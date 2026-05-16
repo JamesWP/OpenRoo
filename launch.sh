@@ -2,6 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+[[ -f ddraw.dll ]] || { echo "ERROR: ddraw.dll missing — run build.sh first"; exit 1; }
+
 > JJ.log; > StreamSoundBuffer.log; rm -f steam-123456.log
 
 env -i \
