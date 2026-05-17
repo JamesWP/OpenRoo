@@ -18,6 +18,7 @@ roll_log() {
 roll_log JJ.log
 roll_log StreamSoundBuffer.log
 roll_log steam-123456.log
+roll_log karoo_hooks.log
 
 env -i \
   HOME="$HOME" USER="$USER" \
