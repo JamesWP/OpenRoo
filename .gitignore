@@ -1,2 +1,6 @@
 *.log
+*.log.[1-9]
 ddraw.dll
+**/*.sav
+karoo-hooks/karoo_hooks.dll
+karoo_hooks.dll
