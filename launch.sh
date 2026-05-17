@@ -5,7 +5,19 @@ cd "$(dirname "$0")"
 [[ -f ddraw.dll ]]        || { echo "ERROR: ddraw.dll missing — run build.sh first"; exit 1; }
 [[ -f karoo_hooks.dll ]] || { echo "ERROR: karoo_hooks.dll missing — run build.sh first"; exit 1; }
 
-> JJ.log; > StreamSoundBuffer.log; rm -f steam-123456.log
+roll_log() {
+  local base="$1" keep=5
+  rm -f "${base}.${keep}"
+  for i in $(seq $((keep-1)) -1 1); do
+    [[ -f "${base}.${i}" ]] && mv "${base}.${i}" "${base}.$((i+1))"
+  done
+  [[ -f "${base}" ]] && mv "${base}" "${base}.1"
+  > "${base}"
+}
+
+roll_log JJ.log
+roll_log StreamSoundBuffer.log
+roll_log steam-123456.log
 
 env -i \
   HOME="$HOME" USER="$USER" \
