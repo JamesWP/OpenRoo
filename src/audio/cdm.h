@@ -19,6 +19,7 @@ struct CDM {
     int   getTrackLength(char **out_ptr, int track);
     void  playTrack(int from, int to);
     void  stopTrack();
+    void  setMixerVolume(DWORD level);
 };
 
 static_assert(offsetof(CDM, notify_hwnd)   == 0x58,  "CDM layout mismatch");

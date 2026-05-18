@@ -103,6 +103,13 @@ void CDM::stopTrack()
     log_write("CDM::stopTrack done\n");
 }
 
+// TODO: volume control — the game calls this via CDM_SetMixerVolume (patched call sites
+// at 0x402ED0); MCI waveaudio exposes no per-alias volume API so this is a no-op for now.
+void CDM::setMixerVolume(DWORD level)
+{
+    log_write("CDM::setMixerVolume(level=0x%lX) — not implemented\n", level);
+}
+
 /* ─── Exports — thin thiscall wrappers so patch.py import names resolve ─── */
 extern "C" {
 
@@ -125,5 +132,8 @@ CDM_PlayTrack(CDM *self, int from, int to) { self->playTrack(from, to); }
 
 __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self) { self->stopTrack(); }
+
+__declspec(dllexport) void __attribute__((thiscall))
+CDM_SetMixerVolume(CDM *self, DWORD level) { self->setMixerVolume(level); }
 
 } // extern "C"
