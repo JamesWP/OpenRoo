@@ -6,5 +6,6 @@ karoo-hooks/karoo_hooks.dll
 karoo_hooks.dll
 Karoo.exe
 Karoo.cfg
+Karoo.exe.orig.xml
 *.pyc
 __pycache__/
