@@ -9,3 +9,4 @@ Karoo.cfg
 Karoo.exe.orig.xml
 *.pyc
 __pycache__/
+debug.gdb
