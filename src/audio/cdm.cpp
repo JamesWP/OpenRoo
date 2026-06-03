@@ -8,26 +8,36 @@
 CDM* CDM::construct()
 {
     log_write("CDM::construct(this=%p)\n", this);
-    vtable        = const_cast<void*>(CDM_VTABLE);
-    track_count   = 0;
-    memset(tracks, 0, sizeof(tracks));
-    notify_hwnd   = 0;
+    vtable       = const_cast<void*>(CDM_VTABLE);
+    nummixers    = 0;
+    memset(mixers, 0, sizeof(mixers));
+    windowhandle = NULL;
+    repeat       = false;
+    tracknumber  = 0;
     log_write("CDM::construct done\n");
     return this;
 }
 
-void CDM::destruct()
+void CDM::stopAndClose()
 {
-    log_write("CDM::destruct(this=%p)\n", this);
-    stopTrack();
+    log_write("CDM::stopAndClose(this=%p)\n", this);
     vtable = const_cast<void*>(CDM_VTABLE);
-    log_write("CDM::destruct done\n");
+    repeat = false;
+    mciSendStringA("stop km", NULL, 0, NULL);
+    mciSendStringA("close km", NULL, 0, NULL);
+    log_write("CDM::stopAndClose done\n");
+}
+
+void CDM::setWindowHandle(HWND hwnd)
+{
+    log_write("CDM::setWindowHandle(hwnd=0x%p)\n", hwnd);
+    windowhandle = hwnd;
 }
 
 int CDM::getTrackCount()
 {
     log_write("CDM::getTrackCount → 9\n");
-    return 9;  // original CD has 9 tracks (1 data + 8 audio); FUN_403420 checks for exactly 9
+    return 9;  // original CD has 9 tracks (1 data + 8 audio); ValidateCDTrackLengths checks for exactly 9
 }
 
 static const char *track_len(int track)
@@ -51,28 +61,28 @@ static const char *track_len(int track)
 int CDM::getTrackLength(char **out_ptr, int track)
 {
     const char *s = track_len(track);
-    strncpy(mci_buf, s, sizeof(mci_buf) - 1);
-    mci_buf[sizeof(mci_buf) - 1] = '\0';
-    if (out_ptr) *out_ptr = mci_buf;
+    strncpy(mcibuff, s, sizeof(mcibuff) - 1);
+    mcibuff[sizeof(mcibuff) - 1] = '\0';
+    if (out_ptr) *out_ptr = mcibuff;
     log_write("CDM::getTrackLength(track=%d) → \"%s\"\n", track, s);
     return 1;
 }
 
-void CDM::playTrack(int from, int to)
+void CDM::playTrack(int track, bool loop)
 {
-    log_write("CDM::playTrack(from=%d, to=%d, notify_hwnd=0x%lX)\n", from, to, notify_hwnd);
+    log_write("CDM::playTrack(track=%d, loop=%d, windowhandle=0x%p)\n", track, (int)loop, windowhandle);
 
     // Stop and close any currently open alias before opening a new one.
     mciSendStringA("stop km", NULL, 0, NULL);
     mciSendStringA("close km", NULL, 0, NULL);
 
-    track_to      = (BYTE)to;
-    current_track = (BYTE)from;
+    tracknumber = track;
+    repeat      = loop;
 
     // CD track 2 → CDTracks\Track 1.wav, track 3 → Track 2.wav, …
-    int wav = from - 1;
+    int wav = track - 1;
     if (wav < 1 || wav > 8) {
-        log_write("CDM::playTrack: track %d out of WAV range\n", from);
+        log_write("CDM::playTrack: track %d out of WAV range\n", track);
         return;
     }
 
@@ -86,25 +96,24 @@ void CDM::playTrack(int from, int to)
     }
 
     // Play non-blocking with notify. The game's WndProc (0x42CE20) handles
-    // MM_MCINOTIFY: on MCI_NOTIFY_SUCCESSFUL it re-calls CDM::PlayTrack with
-    // the saved current_track, so looping is driven by the game's message pump.
-    mciSendStringA("play km notify", NULL, 0, (HWND)(UINT_PTR)notify_hwnd);
+    // MM_MCINOTIFY: on MCI_NOTIFY_SUCCESSFUL it checks CDM::repeat and if set
+    // re-calls CDM::PlayTrack with CDM::tracknumber, driving the loop.
+    mciSendStringA("play km notify", NULL, 0, windowhandle);
     log_write("CDM::playTrack done\n");
 }
 
-void CDM::stopTrack()
+void CDM::stop()
 {
-    log_write("CDM::stopTrack\n");
-    // Zero track_to so any pending MM_MCINOTIFY that slips through the
-    // wParam==MCI_NOTIFY_SUCCESSFUL check does not re-trigger playback.
-    track_to = 0;
+    log_write("CDM::stop\n");
+    // Zero repeat so any pending MM_MCINOTIFY does not re-trigger playback.
+    repeat = false;
     mciSendStringA("stop km", NULL, 0, NULL);
     mciSendStringA("close km", NULL, 0, NULL);
-    log_write("CDM::stopTrack done\n");
+    log_write("CDM::stop done\n");
 }
 
-// TODO: volume control — the game calls this via CDM_SetMixerVolume (patched call sites
-// at 0x402ED0); MCI waveaudio exposes no per-alias volume API so this is a no-op for now.
+// Volume control: the game calls this via CDM_SetMixerVolume (patched call sites
+// at 0x402ED0). MCI waveaudio exposes no per-alias volume API so this is a no-op.
 void CDM::setMixerVolume(DWORD level)
 {
     log_write("CDM::setMixerVolume(level=0x%lX) — not implemented\n", level);
@@ -119,7 +128,10 @@ __declspec(dllexport) CDM* __attribute__((thiscall))
 CDM_Constructor(CDM *self) { return self->construct(); }
 
 __declspec(dllexport) void __attribute__((thiscall))
-CDM_Destructor(CDM *self) { self->destruct(); }
+CDM_Destructor(CDM *self) { self->stopAndClose(); }
+
+__declspec(dllexport) void __attribute__((thiscall))
+CDM_SetWindowHandle(CDM *self, HWND hwnd) { self->setWindowHandle(hwnd); }
 
 __declspec(dllexport) int __attribute__((thiscall))
 CDM_GetTrackCount(CDM *self) { return self->getTrackCount(); }
@@ -128,10 +140,10 @@ __declspec(dllexport) int __attribute__((thiscall))
 CDM_GetTrackLength(CDM *self, char **out_ptr, int track) { return self->getTrackLength(out_ptr, track); }
 
 __declspec(dllexport) void __attribute__((thiscall))
-CDM_PlayTrack(CDM *self, int from, int to) { self->playTrack(from, to); }
+CDM_PlayTrack(CDM *self, int track, bool loop) { self->playTrack(track, loop); }
 
 __declspec(dllexport) void __attribute__((thiscall))
-CDM_StopTrack(CDM *self) { self->stopTrack(); }
+CDM_StopTrack(CDM *self) { self->stop(); }
 
 __declspec(dllexport) void __attribute__((thiscall))
 CDM_SetMixerVolume(CDM *self, DWORD level) { self->setMixerVolume(level); }
