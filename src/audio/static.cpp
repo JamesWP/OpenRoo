@@ -186,7 +186,7 @@ static int CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
                                           IDirectSound *pDS, DWORD dwDsFlags,
                                           const char *filename, void *logger)
 {
-    log_write("CStatic::CreateAndLoadFile(this=%p, file='%s')\n", self, filename ? filename : "<null>");
+    //log_write("CStatic::CreateAndLoadFile(this=%p, file='%s')\n", self, filename ? filename : "<null>");
 
     CStatic_Reset_impl(self);
 
@@ -222,8 +222,8 @@ static int CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
         return 0;
     }
 
-    log_write("CStatic::CreateAndLoadFile: OK '%s' dsflags=0x%lx\n",
-              filename, (unsigned long)bufFlags);
+    //log_write("CStatic::CreateAndLoadFile: OK '%s' dsflags=0x%lx\n",
+    //          filename, (unsigned long)bufFlags);
     return 1;
 }
 
@@ -231,8 +231,8 @@ static int CStatic_CreateAndLoad3DSoundFile_impl(CStaticSoundbuffer *self,
                                                  IDirectSound *pDS, DWORD dwDsFlags,
                                                  const char *filename, void *logger)
 {
-    log_write("CStatic::CreateAndLoad3DSoundFile(this=%p, file='%s')\n",
-              self, filename ? filename : "<null>");
+    //log_write("CStatic::CreateAndLoad3DSoundFile(this=%p, file='%s')\n",
+    //          self, filename ? filename : "<null>");
 
     /* Force CTRL3D flag then create the base buffer. */
     int ok = CStatic_CreateAndLoadFile_impl(self, pDS, dwDsFlags | DSBCAPS_CTRL3D,
@@ -249,7 +249,7 @@ static int CStatic_CreateAndLoad3DSoundFile_impl(CStaticSoundbuffer *self,
         return 0;
     }
 
-    log_write("CStatic::CreateAndLoad3DSoundFile: OK '%s'\n", filename);
+    //log_write("CStatic::CreateAndLoad3DSoundFile: OK '%s'\n", filename);
     return 1;
 }
 
@@ -263,7 +263,7 @@ static void* CStatic_Copy_impl(CStaticSoundbuffer *self,
                                 IDirectSound *pDS,
                                 int flag)
 {
-    log_write("CStatic::Copy(this=%p, other=%p, flag=%d)\n", self, other, flag);
+    //log_write("CStatic::Copy(this=%p, other=%p, flag=%d)\n", self, other, flag);
 
     CStatic_Reset_impl(self);
 
@@ -390,7 +390,7 @@ static int CStatic_RestoreBuffer_impl(CStaticSoundbuffer *self)
 
     HeapFree(GetProcessHeap(), 0, fmt);
     HeapFree(GetProcessHeap(), 0, pcm);
-    log_write("CStatic::RestoreBuffer: OK '%s'\n", self->filename);
+    //log_write("CStatic::RestoreBuffer: OK '%s'\n", self->filename);
     return 1;
 }
 
@@ -398,9 +398,9 @@ static int CStatic_TriggerPlayback_impl(CStaticSoundbuffer *self, DWORD dwLoopFl
 {
     if (!self->soundbuffer) return 0;
 
-    log_write("CStatic::TriggerPlayback(this=%p, file='%s', loop=%lu)\n",
-              self, self->filename ? self->filename : "<null>",
-              (unsigned long)dwLoopFlags);
+    //log_write("CStatic::TriggerPlayback(this=%p, file='%s', loop=%lu)\n",
+    //          self, self->filename ? self->filename : "<null>",
+    //          (unsigned long)dwLoopFlags);
     HRESULT hr = self->soundbuffer->Play(0, 0, dwLoopFlags);
     if (hr == DSERR_BUFFERLOST) {
         log_write("CStatic::TriggerPlayback: buffer lost, restoring '%s'\n",
