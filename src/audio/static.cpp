@@ -398,6 +398,9 @@ static int CStatic_TriggerPlayback_impl(CStaticSoundbuffer *self, DWORD dwLoopFl
 {
     if (!self->soundbuffer) return 0;
 
+    log_write("CStatic::TriggerPlayback(this=%p, file='%s', loop=%lu)\n",
+              self, self->filename ? self->filename : "<null>",
+              (unsigned long)dwLoopFlags);
     HRESULT hr = self->soundbuffer->Play(0, 0, dwLoopFlags);
     if (hr == DSERR_BUFFERLOST) {
         log_write("CStatic::TriggerPlayback: buffer lost, restoring '%s'\n",
