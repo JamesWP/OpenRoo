@@ -70,6 +70,9 @@ static int CFaktSound_Initialize_impl(CFaktSound *self, HWND window,
     self->logger = logger;
 
     /* Create the DirectSound device. */
+    HMODULE hDSound = GetModuleHandleA("dsound.dll");
+    log_write("CFaktSound::Initialize: dsound.dll loaded at %p\n", (void*)hDSound);
+
     HRESULT hr = DirectSoundCreate(NULL, &self->directsound, NULL);
     if (FAILED(hr)) {
         log_write("CFaktSound::Initialize: DirectSoundCreate failed hr=0x%lx\n",
