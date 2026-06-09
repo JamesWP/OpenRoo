@@ -7,9 +7,7 @@
 #include "progctrl.h"
 #include "log.h"
 
-static const char  SAVE_FILE[]  = "ProgableControl.sav";
-static const DWORD SAVE_MAGIC   = 0x43544C50u; /* 'PLTC' */
-static const DWORD SAVE_VERSION = 1;
+static const char SAVE_FILE[] = "ProgableControl.sav";
 
 /* ── action table helpers ─────────────────────────────────────────────────── */
 
@@ -54,6 +52,8 @@ static void free_table(ActionTable *t)
 
 static void release_devices(ProgableControl *s)
 {
+    //log_write("ProgCtrl: release_devices(kbd=%p mouse=%p joy=%p di=%p)\n",
+    //          s->pKeyboard, s->pMouse, s->pJoystick, s->directinput);
     if (s->pKeyboard) { s->pKeyboard->Unacquire(); s->pKeyboard->Release(); s->pKeyboard = nullptr; }
     if (s->pMouse)    { s->pMouse->Unacquire();    s->pMouse->Release();    s->pMouse    = nullptr; }
     if (s->pJoystick) { s->pJoystick->Unacquire(); s->pJoystick->Release(); s->pJoystick = nullptr; }
@@ -64,7 +64,7 @@ static void release_devices(ProgableControl *s)
 
 static void *Setup_impl(ProgableControl *s, int logger_or_0)
 {
-    log_write("ProgCtrl::Setup(logger=%d)\n", logger_or_0);
+    //log_write("ProgCtrl::Setup(this=%p logger_or_0=%d)\n", s, logger_or_0);
     s->vtable        = const_cast<void*>(PROGCTRL_VTABLE);
     s->pLogger       = nullptr;
     s->dwOwns_logger = 0;
@@ -89,7 +89,7 @@ static void *Setup_impl(ProgableControl *s, int logger_or_0)
 
 static void Teardown_impl(ProgableControl *s)
 {
-    log_write("ProgCtrl::Teardown\n");
+    //log_write("ProgCtrl::Teardown(this=%p)\n", s);
     s->vtable = const_cast<void*>(PROGCTRL_VTABLE);
     release_devices(s);
     for (int i = 0; i < 5; i++) free_table(&s->action_tables[i]);
@@ -97,7 +97,7 @@ static void Teardown_impl(ProgableControl *s)
 
 static void ScalarDtor_impl(ProgableControl *s, int free_or_not)
 {
-    log_write("ProgCtrl::ScalarDtor(free=%d)\n", free_or_not);
+    //log_write("ProgCtrl::ScalarDtor(this=%p free_or_not=%d)\n", s, free_or_not);
     Teardown_impl(s);
     if (free_or_not & 1)
         HeapFree(GetProcessHeap(), 0, s);
@@ -105,18 +105,18 @@ static void ScalarDtor_impl(ProgableControl *s, int free_or_not)
 
 static void Shutdown_impl(ProgableControl *s)
 {
-    log_write("ProgCtrl::Shutdown\n");
+    //log_write("ProgCtrl::Shutdown(this=%p)\n", s);
     release_devices(s);
 }
 
 static int InitDInput_impl(ProgableControl *s, HINSTANCE hInstance)
 {
-    log_write("ProgCtrl::InitDInput(hInstance=%p)\n", hInstance);
+    //log_write("ProgCtrl::InitDInput(this=%p hInstance=%p)\n", s, hInstance);
     HRESULT hr = DirectInput8Create(hInstance, DIRECTINPUT_VERSION,
                                     IID_IDirectInput8A,
                                     reinterpret_cast<void**>(&s->directinput), nullptr);
     if (FAILED(hr)) {
-        log_write("ProgCtrl::InitDInput: failed hr=0x%lx\n", hr);
+        log_write("ProgCtrl::InitDInput: DirectInput8Create FAILED hr=0x%08lx\n", hr);
         s->directinput = nullptr;
         return 0;
     }
@@ -125,21 +125,24 @@ static int InitDInput_impl(ProgableControl *s, HINSTANCE hInstance)
 
 static int SetupKbd_impl(ProgableControl *s, HWND hwnd)
 {
-    log_write("ProgCtrl::SetupKbd(hwnd=%p)\n", hwnd);
-    if (!s->directinput) return 0;
-
+    //log_write("ProgCtrl::SetupKbd(this=%p hwnd=%p)\n", s, hwnd);
+    if (!s->directinput) {
+        log_write("ProgCtrl::SetupKbd: no directinput interface\n");
+        return 0;
+    }
     HRESULT hr = s->directinput->CreateDevice(GUID_SysKeyboard, &s->pKeyboard, nullptr);
-    if (FAILED(hr)) { log_write("ProgCtrl::SetupKbd: CreateDevice hr=0x%lx\n", hr); return 0; }
-
+    if (FAILED(hr)) {
+        log_write("ProgCtrl::SetupKbd: CreateDevice FAILED hr=0x%08lx\n", hr);
+        return 0;
+    }
     hr = s->pKeyboard->SetDataFormat(&c_dfDIKeyboard);
     if (FAILED(hr)) {
-        log_write("ProgCtrl::SetupKbd: SetDataFormat hr=0x%lx\n", hr);
+        log_write("ProgCtrl::SetupKbd: SetDataFormat FAILED hr=0x%08lx\n", hr);
         s->pKeyboard->Release(); s->pKeyboard = nullptr; return 0;
     }
-
     hr = s->pKeyboard->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
     if (FAILED(hr)) {
-        log_write("ProgCtrl::SetupKbd: SetCooperativeLevel hr=0x%lx\n", hr);
+        log_write("ProgCtrl::SetupKbd: SetCooperativeLevel FAILED hr=0x%08lx\n", hr);
         s->pKeyboard->Release(); s->pKeyboard = nullptr; return 0;
     }
     return 1;
@@ -147,37 +150,41 @@ static int SetupKbd_impl(ProgableControl *s, HWND hwnd)
 
 static int SetupMouse_impl(ProgableControl *s, HWND hwnd)
 {
-    log_write("ProgCtrl::SetupMouse(hwnd=%p)\n", hwnd);
-    if (!s->directinput) return 0;
-
+    //log_write("ProgCtrl::SetupMouse(this=%p hwnd=%p)\n", s, hwnd);
+    if (!s->directinput) {
+        log_write("ProgCtrl::SetupMouse: no directinput interface\n");
+        return 0;
+    }
     HRESULT hr = s->directinput->CreateDevice(GUID_SysMouse, &s->pMouse, nullptr);
-    if (FAILED(hr)) { log_write("ProgCtrl::SetupMouse: CreateDevice hr=0x%lx\n", hr); return 0; }
-
+    if (FAILED(hr)) {
+        log_write("ProgCtrl::SetupMouse: CreateDevice FAILED hr=0x%08lx\n", hr);
+        return 0;
+    }
     hr = s->pMouse->SetDataFormat(&c_dfDIMouse);
     if (FAILED(hr)) {
-        log_write("ProgCtrl::SetupMouse: SetDataFormat hr=0x%lx\n", hr);
+        log_write("ProgCtrl::SetupMouse: SetDataFormat FAILED hr=0x%08lx\n", hr);
         s->pMouse->Release(); s->pMouse = nullptr; return 0;
     }
-
     hr = s->pMouse->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
     if (FAILED(hr)) {
-        log_write("ProgCtrl::SetupMouse: SetCooperativeLevel hr=0x%lx\n", hr);
+        log_write("ProgCtrl::SetupMouse: SetCooperativeLevel FAILED hr=0x%08lx\n", hr);
         s->pMouse->Release(); s->pMouse = nullptr; return 0;
     }
     return 1;
 }
 
-/* Joystick stubs — no hardware support needed for this title */
 static int SetupJoy_impl(ProgableControl *, HWND)          { return 1; }
 static int SetJoyRange_impl(ProgableControl *, int, int, int) { return 1; }
 static int SetJoyDeadzone_impl(ProgableControl *, DWORD, int) { return 1; }
 
 static int AcquireAll_impl(ProgableControl *s)
 {
-    log_write("ProgCtrl::AcquireAll\n");
     if (s->pKeyboard) {
         HRESULT hr = s->pKeyboard->Acquire();
-        if (FAILED(hr)) { log_write("ProgCtrl::AcquireAll: kbd hr=0x%lx\n", hr); return 0; }
+        if (FAILED(hr)) {
+            log_write("ProgCtrl::AcquireAll: keyboard Acquire FAILED hr=0x%08lx\n", hr);
+            return 0;
+        }
     }
     if (s->pMouse) s->pMouse->Acquire();
     return 1;
@@ -194,10 +201,13 @@ static int UnacquireAll_impl(ProgableControl *s)
 static void RegisterAction_impl(ProgableControl *s, unsigned short mode,
                                  const char *name, ActionCallback cb, void *ctx)
 {
-    log_write("ProgCtrl::RegisterAction(mode=%u name='%s')\n", mode, name);
+    //log_write("ProgCtrl::RegisterAction(mode=%u name='%s' cb=%p ctx=%p)\n", mode, name, cb, ctx);
     if (mode >= 5) return;
     ActionEntry *e = get_or_create(&s->action_tables[mode], name);
-    if (!e) return;
+    if (!e) {
+        log_write("ProgCtrl::RegisterAction: HeapAlloc failed for '%s'\n", name);
+        return;
+    }
     e->callback = cb;
     e->context  = ctx;
 }
@@ -205,6 +215,7 @@ static void RegisterAction_impl(ProgableControl *s, unsigned short mode,
 static int BindKey_impl(ProgableControl *s, unsigned short mode,
                          const char *name, int sc, int strength)
 {
+    //log_write("ProgCtrl::BindKey(mode=%u name='%s' sc=0x%02X strength=%d)\n", mode, name, sc, strength);
     if (mode >= 5) return 0;
     ActionEntry *e = find_entry(&s->action_tables[mode], name);
     if (!e) return 0;
@@ -212,7 +223,7 @@ static int BindKey_impl(ProgableControl *s, unsigned short mode,
         if (kb->scancode == sc) { kb->strength = strength; return 1; }
     }
     KeyBind *kb = (KeyBind *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*kb));
-    if (!kb) return 0;
+    if (!kb) { log_write("ProgCtrl::BindKey: HeapAlloc failed\n"); return 0; }
     kb->scancode = sc;
     kb->strength = strength;
     kb->next     = e->kbd;
@@ -244,8 +255,12 @@ static void GetBindingStr_impl(ProgableControl *s, int mode, const char *name,
         if (s->pKeyboard) {
             DIDEVICEOBJECTINSTANCEA doi;
             doi.dwSize = sizeof(doi);
-            if (SUCCEEDED(s->pKeyboard->GetObjectInfo(&doi, (DWORD)kb->scancode, DIPH_BYOFFSET)))
+            HRESULT hr = s->pKeyboard->GetObjectInfo(&doi, (DWORD)kb->scancode, DIPH_BYOFFSET);
+            if (SUCCEEDED(hr))
                 strncpy(keyname, doi.tszName, sizeof(keyname) - 1);
+            else
+                log_write("ProgCtrl::GetBindingStr: GetObjectInfo sc=0x%02X FAILED hr=0x%08lx\n",
+                          kb->scancode, hr);
         }
         if (!first) {
             size_t cur = strlen(buf), sep = strlen(s->sep_or);
@@ -301,22 +316,100 @@ static int CaptureBinding_impl(ProgableControl *s, unsigned int mode, const char
     return 0;
 }
 
+/* ── save / load ──────────────────────────────────────────────────────────── */
+
+/* Read one action entry's binding block in the original game format:
+ *   DWORD kbd_count;  kbd_count × (DWORD key_id + DWORD strength)
+ *   DWORD axis_count; axis_count × (DWORD axis_id + 8 bytes) — skipped
+ *   DWORD btn_count;  btn_count  × (DWORD btn_id  + 8 bytes) — skipped
+ */
+static int read_orig_entry_bindings(HANDLE f, ProgableControl *s, int mode, ActionEntry *e)
+{
+    DWORD n;
+
+    DWORD kbd_count;
+    if (!ReadFile(f, &kbd_count, 4, &n, nullptr) || n != 4) return 0;
+    log_write("ProgCtrl::ReadBindings(orig):     kbd_count=%lu\n", kbd_count);
+    for (DWORD ki = 0; ki < kbd_count; ki++) {
+        DWORD key_id, strength;
+        if (!ReadFile(f, &key_id,   4, &n, nullptr) || n != 4) return 0;
+        if (!ReadFile(f, &strength, 4, &n, nullptr) || n != 4) return 0;
+        log_write("ProgCtrl::ReadBindings(orig):       key=0x%02lX strength=%lu -> %s\n",
+                  key_id, strength, e ? "applied" : "skipped");
+        if (e) BindKey_impl(s, (unsigned short)mode, e->name, (int)key_id, (int)strength);
+    }
+
+    DWORD axis_count;
+    if (!ReadFile(f, &axis_count, 4, &n, nullptr) || n != 4) return 0;
+    log_write("ProgCtrl::ReadBindings(orig):     axis_count=%lu (skipped)\n", axis_count);
+    for (DWORD ai = 0; ai < axis_count; ai++) {
+        BYTE discard[12];
+        if (!ReadFile(f, discard, 12, &n, nullptr) || n != 12) return 0;
+    }
+
+    DWORD btn_count;
+    if (!ReadFile(f, &btn_count, 4, &n, nullptr) || n != 4) return 0;
+    log_write("ProgCtrl::ReadBindings(orig):     btn_count=%lu (skipped)\n", btn_count);
+    for (DWORD bi = 0; bi < btn_count; bi++) {
+        BYTE discard[12];
+        if (!ReadFile(f, discard, 12, &n, nullptr) || n != 12) return 0;
+    }
+
+    return 1;
+}
+
+static int read_orig_format(HANDLE f, ProgableControl *s)
+{
+    DWORD n;
+    log_write("ProgCtrl::ReadBindings: reading\n");
+    for (int m = 0; m < 5; m++) {
+        DWORD cnt;
+        if (!ReadFile(f, &cnt, 4, &n, nullptr) || n != 4) {
+            log_write("ProgCtrl::ReadBindings(orig): read error on entry count for mode %d\n", m);
+            return 0;
+        }
+        log_write("ProgCtrl::ReadBindings(orig): mode %d: %lu entries\n", m, cnt);
+        for (DWORD ei = 0; ei < cnt; ei++) {
+            char namebuf[256] = {};
+            if (!ReadFile(f, namebuf, 256, &n, nullptr) || n != 256) {
+                log_write("ProgCtrl::ReadBindings(orig): read error on name\n");
+                return 0;
+            }
+            ActionEntry *e = find_entry(&s->action_tables[m], namebuf);
+            log_write("ProgCtrl::ReadBindings(orig):   '%s'%s\n",
+                      namebuf, e ? "" : " (not registered, bindings discarded)");
+            if (!read_orig_entry_bindings(f, s, m, e)) {
+                log_write("ProgCtrl::ReadBindings(orig): read error in bindings for '%s'\n", namebuf);
+                return 0;
+            }
+        }
+    }
+    log_write("ProgCtrl::ReadBindings(orig): ok\n");
+    return 1;
+}
+
 static int WriteBindings_impl(ProgableControl *s)
 {
-    log_write("ProgCtrl::WriteBindings\n");
+    log_write("ProgCtrl::WriteBindings(this=%p) -> '%s'\n", s, SAVE_FILE);
     HANDLE f = CreateFileA(SAVE_FILE, GENERIC_WRITE, 0,
                            nullptr, CREATE_ALWAYS, 0, nullptr);
     if (f == INVALID_HANDLE_VALUE) {
-        log_write("ProgCtrl::WriteBindings: can't create file err=%lu\n", GetLastError());
+        log_write("ProgCtrl::WriteBindings: CreateFile FAILED err=%lu\n", GetLastError());
         return 0;
     }
     DWORD n;
-    DWORD magic = SAVE_MAGIC, ver = SAVE_VERSION;
-    if (!WriteFile(f, &magic, 4, &n, nullptr) || !WriteFile(f, &ver, 4, &n, nullptr))
-        goto fail;
+    /* Original format: no header.
+     *   DWORD entry_count
+     *   For each entry:
+     *     char  name[256]
+     *     DWORD kbd_count;  kbd_count × (DWORD key_id, DWORD strength)
+     *     DWORD axis_count; (always 0)
+     *     DWORD btn_count;  (always 0) */
+    const DWORD zero = 0;
     for (int m = 0; m < 5; m++) {
         ActionTable *t = &s->action_tables[m];
         DWORD cnt = t->entry_count;
+        log_write("ProgCtrl::WriteBindings: mode %d: %lu entries\n", m, cnt);
         if (!WriteFile(f, &cnt, 4, &n, nullptr)) goto fail;
         for (ActionEntry *e = t->head; e; e = e->chain) {
             char namebuf[256] = {};
@@ -325,13 +418,20 @@ static int WriteBindings_impl(ProgableControl *s)
             DWORD kc = 0;
             for (KeyBind *kb = e->kbd; kb; kb = kb->next) kc++;
             if (!WriteFile(f, &kc, 4, &n, nullptr)) goto fail;
+            log_write("ProgCtrl::WriteBindings:   '%s': %lu binding(s)\n", namebuf, kc);
             for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
-                if (!WriteFile(f, &kb->scancode, 4, &n, nullptr)) goto fail;
-                if (!WriteFile(f, &kb->strength, 4, &n, nullptr)) goto fail;
+                DWORD key_id   = (DWORD)kb->scancode;
+                DWORD strength = (DWORD)kb->strength;
+                log_write("ProgCtrl::WriteBindings:     sc=0x%02lX strength=%lu\n", key_id, strength);
+                if (!WriteFile(f, &key_id,   4, &n, nullptr)) goto fail;
+                if (!WriteFile(f, &strength, 4, &n, nullptr)) goto fail;
             }
+            if (!WriteFile(f, &zero, 4, &n, nullptr)) goto fail; /* axis_count = 0 */
+            if (!WriteFile(f, &zero, 4, &n, nullptr)) goto fail; /* btn_count  = 0 */
         }
     }
     CloseHandle(f);
+    log_write("ProgCtrl::WriteBindings: ok\n");
     return 1;
 fail:
     log_write("ProgCtrl::WriteBindings: write error\n");
@@ -341,42 +441,17 @@ fail:
 
 static int ReadBindings_impl(ProgableControl *s)
 {
-    log_write("ProgCtrl::ReadBindings\n");
+    log_write("ProgCtrl::ReadBindings(this=%p) <- '%s'\n", s, SAVE_FILE);
     HANDLE f = CreateFileA(SAVE_FILE, GENERIC_READ, FILE_SHARE_READ,
                            nullptr, OPEN_EXISTING, 0, nullptr);
     if (f == INVALID_HANDLE_VALUE) {
-        log_write("ProgCtrl::ReadBindings: no save file\n");
+        log_write("ProgCtrl::ReadBindings: no save file (err=%lu)\n", GetLastError());
         return 0;
     }
-    DWORD n, magic, ver;
-    if (!ReadFile(f, &magic, 4, &n, nullptr) || n != 4 || magic != SAVE_MAGIC ||
-        !ReadFile(f, &ver,   4, &n, nullptr) || n != 4 || ver   != SAVE_VERSION) {
-        log_write("ProgCtrl::ReadBindings: bad header\n");
-        CloseHandle(f); return 0;
-    }
-    for (int m = 0; m < 5; m++) {
-        DWORD cnt;
-        if (!ReadFile(f, &cnt, 4, &n, nullptr) || n != 4) goto fail;
-        for (DWORD ei = 0; ei < cnt; ei++) {
-            char namebuf[256] = {};
-            if (!ReadFile(f, namebuf, 256, &n, nullptr) || n != 256) goto fail;
-            DWORD kc;
-            if (!ReadFile(f, &kc, 4, &n, nullptr) || n != 4) goto fail;
-            ActionEntry *e = find_entry(&s->action_tables[m], namebuf);
-            for (DWORD ki = 0; ki < kc; ki++) {
-                int sc, st;
-                if (!ReadFile(f, &sc, 4, &n, nullptr) || n != 4) goto fail;
-                if (!ReadFile(f, &st, 4, &n, nullptr) || n != 4) goto fail;
-                if (e) BindKey_impl(s, (unsigned short)m, e->name, sc, st);
-            }
-        }
-    }
+    int ok = read_orig_format(f, s);
     CloseHandle(f);
-    log_write("ProgCtrl::ReadBindings: OK\n");
-    return 1;
-fail:
-    log_write("ProgCtrl::ReadBindings: read error\n");
-    CloseHandle(f); return 0;
+    if (ok) log_write("ProgCtrl::ReadBindings: done\n");
+    return ok;
 }
 
 /* ── exports ─────────────────────────────────────────────────────────────── */
