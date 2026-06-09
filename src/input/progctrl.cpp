@@ -20,15 +20,17 @@ static ActionEntry *find_entry(ActionTable *t, const char *name)
 
 static ActionEntry *get_or_create(ActionTable *t, const char *name)
 {
-    ActionEntry *e = find_entry(t, name);
-    if (!e) {
-        e = (ActionEntry *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*e));
-        if (!e) return nullptr;
-        strncpy(e->name, name, 255);
-        e->chain = t->head;
-        t->head  = e;
-        t->entry_count++;
+    /* Walk to tail, checking for duplicates on the way. */
+    ActionEntry **tail = &t->head;
+    for (ActionEntry *e = t->head; e; e = e->chain) {
+        if (!_stricmp(e->name, name)) return e;
+        tail = &e->chain;
     }
+    ActionEntry *e = (ActionEntry *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*e));
+    if (!e) return nullptr;
+    strncpy(e->name, name, 255);
+    *tail = e;  /* append — preserves registration order in the file */
+    t->entry_count++;
     return e;
 }
 
