@@ -187,7 +187,7 @@ static void *idirectdraw_vtable[] = {
 
 typedef HRESULT (WINAPI *DirectDrawCreate_t)(GUID *, LPDIRECTDRAW *, IUnknown *);
 
-extern "C" HRESULT WINAPI hooks_DirectDrawCreate(
+extern "C" __declspec(dllexport) HRESULT WINAPI hooks_DirectDrawCreate(
         GUID *lpGUID, LPDIRECTDRAW *lplpDD, IUnknown *pUnkOuter)
 {
     DirectDrawCreate_t real_fn = (DirectDrawCreate_t)
