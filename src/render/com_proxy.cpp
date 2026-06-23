@@ -190,8 +190,10 @@ typedef HRESULT (WINAPI *DirectDrawCreate_t)(GUID *, LPDIRECTDRAW *, IUnknown *)
 extern "C" __declspec(dllexport) HRESULT WINAPI hooks_DirectDrawCreate(
         GUID *lpGUID, LPDIRECTDRAW *lplpDD, IUnknown *pUnkOuter)
 {
-    DirectDrawCreate_t real_fn = (DirectDrawCreate_t)
-        GetProcAddress(GetModuleHandleA("ddraw.dll"), "DirectDrawCreate");
+    HMODULE ddraw = GetModuleHandleA("ddraw.dll");
+    DirectDrawCreate_t real_fn = ddraw
+        ? (DirectDrawCreate_t)GetProcAddress(ddraw, "DirectDrawCreate")
+        : NULL;
     if (!real_fn)
         return DDERR_GENERIC;
 
