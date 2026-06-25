@@ -3,9 +3,7 @@
 #include <windows.h>
 #include <ddraw.h>
 
-typedef struct ComProxy {
-    void     **vtable;  /* must be first — COM ABI */
-    IUnknown  *real;
+typedef struct {
+    void    **vtable;  /* must be first — COM ABI requires vtable at offset 0 */
+    IUnknown *real;    /* the real COM pointer this proxy forwards to */
 } ComProxy;
-
-ComProxy *make_proxy(void **vtable, IUnknown *real);

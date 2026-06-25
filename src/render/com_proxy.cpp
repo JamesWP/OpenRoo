@@ -1,191 +1,91 @@
 #include "com_proxy.h"
 
-/* ── helpers ─────────────────────────────────────────────────────────────── */
+typedef HRESULT (WINAPI *DirectDrawCreate_t)(GUID *, LPDIRECTDRAW *, IUnknown *);
 
-ComProxy *make_proxy(void **vtable, IUnknown *real)
+/* Extract the real IDirectDraw pointer from a proxy disguised as IDirectDraw. */
+static inline IDirectDraw *real_dd(IDirectDraw *self)
 {
-    ComProxy *p = (ComProxy *)HeapAlloc(GetProcessHeap(), 0, sizeof(ComProxy));
-    if (p) { p->vtable = vtable; p->real = real; }
-    return p;
+    return (IDirectDraw *)((ComProxy *)self)->real;
 }
 
-#define REAL ((IDirectDraw *)((ComProxy *)self)->real)
+#define NOINLINE __attribute__((noinline))
 
-/* ── IDirectDraw wrapper vtable ───────────────────────────────────────────
-   One thin __stdcall stub per slot.  No logging — GDB breaks on the name. */
+/* --- IDirectDraw wrapper functions (slots 0-22) --- */
 
-static HRESULT __stdcall wrapper_IDirectDraw_QueryInterface(
-        IDirectDraw *self, REFIID riid, void **ppv)
-{
-    return REAL->QueryInterface(riid, ppv);
-}
+static HRESULT WINAPI NOINLINE w_QueryInterface(IDirectDraw *s, REFIID r, void **p)
+    { return real_dd(s)->QueryInterface(r, p); }
+static ULONG   WINAPI NOINLINE w_AddRef(IDirectDraw *s)
+    { return real_dd(s)->AddRef(); }
+static ULONG   WINAPI NOINLINE w_Release(IDirectDraw *s)
+    { return real_dd(s)->Release(); }
+static HRESULT WINAPI NOINLINE w_Compact(IDirectDraw *s)
+    { return real_dd(s)->Compact(); }
+static HRESULT WINAPI NOINLINE w_CreateClipper(IDirectDraw *s, DWORD f, LPDIRECTDRAWCLIPPER *pp, IUnknown *u)
+    { return real_dd(s)->CreateClipper(f, pp, u); }
+static HRESULT WINAPI NOINLINE w_CreatePalette(IDirectDraw *s, DWORD f, LPPALETTEENTRY pe, LPDIRECTDRAWPALETTE *pp, IUnknown *u)
+    { return real_dd(s)->CreatePalette(f, pe, pp, u); }
+static HRESULT WINAPI NOINLINE w_CreateSurface(IDirectDraw *s, LPDDSURFACEDESC d, LPDIRECTDRAWSURFACE *pp, IUnknown *u)
+    { return real_dd(s)->CreateSurface(d, pp, u); }
+static HRESULT WINAPI NOINLINE w_DuplicateSurface(IDirectDraw *s, LPDIRECTDRAWSURFACE src, LPDIRECTDRAWSURFACE *pp)
+    { return real_dd(s)->DuplicateSurface(src, pp); }
+static HRESULT WINAPI NOINLINE w_EnumDisplayModes(IDirectDraw *s, DWORD f, LPDDSURFACEDESC d, LPVOID ctx, LPDDENUMMODESCALLBACK cb)
+    { return real_dd(s)->EnumDisplayModes(f, d, ctx, cb); }
+static HRESULT WINAPI NOINLINE w_EnumSurfaces(IDirectDraw *s, DWORD f, LPDDSURFACEDESC d, LPVOID ctx, LPDDENUMSURFACESCALLBACK cb)
+    { return real_dd(s)->EnumSurfaces(f, d, ctx, cb); }
+static HRESULT WINAPI NOINLINE w_FlipToGDISurface(IDirectDraw *s)
+    { return real_dd(s)->FlipToGDISurface(); }
+static HRESULT WINAPI NOINLINE w_GetCaps(IDirectDraw *s, LPDDCAPS dc, LPDDCAPS hc)
+    { return real_dd(s)->GetCaps(dc, hc); }
+static HRESULT WINAPI NOINLINE w_GetDisplayMode(IDirectDraw *s, LPDDSURFACEDESC d)
+    { return real_dd(s)->GetDisplayMode(d); }
+static HRESULT WINAPI NOINLINE w_GetFourCCCodes(IDirectDraw *s, LPDWORD pn, LPDWORD pc)
+    { return real_dd(s)->GetFourCCCodes(pn, pc); }
+static HRESULT WINAPI NOINLINE w_GetGDISurface(IDirectDraw *s, LPDIRECTDRAWSURFACE *pp)
+    { return real_dd(s)->GetGDISurface(pp); }
+static HRESULT WINAPI NOINLINE w_GetMonitorFrequency(IDirectDraw *s, LPDWORD p)
+    { return real_dd(s)->GetMonitorFrequency(p); }
+static HRESULT WINAPI NOINLINE w_GetScanLine(IDirectDraw *s, LPDWORD p)
+    { return real_dd(s)->GetScanLine(p); }
+static HRESULT WINAPI NOINLINE w_GetVerticalBlankStatus(IDirectDraw *s, LPBOOL p)
+    { return real_dd(s)->GetVerticalBlankStatus(p); }
+static HRESULT WINAPI NOINLINE w_Initialize(IDirectDraw *s, GUID *g)
+    { return real_dd(s)->Initialize(g); }
+static HRESULT WINAPI NOINLINE w_RestoreDisplayMode(IDirectDraw *s)
+    { return real_dd(s)->RestoreDisplayMode(); }
+static HRESULT WINAPI NOINLINE w_SetCooperativeLevel(IDirectDraw *s, HWND h, DWORD f)
+    { return real_dd(s)->SetCooperativeLevel(h, f); }
+static HRESULT WINAPI NOINLINE w_SetDisplayMode(IDirectDraw *s, DWORD w, DWORD h, DWORD bpp)
+    { return real_dd(s)->SetDisplayMode(w, h, bpp); }
+static HRESULT WINAPI NOINLINE w_WaitForVerticalBlank(IDirectDraw *s, DWORD f, HANDLE e)
+    { return real_dd(s)->WaitForVerticalBlank(f, e); }
 
-static ULONG __stdcall wrapper_IDirectDraw_AddRef(IDirectDraw *self)
-{
-    return REAL->AddRef();
-}
-
-static ULONG __stdcall wrapper_IDirectDraw_Release(IDirectDraw *self)
-{
-    IDirectDraw *real = REAL;
-    ULONG refs = real->Release();
-    if (refs == 0)
-        HeapFree(GetProcessHeap(), 0, (ComProxy *)self);
-    return refs;
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_Compact(IDirectDraw *self)
-{
-    return REAL->Compact();
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_CreateClipper(
-        IDirectDraw *self, DWORD flags, LPDIRECTDRAWCLIPPER *out, IUnknown *unk)
-{
-    return REAL->CreateClipper(flags, out, unk);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_CreatePalette(
-        IDirectDraw *self, DWORD flags, LPPALETTEENTRY table,
-        LPDIRECTDRAWPALETTE *out, IUnknown *unk)
-{
-    return REAL->CreatePalette(flags, table, out, unk);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_CreateSurface(
-        IDirectDraw *self, LPDDSURFACEDESC desc,
-        LPDIRECTDRAWSURFACE *out, IUnknown *unk)
-{
-    return REAL->CreateSurface(desc, out, unk);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_DuplicateSurface(
-        IDirectDraw *self, LPDIRECTDRAWSURFACE src, LPDIRECTDRAWSURFACE *out)
-{
-    return REAL->DuplicateSurface(src, out);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_EnumDisplayModes(
-        IDirectDraw *self, DWORD flags, LPDDSURFACEDESC desc,
-        LPVOID ctx, LPDDENUMMODESCALLBACK cb)
-{
-    return REAL->EnumDisplayModes(flags, desc, ctx, cb);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_EnumSurfaces(
-        IDirectDraw *self, DWORD flags, LPDDSURFACEDESC desc,
-        LPVOID ctx, LPDDENUMSURFACESCALLBACK cb)
-{
-    return REAL->EnumSurfaces(flags, desc, ctx, cb);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_FlipToGDISurface(IDirectDraw *self)
-{
-    return REAL->FlipToGDISurface();
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_GetCaps(
-        IDirectDraw *self, LPDDCAPS driver, LPDDCAPS hel)
-{
-    return REAL->GetCaps(driver, hel);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_GetDisplayMode(
-        IDirectDraw *self, LPDDSURFACEDESC desc)
-{
-    return REAL->GetDisplayMode(desc);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_GetFourCCCodes(
-        IDirectDraw *self, LPDWORD num, LPDWORD codes)
-{
-    return REAL->GetFourCCCodes(num, codes);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_GetGDISurface(
-        IDirectDraw *self, LPDIRECTDRAWSURFACE *out)
-{
-    return REAL->GetGDISurface(out);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_GetMonitorFrequency(
-        IDirectDraw *self, LPDWORD freq)
-{
-    return REAL->GetMonitorFrequency(freq);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_GetScanLine(
-        IDirectDraw *self, LPDWORD line)
-{
-    return REAL->GetScanLine(line);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_GetVerticalBlankStatus(
-        IDirectDraw *self, WINBOOL *in_vb)
-{
-    return REAL->GetVerticalBlankStatus(in_vb);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_Initialize(
-        IDirectDraw *self, GUID *guid)
-{
-    return REAL->Initialize(guid);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_RestoreDisplayMode(IDirectDraw *self)
-{
-    return REAL->RestoreDisplayMode();
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_SetCooperativeLevel(
-        IDirectDraw *self, HWND hwnd, DWORD flags)
-{
-    return REAL->SetCooperativeLevel(hwnd, flags);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_SetDisplayMode(
-        IDirectDraw *self, DWORD w, DWORD h, DWORD bpp)
-{
-    return REAL->SetDisplayMode(w, h, bpp);
-}
-
-static HRESULT __stdcall wrapper_IDirectDraw_WaitForVerticalBlank(
-        IDirectDraw *self, DWORD flags, HANDLE ev)
-{
-    return REAL->WaitForVerticalBlank(flags, ev);
-}
-
-#undef REAL
-
-static void *idirectdraw_vtable[] = {
-    (void *)wrapper_IDirectDraw_QueryInterface,
-    (void *)wrapper_IDirectDraw_AddRef,
-    (void *)wrapper_IDirectDraw_Release,
-    (void *)wrapper_IDirectDraw_Compact,
-    (void *)wrapper_IDirectDraw_CreateClipper,
-    (void *)wrapper_IDirectDraw_CreatePalette,
-    (void *)wrapper_IDirectDraw_CreateSurface,
-    (void *)wrapper_IDirectDraw_DuplicateSurface,
-    (void *)wrapper_IDirectDraw_EnumDisplayModes,
-    (void *)wrapper_IDirectDraw_EnumSurfaces,
-    (void *)wrapper_IDirectDraw_FlipToGDISurface,
-    (void *)wrapper_IDirectDraw_GetCaps,
-    (void *)wrapper_IDirectDraw_GetDisplayMode,
-    (void *)wrapper_IDirectDraw_GetFourCCCodes,
-    (void *)wrapper_IDirectDraw_GetGDISurface,
-    (void *)wrapper_IDirectDraw_GetMonitorFrequency,
-    (void *)wrapper_IDirectDraw_GetScanLine,
-    (void *)wrapper_IDirectDraw_GetVerticalBlankStatus,
-    (void *)wrapper_IDirectDraw_Initialize,
-    (void *)wrapper_IDirectDraw_RestoreDisplayMode,
-    (void *)wrapper_IDirectDraw_SetCooperativeLevel,
-    (void *)wrapper_IDirectDraw_SetDisplayMode,
-    (void *)wrapper_IDirectDraw_WaitForVerticalBlank,
+static void *s_dd_vtable[23] = {
+    (void*)w_QueryInterface,
+    (void*)w_AddRef,
+    (void*)w_Release,
+    (void*)w_Compact,
+    (void*)w_CreateClipper,
+    (void*)w_CreatePalette,
+    (void*)w_CreateSurface,
+    (void*)w_DuplicateSurface,
+    (void*)w_EnumDisplayModes,
+    (void*)w_EnumSurfaces,
+    (void*)w_FlipToGDISurface,
+    (void*)w_GetCaps,
+    (void*)w_GetDisplayMode,
+    (void*)w_GetFourCCCodes,
+    (void*)w_GetGDISurface,
+    (void*)w_GetMonitorFrequency,
+    (void*)w_GetScanLine,
+    (void*)w_GetVerticalBlankStatus,
+    (void*)w_Initialize,
+    (void*)w_RestoreDisplayMode,
+    (void*)w_SetCooperativeLevel,
+    (void*)w_SetDisplayMode,
+    (void*)w_WaitForVerticalBlank,
 };
 
-/* ── entry hook ───────────────────────────────────────────────────────────── */
-
-typedef HRESULT (WINAPI *DirectDrawCreate_t)(GUID *, LPDIRECTDRAW *, IUnknown *);
+static ComProxy s_dd_proxy;
 
 extern "C" __declspec(dllexport) HRESULT WINAPI hooks_DirectDrawCreate(
         GUID *lpGUID, LPDIRECTDRAW *lplpDD, IUnknown *pUnkOuter)
@@ -194,19 +94,17 @@ extern "C" __declspec(dllexport) HRESULT WINAPI hooks_DirectDrawCreate(
     DirectDrawCreate_t real_fn = ddraw
         ? (DirectDrawCreate_t)GetProcAddress(ddraw, "DirectDrawCreate")
         : NULL;
-    if (!real_fn)
-        return DDERR_GENERIC;
+    if (!real_fn) return DDERR_GENERIC;
 
-    LPDIRECTDRAW real_dd = NULL;
-    HRESULT hr = real_fn(lpGUID, &real_dd, pUnkOuter);
-    if (FAILED(hr) || !real_dd)
+    LPDIRECTDRAW real = NULL;
+    HRESULT hr = real_fn(lpGUID, &real, pUnkOuter);
+    if (FAILED(hr) || !real) {
+        *lplpDD = NULL;
         return hr;
-
-    ComProxy *proxy = make_proxy(idirectdraw_vtable, (IUnknown *)real_dd);
-    if (!proxy) {
-        real_dd->Release();
-        return E_OUTOFMEMORY;
     }
-    *lplpDD = (LPDIRECTDRAW)proxy;
+
+    s_dd_proxy.vtable = s_dd_vtable;
+    s_dd_proxy.real   = (IUnknown *)real;
+    *lplpDD = (LPDIRECTDRAW)&s_dd_proxy;
     return hr;
 }
