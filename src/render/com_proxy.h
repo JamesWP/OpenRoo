@@ -2,6 +2,7 @@
 #define DIRECTDRAW_VERSION 0x0100
 #include <windows.h>
 #include <ddraw.h>
+#include <d3d.h>
 
 typedef struct {
     void    **vtable;  /* must be first — COM ABI requires vtable at offset 0 */

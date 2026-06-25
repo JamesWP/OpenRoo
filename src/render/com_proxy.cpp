@@ -10,6 +10,65 @@ static const GUID IID_IDirectDraw4_g = {
     {0x8c, 0x4a, 0x00, 0xc0, 0x4f, 0xd9, 0x30, 0xc5}
 };
 
+/* IID_IDirect3D3 = {bb223240-e72b-11d0-a9b4-00aa00c0993e} */
+static const GUID IID_IDirect3D3_g = {
+    0xbb223240, 0xe72b, 0x11d0,
+    {0xa9, 0xb4, 0x00, 0xaa, 0x00, 0xc0, 0x99, 0x3e}
+};
+
+/* Extract the real IDirect3D3 pointer from a proxy. */
+static inline IDirect3D3 *real_d3d3(IDirect3D3 *self)
+{
+    return (IDirect3D3 *)((ComProxy *)self)->real;
+}
+
+/* --- IDirect3D3 wrapper functions (slots 0-11) --- */
+
+static HRESULT WINAPI NOINLINE w3_QueryInterface(IDirect3D3 *s, REFIID r, void **p)
+    { return real_d3d3(s)->QueryInterface(r, p); }
+static ULONG   WINAPI NOINLINE w3_AddRef(IDirect3D3 *s)
+    { return real_d3d3(s)->AddRef(); }
+static ULONG   WINAPI NOINLINE w3_Release(IDirect3D3 *s)
+    { return real_d3d3(s)->Release(); }
+static HRESULT WINAPI NOINLINE w3_EnumDevices(IDirect3D3 *s, LPD3DENUMDEVICESCALLBACK cb, void *ctx)
+    { return real_d3d3(s)->EnumDevices(cb, ctx); }
+static HRESULT WINAPI NOINLINE w3_CreateLight(IDirect3D3 *s, IDirect3DLight **light, IUnknown *outer)
+    { return real_d3d3(s)->CreateLight(light, outer); }
+static HRESULT WINAPI NOINLINE w3_CreateMaterial(IDirect3D3 *s, IDirect3DMaterial3 **mat, IUnknown *outer)
+    { return real_d3d3(s)->CreateMaterial(mat, outer); }
+static HRESULT WINAPI NOINLINE w3_CreateViewport(IDirect3D3 *s, IDirect3DViewport3 **vp, IUnknown *outer)
+    { return real_d3d3(s)->CreateViewport(vp, outer); }
+static HRESULT WINAPI NOINLINE w3_FindDevice(IDirect3D3 *s, D3DFINDDEVICESEARCH *search, D3DFINDDEVICERESULT *result)
+    { return real_d3d3(s)->FindDevice(search, result); }
+static HRESULT WINAPI NOINLINE w3_CreateDevice(IDirect3D3 *s, REFCLSID rclsid, IDirectDrawSurface4 *surf,
+        IDirect3DDevice3 **dev, IUnknown *outer)
+    { return real_d3d3(s)->CreateDevice(rclsid, surf, dev, outer); }
+static HRESULT WINAPI NOINLINE w3_CreateVertexBuffer(IDirect3D3 *s, D3DVERTEXBUFFERDESC *desc,
+        IDirect3DVertexBuffer **buf, DWORD flags, IUnknown *outer)
+    { return real_d3d3(s)->CreateVertexBuffer(desc, buf, flags, outer); }
+static HRESULT WINAPI NOINLINE w3_EnumZBufferFormats(IDirect3D3 *s, REFCLSID dev_iid,
+        LPD3DENUMPIXELFORMATSCALLBACK cb, void *ctx)
+    { return real_d3d3(s)->EnumZBufferFormats(dev_iid, cb, ctx); }
+static HRESULT WINAPI NOINLINE w3_EvictManagedTextures(IDirect3D3 *s)
+    { return real_d3d3(s)->EvictManagedTextures(); }
+
+static void *s_d3d3_vtable_data[12] = {
+    (void*)w3_QueryInterface,
+    (void*)w3_AddRef,
+    (void*)w3_Release,
+    (void*)w3_EnumDevices,
+    (void*)w3_CreateLight,
+    (void*)w3_CreateMaterial,
+    (void*)w3_CreateViewport,
+    (void*)w3_FindDevice,
+    (void*)w3_CreateDevice,
+    (void*)w3_CreateVertexBuffer,
+    (void*)w3_EnumZBufferFormats,
+    (void*)w3_EvictManagedTextures,
+};
+
+static ComProxy s_d3d3_proxy;
+
 /* Extract the real IDirectDraw4 pointer from a proxy. */
 static inline IDirectDraw4 *real_dd4(IDirectDraw4 *self)
 {
@@ -18,8 +77,17 @@ static inline IDirectDraw4 *real_dd4(IDirectDraw4 *self)
 
 /* --- IDirectDraw4 wrapper functions (slots 0-27) --- */
 
-static HRESULT WINAPI NOINLINE w4_QueryInterface(IDirectDraw4 *s, REFIID r, void **p)
-    { return real_dd4(s)->QueryInterface(r, p); }
+static HRESULT WINAPI NOINLINE w4_QueryInterface(IDirectDraw4 *s, REFIID riid, void **ppv)
+{
+    HRESULT hr = real_dd4(s)->QueryInterface(riid, ppv);
+    if (SUCCEEDED(hr) && ppv && *ppv &&
+        memcmp(&riid, &IID_IDirect3D3_g, sizeof(GUID)) == 0) {
+        s_d3d3_proxy.vtable = s_d3d3_vtable_data;
+        s_d3d3_proxy.real   = (IUnknown *)*ppv;
+        *ppv = &s_d3d3_proxy;
+    }
+    return hr;
+}
 static ULONG   WINAPI NOINLINE w4_AddRef(IDirectDraw4 *s)
     { return real_dd4(s)->AddRef(); }
 static ULONG   WINAPI NOINLINE w4_Release(IDirectDraw4 *s)
