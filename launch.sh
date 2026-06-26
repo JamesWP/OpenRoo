@@ -3,11 +3,20 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 DEBUG=0
-for arg in "$@"; do
-  case "$arg" in
-    --debug) DEBUG=1 ;;
-    *) echo "ERROR: unknown arg: $arg" >&2; exit 1 ;;
+HEADLESS=0
+AUTO_EXIT_SECS=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --debug)    DEBUG=1 ;;
+    --headless) HEADLESS=1 ;;
+    --auto-exit)
+      shift
+      [[ $# -gt 0 ]] || { echo "ERROR: --auto-exit requires a seconds argument" >&2; exit 1; }
+      AUTO_EXIT_SECS="$1"
+      ;;
+    *) echo "ERROR: unknown arg: $1" >&2; exit 1 ;;
   esac
+  shift
 done
 
 [[ -f ddraw.dll ]]        || { echo "ERROR: ddraw.dll missing — run build.sh first"; exit 1; }
@@ -41,6 +50,8 @@ PROTON_RUN=(
   PROTON_LOG_DIR="$(pwd)"
   SteamGameId=123456 SteamAppId=123456
   WINEDLLOVERRIDES="ddraw=n,b"
+  KAROO_HEADLESS="$HEADLESS"
+  KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"
   "$PROTON_DIR/proton" run
 )
 
