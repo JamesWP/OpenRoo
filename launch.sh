@@ -83,7 +83,9 @@ if (( DEBUG )); then
   done
 
   echo "Attaching gdb (probes log to ./debug.log)..."
-  exec gdb -q -x debug.gdb
+  gdb -q -x debug.gdb
+  cleanup
+  exit 0
 fi
 
 exec "${PROTON_RUN[@]}" Karoo.exe JJ
