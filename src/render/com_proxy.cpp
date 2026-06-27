@@ -16,6 +16,146 @@ static const GUID IID_IDirect3D3_g = {
     {0xa9, 0xb4, 0x00, 0xaa, 0x00, 0xc0, 0x99, 0x3e}
 };
 
+/* Extract the real IDirect3DDevice3 pointer from a proxy. */
+static inline IDirect3DDevice3 *real_dev3(IDirect3DDevice3 *self)
+{
+    return (IDirect3DDevice3 *)((ComProxy *)self)->real;
+}
+
+/* --- IDirect3DDevice3 wrapper functions (slots 0-41) --- */
+
+static HRESULT WINAPI NOINLINE wd3_QueryInterface(IDirect3DDevice3 *s, REFIID r, void **p)
+    { return real_dev3(s)->QueryInterface(r, p); }
+static ULONG   WINAPI NOINLINE wd3_AddRef(IDirect3DDevice3 *s)
+    { return real_dev3(s)->AddRef(); }
+static ULONG   WINAPI NOINLINE wd3_Release(IDirect3DDevice3 *s)
+    { return real_dev3(s)->Release(); }
+static HRESULT WINAPI NOINLINE wd3_GetCaps(IDirect3DDevice3 *s, D3DDEVICEDESC *hal, D3DDEVICEDESC *hel)
+    { return real_dev3(s)->GetCaps(hal, hel); }
+static HRESULT WINAPI NOINLINE wd3_GetStats(IDirect3DDevice3 *s, D3DSTATS *stats)
+    { return real_dev3(s)->GetStats(stats); }
+static HRESULT WINAPI NOINLINE wd3_AddViewport(IDirect3DDevice3 *s, IDirect3DViewport3 *vp)
+    { return real_dev3(s)->AddViewport(vp); }
+static HRESULT WINAPI NOINLINE wd3_DeleteViewport(IDirect3DDevice3 *s, IDirect3DViewport3 *vp)
+    { return real_dev3(s)->DeleteViewport(vp); }
+static HRESULT WINAPI NOINLINE wd3_NextViewport(IDirect3DDevice3 *s, IDirect3DViewport3 *ref, IDirect3DViewport3 **next, DWORD flags)
+    { return real_dev3(s)->NextViewport(ref, next, flags); }
+static HRESULT WINAPI NOINLINE wd3_EnumTextureFormats(IDirect3DDevice3 *s, LPD3DENUMPIXELFORMATSCALLBACK cb, void *ctx)
+    { return real_dev3(s)->EnumTextureFormats(cb, ctx); }
+static HRESULT WINAPI NOINLINE wd3_BeginScene(IDirect3DDevice3 *s)
+    { return real_dev3(s)->BeginScene(); }
+static HRESULT WINAPI NOINLINE wd3_EndScene(IDirect3DDevice3 *s)
+    { return real_dev3(s)->EndScene(); }
+static HRESULT WINAPI NOINLINE wd3_GetDirect3D(IDirect3DDevice3 *s, IDirect3D3 **d3d)
+    { return real_dev3(s)->GetDirect3D(d3d); }
+static HRESULT WINAPI NOINLINE wd3_SetCurrentViewport(IDirect3DDevice3 *s, IDirect3DViewport3 *vp)
+    { return real_dev3(s)->SetCurrentViewport(vp); }
+static HRESULT WINAPI NOINLINE wd3_GetCurrentViewport(IDirect3DDevice3 *s, IDirect3DViewport3 **vp)
+    { return real_dev3(s)->GetCurrentViewport(vp); }
+static HRESULT WINAPI NOINLINE wd3_SetRenderTarget(IDirect3DDevice3 *s, IDirectDrawSurface4 *surf, DWORD flags)
+    { return real_dev3(s)->SetRenderTarget(surf, flags); }
+static HRESULT WINAPI NOINLINE wd3_GetRenderTarget(IDirect3DDevice3 *s, IDirectDrawSurface4 **surf)
+    { return real_dev3(s)->GetRenderTarget(surf); }
+static HRESULT WINAPI NOINLINE wd3_Begin(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, DWORD flags)
+    { return real_dev3(s)->Begin(pt, fvf, flags); }
+static HRESULT WINAPI NOINLINE wd3_BeginIndexed(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, void *verts, DWORD vert_count, DWORD flags)
+    { return real_dev3(s)->BeginIndexed(pt, fvf, verts, vert_count, flags); }
+static HRESULT WINAPI NOINLINE wd3_Vertex(IDirect3DDevice3 *s, void *v)
+    { return real_dev3(s)->Vertex(v); }
+static HRESULT WINAPI NOINLINE wd3_Index(IDirect3DDevice3 *s, WORD w)
+    { return real_dev3(s)->Index(w); }
+static HRESULT WINAPI NOINLINE wd3_End(IDirect3DDevice3 *s, DWORD flags)
+    { return real_dev3(s)->End(flags); }
+static HRESULT WINAPI NOINLINE wd3_GetRenderState(IDirect3DDevice3 *s, D3DRENDERSTATETYPE rst, LPDWORD val)
+    { return real_dev3(s)->GetRenderState(rst, val); }
+static HRESULT WINAPI NOINLINE wd3_SetRenderState(IDirect3DDevice3 *s, D3DRENDERSTATETYPE rst, DWORD val)
+    { return real_dev3(s)->SetRenderState(rst, val); }
+static HRESULT WINAPI NOINLINE wd3_GetLightState(IDirect3DDevice3 *s, D3DLIGHTSTATETYPE lst, LPDWORD val)
+    { return real_dev3(s)->GetLightState(lst, val); }
+static HRESULT WINAPI NOINLINE wd3_SetLightState(IDirect3DDevice3 *s, D3DLIGHTSTATETYPE lst, DWORD val)
+    { return real_dev3(s)->SetLightState(lst, val); }
+static HRESULT WINAPI NOINLINE wd3_SetTransform(IDirect3DDevice3 *s, D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
+    { return real_dev3(s)->SetTransform(tst, mat); }
+static HRESULT WINAPI NOINLINE wd3_GetTransform(IDirect3DDevice3 *s, D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
+    { return real_dev3(s)->GetTransform(tst, mat); }
+static HRESULT WINAPI NOINLINE wd3_MultiplyTransform(IDirect3DDevice3 *s, D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
+    { return real_dev3(s)->MultiplyTransform(tst, mat); }
+static HRESULT WINAPI NOINLINE wd3_DrawPrimitive(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, void *verts, DWORD vert_count, DWORD flags)
+    { return real_dev3(s)->DrawPrimitive(pt, fvf, verts, vert_count, flags); }
+static HRESULT WINAPI NOINLINE wd3_DrawIndexedPrimitive(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, void *verts, DWORD vert_count, WORD *indices, DWORD idx_count, DWORD flags)
+    { return real_dev3(s)->DrawIndexedPrimitive(pt, fvf, verts, vert_count, indices, idx_count, flags); }
+static HRESULT WINAPI NOINLINE wd3_SetClipStatus(IDirect3DDevice3 *s, D3DCLIPSTATUS *cs)
+    { return real_dev3(s)->SetClipStatus(cs); }
+static HRESULT WINAPI NOINLINE wd3_GetClipStatus(IDirect3DDevice3 *s, D3DCLIPSTATUS *cs)
+    { return real_dev3(s)->GetClipStatus(cs); }
+static HRESULT WINAPI NOINLINE wd3_DrawPrimitiveStrided(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, D3DDRAWPRIMITIVESTRIDEDDATA *data, DWORD vert_count, DWORD flags)
+    { return real_dev3(s)->DrawPrimitiveStrided(pt, fvf, data, vert_count, flags); }
+static HRESULT WINAPI NOINLINE wd3_DrawIndexedPrimitiveStrided(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, D3DDRAWPRIMITIVESTRIDEDDATA *data, DWORD vert_count, WORD *indices, DWORD idx_count, DWORD flags)
+    { return real_dev3(s)->DrawIndexedPrimitiveStrided(pt, fvf, data, vert_count, indices, idx_count, flags); }
+static HRESULT WINAPI NOINLINE wd3_DrawPrimitiveVB(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, IDirect3DVertexBuffer *vb, DWORD start, DWORD count, DWORD flags)
+    { return real_dev3(s)->DrawPrimitiveVB(pt, vb, start, count, flags); }
+static HRESULT WINAPI NOINLINE wd3_DrawIndexedPrimitiveVB(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, IDirect3DVertexBuffer *vb, WORD *indices, DWORD idx_count, DWORD flags)
+    { return real_dev3(s)->DrawIndexedPrimitiveVB(pt, vb, indices, idx_count, flags); }
+static HRESULT WINAPI NOINLINE wd3_ComputeSphereVisibility(IDirect3DDevice3 *s, D3DVECTOR *centers, D3DVALUE *radii, DWORD count, DWORD flags, DWORD *ret)
+    { return real_dev3(s)->ComputeSphereVisibility(centers, radii, count, flags, ret); }
+static HRESULT WINAPI NOINLINE wd3_GetTexture(IDirect3DDevice3 *s, DWORD stage, IDirect3DTexture2 **tex)
+    { return real_dev3(s)->GetTexture(stage, tex); }
+static HRESULT WINAPI NOINLINE wd3_SetTexture(IDirect3DDevice3 *s, DWORD stage, IDirect3DTexture2 *tex)
+    { return real_dev3(s)->SetTexture(stage, tex); }
+static HRESULT WINAPI NOINLINE wd3_GetTextureStageState(IDirect3DDevice3 *s, DWORD stage, D3DTEXTURESTAGESTATETYPE st, LPDWORD val)
+    { return real_dev3(s)->GetTextureStageState(stage, st, val); }
+static HRESULT WINAPI NOINLINE wd3_SetTextureStageState(IDirect3DDevice3 *s, DWORD stage, D3DTEXTURESTAGESTATETYPE st, DWORD val)
+    { return real_dev3(s)->SetTextureStageState(stage, st, val); }
+static HRESULT WINAPI NOINLINE wd3_ValidateDevice(IDirect3DDevice3 *s, LPDWORD passes)
+    { return real_dev3(s)->ValidateDevice(passes); }
+
+static void *s_dev3_vtable_data[42] = {
+    (void*)wd3_QueryInterface,
+    (void*)wd3_AddRef,
+    (void*)wd3_Release,
+    (void*)wd3_GetCaps,
+    (void*)wd3_GetStats,
+    (void*)wd3_AddViewport,
+    (void*)wd3_DeleteViewport,
+    (void*)wd3_NextViewport,
+    (void*)wd3_EnumTextureFormats,
+    (void*)wd3_BeginScene,
+    (void*)wd3_EndScene,
+    (void*)wd3_GetDirect3D,
+    (void*)wd3_SetCurrentViewport,
+    (void*)wd3_GetCurrentViewport,
+    (void*)wd3_SetRenderTarget,
+    (void*)wd3_GetRenderTarget,
+    (void*)wd3_Begin,
+    (void*)wd3_BeginIndexed,
+    (void*)wd3_Vertex,
+    (void*)wd3_Index,
+    (void*)wd3_End,
+    (void*)wd3_GetRenderState,
+    (void*)wd3_SetRenderState,
+    (void*)wd3_GetLightState,
+    (void*)wd3_SetLightState,
+    (void*)wd3_SetTransform,
+    (void*)wd3_GetTransform,
+    (void*)wd3_MultiplyTransform,
+    (void*)wd3_DrawPrimitive,
+    (void*)wd3_DrawIndexedPrimitive,
+    (void*)wd3_SetClipStatus,
+    (void*)wd3_GetClipStatus,
+    (void*)wd3_DrawPrimitiveStrided,
+    (void*)wd3_DrawIndexedPrimitiveStrided,
+    (void*)wd3_DrawPrimitiveVB,
+    (void*)wd3_DrawIndexedPrimitiveVB,
+    (void*)wd3_ComputeSphereVisibility,
+    (void*)wd3_GetTexture,
+    (void*)wd3_SetTexture,
+    (void*)wd3_GetTextureStageState,
+    (void*)wd3_SetTextureStageState,
+    (void*)wd3_ValidateDevice,
+};
+
+static ComProxy s_dev3_proxy;
+
 /* Extract the real IDirect3D3 pointer from a proxy. */
 static inline IDirect3D3 *real_d3d3(IDirect3D3 *self)
 {
@@ -43,6 +183,14 @@ static HRESULT WINAPI NOINLINE w3_FindDevice(IDirect3D3 *s, D3DFINDDEVICESEARCH 
 static HRESULT WINAPI NOINLINE w3_CreateDevice(IDirect3D3 *s, REFCLSID rclsid, IDirectDrawSurface4 *surf,
         IDirect3DDevice3 **dev, IUnknown *outer)
     { return real_d3d3(s)->CreateDevice(rclsid, surf, dev, outer); }
+/* NOTE: we intentionally do NOT proxy IDirect3DDevice3 here.  Wine's internal
+ * unsafe_impl_from_IDirect3DDevice3() hard-asserts that the vtable matches its
+ * own d3d_device3_vtbl (device.c:6815).  If the game ever passes our proxy to
+ * a non-device COM method (e.g. IDirect3DMaterial3::GetHandle) that call goes
+ * through Wine's unsafe_impl_from_IDirect3DDevice3 and hits the assert →
+ * abort() → exit code 3.  The GDB D3Dev3CreateDeviceReturnProbe instead reads
+ * the real Wine vtable from *dev at return time and installs breakpoints there
+ * directly, giving us device-method tracing without replacing the pointer. */
 static HRESULT WINAPI NOINLINE w3_CreateVertexBuffer(IDirect3D3 *s, D3DVERTEXBUFFERDESC *desc,
         IDirect3DVertexBuffer **buf, DWORD flags, IUnknown *outer)
     { return real_d3d3(s)->CreateVertexBuffer(desc, buf, flags, outer); }
