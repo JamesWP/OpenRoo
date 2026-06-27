@@ -16,6 +16,15 @@ static const GUID IID_IDirect3D3_g = {
     {0xa9, 0xb4, 0x00, 0xaa, 0x00, 0xc0, 0x99, 0x3e}
 };
 
+/* IID_IDirectDraw = {6c14db80-a733-11ce-a521-0020af0be560} */
+static const GUID IID_IDirectDraw_g = {
+    0x6c14db80, 0xa733, 0x11ce,
+    {0xa5, 0x21, 0x00, 0x20, 0xaf, 0x0b, 0xe5, 0x60}
+};
+
+/* Forward declaration — s_dd_proxy is defined after the IDirectDraw4 section. */
+static ComProxy s_dd_proxy;
+
 /* Extract the real IDirect3DDevice3 pointer from a proxy. */
 static inline IDirect3DDevice3 *real_dev3(IDirect3DDevice3 *self)
 {
@@ -228,11 +237,16 @@ static inline IDirectDraw4 *real_dd4(IDirectDraw4 *self)
 static HRESULT WINAPI NOINLINE w4_QueryInterface(IDirectDraw4 *s, REFIID riid, void **ppv)
 {
     HRESULT hr = real_dd4(s)->QueryInterface(riid, ppv);
-    if (SUCCEEDED(hr) && ppv && *ppv &&
-        memcmp(&riid, &IID_IDirect3D3_g, sizeof(GUID)) == 0) {
-        s_d3d3_proxy.vtable = s_d3d3_vtable_data;
-        s_d3d3_proxy.real   = (IUnknown *)*ppv;
-        *ppv = &s_d3d3_proxy;
+    if (SUCCEEDED(hr) && ppv && *ppv) {
+        if (memcmp(&riid, &IID_IDirect3D3_g, sizeof(GUID)) == 0) {
+            s_d3d3_proxy.vtable = s_d3d3_vtable_data;
+            s_d3d3_proxy.real   = (IUnknown *)*ppv;
+            *ppv = &s_d3d3_proxy;
+        } else if (memcmp(&riid, &IID_IDirectDraw_g, sizeof(GUID)) == 0) {
+            /* QI AddRef'd the real object; our proxy's Release forwards to the
+               same real IDirectDraw, so refcounting is correct. */
+            *ppv = &s_dd_proxy;
+        }
     }
     return hr;
 }
@@ -415,8 +429,6 @@ static void *s_dd_vtable[23] = {
     (void*)w_SetDisplayMode,
     (void*)w_WaitForVerticalBlank,
 };
-
-static ComProxy s_dd_proxy;
 
 extern "C" __declspec(dllexport) HRESULT WINAPI hooks_DirectDrawCreate(
         GUID *lpGUID, LPDIRECTDRAW *lplpDD, IUnknown *pUnkOuter)
