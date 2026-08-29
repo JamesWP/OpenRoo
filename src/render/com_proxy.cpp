@@ -28,10 +28,11 @@ static ComProxy s_dd_proxy;
 
 /* --- IDirectDrawSurface4 proxy pool ---
  * Surfaces are multi-instance (primary, backbuffer, z-buffer, textures), so
- * unlike the singleton proxies they live in a small pool.  4a scope: only the
- * render-chain surfaces (primary / backbuffer / z-buffer) are wrapped; texture
- * surfaces stay real until the pool becomes dynamic (4b). */
-#define SURF4_POOL_SIZE 8
+ * unlike the singleton proxies they live in a pool.  Entries are keyed by the
+ * real pointer (re-wrap returns the same proxy) and freed when ws4_Release
+ * drops the real refcount to zero, so per-level texture churn cannot exhaust
+ * the pool. */
+#define SURF4_POOL_SIZE 256
 static ComProxy s_surf4_pool[SURF4_POOL_SIZE];
 static void *s_surf4_vtable_data[45];   /* filled in the surface section below */
 
@@ -113,7 +114,14 @@ static HRESULT WINAPI NOINLINE ws4_QueryInterface(IDirectDrawSurface4 *s, REFIID
 static ULONG   WINAPI NOINLINE ws4_AddRef(IDirectDrawSurface4 *s)
     { return real_s4(s)->AddRef(); }
 static ULONG   WINAPI NOINLINE ws4_Release(IDirectDrawSurface4 *s)
-    { return real_s4(s)->Release(); }
+{
+    ULONG rc = real_s4(s)->Release();
+    /* Final release: retire the pool entry so the slot (and a future surface
+     * reusing the same heap address) can be re-wrapped cleanly. */
+    if (rc == 0)
+        ((ComProxy *)s)->real = NULL;
+    return rc;
+}
 static HRESULT WINAPI NOINLINE ws4_AddAttachedSurface(IDirectDrawSurface4 *s, IDirectDrawSurface4 *att)
     { return real_s4(s)->AddAttachedSurface(unwrap_surf4(att)); }
 static HRESULT WINAPI NOINLINE ws4_AddOverlayDirtyRect(IDirectDrawSurface4 *s, LPRECT r)
@@ -737,14 +745,13 @@ static HRESULT WINAPI NOINLINE w4_CreatePalette(IDirectDraw4 *s, DWORD f, LPPALE
 static HRESULT WINAPI NOINLINE w4_CreateSurface(IDirectDraw4 *s, LPDDSURFACEDESC2 d, LPDIRECTDRAWSURFACE4 *pp, IUnknown *u)
 {
     HRESULT hr = real_dd4(s)->CreateSurface(d, pp, u);
-    /* 4a scope: wrap only render-chain surfaces (primary flip chain and
-     * z-buffer).  Texture surfaces stay real until the pool is dynamic. */
     if (SUCCEEDED(hr) && pp && *pp && d && dev_proxy_enabled()) {
         DWORD caps = d->ddsCaps.dwCaps;
-        if (caps & DDSCAPS_PRIMARYSURFACE)
-            *pp = wrap_surf4(*pp, "primary");
-        else if (caps & DDSCAPS_ZBUFFER)
-            *pp = wrap_surf4(*pp, "zbuffer");
+        const char *what = (caps & DDSCAPS_PRIMARYSURFACE) ? "primary"
+                         : (caps & DDSCAPS_ZBUFFER)        ? "zbuffer"
+                         : (caps & DDSCAPS_TEXTURE)        ? "texture"
+                                                           : "surface";
+        *pp = wrap_surf4(*pp, what);
     }
     return hr;
 }
