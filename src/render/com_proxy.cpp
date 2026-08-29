@@ -17,6 +17,12 @@ static const GUID IID_IDirect3D3_g = {
     {0xa9, 0xb4, 0x00, 0xaa, 0x00, 0xc0, 0x99, 0x3e}
 };
 
+/* IID_IDirect3DTexture2 = {93281502-8cf8-11d0-89ab-00a0c9054129} */
+static const GUID IID_IDirect3DTexture2_g = {
+    0x93281502, 0x8cf8, 0x11d0,
+    {0x89, 0xab, 0x00, 0xa0, 0xc9, 0x05, 0x41, 0x29}
+};
+
 /* IID_IDirectDraw = {6c14db80-a733-11ce-a521-0020af0be560} */
 static const GUID IID_IDirectDraw_g = {
     0x6c14db80, 0xa733, 0x11ce,
@@ -102,6 +108,45 @@ static FxMode fx_mode(void)
     return mode;
 }
 
+/* --- IDirect3DTexture2 proxy pool ---
+ * Same pattern as the surface pool: multi-instance, keyed by real pointer,
+ * retired on final Release.  Wrapped where the game obtains textures
+ * (QueryInterface on a surface proxy); wrapper functions live further down
+ * (they need unwrap_dev3). */
+#define TEX2_POOL_SIZE 256
+static ComProxy s_tex2_pool[TEX2_POOL_SIZE];
+static void *s_tex2_vtable_data[6];     /* filled in the texture section below */
+
+static inline bool is_tex2_proxy(void *p)
+{
+    return p >= (void *)&s_tex2_pool[0] && p < (void *)&s_tex2_pool[TEX2_POOL_SIZE];
+}
+
+static inline IDirect3DTexture2 *unwrap_tex2(IDirect3DTexture2 *tex)
+{
+    if (is_tex2_proxy(tex))
+        return (IDirect3DTexture2 *)((ComProxy *)tex)->real;
+    return tex;
+}
+
+static IDirect3DTexture2 *wrap_tex2(IDirect3DTexture2 *real)
+{
+    int free_slot = -1;
+    for (int i = 0; i < TEX2_POOL_SIZE; i++) {
+        if (s_tex2_pool[i].real == (IUnknown *)real)
+            return (IDirect3DTexture2 *)&s_tex2_pool[i];
+        if (!s_tex2_pool[i].real && free_slot < 0)
+            free_slot = i;
+    }
+    if (free_slot < 0) {
+        log_write("com_proxy: tex2 pool FULL — texture left unproxied (real=%p)\n", real);
+        return real;
+    }
+    s_tex2_pool[free_slot].vtable = s_tex2_vtable_data;
+    s_tex2_pool[free_slot].real   = (IUnknown *)real;
+    return (IDirect3DTexture2 *)&s_tex2_pool[free_slot];
+}
+
 /* --- IDirectDrawSurface4 wrapper functions (45 slots) --- */
 
 static inline IDirectDrawSurface4 *real_s4(IDirectDrawSurface4 *self)
@@ -110,7 +155,17 @@ static inline IDirectDrawSurface4 *real_s4(IDirectDrawSurface4 *self)
 }
 
 static HRESULT WINAPI NOINLINE ws4_QueryInterface(IDirectDrawSurface4 *s, REFIID r, void **p)
-    { return real_s4(s)->QueryInterface(r, p); }
+{
+    HRESULT hr = real_s4(s)->QueryInterface(r, p);
+    if (SUCCEEDED(hr) && p && *p &&
+        memcmp(&r, &IID_IDirect3DTexture2_g, sizeof(GUID)) == 0) {
+        static LONG first = 0;
+        *p = wrap_tex2((IDirect3DTexture2 *)*p);
+        if (InterlockedIncrement(&first) == 1)
+            log_write("com_proxy: texture2 proxying active (first wrap)\n");
+    }
+    return hr;
+}
 static ULONG   WINAPI NOINLINE ws4_AddRef(IDirectDrawSurface4 *s)
     { return real_s4(s)->AddRef(); }
 static ULONG   WINAPI NOINLINE ws4_Release(IDirectDrawSurface4 *s)
@@ -376,7 +431,7 @@ static HRESULT WINAPI NOINLINE wd3_ComputeSphereVisibility(IDirect3DDevice3 *s, 
 static HRESULT WINAPI NOINLINE wd3_GetTexture(IDirect3DDevice3 *s, DWORD stage, IDirect3DTexture2 **tex)
     { return real_dev3(s)->GetTexture(stage, tex); }
 static HRESULT WINAPI NOINLINE wd3_SetTexture(IDirect3DDevice3 *s, DWORD stage, IDirect3DTexture2 *tex)
-    { return real_dev3(s)->SetTexture(stage, tex); }
+    { return real_dev3(s)->SetTexture(stage, unwrap_tex2(tex)); }
 static HRESULT WINAPI NOINLINE wd3_GetTextureStageState(IDirect3DDevice3 *s, DWORD stage, D3DTEXTURESTAGESTATETYPE st, LPDWORD val)
     { return real_dev3(s)->GetTextureStageState(stage, st, val); }
 static HRESULT WINAPI NOINLINE wd3_SetTextureStageState(IDirect3DDevice3 *s, DWORD stage, D3DTEXTURESTAGESTATETYPE st, DWORD val)
@@ -442,6 +497,49 @@ static inline IDirect3DDevice3 *unwrap_dev3(IDirect3DDevice3 *dev)
         return (IDirect3DDevice3 *)s_dev3_proxy.real;
     return dev;
 }
+
+/* --- IDirect3DTexture2 wrapper functions (6 slots; pool declared above) --- */
+
+static inline IDirect3DTexture2 *real_t2(IDirect3DTexture2 *self)
+{
+    return (IDirect3DTexture2 *)((ComProxy *)self)->real;
+}
+
+static HRESULT WINAPI NOINLINE wt2_QueryInterface(IDirect3DTexture2 *s, REFIID r, void **p)
+    { return real_t2(s)->QueryInterface(r, p); }
+static ULONG   WINAPI NOINLINE wt2_AddRef(IDirect3DTexture2 *s)
+    { return real_t2(s)->AddRef(); }
+static ULONG   WINAPI NOINLINE wt2_Release(IDirect3DTexture2 *s)
+{
+    ULONG rc = real_t2(s)->Release();
+    if (rc == 0)
+        ((ComProxy *)s)->real = NULL;
+    return rc;
+}
+static HRESULT WINAPI NOINLINE wt2_GetHandle(IDirect3DTexture2 *s, IDirect3DDevice2 *dev, LPD3DTEXTUREHANDLE h)
+{
+    /* The game only holds our Device3 proxy; if it passes that here (as the
+     * legacy Device2 param), substitute the real device by pointer identity. */
+    if ((void *)dev == (void *)&s_dev3_proxy)
+        dev = (IDirect3DDevice2 *)s_dev3_proxy.real;
+    return real_t2(s)->GetHandle(dev, h);
+}
+static HRESULT WINAPI NOINLINE wt2_PaletteChanged(IDirect3DTexture2 *s, DWORD start, DWORD count)
+    { return real_t2(s)->PaletteChanged(start, count); }
+static HRESULT WINAPI NOINLINE wt2_Load(IDirect3DTexture2 *s, IDirect3DTexture2 *src)
+    { return real_t2(s)->Load(unwrap_tex2(src)); }
+
+struct Tex2VtableInit {
+    Tex2VtableInit() {
+        s_tex2_vtable_data[0] = (void*)wt2_QueryInterface;
+        s_tex2_vtable_data[1] = (void*)wt2_AddRef;
+        s_tex2_vtable_data[2] = (void*)wt2_Release;
+        s_tex2_vtable_data[3] = (void*)wt2_GetHandle;
+        s_tex2_vtable_data[4] = (void*)wt2_PaletteChanged;
+        s_tex2_vtable_data[5] = (void*)wt2_Load;
+    }
+};
+static Tex2VtableInit s_tex2_vtable_initializer;
 
 /* --- IDirect3DLight proxy (6 slots) --- */
 
