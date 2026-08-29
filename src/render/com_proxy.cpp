@@ -26,6 +26,49 @@ static const GUID IID_IDirectDraw_g = {
 /* Forward declaration — s_dd_proxy is defined after the IDirectDraw4 section. */
 static ComProxy s_dd_proxy;
 
+/* --- IDirectDrawSurface4 proxy pool ---
+ * Surfaces are multi-instance (primary, backbuffer, z-buffer, textures), so
+ * unlike the singleton proxies they live in a small pool.  4a scope: only the
+ * render-chain surfaces (primary / backbuffer / z-buffer) are wrapped; texture
+ * surfaces stay real until the pool becomes dynamic (4b). */
+#define SURF4_POOL_SIZE 8
+static ComProxy s_surf4_pool[SURF4_POOL_SIZE];
+static void *s_surf4_vtable_data[45];   /* filled in the surface section below */
+
+static inline bool is_surf4_proxy(void *p)
+{
+    return p >= (void *)&s_surf4_pool[0] && p < (void *)&s_surf4_pool[SURF4_POOL_SIZE];
+}
+
+static inline IDirectDrawSurface4 *unwrap_surf4(IDirectDrawSurface4 *surf)
+{
+    if (is_surf4_proxy(surf))
+        return (IDirectDrawSurface4 *)((ComProxy *)surf)->real;
+    return surf;
+}
+
+/* Wrap a real surface, reusing the pool entry if this real pointer is already
+ * wrapped.  Returns the real pointer unchanged if the pool is full (logged). */
+static IDirectDrawSurface4 *wrap_surf4(IDirectDrawSurface4 *real, const char *what)
+{
+    int free_slot = -1;
+    for (int i = 0; i < SURF4_POOL_SIZE; i++) {
+        if (s_surf4_pool[i].real == (IUnknown *)real)
+            return (IDirectDrawSurface4 *)&s_surf4_pool[i];
+        if (!s_surf4_pool[i].real && free_slot < 0)
+            free_slot = i;
+    }
+    if (free_slot < 0) {
+        log_write("com_proxy: surf4 pool FULL — %s left unproxied (real=%p)\n", what, real);
+        return real;
+    }
+    s_surf4_pool[free_slot].vtable = s_surf4_vtable_data;
+    s_surf4_pool[free_slot].real   = (IUnknown *)real;
+    log_write("com_proxy: surface proxy[%d] installed for %s (real=%p)\n",
+              free_slot, what, real);
+    return (IDirectDrawSurface4 *)&s_surf4_pool[free_slot];
+}
+
 /* A/B switch: KAROO_D3D_PROXY=0 disables the IDirect3DDevice3 + material
  * proxies (the pre-existing DD/DD4/D3D3 proxies stay active either way). */
 static bool dev_proxy_enabled(void)
@@ -57,6 +100,168 @@ static FxMode fx_mode(void)
     }
     return mode;
 }
+
+/* --- IDirectDrawSurface4 wrapper functions (45 slots) --- */
+
+static inline IDirectDrawSurface4 *real_s4(IDirectDrawSurface4 *self)
+{
+    return (IDirectDrawSurface4 *)((ComProxy *)self)->real;
+}
+
+static HRESULT WINAPI NOINLINE ws4_QueryInterface(IDirectDrawSurface4 *s, REFIID r, void **p)
+    { return real_s4(s)->QueryInterface(r, p); }
+static ULONG   WINAPI NOINLINE ws4_AddRef(IDirectDrawSurface4 *s)
+    { return real_s4(s)->AddRef(); }
+static ULONG   WINAPI NOINLINE ws4_Release(IDirectDrawSurface4 *s)
+    { return real_s4(s)->Release(); }
+static HRESULT WINAPI NOINLINE ws4_AddAttachedSurface(IDirectDrawSurface4 *s, IDirectDrawSurface4 *att)
+    { return real_s4(s)->AddAttachedSurface(unwrap_surf4(att)); }
+static HRESULT WINAPI NOINLINE ws4_AddOverlayDirtyRect(IDirectDrawSurface4 *s, LPRECT r)
+    { return real_s4(s)->AddOverlayDirtyRect(r); }
+static HRESULT WINAPI NOINLINE ws4_Blt(IDirectDrawSurface4 *s, LPRECT dr, IDirectDrawSurface4 *src, LPRECT sr, DWORD flags, LPDDBLTFX fx)
+    { return real_s4(s)->Blt(dr, unwrap_surf4(src), sr, flags, fx); }
+static HRESULT WINAPI NOINLINE ws4_BltBatch(IDirectDrawSurface4 *s, LPDDBLTBATCH b, DWORD n, DWORD flags)
+    { return real_s4(s)->BltBatch(b, n, flags); }
+static HRESULT WINAPI NOINLINE ws4_BltFast(IDirectDrawSurface4 *s, DWORD x, DWORD y, IDirectDrawSurface4 *src, LPRECT sr, DWORD trans)
+    { return real_s4(s)->BltFast(x, y, unwrap_surf4(src), sr, trans); }
+static HRESULT WINAPI NOINLINE ws4_DeleteAttachedSurface(IDirectDrawSurface4 *s, DWORD flags, IDirectDrawSurface4 *att)
+    { return real_s4(s)->DeleteAttachedSurface(flags, unwrap_surf4(att)); }
+static HRESULT WINAPI NOINLINE ws4_EnumAttachedSurfaces(IDirectDrawSurface4 *s, LPVOID ctx, LPDDENUMSURFACESCALLBACK2 cb)
+    { return real_s4(s)->EnumAttachedSurfaces(ctx, cb); }
+static HRESULT WINAPI NOINLINE ws4_EnumOverlayZOrders(IDirectDrawSurface4 *s, DWORD flags, LPVOID ctx, LPDDENUMSURFACESCALLBACK2 cb)
+    { return real_s4(s)->EnumOverlayZOrders(flags, ctx, cb); }
+static HRESULT WINAPI NOINLINE ws4_Flip(IDirectDrawSurface4 *s, IDirectDrawSurface4 *over, DWORD flags)
+    { return real_s4(s)->Flip(unwrap_surf4(over), flags); }
+static HRESULT WINAPI NOINLINE ws4_GetAttachedSurface(IDirectDrawSurface4 *s, LPDDSCAPS2 caps, IDirectDrawSurface4 **att)
+{
+    HRESULT hr = real_s4(s)->GetAttachedSurface(caps, att);
+    /* The backbuffer is obtained this way off the (proxied) primary — wrap it
+     * so the game's render-target pointer is also ours. */
+    if (SUCCEEDED(hr) && att && *att)
+        *att = wrap_surf4(*att, "attached surface");
+    return hr;
+}
+static HRESULT WINAPI NOINLINE ws4_GetBltStatus(IDirectDrawSurface4 *s, DWORD flags)
+    { return real_s4(s)->GetBltStatus(flags); }
+static HRESULT WINAPI NOINLINE ws4_GetCaps(IDirectDrawSurface4 *s, LPDDSCAPS2 caps)
+    { return real_s4(s)->GetCaps(caps); }
+static HRESULT WINAPI NOINLINE ws4_GetClipper(IDirectDrawSurface4 *s, LPDIRECTDRAWCLIPPER *pp)
+    { return real_s4(s)->GetClipper(pp); }
+static HRESULT WINAPI NOINLINE ws4_GetColorKey(IDirectDrawSurface4 *s, DWORD flags, LPDDCOLORKEY key)
+    { return real_s4(s)->GetColorKey(flags, key); }
+static HRESULT WINAPI NOINLINE ws4_GetDC(IDirectDrawSurface4 *s, HDC *hdc)
+    { return real_s4(s)->GetDC(hdc); }
+static HRESULT WINAPI NOINLINE ws4_GetFlipStatus(IDirectDrawSurface4 *s, DWORD flags)
+    { return real_s4(s)->GetFlipStatus(flags); }
+static HRESULT WINAPI NOINLINE ws4_GetOverlayPosition(IDirectDrawSurface4 *s, LPLONG x, LPLONG y)
+    { return real_s4(s)->GetOverlayPosition(x, y); }
+static HRESULT WINAPI NOINLINE ws4_GetPalette(IDirectDrawSurface4 *s, LPDIRECTDRAWPALETTE *pp)
+    { return real_s4(s)->GetPalette(pp); }
+static HRESULT WINAPI NOINLINE ws4_GetPixelFormat(IDirectDrawSurface4 *s, LPDDPIXELFORMAT pf)
+    { return real_s4(s)->GetPixelFormat(pf); }
+static HRESULT WINAPI NOINLINE ws4_GetSurfaceDesc(IDirectDrawSurface4 *s, LPDDSURFACEDESC2 d)
+    { return real_s4(s)->GetSurfaceDesc(d); }
+static HRESULT WINAPI NOINLINE ws4_Initialize(IDirectDrawSurface4 *s, LPDIRECTDRAW dd, LPDDSURFACEDESC2 d)
+    { return real_s4(s)->Initialize(dd, d); }
+static HRESULT WINAPI NOINLINE ws4_IsLost(IDirectDrawSurface4 *s)
+    { return real_s4(s)->IsLost(); }
+static HRESULT WINAPI NOINLINE ws4_Lock(IDirectDrawSurface4 *s, LPRECT r, LPDDSURFACEDESC2 d, DWORD flags, HANDLE ev)
+    { return real_s4(s)->Lock(r, d, flags, ev); }
+static HRESULT WINAPI NOINLINE ws4_ReleaseDC(IDirectDrawSurface4 *s, HDC hdc)
+    { return real_s4(s)->ReleaseDC(hdc); }
+static HRESULT WINAPI NOINLINE ws4_Restore(IDirectDrawSurface4 *s)
+    { return real_s4(s)->Restore(); }
+static HRESULT WINAPI NOINLINE ws4_SetClipper(IDirectDrawSurface4 *s, LPDIRECTDRAWCLIPPER cl)
+    { return real_s4(s)->SetClipper(cl); }
+static HRESULT WINAPI NOINLINE ws4_SetColorKey(IDirectDrawSurface4 *s, DWORD flags, LPDDCOLORKEY key)
+    { return real_s4(s)->SetColorKey(flags, key); }
+static HRESULT WINAPI NOINLINE ws4_SetOverlayPosition(IDirectDrawSurface4 *s, LONG x, LONG y)
+    { return real_s4(s)->SetOverlayPosition(x, y); }
+static HRESULT WINAPI NOINLINE ws4_SetPalette(IDirectDrawSurface4 *s, LPDIRECTDRAWPALETTE pal)
+    { return real_s4(s)->SetPalette(pal); }
+static HRESULT WINAPI NOINLINE ws4_Unlock(IDirectDrawSurface4 *s, LPRECT r)
+    { return real_s4(s)->Unlock(r); }
+static HRESULT WINAPI NOINLINE ws4_UpdateOverlay(IDirectDrawSurface4 *s, LPRECT sr, IDirectDrawSurface4 *dst, LPRECT dr, DWORD flags, LPDDOVERLAYFX fx)
+    { return real_s4(s)->UpdateOverlay(sr, unwrap_surf4(dst), dr, flags, fx); }
+static HRESULT WINAPI NOINLINE ws4_UpdateOverlayDisplay(IDirectDrawSurface4 *s, DWORD flags)
+    { return real_s4(s)->UpdateOverlayDisplay(flags); }
+static HRESULT WINAPI NOINLINE ws4_UpdateOverlayZOrder(IDirectDrawSurface4 *s, DWORD flags, IDirectDrawSurface4 *ref)
+    { return real_s4(s)->UpdateOverlayZOrder(flags, unwrap_surf4(ref)); }
+static HRESULT WINAPI NOINLINE ws4_GetDDInterface(IDirectDrawSurface4 *s, LPVOID *pp)
+    { return real_s4(s)->GetDDInterface(pp); }
+static HRESULT WINAPI NOINLINE ws4_PageLock(IDirectDrawSurface4 *s, DWORD flags)
+    { return real_s4(s)->PageLock(flags); }
+static HRESULT WINAPI NOINLINE ws4_PageUnlock(IDirectDrawSurface4 *s, DWORD flags)
+    { return real_s4(s)->PageUnlock(flags); }
+static HRESULT WINAPI NOINLINE ws4_SetSurfaceDesc(IDirectDrawSurface4 *s, LPDDSURFACEDESC2 d, DWORD flags)
+    { return real_s4(s)->SetSurfaceDesc(d, flags); }
+static HRESULT WINAPI NOINLINE ws4_SetPrivateData(IDirectDrawSurface4 *s, REFGUID g, LPVOID data, DWORD size, DWORD flags)
+    { return real_s4(s)->SetPrivateData(g, data, size, flags); }
+static HRESULT WINAPI NOINLINE ws4_GetPrivateData(IDirectDrawSurface4 *s, REFGUID g, LPVOID data, LPDWORD size)
+    { return real_s4(s)->GetPrivateData(g, data, size); }
+static HRESULT WINAPI NOINLINE ws4_FreePrivateData(IDirectDrawSurface4 *s, REFGUID g)
+    { return real_s4(s)->FreePrivateData(g); }
+static HRESULT WINAPI NOINLINE ws4_GetUniquenessValue(IDirectDrawSurface4 *s, LPDWORD v)
+    { return real_s4(s)->GetUniquenessValue(v); }
+static HRESULT WINAPI NOINLINE ws4_ChangeUniquenessValue(IDirectDrawSurface4 *s)
+    { return real_s4(s)->ChangeUniquenessValue(); }
+
+/* Populate s_surf4_vtable_data (declared with the pool above) at load time. */
+static void *const s_surf4_vtable_init[45] = {
+    (void*)ws4_QueryInterface,
+    (void*)ws4_AddRef,
+    (void*)ws4_Release,
+    (void*)ws4_AddAttachedSurface,
+    (void*)ws4_AddOverlayDirtyRect,
+    (void*)ws4_Blt,
+    (void*)ws4_BltBatch,
+    (void*)ws4_BltFast,
+    (void*)ws4_DeleteAttachedSurface,
+    (void*)ws4_EnumAttachedSurfaces,
+    (void*)ws4_EnumOverlayZOrders,
+    (void*)ws4_Flip,
+    (void*)ws4_GetAttachedSurface,
+    (void*)ws4_GetBltStatus,
+    (void*)ws4_GetCaps,
+    (void*)ws4_GetClipper,
+    (void*)ws4_GetColorKey,
+    (void*)ws4_GetDC,
+    (void*)ws4_GetFlipStatus,
+    (void*)ws4_GetOverlayPosition,
+    (void*)ws4_GetPalette,
+    (void*)ws4_GetPixelFormat,
+    (void*)ws4_GetSurfaceDesc,
+    (void*)ws4_Initialize,
+    (void*)ws4_IsLost,
+    (void*)ws4_Lock,
+    (void*)ws4_ReleaseDC,
+    (void*)ws4_Restore,
+    (void*)ws4_SetClipper,
+    (void*)ws4_SetColorKey,
+    (void*)ws4_SetOverlayPosition,
+    (void*)ws4_SetPalette,
+    (void*)ws4_Unlock,
+    (void*)ws4_UpdateOverlay,
+    (void*)ws4_UpdateOverlayDisplay,
+    (void*)ws4_UpdateOverlayZOrder,
+    (void*)ws4_GetDDInterface,
+    (void*)ws4_PageLock,
+    (void*)ws4_PageUnlock,
+    (void*)ws4_SetSurfaceDesc,
+    (void*)ws4_SetPrivateData,
+    (void*)ws4_GetPrivateData,
+    (void*)ws4_FreePrivateData,
+    (void*)ws4_GetUniquenessValue,
+    (void*)ws4_ChangeUniquenessValue,
+};
+
+struct Surf4VtableInit {
+    Surf4VtableInit() {
+        for (int i = 0; i < 45; i++)
+            s_surf4_vtable_data[i] = s_surf4_vtable_init[i];
+    }
+};
+static Surf4VtableInit s_surf4_vtable_initializer;
 
 /* Extract the real IDirect3DDevice3 pointer from a proxy. */
 static inline IDirect3DDevice3 *real_dev3(IDirect3DDevice3 *self)
@@ -115,7 +320,7 @@ static HRESULT WINAPI NOINLINE wd3_SetCurrentViewport(IDirect3DDevice3 *s, IDire
 static HRESULT WINAPI NOINLINE wd3_GetCurrentViewport(IDirect3DDevice3 *s, IDirect3DViewport3 **vp)
     { return real_dev3(s)->GetCurrentViewport(vp); }
 static HRESULT WINAPI NOINLINE wd3_SetRenderTarget(IDirect3DDevice3 *s, IDirectDrawSurface4 *surf, DWORD flags)
-    { return real_dev3(s)->SetRenderTarget(surf, flags); }
+    { return real_dev3(s)->SetRenderTarget(unwrap_surf4(surf), flags); }
 static HRESULT WINAPI NOINLINE wd3_GetRenderTarget(IDirect3DDevice3 *s, IDirectDrawSurface4 **surf)
     { return real_dev3(s)->GetRenderTarget(surf); }
 static HRESULT WINAPI NOINLINE wd3_Begin(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, DWORD flags)
@@ -320,7 +525,7 @@ static HRESULT WINAPI NOINLINE wvp_GetViewport2(IDirect3DViewport3 *s, D3DVIEWPO
 static HRESULT WINAPI NOINLINE wvp_SetViewport2(IDirect3DViewport3 *s, D3DVIEWPORT2 *vp)
     { return real_vp3(s)->SetViewport2(vp); }
 static HRESULT WINAPI NOINLINE wvp_SetBackgroundDepth2(IDirect3DViewport3 *s, IDirectDrawSurface4 *surf)
-    { return real_vp3(s)->SetBackgroundDepth2(surf); }
+    { return real_vp3(s)->SetBackgroundDepth2(unwrap_surf4(surf)); }
 static HRESULT WINAPI NOINLINE wvp_GetBackgroundDepth2(IDirect3DViewport3 *s, IDirectDrawSurface4 **surf, BOOL *valid)
     { return real_vp3(s)->GetBackgroundDepth2(surf, valid); }
 static HRESULT WINAPI NOINLINE wvp_Clear2(IDirect3DViewport3 *s, DWORD n, D3DRECT *rects, DWORD flags, D3DCOLOR color, D3DVALUE z, DWORD stencil)
@@ -453,7 +658,7 @@ static HRESULT WINAPI NOINLINE w3_FindDevice(IDirect3D3 *s, D3DFINDDEVICESEARCH 
 static HRESULT WINAPI NOINLINE w3_CreateDevice(IDirect3D3 *s, REFCLSID rclsid, IDirectDrawSurface4 *surf,
         IDirect3DDevice3 **dev, IUnknown *outer)
 {
-    HRESULT hr = real_d3d3(s)->CreateDevice(rclsid, surf, dev, outer);
+    HRESULT hr = real_d3d3(s)->CreateDevice(rclsid, unwrap_surf4(surf), dev, outer);
     if (SUCCEEDED(hr) && dev && *dev && dev_proxy_enabled()) {
         s_dev3_proxy.vtable = s_dev3_vtable_data;
         s_dev3_proxy.real   = (IUnknown *)*dev;
@@ -530,7 +735,19 @@ static HRESULT WINAPI NOINLINE w4_CreateClipper(IDirectDraw4 *s, DWORD f, LPDIRE
 static HRESULT WINAPI NOINLINE w4_CreatePalette(IDirectDraw4 *s, DWORD f, LPPALETTEENTRY pe, LPDIRECTDRAWPALETTE *pp, IUnknown *u)
     { return real_dd4(s)->CreatePalette(f, pe, pp, u); }
 static HRESULT WINAPI NOINLINE w4_CreateSurface(IDirectDraw4 *s, LPDDSURFACEDESC2 d, LPDIRECTDRAWSURFACE4 *pp, IUnknown *u)
-    { return real_dd4(s)->CreateSurface(d, pp, u); }
+{
+    HRESULT hr = real_dd4(s)->CreateSurface(d, pp, u);
+    /* 4a scope: wrap only render-chain surfaces (primary flip chain and
+     * z-buffer).  Texture surfaces stay real until the pool is dynamic. */
+    if (SUCCEEDED(hr) && pp && *pp && d && dev_proxy_enabled()) {
+        DWORD caps = d->ddsCaps.dwCaps;
+        if (caps & DDSCAPS_PRIMARYSURFACE)
+            *pp = wrap_surf4(*pp, "primary");
+        else if (caps & DDSCAPS_ZBUFFER)
+            *pp = wrap_surf4(*pp, "zbuffer");
+    }
+    return hr;
+}
 static HRESULT WINAPI NOINLINE w4_DuplicateSurface(IDirectDraw4 *s, LPDIRECTDRAWSURFACE4 src, LPDIRECTDRAWSURFACE4 *pp)
     { return real_dd4(s)->DuplicateSurface(src, pp); }
 static HRESULT WINAPI NOINLINE w4_EnumDisplayModes(IDirectDraw4 *s, DWORD f, LPDDSURFACEDESC2 d, LPVOID ctx, LPDDENUMMODESCALLBACK2 cb)
