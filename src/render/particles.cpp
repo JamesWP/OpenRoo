@@ -56,11 +56,18 @@ static DWORD node_colour(const ParticleNode *node)
     return fx_tint() ? FX_TINT_COLOUR : node->dwDiffuse;
 }
 
-static void log_draw(const char *name, const void *self, IDirect3DDevice3 *dev,
-                     DWORD count, HRESULT hr)
+/* Per-class state so one busy class can't hide the others: the first
+ * PARTICLE_LOG_FIRST draws are logged, and so is the first draw that
+ * actually carries vertices (an empty ring draws with verts=0). */
+struct DrawLogState { LONG calls; LONG nonempty; };
+
+static void log_draw(DrawLogState *st, const char *name, const void *self,
+                     IDirect3DDevice3 *dev, DWORD count, HRESULT hr)
 {
-    static LONG logged = 0;
-    if (InterlockedIncrement(&logged) <= PARTICLE_LOG_FIRST)
+    bool report = InterlockedIncrement(&st->calls) <= PARTICLE_LOG_FIRST;
+    if (count > 0 && InterlockedExchange(&st->nonempty, 1) == 0)
+        report = true;
+    if (report)
         log_write("particle: %s this=%p dev=%p verts=%lu -> hr=%08lX\n",
                   name, self, dev, count, hr);
 }
@@ -134,17 +141,19 @@ static void xface_fill(XFaceParticleSystem *self)
 
 static DWORD point_draw(PointParticleSystem *self, IDirect3DDevice3 *dev)
 {
+    static DrawLogState st;
     HRESULT hr = dev->DrawPrimitive(D3DPT_POINTLIST, PARTICLE_FVF,
                                     self->pVerts, self->dwVertexCount, 0);
-    log_draw("PointDraw", self, dev, self->dwVertexCount, hr);
+    log_draw(&st, "PointDraw", self, dev, self->dwVertexCount, hr);
     return self->dwVertexCount;
 }
 
 static DWORD face_draw(FaceParticleSystem *self, IDirect3DDevice3 *dev)
 {
+    static DrawLogState st;
     HRESULT hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, PARTICLE_FVF,
                                     self->pVerts, self->nVertexCount, 0);
-    log_draw("FaceDraw", self, dev, self->nVertexCount, hr);
+    log_draw(&st, "FaceDraw", self, dev, self->nVertexCount, hr);
     return self->nVertexCount / 6;
 }
 
@@ -161,7 +170,8 @@ static DWORD xface_draw(XFaceParticleSystem *self, IDirect3DDevice3 *dev)
     HRESULT hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, PARTICLE_FVF,
                                     self->pVerts, self->nVertexCount, 0);
     dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, saved);
-    log_draw("XFaceDraw", self, dev, self->nVertexCount, hr);
+    static DrawLogState st;
+    log_draw(&st, "XFaceDraw", self, dev, self->nVertexCount, hr);
     return self->nVertexCount / 6;
 }
 
@@ -300,6 +310,9 @@ static bool fx_spin(void)
 
 static void base_tick(ParticleSystem *self, DWORD dt)
 {
+    static LONG once = 0;
+    if (InterlockedExchange(&once, 1) == 0)
+        log_write("particle: BaseTick active (this=%p dt=%lu)\n", self, dt);
     if (self->pGenerator)
         ((gen_tick_fn)((void ***)self->pGenerator)[0][GEN_VT_TICK])(self->pGenerator, dt);
     if (self->pEnvironment)
@@ -308,6 +321,10 @@ static void base_tick(ParticleSystem *self, DWORD dt)
 
 static void xface_tick(XFaceParticleSystem *self, DWORD dt)
 {
+    static LONG once = 0;
+    if (InterlockedExchange(&once, 1) == 0)
+        log_write("particle: XFaceTick active (this=%p entries=%lu)\n",
+                  self, self->dwCornerTableCount);
     if (self->pCornerTable) {
         float spin = fx_spin() ? 10.0f : 1.0f;
         for (DWORD i = 0; i < self->dwCornerTableCount; i++) {
@@ -399,11 +416,20 @@ Particle_XFaceTick(XFaceParticleSystem *self, DWORD dt)  { xface_tick(self, dt);
 
 __declspec(dllexport) void THISCALL
 Particle_FaceSetVector(FaceParticleSystem *self, float x, float y, float z)
-{ face_set_vector(self, x, y, z); }
+{
+    static LONG once = 0;
+    if (InterlockedExchange(&once, 1) == 0)
+        log_write("particle: FaceSetVector active (this=%p dir=%f,%f,%f)\n",
+                  self, x, y, z);
+    face_set_vector(self, x, y, z);
+}
 
 __declspec(dllexport) void THISCALL
 Particle_FaceTransformCorners(FaceParticleSystem *self, float *matrix)
 {
+    static LONG once = 0;
+    if (InterlockedExchange(&once, 1) == 0)
+        log_write("particle: FaceTransformCorners active (this=%p)\n", self);
     for (int c = 0; c < 6; c++)
         transform_point(self->flCorner[c], matrix);
 }
