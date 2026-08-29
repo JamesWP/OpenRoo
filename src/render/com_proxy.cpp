@@ -200,6 +200,44 @@ static inline IDirect3DDevice3 *unwrap_dev3(IDirect3DDevice3 *dev)
     return dev;
 }
 
+/* --- IDirect3DLight proxy (6 slots) --- */
+
+static ComProxy s_light_proxy;
+
+static inline IDirect3DLight *unwrap_light(IDirect3DLight *light)
+{
+    if ((void *)light == (void *)&s_light_proxy)
+        return (IDirect3DLight *)s_light_proxy.real;
+    return light;
+}
+
+static inline IDirect3DLight *real_light(IDirect3DLight *self)
+{
+    return (IDirect3DLight *)((ComProxy *)self)->real;
+}
+
+static HRESULT WINAPI NOINLINE wl_QueryInterface(IDirect3DLight *s, REFIID r, void **p)
+    { return real_light(s)->QueryInterface(r, p); }
+static ULONG   WINAPI NOINLINE wl_AddRef(IDirect3DLight *s)
+    { return real_light(s)->AddRef(); }
+static ULONG   WINAPI NOINLINE wl_Release(IDirect3DLight *s)
+    { return real_light(s)->Release(); }
+static HRESULT WINAPI NOINLINE wl_Initialize(IDirect3DLight *s, IDirect3D *d3d)
+    { return real_light(s)->Initialize(d3d); }
+static HRESULT WINAPI NOINLINE wl_SetLight(IDirect3DLight *s, D3DLIGHT *light)
+    { return real_light(s)->SetLight(light); }
+static HRESULT WINAPI NOINLINE wl_GetLight(IDirect3DLight *s, D3DLIGHT *light)
+    { return real_light(s)->GetLight(light); }
+
+static void *s_light_vtable_data[6] = {
+    (void*)wl_QueryInterface,
+    (void*)wl_AddRef,
+    (void*)wl_Release,
+    (void*)wl_Initialize,
+    (void*)wl_SetLight,
+    (void*)wl_GetLight,
+};
+
 /* --- IDirect3DViewport3 proxy (21 slots) --- */
 
 static inline IDirect3DViewport3 *real_vp3(IDirect3DViewport3 *self)
@@ -234,11 +272,11 @@ static HRESULT WINAPI NOINLINE wvp_GetBackgroundDepth(IDirect3DViewport3 *s, IDi
 static HRESULT WINAPI NOINLINE wvp_Clear(IDirect3DViewport3 *s, DWORD n, D3DRECT *rects, DWORD flags)
     { return real_vp3(s)->Clear(n, rects, flags); }
 static HRESULT WINAPI NOINLINE wvp_AddLight(IDirect3DViewport3 *s, IDirect3DLight *light)
-    { return real_vp3(s)->AddLight(light); }
+    { return real_vp3(s)->AddLight(unwrap_light(light)); }
 static HRESULT WINAPI NOINLINE wvp_DeleteLight(IDirect3DViewport3 *s, IDirect3DLight *light)
-    { return real_vp3(s)->DeleteLight(light); }
+    { return real_vp3(s)->DeleteLight(unwrap_light(light)); }
 static HRESULT WINAPI NOINLINE wvp_NextLight(IDirect3DViewport3 *s, IDirect3DLight *ref, IDirect3DLight **next, DWORD flags)
-    { return real_vp3(s)->NextLight(ref, next, flags); }
+    { return real_vp3(s)->NextLight(unwrap_light(ref), next, flags); }
 static HRESULT WINAPI NOINLINE wvp_GetViewport2(IDirect3DViewport3 *s, D3DVIEWPORT2 *vp)
     { return real_vp3(s)->GetViewport2(vp); }
 static HRESULT WINAPI NOINLINE wvp_SetViewport2(IDirect3DViewport3 *s, D3DVIEWPORT2 *vp)
@@ -324,7 +362,16 @@ static ULONG   WINAPI NOINLINE w3_Release(IDirect3D3 *s)
 static HRESULT WINAPI NOINLINE w3_EnumDevices(IDirect3D3 *s, LPD3DENUMDEVICESCALLBACK cb, void *ctx)
     { return real_d3d3(s)->EnumDevices(cb, ctx); }
 static HRESULT WINAPI NOINLINE w3_CreateLight(IDirect3D3 *s, IDirect3DLight **light, IUnknown *outer)
-    { return real_d3d3(s)->CreateLight(light, outer); }
+{
+    HRESULT hr = real_d3d3(s)->CreateLight(light, outer);
+    if (SUCCEEDED(hr) && light && *light && dev_proxy_enabled()) {
+        s_light_proxy.vtable = s_light_vtable_data;
+        s_light_proxy.real   = (IUnknown *)*light;
+        *light = (IDirect3DLight *)&s_light_proxy;
+        log_write("com_proxy: light proxy installed (real=%p)\n", s_light_proxy.real);
+    }
+    return hr;
+}
 static HRESULT WINAPI NOINLINE w3_CreateMaterial(IDirect3D3 *s, IDirect3DMaterial3 **mat, IUnknown *outer)
 {
     HRESULT hr = real_d3d3(s)->CreateMaterial(mat, outer);
