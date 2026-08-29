@@ -36,6 +36,28 @@ static bool dev_proxy_enabled(void)
     return true;
 }
 
+/* Visual-proof effects: KAROO_D3D_FX selects a deliberately visible render
+ * alteration, demonstrating that the corresponding proxy carries live
+ * traffic.  Off when unset. */
+enum FxMode { FX_OFF = 0, FX_WIRE, FX_TINT, FX_LIGHT };
+
+static FxMode fx_mode(void)
+{
+    static FxMode mode = (FxMode)-1;
+    if (mode == (FxMode)-1) {
+        char buf[16];
+        mode = FX_OFF;
+        if (GetEnvironmentVariableA("KAROO_D3D_FX", buf, sizeof(buf))) {
+            if      (lstrcmpiA(buf, "wire")  == 0) mode = FX_WIRE;
+            else if (lstrcmpiA(buf, "tint")  == 0) mode = FX_TINT;
+            else if (lstrcmpiA(buf, "light") == 0) mode = FX_LIGHT;
+        }
+        if (mode != FX_OFF)
+            log_write("com_proxy: FX mode %d active\n", (int)mode);
+    }
+    return mode;
+}
+
 /* Extract the real IDirect3DDevice3 pointer from a proxy. */
 static inline IDirect3DDevice3 *real_dev3(IDirect3DDevice3 *self)
 {
@@ -75,7 +97,15 @@ static HRESULT WINAPI NOINLINE wd3_NextViewport(IDirect3DDevice3 *s, IDirect3DVi
 static HRESULT WINAPI NOINLINE wd3_EnumTextureFormats(IDirect3DDevice3 *s, LPD3DENUMPIXELFORMATSCALLBACK cb, void *ctx)
     { return real_dev3(s)->EnumTextureFormats(cb, ctx); }
 static HRESULT WINAPI NOINLINE wd3_BeginScene(IDirect3DDevice3 *s)
-    { return real_dev3(s)->BeginScene(); }
+{
+    HRESULT hr = real_dev3(s)->BeginScene();
+    /* FX_WIRE: force wireframe each frame — proves the device proxy sits in
+     * the per-frame render path (game never touches FILLMODE, so no restore
+     * is needed). */
+    if (SUCCEEDED(hr) && fx_mode() == FX_WIRE)
+        real_dev3(s)->SetRenderState(D3DRENDERSTATE_FILLMODE, D3DFILL_WIREFRAME);
+    return hr;
+}
 static HRESULT WINAPI NOINLINE wd3_EndScene(IDirect3DDevice3 *s)
     { return real_dev3(s)->EndScene(); }
 static HRESULT WINAPI NOINLINE wd3_GetDirect3D(IDirect3DDevice3 *s, IDirect3D3 **d3d)
@@ -225,7 +255,15 @@ static ULONG   WINAPI NOINLINE wl_Release(IDirect3DLight *s)
 static HRESULT WINAPI NOINLINE wl_Initialize(IDirect3DLight *s, IDirect3D *d3d)
     { return real_light(s)->Initialize(d3d); }
 static HRESULT WINAPI NOINLINE wl_SetLight(IDirect3DLight *s, D3DLIGHT *light)
-    { return real_light(s)->SetLight(light); }
+{
+    /* FX_LIGHT: strip green+blue from the scene light — proves the light
+     * proxy is live (lit geometry turns red). */
+    if (light && fx_mode() == FX_LIGHT) {
+        light->dcvColor.g = 0.0f;
+        light->dcvColor.b = 0.0f;
+    }
+    return real_light(s)->SetLight(light);
+}
 static HRESULT WINAPI NOINLINE wl_GetLight(IDirect3DLight *s, D3DLIGHT *light)
     { return real_light(s)->GetLight(light); }
 
@@ -286,7 +324,23 @@ static HRESULT WINAPI NOINLINE wvp_SetBackgroundDepth2(IDirect3DViewport3 *s, ID
 static HRESULT WINAPI NOINLINE wvp_GetBackgroundDepth2(IDirect3DViewport3 *s, IDirectDrawSurface4 **surf, BOOL *valid)
     { return real_vp3(s)->GetBackgroundDepth2(surf, valid); }
 static HRESULT WINAPI NOINLINE wvp_Clear2(IDirect3DViewport3 *s, DWORD n, D3DRECT *rects, DWORD flags, D3DCOLOR color, D3DVALUE z, DWORD stencil)
-    { return real_vp3(s)->Clear2(n, rects, flags, color, z, stencil); }
+{
+    /* FX_TINT: magenta clear — proves the viewport proxy carries the
+     * per-frame Clear2.  The game clears depth+stencil only, so the color
+     * arg is normally unused; force D3DCLEAR_TARGET so the tint shows
+     * (geometry drawn afterwards will still cover most of it). */
+    if (fx_mode() == FX_TINT) {
+        flags |= D3DCLEAR_TARGET;
+        color = 0x00FF00FF;
+    }
+    HRESULT hr = real_vp3(s)->Clear2(n, rects, flags, color, z, stencil);
+    static LONG clear2_logged = 0;
+    if (InterlockedIncrement(&clear2_logged) <= 3)
+        log_write("com_proxy: Clear2 #%ld n=%lu flags=%08lX color=%08lX -> hr=%08lX%s\n",
+            clear2_logged, n, flags, color, (DWORD)hr,
+            (n && rects) ? " (has rects)" : "");
+    return hr;
+}
 
 static void *s_vp3_vtable_data[21] = {
     (void*)wvp_QueryInterface,
