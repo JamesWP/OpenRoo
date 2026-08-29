@@ -1,4 +1,5 @@
 #include "com_proxy.h"
+#include "log.h"
 
 typedef HRESULT (WINAPI *DirectDrawCreate_t)(GUID *, LPDIRECTDRAW *, IUnknown *);
 
@@ -25,10 +26,32 @@ static const GUID IID_IDirectDraw_g = {
 /* Forward declaration — s_dd_proxy is defined after the IDirectDraw4 section. */
 static ComProxy s_dd_proxy;
 
+/* A/B switch: KAROO_D3D_PROXY=0 disables the IDirect3DDevice3 + material
+ * proxies (the pre-existing DD/DD4/D3D3 proxies stay active either way). */
+static bool dev_proxy_enabled(void)
+{
+    char buf[8];
+    if (GetEnvironmentVariableA("KAROO_D3D_PROXY", buf, sizeof(buf)))
+        return buf[0] != '0';
+    return true;
+}
+
 /* Extract the real IDirect3DDevice3 pointer from a proxy. */
 static inline IDirect3DDevice3 *real_dev3(IDirect3DDevice3 *self)
 {
     return (IDirect3DDevice3 *)((ComProxy *)self)->real;
+}
+
+/* Viewport proxy storage — defined early so the device wrappers below can
+ * unwrap viewport arguments before forwarding to the real Wine device
+ * (unsafe_impl_from_IDirect3DViewport3 asserts on a foreign vtable). */
+static ComProxy s_vp3_proxy;
+
+static inline IDirect3DViewport3 *unwrap_vp3(IDirect3DViewport3 *vp)
+{
+    if ((void *)vp == (void *)&s_vp3_proxy)
+        return (IDirect3DViewport3 *)s_vp3_proxy.real;
+    return vp;
 }
 
 /* --- IDirect3DDevice3 wrapper functions (slots 0-41) --- */
@@ -44,11 +67,11 @@ static HRESULT WINAPI NOINLINE wd3_GetCaps(IDirect3DDevice3 *s, D3DDEVICEDESC *h
 static HRESULT WINAPI NOINLINE wd3_GetStats(IDirect3DDevice3 *s, D3DSTATS *stats)
     { return real_dev3(s)->GetStats(stats); }
 static HRESULT WINAPI NOINLINE wd3_AddViewport(IDirect3DDevice3 *s, IDirect3DViewport3 *vp)
-    { return real_dev3(s)->AddViewport(vp); }
+    { return real_dev3(s)->AddViewport(unwrap_vp3(vp)); }
 static HRESULT WINAPI NOINLINE wd3_DeleteViewport(IDirect3DDevice3 *s, IDirect3DViewport3 *vp)
-    { return real_dev3(s)->DeleteViewport(vp); }
+    { return real_dev3(s)->DeleteViewport(unwrap_vp3(vp)); }
 static HRESULT WINAPI NOINLINE wd3_NextViewport(IDirect3DDevice3 *s, IDirect3DViewport3 *ref, IDirect3DViewport3 **next, DWORD flags)
-    { return real_dev3(s)->NextViewport(ref, next, flags); }
+    { return real_dev3(s)->NextViewport(unwrap_vp3(ref), next, flags); }
 static HRESULT WINAPI NOINLINE wd3_EnumTextureFormats(IDirect3DDevice3 *s, LPD3DENUMPIXELFORMATSCALLBACK cb, void *ctx)
     { return real_dev3(s)->EnumTextureFormats(cb, ctx); }
 static HRESULT WINAPI NOINLINE wd3_BeginScene(IDirect3DDevice3 *s)
@@ -58,7 +81,7 @@ static HRESULT WINAPI NOINLINE wd3_EndScene(IDirect3DDevice3 *s)
 static HRESULT WINAPI NOINLINE wd3_GetDirect3D(IDirect3DDevice3 *s, IDirect3D3 **d3d)
     { return real_dev3(s)->GetDirect3D(d3d); }
 static HRESULT WINAPI NOINLINE wd3_SetCurrentViewport(IDirect3DDevice3 *s, IDirect3DViewport3 *vp)
-    { return real_dev3(s)->SetCurrentViewport(vp); }
+    { return real_dev3(s)->SetCurrentViewport(unwrap_vp3(vp)); }
 static HRESULT WINAPI NOINLINE wd3_GetCurrentViewport(IDirect3DDevice3 *s, IDirect3DViewport3 **vp)
     { return real_dev3(s)->GetCurrentViewport(vp); }
 static HRESULT WINAPI NOINLINE wd3_SetRenderTarget(IDirect3DDevice3 *s, IDirectDrawSurface4 *surf, DWORD flags)
@@ -165,6 +188,125 @@ static void *s_dev3_vtable_data[42] = {
 
 static ComProxy s_dev3_proxy;
 
+/* Unwrap our device proxy back to the real Wine IDirect3DDevice3.  Needed
+ * wherever the game passes the device pointer as an ARGUMENT to a non-device
+ * COM method (e.g. IDirect3DMaterial3::GetHandle in CreateSceneMaterial) —
+ * Wine's unsafe_impl_from_IDirect3DDevice3() hard-asserts on a foreign vtable
+ * (device.c:6815), so the real pointer must be substituted before forwarding. */
+static inline IDirect3DDevice3 *unwrap_dev3(IDirect3DDevice3 *dev)
+{
+    if ((void *)dev == (void *)&s_dev3_proxy)
+        return (IDirect3DDevice3 *)s_dev3_proxy.real;
+    return dev;
+}
+
+/* --- IDirect3DViewport3 proxy (21 slots) --- */
+
+static inline IDirect3DViewport3 *real_vp3(IDirect3DViewport3 *self)
+{
+    return (IDirect3DViewport3 *)((ComProxy *)self)->real;
+}
+
+static HRESULT WINAPI NOINLINE wvp_QueryInterface(IDirect3DViewport3 *s, REFIID r, void **p)
+    { return real_vp3(s)->QueryInterface(r, p); }
+static ULONG   WINAPI NOINLINE wvp_AddRef(IDirect3DViewport3 *s)
+    { return real_vp3(s)->AddRef(); }
+static ULONG   WINAPI NOINLINE wvp_Release(IDirect3DViewport3 *s)
+    { return real_vp3(s)->Release(); }
+static HRESULT WINAPI NOINLINE wvp_Initialize(IDirect3DViewport3 *s, IDirect3D *d3d)
+    { return real_vp3(s)->Initialize(d3d); }
+static HRESULT WINAPI NOINLINE wvp_GetViewport(IDirect3DViewport3 *s, D3DVIEWPORT *vp)
+    { return real_vp3(s)->GetViewport(vp); }
+static HRESULT WINAPI NOINLINE wvp_SetViewport(IDirect3DViewport3 *s, D3DVIEWPORT *vp)
+    { return real_vp3(s)->SetViewport(vp); }
+static HRESULT WINAPI NOINLINE wvp_TransformVertices(IDirect3DViewport3 *s, DWORD n, D3DTRANSFORMDATA *d, DWORD flags, DWORD *off)
+    { return real_vp3(s)->TransformVertices(n, d, flags, off); }
+static HRESULT WINAPI NOINLINE wvp_LightElements(IDirect3DViewport3 *s, DWORD n, D3DLIGHTDATA *d)
+    { return real_vp3(s)->LightElements(n, d); }
+static HRESULT WINAPI NOINLINE wvp_SetBackground(IDirect3DViewport3 *s, D3DMATERIALHANDLE h)
+    { return real_vp3(s)->SetBackground(h); }
+static HRESULT WINAPI NOINLINE wvp_GetBackground(IDirect3DViewport3 *s, D3DMATERIALHANDLE *h, BOOL *valid)
+    { return real_vp3(s)->GetBackground(h, valid); }
+static HRESULT WINAPI NOINLINE wvp_SetBackgroundDepth(IDirect3DViewport3 *s, IDirectDrawSurface *surf)
+    { return real_vp3(s)->SetBackgroundDepth(surf); }
+static HRESULT WINAPI NOINLINE wvp_GetBackgroundDepth(IDirect3DViewport3 *s, IDirectDrawSurface **surf, BOOL *valid)
+    { return real_vp3(s)->GetBackgroundDepth(surf, valid); }
+static HRESULT WINAPI NOINLINE wvp_Clear(IDirect3DViewport3 *s, DWORD n, D3DRECT *rects, DWORD flags)
+    { return real_vp3(s)->Clear(n, rects, flags); }
+static HRESULT WINAPI NOINLINE wvp_AddLight(IDirect3DViewport3 *s, IDirect3DLight *light)
+    { return real_vp3(s)->AddLight(light); }
+static HRESULT WINAPI NOINLINE wvp_DeleteLight(IDirect3DViewport3 *s, IDirect3DLight *light)
+    { return real_vp3(s)->DeleteLight(light); }
+static HRESULT WINAPI NOINLINE wvp_NextLight(IDirect3DViewport3 *s, IDirect3DLight *ref, IDirect3DLight **next, DWORD flags)
+    { return real_vp3(s)->NextLight(ref, next, flags); }
+static HRESULT WINAPI NOINLINE wvp_GetViewport2(IDirect3DViewport3 *s, D3DVIEWPORT2 *vp)
+    { return real_vp3(s)->GetViewport2(vp); }
+static HRESULT WINAPI NOINLINE wvp_SetViewport2(IDirect3DViewport3 *s, D3DVIEWPORT2 *vp)
+    { return real_vp3(s)->SetViewport2(vp); }
+static HRESULT WINAPI NOINLINE wvp_SetBackgroundDepth2(IDirect3DViewport3 *s, IDirectDrawSurface4 *surf)
+    { return real_vp3(s)->SetBackgroundDepth2(surf); }
+static HRESULT WINAPI NOINLINE wvp_GetBackgroundDepth2(IDirect3DViewport3 *s, IDirectDrawSurface4 **surf, BOOL *valid)
+    { return real_vp3(s)->GetBackgroundDepth2(surf, valid); }
+static HRESULT WINAPI NOINLINE wvp_Clear2(IDirect3DViewport3 *s, DWORD n, D3DRECT *rects, DWORD flags, D3DCOLOR color, D3DVALUE z, DWORD stencil)
+    { return real_vp3(s)->Clear2(n, rects, flags, color, z, stencil); }
+
+static void *s_vp3_vtable_data[21] = {
+    (void*)wvp_QueryInterface,
+    (void*)wvp_AddRef,
+    (void*)wvp_Release,
+    (void*)wvp_Initialize,
+    (void*)wvp_GetViewport,
+    (void*)wvp_SetViewport,
+    (void*)wvp_TransformVertices,
+    (void*)wvp_LightElements,
+    (void*)wvp_SetBackground,
+    (void*)wvp_GetBackground,
+    (void*)wvp_SetBackgroundDepth,
+    (void*)wvp_GetBackgroundDepth,
+    (void*)wvp_Clear,
+    (void*)wvp_AddLight,
+    (void*)wvp_DeleteLight,
+    (void*)wvp_NextLight,
+    (void*)wvp_GetViewport2,
+    (void*)wvp_SetViewport2,
+    (void*)wvp_SetBackgroundDepth2,
+    (void*)wvp_GetBackgroundDepth2,
+    (void*)wvp_Clear2,
+};
+
+/* --- IDirect3DMaterial3 proxy ---
+ * Proxied solely so GetHandle can unwrap the device argument; all other
+ * slots are plain passthroughs. */
+
+static inline IDirect3DMaterial3 *real_mat3(IDirect3DMaterial3 *self)
+{
+    return (IDirect3DMaterial3 *)((ComProxy *)self)->real;
+}
+
+static HRESULT WINAPI NOINLINE wm3_QueryInterface(IDirect3DMaterial3 *s, REFIID r, void **p)
+    { return real_mat3(s)->QueryInterface(r, p); }
+static ULONG   WINAPI NOINLINE wm3_AddRef(IDirect3DMaterial3 *s)
+    { return real_mat3(s)->AddRef(); }
+static ULONG   WINAPI NOINLINE wm3_Release(IDirect3DMaterial3 *s)
+    { return real_mat3(s)->Release(); }
+static HRESULT WINAPI NOINLINE wm3_SetMaterial(IDirect3DMaterial3 *s, D3DMATERIAL *mat)
+    { return real_mat3(s)->SetMaterial(mat); }
+static HRESULT WINAPI NOINLINE wm3_GetMaterial(IDirect3DMaterial3 *s, D3DMATERIAL *mat)
+    { return real_mat3(s)->GetMaterial(mat); }
+static HRESULT WINAPI NOINLINE wm3_GetHandle(IDirect3DMaterial3 *s, IDirect3DDevice3 *dev, D3DMATERIALHANDLE *handle)
+    { return real_mat3(s)->GetHandle(unwrap_dev3(dev), handle); }
+
+static void *s_mat3_vtable_data[6] = {
+    (void*)wm3_QueryInterface,
+    (void*)wm3_AddRef,
+    (void*)wm3_Release,
+    (void*)wm3_SetMaterial,
+    (void*)wm3_GetMaterial,
+    (void*)wm3_GetHandle,
+};
+
+static ComProxy s_mat3_proxy;
+
 /* Extract the real IDirect3D3 pointer from a proxy. */
 static inline IDirect3D3 *real_d3d3(IDirect3D3 *self)
 {
@@ -184,22 +326,48 @@ static HRESULT WINAPI NOINLINE w3_EnumDevices(IDirect3D3 *s, LPD3DENUMDEVICESCAL
 static HRESULT WINAPI NOINLINE w3_CreateLight(IDirect3D3 *s, IDirect3DLight **light, IUnknown *outer)
     { return real_d3d3(s)->CreateLight(light, outer); }
 static HRESULT WINAPI NOINLINE w3_CreateMaterial(IDirect3D3 *s, IDirect3DMaterial3 **mat, IUnknown *outer)
-    { return real_d3d3(s)->CreateMaterial(mat, outer); }
+{
+    HRESULT hr = real_d3d3(s)->CreateMaterial(mat, outer);
+    if (SUCCEEDED(hr) && mat && *mat && dev_proxy_enabled()) {
+        s_mat3_proxy.vtable = s_mat3_vtable_data;
+        s_mat3_proxy.real   = (IUnknown *)*mat;
+        *mat = (IDirect3DMaterial3 *)&s_mat3_proxy;
+        log_write("com_proxy: material proxy installed (real=%p)\n", s_mat3_proxy.real);
+    }
+    return hr;
+}
 static HRESULT WINAPI NOINLINE w3_CreateViewport(IDirect3D3 *s, IDirect3DViewport3 **vp, IUnknown *outer)
-    { return real_d3d3(s)->CreateViewport(vp, outer); }
+{
+    HRESULT hr = real_d3d3(s)->CreateViewport(vp, outer);
+    if (SUCCEEDED(hr) && vp && *vp && dev_proxy_enabled()) {
+        s_vp3_proxy.vtable = s_vp3_vtable_data;
+        s_vp3_proxy.real   = (IUnknown *)*vp;
+        *vp = (IDirect3DViewport3 *)&s_vp3_proxy;
+        log_write("com_proxy: viewport proxy installed (real=%p)\n", s_vp3_proxy.real);
+    }
+    return hr;
+}
 static HRESULT WINAPI NOINLINE w3_FindDevice(IDirect3D3 *s, D3DFINDDEVICESEARCH *search, D3DFINDDEVICERESULT *result)
     { return real_d3d3(s)->FindDevice(search, result); }
 static HRESULT WINAPI NOINLINE w3_CreateDevice(IDirect3D3 *s, REFCLSID rclsid, IDirectDrawSurface4 *surf,
         IDirect3DDevice3 **dev, IUnknown *outer)
-    { return real_d3d3(s)->CreateDevice(rclsid, surf, dev, outer); }
-/* NOTE: we intentionally do NOT proxy IDirect3DDevice3 here.  Wine's internal
- * unsafe_impl_from_IDirect3DDevice3() hard-asserts that the vtable matches its
- * own d3d_device3_vtbl (device.c:6815).  If the game ever passes our proxy to
- * a non-device COM method (e.g. IDirect3DMaterial3::GetHandle) that call goes
- * through Wine's unsafe_impl_from_IDirect3DDevice3 and hits the assert →
- * abort() → exit code 3.  The GDB D3Dev3CreateDeviceReturnProbe instead reads
- * the real Wine vtable from *dev at return time and installs breakpoints there
- * directly, giving us device-method tracing without replacing the pointer. */
+{
+    HRESULT hr = real_d3d3(s)->CreateDevice(rclsid, surf, dev, outer);
+    if (SUCCEEDED(hr) && dev && *dev && dev_proxy_enabled()) {
+        s_dev3_proxy.vtable = s_dev3_vtable_data;
+        s_dev3_proxy.real   = (IUnknown *)*dev;
+        *dev = (IDirect3DDevice3 *)&s_dev3_proxy;
+        log_write("com_proxy: device proxy installed (real=%p)\n", s_dev3_proxy.real);
+    }
+    return hr;
+}
+/* The device proxy trips Wine's unsafe_impl_from_IDirect3DDevice3() assert
+ * (device.c:6815) if the game ever passes it as an argument to a non-device
+ * COM method on a REAL (unproxied) Wine object.  Every such method must be
+ * reached through a proxy that unwraps the device via unwrap_dev3() — see
+ * the IDirect3DMaterial3 proxy above (GetHandle).  A missed site aborts with
+ * exit code 3 and the Wine assert message in the Proton log: that is the
+ * detection signal, not a silent failure. */
 static HRESULT WINAPI NOINLINE w3_CreateVertexBuffer(IDirect3D3 *s, D3DVERTEXBUFFERDESC *desc,
         IDirect3DVertexBuffer **buf, DWORD flags, IUnknown *outer)
     { return real_d3d3(s)->CreateVertexBuffer(desc, buf, flags, outer); }

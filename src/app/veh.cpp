@@ -7,11 +7,25 @@ static LONG WINAPI veh_handler(EXCEPTION_POINTERS *ep)
     EXCEPTION_RECORD  *er  = ep->ExceptionRecord;
     CONTEXT           *ctx = ep->ContextRecord;
 
+    // Guard-page violations kill the process unhandled (exit 0x80000001) and
+    // are otherwise invisible — log them wherever they occur, capped so the
+    // legitimate per-thread stack-growth ones can't flood the log.
+    if (er->ExceptionCode == STATUS_GUARD_PAGE_VIOLATION) {
+        static LONG guard_count = 0;
+        if (InterlockedIncrement(&guard_count) <= 64)
+            log_write("=== GUARD PAGE ===  EIP=%08lX fault_addr=%08lX type=%s  (#%ld)\n",
+                ctx->Eip, (DWORD)er->ExceptionInformation[1],
+                er->ExceptionInformation[0] ? "write" : "read", guard_count);
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
     if (er->ExceptionCode != EXCEPTION_ACCESS_VIOLATION)
         return EXCEPTION_CONTINUE_SEARCH;
-    // Only log crashes in game code; Wine's own page-fault handling (EIP in DLL range)
-    // fires this VEH first — ignore those.
-    if (ctx->Eip < 0x400000 || ctx->Eip >= 0x500000)
+    // Only log crashes in game code or karoo_hooks.dll (image base 0x10000000);
+    // Wine's own page-fault handling (EIP in other DLL ranges) fires this VEH
+    // first — ignore those.
+    if (!((ctx->Eip >= 0x400000 && ctx->Eip < 0x500000) ||
+          (ctx->Eip >= 0x10000000 && ctx->Eip < 0x10100000)))
         return EXCEPTION_CONTINUE_SEARCH;
 
     log_write("\n=== ACCESS VIOLATION ===\n");
