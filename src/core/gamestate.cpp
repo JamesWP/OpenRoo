@@ -21,6 +21,25 @@
  * bonus for moving quickly.  That is a hypothesis, not a result: it is logged
  * as vit=(?) and confirmed by watching it rise while moving fast.
  *
+ * CONFIRMED IN GAME (2026-08-30, Forest\BombStart, James playing):
+ *   +0x175406 gems collected  — stepped 0..10, one per pickup
+ *   +0x04224D foes killed     — stepped 0..4, one per kill (byte)
+ *   +0x170A64 vitality        — varies continuously with movement, not health
+ *   +0x1752B8 level complete  — 0 -> 1 on reaching the exit
+ *   +0x1751EE player position — 1606 distinct values, smooth per-frame motion
+ *   +0x42250 / +0x1753E3      — items available / items collected; the second
+ *                               counts BOTH bombs and gems (3 + 10 = 13)
+ * The level score reproduces exactly from these six terms, which is the real
+ * proof — see the formula in REPLAY_PLAN.md.
+ *
+ * STILL UNRESOLVED (the death run should settle both):
+ *   +0x175402 "lives"  — read 2 on the menu, then 0 for the whole level with
+ *                        no deaths.  Width unknown; logged as 4 raw bytes.
+ *   +0x1752E8 "death"  — pulsed to 0x00000100 six times during clean play with
+ *                        no deaths, so the live byte is +0x1752E9 and the
+ *                        plan's "death / time-out" label is at best misaligned.
+ *                        Logged as 4 raw bytes.
+ *
  * The gem reading itself (collected at +0x175406, required at +0x2AB723) is
  * consistent with the arithmetic — the score is min(collected, required) * 5 —
  * but that is still an inference from the shape of the code.  Everything here
@@ -40,12 +59,12 @@ struct GameState {
     BYTE  foes_killed;      // +0x4224d   byte
     int   time_limit_s;     // +0x2ab591  dword
     DWORD elapsed_ms;       // +0x2ab595  dword
-    int   lives;            // +0x175402  dword (?)
+    BYTE  lives_raw[4];     // +0x175402  width unknown (?)
     int   total_score;      // +0x1753f5  dword
     int   level_score;      // +0x140536  dword
     BYTE  vitality;         // +0x170a64  byte (?) — see note above
-    int   death_flag;       // +0x1752e8  dword (?)
-    int   complete_flag;    // +0x1752b8  dword (?)
+    BYTE  death_raw[4];     // +0x1752e8  width unknown; live byte is +0x1752e9 (?)
+    int   complete_flag;    // +0x1752b8  dword — CONFIRMED: 0 -> 1 on level exit
     WORD  extra_count;      // +0x42250   ushort
     WORD  extra_cap;        // +0x1753e3  ushort
     BYTE  extra_block;      // +0x4220b   byte
@@ -83,11 +102,11 @@ static bool read_state(GameState *s)
     s->foes_killed    = *(const BYTE  *)(g + 0x04224d);
     s->time_limit_s   = *(const int   *)(g + 0x2ab591);
     s->elapsed_ms     = *(const DWORD *)(g + 0x2ab595);
-    s->lives          = *(const int   *)(g + 0x175402);
+    memcpy(s->lives_raw, g + 0x175402, 4);
     s->total_score    = *(const int   *)(g + 0x1753f5);
     s->level_score    = *(const int   *)(g + 0x140536);
     s->vitality       = *(const BYTE  *)(g + 0x170a64);
-    s->death_flag     = *(const int   *)(g + 0x1752e8);
+    memcpy(s->death_raw, g + 0x1752e8, 4);
     s->complete_flag  = *(const int   *)(g + 0x1752b8);
     s->extra_count    = *(const WORD  *)(g + 0x042250);
     s->extra_cap      = *(const WORD  *)(g + 0x1753e3);
@@ -111,16 +130,18 @@ void gamestate_tick(void)
     a.elapsed_ms = b.elapsed_ms = 0;
     if (g_have_prev && memcmp(&a, &b, sizeof(a)) == 0) return;
 
-    log_write("gamestate: f=%lu mode=%u gems=%d/%d(?) foes=%u lives=%d(?) "
-              "vit=%u(?) score=%d/%d t=%lu/%ds extra=%u/%u blk=%u "
-              "death=%d(?) done=%d(?) pos=%.3f,%.3f,%.3f(?)\n",
+    log_write("gamestate: f=%lu mode=%u gems=%d/%d(?) foes=%u vit=%u "
+              "score=%d/%d t=%lu/%ds items=%u/%u blk=%u done=%d "
+              "lives[%02x %02x %02x %02x](?) death[%02x %02x %02x %02x](?) "
+              "pos=%.3f,%.3f,%.3f\n",
               (unsigned long)g_frame, (unsigned)s.mode,
               s.gems_collected, s.gems_required, (unsigned)s.foes_killed,
-              s.lives, (unsigned)s.vitality, s.level_score, s.total_score,
+              (unsigned)s.vitality, s.level_score, s.total_score,
               (unsigned long)(s.elapsed_ms / 1000), s.time_limit_s,
-              (unsigned)s.extra_count, (unsigned)s.extra_cap,
-              (unsigned)s.extra_block,
-              s.death_flag, s.complete_flag,
+              (unsigned)s.extra_cap, (unsigned)s.extra_count,
+              (unsigned)s.extra_block, s.complete_flag,
+              s.lives_raw[0], s.lives_raw[1], s.lives_raw[2], s.lives_raw[3],
+              s.death_raw[0], s.death_raw[1], s.death_raw[2], s.death_raw[3],
               s.pos[0], s.pos[1], s.pos[2]);
 
     g_prev      = s;
