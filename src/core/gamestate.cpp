@@ -85,14 +85,24 @@ struct GameState {
  *
  * KAROO_DEATH_DIFF=1 enables it.  The snapshot refreshes every SNAP_EVERY
  * frames while alive, so the diff window is short and the noise stays low.
+ *
+ * The first version diffed only at the moment of death, and that was not
+ * enough: across two real deaths it found no dword stepping by 1, because the
+ * game does not decrement lives when you die — it does it during the restart
+ * (GameTick 0x004160D6 does DEC EAX / store / call 0x004184A0).  So there is a
+ * second report REPORT_AFTER frames after the death cause clears, diffed
+ * against the same pre-death snapshot, which brackets the whole death ->
+ * restart cycle.
  */
 #define GAME_SIZE   0x51790d
-#define SNAP_EVERY  30
-#define DIFF_MAX    120
+#define SNAP_EVERY   30
+#define DIFF_MAX     120
+#define REPORT_AFTER 45   /* frames after respawn for the second report */
 
 static BYTE *g_snap;
 static int   g_diff_on = -1;
 static BYTE  g_prev_death;
+static DWORD g_respawn_at;   /* frame the death cause cleared; 0 = idle */
 
 static bool deathdiff_enabled(void)
 {
@@ -111,10 +121,11 @@ static bool deathdiff_enabled(void)
 /* Report dwords that differ between the snapshot and the live object.  Ones
  * that moved by exactly -1 or +1 are listed first: that is what a life, a
  * bomb count or an attempt counter looks like across a single death. */
-static void deathdiff_report(const BYTE *game, unsigned cause)
+static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
 {
     int shown = 0, delta1 = 0;
-    log_write("deathdiff: === death cause=%u — dwords that changed vs snapshot ===\n", cause);
+    log_write("deathdiff: === %s (cause=%u) — dwords changed vs pre-death snapshot ===\n",
+              when, cause);
 
     for (int pass = 0; pass < 2 && shown < DIFF_MAX; pass++) {
         for (DWORD o = 0; o + 4 <= GAME_SIZE && shown < DIFF_MAX; o += 4) {
@@ -217,10 +228,18 @@ void gamestate_deathdiff(void)
 
     BYTE cause = *(const BYTE *)(game + 0x1752e8);
 
-    if (cause != 0 && g_prev_death == 0)
-        deathdiff_report(game, cause);          /* just died — diff first */
-    else if (cause == 0 && (g_frame % SNAP_EVERY) == 0)
+    if (cause != 0 && g_prev_death == 0) {
+        deathdiff_report(game, cause, "at death");
+        g_respawn_at = 0;
+    } else if (cause == 0 && g_prev_death != 0) {
+        g_respawn_at = g_frame;                 /* restart began — hold the snapshot */
+    } else if (g_respawn_at && g_frame - g_respawn_at >= REPORT_AFTER) {
+        /* The decrement happens in here, not at the death itself. */
+        deathdiff_report(game, g_prev_death, "after respawn");
+        g_respawn_at = 0;
+    } else if (cause == 0 && !g_respawn_at && (g_frame % SNAP_EVERY) == 0) {
         memcpy(g_snap, game, GAME_SIZE);        /* alive — refresh window */
+    }
 
     g_prev_death = cause;
 }
