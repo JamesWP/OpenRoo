@@ -1,0 +1,11 @@
+#pragma once
+#include <windows.h>
+
+/* Fixed-timestep clock — see REPLAY_PLAN.md Stage A.
+ *
+ * Replaces the game's QueryPerformanceCounter wrapper at 0x00404040, which
+ * returns *absolute elapsed seconds* (not a delta) on the x87 stack.  With
+ * KAROO_FIXED_DT set, the clock advances by exactly that many seconds per
+ * call, making the whole simulation a fixed-timestep one.
+ */
+double clock_seconds(void);
