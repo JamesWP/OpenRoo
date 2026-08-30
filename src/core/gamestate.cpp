@@ -50,6 +50,7 @@
 #include "gamestate.h"
 #include "log.h"
 #include <string.h>
+#include <stdlib.h>
 
 #define GAME_GLOBAL_PTR ((void **)0x0046c498)
 
@@ -71,6 +72,66 @@ struct GameState {
     float pos[3];           // +0x1751ee  float[3] (?)
     unsigned short mode;    // game_state passed to DispatchInputActions
 };
+
+/* ── Death diff (field finder) ─────────────────────────────────────────────
+ *
+ * Guessing field meanings one at a time is slow and, as +0x175402 showed,
+ * wrong: it is INC'd on a "boommaker" name match at 0x0041B23D and DEC'd in
+ * GameTick at 0x004160D6, yet it read 0 for a whole level in which bombs were
+ * collected and spent.  So instead of naming candidates up front, snapshot the
+ * whole Game object during play and diff it the moment a death registers.  A
+ * lives counter is then simply a dword that dropped by exactly 1 across the
+ * death, and it names itself.
+ *
+ * KAROO_DEATH_DIFF=1 enables it.  The snapshot refreshes every SNAP_EVERY
+ * frames while alive, so the diff window is short and the noise stays low.
+ */
+#define GAME_SIZE   0x51790d
+#define SNAP_EVERY  30
+#define DIFF_MAX    120
+
+static BYTE *g_snap;
+static int   g_diff_on = -1;
+static BYTE  g_prev_death;
+
+static bool deathdiff_enabled(void)
+{
+    if (g_diff_on < 0) {
+        char buf[16];
+        g_diff_on = 0;
+        if (GetEnvironmentVariableA("KAROO_DEATH_DIFF", buf, sizeof(buf)) && buf[0] && buf[0] != '0') {
+            g_snap = (BYTE *)VirtualAlloc(NULL, GAME_SIZE, MEM_COMMIT, PAGE_READWRITE);
+            g_diff_on = (g_snap != NULL);
+        }
+        log_write("gamestate: death diff %s\n", g_diff_on ? "enabled" : "disabled");
+    }
+    return g_diff_on > 0;
+}
+
+/* Report dwords that differ between the snapshot and the live object.  Ones
+ * that moved by exactly -1 or +1 are listed first: that is what a life, a
+ * bomb count or an attempt counter looks like across a single death. */
+static void deathdiff_report(const BYTE *game, unsigned cause)
+{
+    int shown = 0, delta1 = 0;
+    log_write("deathdiff: === death cause=%u — dwords that changed vs snapshot ===\n", cause);
+
+    for (int pass = 0; pass < 2 && shown < DIFF_MAX; pass++) {
+        for (DWORD o = 0; o + 4 <= GAME_SIZE && shown < DIFF_MAX; o += 4) {
+            int a = *(const int *)(g_snap + o);
+            int b = *(const int *)(game   + o);
+            if (a == b) continue;
+            bool step = (b - a == -1) || (b - a == 1);
+            if (pass == 0 && !step) continue;
+            if (pass == 1 && step)  continue;
+            if (pass == 0) delta1++;
+            log_write("deathdiff:   +0x%06lx  %d -> %d  (%+d)%s\n",
+                      (unsigned long)o, a, b, b - a, step ? "  <-- step" : "");
+            shown++;
+        }
+    }
+    log_write("deathdiff: === %d shown, %d of them +/-1 steps ===\n", shown, delta1);
+}
 
 static int       g_on = -1;
 static GameState g_prev;
@@ -146,4 +207,20 @@ void gamestate_tick(void)
 
     g_prev      = s;
     g_have_prev = true;
+}
+
+void gamestate_deathdiff(void)
+{
+    if (!deathdiff_enabled()) return;
+    const BYTE *game = (const BYTE *)*GAME_GLOBAL_PTR;
+    if (!game) return;
+
+    BYTE cause = *(const BYTE *)(game + 0x1752e8);
+
+    if (cause != 0 && g_prev_death == 0)
+        deathdiff_report(game, cause);          /* just died — diff first */
+    else if (cause == 0 && (g_frame % SNAP_EVERY) == 0)
+        memcpy(g_snap, game, GAME_SIZE);        /* alive — refresh window */
+
+    g_prev_death = cause;
 }

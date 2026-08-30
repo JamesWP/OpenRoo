@@ -13,3 +13,6 @@ void gamestate_note_mode(unsigned short mode);
 
 /* Called once per frame; logs only on change. */
 void gamestate_tick(void);
+
+/* Snapshot/diff the whole Game object across a death (KAROO_DEATH_DIFF=1). */
+void gamestate_deathdiff(void);
