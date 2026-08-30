@@ -37,25 +37,32 @@
  * (the com_proxy proxy the game holds, so the draw stays visible to the proxy
  * layer), same primitive type, FVF, vertex count and flags.
  *
- * KAROO_SCENEQUAD_FX=drop skips the draw entirely — the animated billboard
- * quads vanish — as visual proof the pixels come from this reimplementation.
+ * Visual proof modes (must also be listed in launch.sh's `env -i` block or they
+ * never reach the game):
+ *   KAROO_SCENEQUAD_FX=drop  skips the draw — the animated billboard quads vanish
+ *   KAROO_SCENEQUAD_FX=tint  forces their vertex diffuse to magenta
  */
 #include "com_proxy.h"
 #include "log.h"
 
 #define QUAD_LOG_FIRST  8
 
-static bool fx_drop(void)
+enum QuadFx { FX_OFF = 0, FX_DROP, FX_TINT };
+
+static QuadFx quad_fx(void)
 {
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
-        cached = 0;
-        if (GetEnvironmentVariableA("KAROO_SCENEQUAD_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "drop") == 0);
-        log_write("scenequad: FX mode = %s\n", cached ? "drop" : "off");
+        buf[0] = 0;
+        GetEnvironmentVariableA("KAROO_SCENEQUAD_FX", buf, sizeof(buf));
+        cached = FX_OFF;
+        if (lstrcmpiA(buf, "drop") == 0)      cached = FX_DROP;
+        else if (lstrcmpiA(buf, "tint") == 0) cached = FX_TINT;
+        log_write("scenequad: FX mode = %s (KAROO_SCENEQUAD_FX='%s')\n",
+                  cached == FX_DROP ? "drop" : cached == FX_TINT ? "tint" : "off", buf);
     }
-    return cached != 0;
+    return (QuadFx)cached;
 }
 
 extern "C" __declspec(dllexport) HRESULT WINAPI
@@ -76,8 +83,16 @@ hooks_SceneQuadDrawStrided(IDirect3DDevice3 *dev, D3DPRIMITIVETYPE prim, DWORD f
                   dev, (DWORD)prim, fvf, ntex, data->position.lpvData,
                   data->textureCoords[0].lpvData, vert_count);
 
-    if (fx_drop())
+    QuadFx fx = quad_fx();
+    if (fx == FX_DROP)
         return D3D_OK;
+    if (fx == FX_TINT && data->diffuse.lpvData) {
+        /* The diffuse array is the game's static per-draw scratch block
+         * (0x004E0070), rebuilt before every call, so overwriting it here is
+         * safe and lasts exactly one draw. */
+        for (DWORD i = 0; i < vert_count; i++)
+            *(DWORD *)((char *)data->diffuse.lpvData + i * data->diffuse.dwStride) = 0xFFFF00FF;
+    }
 
     return dev->DrawPrimitiveStrided(prim, fvf, data, vert_count, flags);
 }
