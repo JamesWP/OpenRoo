@@ -151,3 +151,35 @@ static_assert(sizeof(XFaceParticleSystem) == 0x96, "XFace size");
  * function, so logging and FX behave identically whichever way in. */
 void  ps_fill(ParticleSystem *self);
 DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev);
+
+/* ─── Vtable exports ───────────────────────────────────────────────────────
+ *
+ * Declared here so factory.cpp can install them into the vtables it owns
+ * (Stage E3).  Signatures must match the definitions in particles.cpp exactly;
+ * they are the game's vtable slot signatures. */
+#define PS_THISCALL __attribute__((thiscall))
+extern "C" {
+void  PS_THISCALL Particle_BaseTick(ParticleSystem *self, DWORD dt);              /* slot 7 */
+void  PS_THISCALL Particle_XFaceTick(XFaceParticleSystem *self, DWORD dt);        /* slot 7 */
+DWORD PS_THISCALL Particle_BaseRender(ParticleSystem *self, IDirect3DDevice3 *d); /* slot 8 */
+DWORD PS_THISCALL Particle_PointRender(PointParticleSystem *self, IDirect3DDevice3 *d);
+void  PS_THISCALL Particle_PointFill(PointParticleSystem *self);                  /* slot 9 */
+void  PS_THISCALL Particle_FaceFill(FaceParticleSystem *self);
+void  PS_THISCALL Particle_XFaceFill(XFaceParticleSystem *self);
+void  PS_THISCALL Particle_FaceSetVector(FaceParticleSystem *self,
+                                         float x, float y, float z);              /* slot 10 */
+void  PS_THISCALL Particle_FaceTransformCorners(FaceParticleSystem *self,
+                                                float *matrix);                   /* slot 11 */
+DWORD PS_THISCALL Particle_PointDraw(PointParticleSystem *self, IDirect3DDevice3 *d); /* slot 12 */
+DWORD PS_THISCALL Particle_FaceDraw(FaceParticleSystem *self, IDirect3DDevice3 *d);
+DWORD PS_THISCALL Particle_XFaceDraw(XFaceParticleSystem *self, IDirect3DDevice3 *d);
+}
+
+/* ParticleSystem vtable slot numbers (15-slot table, § 6.2 / PARTICLE_PLAN § 1.3). */
+#define PS_VT_TICK    7
+#define PS_VT_RENDER  8
+#define PS_VT_FILL    9
+#define PS_VT_SETVEC 10
+#define PS_VT_XFORM  11
+#define PS_VT_DRAW   12
+#define PS_VTBL_SLOTS 15

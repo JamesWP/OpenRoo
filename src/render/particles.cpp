@@ -38,8 +38,7 @@
 #define THISCALL __attribute__((thiscall))
 typedef void  (THISCALL *ps_fill_fn)(ParticleSystem *);
 typedef DWORD (THISCALL *ps_draw_fn)(ParticleSystem *, IDirect3DDevice3 *);
-#define VT_FILL 9   /* vtable slot +0x24 */
-#define VT_DRAW 12  /* vtable slot +0x30 */
+/* slot numbers live in particles.h (PS_VT_*) */
 
 static bool fx_tint(void)
 {
@@ -256,7 +255,7 @@ void ps_fill(ParticleSystem *self)
     case VTBL_PARTICLE_FACE:  face_fill((FaceParticleSystem *)self);   return;
     case VTBL_PARTICLE_XFACE: xface_fill((XFaceParticleSystem *)self); return;
     }
-    ((ps_fill_fn)self->pVtable[VT_FILL])(self);
+    ((ps_fill_fn)self->pVtable[PS_VT_FILL])(self);
 }
 
 DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev)
@@ -271,7 +270,7 @@ DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev)
     case VTBL_PARTICLE_FACE:  return face_draw((FaceParticleSystem *)self, dev);
     case VTBL_PARTICLE_XFACE: return xface_draw((XFaceParticleSystem *)self, dev);
     }
-    return ((ps_draw_fn)self->pVtable[VT_DRAW])(self, dev);
+    return ((ps_draw_fn)self->pVtable[PS_VT_DRAW])(self, dev);
 }
 
 /* ═══════════════ Stage B — tick + Face corner setup/transform ═══════════════

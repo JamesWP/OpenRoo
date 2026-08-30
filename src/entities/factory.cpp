@@ -2,8 +2,9 @@
  *
  * Replaces the two factories at their call sites (patch.py CALL_PATCHES):
  *
- *   0x4485d0 GeneratorFactoryCreate    → Gen_FactoryCreate    (2 E8 sites)
- *   0x4488f0 EnvironmentFactoryCreate  → Env_FactoryCreate    (2 E8 sites)
+ *   0x4485d0 GeneratorFactoryCreate     → Gen_FactoryCreate  (2 E8 sites)
+ *   0x4488f0 EnvironmentFactoryCreate   → Env_FactoryCreate  (2 E8 sites)
+ *   0x448ab0 ParticleSystemFactoryCreate → PS_FactoryCreate   (2 E8 sites)
  *
  * Neither original is UD2-stubbed: we call straight through to it to do the
  * allocation and construction, then swap the finished object's vtable pointer
@@ -24,6 +25,7 @@
  */
 #include "factory.h"
 #include "generators.h"
+#include "particles.h"
 #include "log.h"
 
 /* The originals, called by absolute address.  They are left intact in the
@@ -33,8 +35,9 @@
 typedef void *(__cdecl *factory_fn)(const char *name);
 #define ORIG_GENERATOR_FACTORY    ((factory_fn)0x004485d0)
 #define ORIG_ENVIRONMENT_FACTORY  ((factory_fn)0x004488f0)
+#define ORIG_PARTICLESYSTEM_FACTORY ((factory_fn)0x00448ab0)
 
-/* Generator vtables have 10 slots, Environment 6 (§ 6.2). */
+/* Generator vtables have 10 slots, Environment 6 (§ 6.2), ParticleSystem 15. */
 #define GEN_VTBL_SLOTS  10
 #define ENV_VTBL_SLOTS   6
 
@@ -103,12 +106,33 @@ struct SlotOverride {
 };
 
 static const SlotOverride g_override[] = {
-    /* slot 3 = Tick(float dt) — the per-frame emit / integrate (§ 6.2) */
+    /* Generator / Environment slot 3 = Tick(float dt) — emit / integrate. */
     { VTBL_GEN_STD,      GEN_VT_TICK_SLOT, (void *)Gen_StdEmit      },
     { VTBL_GEN_XSTD,     GEN_VT_TICK_SLOT, (void *)Gen_XStdEmit     },
     { VTBL_GEN_CYLINDER, GEN_VT_TICK_SLOT, (void *)Gen_CylinderEmit },
     { VTBL_ENV_GRAVITY,  GEN_VT_TICK_SLOT, (void *)Env_GravityTick  },
     { VTBL_ENV_MAGNET,   GEN_VT_TICK_SLOT, (void *)Env_MagnetTick   },
+
+    /* ParticleSystem — the Stage A/B render and tick path. */
+    { VTBL_PARTICLE_BASE,  PS_VT_TICK,   (void *)Particle_BaseTick   },
+    { VTBL_PARTICLE_BASE,  PS_VT_RENDER, (void *)Particle_BaseRender },
+
+    { VTBL_PARTICLE_POINT, PS_VT_TICK,   (void *)Particle_BaseTick    },
+    { VTBL_PARTICLE_POINT, PS_VT_RENDER, (void *)Particle_PointRender },
+    { VTBL_PARTICLE_POINT, PS_VT_FILL,   (void *)Particle_PointFill   },
+    { VTBL_PARTICLE_POINT, PS_VT_DRAW,   (void *)Particle_PointDraw   },
+
+    { VTBL_PARTICLE_FACE,  PS_VT_TICK,   (void *)Particle_BaseTick             },
+    { VTBL_PARTICLE_FACE,  PS_VT_RENDER, (void *)Particle_BaseRender           },
+    { VTBL_PARTICLE_FACE,  PS_VT_FILL,   (void *)Particle_FaceFill             },
+    { VTBL_PARTICLE_FACE,  PS_VT_SETVEC, (void *)Particle_FaceSetVector        },
+    { VTBL_PARTICLE_FACE,  PS_VT_XFORM,  (void *)Particle_FaceTransformCorners },
+    { VTBL_PARTICLE_FACE,  PS_VT_DRAW,   (void *)Particle_FaceDraw             },
+
+    { VTBL_PARTICLE_XFACE, PS_VT_TICK,   (void *)Particle_XFaceTick  },
+    { VTBL_PARTICLE_XFACE, PS_VT_RENDER, (void *)Particle_BaseRender },
+    { VTBL_PARTICLE_XFACE, PS_VT_FILL,   (void *)Particle_XFaceFill  },
+    { VTBL_PARTICLE_XFACE, PS_VT_DRAW,   (void *)Particle_XFaceDraw  },
 };
 
 /* Apply every override registered for `game_vtbl` to a freshly cloned table. */
@@ -154,6 +178,18 @@ Gen_FactoryCreate(const char *name)
         log_write("factory: Gen_FactoryCreate active (first = \"%s\" -> %p)\n",
                   name ? name : "(null)", obj);
     adopt_vtable(obj, GEN_VTBL_SLOTS);
+    return obj;
+}
+
+__declspec(dllexport) void *__cdecl
+PS_FactoryCreate(const char *name)
+{
+    void *obj = ORIG_PARTICLESYSTEM_FACTORY(name);
+    static LONG once = 0;
+    if (InterlockedExchange(&once, 1) == 0)
+        log_write("factory: PS_FactoryCreate active (first = \"%s\" -> %p)\n",
+                  name ? name : "(null)", obj);
+    adopt_vtable(obj, PS_VTBL_SLOTS);
     return obj;
 }
 
