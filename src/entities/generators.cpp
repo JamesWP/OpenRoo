@@ -8,6 +8,7 @@
  * Replaced so far:
  *   0x44c450 GravityEnvironment::TickUpdate  → Env_GravityTick   (vtbl 0x45f110 slot 3)
  *   0x44cca0 MagnetEnvironment::TickUpdate   → Env_MagnetTick    (vtbl 0x45f128 slot 3)
+ *   0x449fe0 StdGenerator::EmitParticles     → Gen_StdEmit       (vtbl 0x45f094 slot 3)
  *   0x448560 Environment::RetireParticleNode → inlined as retire_node() here;
  *            with both ticks replaced the original is unreachable (UD2)
  *
@@ -21,6 +22,8 @@
  *   antigrav — invert and amplify gravity (x-3): every falling effect rises
  *   nolife  — skip the flLife decrement, so nothing expires (also the
  *             ring-contract stress test: emission must stall, not corrupt)
+ *   burst    — emit particles at x3 initial velocity, so every effect visibly
+ *              throws further; proves the emission path, not the integration
  */
 #include "generators.h"
 #include "log.h"
@@ -30,7 +33,7 @@
 
 /* ─── FX ─── */
 
-enum SimFx { FX_NONE = 0, FX_GRAVITY, FX_NOLIFE, FX_ANTIGRAV };
+enum SimFx { FX_NONE = 0, FX_GRAVITY, FX_NOLIFE, FX_ANTIGRAV, FX_BURST };
 
 static SimFx sim_fx(void)
 {
@@ -43,6 +46,7 @@ static SimFx sim_fx(void)
             if (lstrcmpiA(buf, "gravity") == 0)       { cached = FX_GRAVITY;  name = "gravity";  }
             else if (lstrcmpiA(buf, "nolife") == 0)   { cached = FX_NOLIFE;   name = "nolife";   }
             else if (lstrcmpiA(buf, "antigrav") == 0) { cached = FX_ANTIGRAV; name = "antigrav"; }
+            else if (lstrcmpiA(buf, "burst") == 0)    { cached = FX_BURST;    name = "burst";    }
         }
         if (cached != FX_NONE)
             log_write("sim: FX mode = %s\n", name);
@@ -275,6 +279,75 @@ static void magnet_tick(MagnetEnvironment *self, float dt)
     } while (node != self->base.pRing->pRingCurrent);
 }
 
+/* ─── C3: StdGenerator::EmitParticles (0x449fe0) ─── */
+
+/* The originals wrap by SUBTRACTION off the pre-increment value, not by a
+ * modulo, and the two differ if an index is ever driven out of range: e.g. the
+ * step-3 index maps 497/498/499 -> 0/1/2 via (old - 497).  Mirror the
+ * arithmetic rather than writing % 500. */
+static DWORD wrap_index(DWORD old, DWORD step, DWORD limit)
+{
+    DWORD next = old + step;
+    return (next > limit - 1) ? old - (limit - step) : next;
+}
+
+/* Life/prob indices use a different idiom: bump while below the last entry,
+ * otherwise snap to 0. */
+static DWORD bump_index(DWORD cur, DWORD count)
+{
+    return (cur < count - 1) ? cur + 1 : 0;
+}
+
+static void std_emit(StdGenerator *self, float dt)
+{
+    if (self->base.dwEnabled == 0)
+        return;
+    RingBuffer *ring = self->base.pRing;
+    if (ring->pRingCurrent == NULL)
+        return;
+
+    float acc = dt * self->flDtScale + self->flAccumulator;
+    self->flAccumulator = acc;
+    if (!(acc >= 0.0f))
+        return;
+
+    int count = (int)acc;                       /* truncates toward zero */
+    self->flAccumulator = acc - (float)count;
+    if (count <= 0)
+        return;
+
+    SimFx fx = sim_fx();
+    float vscale = (fx == FX_BURST) ? 3.0f : 1.0f;
+
+    for (int emitted = 0; ; ) {
+        ParticleNode *node = ring->pRingCurrent;
+        const float *pos = &self->flPosTable[self->dwPosIdx * 3];
+        const float *vel = &self->flVelTable[self->dwVelIdx * 3];
+
+        node->flLife = self->pLifeTable[self->dwLifeIdx];
+        node->flX = pos[0];
+        node->flY = pos[1];
+        node->flZ = pos[2];
+        node->flVel[0] = vel[0] * vscale;
+        node->flVel[1] = vel[1] * vscale;
+        node->flVel[2] = vel[2] * vscale;
+        node->dwDiffuse = self->pEmitProb[self->dwProbIdx];
+
+        self->dwPosIdx  = wrap_index(self->dwPosIdx, 1, 500);
+        self->dwVelIdx  = wrap_index(self->dwVelIdx, 3, 500);
+        self->dwLifeIdx = bump_index(self->dwLifeIdx, 100);
+        self->dwProbIdx = bump_index(self->dwProbIdx, 200);
+
+        /* Claim the node: advance the free-list cursor past it. */
+        self->base.pRing->pRingCurrent = node->pNext;
+        ring = self->base.pRing;
+        if (ring->pRingCurrent == NULL)
+            return;                             /* ring full — stop early */
+        if (count <= ++emitted)
+            return;
+    }
+}
+
 /* ─── Exports ─── */
 
 #define THISCALL __attribute__((thiscall))
@@ -312,6 +385,22 @@ Env_MagnetTick(MagnetEnvironment *self, float dt)
                   self->flCentre[0], self->flCentre[1], self->flCentre[2]);
     }
     magnet_tick(self, dt);
+}
+
+__declspec(dllexport) void THISCALL
+Gen_StdEmit(StdGenerator *self, float dt)
+{
+    static LONG calls = 0;
+    if (InterlockedIncrement(&calls) <= SIM_LOG_FIRST) {
+        RingBuffer *ring = self->base.pRing;
+        DWORD free_nodes = 0;
+        for (ParticleNode *n = ring->pRingCurrent; n; n = n->pNext)
+            free_nodes++;
+        log_write("sim: StdEmit this=%p dt=%f enabled=%lu accum=%f free=%lu ring=%lu\n",
+                  self, dt, self->base.dwEnabled, self->flAccumulator,
+                  free_nodes, ring->dwRingCount);
+    }
+    std_emit(self, dt);
 }
 
 } // extern "C"

@@ -98,3 +98,52 @@ static_assert(offsetof(MagnetEnvironment, flFadeRate)     == 0x44, "Magnet layou
 static_assert(offsetof(MagnetEnvironment, dwFadeThreshold)== 0x48, "Magnet layout");
 static_assert(offsetof(MagnetEnvironment, flFadeAccum)    == 0x4c, "Magnet layout");
 static_assert(sizeof(MagnetEnvironment) == 0x50, "Magnet size");
+
+/* StdGenerator (0x3420) — vtable 0x45f094, emit 0x449fe0.  The default emitter
+ * (44 of the 62 shipping .par files).
+ *
+ * The four lookup tables tile the struct exactly from +0x78 to +0x3408 with no
+ * gaps, which is what pins the layout: emit only ever indexes them, never
+ * recomputes the values.  Table *construction* stays game-owned — Load (slot 5)
+ * fills them from the .par parameters and we do not touch it.
+ *
+ * NOTE the names: flPosTable was "pSphTable" and flVelTable "pBoxTable" in
+ * earlier RE, which had position and velocity the wrong way round.  Emit writes
+ * flPosTable to node+0x08 and flVelTable to node+0x14, and the shipped render
+ * fill reads node+0x08 as the position. */
+struct StdGenerator {
+    Generator base;               // +0x0000
+    float     flDtScale;          // +0x0010 accumulator rate
+    DWORD     dwEmitMode;         // +0x0014 0 = sphere, 1 = box (shapes the tables)
+    float     flSphMin[3];        // +0x0018 } serialised emit-shape parameters,
+    float     flSphMax[3];        // +0x0024 } consumed by Load when it builds
+    float     flBoxMin[3];        // +0x0030 } the tables; emit never reads them
+    float     flBoxMax[3];        // +0x003c }
+    float     flVelMin[3];        // +0x0048 }
+    float     flVelMax[3];        // +0x0054 }
+    float     flLifeMin;          // +0x0060
+    float     flLifeMax;          // +0x0064
+    float     flEmitRateMin;      // +0x0068
+    float     flEmitRateMax;      // +0x006c
+    void     *pTypeTable;         // +0x0070 heap; owned by Load/Copy/dtor
+    DWORD     dwTypeTableCount;   // +0x0074
+    float     flPosTable[1500];   // +0x0078 500 x xyz emit positions
+    float     flVelTable[1500];   // +0x17e8 500 x xyz emit velocities
+    float     pLifeTable[100];    // +0x2f58
+    DWORD     pEmitProb[200];     // +0x30e8 emitted diffuse colours
+    DWORD     dwCtr0;             // +0x3408
+    float     flAccumulator;      // +0x340c fractional emission carry
+    DWORD     dwPosIdx;           // +0x3410 step 1, wrap 500
+    DWORD     dwVelIdx;           // +0x3414 step 3, wrap 500
+    DWORD     dwLifeIdx;          // +0x3418 step 1, wrap 100
+    DWORD     dwProbIdx;          // +0x341c step 1, wrap 200
+};
+static_assert(offsetof(StdGenerator, flDtScale)     == 0x0010, "Std layout");
+static_assert(offsetof(StdGenerator, flPosTable)    == 0x0078, "Std layout");
+static_assert(offsetof(StdGenerator, flVelTable)    == 0x17e8, "Std layout");
+static_assert(offsetof(StdGenerator, pLifeTable)    == 0x2f58, "Std layout");
+static_assert(offsetof(StdGenerator, pEmitProb)     == 0x30e8, "Std layout");
+static_assert(offsetof(StdGenerator, flAccumulator) == 0x340c, "Std layout");
+static_assert(offsetof(StdGenerator, dwPosIdx)      == 0x3410, "Std layout");
+static_assert(offsetof(StdGenerator, dwProbIdx)     == 0x341c, "Std layout");
+static_assert(sizeof(StdGenerator) == 0x3420, "Std size");
