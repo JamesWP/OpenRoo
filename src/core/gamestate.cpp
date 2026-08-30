@@ -14,6 +14,13 @@
  *     +0x42250 scored at x5 into +0x140512, capped by a ushort at +0x1753E3
  *     and suppressed by a byte flag at +0x4220B.
  *
+ * +0x170A64 is NOT health.  The plan called it "health / energy, clamped to
+ * 100", but the game has no damage model at all — you die outright on a fall
+ * or on contact with a foe.  It is added straight into the level score as a
+ * bonus term, which fits James's reading of it as "vitality", a speed-like
+ * bonus for moving quickly.  That is a hypothesis, not a result: it is logged
+ * as vit=(?) and confirmed by watching it rise while moving fast.
+ *
  * The gem reading itself (collected at +0x175406, required at +0x2AB723) is
  * consistent with the arithmetic — the score is min(collected, required) * 5 —
  * but that is still an inference from the shape of the code.  Everything here
@@ -36,7 +43,7 @@ struct GameState {
     int   lives;            // +0x175402  dword (?)
     int   total_score;      // +0x1753f5  dword
     int   level_score;      // +0x140536  dword
-    BYTE  health;           // +0x170a64  byte
+    BYTE  vitality;         // +0x170a64  byte (?) — see note above
     int   death_flag;       // +0x1752e8  dword (?)
     int   complete_flag;    // +0x1752b8  dword (?)
     WORD  extra_count;      // +0x42250   ushort
@@ -79,7 +86,7 @@ static bool read_state(GameState *s)
     s->lives          = *(const int   *)(g + 0x175402);
     s->total_score    = *(const int   *)(g + 0x1753f5);
     s->level_score    = *(const int   *)(g + 0x140536);
-    s->health         = *(const BYTE  *)(g + 0x170a64);
+    s->vitality       = *(const BYTE  *)(g + 0x170a64);
     s->death_flag     = *(const int   *)(g + 0x1752e8);
     s->complete_flag  = *(const int   *)(g + 0x1752b8);
     s->extra_count    = *(const WORD  *)(g + 0x042250);
@@ -105,11 +112,11 @@ void gamestate_tick(void)
     if (g_have_prev && memcmp(&a, &b, sizeof(a)) == 0) return;
 
     log_write("gamestate: f=%lu mode=%u gems=%d/%d(?) foes=%u lives=%d(?) "
-              "hp=%u score=%d/%d t=%lu/%ds extra=%u/%u blk=%u "
+              "vit=%u(?) score=%d/%d t=%lu/%ds extra=%u/%u blk=%u "
               "death=%d(?) done=%d(?) pos=%.3f,%.3f,%.3f(?)\n",
               (unsigned long)g_frame, (unsigned)s.mode,
               s.gems_collected, s.gems_required, (unsigned)s.foes_killed,
-              s.lives, (unsigned)s.health, s.level_score, s.total_score,
+              s.lives, (unsigned)s.vitality, s.level_score, s.total_score,
               (unsigned long)(s.elapsed_ms / 1000), s.time_limit_s,
               (unsigned)s.extra_count, (unsigned)s.extra_cap,
               (unsigned)s.extra_block,
