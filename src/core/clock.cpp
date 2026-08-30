@@ -31,6 +31,7 @@
  */
 #include "clock.h"
 #include "log.h"
+#include "determinism.h"
 #include <stdlib.h>
 
 static bool      g_started;      /* first-call flag           (was 0x4645a4) */
@@ -89,6 +90,10 @@ double clock_seconds(void)
 {
     if (g_fixed_dt < 0.0) clock_init();
     clock_log_progress();
+    /* One call per rendered frame from RenderGameFrame, so this is the frame
+     * boundary for the Stage A2 checksum.  UpdatePlayerCamera's setup-time call
+     * closes one extra (empty) frame; that is deterministic, so it is left. */
+    dethash_frame_end(g_accum);
 
     if (g_fixed_dt > 0.0) {
         /* Virtual clock.  First call returns 0.0, as the original does. */
@@ -132,7 +137,62 @@ double clock_seconds(void)
     return g_accum;
 }
 
+/* ── Deterministic seed (REPLAY_PLAN.md Stage A2) ──────────────────────────
+ *
+ * Stage A2's checksum showed two runs diverging on the very first emitted
+ * particle, with emission *counts* identical and only pos/vel/life differing.
+ * That traced to 0x00448FB0, the generator table builder, which draws from
+ * rand() — MSVC's LCG at 0x0045167C (state 0x00469F38), unnamed in the binary,
+ * which is why the plan's search_functions("rand") missed it.
+ *
+ * The LCG itself is deterministic.  The leak is the seed: 0x0045169A is time()
+ * (GetLocalTime/GetSystemTime folded to epoch seconds), and it feeds srand at
+ * five sites — SetupLevelObjects (0x0041672B), FUN_004479F0 (0x004479FA),
+ * FUN_00448E80 (0x00448EC5, one-shot), CloneTypeTable (0x00449F22) and
+ * FUN_0044B920 (0x0044B9AB).  All five xrefs of time() are srand seeding and
+ * nothing else, so intercepting the one function pins every one of them.
+ *
+ * KAROO_SEED=<int> returns that constant instead of the wall clock.  Replay
+ * needs it *and* KAROO_FIXED_DT — they fix independent sources.
+ *
+ * Unset, we call the original at 0x0045169A through.  It is deliberately NOT
+ * UD2-stubbed: calling through keeps the real behaviour bit-exact, including
+ * the timezone/DST globals it caches at 0x004E0910..0x004E0924, which a
+ * reimplementation would leave stale.
+ */
+#define GAME_TIME_ORIGINAL ((int (__cdecl *)(int *))0x0045169A)
+
+static int  g_seed      = 0;
+static bool g_seed_set  = false;
+static bool g_seed_read = false;
+
+static int game_time(int *out)
+{
+    if (!g_seed_read) {
+        char buf[32];
+        g_seed_read = true;
+        if (GetEnvironmentVariableA("KAROO_SEED", buf, sizeof(buf)) && buf[0]) {
+            g_seed     = atoi(buf);
+            g_seed_set = true;
+        }
+        log_write("clock: seed = %s (%d)\n",
+                  g_seed_set ? "FIXED" : "wall clock", g_seed);
+    }
+
+    if (!g_seed_set)
+        return GAME_TIME_ORIGINAL(out);
+
+    if (out) *out = g_seed;
+    return g_seed;
+}
+
 extern "C" {
+
+/* Replaces 0x0045169A (time()) at all five srand call sites. */
+__declspec(dllexport) int __cdecl hooks_GameTime(int *out)
+{
+    return game_time(out);
+}
 
 /* Replaces 0x00404040.  __cdecl, no arguments, double returned in st(0) —
  * exactly what both call sites expect (they FMUL the result straight away). */

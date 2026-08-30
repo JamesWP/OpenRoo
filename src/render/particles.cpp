@@ -26,6 +26,7 @@
 #include "particles.h"
 #include "com_proxy.h"
 #include "log.h"
+#include "determinism.h"
 #include <math.h>
 
 #define PARTICLE_FVF       0x1e2  /* XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1 — 0x20 stride */
@@ -317,6 +318,7 @@ static void base_tick(ParticleSystem *self, DWORD dt)
         ((gen_tick_fn)((void ***)self->pGenerator)[0][GEN_VT_TICK])(self->pGenerator, dt);
     if (self->pEnvironment)
         ((gen_tick_fn)((void ***)self->pEnvironment)[0][GEN_VT_TICK])(self->pEnvironment, dt);
+    dethash_particles(self);
 }
 
 static void xface_tick(XFaceParticleSystem *self, DWORD dt)
