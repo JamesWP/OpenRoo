@@ -15,3 +15,4 @@ debug.gdb
 *.rec
 *.hash
 !tests/*.rec
+ddraw.dll.patched-unused
