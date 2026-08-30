@@ -72,3 +72,29 @@ static_assert(offsetof(GravityEnvironment, flClipMax)    == 0x50, "Gravity layou
 static_assert(offsetof(GravityEnvironment, flClipMin)    == 0x5c, "Gravity layout");
 static_assert(offsetof(GravityEnvironment, flFadeAccum)  == 0x68, "Gravity layout");
 static_assert(sizeof(GravityEnvironment) == 0x6c, "Gravity size");
+
+/* MagnetEnvironment (0x50) — vtable 0x45f128, tick 0x44cca0.
+ * Same life/fade/retire skeleton as Gravity; gravity acceleration is replaced
+ * by attraction toward flCentre, and a particle that arrives inside the
+ * half-extent box is retired.  flRange/dwField30 are serialised but never read
+ * by the tick. */
+struct MagnetEnvironment {
+    Environment base;             // +0x00
+    float       flCentre[3];      // +0x0c attraction target
+    float       flForce[3];       // +0x18 per-axis force magnitude
+    float       flHalfExtent[3];  // +0x24 arrival box; inside -> retire
+    float       flRange;          // +0x30 unread by the tick
+    DWORD       dwField34;        // +0x34 unread by the tick
+    DWORD       dwTargetRGB[3];   // +0x38 fade targets: R, G, B
+    float       flFadeRate;       // +0x44
+    DWORD       dwFadeThreshold;  // +0x48
+    float       flFadeAccum;      // +0x4c
+};
+static_assert(offsetof(MagnetEnvironment, flCentre)       == 0x0c, "Magnet layout");
+static_assert(offsetof(MagnetEnvironment, flForce)        == 0x18, "Magnet layout");
+static_assert(offsetof(MagnetEnvironment, flHalfExtent)   == 0x24, "Magnet layout");
+static_assert(offsetof(MagnetEnvironment, dwTargetRGB)    == 0x38, "Magnet layout");
+static_assert(offsetof(MagnetEnvironment, flFadeRate)     == 0x44, "Magnet layout");
+static_assert(offsetof(MagnetEnvironment, dwFadeThreshold)== 0x48, "Magnet layout");
+static_assert(offsetof(MagnetEnvironment, flFadeAccum)    == 0x4c, "Magnet layout");
+static_assert(sizeof(MagnetEnvironment) == 0x50, "Magnet size");

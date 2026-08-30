@@ -5,8 +5,11 @@
  * dispatches pGenerator->vtbl[3](dt) and pEnvironment->vtbl[3](dt) by pointer,
  * each replacement here is just a vtable slot swap plus a UD2 stub.
  *
- * C1 (this file, so far):
+ * Replaced so far:
  *   0x44c450 GravityEnvironment::TickUpdate  → Env_GravityTick   (vtbl 0x45f110 slot 3)
+ *   0x44cca0 MagnetEnvironment::TickUpdate   → Env_MagnetTick    (vtbl 0x45f128 slot 3)
+ *   0x448560 Environment::RetireParticleNode → inlined as retire_node() here;
+ *            with both ticks replaced the original is unreachable (UD2)
  *
  * The ring is one NULL-terminated doubly-linked list, partitioned as
  * [pRingHead, pRingCurrent) live and [pRingCurrent, pRingTail] free.  The
@@ -199,6 +202,79 @@ static void gravity_tick(GravityEnvironment *self, float dt)
     } while (node != self->base.pRing->pRingCurrent);
 }
 
+/* ─── C2: MagnetEnvironment::TickUpdate (0x44cca0) ─── */
+
+/* Per-axis "has arrived" test, in the original's branch form rather than
+ * fabsf(d) <= half — the two differ if a half-extent is ever negative. */
+static bool within_extent(float d, float half)
+{
+    return (d <= 0.0f) ? (-half <= d) : (d <= half);
+}
+
+static void magnet_tick(MagnetEnvironment *self, float dt)
+{
+    RingBuffer *ring = self->base.pRing;
+    if (ring->pRingCurrent == ring->pRingHead)
+        return;
+
+    SimFx fx = sim_fx();
+    /* antigrav repels instead of attracting — the magnet equivalent of the
+     * inverted gravity, and just as obvious on a shield effect. */
+    float fscale = (fx == FX_ANTIGRAV) ? -3.0f : (fx == FX_GRAVITY ? 5.0f : 1.0f);
+
+    DWORD step = fade_step(&self->flFadeAccum, self->flFadeRate,
+                           self->dwFadeThreshold, dt);
+
+    ring = self->base.pRing;
+    ParticleNode *node = ring->pRingHead;
+    if (node == ring->pRingCurrent)
+        return;
+
+    do {
+        ParticleNode *next;
+        bool retire = false;
+
+        if (fx != FX_NOLIFE)
+            node->flLife -= dt;
+
+        if (node->flLife >= 0.0f) {
+            float d[3] = { self->flCentre[0] - node->flX,
+                           self->flCentre[1] - node->flY,
+                           self->flCentre[2] - node->flZ };
+
+            if (within_extent(d[0], self->flHalfExtent[0]) &&
+                within_extent(d[1], self->flHalfExtent[1]) &&
+                within_extent(d[2], self->flHalfExtent[2])) {
+                retire = true;   /* arrived at the magnet */
+            } else {
+                /* Unguarded division, as the original is: a zero-length d is
+                 * already inside the box above and has been retired. */
+                float len = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+                node->flVel[0] += (d[0] / len) * self->flForce[0] * fscale * dt;
+                node->flVel[1] += (d[1] / len) * self->flForce[1] * fscale * dt;
+                node->flVel[2] += (d[2] / len) * self->flForce[2] * fscale * dt;
+                node->flX += node->flVel[0] * dt;
+                node->flY += node->flVel[1] * dt;
+                node->flZ += node->flVel[2] * dt;
+
+                if (step != 0)
+                    node->dwDiffuse = fade_diffuse(node->dwDiffuse,
+                                                   self->dwTargetRGB, step);
+            }
+        } else {
+            retire = true;
+        }
+
+        next = node->pNext;
+        if (retire) {
+            retire_node(self->base.pRing, node);
+            if (next == NULL)
+                return;
+        }
+        node = next;
+    } while (node != self->base.pRing->pRingCurrent);
+}
+
 /* ─── Exports ─── */
 
 #define THISCALL __attribute__((thiscall))
@@ -219,6 +295,23 @@ Env_GravityTick(GravityEnvironment *self, float dt)
                   self, dt, live, ring->dwRingCount);
     }
     gravity_tick(self, dt);
+}
+
+__declspec(dllexport) void THISCALL
+Env_MagnetTick(MagnetEnvironment *self, float dt)
+{
+    static LONG calls = 0;
+    if (InterlockedIncrement(&calls) <= SIM_LOG_FIRST) {
+        RingBuffer *ring = self->base.pRing;
+        DWORD live = 0;
+        for (ParticleNode *n = ring->pRingHead;
+             n && n != ring->pRingCurrent; n = n->pNext)
+            live++;
+        log_write("sim: MagnetTick this=%p dt=%f live=%lu ring=%lu centre=%f,%f,%f\n",
+                  self, dt, live, ring->dwRingCount,
+                  self->flCentre[0], self->flCentre[1], self->flCentre[2]);
+    }
+    magnet_tick(self, dt);
 }
 
 } // extern "C"
