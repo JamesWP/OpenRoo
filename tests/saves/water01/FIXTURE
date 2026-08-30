@@ -1,0 +1,22 @@
+# Ka'roo save fixture — restore with:
+#  python3 tools/karoosave.py restore tests/saves/water01
+# Created from /home/james/Documents/KaRoo/.claude/worktrees/replay-plan/SavedGames
+
+jj.gam 856e39ed6bb99c7b2b2f0c5c452e56862f7614d85d66ab45dab5d35d24df74b1
+
+file e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 GAM.DAT
+file 3c3887e737f033f34d7a2819b8035dc60a4cd7b202acf56b56c51aea32ce5062 JJ3.sav
+file dc7d0ba596a06edae68c814475dadd5def378016f85b8d5e75b5b60062a6f71b jj0.sav
+file 5c806eb7861eba32dd5baa50e77bbd40980551dd95b3d49d1ae78faa52932066 jj1.sav
+file 5a4eff77c93b8f6830278587d6d02e088a661d54e7df7206897df6bbc9eb32f5 jj2.sav
+file 8aa4b181088f6b74b497d546292a6760e2dfef6b0cb0240b98d3f27c858f48a6 jj4.sav
+file a8503404eeb697b65dd0525845c95980e2177b6d06b123b17ffa13c4aa6b3139 jj5.sav
+
+# Decoded slot table at snapshot time (context only; the bytes above
+# are what is restored):
+#   JJ3.sav    name='..........' in_use=0 level=0   Forest\Start
+#   jj0.sav    name='Jamessese'  in_use=1 level=59  Space\Superenemy
+#   jj1.sav    name='haxored'    in_use=1 level=12  Castle\Something
+#   jj2.sav    name='Caroline'   in_use=1 level=4   Forest\Glue&EnemyStart
+#   jj4.sav    name='Caroline'   in_use=1 level=23  Water\Water01
+#   jj5.sav    name='..........' in_use=1 level=59  Space\Superenemy

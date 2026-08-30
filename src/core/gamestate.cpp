@@ -227,6 +227,25 @@ static GameState g_live;
 static bool      g_have_live;
 static DWORD     g_live_frame;
 
+/* State at the moment a level was completed.
+ *
+ * The last in-level frame is NOT the end of the level under test as soon as a
+ * recording carries on into the next one -- the water01 recording completes
+ * Water01 and then launches the following level, so its last in-level frame
+ * reads gems 0/12 and complete=0, which is the *next* level starting.  A test
+ * that blessed that would assert nothing about the level it named.
+ *
+ * So latch separately on the completion flag.  The latch refreshes while the
+ * flag stays set rather than freezing on the first frame of it, because
+ * CalculateLevelScore writes level_score and the new running total a frame or
+ * two after the flag flips -- latching the leading edge would capture a score
+ * that had not been computed yet.  It locks when the flag clears, so a later
+ * level's completion cannot overwrite the first one. */
+static GameState g_done;
+static bool      g_have_done;
+static DWORD     g_done_frame;
+static int       g_done_phase;   /* 0 never seen, 1 in progress, 2 locked */
+
 void gamestate_tick(void)
 {
     g_frame++;
@@ -237,6 +256,22 @@ void gamestate_tick(void)
         g_live       = s;
         g_have_live  = true;
         g_live_frame = g_frame;
+    }
+
+    if (s.complete_flag != 0) {
+        if (g_done_phase != 2) {          /* refresh until the flag clears */
+            g_done       = s;
+            g_have_done  = true;
+            g_done_frame = g_frame;
+            g_done_phase = 1;
+        }
+    } else if (g_done_phase == 1) {
+        g_done_phase = 2;                 /* lock: first completion wins */
+        log_write("gamestate: level completed at frame %lu - latched "
+                  "(score=%d total=%d gems=%d/%d t=%lus)\n",
+                  (unsigned long)g_done_frame, g_done.level_score,
+                  g_done.total_score, g_done.gems_collected, g_done.gems_required,
+                  (unsigned long)(g_done.elapsed_ms / 1000));
     }
 
     if (!gamestate_enabled()) return;
@@ -343,7 +378,28 @@ void gamestate_dump(const char *reason)
         fprintf(fp, "  \"level_complete\": %d,\n",  s.complete_flag);
         fprintf(fp, "  \"death_cause\": %u,\n",     (unsigned)s.death_raw[0]);
         fprintf(fp, "  \"pos\": [%.6f, %.6f, %.6f],\n", s.pos[0], s.pos[1], s.pos[2]);
-        fprintf(fp, "  \"_unconfirmed\": [\"vitality\", \"death_cause\", \"pos\"]\n");
+        fprintf(fp, "  \"_unconfirmed\": [\"vitality\", \"death_cause\", \"pos\"],\n");
+        fprintf(fp, "  \"completed_a_level\": %s,\n", g_have_done ? "true" : "false");
+        if (g_have_done) {
+            fprintf(fp, "  \"at_completion\": {\n");
+            fprintf(fp, "    \"frame\": %lu,\n",           (unsigned long)g_done_frame);
+            fprintf(fp, "    \"gems_collected\": %d,\n",   g_done.gems_collected);
+            fprintf(fp, "    \"gems_required\": %d,\n",    g_done.gems_required);
+            fprintf(fp, "    \"foes_killed\": %u,\n",      (unsigned)g_done.foes_killed);
+            fprintf(fp, "    \"items_collected\": %u,\n",  (unsigned)g_done.extra_cap);
+            fprintf(fp, "    \"items_available\": %u,\n",  (unsigned)g_done.extra_count);
+            fprintf(fp, "    \"items_bonus_blocked\": %u,\n", (unsigned)g_done.extra_block);
+            fprintf(fp, "    \"vitality\": %u,\n",         (unsigned)g_done.vitality);
+            fprintf(fp, "    \"lives\": %u,\n",            (unsigned)g_done.lives);
+            fprintf(fp, "    \"level_score\": %d,\n",      g_done.level_score);
+            fprintf(fp, "    \"total_score\": %d,\n",      g_done.total_score);
+            fprintf(fp, "    \"time_limit_s\": %d,\n",     g_done.time_limit_s);
+            fprintf(fp, "    \"elapsed_ms\": %lu,\n",      (unsigned long)g_done.elapsed_ms);
+            fprintf(fp, "    \"level_complete\": %d\n",    g_done.complete_flag);
+            fprintf(fp, "  }\n");
+        } else {
+            fprintf(fp, "  \"at_completion\": null\n");
+        }
     } else {
         fprintf(fp, "\n");
     }

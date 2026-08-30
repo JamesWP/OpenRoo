@@ -117,6 +117,30 @@ def check_header(entry, cfg, rec_path):
     return hdr, frames, problems
 
 
+def wait_for_quiet(timeout=60):
+    """Wait for a previous run's game process to actually be gone.
+
+    Running two recordings back to back wedged the second launch: it hung
+    before our DLL wrote a single log line, because the previous run's
+    Karoo.exe / wineserver had not finished shutting down and the new launch
+    sat waiting on the prefix.  Each recording passes on its own, so this is a
+    harness problem, not a replay one.  Poll rather than sleeping a fixed
+    amount, so the common case (already quiet) costs nothing.
+    """
+    import time
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        r = subprocess.run(["pgrep", "-f", "Karoo.exe"],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if r.returncode != 0:          # nothing matched
+            time.sleep(2)              # let wineserver finish behind it
+            return True
+        time.sleep(1)
+    print("  ! a previous Karoo.exe is still running after %ds — the launch "
+          "below may wedge" % timeout)
+    return False
+
+
 def launch(entry, cfg, rec_path, dump_path, hash_path):
     env = dict(os.environ)
     env["KAROO_REPLAY"] = rec_path
@@ -143,16 +167,32 @@ def crash_verdict():
 CRASH_NAME = {0: "none", 1: "known", 2: "different", 3: "undetermined"}
 
 
+def lookup(actual, key):
+    """Resolve a dotted key such as at_completion.total_score.
+
+    Returns (found, value).  Nested blocks matter because the last in-level
+    frame is not the end of the level under test once a recording carries on
+    into the next one — at_completion.* is the block that describes the level
+    the entry is named for."""
+    cur = actual
+    for part in key.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return False, None
+        cur = cur[part]
+    return True, cur
+
+
 def compare_state(expected, actual):
     """Return a list of human-readable mismatches.  Only the fields the
     manifest names are compared — an unlisted field is deliberately not
     asserted, so a test can pin a gem count without pinning a float position."""
     bad = []
     for key, want in sorted(expected.items()):
-        if key not in actual:
+        found, got = lookup(actual, key)
+        if not found:
             bad.append("%s: expected %r but the dump has no such field" % (key, want))
-        elif actual[key] != want:
-            bad.append("%s: expected %r, got %r" % (key, want, actual[key]))
+        elif got != want:
+            bad.append("%s: expected %r, got %r" % (key, want, got))
     return bad
 
 
@@ -180,6 +220,7 @@ def run_one(m, entry, bless=False):
           % (len(frames), hdr["dt"], hdr["seed"], entry.get("saves", "<none>")))
 
     restore_fixture(entry)
+    wait_for_quiet()
     for stale in (dump_path, hash_path):
         if os.path.exists(stale):
             os.remove(stale)
@@ -219,8 +260,16 @@ def run_one(m, entry, bless=False):
         if actual is None:
             print("  cannot bless: no state dump")
             return False
+        skip = ("reason", "frame", "pos", "at_completion")
         keep = {k: v for k, v in actual.items()
-                if not k.startswith("_") and k not in ("reason", "frame", "pos")}
+                if not k.startswith("_") and k not in skip}
+        # Flatten the completion block into dotted keys.  Its own "frame" is
+        # dropped for the same reason the top-level one is: it is a position in
+        # the run, not a property of the level.
+        done = actual.get("at_completion")
+        if isinstance(done, dict):
+            keep.update({"at_completion.%s" % k: v for k, v in done.items()
+                         if k != "frame"})
         entry.setdefault("expect", {})["state"] = keep
         entry["expect"]["crash"] = CRASH_NAME.get(verdict, "undetermined")
         # A blessed run reached its own end; any stop-early expectation from a

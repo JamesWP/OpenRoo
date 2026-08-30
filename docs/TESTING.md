@@ -101,6 +101,30 @@ with the header rather than reporting a diff that was never a real comparison.
    Then run it once more and confirm it passes, and edit one expected value to
    confirm it fails. An assertion nobody has watched fail is not an assertion.
 
+### Assert on the level you named
+
+If a recording carries on past the level under test — into the next level, or
+just back to the menu — the *last in-level frame* is no longer that level's end
+state. `water01` completes Water01 and then launches the following level, so its
+top-level dump block reads `gems 0/12`, `time_limit_s 220`, `level_complete 0`:
+the next level starting.
+
+The dump therefore also carries an **`at_completion`** block, latched the first
+time the completion flag goes non-zero and locked when it clears, so a later
+level cannot overwrite it. Assert on `at_completion.*` for anything about the
+level the entry is named for:
+
+```json
+"at_completion.level_score": 320,
+"at_completion.gems_collected": 15,
+"at_completion.level_complete": 1
+```
+
+The latch refreshes while the flag stays set rather than freezing on its leading
+edge, because `CalculateLevelScore` writes the score a frame or two after the
+flag flips. `completed_a_level` is `false` and `at_completion` is `null` for a
+recording that never finishes one.
+
 ### Writing the description
 
 The description is the point of the catalogue — it is how a future task decides
@@ -123,6 +147,15 @@ Run `python3 tools/replaytest.py --list` for the current contents.
 `manifest.json` is the source of truth; the notes below are the standing
 context that does not belong in a JSON field.
 
+### Running the whole suite
+
+Recordings run back to back, and the second launch will wedge — hanging before
+the DLL writes a single log line — if the previous run's `Karoo.exe` and
+`wineserver` have not finished shutting down. The harness polls for that between
+runs. If you ever see a run produce an empty `karoo_hooks.log` and no hash file,
+that is this, not a replay failure: the recording will pass on its own. Clear it
+with `pkill -f Karoo.exe; pkill -f wineserver`.
+
 ### `bombstart-crash`
 
 Named for the CRASH.md guard-page fault it used to reproduce: before that bug
@@ -137,5 +170,25 @@ produced byte-identical 1036-frame hash logs and identical end-state dumps.
 
 It is a menu-and-early-gameplay test, not a full level run — the recorded
 session quits after about ten seconds of play. A scoring or level-completion
-regression would **not** be caught by it. That gap is the obvious next
-recording to capture.
+regression would not be caught by it; `water01` covers that.
+
+### `water01`
+
+The full-level counterpart. Loads slot 4, plays `Water\Water01` end to end
+collecting all 15 gems, completes it at frame 3921 for a level score of 320,
+then launches into the following level and quits a few seconds in. 4147 records
+over 4150 frames, 2102 with a key held — four times the length of
+`bombstart-crash`, and byte-identical across runs.
+
+It pins two things nothing else does:
+
+- **Level completion and the score formula.** The score reproduces exactly from
+  six fields, `75 + 0 + 0 + 92 + 75 + 78 = 320`, and the running total steps
+  `1077 -> 1397`.
+- **The all-items bonus actually awarded.** Both runs recorded in REPLAY_PLAN.md
+  had it withheld — one because items were short, one because the `+0x4220B`
+  flag was set. Here `items_collected >= items_available` with the flag clear,
+  so the `items_available * 5` term is paid. That is a score branch nothing else
+  exercises.
+
+Assert on `at_completion.*`, not the top-level block — see above.

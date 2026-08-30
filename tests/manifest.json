@@ -58,6 +58,57 @@
         }
       },
       "notes": "Named for the crash it used to reproduce; kept under that name because tests/README.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced byte-identical 1036-frame hash logs and identical end-state dumps."
+    },
+    {
+      "name": "water01",
+      "file": "water01.rec",
+      "saves": "tests/saves/water01",
+      "level": "Water\\Water01",
+      "description": "Hand-played by James, 2026-08-31. Navigates the main menu, loads save slot 4 (Water\\Water01), plays the level through to the exit collecting all 15 gems (15 of 15 items, no foes killed, no deaths), completes it at frame 3921 for a level score of 320, then launches into the following level and quits a few seconds in without saving. 4147 records over 4150 frames, 2102 with a key held.",
+      "scenario": "full level run: menu, save-slot load, all 15 gems, exit reached, then into the next level",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 4150,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 0,
+          "gems_required": 12,
+          "foes_killed": 0,
+          "items_collected": 0,
+          "items_available": 12,
+          "items_bonus_blocked": 0,
+          "vitality": 0,
+          "lives": 0,
+          "level_score": 320,
+          "total_score": 1397,
+          "time_limit_s": 220,
+          "elapsed_ms": 1168,
+          "level_complete": 0,
+          "death_cause": 0,
+          "completed_a_level": true,
+          "at_completion.gems_collected": 15,
+          "at_completion.gems_required": 15,
+          "at_completion.foes_killed": 0,
+          "at_completion.items_collected": 15,
+          "at_completion.items_available": 15,
+          "at_completion.items_bonus_blocked": 0,
+          "at_completion.vitality": 78,
+          "at_completion.lives": 0,
+          "at_completion.level_score": 320,
+          "at_completion.total_score": 1397,
+          "at_completion.time_limit_s": 100,
+          "at_completion.elapsed_ms": 54816,
+          "at_completion.level_complete": 1
+        }
+      },
+      "notes": "Assert on the at_completion.* fields, not the top-level ones: the recording carries on into the next level, so the top-level block describes THAT level starting (gems 0/12, time_limit_s 220, level_complete 0), not Water01. at_completion latches the first completion and is Water01's. The score reproduces exactly from six fields: 75 gem base + 0 surplus + 0 foes + 92 time ((100-54)*2) + 75 all-items + 78 vitality = 320, and 1077 + 320 = 1397. Verified 2026-08-31: two consecutive runs gave byte-identical 4150-frame hash logs and identical end-state dumps.",
+      "timeout": 300,
+      "purpose": [
+        "The full-level counterpart to bombstart-crash, which never completes a level. Pins level completion and the score formula as regression guards.",
+        "Covers the score branch neither earlier run reached: the all-items bonus actually AWARDED (items_collected >= items_available with the +0x4220B flag clear). The two runs in REPLAY_PLAN.md both had it withheld.",
+        "Exercises a level transition, which no other recording does."
+      ]
     }
   ]
 }
