@@ -52,9 +52,21 @@ static HANDLE   g_fh   = INVALID_HANDLE_VALUE;
 static FrameRec g_cur;           /* frame being accumulated (record) */
 static FrameRec g_play;          /* frame being served (replay) */
 static bool     g_have_play;
+static FrameRec g_pending;       /* record read ahead, not yet due */
+static bool     g_have_pending;
 static bool     g_finished;
 static BYTE     g_async_used[ASYNC_MAX];
 static bool     g_keys_seen;
+
+static int      g_dbg = -1;
+static bool input_debug(void)
+{
+    if (g_dbg < 0) {
+        char b[8];
+        g_dbg = (GetEnvironmentVariableA("KAROO_INPUT_DEBUG", b, sizeof(b)) && b[0] && b[0] != '0');
+    }
+    return g_dbg > 0;
+}
 
 static double   g_dt;
 static DWORD    g_seed;
@@ -215,31 +227,68 @@ static bool read_exact(void *dst, DWORD n)
     return ReadFile(g_fh, dst, n, &got, NULL) && got == n;
 }
 
+static bool read_one(FrameRec *r)
+{
+    memset(r, 0, sizeof(*r));
+    if (!read_exact(&r->frame, 4) || !read_exact(&r->game_state, 1) ||
+        !read_exact(r->keys, 256)  || !read_exact(&r->async_count, 1))
+        return false;
+    if (r->async_count > ASYNC_MAX) return false;
+    for (int i = 0; i < r->async_count; i++)
+        if (!read_exact(r->async[i], 2)) return false;
+    return true;
+}
+
+/* Serve records by FRAME INDEX, not in bare sequence.
+ *
+ * A recording can skip frames: flush_frame() writes nothing for a frame in
+ * which the game neither polled the keyboard nor called GetAsyncKeyState, and
+ * a real hand-played run did exactly that once (frame 231 of 1147).  Consuming
+ * records sequentially would then shift every later frame by one and desync
+ * the whole replay.  So a record is only applied on the frame it was recorded
+ * on; frames with no record get no input, which is what actually happened.
+ *
+ * The `<=` guard means a record whose frame has already passed is consumed
+ * rather than stalling the replay behind it forever.
+ */
 static void load_frame(void)
 {
     g_have_play = false;
-    if (g_finished) return;
+    unsigned now = clock_frame();
 
-    FrameRec r;
-    memset(&r, 0, sizeof(r));
-    if (!read_exact(&r.frame, 4) || !read_exact(&r.game_state, 1) ||
-        !read_exact(r.keys, 256)  || !read_exact(&r.async_count, 1)) {
-        g_finished = true;
-        log_write("record: replay finished at frame %u\n", clock_frame());
-        return;
+    if (!g_have_pending && !g_finished) {
+        if (read_one(&g_pending)) {
+            g_have_pending = true;
+        } else {
+            g_finished = true;
+            log_write("record: replay finished at frame %u\n", now);
+        }
     }
-    if (r.async_count > ASYNC_MAX) { g_finished = true; return; }
-    for (int i = 0; i < r.async_count; i++)
-        if (!read_exact(r.async[i], 2)) { g_finished = true; return; }
 
-    g_play = r;
-    g_have_play = true;
-    memset(g_async_used, 0, sizeof(g_async_used));
+    if (g_have_pending && g_pending.frame <= now) {
+        g_play = g_pending;
+        g_have_pending = false;
+        g_have_play = true;
+        memset(g_async_used, 0, sizeof(g_async_used));
+    }
 }
 
 bool replay_keys(unsigned short *game_state, BYTE *keys)
 {
-    if (!record_replaying() || !g_have_play) return false;
+    if (!record_replaying()) return false;
+    static int served = 0, empty = 0;
+    if (!g_have_play) {
+        if (input_debug() && ++empty <= 5)
+            log_write("replaydbg: frame %u — no record for this frame\n", clock_frame());
+        return false;
+    }
+    if (input_debug()) {
+        int held = -1;
+        for (int i = 0; i < 256; i++) if (g_play.keys[i] & 0x80) { held = i; break; }
+        if (held >= 0 && ++served <= 12)
+            log_write("replaydbg: frame %u serving rec-frame %u state=%u scancode %d\n",
+                      clock_frame(), g_play.frame, g_play.game_state, held);
+    }
     *game_state = g_play.game_state;
     memcpy(keys, g_play.keys, 256);
     return true;
@@ -274,6 +323,14 @@ extern "C" {
 /* Replaces the GetAsyncKeyState IAT slot (0x0045D1B0, 16 call sites). */
 __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
 {
+    if (input_debug()) {   /* which of the 16 call sites actually execute */
+        static int n = 0;
+        if (n < 40) {
+            n++;
+            log_write("askdbg: frame %u vkey=0x%02X from ret=%p\n",
+                      clock_frame(), vKey, __builtin_return_address(0));
+        }
+    }
     SHORT v;
     if (record_replaying()) {
         replay_async(vKey, &v);
