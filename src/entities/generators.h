@@ -147,3 +147,45 @@ static_assert(offsetof(StdGenerator, flAccumulator) == 0x340c, "Std layout");
 static_assert(offsetof(StdGenerator, dwPosIdx)      == 0x3410, "Std layout");
 static_assert(offsetof(StdGenerator, dwProbIdx)     == 0x341c, "Std layout");
 static_assert(sizeof(StdGenerator) == 0x3420, "Std size");
+
+/* CylinderGenerator (0x3444) — vtable 0x45f0e8, emit 0x44ba70.
+ * Portal / exit emitters (8 shipping .par files).
+ *
+ * Same claim-and-advance skeleton and the same four index cadences as
+ * StdGenerator, but the sampled position is scaled, run through a 4x4 matrix
+ * and then offset by flOrigin.  Velocity is taken straight from its table and
+ * is NOT transformed.
+ *
+ * flMatrix is row-major and applied as the row vector (v,1) x M — the same
+ * convention as Stage B's corner transforms, confirmed from the decompiled
+ * inner loop (out[c] = sum_r M[r][c] * v[r]). */
+struct CylinderGenerator {
+    Generator base;               // +0x0000
+    float     flOrigin[3];        // +0x0010 added after the transform
+    BYTE      opaque1c[0x0c];     // +0x001c unread by emit
+    float     flScale;            // +0x0028 applied before the transform
+    float     flMatrix[16];       // +0x002c row-major 4x4
+    BYTE      opaque6c[0x28];     // +0x006c unread by emit
+    float     flDtScale;          // +0x0094
+    BYTE      opaque98[0x08];     // +0x0098 unread by emit
+    float     flAccumulator;      // +0x00a0
+    float     flPosTable[1500];   // +0x00a4 500 x xyz
+    float     flVelTable[1500];   // +0x1814 500 x xyz (untransformed)
+    float     pLifeTable[100];    // +0x2f84
+    DWORD     pEmitProb[200];     // +0x3114
+    DWORD     dwPosIdx;           // +0x3434 step 1, wrap 500
+    DWORD     dwVelIdx;           // +0x3438 step 3, wrap 500
+    DWORD     dwLifeIdx;          // +0x343c step 1, wrap 100
+    DWORD     dwProbIdx;          // +0x3440 step 1, wrap 200
+};
+static_assert(offsetof(CylinderGenerator, flScale)       == 0x0028, "Cyl layout");
+static_assert(offsetof(CylinderGenerator, flMatrix)      == 0x002c, "Cyl layout");
+static_assert(offsetof(CylinderGenerator, flDtScale)     == 0x0094, "Cyl layout");
+static_assert(offsetof(CylinderGenerator, flAccumulator) == 0x00a0, "Cyl layout");
+static_assert(offsetof(CylinderGenerator, flPosTable)    == 0x00a4, "Cyl layout");
+static_assert(offsetof(CylinderGenerator, flVelTable)    == 0x1814, "Cyl layout");
+static_assert(offsetof(CylinderGenerator, pLifeTable)    == 0x2f84, "Cyl layout");
+static_assert(offsetof(CylinderGenerator, pEmitProb)     == 0x3114, "Cyl layout");
+static_assert(offsetof(CylinderGenerator, dwPosIdx)      == 0x3434, "Cyl layout");
+static_assert(offsetof(CylinderGenerator, dwProbIdx)     == 0x3440, "Cyl layout");
+static_assert(sizeof(CylinderGenerator) == 0x3444, "Cyl size");

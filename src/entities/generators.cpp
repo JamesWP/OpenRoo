@@ -9,6 +9,7 @@
  *   0x44c450 GravityEnvironment::TickUpdate  → Env_GravityTick   (vtbl 0x45f110 slot 3)
  *   0x44cca0 MagnetEnvironment::TickUpdate   → Env_MagnetTick    (vtbl 0x45f128 slot 3)
  *   0x449fe0 StdGenerator::EmitParticles     → Gen_StdEmit       (vtbl 0x45f094 slot 3)
+ *   0x44ba70 CylinderGenerator::EmitParticles→ Gen_CylinderEmit  (vtbl 0x45f0e8 slot 3)
  *   0x448560 Environment::RetireParticleNode → inlined as retire_node() here;
  *            with both ticks replaced the original is unreachable (UD2)
  *
@@ -348,6 +349,82 @@ static void std_emit(StdGenerator *self, float dt)
     }
 }
 
+/* ─── C4: CylinderGenerator::EmitParticles (0x44ba70) ─── */
+
+/* (v,1) x M as a row vector with w-divide, M row-major.  Same convention as
+ * the Stage B corner transforms; the decompiled inner loop accumulates
+ * out[c] = sum_r M[r][c] * v[r].  The w-divide is skipped when w is exactly
+ * the value at 0x45d2e8 (0.0), as in the original. */
+static void transform_point_row(float out[3], const float v[3], const float m[16])
+{
+    float o[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    float in[4] = { v[0], v[1], v[2], 1.0f };
+    for (int c = 0; c < 4; c++)
+        for (int r = 0; r < 4; r++)
+            o[c] += m[r * 4 + c] * in[r];
+    if (o[3] != 0.0f) {
+        o[0] /= o[3]; o[1] /= o[3]; o[2] /= o[3];
+    }
+    out[0] = o[0]; out[1] = o[1]; out[2] = o[2];
+}
+
+static void cylinder_emit(CylinderGenerator *self, float dt)
+{
+    if (self->base.dwEnabled == 0)
+        return;
+    RingBuffer *ring = self->base.pRing;
+    if (ring->pRingCurrent == NULL)
+        return;
+
+    float acc = dt * self->flDtScale + self->flAccumulator;
+    self->flAccumulator = acc;
+    if (!(acc >= 0.0f))
+        return;
+
+    int count = (int)acc;
+    self->flAccumulator = acc - (float)count;
+    if (count <= 0)
+        return;
+
+    float vscale = (sim_fx() == FX_BURST) ? 3.0f : 1.0f;
+
+    for (int emitted = 0; ; ) {
+        ParticleNode *node = ring->pRingCurrent;
+        const float *pos = &self->flPosTable[self->dwPosIdx * 3];
+        const float *vel = &self->flVelTable[self->dwVelIdx * 3];
+
+        node->flLife = self->pLifeTable[self->dwLifeIdx];
+
+        /* Sample -> scale -> transform -> offset. */
+        float p[3] = { pos[0] * self->flScale,
+                       pos[1] * self->flScale,
+                       pos[2] * self->flScale };
+        float t[3];
+        transform_point_row(t, p, self->flMatrix);
+        node->flX = t[0] + self->flOrigin[0];
+        node->flY = t[1] + self->flOrigin[1];
+        node->flZ = t[2] + self->flOrigin[2];
+
+        /* Velocity is NOT run through the matrix. */
+        node->flVel[0] = vel[0] * vscale;
+        node->flVel[1] = vel[1] * vscale;
+        node->flVel[2] = vel[2] * vscale;
+        node->dwDiffuse = self->pEmitProb[self->dwProbIdx];
+
+        self->dwPosIdx  = wrap_index(self->dwPosIdx, 1, 500);
+        self->dwVelIdx  = wrap_index(self->dwVelIdx, 3, 500);
+        self->dwLifeIdx = bump_index(self->dwLifeIdx, 100);
+        self->dwProbIdx = bump_index(self->dwProbIdx, 200);
+
+        self->base.pRing->pRingCurrent = node->pNext;
+        ring = self->base.pRing;
+        if (ring->pRingCurrent == NULL)
+            return;
+        if (count <= ++emitted)
+            return;
+    }
+}
+
 /* ─── Exports ─── */
 
 #define THISCALL __attribute__((thiscall))
@@ -401,6 +478,19 @@ Gen_StdEmit(StdGenerator *self, float dt)
                   free_nodes, ring->dwRingCount);
     }
     std_emit(self, dt);
+}
+
+__declspec(dllexport) void THISCALL
+Gen_CylinderEmit(CylinderGenerator *self, float dt)
+{
+    static LONG calls = 0;
+    if (InterlockedIncrement(&calls) <= SIM_LOG_FIRST)
+        log_write("sim: CylinderEmit this=%p dt=%f enabled=%lu accum=%f "
+                  "origin=%f,%f,%f scale=%f ring=%lu\n",
+                  self, dt, self->base.dwEnabled, self->flAccumulator,
+                  self->flOrigin[0], self->flOrigin[1], self->flOrigin[2],
+                  self->flScale, self->base.pRing->dwRingCount);
+    cylinder_emit(self, dt);
 }
 
 } // extern "C"
