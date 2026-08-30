@@ -32,6 +32,7 @@
 #include "clock.h"
 #include "log.h"
 #include "determinism.h"
+#include "gamestate.h"
 #include <stdlib.h>
 
 static bool      g_started;      /* first-call flag           (was 0x4645a4) */
@@ -94,6 +95,7 @@ double clock_seconds(void)
      * boundary for the Stage A2 checksum.  UpdatePlayerCamera's setup-time call
      * closes one extra (empty) frame; that is deterministic, so it is left. */
     dethash_frame_end(g_accum);
+    gamestate_tick();
 
     if (g_fixed_dt > 0.0) {
         /* Virtual clock.  First call returns 0.0, as the original does. */

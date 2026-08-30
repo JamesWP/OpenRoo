@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "progctrl.h"
 #include "log.h"
+#include "gamestate.h"
 
 static const char SAVE_FILE[] = "ProgableControl.sav";
 
@@ -278,6 +279,8 @@ static void GetBindingStr_impl(ProgableControl *s, int mode, const char *name,
 
 static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
 {
+    /* Captured before the early return so paused/cutscene modes are visible. */
+    gamestate_note_mode(game_state);
     if (game_state >= 5 || !s->pKeyboard) return;
 
     BYTE ks[256];

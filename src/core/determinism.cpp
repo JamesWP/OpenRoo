@@ -34,15 +34,18 @@
 
 #define GAME_GLOBAL_PTR ((void **)0x0046c498)
 
-/* Assertion-surface offsets from REPLAY_PLAN.md.  Interpretation unconfirmed
- * (Stage B); hashed as opaque bytes, so a wrong label cannot mislead a result. */
+/* Assertion-surface offsets.  Widths are from the CalculateLevelScore
+ * (0x0041A760) decompile — +0x04224D and +0x170A64 are bytes, not dwords, as
+ * the plan's table implied.  Meanings are still unconfirmed in game (Stage B),
+ * so these are hashed as opaque bytes and logged under neutral names: a wrong
+ * label must not be able to mislead a determinism result. */
 static const struct { DWORD off; DWORD len; const char *tag; } GAME_FIELDS[] = {
     { 0x1751ee, 12, "pos"     },  /* three floats — player position (unconfirmed) */
     { 0x175406,  4, "f175406" },  /* gems collected (unconfirmed) */
-    { 0x04224d,  4, "f04224d" },  /* foes killed (unconfirmed) */
-    { 0x2ab595,  4, "f2ab595" },  /* elapsed ms (unconfirmed) */
-    { 0x1753f5,  4, "f1753f5" },  /* running score (unconfirmed) */
-    { 0x170a64,  4, "f170a64" },  /* health (unconfirmed) */
+    { 0x04224d,  1, "f04224d" },  /* foes killed — byte */
+    { 0x2ab595,  4, "f2ab595" },  /* elapsed ms */
+    { 0x1753f5,  4, "f1753f5" },  /* running score */
+    { 0x170a64,  1, "f170a64" },  /* health — byte */
     { 0x1752e8,  4, "f1752e8" },  /* death / time-out flag (unconfirmed) */
     { 0x1752b8,  4, "f1752b8" },  /* level-complete flag (unconfirmed) */
 };
@@ -119,10 +122,15 @@ void dethash_frame_end(double virtual_seconds)
     if (game) {
         for (size_t i = 0; i < sizeof(GAME_FIELDS) / sizeof(GAME_FIELDS[0]); i++) {
             fold(game + GAME_FIELDS[i].off, GAME_FIELDS[i].len);
-            if (GAME_FIELDS[i].len == 4 && fl < (int)sizeof(fields) - 32)
+            if (fl >= (int)sizeof(fields) - 32) continue;
+            if (GAME_FIELDS[i].len == 4)
                 fl += snprintf(fields + fl, sizeof(fields) - fl, " %s=%08lx",
                                GAME_FIELDS[i].tag,
                                (unsigned long)*(const DWORD *)(game + GAME_FIELDS[i].off));
+            else if (GAME_FIELDS[i].len == 1)
+                fl += snprintf(fields + fl, sizeof(fields) - fl, " %s=%02x",
+                               GAME_FIELDS[i].tag,
+                               (unsigned)*(const BYTE *)(game + GAME_FIELDS[i].off));
         }
     }
 
