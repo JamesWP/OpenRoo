@@ -22,9 +22,21 @@
  * AttachEnvironmentRing (0x4484e0) install it. */
 
 /* Base class of every emitter.  Note +0x0C is the ring back-pointer, NOT
- * padding, and dwEnabled exists only here — Environment has no such flag. */
+ * padding, and dwEnabled exists only here — Environment has no such flag.
+ *
+ * Generator vtables have TEN slots, not eight (0x45f094..0x45f0bb, next vtable
+ * at 0x45f0bc; gap / 4 = 10).  Slot map, recovered from the call sites:
+ *
+ *   0  ~dtor(int flags)         scalar deleting dtor, MSVC convention
+ *   1  CopyFrom(Generator *src) from CloneGeneratorFromSource (0x4488b0)
+ *   2  AttachRing(RingBuffer *) SHARED 0x4483c0; from ParticleSystem::SetGenerator
+ *   3  Tick(float dt)           OURS
+ *   4  Save(FILE *)             field-by-field fwrite
+ *   5  Load(FILE *)             field-by-field fread + table builders
+ *   6..9  tiny shared base stubs (0x448470 / 0x448480 / 0x448470 / 0x448440),
+ *         still live for the base class — do not stub them. */
 struct Generator {
-    void      **pVtable;          // +0x00 8-slot vtable
+    void      **pVtable;          // +0x00 10-slot vtable
     char       *pName;            // +0x04
     DWORD       dwEnabled;        // +0x08 toggled by Enable/DisableRenderNode
     RingBuffer *pRing;            // +0x0c
@@ -33,7 +45,10 @@ static_assert(sizeof(Generator) == 0x10, "Generator size");
 static_assert(offsetof(Generator, pRing) == 0x0c, "Generator layout");
 
 /* Base class of every environment.  12 bytes: the ring pointer sits at +0x08,
- * where Generator keeps dwEnabled. */
+ * where Generator keeps dwEnabled.
+ *
+ * Six slots (not 8), same meanings as the Generator map above for 0..5; slot 2
+ * is the shared AttachEnvironmentRing (0x4484e0). */
 struct Environment {
     void      **pVtable;          // +0x00 6-slot vtable (not 8)
     char       *pName;            // +0x04
