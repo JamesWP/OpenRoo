@@ -33,6 +33,7 @@
 #include "log.h"
 #include "determinism.h"
 #include "gamestate.h"
+#include "headless.h"
 #include "record.h"
 #include <stdlib.h>
 
@@ -88,6 +89,8 @@ static void clock_log_progress(void)
               g_calls, g_accum, (double)(GetTickCount() - g_wall0) / 1000.0);
 }
 
+static bool g_replay_ended;
+
 unsigned clock_frame(void) { return g_calls; }
 
 double clock_seconds(void)
@@ -101,6 +104,17 @@ double clock_seconds(void)
     gamestate_tick();
     gamestate_deathdiff();
     record_frame_boundary();
+
+    /* Stage E.  A replay must end on the recording's own length, never on
+     * wall-clock time (Stage A notes: frame counts vary run to run because the
+     * loop is uncapped).  Dump the end state while the level is still live —
+     * after teardown the score fields are gone — then close the window so the
+     * game's own shutdown path runs and crashcheck.py can see it complete. */
+    if (record_replaying() && record_replay_finished() && !g_replay_ended) {
+        g_replay_ended = true;
+        gamestate_dump("replay-finished");
+        headless_end_run("replay finished");
+    }
 
     if (g_fixed_dt > 0.0) {
         /* Virtual clock.  First call returns 0.0, as the original does. */

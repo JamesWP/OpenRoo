@@ -13,4 +13,10 @@ debug.gdb
 # Recordings and determinism hash logs (test artifacts)
 *.rec
 *.hash
+replaytest-*.json
 !tests/*.rec
+
+# Save fixtures are committed test data, not the live SavedGames/ slots that
+# **/*.sav above deliberately ignores. Without this, restoring a fixture would
+# depend on files nobody could clone.
+!tests/saves/**/*.sav

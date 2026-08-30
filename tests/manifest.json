@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "_comment": [
+    "The test-recording catalogue.  One entry per recording; tools/replaytest.py",
+    "runs them.  Add entries with `replaytest.py record <name> --description ...`,",
+    "remove them by deleting the entry and its .rec file.  See tests/README.md.",
+    "",
+    "Fields:",
+    "  name         identifier used on the command line",
+    "  file         the .rec, relative to tests/",
+    "  saves        save fixture restored before the run, relative to the repo",
+    "  level        level the recording plays, for humans",
+    "  description  what the recording does and what it is good for",
+    "  dt / seed    determinism settings; MUST match the recording's header",
+    "  timeout      --auto-exit seconds; a safety net, the replay ends itself",
+    "  expect.crash \"none\", \"known\" (the CRASH.md guard-page fault) or \"different\"",
+    "  expect.state fields from the KAROO_STATE_DUMP JSON that must match exactly;",
+    "               omit a field to leave it unasserted",
+    "  notes        anything a reader needs before trusting the entry"
+  ],
+  "defaults": {
+    "dt": "0.016667",
+    "seed": "12345",
+    "timeout": 120
+  },
+  "recordings": [
+    {
+      "name": "bombstart-crash",
+      "file": "bombstart-crash.rec",
+      "saves": "tests/saves/bombstart",
+      "level": "Forest\\BombStart",
+      "description": "Hand-played by James, 2026-08-30. Navigates the main menu, loads save slot 4 (Forest\\BombStart), plays about 10 seconds of the level \u2014 picks up one item and kills one foe \u2014 then quits. 1034 records over 1036 frames, 313 with a key held. The level is never completed; this exercises the menu, the save-slot load and the first seconds of gameplay, not a full run.",
+      "scenario": "menu navigation + save-slot load + ~10s of BombStart gameplay",
+      "purpose": [
+        "Stage D fixture: replaying it reproduces the recorded run's per-frame state checksum exactly.",
+        "Historically the deterministic reproducer for the CRASH.md guard-page fault \u2014 it crashed at frame 797 every time. That crash is now fixed (Game::RenderSceneObjects left textureCoords[1] uninitialised), so the recording runs to its own end and the entry guards against the crash coming back."
+      ],
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 1036,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 0,
+          "gems_required": 0,
+          "foes_killed": 1,
+          "items_collected": 1,
+          "items_available": 13,
+          "items_bonus_blocked": 0,
+          "vitality": 61,
+          "lives": 0,
+          "level_score": 0,
+          "total_score": 1077,
+          "time_limit_s": 120,
+          "elapsed_ms": 10544,
+          "level_complete": 0,
+          "death_cause": 0
+        }
+      },
+      "notes": "Named for the crash it used to reproduce; kept under that name because tests/README.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced byte-identical 1036-frame hash logs and identical end-state dumps."
+    }
+  ]
+}

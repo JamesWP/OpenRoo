@@ -1,0 +1,410 @@
+#!/usr/bin/env python3
+r"""Ka'roo replay test harness — REPLAY_PLAN.md Stage E.
+
+Runs the recordings catalogued in tests/manifest.json: restore the save
+fixture, replay the recorded input under the fixed clock and fixed seed, then
+compare the end state and the crash classification against what the manifest
+says should happen.
+
+    python3 tools/replaytest.py                 # run every recording
+    python3 tools/replaytest.py bombstart-crash # run one
+    python3 tools/replaytest.py --list          # what is catalogued
+    python3 tools/replaytest.py --bless NAME    # re-baseline expect.state
+    python3 tools/replaytest.py record NAME --description "..." \
+            --saves tests/saves/bombstart --level 'Forest\BombStart'
+
+Exit code is the point: 0 = every selected recording behaved as catalogued,
+1 = at least one did not.
+
+Why the harness does the asserting.  The plan called for KAROO_ASSERT inside
+the DLL setting the process exit code.  Stage A established that
+`launch.sh --headless` exits non-zero whatever the game returns — the code
+comes from the game's own WinMain after the posted window close — so a
+DLL-set exit code cannot reach the caller.  The DLL therefore only writes
+KAROO_STATE_DUMP, and the comparison lives here, where the expected values sit
+next to the recording in a file a human can read and edit.
+
+Determinism preconditions, all of which this script enforces rather than
+assumes (REPLAY_PLAN.md Stages A/A2):
+
+  - KAROO_FIXED_DT and KAROO_SEED must match the recording's own header, or
+    the replay diverges.  Checked against the header before launching.
+  - SavedGames/ must hold exactly the bytes it held at record time, because
+    the recording replays the *keypresses* that pick a save slot, not the load
+    itself.  A different slot layout lands the menu somewhere else and the run
+    diverges immediately.  That is what the save fixtures are for.
+  - The replay ends on the recording's own length, never on wall-clock time.
+    The DLL does that itself now (clock.cpp); --auto-exit is only a safety net
+    for a run that wedges.
+"""
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TESTS = os.path.join(REPO, "tests")
+MANIFEST = os.path.join(TESTS, "manifest.json")
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import replay as recfmt          # noqa: E402  — the recording decoder
+
+
+# ── manifest ──────────────────────────────────────────────────────────────
+
+def load_manifest():
+    with open(MANIFEST) as fh:
+        m = json.load(fh)
+    if m.get("version") != 1:
+        sys.exit("%s: unsupported manifest version %r" % (MANIFEST, m.get("version")))
+    return m
+
+
+def save_manifest(m):
+    with open(MANIFEST, "w") as fh:
+        json.dump(m, fh, indent=2)
+        fh.write("\n")
+
+
+def entry_defaults(m, e):
+    d = dict(m.get("defaults", {}))
+    d.update({k: v for k, v in e.items() if v is not None})
+    return d
+
+
+def select(m, names):
+    recs = m["recordings"]
+    if not names:
+        return recs
+    by_name = {r["name"]: r for r in recs}
+    out = []
+    for n in names:
+        if n not in by_name:
+            sys.exit("no recording named %r (see --list)" % n)
+        out.append(by_name[n])
+    return out
+
+
+# ── running ───────────────────────────────────────────────────────────────
+
+def restore_fixture(entry):
+    fixture = entry.get("saves")
+    if not fixture:
+        print("  ! no save fixture — the run inherits whatever SavedGames holds")
+        return
+    path = os.path.join(REPO, fixture)
+    subprocess.run([sys.executable, os.path.join(REPO, "tools", "karoosave.py"),
+                    "restore", path],
+                   cwd=REPO, check=True)
+
+
+def check_header(entry, cfg, rec_path):
+    """A replay under different determinism settings than the recording is not
+    a test, it is noise.  Refuse it up front rather than reporting a diff."""
+    hdr, frames = recfmt.load(rec_path)
+    problems = []
+    want_dt = float(cfg["dt"]) if cfg.get("dt") else 0.0
+    if abs(hdr["dt"] - want_dt) > 1e-12:
+        problems.append("manifest dt=%s but the recording was made at %.9f"
+                        % (cfg.get("dt"), hdr["dt"]))
+    want_seed = int(cfg["seed"]) if cfg.get("seed") else None
+    if want_seed is not None and (not hdr["seed_set"] or hdr["seed"] != want_seed):
+        problems.append("manifest seed=%s but the recording was made with %s"
+                        % (want_seed,
+                           hdr["seed"] if hdr["seed_set"] else "no seed"))
+    return hdr, frames, problems
+
+
+def launch(entry, cfg, rec_path, dump_path, hash_path):
+    env = dict(os.environ)
+    env["KAROO_REPLAY"] = rec_path
+    env["KAROO_STATE_DUMP"] = dump_path
+    env["KAROO_HASH_LOG"] = hash_path
+    env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
+    env["KAROO_SEED"] = str(cfg.get("seed", ""))
+    cmd = ["bash", os.path.join(REPO, "launch.sh"),
+           "--headless", "--auto-exit", str(cfg.get("timeout", 120))]
+    # launch.sh exits non-zero regardless of how the run went (Stage A note),
+    # so its return code is deliberately ignored; crashcheck.py and the state
+    # dump are the oracles.
+    subprocess.run(cmd, cwd=REPO, env=env,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def crash_verdict():
+    """0 clean / 1 the known crash / 2 a different crash / 3 undetermined."""
+    r = subprocess.run([sys.executable, os.path.join(REPO, "tools", "crashcheck.py"),
+                        "--quiet"], cwd=REPO)
+    return r.returncode
+
+
+CRASH_NAME = {0: "none", 1: "known", 2: "different", 3: "undetermined"}
+
+
+def compare_state(expected, actual):
+    """Return a list of human-readable mismatches.  Only the fields the
+    manifest names are compared — an unlisted field is deliberately not
+    asserted, so a test can pin a gem count without pinning a float position."""
+    bad = []
+    for key, want in sorted(expected.items()):
+        if key not in actual:
+            bad.append("%s: expected %r but the dump has no such field" % (key, want))
+        elif actual[key] != want:
+            bad.append("%s: expected %r, got %r" % (key, want, actual[key]))
+    return bad
+
+
+def run_one(m, entry, bless=False):
+    cfg = entry_defaults(m, entry)
+    name = entry["name"]
+    rec_path = os.path.join(TESTS, entry["file"])
+    dump_path = os.path.join(REPO, "replaytest-%s.json" % name)
+    hash_path = os.path.join(REPO, "replaytest-%s.hash" % name)
+
+    print("=" * 72)
+    print("%s — %s" % (name, entry.get("level", "?")))
+    print("  %s" % entry.get("description", "").strip())
+
+    if not os.path.exists(rec_path):
+        print("  FAIL: recording %s is missing" % rec_path)
+        return False
+
+    hdr, frames, problems = check_header(entry, cfg, rec_path)
+    if problems:
+        for p in problems:
+            print("  FAIL: %s" % p)
+        return False
+    print("  %d frames, dt=%.9f seed=%u, fixture=%s"
+          % (len(frames), hdr["dt"], hdr["seed"], entry.get("saves", "<none>")))
+
+    restore_fixture(entry)
+    for stale in (dump_path, hash_path):
+        if os.path.exists(stale):
+            os.remove(stale)
+
+    launch(entry, cfg, rec_path, dump_path, hash_path)
+
+    verdict = crash_verdict()
+    want_crash = entry.get("expect", {}).get("crash", "none")
+    ok = True
+
+    print("  crash: %s (expected %s)" % (CRASH_NAME.get(verdict, verdict), want_crash))
+    if CRASH_NAME.get(verdict) != want_crash:
+        print("  FAIL: crash classification differs — see karoo_hooks.log / "
+              "steam-123456.log, and CRASH.md for the fingerprint")
+        ok = False
+
+    nframes = 0
+    if os.path.exists(hash_path):
+        with open(hash_path) as fh:
+            nframes = sum(1 for _ in fh)
+        print("  hash log: %d frames -> %s" % (nframes, os.path.basename(hash_path)))
+    want_frame = entry.get("expect", {}).get("crash_frame")
+    if want_frame is not None and nframes and abs(nframes - want_frame) > 2:
+        print("  FAIL: expected to stop around frame %d, stopped at %d"
+              % (want_frame, nframes))
+        ok = False
+
+    actual = None
+    if os.path.exists(dump_path):
+        with open(dump_path) as fh:
+            actual = json.load(fh)
+        print("  end state: reason=%s frame=%s" % (actual.get("reason"), actual.get("frame")))
+    else:
+        print("  end state: no dump written")
+
+    if bless:
+        if actual is None:
+            print("  cannot bless: no state dump")
+            return False
+        keep = {k: v for k, v in actual.items()
+                if not k.startswith("_") and k not in ("reason", "frame", "pos")}
+        entry.setdefault("expect", {})["state"] = keep
+        entry["expect"]["crash"] = CRASH_NAME.get(verdict, "undetermined")
+        # A blessed run reached its own end; any stop-early expectation from a
+        # previous baseline no longer applies.
+        entry["expect"].pop("crash_frame", None)
+        # frames_run is already inside state; a second frame count would be a
+        # duplicate expectation that could drift out of step with it.
+        print("  blessed %d fields into the manifest" % len(keep))
+        return True
+
+    expected = entry.get("expect", {}).get("state") or {}
+    if expected:
+        if actual is None:
+            print("  FAIL: manifest expects end state but no dump was written")
+            ok = False
+        else:
+            bad = compare_state(expected, actual)
+            for b in bad:
+                print("  FAIL: %s" % b)
+            if not bad:
+                print("  end state matches all %d asserted field(s)" % len(expected))
+            ok = ok and not bad
+    else:
+        print("  no end-state assertions (expect.state is empty)")
+
+    print("  %s" % ("PASS" if ok else "FAIL"))
+    return ok
+
+
+# ── recording capture ─────────────────────────────────────────────────────
+
+CAPTURE_HELP = r"""
+Capturing a recording
+---------------------
+1. Put SavedGames/ into the exact state the recording should start from, then
+   freeze it:
+
+       python3 tools/karoosave.py set 4 --match BombStart --seed-from 2
+       python3 tools/karoosave.py snapshot tests/saves/<name>
+
+2. Run this command.  The game launches windowed, with the fixed clock and the
+   fixed seed already set, recording to tests/<name>.rec.  Play the scenario,
+   then quit the game normally.
+
+3. The entry is written into tests/manifest.json with your --description.  It
+   starts with no end-state assertions; run --bless once you trust the run to
+   pin the fields it should reproduce.
+
+Record and replay must both use the same dt and seed, or the replay diverges.
+That is why this command sets them rather than leaving them to the shell.
+"""
+
+
+def cmd_record(args):
+    m = load_manifest()
+    if any(r["name"] == args.name for r in m["recordings"]) and not args.force:
+        sys.exit("a recording named %r is already catalogued; pass --force to "
+                 "re-capture it" % args.name)
+
+    cfg = m.get("defaults", {})
+    dt = args.dt or cfg.get("dt", "0.016667")
+    seed = args.seed or cfg.get("seed", "12345")
+    rec_path = os.path.join(TESTS, args.name + ".rec")
+
+    if args.saves:
+        fixture = os.path.join(REPO, args.saves)
+        if not os.path.exists(os.path.join(fixture, "FIXTURE")):
+            sys.exit("%s is not a save fixture — run `karoosave.py snapshot %s` "
+                     "first, with SavedGames/ in the state the recording should "
+                     "start from" % (args.saves, args.saves))
+        # Restore it now so what is recorded is what will be replayed.
+        subprocess.run([sys.executable, os.path.join(REPO, "tools", "karoosave.py"),
+                        "restore", fixture], cwd=REPO, check=True)
+
+    env = dict(os.environ)
+    env["KAROO_RECORD"] = rec_path
+    env["KAROO_RECORD_LABEL"] = args.level or args.name
+    env["KAROO_FIXED_DT"] = dt
+    env["KAROO_SEED"] = seed
+    env["KAROO_HASH_LOG"] = os.path.join(REPO, "replaytest-%s.hash" % args.name)
+    env["KAROO_STATE_DUMP"] = os.path.join(REPO, "replaytest-%s.json" % args.name)
+
+    print("Recording to %s" % rec_path)
+    print("  dt=%s seed=%s fixture=%s" % (dt, seed, args.saves or "<none>"))
+    print("Play the scenario, then quit the game normally.")
+    subprocess.run(["bash", os.path.join(REPO, "launch.sh")], cwd=REPO, env=env)
+
+    if not os.path.exists(rec_path):
+        sys.exit("no recording was written — was KAROO_RECORD reaching the game? "
+                 "(it must be in launch.sh's `env -i` block)")
+
+    hdr, frames = recfmt.load(rec_path)
+    keyed = sum(1 for f in frames if recfmt.pressed(f[2]))
+    print("\ncaptured %d frames, %d with a key held" % (len(frames), keyed))
+
+    entry = {
+        "name": args.name,
+        "file": os.path.basename(rec_path),
+        "saves": args.saves,
+        "level": args.level,
+        "description": args.description,
+        "scenario": args.scenario or args.description,
+        "expect": {"crash": "none", "state": {}},
+        "notes": "Captured %d frames. No end-state assertions yet — run "
+                 "`replaytest.py --bless %s` once a replay is trusted."
+                 % (len(frames), args.name),
+    }
+    m["recordings"] = [r for r in m["recordings"] if r["name"] != args.name]
+    m["recordings"].append(entry)
+    m["recordings"].sort(key=lambda r: r["name"])
+    save_manifest(m)
+    print("added %r to %s" % (args.name, os.path.relpath(MANIFEST, REPO)))
+    print("\nNow verify it replays before trusting it:")
+    print("  python3 tools/replaytest.py %s" % args.name)
+
+
+def cmd_list(m):
+    print("%d recording(s) in %s\n" % (len(m["recordings"]), os.path.relpath(MANIFEST, REPO)))
+    for r in m["recordings"]:
+        exp = r.get("expect", {})
+        print("%-22s %s" % (r["name"], r.get("level", "?")))
+        print("  %s" % r.get("description", "").strip())
+        print("  fixture=%s  expect crash=%s, %d asserted field(s)"
+              % (r.get("saves", "<none>"), exp.get("crash", "none"),
+                 len(exp.get("state") or {})))
+        if r.get("notes"):
+            print("  note: %s" % r["notes"])
+        print()
+
+
+def main():
+    # `record` is dispatched by hand rather than with add_subparsers: argparse
+    # cannot combine a subparser with the trailing `names` positional that the
+    # run mode wants, and the run mode is the common case.
+    if len(sys.argv) > 1 and sys.argv[1] == "record":
+        p = argparse.ArgumentParser(
+            prog="replaytest.py record",
+            description=CAPTURE_HELP,
+            formatter_class=argparse.RawDescriptionHelpFormatter)
+        p.add_argument("name", help="identifier, also the .rec basename")
+        p.add_argument("--description", required=True,
+                       help="what the recording does and what it is good for")
+        p.add_argument("--scenario", help="short form, e.g. 'gem run, no deaths'")
+        p.add_argument("--level", help=r"level name, e.g. 'Forest\BombStart'")
+        p.add_argument("--saves",
+                       help="save fixture to start from, e.g. tests/saves/bombstart")
+        p.add_argument("--dt")
+        p.add_argument("--seed")
+        p.add_argument("--force", action="store_true", help="replace an existing entry")
+        return cmd_record(p.parse_args(sys.argv[2:])) or 0
+
+    ap = argparse.ArgumentParser(
+        description=__doc__ + CAPTURE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("names", nargs="*", help="recordings to run (default: all)")
+    ap.add_argument("--list", action="store_true",
+                    help="show the catalogue and exit")
+    ap.add_argument("--bless", action="store_true",
+                    help="write the run's own end state into the manifest as "
+                         "the expectation — only after you believe the run")
+    args = ap.parse_args()
+
+    m = load_manifest()
+    if args.list:
+        cmd_list(m)
+        return 0
+
+    entries = select(m, args.names)
+    if args.bless and len(entries) != 1:
+        sys.exit("--bless takes exactly one recording name")
+
+    results = [(e["name"], run_one(m, e, bless=args.bless)) for e in entries]
+    if args.bless:
+        save_manifest(m)
+        print("manifest updated")
+        return 0 if all(ok for _, ok in results) else 1
+
+    print("=" * 72)
+    failed = [n for n, ok in results if not ok]
+    print("%d/%d passed" % (len(results) - len(failed), len(results)))
+    for n in failed:
+        print("  FAILED: %s" % n)
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

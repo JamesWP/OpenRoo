@@ -42,10 +42,21 @@ the level and name, leaving every unknown field at a value the game has
 already accepted.
 
 The game reads all slots once at startup, so edit while it is NOT running.
+
+For automated tests, do not re-derive a slot with `set` — snapshot the whole
+SavedGames/ directory into a *fixture* and restore it byte for byte before each
+run.  See "Save fixtures" below and REPLAY_PLAN.md Stage E.
+
+    python3 tools/karoosave.py set 4 --match BombStart --seed-from 2
+    python3 tools/karoosave.py snapshot tests/saves/bombstart
+    python3 tools/karoosave.py restore  tests/saves/bombstart
 """
 
 import argparse
+import glob
+import hashlib
 import os
+import shutil
 import sys
 
 GAM_KEY = 5
@@ -195,6 +206,178 @@ def cmd_set(args):
     print("Start the game, pick this save slot, and it should load that level.")
 
 
+# ── Save fixtures ─────────────────────────────────────────────────────────
+#
+# A recording that navigates the menu to "load slot N" only lands on the level
+# it was recorded against if slot N holds exactly the bytes it held then.
+# `set --seed-from` gets you there by hand, but it is not reproducible: it
+# depends on which slot you seeded from and on whatever that slot happened to
+# contain that day.
+#
+# A *fixture* removes the guesswork by storing the bytes themselves.  It is a
+# directory holding a byte-for-byte copy of every file in SavedGames/ plus a
+# FIXTURE manifest recording each file's SHA-256 and, for context, the decoded
+# slot table.  `restore` copies it back verbatim and deletes any save file the
+# fixture does not name, so no stale slot can survive into the run.
+#
+# This is deliberately the "copy a known-good record" approach CLAUDE.md asks
+# for: it needs none of the still-undecoded save fields to be understood, and
+# it stays correct if they are later decoded differently.
+#
+# JJ.GAM is NOT part of the fixture — it is committed game data, shared by every
+# fixture.  But a slot stores a level *index* into it, so a JJ.GAM edit would
+# silently repoint every fixture at a different level.  Its hash is therefore
+# recorded and checked on restore.
+
+FIXTURE_FILE = "FIXTURE"
+SAVE_GLOBS = ("jj*.sav", "JJ*.sav", "GAM.DAT")
+
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def save_files(saves_dir):
+    """Every file the game reads out of SavedGames/, sorted, basenames only."""
+    found = set()
+    for pat in SAVE_GLOBS:
+        for p in glob.glob(os.path.join(saves_dir, pat)):
+            if os.path.isfile(p):
+                found.add(os.path.basename(p))
+    return sorted(found)
+
+
+def read_fixture(fixture_dir):
+    """Parse a fixture's FIXTURE manifest -> (gam_sha or None, {name: sha})."""
+    path = os.path.join(fixture_dir, FIXTURE_FILE)
+    if not os.path.exists(path):
+        sys.exit("%s: not a save fixture (no %s)" % (fixture_dir, FIXTURE_FILE))
+    gam, files = None, {}
+    for line in open(path):
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        key, _, val = line.partition(" ")
+        if key == "jj.gam":
+            gam = val.strip()
+        elif key == "file":
+            digest, _, name = val.strip().partition(" ")
+            files[name.strip()] = digest
+    return gam, files
+
+
+def cmd_snapshot(args):
+    names = load_levels(args.gam)
+    files = save_files(args.saves)
+    if not files:
+        sys.exit("%s: no save files to snapshot" % args.saves)
+
+    os.makedirs(args.fixture, exist_ok=True)
+    slots = []
+    lines = ["# Ka'roo save fixture — restore with:",
+             "#  python3 tools/karoosave.py restore %s" % args.fixture,
+             "# Created from %s" % args.saves,
+             "",
+             "jj.gam %s" % sha256(args.gam),
+             ""]
+
+    for name in files:
+        src = os.path.join(args.saves, name)
+        shutil.copyfile(src, os.path.join(args.fixture, name))
+        lines.append("file %s %s" % (sha256(src), name))
+
+    lines.append("")
+    lines.append("# Decoded slot table at snapshot time (context only; the bytes above")
+    lines.append("# are what is restored):")
+    for name in files:
+        if not name.lower().startswith("jj") or not name.lower().endswith(".sav"):
+            continue
+        try:
+            plain = read_slot(os.path.join(args.saves, name))
+        except ValueError as e:
+            slots.append("#   %-10s <unreadable: %s>" % (name, e))
+            continue
+        lvl = plain[OFF_LEVEL]
+        lname = names[lvl] if lvl < len(names) else "<out of range>"
+        slots.append("#   %-10s name=%-12r in_use=%d level=%-3d %s"
+                    % (name, slot_name(plain), plain[OFF_IN_USE], lvl, lname))
+
+    with open(os.path.join(args.fixture, FIXTURE_FILE), "w") as fh:
+        fh.write("\n".join(lines + slots) + "\n")
+
+    print("snapshot -> %s  (%d files)" % (args.fixture, len(files)))
+    for line in slots:
+        print(" " + line[1:])
+
+
+def cmd_restore(args):
+    gam_sha, files = read_fixture(args.fixture)
+    if not files:
+        sys.exit("%s: fixture names no files" % args.fixture)
+
+    have = sha256(args.gam)
+    if gam_sha and have != gam_sha:
+        msg = ("JJ.GAM has changed since this fixture was taken\n"
+               "  fixture: %s\n  current: %s\n"
+               "Save slots store a level *index* into JJ.GAM, so the restored "
+               "slots may now point at different levels.\n"
+               "Re-record the fixture, or pass --force if you know the table is "
+               "compatible." % (gam_sha, have))
+        if not args.force:
+            sys.exit("ERROR: " + msg)
+        print("WARNING: " + msg)
+
+    os.makedirs(args.saves, exist_ok=True)
+
+    # Remove any save the fixture does not name: a leftover slot from an
+    # earlier test would still be visible in the menu and could be the one a
+    # recording's keypresses land on.
+    removed = [n for n in save_files(args.saves) if n not in files]
+    for name in removed:
+        os.remove(os.path.join(args.saves, name))
+
+    for name, digest in sorted(files.items()):
+        src = os.path.join(args.fixture, name)
+        if not os.path.exists(src):
+            sys.exit("%s: fixture is incomplete, %s is missing" % (args.fixture, name))
+        if sha256(src) != digest:
+            sys.exit("%s: %s does not match its recorded hash — fixture is corrupt"
+                     % (args.fixture, name))
+        shutil.copyfile(src, os.path.join(args.saves, name))
+
+    print("restored %d file(s) from %s -> %s%s"
+          % (len(files), args.fixture, args.saves,
+             "" if not removed else "  (removed %s)" % ", ".join(removed)))
+
+
+def cmd_verify(args):
+    """Is SavedGames/ currently exactly what the fixture says? (exit 1 if not)"""
+    gam_sha, files = read_fixture(args.fixture)
+    bad = []
+    if gam_sha and sha256(args.gam) != gam_sha:
+        bad.append("JJ.GAM differs from the fixture")
+    for name, digest in sorted(files.items()):
+        live = os.path.join(args.saves, name)
+        if not os.path.exists(live):
+            bad.append("%s is missing" % name)
+        elif sha256(live) != digest:
+            bad.append("%s differs" % name)
+    for name in save_files(args.saves):
+        if name not in files:
+            bad.append("%s is present but not in the fixture" % name)
+    if bad:
+        print("MISMATCH against %s:" % args.fixture)
+        for b in bad:
+            print("  %s" % b)
+        return 1
+    print("SavedGames matches %s" % args.fixture)
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -222,8 +405,25 @@ def main():
     p.add_argument("--no-backup", action="store_true")
     p.set_defaults(func=cmd_set)
 
+    p = sub.add_parser("snapshot",
+                       help="copy SavedGames/ into a reusable save fixture")
+    p.add_argument("fixture", help="directory to write, e.g. tests/saves/bombstart")
+    p.set_defaults(func=cmd_snapshot)
+
+    p = sub.add_parser("restore",
+                       help="restore SavedGames/ from a fixture, byte for byte")
+    p.add_argument("fixture")
+    p.add_argument("--force", action="store_true",
+                   help="restore even if JJ.GAM has changed since the snapshot")
+    p.set_defaults(func=cmd_restore)
+
+    p = sub.add_parser("verify",
+                       help="check SavedGames/ still matches a fixture (exit 1 if not)")
+    p.add_argument("fixture")
+    p.set_defaults(func=cmd_verify)
+
     args = ap.parse_args()
-    args.func(args)
+    sys.exit(args.func(args) or 0)
 
 
 if __name__ == "__main__":

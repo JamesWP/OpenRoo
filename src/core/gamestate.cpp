@@ -56,6 +56,7 @@
 #include "log.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #define GAME_GLOBAL_PTR ((void **)0x0046c498)
 
@@ -210,13 +211,35 @@ static bool read_state(GameState *s)
     return true;
 }
 
+/* Last state seen while a level was actually running.
+ *
+ * The end-of-run dump cannot simply read the live object: a recording usually
+ * ends with the player quitting, and by the time the process is shutting down
+ * the level is torn down and the score fields are gone.  Nor can it wait for
+ * the recording to be exhausted — the first real recording ends by quitting
+ * the game, ~110 frames before its own last record.  So cache every in-level
+ * frame and dump the last one, which is the end state of the gameplay
+ * segment, which is what a test wants to assert on.
+ *
+ * mode != 0 is the "in a level" test: Stage B confirmed mode goes 0 -> 1 on
+ * level start and 1 -> 0 at the end. */
+static GameState g_live;
+static bool      g_have_live;
+static DWORD     g_live_frame;
+
 void gamestate_tick(void)
 {
     g_frame++;
-    if (!gamestate_enabled()) return;
 
     GameState s;
     if (!read_state(&s)) return;
+    if (s.mode != 0) {
+        g_live       = s;
+        g_have_live  = true;
+        g_live_frame = g_frame;
+    }
+
+    if (!gamestate_enabled()) return;
 
     /* Elapsed time moves every frame; comparing it would log every frame and
      * bury the events worth seeing.  It is still printed on each line. */
@@ -264,4 +287,69 @@ void gamestate_deathdiff(void)
     }
 
     g_prev_death = cause;
+}
+
+
+/* ── Stage E: end-of-run state dump ───────────────────────────────────────
+ *
+ * Written at the end of a replay, while the level is still live — after
+ * teardown the score fields are gone.  Emitted as JSON so the harness can diff
+ * it field by field and name the field that moved, rather than reporting only
+ * that the run differed.
+ *
+ * Every field here is one from the table above.  The ones still marked (?) in
+ * the log are dumped too, with an "_unconfirmed" list naming them, so a test
+ * that asserts on one is doing so knowingly.
+ */
+void gamestate_dump(const char *reason)
+{
+    static bool dumped = false;
+    if (dumped) return;              /* the first (earliest, most live) wins */
+
+    char path[MAX_PATH];
+    if (!GetEnvironmentVariableA("KAROO_STATE_DUMP", path, sizeof(path)) || !path[0])
+        return;
+    dumped = true;
+
+    GameState s   = g_live;
+    bool     have = g_have_live;
+
+    FILE *fp = fopen(path, "w");
+    if (!fp) {
+        log_write("gamestate: dump: cannot open %s\n", path);
+        return;
+    }
+
+    fprintf(fp, "{\n");
+    fprintf(fp, "  \"reason\": \"%s\",\n", reason);
+    fprintf(fp, "  \"frame\": %lu,\n", (unsigned long)g_live_frame);
+    fprintf(fp, "  \"frames_run\": %lu,\n", (unsigned long)g_frame);
+    fprintf(fp, "  \"game_live\": %s", have ? "true" : "false");
+    if (have) {
+        fprintf(fp, ",\n");
+        fprintf(fp, "  \"mode\": %u,\n",            (unsigned)s.mode);
+        fprintf(fp, "  \"gems_collected\": %d,\n",  s.gems_collected);
+        fprintf(fp, "  \"gems_required\": %d,\n",   s.gems_required);
+        fprintf(fp, "  \"foes_killed\": %u,\n",     (unsigned)s.foes_killed);
+        fprintf(fp, "  \"items_collected\": %u,\n", (unsigned)s.extra_cap);
+        fprintf(fp, "  \"items_available\": %u,\n", (unsigned)s.extra_count);
+        fprintf(fp, "  \"items_bonus_blocked\": %u,\n", (unsigned)s.extra_block);
+        fprintf(fp, "  \"vitality\": %u,\n",        (unsigned)s.vitality);
+        fprintf(fp, "  \"lives\": %u,\n",           (unsigned)s.lives);
+        fprintf(fp, "  \"level_score\": %d,\n",     s.level_score);
+        fprintf(fp, "  \"total_score\": %d,\n",     s.total_score);
+        fprintf(fp, "  \"time_limit_s\": %d,\n",    s.time_limit_s);
+        fprintf(fp, "  \"elapsed_ms\": %lu,\n",     (unsigned long)s.elapsed_ms);
+        fprintf(fp, "  \"level_complete\": %d,\n",  s.complete_flag);
+        fprintf(fp, "  \"death_cause\": %u,\n",     (unsigned)s.death_raw[0]);
+        fprintf(fp, "  \"pos\": [%.6f, %.6f, %.6f],\n", s.pos[0], s.pos[1], s.pos[2]);
+        fprintf(fp, "  \"_unconfirmed\": [\"vitality\", \"death_cause\", \"pos\"]\n");
+    } else {
+        fprintf(fp, "\n");
+    }
+    fprintf(fp, "}\n");
+    fclose(fp);
+
+    log_write("gamestate: dumped end state (%s, from frame %lu of %lu) to %s\n",
+              reason, (unsigned long)g_live_frame, (unsigned long)g_frame, path);
 }
