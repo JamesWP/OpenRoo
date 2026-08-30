@@ -10,27 +10,47 @@
  * touches are asserted; table construction (Save/Load/Copy) stays game-owned.
  */
 
-/* Embedded at ParticleSystem+0x08; both Generator and Environment hold a
- * pointer to it (Generator+0x0C, Environment+0x08), installed by
- * AttachGeneratorRing (0x4483c0) / AttachEnvironmentRing (0x4484e0).
- *
- *   pRingBase ─ … ─ pRingHead ─ … ─ pRingCurrent ─ … ─ pRingTail ─╴NULL
- *                   └─── live ───┘  └───── free ──────┘
- */
-struct RingBuffer {
-    DWORD         dwRingCount;    // +0x00
-    ParticleNode *pRingBase;      // +0x04
-    ParticleNode *pRingHead;      // +0x08 oldest live particle
-    ParticleNode *pRingTail;      // +0x0c last free node
-    ParticleNode *pRingCurrent;   // +0x10 next node to emit into
-};
-static_assert(sizeof(RingBuffer) == 0x14, "RingBuffer size");
-static_assert(offsetof(RingBuffer, pRingCurrent) == 0x10, "RingBuffer layout");
+/* Class identity — see the VTBL_PARTICLE_* note in particles.h. */
+#define VTBL_GEN_STD         0x0045f094
+#define VTBL_GEN_XSTD        0x0045f0bc
+#define VTBL_GEN_CYLINDER    0x0045f0e8
+#define VTBL_ENV_GRAVITY     0x0045f110
+#define VTBL_ENV_MAGNET      0x0045f128
+
+/* RingBuffer now lives in particles.h — it is ParticleSystem::ring, and the
+ * pointer below is that same object.  AttachGeneratorRing (0x4483c0) /
+ * AttachEnvironmentRing (0x4484e0) install it. */
 
 /* Base class of every emitter.  Note +0x0C is the ring back-pointer, NOT
- * padding, and dwEnabled exists only here — Environment has no such flag. */
+ * padding, and dwEnabled exists only here — Environment has no such flag.
+ *
+ * Generator vtables have TEN slots, not eight (0x45f094..0x45f0bb, next vtable
+ * at 0x45f0bc; gap / 4 = 10).  Slot map, recovered from the call sites:
+ *
+ *   0  ~dtor(int flags)         scalar deleting dtor, MSVC convention
+ *   1  CopyFrom(Generator *src) from CloneGeneratorFromSource (0x4488b0)
+ *   2  AttachRing(RingBuffer *) SHARED 0x4483c0; from ParticleSystem::SetGenerator
+ *   3  Tick(float dt)           OURS
+ *   4  Save(FILE *)             field-by-field fwrite
+ *   5  Load(FILE *)             field-by-field fread + table builders
+ *   6  SetPosition(vec3)       writes flOrigin (Cyl) / flPosOffset (XStd);
+ *                              StdGenerator no-ops it (0x448470 = RET 0xc)
+ *   7  unknown, 4 args         overridden by XStd only (0x44a850)
+ *   8  SetDirection(vec3)      Cyl 0x44b0c0 writes the direction at +0x1c and
+ *                              builds flMatrix at +0x2c; Std no-ops it
+ *   9  unknown, 1 arg          overridden by XStd only (0x44a930)
+ *
+ * Slots 6-9 are NOT dead stubs — gameplay drives 6 and 8 through
+ * ParticleSystem::GetGenerator (0x447dd0), which hands out the raw Generator*
+ * purely so the caller can make a vtable call on it.
+ *
+ * The only non-vtable field accesses from outside the class are pName (+0x04,
+ * read by GetGenerator / Serialize / CloneGeneratorFromSource) and dwEnabled
+ * (+0x08, written directly by GeneratorEnableFlag 0x448450 /
+ * GeneratorDisableFlag 0x448460 via ParticleSystem::Enable/DisableRenderNode).
+ * No subclass field is ever touched from outside. See PARTICLE_PLAN.md 6.2a. */
 struct Generator {
-    void      **pVtable;          // +0x00 8-slot vtable
+    void      **pVtable;          // +0x00 10-slot vtable
     char       *pName;            // +0x04
     DWORD       dwEnabled;        // +0x08 toggled by Enable/DisableRenderNode
     RingBuffer *pRing;            // +0x0c
@@ -39,7 +59,10 @@ static_assert(sizeof(Generator) == 0x10, "Generator size");
 static_assert(offsetof(Generator, pRing) == 0x0c, "Generator layout");
 
 /* Base class of every environment.  12 bytes: the ring pointer sits at +0x08,
- * where Generator keeps dwEnabled. */
+ * where Generator keeps dwEnabled.
+ *
+ * Six slots (not 8), same meanings as the Generator map above for 0..5; slot 2
+ * is the shared AttachEnvironmentRing (0x4484e0). */
 struct Environment {
     void      **pVtable;          // +0x00 6-slot vtable (not 8)
     char       *pName;            // +0x04
@@ -210,3 +233,19 @@ static_assert(offsetof(CylinderGenerator, pEmitProb)     == 0x3114, "Cyl layout"
 static_assert(offsetof(CylinderGenerator, dwPosIdx)      == 0x3434, "Cyl layout");
 static_assert(offsetof(CylinderGenerator, dwProbIdx)     == 0x3440, "Cyl layout");
 static_assert(sizeof(CylinderGenerator) == 0x3444, "Cyl size");
+
+/* ─── Internal (non-virtual) entry points ──────────────────────────────────
+ *
+ * Every live Generator and Environment class is ours (PARTICLE_PLAN.md § 4.8:
+ * Std / XStd / Cylinder, Gravity / Magnet; PointGenerator and BoxGenerator are
+ * in the binary but instantiated by no .par file).  So Particle_BaseTick's
+ * `pGenerator->vtbl[3](dt)` always left the DLL through a patched game vtable
+ * only to come straight back.  These call the implementation directly when the
+ * slot holds one of our exports, and fall back to real virtual dispatch
+ * otherwise — so the dead classes, or anything we have not replaced, still
+ * work exactly as before. */
+/* Slot 3 = Tick(float dt) for both Generator and Environment. */
+#define GEN_VT_TICK_SLOT 3
+
+void sim_tick_generator(Generator *gen, float dt);
+void sim_tick_environment(Environment *env, float dt);

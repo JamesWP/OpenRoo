@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <stddef.h>
+#include "com_proxy.h"
 
 /* ParticleSystem hierarchy — render-path structs.
  * Layouts from Ghidra (verified against the fill/draw disassembly; see
@@ -39,23 +40,54 @@ struct ParticleVertex {
 };
 static_assert(sizeof(ParticleVertex) == 0x20, "ParticleVertex size");
 
-/* Base class, 0x28 bytes.  Ring walk: if head == current the ring is empty;
- * otherwise iterate node = node->pNext starting at head until node == current. */
+/* The ring, as ONE struct.  It is embedded in ParticleSystem at +0x08, and it
+ * is the *same object* that Generator+0x0C and Environment+0x08 point at:
+ * AttachGeneratorRing (0x4483c0) / AttachEnvironmentRing (0x4484e0) are handed
+ * `&ps->ring` by SetGenerator/SetEnvironment.  Declaring it once means the
+ * emitter, the integrator and the render fill all name the same fields.
+ *
+ *   pRingBase ─ … ─ pRingHead ─ … ─ pRingCurrent ─ … ─ pRingTail ─╴NULL
+ *                     └─── live ───┘  └───── free ──────┘
+ *
+ * Empty when pRingHead == pRingCurrent; full when pRingCurrent == NULL. */
+struct RingBuffer {
+    DWORD         dwRingCount;    // +0x00
+    ParticleNode *pRingBase;      // +0x04
+    ParticleNode *pRingHead;      // +0x08 oldest live particle
+    ParticleNode *pRingTail;      // +0x0c last free node
+    ParticleNode *pRingCurrent;   // +0x10 next node to emit into
+};
+static_assert(sizeof(RingBuffer) == 0x14, "RingBuffer size");
+static_assert(offsetof(RingBuffer, pRingCurrent) == 0x10, "RingBuffer layout");
+
+struct Generator;
+struct Environment;
+
+/* Class identity = the vtable address stored at +0x00.  The game image has no
+ * relocations and is always mapped at 0x400000, so these are constants at
+ * runtime; the dispatchers in particles.cpp / generators.cpp use them to
+ * recognise a class without going back out through the vtable.
+ *
+ * They must stay in step with patch.py's VTABLE_PATCHES (file offset = VA -
+ * 0x400000).  Anything not listed here falls back to a real virtual call. */
+#define VTBL_PARTICLE_BASE   0x0045efb8
+#define VTBL_PARTICLE_POINT  0x0045f140
+#define VTBL_PARTICLE_FACE   0x0045f17c
+#define VTBL_PARTICLE_XFACE  0x0045f1b8
+
+/* Base class, 0x28 bytes. */
 struct ParticleSystem {
     void         **pVtable;       // +0x00 → 15-slot vtable
     char          *pName;         // +0x04
-    DWORD          dwRingCount;   // +0x08
-    ParticleNode  *pRingBase;     // +0x0c
-    ParticleNode  *pRingHead;     // +0x10
-    ParticleNode  *pRingTail;     // +0x14
-    ParticleNode  *pRingCurrent;  // +0x18
-    void          *pGenerator;    // +0x1c
-    void          *pEnvironment;  // +0x20
+    RingBuffer     ring;          // +0x08 handed to the generator and environment
+    Generator     *pGenerator;    // +0x1c
+    Environment   *pEnvironment;  // +0x20
     void          *pField24;      // +0x24
 };
 static_assert(sizeof(ParticleSystem) == 0x28, "ParticleSystem size");
-static_assert(offsetof(ParticleSystem, pRingHead)    == 0x10, "ParticleSystem layout");
-static_assert(offsetof(ParticleSystem, pRingCurrent) == 0x18, "ParticleSystem layout");
+static_assert(offsetof(ParticleSystem, ring)         == 0x08, "ParticleSystem layout");
+static_assert(offsetof(ParticleSystem, pGenerator)   == 0x1c, "ParticleSystem layout");
+static_assert(offsetof(ParticleSystem, pEnvironment) == 0x20, "ParticleSystem layout");
 
 struct PointParticleSystem {      // 0x30 bytes
     ParticleSystem  base;
@@ -106,3 +138,48 @@ static_assert(offsetof(XFaceParticleSystem, nVertexCount)       == 0x30, "XFace 
 static_assert(offsetof(XFaceParticleSystem, dwCornerTableCount) == 0x72, "XFace layout");
 static_assert(sizeof(XFaceParticleSystem) == 0x96, "XFace size");
 #pragma pack(pop)
+
+/* ─── Internal (non-virtual) entry points ──────────────────────────────────
+ *
+ * Every one of the three concrete fill/draw methods is ours, so Render does
+ * not need to leave the DLL to reach them.  These resolve the class from the
+ * vtable slot the original Render *would* have called: if the slot holds one
+ * of our exports we call the implementation directly; anything else is still
+ * dispatched indirectly, so an unreplaced or future override keeps working.
+ *
+ * The two entry paths (game vtable → export, and Render → here) run the same
+ * function, so logging and FX behave identically whichever way in. */
+void  ps_fill(ParticleSystem *self);
+DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev);
+
+/* ─── Vtable exports ───────────────────────────────────────────────────────
+ *
+ * Declared here so factory.cpp can install them into the vtables it owns
+ * (Stage E3).  Signatures must match the definitions in particles.cpp exactly;
+ * they are the game's vtable slot signatures. */
+#define PS_THISCALL __attribute__((thiscall))
+extern "C" {
+void  PS_THISCALL Particle_BaseTick(ParticleSystem *self, DWORD dt);              /* slot 7 */
+void  PS_THISCALL Particle_XFaceTick(XFaceParticleSystem *self, DWORD dt);        /* slot 7 */
+DWORD PS_THISCALL Particle_BaseRender(ParticleSystem *self, IDirect3DDevice3 *d); /* slot 8 */
+DWORD PS_THISCALL Particle_PointRender(PointParticleSystem *self, IDirect3DDevice3 *d);
+void  PS_THISCALL Particle_PointFill(PointParticleSystem *self);                  /* slot 9 */
+void  PS_THISCALL Particle_FaceFill(FaceParticleSystem *self);
+void  PS_THISCALL Particle_XFaceFill(XFaceParticleSystem *self);
+void  PS_THISCALL Particle_FaceSetVector(FaceParticleSystem *self,
+                                         float x, float y, float z);              /* slot 10 */
+void  PS_THISCALL Particle_FaceTransformCorners(FaceParticleSystem *self,
+                                                float *matrix);                   /* slot 11 */
+DWORD PS_THISCALL Particle_PointDraw(PointParticleSystem *self, IDirect3DDevice3 *d); /* slot 12 */
+DWORD PS_THISCALL Particle_FaceDraw(FaceParticleSystem *self, IDirect3DDevice3 *d);
+DWORD PS_THISCALL Particle_XFaceDraw(XFaceParticleSystem *self, IDirect3DDevice3 *d);
+}
+
+/* ParticleSystem vtable slot numbers (15-slot table, § 6.2 / PARTICLE_PLAN § 1.3). */
+#define PS_VT_TICK    7
+#define PS_VT_RENDER  8
+#define PS_VT_FILL    9
+#define PS_VT_SETVEC 10
+#define PS_VT_XFORM  11
+#define PS_VT_DRAW   12
+#define PS_VTBL_SLOTS 15

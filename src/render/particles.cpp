@@ -24,10 +24,13 @@
  * pixels come from this reimplementation.
  */
 #include "particles.h"
+#include "generators.h"
+#include "factory.h"
 #include "com_proxy.h"
 #include "log.h"
 #include "determinism.h"
 #include <math.h>
+#include <string.h>
 
 #define PARTICLE_FVF       0x1e2  /* XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1 — 0x20 stride */
 #define PARTICLE_LOG_FIRST 8
@@ -36,8 +39,7 @@
 #define THISCALL __attribute__((thiscall))
 typedef void  (THISCALL *ps_fill_fn)(ParticleSystem *);
 typedef DWORD (THISCALL *ps_draw_fn)(ParticleSystem *, IDirect3DDevice3 *);
-#define VT_FILL 9   /* vtable slot +0x24 */
-#define VT_DRAW 12  /* vtable slot +0x30 */
+/* slot numbers live in particles.h (PS_VT_*) */
 
 static bool fx_tint(void)
 {
@@ -73,24 +75,38 @@ static void log_draw(DrawLogState *st, const char *name, const void *self,
                   name, self, dev, count, hr);
 }
 
-/* ─── Fill: walk the ring from pRingHead until pRingCurrent ─── */
+/* ─── Fill ─────────────────────────────────────────────────────────────────
+ *
+ * All three fills walk the same live region of the same ring — the very ring
+ * the generator emits into and the environment retires from — so the walk is
+ * written once here.  `emit` writes the vertices for one node and returns how
+ * many it wrote. */
+
+template <typename EmitFn>
+static DWORD fill_ring(ParticleSystem *ps, EmitFn emit)
+{
+    DWORD n = 0;
+    if (ps->ring.pRingHead != ps->ring.pRingCurrent) {
+        ParticleNode *node = ps->ring.pRingHead;
+        do {
+            n += emit(node, n);
+            node = node->pNext;
+        } while (node != ps->ring.pRingCurrent);
+    }
+    return n;
+}
 
 static void point_fill(PointParticleSystem *self)
 {
-    ParticleSystem *ps = &self->base;
-    DWORD n = 0;
-    if (ps->pRingHead != ps->pRingCurrent) {
-        ParticleNode *node = ps->pRingHead;
-        do {
-            ParticleVertex *v = &self->pVerts[n++];
+    self->dwVertexCount = fill_ring(&self->base,
+        [self](const ParticleNode *node, DWORD n) -> DWORD {
+            ParticleVertex *v = &self->pVerts[n];
             v->flX = node->flX;
             v->flY = node->flY;
             v->flZ = node->flZ;
             v->dwDiffuse = node_colour(node);
-            node = node->pNext;
-        } while (node != ps->pRingCurrent);
-    }
-    self->dwVertexCount = n;
+            return 1;
+        });
 }
 
 /* Shared by Face (baked corners) and XFace (per-particle corner-table entry):
@@ -109,33 +125,21 @@ static void emit_face(ParticleVertex *v, const ParticleNode *node,
 
 static void face_fill(FaceParticleSystem *self)
 {
-    ParticleSystem *ps = &self->base;
-    DWORD n = 0;
-    if (ps->pRingHead != ps->pRingCurrent) {
-        ParticleNode *node = ps->pRingHead;
-        do {
+    self->nVertexCount = (WORD)fill_ring(&self->base,
+        [self](const ParticleNode *node, DWORD n) -> DWORD {
             emit_face(&self->pVerts[n], node, &self->flCorner[0][0]);
-            n += 6;
-            node = node->pNext;
-        } while (node != ps->pRingCurrent);
-    }
-    self->nVertexCount = (WORD)n;
+            return 6;
+        });
 }
 
 static void xface_fill(XFaceParticleSystem *self)
 {
-    ParticleSystem *ps = &self->base;
-    DWORD n = 0;
-    if (ps->pRingHead != ps->pRingCurrent) {
-        ParticleNode *node = ps->pRingHead;
-        do {
+    self->nVertexCount = (WORD)fill_ring(&self->base,
+        [self](const ParticleNode *node, DWORD n) -> DWORD {
             emit_face(&self->pVerts[n], node,
                       &self->pCornerTable[node->dwShapeIndex].flCorner[0][0]);
-            n += 6;
-            node = node->pNext;
-        } while (node != ps->pRingCurrent);
-    }
-    self->nVertexCount = (WORD)n;
+            return 6;
+        });
 }
 
 /* ─── Draw ─── */
@@ -200,14 +204,14 @@ __declspec(dllexport) DWORD THISCALL
 Particle_XFaceDraw(XFaceParticleSystem *self, IDirect3DDevice3 *dev)
 { return xface_draw(self, dev); }
 
-/* Base Render (Face/XFace slot 8): virtual dispatch of fill then draw,
- * exactly like the original 0x447d10 — through the (patched) vtable, so any
- * future override still wins. */
+/* Base Render (Face/XFace slot 8): fill then draw, as the original 0x447d10
+ * did through slots 9 and 12.  ps_fill / ps_draw resolve those slots without
+ * leaving the DLL when they hold our own code — see below. */
 __declspec(dllexport) DWORD THISCALL
 Particle_BaseRender(ParticleSystem *self, IDirect3DDevice3 *dev)
 {
-    ((ps_fill_fn)self->pVtable[VT_FILL])(self);
-    return ((ps_draw_fn)self->pVtable[VT_DRAW])(self, dev);
+    ps_fill(self);
+    return ps_draw(self, dev);
 }
 
 /* Point Render (slot 8 override): the original dispatches fill virtually but
@@ -215,11 +219,60 @@ Particle_BaseRender(ParticleSystem *self, IDirect3DDevice3 *dev)
 __declspec(dllexport) DWORD THISCALL
 Particle_PointRender(PointParticleSystem *self, IDirect3DDevice3 *dev)
 {
-    ((ps_fill_fn)self->base.pVtable[VT_FILL])(&self->base);
+    ps_fill(&self->base);
     return point_draw(self, dev);
 }
 
 } // extern "C"
+
+/* ─── Direct dispatch ──────────────────────────────────────────────────────
+ *
+ * All three concrete fill/draw pairs are ours, so dispatching slots 9 and 12
+ * through the game's vtable only takes the call out of this DLL and straight
+ * back in.  Recognise the class by its vtable address (see the VTBL_* note in
+ * particles.h — the slots themselves hold .khook trampolines inside the game
+ * image, not DLL addresses, so they are the wrong thing to compare) and call
+ * the implementation directly.  An unknown vtable still gets a genuine virtual
+ * call, so an unreplaced or future override keeps working. */
+
+/* As in generators.cpp: one line the first time through each of fill and draw,
+ * recording whether the call stayed inside the DLL. */
+static void log_path_once(LONG *once, const char *what, bool direct, void *slot)
+{
+    if (InterlockedExchange(once, 1) == 0)
+        log_write("particle: %s dispatch = %s (vtbl=%p)\n",
+                  what, direct ? "direct" : "virtual", slot);
+}
+
+void ps_fill(ParticleSystem *self)
+{
+    DWORD vtbl = vtbl_identity(self->pVtable);
+    static LONG once = 0;
+    log_path_once(&once, "fill",
+                  vtbl == VTBL_PARTICLE_POINT || vtbl == VTBL_PARTICLE_FACE ||
+                  vtbl == VTBL_PARTICLE_XFACE, self->pVtable);
+    switch (vtbl) {
+    case VTBL_PARTICLE_POINT: point_fill((PointParticleSystem *)self); return;
+    case VTBL_PARTICLE_FACE:  face_fill((FaceParticleSystem *)self);   return;
+    case VTBL_PARTICLE_XFACE: xface_fill((XFaceParticleSystem *)self); return;
+    }
+    ((ps_fill_fn)self->pVtable[PS_VT_FILL])(self);
+}
+
+DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev)
+{
+    DWORD vtbl = vtbl_identity(self->pVtable);
+    static LONG once = 0;
+    log_path_once(&once, "draw",
+                  vtbl == VTBL_PARTICLE_POINT || vtbl == VTBL_PARTICLE_FACE ||
+                  vtbl == VTBL_PARTICLE_XFACE, self->pVtable);
+    switch (vtbl) {
+    case VTBL_PARTICLE_POINT: return point_draw((PointParticleSystem *)self, dev);
+    case VTBL_PARTICLE_FACE:  return face_draw((FaceParticleSystem *)self, dev);
+    case VTBL_PARTICLE_XFACE: return xface_draw((XFaceParticleSystem *)self, dev);
+    }
+    return ((ps_draw_fn)self->pVtable[PS_VT_DRAW])(self, dev);
+}
 
 /* ═══════════════ Stage B — tick + Face corner setup/transform ═══════════════
  *
@@ -231,9 +284,6 @@ Particle_PointRender(PointParticleSystem *self, IDirect3DDevice3 *dev)
  *   0x44d590 FaceParticleSystem::SetVector (slot 10)        → Particle_FaceSetVector
  *   0x44dac0 FaceParticleSystem::TransformCorners (slot 11) → Particle_FaceTransformCorners
  */
-
-typedef void (THISCALL *gen_tick_fn)(void *, DWORD);
-#define GEN_VT_TICK 3  /* Generator vtable slot +0x0c */
 
 /* Row-major 4x4, row-vector convention (D3D style): out[r][c] = Σk a[r][k]·b[k][c]. */
 typedef float Mat4[16];
@@ -309,19 +359,31 @@ static bool fx_spin(void)
     return cached != 0;
 }
 
-static void base_tick(ParticleSystem *self, DWORD dt)
+/* dt reaches slot 7 as an untyped 4-byte relay — 0x447ce0 takes `undefined4`
+ * and passes it straight on — while the emitters and integrators consume it as
+ * a float.  Reinterpret once here, at the vtable boundary, so the bits are
+ * unchanged and everything below this point is honestly typed. */
+static float relay_dt(DWORD dt)
+{
+    float fdt;
+    memcpy(&fdt, &dt, sizeof fdt);
+    return fdt;
+}
+
+static void base_tick(ParticleSystem *self, float dt)
 {
     static LONG once = 0;
     if (InterlockedExchange(&once, 1) == 0)
-        log_write("particle: BaseTick active (this=%p dt=%lu)\n", self, dt);
+        log_write("particle: BaseTick active (this=%p dt=%f gen=%p env=%p)\n",
+                  self, dt, self->pGenerator, self->pEnvironment);
     if (self->pGenerator)
-        ((gen_tick_fn)((void ***)self->pGenerator)[0][GEN_VT_TICK])(self->pGenerator, dt);
+        sim_tick_generator(self->pGenerator, dt);
     if (self->pEnvironment)
-        ((gen_tick_fn)((void ***)self->pEnvironment)[0][GEN_VT_TICK])(self->pEnvironment, dt);
+        sim_tick_environment(self->pEnvironment, dt);
     dethash_particles(self);
 }
 
-static void xface_tick(XFaceParticleSystem *self, DWORD dt)
+static void xface_tick(XFaceParticleSystem *self, float dt)
 {
     static LONG once = 0;
     if (InterlockedExchange(&once, 1) == 0)
@@ -411,10 +473,10 @@ static void face_set_vector(FaceParticleSystem *self, float x, float y, float z)
 extern "C" {
 
 __declspec(dllexport) void THISCALL
-Particle_BaseTick(ParticleSystem *self, DWORD dt)  { base_tick(self, dt); }
+Particle_BaseTick(ParticleSystem *self, DWORD dt)  { base_tick(self, relay_dt(dt)); }
 
 __declspec(dllexport) void THISCALL
-Particle_XFaceTick(XFaceParticleSystem *self, DWORD dt)  { xface_tick(self, dt); }
+Particle_XFaceTick(XFaceParticleSystem *self, DWORD dt)  { xface_tick(self, relay_dt(dt)); }
 
 __declspec(dllexport) void THISCALL
 Particle_FaceSetVector(FaceParticleSystem *self, float x, float y, float z)

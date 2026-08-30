@@ -101,8 +101,8 @@ void dethash_particles(ParticleSystem *ps)
     g_systems++;
     /* Ring walk exactly as particles.cpp does it: empty when head == current,
      * otherwise head..current exclusive. */
-    ParticleNode *n = ps->pRingHead;
-    for (DWORD guard = 0; n && n != ps->pRingCurrent && guard <= ps->dwRingCount;
+    ParticleNode *n = ps->ring.pRingHead;
+    for (DWORD guard = 0; n && n != ps->ring.pRingCurrent && guard <= ps->ring.dwRingCount;
          n = n->pNext, guard++) {
         fold_sub(0, &n->flX,       3 * sizeof(float));
         fold_sub(1, n->flVel,      3 * sizeof(float));
