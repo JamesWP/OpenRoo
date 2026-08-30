@@ -10,6 +10,7 @@
  *   0x44cca0 MagnetEnvironment::TickUpdate   → Env_MagnetTick    (vtbl 0x45f128 slot 3)
  *   0x449fe0 StdGenerator::EmitParticles     → Gen_StdEmit       (vtbl 0x45f094 slot 3)
  *   0x44ba70 CylinderGenerator::EmitParticles→ Gen_CylinderEmit  (vtbl 0x45f0e8 slot 3)
+ *   0x44aac0 XStdGenerator::EmitParticles    → Gen_XStdEmit      (vtbl 0x45f0bc slot 3)
  *   0x448560 Environment::RetireParticleNode → inlined as retire_node() here;
  *            with both ticks replaced the original is unreachable (UD2)
  *
@@ -299,7 +300,11 @@ static DWORD bump_index(DWORD cur, DWORD count)
     return (cur < count - 1) ? cur + 1 : 0;
 }
 
-static void std_emit(StdGenerator *self, float dt)
+/* Shared by C3 and C5: XStdGenerator's emit is StdGenerator's with a constant
+ * bias added to the sampled position and velocity, so both go through here.
+ * pos_off / vel_off are NULL for a plain StdGenerator. */
+static void std_emit(StdGenerator *self, float dt,
+                     const float *pos_off, const float *vel_off)
 {
     if (self->base.dwEnabled == 0)
         return;
@@ -326,12 +331,12 @@ static void std_emit(StdGenerator *self, float dt)
         const float *vel = &self->flVelTable[self->dwVelIdx * 3];
 
         node->flLife = self->pLifeTable[self->dwLifeIdx];
-        node->flX = pos[0];
-        node->flY = pos[1];
-        node->flZ = pos[2];
-        node->flVel[0] = vel[0] * vscale;
-        node->flVel[1] = vel[1] * vscale;
-        node->flVel[2] = vel[2] * vscale;
+        node->flX = pos[0] + (pos_off ? pos_off[0] : 0.0f);
+        node->flY = pos[1] + (pos_off ? pos_off[1] : 0.0f);
+        node->flZ = pos[2] + (pos_off ? pos_off[2] : 0.0f);
+        node->flVel[0] = (vel[0] + (vel_off ? vel_off[0] : 0.0f)) * vscale;
+        node->flVel[1] = (vel[1] + (vel_off ? vel_off[1] : 0.0f)) * vscale;
+        node->flVel[2] = (vel[2] + (vel_off ? vel_off[2] : 0.0f)) * vscale;
         node->dwDiffuse = self->pEmitProb[self->dwProbIdx];
 
         self->dwPosIdx  = wrap_index(self->dwPosIdx, 1, 500);
@@ -477,7 +482,7 @@ Gen_StdEmit(StdGenerator *self, float dt)
                   self, dt, self->base.dwEnabled, self->flAccumulator,
                   free_nodes, ring->dwRingCount);
     }
-    std_emit(self, dt);
+    std_emit(self, dt, NULL, NULL);
 }
 
 __declspec(dllexport) void THISCALL
@@ -491,6 +496,20 @@ Gen_CylinderEmit(CylinderGenerator *self, float dt)
                   self->flOrigin[0], self->flOrigin[1], self->flOrigin[2],
                   self->flScale, self->base.pRing->dwRingCount);
     cylinder_emit(self, dt);
+}
+
+__declspec(dllexport) void THISCALL
+Gen_XStdEmit(XStdGenerator *self, float dt)
+{
+    static LONG calls = 0;
+    if (InterlockedIncrement(&calls) <= SIM_LOG_FIRST)
+        log_write("sim: XStdEmit this=%p dt=%f enabled=%lu posoff=%f,%f,%f "
+                  "veloff=%f,%f,%f ring=%lu\n",
+                  self, dt, self->base.base.dwEnabled,
+                  self->flPosOffset[0], self->flPosOffset[1], self->flPosOffset[2],
+                  self->flVelOffset[0], self->flVelOffset[1], self->flVelOffset[2],
+                  self->base.base.pRing->dwRingCount);
+    std_emit(&self->base, dt, self->flPosOffset, self->flVelOffset);
 }
 
 } // extern "C"

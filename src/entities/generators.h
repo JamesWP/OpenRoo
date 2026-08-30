@@ -148,6 +148,27 @@ static_assert(offsetof(StdGenerator, dwPosIdx)      == 0x3410, "Std layout");
 static_assert(offsetof(StdGenerator, dwProbIdx)     == 0x341c, "Std layout");
 static_assert(sizeof(StdGenerator) == 0x3420, "Std size");
 
+/* XStdGenerator (0x3438) — vtable 0x45f0bc, emit 0x44aac0.
+ * Thrusters / flames (3 shipping .par files).
+ *
+ * Genuine inheritance: every field through +0x341c is laid out identically to
+ * StdGenerator, and the 0x18-byte extension begins exactly where StdGenerator
+ * ends.  Its ctor calls the StdGenerator ctor and its Save/Load/Copy chain into
+ * StdGenerator's.  Emit is StdGenerator's with a constant bias added to the
+ * sampled position and velocity.
+ *
+ * There is NO matrix transform here, despite earlier RE notes claiming
+ * "StdGenerator + 4x4 matrix"; those notes also placed the extension at
+ * +0x3410, which is the pData-relative offset, not the struct one. */
+struct XStdGenerator {
+    StdGenerator base;            // +0x0000
+    float        flPosOffset[3];  // +0x3420 added to the sampled position
+    float        flVelOffset[3];  // +0x342c added to the sampled velocity
+};
+static_assert(offsetof(XStdGenerator, flPosOffset) == 0x3420, "XStd layout");
+static_assert(offsetof(XStdGenerator, flVelOffset) == 0x342c, "XStd layout");
+static_assert(sizeof(XStdGenerator) == 0x3438, "XStd size");
+
 /* CylinderGenerator (0x3444) — vtable 0x45f0e8, emit 0x44ba70.
  * Portal / exit emitters (8 shipping .par files).
  *
