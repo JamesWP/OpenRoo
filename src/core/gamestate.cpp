@@ -32,9 +32,14 @@
  * The level score reproduces exactly from these six terms, which is the real
  * proof — see the formula in REPLAY_PLAN.md.
  *
- * STILL UNRESOLVED (the death run should settle both):
- *   +0x175402 "lives"  — read 2 on the menu, then 0 for the whole level with
- *                        no deaths.  Width unknown; logged as 4 raw bytes.
+ * +0x175402 IS lives, confirmed 2026-08-30: it read 2 through a new game and
+ * stepped to 1 at the respawn, matching DEC EAX / store at 0x004160D6.  It had
+ * read 0 in two earlier runs simply because those saves had no lives left —
+ * a reminder that "the field never moved" is not evidence when the value was
+ * already at its floor.  The INC at 0x0041B23D is consistent with an
+ * extra-life pickup granting one.
+ *
+ * STILL UNRESOLVED:
  *   +0x1752E8 "death"  — pulsed to 0x00000100 six times during clean play with
  *                        no deaths, so the live byte is +0x1752E9 and the
  *                        plan's "death / time-out" label is at best misaligned.
@@ -60,7 +65,7 @@ struct GameState {
     BYTE  foes_killed;      // +0x4224d   byte
     int   time_limit_s;     // +0x2ab591  dword
     DWORD elapsed_ms;       // +0x2ab595  dword
-    BYTE  lives_raw[4];     // +0x175402  width unknown (?)
+    BYTE  lives;            // +0x175402  CONFIRMED lives remaining
     int   total_score;      // +0x1753f5  dword
     int   level_score;      // +0x140536  dword
     BYTE  vitality;         // +0x170a64  byte (?) — see note above
@@ -82,6 +87,12 @@ struct GameState {
  * whole Game object during play and diff it the moment a death registers.  A
  * lives counter is then simply a dword that dropped by exactly 1 across the
  * death, and it names itself.
+ *
+ * Scan byte-wise, not dword-wise.  The first version compared aligned dwords
+ * only, and that very nearly lost the answer: lives is a byte, so its 2 -> 1
+ * step showed up as the dword at +0x175400 moving 147624 -> 82088, a delta of
+ * -65536 buried among the large-delta noise instead of being flagged as a
+ * step.  Byte granularity is what makes a counter announce itself.
  *
  * KAROO_DEATH_DIFF=1 enables it.  The snapshot refreshes every SNAP_EVERY
  * frames while alive, so the diff window is short and the noise stays low.
@@ -118,30 +129,41 @@ static bool deathdiff_enabled(void)
     return g_diff_on > 0;
 }
 
-/* Report dwords that differ between the snapshot and the live object.  Ones
- * that moved by exactly -1 or +1 are listed first: that is what a life, a
- * bomb count or an attempt counter looks like across a single death. */
+/* Report what differs between the snapshot and the live object.  Bytes that
+ * moved by exactly -1 or +1 are listed first: that is what a life, a bomb
+ * count or an attempt counter looks like across a single death.  Everything
+ * else is reported as dwords, which reads better for pointers and floats. */
 static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
 {
     int shown = 0, delta1 = 0;
     log_write("deathdiff: === %s (cause=%u) — dwords changed vs pre-death snapshot ===\n",
               when, cause);
 
-    for (int pass = 0; pass < 2 && shown < DIFF_MAX; pass++) {
-        for (DWORD o = 0; o + 4 <= GAME_SIZE && shown < DIFF_MAX; o += 4) {
-            int a = *(const int *)(g_snap + o);
-            int b = *(const int *)(game   + o);
-            if (a == b) continue;
-            bool step = (b - a == -1) || (b - a == 1);
-            if (pass == 0 && !step) continue;
-            if (pass == 1 && step)  continue;
-            if (pass == 0) delta1++;
-            log_write("deathdiff:   +0x%06lx  %d -> %d  (%+d)%s\n",
-                      (unsigned long)o, a, b, b - a, step ? "  <-- step" : "");
-            shown++;
-        }
+    /* Pass 0: byte-granular +/-1 steps — the counters. */
+    for (DWORD o = 0; o < GAME_SIZE && shown < DIFF_MAX; o++) {
+        int a = g_snap[o], b = game[o];
+        int d = b - a;
+        if (d != 1 && d != -1) continue;
+        log_write("deathdiff:   +0x%06lx  byte %d -> %d  (%+d)  <-- step\n",
+                  (unsigned long)o, a, b, d);
+        shown++; delta1++;
     }
-    log_write("deathdiff: === %d shown, %d of them +/-1 steps ===\n", shown, delta1);
+    /* Pass 1: everything else, as dwords. */
+    for (DWORD o = 0; o + 4 <= GAME_SIZE && shown < DIFF_MAX; o += 4) {
+        int a = *(const int *)(g_snap + o);
+        int b = *(const int *)(game   + o);
+        if (a == b) continue;
+        bool bytestep = false;
+        for (int i = 0; i < 4; i++) {
+            int d = (int)game[o + i] - (int)g_snap[o + i];
+            if (d == 1 || d == -1) bytestep = true;
+        }
+        if (bytestep) continue;          /* already reported above */
+        log_write("deathdiff:   +0x%06lx  %d -> %d  (%+d)\n",
+                  (unsigned long)o, a, b, b - a);
+        shown++;
+    }
+    log_write("deathdiff: === %d shown, %d of them byte +/-1 steps ===\n", shown, delta1);
 }
 
 static int       g_on = -1;
@@ -174,7 +196,7 @@ static bool read_state(GameState *s)
     s->foes_killed    = *(const BYTE  *)(g + 0x04224d);
     s->time_limit_s   = *(const int   *)(g + 0x2ab591);
     s->elapsed_ms     = *(const DWORD *)(g + 0x2ab595);
-    memcpy(s->lives_raw, g + 0x175402, 4);
+    s->lives = *(const BYTE *)(g + 0x175402);
     s->total_score    = *(const int   *)(g + 0x1753f5);
     s->level_score    = *(const int   *)(g + 0x140536);
     s->vitality       = *(const BYTE  *)(g + 0x170a64);
@@ -204,7 +226,7 @@ void gamestate_tick(void)
 
     log_write("gamestate: f=%lu mode=%u gems=%d/%d(?) foes=%u vit=%u "
               "score=%d/%d t=%lu/%ds items=%u/%u blk=%u done=%d "
-              "lives[%02x %02x %02x %02x](?) death[%02x %02x %02x %02x](?) "
+              "lives=%u death[%02x %02x %02x %02x](?) "
               "pos=%.3f,%.3f,%.3f\n",
               (unsigned long)g_frame, (unsigned)s.mode,
               s.gems_collected, s.gems_required, (unsigned)s.foes_killed,
@@ -212,7 +234,7 @@ void gamestate_tick(void)
               (unsigned long)(s.elapsed_ms / 1000), s.time_limit_s,
               (unsigned)s.extra_cap, (unsigned)s.extra_count,
               (unsigned)s.extra_block, s.complete_flag,
-              s.lives_raw[0], s.lives_raw[1], s.lives_raw[2], s.lives_raw[3],
+              (unsigned)s.lives,
               s.death_raw[0], s.death_raw[1], s.death_raw[2], s.death_raw[3],
               s.pos[0], s.pos[1], s.pos[2]);
 
