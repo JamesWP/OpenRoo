@@ -1,10 +1,10 @@
 # Ka'roo on Linux
 
-Ka'roo is a 1990s Windows DirectDraw game running under Linux via Proton/Wine with a patched `ddraw.dll`.
+Ka'roo is a 1990s Windows DirectDraw game running under Linux via Proton/Wine.
 
 ## Quick start
 
-**Build the patched ddraw.dll** (needs the Wine build tree at `/home/james/proton-wine-build`):
+**Build the hooks DLL and patch the game binary:**
 
 ```bash
 bash build.sh
@@ -18,10 +18,10 @@ bash launch.sh
 
 ## How it works
 
-The game uses DirectDraw 7 / Direct3D 7 and crashes in Wine's `pack_strided_data` when it passes
-partially-initialised `D3DDRAWPRIMITIVESTRIDEDDATA` structs. `build.sh` compiles a patched Wine
-`ddraw.dll` from the `proton-wine-src` submodule (`JamesWP/wine`, branch `karoo-patches`) and
-strips the Wine builtin marker so Proton loads it as a native DLL.
+The game uses DirectDraw 7 / Direct3D 7. It used to crash in Wine's `pack_strided_data` when it
+passed a partially-initialised `D3DDRAWPRIMITIVESTRIDEDDATA` struct; that is fixed in the game's
+own code path now (see `CRASH.md`), so it runs on stock Wine ddraw. `build.sh` builds
+`karoo_hooks.dll` and applies the binary patches in `patch.py`.
 
 See `CLAUDE.md` for full build/patch details and `log.md` for the crash investigation notes.
 

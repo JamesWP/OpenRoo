@@ -21,10 +21,8 @@ done
 
 [[ -f karoo_hooks.dll ]] || { echo "ERROR: karoo_hooks.dll missing — run build.sh first"; exit 1; }
 
-# The game must run on stock Wine ddraw.  A ddraw.dll sitting in the game
-# directory is loaded in preference to the system one even under ddraw=b
-# (verified: Wine logs it as "builtin" from this path), so its presence would
-# silently reinstate the old patched build.
+# A ddraw.dll here would be loaded in preference to stock Wine ddraw, even under
+# ddraw=b, silently reinstating the old patched build.
 if [[ -f ddraw.dll ]]; then
   echo "ERROR: ddraw.dll present in the game directory — it would be loaded instead of" >&2
   echo "       stock Wine ddraw (Wine logs it from this path as \"builtin\"). Remove it." >&2
@@ -58,11 +56,7 @@ PROTON_RUN=(
   STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.steam/root"
   PROTON_LOG_DIR="$(pwd)"
   SteamGameId=123456 SteamAppId=123456
-  # Stock Wine ddraw.  The two pack_strided_data guards this used to need are
-  # obsolete: the game bug they papered over (FVF 0x242 declaring two texture
-  # coordinate sets while textureCoords[1] was left as stack garbage) is now
-  # fixed at source by hooks_SceneQuadDrawStrided.  "b" forces builtin rather
-  # than relying on load order, so a stray native ddraw.dll cannot creep back in.
+  # Stock Wine ddraw — forced builtin rather than relying on load order.
   WINEDLLOVERRIDES="ddraw=b"
   KAROO_HEADLESS="$HEADLESS"
   KAROO_D3D_PROXY="${KAROO_D3D_PROXY:-1}"
@@ -78,7 +72,6 @@ PROTON_RUN=(
   KAROO_REPLAY="${KAROO_REPLAY:-}"
   KAROO_RECORD_LABEL="${KAROO_RECORD_LABEL:-}"
   KAROO_INPUT_DEBUG="${KAROO_INPUT_DEBUG:-}"
-  KAROO_STRIDED_DIAG="${KAROO_STRIDED_DIAG:-}"
   KAROO_SCENEQUAD_FX="${KAROO_SCENEQUAD_FX:-}"
   KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"
   "$PROTON_DIR/proton" run

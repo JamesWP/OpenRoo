@@ -1,7 +1,5 @@
 #include "com_proxy.h"
 #include "log.h"
-#include <stdlib.h>
-#include <stdint.h>
 
 typedef HRESULT (WINAPI *DirectDrawCreate_t)(GUID *, LPDIRECTDRAW *, IUnknown *);
 
@@ -421,20 +419,7 @@ static HRESULT WINAPI NOINLINE wd3_SetClipStatus(IDirect3DDevice3 *s, D3DCLIPSTA
 static HRESULT WINAPI NOINLINE wd3_GetClipStatus(IDirect3DDevice3 *s, D3DCLIPSTATUS *cs)
     { return real_dev3(s)->GetClipStatus(cs); }
 static HRESULT WINAPI NOINLINE wd3_DrawPrimitiveStrided(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, D3DDRAWPRIMITIVESTRIDEDDATA *data, DWORD vert_count, DWORD flags)
-{
-    if (getenv("KAROO_STRIDED_DIAG")) {
-        static int n = 0;
-        if (n < 40) {
-            n++;
-            log_write("DPS: ret=%08X fvf=%03X ntex=%u pos=%p tex0=%p tex1=%p tex2=%p",
-                      (unsigned)(uintptr_t)__builtin_return_address(0), (unsigned)fvf,
-                      (unsigned)((fvf >> 8) & 0xf), data->position.lpvData,
-                      data->textureCoords[0].lpvData, data->textureCoords[1].lpvData,
-                      data->textureCoords[2].lpvData);
-        }
-    }
-    return real_dev3(s)->DrawPrimitiveStrided(pt, fvf, data, vert_count, flags);
-}
+    { return real_dev3(s)->DrawPrimitiveStrided(pt, fvf, data, vert_count, flags); }
 static HRESULT WINAPI NOINLINE wd3_DrawIndexedPrimitiveStrided(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, D3DDRAWPRIMITIVESTRIDEDDATA *data, DWORD vert_count, WORD *indices, DWORD idx_count, DWORD flags)
     { return real_dev3(s)->DrawIndexedPrimitiveStrided(pt, fvf, data, vert_count, indices, idx_count, flags); }
 static HRESULT WINAPI NOINLINE wd3_DrawPrimitiveVB(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, IDirect3DVertexBuffer *vb, DWORD start, DWORD count, DWORD flags)
