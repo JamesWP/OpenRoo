@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ka'roo level table and save-slot editor.
+r"""Ka'roo level table and save-slot editor.
 
 Lets you jump a save slot straight to any level, so a given level can be
 loaded for testing without playing up to it.
