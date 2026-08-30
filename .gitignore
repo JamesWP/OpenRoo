@@ -10,3 +10,7 @@ Karoo.exe.orig.xml
 *.pyc
 __pycache__/
 debug.gdb
+
+# Recordings and determinism hash logs (test artifacts)
+*.rec
+*.hash

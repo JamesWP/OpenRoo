@@ -33,6 +33,7 @@
 #include "log.h"
 #include "determinism.h"
 #include "gamestate.h"
+#include "record.h"
 #include <stdlib.h>
 
 static bool      g_started;      /* first-call flag           (was 0x4645a4) */
@@ -87,6 +88,8 @@ static void clock_log_progress(void)
               g_calls, g_accum, (double)(GetTickCount() - g_wall0) / 1000.0);
 }
 
+unsigned clock_frame(void) { return g_calls; }
+
 double clock_seconds(void)
 {
     if (g_fixed_dt < 0.0) clock_init();
@@ -97,6 +100,7 @@ double clock_seconds(void)
     dethash_frame_end(g_accum);
     gamestate_tick();
     gamestate_deathdiff();
+    record_frame_boundary();
 
     if (g_fixed_dt > 0.0) {
         /* Virtual clock.  First call returns 0.0, as the original does. */

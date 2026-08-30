@@ -7,6 +7,7 @@
 #include "progctrl.h"
 #include "log.h"
 #include "gamestate.h"
+#include "record.h"
 
 static const char SAVE_FILE[] = "ProgableControl.sav";
 
@@ -281,15 +282,26 @@ static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
 {
     /* Captured before the early return so paused/cutscene modes are visible. */
     gamestate_note_mode(game_state);
-    if (game_state >= 5 || !s->pKeyboard) return;
 
     BYTE ks[256];
-    HRESULT hr = s->pKeyboard->GetDeviceState(256, ks);
-    if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
-        s->pKeyboard->Acquire();
-        hr = s->pKeyboard->GetDeviceState(256, ks);
+    if (record_replaying()) {
+        /* Replay drives the scancode array and the mode from the recording,
+         * so the real keyboard is not touched at all. */
+        unsigned short recorded = game_state;
+        if (!replay_keys(&recorded, ks)) return;
+        game_state = recorded;
+        if (game_state >= 5) return;
+    } else {
+        if (game_state >= 5 || !s->pKeyboard) return;
+
+        HRESULT hr = s->pKeyboard->GetDeviceState(256, ks);
+        if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
+            s->pKeyboard->Acquire();
+            hr = s->pKeyboard->GetDeviceState(256, ks);
+        }
+        if (FAILED(hr)) return;
+        record_keys(game_state, ks);
     }
-    if (FAILED(hr)) return;
 
     for (ActionEntry *e = s->action_tables[game_state].head; e; e = e->chain) {
         for (KeyBind *kb = e->kbd; kb; kb = kb->next) {

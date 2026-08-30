@@ -9,3 +9,7 @@
  * call, making the whole simulation a fixed-timestep one.
  */
 double clock_seconds(void);
+
+/* Frame index — one per clock_seconds() call, i.e. one per rendered frame.
+ * The shared frame number for the hash log, the state log and recordings. */
+unsigned clock_frame(void);
