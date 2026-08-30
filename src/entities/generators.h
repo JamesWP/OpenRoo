@@ -33,8 +33,22 @@
  *   3  Tick(float dt)           OURS
  *   4  Save(FILE *)             field-by-field fwrite
  *   5  Load(FILE *)             field-by-field fread + table builders
- *   6..9  tiny shared base stubs (0x448470 / 0x448480 / 0x448470 / 0x448440),
- *         still live for the base class — do not stub them. */
+ *   6  SetPosition(vec3)       writes flOrigin (Cyl) / flPosOffset (XStd);
+ *                              StdGenerator no-ops it (0x448470 = RET 0xc)
+ *   7  unknown, 4 args         overridden by XStd only (0x44a850)
+ *   8  SetDirection(vec3)      Cyl 0x44b0c0 writes the direction at +0x1c and
+ *                              builds flMatrix at +0x2c; Std no-ops it
+ *   9  unknown, 1 arg          overridden by XStd only (0x44a930)
+ *
+ * Slots 6-9 are NOT dead stubs — gameplay drives 6 and 8 through
+ * ParticleSystem::GetGenerator (0x447dd0), which hands out the raw Generator*
+ * purely so the caller can make a vtable call on it.
+ *
+ * The only non-vtable field accesses from outside the class are pName (+0x04,
+ * read by GetGenerator / Serialize / CloneGeneratorFromSource) and dwEnabled
+ * (+0x08, written directly by GeneratorEnableFlag 0x448450 /
+ * GeneratorDisableFlag 0x448460 via ParticleSystem::Enable/DisableRenderNode).
+ * No subclass field is ever touched from outside. See PARTICLE_PLAN.md 6.2a. */
 struct Generator {
     void      **pVtable;          // +0x00 10-slot vtable
     char       *pName;            // +0x04
