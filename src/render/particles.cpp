@@ -25,6 +25,7 @@
  */
 #include "particles.h"
 #include "generators.h"
+#include "factory.h"
 #include "com_proxy.h"
 #include "log.h"
 #include <math.h>
@@ -245,7 +246,7 @@ static void log_path_once(LONG *once, const char *what, bool direct, void *slot)
 
 void ps_fill(ParticleSystem *self)
 {
-    DWORD vtbl = (DWORD)self->pVtable;
+    DWORD vtbl = vtbl_identity(self->pVtable);
     static LONG once = 0;
     log_path_once(&once, "fill",
                   vtbl == VTBL_PARTICLE_POINT || vtbl == VTBL_PARTICLE_FACE ||
@@ -260,7 +261,7 @@ void ps_fill(ParticleSystem *self)
 
 DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev)
 {
-    DWORD vtbl = (DWORD)self->pVtable;
+    DWORD vtbl = vtbl_identity(self->pVtable);
     static LONG once = 0;
     log_path_once(&once, "draw",
                   vtbl == VTBL_PARTICLE_POINT || vtbl == VTBL_PARTICLE_FACE ||

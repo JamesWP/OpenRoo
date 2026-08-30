@@ -28,6 +28,7 @@
  *              throws further; proves the emission path, not the integration
  */
 #include "generators.h"
+#include "factory.h"
 #include "log.h"
 #include <math.h>
 
@@ -543,6 +544,10 @@ Gen_XStdEmit(XStdGenerator *self, float dt)          { xstd_gen_tick(self, dt); 
  * not write DLL addresses into the slots, it writes trampolines inside the
  * game image, so comparing slots never matches.
  *
+ * Since Stage E1 the object's +0x00 may be one of our cloned tables rather than
+ * the game VA, so the address goes through vtbl_identity() first, which maps a
+ * clone back to the game vtable it was cloned from.
+ *
  * A vtable we do not know still gets a genuine virtual call, which is what
  * keeps the dead PointGenerator / BoxGenerator classes (and anything replaced
  * later) working unchanged. */
@@ -563,7 +568,7 @@ static void log_path_once(LONG *once, const char *what, bool direct, void *slot)
 
 void sim_tick_generator(Generator *gen, float dt)
 {
-    DWORD vtbl = (DWORD)gen->pVtable;
+    DWORD vtbl = vtbl_identity(gen->pVtable);
     static LONG once = 0;
     log_path_once(&once, "generator",
                   vtbl == VTBL_GEN_STD || vtbl == VTBL_GEN_XSTD ||
@@ -578,7 +583,7 @@ void sim_tick_generator(Generator *gen, float dt)
 
 void sim_tick_environment(Environment *env, float dt)
 {
-    DWORD vtbl = (DWORD)env->pVtable;
+    DWORD vtbl = vtbl_identity(env->pVtable);
     static LONG once = 0;
     log_path_once(&once, "environment",
                   vtbl == VTBL_ENV_GRAVITY || vtbl == VTBL_ENV_MAGNET, env->pVtable);
