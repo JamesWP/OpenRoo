@@ -244,5 +244,8 @@ static_assert(sizeof(CylinderGenerator) == 0x3444, "Cyl size");
  * slot holds one of our exports, and fall back to real virtual dispatch
  * otherwise — so the dead classes, or anything we have not replaced, still
  * work exactly as before. */
+/* Slot 3 = Tick(float dt) for both Generator and Environment. */
+#define GEN_VT_TICK_SLOT 3
+
 void sim_tick_generator(Generator *gen, float dt);
 void sim_tick_environment(Environment *env, float dt);
