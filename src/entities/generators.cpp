@@ -430,79 +430,65 @@ static void cylinder_emit(CylinderGenerator *self, float dt)
     }
 }
 
-/* ─── Exports ─── */
+/* ─── One definition per class ─────────────────────────────────────────────
+ *
+ * Each of these is the single implementation of that class's tick, logging
+ * included.  Both entry paths run it: the exported vtable thunk below (when
+ * the game dispatches) and sim_tick_generator / sim_tick_environment (when we
+ * dispatch from Particle_BaseTick).  Behaviour is therefore identical
+ * whichever way the call arrives. */
 
-#define THISCALL __attribute__((thiscall))
+#define SIM_LOG_ONCE(counter) \
+    static LONG counter = 0; \
+    if (InterlockedIncrement(&counter) <= SIM_LOG_FIRST)
 
-extern "C" {
-
-__declspec(dllexport) void THISCALL
-Env_GravityTick(GravityEnvironment *self, float dt)
+static DWORD count_live(const RingBuffer *ring)
 {
-    static LONG calls = 0;
-    if (InterlockedIncrement(&calls) <= SIM_LOG_FIRST) {
-        RingBuffer *ring = self->base.pRing;
-        DWORD live = 0;
-        for (ParticleNode *n = ring->pRingHead;
-             n && n != ring->pRingCurrent; n = n->pNext)
-            live++;
+    DWORD live = 0;
+    for (ParticleNode *n = ring->pRingHead; n && n != ring->pRingCurrent; n = n->pNext)
+        live++;
+    return live;
+}
+
+static DWORD count_free(const RingBuffer *ring)
+{
+    DWORD free_nodes = 0;
+    for (ParticleNode *n = ring->pRingCurrent; n; n = n->pNext)
+        free_nodes++;
+    return free_nodes;
+}
+
+static void gravity_env_tick(GravityEnvironment *self, float dt)
+{
+    SIM_LOG_ONCE(calls)
         log_write("sim: GravityTick this=%p dt=%f live=%lu ring=%lu\n",
-                  self, dt, live, ring->dwRingCount);
-    }
+                  self, dt, count_live(self->base.pRing),
+                  self->base.pRing->dwRingCount);
     gravity_tick(self, dt);
 }
 
-__declspec(dllexport) void THISCALL
-Env_MagnetTick(MagnetEnvironment *self, float dt)
+static void magnet_env_tick(MagnetEnvironment *self, float dt)
 {
-    static LONG calls = 0;
-    if (InterlockedIncrement(&calls) <= SIM_LOG_FIRST) {
-        RingBuffer *ring = self->base.pRing;
-        DWORD live = 0;
-        for (ParticleNode *n = ring->pRingHead;
-             n && n != ring->pRingCurrent; n = n->pNext)
-            live++;
+    SIM_LOG_ONCE(calls)
         log_write("sim: MagnetTick this=%p dt=%f live=%lu ring=%lu centre=%f,%f,%f\n",
-                  self, dt, live, ring->dwRingCount,
+                  self, dt, count_live(self->base.pRing),
+                  self->base.pRing->dwRingCount,
                   self->flCentre[0], self->flCentre[1], self->flCentre[2]);
-    }
     magnet_tick(self, dt);
 }
 
-__declspec(dllexport) void THISCALL
-Gen_StdEmit(StdGenerator *self, float dt)
+static void std_gen_tick(StdGenerator *self, float dt)
 {
-    static LONG calls = 0;
-    if (InterlockedIncrement(&calls) <= SIM_LOG_FIRST) {
-        RingBuffer *ring = self->base.pRing;
-        DWORD free_nodes = 0;
-        for (ParticleNode *n = ring->pRingCurrent; n; n = n->pNext)
-            free_nodes++;
+    SIM_LOG_ONCE(calls)
         log_write("sim: StdEmit this=%p dt=%f enabled=%lu accum=%f free=%lu ring=%lu\n",
                   self, dt, self->base.dwEnabled, self->flAccumulator,
-                  free_nodes, ring->dwRingCount);
-    }
+                  count_free(self->base.pRing), self->base.pRing->dwRingCount);
     std_emit(self, dt, NULL, NULL);
 }
 
-__declspec(dllexport) void THISCALL
-Gen_CylinderEmit(CylinderGenerator *self, float dt)
+static void xstd_gen_tick(XStdGenerator *self, float dt)
 {
-    static LONG calls = 0;
-    if (InterlockedIncrement(&calls) <= SIM_LOG_FIRST)
-        log_write("sim: CylinderEmit this=%p dt=%f enabled=%lu accum=%f "
-                  "origin=%f,%f,%f scale=%f ring=%lu\n",
-                  self, dt, self->base.dwEnabled, self->flAccumulator,
-                  self->flOrigin[0], self->flOrigin[1], self->flOrigin[2],
-                  self->flScale, self->base.pRing->dwRingCount);
-    cylinder_emit(self, dt);
-}
-
-__declspec(dllexport) void THISCALL
-Gen_XStdEmit(XStdGenerator *self, float dt)
-{
-    static LONG calls = 0;
-    if (InterlockedIncrement(&calls) <= SIM_LOG_FIRST)
+    SIM_LOG_ONCE(calls)
         log_write("sim: XStdEmit this=%p dt=%f enabled=%lu posoff=%f,%f,%f "
                   "veloff=%f,%f,%f ring=%lu\n",
                   self, dt, self->base.base.dwEnabled,
@@ -512,4 +498,93 @@ Gen_XStdEmit(XStdGenerator *self, float dt)
     std_emit(&self->base, dt, self->flPosOffset, self->flVelOffset);
 }
 
+static void cyl_gen_tick(CylinderGenerator *self, float dt)
+{
+    SIM_LOG_ONCE(calls)
+        log_write("sim: CylinderEmit this=%p dt=%f enabled=%lu accum=%f "
+                  "origin=%f,%f,%f scale=%f ring=%lu\n",
+                  self, dt, self->base.dwEnabled, self->flAccumulator,
+                  self->flOrigin[0], self->flOrigin[1], self->flOrigin[2],
+                  self->flScale, self->base.pRing->dwRingCount);
+    cylinder_emit(self, dt);
+}
+
+/* ─── Exports — vtable slot 3 thunks, installed by patch.py ─── */
+
+#define THISCALL __attribute__((thiscall))
+
+extern "C" {
+
+__declspec(dllexport) void THISCALL
+Env_GravityTick(GravityEnvironment *self, float dt)  { gravity_env_tick(self, dt); }
+
+__declspec(dllexport) void THISCALL
+Env_MagnetTick(MagnetEnvironment *self, float dt)    { magnet_env_tick(self, dt); }
+
+__declspec(dllexport) void THISCALL
+Gen_StdEmit(StdGenerator *self, float dt)            { std_gen_tick(self, dt); }
+
+__declspec(dllexport) void THISCALL
+Gen_CylinderEmit(CylinderGenerator *self, float dt)  { cyl_gen_tick(self, dt); }
+
+__declspec(dllexport) void THISCALL
+Gen_XStdEmit(XStdGenerator *self, float dt)          { xstd_gen_tick(self, dt); }
+
 } // extern "C"
+
+/* ─── Direct dispatch ──────────────────────────────────────────────────────
+ *
+ * Every live Generator and Environment class is ours, so dispatching slot 3
+ * through the game's vtable only leaves this DLL and comes straight back —
+ * via a .khook trampoline, an IAT entry and an indirect call.  Recognise the
+ * class by its vtable address and call the implementation directly.
+ *
+ * NOTE it must be the *vtable* address, not the slot contents: patch.py does
+ * not write DLL addresses into the slots, it writes trampolines inside the
+ * game image, so comparing slots never matches.
+ *
+ * A vtable we do not know still gets a genuine virtual call, which is what
+ * keeps the dead PointGenerator / BoxGenerator classes (and anything replaced
+ * later) working unchanged. */
+
+#define GEN_VT_TICK 3  /* Generator/Environment vtable slot +0x0c */
+
+typedef void (THISCALL *sim_tick_fn)(void *, float);
+
+/* One line per kind, the first time through, recording which path was taken.
+ * "direct" is the point of this layer; a "virtual" line means a class we do
+ * not own is in play and the fallback did its job. */
+static void log_path_once(LONG *once, const char *what, bool direct, void *slot)
+{
+    if (InterlockedExchange(once, 1) == 0)
+        log_write("sim: %s dispatch = %s (vtbl=%p)\n",
+                  what, direct ? "direct" : "virtual", slot);
+}
+
+void sim_tick_generator(Generator *gen, float dt)
+{
+    DWORD vtbl = (DWORD)gen->pVtable;
+    static LONG once = 0;
+    log_path_once(&once, "generator",
+                  vtbl == VTBL_GEN_STD || vtbl == VTBL_GEN_XSTD ||
+                  vtbl == VTBL_GEN_CYLINDER, gen->pVtable);
+    switch (vtbl) {
+    case VTBL_GEN_STD:      std_gen_tick((StdGenerator *)gen, dt);      return;
+    case VTBL_GEN_XSTD:     xstd_gen_tick((XStdGenerator *)gen, dt);    return;
+    case VTBL_GEN_CYLINDER: cyl_gen_tick((CylinderGenerator *)gen, dt); return;
+    }
+    ((sim_tick_fn)gen->pVtable[GEN_VT_TICK])(gen, dt);  /* not ours — virtual */
+}
+
+void sim_tick_environment(Environment *env, float dt)
+{
+    DWORD vtbl = (DWORD)env->pVtable;
+    static LONG once = 0;
+    log_path_once(&once, "environment",
+                  vtbl == VTBL_ENV_GRAVITY || vtbl == VTBL_ENV_MAGNET, env->pVtable);
+    switch (vtbl) {
+    case VTBL_ENV_GRAVITY: gravity_env_tick((GravityEnvironment *)env, dt); return;
+    case VTBL_ENV_MAGNET:  magnet_env_tick((MagnetEnvironment *)env, dt);   return;
+    }
+    ((sim_tick_fn)env->pVtable[GEN_VT_TICK])(env, dt);
+}

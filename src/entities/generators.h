@@ -10,22 +10,16 @@
  * touches are asserted; table construction (Save/Load/Copy) stays game-owned.
  */
 
-/* Embedded at ParticleSystem+0x08; both Generator and Environment hold a
- * pointer to it (Generator+0x0C, Environment+0x08), installed by
- * AttachGeneratorRing (0x4483c0) / AttachEnvironmentRing (0x4484e0).
- *
- *   pRingBase ─ … ─ pRingHead ─ … ─ pRingCurrent ─ … ─ pRingTail ─╴NULL
- *                   └─── live ───┘  └───── free ──────┘
- */
-struct RingBuffer {
-    DWORD         dwRingCount;    // +0x00
-    ParticleNode *pRingBase;      // +0x04
-    ParticleNode *pRingHead;      // +0x08 oldest live particle
-    ParticleNode *pRingTail;      // +0x0c last free node
-    ParticleNode *pRingCurrent;   // +0x10 next node to emit into
-};
-static_assert(sizeof(RingBuffer) == 0x14, "RingBuffer size");
-static_assert(offsetof(RingBuffer, pRingCurrent) == 0x10, "RingBuffer layout");
+/* Class identity — see the VTBL_PARTICLE_* note in particles.h. */
+#define VTBL_GEN_STD         0x0045f094
+#define VTBL_GEN_XSTD        0x0045f0bc
+#define VTBL_GEN_CYLINDER    0x0045f0e8
+#define VTBL_ENV_GRAVITY     0x0045f110
+#define VTBL_ENV_MAGNET      0x0045f128
+
+/* RingBuffer now lives in particles.h — it is ParticleSystem::ring, and the
+ * pointer below is that same object.  AttachGeneratorRing (0x4483c0) /
+ * AttachEnvironmentRing (0x4484e0) install it. */
 
 /* Base class of every emitter.  Note +0x0C is the ring back-pointer, NOT
  * padding, and dwEnabled exists only here — Environment has no such flag. */
@@ -210,3 +204,16 @@ static_assert(offsetof(CylinderGenerator, pEmitProb)     == 0x3114, "Cyl layout"
 static_assert(offsetof(CylinderGenerator, dwPosIdx)      == 0x3434, "Cyl layout");
 static_assert(offsetof(CylinderGenerator, dwProbIdx)     == 0x3440, "Cyl layout");
 static_assert(sizeof(CylinderGenerator) == 0x3444, "Cyl size");
+
+/* ─── Internal (non-virtual) entry points ──────────────────────────────────
+ *
+ * Every live Generator and Environment class is ours (PARTICLE_PLAN.md § 4.8:
+ * Std / XStd / Cylinder, Gravity / Magnet; PointGenerator and BoxGenerator are
+ * in the binary but instantiated by no .par file).  So Particle_BaseTick's
+ * `pGenerator->vtbl[3](dt)` always left the DLL through a patched game vtable
+ * only to come straight back.  These call the implementation directly when the
+ * slot holds one of our exports, and fall back to real virtual dispatch
+ * otherwise — so the dead classes, or anything we have not replaced, still
+ * work exactly as before. */
+void sim_tick_generator(Generator *gen, float dt);
+void sim_tick_environment(Environment *env, float dt);
