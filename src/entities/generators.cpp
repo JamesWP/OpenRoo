@@ -14,7 +14,8 @@
  * *allocation* stays game-owned — we only honour the contract.
  *
  * KAROO_PARTICLE_FX modes added here:
- *   gravity — multiply flGravity x5, so particles visibly plummet
+ *   gravity  — multiply flGravity x5, so particles visibly plummet
+ *   antigrav — invert and amplify gravity (x-3): every falling effect rises
  *   nolife  — skip the flLife decrement, so nothing expires (also the
  *             ring-contract stress test: emission must stall, not corrupt)
  */
@@ -26,22 +27,36 @@
 
 /* ─── FX ─── */
 
-enum SimFx { FX_NONE = 0, FX_GRAVITY, FX_NOLIFE };
+enum SimFx { FX_NONE = 0, FX_GRAVITY, FX_NOLIFE, FX_ANTIGRAV };
 
 static SimFx sim_fx(void)
 {
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
+        const char *name = "off";
         cached = FX_NONE;
         if (GetEnvironmentVariableA("KAROO_PARTICLE_FX", buf, sizeof(buf))) {
-            if (lstrcmpiA(buf, "gravity") == 0)     cached = FX_GRAVITY;
-            else if (lstrcmpiA(buf, "nolife") == 0) cached = FX_NOLIFE;
+            if (lstrcmpiA(buf, "gravity") == 0)       { cached = FX_GRAVITY;  name = "gravity";  }
+            else if (lstrcmpiA(buf, "nolife") == 0)   { cached = FX_NOLIFE;   name = "nolife";   }
+            else if (lstrcmpiA(buf, "antigrav") == 0) { cached = FX_ANTIGRAV; name = "antigrav"; }
         }
         if (cached != FX_NONE)
-            log_write("sim: FX mode = %s\n", cached == FX_GRAVITY ? "gravity" : "nolife");
+            log_write("sim: FX mode = %s\n", name);
     }
     return (SimFx)cached;
+}
+
+/* Gravity multiplier for the current FX mode.  antigrav inverts and amplifies,
+ * so every falling effect visibly rises instead — the clearest single proof
+ * that the integration is running from this DLL and not from game code. */
+static float fx_gravity_scale(SimFx fx)
+{
+    switch (fx) {
+    case FX_GRAVITY:  return 5.0f;
+    case FX_ANTIGRAV: return -3.0f;
+    default:          return 1.0f;
+    }
 }
 
 /* ─── Shared ring/colour helpers (C2 reuses all three) ─── */
@@ -132,7 +147,7 @@ static void gravity_tick(GravityEnvironment *self, float dt)
         return;
 
     SimFx fx = sim_fx();
-    float scale = (fx == FX_GRAVITY) ? 5.0f : 1.0f;
+    float scale = fx_gravity_scale(fx);
     float gx = self->flGravity[0] * scale;
     float gy = self->flGravity[1] * scale;
     float gz = self->flGravity[2] * scale;
