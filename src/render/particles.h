@@ -7,17 +7,23 @@
  * PARTICLE_PLAN.md § 1).  Only the fields the render path touches are
  * asserted; simulation state stays game-owned. */
 
-/* Ring node, 0x2C bytes.  +0x14..+0x23 is generator-owned simulation state. */
+/* Ring node, 0x2C bytes — layout complete as of Stage C (PARTICLE_PLAN.md § 4.3).
+ * The ring is ONE NULL-terminated doubly-linked list (not circular), split into
+ * a live region [pRingHead, pRingCurrent) and a free region [pRingCurrent,
+ * pRingTail].  Generators claim at pRingCurrent; environments age and retire. */
 struct ParticleNode {
-    void         *unknown00;      // +0x00
+    ParticleNode *pPrev;          // +0x00
     ParticleNode *pNext;          // +0x04
-    float         flX, flY, flZ;  // +0x08..+0x10
-    BYTE          sim14[0x10];    // +0x14 simulation state, not read here
+    float         flX, flY, flZ;  // +0x08..+0x10 position
+    float         flVel[3];       // +0x14..+0x1c velocity
+    float         flLife;         // +0x20 seconds remaining; < 0 retires
     DWORD         dwDiffuse;      // +0x24
-    DWORD         dwShapeIndex;   // +0x28 XFace corner-table index
+    DWORD         dwShapeIndex;   // +0x28 XFace corner-table index; alloc-time only
 };
 static_assert(offsetof(ParticleNode, pNext)        == 0x04, "ParticleNode layout");
 static_assert(offsetof(ParticleNode, flX)          == 0x08, "ParticleNode layout");
+static_assert(offsetof(ParticleNode, flVel)        == 0x14, "ParticleNode layout");
+static_assert(offsetof(ParticleNode, flLife)       == 0x20, "ParticleNode layout");
 static_assert(offsetof(ParticleNode, dwDiffuse)    == 0x24, "ParticleNode layout");
 static_assert(offsetof(ParticleNode, dwShapeIndex) == 0x28, "ParticleNode layout");
 static_assert(sizeof(ParticleNode) == 0x2C, "ParticleNode size");
