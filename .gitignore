@@ -14,3 +14,4 @@ debug.gdb
 # Recordings and determinism hash logs (test artifacts)
 *.rec
 *.hash
+!tests/*.rec
