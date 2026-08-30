@@ -24,12 +24,18 @@ jjN.sav (LoadSaveFile @ 0x43b4cc, writer @ 0x43b3d0, init @ 0x43b560)
     +0x16  dword             not decoded
     +0x1a  dword             not decoded
     +0x1e  dword             not decoded (looks like score)
-    +0x22  dword             1 for every used slot
+    +0x22  dword             "slot in use" — 1 in every loadable slot, and
+                             explicitly zeroed by the empty-slot initialiser
+                             at 0x43b560. A slot with 0 here is ignored by
+                             the menu: pressing Enter does nothing.
     +0x26  dword             not decoded
 
-The level field is identified by correspondence, not yet by the reading code:
-in every shipped slot it holds a valid index (0..count-1) and the values track
-how far each save has progressed. The other fields are left untouched.
+Neither the level field nor the in-use flag is identified from the reading
+code — both come from correspondence across the shipped slots plus the
+empty-slot initialiser. Because several fields remain undecoded, the reliable
+way to make a slot loadable is --seed-from: copy a known-good slot wholesale
+and change only the level and name, so every unknown field keeps a value the
+game already accepted.
 
 The game reads all slots once at startup, so edit while it is NOT running.
 """
@@ -43,6 +49,7 @@ SAV_KEY = 0x37
 SLOT_SIZE = 0x2A
 NAME_LEN = 0x14
 OFF_LEVEL = 0x14
+OFF_IN_USE = 0x22
 EMPTY_NAME = ".........."
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -143,6 +150,18 @@ def cmd_set(args):
     path = slot_path(args.saves, args.slot)
     plain = read_slot(path)
 
+    if args.seed_from is not None:
+        if args.seed_from == args.slot:
+            sys.exit("--seed-from must name a different slot")
+        src = slot_path(args.saves, args.seed_from)
+        seed = read_slot(src)
+        if seed[OFF_IN_USE] == 0:
+            sys.exit("slot %d is itself unused (in-use flag is 0); "
+                     "seed from a slot the game can already load" % args.seed_from)
+        print("seeding from %s (level %d, name %r)"
+              % (src, seed[OFF_LEVEL], slot_name(seed)))
+        plain = seed
+
     if not args.no_backup:
         backup = path + ".bak"
         if not os.path.exists(backup):
@@ -154,11 +173,21 @@ def cmd_set(args):
     plain[OFF_LEVEL] = level
     if slot_name(plain) == EMPTY_NAME or args.name:
         set_slot_name(plain, args.name or "TEST")
+
+    was_unused = plain[OFF_IN_USE] == 0
+    if was_unused:
+        plain[OFF_IN_USE] = 1
+        print("slot was marked unused; setting the in-use flag at +0x%02x" % OFF_IN_USE)
+
     write_slot(path, plain)
 
     old_name = names[old] if old < len(names) else "<out of range>"
     print("%s: level %d (%s) -> %d (%s)  slot name %r"
           % (path, old, old_name, level, names[level], slot_name(plain)))
+    if was_unused and args.seed_from is None:
+        print("NOTE: this slot was empty and several record fields are still\n"
+              "      undecoded. If the menu will not load it, re-run with\n"
+              "      --seed-from <a slot that loads>.")
     print("Start the game, pick this save slot, and it should load that level.")
 
 
@@ -183,6 +212,9 @@ def main():
     g.add_argument("--level", type=int, help="level index")
     g.add_argument("--match", help="substring of the level name, e.g. Egypt\\\\Race")
     p.add_argument("--name", help="also set the slot name")
+    p.add_argument("--seed-from", type=int, metavar="SLOT",
+                   help="copy this loadable slot wholesale first, so every "
+                        "undecoded field keeps a value the game accepts")
     p.add_argument("--no-backup", action="store_true")
     p.set_defaults(func=cmd_set)
 
