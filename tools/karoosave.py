@@ -30,12 +30,16 @@ jjN.sav (LoadSaveFile @ 0x43b4cc, writer @ 0x43b3d0, init @ 0x43b560)
                              the menu: pressing Enter does nothing.
     +0x26  dword             not decoded
 
-Neither the level field nor the in-use flag is identified from the reading
-code — both come from correspondence across the shipped slots plus the
-empty-slot initialiser. Because several fields remain undecoded, the reliable
-way to make a slot loadable is --seed-from: copy a known-good slot wholesale
-and change only the level and name, so every unknown field keeps a value the
-game already accepted.
+Both the level field and the in-use flag are CONFIRMED IN GAME (2026-08-30):
+slot 4, seeded from slot 3 so that only the name and +0x14 differed, loaded
+Egypt\Race exactly as set. They were originally derived from correspondence
+across the shipped slots plus the empty-slot initialiser, not from the
+reading code.
+
+The remaining fields are still undecoded, so --seed-from stays the reliable
+way to prepare a slot: it copies a known-good slot wholesale and changes only
+the level and name, leaving every unknown field at a value the game has
+already accepted.
 
 The game reads all slots once at startup, so edit while it is NOT running.
 """
