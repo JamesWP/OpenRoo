@@ -4,9 +4,19 @@
  * elapsed time in seconds as a float10 on the x87 stack — both call sites
  * (0x00426E19 in UpdatePlayerCamera, 0x00426F9C in RenderGameFrame) multiply
  * the result by 1000.0 (0x0045d3d0) to get milliseconds, and RenderGameFrame
- * derives its per-frame dt by subtracting the previous frame's value.  A
- * third reference is a PUSH 0x404040 at 0x0042658b that registers it as a
- * callback, so patch.py redirects that too.
+ * derives its per-frame dt by subtracting the previous frame's value.
+ *
+ * There is a third reference to the value 0x404040, a PUSH at 0x0042658b, and
+ * it is NOT a reference to this function — it is an ambient light colour that
+ * happens to have the same numeric value:
+ *
+ *   0042658b  PUSH 0x404040               ; RGB(0x40,0x40,0x40), dark grey
+ *   00426590  PUSH 0x2                    ; D3DLIGHTSTATE_AMBIENT
+ *   00426593  CALL dword ptr [ECX + 0x60] ; slot 24 = SetLightState
+ *
+ * patch.py used to redirect it as a callback, which set the scene's ambient
+ * light to a trampoline VA and tinted every lit mesh.  See the note in
+ * patch.py where the entry was removed.
  *
  * All of the original's state (0x46c434 shift, 0x46c438 period, 0x46c444 last
  * tick, 0x46c448 accumulator, 0x46c450 previous, 0x46c440 stall counter,

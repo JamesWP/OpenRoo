@@ -34,9 +34,69 @@ static bool fx_half(void)
     return cached != 0;
 }
 
+/* KAROO_MESH_DIAG=1 — dump the pipeline state the first time a mesh is drawn.
+ *
+ * The mesh FVF (0x212 = XYZ|NORMAL|TEX2) carries no vertex colour, so a mesh
+ * that comes out tinted is being coloured by the lighting/material/texture
+ * state, none of which this file sets.  Rather than theorise about which, read
+ * them all off one headless run. */
+static void mesh_diag(IDirect3DDevice3 *dev, DWORD flags)
+{
+    static LONG once = 0;
+    char buf[8];
+    if (!GetEnvironmentVariableA("KAROO_MESH_DIAG", buf, sizeof(buf)) || buf[0] == '0')
+        return;
+    if (InterlockedExchange(&once, 1) != 0)
+        return;
+
+    static const struct { D3DRENDERSTATETYPE rs; const char *name; } rstates[] = {
+        { D3DRENDERSTATE_SHADEMODE,       "SHADEMODE"       },
+        { D3DRENDERSTATE_SRCBLEND,        "SRCBLEND"        },
+        { D3DRENDERSTATE_DESTBLEND,       "DESTBLEND"       },
+        { D3DRENDERSTATE_TEXTUREMAPBLEND, "TEXTUREMAPBLEND" },
+        { D3DRENDERSTATE_CULLMODE,        "CULLMODE"        },
+        { D3DRENDERSTATE_ALPHABLENDENABLE,"ALPHABLENDENABLE"},
+        { D3DRENDERSTATE_FOGENABLE,       "FOGENABLE"       },
+        { D3DRENDERSTATE_FOGCOLOR,        "FOGCOLOR"        },
+        { D3DRENDERSTATE_SPECULARENABLE,  "SPECULARENABLE"  },
+        { D3DRENDERSTATE_COLORKEYENABLE,  "COLORKEYENABLE"  },
+        { D3DRENDERSTATE_TEXTUREFACTOR,   "TEXTUREFACTOR"   },
+        { D3DRENDERSTATE_AMBIENT,         "AMBIENT"         },
+    };
+    for (unsigned i = 0; i < sizeof rstates / sizeof rstates[0]; i++) {
+        DWORD v = 0xdeadbeef;
+        HRESULT hr = dev->GetRenderState(rstates[i].rs, &v);
+        log_write("diag: rs %-17s = %08lX (hr=%08lX)\n", rstates[i].name, v, hr);
+    }
+
+    static const struct { D3DTEXTURESTAGESTATETYPE ts; const char *name; } tstates[] = {
+        { D3DTSS_COLOROP,   "COLOROP"   },
+        { D3DTSS_COLORARG1, "COLORARG1" },
+        { D3DTSS_COLORARG2, "COLORARG2" },
+        { D3DTSS_ALPHAOP,   "ALPHAOP"   },
+        { D3DTSS_TEXCOORDINDEX, "TEXCOORDINDEX" },
+    };
+    for (unsigned i = 0; i < sizeof tstates / sizeof tstates[0]; i++) {
+        DWORD v = 0xdeadbeef;
+        HRESULT hr = dev->GetTextureStageState(0, tstates[i].ts, &v);
+        log_write("diag: ts0 %-14s = %08lX (hr=%08lX)\n", tstates[i].name, v, hr);
+    }
+
+    DWORD lmat = 0xdeadbeef, lamb = 0xdeadbeef;
+    HRESULT hr1 = dev->GetLightState(D3DLIGHTSTATE_MATERIAL, &lmat);
+    HRESULT hr2 = dev->GetLightState(D3DLIGHTSTATE_AMBIENT,  &lamb);
+    IDirect3DTexture2 *tex = NULL;
+    HRESULT hr3 = dev->GetTexture(0, &tex);
+    log_write("diag: lightstate MATERIAL=%08lX (hr=%08lX) AMBIENT=%08lX (hr=%08lX) "
+              "tex0=%p (hr=%08lX) drawflags=%02lX\n",
+              lmat, hr1, lamb, hr2, (void *)tex, hr3, flags);
+}
+
 static HRESULT draw_mesh(CFaktMesh *mesh, IDirect3DDevice3 *dev, DWORD frame,
                          DWORD flags, const char *name)
 {
+    mesh_diag(dev, flags);
+
     frame &= 0xffff;
     if (frame >= mesh->wFrameCount)
         frame = 0;
