@@ -162,19 +162,30 @@ static DWORD face_draw(FaceParticleSystem *self, IDirect3DDevice3 *dev)
     return self->nVertexCount / 6;
 }
 
-/* Two-pass draw: colour layer with SRCBLEND=SRCCOLOR, alpha layer with
- * SRCBLEND=SRCALPHA, original src blend restored afterwards. */
+/* Two-pass draw, once per face winding: the original saves render state 0x16
+ * (D3DRENDERSTATE_CULLMODE = 22), draws with D3DCULL_CCW (3), draws again with
+ * D3DCULL_CW (2), then restores the saved value — 0044eb9f/0044eba9/0044ebcd/
+ * 0044ebf4.  That is what makes an XFace billboard two-sided: each quad is
+ * rasterised for both windings, so a particle whose corner table has rotated
+ * past edge-on is still drawn.
+ *
+ * This was previously written against D3DRENDERSTATE_SRCBLEND (19) with
+ * D3DBLEND_SRCCOLOR/D3DBLEND_SRCALPHA — a misreading of 0x16 as a blend state.
+ * The values happened to be 3 and 2 in the original, which is why it looked
+ * plausible; D3DBLEND_SRCALPHA is in fact 5.  The effect was that cull mode was
+ * never toggled (rotating XFace particles, e.g. torch flames, vanished for good
+ * once their winding flipped) while the global source blend factor was stomped. */
 static DWORD xface_draw(XFaceParticleSystem *self, IDirect3DDevice3 *dev)
 {
     DWORD saved = 0;
-    dev->GetRenderState(D3DRENDERSTATE_SRCBLEND, &saved);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCCOLOR);
+    dev->GetRenderState(D3DRENDERSTATE_CULLMODE, &saved);
+    dev->SetRenderState(D3DRENDERSTATE_CULLMODE, D3DCULL_CCW);
     dev->DrawPrimitive(D3DPT_TRIANGLELIST, PARTICLE_FVF,
                        self->pVerts, self->nVertexCount, 0);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
+    dev->SetRenderState(D3DRENDERSTATE_CULLMODE, D3DCULL_CW);
     HRESULT hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, PARTICLE_FVF,
                                     self->pVerts, self->nVertexCount, 0);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, saved);
+    dev->SetRenderState(D3DRENDERSTATE_CULLMODE, saved);
     static DrawLogState st;
     log_draw(&st, "XFaceDraw", self, dev, self->nVertexCount, hr);
     return self->nVertexCount / 6;
