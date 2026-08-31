@@ -18,7 +18,7 @@ Because the bug is intermittent, a single clean run proves nothing.  To measure
 a crash rate, loop it and count:
 
     for i in $(seq 20); do
-        bash launch.sh --headless --auto-exit 40 >/dev/null 2>&1
+        bash launch.sh --skip-launcher --auto-exit 40 >/dev/null 2>&1
         python3 tools/crashcheck.py --quiet; echo "run $i -> $?"
     done
 """

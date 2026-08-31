@@ -3,12 +3,17 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 DEBUG=0
-HEADLESS=0
+SKIP_LAUNCHER=0
 AUTO_EXIT_SECS=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --debug)    DEBUG=1 ;;
-    --headless) HEADLESS=1 ;;
+    # Auto-dismiss the launcher dialog so the run needs nobody at the keyboard.
+    # This is NOT headless — the game still opens a window and renders. The
+    # dialog is the only place the video mode is chosen, so a run that skips it
+    # takes the mode from Karoo.cfg; see the default-config block below.
+    --skip-launcher) SKIP_LAUNCHER=1 ;;
+    --headless) SKIP_LAUNCHER=1 ;;   # deprecated alias; it was never headless
     --auto-exit)
       shift
       [[ $# -gt 0 ]] || { echo "ERROR: --auto-exit requires a seconds argument" >&2; exit 1; }
@@ -39,6 +44,17 @@ roll_log() {
   > "${base}"
 }
 
+# Karoo.cfg is gitignored, so a fresh clone or git worktree has none. Without it
+# Game::Load falls back to FUN_0041d520, which sets sound and gamma defaults but
+# leaves the video mode index and adapter GUID at their zero-initialised values —
+# so the game silently comes up in whatever mode DirectDraw enumerates first.
+# Install a known-good config instead. Only when absent: never overwrite a
+# config the player has since changed through the launcher.
+if [[ ! -f Karoo.cfg ]]; then
+  echo "Karoo.cfg missing — installing Karoo.cfg.default (1024x768x32)"
+  cp Karoo.cfg.default Karoo.cfg
+fi
+
 roll_log JJ.log
 roll_log StreamSoundBuffer.log
 roll_log steam-123456.log
@@ -58,7 +74,7 @@ PROTON_RUN=(
   SteamGameId=123456 SteamAppId=123456
   # Stock Wine ddraw — forced builtin rather than relying on load order.
   WINEDLLOVERRIDES="ddraw=b"
-  KAROO_HEADLESS="$HEADLESS"
+  KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
   KAROO_D3D_PROXY="${KAROO_D3D_PROXY:-1}"
   KAROO_D3D_FX="${KAROO_D3D_FX:-}"
   KAROO_FAKTMESH_FX="${KAROO_FAKTMESH_FX:-}"

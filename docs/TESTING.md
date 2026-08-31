@@ -13,6 +13,10 @@ python3 tools/replaytest.py NAME         # run one
 Exit code 0 means every selected recording behaved exactly as `manifest.json`
 says it should. Non-zero means one did not, and the output names the field.
 
+A replay is unattended, not headless: the harness passes `--skip-launcher`, so
+nobody has to click through the launcher dialog, but the game still opens a
+window and renders each run on screen. These tests need a display.
+
 ## What is here
 
 | Path | What it is |
@@ -189,9 +193,9 @@ with `pkill -f Karoo.exe; pkill -f wineserver`.
 ### `bombstart-crash`
 
 Named for the CRASH.md guard-page fault it used to reproduce: before that bug
-was fixed, replaying this recording headless crashed at frame 797 *every time*,
+was fixed, replaying this recording unattended crashed at frame 797 *every time*,
 while the bug was otherwise intermittent (~1 run in 5) and had never been caught
-headless at all. That is what a deterministic replay buys.
+caught by an unattended run at all. That is what a deterministic replay buys.
 
 The crash is now fixed (`Game::RenderSceneObjects` left `textureCoords[1]`
 uninitialised), so the recording runs to its own end and the entry stands as a

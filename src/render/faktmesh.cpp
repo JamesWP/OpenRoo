@@ -39,7 +39,7 @@ static bool fx_half(void)
  * The mesh FVF (0x212 = XYZ|NORMAL|TEX2) carries no vertex colour, so a mesh
  * that comes out tinted is being coloured by the lighting/material/texture
  * state, none of which this file sets.  Rather than theorise about which, read
- * them all off one headless run. */
+ * them all off one unattended run. */
 static void mesh_diag(IDirect3DDevice3 *dev, DWORD flags)
 {
     static LONG once = 0;

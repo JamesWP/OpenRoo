@@ -12,7 +12,7 @@
  *     diffuse.  These are integrated against dt by our own generator and
  *     environment ticks, so they are the most dt-sensitive state in the game
  *     and — unlike the player — they are live on the main menu, which is the
- *     only scene `launch.sh --headless` currently reaches.
+ *     only scene `launch.sh --skip-launcher` currently reaches.
  *   - Game fields, when GameGlobal (0x0046c498) is non-null.  These are the
  *     REPLAY_PLAN.md assertion surface.  Stage A2 only needs them to be
  *     *stable*, not correctly interpreted — the gem/score reading is still

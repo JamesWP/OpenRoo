@@ -18,7 +18,7 @@ Exit code is the point: 0 = every selected recording behaved as catalogued,
 
 Why the harness does the asserting.  The plan called for KAROO_ASSERT inside
 the DLL setting the process exit code.  Stage A established that
-`launch.sh --headless` exits non-zero whatever the game returns — the code
+`launch.sh --skip-launcher` exits non-zero whatever the game returns — the code
 comes from the game's own WinMain after the posted window close — so a
 DLL-set exit code cannot reach the caller.  The DLL therefore only writes
 KAROO_STATE_DUMP, and the comparison lives here, where the expected values sit
@@ -158,7 +158,7 @@ def launch(entry, cfg, rec_path, dump_path, hash_path):
     env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
     env["KAROO_SEED"] = str(cfg.get("seed", ""))
     cmd = ["bash", os.path.join(REPO, "launch.sh"),
-           "--headless", "--auto-exit", str(cfg.get("timeout", 120))]
+           "--skip-launcher", "--auto-exit", str(cfg.get("timeout", 120))]
     # launch.sh exits non-zero regardless of how the run went (Stage A note),
     # so its return code is deliberately ignored; crashcheck.py and the state
     # dump are the oracles.

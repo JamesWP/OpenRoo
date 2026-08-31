@@ -43,7 +43,7 @@
 #include "log.h"
 #include "determinism.h"
 #include "gamestate.h"
-#include "headless.h"
+#include "launcher.h"
 #include "record.h"
 #include <stdlib.h>
 
@@ -143,7 +143,7 @@ double clock_seconds(void)
     if (record_replaying() && record_replay_finished() && !g_replay_ended) {
         g_replay_ended = true;
         gamestate_dump("replay-finished");
-        headless_end_run("replay finished");
+        launcher_end_run("replay finished");
     }
 
     if (g_fixed_dt > 0.0) {
