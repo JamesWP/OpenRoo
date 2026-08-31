@@ -64,6 +64,50 @@ static_assert(offsetof(QuadVerts, pData)   == 0x128, "QuadVerts layout");
 
 #define g_dwWorldIdentity (*(D3DMATRIX *)0x004e0440)
 
+/* KAROO_QUAD_DUMP=<path> — write every vertex of the first frame's quad batch
+ * to a file, once.  FVF 0x1e2 is a 32-byte vertex: xyz(12) + reserved(4) +
+ * diffuse(4) + specular(4) + uv(8).  This is how the tile-side geometry is
+ * mapped back onto the level grid without guessing from file statistics. */
+static void quad_dump(const void *data, DWORD quads)
+{
+    static LONG calls = 0;
+    char path[MAX_PATH];
+    if (!GetEnvironmentVariableA("KAROO_QUAD_DUMP", path, sizeof(path)))
+        return;
+    /* Dump the 200th gated draw, not the first: if the buffer is filled
+     * lazily, the first frame would show an empty one. */
+    if (InterlockedIncrement(&calls) != 200)
+        return;
+    log_write("quadbatch: dumping at call 200, pData=%p quads=%lu\n", data, quads);
+
+    HANDLE f = CreateFileA(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+                           FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f == INVALID_HANDLE_VALUE) {
+        log_write("quadbatch: dump could not open %s (err=%lu)\n",
+                  path, GetLastError());
+        return;
+    }
+    const BYTE *v = (const BYTE *)data;
+    char line[300];
+    DWORD wr;
+    int n = wsprintfA(line, "raw dump pData=%p quads=%lu\r\n", data, quads);
+    WriteFile(f, line, n, &wr, NULL);
+    /* Raw hex of the whole declared buffer (quads*6*32 bytes), 32 bytes per
+     * line = one vertex per line, so the analysis can find the geometry
+     * wherever it actually sits rather than assuming the FVF offsets. */
+    DWORD total = quads * 6 * 32;
+    for (DWORD off = 0; off < total; off += 32) {
+        n = 0;
+        n += wsprintfA(line + n, "%06lX ", off);
+        for (int b = 0; b < 32; b++)
+            n += wsprintfA(line + n, "%02X", v[off + b]);
+        n += wsprintfA(line + n, "\r\n");
+        WriteFile(f, line, n, &wr, NULL);
+    }
+    CloseHandle(f);
+    log_write("quadbatch: dumped %lu quads to %s\n", quads, path);
+}
+
 enum QuadFxMode { QUAD_FX_OFF = 0, QUAD_FX_NOALPHA, QUAD_FX_NODRAW };
 
 static QuadFxMode quad_fx(void)
@@ -138,6 +182,7 @@ Direct3D_DrawQuadBatch(QuadVerts *verts, void *game, Direct3D *d3d)
             if (*(DWORD *)(obj + LOBJ_OFF_DRAWKIND) == 2) {
                 d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD,
                                            &g_dwWorldIdentity);
+                quad_dump(verts->pData, verts->dwQuads);
                 HRESULT hr = S_OK;
                 if (quad_fx() != QUAD_FX_NODRAW)
                     hr = d3d->pDevice->DrawPrimitive(
