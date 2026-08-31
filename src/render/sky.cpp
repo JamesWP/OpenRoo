@@ -42,20 +42,22 @@
  *      (0x08 + 0x18 = 0x20 is each one's pTexture2).
  *   3. EBP is loaded from the stack slot holding `this`.
  *
- * ── One thing deliberately NOT reproduced ──────────────────────────────────
- * The decompile contains `uStack_9c = uStack_4`, which reads as storing an
- * uninitialised stack value into element _41 of the second matrix.  That is a
- * decompiler artifact, not real code: the original interleaves the argument
- * pushes for MatrixBuildIdentity with `flds 0x20(%esp)` / `mov 0x30(%esp),%eax`
- * (0x43cc75, 0x43cc8b), so ESP moves between the lea and the stores and Ghidra
- * mis-assigns the slots.  A real garbage _41 would translate the sky visibly
- * every frame, which does not happen.
+ * ── A wrong call I made here, and the correction ──────────────────────────
+ * The decompile renders the translation write as `uStack_9c = uStack_4`, which
+ * looks like an uninitialised stack value landing in _41 of the second matrix.
+ * I first dismissed it as a decompiler artifact and dropped it.  That produced
+ * a visible skybox glitch (James spotted it) while the replay tests still
+ * passed -- they assert game state, not pixels.
  *
- * The original then multiplies the Y-rotation by that identity matrix.  That
- * product is bit-identical to the rotation itself (x*1.0 and +0.0 are exact
- * for finite values, and the accumulator starts at zero), so the rotation is
- * written straight into WorldMatrix rather than running a 4x4 multiply whose
- * result cannot differ.
+ * It is real.  The original loads three consecutive dwords from the caller's
+ * by-value struct (0x43ccd8/e6/f3: [esp+0xe4], [esp+0xe8], [esp+0xec]) and
+ * stores them at offsets 0x30/0x34/0x38 of the matrix built at esp+0x1c --
+ * i.e. _41/_42/_43, the translation row.  Ghidra mis-assigned the slots
+ * because ESP moves between the lea and the stores.
+ *
+ * So the world matrix is Yrot * Translate(centre): the skybox is translated to
+ * follow the viewer.  Dropping the translation leaves the sky pinned at the
+ * world origin, which is exactly the glitch.
  *
  * Note the rotation is the transpose of the usual D3D Y-rotation: the original
  * sets _13 = +sin and _31 = -sin (from afStack_8c[2] and the -0x6c slot).
@@ -90,10 +92,8 @@ static bool fx_one_quad(void)
 
 extern "C" __declspec(dllexport) float * __attribute__((thiscall))
 Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
-                      DWORD arg1, DWORD arg2, DWORD arg3)
+                      float flCentreX, float flCentreY, float flCentreZ)
 {
-    (void)arg1; (void)arg2; (void)arg3;  /* popped, never read — see header */
-
     dev->SetRenderState(D3DRENDERSTATE_ZENABLE, 0);
 
     const float c = (float)cos(self->flYawAngle);
@@ -106,6 +106,15 @@ Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
     m[5]  = 1.0f;               /* _22      */
     m[8]  = -s;  m[10] = c;     /* _31, _33 */
     m[15] = 1.0f;               /* _44      */
+
+    /* Translation row: the three by-value floats the caller passes.  The
+     * original writes them into _41/_42/_43 of the second matrix and then
+     * computes Yrot * T; since Yrot's last row is (0,0,0,1) and T's upper 3x3
+     * is identity, that product is exactly this rotation with the translation
+     * row copied in, so it is written directly. */
+    m[12] = flCentreX;          /* _41 */
+    m[13] = flCentreY;          /* _42 */
+    m[14] = flCentreZ;          /* _43 */
 
     dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)m);
 
