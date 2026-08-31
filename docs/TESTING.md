@@ -29,10 +29,10 @@ Enter. If `SavedGames/` holds a different set of slots than it did at record
 time, those keypresses land somewhere else and the run diverges immediately —
 a broken fixture, not a replay bug.
 
-`karoosave.py set --seed-from` prepares a slot by hand, but it is not
-reproducible: the result depends on which slot you seeded from and on what that
-slot happened to contain. So a recording does not describe its save state, it
-**carries** it:
+`karoosave.py write` builds a slot from scratch, but pointing the harness at a
+command rather than at bytes is not reproducible: a later change to the tool's
+defaults would silently change what the recording loads. So a recording does
+not describe its save state, it **carries** it:
 
 ```bash
 python3 tools/karoosave.py snapshot tests/saves/<name>   # freeze SavedGames/
@@ -62,13 +62,15 @@ with the header rather than reporting a diff that was never a real comparison.
 
    ```bash
    python3 tools/karoosave.py levels Egypt
-   python3 tools/karoosave.py set 4 --match 'Egypt\Race' --seed-from 2
+   python3 tools/karoosave.py write --slot 4 --match 'Egypt\Race' --all
    python3 tools/karoosave.py snapshot tests/saves/egypt-race
    ```
 
-   `--seed-from` copies a slot the game already loads, so the still-undecoded
-   save fields keep values it accepts. Edit saves only while the game is **not**
-   running — it reads every slot once at startup.
+   The save record is fully decoded, so `write` synthesises the slot outright;
+   `--all` writes every other slot as an empty slot and deletes anything else
+   in `SavedGames/`, so the starting state is exactly what you asked for rather
+   than whatever the directory happened to hold. Edit saves only while the game
+   is **not** running — it reads every slot once at startup.
 
 2. **Record.** This launches the game windowed with the fixed clock and fixed
    seed already set, so what you record is replayable:
