@@ -4,15 +4,7 @@
 #include <ddraw.h>
 #include <d3d.h>
 #include <stddef.h>
-
-/* SceneTexture — the 28-byte extended LoadedImage variant (HOOKS.md
- * § LoadedImage struct — two sizes).  Only pTexture2 is used here. */
-struct SceneTextureRec {
-    BYTE               base[0x18];  // +0x00 LoadedImage base
-    IDirect3DTexture2 *pTexture2;   // +0x18
-};
-static_assert(sizeof(SceneTextureRec) == 0x1c, "SceneTexture stride mismatch");
-static_assert(offsetof(SceneTextureRec, pTexture2) == 0x18, "SceneTexture layout");
+#include "texture.h"   /* SceneTexture (28-byte extended LoadedImage) */
 
 /* SkyBackground — the object DrawSkyBackground (0x43cc00) is called on.
  * Derived from the EBP-relative offsets in the original (0x20 textures,
@@ -21,7 +13,7 @@ static_assert(offsetof(SceneTextureRec, pTexture2) == 0x18, "SceneTexture layout
 struct SkyBackground {
     DWORD           field0;         // +0x000
     float           flYawAngle;     // +0x004 radians; drives the Y rotation
-    SceneTextureRec Textures[6];    // +0x008 .. +0x0b0
+    SceneTexture    Textures[6];    // +0x008 .. +0x0b0 (stride 0x1c)
     BYTE            QuadVerts[6 * 0x80]; // +0x0b0 .. +0x3b0  6 quads, 4 verts, FVF 0x1e2
     float           WorldMatrix[16];     // +0x3b0 .. +0x3f0
 };
