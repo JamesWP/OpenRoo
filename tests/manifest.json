@@ -60,6 +60,38 @@
       "notes": "Named for the crash it used to reproduce; kept under that name because tests/README.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced byte-identical 1036-frame hash logs and identical end-state dumps."
     },
     {
+      "name": "castle-something",
+      "file": "castle-something.rec",
+      "saves": "tests/saves/castle-something",
+      "level": "Castle\\Something",
+      "description": "Hand-played by James, 2026-08-31. Navigates the main menu, loads save slot 4 (Castle\\Something), collects 8 of the 41 items and quits about 11 seconds in without completing the level (8/40 gems, no foes killed, vitality down to 70 from damage taken). 1033 records over 1035 frames, 439 with a key held. Covers the menu, the save-slot load and the first seconds of Castle-theme gameplay; the level is never completed, so completed_a_level is false and there is no at_completion block. This is the only recording that exercises DrawQuadBatch's dwType==2 draw path (116 quads per frame) -- Forest\\BombStart and Water\\Water01 have no such object, so a change to karoo-hooks/quadbatch.cpp is only covered here.",
+      "scenario": "Hand-played by James, 2026-08-31. Navigates the main menu, loads save slot 4 (Castle\\Something), collects a few gems and then quits without completing the level. Covers the menu, the save-slot load and the first seconds of Castle-theme gameplay; the level is never completed, so there is no at_completion block. Captured to give the Castle theme's content coverage the Forest and Water recordings lack.",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 1035,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 8,
+          "gems_required": 40,
+          "foes_killed": 0,
+          "items_collected": 8,
+          "items_available": 41,
+          "items_bonus_blocked": 0,
+          "vitality": 70,
+          "lives": 3,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 120,
+          "elapsed_ms": 11312,
+          "level_complete": 0,
+          "death_cause": 1,
+          "completed_a_level": false
+        }
+      },
+      "notes": "Captured 1033 frames. No end-state assertions yet \u2014 run `replaytest.py --bless castle-something` once a replay is trusted."
+    },
+    {
       "name": "water01",
       "file": "water01.rec",
       "saves": "tests/saves/water01",
