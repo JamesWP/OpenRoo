@@ -404,8 +404,32 @@ static HRESULT WINAPI NOINLINE wd3_GetLightState(IDirect3DDevice3 *s, D3DLIGHTST
     { return real_dev3(s)->GetLightState(lst, val); }
 static HRESULT WINAPI NOINLINE wd3_SetLightState(IDirect3DDevice3 *s, D3DLIGHTSTATETYPE lst, DWORD val)
     { return real_dev3(s)->SetLightState(lst, val); }
+/* KAROO_XFORM_DUMP=1 — log every WORLD transform the game sets, as raw float
+ * bits.  This captures a world matrix built by a not-yet-replaced function as
+ * ground truth, so a reimplementation can be checked against what the original
+ * actually produced rather than against a reading of the decompiler's stack
+ * model.  Capped; WORLD only. */
+static void xform_dump(D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
+{
+    static int on = -1;
+    if (on < 0) {
+        char b[8];
+        on = (GetEnvironmentVariableA("KAROO_XFORM_DUMP", b, sizeof b) && b[0] != '0');
+    }
+    if (!on || tst != D3DTRANSFORMSTATE_WORLD || mat == NULL)
+        return;
+    static LONG n = 0;
+    if (InterlockedIncrement(&n) > 40)
+        return;
+    const DWORD *m = (const DWORD *)mat;
+    log_write("xform: WORLD %08lX %08lX %08lX %08lX | %08lX %08lX %08lX %08lX | "
+              "%08lX %08lX %08lX %08lX | %08lX %08lX %08lX %08lX\n",
+              m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7],
+              m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]);
+}
+
 static HRESULT WINAPI NOINLINE wd3_SetTransform(IDirect3DDevice3 *s, D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
-    { return real_dev3(s)->SetTransform(tst, mat); }
+    { xform_dump(tst, mat); return real_dev3(s)->SetTransform(tst, mat); }
 static HRESULT WINAPI NOINLINE wd3_GetTransform(IDirect3DDevice3 *s, D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
     { return real_dev3(s)->GetTransform(tst, mat); }
 static HRESULT WINAPI NOINLINE wd3_MultiplyTransform(IDirect3DDevice3 *s, D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
