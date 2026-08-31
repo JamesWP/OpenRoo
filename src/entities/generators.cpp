@@ -31,6 +31,7 @@
 #include "factory.h"
 #include "log.h"
 #include <math.h>
+#include <stdlib.h>
 
 #define SIM_LOG_FIRST 8
 
@@ -459,12 +460,68 @@ static DWORD count_free(const RingBuffer *ring)
     return free_nodes;
 }
 
+/* --- Steady-state instrumentation (KAROO_SIM_STATS=N) ---------------------
+ *
+ * CLAUDE.md's rule for simulation code: log live/free and confirm they reach a
+ * steady state rather than climbing to the buffer size or collapsing to zero.
+ * Set KAROO_SIM_STATS to a tick interval (e.g. 60) and every environment logs
+ * its ring occupancy every N ticks, keyed by object address so several systems
+ * in one scene stay distinguishable.  Off (0) unless the variable is set. */
+static DWORD stats_interval(void)
+{
+    static LONG cached = -1;
+    if (cached < 0) {
+        char buf[16];
+        LONG v = 0;
+        if (GetEnvironmentVariableA("KAROO_SIM_STATS", buf, sizeof(buf)))
+            v = (LONG)strtol(buf, NULL, 10);
+        if (v < 0)
+            v = 0;
+        InterlockedExchange(&cached, v);
+        if (v > 0)
+            log_write("sim: stats every %ld ticks\n", v);
+    }
+    return (DWORD)cached;
+}
+
+static void stats_tick(const char *what, void *self, const RingBuffer *ring, LONG *counter, float dt)
+{
+    DWORD every = stats_interval();
+    if (every == 0)
+        return;
+    LONG n = InterlockedIncrement(counter);
+    if ((DWORD)n % every)
+        return;
+    /* Also report how many of the live nodes are already expired (flLife < 0).
+     * A healthy ring retires those the same tick they expire, so this should
+     * hover near zero; a live region full of expired nodes means retirement
+     * has stopped and the ring can never recycle. */
+    DWORD expired = 0, oldest_seen = 0;
+    float minlife = 0.0f, maxlife = 0.0f;
+    bool first = true;
+    for (ParticleNode *nd = ring->pRingHead; nd && nd != ring->pRingCurrent; nd = nd->pNext) {
+        if (nd->flLife < 0.0f)
+            expired++;
+        if (first || nd->flLife < minlife) minlife = nd->flLife;
+        if (first || nd->flLife > maxlife) maxlife = nd->flLife;
+        first = false;
+        if (++oldest_seen > 4096) break;   /* cycle guard */
+    }
+    log_write("stats: %s this=%p tick=%ld dt=%.9f live=%lu free=%lu ring=%lu expired=%lu "
+              "life=[%f..%f] head=%p cur=%p tail=%p\n",
+              what, self, n, dt, count_live(ring), count_free(ring), ring->dwRingCount,
+              expired, minlife, maxlife,
+              ring->pRingHead, ring->pRingCurrent, ring->pRingTail);
+}
+
 static void gravity_env_tick(GravityEnvironment *self, float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: GravityTick this=%p dt=%f live=%lu ring=%lu\n",
                   self, dt, count_live(self->base.pRing),
                   self->base.pRing->dwRingCount);
+    static LONG ticks = 0;
+    stats_tick("gravity", self, self->base.pRing, &ticks, dt);
     gravity_tick(self, dt);
 }
 
@@ -475,6 +532,8 @@ static void magnet_env_tick(MagnetEnvironment *self, float dt)
                   self, dt, count_live(self->base.pRing),
                   self->base.pRing->dwRingCount,
                   self->flCentre[0], self->flCentre[1], self->flCentre[2]);
+    static LONG ticks = 0;
+    stats_tick("magnet", self, self->base.pRing, &ticks, dt);
     magnet_tick(self, dt);
 }
 

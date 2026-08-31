@@ -693,7 +693,19 @@ static ULONG   WINAPI NOINLINE wm3_AddRef(IDirect3DMaterial3 *s)
 static ULONG   WINAPI NOINLINE wm3_Release(IDirect3DMaterial3 *s)
     { return real_mat3(s)->Release(); }
 static HRESULT WINAPI NOINLINE wm3_SetMaterial(IDirect3DMaterial3 *s, D3DMATERIAL *mat)
-    { return real_mat3(s)->SetMaterial(mat); }
+{
+    /* KAROO_MESH_DIAG: the lit mesh path (FVF 0x212, flags 0x08) takes its
+     * colour from the material, so log what the game actually sets. */
+    static LONG logged = 0;
+    if (mat && InterlockedIncrement(&logged) <= 8)
+        log_write("diag: SetMaterial diffuse=%.3f,%.3f,%.3f,%.3f "
+                  "ambient=%.3f,%.3f,%.3f emissive=%.3f,%.3f,%.3f ramp=%lu\n",
+                  mat->dcvDiffuse.r, mat->dcvDiffuse.g, mat->dcvDiffuse.b, mat->dcvDiffuse.a,
+                  mat->dcvAmbient.r, mat->dcvAmbient.g, mat->dcvAmbient.b,
+                  mat->dcvEmissive.r, mat->dcvEmissive.g, mat->dcvEmissive.b,
+                  mat->dwRampSize);
+    return real_mat3(s)->SetMaterial(mat);
+}
 static HRESULT WINAPI NOINLINE wm3_GetMaterial(IDirect3DMaterial3 *s, D3DMATERIAL *mat)
     { return real_mat3(s)->GetMaterial(mat); }
 static HRESULT WINAPI NOINLINE wm3_GetHandle(IDirect3DMaterial3 *s, IDirect3DDevice3 *dev, D3DMATERIALHANDLE *handle)
