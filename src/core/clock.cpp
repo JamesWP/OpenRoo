@@ -40,7 +40,27 @@
 static bool      g_started;      /* first-call flag           (was 0x4645a4) */
 static DWORD     g_last;         /* previous shifted tick     (was 0x46c444) */
 static double    g_accum;        /* elapsed seconds           (was 0x46c448) */
-static double    g_prev;         /* previous returned value   (was 0x46c450) */
+/* NOT a DLL-local, unlike every other field above.
+ *
+ * RenderGameFrame derives its per-frame dt by reading this global *itself*,
+ * before calling us:
+ *
+ *   00426f8c  FLD   double ptr [0x0046c450]   ; previous frame's seconds
+ *   00426f92  FMUL  1000.0
+ *   00426f98  FSTP  [ESP+0x20]
+ *   00426f9c  CALL  0x00404040                ; now
+ *   00426fa1  FMUL  1000.0
+ *   00426fab  FSUB  [ESP+0x20]                ; dt = now - prev
+ *
+ * So it is shared state, not clock-private, and it has to stay at its game
+ * address.  Holding it in a DLL static left 0x0046c450 at 0.0 for the whole
+ * run, making every consumer's "delta" the absolute elapsed time instead —
+ * growing without bound (measured: 0.6s at 1s in, 57s at 60s in).
+ *
+ * get_xrefs_to confirms this is the only one of the clock's globals with an
+ * outside reader: 0x46c434/438/440/444/448 are touched solely by 0x404040 and
+ * its initialiser 0x403fa0, and stay local here. */
+#define g_prev (*(double *)0x0046c450)
 static int       g_same;         /* identical-result run      (was 0x46c440) */
 static BYTE      g_shift;        /* frequency shift           (was 0x46c434) */
 static double    g_period;       /* seconds per shifted tick  (was 0x46c438) */
@@ -120,6 +140,7 @@ double clock_seconds(void)
         /* Virtual clock.  First call returns 0.0, as the original does. */
         if (!g_started) { g_started = true; return g_accum; }
         g_accum += g_fixed_dt;
+        g_prev = g_accum;   /* keep RenderGameFrame's dt source current */
         return g_accum;
     }
 
