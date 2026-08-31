@@ -150,8 +150,46 @@ def wait_for_quiet(timeout=60):
     return False
 
 
+# Presentation vsync, and why the harness turns it off.
+#
+# A replay runs on the virtual clock (KAROO_FIXED_DT), so no part of the game
+# paces itself against wall time — the loop is uncapped as far as the game is
+# concerned.  Presentation is not: the flip blocks on the display refresh, which
+# pinned every run at the monitor's rate (measured: 600 frames per 10.05 s wall
+# = 59.7 fps) and made a replay cost about as long as it took to play.
+#
+# The wait is below Wine — passing DDFLIP_NOVSYNC through the ddraw proxy was
+# tried and changed nothing — so these are the driver-side switches: Mesa GL,
+# Mesa's Vulkan WSI, and the NVIDIA GL equivalent.  Setting all three covers
+# whichever backend wined3d picked without having to detect it.
+#
+# This changes when a finished frame reaches the screen, not what is in it:
+# every frame is still rendered and presented, the clock is virtual, and nothing
+# in the game reads back present timing.  Confirmed rather than assumed — with
+# it on, both recordings reproduce their catalogued end state and their exact
+# frame counts.
+#
+# KAROO_NO_TURBO=1 restores the vsync-limited pace, and a variable already set
+# in the caller's environment is left alone, so a run can be slowed deliberately
+# to watch it.
+VSYNC_OFF = {
+    "vblank_mode": "0",                       # Mesa OpenGL
+    "MESA_VK_WSI_PRESENT_MODE": "immediate",  # Mesa Vulkan WSI
+    "__GL_SYNC_TO_VBLANK": "0",               # NVIDIA OpenGL
+}
+
+
+def apply_turbo(env):
+    """Unthrottle presentation unless the caller asked not to."""
+    if os.environ.get("KAROO_NO_TURBO", "") not in ("", "0"):
+        return env
+    for k, v in VSYNC_OFF.items():
+        env.setdefault(k, v)
+    return env
+
+
 def launch(entry, cfg, rec_path, dump_path, hash_path):
-    env = dict(os.environ)
+    env = apply_turbo(dict(os.environ))
     env["KAROO_REPLAY"] = rec_path
     env["KAROO_STATE_DUMP"] = dump_path
     env["KAROO_HASH_LOG"] = hash_path

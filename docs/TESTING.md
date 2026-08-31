@@ -190,6 +190,30 @@ runs. If you ever see a run produce an empty `karoo_hooks.log` and no hash file,
 that is this, not a replay failure: the recording will pass on its own. Clear it
 with `pkill -f Karoo.exe; pkill -f wineserver`.
 
+**The suite runs unthrottled.** A replay is on the virtual clock, so nothing in
+the game paces itself against wall time — but presentation still blocked on the
+display refresh, pinning every run at the monitor's rate (600 frames per 10.05 s
+wall = 59.7 fps) and making a replay cost about as long as it took to play.
+`replaytest.py` therefore launches with vsync disabled at the driver
+(`VSYNC_OFF` in the harness: `vblank_mode`, `MESA_VK_WSI_PRESENT_MODE`,
+`__GL_SYNC_TO_VBLANK` — all three, so the backend wined3d picked does not have
+to be detected). Frames then run at roughly 230 fps and the two-recording suite
+takes **35 s instead of 102 s**.
+
+The wait is below Wine: passing `DDFLIP_NOVSYNC` through the ddraw proxy was
+tried first and changed nothing. The game has no vsync option of its own.
+
+This changes when a finished frame reaches the screen, not what is in it — every
+frame is still rendered and presented, and nothing reads back present timing.
+Checked rather than assumed: both recordings reproduce their catalogued end
+state and exact frame counts unthrottled, and two consecutive `water01` runs
+produce byte-identical 4150-frame hash logs.
+
+Set `KAROO_NO_TURBO=1` to put the vsync limit back — useful when you want to
+*watch* a replay at playing speed. A variable already set in your environment is
+left alone either way. Capture (`replaytest.py record`) is never unthrottled;
+a human plays that one in real time.
+
 ### `bombstart-crash`
 
 Named for the CRASH.md guard-page fault it used to reproduce: before that bug

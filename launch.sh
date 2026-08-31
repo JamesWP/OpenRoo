@@ -68,6 +68,15 @@ PROTON_RUN=(
   DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-}"
   XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}"
   PATH="$PATH"
+  # Vsync control.  The replay clock is virtual, so nothing in the game paces
+  # itself against wall time — but presentation still blocks on the display
+  # refresh, which pinned a run at ~60 fps and made a 4150-frame replay take
+  # 70 s of wall clock.  DDFLIP_NOVSYNC through ddraw does not lift it; the
+  # wait is below Wine, in the GL/Vulkan present.  These are the driver-side
+  # switches (Mesa GL, Mesa Vulkan WSI, NVIDIA GL).  Unset = untouched.
+  vblank_mode="${vblank_mode:-}"
+  MESA_VK_WSI_PRESENT_MODE="${MESA_VK_WSI_PRESENT_MODE:-}"
+  __GL_SYNC_TO_VBLANK="${__GL_SYNC_TO_VBLANK:-}"
   STEAM_COMPAT_DATA_PATH="$HOME/.proton/Karoo.exe"
   STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.steam/root"
   PROTON_LOG_DIR="$(pwd)"
