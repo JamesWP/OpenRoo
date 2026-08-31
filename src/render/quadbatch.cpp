@@ -36,9 +36,15 @@
  *
  * The device is the com_proxy device proxy; calls go through it deliberately.
  *
- * KAROO_QUAD_FX=noalpha forces ALPHABLENDENABLE off for every sub-object, so
- * quads that should be translucent render opaque — visual proof the state
- * comes from this code.
+ * KAROO_QUAD_FX visual-proof modes:
+ *   noalpha — force ALPHABLENDENABLE off for every sub-object.  Note this is
+ *             invisible on content whose sub-objects already have
+ *             dwBlendSrc/dwBlendDst of 0, which is the common case: the first
+ *             level checked draws 116 quads with src=0 dst=0, already taking
+ *             the alpha-off branch.
+ *   nodraw  — skip the DrawPrimitive entirely, leaving every render state set
+ *             exactly as before.  The quads vanish; nothing else changes.
+ *             This is the mode that actually proves the draw is ours.
  */
 #include "direct3d.h"
 #include "levelobject.h"
@@ -58,17 +64,23 @@ static_assert(offsetof(QuadVerts, pData)   == 0x128, "QuadVerts layout");
 
 #define g_dwWorldIdentity (*(D3DMATRIX *)0x004e0440)
 
-static bool fx_noalpha(void)
+enum QuadFxMode { QUAD_FX_OFF = 0, QUAD_FX_NOALPHA, QUAD_FX_NODRAW };
+
+static QuadFxMode quad_fx(void)
 {
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
-        cached = 0;
-        if (GetEnvironmentVariableA("KAROO_QUAD_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "noalpha") == 0);
-        log_write("quadbatch: FX mode = %s\n", cached ? "noalpha" : "off");
+        cached = QUAD_FX_OFF;
+        if (GetEnvironmentVariableA("KAROO_QUAD_FX", buf, sizeof(buf))) {
+            if (lstrcmpiA(buf, "noalpha") == 0) cached = QUAD_FX_NOALPHA;
+            else if (lstrcmpiA(buf, "nodraw") == 0) cached = QUAD_FX_NODRAW;
+        }
+        log_write("quadbatch: FX mode = %s\n",
+                  cached == QUAD_FX_NOALPHA ? "noalpha" :
+                  cached == QUAD_FX_NODRAW  ? "nodraw"  : "off");
     }
-    return cached != 0;
+    return (QuadFxMode)cached;
 }
 
 extern "C" __declspec(dllexport) void __cdecl
@@ -110,7 +122,8 @@ Direct3D_DrawQuadBatch(QuadVerts *verts, void *game, Direct3D *d3d)
             /* One tail call in the original, state/value chosen by the branch. */
             D3DRENDERSTATETYPE last_state;
             DWORD              last_value;
-            if (sub->dwBlendSrc && sub->dwBlendDst && !fx_noalpha()) {
+            if (sub->dwBlendSrc && sub->dwBlendDst
+                && quad_fx() != QUAD_FX_NOALPHA) {
                 d3d->pDevice->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
                 d3d->pDevice->SetRenderState(D3DRENDERSTATE_SRCBLEND,
                                              sub->dwBlendSrc);
@@ -125,9 +138,11 @@ Direct3D_DrawQuadBatch(QuadVerts *verts, void *game, Direct3D *d3d)
             if (*(DWORD *)(obj + LOBJ_OFF_DRAWKIND) == 2) {
                 d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD,
                                            &g_dwWorldIdentity);
-                HRESULT hr = d3d->pDevice->DrawPrimitive(
-                    D3DPT_TRIANGLELIST, QUAD_FVF, verts->pData,
-                    verts->dwQuads * 6, 0);
+                HRESULT hr = S_OK;
+                if (quad_fx() != QUAD_FX_NODRAW)
+                    hr = d3d->pDevice->DrawPrimitive(
+                        D3DPT_TRIANGLELIST, QUAD_FVF, verts->pData,
+                        verts->dwQuads * 6, 0);
 
                 static LONG logged = 0;
                 if (InterlockedIncrement(&logged) <= QUAD_LOG_FIRST)
