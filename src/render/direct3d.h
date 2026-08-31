@@ -5,6 +5,28 @@
 #include <d3d.h>
 #include <stddef.h>
 
+/* LinkedList / LinkedListNode — the game's intrusive list (Ghidra structs,
+ * 16 and 12 bytes).  Direct3D uses one to hold the enumerated display modes. */
+struct LinkedListNode {
+    void           *pValue;    // +0x00
+    LinkedListNode *pNextNode; // +0x04
+    LinkedListNode *pPrevNode; // +0x08
+};
+static_assert(sizeof(LinkedListNode) == 12, "LinkedListNode size mismatch");
+
+struct LinkedList {
+    void           **vtable;   // +0x00
+    LinkedListNode  *pHead;    // +0x04
+    LinkedListNode  *pTail;    // +0x08
+    DWORD            dwCount;  // +0x0c
+};
+static_assert(sizeof(LinkedList) == 16, "LinkedList size mismatch");
+
+/* DisplayModeNode — 12 bytes, the pValue of each modeList node. */
+struct DisplayModeNode {
+    DWORD dwWidth, dwHeight, dwBitDepth;
+};
+
 /* Direct3D — the game's D3D wrapper object, reached through the global
  * g_pDirect3D @ 0x004e04ac.  Only the fields the replaced functions touch are
  * named; the rest is padding to the confirmed 568-byte size (Ghidra struct
@@ -19,13 +41,22 @@ struct Direct3D {
     IDirectDrawSurface4  *pBackBuffer; // +0x34
     IDirectDrawSurface4  *pPrimary;    // +0x38
     IDirectDrawSurface4  *pZBuffer;    // +0x3c
-    BYTE                  pad40[0x1f8];// +0x40.. (mode list, error string, pDD4, hWnd)
+    LinkedList            modeList;    // +0x40 DisplayModeNode* list (16 bytes)
+    DisplayModeNode      *pSelectedMode; // +0x50
+    char                  pLastError[100]; // +0x54
+    IDirectDraw4         *pDD4;       // +0xb8
+    HWND                  hWnd;       // +0xbc
+    BYTE                  padc0[0x178];// +0xc0.. remainder of the 568-byte object
 };
 
 static_assert(offsetof(Direct3D, pDevice)     == 0x0c, "Direct3D layout mismatch");
 static_assert(offsetof(Direct3D, pBackBuffer) == 0x34, "Direct3D layout mismatch");
 static_assert(offsetof(Direct3D, pPrimary)    == 0x38, "Direct3D layout mismatch");
-static_assert(offsetof(Direct3D, pZBuffer)    == 0x3c, "Direct3D layout mismatch");
+static_assert(offsetof(Direct3D, pZBuffer)      == 0x3c, "Direct3D layout mismatch");
+static_assert(offsetof(Direct3D, modeList)      == 0x40, "Direct3D layout mismatch");
+static_assert(offsetof(Direct3D, pSelectedMode) == 0x50, "Direct3D layout mismatch");
+static_assert(offsetof(Direct3D, pDD4)          == 0xb8, "Direct3D layout mismatch");
+static_assert(offsetof(Direct3D, hWnd)          == 0xbc, "Direct3D layout mismatch");
 static_assert(sizeof(Direct3D)                == 568,  "Direct3D size mismatch");
 
 /* LoadedImage — base (24-byte) variant.  FlipPrimaryFrame reads only

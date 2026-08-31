@@ -1,7 +1,8 @@
 /* Direct3D closure reimplementations — presentation path.
  *
  * Replaces (safety-stubbed by patch.py):
- *   0x425fc0 FlipPrimaryFrame  __cdecl(LoadedImage *)
+ *   0x425fc0 FlipPrimaryFrame        __cdecl(LoadedImage *)
+ *   0x413180 Direct3D::ReleaseResources  __thiscall(this), ret 0
  *
  * The original is 52 bytes and does exactly two COM calls:
  *
@@ -71,4 +72,60 @@ Direct3D_FlipPrimaryFrame(LoadedImage *img)
                   img, img->pTextureSurface, d3d->pZBuffer, d3d->pPrimary,
                   blt, hr_flip);
     }
+}
+
+/* ─── Direct3D::ReleaseResources (0x413180) ────────────────────────────────
+ *
+ * __thiscall(this), plain `ret` — no stack args (checked against the original,
+ * not taken from the decompiler).  Four E8 call sites, no E9/PUSH/DATA refs.
+ *
+ * Releases the six COM interfaces it owns, frees the enumerated display-mode
+ * list, and zeroes the mode/z-buffer-format state.
+ *
+ * Two behaviours preserved deliberately:
+ *   - pZBuffer is NULLed but never Released.  Every other interface here gets
+ *     a Release first; the z-buffer surface does not.  That is a leak in the
+ *     original, reproduced rather than "fixed" — releasing it would change the
+ *     refcount the rest of the teardown sees.
+ *   - The mode-list walk frees each node's pValue and then calls
+ *     LinkedList::Clear, which frees the nodes themselves.  Two passes, as in
+ *     the original.
+ *
+ * LinkedList::Clear and FactAlloc::Free2 are shared helpers that stay live for
+ * other callers, so they are called at their original addresses rather than
+ * stubbed or duplicated (same approach as factory.cpp).
+ */
+typedef void (__cdecl *free2_fn)(void *);
+#define ORIG_FACT_FREE2 ((free2_fn)0x004504c0)
+
+typedef void (__attribute__((thiscall)) *listclear_fn)(LinkedList *);
+#define ORIG_LIST_CLEAR ((listclear_fn)0x004254f0)
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Direct3D_ReleaseResources(Direct3D *self)
+{
+    if (self->pViewport)   { self->pViewport->Release();   self->pViewport   = NULL; }
+    if (self->pDevice)     { self->pDevice->Release();     self->pDevice     = NULL; }
+    if (self->pBackBuffer) { self->pBackBuffer->Release(); self->pBackBuffer = NULL; }
+    if (self->pPrimary)    { self->pPrimary->Release();    self->pPrimary    = NULL; }
+    if (self->pD3D)        { self->pD3D->Release();        self->pD3D        = NULL; }
+    if (self->pDD4)        { self->pDD4->Release();        self->pDD4        = NULL; }
+
+    /* Free each node's payload, then the nodes. */
+    for (LinkedListNode *n = self->modeList.pHead; n != NULL; ) {
+        void *value = n->pValue;
+        n = n->pNextNode;
+        if (value)
+            ORIG_FACT_FREE2(value);
+    }
+    ORIG_LIST_CLEAR(&self->modeList);
+
+    self->pSelectedMode     = NULL;
+    self->dwModeFilterFlags = 0;
+    for (int i = 0; i < 8; i++)          /* dwZBufFmtSize .. +0x30 */
+        self->zbufFmt[i] = 0;
+
+    self->pZBuffer = NULL;               /* NOT released — see header */
+
+    log_write("direct3d: ReleaseResources this=%p done\n", self);
 }

@@ -60,6 +60,29 @@ roll_log StreamSoundBuffer.log
 roll_log steam-123456.log
 roll_log karoo_hooks.log
 
+# X authority self-heal.  The game needs a display, and under Wayland+Mutter
+# the Xwayland cookie lives in a randomly-named file that is REPLACED whenever
+# Xwayland restarts (a suspend/resume or a session restart will do it).  A
+# shell — or a long-running agent session — started before that keeps the old
+# XAUTHORITY path in its environment, and every launch then dies with
+#   Invalid MIT-MAGIC-COOKIE-1 key
+#   err:winediag:nodrv_CreateWindow ... "The explorer process failed to start."
+# and the game exits having rendered zero frames.  That looks exactly like a
+# crash in whatever was last changed, which is an expensive misdiagnosis.
+#
+# So: if the current XAUTHORITY does not actually work, fall back to the
+# newest mutter Xwayland cookie.  Only ever overrides a broken value.
+if ! DISPLAY="$DISPLAY" XAUTHORITY="${XAUTHORITY:-}" xdpyinfo >/dev/null 2>&1; then
+  newest_cookie=$(ls -t "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/.mutter-Xwaylandauth.* 2>/dev/null | head -1)
+  if [ -n "$newest_cookie" ] && DISPLAY="$DISPLAY" XAUTHORITY="$newest_cookie" xdpyinfo >/dev/null 2>&1; then
+    echo "XAUTHORITY was stale; using $newest_cookie"
+    export XAUTHORITY="$newest_cookie"
+  else
+    echo "WARNING: cannot reach the X display ($DISPLAY)." >&2
+    echo "  The game needs a display; it will start and exit with 0 frames." >&2
+  fi
+fi
+
 PROTON_DIR="$HOME/.steam/root/steamapps/common/Proton - Experimental"
 PROTON_RUN=(
   env -i

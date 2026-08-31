@@ -41,6 +41,7 @@ assumes (REPLAY_PLAN.md Stages A/A2):
 import argparse
 import json
 import os
+import signal
 import subprocess
 import sys
 
@@ -126,6 +127,13 @@ def check_header(entry, cfg, rec_path):
     return hdr, frames, problems
 
 
+# Wall-clock ceiling for one recording: max(MIN_WALL_BUDGET, auto_exit * FACTOR).
+# Generous on purpose — this exists to stop an indefinite hang, not to police
+# how fast a run is.
+MIN_WALL_BUDGET    = 300   # seconds
+WALL_BUDGET_FACTOR = 6
+
+
 def wait_for_quiet(timeout=60):
     """Wait for a previous run's game process to actually be gone.
 
@@ -195,13 +203,49 @@ def launch(entry, cfg, rec_path, dump_path, hash_path):
     env["KAROO_HASH_LOG"] = hash_path
     env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
     env["KAROO_SEED"] = str(cfg.get("seed", ""))
+    auto_exit = int(cfg.get("timeout", 120))
     cmd = ["bash", os.path.join(REPO, "launch.sh"),
-           "--skip-launcher", "--auto-exit", str(cfg.get("timeout", 120))]
+           "--skip-launcher", "--auto-exit", str(auto_exit)]
+
+    # Hard wall-clock bound.  --auto-exit is a *game-time* budget, so it does
+    # not bound wall time at all: if the game wedges, or the machine suspends
+    # mid-run, an unbounded wait blocks the whole suite indefinitely (seen
+    # 2026-08-31 on a laptop that slept).  The margin is deliberately wide —
+    # a slow run must not be reported as a hang — but finite.
+    budget = max(MIN_WALL_BUDGET, auto_exit * WALL_BUDGET_FACTOR)
+
+    # start_new_session so the whole tree gets signalled: killing the bash
+    # child alone would leave Proton/Wine running and the next recording would
+    # then fail for the wrong reason.
+    proc = subprocess.Popen(cmd, cwd=REPO, env=env,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                            start_new_session=True)
     # launch.sh exits non-zero regardless of how the run went (Stage A note),
     # so its return code is deliberately ignored; crashcheck.py and the state
     # dump are the oracles.
-    subprocess.run(cmd, cwd=REPO, env=env,
+    try:
+        proc.wait(timeout=budget)
+        return False
+    except subprocess.TimeoutExpired:
+        pass
+
+    print("  TIMEOUT: no exit after %ds wall clock (--auto-exit was %ds of "
+          "game time); killing the run" % (budget, auto_exit))
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(os.getpgid(proc.pid), sig)
+        except (ProcessLookupError, PermissionError):
+            break
+        try:
+            proc.wait(timeout=10)
+            break
+        except subprocess.TimeoutExpired:
+            continue
+    # Backstop: the game can outlive the launcher script.
+    subprocess.run(["pkill", "-f", "Karoo.exe"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    wait_for_quiet()
+    return True
 
 
 def crash_verdict():
@@ -275,7 +319,10 @@ def run_one(m, entry, bless=False):
         if os.path.exists(stale):
             os.remove(stale)
 
-    launch(entry, cfg, rec_path, dump_path, hash_path)
+    if launch(entry, cfg, rec_path, dump_path, hash_path):
+        print("  FAIL: run timed out and was killed — treat this as a hang, "
+              "not a state mismatch. karoo_hooks.log ends where it wedged.")
+        return False
 
     verdict = crash_verdict()
     want_crash = entry.get("expect", {}).get("crash", "none")
