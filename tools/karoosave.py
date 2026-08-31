@@ -331,36 +331,45 @@ def cmd_set(args):
 # ── Save fixtures ─────────────────────────────────────────────────────────
 #
 # A recording that navigates the menu to "load slot N" only lands on the level
-# it was recorded against if slot N holds exactly the bytes it held then.
-# `set --seed-from` gets you there by hand, but it is not reproducible: it
-# depends on which slot you seeded from and on whatever that slot happened to
-# contain that day.
+# it was recorded against if SavedGames/ holds exactly the state it held then.
+# So a recording does not describe its save state, it **carries** it, in a
+# fixture directory named by tests/manifest.json.
 #
-# A *fixture* removes the guesswork by storing the bytes themselves.  It is a
-# directory holding a byte-for-byte copy of every file in SavedGames/ plus a
-# FIXTURE manifest recording each file's SHA-256 and, for context, the decoded
-# slot table.  `restore` copies it back verbatim and deletes any save file the
-# fixture does not name, so no stale slot can survive into the run.
+# A fixture is a single declarative FIXTURE file: for each save file, the
+# decoded SaveSlot fields, plus the SHA-256 of the bytes those fields must
+# produce.  `restore` SYNTHESISES each file from the fields (build_slot) and
+# then checks the result against the recorded hash, failing hard on any
+# mismatch.  Nothing is copied.
 #
-# This is deliberately the "copy a known-good record" approach CLAUDE.md asks
-# for: it needs none of the still-undecoded save fields to be understood, and
-# it stays correct if they are later decoded differently.
+# The hash is the whole point of the design.  Generating from fields makes a
+# fixture readable and diffable, but it also makes it depend on this tool: a
+# bug or a changed default in build_slot would silently alter what every
+# recording loads, and the symptom would be a replay diverging thousands of
+# frames later rather than an obvious tooling error.  The hash turns that into
+# a hard error at restore time, before the game is ever launched.  Do not
+# "fix" a hash mismatch by re-snapshotting until you know which side is wrong.
 #
-# JJ.GAM is NOT part of the fixture — it is committed game data, shared by every
+# JJ.GAM is NOT part of a fixture — it is committed game data, shared by every
 # fixture.  But a slot stores a level *index* into it, so a JJ.GAM edit would
 # silently repoint every fixture at a different level.  Its hash is therefore
 # recorded and checked on restore.
+#
+# Filenames are recorded per slot rather than derived.  The shipped set has
+# slot 3 on disk as "JJ3.sav", uppercase, with no lowercase counterpart: Wine
+# finds it case-insensitively, but this tool must reproduce the name it saw.
 
 FIXTURE_FILE = "FIXTURE"
+FIXTURE_VERSION = 2
 SAVE_GLOBS = ("jj*.sav", "JJ*.sav", "GAM.DAT")
 
 
+def sha256_bytes(data):
+    return hashlib.sha256(data).hexdigest()
+
+
 def sha256(path):
-    h = hashlib.sha256()
     with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(65536), b""):
-            h.update(chunk)
-    return h.hexdigest()
+        return sha256_bytes(fh.read())
 
 
 def save_files(saves_dir):
@@ -373,23 +382,132 @@ def save_files(saves_dir):
     return sorted(found)
 
 
+class Fixture:
+    """A parsed FIXTURE spec.
+
+    slots   [{index, file, sha, name, <SLOT_FIELDS>}]  synthesised records
+    blobs   [{file, sha, size}]                        non-slot files, empty only
+    legacy  {name: sha}                                v1 fixture, bytes stored
+    """
+
+    def __init__(self, gam_sha=None, slots=None, blobs=None, legacy=None):
+        self.gam_sha = gam_sha
+        self.slots = slots or []
+        self.blobs = blobs or []
+        self.legacy = legacy or {}
+
+    def filenames(self):
+        return ([s["file"] for s in self.slots] + [b["file"] for b in self.blobs]
+                + sorted(self.legacy))
+
+    def generate(self):
+        """{filename: enciphered bytes} for every file this fixture declares.
+
+        Raises ValueError naming the file if a generated record does not match
+        the hash the fixture recorded for it.
+        """
+        out = {}
+        for s in self.slots:
+            plain = build_slot(s["name"], **{f: s[f] for f, _, _ in SLOT_FIELDS})
+            data = encipher(bytes(plain), SAV_KEY)
+            got = sha256_bytes(data)
+            if got != s["sha"]:
+                raise ValueError(
+                    "%s: the fields in the fixture generate bytes that do not "
+                    "match the recorded hash\n"
+                    "    fixture sha: %s\n  generated sha: %s\n"
+                    "  Either the fields were edited without re-snapshotting, "
+                    "or build_slot no longer encodes a slot the same way.\n"
+                    "  Work out which before touching the fixture."
+                    % (s["file"], s["sha"], got))
+            out[s["file"]] = data
+        for b in self.blobs:
+            data = b"\x00" * b["size"]
+            got = sha256_bytes(data)
+            if got != b["sha"]:
+                raise ValueError("%s: %d zero bytes hash to %s, fixture says %s"
+                                 % (b["file"], b["size"], got, b["sha"]))
+            out[b["file"]] = data
+        return out
+
+
+def _parse_kv(rest):
+    """`k=v k=v ... name="quoted"` -> dict of strings."""
+    out, i, n = {}, 0, len(rest)
+    while i < n:
+        while i < n and rest[i].isspace():
+            i += 1
+        if i >= n:
+            break
+        eq = rest.index("=", i)
+        key = rest[i:eq].strip()
+        i = eq + 1
+        if i < n and rest[i] == '"':
+            j = i + 1
+            buf = []
+            while rest[j] != '"':
+                if rest[j] == "\\":
+                    j += 1
+                buf.append(rest[j])
+                j += 1
+            out[key] = "".join(buf)
+            i = j + 1
+        else:
+            j = i
+            while j < n and not rest[j].isspace():
+                j += 1
+            out[key] = rest[i:j]
+            i = j
+    return out
+
+
 def read_fixture(fixture_dir):
-    """Parse a fixture's FIXTURE manifest -> (gam_sha or None, {name: sha})."""
+    """Parse a fixture directory's FIXTURE file -> Fixture."""
     path = os.path.join(fixture_dir, FIXTURE_FILE)
     if not os.path.exists(path):
         sys.exit("%s: not a save fixture (no %s)" % (fixture_dir, FIXTURE_FILE))
-    gam, files = None, {}
-    for line in open(path):
+
+    fx = Fixture()
+    for lineno, line in enumerate(open(path), 1):
         line = line.split("#", 1)[0].strip()
         if not line:
             continue
-        key, _, val = line.partition(" ")
-        if key == "jj.gam":
-            gam = val.strip()
-        elif key == "file":
-            digest, _, name = val.strip().partition(" ")
-            files[name.strip()] = digest
-    return gam, files
+        key, _, rest = line.partition(" ")
+        rest = rest.strip()
+        try:
+            if key == "version":
+                if int(rest) != FIXTURE_VERSION:
+                    sys.exit("%s: fixture version %s, this tool writes %d"
+                             % (path, rest, FIXTURE_VERSION))
+            elif key == "jj.gam":
+                fx.gam_sha = rest
+            elif key == "slot":
+                idx, _, rest = rest.partition(" ")
+                fname, _, rest = rest.strip().partition(" ")
+                kv = _parse_kv(rest.strip())
+                slot = {"index": int(idx), "file": fname,
+                        "sha": kv["sha"], "name": kv["name"]}
+                for field, _, _ in SLOT_FIELDS:
+                    slot[field] = int(kv[field])
+                fx.slots.append(slot)
+            elif key == "blob":
+                fname, _, rest = rest.partition(" ")
+                kv = _parse_kv(rest.strip())
+                size = int(kv["size"])
+                if size != 0:
+                    sys.exit("%s:%d: blob %s is %d bytes; only empty non-slot "
+                             "files can be generated" % (path, lineno, fname, size))
+                fx.blobs.append({"file": fname, "sha": kv["sha"], "size": size})
+            elif key == "file":
+                # v1 fixture: `file <sha> <name>`, bytes stored alongside.
+                digest, _, name = rest.partition(" ")
+                fx.legacy[name.strip()] = digest
+        except (KeyError, ValueError, IndexError) as e:
+            sys.exit("%s:%d: malformed %s line (%s)" % (path, lineno, key, e))
+
+    if fx.legacy and (fx.slots or fx.blobs):
+        sys.exit("%s: mixes v1 `file` lines with v2 `slot`/`blob` lines" % path)
+    return fx
 
 
 def cmd_snapshot(args):
@@ -399,97 +517,166 @@ def cmd_snapshot(args):
         sys.exit("%s: no save files to snapshot" % args.saves)
 
     os.makedirs(args.fixture, exist_ok=True)
-    slots = []
-    lines = ["# Ka'roo save fixture — restore with:",
-             "#  python3 tools/karoosave.py restore %s" % args.fixture,
-             "# Created from %s" % args.saves,
-             "",
-             "jj.gam %s" % sha256(args.gam),
-             ""]
+    slots, blobs = [], []
 
-    for name in files:
-        src = os.path.join(args.saves, name)
-        shutil.copyfile(src, os.path.join(args.fixture, name))
-        lines.append("file %s %s" % (sha256(src), name))
+    for name in sorted(files):
+        raw = open(os.path.join(args.saves, name), "rb").read()
+        if len(raw) == SLOT_SIZE:
+            plain = bytearray(decipher(raw, SAV_KEY))
+            entry = {"file": name, "sha": sha256_bytes(raw),
+                     "name": slot_name(plain)}
+            entry.update(unpack_slot(plain))
+            # Slot index comes from the filename: jjN.sav / JJN.sav.
+            digits = "".join(c for c in os.path.splitext(name)[0] if c.isdigit())
+            entry["index"] = int(digits) if digits else len(slots)
+            slots.append(entry)
+        elif len(raw) == 0:
+            blobs.append({"file": name, "sha": sha256_bytes(raw), "size": 0})
+        else:
+            sys.exit("%s: %s is %d bytes — neither a %d-byte slot nor empty, so "
+                     "it cannot be generated. This fixture format only supports "
+                     "save slots." % (args.fixture, name, len(raw), SLOT_SIZE))
 
-    lines.append("")
-    lines.append("# Decoded slot table at snapshot time (context only; the bytes above")
-    lines.append("# are what is restored):")
-    for name in files:
-        if not name.lower().startswith("jj") or not name.lower().endswith(".sav"):
-            continue
-        try:
-            plain = read_slot(os.path.join(args.saves, name))
-        except ValueError as e:
-            slots.append("#   %-10s <unreadable: %s>" % (name, e))
-            continue
-        lvl = plain[OFF_LEVEL]
-        lname = names[lvl] if lvl < len(names) else "<out of range>"
-        slots.append("#   %-10s name=%-12r in_use=%d level=%-3d %s"
-                    % (name, slot_name(plain), plain[OFF_IN_USE], lvl, lname))
+    slots.sort(key=lambda s: s["index"])
+    out = [
+        "# Ka'roo save fixture — generated, then hash-checked.",
+        "#",
+        "# `restore` SYNTHESISES each file below from its fields and refuses to",
+        "# continue if the bytes do not hash to the recorded sha. Editing a field",
+        "# without re-snapshotting is a hard error, not a silent change.",
+        "#",
+        "#   python3 tools/karoosave.py restore %s" % args.fixture,
+        "",
+        "version %d" % FIXTURE_VERSION,
+        "jj.gam %s" % sha256(args.gam),
+        "",
+    ]
+    for s in slots:
+        lvl = s["level"]
+        out.append("# slot %d — %s"
+                   % (s["index"],
+                      "<empty>" if not s["in_use"] else
+                      (names[lvl] if lvl < len(names) else "<level out of range>")))
+        out.append('slot %d %s sha=%s name="%s" %s'
+                   % (s["index"], s["file"], s["sha"],
+                      s["name"].replace("\\", "\\\\").replace('"', '\\"'),
+                      " ".join("%s=%d" % (f, s[f]) for f, _, _ in SLOT_FIELDS)))
+    if blobs:
+        out.append("")
+        out.append("# Non-slot files. Only empty ones can be generated.")
+        for b in blobs:
+            out.append("blob %s sha=%s size=%d" % (b["file"], b["sha"], b["size"]))
 
     with open(os.path.join(args.fixture, FIXTURE_FILE), "w") as fh:
-        fh.write("\n".join(lines + slots) + "\n")
+        fh.write("\n".join(out) + "\n")
 
-    print("snapshot -> %s  (%d files)" % (args.fixture, len(files)))
-    for line in slots:
-        print(" " + line[1:])
+    # A v1 fixture kept the bytes alongside; a v2 one must not, or `restore`
+    # would look reproducible while stale copies sat there being ignored.
+    stale = save_files(args.fixture)
+    for n in stale:
+        os.remove(os.path.join(args.fixture, n))
+
+    # Prove the spec just written regenerates exactly what was read.
+    fx = read_fixture(args.fixture)
+    try:
+        gen = fx.generate()
+    except ValueError as e:
+        sys.exit("ERROR: fixture does not round-trip: %s" % e)
+    for name in files:
+        if gen[name] != open(os.path.join(args.saves, name), "rb").read():
+            sys.exit("ERROR: %s regenerates to different bytes" % name)
+
+    print("snapshot -> %s  (%d slot(s), %d blob(s)%s)"
+          % (args.fixture, len(slots), len(blobs),
+             ", removed %d stored copy(s)" % len(stale) if stale else ""))
+    for s in slots:
+        lvl = s["level"]
+        lname = names[lvl] if lvl < len(names) else "<out of range>"
+        print("   %-10s name=%-12r in_use=%d level=%-3d %s"
+              % (s["file"], s["name"], s["in_use"], lvl, lname))
+    print("   regenerates byte-for-byte from the fields above")
 
 
 def cmd_restore(args):
-    gam_sha, files = read_fixture(args.fixture)
-    if not files:
+    fx = read_fixture(args.fixture)
+    if not fx.filenames():
         sys.exit("%s: fixture names no files" % args.fixture)
 
     have = sha256(args.gam)
-    if gam_sha and have != gam_sha:
+    if fx.gam_sha and have != fx.gam_sha:
         msg = ("JJ.GAM has changed since this fixture was taken\n"
                "  fixture: %s\n  current: %s\n"
                "Save slots store a level *index* into JJ.GAM, so the restored "
                "slots may now point at different levels.\n"
                "Re-record the fixture, or pass --force if you know the table is "
-               "compatible." % (gam_sha, have))
+               "compatible." % (fx.gam_sha, have))
         if not args.force:
             sys.exit("ERROR: " + msg)
         print("WARNING: " + msg)
+
+    if fx.legacy:
+        # v1 fixture: bytes stored alongside. Copy them, as before.
+        contents = {}
+        for name, digest in sorted(fx.legacy.items()):
+            src = os.path.join(args.fixture, name)
+            if not os.path.exists(src):
+                sys.exit("%s: fixture is incomplete, %s is missing"
+                         % (args.fixture, name))
+            data = open(src, "rb").read()
+            if sha256_bytes(data) != digest:
+                sys.exit("%s: %s does not match its recorded hash — fixture is "
+                         "corrupt" % (args.fixture, name))
+            contents[name] = data
+        how = "copied, v1 fixture"
+    else:
+        try:
+            contents = fx.generate()
+        except ValueError as e:
+            sys.exit("ERROR: %s" % e)
+        how = "generated + hash-checked"
 
     os.makedirs(args.saves, exist_ok=True)
 
     # Remove any save the fixture does not name: a leftover slot from an
     # earlier test would still be visible in the menu and could be the one a
     # recording's keypresses land on.
-    removed = [n for n in save_files(args.saves) if n not in files]
+    removed = [n for n in save_files(args.saves) if n not in contents]
     for name in removed:
         os.remove(os.path.join(args.saves, name))
 
-    for name, digest in sorted(files.items()):
-        src = os.path.join(args.fixture, name)
-        if not os.path.exists(src):
-            sys.exit("%s: fixture is incomplete, %s is missing" % (args.fixture, name))
-        if sha256(src) != digest:
-            sys.exit("%s: %s does not match its recorded hash — fixture is corrupt"
-                     % (args.fixture, name))
-        shutil.copyfile(src, os.path.join(args.saves, name))
+    for name, data in sorted(contents.items()):
+        with open(os.path.join(args.saves, name), "wb") as fh:
+            fh.write(data)
 
-    print("restored %d file(s) from %s -> %s%s"
-          % (len(files), args.fixture, args.saves,
+    print("restored %d file(s) (%s) from %s -> %s%s"
+          % (len(contents), how, args.fixture, args.saves,
              "" if not removed else "  (removed %s)" % ", ".join(removed)))
 
 
 def cmd_verify(args):
     """Is SavedGames/ currently exactly what the fixture says? (exit 1 if not)"""
-    gam_sha, files = read_fixture(args.fixture)
+    fx = read_fixture(args.fixture)
     bad = []
-    if gam_sha and sha256(args.gam) != gam_sha:
+    if fx.gam_sha and sha256(args.gam) != fx.gam_sha:
         bad.append("JJ.GAM differs from the fixture")
-    for name, digest in sorted(files.items()):
+
+    if fx.legacy:
+        expected = dict(fx.legacy)
+    else:
+        try:
+            expected = {n: sha256_bytes(d) for n, d in fx.generate().items()}
+        except ValueError as e:
+            print("MISMATCH against %s:\n  %s" % (args.fixture, e))
+            return 1
+
+    for name, digest in sorted(expected.items()):
         live = os.path.join(args.saves, name)
         if not os.path.exists(live):
             bad.append("%s is missing" % name)
         elif sha256(live) != digest:
             bad.append("%s differs" % name)
     for name in save_files(args.saves):
-        if name not in files:
+        if name not in expected:
             bad.append("%s is present but not in the fixture" % name)
     if bad:
         print("MISMATCH against %s:" % args.fixture)

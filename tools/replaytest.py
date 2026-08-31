@@ -90,14 +90,23 @@ def select(m, names):
 # ── running ───────────────────────────────────────────────────────────────
 
 def restore_fixture(entry):
+    """Rebuild SavedGames/ from the recording's fixture. True if it is usable.
+
+    A v2 fixture is *generated* from the decoded slot fields and then checked
+    against the hash recorded for each file, so a fixture that has been edited
+    without re-snapshotting fails here — before the game is launched — instead
+    of showing up as a replay divergence thousands of frames later.
+    """
     fixture = entry.get("saves")
     if not fixture:
         print("  ! no save fixture — the run inherits whatever SavedGames holds")
-        return
+        return True
     path = os.path.join(REPO, fixture)
-    subprocess.run([sys.executable, os.path.join(REPO, "tools", "karoosave.py"),
-                    "restore", path],
-                   cwd=REPO, check=True)
+    r = subprocess.run([sys.executable,
+                        os.path.join(REPO, "tools", "karoosave.py"),
+                        "restore", path],
+                       cwd=REPO)
+    return r.returncode == 0
 
 
 def check_header(entry, cfg, rec_path):
@@ -219,7 +228,10 @@ def run_one(m, entry, bless=False):
     print("  %d frames, dt=%.9f seed=%u, fixture=%s"
           % (len(frames), hdr["dt"], hdr["seed"], entry.get("saves", "<none>")))
 
-    restore_fixture(entry)
+    if not restore_fixture(entry):
+        print("  FAIL: could not rebuild the save fixture %s — see the error "
+              "above. The game was not launched." % entry.get("saves"))
+        return False
     wait_for_quiet()
     for stale in (dump_path, hash_path):
         if os.path.exists(stale):
