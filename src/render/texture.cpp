@@ -4,6 +4,8 @@
  *            — 3 E8 call sites, all-CALL refs
  *   0x440050 SceneTexture::ReleaseD3DTexture      __thiscall(this), ret 0
  *            — 8 E8 call sites, all-CALL refs
+ *   0x43eb00 LoadedImage::Load                    __thiscall(this), ret 0
+ *            — 24 E8 call sites, all-CALL refs (surface-lost reload)
  *
  * Signature note: HOOKS.md lists ReleaseTextureSurfaces as `__fastcall`.  The
  * original is `mov ecx,esi` at entry and a plain `ret` — this in ECX, zero
@@ -71,3 +73,75 @@ Texture_ReleaseD3DTexture(SceneTexture *self)
 }
 
 } // extern "C"
+
+/* ─── LoadedImage::Load (0x43eb00) ─────────────────────────────────────────
+ *
+ * Surface-lost recovery: Restore() the DirectDraw surface, then re-apply
+ * whichever loader originally filled it — LoadImageA + BlitDIBToSurface for a
+ * BMP/DIB (loadedState 1), ParseTGAFile for a TGA (loadedState 2), nothing
+ * otherwise.  __thiscall(this), plain ret, 24 call sites, no vtable refs.
+ *
+ * BlitDIBToSurface (0x43dfc0) and ParseTGAFile (0x43e190) are left intact in
+ * the binary and called at their original addresses; both are __thiscall with
+ * one stack arg (`ret $0x4`, checked).
+ *
+ * Return convention, preserved exactly: a bool in AL with the upper three
+ * bytes carrying whatever the last call left there.
+ *   - no surface                        -> 0
+ *   - Restore failed                    -> hr & 0xffffff00      (AL = 0)
+ *   - DIB reload failed                 -> DeleteObject & ~0xff (AL = 0)
+ *   - TGA reload failed                 -> ParseTGAFile's value verbatim
+ *   - otherwise                         -> (last & 0xffffff00) | 1
+ * Note the last case also covers loadedState values other than 1 and 2: the
+ * original computes loadedState-2, finds it non-zero, skips the TGA path and
+ * still returns true.  That is reproduced rather than turned into a failure.
+ */
+typedef unsigned int (__attribute__((thiscall)) *blitdib_fn)(LoadedImage *, HANDLE);
+#define ORIG_BLIT_DIB ((blitdib_fn)0x0043dfc0)
+
+typedef unsigned int (__attribute__((thiscall)) *parsetga_fn)(LoadedImage *, LPCSTR);
+#define ORIG_PARSE_TGA ((parsetga_fn)0x0043e190)
+
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+Texture_Load(LoadedImage *self)
+{
+    IDirectDrawSurface4 *surf = self->pTextureSurface;
+    if (surf == NULL)
+        return 0;
+
+    HRESULT hr = surf->Restore();
+    static LONG seen = 0;
+    if (InterlockedIncrement(&seen) <= 4)
+        log_write("texture: Load this=%p state=%d restore=%08lX name=%s\n",
+                  self, self->loadedState, hr,
+                  self->ImageName ? self->ImageName : "(null)");
+    if (hr < 0)
+        return (unsigned int)hr & 0xffffff00u;
+
+    unsigned int last;
+    if (self->loadedState == 1) {
+        HANDLE h = LoadImageA(GetModuleHandleA(NULL), self->ImageName,
+                              IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
+        if (h == NULL) {
+            h = LoadImageA(NULL, self->ImageName, IMAGE_BITMAP, 0, 0,
+                           LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+            if (h == NULL)
+                return 0;
+        }
+        unsigned int ok = ORIG_BLIT_DIB(self, h);
+        if ((ok & 0xff) == 0) {
+            unsigned int d = (unsigned int)DeleteObject((HGDIOBJ)h);
+            return d & 0xffffff00u;
+        }
+        last = (unsigned int)DeleteObject((HGDIOBJ)h);
+    } else {
+        last = (unsigned int)(self->loadedState - 2);
+        if (last == 0) {
+            last = ORIG_PARSE_TGA(self, self->ImageName);
+            if ((last & 0xff) == 0)
+                return last;
+        }
+    }
+
+    return (last & 0xffffff00u) | 1u;
+}
