@@ -38,7 +38,7 @@
       "expect": {
         "crash": "none",
         "state": {
-          "frames_run": 1036,
+          "frames_run": 1035,
           "game_live": true,
           "mode": 1,
           "gems_collected": 0,
@@ -54,7 +54,8 @@
           "time_limit_s": 120,
           "elapsed_ms": 10544,
           "level_complete": 0,
-          "death_cause": 0
+          "death_cause": 0,
+          "completed_a_level": false
         }
       },
       "notes": "Named for the crash it used to reproduce; kept under that name because tests/README.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced byte-identical 1036-frame hash logs and identical end-state dumps."
@@ -69,7 +70,7 @@
       "expect": {
         "crash": "none",
         "state": {
-          "frames_run": 1035,
+          "frames_run": 1034,
           "game_live": true,
           "mode": 1,
           "gems_collected": 8,
@@ -101,7 +102,7 @@
       "expect": {
         "crash": "none",
         "state": {
-          "frames_run": 4150,
+          "frames_run": 4149,
           "game_live": true,
           "mode": 1,
           "gems_collected": 0,
