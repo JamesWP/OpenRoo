@@ -93,6 +93,19 @@
       "notes": "Captured 1033 frames. No end-state assertions yet \u2014 run `replaytest.py --bless castle-something` once a replay is trusted."
     },
     {
+      "name": "destr-extralife",
+      "file": "destr-extralife.rec",
+      "saves": "tests/saves/destr-extralife",
+      "level": "Forest\\DestrStart",
+      "description": "Hand-played by James. Forest\\DestrStart: collects the extra life (tile contents 7) at u=11,v=3, which sits in a pocket whose only approach is (10,4)->(11,4)->(11,3) with a foe spawning at (10,3). Captured to show how a human gets past that foe - whether it is dormant until triggered, and what the route and timing are - because the policy completes the level 30/30 but walks past this pickup.",
+      "scenario": "extra life at (11,3), guarded by the foe at (10,3)",
+      "expect": {
+        "crash": "none",
+        "state": {}
+      },
+      "notes": "Captured 4602 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-extralife` once a replay is trusted."
+    },
+    {
       "name": "water01",
       "file": "water01.rec",
       "saves": "tests/saves/water01",

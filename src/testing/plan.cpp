@@ -216,7 +216,29 @@ static void build_tour(const Observation *o, int pu, int pv)
         }
     }
 
-    /* Nearest neighbour from the player. */
+    /* Which stops are guarded -- a foe on or beside them right now.
+     *
+     * These are taken FIRST, ahead of anything nearer.  Foes start a level
+     * dormant: on Forest\DestrStart the one guarding the extra life sits
+     * still for 650 frames before it moves at all, and the life is the cell
+     * next to it.  A plain nearest-first tour reaches that corner late, by
+     * which time the foe is awake and the pickup costs a life to reach --
+     * a hand-played run had to lure the foe onto a falling tile to kill it
+     * before it could be taken.  Going early is much cheaper than fighting.
+     *
+     * A guarded stop that has become unreachable still falls out of the tour
+     * below, and the danger-avoidance and wait-for-the-foe logic still apply
+     * on the way there, so this changes the order rather than the safety. */
+    bool guarded[MAX_STOPS];
+    for (int i = 0; i < n; i++) {
+        int gu = g_stop[i] / WS_GRID_PITCH, gv = g_stop[i] % WS_GRID_PITCH;
+        guarded[i] = false;
+        for (int d = 0; d < 4 && !guarded[i]; d++)
+            if (ws_foe_on_cell(o, gu + DU[d], gv + DV[d])) guarded[i] = true;
+        if (ws_foe_on_cell(o, gu, gv)) guarded[i] = true;
+    }
+
+    /* Nearest neighbour, guarded stops first. */
     bool used[MAX_STOPS];
     memset(used, 0, sizeof(used));
     int order[MAX_STOPS], m = 0, cur = 0;
@@ -225,7 +247,12 @@ static void build_tour(const Observation *o, int pu, int pv)
         for (int i = 0; i < n; i++) {
             if (used[i]) continue;
             if (g_cost[cur][i + 1] == UNREACHED) continue;
-            if (best < 0 || g_cost[cur][i + 1] < g_cost[cur][best + 1]) best = i;
+            if (best < 0) { best = i; continue; }
+            if (guarded[i] != guarded[best]) {          /* guarded wins outright */
+                if (guarded[i]) best = i;
+                continue;
+            }
+            if (g_cost[cur][i + 1] < g_cost[cur][best + 1]) best = i;
         }
         if (best < 0) break;            /* the rest are unreachable */
         used[best] = true;
@@ -234,11 +261,17 @@ static void build_tour(const Observation *o, int pu, int pv)
     }
 
     /* 2-opt: reverse any segment that shortens the open tour.  Bounded so a
-     * pathological level cannot spend the frame here. */
+     * pathological level cannot spend the frame here.  Segments containing a
+     * guarded stop are left alone, or the reordering above would be undone by
+     * the very distance argument it exists to override. */
     for (int pass = 0; pass < 8; pass++) {
         bool improved = false;
         for (int i = 0; i < m - 1; i++) {
             for (int j = i + 1; j < m; j++) {
+                bool has_guarded = false;
+                for (int x = i; x <= j && !has_guarded; x++)
+                    if (guarded[order[x]]) has_guarded = true;
+                if (has_guarded) continue;
                 int a = (i == 0) ? 0 : order[i - 1] + 1;
                 int b = order[i] + 1, c = order[j] + 1;
                 int dNext = (j + 1 < m) ? order[j + 1] + 1 : -1;
@@ -258,6 +291,22 @@ static void build_tour(const Observation *o, int pu, int pv)
 
     for (int i = 0; i < m; i++) g_tour[i] = g_stop[order[i]];
     g_tour_n = m;
+
+    log_write("plan: tour rebuilt from (%d,%d): %d of %d stops reachable\n",
+              pu, pv, m, n);
+    for (int i = 0; i < m && i < 6; i++)
+        log_write("plan:   [%d] (%d,%d) contents=%u%s cost=%d\n", i,
+                  g_tour[i] / WS_GRID_PITCH, g_tour[i] % WS_GRID_PITCH,
+                  o->grid[g_tour[i]].contents,
+                  guarded[order[i]] ? " GUARDED" : "",
+                  g_cost[i == 0 ? 0 : order[i-1] + 1][order[i] + 1]);
+    for (int i = 0; i < n; i++)
+        if (o->grid[g_stop[i]].contents != 1)
+            log_write("plan:   special contents=%u at (%d,%d) reachable=%s%s\n",
+                      o->grid[g_stop[i]].contents,
+                      g_stop[i] / WS_GRID_PITCH, g_stop[i] % WS_GRID_PITCH,
+                      g_cost[0][i + 1] == UNREACHED ? "NO" : "yes",
+                      guarded[i] ? " GUARDED" : "");
 }
 
 /* ── the step ───────────────────────────────────────────────────────────── */

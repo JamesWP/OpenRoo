@@ -269,10 +269,22 @@ static bool ws_passable_impl(const Observation *o, int fu, int fv,
     const WsTile *to   = &o->grid[tv + tu * WS_GRID_PITCH];
 
     if (to->kind == 0)      return false;   /* no floor — confirmed by falling into one */
-    if (to->occupant != 0) {
-        /* A foe's occupancy is temporary; anything else is furniture. */
-        if (!(ignore_foes && ws_foe_on_cell(o, tu, tv))) return false;
-    }
+    /* The occupant byte means "an entity is standing here": UpdateEntityMovement
+     * writes the entity's kind (+0x152) into it on arrival and zeroes it on
+     * departure, and SpawnFoeObject seeds it.  It is not used for scenery.
+     *
+     * It also LEAKS.  Game::RemoveFoeObject frees the foe, nulls its pointer
+     * and compacts the id list, but never clears the tile it died on, so a
+     * killed foe leaves the byte set for the rest of the level.  Two things
+     * follow: UpdateBreakableTile re-arms on that stale value, which is why a
+     * falling tile a foe died on drops again after respawning; and a reader
+     * that trusts the byte will treat an empty cell as blocked for good, which
+     * can strand whatever is behind it.
+     *
+     * So trust live entity positions, not the byte: a cell is occupied only if
+     * a foe or enemy is actually reported there. */
+    if (to->occupant != 0 && !ignore_foes && ws_foe_on_cell(o, tu, tv))
+        return false;
     if (to->kind == 0x16)   return false;
     if (to->kind == 0x17 && to->spent == 0) return false;
 
@@ -387,6 +399,15 @@ static void map_dump(const BYTE *g, const Observation *obs, const char *path)
 
     fprintf(fp, "{\n");
     fprintf(fp, "  \"frame\": %lu,\n", (unsigned long)obs->frame);
+    fprintf(fp, "  \"level_index\": %u,\n", (unsigned)g[0x173583]);
+    /* Level names contain backslashes ("Forest\\DestrStart"), which are not
+     * legal raw in a JSON string. */
+    fputs("  \"level_name\": \"", fp);
+    for (const char *n = (const char *)(g + 0x173483); *n && n < (const char *)g + 0x173483 + 96; n++) {
+        if (*n == '\\' || *n == '"') fputc('\\', fp);
+        fputc(*n, fp);
+    }
+    fputs("\",\n", fp);
     fprintf(fp, "  \"cols_u\": %u,\n", obs->cols);
     fprintf(fp, "  \"rows_v\": %u,\n", obs->rows);
     fprintf(fp, "  \"pitch\": %u,\n", (unsigned)WS_GRID_PITCH);
@@ -514,6 +535,14 @@ static void obs_dump_line(FILE *fp, const Observation *obs)
 
 static int   g_trace = -1, g_obsdump = -1;
 static char  g_map_path[MAX_PATH], g_obs_path[MAX_PATH];
+/* One map dump per process, deliberately.
+ *
+ * This used to re-arm whenever the game returned to a menu, so a run that
+ * completed a level and carried on into the next one silently overwrote the
+ * dump with the NEXT level's grid.  Analysis was then done against the wrong
+ * map -- geometry that did not match the level being reasoned about, with
+ * nothing in the file to say so.  The dump now happens once and carries the
+ * level index and name, so a stale or mismatched file is obvious on sight. */
 static bool  g_map_wanted, g_map_done;
 static FILE *g_obs_fp;
 
@@ -542,10 +571,7 @@ void worldstate_tick(void)
      * gated on it so menus do not produce a map dump of a stale grid. */
     Observation *obs = &g_obs;
     unsigned short mode = gamestate_mode();
-    if (mode == 0) {
-        g_map_done = false;            /* re-arm for the next level */
-        return;
-    }
+    if (mode == 0) return;
     if (!worldstate_observe(obs)) return;
     obs->mode   = mode;
     g_obs_valid = true;
