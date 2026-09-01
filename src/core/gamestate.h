@@ -11,6 +11,11 @@ bool gamestate_enabled(void);
 /* game_state as handed to ProgableControl::DispatchInputActions. */
 void gamestate_note_mode(unsigned short mode);
 
+/* The last game_state seen.  0 means "not in a level" — confirmed in Stage B
+ * (0 -> 1 on level start, 1 -> 0 at the end).  worldstate.cpp gates on it so a
+ * menu frame cannot produce a map dump of a stale or torn-down grid. */
+unsigned short gamestate_mode(void);
+
 /* Called once per frame; logs only on change. */
 void gamestate_tick(void);
 

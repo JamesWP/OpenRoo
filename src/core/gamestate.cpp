@@ -186,6 +186,7 @@ bool gamestate_enabled(void)
 }
 
 void gamestate_note_mode(unsigned short mode) { g_mode = mode; }
+unsigned short gamestate_mode(void) { return g_mode; }
 
 static bool read_state(GameState *s)
 {

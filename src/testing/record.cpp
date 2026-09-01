@@ -30,6 +30,7 @@
  * frame boundary does not guarantee.
  */
 #include "record.h"
+#include "policy.h"
 #include "clock.h"
 #include "log.h"
 #include <stdlib.h>
@@ -332,9 +333,17 @@ __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
         }
     }
     SHORT v;
-    if (record_replaying()) {
+    if (record_replaying() && !policy_in_control(clock_frame())) {
         replay_async(vKey, &v);
         return v;
+    }
+    if (policy_in_control(clock_frame())) {
+        /* The policy owns the run, so the recording's ENTER/ESC answers must
+         * not reach the game — the prefix recording ends by quitting, and
+         * replaying that answer killed the policy run at exactly the
+         * recording's length.  The policy drives the scancode array only; it
+         * has no menu decisions to make, so every async key reads as up. */
+        return 0;
     }
     v = GetAsyncKeyState(vKey);
     record_async(vKey, v);

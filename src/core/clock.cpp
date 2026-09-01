@@ -43,6 +43,8 @@
 #include "log.h"
 #include "determinism.h"
 #include "gamestate.h"
+#include "worldstate.h"
+#include "policy.h"
 #include "launcher.h"
 #include "record.h"
 #include <stdlib.h>
@@ -133,6 +135,7 @@ double clock_seconds(void)
     dethash_frame_end(g_accum);
     gamestate_tick();
     gamestate_deathdiff();
+    worldstate_tick();
     record_frame_boundary();
 
     /* Stage E.  A replay must end on the recording's own length, never on
@@ -140,7 +143,10 @@ double clock_seconds(void)
      * loop is uncapped).  Dump the end state while the level is still live —
      * after teardown the score fields are gone — then close the window so the
      * game's own shutdown path runs and crashcheck.py can see it complete. */
-    if (record_replaying() && record_replay_finished() && !g_replay_ended) {
+    /* A policy run outlives the recording that bootstrapped it: the prefix only
+     * exists to get into a level.  --auto-exit still bounds the run. */
+    if (record_replaying() && record_replay_finished() && !g_replay_ended &&
+        !policy_in_control(g_calls)) {
         g_replay_ended = true;
         gamestate_dump("replay-finished");
         launcher_end_run("replay finished");

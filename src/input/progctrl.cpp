@@ -8,6 +8,8 @@
 #include "log.h"
 #include "gamestate.h"
 #include "record.h"
+#include "policy.h"
+#include "clock.h"
 
 static const char SAVE_FILE[] = "ProgableControl.sav";
 
@@ -284,13 +286,22 @@ static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
     gamestate_note_mode(game_state);
 
     BYTE ks[256];
-    if (record_replaying()) {
+    if (record_replaying() && !policy_in_control(clock_frame())) {
         /* Replay drives the scancode array and the mode from the recording,
          * so the real keyboard is not touched at all. */
         unsigned short recorded = game_state;
         if (!replay_keys(&recorded, ks)) return;
         game_state = recorded;
         if (game_state >= 5) return;
+    } else if (policy_in_control(clock_frame())) {
+        /* The policy owns the run from here: the recording (if any) only
+         * existed to supply the menu prefix that got us into a level.  The
+         * real keyboard is not read, so this is reproducible in the same way a
+         * replay is. */
+        if (game_state >= 5) return;
+        memset(ks, 0, sizeof(ks));
+        if (!policy_keys(s, game_state, ks)) return;
+        record_keys(game_state, ks);
     } else {
         if (game_state >= 5 || !s->pKeyboard) return;
 
@@ -300,6 +311,12 @@ static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
             hr = s->pKeyboard->GetDeviceState(256, ks);
         }
         if (FAILED(hr)) return;
+        /* Stage 4: the policy overwrites the buffer the game was about to be
+         * given.  It runs *before* record_keys so a policy-driven run is
+         * captured to a .rec exactly as a hand-played one is — replaying that
+         * file back is the check that perception, decision and injection all
+         * agree.  It declines outside a level, so menus stay hand-driven. */
+        policy_keys(s, game_state, ks);
         record_keys(game_state, ks);
     }
 
