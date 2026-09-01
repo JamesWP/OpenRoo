@@ -93,6 +93,19 @@
       "notes": "Captured 1033 frames. No end-state assertions yet \u2014 run `replaytest.py --bless castle-something` once a replay is trusted."
     },
     {
+      "name": "destr-bait",
+      "file": "destr-bait.rec",
+      "saves": "tests/saves/destr-extralife",
+      "level": "Forest\\DestrStart",
+      "description": "Hand-played by James, isolated. Forest\\DestrStart: does the bait manoeuvre and nothing else, then quits once the extra life at (11,3) is taken. The sequence is: climb the stairs, wait clear of the falling tiles so the foe commits to crossing the bridge, step on and off a tile to break it while he is mid-crossing, which severs his path and strands him on a falling cell so he drops; wait out the repeat fall (a tile a foe dies on re-arms from the stale occupant byte and falls again); then collect the life. Captured to measure the timings a tactical layer would need: how long the bait wait is, how many frames the foe takes to commit, and how long the repeat fall lasts.",
+      "scenario": "bait the foe onto the falling bridge, break it under him, take the extra life",
+      "expect": {
+        "crash": "none",
+        "state": {}
+      },
+      "notes": "Captured 2098 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-bait` once a replay is trusted."
+    },
+    {
       "name": "destr-extralife",
       "file": "destr-extralife.rec",
       "saves": "tests/saves/destr-extralife",
