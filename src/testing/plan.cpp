@@ -49,6 +49,20 @@ static const int DV[4] = { -1, 0, +1, 0 };
 /* ── danger ─────────────────────────────────────────────────────────────── */
 
 static bool  g_danger[CELLS];
+/* Danger has two tiers.
+ *
+ * LETHAL is a cell an awake foe occupies or could step into next tick.  Going
+ * there is not a risk, it is a death, so it is refused outright — including by
+ * the "ignore danger and move anyway" fallback.  That fallback previously
+ * treated a foe like any other hazard, and the result was visible on screen:
+ * the policy would route around a foe when it could and walk straight into it
+ * when it could not, losing two lives in a single run.
+ *
+ * DANGER is ground to prefer not to stand on — falling tiles, and the cells
+ * around a frozen foe that cannot act this tick.  Those are avoided when there
+ * is an alternative and crossed when there is not.
+ */
+static bool  g_lethal[CELLS];
 /* While pickups remain, the exit is a hazard rather than a destination: once
  * gems_collected >= gems_required, merely stepping on it ends the level, so a
  * route that crosses it would finish early and abandon whatever is left.
@@ -64,6 +78,7 @@ static void mark_danger(const Observation *o)
     if (g_danger_frame == o->frame) return;
     g_danger_frame = o->frame;
     memset(g_danger, 0, sizeof(g_danger));
+    memset(g_lethal, 0, sizeof(g_lethal));
 
     /* Falling tiles are dangerous ground rather than blocked ground: standing
      * on one kills, crossing one does not, and on the levels that use them they
@@ -80,6 +95,7 @@ static void mark_danger(const Observation *o)
             int fu = v[i].gu, fv = v[i].gv;
             if (fu < 0 || fv < 0 || fu >= o->cols || fv >= o->rows) continue;
             g_danger[IDX(fu, fv)] = true;
+            g_lethal[IDX(fu, fv)] = true;
             /* A frozen foe cannot step anywhere this tick, so only the cell it
              * occupies is off limits — its neighbours are ordinary ground.
              * That is what makes a pickup guarded by a foe reachable while the
@@ -89,6 +105,7 @@ static void mark_danger(const Observation *o)
                 int au = fu + DU[d], av = fv + DV[d];
                 if (au < 0 || av < 0 || au >= o->cols || av >= o->rows) continue;
                 g_danger[IDX(au, av)] = true;
+                g_lethal[IDX(au, av)] = true;
             }
         }
     }
@@ -114,7 +131,7 @@ static void bfs(const Observation *o, int su, int sv, bool avoid,
 {
     for (int i = 0; i < CELLS; i++) { g_dist[i] = UNREACHED; g_prev[i] = -1; }
     if (su < 0 || sv < 0 || su >= o->cols || sv >= o->rows) return;
-    if (avoid) mark_danger(o);
+    mark_danger(o);
 
     int head = 0, tail = 0;
     int start = IDX(su, sv);
@@ -132,6 +149,7 @@ static void bfs(const Observation *o, int su, int sv, bool avoid,
             if (ignore_foes) {
                 if (!ws_passable_ignoring_foes(o, cu, cv, au, av)) continue;
             } else if (!ws_passable(o, cu, cv, au, av)) continue;
+            if (g_lethal[adj]) continue;          /* never, even as a fallback */
             if (avoid && g_danger[adj]) continue;
             if (adj == g_avoid_cell) continue;
             g_dist[adj] = g_dist[cur] + 1;
@@ -229,13 +247,29 @@ static void build_tour(const Observation *o, int pu, int pv)
      * A guarded stop that has become unreachable still falls out of the tour
      * below, and the danger-avoidance and wait-for-the-foe logic still apply
      * on the way there, so this changes the order rather than the safety. */
-    bool guarded[MAX_STOPS];
+    /* Rank 2 = a special pickup, 1 = one a foe is standing on or beside,
+     * 0 = an ordinary crystal.  Higher ranks are taken first.
+     *
+     * Guardedness alone was not a durable key.  It is recomputed from where
+     * the foes are at the moment the tour is built, and the tour is rebuilt
+     * every time anything is collected — so the extra life on
+     * Forest\DestrStart started out ranked first (the foe was dormant beside
+     * it), and then LOST that rank the moment the foe woke and wandered off.
+     * Watching it, the player heads for the life, collects a gem on the way,
+     * the tour rebuilds without the life ranked, and it turns round and goes
+     * back to the crystals.  Which is exactly what happened on screen.
+     *
+     * A pickup's contents value does not decay, so rank on that first: a
+     * crystal is contents 1 and there are dozens; anything else is rare and
+     * worth a detour (7 is the extra life, and the freeze bonus and the timer
+     * top-up are likewise one-offs). */
+    int rank[MAX_STOPS];
     for (int i = 0; i < n; i++) {
         int gu = g_stop[i] / WS_GRID_PITCH, gv = g_stop[i] % WS_GRID_PITCH;
-        guarded[i] = false;
-        for (int d = 0; d < 4 && !guarded[i]; d++)
-            if (ws_foe_on_cell(o, gu + DU[d], gv + DV[d])) guarded[i] = true;
-        if (ws_foe_on_cell(o, gu, gv)) guarded[i] = true;
+        bool guarded = ws_foe_on_cell(o, gu, gv);
+        for (int d = 0; d < 4 && !guarded; d++)
+            if (ws_foe_on_cell(o, gu + DU[d], gv + DV[d])) guarded = true;
+        rank[i] = (o->grid[g_stop[i]].contents != 1) ? 2 : (guarded ? 1 : 0);
     }
 
     /* Nearest neighbour, guarded stops first. */
@@ -248,8 +282,8 @@ static void build_tour(const Observation *o, int pu, int pv)
             if (used[i]) continue;
             if (g_cost[cur][i + 1] == UNREACHED) continue;
             if (best < 0) { best = i; continue; }
-            if (guarded[i] != guarded[best]) {          /* guarded wins outright */
-                if (guarded[i]) best = i;
+            if (rank[i] != rank[best]) {               /* higher rank wins outright */
+                if (rank[i] > rank[best]) best = i;
                 continue;
             }
             if (g_cost[cur][i + 1] < g_cost[cur][best + 1]) best = i;
@@ -268,10 +302,10 @@ static void build_tour(const Observation *o, int pu, int pv)
         bool improved = false;
         for (int i = 0; i < m - 1; i++) {
             for (int j = i + 1; j < m; j++) {
-                bool has_guarded = false;
-                for (int x = i; x <= j && !has_guarded; x++)
-                    if (guarded[order[x]]) has_guarded = true;
-                if (has_guarded) continue;
+                bool has_ranked = false;
+                for (int x = i; x <= j && !has_ranked; x++)
+                    if (rank[order[x]] > 0) has_ranked = true;
+                if (has_ranked) continue;
                 int a = (i == 0) ? 0 : order[i - 1] + 1;
                 int b = order[i] + 1, c = order[j] + 1;
                 int dNext = (j + 1 < m) ? order[j + 1] + 1 : -1;
@@ -298,7 +332,7 @@ static void build_tour(const Observation *o, int pu, int pv)
         log_write("plan:   [%d] (%d,%d) contents=%u%s cost=%d\n", i,
                   g_tour[i] / WS_GRID_PITCH, g_tour[i] % WS_GRID_PITCH,
                   o->grid[g_tour[i]].contents,
-                  guarded[order[i]] ? " GUARDED" : "",
+                  rank[order[i]] == 2 ? " SPECIAL" : rank[order[i]] ? " GUARDED" : "",
                   g_cost[i == 0 ? 0 : order[i-1] + 1][order[i] + 1]);
     for (int i = 0; i < n; i++)
         if (o->grid[g_stop[i]].contents != 1)
@@ -306,7 +340,7 @@ static void build_tour(const Observation *o, int pu, int pv)
                       o->grid[g_stop[i]].contents,
                       g_stop[i] / WS_GRID_PITCH, g_stop[i] % WS_GRID_PITCH,
                       g_cost[0][i + 1] == UNREACHED ? "NO" : "yes",
-                      guarded[i] ? " GUARDED" : "");
+                      rank[i] == 2 ? " SPECIAL" : rank[i] ? " GUARDED" : "");
 }
 
 /* ── the step ───────────────────────────────────────────────────────────── */
