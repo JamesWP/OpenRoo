@@ -80,11 +80,28 @@
  * avoided softly instead: routed around when there is an alternative, crossed
  * when there is not.
  *
- * Not modelled: the variants that fall twice (fall, respawn, fall again) and
- * the ones in later levels that never respawn.  The per-tile param byte reads
- * 0 for all 25 on DestrStart, so whatever distinguishes them lives in the
- * breakable object rather than the tile. */
+ * They come back.  UpdateBreakableTile (0x00403d40) arms the tile when someone
+ * steps on it, drops it after a delay (kind -> 0, which is the death), and
+ * then respawns it (kind -> 0x0d) — but only when the object's +0x59 is zero,
+ * and that field is the TILE'S PARAM BYTE passed through SpawnBreakableObject.
+ * So param 0 respawns and a nonzero param falls once and stays gone, which is
+ * the "does not respawn" variant in later levels.  All 25 on DestrStart have
+ * param 0.
+ *
+ * The practical consequence for planning is that a severed route is usually
+ * temporary, so a plan must be allowed to recover rather than being computed
+ * once — see plan.cpp. */
 #define WS_TILE_FALLING 0x0d
+
+/* Contents 7 is the extra life.  UpdatePlayerTileEffects does
+ * `entity+0x239 += 1` for it, and the player entity is Game+0x1751c9, so that
+ * write lands on Game+0x175402 — the lives counter.  (The sibling case,
+ * contents 1, does entity+0x23d, which is Game+0x175406, the gem count.)
+ *
+ * This is why a scan for writes to the absolute address 0x175402 came up with
+ * only level init, the "mausuruh" cheat, the death decrement and save-restore:
+ * the pickup writes it through the entity pointer. */
+#define WS_TILE_EXTRA_LIFE 0x07
 
 #define WS_TILE_TRANSFORM 0x0d
 static inline bool ws_is_pickup(BYTE contents)
@@ -103,7 +120,7 @@ static const int WS_DIR_DV[5] = { 0, -1,  0, +1,  0 };
 struct WsTile {
     BYTE  kind;        /* +0x2ab72a */
     BYTE  param;       /* +0x2ab72b */
-    BYTE  contents;    /* +0x2ab72c  1 = crystal */
+    BYTE  contents;    /* +0x2ab72c  1 = crystal, 7 = extra life */
     BYTE  occupant;    /* +0x2ab732  foe kind, written at spawn */
     BYTE  height;      /* +0x2ab729 */
     BYTE  spawn;       /* +0x3e181c  second plane: foe spawns, pickups */
@@ -119,6 +136,8 @@ struct WsEntity {
     BYTE  kind;        /* foe +0x152; 0 for enemies (field not confirmed) */
     BYTE  facing;      /* +0x14  1..4, see WS_DIR_* below */
     BYTE  moving;      /* +0x14e in-progress move direction, 0 = idle */
+    BYTE  subtype;     /* +0x62  behaviour: 1 heads for the exit, 2/3 chase */
+    DWORD frozen;      /* +0xef  nonzero = this foe will not act this tick */
     BYTE  category;    /* +0x15a (foes only) */
     BYTE  gu, gv, gh;  /* +0x31 / +0x32 / +0x33 — current grid cell */
     BYTE  su, sv, sh;  /* +0x153..0x155 — spawn cell (foes only) */
@@ -142,6 +161,7 @@ struct Observation {
     BYTE  player_cell[3];      /* Game+0x1751fa  (U, V, H) */
     BYTE  exit_cell[3];        /* Game+0x17530b  (U, V, H) — the level exit */
 
+    DWORD freeze_timer;        /* Game+0x1753af — nonzero freezes every foe */
     unsigned n_foes;
     unsigned n_enemies;
     WsEntity foes[WS_MAX_ENT];
@@ -181,6 +201,33 @@ bool worldstate_observe(Observation *obs);
  * move costs a detour; an accepted illegal one wedges the policy against an
  * obstacle, which is the failure this function exists to stop. */
 bool ws_passable(const Observation *o, int fu, int fv, int tu, int tv);
+
+/* As ws_passable, but with foes treated as if they were not there.
+ *
+ * A foe standing on a cell blocks it through the occupant byte, exactly like a
+ * crate does — but a foe moves and a crate does not.  Asking "would this be
+ * reachable if the foes stepped aside?" separates a route that is blocked
+ * for now from one that is blocked for good, which is what lets the policy
+ * wait for a guarded pickup instead of giving up on it. */
+bool ws_passable_ignoring_foes(const Observation *o, int fu, int fv,
+                               int tu, int tv);
+
+/* Foe behaviour, from GameTick's foe loop:
+ *
+ *   if (Game+0x1753af == 0 && bGame_state == 1) foe+0xef = 0;   // acts
+ *   else                                        foe+0xef = 1;   // frozen
+ *
+ * and foe+0xef is also forced to 1 once the level is completed or the player
+ * is dead.  Game+0x1753af is the freeze bonus: while it is set every foe is
+ * frozen, which is the window in which a guarded pickup can be taken safely.
+ *
+ * foe+0x62 selects the behaviour: 1 walks to the level EXIT rather than
+ * chasing, 2 and 3 chase the player through different searches, 5 hunts other
+ * foes.  So not every foe is coming for you.
+ */
+
+/* Is a live foe or enemy standing on this cell? */
+bool ws_foe_on_cell(const Observation *o, int u, int v);
 
 /* Called once per frame from clock_seconds(), after gamestate_tick().
  * Drives KAROO_MAP_DUMP (Stage 1), KAROO_ENTITY_TRACE (Stage 2) and

@@ -49,6 +49,14 @@ static const int DV[4] = { -1, 0, +1, 0 };
 /* ── danger ─────────────────────────────────────────────────────────────── */
 
 static bool  g_danger[CELLS];
+/* While pickups remain, the exit is a hazard rather than a destination: once
+ * gems_collected >= gems_required, merely stepping on it ends the level, so a
+ * route that crosses it would finish early and abandon whatever is left.
+ *
+ * This is a guard, not a fix for anything observed -- on Forest\DestrStart the
+ * exit is a dead end and is not on the way to anything, so it was NOT the
+ * reason the extra life there kept being missed. */
+static int   g_avoid_cell = -1;
 static DWORD g_danger_frame = 0xffffffff;
 
 static void mark_danger(const Observation *o)
@@ -72,6 +80,11 @@ static void mark_danger(const Observation *o)
             int fu = v[i].gu, fv = v[i].gv;
             if (fu < 0 || fv < 0 || fu >= o->cols || fv >= o->rows) continue;
             g_danger[IDX(fu, fv)] = true;
+            /* A frozen foe cannot step anywhere this tick, so only the cell it
+             * occupies is off limits — its neighbours are ordinary ground.
+             * That is what makes a pickup guarded by a foe reachable while the
+             * freeze bonus is running. */
+            if (v[i].frozen) continue;
             for (int d = 0; d < 4; d++) {
                 int au = fu + DU[d], av = fv + DV[d];
                 if (au < 0 || av < 0 || au >= o->cols || av >= o->rows) continue;
@@ -96,7 +109,8 @@ static int   g_queue[CELLS];
 
 /* Fill g_dist/g_prev from (su,sv).  `avoid` skips dangerous cells except the
  * start itself — standing in danger must not make the whole grid unreachable. */
-static void bfs(const Observation *o, int su, int sv, bool avoid)
+static void bfs(const Observation *o, int su, int sv, bool avoid,
+                bool ignore_foes = false)
 {
     for (int i = 0; i < CELLS; i++) { g_dist[i] = UNREACHED; g_prev[i] = -1; }
     if (su < 0 || sv < 0 || su >= o->cols || sv >= o->rows) return;
@@ -115,8 +129,11 @@ static void bfs(const Observation *o, int su, int sv, bool avoid)
             if (au < 0 || av < 0 || au >= o->cols || av >= o->rows) continue;
             int adj = IDX(au, av);
             if (g_dist[adj] != UNREACHED) continue;
-            if (!ws_passable(o, cu, cv, au, av)) continue;
+            if (ignore_foes) {
+                if (!ws_passable_ignoring_foes(o, cu, cv, au, av)) continue;
+            } else if (!ws_passable(o, cu, cv, au, av)) continue;
             if (avoid && g_danger[adj]) continue;
+            if (adj == g_avoid_cell) continue;
             g_dist[adj] = g_dist[cur] + 1;
             g_prev[adj] = cur;
             g_queue[tail++] = adj;
@@ -131,7 +148,29 @@ static int  g_tour_n;
 static int  g_tour_at;           /* how far along we are */
 static int  g_tour_sig;          /* pickup-set signature the tour was built for */
 
-void plan_reset(void) { g_tour_n = 0; g_tour_at = 0; g_tour_sig = -1; }
+/* The stop we are currently walking to, and how long it has been unreachable.
+ *
+ * Without this the policy visibly dithered — it would set off towards a gem,
+ * turn around, then head back.  Two things made the choice flip frame to
+ * frame: the danger-avoiding search depends on where the foes are, which
+ * changes every frame, so which stops look reachable changes with it; and a
+ * forced tour rebuild re-runs nearest-neighbour from wherever the player now
+ * stands, which can reorder the head of the tour.
+ *
+ * So pick a target and keep it.  A target is only abandoned once it has been
+ * collected, or has been unreachable for TARGET_PATIENCE consecutive frames —
+ * long enough for a falling tile to respawn, so a momentary gap in the floor
+ * does not cause a change of mind. */
+#define TARGET_PATIENCE 90
+
+static int g_target = -1;
+static int g_target_fail;
+
+void plan_reset(void)
+{
+    g_tour_n = 0; g_tour_at = 0; g_tour_sig = -1;
+    g_target = -1; g_target_fail = 0;
+}
 
 static int pickup_signature(const Observation *o)
 {
@@ -165,7 +204,12 @@ static void build_tour(const Observation *o, int pu, int pv)
     for (int a = 0; a <= n; a++) {
         int su = (a == 0) ? pu : g_stop[a - 1] / WS_GRID_PITCH;
         int sv = (a == 0) ? pv : g_stop[a - 1] % WS_GRID_PITCH;
-        bfs(o, su, sv, false);
+        /* Ignore foes when costing the tour.  A pickup with a foe standing on
+         * or beside it is guarded, not unreachable — some are placed that way
+         * deliberately — and excluding it here means it never becomes a target
+         * at all, so the wait-for-the-foe-to-move logic never gets a chance.
+         * That is how the extra life on Forest\DestrStart was walked past. */
+        bfs(o, su, sv, false, true);
         for (int b = 0; b <= n; b++) {
             int t = (b == 0) ? IDX(pu, pv) : g_stop[b - 1];
             g_cost[a][b] = g_dist[t];
@@ -251,8 +295,32 @@ bool plan_next_step(const Observation *o, int pu, int pv, int *nu, int *nv,
     if (seek_exit) {
         int goal = IDX(o->exit_cell[0], o->exit_cell[1]);
         if (o->exit_cell[0] >= o->cols || o->exit_cell[1] >= o->rows) return false;
+        g_avoid_cell = -1;
         return step_towards(o, pu, pv, goal, nu, nv);
     }
+
+    /* Collecting: keep off the exit so the level is not ended early. */
+    g_avoid_cell = (o->exit_cell[0] < o->cols && o->exit_cell[1] < o->rows)
+                 ? IDX(o->exit_cell[0], o->exit_cell[1]) : -1;
+
+    /* Stick with the current target while it is still worth having. */
+    if (g_target >= 0 && ws_is_pickup(o->grid[g_target].contents) &&
+        g_target != IDX(pu, pv)) {
+        if (step_towards(o, pu, pv, g_target, nu, nv)) {
+            g_target_fail = 0;
+            return true;
+        }
+        /* Blocked.  If the only thing in the way is a foe, this is a guarded
+         * pickup rather than an unreachable one — some are deliberately placed
+         * behind a foe — so hold the target and wait for it to move instead of
+         * giving up and wandering off to something else. */
+        bfs(o, pu, pv, false, true);
+        if (g_dist[g_target] != UNREACHED) return false;
+
+        if (++g_target_fail < TARGET_PATIENCE) return false;   /* wait it out */
+    }
+    g_target = -1;
+    g_target_fail = 0;
 
     int sig = pickup_signature(o);
     if (sig != g_tour_sig) {                       /* something was collected */
@@ -267,7 +335,24 @@ bool plan_next_step(const Observation *o, int pu, int pv, int *nu, int *nv,
         int goal = g_tour[i];
         if (!ws_is_pickup(o->grid[goal].contents)) { g_tour_at = i + 1; continue; }
         if (goal == IDX(pu, pv)) { g_tour_at = i + 1; continue; }
-        if (step_towards(o, pu, pv, goal, nu, nv)) return true;
+        if (step_towards(o, pu, pv, goal, nu, nv)) {
+            g_target = goal;
+            g_target_fail = 0;
+            return true;
+        }
     }
+
+    /* Nothing on the tour is reachable.  Force a rebuild next frame.
+     *
+     * The tour is normally rebuilt only when a pickup is taken, and that is a
+     * trap on levels with falling tiles: those tiles go void for a moment and
+     * come back (UpdateBreakableTile respawns them unless the tile's param
+     * byte is nonzero), so a tour built during the gap sees a severed map,
+     * comes out short or empty, and is then never rebuilt because no pickup
+     * was collected.  The policy stalls for good on a level that is still
+     * perfectly winnable — which is exactly what Forest\DestrStart did at
+     * 16/30, and why "the corridors are permanently severed" was the wrong
+     * diagnosis. */
+    g_tour_sig = -1;
     return false;
 }

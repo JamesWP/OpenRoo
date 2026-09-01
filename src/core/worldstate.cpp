@@ -108,6 +108,7 @@
 #define OFF_LIVES      0x175402
 #define OFF_COMPLETE   0x1752b8
 #define OFF_CRYSTALS   0x042252
+#define OFF_FREEZE     0x1753af   /* nonzero = all foes frozen (freeze bonus) */
 
 static WsTile     g_grid[WS_GRID_PITCH * WS_GRID_PITCH];
 static Observation g_obs;
@@ -151,6 +152,8 @@ static void read_entity(const BYTE *obj, BYTE slot, bool foe, WsEntity *e)
     e->gh      = obj[0x33];
     memcpy(e->pos, obj + 0x25, sizeof(e->pos));
     e->hidden  = *(const DWORD *)(obj + 0x82);
+    e->subtype = obj[0x62];
+    e->frozen  = *(const DWORD *)(obj + 0xef);
     if (foe) {
         e->kind     = obj[0x152];
         e->category = obj[0x15a];
@@ -236,6 +239,7 @@ bool worldstate_observe(Observation *obs)
     obs->lives             = g[OFF_LIVES];
     obs->level_complete    = *(const int   *)(g + OFF_COMPLETE);
     obs->crystals_in_level = *(const WORD  *)(g + OFF_CRYSTALS);
+    obs->freeze_timer      = *(const DWORD *)(g + OFF_FREEZE);
     return true;
 }
 
@@ -244,7 +248,19 @@ bool worldstate_observe(Observation *obs)
  * climb or a wall. */
 static inline bool ws_is_ramp(BYTE kind) { return kind > 4 && kind < 9; }
 
-bool ws_passable(const Observation *o, int fu, int fv, int tu, int tv)
+bool ws_foe_on_cell(const Observation *o, int u, int v)
+{
+    for (unsigned pass = 0; pass < 2; pass++) {
+        const WsEntity *e = pass ? o->enemies : o->foes;
+        unsigned n        = pass ? o->n_enemies : o->n_foes;
+        for (unsigned i = 0; i < n; i++)
+            if (e[i].gu == u && e[i].gv == v) return true;
+    }
+    return false;
+}
+
+static bool ws_passable_impl(const Observation *o, int fu, int fv,
+                             int tu, int tv, bool ignore_foes)
 {
     if (tu < 0 || tv < 0 || tu >= o->cols || tv >= o->rows) return false;
     if (fu < 0 || fv < 0 || fu >= o->cols || fv >= o->rows) return false;
@@ -253,7 +269,10 @@ bool ws_passable(const Observation *o, int fu, int fv, int tu, int tv)
     const WsTile *to   = &o->grid[tv + tu * WS_GRID_PITCH];
 
     if (to->kind == 0)      return false;   /* no floor — confirmed by falling into one */
-    if (to->occupant != 0)  return false;   /* an object or a foe is standing there */
+    if (to->occupant != 0) {
+        /* A foe's occupancy is temporary; anything else is furniture. */
+        if (!(ignore_foes && ws_foe_on_cell(o, tu, tv))) return false;
+    }
     if (to->kind == 0x16)   return false;
     if (to->kind == 0x17 && to->spent == 0) return false;
 
@@ -293,6 +312,17 @@ bool ws_passable(const Observation *o, int fu, int fv, int tu, int tv)
         return false;
 
     return true;
+}
+
+bool ws_passable(const Observation *o, int fu, int fv, int tu, int tv)
+{
+    return ws_passable_impl(o, fu, fv, tu, tv, false);
+}
+
+bool ws_passable_ignoring_foes(const Observation *o, int fu, int fv,
+                               int tu, int tv)
+{
+    return ws_passable_impl(o, fu, fv, tu, tv, true);
 }
 
 const Observation *worldstate_latest(void) { return g_obs_valid ? &g_obs : NULL; }
