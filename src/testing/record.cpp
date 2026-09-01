@@ -337,14 +337,13 @@ __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
         replay_async(vKey, &v);
         return v;
     }
-    if (policy_in_control(clock_frame())) {
-        /* The policy owns the run, so the recording's ENTER/ESC answers must
-         * not reach the game — the prefix recording ends by quitting, and
-         * replaying that answer killed the policy run at exactly the
-         * recording's length.  The policy drives the scancode array only; it
-         * has no menu decisions to make, so every async key reads as up. */
-        return 0;
-    }
+    /* Under policy control the recording's answers must not reach the game —
+     * the prefix recording ends by quitting, and replaying that answer killed
+     * the policy run at exactly the recording's length.  But the *real*
+     * keyboard must still be read, and the first version returned 0 here
+     * instead: that took ESC and ENTER away from the person watching, who then
+     * had no way to quit a policy run at all and had to kill the window.
+     * Falling through reads the real keyboard, which is what we want. */
     v = GetAsyncKeyState(vKey);
     record_async(vKey, v);
     return v;

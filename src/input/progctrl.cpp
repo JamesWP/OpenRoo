@@ -299,8 +299,28 @@ static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
          * real keyboard is not read, so this is reproducible in the same way a
          * replay is. */
         if (game_state >= 5) return;
+
+        /* Read the human's keys first, then merge the policy's on top.  The
+         * policy drives, but whoever is watching can still steer, and — more
+         * importantly — is not locked out of their own game.  Recording sees
+         * the merged array, so a recorded policy run still replays exactly. */
+        BYTE human[256];
+        memset(human, 0, sizeof(human));
+        if (s->pKeyboard) {
+            HRESULT hr = s->pKeyboard->GetDeviceState(256, human);
+            if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
+                s->pKeyboard->Acquire();
+                hr = s->pKeyboard->GetDeviceState(256, human);
+            }
+            if (FAILED(hr)) memset(human, 0, sizeof(human));
+        }
+
         memset(ks, 0, sizeof(ks));
-        if (!policy_keys(s, game_state, ks)) return;
+        if (!policy_keys(s, game_state, ks)) {
+            memcpy(ks, human, sizeof(ks));
+        } else {
+            for (int i = 0; i < 256; i++) ks[i] |= human[i];
+        }
         record_keys(game_state, ks);
     } else {
         if (game_state >= 5 || !s->pKeyboard) return;
