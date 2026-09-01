@@ -47,9 +47,17 @@ static bool fx_noblt(void)
     return cached != 0;
 }
 
+/* DrawSceneObjects golden-output fixture (dsogolden.cpp).  Fires once, on the
+ * first presented frame -- late enough that the game's globals are up, early
+ * enough for an --auto-exit smoke run to reach it.  No-op unless
+ * KAROO_DSO_GOLDEN is set. */
+void dsogolden_maybe_run(void);
+
 extern "C" __declspec(dllexport) void __cdecl
 Direct3D_FlipPrimaryFrame(LoadedImage *img)
 {
+    dsogolden_maybe_run();
+
     Direct3D *d3d = g_pDirect3D;
     HRESULT hr_blt = S_OK;
     bool skipped = fx_noblt();

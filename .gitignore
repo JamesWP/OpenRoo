@@ -28,3 +28,9 @@ replaytest-*.json
 LevelReport.txt
 ScriptTexts.txt
 !tests/levelreport/*.txt
+
+# DrawSceneObjects golden-output fixture run output (karoo-hooks/dsogolden.cpp).
+# A test output, like LevelReport.txt above: the baseline it is compared
+# against lives in tests/rendertrace/ (tools/dsogolden.py).
+karoo_dso_golden.txt
+!tests/rendertrace/*.txt
