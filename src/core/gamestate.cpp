@@ -82,9 +82,17 @@ struct GameState {
 /* ── Death diff (field finder) ─────────────────────────────────────────────
  *
  * Guessing field meanings one at a time is slow and, as +0x175402 showed,
- * wrong: it is INC'd on a "boommaker" name match at 0x0041B23D and DEC'd in
- * GameTick at 0x004160D6, yet it read 0 for a whole level in which bombs were
- * collected and spent.  So instead of naming candidates up front, snapshot the
+ * wrong: it is INC'd at 0x0041B23D and DEC'd in GameTick at 0x004160D6, yet it
+ * read 0 for a whole level in which bombs were collected and spent.
+ *
+ * (That INC was attributed here to a "boommaker" name match, which is wrong.
+ * 0x0041B23D is in the typed-cheat handler FUN_0041aca0, and the code that
+ * reaches it is "mausuruh" — +1 life.  "boommaker" is the adjacent compare and
+ * adds 10 to a different field, Game+0x1752b1.  No *pickup* writes 0x175402 at
+ * all: its only writers are level init, this cheat, the death decrement and
+ * save-slot restore.)
+ *
+ * So instead of naming candidates up front, snapshot the
  * whole Game object during play and diff it the moment a death registers.  A
  * lives counter is then simply a dword that dropped by exactly 1 across the
  * death, and it names itself.

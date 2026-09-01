@@ -24,3 +24,8 @@ bool policy_in_control(DWORD frame);
  * leaves the buffer alone when the policy is off, not in a level, or has no
  * valid observation — so the human at the keyboard still drives the menus. */
 bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys);
+
+/* Menu-side half of the policy: drives the menu into a level at startup and
+ * out of one on death or completion.  Called every frame, including while no
+ * level is loaded (when policy_keys is never reached). */
+void policy_menu_tick(void);

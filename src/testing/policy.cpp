@@ -44,6 +44,8 @@
 #include "policy.h"
 #include "progctrl.h"
 #include "worldstate.h"
+#include "menu.h"
+#include "gamestate.h"
 #include "log.h"
 #include <string.h>
 #include <math.h>
@@ -79,14 +81,6 @@
 
 static int  g_mode = -1;          /* -1 unknown, 0 off, 1 nearest-crystal */
 static char g_name[32];
-
-/* Which way "John_Turn_Left" actually turns depends on the handedness of (U, V)
- * pair, and that is not known from the decompile — the axes are only known to
- * be consistent, not oriented.  So the sign is a setting rather than a guess:
- * KAROO_POLICY_FLIP=1 inverts it.  The default below is the one that was
- * measured to work; see the commit message.  If a level has the policy circling
- * a crystal instead of walking to it, this is the first thing to flip. */
-static int g_flip = -1;
 
 /* Frame at which the policy takes over, default 0 (immediately).
  *
@@ -129,16 +123,6 @@ static DWORD policy_after(void)
     return g_after;
 }
 
-static bool turn_flipped(void)
-{
-    if (g_flip < 0) {
-        char buf[8];
-        g_flip = (GetEnvironmentVariableA("KAROO_POLICY_FLIP", buf, sizeof(buf))
-                  && buf[0] && buf[0] != '0');
-    }
-    return g_flip > 0;
-}
-
 bool policy_active(void)
 {
     if (g_mode < 0) {
@@ -146,14 +130,163 @@ bool policy_active(void)
         g_mode = 0;
         if (GetEnvironmentVariableA("KAROO_POLICY", buf, sizeof(buf)) && buf[0]) {
             if (strcmp(buf, "nearest-crystal") == 0) g_mode = 1;
+            else if (strcmp(buf, "probe") == 0) g_mode = 2;
             else if (strcmp(buf, "none") != 0)
                 log_write("policy: unknown KAROO_POLICY=%s — disabled "
-                          "(known: nearest-crystal)\n", buf);
+                          "(known: nearest-crystal, probe)\n", buf);
             strncpy(g_name, buf, sizeof(g_name) - 1);
         }
         log_write("policy: %s\n", g_mode ? g_name : "disabled");
     }
     return g_mode > 0;
+}
+
+/* ── menu goals: getting into a level, and out of one ────────────────────
+ *
+ * This replaces the recording prefix.  A policy run used to borrow
+ * bombstart-crash's menu keystrokes to reach a level, which meant the run only
+ * started if SavedGames happened to hold what that recording expected — the
+ * cause of every "wedged at the main menu" failure.  Now the policy navigates
+ * the menu itself: KAROO_MENU_SLOT=<k> asks for node 200+k, which is the
+ * "load save slot k" leaf.
+ *
+ * Game+0x2ab58c is the screen enum: 2 = game over, 3 = level completed,
+ * 4 = playing.  It is set alongside the completed/gameover handling in
+ * FUN_0041aca0, which also sets the menu node to 0x28 (the level-completed
+ * screen) — so the values are read off the same code that drives the menu,
+ * not guessed.
+ */
+#define GAME_PTR   ((void **)0x0046c498)
+
+static int  g_slot = -2;      /* -2 unread, -1 none */
+static bool g_slot_done;
+static bool g_played;         /* have we been in a running level this run? */
+
+static bool loop_runs(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        char buf[8];
+        v = (GetEnvironmentVariableA("KAROO_POLICY_LOOP", buf, sizeof(buf))
+             && buf[0] && buf[0] != '0');
+    }
+    return v > 0;
+}
+
+static int menu_slot(void)
+{
+    if (g_slot == -2) {
+        char buf[16];
+        g_slot = -1;
+        if (GetEnvironmentVariableA("KAROO_MENU_SLOT", buf, sizeof(buf)) && buf[0])
+            g_slot = (int)strtol(buf, NULL, 10);
+    }
+    return g_slot;
+}
+
+static bool exit_when_done(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        char buf[8];
+        v = (GetEnvironmentVariableA("KAROO_POLICY_EXIT", buf, sizeof(buf))
+             && buf[0] && buf[0] != '0');
+    }
+    return v > 0;
+}
+
+/* Called every frame from policy_keys, and also while no level is loaded. */
+void policy_menu_tick(void)
+{
+    if (!policy_active()) return;
+    const BYTE *g = (const BYTE *)*GAME_PTR;
+    if (!g) return;
+    BYTE screen = g[OFF_GAME_STATE];
+
+    /* bGame_state turned out not to hold the value the level-load path writes
+     * for the whole time a level is up, so log every transition rather than
+     * reasoning about it: a gate built on the wrong value fails silently. */
+    static int last_screen = -1;
+    if ((int)screen != last_screen) {
+        log_write("policy: bGame_state %d -> %u (mode=%u death=%u)\n",
+                  last_screen, (unsigned)screen, (unsigned)gamestate_mode(),
+                  (unsigned)g[0x1752e8]);
+        last_screen = screen;
+    }
+    if (screen == GAME_ST_PLAYING) g_played = true;
+
+    if (menu_goal() != MENU_NO_GOAL) return;   /* a route is already running */
+
+    /* Loading a level does not start it.  The script system flies the camera
+     * through the level with the intro audio, and then a "press enter" screen
+     * waits before the timer and the simulation actually run — both advanced
+     * with ENTER.  Throughout, bGame_state is already 4, so "a level is
+     * loaded" is not the same as "a level is running"; the discriminator is
+     * the dispatcher's game_state, which stays 0 until play begins.
+     *
+     * Without this the policy simply never started: a run sat on the intro for
+     * 4400 frames with the level loaded (10 gems, 140 s limit) and mode 0. */
+    /* A death also waits for ENTER, and this is why the very first policy runs
+     * looked like they "lost control" after a few hundred frames: they had
+     * died, and nothing was acknowledging it.  The borrowed recording used to
+     * hide this — its leftover ENTER presses advanced the prompt, which is why
+     * the recording-driven runs appeared to respawn on their own and the
+     * menu-driven one froze at the same point.
+     *
+     * Game+0x1752e8 is the death cause byte gamestate.cpp already logs; it is
+     * nonzero for the whole death/respawn window and clears on respawn. */
+    if (g[0x1752e8] != 0 && screen != GAME_ST_GAMEOVER && screen != GAME_ST_MENU) {
+        static bool said;
+        if (!said) { said = true; log_write("policy: death — pressing enter to respawn\n"); }
+        menu_pulse(0x0d);
+        return;
+    }
+
+    if (screen == GAME_ST_LOADED && gamestate_mode() == 0) {
+        static bool said;
+        if (!said) { said = true; log_write("policy: level intro — pressing enter to start\n"); }
+        menu_pulse(0x0d);
+        return;
+    }
+
+    /* The game-over and level-completed score screens are not menu nodes: they
+     * wait for ENTER and then drop back to the main menu.  Only once we are at
+     * the main menu (state 0) is there a node tree to navigate. */
+    if (screen == GAME_ST_GAMEOVER || screen == GAME_ST_COMPLETED) {
+        static int said;
+        if (said != screen) { said = screen;
+            log_write("policy: %s screen — pressing enter to clear\n",
+                      screen == GAME_ST_GAMEOVER ? "game over" : "level completed"); }
+        menu_pulse(0x0d);
+        return;
+    }
+
+
+    if (screen != GAME_ST_MENU) return;
+
+    if (!g_slot_done && menu_slot() >= 0) {
+        g_slot_done = true;                     /* one shot: get into the level */
+        log_write("policy: loading save slot %d via the menu (node %d)\n",
+                  menu_slot(), MENU_NODE_LOAD_SLOT + menu_slot());
+        menu_request(MENU_NODE_LOAD_SLOT + menu_slot());
+        return;
+    }
+
+    /* Back at the main menu having already played: the run is over.  Quit
+     * through the menu rather than reloading — reloading here is what produced
+     * the endless load/die/load loop the first time round.  KAROO_POLICY_LOOP=1
+     * asks for that loop deliberately, for unattended repeated runs. */
+    if (g_slot_done && g_played) {
+        static bool said;
+        if (loop_runs()) {
+            g_played = false;
+            log_write("policy: run over — reloading slot %d (KAROO_POLICY_LOOP)\n", menu_slot());
+            menu_request(MENU_NODE_LOAD_SLOT + menu_slot());
+        } else {
+            if (!said) { said = true; log_write("policy: run over — quitting via the menu\n"); }
+            menu_request(MENU_NODE_QUIT);
+        }
+    }
 }
 
 bool policy_in_control(DWORD frame)
@@ -211,21 +344,6 @@ static void dump_actions(ProgableControl *s, unsigned short mode)
 
 /* ── the controller ─────────────────────────────────────────────────────── */
 
-static float g_hist_u[HEADING_LAG], g_hist_v[HEADING_LAG];
-static unsigned g_hist_n;
-static DWORD    g_last_frame;
-static float    g_last_u, g_last_v;
-static int      g_still;
-static int      g_burst;
-static int      g_walk;
-static bool     g_walked_last;
-static bool     g_turn_left;
-
-static void heading_reset(void)
-{
-    g_hist_n = 0; g_still = 0; g_burst = 0; g_walk = 0; g_walked_last = false;
-}
-
 /* Breadth-first search from the player's cell to the nearest reachable
  * crystal, returning the next cell to step to.
  *
@@ -243,12 +361,13 @@ static void heading_reset(void)
  * scope yet" and they need the tile-kind semantics confirmed first.  This is
  * enough to make Stage 4's check observable, and no more.
  */
-#define WALKABLE(o, u, v) ((o)->grid[(v) + (u) * WS_GRID_PITCH].kind != 0)
+
 
 static short g_prev_cell[WS_GRID_PITCH * WS_GRID_PITCH];
 static short g_queue[WS_GRID_PITCH * WS_GRID_PITCH];
 
-static bool next_step(const Observation *o, int pu, int pv, int *nu, int *nv)
+static bool next_step(const Observation *o, int pu, int pv, int *nu, int *nv,
+                      bool seek_exit)
 {
     if (pu < 0 || pv < 0 || pu >= o->cols || pv >= o->rows) return false;
 
@@ -267,16 +386,21 @@ static bool next_step(const Observation *o, int pu, int pv, int *nu, int *nv)
         int cur = g_queue[head++];
         int cu = cur / WS_GRID_PITCH, cv = cur % WS_GRID_PITCH;
 
-        /* The start cell holds a crystal only if the player is standing on one,
-         * in which case there is nothing to walk towards. */
-        if (cur != start && o->grid[cur].contents == 1) { goal = cur; break; }
+        /* The start cell is never the goal: standing on the target means there
+         * is nothing to walk towards. */
+        if (cur != start) {
+            bool hit = seek_exit
+                ? (cu == o->exit_cell[0] && cv == o->exit_cell[1])
+                : ws_is_pickup(o->grid[cur].contents);
+            if (hit) { goal = cur; break; }
+        }
 
         for (int d = 0; d < 4; d++) {
             int au = cu + du[d], av = cv + dv[d];
             if (au < 0 || av < 0 || au >= o->cols || av >= o->rows) continue;
             int adj = av + au * WS_GRID_PITCH;
             if (g_prev_cell[adj] >= 0) continue;
-            if (!WALKABLE(o, au, av)) continue;
+            if (!ws_passable(o, cu, cv, au, av)) continue;
             g_prev_cell[adj] = (short)cur;
             g_queue[tail++] = (short)adj;
         }
@@ -299,149 +423,156 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
     if (!policy_active() || !s) return false;
 
     const Observation *o = worldstate_latest();
-    if (!o || !o->valid || o->mode == 0) { heading_reset(); return false; }
-    if (o->frame < policy_after()) { heading_reset(); return false; }
-
-    /* worldstate_tick() runs once per frame from the clock; the dispatcher can
-     * be called without an intervening frame boundary.  Only advance the
-     * history on a new frame, or the heading estimate collapses. */
-    bool new_frame = (o->frame != g_last_frame);
-    g_last_frame = o->frame;
-
-    float pu = o->player_grid[0], pv = o->player_grid[2];
-
-    float hu = 0, hv = 0;
-    bool have_heading = false;
-    if (g_hist_n >= HEADING_LAG) {
-        unsigned oldest = g_hist_n % HEADING_LAG;   /* slot about to be reused */
-        hu = pu - g_hist_u[oldest];
-        hv = pv - g_hist_v[oldest];
-        have_heading = (hu * hu + hv * hv) >= (MIN_MOTION * MIN_MOTION);
-    }
-    if (new_frame) {
-        g_hist_u[g_hist_n % HEADING_LAG] = pu;
-        g_hist_v[g_hist_n % HEADING_LAG] = pv;
-        g_hist_n++;
-    }
+    if (!o || !o->valid || o->mode == 0) return false;
+    if (o->frame < policy_after()) return false;
 
     dump_actions(s, game_state);
     memset(keys, 0, 256);
 
-    int nu, nv;
-    if (!next_step(o, (int)(pu + 0.5f), (int)(pv + 0.5f), &nu, &nv)) {
-        if (policy_trace())
-            log_write("policy: f=%lu pos=(%.3f,%.3f) NO REACHABLE CRYSTAL\n",
-                      (unsigned long)o->frame, pu, pv);
-        return true;
-    }
-
-    float du = (float)nu - pu, dv = (float)nv - pv;
-    if (du * du + dv * dv <= REACH_TILES * REACH_TILES) {
-        /* Already on the next waypoint — keep walking so the heading estimate
-         * stays fresh rather than stalling on the tile boundary. */
-        press(s, game_state, ACT_FORWARD, keys);
-        return true;
-    }
-
     /* ── the controller ──────────────────────────────────────────────────
      *
-     * A state machine, not a per-frame reflex, because the per-frame version
-     * deadlocked and the trace showed exactly how: turning on the spot
-     * produces no motion, so the measured heading goes stale, so the
-     * controller falls back to "walk forward", so it walks into whatever it
-     * happens to be facing — for 170 straight frames at (9,9) on
-     * Forest\Start, without moving.
+     * Facing is a real field, so this is now arithmetic rather than
+     * guesswork.  The previous version estimated a heading from how the
+     * player had moved over the last few frames, which is what made it
+     * deadlock twice: turning produces no motion, so the estimate went stale
+     * exactly when it was needed, and the fallback walked into walls.  All of
+     * that machinery — the history ring, the stuck detector, the turn bursts,
+     * the KAROO_POLICY_FLIP guess about handedness — is gone.
      *
-     * Two rules fix it, and both are about committing:
-     *   - a turn runs for a fixed burst before the heading is consulted again,
-     *     so a turn actually completes;
-     *   - if walking has produced no motion for STUCK_FRAMES, turn regardless
-     *     of what the heading says, because "facing a wall" and "no heading"
-     *     look identical from here.
-     *
-     * The result cannot deadlock: every state has a timeout into the other.
+     * The keys here are level-triggered, not edge-triggered like the menu's:
+     * PlayerMoveForward and PlayerTurnRight both no-op while a move is in
+     * progress (entity+0x14e != 0), so holding a key steps one tile or one
+     * quarter-turn at a time.  Holding is therefore correct and needs no
+     * pulsing; the controller simply stops asking once it is aligned.
      */
-    /* Motion bookkeeping.  g_still counts only frames the policy spent trying
-     * to WALK.  Counting turn frames too was the second deadlock: turning
-     * never moves the player, so "still" kept climbing during a turn, so the
-     * stuck rule fired, so it turned again — the trace showed it spinning on
-     * the spot from f=474 onwards, alternating turn bursts and never once
-     * walking. */
-    if (new_frame) {
-        float mu = pu - g_last_u, mv = pv - g_last_v;
-        bool moved = (mu * mu + mv * mv) >= (STILL_EPS * STILL_EPS);
-        g_last_u = pu; g_last_v = pv;
-        if (moved)              g_still = 0;
-        else if (g_walked_last) g_still++;
-    }
+    int pu = (int)(o->player_grid[0] + 0.5f);
+    int pv = (int)(o->player_grid[2] + 0.5f);
 
-    /* One-tile lookahead.
+    /* Direction calibration.
      *
-     * The BFS never routes through a kind-0 cell, but the controller only
-     * steers *roughly* toward the next waypoint and can drift diagonally past
-     * it.  That is how the first long run ended: two crystals collected, then
-     * a walk into (9,13) — a kind-0 cell the path never contained — and a fall
-     * to -100.  So refuse to press forward when the cell one tile ahead along
-     * the current heading is not walkable, and turn instead. */
-    bool ahead_ok = true;
-    if (have_heading) {
-        float len = sqrtf(hu * hu + hv * hv);
-        if (len > 0.0f) {
-            int au = (int)(pu + hu / len + 0.5f);
-            int av = (int)(pv + hv / len + 0.5f);
-            ahead_ok = (au >= 0 && av >= 0 && au < o->cols && av < o->rows &&
-                        WALKABLE(o, au, av));
+     * The direction->axis table was first derived from FUN_00438770's movement
+     * interpolation and came out wrong in play: with facing 2 the player moved
+     * along +V, not +U.  Two encodings are mixed up in that function —
+     * entity+0x14e holds a plain 1..4 while walking but direction+10 while
+     * turning (PlayerTurnRight writes +0x145 = dir + 10) — so the switch cases
+     * do not map to facing values as directly as they appear to.
+     *
+     * So measure it instead of arguing with the decompile: log the facing and
+     * the cell delta every time the player's cell actually changes, and read
+     * the table off a run.  KAROO_POLICY_TRACE shows these as STEP lines.
+     */
+    {
+        static int last_u = -999, last_v = -999;
+        static BYTE last_face;
+        if (last_u != -999 && (pu != last_u || pv != last_v) && policy_trace())
+            log_write("policy: STEP face=%u(before %u) delta=(%+d,%+d)\n",
+                      o->player_facing, last_face, pu - last_u, pv - last_v);
+        if (pu != last_u || pv != last_v) { last_u = pu; last_v = pv; }
+        last_face = o->player_facing;
+    }
+
+    /* KAROO_POLICY=probe — calibration, not play.
+     *
+     * Walk until the cell changes, then turn right until the facing changes,
+     * and repeat.  Over one run that visits all four facings and prints a STEP
+     * line for each, which is how the direction table below was established
+     * after deriving it from the decompile gave the wrong answer.  It also
+     * shows the turn *order*, so "right is +1" is measured rather than assumed.
+     */
+    if (g_mode == 2) {
+        static int  phase;          /* 0 = walking, 1 = turning */
+        static int  mark_u, mark_v;
+        static BYTE mark_face;
+        static bool primed;
+        if (!primed) { primed = true; mark_u = pu; mark_v = pv; mark_face = o->player_facing; }
+
+        if (phase == 0) {
+            if (pu != mark_u || pv != mark_v) {
+                phase = 1; mark_face = o->player_facing;
+            } else {
+                press(s, game_state, ACT_FORWARD, keys);
+                return true;
+            }
+        }
+        if (o->player_facing != mark_face) {
+            log_write("policy: PROBE turn_right %u -> %u\n",
+                      mark_face, o->player_facing);
+            phase = 0; mark_u = pu; mark_v = pv;
+            press(s, game_state, ACT_FORWARD, keys);
+            return true;
+        }
+        press(s, game_state, ACT_TURN_R, keys);
+        return true;
+    }
+
+    /* Crystals first, then the exit.
+     *
+     * With every crystal collected the policy had no target left and simply
+     * stood still — the level was won on points and never finished.  GameTick
+     * only sets the completion flag when the player's cell matches the exit
+     * AND gems_collected >= gems_required, so switching targets in that order
+     * matches the game's own condition. */
+    /* Collect everything worth having first, then leave.  gems_required is the
+     * exit's condition, but other pickups are still worth a detour while the
+     * level is open, so only switch to the exit when nothing else is left. */
+    bool seek_exit = false;
+    int nu, nv;
+    if (!next_step(o, pu, pv, &nu, &nv, false)) {
+        if (o->gems_collected >= o->gems_required &&
+            next_step(o, pu, pv, &nu, &nv, true))
+            seek_exit = true;               /* nothing left to collect — leave */
+        else {
+            if (policy_trace())
+                log_write("policy: f=%lu cell=(%d,%d) NOTHING REACHABLE (%s)\n",
+                          (unsigned long)o->frame, pu, pv,
+                          o->gems_collected >= o->gems_required
+                              ? "exit" : "pickup");
+            return true;
         }
     }
 
+    /* Which of the four directions steps from here to the next cell. */
+    int want = 0;
+    for (int d = WS_DIR_MIN; d <= WS_DIR_MAX; d++)
+        if (pu + WS_DIR_DU[d] == nu && pv + WS_DIR_DV[d] == nv) { want = d; break; }
+
+    BYTE face = o->player_facing;
     const char *act;
-    if (g_burst > 0) {                        /* committed to a turn */
-        if (new_frame) g_burst--;
-        act = g_turn_left ? ACT_TURN_L : ACT_TURN_R;
-    } else if (!ahead_ok) {
-        /* About to walk off the map — turn, whatever the plan said. */
-        g_turn_left = true;
-        g_burst     = TURN_FRAMES;
-        g_walk      = WALK_FRAMES;
-        g_still     = 0;
-        act = ACT_TURN_L;
-    } else if (g_walk > 0) {
-        /* Always walk for a stretch after a turn, so there is fresh motion to
-         * measure a heading from before the next turn decision is taken.
-         * Without this the controller decides on a heading it measured before
-         * the turn, which is exactly the one the turn was meant to change. */
-        if (new_frame) g_walk--;
+    if (want == 0 || face < WS_DIR_MIN || face > WS_DIR_MAX) {
+        /* The BFS only ever returns a 4-neighbour, so this should not happen;
+         * walking forward is a harmless default that keeps things moving. */
         act = ACT_FORWARD;
-    } else if (g_still >= STUCK_FRAMES) {     /* walking is getting nowhere */
-        g_turn_left = true;
-        g_burst     = TURN_FRAMES;
-        g_walk      = WALK_FRAMES;
-        g_still     = 0;
-        act = ACT_TURN_L;
-    } else if (have_heading) {
-        float cross = hu * dv - hv * du;
-        float dot   = hu * du + hv * dv;
-        float err   = atan2f(cross, dot);
-        if (turn_flipped()) err = -err;
-        if (err > ALIGN_TOL || err < -ALIGN_TOL) {
-            g_turn_left = (err > 0);
-            g_burst     = TURN_FRAMES;
-            g_walk      = WALK_FRAMES;
-            act = g_turn_left ? ACT_TURN_L : ACT_TURN_R;
-        } else {
-            act = ACT_FORWARD;
-        }
+    } else if (face == want) {
+        act = ACT_FORWARD;
+    } else if (o->player_moving != 0) {
+        /* Mid-action: press nothing.
+         *
+         * Turning is the one place a held key is wrong.  PlayerTurnRight
+         * no-ops while a move is in progress *except* that it buffers the
+         * press into entity+0x60/+0x61, so holding the key queues a second
+         * turn that fires the moment the first completes — the player
+         * overshoots by 90 degrees every time.  That is exactly what the probe
+         * run showed: turn_right stepped 1 -> 2, but by the time the next walk
+         * happened the facing had already run on to 3, so facings 2 and 4
+         * never got to move at all and the policy oscillated along one axis.
+         *
+         * Gating on the busy field means one turn is issued per completed
+         * action, which is what a person pressing the key does. */
+        act = NULL;
     } else {
-        act = ACT_FORWARD;                    /* walking is what builds a heading */
+        /* Turn the short way: right is +1 mod 4 (measured: 1->2, 3->4), left
+         * is -1.  A half-turn goes right arbitrarily and re-decides next
+         * frame. */
+        int cw = (want - (int)face + 4) % 4;
+        act = (cw == 3) ? ACT_TURN_L : ACT_TURN_R;
     }
-    press(s, game_state, act, keys);
-    if (new_frame) g_walked_last = (act == ACT_FORWARD);
+    if (act) press(s, game_state, act, keys);
 
     if (policy_trace())
-        log_write("policy: f=%lu pos=(%.3f,%.3f) way=(%d,%d) head=(%.3f,%.3f)%s "
-                  "still=%d burst=%d walk=%d%s -> %s\n",
-                  (unsigned long)o->frame, pu, pv, nu, nv, hu, hv,
-                  have_heading ? "" : "[stale]", g_still, g_burst, g_walk,
-                  ahead_ok ? "" : " EDGE", act);
+        log_write("policy: f=%lu cell=(%d,%d) face=%u want=%d step=(%d,%d) "
+                  "moving=%u %s -> %s\n",
+                  (unsigned long)o->frame, pu, pv, o->player_facing, want,
+                  nu, nv, o->player_moving, seek_exit ? "exit" : "gem",
+                  act ? act : "(wait)");
     return true;
 }

@@ -31,6 +31,7 @@
  */
 #include "record.h"
 #include "policy.h"
+#include "menu.h"
 #include "clock.h"
 #include "log.h"
 #include <stdlib.h>
@@ -332,6 +333,12 @@ __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
                       clock_frame(), vKey, __builtin_return_address(0));
         }
     }
+    /* The menu driver answers first: it is synthesising an edge that the
+     * navigator's debounce depends on, and neither a recording nor the real
+     * keyboard must contradict it. */
+    SHORT mv;
+    if (menu_async_override(vKey, &mv)) return mv;
+
     SHORT v;
     if (record_replaying() && !policy_in_control(clock_frame())) {
         replay_async(vKey, &v);

@@ -80,9 +80,26 @@
 #define OFF_ENE_IDS    0x174610
 
 /* Player */
-#define OFF_PLR_GRIDF  0x1751ee   /* float[3] (U, H, V) */
+/* The player is an entity of the same class as foes and enemies: its object
+ * base is Game+0x1751c9, the context the input callbacks are registered with
+ * in DirectInputSetup.  That is confirmed arithmetically — the position triple
+ * this file already reads at Game+0x1751ee is exactly base+0x25, and the grid
+ * bytes at Game+0x1751fa are base+0x31, matching the foe layout offset for
+ * offset. */
+#define OFF_PLAYER_OBJ 0x1751c9
+#define OFF_PLR_FACING (OFF_PLAYER_OBJ + 0x14)    /* 0x1751dd */
+#define OFF_PLR_MOVING (OFF_PLAYER_OBJ + 0x14e)   /* 0x175317 */
+#define OFF_PLR_GRIDF  0x1751ee   /* float[3] (U, H, V) = base+0x25 */
 #define OFF_PLR_CELL   0x1751fa   /* byte[3]  (U, V, H) */
 #define OFF_PLR_WORLD  0x2ab580   /* float[3] (U, H, V) */
+
+/* The level exit, as (U, V, H) bytes.  SetupLevelObjects finds it by searching
+ * the grid for tile kind 4 (FUN_0041f430(..., 4, Game+0x17530b)) — and there
+ * is exactly one such tile on every level dumped so far.  GameTick sets the
+ * completion flag when the player's cell equals these three AND
+ * gems_collected >= gems_required, so the exit only counts once the level's
+ * crystals are done. */
+#define OFF_EXIT_CELL  0x17530b
 
 /* Scalars, same fields gamestate.cpp reads. */
 #define OFF_GEMS_GOT   0x175406
@@ -127,7 +144,8 @@ static void read_entity(const BYTE *obj, BYTE slot, bool foe, WsEntity *e)
 {
     memset(e, 0, sizeof(*e));
     e->slot    = slot;
-    e->subtype = obj[0x14];
+    e->facing  = obj[0x14];
+    e->moving  = (BYTE)*(const DWORD *)(obj + 0x14e);
     e->gu      = obj[0x31];
     e->gv      = obj[0x32];
     e->gh      = obj[0x33];
@@ -199,9 +217,12 @@ bool worldstate_observe(Observation *obs)
         }
     }
 
+    obs->player_facing = g[OFF_PLR_FACING];
+    obs->player_moving = (BYTE)*(const DWORD *)(g + OFF_PLR_MOVING);
     memcpy(obs->player_grid,  g + OFF_PLR_GRIDF, sizeof(obs->player_grid));
     memcpy(obs->player_world, g + OFF_PLR_WORLD, sizeof(obs->player_world));
     memcpy(obs->player_cell,  g + OFF_PLR_CELL,  sizeof(obs->player_cell));
+    memcpy(obs->exit_cell,    g + OFF_EXIT_CELL, sizeof(obs->exit_cell));
 
     obs->n_foes    = read_table(g, OFF_FOE_PTRS, OFF_FOE_COUNT, OFF_FOE_IDS,
                                 true,  obs->foes);
@@ -214,6 +235,58 @@ bool worldstate_observe(Observation *obs)
     obs->lives             = g[OFF_LIVES];
     obs->level_complete    = *(const int   *)(g + OFF_COMPLETE);
     obs->crystals_in_level = *(const WORD  *)(g + OFF_CRYSTALS);
+    return true;
+}
+
+/* Tile kinds 5..8 are ramps: FUN_0041f8a0(k) == (4 < k && k < 9), and the
+ * movement code uses that predicate to decide whether a height change is a
+ * climb or a wall. */
+static inline bool ws_is_ramp(BYTE kind) { return kind > 4 && kind < 9; }
+
+bool ws_passable(const Observation *o, int fu, int fv, int tu, int tv)
+{
+    if (tu < 0 || tv < 0 || tu >= o->cols || tv >= o->rows) return false;
+    if (fu < 0 || fv < 0 || fu >= o->cols || fv >= o->rows) return false;
+
+    const WsTile *from = &o->grid[fv + fu * WS_GRID_PITCH];
+    const WsTile *to   = &o->grid[tv + tu * WS_GRID_PITCH];
+
+    if (to->kind == 0)      return false;   /* no floor — confirmed by falling into one */
+    if (to->occupant != 0)  return false;   /* an object or a foe is standing there */
+    if (to->kind == 0x16)   return false;
+    if (to->kind == 0x17)   return false;   /* gated on tile+0x7a, which is not read */
+
+    /* Climbing.
+     *
+     * Exempting a step whenever *either* tile was a ramp was far too loose,
+     * and it killed a run: the policy routed up a ledge it could only ever
+     * drop off.  The movement code is specific — it permits the climb only
+     * when the tile being LEFT is a ramp whose orientation matches the
+     * direction of travel:
+     *
+     *   if (move_dir == cur.kind - 4 || move_dir == turn(cur.kind - 4, 2))
+     *       if (cur.height < dest.height) ... climb ...
+     *   else if (dest.height == cur.height + 1) cancel;
+     *
+     * so the ramp's own facing matters, and it is the source tile that counts.
+     */
+    if (to->height > from->height) {
+        if (!ws_is_ramp(from->kind)) return false;
+        int dir = 0;
+        for (int d = WS_DIR_MIN; d <= WS_DIR_MAX; d++)
+            if (fu + WS_DIR_DU[d] == tu && fv + WS_DIR_DV[d] == tv) { dir = d; break; }
+        int ramp = from->kind - 4;                 /* 1..4 */
+        int back = ((ramp - 1 + 2) % 4) + 1;       /* its opposite */
+        if (dir != ramp && dir != back) return false;
+    }
+
+    /* Falling: a drop of three or more kills.  Nothing in the search stopped
+     * this before, so a route could walk the player off a lethal ledge and the
+     * policy would cheerfully take it. */
+    if (to->kind != WS_TILE_SOFT_LAND &&
+        from->height > to->height + WS_MAX_SAFE_DROP)
+        return false;
+
     return true;
 }
 
@@ -338,10 +411,10 @@ static void trace_entities(const Observation *obs, const char *tag,
         const WsEntity *e = &ents[i];
         bool inb = (e->gu < obs->cols && e->gv < obs->rows);
         bool ax  = axis_ok(e->pos[0], e->gu) && axis_ok(e->pos[2], e->gv);
-        log_write("entity: f=%lu %s[%u] slot=%u kind=%u sub=%u cat=%u "
+        log_write("entity: f=%lu %s[%u] slot=%u kind=%u face=%u cat=%u "
                   "cell=(%u,%u,%u) pos=(%.3f,%.3f,%.3f) hid=%lu%s%s\n",
                   (unsigned long)obs->frame, tag, i, e->slot,
-                  e->kind, e->subtype, e->category,
+                  e->kind, e->facing, e->category,
                   e->gu, e->gv, e->gh,
                   e->pos[0], e->pos[1], e->pos[2],
                   (unsigned long)e->hidden,
@@ -353,12 +426,13 @@ static void trace_entities(const Observation *obs, const char *tag,
 
 static void trace_frame(const Observation *obs)
 {
-    log_write("entity: f=%lu mode=%u grid=%ux%u player cell=(%u,%u,%u) "
+    log_write("entity: f=%lu mode=%u grid=%ux%u player cell=(%u,%u,%u) face=%u "
               "gridf=(%.3f,%.3f,%.3f) world=(%.3f,%.3f,%.3f) "
               "foes=%u enemies=%u killed=%u gems=%d/%d\n",
               (unsigned long)obs->frame, (unsigned)obs->mode,
               obs->cols, obs->rows,
               obs->player_cell[0], obs->player_cell[1], obs->player_cell[2],
+              obs->player_facing,
               obs->player_grid[0],  obs->player_grid[1],  obs->player_grid[2],
               obs->player_world[0], obs->player_world[1], obs->player_world[2],
               obs->n_foes, obs->n_enemies, (unsigned)obs->foes_killed,

@@ -45,6 +45,7 @@
 #include "gamestate.h"
 #include "worldstate.h"
 #include "policy.h"
+#include "menu.h"
 #include "launcher.h"
 #include "record.h"
 #include <stdlib.h>
@@ -136,6 +137,8 @@ double clock_seconds(void)
     gamestate_tick();
     gamestate_deathdiff();
     worldstate_tick();
+    policy_menu_tick();
+    menu_tick();
     record_frame_boundary();
 
     /* Stage E.  A replay must end on the recording's own length, never on
