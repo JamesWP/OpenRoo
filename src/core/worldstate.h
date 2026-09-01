@@ -57,6 +57,35 @@
  * save-slot restore, and the "mausuruh" cheat — no pickup writes them
  * directly, so a life must be granted indirectly.  Collecting every benign
  * pickup is a superset that includes it. */
+/* Kind 2 is the glue pad (the "Glue&Enemy" levels are full of them: 16 on
+ * Forest\Glue&EnemyStart).  Standing on one whose spent flag is clear cancels
+ * the entity's queued move for a fixed time, then sets the flag and the pad
+ * goes inert:
+ *
+ *   if (height == tile.height && tile.kind == 2 && tile+0x7a == 0) {
+ *       if (now - stuck_since <= DURATION) entity+0x145 = 0;   // frozen
+ *       else { stuck_since = 0; tile+0x7a = 1; }               // pad spent
+ *   }
+ *
+ * Foes run the same entity code, so a foe crossing one is frozen too — which
+ * is the basis for luring them onto a pad, not implemented here. */
+#define WS_TILE_GLUE 0x02
+
+/* Kind 0x0d is the falling tile — SetupLevelObjects hands each one to
+ * SpawnBreakableObject.  Stand on it and a few ticks later it drops away and
+ * takes you with it; cross it without stopping and it is harmless.  Forest
+ * level 9 ("DestrStart", 25 of them) is the first to use them, and they are
+ * laid out as corridors — (3,10)..(3,13), (6,6)..(6,9), (11,7)..(11,9) — so
+ * treating them as impassable would make the level unsolvable.  They are
+ * avoided softly instead: routed around when there is an alternative, crossed
+ * when there is not.
+ *
+ * Not modelled: the variants that fall twice (fall, respawn, fall again) and
+ * the ones in later levels that never respawn.  The per-tile param byte reads
+ * 0 for all 25 on DestrStart, so whatever distinguishes them lives in the
+ * breakable object rather than the tile. */
+#define WS_TILE_FALLING 0x0d
+
 #define WS_TILE_TRANSFORM 0x0d
 static inline bool ws_is_pickup(BYTE contents)
 {
@@ -81,6 +110,7 @@ struct WsTile {
     BYTE  spawn_a;     /* +0x3e1819 */
     BYTE  spawn_b;     /* +0x3e181b */
     float height_f;    /* +0x2ab733 */
+    DWORD spent;       /* +0x2ab7a4 (tile+0x7a) — "this tile has been used" */
 };
 
 /* One live foe or enemy. */

@@ -45,6 +45,7 @@
 #include "progctrl.h"
 #include "worldstate.h"
 #include "menu.h"
+#include "plan.h"
 #include "gamestate.h"
 #include "log.h"
 #include <string.h>
@@ -212,6 +213,9 @@ void policy_menu_tick(void)
                   last_screen, (unsigned)screen, (unsigned)gamestate_mode(),
                   (unsigned)g[0x1752e8]);
         last_screen = screen;
+        /* A new level means a new tour; a stale one would send the policy to
+         * cells that no longer hold anything. */
+        if (screen == GAME_ST_MENU || screen == GAME_ST_LOADED) plan_reset();
     }
     if (screen == GAME_ST_PLAYING) g_played = true;
 
@@ -344,80 +348,6 @@ static void dump_actions(ProgableControl *s, unsigned short mode)
 
 /* ── the controller ─────────────────────────────────────────────────────── */
 
-/* Breadth-first search from the player's cell to the nearest reachable
- * crystal, returning the next cell to step to.
- *
- * Terrain awareness is here because the first working version did not have it
- * and the result was unambiguous: from (7,6) on Forest\BombStart the nearest
- * crystal is (1,6), due west, and the policy walked west off the edge at (5,6)
- * and fell — the vertical position dropped from 30 to 4 in freefall and the
- * run ended with death_cause 2.  That is what "goal-seeking with no map" looks
- * like, and it is also how tile kind 0 was confirmed to mean *no floor*: the
- * player fell at exactly the first kind-0 cell on its path.
- *
- * So: 4-neighbour BFS over tiles whose kind is nonzero.  Deliberately minimal —
- * it ignores height differences (so it will happily route up a cliff it cannot
- * climb), foes, bridges, lifts and switches.  Those are AI_PLAN.md § "Not in
- * scope yet" and they need the tile-kind semantics confirmed first.  This is
- * enough to make Stage 4's check observable, and no more.
- */
-
-
-static short g_prev_cell[WS_GRID_PITCH * WS_GRID_PITCH];
-static short g_queue[WS_GRID_PITCH * WS_GRID_PITCH];
-
-static bool next_step(const Observation *o, int pu, int pv, int *nu, int *nv,
-                      bool seek_exit)
-{
-    if (pu < 0 || pv < 0 || pu >= o->cols || pv >= o->rows) return false;
-
-    for (int i = 0; i < WS_GRID_PITCH * WS_GRID_PITCH; i++) g_prev_cell[i] = -1;
-
-    int head = 0, tail = 0;
-    int start = pv + pu * WS_GRID_PITCH;
-    g_queue[tail++] = (short)start;
-    g_prev_cell[start] = (short)start;      /* its own parent: marks visited */
-
-    int goal = -1;
-    static const int du[4] = { 1, -1, 0, 0 };
-    static const int dv[4] = { 0, 0, 1, -1 };
-
-    while (head < tail && goal < 0) {
-        int cur = g_queue[head++];
-        int cu = cur / WS_GRID_PITCH, cv = cur % WS_GRID_PITCH;
-
-        /* The start cell is never the goal: standing on the target means there
-         * is nothing to walk towards. */
-        if (cur != start) {
-            bool hit = seek_exit
-                ? (cu == o->exit_cell[0] && cv == o->exit_cell[1])
-                : ws_is_pickup(o->grid[cur].contents);
-            if (hit) { goal = cur; break; }
-        }
-
-        for (int d = 0; d < 4; d++) {
-            int au = cu + du[d], av = cv + dv[d];
-            if (au < 0 || av < 0 || au >= o->cols || av >= o->rows) continue;
-            int adj = av + au * WS_GRID_PITCH;
-            if (g_prev_cell[adj] >= 0) continue;
-            if (!ws_passable(o, cu, cv, au, av)) continue;
-            g_prev_cell[adj] = (short)cur;
-            g_queue[tail++] = (short)adj;
-        }
-    }
-    if (goal < 0) return false;                     /* none reachable */
-
-    /* Walk the parent chain back to the cell adjacent to the start. */
-    int cur = goal;
-    while (g_prev_cell[cur] != start && g_prev_cell[cur] != cur)
-        cur = g_prev_cell[cur];
-    if (cur == start) return false;
-
-    *nu = cur / WS_GRID_PITCH;
-    *nv = cur % WS_GRID_PITCH;
-    return true;
-}
-
 bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
 {
     if (!policy_active() || !s) return false;
@@ -517,9 +447,9 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
      * level is open, so only switch to the exit when nothing else is left. */
     bool seek_exit = false;
     int nu, nv;
-    if (!next_step(o, pu, pv, &nu, &nv, false)) {
+    if (!plan_next_step(o, pu, pv, &nu, &nv, false)) {
         if (o->gems_collected >= o->gems_required &&
-            next_step(o, pu, pv, &nu, &nv, true))
+            plan_next_step(o, pu, pv, &nu, &nv, true))
             seek_exit = true;               /* nothing left to collect — leave */
         else {
             if (policy_trace())

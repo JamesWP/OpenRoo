@@ -211,6 +211,7 @@ bool worldstate_observe(Observation *obs)
             o->occupant = t[8];
             o->height   = t[-1];
             memcpy(&o->height_f, t + 9, sizeof(float));
+            memcpy(&o->spent, t + 0x7a, sizeof(DWORD));
             o->spawn_a  = p2[0];
             o->spawn_b  = p2[2];
             o->spawn    = p2[3];
@@ -254,7 +255,11 @@ bool ws_passable(const Observation *o, int fu, int fv, int tu, int tv)
     if (to->kind == 0)      return false;   /* no floor — confirmed by falling into one */
     if (to->occupant != 0)  return false;   /* an object or a foe is standing there */
     if (to->kind == 0x16)   return false;
-    if (to->kind == 0x17)   return false;   /* gated on tile+0x7a, which is not read */
+    if (to->kind == 0x17 && to->spent == 0) return false;
+
+    /* Glue: an unspent pad freezes whoever stands on it, which on a level with
+     * foes about is how you get caught.  A spent one is inert and safe. */
+    if (to->kind == WS_TILE_GLUE && to->spent == 0) return false;
 
     /* Climbing.
      *
