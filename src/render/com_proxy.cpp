@@ -398,44 +398,125 @@ static HRESULT WINAPI NOINLINE wd3_End(IDirect3DDevice3 *s, DWORD flags)
     { return real_dev3(s)->End(flags); }
 static HRESULT WINAPI NOINLINE wd3_GetRenderState(IDirect3DDevice3 *s, D3DRENDERSTATETYPE rst, LPDWORD val)
     { return real_dev3(s)->GetRenderState(rst, val); }
+/* Defined below, with the rest of the render-trace machinery. */
+static int d3d_trace_on(void);
+
 static HRESULT WINAPI NOINLINE wd3_SetRenderState(IDirect3DDevice3 *s, D3DRENDERSTATETYPE rst, DWORD val)
-    { return real_dev3(s)->SetRenderState(rst, val); }
+{
+    if (d3d_trace_on())
+        log_write("d3d: ra=%08lX SetRenderState(%d, %lu)\n",
+                  (unsigned long)(ULONG_PTR)__builtin_return_address(0),
+                  (int)rst, (unsigned long)val);
+    return real_dev3(s)->SetRenderState(rst, val);
+}
 static HRESULT WINAPI NOINLINE wd3_GetLightState(IDirect3DDevice3 *s, D3DLIGHTSTATETYPE lst, LPDWORD val)
     { return real_dev3(s)->GetLightState(lst, val); }
 static HRESULT WINAPI NOINLINE wd3_SetLightState(IDirect3DDevice3 *s, D3DLIGHTSTATETYPE lst, DWORD val)
     { return real_dev3(s)->SetLightState(lst, val); }
-/* KAROO_XFORM_DUMP=1 — log every WORLD transform the game sets, as raw float
- * bits.  This captures a world matrix built by a not-yet-replaced function as
- * ground truth, so a reimplementation can be checked against what the original
- * actually produced rather than against a reading of the decompiler's stack
- * model.  Capped; WORLD only. */
-static void xform_dump(D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
+/* ─── Caller-attributed render trace ──────────────────────────────────────
+ *
+ * KAROO_XFORM_DUMP=<n>  — log the first <n> WORLD transforms (1 means 40, the
+ *                         historical cap, so existing invocations still work).
+ * KAROO_D3D_TRACE=<n>   — log the first <n> SetTransform / SetRenderState /
+ *                         SetTexture / DrawPrimitive calls with their arguments.
+ *
+ * Both stamp every line with the *caller's* return address.  That is what
+ * makes the dump usable: WORLD is set by DrawSceneObjects, DrawMeshBatch,
+ * DrawQuadBatch, DrawTerrainTiles and the sky pass alike, so an untagged dump
+ * cannot attribute a matrix to the function that built it.  The return address
+ * lands in the game's .text and names the call site directly.
+ *
+ * This is the ground-truth capture RENDER_PLAN.md asks for before replacing a
+ * render function: run it against the original, replace, run it again, diff.
+ * It checks a reimplementation against what the original actually emitted
+ * rather than against a reading of the decompiler's stack model — which for
+ * DrawSceneObjects is demonstrably wrong.
+ *
+ * The cap is read from the environment so a run can be widened without a
+ * rebuild.  The wrappers pass __builtin_return_address(0) explicitly rather
+ * than having the helper walk up a frame: the wrappers are NOINLINE, but the
+ * helper itself may still be inlined into them.
+ */
+static int trace_budget(const char *var, int dflt)
 {
-    static int on = -1;
-    if (on < 0) {
-        char b[8];
-        on = (GetEnvironmentVariableA("KAROO_XFORM_DUMP", b, sizeof b) && b[0] != '0');
-    }
-    if (!on || tst != D3DTRANSFORMSTATE_WORLD || mat == NULL)
+    char b[16];
+    DWORD n = GetEnvironmentVariableA(var, b, sizeof b);
+    if (n == 0 || n >= sizeof b || b[0] == '0')
+        return 0;
+    int v = 0;
+    for (DWORD i = 0; i < n && b[i] >= '0' && b[i] <= '9'; ++i)
+        v = v * 10 + (b[i] - '0');
+    return v > 1 ? v : dflt;   /* "1" keeps the historical cap */
+}
+
+static void xform_dump(D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat, void *ra)
+{
+    static int budget = -1;
+    if (budget < 0)
+        budget = trace_budget("KAROO_XFORM_DUMP", 40);
+    if (budget == 0 || tst != D3DTRANSFORMSTATE_WORLD || mat == NULL)
         return;
     static LONG n = 0;
-    if (InterlockedIncrement(&n) > 40)
+    if (InterlockedIncrement(&n) > budget)
         return;
     const DWORD *m = (const DWORD *)mat;
-    log_write("xform: WORLD %08lX %08lX %08lX %08lX | %08lX %08lX %08lX %08lX | "
+    log_write("xform: WORLD ra=%08lX %08lX %08lX %08lX %08lX | %08lX %08lX %08lX %08lX | "
               "%08lX %08lX %08lX %08lX | %08lX %08lX %08lX %08lX\n",
+              (unsigned long)(ULONG_PTR)ra,
               m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7],
               m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]);
 }
 
+/* Non-zero while the trace still has budget. */
+static int d3d_trace_on(void)
+{
+    static int budget = -1;
+    if (budget < 0)
+        budget = trace_budget("KAROO_D3D_TRACE", 4000);
+    if (budget == 0)
+        return 0;
+    static LONG n = 0;
+    return InterlockedIncrement(&n) <= budget;
+}
+
 static HRESULT WINAPI NOINLINE wd3_SetTransform(IDirect3DDevice3 *s, D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
-    { xform_dump(tst, mat); return real_dev3(s)->SetTransform(tst, mat); }
+{
+    void *ra = __builtin_return_address(0);
+    xform_dump(tst, mat, ra);
+    if (d3d_trace_on()) {
+        const DWORD *m = (const DWORD *)mat;
+        if (m != NULL)
+            log_write("d3d: ra=%08lX SetTransform(%d) %08lX %08lX %08lX %08lX | "
+                      "%08lX %08lX %08lX %08lX | %08lX %08lX %08lX %08lX | "
+                      "%08lX %08lX %08lX %08lX\n",
+                      (unsigned long)(ULONG_PTR)ra, (int)tst,
+                      m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7],
+                      m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]);
+        else
+            log_write("d3d: ra=%08lX SetTransform(%d) NULL\n",
+                      (unsigned long)(ULONG_PTR)ra, (int)tst);
+    }
+    return real_dev3(s)->SetTransform(tst, mat);
+}
 static HRESULT WINAPI NOINLINE wd3_GetTransform(IDirect3DDevice3 *s, D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
     { return real_dev3(s)->GetTransform(tst, mat); }
 static HRESULT WINAPI NOINLINE wd3_MultiplyTransform(IDirect3DDevice3 *s, D3DTRANSFORMSTATETYPE tst, D3DMATRIX *mat)
     { return real_dev3(s)->MultiplyTransform(tst, mat); }
 static HRESULT WINAPI NOINLINE wd3_DrawPrimitive(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, void *verts, DWORD vert_count, DWORD flags)
-    { return real_dev3(s)->DrawPrimitive(pt, fvf, verts, vert_count, flags); }
+{
+    if (d3d_trace_on()) {
+        /* First vertex only — enough to identify the geometry without
+         * flooding the log; the count and FVF give the rest. */
+        const DWORD *v = (const DWORD *)verts;
+        log_write("d3d: ra=%08lX DrawPrimitive(pt=%d fvf=%03lX n=%lu fl=%lX) v0="
+                  "%08lX %08lX %08lX\n",
+                  (unsigned long)(ULONG_PTR)__builtin_return_address(0),
+                  (int)pt, (unsigned long)fvf, (unsigned long)vert_count,
+                  (unsigned long)flags,
+                  v ? v[0] : 0UL, v ? v[1] : 0UL, v ? v[2] : 0UL);
+    }
+    return real_dev3(s)->DrawPrimitive(pt, fvf, verts, vert_count, flags);
+}
 static HRESULT WINAPI NOINLINE wd3_DrawIndexedPrimitive(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, void *verts, DWORD vert_count, WORD *indices, DWORD idx_count, DWORD flags)
     { return real_dev3(s)->DrawIndexedPrimitive(pt, fvf, verts, vert_count, indices, idx_count, flags); }
 static HRESULT WINAPI NOINLINE wd3_SetClipStatus(IDirect3DDevice3 *s, D3DCLIPSTATUS *cs)
@@ -455,7 +536,13 @@ static HRESULT WINAPI NOINLINE wd3_ComputeSphereVisibility(IDirect3DDevice3 *s, 
 static HRESULT WINAPI NOINLINE wd3_GetTexture(IDirect3DDevice3 *s, DWORD stage, IDirect3DTexture2 **tex)
     { return real_dev3(s)->GetTexture(stage, tex); }
 static HRESULT WINAPI NOINLINE wd3_SetTexture(IDirect3DDevice3 *s, DWORD stage, IDirect3DTexture2 *tex)
-    { return real_dev3(s)->SetTexture(stage, unwrap_tex2(tex)); }
+{
+    if (d3d_trace_on())
+        log_write("d3d: ra=%08lX SetTexture(%lu, %p)\n",
+                  (unsigned long)(ULONG_PTR)__builtin_return_address(0),
+                  (unsigned long)stage, (void *)tex);
+    return real_dev3(s)->SetTexture(stage, unwrap_tex2(tex));
+}
 static HRESULT WINAPI NOINLINE wd3_GetTextureStageState(IDirect3DDevice3 *s, DWORD stage, D3DTEXTURESTAGESTATETYPE st, LPDWORD val)
     { return real_dev3(s)->GetTextureStageState(stage, st, val); }
 static HRESULT WINAPI NOINLINE wd3_SetTextureStageState(IDirect3DDevice3 *s, DWORD stage, D3DTEXTURESTAGESTATETYPE st, DWORD val)
