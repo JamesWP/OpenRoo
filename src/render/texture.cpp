@@ -81,9 +81,10 @@ Texture_ReleaseD3DTexture(SceneTexture *self)
  * BMP/DIB (loadedState 1), ParseTGAFile for a TGA (loadedState 2), nothing
  * otherwise.  __thiscall(this), plain ret, 24 call sites, no vtable refs.
  *
- * BlitDIBToSurface (0x43dfc0) and ParseTGAFile (0x43e190) are left intact in
- * the binary and called at their original addresses; both are __thiscall with
- * one stack arg (`ret $0x4`, checked).
+ * ParseTGAFile (0x43e190) is left intact in the binary and called at its
+ * original address; it is __thiscall with one stack arg (`ret $0x4`, checked).
+ * BlitDIBToSurface (0x43dfc0) used to be called the same way, but is now
+ * replaced and UD2-stubbed, so this calls TextureDIB_BlitToSurface directly.
  *
  * Return convention, preserved exactly: a bool in AL with the upper three
  * bytes carrying whatever the last call left there.
@@ -96,8 +97,8 @@ Texture_ReleaseD3DTexture(SceneTexture *self)
  * original computes loadedState-2, finds it non-zero, skips the TGA path and
  * still returns true.  That is reproduced rather than turned into a failure.
  */
-typedef unsigned int (__attribute__((thiscall)) *blitdib_fn)(LoadedImage *, HANDLE);
-#define ORIG_BLIT_DIB ((blitdib_fn)0x0043dfc0)
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+TextureDIB_BlitToSurface(LoadedImage *, HANDLE);
 
 typedef unsigned int (__attribute__((thiscall)) *parsetga_fn)(LoadedImage *, LPCSTR);
 #define ORIG_PARSE_TGA ((parsetga_fn)0x0043e190)
@@ -128,7 +129,7 @@ Texture_Load(LoadedImage *self)
             if (h == NULL)
                 return 0;
         }
-        unsigned int ok = ORIG_BLIT_DIB(self, h);
+        unsigned int ok = TextureDIB_BlitToSurface(self, h);
         if ((ok & 0xff) == 0) {
             unsigned int d = (unsigned int)DeleteObject((HGDIOBJ)h);
             return d & 0xffffff00u;
