@@ -1,0 +1,58 @@
+#include "levelreport.h"
+#include "menu.h"
+#include "log.h"
+#include <stdlib.h>
+
+/* See levelreport.h.  LoadSounds' three queries are consecutive and are the
+ * first VK_L queries of the run, so a countdown of three is exact. */
+static int  g_left    = -1;   /* -1 = not initialised */
+static bool g_enabled = false;
+
+static void init(void)
+{
+    if (g_left >= 0) return;
+    const char *e = getenv("KAROO_LEVEL_REPORT");
+    g_enabled = (e && *e && *e != '0');
+    g_left    = g_enabled ? 3 : 0;
+    if (g_enabled)
+        log_write("levelreport: KAROO_LEVEL_REPORT set — will answer the next "
+                  "three VK_L queries as down (Game::LoadSounds trigger)\n");
+}
+
+bool levelreport_enabled(void)
+{
+    init();
+    return g_enabled;
+}
+
+bool levelreport_async_override(int vkey, SHORT *out)
+{
+    init();
+    if (!g_enabled || g_left <= 0) return false;
+    if (vkey != 0x4C /* VK_L */)   return false;
+    g_left--;
+    if (g_left == 0)
+        log_write("levelreport: trigger delivered; WriteLevelReport should now "
+                  "run over every level\n");
+    *out = (SHORT)0x8000;
+    return true;
+}
+
+void levelreport_tick(void)
+{
+    init();
+    if (!g_enabled || g_left != 0) return;   /* not enabled, or not yet fired */
+
+    /* The first frame boundary is already past WriteLevelReport: LoadSounds
+     * calls it synchronously, long before the render loop starts ticking the
+     * clock.  So by the time this runs the files are written and the only job
+     * left is to leave.  menu_request is idempotent and the driver needs
+     * several frames to walk to the node, so ask every frame until we are
+     * gone. */
+    static bool said;
+    if (!said) {
+        said = true;
+        log_write("levelreport: report written — quitting via the menu\n");
+    }
+    menu_request(MENU_NODE_QUIT);
+}

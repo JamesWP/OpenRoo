@@ -32,6 +32,7 @@
 #include "record.h"
 #include "policy.h"
 #include "menu.h"
+#include "levelreport.h"
 #include "clock.h"
 #include "log.h"
 #include <stdlib.h>
@@ -338,6 +339,11 @@ __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
      * keyboard must contradict it. */
     SHORT mv;
     if (menu_async_override(vKey, &mv)) return mv;
+
+    /* The level-report trigger is answered before the recording is consulted:
+     * it fires inside Game::LoadSounds, which runs before the first frame
+     * boundary, so there is no recorded frame to answer it from anyway. */
+    if (levelreport_async_override(vKey, &mv)) return mv;
 
     SHORT v;
     if (record_replaying() && !policy_in_control(clock_frame())) {

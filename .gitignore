@@ -21,3 +21,10 @@ replaytest-*.json
 # **/*.sav above deliberately ignores. Without this, restoring a fixture would
 # depend on files nobody could clone.
 !tests/saves/**/*.sav
+
+# The game's own all-levels dump, written into the game directory whenever L is
+# held during Game::LoadSounds. It is a *test output*, not source: the baseline
+# it is compared against lives in tests/levelreport/ (tools/levelreport.py).
+LevelReport.txt
+ScriptTexts.txt
+!tests/levelreport/*.txt
