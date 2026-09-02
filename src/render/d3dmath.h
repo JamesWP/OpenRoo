@@ -8,6 +8,12 @@
  * from the disassembly.  The originals stay live in the binary -- they have
  * many other callers -- these are simply our own equivalents.
  *
+ * TWO BACKENDS.  The shipped build uses d3dmath_std.cpp: plain float, the C
+ * library, no assembly.  A verification build (`make VERIFY=1`) additionally
+ * compiles d3dmath.cpp, which reproduces the originals bit for bit, and lets
+ * KAROO_MATH=exact select it.  The notes below describe what bit-exactness
+ * required and apply to that backend only.
+ *
  * BIT-EXACTNESS IS THE WHOLE POINT, and it is not automatic:
  *
  *  - The originals do all float arithmetic on the x87 stack, accumulating in
@@ -99,8 +105,21 @@ void  m4_translate(Mat4 *d, float x, float y, float z);
 
 /* x87 pow, matching the CRT's _CIpow (0x450c80): 2^(y*log2(x)) built from
  * FYL2X and F2XM1, with the integer and fractional parts of the exponent
- * separated by FRNDINT/FSCALE.  x <= 0 is not reached by any caller here. */
+ * separated by FRNDINT/FSCALE.  x <= 0 is not reached by any caller here.
+ * Verification build only. */
 long double x87_pow(long double x, long double y);
+
+/* Scalar helpers, dispatched like the rest (d3dmath_mode.cpp).  Separate from
+ * the vector routines because DrawSceneObjects uses them directly for the path
+ * parameter, the animation frame and the tangent-derived heading. */
+float  m_sqrt(float v);
+/* Angle between two vectors, acos(dot / (|a||b|)).  Lives here rather than in
+ * the caller because the intermediate precision is a backend decision: the
+ * exact backend keeps the dot product and the division in 80 bits, as the
+ * original does. */
+float v3_angle_between(const Vec3 *a, const Vec3 *b);
+double m_fmod(double a, double b);
+float  m_acos(float v);
 
 /* SUM of squares -- the game's "DotProduct3" is really a self-dot. */
 float v3_len_sq(const Vec3 *v);

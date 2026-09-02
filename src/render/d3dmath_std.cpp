@@ -134,3 +134,14 @@ void billboard_corners_std(Vec3 dst[4], float dx, float dy, float dz, float size
     for (int i = 0; i < 4; ++i)
         v3_sub_inplace(&dst[i], &centre);
 }
+
+/* acos(dot / (|a||b|)).  Same summation order as the original for readability,
+ * though nothing here depends on it. */
+float v3_angle_between_std(const Vec3 *a, const Vec3 *b)
+{
+    float la = sqrtf(v3_len_sq_std(a));
+    float lb = sqrtf(v3_len_sq_std(b));
+    double dot = (double)a->x * b->x + (double)a->z * b->z;
+    dot = dot + (double)a->y * b->y;
+    return acosf((float)(dot / ((double)la * lb)));
+}
