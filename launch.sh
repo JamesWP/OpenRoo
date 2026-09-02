@@ -83,73 +83,68 @@ if ! DISPLAY="$DISPLAY" XAUTHORITY="${XAUTHORITY:-}" xdpyinfo >/dev/null 2>&1; t
   fi
 fi
 
+# ─── Environment forwarding ───────────────────────────────────────────────
+#
+# The game runs under `env -i`, a deliberately hermetic environment: replays
+# are only reproducible because the run does not inherit whatever happens to
+# be in the caller's shell.  That stays.
+#
+# What changed (2026-09-02) is HOW the optional variables get forwarded.  This
+# block used to list every KAROO_* flag as `KAROO_X="${KAROO_X:-}"`, which
+# meant an UNSET flag still reached the game as an EMPTY STRING.  Hook code
+# testing `getenv("KAROO_X") != NULL` therefore saw every flag as enabled.
+# That silently turned the TGA acceptance test into an original-vs-original
+# no-op for three runs, including two that reported clean passes — see
+# RENDER_PLAN.md, 2026-09-02.  Unset now stays unset, so a NULL test means
+# what it looks like it means.  (Comparing the value, not just the pointer,
+# is still the more robust habit in the DLL.)
+#
+# It also sweeps KAROO_* out of the environment instead of naming each flag,
+# so a new mode no longer has to be added here to reach the game — which was
+# its own recurring trap, documented in CLAUDE.md.
+FORWARD_ENV=()
+
+# Optional host variables: forwarded only when actually set.  The vsync
+# switches especially — the replay clock is virtual, so nothing in the game
+# paces itself against wall time, but presentation still blocks on the display
+# refresh, which pinned a run at ~60 fps and made a 4150-frame replay take 70 s
+# of wall clock.  DDFLIP_NOVSYNC through ddraw does not lift it; the wait is
+# below Wine, in the GL/Vulkan present.  These are the driver-side switches
+# (Mesa GL, Mesa Vulkan WSI, NVIDIA GL), and unset really does mean untouched
+# now — passing them as empty strings is NOT the same thing.
+for _name in XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR \
+             vblank_mode MESA_VK_WSI_PRESENT_MODE __GL_SYNC_TO_VBLANK; do
+  if [[ -n ${!_name+set} ]]; then
+    FORWARD_ENV+=("$_name=${!_name}")
+  fi
+done
+
+# Every KAROO_* the caller set, exported or not (compgen sees both).  The
+# three the script controls itself are excluded here and set explicitly below.
+for _name in $(compgen -v); do
+  case "$_name" in
+    KAROO_SKIP_LAUNCHER|KAROO_AUTO_EXIT_SECS|KAROO_D3D_PROXY) continue ;;
+    KAROO_*) FORWARD_ENV+=("$_name=${!_name}") ;;
+  esac
+done
+
 PROTON_DIR="$HOME/.steam/root/steamapps/common/Proton - Experimental"
 PROTON_RUN=(
   env -i
   HOME="$HOME" USER="$USER"
-  DISPLAY="$DISPLAY" XAUTHORITY="${XAUTHORITY:-}"
-  DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-}"
-  XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}"
+  DISPLAY="$DISPLAY"
   PATH="$PATH"
-  # Vsync control.  The replay clock is virtual, so nothing in the game paces
-  # itself against wall time — but presentation still blocks on the display
-  # refresh, which pinned a run at ~60 fps and made a 4150-frame replay take
-  # 70 s of wall clock.  DDFLIP_NOVSYNC through ddraw does not lift it; the
-  # wait is below Wine, in the GL/Vulkan present.  These are the driver-side
-  # switches (Mesa GL, Mesa Vulkan WSI, NVIDIA GL).  Unset = untouched.
-  vblank_mode="${vblank_mode:-}"
-  MESA_VK_WSI_PRESENT_MODE="${MESA_VK_WSI_PRESENT_MODE:-}"
-  __GL_SYNC_TO_VBLANK="${__GL_SYNC_TO_VBLANK:-}"
   STEAM_COMPAT_DATA_PATH="$HOME/.proton/Karoo.exe"
   STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.steam/root"
   PROTON_LOG_DIR="$(pwd)"
   SteamGameId=123456 SteamAppId=123456
   # Stock Wine ddraw — forced builtin rather than relying on load order.
   WINEDLLOVERRIDES="ddraw=b"
+  # Script-controlled; these are always set, so the DLL can rely on them.
   KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
-  KAROO_D3D_PROXY="${KAROO_D3D_PROXY:-1}"
-  KAROO_D3D_FX="${KAROO_D3D_FX:-}"
-  KAROO_FAKTMESH_FX="${KAROO_FAKTMESH_FX:-}"
-  KAROO_FLIP_FX="${KAROO_FLIP_FX:-}"
-  KAROO_PARTICLE_FX="${KAROO_PARTICLE_FX:-}"
-  KAROO_QUAD_FX="${KAROO_QUAD_FX:-}"
-  KAROO_QUAD_DIAG="${KAROO_QUAD_DIAG:-}"
-  KAROO_XFORM_DUMP="${KAROO_XFORM_DUMP:-}"
-  KAROO_D3D_TRACE="${KAROO_D3D_TRACE:-}"
-  KAROO_MATH="${KAROO_MATH:-}"
-  KAROO_MATH_SELFTEST="${KAROO_MATH_SELFTEST:-}"
-  KAROO_DSO_GOLDEN="${KAROO_DSO_GOLDEN:-}"
-  KAROO_TGA_VERIFY="${KAROO_TGA_VERIFY:-}"
-  KAROO_TGA_VERIFY_SWAP="${KAROO_TGA_VERIFY_SWAP:-}"
-  KAROO_TGA_VERIFY_CONTROL="${KAROO_TGA_VERIFY_CONTROL:-}"
-  KAROO_QUAD_DUMP="${KAROO_QUAD_DUMP:-}"
-  KAROO_SKY_FX="${KAROO_SKY_FX:-}"
-  KAROO_SIM_STATS="${KAROO_SIM_STATS:-}"
-  KAROO_MESH_DIAG="${KAROO_MESH_DIAG:-}"
-  KAROO_FIXED_DT="${KAROO_FIXED_DT:-}"
-  KAROO_HASH_LOG="${KAROO_HASH_LOG:-}"
-  KAROO_SEED="${KAROO_SEED:-}"
-  KAROO_STATE_LOG="${KAROO_STATE_LOG:-}"
-  KAROO_STATE_DUMP="${KAROO_STATE_DUMP:-}"
-  KAROO_DEATH_DIFF="${KAROO_DEATH_DIFF:-}"
-  KAROO_MAP_DUMP="${KAROO_MAP_DUMP:-}"
-  KAROO_ENTITY_TRACE="${KAROO_ENTITY_TRACE:-}"
-  KAROO_OBS_DUMP="${KAROO_OBS_DUMP:-}"
-  KAROO_POLICY="${KAROO_POLICY:-}"
-  KAROO_POLICY_AFTER="${KAROO_POLICY_AFTER:-}"
-  KAROO_POLICY_FLIP="${KAROO_POLICY_FLIP:-}"
-  KAROO_POLICY_TRACE="${KAROO_POLICY_TRACE:-}"
-  KAROO_POLICY_EXIT="${KAROO_POLICY_EXIT:-}"
-  KAROO_MENU_SLOT="${KAROO_MENU_SLOT:-}"
-  KAROO_MENU_TRACE="${KAROO_MENU_TRACE:-}"
-  KAROO_POLICY_LOOP="${KAROO_POLICY_LOOP:-}"
-  KAROO_RECORD="${KAROO_RECORD:-}"
-  KAROO_REPLAY="${KAROO_REPLAY:-}"
-  KAROO_RECORD_LABEL="${KAROO_RECORD_LABEL:-}"
-  KAROO_INPUT_DEBUG="${KAROO_INPUT_DEBUG:-}"
-  KAROO_LEVEL_REPORT="${KAROO_LEVEL_REPORT:-}"
-  KAROO_SCENEQUAD_FX="${KAROO_SCENEQUAD_FX:-}"
   KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"
+  KAROO_D3D_PROXY="${KAROO_D3D_PROXY:-1}"
+  "${FORWARD_ENV[@]}"
   "$PROTON_DIR/proton" run
 )
 
