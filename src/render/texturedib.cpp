@@ -48,8 +48,14 @@
  *    not a strdup.  Its inline REPNE SCASB length is `not ecx` alone, giving
  *    strlen+1; BlitDIBToSurface's two error paths use the same idiom with a
  *    trailing `dec ecx`, so they log the true length.  Both as written.
- *  - The first LoadImageA passes LR_LOADFROMFILE only (0x2000); the fallback
- *    adds LR_CREATEDIBSECTION (0x2010) and passes hInst=NULL.
+ *  - The first LoadImageA passes LR_CREATEDIBSECTION only (0x2000), with
+ *    hInst = the exe module, so it looks for a BITMAP *resource* of that name
+ *    and fails for every real texture; the fallback adds LR_LOADFROMFILE
+ *    (0x2010) and passes hInst=NULL, and is what actually loads the file.
+ *    This comment and the code originally read the constant as 0x0010
+ *    (LR_LOADFROMFILE), which made the first call succeed and produced a
+ *    device-dependent bitmap rather than a DIB section — corrected 2026-09-02
+ *    while replacing BindTextureResource, which has the identical prologue.
  *
  * texture.cpp's ORIG_BLIT_DIB pointed at 0x43dfc0, which is now UD2-stubbed,
  * so Texture_Load calls TextureDIB_BlitToSurface directly instead.
@@ -177,7 +183,7 @@ TextureDIB_CreateSurface(LoadedImage *self, IDirectDraw4 *dd, LPCSTR name,
                          char bSysMem)
 {
     HANDLE hbmp = LoadImageA(GetModuleHandleA(NULL), name, IMAGE_BITMAP,
-                             0, 0, LR_LOADFROMFILE);
+                             0, 0, LR_CREATEDIBSECTION);
     if (hbmp == NULL) {
         hbmp = LoadImageA(NULL, name, IMAGE_BITMAP, 0, 0,
                           LR_LOADFROMFILE | LR_CREATEDIBSECTION);
