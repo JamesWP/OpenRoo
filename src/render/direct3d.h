@@ -38,9 +38,15 @@ struct Direct3D {
     IDirect3DDevice3     *pDevice;     // +0x0c
     DWORD                 dwModeFilterFlags; // +0x10
     DWORD                 zbufFmt[8];  // +0x14..+0x30  DDPIXELFORMAT by value
-    IDirectDrawSurface4  *pBackBuffer; // +0x34
+    /* NOTE: these two names are backwards, and CreateD3DDevice is what proves
+     * it — +0x34 receives the CreateSurface'd DDSCAPS_ZBUFFER surface and
+     * +0x3c receives the GetAttachedSurface(DDSCAPS_BACKBUFFER) result.  That
+     * is why FlipPrimaryFrame Blts to "pZBuffer" and why ReleaseResources
+     * releases "pBackBuffer" but not "pZBuffer".  Kept as-is because shipped
+     * code already reads against these names; see RENDER_PLAN.md 2026-09-03. */
+    IDirectDrawSurface4  *pBackBuffer; // +0x34  really the Z-BUFFER
     IDirectDrawSurface4  *pPrimary;    // +0x38
-    IDirectDrawSurface4  *pZBuffer;    // +0x3c
+    IDirectDrawSurface4  *pZBuffer;    // +0x3c  really the BACK BUFFER
     LinkedList            modeList;    // +0x40 DisplayModeNode* list (16 bytes)
     DisplayModeNode      *pSelectedMode; // +0x50
     char                  pLastError[100]; // +0x54
