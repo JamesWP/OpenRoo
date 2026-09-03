@@ -127,6 +127,45 @@ static BridgeFxMode bridge_fx(void)
     return (BridgeFxMode)cached;
 }
 
+/* KAROO_BRIDGE_DIAG=1 — which of the four orientation branches does a level
+ * actually reach?  The first-8-draws log answers that for the first frame
+ * only, which is not enough: the acceptance question "did every orientation
+ * reverse under KAROO_BRIDGE_FX=backward" cannot be answered without knowing
+ * how many orientations were on screen at all.  This logs each distinct
+ * (conveyor, axis, dir, n) combination once, over the whole run. */
+static void bridge_note_variant(DWORD k, int axis, int dir, int n,
+                                float vnear, float vfar)
+{
+    static int enabled = -1;
+    if (enabled < 0) {
+        char b[8];
+        enabled = (GetEnvironmentVariableA("KAROO_BRIDGE_DIAG", b, sizeof(b))
+                   && b[0] != '0') ? 1 : 0;
+    }
+    if (!enabled)
+        return;
+
+    /* Small fixed table; a level has at most a couple of dozen conveyors. */
+    static DWORD seen[64];
+    static int   nseen = 0;
+    DWORD key = (k << 24) | ((DWORD)(axis & 0xff) << 16)
+                | ((DWORD)(dir & 0xff) << 8) | (DWORD)(n & 0xff);
+    for (int q = 0; q < nseen; q++)
+        if (seen[q] == key)
+            return;
+    if (nseen >= (int)(sizeof(seen) / sizeof(seen[0])))
+        return;
+    seen[nseen++] = key;
+    /* The two v coordinates of texture set 0 are the whole animation: if
+     * KAROO_BRIDGE_FX=backward reverses the scroll, both must change sign
+     * here, for every variant. */
+    log_write("bridgesurf: diag variant #%d cv=%lu axis=%d dir=%d n=%d "
+              "(branch %s/%s) v[0]=%d/1000 v[1]=%d/1000\n",
+              nseen, k, axis, dir, n,
+              axis == 1 ? "X" : "Z", dir > 0 ? "fwd" : "back",
+              (int)(vnear * 1000.0f), (int)(vfar * 1000.0f));
+}
+
 extern "C" __declspec(dllexport) void __cdecl
 Direct3D_DrawBridgeSurfaces(void *game, void *lvl, Direct3D *d3d, double t)
 {
@@ -309,6 +348,12 @@ Direct3D_DrawBridgeSurfaces(void *game, void *lvl, Direct3D *d3d, double t)
                                   (int)*(signed char *)(cv + 0x45),
                                   (int)(len * 1000.0f),
                                   (int)(f * 1000.0f), hr);
+
+                    bridge_note_variant(k,
+                                        *(signed char *)(cv + 0x60),
+                                        *(signed char *)(cv + 0x57),
+                                        *(signed char *)(cv + 0x45),
+                                        v[0].v0, v[1].v0);
                 }
             }
         }
