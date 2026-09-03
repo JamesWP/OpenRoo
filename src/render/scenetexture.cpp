@@ -312,17 +312,90 @@ static double st_size_report_value(unsigned int n)
  * still arrive, and `getenv(...) != NULL` is not a test for anything.  See
  * RENDER_PLAN.md, 2026-09-02, where that trap silently turned the TGA
  * acceptance test into a no-op for three runs. */
-static bool texture_fx_bpp16(void)
+/* "solid" is the louder mode: once the decoder has filled the texture surface,
+ * lock it and overwrite every pixel with flat magenta.  Unlike bpp16 it does
+ * not depend on the format picker honouring anything — it writes the surface
+ * this function created, through the pointer this function owns, so if the
+ * textures come out flat magenta then this code ran, full stop. */
+enum TextureFx { TEXFX_OFF = 0, TEXFX_BPP16, TEXFX_SOLID };
+
+static int texture_fx_mode(void)
 {
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
-        cached = 0;
-        if (GetEnvironmentVariableA("KAROO_TEXTURE_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "bpp16") == 0);
-        log_write("scenetexture: FX mode = %s\n", cached ? "bpp16" : "off");
+        cached = TEXFX_OFF;
+        if (GetEnvironmentVariableA("KAROO_TEXTURE_FX", buf, sizeof(buf))) {
+            if (lstrcmpiA(buf, "bpp16") == 0)
+                cached = TEXFX_BPP16;
+            else if (lstrcmpiA(buf, "solid") == 0)
+                cached = TEXFX_SOLID;
+        }
+        log_write("scenetexture: FX mode = %s\n",
+                  cached == TEXFX_BPP16 ? "bpp16" :
+                  cached == TEXFX_SOLID ? "solid" : "off");
     }
-    return cached != 0;
+    return cached;
+}
+
+static bool texture_fx_bpp16(void) { return texture_fx_mode() == TEXFX_BPP16; }
+
+/* What the picker actually chose.  bpp16 looking identical on screen has two
+ * possible causes — this code not reaching the choice, or the picker returning
+ * the same format whatever it is asked for — and they are told apart by
+ * reading the format rather than by looking at pixels. */
+static void texture_log_format(const char *who, UINT requested,
+                               const DDPIXELFORMAT *pf)
+{
+    static LONG seen = 0;
+    if (InterlockedIncrement(&seen) <= 8)
+        log_write("scenetexture: %s req=%u -> chosen %lubpp flags=%08lX "
+                  "r=%08lX g=%08lX b=%08lX a=%08lX\n",
+                  who, requested, (unsigned long)pf->dwRGBBitCount,
+                  (unsigned long)pf->dwFlags,
+                  (unsigned long)pf->dwRBitMask, (unsigned long)pf->dwGBitMask,
+                  (unsigned long)pf->dwBBitMask,
+                  (unsigned long)pf->dwRGBAlphaBitMask);
+}
+
+/* Flat-fill the texture surface, for TEXFX_SOLID.  Writes through the
+ * destination's own pitch and bit count, so it works for any format the picker
+ * chose; anything other than 16 or 32 bits per pixel is left alone rather than
+ * guessed at. */
+static void texture_fx_fill_solid(IDirectDrawSurface4 *surf)
+{
+    DDSURFACEDESC2 d;
+    memset(&d, 0, sizeof(d));
+    d.dwSize = sizeof(d);
+    HRESULT hr = surf->Lock(NULL, &d, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL);
+
+    /* Never fail silently: an unlockable surface would look exactly like "the
+     * FX did nothing", which is the failure mode that made bpp16 ambiguous. */
+    static LONG seen = 0;
+    if (InterlockedIncrement(&seen) <= 4)
+        log_write("scenetexture: solid fill lock=%08lX %lux%lu %lubpp pitch=%ld\n",
+                  (unsigned long)hr, (unsigned long)d.dwWidth,
+                  (unsigned long)d.dwHeight,
+                  (unsigned long)d.ddpfPixelFormat.dwRGBBitCount,
+                  (long)d.lPitch);
+    if (hr < 0)
+        return;
+
+    BYTE *row = (BYTE *)d.lpSurface;
+    for (DWORD y = 0; y < d.dwHeight; ++y, row += d.lPitch) {
+        if (d.ddpfPixelFormat.dwRGBBitCount == 32) {
+            DWORD *p = (DWORD *)row;
+            for (DWORD x = 0; x < d.dwWidth; ++x)
+                p[x] = 0xFFFF00FFu;          /* opaque magenta */
+        } else if (d.ddpfPixelFormat.dwRGBBitCount == 16) {
+            WORD *p = (WORD *)row;
+            for (DWORD x = 0; x < d.dwWidth; ++x)
+                p[x] = (WORD)(d.ddpfPixelFormat.dwRBitMask |
+                              d.ddpfPixelFormat.dwBBitMask |
+                              d.ddpfPixelFormat.dwRGBAlphaBitMask);
+        }
+    }
+    surf->Unlock(NULL);
 }
 
 extern "C" {
@@ -377,6 +450,7 @@ Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
         bpp = 16;
 
     ORIG_PICK_TEXTURE_FORMAT(dev, bpp, 0, &ddsd.ddpfPixelFormat);
+    texture_log_format("Bind", bpp, &ddsd.ddpfPixelFormat);
 
     DevDescRaw hw, sw;
     memset(&hw, 0, sizeof(hw));
@@ -404,6 +478,8 @@ Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
     }
 
     if ((TextureDIB_BlitToSurface(&self->base, hbmp) & 0xff) != 0) {
+        if (texture_fx_mode() == TEXFX_SOLID)
+            texture_fx_fill_solid(self->base.pTextureSurface);
         hr = self->base.pTextureSurface->QueryInterface(IID_IDirect3DTexture2,
                                                         (void **)&self->pTexture2);
         if (hr >= 0) {
@@ -498,6 +574,7 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
         bpp = 16;
 
     ORIG_PICK_TEXTURE_FORMAT(dev, bpp, alphaFlag, &ddsd.ddpfPixelFormat);
+    texture_log_format("Import", bpp, &ddsd.ddpfPixelFormat);
 
     DevDescRaw hw, sw;
     memset(&hw, 0, sizeof(hw));
@@ -519,6 +596,9 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
         Texture_ReleaseD3DTexture(self);
         return ORIG_FW_CLOSE(&file) & 0xffffff00u;
     }
+
+    if (texture_fx_mode() == TEXFX_SOLID)
+        texture_fx_fill_solid(self->base.pTextureSurface);
 
     hr = self->base.pTextureSurface->QueryInterface(IID_IDirect3DTexture2,
                                                     (void **)&self->pTexture2);
