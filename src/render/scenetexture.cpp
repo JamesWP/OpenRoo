@@ -294,6 +294,37 @@ static double st_size_report_value(unsigned int n)
     return (double)__builtin_powl(2.0L, e);
 }
 
+/* ─── KAROO_TEXTURE_FX — visual proof that these replacements run ──────────
+ *
+ * "bpp16" forces the resolved bit depth to 16 just before
+ * PickTextureFormatForDepth, in BOTH loaders.  Every texture in the game then
+ * loads into a 16-bit surface instead of the 32-bit one the source asks for,
+ * which is unmistakable on screen: banding on the sky gradient and on every
+ * smooth-shaded texture.
+ *
+ * This is a change only this file can produce.  The depth-request rule (note 2
+ * — honour the argument only if it is exactly 16 or 32, else take the source's
+ * own depth) lives here and nowhere else; neither the DIB blitter nor the TGA
+ * decoder chooses a surface format.  So banding proves that the code deciding
+ * the format is ours, not that some texture somewhere changed.
+ *
+ * Read by VALUE, never by presence — under launch.sh an unset KAROO_* flag can
+ * still arrive, and `getenv(...) != NULL` is not a test for anything.  See
+ * RENDER_PLAN.md, 2026-09-02, where that trap silently turned the TGA
+ * acceptance test into a no-op for three runs. */
+static bool texture_fx_bpp16(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        char buf[16];
+        cached = 0;
+        if (GetEnvironmentVariableA("KAROO_TEXTURE_FX", buf, sizeof(buf)))
+            cached = (lstrcmpiA(buf, "bpp16") == 0);
+        log_write("scenetexture: FX mode = %s\n", cached ? "bpp16" : "off");
+    }
+    return cached != 0;
+}
+
 extern "C" {
 
 /* ─── SceneTexture::BindTextureResource (0x43fc70) ─────────────────────────
@@ -341,6 +372,9 @@ Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
     /* Note 2: only an exact 16 or 32 is honoured. */
     if (bpp != 16 && bpp != 32)
         bpp = (UINT)((DWORD)bm.bmBitsPixel & 0xffff);
+
+    if (texture_fx_bpp16())
+        bpp = 16;
 
     ORIG_PICK_TEXTURE_FORMAT(dev, bpp, 0, &ddsd.ddpfPixelFormat);
 
@@ -459,6 +493,9 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
 
     if (bpp != 16 && bpp != 32)
         bpp = (UINT)h.bpp;
+
+    if (texture_fx_bpp16())
+        bpp = 16;
 
     ORIG_PICK_TEXTURE_FORMAT(dev, bpp, alphaFlag, &ddsd.ddpfPixelFormat);
 
