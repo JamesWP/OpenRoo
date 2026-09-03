@@ -198,6 +198,21 @@ void menu_tick(void)
         if (++g_phase == 0) g_key = 0;
     }
 
+    /* KAROO_MENU_NODE=<n> — drive to one menu node, once, and stop there.
+     * A test hook for the menu-gated screens (the high-score table is node 3,
+     * per RenderGameFrame's `field_0x195734 == 3` gate), so they can be
+     * reached without a human at the keyboard.  Read by value; one-shot, so
+     * the arrival that clears g_goal does not re-request it. */
+    static int node_req = -1;
+    if (node_req < 0) {
+        char buf[16];
+        node_req = 0;
+        if (GetEnvironmentVariableA("KAROO_MENU_NODE", buf, sizeof(buf)) && buf[0]) {
+            node_req = 1;
+            menu_request((unsigned)strtol(buf, NULL, 10));
+        }
+    }
+
     if (g_goal == MENU_NO_GOAL) return;
 
     const BYTE *g = (const BYTE *)*GAME_GLOBAL_PTR;
