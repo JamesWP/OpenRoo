@@ -42,3 +42,14 @@ add two includes to top of SourceFiles to parse: /dir/usr/local/include/wine/win
 (or whatever you want to replace dinput.h with)
 
 click parse to program and then 'Use Open Archives' if prompted
+
+## Cheats
+     "mausuruh"  Game+0x175402 += 1     -- one extra life
+     "boommaker" Game+0x1752b1 += 10
+     "sportsman" Game+0x1752b2 += 1
+     "kaputo"    every live foe's +0x11f = 4
+     "supa"      completes the level (bGame_state 3, menu node 0x28), or
+                 game over when it is the last level
+     "notme"     sets Game+0x1753bb and marks the player's tile
+     "jjmap"     load a level by name      "jjmapnr"  load a level by number
+   
