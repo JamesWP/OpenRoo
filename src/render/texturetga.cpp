@@ -141,9 +141,9 @@ typedef void  (__cdecl *free2_fn)(void *);
 #define ORIG_FACT_FREE2   ((free2_fn)0x004504c0)
 
 /* ImageLogger::Log — __cdecl(const char *, int len, int, int *sink). */
-typedef unsigned int (__cdecl *imagelog_fn)(const char *, int, int, int *);
-#define ORIG_IMAGE_LOG ((imagelog_fn)0x004513c7)
-#define IMAGE_LOG_SINK ((int *)0x00469cf8)
+typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
+#define ORIG_FWRITE ((fwrite_fn)0x004513c7)
+#define GAME_LOG_FILE ((int *)0x00469cf8)
 
 #define STR_CREATESURFACE_FAILED ((const char *)0x0046718c)
 #define STR_LOCK_FAILED          ((const char *)0x004671a4)
@@ -283,9 +283,9 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
 
     IDirectDrawSurface4 *tmp = NULL;
     if (dd->CreateSurface(&ddsd, &tmp, NULL) < 0) {
-        ORIG_IMAGE_LOG(STR_CREATESURFACE_FAILED,
+        ORIG_FWRITE(STR_CREATESURFACE_FAILED,
                        (int)tga_strlen(STR_CREATESURFACE_FAILED),
-                       1, IMAGE_LOG_SINK);
+                       1, GAME_LOG_FILE);
         return ORIG_FW_CLOSE(&file) & 0xffffff00u;
     }
 
@@ -293,8 +293,8 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
      * surface's real geometry, which is what the conversion loop below reads:
      * dwWidth, dwHeight, lPitch, lpSurface and the four channel masks. */
     if (tmp->Lock(NULL, &ddsd, 0, NULL) < 0) {
-        ORIG_IMAGE_LOG(STR_LOCK_FAILED, (int)tga_strlen(STR_LOCK_FAILED),
-                       1, IMAGE_LOG_SINK);
+        ORIG_FWRITE(STR_LOCK_FAILED, (int)tga_strlen(STR_LOCK_FAILED),
+                       1, GAME_LOG_FILE);
         if (tmp != NULL)
             tmp->Release();
         return ORIG_FW_CLOSE(&file) & 0xffffff00u;
