@@ -64,12 +64,16 @@
 #include "texture.h"
 #include "log.h"
 
-/* ImageLogger::Log — __cdecl(const char *msg, int len, int, int *sink).
- * Reconstructed from both call sites: 4 pushes, `add esp,0x10`.  Left live in
- * the binary; the global at 0x469cf8 is its sink. */
-typedef unsigned int (__cdecl *imagelog_fn)(const char *, int, int, int *);
-#define ORIG_IMAGE_LOG ((imagelog_fn)0x004513c7)
-#define IMAGE_LOG_SINK ((int *)0x00469cf8)
+/* The CRT's fwrite — __cdecl(const void *buf, size_t size, size_t count,
+ * FILE *stream).  This address was called "ImageLogger::Log" here until
+ * 2026-09-04; the name was wrong, the four arguments were always right.  The
+ * game logs by calling fwrite(msg, strlen(msg), 1, logFILE), which is why the
+ * call sites read like a logger; 0x469cf8 is the log FILE *, not a sink
+ * object.  Settled by ASSET_PLAN.md Phase 2: SaveConfig calls the same address
+ * as fwrite(blob, 0x144e, 1, fp).  Left live in the binary. */
+typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
+#define ORIG_FWRITE ((fwrite_fn)0x004513c7)
+#define GAME_LOG_FILE ((int *)0x00469cf8)
 
 /* operator new — __cdecl(size_t); FactAlloc::Free2 — __cdecl(void *);
  * MaybeSprintf — __cdecl(char *, const char *fmt, ...).  Shared helpers that
@@ -143,9 +147,9 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
     IDirectDrawSurface4 *tmp = NULL;
     HRESULT hr = dd->CreateSurface(&ddsd, &tmp, NULL);
     if (hr < 0) {
-        unsigned int r = ORIG_IMAGE_LOG(STR_CREATESURFACE_FAILED,
+        unsigned int r = ORIG_FWRITE(STR_CREATESURFACE_FAILED,
                                         (int)dib_strlen(STR_CREATESURFACE_FAILED),
-                                        1, IMAGE_LOG_SINK);
+                                        1, GAME_LOG_FILE);
         self->loadStatus = 3;
         return r & 0xffffff00u;             /* upper bytes: ImageLogger::Log */
     }
@@ -153,9 +157,9 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
     HDC hdcDst = NULL;
     hr = tmp->GetDC(&hdcDst);
     if (hr < 0) {
-        unsigned int r = ORIG_IMAGE_LOG(STR_GETDC_FAILED,
+        unsigned int r = ORIG_FWRITE(STR_GETDC_FAILED,
                                         (int)dib_strlen(STR_GETDC_FAILED),
-                                        1, IMAGE_LOG_SINK);
+                                        1, GAME_LOG_FILE);
         self->loadStatus = 4;
         return r & 0xffffff00u;             /* upper bytes: ImageLogger::Log */
     }

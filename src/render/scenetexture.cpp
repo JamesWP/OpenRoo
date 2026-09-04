@@ -175,9 +175,9 @@ typedef char *(__cdecl *strrchr_fn)(const char *, int);
 #define FMT_PERCENT_S      ((const char *)0x004641f8)
 
 /* ImageLogger::Log — __cdecl(const char *, int len, int, int *sink). */
-typedef unsigned int (__cdecl *imagelog_fn)(const char *, int, int, int *);
-#define ORIG_IMAGE_LOG ((imagelog_fn)0x004513c7)
-#define IMAGE_LOG_SINK ((int *)0x00469cf8)
+typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
+#define ORIG_FWRITE ((fwrite_fn)0x004513c7)
+#define GAME_LOG_FILE ((int *)0x00469cf8)
 
 /* See the header note: __stdcall, not __thiscall. */
 typedef void (__stdcall *enumfmt_fn)(IDirect3DDevice3 *, DWORD, DWORD, DDPIXELFORMAT *);
@@ -248,7 +248,7 @@ static unsigned int st_strlen(const char *s)
 
 static void st_log_str(const char *s)
 {
-    ORIG_IMAGE_LOG(s, (int)st_strlen(s), 1, IMAGE_LOG_SINK);
+    ORIG_FWRITE(s, (int)st_strlen(s), 1, GAME_LOG_FILE);
 }
 
 /* The game's inlined strcmp: 0 when equal, otherwise -1 or 1 from the
