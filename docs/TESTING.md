@@ -41,6 +41,47 @@ them cannot move the simulation.
 `--no-fast` renders every frame for real. `--fast` still exists so a run can
 say so explicitly.
 
+## `--headless` -- no window, no graphics, no display
+
+`--fast` stops the game *asking* the driver to draw. `--headless` removes the
+driver: `hooks_DirectDrawCreate` hands back an in-DLL null DirectDraw
+(`karoo-hooks/nullddraw.cpp`) rather than loading `ddraw.dll`, and the game's
+one window is created message-only so Wine needs no display driver for it.
+Nothing appears on screen, nothing takes focus, no desktop mode is switched,
+and the run works with `DISPLAY` unset entirely.
+
+```bash
+python3 tools/replaytest.py --headless          # the whole suite, in the background
+bash launch.sh --headless --auto-exit 40        # one run
+```
+
+This is the mode to use when the suite is running while somebody is working on
+the machine, or on a box with no X server at all. It is orthogonal to
+`--fast`: fast skips the draw calls, headless removes what they would have
+gone to, and the two compose.
+
+**Why the null device is a recording, not a stub.** The game reads what the
+driver reports and behaves accordingly -- `Karoo.cfg`'s video-mode *index*
+selects from the enumerated mode list, `PickTextureFormatForDepth` (0x43f720)
+picks from `EnumTextureFormats`, and `st_texture_caps` branches on
+`D3DDEVICEDESC.dcmColorModel`. Invent those answers and the run legitimately
+differs, and a replay diverges for a reason that has nothing to do with
+headlessness. So `nullddraw.cpp`'s tables were captured from stock Wine ddraw
+with `KAROO_DDRAW_DIAG=1` and are replayed verbatim: 93 display modes, 14
+texture formats, 4 z-buffer formats, and the two 0xfc-byte device descriptors.
+
+A consequence: the mode list is fixed rather than read from the host monitor,
+so `Karoo.cfg`'s mode index means the same thing on every machine. If a Wine
+update changes what ddraw reports, re-capture with `KAROO_DDRAW_DIAG=1` rather
+than hand-editing the tables.
+
+**Surfaces are real memory.** They have to be -- the texture loaders write
+pixels into them (`texturetga.cpp` Locks and parses, `texturedib.cpp` gets a DC
+and BitBlts). Every surface with an RGB format is backed by a `CreateDIBSection`
+allocation, so `Lock` and `GetDC` address the same storage. What is *not*
+implemented is stretching and format-converting Blts; the one place the game
+asks for one is the loading-screen bitmap, and it logs a single line saying so.
+
 ### The one recording that never runs fast
 
 `bombstart-crash` carries `"fast": false` in the manifest and always renders for

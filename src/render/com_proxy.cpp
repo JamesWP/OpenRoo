@@ -1,5 +1,6 @@
 #include "com_proxy.h"
 #include "log.h"
+#include "nullddraw.h"
 
 typedef HRESULT (WINAPI *DirectDrawCreate_t)(GUID *, LPDIRECTDRAW *, IUnknown *);
 
@@ -107,6 +108,91 @@ static FxMode fx_mode(void)
             log_write("com_proxy: FX mode %d active\n", (int)mode);
     }
     return mode;
+}
+
+/* --- KAROO_DDRAW_DIAG: capture what the real driver answers ---------------
+ *
+ * The headless null device (nullddraw.cpp) has to present the game with the
+ * same DirectDraw/Direct3D environment stock Wine does, or the texture format
+ * choice, the mode list and the device caps all shift underneath code that
+ * reads them -- and a replay would then diverge for reasons that have nothing
+ * to do with the change under test.
+ *
+ * So the null device's tables are not guessed: this block dumps the real
+ * answers once, and nullddraw.cpp replays them.  Set KAROO_DDRAW_DIAG=1 and
+ * read karoo_hooks.log.  Read by value, never by presence.
+ */
+static bool dd_diag(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        char buf[8];
+        cached = GetEnvironmentVariableA("KAROO_DDRAW_DIAG", buf, sizeof(buf))
+                 && buf[0] != '0';
+        if (cached)
+            log_write("ddraw_diag: active\n");
+    }
+    return cached != 0;
+}
+
+/* DWORD-wise dump: the structures below are read by the game as dword arrays
+ * (D3DDEVICEDESC is 0xfc bytes = 0x3f dwords), so dwords are the useful unit. */
+static void diag_dwords(const char *tag, const void *p, unsigned nbytes)
+{
+    const DWORD *d = (const DWORD *)p;
+    unsigned n = nbytes / 4;
+    for (unsigned i = 0; i < n; i += 8) {
+        char line[256];
+        int o = wsprintfA(line, "ddraw_diag: %s[%02u]", tag, i);
+        for (unsigned j = i; j < i + 8 && j < n; j++)
+            o += wsprintfA(line + o, " %08lX", (unsigned long)d[j]);
+        log_write("%s\n", line);
+    }
+}
+
+static void diag_pixfmt(const char *tag, const DDPIXELFORMAT *pf)
+{
+    log_write("ddraw_diag: %s size=%lu flags=%08lX fourcc=%08lX bits=%lu "
+              "r=%08lX g=%08lX b=%08lX a=%08lX\n",
+              tag, (unsigned long)pf->dwSize, (unsigned long)pf->dwFlags,
+              (unsigned long)pf->dwFourCC, (unsigned long)pf->dwRGBBitCount,
+              (unsigned long)pf->dwRBitMask, (unsigned long)pf->dwGBitMask,
+              (unsigned long)pf->dwBBitMask, (unsigned long)pf->dwRGBAlphaBitMask);
+}
+
+/* Enumeration thunks.  Each logs the entry, then forwards to the game's own
+ * callback, so behaviour is unchanged with the diag on. */
+static LPDDENUMMODESCALLBACK2        s_diag_mode_cb;
+static void                         *s_diag_mode_ctx;
+static LPD3DENUMPIXELFORMATSCALLBACK s_diag_zfmt_cb;
+static void                         *s_diag_zfmt_ctx;
+static LPD3DENUMPIXELFORMATSCALLBACK s_diag_tfmt_cb;
+static void                         *s_diag_tfmt_ctx;
+
+static HRESULT WINAPI diag_mode_thunk(LPDDSURFACEDESC2 d, LPVOID ctx)
+{
+    (void)ctx;
+    log_write("ddraw_diag: mode %lux%lux%lu pitch=%ld refresh=%lu flags=%08lX caps=%08lX\n",
+              (unsigned long)d->dwWidth, (unsigned long)d->dwHeight,
+              (unsigned long)d->ddpfPixelFormat.dwRGBBitCount,
+              (long)d->lPitch, (unsigned long)d->dwRefreshRate,
+              (unsigned long)d->dwFlags, (unsigned long)d->ddsCaps.dwCaps);
+    diag_pixfmt("  mode.pf", &d->ddpfPixelFormat);
+    return s_diag_mode_cb(d, s_diag_mode_ctx);
+}
+
+static HRESULT WINAPI diag_zfmt_thunk(LPDDPIXELFORMAT pf, LPVOID ctx)
+{
+    (void)ctx;
+    diag_pixfmt("zbuffmt", pf);
+    return s_diag_zfmt_cb(pf, s_diag_zfmt_ctx);
+}
+
+static HRESULT WINAPI diag_tfmt_thunk(LPDDPIXELFORMAT pf, LPVOID ctx)
+{
+    (void)ctx;
+    diag_pixfmt("texfmt", pf);
+    return s_diag_tfmt_cb(pf, s_diag_tfmt_ctx);
 }
 
 /* --- IDirect3DTexture2 proxy pool ---
@@ -224,13 +310,36 @@ static HRESULT WINAPI NOINLINE ws4_GetPalette(IDirectDrawSurface4 *s, LPDIRECTDR
 static HRESULT WINAPI NOINLINE ws4_GetPixelFormat(IDirectDrawSurface4 *s, LPDDPIXELFORMAT pf)
     { return real_s4(s)->GetPixelFormat(pf); }
 static HRESULT WINAPI NOINLINE ws4_GetSurfaceDesc(IDirectDrawSurface4 *s, LPDDSURFACEDESC2 d)
-    { return real_s4(s)->GetSurfaceDesc(d); }
+{
+    HRESULT hr = real_s4(s)->GetSurfaceDesc(d);
+    static LONG times = 0;
+    if (dd_diag() && SUCCEEDED(hr) && d && InterlockedIncrement(&times) <= 8) {
+        log_write("ddraw_diag: GetSurfaceDesc flags=%08lX caps=%08lX %lux%lu pitch=%ld\n",
+                  (unsigned long)d->dwFlags, (unsigned long)d->ddsCaps.dwCaps,
+                  (unsigned long)d->dwWidth, (unsigned long)d->dwHeight,
+                  (long)d->lPitch);
+        diag_pixfmt("  gsd.pf", &d->ddpfPixelFormat);
+    }
+    return hr;
+}
 static HRESULT WINAPI NOINLINE ws4_Initialize(IDirectDrawSurface4 *s, LPDIRECTDRAW dd, LPDDSURFACEDESC2 d)
     { return real_s4(s)->Initialize(dd, d); }
 static HRESULT WINAPI NOINLINE ws4_IsLost(IDirectDrawSurface4 *s)
     { return real_s4(s)->IsLost(); }
 static HRESULT WINAPI NOINLINE ws4_Lock(IDirectDrawSurface4 *s, LPRECT r, LPDDSURFACEDESC2 d, DWORD flags, HANDLE ev)
-    { return real_s4(s)->Lock(r, d, flags, ev); }
+{
+    HRESULT hr = real_s4(s)->Lock(r, d, flags, ev);
+    static LONG times = 0;
+    if (dd_diag() && SUCCEEDED(hr) && d && InterlockedIncrement(&times) <= 8) {
+        log_write("ddraw_diag: Lock rect=%p flags=%08lX -> dflags=%08lX %lux%lu "
+                  "pitch=%ld bits=%p\n",
+                  r, (unsigned long)flags, (unsigned long)d->dwFlags,
+                  (unsigned long)d->dwWidth, (unsigned long)d->dwHeight,
+                  (long)d->lPitch, d->lpSurface);
+        diag_pixfmt("  lock.pf", &d->ddpfPixelFormat);
+    }
+    return hr;
+}
 static HRESULT WINAPI NOINLINE ws4_ReleaseDC(IDirectDrawSurface4 *s, HDC hdc)
     { return real_s4(s)->ReleaseDC(hdc); }
 static HRESULT WINAPI NOINLINE ws4_Restore(IDirectDrawSurface4 *s)
@@ -354,7 +463,19 @@ static ULONG   WINAPI NOINLINE wd3_AddRef(IDirect3DDevice3 *s)
 static ULONG   WINAPI NOINLINE wd3_Release(IDirect3DDevice3 *s)
     { return real_dev3(s)->Release(); }
 static HRESULT WINAPI NOINLINE wd3_GetCaps(IDirect3DDevice3 *s, D3DDEVICEDESC *hal, D3DDEVICEDESC *hel)
-    { return real_dev3(s)->GetCaps(hal, hel); }
+{
+    HRESULT hr = real_dev3(s)->GetCaps(hal, hel);
+    static LONG times = 0;
+    if (dd_diag() && InterlockedIncrement(&times) == 1) {
+        log_write("ddraw_diag: Device3::GetCaps hr=%08lX hal=%p hel=%p\n",
+                  (unsigned long)hr, hal, hel);
+        if (SUCCEEDED(hr)) {
+            diag_dwords("devdesc.hal", hal, 0xfc);
+            diag_dwords("devdesc.hel", hel, 0xfc);
+        }
+    }
+    return hr;
+}
 static HRESULT WINAPI NOINLINE wd3_GetStats(IDirect3DDevice3 *s, D3DSTATS *stats)
     { return real_dev3(s)->GetStats(stats); }
 static HRESULT WINAPI NOINLINE wd3_AddViewport(IDirect3DDevice3 *s, IDirect3DViewport3 *vp)
@@ -364,7 +485,17 @@ static HRESULT WINAPI NOINLINE wd3_DeleteViewport(IDirect3DDevice3 *s, IDirect3D
 static HRESULT WINAPI NOINLINE wd3_NextViewport(IDirect3DDevice3 *s, IDirect3DViewport3 *ref, IDirect3DViewport3 **next, DWORD flags)
     { return real_dev3(s)->NextViewport(unwrap_vp3(ref), next, flags); }
 static HRESULT WINAPI NOINLINE wd3_EnumTextureFormats(IDirect3DDevice3 *s, LPD3DENUMPIXELFORMATSCALLBACK cb, void *ctx)
-    { return real_dev3(s)->EnumTextureFormats(cb, ctx); }
+{
+    static LONG times = 0;
+    if (dd_diag() && InterlockedIncrement(&times) == 1) {
+        s_diag_tfmt_cb  = cb;
+        s_diag_tfmt_ctx = ctx;
+        HRESULT hr = real_dev3(s)->EnumTextureFormats(diag_tfmt_thunk, ctx);
+        log_write("ddraw_diag: EnumTextureFormats end hr=%08lX\n", (unsigned long)hr);
+        return hr;
+    }
+    return real_dev3(s)->EnumTextureFormats(cb, ctx);
+}
 static HRESULT WINAPI NOINLINE wd3_BeginScene(IDirect3DDevice3 *s)
 {
     HRESULT hr = real_dev3(s)->BeginScene();
@@ -890,7 +1021,17 @@ static HRESULT WINAPI NOINLINE w3_CreateViewport(IDirect3D3 *s, IDirect3DViewpor
     return hr;
 }
 static HRESULT WINAPI NOINLINE w3_FindDevice(IDirect3D3 *s, D3DFINDDEVICESEARCH *search, D3DFINDDEVICERESULT *result)
-    { return real_d3d3(s)->FindDevice(search, result); }
+{
+    HRESULT hr = real_d3d3(s)->FindDevice(search, result);
+    static LONG times = 0;
+    if (dd_diag() && InterlockedIncrement(&times) == 1) {
+        log_write("ddraw_diag: FindDevice hr=%08lX result=%p\n",
+                  (unsigned long)hr, result);
+        if (SUCCEEDED(hr) && result)
+            diag_dwords("finddev", result, 0x20c);
+    }
+    return hr;
+}
 static HRESULT WINAPI NOINLINE w3_CreateDevice(IDirect3D3 *s, REFCLSID rclsid, IDirectDrawSurface4 *surf,
         IDirect3DDevice3 **dev, IUnknown *outer)
 {
@@ -915,7 +1056,16 @@ static HRESULT WINAPI NOINLINE w3_CreateVertexBuffer(IDirect3D3 *s, D3DVERTEXBUF
     { return real_d3d3(s)->CreateVertexBuffer(desc, buf, flags, outer); }
 static HRESULT WINAPI NOINLINE w3_EnumZBufferFormats(IDirect3D3 *s, REFCLSID dev_iid,
         LPD3DENUMPIXELFORMATSCALLBACK cb, void *ctx)
-    { return real_d3d3(s)->EnumZBufferFormats(dev_iid, cb, ctx); }
+{
+    if (dd_diag()) {
+        s_diag_zfmt_cb  = cb;
+        s_diag_zfmt_ctx = ctx;
+        HRESULT hr = real_d3d3(s)->EnumZBufferFormats(dev_iid, diag_zfmt_thunk, ctx);
+        log_write("ddraw_diag: EnumZBufferFormats end hr=%08lX\n", (unsigned long)hr);
+        return hr;
+    }
+    return real_d3d3(s)->EnumZBufferFormats(dev_iid, cb, ctx);
+}
 static HRESULT WINAPI NOINLINE w3_EvictManagedTextures(IDirect3D3 *s)
     { return real_d3d3(s)->EvictManagedTextures(); }
 
@@ -973,6 +1123,17 @@ static HRESULT WINAPI NOINLINE w4_CreatePalette(IDirectDraw4 *s, DWORD f, LPPALE
 static HRESULT WINAPI NOINLINE w4_CreateSurface(IDirectDraw4 *s, LPDDSURFACEDESC2 d, LPDIRECTDRAWSURFACE4 *pp, IUnknown *u)
 {
     HRESULT hr = real_dd4(s)->CreateSurface(d, pp, u);
+    if (dd_diag() && d) {
+        log_write("ddraw_diag: CreateSurface hr=%08lX flags=%08lX caps=%08lX "
+                  "%lux%lu bbc=%lu stage=%lu\n",
+                  (unsigned long)hr, (unsigned long)d->dwFlags,
+                  (unsigned long)d->ddsCaps.dwCaps,
+                  (unsigned long)d->dwWidth, (unsigned long)d->dwHeight,
+                  (unsigned long)d->dwBackBufferCount,
+                  (unsigned long)d->dwTextureStage);
+        if (d->dwFlags & DDSD_PIXELFORMAT)
+            diag_pixfmt("  cs.pf", &d->ddpfPixelFormat);
+    }
     if (SUCCEEDED(hr) && pp && *pp && d && dev_proxy_enabled()) {
         DWORD caps = d->ddsCaps.dwCaps;
         const char *what = (caps & DDSCAPS_PRIMARYSURFACE) ? "primary"
@@ -986,13 +1147,34 @@ static HRESULT WINAPI NOINLINE w4_CreateSurface(IDirectDraw4 *s, LPDDSURFACEDESC
 static HRESULT WINAPI NOINLINE w4_DuplicateSurface(IDirectDraw4 *s, LPDIRECTDRAWSURFACE4 src, LPDIRECTDRAWSURFACE4 *pp)
     { return real_dd4(s)->DuplicateSurface(src, pp); }
 static HRESULT WINAPI NOINLINE w4_EnumDisplayModes(IDirectDraw4 *s, DWORD f, LPDDSURFACEDESC2 d, LPVOID ctx, LPDDENUMMODESCALLBACK2 cb)
-    { return real_dd4(s)->EnumDisplayModes(f, d, ctx, cb); }
+{
+    if (dd_diag()) {
+        log_write("ddraw_diag: EnumDisplayModes flags=%08lX desc=%p\n",
+                  (unsigned long)f, d);
+        s_diag_mode_cb  = cb;
+        s_diag_mode_ctx = ctx;
+        HRESULT hr = real_dd4(s)->EnumDisplayModes(f, d, ctx, diag_mode_thunk);
+        log_write("ddraw_diag: EnumDisplayModes end hr=%08lX\n", (unsigned long)hr);
+        return hr;
+    }
+    return real_dd4(s)->EnumDisplayModes(f, d, ctx, cb);
+}
 static HRESULT WINAPI NOINLINE w4_EnumSurfaces(IDirectDraw4 *s, DWORD f, LPDDSURFACEDESC2 d, LPVOID ctx, LPDDENUMSURFACESCALLBACK2 cb)
     { return real_dd4(s)->EnumSurfaces(f, d, ctx, cb); }
 static HRESULT WINAPI NOINLINE w4_FlipToGDISurface(IDirectDraw4 *s)
     { return real_dd4(s)->FlipToGDISurface(); }
 static HRESULT WINAPI NOINLINE w4_GetCaps(IDirectDraw4 *s, LPDDCAPS dc, LPDDCAPS hc)
-    { return real_dd4(s)->GetCaps(dc, hc); }
+{
+    HRESULT hr = real_dd4(s)->GetCaps(dc, hc);
+    static LONG times = 0;
+    if (dd_diag() && InterlockedIncrement(&times) == 1) {
+        log_write("ddraw_diag: DD4::GetCaps hr=%08lX drv=%p hel=%p\n",
+                  (unsigned long)hr, dc, hc);
+        if (SUCCEEDED(hr) && dc) diag_dwords("ddcaps.drv", dc, dc->dwSize);
+        if (SUCCEEDED(hr) && hc) diag_dwords("ddcaps.hel", hc, hc->dwSize);
+    }
+    return hr;
+}
 static HRESULT WINAPI NOINLINE w4_GetDisplayMode(IDirectDraw4 *s, LPDDSURFACEDESC2 d)
     { return real_dd4(s)->GetDisplayMode(d); }
 static HRESULT WINAPI NOINLINE w4_GetFourCCCodes(IDirectDraw4 *s, LPDWORD pn, LPDWORD pc)
@@ -1154,6 +1336,19 @@ static void *s_dd_vtable[23] = {
 extern "C" __declspec(dllexport) HRESULT WINAPI hooks_DirectDrawCreate(
         GUID *lpGUID, LPDIRECTDRAW *lplpDD, IUnknown *pUnkOuter)
 {
+    if (!lplpDD) return E_POINTER;
+
+    /* KAROO_HEADLESS: hand back the in-DLL null device instead of loading
+     * ddraw.dll at all.  This is the single point where headless mode is
+     * decided — every IDirectDraw4, surface, device and viewport the game
+     * ever sees descends from this object, so no other code path needs to
+     * know.  The proxy layer below is bypassed with it: there is no real
+     * object to forward to, and nothing to intercept. */
+    if (nulldd_enabled()) {
+        *lplpDD = nulldd_create();
+        return DD_OK;
+    }
+
     HMODULE ddraw = GetModuleHandleA("ddraw.dll");
     DirectDrawCreate_t real_fn = ddraw
         ? (DirectDrawCreate_t)GetProcAddress(ddraw, "DirectDrawCreate")

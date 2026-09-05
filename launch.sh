@@ -5,6 +5,7 @@ cd "$(dirname "$0")"
 DEBUG=0
 SKIP_LAUNCHER=0
 AUTO_EXIT_SECS=0
+HEADLESS=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --debug)    DEBUG=1 ;;
@@ -13,7 +14,12 @@ while [[ $# -gt 0 ]]; do
     # dialog is the only place the video mode is chosen, so a run that skips it
     # takes the mode from Karoo.cfg; see the default-config block below.
     --skip-launcher) SKIP_LAUNCHER=1 ;;
-    --headless) SKIP_LAUNCHER=1 ;;   # deprecated alias; it was never headless
+    # Truly headless: no window, no graphics, no display needed.  Implies
+    # --skip-launcher (the dialog is a window too).  DirectDraw is replaced
+    # wholesale by the in-DLL null device -- see karoo-hooks/nullddraw.cpp --
+    # so nothing here touches X, nothing takes focus, and no desktop mode is
+    # switched.  This is what to use for a background test run.
+    --headless) HEADLESS=1; SKIP_LAUNCHER=1 ;;
     --auto-exit)
       shift
       [[ $# -gt 0 ]] || { echo "ERROR: --auto-exit requires a seconds argument" >&2; exit 1; }
@@ -72,14 +78,17 @@ roll_log karoo_hooks.log
 #
 # So: if the current XAUTHORITY does not actually work, fall back to the
 # newest mutter Xwayland cookie.  Only ever overrides a broken value.
-if ! DISPLAY="$DISPLAY" XAUTHORITY="${XAUTHORITY:-}" xdpyinfo >/dev/null 2>&1; then
+if (( HEADLESS )); then
+  : # No display is needed or wanted; skip the X checks entirely.
+elif ! DISPLAY="${DISPLAY:-}" XAUTHORITY="${XAUTHORITY:-}" xdpyinfo >/dev/null 2>&1; then
   newest_cookie=$(ls -t "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/.mutter-Xwaylandauth.* 2>/dev/null | head -1)
   if [ -n "$newest_cookie" ] && DISPLAY="$DISPLAY" XAUTHORITY="$newest_cookie" xdpyinfo >/dev/null 2>&1; then
     echo "XAUTHORITY was stale; using $newest_cookie"
     export XAUTHORITY="$newest_cookie"
   else
-    echo "WARNING: cannot reach the X display ($DISPLAY)." >&2
+    echo "WARNING: cannot reach the X display (${DISPLAY:-unset})." >&2
     echo "  The game needs a display; it will start and exit with 0 frames." >&2
+    echo "  Pass --headless to run with no display at all." >&2
   fi
 fi
 
@@ -123,7 +132,7 @@ done
 # three the script controls itself are excluded here and set explicitly below.
 for _name in $(compgen -v); do
   case "$_name" in
-    KAROO_SKIP_LAUNCHER|KAROO_AUTO_EXIT_SECS|KAROO_D3D_PROXY) continue ;;
+    KAROO_SKIP_LAUNCHER|KAROO_AUTO_EXIT_SECS|KAROO_D3D_PROXY|KAROO_HEADLESS) continue ;;
     KAROO_*) FORWARD_ENV+=("$_name=${!_name}") ;;
   esac
 done
@@ -132,7 +141,7 @@ PROTON_DIR="$HOME/.steam/root/steamapps/common/Proton - Experimental"
 PROTON_RUN=(
   env -i
   HOME="$HOME" USER="$USER"
-  DISPLAY="$DISPLAY"
+  DISPLAY="${DISPLAY:-}"
   PATH="$PATH"
   STEAM_COMPAT_DATA_PATH="$HOME/.proton/Karoo.exe"
   STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.steam/root"
@@ -144,6 +153,7 @@ PROTON_RUN=(
   KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
   KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"
   KAROO_D3D_PROXY="${KAROO_D3D_PROXY:-1}"
+  KAROO_HEADLESS="$HEADLESS"
   "${FORWARD_ENV[@]}"
   "$PROTON_DIR/proton" run
 )

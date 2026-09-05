@@ -271,7 +271,8 @@ def entry_fast(entry, fast):
     return fast and entry.get("fast", True)
 
 
-def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True):
+def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
+           headless=False):
     env = apply_fast(apply_turbo(dict(os.environ)), fast)
     env["KAROO_REPLAY"] = rec_path
     env["KAROO_STATE_DUMP"] = dump_path
@@ -279,8 +280,14 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True):
     env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
     env["KAROO_SEED"] = str(cfg.get("seed", ""))
     auto_exit = int(cfg.get("timeout", 120))
+    # --headless replaces DirectDraw with the in-DLL null device
+    # (karoo-hooks/nullddraw.cpp) and makes the game's window message-only, so
+    # the run needs no display, opens nothing on screen and takes no focus.
+    # It implies --skip-launcher.  Orthogonal to --fast: fast skips the draw
+    # CALLS, headless removes the driver underneath them.
     cmd = ["bash", os.path.join(REPO, "launch.sh"),
-           "--skip-launcher", "--auto-exit", str(auto_exit)]
+           "--headless" if headless else "--skip-launcher",
+           "--auto-exit", str(auto_exit)]
 
     # Hard wall-clock bound.  --auto-exit is a *game-time* budget, so it does
     # not bound wall time at all: if the game wedges, or the machine suspends
@@ -362,7 +369,7 @@ def compare_state(expected, actual):
     return bad
 
 
-def run_one(m, entry, bless=False, fast=True):
+def run_one(m, entry, bless=False, fast=True, headless=False):
     cfg = entry_defaults(m, entry)
     name = entry["name"]
     rec_path = os.path.join(TESTS, entry["file"])
@@ -395,7 +402,7 @@ def run_one(m, entry, bless=False, fast=True):
             os.remove(stale)
 
     if launch(entry, cfg, rec_path, dump_path, hash_path,
-              fast=entry_fast(entry, fast)):
+              fast=entry_fast(entry, fast), headless=headless):
         print("  FAIL: run timed out and was killed — treat this as a hang, "
               "not a state mismatch. karoo_hooks.log ends where it wedged.")
         return False
@@ -608,6 +615,12 @@ def main():
                     help="render every frame for real. Slower (~216 s vs "
                          "~172 s for the suite), and the only way to exercise "
                          "the ddraw draw path for every recording.")
+    ap.add_argument("--headless", action="store_true",
+                    help="run with no window and no graphics at all: "
+                         "DirectDraw is replaced by the in-DLL null device and "
+                         "the game's window is made message-only, so the suite "
+                         "can run in the background without stealing focus and "
+                         "without a display. Implies --skip-launcher.")
     ap.add_argument("--bless", action="store_true",
                     help="write the run's own end state into the manifest as "
                          "the expectation — only after you believe the run")
@@ -622,7 +635,8 @@ def main():
     if args.bless and len(entries) != 1:
         sys.exit("--bless takes exactly one recording name")
 
-    results = [(e["name"], run_one(m, e, bless=args.bless, fast=args.fast))
+    results = [(e["name"], run_one(m, e, bless=args.bless, fast=args.fast,
+                                   headless=args.headless))
                for e in entries]
     if args.bless:
         save_manifest(m)
