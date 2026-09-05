@@ -16,6 +16,7 @@
     "  expect.crash \"none\", \"known\" (the CRASH.md guard-page fault) or \"different\"",
     "  expect.state fields from the KAROO_STATE_DUMP JSON that must match exactly;",
     "               omit a field to leave it unasserted",
+    "  fast         optional; false = never run under --fast (the default), for a recording that guards something on the render path",
     "  notes        anything a reader needs before trusting the entry"
   ],
   "defaults": {
@@ -29,11 +30,11 @@
       "file": "bombstart-crash.rec",
       "saves": "tests/saves/bombstart",
       "level": "Forest\\BombStart",
-      "description": "Hand-played by James, 2026-08-30. Navigates the main menu, loads save slot 4 (Forest\\BombStart), plays about 10 seconds of the level \u2014 picks up one item and kills one foe \u2014 then quits. 1034 records over 1036 frames, 313 with a key held. The level is never completed; this exercises the menu, the save-slot load and the first seconds of gameplay, not a full run.",
+      "description": "Hand-played by James, 2026-08-30. Navigates the main menu, loads save slot 4 (Forest\\BombStart), plays about 10 seconds of the level — picks up one item and kills one foe — then quits. 1034 records over 1036 frames, 313 with a key held. The level is never completed; this exercises the menu, the save-slot load and the first seconds of gameplay, not a full run.",
       "scenario": "menu navigation + save-slot load + ~10s of BombStart gameplay",
       "purpose": [
         "Stage D fixture: replaying it reproduces the recorded run's per-frame state checksum exactly.",
-        "Historically the deterministic reproducer for the CRASH.md guard-page fault \u2014 it crashed at frame 797 every time. That crash is now fixed (Game::RenderSceneObjects left textureCoords[1] uninitialised), so the recording runs to its own end and the entry guards against the crash coming back."
+        "Historically the deterministic reproducer for the CRASH.md guard-page fault — it crashed at frame 797 every time. That crash is now fixed (Game::RenderSceneObjects left textureCoords[1] uninitialised), so the recording runs to its own end and the entry guards against the crash coming back."
       ],
       "expect": {
         "crash": "none",
@@ -58,7 +59,8 @@
           "completed_a_level": false
         }
       },
-      "notes": "Named for the crash it used to reproduce; kept under that name because tests/README.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced byte-identical 1036-frame hash logs and identical end-state dumps."
+      "notes": "Named for the crash it used to reproduce; kept under that name because tests/README.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced byte-identical 1036-frame hash logs and identical end-state dumps. --fast is the suite default, and this entry sets \"fast\": false to opt out of it: --fast skips the ddraw draw calls, and the fault this recording guards happened INSIDE DrawPrimitiveStrided, so running it fast would silently retire the only render-path crash guard the suite has. Costs about 10 s. Remove the field to make the whole suite fast unconditionally.",
+      "fast": false
     },
     {
       "name": "bridge01",
@@ -90,7 +92,7 @@
           "completed_a_level": false
         }
       },
-      "notes": "Captured 1063 frames. No end-state assertions yet \u2014 run `replaytest.py --bless bridge01` once a replay is trusted."
+      "notes": "Captured 1063 frames. Blessed; the note previously still said it was unasserted."
     },
     {
       "name": "castle-something",
@@ -122,7 +124,7 @@
           "completed_a_level": false
         }
       },
-      "notes": "Captured 1033 frames. No end-state assertions yet \u2014 run `replaytest.py --bless castle-something` once a replay is trusted."
+      "notes": "Captured 1033 frames. Blessed; the note previously still said it was unasserted."
     },
     {
       "name": "destr-bait",
@@ -135,7 +137,7 @@
         "crash": "none",
         "state": {}
       },
-      "notes": "Captured 2098 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-bait` once a replay is trusted."
+      "notes": "Captured 2098 frames. No end-state assertions yet — run `replaytest.py --bless destr-bait` once a replay is trusted."
     },
     {
       "name": "destr-extralife",
@@ -148,7 +150,52 @@
         "crash": "none",
         "state": {}
       },
-      "notes": "Captured 4602 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-extralife` once a replay is trusted."
+      "notes": "Captured 4602 frames. No end-state assertions yet — run `replaytest.py --bless destr-extralife` once a replay is trusted."
+    },
+    {
+      "name": "freezestart",
+      "file": "freezestart.rec",
+      "saves": "tests/saves/freezestart",
+      "level": "Forest\\FreezeStart",
+      "description": "Hand-played by James, 2026-09-05. Forest\\FreezeStart played through to the exit: all 56 crystals and all 64 items collected, no foes killed, no damage taken, completed at frame 2158 in 30.2 s of game time against a 100 s limit for a level score of 839. 2258 frames in total. Two reasons this one carries weight beyond its object coverage: it is the suite's only coverage of the freeze objects (8 on this level, more than any other level in the game), and it is one of only two recordings that finishes a level, so it drives Game::CalculateLevelScore and the score tally with the all-items bonus actually earned rather than skipped.",
+      "scenario": "full clean completion of FreezeStart: every crystal, every item, no damage",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 2258,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 56,
+          "gems_required": 56,
+          "foes_killed": 0,
+          "items_collected": 64,
+          "items_available": 64,
+          "items_bonus_blocked": 0,
+          "vitality": 99,
+          "lives": 3,
+          "level_score": 839,
+          "total_score": 839,
+          "time_limit_s": 100,
+          "elapsed_ms": 30240,
+          "level_complete": 1,
+          "death_cause": 0,
+          "completed_a_level": true,
+          "at_completion.gems_collected": 56,
+          "at_completion.gems_required": 56,
+          "at_completion.foes_killed": 0,
+          "at_completion.items_collected": 64,
+          "at_completion.items_available": 64,
+          "at_completion.items_bonus_blocked": 0,
+          "at_completion.vitality": 100,
+          "at_completion.lives": 3,
+          "at_completion.level_score": 839,
+          "at_completion.total_score": 839,
+          "at_completion.time_limit_s": 100,
+          "at_completion.elapsed_ms": 30240,
+          "at_completion.level_complete": 1
+        }
+      },
+      "notes": "Blessed 2026-09-05. Determinism confirmed before blessing rather than assumed: two consecutive runs produced byte-identical 2258-frame hash logs AND byte-identical end-state dumps. The completion fields are the ones to watch -- level_complete, gems 56/56 and items 64/64 all being maxed is what makes the all-items bonus fire, and a regression that quietly denies that bonus would show up here as a level_score change and nowhere else."
     },
     {
       "name": "gameover-forest",
@@ -180,6 +227,134 @@
         }
       },
       "notes": "Captured 1491 frames, blessed on 18 fields. The ONLY recording that reaches the game-over overlay (bGame_state 2), so it is the only automated coverage of karoo-hooks/scoreoverlay.cpp Score_DrawGameOverScore -- the four capped \"scoreoverlay: gameover\" lines in karoo_hooks.log are how you check it still runs. One life, so the single death ends the game rather than respawning; lives=0 and death_cause=1 are the fields that say so. Scores are non-zero (4 gems, level_score 94) deliberately, so the breakdown draws real numbers in its count and product columns rather than a screen of zeros. The high-score half of that file is NOT covered here -- reach it with KAROO_MENU_NODE=3."
+    },
+    {
+      "name": "protectionstart",
+      "file": "protectionstart.rec",
+      "saves": "tests/saves/protectionstart",
+      "level": "Egypt\\ProtectionStart",
+      "description": "Hand-played by James, 2026-09-05. Egypt\\ProtectionStart for about 11.6 s: collects 1 of 17 items, no crystals of the 12 required, takes heavy damage (vitality down to 10 from 100) and records death_cause 1 while still holding 3 lives, then quits without completing the level. 1138 frames. Two firsts for the suite: the only coverage of the protect objects (5), and the ONLY recording that loads an Egypt level at all -- Egypt is 13 of the game's 80 levels and none of its theme assets had ever been exercised by a replay before this.",
+      "scenario": "first seconds of an Egypt level, taking heavy damage",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 1138,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 0,
+          "gems_required": 12,
+          "foes_killed": 0,
+          "items_collected": 1,
+          "items_available": 17,
+          "items_bonus_blocked": 0,
+          "vitality": 10,
+          "lives": 3,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 100,
+          "elapsed_ms": 11616,
+          "level_complete": 0,
+          "death_cause": 1,
+          "completed_a_level": false
+        }
+      },
+      "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1138-frame hash logs and identical end-state dumps. NOTE the death_cause=1 with lives=3: that pairing is recorded as observed and has NOT been explained -- gameover-forest reaches death_cause=1 with lives=0. Do not read it as 'a death was not counted' without checking; it is asserted here so that if the meaning of the field changes, this entry says so."
+    },
+    {
+      "name": "sandra02",
+      "file": "sandra02.rec",
+      "saves": "tests/saves/sandra02",
+      "level": "Space\\Sandra02",
+      "description": "Hand-played by James, 2026-09-05. Space\\Sandra02 for about 18.2 s: collects 1 of 39 items and 1 of the 30 crystals required, vitality down to 44, no foes killed and no deaths, then quits without completing. 1464 frames. This is the recording that carries most of the suite's new object coverage: slides (14), glue (4), teleporters (2), speed (2), hidden lives (2), jump pads (1) and obstacles (1), none of which any earlier recording touched. It also has bombs, breakables and elevators, so it overlaps bombstart-crash and castle-something rather than replacing them.",
+      "scenario": "first seconds of Sandra02, the glue/slide/teleporter level",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 1464,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 1,
+          "gems_required": 30,
+          "foes_killed": 0,
+          "items_collected": 1,
+          "items_available": 39,
+          "items_bonus_blocked": 0,
+          "vitality": 44,
+          "lives": 3,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 180,
+          "elapsed_ms": 18176,
+          "level_complete": 0,
+          "death_cause": 0,
+          "completed_a_level": false
+        }
+      },
+      "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1464-frame hash logs and identical end-state dumps. The level is not completed, so there is no at_completion block and completed_a_level is false. Its value is the tile-effect coverage, not the outcome: this is the recording that will catch a regression in Game::UpdatePlayerTileEffects (0x41fcb0), which handles glue, slides, jump pads and teleporters and which no recording could see before it existed."
+    },
+    {
+      "name": "thrower02",
+      "file": "thrower02.rec",
+      "saves": "tests/saves/thrower02",
+      "level": "Candy\\Thrower02",
+      "description": "Hand-played by James, 2026-09-05. Candy\\Thrower02 for about 44.2 s: kills one foe, collects 1 of 15 items and 1 of the 10 crystals required, vitality down to 24, then quits without completing. 2931 frames -- the longest of the five new recordings. Covers throwers (1), the paraglider (2), slides (8), teleporters (3), jump pads (3), ice (1) and hidden crystals (1). Paired with thrower02_fly, which plays the same level from the same fixture a different way.",
+      "scenario": "first seconds of Thrower02, killing one foe",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 2931,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 1,
+          "gems_required": 10,
+          "foes_killed": 1,
+          "items_collected": 1,
+          "items_available": 15,
+          "items_bonus_blocked": 0,
+          "vitality": 24,
+          "lives": 3,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 220,
+          "elapsed_ms": 44240,
+          "level_complete": 0,
+          "death_cause": 0,
+          "completed_a_level": false
+        }
+      },
+      "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 2931-frame hash logs and identical end-state dumps. foes_killed=1 is worth keeping an eye on: it is one of only two recordings that kills anything (with bombstart-crash), so it is thin coverage of the foe-death path and of CalculateLevelScore's foe term."
+    },
+    {
+      "name": "thrower02_fly",
+      "file": "thrower02_fly.rec",
+      "saves": "tests/saves/thrower02",
+      "level": "Candy\\Thrower02",
+      "description": "Hand-played by James, 2026-09-05. Candy\\Thrower02 again, from the same save fixture as thrower02 but played with the flying powerup: 1395 frames, about 16.2 s, 3 of 15 items collected, no crystals, vitality 41, level not completed. It ends on 4 lives, one MORE than it started with -- the level carries 2 extra-life pickups and this run takes one. That makes it the only recording in the suite where the life count goes UP; everywhere else lives are lost or unchanged, so it is the only automated check that the pickup path credits a life at all.",
+      "scenario": "Thrower02 again, flying, gaining a life",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 1395,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 0,
+          "gems_required": 10,
+          "foes_killed": 0,
+          "items_collected": 3,
+          "items_available": 15,
+          "items_bonus_blocked": 0,
+          "vitality": 41,
+          "lives": 4,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 220,
+          "elapsed_ms": 16160,
+          "level_complete": 0,
+          "death_cause": 0,
+          "completed_a_level": false
+        }
+      },
+      "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1395-frame hash logs and identical end-state dumps. lives=4 is the assertion that matters here -- if a change breaks the extra-life pickup, this is the only recording that fails. Two recordings sharing one fixture (tests/saves/thrower02) is intended, not an oversight: the fixture is the starting state, and two different playthroughs of it are two tests."
     },
     {
       "name": "water01",

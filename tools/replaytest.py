@@ -206,23 +206,33 @@ def apply_turbo(env):
 #   KAROO_FLIP_FX=noblt   Direct3D_FlipPrimaryFrame skips the Blt to the back
 #                         buffer (it still Flips)
 #
-# Measured on this machine, whole suite, 15,473 frames over 7 recordings:
+# Measured on this machine, whole suite, 12 recordings (2026-09-05):
 #
-#   baseline   106.5 s
-#   --fast      79.2 s      -26%
+#   --no-fast   216.0 s
+#   default     171.6 s      -21%
+#
+# 12/12 pass either way.  On the 7-recording suite this was first measured on,
+# the same change was 106.5 s -> 79.2 s, -26%; the ratio moved because
+# bombstart-crash now opts out and renders for real.
 #
 # Per recording the shape is about 5.9 s of fixed launch cost plus 3.9 ms a
-# frame, and --fast takes the per-frame figure to about 2.2 ms.  All 7 still
-# pass, water01 included with all 31 asserted fields, which is the point: draw
-# calls are pure output.  Nothing in the game reads them back, so removing them
-# cannot move the simulation -- and if it ever did, the suite would say so.
+# frame, and fast mode takes the per-frame figure to about 2.2 ms.  water01 and
+# freezestart pass with all 31 asserted fields either way, which is the point:
+# draw calls are pure output.  Nothing in the game reads them back, so removing
+# them cannot move the simulation -- and if it ever did, the suite would say so.
 #
-# WHY THIS IS NOT THE DEFAULT.  bombstart-crash exists to guard the CRASH.md
-# fault, which was a bad pointer handed to ddraw and which faulted *inside*
-# DrawPrimitiveStrided.  Under --fast that call never reaches ddraw, so that
-# entire class of fault -- the one this suite has actually caught before -- is
-# invisible.  --fast is for iterating on simulation changes; run the plain
-# suite before committing.
+# THIS IS THE DEFAULT.  --no-fast restores the full render path.
+#
+# One recording opts out of it permanently, and the reason is worth keeping in
+# view.  bombstart-crash exists to guard the CRASH.md fault: a bad pointer
+# handed to ddraw, which faulted *inside* DrawPrimitiveStrided.  Skipping the
+# draw call means that pointer is never handed over, so that entire class of
+# fault -- the only one this suite has actually caught in anger -- would go
+# unnoticed.  Rather than trade it away for the ~10 s that recording costs, the
+# manifest entry carries "fast": false and it always runs the real render path.
+#
+# So the suite is fast by default and still guards the thing it was built to
+# guard.  Any recording can opt out the same way; see entry_fast() below.
 #
 # Two things deliberately NOT done here, both measured:
 #
@@ -251,7 +261,17 @@ def apply_fast(env, fast):
     return env
 
 
-def launch(entry, cfg, rec_path, dump_path, hash_path, fast=False):
+def entry_fast(entry, fast):
+    """Whether THIS recording runs fast.
+
+    A recording whose value is guarding something on the render path sets
+    "fast": false in the manifest and is never run fast, however the suite was
+    invoked.  --no-fast still turns it off for everything.
+    """
+    return fast and entry.get("fast", True)
+
+
+def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True):
     env = apply_fast(apply_turbo(dict(os.environ)), fast)
     env["KAROO_REPLAY"] = rec_path
     env["KAROO_STATE_DUMP"] = dump_path
@@ -342,7 +362,7 @@ def compare_state(expected, actual):
     return bad
 
 
-def run_one(m, entry, bless=False, fast=False):
+def run_one(m, entry, bless=False, fast=True):
     cfg = entry_defaults(m, entry)
     name = entry["name"]
     rec_path = os.path.join(TESTS, entry["file"])
@@ -374,7 +394,8 @@ def run_one(m, entry, bless=False, fast=False):
         if os.path.exists(stale):
             os.remove(stale)
 
-    if launch(entry, cfg, rec_path, dump_path, hash_path, fast=fast):
+    if launch(entry, cfg, rec_path, dump_path, hash_path,
+              fast=entry_fast(entry, fast)):
         print("  FAIL: run timed out and was killed — treat this as a hang, "
               "not a state mismatch. karoo_hooks.log ends where it wedged.")
         return False
@@ -579,11 +600,14 @@ def main():
     ap.add_argument("names", nargs="*", help="recordings to run (default: all)")
     ap.add_argument("--list", action="store_true",
                     help="show the catalogue and exit")
-    ap.add_argument("--fast", action="store_true",
+    ap.add_argument("--fast", dest="fast", action="store_true", default=True,
                     help="skip the render work (KAROO_D3D_FX=nodraw, "
-                         "KAROO_FLIP_FX=noblt): ~26%% faster, but no longer "
-                         "guards the CRASH.md class of fault inside ddraw. "
-                         "For iterating; run the plain suite before committing.")
+                         "KAROO_FLIP_FX=noblt). This is the DEFAULT; the flag "
+                         "is kept so it can be stated explicitly.")
+    ap.add_argument("--no-fast", dest="fast", action="store_false",
+                    help="render every frame for real. Slower (~216 s vs "
+                         "~172 s for the suite), and the only way to exercise "
+                         "the ddraw draw path for every recording.")
     ap.add_argument("--bless", action="store_true",
                     help="write the run's own end state into the manifest as "
                          "the expectation — only after you believe the run")

@@ -8,36 +8,52 @@ way; this file is the operating manual.
 python3 tools/replaytest.py              # run every catalogued recording
 python3 tools/replaytest.py --list       # what is catalogued, and why
 python3 tools/replaytest.py NAME         # run one
-python3 tools/replaytest.py --fast       # skip the rendering, ~26% faster
+python3 tools/replaytest.py --no-fast    # render every frame for real
 ```
 
-## `--fast`, and when not to use it
+## `--fast` is the default
 
 A replay already runs on the virtual clock and with vsync off, so the loop is
 uncapped. What is left is real work, and most of the per-frame half of it is
 rendering the game does not need to do to be tested: the suite asserts *game
 state*, and draw calls are pure output that nothing reads back.
 
-`--fast` sets two switches the DLL already has -- `KAROO_D3D_FX=nodraw`, which
+Fast mode sets two switches the DLL already has -- `KAROO_D3D_FX=nodraw`, which
 returns `D3D_OK` from all six `DrawPrimitive*` entry points in the com_proxy
 device without forwarding, and `KAROO_FLIP_FX=noblt`, which skips the Blt in
-`Direct3D_FlipPrimaryFrame`. Measured over the whole suite, 15,473 frames:
+`Direct3D_FlipPrimaryFrame`. Measured over the whole suite:
 
-| Run | Wall |
-|---|---|
-| baseline | 106.5 s |
-| `--fast` | 80.6 s (-24%) |
+| Run | Wall | Result |
+|---|---|---|
+| `--no-fast` | 216.0 s | 12/12 |
+| default (fast) | 171.6 s (-21%) | 12/12 |
+
+Measured 2026-09-05 over all twelve recordings. On the seven-recording suite
+this was first measured on it was 106.5 s -> 79.2 s, -26%; the ratio moved
+because `bombstart-crash` now opts out and renders for real.
 
 Per recording that is roughly 5.9 s of fixed launch cost plus 3.9 ms a frame,
-which `--fast` takes to about 2.2 ms. All seven recordings still pass, water01
-with all 31 asserted fields.
+which fast mode takes to about 2.2 ms. Every recording passes either way,
+water01 and freezestart with all 31 asserted fields, which is the evidence that
+draw calls are pure output: nothing in the game reads them back, so removing
+them cannot move the simulation.
 
-**It is not the default, and it is not a substitute for the plain suite.**
-`bombstart-crash` exists to guard the CRASH.md fault, which was a bad pointer
-handed to ddraw and which faulted *inside* `DrawPrimitiveStrided`. Under
-`--fast` that call never reaches ddraw, so the one class of fault this suite
-has actually caught in anger becomes invisible. Use `--fast` while iterating on
-simulation changes; run `replaytest.py` plain before committing.
+`--no-fast` renders every frame for real. `--fast` still exists so a run can
+say so explicitly.
+
+### The one recording that never runs fast
+
+`bombstart-crash` carries `"fast": false` in the manifest and always renders for
+real, whatever the suite was invoked with.
+
+It exists to guard the CRASH.md fault: a bad pointer handed to ddraw, which
+faulted *inside* `DrawPrimitiveStrided`. Skip the draw call and that pointer is
+never handed over, so the only class of fault this suite has actually caught in
+anger would go unnoticed. It costs about 10 s of the run, which is a better
+trade than losing the guard.
+
+Any recording can opt out the same way. Deleting the field would make the suite
+fast unconditionally -- and would retire that guard, so do it deliberately.
 
 Two things that look like wins and are not, both measured rather than assumed:
 
