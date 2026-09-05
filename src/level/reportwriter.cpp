@@ -116,11 +116,26 @@ typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
 #define ORIG_SET_LEVEL_NAME ((setname_fn)0x004186b0)
 #define ORIG_OPEN_LEVEL     ((openlvl_fn)0x004186f0)
 #define ORIG_SETUP_OBJECTS  ((setup_fn)  0x00416420)
-#define ORIG_CALC_SCORE     ((score_fn)  0x0041a760)
+/* Was ((score_fn) 0x0041a760) -- the game's Game::CalculateLevelScore.
+ * levelscore.cpp owns it now (GAMETICK_PLAN.md Band A) and the original is
+ * UD2-stubbed, so this goes to ours.  This call is why the level report is an
+ * 80-level acceptance test for that replacement.
+ *
+ * The absolute-address call here is exactly the kind an `xref.py` scan of the
+ * EXE cannot see: it lives in our DLL, so the exe holds no reference to
+ * 0x0041a760 at all -- not an E8, not a 68 imm32, not even the raw four bytes.
+ * Stubbing the original trapped at `call eax` with eax = 0041a760 and nothing
+ * in the binary to explain it.  When replacing anything, grep karoo-hooks/ for
+ * its address as well as running xref.py over the exe. */
+#define ORIG_CALC_SCORE     ((score_fn)  Score_CalculateLevelScore)
 /* Was ((logmsg_fn) 0x00441b10) -- the game's Logger::LogMessage.  gamelog.cpp
  * owns that class now and the original is UD2-stubbed, so this goes to ours. */
 #define ORIG_LOG_MESSAGE \
     ((void (__cdecl *)(void *, int, const char *, ...))GameLog_LogMessage)
+
+/* Ours since GAMETICK_PLAN.md Band A (karoo-hooks/levelscore.cpp). */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Score_CalculateLevelScore(void *self, char endReason);
 
 /* Ours since Phase 2 (karoo-hooks/playerstate.cpp). */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
