@@ -105,9 +105,12 @@
 #include <ctype.h>
 #include "log.h"
 
-/* The game's logger -- the one callback here.  __cdecl(logger, level, fmt, ...) */
-typedef void (__cdecl *logmsg_fn)(void *logger, int level, const char *fmt, ...);
-#define ORIG_LOG_MESSAGE ((logmsg_fn)0x00441b10)
+/* The game's logger.  This used to be the one callback in this file, reaching
+ * into Karoo.exe at 0x00441b10; since gamelog.cpp replaced the Logger class
+ * that original is UD2-stubbed, and this calls our own writer instead. */
+#include "gamelog.h"
+#define ORIG_LOG_MESSAGE \
+    ((void (__cdecl *)(void *, int, const char *, ...))GameLog_LogMessage)
 #define STR_ANI_LOADED   ((const char *)0x004640b0)   /* "ANI: %s loaded" */
 
 #define ANI_TABLE_SIZE   0x180      /* 24 slots x 0x10, and it tiles exactly */

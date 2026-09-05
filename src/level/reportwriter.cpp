@@ -71,6 +71,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "log.h"
+#include "gamelog.h"
 
 /* ─── Game data (DATA references, not calls) ─────────────────────────────── */
 
@@ -111,13 +112,15 @@ typedef void (__attribute__((thiscall)) *setname_fn)(void *self, unsigned idx);
 typedef void (__attribute__((thiscall)) *openlvl_fn)(void *self, unsigned idx);
 typedef void (__attribute__((thiscall)) *setup_fn)  (void *self);
 typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
-typedef void (__cdecl *logmsg_fn)(void *logger, int level, const char *fmt, ...);
 
 #define ORIG_SET_LEVEL_NAME ((setname_fn)0x004186b0)
 #define ORIG_OPEN_LEVEL     ((openlvl_fn)0x004186f0)
 #define ORIG_SETUP_OBJECTS  ((setup_fn)  0x00416420)
 #define ORIG_CALC_SCORE     ((score_fn)  0x0041a760)
-#define ORIG_LOG_MESSAGE    ((logmsg_fn) 0x00441b10)
+/* Was ((logmsg_fn) 0x00441b10) -- the game's Logger::LogMessage.  gamelog.cpp
+ * owns that class now and the original is UD2-stubbed, so this goes to ours. */
+#define ORIG_LOG_MESSAGE \
+    ((void (__cdecl *)(void *, int, const char *, ...))GameLog_LogMessage)
 
 /* Ours since Phase 2 (karoo-hooks/playerstate.cpp). */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
