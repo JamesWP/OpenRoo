@@ -139,30 +139,23 @@
  * The observable difference is confined to a throw that cannot happen.
  */
 #include <string.h>
+#include <stdio.h>
 #include "texture.h"
 #include "log.h"
 
 /* ─── Originals left live in the binary ──────────────────────────────────── */
 
-/* FileWrapper — { vtable, FILE * }; see texturetga.cpp for the method notes.
- * The FILE * belongs to the game's statically linked CRT, so its fread must be
- * the game's too. */
-struct FileWrapper {
-    void *pVtable;   /* +0x00, always 0x0045d3a4 */
-    void *fp;        /* +0x04 */
-};
-
-typedef void  (__attribute__((thiscall)) *fw_ctor_fn)(FileWrapper *);
-typedef void *(__attribute__((thiscall)) *fw_open_fn)(FileWrapper *, LPCSTR, LPCSTR);
-typedef int   (__attribute__((thiscall)) *fw_close_fn)(FileWrapper *);
-#define ORIG_FW_CTOR      ((fw_ctor_fn)0x00413430)
-#define ORIG_FW_OPEN      ((fw_open_fn)0x00413480)
-#define ORIG_FW_CLOSEFILE ((fw_close_fn)0x004134b0)
-#define ORIG_FW_CLOSE     ((fw_close_fn)0x00413460)
-#define STR_MODE_RB       ((LPCSTR)0x00465188)   /* "rb" */
-
-typedef unsigned int (__cdecl *fread_fn)(void *, unsigned int, unsigned int, void *);
-#define ORIG_FREAD ((fread_fn)0x0045158a)
+/* THE FILE IS OURS (2026-09-05).  This reader used to open through the game's
+ * FileWrapper and read with the game's fread, on the grounds that the FILE *
+ * belonged to the game's CRT.  True, but it was the wrong thing to hold fixed:
+ * the file is opened HERE, and whoever opens a file decides which CRT owns it.
+ * The FileWrapper is a purely local { vtable, FILE * } on the stack that
+ * nothing outside this function sees, so a plain FILE * from our own CRT is
+ * behaviourally identical -- see the method notes in texturetga.cpp.
+ *
+ * The original's failure paths return FileWrapper::Close's result with AL
+ * forced to 0, so the upper three bytes of EAX carry Close's value; we return
+ * a plain 0.  Callers test AL only. */
 
 typedef char *(__cdecl *opnew_fn)(unsigned int);
 typedef void  (__cdecl *free2_fn)(void *);
@@ -512,28 +505,26 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
     st_log_str(name);
     st_log_str(STR_NEWLINE);
 
-    FileWrapper file;
-    ORIG_FW_CTOR(&file);
-
-    if (ORIG_FW_OPEN(&file, name, STR_MODE_RB) == NULL)
-        return ORIG_FW_CLOSE(&file) & 0xffffff00u;
+    FILE *fp = fopen(name, "rb");
+    if (fp == NULL)
+        return 0;
 
     /* Header: twelve reads, no error checking whatsoever. */
     TgaHeader h;
-    void *fp = file.fp;
-    ORIG_FREAD(&h.idLength,        1, 1, fp);
-    ORIG_FREAD(&h.colourMapType,   1, 1, fp);
-    ORIG_FREAD(&h.imageType,       1, 1, fp);
-    ORIG_FREAD(&h.colourMapOrigin, 2, 1, fp);
-    ORIG_FREAD(&h.colourMapLength, 2, 1, fp);
-    ORIG_FREAD(&h.colourMapDepth,  1, 1, fp);
-    ORIG_FREAD(&h.xOrigin,         2, 1, fp);
-    ORIG_FREAD(&h.yOrigin,         2, 1, fp);
-    ORIG_FREAD(&h.width,           2, 1, fp);
-    ORIG_FREAD(&h.height,          2, 1, fp);
-    ORIG_FREAD(&h.bpp,             1, 1, fp);
-    ORIG_FREAD(&h.descriptor,      1, 1, fp);
-    ORIG_FW_CLOSEFILE(&file);
+    fread(&h.idLength,        1, 1, fp);
+    fread(&h.colourMapType,   1, 1, fp);
+    fread(&h.imageType,       1, 1, fp);
+    fread(&h.colourMapOrigin, 2, 1, fp);
+    fread(&h.colourMapLength, 2, 1, fp);
+    fread(&h.colourMapDepth,  1, 1, fp);
+    fread(&h.xOrigin,         2, 1, fp);
+    fread(&h.yOrigin,         2, 1, fp);
+    fread(&h.width,           2, 1, fp);
+    fread(&h.height,          2, 1, fp);
+    fread(&h.bpp,             1, 1, fp);
+    fread(&h.descriptor,      1, 1, fp);
+    fclose(fp);
+    fp = NULL;
 
     static LONG seen_import = 0;
     if (InterlockedIncrement(&seen_import) <= 4)
@@ -546,8 +537,10 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
     Texture_ReleaseD3DTexture(self);
 
     /* Note 7: true-colour only, compressed or not. */
-    if (h.imageType != 2 && h.imageType != 0x0a)
-        return ORIG_FW_CLOSE(&file) & 0xffffff00u;
+    if (h.imageType != 2 && h.imageType != 0x0a) {
+        if (fp != NULL) fclose(fp);
+        return 0;
+    }
 
     st_log_str(STR_TYPE_OK);
 
@@ -588,13 +581,15 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
     HRESULT hr = dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
     if (hr < 0) {
         st_log_str(STR_NO_TEXTURE_SURFACE);
-        return ORIG_FW_CLOSE(&file) & 0xffffff00u;
+        if (fp != NULL) fclose(fp);
+        return 0;
     }
 
     if ((TextureTGA_Parse(&self->base, name) & 0xff) == 0) {
         st_log_str(STR_NO_TGA_COPY);
         Texture_ReleaseD3DTexture(self);
-        return ORIG_FW_CLOSE(&file) & 0xffffff00u;
+        if (fp != NULL) fclose(fp);
+        return 0;
     }
 
     if (texture_fx_mode() == TEXFX_SOLID)
@@ -606,12 +601,14 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
         /* Release first, then log — that order is the original's. */
         Texture_ReleaseD3DTexture(self);
         st_log_str(STR_NO_TEXTURE_IFACE);
-        return ORIG_FW_CLOSE(&file) & 0xffffff00u;
+        if (fp != NULL) fclose(fp);
+        return 0;
     }
 
     st_set_image_name(&self->base, name);
     self->base.loadedState = 2;
-    return (ORIG_FW_CLOSE(&file) & 0xffffff00u) | 1u;
+    if (fp != NULL) fclose(fp);
+    return 1;
 }
 
 /* ─── SceneTexture::SelectTextureLoader (0x43feb0) ─────────────────────────

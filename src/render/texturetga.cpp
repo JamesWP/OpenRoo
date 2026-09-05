@@ -98,42 +98,41 @@
  */
 #include "texture.h"
 #include "log.h"
+#include <stdio.h>
 
 /* ─── Originals left live in the binary ────────────────────────────────────
  *
- * The FILE * belongs to the game's statically linked CRT, so its fread/fseek/
- * fclose must be the game's too — mingw's would be operating on a foreign
- * FILE.  All of these are shared helpers with many other callers. */
-
-/* FileWrapper — an 8-byte { vtable, FILE * } at 0x45d3a4.
+ * ─── The file is OURS now (2026-09-05) ────────────────────────────────────
+ *
+ * This reader used to open through the game's FileWrapper and then read with
+ * the game's fread, because the FILE * was the game CRT's and mingw's fread
+ * would have been operating on a foreign FILE.  That reasoning was correct but
+ * it treated the wrong thing as fixed: the file is opened HERE, so nothing
+ * forced it to be the game's.  Whoever opens a file decides which CRT owns it.
+ *
+ * The FileWrapper the original uses is a purely local 8-byte
+ * { vtable, FILE * } on the stack -- nothing outside this function ever sees
+ * it -- so replacing it with a plain FILE * from our own CRT changes no
+ * observable behaviour:
+ *
  *   0x413430  ctor(this)                       vtable + fp = NULL
- *   0x413480  Open(this, path, mode) -> FILE*  closes any open file first
- *   0x4134b0  CloseFile(this) -> int           fclose; fp = NULL iff it
+ *   0x413480  Open(this, path, mode) -> FILE*  closes any open file, fopens
+ *   0x4134b0  CloseFile(this)                  fclose; fp = NULL iff it
  *                                              returned 0
- *   0x413460  Close(this) -> int               resets the vtable, then
- *                                              CloseFile if fp is non-NULL,
- *                                              else returns 0
- * ParseTGAFile calls CloseFile as soon as the pixel data is read and Close
- * again at every exit; the second call therefore sees fp == NULL and returns
- * 0, which is where the "upper three bytes" of the result come from. */
-struct FileWrapper {
-    void *pVtable;   /* +0x00, always 0x0045d3a4 */
-    void *fp;        /* +0x04, the game CRT's FILE * */
-};
-
-typedef void  (__attribute__((thiscall)) *fw_ctor_fn)(FileWrapper *);
-typedef void *(__attribute__((thiscall)) *fw_open_fn)(FileWrapper *, LPCSTR, LPCSTR);
-typedef int   (__attribute__((thiscall)) *fw_close_fn)(FileWrapper *);
-#define ORIG_FW_CTOR      ((fw_ctor_fn)0x00413430)
-#define ORIG_FW_OPEN      ((fw_open_fn)0x00413480)
-#define ORIG_FW_CLOSEFILE ((fw_close_fn)0x004134b0)
-#define ORIG_FW_CLOSE     ((fw_close_fn)0x00413460)
-#define STR_MODE_RB       ((LPCSTR)0x00465188)   /* "rb" */
-
-typedef unsigned int (__cdecl *fread_fn)(void *, unsigned int, unsigned int, void *);
-typedef int          (__cdecl *fseek_fn)(void *, long, int);
-#define ORIG_FREAD ((fread_fn)0x0045158a)
-#define ORIG_FSEEK ((fseek_fn)0x004517b9)
+ *   0x413460  Close(this)                      resets the vtable, then
+ *                                              CloseFile if fp is non-NULL
+ *
+ * The original calls CloseFile once the pixel data is read and Close again at
+ * every exit; the second call therefore sees fp == NULL and does nothing.  The
+ * replacement closes once and NULLs, which is the same sequence of fcloses.
+ *
+ * One unobservable difference: the original's failure paths return the Close
+ * result with AL forced to 0, so the upper three bytes of EAX carry Close's
+ * return value.  We return a plain 0.  Callers test AL only.
+ *
+ * (The one case where the game's CRT is still required is a FILE * the game
+ * itself opened and handed us -- see karoo-hooks/reportwriter.cpp for how that
+ * one was resolved, by moving the open rather than reaching across.) */
 
 typedef char *(__cdecl *opnew_fn)(unsigned int);
 typedef void  (__cdecl *free2_fn)(void *);
@@ -239,30 +238,27 @@ extern "C" {
 unsigned int __attribute__((thiscall))
 TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
 {
-    FileWrapper file;
-    ORIG_FW_CTOR(&file);
-
     DDSURFACEDESC2 ddsd;
     ddsd.dwSize = sizeof(DDSURFACEDESC2);   /* 0x7c, written before the open */
 
-    if (ORIG_FW_OPEN(&file, path, STR_MODE_RB) == NULL)
-        return ORIG_FW_CLOSE(&file) & 0xffffff00u;
+    FILE *fp = fopen(path, "rb");
+    if (fp == NULL)
+        return 0;
 
     /* Header: twelve reads, no error checking whatsoever. */
     TgaHeader h;
-    void *fp = file.fp;
-    ORIG_FREAD(&h.idLength,        1, 1, fp);
-    ORIG_FREAD(&h.colourMapType,   1, 1, fp);
-    ORIG_FREAD(&h.imageType,       1, 1, fp);
-    ORIG_FREAD(&h.colourMapOrigin, 2, 1, fp);
-    ORIG_FREAD(&h.colourMapLength, 2, 1, fp);
-    ORIG_FREAD(&h.colourMapDepth,  1, 1, fp);
-    ORIG_FREAD(&h.xOrigin,         2, 1, fp);
-    ORIG_FREAD(&h.yOrigin,         2, 1, fp);
-    ORIG_FREAD(&h.width,           2, 1, fp);
-    ORIG_FREAD(&h.height,          2, 1, fp);
-    ORIG_FREAD(&h.bpp,             1, 1, fp);
-    ORIG_FREAD(&h.descriptor,      1, 1, fp);
+    fread(&h.idLength,        1, 1, fp);
+    fread(&h.colourMapType,   1, 1, fp);
+    fread(&h.imageType,       1, 1, fp);
+    fread(&h.colourMapOrigin, 2, 1, fp);
+    fread(&h.colourMapLength, 2, 1, fp);
+    fread(&h.colourMapDepth,  1, 1, fp);
+    fread(&h.xOrigin,         2, 1, fp);
+    fread(&h.yOrigin,         2, 1, fp);
+    fread(&h.width,           2, 1, fp);
+    fread(&h.height,          2, 1, fp);
+    fread(&h.bpp,             1, 1, fp);
+    fread(&h.descriptor,      1, 1, fp);
 
     static LONG seen = 0;
     if (InterlockedIncrement(&seen) <= 4)
@@ -286,7 +282,8 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
         ORIG_FWRITE(STR_CREATESURFACE_FAILED,
                        (int)tga_strlen(STR_CREATESURFACE_FAILED),
                        1, GAME_LOG_FILE);
-        return ORIG_FW_CLOSE(&file) & 0xffffff00u;
+        if (fp != NULL) fclose(fp);
+        return 0;
     }
 
     /* dwFlags is 0 — not DDLOCK_WAIT.  Lock overwrites ddsd with the scratch
@@ -297,11 +294,12 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
                        1, GAME_LOG_FILE);
         if (tmp != NULL)
             tmp->Release();
-        return ORIG_FW_CLOSE(&file) & 0xffffff00u;
+        if (fp != NULL) fclose(fp);
+        return 0;
     }
 
     /* Bug 2: colourMapLength is added as a byte count. */
-    ORIG_FSEEK(fp, (long)(h.colourMapLength + (unsigned int)h.idLength), SEEK_CUR);
+    fseek(fp, (long)(h.colourMapLength + (unsigned int)h.idLength), SEEK_CUR);
 
     /* Buffer size = bpp * height * width / 8, as a signed divide: the
      * `cdq; and edx,7; add; sar 3` idiom, not a shift. */
@@ -318,13 +316,13 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
         if (npix != 0) {
             do {
                 unsigned char pkt;
-                ORIG_FREAD(&pkt, 1, 1, fp);
+                fread(&pkt, 1, 1, fp);
                 if ((pkt & 0x80) != 0) {
                     /* Run packet: one pixel, repeated (pkt & 0x7f) + 1 times.
                      * The run pixel is read into a 4-byte slot regardless of
                      * depth, and only the low bpp/8 bytes are filled. */
                     unsigned int run = 0;
-                    ORIG_FREAD(&run, (unsigned int)(h.bpp >> 3), 1, fp);
+                    fread(&run, (unsigned int)(h.bpp >> 3), 1, fp);
                     int count = (int)((pkt & 0x7f) + 1);
                     for (int k = 0; k < count; ++k) {
                         if (h.bpp == 0x10)
@@ -343,7 +341,7 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
                      * file, at buf + bpp*i/8 (an unsigned shift here, unlike
                      * the signed divide used for the allocation). */
                     unsigned int count = (unsigned int)(pkt & 0x7f) + 1u;
-                    ORIG_FREAD(buf + (((unsigned int)h.bpp * i) >> 3),
+                    fread(buf + (((unsigned int)h.bpp * i) >> 3),
                                (unsigned int)h.bpp >> 3, count, fp);
                 }
                 i += 1u + (pkt & 0x7f);
@@ -353,10 +351,11 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
         /* Bug 7: every non-0x0a type, compressed or not, lands here. */
         int n = (int)((unsigned int)h.bpp * (unsigned int)h.height
                                           * (unsigned int)h.width);
-        ORIG_FREAD(buf, 1, (unsigned int)((n + ((n >> 31) & 7)) >> 3), fp);
+        fread(buf, 1, (unsigned int)((n + ((n >> 31) & 7)) >> 3), fp);
     }
 
-    ORIG_FW_CLOSEFILE(&file);
+    fclose(fp);
+    fp = NULL;
 
     /* ─── Conversion ───────────────────────────────────────────────────────
      *
@@ -470,7 +469,8 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
     if (tmp->Unlock(NULL) < 0) {
         if (tmp != NULL)
             tmp->Release();
-        return ORIG_FW_CLOSE(&file) & 0xffffff00u;
+        if (fp != NULL) fclose(fp);
+        return 0;
     }
 
     self->pTextureSurface->Blt(NULL, tmp, NULL, DDBLT_WAIT, NULL);
@@ -478,7 +478,8 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
     if (tmp != NULL)
         tmp->Release();
 
-    return (ORIG_FW_CLOSE(&file) & 0xffffff00u) | 1u;
+    if (fp != NULL) fclose(fp);
+    return 1;
 }
 
 } // extern "C"
