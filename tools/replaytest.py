@@ -44,6 +44,7 @@ import os
 import signal
 import subprocess
 import sys
+import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTS = os.path.join(REPO, "tests")
@@ -90,7 +91,7 @@ def select(m, names):
 
 # ── running ───────────────────────────────────────────────────────────────
 
-def restore_fixture(entry):
+def restore_fixture(entry, verbose=False):
     """Rebuild SavedGames/ from the recording's fixture. True if it is usable.
 
     A v2 fixture is *generated* from the decoded slot fields and then checked
@@ -103,10 +104,11 @@ def restore_fixture(entry):
         print("  ! no save fixture — the run inherits whatever SavedGames holds")
         return True
     path = os.path.join(REPO, fixture)
+    stdout = None if verbose else subprocess.DEVNULL
     r = subprocess.run([sys.executable,
                         os.path.join(REPO, "tools", "karoosave.py"),
                         "restore", path],
-                       cwd=REPO)
+                       cwd=REPO, stdout=stdout)
     return r.returncode == 0
 
 
@@ -223,7 +225,7 @@ def apply_turbo(env):
 #
 # THIS IS THE DEFAULT.  --no-fast restores the full render path.
 #
-# One recording opts out of it permanently, and the reason is worth keeping in
+# One recording opts out of it permanently (unless headless is specified), and the reason is worth keeping in
 # view.  bombstart-crash exists to guard the CRASH.md fault: a bad pointer
 # handed to ddraw, which faulted *inside* DrawPrimitiveStrided.  Skipping the
 # draw call means that pointer is never handed over, so that entire class of
@@ -272,7 +274,7 @@ def entry_fast(entry, fast):
 
 
 def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
-           headless=False):
+           headless=True):
     env = apply_fast(apply_turbo(dict(os.environ)), fast)
     env["KAROO_REPLAY"] = rec_path
     env["KAROO_STATE_DUMP"] = dump_path
@@ -369,7 +371,7 @@ def compare_state(expected, actual):
     return bad
 
 
-def run_one(m, entry, bless=False, fast=True, headless=False):
+def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
     cfg = entry_defaults(m, entry)
     name = entry["name"]
     rec_path = os.path.join(TESTS, entry["file"])
@@ -378,7 +380,11 @@ def run_one(m, entry, bless=False, fast=True, headless=False):
 
     print("=" * 72)
     print("%s — %s" % (name, entry.get("level", "?")))
-    print("  %s" % entry.get("description", "").strip())
+    
+    start = time.perf_counter()
+
+    if verbose:
+        print("  %s" % entry.get("description", "").strip())
 
     if not os.path.exists(rec_path):
         print("  FAIL: recording %s is missing" % rec_path)
@@ -389,10 +395,12 @@ def run_one(m, entry, bless=False, fast=True, headless=False):
         for p in problems:
             print("  FAIL: %s" % p)
         return False
-    print("  %d frames, dt=%.9f seed=%u, fixture=%s"
-          % (len(frames), hdr["dt"], hdr["seed"], entry.get("saves", "<none>")))
 
-    if not restore_fixture(entry):
+    if verbose:
+        print("  %d frames, dt=%.9f seed=%u, fixture=%s"
+              % (len(frames), hdr["dt"], hdr["seed"], entry.get("saves", "<none>")))
+
+    if not restore_fixture(entry, verbose):
         print("  FAIL: could not rebuild the save fixture %s — see the error "
               "above. The game was not launched." % entry.get("saves"))
         return False
@@ -401,8 +409,12 @@ def run_one(m, entry, bless=False, fast=True, headless=False):
         if os.path.exists(stale):
             os.remove(stale)
 
+    if not entry_fast(entry, fast) and headless:
+        if verbose:
+            print("ignoring fastonly test due to headless being enabled")
+
     if launch(entry, cfg, rec_path, dump_path, hash_path,
-              fast=entry_fast(entry, fast), headless=headless):
+              fast=entry_fast(entry, fast) or headless, headless=headless):
         print("  FAIL: run timed out and was killed — treat this as a hang, "
               "not a state mismatch. karoo_hooks.log ends where it wedged.")
         return False
@@ -411,7 +423,8 @@ def run_one(m, entry, bless=False, fast=True, headless=False):
     want_crash = entry.get("expect", {}).get("crash", "none")
     ok = True
 
-    print("  crash: %s (expected %s)" % (CRASH_NAME.get(verdict, verdict), want_crash))
+    if verbose:
+        print("  crash: %s (expected %s)" % (CRASH_NAME.get(verdict, verdict), want_crash))
     if CRASH_NAME.get(verdict) != want_crash:
         print("  FAIL: crash classification differs — see karoo_hooks.log / "
               "steam-123456.log, and CRASH.md for the fingerprint")
@@ -421,7 +434,8 @@ def run_one(m, entry, bless=False, fast=True, headless=False):
     if os.path.exists(hash_path):
         with open(hash_path) as fh:
             nframes = sum(1 for _ in fh)
-        print("  hash log: %d frames -> %s" % (nframes, os.path.basename(hash_path)))
+        if verbose:
+            print("  hash log: %d frames -> %s" % (nframes, os.path.basename(hash_path)))
     want_frame = entry.get("expect", {}).get("crash_frame")
     if want_frame is not None and nframes and abs(nframes - want_frame) > 2:
         print("  FAIL: expected to stop around frame %d, stopped at %d"
@@ -432,9 +446,11 @@ def run_one(m, entry, bless=False, fast=True, headless=False):
     if os.path.exists(dump_path):
         with open(dump_path) as fh:
             actual = json.load(fh)
-        print("  end state: reason=%s frame=%s" % (actual.get("reason"), actual.get("frame")))
+        if verbose:
+            print("  end state: reason=%s frame=%s" % (actual.get("reason"), actual.get("frame")))
     else:
-        print("  end state: no dump written")
+        if verbose:
+            print("  end state: no dump written")
 
     if bless:
         if actual is None:
@@ -470,12 +486,17 @@ def run_one(m, entry, bless=False, fast=True, headless=False):
             for b in bad:
                 print("  FAIL: %s" % b)
             if not bad:
-                print("  end state matches all %d asserted field(s)" % len(expected))
+                if verbose:
+                    print("  end state matches all %d asserted field(s)" % len(expected))
             ok = ok and not bad
     else:
-        print("  no end-state assertions (expect.state is empty)")
+        if verbose:
+            print("  no end-state assertions (expect.state is empty)")
 
-    print("  %s" % ("PASS" if ok else "FAIL"))
+    end = time.perf_counter()
+
+    duration_s = end-start
+    print("  %s (%02.2f)" % ("PASS" if ok else "FAIL", duration_s))
     return ok
 
 
@@ -615,15 +636,19 @@ def main():
                     help="render every frame for real. Slower (~216 s vs "
                          "~172 s for the suite), and the only way to exercise "
                          "the ddraw draw path for every recording.")
-    ap.add_argument("--headless", action="store_true",
+    ap.add_argument("--no-headless", dest="headless", action="store_false", 
+                    help="disable the headless mode which is enabled by default")
+    ap.add_argument("--headless", dest="headless", action="store_true", default=True,
                     help="run with no window and no graphics at all: "
                          "DirectDraw is replaced by the in-DLL null device and "
                          "the game's window is made message-only, so the suite "
                          "can run in the background without stealing focus and "
-                         "without a display. Implies --skip-launcher.")
+                         "without a display. Implies --skip-launcher. also means"
+                         " test fast flag is ignored")
     ap.add_argument("--bless", action="store_true",
                     help="write the run's own end state into the manifest as "
                          "the expectation — only after you believe the run")
+    ap.add_argument("--verbose", "-v", dest="verbose", default=False, action="store_true")
     args = ap.parse_args()
 
     m = load_manifest()
@@ -636,7 +661,7 @@ def main():
         sys.exit("--bless takes exactly one recording name")
 
     results = [(e["name"], run_one(m, e, bless=args.bless, fast=args.fast,
-                                   headless=args.headless))
+                                   headless=args.headless, verbose=args.verbose))
                for e in entries]
     if args.bless:
         save_manifest(m)
