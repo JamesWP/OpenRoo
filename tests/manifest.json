@@ -30,11 +30,11 @@
       "file": "bombstart-crash.rec",
       "saves": "tests/saves/bombstart",
       "level": "Forest\\BombStart",
-      "description": "Hand-played by James, 2026-08-30. Navigates the main menu, loads save slot 4 (Forest\\BombStart), plays about 10 seconds of the level — picks up one item and kills one foe — then quits. 1034 records over 1036 frames, 313 with a key held. The level is never completed; this exercises the menu, the save-slot load and the first seconds of gameplay, not a full run.",
+      "description": "Hand-played by James, 2026-08-30. Navigates the main menu, loads save slot 4 (Forest\\BombStart), plays about 10 seconds of the level \u2014 picks up one item and kills one foe \u2014 then quits. 1034 records over 1036 frames, 313 with a key held. The level is never completed; this exercises the menu, the save-slot load and the first seconds of gameplay, not a full run.",
       "scenario": "menu navigation + save-slot load + ~10s of BombStart gameplay",
       "purpose": [
         "Stage D fixture: replaying it reproduces the recorded run's per-frame state checksum exactly.",
-        "Historically the deterministic reproducer for the CRASH.md guard-page fault — it crashed at frame 797 every time. That crash is now fixed (Game::RenderSceneObjects left textureCoords[1] uninitialised), so the recording runs to its own end and the entry guards against the crash coming back."
+        "Historically the deterministic reproducer for the CRASH.md guard-page fault \u2014 it crashed at frame 797 every time. That crash is now fixed (Game::RenderSceneObjects left textureCoords[1] uninitialised), so the recording runs to its own end and the entry guards against the crash coming back."
       ],
       "expect": {
         "crash": "none",
@@ -135,9 +135,28 @@
       "scenario": "bait the foe onto the falling bridge, break it under him, take the extra life",
       "expect": {
         "crash": "none",
-        "state": {}
+        "state": {
+          "frames_run": 2100,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 3,
+          "gems_required": 30,
+          "foes_killed": 1,
+          "items_collected": 4,
+          "items_available": 31,
+          "items_bonus_blocked": 0,
+          "vitality": 45,
+          "lives": 4,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 120,
+          "elapsed_ms": 28608,
+          "level_complete": 0,
+          "death_cause": 0,
+          "completed_a_level": false
+        }
       },
-      "notes": "Captured 2098 frames. No end-state assertions yet — run `replaytest.py --bless destr-bait` once a replay is trusted."
+      "notes": "Captured 2098 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-bait` once a replay is trusted."
     },
     {
       "name": "destr-extralife",
@@ -148,9 +167,41 @@
       "scenario": "extra life at (11,3), guarded by the foe at (10,3)",
       "expect": {
         "crash": "none",
-        "state": {}
+        "state": {
+          "frames_run": 4605,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 30,
+          "gems_required": 30,
+          "foes_killed": 1,
+          "items_collected": 31,
+          "items_available": 31,
+          "items_bonus_blocked": 0,
+          "vitality": 64,
+          "lives": 4,
+          "level_score": 537,
+          "total_score": 537,
+          "time_limit_s": 120,
+          "elapsed_ms": 61344,
+          "level_complete": 1,
+          "death_cause": 0,
+          "completed_a_level": true,
+          "at_completion.gems_collected": 30,
+          "at_completion.gems_required": 30,
+          "at_completion.foes_killed": 1,
+          "at_completion.items_collected": 31,
+          "at_completion.items_available": 31,
+          "at_completion.items_bonus_blocked": 0,
+          "at_completion.vitality": 64,
+          "at_completion.lives": 4,
+          "at_completion.level_score": 537,
+          "at_completion.total_score": 537,
+          "at_completion.time_limit_s": 120,
+          "at_completion.elapsed_ms": 61344,
+          "at_completion.level_complete": 1
+        }
       },
-      "notes": "Captured 4602 frames. No end-state assertions yet — run `replaytest.py --bless destr-extralife` once a replay is trusted."
+      "notes": "Captured 4602 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-extralife` once a replay is trusted."
     },
     {
       "name": "freezestart",
