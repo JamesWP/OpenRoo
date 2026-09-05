@@ -89,7 +89,7 @@ static bool dev_proxy_enabled(void)
 /* Visual-proof effects: KAROO_D3D_FX selects a deliberately visible render
  * alteration, demonstrating that the corresponding proxy carries live
  * traffic.  Off when unset. */
-enum FxMode { FX_OFF = 0, FX_WIRE, FX_TINT, FX_LIGHT };
+enum FxMode { FX_OFF = 0, FX_WIRE, FX_TINT, FX_LIGHT, FX_NODRAW };
 
 static FxMode fx_mode(void)
 {
@@ -101,6 +101,7 @@ static FxMode fx_mode(void)
             if      (lstrcmpiA(buf, "wire")  == 0) mode = FX_WIRE;
             else if (lstrcmpiA(buf, "tint")  == 0) mode = FX_TINT;
             else if (lstrcmpiA(buf, "light") == 0) mode = FX_LIGHT;
+            else if (lstrcmpiA(buf, "nodraw") == 0) mode = FX_NODRAW;
         }
         if (mode != FX_OFF)
             log_write("com_proxy: FX mode %d active\n", (int)mode);
@@ -515,22 +516,28 @@ static HRESULT WINAPI NOINLINE wd3_DrawPrimitive(IDirect3DDevice3 *s, D3DPRIMITI
                   (unsigned long)flags,
                   v ? v[0] : 0UL, v ? v[1] : 0UL, v ? v[2] : 0UL);
     }
+    if (fx_mode() == FX_NODRAW) return D3D_OK;
     return real_dev3(s)->DrawPrimitive(pt, fvf, verts, vert_count, flags);
 }
 static HRESULT WINAPI NOINLINE wd3_DrawIndexedPrimitive(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, void *verts, DWORD vert_count, WORD *indices, DWORD idx_count, DWORD flags)
-    { return real_dev3(s)->DrawIndexedPrimitive(pt, fvf, verts, vert_count, indices, idx_count, flags); }
+    { if (fx_mode() == FX_NODRAW) return D3D_OK;
+      return real_dev3(s)->DrawIndexedPrimitive(pt, fvf, verts, vert_count, indices, idx_count, flags); }
 static HRESULT WINAPI NOINLINE wd3_SetClipStatus(IDirect3DDevice3 *s, D3DCLIPSTATUS *cs)
     { return real_dev3(s)->SetClipStatus(cs); }
 static HRESULT WINAPI NOINLINE wd3_GetClipStatus(IDirect3DDevice3 *s, D3DCLIPSTATUS *cs)
     { return real_dev3(s)->GetClipStatus(cs); }
 static HRESULT WINAPI NOINLINE wd3_DrawPrimitiveStrided(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, D3DDRAWPRIMITIVESTRIDEDDATA *data, DWORD vert_count, DWORD flags)
-    { return real_dev3(s)->DrawPrimitiveStrided(pt, fvf, data, vert_count, flags); }
+    { if (fx_mode() == FX_NODRAW) return D3D_OK;
+      return real_dev3(s)->DrawPrimitiveStrided(pt, fvf, data, vert_count, flags); }
 static HRESULT WINAPI NOINLINE wd3_DrawIndexedPrimitiveStrided(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, DWORD fvf, D3DDRAWPRIMITIVESTRIDEDDATA *data, DWORD vert_count, WORD *indices, DWORD idx_count, DWORD flags)
-    { return real_dev3(s)->DrawIndexedPrimitiveStrided(pt, fvf, data, vert_count, indices, idx_count, flags); }
+    { if (fx_mode() == FX_NODRAW) return D3D_OK;
+      return real_dev3(s)->DrawIndexedPrimitiveStrided(pt, fvf, data, vert_count, indices, idx_count, flags); }
 static HRESULT WINAPI NOINLINE wd3_DrawPrimitiveVB(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, IDirect3DVertexBuffer *vb, DWORD start, DWORD count, DWORD flags)
-    { return real_dev3(s)->DrawPrimitiveVB(pt, vb, start, count, flags); }
+    { if (fx_mode() == FX_NODRAW) return D3D_OK;
+      return real_dev3(s)->DrawPrimitiveVB(pt, vb, start, count, flags); }
 static HRESULT WINAPI NOINLINE wd3_DrawIndexedPrimitiveVB(IDirect3DDevice3 *s, D3DPRIMITIVETYPE pt, IDirect3DVertexBuffer *vb, WORD *indices, DWORD idx_count, DWORD flags)
-    { return real_dev3(s)->DrawIndexedPrimitiveVB(pt, vb, indices, idx_count, flags); }
+    { if (fx_mode() == FX_NODRAW) return D3D_OK;
+      return real_dev3(s)->DrawIndexedPrimitiveVB(pt, vb, indices, idx_count, flags); }
 static HRESULT WINAPI NOINLINE wd3_ComputeSphereVisibility(IDirect3DDevice3 *s, D3DVECTOR *centers, D3DVALUE *radii, DWORD count, DWORD flags, DWORD *ret)
     { return real_dev3(s)->ComputeSphereVisibility(centers, radii, count, flags, ret); }
 static HRESULT WINAPI NOINLINE wd3_GetTexture(IDirect3DDevice3 *s, DWORD stage, IDirect3DTexture2 **tex)

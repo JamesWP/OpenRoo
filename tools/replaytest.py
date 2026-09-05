@@ -196,8 +196,63 @@ def apply_turbo(env):
     return env
 
 
-def launch(entry, cfg, rec_path, dump_path, hash_path):
-    env = apply_turbo(dict(os.environ))
+# --fast: stop rendering, keep simulating.
+#
+# Turbo above removed the *pacing* on presentation; this removes the rendering
+# work itself, using two switches the DLL already has:
+#
+#   KAROO_D3D_FX=nodraw   the com_proxy device returns D3D_OK from all six
+#                         DrawPrimitive* entry points without forwarding
+#   KAROO_FLIP_FX=noblt   Direct3D_FlipPrimaryFrame skips the Blt to the back
+#                         buffer (it still Flips)
+#
+# Measured on this machine, whole suite, 15,473 frames over 7 recordings:
+#
+#   baseline   106.5 s
+#   --fast      79.2 s      -26%
+#
+# Per recording the shape is about 5.9 s of fixed launch cost plus 3.9 ms a
+# frame, and --fast takes the per-frame figure to about 2.2 ms.  All 7 still
+# pass, water01 included with all 31 asserted fields, which is the point: draw
+# calls are pure output.  Nothing in the game reads them back, so removing them
+# cannot move the simulation -- and if it ever did, the suite would say so.
+#
+# WHY THIS IS NOT THE DEFAULT.  bombstart-crash exists to guard the CRASH.md
+# fault, which was a bad pointer handed to ddraw and which faulted *inside*
+# DrawPrimitiveStrided.  Under --fast that call never reaches ddraw, so that
+# entire class of fault -- the one this suite has actually caught before -- is
+# invisible.  --fast is for iterating on simulation changes; run the plain
+# suite before committing.
+#
+# Two things deliberately NOT done here, both measured:
+#
+#   Skipping the Blt alone is worth 2%.  It is bundled into --fast because it
+#   is free, not because it matters.
+#
+#   Turning Wine's tracing off (WINEDEBUG=-all, which Proton's PROTON_LOG_DIR
+#   otherwise sets to +seh,+loaddll,+mscoree) is worth 1-2%, inside the noise,
+#   and it would silently break the project's primary evidence that no call
+#   site was missed: `grep -c c000001d steam-123456.log` counts trace:seh
+#   lines that would no longer be written.  Our own VEH does not catch illegal
+#   instructions -- checked, a run with 9 UD2 hits logged 0 VEH lines -- so
+#   there is no replacement for that check.  Not worth 2%.
+FAST_ENV = {
+    "KAROO_D3D_FX":  "nodraw",
+    "KAROO_FLIP_FX": "noblt",
+}
+
+
+def apply_fast(env, fast):
+    """Skip the render work.  Caller-set values win, so a run can override."""
+    if not fast:
+        return env
+    for k, v in FAST_ENV.items():
+        env.setdefault(k, v)
+    return env
+
+
+def launch(entry, cfg, rec_path, dump_path, hash_path, fast=False):
+    env = apply_fast(apply_turbo(dict(os.environ)), fast)
     env["KAROO_REPLAY"] = rec_path
     env["KAROO_STATE_DUMP"] = dump_path
     env["KAROO_HASH_LOG"] = hash_path
@@ -287,7 +342,7 @@ def compare_state(expected, actual):
     return bad
 
 
-def run_one(m, entry, bless=False):
+def run_one(m, entry, bless=False, fast=False):
     cfg = entry_defaults(m, entry)
     name = entry["name"]
     rec_path = os.path.join(TESTS, entry["file"])
@@ -319,7 +374,7 @@ def run_one(m, entry, bless=False):
         if os.path.exists(stale):
             os.remove(stale)
 
-    if launch(entry, cfg, rec_path, dump_path, hash_path):
+    if launch(entry, cfg, rec_path, dump_path, hash_path, fast=fast):
         print("  FAIL: run timed out and was killed — treat this as a hang, "
               "not a state mismatch. karoo_hooks.log ends where it wedged.")
         return False
@@ -524,6 +579,11 @@ def main():
     ap.add_argument("names", nargs="*", help="recordings to run (default: all)")
     ap.add_argument("--list", action="store_true",
                     help="show the catalogue and exit")
+    ap.add_argument("--fast", action="store_true",
+                    help="skip the render work (KAROO_D3D_FX=nodraw, "
+                         "KAROO_FLIP_FX=noblt): ~26%% faster, but no longer "
+                         "guards the CRASH.md class of fault inside ddraw. "
+                         "For iterating; run the plain suite before committing.")
     ap.add_argument("--bless", action="store_true",
                     help="write the run's own end state into the manifest as "
                          "the expectation — only after you believe the run")
@@ -538,7 +598,8 @@ def main():
     if args.bless and len(entries) != 1:
         sys.exit("--bless takes exactly one recording name")
 
-    results = [(e["name"], run_one(m, e, bless=args.bless)) for e in entries]
+    results = [(e["name"], run_one(m, e, bless=args.bless, fast=args.fast))
+               for e in entries]
     if args.bless:
         save_manifest(m)
         print("manifest updated")

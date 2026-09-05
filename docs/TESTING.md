@@ -8,7 +8,47 @@ way; this file is the operating manual.
 python3 tools/replaytest.py              # run every catalogued recording
 python3 tools/replaytest.py --list       # what is catalogued, and why
 python3 tools/replaytest.py NAME         # run one
+python3 tools/replaytest.py --fast       # skip the rendering, ~26% faster
 ```
+
+## `--fast`, and when not to use it
+
+A replay already runs on the virtual clock and with vsync off, so the loop is
+uncapped. What is left is real work, and most of the per-frame half of it is
+rendering the game does not need to do to be tested: the suite asserts *game
+state*, and draw calls are pure output that nothing reads back.
+
+`--fast` sets two switches the DLL already has -- `KAROO_D3D_FX=nodraw`, which
+returns `D3D_OK` from all six `DrawPrimitive*` entry points in the com_proxy
+device without forwarding, and `KAROO_FLIP_FX=noblt`, which skips the Blt in
+`Direct3D_FlipPrimaryFrame`. Measured over the whole suite, 15,473 frames:
+
+| Run | Wall |
+|---|---|
+| baseline | 106.5 s |
+| `--fast` | 80.6 s (-24%) |
+
+Per recording that is roughly 5.9 s of fixed launch cost plus 3.9 ms a frame,
+which `--fast` takes to about 2.2 ms. All seven recordings still pass, water01
+with all 31 asserted fields.
+
+**It is not the default, and it is not a substitute for the plain suite.**
+`bombstart-crash` exists to guard the CRASH.md fault, which was a bad pointer
+handed to ddraw and which faulted *inside* `DrawPrimitiveStrided`. Under
+`--fast` that call never reaches ddraw, so the one class of fault this suite
+has actually caught in anger becomes invisible. Use `--fast` while iterating on
+simulation changes; run `replaytest.py` plain before committing.
+
+Two things that look like wins and are not, both measured rather than assumed:
+
+- Skipping the Blt on its own is worth 2%. It is bundled in because it is
+  free, not because it matters.
+- Turning Wine's tracing off (`WINEDEBUG=-all`; Proton's `PROTON_LOG_DIR`
+  otherwise sets `+seh,+loaddll,+mscoree`) is worth 1-2%, inside the noise --
+  and it would silently break `grep -c c000001d steam-123456.log`, which is the
+  project's primary evidence that no call site was missed, because that string
+  only appears in `trace:seh` lines. Our own VEH does not catch illegal
+  instructions: a run with 9 UD2 hits logged 0 VEH lines. Not worth 2%.
 
 Exit code 0 means every selected recording behaved exactly as `manifest.json`
 says it should. Non-zero means one did not, and the output names the field.
