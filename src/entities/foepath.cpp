@@ -835,3 +835,125 @@ Sim_PropagateImprovedPathCosts(void *self, void *node)
 
     diag_report();
 }
+
+/* ─── FoePath::RelaxPathNeighbourCell (0x00402000) ────────────────────────
+ *
+ * __thiscall, RET 0x14 — five stack arguments:
+ *   parent   the node being expanded
+ *   u, v     the neighbour cell being relaxed
+ *   goalU/V  the search goal, used only for the heuristic
+ *
+ * The classic relax step, in three branches on where the cell already is:
+ *
+ *   on the OPEN list    record it as a child of parent; if gnew is better,
+ *                       rewrite g, f and parent.  No cascade — the node has
+ *                       not been expanded yet, so it has no children to fix.
+ *   on the CLOSED list  same, and THEN call PropagateImprovedPathCosts,
+ *                       because this node's descendants already carry costs
+ *                       derived from its old g.  This is the one call site
+ *                       of the cascade, and the reason that subsystem exists
+ *                       at all (see the DIAG note above).
+ *   nowhere yet         allocate a 0x44-byte node, fill it in, insert it in
+ *                       f order, and record it as a child of parent.
+ *
+ * gnew is `parent->g + 1` — unit edge costs — and
+ *     h = (v - goalV)^2 + (u - goalU)^2
+ * is a SQUARED Euclidean distance.  That is the inadmissible, inconsistent
+ * heuristic the whole re-open machinery exists to compensate for; it is
+ * reproduced exactly and must not be "fixed" to a real distance.
+ *
+ * ─── A GENUINE BUFFER OVERFLOW, PRESERVED ────────────────────────────────
+ *
+ * All three branches record the neighbour in the parent's child array with
+ * the same open-coded scan:
+ *
+ *     i = 0; while (parent->child[i] != 0 && ++i < 8) ;
+ *     parent->child[i] = node;          <-- no bounds check on i
+ *
+ * The loop exits with i == 8 when every slot is occupied, and the store then
+ * writes ONE PAST the eight-entry array at node+0x20..0x3c — i.e. straight
+ * onto node+0x40, WHICH IS THE LIST `next` POINTER.  A ninth child silently
+ * relinks the open or closed list through an arbitrary node.
+ *
+ * This is reproduced deliberately, per CLAUDE.md's rule that reimplementations
+ * are bit-exact including defects.  It is reachable only for a cell with nine
+ * or more distinct relaxed neighbours, which a 4-connected grid cannot
+ * produce in one expansion — but ExpandPathNodeNeighbours relaxes through the
+ * same parent repeatedly across a search, and nothing ever clears these
+ * slots, so the count is cumulative rather than per-expansion.  Do not add a
+ * bounds check without a recording that proves the overflow unreachable.
+ *
+ * ─── Order matters in two places ─────────────────────────────────────────
+ *
+ * 1. In the two "already present" branches the child slot is written BEFORE
+ *    the cost test, and therefore EVEN WHEN THE COST DOES NOT IMPROVE.  In
+ *    the new-node branch it is written LAST, after the f-ordered insert.
+ *    The three are not interchangeable.
+ * 2. The closed branch writes parent, f and g in that order and only then
+ *    cascades, so the cascade sees the already-updated node.
+ *
+ * FOUR E8 call sites (0x00401F30, 0x00401F6D, 0x00401FAA, 0x00401FE7),
+ * all in ExpandPathNodeNeighbours — one per neighbour; xref.py reports those
+ * four as CALL and nothing else.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_RelaxPathNeighbourCell(void *self, void *parent, int u, int v,
+                           int goalU, int goalV)
+{
+    unsigned char *p = (unsigned char *)parent;
+    const int gnew = *(const int *)(p + 0x08) + 1;
+    const int key = Sim_ComputeCellLinearIndex(self, u, v);
+
+    /* The open-coded scan, overflow and all — see the note above. */
+    #define RELAX_RECORD_CHILD(node)                                        \
+        do {                                                                \
+            int _i = 0;                                                     \
+            while (*(void **)(p + 0x20 + _i * 4) != 0 && ++_i < 8)          \
+                ;                                                           \
+            *(void **)(p + 0x20 + _i * 4) = (node);                         \
+        } while (0)
+
+    unsigned char *n = (unsigned char *)Sim_FindOpenPathNodeByKey(self, key);
+    if (n != 0) {
+        RELAX_RECORD_CHILD(n);
+        if (gnew < *(const int *)(n + 0x08)) {
+            *(int *)(n + 0x08) = gnew;
+            *(int *)(n + 0x00) = *(const int *)(n + 0x04) + gnew;
+            *(unsigned char **)(n + 0x1c) = p;
+        }
+        return;
+    }
+
+    n = (unsigned char *)Sim_FindClosedPathNodeByKey(self, key);
+    if (n != 0) {
+        RELAX_RECORD_CHILD(n);
+        if (gnew < *(const int *)(n + 0x08)) {
+            *(unsigned char **)(n + 0x1c) = p;
+            *(int *)(n + 0x00) = *(const int *)(n + 0x04) + gnew;
+            *(int *)(n + 0x08) = gnew;
+            Sim_PropagateImprovedPathCosts(self, n);
+        }
+        return;
+    }
+
+    /* Not seen before: a fresh node. */
+    n = (unsigned char *)AllocateZeroedHeapBlock(1, 0x44);
+
+    const int du = u - goalU;
+    const int dv = v - goalV;
+    const int h = dv * dv + du * du;      /* squared distance, deliberately */
+
+    *(unsigned char **)(n + 0x1c) = p;
+    *(int *)(n + 0x08) = gnew;
+    *(int *)(n + 0x04) = h;
+    *(int *)(n + 0x18) = key;
+    *(int *)(n + 0x00) = h + gnew;
+    *(int *)(n + 0x10) = u;
+    *(int *)(n + 0x14) = v;
+
+    Sim_InsertOpenPathNodeByCost(self, n);
+
+    RELAX_RECORD_CHILD(n);              /* last, unlike the branches above */
+
+    #undef RELAX_RECORD_CHILD
+}
