@@ -115,6 +115,17 @@ static int fx_keyclash(void)
     return cached;
 }
 
+static int fx_popsecond(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("popsecond");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=popsecond -- expanding the second-best node\n");
+    }
+    return cached;
+}
+
 /* ─── FoePath::CheckPathCellPassable (0x00401cd0) ─────────────────────────
  *
  * __thiscall, RET 8.  `this` = the pathfinder object at foe+0x13b.
@@ -198,4 +209,81 @@ Sim_ComputeCellLinearIndex(void *self, int u, int v)
         return stride * v;
 
     return stride * v + u;
+}
+
+/* ─── FoePath::PopBestOpenPathNode (0x00401ec0) ───────────────────────────
+ *
+ * __thiscall, no arguments, RET 0.  Moves the front node of the open list
+ * onto the front of the closed list and returns it.
+ *
+ *     head = open->next;            open   = this+0x06
+ *     if (!head) return NULL;       closed = this+0x0a
+ *     open->next   = head->next;    ->next = node+0x40
+ *     head->next   = closed->next;
+ *     closed->next = head;
+ *     return head;
+ *
+ * GHIDRA HAD THIS TYPED `void`, AND IT IS NOT.  The node stays in EAX from
+ * the `MOV EAX,[EDX+0x40]` that loads it — on the empty path EAX is the zero
+ * that failed the TEST, on the success path it is the popped node — and
+ * SearchPathNodeGraph uses that return value as its current node, so a
+ * literal reading of the decompile would have produced a function that
+ * silently returned garbage.  The Ghidra prototype is corrected this cycle.
+ * This is the "a nonsensical decompile usually means a wrong type" rule in
+ * its milder form: the decompile was not nonsensical, just quietly wrong.
+ *
+ * The list is kept in f order by the insertion in RelaxPathNeighbourCell, so
+ * taking the front IS taking the best node; there is no scan here.
+ *
+ * TWO EXACTNESS POINTS:
+ *
+ * 1. THE ORIGINAL RE-READS this+0x0a TWICE (`MOV EDX,[ECX+0xa]` and then
+ *    `MOV ECX,[ECX+0xa]`) rather than keeping it in a register.  Nothing
+ *    between the two writes to it, so a single read is equivalent — but the
+ *    two loads are kept here anyway, because CLAUDE.md's rule is to
+ *    reproduce the original's shape rather than to tidy it, and a future
+ *    reader diffing against the listing should not have to re-derive that
+ *    the merge was safe.
+ * 2. NO NULL CHECK ON THE LISTS THEMSELVES.  `open` and `closed` are
+ *    dereferenced unconditionally; only the *node* is tested.  Both are
+ *    allocated by SearchPathNodeGraph before this can run, so the original
+ *    is right, and adding a guard would change behaviour on a corrupt object
+ *    from a fault into a silent wrong answer.
+ *
+ * ONE E8 call site, at 0x00401e5c inside SearchPathNodeGraph; xref.py
+ * reports that reference and no other.
+ */
+extern "C" __declspec(dllexport) void * __attribute__((thiscall))
+Sim_PopBestOpenPathNode(void *self)
+{
+    unsigned char *pf = (unsigned char *)self;
+
+    unsigned char *open = *(unsigned char **)(pf + 0x06);
+    unsigned char *head = *(unsigned char **)(open + 0x40);
+    if (head == 0)
+        return 0;
+
+    /* KAROO_SIM_FX=popsecond takes the *second* node off the open list when
+     * there is one.  The list is f-ordered, so this is precisely "expand the
+     * second-best node instead of the best" — the search still terminates
+     * (the iteration cap at this+0x2f bounds it) and still returns paths,
+     * but they are no longer the ones A* would choose.  A direction change
+     * of sorts: it proves the ordering is load-bearing, not just that the
+     * function runs. */
+    if (fx_popsecond()) {
+        unsigned char *second = *(unsigned char **)(head + 0x40);
+        if (second != 0) {
+            open = head;          /* unlink `second` from behind `head` */
+            head = second;
+        }
+    }
+
+    *(unsigned char **)(open + 0x40) = *(unsigned char **)(head + 0x40);
+
+    /* Both reads of this+0x0a, as the original has them. */
+    *(unsigned char **)(head + 0x40) =
+        *(unsigned char **)(*(unsigned char **)(pf + 0x0a) + 0x40);
+    *(unsigned char **)(*(unsigned char **)(pf + 0x0a) + 0x40) = head;
+
+    return head;
 }
