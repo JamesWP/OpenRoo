@@ -143,6 +143,19 @@ static int fx_nolookup(void)
     return cached;
 }
 
+/* See the call site: skips cost re-propagation entirely.  Strictly stronger
+ * than nopropagate, which left the direct children still being improved. */
+static int fx_nocostfix(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("nocostfix");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=nocostfix -- no cost re-propagation at all\n");
+    }
+    return cached;
+}
+
 /* See the call site: drops the cost-propagation push. */
 static int fx_nopropagate(void)
 {
@@ -660,4 +673,102 @@ Sim_PopPendingPathNode(void *self)
 
     FactAlloc_Free(cell);
     return node;
+}
+
+/* ─── FoePath::PropagateImprovedPathCosts (0x004021b0) ────────────────────
+ *
+ * __thiscall, RET 4, one argument: the node whose g has just improved.
+ * Pushes that improvement out through the search graph.
+ *
+ * Each node carries up to EIGHT children at node+0x20 (the neighbours that
+ * were relaxed through it).  For each child still reachable more cheaply via
+ * this parent, the child's g, f and parent link are rewritten and the child
+ * is pushed on the worklist; then the worklist is drained, repeating the
+ * same eight-child sweep for every node that comes off it.
+ *
+ * Node fields, in the layout the rest of this file already uses:
+ * f at +0x00, h at +0x04, g at +0x08, parent at +0x1c, children at +0x20.
+ *
+ *     gnew = parent->g + 1;
+ *     if (gnew < child->g) {
+ *         child->g = gnew;  child->f = child->h + gnew;  child->parent = p;
+ *         push(child);
+ *     }
+ *
+ * FIVE EXACTNESS POINTS:
+ *
+ * 1. THE TWO SWEEPS ARE NOT THE SAME CODE, AND THE DIFFERENCE IS REAL.  In
+ *    the first sweep the parent's g is loaded ONCE before the loop into a
+ *    stack slot ([ESP+0x14]) and INC'd per child; in the drain sweep it is
+ *    re-read from the popped node EVERY iteration (MOV ECX,[ESI+8] at
+ *    0x00402214).  Nothing in either loop writes the parent's own g, so the
+ *    two are equivalent today — but they are written differently and are
+ *    reproduced differently, because "equivalent today" is exactly the kind
+ *    of claim that stops being true when something upstream changes.
+ * 2. THE CHILD WALK STOPS AT THE FIRST EMPTY SLOT, it does not skip holes:
+ *    load, TEST, JZ leaves the loop entirely.  A node whose child array had
+ *    a gap would have its later children ignored.
+ * 3. THE COMPARE IS SIGNED (CMP/JGE), and the step is a plain +1 — this
+ *    search has unit edge costs, which is also why h being a *squared*
+ *    distance makes it inadmissible and the result not truly optimal.
+ *    Preserved, not corrected.
+ * 4. THE OUTER LOOP IS A do/while ON THE WORKLIST HEAD, re-tested after each
+ *    drain sweep and jumping back to the pop rather than to the test.
+ * 5. THE CHILD LINK IS NOT CLEARED anywhere here, so a node can be pushed
+ *    again later through the same parent; termination rests entirely on the
+ *    strict < in the improvement test.
+ *
+ * ONE E8 call site, at 0x004020A5 in RelaxPathNeighbourCell.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_PropagateImprovedPathCosts(void *self, void *node)
+{
+    unsigned char *pf = (unsigned char *)self;
+    unsigned char *p = (unsigned char *)node;
+
+    /* KAROO_SIM_FX=nocostfix skips the whole cascade, so a cheaper route
+     * found later never rewrites the costs recorded earlier.  Stronger than
+     * nopropagate, which only dropped the worklist and left the direct
+     * children still being improved. */
+    if (fx_nocostfix())
+        return;
+
+    /* Sweep 1: the parent's g hoisted once, per point 1 above. */
+    const int gp = *(const int *)(p + 0x08);
+    for (int i = 0; i < 8; ++i) {
+        unsigned char *c = *(unsigned char **)(p + 0x20 + i * 4);
+        if (c == 0)
+            break;
+        const int gnew = gp + 1;
+        if (gnew < *(const int *)(c + 0x08)) {
+            *(int *)(c + 0x08) = gnew;
+            *(int *)(c + 0x00) = *(const int *)(c + 0x04) + gnew;
+            *(unsigned char **)(c + 0x1c) = p;
+            Sim_PushPendingPathNode(self, c);
+        }
+    }
+
+    /* Sweep 2: drain the worklist, re-reading the parent's g each time. */
+    unsigned char *owner = *(unsigned char **)(pf + 0x12);
+    if (*(unsigned char **)(owner + 4) == 0)
+        return;
+
+    do {
+        unsigned char *q = (unsigned char *)Sim_PopPendingPathNode(self);
+
+        for (int i = 0; i < 8; ++i) {
+            unsigned char *c = *(unsigned char **)(q + 0x20 + i * 4);
+            if (c == 0)
+                break;
+            const int gnew = *(const int *)(q + 0x08) + 1;   /* re-read */
+            if (gnew < *(const int *)(c + 0x08)) {
+                *(int *)(c + 0x08) = gnew;
+                *(int *)(c + 0x00) = *(const int *)(c + 0x04) + gnew;
+                *(unsigned char **)(c + 0x1c) = q;
+                Sim_PushPendingPathNode(self, c);
+            }
+        }
+
+        owner = *(unsigned char **)(pf + 0x12);
+    } while (*(unsigned char **)(owner + 4) != 0);
 }
