@@ -129,11 +129,22 @@ def check_header(entry, cfg, rec_path):
     return hdr, frames, problems
 
 
-# Wall-clock ceiling for one recording: max(MIN_WALL_BUDGET, auto_exit * FACTOR).
-# Generous on purpose — this exists to stop an indefinite hang, not to police
-# how fast a run is.
-MIN_WALL_BUDGET    = 300   # seconds
-WALL_BUDGET_FACTOR = 6
+# Wall-clock ceiling for ONE recording — the stuck detector.
+#
+# A healthy recording takes 11-14 s headless (12-15 s with a display), so 25 s
+# is roughly a 2x margin on the slowest observed run and still catches a wedge
+# in seconds rather than minutes.  This is deliberately much tighter than the
+# old max(300, auto_exit*6): that bound existed only to stop an *indefinite*
+# hang, and in practice a wedged Proton prefix or a game stuck in
+# futex_wait_multiple would sit there for five minutes per recording and turn
+# the suite into an hour of nothing.  Both failure modes are documented in
+# GAMETICK_PLAN.md's standing hazards, and both are visible within 25 s.
+#
+# It is a *stuck* detector, not a benchmark: exceeding it is reported as STUCK,
+# distinct from FAIL, because the usual cause is the environment (a surviving
+# wineserver, a stale Karoo.exe) rather than the change under test.  Raise it
+# with KAROO_STUCK_SECONDS if a genuinely slower machine needs the room.
+STUCK_SECONDS = int(os.environ.get("KAROO_STUCK_SECONDS", "25"))
 
 
 def wait_for_quiet(timeout=60):
@@ -296,7 +307,7 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
     # mid-run, an unbounded wait blocks the whole suite indefinitely (seen
     # 2026-08-31 on a laptop that slept).  The margin is deliberately wide —
     # a slow run must not be reported as a hang — but finite.
-    budget = max(MIN_WALL_BUDGET, auto_exit * WALL_BUDGET_FACTOR)
+    budget = STUCK_SECONDS
 
     # start_new_session so the whole tree gets signalled: killing the bash
     # child alone would leave Proton/Wine running and the next recording would
@@ -313,8 +324,14 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
     except subprocess.TimeoutExpired:
         pass
 
-    print("  TIMEOUT: no exit after %ds wall clock (--auto-exit was %ds of "
-          "game time); killing the run" % (budget, auto_exit))
+    print("  STUCK: no exit after %ds wall clock (--auto-exit was %ds of game "
+          "time); killing the run.\n"
+          "         A healthy recording finishes in 11-14s, so this is a wedge,\n"
+          "         not a slow run.  Suspect the environment first: a surviving\n"
+          "         wineserver or a stale Karoo.exe from an earlier run wedges\n"
+          "         the next launch (see GAMETICK_PLAN.md standing hazards).\n"
+          "         Raise KAROO_STUCK_SECONDS if this machine is genuinely slower."
+          % (budget, auto_exit))
     for sig in (signal.SIGTERM, signal.SIGKILL):
         try:
             os.killpg(os.getpgid(proc.pid), sig)
@@ -415,8 +432,10 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
 
     if launch(entry, cfg, rec_path, dump_path, hash_path,
               fast=entry_fast(entry, fast) or headless, headless=headless):
-        print("  FAIL: run timed out and was killed — treat this as a hang, "
-              "not a state mismatch. karoo_hooks.log ends where it wedged.")
+        print("  FAIL (STUCK): run exceeded the %ds stuck detector and was "
+              "killed.\n"
+              "         Treat this as a hang, not a state mismatch — "
+              "karoo_hooks.log ends where it wedged." % STUCK_SECONDS)
         return False
 
     verdict = crash_verdict()
