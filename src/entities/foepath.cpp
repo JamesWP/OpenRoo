@@ -207,6 +207,28 @@ static void diag_report(void)
               g_diag.pops, g_diag.deepest);
 }
 
+static int fx_truedist(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("truedist");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=truedist -- admissible heuristic, not squared\n");
+    }
+    return cached;
+}
+
+static int fx_facingramp(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("facingramp");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=facingramp -- ramp codes use the facing pairing\n");
+    }
+    return cached;
+}
+
 /* See the call site: skips cost re-propagation entirely.  Strictly stronger
  * than nopropagate, which left the direct children still being improved. */
 static int fx_nocostfix(void)
@@ -941,7 +963,16 @@ Sim_RelaxPathNeighbourCell(void *self, void *parent, int u, int v,
 
     const int du = u - goalU;
     const int dv = v - goalV;
-    const int h = dv * dv + du * du;      /* squared distance, deliberately */
+    int h = dv * dv + du * du;            /* squared distance, deliberately */
+
+    /* KAROO_SIM_FX=truedist replaces the squared heuristic with a real
+     * (Manhattan) one.  That is the "obvious fix" this file warns against:
+     * it makes h admissible and consistent, which changes the expansion
+     * order, the paths chosen, and — since a consistent heuristic never
+     * re-opens a closed node — silences the whole cost cascade too.  A
+     * change of algorithm, not of a constant. */
+    if (fx_truedist())
+        h = (du < 0 ? -du : du) + (dv < 0 ? -dv : dv);
 
     *(unsigned char **)(n + 0x1c) = p;
     *(int *)(n + 0x08) = gnew;
@@ -1000,6 +1031,19 @@ extern "C" __declspec(dllexport) int __attribute__((stdcall))
 Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
                              unsigned char u_to,   unsigned char v_to)
 {
+    /* KAROO_SIM_FX=facingramp swaps the axis pairing to the movement facing
+     * table (+v -> 3, +u -> 2).  This is precisely the "reconciliation" the
+     * comment above warns is wrong: it should misclassify every ramp. */
+    if (fx_facingramp()) {
+        if (v_from < v_to)
+            return 3;
+        if (u_from < u_to)
+            return 2;
+        if (v_from > v_to)
+            return 1;
+        return (u_to < u_from) ? 4 : 0;
+    }
+
     if (v_from < v_to)
         return 1;
     if (u_from < u_to)
