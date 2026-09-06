@@ -213,6 +213,17 @@ static void diag_report(void)
               g_diag.pops, g_diag.deepest);
 }
 
+static int fx_revexpand(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("revexpand");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=revexpand -- neighbours expanded in reverse\n");
+    }
+    return cached;
+}
+
 static int fx_freestep(void)
 {
     static int cached = -1;
@@ -1257,4 +1268,79 @@ Sim_CheckCellStepIsLegal(void *self, unsigned char u_from, unsigned char v_from,
     }
 
     return flag;
+}
+
+/* ─── FoePath::ExpandPathNodeNeighbours (0x00401ef0) ──────────────────────
+ *
+ * __thiscall, RET 0xc: (node, goalU, goalV).  The four-neighbour expansion,
+ * and now a thin function because everything it calls is ours.
+ *
+ * For each neighbour, in this order — v-1, u+1, v+1, u-1 — it applies two
+ * independent gates and then relaxes:
+ *
+ *     if (CheckPathCellPassable(u', v'))                    is the cell open?
+ *         if (CheckCellStepIsLegal(tilebase, u,v, u',v'))   can we get there?
+ *             RelaxPathNeighbourCell(node, u', v', goalU, goalV);
+ *
+ * THE ORDER IS THE SEARCH'S TIE-BREAKING and must not be sorted or
+ * rearranged.  Equal-cost nodes enter the open list in this sequence, and
+ * InsertOpenPathNodeByCost is a stable insert-before-equal, so this order
+ * decides which of several equally short paths a foe walks.  It is the other
+ * half of the tie-breaking noted on that function.
+ *
+ * TWO THINGS THE LISTING MAKES CLEAR THAT THE DECOMPILE DOES NOT:
+ *
+ * 1. THE TWO GATES TAKE DIFFERENT `this`.  CheckPathCellPassable is called on
+ *    the pathfinder (ECX = this), CheckCellStepIsLegal on `*(void **)this` —
+ *    the TILE BASE (`MOV ECX,[EDI]` before each of its four calls).  This is
+ *    the direct confirmation of that function's `this` type, from the call
+ *    site rather than from its body.
+ * 2. THE FROM-COORDINATES ARE RE-READ FROM THE NODE for every neighbour, and
+ *    are passed to the step test as BYTES (`MOV AL,[ESI+0x14]`) while the
+ *    passability test and the relax get the full ints.  Nothing writes the
+ *    node's u/v here, so the re-reads are equivalent — but the byte-vs-int
+ *    split is real and is preserved by the parameter types.
+ *
+ * Node coordinates: u at +0x10, v at +0x14.
+ *
+ * ONE E8 call site, at 0x00401E79 in SearchPathNodeGraph; xref.py reports
+ * that and nothing else.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_ExpandPathNodeNeighbours(void *self, void *node, int goalU, int goalV)
+{
+    unsigned char *n = (unsigned char *)node;
+    void *tilebase = *(void **)self;
+
+    /* Each step: the neighbour coordinate is formed exactly as the original
+     * forms it, from a fresh read of the node. */
+    struct { int du, dv; } step[4] = { { 0, -1 }, { +1, 0 }, { 0, +1 }, { -1, 0 } };
+
+    /* KAROO_SIM_FX=revexpand reverses the neighbour order.  Every path stays
+     * exactly as short — only which equal-cost node is queued first changes —
+     * so this isolates the tie-breaking claim in the comment above from the
+     * expansion itself.  If it were unobservable, the claim that this order
+     * decides a foe's route would be unsupported. */
+    if (fx_revexpand()) {
+        for (int i = 0; i < 2; ++i) {
+            const int du = step[i].du, dv = step[i].dv;
+            step[i].du = step[3 - i].du;  step[i].dv = step[3 - i].dv;
+            step[3 - i].du = du;          step[3 - i].dv = dv;
+        }
+    }
+
+    for (int i = 0; i < 4; ++i) {
+        const int u = *(const int *)(n + 0x10);
+        const int v = *(const int *)(n + 0x14);
+        const int nu = u + step[i].du;
+        const int nv = v + step[i].dv;
+
+        if (!Sim_CheckPathCellPassable(self, nu, nv))
+            continue;
+        if (!Sim_CheckCellStepIsLegal(tilebase, (unsigned char)u, (unsigned char)v,
+                                      (unsigned char)nu, (unsigned char)nv))
+            continue;
+
+        Sim_RelaxPathNeighbourCell(self, node, nu, nv, goalU, goalV);
+    }
 }
