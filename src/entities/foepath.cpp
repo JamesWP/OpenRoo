@@ -71,6 +71,12 @@
 #include <windows.h>
 #include "log.h"
 
+/* Leaves this file stands on, both already ours (entitymath.cpp). */
+extern "C" __declspec(dllexport) int __attribute__((stdcall))
+Sim_CheckTileIsRamp(unsigned char kind);
+extern "C" __declspec(dllexport) unsigned char __attribute__((stdcall))
+Sim_GetTurnedDirection(unsigned char dir, unsigned char delta);
+
 /* Tile addressing, matching entitymove.cpp's TILE() exactly. */
 #define TILE(base, u, v)  ((const unsigned char *)(base) + (((int)(v) + (int)(u) * 100) * 0x7f))
 
@@ -205,6 +211,17 @@ static void diag_report(void)
     log_write("foepath diag: cascades=%u reparent=%u pushes=%u pops=%u deepest=%u\n",
               g_diag.cascades, g_diag.reparent, g_diag.pushes,
               g_diag.pops, g_diag.deepest);
+}
+
+static int fx_freestep(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("freestep");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=freestep -- every cell step reports legal\n");
+    }
+    return cached;
 }
 
 static int fx_truedist(void)
@@ -1051,4 +1068,193 @@ Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
     if (v_from > v_to)
         return 3;
     return (u_to < u_from) ? 2 : 0;
+}
+
+/* ─── CheckCellStepIsLegal (0x0041f500) ───────────────────────────────────
+ *
+ * `__thiscall`, RET 0x10, four byte arguments (u_from, v_from, u_to, v_to).
+ * `this` IS THE TILE BASE, not the pathfinder object — ExpandPathNodeNeighbours
+ * passes `pathfinder->tilebase` (`*(void **)this`).  Getting that wrong would
+ * make every offset below read from the wrong place.
+ *
+ * Answers "may an entity step from one cell to the adjacent one", covering
+ * flat ground, ramps, kind-9 steps, bridges (0x10), elevators (0x0e) and
+ * jump pads (2).
+ *
+ * ─── THE FOUR "IMPOSSIBLE" OFFSETS ARE NEIGHBOUR TILES ───────────────────
+ *
+ * The decompile renders four accesses as `EBP + 0x3338`, `EBP + -0x3000`,
+ * `EBP + 0x21b` and `EBP + 0x11d`, which look like the pData trap or a
+ * struct overrun.  They are neither.  With the tile stride 0x7f and the row
+ * stride 100 * 0x7f = 0x319C, and the height field at +0x19c:
+ *
+ *     +0x3338 = +0x319C + 0x19C   ->  neighbour(u+1).height
+ *     -0x3000 = -0x319C + 0x19C   ->  neighbour(u-1).height
+ *     +0x021b = +0x007F + 0x19C   ->  neighbour(v+1).height
+ *     +0x011d = -0x007F + 0x19C   ->  neighbour(v-1).height
+ *
+ * i.e. the elevator compares its own level byte (+0x1f1) against the height
+ * of the neighbour on the OPPOSITE side from the direction of travel — the
+ * cell behind you.  All four follow that rule consistently, which is what
+ * makes the reading safe rather than a guess.  They are written below as
+ * explicit neighbour lookups so the next reader does not have to redo this.
+ *
+ * ─── Things that must not be tidied ──────────────────────────────────────
+ *
+ * 1. THE CLAUSES ARE A SEQUENCE OF ASSIGNMENTS, NOT AN OR.  Later clauses
+ *    OVERWRITE the verdict, including clearing it: the bridge and elevator
+ *    blocks both end in an explicit `flag = 0` on their failure paths, wiping
+ *    out whatever the ramp and height clauses decided.  Reordering them, or
+ *    collapsing them into a chain of `||`, changes the answer.  (This is also
+ *    why KAROO_SIM_FX=facingramp is unobservable — the ramp clause's verdict
+ *    is frequently overwritten downstream.)
+ * 2. HEIGHTS ARE ZERO-EXTENDED BYTES COMPARED AS INTS.  `to.height ==
+ *    from.height - 1` is int arithmetic, so a from.height of 0 yields -1 and
+ *    matches nothing.  Keeping it in int is deliberate.
+ * 3. THE STEP-DIRECTION AND HEIGHT DELTA COMPARES ARE UNSIGNED on the byte
+ *    coordinates but signed once widened (`JGE`/`JLE` on the delta).
+ * 4. THE SECOND CheckTileIsRamp(from.kind) IS REDUNDANT — the original calls
+ *    it twice with the same argument on the same path.  Reproduced as one
+ *    call with a comment rather than two, since it is a pure function of its
+ *    argument and cannot differ; this is the one place shape is not
+ *    preserved literally, and it is noted here for that reason.
+ * 5. THE ORIGINAL SCRIBBLES ON ITS OWN ARGUMENT SLOT: at 0x0041f7a8 it stores
+ *    to.kind over the caller's `u_to` word, then reads it back at 0x0041f81d.
+ *    Harmless (the slot is callee-cleaned and u_to is live in a register),
+ *    but it is why the listing appears to compare `u_to` against 0x0e.
+ *
+ * ─── The jump-pad tail ───────────────────────────────────────────────────
+ *
+ * When the FROM cell is an unoccupied jump pad (kind 2, occupant 0) the
+ * function ignores everything above and returns whether one specific cell is
+ * occupied by 4.  That cell is
+ *
+ *     u' = u_to + 2*(u_from - u_to)  =  2*u_from - u_to
+ *     v' = v_to + 2*(v_from - v_to)  =  2*v_from - v_to
+ *
+ * i.e. the mirror of the destination through the pad — the cell directly
+ * BEHIND you as you step onto the pad.  The doubling is written exactly as
+ * the original computes it (the `*2 ... *50 ... *2` chain), because the
+ * intermediate is formed in a byte before being sign-extended and a tidier
+ * formula would not wrap the same way.
+ *
+ * FOUR E8 call sites, all in ExpandPathNodeNeighbours (one per neighbour).
+ */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_CheckCellStepIsLegal(void *self, unsigned char u_from, unsigned char v_from,
+                         unsigned char u_to, unsigned char v_to)
+{
+    const unsigned char *base = (const unsigned char *)self;
+
+    /* KAROO_SIM_FX=freestep declares every step legal.  Foes then path
+     * straight through walls, height changes and the wrong way along
+     * bridges — the strongest possible break of this function, and the one
+     * that says whether its verdict is consulted at all. */
+    if (fx_freestep())
+        return 1;
+
+    const unsigned char *to   = TILE(base, u_to,   v_to);
+    const unsigned char *from = TILE(base, u_from, v_from);
+
+    int flag = 0;
+
+    /* Ramp entry: the destination ramp must face the way we are stepping,
+     * or the reverse of it.
+     *
+     * THIS TEST APPEARS TWICE, AND THAT IS THE ORIGINAL, NOT A SLIP.  The
+     * same CheckTileIsRamp(to.kind) and the same GetCellStepDirectionCode
+     * are evaluated again below (0x0041f62e onward) to gate the ramp-height
+     * rule.  Both are pure, so the second evaluation cannot differ — but the
+     * two clauses set the verdict at different points in the sequence, with
+     * the height clauses in between, so they are not foldable into one. */
+    if (Sim_CheckTileIsRamp(to[0x19d])) {
+        const int code = Sim_GetCellStepDirectionCode(u_from, v_from, u_to, v_to);
+        const unsigned char k = to[0x19d];
+        if ((int)(k & 0xff) - 4 == code ||
+            Sim_GetTurnedDirection((unsigned char)(k - 4), 2) == code)
+            flag = 1;
+    }
+
+    /* Flat step, or a kind-9 step whose two step heights bracket the move. */
+    if (from[0x19d] != 0x10 && from[0x19c] == to[0x19c])
+        flag = 1;
+    else if (to[0x19d] == 9 &&
+             (to[0x1d3] == from[0x19c] || to[0x1d4] == from[0x19c]))
+        flag = 1;
+    else if (from[0x19d] == 9 &&
+             (from[0x1d3] == to[0x19c] || from[0x1d4] == to[0x19c]))
+        flag = 1;
+
+    if (Sim_CheckTileIsRamp(to[0x19d])) {
+        const int code = Sim_GetCellStepDirectionCode(u_from, v_from, u_to, v_to);
+        const unsigned char k = to[0x19d];
+        if ((int)(k & 0xff) - 4 == code ||
+            Sim_GetTurnedDirection((unsigned char)(k - 4), 2) == code) {
+            int ok = 1;
+            /* The original calls CheckTileIsRamp(from.kind) twice here; it is
+             * pure, so once is exact.  See point 4 above. */
+            if (Sim_CheckTileIsRamp(from[0x19d]) && code != (int)from[0x19d])
+                ok = 0;
+            if (ok && (int)to[0x19c] == (int)from[0x19c] - 1)
+                flag = 1;
+        }
+    } else {
+        const int d = (int)to[0x19c] - (int)from[0x19c];
+        if (from[0x19d] != 0x10 && d < 3 && d > 0)
+            flag = (*(const int *)(from + 0x1bc) == 0);
+    }
+
+    /* Bridge / conveyor: only passable along its own direction byte. */
+    if (from[0x19d] == 0x10 && from[0x19c] == to[0x19c]) {
+        const unsigned char dir = from[0x1f2];
+        if (v_from < v_to && dir == 1)
+            flag = 1;
+        else if (u_from < u_to && dir == 4)
+            flag = 1;
+        else if (v_from > v_to && dir == 3)
+            flag = 1;
+        else if (u_from > u_to && dir == 2)
+            flag = 1;
+        else
+            flag = 0;                    /* clears earlier clauses */
+    }
+
+    if (to[0x19d] == 0x10)
+        flag = 1;
+
+    /* Elevator: its level byte must match the height of the cell behind. */
+    if (from[0x19d] == 0x0e) {
+        const unsigned char lvl = from[0x1f1];
+        const unsigned char *nu_pos = TILE(base, u_from + 1, v_from);
+        const unsigned char *nu_neg = TILE(base, u_from - 1, v_from);
+        const unsigned char *nv_pos = TILE(base, u_from, v_from + 1);
+        const unsigned char *nv_neg = TILE(base, u_from, v_from - 1);
+
+        if (u_from > u_to && lvl == nu_pos[0x19c])
+            flag = 1;
+        else if (u_from < u_to && lvl == nu_neg[0x19c])
+            flag = 1;
+        else if (v_from > v_to && lvl == nv_pos[0x19c])
+            flag = 1;
+        else if (v_from < v_to && lvl == nv_neg[0x19c])
+            flag = 1;
+        else
+            flag = 0;                    /* clears earlier clauses */
+    }
+
+    if (to[0x19d] == 0x0e)
+        flag = 1;
+
+    /* Unoccupied jump pad: the answer is about the cell behind, and nothing
+     * decided above survives. */
+    if (from[0x19d] == 2 && from[0x1a5] == 0) {
+        const signed char du = (signed char)(u_from - u_to);
+        const signed char dv = (signed char)(v_from - v_to);
+        const int up = (int)u_to + (int)du * 2;
+        const int vp = (int)v_to + (int)dv * 2;
+        const unsigned char *land = base + ((vp + up * 100) * 0x7f);
+        return land[0x1a5] == 4;
+    }
+
+    return flag;
 }
