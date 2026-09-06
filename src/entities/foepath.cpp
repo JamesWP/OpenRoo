@@ -71,6 +71,12 @@
 #include <windows.h>
 #include "log.h"
 
+/* Leaves this file stands on, both already ours (entitymath.cpp). */
+extern "C" __declspec(dllexport) int __attribute__((stdcall))
+Sim_CheckTileIsRamp(unsigned char kind);
+extern "C" __declspec(dllexport) unsigned char __attribute__((stdcall))
+Sim_GetTurnedDirection(unsigned char dir, unsigned char delta);
+
 /* Tile addressing, matching entitymove.cpp's TILE() exactly. */
 #define TILE(base, u, v)  ((const unsigned char *)(base) + (((int)(v) + (int)(u) * 100) * 0x7f))
 
@@ -205,6 +211,50 @@ static void diag_report(void)
     log_write("foepath diag: cascades=%u reparent=%u pushes=%u pops=%u deepest=%u\n",
               g_diag.cascades, g_diag.reparent, g_diag.pushes,
               g_diag.pops, g_diag.deepest);
+}
+
+static int fx_shortsearch(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("shortsearch");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=shortsearch -- one expansion per search\n");
+    }
+    return cached;
+}
+
+static int fx_fwdsearch(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("fwdsearch");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=fwdsearch -- endpoints swapped, search runs forward\n");
+    }
+    return cached;
+}
+
+static int fx_revexpand(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("revexpand");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=revexpand -- neighbours expanded in reverse\n");
+    }
+    return cached;
+}
+
+static int fx_freestep(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("freestep");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=freestep -- every cell step reports legal\n");
+    }
+    return cached;
 }
 
 static int fx_truedist(void)
@@ -1051,4 +1101,464 @@ Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
     if (v_from > v_to)
         return 3;
     return (u_to < u_from) ? 2 : 0;
+}
+
+/* ─── CheckCellStepIsLegal (0x0041f500) ───────────────────────────────────
+ *
+ * `__thiscall`, RET 0x10, four byte arguments (u_from, v_from, u_to, v_to).
+ * `this` IS THE TILE BASE, not the pathfinder object — ExpandPathNodeNeighbours
+ * passes `pathfinder->tilebase` (`*(void **)this`).  Getting that wrong would
+ * make every offset below read from the wrong place.
+ *
+ * Answers "may an entity step from one cell to the adjacent one", covering
+ * flat ground, ramps, kind-9 steps, bridges (0x10), elevators (0x0e) and
+ * jump pads (2).
+ *
+ * ─── THE FOUR "IMPOSSIBLE" OFFSETS ARE NEIGHBOUR TILES ───────────────────
+ *
+ * The decompile renders four accesses as `EBP + 0x3338`, `EBP + -0x3000`,
+ * `EBP + 0x21b` and `EBP + 0x11d`, which look like the pData trap or a
+ * struct overrun.  They are neither.  With the tile stride 0x7f and the row
+ * stride 100 * 0x7f = 0x319C, and the height field at +0x19c:
+ *
+ *     +0x3338 = +0x319C + 0x19C   ->  neighbour(u+1).height
+ *     -0x3000 = -0x319C + 0x19C   ->  neighbour(u-1).height
+ *     +0x021b = +0x007F + 0x19C   ->  neighbour(v+1).height
+ *     +0x011d = -0x007F + 0x19C   ->  neighbour(v-1).height
+ *
+ * i.e. the elevator compares its own level byte (+0x1f1) against the height
+ * of the neighbour on the OPPOSITE side from the direction of travel — the
+ * cell behind you.  All four follow that rule consistently, which is what
+ * makes the reading safe rather than a guess.  They are written below as
+ * explicit neighbour lookups so the next reader does not have to redo this.
+ *
+ * ─── Things that must not be tidied ──────────────────────────────────────
+ *
+ * 1. THE CLAUSES ARE A SEQUENCE OF ASSIGNMENTS, NOT AN OR.  Later clauses
+ *    OVERWRITE the verdict, including clearing it: the bridge and elevator
+ *    blocks both end in an explicit `flag = 0` on their failure paths, wiping
+ *    out whatever the ramp and height clauses decided.  Reordering them, or
+ *    collapsing them into a chain of `||`, changes the answer.  (This is also
+ *    why KAROO_SIM_FX=facingramp is unobservable — the ramp clause's verdict
+ *    is frequently overwritten downstream.)
+ * 2. HEIGHTS ARE ZERO-EXTENDED BYTES COMPARED AS INTS.  `to.height ==
+ *    from.height - 1` is int arithmetic, so a from.height of 0 yields -1 and
+ *    matches nothing.  Keeping it in int is deliberate.
+ * 3. THE STEP-DIRECTION AND HEIGHT DELTA COMPARES ARE UNSIGNED on the byte
+ *    coordinates but signed once widened (`JGE`/`JLE` on the delta).
+ * 4. THE SECOND CheckTileIsRamp(from.kind) IS REDUNDANT — the original calls
+ *    it twice with the same argument on the same path.  Reproduced as one
+ *    call with a comment rather than two, since it is a pure function of its
+ *    argument and cannot differ; this is the one place shape is not
+ *    preserved literally, and it is noted here for that reason.
+ * 5. THE ORIGINAL SCRIBBLES ON ITS OWN ARGUMENT SLOT: at 0x0041f7a8 it stores
+ *    to.kind over the caller's `u_to` word, then reads it back at 0x0041f81d.
+ *    Harmless (the slot is callee-cleaned and u_to is live in a register),
+ *    but it is why the listing appears to compare `u_to` against 0x0e.
+ *
+ * ─── The jump-pad tail ───────────────────────────────────────────────────
+ *
+ * When the FROM cell is an unoccupied jump pad (kind 2, occupant 0) the
+ * function ignores everything above and returns whether one specific cell is
+ * occupied by 4.  That cell is
+ *
+ *     u' = u_to + 2*(u_from - u_to)  =  2*u_from - u_to
+ *     v' = v_to + 2*(v_from - v_to)  =  2*v_from - v_to
+ *
+ * i.e. the mirror of the destination through the pad — the cell directly
+ * BEHIND you as you step onto the pad.  The doubling is written exactly as
+ * the original computes it (the `*2 ... *50 ... *2` chain), because the
+ * intermediate is formed in a byte before being sign-extended and a tidier
+ * formula would not wrap the same way.
+ *
+ * FOUR E8 call sites, all in ExpandPathNodeNeighbours (one per neighbour).
+ */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_CheckCellStepIsLegal(void *self, unsigned char u_from, unsigned char v_from,
+                         unsigned char u_to, unsigned char v_to)
+{
+    const unsigned char *base = (const unsigned char *)self;
+
+    /* KAROO_SIM_FX=freestep declares every step legal.  Foes then path
+     * straight through walls, height changes and the wrong way along
+     * bridges — the strongest possible break of this function, and the one
+     * that says whether its verdict is consulted at all. */
+    if (fx_freestep())
+        return 1;
+
+    const unsigned char *to   = TILE(base, u_to,   v_to);
+    const unsigned char *from = TILE(base, u_from, v_from);
+
+    int flag = 0;
+
+    /* Ramp entry: the destination ramp must face the way we are stepping,
+     * or the reverse of it.
+     *
+     * THIS TEST APPEARS TWICE, AND THAT IS THE ORIGINAL, NOT A SLIP.  The
+     * same CheckTileIsRamp(to.kind) and the same GetCellStepDirectionCode
+     * are evaluated again below (0x0041f62e onward) to gate the ramp-height
+     * rule.  Both are pure, so the second evaluation cannot differ — but the
+     * two clauses set the verdict at different points in the sequence, with
+     * the height clauses in between, so they are not foldable into one. */
+    if (Sim_CheckTileIsRamp(to[0x19d])) {
+        const int code = Sim_GetCellStepDirectionCode(u_from, v_from, u_to, v_to);
+        const unsigned char k = to[0x19d];
+        if ((int)(k & 0xff) - 4 == code ||
+            Sim_GetTurnedDirection((unsigned char)(k - 4), 2) == code)
+            flag = 1;
+    }
+
+    /* Flat step, or a kind-9 step whose two step heights bracket the move. */
+    if (from[0x19d] != 0x10 && from[0x19c] == to[0x19c])
+        flag = 1;
+    else if (to[0x19d] == 9 &&
+             (to[0x1d3] == from[0x19c] || to[0x1d4] == from[0x19c]))
+        flag = 1;
+    else if (from[0x19d] == 9 &&
+             (from[0x1d3] == to[0x19c] || from[0x1d4] == to[0x19c]))
+        flag = 1;
+
+    if (Sim_CheckTileIsRamp(to[0x19d])) {
+        const int code = Sim_GetCellStepDirectionCode(u_from, v_from, u_to, v_to);
+        const unsigned char k = to[0x19d];
+        if ((int)(k & 0xff) - 4 == code ||
+            Sim_GetTurnedDirection((unsigned char)(k - 4), 2) == code) {
+            int ok = 1;
+            /* The original calls CheckTileIsRamp(from.kind) twice here; it is
+             * pure, so once is exact.  See point 4 above. */
+            if (Sim_CheckTileIsRamp(from[0x19d]) && code != (int)from[0x19d])
+                ok = 0;
+            if (ok && (int)to[0x19c] == (int)from[0x19c] - 1)
+                flag = 1;
+        }
+    } else {
+        const int d = (int)to[0x19c] - (int)from[0x19c];
+        if (from[0x19d] != 0x10 && d < 3 && d > 0)
+            flag = (*(const int *)(from + 0x1bc) == 0);
+    }
+
+    /* Bridge / conveyor: only passable along its own direction byte. */
+    if (from[0x19d] == 0x10 && from[0x19c] == to[0x19c]) {
+        const unsigned char dir = from[0x1f2];
+        if (v_from < v_to && dir == 1)
+            flag = 1;
+        else if (u_from < u_to && dir == 4)
+            flag = 1;
+        else if (v_from > v_to && dir == 3)
+            flag = 1;
+        else if (u_from > u_to && dir == 2)
+            flag = 1;
+        else
+            flag = 0;                    /* clears earlier clauses */
+    }
+
+    if (to[0x19d] == 0x10)
+        flag = 1;
+
+    /* Elevator: its level byte must match the height of the cell behind. */
+    if (from[0x19d] == 0x0e) {
+        const unsigned char lvl = from[0x1f1];
+        const unsigned char *nu_pos = TILE(base, u_from + 1, v_from);
+        const unsigned char *nu_neg = TILE(base, u_from - 1, v_from);
+        const unsigned char *nv_pos = TILE(base, u_from, v_from + 1);
+        const unsigned char *nv_neg = TILE(base, u_from, v_from - 1);
+
+        if (u_from > u_to && lvl == nu_pos[0x19c])
+            flag = 1;
+        else if (u_from < u_to && lvl == nu_neg[0x19c])
+            flag = 1;
+        else if (v_from > v_to && lvl == nv_pos[0x19c])
+            flag = 1;
+        else if (v_from < v_to && lvl == nv_neg[0x19c])
+            flag = 1;
+        else
+            flag = 0;                    /* clears earlier clauses */
+    }
+
+    if (to[0x19d] == 0x0e)
+        flag = 1;
+
+    /* Unoccupied jump pad: the answer is about the cell behind, and nothing
+     * decided above survives. */
+    if (from[0x19d] == 2 && from[0x1a5] == 0) {
+        const signed char du = (signed char)(u_from - u_to);
+        const signed char dv = (signed char)(v_from - v_to);
+        const int up = (int)u_to + (int)du * 2;
+        const int vp = (int)v_to + (int)dv * 2;
+        const unsigned char *land = base + ((vp + up * 100) * 0x7f);
+        return land[0x1a5] == 4;
+    }
+
+    return flag;
+}
+
+/* ─── FoePath::ExpandPathNodeNeighbours (0x00401ef0) ──────────────────────
+ *
+ * __thiscall, RET 0xc: (node, goalU, goalV).  The four-neighbour expansion,
+ * and now a thin function because everything it calls is ours.
+ *
+ * For each neighbour, in this order — v-1, u+1, v+1, u-1 — it applies two
+ * independent gates and then relaxes:
+ *
+ *     if (CheckPathCellPassable(u', v'))                    is the cell open?
+ *         if (CheckCellStepIsLegal(tilebase, u,v, u',v'))   can we get there?
+ *             RelaxPathNeighbourCell(node, u', v', goalU, goalV);
+ *
+ * THE ORDER IS THE SEARCH'S TIE-BREAKING and must not be sorted or
+ * rearranged.  Equal-cost nodes enter the open list in this sequence, and
+ * InsertOpenPathNodeByCost is a stable insert-before-equal, so this order
+ * decides which of several equally short paths a foe walks.  It is the other
+ * half of the tie-breaking noted on that function.
+ *
+ * TWO THINGS THE LISTING MAKES CLEAR THAT THE DECOMPILE DOES NOT:
+ *
+ * 1. THE TWO GATES TAKE DIFFERENT `this`.  CheckPathCellPassable is called on
+ *    the pathfinder (ECX = this), CheckCellStepIsLegal on `*(void **)this` —
+ *    the TILE BASE (`MOV ECX,[EDI]` before each of its four calls).  This is
+ *    the direct confirmation of that function's `this` type, from the call
+ *    site rather than from its body.
+ * 2. THE FROM-COORDINATES ARE RE-READ FROM THE NODE for every neighbour, and
+ *    are passed to the step test as BYTES (`MOV AL,[ESI+0x14]`) while the
+ *    passability test and the relax get the full ints.  Nothing writes the
+ *    node's u/v here, so the re-reads are equivalent — but the byte-vs-int
+ *    split is real and is preserved by the parameter types.
+ *
+ * Node coordinates: u at +0x10, v at +0x14.
+ *
+ * ONE E8 call site, at 0x00401E79 in SearchPathNodeGraph; xref.py reports
+ * that and nothing else.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_ExpandPathNodeNeighbours(void *self, void *node, int goalU, int goalV)
+{
+    unsigned char *n = (unsigned char *)node;
+    void *tilebase = *(void **)self;
+
+    /* Each step: the neighbour coordinate is formed exactly as the original
+     * forms it, from a fresh read of the node. */
+    struct { int du, dv; } step[4] = { { 0, -1 }, { +1, 0 }, { 0, +1 }, { -1, 0 } };
+
+    /* KAROO_SIM_FX=revexpand reverses the neighbour order.  Every path stays
+     * exactly as short — only which equal-cost node is queued first changes —
+     * so this isolates the tie-breaking claim in the comment above from the
+     * expansion itself.  If it were unobservable, the claim that this order
+     * decides a foe's route would be unsupported. */
+    if (fx_revexpand()) {
+        for (int i = 0; i < 2; ++i) {
+            const int du = step[i].du, dv = step[i].dv;
+            step[i].du = step[3 - i].du;  step[i].dv = step[3 - i].dv;
+            step[3 - i].du = du;          step[3 - i].dv = dv;
+        }
+    }
+
+    for (int i = 0; i < 4; ++i) {
+        const int u = *(const int *)(n + 0x10);
+        const int v = *(const int *)(n + 0x14);
+        const int nu = u + step[i].du;
+        const int nv = v + step[i].dv;
+
+        if (!Sim_CheckPathCellPassable(self, nu, nv))
+            continue;
+        if (!Sim_CheckCellStepIsLegal(tilebase, (unsigned char)u, (unsigned char)v,
+                                      (unsigned char)nu, (unsigned char)nv))
+            continue;
+
+        Sim_RelaxPathNeighbourCell(self, node, nu, nv, goalU, goalV);
+    }
+}
+
+/* ─── FoePath::SearchPathNodeGraph (0x00401db0) ───────────────────────────
+ *
+ * __thiscall, RET 0x10: (uFoe, vFoe, uTarget, vTarget).  The search loop.
+ *
+ * ─── THE SEARCH RUNS BACKWARD, AND THAT EXPLAINS THE CONSUMER ────────────
+ *
+ * The seed node is built from the THIRD and FOURTH arguments — the target
+ * cell — and the key the loop is looking for is `key(arg1, arg2)`, the foe's
+ * own cell.  So the search starts at the player and walks out until it
+ * reaches the foe.
+ *
+ * That is why SetFoeChaseTarget, having got a result, takes the found node's
+ * PARENT (`node->parent` at +0x1c) as the move: the found node IS the foe's
+ * cell, and its parent is the next cell along the path back toward the
+ * player.  Read forwards this looks like an off-by-one; read backwards it is
+ * exactly right.  It also explains why the cost cascade is invisible
+ * (GAMETICK_PLAN.md): only that one parent pointer is ever consumed.
+ *
+ * ─── What it does ────────────────────────────────────────────────────────
+ *
+ *   this+0x33/0x34 = the foe cell, this+0x31/0x32 = the target cell (stored
+ *   for the caller's benefit; nothing here reads them back)
+ *   allocate the open list header, the closed list header and the seed node,
+ *     all calloc(1, 0x44)
+ *   seed: g = 0, h = f = (uT-uF)^2 + (vT-vF)^2, key = key(uT,vT),
+ *         u = uT, v = vT; linked directly as open->next
+ *   loop up to `cap` times, where cap is the u16 at this+0x2f that
+ *     SetFoeChaseTarget writes from its `speed` argument:
+ *         node = PopBestOpenPathNode();  if (!node) return 0;
+ *         if (node->key == goalKey) break;
+ *         ExpandPathNodeNeighbours(node, uFoe, vFoe);
+ *   on break with iterations left: this+0xe = node; return 1
+ *   otherwise return 0
+ *
+ * ─── Exactness ───────────────────────────────────────────────────────────
+ *
+ * 1. THE THREE HEADERS ARE LEAKED, NOT REUSED.  Each call allocates two new
+ *    list headers; ReleasePathSearchNodeLists frees only the nodes hanging
+ *    off them.  Documented on that function and reproduced here — this is
+ *    the allocation half of the same defect.
+ * 2. THE CAP IS AN UNSIGNED 16-BIT COMPARE on entry (`CMP word [ESI+0x2f],DI`
+ *    with DI zero, JBE) and a SIGNED 32-bit one inside the loop, after
+ *    zero-extension.  A cap of 0 therefore skips the loop entirely and falls
+ *    into the tail with a junk `node` value that the `iter < cap` test then
+ *    discards — reproduced by initialising the result to null and letting the
+ *    same test reject it.
+ * 3. h IS THE SQUARED distance again, matching RelaxPathNeighbourCell.  g is
+ *    explicitly zeroed even though calloc already did it.
+ * 4. THE ORIGINAL SCRIBBLES THE GOAL KEY over its own caller's third argument
+ *    slot and re-reads it from there every iteration.  Equivalent to a local
+ *    (nothing else writes it), and kept as a local here — noted only because
+ *    it makes the listing look like it is reading an argument that has
+ *    already been consumed.
+ * 5. The return is a full 32-bit 0/1.
+ *
+ * ONE E8 call site, at 0x00401C85 in FindFoePathBetweenCells; xref.py
+ * reports that and nothing else.
+ */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_SearchPathNodeGraph(void *self, int uFoe, int vFoe, int uTarget, int vTarget)
+{
+    unsigned char *pf = (unsigned char *)self;
+
+    pf[0x32] = (unsigned char)vTarget;
+    pf[0x34] = (unsigned char)vFoe;
+    pf[0x31] = (unsigned char)uTarget;
+    pf[0x33] = (unsigned char)uFoe;
+
+    const int goalKey = Sim_ComputeCellLinearIndex(self, uFoe, vFoe);
+
+    /* Two fresh list headers every search — see exactness point 1. */
+    *(void **)(pf + 0x06) = AllocateZeroedHeapBlock(1, 0x44);
+    *(void **)(pf + 0x0a) = AllocateZeroedHeapBlock(1, 0x44);
+
+    unsigned char *seed = (unsigned char *)AllocateZeroedHeapBlock(1, 0x44);
+
+    const int du = uTarget - uFoe;
+    const int dv = vTarget - vFoe;
+    const int h = du * du + dv * dv;
+
+    *(int *)(seed + 0x08) = 0;                  /* g, already zero */
+    *(int *)(seed + 0x04) = h;
+    *(int *)(seed + 0x00) = h;
+    *(int *)(seed + 0x18) = Sim_ComputeCellLinearIndex(self, uTarget, vTarget);
+    *(int *)(seed + 0x10) = uTarget;
+    *(int *)(seed + 0x14) = vTarget;
+
+    *(unsigned char **)(*(unsigned char **)(pf + 0x06) + 0x40) = seed;
+
+    unsigned short cap = *(const unsigned short *)(pf + 0x2f);
+
+    /* KAROO_SIM_FX=shortsearch caps the loop at a single expansion, so any
+     * path longer than one step is reported as "no path".  Attacks the
+     * iteration budget specifically rather than the search's correctness. */
+    if (fx_shortsearch() && cap > 1)
+        cap = 1;
+
+    int iter = 0;
+    unsigned char *node = 0;
+
+    if (cap > 0) {
+        for (;;) {
+            node = (unsigned char *)Sim_PopBestOpenPathNode(self);
+            if (node == 0)
+                return 0;
+            if (*(const int *)(node + 0x18) == goalKey)
+                break;
+
+            Sim_ExpandPathNodeNeighbours(self, node, uFoe, vFoe);
+
+            if (++iter >= (int)cap)
+                break;
+        }
+    }
+
+    if (iter < (int)cap) {
+        *(unsigned char **)(pf + 0x0e) = node;
+        return 1;
+    }
+    return 0;
+}
+
+/* ─── FoePath::FindFoePathBetweenCells (0x00401c20) ───────────────────────
+ *
+ * __thiscall, RET 0x10: (uFoe, vFoe, uTarget, vTarget).  The cluster's entry
+ * point, and the last of its sixteen functions.
+ *
+ *   if (!CheckPathCellPassable(uTarget, vTarget)) fail;
+ *   if (!CheckPathCellPassable(uFoe,    vFoe))    fail;
+ *   if (key(uFoe,vFoe) == key(uTarget,vTarget))   fail;   // already there
+ *   ReleasePathSearchNodeLists();                         // drop the last search
+ *   if (!SearchPathNodeGraph(uFoe, vFoe, uTarget, vTarget)) fail;
+ *   this+0x16 = 1; return 1;
+ * fail:
+ *   this+0x16 = 0; return 0;
+ *
+ * ─── Points worth keeping ────────────────────────────────────────────────
+ *
+ * 1. THE TARGET IS TESTED FOR PASSABILITY BEFORE THE FOE'S OWN CELL.  Order
+ *    matters only because CheckPathCellPassable is not pure — it reads live
+ *    tile state — but it is preserved regardless.
+ * 2. THE "SAME CELL" TEST COMPARES NODE KEYS, NOT COORDINATES.  Since
+ *    ComputeCellLinearIndex uses the stride at this+0x1e rather than the tile
+ *    stride, two genuinely different cells collide whenever that stride is
+ *    wrong — and the function then reports "no path" rather than searching.
+ *    This is the one place the stride mismatch documented on
+ *    ComputeCellLinearIndex could produce visible behaviour, which is why
+ *    that helper's stride must not be "corrected" to 100.
+ * 3. THE PREVIOUS SEARCH'S NODES ARE FREED HERE, not by the search itself,
+ *    and only once both endpoint checks have passed.  An early failure
+ *    therefore LEAVES THE LAST SEARCH'S NODES ALLOCATED AND LINKED, and the
+ *    next successful call frees them then.  Reproduced exactly.
+ * 4. this+0x16 IS WRITTEN AS AN UNALIGNED DWORD, and is written on every
+ *    path — it mirrors the return value for the caller's benefit.
+ * 5. The return is a full 32-bit 0/1.
+ *
+ * ONE E8 call site, at 0x0043AA4E in SetFoeChaseTarget; xref.py reports
+ * that and nothing else, and no absolute-address call from our own DLL
+ * (the two grep hits in levelscore.cpp and plan.cpp are prose, not code).
+ */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_FindFoePathBetweenCells(void *self, int uFoe, int vFoe,
+                            int uTarget, int vTarget)
+{
+    unsigned char *pf = (unsigned char *)self;
+
+    if (Sim_CheckPathCellPassable(self, uTarget, vTarget) != 0 &&
+        Sim_CheckPathCellPassable(self, uFoe, vFoe) != 0) {
+
+        const int keyFoe    = Sim_ComputeCellLinearIndex(self, uFoe, vFoe);
+        const int keyTarget = Sim_ComputeCellLinearIndex(self, uTarget, vTarget);
+
+        if (keyFoe != keyTarget) {
+            Sim_ReleasePathSearchNodeLists(self);
+
+            /* KAROO_SIM_FX=fwdsearch swaps the endpoints, making the search
+             * run forward from the foe to the target instead of backward.
+             * It still finds paths of the same length — but the node
+             * SetFoeChaseTarget then reads is the TARGET's, not the foe's,
+             * so its parent is no longer the foe's next step.  This is the
+             * direct test of the backward-search finding documented on
+             * SearchPathNodeGraph. */
+            const int ok = fx_fwdsearch()
+                ? Sim_SearchPathNodeGraph(self, uTarget, vTarget, uFoe, vFoe)
+                : Sim_SearchPathNodeGraph(self, uFoe, vFoe, uTarget, vTarget);
+            if (ok != 0) {
+                *(int *)(pf + 0x16) = 1;
+                return 1;
+            }
+        }
+    }
+
+    *(int *)(pf + 0x16) = 0;
+    return 0;
 }
