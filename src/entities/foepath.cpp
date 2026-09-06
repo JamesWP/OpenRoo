@@ -287,3 +287,103 @@ Sim_PopBestOpenPathNode(void *self)
 
     return head;
 }
+
+/* FactAlloc::Free — __cdecl(void *), 0x0045087c.  THE named callback into
+ * the game binary for this file, and the same exception every other
+ * replacement here makes (gamelog.cpp, model.cpp, scenematerial.cpp,
+ * texture.cpp all call it).  The pathfinder's nodes are allocated by the
+ * game's calloc at 0x004507ff (named AllocateZeroedHeapBlock in Ghidra this
+ * cycle), which routes through FactAlloc's own sub-allocator before falling
+ * back to HeapAlloc.  Memory from that allocator MUST go back to that
+ * allocator, so freeing it ourselves is not an option — this is the
+ * no-callback rule's standing allocator exemption, named here as the rule
+ * requires. */
+typedef void (__cdecl *factalloc_free_fn)(void *);
+static const factalloc_free_fn FactAlloc_Free = (factalloc_free_fn)0x0045087c;
+
+/* ─── FoePath::ReleasePathSearchNodeLists (0x00401d60) ────────────────────
+ *
+ * __thiscall, no arguments, RET 0.  Frees every node on both lists.  The two
+ * halves are byte-identical but for the list offset: open at this+0x06,
+ * closed at this+0x0a.
+ *
+ *     hdr = *(this+off);  if (!hdr) skip;
+ *     n = hdr->next;      if (!n)   skip;
+ *     do { p = n; n = n->next; FactAlloc::Free(p); } while (n);
+ *
+ * TWO DEFECTS, BOTH PRESERVED AND NEITHER FIXED:
+ *
+ * 1. THE HEADERS' `next` IS LEFT DANGLING.  Nothing writes 0 to hdr->next
+ *    after the chain is freed, so both list headers keep pointing at freed
+ *    memory when this returns.  It is safe only because the sole callers
+ *    (FindFoePathBetweenCells at 0x401c03 and 0x401c74) either abandon the
+ *    search or let SearchPathNodeGraph install fresh headers before anything
+ *    reads them.  Writing the obvious `hdr->next = 0` here would be a
+ *    behaviour change on any future path that does read them, and CLAUDE.md
+ *    is explicit that reimplementations reproduce defects.
+ *
+ * 2. THE HEADERS THEMSELVES ARE LEAKED.  SearchPathNodeGraph callocs a new
+ *    0x44-byte header for each list on every search and this frees only the
+ *    nodes hanging off them, so each search leaks two blocks.  With a foe
+ *    pathfinding every tick that is a steady drip for the whole level.  It
+ *    is the original's behaviour and is reproduced exactly; noting it here
+ *    because it will look like a leak introduced by this project the first
+ *    time anyone profiles the game, and it is not.
+ *
+ * The loop shape is also the original's: the head node is tested once before
+ * the loop and the `next` pointer is read *before* the free, which is what
+ * makes freeing while walking safe.
+ *
+ * TWO E8 call sites, both in FindFoePathBetweenCells (0x00401c03 and
+ * 0x00401c74); xref.py reports both as CALL and nothing else.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_ReleasePathSearchNodeLists(void *self)
+{
+    unsigned char *pf = (unsigned char *)self;
+    static const unsigned lists[2] = { 0x06, 0x0a };
+    static int reported = 0;
+    int freed = 0;
+
+    for (int i = 0; i < 2; ++i) {
+        unsigned char *hdr = *(unsigned char **)(pf + lists[i]);
+        if (hdr == 0)
+            continue;
+
+        unsigned char *n = *(unsigned char **)(hdr + 0x40);
+        if (n == 0)
+            continue;
+
+        do {
+            unsigned char *p = n;
+            n = *(unsigned char **)(n + 0x40);   /* read before the free */
+            FactAlloc_Free(p);
+            ++freed;
+        } while (n != 0);
+
+        /* Deliberately no `hdr->next = 0` — see defect 1 above. */
+    }
+
+    /* Logged UNCONDITIONALLY, once per run, for the same reason bombfuse.cpp
+     * logs its first tick: this function has no replay-detectable negative
+     * control.  Freeing is invisible to the simulation — skipping it leaks
+     * and changes nothing a recording asserts, and freeing anything extra is
+     * a corruption, not a control.  So "does the suite exercise it?" cannot
+     * be answered by a failing assertion, and a flag-gated line could not
+     * answer it either: silence would be ambiguous between "no foe ever
+     * searched" and "the flag never arrived".
+     *
+     * Two lines, because the first call is always empty: it runs at the top
+     * of FindFoePathBetweenCells before any search has allocated, so a
+     * "first call" line alone reports 0 and proves only that the function is
+     * reached.  The second line is the one that shows nodes being reclaimed.
+     */
+    if (reported == 0) {
+        reported = 1;
+        log_write("foepath: first ReleasePathSearchNodeLists -- %d node(s) freed\n", freed);
+    }
+    if (reported == 1 && freed > 0) {
+        reported = 2;
+        log_write("foepath: first non-empty release -- %d node(s) freed\n", freed);
+    }
+}
