@@ -143,6 +143,70 @@ static int fx_nolookup(void)
     return cached;
 }
 
+/* ─── KAROO_FOEPATH_DIAG — is the re-open machinery actually doing work? ──
+ *
+ * Three functions in this file — PushPendingPathNode, PopPendingPathNode and
+ * PropagateImprovedPathCosts — are reachable and exercised but invisible to
+ * every asserted field in all twelve recordings (GAMETICK_PLAN.md records
+ * this: `nocostfix` skips the cascade outright and the suite still passes
+ * 12/12).  That raises the obvious question of whether they are live at all
+ * or merely an optimisation that never fires, and it is a question to
+ * measure rather than argue about.
+ *
+ * The structure already answers half of it.  RelaxPathNeighbourCell calls
+ * the cascade on exactly ONE branch: a cell found on the CLOSED list that
+ * has just been reached with a smaller g.  In a textbook A* with a
+ * consistent heuristic that branch is unreachable — a closed node's cost can
+ * never improve — and the whole subsystem would be dead code.  It is
+ * reachable here because h is a SQUARED Euclidean distance (see
+ * SearchPathNodeGraph and RelaxPathNeighbourCell), which is neither
+ * admissible nor consistent.  So this is not an optimisation: it is the
+ * repair mechanism for a deliberately-wrong heuristic, and how often it runs
+ * is a property of the map.
+ *
+ * KAROO_FOEPATH_DIAG=1 counts the work and logs a running summary at
+ * 1/10/100/1000/10000 cascade calls:
+ *
+ *   cascades  calls to PropagateImprovedPathCosts = closed cells re-opened
+ *   reparent  children whose g, f and parent were actually rewritten
+ *   pushes    worklist pushes (== reparent; they are the same branch)
+ *   pops      worklist drains, i.e. re-opening that went more than one level
+ *   deepest   the largest single drain, in nodes
+ *
+ * `pops` is the interesting one.  cascades > 0 with pops == 0 would mean
+ * re-opens happen but never propagate past the immediate children; pops
+ * climbing with cascades means the correction really does ripple.
+ */
+struct FoePathDiag {
+    unsigned cascades, reparent, pushes, pops, deepest, cur_drain;
+};
+static FoePathDiag g_diag;
+
+static int diag_on(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        char buf[64];
+        DWORD n = GetEnvironmentVariableA("KAROO_FOEPATH_DIAG", buf, sizeof(buf));
+        cached = (n > 0 && n < sizeof(buf) && buf[0] != '0') ? 1 : 0;
+    }
+    return cached;
+}
+
+static void diag_report(void)
+{
+    if (!diag_on())
+        return;
+
+    const unsigned c = g_diag.cascades;
+    if (c != 1 && c != 10 && c != 100 && c != 1000 && c != 10000)
+        return;
+
+    log_write("foepath diag: cascades=%u reparent=%u pushes=%u pops=%u deepest=%u\n",
+              g_diag.cascades, g_diag.reparent, g_diag.pushes,
+              g_diag.pops, g_diag.deepest);
+}
+
 /* See the call site: skips cost re-propagation entirely.  Strictly stronger
  * than nopropagate, which left the direct children still being improved. */
 static int fx_nocostfix(void)
@@ -636,15 +700,7 @@ Sim_PushPendingPathNode(void *self, void *node)
     if (fx_nopropagate())
         return;
 
-    /* Unconditional one-shot, same reasoning as ReleasePathSearchNodeLists:
-     * the negative control for this pair is not replay-detectable, so a log
-     * is the only honest answer to "did the suite run it?", and a flag-gated
-     * one would leave silence ambiguous. */
-    static int pushed = 0;
-    if (!pushed) {
-        pushed = 1;
-        log_write("foepath: first PushPendingPathNode\n");
-    }
+    ++g_diag.pushes;
 
     unsigned char *cell = (unsigned char *)AllocateZeroedHeapBlock(1, 9);
 
@@ -662,11 +718,7 @@ Sim_PopPendingPathNode(void *self)
     unsigned char *owner = *(unsigned char **)((unsigned char *)self + 0x12);
     unsigned char *cell = *(unsigned char **)(owner + 4);
 
-    static int popped = 0;
-    if (!popped) {
-        popped = 1;
-        log_write("foepath: first PopPendingPathNode\n");
-    }
+    ++g_diag.pops;
 
     void *node = *(void **)cell;
     *(void **)(owner + 4) = *(void **)(cell + 4);
@@ -733,6 +785,9 @@ Sim_PropagateImprovedPathCosts(void *self, void *node)
     if (fx_nocostfix())
         return;
 
+    ++g_diag.cascades;
+    g_diag.cur_drain = 0;
+
     /* Sweep 1: the parent's g hoisted once, per point 1 above. */
     const int gp = *(const int *)(p + 0x08);
     for (int i = 0; i < 8; ++i) {
@@ -744,17 +799,22 @@ Sim_PropagateImprovedPathCosts(void *self, void *node)
             *(int *)(c + 0x08) = gnew;
             *(int *)(c + 0x00) = *(const int *)(c + 0x04) + gnew;
             *(unsigned char **)(c + 0x1c) = p;
+            ++g_diag.reparent;
             Sim_PushPendingPathNode(self, c);
         }
     }
 
     /* Sweep 2: drain the worklist, re-reading the parent's g each time. */
     unsigned char *owner = *(unsigned char **)(pf + 0x12);
-    if (*(unsigned char **)(owner + 4) == 0)
+    if (*(unsigned char **)(owner + 4) == 0) {
+        diag_report();
         return;
+    }
 
     do {
         unsigned char *q = (unsigned char *)Sim_PopPendingPathNode(self);
+        if (++g_diag.cur_drain > g_diag.deepest)
+            g_diag.deepest = g_diag.cur_drain;
 
         for (int i = 0; i < 8; ++i) {
             unsigned char *c = *(unsigned char **)(q + 0x20 + i * 4);
@@ -765,10 +825,13 @@ Sim_PropagateImprovedPathCosts(void *self, void *node)
                 *(int *)(c + 0x08) = gnew;
                 *(int *)(c + 0x00) = *(const int *)(c + 0x04) + gnew;
                 *(unsigned char **)(c + 0x1c) = q;
+                ++g_diag.reparent;
                 Sim_PushPendingPathNode(self, c);
             }
         }
 
         owner = *(unsigned char **)(pf + 0x12);
     } while (*(unsigned char **)(owner + 4) != 0);
+
+    diag_report();
 }
