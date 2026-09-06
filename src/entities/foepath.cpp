@@ -84,15 +84,33 @@
  * SetFoeChaseTarget leaves the pending move at 0, and foes stand still
  * instead of chasing.  Only this code path can produce it.
  */
+static int fx_is(const char *mode)
+{
+    char buf[64];
+    DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    return (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, mode) == 0) ? 1 : 0;
+}
+
 static int fx_blindfoe(void)
 {
     static int cached = -1;
     if (cached < 0) {
-        char buf[64];
-        DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "blindfoe") == 0) ? 1 : 0;
+        cached = fx_is("blindfoe");
         if (cached)
             log_write("foepath: KAROO_SIM_FX=blindfoe -- every cell reports impassable\n");
+    }
+    return cached;
+}
+
+/* See the note at the call site: this control has to break injectivity, not
+ * merely change the number. */
+static int fx_keyclash(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("keyclash");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=keyclash -- node keys drop the column\n");
     }
     return cached;
 }
@@ -134,4 +152,50 @@ Sim_CheckPathCellPassable(void *self, int u, int v)
         return 0;
 
     return 1;
+}
+
+/* ─── FoePath::ComputeCellLinearIndex (0x00401cb0) ────────────────────────
+ *
+ * __thiscall, RET 8.  The whole function is five instructions:
+ *
+ *     MOV EAX,[ECX+0x1e] / MOV ECX,[ESP+4] / IMUL EAX,[ESP+8]
+ *     ADD EAX,ECX / RET 8
+ *
+ * i.e. `stride * v + u`, where the stride is a full 32-bit int at this+0x1e.
+ *
+ * THIS IS NOT THE TILE ADDRESSING.  CheckPathCellPassable above uses the
+ * game-wide `(v + u*100) * 0x7f` scheme that entitymove.cpp also uses; this
+ * one uses a per-search stride read from the object.  The two numbers are
+ * unrelated, they are not interchangeable, and merging them — which is
+ * tempting, since both turn a cell into a scalar — would silently corrupt
+ * every node key the search compares.  Kept deliberately separate.
+ *
+ * The result is only ever used as an identity for a cell: SearchPathNodeGraph
+ * compares it against the goal key (node+0x18) and RelaxPathNeighbourCell
+ * stores it at node[6] for the open/closed lookups.  Nothing indexes memory
+ * with it, so a stride that does not match the real map width would still
+ * "work" as long as it is injective, which is presumably why nobody noticed
+ * it differs from the tile stride.
+ *
+ * IMUL IS SIGNED and the add wraps in 32 bits; both are reproduced by using
+ * plain `int`.  Five E8 call sites, all inside the cluster (two in
+ * FindFoePathBetweenCells, two in SearchPathNodeGraph, one in
+ * RelaxPathNeighbourCell); xref.py reports all five as CALL and nothing else.
+ */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_ComputeCellLinearIndex(void *self, int u, int v)
+{
+    const int stride = *(const int *)((const unsigned char *)self + 0x1e);
+
+    /* KAROO_SIM_FX=keyclash drops the column from the key, so every cell in
+     * a row shares one identity.  A *value* change here is not necessarily
+     * observable — the key is only ever used as a cell identity, so any
+     * injective function of (u,v) would behave identically — which is why
+     * the control has to break injectivity rather than just perturb the
+     * arithmetic.  With rows collapsed, the search treats cells it has
+     * never visited as already closed and the paths it returns go wrong. */
+    if (fx_keyclash())
+        return stride * v;
+
+    return stride * v + u;
 }
