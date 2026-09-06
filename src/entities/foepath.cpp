@@ -143,6 +143,19 @@ static int fx_nolookup(void)
     return cached;
 }
 
+/* See the call site: this breaks the write end of the f-ordering invariant,
+ * as popsecond breaks the read end. */
+static int fx_nosort(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("nosort");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=nosort -- open list pushed at the front\n");
+    }
+    return cached;
+}
+
 /* ─── FoePath::CheckPathCellPassable (0x00401cd0) ─────────────────────────
  *
  * __thiscall, RET 8.  `this` = the pathfinder object at foe+0x13b.
@@ -465,4 +478,75 @@ Sim_FindClosedPathNodeByKey(void *self, int key)
     if (fx_nolookup())
         return 0;
     return foepath_find_by_key(self, 0x0a, key);
+}
+
+/* ─── FoePath::InsertOpenPathNodeByCost (0x00402170) ──────────────────────
+ *
+ * __thiscall, RET 4, one argument: the node to insert.  Inserts it into the
+ * open list in ascending order of the total cost f at node[0], which is what
+ * makes PopBestOpenPathNode's "take the front" the same thing as "take the
+ * best".  The two were read a cycle apart and agree; this is the half that
+ * establishes the invariant.
+ *
+ *     hdr = this->open;                    (this+0x06)
+ *     if (!hdr->next) { hdr->next = n; return; }
+ *     prev = hdr;  cur = hdr->next;  f = n->f;
+ *     while (cur && cur->f < f) { prev = cur; cur = cur->next; }
+ *     n->next = cur;  prev->next = n;
+ *
+ * THREE EXACTNESS POINTS:
+ *
+ * 1. THE COMPARE IS SIGNED (`CMP [EAX],ESI` / `JGE`).  f is g + h with h a
+ *    squared Euclidean distance, so it is non-negative in practice and the
+ *    distinction is unreachable — but an unsigned compare here would be a
+ *    different function, and the listing says signed.
+ * 2. IT IS A STABLE INSERT-BEFORE-EQUAL.  The walk stops at the first node
+ *    whose f is >= the new one's (JGE leaves the loop), so a tie puts the
+ *    newcomer AHEAD of the equal-cost nodes already queued.  With f ties
+ *    common on a square grid this decides the search's tie-breaking, and so
+ *    which of several equally short paths a foe actually takes — the very
+ *    thing the SetFoeChaseTarget plate comment attributes to "the
+ *    pathfinder's tie-breaking".  Reversing it to insert-after-equal would
+ *    keep every path optimal and still change observable movement.
+ * 3. THE FIRST `TEST EAX,EAX` INSIDE THE LOOP IS DEAD.  EAX is already known
+ *    non-zero from the JNZ that entered, so the first iteration can never
+ *    take it.  Left as written rather than hoisted, per the standing rule
+ *    about reproducing shape.
+ *
+ * ONE E8 call site, at 0x00402105 in RelaxPathNeighbourCell; xref.py reports
+ * that and nothing else.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_InsertOpenPathNodeByCost(void *self, void *node)
+{
+    unsigned char *hdr = *(unsigned char **)((unsigned char *)self + 0x06);
+    unsigned char *n = (unsigned char *)node;
+
+    unsigned char *cur = *(unsigned char **)(hdr + 0x40);
+    if (cur == 0) {
+        *(unsigned char **)(hdr + 0x40) = n;
+        return;
+    }
+
+    const int f = *(const int *)n;          /* signed, see point 1 */
+    unsigned char *prev = hdr;
+
+    while (cur != 0 && *(const int *)cur < f) {
+        prev = cur;
+        cur = *(unsigned char **)(cur + 0x40);
+    }
+
+    /* KAROO_SIM_FX=nosort ignores the ordering and pushes at the front, so
+     * the open list becomes LIFO and the search stops being A* — it still
+     * terminates under the iteration cap and still returns paths, they are
+     * just no longer the cheapest.  The mirror of popsecond: that one broke
+     * the read end of the invariant, this one breaks the write end. */
+    if (fx_nosort()) {
+        *(unsigned char **)(n + 0x40) = *(unsigned char **)(hdr + 0x40);
+        *(unsigned char **)(hdr + 0x40) = n;
+        return;
+    }
+
+    *(unsigned char **)(n + 0x40) = cur;
+    *(unsigned char **)(prev + 0x40) = n;
 }
