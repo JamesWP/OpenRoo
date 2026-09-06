@@ -84,15 +84,44 @@
  * SetFoeChaseTarget leaves the pending move at 0, and foes stand still
  * instead of chasing.  Only this code path can produce it.
  */
+static int fx_is(const char *mode)
+{
+    char buf[64];
+    DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    return (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, mode) == 0) ? 1 : 0;
+}
+
 static int fx_blindfoe(void)
 {
     static int cached = -1;
     if (cached < 0) {
-        char buf[64];
-        DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "blindfoe") == 0) ? 1 : 0;
+        cached = fx_is("blindfoe");
         if (cached)
             log_write("foepath: KAROO_SIM_FX=blindfoe -- every cell reports impassable\n");
+    }
+    return cached;
+}
+
+/* See the note at the call site: this control has to break injectivity, not
+ * merely change the number. */
+static int fx_keyclash(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("keyclash");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=keyclash -- node keys drop the column\n");
+    }
+    return cached;
+}
+
+static int fx_popsecond(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("popsecond");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=popsecond -- expanding the second-best node\n");
     }
     return cached;
 }
@@ -134,4 +163,227 @@ Sim_CheckPathCellPassable(void *self, int u, int v)
         return 0;
 
     return 1;
+}
+
+/* ─── FoePath::ComputeCellLinearIndex (0x00401cb0) ────────────────────────
+ *
+ * __thiscall, RET 8.  The whole function is five instructions:
+ *
+ *     MOV EAX,[ECX+0x1e] / MOV ECX,[ESP+4] / IMUL EAX,[ESP+8]
+ *     ADD EAX,ECX / RET 8
+ *
+ * i.e. `stride * v + u`, where the stride is a full 32-bit int at this+0x1e.
+ *
+ * THIS IS NOT THE TILE ADDRESSING.  CheckPathCellPassable above uses the
+ * game-wide `(v + u*100) * 0x7f` scheme that entitymove.cpp also uses; this
+ * one uses a per-search stride read from the object.  The two numbers are
+ * unrelated, they are not interchangeable, and merging them — which is
+ * tempting, since both turn a cell into a scalar — would silently corrupt
+ * every node key the search compares.  Kept deliberately separate.
+ *
+ * The result is only ever used as an identity for a cell: SearchPathNodeGraph
+ * compares it against the goal key (node+0x18) and RelaxPathNeighbourCell
+ * stores it at node[6] for the open/closed lookups.  Nothing indexes memory
+ * with it, so a stride that does not match the real map width would still
+ * "work" as long as it is injective, which is presumably why nobody noticed
+ * it differs from the tile stride.
+ *
+ * IMUL IS SIGNED and the add wraps in 32 bits; both are reproduced by using
+ * plain `int`.  Five E8 call sites, all inside the cluster (two in
+ * FindFoePathBetweenCells, two in SearchPathNodeGraph, one in
+ * RelaxPathNeighbourCell); xref.py reports all five as CALL and nothing else.
+ */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_ComputeCellLinearIndex(void *self, int u, int v)
+{
+    const int stride = *(const int *)((const unsigned char *)self + 0x1e);
+
+    /* KAROO_SIM_FX=keyclash drops the column from the key, so every cell in
+     * a row shares one identity.  A *value* change here is not necessarily
+     * observable — the key is only ever used as a cell identity, so any
+     * injective function of (u,v) would behave identically — which is why
+     * the control has to break injectivity rather than just perturb the
+     * arithmetic.  With rows collapsed, the search treats cells it has
+     * never visited as already closed and the paths it returns go wrong. */
+    if (fx_keyclash())
+        return stride * v;
+
+    return stride * v + u;
+}
+
+/* ─── FoePath::PopBestOpenPathNode (0x00401ec0) ───────────────────────────
+ *
+ * __thiscall, no arguments, RET 0.  Moves the front node of the open list
+ * onto the front of the closed list and returns it.
+ *
+ *     head = open->next;            open   = this+0x06
+ *     if (!head) return NULL;       closed = this+0x0a
+ *     open->next   = head->next;    ->next = node+0x40
+ *     head->next   = closed->next;
+ *     closed->next = head;
+ *     return head;
+ *
+ * GHIDRA HAD THIS TYPED `void`, AND IT IS NOT.  The node stays in EAX from
+ * the `MOV EAX,[EDX+0x40]` that loads it — on the empty path EAX is the zero
+ * that failed the TEST, on the success path it is the popped node — and
+ * SearchPathNodeGraph uses that return value as its current node, so a
+ * literal reading of the decompile would have produced a function that
+ * silently returned garbage.  The Ghidra prototype is corrected this cycle.
+ * This is the "a nonsensical decompile usually means a wrong type" rule in
+ * its milder form: the decompile was not nonsensical, just quietly wrong.
+ *
+ * The list is kept in f order by the insertion in RelaxPathNeighbourCell, so
+ * taking the front IS taking the best node; there is no scan here.
+ *
+ * TWO EXACTNESS POINTS:
+ *
+ * 1. THE ORIGINAL RE-READS this+0x0a TWICE (`MOV EDX,[ECX+0xa]` and then
+ *    `MOV ECX,[ECX+0xa]`) rather than keeping it in a register.  Nothing
+ *    between the two writes to it, so a single read is equivalent — but the
+ *    two loads are kept here anyway, because CLAUDE.md's rule is to
+ *    reproduce the original's shape rather than to tidy it, and a future
+ *    reader diffing against the listing should not have to re-derive that
+ *    the merge was safe.
+ * 2. NO NULL CHECK ON THE LISTS THEMSELVES.  `open` and `closed` are
+ *    dereferenced unconditionally; only the *node* is tested.  Both are
+ *    allocated by SearchPathNodeGraph before this can run, so the original
+ *    is right, and adding a guard would change behaviour on a corrupt object
+ *    from a fault into a silent wrong answer.
+ *
+ * ONE E8 call site, at 0x00401e5c inside SearchPathNodeGraph; xref.py
+ * reports that reference and no other.
+ */
+extern "C" __declspec(dllexport) void * __attribute__((thiscall))
+Sim_PopBestOpenPathNode(void *self)
+{
+    unsigned char *pf = (unsigned char *)self;
+
+    unsigned char *open = *(unsigned char **)(pf + 0x06);
+    unsigned char *head = *(unsigned char **)(open + 0x40);
+    if (head == 0)
+        return 0;
+
+    /* KAROO_SIM_FX=popsecond takes the *second* node off the open list when
+     * there is one.  The list is f-ordered, so this is precisely "expand the
+     * second-best node instead of the best" — the search still terminates
+     * (the iteration cap at this+0x2f bounds it) and still returns paths,
+     * but they are no longer the ones A* would choose.  A direction change
+     * of sorts: it proves the ordering is load-bearing, not just that the
+     * function runs. */
+    if (fx_popsecond()) {
+        unsigned char *second = *(unsigned char **)(head + 0x40);
+        if (second != 0) {
+            open = head;          /* unlink `second` from behind `head` */
+            head = second;
+        }
+    }
+
+    *(unsigned char **)(open + 0x40) = *(unsigned char **)(head + 0x40);
+
+    /* Both reads of this+0x0a, as the original has them. */
+    *(unsigned char **)(head + 0x40) =
+        *(unsigned char **)(*(unsigned char **)(pf + 0x0a) + 0x40);
+    *(unsigned char **)(*(unsigned char **)(pf + 0x0a) + 0x40) = head;
+
+    return head;
+}
+
+/* FactAlloc::Free — __cdecl(void *), 0x0045087c.  THE named callback into
+ * the game binary for this file, and the same exception every other
+ * replacement here makes (gamelog.cpp, model.cpp, scenematerial.cpp,
+ * texture.cpp all call it).  The pathfinder's nodes are allocated by the
+ * game's calloc at 0x004507ff (named AllocateZeroedHeapBlock in Ghidra this
+ * cycle), which routes through FactAlloc's own sub-allocator before falling
+ * back to HeapAlloc.  Memory from that allocator MUST go back to that
+ * allocator, so freeing it ourselves is not an option — this is the
+ * no-callback rule's standing allocator exemption, named here as the rule
+ * requires. */
+typedef void (__cdecl *factalloc_free_fn)(void *);
+static const factalloc_free_fn FactAlloc_Free = (factalloc_free_fn)0x0045087c;
+
+/* ─── FoePath::ReleasePathSearchNodeLists (0x00401d60) ────────────────────
+ *
+ * __thiscall, no arguments, RET 0.  Frees every node on both lists.  The two
+ * halves are byte-identical but for the list offset: open at this+0x06,
+ * closed at this+0x0a.
+ *
+ *     hdr = *(this+off);  if (!hdr) skip;
+ *     n = hdr->next;      if (!n)   skip;
+ *     do { p = n; n = n->next; FactAlloc::Free(p); } while (n);
+ *
+ * TWO DEFECTS, BOTH PRESERVED AND NEITHER FIXED:
+ *
+ * 1. THE HEADERS' `next` IS LEFT DANGLING.  Nothing writes 0 to hdr->next
+ *    after the chain is freed, so both list headers keep pointing at freed
+ *    memory when this returns.  It is safe only because the sole callers
+ *    (FindFoePathBetweenCells at 0x401c03 and 0x401c74) either abandon the
+ *    search or let SearchPathNodeGraph install fresh headers before anything
+ *    reads them.  Writing the obvious `hdr->next = 0` here would be a
+ *    behaviour change on any future path that does read them, and CLAUDE.md
+ *    is explicit that reimplementations reproduce defects.
+ *
+ * 2. THE HEADERS THEMSELVES ARE LEAKED.  SearchPathNodeGraph callocs a new
+ *    0x44-byte header for each list on every search and this frees only the
+ *    nodes hanging off them, so each search leaks two blocks.  With a foe
+ *    pathfinding every tick that is a steady drip for the whole level.  It
+ *    is the original's behaviour and is reproduced exactly; noting it here
+ *    because it will look like a leak introduced by this project the first
+ *    time anyone profiles the game, and it is not.
+ *
+ * The loop shape is also the original's: the head node is tested once before
+ * the loop and the `next` pointer is read *before* the free, which is what
+ * makes freeing while walking safe.
+ *
+ * TWO E8 call sites, both in FindFoePathBetweenCells (0x00401c03 and
+ * 0x00401c74); xref.py reports both as CALL and nothing else.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_ReleasePathSearchNodeLists(void *self)
+{
+    unsigned char *pf = (unsigned char *)self;
+    static const unsigned lists[2] = { 0x06, 0x0a };
+    static int reported = 0;
+    int freed = 0;
+
+    for (int i = 0; i < 2; ++i) {
+        unsigned char *hdr = *(unsigned char **)(pf + lists[i]);
+        if (hdr == 0)
+            continue;
+
+        unsigned char *n = *(unsigned char **)(hdr + 0x40);
+        if (n == 0)
+            continue;
+
+        do {
+            unsigned char *p = n;
+            n = *(unsigned char **)(n + 0x40);   /* read before the free */
+            FactAlloc_Free(p);
+            ++freed;
+        } while (n != 0);
+
+        /* Deliberately no `hdr->next = 0` — see defect 1 above. */
+    }
+
+    /* Logged UNCONDITIONALLY, once per run, for the same reason bombfuse.cpp
+     * logs its first tick: this function has no replay-detectable negative
+     * control.  Freeing is invisible to the simulation — skipping it leaks
+     * and changes nothing a recording asserts, and freeing anything extra is
+     * a corruption, not a control.  So "does the suite exercise it?" cannot
+     * be answered by a failing assertion, and a flag-gated line could not
+     * answer it either: silence would be ambiguous between "no foe ever
+     * searched" and "the flag never arrived".
+     *
+     * Two lines, because the first call is always empty: it runs at the top
+     * of FindFoePathBetweenCells before any search has allocated, so a
+     * "first call" line alone reports 0 and proves only that the function is
+     * reached.  The second line is the one that shows nodes being reclaimed.
+     */
+    if (reported == 0) {
+        reported = 1;
+        log_write("foepath: first ReleasePathSearchNodeLists -- %d node(s) freed\n", freed);
+    }
+    if (reported == 1 && freed > 0) {
+        reported = 2;
+        log_write("foepath: first non-empty release -- %d node(s) freed\n", freed);
+    }
 }
