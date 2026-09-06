@@ -207,6 +207,28 @@ static void diag_report(void)
               g_diag.pops, g_diag.deepest);
 }
 
+static int fx_truedist(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("truedist");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=truedist -- admissible heuristic, not squared\n");
+    }
+    return cached;
+}
+
+static int fx_facingramp(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("facingramp");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=facingramp -- ramp codes use the facing pairing\n");
+    }
+    return cached;
+}
+
 /* See the call site: skips cost re-propagation entirely.  Strictly stronger
  * than nopropagate, which left the direct children still being improved. */
 static int fx_nocostfix(void)
@@ -834,4 +856,199 @@ Sim_PropagateImprovedPathCosts(void *self, void *node)
     } while (*(unsigned char **)(owner + 4) != 0);
 
     diag_report();
+}
+
+/* ─── FoePath::RelaxPathNeighbourCell (0x00402000) ────────────────────────
+ *
+ * __thiscall, RET 0x14 — five stack arguments:
+ *   parent   the node being expanded
+ *   u, v     the neighbour cell being relaxed
+ *   goalU/V  the search goal, used only for the heuristic
+ *
+ * The classic relax step, in three branches on where the cell already is:
+ *
+ *   on the OPEN list    record it as a child of parent; if gnew is better,
+ *                       rewrite g, f and parent.  No cascade — the node has
+ *                       not been expanded yet, so it has no children to fix.
+ *   on the CLOSED list  same, and THEN call PropagateImprovedPathCosts,
+ *                       because this node's descendants already carry costs
+ *                       derived from its old g.  This is the one call site
+ *                       of the cascade, and the reason that subsystem exists
+ *                       at all (see the DIAG note above).
+ *   nowhere yet         allocate a 0x44-byte node, fill it in, insert it in
+ *                       f order, and record it as a child of parent.
+ *
+ * gnew is `parent->g + 1` — unit edge costs — and
+ *     h = (v - goalV)^2 + (u - goalU)^2
+ * is a SQUARED Euclidean distance.  That is the inadmissible, inconsistent
+ * heuristic the whole re-open machinery exists to compensate for; it is
+ * reproduced exactly and must not be "fixed" to a real distance.
+ *
+ * ─── A GENUINE BUFFER OVERFLOW, PRESERVED ────────────────────────────────
+ *
+ * All three branches record the neighbour in the parent's child array with
+ * the same open-coded scan:
+ *
+ *     i = 0; while (parent->child[i] != 0 && ++i < 8) ;
+ *     parent->child[i] = node;          <-- no bounds check on i
+ *
+ * The loop exits with i == 8 when every slot is occupied, and the store then
+ * writes ONE PAST the eight-entry array at node+0x20..0x3c — i.e. straight
+ * onto node+0x40, WHICH IS THE LIST `next` POINTER.  A ninth child silently
+ * relinks the open or closed list through an arbitrary node.
+ *
+ * This is reproduced deliberately, per CLAUDE.md's rule that reimplementations
+ * are bit-exact including defects.  It is reachable only for a cell with nine
+ * or more distinct relaxed neighbours, which a 4-connected grid cannot
+ * produce in one expansion — but ExpandPathNodeNeighbours relaxes through the
+ * same parent repeatedly across a search, and nothing ever clears these
+ * slots, so the count is cumulative rather than per-expansion.  Do not add a
+ * bounds check without a recording that proves the overflow unreachable.
+ *
+ * ─── Order matters in two places ─────────────────────────────────────────
+ *
+ * 1. In the two "already present" branches the child slot is written BEFORE
+ *    the cost test, and therefore EVEN WHEN THE COST DOES NOT IMPROVE.  In
+ *    the new-node branch it is written LAST, after the f-ordered insert.
+ *    The three are not interchangeable.
+ * 2. The closed branch writes parent, f and g in that order and only then
+ *    cascades, so the cascade sees the already-updated node.
+ *
+ * FOUR E8 call sites (0x00401F30, 0x00401F6D, 0x00401FAA, 0x00401FE7),
+ * all in ExpandPathNodeNeighbours — one per neighbour; xref.py reports those
+ * four as CALL and nothing else.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_RelaxPathNeighbourCell(void *self, void *parent, int u, int v,
+                           int goalU, int goalV)
+{
+    unsigned char *p = (unsigned char *)parent;
+    const int gnew = *(const int *)(p + 0x08) + 1;
+    const int key = Sim_ComputeCellLinearIndex(self, u, v);
+
+    /* The open-coded scan, overflow and all — see the note above. */
+    #define RELAX_RECORD_CHILD(node)                                        \
+        do {                                                                \
+            int _i = 0;                                                     \
+            while (*(void **)(p + 0x20 + _i * 4) != 0 && ++_i < 8)          \
+                ;                                                           \
+            *(void **)(p + 0x20 + _i * 4) = (node);                         \
+        } while (0)
+
+    unsigned char *n = (unsigned char *)Sim_FindOpenPathNodeByKey(self, key);
+    if (n != 0) {
+        RELAX_RECORD_CHILD(n);
+        if (gnew < *(const int *)(n + 0x08)) {
+            *(int *)(n + 0x08) = gnew;
+            *(int *)(n + 0x00) = *(const int *)(n + 0x04) + gnew;
+            *(unsigned char **)(n + 0x1c) = p;
+        }
+        return;
+    }
+
+    n = (unsigned char *)Sim_FindClosedPathNodeByKey(self, key);
+    if (n != 0) {
+        RELAX_RECORD_CHILD(n);
+        if (gnew < *(const int *)(n + 0x08)) {
+            *(unsigned char **)(n + 0x1c) = p;
+            *(int *)(n + 0x00) = *(const int *)(n + 0x04) + gnew;
+            *(int *)(n + 0x08) = gnew;
+            Sim_PropagateImprovedPathCosts(self, n);
+        }
+        return;
+    }
+
+    /* Not seen before: a fresh node. */
+    n = (unsigned char *)AllocateZeroedHeapBlock(1, 0x44);
+
+    const int du = u - goalU;
+    const int dv = v - goalV;
+    int h = dv * dv + du * du;            /* squared distance, deliberately */
+
+    /* KAROO_SIM_FX=truedist replaces the squared heuristic with a real
+     * (Manhattan) one.  That is the "obvious fix" this file warns against:
+     * it makes h admissible and consistent, which changes the expansion
+     * order, the paths chosen, and — since a consistent heuristic never
+     * re-opens a closed node — silences the whole cost cascade too.  A
+     * change of algorithm, not of a constant. */
+    if (fx_truedist())
+        h = (du < 0 ? -du : du) + (dv < 0 ? -dv : dv);
+
+    *(unsigned char **)(n + 0x1c) = p;
+    *(int *)(n + 0x08) = gnew;
+    *(int *)(n + 0x04) = h;
+    *(int *)(n + 0x18) = key;
+    *(int *)(n + 0x00) = h + gnew;
+    *(int *)(n + 0x10) = u;
+    *(int *)(n + 0x14) = v;
+
+    Sim_InsertOpenPathNodeByCost(self, n);
+
+    RELAX_RECORD_CHILD(n);              /* last, unlike the branches above */
+
+    #undef RELAX_RECORD_CHILD
+}
+
+/* ─── GetCellStepDirectionCode (0x0041f8c0) ───────────────────────────────
+ *
+ * `__stdcall`, RET 0x10, four byte arguments (u_from, v_from, u_to, v_to).
+ * Classifies the step between two cells into a 1..4 code, or 0.
+ *
+ *     v_from <  v_to  -> 1
+ *     u_from <  u_to  -> 4
+ *     v_from >  v_to  -> 3
+ *     u_to   <  u_from-> 2
+ *     otherwise          0        (the two cells are the same)
+ *
+ * Tested in exactly that order and reproduced in it; the tests are not
+ * mutually exclusive for a diagonal, so the order is what decides.
+ *
+ * THIS IS NOT THE MOVEMENT FACING TABLE, AND MUST NOT BE RECONCILED WITH IT.
+ * worldstate.h's facing map (confirmed three ways, and independently again
+ * by SetFoeChaseTarget) is 1 -> (0,-1), 2 -> (+1,0), 3 -> (0,+1),
+ * 4 -> (-1,0).  This function pairs the axes the other way round: +v gives 1
+ * where the facing table gives 3, and +u gives 4 where the facing table
+ * gives 2.  That is not a bug in either.  The sole consumer,
+ * CheckCellStepIsLegal, compares the result against a RAMP KIND minus 4 —
+ * tile kinds 5..8 are the four ramp orientations, so 5..8 - 4 = 1..4 — and
+ * ramp orientation is simply a different enumeration from entity facing.
+ * "Fixing" this to agree with the facing table would break every ramp test.
+ *
+ * ALL FOUR COMPARES ARE UNSIGNED (JNC / JBE) on bytes, so the parameters are
+ * u8 and there is no negative case; widening them to signed int would change
+ * the answer for any coordinate above 0x7f.
+ *
+ * The zero case is computed rather than branched — `CMP CL,AL; SBB AL,AL;
+ * AND EAX,2` — which yields 2 when u_to < u_from and 0 otherwise.  Note the
+ * AND is on the full EAX whose upper bytes are stale at that point; the mask
+ * clears them, so the result is a clean 0 or 2 and there is no garbage-byte
+ * deviation to preserve.
+ *
+ * TWO E8 call sites, both inside CheckCellStepIsLegal (the ramp test in each
+ * of its two halves); xref.py reports both as CALL and nothing else.
+ */
+extern "C" __declspec(dllexport) int __attribute__((stdcall))
+Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
+                             unsigned char u_to,   unsigned char v_to)
+{
+    /* KAROO_SIM_FX=facingramp swaps the axis pairing to the movement facing
+     * table (+v -> 3, +u -> 2).  This is precisely the "reconciliation" the
+     * comment above warns is wrong: it should misclassify every ramp. */
+    if (fx_facingramp()) {
+        if (v_from < v_to)
+            return 3;
+        if (u_from < u_to)
+            return 2;
+        if (v_from > v_to)
+            return 1;
+        return (u_to < u_from) ? 4 : 0;
+    }
+
+    if (v_from < v_to)
+        return 1;
+    if (u_from < u_to)
+        return 4;
+    if (v_from > v_to)
+        return 3;
+    return (u_to < u_from) ? 2 : 0;
 }
