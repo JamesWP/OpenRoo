@@ -213,6 +213,28 @@ static void diag_report(void)
               g_diag.pops, g_diag.deepest);
 }
 
+static int fx_shortsearch(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("shortsearch");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=shortsearch -- one expansion per search\n");
+    }
+    return cached;
+}
+
+static int fx_fwdsearch(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("fwdsearch");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=fwdsearch -- endpoints swapped, search runs forward\n");
+    }
+    return cached;
+}
+
 static int fx_revexpand(void)
 {
     static int cached = -1;
@@ -1343,4 +1365,200 @@ Sim_ExpandPathNodeNeighbours(void *self, void *node, int goalU, int goalV)
 
         Sim_RelaxPathNeighbourCell(self, node, nu, nv, goalU, goalV);
     }
+}
+
+/* ─── FoePath::SearchPathNodeGraph (0x00401db0) ───────────────────────────
+ *
+ * __thiscall, RET 0x10: (uFoe, vFoe, uTarget, vTarget).  The search loop.
+ *
+ * ─── THE SEARCH RUNS BACKWARD, AND THAT EXPLAINS THE CONSUMER ────────────
+ *
+ * The seed node is built from the THIRD and FOURTH arguments — the target
+ * cell — and the key the loop is looking for is `key(arg1, arg2)`, the foe's
+ * own cell.  So the search starts at the player and walks out until it
+ * reaches the foe.
+ *
+ * That is why SetFoeChaseTarget, having got a result, takes the found node's
+ * PARENT (`node->parent` at +0x1c) as the move: the found node IS the foe's
+ * cell, and its parent is the next cell along the path back toward the
+ * player.  Read forwards this looks like an off-by-one; read backwards it is
+ * exactly right.  It also explains why the cost cascade is invisible
+ * (GAMETICK_PLAN.md): only that one parent pointer is ever consumed.
+ *
+ * ─── What it does ────────────────────────────────────────────────────────
+ *
+ *   this+0x33/0x34 = the foe cell, this+0x31/0x32 = the target cell (stored
+ *   for the caller's benefit; nothing here reads them back)
+ *   allocate the open list header, the closed list header and the seed node,
+ *     all calloc(1, 0x44)
+ *   seed: g = 0, h = f = (uT-uF)^2 + (vT-vF)^2, key = key(uT,vT),
+ *         u = uT, v = vT; linked directly as open->next
+ *   loop up to `cap` times, where cap is the u16 at this+0x2f that
+ *     SetFoeChaseTarget writes from its `speed` argument:
+ *         node = PopBestOpenPathNode();  if (!node) return 0;
+ *         if (node->key == goalKey) break;
+ *         ExpandPathNodeNeighbours(node, uFoe, vFoe);
+ *   on break with iterations left: this+0xe = node; return 1
+ *   otherwise return 0
+ *
+ * ─── Exactness ───────────────────────────────────────────────────────────
+ *
+ * 1. THE THREE HEADERS ARE LEAKED, NOT REUSED.  Each call allocates two new
+ *    list headers; ReleasePathSearchNodeLists frees only the nodes hanging
+ *    off them.  Documented on that function and reproduced here — this is
+ *    the allocation half of the same defect.
+ * 2. THE CAP IS AN UNSIGNED 16-BIT COMPARE on entry (`CMP word [ESI+0x2f],DI`
+ *    with DI zero, JBE) and a SIGNED 32-bit one inside the loop, after
+ *    zero-extension.  A cap of 0 therefore skips the loop entirely and falls
+ *    into the tail with a junk `node` value that the `iter < cap` test then
+ *    discards — reproduced by initialising the result to null and letting the
+ *    same test reject it.
+ * 3. h IS THE SQUARED distance again, matching RelaxPathNeighbourCell.  g is
+ *    explicitly zeroed even though calloc already did it.
+ * 4. THE ORIGINAL SCRIBBLES THE GOAL KEY over its own caller's third argument
+ *    slot and re-reads it from there every iteration.  Equivalent to a local
+ *    (nothing else writes it), and kept as a local here — noted only because
+ *    it makes the listing look like it is reading an argument that has
+ *    already been consumed.
+ * 5. The return is a full 32-bit 0/1.
+ *
+ * ONE E8 call site, at 0x00401C85 in FindFoePathBetweenCells; xref.py
+ * reports that and nothing else.
+ */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_SearchPathNodeGraph(void *self, int uFoe, int vFoe, int uTarget, int vTarget)
+{
+    unsigned char *pf = (unsigned char *)self;
+
+    pf[0x32] = (unsigned char)vTarget;
+    pf[0x34] = (unsigned char)vFoe;
+    pf[0x31] = (unsigned char)uTarget;
+    pf[0x33] = (unsigned char)uFoe;
+
+    const int goalKey = Sim_ComputeCellLinearIndex(self, uFoe, vFoe);
+
+    /* Two fresh list headers every search — see exactness point 1. */
+    *(void **)(pf + 0x06) = AllocateZeroedHeapBlock(1, 0x44);
+    *(void **)(pf + 0x0a) = AllocateZeroedHeapBlock(1, 0x44);
+
+    unsigned char *seed = (unsigned char *)AllocateZeroedHeapBlock(1, 0x44);
+
+    const int du = uTarget - uFoe;
+    const int dv = vTarget - vFoe;
+    const int h = du * du + dv * dv;
+
+    *(int *)(seed + 0x08) = 0;                  /* g, already zero */
+    *(int *)(seed + 0x04) = h;
+    *(int *)(seed + 0x00) = h;
+    *(int *)(seed + 0x18) = Sim_ComputeCellLinearIndex(self, uTarget, vTarget);
+    *(int *)(seed + 0x10) = uTarget;
+    *(int *)(seed + 0x14) = vTarget;
+
+    *(unsigned char **)(*(unsigned char **)(pf + 0x06) + 0x40) = seed;
+
+    unsigned short cap = *(const unsigned short *)(pf + 0x2f);
+
+    /* KAROO_SIM_FX=shortsearch caps the loop at a single expansion, so any
+     * path longer than one step is reported as "no path".  Attacks the
+     * iteration budget specifically rather than the search's correctness. */
+    if (fx_shortsearch() && cap > 1)
+        cap = 1;
+
+    int iter = 0;
+    unsigned char *node = 0;
+
+    if (cap > 0) {
+        for (;;) {
+            node = (unsigned char *)Sim_PopBestOpenPathNode(self);
+            if (node == 0)
+                return 0;
+            if (*(const int *)(node + 0x18) == goalKey)
+                break;
+
+            Sim_ExpandPathNodeNeighbours(self, node, uFoe, vFoe);
+
+            if (++iter >= (int)cap)
+                break;
+        }
+    }
+
+    if (iter < (int)cap) {
+        *(unsigned char **)(pf + 0x0e) = node;
+        return 1;
+    }
+    return 0;
+}
+
+/* ─── FoePath::FindFoePathBetweenCells (0x00401c20) ───────────────────────
+ *
+ * __thiscall, RET 0x10: (uFoe, vFoe, uTarget, vTarget).  The cluster's entry
+ * point, and the last of its sixteen functions.
+ *
+ *   if (!CheckPathCellPassable(uTarget, vTarget)) fail;
+ *   if (!CheckPathCellPassable(uFoe,    vFoe))    fail;
+ *   if (key(uFoe,vFoe) == key(uTarget,vTarget))   fail;   // already there
+ *   ReleasePathSearchNodeLists();                         // drop the last search
+ *   if (!SearchPathNodeGraph(uFoe, vFoe, uTarget, vTarget)) fail;
+ *   this+0x16 = 1; return 1;
+ * fail:
+ *   this+0x16 = 0; return 0;
+ *
+ * ─── Points worth keeping ────────────────────────────────────────────────
+ *
+ * 1. THE TARGET IS TESTED FOR PASSABILITY BEFORE THE FOE'S OWN CELL.  Order
+ *    matters only because CheckPathCellPassable is not pure — it reads live
+ *    tile state — but it is preserved regardless.
+ * 2. THE "SAME CELL" TEST COMPARES NODE KEYS, NOT COORDINATES.  Since
+ *    ComputeCellLinearIndex uses the stride at this+0x1e rather than the tile
+ *    stride, two genuinely different cells collide whenever that stride is
+ *    wrong — and the function then reports "no path" rather than searching.
+ *    This is the one place the stride mismatch documented on
+ *    ComputeCellLinearIndex could produce visible behaviour, which is why
+ *    that helper's stride must not be "corrected" to 100.
+ * 3. THE PREVIOUS SEARCH'S NODES ARE FREED HERE, not by the search itself,
+ *    and only once both endpoint checks have passed.  An early failure
+ *    therefore LEAVES THE LAST SEARCH'S NODES ALLOCATED AND LINKED, and the
+ *    next successful call frees them then.  Reproduced exactly.
+ * 4. this+0x16 IS WRITTEN AS AN UNALIGNED DWORD, and is written on every
+ *    path — it mirrors the return value for the caller's benefit.
+ * 5. The return is a full 32-bit 0/1.
+ *
+ * ONE E8 call site, at 0x0043AA4E in SetFoeChaseTarget; xref.py reports
+ * that and nothing else, and no absolute-address call from our own DLL
+ * (the two grep hits in levelscore.cpp and plan.cpp are prose, not code).
+ */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_FindFoePathBetweenCells(void *self, int uFoe, int vFoe,
+                            int uTarget, int vTarget)
+{
+    unsigned char *pf = (unsigned char *)self;
+
+    if (Sim_CheckPathCellPassable(self, uTarget, vTarget) != 0 &&
+        Sim_CheckPathCellPassable(self, uFoe, vFoe) != 0) {
+
+        const int keyFoe    = Sim_ComputeCellLinearIndex(self, uFoe, vFoe);
+        const int keyTarget = Sim_ComputeCellLinearIndex(self, uTarget, vTarget);
+
+        if (keyFoe != keyTarget) {
+            Sim_ReleasePathSearchNodeLists(self);
+
+            /* KAROO_SIM_FX=fwdsearch swaps the endpoints, making the search
+             * run forward from the foe to the target instead of backward.
+             * It still finds paths of the same length — but the node
+             * SetFoeChaseTarget then reads is the TARGET's, not the foe's,
+             * so its parent is no longer the foe's next step.  This is the
+             * direct test of the backward-search finding documented on
+             * SearchPathNodeGraph. */
+            const int ok = fx_fwdsearch()
+                ? Sim_SearchPathNodeGraph(self, uTarget, vTarget, uFoe, vFoe)
+                : Sim_SearchPathNodeGraph(self, uFoe, vFoe, uTarget, vTarget);
+            if (ok != 0) {
+                *(int *)(pf + 0x16) = 1;
+                return 1;
+            }
+        }
+    }
+
+    *(int *)(pf + 0x16) = 0;
+    return 0;
 }
