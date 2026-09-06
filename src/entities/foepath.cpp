@@ -143,6 +143,31 @@ static int fx_nolookup(void)
     return cached;
 }
 
+/* See the call site: skips cost re-propagation entirely.  Strictly stronger
+ * than nopropagate, which left the direct children still being improved. */
+static int fx_nocostfix(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("nocostfix");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=nocostfix -- no cost re-propagation at all\n");
+    }
+    return cached;
+}
+
+/* See the call site: drops the cost-propagation push. */
+static int fx_nopropagate(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("nopropagate");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=nopropagate -- cost improvements do not cascade\n");
+    }
+    return cached;
+}
+
 /* See the call site: this breaks the write end of the f-ordering invariant,
  * as popsecond breaks the read end. */
 static int fx_nosort(void)
@@ -330,6 +355,15 @@ Sim_PopBestOpenPathNode(void *self)
  * requires. */
 typedef void (__cdecl *factalloc_free_fn)(void *);
 static const factalloc_free_fn FactAlloc_Free = (factalloc_free_fn)0x0045087c;
+
+/* AllocateZeroedHeapBlock — __cdecl(int count, int size), 0x004507ff: the
+ * game's calloc, and the allocator half of the pair above.  The SECOND (and
+ * last) named callback in this file, for the same unavoidable reason: cells
+ * this allocates are freed by FactAlloc::Free, and blocks that cross that
+ * boundary have to come from the matching allocator.  Named here as the
+ * no-callback rule requires. */
+typedef void * (__cdecl *alloc_zeroed_fn)(int, int);
+static const alloc_zeroed_fn AllocateZeroedHeapBlock = (alloc_zeroed_fn)0x004507ff;
 
 /* ─── FoePath::ReleasePathSearchNodeLists (0x00401d60) ────────────────────
  *
@@ -549,4 +583,192 @@ Sim_InsertOpenPathNodeByCost(void *self, void *node)
 
     *(unsigned char **)(n + 0x40) = cur;
     *(unsigned char **)(prev + 0x40) = n;
+}
+
+/* ─── FoePath::PushPendingPathNode (0x00402250) ───────────────────────────
+ * ─── FoePath::PopPendingPathNode  (0x00402280) ───────────────────────────
+ *
+ * The two halves of the cost-propagation worklist, taken as one cycle
+ * because they are push and pop of a single structure: testing either alone
+ * is meaningless, since the only caller of both is
+ * PropagateImprovedPathCosts and a half-replaced stack has no observable
+ * intermediate state.
+ *
+ * IT IS A STACK, NOT A QUEUE.  Push links the new cell at the head and pop
+ * takes the head, so the cascade below is depth-first.  The head lives at
+ * `*(this+0x12) + 4`; `this+0x12` points at a small owner block whose +4 is
+ * the only field either function touches.
+ *
+ * Cell layout: cell[0] = the path node, cell[4] = the next cell.
+ *
+ * THE CELL IS ALLOCATED AS calloc(1, 9) — NINE BYTES for two dwords.  The
+ * ninth byte is never read or written by anything in the cluster.  It is
+ * reproduced exactly: `9` here is not a typo to round up to 12, and asking
+ * the allocator for 8 would be a different call with a different bucket.
+ *
+ * Push re-reads `*(this+0x12)` twice (0x402265 and 0x40226e) rather than
+ * keeping it; nothing between the two writes to it, so the reads are
+ * equivalent, and both are kept per the standing shape rule.
+ *
+ * POP HAS NO EMPTINESS CHECK — it dereferences the head unconditionally.
+ * PropagateImprovedPathCosts tests `owner->head != 0` before every call, so
+ * the original is right; a guard here would turn a fault on a corrupt object
+ * into a silent wrong answer, the same call made for the lookups and for
+ * PopBestOpenPathNode.
+ *
+ * Pop returns the *node*, not the cell, and frees the cell through
+ * FactAlloc::Free — the allocator callback already named above, and the
+ * matching half of the calloc in push.
+ *
+ * Push has TWO E8 call sites (0x004021E8, 0x0040222F) and pop ONE
+ * (0x00402202), all three in PropagateImprovedPathCosts; xref.py reports
+ * those and nothing else.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_PushPendingPathNode(void *self, void *node)
+{
+    /* KAROO_SIM_FX=nopropagate drops the push, so a node whose cost improves
+     * never has its descendants re-examined: the cascade in
+     * PropagateImprovedPathCosts finds an empty worklist and stops after the
+     * direct children.  Paths stay valid but stop being cheapest, which is
+     * the one thing this stack exists to guarantee.  It also allocates
+     * nothing, so it is a clean switch rather than a leak. */
+    if (fx_nopropagate())
+        return;
+
+    /* Unconditional one-shot, same reasoning as ReleasePathSearchNodeLists:
+     * the negative control for this pair is not replay-detectable, so a log
+     * is the only honest answer to "did the suite run it?", and a flag-gated
+     * one would leave silence ambiguous. */
+    static int pushed = 0;
+    if (!pushed) {
+        pushed = 1;
+        log_write("foepath: first PushPendingPathNode\n");
+    }
+
+    unsigned char *cell = (unsigned char *)AllocateZeroedHeapBlock(1, 9);
+
+    *(void **)cell = node;
+
+    /* Both reads of this+0x12, as the original has them. */
+    *(void **)(cell + 4) =
+        *(void **)(*(unsigned char **)((unsigned char *)self + 0x12) + 4);
+    *(unsigned char **)(*(unsigned char **)((unsigned char *)self + 0x12) + 4) = cell;
+}
+
+extern "C" __declspec(dllexport) void * __attribute__((thiscall))
+Sim_PopPendingPathNode(void *self)
+{
+    unsigned char *owner = *(unsigned char **)((unsigned char *)self + 0x12);
+    unsigned char *cell = *(unsigned char **)(owner + 4);
+
+    static int popped = 0;
+    if (!popped) {
+        popped = 1;
+        log_write("foepath: first PopPendingPathNode\n");
+    }
+
+    void *node = *(void **)cell;
+    *(void **)(owner + 4) = *(void **)(cell + 4);
+
+    FactAlloc_Free(cell);
+    return node;
+}
+
+/* ─── FoePath::PropagateImprovedPathCosts (0x004021b0) ────────────────────
+ *
+ * __thiscall, RET 4, one argument: the node whose g has just improved.
+ * Pushes that improvement out through the search graph.
+ *
+ * Each node carries up to EIGHT children at node+0x20 (the neighbours that
+ * were relaxed through it).  For each child still reachable more cheaply via
+ * this parent, the child's g, f and parent link are rewritten and the child
+ * is pushed on the worklist; then the worklist is drained, repeating the
+ * same eight-child sweep for every node that comes off it.
+ *
+ * Node fields, in the layout the rest of this file already uses:
+ * f at +0x00, h at +0x04, g at +0x08, parent at +0x1c, children at +0x20.
+ *
+ *     gnew = parent->g + 1;
+ *     if (gnew < child->g) {
+ *         child->g = gnew;  child->f = child->h + gnew;  child->parent = p;
+ *         push(child);
+ *     }
+ *
+ * FIVE EXACTNESS POINTS:
+ *
+ * 1. THE TWO SWEEPS ARE NOT THE SAME CODE, AND THE DIFFERENCE IS REAL.  In
+ *    the first sweep the parent's g is loaded ONCE before the loop into a
+ *    stack slot ([ESP+0x14]) and INC'd per child; in the drain sweep it is
+ *    re-read from the popped node EVERY iteration (MOV ECX,[ESI+8] at
+ *    0x00402214).  Nothing in either loop writes the parent's own g, so the
+ *    two are equivalent today — but they are written differently and are
+ *    reproduced differently, because "equivalent today" is exactly the kind
+ *    of claim that stops being true when something upstream changes.
+ * 2. THE CHILD WALK STOPS AT THE FIRST EMPTY SLOT, it does not skip holes:
+ *    load, TEST, JZ leaves the loop entirely.  A node whose child array had
+ *    a gap would have its later children ignored.
+ * 3. THE COMPARE IS SIGNED (CMP/JGE), and the step is a plain +1 — this
+ *    search has unit edge costs, which is also why h being a *squared*
+ *    distance makes it inadmissible and the result not truly optimal.
+ *    Preserved, not corrected.
+ * 4. THE OUTER LOOP IS A do/while ON THE WORKLIST HEAD, re-tested after each
+ *    drain sweep and jumping back to the pop rather than to the test.
+ * 5. THE CHILD LINK IS NOT CLEARED anywhere here, so a node can be pushed
+ *    again later through the same parent; termination rests entirely on the
+ *    strict < in the improvement test.
+ *
+ * ONE E8 call site, at 0x004020A5 in RelaxPathNeighbourCell.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_PropagateImprovedPathCosts(void *self, void *node)
+{
+    unsigned char *pf = (unsigned char *)self;
+    unsigned char *p = (unsigned char *)node;
+
+    /* KAROO_SIM_FX=nocostfix skips the whole cascade, so a cheaper route
+     * found later never rewrites the costs recorded earlier.  Stronger than
+     * nopropagate, which only dropped the worklist and left the direct
+     * children still being improved. */
+    if (fx_nocostfix())
+        return;
+
+    /* Sweep 1: the parent's g hoisted once, per point 1 above. */
+    const int gp = *(const int *)(p + 0x08);
+    for (int i = 0; i < 8; ++i) {
+        unsigned char *c = *(unsigned char **)(p + 0x20 + i * 4);
+        if (c == 0)
+            break;
+        const int gnew = gp + 1;
+        if (gnew < *(const int *)(c + 0x08)) {
+            *(int *)(c + 0x08) = gnew;
+            *(int *)(c + 0x00) = *(const int *)(c + 0x04) + gnew;
+            *(unsigned char **)(c + 0x1c) = p;
+            Sim_PushPendingPathNode(self, c);
+        }
+    }
+
+    /* Sweep 2: drain the worklist, re-reading the parent's g each time. */
+    unsigned char *owner = *(unsigned char **)(pf + 0x12);
+    if (*(unsigned char **)(owner + 4) == 0)
+        return;
+
+    do {
+        unsigned char *q = (unsigned char *)Sim_PopPendingPathNode(self);
+
+        for (int i = 0; i < 8; ++i) {
+            unsigned char *c = *(unsigned char **)(q + 0x20 + i * 4);
+            if (c == 0)
+                break;
+            const int gnew = *(const int *)(q + 0x08) + 1;   /* re-read */
+            if (gnew < *(const int *)(c + 0x08)) {
+                *(int *)(c + 0x08) = gnew;
+                *(int *)(c + 0x00) = *(const int *)(c + 0x04) + gnew;
+                *(unsigned char **)(c + 0x1c) = q;
+                Sim_PushPendingPathNode(self, c);
+            }
+        }
+
+        owner = *(unsigned char **)(pf + 0x12);
+    } while (*(unsigned char **)(owner + 4) != 0);
 }
