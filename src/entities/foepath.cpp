@@ -126,6 +126,23 @@ static int fx_popsecond(void)
     return cached;
 }
 
+/* KAROO_SIM_FX=nolookup makes both list lookups report "not present".
+ * RelaxPathNeighbourCell then believes it has never seen any cell before, so
+ * it allocates a fresh node for every neighbour of every expansion instead
+ * of rewiring the existing one — the search stops recognising revisits and
+ * the parent chain it builds is no longer the cheapest one.  A structural
+ * break rather than a numeric one, which is what a pure lookup needs. */
+static int fx_nolookup(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        cached = fx_is("nolookup");
+        if (cached)
+            log_write("foepath: KAROO_SIM_FX=nolookup -- both list lookups report absent\n");
+    }
+    return cached;
+}
+
 /* ─── FoePath::CheckPathCellPassable (0x00401cd0) ─────────────────────────
  *
  * __thiscall, RET 8.  `this` = the pathfinder object at foe+0x13b.
@@ -386,4 +403,66 @@ Sim_ReleasePathSearchNodeLists(void *self)
         reported = 2;
         log_write("foepath: first non-empty release -- %d node(s) freed\n", freed);
     }
+}
+
+/* ─── FoePath::FindOpenPathNodeByKey   (0x00402130) ───────────────────────
+ * ─── FoePath::FindClosedPathNodeByKey (0x00402150) ───────────────────────
+ *
+ * Both __thiscall, RET 4, one int argument: the cell key that
+ * ComputeCellLinearIndex produced.  Walk the list looking for the node whose
+ * key (node+0x18) matches, and return it, or 0.
+ *
+ * THE TWO LISTINGS ARE BYTE-IDENTICAL BUT FOR ONE BYTE — the list offset in
+ * the first instruction, `MOV EAX,[ECX+0x6]` against `MOV EAX,[ECX+0xa]`.
+ * Same instruction sequence, same lengths, same branch displacements.  They
+ * are taken as one cycle for that reason, which is the precedent
+ * entitymath.cpp and voicepool.cpp already set for small sibling pairs; the
+ * shared body below is not a tidy-up, it is what the compiler was given.
+ *
+ * TWO EXACTNESS POINTS:
+ *
+ * 1. THE HEADER IS DEREFERENCED WITHOUT A NULL CHECK.  `MOV EAX,[ECX+off]`
+ *    then straight into `MOV EAX,[EAX+0x40]`; only the *node* pointer is
+ *    ever tested.  Same shape as PopBestOpenPathNode, and left alone for the
+ *    same reason — the lists exist before any lookup can run, and a guard
+ *    would convert a fault on a corrupt object into a silent wrong answer.
+ * 2. THE KEY COMPARE IS A PLAIN 32-BIT EQUALITY (`CMP [EAX+0x18],ECX` /
+ *    `JZ`), so the signedness of the key never matters — which is just as
+ *    well, since ComputeCellLinearIndex's IMUL can produce a negative one.
+ *
+ * The header node itself is never a candidate: the walk starts at
+ * hdr->next.  So a key that happened to match whatever lies at hdr+0x18 is
+ * not returned, and the two lists' headers are pure sentinels.
+ *
+ * FindOpenPathNodeByKey has ONE E8 call site and FindClosedPathNodeByKey
+ * ONE, both in RelaxPathNeighbourCell; xref.py reports those and nothing
+ * else for either.
+ */
+static void *foepath_find_by_key(void *self, unsigned listoff, int key)
+{
+    unsigned char *hdr = *(unsigned char **)((unsigned char *)self + listoff);
+    unsigned char *n = *(unsigned char **)(hdr + 0x40);
+
+    while (n != 0) {
+        if (*(const int *)(n + 0x18) == key)
+            return n;
+        n = *(unsigned char **)(n + 0x40);
+    }
+    return 0;
+}
+
+extern "C" __declspec(dllexport) void * __attribute__((thiscall))
+Sim_FindOpenPathNodeByKey(void *self, int key)
+{
+    if (fx_nolookup())
+        return 0;
+    return foepath_find_by_key(self, 0x06, key);
+}
+
+extern "C" __declspec(dllexport) void * __attribute__((thiscall))
+Sim_FindClosedPathNodeByKey(void *self, int key)
+{
+    if (fx_nolookup())
+        return 0;
+    return foepath_find_by_key(self, 0x0a, key);
 }
