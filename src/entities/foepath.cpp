@@ -957,3 +957,54 @@ Sim_RelaxPathNeighbourCell(void *self, void *parent, int u, int v,
 
     #undef RELAX_RECORD_CHILD
 }
+
+/* ─── GetCellStepDirectionCode (0x0041f8c0) ───────────────────────────────
+ *
+ * `__stdcall`, RET 0x10, four byte arguments (u_from, v_from, u_to, v_to).
+ * Classifies the step between two cells into a 1..4 code, or 0.
+ *
+ *     v_from <  v_to  -> 1
+ *     u_from <  u_to  -> 4
+ *     v_from >  v_to  -> 3
+ *     u_to   <  u_from-> 2
+ *     otherwise          0        (the two cells are the same)
+ *
+ * Tested in exactly that order and reproduced in it; the tests are not
+ * mutually exclusive for a diagonal, so the order is what decides.
+ *
+ * THIS IS NOT THE MOVEMENT FACING TABLE, AND MUST NOT BE RECONCILED WITH IT.
+ * worldstate.h's facing map (confirmed three ways, and independently again
+ * by SetFoeChaseTarget) is 1 -> (0,-1), 2 -> (+1,0), 3 -> (0,+1),
+ * 4 -> (-1,0).  This function pairs the axes the other way round: +v gives 1
+ * where the facing table gives 3, and +u gives 4 where the facing table
+ * gives 2.  That is not a bug in either.  The sole consumer,
+ * CheckCellStepIsLegal, compares the result against a RAMP KIND minus 4 —
+ * tile kinds 5..8 are the four ramp orientations, so 5..8 - 4 = 1..4 — and
+ * ramp orientation is simply a different enumeration from entity facing.
+ * "Fixing" this to agree with the facing table would break every ramp test.
+ *
+ * ALL FOUR COMPARES ARE UNSIGNED (JNC / JBE) on bytes, so the parameters are
+ * u8 and there is no negative case; widening them to signed int would change
+ * the answer for any coordinate above 0x7f.
+ *
+ * The zero case is computed rather than branched — `CMP CL,AL; SBB AL,AL;
+ * AND EAX,2` — which yields 2 when u_to < u_from and 0 otherwise.  Note the
+ * AND is on the full EAX whose upper bytes are stale at that point; the mask
+ * clears them, so the result is a clean 0 or 2 and there is no garbage-byte
+ * deviation to preserve.
+ *
+ * TWO E8 call sites, both inside CheckCellStepIsLegal (the ramp test in each
+ * of its two halves); xref.py reports both as CALL and nothing else.
+ */
+extern "C" __declspec(dllexport) int __attribute__((stdcall))
+Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
+                             unsigned char u_to,   unsigned char v_to)
+{
+    if (v_from < v_to)
+        return 1;
+    if (u_from < u_to)
+        return 4;
+    if (v_from > v_to)
+        return 3;
+    return (u_to < u_from) ? 2 : 0;
+}
