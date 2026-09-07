@@ -26,15 +26,47 @@
   },
   "recordings": [
     {
+      "name": "switchfoe",
+      "file": "switchfoe.rec",
+      "saves": "tests/saves/switchfoe",
+      "level": "Space\\Bridges&EnemiesStart",
+      "description": "Hand-played by James, 2026-09-07, to close the coverage gap named in GAMETICK_PLAN.md: the tile-query cluster was reached by NOTHING in the suite. Space\\Bridges&EnemiesStart for 1796 frames. The foes on this level do not chase the player -- they seek out switches the player has toggled and turn them back off. That behaviour IS GameTick's foe type-2 dispatch, and it is the only thing in the game that drives FindNearestListedObjectTile.",
+      "scenario": "Toggle switches, then let the foes walk to them and switch them back. Two or more switches are left pending near a foe at the same time, deliberately: the KAROO_SIM_FX=listfar control picks the FARTHEST qualifying candidate instead of the nearest, so with only one pending switch in range nearest == farthest and the control cannot fail even though the function ran. Foes are also allowed to REACH switches rather than being outrun, because arrival is the path that calls MarkListedTilesBlockedByObject.",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 1798,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 0,
+          "gems_required": 8,
+          "foes_killed": 0,
+          "items_collected": 0,
+          "items_available": 9,
+          "items_bonus_blocked": 0,
+          "vitality": 35,
+          "lives": 3,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 140,
+          "elapsed_ms": 25312,
+          "level_complete": 0,
+          "death_cause": 0,
+          "completed_a_level": false
+        }
+      },
+      "notes": "Captured 1796 frames. Covers foe type 2 (+0x62 == 2), the gate at 0x00415751 (foe+0xd7 == 0xff -> retarget) and the type-2 arm at 0x004158a3, which calls FindNearestListedObjectTile with the foe's own cell and radius 7. The census in karoo-hooks/tilequery.cpp names five levels carrying a gated foe type; this is one of the two type-2 levels. Types 3 and 5 still have no recording -- see Egypt\\CollectIt / Candy\\Collect01 and Castle\\EnemyVsEnemy."
+    },
+    {
       "name": "bombstart-crash",
       "file": "bombstart-crash.rec",
       "saves": "tests/saves/bombstart",
       "level": "Forest\\BombStart",
-      "description": "Hand-played by James, 2026-08-30. Navigates the main menu, loads save slot 4 (Forest\\BombStart), plays about 10 seconds of the level — picks up one item and kills one foe — then quits. 1034 records over 1036 frames, 313 with a key held. The level is never completed; this exercises the menu, the save-slot load and the first seconds of gameplay, not a full run.",
+      "description": "Hand-played by James, 2026-08-30. Navigates the main menu, loads save slot 4 (Forest\\BombStart), plays about 10 seconds of the level \u2014 picks up one item and kills one foe \u2014 then quits. 1034 records over 1036 frames, 313 with a key held. The level is never completed; this exercises the menu, the save-slot load and the first seconds of gameplay, not a full run.",
       "scenario": "menu navigation + save-slot load + ~10s of BombStart gameplay",
       "purpose": [
         "Stage D fixture: replaying it reproduces the recorded run's per-frame state checksum exactly.",
-        "Historically the deterministic reproducer for the CRASH.md guard-page fault — it crashed at frame 797 every time. That crash is now fixed (Game::RenderSceneObjects left textureCoords[1] uninitialised), so the recording runs to its own end and the entry guards against the crash coming back."
+        "Historically the deterministic reproducer for the CRASH.md guard-page fault \u2014 it crashed at frame 797 every time. That crash is now fixed (Game::RenderSceneObjects left textureCoords[1] uninitialised), so the recording runs to its own end and the entry guards against the crash coming back."
       ],
       "expect": {
         "crash": "none",
@@ -156,7 +188,7 @@
           "completed_a_level": false
         }
       },
-      "notes": "Captured 2098 frames. No end-state assertions yet — run `replaytest.py --bless destr-bait` once a replay is trusted."
+      "notes": "Captured 2098 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-bait` once a replay is trusted."
     },
     {
       "name": "destr-extralife",
@@ -201,7 +233,7 @@
           "at_completion.level_complete": 1
         }
       },
-      "notes": "Captured 4602 frames. No end-state assertions yet — run `replaytest.py --bless destr-extralife` once a replay is trusted."
+      "notes": "Captured 4602 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-extralife` once a replay is trusted."
     },
     {
       "name": "enemyfactory",

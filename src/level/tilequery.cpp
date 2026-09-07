@@ -723,7 +723,7 @@ extern "C" void tilequery_census_object_types(void *self)
     static int announced = 0;
     static unsigned int level = 0;
     unsigned int count, i;
-    int interesting = 0;
+    int has2 = 0, has3 = 0, has5 = 0;
 
     fx_init();
     if (!s_diag)
@@ -731,34 +731,48 @@ extern "C" void tilequery_census_object_types(void *self)
 
     if (!announced) {
         announced = 1;
-        log_write("tilequery: census of object +0x62 types begins "
+        log_write("tilequery: census of FOE +0x62 types begins "
                   "(2 = listed-object search, 3 = radius search, "
                   "5 = farthest search)\n");
     }
 
     ++level;
-    count = (unsigned int)GU8(0x48b12) + 1;
+
+    /* The FOE table, exactly as worldstate.cpp enumerates it: pointer array
+     * at Game+0x174804 indexed by the live-id list at Game+0x174fd5, with
+     * the count byte at Game+0x174fd4.  This is the same table, and the
+     * same +0x62 field, that GameTick's type dispatch reads.
+     *
+     * An earlier version of this census walked Game+0x170643 -- the object
+     * LISTS -- instead.  That is a different array whose entries have no
+     * +0x62 type field, so the values it reported (221, 131, 69, 183, 240
+     * and so on) were garbage, and the six levels it named were wrong.
+     * Recorded here because the mistake is an easy one to repeat: the
+     * object-list array is what MarkListedTilesBlockedByObject uses, and it
+     * sits only a few hundred bytes away from the foe table in Game. */
+    count = (unsigned int)GU8(0x174fd4);
     for (i = 0; i < count; ++i) {
-        unsigned char *obj = GPP(0x170643 + i * 4);
+        unsigned char  id  = GU8(0x174fd5 + i);
+        unsigned char *foe = GPP(0x174804 + (unsigned int)id * 4);
         unsigned char  t;
 
-        if (obj == 0)
+        if (foe == 0)
             continue;
-        t = obj[0x62];
+        t = foe[0x62];
 
         if (!seen[t]) {
             seen[t] = 1;
-            log_write("tilequery: CENSUS new object type +0x62 = %u\n",
+            log_write("tilequery: CENSUS new foe type +0x62 = %u\n",
                       (unsigned)t);
         }
-        if (t == 2 || t == 3 || t == 5)
-            interesting = 1;
+        if (t == 2) has2 = 1;
+        if (t == 3) has3 = 1;
+        if (t == 5) has5 = 1;
     }
 
-    if (interesting) {
-        /* Named per level rather than once, so the log line can be
-         * correlated with the `levelmap:` line immediately above it. */
-        log_write("tilequery: CENSUS level #%u carries a GATED type "
-                  "(2/3/5) -- capture a recording here\n", level);
+    if (has2 || has3 || has5) {
+        log_write("tilequery: CENSUS level #%u carries GATED foe type%s%s%s "
+                  "-- capture a recording here\n", level,
+                  has2 ? " 2" : "", has3 ? " 3" : "", has5 ? " 5" : "");
     }
 }

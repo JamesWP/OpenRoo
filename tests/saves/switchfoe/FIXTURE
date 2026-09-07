@@ -1,0 +1,26 @@
+# Ka'roo save fixture — generated, then hash-checked.
+#
+# `restore` SYNTHESISES each file below from its fields and refuses to
+# continue if the bytes do not hash to the recorded sha. Editing a field
+# without re-snapshotting is a hard error, not a silent change.
+#
+#   python3 tools/karoosave.py restore tests/saves/switchfoe
+
+version 2
+jj.gam 856e39ed6bb99c7b2b2f0c5c452e56862f7614d85d66ab45dab5d35d24df74b1
+
+# slot 0 — <empty>
+slot 0 jj0.sav sha=3c3887e737f033f34d7a2819b8035dc60a4cd7b202acf56b56c51aea32ce5062 name=".........." level=0 lives=0 score=0 completion=0 time=0 in_use=0 unused=0
+# slot 1 — <empty>
+slot 1 jj1.sav sha=3c3887e737f033f34d7a2819b8035dc60a4cd7b202acf56b56c51aea32ce5062 name=".........." level=0 lives=0 score=0 completion=0 time=0 in_use=0 unused=0
+# slot 2 — <empty>
+slot 2 jj2.sav sha=3c3887e737f033f34d7a2819b8035dc60a4cd7b202acf56b56c51aea32ce5062 name=".........." level=0 lives=0 score=0 completion=0 time=0 in_use=0 unused=0
+# slot 3 — <empty>
+slot 3 jj3.sav sha=3c3887e737f033f34d7a2819b8035dc60a4cd7b202acf56b56c51aea32ce5062 name=".........." level=0 lives=0 score=0 completion=0 time=0 in_use=0 unused=0
+# slot 4 — Space\Bridges&EnemiesStart
+slot 4 jj4.sav sha=682bb686ac58a9fbe66ef139b13b4cefe69dcf821bab6a24759bf03737c5ce1f name="TEST" level=56 lives=3 score=0 completion=0 time=0 in_use=1 unused=0
+# slot 5 — <empty>
+slot 5 jj5.sav sha=3c3887e737f033f34d7a2819b8035dc60a4cd7b202acf56b56c51aea32ce5062 name=".........." level=0 lives=0 score=0 completion=0 time=0 in_use=0 unused=0
+
+# Non-slot files. Only empty ones can be generated.
+blob GAM.DAT sha=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 size=0
