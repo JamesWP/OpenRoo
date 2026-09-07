@@ -30,11 +30,11 @@
       "file": "bombstart-crash.rec",
       "saves": "tests/saves/bombstart",
       "level": "Forest\\BombStart",
-      "description": "Hand-played by James, 2026-08-30. Navigates the main menu, loads save slot 4 (Forest\\BombStart), plays about 10 seconds of the level \u2014 picks up one item and kills one foe \u2014 then quits. 1034 records over 1036 frames, 313 with a key held. The level is never completed; this exercises the menu, the save-slot load and the first seconds of gameplay, not a full run.",
+      "description": "Hand-played by James, 2026-08-30. Navigates the main menu, loads save slot 4 (Forest\\BombStart), plays about 10 seconds of the level — picks up one item and kills one foe — then quits. 1034 records over 1036 frames, 313 with a key held. The level is never completed; this exercises the menu, the save-slot load and the first seconds of gameplay, not a full run.",
       "scenario": "menu navigation + save-slot load + ~10s of BombStart gameplay",
       "purpose": [
         "Stage D fixture: replaying it reproduces the recorded run's per-frame state checksum exactly.",
-        "Historically the deterministic reproducer for the CRASH.md guard-page fault \u2014 it crashed at frame 797 every time. That crash is now fixed (Game::RenderSceneObjects left textureCoords[1] uninitialised), so the recording runs to its own end and the entry guards against the crash coming back."
+        "Historically the deterministic reproducer for the CRASH.md guard-page fault — it crashed at frame 797 every time. That crash is now fixed (Game::RenderSceneObjects left textureCoords[1] uninitialised), so the recording runs to its own end and the entry guards against the crash coming back."
       ],
       "expect": {
         "crash": "none",
@@ -156,7 +156,7 @@
           "completed_a_level": false
         }
       },
-      "notes": "Captured 2098 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-bait` once a replay is trusted."
+      "notes": "Captured 2098 frames. No end-state assertions yet — run `replaytest.py --bless destr-bait` once a replay is trusted."
     },
     {
       "name": "destr-extralife",
@@ -201,7 +201,71 @@
           "at_completion.level_complete": 1
         }
       },
-      "notes": "Captured 4602 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-extralife` once a replay is trusted."
+      "notes": "Captured 4602 frames. No end-state assertions yet — run `replaytest.py --bless destr-extralife` once a replay is trusted."
+    },
+    {
+      "name": "enemyfactory",
+      "file": "enemyfactory.rec",
+      "saves": "tests/saves/enemyfactory",
+      "level": "Space\\EnemyFactory",
+      "description": "Hand-played by James, 2026-09-07, to close a coverage gap named in GAMETICK_PLAN.md. Space\\EnemyFactory for 2013 frames: kills SIX foes -- more than any other recording in the suite -- collects 10 items and 2 of the 20 crystals required, vitality down to 60, does not complete. WHY IT EXISTS: this level manufactures foes DURING play, so it is the only recording that drives SpawnFoeObject's GameTick call site (0x0041529A) rather than only the level-setup sites. That site passes `<level byte> + 100`, and here the byte is 0, so the type is exactly 100 (0x64) -- the BOUNDARY of the `CMP BL,0x64 / JBE` test in karoo-hooks/objectspawn.cpp. A transcription that used >= instead of > would be caught by this recording and by nothing else in the suite. Six kills plus continuous respawning also make it the suite's heaviest churn through RemoveFoeObject, the ID free-list compaction and ClaimSpareObjectIdSlot's highest-unused-ID allocator, which only does anything surprising once two or more IDs are free at the same time. It has 8 bomb pickups, the most of any level, and does spawn bombs and remove enemies.",
+      "scenario": "Space\\EnemyFactory, runtime foe manufacturing and the 0x64 boundary",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 2013,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 2,
+          "gems_required": 20,
+          "foes_killed": 6,
+          "items_collected": 10,
+          "items_available": 8,
+          "items_bonus_blocked": 0,
+          "vitality": 60,
+          "lives": 3,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 120,
+          "elapsed_ms": 27856,
+          "level_complete": 0,
+          "death_cause": 1,
+          "completed_a_level": false
+        }
+      },
+      "notes": "Captured 2013 frames. Determinism confirmed before blessing rather than assumed: two consecutive headless runs produced byte-identical hash logs AND byte-identical end-state dumps. Blessed on 18 fields; the assertion was then watched to fail on purpose (foes_killed forced to 99 -> harness exits 1 naming that field) before being restored. foes_killed=6 is the field that carries the weight here: it is the spawn/despawn churn expressed as a number, so a regression in the ID allocator or the free-list compaction shows up as a different kill count rather than as a crash. Note items_collected 10 exceeds items_available 8 -- that is what the game reports, not a blessing error."
+    },
+    {
+      "name": "freeze03",
+      "file": "freeze03.rec",
+      "saves": "tests/saves/freeze03",
+      "level": "Space\\Freeze03",
+      "description": "Hand-played by James, 2026-09-07, to close a coverage gap named in GAMETICK_PLAN.md rather than to cover a level. Space\\Freeze03 for 3630 frames: collects 4 of the 8 items, no crystals of the 4 required, dies once (vitality 0, lives 3->2) and does not complete. WHY IT EXISTS: it is one of only TWO levels in the game whose level data carries a foe type above 0x64, and the only one carrying all three -- 102, 103 and 104. That makes it the sole automated coverage of SpawnFoeObject's high-type branch (karoo-hooks/objectspawn.cpp), which stores type-0x64 into entity+0x14 and then ZEROES the working copy, so the value reaching the pathfinder's +0x2a is 0 for these foes and the original type for every other foe in the game. Before this recording that branch was transcribed but executed by nothing. Do not confuse this level with the `thrower02` recording, which is Candy\\Thrower02 and carries no high type. It also spawns bombs and removes enemies, so it exercises SpawnBombObject and RemoveEnemyObject, and it sets items_bonus_blocked=1.",
+      "scenario": "Space\\Freeze03, the only level carrying all three high foe types",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 3630,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 0,
+          "gems_required": 4,
+          "foes_killed": 0,
+          "items_collected": 4,
+          "items_available": 8,
+          "items_bonus_blocked": 1,
+          "vitality": 0,
+          "lives": 2,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 120,
+          "elapsed_ms": 720,
+          "level_complete": 0,
+          "death_cause": 0,
+          "completed_a_level": false
+        }
+      },
+      "notes": "Captured 3630 frames. Determinism confirmed before blessing rather than assumed: two consecutive headless runs produced byte-identical hash logs AND byte-identical end-state dumps. Blessed on 18 fields; the assertion was then watched to fail on purpose (items_collected forced to 77 -> harness exits 1 naming that field) before being restored. The fields to watch are the ones that say the high-type foes behaved: foes_killed 0 and vitality 0 mean the player died to them without killing any, so a regression in the high-type path would move vitality or death_cause here and nowhere else in the suite. KAROO_SPAWN_DIAG=1 on this recording logs HIGHTYPE 102, 103 and 104 plus 'first type > 0x64' -- that is how to confirm the branch is still reached."
     },
     {
       "name": "freezestart",
