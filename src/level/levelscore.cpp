@@ -154,9 +154,18 @@ static int fx_double(void)
     return s_fxDouble;
 }
 
+/* karoo-hooks/tilequery.cpp -- read-only coverage census, KAROO_TILEQ_DIAG=1. */
+extern "C" void tilequery_census_object_types(void *self);
+
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Score_CalculateLevelScore(void *self, char endReason)
 {
+    /* KAROO_TILEQ_DIAG=1 only, and read-only: censuses the object +0x62
+     * types this level carries, so `tools/levelreport.py` can name the
+     * levels that reach tilequery.cpp's type-gated call sites.  See the
+     * census note at the bottom of karoo-hooks/tilequery.cpp. */
+    tilequery_census_object_types(self);
+
     /* ── gems and surplus ────────────────────────────────────────────── */
     const int collected = I32(self, OFF_COLLECTED);
     const int quota     = I32(self, OFF_QUOTA);
