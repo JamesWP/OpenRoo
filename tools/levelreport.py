@@ -123,7 +123,7 @@ def wait_for_quiet(timeout=30):
     return False
 
 
-def launch():
+def launch(headless=True):
     """Run the game with the trigger set.  Returns True if it exited by itself."""
     for f in OUTPUTS:
         try:
@@ -139,7 +139,16 @@ def launch():
     env.setdefault("MESA_VK_WSI_PRESENT_MODE", "immediate")
     env.setdefault("__GL_SYNC_TO_VBLANK", "0")
 
-    cmd = [os.path.join(REPO, "launch.sh"), "--skip-launcher",
+    # --headless is the default, exactly as in tools/replaytest.py: no window,
+    # no display needed and nothing takes focus, which is what makes this
+    # runnable from a background job.  It is not merely --skip-launcher with
+    # the window hidden -- DirectDraw is replaced by the in-DLL null device
+    # (karoo-hooks/nullddraw.cpp), so no driver is involved at all.  The report
+    # is produced by the game's own WriteLevelReport and draws nothing anyone
+    # needs to watch, so there is no reason to want a display by default;
+    # --no-headless falls back to --skip-launcher when you do.
+    cmd = [os.path.join(REPO, "launch.sh"),
+           "--headless" if headless else "--skip-launcher",
            "--auto-exit", str(AUTO_EXIT_SECS)]
     print("  launching: KAROO_LEVEL_REPORT=1 %s" % " ".join(cmd[1:]))
     proc = subprocess.Popen(cmd, cwd=REPO, env=env,
@@ -234,6 +243,11 @@ def main():
                     help="leave the produced files in the game directory")
     ap.add_argument("--no-run", action="store_true",
                     help="compare the files already in the game directory")
+    ap.add_argument("--headless", dest="headless", action="store_true",
+                    default=True,
+                    help="run with no display at all (the default)")
+    ap.add_argument("--no-headless", dest="headless", action="store_false",
+                    help="render to a real window instead (--skip-launcher)")
     args = ap.parse_args()
 
     problems = preflight()
@@ -252,7 +266,7 @@ def main():
 
     wait_for_quiet()
     with Sandbox(SIDE_EFFECTS):
-        clean_exit = launch()
+        clean_exit = launch(headless=args.headless)
 
     ok_dll, ok_game = triggered()
     if not ok_dll:
