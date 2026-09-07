@@ -26,38 +26,6 @@
   },
   "recordings": [
     {
-      "name": "switchfoe",
-      "file": "switchfoe.rec",
-      "saves": "tests/saves/switchfoe",
-      "level": "Space\\Bridges&EnemiesStart",
-      "description": "Hand-played by James, 2026-09-07, to close the coverage gap named in GAMETICK_PLAN.md: the tile-query cluster was reached by NOTHING in the suite. Space\\Bridges&EnemiesStart for 1796 frames. The foes on this level do not chase the player -- they seek out switches the player has toggled and turn them back off. That behaviour IS GameTick's foe type-2 dispatch, and it is the only thing in the game that drives FindNearestListedObjectTile.",
-      "scenario": "Toggle switches, then let the foes walk to them and switch them back. Two or more switches are left pending near a foe at the same time, deliberately: the KAROO_SIM_FX=listfar control picks the FARTHEST qualifying candidate instead of the nearest, so with only one pending switch in range nearest == farthest and the control cannot fail even though the function ran. Foes are also allowed to REACH switches rather than being outrun, because arrival is the path that calls MarkListedTilesBlockedByObject.",
-      "expect": {
-        "crash": "none",
-        "state": {
-          "frames_run": 1798,
-          "game_live": true,
-          "mode": 1,
-          "gems_collected": 0,
-          "gems_required": 8,
-          "foes_killed": 0,
-          "items_collected": 0,
-          "items_available": 9,
-          "items_bonus_blocked": 0,
-          "vitality": 35,
-          "lives": 3,
-          "level_score": 0,
-          "total_score": 0,
-          "time_limit_s": 140,
-          "elapsed_ms": 25312,
-          "level_complete": 0,
-          "death_cause": 0,
-          "completed_a_level": false
-        }
-      },
-      "notes": "Captured 1796 frames. Covers foe type 2 (+0x62 == 2), the gate at 0x00415751 (foe+0xd7 == 0xff -> retarget) and the type-2 arm at 0x004158a3, which calls FindNearestListedObjectTile with the foe's own cell and radius 7. The census in karoo-hooks/tilequery.cpp names five levels carrying a gated foe type; this is one of the two type-2 levels. Types 3 and 5 still have no recording -- see Egypt\\CollectIt / Candy\\Collect01 and Castle\\EnemyVsEnemy."
-    },
-    {
       "name": "bombstart-crash",
       "file": "bombstart-crash.rec",
       "saves": "tests/saves/bombstart",
@@ -157,6 +125,51 @@
         }
       },
       "notes": "Captured 1033 frames. Blessed; the note previously still said it was unasserted."
+    },
+    {
+      "name": "cristal-stealer",
+      "file": "cristal-stealer.rec",
+      "saves": "tests/saves/cristal-stealer",
+      "level": "Egypt\\CollectIt",
+      "description": "Hand-played by James, 2026-09-07, to arm the KAROO_SIM_FX=radiusfar control, which could not fail before it. Egypt\\CollectIt for 2514 frames. The foes on this level are crystal STEALERS: GameTick's foe type-3 arm searches for the nearest tile whose contents byte (tile+0x19f) is 1 -- an uncollected crystal -- within radius 5 of the foe, and diverts there instead of chasing the player. It is the only thing in the game that drives FindNearestFlaggedTileInRadius.",
+      "scenario": "Crystals are on the level from the start, so the search fires without being provoked -- what needed care was leaving TWO OR MORE crystals within radius 5 of a foe at different distances. KAROO_SIM_FX=radiusfar picks the FARTHEST qualifying tile instead of the nearest, so a foe with only one crystal in range makes nearest == farthest and the control cannot fail even though the function ran. Areas near foes are deliberately NOT cleared: with no crystal in range the type-3 arm takes its fallback path and chases the player instead, which exercises nothing here.",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 2517,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 31,
+          "gems_required": 30,
+          "foes_killed": 0,
+          "items_collected": 31,
+          "items_available": 45,
+          "items_bonus_blocked": 0,
+          "vitality": 87,
+          "lives": 3,
+          "level_score": 309,
+          "total_score": 309,
+          "time_limit_s": 65,
+          "elapsed_ms": 34176,
+          "level_complete": 1,
+          "death_cause": 0,
+          "completed_a_level": true,
+          "at_completion.gems_collected": 31,
+          "at_completion.gems_required": 30,
+          "at_completion.foes_killed": 0,
+          "at_completion.items_collected": 31,
+          "at_completion.items_available": 45,
+          "at_completion.items_bonus_blocked": 0,
+          "at_completion.vitality": 88,
+          "at_completion.lives": 3,
+          "at_completion.level_score": 309,
+          "at_completion.total_score": 309,
+          "at_completion.time_limit_s": 65,
+          "at_completion.elapsed_ms": 34176,
+          "at_completion.level_complete": 1
+        }
+      },
+      "notes": "Captured 2514 frames. Covers foe type 3 (+0x62 == 3) and the arm at 0x00415949, which calls FindNearestFlaggedTileInRadius with the foe's own cell and radius 5. On SUCCESS it sets foe+0x64 = 0x96 and calls SetFoeChaseTarget with the found tile; on FAILURE it falls back to the player's cell (Game+0x1751fa/fb) with foe+0x64 = 0x64 -- so a foe visibly ignoring the player is the search succeeding. Sibling of switchfoe, which covers type 2. Type 5 (FindFarthestOccupiedTile) still has no recording: see Castle\\EnemyVsEnemy. COVERAGE, measured not assumed: this recording CALLS the search and SUCCEEDS in it (KAROO_TILEQ_DIAG=1 logs a HIT at u=9 v=5), but KAROO_SIM_FX=radiusfar still passes 16/16 -- so the function is EXERCISED but UNCONTROLLED. A near/far control only fails if two candidates were in range at different distances AND the swap moved an asserted field; that was not established here. Do not read this entry's presence as radiusfar coverage."
     },
     {
       "name": "destr-bait",
@@ -438,6 +451,38 @@
         }
       },
       "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1464-frame hash logs and identical end-state dumps. The level is not completed, so there is no at_completion block and completed_a_level is false. Its value is the tile-effect coverage, not the outcome: this is the recording that will catch a regression in Game::UpdatePlayerTileEffects (0x41fcb0), which handles glue, slides, jump pads and teleporters and which no recording could see before it existed."
+    },
+    {
+      "name": "switchfoe",
+      "file": "switchfoe.rec",
+      "saves": "tests/saves/switchfoe",
+      "level": "Space\\Bridges&EnemiesStart",
+      "description": "Hand-played by James, 2026-09-07, to close the coverage gap named in GAMETICK_PLAN.md: the tile-query cluster was reached by NOTHING in the suite. Space\\Bridges&EnemiesStart for 1796 frames. The foes on this level do not chase the player -- they seek out switches the player has toggled and turn them back off. That behaviour IS GameTick's foe type-2 dispatch, and it is the only thing in the game that drives FindNearestListedObjectTile.",
+      "scenario": "Toggle switches, then let the foes walk to them and switch them back. Two or more switches are left pending near a foe at the same time, deliberately: the KAROO_SIM_FX=listfar control picks the FARTHEST qualifying candidate instead of the nearest, so with only one pending switch in range nearest == farthest and the control cannot fail even though the function ran. Foes are also allowed to REACH switches rather than being outrun, because arrival is the path that calls MarkListedTilesBlockedByObject.",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 1798,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 0,
+          "gems_required": 8,
+          "foes_killed": 0,
+          "items_collected": 0,
+          "items_available": 9,
+          "items_bonus_blocked": 0,
+          "vitality": 35,
+          "lives": 3,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 140,
+          "elapsed_ms": 25312,
+          "level_complete": 0,
+          "death_cause": 0,
+          "completed_a_level": false
+        }
+      },
+      "notes": "Captured 1796 frames. Covers foe type 2 (+0x62 == 2), the gate at 0x00415751 (foe+0xd7 == 0xff -> retarget) and the type-2 arm at 0x004158a3, which calls FindNearestListedObjectTile with the foe's own cell and radius 7. The census in karoo-hooks/tilequery.cpp names five levels carrying a gated foe type; this is one of the two type-2 levels. Types 3 and 5 still have no recording -- see Egypt\\CollectIt / Candy\\Collect01 and Castle\\EnemyVsEnemy."
     },
     {
       "name": "thrower02",
