@@ -132,7 +132,14 @@ Sim_OpenLevelFile(void *self, unsigned int levelNo);
 
 #define ORIG_SET_LEVEL_NAME Sim_SetCurrentLevelName
 #define ORIG_OPEN_LEVEL     Sim_OpenLevelFile
-#define ORIG_SETUP_OBJECTS  ((setup_fn)  0x00416420)
+/* Was ((setup_fn) 0x00416420) -- the game's Game::SetupLevelObjects.
+ * levelsetup.cpp owns it now (GAMETICK_PLAN.md Band B) and the original is
+ * UD2-stubbed, so this goes to ours.  Third instance of the DLL-caller
+ * hazard the comment below names; checked BEFORE stubbing this time. */
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+Sim_SetupLevelObjects(void *self);
+
+#define ORIG_SETUP_OBJECTS  Sim_SetupLevelObjects
 /* Was ((score_fn) 0x0041a760) -- the game's Game::CalculateLevelScore.
  * levelscore.cpp owns it now (GAMETICK_PLAN.md Band A) and the original is
  * UD2-stubbed, so this goes to ours.  This call is why the level report is an
