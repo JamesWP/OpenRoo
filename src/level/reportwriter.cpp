@@ -113,8 +113,25 @@ typedef void (__attribute__((thiscall)) *openlvl_fn)(void *self, unsigned idx);
 typedef void (__attribute__((thiscall)) *setup_fn)  (void *self);
 typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
 
-#define ORIG_SET_LEVEL_NAME ((setname_fn)0x004186b0)
-#define ORIG_OPEN_LEVEL     ((openlvl_fn)0x004186f0)
+/* Was ((setname_fn) 0x004186b0) / ((openlvl_fn) 0x004186f0) -- the game's
+ * Game::SetCurrentLevelName and Game::OpenLevelFile.  levelparse.cpp owns
+ * both now (GAMETICK_PLAN.md Band B) and the originals are UD2-stubbed, so
+ * these go to ours -- the same move the score call below already made, and
+ * for the same reason.
+ *
+ * These two calls are why the level report is an 80-level acceptance test for
+ * the loader replacements.  They are also the second instance of the hazard
+ * the comment below names: the cycle that replaced them patched all 20 E8
+ * sites in the EXE, and the replay suite passed 16/16, because the ONLY
+ * caller left was in our own DLL.  `levelreport.py` failed with nine
+ * c000001d, and the UD2 stub named the address. */
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+Sim_SetCurrentLevelName(void *self, unsigned int levelNo);
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+Sim_OpenLevelFile(void *self, unsigned int levelNo);
+
+#define ORIG_SET_LEVEL_NAME Sim_SetCurrentLevelName
+#define ORIG_OPEN_LEVEL     Sim_OpenLevelFile
 #define ORIG_SETUP_OBJECTS  ((setup_fn)  0x00416420)
 /* Was ((score_fn) 0x0041a760) -- the game's Game::CalculateLevelScore.
  * levelscore.cpp owns it now (GAMETICK_PLAN.md Band A) and the original is
