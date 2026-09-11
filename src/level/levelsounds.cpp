@@ -44,17 +44,14 @@
 #include <windows.h>
 #include <string.h>
 #include "log.h"
+#include "soundmanager.h"
 
 struct CStaticSoundbuffer;
 struct VoicePool;
-typedef CStaticSoundbuffer *(__attribute__((thiscall)) *acquire_fn)(void *sm,
-                                                                    const char *name,
-                                                                    int mode);
 typedef VoicePool *(__attribute__((thiscall)) *acquire_pool_fn)(void *sm, int count,
                                                                  const char *name,
                                                                  int mode);
 typedef void (__attribute__((thiscall)) *pool_wipe_fn)(VoicePool *vp);
-#define ORIG_ACQUIRE_SOUND ((acquire_fn)     0x00443660)   /* named callback */
 #define ORIG_ACQUIRE_POOL  ((acquire_pool_fn)0x00443810)   /* named callback */
 #define ORIG_POOL_WIPE     ((pool_wipe_fn)   0x00442a20)   /* named callback */
 
@@ -92,7 +89,7 @@ static CStaticSoundbuffer *acq(unsigned char *B, unsigned int nameOff)
 {
     char name[256];
     strcpy(name, (const char *)(B + nameOff));
-    return ORIG_ACQUIRE_SOUND(B + G_SOUND_MGR, name, 1);
+    return ((SoundManager *)(B + G_SOUND_MGR))->acquireStatic(name, 1);
 }
 
 static VoicePool *acq_pool(unsigned char *B, int count, unsigned int nameOff)
@@ -196,7 +193,7 @@ Sim_InitLevelBasedSounds(void *self)
                     continue;
                 const char *nm = (const char *)(E + 0x48ba6);
                 GameLog_LogMessage(GAMELOGGER, 1, F_LEOSOUND, nm);
-                CStaticSoundbuffer *p = ORIG_ACQUIRE_SOUND(B + G_SOUND_MGR, nm, 1);
+                CStaticSoundbuffer *p = ((SoundManager *)(B + G_SOUND_MGR))->acquireStatic(nm, 1);
                 *(CStaticSoundbuffer **)(E + 0x49ae2) = p;
                 if (p != NULL) {
                     CStatic_Set3DPosition(p, *(float *)(E + 0x48ca6),

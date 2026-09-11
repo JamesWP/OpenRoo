@@ -27,6 +27,10 @@ public:
     /* 0x00443400 -- the voice-pool counterpart, same argument shape. */
     void releasePooledForOwner(void *buffer, int bDestroyIfUnused);
 
+    /* 0x00443660 AcquireSoundBuffer -- load (or share) the named static
+     * buffer.  `mode` is passed through; callers use 0 and 1. */
+    CStaticSoundbuffer *acquireStatic(const char *name, int mode);
+
 private:
     SoundManager() = delete;   /* game-owned; only ever reached by pointer */
 };

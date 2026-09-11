@@ -314,7 +314,7 @@ static void fx_init(void)
 #define GPP(o)   (*(unsigned char **)(B + (o)))
 
 /* Tile addressing: base + (v + u*100) * 0x7f, identical to entitymove.cpp's
- * and bombfuse.cpp's TILE(). */
+ * and bomb.cpp's TILE(). */
 #define TILEOFF(u, v)   ((((int)(v)) + ((int)(u)) * 100) * 0x7f)
 
 #define T8(t, o)    (*(unsigned char *)((t) + (o)))
@@ -348,7 +348,7 @@ static const char *const k_names[4] = {
     "FindFarthestOccupiedTile",
 };
 
-/* Unconditional once-each, the same choice bombfuse.cpp and slidinghazard.cpp
+/* Unconditional once-each, the same choice bomb.cpp and slidinghazard.cpp
  * make and for the same reason: a flag-gated line cannot distinguish "this
  * query is never called here" from "the flag never arrived". */
 static void diag_enter(int which, const void *self)

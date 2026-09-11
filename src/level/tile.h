@@ -100,6 +100,19 @@ public:
      * (breakabletile.cpp), and will not arm while it is set. */
     int  field217() const                      { return field_217; }
 
+    /* ── a bomb's blast (bomb.cpp) ──────────────────────────────────── */
+    /* +0x1a0: the blasting bomb's height while its 3x3 is live, else 0. */
+    void setBlastHeight(unsigned char h)       { blastHeight_ = h; }
+    /* +0x19f: a spent destructible block's promoted hidden contents. */
+    void setContents(unsigned char c)          { contents_ = c; }
+    /* +0x202: the destructible block's hidden contents. */
+    unsigned char field202() const             { return field_202; }
+    /* Meanings unknown: raised by a blast on a destructible block; +0x203
+     * drops again when the blast clears. */
+    void setField203(int b)                    { field_203 = b; }
+    void setField20f(int b)                    { field_20f = b; }
+    void setBlastTime(double t)                { blastTime_ = t; }
+
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
     KAROO_LAYOUT_REGISTER(Tile);
@@ -107,7 +120,10 @@ private:
     unsigned char gap_000[0x19c - 0x000];
     unsigned char height_;            /* 0x19c                              */
     unsigned char objectMarker_;      /* 0x19d  object kind / scan stop     */
-    unsigned char gap_19e[0x1a5 - 0x19e];
+    unsigned char gap_19e[0x19f - 0x19e];
+    unsigned char contents_;          /* 0x19f  what can be picked up here  */
+    unsigned char blastHeight_;       /* 0x1a0  live blast, 0 = none        */
+    unsigned char gap_1a1[0x1a5 - 0x1a1];
     unsigned char field_1a5;          /* 0x1a5                              */
     float         liftLiveHeight_;    /* 0x1a6  the lift's live height      */
     unsigned char slideSlot_;         /* 0x1aa  which slide's track this is */
@@ -142,7 +158,10 @@ private:
     int           field_1f6;          /* 0x1f6                              */
     unsigned char gap_1fa[0x202 - 0x1fa];
     unsigned char field_202;          /* 0x202                              */
-    unsigned char gap_203[0x217 - 0x203];
+    int           field_203;          /* 0x203                              */
+    double        blastTime_;         /* 0x207  when a blast spent this cell */
+    int           field_20f;          /* 0x20f                              */
+    unsigned char gap_213[0x217 - 0x213];
     int           field_217;          /* 0x217                              */
 };
 
@@ -150,6 +169,8 @@ KAROO_LAYOUT_CHECKS(Tile)
 {
     KAROO_LAYOUT_AT(height_,           0x19c);
     KAROO_LAYOUT_AT(objectMarker_,     0x19d);
+    KAROO_LAYOUT_AT(contents_,         0x19f);
+    KAROO_LAYOUT_AT(blastHeight_,      0x1a0);
     KAROO_LAYOUT_AT(field_1a5,         0x1a5);
     KAROO_LAYOUT_AT(liftLiveHeight_,   0x1a6);
     KAROO_LAYOUT_AT(slideSlot_,        0x1aa);
@@ -175,5 +196,8 @@ KAROO_LAYOUT_CHECKS(Tile)
     KAROO_LAYOUT_AT(bridgeAxis_,       0x1f5);
     KAROO_LAYOUT_AT(field_1f6,         0x1f6);
     KAROO_LAYOUT_AT(field_202,         0x202);
+    KAROO_LAYOUT_AT(field_203,         0x203);
+    KAROO_LAYOUT_AT(blastTime_,        0x207);
+    KAROO_LAYOUT_AT(field_20f,         0x20f);
     KAROO_LAYOUT_AT(field_217,         0x217);
 }

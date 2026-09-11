@@ -50,6 +50,7 @@
 #include "slideobject.h"
 #include "bridgeobject.h"
 #include "breakabletile.h"
+#include "bomb.h"
 
 struct CStaticSoundbuffer;
 struct ProgableControl;
@@ -70,15 +71,12 @@ __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AnimateScoreTal
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PollTextEntryKeys(void *self, unsigned int phase);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
 
-__declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateBombFuseAndBlast(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdatePlayerTileEffects(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateFoeObjectStep(void *self, unsigned char playerU, unsigned char playerV);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_SetFoeChaseTarget(void *self, unsigned char targetU, unsigned char targetV, unsigned short speed);
 
 __declspec(dllexport) unsigned char __attribute__((thiscall)) Sim_SpawnFoeObject(void *self, unsigned int u, unsigned int v, unsigned int h, unsigned int kind, unsigned int type);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_SpawnBombObject(void *self, unsigned int u, unsigned int v, unsigned int h, unsigned int flag);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_RemoveFoeObject(void *self, unsigned int idArg);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_RemoveEnemyObject(void *self, unsigned int idArg);
 __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AcquireObjectSoundBuffersForIndex(void *self, unsigned int objArg);
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_MarkListedTilesBlockedByObject(void *self, unsigned int listIndex);
@@ -354,11 +352,11 @@ Sim_GameTick(void *self, double dt, double now)
     }
 
     /* enemies: count re-read each pass; no step-back after a removal */
-    for (int i = 0; i < (int)G8(0x17460f); ++i) {
-        Sim_UpdateBombFuseAndBlast(GP(0x173e3f + G8(0x174610 + i) * 4));
-        unsigned char id = G8(0x174610 + i);
-        if (O32(GP(0x173e3f + id * 4), 0x7e) != 0)
-            Sim_RemoveEnemyObject(B, id);
+    for (int i = 0; i < (int)((Game *)B)->bombCount(); ++i) {
+        ((Game *)B)->bombSlot(((Game *)B)->bombId(i))->tick();
+        unsigned char id = ((Game *)B)->bombId(i);
+        if (((Game *)B)->bombSlot(id)->removeRequested() != 0)
+            Bomb::remove((Game *)B, id);
     }
 
     {
@@ -454,12 +452,12 @@ Sim_GameTick(void *self, double dt, double now)
         }
         if (spawn) {
             if (offset)
-                Sim_SpawnBombObject(B, (unsigned char)(G8(0x1751fa) - G8(0x175308)),
+                Bomb::spawn((Game *)B,(unsigned char)(G8(0x1751fa) - G8(0x175308)),
                                     (unsigned char)(G8(0x1751fb) - G8(0x175309)),
                                     (unsigned char)(G8(0x1751fc) - G8(0x17530a)),
                                     G8(0x1751dd));
             else
-                Sim_SpawnBombObject(B, G8(0x1751fa), G8(0x1751fb), G8(0x1751fc),
+                Bomb::spawn((Game *)B,G8(0x1751fa), G8(0x1751fb), G8(0x1751fc),
                                     G8(0x1751dd));
             G32(0x1752ad) = 0;
         }
@@ -606,12 +604,12 @@ Sim_GameTick(void *self, double dt, double now)
                 }
                 if (spawn) {
                     if (offset)
-                        Sim_SpawnBombObject(B, (unsigned char)(O8(f, 0x31) - O8(f, 0x13f)),
+                        Bomb::spawn((Game *)B,(unsigned char)(O8(f, 0x31) - O8(f, 0x13f)),
                                             (unsigned char)(O8(f, 0x32) - O8(f, 0x140)),
                                             (unsigned char)(O8(f, 0x33) - O8(f, 0x141)),
                                             O8(f, 0x14));
                     else
-                        Sim_SpawnBombObject(B, O8(f, 0x31), O8(f, 0x32), O8(f, 0x33),
+                        Bomb::spawn((Game *)B,O8(f, 0x31), O8(f, 0x32), O8(f, 0x33),
                                             O8(f, 0x14));
                     O32(*slot, 0xe4) = 0;
                 }
