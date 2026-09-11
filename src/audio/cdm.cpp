@@ -149,3 +149,33 @@ __declspec(dllexport) void __attribute__((thiscall))
 CDM_SetMixerVolume(CDM *self, DWORD level) { self->setMixerVolume(level); }
 
 } // extern "C"
+
+/* ─── CDM::GetMixerDetails 0x00402e60 ─────────────────────────────────────
+ * GAMETICK_PLAN.md Band B reopened (HandleKeypress's CD-volume option, and
+ * Game::Load at 0x00414A36).  __thiscall(CDM*), BARE RET -- no stack
+ * argument.  The decompile shows an `int param_1`; the listing's plain RET
+ * and both callers (MOV ECX,0x4dc640 / CALL, nothing pushed) say otherwise.
+ * An earlier draft trusted the decompile, compiled to RET 4, and unbalanced
+ * Game::Load's stack -- every replay died 4 s in with no VEH dump.
+ * No mixers -> 0.  Otherwise one MIXERCONTROLDETAILS (cbStruct 0x18, one
+ * channel, cbDetails 4) on mixers[0], MIXER_GETCONTROLDETAILSF_VALUE with
+ * MIXER_OBJECTF_HMIXER (0x80000000), and the value -- or 0 on any MMRESULT
+ * error, which is what `~-(r != 0) & value` computes. */
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+CDM_GetMixerDetails(CDM *self)
+{
+    MIXERCONTROLDETAILS d;
+    DWORD value;
+
+    if (self->nummixers == 0)
+        return 0;
+    d.cbStruct = 0x18;
+    d.dwControlID = self->mixers[0].dwVolumeControlID;
+    d.cChannels = 1;
+    d.hwndOwner = NULL;
+    d.cbDetails = 4;
+    d.paDetails = &value;
+    MMRESULT r = mixerGetControlDetailsA((HMIXEROBJ)self->mixers[0].hmixer, &d,
+                                         0x80000000);
+    return r != 0 ? 0 : (unsigned int)value;
+}
