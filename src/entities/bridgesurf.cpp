@@ -43,8 +43,10 @@
  * That is quadratic and almost certainly not what was intended, but it is
  * what the binary does, so it is reproduced.
  *
- * Field offsets on a loop-C object (all read from the disassembly, all
- * unaligned, so they are byte offsets rather than a declared struct):
+ * Loop C's objects are BridgeObjects (bridgeobject.h), and since COHESION
+ * Band 4a the per-bridge vertex build is BridgeObject::buildSurface -- this
+ * file keeps the render states and the draw.  The fields it reads, from the
+ * disassembly:
  *   +0x25 float[3]  b — the far point (z is negated on read)
  *   +0x39 float[3]  a — the anchor    (z is negated on read)
  *   +0x45 int8      n — scroll divisor and texture-repeat multiplier
@@ -81,8 +83,9 @@
  */
 #include "direct3d.h"
 #include "levelobject.h"
+#include "game.h"
+#include "bridgeobject.h"
 #include "log.h"
-#include <math.h>
 
 #define BRIDGE_FVF        0x242
 #define BRIDGE_LOG_FIRST  8
@@ -92,18 +95,7 @@
 #define LVL_OFF_BRIDGE_OBJECTS  0x6c9bc
 #define LOBJ_OFF_ZWRITE_GATE    0x5ad
 #define LOBJ_OFF_SPECULAR_GATE  0x5b5
-#define GAME_OFF_CONVEYORS      0x170643
-#define GAME_OFF_CONVEYOR_COUNT 0x170a43
 #define GAME_OFF_SPECULAR_OPT   0x2aa138
-
-/* FVF 0x242 vertex: XYZ | DIFFUSE | two texture coordinate sets. */
-struct BridgeVertex {
-    float x, y, z;
-    DWORD diffuse;
-    float u0, v0;
-    float u1, v1;
-};
-static_assert(sizeof(BridgeVertex) == 0x20, "BridgeVertex stride mismatch");
 
 enum BridgeFxMode { BRIDGE_FX_OFF = 0, BRIDGE_FX_TINT, BRIDGE_FX_NODRAW,
                     BRIDGE_FX_BACKWARD };
@@ -234,102 +226,18 @@ Direct3D_DrawBridgeSurfaces(void *game, void *lvl, Direct3D *d3d, double t)
                 }
 
                 for (DWORD k = 0;
-                     k < *(BYTE *)((BYTE *)game + GAME_OFF_CONVEYOR_COUNT);
+                     k < ((Game *)game)->bridgeCount();
                      k++) {
-                    BYTE *cv =
-                        ((BYTE **)((BYTE *)game + GAME_OFF_CONVEYORS))[k];
+                    const BridgeObject *cv = ((Game *)game)->bridgeSlot(k);
 
-                    if (*(DWORD *)(cv + 0x53) == 0
-                        && *(DWORD *)(cv + 0x58) == 0)
-                        continue;
-
+                    /* The vertex build is the bridge's own -- see
+                     * BridgeObject::buildSurface. */
                     BridgeVertex v[4];
-                    for (int q = 0; q < 4; q++) {
-                        v[q].x = v[q].y = v[q].z = 0.0f;
-                        v[q].diffuse = 0xFFFFFFFF; /* dead: rewritten below */
-                        v[q].u0 = v[q].v0 = v[q].u1 = v[q].v1 = 0.0f;
-                    }
-
-                    float ax = *(float *)(cv + 0x39);
-                    float ay = *(float *)(cv + 0x3d);
-                    float az = -*(float *)(cv + 0x41);
-                    float bx = *(float *)(cv + 0x25);
-                    float by = *(float *)(cv + 0x29);
-                    float bz = -*(float *)(cv + 0x2d);
-                    float n  = (float)*(signed char *)(cv + 0x45);
-
-                    float dx = bx - ax, dy = by - ay, dz = bz - az;
-                    /* Summation order matches the x87: dy*dy + dz*dz, then
-                     * + dx*dx. */
-                    float len = (float)sqrt(dy * dy + dz * dz + dx * dx);
-                    float vs  = len * 0.25f;
-
-                    float f = (float)fmod(t * (double)0.001f / n, 1.0);
-                    if (bridge_fx() == BRIDGE_FX_BACKWARD)
-                        f = -f;
-                    float fn = f * n;
-
-                    if (*(signed char *)(cv + 0x60) == 1) {
-                        float x0 = ax - 0.5f;
-                        float zlo = az - 0.5f, zhi = az + 0.5f;
-                        if (*(signed char *)(cv + 0x57) > 0) {
-                            v[0].x = x0 + len; v[0].y = ay; v[0].z = zlo;
-                            v[0].u0 = 0.0f; v[0].v0 = vs - fn;
-                            v[0].u1 = 0.0f; v[0].v1 = 1.0f;
-                            v[1].x = x0;       v[1].y = ay; v[1].z = zlo;
-                            v[1].u0 = 0.0f; v[1].v0 = -fn;
-                            v[1].u1 = 0.0f; v[1].v1 = 0.0f;
-                            v[2].x = x0 + len; v[2].y = ay; v[2].z = zhi;
-                            v[2].u0 = 1.0f; v[2].v0 = vs - fn;
-                            v[2].u1 = 1.0f; v[2].v1 = 1.0f;
-                            v[3].x = x0;       v[3].y = ay; v[3].z = zhi;
-                            v[3].u0 = 1.0f; v[3].v0 = -fn;
-                            v[3].u1 = 1.0f; v[3].v1 = 0.0f;
-                        } else {
-                            v[0].x = x0;       v[0].y = ay; v[0].z = zlo;
-                            v[0].u0 = 0.0f; v[0].v0 = fn + vs;
-                            v[0].u1 = 0.0f; v[0].v1 = 1.0f;
-                            v[1].x = x0 - len; v[1].y = ay; v[1].z = zlo;
-                            v[1].u0 = 0.0f; v[1].v0 = fn;
-                            v[1].u1 = 0.0f; v[1].v1 = 0.0f;
-                            v[2].x = x0;       v[2].y = ay; v[2].z = zhi;
-                            v[2].u0 = 1.0f; v[2].v0 = fn + vs;
-                            v[2].u1 = 1.0f; v[2].v1 = 1.0f;
-                            v[3].x = x0 - len; v[3].y = ay; v[3].z = zhi;
-                            v[3].u0 = 1.0f; v[3].v0 = fn;
-                            v[3].u1 = 1.0f; v[3].v1 = 0.0f;
-                        }
-                    } else {
-                        float xhi = ax + 0.5f, xlo = ax - 0.5f;
-                        float z1 = az + 0.5f;
-                        if (*(signed char *)(cv + 0x57) > 0) {
-                            v[0].x = xhi; v[0].y = ay; v[0].z = z1 - len;
-                            v[0].u0 = 1.0f; v[0].v0 = vs - fn;
-                            v[0].u1 = 1.0f; v[0].v1 = 1.0f;
-                            v[1].x = xlo; v[1].y = ay; v[1].z = z1 - len;
-                            v[1].u0 = 0.0f; v[1].v0 = vs - fn;
-                            v[1].u1 = 0.0f; v[1].v1 = 1.0f;
-                            v[2].x = xhi; v[2].y = ay; v[2].z = z1;
-                            v[2].u0 = 1.0f; v[2].v0 = -fn;
-                            v[2].u1 = 1.0f; v[2].v1 = 0.0f;
-                            v[3].x = xlo; v[3].y = ay; v[3].z = z1;
-                            v[3].u0 = 0.0f; v[3].v0 = -fn;
-                            v[3].u1 = 0.0f; v[3].v1 = 0.0f;
-                        } else {
-                            v[0].x = xhi; v[0].y = ay; v[0].z = z1;
-                            v[0].u0 = 1.0f; v[0].v0 = fn + vs;
-                            v[0].u1 = 1.0f; v[0].v1 = 1.0f;
-                            v[1].x = xlo; v[1].y = ay; v[1].z = z1;
-                            v[1].u0 = 0.0f; v[1].v0 = fn + vs;
-                            v[1].u1 = 0.0f; v[1].v1 = 1.0f;
-                            v[2].x = xhi; v[2].y = ay; v[2].z = z1 + len;
-                            v[2].u0 = 1.0f; v[2].v0 = fn;
-                            v[2].u1 = 1.0f; v[2].v1 = 0.0f;
-                            v[3].x = xlo; v[3].y = ay; v[3].z = z1 + len;
-                            v[3].u0 = 0.0f; v[3].v0 = fn;
-                            v[3].u1 = 0.0f; v[3].v1 = 0.0f;
-                        }
-                    }
+                    BridgeSurfaceInfo info;
+                    if (!cv->buildSurface(v, t,
+                                          bridge_fx() == BRIDGE_FX_BACKWARD,
+                                          &info))
+                        continue;
                     for (int q = 0; q < 4; q++)
                         v[q].diffuse = diffuse;
 
@@ -342,17 +250,11 @@ Direct3D_DrawBridgeSurfaces(void *game, void *lvl, Direct3D *d3d, double t)
                     if (InterlockedIncrement(&logged) <= BRIDGE_LOG_FIRST)
                         log_write("bridgesurf: obj=%lu sub=%lu cv=%lu axis=%d "
                                   "dir=%d n=%d len=%d f=%d/1000 -> hr=%08lX\n",
-                                  i, s, k,
-                                  (int)*(signed char *)(cv + 0x60),
-                                  (int)*(signed char *)(cv + 0x57),
-                                  (int)*(signed char *)(cv + 0x45),
-                                  (int)(len * 1000.0f),
-                                  (int)(f * 1000.0f), hr);
+                                  i, s, k, info.axis, info.dir, info.n,
+                                  (int)(info.len * 1000.0f),
+                                  (int)(info.f * 1000.0f), hr);
 
-                    bridge_note_variant(k,
-                                        *(signed char *)(cv + 0x60),
-                                        *(signed char *)(cv + 0x57),
-                                        *(signed char *)(cv + 0x45),
+                    bridge_note_variant(k, info.axis, info.dir, info.n,
                                         v[0].v0, v[1].v0);
                 }
             }
