@@ -5,7 +5,8 @@
  *     Game::RemoveEnemyObject        0x00417a20   (was objectremove.cpp)
  *
  *     Bomb ctor / dtor               0x00402700 / 0x00402840 + 0x00402860
- *                                    -- still the GAME's; see bomb.h
+ *                                    -- ours, on the MovableEntity base
+ *                                    (movableentity.cpp)
  *
  * Every function of ours that reads or writes a Bomb field lives here; bomb.h
  * keeps the fields private.  The "enemy" table is the bomb table: the spawn
@@ -72,8 +73,8 @@
  * 4. THE STRING COPY IS AN UNBOUNDED strcpy (`repne scasb; rep movs`) into a
  *    256-byte buffer; the enabled flag right after each name stops it.
  *
- * Kept as callbacks: the ctor 0x402700 (bomb.h), operator_new (the game's
- * heap, since the game's dtor frees it -- alloc.h), ClaimSpareObjectIdSlot
+ * Allocation is our own `new` (see "Construction and destruction" below).
+ * Kept as callbacks: ClaimSpareObjectIdSlot
  * (Game::claimSpareObjectId; its AL return is a compiler artefact, see
  * objectspawn.cpp) and AcquireSoundBuffer (SoundManager::acquireStatic).
  *
@@ -125,10 +126,7 @@
 #include "gamelog.h"
 #include "log.h"
 
-/* PLACEHOLDER: the bomb constructor 0x00402700, __fastcall.  Stays the
- * game's until the movable-entity base it layers on is ours (bomb.h). */
-typedef Bomb *(__attribute__((fastcall)) *bomb_ctor_fn)(void *mem);
-#define ORIG_BOMB_CTOR ((bomb_ctor_fn)0x00402700)
+#include <new>               /* std::nothrow */
 
 /* The game's own logger instance, Logger at 0x0046c4c0. */
 #define GAME_LOGGER   ((GameLogger *)0x0046c4c0)
@@ -186,6 +184,87 @@ static inline double fuse_ms(void)   { return s_fx_shortfuse ? K_FUSE_MS   / 2.0
 static inline double clear_ms(void)  { return s_fx_shortfuse ? K_CLEAR_MS  / 2.0 : K_CLEAR_MS;  }
 static inline double remove_ms(void) { return s_fx_shortfuse ? K_REMOVE_MS / 2.0 : K_REMOVE_MS; }
 
+/* ═══ Construction and destruction ═════════════════════════════════════════
+ *
+ * 0x402700 constructs in two layers: the MovableEntity base 0x438720 (ours:
+ * MovableEntity() zeroes the three floats), then the bomb's own stores, in
+ * the listing's order below.  Every other byte is left as operator new
+ * returned it, as the original leaves it.  The ctor clears +0xab..+0xcb a
+ * second time right after ZeroEntitySoundSlotPointers (but not +0xa3, +0xa7
+ * or +0xcf); dead stores, kept.  Two pairs of dword stores are one double
+ * each: +0x66/+0x6a = 200.0 and +0x48/+0x4c = 50.0.
+ *
+ * 0x402840 (vtable slot 0; 0x45d29c has ONE slot -- the next dword is 0)
+ * calls 0x402860, which re-installs 0x45d29c and jumps to the base dtor
+ * 0x438760; then Free2 if flags & 1.  All three vtable stores are dead -- the
+ * only caller passes flags 1 -- and are not reproduced.
+ *
+ * A byte scan of .text for 0x45d29c finds only the ctor (00402727) and the
+ * dtor (00402862).  0x402700's one caller is the stubbed spawn; 0x402840 is
+ * reached only through the vtable, from the remove (ours).  So we create and
+ * destroy every bomb, and use our own new/delete.
+ */
+const Bomb::Vtbl Bomb::VTABLE = { &Bomb::scalarDeletingDtor };
+
+Bomb *Bomb::create()
+{
+    return new (std::nothrow) Bomb;
+}
+
+Bomb::Bomb()
+{
+    /* MovableEntity() has run: 0x438720 */
+    vtable_           = &VTABLE;
+    rollSound_        = 0;                  /* +0x15a */
+    blastSound_       = 0;                  /* +0x15e */
+    zeroSoundSlots();                       /* 0x43ad60 */
+    field_7a          = 0;
+    field_82          = 0;
+    removeRequested_  = 0;
+    field_86          = 0;
+    zoneCleared_      = 0;
+    field_124         = 1;
+    facing_           = 1;
+    field_126         = 0;
+    field_58          = 0;
+    field_14e         = 0;
+    field_12a         = 0;
+    field_fb          = 0;
+    field_120         = 0;
+    moveState_        = 0;
+    field_ef          = 0;
+    field_e8          = 0;
+    field_66          = 200.0;              /* 0 at +0x66, 0x40690000 at +0x6a */
+    field_e4          = 0;
+    field_ff          = 0;
+    field_156         = 0;
+    field_e9          = 0;
+    field_11e         = 0xff;
+    field_11a         = 0;
+    field_ea          = 0;
+    field_9b          = 0;
+    kind_             = 9;
+    blastSoundPlayed_ = 0;
+    sound_ab_         = 0;                  /* the redundant second clear */
+    sound_af_         = 0;
+    sound_b3_         = 0;
+    sound_b7_         = 0;
+    sound_bb_         = 0;
+    sound_bf_         = 0;
+    sound_c3_         = 0;
+    sound_c7_         = 0;
+    sound_cb_         = 0;
+    field_d8          = 0;
+    field_48          = 50.0;               /* 0 at +0x48, 0x40490000 at +0x4c */
+}
+
+void *Bomb::scalarDeletingDtor(Bomb *self, unsigned int flags)
+{
+    if (flags & 1)
+        delete self;
+    return self;
+}
+
 /* ═══ 0x00417700 -- Game::SpawnBombObject ══════════════════════════════════ */
 static unsigned long s_spawns       = 0;
 static int           s_logged_spawn = 0;
@@ -238,10 +317,7 @@ void Bomb::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     id = game->claimSpareObjectId(game->bombIds(), game->bombCountRef());
 
-    {
-        void *mem = game_operator_new(0x172);
-        p = mem ? ORIG_BOMB_CTOR(mem) : 0;
-    }
+    p = create();
 
     slot  = game->bombSlotRef(id);
     *slot = p;
@@ -393,7 +469,7 @@ void Bomb::tick()
                               (float)(int)heightCell_,
                               -(float)(int)cellV_,
                               1);
-        if (loopHalted_ == 0)
+        if (field_86 == 0)                  /* raised by the BLAST below */
             CStatic_TriggerPlayback(rollSound_, 0);
         else
             CStatic_HaltPlayback(rollSound_);
@@ -412,7 +488,7 @@ void Bomb::tick()
     /* ── BLAST ───────────────────────────────────────────────────────── */
     field_11e    = 0xff;
     field_ef     = 1;
-    loopHalted_  = 1;
+    field_86     = 1;                       /* halts the roll sound */
     field_14e    = 0;
     pendingMove_ = 0;
 
