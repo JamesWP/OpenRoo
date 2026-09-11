@@ -14,14 +14,14 @@
  * __thiscall on Game, FIVE dword stack arguments (RET 0x14), returns the new
  * ID in AL.  Three E8 sites: 0x0041529A 0x00416E8B 0x00416EBC.
  *
- * Kept as callbacks: PopulateFoeEntityDefaults 0x411ff0 (the ctor, which owns
- * the vtable 0x45d388), AttachFoePathfinderToEntity 0x43a970 (operator_new
- * (0x35) + the FoePath ctor), and ClaimSpareObjectIdSlot 0x417250 through
- * Game::claimSpareObjectId.  That last one is typed void in Ghidra but both
- * spawns read AL as the new ID; "which local is in AL at a void RET" is a
- * compiler artefact, so it is called through rather than rewritten from a
- * decompile that does not model the return.  The allocation is the game's
- * operator_new because the game's own scalar deleting dtor frees it.
+ * Allocation and construction are ours (see "Construction and destruction"
+ * below).  Kept as callbacks: AttachFoePathfinderToEntity 0x43a970
+ * (operator_new(0x35) + the FoePath ctor -- the FoePath is foepath.cpp's to
+ * take) and ClaimSpareObjectIdSlot 0x417250 through Game::claimSpareObjectId.
+ * That last one is typed void in Ghidra but both spawns read AL as the new
+ * ID; "which local is in AL at a void RET" is a compiler artefact, so it is
+ * called through rather than rewritten from a decompile that does not model
+ * the return.
  *
  * The MSVC EH frame around the allocation is not reproduced: the allocator
  * returns NULL rather than throwing, so the frame is unobservable.
@@ -158,11 +158,11 @@
 #include "static.h"
 #include "log.h"
 
+#include <new>               /* std::nothrow */
+
 /* ─── Callbacks into the game binary, each justified in the header ──────── */
-typedef void *(__attribute__((fastcall)) *foe_ctor_fn)(void *mem);
 typedef void  (__attribute__((fastcall)) *attach_path_fn)(Foe *foe);
 
-#define ORIG_FOE_CTOR     ((foe_ctor_fn)    0x00411ff0)
 #define ORIG_ATTACH_PATH  ((attach_path_fn) 0x0043a970)
 
 /* ─── Controls and diags, read by VALUE, never by presence ──────────────── */
@@ -224,6 +224,114 @@ Tile *Foe::tile(int u, int v) const
     return Tile::at(tileBase_, u, v);
 }
 
+/* ═══ Construction and destruction ═════════════════════════════════════════
+ *
+ * 0x411ff0 constructs in two layers: the MovableEntity base 0x438720 (ours:
+ * MovableEntity() zeroes the three floats), then the foe's own stores, in the
+ * listing's order below.  Every other byte is left as operator new returned
+ * it, as the original leaves it -- facing, kind, cell and the rest are the
+ * spawn's to write.  The ctor zeroes +0xab..+0xcf a second time right after
+ * ZeroEntitySoundSlotPointers, plus +0x9f; dead stores for the handles, kept.
+ * Two pairs of dword stores are one double each: +0x48/+0x4c = 20.0 and
+ * +0x38/+0x3c = 1000.0.
+ *
+ * 0x412140 (vtable slot 0; 0x45d388 has ONE slot -- the next dword is 0)
+ * calls 0x412160 and then Free2 if flags & 1.  0x412160, from its listing:
+ * re-install 0x45d388 (dead), clear tile+0x1a1 (dword) and tile+0x1a5 on the
+ * foe's cell and tile+0x1a5 on the cell (u - [+0x13f], v - [+0x140]), all
+ * MOVSX; destroy and Free2 the FoePath if there is one; then the base dtor
+ * 0x438760 (vtable stores only, dead -- the free follows).
+ *
+ * A byte scan of .text for 0x45d388 finds only the ctor (0041201d) and the
+ * dtor (00412180).  0x411ff0's one caller is the spawn (ours); 0x412160's
+ * only caller is 0x412140, reached only through the vtable, from the remove
+ * (ours).  So we create and destroy every foe, and use our own new/delete.
+ * The FoePath is still the game's -- AttachFoePathfinderToEntity allocates
+ * it with operator_new -- so it goes back through game_free2.
+ */
+const Foe::Vtbl Foe::VTABLE = { &Foe::scalarDeletingDtor };
+
+Foe *Foe::create()
+{
+    return new (std::nothrow) Foe;
+}
+
+Foe::Foe()
+{
+    /* MovableEntity() has run: 0x438720 */
+    vtable_          = &VTABLE;
+    zeroSoundSlots();                       /* 0x43ad60 */
+    field_7a         = 0;
+    field_82         = 0;
+    removeRequested_ = 0;
+    field_86         = 0;
+    field_58         = 0;
+    field_124        = 1;
+    field_14e        = 0;
+    pendingMove_     = 0;
+    field_126        = 0;
+    field_12a        = 0;
+    field_fb         = 0;
+    field_120        = 0;
+    field_11e        = 0xff;
+    field_d7         = 0xff;
+    field_48         = 20.0;                /* 0 at +0x48 ... */
+    field_38         = 1000.0;              /* 0 at +0x38 ... */
+    moveState_       = 0;
+    field_ef         = 0;
+    field_e8         = 0;
+    field_e4         = 0;
+    field_ff         = 0;
+    field_156        = 0;
+    field_e9         = 0;
+    field_11a        = 0;
+    field_ea         = 0;
+    field_d3         = 0;
+    field_9b         = 0;
+    pool_9f_         = 0;
+    sound_ab_        = 0;                   /* the redundant second clear */
+    sound_af_        = 0;
+    sound_b3_        = 0;
+    sound_b7_        = 0;
+    sound_bb_        = 0;
+    sound_bf_        = 0;
+    sound_c3_        = 0;
+    sound_c7_        = 0;
+    sound_cb_        = 0;
+    sound_cf_        = 0;
+    field_9a         = 0;
+    field_6e         = 0;
+    field_63         = 0;
+    dropContents_    = 0;
+    type_            = 0;
+    /* ... 0x40340000 at +0x4c (00412117) */
+    pathfinder_      = 0;
+    /* ... 0x408f4000 at +0x3c (00412124) */
+}
+
+void Foe::destroy()
+{
+    void *pf;
+
+    tile(cellU_, cellV_)->setField1a1(0);
+    tile(cellU_, cellV_)->setField1a5(0);
+    tile(cellU_ - field_13f, cellV_ - field_140)->setField1a5(0);
+
+    pf = pathfinder_;
+    if (pf != 0) {
+        FoePath_Destroy(pf);                /* 0x401c00, still the game's */
+        game_free2(pf);
+    }
+}
+
+void *Foe::scalarDeletingDtor(Foe *self, unsigned int flags)
+{
+    self->destroy();
+    if (flags & 1)
+        delete self;
+    return self;
+}
+
 /* ═══ 0x004172d0 -- Game::SpawnFoeObject ═══════════════════════════════════ */
 
 /* Each distinct foe type, logged once with the level it first appeared in;
@@ -258,7 +366,6 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     unsigned int  i;
     Foe         **slot;
     Foe          *p;
-    void         *mem;
 
     fx_init();
 
@@ -268,8 +375,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     id = game->claimSpareObjectId(game->foeIds(), game->foeCountRef());
 
-    mem = game_operator_new(0x15e);
-    p   = mem ? (Foe *)ORIG_FOE_CTOR(mem) : 0;
+    p = create();
 
     i     = (unsigned int)id;
     slot  = game->foeSlotRef(i);

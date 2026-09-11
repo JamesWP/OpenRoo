@@ -5,8 +5,11 @@
  * filled only by SpawnFoeObject.
  *
  * Ours (foe.cpp): spawn (0x4172d0), remove (0x417530), step (0x412240) and
- * chase (0x43a9d0).  Most foe fields sit inside the MovableEntity region, so
- * they are declared there (protected) rather than here.
+ * chase (0x43a9d0), and construction and destruction -- our own `new`, and
+ * our own one-slot vtable in place of the game's 0x45d388; the originals
+ * 0x411ff0, 0x412140 and 0x412160 are UD2-stubbed.  Most foe fields sit
+ * inside the MovableEntity region, so they are declared there (protected)
+ * rather than here.
  *
  * Outside accessors remain, which is why the layout stays packed and
  * asserted: GameTick's foe loop (gametick.cpp) picks each foe's target and
@@ -50,6 +53,25 @@ public:
                         unsigned short speed);
 
 private:
+    /* The vtable.  MSVC layout: one slot, the scalar deleting destructor,
+     * __thiscall with a flags argument (bit 0 = free the memory).  The
+     * remove dispatches through it (Object_DestroyAndCompactId). */
+    struct Vtbl {
+        void *(__attribute__((thiscall)) *scalarDeletingDtor)(Foe *self,
+                                                              unsigned int flags);
+    };
+    static const Vtbl VTABLE;
+
+    /* 0x411ff0 -- allocate and construct, with our own new.  NULL if
+     * allocation fails, as the original's operator new returned NULL. */
+    static Foe *create();
+    Foe();
+    /* 0x412160 -- the destructor body. */
+    void destroy();
+    /* 0x412140 -- vtable slot 0. */
+    static void *__attribute__((thiscall)) scalarDeletingDtor(Foe *self,
+                                                              unsigned int flags);
+
     Tile *tile(int u, int v) const;
 
     KAROO_LAYOUT_REGISTER(Foe);

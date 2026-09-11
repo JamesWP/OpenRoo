@@ -3,6 +3,17 @@
  * rather than redeclaring it (COHESION_PLAN.md, template 10). */
 #pragma once
 
+/* PLACEHOLDER: the FoePath destructor body 0x00401c00, __fastcall (ECX =
+ * the FoePath): ReleasePathSearchNodeLists (ours) then FactAlloc::Free of
+ * its +0x12 buffer.  Called through, not rewritten: the still-original
+ * Player dtor (0x0041FA48) calls it too.  The caller frees the FoePath
+ * itself afterwards (Free2). */
+inline void FoePath_Destroy(void *self)
+{
+    typedef void (__attribute__((fastcall)) *fn)(void *);
+    ((fn)0x00401c00)(self);
+}
+
 /* FindFoePathBetweenCells 0x00401c20.  `self` is the FoePath. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Sim_FindFoePathBetweenCells(void *self, int uFoe, int vFoe,
