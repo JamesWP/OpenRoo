@@ -19,9 +19,12 @@
  * player's or a foe's switch byte selects a slot here, sets +0x53 and the
  * phase start), and DrawBridgeSurfaces draws a deck from its anchor
  * (+0x39..) to its live end (+0x25..).  Ghidra now names the tick
- * UpdateBridgeObject.  The export names and the `hazardaxis` /
- * KAROO_HAZARD_DIAG / `bridgespan` names are kept, so the commands in
- * CLAUDE.md, GAMETICK_PLAN.md and old commit messages still work.
+ * UpdateBridgeObject, and the names here follow: the tick's export is
+ * Sim_UpdateBridgeObject (was Sim_UpdateSlidingHazardObject), its control
+ * `deckaxis` (was `hazardaxis`) and its diag KAROO_DECK_DIAG (was
+ * KAROO_HAZARD_DIAG).  Not `bridgeaxis` / KAROO_BRIDGE_DIAG: those name the
+ * rejected spawn control and bridgesurf.cpp's render diag.  GAMETICK_PLAN.md
+ * and older commit messages use the old names.
  *
  * ─── The tick ────────────────────────────────────────────────────────────
  *
@@ -73,13 +76,13 @@
  *
  * ─── Controls and diags ──────────────────────────────────────────────────
  *
- * KAROO_SIM_FX=hazardaxis flips the travel axis 1<->2 at the single point the
+ * KAROO_SIM_FX=deckaxis flips the travel axis 1<->2 at the single point the
  * tick reads it, so motion, guard and stamp move together -- a DIRECTION
  * change.  KAROO_SIM_FX=bridgespan exchanges the spawn's two far-end arms
  * (see spawn).  KAROO_SIM_FX=keepobjects makes the purge do nothing, shared
  * with the other purges.
  *
- * KAROO_HAZARD_DIAG=1 logs the first extend stamp and retract unstamp, plus a
+ * KAROO_DECK_DIAG=1 logs the first extend stamp and retract unstamp, plus a
  * tick count every 5000; the first tick is logged unconditionally.
  * KAROO_PLACE_DIAG=1 logs every spawn with its scan axis; KAROO_RESET_DIAG=1
  * the first purge and every live one.
@@ -104,10 +107,10 @@
 static const float K_MS_TO_TILE = 0.01f;      /* 0x0045d400 */
 
 /* ─── Controls and diags, read by VALUE, never by presence ──────────────── */
-static int s_fx_hazardaxis  = 0;
+static int s_fx_deckaxis  = 0;
 static int s_fx_bridgespan  = 0;
 static int s_fx_keepobjects = 0;
-static int s_diag_hazard    = 0;   /* KAROO_HAZARD_DIAG */
+static int s_diag_deck    = 0;   /* KAROO_DECK_DIAG */
 static int s_diag_place     = 0;   /* KAROO_PLACE_DIAG  */
 static int s_diag_reset     = 0;   /* KAROO_RESET_DIAG  */
 static int s_init           = 0;
@@ -127,9 +130,9 @@ static void fx_init(void)
     s_init = 1;
 
     if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
-        if (strcmp(buf, "hazardaxis") == 0) {
-            s_fx_hazardaxis = 1;
-            log_write("bridgeobject: KAROO_SIM_FX=hazardaxis -- travel axis "
+        if (strcmp(buf, "deckaxis") == 0) {
+            s_fx_deckaxis = 1;
+            log_write("bridgeobject: KAROO_SIM_FX=deckaxis -- travel axis "
                       "1<->2 flipped\n");
         } else if (strcmp(buf, "bridgespan") == 0) {
             s_fx_bridgespan = 1;
@@ -145,8 +148,8 @@ static void fx_init(void)
         }
     }
 
-    if (env_set("KAROO_HAZARD_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
-        s_diag_hazard = 1;
+    if (env_set("KAROO_DECK_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
+        s_diag_deck = 1;
     if (env_set("KAROO_PLACE_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
         s_diag_place = 1;
     if (env_set("KAROO_RESET_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
@@ -478,7 +481,7 @@ void BridgeObject::tick()
         s_logged_first = 1;
         log_write("bridgeobject: first bridge tick -- this=%p\n", (void *)this);
     }
-    if (s_diag_hazard) {
+    if (s_diag_deck) {
         ++s_ticks;
         if ((s_ticks % 5000) == 0)
             log_write("bridgeobject: %lu ticks\n", s_ticks);
@@ -487,10 +490,10 @@ void BridgeObject::tick()
     recordCopy_ = *record_;
     now_ = *clock_;
 
-    /* The axis, read once.  hazardaxis flips it here, at the single point
+    /* The axis, read once.  deckaxis flips it here, at the single point
      * every axis decision below goes through. */
     axis = axis_;
-    if (s_fx_hazardaxis) {
+    if (s_fx_deckaxis) {
         if (axis == 1)      axis = 2;
         else if (axis == 2) axis = 1;
     }
@@ -555,7 +558,7 @@ void BridgeObject::tick()
             || (axis == 2 && cv < (signed char)guard_)) {
             Tile *t = Tile::at(tileBase_, cu, cv);
 
-            if (s_diag_hazard && !s_logged_stamp) {
+            if (s_diag_deck && !s_logged_stamp) {
                 s_logged_stamp = 1;
                 log_write("bridgeobject: first extend stamp -- axis=%u "
                           "cell=(%d,%d) height=%u\n",
@@ -566,7 +569,7 @@ void BridgeObject::tick()
             t->setObjectMarker(0x14);
             t->setField217(1);
             t->setHeight(tileHeight_);
-            /* The STAMPED axis is the flipped one under hazardaxis too. */
+            /* The STAMPED axis is the flipped one under deckaxis too. */
             t->setBridgeAxis(axis);
             t->setField1f6(1);
             t->setBridgeSlot(slot_);
@@ -621,7 +624,7 @@ void BridgeObject::tick()
         || (axis == 2 && cv < (signed char)guard_)) {
         Tile *t = Tile::at(tileBase_, cu, cv);
 
-        if (s_diag_hazard && !s_logged_unstamp) {
+        if (s_diag_deck && !s_logged_unstamp) {
             s_logged_unstamp = 1;
             log_write("bridgeobject: first retract unstamp -- axis=%u "
                       "cell=(%d,%d)\n", (unsigned)axis, (int)cu, (int)cv);
@@ -742,10 +745,10 @@ bool BridgeObject::buildSurface(BridgeVertex v[4], double t, bool backward,
 }
 
 /* ═══ Exports -- thin ABI shims; patch.py routes the three originals here ═
- * The tick keeps its old export name so patch.py does not change. */
+ */
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_UpdateSlidingHazardObject(BridgeObject *self)
+Sim_UpdateBridgeObject(BridgeObject *self)
 {
     self->tick();
 }
