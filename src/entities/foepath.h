@@ -1,21 +1,27 @@
 /* FoePath -- the foe pathfinder, a best-first (A*-shaped) search over the
- * tile grid.  One per foe, hung off foe+0x13b; 0x35 bytes, allocated by
- * AttachFoePathfinderToEntity 0x43a970 with operator_new and constructed by
- * PopulateFoePathSearchContext 0x401bb0 (both still the game's, so the
- * object's two ends stay on the game's heap).
+ * tile grid.  One per foe, hung off foe+0x13b; 0x35 bytes.
  *
- * The search's methods are ours (foepath.cpp), and so is the destructor
- * body 0x401c00 (dispose(); the Player dtor's call is routed to it); every
- * one is a one-line export shim over a method below.  The layout is packed and asserted
- * against the ctor's stores and the listings; see foepath.cpp for each
- * method's exactness notes.
+ * All of it is ours (foepath.cpp): construction (create(), replacing
+ * AttachFoePathfinderToEntity 0x43a970's allocation and the ctor
+ * PopulateFoePathSearchContext 0x401bb0, both UD2-stubbed), the search's
+ * methods, and the destructor body 0x401c00 (dispose(); the still-original
+ * Player dtor's call is routed to it).  The search's methods are one-line
+ * export shims over the methods below.
+ *
+ * The object, its worklist block, cells and nodes are allocated and freed
+ * with OUR allocators (new/delete, calloc/free): every allocation and free
+ * is ours, and the Player -- whose still-original dtor would Free2 its
+ * +0x13b -- never holds a FoePath (see the allocator note in foepath.cpp).
+ * The layouts are packed and asserted against the ctor's stores and the
+ * listings all the same; see foepath.cpp for each method's exactness notes.
  */
 #pragma once
 
 #include "layout.h"
 
-/* A search node: calloc(1, 0x44) from the game's heap, freed with
- * FactAlloc::Free.  A plain record, public: FoePath builds and links them,
+/* A search node: calloc(1, 0x44), freed with free() -- our CRT now (the
+ * original used the game's calloc and FactAlloc::Free).  A plain record,
+ * public: FoePath builds and links them,
  * and the chase (foe.cpp) reads the result's parent and cell. */
 struct __attribute__((packed)) PathNode {
     static const int ORIGIN = 0;
@@ -108,6 +114,13 @@ class __attribute__((packed)) FoePath {
 public:
     static const int ORIGIN = 0;
 
+    /* AttachFoePathfinderToEntity 0x43a970's allocation plus the ctor
+     * 0x401bb0: our own operator new (nothrow), then populate.  NULL if the
+     * allocation fails, exactly as the original stores it. */
+    static FoePath *create(unsigned char *tileBase, unsigned short field04);
+    /* The Foe dtor's `dispose(); Free2(p)` -- with our own delete. */
+    static void destroy(FoePath *p);
+
     /* ── the chase's side (Foe::chase, foe.cpp) ─────────────────────── */
     /* +0x2f: the search's iteration budget, from the chase's `speed`. */
     void setCap(unsigned short n)                  { cap_ = n; }
@@ -147,7 +160,9 @@ public:
     void      dispose();
 
 private:
-    FoePath() = delete;   /* game-constructed; only ever reached by pointer */
+    FoePath() = delete;   /* built on raw game-heap memory by create() */
+    /* 0x401bb0 -- PopulateFoePathSearchContext, the ctor's stores. */
+    void populate(unsigned char *tileBase, unsigned short field04);
     static PathNode *findByKey(PathNode *hdr, int key);
 
     KAROO_LAYOUT_REGISTER(FoePath);

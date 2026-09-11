@@ -69,8 +69,9 @@
  *    touched.
  */
 #include <windows.h>
+#include <stdlib.h>          /* calloc, free -- our CRT, see the allocator note */
+#include <new>               /* std::nothrow */
 #include "log.h"
-#include "alloc.h"
 #include "foepath.h"
 #include "tile.h"
 #include "entitymath.h"   /* CheckTileIsRamp, GetTurnedDirection */
@@ -493,25 +494,32 @@ Sim_PopBestOpenPathNode(FoePath *self)
     return self->popBestOpen();
 }
 
-/* FactAlloc::Free — __cdecl(void *), 0x0045087c.  THE named callback into
- * the game binary for this file, and the same exception every other
- * replacement here makes (gamelog.cpp, model.cpp, scenematerial.cpp,
- * texture.cpp all call it).  The pathfinder's nodes are allocated by the
- * game's calloc at 0x004507ff (named AllocateZeroedHeapBlock in Ghidra this
- * cycle), which routes through FactAlloc's own sub-allocator before falling
- * back to HeapAlloc.  Memory from that allocator MUST go back to that
- * allocator, so freeing it ourselves is not an option — this is the
- * no-callback rule's standing allocator exemption, named here as the rule
- * requires. */
-
-/* AllocateZeroedHeapBlock — __cdecl(int count, int size), 0x004507ff: the
- * game's calloc, and the allocator half of the pair above.  The SECOND (and
- * last) named callback in this file, for the same unavoidable reason: cells
- * this allocates are freed by FactAlloc::Free, and blocks that cross that
- * boundary have to come from the matching allocator.  Named here as the
- * no-callback rule requires. */
-typedef void * (__cdecl *alloc_zeroed_fn)(int, int);
-static const alloc_zeroed_fn AllocateZeroedHeapBlock = (alloc_zeroed_fn)0x004507ff;
+/* ─── The allocator: OURS (James's call, 2026-09-11) ──────────────────────
+ *
+ * The original allocates every pathfinder block with the game's calloc
+ * 0x004507ff (Ghidra AllocateZeroedHeapBlock) and frees it with
+ * FactAlloc::Free 0x0045087c, and the FoePath object itself with
+ * operator_new / Free2.  Those were kept as callbacks while the game's code
+ * owned one end.  It no longer does:
+ *
+ *   - every allocation site is ours: the FoePath (create), its worklist
+ *     block (populate), worklist cells (pushPending), list headers, seed and
+ *     nodes (search, relax);
+ *   - every free is ours: nodes (releaseLists), cells (popPending), the
+ *     worklist block (dispose), the object (destroy);
+ *   - the one still-original holder of a FoePath pointer, the Player dtor
+ *     (0x41FA48: dispose + Free2 on its +0x13b), never sees one.  A scan of
+ *     Karoo.exe.orig for every store to [reg+0x13b] finds exactly three: the
+ *     Foe ctor (0x41211e, stubbed), the attach (0x43a9b8, stubbed) and the
+ *     Player ctor (0x41f9db), which stores 0; the dtor null-checks first.
+ *
+ * So both ends are ours, and the blocks come from and go back to our CRT.
+ * calloc(count, size) is the same call shape the original made, zeroing
+ * included; the nine-byte worklist cells stay nine bytes. */
+static inline void *path_calloc(int count, int size)
+{
+    return calloc((size_t)count, (size_t)size);
+}
 
 /* ─── FoePath::ReleasePathSearchNodeLists (0x00401d60) ────────────────────
  *
@@ -566,7 +574,7 @@ void FoePath::releaseLists()
         do {
             PathNode *p = n;
             n = n->next;                         /* read before the free */
-            game_free(p);
+            free(p);
             ++freed;
         } while (n != 0);
 
@@ -603,6 +611,70 @@ Sim_ReleasePathSearchNodeLists(FoePath *self)
     self->releaseLists();
 }
 
+/* ─── FoePath::PopulateFoePathSearchContext (0x00401bb0) ───────────────────
+ * ─── Game::AttachFoePathfinderToEntity's allocation (0x0043a970) ─────────
+ *
+ * The ctor, from its listing: __thiscall, RET 8, (tileBase, u16).
+ *
+ *     [+0x00] = tileBase             [+0x04] = the u16 (word store)
+ *     [+0x1e] = tileBase[0x19b]      zero-extended (XOR EDX; MOV DL)
+ *     [+0x1a] = tileBase[0x19a]      zero-extended (XOR ECX; MOV CL)
+ *     [+0x12] = calloc(1, 9)         the worklist owner block
+ *     [+0x16] = [+0x06] = [+0x0a] = [+0x0e] = 0     in that order
+ *     return this
+ *
+ * +0x1a/+0x1e are the map's v and u extents, read from the map header that
+ * sits in the first cell's bytes (Tile::mapExtentV/U at cell (0, 0) -- the
+ * tile pointer IS tileBase there).  Mode (+0x2a), cap (+0x2f) and the four
+ * cell bytes are left as operator new returned them; the spawn and the
+ * chase write them before any search reads them.
+ *
+ * The attach, from its listing: `operator_new(0x35)`; NULL -> store NULL
+ * (the foe then has no pathfinder, and the chase dereferences it unguarded
+ * -- kept); else construct with (foe+0x34, 0).  Its MSVC EH frame is not
+ * reproduced: the allocator returns NULL rather than throwing.  The store
+ * into foe+0x13b stays with the Foe (foe.cpp).
+ *
+ * Both originals have one E8 caller each, and both callers are stubbed:
+ * 0x0043A9AB (the ctor, inside the attach) and 0x00417500 (the attach,
+ * inside the spawn).  A byte scan finds no DATA use of either address.
+ */
+FoePath *FoePath::create(unsigned char *tileBase, unsigned short field04)
+{
+    /* Raw storage, then the ctor's stores: FoePath has no C++ ctor (the
+     * original leaves mode, cap and the cells as the allocator returned
+     * them).  NULL on failure, as the original's operator_new. */
+    FoePath *p = (FoePath *)::operator new(sizeof(FoePath), std::nothrow);
+    if (p == 0)
+        return 0;
+    p->populate(tileBase, field04);
+    return p;
+}
+
+/* The Foe dtor's tail (0x412160): the dtor body, then free the object --
+ * the original's `CALL 0x401c00; PUSH EDI; CALL Free2`.  Our own delete now,
+ * matching create(). */
+void FoePath::destroy(FoePath *p)
+{
+    p->dispose();
+    ::operator delete(p);
+}
+
+void FoePath::populate(unsigned char *tileBase, unsigned short field04)
+{
+    const Tile *header = Tile::at(tileBase, 0, 0);
+
+    tileBase_  = tileBase;
+    field_04   = field04;
+    keyStride_ = (int)header->mapExtentU();       /* +0x19b */
+    extentV_   = (int)header->mapExtentV();       /* +0x19a */
+    pending_   = (PendingStack *)path_calloc(1, 9);
+    found_     = 0;
+    open_      = 0;
+    closed_    = 0;
+    result_    = 0;
+}
+
 /* ─── FoePath::DisposeFoePathSearchState (0x00401c00) ─────────────────────
  *
  * The FoePath's destructor body.  The whole listing:
@@ -613,9 +685,10 @@ Sim_ReleasePathSearchNodeLists(FoePath *self)
  *     ADD ESP,4; POP ESI; RET
  *
  * __thiscall (ECX), no stack arguments, no return value read.  The
- * worklist block was calloc'd by the FoePath ctor 0x401bb0, so it goes back
- * through the game's Free (alloc.h).  The FoePath itself is NOT freed here:
- * both callers Free2 it afterwards.  Nothing is nulled: pending_ and the
+ * worklist block was calloc'd by populate(), so it goes back through our
+ * free (see the allocator note).  The FoePath itself is NOT freed here: the
+ * Foe frees it afterwards (destroy()), and the Player dtor would Free2 it --
+ * but never holds one.  Nothing is nulled: pending_ and the
  * list headers are left dangling, as in the original -- the object is freed
  * next.
  *
@@ -627,7 +700,7 @@ Sim_ReleasePathSearchNodeLists(FoePath *self)
 void FoePath::dispose()
 {
     releaseLists();
-    game_free(pending_);
+    free(pending_);
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -834,7 +907,7 @@ void FoePath::pushPending(PathNode *node)
 
     ++g_diag.pushes;
 
-    PendingCell *cell = (PendingCell *)AllocateZeroedHeapBlock(1, 9);
+    PendingCell *cell = (PendingCell *)path_calloc(1, 9);
 
     cell->node = node;
 
@@ -853,7 +926,7 @@ PathNode *FoePath::popPending()
     PathNode *node = cell->node;
     owner->head = cell->next;
 
-    game_free(cell);
+    free(cell);
     return node;
 }
 
@@ -1071,7 +1144,7 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
     }
 
     /* Not seen before: a fresh node. */
-    n = (PathNode *)AllocateZeroedHeapBlock(1, 0x44);
+    n = (PathNode *)path_calloc(1, 0x44);
 
     const int du = u - goalU;
     const int dv = v - goalV;
@@ -1508,10 +1581,10 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
     const int goalKey = cellKey(uFoe, vFoe);
 
     /* Two fresh list headers every search — see exactness point 1. */
-    open_   = (PathNode *)AllocateZeroedHeapBlock(1, 0x44);
-    closed_ = (PathNode *)AllocateZeroedHeapBlock(1, 0x44);
+    open_   = (PathNode *)path_calloc(1, 0x44);
+    closed_ = (PathNode *)path_calloc(1, 0x44);
 
-    PathNode *seed = (PathNode *)AllocateZeroedHeapBlock(1, 0x44);
+    PathNode *seed = (PathNode *)path_calloc(1, 0x44);
 
     const int du = uTarget - uFoe;
     const int dv = vTarget - vFoe;

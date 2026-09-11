@@ -125,6 +125,10 @@ public:
     void setField1a1(int b)                    { field_1a1 = b; }
 
     /* ── read by the foe pathfinder (foepath.cpp) ────────────────────── */
+    /* +0x19a / +0x19b: the map header's extents -- read these only from
+     * Tile::at(base, 0, 0), which is the header's address. */
+    unsigned char mapExtentV() const           { return mapExtentV_; }
+    unsigned char mapExtentU() const           { return mapExtentU_; }
     /* +0x1f1: an elevator (kind 0x0e) cell's level byte. */
     unsigned char field1f1() const             { return field_1f1; }
     /* +0x1f2: on a bridge (kind 0x10) cell, its direction byte. */
@@ -134,7 +138,11 @@ private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
     KAROO_LAYOUT_REGISTER(Tile);
 
-    unsigned char gap_000[0x19c - 0x000];
+    unsigned char gap_000[0x19a - 0x000];
+    /* Meaningful only at cell (0, 0), where the tile pointer is the tile
+     * base: the map header's extents (levelsetup.cpp G_MAP_H / G_MAP_W). */
+    unsigned char mapExtentV_;        /* 0x19a  the map's v extent          */
+    unsigned char mapExtentU_;        /* 0x19b  the map's u extent          */
     unsigned char height_;            /* 0x19c                              */
     unsigned char objectMarker_;      /* 0x19d  object kind / scan stop     */
     unsigned char gap_19e[0x19f - 0x19e];
@@ -185,6 +193,8 @@ private:
 
 KAROO_LAYOUT_CHECKS(Tile)
 {
+    KAROO_LAYOUT_AT(mapExtentV_,       0x19a);
+    KAROO_LAYOUT_AT(mapExtentU_,       0x19b);
     KAROO_LAYOUT_AT(height_,           0x19c);
     KAROO_LAYOUT_AT(objectMarker_,     0x19d);
     KAROO_LAYOUT_AT(contents_,         0x19f);

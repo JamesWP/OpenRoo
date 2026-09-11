@@ -15,13 +15,12 @@
  * ID in AL.  Three E8 sites: 0x0041529A 0x00416E8B 0x00416EBC.
  *
  * Allocation and construction are ours (see "Construction and destruction"
- * below).  Kept as callbacks: AttachFoePathfinderToEntity 0x43a970
- * (operator_new(0x35) + the FoePath ctor -- the FoePath is foepath.cpp's to
- * take) and ClaimSpareObjectIdSlot 0x417250 through Game::claimSpareObjectId.
- * That last one is typed void in Ghidra but both spawns read AL as the new
- * ID; "which local is in AL at a void RET" is a compiler artefact, so it is
- * called through rather than rewritten from a decompile that does not model
- * the return.
+ * below), and so is the pathfinder's: AttachFoePathfinderToEntity 0x43a970
+ * is FoePath::create() plus the store into +0x13b.  Kept as a callback:
+ * ClaimSpareObjectIdSlot 0x417250 through Game::claimSpareObjectId.  It is
+ * typed void in Ghidra but both spawns read AL as the new ID; "which local
+ * is in AL at a void RET" is a compiler artefact, so it is called through
+ * rather than rewritten from a decompile that does not model the return.
  *
  * The MSVC EH frame around the allocation is not reproduced: the allocator
  * returns NULL rather than throwing, so the frame is unobservable.
@@ -148,7 +147,6 @@
 #include "foe.h"
 #include "game.h"
 #include "tile.h"
-#include "alloc.h"
 #include "entitymove.h"
 #include "entitymath.h"
 #include "foepath.h"
@@ -160,10 +158,6 @@
 
 #include <new>               /* std::nothrow */
 
-/* ─── Callbacks into the game binary, each justified in the header ──────── */
-typedef void  (__attribute__((fastcall)) *attach_path_fn)(Foe *foe);
-
-#define ORIG_ATTACH_PATH  ((attach_path_fn) 0x0043a970)
 
 /* ─── Controls and diags, read by VALUE, never by presence ──────────────── */
 static int s_fx_spawnswap = 0;
@@ -246,8 +240,8 @@ Tile *Foe::tile(int u, int v) const
  * dtor (00412180).  0x411ff0's one caller is the spawn (ours); 0x412160's
  * only caller is 0x412140, reached only through the vtable, from the remove
  * (ours).  So we create and destroy every foe, and use our own new/delete.
- * The FoePath is still the game's -- AttachFoePathfinderToEntity allocates
- * it with operator_new -- so it goes back through game_free2.
+ * The FoePath is ours too (FoePath::create / destroy, our own allocators;
+ * see foepath.cpp's allocator note for why the Player cannot hold one).
  */
 const Foe::Vtbl Foe::VTABLE = { &Foe::scalarDeletingDtor };
 
@@ -318,10 +312,8 @@ void Foe::destroy()
     tile(cellU_ - field_13f, cellV_ - field_140)->setField1a5(0);
 
     pf = pathfinder_;
-    if (pf != 0) {
-        pf->dispose();                      /* 0x401c00 */
-        game_free2(pf);
-    }
+    if (pf != 0)
+        FoePath::destroy(pf);               /* 0x401c00, then Free2 */
 }
 
 void *Foe::scalarDeletingDtor(Foe *self, unsigned int flags)
@@ -469,7 +461,9 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     /* Detail 4: the kind byte, re-read from the slot, into the spawn cell. */
     Tile::at(game->tileBase(), (int)u, (int)v)->setField1a5((*slot)->kind_);
 
-    ORIG_ATTACH_PATH(*slot);
+    /* AttachFoePathfinderToEntity 0x43a970: allocate and construct (reading
+     * the foe's tile base), then store -- NULL on a failed allocation. */
+    (*slot)->pathfinder_ = FoePath::create((*slot)->tileBase_, 0);
 
     /* Detail 5: the ZEROED working copy, not the original type. */
     (*slot)->pathfinder_->setMode(type);
