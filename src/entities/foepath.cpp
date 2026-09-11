@@ -603,6 +603,39 @@ Sim_ReleasePathSearchNodeLists(FoePath *self)
     self->releaseLists();
 }
 
+/* ─── FoePath::DisposeFoePathSearchState (0x00401c00) ─────────────────────
+ *
+ * The FoePath's destructor body.  The whole listing:
+ *
+ *     PUSH ESI; MOV ESI,ECX
+ *     CALL 0x401d60                  ReleasePathSearchNodeLists
+ *     PUSH [ESI+0x12]; CALL 0x45087c FactAlloc::Free(pending)
+ *     ADD ESP,4; POP ESI; RET
+ *
+ * __thiscall (ECX), no stack arguments, no return value read.  The
+ * worklist block was calloc'd by the FoePath ctor 0x401bb0, so it goes back
+ * through the game's Free (alloc.h).  The FoePath itself is NOT freed here:
+ * both callers Free2 it afterwards.  Nothing is nulled: pending_ and the
+ * list headers are left dangling, as in the original -- the object is freed
+ * next.
+ *
+ * TWO E8 call sites, no DATA reference (byte scan for 0x00401c00 finds
+ * none): 0x00412210 in the Foe dtor body (stubbed; foe.cpp calls dispose()
+ * directly) and 0x0041FA48 in the still-original Player dtor, which
+ * CALL_PATCHES routes to the export below.
+ */
+void FoePath::dispose()
+{
+    releaseLists();
+    game_free(pending_);
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_DisposeFoePathSearchState(FoePath *self)
+{
+    self->dispose();
+}
+
 /* ─── FoePath::FindOpenPathNodeByKey   (0x00402130) ───────────────────────
  * ─── FoePath::FindClosedPathNodeByKey (0x00402150) ───────────────────────
  *

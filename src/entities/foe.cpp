@@ -319,7 +319,7 @@ void Foe::destroy()
 
     pf = pathfinder_;
     if (pf != 0) {
-        FoePath_Destroy(pf);                /* 0x401c00, still the game's */
+        pf->dispose();                      /* 0x401c00 */
         game_free2(pf);
     }
 }

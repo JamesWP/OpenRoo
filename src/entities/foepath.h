@@ -4,8 +4,9 @@
  * PopulateFoePathSearchContext 0x401bb0 (both still the game's, so the
  * object's two ends stay on the game's heap).
  *
- * The search's methods are ours (foepath.cpp); every one is a one-line
- * export shim over a method below.  The layout is packed and asserted
+ * The search's methods are ours (foepath.cpp), and so is the destructor
+ * body 0x401c00 (dispose(); the Player dtor's call is routed to it); every
+ * one is a one-line export shim over a method below.  The layout is packed and asserted
  * against the ctor's stores and the listings; see foepath.cpp for each
  * method's exactness notes.
  */
@@ -141,6 +142,10 @@ public:
     void      pushPending(PathNode *node);                        /* 0x402250 */
     PathNode *popPending();                                       /* 0x402280 */
 
+    /* 0x401c00 -- the destructor body: free the nodes and the worklist
+     * block.  The caller frees the FoePath itself afterwards (Free2). */
+    void      dispose();
+
 private:
     FoePath() = delete;   /* game-constructed; only ever reached by pointer */
     static PathNode *findByKey(PathNode *hdr, int key);
@@ -186,16 +191,4 @@ KAROO_LAYOUT_CHECKS(FoePath)
     KAROO_LAYOUT_AT(foeV_,      0x34);
     /* AttachFoePathfinderToEntity's operator_new(0x35). */
     KAROO_LAYOUT_SIZE(0x35);
-}
-
-/* PLACEHOLDER: the FoePath destructor body 0x00401c00 (Ghidra
- * FoePath::DisposeFoePathSearchState), __fastcall/__thiscall (ECX =
- * the FoePath): ReleasePathSearchNodeLists (ours) then FactAlloc::Free of
- * its +0x12 block.  Called through, not rewritten: the still-original
- * Player dtor (0x0041FA48) calls it too.  The caller frees the FoePath
- * itself afterwards (Free2). */
-inline void FoePath_Destroy(FoePath *self)
-{
-    typedef void (__attribute__((fastcall)) *fn)(FoePath *);
-    ((fn)0x00401c00)(self);
 }
