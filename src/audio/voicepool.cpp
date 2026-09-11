@@ -17,6 +17,7 @@
  */
 #include <windows.h>
 #include "static.h"
+#include "voicepool.h"
 #include "log.h"
 
 /* Our own replacements, in this same DLL. */

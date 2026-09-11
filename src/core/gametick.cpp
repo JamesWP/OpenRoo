@@ -51,6 +51,7 @@
 #include "bridgeobject.h"
 #include "breakabletile.h"
 #include "bomb.h"
+#include "foe.h"
 
 struct CStaticSoundbuffer;
 struct ProgableControl;
@@ -72,11 +73,6 @@ __declspec(dllexport) void __attribute__((thiscall)) Sim_PollTextEntryKeys(void 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdatePlayerTileEffects(void *self);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateFoeObjectStep(void *self, unsigned char playerU, unsigned char playerV);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_SetFoeChaseTarget(void *self, unsigned char targetU, unsigned char targetV, unsigned short speed);
-
-__declspec(dllexport) unsigned char __attribute__((thiscall)) Sim_SpawnFoeObject(void *self, unsigned int u, unsigned int v, unsigned int h, unsigned int kind, unsigned int type);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_RemoveFoeObject(void *self, unsigned int idArg);
 __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AcquireObjectSoundBuffersForIndex(void *self, unsigned int objArg);
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_MarkListedTilesBlockedByObject(void *self, unsigned int listIndex);
@@ -380,9 +376,9 @@ Sim_GameTick(void *self, double dt, double now)
                 continue;
             signed char u = (signed char)E[-0x14], v = (signed char)E[-0x13];
             if (G8(0x2ab732 + TIDX(u, v)) == 0 && G8(0x174fd4) < E[0]) {
-                unsigned char id = Sim_SpawnFoeObject(B, (unsigned char)u,
-                                                      (unsigned char)v, E[-0x12], 2,
-                                                      (unsigned char)(E[-0x09] + 100));
+                unsigned char id = Foe::spawn((Game *)B, (unsigned char)u,
+                                              (unsigned char)v, E[-0x12], 2,
+                                              (unsigned char)(E[-0x09] + 100));
                 void *foe = GP(0x174804 + id * 4);
                 if (((int)G8(0x4224d) + 1) % 15 == 0)
                     O8(foe, 0x15a) = 7;
@@ -534,7 +530,7 @@ Sim_GameTick(void *self, double dt, double now)
             tv = O8(*slot, 0x32);
             if (Sim_FindNearestListedObjectTile(B, &tu, &tv, 7) != 0) {
                 O16(*slot, 0x64) = 100;
-                Sim_SetFoeChaseTarget(*slot, tu, tv, 100);
+                ((Foe *)*slot)->chase(tu, tv, 100);
                 if (O32(*slot, 0xd3) == 0 && O8(*slot, 0x145) == 0 &&
                     O8(*slot, 0x125) == 0) {
                     tu = G8(0x1751fa);
@@ -556,7 +552,7 @@ Sim_GameTick(void *self, double dt, double now)
                 O16(*slot, 0x64) = 100;
             } else {
                 O16(*slot, 0x64) = 0x96;
-                Sim_SetFoeChaseTarget(*slot, tu, tv, 0x96);
+                ((Foe *)*slot)->chase(tu, tv, 0x96);
                 if (O8(*slot, 0x145) == 0) {
                     tu = G8(0x1751fa);
                     tv = G8(0x1751fb);
@@ -587,7 +583,7 @@ Sim_GameTick(void *self, double dt, double now)
                 O32(*slot, 0xef) = 1;
         }
 
-        Sim_UpdateFoeObjectStep(*slot, tu, tv);
+        ((Foe *)*slot)->step(tu, tv);
 
         /* a foe's own bomb drop -- same "too late leaves the flag" shape */
         {
@@ -648,7 +644,7 @@ Sim_GameTick(void *self, double dt, double now)
                 if (O32(f, 0x7e) != 0) {
                     if ((long double)OF(f, 0x29) > 0.0L)
                         G8(0x2ab72c + TIDX(OS8(f, 0x31), OS8(f, 0x32))) = O8(f, 0x15a);
-                    Sim_RemoveFoeObject(B, id);
+                    Foe::remove((Game *)B, id);
                     G8(0x4224d) = (unsigned char)(G8(0x4224d) + 1);
                 }
             }

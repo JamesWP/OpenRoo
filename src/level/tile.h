@@ -113,17 +113,42 @@ public:
     void setField20f(int b)                    { field_20f = b; }
     void setBlastTime(double t)                { blastTime_ = t; }
 
+    /* ── read by a foe (foe.cpp) ─────────────────────────────────────── */
+    unsigned char contents() const             { return contents_; }
+    int    slideTrack() const                  { return slideTrack_; }
+    double slideParkedSince() const            { return slideParkedSince_; }
+    double slideDwell() const                  { return slideDwell_; }
+    double liftParkedSince() const             { return liftParkedSince_; }
+    double liftDwell() const                   { return liftDwell_; }
+    /* Cleared (one dword) by a foe's destructor on the cell it stood on;
+     * meaning unknown. */
+    void setField1a1(int b)                    { field_1a1 = b; }
+
+    /* ── read by the foe pathfinder (foepath.cpp) ────────────────────── */
+    /* +0x19a / +0x19b: the map header's extents -- read these only from
+     * Tile::at(base, 0, 0), which is the header's address. */
+    unsigned char mapExtentV() const           { return mapExtentV_; }
+    unsigned char mapExtentU() const           { return mapExtentU_; }
+    /* +0x1f1: an elevator (kind 0x0e) cell's level byte. */
+    unsigned char field1f1() const             { return field_1f1; }
+    /* +0x1f2: on a bridge (kind 0x10) cell, its direction byte. */
+    unsigned char field1f2() const             { return field_1f2; }
+
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
     KAROO_LAYOUT_REGISTER(Tile);
 
-    unsigned char gap_000[0x19c - 0x000];
+    unsigned char gap_000[0x19a - 0x000];
+    /* Meaningful only at cell (0, 0), where the tile pointer is the tile
+     * base: the map header's extents (levelsetup.cpp G_MAP_H / G_MAP_W). */
+    unsigned char mapExtentV_;        /* 0x19a  the map's v extent          */
+    unsigned char mapExtentU_;        /* 0x19b  the map's u extent          */
     unsigned char height_;            /* 0x19c                              */
     unsigned char objectMarker_;      /* 0x19d  object kind / scan stop     */
     unsigned char gap_19e[0x19f - 0x19e];
     unsigned char contents_;          /* 0x19f  what can be picked up here  */
     unsigned char blastHeight_;       /* 0x1a0  live blast, 0 = none        */
-    unsigned char gap_1a1[0x1a5 - 0x1a1];
+    int           field_1a1;          /* 0x1a1                              */
     unsigned char field_1a5;          /* 0x1a5                              */
     float         liftLiveHeight_;    /* 0x1a6  the lift's live height      */
     unsigned char slideSlot_;         /* 0x1aa  which slide's track this is */
@@ -150,7 +175,8 @@ private:
     /* One double, though the original writes it as two dwords (0 at
      * +0x1e5, 0x40977000 at +0x1e9): 0x4097700000000000 = 1500.0. */
     double        liftDwell_;         /* 0x1e5  park dwell in ms, 1500.0    */
-    unsigned char gap_1ed[0x1f2 - 0x1ed];
+    unsigned char gap_1ed[0x1f1 - 0x1ed];
+    unsigned char field_1f1;          /* 0x1f1  an elevator's level byte    */
     unsigned char field_1f2;          /* 0x1f2                              */
     unsigned char gap_1f3[0x1f4 - 0x1f3];
     unsigned char bridgeSlot_;        /* 0x1f4  the bridge's switch slot    */
@@ -167,10 +193,13 @@ private:
 
 KAROO_LAYOUT_CHECKS(Tile)
 {
+    KAROO_LAYOUT_AT(mapExtentV_,       0x19a);
+    KAROO_LAYOUT_AT(mapExtentU_,       0x19b);
     KAROO_LAYOUT_AT(height_,           0x19c);
     KAROO_LAYOUT_AT(objectMarker_,     0x19d);
     KAROO_LAYOUT_AT(contents_,         0x19f);
     KAROO_LAYOUT_AT(blastHeight_,      0x1a0);
+    KAROO_LAYOUT_AT(field_1a1,         0x1a1);
     KAROO_LAYOUT_AT(field_1a5,         0x1a5);
     KAROO_LAYOUT_AT(liftLiveHeight_,   0x1a6);
     KAROO_LAYOUT_AT(slideSlot_,        0x1aa);
@@ -191,6 +220,7 @@ KAROO_LAYOUT_CHECKS(Tile)
     KAROO_LAYOUT_AT(liftMovingSince_,  0x1d5);
     KAROO_LAYOUT_AT(liftParkedSince_,  0x1dd);
     KAROO_LAYOUT_AT(liftDwell_,        0x1e5);
+    KAROO_LAYOUT_AT(field_1f1,         0x1f1);
     KAROO_LAYOUT_AT(field_1f2,         0x1f2);
     KAROO_LAYOUT_AT(bridgeSlot_,       0x1f4);
     KAROO_LAYOUT_AT(bridgeAxis_,       0x1f5);

@@ -35,6 +35,7 @@ struct __attribute__((packed)) SoundAssetName {
 };
 
 class Bomb;
+class Foe;
 
 class __attribute__((packed)) Game {
 public:
@@ -102,6 +103,26 @@ public:
         return (Bomb **)((unsigned char *)this + offsetof(Game, bombSlots_)) + id;
     }
 
+    /* ── foes ───────────────────────────────────────────────────────── */
+    /* The same slot/count/ID-list shape as the bombs, and the same *Ref
+     * accessors for the shared remove tail. */
+    unsigned char  foeCount() const               { return foeCount_; }
+    void           setFoeCount(unsigned char n)   { foeCount_ = n; }
+    unsigned char *foeCountRef()    { return (unsigned char *)this + offsetof(Game, foeCount_); }
+    unsigned char  foeId(unsigned int i) const    { return foeIds_[i]; }
+    unsigned char *foeIds()         { return (unsigned char *)this + offsetof(Game, foeIds_); }
+    Foe           *foeSlot(unsigned int id) const { return foeSlots_[id]; }
+    Foe          **foeSlotRef(unsigned int id)
+    {
+        return (Foe **)((unsigned char *)this + offsetof(Game, foeSlots_)) + id;
+    }
+    /* A WORD the foe spawn bumps for type 0x0b; levelsetup.cpp calls it a
+     * crystal count.  Not confirmed, so not named. */
+    unsigned short field_42252() const             { return field_42252_; }
+    void           setField42252(unsigned short n) { field_42252_ = n; }
+    /* The current level's path; diagnostics only. */
+    const char    *levelName() const               { return levelName_; }
+
     /* The named sound assets a bomb acquires at spawn: a 256-byte file name
      * with its enabled flag immediately after.  Meanings not decoded. */
     const SoundAssetName *soundAsset429b6() const { return &soundAsset429b6_; }
@@ -125,7 +146,9 @@ private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x0429b6 - 0x000000];
+    unsigned char gap_000000[0x042252 - 0x000000];
+    unsigned short field_42252_;                          /* 0x042252 */
+    unsigned char gap_042254[0x0429b6 - 0x042254];
     SoundAssetName soundAsset429b6_;                      /* 0x0429b6 */
     unsigned char gap_042aba[0x042ac2 - 0x042aba];
     SoundAssetName soundAsset42ac2_;                      /* 0x042ac2 */
@@ -147,7 +170,9 @@ private:
     unsigned char gap_170a44[0x170a54 - 0x170a44];
     double        clock_;                                 /* 0x170a54 */
     Field170a5c   field_170a5c_;                          /* 0x170a5c */
-    unsigned char gap_170a64[0x173588 - 0x170a64];
+    unsigned char gap_170a64[0x173483 - 0x170a64];
+    /* Its length is unknown; declared only as far as the next field. */
+    char          levelName_[0x173588 - 0x173483];        /* 0x173483 */
     SlideObject  *slideSlots_[100];                       /* 0x173588 */
     unsigned char slideCount_;                            /* 0x173718 */
     LiftObject   *liftSlots_[256];                        /* 0x173719 */
@@ -158,7 +183,11 @@ private:
     Bomb         *bombSlots_[500];                        /* 0x173e3f */
     unsigned char bombCount_;                             /* 0x17460f */
     unsigned char bombIds_[500];                          /* 0x174610 */
-    unsigned char gap_174804[0x2ab58d - 0x174804];
+    Foe          *foeSlots_[500];                         /* 0x174804 */
+    unsigned char foeCount_;                              /* 0x174fd4 */
+    /* 500 long: the Player object follows at 0x1751c9. */
+    unsigned char foeIds_[500];                           /* 0x174fd5 */
+    unsigned char gap_1751c9[0x2ab58d - 0x1751c9];
     /* Where Tile::at() indexes from; the tiles extend past it. */
     unsigned char tileOrigin_[1];                         /* 0x2ab58d */
 };
@@ -185,5 +214,10 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(bombSlots_,        0x173e3f);
     KAROO_LAYOUT_AT(bombCount_,        0x17460f);
     KAROO_LAYOUT_AT(bombIds_,          0x174610);
+    KAROO_LAYOUT_AT(foeSlots_,         0x174804);
+    KAROO_LAYOUT_AT(foeCount_,         0x174fd4);
+    KAROO_LAYOUT_AT(foeIds_,           0x174fd5);
+    KAROO_LAYOUT_AT(field_42252_,      0x042252);
+    KAROO_LAYOUT_AT(levelName_,        0x173483);
     KAROO_LAYOUT_AT(tileOrigin_,       0x2ab58d);
 }
