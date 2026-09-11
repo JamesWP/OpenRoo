@@ -172,24 +172,25 @@ static const unsigned int LIFT_ALLOC_SIZE = 0x4c;
 
 void LiftObject::assertLayout()
 {
-    static_assert(offsetof(LiftObject, now_)        == 0x04, "LiftObject layout");
-    static_assert(offsetof(LiftObject, clock_)      == 0x0c, "LiftObject layout");
-    static_assert(offsetof(LiftObject, record_)     == 0x10, "LiftObject layout");
-    static_assert(offsetof(LiftObject, recordCopy_) == 0x15, "LiftObject layout");
-    static_assert(offsetof(LiftObject, posU_)       == 0x25, "LiftObject layout");
-    static_assert(offsetof(LiftObject, height_)     == 0x29, "LiftObject layout");
-    static_assert(offsetof(LiftObject, posV_)       == 0x2d, "LiftObject layout");
-    static_assert(offsetof(LiftObject, cellU_)      == 0x31, "LiftObject layout");
-    static_assert(offsetof(LiftObject, heightCell_) == 0x33, "LiftObject layout");
-    static_assert(offsetof(LiftObject, tileBase_)   == 0x34, "LiftObject layout");
-    static_assert(offsetof(LiftObject, baseHeight_) == 0x38, "LiftObject layout");
-    static_assert(offsetof(LiftObject, topHeight_)  == 0x39, "LiftObject layout");
-    static_assert(offsetof(LiftObject, sound_)      == 0x3a, "LiftObject layout");
-    static_assert(offsetof(LiftObject, slot_)       == 0x3e, "LiftObject layout");
-    static_assert(offsetof(LiftObject, atTop_)      == 0x3f, "LiftObject layout");
-    static_assert(offsetof(LiftObject, state_)      == 0x43, "LiftObject layout");
-    static_assert(offsetof(LiftObject, phaseStart_) == 0x44, "LiftObject layout");
-    static_assert(sizeof(LiftObject) == LIFT_ALLOC_SIZE,    "LiftObject size");
+    KAROO_LAYOUT_AT(LiftObject, now_,        0x04);
+    KAROO_LAYOUT_AT(LiftObject, clock_,      0x0c);
+    KAROO_LAYOUT_AT(LiftObject, record_,     0x10);
+    KAROO_LAYOUT_AT(LiftObject, recordCopy_, 0x15);
+    KAROO_LAYOUT_AT(LiftObject, posU_,       0x25);
+    KAROO_LAYOUT_AT(LiftObject, height_,     0x29);
+    KAROO_LAYOUT_AT(LiftObject, posV_,       0x2d);
+    KAROO_LAYOUT_AT(LiftObject, cellU_,      0x31);
+    KAROO_LAYOUT_AT(LiftObject, heightCell_, 0x33);
+    KAROO_LAYOUT_AT(LiftObject, tileBase_,   0x34);
+    KAROO_LAYOUT_AT(LiftObject, baseHeight_, 0x38);
+    KAROO_LAYOUT_AT(LiftObject, topHeight_,  0x39);
+    KAROO_LAYOUT_AT(LiftObject, sound_,      0x3a);
+    KAROO_LAYOUT_AT(LiftObject, slot_,       0x3e);
+    KAROO_LAYOUT_AT(LiftObject, atTop_,      0x3f);
+    KAROO_LAYOUT_AT(LiftObject, state_,      0x43);
+    KAROO_LAYOUT_AT(LiftObject, phaseStart_, 0x44);
+    /* The allocation size is relied on too: operator new(0x4c). */
+    static_assert(sizeof(LiftObject) == LIFT_ALLOC_SIZE, "LiftObject size");
 }
 
 /* ─── Controls and diags, read by VALUE, never by presence ────────────────

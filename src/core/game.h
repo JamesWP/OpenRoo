@@ -1,72 +1,82 @@
 /* Game -- the one global game object (COHESION_PLAN.md Band 3).
  *
  * SKETCH.  Band 3 is last in the plan; until then this class grows one
- * accessor at a time, as each object class needs a Game field.  Only fields
- * some converted class actually reads are here.  Files not yet converted
- * still use their own G_* offsets -- when one is converted, its G_* defines
- * are deleted in favour of these.
+ * field at a time, as each object class needs one.  Files not yet converted
+ * still use their own G_* defines -- when one is converted, its defines are
+ * deleted in favour of these accessors.
  *
- * The layout belongs to the game (its allocator and GameTick still own it),
- * so there are no data members: every field is an offset from `this`,
- * stated once below.  Unknown fields are named field_<offset> -- naming is
- * RE work and happens in Ghidra first.
+ * Real fields at the game's offsets, packed; everything unknown is a gap
+ * whose size is written as END - START of its neighbours.  Only the offsets
+ * are asserted (layout.h), never the gaps, so splitting a gap for a new
+ * field changes no existing assertion.  Unknown-meaning fields are named
+ * field_<offset>; naming is RE work and happens in Ghidra first.
  */
 #pragma once
+
+#include "layout.h"
 
 class SoundManager;
 class LiftObject;
 
-class Game {
+class __attribute__((packed)) Game {
 public:
+    static const int ORIGIN = 0;
+
     /* ── sound ──────────────────────────────────────────────────────── */
-    SoundManager *soundManager()     { return (SoundManager *)(raw() + OFF_SOUND_MGR); }
-    /* Nonzero once sound is up.  Inside the SoundManager's span, but not
-     * yet confirmed as one of its fields -- so it lives here for now. */
-    int  soundCreated() const        { return at<int>(OFF_SOUND_CREATED); }
+    SoundManager *soundManager()     { return (SoundManager *)soundManagerHead_; }
+    /* Nonzero once sound is up. */
+    int  soundCreated() const        { return soundCreated_; }
 
     /* ── time ───────────────────────────────────────────────────────── */
     /* The 8-byte clock accumulator.  Objects keep a pointer to it and
-     * re-read it every tick. */
-    double        *clock()           { return (double *)(raw() + OFF_CLOCK); }
-    /* An 8-byte record every level object copies to its +0x15 each tick;
-     * meaning unknown. */
-    unsigned char *field_170a5c()    { return raw() + OFF_170A5C; }
+     * re-read it every tick.  Addressed via offsetof rather than &clock_,
+     * which GCC flags for a packed member (-Waddress-of-packed-member); the
+     * offset still comes from the field, and 0x170a54 is 4-aligned. */
+    double        *clock()
+    {
+        return (double *)((unsigned char *)this + offsetof(Game, clock_));
+    }
+    /* An 8-byte record every level object copies to its +0x15 each tick. */
+    unsigned char *field_170a5c()    { return field_170a5c_; }
 
     /* ── tiles ──────────────────────────────────────────────────────── */
     /* The base Tile::at() indexes from.  Objects keep their own copy. */
-    unsigned char *tileBase()        { return raw() + OFF_TILE_BASE; }
+    unsigned char *tileBase()        { return tileOrigin_; }
 
     /* ── lifts ──────────────────────────────────────────────────────── */
-    unsigned char liftCount() const          { return at<unsigned char>(OFF_LIFT_COUNT); }
-    void          setLiftCount(unsigned char n) { at<unsigned char>(OFF_LIFT_COUNT) = n; }
-    LiftObject   *liftSlot(unsigned int i) const
-                  { return at<LiftObject *>(OFF_LIFT_SLOTS + i * 4); }
-    void          setLiftSlot(unsigned int i, LiftObject *p)
-                  { at<LiftObject *>(OFF_LIFT_SLOTS + i * 4) = p; }
+    unsigned char liftCount() const              { return liftCount_; }
+    void          setLiftCount(unsigned char n)  { liftCount_ = n; }
+    LiftObject   *liftSlot(unsigned int i) const { return liftSlots_[i]; }
+    void          setLiftSlot(unsigned int i, LiftObject *p) { liftSlots_[i] = p; }
 
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
+    static void assertLayout();
 
-    static const unsigned int OFF_SOUND_MGR     = 0x13cba8;
-    static const unsigned int OFF_SOUND_CREATED = 0x13cc34;
-    static const unsigned int OFF_CLOCK         = 0x170a54;
-    static const unsigned int OFF_170A5C        = 0x170a5c;
-    static const unsigned int OFF_LIFT_SLOTS    = 0x173719;   /* unaligned */
-    static const unsigned int OFF_LIFT_COUNT    = 0x173b19;
-    static const unsigned int OFF_TILE_BASE     = 0x2ab58d;
-
-    unsigned char       *raw()       { return (unsigned char *)this; }
-    const unsigned char *raw() const { return (const unsigned char *)this; }
-
-    /* Many Game fields sit at odd offsets; every access is unaligned-safe. */
-    template <class T> T &at(unsigned int off)
-    {
-        typedef T __attribute__((aligned(1))) ua;
-        return *(ua *)(raw() + off);
-    }
-    template <class T> const T &at(unsigned int off) const
-    {
-        typedef T __attribute__((aligned(1))) ua;
-        return *(const ua *)(raw() + off);
-    }
+    unsigned char gap_000000[0x13cba8 - 0x000000];
+    /* The SoundManager is embedded here; its full size is unknown (its
+     * lists reach at least +0xa4), so only the bytes up to the next field
+     * we use are declared.  soundCreated_ sits inside it at +0x8c. */
+    unsigned char soundManagerHead_[0x13cc34 - 0x13cba8];
+    int           soundCreated_;                          /* 0x13cc34 */
+    unsigned char gap_13cc38[0x170a54 - 0x13cc38];
+    double        clock_;                                 /* 0x170a54 */
+    unsigned char field_170a5c_[8];                       /* 0x170a5c */
+    unsigned char gap_170a64[0x173719 - 0x170a64];
+    LiftObject   *liftSlots_[256];                        /* 0x173719 */
+    unsigned char liftCount_;                             /* 0x173b19 */
+    unsigned char gap_173b1a[0x2ab58d - 0x173b1a];
+    /* Where Tile::at() indexes from; the tiles extend past it. */
+    unsigned char tileOrigin_[1];                         /* 0x2ab58d */
 };
+
+inline void Game::assertLayout()
+{
+    KAROO_LAYOUT_AT(Game, soundManagerHead_, 0x13cba8);
+    KAROO_LAYOUT_AT(Game, soundCreated_,     0x13cc34);
+    KAROO_LAYOUT_AT(Game, clock_,            0x170a54);
+    KAROO_LAYOUT_AT(Game, field_170a5c_,     0x170a5c);
+    KAROO_LAYOUT_AT(Game, liftSlots_,        0x173719);
+    KAROO_LAYOUT_AT(Game, liftCount_,        0x173b19);
+    KAROO_LAYOUT_AT(Game, tileOrigin_,       0x2ab58d);
+}

@@ -7,17 +7,21 @@
  *
  * The layout is the game's: operator new(0x4c), the game's constructor and
  * vtable, and GameTick still iterating the slot array.  So the class is
- * packed, and every offset is asserted in liftobject.cpp.  It may choose its
- * own layout only once the constructor and destructor are ours too
+ * packed, and every offset is asserted (layout.h) in liftobject.cpp.  It may
+ * choose its own layout only once the constructor and destructor are ours too
  * (COHESION_PLAN.md, "When may a class own its layout?").
  */
 #pragma once
+
+#include "layout.h"
 
 class Game;
 struct CStaticSoundbuffer;
 
 class __attribute__((packed)) LiftObject {
 public:
+    static const int ORIGIN = 0;
+
     /* Game::SpawnLiftObject 0x00417b90.  Arguments are dwords masked to
      * bytes, exactly as the original reads them. */
     static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
