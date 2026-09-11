@@ -85,6 +85,15 @@ public:
     void setField1f2(unsigned char b)          { field_1f2 = b; }
     void setField202(unsigned char b)          { field_202 = b; }
 
+    /* ── a bridge deck cell (bridgeobject.cpp) ──────────────────────── */
+    /* The spawn stamps its own cell; the tick stamps each deck cell as it
+     * extends.  Retract clears +0x1f6 and +0x217 but NOT these two. */
+    void setBridgeSlot(unsigned char n)        { bridgeSlot_ = n; }
+    void setBridgeAxis(unsigned char a)        { bridgeAxis_ = a; }
+    /* Meaning unknown: 1 on an extended deck cell, 0 otherwise. */
+    void setField1f6(int b)                    { field_1f6 = b; }
+    void setField217(int b)                    { field_217 = b; }
+
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
     KAROO_LAYOUT_REGISTER(Tile);
@@ -121,8 +130,14 @@ private:
     double        liftDwell_;         /* 0x1e5  park dwell in ms, 1500.0    */
     unsigned char gap_1ed[0x1f2 - 0x1ed];
     unsigned char field_1f2;          /* 0x1f2                              */
-    unsigned char gap_1f3[0x202 - 0x1f3];
+    unsigned char gap_1f3[0x1f4 - 0x1f3];
+    unsigned char bridgeSlot_;        /* 0x1f4  the bridge's switch slot    */
+    unsigned char bridgeAxis_;        /* 0x1f5  1 = along U, 2 = along V    */
+    int           field_1f6;          /* 0x1f6                              */
+    unsigned char gap_1fa[0x202 - 0x1fa];
     unsigned char field_202;          /* 0x202                              */
+    unsigned char gap_203[0x217 - 0x203];
+    int           field_217;          /* 0x217                              */
 };
 
 KAROO_LAYOUT_CHECKS(Tile)
@@ -150,5 +165,9 @@ KAROO_LAYOUT_CHECKS(Tile)
     KAROO_LAYOUT_AT(liftParkedSince_,  0x1dd);
     KAROO_LAYOUT_AT(liftDwell_,        0x1e5);
     KAROO_LAYOUT_AT(field_1f2,         0x1f2);
+    KAROO_LAYOUT_AT(bridgeSlot_,       0x1f4);
+    KAROO_LAYOUT_AT(bridgeAxis_,       0x1f5);
+    KAROO_LAYOUT_AT(field_1f6,         0x1f6);
     KAROO_LAYOUT_AT(field_202,         0x202);
+    KAROO_LAYOUT_AT(field_217,         0x217);
 }

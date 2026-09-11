@@ -166,6 +166,7 @@
 #include "game.h"
 #include "liftobject.h"
 #include "slideobject.h"
+#include "bridgeobject.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -340,8 +341,6 @@ Leo_OpenExtraObjectsFile(void *self, const char *name);
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PurgeBreakableObjects(void *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeBridgeObjects(void *self);
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_RemoveFoeObject(void *self, unsigned int idArg);
@@ -355,10 +354,6 @@ Sim_SpawnFoeObject(void *self, unsigned int uArg, unsigned int vArg,
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_SpawnBreakableObject(void *self, unsigned int uArg, unsigned int vArg,
                          unsigned int heightArg, unsigned int param4);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnBridgeObject(void *self, unsigned int uArg, unsigned int vArg,
-                      unsigned int heightArg, unsigned int slotArg,
-                      unsigned int axisArg);
 
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Sim_FindNearestFlaggedTileInRadius(void *self, unsigned char *pu,
@@ -561,7 +556,7 @@ Sim_SetupLevelObjects(void *self)
     LiftObject::purgeAll((Game *)G);
     SlideObject::purgeAll((Game *)G);
     Sim_PurgeBreakableObjects(G);
-    Sim_PurgeBridgeObjects(G);
+    BridgeObject::purgeAll((Game *)G);
 
     {
         u32_ua *p = (u32_ua *)(G + G_CLEAR_BLOCK);
@@ -704,8 +699,8 @@ Sim_SetupLevelObjects(void *self)
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_XBRIDGE);
                     } else {
-                        Sim_SpawnBridgeObject(G, u, v, B(G, T_HEIGHT + off),
-                                              (unsigned char)(param - 1), 1);
+                        BridgeObject::spawn((Game *)G, u, v, B(G, T_HEIGHT + off),
+                                            (unsigned char)(param - 1), 1);
                         B(G, T_PARAM + off) = 0;
                         W(G, C_BRIDGES)++;
                     }
@@ -715,8 +710,8 @@ Sim_SetupLevelObjects(void *self)
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_YBRIDGE);
                     } else {
-                        Sim_SpawnBridgeObject(G, u, v, B(G, T_HEIGHT + off),
-                                              (unsigned char)(param - 1), 2);
+                        BridgeObject::spawn((Game *)G, u, v, B(G, T_HEIGHT + off),
+                                            (unsigned char)(param - 1), 2);
                         B(G, T_PARAM + off) = 0;
                         W(G, C_BRIDGES)++;
                     }

@@ -137,6 +137,7 @@
 #include "game.h"
 #include "liftobject.h"
 #include "slideobject.h"
+#include "bridgeobject.h"
 #include "soundmanager.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
@@ -146,8 +147,6 @@
 
 #define G_BREAK_SLOTS     0x173b1e
 #define G_BREAK_COUNT     0x173e3e
-#define G_BRIDGE_SLOTS    0x170643
-#define G_BRIDGE_COUNT    0x170a43
 
 #define G_FOE_COUNT       0x174fd4
 #define G_FOE_IDS         0x174fd5
@@ -191,7 +190,6 @@ static int s_init           = 0;
 
 static unsigned s_calls        = 0;
 static int s_logged_break      = 0;
-static int s_logged_bridge     = 0;
 static int s_logged_clear      = 0;
 static int s_logged_release    = 0;
 static int s_logged_dtor       = 0;
@@ -281,7 +279,9 @@ static void destroy_object(void *obj)
 }
 
 /* Game::PurgeSlideObjects 0x004181b0 is SlideObject::purgeAll, in
- * slideobject.cpp; Game::PurgeLiftObjects likewise in liftobject.cpp. */
+ * slideobject.cpp; Game::PurgeLiftObjects likewise in liftobject.cpp, and
+ * Game::PurgeBridgeObjects 0x0041a190 in bridgeobject.cpp (detail 3 above
+ * went with it). */
 
 /* ═══ 0x004183f0 -- Game::PurgeBreakableObjects ════════════════════════════
  *
@@ -324,45 +324,6 @@ Sim_PurgeBreakableObjects(void *self)
     G[G_BREAK_COUNT] = 0;
 }
 
-/* ═══ 0x0041a190 -- Game::PurgeBridgeObjects ═══════════════════════════════
- *
- * Indexes with a SIGNED int against the zero-extended count byte, unlike the
- * byte index the other three use.  Preserved; see the header.
- */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeBridgeObjects(void *self)
-{
-    unsigned char *G = (unsigned char *)self;
-    int i;
-
-    fx_init();
-    diag_tick();
-
-    if (s_fx_keepobjects)
-        return;   /* the purge does nothing at all -- see header */
-
-    if (s_diag && !s_logged_bridge) {
-        s_logged_bridge = 1;
-        log_write("gamereset: first PurgeBridgeObjects -- count=%u\n",
-                  (unsigned)G[G_BRIDGE_COUNT]);
-    }
-
-    i = 0;
-    if (G[G_BRIDGE_COUNT] != 0) {
-        diag_live_purge("bridge", (unsigned)G[G_BRIDGE_COUNT]);
-        do {
-            {
-                /* No null test on the slot here -- the original
-                 * reads the handle field off the raw pointer. */
-                release_handle(G, SLOT(G, G_BRIDGE_SLOTS, i), 0x47);
-                destroy_object(SLOT(G, G_BRIDGE_SLOTS, i));
-            }
-            i++;
-        } while (i < (int)(unsigned int)G[G_BRIDGE_COUNT]);
-    }
-    G[G_BRIDGE_COUNT] = 0;
-}
-
 /* ═══ 0x00418580 -- Game::ClearGameState ═══════════════════════════════════ */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_ClearGameState(void *self)
@@ -382,7 +343,8 @@ Sim_ClearGameState(void *self)
                   (unsigned)G[G_FOE_COUNT], (unsigned)G[G_ENEMY_COUNT],
                   (unsigned)((Game *)G)->liftCount(),
                   (unsigned)((Game *)G)->slideCount(),
-                  (unsigned)G[G_BREAK_COUNT], (unsigned)G[G_BRIDGE_COUNT]);
+                  (unsigned)G[G_BREAK_COUNT],
+                  (unsigned)((Game *)G)->bridgeCount());
     }
 
     /* The guard byte is READ here, at 0x00418597, before the stores -- the
@@ -415,7 +377,7 @@ Sim_ClearGameState(void *self)
     LiftObject::purgeAll((Game *)self);
     SlideObject::purgeAll((Game *)self);
     Sim_PurgeBreakableObjects(self);
-    Sim_PurgeBridgeObjects(self);
+    BridgeObject::purgeAll((Game *)self);
 
     /* REP STOSD, ECX=0x40 -- 0x100 bytes at Game+0x170543 (unaligned base). */
     p = (u32_ua *)(G + G_CLEAR_BLOCK);

@@ -306,6 +306,9 @@ static void fx_init(void)
 }
 
 /* ─── Game-base access, unaligned as in the other sim files ───────────── */
+#include "game.h"
+#include "bridgeobject.h"
+
 #define GU8(o)    (*(unsigned char *)(B + (o)))
 #define GI32(o)   (*(int  *)(B + (o)))
 #define GPP(o)   (*(unsigned char **)(B + (o)))
@@ -392,7 +395,7 @@ Sim_MarkListedTilesBlockedByObject(void *self, unsigned int listIndex)
 
     /* Point 3: the flag is (object->+0x58 == 0) -- set when the field is
      * ZERO.  Read once, before the loop, exactly as the original does. */
-    flagged = *(int *)(GPP(0x170643 + li * 4) + 0x58);
+    flagged = ((Game *)B)->bridgeSlot(li)->phase();
     value   = (unsigned int)(flagged == 0);
 
     if (s_fx == FX_BLOCKINVERT)

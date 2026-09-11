@@ -18,6 +18,7 @@
 class SoundManager;
 class LiftObject;
 class SlideObject;
+class BridgeObject;
 
 /* The 8-byte record at Game+0x170a5c, copied into every level object's +0x15
  * each tick.  Meaning unknown; a struct so that it copies by assignment. */
@@ -62,6 +63,14 @@ public:
     SlideObject  *slideSlot(unsigned int i) const  { return slideSlots_[i]; }
     void          setSlideSlot(unsigned int i, SlideObject *p) { slideSlots_[i] = p; }
 
+    /* ── bridges ────────────────────────────────────────────────────── */
+    /* Indexed by the bridge's switch slot, not the count; the count is a
+     * running total (see BridgeObject::spawn). */
+    unsigned char bridgeCount() const              { return bridgeCount_; }
+    void          setBridgeCount(unsigned char n)  { bridgeCount_ = n; }
+    BridgeObject *bridgeSlot(unsigned int i) const { return bridgeSlots_[i]; }
+    void          setBridgeSlot(unsigned int i, BridgeObject *p) { bridgeSlots_[i] = p; }
+
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
@@ -72,7 +81,10 @@ private:
      * we use are declared.  soundCreated_ sits inside it at +0x8c. */
     unsigned char soundManagerHead_[0x13cc34 - 0x13cba8];
     int           soundCreated_;                          /* 0x13cc34 */
-    unsigned char gap_13cc38[0x170a54 - 0x13cc38];
+    unsigned char gap_13cc38[0x170643 - 0x13cc38];
+    BridgeObject *bridgeSlots_[256];                      /* 0x170643 */
+    unsigned char bridgeCount_;                           /* 0x170a43 */
+    unsigned char gap_170a44[0x170a54 - 0x170a44];
     double        clock_;                                 /* 0x170a54 */
     Field170a5c   field_170a5c_;                          /* 0x170a5c */
     unsigned char gap_170a64[0x173588 - 0x170a64];
@@ -89,6 +101,8 @@ KAROO_LAYOUT_CHECKS(Game)
 {
     KAROO_LAYOUT_AT(soundManagerHead_, 0x13cba8);
     KAROO_LAYOUT_AT(soundCreated_,     0x13cc34);
+    KAROO_LAYOUT_AT(bridgeSlots_,      0x170643);
+    KAROO_LAYOUT_AT(bridgeCount_,      0x170a43);
     KAROO_LAYOUT_AT(clock_,            0x170a54);
     KAROO_LAYOUT_AT(field_170a5c_,     0x170a5c);
     KAROO_LAYOUT_AT(slideSlots_,       0x173588);

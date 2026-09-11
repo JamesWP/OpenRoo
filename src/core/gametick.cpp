@@ -48,6 +48,7 @@
 #include "game.h"
 #include "liftobject.h"
 #include "slideobject.h"
+#include "bridgeobject.h"
 
 struct CStaticSoundbuffer;
 struct ProgableControl;
@@ -69,7 +70,6 @@ __declspec(dllexport) void __attribute__((thiscall)) Sim_PollTextEntryKeys(void 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateBreakableTile(void *self);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateSlidingHazardObject(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateBombFuseAndBlast(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdatePlayerTileEffects(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateFoeObjectStep(void *self, unsigned char playerU, unsigned char playerV);
@@ -241,9 +241,9 @@ static unsigned char completion_percent(unsigned int a, unsigned int b)
 
 static void trigger_switch_tile(unsigned char *B, unsigned char sw, int u, int v)
 {
-    void *br = GP(0x170643 + sw * 4);
+    BridgeObject *br = ((Game *)B)->bridgeSlot(sw);
     int idx = TIDX(u, v);
-    if (O32(br, 0x58) == 0)
+    if (br->phase() == 0)
         G32(0x2ab7a4 + idx) = 1;
     else
         G32(0x2ab7a4 + idx) = 0;
@@ -339,8 +339,8 @@ Sim_GameTick(void *self, double dt, double now)
     }
     for (int i = 0; i < (int)G8(0x173e3e); ++i)
         Sim_UpdateBreakableTile(GP(0x173b1e + i * 4));
-    for (int i = 0; i < (int)G8(0x170a43); ++i)
-        Sim_UpdateSlidingHazardObject(GP(0x170643 + i * 4));
+    for (int i = 0; i < (int)game->bridgeCount(); ++i)
+        game->bridgeSlot(i)->tick();
 
     if ((STATE == 1 || STATE == 4) && DEB != 0x1b && KEY(0x1b) != 0) {
         G8(0x48b13) = STATE;
@@ -468,22 +468,12 @@ Sim_GameTick(void *self, double dt, double now)
     /* a switch the player stepped on */
     {
         unsigned char sw = G8(0x1752a0);
-        if (sw < 0xff && O32(GP(0x170643 + sw * 4), 0x53) == 0) {
+        if (sw < 0xff && ((Game *)B)->bridgeSlot(sw)->armed() == 0) {
             GameLog_LogMessage(GAMELOGGER, 1, F_SWITCH, (unsigned int)sw);
             trigger_switch_tile(B, G8(0x1752a0), GS8(0x1751fa), GS8(0x1751fb));
-            void *br = GP(0x170643 + G8(0x1752a0) * 4);
-            O32(br, 0x53) = 1;
-            br = GP(0x170643 + G8(0x1752a0) * 4);
-            O32(br, 0x4b) = G32(0x170a54);
-            O32(br, 0x4f) = G32(0x170a58);
-            br = GP(0x170643 + G8(0x1752a0) * 4);
-            CStaticSoundbuffer *snd = (CStaticSoundbuffer *)OP(br, 0x47);
-            if (snd != NULL) {
-                CStatic_Set3DPosition(snd, (float)OS8(br, 0x31), (float)OS8(br, 0x33),
-                                      -(float)OS8(br, 0x32), 1);
-                CStatic_TriggerPlayback(
-                    (CStaticSoundbuffer *)OP(GP(0x170643 + G8(0x1752a0) * 4), 0x47), 1);
-            }
+            BridgeObject *br = ((Game *)B)->bridgeSlot(G8(0x1752a0));
+            br->arm(((Game *)B)->clock());
+            br->playArmSound();
             Sim_MarkListedTilesBlockedByObject(B, G8(0x1752a0));
             G8(0x1752a0) = 0xff;
         }
@@ -515,14 +505,10 @@ Sim_GameTick(void *self, double dt, double now)
 
         {
             unsigned char sw = O8(*slot, 0xd7);
-            if (sw < 0xff && O32(GP(0x170643 + sw * 4), 0x53) == 0) {
+            if (sw < 0xff && ((Game *)B)->bridgeSlot(sw)->armed() == 0) {
                 GameLog_LogMessage(GAMELOGGER, 1, F_SWITCH, (unsigned int)sw);
                 trigger_switch_tile(B, O8(*slot, 0xd7), OS8(*slot, 0x31), OS8(*slot, 0x32));
-                void *br = GP(0x170643 + O8(*slot, 0xd7) * 4);
-                O32(br, 0x53) = 1;
-                br = GP(0x170643 + O8(*slot, 0xd7) * 4);
-                O32(br, 0x4b) = G32(0x170a54);
-                O32(br, 0x4f) = G32(0x170a58);
+                ((Game *)B)->bridgeSlot(O8(*slot, 0xd7))->arm(((Game *)B)->clock());
                 Sim_MarkListedTilesBlockedByObject(B, O8(*slot, 0xd7));
                 O8(*slot, 0xd7) = 0xff;
             }
