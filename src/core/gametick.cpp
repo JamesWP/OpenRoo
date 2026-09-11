@@ -49,6 +49,7 @@
 #include "liftobject.h"
 #include "slideobject.h"
 #include "bridgeobject.h"
+#include "breakabletile.h"
 
 struct CStaticSoundbuffer;
 struct ProgableControl;
@@ -69,7 +70,6 @@ __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AnimateScoreTal
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PollTextEntryKeys(void *self, unsigned int phase);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
 
-__declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateBreakableTile(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateBombFuseAndBlast(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdatePlayerTileEffects(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateFoeObjectStep(void *self, unsigned char playerU, unsigned char playerV);
@@ -337,8 +337,8 @@ Sim_GameTick(void *self, double dt, double now)
         for (int i = 0; i < (int)game->liftCount(); ++i)
             game->liftSlot(i)->tick();
     }
-    for (int i = 0; i < (int)G8(0x173e3e); ++i)
-        Sim_UpdateBreakableTile(GP(0x173b1e + i * 4));
+    for (int i = 0; i < (int)game->breakableCount(); ++i)
+        game->breakableSlot(i)->tick();
     for (int i = 0; i < (int)game->bridgeCount(); ++i)
         game->bridgeSlot(i)->tick();
 
