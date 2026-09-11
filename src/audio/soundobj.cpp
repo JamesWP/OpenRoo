@@ -40,16 +40,13 @@
 #include <windows.h>
 #include <string.h>
 #include "log.h"
+#include "soundmanager.h"
 
 struct CStaticSoundbuffer;
 struct VoicePool;
-typedef CStaticSoundbuffer *(__attribute__((thiscall)) *acquire_fn)(void *sm,
-                                                                    const char *name,
-                                                                    int mode);
 typedef VoicePool *(__attribute__((thiscall)) *acquire_pool_fn)(void *sm, int count,
                                                                  const char *name,
                                                                  int mode);
-#define ORIG_ACQUIRE_SOUND ((acquire_fn)     0x00443660)   /* named callback */
 #define ORIG_ACQUIRE_POOL  ((acquire_pool_fn)0x00443810)   /* named callback */
 
 #define G_SOUND_MGR 0x13cba8
@@ -61,7 +58,7 @@ static void *acq(unsigned char *B, unsigned int nameOff)
 {
     char name[256];
     strcpy(name, (const char *)(B + nameOff));
-    return ORIG_ACQUIRE_SOUND(B + G_SOUND_MGR, name, 1);
+    return ((SoundManager *)(B + G_SOUND_MGR))->acquireStatic(name, 1);
 }
 
 static void *acq_pool(unsigned char *B, int count, unsigned int nameOff)

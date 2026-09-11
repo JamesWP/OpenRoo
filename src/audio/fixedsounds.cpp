@@ -40,17 +40,14 @@
 #include <stdio.h>
 #include <string.h>
 #include "log.h"
+#include "soundmanager.h"
 
 struct CStaticSoundbuffer;
 struct VoicePool;
-typedef CStaticSoundbuffer *(__attribute__((thiscall)) *acquire_fn)(void *sm,
-                                                                    const char *name,
-                                                                    int mode);
 typedef VoicePool *(__attribute__((thiscall)) *acquire_pool_fn)(void *sm, int count,
                                                                  const char *name,
                                                                  int mode);
 typedef void (__attribute__((thiscall)) *sound_setup_fn)(void *sm, int mode3d);
-#define ORIG_ACQUIRE_SOUND ((acquire_fn)     0x00443660)   /* named callback */
 #define ORIG_ACQUIRE_POOL  ((acquire_pool_fn)0x00443810)   /* named callback */
 #define ORIG_SOUND_SETUP   ((sound_setup_fn) 0x004439d0)   /* named callback */
 
@@ -91,7 +88,7 @@ static void bank(unsigned char *B, unsigned int slot, unsigned int fmt,
     if (GP(slot) != NULL)
         CStatic_Reset((CStaticSoundbuffer *)GP(slot));
     sprintf(path, (const char *)fmt, GAMEDIR, suffix);
-    GP(slot) = ORIG_ACQUIRE_SOUND(B + 0x13cba8, path, 0);
+    GP(slot) = ((SoundManager *)(B + 0x13cba8))->acquireStatic(path, 0);
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -162,19 +159,19 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
     }
 
     sprintf(path, (const char *)0x00465ae4, GAMEDIR);
-    GP(0x13cc5c) = ORIG_ACQUIRE_SOUND(sm, path, 0);          /* TimeOut */
+    GP(0x13cc5c) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* TimeOut */
     sprintf(path, (const char *)0x00465ac8, GAMEDIR);
-    GP(0x13cc6c) = ORIG_ACQUIRE_SOUND(sm, path, 0);          /* LastSeconds */
+    GP(0x13cc6c) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* LastSeconds */
     sprintf(path, (const char *)0x00465ab4, GAMEDIR);
-    GP(0x13cc68) = ORIG_ACQUIRE_SOUND(sm, path, 0);          /* Count */
+    GP(0x13cc68) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* Count */
     sprintf(path, (const char *)0x00465a9c, GAMEDIR);
     GP(0x13cc64) = ORIG_ACQUIRE_POOL(sm, 5, path, 0);        /* MenuUpDown */
     sprintf(path, (const char *)0x00465a88, GAMEDIR);
-    GP(0x13cc60) = ORIG_ACQUIRE_SOUND(sm, path, 0);          /* Switch */
+    GP(0x13cc60) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* Switch */
     sprintf(path, (const char *)0x00465a6c, GAMEDIR);
-    GP(0x13cc70) = ORIG_ACQUIRE_SOUND(sm, path, 0);          /* LevelCompleted */
+    GP(0x13cc70) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* LevelCompleted */
     sprintf(path, (const char *)0x00465a58, GAMEDIR);
-    GP(0x175270) = ORIG_ACQUIRE_SOUND(sm, path, 1);          /* splat */
+    GP(0x175270) = ((SoundManager *)sm)->acquireStatic(path, 1);          /* splat */
     ORIG_SOUND_SETUP(sm, (int)G32(0x2ab564));
 
     G32(0x13cc80) = 1;

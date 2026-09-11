@@ -139,6 +139,7 @@
 #include "slideobject.h"
 #include "bridgeobject.h"
 #include "breakabletile.h"
+#include "bomb.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -162,8 +163,6 @@ extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_RemoveFoeObject(void *self, unsigned int idArg);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveEnemyObject(void *self, unsigned int idArg);
 
 #define GAME_LOGGER   ((GameLogger *)0x0046c4c0)
 #define S_GAMEFILE_ERR ((const char *)0x004657a4)
@@ -282,7 +281,7 @@ Sim_ClearGameState(void *self)
             log_write("gamereset: first enemy drain -- count=%u id=%u\n",
                       (unsigned)G[G_ENEMY_COUNT], (unsigned)G[G_ENEMY_IDS]);
         }
-        Sim_RemoveEnemyObject(self, G[G_ENEMY_IDS]);
+        Bomb::remove((Game *)self, G[G_ENEMY_IDS]);
     }
 
     ((Game *)G)->setBreakableCount(0);

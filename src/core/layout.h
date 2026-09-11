@@ -98,8 +98,17 @@ struct LayoutSuite {
 #define KAROO_LAYOUT_CHECKS(Class)                                          \
     inline void Class::karooCheckLayout(karoo::LayoutReport &karooReport_)
 
-/* `member` must be at `gameOffset` from the game's address for the object. */
+/* `member` must be at `gameOffset` from the game's address for the object.
+ *
+ * -Winvalid-offsetof is silenced around these two statements only: a class
+ * deriving from a packed base (Bomb : MovableEntity) is not standard-layout,
+ * so offsetof on it is "conditionally supported" -- and GCC supports it,
+ * placing the derived members straight after the packed base, which is
+ * exactly what these asserts then check.  The pragma cannot go inside the
+ * expression, hence statement level. */
 #define KAROO_LAYOUT_AT(member, gameOffset)                                 \
+    _Pragma("GCC diagnostic push")                                          \
+    _Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")                \
     static_assert(karoo::layoutAt(KarooLayoutSelf::ORIGIN,                  \
                                   offsetof(KarooLayoutSelf, member),        \
                                   (gameOffset)),                            \
@@ -107,7 +116,8 @@ struct LayoutSuite {
     karooReport_.expect(karoo::layoutAt(KarooLayoutSelf::ORIGIN,            \
                                         offsetof(KarooLayoutSelf, member),  \
                                         (gameOffset)),                      \
-                        #member " at " #gameOffset)
+                        #member " at " #gameOffset);                        \
+    _Pragma("GCC diagnostic pop")
 
 /* Only where the size is relied on -- an object the game allocates. */
 #define KAROO_LAYOUT_SIZE(size)                                             \

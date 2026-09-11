@@ -146,6 +146,7 @@
 
 #include "log.h"
 #include "soundmanager.h"
+#include "objectremove.h"
 
 /* ─── HaltPlayback, already ours (static.cpp) ─────────────────────────── */
 struct CStaticSoundbuffer;
@@ -171,10 +172,6 @@ typedef void (__attribute__((thiscall)) *scalar_dtor_fn)(void *self, int flags);
 #define G_FOE_SLOTS      0x174804   /* object pointers, id*4              */
 #define G_FOE_COUNT      0x174fd4   /* byte count of the ID list          */
 #define G_FOE_IDS        0x174fd5   /* the ID list itself                 */
-
-#define G_ENEMY_SLOTS    0x173e3f   /* object pointers, id*4 (unaligned)  */
-#define G_ENEMY_COUNT    0x17460f
-#define G_ENEMY_IDS      0x174610
 
 /* ─── KAROO_SIM_FX / KAROO_REMOVE_DIAG, read by value ────────────────────
  * By VALUE, never by presence (RENDER_PLAN.md, 2026-09-02). */
@@ -207,7 +204,6 @@ static void fx_init(void)
 
 static unsigned long s_removals      = 0;
 static int s_logged_foe      = 0;
-static int s_logged_enemy    = 0;
 static int s_logged_release  = 0;
 static int s_logged_dtor     = 0;
 static int s_logged_shift    = 0;
@@ -246,7 +242,7 @@ static inline void release_field(SoundManager *sm, void **slot, int off,
  *
  * `bNullSlot` is difference 4 -- the foe path nulls the slot, the enemy path
  * does not, leaving a dangling pointer.  Deliberate; see the header. */
-static void destroy_and_compact(void **slot, unsigned char *pCount,
+void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
                                 unsigned char *pIds, unsigned char id,
                                 int bNullSlot)
 {
@@ -341,54 +337,13 @@ Sim_RemoveFoeObject(void *self, unsigned int idArg)
         release_field(sm, slot, 0xa7, 1, 0);
     }
 
-    destroy_and_compact(slot,
-                        G + G_FOE_COUNT,
-                        G + G_FOE_IDS,
-                        id,
-                        1);                    /* the foe path DOES null */
+    Object_DestroyAndCompactId(slot,
+                               G + G_FOE_COUNT,
+                               G + G_FOE_IDS,
+                               id,
+                               1);             /* the foe path DOES null */
 }
 
-/* ─── Game::RemoveEnemyObject 0x00417a20 ─────────────────────────────── */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveEnemyObject(void *self, unsigned int idArg)
-{
-    unsigned char *G  = (unsigned char *)self;
-    unsigned char id  = (unsigned char)(idArg & 0xff);
-    void **slot       = (void **)(G + G_ENEMY_SLOTS + (unsigned int)id * 4);
-    SoundManager *sm  = (SoundManager *)(G + G_SOUND_MGR);
-
-    fx_init();
-
-    if (*slot == 0)
-        return;
-
-    if (!s_logged_enemy) {
-        s_logged_enemy = 1;
-        log_write("objectremove: first enemy removal -- this=%p id=%u "
-                  "obj=%p\n", self, (unsigned)id, *slot);
-    }
-    if (s_diag) {
-        ++s_removals;
-        if ((s_removals % 500) == 0)
-            log_write("objectremove: %lu removals\n", s_removals);
-    }
-
-    if (*(int *)(G + G_SOUND_CREATED) != 0) {
-        /* Order verbatim from 0x00417a54..0x00417b22.  Flag 0 throughout --
-         * so these releases never destroy a shared buffer. */
-        release_field(sm, slot, 0x15e, 0, 0);
-        release_field(sm, slot, 0xb3,  0, 0);
-        release_field(sm, slot, 0xb7,  0, 0);
-        release_field(sm, slot, 0xbb,  0, 0);
-        release_field(sm, slot, 0xc3,  0, 0);
-        release_field(sm, slot, 0x15a, 0, 0);
-        release_field(sm, slot, 0xab,  0, 0);
-        release_field(sm, slot, 0xaf,  0, 0);
-    }
-
-    destroy_and_compact(slot,
-                        G + G_ENEMY_COUNT,
-                        G + G_ENEMY_IDS,
-                        id,
-                        0);                    /* NOT nulled -- see header */
-}
+/* Game::RemoveEnemyObject 0x00417a20 is the bomb's remove and now lives in
+ * bomb.cpp (Bomb::remove), calling Object_DestroyAndCompactId with bNullSlot
+ * 0.  The header above still describes both, since they are one listing. */

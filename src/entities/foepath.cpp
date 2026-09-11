@@ -563,7 +563,7 @@ Sim_ReleasePathSearchNodeLists(void *self)
         /* Deliberately no `hdr->next = 0` — see defect 1 above. */
     }
 
-    /* Logged UNCONDITIONALLY, once per run, for the same reason bombfuse.cpp
+    /* Logged UNCONDITIONALLY, once per run, for the same reason bomb.cpp
      * logs its first tick: this function has no replay-detectable negative
      * control.  Freeing is invisible to the simulation — skipping it leaks
      * and changes nothing a recording asserts, and freeing anything extra is

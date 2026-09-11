@@ -27,6 +27,15 @@ struct Field170a5c {
     unsigned char bytes[8];
 };
 
+/* A sound asset's file name and, immediately after it, its enabled flag.
+ * The spawn's unbounded strcpy of `name` relies on the flag to stop it. */
+struct __attribute__((packed)) SoundAssetName {
+    char name[256];
+    int  enabled;
+};
+
+class Bomb;
+
 class __attribute__((packed)) Game {
 public:
     static const int ORIGIN = 0;
@@ -78,11 +87,55 @@ public:
     BreakableTile *breakableSlot(unsigned int i) const { return breakableSlots_[i]; }
     void           setBreakableSlot(unsigned int i, BreakableTile *p) { breakableSlots_[i] = p; }
 
+    /* ── bombs (the game's "enemy" table) ───────────────────────────── */
+    /* Slots are indexed by ID; the ID list holds the live IDs, count long.
+     * The *Ref accessors hand out addresses because the remove's tail
+     * (objectremove.cpp) edits them in place, and the removes re-read the
+     * slot through its address exactly as the original does. */
+    unsigned char  bombCount() const               { return bombCount_; }
+    unsigned char *bombCountRef()   { return (unsigned char *)this + offsetof(Game, bombCount_); }
+    unsigned char  bombId(unsigned int i) const    { return bombIds_[i]; }
+    unsigned char *bombIds()        { return (unsigned char *)this + offsetof(Game, bombIds_); }
+    Bomb          *bombSlot(unsigned int id) const { return bombSlots_[id]; }
+    Bomb         **bombSlotRef(unsigned int id)
+    {
+        return (Bomb **)((unsigned char *)this + offsetof(Game, bombSlots_)) + id;
+    }
+
+    /* The named sound assets a bomb acquires at spawn: a 256-byte file name
+     * with its enabled flag immediately after.  Meanings not decoded. */
+    const SoundAssetName *soundAsset429b6() const { return &soundAsset429b6_; }
+    const SoundAssetName *soundAsset42ac2() const { return &soundAsset42ac2_; }
+    const SoundAssetName *soundAsset457c6() const { return &soundAsset457c6_; }
+    const SoundAssetName *soundAsset46132() const { return &soundAsset46132_; }
+    const SoundAssetName *soundAsset46baa() const { return &soundAsset46baa_; }
+
+    /* ── game code still called ─────────────────────────────────────── */
+    /* PLACEHOLDER: ClaimSpareObjectIdSlot 0x00417250, __thiscall on Game.
+     * Ghidra types it void, but both spawns read AL as the new ID -- see
+     * objectspawn.cpp for why it is called through rather than rewritten. */
+    unsigned char claimSpareObjectId(unsigned char *ids, unsigned char *count)
+    {
+        typedef unsigned char (__attribute__((thiscall)) *fn)(Game *, unsigned char *,
+                                                              unsigned char *);
+        return ((fn)0x00417250)(this, ids, count);
+    }
+
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x13cba8 - 0x000000];
+    unsigned char gap_000000[0x0429b6 - 0x000000];
+    SoundAssetName soundAsset429b6_;                      /* 0x0429b6 */
+    unsigned char gap_042aba[0x042ac2 - 0x042aba];
+    SoundAssetName soundAsset42ac2_;                      /* 0x042ac2 */
+    unsigned char gap_042bc6[0x0457c6 - 0x042bc6];
+    SoundAssetName soundAsset457c6_;                      /* 0x0457c6 */
+    unsigned char gap_0458ca[0x046132 - 0x0458ca];
+    SoundAssetName soundAsset46132_;                      /* 0x046132 */
+    unsigned char gap_046236[0x046baa - 0x046236];
+    SoundAssetName soundAsset46baa_;                      /* 0x046baa */
+    unsigned char gap_046cae[0x13cba8 - 0x046cae];
     /* The SoundManager is embedded here; its full size is unknown (its
      * lists reach at least +0xa4), so only the bytes up to the next field
      * we use are declared.  soundCreated_ sits inside it at +0x8c. */
@@ -102,7 +155,10 @@ private:
     unsigned char gap_173b1a[0x173b1e - 0x173b1a];
     BreakableTile *breakableSlots_[200];                  /* 0x173b1e */
     unsigned char breakableCount_;                        /* 0x173e3e */
-    unsigned char gap_173e3f[0x2ab58d - 0x173e3f];
+    Bomb         *bombSlots_[500];                        /* 0x173e3f */
+    unsigned char bombCount_;                             /* 0x17460f */
+    unsigned char bombIds_[500];                          /* 0x174610 */
+    unsigned char gap_174804[0x2ab58d - 0x174804];
     /* Where Tile::at() indexes from; the tiles extend past it. */
     unsigned char tileOrigin_[1];                         /* 0x2ab58d */
 };
@@ -121,5 +177,13 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(liftCount_,        0x173b19);
     KAROO_LAYOUT_AT(breakableSlots_,   0x173b1e);
     KAROO_LAYOUT_AT(breakableCount_,   0x173e3e);
+    KAROO_LAYOUT_AT(soundAsset429b6_,  0x0429b6);
+    KAROO_LAYOUT_AT(soundAsset42ac2_,  0x042ac2);
+    KAROO_LAYOUT_AT(soundAsset457c6_,  0x0457c6);
+    KAROO_LAYOUT_AT(soundAsset46132_,  0x046132);
+    KAROO_LAYOUT_AT(soundAsset46baa_,  0x046baa);
+    KAROO_LAYOUT_AT(bombSlots_,        0x173e3f);
+    KAROO_LAYOUT_AT(bombCount_,        0x17460f);
+    KAROO_LAYOUT_AT(bombIds_,          0x174610);
     KAROO_LAYOUT_AT(tileOrigin_,       0x2ab58d);
 }
