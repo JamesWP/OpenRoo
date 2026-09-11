@@ -145,6 +145,7 @@
 #include <string.h>
 
 #include "log.h"
+#include "soundmanager.h"
 
 /* ─── HaltPlayback, already ours (static.cpp) ─────────────────────────── */
 struct CStaticSoundbuffer;
@@ -157,11 +158,6 @@ CStatic_HaltPlayback(CStaticSoundbuffer *self);
  * Named here rather than replaced -- see the header.  Both are __thiscall on
  * the SoundManager at Game+0x13cba8, taking the buffer pointer and the owner
  * flag as two pushed dwords. */
-typedef void (__attribute__((thiscall)) *release_fn)(void *sm, void *buffer,
-                                                     int bDestroyIfUnused);
-
-#define ORIG_RELEASE_STATIC ((release_fn)0x004432f0)
-#define ORIG_RELEASE_POOL   ((release_fn)0x00443400)
 
 /* The object's own scalar deleting destructor, vtable slot 0.  The game
  * constructed these objects and still owns their vtables, so this dispatches
@@ -224,7 +220,7 @@ typedef void *__attribute__((aligned(1))) u_ptr;
 /* Release one named sound field, if the object holds one.  `slot` is the
  * address of the slot-array entry, re-read on every call exactly as the
  * original does. */
-static inline void release_field(void *sm, void **slot, int off,
+static inline void release_field(SoundManager *sm, void **slot, int off,
                                  int flag, int bPool)
 {
     void *obj = *slot;
@@ -240,9 +236,9 @@ static inline void release_field(void *sm, void **slot, int off,
     }
 
     if (bPool)
-        ORIG_RELEASE_POOL(sm, buf, flag);
+        sm->releasePooledForOwner(buf, flag);
     else
-        ORIG_RELEASE_STATIC(sm, buf, flag);
+        sm->releaseStaticForOwner(buf, flag);
 }
 
 /* The shared tail: destroy the object through its own vtable slot 0, then
@@ -305,7 +301,7 @@ Sim_RemoveFoeObject(void *self, unsigned int idArg)
     unsigned char *G  = (unsigned char *)self;
     unsigned char id  = (unsigned char)(idArg & 0xff);
     void **slot       = (void **)(G + G_FOE_SLOTS + (unsigned int)id * 4);
-    void *sm          = (void *)(G + G_SOUND_MGR);
+    SoundManager *sm  = (SoundManager *)(G + G_SOUND_MGR);
 
     fx_init();
 
@@ -359,7 +355,7 @@ Sim_RemoveEnemyObject(void *self, unsigned int idArg)
     unsigned char *G  = (unsigned char *)self;
     unsigned char id  = (unsigned char)(idArg & 0xff);
     void **slot       = (void **)(G + G_ENEMY_SLOTS + (unsigned int)id * 4);
-    void *sm          = (void *)(G + G_SOUND_MGR);
+    SoundManager *sm  = (SoundManager *)(G + G_SOUND_MGR);
 
     fx_init();
 

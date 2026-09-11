@@ -226,6 +226,7 @@
 #include <string.h>
 
 #include "log.h"
+#include "soundmanager.h"
 
 /* ─── Game / Level3DExtraObjects field offsets ───────────────────────────── */
 
@@ -274,9 +275,6 @@
 
 struct CStaticSoundbuffer;
 
-typedef void (__attribute__((thiscall)) *release_fn)(void *sm, void *buffer,
-                                                     int bDestroyIfUnused);
-#define ORIG_RELEASE_STATIC ((release_fn)0x004432f0)
 
 typedef int (__cdecl *sprintf_fn)(char *, const char *, ...);
 #define ORIG_MAYBE_SPRINTF ((sprintf_fn)0x00450655)
@@ -372,7 +370,7 @@ Leo_ReleaseExtraObjectSoundBuffers(void *self)
         /* the handle is re-read after HaltPlayback, exactly as the original */
         if (*(void **)slot != 0) {
             CStatic_HaltPlayback(*(CStaticSoundbuffer **)slot);
-            ORIG_RELEASE_STATIC(*(void **)(X + X_SOUND_MGR), *(void **)slot, 1);
+            (*(SoundManager **)(X + X_SOUND_MGR))->releaseStaticForOwner(*(void **)slot, 1);
             *(void **)slot = 0;
 
             s_released++;

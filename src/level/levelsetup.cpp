@@ -163,6 +163,8 @@
 #include <string.h>
 
 #include "log.h"
+#include "game.h"
+#include "liftobject.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -182,7 +184,6 @@
 #define G_SOUND_100        0x13cca8
 
 #define G_COUNT_CRYSTAL    0x42252     /* WORD                               */
-#define G_LIFT_COUNT       0x173b19
 #define G_LIFT_COUNT2      0x173b1a
 #define G_SLIDE_COUNT      0x173718
 #define G_BREAK_COUNT      0x173e3e
@@ -338,8 +339,6 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Leo_OpenExtraObjectsFile(void *self, const char *name);
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeLiftObjects(void *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PurgeSlideObjects(void *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PurgeBreakableObjects(void *self);
@@ -355,9 +354,6 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_SpawnFoeObject(void *self, unsigned int uArg, unsigned int vArg,
                    unsigned int hArg, unsigned int kindArg,
                    unsigned int typeArg);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnLiftObject(void *self, unsigned int uArg, unsigned int vArg,
-                    unsigned int heightArg, unsigned int param4);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_SpawnBreakableObject(void *self, unsigned int uArg, unsigned int vArg,
                          unsigned int heightArg, unsigned int param4);
@@ -567,7 +563,7 @@ Sim_SetupLevelObjects(void *self)
     DW(G, 0x175221)       = 0;
 
     /* ── tear down the previous level ──────────────────────────────────── */
-    Sim_PurgeLiftObjects(G);
+    LiftObject::purgeAll((Game *)G);
     Sim_PurgeSlideObjects(G);
     Sim_PurgeBreakableObjects(G);
     Sim_PurgeBridgeObjects(G);
@@ -586,7 +582,7 @@ Sim_SetupLevelObjects(void *self)
 
     B(G, G_BREAK_COUNT) = 0;
     B(G, G_FOE_COUNT)   = 0;
-    B(G, G_LIFT_COUNT)  = 0;
+    ((Game *)G)->setLiftCount(0);
     B(G, G_SLIDE_COUNT) = 0;
     B(G, G_ENEMY_COUNT) = 0;
     B(G, G_SWITCH_MAX)  = 0;
@@ -741,7 +737,7 @@ Sim_SetupLevelObjects(void *self)
                     B(G, T_TYPE + off) = 1;
 
                 if (B(G, T_TYPE + off) == 0x09) {
-                    Sim_SpawnLiftObject(G, u, v, B(G, T_HEIGHT + off),
+                    LiftObject::spawn((Game *)G, u, v, B(G, T_HEIGHT + off),
                                         B(G, T_PARAM + off));
                     B(G, T_PARAM + off) = 0;
                 }
@@ -1018,7 +1014,7 @@ next_row:
                   s_calls, (unsigned)B(G, G_MAP_W), (unsigned)B(G, G_MAP_H),
                   (unsigned)W(G, G_COUNT_CRYSTAL), (unsigned)W(G, C_TOTAL),
                   (unsigned)W(G, C_BRIDGES), (unsigned)W(G, C_TELEPORTS),
-                  (unsigned)B(G, G_LIFT_COUNT), (unsigned)B(G, G_SLIDE_COUNT),
+                  (unsigned)((Game *)G)->liftCount(), (unsigned)B(G, G_SLIDE_COUNT),
                   (unsigned)B(G, G_BREAK_COUNT), (unsigned)B(G, G_FOE_COUNT),
                   (unsigned)W(G, C_FREEBOMBS), (unsigned)W(G, C_TIMED),
                   (unsigned)B(G, G_SWITCH_MAX));

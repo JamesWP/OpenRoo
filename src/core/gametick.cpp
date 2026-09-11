@@ -45,6 +45,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "log.h"
+#include "game.h"
+#include "liftobject.h"
 
 struct CStaticSoundbuffer;
 struct ProgableControl;
@@ -65,7 +67,6 @@ __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AnimateScoreTal
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PollTextEntryKeys(void *self, unsigned int phase);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
 
-__declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateVerticalLiftObject(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdatePushedBlockObject(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateBreakableTile(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdateSlidingHazardObject(void *self);
@@ -324,16 +325,17 @@ Sim_GameTick(void *self, double dt, double now)
     if (STATE == 6)
         Sim_PollTextEntryKeys(B + 0x170a6d, (unsigned int)ftol80(ACC));
 
+    Game *game = (Game *)B;
     if (!s_fx) {
-        for (int i = 0; i < (int)G8(0x173b19); ++i)
-            Sim_UpdateVerticalLiftObject(GP(0x173719 + i * 4));
+        for (int i = 0; i < (int)game->liftCount(); ++i)
+            game->liftSlot(i)->tick();
         for (int i = 0; i < (int)G8(0x173718); ++i)
             Sim_UpdatePushedBlockObject(GP(0x173588 + i * 4));
     } else {
         for (int i = 0; i < (int)G8(0x173718); ++i)
             Sim_UpdatePushedBlockObject(GP(0x173588 + i * 4));
-        for (int i = 0; i < (int)G8(0x173b19); ++i)
-            Sim_UpdateVerticalLiftObject(GP(0x173719 + i * 4));
+        for (int i = 0; i < (int)game->liftCount(); ++i)
+            game->liftSlot(i)->tick();
     }
     for (int i = 0; i < (int)G8(0x173e3e); ++i)
         Sim_UpdateBreakableTile(GP(0x173b1e + i * 4));

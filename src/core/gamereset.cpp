@@ -134,14 +134,15 @@
 #include <string.h>
 
 #include "log.h"
+#include "game.h"
+#include "liftobject.h"
+#include "soundmanager.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
 #define G_SOUND_MGR       0x13cba8   /* SoundManager sub-object              */
 #define G_SOUND_CREATED   0x13cc34   /* nonzero once sound is up             */
 
-#define G_LIFT_SLOTS      0x173719
-#define G_LIFT_COUNT      0x173b19
 #define G_SLIDE_SLOTS     0x173588
 #define G_SLIDE_COUNT     0x173718
 #define G_BREAK_SLOTS     0x173b1e
@@ -161,9 +162,6 @@
 
 /* ─── Callbacks kept at their original addresses ─────────────────────────── */
 
-typedef void (__attribute__((thiscall)) *release_fn)(void *sm, void *buffer,
-                                                     int bDestroyIfUnused);
-#define ORIG_RELEASE_STATIC ((release_fn)0x004432f0)
 
 typedef void (__attribute__((thiscall)) *scalar_dtor_fn)(void *self, int flags);
 
@@ -193,7 +191,6 @@ static int s_diag           = 0;
 static int s_init           = 0;
 
 static unsigned s_calls        = 0;
-static int s_logged_lift       = 0;
 static int s_logged_slide      = 0;
 static int s_logged_break      = 0;
 static int s_logged_bridge     = 0;
@@ -265,7 +262,7 @@ static void release_handle(unsigned char *G, void *obj, unsigned int off)
         log_write("gamereset: first sound release -- obj=%p off=0x%x h=%p\n",
                   obj, off, h);
     }
-    ORIG_RELEASE_STATIC((void *)(G + G_SOUND_MGR), h, 1);
+    ((SoundManager *)(G + G_SOUND_MGR))->releaseStaticForOwner(h, 1);
 }
 
 /* Call the object's own vtable slot 0 (scalar deleting destructor). */
@@ -283,41 +280,6 @@ static void destroy_object(void *obj)
                   obj, (void *)vtbl, (void *)vtbl[0]);
     }
     vtbl[0](obj, 1);
-}
-
-/* ═══ 0x00417d90 -- Game::PurgeLiftObjects ═════════════════════════════════ */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeLiftObjects(void *self)
-{
-    unsigned char *G = (unsigned char *)self;
-    unsigned char i;
-
-    fx_init();
-    diag_tick();
-
-    if (s_fx_keepobjects)
-        return;   /* the purge does nothing at all -- see header */
-
-    if (s_diag && !s_logged_lift) {
-        s_logged_lift = 1;
-        log_write("gamereset: first PurgeLiftObjects -- count=%u\n",
-                  (unsigned)G[G_LIFT_COUNT]);
-    }
-
-    i = 0;
-    if (G[G_LIFT_COUNT] != 0) {
-        diag_live_purge("lift", (unsigned)G[G_LIFT_COUNT]);
-        do {
-            {
-                /* No null test on the slot here -- the original
-                 * reads the handle field off the raw pointer. */
-                release_handle(G, SLOT(G, G_LIFT_SLOTS, i), 0x3a);
-                destroy_object(SLOT(G, G_LIFT_SLOTS, i));
-            }
-            i++;
-        } while (i < G[G_LIFT_COUNT]);   /* count RE-READ every iteration */
-    }
-    G[G_LIFT_COUNT] = 0;
 }
 
 /* ═══ 0x004181b0 -- Game::PurgeSlideObjects ════════════════════════════════ */
@@ -452,7 +414,7 @@ Sim_ClearGameState(void *self)
         log_write("gamereset: first ClearGameState -- foes=%u enemies=%u "
                   "lift=%u slide=%u break=%u bridge=%u\n",
                   (unsigned)G[G_FOE_COUNT], (unsigned)G[G_ENEMY_COUNT],
-                  (unsigned)G[G_LIFT_COUNT], (unsigned)G[G_SLIDE_COUNT],
+                  (unsigned)((Game *)G)->liftCount(), (unsigned)G[G_SLIDE_COUNT],
                   (unsigned)G[G_BREAK_COUNT], (unsigned)G[G_BRIDGE_COUNT]);
     }
 
@@ -483,7 +445,7 @@ Sim_ClearGameState(void *self)
         PostQuitMessage(1);
     }
 
-    Sim_PurgeLiftObjects(self);
+    LiftObject::purgeAll((Game *)self);
     Sim_PurgeSlideObjects(self);
     Sim_PurgeBreakableObjects(self);
     Sim_PurgeBridgeObjects(self);
@@ -513,7 +475,7 @@ Sim_ClearGameState(void *self)
 
     G[G_BREAK_COUNT]  = 0;
     G[G_FOE_COUNT]    = 0;
-    G[G_LIFT_COUNT]   = 0;
+    ((Game *)G)->setLiftCount(0);
     G[G_SLIDE_COUNT]  = 0;
     G[G_ENEMY_COUNT]  = 0;
 }
