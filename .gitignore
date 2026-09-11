@@ -3,6 +3,8 @@
 **/*.sav
 karoo-hooks/karoo_hooks.dll
 karoo_hooks.dll
+karoo-hooks/layouttest.exe
+karoo-hooks/obj/
 Karoo.exe
 Karoo.cfg
 Karoo.exe.orig.xml

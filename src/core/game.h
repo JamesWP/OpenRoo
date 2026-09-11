@@ -18,6 +18,12 @@
 class SoundManager;
 class LiftObject;
 
+/* The 8-byte record at Game+0x170a5c, copied into every level object's +0x15
+ * each tick.  Meaning unknown; a struct so that it copies by assignment. */
+struct Field170a5c {
+    unsigned char bytes[8];
+};
+
 class __attribute__((packed)) Game {
 public:
     static const int ORIGIN = 0;
@@ -37,7 +43,7 @@ public:
         return (double *)((unsigned char *)this + offsetof(Game, clock_));
     }
     /* An 8-byte record every level object copies to its +0x15 each tick. */
-    unsigned char *field_170a5c()    { return field_170a5c_; }
+    Field170a5c   *field_170a5c()    { return &field_170a5c_; }
 
     /* ── tiles ──────────────────────────────────────────────────────── */
     /* The base Tile::at() indexes from.  Objects keep their own copy. */
@@ -51,7 +57,7 @@ public:
 
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
-    static void assertLayout();
+    KAROO_LAYOUT_REGISTER(Game);
 
     unsigned char gap_000000[0x13cba8 - 0x000000];
     /* The SoundManager is embedded here; its full size is unknown (its
@@ -61,7 +67,7 @@ private:
     int           soundCreated_;                          /* 0x13cc34 */
     unsigned char gap_13cc38[0x170a54 - 0x13cc38];
     double        clock_;                                 /* 0x170a54 */
-    unsigned char field_170a5c_[8];                       /* 0x170a5c */
+    Field170a5c   field_170a5c_;                          /* 0x170a5c */
     unsigned char gap_170a64[0x173719 - 0x170a64];
     LiftObject   *liftSlots_[256];                        /* 0x173719 */
     unsigned char liftCount_;                             /* 0x173b19 */
@@ -70,13 +76,13 @@ private:
     unsigned char tileOrigin_[1];                         /* 0x2ab58d */
 };
 
-inline void Game::assertLayout()
+KAROO_LAYOUT_CHECKS(Game)
 {
-    KAROO_LAYOUT_AT(Game, soundManagerHead_, 0x13cba8);
-    KAROO_LAYOUT_AT(Game, soundCreated_,     0x13cc34);
-    KAROO_LAYOUT_AT(Game, clock_,            0x170a54);
-    KAROO_LAYOUT_AT(Game, field_170a5c_,     0x170a5c);
-    KAROO_LAYOUT_AT(Game, liftSlots_,        0x173719);
-    KAROO_LAYOUT_AT(Game, liftCount_,        0x173b19);
-    KAROO_LAYOUT_AT(Game, tileOrigin_,       0x2ab58d);
+    KAROO_LAYOUT_AT(soundManagerHead_, 0x13cba8);
+    KAROO_LAYOUT_AT(soundCreated_,     0x13cc34);
+    KAROO_LAYOUT_AT(clock_,            0x170a54);
+    KAROO_LAYOUT_AT(field_170a5c_,     0x170a5c);
+    KAROO_LAYOUT_AT(liftSlots_,        0x173719);
+    KAROO_LAYOUT_AT(liftCount_,        0x173b19);
+    KAROO_LAYOUT_AT(tileOrigin_,       0x2ab58d);
 }

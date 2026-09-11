@@ -19,8 +19,6 @@
  */
 #pragma once
 
-#include <string.h>
-
 #include "layout.h"
 
 class __attribute__((packed)) Tile {
@@ -38,23 +36,21 @@ public:
     void setHeight(unsigned char h)            { height_ = h; }
 
     /* ── published by a lift standing on this cell (liftobject.cpp) ── */
-    /* The two floats are written as raw bits, as the original's integer
-     * moves do, so no value passes through the FPU. */
-    void setLiftLiveHeightBits(unsigned int b) { memcpy(&liftLiveHeight_, &b, 4); }
+    void setLiftLiveHeight(float h)            { liftLiveHeight_ = h; }
     void setLiftSlot(unsigned char n)          { liftSlot_ = n; }
     signed char liftBottom() const             { return liftBottom_; }
     signed char liftTop() const                { return liftTop_; }
     void setLiftBottom(unsigned char h)        { liftBottom_ = (signed char)h; }
     void setLiftTop(unsigned char h)           { liftTop_ = (signed char)h; }
-    void setLiftMovingSince(const void *d)     { memcpy(&liftMovingSince_, d, 8); }
-    void clearLiftMovingSince()                { memset(&liftMovingSince_, 0, 8); }
-    void setLiftParkedSince(const void *d)     { memcpy(&liftParkedSince_, d, 8); }
-    void setField_1e5(int x)                   { field_1e5_ = x; }
-    void setLiftDwellBits(unsigned int b)      { memcpy(&liftDwell_, &b, 4); }
+    void setLiftMovingSince(double t)          { liftMovingSince_ = t; }
+    /* +0.0 is all-zero bits, so this is the original's two zero dwords. */
+    void clearLiftMovingSince()                { liftMovingSince_ = 0.0; }
+    void setLiftParkedSince(double t)          { liftParkedSince_ = t; }
+    void setLiftDwell(double ms)               { liftDwell_ = ms; }
 
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
-    static void assertLayout();
+    KAROO_LAYOUT_REGISTER(Tile);
 
     unsigned char gap_000[0x19c - 0x000];
     unsigned char height_;            /* 0x19c                              */
@@ -66,19 +62,19 @@ private:
     signed char   liftTop_;           /* 0x1d4  ... and here at top         */
     double        liftMovingSince_;   /* 0x1d5  phase start while MOVING    */
     double        liftParkedSince_;   /* 0x1dd  phase start while PARKED    */
-    int           field_1e5_;         /* 0x1e5  zeroed while parked         */
-    float         liftDwell_;         /* 0x1e9  park dwell, 1500.0f         */
+    /* One double, though the original writes it as two dwords (0 at
+     * +0x1e5, 0x40977000 at +0x1e9): 0x4097700000000000 = 1500.0. */
+    double        liftDwell_;         /* 0x1e5  park dwell in ms, 1500.0    */
 };
 
-inline void Tile::assertLayout()
+KAROO_LAYOUT_CHECKS(Tile)
 {
-    KAROO_LAYOUT_AT(Tile, height_,          0x19c);
-    KAROO_LAYOUT_AT(Tile, liftLiveHeight_,  0x1a6);
-    KAROO_LAYOUT_AT(Tile, liftSlot_,        0x1d2);
-    KAROO_LAYOUT_AT(Tile, liftBottom_,      0x1d3);
-    KAROO_LAYOUT_AT(Tile, liftTop_,         0x1d4);
-    KAROO_LAYOUT_AT(Tile, liftMovingSince_, 0x1d5);
-    KAROO_LAYOUT_AT(Tile, liftParkedSince_, 0x1dd);
-    KAROO_LAYOUT_AT(Tile, field_1e5_,       0x1e5);
-    KAROO_LAYOUT_AT(Tile, liftDwell_,       0x1e9);
+    KAROO_LAYOUT_AT(height_,          0x19c);
+    KAROO_LAYOUT_AT(liftLiveHeight_,  0x1a6);
+    KAROO_LAYOUT_AT(liftSlot_,        0x1d2);
+    KAROO_LAYOUT_AT(liftBottom_,      0x1d3);
+    KAROO_LAYOUT_AT(liftTop_,         0x1d4);
+    KAROO_LAYOUT_AT(liftMovingSince_, 0x1d5);
+    KAROO_LAYOUT_AT(liftParkedSince_, 0x1dd);
+    KAROO_LAYOUT_AT(liftDwell_,       0x1e5);
 }

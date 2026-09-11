@@ -33,9 +33,12 @@
  *                   one height unit per 200 ms.
  *   _DAT_0045d2e0 = 0x4097700000000000 = 1500.0 (double) -- the park dwell.
  *
- * and the literal 0x40977000 the parked branch stamps into tile+0x1e9 is
- * 1500.0f, the same dwell as a float.  That is the lift telling the tile how
- * long the pause lasts, which is why the two constants match.
+ * The parked branch also stores 0 to tile+0x1e5 and 0x40977000 to +0x1e9.
+ * Those are the low and high dwords of ONE little-endian double,
+ * 0x4097700000000000 = 1500.0 -- the park dwell again, published to the tile
+ * as a double at +0x1e5 (foechase.cpp reads it back as one).  An earlier
+ * reading took +0x1e9 alone as the float "1500.0f"; 0x40977000 as a float is
+ * about 4.73, and the zeroed +0x1e5 is its low half.
  *
  * The tile it publishes to, at (u,v) = (+0x31, +0x32):
  *
@@ -45,8 +48,7 @@
  *   tile+0x1d4  s8      stored TOP, read on a completed rise
  *   tile+0x1d5  double  phase start, while MOVING (zeroed while parked)
  *   tile+0x1dd  double  phase start, while PARKED
- *   tile+0x1e5  s32     zeroed while parked
- *   tile+0x1e9  float   1500.0f while parked
+ *   tile+0x1e5  double  1500.0, the park dwell, while parked
  *
  * ─── Two things the decompile gets wrong, and one it hides ───────────────
  *
@@ -79,7 +81,8 @@
  *    "preserved bug".  It is not one.  +0x04 is the `now` double, so +0x08 is
  *    its HIGH dword; +0x44 is the phase-start double, so +0x48 is ITS high
  *    dword.  The pair is a full 8-byte copy that MSVC emitted as two dword
- *    moves and Ghidra did not re-pair.  Written as an 8-byte copy here.
+ *    moves and Ghidra did not re-pair.  Written as a double assignment
+ *    here -- see "Floating-point copies" below.
  *    Checked because the plan's standing rule says to: the decompile's
  *    framing was misleading, and `FSUB double ptr [ESI + 0x44]` at three
  *    sites settles that +0x44 really is read as eight bytes.
@@ -115,6 +118,15 @@
  *    after SETNZ so the INC cannot carry, and only AL is stored.  State
  *    becomes 1 (rise) when the latch is clear and 2 (fall) when it is set.
  *
+ * ─── Floating-point copies ───────────────────────────────────────────────
+ *
+ * Doubles and floats are copied by plain assignment.  The original does
+ * some of those copies with integer MOVs (phaseStart_ <- now_, every tile
+ * publish) and one through x87 (now_ <- *clock_, FLD/FST); GCC at -O0
+ * copies through x87 throughout.  The two differ only for a signalling NaN,
+ * which x87 quietens -- and no clock or timestamp ever holds one.  Accepted
+ * deliberately, as the project-wide rule (COHESION_PLAN.md, template 3).
+ *
  * ─── Visual / measurable proof ───────────────────────────────────────────
  *
  * KAROO_SIM_FX=liftflip inverts the departure direction latch at the one
@@ -133,7 +145,7 @@
 
 #include <windows.h>
 #include <stddef.h>
-#include <string.h>
+#include <string.h>          /* strcmp */
 
 #include "liftobject.h"
 #include "game.h"
@@ -165,33 +177,7 @@ typedef void  (__attribute__((thiscall)) *scalar_dtor_fn)(void *self, int flags)
 /* Read from .rdata: 0x3ba3d70a and 0x4097700000000000. */
 static const float  K_MS_TO_HEIGHT = 0.005f;    /* 0x0045d384 */
 static const double K_PARK_DWELL   = 1500.0;    /* 0x0045d2e0 */
-/* The literal the parked branch stamps into tile+0x1e9 -- 1500.0f. */
-static const unsigned int K_DWELL_F32 = 0x40977000u;
 
-static const unsigned int LIFT_ALLOC_SIZE = 0x4c;
-
-void LiftObject::assertLayout()
-{
-    KAROO_LAYOUT_AT(LiftObject, now_,        0x04);
-    KAROO_LAYOUT_AT(LiftObject, clock_,      0x0c);
-    KAROO_LAYOUT_AT(LiftObject, record_,     0x10);
-    KAROO_LAYOUT_AT(LiftObject, recordCopy_, 0x15);
-    KAROO_LAYOUT_AT(LiftObject, posU_,       0x25);
-    KAROO_LAYOUT_AT(LiftObject, height_,     0x29);
-    KAROO_LAYOUT_AT(LiftObject, posV_,       0x2d);
-    KAROO_LAYOUT_AT(LiftObject, cellU_,      0x31);
-    KAROO_LAYOUT_AT(LiftObject, heightCell_, 0x33);
-    KAROO_LAYOUT_AT(LiftObject, tileBase_,   0x34);
-    KAROO_LAYOUT_AT(LiftObject, baseHeight_, 0x38);
-    KAROO_LAYOUT_AT(LiftObject, topHeight_,  0x39);
-    KAROO_LAYOUT_AT(LiftObject, sound_,      0x3a);
-    KAROO_LAYOUT_AT(LiftObject, slot_,       0x3e);
-    KAROO_LAYOUT_AT(LiftObject, atTop_,      0x3f);
-    KAROO_LAYOUT_AT(LiftObject, state_,      0x43);
-    KAROO_LAYOUT_AT(LiftObject, phaseStart_, 0x44);
-    /* The allocation size is relied on too: operator new(0x4c). */
-    static_assert(sizeof(LiftObject) == LIFT_ALLOC_SIZE, "LiftObject size");
-}
 
 /* ─── Controls and diags, read by VALUE, never by presence ────────────────
  *
@@ -293,7 +279,7 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     base = baseArg & 0xff;
     top  = topArg & 0xff;
 
-    raw = ORIG_OPERATOR_NEW(LIFT_ALLOC_SIZE);
+    raw = ORIG_OPERATOR_NEW(LiftObject::ALLOC_SIZE);
     if (raw == 0) {
         if (s_diag_place && !s_logged_oom) {
             s_logged_oom = 1;
@@ -335,8 +321,8 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     obj->sound_ = 0;
     tile->clearLiftMovingSince();
 
-    /* The 8-byte clock, copied as two dword moves at 00417d34. */
-    memcpy(&obj->phaseStart_, game->clock(), 8);
+    /* The 8-byte clock (two dword moves at 00417d34 in the original). */
+    obj->phaseStart_ = *game->clock();
 
     obj->atTop_ = 0;       /* overwrites the constructor's 1 */
     obj->state_ = 1;
@@ -423,7 +409,7 @@ void LiftObject::tick()
             log_write("liftobject: %lu ticks\n", s_ticks);
     }
 
-    memcpy(recordCopy_, record_, 8);
+    recordCopy_ = *record_;
     now_ = *clock_;
 
     /* ─── State 1: RISING ───────────────────────────────────────────── */
@@ -449,7 +435,7 @@ void LiftObject::tick()
 
             heightCell_ = top;
             /* Point 2: one 8-byte double, not two stray dwords. */
-            memcpy(&phaseStart_, &now_, 8);
+            phaseStart_ = now_;
             height_ = (float)(int)top;
             atTop_  = 1;
             state_  = 0;
@@ -487,7 +473,7 @@ void LiftObject::tick()
                 }
 
                 heightCell_ = bot;
-                memcpy(&phaseStart_, &now_, 8);
+                phaseStart_ = now_;
                 height_ = (float)(int)bot;
                 atTop_  = 0;
                 state_  = 0;
@@ -507,9 +493,8 @@ void LiftObject::tick()
 
     if (state_ == 0) {
         /* Point 6: the OLD phase start is published first. */
-        t->setLiftParkedSince(&phaseStart_);
-        t->setField_1e5(0);
-        t->setLiftDwellBits(K_DWELL_F32);
+        t->setLiftParkedSince(phaseStart_);
+        t->setLiftDwell(K_PARK_DWELL);
 
         /* Point 5: unordered-false, so a NaN does NOT depart. */
         if (now_ - phaseStart_ >= K_PARK_DWELL) {
@@ -520,7 +505,7 @@ void LiftObject::tick()
             if (s_fx_liftflip)
                 latch = (latch != 0) ? 0 : 1;
 
-            memcpy(&phaseStart_, &now_, 8);
+            phaseStart_ = now_;
             /* Point 7: SETNZ + INC, so 1 (rise) or 2 (fall). */
             state_ = (signed char)((latch != 0) + 1);
 
@@ -542,17 +527,12 @@ void LiftObject::tick()
          * leaves the park timestamp visible at tile+0x1dd this tick. */
         t->clearLiftMovingSince();
     } else {
-        t->setLiftMovingSince(&phaseStart_);
+        t->setLiftMovingSince(phaseStart_);
     }
 
     /* Published every tick, in both states. */
-    {
-        unsigned int bits;
-        float h = height_;
-        memcpy(&bits, &h, 4);
-        t->setHeight((unsigned char)heightCell_);
-        t->setLiftLiveHeightBits(bits);
-    }
+    t->setHeight((unsigned char)heightCell_);
+    t->setLiftLiveHeight(height_);
 
     posU_ = (float)(int)cellU_;
     posV_ = (float)(int)cellV_;

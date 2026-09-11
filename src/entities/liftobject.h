@@ -14,13 +14,14 @@
 #pragma once
 
 #include "layout.h"
+#include "game.h"
 
-class Game;
 struct CStaticSoundbuffer;
 
 class __attribute__((packed)) LiftObject {
 public:
     static const int ORIGIN = 0;
+    static const unsigned int ALLOC_SIZE = 0x4c;   /* operator new in spawn */
 
     /* Game::SpawnLiftObject 0x00417b90.  Arguments are dwords masked to
      * bytes, exactly as the original reads them. */
@@ -44,14 +45,14 @@ private:
     /* vtable slot 0 (0x411c80, scalar deleting dtor), flags 1. */
     void destroy();
 
-    static void assertLayout();
+    KAROO_LAYOUT_REGISTER(LiftObject);
 
     void               *vtable_;       /* +0x00  game's, 0x45d380            */
     double              now_;          /* +0x04  latched from *clock_        */
     double             *clock_;        /* +0x0c  Game::clock()               */
-    unsigned char      *record_;       /* +0x10  Game::field_170a5c()        */
+    Field170a5c        *record_;       /* +0x10  Game::field_170a5c()        */
     unsigned char       field_14;      /* +0x14                              */
-    unsigned char       recordCopy_[8];/* +0x15  copied from *record_        */
+    Field170a5c         recordCopy_;   /* +0x15  copied from *record_        */
     unsigned char       field_1d[8];   /* +0x1d                              */
     float               posU_;         /* +0x25  } base-class fields,        */
     float               height_;       /* +0x29  } zeroed by 0x401000;       */
@@ -68,3 +69,26 @@ private:
     signed char         state_;        /* +0x43  0 parked, 1 rising, 2 falling */
     double              phaseStart_;   /* +0x44                              */
 };
+
+KAROO_LAYOUT_CHECKS(LiftObject)
+{
+    KAROO_LAYOUT_AT(now_,        0x04);
+    KAROO_LAYOUT_AT(clock_,      0x0c);
+    KAROO_LAYOUT_AT(record_,     0x10);
+    KAROO_LAYOUT_AT(recordCopy_, 0x15);
+    KAROO_LAYOUT_AT(posU_,       0x25);
+    KAROO_LAYOUT_AT(height_,     0x29);
+    KAROO_LAYOUT_AT(posV_,       0x2d);
+    KAROO_LAYOUT_AT(cellU_,      0x31);
+    KAROO_LAYOUT_AT(heightCell_, 0x33);
+    KAROO_LAYOUT_AT(tileBase_,   0x34);
+    KAROO_LAYOUT_AT(baseHeight_, 0x38);
+    KAROO_LAYOUT_AT(topHeight_,  0x39);
+    KAROO_LAYOUT_AT(sound_,      0x3a);
+    KAROO_LAYOUT_AT(slot_,       0x3e);
+    KAROO_LAYOUT_AT(atTop_,      0x3f);
+    KAROO_LAYOUT_AT(state_,      0x43);
+    KAROO_LAYOUT_AT(phaseStart_, 0x44);
+    /* The allocation size is relied on too: operator new(0x4c). */
+    KAROO_LAYOUT_SIZE(ALLOC_SIZE);
+}
