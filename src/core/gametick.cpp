@@ -52,6 +52,7 @@
 #include "breakabletile.h"
 #include "bomb.h"
 #include "foe.h"
+#include "tilequery.h"
 
 struct CStaticSoundbuffer;
 struct ProgableControl;
@@ -74,11 +75,6 @@ __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(vo
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_UpdatePlayerTileEffects(void *self);
 __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AcquireObjectSoundBuffersForIndex(void *self, unsigned int objArg);
-
-__declspec(dllexport) void __attribute__((thiscall)) Sim_MarkListedTilesBlockedByObject(void *self, unsigned int listIndex);
-__declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_FindNearestListedObjectTile(void *self, unsigned char *pu, unsigned char *pv, unsigned char maxDist);
-__declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_FindNearestFlaggedTileInRadius(void *self, unsigned char *pu, unsigned char *pv, unsigned char radius);
-__declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_FindFarthestOccupiedTile(void *self, unsigned char *pu, unsigned char *pv);
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PopMenuNodeFromStack(void *self);
@@ -128,13 +124,6 @@ typedef void (__attribute__((fastcall)) *relstream_fn)(void *self);
 #define GF(o)   (*(float *)(B + (o)))
 #define KEY(k)  hooks_GetAsyncKeyState(k)
 
-#define O8(p, o)  (*(unsigned char *)((unsigned char *)(p) + (o)))
-#define OS8(p, o) (*(signed char *)((unsigned char *)(p) + (o)))
-#define O16(p, o) (*(unsigned short *)((unsigned char *)(p) + (o)))
-#define O32(p, o) (*(unsigned int *)((unsigned char *)(p) + (o)))
-#define OP(p, o)  (*(void **)((unsigned char *)(p) + (o)))
-#define OD(p, o)  (*(double *)((unsigned char *)(p) + (o)))
-#define OF(p, o)  (*(float *)((unsigned char *)(p) + (o)))
 
 #define STATE   G8(0x2ab58c)
 #define DEB     G8(0x175517)
@@ -379,11 +368,11 @@ Sim_GameTick(void *self, double dt, double now)
                 unsigned char id = Foe::spawn((Game *)B, (unsigned char)u,
                                               (unsigned char)v, E[-0x12], 2,
                                               (unsigned char)(E[-0x09] + 100));
-                void *foe = GP(0x174804 + id * 4);
+                Foe *foe = ((Game *)B)->foeSlot(id);
                 if (((int)G8(0x4224d) + 1) % 15 == 0)
-                    O8(foe, 0x15a) = 7;
+                    foe->setDropContents(7);
                 else
-                    O8(foe, 0x15a) = 1;
+                    foe->setDropContents(1);
                 Sim_AcquireObjectSoundBuffersForIndex(B, id);
             }
             *(unsigned int *)(E - 0x11) = G32(0x170a54);
@@ -491,163 +480,40 @@ Sim_GameTick(void *self, double dt, double now)
         }
     }
 
-    /* ─── the foe loop ─── */
-    for (int i = 0; i < (int)G8(0x174fd4); ++i) {
-        unsigned char id = G8(0x174fd5 + i);
-        void **slot = (void **)(B + 0x174804 + id * 4);
+    /* ─── the foe loop ───
+     * The foe-side pieces are Foe methods (foe.cpp); the slot is re-read
+     * through its address for each, as the original re-reads it. */
+    for (int i = 0; i < (int)game->foeCount(); ++i) {
+        unsigned char id = game->foeId(i);
+        Foe **slot = game->foeSlotRef(id);
         unsigned char tu, tv;
 
         {
-            unsigned char sw = O8(*slot, 0xd7);
-            if (sw < 0xff && ((Game *)B)->bridgeSlot(sw)->armed() == 0) {
+            unsigned char sw = (*slot)->switchSlot();
+            if (sw < 0xff && game->bridgeSlot(sw)->armed() == 0) {
                 GameLog_LogMessage(GAMELOGGER, 1, F_SWITCH, (unsigned int)sw);
-                trigger_switch_tile(B, O8(*slot, 0xd7), OS8(*slot, 0x31), OS8(*slot, 0x32));
-                ((Game *)B)->bridgeSlot(O8(*slot, 0xd7))->arm(((Game *)B)->clock());
-                Sim_MarkListedTilesBlockedByObject(B, O8(*slot, 0xd7));
-                O8(*slot, 0xd7) = 0xff;
+                trigger_switch_tile(B, (*slot)->switchSlot(), (*slot)->cellU(), (*slot)->cellV());
+                game->bridgeSlot((*slot)->switchSlot())->arm(game->clock());
+                Sim_MarkListedTilesBlockedByObject(B, (*slot)->switchSlot());
+                (*slot)->clearSwitchSlot();
             }
         }
 
-        if (G32(0x1753af) == 0 && STATE == 1)
-            O32(*slot, 0xef) = 0;
-        else
-            O32(*slot, 0xef) = 1;
+        int hold = (G32(0x1753af) == 0 && STATE == 1) ? 0 : 1;
         if (STATE == 3)
-            O32(*slot, 0xef) = 1;
+            hold = 1;
         if (G8(0x1752e8) != 0)
-            O32(*slot, 0xef) = 1;
+            hold = 1;
+        (*slot)->chooseTarget(game, hold, G8(0x1751fa), G8(0x1751fb),
+                              G8(0x17530b), G8(0x17530c), &tu, &tv);
 
-        tu = G8(0x1751fa);
-        tv = G8(0x1751fb);
-        O16(*slot, 0x64) = 0x32;
-        if (O8(*slot, 0x62) == 1) {
-            tu = G8(0x17530b);
-            tv = G8(0x17530c);
-            O16(*slot, 0x64) = 400;
-        }
-        if (O8(*slot, 0x62) == 2) {
-            tu = O8(*slot, 0x31);
-            tv = O8(*slot, 0x32);
-            if (Sim_FindNearestListedObjectTile(B, &tu, &tv, 7) != 0) {
-                O16(*slot, 0x64) = 100;
-                ((Foe *)*slot)->chase(tu, tv, 100);
-                if (O32(*slot, 0xd3) == 0 && O8(*slot, 0x145) == 0 &&
-                    O8(*slot, 0x125) == 0) {
-                    tu = G8(0x1751fa);
-                    tv = G8(0x1751fb);
-                    O16(*slot, 0x64) = 0x32;
-                }
-            } else {
-                tu = G8(0x1751fa);
-                tv = G8(0x1751fb);
-                O16(*slot, 0x64) = 100;
-            }
-        }
-        if (O8(*slot, 0x62) == 3) {
-            tu = O8(*slot, 0x31);
-            tv = O8(*slot, 0x32);
-            if (Sim_FindNearestFlaggedTileInRadius(B, &tu, &tv, 5) == 0) {
-                tu = G8(0x1751fa);
-                tv = G8(0x1751fb);
-                O16(*slot, 0x64) = 100;
-            } else {
-                O16(*slot, 0x64) = 0x96;
-                ((Foe *)*slot)->chase(tu, tv, 0x96);
-                if (O8(*slot, 0x145) == 0) {
-                    tu = G8(0x1751fa);
-                    tv = G8(0x1751fb);
-                    O16(*slot, 0x64) = 100;
-                }
-            }
-        }
-        if (O8(*slot, 0x62) == 5) {
-            int found = 0;
-            O32(*slot, 0xef) = 0;
-            for (int j = 0; j < (int)G8(0x174fd4); ++j) {
-                void *other = GP(0x174804 + G8(0x174fd5 + j) * 4);
-                if (O8(other, 0x152) == 2) {
-                    found = 1;
-                    tu = O8(other, 0x31);
-                    tv = O8(other, 0x32);
-                    O16(*slot, 0x64) = 0x96;
-                }
-            }
-            if (!found)
-                O32(*slot, 0xef) = 1;
-        }
-        if (O8(*slot, 0x62) == 7) {
-            O32(*slot, 0xef) = 0;
-            if (Sim_FindFarthestOccupiedTile(*slot, &tu, &tv) != 0)
-                O16(*slot, 0x64) = 0x96;
-            else
-                O32(*slot, 0xef) = 1;
-        }
-
-        ((Foe *)*slot)->step(tu, tv);
-
-        /* a foe's own bomb drop -- same "too late leaves the flag" shape */
-        {
-            void *f = *slot;
-            if (O32(f, 0xe4) != 0 && O8(f, 0x62) != 2) {
-                unsigned int timed = O32(f, 0x14e);
-                int spawn = 1, offset = 0;
-                if (timed != 0) {
-                    long double since = (long double)ACC - (long double)OD(f, 0x146);
-                    if (since < 50.0L)
-                        offset = 1;
-                    else
-                        spawn = 0;
-                }
-                if (spawn) {
-                    if (offset)
-                        Bomb::spawn((Game *)B,(unsigned char)(O8(f, 0x31) - O8(f, 0x13f)),
-                                            (unsigned char)(O8(f, 0x32) - O8(f, 0x140)),
-                                            (unsigned char)(O8(f, 0x33) - O8(f, 0x141)),
-                                            O8(f, 0x14));
-                    else
-                        Bomb::spawn((Game *)B,O8(f, 0x31), O8(f, 0x32), O8(f, 0x33),
-                                            O8(f, 0x14));
-                    O32(*slot, 0xe4) = 0;
-                }
-            }
-        }
-
-        /* contact with the player: sqrt((dz^2 + dy^2) + dx^2) < 0.5 at 80 bits */
-        {
-            void *f = *slot;
-            if (G8(0x1752e8) == 0) {
-                if (O8(f, 0x152) != 3 && O8(f, 0x11f) == 0) {
-                    long double dx = (long double)OF(f, 0x25) - (long double)GF(0x1751ee);
-                    long double dy = (long double)OF(f, 0x29) - (long double)GF(0x1751f2);
-                    long double dz = (long double)OF(f, 0x2d) - (long double)GF(0x1751f6);
-                    long double s = dz * dz + dy * dy;
-                    s = s + dx * dx;
-                    long double dist;
-                    __asm__("fsqrt" : "=t"(dist) : "0"(s));
-                    if (dist < 0.5L)
-                        G8(0x1752e8) = 1;
-                }
-            } else if (O32(f, 0x14e) == 0) {
-                O8(f, 0x9a) = 0x28;
-            }
-        }
-
-        {
-            void *f = *slot;
-            if (O8(f, 0x11f) != 0 && O32(f, 0x120) == 0) {
-                O32(f, 0x86) = 1;
-                f = *slot;
-                int idx = TIDX(OS8(f, 0x153), OS8(f, 0x154));
-                if (G8(0x3e181c + idx) != 0x64)
-                    G8(0x3e181c + idx) = 0;
-                f = *slot;
-                if (O32(f, 0x7e) != 0) {
-                    if ((long double)OF(f, 0x29) > 0.0L)
-                        G8(0x2ab72c + TIDX(OS8(f, 0x31), OS8(f, 0x32))) = O8(f, 0x15a);
-                    Foe::remove((Game *)B, id);
-                    G8(0x4224d) = (unsigned char)(G8(0x4224d) + 1);
-                }
-            }
+        (*slot)->step(tu, tv);
+        (*slot)->dropBomb(game);
+        (*slot)->checkPlayerContact(&G8(0x1752e8),
+                                    GF(0x1751ee), GF(0x1751f2), GF(0x1751f6));
+        if ((*slot)->finishDespawn(B + 0x3e181c)) {
+            Foe::remove(game, id);
+            G8(0x4224d) = (unsigned char)(G8(0x4224d) + 1);
         }
     }
 

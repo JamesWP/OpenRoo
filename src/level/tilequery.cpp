@@ -258,6 +258,7 @@
 #include <math.h>
 
 #include "log.h"
+#include "tilequery.h"
 
 /* ─── KAROO_SIM_FX / KAROO_TILEQ_DIAG, read by VALUE ──────────────────────
  *

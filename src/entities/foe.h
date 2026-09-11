@@ -12,8 +12,7 @@
  * rather than here.
  *
  * Outside accessors remain, which is why the layout stays packed and
- * asserted: GameTick's foe loop (gametick.cpp) picks each foe's target and
- * handles its bomb drop, contact and despawn by raw offset;
+ * asserted (GameTick's foe loop now goes through the methods below);
  * soundobj.cpp and levelsounds.cpp attach its sounds; cheatcode.cpp forces
  * moveState; tilequery.cpp (FindFarthestOccupiedTile) and entitymove.cpp
  * (UpdateEntityMovement) treat it as a plain entity; worldstate.cpp reads the
@@ -51,6 +50,38 @@ public:
      * the first step in pendingMove.  Returns it. */
     unsigned char chase(unsigned char targetU, unsigned char targetV,
                         unsigned short speed);
+
+    /* ── GameTick's foe loop (gametick.cpp) ─────────────────────────────
+     * The loop keeps the Game-side sequencing (the switch hand-off to the
+     * bridge, the remove, the kill counter); each foe-side piece is here.
+     * Game and Player fields arrive as arguments, read by the loop at the
+     * same point the original reads them. */
+
+    /* +0x15a, set by the runtime foe spawners: 7 every 15th kill, else 1. */
+    void setDropContents(unsigned char c)  { dropContents_ = c; }
+    /* +0xd7: the switch the foe stands on, 0xff = none. */
+    unsigned char switchSlot() const       { return field_d7; }
+    void clearSwitchSlot()                 { field_d7 = 0xff; }
+    signed char cellU() const              { return cellU_; }
+    signed char cellV() const              { return cellV_; }
+
+    /* The target per behaviour type, the hold flag +0xef and chase speed
+     * +0x64 (types 2 and 3 chase from here).  `hold` is the loop's 0/1. */
+    void chooseTarget(Game *game, int hold,
+                      unsigned char playerU, unsigned char playerV,
+                      unsigned char escortU, unsigned char escortV,
+                      unsigned char *pu, unsigned char *pv);
+    /* The foe's own bomb drop: the hit flag +0xe4 raised by step(). */
+    void dropBomb(Game *game);
+    /* Touching the player kills it (*playerMoveState = 1); once the player
+     * is down, an unfrozen foe gets +0x9a = 0x28. */
+    void checkPlayerContact(unsigned char *playerMoveState,
+                            float playerU, float playerY, float playerV);
+    /* A foe in a move state: mark +0x86, clear its home cell's entry in
+     * `homeMarks` (Game+0x3e181c) unless it is 0x64, and if removal was
+     * requested stamp its drop contents (when above ground) and return
+     * true -- the caller removes it. */
+    bool finishDespawn(unsigned char *homeMarks);
 
 private:
     /* The vtable.  MSVC layout: one slot, the scalar deleting destructor,

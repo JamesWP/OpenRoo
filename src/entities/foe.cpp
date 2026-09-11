@@ -154,6 +154,8 @@
 #include "objectremove.h"
 #include "soundmanager.h"
 #include "static.h"
+#include "bomb.h"
+#include "tilequery.h"
 #include "log.h"
 
 #include <new>               /* std::nothrow */
@@ -881,4 +883,146 @@ Sim_SetFoeChaseTarget(Foe *self, unsigned char targetU, unsigned char targetV,
                       unsigned short speed)
 {
     return self->chase(targetU, targetV, speed);
+}
+
+/* ═══ GameTick's foe loop (was gametick.cpp, listing 0x414df0-0x416414) ═════
+ *
+ * Moved verbatim from the loop body; the loop keeps the order of the calls.
+ * Player and Game values are the loop's arguments, read at the same point.
+ */
+
+void Foe::chooseTarget(Game *game, int hold,
+                       unsigned char playerU, unsigned char playerV,
+                       unsigned char escortU, unsigned char escortV,
+                       unsigned char *pu, unsigned char *pv)
+{
+    unsigned char tu = playerU, tv = playerV;
+
+    field_ef = hold;
+    field_64 = 0x32;
+    if (type_ == 1) {
+        tu = escortU;
+        tv = escortV;
+        field_64 = 400;
+    }
+    if (type_ == 2) {
+        tu = (unsigned char)cellU_;
+        tv = (unsigned char)cellV_;
+        if (Sim_FindNearestListedObjectTile(game, &tu, &tv, 7) != 0) {
+            field_64 = 100;
+            chase(tu, tv, 100);
+            if (field_d3 == 0 && pendingMove_ == 0 && field_125 == 0) {
+                tu = playerU;
+                tv = playerV;
+                field_64 = 0x32;
+            }
+        } else {
+            tu = playerU;
+            tv = playerV;
+            field_64 = 100;
+        }
+    }
+    if (type_ == 3) {
+        tu = (unsigned char)cellU_;
+        tv = (unsigned char)cellV_;
+        if (Sim_FindNearestFlaggedTileInRadius(game, &tu, &tv, 5) == 0) {
+            tu = playerU;
+            tv = playerV;
+            field_64 = 100;
+        } else {
+            field_64 = 0x96;
+            chase(tu, tv, 0x96);
+            if (pendingMove_ == 0) {
+                tu = playerU;
+                tv = playerV;
+                field_64 = 100;
+            }
+        }
+    }
+    if (type_ == 5) {
+        int found = 0;
+        field_ef = 0;
+        for (int j = 0; j < (int)game->foeCount(); ++j) {
+            Foe *other = game->foeSlot(game->foeId(j));
+            if (other->kind_ == 2) {
+                found = 1;
+                tu = (unsigned char)other->cellU_;
+                tv = (unsigned char)other->cellV_;
+                field_64 = 0x96;
+            }
+        }
+        if (!found)
+            field_ef = 1;
+    }
+    if (type_ == 7) {
+        field_ef = 0;
+        if (Sim_FindFarthestOccupiedTile(this, &tu, &tv) != 0)
+            field_64 = 0x96;
+        else
+            field_ef = 1;
+    }
+    *pu = tu;
+    *pv = tv;
+}
+
+/* The same "too late leaves the flag" shape as the player's bomb drop. */
+void Foe::dropBomb(Game *game)
+{
+    if (field_e4 == 0 || type_ == 2)
+        return;
+    int spawn = 1, offset = 0;
+    if (field_14e != 0) {
+        long double since = (long double)*game->clock() - (long double)field_146;
+        if (since < 50.0L)
+            offset = 1;
+        else
+            spawn = 0;
+    }
+    if (!spawn)
+        return;
+    if (offset)
+        Bomb::spawn(game, (unsigned char)((unsigned char)cellU_ - (unsigned char)field_13f),
+                          (unsigned char)((unsigned char)cellV_ - (unsigned char)field_140),
+                          (unsigned char)((unsigned char)heightCell_ - (unsigned char)field_141),
+                          facing_);
+    else
+        Bomb::spawn(game, (unsigned char)cellU_, (unsigned char)cellV_,
+                          (unsigned char)heightCell_, facing_);
+    field_e4 = 0;
+}
+
+/* sqrt((dz^2 + dy^2) + dx^2) < 0.5, at 80 bits. */
+void Foe::checkPlayerContact(unsigned char *playerMoveState,
+                             float playerU, float playerY, float playerV)
+{
+    if (*playerMoveState == 0) {
+        if (kind_ != 3 && moveState_ == 0) {
+            long double dx = (long double)posU_ - (long double)playerU;
+            long double dy = (long double)posY_ - (long double)playerY;
+            long double dz = (long double)posV_ - (long double)playerV;
+            long double s = dz * dz + dy * dy;
+            s = s + dx * dx;
+            long double dist;
+            __asm__("fsqrt" : "=t"(dist) : "0"(s));
+            if (dist < 0.5L)
+                *playerMoveState = 1;
+        }
+    } else if (field_14e == 0) {
+        field_9a = 0x28;
+    }
+}
+
+bool Foe::finishDespawn(unsigned char *homeMarks)
+{
+    if (moveState_ == 0 || field_120 != 0)
+        return false;
+    field_86 = 1;
+    int idx = ((int)(signed char)homeV_ + (int)(signed char)homeU_ * 100) * 0x7f;
+    if (homeMarks[idx] != 0x64)
+        homeMarks[idx] = 0;
+    if (removeRequested_ == 0)
+        return false;
+    if ((long double)posY_ > 0.0L)
+        tile(cellU_, cellV_)->setContents(dropContents_);
+    return true;
 }
