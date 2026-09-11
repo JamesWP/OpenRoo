@@ -136,6 +136,7 @@
 #include "log.h"
 #include "game.h"
 #include "liftobject.h"
+#include "slideobject.h"
 #include "soundmanager.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
@@ -143,8 +144,6 @@
 #define G_SOUND_MGR       0x13cba8   /* SoundManager sub-object              */
 #define G_SOUND_CREATED   0x13cc34   /* nonzero once sound is up             */
 
-#define G_SLIDE_SLOTS     0x173588
-#define G_SLIDE_COUNT     0x173718
 #define G_BREAK_SLOTS     0x173b1e
 #define G_BREAK_COUNT     0x173e3e
 #define G_BRIDGE_SLOTS    0x170643
@@ -191,7 +190,6 @@ static int s_diag           = 0;
 static int s_init           = 0;
 
 static unsigned s_calls        = 0;
-static int s_logged_slide      = 0;
 static int s_logged_break      = 0;
 static int s_logged_bridge     = 0;
 static int s_logged_clear      = 0;
@@ -282,40 +280,8 @@ static void destroy_object(void *obj)
     vtbl[0](obj, 1);
 }
 
-/* ═══ 0x004181b0 -- Game::PurgeSlideObjects ════════════════════════════════ */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeSlideObjects(void *self)
-{
-    unsigned char *G = (unsigned char *)self;
-    unsigned char i;
-
-    fx_init();
-    diag_tick();
-
-    if (s_fx_keepobjects)
-        return;   /* the purge does nothing at all -- see header */
-
-    if (s_diag && !s_logged_slide) {
-        s_logged_slide = 1;
-        log_write("gamereset: first PurgeSlideObjects -- count=%u\n",
-                  (unsigned)G[G_SLIDE_COUNT]);
-    }
-
-    i = 0;
-    if (G[G_SLIDE_COUNT] != 0) {
-        diag_live_purge("slide", (unsigned)G[G_SLIDE_COUNT]);
-        do {
-            {
-                /* No null test on the slot here -- the original
-                 * reads the handle field off the raw pointer. */
-                release_handle(G, SLOT(G, G_SLIDE_SLOTS, i), 0x39);
-                destroy_object(SLOT(G, G_SLIDE_SLOTS, i));
-            }
-            i++;
-        } while (i < G[G_SLIDE_COUNT]);
-    }
-    G[G_SLIDE_COUNT] = 0;
-}
+/* Game::PurgeSlideObjects 0x004181b0 is SlideObject::purgeAll, in
+ * slideobject.cpp; Game::PurgeLiftObjects likewise in liftobject.cpp. */
 
 /* ═══ 0x004183f0 -- Game::PurgeBreakableObjects ════════════════════════════
  *
@@ -414,7 +380,8 @@ Sim_ClearGameState(void *self)
         log_write("gamereset: first ClearGameState -- foes=%u enemies=%u "
                   "lift=%u slide=%u break=%u bridge=%u\n",
                   (unsigned)G[G_FOE_COUNT], (unsigned)G[G_ENEMY_COUNT],
-                  (unsigned)((Game *)G)->liftCount(), (unsigned)G[G_SLIDE_COUNT],
+                  (unsigned)((Game *)G)->liftCount(),
+                  (unsigned)((Game *)G)->slideCount(),
                   (unsigned)G[G_BREAK_COUNT], (unsigned)G[G_BRIDGE_COUNT]);
     }
 
@@ -446,7 +413,7 @@ Sim_ClearGameState(void *self)
     }
 
     LiftObject::purgeAll((Game *)self);
-    Sim_PurgeSlideObjects(self);
+    SlideObject::purgeAll((Game *)self);
     Sim_PurgeBreakableObjects(self);
     Sim_PurgeBridgeObjects(self);
 
@@ -476,6 +443,6 @@ Sim_ClearGameState(void *self)
     G[G_BREAK_COUNT]  = 0;
     G[G_FOE_COUNT]    = 0;
     ((Game *)G)->setLiftCount(0);
-    G[G_SLIDE_COUNT]  = 0;
+    ((Game *)G)->setSlideCount(0);
     G[G_ENEMY_COUNT]  = 0;
 }

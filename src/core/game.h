@@ -17,6 +17,7 @@
 
 class SoundManager;
 class LiftObject;
+class SlideObject;
 
 /* The 8-byte record at Game+0x170a5c, copied into every level object's +0x15
  * each tick.  Meaning unknown; a struct so that it copies by assignment. */
@@ -55,6 +56,12 @@ public:
     LiftObject   *liftSlot(unsigned int i) const { return liftSlots_[i]; }
     void          setLiftSlot(unsigned int i, LiftObject *p) { liftSlots_[i] = p; }
 
+    /* ── slides ─────────────────────────────────────────────────────── */
+    unsigned char slideCount() const               { return slideCount_; }
+    void          setSlideCount(unsigned char n)   { slideCount_ = n; }
+    SlideObject  *slideSlot(unsigned int i) const  { return slideSlots_[i]; }
+    void          setSlideSlot(unsigned int i, SlideObject *p) { slideSlots_[i] = p; }
+
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
@@ -68,7 +75,9 @@ private:
     unsigned char gap_13cc38[0x170a54 - 0x13cc38];
     double        clock_;                                 /* 0x170a54 */
     Field170a5c   field_170a5c_;                          /* 0x170a5c */
-    unsigned char gap_170a64[0x173719 - 0x170a64];
+    unsigned char gap_170a64[0x173588 - 0x170a64];
+    SlideObject  *slideSlots_[100];                       /* 0x173588 */
+    unsigned char slideCount_;                            /* 0x173718 */
     LiftObject   *liftSlots_[256];                        /* 0x173719 */
     unsigned char liftCount_;                             /* 0x173b19 */
     unsigned char gap_173b1a[0x2ab58d - 0x173b1a];
@@ -82,6 +91,8 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(soundCreated_,     0x13cc34);
     KAROO_LAYOUT_AT(clock_,            0x170a54);
     KAROO_LAYOUT_AT(field_170a5c_,     0x170a5c);
+    KAROO_LAYOUT_AT(slideSlots_,       0x173588);
+    KAROO_LAYOUT_AT(slideCount_,       0x173718);
     KAROO_LAYOUT_AT(liftSlots_,        0x173719);
     KAROO_LAYOUT_AT(liftCount_,        0x173b19);
     KAROO_LAYOUT_AT(tileOrigin_,       0x2ab58d);
