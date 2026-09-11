@@ -71,6 +71,7 @@
 #include <windows.h>
 #include "log.h"
 #include "alloc.h"
+#include "foepath.h"
 
 /* Leaves this file stands on, both already ours (entitymath.cpp). */
 extern "C" __declspec(dllexport) int __attribute__((stdcall))

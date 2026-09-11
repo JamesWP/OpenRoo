@@ -168,6 +168,7 @@
 #include "slideobject.h"
 #include "bridgeobject.h"
 #include "breakabletile.h"
+#include "foe.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -188,8 +189,6 @@
 
 #define G_COUNT_CRYSTAL    0x42252     /* WORD                               */
 #define G_LIFT_COUNT2      0x173b1a
-#define G_FOE_COUNT        0x174fd4
-#define G_FOE_IDS          0x174fd5
 #define G_ENEMY_COUNT      0x17460f
 #define G_ENEMY_IDS        0x174610
 #define G_SWITCH_MAX       0x48b12
@@ -340,14 +339,7 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Leo_OpenExtraObjectsFile(void *self, const char *name);
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveFoeObject(void *self, unsigned int idArg);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_RemoveEnemyObject(void *self, unsigned int idArg);
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnFoeObject(void *self, unsigned int uArg, unsigned int vArg,
-                   unsigned int hArg, unsigned int kindArg,
-                   unsigned int typeArg);
 
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Sim_FindNearestFlaggedTileInRadius(void *self, unsigned char *pu,
@@ -559,13 +551,13 @@ Sim_SetupLevelObjects(void *self)
             *p++ = 0;
     }
 
-    while (B(G, G_FOE_COUNT) != 0)
-        Sim_RemoveFoeObject(G, B(G, G_FOE_IDS));
+    while (((Game *)G)->foeCount() != 0)
+        Foe::remove((Game *)G, ((Game *)G)->foeId(0));
     while (B(G, G_ENEMY_COUNT) != 0)
         Sim_RemoveEnemyObject(G, B(G, G_ENEMY_IDS));
 
     ((Game *)G)->setBreakableCount(0);
-    B(G, G_FOE_COUNT)   = 0;
+    ((Game *)G)->setFoeCount(0);
     ((Game *)G)->setLiftCount(0);
     ((Game *)G)->setSlideCount(0);
     B(G, G_ENEMY_COUNT) = 0;
@@ -865,14 +857,14 @@ Sim_SetupLevelObjects(void *self)
                             B(G, T_PARAM + off) = 0;
                             hh = (unsigned char)(hh + bump);
                         }
-                        Sim_SpawnFoeObject(G, u, v, hh, 2, B(G, T_PARAM + off));
+                        Foe::spawn((Game *)G, u, v, hh, 2, B(G, T_PARAM + off));
                         B(G, T_ITEM + off) = 0;
                         spawned2 = 1;
                     }
 
                     if (B(G, T2_TYPE + off) == 0x03) {
-                        Sim_SpawnFoeObject(G, u, v, B(G, T_HEIGHT + off), 3,
-                                           B(G, T_PARAM + off));
+                        Foe::spawn((Game *)G, u, v, B(G, T_HEIGHT + off), 3,
+                                   B(G, T_PARAM + off));
                         B(G, T_ITEM  + off) = 0;
                         B(G, T_PARAM + off) = 0;
                     } else if (!spawned2) {
@@ -999,7 +991,7 @@ next_row:
                   (unsigned)W(G, G_COUNT_CRYSTAL), (unsigned)W(G, C_TOTAL),
                   (unsigned)W(G, C_BRIDGES), (unsigned)W(G, C_TELEPORTS),
                   (unsigned)((Game *)G)->liftCount(), (unsigned)((Game *)G)->slideCount(),
-                  (unsigned)((Game *)G)->breakableCount(), (unsigned)B(G, G_FOE_COUNT),
+                  (unsigned)((Game *)G)->breakableCount(), (unsigned)((Game *)G)->foeCount(),
                   (unsigned)W(G, C_FREEBOMBS), (unsigned)W(G, C_TIMED),
                   (unsigned)B(G, G_SWITCH_MAX));
 

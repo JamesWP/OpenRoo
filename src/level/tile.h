@@ -113,6 +113,17 @@ public:
     void setField20f(int b)                    { field_20f = b; }
     void setBlastTime(double t)                { blastTime_ = t; }
 
+    /* ── read by a foe (foe.cpp) ─────────────────────────────────────── */
+    unsigned char contents() const             { return contents_; }
+    int    slideTrack() const                  { return slideTrack_; }
+    double slideParkedSince() const            { return slideParkedSince_; }
+    double slideDwell() const                  { return slideDwell_; }
+    double liftParkedSince() const             { return liftParkedSince_; }
+    double liftDwell() const                   { return liftDwell_; }
+    /* Cleared (one dword) by a foe's destructor on the cell it stood on;
+     * meaning unknown. */
+    void setField1a1(int b)                    { field_1a1 = b; }
+
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
     KAROO_LAYOUT_REGISTER(Tile);
@@ -123,7 +134,7 @@ private:
     unsigned char gap_19e[0x19f - 0x19e];
     unsigned char contents_;          /* 0x19f  what can be picked up here  */
     unsigned char blastHeight_;       /* 0x1a0  live blast, 0 = none        */
-    unsigned char gap_1a1[0x1a5 - 0x1a1];
+    int           field_1a1;          /* 0x1a1                              */
     unsigned char field_1a5;          /* 0x1a5                              */
     float         liftLiveHeight_;    /* 0x1a6  the lift's live height      */
     unsigned char slideSlot_;         /* 0x1aa  which slide's track this is */
@@ -171,6 +182,7 @@ KAROO_LAYOUT_CHECKS(Tile)
     KAROO_LAYOUT_AT(objectMarker_,     0x19d);
     KAROO_LAYOUT_AT(contents_,         0x19f);
     KAROO_LAYOUT_AT(blastHeight_,      0x1a0);
+    KAROO_LAYOUT_AT(field_1a1,         0x1a1);
     KAROO_LAYOUT_AT(field_1a5,         0x1a5);
     KAROO_LAYOUT_AT(liftLiveHeight_,   0x1a6);
     KAROO_LAYOUT_AT(slideSlot_,        0x1aa);

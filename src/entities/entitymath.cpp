@@ -26,6 +26,7 @@
  */
 #include <windows.h>
 #include "log.h"
+#include "entitymath.h"
 
 /* ─── Game::CheckTileIsRamp (0x0041f8a0) ──────────────────────────────────
  *

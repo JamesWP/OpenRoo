@@ -140,11 +140,10 @@
 #include "bridgeobject.h"
 #include "breakabletile.h"
 #include "bomb.h"
+#include "foe.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
-#define G_FOE_COUNT       0x174fd4
-#define G_FOE_IDS         0x174fd5
 #define G_ENEMY_COUNT     0x17460f
 #define G_ENEMY_IDS       0x174610
 
@@ -161,8 +160,6 @@
 struct GameLogger;
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveFoeObject(void *self, unsigned int idArg);
 
 #define GAME_LOGGER   ((GameLogger *)0x0046c4c0)
 #define S_GAMEFILE_ERR ((const char *)0x004657a4)
@@ -222,7 +219,7 @@ Sim_ClearGameState(void *self)
         s_logged_clear = 1;
         log_write("gamereset: first ClearGameState -- foes=%u enemies=%u "
                   "lift=%u slide=%u break=%u bridge=%u\n",
-                  (unsigned)G[G_FOE_COUNT], (unsigned)G[G_ENEMY_COUNT],
+                  (unsigned)((Game *)G)->foeCount(), (unsigned)G[G_ENEMY_COUNT],
                   (unsigned)((Game *)G)->liftCount(),
                   (unsigned)((Game *)G)->slideCount(),
                   (unsigned)((Game *)G)->breakableCount(),
@@ -266,13 +263,14 @@ Sim_ClearGameState(void *self)
     for (n = 0x40; n != 0; n--)
         *p++ = 0;
 
-    while (G[G_FOE_COUNT] != 0) {
+    while (((Game *)G)->foeCount() != 0) {
         if (s_diag && !s_logged_foedrain) {
             s_logged_foedrain = 1;
             log_write("gamereset: first foe drain -- count=%u id=%u\n",
-                      (unsigned)G[G_FOE_COUNT], (unsigned)G[G_FOE_IDS]);
+                      (unsigned)((Game *)G)->foeCount(),
+                      (unsigned)((Game *)G)->foeId(0));
         }
-        Sim_RemoveFoeObject(self, G[G_FOE_IDS]);
+        Foe::remove((Game *)self, ((Game *)G)->foeId(0));
     }
 
     while (G[G_ENEMY_COUNT] != 0) {
@@ -285,7 +283,7 @@ Sim_ClearGameState(void *self)
     }
 
     ((Game *)G)->setBreakableCount(0);
-    G[G_FOE_COUNT]    = 0;
+    ((Game *)G)->setFoeCount(0);
     ((Game *)G)->setLiftCount(0);
     ((Game *)G)->setSlideCount(0);
     G[G_ENEMY_COUNT]  = 0;

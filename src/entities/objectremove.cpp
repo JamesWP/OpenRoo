@@ -145,33 +145,15 @@
 #include <string.h>
 
 #include "log.h"
-#include "soundmanager.h"
 #include "objectremove.h"
 
-/* ─── HaltPlayback, already ours (static.cpp) ─────────────────────────── */
-struct CStaticSoundbuffer;
-
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *self);
-
-/* ─── The two sound-manager callbacks into the game binary ────────────────
- *
- * Named here rather than replaced -- see the header.  Both are __thiscall on
- * the SoundManager at Game+0x13cba8, taking the buffer pointer and the owner
- * flag as two pushed dwords. */
+/* The two sound-manager release calls the removes make are SoundManager
+ * methods now (soundmanager.h), called from foe.cpp and bomb.cpp. */
 
 /* The object's own scalar deleting destructor, vtable slot 0.  The game
  * constructed these objects and still owns their vtables, so this dispatches
  * through the pointer the object carries rather than through anything here. */
 typedef void (__attribute__((thiscall)) *scalar_dtor_fn)(void *self, int flags);
-
-/* ─── Game field offsets, read from the listings ──────────────────────── */
-#define G_SOUND_MGR      0x13cba8   /* SoundManager sub-object            */
-#define G_SOUND_CREATED  0x13cc34   /* nonzero once sound is up           */
-
-#define G_FOE_SLOTS      0x174804   /* object pointers, id*4              */
-#define G_FOE_COUNT      0x174fd4   /* byte count of the ID list          */
-#define G_FOE_IDS        0x174fd5   /* the ID list itself                 */
 
 /* ─── KAROO_SIM_FX / KAROO_REMOVE_DIAG, read by value ────────────────────
  * By VALUE, never by presence (RENDER_PLAN.md, 2026-09-02). */
@@ -202,40 +184,8 @@ static void fx_init(void)
         s_diag = 1;
 }
 
-static unsigned long s_removals      = 0;
-static int s_logged_foe      = 0;
-static int s_logged_release  = 0;
 static int s_logged_dtor     = 0;
 static int s_logged_shift    = 0;
-
-/* ─── Unaligned scalar access, as in the other Band A files ───────────── */
-typedef void *__attribute__((aligned(1))) u_ptr;
-
-#define OBJPTR(base, off)  (*(u_ptr *)((unsigned char *)(base) + (off)))
-
-/* Release one named sound field, if the object holds one.  `slot` is the
- * address of the slot-array entry, re-read on every call exactly as the
- * original does. */
-static inline void release_field(SoundManager *sm, void **slot, int off,
-                                 int flag, int bPool)
-{
-    void *obj = *slot;
-    void *buf = OBJPTR(obj, off);
-
-    if (buf == 0)
-        return;
-
-    if (s_diag && !s_logged_release) {
-        s_logged_release = 1;
-        log_write("objectremove: first sound release -- obj=%p +0x%x buf=%p "
-                  "flag=%d pool=%d\n", obj, off, buf, flag, bPool);
-    }
-
-    if (bPool)
-        sm->releasePooledForOwner(buf, flag);
-    else
-        sm->releaseStaticForOwner(buf, flag);
-}
 
 /* The shared tail: destroy the object through its own vtable slot 0, then
  * compact the ID free-list and decrement the count.
@@ -290,60 +240,7 @@ void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
     *pCount = (unsigned char)(*pCount - 1);
 }
 
-/* ─── Game::RemoveFoeObject 0x00417530 ───────────────────────────────── */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveFoeObject(void *self, unsigned int idArg)
-{
-    unsigned char *G  = (unsigned char *)self;
-    unsigned char id  = (unsigned char)(idArg & 0xff);
-    void **slot       = (void **)(G + G_FOE_SLOTS + (unsigned int)id * 4);
-    SoundManager *sm  = (SoundManager *)(G + G_SOUND_MGR);
-
-    fx_init();
-
-    if (*slot == 0)
-        return;
-
-    if (!s_logged_foe) {
-        s_logged_foe = 1;
-        log_write("objectremove: first foe removal -- this=%p id=%u obj=%p\n",
-                  self, (unsigned)id, *slot);
-    }
-    if (s_diag) {
-        ++s_removals;
-        if ((s_removals % 500) == 0)
-            log_write("objectremove: %lu removals\n", s_removals);
-    }
-
-    if (*(int *)(G + G_SOUND_CREATED) != 0) {
-        /* Order verbatim from 0x00417564..0x0041768d.  Flag 1 throughout. */
-        release_field(sm, slot, 0x9f, 1, 1);   /* voice pool */
-        release_field(sm, slot, 0xb3, 1, 0);
-        release_field(sm, slot, 0xc7, 1, 0);
-        release_field(sm, slot, 0xb7, 1, 0);
-        release_field(sm, slot, 0xbb, 1, 0);
-
-        /* +0xc3 is halted first, then released -- and the pointer is re-read
-         * between the two calls, exactly as at 0x004175f5. */
-        if (OBJPTR(*slot, 0xc3) != 0) {
-            CStatic_HaltPlayback((CStaticSoundbuffer *)OBJPTR(*slot, 0xc3));
-            release_field(sm, slot, 0xc3, 1, 0);
-        }
-
-        release_field(sm, slot, 0xab, 1, 0);
-        release_field(sm, slot, 0xaf, 1, 0);
-        release_field(sm, slot, 0xcb, 1, 0);
-        release_field(sm, slot, 0xcf, 1, 1);   /* voice pool */
-        release_field(sm, slot, 0xa7, 1, 0);
-    }
-
-    Object_DestroyAndCompactId(slot,
-                               G + G_FOE_COUNT,
-                               G + G_FOE_IDS,
-                               id,
-                               1);             /* the foe path DOES null */
-}
-
-/* Game::RemoveEnemyObject 0x00417a20 is the bomb's remove and now lives in
- * bomb.cpp (Bomb::remove), calling Object_DestroyAndCompactId with bNullSlot
- * 0.  The header above still describes both, since they are one listing. */
+/* Both removes now live with their classes: Game::RemoveFoeObject 0x00417530
+ * in foe.cpp (Foe::remove, bNullSlot 1) and Game::RemoveEnemyObject
+ * 0x00417a20 in bomb.cpp (Bomb::remove, bNullSlot 0).  The header above
+ * still describes both, since they are one listing. */
