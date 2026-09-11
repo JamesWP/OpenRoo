@@ -63,6 +63,7 @@
 #include <string.h>
 #include "texture.h"
 #include "log.h"
+#include "alloc.h"
 
 /* The CRT's fwrite — __cdecl(const void *buf, size_t size, size_t count,
  * FILE *stream).  This address was called "ImageLogger::Log" here until
@@ -78,10 +79,6 @@ typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
 /* operator new — __cdecl(size_t); FactAlloc::Free2 — __cdecl(void *);
  * MaybeSprintf — __cdecl(char *, const char *fmt, ...).  Shared helpers that
  * stay live for the rest of the binary. */
-typedef char *(__cdecl *opnew_fn)(unsigned int);
-#define ORIG_OPERATOR_NEW ((opnew_fn)0x00450e9d)
-typedef void (__cdecl *free2_fn)(void *);
-#define ORIG_FACT_FREE2 ((free2_fn)0x004504c0)
 typedef int (__cdecl *sprintf_fn)(char *, const char *, ...);
 #define ORIG_MAYBE_SPRINTF ((sprintf_fn)0x00450655)
 #define FMT_PERCENT_S ((const char *)0x004641f8)
@@ -233,10 +230,10 @@ TextureDIB_CreateSurface(LoadedImage *self, IDirectDraw4 *dd, LPCSTR name,
     }
 
     if (self->ImageName != NULL)
-        ORIG_FACT_FREE2(self->ImageName);
+        game_free2(self->ImageName);
 
     /* strlen+1: the original's `not ecx` with no matching `dec ecx`. */
-    char *copy = ORIG_OPERATOR_NEW(dib_strlen(name) + 1u);
+    char *copy = (char *)game_operator_new(dib_strlen(name) + 1u);
     self->ImageName = copy;
     ORIG_MAYBE_SPRINTF(copy, FMT_PERCENT_S, name);
 

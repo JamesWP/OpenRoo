@@ -82,13 +82,10 @@
 #include <string.h>
 #include "faktmesh.h"
 #include "log.h"
+#include "alloc.h"
 
 /* The game's heap.  Allocations here are freed by FreeThing2 (0x437fb0) via
  * FactAlloc::Free2, so they must come from the matching allocator. */
-typedef void *(__cdecl *opnew_fn)(unsigned int);
-typedef void  (__cdecl *free2_fn)(void *);
-#define ORIG_OPERATOR_NEW ((opnew_fn)0x00450e9d)
-#define ORIG_FACT_FREE2   ((free2_fn)0x004504c0)
 
 #define MDL_FRAME_REC_SIZE 0x18
 #define MDL_VERTEX_SIZE    0x28
@@ -120,13 +117,13 @@ static unsigned long fnv1a(const void *p, unsigned len)
  * called.  Frees the four heap fields, then resets the two scalars. */
 static void model_release(CFaktMesh *m)
 {
-    if (m->pVertexData)   ORIG_FACT_FREE2(m->pVertexData);
+    if (m->pVertexData)   game_free2(m->pVertexData);
     m->pVertexData = NULL;
-    if (m->pFrameRecords) ORIG_FACT_FREE2(m->pFrameRecords);
+    if (m->pFrameRecords) game_free2(m->pFrameRecords);
     m->pFrameRecords = NULL;
-    if (m->pScratchVerts) ORIG_FACT_FREE2(m->pScratchVerts);
+    if (m->pScratchVerts) game_free2(m->pScratchVerts);
     m->pScratchVerts = NULL;
-    if (m->pszName)       ORIG_FACT_FREE2(m->pszName);
+    if (m->pszName)       game_free2(m->pszName);
     m->pszName = NULL;
     m->dwVertexCount = 0;
     m->wFrameCount   = 1;
@@ -153,15 +150,15 @@ Model_ImportSceneModels(CFaktMesh *self, const char *path)
     total  = frames * verts;
 
     /* Per-frame records: allocated, NOT zero-filled (defect 2). */
-    self->pFrameRecords = ORIG_OPERATOR_NEW(frames * MDL_FRAME_REC_SIZE);
+    self->pFrameRecords = game_operator_new(frames * MDL_FRAME_REC_SIZE);
 
     /* Vertex array: zero-filled, 10 dwords per vertex. */
-    self->pVertexData = ORIG_OPERATOR_NEW(total * MDL_VERTEX_SIZE);
+    self->pVertexData = game_operator_new(total * MDL_VERTEX_SIZE);
     if (self->pVertexData != NULL && total != 0)
         memset(self->pVertexData, 0, total * MDL_VERTEX_SIZE);
 
     /* Scratch vertices: one frame's worth, zero-filled. */
-    self->pScratchVerts = ORIG_OPERATOR_NEW(verts * MDL_VERTEX_SIZE);
+    self->pScratchVerts = game_operator_new(verts * MDL_VERTEX_SIZE);
     if (self->pScratchVerts != NULL && verts != 0)
         memset(self->pScratchVerts, 0, verts * MDL_VERTEX_SIZE);
 
@@ -191,7 +188,7 @@ Model_ImportSceneModels(CFaktMesh *self, const char *path)
     /* strdup onto the game's heap: FreeThing2 frees this pointer. */
     {
         unsigned n = (unsigned)strlen(path) + 1;
-        char *name = (char *)ORIG_OPERATOR_NEW(n);
+        char *name = (char *)game_operator_new(n);
         self->pszName = name;
         if (name != NULL)
             memcpy(name, path, n);

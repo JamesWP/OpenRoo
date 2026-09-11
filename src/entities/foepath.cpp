@@ -70,6 +70,7 @@
  */
 #include <windows.h>
 #include "log.h"
+#include "alloc.h"
 
 /* Leaves this file stands on, both already ours (entitymath.cpp). */
 extern "C" __declspec(dllexport) int __attribute__((stdcall))
@@ -489,8 +490,6 @@ Sim_PopBestOpenPathNode(void *self)
  * allocator, so freeing it ourselves is not an option — this is the
  * no-callback rule's standing allocator exemption, named here as the rule
  * requires. */
-typedef void (__cdecl *factalloc_free_fn)(void *);
-static const factalloc_free_fn FactAlloc_Free = (factalloc_free_fn)0x0045087c;
 
 /* AllocateZeroedHeapBlock — __cdecl(int count, int size), 0x004507ff: the
  * game's calloc, and the allocator half of the pair above.  The SECOND (and
@@ -557,7 +556,7 @@ Sim_ReleasePathSearchNodeLists(void *self)
         do {
             unsigned char *p = n;
             n = *(unsigned char **)(n + 0x40);   /* read before the free */
-            FactAlloc_Free(p);
+            game_free(p);
             ++freed;
         } while (n != 0);
 
@@ -795,7 +794,7 @@ Sim_PopPendingPathNode(void *self)
     void *node = *(void **)cell;
     *(void **)(owner + 4) = *(void **)(cell + 4);
 
-    FactAlloc_Free(cell);
+    game_free(cell);
     return node;
 }
 

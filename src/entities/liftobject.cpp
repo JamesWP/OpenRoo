@@ -146,6 +146,7 @@
 
 #include <windows.h>
 #include <stddef.h>
+#include <new>               /* std::nothrow */
 #include <string.h>          /* strcmp */
 
 #include "liftobject.h"
@@ -154,15 +155,6 @@
 #include "soundmanager.h"
 #include "static.h"
 #include "log.h"
-
-/* ─── The CRT allocator pair -- the game's, so its heap is unchanged ─────
- * operator new 0x450e9d (__nh_malloc) and FactAlloc::Free2 0x4504c0 (free).
- * CRT, not a game class, so called directly rather than via a placeholder. */
-typedef void *(__cdecl *operator_new_fn)(unsigned int cb);
-typedef void  (__cdecl *free_fn)(void *p);
-
-#define ORIG_OPERATOR_NEW  ((operator_new_fn)0x00450e9d)
-#define ORIG_FREE          ((free_fn)0x004504c0)
 
 /* Read from .rdata: 0x3ba3d70a and 0x4097700000000000. */
 static const float  K_MS_TO_HEIGHT = 0.005f;    /* 0x0045d384 */
@@ -231,7 +223,8 @@ static void fx_init(void)
  * operator new returned it, as the original leaves it.
  *
  * 0x411c80 destroys in two layers too: 0x411ca0 re-installs 0x45d380, then
- * the base destructor 0x401060 installs 0x45d290; then Free2 if flags & 1.
+ * the base destructor 0x401060 installs 0x45d290; then Free2 if flags & 1
+ * (here, our own `delete` -- we allocated it with our own `new`).
  * Both vtable stores are dead -- the only caller passes flags 1, so the
  * memory is freed in the same call -- and are not reproduced.
  */
@@ -239,13 +232,12 @@ const LiftObject::Vtbl LiftObject::VTABLE = { &LiftObject::scalarDeletingDtor };
 
 LiftObject *LiftObject::create()
 {
-    LiftObject *obj = (LiftObject *)ORIG_OPERATOR_NEW(ALLOC_SIZE);
-    if (obj != 0)
-        obj->construct();
-    return obj;
+    return new (std::nothrow) LiftObject;
 }
 
-void LiftObject::construct()
+/* Only the fields the original constructors write; every other byte is left
+ * as `new` returned it, as the original leaves operator new's. */
+LiftObject::LiftObject()
 {
     /* base constructor 0x401000 */
     posU_   = 0.0f;
@@ -261,7 +253,7 @@ void LiftObject::construct()
 void *LiftObject::scalarDeletingDtor(LiftObject *self, unsigned int flags)
 {
     if (flags & 1)
-        ORIG_FREE(self);
+        delete self;
     return self;
 }
 

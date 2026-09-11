@@ -98,6 +98,7 @@
  */
 #include "texture.h"
 #include "log.h"
+#include "alloc.h"
 #include <stdio.h>
 
 /* ─── Originals left live in the binary ────────────────────────────────────
@@ -134,10 +135,6 @@
  * itself opened and handed us -- see karoo-hooks/reportwriter.cpp for how that
  * one was resolved, by moving the open rather than reaching across.) */
 
-typedef char *(__cdecl *opnew_fn)(unsigned int);
-typedef void  (__cdecl *free2_fn)(void *);
-#define ORIG_OPERATOR_NEW ((opnew_fn)0x00450e9d)
-#define ORIG_FACT_FREE2   ((free2_fn)0x004504c0)
 
 /* ImageLogger::Log — __cdecl(const char *, int len, int, int *sink). */
 typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
@@ -305,7 +302,7 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
      * `cdq; and edx,7; add; sar 3` idiom, not a shift. */
     int bits = (int)((unsigned int)h.bpp * (unsigned int)h.height
                                          * (unsigned int)h.width);
-    char *buf = ORIG_OPERATOR_NEW((unsigned int)((bits + ((bits >> 31) & 7)) >> 3));
+    char *buf = (char *)game_operator_new((unsigned int)((bits + ((bits >> 31) & 7)) >> 3));
 
     if (h.imageType == 0x0a) {
         /* RLE true-colour.  `i` is the running pixel index; the loop
@@ -464,7 +461,7 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
     }
 
     if (buf != NULL)
-        ORIG_FACT_FREE2(buf);
+        game_free2(buf);
 
     if (tmp->Unlock(NULL) < 0) {
         if (tmp != NULL)

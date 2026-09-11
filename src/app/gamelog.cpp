@@ -123,6 +123,7 @@
 #include <stddef.h>
 #include "gamelog.h"
 #include "log.h"
+#include "alloc.h"
 
 /* The game's LoggerVtable at 0x0045ef98.  One slot -- the scalar-deleting
  * destructor -- confirmed by reading the four dwords there: 0x00441840 is
@@ -137,8 +138,6 @@
  * in this file, and unavoidable: the object being deleted came from the game's
  * operator new at its construction site, so it must go back to that heap.
  * Named here as CLAUDE.md's no-callback rule requires. */
-typedef void (__cdecl *free2_fn)(void *);
-#define ORIG_FACT_FREE2 ((free2_fn)0x004504c0)
 
 /* The game's format strings, for the first-use audit below. */
 #define STR_BANNER  ((const char *)0x00467390)
@@ -306,7 +305,7 @@ GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags)
 {
     GameLog_CloseAndRebindVtable(self);
     if (flags & 1)
-        ORIG_FACT_FREE2(self);
+        game_free2(self);
     return self;
 }
 

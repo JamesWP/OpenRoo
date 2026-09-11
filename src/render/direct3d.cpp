@@ -31,6 +31,7 @@
  */
 #include "direct3d.h"
 #include "log.h"
+#include "alloc.h"
 
 #define FLIP_LOG_FIRST 8
 
@@ -109,8 +110,6 @@ Direct3D_FlipPrimaryFrame(LoadedImage *img)
  * other callers, so they are called at their original addresses rather than
  * stubbed or duplicated (same approach as factory.cpp).
  */
-typedef void (__cdecl *free2_fn)(void *);
-#define ORIG_FACT_FREE2 ((free2_fn)0x004504c0)
 
 typedef void (__attribute__((thiscall)) *listclear_fn)(LinkedList *);
 #define ORIG_LIST_CLEAR ((listclear_fn)0x004254f0)
@@ -130,7 +129,7 @@ Direct3D_ReleaseResources(Direct3D *self)
         void *value = n->pValue;
         n = n->pNextNode;
         if (value)
-            ORIG_FACT_FREE2(value);
+            game_free2(value);
     }
     ORIG_LIST_CLEAR(&self->modeList);
 

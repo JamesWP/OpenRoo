@@ -5,9 +5,9 @@
  * private, so the compiler enforces that -- code elsewhere reaches a lift
  * only through the public methods.
  *
- * Construction and destruction are ours too: create() allocates from the
- * game's CRT heap (operator new 0x450e9d, so the heap sees exactly the
- * allocations it always did) and installs OUR vtable, whose one slot is an
+ * Construction and destruction are ours too: create() allocates with our own
+ * `new` (we both create and destroy every lift -- COHESION_PLAN.md template
+ * 6) and the constructor installs OUR vtable, whose one slot is an
  * MSVC-shaped scalar deleting destructor.  Nothing depends on the game's
  * vtable 0x45d380 or on patch.py rewriting a slot; the three originals
  * (0x411c50, 0x411c80, 0x411ca0) are UD2-stubbed.
@@ -27,7 +27,6 @@ struct CStaticSoundbuffer;
 class __attribute__((packed)) LiftObject {
 public:
     static const int ORIGIN = 0;
-    static const unsigned int ALLOC_SIZE = 0x4c;   /* operator new in spawn */
 
     /* Game::SpawnLiftObject 0x00417b90.  Arguments are dwords masked to
      * bytes, exactly as the original reads them. */
@@ -42,7 +41,6 @@ public:
     void tick();
 
 private:
-    LiftObject() = delete;          /* constructed by the game; see construct() */
 
     /* The vtable.  MSVC layout: one slot, the scalar deleting destructor,
      * __thiscall with a flags argument (bit 0 = free the memory). */
@@ -52,10 +50,11 @@ private:
     };
     static const Vtbl VTABLE;
 
-    /* 0x411c50 -- allocate (CRT operator new) and construct.  NULL if the
-     * allocation fails, as the original's new returns NULL. */
+    /* 0x411c50 -- allocate and construct, with our own new: we both create
+     * and destroy every lift.  NULL if allocation fails, as the original's
+     * operator new returned NULL. */
     static LiftObject *create();
-    void construct();
+    LiftObject();
     /* 0x411c80 -- vtable slot 0. */
     static void *__attribute__((thiscall)) scalarDeletingDtor(LiftObject *self,
                                                               unsigned int flags);
@@ -106,6 +105,6 @@ KAROO_LAYOUT_CHECKS(LiftObject)
     KAROO_LAYOUT_AT(atTop_,      0x3f);
     KAROO_LAYOUT_AT(state_,      0x43);
     KAROO_LAYOUT_AT(phaseStart_, 0x44);
-    /* The allocation size is relied on too: operator new(0x4c). */
-    KAROO_LAYOUT_SIZE(ALLOC_SIZE);
+    /* No size check: the object is ours to allocate, so nothing relies on
+     * it being the original's 0x4c. */
 }

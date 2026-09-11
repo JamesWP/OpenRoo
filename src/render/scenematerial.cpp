@@ -27,12 +27,11 @@
  */
 #include "scenematerial.h"
 #include "log.h"
+#include "alloc.h"
 
 /* FactAlloc::Free2 — __cdecl(void *), confirmed from the call site
  * (0x42d74e: push eax / call 0x4504c0 / add esp,4).  The original is left
  * intact in the binary, as factory.cpp already does for the factories. */
-typedef void (__cdecl *free2_fn)(void *);
-#define ORIG_FACT_FREE2 ((free2_fn)0x004504c0)
 
 extern "C" {
 
@@ -45,7 +44,7 @@ SceneMaterial_Release(SceneMaterial *self)
     self->pMaterial = NULL;          /* unconditional, unlike the light */
 
     if (self->pHeapData != NULL)
-        ORIG_FACT_FREE2(self->pHeapData);
+        game_free2(self->pHeapData);
     self->pHeapData = NULL;
 }
 

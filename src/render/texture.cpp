@@ -32,10 +32,9 @@
  */
 #include "texture.h"
 #include "log.h"
+#include "alloc.h"
 
 /* FactAlloc::Free2 — __cdecl(void *), shared helper left live in the binary. */
-typedef void (__cdecl *free2_fn)(void *);
-#define ORIG_FACT_FREE2 ((free2_fn)0x004504c0)
 
 extern "C" {
 
@@ -53,7 +52,7 @@ Texture_ReleaseSurfaces(LoadedImage *self)
     self->pTexturePalette = NULL;          /* unconditional */
 
     if (self->ImageName != NULL) {
-        ORIG_FACT_FREE2(self->ImageName);
+        game_free2(self->ImageName);
         self->ImageName = NULL;            /* only inside the check */
     }
 

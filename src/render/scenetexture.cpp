@@ -142,6 +142,7 @@
 #include <stdio.h>
 #include "texture.h"
 #include "log.h"
+#include "alloc.h"
 
 /* ─── Originals left live in the binary ──────────────────────────────────── */
 
@@ -157,12 +158,8 @@
  * forced to 0, so the upper three bytes of EAX carry Close's value; we return
  * a plain 0.  Callers test AL only. */
 
-typedef char *(__cdecl *opnew_fn)(unsigned int);
-typedef void  (__cdecl *free2_fn)(void *);
 typedef int   (__cdecl *sprintf_fn)(char *, const char *, ...);
 typedef char *(__cdecl *strrchr_fn)(const char *, int);
-#define ORIG_OPERATOR_NEW  ((opnew_fn)0x00450e9d)
-#define ORIG_FACT_FREE2    ((free2_fn)0x004504c0)
 #define ORIG_MAYBE_SPRINTF ((sprintf_fn)0x00450655)
 #define ORIG_STRRCHR       ((strrchr_fn)0x00451a50)
 #define FMT_PERCENT_S      ((const char *)0x004641f8)
@@ -261,8 +258,8 @@ static int st_strcmp(const unsigned char *a, const unsigned char *b)
 static void st_set_image_name(LoadedImage *self, LPCSTR name)
 {
     if (self->ImageName != NULL)
-        ORIG_FACT_FREE2(self->ImageName);
-    char *copy = ORIG_OPERATOR_NEW(st_strlen(name) + 1u);
+        game_free2(self->ImageName);
+    char *copy = (char *)game_operator_new(st_strlen(name) + 1u);
     self->ImageName = copy;
     ORIG_MAYBE_SPRINTF(copy, FMT_PERCENT_S, name);
 }
