@@ -4,11 +4,12 @@
  *     Game::PurgeLiftObjects         0x00417d90   (was gamereset.cpp)
  *     LiftObject::UpdateVerticalLiftObject 0x00411cb0  GAMETICK_PLAN.md Band A
  *
+ *     LiftObject ctor / dtor         0x00411c50 / 0x00411c80 + 0x00411ca0
+ *
  * Every function that reads or writes a LiftObject field lives in this
  * file; the class (liftobject.h) keeps them private so nothing else can.
- * Game code still called -- the constructor 0x411c50 and the destructor in
- * vtable slot 0 -- is reached only through LiftObject::construct() and
- * ::destroy(), so replacing either later changes no call site.
+ * The one exception is the original renderer, FUN_00408870, which still
+ * reads the three position floats -- see liftobject.h.
  *
  * ─── The tick ────────────────────────────────────────────────────────────
  *
@@ -154,25 +155,14 @@
 #include "static.h"
 #include "log.h"
 
-/* ─── Callees already ours, in static.cpp ─────────────────────────────── */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *self);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Set3DPosition(CStaticSoundbuffer *self,
-                      float x, float y, float z, DWORD dwApply);
-
-/* ─── Game code still called: the CRT allocator and our own ctor ──────
- * `operator new` is the CRT's, not a game class, so it gets no placeholder
- * class.  The constructor is LiftObject's own and is reached only through
- * LiftObject::construct(). */
+/* ─── The CRT allocator pair -- the game's, so its heap is unchanged ─────
+ * operator new 0x450e9d (__nh_malloc) and FactAlloc::Free2 0x4504c0 (free).
+ * CRT, not a game class, so called directly rather than via a placeholder. */
 typedef void *(__cdecl *operator_new_fn)(unsigned int cb);
-typedef void *(__attribute__((fastcall)) *construct_fn)(void *raw);
-typedef void  (__attribute__((thiscall)) *scalar_dtor_fn)(void *self, int flags);
+typedef void  (__cdecl *free_fn)(void *p);
 
 #define ORIG_OPERATOR_NEW  ((operator_new_fn)0x00450e9d)
-#define ORIG_CONSTRUCT     ((construct_fn)0x00411c50)
+#define ORIG_FREE          ((free_fn)0x004504c0)
 
 /* Read from .rdata: 0x3ba3d70a and 0x4097700000000000. */
 static const float  K_MS_TO_HEIGHT = 0.005f;    /* 0x0045d384 */
@@ -231,16 +221,53 @@ static void fx_init(void)
         s_diag_reset = 1;
 }
 
-/* ═══ Placeholders for game code ═══════════════════════════════════════ */
+/* ═══ Construction and destruction ═════════════════════════════════════
+ *
+ * 0x411c50 constructs in two layers: the shared level-object base
+ * constructor 0x401000 (installs the base vtable 0x45d290, zeroes +0x25,
+ * +0x29, +0x2d), then the lift's own (installs 0x45d380, state 1, atTop 1,
+ * sound 0).  The base vtable store is overwritten at once, so only its
+ * three zeroes survive -- those are kept; every other byte is left as
+ * operator new returned it, as the original leaves it.
+ *
+ * 0x411c80 destroys in two layers too: 0x411ca0 re-installs 0x45d380, then
+ * the base destructor 0x401060 installs 0x45d290; then Free2 if flags & 1.
+ * Both vtable stores are dead -- the only caller passes flags 1, so the
+ * memory is freed in the same call -- and are not reproduced.
+ */
+const LiftObject::Vtbl LiftObject::VTABLE = { &LiftObject::scalarDeletingDtor };
 
-LiftObject *LiftObject::construct(void *raw)
+LiftObject *LiftObject::create()
 {
-    return (LiftObject *)ORIG_CONSTRUCT(raw);
+    LiftObject *obj = (LiftObject *)ORIG_OPERATOR_NEW(ALLOC_SIZE);
+    if (obj != 0)
+        obj->construct();
+    return obj;
+}
+
+void LiftObject::construct()
+{
+    /* base constructor 0x401000 */
+    posU_   = 0.0f;
+    height_ = 0.0f;
+    posV_   = 0.0f;
+    /* lift constructor 0x411c50 */
+    vtable_ = &VTABLE;
+    state_  = 1;
+    atTop_  = 1;          /* spawn overwrites this with 0 */
+    sound_  = 0;
+}
+
+void *LiftObject::scalarDeletingDtor(LiftObject *self, unsigned int flags)
+{
+    if (flags & 1)
+        ORIG_FREE(self);
+    return self;
 }
 
 void LiftObject::destroy()
 {
-    ((scalar_dtor_fn *)vtable_)[0](this, 1);
+    vtable_->scalarDeletingDtor(this, 1);
 }
 
 /* ═══ 0x00417b90 -- Game::SpawnLiftObject ════════════════════════════════
@@ -279,15 +306,13 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     base = baseArg & 0xff;
     top  = topArg & 0xff;
 
-    raw = ORIG_OPERATOR_NEW(LiftObject::ALLOC_SIZE);
+    raw = create();
     if (raw == 0) {
         if (s_diag_place && !s_logged_oom) {
             s_logged_oom = 1;
             log_write("liftobject: ALLOCATION FAILED in spawn -- the original "
                       "would store through the slot, which now holds NULL\n");
         }
-    } else {
-        raw = construct(raw);
     }
 
     n = game->liftCount();

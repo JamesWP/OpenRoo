@@ -5,10 +5,16 @@
  * private, so the compiler enforces that -- code elsewhere reaches a lift
  * only through the public methods.
  *
- * The layout is the game's: operator new(0x4c), the game's constructor and
- * vtable, and GameTick still iterating the slot array.  So the class is
- * packed, and every offset is asserted (layout.h) in liftobject.cpp.  It may
- * choose its own layout only once the constructor and destructor are ours too
+ * Construction and destruction are ours too: create() allocates from the
+ * game's CRT heap (operator new 0x450e9d, so the heap sees exactly the
+ * allocations it always did) and installs OUR vtable, whose one slot is an
+ * MSVC-shaped scalar deleting destructor.  Nothing depends on the game's
+ * vtable 0x45d380 or on patch.py rewriting a slot; the three originals
+ * (0x411c50, 0x411c80, 0x411ca0) are UD2-stubbed.
+ *
+ * The layout is still the game's: the renderer (FUN_00408870, original)
+ * reads every lift's +0x25/+0x29/+0x2d directly.  So the class stays packed
+ * and every offset is asserted, until that reader is ours too
  * (COHESION_PLAN.md, "When may a class own its layout?").
  */
 #pragma once
@@ -38,16 +44,27 @@ public:
 private:
     LiftObject() = delete;          /* constructed by the game; see construct() */
 
-    /* ── Placeholders for the game code this class still calls ─────── */
-    /* 0x00411c50 -- base ctor 0x401000, then vtable 0x45d380, state 1,
-     * atTop 1, sound 0.  Returns `raw`. */
-    static LiftObject *construct(void *raw);
-    /* vtable slot 0 (0x411c80, scalar deleting dtor), flags 1. */
+    /* The vtable.  MSVC layout: one slot, the scalar deleting destructor,
+     * __thiscall with a flags argument (bit 0 = free the memory). */
+    struct Vtbl {
+        void *(__attribute__((thiscall)) *scalarDeletingDtor)(LiftObject *self,
+                                                              unsigned int flags);
+    };
+    static const Vtbl VTABLE;
+
+    /* 0x411c50 -- allocate (CRT operator new) and construct.  NULL if the
+     * allocation fails, as the original's new returns NULL. */
+    static LiftObject *create();
+    void construct();
+    /* 0x411c80 -- vtable slot 0. */
+    static void *__attribute__((thiscall)) scalarDeletingDtor(LiftObject *self,
+                                                              unsigned int flags);
+    /* Destroy through the object's own vtable, flags 1, as the purge did. */
     void destroy();
 
     KAROO_LAYOUT_REGISTER(LiftObject);
 
-    void               *vtable_;       /* +0x00  game's, 0x45d380            */
+    const Vtbl         *vtable_;       /* +0x00  &VTABLE                     */
     double              now_;          /* +0x04  latched from *clock_        */
     double             *clock_;        /* +0x0c  Game::clock()               */
     Field170a5c        *record_;       /* +0x10  Game::field_170a5c()        */

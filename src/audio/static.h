@@ -34,3 +34,19 @@ static_assert(sizeof(CStaticSoundbuffer)                 == 0x18, "CStaticSoundb
  * reaches our code without a vtable patch.
  */
 static const void *STATIC_VTABLE = reinterpret_cast<const void*>(0x45ef9c);
+
+/* ─── Our reimplementations, defined in static.cpp ───────────────────────
+ *
+ * Declared here, by the file that owns them, so callers include this header
+ * instead of redeclaring the exports.  Only the ones some caller outside
+ * static.cpp uses are listed; add others as callers are converted.
+ */
+extern "C" {
+__declspec(dllexport) int  __attribute__((thiscall))
+CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
+__declspec(dllexport) void __attribute__((thiscall))
+CStatic_HaltPlayback(CStaticSoundbuffer *self);
+__declspec(dllexport) void __attribute__((thiscall))
+CStatic_Set3DPosition(CStaticSoundbuffer *self,
+                      float x, float y, float z, DWORD dwApply);
+}
