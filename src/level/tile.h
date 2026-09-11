@@ -124,6 +124,12 @@ public:
      * meaning unknown. */
     void setField1a1(int b)                    { field_1a1 = b; }
 
+    /* ── read by the foe pathfinder (foepath.cpp) ────────────────────── */
+    /* +0x1f1: an elevator (kind 0x0e) cell's level byte. */
+    unsigned char field1f1() const             { return field_1f1; }
+    /* +0x1f2: on a bridge (kind 0x10) cell, its direction byte. */
+    unsigned char field1f2() const             { return field_1f2; }
+
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
     KAROO_LAYOUT_REGISTER(Tile);
@@ -161,7 +167,8 @@ private:
     /* One double, though the original writes it as two dwords (0 at
      * +0x1e5, 0x40977000 at +0x1e9): 0x4097700000000000 = 1500.0. */
     double        liftDwell_;         /* 0x1e5  park dwell in ms, 1500.0    */
-    unsigned char gap_1ed[0x1f2 - 0x1ed];
+    unsigned char gap_1ed[0x1f1 - 0x1ed];
+    unsigned char field_1f1;          /* 0x1f1  an elevator's level byte    */
     unsigned char field_1f2;          /* 0x1f2                              */
     unsigned char gap_1f3[0x1f4 - 0x1f3];
     unsigned char bridgeSlot_;        /* 0x1f4  the bridge's switch slot    */
@@ -203,6 +210,7 @@ KAROO_LAYOUT_CHECKS(Tile)
     KAROO_LAYOUT_AT(liftMovingSince_,  0x1d5);
     KAROO_LAYOUT_AT(liftParkedSince_,  0x1dd);
     KAROO_LAYOUT_AT(liftDwell_,        0x1e5);
+    KAROO_LAYOUT_AT(field_1f1,         0x1f1);
     KAROO_LAYOUT_AT(field_1f2,         0x1f2);
     KAROO_LAYOUT_AT(bridgeSlot_,       0x1f4);
     KAROO_LAYOUT_AT(bridgeAxis_,       0x1f5);

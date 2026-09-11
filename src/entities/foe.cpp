@@ -311,7 +311,7 @@ Foe::Foe()
 
 void Foe::destroy()
 {
-    void *pf;
+    FoePath *pf;
 
     tile(cellU_, cellV_)->setField1a1(0);
     tile(cellU_, cellV_)->setField1a5(0);
@@ -472,7 +472,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     ORIG_ATTACH_PATH(*slot);
 
     /* Detail 5: the ZEROED working copy, not the original type. */
-    ((unsigned char *)(*slot)->pathfinder_)[0x2a] = type;
+    (*slot)->pathfinder_->setMode(type);
 
     return id;
 }
@@ -731,13 +731,6 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
 
 /* ═══ 0x0043a9d0 -- Game::SetFoeChaseTarget ════════════════════════════════ */
 
-/* The FoePath's fields, by offset until foepath.cpp becomes a class. */
-typedef unsigned short __attribute__((aligned(1))) u_ushort;
-typedef int            __attribute__((aligned(1))) u_i32;
-#define PF8(p, o)   (*(unsigned char *)((unsigned char *)(p) + (o)))
-#define PF16(p, o)  (*(u_ushort      *)((unsigned char *)(p) + (o)))
-#define PF32(p, o)  (*(u_i32         *)((unsigned char *)(p) + (o)))
-
 /* f: __ftol, low dword kept, re-widened through a ZERO high dword. */
 static inline unsigned ftol32(double v)
 {
@@ -750,31 +743,30 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
     fx_init();
 
     /* 1. Stash the search parameters in the pathfinder. */
-    PF16(pathfinder_, 0x2f) = speed;
-    PF8(pathfinder_, 0x31)  = targetU;
-    PF8(pathfinder_, 0x32)  = targetV;
+    pathfinder_->setCap(speed);
+    pathfinder_->setTarget(targetU, targetV);
 
     if ((signed char)type_ == 2)
-        PF8(pathfinder_, 0x2a) = (field_d3 != 0) ? 0 : 2;
+        pathfinder_->setMode((field_d3 != 0) ? 0 : 2);
 
     /* 2. A move already in flight wins. */
     if (field_14e != 0)
         return pendingMove_;
 
     /* 3. Search -- backward, from the target to the foe. */
-    if (Sim_FindFoePathBetweenCells(pathfinder_,
-                                    (int)cellU_, (int)cellV_,
-                                    (unsigned)targetU, (unsigned)targetV) == 0) {
+    if (pathfinder_->find((int)cellU_, (int)cellV_,
+                          (unsigned)targetU, (unsigned)targetV) == 0) {
         pendingMove_ = 0;
         return pendingMove_;
     }
 
     /* Advance the result node to its PARENT: the foe's next step. */
-    PF32(pathfinder_, 0x0e) = PF32(PF32(pathfinder_, 0x0e), 0x1c);
+    pathfinder_->setResult(pathfinder_->result()->parent);
 
-    unsigned char *node = (unsigned char *)PF32(pathfinder_, 0x0e);
-    const unsigned char nu = node[0x10];
-    const unsigned char nv = node[0x14];
+    const PathNode *node = pathfinder_->result();
+    /* The low bytes of the node's int cell, as the original's byte loads. */
+    const unsigned char nu = (unsigned char)node->u;
+    const unsigned char nv = (unsigned char)node->v;
 
     /* 4. Delta -> facing.  Four independent ifs; 8-bit arithmetic. */
     const signed char du = (signed char)(unsigned char)(nu - (unsigned char)cellU_);

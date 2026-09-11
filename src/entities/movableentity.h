@@ -33,6 +33,7 @@
 
 struct CStaticSoundbuffer;
 struct VoicePool;
+class FoePath;
 
 class __attribute__((packed)) MovableEntity {
 public:
@@ -142,7 +143,7 @@ protected:
     unsigned char       gap_12e[0x132 - 0x12e];
     double              field_132;        /* +0x132                         */
     unsigned char       gap_13a[0x13b - 0x13a];
-    void               *pathfinder_;      /* +0x13b  foe: its FoePath       */
+    FoePath            *pathfinder_;      /* +0x13b  foe: its FoePath       */
     signed char         field_13f;        /* +0x13f  } a cell offset, read  */
     signed char         field_140;        /* +0x140  } signed               */
     signed char         field_141;        /* +0x141  }                      */

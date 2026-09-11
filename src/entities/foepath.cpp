@@ -72,15 +72,18 @@
 #include "log.h"
 #include "alloc.h"
 #include "foepath.h"
+#include "tile.h"
+#include "entitymath.h"   /* CheckTileIsRamp, GetTurnedDirection */
 
-/* Leaves this file stands on, both already ours (entitymath.cpp). */
-extern "C" __declspec(dllexport) int __attribute__((stdcall))
-Sim_CheckTileIsRamp(unsigned char kind);
-extern "C" __declspec(dllexport) unsigned char __attribute__((stdcall))
-Sim_GetTurnedDirection(unsigned char dir, unsigned char delta);
-
-/* Tile addressing, matching entitymove.cpp's TILE() exactly. */
-#define TILE(base, u, v)  ((const unsigned char *)(base) + (((int)(v) + (int)(u) * 100) * 0x7f))
+/* ─── Structure ───────────────────────────────────────────────────────────
+ *
+ * The FoePath, its nodes and the worklist are classes now (foepath.h), and
+ * every tile read goes through Tile.  Each function below is a FoePath
+ * method followed by its one-line export shim, which patch.py binds by
+ * name.  The offsets quoted in the notes are the listings'; the members
+ * they name are asserted at those offsets in foepath.h and tile.h.
+ * Tile's +0x1bc (named slideTrack there) is the "blocker" these notes
+ * mention. */
 
 /* ─── KAROO_SIM_FX, read by value ─────────────────────────────────────────
  *
@@ -323,39 +326,41 @@ static int fx_nosort(void)
  *
  * __thiscall, RET 8.  `this` = the pathfinder object at foe+0x13b.
  */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_CheckPathCellPassable(void *self, int u, int v)
+int FoePath::passable(int u, int v)
 {
     if (fx_blindfoe())
         return 0;
 
-    const unsigned char *pf = (const unsigned char *)self;
-    const void *tilebase = *(void *const *)pf;          /* this+0x00 */
+    const Tile *t = Tile::at(tileBase_, u, v);
+    const unsigned char kind = t->objectMarker();
 
-    const unsigned char *t = TILE(tilebase, u, v);
-    const unsigned char kind = t[0x19d];
-
-    /* Void cell with nothing bridging it. */
-    if (kind == 0 && *(const int *)(t + 0x1bc) == 0)
+    /* Void cell with nothing bridging it (+0x1bc read only here: lazy). */
+    if (kind == 0 && t->slideTrack() == 0)
         return 0;
     if (kind == 0x16)
         return 0;
-    if (kind == 0x17 && *(const int *)(t + 0x217) == 0)
+    if (kind == 0x17 && t->field217() == 0)
         return 0;
 
-    const unsigned char mode = pf[0x2a];                /* this+0x2a */
+    const unsigned char mode = mode_;
 
     if (mode == 7) {
-        const unsigned char occupant = t[0x1a5];
+        const unsigned char occupant = t->field1a5();
         if (occupant == 4 || occupant == 3)
             return 0;
     }
 
     if (mode == 2 && kind == 0x11 &&
-        *(const int *)(t + 0x217) == 0 && t[0x1a5] != 4)
+        t->field217() == 0 && t->field1a5() != 4)
         return 0;
 
     return 1;
+}
+
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_CheckPathCellPassable(FoePath *self, int u, int v)
+{
+    return self->passable(u, v);
 }
 
 /* ─── FoePath::ComputeCellLinearIndex (0x00401cb0) ────────────────────────
@@ -386,10 +391,9 @@ Sim_CheckPathCellPassable(void *self, int u, int v)
  * FindFoePathBetweenCells, two in SearchPathNodeGraph, one in
  * RelaxPathNeighbourCell); xref.py reports all five as CALL and nothing else.
  */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_ComputeCellLinearIndex(void *self, int u, int v)
+int FoePath::cellKey(int u, int v)
 {
-    const int stride = *(const int *)((const unsigned char *)self + 0x1e);
+    const int stride = keyStride_;
 
     /* KAROO_SIM_FX=keyclash drops the column from the key, so every cell in
      * a row shares one identity.  A *value* change here is not necessarily
@@ -402,6 +406,12 @@ Sim_ComputeCellLinearIndex(void *self, int u, int v)
         return stride * v;
 
     return stride * v + u;
+}
+
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_ComputeCellLinearIndex(FoePath *self, int u, int v)
+{
+    return self->cellKey(u, v);
 }
 
 /* ─── FoePath::PopBestOpenPathNode (0x00401ec0) ───────────────────────────
@@ -446,13 +456,10 @@ Sim_ComputeCellLinearIndex(void *self, int u, int v)
  * ONE E8 call site, at 0x00401e5c inside SearchPathNodeGraph; xref.py
  * reports that reference and no other.
  */
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-Sim_PopBestOpenPathNode(void *self)
+PathNode *FoePath::popBestOpen()
 {
-    unsigned char *pf = (unsigned char *)self;
-
-    unsigned char *open = *(unsigned char **)(pf + 0x06);
-    unsigned char *head = *(unsigned char **)(open + 0x40);
+    PathNode *open = open_;
+    PathNode *head = open->next;
     if (head == 0)
         return 0;
 
@@ -464,21 +471,26 @@ Sim_PopBestOpenPathNode(void *self)
      * of sorts: it proves the ordering is load-bearing, not just that the
      * function runs. */
     if (fx_popsecond()) {
-        unsigned char *second = *(unsigned char **)(head + 0x40);
+        PathNode *second = head->next;
         if (second != 0) {
             open = head;          /* unlink `second` from behind `head` */
             head = second;
         }
     }
 
-    *(unsigned char **)(open + 0x40) = *(unsigned char **)(head + 0x40);
+    open->next = head->next;
 
-    /* Both reads of this+0x0a, as the original has them. */
-    *(unsigned char **)(head + 0x40) =
-        *(unsigned char **)(*(unsigned char **)(pf + 0x0a) + 0x40);
-    *(unsigned char **)(*(unsigned char **)(pf + 0x0a) + 0x40) = head;
+    /* Both reads of closed_, as the original has them. */
+    head->next    = closed_->next;
+    closed_->next = head;
 
     return head;
+}
+
+extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
+Sim_PopBestOpenPathNode(FoePath *self)
+{
+    return self->popBestOpen();
 }
 
 /* FactAlloc::Free — __cdecl(void *), 0x0045087c.  THE named callback into
@@ -537,26 +549,23 @@ static const alloc_zeroed_fn AllocateZeroedHeapBlock = (alloc_zeroed_fn)0x004507
  * TWO E8 call sites, both in FindFoePathBetweenCells (0x00401c03 and
  * 0x00401c74); xref.py reports both as CALL and nothing else.
  */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ReleasePathSearchNodeLists(void *self)
+void FoePath::releaseLists()
 {
-    unsigned char *pf = (unsigned char *)self;
-    static const unsigned lists[2] = { 0x06, 0x0a };
     static int reported = 0;
     int freed = 0;
 
     for (int i = 0; i < 2; ++i) {
-        unsigned char *hdr = *(unsigned char **)(pf + lists[i]);
+        PathNode *hdr = (i == 0) ? open_ : closed_;
         if (hdr == 0)
             continue;
 
-        unsigned char *n = *(unsigned char **)(hdr + 0x40);
+        PathNode *n = hdr->next;
         if (n == 0)
             continue;
 
         do {
-            unsigned char *p = n;
-            n = *(unsigned char **)(n + 0x40);   /* read before the free */
+            PathNode *p = n;
+            n = n->next;                         /* read before the free */
             game_free(p);
             ++freed;
         } while (n != 0);
@@ -586,6 +595,12 @@ Sim_ReleasePathSearchNodeLists(void *self)
         reported = 2;
         log_write("foepath: first non-empty release -- %d node(s) freed\n", freed);
     }
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_ReleasePathSearchNodeLists(FoePath *self)
+{
+    self->releaseLists();
 }
 
 /* ─── FoePath::FindOpenPathNodeByKey   (0x00402130) ───────────────────────
@@ -621,33 +636,42 @@ Sim_ReleasePathSearchNodeLists(void *self)
  * ONE, both in RelaxPathNeighbourCell; xref.py reports those and nothing
  * else for either.
  */
-static void *foepath_find_by_key(void *self, unsigned listoff, int key)
+PathNode *FoePath::findByKey(PathNode *hdr, int key)
 {
-    unsigned char *hdr = *(unsigned char **)((unsigned char *)self + listoff);
-    unsigned char *n = *(unsigned char **)(hdr + 0x40);
+    PathNode *n = hdr->next;
 
     while (n != 0) {
-        if (*(const int *)(n + 0x18) == key)
+        if (n->key == key)
             return n;
-        n = *(unsigned char **)(n + 0x40);
+        n = n->next;
     }
     return 0;
 }
 
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-Sim_FindOpenPathNodeByKey(void *self, int key)
+PathNode *FoePath::findOpen(int key)
 {
     if (fx_nolookup())
         return 0;
-    return foepath_find_by_key(self, 0x06, key);
+    return findByKey(open_, key);
 }
 
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-Sim_FindClosedPathNodeByKey(void *self, int key)
+PathNode *FoePath::findClosed(int key)
 {
     if (fx_nolookup())
         return 0;
-    return foepath_find_by_key(self, 0x0a, key);
+    return findByKey(closed_, key);
+}
+
+extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
+Sim_FindOpenPathNodeByKey(FoePath *self, int key)
+{
+    return self->findOpen(key);
+}
+
+extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
+Sim_FindClosedPathNodeByKey(FoePath *self, int key)
+{
+    return self->findClosed(key);
 }
 
 /* ─── FoePath::InsertOpenPathNodeByCost (0x00402170) ──────────────────────
@@ -686,24 +710,22 @@ Sim_FindClosedPathNodeByKey(void *self, int key)
  * ONE E8 call site, at 0x00402105 in RelaxPathNeighbourCell; xref.py reports
  * that and nothing else.
  */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_InsertOpenPathNodeByCost(void *self, void *node)
+void FoePath::insertOpenByCost(PathNode *n)
 {
-    unsigned char *hdr = *(unsigned char **)((unsigned char *)self + 0x06);
-    unsigned char *n = (unsigned char *)node;
+    PathNode *hdr = open_;
 
-    unsigned char *cur = *(unsigned char **)(hdr + 0x40);
+    PathNode *cur = hdr->next;
     if (cur == 0) {
-        *(unsigned char **)(hdr + 0x40) = n;
+        hdr->next = n;
         return;
     }
 
-    const int f = *(const int *)n;          /* signed, see point 1 */
-    unsigned char *prev = hdr;
+    const int f = n->f;                     /* signed, see point 1 */
+    PathNode *prev = hdr;
 
-    while (cur != 0 && *(const int *)cur < f) {
+    while (cur != 0 && cur->f < f) {
         prev = cur;
-        cur = *(unsigned char **)(cur + 0x40);
+        cur = cur->next;
     }
 
     /* KAROO_SIM_FX=nosort ignores the ordering and pushes at the front, so
@@ -712,13 +734,19 @@ Sim_InsertOpenPathNodeByCost(void *self, void *node)
      * just no longer the cheapest.  The mirror of popsecond: that one broke
      * the read end of the invariant, this one breaks the write end. */
     if (fx_nosort()) {
-        *(unsigned char **)(n + 0x40) = *(unsigned char **)(hdr + 0x40);
-        *(unsigned char **)(hdr + 0x40) = n;
+        n->next   = hdr->next;
+        hdr->next = n;
         return;
     }
 
-    *(unsigned char **)(n + 0x40) = cur;
-    *(unsigned char **)(prev + 0x40) = n;
+    n->next    = cur;
+    prev->next = n;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_InsertOpenPathNodeByCost(FoePath *self, PathNode *node)
+{
+    self->insertOpenByCost(node);
 }
 
 /* ─── FoePath::PushPendingPathNode (0x00402250) ───────────────────────────
@@ -760,8 +788,7 @@ Sim_InsertOpenPathNodeByCost(void *self, void *node)
  * (0x00402202), all three in PropagateImprovedPathCosts; xref.py reports
  * those and nothing else.
  */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushPendingPathNode(void *self, void *node)
+void FoePath::pushPending(PathNode *node)
 {
     /* KAROO_SIM_FX=nopropagate drops the push, so a node whose cost improves
      * never has its descendants re-examined: the cascade in
@@ -774,29 +801,39 @@ Sim_PushPendingPathNode(void *self, void *node)
 
     ++g_diag.pushes;
 
-    unsigned char *cell = (unsigned char *)AllocateZeroedHeapBlock(1, 9);
+    PendingCell *cell = (PendingCell *)AllocateZeroedHeapBlock(1, 9);
 
-    *(void **)cell = node;
+    cell->node = node;
 
-    /* Both reads of this+0x12, as the original has them. */
-    *(void **)(cell + 4) =
-        *(void **)(*(unsigned char **)((unsigned char *)self + 0x12) + 4);
-    *(unsigned char **)(*(unsigned char **)((unsigned char *)self + 0x12) + 4) = cell;
+    /* Both reads of pending_, as the original has them. */
+    cell->next         = pending_->head;
+    pending_->head     = cell;
 }
 
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-Sim_PopPendingPathNode(void *self)
+PathNode *FoePath::popPending()
 {
-    unsigned char *owner = *(unsigned char **)((unsigned char *)self + 0x12);
-    unsigned char *cell = *(unsigned char **)(owner + 4);
+    PendingStack *owner = pending_;
+    PendingCell  *cell  = owner->head;
 
     ++g_diag.pops;
 
-    void *node = *(void **)cell;
-    *(void **)(owner + 4) = *(void **)(cell + 4);
+    PathNode *node = cell->node;
+    owner->head = cell->next;
 
     game_free(cell);
     return node;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_PushPendingPathNode(FoePath *self, PathNode *node)
+{
+    self->pushPending(node);
+}
+
+extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
+Sim_PopPendingPathNode(FoePath *self)
+{
+    return self->popPending();
 }
 
 /* ─── FoePath::PropagateImprovedPathCosts (0x004021b0) ────────────────────
@@ -844,12 +881,8 @@ Sim_PopPendingPathNode(void *self)
  *
  * ONE E8 call site, at 0x004020A5 in RelaxPathNeighbourCell.
  */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PropagateImprovedPathCosts(void *self, void *node)
+void FoePath::propagate(PathNode *p)
 {
-    unsigned char *pf = (unsigned char *)self;
-    unsigned char *p = (unsigned char *)node;
-
     /* KAROO_SIM_FX=nocostfix skips the whole cascade, so a cheaper route
      * found later never rewrites the costs recorded earlier.  Stronger than
      * nopropagate, which only dropped the worklist and left the direct
@@ -861,51 +894,57 @@ Sim_PropagateImprovedPathCosts(void *self, void *node)
     g_diag.cur_drain = 0;
 
     /* Sweep 1: the parent's g hoisted once, per point 1 above. */
-    const int gp = *(const int *)(p + 0x08);
+    const int gp = p->g;
     for (int i = 0; i < 8; ++i) {
-        unsigned char *c = *(unsigned char **)(p + 0x20 + i * 4);
+        PathNode *c = p->children[i];
         if (c == 0)
             break;
         const int gnew = gp + 1;
-        if (gnew < *(const int *)(c + 0x08)) {
-            *(int *)(c + 0x08) = gnew;
-            *(int *)(c + 0x00) = *(const int *)(c + 0x04) + gnew;
-            *(unsigned char **)(c + 0x1c) = p;
+        if (gnew < c->g) {
+            c->g      = gnew;
+            c->f      = c->h + gnew;
+            c->parent = p;
             ++g_diag.reparent;
-            Sim_PushPendingPathNode(self, c);
+            pushPending(c);
         }
     }
 
     /* Sweep 2: drain the worklist, re-reading the parent's g each time. */
-    unsigned char *owner = *(unsigned char **)(pf + 0x12);
-    if (*(unsigned char **)(owner + 4) == 0) {
+    PendingStack *owner = pending_;
+    if (owner->head == 0) {
         diag_report();
         return;
     }
 
     do {
-        unsigned char *q = (unsigned char *)Sim_PopPendingPathNode(self);
+        PathNode *q = popPending();
         if (++g_diag.cur_drain > g_diag.deepest)
             g_diag.deepest = g_diag.cur_drain;
 
         for (int i = 0; i < 8; ++i) {
-            unsigned char *c = *(unsigned char **)(q + 0x20 + i * 4);
+            PathNode *c = q->children[i];
             if (c == 0)
                 break;
-            const int gnew = *(const int *)(q + 0x08) + 1;   /* re-read */
-            if (gnew < *(const int *)(c + 0x08)) {
-                *(int *)(c + 0x08) = gnew;
-                *(int *)(c + 0x00) = *(const int *)(c + 0x04) + gnew;
-                *(unsigned char **)(c + 0x1c) = q;
+            const int gnew = q->g + 1;                       /* re-read */
+            if (gnew < c->g) {
+                c->g      = gnew;
+                c->f      = c->h + gnew;
+                c->parent = q;
                 ++g_diag.reparent;
-                Sim_PushPendingPathNode(self, c);
+                pushPending(c);
             }
         }
 
-        owner = *(unsigned char **)(pf + 0x12);
-    } while (*(unsigned char **)(owner + 4) != 0);
+        owner = pending_;
+    } while (owner->head != 0);
 
     diag_report();
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_PropagateImprovedPathCosts(FoePath *self, PathNode *node)
+{
+    self->propagate(node);
 }
 
 /* ─── FoePath::RelaxPathNeighbourCell (0x00402000) ────────────────────────
@@ -968,48 +1007,38 @@ Sim_PropagateImprovedPathCosts(void *self, void *node)
  * all in ExpandPathNodeNeighbours — one per neighbour; xref.py reports those
  * four as CALL and nothing else.
  */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RelaxPathNeighbourCell(void *self, void *parent, int u, int v,
-                           int goalU, int goalV)
+void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
 {
-    unsigned char *p = (unsigned char *)parent;
-    const int gnew = *(const int *)(p + 0x08) + 1;
-    const int key = Sim_ComputeCellLinearIndex(self, u, v);
+    const int gnew = p->g + 1;
+    const int key = cellKey(u, v);
 
-    /* The open-coded scan, overflow and all — see the note above. */
-    #define RELAX_RECORD_CHILD(node)                                        \
-        do {                                                                \
-            int _i = 0;                                                     \
-            while (*(void **)(p + 0x20 + _i * 4) != 0 && ++_i < 8)          \
-                ;                                                           \
-            *(void **)(p + 0x20 + _i * 4) = (node);                         \
-        } while (0)
-
-    unsigned char *n = (unsigned char *)Sim_FindOpenPathNodeByKey(self, key);
+    /* recordChild() is the open-coded scan, overflow and all -- see the
+     * note above and PathNode::recordChild. */
+    PathNode *n = findOpen(key);
     if (n != 0) {
-        RELAX_RECORD_CHILD(n);
-        if (gnew < *(const int *)(n + 0x08)) {
-            *(int *)(n + 0x08) = gnew;
-            *(int *)(n + 0x00) = *(const int *)(n + 0x04) + gnew;
-            *(unsigned char **)(n + 0x1c) = p;
+        p->recordChild(n);
+        if (gnew < n->g) {
+            n->g      = gnew;
+            n->f      = n->h + gnew;
+            n->parent = p;
         }
         return;
     }
 
-    n = (unsigned char *)Sim_FindClosedPathNodeByKey(self, key);
+    n = findClosed(key);
     if (n != 0) {
-        RELAX_RECORD_CHILD(n);
-        if (gnew < *(const int *)(n + 0x08)) {
-            *(unsigned char **)(n + 0x1c) = p;
-            *(int *)(n + 0x00) = *(const int *)(n + 0x04) + gnew;
-            *(int *)(n + 0x08) = gnew;
-            Sim_PropagateImprovedPathCosts(self, n);
+        p->recordChild(n);
+        if (gnew < n->g) {
+            n->parent = p;
+            n->f      = n->h + gnew;
+            n->g      = gnew;
+            propagate(n);
         }
         return;
     }
 
     /* Not seen before: a fresh node. */
-    n = (unsigned char *)AllocateZeroedHeapBlock(1, 0x44);
+    n = (PathNode *)AllocateZeroedHeapBlock(1, 0x44);
 
     const int du = u - goalU;
     const int dv = v - goalV;
@@ -1024,19 +1053,24 @@ Sim_RelaxPathNeighbourCell(void *self, void *parent, int u, int v,
     if (fx_truedist())
         h = (du < 0 ? -du : du) + (dv < 0 ? -dv : dv);
 
-    *(unsigned char **)(n + 0x1c) = p;
-    *(int *)(n + 0x08) = gnew;
-    *(int *)(n + 0x04) = h;
-    *(int *)(n + 0x18) = key;
-    *(int *)(n + 0x00) = h + gnew;
-    *(int *)(n + 0x10) = u;
-    *(int *)(n + 0x14) = v;
+    n->parent = p;
+    n->g      = gnew;
+    n->h      = h;
+    n->key    = key;
+    n->f      = h + gnew;
+    n->u      = u;
+    n->v      = v;
 
-    Sim_InsertOpenPathNodeByCost(self, n);
+    insertOpenByCost(n);
 
-    RELAX_RECORD_CHILD(n);              /* last, unlike the branches above */
+    p->recordChild(n);                  /* last, unlike the branches above */
+}
 
-    #undef RELAX_RECORD_CHILD
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_RelaxPathNeighbourCell(FoePath *self, PathNode *parent, int u, int v,
+                           int goalU, int goalV)
+{
+    self->relax(parent, u, v, goalU, goalV);
 }
 
 /* ─── GetCellStepDirectionCode (0x0041f8c0) ───────────────────────────────
@@ -1174,10 +1208,9 @@ Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
  * FOUR E8 call sites, all in ExpandPathNodeNeighbours (one per neighbour).
  */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_CheckCellStepIsLegal(void *self, unsigned char u_from, unsigned char v_from,
+Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned char v_from,
                          unsigned char u_to, unsigned char v_to)
 {
-    const unsigned char *base = (const unsigned char *)self;
 
     /* KAROO_SIM_FX=freestep declares every step legal.  Foes then path
      * straight through walls, height changes and the wrong way along
@@ -1186,8 +1219,8 @@ Sim_CheckCellStepIsLegal(void *self, unsigned char u_from, unsigned char v_from,
     if (fx_freestep())
         return 1;
 
-    const unsigned char *to   = TILE(base, u_to,   v_to);
-    const unsigned char *from = TILE(base, u_from, v_from);
+    const Tile *to   = Tile::at(base, u_to,   v_to);
+    const Tile *from = Tile::at(base, u_from, v_from);
 
     int flag = 0;
 
@@ -1200,46 +1233,51 @@ Sim_CheckCellStepIsLegal(void *self, unsigned char u_from, unsigned char v_from,
      * rule.  Both are pure, so the second evaluation cannot differ — but the
      * two clauses set the verdict at different points in the sequence, with
      * the height clauses in between, so they are not foldable into one. */
-    if (Sim_CheckTileIsRamp(to[0x19d])) {
+    if (Sim_CheckTileIsRamp(to->objectMarker())) {
         const int code = Sim_GetCellStepDirectionCode(u_from, v_from, u_to, v_to);
-        const unsigned char k = to[0x19d];
+        const unsigned char k = to->objectMarker();
         if ((int)(k & 0xff) - 4 == code ||
             Sim_GetTurnedDirection((unsigned char)(k - 4), 2) == code)
             flag = 1;
     }
 
-    /* Flat step, or a kind-9 step whose two step heights bracket the move. */
-    if (from[0x19d] != 0x10 && from[0x19c] == to[0x19c])
+    /* Flat step, or a kind-9 step whose two step heights bracket the move.
+     * The lift bytes +0x1d3/+0x1d4 are compared as UNSIGNED bytes here,
+     * though Tile types them signed for the lift tick. */
+    if (from->objectMarker() != 0x10 && from->height() == to->height())
         flag = 1;
-    else if (to[0x19d] == 9 &&
-             (to[0x1d3] == from[0x19c] || to[0x1d4] == from[0x19c]))
+    else if (to->objectMarker() == 9 &&
+             ((unsigned char)to->liftBottom() == from->height() ||
+              (unsigned char)to->liftTop() == from->height()))
         flag = 1;
-    else if (from[0x19d] == 9 &&
-             (from[0x1d3] == to[0x19c] || from[0x1d4] == to[0x19c]))
+    else if (from->objectMarker() == 9 &&
+             ((unsigned char)from->liftBottom() == to->height() ||
+              (unsigned char)from->liftTop() == to->height()))
         flag = 1;
 
-    if (Sim_CheckTileIsRamp(to[0x19d])) {
+    if (Sim_CheckTileIsRamp(to->objectMarker())) {
         const int code = Sim_GetCellStepDirectionCode(u_from, v_from, u_to, v_to);
-        const unsigned char k = to[0x19d];
+        const unsigned char k = to->objectMarker();
         if ((int)(k & 0xff) - 4 == code ||
             Sim_GetTurnedDirection((unsigned char)(k - 4), 2) == code) {
             int ok = 1;
             /* The original calls CheckTileIsRamp(from.kind) twice here; it is
              * pure, so once is exact.  See point 4 above. */
-            if (Sim_CheckTileIsRamp(from[0x19d]) && code != (int)from[0x19d])
+            if (Sim_CheckTileIsRamp(from->objectMarker()) &&
+                code != (int)from->objectMarker())
                 ok = 0;
-            if (ok && (int)to[0x19c] == (int)from[0x19c] - 1)
+            if (ok && (int)to->height() == (int)from->height() - 1)
                 flag = 1;
         }
     } else {
-        const int d = (int)to[0x19c] - (int)from[0x19c];
-        if (from[0x19d] != 0x10 && d < 3 && d > 0)
-            flag = (*(const int *)(from + 0x1bc) == 0);
+        const int d = (int)to->height() - (int)from->height();
+        if (from->objectMarker() != 0x10 && d < 3 && d > 0)
+            flag = (from->slideTrack() == 0);
     }
 
     /* Bridge / conveyor: only passable along its own direction byte. */
-    if (from[0x19d] == 0x10 && from[0x19c] == to[0x19c]) {
-        const unsigned char dir = from[0x1f2];
+    if (from->objectMarker() == 0x10 && from->height() == to->height()) {
+        const unsigned char dir = from->field1f2();
         if (v_from < v_to && dir == 1)
             flag = 1;
         else if (u_from < u_to && dir == 4)
@@ -1252,41 +1290,40 @@ Sim_CheckCellStepIsLegal(void *self, unsigned char u_from, unsigned char v_from,
             flag = 0;                    /* clears earlier clauses */
     }
 
-    if (to[0x19d] == 0x10)
+    if (to->objectMarker() == 0x10)
         flag = 1;
 
     /* Elevator: its level byte must match the height of the cell behind. */
-    if (from[0x19d] == 0x0e) {
-        const unsigned char lvl = from[0x1f1];
-        const unsigned char *nu_pos = TILE(base, u_from + 1, v_from);
-        const unsigned char *nu_neg = TILE(base, u_from - 1, v_from);
-        const unsigned char *nv_pos = TILE(base, u_from, v_from + 1);
-        const unsigned char *nv_neg = TILE(base, u_from, v_from - 1);
+    if (from->objectMarker() == 0x0e) {
+        const unsigned char lvl = from->field1f1();
+        const Tile *nu_pos = Tile::at(base, u_from + 1, v_from);
+        const Tile *nu_neg = Tile::at(base, u_from - 1, v_from);
+        const Tile *nv_pos = Tile::at(base, u_from, v_from + 1);
+        const Tile *nv_neg = Tile::at(base, u_from, v_from - 1);
 
-        if (u_from > u_to && lvl == nu_pos[0x19c])
+        if (u_from > u_to && lvl == nu_pos->height())
             flag = 1;
-        else if (u_from < u_to && lvl == nu_neg[0x19c])
+        else if (u_from < u_to && lvl == nu_neg->height())
             flag = 1;
-        else if (v_from > v_to && lvl == nv_pos[0x19c])
+        else if (v_from > v_to && lvl == nv_pos->height())
             flag = 1;
-        else if (v_from < v_to && lvl == nv_neg[0x19c])
+        else if (v_from < v_to && lvl == nv_neg->height())
             flag = 1;
         else
             flag = 0;                    /* clears earlier clauses */
     }
 
-    if (to[0x19d] == 0x0e)
+    if (to->objectMarker() == 0x0e)
         flag = 1;
 
     /* Unoccupied jump pad: the answer is about the cell behind, and nothing
      * decided above survives. */
-    if (from[0x19d] == 2 && from[0x1a5] == 0) {
+    if (from->objectMarker() == 2 && from->field1a5() == 0) {
         const signed char du = (signed char)(u_from - u_to);
         const signed char dv = (signed char)(v_from - v_to);
         const int up = (int)u_to + (int)du * 2;
         const int vp = (int)v_to + (int)dv * 2;
-        const unsigned char *land = base + ((vp + up * 100) * 0x7f);
-        return land[0x1a5] == 4;
+        return Tile::at(base, up, vp)->field1a5() == 4;
     }
 
     return flag;
@@ -1328,12 +1365,8 @@ Sim_CheckCellStepIsLegal(void *self, unsigned char u_from, unsigned char v_from,
  * ONE E8 call site, at 0x00401E79 in SearchPathNodeGraph; xref.py reports
  * that and nothing else.
  */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ExpandPathNodeNeighbours(void *self, void *node, int goalU, int goalV)
+void FoePath::expand(PathNode *n, int goalU, int goalV)
 {
-    unsigned char *n = (unsigned char *)node;
-    void *tilebase = *(void **)self;
-
     /* Each step: the neighbour coordinate is formed exactly as the original
      * forms it, from a fresh read of the node. */
     struct { int du, dv; } step[4] = { { 0, -1 }, { +1, 0 }, { 0, +1 }, { -1, 0 } };
@@ -1352,19 +1385,26 @@ Sim_ExpandPathNodeNeighbours(void *self, void *node, int goalU, int goalV)
     }
 
     for (int i = 0; i < 4; ++i) {
-        const int u = *(const int *)(n + 0x10);
-        const int v = *(const int *)(n + 0x14);
+        const int u = n->u;
+        const int v = n->v;
         const int nu = u + step[i].du;
         const int nv = v + step[i].dv;
 
-        if (!Sim_CheckPathCellPassable(self, nu, nv))
+        if (!passable(nu, nv))
             continue;
-        if (!Sim_CheckCellStepIsLegal(tilebase, (unsigned char)u, (unsigned char)v,
+        /* `this` for the step test is the TILE BASE (MOV ECX,[EDI]). */
+        if (!Sim_CheckCellStepIsLegal(tileBase_, (unsigned char)u, (unsigned char)v,
                                       (unsigned char)nu, (unsigned char)nv))
             continue;
 
-        Sim_RelaxPathNeighbourCell(self, node, nu, nv, goalU, goalV);
+        relax(n, nu, nv, goalU, goalV);
     }
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_ExpandPathNodeNeighbours(FoePath *self, PathNode *node, int goalU, int goalV)
+{
+    self->expand(node, goalU, goalV);
 }
 
 /* ─── FoePath::SearchPathNodeGraph (0x00401db0) ───────────────────────────
@@ -1425,38 +1465,35 @@ Sim_ExpandPathNodeNeighbours(void *self, void *node, int goalU, int goalV)
  * ONE E8 call site, at 0x00401C85 in FindFoePathBetweenCells; xref.py
  * reports that and nothing else.
  */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_SearchPathNodeGraph(void *self, int uFoe, int vFoe, int uTarget, int vTarget)
+int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
 {
-    unsigned char *pf = (unsigned char *)self;
+    targetV_ = (unsigned char)vTarget;
+    foeV_    = (unsigned char)vFoe;
+    targetU_ = (unsigned char)uTarget;
+    foeU_    = (unsigned char)uFoe;
 
-    pf[0x32] = (unsigned char)vTarget;
-    pf[0x34] = (unsigned char)vFoe;
-    pf[0x31] = (unsigned char)uTarget;
-    pf[0x33] = (unsigned char)uFoe;
-
-    const int goalKey = Sim_ComputeCellLinearIndex(self, uFoe, vFoe);
+    const int goalKey = cellKey(uFoe, vFoe);
 
     /* Two fresh list headers every search — see exactness point 1. */
-    *(void **)(pf + 0x06) = AllocateZeroedHeapBlock(1, 0x44);
-    *(void **)(pf + 0x0a) = AllocateZeroedHeapBlock(1, 0x44);
+    open_   = (PathNode *)AllocateZeroedHeapBlock(1, 0x44);
+    closed_ = (PathNode *)AllocateZeroedHeapBlock(1, 0x44);
 
-    unsigned char *seed = (unsigned char *)AllocateZeroedHeapBlock(1, 0x44);
+    PathNode *seed = (PathNode *)AllocateZeroedHeapBlock(1, 0x44);
 
     const int du = uTarget - uFoe;
     const int dv = vTarget - vFoe;
     const int h = du * du + dv * dv;
 
-    *(int *)(seed + 0x08) = 0;                  /* g, already zero */
-    *(int *)(seed + 0x04) = h;
-    *(int *)(seed + 0x00) = h;
-    *(int *)(seed + 0x18) = Sim_ComputeCellLinearIndex(self, uTarget, vTarget);
-    *(int *)(seed + 0x10) = uTarget;
-    *(int *)(seed + 0x14) = vTarget;
+    seed->g   = 0;                              /* already zero */
+    seed->h   = h;
+    seed->f   = h;
+    seed->key = cellKey(uTarget, vTarget);
+    seed->u   = uTarget;
+    seed->v   = vTarget;
 
-    *(unsigned char **)(*(unsigned char **)(pf + 0x06) + 0x40) = seed;
+    open_->next = seed;
 
-    unsigned short cap = *(const unsigned short *)(pf + 0x2f);
+    unsigned short cap = cap_;
 
     /* KAROO_SIM_FX=shortsearch caps the loop at a single expansion, so any
      * path longer than one step is reported as "no path".  Attacks the
@@ -1465,17 +1502,17 @@ Sim_SearchPathNodeGraph(void *self, int uFoe, int vFoe, int uTarget, int vTarget
         cap = 1;
 
     int iter = 0;
-    unsigned char *node = 0;
+    PathNode *node = 0;
 
     if (cap > 0) {
         for (;;) {
-            node = (unsigned char *)Sim_PopBestOpenPathNode(self);
+            node = popBestOpen();
             if (node == 0)
                 return 0;
-            if (*(const int *)(node + 0x18) == goalKey)
+            if (node->key == goalKey)
                 break;
 
-            Sim_ExpandPathNodeNeighbours(self, node, uFoe, vFoe);
+            expand(node, uFoe, vFoe);
 
             if (++iter >= (int)cap)
                 break;
@@ -1483,10 +1520,16 @@ Sim_SearchPathNodeGraph(void *self, int uFoe, int vFoe, int uTarget, int vTarget
     }
 
     if (iter < (int)cap) {
-        *(unsigned char **)(pf + 0x0e) = node;
+        result_ = node;
         return 1;
     }
     return 0;
+}
+
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_SearchPathNodeGraph(FoePath *self, int uFoe, int vFoe, int uTarget, int vTarget)
+{
+    return self->search(uFoe, vFoe, uTarget, vTarget);
 }
 
 /* ─── FoePath::FindFoePathBetweenCells (0x00401c20) ───────────────────────
@@ -1527,20 +1570,16 @@ Sim_SearchPathNodeGraph(void *self, int uFoe, int vFoe, int uTarget, int vTarget
  * that and nothing else, and no absolute-address call from our own DLL
  * (the two grep hits in levelscore.cpp and plan.cpp are prose, not code).
  */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_FindFoePathBetweenCells(void *self, int uFoe, int vFoe,
-                            int uTarget, int vTarget)
+int FoePath::find(int uFoe, int vFoe, int uTarget, int vTarget)
 {
-    unsigned char *pf = (unsigned char *)self;
+    if (passable(uTarget, vTarget) != 0 &&
+        passable(uFoe, vFoe) != 0) {
 
-    if (Sim_CheckPathCellPassable(self, uTarget, vTarget) != 0 &&
-        Sim_CheckPathCellPassable(self, uFoe, vFoe) != 0) {
-
-        const int keyFoe    = Sim_ComputeCellLinearIndex(self, uFoe, vFoe);
-        const int keyTarget = Sim_ComputeCellLinearIndex(self, uTarget, vTarget);
+        const int keyFoe    = cellKey(uFoe, vFoe);
+        const int keyTarget = cellKey(uTarget, vTarget);
 
         if (keyFoe != keyTarget) {
-            Sim_ReleasePathSearchNodeLists(self);
+            releaseLists();
 
             /* KAROO_SIM_FX=fwdsearch swaps the endpoints, making the search
              * run forward from the foe to the target instead of backward.
@@ -1550,15 +1589,22 @@ Sim_FindFoePathBetweenCells(void *self, int uFoe, int vFoe,
              * direct test of the backward-search finding documented on
              * SearchPathNodeGraph. */
             const int ok = fx_fwdsearch()
-                ? Sim_SearchPathNodeGraph(self, uTarget, vTarget, uFoe, vFoe)
-                : Sim_SearchPathNodeGraph(self, uFoe, vFoe, uTarget, vTarget);
+                ? search(uTarget, vTarget, uFoe, vFoe)
+                : search(uFoe, vFoe, uTarget, vTarget);
             if (ok != 0) {
-                *(int *)(pf + 0x16) = 1;
+                found_ = 1;
                 return 1;
             }
         }
     }
 
-    *(int *)(pf + 0x16) = 0;
+    found_ = 0;
     return 0;
+}
+
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_FindFoePathBetweenCells(FoePath *self, int uFoe, int vFoe,
+                            int uTarget, int vTarget)
+{
+    return self->find(uFoe, vFoe, uTarget, vTarget);
 }
