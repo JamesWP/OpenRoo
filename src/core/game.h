@@ -19,6 +19,7 @@ class SoundManager;
 class LiftObject;
 class SlideObject;
 class BridgeObject;
+class BreakableTile;
 
 /* The 8-byte record at Game+0x170a5c, copied into every level object's +0x15
  * each tick.  Meaning unknown; a struct so that it copies by assignment. */
@@ -71,6 +72,12 @@ public:
     BridgeObject *bridgeSlot(unsigned int i) const { return bridgeSlots_[i]; }
     void          setBridgeSlot(unsigned int i, BridgeObject *p) { bridgeSlots_[i] = p; }
 
+    /* ── breakable tiles ────────────────────────────────────────────── */
+    unsigned char  breakableCount() const              { return breakableCount_; }
+    void           setBreakableCount(unsigned char n)  { breakableCount_ = n; }
+    BreakableTile *breakableSlot(unsigned int i) const { return breakableSlots_[i]; }
+    void           setBreakableSlot(unsigned int i, BreakableTile *p) { breakableSlots_[i] = p; }
+
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
@@ -92,7 +99,10 @@ private:
     unsigned char slideCount_;                            /* 0x173718 */
     LiftObject   *liftSlots_[256];                        /* 0x173719 */
     unsigned char liftCount_;                             /* 0x173b19 */
-    unsigned char gap_173b1a[0x2ab58d - 0x173b1a];
+    unsigned char gap_173b1a[0x173b1e - 0x173b1a];
+    BreakableTile *breakableSlots_[200];                  /* 0x173b1e */
+    unsigned char breakableCount_;                        /* 0x173e3e */
+    unsigned char gap_173e3f[0x2ab58d - 0x173e3f];
     /* Where Tile::at() indexes from; the tiles extend past it. */
     unsigned char tileOrigin_[1];                         /* 0x2ab58d */
 };
@@ -109,5 +119,7 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(slideCount_,       0x173718);
     KAROO_LAYOUT_AT(liftSlots_,        0x173719);
     KAROO_LAYOUT_AT(liftCount_,        0x173b19);
+    KAROO_LAYOUT_AT(breakableSlots_,   0x173b1e);
+    KAROO_LAYOUT_AT(breakableCount_,   0x173e3e);
     KAROO_LAYOUT_AT(tileOrigin_,       0x2ab58d);
 }

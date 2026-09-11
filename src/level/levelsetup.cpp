@@ -167,6 +167,7 @@
 #include "liftobject.h"
 #include "slideobject.h"
 #include "bridgeobject.h"
+#include "breakabletile.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -187,7 +188,6 @@
 
 #define G_COUNT_CRYSTAL    0x42252     /* WORD                               */
 #define G_LIFT_COUNT2      0x173b1a
-#define G_BREAK_COUNT      0x173e3e
 #define G_FOE_COUNT        0x174fd4
 #define G_FOE_IDS          0x174fd5
 #define G_ENEMY_COUNT      0x17460f
@@ -340,9 +340,6 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Leo_OpenExtraObjectsFile(void *self, const char *name);
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeBreakableObjects(void *self);
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_RemoveFoeObject(void *self, unsigned int idArg);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_RemoveEnemyObject(void *self, unsigned int idArg);
@@ -351,9 +348,6 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_SpawnFoeObject(void *self, unsigned int uArg, unsigned int vArg,
                    unsigned int hArg, unsigned int kindArg,
                    unsigned int typeArg);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnBreakableObject(void *self, unsigned int uArg, unsigned int vArg,
-                         unsigned int heightArg, unsigned int param4);
 
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Sim_FindNearestFlaggedTileInRadius(void *self, unsigned char *pu,
@@ -555,7 +549,7 @@ Sim_SetupLevelObjects(void *self)
     /* ── tear down the previous level ──────────────────────────────────── */
     LiftObject::purgeAll((Game *)G);
     SlideObject::purgeAll((Game *)G);
-    Sim_PurgeBreakableObjects(G);
+    BreakableTile::purgeAll((Game *)G);
     BridgeObject::purgeAll((Game *)G);
 
     {
@@ -570,7 +564,7 @@ Sim_SetupLevelObjects(void *self)
     while (B(G, G_ENEMY_COUNT) != 0)
         Sim_RemoveEnemyObject(G, B(G, G_ENEMY_IDS));
 
-    B(G, G_BREAK_COUNT) = 0;
+    ((Game *)G)->setBreakableCount(0);
     B(G, G_FOE_COUNT)   = 0;
     ((Game *)G)->setLiftCount(0);
     ((Game *)G)->setSlideCount(0);
@@ -755,7 +749,7 @@ Sim_SetupLevelObjects(void *self)
                 }
 
                 if (B(G, T_TYPE + off) == 0x0d)
-                    Sim_SpawnBreakableObject(G, u, v, B(G, T_HEIGHT + off),
+                    BreakableTile::spawn((Game *)G, u, v, B(G, T_HEIGHT + off),
                                              B(G, T_PARAM + off));
 
                 /* teleport pairing */
@@ -1005,7 +999,7 @@ next_row:
                   (unsigned)W(G, G_COUNT_CRYSTAL), (unsigned)W(G, C_TOTAL),
                   (unsigned)W(G, C_BRIDGES), (unsigned)W(G, C_TELEPORTS),
                   (unsigned)((Game *)G)->liftCount(), (unsigned)((Game *)G)->slideCount(),
-                  (unsigned)B(G, G_BREAK_COUNT), (unsigned)B(G, G_FOE_COUNT),
+                  (unsigned)((Game *)G)->breakableCount(), (unsigned)B(G, G_FOE_COUNT),
                   (unsigned)W(G, C_FREEBOMBS), (unsigned)W(G, C_TIMED),
                   (unsigned)B(G, G_SWITCH_MAX));
 

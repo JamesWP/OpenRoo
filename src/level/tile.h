@@ -33,13 +33,16 @@ public:
     }
 
     /* +0x19c  the cell's height byte. */
+    unsigned char height() const               { return height_; }
     void setHeight(unsigned char h)            { height_ = h; }
 
     /* +0x19d  the object marker/kind byte.  SetupLevelObjects reads it back
      * (a slide scan stops at a nonzero one); a slide stamps 0x0c here. */
     unsigned char objectMarker() const         { return objectMarker_; }
     void setObjectMarker(unsigned char k)      { objectMarker_ = k; }
-    /* +0x1a5  cleared with the marker when a slide vacates a cell. */
+    /* +0x1a5  cleared with the marker when a slide vacates a cell.  A
+     * breakable arms when it is nonzero (someone is standing on the cell). */
+    unsigned char field1a5() const             { return field_1a5; }
     void setField1a5(unsigned char b)          { field_1a5 = b; }
 
     /* ── published by a lift standing on this cell (liftobject.cpp) ── */
@@ -93,6 +96,9 @@ public:
     /* Meaning unknown: 1 on an extended deck cell, 0 otherwise. */
     void setField1f6(int b)                    { field_1f6 = b; }
     void setField217(int b)                    { field_217 = b; }
+    /* A breakable sets it when it falls and clears it when it respawns
+     * (breakabletile.cpp), and will not arm while it is set. */
+    int  field217() const                      { return field_217; }
 
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
