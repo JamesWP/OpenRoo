@@ -52,6 +52,7 @@
 #include "breakabletile.h"
 #include "bomb.h"
 #include "foe.h"
+#include "player.h"
 #include "tilequery.h"
 
 struct CStaticSoundbuffer;
@@ -73,7 +74,6 @@ __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AnimateScoreTal
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PollTextEntryKeys(void *self, unsigned int phase);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
 
-__declspec(dllexport) void __attribute__((thiscall)) Sim_UpdatePlayerTileEffects(void *self);
 __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AcquireObjectSoundBuffersForIndex(void *self, unsigned int objArg);
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
@@ -351,7 +351,7 @@ Sim_GameTick(void *self, double dt, double now)
             G8(0x170a64) = 100;
     }
 
-    Sim_UpdatePlayerTileEffects(B + 0x1751c9);
+    Sim_UpdatePlayerTileEffects((Player *)(B + 0x1751c9));
 
     if (STATE == 1) {
         if (G32(0x13cdb7) != 0)
