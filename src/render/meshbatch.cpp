@@ -139,8 +139,7 @@ Direct3D_DrawMeshBatch(void *ctx, void *game, Direct3D *d3d)
             d3d->pDevice->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSV, addr);
 
             if (sub->pTexture)
-                d3d->pDevice->SetTexture(
-                    0, *(IDirect3DTexture2 **)((BYTE *)sub->pTexture + 0x18));
+                d3d->pDevice->SetTexture(0, sub->pTexture->pTexture2);
 
             /* One tail call in the original, state/value picked by the branch. */
             D3DRENDERSTATETYPE last_state;
