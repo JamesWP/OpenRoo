@@ -134,6 +134,27 @@ public:
     /* +0x1f2: on a bridge (kind 0x10) cell, its direction byte. */
     unsigned char field1f2() const             { return field_1f2; }
 
+    /* ── read by the movement tick (entitymove.cpp) ──────────────────── */
+    /* The tick reads +0x19c, +0x19d, +0x1a5 and +0x1f1 both MOVSX and
+     * MOVZX; the accessors are unsigned and the signed reads cast at the
+     * read site. */
+    unsigned char blastHeight() const          { return blastHeight_; }
+    float  liftLiveHeight() const              { return liftLiveHeight_; }
+    unsigned char slideSlot() const            { return slideSlot_; }
+    unsigned char slideOriginU() const         { return slideOriginU_; }
+    unsigned char slideOriginV() const         { return slideOriginV_; }
+    unsigned char slideCellU() const           { return slideCellU_; }
+    unsigned char slideCellV() const           { return slideCellV_; }
+    float  slidePosU() const                   { return slidePosU_; }
+    float  slidePosY() const                   { return slidePosY_; }
+    float  slidePosV() const                   { return slidePosV_; }
+    /* +0x1ee / +0x1ef: on a teleporter (kind 0x0f) cell, read as the u and
+     * v of the cell it sends the entity to. */
+    unsigned char field1ee() const             { return field_1ee; }
+    unsigned char field1ef() const             { return field_1ef; }
+    /* +0x1f3: on a kind-0x11 cell, copied into the entity's +0xd7. */
+    unsigned char field1f3() const             { return field_1f3; }
+
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
     KAROO_LAYOUT_REGISTER(Tile);
@@ -175,10 +196,13 @@ private:
     /* One double, though the original writes it as two dwords (0 at
      * +0x1e5, 0x40977000 at +0x1e9): 0x4097700000000000 = 1500.0. */
     double        liftDwell_;         /* 0x1e5  park dwell in ms, 1500.0    */
-    unsigned char gap_1ed[0x1f1 - 0x1ed];
+    unsigned char gap_1ed[0x1ee - 0x1ed];
+    unsigned char field_1ee;          /* 0x1ee                              */
+    unsigned char field_1ef;          /* 0x1ef                              */
+    unsigned char gap_1f0[0x1f1 - 0x1f0];
     unsigned char field_1f1;          /* 0x1f1  an elevator's level byte    */
     unsigned char field_1f2;          /* 0x1f2                              */
-    unsigned char gap_1f3[0x1f4 - 0x1f3];
+    unsigned char field_1f3;          /* 0x1f3                              */
     unsigned char bridgeSlot_;        /* 0x1f4  the bridge's switch slot    */
     unsigned char bridgeAxis_;        /* 0x1f5  1 = along U, 2 = along V    */
     int           field_1f6;          /* 0x1f6                              */
@@ -221,7 +245,10 @@ KAROO_LAYOUT_CHECKS(Tile)
     KAROO_LAYOUT_AT(liftParkedSince_,  0x1dd);
     KAROO_LAYOUT_AT(liftDwell_,        0x1e5);
     KAROO_LAYOUT_AT(field_1f1,         0x1f1);
+    KAROO_LAYOUT_AT(field_1ee,         0x1ee);
+    KAROO_LAYOUT_AT(field_1ef,         0x1ef);
     KAROO_LAYOUT_AT(field_1f2,         0x1f2);
+    KAROO_LAYOUT_AT(field_1f3,         0x1f3);
     KAROO_LAYOUT_AT(bridgeSlot_,       0x1f4);
     KAROO_LAYOUT_AT(bridgeAxis_,       0x1f5);
     KAROO_LAYOUT_AT(field_1f6,         0x1f6);
