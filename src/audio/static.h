@@ -33,7 +33,7 @@ static_assert(sizeof(CStaticSoundbuffer)                 == 0x18, "CStaticSoundb
  * patch.py redirects to our CStatic_ReinitBuffer, so virtual dtor cleanup
  * reaches our code without a vtable patch.
  */
-static const void *STATIC_VTABLE = reinterpret_cast<const void*>(0x45ef9c);
+static const void *const STATIC_VTABLE = reinterpret_cast<const void*>(0x45ef9c);
 
 /* ─── Our reimplementations, defined in static.cpp ───────────────────────
  *

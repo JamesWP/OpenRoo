@@ -12,7 +12,7 @@ void FaktMovie::setup(void *log_obj_arg)
     log_write("FaktMovie::setup(this=%p, log_obj=%p)\n", this, log_obj_arg);
 }
 
-int FaktMovie::loadVideo(void *arg1, void *arg2, void *arg3, const char *path)
+int FaktMovie::loadVideo(void * /*arg1*/, void * /*arg2*/, void * /*arg3*/, const char *path)
 {
     log_write("FaktMovie::loadVideo(this=%p, path=\"%s\")\n",
               this, path ? path : "(null)");

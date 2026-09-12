@@ -63,4 +63,4 @@ static_assert(offsetof(ProgableControl, action_tables)  == 0x144, "action_tables
 static_assert(sizeof(ProgableControl)                   == 0x194, "ProgableControl size");
 
 /* Original vtable at PTR_ScalarDtorProgControl @ 0x0045efb0 */
-static const void *PROGCTRL_VTABLE = reinterpret_cast<const void*>(0x45efb0);
+static const void *const PROGCTRL_VTABLE = reinterpret_cast<const void*>(0x45efb0);

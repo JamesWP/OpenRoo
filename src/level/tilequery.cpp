@@ -212,7 +212,7 @@
  *    when the best distance is STRICTLY greater than zero, and a NaN
  *    returns 0.  Plain `best > 0.0` is unordered-false in C too, so that is
  *    what is written -- and the equality half matters: a best of exactly
- *    0.0, which is the initial value, returns 0 and leaves *pu/*pv
+ *    0.0, which is the initial value, returns 0 and leaves *pu and *pv
  *    untouched.  That is the no-candidate path.
  *
  * 11. THE TWO SEARCHES' ACCEPT TESTS ARE UNSIGNED AND STRICT.  `CMP AL,..`

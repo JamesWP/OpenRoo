@@ -82,6 +82,6 @@ extern "C" __declspec(dllexport) INT_PTR WINAPI hooks_DialogBoxParamA(
     typedef INT_PTR (WINAPI *fn_t)(HINSTANCE, LPCSTR, HWND, DLGPROC, LPARAM);
     static fn_t real_fn = NULL;
     if (!real_fn)
-        real_fn = (fn_t)GetProcAddress(GetModuleHandleA("user32.dll"), "DialogBoxParamA");
+        real_fn = (fn_t)(void (*)(void))GetProcAddress(GetModuleHandleA("user32.dll"), "DialogBoxParamA");
     return real_fn(hInstance, lpTemplate, hWndParent, lpDialogFunc, dwInitParam);
 }
