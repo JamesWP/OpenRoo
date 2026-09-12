@@ -68,7 +68,7 @@ static void release_devices(ProgableControl *s)
 
 /* ── method bodies ────────────────────────────────────────────────────────── */
 
-static void *Setup_impl(ProgableControl *s, int logger_or_0)
+static void *Setup_impl(ProgableControl *s, int /*logger_or_0*/)
 {
     //log_write("ProgCtrl::Setup(this=%p logger_or_0=%d)\n", s, logger_or_0);
     s->vtable        = const_cast<void*>(PROGCTRL_VTABLE);

@@ -1351,7 +1351,7 @@ extern "C" __declspec(dllexport) HRESULT WINAPI hooks_DirectDrawCreate(
 
     HMODULE ddraw = GetModuleHandleA("ddraw.dll");
     DirectDrawCreate_t real_fn = ddraw
-        ? (DirectDrawCreate_t)GetProcAddress(ddraw, "DirectDrawCreate")
+        ? (DirectDrawCreate_t)(void (*)(void))GetProcAddress(ddraw, "DirectDrawCreate")
         : NULL;
     if (!real_fn) return DDERR_GENERIC;
 

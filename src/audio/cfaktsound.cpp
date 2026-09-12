@@ -21,7 +21,7 @@ static void CFaktSound_BlankFields_impl(CFaktSound *self)
     self->vtable = const_cast<void*>(CFAKTSOUND_VTABLE);
 }
 
-static CFaktSound *CFaktSound_ScalarDeletingDtor_impl(CFaktSound *self, DWORD free_memory)
+static CFaktSound *CFaktSound_ScalarDeletingDtor_impl(CFaktSound *self, DWORD /*free_memory*/)
 {
     /* CFaktSound objects are always embedded — free_memory is always 0 in practice. */
     CFaktSound_ReleaseComRefs_impl(self);

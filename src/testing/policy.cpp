@@ -185,17 +185,6 @@ static int menu_slot(void)
     return g_slot;
 }
 
-static bool exit_when_done(void)
-{
-    static int v = -1;
-    if (v < 0) {
-        char buf[8];
-        v = (GetEnvironmentVariableA("KAROO_POLICY_EXIT", buf, sizeof(buf))
-             && buf[0] && buf[0] != '0');
-    }
-    return v > 0;
-}
-
 /* Called every frame from policy_keys, and also while no level is loaded. */
 void policy_menu_tick(void)
 {

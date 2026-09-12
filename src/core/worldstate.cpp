@@ -178,7 +178,8 @@ static unsigned read_table(const BYTE *g, unsigned off_ptrs, unsigned off_count,
     unsigned n = 0;
     for (unsigned i = 0; i < count; i++) {
         BYTE slot = ids[i];
-        if (slot >= WS_MAX_ENT) continue;      /* corrupt id — skip, don't fault */
+        /* No range check: a byte id cannot index past the table. */
+        static_assert(WS_MAX_ENT > 0xff, "a BYTE id could overrun ptrs[]");
         const BYTE *obj = ptrs[slot];
         if (!obj) continue;                    /* freed slot still in the list */
         read_entity(obj, slot, foe, &out[n++]);

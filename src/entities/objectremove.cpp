@@ -200,6 +200,11 @@ void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
     unsigned char found = 0;
     unsigned char i     = 0;
 
+    /* The only entry point left in this file since the removes moved to
+     * foe.cpp and bomb.cpp -- which took their fx_init() calls with them,
+     * leaving keepid and this half of KAROO_REMOVE_DIAG silently off. */
+    fx_init();
+
     /* `MOV EDX,[ECX]; PUSH 1; CALL [EDX]` -- vtable slot 0, argument 1. */
     if (obj != 0) {
         scalar_dtor_fn *vtbl = *(scalar_dtor_fn **)obj;
