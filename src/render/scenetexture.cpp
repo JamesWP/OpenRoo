@@ -141,6 +141,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "texture.h"
+#include "tga.h"
 #include "log.h"
 #include "alloc.h"
 
@@ -205,25 +206,6 @@ struct DevDescRaw { DWORD dw[0x3f]; };
 static_assert(sizeof(DevDescRaw) == 0xfc, "D3DDEVICEDESC must be 0xfc bytes");
 #define DEVDESC_COLORMODEL 2
 
-/* The 18-byte TGA header, in the original's field order and sizes.  Duplicated
- * from texturetga.cpp rather than shared: both are reconstructions of the same
- * on-disk layout, and keeping each file self-contained leaves the already
- * byte-verified TGA loader untouched. */
-struct TgaHeader {
-    unsigned char  idLength;
-    unsigned char  colourMapType;
-    unsigned char  imageType;
-    unsigned short colourMapOrigin;
-    unsigned short colourMapLength;
-    unsigned char  colourMapDepth;
-    unsigned short xOrigin;
-    unsigned short yOrigin;
-    unsigned short width;
-    unsigned short height;
-    unsigned char  bpp;
-    unsigned char  descriptor;
-} __attribute__((packed));
-static_assert(sizeof(TgaHeader) == 18, "TGA header must be 18 bytes");
 
 /* The inline REPNE SCASB the originals use.  st_strlen is the true length
  * (`not ecx; dec ecx`), used by the log calls; the name copies allocate

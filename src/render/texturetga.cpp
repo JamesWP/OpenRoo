@@ -97,6 +97,7 @@
  * touched at all, unlike the DIB loader, which sets it on every failure.
  */
 #include "texture.h"
+#include "tga.h"
 #include "log.h"
 #include "alloc.h"
 #include <stdio.h>
@@ -202,24 +203,6 @@ static unsigned int ftol8(long double v)
     return (unsigned int)(long long)v & 0xffu;
 }
 
-/* The 18-byte TGA header, read field by field in exactly the original's
- * order and sizes (twelve separate freads, not one block read). */
-struct TgaHeader {
-    unsigned char  idLength;         /* +0x00 */
-    unsigned char  colourMapType;    /* +0x01 */
-    unsigned char  imageType;        /* +0x02 */
-    unsigned short colourMapOrigin;  /* +0x03 */
-    unsigned short colourMapLength;  /* +0x05 */
-    unsigned char  colourMapDepth;   /* +0x07 */
-    unsigned short xOrigin;          /* +0x08 */
-    unsigned short yOrigin;          /* +0x0a */
-    unsigned short width;            /* +0x0c */
-    unsigned short height;           /* +0x0e */
-    unsigned char  bpp;              /* +0x10 */
-    unsigned char  descriptor;       /* +0x11 */
-} __attribute__((packed));
-
-static_assert(sizeof(TgaHeader) == 18, "TGA header must be 18 bytes");
 
 #if KAROO_VERIFY_ORIGINAL
 /* Filled by the impl with the Lock'd scratch surface's real format, which is

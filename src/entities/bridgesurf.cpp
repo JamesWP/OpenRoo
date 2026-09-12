@@ -198,7 +198,7 @@ Direct3D_DrawBridgeSurfaces(void *game, void *lvl, Direct3D *d3d, double t)
                  * previously bound texture in place. */
                 d3d->pDevice->SetTexture(
                     0, sub->pTexture
-                       ? *(IDirect3DTexture2 **)((BYTE *)sub->pTexture + 0x18)
+                       ? sub->pTexture->pTexture2
                        : NULL);
 
                 /* One tail call in the original, state/value by the branch. */

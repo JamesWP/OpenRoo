@@ -4,6 +4,7 @@
 #include <ddraw.h>
 #include <d3d.h>
 #include <stddef.h>
+#include "texture.h"    /* SceneTexture */
 
 /* SceneSubObject — per-draw-call blend/texture state, 60 bytes, stored inline
  * in LevelObject at +0x3c5.  Layout from HOOKS.md § SceneSubObject, with
@@ -12,7 +13,7 @@
  * it is zero.  HOOKS.md had +0x14 inside an unknown pad. */
 struct SceneSubObject {
     DWORD  dwVisibilityGate; // +0x00
-    void  *pTexture;         // +0x04  SetTexture(0, *(pTexture+0x18))
+    SceneTexture *pTexture;  // +0x04  SetTexture(0, pTexture->pTexture2)
     DWORD  unknown08;        // +0x08
     DWORD  dwBlendSrc;       // +0x0c  D3DRENDERSTATE_SRCBLEND value
     DWORD  dwBlendDst;       // +0x10  D3DRENDERSTATE_DESTBLEND value
