@@ -22,8 +22,7 @@
  * unwind funclets that undo a partly built entity.
  *
  * The fields are every entity field a converted class touches.  Most are
- * also read by still-raw code -- UpdateEntityMovement (entitymove.cpp), the
- * foe files, and the original RenderGameFrame -- so the layout is packed and
+ * also read by still-raw code -- the foe files, and the original RenderGameFrame -- so the layout is packed and
  * asserted.  Names are the ones the code relies on; field_<off> otherwise.
  */
 #pragma once
@@ -55,6 +54,10 @@ public:
      * UpdateEntityMovement raises it once moveState reaches 4. */
     int removeRequested() const { return removeRequested_; }
 
+    /* 0x00438770 -- the movement step every entity tick ends in (player,
+     * foe, bomb); entitymove.cpp.  Returns 1 in AL on the two early outs. */
+    unsigned int updateMovement();
+
 protected:
     /* Our own subclasses: the base's only field work, the three zeroed
      * floats of 0x401000.  The vtable is the subclass's to set. */
@@ -77,13 +80,17 @@ protected:
     /* One double, though the foe ctor writes it as two dwords: 1000.0
      * (0 at +0x38, 0x408f4000 at +0x3c). */
     double              field_38;         /* +0x038                         */
-    unsigned char       gap_040[0x048 - 0x040];
+    int                 field_40;         /* +0x040                         */
+    int                 field_44;         /* +0x044                         */
     /* One double, though the ctors write it as two dwords: bomb 50.0
      * (0x40490000 at +0x4c), foe and player 20.0 (0x40340000). */
     double              field_48;         /* +0x048                         */
-    unsigned char       gap_050[0x058 - 0x050];
+    double              field_50;         /* +0x050                         */
     int                 field_58;         /* +0x058                         */
-    unsigned char       gap_05c[0x062 - 0x05c];
+    /* Set as the bits 0xc0400000, i.e. -3.0f, and read as a float. */
+    float               field_5c;         /* +0x05c                         */
+    unsigned char       field_60;         /* +0x060                         */
+    unsigned char       field_61;         /* +0x061                         */
     /* The foe's behaviour type (1 escort, 2 seek listed tile, 3 seek
      * flagged tile, 4 return to post, 5 follow, 7 farthest -- GameTick's
      * foe loop).  Read signed by the step and the chase. */
@@ -100,7 +107,8 @@ protected:
     int                 removeRequested_; /* +0x07e                         */
     int                 field_82;         /* +0x082  read by RenderGameFrame */
     int                 field_86;         /* +0x086                         */
-    unsigned char       gap_08a[0x09a - 0x08a];
+    double              field_8a;         /* +0x08a                         */
+    unsigned char       gap_092[0x09a - 0x092];
     unsigned char       field_9a;         /* +0x09a                         */
     int                 field_9b;         /* +0x09b                         */
     VoicePool          *pool_9f_;         /* +0x09f  foe: a voice pool      */
@@ -124,23 +132,25 @@ protected:
     unsigned char       field_e8;         /* +0x0e8                         */
     unsigned char       field_e9;         /* +0x0e9                         */
     int                 field_ea;         /* +0x0ea                         */
-    unsigned char       gap_0ee[0x0ef - 0x0ee];
+    unsigned char       field_ee;         /* +0x0ee                         */
     int                 field_ef;         /* +0x0ef                         */
     unsigned char       gap_0f3[0x0fb - 0x0f3];
     int                 field_fb;         /* +0x0fb                         */
     unsigned char       field_ff;         /* +0x0ff                         */
-    unsigned char       gap_100[0x108 - 0x100];
+    double              field_100;        /* +0x100                         */
     unsigned char       field_108;        /* +0x108                         */
-    unsigned char       gap_109[0x11a - 0x109];
+    unsigned char       gap_109[0x111 - 0x109];
+    unsigned char       field_111;        /* +0x111                         */
+    double              field_112;        /* +0x112                         */
     int                 field_11a;        /* +0x11a                         */
     unsigned char       field_11e;        /* +0x11e                         */
     unsigned char       moveState_;       /* +0x11f  4 = despawn            */
     int                 field_120;        /* +0x120                         */
     unsigned char       field_124;        /* +0x124                         */
     unsigned char       field_125;        /* +0x125                         */
-    int                 field_126;        /* +0x126                         */
-    int                 field_12a;        /* +0x12a                         */
-    unsigned char       gap_12e[0x132 - 0x12e];
+    /* One double, though the ctors write it as two zero dwords. */
+    double              field_126;        /* +0x126                         */
+    int                 field_12e;        /* +0x12e                         */
     double              field_132;        /* +0x132                         */
     unsigned char       gap_13a[0x13b - 0x13a];
     FoePath            *pathfinder_;      /* +0x13b  foe: its FoePath       */
@@ -176,8 +186,14 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(heightCell_,      0x033);
     KAROO_LAYOUT_AT(tileBase_,        0x034);
     KAROO_LAYOUT_AT(field_38,         0x038);
+    KAROO_LAYOUT_AT(field_40,         0x040);
+    KAROO_LAYOUT_AT(field_44,         0x044);
     KAROO_LAYOUT_AT(field_48,         0x048);
+    KAROO_LAYOUT_AT(field_50,         0x050);
     KAROO_LAYOUT_AT(field_58,         0x058);
+    KAROO_LAYOUT_AT(field_5c,         0x05c);
+    KAROO_LAYOUT_AT(field_60,         0x060);
+    KAROO_LAYOUT_AT(field_61,         0x061);
     KAROO_LAYOUT_AT(type_,            0x062);
     KAROO_LAYOUT_AT(field_63,         0x063);
     KAROO_LAYOUT_AT(field_64,         0x064);
@@ -188,6 +204,7 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(removeRequested_, 0x07e);
     KAROO_LAYOUT_AT(field_82,         0x082);
     KAROO_LAYOUT_AT(field_86,         0x086);
+    KAROO_LAYOUT_AT(field_8a,         0x08a);
     KAROO_LAYOUT_AT(field_9a,         0x09a);
     KAROO_LAYOUT_AT(field_9b,         0x09b);
     KAROO_LAYOUT_AT(pool_9f_,         0x09f);
@@ -211,10 +228,14 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(field_e8,         0x0e8);
     KAROO_LAYOUT_AT(field_e9,         0x0e9);
     KAROO_LAYOUT_AT(field_ea,         0x0ea);
+    KAROO_LAYOUT_AT(field_ee,         0x0ee);
     KAROO_LAYOUT_AT(field_ef,         0x0ef);
     KAROO_LAYOUT_AT(field_fb,         0x0fb);
     KAROO_LAYOUT_AT(field_ff,         0x0ff);
+    KAROO_LAYOUT_AT(field_100,        0x100);
     KAROO_LAYOUT_AT(field_108,        0x108);
+    KAROO_LAYOUT_AT(field_111,        0x111);
+    KAROO_LAYOUT_AT(field_112,        0x112);
     KAROO_LAYOUT_AT(field_11a,        0x11a);
     KAROO_LAYOUT_AT(field_11e,        0x11e);
     KAROO_LAYOUT_AT(moveState_,       0x11f);
@@ -222,7 +243,7 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(field_124,        0x124);
     KAROO_LAYOUT_AT(field_125,        0x125);
     KAROO_LAYOUT_AT(field_126,        0x126);
-    KAROO_LAYOUT_AT(field_12a,        0x12a);
+    KAROO_LAYOUT_AT(field_12e,        0x12e);
     KAROO_LAYOUT_AT(field_132,        0x132);
     KAROO_LAYOUT_AT(pathfinder_,      0x13b);
     KAROO_LAYOUT_AT(field_13f,        0x13f);

@@ -225,10 +225,9 @@ Bomb::Bomb()
     zoneCleared_      = 0;
     field_124         = 1;
     facing_           = 1;
-    field_126         = 0;
+    field_126         = 0.0;                /* two zero dwords */
     field_58          = 0;
     field_14e         = 0;
-    field_12a         = 0;
     field_fb          = 0;
     field_120         = 0;
     moveState_        = 0;
@@ -479,7 +478,7 @@ void Bomb::tick()
     diff = now_ - droppedAt_;
     if (!(diff >= fuse_ms())) {
         pendingMove_ = facing_;
-        Sim_UpdateEntityMovement(this);
+        updateMovement();
         if (field_14e != 0)
             field_ef = 1;
         return;
@@ -559,12 +558,12 @@ void Bomb::tick()
     if (diff >= remove_ms() && zoneCleared_ == 0) {
         zoneCleared_ = 1;
         moveState_   = 4;                /* despawn */
-        Sim_UpdateEntityMovement(this);
+        updateMovement();
         return;
     }
 
     zoneCleared_ = 0;
-    Sim_UpdateEntityMovement(this);
+    updateMovement();
 }
 
 /* ═══ Exports -- thin ABI shims; patch.py routes the three originals here ═ */

@@ -265,8 +265,7 @@ Foe::Foe()
     field_124        = 1;
     field_14e        = 0;
     pendingMove_     = 0;
-    field_126        = 0;
-    field_12a        = 0;
+    field_126        = 0.0;             /* two zero dwords */
     field_fb         = 0;
     field_120        = 0;
     field_11e        = 0xff;
@@ -651,7 +650,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
         }
     }
     if (field_14e != 0 && !s_fx_unfreeze) {
-        Sim_UpdateEntityMovement(this);
+        updateMovement();
         return;
     }
 
@@ -668,7 +667,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
          * nothing. */
         targetU_ = playerU;
         targetV_ = playerV;
-        Sim_UpdateEntityMovement(this);
+        updateMovement();
         return;
     }
 
@@ -722,7 +721,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     }
 
     /* ── 8. Every path ends here ─────────────────────────────────────── */
-    Sim_UpdateEntityMovement(this);
+    updateMovement();
 }
 
 /* ═══ 0x0043a9d0 -- Game::SetFoeChaseTarget ════════════════════════════════ */
