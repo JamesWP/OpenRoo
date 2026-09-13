@@ -192,9 +192,6 @@ JJScript_ReadTextsForReport(void *self, const char *path, FILE *sink);
 #define OFF_LEO_ID        0x13cba6  /* WORD                                   */
 #define OFF_PAR_TIME_SRC  0x2ab71f  /* int, par time before the 50% scaling   */
 /* OFF_PAR_COPY was Player +0x23d (player.h), the crystals count. */
-#define OFF_TIME_PCT      0x170a64  /* BYTE, forced to 0x32 (50%)             */
-#define OFF_SCORE_A       0x140502  /* int                                    */
-#define OFF_SCORE_B       0x140516  /* int                                    */
 #define OFF_LEVEL_PATH    0x173483  /* char[], <World>\<Level>                */
 #define OFF_LEVEL_TITLE   0x2ab61d  /* char[], display name                   */
 #define OFF_SCRIPT_OBJ    0x195735  /* the instruction-script object          */
@@ -313,7 +310,7 @@ Report_WriteLevelReport(void *self, const char *pathname)
 
         ((Game *)g)->player()->setGemsCollected(
             ((Game *)g)->gemsRequired());
-        g[OFF_TIME_PCT] = 0x32;
+        ((Game *)g)->setVitalityPercent(0x32);
         timeBonus = (unsigned)(*(int *)(g + OFF_PAR_TIME_SRC) * 0x32) / 100;
         ORIG_LOG_MESSAGE(GAME_LOGGER, 3, STR_LOG_TIME, timeBonus);
         ORIG_CALC_SCORE(self, 2);
@@ -322,8 +319,8 @@ Report_WriteLevelReport(void *self, const char *pathname)
         fputs(buf, out);
 
         total = *(int *)(g + OFF_SCORE_TOTAL)
-              + ((*(int *)(g + OFF_SCORE_A) + 0x78 + (int)timeBonus * 2
-                  + *(int *)(g + OFF_SCORE_B)) - (int)idx);   /* defect 6 */
+              + ((((Game *)g)->gemsScore() + 0x78 + (int)timeBonus * 2
+                  + ((Game *)g)->vitalityScore()) - (int)idx);   /* defect 6 */
         *(int *)(g + OFF_SCORE_TOTAL) = total;
         sprintf(buf, STR_D_TAB, (unsigned)total);
         fputs(buf, out);

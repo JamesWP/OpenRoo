@@ -211,7 +211,7 @@ static bool read_state(GameState *s)
     s->lives          = (BYTE)pl->field239();
     s->total_score    = pl->field22c();
     s->level_score    = *(const int   *)(g + 0x140536);
-    s->vitality       = *(const BYTE  *)(g + 0x170a64);
+    s->vitality       = ((const Game *)g)->vitalityPercent();
     {   /* four bytes from +0x11f: the move state and the low three of +0x120 */
         int f120 = pl->field120();
         s->death_raw[0] = pl->moveState();

@@ -344,10 +344,10 @@ Sim_GameTick(void *self, double dt, double now)
     }
 
     {
-        unsigned char pct = completion_percent((unsigned int)pl->fieldD8(), G32(0x170a65));
-        G8(0x170a64) = pct;
+        unsigned char pct = completion_percent((unsigned int)pl->fieldD8(), ((Game *)B)->field_170a65());
+        ((Game *)B)->setVitalityPercent(pct);
         if (pct > 100)
-            G8(0x170a64) = 100;
+            ((Game *)B)->setVitalityPercent(100);
     }
 
     pl->updateTileEffects();
@@ -464,7 +464,8 @@ Sim_GameTick(void *self, double dt, double now)
         G8(0x28ab2d) = 2;
     } else if (STATE == 1) {
         G32(0x2ab595) += (unsigned int)ftol80(*(double *)(B + 0x170a5c));
-        G32(0x170a65) += (unsigned int)ftol80(*(double *)(B + 0x170a5c));
+        ((Game *)B)->setField170a65(((Game *)B)->field_170a65()
+            + (unsigned int)ftol80(*(double *)(B + 0x170a5c)));
     }
 
     if ((unsigned int)pl->fieldEa() != 0) {

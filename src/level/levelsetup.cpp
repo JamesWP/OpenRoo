@@ -915,7 +915,7 @@ next_row:
     }
 
     DW(G, 0x2ab595) = 0;
-    DW(G, 0x170a65) = 0;
+    ((Game *)G)->setField170a65(0);
 
     off = SIDX(PL->cellU(), PL->cellV());
     DW(G, T_DW_72E + off) = 0;

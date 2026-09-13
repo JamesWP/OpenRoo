@@ -70,6 +70,22 @@ public:
     /* Gems the level requires (Player::gemsCollected is the other side). */
     int            gemsRequired() const { return gemsRequired_; }
 
+    /* ── vitality and the score tally ───────────────────────────────── */
+    /* The tally's "vitality" row, which pays it 1:1: Player::fieldD8 per
+     * second of field_170a65, times 25, capped at 100 -- a RATE, not
+     * health (gamestate.cpp's note: it varies with movement).  Named for
+     * the row it feeds, as determinism.cpp and the manifest already do. */
+    unsigned char  vitalityPercent() const           { return vitalityPercent_; }
+    void           setVitalityPercent(unsigned char p) { vitalityPercent_ = p; }
+    /* The divisor: GameTick adds each tick's clock step to it and the
+     * level builder zeroes it, so likely elapsed level time.  Unconfirmed. */
+    unsigned int   field_170a65() const              { return field_170a65_; }
+    void           setField170a65(unsigned int n)    { field_170a65_ = n; }
+    int            gemsScore() const                 { return gemsScore_; }
+    void           setGemsScore(int n)               { gemsScore_ = n; }
+    int            vitalityScore() const             { return vitalityScore_; }
+    void           setVitalityScore(int n)           { vitalityScore_ = n; }
+
     /* ── lifts ──────────────────────────────────────────────────────── */
     unsigned char liftCount() const              { return liftCount_; }
     void          setLiftCount(unsigned char n)  { liftCount_ = n; }
@@ -241,13 +257,22 @@ private:
      * we use are declared.  soundCreated_ sits inside it at +0x8c. */
     unsigned char soundManagerHead_[0x13cc34 - 0x13cba8];
     int           soundCreated_;                          /* 0x13cc34 */
-    unsigned char gap_13cc38[0x170643 - 0x13cc38];
+    unsigned char gap_13cc38[0x140502 - 0x13cc38];
+    /* Two of the end-of-level tally's six SCORE cells (levelscore.cpp has
+     * the full table), written by CalculateLevelScore 0x41a760. */
+    int           gemsScore_;                             /* 0x140502 */
+    unsigned char gap_140506[0x140516 - 0x140506];
+    int           vitalityScore_;                         /* 0x140516 */
+    unsigned char gap_14051a[0x170643 - 0x14051a];
     BridgeObject *bridgeSlots_[256];                      /* 0x170643 */
     unsigned char bridgeCount_;                           /* 0x170a43 */
     unsigned char gap_170a44[0x170a54 - 0x170a44];
     double        clock_;                                 /* 0x170a54 */
     Field170a5c   field_170a5c_;                          /* 0x170a5c */
-    unsigned char gap_170a64[0x173483 - 0x170a64];
+    /* Recomputed by GameTick every tick; see vitalityPercent(). */
+    unsigned char vitalityPercent_;                       /* 0x170a64 */
+    unsigned int  field_170a65_;                          /* 0x170a65 */
+    unsigned char gap_170a69[0x173483 - 0x170a69];
     /* Its length is unknown; declared only as far as the next field. */
     char          levelName_[0x173588 - 0x173483];        /* 0x173483 */
     SlideObject  *slideSlots_[100];                       /* 0x173588 */
@@ -283,6 +308,10 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(bridgeCount_,      0x170a43);
     KAROO_LAYOUT_AT(clock_,            0x170a54);
     KAROO_LAYOUT_AT(field_170a5c_,     0x170a5c);
+    KAROO_LAYOUT_AT(gemsScore_,        0x140502);
+    KAROO_LAYOUT_AT(vitalityScore_,    0x140516);
+    KAROO_LAYOUT_AT(vitalityPercent_,  0x170a64);
+    KAROO_LAYOUT_AT(field_170a65_,     0x170a65);
     KAROO_LAYOUT_AT(slideSlots_,       0x173588);
     KAROO_LAYOUT_AT(slideCount_,       0x173718);
     KAROO_LAYOUT_AT(liftSlots_,        0x173719);
