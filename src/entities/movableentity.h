@@ -58,6 +58,56 @@ public:
      * foe, bomb); entitymove.cpp.  Returns 1 in AL on the two early outs. */
     unsigned int updateMovement();
 
+    /* ── readers shared by every entity (Player, Foe, Bomb) ─────────────
+     * worldstate.cpp's snapshot reads foes and bombs through these; the
+     * Player's callers too.  Meanings unknown unless noted. */
+    unsigned char facing() const               { return facing_; }
+    float posU() const                         { return posU_; }
+    float posY() const                         { return posY_; }
+    float posV() const                         { return posV_; }
+    signed char cellU() const                  { return cellU_; }
+    signed char cellV() const                  { return cellV_; }
+    signed char heightCell() const             { return heightCell_; }
+    unsigned char type() const                 { return type_; }
+    int   field82() const                      { return field_82; }
+    /* +0xef: the foe's hold flag; the Player's level-complete flag. */
+    int   fieldEf() const                      { return field_ef; }
+    int   field14e() const                     { return field_14e; }
+    unsigned char kind() const                 { return kind_; }
+    unsigned char homeU() const                { return homeU_; }
+    unsigned char homeV() const                { return homeV_; }
+    unsigned char homeH() const                { return homeH_; }
+
+    /* ── the sound handles (soundobj.cpp for foes; levelsounds.cpp and
+     *    fixedsounds.cpp for the Player) ──────────────────────────────── */
+    VoicePool *pool9f() const                  { return pool_9f_; }
+    void  setPool9f(VoicePool *p)              { pool_9f_ = p; }
+    CStaticSoundbuffer *soundA3() const        { return sound_a3_; }
+    void  setSoundA3(CStaticSoundbuffer *p)    { sound_a3_ = p; }
+    CStaticSoundbuffer *soundA7() const        { return sound_a7_; }
+    void  setSoundA7(CStaticSoundbuffer *p)    { sound_a7_ = p; }
+    CStaticSoundbuffer *soundAb() const        { return sound_ab_; }
+    void  setSoundAb(CStaticSoundbuffer *p)    { sound_ab_ = p; }
+    CStaticSoundbuffer *soundAf() const        { return sound_af_; }
+    void  setSoundAf(CStaticSoundbuffer *p)    { sound_af_ = p; }
+    CStaticSoundbuffer *soundB3() const        { return sound_b3_; }
+    void  setSoundB3(CStaticSoundbuffer *p)    { sound_b3_ = p; }
+    CStaticSoundbuffer *soundB7() const        { return sound_b7_; }
+    void  setSoundB7(CStaticSoundbuffer *p)    { sound_b7_ = p; }
+    CStaticSoundbuffer *soundBb() const        { return sound_bb_; }
+    void  setSoundBb(CStaticSoundbuffer *p)    { sound_bb_ = p; }
+    CStaticSoundbuffer *soundBf() const        { return sound_bf_; }
+    void  setSoundBf(CStaticSoundbuffer *p)    { sound_bf_ = p; }
+    CStaticSoundbuffer *soundC3() const        { return sound_c3_; }
+    void  setSoundC3(CStaticSoundbuffer *p)    { sound_c3_ = p; }
+    CStaticSoundbuffer *soundC7() const        { return sound_c7_; }
+    void  setSoundC7(CStaticSoundbuffer *p)    { sound_c7_ = p; }
+    CStaticSoundbuffer *soundCb() const        { return sound_cb_; }
+    void  setSoundCb(CStaticSoundbuffer *p)    { sound_cb_ = p; }
+    /* +0xcf holds a voice pool on the player and on a foe. */
+    VoicePool *poolCf() const                  { return (VoicePool *)sound_cf_; }
+    void  setPoolCf(VoicePool *p)              { sound_cf_ = (CStaticSoundbuffer *)p; }
+
 protected:
     /* Our own subclasses: the base's only field work, the three zeroed
      * floats of 0x401000.  The vtable is the subclass's to set. */

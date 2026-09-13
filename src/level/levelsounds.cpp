@@ -47,14 +47,15 @@
 #include "soundmanager.h"
 #include "game.h"
 #include "player.h"
+#include "soundobj.h"
+#include "liftobject.h"
+#include "slideobject.h"
+#include "bridgeobject.h"
+#include "breakabletile.h"
 
 struct CStaticSoundbuffer;
 struct VoicePool;
-typedef VoicePool *(__attribute__((thiscall)) *acquire_pool_fn)(void *sm, int count,
-                                                                 const char *name,
-                                                                 int mode);
 typedef void (__attribute__((thiscall)) *pool_wipe_fn)(VoicePool *vp);
-#define ORIG_ACQUIRE_POOL  ((acquire_pool_fn)0x00443810)   /* named callback */
 #define ORIG_POOL_WIPE     ((pool_wipe_fn)   0x00442a20)   /* named callback */
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -64,8 +65,6 @@ CStatic_Set3DPosition(CStaticSoundbuffer *self, float x, float y, float z,
                       DWORD dwApply);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_AcquireObjectSoundBuffersForIndex(void *self, unsigned int objArg);
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 
@@ -78,7 +77,6 @@ GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 #define S_SPACE     ((const char *)0x004660ac)
 #define S_CANDY     ((const char *)0x004660a4)
 
-#define G_SOUND_MGR 0x13cba8
 #define G8(o)   (*(unsigned char *)(B + (o)))
 #define G16(o)  (*(unsigned short *)(B + (o)))
 #define G32(o)  (*(unsigned int *)(B + (o)))
@@ -87,43 +85,46 @@ GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 
 static int s_fx = -1;
 
-static CStaticSoundbuffer *acq(unsigned char *B, unsigned int nameOff)
+static CStaticSoundbuffer *acq(Game *game, const SoundAssetName *asset)
 {
     char name[256];
-    strcpy(name, (const char *)(B + nameOff));
-    return ((SoundManager *)(B + G_SOUND_MGR))->acquireStatic(name, 1);
+    strcpy(name, asset->name);
+    return game->soundManager()->acquireStatic(name, 1);
 }
 
-static VoicePool *acq_pool(unsigned char *B, int count, unsigned int nameOff)
+static VoicePool *acq_pool(Game *game, int count, const SoundAssetName *asset)
 {
     char name[256];
-    strcpy(name, (const char *)(B + nameOff));
-    return ORIG_ACQUIRE_POOL(B + G_SOUND_MGR, count, name, 1);
+    strcpy(name, asset->name);
+    return game->soundManager()->acquirePool(count, name, 1);
 }
 
 /* Reset-if-set, then reacquire-if-named, for one of the eleven slots.  The
  * caller stores the result back: the new buffer if the asset is named, else
  * the (reset) buffer it passed -- the original left the slot untouched, and
  * storing the same value back is the same state. */
-static CStaticSoundbuffer *reslot(unsigned char *B, CStaticSoundbuffer *cur,
-                                  unsigned int nameOff)
+static CStaticSoundbuffer *reslot(Game *game, CStaticSoundbuffer *cur,
+                                  const SoundAssetName *asset)
 {
     if (cur != NULL)
         CStatic_Reset(cur);
-    if (G32(nameOff + 0x100) != 0)
-        return acq(B, nameOff);
+    if (asset->enabled != 0)
+        return acq(game, asset);
     return cur;
 }
 
-/* Per-object sound for one slot table. */
-static void per_object(unsigned char *B, unsigned int table, unsigned int countOff,
-                       unsigned int nameOff, unsigned int field)
+/* Give every object in one slot table its moving-loop sound: the lift,
+ * slide and bridge each have one handle, set through setSound().  The count
+ * and the slot are re-read every pass, as the listing does. */
+template <typename T>
+static void attachLoopSound(Game *game,
+                            unsigned char (Game::*count)() const,
+                            T *(Game::*slot)(unsigned int) const,
+                            const SoundAssetName *asset)
 {
-    for (unsigned short i = 0; i < G8(countOff); ++i) {
-        if (G32(nameOff + 0x100) != 0) {
-            CStaticSoundbuffer *p = acq(B, nameOff);
-            *(CStaticSoundbuffer **)(*(unsigned char **)(B + table + i * 4) + field) = p;
-        }
+    for (unsigned short i = 0; i < (game->*count)(); ++i) {
+        if (asset->enabled != 0)
+            (game->*slot)(i)->setSound(acq(game, asset));
     }
 }
 
@@ -131,7 +132,8 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_InitLevelBasedSounds(void *self)
 {
     unsigned char *B = (unsigned char *)self;
-    Player *pl = ((Game *)B)->player();
+    Game *game = (Game *)B;
+    Player *pl = game->player();
     const char *world = (const char *)(B + 0x2ab69d);
 
     if (s_fx < 0) {
@@ -154,44 +156,44 @@ Sim_InitLevelBasedSounds(void *self)
 
         if (pl->pool9f() != NULL)
             ORIG_POOL_WIPE(pl->pool9f());
-        if (G32(0x442ca) != 0)
-            pl->setPool9f(acq_pool(B, 3, 0x441ca));
+        if (game->soundAsset441ca()->enabled != 0)
+            pl->setPool9f(acq_pool(game, 3, game->soundAsset441ca()));
         if (pl->poolCf() != NULL)
             ORIG_POOL_WIPE(pl->poolCf());
-        if (G32(0x4246e) != 0)
-            pl->setPoolCf(acq_pool(B, 10, 0x4236e));
+        if (game->soundAsset4236e()->enabled != 0)
+            pl->setPoolCf(acq_pool(game, 10, game->soundAsset4236e()));
 
-        pl->setSoundC3(reslot(B, pl->soundC3(), 0x456ba));
-        pl->setSoundBf(reslot(B, pl->soundBf(), 0x42ef2));
-        pl->setSoundB3(reslot(B, pl->soundB3(), 0x429b6));
-        pl->setSoundC7(reslot(B, pl->soundC7(), 0x4279e));
-        pl->setSoundA3(reslot(B, pl->soundA3(), 0x428aa));
-        pl->setSoundB7(reslot(B, pl->soundB7(), 0x42ac2));
-        pl->setSoundBb(reslot(B, pl->soundBb(), 0x42ac2));
-        pl->setSoundAb(reslot(B, pl->soundAb(), 0x42586));
-        pl->setSoundAf(reslot(B, pl->soundAf(), 0x42692));
-        pl->setSoundCb(reslot(B, pl->soundCb(), 0x42de6));
-        pl->setSoundA7(reslot(B, pl->soundA7(), 0x44c42));
+        pl->setSoundC3(reslot(game, pl->soundC3(), game->soundAsset456ba()));
+        pl->setSoundBf(reslot(game, pl->soundBf(), game->soundAsset42ef2()));
+        pl->setSoundB3(reslot(game, pl->soundB3(), game->soundAsset429b6()));
+        pl->setSoundC7(reslot(game, pl->soundC7(), game->soundAsset4279e()));
+        pl->setSoundA3(reslot(game, pl->soundA3(), game->soundAsset428aa()));
+        pl->setSoundB7(reslot(game, pl->soundB7(), game->soundAsset42ac2()));
+        pl->setSoundBb(reslot(game, pl->soundBb(), game->soundAsset42ac2()));
+        pl->setSoundAb(reslot(game, pl->soundAb(), game->soundAsset42586()));
+        pl->setSoundAf(reslot(game, pl->soundAf(), game->soundAsset42692()));
+        pl->setSoundCb(reslot(game, pl->soundCb(), game->soundAsset42de6()));
+        pl->setSoundA7(reslot(game, pl->soundA7(), game->soundAsset44c42()));
 
-        for (unsigned short i = 0; i < G8(0x174fd4); ++i)
-            Sim_AcquireObjectSoundBuffersForIndex(B, G8(0x174fd5 + i));
+        for (unsigned short i = 0; i < game->foeCount(); ++i)
+            Sim_AcquireObjectSoundBuffersForIndex(game, game->foeId(i));
 
-        for (unsigned short i = 0; i < G8(0x173e3e); ++i) {
-            unsigned char *obj;
-            if (G32(0x4320a) != 0) {
-                CStaticSoundbuffer *p = acq(B, 0x4310a);
-                obj = *(unsigned char **)(B + 0x173b1e + i * 4);
-                *(CStaticSoundbuffer **)(obj + 0x4d) = p;
+        for (unsigned short i = 0; i < game->breakableCount(); ++i) {
+            if (game->soundAsset4310a()->enabled != 0) {
+                CStaticSoundbuffer *p = acq(game, game->soundAsset4310a());
+                game->breakableSlot(i)->setFallSound(p);
             }
-            if (G32(0x43316) != 0) {
-                CStaticSoundbuffer *p = acq(B, 0x43216);
-                obj = *(unsigned char **)(B + 0x173b1e + i * 4);
-                *(CStaticSoundbuffer **)(obj + 0x51) = p;
+            if (game->soundAsset43216()->enabled != 0) {
+                CStaticSoundbuffer *p = acq(game, game->soundAsset43216());
+                game->breakableSlot(i)->setRespawnSound(p);
             }
         }
-        per_object(B, 0x173719, 0x173b19, 0x42bce, 0x3a);
-        per_object(B, 0x173588, 0x173718, 0x42cda, 0x39);
-        per_object(B, 0x170643, 0x170a43, 0x42ffe, 0x47);
+        attachLoopSound(game, &Game::liftCount,   &Game::liftSlot,
+                        game->soundAsset42bce());
+        attachLoopSound(game, &Game::slideCount,  &Game::slideSlot,
+                        game->soundAsset42cda());
+        attachLoopSound(game, &Game::bridgeCount, &Game::bridgeSlot,
+                        game->soundAsset42ffe());
 
         if (G8(0x4220b) == 0 && G32(0x2ab564) != 0) {
             GameLog_LogMessage(GAMELOGGER, 1, F_TRYLEO);
@@ -201,7 +203,7 @@ Sim_InitLevelBasedSounds(void *self)
                     continue;
                 const char *nm = (const char *)(E + 0x48ba6);
                 GameLog_LogMessage(GAMELOGGER, 1, F_LEOSOUND, nm);
-                CStaticSoundbuffer *p = ((SoundManager *)(B + G_SOUND_MGR))->acquireStatic(nm, 1);
+                CStaticSoundbuffer *p = game->soundManager()->acquireStatic(nm, 1);
                 *(CStaticSoundbuffer **)(E + 0x49ae2) = p;
                 if (p != NULL) {
                     CStatic_Set3DPosition(p, *(float *)(E + 0x48ca6),

@@ -45,16 +45,10 @@ public:
     void  setClock(double *c)                  { clock_ = c; }
     void  setRecord(Field170a5c *r)            { record_ = r; }
     void  setTileBase(unsigned char *b)        { tileBase_ = b; }
-    unsigned char facing() const               { return facing_; }
+    /* The readers (facing, pos, cell) are MovableEntity's. */
     void  setFacing(unsigned char f)           { facing_ = f; }
-    float posU() const                         { return posU_; }
-    float posY() const                         { return posY_; }
-    float posV() const                         { return posV_; }
     /* Stored in the order u, y, v -- as each caller stored them. */
     void  setPos(float u, float y, float v)    { posU_ = u; posY_ = y; posV_ = v; }
-    signed char cellU() const                  { return cellU_; }
-    signed char cellV() const                  { return cellV_; }
-    signed char heightCell() const             { return heightCell_; }
     void  setCell(unsigned char u, unsigned char v, unsigned char h)
     {
         cellU_ = (signed char)u;
@@ -93,7 +87,6 @@ public:
     int   fieldEa() const                      { return field_ea; }
     void  setFieldEa(int n)                    { field_ea = n; }
     /* +0xef: gamestate.cpp's level-complete flag (0 -> 1 on exit). */
-    int   fieldEf() const                      { return field_ef; }
     void  setFieldEf(int n)                    { field_ef = n; }
     void  setFieldFf(unsigned char b)          { field_ff = b; }
     void  setField108(unsigned char b)         { field_108 = b; }
@@ -120,44 +113,14 @@ public:
     unsigned char *field142Ref()               { return &field_142; }
     void  setPendingMove(unsigned char m)      { pendingMove_ = m; }
     double field146() const                    { return field_146; }
-    int   field14e() const                     { return field_14e; }
     void  setField14e(int n)                   { field_14e = n; }
     void  setKind(unsigned char k)             { kind_ = k; }
     /* +0x153..+0x155: the start cell (u, v, h), from the marker-3 lookup,
-     * which writes it through the pointer. */
-    unsigned char homeU() const                { return homeU_; }
-    unsigned char homeV() const                { return homeV_; }
-    unsigned char homeH() const                { return homeH_; }
+     * which writes it through the pointer (read with MovableEntity::homeU). */
     unsigned char *homeRef()                   { return &homeU_; }
 
-    /* ── the base's sound handles (levelsounds.cpp, fixedsounds.cpp) ── */
-    VoicePool *pool9f() const                  { return pool_9f_; }
-    void  setPool9f(VoicePool *p)              { pool_9f_ = p; }
-    CStaticSoundbuffer *soundA3() const        { return sound_a3_; }
-    void  setSoundA3(CStaticSoundbuffer *p)    { sound_a3_ = p; }
-    CStaticSoundbuffer *soundA7() const        { return sound_a7_; }
-    void  setSoundA7(CStaticSoundbuffer *p)    { sound_a7_ = p; }
-    CStaticSoundbuffer *soundAb() const        { return sound_ab_; }
-    void  setSoundAb(CStaticSoundbuffer *p)    { sound_ab_ = p; }
-    CStaticSoundbuffer *soundAf() const        { return sound_af_; }
-    void  setSoundAf(CStaticSoundbuffer *p)    { sound_af_ = p; }
-    CStaticSoundbuffer *soundB3() const        { return sound_b3_; }
-    void  setSoundB3(CStaticSoundbuffer *p)    { sound_b3_ = p; }
-    CStaticSoundbuffer *soundB7() const        { return sound_b7_; }
-    void  setSoundB7(CStaticSoundbuffer *p)    { sound_b7_ = p; }
-    CStaticSoundbuffer *soundBb() const        { return sound_bb_; }
-    void  setSoundBb(CStaticSoundbuffer *p)    { sound_bb_ = p; }
-    CStaticSoundbuffer *soundBf() const        { return sound_bf_; }
-    void  setSoundBf(CStaticSoundbuffer *p)    { sound_bf_ = p; }
-    CStaticSoundbuffer *soundC3() const        { return sound_c3_; }
-    void  setSoundC3(CStaticSoundbuffer *p)    { sound_c3_ = p; }
-    CStaticSoundbuffer *soundC7() const        { return sound_c7_; }
-    void  setSoundC7(CStaticSoundbuffer *p)    { sound_c7_ = p; }
-    CStaticSoundbuffer *soundCb() const        { return sound_cb_; }
-    void  setSoundCb(CStaticSoundbuffer *p)    { sound_cb_ = p; }
-    /* +0xcf holds a voice pool on the player, as on a foe. */
-    VoicePool *poolCf() const                  { return (VoicePool *)sound_cf_; }
-    void  setPoolCf(VoicePool *p)              { sound_cf_ = (CStaticSoundbuffer *)p; }
+    /* The base's sound handles (pool9f, soundA3..soundCb, poolCf) are
+     * MovableEntity's: the foe's sounds are attached through them too. */
 
     /* ── the Player's own fields ────────────────────────────────────── */
     /* +0x15a: the world's sound variant (0 Egypt, 1 Candy, 2 Space --

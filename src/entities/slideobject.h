@@ -13,11 +13,9 @@
  * place of the game's 0x45d6f0; the originals 0x43adb0, 0x43add0 and
  * 0x43adf0 are UD2-stubbed.
  *
- * Two outside readers remain, both original code, which is why the layout
- * stays packed and asserted:
- *   - the renderer FUN_00408920 reads +0x25/+0x29/+0x2d and the kind +0x47;
- *   - levelsounds.cpp's InitLevelBasedSounds writes the sound handle +0x39
- *     by raw offset (as it still does the lift's +0x3a).
+ * One outside reader remains, original code, which is why the layout stays
+ * packed and asserted: the renderer FUN_00408920 reads +0x25/+0x29/+0x2d and
+ * the kind +0x47.  (levelsounds.cpp attaches the sound through setSound().)
  */
 #pragma once
 
@@ -41,6 +39,9 @@ public:
 
     /* UpdateSlideObject 0x0043ae00 -- one tick. */
     void tick();
+
+    /* +0x39, attached by InitLevelBasedSounds (levelsounds.cpp). */
+    void setSound(CStaticSoundbuffer *p) { sound_ = p; }
 
 private:
 

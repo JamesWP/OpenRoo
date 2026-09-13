@@ -130,11 +130,34 @@ public:
     /* The current level's path; diagnostics only. */
     const char    *levelName() const               { return levelName_; }
 
-    /* The named sound assets a bomb acquires at spawn: a 256-byte file name
-     * with its enabled flag immediately after.  Meanings not decoded. */
+    /* The named sound assets the spawns and level sounds acquire: a 256-byte
+     * file name with its enabled flag immediately after.  Named by offset;
+     * meanings not decoded.  They sit on a 0x10c stride (0x42262 + k*0x10c
+     * covers every one up to 0x42ffe), so they are likely one table of
+     * 0x10c-byte records -- not yet modelled as one. */
+    const SoundAssetName *soundAsset42262() const { return &soundAsset42262_; }
+    const SoundAssetName *soundAsset4236e() const { return &soundAsset4236e_; }
+    const SoundAssetName *soundAsset4247a() const { return &soundAsset4247a_; }
+    const SoundAssetName *soundAsset42586() const { return &soundAsset42586_; }
+    const SoundAssetName *soundAsset42692() const { return &soundAsset42692_; }
+    const SoundAssetName *soundAsset4279e() const { return &soundAsset4279e_; }
+    const SoundAssetName *soundAsset428aa() const { return &soundAsset428aa_; }
     const SoundAssetName *soundAsset429b6() const { return &soundAsset429b6_; }
     const SoundAssetName *soundAsset42ac2() const { return &soundAsset42ac2_; }
+    const SoundAssetName *soundAsset42bce() const { return &soundAsset42bce_; }
+    const SoundAssetName *soundAsset42cda() const { return &soundAsset42cda_; }
+    const SoundAssetName *soundAsset42de6() const { return &soundAsset42de6_; }
+    const SoundAssetName *soundAsset42ef2() const { return &soundAsset42ef2_; }
+    const SoundAssetName *soundAsset42ffe() const { return &soundAsset42ffe_; }
+    const SoundAssetName *soundAsset4310a() const { return &soundAsset4310a_; }
+    const SoundAssetName *soundAsset43216() const { return &soundAsset43216_; }
+    const SoundAssetName *soundAsset441ca() const { return &soundAsset441ca_; }
+    const SoundAssetName *soundAsset44c42() const { return &soundAsset44c42_; }
+    const SoundAssetName *soundAsset44d4e() const { return &soundAsset44d4e_; }
+    const SoundAssetName *soundAsset44e5a() const { return &soundAsset44e5a_; }
+    const SoundAssetName *soundAsset456ba() const { return &soundAsset456ba_; }
     const SoundAssetName *soundAsset457c6() const { return &soundAsset457c6_; }
+    const SoundAssetName *soundAsset458d2() const { return &soundAsset458d2_; }
     const SoundAssetName *soundAsset46132() const { return &soundAsset46132_; }
     const SoundAssetName *soundAsset46baa() const { return &soundAsset46baa_; }
 
@@ -155,16 +178,56 @@ private:
 
     unsigned char gap_000000[0x042252 - 0x000000];
     unsigned short field_42252_;                          /* 0x042252 */
-    unsigned char gap_042254[0x0429b6 - 0x042254];
-    SoundAssetName soundAsset429b6_;                      /* 0x0429b6 */
+    unsigned char gap_042254[0x042262 - 0x042254];
+    SoundAssetName soundAsset42262_;                 /* 0x042262 */
+    unsigned char gap_042366[0x04236e - 0x042366];
+    SoundAssetName soundAsset4236e_;                 /* 0x04236e */
+    unsigned char gap_042472[0x04247a - 0x042472];
+    SoundAssetName soundAsset4247a_;                 /* 0x04247a */
+    unsigned char gap_04257e[0x042586 - 0x04257e];
+    SoundAssetName soundAsset42586_;                 /* 0x042586 */
+    unsigned char gap_04268a[0x042692 - 0x04268a];
+    SoundAssetName soundAsset42692_;                 /* 0x042692 */
+    unsigned char gap_042796[0x04279e - 0x042796];
+    SoundAssetName soundAsset4279e_;                 /* 0x04279e */
+    unsigned char gap_0428a2[0x0428aa - 0x0428a2];
+    SoundAssetName soundAsset428aa_;                 /* 0x0428aa */
+    unsigned char gap_0429ae[0x0429b6 - 0x0429ae];
+    SoundAssetName soundAsset429b6_;                 /* 0x0429b6 */
     unsigned char gap_042aba[0x042ac2 - 0x042aba];
-    SoundAssetName soundAsset42ac2_;                      /* 0x042ac2 */
-    unsigned char gap_042bc6[0x0457c6 - 0x042bc6];
-    SoundAssetName soundAsset457c6_;                      /* 0x0457c6 */
-    unsigned char gap_0458ca[0x046132 - 0x0458ca];
-    SoundAssetName soundAsset46132_;                      /* 0x046132 */
+    SoundAssetName soundAsset42ac2_;                 /* 0x042ac2 */
+    unsigned char gap_042bc6[0x042bce - 0x042bc6];
+    SoundAssetName soundAsset42bce_;                 /* 0x042bce */
+    unsigned char gap_042cd2[0x042cda - 0x042cd2];
+    SoundAssetName soundAsset42cda_;                 /* 0x042cda */
+    unsigned char gap_042dde[0x042de6 - 0x042dde];
+    SoundAssetName soundAsset42de6_;                 /* 0x042de6 */
+    unsigned char gap_042eea[0x042ef2 - 0x042eea];
+    SoundAssetName soundAsset42ef2_;                 /* 0x042ef2 */
+    unsigned char gap_042ff6[0x042ffe - 0x042ff6];
+    SoundAssetName soundAsset42ffe_;                 /* 0x042ffe */
+    unsigned char gap_043102[0x04310a - 0x043102];
+    SoundAssetName soundAsset4310a_;                 /* 0x04310a */
+    unsigned char gap_04320e[0x043216 - 0x04320e];
+    SoundAssetName soundAsset43216_;                 /* 0x043216 */
+    unsigned char gap_04331a[0x0441ca - 0x04331a];
+    SoundAssetName soundAsset441ca_;                 /* 0x0441ca */
+    unsigned char gap_0442ce[0x044c42 - 0x0442ce];
+    SoundAssetName soundAsset44c42_;                 /* 0x044c42 */
+    unsigned char gap_044d46[0x044d4e - 0x044d46];
+    SoundAssetName soundAsset44d4e_;                 /* 0x044d4e */
+    unsigned char gap_044e52[0x044e5a - 0x044e52];
+    SoundAssetName soundAsset44e5a_;                 /* 0x044e5a */
+    unsigned char gap_044f5e[0x0456ba - 0x044f5e];
+    SoundAssetName soundAsset456ba_;                 /* 0x0456ba */
+    unsigned char gap_0457be[0x0457c6 - 0x0457be];
+    SoundAssetName soundAsset457c6_;                 /* 0x0457c6 */
+    unsigned char gap_0458ca[0x0458d2 - 0x0458ca];
+    SoundAssetName soundAsset458d2_;                 /* 0x0458d2 */
+    unsigned char gap_0459d6[0x046132 - 0x0459d6];
+    SoundAssetName soundAsset46132_;                 /* 0x046132 */
     unsigned char gap_046236[0x046baa - 0x046236];
-    SoundAssetName soundAsset46baa_;                      /* 0x046baa */
+    SoundAssetName soundAsset46baa_;                 /* 0x046baa */
     unsigned char gap_046cae[0x13cba8 - 0x046cae];
     /* The SoundManager is embedded here; its full size is unknown (its
      * lists reach at least +0xa4), so only the bytes up to the next field
@@ -213,9 +276,29 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(liftCount_,        0x173b19);
     KAROO_LAYOUT_AT(breakableSlots_,   0x173b1e);
     KAROO_LAYOUT_AT(breakableCount_,   0x173e3e);
+    KAROO_LAYOUT_AT(soundAsset42262_,  0x042262);
+    KAROO_LAYOUT_AT(soundAsset4236e_,  0x04236e);
+    KAROO_LAYOUT_AT(soundAsset4247a_,  0x04247a);
+    KAROO_LAYOUT_AT(soundAsset42586_,  0x042586);
+    KAROO_LAYOUT_AT(soundAsset42692_,  0x042692);
+    KAROO_LAYOUT_AT(soundAsset4279e_,  0x04279e);
+    KAROO_LAYOUT_AT(soundAsset428aa_,  0x0428aa);
     KAROO_LAYOUT_AT(soundAsset429b6_,  0x0429b6);
     KAROO_LAYOUT_AT(soundAsset42ac2_,  0x042ac2);
+    KAROO_LAYOUT_AT(soundAsset42bce_,  0x042bce);
+    KAROO_LAYOUT_AT(soundAsset42cda_,  0x042cda);
+    KAROO_LAYOUT_AT(soundAsset42de6_,  0x042de6);
+    KAROO_LAYOUT_AT(soundAsset42ef2_,  0x042ef2);
+    KAROO_LAYOUT_AT(soundAsset42ffe_,  0x042ffe);
+    KAROO_LAYOUT_AT(soundAsset4310a_,  0x04310a);
+    KAROO_LAYOUT_AT(soundAsset43216_,  0x043216);
+    KAROO_LAYOUT_AT(soundAsset441ca_,  0x0441ca);
+    KAROO_LAYOUT_AT(soundAsset44c42_,  0x044c42);
+    KAROO_LAYOUT_AT(soundAsset44d4e_,  0x044d4e);
+    KAROO_LAYOUT_AT(soundAsset44e5a_,  0x044e5a);
+    KAROO_LAYOUT_AT(soundAsset456ba_,  0x0456ba);
     KAROO_LAYOUT_AT(soundAsset457c6_,  0x0457c6);
+    KAROO_LAYOUT_AT(soundAsset458d2_,  0x0458d2);
     KAROO_LAYOUT_AT(soundAsset46132_,  0x046132);
     KAROO_LAYOUT_AT(soundAsset46baa_,  0x046baa);
     KAROO_LAYOUT_AT(bombSlots_,        0x173e3f);

@@ -32,3 +32,14 @@ CStaticSoundbuffer *SoundManager::acquireStatic(const char *name, int mode)
 {
     return ORIG_ACQUIRE_STATIC(this, name, mode);
 }
+
+typedef VoicePool *(__attribute__((thiscall)) *acquire_pool_fn)(SoundManager *sm,
+                                                                 int count,
+                                                                 const char *name,
+                                                                 int mode);
+#define ORIG_ACQUIRE_POOL ((acquire_pool_fn)0x00443810)
+
+VoicePool *SoundManager::acquirePool(int count, const char *name, int mode)
+{
+    return ORIG_ACQUIRE_POOL(this, count, name, mode);
+}

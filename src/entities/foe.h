@@ -59,11 +59,10 @@ public:
 
     /* +0x15a, set by the runtime foe spawners: 7 every 15th kill, else 1. */
     void setDropContents(unsigned char c)  { dropContents_ = c; }
+    unsigned char dropContents() const     { return dropContents_; }
     /* +0xd7: the switch the foe stands on, 0xff = none. */
     unsigned char switchSlot() const       { return field_d7; }
     void clearSwitchSlot()                 { field_d7 = 0xff; }
-    signed char cellU() const              { return cellU_; }
-    signed char cellV() const              { return cellV_; }
 
     /* The target per behaviour type, the hold flag +0xef and chase speed
      * +0x64 (types 2 and 3 chase from here).  `hold` is the loop's 0/1. */

@@ -17,10 +17,10 @@
  * game's 0x45d714; the originals 0x43ec00, 0x43ec20 and 0x43ec40 are
  * UD2-stubbed.
  *
- * One outside writer remains: levelsounds.cpp's InitLevelBasedSounds writes
- * the sound handle +0x47 by raw offset (as it does the lift's and slide's).
- * No original code reads a bridge field any more -- see COHESION_PLAN.md --
- * but the layout stays packed and asserted until that writer is converted.
+ * No outside accessor remains: no original code reads a bridge field (see
+ * COHESION_PLAN.md), and levelsounds.cpp attaches the sound through
+ * setSound().  The layout is still packed and asserted; unpacking it is a
+ * separate decision, not made here.
  */
 #pragma once
 
@@ -78,6 +78,9 @@ public:
      * is left 0xFFFFFFFF for the caller to overwrite. */
     bool buildSurface(BridgeVertex v[4], double t, bool backward,
                       BridgeSurfaceInfo *info) const;
+
+    /* +0x47, attached by InitLevelBasedSounds (levelsounds.cpp). */
+    void setSound(CStaticSoundbuffer *p) { sound_ = p; }
 
 private:
 
