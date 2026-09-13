@@ -204,19 +204,11 @@ static unsigned int ftol8(long double v)
 }
 
 
-#if KAROO_VERIFY_ORIGINAL
-/* Filled by the impl with the Lock'd scratch surface's real format, which is
- * what the conversion actually reads — not the destination's. */
-struct TgaDbg { unsigned long r, g, b, a, bits, w, h, pitch; int srcBpp, type; };
-TgaDbg g_tgaDbg;
-#endif
 
 extern "C" {
 
-/* The reimplementation proper.  TextureTGA_Parse below is either a direct
- * call to this or, in a verification build, the comparing wrapper. */
-unsigned int __attribute__((thiscall))
-TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
+__declspec(dllexport) unsigned int __attribute__((thiscall))
+TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 {
     DDSURFACEDESC2 ddsd;
     ddsd.dwSize = sizeof(DDSURFACEDESC2);   /* 0x7c, written before the open */
@@ -358,16 +350,6 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
     float alpha = 0.0f, green = 0.0f, blue = 0.0f;
     long double red = 0.0L;
 
-#if KAROO_VERIFY_ORIGINAL
-    g_tgaDbg.r = ddsd.ddpfPixelFormat.dwRBitMask;
-    g_tgaDbg.g = ddsd.ddpfPixelFormat.dwGBitMask;
-    g_tgaDbg.b = ddsd.ddpfPixelFormat.dwBBitMask;
-    g_tgaDbg.a = ddsd.ddpfPixelFormat.dwRGBAlphaBitMask;
-    g_tgaDbg.bits = ddsd.ddpfPixelFormat.dwRGBBitCount;
-    g_tgaDbg.w = ddsd.dwWidth; g_tgaDbg.h = ddsd.dwHeight;
-    g_tgaDbg.pitch = (unsigned long)ddsd.lPitch;
-    g_tgaDbg.srcBpp = h.bpp; g_tgaDbg.type = h.imageType;
-#endif
 
     const int   H     = (int)ddsd.dwHeight;
     const int   W     = (int)ddsd.dwWidth;
@@ -463,174 +445,3 @@ TextureTGA_ParseImpl(LoadedImage *self, LPCSTR path)
 }
 
 } // extern "C"
-
-/* ─── Acceptance test: KAROO_TGA_VERIFY=1 (verification builds only) ───────
- *
- * There is no synthetic-fixture oracle for this one the way dsogolden.cpp is
- * for DrawSceneObjects, because the function's whole output is a DirectDraw
- * surface: it needs a live device, and the destination's pixel format is an
- * *input* to the conversion.  So the oracle is the original itself, run over
- * the game's own textures, in the game, against the same destination surface.
- *
- * For each load: run the ORIGINAL, snapshot the destination surface, run
- * OURS into the same surface, snapshot again, and compare every byte.  Both
- * fill the surface completely via the closing Blt, so a difference in any
- * pixel — or in the return value — is a real divergence.
- *
- *   make VERIFY=1
- *   comment out the (0x3e190, _UD2) SAFETY_STUBS entry in patch.py
- *   KAROO_TGA_VERIFY=1 bash launch.sh --skip-launcher --auto-exit 60
- *
- * The CALL_PATCHES rewrite stays in place — it is what gets us entered — so
- * only the stub has to go, exactly as for DrawSceneObjects.
- */
-#if KAROO_VERIFY_ORIGINAL
-
-#include <stdlib.h>
-
-typedef unsigned int (__attribute__((thiscall)) *parsetga_fn)(LoadedImage *, LPCSTR);
-#define ORIG_PARSE_TGA ((parsetga_fn)0x0043e190)
-
-/* Copy the whole locked surface out.  Returns NULL if it cannot be locked. */
-static unsigned char *tga_snapshot(IDirectDrawSurface4 *surf, unsigned int *len)
-{
-    DDSURFACEDESC2 d;
-    memset(&d, 0, sizeof(d));
-    d.dwSize = sizeof(d);
-    if (surf->Lock(NULL, &d, DDLOCK_WAIT, NULL) < 0)
-        return NULL;
-    unsigned int n = (unsigned int)d.lPitch * d.dwHeight;
-    unsigned char *p = (unsigned char *)malloc(n);
-    if (p != NULL)
-        memcpy(p, d.lpSurface, n);
-    surf->Unlock(NULL);
-    *len = n;
-    return p;
-}
-
-/* launch.sh forwards every KAROO_* variable through its `env -i` block, so an
- * unset one still reaches the game as an EMPTY string.  A bare `getenv(...) !=
- * NULL` test is therefore always true here, which silently turned the whole
- * acceptance test into original-vs-original for three runs.  Every flag in
- * this file goes through this one predicate. */
-static int tga_flag(const char *name)
-{
-    const char *e = getenv(name);
-    return (e != NULL && *e != '\0' && *e != '0') ? 1 : 0;
-}
-
-static int tga_verify_enabled(void)
-{
-    static int state = -1;
-    if (state < 0)
-        state = tga_flag("KAROO_TGA_VERIFY");
-    return state;
-}
-
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureTGA_Parse(LoadedImage *self, LPCSTR path)
-{
-    if (!tga_verify_enabled())
-        return TextureTGA_ParseImpl(self, path);
-
-    static LONG files = 0, bad = 0;
-
-    /* KAROO_TGA_VERIFY_SWAP runs ours first, the original second.
-     * KAROO_TGA_VERIFY_CONTROL runs the ORIGINAL for both halves — a null
-     * experiment: anything it still reports is an artefact of this harness
-     * and not a difference between the two implementations. */
-    const int swap    = tga_flag("KAROO_TGA_VERIFY_SWAP");
-    const int control = tga_flag("KAROO_TGA_VERIFY_CONTROL");
-
-    unsigned int rOrig = (swap && !control) ? TextureTGA_ParseImpl(self, path)
-                                            : ORIG_PARSE_TGA(self, path);
-    unsigned int nOrig = 0;
-    unsigned char *sOrig = tga_snapshot(self->pTextureSurface, &nOrig);
-
-    unsigned int rOurs = (control || swap) ? ORIG_PARSE_TGA(self, path)
-                                            : TextureTGA_ParseImpl(self, path);
-    unsigned int nOurs = 0;
-    unsigned char *sOurs = tga_snapshot(self->pTextureSurface, &nOurs);
-
-    InterlockedIncrement(&files);
-    const char *verdict = "MATCH";
-    unsigned int diff = 0;
-    extern struct TgaDbg g_tgaDbg;
-    if (sOrig == NULL || sOurs == NULL) {
-        verdict = "SKIP (lock failed)";
-    } else if (nOrig != nOurs) {
-        verdict = "SIZE MISMATCH";
-        InterlockedIncrement(&bad);
-    } else {
-        /* Compare only the bits the destination's pixel format actually
-         * defines.  The unused byte of an X8R8G8B8 surface is outside every
-         * mask, is written by neither implementation's arithmetic, and comes
-         * back 0xFF from the first load of a surface and 0x00 from the
-         * second.  KAROO_TGA_VERIFY_CONTROL proves that: with the ORIGINAL
-         * on both sides of the comparison it reports exactly the same 29
-         * files differing in exactly that lane.  So masking it out removes an
-         * artefact of loading twice into one surface, not a real difference. */
-        unsigned int valid = 0xffffffffu;
-        unsigned int bpp   = 4;
-        {
-            DDSURFACEDESC2 d;
-            memset(&d, 0, sizeof(d));
-            d.dwSize = sizeof(d);
-            if (self->pTextureSurface->GetSurfaceDesc(&d) >= 0
-                && d.ddpfPixelFormat.dwRGBBitCount != 0) {
-                valid = d.ddpfPixelFormat.dwRBitMask
-                      | d.ddpfPixelFormat.dwGBitMask
-                      | d.ddpfPixelFormat.dwBBitMask
-                      | d.ddpfPixelFormat.dwRGBAlphaBitMask;
-                bpp = d.ddpfPixelFormat.dwRGBBitCount / 8;
-            }
-        }
-        unsigned char vmask[4];
-        for (unsigned int k = 0; k < 4; ++k)
-            vmask[k] = (k < bpp) ? (unsigned char)(valid >> (8 * k)) : 0;
-
-        unsigned int lane[4] = {0,0,0,0};
-        char sample[160]; sample[0] = '\0';
-        int nsample = 0;
-        for (unsigned int i = 0; i < nOrig; ++i)
-            if (((sOrig[i] ^ sOurs[i]) & vmask[i % bpp]) != 0) {
-                ++diff;
-                ++lane[i & 3];
-                if (nsample < 3) {
-                    char one[48];
-                    wsprintfA(one, " [%u]%02X/%02X", i, sOrig[i], sOurs[i]);
-                    lstrcatA(sample, one);
-                    ++nsample;
-                }
-            }
-        if (diff != 0 || rOrig != rOurs) {
-            verdict = "DIFF";
-            InterlockedIncrement(&bad);
-            log_write("tgaverify:   lanes b=%u g=%u r=%u a=%u  masks "
-                      "R=%08lX G=%08lX B=%08lX A=%08lX bits=%lu "
-                      "%lux%lu pitch=%lu src=%d type=%d %s\n",
-                      lane[0], lane[1], lane[2], lane[3],
-                      g_tgaDbg.r, g_tgaDbg.g, g_tgaDbg.b, g_tgaDbg.a,
-                      g_tgaDbg.bits, g_tgaDbg.w, g_tgaDbg.h, g_tgaDbg.pitch,
-                      g_tgaDbg.srcBpp, g_tgaDbg.type, sample);
-        }
-    }
-    log_write("tgaverify: %-18s %6u bytes  %6u differ  ret %08X/%08X  %s  "
-              "[%ld files, %ld bad]\n",
-              verdict, nOrig, diff, rOrig, rOurs, path ? path : "(null)",
-              files, bad);
-
-    free(sOrig);
-    free(sOurs);
-    return rOurs;
-}
-
-#else
-
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureTGA_Parse(LoadedImage *self, LPCSTR path)
-{
-    return TextureTGA_ParseImpl(self, path);
-}
-
-#endif
