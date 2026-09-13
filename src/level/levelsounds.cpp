@@ -45,6 +45,8 @@
 #include <string.h>
 #include "log.h"
 #include "soundmanager.h"
+#include "game.h"
+#include "player.h"
 
 struct CStaticSoundbuffer;
 struct VoicePool;
@@ -99,13 +101,18 @@ static VoicePool *acq_pool(unsigned char *B, int count, unsigned int nameOff)
     return ORIG_ACQUIRE_POOL(B + G_SOUND_MGR, count, name, 1);
 }
 
-/* Reset-if-set, then reacquire-if-named, for one of the eleven slots. */
-static void reslot(unsigned char *B, unsigned int slot, unsigned int nameOff)
+/* Reset-if-set, then reacquire-if-named, for one of the eleven slots.  The
+ * caller stores the result back: the new buffer if the asset is named, else
+ * the (reset) buffer it passed -- the original left the slot untouched, and
+ * storing the same value back is the same state. */
+static CStaticSoundbuffer *reslot(unsigned char *B, CStaticSoundbuffer *cur,
+                                  unsigned int nameOff)
 {
-    if (GP(slot) != NULL)
-        CStatic_Reset((CStaticSoundbuffer *)GP(slot));
+    if (cur != NULL)
+        CStatic_Reset(cur);
     if (G32(nameOff + 0x100) != 0)
-        GP(slot) = acq(B, nameOff);
+        return acq(B, nameOff);
+    return cur;
 }
 
 /* Per-object sound for one slot table. */
@@ -124,6 +131,7 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_InitLevelBasedSounds(void *self)
 {
     unsigned char *B = (unsigned char *)self;
+    Player *pl = ((Game *)B)->player();
     const char *world = (const char *)(B + 0x2ab69d);
 
     if (s_fx < 0) {
@@ -136,34 +144,34 @@ Sim_InitLevelBasedSounds(void *self)
 
     GameLog_LogMessage(GAMELOGGER, 2, F_TRYINIT);
     if (G32(0x13cc34) != 0) {
-        G32(0x175323) = 0;
+        pl->setField15a(0);
         if (strcmp(world, S_EGYPT) == 0)
-            G32(0x175323) = 0;
+            pl->setField15a(0);
         if (strcmp(world, S_SPACE) == 0)
-            G32(0x175323) = s_fx ? 1 : 2;
+            pl->setField15a(s_fx ? 1 : 2);
         if (strcmp(world, S_CANDY) == 0)
-            G32(0x175323) = s_fx ? 2 : 1;
+            pl->setField15a(s_fx ? 2 : 1);
 
-        if (GP(0x175268) != NULL)
-            ORIG_POOL_WIPE((VoicePool *)GP(0x175268));
+        if (pl->pool9f() != NULL)
+            ORIG_POOL_WIPE(pl->pool9f());
         if (G32(0x442ca) != 0)
-            GP(0x175268) = acq_pool(B, 3, 0x441ca);
-        if (GP(0x175298) != NULL)
-            ORIG_POOL_WIPE((VoicePool *)GP(0x175298));
+            pl->setPool9f(acq_pool(B, 3, 0x441ca));
+        if (pl->poolCf() != NULL)
+            ORIG_POOL_WIPE(pl->poolCf());
         if (G32(0x4246e) != 0)
-            GP(0x175298) = acq_pool(B, 10, 0x4236e);
+            pl->setPoolCf(acq_pool(B, 10, 0x4236e));
 
-        reslot(B, 0x17528c, 0x456ba);
-        reslot(B, 0x175288, 0x42ef2);
-        reslot(B, 0x17527c, 0x429b6);
-        reslot(B, 0x175290, 0x4279e);
-        reslot(B, 0x17526c, 0x428aa);
-        reslot(B, 0x175280, 0x42ac2);
-        reslot(B, 0x175284, 0x42ac2);
-        reslot(B, 0x175274, 0x42586);
-        reslot(B, 0x175278, 0x42692);
-        reslot(B, 0x175294, 0x42de6);
-        reslot(B, 0x175270, 0x44c42);
+        pl->setSoundC3(reslot(B, pl->soundC3(), 0x456ba));
+        pl->setSoundBf(reslot(B, pl->soundBf(), 0x42ef2));
+        pl->setSoundB3(reslot(B, pl->soundB3(), 0x429b6));
+        pl->setSoundC7(reslot(B, pl->soundC7(), 0x4279e));
+        pl->setSoundA3(reslot(B, pl->soundA3(), 0x428aa));
+        pl->setSoundB7(reslot(B, pl->soundB7(), 0x42ac2));
+        pl->setSoundBb(reslot(B, pl->soundBb(), 0x42ac2));
+        pl->setSoundAb(reslot(B, pl->soundAb(), 0x42586));
+        pl->setSoundAf(reslot(B, pl->soundAf(), 0x42692));
+        pl->setSoundCb(reslot(B, pl->soundCb(), 0x42de6));
+        pl->setSoundA7(reslot(B, pl->soundA7(), 0x44c42));
 
         for (unsigned short i = 0; i < G8(0x174fd4); ++i)
             Sim_AcquireObjectSoundBuffersForIndex(B, G8(0x174fd5 + i));
