@@ -241,7 +241,7 @@ Sim_ClearGameState(void *self)
     *(unsigned int *)(G + 0x170a44) = 0;
     G[0x173583]                     = 0;
     G[0x4220b]                      = 0;
-    pl->setField23d(0);
+    pl->setGemsCollected(0);
     pl->setFacing(1);
     pl->setField14e(0);
     pl->setField120(0);

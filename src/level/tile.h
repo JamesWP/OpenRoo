@@ -162,6 +162,13 @@ public:
     int  field004() const                      { return field_004; }
     void setField004(int n)                    { field_004 = n; }
 
+    /* ── the level's gem quota ───────────────────────────────────────── */
+    /* +0x196 (Game+0x2ab723), header only: the gems the level REQUIRES.
+     * CalculateLevelScore 0x41a760 pays 5 a gem up to it and 10 per gem
+     * collected beyond it (Player::gemsCollected) -- not a par time, as one
+     * file had it (COHESION_PLAN.md Band 3). */
+    int  gemsRequired() const                  { return gemsRequired_; }
+
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
     KAROO_LAYOUT_REGISTER(Tile);
@@ -170,7 +177,9 @@ private:
     /* Meaningful only at cell (0, 0), where the tile pointer is the tile
      * base: the time bonus pickup adds 5 to it. */
     int           field_004;          /* 0x004                              */
-    unsigned char gap_008[0x19a - 0x008];
+    unsigned char gap_008[0x196 - 0x008];
+    /* Meaningful only at cell (0, 0): Game+0x2ab723, the gem quota. */
+    int           gemsRequired_;      /* 0x196                              */
     /* Meaningful only at cell (0, 0), where the tile pointer is the tile
      * base: the map header's extents (levelsetup.cpp G_MAP_H / G_MAP_W). */
     unsigned char mapExtentV_;        /* 0x19a  the map's v extent          */
@@ -229,6 +238,7 @@ private:
 KAROO_LAYOUT_CHECKS(Tile)
 {
     KAROO_LAYOUT_AT(field_004,         0x004);
+    KAROO_LAYOUT_AT(gemsRequired_,     0x196);
     KAROO_LAYOUT_AT(mapExtentV_,       0x19a);
     KAROO_LAYOUT_AT(mapExtentU_,       0x19b);
     KAROO_LAYOUT_AT(height_,           0x19c);

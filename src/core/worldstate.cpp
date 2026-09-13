@@ -59,6 +59,7 @@
 #include "policy.h"
 #include "log.h"
 #include "game.h"
+#include "tile.h"
 #include "player.h"
 #include "foe.h"
 #include "bomb.h"
@@ -95,7 +96,6 @@
 /* Player +0x142..+0x144 (player.h). */
 
 /* Scalars, same fields gamestate.cpp reads. */
-#define OFF_GEMS_REQ   0x2ab723
 #define OFF_FOES_KILL  0x04224d
 #define OFF_CRYSTALS   0x042252
 
@@ -247,8 +247,8 @@ bool worldstate_observe(Observation *obs)
     obs->n_enemies = read_table(game, game->bombCount(), &Game::bombId,
                                 &Game::bombSlot, read_bomb, obs->enemies);
 
-    obs->gems_collected    = pl->field23d();
-    obs->gems_required     = *(const int   *)(g + OFF_GEMS_REQ);
+    obs->gems_collected    = pl->gemsCollected();
+    obs->gems_required     = Tile::at(((Game *)g)->tileBase(), 0, 0)->gemsRequired();
     obs->foes_killed       = g[OFF_FOES_KILL];
     obs->lives             = (BYTE)pl->field239();
     obs->level_complete    = pl->fieldEf();

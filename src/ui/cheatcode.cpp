@@ -209,7 +209,7 @@ Sim_HandleTypedCheatCode(void *self)
                 G8(0x173583) = lvl;
                 FILE *fp = fopen(path, "r");
                 if (fp != NULL) {
-                    pl->setField23d(0);
+                    pl->setGemsCollected(0);
                     Sim_OpenLevelFile(B, G8(0x173583));
                     Sim_SetupLevelObjects(B);
                     enter_loaded_state(B, fp);
@@ -232,7 +232,7 @@ Sim_HandleTypedCheatCode(void *self)
             sprintf(path, F_LVLPATH, GAMEDIR, (const char *)frame);
             FILE *fp = fopen(path, "r");
             if (fp != NULL) {
-                pl->setField23d(0);
+                pl->setGemsCollected(0);
                 Sim_ParseLevelFiles(B, (const char *)frame);
                 Sim_SetupLevelObjects(B);
                 enter_loaded_state(B, fp);

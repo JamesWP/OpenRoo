@@ -354,7 +354,7 @@ Sim_HandleKeypress(void *self)
         break;
     case 0x29: {
         unsigned char lvl = (unsigned char)(G8(0x173583) + 1);
-        ((Game *)B)->player()->setField23d(0);
+        ((Game *)B)->player()->setGemsCollected(0);
         G8(0x173583) = lvl;
         Sim_OpenLevelFile(B, lvl);
         Sim_SetupLevelObjects(B);

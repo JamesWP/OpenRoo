@@ -90,9 +90,9 @@
 #include "log.h"
 #include "game.h"
 #include "player.h"
+#include "tile.h"
 
 /* Inputs */
-#define OFF_QUOTA       0x2ab723   /* int   gems the level asks for        */
 #define OFF_FOES_KILLED 0x4224d    /* byte                                  */
 #define OFF_TIME_LIMIT  0x2ab591   /* int   seconds                         */
 #define OFF_TIME_ELAPSED 0x2ab595  /* uint  milliseconds                    */
@@ -166,8 +166,8 @@ Score_CalculateLevelScore(void *self, char endReason)
     tilequery_census_object_types(self);
 
     /* ── gems and surplus ────────────────────────────────────────────── */
-    const int collected = ((Game *)self)->player()->field23d();
-    const int quota     = I32(self, OFF_QUOTA);
+    const int collected = ((Game *)self)->player()->gemsCollected();
+    const int quota     = Tile::at(((Game *)self)->tileBase(), 0, 0)->gemsRequired();
 
     if (collected > quota) {
         I32(self, OFF_S_GEMS)    = quota * 5;

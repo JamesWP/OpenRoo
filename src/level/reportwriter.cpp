@@ -75,6 +75,7 @@
 #include "game.h"
 #include "foe.h"
 #include "player.h"
+#include "tile.h"
 
 /* ─── Game data (DATA references, not calls) ─────────────────────────────── */
 
@@ -191,7 +192,6 @@ JJScript_ReadTextsForReport(void *self, const char *path, FILE *sink);
 #define OFF_LEO_FLAG      0x48b9c   /* int                                    */
 #define OFF_LEO_ID        0x13cba6  /* WORD                                   */
 #define OFF_PAR_TIME_SRC  0x2ab71f  /* int, par time before the 50% scaling   */
-#define OFF_PAR_TIME      0x2ab723  /* int, printed in its own column         */
 /* OFF_PAR_COPY was Player +0x23d (player.h), the crystals count. */
 #define OFF_TIME_PCT      0x170a64  /* BYTE, forced to 0x32 (50%)             */
 #define OFF_SCORE_A       0x140502  /* int                                    */
@@ -312,7 +312,8 @@ Report_WriteLevelReport(void *self, const char *pathname)
             fputs(buf, out);
         }
 
-        ((Game *)g)->player()->setField23d(*(int *)(g + OFF_PAR_TIME));
+        ((Game *)g)->player()->setGemsCollected(
+            Tile::at(((Game *)g)->tileBase(), 0, 0)->gemsRequired());
         g[OFF_TIME_PCT] = 0x32;
         timeBonus = (unsigned)(*(int *)(g + OFF_PAR_TIME_SRC) * 0x32) / 100;
         ORIG_LOG_MESSAGE(GAME_LOGGER, 3, STR_LOG_TIME, timeBonus);

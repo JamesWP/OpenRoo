@@ -167,8 +167,8 @@ public:
     int   field239() const                     { return field_239; }
     void  setField239(int n)                   { field_239 = n; }
     /* +0x23d: crystals collected. */
-    int   field23d() const                     { return field_23d; }
-    void  setField23d(int n)                   { field_23d = n; }
+    int   gemsCollected() const                     { return gemsCollected_; }
+    void  setGemsCollected(int n)                   { gemsCollected_ = n; }
 
 private:
     Player() = delete;   /* game-owned, embedded in Game */
@@ -210,7 +210,7 @@ private:
     signed char         field_230;        /* +0x230  last random roll       */
     double              field_231;        /* +0x231                         */
     int                 field_239;        /* +0x239  lives                  */
-    int                 field_23d;        /* +0x23d  crystals               */
+    int                 gemsCollected_;        /* +0x23d  crystals               */
 };
 
 KAROO_LAYOUT_CHECKS(Player)
@@ -237,7 +237,7 @@ KAROO_LAYOUT_CHECKS(Player)
     KAROO_LAYOUT_AT(field_230,     0x230);
     KAROO_LAYOUT_AT(field_231,     0x231);
     KAROO_LAYOUT_AT(field_239,     0x239);
-    KAROO_LAYOUT_AT(field_23d,     0x23d);
+    KAROO_LAYOUT_AT(gemsCollected_,     0x23d);
     KAROO_LAYOUT_SIZE(0x241);
 }
 

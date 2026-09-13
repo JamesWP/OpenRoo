@@ -171,6 +171,7 @@
 #include "bridgeobject.h"
 #include "breakabletile.h"
 #include "foe.h"
+#include "tile.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -261,7 +262,6 @@
 #define G_LEVEL_NAME       0x173483
 #define G_SCRIPT_COUNT     0x1960e6
 #define G_CD_OBJ           0x2223f
-#define G_REQUIRED         0x2ab723
 
 /* Globals outside `Game`. */
 #define GBL_LISTENER    ((float *)0x0046c4a0)
@@ -939,10 +939,10 @@ next_row:
 
     GameLog_LogMessage(GAME_LOGGER_VA, 1, S_CRYSTALS,
                        (unsigned int)W(G, G_COUNT_CRYSTAL),
-                       DW(G, G_REQUIRED));
+                       Tile::at(((Game *)G)->tileBase(), 0, 0)->gemsRequired());
 
-    if ((int)((unsigned int)PL->field23d() + (unsigned int)W(G, G_COUNT_CRYSTAL)) <
-        (int)DW(G, G_REQUIRED))
+    if ((int)((unsigned int)PL->gemsCollected() + (unsigned int)W(G, G_COUNT_CRYSTAL)) <
+        Tile::at(((Game *)G)->tileBase(), 0, 0)->gemsRequired())
         GameLog_LogMessage(GAME_LOGGER_VA, 3, S_WARN_CRYSTALS);
 
     /* ONE argument -- see the header. */

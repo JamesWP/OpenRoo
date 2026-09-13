@@ -56,6 +56,7 @@
 #include "log.h"
 #include "game.h"
 #include "player.h"
+#include "tile.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -203,8 +204,8 @@ static bool read_state(GameState *s)
     if (!g) return false;
 
     const Player *pl = ((const Game *)g)->player();
-    s->gems_collected = pl->field23d();
-    s->gems_required  = *(const int   *)(g + 0x2ab723);
+    s->gems_collected = pl->gemsCollected();
+    s->gems_required  = Tile::at(((Game *)g)->tileBase(), 0, 0)->gemsRequired();
     s->foes_killed    = *(const BYTE  *)(g + 0x04224d);
     s->time_limit_s   = *(const int   *)(g + 0x2ab591);
     s->elapsed_ms     = *(const DWORD *)(g + 0x2ab595);
