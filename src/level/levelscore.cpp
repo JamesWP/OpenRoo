@@ -88,18 +88,17 @@
  */
 #include <windows.h>
 #include "log.h"
+#include "game.h"
+#include "player.h"
 
 /* Inputs */
-#define OFF_COLLECTED   0x175406   /* int   gems the player has            */
 #define OFF_QUOTA       0x2ab723   /* int   gems the level asks for        */
 #define OFF_FOES_KILLED 0x4224d    /* byte                                  */
 #define OFF_TIME_LIMIT  0x2ab591   /* int   seconds                         */
 #define OFF_TIME_ELAPSED 0x2ab595  /* uint  milliseconds                    */
 #define OFF_ITEM_TOTAL  0x42250    /* u16                                   */
-#define OFF_ITEM_SEEN   0x1753e3   /* u16                                   */
 #define OFF_NO_BONUS    0x4220b    /* byte  set = all-items bonus denied     */
 #define OFF_VITALITY    0x170a64   /* byte  clamped percentage               */
-#define OFF_RUNNING     0x1753f5   /* int   running total, persisted to .sav */
 #define OFF_CLOCK_MS    0x170a54   /* double                                 */
 
 /* Counts */
@@ -167,7 +166,7 @@ Score_CalculateLevelScore(void *self, char endReason)
     tilequery_census_object_types(self);
 
     /* ── gems and surplus ────────────────────────────────────────────── */
-    const int collected = I32(self, OFF_COLLECTED);
+    const int collected = ((Game *)self)->player()->field23d();
     const int quota     = I32(self, OFF_QUOTA);
 
     if (collected > quota) {
@@ -203,7 +202,7 @@ Score_CalculateLevelScore(void *self, char endReason)
 
     /* ── all-items bonus ─────────────────────────────────────────────── */
     const unsigned short itemTotal = U16(self, OFF_ITEM_TOTAL);
-    if (itemTotal > U16(self, OFF_ITEM_SEEN) || U8(self, OFF_NO_BONUS) != 0) {
+    if (itemTotal > ((Game *)self)->player()->field21a() || U8(self, OFF_NO_BONUS) != 0) {
         I32(self, OFF_S_ALLITEMS) = 0;
         I32(self, OFF_C_ALLITEMS) = 0;
     } else {
@@ -235,7 +234,7 @@ Score_CalculateLevelScore(void *self, char endReason)
                     + I32(self, OFF_S_SURPLUS)  + I32(self, OFF_S_VITALITY)
                     + I32(self, OFF_S_TIME)     + I32(self, OFF_S_GEMS);
 
-    const int running = I32(self, OFF_RUNNING);
+    const int running = ((Game *)self)->player()->field22c();
     I32(self, OFF_LEVEL_TOTAL) = total;
     I32(self, OFF_GRAND_TOTAL) = total + running;
 
@@ -244,7 +243,7 @@ Score_CalculateLevelScore(void *self, char endReason)
 
     I32(self, OFF_TALLY_BASE)  = running;
     I32(self, OFF_TALLY_TOTAL) = running;
-    I32(self, OFF_RUNNING)     = total + running;
+    ((Game *)self)->player()->setField22c(total + running);
 
     /* ── hand the tally animation its stage 0 and start timestamp ────── */
     U8(self, OFF_STAGE) = 0;

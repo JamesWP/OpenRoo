@@ -141,6 +141,7 @@
 #include "breakabletile.h"
 #include "bomb.h"
 #include "foe.h"
+#include "player.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -230,21 +231,23 @@ Sim_ClearGameState(void *self)
      * branch on it is sunk to 0x004185f8.  See the header. */
     gamefile_ok = G[G_GAMEFILE_OK];
 
-    *(unsigned int *)(G + 0x175402) = 2;   /* lives */
+    Player *pl = ((Game *)G)->player();
+    pl->setField239(2);                    /* lives */
     G[0x28ab2d]                     = 2;
-    *(unsigned int *)(G + 0x1752ef) = 0;
-    *(unsigned int *)(G + 0x17522f) = 0;
+    /* +0x126 and +0x66 are doubles the original writes as two dwords each,
+     * split across this block (+0x1752ef/+0x1752f3, +0x17522f/+0x175233).
+     * Nothing reads between, so each is one double store (template 3). */
+    pl->setField126(0.0);
     *(unsigned int *)(G + 0x170a44) = 0;
     G[0x173583]                     = 0;
     G[0x4220b]                      = 0;
-    *(unsigned int *)(G + 0x175406) = 0;
-    G[0x1751dd]                     = 1;
-    *(unsigned int *)(G + 0x175317) = 0;
-    *(unsigned int *)(G + 0x1752f3) = 0;
-    *(unsigned int *)(G + 0x1752e9) = 0;
-    G[0x1752e8]                     = 0;
-    *(unsigned int *)(G + 0x175233) = 0x40690000;   /* float 3.625 */
-    *(unsigned int *)(G + 0x1753f5) = 0;
+    pl->setField23d(0);
+    pl->setFacing(1);
+    pl->setField14e(0);
+    pl->setField120(0);
+    pl->setMoveState(0);
+    pl->setField66(200.0);                 /* bits 0x4069000000000000 */
+    pl->setField22c(0);
     *(unsigned int *)(G + 0x170a48) = 0;
 
     if (gamefile_ok == 0) {

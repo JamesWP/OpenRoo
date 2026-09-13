@@ -157,7 +157,9 @@ protected:
     signed char         field_13f;        /* +0x13f  } a cell offset, read  */
     signed char         field_140;        /* +0x140  } signed               */
     signed char         field_141;        /* +0x141  }                      */
-    unsigned char       gap_142[0x145 - 0x142];
+    unsigned char       field_142;        /* +0x142  } player: the marker-4 */
+    unsigned char       field_143;        /* +0x143  } cell (u, v, h)       */
+    unsigned char       field_144;        /* +0x144  }                      */
     unsigned char       pendingMove_;     /* +0x145                         */
     double              field_146;        /* +0x146                         */
     int                 field_14e;        /* +0x14e                         */
@@ -249,6 +251,9 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(field_13f,        0x13f);
     KAROO_LAYOUT_AT(field_140,        0x140);
     KAROO_LAYOUT_AT(field_141,        0x141);
+    KAROO_LAYOUT_AT(field_142,        0x142);
+    KAROO_LAYOUT_AT(field_143,        0x143);
+    KAROO_LAYOUT_AT(field_144,        0x144);
     KAROO_LAYOUT_AT(pendingMove_,     0x145);
     KAROO_LAYOUT_AT(field_146,        0x146);
     KAROO_LAYOUT_AT(field_14e,        0x14e);
