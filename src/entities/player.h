@@ -93,10 +93,8 @@ public:
     unsigned char field111() const             { return field_111; }
     void  setField11a(int n)                   { field_11a = n; }
     void  setField11e(unsigned char b)         { field_11e = b; }
-    /* +0x11f: nonzero while dead / timed out (3 = time-out). */
-    unsigned char moveState() const            { return moveState_; }
-    void  setMoveState(unsigned char s)        { moveState_ = s; }
-    /* Foe::checkPlayerContact writes through it. */
+    /* +0x11f (moveState, in MovableEntity): nonzero while dead / timed out
+     * (3 = time-out).  Foe::checkPlayerContact writes through it. */
     unsigned char *moveStateRef()              { return &moveState_; }
     int   field120() const                     { return field_120; }
     void  setField120(int n)                   { field_120 = n; }

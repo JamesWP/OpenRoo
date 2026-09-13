@@ -77,6 +77,10 @@ public:
     unsigned char homeU() const                { return homeU_; }
     unsigned char homeV() const                { return homeV_; }
     unsigned char homeH() const                { return homeH_; }
+    /* +0x11f: 4 = despawn (the "kaputo" cheat sets it on every foe); the
+     * Player's is nonzero while dead / timed out (3 = time-out). */
+    unsigned char moveState() const            { return moveState_; }
+    void  setMoveState(unsigned char s)        { moveState_ = s; }
 
     /* ── the sound handles (soundobj.cpp for foes; levelsounds.cpp and
      *    fixedsounds.cpp for the Player) ──────────────────────────────── */

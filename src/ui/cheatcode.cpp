@@ -52,6 +52,7 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "foe.h"
 #include "player.h"
 #include "tile.h"
 
@@ -143,13 +144,15 @@ Sim_HandleTypedCheatCode(void *self)
 
     /* kaputo */
     if (streq(buf, "kaputo")) {
+        Game *g = (Game *)B;
         unsigned char i = 0;
-        if (G8(0x174fd4) != 0) {
+        /* The count is re-read every pass, as the original's CMP is. */
+        if (g->foeCount() != 0) {
             do {
-                unsigned char id = G8(0x174fd5 + i);
+                unsigned char id = g->foeId(i);
                 ++i;
-                (*(unsigned char **)(B + 0x174804 + id * 4))[0x11f] = 4;
-            } while (i < G8(0x174fd4));
+                g->foeSlot(id)->setMoveState(4);
+            } while (i < g->foeCount());
         }
     }
 
