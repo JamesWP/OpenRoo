@@ -37,6 +37,8 @@
 #include <windows.h>
 #include <string.h>
 #include "log.h"
+#include "game.h"
+#include "player.h"
 
 struct CStaticSoundbuffer;
 struct VoicePool;
@@ -272,7 +274,7 @@ Sim_HandleKeypress(void *self)
         G32(0x175513) = 0;
         if (STATE == 5 && G32(0x175530) != 0) {
             STATE = G8(0x48b13);
-            G8(0x17530e) = 0;
+            ((Game *)B)->player()->setPendingMove(0);
             DEB = 0x1b;
         }
     }
@@ -325,7 +327,7 @@ Sim_HandleKeypress(void *self)
     case 0x1f: rebind(B, (const char *)0x004644c0, 0x1f, -1); break;
     case 0x20: rebind(B, (const char *)0x004644b4, 0x20, -1); break;
     case 0x21:
-        if (G32(0x1752b3) == 0)
+        if (((Game *)B)->player()->fieldEa() == 0)
             G8(0x2ab571) = G8(0x2ab571) == 0;
         Sim_PopMenuNodeFromStack(MENU);
         break;
@@ -352,7 +354,7 @@ Sim_HandleKeypress(void *self)
         break;
     case 0x29: {
         unsigned char lvl = (unsigned char)(G8(0x173583) + 1);
-        G32(0x175406) = 0;
+        ((Game *)B)->player()->setField23d(0);
         G8(0x173583) = lvl;
         Sim_OpenLevelFile(B, lvl);
         Sim_SetupLevelObjects(B);

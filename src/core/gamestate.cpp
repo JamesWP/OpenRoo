@@ -54,6 +54,8 @@
  */
 #include "gamestate.h"
 #include "log.h"
+#include "game.h"
+#include "player.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -61,21 +63,21 @@
 #define GAME_GLOBAL_PTR ((void **)0x0046c498)
 
 struct GameState {
-    int   gems_collected;   // +0x175406  dword
+    int   gems_collected;   // Player +0x23d (Game+0x175406)  dword
     int   gems_required;    // +0x2ab723  dword
     BYTE  foes_killed;      // +0x4224d   byte
     int   time_limit_s;     // +0x2ab591  dword
     DWORD elapsed_ms;       // +0x2ab595  dword
-    BYTE  lives;            // +0x175402  CONFIRMED lives remaining
-    int   total_score;      // +0x1753f5  dword
+    BYTE  lives;            // Player +0x239 (Game+0x175402)  CONFIRMED lives remaining
+    int   total_score;      // Player +0x22c (Game+0x1753f5)  dword
     int   level_score;      // +0x140536  dword
     BYTE  vitality;         // +0x170a64  byte (?) — see note above
-    BYTE  death_raw[4];     // +0x1752e8  width unknown; live byte is +0x1752e9 (?)
-    int   complete_flag;    // +0x1752b8  dword — CONFIRMED: 0 -> 1 on level exit
+    BYTE  death_raw[4];     // Player +0x11f..+0x122 (Game+0x1752e8)  width unknown; live byte is +0x1752e9 (?)
+    int   complete_flag;    // Player +0xef (Game+0x1752b8)  dword — CONFIRMED: 0 -> 1 on level exit
     WORD  extra_count;      // +0x42250   ushort
-    WORD  extra_cap;        // +0x1753e3  ushort
+    WORD  extra_cap;        // Player +0x21a (Game+0x1753e3)  ushort
     BYTE  extra_block;      // +0x4220b   byte
-    float pos[3];           // +0x1751ee  float[3] (?)
+    float pos[3];           // Player +0x25 (Game+0x1751ee)  float[3] (?)
     unsigned short mode;    // game_state passed to DispatchInputActions
 };
 
@@ -201,21 +203,28 @@ static bool read_state(GameState *s)
     const unsigned char *g = (const unsigned char *)*GAME_GLOBAL_PTR;
     if (!g) return false;
 
-    s->gems_collected = *(const int   *)(g + 0x175406);
+    const Player *pl = ((const Game *)g)->player();
+    s->gems_collected = pl->field23d();
     s->gems_required  = *(const int   *)(g + 0x2ab723);
     s->foes_killed    = *(const BYTE  *)(g + 0x04224d);
     s->time_limit_s   = *(const int   *)(g + 0x2ab591);
     s->elapsed_ms     = *(const DWORD *)(g + 0x2ab595);
-    s->lives = *(const BYTE *)(g + 0x175402);
-    s->total_score    = *(const int   *)(g + 0x1753f5);
+    s->lives          = (BYTE)pl->field239();
+    s->total_score    = pl->field22c();
     s->level_score    = *(const int   *)(g + 0x140536);
     s->vitality       = *(const BYTE  *)(g + 0x170a64);
-    memcpy(s->death_raw, g + 0x1752e8, 4);
-    s->complete_flag  = *(const int   *)(g + 0x1752b8);
+    {   /* four bytes from +0x11f: the move state and the low three of +0x120 */
+        int f120 = pl->field120();
+        s->death_raw[0] = pl->moveState();
+        memcpy(s->death_raw + 1, &f120, 3);
+    }
+    s->complete_flag  = pl->fieldEf();
     s->extra_count    = *(const WORD  *)(g + 0x042250);
-    s->extra_cap      = *(const WORD  *)(g + 0x1753e3);
+    s->extra_cap      = pl->field21a();
     s->extra_block    = *(const BYTE  *)(g + 0x04220b);
-    memcpy(s->pos, g + 0x1751ee, sizeof(s->pos));
+    s->pos[0]         = pl->posU();
+    s->pos[1]         = pl->posY();
+    s->pos[2]         = pl->posV();
     s->mode           = g_mode;
     return true;
 }
@@ -315,7 +324,7 @@ void gamestate_deathdiff(void)
     const BYTE *game = (const BYTE *)*GAME_GLOBAL_PTR;
     if (!game) return;
 
-    BYTE cause = *(const BYTE *)(game + 0x1752e8);
+    BYTE cause = ((const Game *)game)->player()->moveState();
 
     if (cause != 0 && g_prev_death == 0) {
         deathdiff_report(game, cause, "at death");

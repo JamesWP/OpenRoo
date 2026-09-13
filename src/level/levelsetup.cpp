@@ -163,6 +163,8 @@
 #include <string.h>
 
 #include "log.h"
+#include "player.h"
+#include "crtrand.h"
 #include "game.h"
 #include "liftobject.h"
 #include "slideobject.h"
@@ -174,8 +176,6 @@
 
 #define G_MODE_FLAG        0x14        /* dword; 0 -> state 2, else state 1  */
 #define G_STATE_BYTE       0x17565d
-#define G_CAMERA_A         0x175393    /* dword 0                            */
-#define G_CAMERA_B         0x175397    /* dword 0x40240000                   */
 #define G_SCRIPT_READER    0x195735
 #define G_EXTRA_OBJECTS    0x48b98
 #define G_EXTRA_LOADED     0x48b9c
@@ -195,12 +195,6 @@
 #define G_CLEAR_BLOCK      0x170543    /* 0x40 dwords, also the switch counts */
 #define G_SWITCH_CELLS     0x140543    /* 3 bytes per entry, 0x100 per switch */
 
-#define G_START_U          0x17531c    /* the marker-3 lookup's 3 bytes      */
-#define G_START_V          0x17531d
-#define G_START_H          0x17531e
-#define G_MARK4            0x17530b    /* the marker-4 lookup's 3 bytes      */
-#define G_MARK4_V          0x17530c
-#define G_MARK4_H          0x17530d
 
 #define G_TILES            0x2ab58d    /* the map reader sub-object          */
 #define G_MAP_H            0x2ab727    /* tiles+0x19a, the v extent          */
@@ -268,7 +262,6 @@
 #define G_SCRIPT_COUNT     0x1960e6
 #define G_CD_OBJ           0x2223f
 #define G_REQUIRED         0x2ab723
-#define G_CARRIED          0x175406
 
 /* Globals outside `Game`. */
 #define GBL_LISTENER    ((float *)0x0046c4a0)
@@ -301,9 +294,6 @@ struct GameLogger;
 
 /* ─── Callbacks kept at their original addresses ─────────────────────────── */
 
-typedef void (__attribute__((thiscall)) *ll_clear_fn)(void *self);
-#define ORIG_LIST_CLEAR    ((ll_clear_fn)0x004254f0)
-
 typedef void (__attribute__((thiscall)) *rel_script_fn)(void *self);
 #define ORIG_RELEASE_SCRIPT ((rel_script_fn)0x0041e840)
 
@@ -318,15 +308,6 @@ typedef void (__cdecl *srand_fn)(unsigned int);
 
 /* time(), but through OUR hook -- see the header. */
 extern "C" __declspec(dllexport) int __cdecl hooks_GameTime(int *out);
-
-/* The CRT rand() at 0x0045167c, over the game's shared seed. */
-#define CRT_RAND_SEED  (*(unsigned int *)0x00469f38)
-
-static inline unsigned int crt_rand(void)
-{
-    CRT_RAND_SEED = CRT_RAND_SEED * 0x343FDu + 0x269EC3u;
-    return (CRT_RAND_SEED >> 16) & 0x7FFF;
-}
 
 /* ─── Already ours -- called as exports, the originals carry UD2 stubs ───── */
 
@@ -359,6 +340,10 @@ typedef double         __attribute__((aligned(1))) f64_ua;
 #define DW(g, off)   (*(u32_ua *)((unsigned char *)(g) + (off)))
 #define F(g, off)    (*(f32_ua *)((unsigned char *)(g) + (off)))
 #define D(g, off)    (*(f64_ua *)((unsigned char *)(g) + (off)))
+
+/* The Player, embedded in Game (player.h).  Every function here names the
+ * Game `G`; the Player is a fixed address inside it. */
+#define PL  (((Game *)G)->player())
 
 /* ─── FX / diag ──────────────────────────────────────────────────────────── */
 
@@ -499,8 +484,7 @@ Sim_SetupLevelObjects(void *self)
 
     /* ── run state ─────────────────────────────────────────────────────── */
     B(G, G_STATE_BYTE) = (DW(G, G_MODE_FLAG) == 0) ? 2 : 1;
-    DW(G, G_CAMERA_A) = 0;
-    DW(G, G_CAMERA_B) = 0x40240000;
+    PL->setField1ca(10.0);                /* two dwords: 0, 0x40240000 */
 
     GameLog_LogMessage(GAME_LOGGER_VA, 2, S_INIT_STARTED);
 
@@ -533,10 +517,10 @@ Sim_SetupLevelObjects(void *self)
 
     W(G, G_COUNT_CRYSTAL) = 0;
     DW(G, G_LIFT_COUNT2)  = 0;
-    DW(G, 0x17520d)       = 0;
-    B (G, 0x1752c8)       = 0;
-    DW(G, 0x1752e3)       = 0;
-    DW(G, 0x175221)       = 0;
+    PL->setField44(0);
+    PL->setFieldFf(0);
+    PL->setField11a(0);
+    PL->setField58(0);
 
     /* ── tear down the previous level ──────────────────────────────────── */
     LiftObject::purgeAll((Game *)G);
@@ -562,40 +546,35 @@ Sim_SetupLevelObjects(void *self)
     ((Game *)G)->setSlideCount(0);
     B(G, G_ENEMY_COUNT) = 0;
     B(G, G_SWITCH_MAX)  = 0;
-    B(G, 0x1753f9)      = 0;
+    PL->setField230(0);
 
-    DW(G, 0x1751fd) = (unsigned int)(G + G_TILES);
+    PL->setTileBase(G + G_TILES);
 
     /* ── the player start, and the marker-4 cell ───────────────────────── */
-    if (Sim_FindTileByTypeMarker(G + G_TILES, 3, G + G_START_U)) {
+    if (Sim_FindTileByTypeMarker(G + G_TILES, 3, PL->homeRef())) {
         /* MOVSX, not MOVZX: the index is formed from the SIGNED bytes. */
-        off = SIDX(SB(G, G_START_U), SB(G, G_START_V));
-        B(G, 0x1751dd) = B(G, T_PARAM + off);
+        off = SIDX((signed char)PL->homeU(), (signed char)PL->homeV());
+        PL->setFacing(B(G, T_PARAM + off));
     }
 
     /* The return value is DISCARDED: on a level with no marker-4 cell these
      * three bytes keep the previous level's values.  Preserved. */
-    Sim_FindTileByTypeMarker(G + G_TILES, 4, G + G_MARK4);
+    Sim_FindTileByTypeMarker(G + G_TILES, 4, PL->field142Ref());
 
-    F(G, 0x1753d7) = (float)(int)SB(G, G_MARK4);
-    F(G, 0x1753db) = (float)(int)SB(G, G_MARK4_H);
-    F(G, 0x1753df) = (float)(int)SB(G, G_MARK4_V);
+    PL->setField20e((float)(int)(signed char)PL->field142(),
+                    (float)(int)(signed char)PL->field144(),
+                    (float)(int)(signed char)PL->field143());
 
-    B(G, 0x1751fa) = B(G, G_START_U);
-    B(G, 0x1751fb) = B(G, G_START_V);
-    B(G, 0x1751fc) = B(G, G_START_H);
+    PL->setCell(PL->homeU(), PL->homeV(), PL->homeH());
 
-    off = SIDX(SB(G, G_START_U), SB(G, G_START_V));
+    off = SIDX((signed char)PL->homeU(), (signed char)PL->homeV());
     B(G, T_TYPE + off) = 1;
 
-    F(G, 0x1751ee) = (float)(int)SB(G, 0x1751fa);
-    F(G, 0x1751f2) = (float)(int)SB(G, 0x1751fc);
-    F(G, 0x1751f6) = (float)(int)SB(G, 0x1751fb);
+    PL->setPos((float)(int)PL->cellU(), (float)(int)PL->heightCell(), (float)(int)PL->cellV());
 
-    B (G, 0x1752d1) = 0;
-    B (G, 0x17531b) = 4;
-    DW(G, 0x17522f) = 0;
-    DW(G, 0x175233) = 0x40690000;
+    PL->setField108(0);
+    PL->setKind(4);
+    PL->setField66(200.0);                /* two dwords: 0, 0x40690000 */
 
     /* time() through OUR hook, so KAROO_SEED still governs the run. */
     ORIG_SRAND((unsigned int)hooks_GameTime(0));
@@ -885,7 +864,7 @@ next_row:
     }
 
     /* ── totals and the rest of the reset ──────────────────────────────── */
-    B (G, 0x1752e7) = 0xff;
+    PL->setField11e(0xff);
     DW(G, 0x173584) = 1;
 
     W(G, C_TOTAL) = (unsigned short)(W(G, C_L2_9) + W(G, C_L2_A) +
@@ -894,41 +873,40 @@ next_row:
                                      W(G, C_L2_8) + W(G, C_ITEM7) +
                                      W(G, C_L2_6) + W(G, G_COUNT_CRYSTAL));
 
-    B (G, 0x1752e8) = 0;
-    DW(G, 0x1752a5) = DW(G, G_CLOCK + 0);
-    DW(G, 0x1752a9) = DW(G, G_CLOCK + 4);
+    PL->setMoveState(0);
+    PL->setFieldDc(*((Game *)G)->clock());
 
-    ORIG_LIST_CLEAR(G + 0x1753e5);
+    PL->clearEffects();
 
-    DW(G, 0x1751d9) = (unsigned int)(G + 0x170a5c);
-    DW(G, 0x1753af) = 0;
-    DW(G, 0x1753a3) = 0;
-    DW(G, 0x1753d3) = 0;
-    DW(G, 0x1753c7) = 0;
-    B (G, 0x1752a0) = 0xff;
-    DW(G, 0x17529c) = 0;
-    DW(G, 0x175264) = 0;
-    DW(G, 0x1752ad) = 0;
-    DW(G, 0x1752a1) = 0;
+    PL->setRecord(((Game *)G)->field_170a5c());
+    PL->setField1e6(0);
+    PL->setField1da(0);
+    PL->setField20a(0);
+    PL->setField1fe(0);
+    PL->setSwitchSlot(0xff);
+    PL->setFieldD3(0);
+    PL->setField9b(0);
+    PL->setFieldE4(0);
+    PL->setFieldD8(0);
     DW(G, 0x2ab591) = DW(G, 0x2ab71f);
-    DW(G, 0x1751d5) = (unsigned int)(G + G_CLOCK);
+    PL->setClock(((Game *)G)->clock());
 
     if (B(G, G_GAMEFILE_FLAG) == 0) {
         B(G, 0x4224d)   = 0;
-        W(G, 0x1753e3)  = 0;
+        PL->setField21a(0);
         W(G, 0x42250)   = W(G, C_TOTAL);
 
         if (DW(G, G_SCRIPT_COUNT) == 0) {
-            F(G, G_PLAYER_POS + 0) = (float)(int)SB(G, G_START_U);
-            F(G, G_PLAYER_POS + 4) = (float)(int)SB(G, G_START_H);
-            F(G, G_PLAYER_POS + 8) = (float)(int)SB(G, G_START_V);
+            F(G, G_PLAYER_POS + 0) = (float)(int)(signed char)PL->homeU();
+            F(G, G_PLAYER_POS + 4) = (float)(int)(signed char)PL->homeH();
+            F(G, G_PLAYER_POS + 8) = (float)(int)(signed char)PL->homeV();
         }
 
         if (ORIG_CD_CHECK(G + G_CD_OBJ) == 0 &&
             DW(G, 0xc) == 0 &&
             B(G, G_LEVEL_NO) > 4) {
-            unsigned char cu = B(G, G_START_U);
-            unsigned char cv = B(G, G_START_V);
+            unsigned char cu = PL->homeU();
+            unsigned char cv = PL->homeV();
             if (Sim_FindNearestFlaggedTileInRadius(G, &cu, &cv, 0x14)) {
                 B(G, T_ITEM + TIDX(cu, cv)) = 0;
                 GameLog_LogMessage(GAME_LOGGER_VA, 3, S_CD_MISSING,
@@ -940,23 +918,22 @@ next_row:
     DW(G, 0x2ab595) = 0;
     DW(G, 0x170a65) = 0;
 
-    off = SIDX(SB(G, 0x1751fa), SB(G, 0x1751fb));
+    off = SIDX(PL->cellU(), PL->cellV());
     DW(G, T_DW_72E + off) = 0;
 
-    B (G, 0x1752b2) = 0;
-    B (G, 0x1752b1) = 0;
-    DW(G, 0x1753bb) = 0;
-    DW(G, 0x1752e9) = 0;
-    DW(G, 0x175237) = 0;
-    DW(G, 0x1752b3) = 0;
-    DW(G, 0x1752b8) = 0;
-    DW(G, 0x175317) = 0;
-    B (G, 0x17530e) = 0;
-    DW(G, 0x1752f7) = 0;
-    B (G, 0x175263) = 0;
-    DW(G, 0x17524f) = 0;
-    DW(G, 0x175201) = 0;
-    DW(G, 0x175205) = 0x407f4000;
+    PL->setFieldE9(0);
+    PL->setFieldE8(0);
+    PL->setField1f2(0);
+    PL->setField120(0);
+    PL->setField6e(0);
+    PL->setFieldEa(0);
+    PL->setFieldEf(0);
+    PL->setField14e(0);
+    PL->setPendingMove(0);
+    PL->setField12e(0);
+    PL->setField9a(0);
+    PL->setField86(0);
+    PL->setField38(500.0);                /* two dwords: 0, 0x407f4000 */
     DW(G, G_SOUND_E8)  = 0;
     DW(G, G_SOUND_100) = 0;
 
@@ -964,7 +941,7 @@ next_row:
                        (unsigned int)W(G, G_COUNT_CRYSTAL),
                        DW(G, G_REQUIRED));
 
-    if ((int)(DW(G, G_CARRIED) + (unsigned int)W(G, G_COUNT_CRYSTAL)) <
+    if ((int)((unsigned int)PL->field23d() + (unsigned int)W(G, G_COUNT_CRYSTAL)) <
         (int)DW(G, G_REQUIRED))
         GameLog_LogMessage(GAME_LOGGER_VA, 3, S_WARN_CRYSTALS);
 

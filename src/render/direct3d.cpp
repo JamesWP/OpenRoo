@@ -111,8 +111,6 @@ Direct3D_FlipPrimaryFrame(LoadedImage *img)
  * stubbed or duplicated (same approach as factory.cpp).
  */
 
-typedef void (__attribute__((thiscall)) *listclear_fn)(LinkedList *);
-#define ORIG_LIST_CLEAR ((listclear_fn)0x004254f0)
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Direct3D_ReleaseResources(Direct3D *self)
@@ -131,7 +129,7 @@ Direct3D_ReleaseResources(Direct3D *self)
         if (value)
             game_free2(value);
     }
-    ORIG_LIST_CLEAR(&self->modeList);
+    LinkedList_Clear(&self->modeList);
 
     self->pSelectedMode     = NULL;
     self->dwModeFilterFlags = 0;

@@ -36,6 +36,7 @@ struct __attribute__((packed)) SoundAssetName {
 
 class Bomb;
 class Foe;
+class Player;
 
 class __attribute__((packed)) Game {
 public:
@@ -120,6 +121,12 @@ public:
      * crystal count.  Not confirmed, so not named. */
     unsigned short field_42252() const             { return field_42252_; }
     void           setField42252(unsigned short n) { field_42252_ = n; }
+    /* ── the player ─────────────────────────────────────────────────── */
+    /* Embedded at +0x1751c9 (player.h).  A cast rather than a member:
+     * player.h includes this header, through movableentity.h. */
+    Player       *player()       { return reinterpret_cast<Player *>(gap_1751c9); }
+    const Player *player() const { return reinterpret_cast<const Player *>(gap_1751c9); }
+
     /* The current level's path; diagnostics only. */
     const char    *levelName() const               { return levelName_; }
 

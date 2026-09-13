@@ -38,7 +38,12 @@
  * (0x0041A760) decompile — +0x04224D and +0x170A64 are bytes, not dwords, as
  * the plan's table implied.  Meanings are still unconfirmed in game (Stage B),
  * so these are hashed as opaque bytes and logged under neutral names: a wrong
- * label must not be able to mislead a determinism result. */
+ * label must not be able to mislead a determinism result.
+ *
+ * Five of them are Player fields (player.h: +0x25, +0x23d, +0x22c, +0x11f,
+ * +0xef).  They stay as raw Game offsets deliberately: this table hashes
+ * byte ranges, and routing it through named accessors would reintroduce
+ * exactly the labels it is built to avoid. */
 static const struct { DWORD off; DWORD len; const char *tag; } GAME_FIELDS[] = {
     { 0x1751ee, 12, "pos"     },  /* three floats — player position (unconfirmed) */
     { 0x175406,  4, "f175406" },  /* gems collected (unconfirmed) */

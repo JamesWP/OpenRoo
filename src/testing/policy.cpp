@@ -48,6 +48,8 @@
 #include "plan.h"
 #include "gamestate.h"
 #include "log.h"
+#include "game.h"
+#include "player.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -200,7 +202,7 @@ void policy_menu_tick(void)
     if ((int)screen != last_screen) {
         log_write("policy: bGame_state %d -> %u (mode=%u death=%u)\n",
                   last_screen, (unsigned)screen, (unsigned)gamestate_mode(),
-                  (unsigned)g[0x1752e8]);
+                  (unsigned)((const Game *)g)->player()->moveState());
         last_screen = screen;
         /* A new level means a new tour; a stale one would send the policy to
          * cells that no longer hold anything. */
@@ -228,7 +230,7 @@ void policy_menu_tick(void)
      *
      * Game+0x1752e8 is the death cause byte gamestate.cpp already logs; it is
      * nonzero for the whole death/respawn window and clears on respawn. */
-    if (g[0x1752e8] != 0 && screen != GAME_ST_GAMEOVER && screen != GAME_ST_MENU) {
+    if (((const Game *)g)->player()->moveState() != 0 && screen != GAME_ST_GAMEOVER && screen != GAME_ST_MENU) {
         static bool said;
         if (!said) { said = true; log_write("policy: death — pressing enter to respawn\n"); }
         menu_pulse(0x0d);

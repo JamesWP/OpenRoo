@@ -41,6 +41,8 @@
 #include <string.h>
 #include "log.h"
 #include "soundmanager.h"
+#include "game.h"
+#include "player.h"
 
 struct CStaticSoundbuffer;
 struct VoicePool;
@@ -80,15 +82,16 @@ GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 
 static int s_fx = -1;
 
-/* Reset-if-set, then acquire from a "%s\\waves\\...%s.wav" format. */
-static void bank(unsigned char *B, unsigned int slot, unsigned int fmt,
-                 const char *suffix)
+/* Reset-if-set, then acquire from a "%s\\waves\\...%s.wav" format.  The
+ * caller stores the result back into the slot it passed. */
+static CStaticSoundbuffer *bank(unsigned char *B, CStaticSoundbuffer *cur,
+                                unsigned int fmt, const char *suffix)
 {
     char path[256];
-    if (GP(slot) != NULL)
-        CStatic_Reset((CStaticSoundbuffer *)GP(slot));
+    if (cur != NULL)
+        CStatic_Reset(cur);
     sprintf(path, (const char *)fmt, GAMEDIR, suffix);
-    GP(slot) = ((SoundManager *)(B + 0x13cba8))->acquireStatic(path, 0);
+    return ((SoundManager *)(B + 0x13cba8))->acquireStatic(path, 0);
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -131,17 +134,22 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
 
     for (unsigned int i = 0; i < 3; ++i) {
         char suffix[2] = { (char)('A' + i), 0 };
-        unsigned int esi = 0x175327 + i * 4;
-        bank(B, esi - 0x386b3, 0x465be4, suffix);   /* add02 */
-        bank(B, esi + 0x00,    0x465bcc, suffix);   /* add08 */
-        bank(B, esi + 0x0c,    0x465bb4, suffix);   /* add06 */
-        bank(B, esi + 0x18,    0x465b9c, suffix);   /* add07 */
-        bank(B, esi + 0x24,    0x465b84, suffix);   /* add03 */
-        bank(B, esi + 0x30,    0x465b6c, suffix);   /* add05 */
-        bank(B, esi + 0x48,    0x465b54, suffix);   /* add04 */
-        bank(B, esi + 0x54,    0x465b3c, suffix);   /* add10 */
-        bank(B, esi + 0x60,    0x465b24, suffix);   /* add09 */
-        bank(B, esi + 0x3c,    0x465b0c, suffix);   /* add01 */
+        /* ESI = Game+0x175327 + 4i is the Player's pickup bank +0x15e[i];
+         * ESI-0x386b3 is Game+0x13cc74 + 4i, a Game field. */
+        Player *pl = ((Game *)B)->player();
+        CStaticSoundbuffer **g02 = (CStaticSoundbuffer **)(B + 0x13cc74 + i * 4);
+        *g02 = bank(B, *g02, 0x465be4, suffix);                                   /* add02 */
+#define PBANK(k, fmt) pl->setPickupSound(Player::k, i, bank(B, pl->pickupSound(Player::k, i), fmt, suffix))
+        PBANK(SND_15E, 0x465bcc);   /* add08 */
+        PBANK(SND_16A, 0x465bb4);   /* add06 */
+        PBANK(SND_176, 0x465b9c);   /* add07 */
+        PBANK(SND_182, 0x465b84);   /* add03 */
+        PBANK(SND_18E, 0x465b6c);   /* add05 */
+        PBANK(SND_1A6, 0x465b54);   /* add04 */
+        PBANK(SND_1B2, 0x465b3c);   /* add10 */
+        PBANK(SND_1BE, 0x465b24);   /* add09 */
+        PBANK(SND_19A, 0x465b0c);   /* add01 */
+#undef PBANK
     }
 
     G32(0x196050) = 5;
@@ -171,7 +179,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
     sprintf(path, (const char *)0x00465a6c, GAMEDIR);
     GP(0x13cc70) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* LevelCompleted */
     sprintf(path, (const char *)0x00465a58, GAMEDIR);
-    GP(0x175270) = ((SoundManager *)sm)->acquireStatic(path, 1);          /* splat */
+    ((Game *)B)->player()->setSoundA7(((SoundManager *)sm)->acquireStatic(path, 1)); /* splat */
     ORIG_SOUND_SETUP(sm, (int)G32(0x2ab564));
 
     G32(0x13cc80) = 1;

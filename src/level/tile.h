@@ -155,11 +155,22 @@ public:
     /* +0x1f3: on a kind-0x11 cell, copied into the entity's +0xd7. */
     unsigned char field1f3() const             { return field_1f3; }
 
+    /* ── read by the player tick (tileeffects.cpp) ───────────────────── */
+    /* +0x004: read and written only at Tile::at(base, 0, 0) -- a map
+     * header field, not a cell's.  The time bonus adds 5 to it.  The tick
+     * also reads +0x19f signed; the cast is at the read site. */
+    int  field004() const                      { return field_004; }
+    void setField004(int n)                    { field_004 = n; }
+
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
     KAROO_LAYOUT_REGISTER(Tile);
 
-    unsigned char gap_000[0x19a - 0x000];
+    unsigned char gap_000[0x004 - 0x000];
+    /* Meaningful only at cell (0, 0), where the tile pointer is the tile
+     * base: the time bonus pickup adds 5 to it. */
+    int           field_004;          /* 0x004                              */
+    unsigned char gap_008[0x19a - 0x008];
     /* Meaningful only at cell (0, 0), where the tile pointer is the tile
      * base: the map header's extents (levelsetup.cpp G_MAP_H / G_MAP_W). */
     unsigned char mapExtentV_;        /* 0x19a  the map's v extent          */
@@ -217,6 +228,7 @@ private:
 
 KAROO_LAYOUT_CHECKS(Tile)
 {
+    KAROO_LAYOUT_AT(field_004,         0x004);
     KAROO_LAYOUT_AT(mapExtentV_,       0x19a);
     KAROO_LAYOUT_AT(mapExtentU_,       0x19b);
     KAROO_LAYOUT_AT(height_,           0x19c);

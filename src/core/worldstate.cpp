@@ -58,6 +58,8 @@
 #include "clock.h"
 #include "policy.h"
 #include "log.h"
+#include "game.h"
+#include "player.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -86,12 +88,8 @@
  * this file already reads at Game+0x1751ee is exactly base+0x25, and the grid
  * bytes at Game+0x1751fa are base+0x31, matching the foe layout offset for
  * offset. */
-#define OFF_PLAYER_OBJ 0x1751c9
-#define OFF_PLR_FACING (OFF_PLAYER_OBJ + 0x14)    /* 0x1751dd */
-#define OFF_PLR_MOVING (OFF_PLAYER_OBJ + 0x14e)   /* 0x175317 */
-#define OFF_PLR_GRIDF  0x1751ee   /* float[3] (U, H, V) = base+0x25 */
-#define OFF_PLR_CELL   0x1751fa   /* byte[3]  (U, V, H) */
-#define OFF_PLR_WORLD  0x2ab580   /* float[3] (U, H, V) */
+/* Read through Game::player() (player.h). */
+#define OFF_PLR_WORLD  0x2ab580   /* float[3] (U, H, V) -- a Game field */
 
 /* The level exit, as (U, V, H) bytes.  SetupLevelObjects finds it by searching
  * the grid for tile kind 4 (FUN_0041f430(..., 4, Game+0x17530b)) — and there
@@ -99,16 +97,12 @@
  * completion flag when the player's cell equals these three AND
  * gems_collected >= gems_required, so the exit only counts once the level's
  * crystals are done. */
-#define OFF_EXIT_CELL  0x17530b
+/* Player +0x142..+0x144 (player.h). */
 
 /* Scalars, same fields gamestate.cpp reads. */
-#define OFF_GEMS_GOT   0x175406
 #define OFF_GEMS_REQ   0x2ab723
 #define OFF_FOES_KILL  0x04224d
-#define OFF_LIVES      0x175402
-#define OFF_COMPLETE   0x1752b8
 #define OFF_CRYSTALS   0x042252
-#define OFF_FREEZE     0x1753af   /* nonzero = all foes frozen (freeze bonus) */
 
 static WsTile     g_grid[WS_GRID_PITCH * WS_GRID_PITCH];
 static Observation g_obs;
@@ -222,25 +216,32 @@ bool worldstate_observe(Observation *obs)
         }
     }
 
-    obs->player_facing = g[OFF_PLR_FACING];
-    obs->player_moving = (BYTE)*(const DWORD *)(g + OFF_PLR_MOVING);
-    memcpy(obs->player_grid,  g + OFF_PLR_GRIDF, sizeof(obs->player_grid));
+    const Player *pl = ((const Game *)g)->player();
+    obs->player_facing  = pl->facing();
+    obs->player_moving  = (BYTE)pl->field14e();
+    obs->player_grid[0] = pl->posU();
+    obs->player_grid[1] = pl->posY();
+    obs->player_grid[2] = pl->posV();
     memcpy(obs->player_world, g + OFF_PLR_WORLD, sizeof(obs->player_world));
-    memcpy(obs->player_cell,  g + OFF_PLR_CELL,  sizeof(obs->player_cell));
-    memcpy(obs->exit_cell,    g + OFF_EXIT_CELL, sizeof(obs->exit_cell));
+    obs->player_cell[0] = (BYTE)pl->cellU();
+    obs->player_cell[1] = (BYTE)pl->cellV();
+    obs->player_cell[2] = (BYTE)pl->heightCell();
+    obs->exit_cell[0]   = pl->field142();
+    obs->exit_cell[1]   = pl->field143();
+    obs->exit_cell[2]   = pl->field144();
 
     obs->n_foes    = read_table(g, OFF_FOE_PTRS, OFF_FOE_COUNT, OFF_FOE_IDS,
                                 true,  obs->foes);
     obs->n_enemies = read_table(g, OFF_ENE_PTRS, OFF_ENE_COUNT, OFF_ENE_IDS,
                                 false, obs->enemies);
 
-    obs->gems_collected    = *(const int   *)(g + OFF_GEMS_GOT);
+    obs->gems_collected    = pl->field23d();
     obs->gems_required     = *(const int   *)(g + OFF_GEMS_REQ);
     obs->foes_killed       = g[OFF_FOES_KILL];
-    obs->lives             = g[OFF_LIVES];
-    obs->level_complete    = *(const int   *)(g + OFF_COMPLETE);
+    obs->lives             = (BYTE)pl->field239();
+    obs->level_complete    = pl->fieldEf();
     obs->crystals_in_level = *(const WORD  *)(g + OFF_CRYSTALS);
-    obs->freeze_timer      = *(const DWORD *)(g + OFF_FREEZE);
+    obs->freeze_timer      = (DWORD)pl->field1e6();
     return true;
 }
 

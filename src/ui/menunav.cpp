@@ -52,6 +52,8 @@
 #include <windows.h>
 #include <string.h>
 #include "log.h"
+#include "game.h"
+#include "player.h"
 
 extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -152,9 +154,9 @@ Sim_StoreGameStateIntoSaveSlot(void *self, unsigned int slotArg)
     S[0x170ac1] = (unsigned char)(B[0x173583] + 1);
     *(unsigned int *)(S + 0x170acb) =
         (unsigned int)(long long)*(double *)(B + 0x170a44);
-    *(unsigned int *)(S + 0x170ac7) = *(unsigned int *)(B + 0x1752a1);
-    *(unsigned int *)(S + 0x170ac3) = *(unsigned int *)(B + 0x1753f5);
-    S[0x170ac2] = B[0x175402];
+    *(unsigned int *)(S + 0x170ac7) = (unsigned int)((Game *)B)->player()->fieldD8();
+    *(unsigned int *)(S + 0x170ac3) = (unsigned int)((Game *)B)->player()->field22c();
+    S[0x170ac2] = (unsigned char)((Game *)B)->player()->field239();
     *(unsigned int *)(S + 0x170acf) = 1;
     return 1;
 }

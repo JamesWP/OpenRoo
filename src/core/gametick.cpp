@@ -52,6 +52,7 @@
 #include "breakabletile.h"
 #include "bomb.h"
 #include "foe.h"
+#include "player.h"
 #include "tilequery.h"
 
 struct CStaticSoundbuffer;
@@ -73,7 +74,6 @@ __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AnimateScoreTal
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PollTextEntryKeys(void *self, unsigned int phase);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
 
-__declspec(dllexport) void __attribute__((thiscall)) Sim_UpdatePlayerTileEffects(void *self);
 __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AcquireObjectSoundBuffersForIndex(void *self, unsigned int objArg);
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
@@ -236,6 +236,7 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_GameTick(void *self, double dt, double now)
 {
     unsigned char *B = (unsigned char *)self;
+    Player *pl = ((Game *)B)->player();
 
     if (s_fx < 0) {
         char e[32];
@@ -291,8 +292,7 @@ Sim_GameTick(void *self, double dt, double now)
             }
             G32(0x28ab29) = 0x40e00000;
             G8(0x28ab2d) = 0;
-            G32(0x1753fa) = G32(0x170a54);
-            G32(0x1753fe) = G32(0x170a58);
+            pl->setField231(*((Game *)B)->clock());
         }
     }
 
@@ -345,13 +345,13 @@ Sim_GameTick(void *self, double dt, double now)
     }
 
     {
-        unsigned char pct = completion_percent(G32(0x1752a1), G32(0x170a65));
+        unsigned char pct = completion_percent((unsigned int)pl->fieldD8(), G32(0x170a65));
         G8(0x170a64) = pct;
         if (pct > 100)
             G8(0x170a64) = 100;
     }
 
-    Sim_UpdatePlayerTileEffects(B + 0x1751c9);
+    pl->updateTileEffects();
 
     if (STATE == 1) {
         if (G32(0x13cdb7) != 0)
@@ -380,15 +380,15 @@ Sim_GameTick(void *self, double dt, double now)
         }
 
         G32(0x2ab576) = G32(0x2ab57a);
-        if (G8(0x1752e8) != 0) {
+        if (pl->moveState() != 0) {
             G32(0x13cca8) = 0;
             G32(0x28ab29) = G32(0x13cca4);
-            if (GP(0x175278) != NULL) CStatic_HaltPlayback((CStaticSoundbuffer *)GP(0x175278));
-            if (GP(0x175274) != NULL) CStatic_HaltPlayback((CStaticSoundbuffer *)GP(0x175274));
-            if (GP(0x175290) != NULL) CStatic_HaltPlayback((CStaticSoundbuffer *)GP(0x175290));
+            if (pl->soundAf() != NULL) CStatic_HaltPlayback(pl->soundAf());
+            if (pl->soundAb() != NULL) CStatic_HaltPlayback(pl->soundAb());
+            if (pl->soundC7() != NULL) CStatic_HaltPlayback(pl->soundC7());
         }
 
-        if (G32(0x1752b3) != 0) {
+        if ((unsigned int)pl->fieldEa() != 0) {
             if (G8(0x3215d) == 0) {
                 G8(0x3215d) = (unsigned char)(G8(0x2ab571) + 10);
                 G8(0x2ab571) = 1;
@@ -405,31 +405,30 @@ Sim_GameTick(void *self, double dt, double now)
             long double rem80 = (lim - (long double)(unsigned long long)G32(0x2ab595)) *
                                 (long double)k001;
             double rem64 = (double)rem80;
-            if (rem80 > 11.0L || G8(0x1752e8) == 3) {
-                GD(0x175393) = 10.0;
-            } else if ((long double)GD(0x175393) > (long double)rem64) {
+            if (rem80 > 11.0L || pl->moveState() == 3) {
+                pl->setField1ca(10.0);
+            } else if ((long double)pl->field1ca() > (long double)rem64) {
                 if (GP(0x13cc6c) != NULL)
                     CStatic_TriggerPlayback((CStaticSoundbuffer *)GP(0x13cc6c), 0);
-                GD(0x175393) = crt_floor(rem64);
+                pl->setField1ca(crt_floor(rem64));
             }
         }
-        if (G8(0x1752e8) == 0)
+        if (pl->moveState() == 0)
             ProgCtrl_Dispatch(PROGCTRL, (unsigned short)STATE);
     } else {
-        G32(0x175237) = 0;
-        G32(0x17523b) = G32(0x170a54);
-        G32(0x17523f) = G32(0x170a58);
+        pl->setField6e(0);
+        pl->setField72(*((Game *)B)->clock());
         ProgCtrl_Dispatch(PROGCTRL, 0);
         if (GP(0x13cc6c) != NULL)
             CStatic_HaltPlayback((CStaticSoundbuffer *)GP(0x13cc6c));
     }
 
     /* the player's bomb drop */
-    if (G32(0x1752ad) != 0) {
-        unsigned int timed = G32(0x175317);
+    if ((unsigned int)pl->fieldE4() != 0) {
+        unsigned int timed = (unsigned int)pl->field14e();
         int spawn = 1, offset = 0;
         if (timed != 0) {
-            long double since = (long double)ACC - (long double)GD(0x17530f);
+            long double since = (long double)ACC - (long double)pl->field146();
             if (since < 50.0L)
                 offset = 1;
             else
@@ -437,46 +436,46 @@ Sim_GameTick(void *self, double dt, double now)
         }
         if (spawn) {
             if (offset)
-                Bomb::spawn((Game *)B,(unsigned char)(G8(0x1751fa) - G8(0x175308)),
-                                    (unsigned char)(G8(0x1751fb) - G8(0x175309)),
-                                    (unsigned char)(G8(0x1751fc) - G8(0x17530a)),
-                                    G8(0x1751dd));
+                Bomb::spawn((Game *)B,(unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->field13f()),
+                                    (unsigned char)((unsigned char)pl->cellV() - (unsigned char)pl->field140()),
+                                    (unsigned char)((unsigned char)pl->heightCell() - (unsigned char)pl->field141()),
+                                    pl->facing());
             else
-                Bomb::spawn((Game *)B,G8(0x1751fa), G8(0x1751fb), G8(0x1751fc),
-                                    G8(0x1751dd));
-            G32(0x1752ad) = 0;
+                Bomb::spawn((Game *)B,(unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
+                                    pl->facing());
+            pl->setFieldE4(0);
         }
     }
 
     /* a switch the player stepped on */
     {
-        unsigned char sw = G8(0x1752a0);
+        unsigned char sw = pl->switchSlot();
         if (sw < 0xff && ((Game *)B)->bridgeSlot(sw)->armed() == 0) {
             GameLog_LogMessage(GAMELOGGER, 1, F_SWITCH, (unsigned int)sw);
-            trigger_switch_tile(B, G8(0x1752a0), GS8(0x1751fa), GS8(0x1751fb));
-            BridgeObject *br = ((Game *)B)->bridgeSlot(G8(0x1752a0));
+            trigger_switch_tile(B, pl->switchSlot(), pl->cellU(), pl->cellV());
+            BridgeObject *br = ((Game *)B)->bridgeSlot(pl->switchSlot());
             br->arm(((Game *)B)->clock());
             br->playArmSound();
-            Sim_MarkListedTilesBlockedByObject(B, G8(0x1752a0));
-            G8(0x1752a0) = 0xff;
+            Sim_MarkListedTilesBlockedByObject(B, pl->switchSlot());
+            pl->setSwitchSlot(0xff);
         }
     }
 
-    if (G8(0x1752e8) != 0) {
+    if (pl->moveState() != 0) {
         G8(0x28ab2d) = 2;
     } else if (STATE == 1) {
         G32(0x2ab595) += (unsigned int)ftol80(*(double *)(B + 0x170a5c));
         G32(0x170a65) += (unsigned int)ftol80(*(double *)(B + 0x170a5c));
     }
 
-    if (G32(0x1752b3) != 0) {
+    if ((unsigned int)pl->fieldEa() != 0) {
         G8(0x28ab2d) = 0;
-    } else if (G32(0x1752e9) != 0) {
-        long double d = (long double)(int)G8(0x1752da) - (long double)(int)GS8(0x1751fc);
+    } else if ((unsigned int)pl->field120() != 0) {
+        long double d = (long double)(int)pl->field111() - (long double)(int)pl->heightCell();
         if (d > 2.0L) {
             G8(0x28ab2d) = 1;
-            G32(0x2ab580) = G32(0x1751ee);
-            G32(0x2ab588) = G32(0x1751f6);
+            GF(0x2ab580) = pl->posU();
+            GF(0x2ab588) = pl->posV();
         }
     }
 
@@ -499,18 +498,18 @@ Sim_GameTick(void *self, double dt, double now)
             }
         }
 
-        int hold = (G32(0x1753af) == 0 && STATE == 1) ? 0 : 1;
+        int hold = ((unsigned int)pl->field1e6() == 0 && STATE == 1) ? 0 : 1;
         if (STATE == 3)
             hold = 1;
-        if (G8(0x1752e8) != 0)
+        if (pl->moveState() != 0)
             hold = 1;
-        (*slot)->chooseTarget(game, hold, G8(0x1751fa), G8(0x1751fb),
-                              G8(0x17530b), G8(0x17530c), &tu, &tv);
+        (*slot)->chooseTarget(game, hold, (unsigned char)pl->cellU(), (unsigned char)pl->cellV(),
+                              pl->field142(), pl->field143(), &tu, &tv);
 
         (*slot)->step(tu, tv);
         (*slot)->dropBomb(game);
-        (*slot)->checkPlayerContact(&G8(0x1752e8),
-                                    GF(0x1751ee), GF(0x1751f2), GF(0x1751f6));
+        (*slot)->checkPlayerContact(pl->moveStateRef(),
+                                    pl->posU(), pl->posY(), pl->posV());
         if ((*slot)->finishDespawn(B + 0x3e181c)) {
             Foe::remove(game, id);
             G8(0x4224d) = (unsigned char)(G8(0x4224d) + 1);
@@ -519,23 +518,23 @@ Sim_GameTick(void *self, double dt, double now)
 
     /* ─── playing: camera follow, time-out, exit ─── */
     if (STATE == 1) {
-        if (G32(0x1752e9) == 0 && G8(0x1752e8) == 0) {
-            G32(0x2ab580) = G32(0x1751ee);
-            G32(0x2ab584) = G32(0x1751f2);
-            G32(0x2ab588) = G32(0x1751f6);
+        if ((unsigned int)pl->field120() == 0 && pl->moveState() == 0) {
+            GF(0x2ab580) = pl->posU();
+            GF(0x2ab584) = pl->posY();
+            GF(0x2ab588) = pl->posV();
             G8(0x28ab2d) = 0;
         }
-        if (G8(0x1752e8) != 3) {
+        if (pl->moveState() != 3) {
             int t = GI32(0x2ab591) * 1000;
             if (t - GI32(0x2ab595) <= 0) {
                 void *snd = GP(0x13cc5c);
                 GI32(0x2ab595) = t;
-                G8(0x1752e8) = 3;
+                pl->setMoveState(3);
                 if (snd != NULL)
                     CStatic_TriggerPlayback((CStaticSoundbuffer *)snd, 0);
             }
         }
-        if (GI32(0x175406) >= GI32(0x2ab723)) {
+        if (pl->field23d() >= GI32(0x2ab723)) {
             if (G32(0x173b1a) == 0 && STATE != 3) {
                 int r = (int)ftol80(ACC);
                 void *snd = GP(0x13cc74 + (r % 3) * 4);
@@ -543,12 +542,12 @@ Sim_GameTick(void *self, double dt, double now)
                     CStatic_TriggerPlayback((CStaticSoundbuffer *)snd, 0);
                 G32(0x173b1a) = 1;
             }
-            G32(0x2ab7a4 + TIDX(GS8(0x17530b), GS8(0x17530c))) = 1;
-            if (G8(0x1751fa) == G8(0x17530b) && G8(0x1751fb) == G8(0x17530c) &&
-                G8(0x1751fc) == G8(0x17530d) && G32(0x1752e9) == 0 &&
-                G8(0x1752e8) == 0) {
-                G32(0x1752b8) = 1;
-                if (G32(0x175317) == 0) {
+            G32(0x2ab7a4 + TIDX((signed char)pl->field142(), (signed char)pl->field143())) = 1;
+            if ((unsigned char)pl->cellU() == pl->field142() && (unsigned char)pl->cellV() == pl->field143() &&
+                (unsigned char)pl->heightCell() == pl->field144() && (unsigned int)pl->field120() == 0 &&
+                pl->moveState() == 0) {
+                pl->setFieldEf(1);
+                if ((unsigned int)pl->field14e() == 0) {
                     if (GP(0x13cc70) != NULL)
                         CStatic_TriggerPlayback((CStaticSoundbuffer *)GP(0x13cc70), 0);
                     if ((unsigned int)G8(0x173583) + 1 == (unsigned int)G8(0x4215e)) {
@@ -583,13 +582,13 @@ Sim_GameTick(void *self, double dt, double now)
 
     /* ─── ENTER handling: after a death, or on the game-over tally ─── */
     if (STATE != 2) {
-        if (DEB != 0x0d && KEY(0x0d) != 0 && G8(0x1752e8) != 0 && STATE == 1) {
+        if (DEB != 0x0d && KEY(0x0d) != 0 && pl->moveState() != 0 && STATE == 1) {
             G8(0x4220b) = (unsigned char)(G8(0x4220b) + 1);
-            int lives = GI32(0x175402);
+            int lives = pl->field239();
             int bonus = GI32(0x2ab599);
             int restart_tail = 1;
             if (lives > 0 && bonus == 0) {
-                GI32(0x175402) = lives - 1;              /* the DEC at 0x4160d6 */
+                pl->setField239(lives - 1);              /* the DEC at 0x4160d6 */
                 Sim_RestoreTileGridFromSnapshot(B);
                 Sim_SetupLevelObjects(B);
             } else if (lives <= 0 && bonus == 0) {
@@ -634,7 +633,7 @@ Sim_GameTick(void *self, double dt, double now)
         }
     } else if (DEB != 0x0d && KEY(0x0d) != 0 && G32(0x517909) != 0) {
         unsigned int r = Sim_InsertScoreIntoHighScoreTable(
-            B + 0x13cdbb, G32(0x1753f5), (unsigned char)(G8(0x173583) + 1));
+            B + 0x13cdbb, (unsigned int)pl->field22c(), (unsigned char)(G8(0x173583) + 1));
         if ((unsigned char)r < 0xff) {
             STATE = 6;
             if (G32(0x2aa156) != 0)
@@ -651,7 +650,7 @@ Sim_GameTick(void *self, double dt, double now)
             const char *theme = NULL;
             int setup = 1;
             if ((unsigned int)G8(0x173583) + 1 == (unsigned int)G8(0x4215e) &&
-                G8(0x1752e8) == 0) {
+                pl->moveState() == 0) {
                 if (G32(0x0c) == 0) {
                     char name[256];
                     sprintf(name, F_FINALDIR, (const char *)(B + 0x4215f));
@@ -714,7 +713,7 @@ Sim_GameTick(void *self, double dt, double now)
         DEB = 0x0d;
     }
 
-    if (G8(0x1752e8) != 0 && G8(0x1752e8) != 2)
+    if (pl->moveState() != 0 && pl->moveState() != 2)
         G8(0x28ab2d) = 2;
     if (KEY(DEB) == 0)
         DEB = 0;

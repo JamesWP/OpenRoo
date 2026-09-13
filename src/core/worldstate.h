@@ -154,14 +154,14 @@ struct Observation {
     BYTE  cols, rows;          /* U extent, V extent */
     const WsTile *grid;        /* cols*rows entries, row-major in V */
 
-    BYTE  player_facing;       /* Game+0x1751dd  1..4 */
-    BYTE  player_moving;       /* Game+0x175317  0 = idle */
-    float player_grid[3];      /* Game+0x1751ee  (U, H, V) */
+    BYTE  player_facing;       /* Player +0x14 (Game+0x1751dd)  1..4 */
+    BYTE  player_moving;       /* Player +0x14e (Game+0x175317)  0 = idle */
+    float player_grid[3];      /* Player +0x25 (Game+0x1751ee)  (U, H, V) */
     float player_world[3];     /* Game+0x2ab580  (U, H, V) */
-    BYTE  player_cell[3];      /* Game+0x1751fa  (U, V, H) */
-    BYTE  exit_cell[3];        /* Game+0x17530b  (U, V, H) — the level exit */
+    BYTE  player_cell[3];      /* Player +0x31 (Game+0x1751fa)  (U, V, H) */
+    BYTE  exit_cell[3];        /* Player +0x142 (Game+0x17530b)  (U, V, H) — the level exit */
 
-    DWORD freeze_timer;        /* Game+0x1753af — nonzero freezes every foe */
+    DWORD freeze_timer;        /* Player +0x1e6 (Game+0x1753af) — nonzero freezes every foe */
     unsigned n_foes;
     unsigned n_enemies;
     WsEntity foes[WS_MAX_ENT];
