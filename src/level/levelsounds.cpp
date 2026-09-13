@@ -47,6 +47,7 @@
 #include "soundmanager.h"
 #include "game.h"
 #include "player.h"
+#include "soundobj.h"
 
 struct CStaticSoundbuffer;
 struct VoicePool;
@@ -64,8 +65,6 @@ CStatic_Set3DPosition(CStaticSoundbuffer *self, float x, float y, float z,
                       DWORD dwApply);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_AcquireObjectSoundBuffersForIndex(void *self, unsigned int objArg);
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 
@@ -174,7 +173,7 @@ Sim_InitLevelBasedSounds(void *self)
         pl->setSoundA7(reslot(B, pl->soundA7(), 0x44c42));
 
         for (unsigned short i = 0; i < G8(0x174fd4); ++i)
-            Sim_AcquireObjectSoundBuffersForIndex(B, G8(0x174fd5 + i));
+            Sim_AcquireObjectSoundBuffersForIndex((Game *)B, G8(0x174fd5 + i));
 
         for (unsigned short i = 0; i < G8(0x173e3e); ++i) {
             unsigned char *obj;

@@ -54,6 +54,7 @@
 #include "foe.h"
 #include "player.h"
 #include "tilequery.h"
+#include "soundobj.h"
 
 struct CStaticSoundbuffer;
 struct ProgableControl;
@@ -73,8 +74,6 @@ __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleKeypress(void *se
 __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AnimateScoreTallyStages(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PollTextEntryKeys(void *self, unsigned int phase);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
-
-__declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AcquireObjectSoundBuffersForIndex(void *self, unsigned int objArg);
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PopMenuNodeFromStack(void *self);
@@ -373,7 +372,7 @@ Sim_GameTick(void *self, double dt, double now)
                     foe->setDropContents(7);
                 else
                     foe->setDropContents(1);
-                Sim_AcquireObjectSoundBuffersForIndex(B, id);
+                Sim_AcquireObjectSoundBuffersForIndex((Game *)B, id);
             }
             *(unsigned int *)(E - 0x11) = G32(0x170a54);
             *(unsigned int *)(E - 0x0d) = G32(0x170a58);

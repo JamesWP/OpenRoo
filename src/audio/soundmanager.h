@@ -15,6 +15,7 @@
 #pragma once
 
 struct CStaticSoundbuffer;
+struct VoicePool;
 
 class SoundManager {
 public:
@@ -30,6 +31,10 @@ public:
     /* 0x00443660 AcquireSoundBuffer -- load (or share) the named static
      * buffer.  `mode` is passed through; callers use 0 and 1. */
     CStaticSoundbuffer *acquireStatic(const char *name, int mode);
+
+    /* 0x00443810 AcquireVoicePool -- `count` voices on the named file;
+     * `mode` as for acquireStatic. */
+    VoicePool *acquirePool(int count, const char *name, int mode);
 
 private:
     SoundManager() = delete;   /* game-owned; only ever reached by pointer */

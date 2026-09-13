@@ -6,76 +6,75 @@
  * __thiscall(Game*, uint objectIndex), RET 4.  Transcribed from the LISTING.
  *
  * The SoundManager embedded at Game+0x13cba8 is NOT ours: its two acquire
- * methods are kept as named callbacks, exactly as objectspawn.cpp keeps
- * AcquireSoundBuffer --
- *   AcquireSoundBuffer 0x00443660  thiscall(sm, name, mode)       -> CStatic*
- *   AcquireVoicePool   0x00443810  thiscall(sm, count, name, mode) -> VoicePool*
+ * methods are placeholders in soundmanager.h that call the originals --
+ *   acquireStatic  AcquireSoundBuffer 0x00443660  (name, mode)        -> CStatic*
+ *   acquirePool    AcquireVoicePool   0x00443810  (count, name, mode) -> VoicePool*
  * Replacing the sound manager is its own piece of work, not a GameTick one.
  *
  * Each acquisition is gated on the dword right after a 0x100-byte name
- * (name+0x100) and passes a stack COPY of the name, as the listing does:
+ * (name+0x100) and passes a stack COPY of the name, as the listing does.
+ * The name blocks are Game fields (Band 3), so they stay offsets here:
  *
- *   +0x441ca VoicePool(3) -> obj+0x9f     +0x429b6 -> obj+0xb3
- *   +0x42ac2 -> obj+0xb7, then re-tests the SAME guard and acquires the SAME
- *            name again into obj+0xbb -- two buffers on one file (preserved)
- *   +0x42586 -> obj+0xab                  +0x42692 -> obj+0xaf
- *   obj+0x152 == 2 : +0x457c6 -> +0xc3, +0x42262 VoicePool(5) -> +0xcf,
- *                    +0x44d4e -> +0xa7
- *   otherwise      : +0x458d2 -> +0xc3, +0x4247a VoicePool(5) -> +0xcf,
- *                    +0x44e5a -> +0xa7
- *   +0x42de6 -> obj+0xcb
+ *   +0x441ca VoicePool(3) -> pool9f       +0x429b6 -> soundB3
+ *   +0x42ac2 -> soundB7, then re-tests the SAME guard and acquires the SAME
+ *            name again into soundBb -- two buffers on one file (preserved)
+ *   +0x42586 -> soundAb                   +0x42692 -> soundAf
+ *   kind() == 2 : +0x457c6 -> soundC3, +0x42262 VoicePool(5) -> poolCf,
+ *                 +0x44d4e -> soundA7
+ *   otherwise   : +0x458d2 -> soundC3, +0x4247a VoicePool(5) -> poolCf,
+ *                 +0x44e5a -> soundA7
+ *   +0x42de6 -> soundCb
  *
- * The first five stores re-read the object slot every time (the listing
- * reloads [EBX+EDX*4+0x174804]); from the kind test onward the slot ADDRESS
- * is held and dereferenced per store.  Both forms read the same pointer,
- * since the acquires never write the slot table.
+ * The listing reloads the slot ([EBX+EDX*4+0x174804]) for the first five
+ * stores, then holds the slot ADDRESS and dereferences it per store.  Both
+ * read the same pointer, since the acquires never write the slot table;
+ * here every store re-reads it through Game::foeSlot.
  *
  * Return: MOV AL,1 over whatever EAX last held -- the final acquire's result
  * when the +0x42ee6 guard was set, else that guard dword (0).
  *
- * Control: KAROO_SIM_FX=soundswap -- +0xab and +0xaf swap names.  Sound is
- * outside every asserted field, so this is expected not to fail the suite:
- * the function's effects are audible, not simulated.
+ * Control: KAROO_SIM_FX=soundswap -- soundAb and soundAf swap names.  Sound
+ * is outside every asserted field, so this is expected not to fail the
+ * suite: the function's effects are audible, not simulated.
  */
 #include <windows.h>
 #include <string.h>
 #include "log.h"
+#include "game.h"
+#include "foe.h"
 #include "soundmanager.h"
-
-struct CStaticSoundbuffer;
-struct VoicePool;
-typedef VoicePool *(__attribute__((thiscall)) *acquire_pool_fn)(void *sm, int count,
-                                                                 const char *name,
-                                                                 int mode);
-#define ORIG_ACQUIRE_POOL  ((acquire_pool_fn)0x00443810)   /* named callback */
-
-#define G_SOUND_MGR 0x13cba8
-#define G_FOE_SLOTS 0x174804
+#include "soundobj.h"
 
 static int s_fx = -1;
 
-static void *acq(unsigned char *B, unsigned int nameOff)
+/* A name block in Game, and the guard dword right after it. */
+static const char *name_at(Game *g, unsigned int off)
 {
-    char name[256];
-    strcpy(name, (const char *)(B + nameOff));
-    return ((SoundManager *)(B + G_SOUND_MGR))->acquireStatic(name, 1);
+    return (const char *)g + off;
 }
 
-static void *acq_pool(unsigned char *B, int count, unsigned int nameOff)
+static int guard(Game *g, unsigned int off)
 {
-    char name[256];
-    strcpy(name, (const char *)(B + nameOff));
-    return ORIG_ACQUIRE_POOL(B + G_SOUND_MGR, count, name, 1);
+    return *(const int *)(name_at(g, off) + 0x100);
 }
 
-#define GUARD(off)  (*(int *)(B + (off) + 0x100))
-#define SLOT()      (*(unsigned char **)(B + G_FOE_SLOTS + idx * 4))
-#define PUT(o, v)   (*(void **)(SLOT() + (o)) = (v))
+static CStaticSoundbuffer *acq(Game *g, unsigned int nameOff)
+{
+    char name[256];
+    strcpy(name, name_at(g, nameOff));
+    return g->soundManager()->acquireStatic(name, 1);
+}
+
+static VoicePool *acq_pool(Game *g, int count, unsigned int nameOff)
+{
+    char name[256];
+    strcpy(name, name_at(g, nameOff));
+    return g->soundManager()->acquirePool(count, name, 1);
+}
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_AcquireObjectSoundBuffersForIndex(void *self, unsigned int objArg)
+Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
 {
-    unsigned char *B = (unsigned char *)self;
     unsigned int idx = objArg & 0xff;
     unsigned int offAB = 0x42586, offAF = 0x42692;
     unsigned int last;
@@ -92,40 +91,40 @@ Sim_AcquireObjectSoundBuffersForIndex(void *self, unsigned int objArg)
         offAF = 0x42586;
     }
 
-    if (GUARD(0x441ca))
-        PUT(0x9f, acq_pool(B, 3, 0x441ca));
-    if (GUARD(0x429b6))
-        PUT(0xb3, acq(B, 0x429b6));
-    if (GUARD(0x42ac2)) {
-        PUT(0xb7, acq(B, 0x42ac2));
-        if (GUARD(0x42ac2))
-            PUT(0xbb, acq(B, 0x42ac2));
+    if (guard(g, 0x441ca))
+        g->foeSlot(idx)->setPool9f(acq_pool(g, 3, 0x441ca));
+    if (guard(g, 0x429b6))
+        g->foeSlot(idx)->setSoundB3(acq(g, 0x429b6));
+    if (guard(g, 0x42ac2)) {
+        g->foeSlot(idx)->setSoundB7(acq(g, 0x42ac2));
+        if (guard(g, 0x42ac2))
+            g->foeSlot(idx)->setSoundBb(acq(g, 0x42ac2));
     }
-    if (GUARD(offAB))
-        PUT(0xab, acq(B, offAB));
-    if (GUARD(offAF))
-        PUT(0xaf, acq(B, offAF));
+    if (guard(g, offAB))
+        g->foeSlot(idx)->setSoundAb(acq(g, offAB));
+    if (guard(g, offAF))
+        g->foeSlot(idx)->setSoundAf(acq(g, offAF));
 
-    if (SLOT()[0x152] == 2) {
-        if (GUARD(0x457c6))
-            PUT(0xc3, acq(B, 0x457c6));
-        if (GUARD(0x42262))
-            PUT(0xcf, acq_pool(B, 5, 0x42262));
-        if (GUARD(0x44d4e))
-            PUT(0xa7, acq(B, 0x44d4e));
+    if (g->foeSlot(idx)->kind() == 2) {
+        if (guard(g, 0x457c6))
+            g->foeSlot(idx)->setSoundC3(acq(g, 0x457c6));
+        if (guard(g, 0x42262))
+            g->foeSlot(idx)->setPoolCf(acq_pool(g, 5, 0x42262));
+        if (guard(g, 0x44d4e))
+            g->foeSlot(idx)->setSoundA7(acq(g, 0x44d4e));
     } else {
-        if (GUARD(0x458d2))
-            PUT(0xc3, acq(B, 0x458d2));
-        if (GUARD(0x4247a))
-            PUT(0xcf, acq_pool(B, 5, 0x4247a));
-        if (GUARD(0x44e5a))
-            PUT(0xa7, acq(B, 0x44e5a));
+        if (guard(g, 0x458d2))
+            g->foeSlot(idx)->setSoundC3(acq(g, 0x458d2));
+        if (guard(g, 0x4247a))
+            g->foeSlot(idx)->setPoolCf(acq_pool(g, 5, 0x4247a));
+        if (guard(g, 0x44e5a))
+            g->foeSlot(idx)->setSoundA7(acq(g, 0x44e5a));
     }
 
-    last = (unsigned int)GUARD(0x42de6);
+    last = (unsigned int)guard(g, 0x42de6);
     if (last != 0) {
-        void *p = acq(B, 0x42de6);
-        PUT(0xcb, p);
+        CStaticSoundbuffer *p = acq(g, 0x42de6);
+        g->foeSlot(idx)->setSoundCb(p);
         last = (unsigned int)(unsigned long)p;
     }
     return (last & 0xffffff00u) | 1u;
