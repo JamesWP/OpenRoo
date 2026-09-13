@@ -30,6 +30,7 @@
 #include <string.h>
 #include "static.h"
 #include "log.h"
+#include "game.h"
 
 extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
@@ -82,7 +83,7 @@ Sim_AnimateScoreTallyStages(void *self)
             G32(0x14053f) = now;
             G8(0x14053e) = 1;
             G32(0x1404dd) = n;
-            G32(0x1404c1) = G32(0x140502);
+            G32(0x1404c1) = (unsigned int)((Game *)B)->gemsScore();
         } else {
             tick_sound(B);
             G32(0x1404dd) = el / 50;
@@ -155,7 +156,7 @@ Sim_AnimateScoreTallyStages(void *self)
             G8(0x14053e) = 6;
             G32(0x14053f) = ftol_low(B);
             G32(0x1404f1) = n;
-            G32(0x1404d5) = G32(0x140516);
+            G32(0x1404d5) = (unsigned int)((Game *)B)->vitalityScore();
             G32(0x517909) = 1;
         } else {
             tick_sound(B);

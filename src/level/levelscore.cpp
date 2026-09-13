@@ -97,7 +97,6 @@
 #define OFF_TIME_ELAPSED 0x2ab595  /* uint  milliseconds                    */
 #define OFF_ITEM_TOTAL  0x42250    /* u16                                   */
 #define OFF_NO_BONUS    0x4220b    /* byte  set = all-items bonus denied     */
-#define OFF_VITALITY    0x170a64   /* byte  clamped percentage               */
 #define OFF_CLOCK_MS    0x170a54   /* double                                 */
 
 /* Counts */
@@ -109,12 +108,10 @@
 #define OFF_C_VITALITY  0x140532
 
 /* Scores */
-#define OFF_S_GEMS      0x140502
 #define OFF_S_SURPLUS   0x140506
 #define OFF_S_TIME      0x14050a
 #define OFF_S_FOES      0x14050e
 #define OFF_S_ALLITEMS  0x140512
-#define OFF_S_VITALITY  0x140516
 
 /* Tally output and animation state */
 #define OFF_LEVEL_TOTAL 0x140536
@@ -137,6 +134,7 @@ static const unsigned s_tallyZero[] = {
 #define U32(base, off)  (*(unsigned *)((char *)(base) + (off)))
 #define U16(base, off)  (*(unsigned short *)((char *)(base) + (off)))
 #define U8(base, off)   (*(unsigned char *)((char *)(base) + (off)))
+#define GAME            ((Game *)(self))
 
 static int s_fxDouble = -1;
 
@@ -169,13 +167,13 @@ Score_CalculateLevelScore(void *self, char endReason)
     const int quota     = ((Game *)self)->gemsRequired();
 
     if (collected > quota) {
-        I32(self, OFF_S_GEMS)    = quota * 5;
+        GAME->setGemsScore(quota * 5);
         I32(self, OFF_C_GEMS)    = quota;
         I32(self, OFF_C_SURPLUS) = collected - quota;
         /* the original computes collected*10 - quota*10, not (c-q)*10 */
         I32(self, OFF_S_SURPLUS) = collected * 10 - quota * 10;
     } else {
-        I32(self, OFF_S_GEMS)    = collected * 5;
+        GAME->setGemsScore(collected * 5);
         I32(self, OFF_C_GEMS)    = collected;
         I32(self, OFF_S_SURPLUS) = 0;
         I32(self, OFF_C_SURPLUS) = 0;
@@ -210,28 +208,28 @@ Score_CalculateLevelScore(void *self, char endReason)
     }
 
     /* ── vitality: the clamped percentage scores one point each ──────── */
-    const unsigned vitality = U8(self, OFF_VITALITY);
+    const unsigned vitality = GAME->vitalityPercent();
     U32(self, 0x1404c1)      = 0;          /* zeroed here, before the rest */
-    I32(self, OFF_S_VITALITY) = (int)vitality;
+    GAME->setVitalityScore((int)vitality);
     I32(self, OFF_C_VITALITY) = (int)vitality;
 
     if (fx_double()) {
-        I32(self, OFF_S_GEMS)     *= 2;
+        GAME->setGemsScore(GAME->gemsScore() * 2);
         I32(self, OFF_S_SURPLUS)  *= 2;
         I32(self, OFF_S_FOES)     *= 2;
         I32(self, OFF_S_TIME)     *= 2;
         I32(self, OFF_S_ALLITEMS) *= 2;
-        I32(self, OFF_S_VITALITY) *= 2;
+        GAME->setVitalityScore(GAME->vitalityScore() * 2);
     }
 
     /* ── totals.  Summed in the original's order.
      *
      * The original adds the vitality byte it still has in EAX rather than
-     * re-reading OFF_S_VITALITY; the two are the same value, so summing the
+     * re-reading the vitality score; the two are the same value, so summing the
      * score fields is bit-identical and keeps the FX mode consistent. */
     const int total = I32(self, OFF_S_ALLITEMS) + I32(self, OFF_S_FOES)
-                    + I32(self, OFF_S_SURPLUS)  + I32(self, OFF_S_VITALITY)
-                    + I32(self, OFF_S_TIME)     + I32(self, OFF_S_GEMS);
+                    + I32(self, OFF_S_SURPLUS)  + GAME->vitalityScore()
+                    + I32(self, OFF_S_TIME)     + GAME->gemsScore();
 
     const int running = ((Game *)self)->player()->field22c();
     I32(self, OFF_LEVEL_TOTAL) = total;
