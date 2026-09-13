@@ -319,8 +319,8 @@ Report_WriteLevelReport(void *self, const char *pathname)
         fputs(buf, out);
 
         total = *(int *)(g + OFF_SCORE_TOTAL)
-              + ((((Game *)g)->gemsScore() + 0x78 + (int)timeBonus * 2
-                  + ((Game *)g)->vitalityScore()) - (int)idx);   /* defect 6 */
+              + ((((Game *)g)->tally()->score[TALLY_GEMS] + 0x78 + (int)timeBonus * 2
+                  + ((Game *)g)->tally()->score[TALLY_VITALITY]) - (int)idx);   /* defect 6 */
         *(int *)(g + OFF_SCORE_TOTAL) = total;
         sprintf(buf, STR_D_TAB, (unsigned)total);
         fputs(buf, out);

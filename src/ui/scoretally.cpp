@@ -72,105 +72,112 @@ Sim_AnimateScoreTallyStages(void *self)
     }
 #define LIM(x)  (s_fx ? (x) / 10 : (x))
 
+    ScoreTally *T = ((Game *)B)->tally();
+
     now = ftol_low(B);
-    el  = now - G32(0x14053f);
-    st  = G8(0x14053e);
+    el  = now - (unsigned int)T->stageStart;
+    st  = T->stage;
 
     if (st == 0) {
-        n = G32(0x14051e);
+        n = (unsigned int)T->count[TALLY_GEMS];
         lim = LIM((n * 5 + 5) * 10);
         if (el >= lim) {
-            G32(0x14053f) = now;
-            G8(0x14053e) = 1;
-            G32(0x1404dd) = n;
-            G32(0x1404c1) = (unsigned int)((Game *)B)->gemsScore();
+            T->stageStart = (int)now;
+            T->stage = 1;
+            T->shownCount[TALLY_GEMS] = (int)n;
+            T->shownScore[TALLY_GEMS] = T->score[TALLY_GEMS];
         } else {
             tick_sound(B);
-            G32(0x1404dd) = el / 50;
-            G32(0x1404c1) = (el / 50) * 5;
+            T->shownCount[TALLY_GEMS] = (int)(el / 50);
+            T->shownScore[TALLY_GEMS] = (int)((el / 50) * 5);
         }
         goto totals;
     }
     if (st == 1) {
-        n = G32(0x140522);
+        n = (unsigned int)T->count[TALLY_SURPLUS];
         lim = LIM((n * 5 + 5) * 10);
         if (el >= lim) {
-            G32(0x14053f) = now;
-            G8(0x14053e) = 2;
-            G32(0x1404e1) = n;
-            G32(0x1404c5) = G32(0x140506);
+            T->stageStart = (int)now;
+            T->stage = 2;
+            T->shownCount[TALLY_SURPLUS] = (int)n;
+            T->shownScore[TALLY_SURPLUS] = T->score[TALLY_SURPLUS];
         } else {
             tick_sound(B);
-            G32(0x1404e1) = el / 50;
-            G32(0x1404c5) = (el / 50) * 10;
+            T->shownCount[TALLY_SURPLUS] = (int)(el / 50);
+            T->shownScore[TALLY_SURPLUS] = (int)((el / 50) * 10);
         }
         goto totals;
     }
     if (st == 2) {
-        n = G32(0x14052a);
+        n = (unsigned int)T->count[TALLY_FOES];
         lim = LIM((n * 5 + 5) * 20);
         if (el >= lim) {
-            G32(0x14053f) = now;
-            G8(0x14053e) = 3;
-            G32(0x1404cd) = G32(0x14050e);
-            G32(0x1404e9) = n;
+            T->stageStart = (int)now;
+            T->stage = 3;
+            T->shownScore[TALLY_FOES] = T->score[TALLY_FOES];
+            T->shownCount[TALLY_FOES] = (int)n;
         } else {
             tick_sound(B);
-            G32(0x1404e9) = el / 100;
-            G32(0x1404cd) = (el / 100) * 50;
+            T->shownCount[TALLY_FOES] = (int)(el / 100);
+            T->shownScore[TALLY_FOES] = (int)((el / 100) * 50);
         }
         /* no jump: falls into the stage-3 test with the same `el` */
     }
 
-    st = G8(0x14053e);
+    st = T->stage;
     if (st == 3) {
-        n = G32(0x140526);
+        n = (unsigned int)T->count[TALLY_TIME];
         lim = LIM((n * 5 + 5) * 2);
         if (el >= lim) {
-            G8(0x14053e) = 4;
-            G32(0x14053f) = ftol_low(B);
-            G32(0x1404e5) = n;
-            G32(0x1404c9) = G32(0x14050a);
+            T->stage = 4;
+            T->stageStart = (int)ftol_low(B);
+            T->shownCount[TALLY_TIME] = (int)n;
+            T->shownScore[TALLY_TIME] = T->score[TALLY_TIME];
         } else {
             tick_sound(B);
-            G32(0x1404e5) = el / 10;
-            G32(0x1404c9) = (el / 10) * 2;
+            T->shownCount[TALLY_TIME] = (int)(el / 10);
+            T->shownScore[TALLY_TIME] = (int)((el / 10) * 2);
         }
     } else if (st == 4) {
-        n = G32(0x14052e);
+        n = (unsigned int)T->count[TALLY_ALLITEMS];
         lim = LIM((n * 5 + 5) * 20);
         if (el >= lim) {
-            G8(0x14053e) = 5;
-            G32(0x14053f) = ftol_low(B);
-            G32(0x1404ed) = n;
-            G32(0x1404d1) = G32(0x140512);
+            T->stage = 5;
+            T->stageStart = (int)ftol_low(B);
+            T->shownCount[TALLY_ALLITEMS] = (int)n;
+            T->shownScore[TALLY_ALLITEMS] = T->score[TALLY_ALLITEMS];
         } else {
             tick_sound(B);
-            G32(0x1404ed) = el / 100;
-            G32(0x1404d1) = (el / 100) * 5;
+            T->shownCount[TALLY_ALLITEMS] = (int)(el / 100);
+            T->shownScore[TALLY_ALLITEMS] = (int)((el / 100) * 5);
         }
     } else if (st == 5) {
-        n = G32(0x140532);
+        n = (unsigned int)T->count[TALLY_VITALITY];
         lim = LIM((n * 5 + 5) * 10);
         if (el >= lim) {
-            G8(0x14053e) = 6;
-            G32(0x14053f) = ftol_low(B);
-            G32(0x1404f1) = n;
-            G32(0x1404d5) = (unsigned int)((Game *)B)->vitalityScore();
+            T->stage = 6;
+            T->stageStart = (int)ftol_low(B);
+            T->shownCount[TALLY_VITALITY] = (int)n;
+            T->shownScore[TALLY_VITALITY] = T->score[TALLY_VITALITY];
             G32(0x517909) = 1;
         } else {
             tick_sound(B);
-            G32(0x1404f1) = el / 50;
-            G32(0x1404d5) = el / 50;
+            T->shownCount[TALLY_VITALITY] = (int)(el / 50);
+            T->shownScore[TALLY_VITALITY] = (int)(el / 50);
         }
     }
 
 totals:
     {
-        unsigned int t = G32(0x1404c9) + G32(0x1404cd) + G32(0x1404c1) +
-                         G32(0x1404c5) + G32(0x1404d1) + G32(0x1404d5);
-        G32(0x1404f5) = t;
-        G32(0x1404f9) = G32(0x1404d9) + t;
+        /* Summed unsigned, in the original's order. */
+        unsigned int t = (unsigned int)T->shownScore[TALLY_TIME]
+                       + (unsigned int)T->shownScore[TALLY_FOES]
+                       + (unsigned int)T->shownScore[TALLY_GEMS]
+                       + (unsigned int)T->shownScore[TALLY_SURPLUS]
+                       + (unsigned int)T->shownScore[TALLY_ALLITEMS]
+                       + (unsigned int)T->shownScore[TALLY_VITALITY];
+        T->shownLevelTotal = (int)t;
+        T->shownGrandTotal = (int)((unsigned int)T->shownBase + t);
         if (G8(0x175517) != 0x0d && hooks_GetAsyncKeyState(0x0d) != 0)
             G32(0x517909) = 1;
         return (t & 0xffffff00u) | 0xffu;

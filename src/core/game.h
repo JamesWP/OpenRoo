@@ -34,6 +34,53 @@ struct __attribute__((packed)) SoundAssetName {
     int  enabled;
 };
 
+/* The end-of-level score tally, Game+0x1404c1..+0x140543.  Six rows, each
+ * with a real COUNT and SCORE (CalculateLevelScore 0x41a760) and a SHOWN
+ * count and score that AnimateScoreTallyStages 0x41a970 counts up from zero
+ * towards them.  The arrays are in offset order; the animation's stages
+ * visit FOES before TIME.  The two gaps are never touched by either. */
+enum TallyRow {
+    TALLY_GEMS, TALLY_SURPLUS, TALLY_TIME, TALLY_FOES, TALLY_ALLITEMS,
+    TALLY_VITALITY, TALLY_ROWS
+};
+
+struct __attribute__((packed)) ScoreTally {
+    static const int ORIGIN = 0;
+
+    int           shownScore[TALLY_ROWS];   /* +0x00  0x1404c1 */
+    int           shownBase;                /* +0x18  running total before this level */
+    int           shownCount[TALLY_ROWS];   /* +0x1c  0x1404dd */
+    int           shownLevelTotal;          /* +0x34  sum of shownScore */
+    int           shownGrandTotal;          /* +0x38  shownBase + shownLevelTotal */
+    unsigned char gap_3c[0x41 - 0x3c];
+    int           score[TALLY_ROWS];        /* +0x41  0x140502 */
+    unsigned char gap_59[0x5d - 0x59];
+    int           count[TALLY_ROWS];        /* +0x5d  0x14051e */
+    int           levelTotal;               /* +0x75  0x140536 */
+    int           grandTotal;               /* +0x79  0x14053a */
+    unsigned char stage;                    /* +0x7d  animation state, 0..6 */
+    int           stageStart;               /* +0x7e  ms, the stage's start */
+
+    KAROO_LAYOUT_REGISTER(ScoreTally);
+};
+
+KAROO_LAYOUT_CHECKS(ScoreTally)
+{
+    KAROO_LAYOUT_AT(shownScore,      0x00);
+    KAROO_LAYOUT_AT(shownBase,       0x18);
+    KAROO_LAYOUT_AT(shownCount,      0x1c);
+    KAROO_LAYOUT_AT(shownLevelTotal, 0x34);
+    KAROO_LAYOUT_AT(shownGrandTotal, 0x38);
+    KAROO_LAYOUT_AT(score,           0x41);
+    KAROO_LAYOUT_AT(count,           0x5d);
+    KAROO_LAYOUT_AT(levelTotal,      0x75);
+    KAROO_LAYOUT_AT(grandTotal,      0x79);
+    KAROO_LAYOUT_AT(stage,           0x7d);
+    KAROO_LAYOUT_AT(stageStart,      0x7e);
+    /* Tiles its span, 0x1404c1..0x140543, with no field missing. */
+    KAROO_LAYOUT_SIZE(0x140543 - 0x1404c1);
+}
+
 class Bomb;
 class Foe;
 class Player;
@@ -81,10 +128,10 @@ public:
      * level builder zeroes it, so likely elapsed level time.  Unconfirmed. */
     unsigned int   field_170a65() const              { return field_170a65_; }
     void           setField170a65(unsigned int n)    { field_170a65_ = n; }
-    int            gemsScore() const                 { return gemsScore_; }
-    void           setGemsScore(int n)               { gemsScore_ = n; }
-    int            vitalityScore() const             { return vitalityScore_; }
-    void           setVitalityScore(int n)           { vitalityScore_ = n; }
+    /* The end-of-level tally (CalculateLevelScore fills it,
+     * AnimateScoreTallyStages counts it up). */
+    ScoreTally    *tally()                           { return &tally_; }
+    const ScoreTally *tally() const                  { return &tally_; }
 
     /* ── lifts ──────────────────────────────────────────────────────── */
     unsigned char liftCount() const              { return liftCount_; }
@@ -257,13 +304,9 @@ private:
      * we use are declared.  soundCreated_ sits inside it at +0x8c. */
     unsigned char soundManagerHead_[0x13cc34 - 0x13cba8];
     int           soundCreated_;                          /* 0x13cc34 */
-    unsigned char gap_13cc38[0x140502 - 0x13cc38];
-    /* Two of the end-of-level tally's six SCORE cells (levelscore.cpp has
-     * the full table), written by CalculateLevelScore 0x41a760. */
-    int           gemsScore_;                             /* 0x140502 */
-    unsigned char gap_140506[0x140516 - 0x140506];
-    int           vitalityScore_;                         /* 0x140516 */
-    unsigned char gap_14051a[0x170643 - 0x14051a];
+    unsigned char gap_13cc38[0x1404c1 - 0x13cc38];
+    ScoreTally    tally_;                                 /* 0x1404c1 */
+    unsigned char gap_140543[0x170643 - 0x140543];
     BridgeObject *bridgeSlots_[256];                      /* 0x170643 */
     unsigned char bridgeCount_;                           /* 0x170a43 */
     unsigned char gap_170a44[0x170a54 - 0x170a44];
@@ -308,8 +351,7 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(bridgeCount_,      0x170a43);
     KAROO_LAYOUT_AT(clock_,            0x170a54);
     KAROO_LAYOUT_AT(field_170a5c_,     0x170a5c);
-    KAROO_LAYOUT_AT(gemsScore_,        0x140502);
-    KAROO_LAYOUT_AT(vitalityScore_,    0x140516);
+    KAROO_LAYOUT_AT(tally_,            0x1404c1);
     KAROO_LAYOUT_AT(vitalityPercent_,  0x170a64);
     KAROO_LAYOUT_AT(field_170a65_,     0x170a65);
     KAROO_LAYOUT_AT(slideSlots_,       0x173588);
