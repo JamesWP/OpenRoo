@@ -187,7 +187,7 @@ Sim_HandleTypedCheatCode(void *self)
             G8(0x4220b) = 0;
             GameLog_LogMessage(GAMELOGGER, 1, F_CSL);
         }
-        GD(0x170a44) = (double)(unsigned long long)G32(0x2ab595) + GD(0x170a44);
+        GD(0x170a44) = (double)(unsigned long long)((Game *)B)->timeElapsed() + GD(0x170a44);
     }
 
     /* jjmapnr -- 7-byte prefix, then load by number */

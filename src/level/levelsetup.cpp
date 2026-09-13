@@ -887,11 +887,11 @@ next_row:
     PL->setField9b(0);
     PL->setFieldE4(0);
     PL->setFieldD8(0);
-    DW(G, 0x2ab591) = DW(G, 0x2ab71f);
+    ((Game *)G)->setTimeLimit((int)DW(G, 0x2ab71f));
     PL->setClock(((Game *)G)->clock());
 
     if (B(G, G_GAMEFILE_FLAG) == 0) {
-        B(G, 0x4224d)   = 0;
+        ((Game *)G)->setFoesKilled(0);
         PL->setField21a(0);
         W(G, 0x42250)   = W(G, C_TOTAL);
 
@@ -914,7 +914,7 @@ next_row:
         }
     }
 
-    DW(G, 0x2ab595) = 0;
+    ((Game *)G)->setTimeElapsed(0);
     ((Game *)G)->setField170a65(0);
 
     off = SIDX(PL->cellU(), PL->cellV());

@@ -92,9 +92,6 @@
 #include "player.h"
 
 /* Inputs */
-#define OFF_FOES_KILLED 0x4224d    /* byte                                  */
-#define OFF_TIME_LIMIT  0x2ab591   /* int   seconds                         */
-#define OFF_TIME_ELAPSED 0x2ab595  /* uint  milliseconds                    */
 #define OFF_ITEM_TOTAL  0x42250    /* u16                                   */
 #define OFF_NO_BONUS    0x4220b    /* byte  set = all-items bonus denied     */
 #define OFF_CLOCK_MS    0x170a54   /* double                                 */
@@ -154,14 +151,14 @@ Score_CalculateLevelScore(void *self, char endReason)
     }
 
     /* ── foes ────────────────────────────────────────────────────────── */
-    const unsigned foes = U8(self, OFF_FOES_KILLED);
+    const unsigned foes = GAME->foesKilled();
     t->score[TALLY_FOES] = (int)(foes * 50u);
     t->count[TALLY_FOES] = (int)foes;
 
     /* ── time, only when the level ended by reaching the exit ────────── */
     if (endReason == 3) {
-        const unsigned q = U32(self, OFF_TIME_ELAPSED) / 1000u;   /* magic divide */
-        const unsigned limit = U32(self, OFF_TIME_LIMIT);
+        const unsigned q = GAME->timeElapsed() / 1000u;   /* magic divide */
+        const unsigned limit = (unsigned)GAME->timeLimit();
         /* defect 2: the ((-q) << 31) term is shifted away by the * 2 */
         const unsigned acc = ((0u - q) << 31) - q + limit;
         t->score[TALLY_TIME] = (int)(acc * 2u);
