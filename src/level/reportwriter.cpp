@@ -73,6 +73,7 @@
 #include "log.h"
 #include "gamelog.h"
 #include "game.h"
+#include "foe.h"
 #include "player.h"
 
 /* ─── Game data (DATA references, not calls) ─────────────────────────────── */
@@ -189,10 +190,6 @@ JJScript_ReadTextsForReport(void *self, const char *path, FILE *sink);
 #define OFF_SCRIPT_ID     0x1964fd  /* WORD                                   */
 #define OFF_LEO_FLAG      0x48b9c   /* int                                    */
 #define OFF_LEO_ID        0x13cba6  /* WORD                                   */
-#define OFF_OBJ_COUNT     0x174fd4  /* BYTE                                   */
-#define OFF_OBJ_INDEX     0x174fd5  /* BYTE[]                                 */
-#define OFF_OBJ_TABLE     0x174804  /* void *[]                               */
-#define OFF_OBJ_TYPE      0x152     /* within an object: 2 == "catch"         */
 #define OFF_PAR_TIME_SRC  0x2ab71f  /* int, par time before the 50% scaling   */
 #define OFF_PAR_TIME      0x2ab723  /* int, printed in its own column         */
 /* OFF_PAR_COPY was Player +0x23d (player.h), the crystals count. */
@@ -296,18 +293,18 @@ Report_WriteLevelReport(void *self, const char *pathname)
             *(short *)(g + OFF_TALLY_LEO) += 1;
         }
 
-        if (g[OFF_OBJ_COUNT] != 0) {
-            for (int i = 0; i < (int)g[OFF_OBJ_COUNT]; i++) {
-                unsigned slot = g[OFF_OBJ_INDEX + i];
-                int obj = *(int *)(g + OFF_OBJ_TABLE + slot * 4);
-                if (*(char *)(obj + OFF_OBJ_TYPE) == 2)
+        Game *G = (Game *)g;
+        if (G->foeCount() != 0) {
+            for (int i = 0; i < (int)G->foeCount(); i++) {
+                /* kind 2 == "catch"; read signed, as the original does. */
+                if ((signed char)G->foeSlot(G->foeId(i))->kind() == 2)
                     catchByte++;
             }
             catches = catchByte;
         }
         sprintf(buf, STR_D_TAB, catches);
         fputs(buf, out);
-        sprintf(buf, STR_D_TAB, (unsigned)(g[OFF_OBJ_COUNT] - catches));
+        sprintf(buf, STR_D_TAB, (unsigned)(G->foeCount() - catches));
         fputs(buf, out);
 
         for (unsigned c = 0; c < COLUMN_COUNT; c++) {
