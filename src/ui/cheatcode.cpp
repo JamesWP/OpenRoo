@@ -51,6 +51,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "log.h"
+#include "linkedlist.h"
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PollTextEntryKeys(void *self, unsigned int phase);
@@ -78,8 +79,6 @@ Sim_SetupLevelObjects(void *self);
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 
-typedef void (__attribute__((thiscall)) *append_fn)(void *list, unsigned int item);
-#define ORIG_LINKEDLIST_APPEND ((append_fn)0x004254a0)   /* named callback */
 
 #define CDAUDIO     ((CDM *)0x004dc640)
 #define GAMELOGGER  ((void *)0x0046c4c0)
@@ -245,7 +244,7 @@ Sim_HandleTypedCheatCode(void *self)
 
     if (streq(buf, "notme")) {
         if (G32(0x1753bb) == 0)
-            ORIG_LINKEDLIST_APPEND(B + 0x1753e5, 0x0d);
+            LinkedList_Append((LinkedList *)(B + 0x1753e5), (void *)0x0d);
         G32(0x1753bb) = 1;
         G8(0x17531b) = 3;
         int idx = ((int)(signed char)G8(0x1751fa) * 100 +

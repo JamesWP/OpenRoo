@@ -5,22 +5,9 @@
 #include <d3d.h>
 #include <stddef.h>
 
-/* LinkedList / LinkedListNode — the game's intrusive list (Ghidra structs,
- * 16 and 12 bytes).  Direct3D uses one to hold the enumerated display modes. */
-struct LinkedListNode {
-    void           *pValue;    // +0x00
-    LinkedListNode *pNextNode; // +0x04
-    LinkedListNode *pPrevNode; // +0x08
-};
-static_assert(sizeof(LinkedListNode) == 12, "LinkedListNode size mismatch");
-
-struct LinkedList {
-    void           **vtable;   // +0x00
-    LinkedListNode  *pHead;    // +0x04
-    LinkedListNode  *pTail;    // +0x08
-    DWORD            dwCount;  // +0x0c
-};
-static_assert(sizeof(LinkedList) == 16, "LinkedList size mismatch");
+/* LinkedList / LinkedListNode live in linkedlist.h, with the callbacks.
+ * Direct3D uses one to hold the enumerated display modes. */
+#include "linkedlist.h"
 
 /* DisplayModeNode — 12 bytes, the pValue of each modeList node. */
 struct DisplayModeNode {

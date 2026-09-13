@@ -163,6 +163,8 @@
 #include <string.h>
 
 #include "log.h"
+#include "linkedlist.h"
+#include "crtrand.h"
 #include "game.h"
 #include "liftobject.h"
 #include "slideobject.h"
@@ -301,9 +303,6 @@ struct GameLogger;
 
 /* ─── Callbacks kept at their original addresses ─────────────────────────── */
 
-typedef void (__attribute__((thiscall)) *ll_clear_fn)(void *self);
-#define ORIG_LIST_CLEAR    ((ll_clear_fn)0x004254f0)
-
 typedef void (__attribute__((thiscall)) *rel_script_fn)(void *self);
 #define ORIG_RELEASE_SCRIPT ((rel_script_fn)0x0041e840)
 
@@ -318,15 +317,6 @@ typedef void (__cdecl *srand_fn)(unsigned int);
 
 /* time(), but through OUR hook -- see the header. */
 extern "C" __declspec(dllexport) int __cdecl hooks_GameTime(int *out);
-
-/* The CRT rand() at 0x0045167c, over the game's shared seed. */
-#define CRT_RAND_SEED  (*(unsigned int *)0x00469f38)
-
-static inline unsigned int crt_rand(void)
-{
-    CRT_RAND_SEED = CRT_RAND_SEED * 0x343FDu + 0x269EC3u;
-    return (CRT_RAND_SEED >> 16) & 0x7FFF;
-}
 
 /* ─── Already ours -- called as exports, the originals carry UD2 stubs ───── */
 
@@ -898,7 +888,7 @@ next_row:
     DW(G, 0x1752a5) = DW(G, G_CLOCK + 0);
     DW(G, 0x1752a9) = DW(G, G_CLOCK + 4);
 
-    ORIG_LIST_CLEAR(G + 0x1753e5);
+    LinkedList_Clear((LinkedList *)(G + 0x1753e5));
 
     DW(G, 0x1751d9) = (unsigned int)(G + 0x170a5c);
     DW(G, 0x1753af) = 0;

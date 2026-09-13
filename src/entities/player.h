@@ -21,6 +21,7 @@
 #include "movableentity.h"
 
 struct CStaticSoundbuffer;
+struct LinkedList;
 class Tile;
 
 class __attribute__((packed)) Player : public MovableEntity {
@@ -43,6 +44,9 @@ private:
     int   soundVariant() const;
     void  playAtCell(CStaticSoundbuffer *buf) const;
     void  pickupSound(const SoundRef *arr) const;
+    /* The raw bytes cast, not &effectList_: a LinkedList * to a packed
+     * member would trip -Waddress-of-packed-member. */
+    LinkedList *effects() { return (LinkedList *)effectList_; }
     void  listAppend(int code);
     void  endEffect(int code);
 
