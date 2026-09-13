@@ -13,7 +13,8 @@
  *
  * Each acquisition is gated on the dword right after a 0x100-byte name
  * (name+0x100) and passes a stack COPY of the name, as the listing does.
- * The name blocks are Game fields (Band 3), so they stay offsets here:
+ * The name blocks are Game fields, `Game::soundAsset<offset>()`, named by
+ * offset until their meanings are decoded:
  *
  *   +0x441ca VoicePool(3) -> pool9f       +0x429b6 -> soundB3
  *   +0x42ac2 -> soundB7, then re-tests the SAME guard and acquires the SAME
@@ -47,28 +48,17 @@
 
 static int s_fx = -1;
 
-/* A name block in Game, and the guard dword right after it. */
-static const char *name_at(Game *g, unsigned int off)
-{
-    return (const char *)g + off;
-}
-
-static int guard(Game *g, unsigned int off)
-{
-    return *(const int *)(name_at(g, off) + 0x100);
-}
-
-static CStaticSoundbuffer *acq(Game *g, unsigned int nameOff)
+static CStaticSoundbuffer *acq(Game *g, const SoundAssetName *asset)
 {
     char name[256];
-    strcpy(name, name_at(g, nameOff));
+    strcpy(name, asset->name);
     return g->soundManager()->acquireStatic(name, 1);
 }
 
-static VoicePool *acq_pool(Game *g, int count, unsigned int nameOff)
+static VoicePool *acq_pool(Game *g, int count, const SoundAssetName *asset)
 {
     char name[256];
-    strcpy(name, name_at(g, nameOff));
+    strcpy(name, asset->name);
     return g->soundManager()->acquirePool(count, name, 1);
 }
 
@@ -76,7 +66,8 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
 {
     unsigned int idx = objArg & 0xff;
-    unsigned int offAB = 0x42586, offAF = 0x42692;
+    const SoundAssetName *assetAB = g->soundAsset42586();
+    const SoundAssetName *assetAF = g->soundAsset42692();
     unsigned int last;
 
     if (s_fx < 0) {
@@ -87,43 +78,43 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
             log_write("soundobj: KAROO_SIM_FX=soundswap -- +0xab/+0xaf swapped\n");
     }
     if (s_fx) {
-        offAB = 0x42692;
-        offAF = 0x42586;
+        assetAB = g->soundAsset42692();
+        assetAF = g->soundAsset42586();
     }
 
-    if (guard(g, 0x441ca))
-        g->foeSlot(idx)->setPool9f(acq_pool(g, 3, 0x441ca));
-    if (guard(g, 0x429b6))
-        g->foeSlot(idx)->setSoundB3(acq(g, 0x429b6));
-    if (guard(g, 0x42ac2)) {
-        g->foeSlot(idx)->setSoundB7(acq(g, 0x42ac2));
-        if (guard(g, 0x42ac2))
-            g->foeSlot(idx)->setSoundBb(acq(g, 0x42ac2));
+    if (g->soundAsset441ca()->enabled)
+        g->foeSlot(idx)->setPool9f(acq_pool(g, 3, g->soundAsset441ca()));
+    if (g->soundAsset429b6()->enabled)
+        g->foeSlot(idx)->setSoundB3(acq(g, g->soundAsset429b6()));
+    if (g->soundAsset42ac2()->enabled) {
+        g->foeSlot(idx)->setSoundB7(acq(g, g->soundAsset42ac2()));
+        if (g->soundAsset42ac2()->enabled)
+            g->foeSlot(idx)->setSoundBb(acq(g, g->soundAsset42ac2()));
     }
-    if (guard(g, offAB))
-        g->foeSlot(idx)->setSoundAb(acq(g, offAB));
-    if (guard(g, offAF))
-        g->foeSlot(idx)->setSoundAf(acq(g, offAF));
+    if (assetAB->enabled)
+        g->foeSlot(idx)->setSoundAb(acq(g, assetAB));
+    if (assetAF->enabled)
+        g->foeSlot(idx)->setSoundAf(acq(g, assetAF));
 
     if (g->foeSlot(idx)->kind() == 2) {
-        if (guard(g, 0x457c6))
-            g->foeSlot(idx)->setSoundC3(acq(g, 0x457c6));
-        if (guard(g, 0x42262))
-            g->foeSlot(idx)->setPoolCf(acq_pool(g, 5, 0x42262));
-        if (guard(g, 0x44d4e))
-            g->foeSlot(idx)->setSoundA7(acq(g, 0x44d4e));
+        if (g->soundAsset457c6()->enabled)
+            g->foeSlot(idx)->setSoundC3(acq(g, g->soundAsset457c6()));
+        if (g->soundAsset42262()->enabled)
+            g->foeSlot(idx)->setPoolCf(acq_pool(g, 5, g->soundAsset42262()));
+        if (g->soundAsset44d4e()->enabled)
+            g->foeSlot(idx)->setSoundA7(acq(g, g->soundAsset44d4e()));
     } else {
-        if (guard(g, 0x458d2))
-            g->foeSlot(idx)->setSoundC3(acq(g, 0x458d2));
-        if (guard(g, 0x4247a))
-            g->foeSlot(idx)->setPoolCf(acq_pool(g, 5, 0x4247a));
-        if (guard(g, 0x44e5a))
-            g->foeSlot(idx)->setSoundA7(acq(g, 0x44e5a));
+        if (g->soundAsset458d2()->enabled)
+            g->foeSlot(idx)->setSoundC3(acq(g, g->soundAsset458d2()));
+        if (g->soundAsset4247a()->enabled)
+            g->foeSlot(idx)->setPoolCf(acq_pool(g, 5, g->soundAsset4247a()));
+        if (g->soundAsset44e5a()->enabled)
+            g->foeSlot(idx)->setSoundA7(acq(g, g->soundAsset44e5a()));
     }
 
-    last = (unsigned int)guard(g, 0x42de6);
+    last = (unsigned int)g->soundAsset42de6()->enabled;
     if (last != 0) {
-        CStaticSoundbuffer *p = acq(g, 0x42de6);
+        CStaticSoundbuffer *p = acq(g, g->soundAsset42de6());
         g->foeSlot(idx)->setSoundCb(p);
         last = (unsigned int)(unsigned long)p;
     }
