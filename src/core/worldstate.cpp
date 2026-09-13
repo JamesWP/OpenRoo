@@ -60,6 +60,8 @@
 #include "log.h"
 #include "game.h"
 #include "player.h"
+#include "foe.h"
+#include "bomb.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -73,13 +75,7 @@
 #define OFF_PLANE2     0x3e1819   /* second plane, same idx and stride */
 #define TILE_STRIDE    0x7f
 
-/* Entities */
-#define OFF_FOE_PTRS   0x174804
-#define OFF_FOE_COUNT  0x174fd4
-#define OFF_FOE_IDS    0x174fd5
-#define OFF_ENE_PTRS   0x173e3f
-#define OFF_ENE_COUNT  0x17460f
-#define OFF_ENE_IDS    0x174610
+/* Entities: the foe and bomb tables are Game's (foeSlot/bombSlot, game.h). */
 
 /* Player */
 /* The player is an entity of the same class as foes and enemies: its object
@@ -135,48 +131,64 @@ static inline const BYTE *plane2_at(const BYTE *g, unsigned u, unsigned v)
 
 /* Read one entity through the live-id list.  `foe` selects the extra fields
  * that are only confirmed for the foe class. */
-static void read_entity(const BYTE *obj, BYTE slot, bool foe, WsEntity *e)
+/* The fields every entity shares (MovableEntity).  The cell bytes are signed
+ * in the class and copied here as the raw byte, as before. */
+static void read_entity(const MovableEntity *obj, BYTE slot, WsEntity *e)
 {
     memset(e, 0, sizeof(*e));
     e->slot    = slot;
-    e->facing  = obj[0x14];
-    e->moving  = (BYTE)*(const DWORD *)(obj + 0x14e);
-    e->gu      = obj[0x31];
-    e->gv      = obj[0x32];
-    e->gh      = obj[0x33];
-    memcpy(e->pos, obj + 0x25, sizeof(e->pos));
-    e->hidden  = *(const DWORD *)(obj + 0x82);
-    e->subtype = obj[0x62];
-    e->frozen  = *(const DWORD *)(obj + 0xef);
-    if (foe) {
-        e->kind     = obj[0x152];
-        e->category = obj[0x15a];
-        e->su       = obj[0x153];
-        e->sv       = obj[0x154];
-        e->sh       = obj[0x155];
-    }
+    e->facing  = obj->facing();
+    e->moving  = (BYTE)obj->field14e();
+    e->gu      = (BYTE)obj->cellU();
+    e->gv      = (BYTE)obj->cellV();
+    e->gh      = (BYTE)obj->heightCell();
+    e->pos[0]  = obj->posU();
+    e->pos[1]  = obj->posY();
+    e->pos[2]  = obj->posV();
+    e->hidden  = (DWORD)obj->field82();
+    e->subtype = obj->type();
+    e->frozen  = (DWORD)obj->fieldEf();
 }
 
-static unsigned read_table(const BYTE *g, unsigned off_ptrs, unsigned off_count,
-                           unsigned off_ids, bool foe, WsEntity *out)
+static void read_foe(const Foe *foe, BYTE slot, WsEntity *e)
 {
-    unsigned count = g[off_count];
+    read_entity(foe, slot, e);
+    e->kind     = foe->kind();
+    e->category = foe->dropContents();
+    e->su       = foe->homeU();
+    e->sv       = foe->homeV();
+    e->sh       = foe->homeH();
+}
+
+static void read_bomb(const Bomb *bomb, BYTE slot, WsEntity *e)
+{
+    read_entity(bomb, slot, e);
+}
+
+/* One table: its count, its live-ID list and its slot array, read through
+ * Game's accessors for whichever table `slot_of` names. */
+template <typename T>
+static unsigned read_table(const Game *g, unsigned char count_in,
+                           unsigned char (Game::*id_of)(unsigned int) const,
+                           T *(Game::*slot_of)(unsigned int) const,
+                           void (*read)(const T *, BYTE, WsEntity *),
+                           WsEntity *out)
+{
+    unsigned count = count_in;
     if (count > WS_MAX_ENT) {
         log_write("worldstate: entity count %u exceeds table capacity %u — clamped\n",
                   count, (unsigned)WS_MAX_ENT);
         count = WS_MAX_ENT;
     }
-    const BYTE   *ids  = g + off_ids;
-    const BYTE  **ptrs = (const BYTE **)(g + off_ptrs);
 
     unsigned n = 0;
     for (unsigned i = 0; i < count; i++) {
-        BYTE slot = ids[i];
+        BYTE slot = (g->*id_of)(i);
         /* No range check: a byte id cannot index past the table. */
-        static_assert(WS_MAX_ENT > 0xff, "a BYTE id could overrun ptrs[]");
-        const BYTE *obj = ptrs[slot];
+        static_assert(WS_MAX_ENT > 0xff, "a BYTE id could overrun the slots");
+        const T *obj = (g->*slot_of)(slot);
         if (!obj) continue;                    /* freed slot still in the list */
-        read_entity(obj, slot, foe, &out[n++]);
+        read(obj, slot, &out[n++]);
     }
     return n;
 }
@@ -230,10 +242,11 @@ bool worldstate_observe(Observation *obs)
     obs->exit_cell[1]   = pl->field143();
     obs->exit_cell[2]   = pl->field144();
 
-    obs->n_foes    = read_table(g, OFF_FOE_PTRS, OFF_FOE_COUNT, OFF_FOE_IDS,
-                                true,  obs->foes);
-    obs->n_enemies = read_table(g, OFF_ENE_PTRS, OFF_ENE_COUNT, OFF_ENE_IDS,
-                                false, obs->enemies);
+    const Game *game = (const Game *)g;
+    obs->n_foes    = read_table(game, game->foeCount(), &Game::foeId,
+                                &Game::foeSlot, read_foe, obs->foes);
+    obs->n_enemies = read_table(game, game->bombCount(), &Game::bombId,
+                                &Game::bombSlot, read_bomb, obs->enemies);
 
     obs->gems_collected    = pl->field23d();
     obs->gems_required     = *(const int   *)(g + OFF_GEMS_REQ);
@@ -359,8 +372,8 @@ const Observation *worldstate_latest(void) { return g_obs_valid ? &g_obs : NULL;
  * foe+0x15a is *not* usable here because it reads 1 for both the 0x0b and the
  * 0x07 spawn, only one of which counts.
  *
- * foe+0x62 is not in WsEntity — it is read directly here rather than widening
- * the struct for one diagnostic.
+ * foe+0x62 is WsEntity's `subtype` too, but it is read from the live foe
+ * here, as it always was, rather than from the snapshot.
  */
 static void map_check(const BYTE *g, const Observation *obs)
 {
@@ -370,10 +383,10 @@ static void map_check(const BYTE *g, const Observation *obs)
             if (g_grid[v + u * WS_GRID_PITCH].contents == 1) from_tiles++;
 
     unsigned from_foes = 0;
-    const BYTE **ptrs = (const BYTE **)(g + OFF_FOE_PTRS);
+    const Game *game = (const Game *)g;
     for (unsigned i = 0; i < obs->n_foes; i++) {
-        const BYTE *obj = ptrs[obs->foes[i].slot];
-        if (obj && obj[0x62] == 0x0b) from_foes++;
+        const Foe *foe = game->foeSlot(obs->foes[i].slot);
+        if (foe && foe->type() == 0x0b) from_foes++;
     }
 
     unsigned total = from_tiles + from_foes;

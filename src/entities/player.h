@@ -45,16 +45,10 @@ public:
     void  setClock(double *c)                  { clock_ = c; }
     void  setRecord(Field170a5c *r)            { record_ = r; }
     void  setTileBase(unsigned char *b)        { tileBase_ = b; }
-    unsigned char facing() const               { return facing_; }
+    /* The readers (facing, pos, cell) are MovableEntity's. */
     void  setFacing(unsigned char f)           { facing_ = f; }
-    float posU() const                         { return posU_; }
-    float posY() const                         { return posY_; }
-    float posV() const                         { return posV_; }
     /* Stored in the order u, y, v -- as each caller stored them. */
     void  setPos(float u, float y, float v)    { posU_ = u; posY_ = y; posV_ = v; }
-    signed char cellU() const                  { return cellU_; }
-    signed char cellV() const                  { return cellV_; }
-    signed char heightCell() const             { return heightCell_; }
     void  setCell(unsigned char u, unsigned char v, unsigned char h)
     {
         cellU_ = (signed char)u;
@@ -93,7 +87,6 @@ public:
     int   fieldEa() const                      { return field_ea; }
     void  setFieldEa(int n)                    { field_ea = n; }
     /* +0xef: gamestate.cpp's level-complete flag (0 -> 1 on exit). */
-    int   fieldEf() const                      { return field_ef; }
     void  setFieldEf(int n)                    { field_ef = n; }
     void  setFieldFf(unsigned char b)          { field_ff = b; }
     void  setField108(unsigned char b)         { field_108 = b; }
@@ -120,14 +113,10 @@ public:
     unsigned char *field142Ref()               { return &field_142; }
     void  setPendingMove(unsigned char m)      { pendingMove_ = m; }
     double field146() const                    { return field_146; }
-    int   field14e() const                     { return field_14e; }
     void  setField14e(int n)                   { field_14e = n; }
     void  setKind(unsigned char k)             { kind_ = k; }
     /* +0x153..+0x155: the start cell (u, v, h), from the marker-3 lookup,
-     * which writes it through the pointer. */
-    unsigned char homeU() const                { return homeU_; }
-    unsigned char homeV() const                { return homeV_; }
-    unsigned char homeH() const                { return homeH_; }
+     * which writes it through the pointer (read with MovableEntity::homeU). */
     unsigned char *homeRef()                   { return &homeU_; }
 
     /* ── the base's sound handles (levelsounds.cpp, fixedsounds.cpp) ── */

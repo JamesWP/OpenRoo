@@ -58,6 +58,26 @@ public:
      * foe, bomb); entitymove.cpp.  Returns 1 in AL on the two early outs. */
     unsigned int updateMovement();
 
+    /* ── readers shared by every entity (Player, Foe, Bomb) ─────────────
+     * worldstate.cpp's snapshot reads foes and bombs through these; the
+     * Player's callers too.  Meanings unknown unless noted. */
+    unsigned char facing() const               { return facing_; }
+    float posU() const                         { return posU_; }
+    float posY() const                         { return posY_; }
+    float posV() const                         { return posV_; }
+    signed char cellU() const                  { return cellU_; }
+    signed char cellV() const                  { return cellV_; }
+    signed char heightCell() const             { return heightCell_; }
+    unsigned char type() const                 { return type_; }
+    int   field82() const                      { return field_82; }
+    /* +0xef: the foe's hold flag; the Player's level-complete flag. */
+    int   fieldEf() const                      { return field_ef; }
+    int   field14e() const                     { return field_14e; }
+    unsigned char kind() const                 { return kind_; }
+    unsigned char homeU() const                { return homeU_; }
+    unsigned char homeV() const                { return homeV_; }
+    unsigned char homeH() const                { return homeH_; }
+
 protected:
     /* Our own subclasses: the base's only field work, the three zeroed
      * floats of 0x401000.  The vtable is the subclass's to set. */
