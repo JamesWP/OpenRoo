@@ -67,6 +67,8 @@ public:
     /* ── tiles ──────────────────────────────────────────────────────── */
     /* The base Tile::at() indexes from.  Objects keep their own copy. */
     unsigned char *tileBase()        { return tileOrigin_; }
+    /* Gems the level requires (Player::gemsCollected is the other side). */
+    int            gemsRequired() const { return gemsRequired_; }
 
     /* ── lifts ──────────────────────────────────────────────────────── */
     unsigned char liftCount() const              { return liftCount_; }
@@ -263,8 +265,14 @@ private:
     /* 500 long: the Player object follows at 0x1751c9. */
     unsigned char foeIds_[500];                           /* 0x174fd5 */
     unsigned char gap_1751c9[0x2ab58d - 0x1751c9];
-    /* Where Tile::at() indexes from; the tiles extend past it. */
-    unsigned char tileOrigin_[1];                         /* 0x2ab58d */
+    /* Where Tile::at() indexes from; the tiles extend past it.  The bytes
+     * from here to the first cell look like a map header (the time limit at
+     * +0x2ab591, this quota, the extents at +0x2ab727/8), not tile fields --
+     * see COHESION_PLAN.md Band 3; not yet modelled. */
+    unsigned char tileOrigin_[0x2ab723 - 0x2ab58d];       /* 0x2ab58d */
+    /* The level's gem quota: CalculateLevelScore 0x41a760 pays 5 a gem up
+     * to it and 10 per gem the Player collects beyond it. */
+    int           gemsRequired_;                          /* 0x2ab723 */
 };
 
 KAROO_LAYOUT_CHECKS(Game)
@@ -315,4 +323,5 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(field_42252_,      0x042252);
     KAROO_LAYOUT_AT(levelName_,        0x173483);
     KAROO_LAYOUT_AT(tileOrigin_,       0x2ab58d);
+    KAROO_LAYOUT_AT(gemsRequired_,     0x2ab723);
 }

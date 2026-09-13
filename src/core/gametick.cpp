@@ -53,7 +53,6 @@
 #include "bomb.h"
 #include "foe.h"
 #include "player.h"
-#include "tile.h"
 #include "tilequery.h"
 #include "soundobj.h"
 
@@ -534,7 +533,7 @@ Sim_GameTick(void *self, double dt, double now)
                     CStatic_TriggerPlayback((CStaticSoundbuffer *)snd, 0);
             }
         }
-        if (pl->gemsCollected() >= Tile::at(((Game *)B)->tileBase(), 0, 0)->gemsRequired()) {
+        if (pl->gemsCollected() >= ((Game *)B)->gemsRequired()) {
             if (G32(0x173b1a) == 0 && STATE != 3) {
                 int r = (int)ftol80(ACC);
                 void *snd = GP(0x13cc74 + (r % 3) * 4);

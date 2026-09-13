@@ -75,7 +75,6 @@
 #include "game.h"
 #include "foe.h"
 #include "player.h"
-#include "tile.h"
 
 /* ─── Game data (DATA references, not calls) ─────────────────────────────── */
 
@@ -313,7 +312,7 @@ Report_WriteLevelReport(void *self, const char *pathname)
         }
 
         ((Game *)g)->player()->setGemsCollected(
-            Tile::at(((Game *)g)->tileBase(), 0, 0)->gemsRequired());
+            ((Game *)g)->gemsRequired());
         g[OFF_TIME_PCT] = 0x32;
         timeBonus = (unsigned)(*(int *)(g + OFF_PAR_TIME_SRC) * 0x32) / 100;
         ORIG_LOG_MESSAGE(GAME_LOGGER, 3, STR_LOG_TIME, timeBonus);

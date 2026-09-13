@@ -59,7 +59,6 @@
 #include "policy.h"
 #include "log.h"
 #include "game.h"
-#include "tile.h"
 #include "player.h"
 #include "foe.h"
 #include "bomb.h"
@@ -248,7 +247,7 @@ bool worldstate_observe(Observation *obs)
                                 &Game::bombSlot, read_bomb, obs->enemies);
 
     obs->gems_collected    = pl->gemsCollected();
-    obs->gems_required     = Tile::at(((Game *)g)->tileBase(), 0, 0)->gemsRequired();
+    obs->gems_required     = ((Game *)g)->gemsRequired();
     obs->foes_killed       = g[OFF_FOES_KILL];
     obs->lives             = (BYTE)pl->field239();
     obs->level_complete    = pl->fieldEf();

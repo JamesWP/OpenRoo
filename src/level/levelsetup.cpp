@@ -171,7 +171,6 @@
 #include "bridgeobject.h"
 #include "breakabletile.h"
 #include "foe.h"
-#include "tile.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -939,10 +938,10 @@ next_row:
 
     GameLog_LogMessage(GAME_LOGGER_VA, 1, S_CRYSTALS,
                        (unsigned int)W(G, G_COUNT_CRYSTAL),
-                       Tile::at(((Game *)G)->tileBase(), 0, 0)->gemsRequired());
+                       ((Game *)G)->gemsRequired());
 
     if ((int)((unsigned int)PL->gemsCollected() + (unsigned int)W(G, G_COUNT_CRYSTAL)) <
-        Tile::at(((Game *)G)->tileBase(), 0, 0)->gemsRequired())
+        ((Game *)G)->gemsRequired())
         GameLog_LogMessage(GAME_LOGGER_VA, 3, S_WARN_CRYSTALS);
 
     /* ONE argument -- see the header. */
