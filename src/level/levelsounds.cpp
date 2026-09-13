@@ -114,20 +114,34 @@ static CStaticSoundbuffer *reslot(unsigned char *B, CStaticSoundbuffer *cur,
     return cur;
 }
 
-/* Per-object sound for one slot table: the lift, slide and bridge each have
- * one handle, set through its setSound().  The count and the slot are
- * re-read every pass, as the listing does. */
-template <typename T>
-static void per_object(unsigned char *B,
-                       unsigned char (Game::*count)() const,
-                       T *(Game::*slot)(unsigned int) const,
-                       unsigned int nameOff)
+/* One sound asset as Game stores it: a 0x100-byte file name, then a dword
+ * that is nonzero when the asset is named.  The blocks themselves are Game
+ * fields (Band 3), so they are still found by offset -- in one place. */
+struct __attribute__((packed)) SoundAsset {
+    char name[0x100];
+    int  present;
+};
+static_assert(sizeof(SoundAsset) == 0x104, "name block + guard");
+
+static const SoundAsset &sound_asset(Game *g, unsigned int off)
 {
-    Game *g = (Game *)B;
-    for (unsigned short i = 0; i < (g->*count)(); ++i) {
-        if (G32(nameOff + 0x100) != 0) {
-            CStaticSoundbuffer *p = acq(B, nameOff);
-            (g->*slot)(i)->setSound(p);
+    return *(const SoundAsset *)((const unsigned char *)g + off);
+}
+
+/* Give every object in one slot table its moving-loop sound: the lift,
+ * slide and bridge each have one handle, set through setSound().  The count
+ * and the slot are re-read every pass, as the listing does. */
+template <typename T>
+static void attachLoopSound(Game *game,
+                            unsigned char (Game::*count)() const,
+                            T *(Game::*slot)(unsigned int) const,
+                            const SoundAsset &asset)
+{
+    for (unsigned short i = 0; i < (game->*count)(); ++i) {
+        if (asset.present != 0) {
+            char name[sizeof asset.name];   /* a stack copy, as the listing */
+            strcpy(name, asset.name);
+            (game->*slot)(i)->setSound(game->soundManager()->acquireStatic(name, 1));
         }
     }
 }
@@ -192,9 +206,12 @@ Sim_InitLevelBasedSounds(void *self)
                 game->breakableSlot(i)->setRespawnSound(p);
             }
         }
-        per_object(B, &Game::liftCount,   &Game::liftSlot,   0x42bce);
-        per_object(B, &Game::slideCount,  &Game::slideSlot,  0x42cda);
-        per_object(B, &Game::bridgeCount, &Game::bridgeSlot, 0x42ffe);
+        attachLoopSound(game, &Game::liftCount,   &Game::liftSlot,
+                        sound_asset(game, 0x42bce));
+        attachLoopSound(game, &Game::slideCount,  &Game::slideSlot,
+                        sound_asset(game, 0x42cda));
+        attachLoopSound(game, &Game::bridgeCount, &Game::bridgeSlot,
+                        sound_asset(game, 0x42ffe));
 
         if (G8(0x4220b) == 0 && G32(0x2ab564) != 0) {
             GameLog_LogMessage(GAMELOGGER, 1, F_TRYLEO);
