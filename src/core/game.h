@@ -117,6 +117,16 @@ public:
     /* Gems the level requires (Player::gemsCollected is the other side). */
     int            gemsRequired() const { return gemsRequired_; }
 
+    /* ── the tally's inputs (CalculateLevelScore 0x41a760) ─────────── */
+    unsigned char  foesKilled() const                { return foesKilled_; }
+    void           setFoesKilled(unsigned char n)    { foesKilled_ = n; }
+    /* The level's time limit in seconds (SetupLevelObjects copies it from
+     * +0x2ab71f) and the play time against it in milliseconds. */
+    int            timeLimit() const                 { return timeLimit_; }
+    void           setTimeLimit(int s)               { timeLimit_ = s; }
+    unsigned int   timeElapsed() const               { return timeElapsed_; }
+    void           setTimeElapsed(unsigned int ms)   { timeElapsed_ = ms; }
+
     /* ── vitality and the score tally ───────────────────────────────── */
     /* The tally's "vitality" row, which pays it 1:1: Player::fieldD8 per
      * second of field_170a65, times 25, capped at 100 -- a RATE, not
@@ -246,7 +256,10 @@ private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x042252 - 0x000000];
+    unsigned char gap_000000[0x04224d - 0x000000];
+    /* Foes killed this level; CalculateLevelScore pays 50 each. */
+    unsigned char foesKilled_;                            /* 0x04224d */
+    unsigned char gap_04224e[0x042252 - 0x04224e];
     unsigned short field_42252_;                          /* 0x042252 */
     unsigned char gap_042254[0x042262 - 0x042254];
     SoundAssetName soundAsset42262_;                 /* 0x042262 */
@@ -337,7 +350,12 @@ private:
      * from here to the first cell look like a map header (the time limit at
      * +0x2ab591, this quota, the extents at +0x2ab727/8), not tile fields --
      * see COHESION_PLAN.md Band 3; not yet modelled. */
-    unsigned char tileOrigin_[0x2ab723 - 0x2ab58d];       /* 0x2ab58d */
+    unsigned char tileOrigin_[0x2ab591 - 0x2ab58d];       /* 0x2ab58d */
+    /* Seconds; GameTick times the level out at timeLimit*1000 ms. */
+    int           timeLimit_;                             /* 0x2ab591 */
+    /* Milliseconds of play; CalculateLevelScore pays the unused seconds. */
+    unsigned int  timeElapsed_;                           /* 0x2ab595 */
+    unsigned char gap_2ab599[0x2ab723 - 0x2ab599];
     /* The level's gem quota: CalculateLevelScore 0x41a760 pays 5 a gem up
      * to it and 10 per gem the Player collects beyond it. */
     int           gemsRequired_;                          /* 0x2ab723 */
@@ -395,4 +413,7 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(levelName_,        0x173483);
     KAROO_LAYOUT_AT(tileOrigin_,       0x2ab58d);
     KAROO_LAYOUT_AT(gemsRequired_,     0x2ab723);
+    KAROO_LAYOUT_AT(foesKilled_,       0x04224d);
+    KAROO_LAYOUT_AT(timeLimit_,        0x2ab591);
+    KAROO_LAYOUT_AT(timeElapsed_,      0x2ab595);
 }

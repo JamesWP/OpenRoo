@@ -95,7 +95,6 @@
 /* Player +0x142..+0x144 (player.h). */
 
 /* Scalars, same fields gamestate.cpp reads. */
-#define OFF_FOES_KILL  0x04224d
 #define OFF_CRYSTALS   0x042252
 
 static WsTile     g_grid[WS_GRID_PITCH * WS_GRID_PITCH];
@@ -248,7 +247,7 @@ bool worldstate_observe(Observation *obs)
 
     obs->gems_collected    = pl->gemsCollected();
     obs->gems_required     = ((Game *)g)->gemsRequired();
-    obs->foes_killed       = g[OFF_FOES_KILL];
+    obs->foes_killed       = ((const Game *)g)->foesKilled();
     obs->lives             = (BYTE)pl->field239();
     obs->level_complete    = pl->fieldEf();
     obs->crystals_in_level = *(const WORD  *)(g + OFF_CRYSTALS);

@@ -368,7 +368,7 @@ Sim_GameTick(void *self, double dt, double now)
                                               (unsigned char)v, E[-0x12], 2,
                                               (unsigned char)(E[-0x09] + 100));
                 Foe *foe = ((Game *)B)->foeSlot(id);
-                if (((int)G8(0x4224d) + 1) % 15 == 0)
+                if (((int)((Game *)B)->foesKilled() + 1) % 15 == 0)
                     foe->setDropContents(7);
                 else
                     foe->setDropContents(1);
@@ -400,8 +400,8 @@ Sim_GameTick(void *self, double dt, double now)
         /* last-seconds countdown: compared at 80 bits, stored at 64 */
         {
             static const double k001 = 0.001;              /* DAT_0045d368, a DOUBLE */
-            long double lim = (long double)(unsigned long long)G32(0x2ab591) * 1000.0L;
-            long double rem80 = (lim - (long double)(unsigned long long)G32(0x2ab595)) *
+            long double lim = (long double)(unsigned long long)(unsigned int)((Game *)B)->timeLimit() * 1000.0L;
+            long double rem80 = (lim - (long double)(unsigned long long)((Game *)B)->timeElapsed()) *
                                 (long double)k001;
             double rem64 = (double)rem80;
             if (rem80 > 11.0L || pl->moveState() == 3) {
@@ -463,7 +463,8 @@ Sim_GameTick(void *self, double dt, double now)
     if (pl->moveState() != 0) {
         G8(0x28ab2d) = 2;
     } else if (STATE == 1) {
-        G32(0x2ab595) += (unsigned int)ftol80(*(double *)(B + 0x170a5c));
+        ((Game *)B)->setTimeElapsed(((Game *)B)->timeElapsed()
+            + (unsigned int)ftol80(*(double *)(B + 0x170a5c)));
         ((Game *)B)->setField170a65(((Game *)B)->field_170a65()
             + (unsigned int)ftol80(*(double *)(B + 0x170a5c)));
     }
@@ -512,7 +513,7 @@ Sim_GameTick(void *self, double dt, double now)
                                     pl->posU(), pl->posY(), pl->posV());
         if ((*slot)->finishDespawn(B + 0x3e181c)) {
             Foe::remove(game, id);
-            G8(0x4224d) = (unsigned char)(G8(0x4224d) + 1);
+            ((Game *)B)->setFoesKilled((unsigned char)(((Game *)B)->foesKilled() + 1));
         }
     }
 
@@ -525,10 +526,10 @@ Sim_GameTick(void *self, double dt, double now)
             G8(0x28ab2d) = 0;
         }
         if (pl->moveState() != 3) {
-            int t = GI32(0x2ab591) * 1000;
-            if (t - GI32(0x2ab595) <= 0) {
+            int t = ((Game *)B)->timeLimit() * 1000;
+            if (t - (int)((Game *)B)->timeElapsed() <= 0) {
                 void *snd = GP(0x13cc5c);
-                GI32(0x2ab595) = t;
+                ((Game *)B)->setTimeElapsed((unsigned int)t);
                 pl->setMoveState(3);
                 if (snd != NULL)
                     CStatic_TriggerPlayback((CStaticSoundbuffer *)snd, 0);
@@ -573,7 +574,7 @@ Sim_GameTick(void *self, double dt, double now)
                         Score_CalculateLevelScore(B, (char)STATE);
                         G8(0x4220b) = 0;
                     }
-                    GD(0x170a44) = (double)((long double)(unsigned long long)G32(0x2ab595) +
+                    GD(0x170a44) = (double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
                                             (long double)GD(0x170a44));
                 }
             }
@@ -611,10 +612,10 @@ Sim_GameTick(void *self, double dt, double now)
                 G32(0x175528) = G32(0x170a50);
                 G32(0x17552c) = 1;
                 G8(0x175535) = 0;
-                GI32(0x2ab595) = GI32(0x2ab591) * 1000;
+                ((Game *)B)->setTimeElapsed((unsigned int)(((Game *)B)->timeLimit() * 1000));
                 Score_CalculateLevelScore(B, (char)STATE);
                 G8(0x4220b) = 0;
-                GD(0x170a44) = (double)((long double)(unsigned long long)G32(0x2ab595) +
+                GD(0x170a44) = (double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
                                         (long double)GD(0x170a44));
                 GameLog_LogMessage(GAMELOGGER, 2, F_GAMEDONE,
                                    (unsigned int)G8(0x173583), (unsigned int)G8(0x4215e));
@@ -675,7 +676,7 @@ Sim_GameTick(void *self, double dt, double now)
                 Sim_SetupLevelObjects(B);
                 G32(0x1964e3) = 1;
                 DEB = 0x0d;
-                GD(0x170a44) = (double)((long double)(unsigned long long)G32(0x2ab595) +
+                GD(0x170a44) = (double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
                                         (long double)GD(0x170a44));
             }
         }

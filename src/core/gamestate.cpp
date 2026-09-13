@@ -205,9 +205,9 @@ static bool read_state(GameState *s)
     const Player *pl = ((const Game *)g)->player();
     s->gems_collected = pl->gemsCollected();
     s->gems_required  = ((Game *)g)->gemsRequired();
-    s->foes_killed    = *(const BYTE  *)(g + 0x04224d);
-    s->time_limit_s   = *(const int   *)(g + 0x2ab591);
-    s->elapsed_ms     = *(const DWORD *)(g + 0x2ab595);
+    s->foes_killed    = ((const Game *)g)->foesKilled();
+    s->time_limit_s   = ((const Game *)g)->timeLimit();
+    s->elapsed_ms     = ((const Game *)g)->timeElapsed();
     s->lives          = (BYTE)pl->field239();
     s->total_score    = pl->field22c();
     s->level_score    = *(const int   *)(g + 0x140536);
