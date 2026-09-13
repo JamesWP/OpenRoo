@@ -309,16 +309,16 @@ static void fx_init(void)
 /* ─── Game-base access, unaligned as in the other sim files ───────────── */
 #include "game.h"
 #include "bridgeobject.h"
+#include "foe.h"
+#include "tile.h"
 
 #define GU8(o)    (*(unsigned char *)(B + (o)))
-#define GI32(o)   (*(int  *)(B + (o)))
 #define GPP(o)   (*(unsigned char **)(B + (o)))
 
-/* Tile addressing: base + (v + u*100) * 0x7f, identical to entitymove.cpp's
- * and bomb.cpp's TILE(). */
+/* Tile addressing for the Game-relative tables (+0x2ab72c, +0x2ab7a4):
+ * (v + u*100) * 0x7f, the same stride as Tile::at.  Those are Game fields,
+ * Band 3's. */
 #define TILEOFF(u, v)   ((((int)(v)) + ((int)(u)) * 100) * 0x7f)
-
-#define T8(t, o)    (*(unsigned char *)((t) + (o)))
 
 /* The CRT's __ftol 0x00451134: truncate toward zero into an __int64.  Only
  * the low byte is ever kept by either search, exactly as the originals'
@@ -622,6 +622,7 @@ Sim_FindFarthestOccupiedTile(void *self, unsigned char *pu,
 {
     unsigned char *B     = (unsigned char *)self;
     unsigned char *tiles = GPP(0x34);
+    Tile          *hdr   = Tile::at(tiles, 0, 0);   /* the map header */
     unsigned char  u0    = *pu;
     unsigned char  v0    = *pv;
     unsigned char  bestU = *pu;       /* seeded from the inputs, not zeroed */
@@ -635,20 +636,19 @@ Sim_FindFarthestOccupiedTile(void *self, unsigned char *pu,
     fx_init();
     diag_enter(Q_FAR, self);
 
-    if (T8(tiles, 0x19a) != 0) {
+    if (hdr->mapExtentV() != 0) {
         v = 0;
         do {
             unsigned char u = 0;
 
-            if (T8(tiles, 0x19b) != 0) {
+            if (hdr->mapExtentU() != 0) {
                 int ui = 0;
 
                 do {
                     /* Outer index sits in the v slot, inner in the u slot. */
-                    int off = TILEOFF(ui, (int)(signed char)v);
+                    Tile *t = Tile::at(tiles, ui, (int)(signed char)v);
 
-                    if (T8(tiles, off + 0x19d) != 0 &&
-                        T8(tiles, off + 0x1a5) == 0) {
+                    if (t->objectMarker() != 0 && t->field1a5() == 0) {
                         /* Point 9: the candidate is the full 80-bit FSQRT
                          * result and is COMPARED at that width... */
                         long double d = sqrtl((long double)(int)(
@@ -673,10 +673,10 @@ Sim_FindFarthestOccupiedTile(void *self, unsigned char *pu,
                     /* Point 8: an 8-bit index read back SIGN-extended. */
                     ++u;
                     ui = (int)(signed char)u;
-                } while (ui < (int)(unsigned)T8(tiles, 0x19b));
+                } while (ui < (int)(unsigned)hdr->mapExtentU());
             }
             ++v;
-        } while ((int)(signed char)v < (int)(unsigned)T8(tiles, 0x19a));
+        } while ((int)(signed char)v < (int)(unsigned)hdr->mapExtentV());
 
         /* Point 10: strict, and unordered-false -- a NaN best returns 0. */
         if (best > 0.0) {
@@ -754,15 +754,15 @@ extern "C" void tilequery_census_object_types(void *self)
      * Recorded here because the mistake is an easy one to repeat: the
      * object-list array is what MarkListedTilesBlockedByObject uses, and it
      * sits only a few hundred bytes away from the foe table in Game. */
-    count = (unsigned int)GU8(0x174fd4);
+    Game *g = (Game *)B;
+    count = (unsigned int)g->foeCount();
     for (i = 0; i < count; ++i) {
-        unsigned char  id  = GU8(0x174fd5 + i);
-        unsigned char *foe = GPP(0x174804 + (unsigned int)id * 4);
+        const Foe     *foe = g->foeSlot(g->foeId(i));
         unsigned char  t;
 
         if (foe == 0)
             continue;
-        t = foe[0x62];
+        t = foe->type();
 
         if (!seen[t]) {
             seen[t] = 1;
