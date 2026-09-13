@@ -1,23 +1,13 @@
-/* Standard-maths variant of the 3D helpers.
+/* The 3D helpers' maths: plain float, the C library, no assembly.
  *
- * d3dmath.cpp reproduces the originals bit for bit, which costs it x87 inline
- * asm, long-double intermediates and two preserved rounding asymmetries.  This
- * file is the same maths written the way anyone would write it today: plain
- * float, the C library, and no assembly.
+ * It is NOT bit-exact against the game's originals, and is not meant to be.
+ * Its correctness bar is that the game looks and plays the same; these
+ * matrices feed rendering only, so the replay suite is unaffected.  A
+ * bit-exact x87 backend existed until 2026-09-13 (RENDER_PLAN.md) and is in
+ * git history as karoo-hooks/d3dmath.cpp if a last-bit question ever needs it.
  *
- * It is NOT bit-exact, and is not meant to be.  Its correctness bar is that
- * the game looks and plays the same.  It will not reproduce a golden capture
- * and it must not be used for a replay-determinism run, because a last-bit
- * difference in a matrix feeds the frame checksum.
- *
- * Selected at runtime with KAROO_MATH=standard (default: exact).  Having both
- * behind one switch is the point -- it makes "is this difference real, or just
- * float noise?" a question you can answer by flipping a variable, and it keeps
- * a readable reference implementation next to the faithful one.
- *
- * Only the math-bearing functions are duplicated.  m4_identity, m4_translate,
- * v3_set, v3_sub, v3_div, v3_sub_inplace and billboard_vertex are pure data
- * movement with no rounding decisions, so both modes share them.
+ * m4_identity, m4_translate, v3_set, v3_sub, v3_div, v3_sub_inplace and
+ * billboard_vertex are pure data movement and live in d3dmath_common.cpp.
  */
 #include <math.h>
 #include "d3dmath.h"

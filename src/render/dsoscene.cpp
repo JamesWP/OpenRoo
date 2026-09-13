@@ -12,12 +12,11 @@
  * that it looks and plays the same, and the replay suite passes 5/5 with every
  * end-state field intact because these matrices feed rendering only.
  *
- * A verification build (`make VERIFY=1`) additionally compiles the bit-exact
- * backend, under which this file reproduced the original byte for byte over
- * all 13 fixture cases.  That is how it was accepted in the first place.
+ * It was accepted by reproducing the original byte for byte over 13 synthetic
+ * fixture cases under the (since removed) bit-exact backend.
  *
  * WORLD MATRIX, verified byte-for-byte against captured output from the
- * original (KAROO_DSO_GOLDEN=verify on a VERIFY=1 build):
+ * original:
  *
  *   static path      M = RotX(f19d + pi/2) . RotY(f1a1)  . RotZ(f1a5) . T(f191,f195,f199)
  *   spline, plain    same rotations,                                   . T(bezier(t))
@@ -31,8 +30,7 @@
  *  - TEXTUREADDRESSU and TEXTUREADDRESSV are both set from the SAME field
  *    (+0x1b5).  There is no separate V mode.
  *  - The spline path issues a SECOND SetTexture just before the transform.
- *    The static path does not -- it jumps past that check.  Both are visible
- *    in tests/rendertrace/dsogolden.golden.txt.
+ *    The static path does not -- it jumps past that check.
  *  - Objects whose type is neither 0 nor 2 still run the whole render-state
  *    prologue before being skipped, as do type-0 objects with a NULL mesh.
  *    The state changes are real and observable, so they are not hoisted.

@@ -1,10 +1,5 @@
-/* Math helpers shared by both backends.
- *
- * These are pure data movement -- no arithmetic that could round differently --
- * so the exact and standard implementations would be character for character
- * identical.  They live here rather than being duplicated, and they are built
- * unconditionally: d3dmath.cpp (the bit-exact backend) is compiled out unless
- * KAROO_VERIFY_ORIGINAL=1, and these must survive that.
+/* Math helpers with no arithmetic that could round differently -- pure data
+ * movement.  The address in each comment is the original it mirrors.
  */
 #include "d3dmath.h"
 
