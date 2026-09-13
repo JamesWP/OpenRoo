@@ -42,6 +42,11 @@ class __attribute__((packed)) Game {
 public:
     static const int ORIGIN = 0;
 
+    /* The game's one Game object, through its global pointer 0x0046c498
+     * (NULL until the game has built it).  The only place that address is
+     * named. */
+    static Game *instance()          { return *(Game **)0x0046c498; }
+
     /* ── sound ──────────────────────────────────────────────────────── */
     SoundManager *soundManager()     { return (SoundManager *)soundManagerHead_; }
     /* Nonzero once sound is up. */

@@ -65,7 +65,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define GAME_GLOBAL_PTR ((void **)0x0046c498)
 
 /* Grid */
 #define OFF_V_EXTENT   0x2ab727
@@ -195,7 +194,7 @@ static unsigned read_table(const Game *g, unsigned char count_in,
 
 bool worldstate_observe(Observation *obs)
 {
-    const BYTE *g = (const BYTE *)*GAME_GLOBAL_PTR;
+    const BYTE *g = (const BYTE *)Game::instance();
     memset(obs, 0, sizeof(*obs));
     if (!g) return false;
 
@@ -593,7 +592,7 @@ void worldstate_tick(void)
 
     if (g_map_wanted && !g_map_done) {
         g_map_done = true;
-        map_dump((const BYTE *)*GAME_GLOBAL_PTR, obs, g_map_path);
+        map_dump((const BYTE *)Game::instance(), obs, g_map_path);
     }
     if (g_trace) trace_frame(obs);
     if (g_obsdump) {

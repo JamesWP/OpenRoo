@@ -60,7 +60,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define GAME_GLOBAL_PTR ((void **)0x0046c498)
 
 struct GameState {
     int   gems_collected;   // Player +0x23d (Game+0x175406)  dword
@@ -200,7 +199,7 @@ unsigned short gamestate_mode(void) { return g_mode; }
 
 static bool read_state(GameState *s)
 {
-    const unsigned char *g = (const unsigned char *)*GAME_GLOBAL_PTR;
+    const unsigned char *g = (const unsigned char *)Game::instance();
     if (!g) return false;
 
     const Player *pl = ((const Game *)g)->player();
@@ -321,7 +320,7 @@ void gamestate_tick(void)
 void gamestate_deathdiff(void)
 {
     if (!deathdiff_enabled()) return;
-    const BYTE *game = (const BYTE *)*GAME_GLOBAL_PTR;
+    const BYTE *game = (const BYTE *)Game::instance();
     if (!game) return;
 
     BYTE cause = ((const Game *)game)->player()->moveState();

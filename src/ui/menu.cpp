@@ -57,10 +57,10 @@
  */
 #include "menu.h"
 #include "log.h"
+#include "game.h"
 #include <string.h>
 #include <stdlib.h>
 
-#define GAME_GLOBAL_PTR ((void **)0x0046c498)
 
 #define OFF_LOCK      0x17552c
 #define OFF_LASTKEY   0x175534
@@ -101,7 +101,7 @@ static bool trace_on(void)
 
 bool menu_read(MenuState *m)
 {
-    const BYTE *g = (const BYTE *)*GAME_GLOBAL_PTR;
+    const BYTE *g = (const BYTE *)Game::instance();
     memset(m, 0, sizeof(*m));
     if (!g) return false;
 
@@ -215,7 +215,7 @@ void menu_tick(void)
 
     if (g_goal == MENU_NO_GOAL) return;
 
-    const BYTE *g = (const BYTE *)*GAME_GLOBAL_PTR;
+    const BYTE *g = (const BYTE *)Game::instance();
     if (!g) return;
 
     MenuState m;

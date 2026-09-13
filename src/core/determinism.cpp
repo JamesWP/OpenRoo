@@ -30,9 +30,9 @@
 #include "determinism.h"
 #include "particles.h"
 #include "log.h"
+#include "game.h"
 #include <stdio.h>
 
-#define GAME_GLOBAL_PTR ((void **)0x0046c498)
 
 /* Assertion-surface offsets.  Widths are from the CalculateLevelScore
  * (0x0041A760) decompile — +0x04224D and +0x170A64 are bytes, not dwords, as
@@ -123,7 +123,7 @@ void dethash_frame_end(double virtual_seconds)
 
     char fields[256];
     int  fl = 0;
-    const unsigned char *game = (const unsigned char *)*GAME_GLOBAL_PTR;
+    const unsigned char *game = (const unsigned char *)Game::instance();
     if (game) {
         for (size_t i = 0; i < sizeof(GAME_FIELDS) / sizeof(GAME_FIELDS[0]); i++) {
             fold(game + GAME_FIELDS[i].off, GAME_FIELDS[i].len);

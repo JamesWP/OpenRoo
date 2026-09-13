@@ -159,7 +159,6 @@ bool policy_active(void)
  * screen) — so the values are read off the same code that drives the menu,
  * not guessed.
  */
-#define GAME_PTR   ((void **)0x0046c498)
 
 static int  g_slot = -2;      /* -2 unread, -1 none */
 static bool g_slot_done;
@@ -191,7 +190,7 @@ static int menu_slot(void)
 void policy_menu_tick(void)
 {
     if (!policy_active()) return;
-    const BYTE *g = (const BYTE *)*GAME_PTR;
+    const BYTE *g = (const BYTE *)Game::instance();
     if (!g) return;
     BYTE screen = g[OFF_GAME_STATE];
 
