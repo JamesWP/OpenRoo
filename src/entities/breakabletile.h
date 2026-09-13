@@ -8,12 +8,10 @@
  * place of the game's 0x45d2d0; the originals 0x403ce0, 0x403d10 and
  * 0x403d30 are UD2-stubbed.
  *
- * Two outside accessors remain, which is why the layout stays packed and
- * asserted:
- *   - RenderGameFrame (original) reads the just-fell flag +0x3c and the cell
- *     bytes +0x31/+0x32/+0x33 to place the falling-tile effect;
- *   - levelsounds.cpp's InitLevelBasedSounds writes the two sound handles
- *     +0x4d/+0x51 by raw offset.
+ * One outside accessor remains, which is why the layout stays packed and
+ * asserted: RenderGameFrame (original) reads the just-fell flag +0x3c and the
+ * cell bytes +0x31/+0x32/+0x33 to place the falling-tile effect.
+ * (levelsounds.cpp attaches the two sounds through their setters.)
  */
 #pragma once
 
@@ -39,6 +37,10 @@ public:
 
     /* UpdateBreakableTile 0x00403d40 -- one tick. */
     void tick();
+
+    /* +0x4d / +0x51, attached by InitLevelBasedSounds (levelsounds.cpp). */
+    void setFallSound(CStaticSoundbuffer *p)    { fallSound_ = p; }
+    void setRespawnSound(CStaticSoundbuffer *p) { respawnSound_ = p; }
 
 private:
 
