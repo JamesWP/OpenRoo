@@ -115,7 +115,7 @@ static void enter_loaded_state(unsigned char *B, FILE *fp)
     if (((Game *)B)->musicOn() != 0)
         CDM_StopTrack(CDAUDIO);
     G32(0x1964e3) = 1;
-    G8(0x28ab2d) = 1;
+    ((Game *)B)->setCameraMode(1);
     G8(0x175517) = 0x0d;
     fclose(fp);
 }
@@ -174,7 +174,7 @@ Sim_HandleTypedCheatCode(void *self)
             G8(0x2ab58c) = 3;
             if (((Game *)B)->musicOn() != 0)
                 Sim_PlayCDStuf(B + 0x2223f, S_COMPLETED);
-            G8(0x28ab2d) = 2;
+            ((Game *)B)->setCameraMode(2);
             Sim_RewindMenuStackToRootNode(B + 0x175518);
             Sim_PopMenuNodeFromStack(B + 0x175518);
             Sim_PushMenuNodeOnStack(B + 0x175518, 0x28);
@@ -187,7 +187,7 @@ Sim_HandleTypedCheatCode(void *self)
             ((Game *)B)->setRestartCount(0);
             GameLog_LogMessage(GAMELOGGER, 1, F_CSL);
         }
-        GD(0x170a44) = (double)(unsigned long long)((Game *)B)->timeElapsed() + GD(0x170a44);
+        ((Game *)B)->setTotalPlayTime((double)(unsigned long long)((Game *)B)->timeElapsed() + ((Game *)B)->totalPlayTime());
     }
 
     /* jjmapnr -- 7-byte prefix, then load by number */

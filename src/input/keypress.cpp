@@ -132,7 +132,7 @@ static void loaded_tail(unsigned char *B)
     if (((Game *)B)->musicOn() != 0)
         CDM_StopTrack(CDAUDIO);
     G32(0x1964e3) = 1;
-    G8(0x28ab2d) = 1;
+    ((Game *)B)->setCameraMode(1);
     Sim_RewindMenuStackToRootNode(MENU);
 }
 
@@ -140,16 +140,16 @@ static void option_edit(unsigned char *B, unsigned char key)
 {
     switch (key) {
     case 0x22: {                               /* sfx % -> joystick deadzone */
-        if (DEB != 0x27 && KEY(0x27) != 0 && G16(0x2ab57e) < 0x5a) {
-            G16(0x2ab57e) = (unsigned short)(G16(0x2ab57e) + 10);
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 0, G16(0x2ab57e) * 100);
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 4, G16(0x2ab57e) * 100);
+        if (DEB != 0x27 && KEY(0x27) != 0 && ((Game *)B)->joyDeadzone() < 0x5a) {
+            ((Game *)B)->setJoyDeadzone((unsigned short)(((Game *)B)->joyDeadzone() + 10));
+            ProgCtrl_SetJoyDeadzone(PROGCTRL, 0, ((Game *)B)->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(PROGCTRL, 4, ((Game *)B)->joyDeadzone() * 100);
             DEB = 0x27;
         }
-        if (DEB != 0x25 && KEY(0x25) != 0 && G16(0x2ab57e) > 10) {
-            G16(0x2ab57e) = (unsigned short)(G16(0x2ab57e) - 10);
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 0, G16(0x2ab57e) * 100);
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 4, G16(0x2ab57e) * 100);
+        if (DEB != 0x25 && KEY(0x25) != 0 && ((Game *)B)->joyDeadzone() > 10) {
+            ((Game *)B)->setJoyDeadzone((unsigned short)(((Game *)B)->joyDeadzone() - 10));
+            ProgCtrl_SetJoyDeadzone(PROGCTRL, 0, ((Game *)B)->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(PROGCTRL, 4, ((Game *)B)->joyDeadzone() * 100);
             DEB = 0x25;
         }
         break;
@@ -157,42 +157,42 @@ static void option_edit(unsigned char *B, unsigned char key)
     case 0x3e: {                               /* CD volume */
         int changed = 0;
         CDM_GetMixerDetails(CDAUDIO);          /* result discarded, as shipped */
-        if (DEB != 0x27 && KEY(0x27) != 0 && G8(0x2aa15a) < 100) {
+        if (DEB != 0x27 && KEY(0x27) != 0 && ((Game *)B)->cdVolume() < 100) {
             DEB = 0x27;
-            G8(0x2aa15a) = (unsigned char)(G8(0x2aa15a) + 10);
+            ((Game *)B)->setCdVolume((unsigned char)(((Game *)B)->cdVolume() + 10));
             changed = 1;
         }
-        if (DEB != 0x25 && KEY(0x25) != 0 && G8(0x2aa15a) != 0) {
+        if (DEB != 0x25 && KEY(0x25) != 0 && ((Game *)B)->cdVolume() != 0) {
             DEB = 0x25;
-            G8(0x2aa15a) = (unsigned char)(G8(0x2aa15a) - 10);
+            ((Game *)B)->setCdVolume((unsigned char)(((Game *)B)->cdVolume() - 10));
         } else if (!changed) {
             break;
         }
         {
-            unsigned int v = ((unsigned int)G8(0x2aa15a) * 65536u) / 100u;
-            G32(0x2aa15f) = v;
+            unsigned int v = ((unsigned int)((Game *)B)->cdVolume() * 65536u) / 100u;
+            ((Game *)B)->setCdMixerVolume(v);
             if (v > 65536u)
-                G32(0x2aa15f) = 65536u;
-            CDM_SetMixerVolume(CDAUDIO, G32(0x2aa15f));
+                ((Game *)B)->setCdMixerVolume(65536u);
+            CDM_SetMixerVolume(CDAUDIO, ((Game *)B)->cdMixerVolume());
         }
         break;
     }
     case 0x3f: {                               /* wave volume */
         int changed = 0;
-        if (DEB != 0x27 && KEY(0x27) != 0 && G8(0x2ab568) < 100) {
+        if (DEB != 0x27 && KEY(0x27) != 0 && ((Game *)B)->waveVolume() < 100) {
             DEB = 0x27;
-            G8(0x2ab568) = (unsigned char)(G8(0x2ab568) + 10);
+            ((Game *)B)->setWaveVolume((unsigned char)(((Game *)B)->waveVolume() + 10));
             changed = 1;
         }
-        if (DEB != 0x25 && KEY(0x25) != 0 && G8(0x2ab568) != 0) {
+        if (DEB != 0x25 && KEY(0x25) != 0 && ((Game *)B)->waveVolume() != 0) {
             DEB = 0x25;
-            G8(0x2ab568) = (unsigned char)(G8(0x2ab568) - 10);
+            ((Game *)B)->setWaveVolume((unsigned char)(((Game *)B)->waveVolume() - 10));
         } else if (!changed) {
             break;
         }
-        G32(0x2ab56d) = (unsigned int)G8(0x2ab568) * 0x28f028fu;
-        if (G32(0x13cc34) != 0)
-            waveOutSetVolume((HWAVEOUT)0, G32(0x2ab56d));
+        ((Game *)B)->setWaveOutVolume((unsigned int)((Game *)B)->waveVolume() * 0x28f028fu);
+        if (((Game *)B)->soundCreated() != 0)
+            waveOutSetVolume((HWAVEOUT)0, ((Game *)B)->waveOutVolume());
         break;
     }
     case 0x48: case 0x49: case 0x4a: {         /* three 0..2 byte options */
@@ -365,7 +365,7 @@ Sim_HandleKeypress(void *self)
         DEB = 0x0d;
         G32(0x175524) = G32(0x170a4c);
         G32(0x175528) = G32(0x170a50);
-        G8(0x28ab2d) = 1;
+        ((Game *)B)->setCameraMode(1);
         G32(0x17552c) = 1;
         Sim_PopMenuNodeFromStack(MENU);
         GameLog_LogMessage(GAMELOGGER, 1, F_CONTINUE);

@@ -232,11 +232,13 @@ Sim_ClearGameState(void *self)
 
     Player *pl = ((Game *)G)->player();
     pl->setField239(2);                    /* lives */
-    G[0x28ab2d]                     = 2;
+    ((Game *)G)->setCameraMode(2);
     /* +0x126 and +0x66 are doubles the original writes as two dwords each,
      * split across this block (+0x1752ef/+0x1752f3, +0x17522f/+0x175233).
      * Nothing reads between, so each is one double store (template 3). */
     pl->setField126(0.0);
+    /* Game::totalPlayTime's LOW dword only (0x4185a9 is a dword MOV), so
+     * not setTotalPlayTime(0): the high half survives, as in the original. */
     *(unsigned int *)(G + 0x170a44) = 0;
     ((Game *)G)->setLevelIndex(0);
     ((Game *)G)->setRestartCount(0);

@@ -130,6 +130,35 @@ public:
     int            musicOn() const                   { return musicOn_; }
     void           setMusicOn(int on)                { musicOn_ = on; }
 
+    /* Total play time over the whole game, ms: each level's timeElapsed is
+     * added as it ends; the save slot stores it, ClearGameState zeroes it. */
+    double         totalPlayTime() const             { return totalPlayTime_; }
+    void           setTotalPlayTime(double ms)       { totalPlayTime_ = ms; }
+
+    /* ── volumes (the options menu, HandleKeypress 0x3e/0x3f) ────────── */
+    /* Percent, steps of 10, shown by RenderGameOptions; each has the
+     * device value HandleKeypress derives from it beside it. */
+    unsigned char  cdVolume() const                  { return cdVolume_; }
+    void           setCdVolume(unsigned char p)      { cdVolume_ = p; }
+    /* CD mixer volume, 0..65536 (CDM_SetMixerVolume). */
+    unsigned int   cdMixerVolume() const             { return cdMixerVolume_; }
+    void           setCdMixerVolume(unsigned int v)  { cdMixerVolume_ = v; }
+    unsigned char  waveVolume() const                { return waveVolume_; }
+    void           setWaveVolume(unsigned char p)    { waveVolume_ = p; }
+    /* Both channels packed, for waveOutSetVolume. */
+    unsigned int   waveOutVolume() const             { return waveOutVolume_; }
+    void           setWaveOutVolume(unsigned int v)  { waveOutVolume_ = v; }
+
+    /* ── camera and controls ────────────────────────────────────────── */
+    /* 0 = follow the player; nonzero = view from the separate eye at
+     * +0x2ab580 (FUN_00404120 / UpdateViewTransform), and 2 also spins the
+     * yaw -- the menus and the tally.  Checkpoints restore it. */
+    unsigned char  cameraMode() const                { return cameraMode_; }
+    void           setCameraMode(unsigned char m)    { cameraMode_ = m; }
+    /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
+    unsigned short joyDeadzone() const               { return joyDeadzone_; }
+    void           setJoyDeadzone(unsigned short p)  { joyDeadzone_ = p; }
+
     /* ── the tally's inputs (CalculateLevelScore 0x41a760) ─────────── */
     /* Death restarts on this level: GameTick adds one each time ENTER
      * restarts it after a death, and zeroes it when the level ends (as do
@@ -357,7 +386,8 @@ private:
     unsigned char gap_140543[0x170643 - 0x140543];
     BridgeObject *bridgeSlots_[256];                      /* 0x170643 */
     unsigned char bridgeCount_;                           /* 0x170a43 */
-    unsigned char gap_170a44[0x170a54 - 0x170a44];
+    double        totalPlayTime_;                         /* 0x170a44 */
+    unsigned char gap_170a4c[0x170a54 - 0x170a4c];
     double        clock_;                                 /* 0x170a54 */
     Field170a5c   field_170a5c_;                          /* 0x170a5c */
     /* Recomputed by GameTick every tick; see vitalityPercent(). */
@@ -382,9 +412,20 @@ private:
     unsigned char foeCount_;                              /* 0x174fd4 */
     /* 500 long: the Player object follows at 0x1751c9. */
     unsigned char foeIds_[500];                           /* 0x174fd5 */
-    unsigned char gap_1751c9[0x2aa156 - 0x1751c9];
+    unsigned char gap_1751c9[0x28ab2d - 0x1751c9];
+    unsigned char cameraMode_;                            /* 0x28ab2d */
+    unsigned char gap_28ab2e[0x2aa156 - 0x28ab2e];
     int           musicOn_;                               /* 0x2aa156 */
-    unsigned char gap_2aa15a[0x2ab58d - 0x2aa15a];
+    unsigned char cdVolume_;                              /* 0x2aa15a */
+    unsigned char gap_2aa15b[0x2aa15f - 0x2aa15b];
+    unsigned int  cdMixerVolume_;                         /* 0x2aa15f */
+    unsigned char gap_2aa163[0x2ab568 - 0x2aa163];
+    unsigned char waveVolume_;                            /* 0x2ab568 */
+    unsigned char gap_2ab569[0x2ab56d - 0x2ab569];
+    unsigned int  waveOutVolume_;                         /* 0x2ab56d */
+    unsigned char gap_2ab571[0x2ab57e - 0x2ab571];
+    unsigned short joyDeadzone_;                          /* 0x2ab57e */
+    unsigned char gap_2ab580[0x2ab58d - 0x2ab580];
     /* Where Tile::at() indexes from; the tiles extend past it.  The bytes
      * from here to the first cell look like a map header (the time limit at
      * +0x2ab591, this quota, the extents at +0x2ab727/8), not tile fields --
@@ -463,4 +504,11 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(levelCount_,       0x04215e);
     KAROO_LAYOUT_AT(levelIndex_,       0x173583);
     KAROO_LAYOUT_AT(musicOn_,          0x2aa156);
+    KAROO_LAYOUT_AT(cameraMode_,       0x28ab2d);
+    KAROO_LAYOUT_AT(joyDeadzone_,      0x2ab57e);
+    KAROO_LAYOUT_AT(cdVolume_,         0x2aa15a);
+    KAROO_LAYOUT_AT(cdMixerVolume_,    0x2aa15f);
+    KAROO_LAYOUT_AT(waveVolume_,       0x2ab568);
+    KAROO_LAYOUT_AT(waveOutVolume_,    0x2ab56d);
+    KAROO_LAYOUT_AT(totalPlayTime_,    0x170a44);
 }

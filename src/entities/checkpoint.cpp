@@ -26,6 +26,7 @@
 #include <windows.h>
 #include <string.h>
 #include "log.h"
+#include "game.h"
 
 typedef void (__attribute__((thiscall)) *script_tick_fn)(void *player,
                                                         unsigned int a, unsigned int b,
@@ -55,7 +56,7 @@ Sim_RestoreCheckpointStateBlocks(void *self)
 
     ORIG_SCRIPT_TICK(B + 0x195735, G32(0x170a54), G32(0x170a58),
                      G32(0x170a5c), G32(0x170a60));
-    G8(0x28ab2d)  = G8(0x1964e2);
+    ((Game *)B)->setCameraMode(G8(0x1964e2));
     G32(0x28ab29) = G32(0x1960ea);
     G32(0x2ab580) = G32(0x1964d6);
     G32(0x2ab584) = G32(s_fx ? 0x1964da : 0x1964de);

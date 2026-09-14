@@ -153,7 +153,7 @@ Sim_StoreGameStateIntoSaveSlot(void *self, unsigned int slotArg)
 
     S[0x170ac1] = (unsigned char)(((Game *)B)->levelIndex() + 1);
     *(unsigned int *)(S + 0x170acb) =
-        (unsigned int)(long long)*(double *)(B + 0x170a44);
+        (unsigned int)(long long)((Game *)B)->totalPlayTime();
     *(unsigned int *)(S + 0x170ac7) = (unsigned int)((Game *)B)->player()->fieldD8();
     *(unsigned int *)(S + 0x170ac3) = (unsigned int)((Game *)B)->player()->field22c();
     S[0x170ac2] = (unsigned char)((Game *)B)->player()->field239();
@@ -168,8 +168,8 @@ Sim_RestoreGameStateFromSaveSlot(void *self, unsigned int slotArg)
     unsigned char *S = B + (slotArg & 0xff) * 0x2a;
 
     ((Game *)B)->setLevelIndex(S[0x170ac1]);
-    *(double *)(B + 0x170a44) =
-        (double)(unsigned long long)*(unsigned int *)(S + 0x170acb);
+    ((Game *)B)->setTotalPlayTime(
+        (double)(unsigned long long)*(unsigned int *)(S + 0x170acb));
     *(unsigned int *)(B + 0x1752a1) = *(unsigned int *)(S + 0x170ac7);
     *(unsigned int *)(B + 0x1753f5) = *(unsigned int *)(S + 0x170ac3);
     *(unsigned int *)(B + 0x175402) = S[0x170ac2];

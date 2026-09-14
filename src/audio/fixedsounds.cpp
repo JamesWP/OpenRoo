@@ -123,10 +123,10 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
         Sim_PlayCDStuf(B + 0x2223f, S_MAIN);
     B[0x2235a] = (unsigned char)Sim_FindThemeIndexByThemeName(B + 0x2223f, S_MAIN);
 
-    if (G32(0x13cc34) == 0) {
+    if (((Game *)B)->soundCreated() == 0) {
         GameLog_LogMessage(GAMELOGGER, 1, F_NOSOUND);
         ((Game *)B)->setMusicOn(0);
-        if (G32(0x13cc34) == 0) {
+        if (((Game *)B)->soundCreated() == 0) {
             G32(0x13cc80) = 1;
             return;
         }

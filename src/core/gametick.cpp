@@ -276,7 +276,7 @@ Sim_GameTick(void *self, double dt, double now)
         if (G32(0x1960e6) != 0)
             Sim_RestoreCheckpointStateBlocks(B);
         if (G32(0x1964e3) == 0 || G32(0x1960e6) == 0)
-            G8(0x28ab2d) = 2;
+            ((Game *)B)->setCameraMode(2);
         if (DEB != 0x0d && KEY(0x0d) != 0) {
             G32(0x1964e3) = 0;
             G32(0x196086) = 0;
@@ -290,12 +290,12 @@ Sim_GameTick(void *self, double dt, double now)
                     B + 0x2223f, (const char *)(B + 0x2ab69d));
             }
             G32(0x28ab29) = 0x40e00000;
-            G8(0x28ab2d) = 0;
+            ((Game *)B)->setCameraMode(0);
             pl->setField231(*((Game *)B)->clock());
         }
     }
 
-    if (G8(0x28ab2d) == 0)
+    if (((Game *)B)->cameraMode() == 0)
         GF(0x28ab29) = camera_sway(now, GF(0x13cca4));
 
     if (STATE == 3) {
@@ -461,7 +461,7 @@ Sim_GameTick(void *self, double dt, double now)
     }
 
     if (pl->moveState() != 0) {
-        G8(0x28ab2d) = 2;
+        ((Game *)B)->setCameraMode(2);
     } else if (STATE == 1) {
         ((Game *)B)->setTimeElapsed(((Game *)B)->timeElapsed()
             + (unsigned int)ftol80(*(double *)(B + 0x170a5c)));
@@ -470,11 +470,11 @@ Sim_GameTick(void *self, double dt, double now)
     }
 
     if ((unsigned int)pl->fieldEa() != 0) {
-        G8(0x28ab2d) = 0;
+        ((Game *)B)->setCameraMode(0);
     } else if ((unsigned int)pl->field120() != 0) {
         long double d = (long double)(int)pl->field111() - (long double)(int)pl->heightCell();
         if (d > 2.0L) {
-            G8(0x28ab2d) = 1;
+            ((Game *)B)->setCameraMode(1);
             GF(0x2ab580) = pl->posU();
             GF(0x2ab588) = pl->posV();
         }
@@ -523,7 +523,7 @@ Sim_GameTick(void *self, double dt, double now)
             GF(0x2ab580) = pl->posU();
             GF(0x2ab584) = pl->posY();
             GF(0x2ab588) = pl->posV();
-            G8(0x28ab2d) = 0;
+            ((Game *)B)->setCameraMode(0);
         }
         if (pl->moveState() != 3) {
             int t = ((Game *)B)->timeLimit() * 1000;
@@ -562,7 +562,7 @@ Sim_GameTick(void *self, double dt, double now)
                                            (unsigned int)((Game *)B)->levelCount());
                     } else {
                         STATE = 3;
-                        G8(0x28ab2d) = 2;
+                        ((Game *)B)->setCameraMode(2);
                         Sim_RewindMenuStackToRootNode(MENU);
                         Sim_PopMenuNodeFromStack(MENU);
                         Sim_PushMenuNodeOnStack(MENU, 0x28);
@@ -574,8 +574,8 @@ Sim_GameTick(void *self, double dt, double now)
                         Score_CalculateLevelScore(B, (char)STATE);
                         ((Game *)B)->setRestartCount(0);
                     }
-                    GD(0x170a44) = (double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
-                                            (long double)GD(0x170a44));
+                    ((Game *)B)->setTotalPlayTime((double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
+                                            (long double)((Game *)B)->totalPlayTime()));
                 }
             }
         }
@@ -600,7 +600,7 @@ Sim_GameTick(void *self, double dt, double now)
                 DEB = 0x0d;
                 restart_tail = 0;                        /* JMP 0x4162b3 */
             } else {
-                G8(0x28ab2d) = 2;
+                ((Game *)B)->setCameraMode(2);
                 STATE = 3;
                 if (((Game *)B)->musicOn() != 0)
                     Sim_PlayCDStuf(B + 0x2223f, S_COMPLETE);
@@ -615,8 +615,8 @@ Sim_GameTick(void *self, double dt, double now)
                 ((Game *)B)->setTimeElapsed((unsigned int)(((Game *)B)->timeLimit() * 1000));
                 Score_CalculateLevelScore(B, (char)STATE);
                 ((Game *)B)->setRestartCount(0);
-                GD(0x170a44) = (double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
-                                        (long double)GD(0x170a44));
+                ((Game *)B)->setTotalPlayTime((double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
+                                        (long double)((Game *)B)->totalPlayTime()));
                 GameLog_LogMessage(GAMELOGGER, 2, F_GAMEDONE,
                                    (unsigned int)((Game *)B)->levelIndex(), (unsigned int)((Game *)B)->levelCount());
                 if ((unsigned int)((Game *)B)->levelIndex() == (unsigned int)((Game *)B)->levelCount() - 1) {
@@ -628,7 +628,7 @@ Sim_GameTick(void *self, double dt, double now)
             }
             if (restart_tail) {
                 G32(0x28ab29) = 0x40e00000;
-                G8(0x28ab2d) = 0;
+                ((Game *)B)->setCameraMode(0);
                 DEB = 0x0d;
             }
         }
@@ -676,8 +676,8 @@ Sim_GameTick(void *self, double dt, double now)
                 Sim_SetupLevelObjects(B);
                 G32(0x1964e3) = 1;
                 DEB = 0x0d;
-                GD(0x170a44) = (double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
-                                        (long double)GD(0x170a44));
+                ((Game *)B)->setTotalPlayTime((double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
+                                        (long double)((Game *)B)->totalPlayTime()));
             }
         }
     }
@@ -715,7 +715,7 @@ Sim_GameTick(void *self, double dt, double now)
     }
 
     if (pl->moveState() != 0 && pl->moveState() != 2)
-        G8(0x28ab2d) = 2;
+        ((Game *)B)->setCameraMode(2);
     if (KEY(DEB) == 0)
         DEB = 0;
     G32(0x13cca8) = 0;

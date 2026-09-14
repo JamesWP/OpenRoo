@@ -145,7 +145,7 @@ Sim_InitLevelBasedSounds(void *self)
     }
 
     GameLog_LogMessage(GAMELOGGER, 2, F_TRYINIT);
-    if (G32(0x13cc34) != 0) {
+    if (((Game *)B)->soundCreated() != 0) {
         pl->setField15a(0);
         if (strcmp(world, S_EGYPT) == 0)
             pl->setField15a(0);
