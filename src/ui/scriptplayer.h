@@ -17,7 +17,7 @@
  *   ReadInstructionScriptForLevel 0x41d720  ours: readForLevel (jjscript.cpp)
  *   ReadInstructionScriptTexts 0x41e8b0  ours: readTextsForReport (jjsreport.cpp)
  *   FUN_0041d920               the per-frame tick -- PLACEHOLDER, tick()
- *   ReleaseScriptStreamBuffers 0x41e840  PLACEHOLDER, releaseStreams()
+ *   ReleaseScriptStreamBuffers 0x41e840  ours: releaseStreams (jjscript.cpp)
  *
  * The ctor and dtor are still the game's, run by Game's Load/Destruct.
  * Field meanings come from those functions' decompiles and from the Game
@@ -53,13 +53,9 @@ public:
         typedef void (__attribute__((thiscall)) *fn)(ScriptPlayer *, double, double);
         ((fn)0x0041d920)(this, now, dt);
     }
-    /* PLACEHOLDER: ReleaseScriptStreamBuffers 0x0041e840, __fastcall:
-     * stops, releases and deletes each of the 255 stream slots. */
-    void releaseStreams()
-    {
-        typedef void (__attribute__((fastcall)) *fn)(ScriptPlayer *);
-        ((fn)0x0041e840)(this);
-    }
+    /* ReleaseScriptStreamBuffers 0x0041e840 (jjscript.cpp): stops,
+     * releases and deletes each of the 255 stream slots. */
+    void releaseStreams();
 
     /* Set to 1 by the reader once a script has loaded; OpenLevelFile
      * zeroes it before the read.  Every gate on "this level has a script"
@@ -182,5 +178,7 @@ KAROO_LAYOUT_CHECKS(ScriptPlayer)
 /* The exports patch.py binds; shims onto the methods. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 JJScript_ReadForLevel(ScriptPlayer *self, const char *path);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+JJScript_ReleaseScriptStreamBuffers(ScriptPlayer *self);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 JJScript_ReadTextsForReport(ScriptPlayer *self, const char *path, FILE *sink);

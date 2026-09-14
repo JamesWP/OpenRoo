@@ -53,6 +53,7 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "menunav.h"
 #include "player.h"
 #include "menutree.h"
 
@@ -63,9 +64,9 @@ extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 static int s_fx = -1;
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_NavigateMenuTree(void *self, int now)
+Sim_NavigateMenuTree(MenuTree *self, int now)
 {
-    ((MenuTree *)self)->navigate(now);
+    self->navigate(now);
 }
 
 void MenuTree::navigate(int now)
@@ -147,7 +148,7 @@ void MenuTree::navigate(int now)
 }
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_StoreGameStateIntoSaveSlot(void *self, unsigned int slotArg)
+Sim_StoreGameStateIntoSaveSlot(Game *self, unsigned int slotArg)
 {
     Game     *game = (Game *)self;
     SaveSlot *S    = game->saveSlots()->slot((unsigned char)slotArg);
@@ -162,7 +163,7 @@ Sim_StoreGameStateIntoSaveSlot(void *self, unsigned int slotArg)
 }
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_RestoreGameStateFromSaveSlot(void *self, unsigned int slotArg)
+Sim_RestoreGameStateFromSaveSlot(Game *self, unsigned int slotArg)
 {
     unsigned char *B = (unsigned char *)self;
     SaveSlot *S = ((Game *)B)->saveSlots()->slot((unsigned char)slotArg);

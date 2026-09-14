@@ -31,6 +31,7 @@
 #include "static.h"
 #include "log.h"
 #include "game.h"
+#include "scoretally.h"
 #include "menutree.h"
 
 extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
@@ -58,7 +59,7 @@ static void tick_sound(unsigned char *B)
 }
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_AnimateScoreTallyStages(void *self)
+Sim_AnimateScoreTallyStages(Game *self)
 {
     unsigned char *B = (unsigned char *)self;
     unsigned int now, el, lim, n;

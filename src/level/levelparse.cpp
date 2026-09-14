@@ -227,6 +227,7 @@
 
 #include "log.h"
 #include "game.h"
+#include "levelparse.h"
 #include "soundmanager.h"
 
 /* ─── Game / Level3DExtraObjects field offsets ───────────────────────────── */
@@ -236,16 +237,11 @@
 #define G_MAP_READER      0x2ab58d   /* the .jjm reader sub-object            */
 #define G_MAP_NAME        0x2ab69d   /* the map name the reader last loaded   */
 #define G_MAP_BONUS       0x2ab599   /* DWORD, the %d in the "loaded" line    */
-#define G_EXTRA_OBJECTS   0x48b98    /* Level3DExtraObjects                   */
 
 #define G_NAME_TABLE      0x3215e    /* level-name table, 0x100 per entry     */
 #define G_GAMEFILE_NAME   0x4215f    /* the game file's name, a string        */
 #define G_NEXT_BONUS      0x14       /* DWORD, the peeked next-level bonus    */
 
-#define X_SOUND_MGR       0x8        /* on Level3DExtraObjects                */
-#define X_FIRST_HANDLE    0xf4a
-#define X_RECORD_STRIDE   0xf40
-#define X_RECORD_COUNT    0xff       /* 255, not 256 -- see the header        */
 
 /* ─── Game globals and string constants, at their original addresses ─────── */
 
@@ -351,37 +347,36 @@ static int inline_strcmp(const unsigned char *a, const unsigned char *b)
 
 /* ═══ 0x00425210 -- Level3DExtraObjects::ReleaseExtraObjectSoundBuffers ════ */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Leo_ReleaseExtraObjectSoundBuffers(void *self)
+Leo_ReleaseExtraObjectSoundBuffers(ExtraObjects *self)
 {
-    unsigned char *X = (unsigned char *)self;
-    unsigned char *slot;
-    int i;
+    self->releaseSounds();
+}
 
+void ExtraObjects::releaseSounds()
+{
     fx_init();
 
-    slot = X + X_FIRST_HANDLE;
-    for (i = X_RECORD_COUNT; i != 0; i--) {
+    for (int k = 0; k < RELEASE_COUNT; k++) {
+        ExtraObjectRecord *r = &records_[k];
         /* the handle is re-read after HaltPlayback, exactly as the original */
-        if (*(void **)slot != 0) {
-            CStatic_HaltPlayback(*(CStaticSoundbuffer **)slot);
-            (*(SoundManager **)(X + X_SOUND_MGR))->releaseStaticForOwner(*(void **)slot, 1);
-            *(void **)slot = 0;
+        if (r->sound != 0) {
+            CStatic_HaltPlayback(r->sound);
+            soundManager_->releaseStaticForOwner(r->sound, 1);
+            r->sound = 0;
 
             s_released++;
             if (s_diag && !s_logged_release) {
                 s_logged_release = 1;
                 log_write("levelparse: first extra-object sound release "
-                          "(record %d of %d)\n",
-                          X_RECORD_COUNT - i, X_RECORD_COUNT);
+                          "(record %d of %d)\n", k, (int)RELEASE_COUNT);
             }
         }
-        slot += X_RECORD_STRIDE;
     }
 }
 
 /* ═══ 0x00418910 -- Game::ParseLevelFiles ══════════════════════════════════ */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_ParseLevelFiles(void *self, const char *name)
+Sim_ParseLevelFiles(Game *self, const char *name)
 {
     unsigned char *G = (unsigned char *)self;
     char path[256];      /* [ESP+0x10]  -- 256 bytes, unbounded sprintf */
@@ -406,7 +401,7 @@ Sim_ParseLevelFiles(void *self, const char *name)
         inline_strcpy(prev, (const char *)(G + G_MAP_NAME));
 
     if ((char)ok != 0) {
-        Leo_ReleaseExtraObjectSoundBuffers(G + G_EXTRA_OBJECTS);
+        ((Game *)G)->extraObjects()->releaseSounds();
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LOADED,
                            *(unsigned int *)(G + G_MAP_BONUS), path);
     } else {
@@ -443,7 +438,7 @@ Sim_ParseLevelFiles(void *self, const char *name)
 
 /* ═══ 0x004186b0 -- Game::SetCurrentLevelName ══════════════════════════════ */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_SetCurrentLevelName(void *self, unsigned int levelNo)
+Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
 {
     unsigned char *G = (unsigned char *)self;
 
@@ -459,7 +454,7 @@ Sim_SetCurrentLevelName(void *self, unsigned int levelNo)
 
 /* ═══ 0x004186f0 -- Game::OpenLevelFile ════════════════════════════════════ */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_OpenLevelFile(void *self, unsigned int levelNo)
+Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 {
     unsigned char *G = (unsigned char *)self;
     char path[256];      /* [ESP+0x8]   -- the same two buffers, same offsets */
@@ -504,7 +499,7 @@ Sim_OpenLevelFile(void *self, unsigned int levelNo)
         inline_strcpy(prev, (const char *)(G + G_MAP_NAME));
 
     if ((char)ok != 0) {
-        Leo_ReleaseExtraObjectSoundBuffers(G + G_EXTRA_OBJECTS);
+        ((Game *)G)->extraObjects()->releaseSounds();
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_OPEN_LOADED,
                            *(unsigned int *)(G + G_MAP_BONUS),
                            levelNo & 0xff, path);

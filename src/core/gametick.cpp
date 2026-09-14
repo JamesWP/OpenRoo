@@ -46,6 +46,18 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "gamelog.h"
+#include "scoretally.h"
+#include "levelsounds.h"
+#include "levelsetup.h"
+#include "levelscore.h"
+#include "levelparse.h"
+#include "keypress.h"
+#include "gridrestore.h"
+#include "gamereset.h"
+#include "fixedsounds.h"
+#include "checkpoint.h"
+#include "cheatcode.h"
 #include "menutree.h"
 #include "textentry.h"
 #include "liftobject.h"
@@ -64,24 +76,10 @@ struct CDM;
 
 extern "C" {
 __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
-__declspec(dllexport) void __cdecl GameLog_LogMessage(void *self, int level, const char *fmt, ...);
-
-__declspec(dllexport) void __attribute__((thiscall)) Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self);
-__declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_InitLevelBasedSounds(void *self);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_RestoreCheckpointStateBlocks(void *self);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_HandleKeypress(void *self);
-__declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AnimateScoreTallyStages(void *self);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
 
 
-__declspec(dllexport) void __attribute__((thiscall)) Sim_ClearGameState(void *self);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_ParseLevelFiles(void *self, const char *name);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_SetupLevelObjects(void *self);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_RestoreTileGridFromSnapshot(void *self);
 
-__declspec(dllexport) void __attribute__((thiscall)) Score_CalculateLevelScore(void *self, char endReason);
-__declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_InsertScoreIntoHighScoreTable(void *self, unsigned int score, unsigned char levelId);
-__declspec(dllexport) int __attribute__((thiscall)) HighScore_WriteFile(void *self, const char *name, char key);
+
 
 __declspec(dllexport) void __attribute__((thiscall)) ProgCtrl_Dispatch(ProgableControl *s, unsigned short game_state);
 __declspec(dllexport) void __attribute__((thiscall)) CDM_StopTrack(CDM *self);
@@ -94,7 +92,7 @@ __declspec(dllexport) void __attribute__((thiscall)) CStatic_Set3DPosition(CStat
 
 #define PROGCTRL    ((ProgableControl *)0x0046c298)
 #define CDAUDIO     ((CDM *)0x004dc640)
-#define GAMELOGGER  ((void *)0x0046c4c0)
+#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 #define F_GAMEEND   ((const char *)0x0046559c)   /* "GAME: GameActions - JJ_GAME_END" */
 #define F_SWITCH    ((const char *)0x00465580)   /* "GAME: switch triggered %d" */
 #define F_COMPLETED ((const char *)0x00465554)   /* "GAME: completed at level %d/%d" */
@@ -120,7 +118,7 @@ __declspec(dllexport) void __attribute__((thiscall)) CStatic_Set3DPosition(CStat
 #define STATE   (((Game *)B)->stateRef())
 #define DEB     (((Game *)B)->debounceRef())
 #define MENU    (((Game *)B)->menu())
-#define ACC     GD(0x170a54)
+#define ACC     (*((Game *)B)->clock())
 
 /* Tile addressing: idx = v + u*100, pitch 0x7f (worldstate.cpp). */
 #define TIDX(u, v)  (((int)(v) + (int)(u) * 100) * 0x7f)
@@ -225,7 +223,7 @@ static void trigger_switch_tile(unsigned char *B, unsigned char sw, int u, int v
 }
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_GameTick(void *self, double dt, double now)
+Sim_GameTick(Game *self, double dt, double now)
 {
     unsigned char *B = (unsigned char *)self;
     Player *pl = ((Game *)B)->player();
@@ -238,9 +236,9 @@ Sim_GameTick(void *self, double dt, double now)
             log_write("gametick: KAROO_SIM_FX=tickorder -- slides tick before lifts\n");
     }
 
-    Sim_AcquireFixedSoundBuffersAndMaybeReport(B);
+    Sim_AcquireFixedSoundBuffersAndMaybeReport((Game *)B);
     if (((Game *)B)->levelSoundsReady() == 0 && G32(0x173584) == 0) {
-        Sim_InitLevelBasedSounds(B);
+        Sim_InitLevelBasedSounds((Game *)B);
         ((Game *)B)->setLevelSoundsReady(1);
         if (STATE == 0 && ((Game *)B)->musicOn() != 0)
             ((Game *)B)->cdThemes()->replay();
@@ -260,14 +258,14 @@ Sim_GameTick(void *self, double dt, double now)
     }
 
     if (STATE == 0 || STATE == 5) {
-        Sim_RestoreCheckpointStateBlocks(B);
-        Sim_HandleKeypress(B);
+        Sim_RestoreCheckpointStateBlocks((Game *)B);
+        Sim_HandleKeypress((Game *)B);
     }
 
     if (STATE == 4) {
         ScriptPlayer *sp = ((Game *)B)->scriptPlayer();
         if (sp->loaded() != 0)
-            Sim_RestoreCheckpointStateBlocks(B);
+            Sim_RestoreCheckpointStateBlocks((Game *)B);
         if (sp->running() == 0 || sp->loaded() == 0)
             ((Game *)B)->setCameraMode(2);
         if (DEB != 0x0d && KEY(0x0d) != 0) {
@@ -291,11 +289,11 @@ Sim_GameTick(void *self, double dt, double now)
         ((Game *)B)->setCameraDistance(camera_sway(now, GF(0x13cca4)));
 
     if (STATE == 3) {
-        Sim_HandleKeypress(B);
-        Sim_AnimateScoreTallyStages(B);
+        Sim_HandleKeypress((Game *)B);
+        Sim_AnimateScoreTallyStages((Game *)B);
     }
     if (STATE == 2)
-        Sim_AnimateScoreTallyStages(B);
+        Sim_AnimateScoreTallyStages((Game *)B);
     if (STATE == 6)
         ((Game *)B)->nameEntry()->poll((unsigned int)ftol80(ACC));
 
@@ -345,7 +343,7 @@ Sim_GameTick(void *self, double dt, double now)
 
     if (STATE == 1) {
         if (((Game *)B)->cheatEntry()->active() != 0)
-            Sim_HandleTypedCheatCode(B);
+            Sim_HandleTypedCheatCode((Game *)B);
 
         /* the runtime foe spawners, stride 0x15 from Game+0x20251 */
         for (int i = 0; i < (int)G16(0x42207); ++i) {
@@ -354,7 +352,7 @@ Sim_GameTick(void *self, double dt, double now)
             if (!(since > (long double)*(double *)(E - 0x08)))
                 continue;
             signed char u = (signed char)E[-0x14], v = (signed char)E[-0x13];
-            if (G8(0x2ab732 + TIDX(u, v)) == 0 && G8(0x174fd4) < E[0]) {
+            if (G8(0x2ab732 + TIDX(u, v)) == 0 && ((Game *)B)->foeCount() < E[0]) {
                 unsigned char id = Foe::spawn((Game *)B, (unsigned char)u,
                                               (unsigned char)v, E[-0x12], 2,
                                               (unsigned char)(E[-0x09] + 100));
@@ -370,7 +368,7 @@ Sim_GameTick(void *self, double dt, double now)
             *(double *)(E - 0x11) = *((Game *)B)->clock();
         }
 
-        G32(0x2ab576) = G32(0x2ab57a);
+        ((Game *)B)->config()->setField20a48Bits(((Game *)B)->config()->field20a4cBits());
         if (pl->moveState() != 0) {
             G32(0x13cca8) = 0;
             ((Game *)B)->setCameraDistance(*(float *)(B + 0x13cca4));
@@ -447,7 +445,7 @@ Sim_GameTick(void *self, double dt, double now)
             BridgeObject *br = ((Game *)B)->bridgeSlot(pl->switchSlot());
             br->arm(((Game *)B)->clock());
             br->playArmSound();
-            Sim_MarkListedTilesBlockedByObject(B, pl->switchSlot());
+            Sim_MarkListedTilesBlockedByObject((Game *)B, pl->switchSlot());
             pl->setSwitchSlot(0xff);
         }
     }
@@ -467,8 +465,8 @@ Sim_GameTick(void *self, double dt, double now)
         long double d = (long double)(int)pl->field111() - (long double)(int)pl->heightCell();
         if (d > 2.0L) {
             ((Game *)B)->setCameraMode(1);
-            GF(0x2ab580) = pl->posU();
-            GF(0x2ab588) = pl->posV();
+            ((Game *)B)->setCameraEye(0, pl->posU());
+            ((Game *)B)->setCameraEye(2, pl->posV());
         }
     }
 
@@ -486,7 +484,7 @@ Sim_GameTick(void *self, double dt, double now)
                 GameLog_LogMessage(GAMELOGGER, 1, F_SWITCH, (unsigned int)sw);
                 trigger_switch_tile(B, (*slot)->switchSlot(), (*slot)->cellU(), (*slot)->cellV());
                 game->bridgeSlot((*slot)->switchSlot())->arm(game->clock());
-                Sim_MarkListedTilesBlockedByObject(B, (*slot)->switchSlot());
+                Sim_MarkListedTilesBlockedByObject((Game *)B, (*slot)->switchSlot());
                 (*slot)->clearSwitchSlot();
             }
         }
@@ -512,9 +510,9 @@ Sim_GameTick(void *self, double dt, double now)
     /* ─── playing: camera follow, time-out, exit ─── */
     if (STATE == 1) {
         if ((unsigned int)pl->field120() == 0 && pl->moveState() == 0) {
-            GF(0x2ab580) = pl->posU();
-            GF(0x2ab584) = pl->posY();
-            GF(0x2ab588) = pl->posV();
+            ((Game *)B)->setCameraEye(0, pl->posU());
+            ((Game *)B)->setCameraEye(1, pl->posY());
+            ((Game *)B)->setCameraEye(2, pl->posV());
             ((Game *)B)->setCameraMode(0);
         }
         if (pl->moveState() != 3) {
@@ -547,7 +545,7 @@ Sim_GameTick(void *self, double dt, double now)
                         STATE = 2;
                         if (((Game *)B)->musicOn() != 0)
                             ((Game *)B)->cdThemes()->play(S_GAMEOVER);
-                        Score_CalculateLevelScore(B, 3);
+                        Score_CalculateLevelScore((Game *)B, 3);
                         DEB = 0x0d;
                         GameLog_LogMessage(GAMELOGGER, 1, F_COMPLETED,
                                            (unsigned int)((Game *)B)->levelIndex() + 1,
@@ -562,7 +560,7 @@ Sim_GameTick(void *self, double dt, double now)
                         ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
                         ((Game *)B)->menu()->setLock(1);
                         ((Game *)B)->menu()->setCursor(0);
-                        Score_CalculateLevelScore(B, (char)STATE);
+                        Score_CalculateLevelScore((Game *)B, (char)STATE);
                         ((Game *)B)->setRestartCount(0);
                     }
                     ((Game *)B)->setTotalPlayTime((double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
@@ -581,13 +579,13 @@ Sim_GameTick(void *self, double dt, double now)
             int restart_tail = 1;
             if (lives > 0 && bonus == 0) {
                 pl->setField239(lives - 1);              /* the DEC at 0x4160d6 */
-                Sim_RestoreTileGridFromSnapshot(B);
-                Sim_SetupLevelObjects(B);
+                Sim_RestoreTileGridFromSnapshot((Game *)B);
+                Sim_SetupLevelObjects((Game *)B);
             } else if (lives <= 0 && bonus == 0) {
                 STATE = 2;
                 if (((Game *)B)->musicOn() != 0)
                     ((Game *)B)->cdThemes()->play(S_GAMEOVER);
-                Score_CalculateLevelScore(B, (char)STATE);
+                Score_CalculateLevelScore((Game *)B, (char)STATE);
                 DEB = 0x0d;
                 restart_tail = 0;                        /* JMP 0x4162b3 */
             } else {
@@ -603,7 +601,7 @@ Sim_GameTick(void *self, double dt, double now)
                 ((Game *)B)->menu()->setLock(1);
                 ((Game *)B)->menu()->setCursor(0);
                 ((Game *)B)->setTimeElapsed((unsigned int)(((Game *)B)->timeLimit() * 1000));
-                Score_CalculateLevelScore(B, (char)STATE);
+                Score_CalculateLevelScore((Game *)B, (char)STATE);
                 ((Game *)B)->setRestartCount(0);
                 ((Game *)B)->setTotalPlayTime((double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
                                         (long double)((Game *)B)->totalPlayTime()));
@@ -623,8 +621,8 @@ Sim_GameTick(void *self, double dt, double now)
             }
         }
     } else if (DEB != 0x0d && KEY(0x0d) != 0 && ((Game *)B)->tallyDone() != 0) {
-        unsigned int r = Sim_InsertScoreIntoHighScoreTable(
-            B + 0x13cdbb, (unsigned int)pl->field22c(), (unsigned char)(((Game *)B)->levelIndex() + 1));
+        unsigned int r = ((Game *)B)->highScores()->insert(
+            (unsigned int)pl->field22c(), (unsigned char)(((Game *)B)->levelIndex() + 1));
         if ((unsigned char)r < 0xff) {
             STATE = 6;
             if (((Game *)B)->musicOn() != 0)
@@ -634,7 +632,8 @@ Sim_GameTick(void *self, double dt, double now)
             ((Game *)B)->nameEntry()->setCursor(0);
             DEB = 0x0d;
             ((Game *)B)->nameEntry()->setLastKey(0x0d);
-            ((Game *)B)->nameEntry()->setBuffer((char *)(B + 0x13cdc0 + G8(0x13cdbf) * 0x37));
+            ((Game *)B)->nameEntry()->setBuffer(
+                ((Game *)B)->highScores()->record(((Game *)B)->highScores()->lastRank())->name);
         } else {
             STATE = 0;
             Sim_RewindMenuStackToRootNode(MENU);
@@ -645,7 +644,7 @@ Sim_GameTick(void *self, double dt, double now)
                 if (G32(0x0c) == 0) {
                     char name[256];
                     sprintf(name, F_FINALDIR, (const char *)(B + 0x4215f));
-                    Sim_ParseLevelFiles(B, name);
+                    Sim_ParseLevelFiles((Game *)B, name);
                     Sim_PushMenuNodeOnStack(MENU, 0);
                     ((Game *)B)->menu()->setNode(5);
                     theme = S_FINAL;
@@ -656,14 +655,14 @@ Sim_GameTick(void *self, double dt, double now)
                     DEB = 0x0d;
                 }
             } else {
-                Sim_ClearGameState(B);
-                Sim_ParseLevelFiles(B, (const char *)(B + 0x48b18));
+                Sim_ClearGameState((Game *)B);
+                Sim_ParseLevelFiles((Game *)B, (const char *)(B + 0x48b18));
                 theme = S_MAIN;
             }
             if (theme != NULL)
                 ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(theme));
             if (setup) {
-                Sim_SetupLevelObjects(B);
+                Sim_SetupLevelObjects((Game *)B);
                 ((Game *)B)->scriptPlayer()->setRunning(1);
                 DEB = 0x0d;
                 ((Game *)B)->setTotalPlayTime((double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
@@ -674,7 +673,7 @@ Sim_GameTick(void *self, double dt, double now)
 
     /* ─── ENTER after high-score name entry ─── */
     if (STATE == 6 && DEB != 0x0d && KEY(0x0d) != 0) {
-        HighScore_WriteFile(B + 0x13cdbb, S_HSFILE, 0x4b);
+        ((Game *)B)->highScores()->writeFile(S_HSFILE, 0x4b);
         STATE = 0;
         Sim_RewindMenuStackToRootNode(MENU);
         const char *theme = NULL;
@@ -682,7 +681,7 @@ Sim_GameTick(void *self, double dt, double now)
             if (G32(0x0c) == 0) {
                 char name[256];
                 sprintf(name, F_FINALDIR, (const char *)(B + 0x4215f));
-                Sim_ParseLevelFiles(B, name);
+                Sim_ParseLevelFiles((Game *)B, name);
                 Sim_PushMenuNodeOnStack(MENU, 0);
                 ((Game *)B)->menu()->setNode(5);
                 theme = S_FINAL;
@@ -693,13 +692,13 @@ Sim_GameTick(void *self, double dt, double now)
                 DEB = 0x0d;
             }
         } else {
-            Sim_ClearGameState(B);
-            Sim_ParseLevelFiles(B, (const char *)(B + 0x48b18));
+            Sim_ClearGameState((Game *)B);
+            Sim_ParseLevelFiles((Game *)B, (const char *)(B + 0x48b18));
             theme = S_MAIN;
         }
         if (theme != NULL)
             ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(theme));
-        Sim_SetupLevelObjects(B);
+        Sim_SetupLevelObjects((Game *)B);
         ((Game *)B)->scriptPlayer()->setRunning(1);
         DEB = 0x0d;
     }

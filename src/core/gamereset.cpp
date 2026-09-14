@@ -135,6 +135,7 @@
 
 #include "log.h"
 #include "game.h"
+#include "gamereset.h"
 #include "liftobject.h"
 #include "slideobject.h"
 #include "bridgeobject.h"
@@ -205,7 +206,7 @@ static void diag_tick(void)
 
 /* ═══ 0x00418580 -- Game::ClearGameState ═══════════════════════════════════ */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ClearGameState(void *self)
+Sim_ClearGameState(Game *self)
 {
     unsigned char *G = (unsigned char *)self;
     unsigned char gamefile_ok;

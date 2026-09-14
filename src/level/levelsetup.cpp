@@ -166,6 +166,9 @@
 #include "player.h"
 #include "crtrand.h"
 #include "game.h"
+#include "bomb.h"
+#include "tilequery.h"
+#include "levelsetup.h"
 #include "liftobject.h"
 #include "slideobject.h"
 #include "bridgeobject.h"
@@ -175,8 +178,6 @@
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
 #define G_MODE_FLAG        0x14        /* dword; 0 -> state 2, else state 1  */
-#define G_EXTRA_OBJECTS    0x48b98
-#define G_EXTRA_LOADED     0x48b9c
 #define G_UNK_42258        0x42258
 
 #define G_PLAYER_POS       0x2ab580    /* three floats                       */
@@ -302,17 +303,8 @@ extern "C" __declspec(dllexport) int __cdecl hooks_GameTime(int *out);
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Leo_ReleaseExtraObjectSoundBuffers(void *self);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Leo_OpenExtraObjectsFile(void *self, const char *name);
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveEnemyObject(void *self, unsigned int idArg);
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_FindNearestFlaggedTileInRadius(void *self, unsigned char *pu,
-                                   unsigned char *pv, unsigned char radius);
 
 /* ─── Unaligned accessors ────────────────────────────────────────────────── */
 
@@ -397,7 +389,7 @@ static inline int SIDX(int u, int v)
  * Transcribed in the original's store ORDER, which is not ascending, and
  * with 0x421e5 left out exactly as the original leaves it out. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ResetLevelObjectCounters(void *self)
+Sim_ResetLevelObjectCounters(Game *self)
 {
     unsigned char *G = (unsigned char *)self;
 
@@ -461,7 +453,7 @@ Sim_FindTileByTypeMarker(void *tiles, unsigned int markerArg,
 
 /* ═══ 0x00416420 -- Game::SetupLevelObjects ════════════════════════════════ */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_SetupLevelObjects(void *self)
+Sim_SetupLevelObjects(Game *self)
 {
     unsigned char *G = (unsigned char *)self;
     unsigned char v, u;
@@ -479,7 +471,7 @@ Sim_SetupLevelObjects(void *self)
 
     ((Game *)G)->setLevelSoundsReady(0);
     ((Game *)G)->scriptPlayer()->releaseStreams();
-    Leo_ReleaseExtraObjectSoundBuffers(G + G_EXTRA_OBJECTS);
+    ((Game *)G)->extraObjects()->releaseSounds();
     ORIG_NOOP_440450(G + G_UNK_42258);
 
     /* The player position triple is zeroed, and the listener and the two
@@ -502,7 +494,7 @@ Sim_SetupLevelObjects(void *self)
     ((u32_ua *)GBL_POS)[2] = DW(G, G_PLAYER_POS + 8);
     GBL_C4BC = 0;
 
-    Sim_ResetLevelObjectCounters(G);
+    Sim_ResetLevelObjectCounters((Game *)G);
 
     W(G, G_COUNT_CRYSTAL) = 0;
     DW(G, G_LIFT_COUNT2)  = 0;
@@ -527,7 +519,7 @@ Sim_SetupLevelObjects(void *self)
     while (((Game *)G)->foeCount() != 0)
         Foe::remove((Game *)G, ((Game *)G)->foeId(0));
     while (B(G, G_ENEMY_COUNT) != 0)
-        Sim_RemoveEnemyObject(G, B(G, G_ENEMY_IDS));
+        Sim_RemoveEnemyObject((Game *)G, B(G, G_ENEMY_IDS));
 
     ((Game *)G)->setBreakableCount(0);
     ((Game *)G)->setFoeCount(0);
@@ -896,7 +888,7 @@ next_row:
             ((Game *)G)->levelIndex() > 4) {
             unsigned char cu = PL->homeU();
             unsigned char cv = PL->homeV();
-            if (Sim_FindNearestFlaggedTileInRadius(G, &cu, &cv, 0x14)) {
+            if (Sim_FindNearestFlaggedTileInRadius((Game *)G, &cu, &cv, 0x14)) {
                 B(G, T_ITEM + TIDX(cu, cv)) = 0;
                 GameLog_LogMessage(GAME_LOGGER_VA, 3, S_CD_MISSING,
                                    (unsigned int)cu, (unsigned int)cv);
@@ -935,13 +927,13 @@ next_row:
         GameLog_LogMessage(GAME_LOGGER_VA, 3, S_WARN_CRYSTALS);
 
     /* ONE argument -- see the header. */
-    if (Leo_OpenExtraObjectsFile(G + G_EXTRA_OBJECTS,
+    if (((Game *)G)->extraObjects()->openFile(
                                  (const char *)(G + G_LEVEL_NAME)) == 0) {
-        DW(G, G_EXTRA_LOADED) = 0;
+        ((Game *)G)->extraObjects()->setLoaded(0);
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LEO_FAILED,
                            (const char *)(G + G_LEVEL_NAME));
     } else {
-        DW(G, G_EXTRA_LOADED) = 1;
+        ((Game *)G)->extraObjects()->setLoaded(1);
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LEO_LOADED,
                            (const char *)(G + G_LEVEL_NAME));
     }

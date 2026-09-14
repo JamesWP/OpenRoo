@@ -37,6 +37,7 @@
  */
 #include "d3dmath.h"
 #include "log.h"
+#include "faktmesh.h"
 
 #define SCENE_LIST_HEAD (*(struct SceneNode **)0x0046c45c)
 
@@ -93,10 +94,6 @@ static void compose(Mat4 *d, const Mat4 *left, const Mat4 *right)
 }
 
 typedef void (__attribute__((thiscall)) *mesh_draw_fn)(void *mesh, void *dev, DWORD frame);
-extern "C" __declspec(dllexport) HRESULT __attribute__((thiscall))
-FaktMesh_DrawMeshBuffer(void *self, void *dev, DWORD frame);
-extern "C" __declspec(dllexport) HRESULT __attribute__((thiscall))
-FaktMesh_DrawFramedModel(void *self, void *dev, DWORD frame);
 
 /* Minimal view of the device vtable.  Only the four slots this function
  * dispatches are named; confirmed empirically by the golden fixture, whose
@@ -267,9 +264,9 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
             set_rs(dev, RS_SPECULARENABLE, 0);
 
             if (ob_d(o, O_FRAMED) != 0)
-                FaktMesh_DrawFramedModel(mesh, dev, frame);
+                FaktMesh_DrawFramedModel((CFaktMesh *)mesh, (IDirect3DDevice3 *)dev, frame);
             else
-                FaktMesh_DrawMeshBuffer(mesh, dev, frame);
+                FaktMesh_DrawMeshBuffer((CFaktMesh *)mesh, (IDirect3DDevice3 *)dev, frame);
 
         } else if (type == 2) {
             Vec3 target = { cam[3], cam[4], cam[5] };

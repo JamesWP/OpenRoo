@@ -33,4 +33,10 @@ static_assert(offsetof(CDM, mcibuff)      == 0x5C,  "CDM layout mismatch");
 static_assert(offsetof(CDM, repeat)       == 0x15C, "CDM layout mismatch");
 static_assert(offsetof(CDM, tracknumber)  == 0x15D, "CDM layout mismatch");
 
-static const void *CDM_VTABLE = reinterpret_cast<const void*>(0x45D2B8);
+static const void *const CDM_VTABLE = reinterpret_cast<const void*>(0x45D2B8);
+
+/* Exports of cdm.cpp other files call (COHESION_PLAN.md template 10). */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+CDM_GetTrackCount(CDM *self);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+CDM_GetTrackLength(CDM *self, char **out_ptr, int track);

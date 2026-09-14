@@ -52,31 +52,24 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "gamelog.h"
+#include "levelsetup.h"
+#include "levelscore.h"
+#include "levelparse.h"
+#include "cheatcode.h"
 #include "menutree.h"
 #include "textentry.h"
 #include "foe.h"
 #include "player.h"
 #include "tile.h"
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Score_CalculateLevelScore(void *self, char endReason);
 struct CDM;
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SetCurrentLevelName(void *self, unsigned int levelNo);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_OpenLevelFile(void *self, unsigned int levelNo);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ParseLevelFiles(void *self, const char *name);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SetupLevelObjects(void *self);
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 
 
 #define CDAUDIO     ((CDM *)0x004dc640)
-#define GAMELOGGER  ((void *)0x0046c4c0)
+#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 #define GAMEDIR     ((const char *)0x004e01c4)
 #define S_GAMEOVER  ((const char *)0x00465574)   /* "gameover"  */
 #define S_COMPLETED ((const char *)0x00465548)   /* "completed" */
@@ -113,7 +106,7 @@ static void enter_loaded_state(unsigned char *B, FILE *fp)
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_HandleTypedCheatCode(void *self)
+Sim_HandleTypedCheatCode(Game *self)
 {
     unsigned char *B = (unsigned char *)self;
     Player *pl = ((Game *)B)->player();
@@ -129,7 +122,7 @@ Sim_HandleTypedCheatCode(void *self)
             log_write("cheatcode: KAROO_SIM_FX=cheatlife -- mausuruh gives 2\n");
     }
 
-    ((Game *)B)->cheatEntry()->poll((unsigned int)(long long)GD(0x170a54));
+    ((Game *)B)->cheatEntry()->poll((unsigned int)(long long)*((Game *)B)->clock());
     if (((Game *)B)->cheatEntry()->active() != 0)
         return;
 
@@ -153,7 +146,7 @@ Sim_HandleTypedCheatCode(void *self)
             ((Game *)B)->setState(2);
             if (((Game *)B)->musicOn() != 0)
                 ((Game *)B)->cdThemes()->play(S_GAMEOVER);
-            Score_CalculateLevelScore(B, 0x28);
+            Score_CalculateLevelScore((Game *)B, 0x28);
             ((Game *)B)->setDebounce(0x0d);
             GameLog_LogMessage(GAMELOGGER, 1, F_COMPLETED,
                                (unsigned int)((Game *)B)->levelIndex() + 1,
@@ -172,7 +165,7 @@ Sim_HandleTypedCheatCode(void *self)
             ((Game *)B)->menu()->setNode(0x28);
             ((Game *)B)->menu()->setCursor(0);
             ((Game *)B)->menu()->setLock(1);
-            Score_CalculateLevelScore(B, (char)((Game *)B)->state());
+            Score_CalculateLevelScore((Game *)B, (char)((Game *)B)->state());
             ((Game *)B)->setRestartCount(0);
             GameLog_LogMessage(GAMELOGGER, 1, F_CSL);
         }
@@ -190,7 +183,7 @@ Sim_HandleTypedCheatCode(void *self)
             memcpy(num, buf + 8, len - 8);
             num[len - 8] = 0;
             unsigned char lvl = (unsigned char)(atoi(num) - 1);
-            Sim_SetCurrentLevelName(B, lvl);
+            Sim_SetCurrentLevelName((Game *)B, lvl);
             if (lvl < ((Game *)B)->levelCount()) {
                 sprintf(path, F_LVLPATH, GAMEDIR, (const char *)(B + 0x173483));
                 GameLog_LogMessage(GAMELOGGER, 3, F_LCNUM, (unsigned int)lvl,
@@ -199,8 +192,8 @@ Sim_HandleTypedCheatCode(void *self)
                 FILE *fp = fopen(path, "r");
                 if (fp != NULL) {
                     pl->setGemsCollected(0);
-                    Sim_OpenLevelFile(B, ((Game *)B)->levelIndex());
-                    Sim_SetupLevelObjects(B);
+                    Sim_OpenLevelFile((Game *)B, ((Game *)B)->levelIndex());
+                    Sim_SetupLevelObjects((Game *)B);
                     enter_loaded_state(B, fp);
                 }
             }
@@ -222,8 +215,8 @@ Sim_HandleTypedCheatCode(void *self)
             FILE *fp = fopen(path, "r");
             if (fp != NULL) {
                 pl->setGemsCollected(0);
-                Sim_ParseLevelFiles(B, (const char *)frame);
-                Sim_SetupLevelObjects(B);
+                Sim_ParseLevelFiles((Game *)B, (const char *)frame);
+                Sim_SetupLevelObjects((Game *)B);
                 enter_loaded_state(B, fp);
             }
             buf[0] = 0;

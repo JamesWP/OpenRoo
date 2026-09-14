@@ -88,3 +88,7 @@ KAROO_LAYOUT_CHECKS(Bomb)
     /* The original's operator_new(0x172): the class tiles it exactly. */
     KAROO_LAYOUT_SIZE(0x172);
 }
+
+/* The bomb remove, Game::RemoveEnemyObject 0x417a20 (bomb.cpp). */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_RemoveEnemyObject(Game *self, unsigned int idArg);

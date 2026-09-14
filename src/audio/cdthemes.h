@@ -33,14 +33,10 @@ public:
     unsigned int  play(const char *caption);          /* 0x403360 */
     unsigned int  replay();                           /* 0x4033e0 */
 
-    /* PLACEHOLDER: ValidateCDTrackLengths 0x00403420, __fastcall.  Stores
-     * the CD's track count at +0x18 and returns true only for the game's
-     * own 9-track disc, by comparing each track's length string. */
-    bool validateTrackLengths()
-    {
-        typedef bool (__attribute__((fastcall)) *fn)(CdThemes *);
-        return ((fn)0x00403420)(this);
-    }
+    /* ValidateCDTrackLengths 0x403420 (themeindex.cpp): stores the CD's
+     * track count at +0x18 and returns 1 only for the game's own 9-track
+     * disc, recognised by each track's length string. */
+    int           validateTrackLengths();
 
     /* The track PlayCDStuf last picked (0 = none). */
     unsigned char currentTrack() const               { return currentTrack_; }
@@ -75,3 +71,5 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_PlayCDStuf(CdThemes *self, const char *caption);
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_PlayCDStuf_2(CdThemes *self);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_ValidateCDTrackLengths(CdThemes *self);

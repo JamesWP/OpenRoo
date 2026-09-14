@@ -60,4 +60,4 @@ KAROO_LAYOUT_CHECKS(TextEntry)
 
 /* The export patch.py binds; a shim onto TextEntry::poll. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PollTextEntryKeys(void *self, unsigned int phase);
+Sim_PollTextEntryKeys(TextEntry *self, unsigned int phase);

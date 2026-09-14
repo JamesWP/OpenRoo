@@ -31,13 +31,14 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "checkpoint.h"
 
 static int s_fx = -1;
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RestoreCheckpointStateBlocks(void *self)
+Sim_RestoreCheckpointStateBlocks(Game *self)
 {
-    Game         *g  = (Game *)self;
+    Game         *g  = self;
     ScriptPlayer *sp = g->scriptPlayer();
 
     if (s_fx < 0) {

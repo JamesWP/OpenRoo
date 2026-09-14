@@ -111,10 +111,10 @@ KAROO_LAYOUT_CHECKS(MenuTree)
 
 /* The exports patch.py binds by name. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
+Sim_PushMenuNodeOnStack(MenuTree *self, unsigned int nodeArg);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PopMenuNodeFromStack(void *self);
+Sim_PopMenuNodeFromStack(MenuTree *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RewindMenuStackToRootNode(void *self);
+Sim_RewindMenuStackToRootNode(MenuTree *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_NavigateMenuTree(void *self, int now);
+Sim_NavigateMenuTree(MenuTree *self, int now);

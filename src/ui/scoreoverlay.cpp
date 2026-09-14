@@ -78,6 +78,7 @@
 #include "direct3d.h"
 #include "texture.h"
 #include "log.h"
+#include "game.h"
 
 #define THISCALL __attribute__((thiscall))
 
@@ -96,10 +97,8 @@
 #define g_pPanelVerts   ((const void *)0x004e0580)
 #define g_pPanelTexture (*(IDirect3DTexture2 **)0x004e0760)
 
-/* GameGlobal (*0x0046C498) — high-score table. */
-#define HS_COUNT_OFF   0x1404c0   /* BYTE  entry count                        */
-#define HS_TABLE_OFF   0x13cdc0   /* first record; stride 0x37                */
-#define HS_STRIDE      0x37
+/* GameGlobal (*0x0046C498) — high-score table (highscores.h); offsets
+ * within one HighScoreRecord. */
 #define HS_NAME_OFF    0x00       /* char[0x32], %s                           */
 #define HS_SCORE_OFF   0x32       /* DWORD, %d, drawn in the last column      */
 #define HS_LEVEL_OFF   0x36       /* BYTE,  %d, drawn in the middle column    */
@@ -233,11 +232,11 @@ Score_DrawHighScoreTable(void *g, void *game, Direct3D *d3d, void *text, int n)
     static LONG calls = 0;
     if (InterlockedIncrement(&calls) <= SCORE_LOG_FIRST)
         log_write("scoreoverlay: highscore %.0fx%.0f entries=%u\n",
-                   w, h, (unsigned)*((const BYTE *)g + HS_COUNT_OFF));
+                   w, h, (unsigned)((const Game *)g)->highScores()->count());
 
     /* Unsigned early-out, then a signed loop against a re-read count — both
      * as in the original. */
-    if (*((const BYTE *)g + HS_COUNT_OFF) == 0)
+    if (((const Game *)g)->highScores()->count() == 0)
         return;
 
     const float cellW = (float)(d3d->pSelectedMode->dwWidth * 12) * VSCALE;
@@ -249,7 +248,7 @@ Score_DrawHighScoreTable(void *g, void *game, Direct3D *d3d, void *text, int n)
     char buf[256];
     int row = 0, dy = 0;
     do {
-        const BYTE *rec = (const BYTE *)g + HS_TABLE_OFF + row * HS_STRIDE;
+        const BYTE *rec = (const BYTE *)((const Game *)g)->highScores()->record(row);
         const float y = ((float)dy + 180.0f) * w * VSCALE;
 
         ORIG_MAYBE_SPRINTF(buf, FMT_S, rec + HS_NAME_OFF);
@@ -266,7 +265,7 @@ Score_DrawHighScoreTable(void *g, void *game, Direct3D *d3d, void *text, int n)
 
         dy += 20;
         row++;
-    } while (row < (int)(unsigned)*((const BYTE *)g + HS_COUNT_OFF));
+    } while (row < (int)(unsigned)((const Game *)g)->highScores()->count());
 }
 
 /* ─── DrawGameOverScore (0x435420) ───────────────────────────────────────── */

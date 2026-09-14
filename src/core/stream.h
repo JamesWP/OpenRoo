@@ -49,4 +49,10 @@ static_assert(offsetof(CStreamSoundbuffer, dwThread_done)== 0xa6,  "dwThread_don
 static_assert(offsetof(CStreamSoundbuffer, cs)           == 0xba,  "cs offset");
 static_assert(sizeof(CStreamSoundbuffer)                 == 0xD4,  "CStreamSoundbuffer size");
 
-static const void *STREAM_VTABLE = reinterpret_cast<const void*>(0x45efa4);
+static const void *const STREAM_VTABLE =reinterpret_cast<const void*>(0x45efa4);
+
+/* Exports of stream.cpp other files call (COHESION_PLAN.md template 10). */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CStream_Stop(CStreamSoundbuffer *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CStream_ReleaseResources(CStreamSoundbuffer *self);

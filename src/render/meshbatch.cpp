@@ -91,8 +91,6 @@
 #define g_dwWorldIdentity (*(D3DMATRIX *)0x004e0440)
 #define g_flMeshBatchAngle (*(const double *)0x0045d348)
 
-extern "C" HRESULT __attribute__((thiscall))
-FaktMesh_DrawMeshBuffer(CFaktMesh *self, IDirect3DDevice3 *dev, DWORD frame);
 
 static bool fx_norot(void)
 {

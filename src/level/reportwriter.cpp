@@ -73,6 +73,10 @@
 #include "log.h"
 #include "gamelog.h"
 #include "game.h"
+#include "reportwriter.h"
+#include "levelparse.h"
+#include "levelsetup.h"
+#include "levelscore.h"
 #include "foe.h"
 #include "player.h"
 
@@ -111,9 +115,6 @@
 
 /* ─── Game logic, deliberately still the game's ──────────────────────────── */
 
-typedef void (__attribute__((thiscall)) *setname_fn)(void *self, unsigned idx);
-typedef void (__attribute__((thiscall)) *openlvl_fn)(void *self, unsigned idx);
-typedef void (__attribute__((thiscall)) *setup_fn)  (void *self);
 typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
 
 /* Was ((setname_fn) 0x004186b0) / ((openlvl_fn) 0x004186f0) -- the game's
@@ -128,21 +129,14 @@ typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
  * sites in the EXE, and the replay suite passed 16/16, because the ONLY
  * caller left was in our own DLL.  `levelreport.py` failed with nine
  * c000001d, and the UD2 stub named the address. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_SetCurrentLevelName(void *self, unsigned int levelNo);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_OpenLevelFile(void *self, unsigned int levelNo);
-
-#define ORIG_SET_LEVEL_NAME Sim_SetCurrentLevelName
-#define ORIG_OPEN_LEVEL     Sim_OpenLevelFile
+/* Both through levelparse.h. */
+#define ORIG_SET_LEVEL_NAME(s, n) Sim_SetCurrentLevelName((Game *)(s), (n))
+#define ORIG_OPEN_LEVEL(s, n)     Sim_OpenLevelFile((Game *)(s), (n))
 /* Was ((setup_fn) 0x00416420) -- the game's Game::SetupLevelObjects.
  * levelsetup.cpp owns it now (GAMETICK_PLAN.md Band B) and the original is
  * UD2-stubbed, so this goes to ours.  Third instance of the DLL-caller
  * hazard the comment below names; checked BEFORE stubbing this time. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_SetupLevelObjects(void *self);
-
-#define ORIG_SETUP_OBJECTS  Sim_SetupLevelObjects
+#define ORIG_SETUP_OBJECTS(s)     Sim_SetupLevelObjects((Game *)(s))   /* levelsetup.h */
 /* Was ((score_fn) 0x0041a760) -- the game's Game::CalculateLevelScore.
  * levelscore.cpp owns it now (GAMETICK_PLAN.md Band A) and the original is
  * UD2-stubbed, so this goes to ours.  This call is why the level report is an
@@ -160,13 +154,9 @@ Sim_SetupLevelObjects(void *self);
 #define ORIG_LOG_MESSAGE \
     ((void (__cdecl *)(void *, int, const char *, ...))GameLog_LogMessage)
 
-/* Ours since GAMETICK_PLAN.md Band A (karoo-hooks/levelscore.cpp). */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Score_CalculateLevelScore(void *self, char endReason);
+/* Score_CalculateLevelScore: ours since GAMETICK_PLAN.md Band A, declared
+ * in levelscore.h. */
 
-/* Ours since Phase 2 (karoo-hooks/playerstate.cpp). */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-HighScore_WriteFile(void *self, const char *name, char key);
 
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
@@ -179,17 +169,10 @@ HighScore_WriteFile(void *self, const char *name, char key);
 #define OFF_GAMEFILE      0x4215f   /* char[], game file name                 */
 #define OFF_LEVEL_WORLD   0x2ab69d  /* char[], world/level path               */
 #define OFF_BONUS_FLAG    0x2ab599  /* int                                    */
-#define OFF_LEO_FLAG      0x48b9c   /* int                                    */
-#define OFF_LEO_ID        0x13cba6  /* WORD                                   */
 #define OFF_PAR_TIME_SRC  0x2ab71f  /* int, par time before the 50% scaling   */
 /* OFF_PAR_COPY was Player +0x23d (player.h), the crystals count. */
 #define OFF_LEVEL_PATH    0x173483  /* char[], <World>\<Level>                */
 #define OFF_LEVEL_TITLE   0x2ab61d  /* char[], display name                   */
-#define OFF_HSC_OBJ       0x13cdbb  /* the high-score object                  */
-#define OFF_HSC_TABLE     0x13cfaf  /* "Bernie Boulder" name slot             */
-#define OFF_HSC_LEVEL     0x13cfe5  /* BYTE, level number in that slot        */
-#define OFF_HSC_SCORE     0x13cfe1  /* int, score in that slot                */
-#define HSC_STRIDE        0x37      /* the table runs BACKWARDS at this pitch */
 
 /* The per-column field list, in the original's emission order.  Each is
  * printed with "%d\t"; the widths differ, hence the size tag. */
@@ -211,7 +194,7 @@ static unsigned read_field(const unsigned char *g, unsigned off, unsigned char s
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Report_WriteLevelReport(void *self, const char *pathname)
+Report_WriteLevelReport(Game *self, const char *pathname)
 {
     unsigned char *g = (unsigned char *)self;
     char buf[256];
@@ -271,10 +254,10 @@ Report_WriteLevelReport(void *self, const char *pathname)
             *(short *)(g + OFF_TALLY_IS) += 1;
         }
 
-        if (*(int *)(g + OFF_LEO_FLAG) == 0) {
+        if (((Game *)g)->extraObjects()->loaded() == 0) {
             fputs(STR_BLANK_TAB, out);
         } else {
-            sprintf(buf, STR_D_TAB, (unsigned)*(WORD *)(g + OFF_LEO_ID));
+            sprintf(buf, STR_D_TAB, (unsigned)((Game *)g)->extraObjects()->objectCount());
             fputs(buf, out);
             *(short *)(g + OFF_TALLY_LEO) += 1;
         }
@@ -320,13 +303,14 @@ Report_WriteLevelReport(void *self, const char *pathname)
         fputs(buf, out);
         fputs(STR_NEWLINE, out);   /* defect 3: the title's sprintf is dead */
 
-        /* defect 4: seed the high-score table, backwards, at -0x37 */
+        /* defect 4: seed the high-score table BACKWARDS from record 9 (the
+         * original steps its pointer down by one record per 8 levels) */
         if ((idx % 8 == 0 && idx > 5) || idx == 6) {
             int k = (int)idx / 8;
-            unsigned char *slot = g - k * HSC_STRIDE;
-            strcpy((char *)(slot + OFF_HSC_TABLE), STR_BERNIE);
-            *(char *)(slot + OFF_HSC_LEVEL) = (char)(idx + 1);
-            *(int  *)(slot + OFF_HSC_SCORE) = *(int *)(g + OFF_SCORE_TOTAL);
+            HighScoreRecord *rec = ((Game *)g)->highScores()->record(9 - k);
+            strcpy(rec->name, STR_BERNIE);
+            rec->level = (unsigned char)(idx + 1);
+            rec->score = (unsigned int)*(int *)(g + OFF_SCORE_TOTAL);
         }
 
         {
@@ -367,5 +351,5 @@ Report_WriteLevelReport(void *self, const char *pathname)
     if (sink != NULL)
         fclose(sink);
 
-    HighScore_WriteFile(g + OFF_HSC_OBJ, STR_HSC_NAME, 'K');
+    ((Game *)g)->highScores()->writeFile(STR_HSC_NAME, 'K');
 }

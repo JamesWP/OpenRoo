@@ -46,6 +46,8 @@
 #include "log.h"
 #include "soundmanager.h"
 #include "game.h"
+#include "gamelog.h"
+#include "levelsounds.h"
 #include "player.h"
 #include "soundobj.h"
 #include "liftobject.h"
@@ -65,10 +67,8 @@ CStatic_Set3DPosition(CStaticSoundbuffer *self, float x, float y, float z,
                       DWORD dwApply);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 
-#define GAMELOGGER  ((void *)0x0046c4c0)
+#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 #define F_TRYINIT   ((const char *)0x004660bc)
 #define F_TRYLEO    ((const char *)0x00466078)
 #define F_LEOSOUND  ((const char *)0x00466058)
@@ -129,7 +129,7 @@ static void attachLoopSound(Game *game,
 }
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_InitLevelBasedSounds(void *self)
+Sim_InitLevelBasedSounds(Game *self)
 {
     unsigned char *B = (unsigned char *)self;
     Game *game = (Game *)B;
@@ -197,19 +197,20 @@ Sim_InitLevelBasedSounds(void *self)
 
         if (game->restartCount() == 0 && game->sound3D() != 0) {
             GameLog_LogMessage(GAMELOGGER, 1, F_TRYLEO);
-            for (unsigned short i = 0; i < G16(0x13cba6); ++i) {
-                unsigned char *E = B + (unsigned int)i * 0xf40;
-                if (E[0x48ec2] != 3)
+            /* The count is re-read every pass, as the original's is. */
+            ExtraObjects *xo = game->extraObjects();
+            for (unsigned short i = 0; i < xo->objectCount(); ++i) {
+                ExtraObjectRecord *E = xo->record(i);
+                if (E->kind != EXTRA_SOUND)
                     continue;
-                const char *nm = (const char *)(E + 0x48ba6);
+                const char *nm = E->file;
                 GameLog_LogMessage(GAMELOGGER, 1, F_LEOSOUND, nm);
                 CStaticSoundbuffer *p = game->soundManager()->acquireStatic(nm, 1);
-                *(CStaticSoundbuffer **)(E + 0x49ae2) = p;
+                E->sound = p;
                 if (p != NULL) {
-                    CStatic_Set3DPosition(p, *(float *)(E + 0x48ca6),
-                                          *(float *)(E + 0x48cae),
-                                          -*(float *)(E + 0x48caa), 1);
-                    CStatic_TriggerPlayback(*(CStaticSoundbuffer **)(E + 0x49ae2), 1);
+                    CStatic_Set3DPosition(p, E->position[0], E->position[2],
+                                          -E->position[1], 1);
+                    CStatic_TriggerPlayback(E->sound, 1);
                 }
             }
         }
