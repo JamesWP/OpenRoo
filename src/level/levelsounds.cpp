@@ -145,7 +145,7 @@ Sim_InitLevelBasedSounds(void *self)
     }
 
     GameLog_LogMessage(GAMELOGGER, 2, F_TRYINIT);
-    if (G32(0x13cc34) != 0) {
+    if (((Game *)B)->soundCreated() != 0) {
         pl->setField15a(0);
         if (strcmp(world, S_EGYPT) == 0)
             pl->setField15a(0);
@@ -195,7 +195,7 @@ Sim_InitLevelBasedSounds(void *self)
         attachLoopSound(game, &Game::bridgeCount, &Game::bridgeSlot,
                         game->soundAsset42ffe());
 
-        if (G8(0x4220b) == 0 && G32(0x2ab564) != 0) {
+        if (game->restartCount() == 0 && game->sound3D() != 0) {
             GameLog_LogMessage(GAMELOGGER, 1, F_TRYLEO);
             for (unsigned short i = 0; i < G16(0x13cba6); ++i) {
                 unsigned char *E = B + (unsigned int)i * 0xf40;

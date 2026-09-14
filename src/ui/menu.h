@@ -62,7 +62,6 @@ bool menu_async_override(int vkey, SHORT *out);
  *
  * 4 is therefore "loaded", NOT "playing" — an early gate that assumed
  * otherwise silently never fired. */
-#define OFF_GAME_STATE   0x2ab58c
 #define GAME_ST_MENU      0
 #define GAME_ST_PLAYING   1
 #define GAME_ST_GAMEOVER  2

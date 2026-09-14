@@ -148,7 +148,6 @@
 #define G_ENEMY_COUNT     0x17460f
 #define G_ENEMY_IDS       0x174610
 
-#define G_GAMEFILE_OK     0x4215e    /* zero == the game file did not load   */
 #define G_GAMEFILE_NAME   0x4215f    /* the %s in the error message          */
 
 #define G_CLEAR_BLOCK     0x170543   /* 0x40 dwords zeroed by the REP STOSD  */
@@ -229,18 +228,20 @@ Sim_ClearGameState(void *self)
 
     /* The guard byte is READ here, at 0x00418597, before the stores -- the
      * branch on it is sunk to 0x004185f8.  See the header. */
-    gamefile_ok = G[G_GAMEFILE_OK];
+    gamefile_ok = ((Game *)G)->levelCount();
 
     Player *pl = ((Game *)G)->player();
     pl->setField239(2);                    /* lives */
-    G[0x28ab2d]                     = 2;
+    ((Game *)G)->setCameraMode(2);
     /* +0x126 and +0x66 are doubles the original writes as two dwords each,
      * split across this block (+0x1752ef/+0x1752f3, +0x17522f/+0x175233).
      * Nothing reads between, so each is one double store (template 3). */
     pl->setField126(0.0);
+    /* Game::totalPlayTime's LOW dword only (0x4185a9 is a dword MOV), so
+     * not setTotalPlayTime(0): the high half survives, as in the original. */
     *(unsigned int *)(G + 0x170a44) = 0;
-    G[0x173583]                     = 0;
-    G[0x4220b]                      = 0;
+    ((Game *)G)->setLevelIndex(0);
+    ((Game *)G)->setRestartCount(0);
     pl->setGemsCollected(0);
     pl->setFacing(1);
     pl->setField14e(0);

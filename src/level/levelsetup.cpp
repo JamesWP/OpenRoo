@@ -175,11 +175,9 @@
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
 #define G_MODE_FLAG        0x14        /* dword; 0 -> state 2, else state 1  */
-#define G_STATE_BYTE       0x17565d
 #define G_SCRIPT_READER    0x195735
 #define G_EXTRA_OBJECTS    0x48b98
 #define G_EXTRA_LOADED     0x48b9c
-#define G_UNK_42254        0x42254
 #define G_UNK_42258        0x42258
 
 #define G_PLAYER_POS       0x2ab580    /* three floats                       */
@@ -256,8 +254,6 @@
 #define G_TIMED            0x2023d     /* 0x15 per entry                     */
 #define G_CLOCK            0x170a54    /* the game clock, a double           */
 
-#define G_GAMEFILE_FLAG    0x4220b
-#define G_LEVEL_NO         0x173583
 #define G_LEVEL_NAME       0x173483
 #define G_SCRIPT_COUNT     0x1960e6
 #define G_CD_OBJ           0x2223f
@@ -482,12 +478,13 @@ Sim_SetupLevelObjects(void *self)
     fx_init();
 
     /* ── run state ─────────────────────────────────────────────────────── */
-    B(G, G_STATE_BYTE) = (DW(G, G_MODE_FLAG) == 0) ? 2 : 1;
+    /* The level-completed node 0x28's child count: 2 or 1 by mode. */
+    ((Game *)G)->menu()->setChildCount(0x28, (DW(G, G_MODE_FLAG) == 0) ? 2 : 1);
     PL->setField1ca(10.0);                /* two dwords: 0, 0x40240000 */
 
     GameLog_LogMessage(GAME_LOGGER_VA, 2, S_INIT_STARTED);
 
-    DW(G, G_UNK_42254) = 0;
+    ((Game *)G)->setLevelSoundsReady(0);
     ORIG_RELEASE_SCRIPT(G + G_SCRIPT_READER);
     Leo_ReleaseExtraObjectSoundBuffers(G + G_EXTRA_OBJECTS);
     ORIG_NOOP_440450(G + G_UNK_42258);
@@ -877,7 +874,7 @@ next_row:
 
     PL->clearEffects();
 
-    PL->setRecord(((Game *)G)->field_170a5c());
+    PL->setTickStep(((Game *)G)->tickStep());
     PL->setField1e6(0);
     PL->setField1da(0);
     PL->setField20a(0);
@@ -890,10 +887,10 @@ next_row:
     ((Game *)G)->setTimeLimit((int)DW(G, 0x2ab71f));
     PL->setClock(((Game *)G)->clock());
 
-    if (B(G, G_GAMEFILE_FLAG) == 0) {
+    if (((Game *)G)->restartCount() == 0) {
         ((Game *)G)->setFoesKilled(0);
         PL->setField21a(0);
-        W(G, 0x42250)   = W(G, C_TOTAL);
+        ((Game *)G)->setItemTotal(W(G, C_TOTAL));
 
         if (DW(G, G_SCRIPT_COUNT) == 0) {
             F(G, G_PLAYER_POS + 0) = (float)(int)(signed char)PL->homeU();
@@ -903,7 +900,7 @@ next_row:
 
         if (ORIG_CD_CHECK(G + G_CD_OBJ) == 0 &&
             DW(G, 0xc) == 0 &&
-            B(G, G_LEVEL_NO) > 4) {
+            ((Game *)G)->levelIndex() > 4) {
             unsigned char cu = PL->homeU();
             unsigned char cv = PL->homeV();
             if (Sim_FindNearestFlaggedTileInRadius(G, &cu, &cv, 0x14)) {

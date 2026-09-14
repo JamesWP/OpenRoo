@@ -337,7 +337,7 @@ void Bomb::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     /* Defect 1: through the raw pointer, NOT the slot. */
     p->clock_ = game->clock();
 
-    (*slot)->record_   = game->field_170a5c();
+    (*slot)->tickStep_   = game->tickStep();
     (*slot)->tileBase_ = game->tileBase();
     (*slot)->facing_   = f;
 
@@ -458,7 +458,7 @@ void Bomb::tick()
     }
 
     /* Refresh the two cached copies, in the original's order. */
-    recordCopy_ = *record_;
+    tickStepCopy_ = *tickStep_;
     now_        = *clock_;
 
     /* The rolling/ticking loop sound, on the grid cell: (u, h, -v). */

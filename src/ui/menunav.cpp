@@ -54,12 +54,9 @@
 #include "log.h"
 #include "game.h"
 #include "player.h"
+#include "menutree.h"
 
 extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PopMenuNodeFromStack(void *self);
 
 #define KEY(k)  hooks_GetAsyncKeyState(k)
 
@@ -68,15 +65,19 @@ static int s_fx = -1;
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_NavigateMenuTree(void *self, int now)
 {
-    unsigned char *M = (unsigned char *)self;
-#define CHANGED (*(unsigned int *)(M + 0x04))
-#define LOCK    (*(unsigned int *)(M + 0x14))
-#define LEAVE   (*(unsigned int *)(M + 0x18))
-#define DEB     M[0x1c]
-#define CUR     M[0x1d]
-#define DEPTH   M[0x2001d]
-#define NODE    M[0x2021c]
-#define COUNT(n) M[0x11d + (n)]
+    ((MenuTree *)self)->navigate(now);
+}
+
+void MenuTree::navigate(int now)
+{
+#define CHANGED changed_
+#define LOCK    lock_
+#define LEAVE   leave_
+#define DEB     lastKey_
+#define CUR     cursor_
+#define DEPTH   depth_
+#define NODE    node_
+#define COUNT(n) childCount_[n]
 
     if (s_fx < 0) {
         char e[32];
@@ -88,7 +89,7 @@ Sim_NavigateMenuTree(void *self, int now)
 
     CHANGED = 0;
     if (LOCK != 0) {
-        unsigned int t = (unsigned int)(long long)*(double *)(M + 0x0c);
+        unsigned int t = (unsigned int)(long long)lockStart_;
         if ((unsigned int)now - t > 200)
             LOCK = 0;
         KEY(0x26);
@@ -97,17 +98,17 @@ Sim_NavigateMenuTree(void *self, int now)
         KEY(0x0d);
     } else {
         if (DEB != 0x0d && KEY(0x0d) != 0) {
-            unsigned char child = M[0x21c + NODE * 0xff + CUR];
-            M[0x1e + NODE] = CUR;
+            unsigned char child = children_[NODE * CHILD_STRIDE + CUR];
+            savedCursor_[NODE] = CUR;
             CUR = 0;
             CHANGED = 1;
-            Sim_PushMenuNodeOnStack(M, NODE);
+            push(NODE);
             NODE = child;
             DEB = 0x0d;
         }
         if (DEB != 0x1b && KEY(0x1b) != 0) {
             if (DEPTH > 1) {
-                Sim_PopMenuNodeFromStack(M);
+                pop();
                 CHANGED = 1;
             } else {
                 LEAVE = 1;
@@ -148,16 +149,15 @@ Sim_NavigateMenuTree(void *self, int now)
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_StoreGameStateIntoSaveSlot(void *self, unsigned int slotArg)
 {
-    unsigned char *B = (unsigned char *)self;
-    unsigned char *S = B + (slotArg & 0xff) * 0x2a;
+    Game     *game = (Game *)self;
+    SaveSlot *S    = game->saveSlots()->slot((unsigned char)slotArg);
 
-    S[0x170ac1] = (unsigned char)(B[0x173583] + 1);
-    *(unsigned int *)(S + 0x170acb) =
-        (unsigned int)(long long)*(double *)(B + 0x170a44);
-    *(unsigned int *)(S + 0x170ac7) = (unsigned int)((Game *)B)->player()->fieldD8();
-    *(unsigned int *)(S + 0x170ac3) = (unsigned int)((Game *)B)->player()->field22c();
-    S[0x170ac2] = (unsigned char)((Game *)B)->player()->field239();
-    *(unsigned int *)(S + 0x170acf) = 1;
+    S->levelIndex          = (unsigned char)(game->levelIndex() + 1);
+    S->elapsedGameTime     = (unsigned int)(long long)game->totalPlayTime();
+    S->completionNumerator = (unsigned int)game->player()->fieldD8();
+    S->totalScore          = (unsigned int)game->player()->field22c();
+    S->livesRemaining      = (unsigned char)game->player()->field239();
+    S->inUse               = 1;
     return 1;
 }
 
@@ -165,13 +165,14 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_RestoreGameStateFromSaveSlot(void *self, unsigned int slotArg)
 {
     unsigned char *B = (unsigned char *)self;
-    unsigned char *S = B + (slotArg & 0xff) * 0x2a;
+    SaveSlot *S = ((Game *)B)->saveSlots()->slot((unsigned char)slotArg);
 
-    B[0x173583] = S[0x170ac1];
-    *(double *)(B + 0x170a44) =
-        (double)(unsigned long long)*(unsigned int *)(S + 0x170acb);
-    *(unsigned int *)(B + 0x1752a1) = *(unsigned int *)(S + 0x170ac7);
-    *(unsigned int *)(B + 0x1753f5) = *(unsigned int *)(S + 0x170ac3);
-    *(unsigned int *)(B + 0x175402) = S[0x170ac2];
-    return ((unsigned int)(unsigned long)(S) & 0xffffff00u) | 1u;
+    ((Game *)B)->setLevelIndex(S->levelIndex);
+    ((Game *)B)->setTotalPlayTime((double)(unsigned long long)S->elapsedGameTime);
+    *(unsigned int *)(B + 0x1752a1) = S->completionNumerator;
+    *(unsigned int *)(B + 0x1753f5) = S->totalScore;
+    *(unsigned int *)(B + 0x175402) = S->livesRemaining;
+    /* EAX's low byte is 1; the rest is what the original left in it:
+     * Game + slot*0x2a, the base it indexed every field from. */
+    return ((unsigned int)(unsigned long)(B + (slotArg & 0xff) * 0x2a) & 0xffffff00u) | 1u;
 }

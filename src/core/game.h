@@ -14,6 +14,9 @@
 #pragma once
 
 #include "layout.h"
+#include "textentry.h"
+#include "saveslots.h"
+#include "menutree.h"
 
 class SoundManager;
 class LiftObject;
@@ -21,10 +24,14 @@ class SlideObject;
 class BridgeObject;
 class BreakableTile;
 
-/* The 8-byte record at Game+0x170a5c, copied into every level object's +0x15
- * each tick.  Meaning unknown; a struct so that it copies by assignment. */
-struct Field170a5c {
-    unsigned char bytes[8];
+/* The tick step at Game+0x170a5c: GameTick's `dt` argument, a double
+ * (GameTick 0x41567c and the six Camera* handlers FLD it as one; GameTick
+ * zeroes it while paused, state 5).  Every level object keeps a pointer to
+ * it and copies it to its own +0x15 each tick.  Wrapped in a packed
+ * struct so that it is 1-aligned: objects hold it at odd offsets and pass
+ * its address to byte-copy helpers, which a bare double would warn on. */
+struct __attribute__((packed)) TickStep {
+    double value;
 };
 
 /* A sound asset's file name and, immediately after it, its enabled flag.
@@ -81,6 +88,44 @@ KAROO_LAYOUT_CHECKS(ScoreTally)
     KAROO_LAYOUT_SIZE(0x140543 - 0x1404c1);
 }
 
+/* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport 0x41a280 loads
+ * once, Game+0x13cc5c..+0x13cc84.  Ghidra's SoundManager struct places
+ * these at its +0xb4..+0xd8, but the SoundManager ctor 0x4430e0
+ * initialises nothing past its second list (ending +0xb4) and only Game
+ * code writes them -- so which object owns them is OPEN; they are modelled
+ * here on their own rather than guessed into either. */
+struct CStaticSoundbuffer;
+struct VoicePool;
+struct __attribute__((packed)) FixedSounds {
+    static const int ORIGIN = 0;
+
+    CStaticSoundbuffer *timeOut;          /* +0x00  0x13cc5c */
+    CStaticSoundbuffer *switchClick;      /* +0x04  menu select */
+    VoicePool          *menuUpDown;       /* +0x08  5 voices */
+    CStaticSoundbuffer *count;            /* +0x0c */
+    CStaticSoundbuffer *lastSeconds;      /* +0x10  the countdown */
+    CStaticSoundbuffer *levelCompleted;   /* +0x14 */
+    /* Three banks, 'A'..'C'; GameTick picks one by rand()%3 when the
+     * crystals are complete. */
+    CStaticSoundbuffer *crystalBank[3];   /* +0x18 */
+    /* Set once the load has run (or found no sound); it never runs again. */
+    unsigned int        loaded;           /* +0x24  0x13cc80 */
+
+    KAROO_LAYOUT_REGISTER(FixedSounds);
+};
+
+KAROO_LAYOUT_CHECKS(FixedSounds)
+{
+    KAROO_LAYOUT_AT(switchClick,    0x04);
+    KAROO_LAYOUT_AT(menuUpDown,     0x08);
+    KAROO_LAYOUT_AT(count,          0x0c);
+    KAROO_LAYOUT_AT(lastSeconds,    0x10);
+    KAROO_LAYOUT_AT(levelCompleted, 0x14);
+    KAROO_LAYOUT_AT(crystalBank,    0x18);
+    KAROO_LAYOUT_AT(loaded,         0x24);
+    KAROO_LAYOUT_SIZE(0x28);
+}
+
 class Bomb;
 class Foe;
 class Player;
@@ -98,8 +143,14 @@ public:
     SoundManager *soundManager()     { return (SoundManager *)soundManagerHead_; }
     /* Nonzero once sound is up. */
     int  soundCreated() const        { return soundCreated_; }
+    FixedSounds  *fixedSounds()      { return &fixedSounds_; }
 
     /* ── time ───────────────────────────────────────────────────────── */
+    /* The `now` GameTick was last called with (double, ms); the menus
+     * stamp their timers from it.  Its two halves are also copied dword by
+     * dword into the menu object (+0x175524/8), which stays raw. */
+    double         lastTickTime() const              { return lastTickTime_; }
+    void           setLastTickTime(double t)         { lastTickTime_ = t; }
     /* The 8-byte clock accumulator.  Objects keep a pointer to it and
      * re-read it every tick.  Addressed via offsetof rather than &clock_,
      * which GCC flags for a packed member (-Waddress-of-packed-member); the
@@ -108,8 +159,8 @@ public:
     {
         return (double *)((unsigned char *)this + offsetof(Game, clock_));
     }
-    /* An 8-byte record every level object copies to its +0x15 each tick. */
-    Field170a5c   *field_170a5c()    { return &field_170a5c_; }
+    /* The tick step, dt; objects copy it to their +0x15 each tick. */
+    TickStep      *tickStep()        { return &tickStep_; }
 
     /* ── tiles ──────────────────────────────────────────────────────── */
     /* The base Tile::at() indexes from.  Objects keep their own copy. */
@@ -117,7 +168,126 @@ public:
     /* Gems the level requires (Player::gemsCollected is the other side). */
     int            gemsRequired() const { return gemsRequired_; }
 
+    /* ── text entry ─────────────────────────────────────────────────── */
+    /* The cheat-code entry (HandleTypedCheatCode polls it every tick) and
+     * the name entry (save names and the high-score name). */
+    TextEntry     *cheatEntry()                      { return &cheatEntry_; }
+    TextEntry     *nameEntry()                       { return &nameEntry_; }
+    /* The menu (menutree.h). */
+    MenuTree       *menu()                           { return &menu_; }
+    const MenuTree *menu() const                     { return &menu_; }
+    /* Game's own debounce key (distinct from MenuTree's): GameTick,
+     * HandleKeypress, the tally and the cheats ignore a key equal to it
+     * until it is released.  debounceRef() is for the DEB lvalue aliases. */
+    unsigned char  debounce() const                  { return debounce_; }
+    void           setDebounce(unsigned char k)      { debounce_ = k; }
+    unsigned char &debounceRef()                     { return debounce_; }
+    /* Key-rebind capture: the controls menu's rebind nodes name the action
+     * and set the flag; HandleKeypress captures the next binding and clears
+     * it.  RenderControlsRemap reads the flag. */
+    int            rebindActive() const              { return rebindActive_; }
+    void           setRebindActive(int a)            { rebindActive_ = a; }
+    void           setRebindCode(unsigned char c)    { rebindCode_ = c; }
+    char          *rebindAction()                    { return rebindAction_; }
+    /* The save-slot table (saveslots.h). */
+    SaveSlots     *saveSlots()                       { return &saveSlots_; }
+
+    /* ── game state ─────────────────────────────────────────────────── */
+    /* The top-level state GameTick and HandleKeypress switch on, 0..7.
+     * menu.h's GAME_ST_* (decoded at runtime): 0 menu, 1 playing, 2 game
+     * over, 3 level completed, 4 loaded (the flythrough and its "press
+     * enter" screen), 7 quitting.  6 is high-score name entry (GameTick
+     * sets it after InsertScoreIntoHighScoreTable); 5 is not decoded.
+     * stateRef() is for the files that alias it as a STATE lvalue. */
+    unsigned char  state() const                     { return state_; }
+    void           setState(unsigned char s)         { state_ = s; }
+    unsigned char &stateRef()                        { return state_; }
+    /* GameTick runs InitLevelBasedSounds while this is 0, then sets it;
+     * Load, SetupLevelObjects and the 3D-sound toggle clear it. */
+    int            levelSoundsReady() const          { return levelSoundsReady_; }
+    void           setLevelSoundsReady(int r)        { levelSoundsReady_ = r; }
+    /* Save-name text entry in progress (the entry object is at +0x170a6d):
+     * HandleKeypress sets it on the save-slot nodes, routes keys to the
+     * entry while it is set, and clears it when entry ends. */
+    int            textEntryActive() const           { return textEntryActive_; }
+    void           setTextEntryActive(int a)         { textEntryActive_ = a; }
+
+    /* ── the level sequence ─────────────────────────────────────────── */
+    /* The level being played, 0-based (StoreGameStateIntoSaveSlot saves it),
+     * and how many levels the game file lists (LoadGameFile; zero when it
+     * did not load).  index + 1 == count is the last level. */
+    unsigned char  levelIndex() const                { return levelIndex_; }
+    void           setLevelIndex(unsigned char i)    { levelIndex_ = i; }
+    unsigned char  levelCount() const                { return levelCount_; }
+    /* CD music on: every Sim_PlayCDStuf call is gated on it; HandleKeypress
+     * toggles it, RenderGameOptions shows it, sound setup clears it on
+     * failure.  A dword. */
+    int            musicOn() const                   { return musicOn_; }
+    void           setMusicOn(int on)                { musicOn_ = on; }
+
+    /* Total play time over the whole game, ms: each level's timeElapsed is
+     * added as it ends; the save slot stores it, ClearGameState zeroes it. */
+    double         totalPlayTime() const             { return totalPlayTime_; }
+    void           setTotalPlayTime(double ms)       { totalPlayTime_ = ms; }
+
+    /* ── volumes (the options menu, HandleKeypress 0x3e/0x3f) ────────── */
+    /* Percent, steps of 10, shown by RenderGameOptions; each has the
+     * device value HandleKeypress derives from it beside it. */
+    unsigned char  cdVolume() const                  { return cdVolume_; }
+    void           setCdVolume(unsigned char p)      { cdVolume_ = p; }
+    /* CD mixer volume, 0..65536 (CDM_SetMixerVolume). */
+    unsigned int   cdMixerVolume() const             { return cdMixerVolume_; }
+    void           setCdMixerVolume(unsigned int v)  { cdMixerVolume_ = v; }
+    unsigned char  waveVolume() const                { return waveVolume_; }
+    void           setWaveVolume(unsigned char p)    { waveVolume_ = p; }
+    /* Both channels packed, for waveOutSetVolume. */
+    unsigned int   waveOutVolume() const             { return waveOutVolume_; }
+    void           setWaveOutVolume(unsigned int v)  { waveOutVolume_ = v; }
+
+    /* ── camera and controls ────────────────────────────────────────── */
+    /* 0 = follow the player; nonzero = view from the separate eye at
+     * +0x2ab580 (FUN_00404120 / UpdateViewTransform), and 2 also spins the
+     * yaw -- the menus and the tally.  Checkpoints restore it. */
+    unsigned char  cameraMode() const                { return cameraMode_; }
+    void           setCameraMode(unsigned char m)    { cameraMode_ = m; }
+    /* The distance the camera eases towards (UpdateViewTransform subtracts
+     * the current eye distance and closes a dt-scaled share of the gap):
+     * 7.0 by default, 40.0 in CameraOverview, animated by the sway. */
+    float          cameraDistance() const            { return cameraDistance_; }
+    void           setCameraDistance(float d)        { cameraDistance_ = d; }
+    /* The controls menu's camera option: 1 = the camera turns with the
+     * player (UpdateViewTransform, FUN_00404120).  GameTick forces it to 1
+     * while Player+0xea is set, parking the choice +10 at +0x3215d. */
+    unsigned char  cameraTurnsWithPlayer() const     { return cameraTurnsWithPlayer_; }
+    void           setCameraTurnsWithPlayer(unsigned char on) { cameraTurnsWithPlayer_ = on; }
+    /* Where GameTick parks cameraTurnsWithPlayer while Player+0xea forces
+     * it on: the player's choice + 10, so 0 means "nothing parked".  Load
+     * zeroes it. */
+    unsigned char  parkedCameraOption() const        { return parkedCameraOption_; }
+    void           setParkedCameraOption(unsigned char v) { parkedCameraOption_ = v; }
+    /* The options menu's 3D-sound switch: handed to the SoundManager's
+     * setup, and InitLevelBasedSounds adds the extra-object sounds only
+     * while it is on. */
+    int            sound3D() const                   { return sound3D_; }
+    void           setSound3D(int on)                { sound3D_ = on; }
+    /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
+    unsigned short joyDeadzone() const               { return joyDeadzone_; }
+    void           setJoyDeadzone(unsigned short p)  { joyDeadzone_ = p; }
+
     /* ── the tally's inputs (CalculateLevelScore 0x41a760) ─────────── */
+    /* Death restarts on this level: GameTick adds one each time ENTER
+     * restarts it after a death, and zeroes it when the level ends (as do
+     * ClearGameState and the level-skip cheat).  While it is nonzero the
+     * restart is a RETRY, not a fresh level: SetupLevelObjects keeps the
+     * kill and item counters, OpenLevelFile skips the bonus peek, the
+     * music and extra-object sounds are not reloaded, and
+     * CalculateLevelScore denies the all-items bonus.  A byte; it wraps. */
+    unsigned char  restartCount() const              { return restartCount_; }
+    void           setRestartCount(unsigned char n)  { restartCount_ = n; }
+    /* Items the level holds (SetupLevelObjects copies its census total);
+     * the all-items bonus needs Player::field21a to reach it. */
+    unsigned short itemTotal() const                 { return itemTotal_; }
+    void           setItemTotal(unsigned short n)    { itemTotal_ = n; }
     unsigned char  foesKilled() const                { return foesKilled_; }
     void           setFoesKilled(unsigned char n)    { foesKilled_ = n; }
     /* The level's time limit in seconds (SetupLevelObjects copies it from
@@ -142,6 +312,10 @@ public:
      * AnimateScoreTallyStages counts it up). */
     ScoreTally    *tally()                           { return &tally_; }
     const ScoreTally *tally() const                  { return &tally_; }
+    /* Set to 1 when the tally has finished counting up (or ENTER skipped
+     * it); GameTick only takes ENTER to the high-score table once it is. */
+    int            tallyDone() const                 { return tallyDone_; }
+    void           setTallyDone(int d)               { tallyDone_ = d; }
 
     /* ── lifts ──────────────────────────────────────────────────────── */
     unsigned char liftCount() const              { return liftCount_; }
@@ -256,12 +430,20 @@ private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x04224d - 0x000000];
+    unsigned char gap_000000[0x03215d - 0x000000];
+    unsigned char parkedCameraOption_;                    /* 0x03215d */
+    unsigned char gap_03215e[0x04215e - 0x03215e];
+    unsigned char levelCount_;                            /* 0x04215e */
+    unsigned char gap_04215f[0x04220b - 0x04215f];
+    unsigned char restartCount_;                          /* 0x04220b */
+    unsigned char gap_04220c[0x04224d - 0x04220c];
     /* Foes killed this level; CalculateLevelScore pays 50 each. */
     unsigned char foesKilled_;                            /* 0x04224d */
-    unsigned char gap_04224e[0x042252 - 0x04224e];
+    unsigned char gap_04224e[0x042250 - 0x04224e];
+    unsigned short itemTotal_;                            /* 0x042250 */
     unsigned short field_42252_;                          /* 0x042252 */
-    unsigned char gap_042254[0x042262 - 0x042254];
+    int           levelSoundsReady_;                      /* 0x042254 */
+    unsigned char gap_042258[0x042262 - 0x042258];
     SoundAssetName soundAsset42262_;                 /* 0x042262 */
     unsigned char gap_042366[0x04236e - 0x042366];
     SoundAssetName soundAsset4236e_;                 /* 0x04236e */
@@ -317,20 +499,29 @@ private:
      * we use are declared.  soundCreated_ sits inside it at +0x8c. */
     unsigned char soundManagerHead_[0x13cc34 - 0x13cba8];
     int           soundCreated_;                          /* 0x13cc34 */
-    unsigned char gap_13cc38[0x1404c1 - 0x13cc38];
+    unsigned char gap_13cc38[0x13cc5c - 0x13cc38];
+    FixedSounds   fixedSounds_;                           /* 0x13cc5c */
+    unsigned char gap_13cc84[0x13cdac - 0x13cc84];
+    TextEntry     cheatEntry_;                            /* 0x13cdac */
+    unsigned char gap_13cdbb[0x1404c1 - 0x13cdbb];
     ScoreTally    tally_;                                 /* 0x1404c1 */
     unsigned char gap_140543[0x170643 - 0x140543];
     BridgeObject *bridgeSlots_[256];                      /* 0x170643 */
     unsigned char bridgeCount_;                           /* 0x170a43 */
-    unsigned char gap_170a44[0x170a54 - 0x170a44];
+    double        totalPlayTime_;                         /* 0x170a44 */
+    double        lastTickTime_;                          /* 0x170a4c */
     double        clock_;                                 /* 0x170a54 */
-    Field170a5c   field_170a5c_;                          /* 0x170a5c */
+    TickStep      tickStep_;                              /* 0x170a5c */
     /* Recomputed by GameTick every tick; see vitalityPercent(). */
     unsigned char vitalityPercent_;                       /* 0x170a64 */
     unsigned int  field_170a65_;                          /* 0x170a65 */
-    unsigned char gap_170a69[0x173483 - 0x170a69];
+    int           textEntryActive_;                       /* 0x170a69 */
+    TextEntry     nameEntry_;                             /* 0x170a6d */
+    SaveSlots     saveSlots_;                             /* 0x170a7c */
     /* Its length is unknown; declared only as far as the next field. */
-    char          levelName_[0x173588 - 0x173483];        /* 0x173483 */
+    char          levelName_[0x173583 - 0x173483];        /* 0x173483 */
+    unsigned char levelIndex_;                            /* 0x173583 */
+    unsigned char gap_173584[0x173588 - 0x173584];
     SlideObject  *slideSlots_[100];                       /* 0x173588 */
     unsigned char slideCount_;                            /* 0x173718 */
     LiftObject   *liftSlots_[256];                        /* 0x173719 */
@@ -345,7 +536,31 @@ private:
     unsigned char foeCount_;                              /* 0x174fd4 */
     /* 500 long: the Player object follows at 0x1751c9. */
     unsigned char foeIds_[500];                           /* 0x174fd5 */
-    unsigned char gap_1751c9[0x2ab58d - 0x1751c9];
+    /* The Player (0x241 bytes, player.h) and 7 unknown bytes after it. */
+    unsigned char gap_1751c9[0x175412 - 0x1751c9];
+    unsigned char rebindCode_;                            /* 0x175412 */
+    char          rebindAction_[0x175513 - 0x175413];     /* 0x175413 */
+    int           rebindActive_;                          /* 0x175513 */
+    unsigned char debounce_;                              /* 0x175517 */
+    MenuTree      menu_;                                  /* 0x175518 */
+    unsigned char gap_195735[0x28ab29 - 0x195735];
+    float         cameraDistance_;                        /* 0x28ab29 */
+    unsigned char cameraMode_;                            /* 0x28ab2d */
+    unsigned char gap_28ab2e[0x2aa156 - 0x28ab2e];
+    int           musicOn_;                               /* 0x2aa156 */
+    unsigned char cdVolume_;                              /* 0x2aa15a */
+    unsigned char gap_2aa15b[0x2aa15f - 0x2aa15b];
+    unsigned int  cdMixerVolume_;                         /* 0x2aa15f */
+    unsigned char gap_2aa163[0x2ab564 - 0x2aa163];
+    int           sound3D_;                               /* 0x2ab564 */
+    unsigned char waveVolume_;                            /* 0x2ab568 */
+    unsigned char gap_2ab569[0x2ab56d - 0x2ab569];
+    unsigned int  waveOutVolume_;                         /* 0x2ab56d */
+    unsigned char cameraTurnsWithPlayer_;                 /* 0x2ab571 */
+    unsigned char gap_2ab572[0x2ab57e - 0x2ab572];
+    unsigned short joyDeadzone_;                          /* 0x2ab57e */
+    unsigned char gap_2ab580[0x2ab58c - 0x2ab580];
+    unsigned char state_;                                 /* 0x2ab58c */
     /* Where Tile::at() indexes from; the tiles extend past it.  The bytes
      * from here to the first cell look like a map header (the time limit at
      * +0x2ab591, this quota, the extents at +0x2ab727/8), not tile fields --
@@ -359,16 +574,19 @@ private:
     /* The level's gem quota: CalculateLevelScore 0x41a760 pays 5 a gem up
      * to it and 10 per gem the Player collects beyond it. */
     int           gemsRequired_;                          /* 0x2ab723 */
+    unsigned char gap_2ab727[0x517909 - 0x2ab727];
+    int           tallyDone_;                             /* 0x517909 */
 };
 
 KAROO_LAYOUT_CHECKS(Game)
 {
     KAROO_LAYOUT_AT(soundManagerHead_, 0x13cba8);
     KAROO_LAYOUT_AT(soundCreated_,     0x13cc34);
+    KAROO_LAYOUT_AT(fixedSounds_,      0x13cc5c);
     KAROO_LAYOUT_AT(bridgeSlots_,      0x170643);
     KAROO_LAYOUT_AT(bridgeCount_,      0x170a43);
     KAROO_LAYOUT_AT(clock_,            0x170a54);
-    KAROO_LAYOUT_AT(field_170a5c_,     0x170a5c);
+    KAROO_LAYOUT_AT(tickStep_,         0x170a5c);
     KAROO_LAYOUT_AT(tally_,            0x1404c1);
     KAROO_LAYOUT_AT(vitalityPercent_,  0x170a64);
     KAROO_LAYOUT_AT(field_170a65_,     0x170a65);
@@ -416,4 +634,33 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(foesKilled_,       0x04224d);
     KAROO_LAYOUT_AT(timeLimit_,        0x2ab591);
     KAROO_LAYOUT_AT(timeElapsed_,      0x2ab595);
+    KAROO_LAYOUT_AT(restartCount_,     0x04220b);
+    KAROO_LAYOUT_AT(itemTotal_,        0x042250);
+    KAROO_LAYOUT_AT(tallyDone_,        0x517909);
+    KAROO_LAYOUT_AT(levelCount_,       0x04215e);
+    KAROO_LAYOUT_AT(levelIndex_,       0x173583);
+    KAROO_LAYOUT_AT(musicOn_,          0x2aa156);
+    KAROO_LAYOUT_AT(cameraMode_,       0x28ab2d);
+    KAROO_LAYOUT_AT(joyDeadzone_,      0x2ab57e);
+    KAROO_LAYOUT_AT(cdVolume_,         0x2aa15a);
+    KAROO_LAYOUT_AT(cameraDistance_,   0x28ab29);
+    KAROO_LAYOUT_AT(sound3D_,          0x2ab564);
+    KAROO_LAYOUT_AT(cameraTurnsWithPlayer_, 0x2ab571);
+    KAROO_LAYOUT_AT(cdMixerVolume_,    0x2aa15f);
+    KAROO_LAYOUT_AT(waveVolume_,       0x2ab568);
+    KAROO_LAYOUT_AT(waveOutVolume_,    0x2ab56d);
+    KAROO_LAYOUT_AT(totalPlayTime_,    0x170a44);
+    KAROO_LAYOUT_AT(lastTickTime_,     0x170a4c);
+    KAROO_LAYOUT_AT(state_,            0x2ab58c);
+    KAROO_LAYOUT_AT(parkedCameraOption_, 0x03215d);
+    KAROO_LAYOUT_AT(levelSoundsReady_, 0x042254);
+    KAROO_LAYOUT_AT(textEntryActive_,  0x170a69);
+    KAROO_LAYOUT_AT(cheatEntry_,       0x13cdac);
+    KAROO_LAYOUT_AT(nameEntry_,        0x170a6d);
+    KAROO_LAYOUT_AT(saveSlots_,        0x170a7c);
+    KAROO_LAYOUT_AT(rebindCode_,       0x175412);
+    KAROO_LAYOUT_AT(rebindAction_,     0x175413);
+    KAROO_LAYOUT_AT(rebindActive_,     0x175513);
+    KAROO_LAYOUT_AT(debounce_,         0x175517);
+    KAROO_LAYOUT_AT(menu_,             0x175518);
 }

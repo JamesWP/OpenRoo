@@ -72,9 +72,9 @@ private:
     const Vtbl         *vtable_;         /* +0x00  &VTABLE                   */
     double              now_;            /* +0x04  latched from *clock_      */
     double             *clock_;          /* +0x0c  Game::clock()             */
-    Field170a5c        *record_;         /* +0x10  Game::field_170a5c()      */
+    TickStep        *tickStep_;         /* +0x10  Game::tickStep()        */
     unsigned char       field_14;        /* +0x14                            */
-    Field170a5c         recordCopy_;     /* +0x15  copied from *record_      */
+    TickStep         tickStepCopy_;     /* +0x15  copied from *tickStep_      */
     unsigned char       field_1d[8];     /* +0x1d                            */
     float               posU_;           /* +0x25  } base-class fields,      */
     float               posY_;           /* +0x29  } zeroed by 0x401000      */
@@ -100,8 +100,8 @@ KAROO_LAYOUT_CHECKS(BreakableTile)
 {
     KAROO_LAYOUT_AT(now_,            0x04);
     KAROO_LAYOUT_AT(clock_,          0x0c);
-    KAROO_LAYOUT_AT(record_,         0x10);
-    KAROO_LAYOUT_AT(recordCopy_,     0x15);
+    KAROO_LAYOUT_AT(tickStep_,         0x10);
+    KAROO_LAYOUT_AT(tickStepCopy_,     0x15);
     KAROO_LAYOUT_AT(posU_,           0x25);
     KAROO_LAYOUT_AT(posY_,           0x29);
     KAROO_LAYOUT_AT(posV_,           0x2d);
