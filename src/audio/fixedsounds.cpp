@@ -61,10 +61,6 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Report_WriteLevelReport(void *self, const char *pathname);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStatic_Reset(CStaticSoundbuffer *self);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf(void *self, const char *caption);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_FindThemeIndexByThemeName(void *self, const char *name);
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 
@@ -120,8 +116,8 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
     ((Game *)B)->menu()->setLockStart(*((Game *)B)->clock());
     ((Game *)B)->menu()->setLock(1);
     if (((Game *)B)->musicOn() != 0)
-        Sim_PlayCDStuf(B + 0x2223f, S_MAIN);
-    B[0x2235a] = (unsigned char)Sim_FindThemeIndexByThemeName(B + 0x2223f, S_MAIN);
+        ((Game *)B)->cdThemes()->play(S_MAIN);
+    ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(S_MAIN));
 
     if (((Game *)B)->soundCreated() == 0) {
         GameLog_LogMessage(GAMELOGGER, 1, F_NOSOUND);
@@ -152,12 +148,13 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
 #undef PBANK
     }
 
-    G32(0x196050) = 5;
-    G16(0x196054) = 5;
-    G32(0x196044) = G32(0x13cbc8);
-    G32(0x196048) = 0;
+    ScriptPlayer *sp = ((Game *)B)->scriptPlayer();
+    sp->setField91b(5);
+    sp->setField91f(5);
+    sp->setField90f((void *)G32(0x13cbc8));
+    sp->setField913(0);
     GP(0x48ba0) = sm;
-    GP(0x195b3f) = sm;
+    sp->setSoundManager((SoundManager *)sm);
 
     if (!s_fx) {
         hooks_GetAsyncKeyState(0x4c);

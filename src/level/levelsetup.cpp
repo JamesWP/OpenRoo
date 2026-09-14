@@ -175,7 +175,6 @@
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
 #define G_MODE_FLAG        0x14        /* dword; 0 -> state 2, else state 1  */
-#define G_SCRIPT_READER    0x195735
 #define G_EXTRA_OBJECTS    0x48b98
 #define G_EXTRA_LOADED     0x48b9c
 #define G_UNK_42258        0x42258
@@ -255,8 +254,6 @@
 #define G_CLOCK            0x170a54    /* the game clock, a double           */
 
 #define G_LEVEL_NAME       0x173483
-#define G_SCRIPT_COUNT     0x1960e6
-#define G_CD_OBJ           0x2223f
 
 /* Globals outside `Game`. */
 #define GBL_LISTENER    ((float *)0x0046c4a0)
@@ -289,11 +286,7 @@ struct GameLogger;
 
 /* ─── Callbacks kept at their original addresses ─────────────────────────── */
 
-typedef void (__attribute__((thiscall)) *rel_script_fn)(void *self);
-#define ORIG_RELEASE_SCRIPT ((rel_script_fn)0x0041e840)
 
-typedef int (__attribute__((thiscall)) *cd_check_fn)(void *self);
-#define ORIG_CD_CHECK      ((cd_check_fn)0x00403420)
 
 typedef int (__attribute__((thiscall)) *noop_fn)(void *self);
 #define ORIG_NOOP_440450   ((noop_fn)0x00440450)
@@ -485,7 +478,7 @@ Sim_SetupLevelObjects(void *self)
     GameLog_LogMessage(GAME_LOGGER_VA, 2, S_INIT_STARTED);
 
     ((Game *)G)->setLevelSoundsReady(0);
-    ORIG_RELEASE_SCRIPT(G + G_SCRIPT_READER);
+    ((Game *)G)->scriptPlayer()->releaseStreams();
     Leo_ReleaseExtraObjectSoundBuffers(G + G_EXTRA_OBJECTS);
     ORIG_NOOP_440450(G + G_UNK_42258);
 
@@ -892,13 +885,13 @@ next_row:
         PL->setField21a(0);
         ((Game *)G)->setItemTotal(W(G, C_TOTAL));
 
-        if (DW(G, G_SCRIPT_COUNT) == 0) {
+        if (((Game *)G)->scriptPlayer()->loaded() == 0) {
             F(G, G_PLAYER_POS + 0) = (float)(int)(signed char)PL->homeU();
             F(G, G_PLAYER_POS + 4) = (float)(int)(signed char)PL->homeH();
             F(G, G_PLAYER_POS + 8) = (float)(int)(signed char)PL->homeV();
         }
 
-        if (ORIG_CD_CHECK(G + G_CD_OBJ) == 0 &&
+        if (((Game *)G)->cdThemes()->validateTrackLengths() == 0 &&
             DW(G, 0xc) == 0 &&
             ((Game *)G)->levelIndex() > 4) {
             unsigned char cu = PL->homeU();

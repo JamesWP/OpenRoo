@@ -67,8 +67,6 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_SetMixerVolume(CDM *self, DWORD level);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf_2(void *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_ClearGameState(void *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -123,7 +121,7 @@ static void loaded_tail(unsigned char *B)
     ((Game *)B)->setCameraDistance(7.0f);
     if (((Game *)B)->musicOn() != 0)
         CDM_StopTrack(CDAUDIO);
-    G32(0x1964e3) = 1;
+    ((Game *)B)->scriptPlayer()->setRunning(1);
     ((Game *)B)->setCameraMode(1);
     Sim_RewindMenuStackToRootNode(MENU);
 }
@@ -341,7 +339,7 @@ Sim_HandleKeypress(void *self)
             Sim_PopMenuNodeFromStack(MENU);
             break;
         }
-        Sim_PlayCDStuf_2(B + 0x2223f);
+        ((Game *)B)->cdThemes()->replay();
         ((Game *)B)->setMusicOn(1);
         Sim_PopMenuNodeFromStack(MENU);
         break;
@@ -352,7 +350,7 @@ Sim_HandleKeypress(void *self)
         Sim_OpenLevelFile(B, lvl);
         Sim_SetupLevelObjects(B);
         STATE = 4;
-        G32(0x1964e3) = 1;
+        ((Game *)B)->scriptPlayer()->setRunning(1);
         if (((Game *)B)->musicOn() != 0)
             CDM_StopTrack(CDAUDIO);
         DEB = 0x0d;

@@ -168,10 +168,6 @@ Score_CalculateLevelScore(void *self, char endReason);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 HighScore_WriteFile(void *self, const char *name, char key);
 
-/* Ours since Phase 4 (karoo-hooks/jjsreport.cpp).  It now takes OUR FILE *,
- * which is the whole point of replacing this function. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-JJScript_ReadTextsForReport(void *self, const char *path, FILE *sink);
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -180,20 +176,15 @@ JJScript_ReadTextsForReport(void *self, const char *path, FILE *sink);
 #define OFF_TALLY_LEO     0x42247   /* WORD, levels with a .leo               */
 #define OFF_TALLY_IS      0x4220c   /* WORD, levels with an instruction script*/
 #define OFF_SCORE_TOTAL   0x42212   /* DWORD, running total                   */
-#define OFF_TEXTS_IN      0x19573b  /* WORD, filled by the report .jjs reader */
-#define OFF_SPLINES_IN    0x195739  /* WORD, ditto                            */
 #define OFF_GAMEFILE      0x4215f   /* char[], game file name                 */
 #define OFF_LEVEL_WORLD   0x2ab69d  /* char[], world/level path               */
 #define OFF_BONUS_FLAG    0x2ab599  /* int                                    */
-#define OFF_SCRIPT_FLAG   0x1960e6  /* int                                    */
-#define OFF_SCRIPT_ID     0x1964fd  /* WORD                                   */
 #define OFF_LEO_FLAG      0x48b9c   /* int                                    */
 #define OFF_LEO_ID        0x13cba6  /* WORD                                   */
 #define OFF_PAR_TIME_SRC  0x2ab71f  /* int, par time before the 50% scaling   */
 /* OFF_PAR_COPY was Player +0x23d (player.h), the crystals count. */
 #define OFF_LEVEL_PATH    0x173483  /* char[], <World>\<Level>                */
 #define OFF_LEVEL_TITLE   0x2ab61d  /* char[], display name                   */
-#define OFF_SCRIPT_OBJ    0x195735  /* the instruction-script object          */
 #define OFF_HSC_OBJ       0x13cdbb  /* the high-score object                  */
 #define OFF_HSC_TABLE     0x13cfaf  /* "Bernie Boulder" name slot             */
 #define OFF_HSC_LEVEL     0x13cfe5  /* BYTE, level number in that slot        */
@@ -238,8 +229,8 @@ Report_WriteLevelReport(void *self, const char *pathname)
     *(WORD  *)(g + OFF_TALLY_BONUS) = 0;
     *(WORD  *)(g + OFF_TALLY_LEO)   = 0;
     *(DWORD *)(g + OFF_SCORE_TOTAL) = 0;
-    *(WORD  *)(g + OFF_TEXTS_IN)    = 0;
-    *(WORD  *)(g + OFF_SPLINES_IN)  = 0;
+    ((Game *)g)->scriptPlayer()->setTextBlocks(0);
+    ((Game *)g)->scriptPlayer()->setSplineLines(0);
 
     fputs(STR_TITLE, out);
     sprintf(buf, STR_GAMEFILE, (char *)(g + OFF_GAMEFILE));
@@ -272,10 +263,10 @@ Report_WriteLevelReport(void *self, const char *pathname)
             *(short *)(g + OFF_TALLY_BONUS) += 1;
         }
 
-        if (*(int *)(g + OFF_SCRIPT_FLAG) == 0) {
+        if (((Game *)g)->scriptPlayer()->loaded() == 0) {
             fputs(STR_BLANK_TAB, out);
         } else {
-            sprintf(buf, STR_D_TAB, (unsigned)*(WORD *)(g + OFF_SCRIPT_ID));
+            sprintf(buf, STR_D_TAB, (unsigned)((Game *)g)->scriptPlayer()->lineCount());
             fputs(buf, out);
             *(short *)(g + OFF_TALLY_IS) += 1;
         }
@@ -349,8 +340,8 @@ Report_WriteLevelReport(void *self, const char *pathname)
             sprintf(buf, STR_LVL_NAME, (char *)(g + OFF_LEVEL_TITLE));
             fputs(buf, sink);
 
-            if (*(int *)(g + OFF_SCRIPT_FLAG) != 0)
-                JJScript_ReadTextsForReport(g + OFF_SCRIPT_OBJ, scriptPath, sink);
+            if (((Game *)g)->scriptPlayer()->loaded() != 0)
+                ((Game *)g)->scriptPlayer()->readTextsForReport(scriptPath, sink);
 
             fputs(STR_NEWLINE, sink);
             fputs(STR_NEWLINE, sink);
@@ -365,9 +356,9 @@ Report_WriteLevelReport(void *self, const char *pathname)
     fputs(buf, out);
     sprintf(buf, STR_TESTSCORES, *(int *)(g + OFF_SCORE_TOTAL));
     fputs(buf, out);
-    sprintf(buf, STR_TEXTS_IN, (unsigned)*(WORD *)(g + OFF_TEXTS_IN));
+    sprintf(buf, STR_TEXTS_IN, (unsigned)((Game *)g)->scriptPlayer()->textBlocks());
     fputs(buf, out);
-    sprintf(buf, STR_SPLINES_IN, (unsigned)*(WORD *)(g + OFF_SPLINES_IN));
+    sprintf(buf, STR_SPLINES_IN, (unsigned)((Game *)g)->scriptPlayer()->splineLines());
     fputs(buf, out);
 
     ORIG_LOG_MESSAGE(GAME_LOGGER, 3, STR_LOG_CREATED);   /* defect 2 */

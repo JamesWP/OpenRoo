@@ -60,8 +60,6 @@
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Score_CalculateLevelScore(void *self, char endReason);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf(void *self, const char *caption);
 struct CDM;
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
@@ -108,7 +106,7 @@ static void enter_loaded_state(unsigned char *B, FILE *fp)
     ((Game *)B)->setState(4);
     if (((Game *)B)->musicOn() != 0)
         CDM_StopTrack(CDAUDIO);
-    G32(0x1964e3) = 1;
+    ((Game *)B)->scriptPlayer()->setRunning(1);
     ((Game *)B)->setCameraMode(1);
     ((Game *)B)->setDebounce(0x0d);
     fclose(fp);
@@ -154,7 +152,7 @@ Sim_HandleTypedCheatCode(void *self)
         if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
             ((Game *)B)->setState(2);
             if (((Game *)B)->musicOn() != 0)
-                Sim_PlayCDStuf(B + 0x2223f, S_GAMEOVER);
+                ((Game *)B)->cdThemes()->play(S_GAMEOVER);
             Score_CalculateLevelScore(B, 0x28);
             ((Game *)B)->setDebounce(0x0d);
             GameLog_LogMessage(GAMELOGGER, 1, F_COMPLETED,
@@ -165,7 +163,7 @@ Sim_HandleTypedCheatCode(void *self)
             ((Game *)B)->menu()->setLock(1);
             ((Game *)B)->setState(3);
             if (((Game *)B)->musicOn() != 0)
-                Sim_PlayCDStuf(B + 0x2223f, S_COMPLETED);
+                ((Game *)B)->cdThemes()->play(S_COMPLETED);
             ((Game *)B)->setCameraMode(2);
             Sim_RewindMenuStackToRootNode(((Game *)B)->menu());
             Sim_PopMenuNodeFromStack(((Game *)B)->menu());

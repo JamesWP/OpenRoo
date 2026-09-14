@@ -237,8 +237,6 @@
 #define G_MAP_NAME        0x2ab69d   /* the map name the reader last loaded   */
 #define G_MAP_BONUS       0x2ab599   /* DWORD, the %d in the "loaded" line    */
 #define G_EXTRA_OBJECTS   0x48b98    /* Level3DExtraObjects                   */
-#define G_SCRIPT_READER   0x195735   /* the .jjs reader sub-object            */
-#define G_SCRIPT_COUNT    0x1960e6   /* DWORD, nonzero once a script loaded   */
 
 #define G_NAME_TABLE      0x3215e    /* level-name table, 0x100 per entry     */
 #define G_GAMEFILE_NAME   0x4215f    /* the game file's name, a string        */
@@ -289,8 +287,6 @@ CStatic_HaltPlayback(CStaticSoundbuffer *self);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 LevelMap_ReadFile(void *self, const char *path);
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-JJScript_ReadForLevel(void *self, const char *path);
 
 /* ─── FX / diag ──────────────────────────────────────────────────────────── */
 
@@ -425,11 +421,11 @@ Sim_ParseLevelFiles(void *self, const char *name)
         *(unsigned int *)(G + G_MAP_CHANGED) = 1;
 
     ORIG_MAYBE_SPRINTF(path, S_FMT_SCRIPTS, GAME_DIR, name);
-    *(unsigned int *)(G + G_SCRIPT_COUNT) = 0;
-    JJScript_ReadForLevel(G + G_SCRIPT_READER, path);
+    ((Game *)G)->scriptPlayer()->setLoaded(0);
+    ((Game *)G)->scriptPlayer()->readForLevel(path);
 
     GameLog_LogMessage(GAME_LOGGER_VA, 1,
-                       *(unsigned int *)(G + G_SCRIPT_COUNT) ? S_SCRIPT_OK
+                       ((Game *)G)->scriptPlayer()->loaded() ? S_SCRIPT_OK
                                                              : S_SCRIPT_FAILED,
                        path);
 
@@ -439,7 +435,7 @@ Sim_ParseLevelFiles(void *self, const char *name)
                   "script=%u released=%u\n",
                   s_parses, name, (char)ok ? "ok" : "FAILED",
                   *(unsigned int *)(G + G_MAP_CHANGED),
-                  *(unsigned int *)(G + G_SCRIPT_COUNT), s_released);
+                  ((Game *)G)->scriptPlayer()->loaded(), s_released);
 
     /* XOR AL,AL on both paths -- success and failure are indistinguishable */
     return 0;
@@ -526,11 +522,11 @@ Sim_OpenLevelFile(void *self, unsigned int levelNo)
 
     ORIG_MAYBE_SPRINTF(path, S_FMT_SCRIPTS, GAME_DIR,
                        (const char *)(G + G_LEVEL_NAME));
-    *(unsigned int *)(G + G_SCRIPT_COUNT) = 0;
-    JJScript_ReadForLevel(G + G_SCRIPT_READER, path);
+    ((Game *)G)->scriptPlayer()->setLoaded(0);
+    ((Game *)G)->scriptPlayer()->readForLevel(path);
 
     GameLog_LogMessage(GAME_LOGGER_VA, 1,
-                       *(unsigned int *)(G + G_SCRIPT_COUNT)
+                       ((Game *)G)->scriptPlayer()->loaded()
                            ? S_OPEN_SCRIPT_OK : S_OPEN_SCRIPT_BAD,
                        path);
 
@@ -541,7 +537,7 @@ Sim_OpenLevelFile(void *self, unsigned int levelNo)
                   s_opens, levelNo & 0xff, (const char *)(G + G_LEVEL_NAME),
                   (char)ok ? "ok" : "FAILED",
                   *(unsigned int *)(G + G_MAP_CHANGED),
-                  *(unsigned int *)(G + G_SCRIPT_COUNT), s_released);
+                  ((Game *)G)->scriptPlayer()->loaded(), s_released);
 
     return 0;
 }

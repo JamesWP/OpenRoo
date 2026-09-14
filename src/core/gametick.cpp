@@ -68,9 +68,6 @@ __declspec(dllexport) void __cdecl GameLog_LogMessage(void *self, int level, con
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self);
 __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_InitLevelBasedSounds(void *self);
-__declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_PlayCDStuf(void *self, const char *caption);
-__declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_PlayCDStuf_2(void *self);
-__declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_FindThemeIndexByThemeName(void *self, const char *name);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_RestoreCheckpointStateBlocks(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleKeypress(void *self);
 __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AnimateScoreTallyStages(void *self);
@@ -94,8 +91,6 @@ __declspec(dllexport) void __attribute__((thiscall)) CStatic_HaltPlayback(CStati
 __declspec(dllexport) void __attribute__((thiscall)) CStatic_Set3DPosition(CStaticSoundbuffer *self, float x, float y, float z, DWORD dwApply);
 }
 
-typedef void (__attribute__((fastcall)) *relstream_fn)(void *self);
-#define ORIG_RELEASE_SCRIPT ((relstream_fn)0x0041e840)   /* named callback */
 
 #define PROGCTRL    ((ProgableControl *)0x0046c298)
 #define CDAUDIO     ((CDM *)0x004dc640)
@@ -248,7 +243,7 @@ Sim_GameTick(void *self, double dt, double now)
         Sim_InitLevelBasedSounds(B);
         ((Game *)B)->setLevelSoundsReady(1);
         if (STATE == 0 && ((Game *)B)->musicOn() != 0)
-            Sim_PlayCDStuf_2(B + 0x2223f);
+            ((Game *)B)->cdThemes()->replay();
     }
 
     if (STATE == 7 && DEB != 0x0d && KEY(0x0d) != 0) {
@@ -270,21 +265,21 @@ Sim_GameTick(void *self, double dt, double now)
     }
 
     if (STATE == 4) {
-        if (G32(0x1960e6) != 0)
+        ScriptPlayer *sp = ((Game *)B)->scriptPlayer();
+        if (sp->loaded() != 0)
             Sim_RestoreCheckpointStateBlocks(B);
-        if (G32(0x1964e3) == 0 || G32(0x1960e6) == 0)
+        if (sp->running() == 0 || sp->loaded() == 0)
             ((Game *)B)->setCameraMode(2);
         if (DEB != 0x0d && KEY(0x0d) != 0) {
-            G32(0x1964e3) = 0;
-            G32(0x196086) = 0;
-            ORIG_RELEASE_SCRIPT(B + 0x195735);
-            ORIG_RELEASE_SCRIPT(B + 0x195735);
+            sp->setRunning(0);
+            sp->setSplineActive(0);
+            sp->releaseStreams();
+            sp->releaseStreams();
             STATE = 1;
             if (((Game *)B)->restartCount() == 0) {
                 if (((Game *)B)->musicOn() != 0)
-                    Sim_PlayCDStuf(B + 0x2223f, (const char *)(B + 0x2ab69d));
-                G8(0x2235a) = (unsigned char)Sim_FindThemeIndexByThemeName(
-                    B + 0x2223f, (const char *)(B + 0x2ab69d));
+                    ((Game *)B)->cdThemes()->play((const char *)(B + 0x2ab69d));
+                ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex((const char *)(B + 0x2ab69d)));
             }
             ((Game *)B)->setCameraDistance(7.0f);
             ((Game *)B)->setCameraMode(0);
@@ -551,7 +546,7 @@ Sim_GameTick(void *self, double dt, double now)
                     if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
                         STATE = 2;
                         if (((Game *)B)->musicOn() != 0)
-                            Sim_PlayCDStuf(B + 0x2223f, S_GAMEOVER);
+                            ((Game *)B)->cdThemes()->play(S_GAMEOVER);
                         Score_CalculateLevelScore(B, 3);
                         DEB = 0x0d;
                         GameLog_LogMessage(GAMELOGGER, 1, F_COMPLETED,
@@ -591,7 +586,7 @@ Sim_GameTick(void *self, double dt, double now)
             } else if (lives <= 0 && bonus == 0) {
                 STATE = 2;
                 if (((Game *)B)->musicOn() != 0)
-                    Sim_PlayCDStuf(B + 0x2223f, S_GAMEOVER);
+                    ((Game *)B)->cdThemes()->play(S_GAMEOVER);
                 Score_CalculateLevelScore(B, (char)STATE);
                 DEB = 0x0d;
                 restart_tail = 0;                        /* JMP 0x4162b3 */
@@ -599,7 +594,7 @@ Sim_GameTick(void *self, double dt, double now)
                 ((Game *)B)->setCameraMode(2);
                 STATE = 3;
                 if (((Game *)B)->musicOn() != 0)
-                    Sim_PlayCDStuf(B + 0x2223f, S_COMPLETE);
+                    ((Game *)B)->cdThemes()->play(S_COMPLETE);
                 Sim_RewindMenuStackToRootNode(MENU);
                 Sim_PopMenuNodeFromStack(MENU);
                 Sim_PushMenuNodeOnStack(MENU, 0x28);
@@ -617,7 +612,7 @@ Sim_GameTick(void *self, double dt, double now)
                 if ((unsigned int)((Game *)B)->levelIndex() == (unsigned int)((Game *)B)->levelCount() - 1) {
                     STATE = 2;
                     if (((Game *)B)->musicOn() != 0)
-                        Sim_PlayCDStuf(B + 0x2223f, S_GAMEOVER);
+                        ((Game *)B)->cdThemes()->play(S_GAMEOVER);
                 }
                 ((Game *)B)->setRestartCount(0);
             }
@@ -666,10 +661,10 @@ Sim_GameTick(void *self, double dt, double now)
                 theme = S_MAIN;
             }
             if (theme != NULL)
-                G8(0x2235a) = (unsigned char)Sim_FindThemeIndexByThemeName(B + 0x2223f, theme);
+                ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(theme));
             if (setup) {
                 Sim_SetupLevelObjects(B);
-                G32(0x1964e3) = 1;
+                ((Game *)B)->scriptPlayer()->setRunning(1);
                 DEB = 0x0d;
                 ((Game *)B)->setTotalPlayTime((double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
                                         (long double)((Game *)B)->totalPlayTime()));
@@ -703,9 +698,9 @@ Sim_GameTick(void *self, double dt, double now)
             theme = S_MAIN;
         }
         if (theme != NULL)
-            G8(0x2235a) = (unsigned char)Sim_FindThemeIndexByThemeName(B + 0x2223f, theme);
+            ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(theme));
         Sim_SetupLevelObjects(B);
-        G32(0x1964e3) = 1;
+        ((Game *)B)->scriptPlayer()->setRunning(1);
         DEB = 0x0d;
     }
 

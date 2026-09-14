@@ -17,6 +17,8 @@
 #include "textentry.h"
 #include "saveslots.h"
 #include "menutree.h"
+#include "scriptplayer.h"
+#include "cdthemes.h"
 
 class SoundManager;
 class LiftObject;
@@ -89,11 +91,11 @@ KAROO_LAYOUT_CHECKS(ScoreTally)
 }
 
 /* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport 0x41a280 loads
- * once, Game+0x13cc5c..+0x13cc84.  Ghidra's SoundManager struct places
- * these at its +0xb4..+0xd8, but the SoundManager ctor 0x4430e0
- * initialises nothing past its second list (ending +0xb4) and only Game
- * code writes them -- so which object owns them is OPEN; they are modelled
- * here on their own rather than guessed into either. */
+ * once, Game+0x13cc5c..+0x13cc84.  They are GAME's: the SoundManager is
+ * 0xb4 bytes and ends exactly here (none of its ctor 0x4430e0, dtor
+ * 0x443180, purge 0x443520, init 0x4431f0 or setup 0x4439d0 touches past
+ * its second list at +0xa4), and only Game code writes them.  Ghidra's
+ * 288-byte SoundManager struct over-reaches into them. */
 struct CStaticSoundbuffer;
 struct VoicePool;
 struct __attribute__((packed)) FixedSounds {
@@ -173,6 +175,10 @@ public:
      * the name entry (save names and the high-score name). */
     TextEntry     *cheatEntry()                      { return &cheatEntry_; }
     TextEntry     *nameEntry()                       { return &nameEntry_; }
+    /* The CD-music theme table (cdthemes.h). */
+    CdThemes       *cdThemes()                       { return &cdThemes_; }
+    /* The instruction-script player (scriptplayer.h). */
+    ScriptPlayer   *scriptPlayer()                   { return &scriptPlayer_; }
     /* The menu (menutree.h). */
     MenuTree       *menu()                           { return &menu_; }
     const MenuTree *menu() const                     { return &menu_; }
@@ -272,6 +278,13 @@ public:
     void           setSound3D(int on)                { sound3D_ = on; }
     /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
     unsigned short joyDeadzone() const               { return joyDeadzone_; }
+    /* The separate eye the camera views from when cameraMode() is nonzero
+     * (FUN_00404120 reads it as a float vector); checkpoints restore it
+     * from the script player. */
+    void           setCameraEye(int i, float v)      { cameraEye_[i] = v; }
+    /* A float vector FUN_00404120 reads beside the eye; checkpoints
+     * restore it from the script player's spline point.  Not decoded. */
+    void           setField13cc94(int i, float v)    { field_13cc94_[i] = v; }
     void           setJoyDeadzone(unsigned short p)  { joyDeadzone_ = p; }
 
     /* ── the tally's inputs (CalculateLevelScore 0x41a760) ─────────── */
@@ -430,7 +443,8 @@ private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x03215d - 0x000000];
+    unsigned char gap_000000[0x02223f - 0x000000];
+    CdThemes      cdThemes_;                              /* 0x02223f */
     unsigned char parkedCameraOption_;                    /* 0x03215d */
     unsigned char gap_03215e[0x04215e - 0x03215e];
     unsigned char levelCount_;                            /* 0x04215e */
@@ -496,12 +510,17 @@ private:
     unsigned char gap_046cae[0x13cba8 - 0x046cae];
     /* The SoundManager is embedded here; its full size is unknown (its
      * lists reach at least +0xa4), so only the bytes up to the next field
-     * we use are declared.  soundCreated_ sits inside it at +0x8c. */
+     * we use are declared.  soundCreated_ sits inside it at +0x8c.
+     * Its real size is 0xb4 (its ctor, dtor, purge, init and setup touch
+     * nothing past the second list at +0xa4), so it ends exactly where
+     * fixedSounds_ begins. */
     unsigned char soundManagerHead_[0x13cc34 - 0x13cba8];
     int           soundCreated_;                          /* 0x13cc34 */
-    unsigned char gap_13cc38[0x13cc5c - 0x13cc38];
+    unsigned char gap_13cc38[0x13cc5c - 0x13cc38];        /* SoundManager tail */
     FixedSounds   fixedSounds_;                           /* 0x13cc5c */
-    unsigned char gap_13cc84[0x13cdac - 0x13cc84];
+    unsigned char gap_13cc84[0x13cc94 - 0x13cc84];
+    float         field_13cc94_[3];                       /* 0x13cc94 */
+    unsigned char gap_13cca0[0x13cdac - 0x13cca0];
     TextEntry     cheatEntry_;                            /* 0x13cdac */
     unsigned char gap_13cdbb[0x1404c1 - 0x13cdbb];
     ScoreTally    tally_;                                 /* 0x1404c1 */
@@ -543,7 +562,7 @@ private:
     int           rebindActive_;                          /* 0x175513 */
     unsigned char debounce_;                              /* 0x175517 */
     MenuTree      menu_;                                  /* 0x175518 */
-    unsigned char gap_195735[0x28ab29 - 0x195735];
+    ScriptPlayer  scriptPlayer_;                          /* 0x195735 */
     float         cameraDistance_;                        /* 0x28ab29 */
     unsigned char cameraMode_;                            /* 0x28ab2d */
     unsigned char gap_28ab2e[0x2aa156 - 0x28ab2e];
@@ -559,7 +578,7 @@ private:
     unsigned char cameraTurnsWithPlayer_;                 /* 0x2ab571 */
     unsigned char gap_2ab572[0x2ab57e - 0x2ab572];
     unsigned short joyDeadzone_;                          /* 0x2ab57e */
-    unsigned char gap_2ab580[0x2ab58c - 0x2ab580];
+    float         cameraEye_[3];                          /* 0x2ab580 */
     unsigned char state_;                                 /* 0x2ab58c */
     /* Where Tile::at() indexes from; the tiles extend past it.  The bytes
      * from here to the first cell look like a map header (the time limit at
@@ -663,4 +682,8 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(rebindActive_,     0x175513);
     KAROO_LAYOUT_AT(debounce_,         0x175517);
     KAROO_LAYOUT_AT(menu_,             0x175518);
+    KAROO_LAYOUT_AT(scriptPlayer_,     0x195735);
+    KAROO_LAYOUT_AT(cdThemes_,         0x02223f);
+    KAROO_LAYOUT_AT(cameraEye_,        0x2ab580);
+    KAROO_LAYOUT_AT(field_13cc94_,     0x13cc94);
 }
