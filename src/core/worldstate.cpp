@@ -411,7 +411,7 @@ static void map_dump(const BYTE *g, const Observation *obs, const char *path)
 
     fprintf(fp, "{\n");
     fprintf(fp, "  \"frame\": %lu,\n", (unsigned long)obs->frame);
-    fprintf(fp, "  \"level_index\": %u,\n", (unsigned)g[0x173583]);
+    fprintf(fp, "  \"level_index\": %u,\n", (unsigned)((const Game *)g)->levelIndex());
     /* Level names contain backslashes ("Forest\\DestrStart"), which are not
      * legal raw in a JSON string. */
     fputs("  \"level_name\": \"", fp);

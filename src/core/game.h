@@ -117,7 +117,33 @@ public:
     /* Gems the level requires (Player::gemsCollected is the other side). */
     int            gemsRequired() const { return gemsRequired_; }
 
+    /* ── the level sequence ─────────────────────────────────────────── */
+    /* The level being played, 0-based (StoreGameStateIntoSaveSlot saves it),
+     * and how many levels the game file lists (LoadGameFile; zero when it
+     * did not load).  index + 1 == count is the last level. */
+    unsigned char  levelIndex() const                { return levelIndex_; }
+    void           setLevelIndex(unsigned char i)    { levelIndex_ = i; }
+    unsigned char  levelCount() const                { return levelCount_; }
+    /* CD music on: every Sim_PlayCDStuf call is gated on it; HandleKeypress
+     * toggles it, RenderGameOptions shows it, sound setup clears it on
+     * failure.  A dword. */
+    int            musicOn() const                   { return musicOn_; }
+    void           setMusicOn(int on)                { musicOn_ = on; }
+
     /* ── the tally's inputs (CalculateLevelScore 0x41a760) ─────────── */
+    /* Death restarts on this level: GameTick adds one each time ENTER
+     * restarts it after a death, and zeroes it when the level ends (as do
+     * ClearGameState and the level-skip cheat).  While it is nonzero the
+     * restart is a RETRY, not a fresh level: SetupLevelObjects keeps the
+     * kill and item counters, OpenLevelFile skips the bonus peek, the
+     * music and extra-object sounds are not reloaded, and
+     * CalculateLevelScore denies the all-items bonus.  A byte; it wraps. */
+    unsigned char  restartCount() const              { return restartCount_; }
+    void           setRestartCount(unsigned char n)  { restartCount_ = n; }
+    /* Items the level holds (SetupLevelObjects copies its census total);
+     * the all-items bonus needs Player::field21a to reach it. */
+    unsigned short itemTotal() const                 { return itemTotal_; }
+    void           setItemTotal(unsigned short n)    { itemTotal_ = n; }
     unsigned char  foesKilled() const                { return foesKilled_; }
     void           setFoesKilled(unsigned char n)    { foesKilled_ = n; }
     /* The level's time limit in seconds (SetupLevelObjects copies it from
@@ -142,6 +168,10 @@ public:
      * AnimateScoreTallyStages counts it up). */
     ScoreTally    *tally()                           { return &tally_; }
     const ScoreTally *tally() const                  { return &tally_; }
+    /* Set to 1 when the tally has finished counting up (or ENTER skipped
+     * it); GameTick only takes ENTER to the high-score table once it is. */
+    int            tallyDone() const                 { return tallyDone_; }
+    void           setTallyDone(int d)               { tallyDone_ = d; }
 
     /* ── lifts ──────────────────────────────────────────────────────── */
     unsigned char liftCount() const              { return liftCount_; }
@@ -256,10 +286,15 @@ private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x04224d - 0x000000];
+    unsigned char gap_000000[0x04215e - 0x000000];
+    unsigned char levelCount_;                            /* 0x04215e */
+    unsigned char gap_04215f[0x04220b - 0x04215f];
+    unsigned char restartCount_;                          /* 0x04220b */
+    unsigned char gap_04220c[0x04224d - 0x04220c];
     /* Foes killed this level; CalculateLevelScore pays 50 each. */
     unsigned char foesKilled_;                            /* 0x04224d */
-    unsigned char gap_04224e[0x042252 - 0x04224e];
+    unsigned char gap_04224e[0x042250 - 0x04224e];
+    unsigned short itemTotal_;                            /* 0x042250 */
     unsigned short field_42252_;                          /* 0x042252 */
     unsigned char gap_042254[0x042262 - 0x042254];
     SoundAssetName soundAsset42262_;                 /* 0x042262 */
@@ -330,7 +365,9 @@ private:
     unsigned int  field_170a65_;                          /* 0x170a65 */
     unsigned char gap_170a69[0x173483 - 0x170a69];
     /* Its length is unknown; declared only as far as the next field. */
-    char          levelName_[0x173588 - 0x173483];        /* 0x173483 */
+    char          levelName_[0x173583 - 0x173483];        /* 0x173483 */
+    unsigned char levelIndex_;                            /* 0x173583 */
+    unsigned char gap_173584[0x173588 - 0x173584];
     SlideObject  *slideSlots_[100];                       /* 0x173588 */
     unsigned char slideCount_;                            /* 0x173718 */
     LiftObject   *liftSlots_[256];                        /* 0x173719 */
@@ -345,7 +382,9 @@ private:
     unsigned char foeCount_;                              /* 0x174fd4 */
     /* 500 long: the Player object follows at 0x1751c9. */
     unsigned char foeIds_[500];                           /* 0x174fd5 */
-    unsigned char gap_1751c9[0x2ab58d - 0x1751c9];
+    unsigned char gap_1751c9[0x2aa156 - 0x1751c9];
+    int           musicOn_;                               /* 0x2aa156 */
+    unsigned char gap_2aa15a[0x2ab58d - 0x2aa15a];
     /* Where Tile::at() indexes from; the tiles extend past it.  The bytes
      * from here to the first cell look like a map header (the time limit at
      * +0x2ab591, this quota, the extents at +0x2ab727/8), not tile fields --
@@ -359,6 +398,8 @@ private:
     /* The level's gem quota: CalculateLevelScore 0x41a760 pays 5 a gem up
      * to it and 10 per gem the Player collects beyond it. */
     int           gemsRequired_;                          /* 0x2ab723 */
+    unsigned char gap_2ab727[0x517909 - 0x2ab727];
+    int           tallyDone_;                             /* 0x517909 */
 };
 
 KAROO_LAYOUT_CHECKS(Game)
@@ -416,4 +457,10 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(foesKilled_,       0x04224d);
     KAROO_LAYOUT_AT(timeLimit_,        0x2ab591);
     KAROO_LAYOUT_AT(timeElapsed_,      0x2ab595);
+    KAROO_LAYOUT_AT(restartCount_,     0x04220b);
+    KAROO_LAYOUT_AT(itemTotal_,        0x042250);
+    KAROO_LAYOUT_AT(tallyDone_,        0x517909);
+    KAROO_LAYOUT_AT(levelCount_,       0x04215e);
+    KAROO_LAYOUT_AT(levelIndex_,       0x173583);
+    KAROO_LAYOUT_AT(musicOn_,          0x2aa156);
 }

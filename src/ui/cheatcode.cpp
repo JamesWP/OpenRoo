@@ -112,7 +112,7 @@ static void enter_loaded_state(unsigned char *B, FILE *fp)
 {
     G32(0x28ab29) = 0x40e00000;
     G8(0x2ab58c) = 4;
-    if (G32(0x2aa156) != 0)
+    if (((Game *)B)->musicOn() != 0)
         CDM_StopTrack(CDAUDIO);
     G32(0x1964e3) = 1;
     G8(0x28ab2d) = 1;
@@ -158,21 +158,21 @@ Sim_HandleTypedCheatCode(void *self)
 
     /* supa */
     if (streq(buf, "supa")) {
-        if ((unsigned int)G8(0x173583) + 1 == (unsigned int)G8(0x4215e)) {
+        if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
             G8(0x2ab58c) = 2;
-            if (G32(0x2aa156) != 0)
+            if (((Game *)B)->musicOn() != 0)
                 Sim_PlayCDStuf(B + 0x2223f, S_GAMEOVER);
             Score_CalculateLevelScore(B, 0x28);
             G8(0x175517) = 0x0d;
             GameLog_LogMessage(GAMELOGGER, 1, F_COMPLETED,
-                               (unsigned int)G8(0x173583) + 1,
-                               (unsigned int)G8(0x4215e));
+                               (unsigned int)((Game *)B)->levelIndex() + 1,
+                               (unsigned int)((Game *)B)->levelCount());
         } else {
             G32(0x175524) = G32(0x170a4c);
             G32(0x175528) = G32(0x170a50);
             G32(0x17552c) = 1;
             G8(0x2ab58c) = 3;
-            if (G32(0x2aa156) != 0)
+            if (((Game *)B)->musicOn() != 0)
                 Sim_PlayCDStuf(B + 0x2223f, S_COMPLETED);
             G8(0x28ab2d) = 2;
             Sim_RewindMenuStackToRootNode(B + 0x175518);
@@ -184,7 +184,7 @@ Sim_HandleTypedCheatCode(void *self)
             G8(0x175535) = 0;
             G32(0x17552c) = 1;
             Score_CalculateLevelScore(B, (char)G8(0x2ab58c));
-            G8(0x4220b) = 0;
+            ((Game *)B)->setRestartCount(0);
             GameLog_LogMessage(GAMELOGGER, 1, F_CSL);
         }
         GD(0x170a44) = (double)(unsigned long long)((Game *)B)->timeElapsed() + GD(0x170a44);
@@ -202,15 +202,15 @@ Sim_HandleTypedCheatCode(void *self)
             num[len - 8] = 0;
             unsigned char lvl = (unsigned char)(atoi(num) - 1);
             Sim_SetCurrentLevelName(B, lvl);
-            if (lvl < G8(0x4215e)) {
+            if (lvl < ((Game *)B)->levelCount()) {
                 sprintf(path, F_LVLPATH, GAMEDIR, (const char *)(B + 0x173483));
                 GameLog_LogMessage(GAMELOGGER, 3, F_LCNUM, (unsigned int)lvl,
                                    (const char *)(B + 0x173483));
-                G8(0x173583) = lvl;
+                ((Game *)B)->setLevelIndex(lvl);
                 FILE *fp = fopen(path, "r");
                 if (fp != NULL) {
                     pl->setGemsCollected(0);
-                    Sim_OpenLevelFile(B, G8(0x173583));
+                    Sim_OpenLevelFile(B, ((Game *)B)->levelIndex());
                     Sim_SetupLevelObjects(B);
                     enter_loaded_state(B, fp);
                 }

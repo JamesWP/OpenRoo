@@ -159,7 +159,7 @@ Sim_AnimateScoreTallyStages(void *self)
             T->stageStart = (int)ftol_low(B);
             T->shownCount[TALLY_VITALITY] = (int)n;
             T->shownScore[TALLY_VITALITY] = T->score[TALLY_VITALITY];
-            G32(0x517909) = 1;
+            ((Game *)B)->setTallyDone(1);
         } else {
             tick_sound(B);
             T->shownCount[TALLY_VITALITY] = (int)(el / 50);
@@ -179,7 +179,7 @@ totals:
         T->shownLevelTotal = (int)t;
         T->shownGrandTotal = (int)((unsigned int)T->shownBase + t);
         if (G8(0x175517) != 0x0d && hooks_GetAsyncKeyState(0x0d) != 0)
-            G32(0x517909) = 1;
+            ((Game *)B)->setTallyDone(1);
         return (t & 0xffffff00u) | 0xffu;
     }
 #undef LIM

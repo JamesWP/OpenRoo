@@ -226,6 +226,7 @@
 #include <string.h>
 
 #include "log.h"
+#include "game.h"
 #include "soundmanager.h"
 
 /* ─── Game / Level3DExtraObjects field offsets ───────────────────────────── */
@@ -240,10 +241,7 @@
 #define G_SCRIPT_COUNT    0x1960e6   /* DWORD, nonzero once a script loaded   */
 
 #define G_NAME_TABLE      0x3215e    /* level-name table, 0x100 per entry     */
-#define G_LEVEL_NO        0x173583   /* BYTE, the level currently played      */
-#define G_LEVEL_COUNT     0x4215e    /* BYTE, how many levels the game file has */
 #define G_GAMEFILE_NAME   0x4215f    /* the game file's name, a string        */
-#define G_NO_BONUS_PEEK   0x4220b    /* BYTE, nonzero suppresses the peek     */
 #define G_NEXT_BONUS      0x14       /* DWORD, the peeked next-level bonus    */
 
 #define X_SOUND_MGR       0x8        /* on Level3DExtraObjects                */
@@ -480,9 +478,9 @@ Sim_OpenLevelFile(void *self, unsigned int levelNo)
     ORIG_MAYBE_SPRINTF(path, S_FMT_GAM, (const char *)(G + G_GAMEFILE_NAME));
 
     /* The bonus peek -- load the NEXT level's map just to read its bonus. */
-    if (G[G_NO_BONUS_PEEK] == 0 &&
-        (unsigned int)(G[G_LEVEL_NO]) + 1 != (unsigned int)G[G_LEVEL_COUNT]) {
-        Sim_SetCurrentLevelName(self, (unsigned char)(G[G_LEVEL_NO] + 1));
+    if (((Game *)G)->restartCount() == 0 &&
+        (unsigned int)(((Game *)G)->levelIndex()) + 1 != (unsigned int)((Game *)G)->levelCount()) {
+        Sim_SetCurrentLevelName(self, (unsigned char)(((Game *)G)->levelIndex() + 1));
         ORIG_MAYBE_SPRINTF(path, S_FMT_LEVELS, GAME_DIR,
                            (const char *)(G + G_LEVEL_NAME));
         /* the result is deliberately not tested, as in the original */
@@ -492,7 +490,7 @@ Sim_OpenLevelFile(void *self, unsigned int levelNo)
 
         if (s_diag)
             log_write("levelparse: bonus peek for level %u -> bonus=%u\n",
-                      (unsigned)(unsigned char)(G[G_LEVEL_NO] + 1),
+                      (unsigned)(unsigned char)(((Game *)G)->levelIndex() + 1),
                       *(unsigned int *)(G + G_NEXT_BONUS));
     }
 

@@ -92,17 +92,11 @@
 #include "player.h"
 
 /* Inputs */
-#define OFF_ITEM_TOTAL  0x42250    /* u16                                   */
-#define OFF_NO_BONUS    0x4220b    /* byte  set = all-items bonus denied     */
 #define OFF_CLOCK_MS    0x170a54   /* double                                 */
 
 /* The counts, scores, totals and animation state are Game::tally()
  * (game.h, ScoreTally). */
-#define OFF_DONE_FLAG   0x517909
 
-#define U32(base, off)  (*(unsigned *)((char *)(base) + (off)))
-#define U16(base, off)  (*(unsigned short *)((char *)(base) + (off)))
-#define U8(base, off)   (*(unsigned char *)((char *)(base) + (off)))
 #define GAME            ((Game *)(self))
 
 static int s_fxDouble = -1;
@@ -169,8 +163,8 @@ Score_CalculateLevelScore(void *self, char endReason)
     }
 
     /* ── all-items bonus ─────────────────────────────────────────────── */
-    const unsigned short itemTotal = U16(self, OFF_ITEM_TOTAL);
-    if (itemTotal > ((Game *)self)->player()->field21a() || U8(self, OFF_NO_BONUS) != 0) {
+    const unsigned short itemTotal = ((Game *)self)->itemTotal();
+    if (itemTotal > ((Game *)self)->player()->field21a() || ((Game *)self)->restartCount() != 0) {
         t->score[TALLY_ALLITEMS] = 0;
         t->count[TALLY_ALLITEMS] = 0;
     } else {
@@ -215,5 +209,5 @@ Score_CalculateLevelScore(void *self, char endReason)
     /* ── hand the tally animation its stage 0 and start timestamp ────── */
     t->stage      = 0;
     t->stageStart = (int)(*(double *)((char *)self + OFF_CLOCK_MS));
-    U32(self, OFF_DONE_FLAG) = 1;
+    ((Game *)self)->setTallyDone(1);
 }

@@ -151,7 +151,7 @@ Sim_StoreGameStateIntoSaveSlot(void *self, unsigned int slotArg)
     unsigned char *B = (unsigned char *)self;
     unsigned char *S = B + (slotArg & 0xff) * 0x2a;
 
-    S[0x170ac1] = (unsigned char)(B[0x173583] + 1);
+    S[0x170ac1] = (unsigned char)(((Game *)B)->levelIndex() + 1);
     *(unsigned int *)(S + 0x170acb) =
         (unsigned int)(long long)*(double *)(B + 0x170a44);
     *(unsigned int *)(S + 0x170ac7) = (unsigned int)((Game *)B)->player()->fieldD8();
@@ -167,7 +167,7 @@ Sim_RestoreGameStateFromSaveSlot(void *self, unsigned int slotArg)
     unsigned char *B = (unsigned char *)self;
     unsigned char *S = B + (slotArg & 0xff) * 0x2a;
 
-    B[0x173583] = S[0x170ac1];
+    ((Game *)B)->setLevelIndex(S[0x170ac1]);
     *(double *)(B + 0x170a44) =
         (double)(unsigned long long)*(unsigned int *)(S + 0x170acb);
     *(unsigned int *)(B + 0x1752a1) = *(unsigned int *)(S + 0x170ac7);

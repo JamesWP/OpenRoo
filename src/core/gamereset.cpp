@@ -148,7 +148,6 @@
 #define G_ENEMY_COUNT     0x17460f
 #define G_ENEMY_IDS       0x174610
 
-#define G_GAMEFILE_OK     0x4215e    /* zero == the game file did not load   */
 #define G_GAMEFILE_NAME   0x4215f    /* the %s in the error message          */
 
 #define G_CLEAR_BLOCK     0x170543   /* 0x40 dwords zeroed by the REP STOSD  */
@@ -229,7 +228,7 @@ Sim_ClearGameState(void *self)
 
     /* The guard byte is READ here, at 0x00418597, before the stores -- the
      * branch on it is sunk to 0x004185f8.  See the header. */
-    gamefile_ok = G[G_GAMEFILE_OK];
+    gamefile_ok = ((Game *)G)->levelCount();
 
     Player *pl = ((Game *)G)->player();
     pl->setField239(2);                    /* lives */
@@ -239,8 +238,8 @@ Sim_ClearGameState(void *self)
      * Nothing reads between, so each is one double store (template 3). */
     pl->setField126(0.0);
     *(unsigned int *)(G + 0x170a44) = 0;
-    G[0x173583]                     = 0;
-    G[0x4220b]                      = 0;
+    ((Game *)G)->setLevelIndex(0);
+    ((Game *)G)->setRestartCount(0);
     pl->setGemsCollected(0);
     pl->setFacing(1);
     pl->setField14e(0);

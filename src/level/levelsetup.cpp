@@ -256,8 +256,6 @@
 #define G_TIMED            0x2023d     /* 0x15 per entry                     */
 #define G_CLOCK            0x170a54    /* the game clock, a double           */
 
-#define G_GAMEFILE_FLAG    0x4220b
-#define G_LEVEL_NO         0x173583
 #define G_LEVEL_NAME       0x173483
 #define G_SCRIPT_COUNT     0x1960e6
 #define G_CD_OBJ           0x2223f
@@ -890,10 +888,10 @@ next_row:
     ((Game *)G)->setTimeLimit((int)DW(G, 0x2ab71f));
     PL->setClock(((Game *)G)->clock());
 
-    if (B(G, G_GAMEFILE_FLAG) == 0) {
+    if (((Game *)G)->restartCount() == 0) {
         ((Game *)G)->setFoesKilled(0);
         PL->setField21a(0);
-        W(G, 0x42250)   = W(G, C_TOTAL);
+        ((Game *)G)->setItemTotal(W(G, C_TOTAL));
 
         if (DW(G, G_SCRIPT_COUNT) == 0) {
             F(G, G_PLAYER_POS + 0) = (float)(int)(signed char)PL->homeU();
@@ -903,7 +901,7 @@ next_row:
 
         if (ORIG_CD_CHECK(G + G_CD_OBJ) == 0 &&
             DW(G, 0xc) == 0 &&
-            B(G, G_LEVEL_NO) > 4) {
+            ((Game *)G)->levelIndex() > 4) {
             unsigned char cu = PL->homeU();
             unsigned char cv = PL->homeV();
             if (Sim_FindNearestFlaggedTileInRadius(G, &cu, &cv, 0x14)) {

@@ -129,7 +129,7 @@ static void loaded_tail(unsigned char *B)
 {
     STATE = 4;
     G32(0x28ab29) = 0x40e00000;
-    if (G32(0x2aa156) != 0)
+    if (((Game *)B)->musicOn() != 0)
         CDM_StopTrack(CDAUDIO);
     G32(0x1964e3) = 1;
     G8(0x28ab2d) = 1;
@@ -293,7 +293,7 @@ Sim_HandleKeypress(void *self)
     switch (NODE) {
     case 1:
         Sim_ClearGameState(B);
-        Sim_OpenLevelFile(B, G8(0x173583));
+        Sim_OpenLevelFile(B, ((Game *)B)->levelIndex());
         Sim_SetupLevelObjects(B);
         loaded_tail(B);
         DEB = 0x0d;
@@ -307,7 +307,7 @@ Sim_HandleKeypress(void *self)
     case 6:
         Sim_PopMenuNodeFromStack(MENU);
         STATE = 7;
-        if (G32(0x2aa156) != 0)
+        if (((Game *)B)->musicOn() != 0)
             CDM_StopTrack(CDAUDIO);
         DEB = 0x0d;
         if (G32(0x0c) == 0)
@@ -342,25 +342,25 @@ Sim_HandleKeypress(void *self)
         Sim_PopMenuNodeFromStack(MENU);
         break;
     case 0x3d:
-        if (G32(0x2aa156) != 0) {
-            G32(0x2aa156) = 0;
+        if (((Game *)B)->musicOn() != 0) {
+            ((Game *)B)->setMusicOn(0);
             CDM_StopTrack(CDAUDIO);
             Sim_PopMenuNodeFromStack(MENU);
             break;
         }
         Sim_PlayCDStuf_2(B + 0x2223f);
-        G32(0x2aa156) = 1;
+        ((Game *)B)->setMusicOn(1);
         Sim_PopMenuNodeFromStack(MENU);
         break;
     case 0x29: {
-        unsigned char lvl = (unsigned char)(G8(0x173583) + 1);
+        unsigned char lvl = (unsigned char)(((Game *)B)->levelIndex() + 1);
         ((Game *)B)->player()->setGemsCollected(0);
-        G8(0x173583) = lvl;
+        ((Game *)B)->setLevelIndex(lvl);
         Sim_OpenLevelFile(B, lvl);
         Sim_SetupLevelObjects(B);
         STATE = 4;
         G32(0x1964e3) = 1;
-        if (G32(0x2aa156) != 0)
+        if (((Game *)B)->musicOn() != 0)
             CDM_StopTrack(CDAUDIO);
         DEB = 0x0d;
         G32(0x175524) = G32(0x170a4c);
@@ -392,7 +392,7 @@ Sim_HandleKeypress(void *self)
             if (G32(0x170acf + slot * 0x2a) != 0) {
                 Sim_ClearGameState(B);
                 Sim_RestoreGameStateFromSaveSlot(B, slot);
-                Sim_OpenLevelFile(B, G8(0x173583));
+                Sim_OpenLevelFile(B, ((Game *)B)->levelIndex());
                 Sim_SetupLevelObjects(B);
                 loaded_tail(B);
             }

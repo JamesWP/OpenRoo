@@ -183,7 +183,6 @@ JJScript_ReadTextsForReport(void *self, const char *path, FILE *sink);
 #define OFF_TEXTS_IN      0x19573b  /* WORD, filled by the report .jjs reader */
 #define OFF_SPLINES_IN    0x195739  /* WORD, ditto                            */
 #define OFF_GAMEFILE      0x4215f   /* char[], game file name                 */
-#define OFF_LEVEL_COUNT   0x4215e   /* BYTE                                   */
 #define OFF_LEVEL_WORLD   0x2ab69d  /* char[], world/level path               */
 #define OFF_BONUS_FLAG    0x2ab599  /* int                                    */
 #define OFF_SCRIPT_FLAG   0x1960e6  /* int                                    */
@@ -245,13 +244,13 @@ Report_WriteLevelReport(void *self, const char *pathname)
     fputs(STR_TITLE, out);
     sprintf(buf, STR_GAMEFILE, (char *)(g + OFF_GAMEFILE));
     fputs(buf, out);
-    sprintf(buf, STR_LEVELS, (unsigned)g[OFF_LEVEL_COUNT]);
+    sprintf(buf, STR_LEVELS, (unsigned)((const Game *)g)->levelCount());
     fputs(buf, out);
     fputs(STR_COLHDR1, out);
     fputs(STR_COLHDR2, out);
     fputs(STR_RULE, out);
 
-    for (idx = 0; idx < (unsigned)g[OFF_LEVEL_COUNT]; idx++) {
+    for (idx = 0; idx < (unsigned)((const Game *)g)->levelCount(); idx++) {
         unsigned catches = 0, timeBonus, n = idx + 1;
         unsigned char catchByte = 0;   /* defect 5: a byte */
         int total;

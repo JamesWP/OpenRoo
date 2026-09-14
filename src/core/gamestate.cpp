@@ -218,9 +218,9 @@ static bool read_state(GameState *s)
         memcpy(s->death_raw + 1, &f120, 3);
     }
     s->complete_flag  = pl->fieldEf();
-    s->extra_count    = *(const WORD  *)(g + 0x042250);
+    s->extra_count    = ((const Game *)g)->itemTotal();
     s->extra_cap      = pl->field21a();
-    s->extra_block    = *(const BYTE  *)(g + 0x04220b);
+    s->extra_block    = ((const Game *)g)->restartCount();
     s->pos[0]         = pl->posU();
     s->pos[1]         = pl->posY();
     s->pos[2]         = pl->posV();

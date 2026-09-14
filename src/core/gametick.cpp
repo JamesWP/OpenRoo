@@ -249,7 +249,7 @@ Sim_GameTick(void *self, double dt, double now)
     if (G32(0x42254) == 0 && G32(0x173584) == 0) {
         Sim_InitLevelBasedSounds(B);
         G32(0x42254) = 1;
-        if (STATE == 0 && G32(0x2aa156) != 0)
+        if (STATE == 0 && ((Game *)B)->musicOn() != 0)
             Sim_PlayCDStuf_2(B + 0x2223f);
     }
 
@@ -283,8 +283,8 @@ Sim_GameTick(void *self, double dt, double now)
             ORIG_RELEASE_SCRIPT(B + 0x195735);
             ORIG_RELEASE_SCRIPT(B + 0x195735);
             STATE = 1;
-            if (G8(0x4220b) == 0) {
-                if (G32(0x2aa156) != 0)
+            if (((Game *)B)->restartCount() == 0) {
+                if (((Game *)B)->musicOn() != 0)
                     Sim_PlayCDStuf(B + 0x2223f, (const char *)(B + 0x2ab69d));
                 G8(0x2235a) = (unsigned char)Sim_FindThemeIndexByThemeName(
                     B + 0x2223f, (const char *)(B + 0x2ab69d));
@@ -551,15 +551,15 @@ Sim_GameTick(void *self, double dt, double now)
                 if ((unsigned int)pl->field14e() == 0) {
                     if (GP(0x13cc70) != NULL)
                         CStatic_TriggerPlayback((CStaticSoundbuffer *)GP(0x13cc70), 0);
-                    if ((unsigned int)G8(0x173583) + 1 == (unsigned int)G8(0x4215e)) {
+                    if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
                         STATE = 2;
-                        if (G32(0x2aa156) != 0)
+                        if (((Game *)B)->musicOn() != 0)
                             Sim_PlayCDStuf(B + 0x2223f, S_GAMEOVER);
                         Score_CalculateLevelScore(B, 3);
                         DEB = 0x0d;
                         GameLog_LogMessage(GAMELOGGER, 1, F_COMPLETED,
-                                           (unsigned int)G8(0x173583) + 1,
-                                           (unsigned int)G8(0x4215e));
+                                           (unsigned int)((Game *)B)->levelIndex() + 1,
+                                           (unsigned int)((Game *)B)->levelCount());
                     } else {
                         STATE = 3;
                         G8(0x28ab2d) = 2;
@@ -572,7 +572,7 @@ Sim_GameTick(void *self, double dt, double now)
                         G32(0x17552c) = 1;
                         G8(0x175535) = 0;
                         Score_CalculateLevelScore(B, (char)STATE);
-                        G8(0x4220b) = 0;
+                        ((Game *)B)->setRestartCount(0);
                     }
                     GD(0x170a44) = (double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
                                             (long double)GD(0x170a44));
@@ -584,7 +584,7 @@ Sim_GameTick(void *self, double dt, double now)
     /* ─── ENTER handling: after a death, or on the game-over tally ─── */
     if (STATE != 2) {
         if (DEB != 0x0d && KEY(0x0d) != 0 && pl->moveState() != 0 && STATE == 1) {
-            G8(0x4220b) = (unsigned char)(G8(0x4220b) + 1);
+            ((Game *)B)->setRestartCount((unsigned char)(((Game *)B)->restartCount() + 1));
             int lives = pl->field239();
             int bonus = GI32(0x2ab599);
             int restart_tail = 1;
@@ -594,7 +594,7 @@ Sim_GameTick(void *self, double dt, double now)
                 Sim_SetupLevelObjects(B);
             } else if (lives <= 0 && bonus == 0) {
                 STATE = 2;
-                if (G32(0x2aa156) != 0)
+                if (((Game *)B)->musicOn() != 0)
                     Sim_PlayCDStuf(B + 0x2223f, S_GAMEOVER);
                 Score_CalculateLevelScore(B, (char)STATE);
                 DEB = 0x0d;
@@ -602,7 +602,7 @@ Sim_GameTick(void *self, double dt, double now)
             } else {
                 G8(0x28ab2d) = 2;
                 STATE = 3;
-                if (G32(0x2aa156) != 0)
+                if (((Game *)B)->musicOn() != 0)
                     Sim_PlayCDStuf(B + 0x2223f, S_COMPLETE);
                 Sim_RewindMenuStackToRootNode(MENU);
                 Sim_PopMenuNodeFromStack(MENU);
@@ -614,17 +614,17 @@ Sim_GameTick(void *self, double dt, double now)
                 G8(0x175535) = 0;
                 ((Game *)B)->setTimeElapsed((unsigned int)(((Game *)B)->timeLimit() * 1000));
                 Score_CalculateLevelScore(B, (char)STATE);
-                G8(0x4220b) = 0;
+                ((Game *)B)->setRestartCount(0);
                 GD(0x170a44) = (double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
                                         (long double)GD(0x170a44));
                 GameLog_LogMessage(GAMELOGGER, 2, F_GAMEDONE,
-                                   (unsigned int)G8(0x173583), (unsigned int)G8(0x4215e));
-                if ((unsigned int)G8(0x173583) == (unsigned int)G8(0x4215e) - 1) {
+                                   (unsigned int)((Game *)B)->levelIndex(), (unsigned int)((Game *)B)->levelCount());
+                if ((unsigned int)((Game *)B)->levelIndex() == (unsigned int)((Game *)B)->levelCount() - 1) {
                     STATE = 2;
-                    if (G32(0x2aa156) != 0)
+                    if (((Game *)B)->musicOn() != 0)
                         Sim_PlayCDStuf(B + 0x2223f, S_GAMEOVER);
                 }
-                G8(0x4220b) = 0;
+                ((Game *)B)->setRestartCount(0);
             }
             if (restart_tail) {
                 G32(0x28ab29) = 0x40e00000;
@@ -632,12 +632,12 @@ Sim_GameTick(void *self, double dt, double now)
                 DEB = 0x0d;
             }
         }
-    } else if (DEB != 0x0d && KEY(0x0d) != 0 && G32(0x517909) != 0) {
+    } else if (DEB != 0x0d && KEY(0x0d) != 0 && ((Game *)B)->tallyDone() != 0) {
         unsigned int r = Sim_InsertScoreIntoHighScoreTable(
-            B + 0x13cdbb, (unsigned int)pl->field22c(), (unsigned char)(G8(0x173583) + 1));
+            B + 0x13cdbb, (unsigned int)pl->field22c(), (unsigned char)(((Game *)B)->levelIndex() + 1));
         if ((unsigned char)r < 0xff) {
             STATE = 6;
-            if (G32(0x2aa156) != 0)
+            if (((Game *)B)->musicOn() != 0)
                 CDM_StopTrack(CDAUDIO);
             G8(0x170a77) = 0x0f;
             G32(0x170a78) = 1;
@@ -650,7 +650,7 @@ Sim_GameTick(void *self, double dt, double now)
             Sim_RewindMenuStackToRootNode(MENU);
             const char *theme = NULL;
             int setup = 1;
-            if ((unsigned int)G8(0x173583) + 1 == (unsigned int)G8(0x4215e) &&
+            if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount() &&
                 pl->moveState() == 0) {
                 if (G32(0x0c) == 0) {
                     char name[256];
@@ -661,7 +661,7 @@ Sim_GameTick(void *self, double dt, double now)
                     theme = S_FINAL;
                 } else {
                     STATE = 7;
-                    if (G32(0x2aa156) != 0)
+                    if (((Game *)B)->musicOn() != 0)
                         CDM_StopTrack(CDAUDIO);
                     DEB = 0x0d;
                 }
@@ -688,7 +688,7 @@ Sim_GameTick(void *self, double dt, double now)
         STATE = 0;
         Sim_RewindMenuStackToRootNode(MENU);
         const char *theme = NULL;
-        if ((unsigned int)G8(0x173583) + 1 == (unsigned int)G8(0x4215e)) {
+        if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
             if (G32(0x0c) == 0) {
                 char name[256];
                 sprintf(name, F_FINALDIR, (const char *)(B + 0x4215f));
@@ -698,7 +698,7 @@ Sim_GameTick(void *self, double dt, double now)
                 theme = S_FINAL;
             } else {
                 STATE = 7;
-                if (G32(0x2aa156) != 0)
+                if (((Game *)B)->musicOn() != 0)
                     CDM_StopTrack(CDAUDIO);
                 DEB = 0x0d;
             }
