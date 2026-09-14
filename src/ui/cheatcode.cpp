@@ -161,8 +161,7 @@ Sim_HandleTypedCheatCode(void *self)
                                (unsigned int)((Game *)B)->levelIndex() + 1,
                                (unsigned int)((Game *)B)->levelCount());
         } else {
-            ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
-            ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+            ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
             ((Game *)B)->menu()->setLock(1);
             ((Game *)B)->setState(3);
             if (((Game *)B)->musicOn() != 0)
@@ -171,8 +170,7 @@ Sim_HandleTypedCheatCode(void *self)
             Sim_RewindMenuStackToRootNode(((Game *)B)->menu());
             Sim_PopMenuNodeFromStack(((Game *)B)->menu());
             Sim_PushMenuNodeOnStack(((Game *)B)->menu(), 0x28);
-            ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
-            ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+            ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
             ((Game *)B)->menu()->setNode(0x28);
             ((Game *)B)->menu()->setCursor(0);
             ((Game *)B)->menu()->setLock(1);

@@ -294,7 +294,7 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     game->setBridgeSlot(slot, obj);
 
     obj->clock_  = game->clock();
-    obj->record_ = game->field_170a5c();
+    obj->tickStep_ = game->tickStep();
     obj->axis_   = (unsigned char)axis;
 
     base = game->tileBase();
@@ -487,7 +487,7 @@ void BridgeObject::tick()
             log_write("bridgeobject: %lu ticks\n", s_ticks);
     }
 
-    recordCopy_ = *record_;
+    tickStepCopy_ = *tickStep_;
     now_ = *clock_;
 
     /* The axis, read once.  deckaxis flips it here, at the single point

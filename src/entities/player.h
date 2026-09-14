@@ -43,7 +43,7 @@ public:
 
     /* ── the level-object base ──────────────────────────────────────── */
     void  setClock(double *c)                  { clock_ = c; }
-    void  setRecord(Field170a5c *r)            { record_ = r; }
+    void  setTickStep(TickStep *r)            { tickStep_ = r; }
     void  setTileBase(unsigned char *b)        { tileBase_ = b; }
     /* The readers (facing, pos, cell) are MovableEntity's. */
     void  setFacing(unsigned char f)           { facing_ = f; }

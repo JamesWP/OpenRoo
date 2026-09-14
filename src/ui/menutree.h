@@ -37,12 +37,9 @@ public:
     void           setLastNodeSeen(unsigned short n) { lastNodeSeen_ = n; }
 
     /* The 200 ms input lock: while lock() is nonzero every key is
-     * discarded, until `now` passes lockStart by 200.  lockStart is also
-     * written dword by dword, so both halves are exposed raw. */
-    unsigned int  *lockStartWords()
-    {
-        return (unsigned int *)((unsigned char *)this + offsetof(MenuTree, lockStart_));
-    }
+     * discarded, until `now` passes lockStart by 200.  The original copies
+     * the time in as two dword MOVs; it is one double. */
+    void           setLockStart(double t)           { lockStart_ = t; }
     unsigned int   lock() const                     { return lock_; }
     void           setLock(unsigned int l)          { lock_ = l; }
     /* ESC at the root: leave the menu. */

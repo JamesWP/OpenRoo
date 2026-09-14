@@ -874,7 +874,7 @@ next_row:
 
     PL->clearEffects();
 
-    PL->setRecord(((Game *)G)->field_170a5c());
+    PL->setTickStep(((Game *)G)->tickStep());
     PL->setField1e6(0);
     PL->setField1da(0);
     PL->setField20a(0);

@@ -120,9 +120,9 @@ protected:
     const void         *vtable_;          /* +0x000                         */
     double              now_;             /* +0x004  latched from *clock_   */
     double             *clock_;           /* +0x00c  Game::clock()          */
-    Field170a5c        *record_;          /* +0x010  Game::field_170a5c()   */
+    TickStep        *tickStep_;          /* +0x010  Game::tickStep()     */
     unsigned char       facing_;          /* +0x014                         */
-    Field170a5c         recordCopy_;      /* +0x015  copied from *record_   */
+    TickStep         tickStepCopy_;      /* +0x015  copied from *tickStep_   */
     unsigned char       gap_01d[0x025 - 0x01d];
     float               posU_;            /* +0x025  } world position, read */
     float               posY_;            /* +0x029  } by RenderGameFrame   */
@@ -231,9 +231,9 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
 {
     KAROO_LAYOUT_AT(now_,             0x004);
     KAROO_LAYOUT_AT(clock_,           0x00c);
-    KAROO_LAYOUT_AT(record_,          0x010);
+    KAROO_LAYOUT_AT(tickStep_,          0x010);
     KAROO_LAYOUT_AT(facing_,          0x014);
-    KAROO_LAYOUT_AT(recordCopy_,      0x015);
+    KAROO_LAYOUT_AT(tickStepCopy_,      0x015);
     KAROO_LAYOUT_AT(posU_,            0x025);
     KAROO_LAYOUT_AT(posY_,            0x029);
     KAROO_LAYOUT_AT(posV_,            0x02d);

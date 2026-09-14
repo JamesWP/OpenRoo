@@ -275,7 +275,7 @@ unsigned int BreakableTile::spawn(Game *game, unsigned int uArg,
     }
 
     obj->clock_    = game->clock();
-    obj->record_   = game->field_170a5c();
+    obj->tickStep_   = game->tickStep();
     obj->tileBase_ = game->tileBase();
 
     obj->cellU_      = (signed char)u;
@@ -389,7 +389,7 @@ void BreakableTile::tick()
     const double fallDelay = s_fx_slowfall ? FALL_DELAY_MS * 3.0 : FALL_DELAY_MS;
 
     /* Refresh the two cached copies the rest of the tick reads. */
-    recordCopy_ = *record_;
+    tickStepCopy_ = *tickStep_;
     now_        = *clock_;
 
     Tile *t = tile();

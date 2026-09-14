@@ -404,7 +404,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     /* Detail 1: through the raw pointer, NOT the slot. */
     p->clock_ = game->clock();
 
-    (*slot)->record_ = game->field_170a5c();
+    (*slot)->tickStep_ = game->tickStep();
 
     /* Detail 2: i * 1500, as a signed int, plus the clock. */
     (*slot)->field_72 = (double)(int)(i * 0x5dc) + *game->clock();
@@ -582,7 +582,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     }
 
     /* 1. In the original's order. */
-    recordCopy_ = *record_;
+    tickStepCopy_ = *tickStep_;
     now_        = *clock_;
 
     /* ── 2. The contact test ─────────────────────────────────────────── */

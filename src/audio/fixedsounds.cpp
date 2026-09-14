@@ -117,8 +117,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
         GameLog_LogMessage(GAMELOGGER, 1, F_CFG_OK);
     else
         GameLog_LogMessage(GAMELOGGER, 3, F_CFG_ERR);
-    ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a54);
-    ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a58);
+    ((Game *)B)->menu()->setLockStart(*((Game *)B)->clock());
     ((Game *)B)->menu()->setLock(1);
     if (((Game *)B)->musicOn() != 0)
         Sim_PlayCDStuf(B + 0x2223f, S_MAIN);

@@ -379,7 +379,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     }
 
     obj->clock_    = game->clock();
-    obj->record_   = game->field_170a5c();
+    obj->tickStep_   = game->tickStep();
     obj->kind_     = (signed char)kind;
     obj->state_    = 1;
     obj->tileBase_ = base;
@@ -542,7 +542,7 @@ void SlideObject::tick()
             log_write("slideobject: %lu ticks\n", s_ticks);
     }
 
-    recordCopy_ = *record_;
+    tickStepCopy_ = *tickStep_;
     now_ = *clock_;
 
     /* ─── State 1: ADVANCING ────────────────────────────────────────── */

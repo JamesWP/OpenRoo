@@ -320,7 +320,7 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     }
 
     obj->clock_    = game->clock();
-    obj->record_   = game->field_170a5c();
+    obj->tickStep_   = game->tickStep();
     obj->tileBase_ = game->tileBase();
 
     obj->cellU_      = (signed char)u;
@@ -426,7 +426,7 @@ void LiftObject::tick()
             log_write("liftobject: %lu ticks\n", s_ticks);
     }
 
-    recordCopy_ = *record_;
+    tickStepCopy_ = *tickStep_;
     now_ = *clock_;
 
     /* ─── State 1: RISING ───────────────────────────────────────────── */

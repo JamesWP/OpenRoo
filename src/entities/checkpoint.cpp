@@ -28,9 +28,10 @@
 #include "log.h"
 #include "game.h"
 
+/* (now, dt): two doubles by value, which the original pushes as four
+ * dwords -- the same 16 stack bytes. */
 typedef void (__attribute__((thiscall)) *script_tick_fn)(void *player,
-                                                        unsigned int a, unsigned int b,
-                                                        unsigned int c, unsigned int d);
+                                                        double now, double dt);
 #define ORIG_SCRIPT_TICK ((script_tick_fn)0x0041d920)   /* named callback */
 
 #define G32(o) (*(unsigned int *)(B + (o)))
@@ -54,8 +55,8 @@ Sim_RestoreCheckpointStateBlocks(void *self)
     if (G32(0x1964e3) == 0 || G32(0x1960e6) == 0)
         return;
 
-    ORIG_SCRIPT_TICK(B + 0x195735, G32(0x170a54), G32(0x170a58),
-                     G32(0x170a5c), G32(0x170a60));
+    ORIG_SCRIPT_TICK(B + 0x195735, *((Game *)B)->clock(),
+                     ((Game *)B)->tickStep()->value);
     ((Game *)B)->setCameraMode(G8(0x1964e2));
     ((Game *)B)->setCameraDistance(*(float *)(B + 0x1960ea));
     G32(0x2ab580) = G32(0x1964d6);

@@ -258,10 +258,9 @@ Sim_GameTick(void *self, double dt, double now)
 
     ((Game *)B)->setLastTickTime(now);
     if (STATE == 5) {
-        G32(0x170a5c) = 0;
-        G32(0x170a60) = 0;
+        ((Game *)B)->tickStep()->value = 0.0;    /* two zero dwords: +0.0 */
     } else {
-        *(double *)(B + 0x170a5c) = dt;
+        ((Game *)B)->tickStep()->value = dt;
         ACC = (double)((long double)dt + (long double)ACC);
     }
 
@@ -327,8 +326,7 @@ Sim_GameTick(void *self, double dt, double now)
         Sim_RewindMenuStackToRootNode(MENU);
         ((Game *)B)->menu()->setLastKey(0x1b);
         STATE = 5;
-        ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
-        ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+        ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
         ((Game *)B)->menu()->setLock(1);
         DEB = 0x1b;
     }
@@ -372,8 +370,9 @@ Sim_GameTick(void *self, double dt, double now)
                     foe->setDropContents(1);
                 Sim_AcquireObjectSoundBuffersForIndex((Game *)B, id);
             }
-            *(unsigned int *)(E - 0x11) = G32(0x170a54);
-            *(unsigned int *)(E - 0x0d) = G32(0x170a58);
+            /* The spawner's last-spawn time (read as a double above), set
+             * from the clock -- two dword MOVs in the original, one double. */
+            *(double *)(E - 0x11) = *((Game *)B)->clock();
         }
 
         G32(0x2ab576) = G32(0x2ab57a);
@@ -565,8 +564,7 @@ Sim_GameTick(void *self, double dt, double now)
                         Sim_PopMenuNodeFromStack(MENU);
                         Sim_PushMenuNodeOnStack(MENU, 0x28);
                         ((Game *)B)->menu()->setNode(0x28);
-                        ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
-                        ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+                        ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
                         ((Game *)B)->menu()->setLock(1);
                         ((Game *)B)->menu()->setCursor(0);
                         Score_CalculateLevelScore(B, (char)STATE);
@@ -606,8 +604,7 @@ Sim_GameTick(void *self, double dt, double now)
                 Sim_PopMenuNodeFromStack(MENU);
                 Sim_PushMenuNodeOnStack(MENU, 0x28);
                 ((Game *)B)->menu()->setNode(0x28);
-                ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
-                ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+                ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
                 ((Game *)B)->menu()->setLock(1);
                 ((Game *)B)->menu()->setCursor(0);
                 ((Game *)B)->setTimeElapsed((unsigned int)(((Game *)B)->timeLimit() * 1000));

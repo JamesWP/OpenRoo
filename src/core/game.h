@@ -24,10 +24,14 @@ class SlideObject;
 class BridgeObject;
 class BreakableTile;
 
-/* The 8-byte record at Game+0x170a5c, copied into every level object's +0x15
- * each tick.  Meaning unknown; a struct so that it copies by assignment. */
-struct Field170a5c {
-    unsigned char bytes[8];
+/* The tick step at Game+0x170a5c: GameTick's `dt` argument, a double
+ * (GameTick 0x41567c and the six Camera* handlers FLD it as one; GameTick
+ * zeroes it while paused, state 5).  Every level object keeps a pointer to
+ * it and copies it to its own +0x15 each tick.  Wrapped in a packed
+ * struct so that it is 1-aligned: objects hold it at odd offsets and pass
+ * its address to byte-copy helpers, which a bare double would warn on. */
+struct __attribute__((packed)) TickStep {
+    double value;
 };
 
 /* A sound asset's file name and, immediately after it, its enabled flag.
@@ -155,8 +159,8 @@ public:
     {
         return (double *)((unsigned char *)this + offsetof(Game, clock_));
     }
-    /* An 8-byte record every level object copies to its +0x15 each tick. */
-    Field170a5c   *field_170a5c()    { return &field_170a5c_; }
+    /* The tick step, dt; objects copy it to their +0x15 each tick. */
+    TickStep      *tickStep()        { return &tickStep_; }
 
     /* ── tiles ──────────────────────────────────────────────────────── */
     /* The base Tile::at() indexes from.  Objects keep their own copy. */
@@ -507,7 +511,7 @@ private:
     double        totalPlayTime_;                         /* 0x170a44 */
     double        lastTickTime_;                          /* 0x170a4c */
     double        clock_;                                 /* 0x170a54 */
-    Field170a5c   field_170a5c_;                          /* 0x170a5c */
+    TickStep      tickStep_;                              /* 0x170a5c */
     /* Recomputed by GameTick every tick; see vitalityPercent(). */
     unsigned char vitalityPercent_;                       /* 0x170a64 */
     unsigned int  field_170a65_;                          /* 0x170a65 */
@@ -582,7 +586,7 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(bridgeSlots_,      0x170643);
     KAROO_LAYOUT_AT(bridgeCount_,      0x170a43);
     KAROO_LAYOUT_AT(clock_,            0x170a54);
-    KAROO_LAYOUT_AT(field_170a5c_,     0x170a5c);
+    KAROO_LAYOUT_AT(tickStep_,         0x170a5c);
     KAROO_LAYOUT_AT(tally_,            0x1404c1);
     KAROO_LAYOUT_AT(vitalityPercent_,  0x170a64);
     KAROO_LAYOUT_AT(field_170a65_,     0x170a65);

@@ -356,8 +356,7 @@ Sim_HandleKeypress(void *self)
         if (((Game *)B)->musicOn() != 0)
             CDM_StopTrack(CDAUDIO);
         DEB = 0x0d;
-        ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
-        ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+        ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
         ((Game *)B)->setCameraMode(1);
         ((Game *)B)->menu()->setLock(1);
         Sim_PopMenuNodeFromStack(MENU);
