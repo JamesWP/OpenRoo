@@ -192,7 +192,7 @@ void policy_menu_tick(void)
     if (!policy_active()) return;
     const BYTE *g = (const BYTE *)Game::instance();
     if (!g) return;
-    BYTE screen = g[OFF_GAME_STATE];
+    BYTE screen = ((const Game *)g)->state();
 
     /* bGame_state turned out not to hold the value the level-load path writes
      * for the whole time a level is up, so log every transition rather than

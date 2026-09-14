@@ -14,6 +14,8 @@
 #pragma once
 
 #include "layout.h"
+#include "textentry.h"
+#include "saveslots.h"
 
 class SoundManager;
 class LiftObject;
@@ -100,6 +102,11 @@ public:
     int  soundCreated() const        { return soundCreated_; }
 
     /* ── time ───────────────────────────────────────────────────────── */
+    /* The `now` GameTick was last called with (double, ms); the menus
+     * stamp their timers from it.  Its two halves are also copied dword by
+     * dword into the menu object (+0x175524/8), which stays raw. */
+    double         lastTickTime() const              { return lastTickTime_; }
+    void           setLastTickTime(double t)         { lastTickTime_ = t; }
     /* The 8-byte clock accumulator.  Objects keep a pointer to it and
      * re-read it every tick.  Addressed via offsetof rather than &clock_,
      * which GCC flags for a packed member (-Waddress-of-packed-member); the
@@ -116,6 +123,34 @@ public:
     unsigned char *tileBase()        { return tileOrigin_; }
     /* Gems the level requires (Player::gemsCollected is the other side). */
     int            gemsRequired() const { return gemsRequired_; }
+
+    /* ── text entry ─────────────────────────────────────────────────── */
+    /* The cheat-code entry (HandleTypedCheatCode polls it every tick) and
+     * the name entry (save names and the high-score name). */
+    TextEntry     *cheatEntry()                      { return &cheatEntry_; }
+    TextEntry     *nameEntry()                       { return &nameEntry_; }
+    /* The save-slot table (saveslots.h). */
+    SaveSlots     *saveSlots()                       { return &saveSlots_; }
+
+    /* ── game state ─────────────────────────────────────────────────── */
+    /* The top-level state GameTick and HandleKeypress switch on, 0..7.
+     * menu.h's GAME_ST_* (decoded at runtime): 0 menu, 1 playing, 2 game
+     * over, 3 level completed, 4 loaded (the flythrough and its "press
+     * enter" screen), 7 quitting.  6 is high-score name entry (GameTick
+     * sets it after InsertScoreIntoHighScoreTable); 5 is not decoded.
+     * stateRef() is for the files that alias it as a STATE lvalue. */
+    unsigned char  state() const                     { return state_; }
+    void           setState(unsigned char s)         { state_ = s; }
+    unsigned char &stateRef()                        { return state_; }
+    /* GameTick runs InitLevelBasedSounds while this is 0, then sets it;
+     * Load, SetupLevelObjects and the 3D-sound toggle clear it. */
+    int            levelSoundsReady() const          { return levelSoundsReady_; }
+    void           setLevelSoundsReady(int r)        { levelSoundsReady_ = r; }
+    /* Save-name text entry in progress (the entry object is at +0x170a6d):
+     * HandleKeypress sets it on the save-slot nodes, routes keys to the
+     * entry while it is set, and clears it when entry ends. */
+    int            textEntryActive() const           { return textEntryActive_; }
+    void           setTextEntryActive(int a)         { textEntryActive_ = a; }
 
     /* ── the level sequence ─────────────────────────────────────────── */
     /* The level being played, 0-based (StoreGameStateIntoSaveSlot saves it),
@@ -155,6 +190,26 @@ public:
      * yaw -- the menus and the tally.  Checkpoints restore it. */
     unsigned char  cameraMode() const                { return cameraMode_; }
     void           setCameraMode(unsigned char m)    { cameraMode_ = m; }
+    /* The distance the camera eases towards (UpdateViewTransform subtracts
+     * the current eye distance and closes a dt-scaled share of the gap):
+     * 7.0 by default, 40.0 in CameraOverview, animated by the sway. */
+    float          cameraDistance() const            { return cameraDistance_; }
+    void           setCameraDistance(float d)        { cameraDistance_ = d; }
+    /* The controls menu's camera option: 1 = the camera turns with the
+     * player (UpdateViewTransform, FUN_00404120).  GameTick forces it to 1
+     * while Player+0xea is set, parking the choice +10 at +0x3215d. */
+    unsigned char  cameraTurnsWithPlayer() const     { return cameraTurnsWithPlayer_; }
+    void           setCameraTurnsWithPlayer(unsigned char on) { cameraTurnsWithPlayer_ = on; }
+    /* Where GameTick parks cameraTurnsWithPlayer while Player+0xea forces
+     * it on: the player's choice + 10, so 0 means "nothing parked".  Load
+     * zeroes it. */
+    unsigned char  parkedCameraOption() const        { return parkedCameraOption_; }
+    void           setParkedCameraOption(unsigned char v) { parkedCameraOption_ = v; }
+    /* The options menu's 3D-sound switch: handed to the SoundManager's
+     * setup, and InitLevelBasedSounds adds the extra-object sounds only
+     * while it is on. */
+    int            sound3D() const                   { return sound3D_; }
+    void           setSound3D(int on)                { sound3D_ = on; }
     /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
     unsigned short joyDeadzone() const               { return joyDeadzone_; }
     void           setJoyDeadzone(unsigned short p)  { joyDeadzone_ = p; }
@@ -315,7 +370,9 @@ private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x04215e - 0x000000];
+    unsigned char gap_000000[0x03215d - 0x000000];
+    unsigned char parkedCameraOption_;                    /* 0x03215d */
+    unsigned char gap_03215e[0x04215e - 0x03215e];
     unsigned char levelCount_;                            /* 0x04215e */
     unsigned char gap_04215f[0x04220b - 0x04215f];
     unsigned char restartCount_;                          /* 0x04220b */
@@ -325,7 +382,8 @@ private:
     unsigned char gap_04224e[0x042250 - 0x04224e];
     unsigned short itemTotal_;                            /* 0x042250 */
     unsigned short field_42252_;                          /* 0x042252 */
-    unsigned char gap_042254[0x042262 - 0x042254];
+    int           levelSoundsReady_;                      /* 0x042254 */
+    unsigned char gap_042258[0x042262 - 0x042258];
     SoundAssetName soundAsset42262_;                 /* 0x042262 */
     unsigned char gap_042366[0x04236e - 0x042366];
     SoundAssetName soundAsset4236e_;                 /* 0x04236e */
@@ -381,19 +439,23 @@ private:
      * we use are declared.  soundCreated_ sits inside it at +0x8c. */
     unsigned char soundManagerHead_[0x13cc34 - 0x13cba8];
     int           soundCreated_;                          /* 0x13cc34 */
-    unsigned char gap_13cc38[0x1404c1 - 0x13cc38];
+    unsigned char gap_13cc38[0x13cdac - 0x13cc38];
+    TextEntry     cheatEntry_;                            /* 0x13cdac */
+    unsigned char gap_13cdbb[0x1404c1 - 0x13cdbb];
     ScoreTally    tally_;                                 /* 0x1404c1 */
     unsigned char gap_140543[0x170643 - 0x140543];
     BridgeObject *bridgeSlots_[256];                      /* 0x170643 */
     unsigned char bridgeCount_;                           /* 0x170a43 */
     double        totalPlayTime_;                         /* 0x170a44 */
-    unsigned char gap_170a4c[0x170a54 - 0x170a4c];
+    double        lastTickTime_;                          /* 0x170a4c */
     double        clock_;                                 /* 0x170a54 */
     Field170a5c   field_170a5c_;                          /* 0x170a5c */
     /* Recomputed by GameTick every tick; see vitalityPercent(). */
     unsigned char vitalityPercent_;                       /* 0x170a64 */
     unsigned int  field_170a65_;                          /* 0x170a65 */
-    unsigned char gap_170a69[0x173483 - 0x170a69];
+    int           textEntryActive_;                       /* 0x170a69 */
+    TextEntry     nameEntry_;                             /* 0x170a6d */
+    SaveSlots     saveSlots_;                             /* 0x170a7c */
     /* Its length is unknown; declared only as far as the next field. */
     char          levelName_[0x173583 - 0x173483];        /* 0x173483 */
     unsigned char levelIndex_;                            /* 0x173583 */
@@ -412,20 +474,24 @@ private:
     unsigned char foeCount_;                              /* 0x174fd4 */
     /* 500 long: the Player object follows at 0x1751c9. */
     unsigned char foeIds_[500];                           /* 0x174fd5 */
-    unsigned char gap_1751c9[0x28ab2d - 0x1751c9];
+    unsigned char gap_1751c9[0x28ab29 - 0x1751c9];
+    float         cameraDistance_;                        /* 0x28ab29 */
     unsigned char cameraMode_;                            /* 0x28ab2d */
     unsigned char gap_28ab2e[0x2aa156 - 0x28ab2e];
     int           musicOn_;                               /* 0x2aa156 */
     unsigned char cdVolume_;                              /* 0x2aa15a */
     unsigned char gap_2aa15b[0x2aa15f - 0x2aa15b];
     unsigned int  cdMixerVolume_;                         /* 0x2aa15f */
-    unsigned char gap_2aa163[0x2ab568 - 0x2aa163];
+    unsigned char gap_2aa163[0x2ab564 - 0x2aa163];
+    int           sound3D_;                               /* 0x2ab564 */
     unsigned char waveVolume_;                            /* 0x2ab568 */
     unsigned char gap_2ab569[0x2ab56d - 0x2ab569];
     unsigned int  waveOutVolume_;                         /* 0x2ab56d */
-    unsigned char gap_2ab571[0x2ab57e - 0x2ab571];
+    unsigned char cameraTurnsWithPlayer_;                 /* 0x2ab571 */
+    unsigned char gap_2ab572[0x2ab57e - 0x2ab572];
     unsigned short joyDeadzone_;                          /* 0x2ab57e */
-    unsigned char gap_2ab580[0x2ab58d - 0x2ab580];
+    unsigned char gap_2ab580[0x2ab58c - 0x2ab580];
+    unsigned char state_;                                 /* 0x2ab58c */
     /* Where Tile::at() indexes from; the tiles extend past it.  The bytes
      * from here to the first cell look like a map header (the time limit at
      * +0x2ab591, this quota, the extents at +0x2ab727/8), not tile fields --
@@ -507,8 +573,19 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(cameraMode_,       0x28ab2d);
     KAROO_LAYOUT_AT(joyDeadzone_,      0x2ab57e);
     KAROO_LAYOUT_AT(cdVolume_,         0x2aa15a);
+    KAROO_LAYOUT_AT(cameraDistance_,   0x28ab29);
+    KAROO_LAYOUT_AT(sound3D_,          0x2ab564);
+    KAROO_LAYOUT_AT(cameraTurnsWithPlayer_, 0x2ab571);
     KAROO_LAYOUT_AT(cdMixerVolume_,    0x2aa15f);
     KAROO_LAYOUT_AT(waveVolume_,       0x2ab568);
     KAROO_LAYOUT_AT(waveOutVolume_,    0x2ab56d);
     KAROO_LAYOUT_AT(totalPlayTime_,    0x170a44);
+    KAROO_LAYOUT_AT(lastTickTime_,     0x170a4c);
+    KAROO_LAYOUT_AT(state_,            0x2ab58c);
+    KAROO_LAYOUT_AT(parkedCameraOption_, 0x03215d);
+    KAROO_LAYOUT_AT(levelSoundsReady_, 0x042254);
+    KAROO_LAYOUT_AT(textEntryActive_,  0x170a69);
+    KAROO_LAYOUT_AT(cheatEntry_,       0x13cdac);
+    KAROO_LAYOUT_AT(nameEntry_,        0x170a6d);
+    KAROO_LAYOUT_AT(saveSlots_,        0x170a7c);
 }

@@ -31,6 +31,7 @@
 #include <windows.h>
 #include <string.h>
 #include "log.h"
+#include "textentry.h"
 
 extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 
@@ -60,12 +61,16 @@ static int blink_positive(unsigned int phase)
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PollTextEntryKeys(void *self, unsigned int phase)
 {
-    unsigned char *W = (unsigned char *)self;
-#define BUF   (*(unsigned char **)(W + 4))
-#define LAST  W[8]
-#define CUR   W[9]
-#define MAXL  W[10]
-#define ACTIVE (*(int *)(W + 0xb))
+    ((TextEntry *)self)->poll(phase);
+}
+
+void TextEntry::poll(unsigned int phase)
+{
+#define BUF    ((unsigned char *)buffer_)
+#define LAST   lastKey_
+#define CUR    cursor_
+#define MAXL   maxLength_
+#define ACTIVE active_
 
     if (s_fx < 0) {
         char b[32];

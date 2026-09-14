@@ -52,12 +52,11 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "textentry.h"
 #include "foe.h"
 #include "player.h"
 #include "tile.h"
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PollTextEntryKeys(void *self, unsigned int phase);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Score_CalculateLevelScore(void *self, char endReason);
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
@@ -110,8 +109,8 @@ static int streq(const unsigned char *a, const char *b)
  * state 4 with the flythrough armed. */
 static void enter_loaded_state(unsigned char *B, FILE *fp)
 {
-    G32(0x28ab29) = 0x40e00000;
-    G8(0x2ab58c) = 4;
+    ((Game *)B)->setCameraDistance(7.0f);
+    ((Game *)B)->setState(4);
     if (((Game *)B)->musicOn() != 0)
         CDM_StopTrack(CDAUDIO);
     G32(0x1964e3) = 1;
@@ -137,9 +136,8 @@ Sim_HandleTypedCheatCode(void *self)
             log_write("cheatcode: KAROO_SIM_FX=cheatlife -- mausuruh gives 2\n");
     }
 
-    Sim_PollTextEntryKeys(B + 0x13cdac,
-                          (unsigned int)(long long)GD(0x170a54));
-    if (G32(0x13cdb7) != 0)
+    ((Game *)B)->cheatEntry()->poll((unsigned int)(long long)GD(0x170a54));
+    if (((Game *)B)->cheatEntry()->active() != 0)
         return;
 
     /* kaputo */
@@ -159,7 +157,7 @@ Sim_HandleTypedCheatCode(void *self)
     /* supa */
     if (streq(buf, "supa")) {
         if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
-            G8(0x2ab58c) = 2;
+            ((Game *)B)->setState(2);
             if (((Game *)B)->musicOn() != 0)
                 Sim_PlayCDStuf(B + 0x2223f, S_GAMEOVER);
             Score_CalculateLevelScore(B, 0x28);
@@ -171,7 +169,7 @@ Sim_HandleTypedCheatCode(void *self)
             G32(0x175524) = G32(0x170a4c);
             G32(0x175528) = G32(0x170a50);
             G32(0x17552c) = 1;
-            G8(0x2ab58c) = 3;
+            ((Game *)B)->setState(3);
             if (((Game *)B)->musicOn() != 0)
                 Sim_PlayCDStuf(B + 0x2223f, S_COMPLETED);
             ((Game *)B)->setCameraMode(2);
@@ -183,7 +181,7 @@ Sim_HandleTypedCheatCode(void *self)
             G8(0x195734) = 0x28;
             G8(0x175535) = 0;
             G32(0x17552c) = 1;
-            Score_CalculateLevelScore(B, (char)G8(0x2ab58c));
+            Score_CalculateLevelScore(B, (char)((Game *)B)->state());
             ((Game *)B)->setRestartCount(0);
             GameLog_LogMessage(GAMELOGGER, 1, F_CSL);
         }
@@ -258,8 +256,8 @@ Sim_HandleTypedCheatCode(void *self)
     }
 
     memset(buf, 0, 0x100);
-    G8(0x13cdb5) = 0;
+    ((Game *)B)->cheatEntry()->setCursor(0);
     *(unsigned char **)(B + 0x13cdb0) = buf;
-    G32(0x13cdb7) = 1;
-    G8(0x13cdb4) = 0x0d;
+    ((Game *)B)->cheatEntry()->setActive(1);
+    ((Game *)B)->cheatEntry()->setLastKey(0x0d);
 }

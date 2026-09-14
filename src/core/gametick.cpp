@@ -46,6 +46,7 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "textentry.h"
 #include "liftobject.h"
 #include "slideobject.h"
 #include "bridgeobject.h"
@@ -72,7 +73,6 @@ __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_FindThemeIndexB
 __declspec(dllexport) void __attribute__((thiscall)) Sim_RestoreCheckpointStateBlocks(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleKeypress(void *self);
 __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AnimateScoreTallyStages(void *self);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_PollTextEntryKeys(void *self, unsigned int phase);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
@@ -124,7 +124,7 @@ typedef void (__attribute__((fastcall)) *relstream_fn)(void *self);
 #define KEY(k)  hooks_GetAsyncKeyState(k)
 
 
-#define STATE   G8(0x2ab58c)
+#define STATE   (((Game *)B)->stateRef())
 #define DEB     G8(0x175517)
 #define MENU    (B + 0x175518)
 #define ACC     GD(0x170a54)
@@ -246,9 +246,9 @@ Sim_GameTick(void *self, double dt, double now)
     }
 
     Sim_AcquireFixedSoundBuffersAndMaybeReport(B);
-    if (G32(0x42254) == 0 && G32(0x173584) == 0) {
+    if (((Game *)B)->levelSoundsReady() == 0 && G32(0x173584) == 0) {
         Sim_InitLevelBasedSounds(B);
-        G32(0x42254) = 1;
+        ((Game *)B)->setLevelSoundsReady(1);
         if (STATE == 0 && ((Game *)B)->musicOn() != 0)
             Sim_PlayCDStuf_2(B + 0x2223f);
     }
@@ -258,7 +258,7 @@ Sim_GameTick(void *self, double dt, double now)
         PostQuitMessage(1);
     }
 
-    *(double *)(B + 0x170a4c) = now;
+    ((Game *)B)->setLastTickTime(now);
     if (STATE == 5) {
         G32(0x170a5c) = 0;
         G32(0x170a60) = 0;
@@ -289,14 +289,14 @@ Sim_GameTick(void *self, double dt, double now)
                 G8(0x2235a) = (unsigned char)Sim_FindThemeIndexByThemeName(
                     B + 0x2223f, (const char *)(B + 0x2ab69d));
             }
-            G32(0x28ab29) = 0x40e00000;
+            ((Game *)B)->setCameraDistance(7.0f);
             ((Game *)B)->setCameraMode(0);
             pl->setField231(*((Game *)B)->clock());
         }
     }
 
     if (((Game *)B)->cameraMode() == 0)
-        GF(0x28ab29) = camera_sway(now, GF(0x13cca4));
+        ((Game *)B)->setCameraDistance(camera_sway(now, GF(0x13cca4)));
 
     if (STATE == 3) {
         Sim_HandleKeypress(B);
@@ -305,7 +305,7 @@ Sim_GameTick(void *self, double dt, double now)
     if (STATE == 2)
         Sim_AnimateScoreTallyStages(B);
     if (STATE == 6)
-        Sim_PollTextEntryKeys(B + 0x170a6d, (unsigned int)ftol80(ACC));
+        ((Game *)B)->nameEntry()->poll((unsigned int)ftol80(ACC));
 
     Game *game = (Game *)B;
     if (!s_fx) {
@@ -353,7 +353,7 @@ Sim_GameTick(void *self, double dt, double now)
     pl->updateTileEffects();
 
     if (STATE == 1) {
-        if (G32(0x13cdb7) != 0)
+        if (((Game *)B)->cheatEntry()->active() != 0)
             Sim_HandleTypedCheatCode(B);
 
         /* the runtime foe spawners, stride 0x15 from Game+0x20251 */
@@ -381,20 +381,20 @@ Sim_GameTick(void *self, double dt, double now)
         G32(0x2ab576) = G32(0x2ab57a);
         if (pl->moveState() != 0) {
             G32(0x13cca8) = 0;
-            G32(0x28ab29) = G32(0x13cca4);
+            ((Game *)B)->setCameraDistance(*(float *)(B + 0x13cca4));
             if (pl->soundAf() != NULL) CStatic_HaltPlayback(pl->soundAf());
             if (pl->soundAb() != NULL) CStatic_HaltPlayback(pl->soundAb());
             if (pl->soundC7() != NULL) CStatic_HaltPlayback(pl->soundC7());
         }
 
         if ((unsigned int)pl->fieldEa() != 0) {
-            if (G8(0x3215d) == 0) {
-                G8(0x3215d) = (unsigned char)(G8(0x2ab571) + 10);
-                G8(0x2ab571) = 1;
+            if (((Game *)B)->parkedCameraOption() == 0) {
+                ((Game *)B)->setParkedCameraOption((unsigned char)(((Game *)B)->cameraTurnsWithPlayer() + 10));
+                ((Game *)B)->setCameraTurnsWithPlayer(1);
             }
-        } else if (G8(0x3215d) >= 10) {
-            G8(0x2ab571) = (unsigned char)(G8(0x3215d) - 10);
-            G8(0x3215d) = 0;
+        } else if (((Game *)B)->parkedCameraOption() >= 10) {
+            ((Game *)B)->setCameraTurnsWithPlayer((unsigned char)(((Game *)B)->parkedCameraOption() - 10));
+            ((Game *)B)->setParkedCameraOption(0);
         }
 
         /* last-seconds countdown: compared at 80 bits, stored at 64 */
@@ -627,7 +627,7 @@ Sim_GameTick(void *self, double dt, double now)
                 ((Game *)B)->setRestartCount(0);
             }
             if (restart_tail) {
-                G32(0x28ab29) = 0x40e00000;
+                ((Game *)B)->setCameraDistance(7.0f);
                 ((Game *)B)->setCameraMode(0);
                 DEB = 0x0d;
             }
@@ -639,12 +639,12 @@ Sim_GameTick(void *self, double dt, double now)
             STATE = 6;
             if (((Game *)B)->musicOn() != 0)
                 CDM_StopTrack(CDAUDIO);
-            G8(0x170a77) = 0x0f;
-            G32(0x170a78) = 1;
-            G8(0x170a76) = 0;
+            ((Game *)B)->nameEntry()->setMaxLength(0x0f);
+            ((Game *)B)->nameEntry()->setActive(1);
+            ((Game *)B)->nameEntry()->setCursor(0);
             DEB = 0x0d;
-            G8(0x170a75) = 0x0d;
-            *(unsigned char **)(B + 0x170a71) = B + 0x13cdc0 + G8(0x13cdbf) * 0x37;
+            ((Game *)B)->nameEntry()->setLastKey(0x0d);
+            ((Game *)B)->nameEntry()->setBuffer((char *)(B + 0x13cdc0 + G8(0x13cdbf) * 0x37));
         } else {
             STATE = 0;
             Sim_RewindMenuStackToRootNode(MENU);

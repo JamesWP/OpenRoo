@@ -38,6 +38,7 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "textentry.h"
 #include "player.h"
 
 struct CStaticSoundbuffer;
@@ -54,10 +55,6 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Sim_VoicePoolCycle(VoicePool *self, DWORD dwLoopFlags);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_NavigateMenuTree(void *self, int now);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PollTextEntryKeys(void *self, unsigned int phase);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Save_WriteAllSlotFiles(void *self, const char *name, char key);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PopMenuNodeFromStack(void *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -108,7 +105,7 @@ typedef void (__attribute__((thiscall)) *sound_setup_fn)(void *sm, int mode3d);
 #define MENU    (B + 0x175518)
 #define DEB     G8(0x175517)
 #define NODE    G8(0x195734)
-#define STATE   G8(0x2ab58c)
+#define STATE   (((Game *)B)->stateRef())
 
 static int s_fx = -1;
 
@@ -128,7 +125,7 @@ static void rebind(unsigned char *B, const char *name, unsigned char code, int h
 static void loaded_tail(unsigned char *B)
 {
     STATE = 4;
-    G32(0x28ab29) = 0x40e00000;
+    ((Game *)B)->setCameraDistance(7.0f);
     if (((Game *)B)->musicOn() != 0)
         CDM_StopTrack(CDAUDIO);
     G32(0x1964e3) = 1;
@@ -226,7 +223,7 @@ Sim_HandleKeypress(void *self)
     }
 
     int entry = 0;
-    if (G32(0x175513) == 0 && G32(0x170a69) == 0) {
+    if (G32(0x175513) == 0 && ((Game *)B)->textEntryActive() == 0) {
         if (KEY(0x1b) != 0 && DEB != 0x1b && G32(0x17551c) != 0) {
             if (GP(0x13cc60) != NULL)
                 CStatic_TriggerPlayback((CStaticSoundbuffer *)GP(0x13cc60), 0);
@@ -250,21 +247,22 @@ Sim_HandleKeypress(void *self)
                 CStatic_TriggerPlayback((CStaticSoundbuffer *)GP(0x13cc60), 0);
             DEB = 0x0d;
         }
-        Sim_NavigateMenuTree(MENU, (int)(long long)GD(0x170a4c));
+        Sim_NavigateMenuTree(MENU, (int)(long long)((Game *)B)->lastTickTime());
         G16(0x175520) = (unsigned short)NODE;
-        entry = G32(0x170a69) != 0;
+        entry = ((Game *)B)->textEntryActive() != 0;
     } else {
-        entry = G32(0x170a69) != 0;
+        entry = ((Game *)B)->textEntryActive() != 0;
     }
 
     if (entry) {                               /* save-name text entry */
-        Sim_PollTextEntryKeys(B + 0x170a6d, (unsigned int)(long long)GD(0x170a54));
-        if (G32(0x170a78) == 0) {
-            if (G8(0x170a75) == 0x0d)
-                Save_WriteAllSlotFiles(B + 0x170a7c, (const char *)(B + 0x4215f), 0x37);
+        ((Game *)B)->nameEntry()->poll((unsigned int)(long long)GD(0x170a54));
+        if (((Game *)B)->nameEntry()->active() == 0) {
+            if (((Game *)B)->nameEntry()->lastKey() == 0x0d)
+                Save_WriteAllSlotFiles(((Game *)B)->saveSlots(), (const char *)(B + 0x4215f), 0x37);
             else
-                memcpy(B + 0x170aad + G16(0x170a80) * 0x2a, B + 0x170a82, 0x2a);
-            G32(0x170a69) = 0;
+                memcpy(((Game *)B)->saveSlots()->slot((unsigned char)((Game *)B)->saveSlots()->editSlot()),
+                       ((Game *)B)->saveSlots()->edit(), sizeof(SaveSlot));
+            ((Game *)B)->setTextEntryActive(0);
             Sim_PopMenuNodeFromStack(MENU);
             G8(0x175535) = 0;
         }
@@ -328,7 +326,7 @@ Sim_HandleKeypress(void *self)
     case 0x20: rebind(B, (const char *)0x004644b4, 0x20, -1); break;
     case 0x21:
         if (((Game *)B)->player()->fieldEa() == 0)
-            G8(0x2ab571) = G8(0x2ab571) == 0;
+            ((Game *)B)->setCameraTurnsWithPlayer(((Game *)B)->cameraTurnsWithPlayer() == 0);
         Sim_PopMenuNodeFromStack(MENU);
         break;
     case 0x47:
@@ -336,9 +334,9 @@ Sim_HandleKeypress(void *self)
         Sim_PopMenuNodeFromStack(MENU);
         break;
     case 0x3c:
-        G32(0x2ab564) = G32(0x2ab564) == 0;
-        ORIG_SOUND_SETUP(B + 0x13cba8, (int)G32(0x2ab564));
-        G32(0x42254) = 0;
+        ((Game *)B)->setSound3D(((Game *)B)->sound3D() == 0);
+        ORIG_SOUND_SETUP(B + 0x13cba8, ((Game *)B)->sound3D());
+        ((Game *)B)->setLevelSoundsReady(0);
         Sim_PopMenuNodeFromStack(MENU);
         break;
     case 0x3d:
@@ -383,13 +381,13 @@ Sim_HandleKeypress(void *self)
 
     /* save-slot LOAD nodes 200 .. 200+n-1 */
     {
-        unsigned int n = G8(0x170aac);
+        unsigned int n = ((Game *)B)->saveSlots()->count();
         unsigned int node = NODE;
         if (node >= 200 && (int)node < (int)(n + 200)) {
             unsigned char slot = (unsigned char)(node + 0x38);
             if (s_fx)
                 slot = (unsigned char)(slot + 1);
-            if (G32(0x170acf + slot * 0x2a) != 0) {
+            if (((Game *)B)->saveSlots()->slot(slot)->inUse != 0) {
                 Sim_ClearGameState(B);
                 Sim_RestoreGameStateFromSaveSlot(B, slot);
                 Sim_OpenLevelFile(B, ((Game *)B)->levelIndex());
@@ -403,20 +401,20 @@ Sim_HandleKeypress(void *self)
 
     /* save-slot SAVE nodes 200+n .. 200+2n-1 */
     {
-        unsigned int n = G8(0x170aac);
+        unsigned int n = ((Game *)B)->saveSlots()->count();
         unsigned int node = NODE;
         if ((int)node >= (int)(n + 200) && (int)node < (int)(2 * n + 200)) {
             unsigned char slot = (unsigned char)(node - n + 0x38);
-            unsigned char *rec = B + 0x170aad + slot * 0x2a;
-            G8(0x170a77) = 10;
-            G32(0x170a69) = 1;
-            G32(0x170a78) = 1;
-            memcpy(B + 0x170a82, rec, 0x2a);
-            *(unsigned char **)(B + 0x170a71) = rec;
-            G16(0x170a80) = slot;
-            G8(0x170a76) = (unsigned char)strlen((const char *)rec);
+            unsigned char *rec = (unsigned char *)((Game *)B)->saveSlots()->slot(slot);
+            ((Game *)B)->nameEntry()->setMaxLength(10);
+            ((Game *)B)->setTextEntryActive(1);
+            ((Game *)B)->nameEntry()->setActive(1);
+            memcpy(((Game *)B)->saveSlots()->edit(), rec, sizeof(SaveSlot));
+            ((Game *)B)->nameEntry()->setBuffer((char *)rec);
+            ((Game *)B)->saveSlots()->setEditSlot(slot);
+            ((Game *)B)->nameEntry()->setCursor((unsigned char)strlen((const char *)rec));
             Sim_StoreGameStateIntoSaveSlot(B, slot);
-            G8(0x170a75) = 0x0d;
+            ((Game *)B)->nameEntry()->setLastKey(0x0d);
             KEY(8);
             KEY(8);
             KEY(8);

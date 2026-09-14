@@ -57,7 +57,7 @@ Sim_RestoreCheckpointStateBlocks(void *self)
     ORIG_SCRIPT_TICK(B + 0x195735, G32(0x170a54), G32(0x170a58),
                      G32(0x170a5c), G32(0x170a60));
     ((Game *)B)->setCameraMode(G8(0x1964e2));
-    G32(0x28ab29) = G32(0x1960ea);
+    ((Game *)B)->setCameraDistance(*(float *)(B + 0x1960ea));
     G32(0x2ab580) = G32(0x1964d6);
     G32(0x2ab584) = G32(s_fx ? 0x1964da : 0x1964de);
     G32(0x2ab588) = G32(s_fx ? 0x1964de : 0x1964da);

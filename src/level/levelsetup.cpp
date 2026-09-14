@@ -179,7 +179,6 @@
 #define G_SCRIPT_READER    0x195735
 #define G_EXTRA_OBJECTS    0x48b98
 #define G_EXTRA_LOADED     0x48b9c
-#define G_UNK_42254        0x42254
 #define G_UNK_42258        0x42258
 
 #define G_PLAYER_POS       0x2ab580    /* three floats                       */
@@ -485,7 +484,7 @@ Sim_SetupLevelObjects(void *self)
 
     GameLog_LogMessage(GAME_LOGGER_VA, 2, S_INIT_STARTED);
 
-    DW(G, G_UNK_42254) = 0;
+    ((Game *)G)->setLevelSoundsReady(0);
     ORIG_RELEASE_SCRIPT(G + G_SCRIPT_READER);
     Leo_ReleaseExtraObjectSoundBuffers(G + G_EXTRA_OBJECTS);
     ORIG_NOOP_440450(G + G_UNK_42258);

@@ -148,16 +148,15 @@ Sim_NavigateMenuTree(void *self, int now)
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_StoreGameStateIntoSaveSlot(void *self, unsigned int slotArg)
 {
-    unsigned char *B = (unsigned char *)self;
-    unsigned char *S = B + (slotArg & 0xff) * 0x2a;
+    Game     *game = (Game *)self;
+    SaveSlot *S    = game->saveSlots()->slot((unsigned char)slotArg);
 
-    S[0x170ac1] = (unsigned char)(((Game *)B)->levelIndex() + 1);
-    *(unsigned int *)(S + 0x170acb) =
-        (unsigned int)(long long)((Game *)B)->totalPlayTime();
-    *(unsigned int *)(S + 0x170ac7) = (unsigned int)((Game *)B)->player()->fieldD8();
-    *(unsigned int *)(S + 0x170ac3) = (unsigned int)((Game *)B)->player()->field22c();
-    S[0x170ac2] = (unsigned char)((Game *)B)->player()->field239();
-    *(unsigned int *)(S + 0x170acf) = 1;
+    S->levelIndex          = (unsigned char)(game->levelIndex() + 1);
+    S->elapsedGameTime     = (unsigned int)(long long)game->totalPlayTime();
+    S->completionNumerator = (unsigned int)game->player()->fieldD8();
+    S->totalScore          = (unsigned int)game->player()->field22c();
+    S->livesRemaining      = (unsigned char)game->player()->field239();
+    S->inUse               = 1;
     return 1;
 }
 
@@ -165,13 +164,14 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_RestoreGameStateFromSaveSlot(void *self, unsigned int slotArg)
 {
     unsigned char *B = (unsigned char *)self;
-    unsigned char *S = B + (slotArg & 0xff) * 0x2a;
+    SaveSlot *S = ((Game *)B)->saveSlots()->slot((unsigned char)slotArg);
 
-    ((Game *)B)->setLevelIndex(S[0x170ac1]);
-    ((Game *)B)->setTotalPlayTime(
-        (double)(unsigned long long)*(unsigned int *)(S + 0x170acb));
-    *(unsigned int *)(B + 0x1752a1) = *(unsigned int *)(S + 0x170ac7);
-    *(unsigned int *)(B + 0x1753f5) = *(unsigned int *)(S + 0x170ac3);
-    *(unsigned int *)(B + 0x175402) = S[0x170ac2];
-    return ((unsigned int)(unsigned long)(S) & 0xffffff00u) | 1u;
+    ((Game *)B)->setLevelIndex(S->levelIndex);
+    ((Game *)B)->setTotalPlayTime((double)(unsigned long long)S->elapsedGameTime);
+    *(unsigned int *)(B + 0x1752a1) = S->completionNumerator;
+    *(unsigned int *)(B + 0x1753f5) = S->totalScore;
+    *(unsigned int *)(B + 0x175402) = S->livesRemaining;
+    /* EAX's low byte is 1; the rest is what the original left in it:
+     * Game + slot*0x2a, the base it indexed every field from. */
+    return ((unsigned int)(unsigned long)(B + (slotArg & 0xff) * 0x2a) & 0xffffff00u) | 1u;
 }

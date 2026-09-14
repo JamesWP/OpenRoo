@@ -231,7 +231,7 @@ void menu_tick(void)
         log_write("menu: node=%u cursor=%u/%u depth=%u lock=%lu screen=%u "
                   "children=[%s] goal=%u\n",
                   m.node, m.cursor, m.count, m.depth, (unsigned long)m.lock,
-                  (unsigned)g[0x2ab58c], kids, g_goal);
+                  (unsigned)((const Game *)g)->state(), kids, g_goal);
         g_last_node = m.node; g_last_cursor = m.cursor;
     }
 

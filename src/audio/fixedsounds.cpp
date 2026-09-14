@@ -180,7 +180,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
     GP(0x13cc70) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* LevelCompleted */
     sprintf(path, (const char *)0x00465a58, GAMEDIR);
     ((Game *)B)->player()->setSoundA7(((SoundManager *)sm)->acquireStatic(path, 1)); /* splat */
-    ORIG_SOUND_SETUP(sm, (int)G32(0x2ab564));
+    ORIG_SOUND_SETUP(sm, ((Game *)B)->sound3D());
 
     G32(0x13cc80) = 1;
 }
