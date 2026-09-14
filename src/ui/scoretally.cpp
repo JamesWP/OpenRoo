@@ -31,6 +31,7 @@
 #include "static.h"
 #include "log.h"
 #include "game.h"
+#include "menutree.h"
 
 extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
@@ -51,7 +52,7 @@ static unsigned int ftol_low(const unsigned char *B)
 
 static void tick_sound(unsigned char *B)
 {
-    CStaticSoundbuffer *s = *(CStaticSoundbuffer **)(B + 0x13cc68);
+    CStaticSoundbuffer *s = ((Game *)B)->fixedSounds()->count;
     if (s != NULL)
         CStatic_TriggerPlayback(s, 0);
 }
@@ -178,7 +179,7 @@ totals:
                        + (unsigned int)T->shownScore[TALLY_VITALITY];
         T->shownLevelTotal = (int)t;
         T->shownGrandTotal = (int)((unsigned int)T->shownBase + t);
-        if (G8(0x175517) != 0x0d && hooks_GetAsyncKeyState(0x0d) != 0)
+        if (((Game *)B)->debounce() != 0x0d && hooks_GetAsyncKeyState(0x0d) != 0)
             ((Game *)B)->setTallyDone(1);
         return (t & 0xffffff00u) | 0xffu;
     }

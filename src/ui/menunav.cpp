@@ -54,12 +54,9 @@
 #include "log.h"
 #include "game.h"
 #include "player.h"
+#include "menutree.h"
 
 extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PopMenuNodeFromStack(void *self);
 
 #define KEY(k)  hooks_GetAsyncKeyState(k)
 
@@ -68,15 +65,19 @@ static int s_fx = -1;
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_NavigateMenuTree(void *self, int now)
 {
-    unsigned char *M = (unsigned char *)self;
-#define CHANGED (*(unsigned int *)(M + 0x04))
-#define LOCK    (*(unsigned int *)(M + 0x14))
-#define LEAVE   (*(unsigned int *)(M + 0x18))
-#define DEB     M[0x1c]
-#define CUR     M[0x1d]
-#define DEPTH   M[0x2001d]
-#define NODE    M[0x2021c]
-#define COUNT(n) M[0x11d + (n)]
+    ((MenuTree *)self)->navigate(now);
+}
+
+void MenuTree::navigate(int now)
+{
+#define CHANGED changed_
+#define LOCK    lock_
+#define LEAVE   leave_
+#define DEB     lastKey_
+#define CUR     cursor_
+#define DEPTH   depth_
+#define NODE    node_
+#define COUNT(n) childCount_[n]
 
     if (s_fx < 0) {
         char e[32];
@@ -88,7 +89,7 @@ Sim_NavigateMenuTree(void *self, int now)
 
     CHANGED = 0;
     if (LOCK != 0) {
-        unsigned int t = (unsigned int)(long long)*(double *)(M + 0x0c);
+        unsigned int t = (unsigned int)(long long)lockStart_;
         if ((unsigned int)now - t > 200)
             LOCK = 0;
         KEY(0x26);
@@ -97,17 +98,17 @@ Sim_NavigateMenuTree(void *self, int now)
         KEY(0x0d);
     } else {
         if (DEB != 0x0d && KEY(0x0d) != 0) {
-            unsigned char child = M[0x21c + NODE * 0xff + CUR];
-            M[0x1e + NODE] = CUR;
+            unsigned char child = children_[NODE * CHILD_STRIDE + CUR];
+            savedCursor_[NODE] = CUR;
             CUR = 0;
             CHANGED = 1;
-            Sim_PushMenuNodeOnStack(M, NODE);
+            push(NODE);
             NODE = child;
             DEB = 0x0d;
         }
         if (DEB != 0x1b && KEY(0x1b) != 0) {
             if (DEPTH > 1) {
-                Sim_PopMenuNodeFromStack(M);
+                pop();
                 CHANGED = 1;
             } else {
                 LEAVE = 1;

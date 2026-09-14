@@ -58,18 +58,11 @@
 #include "menu.h"
 #include "log.h"
 #include "game.h"
+#include "menutree.h"
 #include <string.h>
 #include <stdlib.h>
 
 
-#define OFF_LOCK      0x17552c
-#define OFF_LASTKEY   0x175534
-#define OFF_CURSOR    0x175535
-#define OFF_COUNTS    0x175635
-#define OFF_CHILDREN  0x175734
-#define OFF_DEPTH     0x195535
-#define OFF_NODE      0x195734
-#define CHILD_STRIDE  0xff
 
 /* Pulse shape.  Two frames asserted is comfortably an edge at any frame rate
  * the game runs at; three released is enough for the navigator to clear its
@@ -105,13 +98,14 @@ bool menu_read(MenuState *m)
     memset(m, 0, sizeof(*m));
     if (!g) return false;
 
-    m->node     = g[OFF_NODE];
-    m->cursor   = g[OFF_CURSOR];
-    m->count    = g[OFF_COUNTS + m->node];
-    m->depth    = g[OFF_DEPTH];
-    m->last_key = g[OFF_LASTKEY];
-    m->lock     = *(const DWORD *)(g + OFF_LOCK);
-    memcpy(m->children, g + OFF_CHILDREN + (unsigned)m->node * CHILD_STRIDE, 256);
+    const MenuTree *mt = ((const Game *)g)->menu();
+    m->node     = mt->node();
+    m->cursor   = mt->cursor();
+    m->count    = mt->childCount(m->node);
+    m->depth    = mt->depth();
+    m->last_key = mt->lastKey();
+    m->lock     = mt->lock();
+    memcpy(m->children, mt->childRow(m->node), 256);
     m->valid    = true;
     return true;
 }
@@ -156,9 +150,9 @@ static int route_first_hop(const BYTE *g, BYTE from, BYTE goal)
     int head = 0, tail = 0;
     seen[from] = true;
 
-    BYTE n = g[OFF_COUNTS + from];
+    BYTE n = ((const Game *)g)->menu()->childCount(from);
     for (BYTE i = 0; i < n; i++) {
-        BYTE c = g[OFF_CHILDREN + (unsigned)from * CHILD_STRIDE + i];
+        BYTE c = ((const Game *)g)->menu()->child(from, (unsigned char)i);
         if (c == goal) return i;
         if (seen[c]) continue;
         seen[c]  = true;
@@ -168,9 +162,9 @@ static int route_first_hop(const BYTE *g, BYTE from, BYTE goal)
 
     while (head < tail) {
         BYTE cur = (BYTE)queue[head++];
-        BYTE cn  = g[OFF_COUNTS + cur];
+        BYTE cn  = ((const Game *)g)->menu()->childCount(cur);
         for (BYTE i = 0; i < cn; i++) {
-            BYTE c = g[OFF_CHILDREN + (unsigned)cur * CHILD_STRIDE + i];
+            BYTE c = ((const Game *)g)->menu()->child(cur, (unsigned char)i);
             if (c == goal) return first[cur];
             if (seen[c]) continue;
             seen[c]  = true;

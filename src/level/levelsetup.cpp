@@ -175,7 +175,6 @@
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
 #define G_MODE_FLAG        0x14        /* dword; 0 -> state 2, else state 1  */
-#define G_STATE_BYTE       0x17565d
 #define G_SCRIPT_READER    0x195735
 #define G_EXTRA_OBJECTS    0x48b98
 #define G_EXTRA_LOADED     0x48b9c
@@ -479,7 +478,8 @@ Sim_SetupLevelObjects(void *self)
     fx_init();
 
     /* ── run state ─────────────────────────────────────────────────────── */
-    B(G, G_STATE_BYTE) = (DW(G, G_MODE_FLAG) == 0) ? 2 : 1;
+    /* The level-completed node 0x28's child count: 2 or 1 by mode. */
+    ((Game *)G)->menu()->setChildCount(0x28, (DW(G, G_MODE_FLAG) == 0) ? 2 : 1);
     PL->setField1ca(10.0);                /* two dwords: 0, 0x40240000 */
 
     GameLog_LogMessage(GAME_LOGGER_VA, 2, S_INIT_STARTED);

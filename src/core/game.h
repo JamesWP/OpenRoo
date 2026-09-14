@@ -16,6 +16,7 @@
 #include "layout.h"
 #include "textentry.h"
 #include "saveslots.h"
+#include "menutree.h"
 
 class SoundManager;
 class LiftObject;
@@ -83,6 +84,44 @@ KAROO_LAYOUT_CHECKS(ScoreTally)
     KAROO_LAYOUT_SIZE(0x140543 - 0x1404c1);
 }
 
+/* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport 0x41a280 loads
+ * once, Game+0x13cc5c..+0x13cc84.  Ghidra's SoundManager struct places
+ * these at its +0xb4..+0xd8, but the SoundManager ctor 0x4430e0
+ * initialises nothing past its second list (ending +0xb4) and only Game
+ * code writes them -- so which object owns them is OPEN; they are modelled
+ * here on their own rather than guessed into either. */
+struct CStaticSoundbuffer;
+struct VoicePool;
+struct __attribute__((packed)) FixedSounds {
+    static const int ORIGIN = 0;
+
+    CStaticSoundbuffer *timeOut;          /* +0x00  0x13cc5c */
+    CStaticSoundbuffer *switchClick;      /* +0x04  menu select */
+    VoicePool          *menuUpDown;       /* +0x08  5 voices */
+    CStaticSoundbuffer *count;            /* +0x0c */
+    CStaticSoundbuffer *lastSeconds;      /* +0x10  the countdown */
+    CStaticSoundbuffer *levelCompleted;   /* +0x14 */
+    /* Three banks, 'A'..'C'; GameTick picks one by rand()%3 when the
+     * crystals are complete. */
+    CStaticSoundbuffer *crystalBank[3];   /* +0x18 */
+    /* Set once the load has run (or found no sound); it never runs again. */
+    unsigned int        loaded;           /* +0x24  0x13cc80 */
+
+    KAROO_LAYOUT_REGISTER(FixedSounds);
+};
+
+KAROO_LAYOUT_CHECKS(FixedSounds)
+{
+    KAROO_LAYOUT_AT(switchClick,    0x04);
+    KAROO_LAYOUT_AT(menuUpDown,     0x08);
+    KAROO_LAYOUT_AT(count,          0x0c);
+    KAROO_LAYOUT_AT(lastSeconds,    0x10);
+    KAROO_LAYOUT_AT(levelCompleted, 0x14);
+    KAROO_LAYOUT_AT(crystalBank,    0x18);
+    KAROO_LAYOUT_AT(loaded,         0x24);
+    KAROO_LAYOUT_SIZE(0x28);
+}
+
 class Bomb;
 class Foe;
 class Player;
@@ -100,6 +139,7 @@ public:
     SoundManager *soundManager()     { return (SoundManager *)soundManagerHead_; }
     /* Nonzero once sound is up. */
     int  soundCreated() const        { return soundCreated_; }
+    FixedSounds  *fixedSounds()      { return &fixedSounds_; }
 
     /* ── time ───────────────────────────────────────────────────────── */
     /* The `now` GameTick was last called with (double, ms); the menus
@@ -129,6 +169,22 @@ public:
      * the name entry (save names and the high-score name). */
     TextEntry     *cheatEntry()                      { return &cheatEntry_; }
     TextEntry     *nameEntry()                       { return &nameEntry_; }
+    /* The menu (menutree.h). */
+    MenuTree       *menu()                           { return &menu_; }
+    const MenuTree *menu() const                     { return &menu_; }
+    /* Game's own debounce key (distinct from MenuTree's): GameTick,
+     * HandleKeypress, the tally and the cheats ignore a key equal to it
+     * until it is released.  debounceRef() is for the DEB lvalue aliases. */
+    unsigned char  debounce() const                  { return debounce_; }
+    void           setDebounce(unsigned char k)      { debounce_ = k; }
+    unsigned char &debounceRef()                     { return debounce_; }
+    /* Key-rebind capture: the controls menu's rebind nodes name the action
+     * and set the flag; HandleKeypress captures the next binding and clears
+     * it.  RenderControlsRemap reads the flag. */
+    int            rebindActive() const              { return rebindActive_; }
+    void           setRebindActive(int a)            { rebindActive_ = a; }
+    void           setRebindCode(unsigned char c)    { rebindCode_ = c; }
+    char          *rebindAction()                    { return rebindAction_; }
     /* The save-slot table (saveslots.h). */
     SaveSlots     *saveSlots()                       { return &saveSlots_; }
 
@@ -439,7 +495,9 @@ private:
      * we use are declared.  soundCreated_ sits inside it at +0x8c. */
     unsigned char soundManagerHead_[0x13cc34 - 0x13cba8];
     int           soundCreated_;                          /* 0x13cc34 */
-    unsigned char gap_13cc38[0x13cdac - 0x13cc38];
+    unsigned char gap_13cc38[0x13cc5c - 0x13cc38];
+    FixedSounds   fixedSounds_;                           /* 0x13cc5c */
+    unsigned char gap_13cc84[0x13cdac - 0x13cc84];
     TextEntry     cheatEntry_;                            /* 0x13cdac */
     unsigned char gap_13cdbb[0x1404c1 - 0x13cdbb];
     ScoreTally    tally_;                                 /* 0x1404c1 */
@@ -474,7 +532,14 @@ private:
     unsigned char foeCount_;                              /* 0x174fd4 */
     /* 500 long: the Player object follows at 0x1751c9. */
     unsigned char foeIds_[500];                           /* 0x174fd5 */
-    unsigned char gap_1751c9[0x28ab29 - 0x1751c9];
+    /* The Player (0x241 bytes, player.h) and 7 unknown bytes after it. */
+    unsigned char gap_1751c9[0x175412 - 0x1751c9];
+    unsigned char rebindCode_;                            /* 0x175412 */
+    char          rebindAction_[0x175513 - 0x175413];     /* 0x175413 */
+    int           rebindActive_;                          /* 0x175513 */
+    unsigned char debounce_;                              /* 0x175517 */
+    MenuTree      menu_;                                  /* 0x175518 */
+    unsigned char gap_195735[0x28ab29 - 0x195735];
     float         cameraDistance_;                        /* 0x28ab29 */
     unsigned char cameraMode_;                            /* 0x28ab2d */
     unsigned char gap_28ab2e[0x2aa156 - 0x28ab2e];
@@ -513,6 +578,7 @@ KAROO_LAYOUT_CHECKS(Game)
 {
     KAROO_LAYOUT_AT(soundManagerHead_, 0x13cba8);
     KAROO_LAYOUT_AT(soundCreated_,     0x13cc34);
+    KAROO_LAYOUT_AT(fixedSounds_,      0x13cc5c);
     KAROO_LAYOUT_AT(bridgeSlots_,      0x170643);
     KAROO_LAYOUT_AT(bridgeCount_,      0x170a43);
     KAROO_LAYOUT_AT(clock_,            0x170a54);
@@ -588,4 +654,9 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(cheatEntry_,       0x13cdac);
     KAROO_LAYOUT_AT(nameEntry_,        0x170a6d);
     KAROO_LAYOUT_AT(saveSlots_,        0x170a7c);
+    KAROO_LAYOUT_AT(rebindCode_,       0x175412);
+    KAROO_LAYOUT_AT(rebindAction_,     0x175413);
+    KAROO_LAYOUT_AT(rebindActive_,     0x175513);
+    KAROO_LAYOUT_AT(debounce_,         0x175517);
+    KAROO_LAYOUT_AT(menu_,             0x175518);
 }

@@ -46,6 +46,7 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "menutree.h"
 #include "textentry.h"
 #include "liftobject.h"
 #include "slideobject.h"
@@ -75,9 +76,6 @@ __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleKeypress(void *se
 __declspec(dllexport) unsigned int __attribute__((thiscall)) Sim_AnimateScoreTallyStages(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_HandleTypedCheatCode(void *self);
 
-__declspec(dllexport) void __attribute__((thiscall)) Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_PopMenuNodeFromStack(void *self);
-__declspec(dllexport) void __attribute__((thiscall)) Sim_RewindMenuStackToRootNode(void *self);
 
 __declspec(dllexport) void __attribute__((thiscall)) Sim_ClearGameState(void *self);
 __declspec(dllexport) void __attribute__((thiscall)) Sim_ParseLevelFiles(void *self, const char *name);
@@ -125,8 +123,8 @@ typedef void (__attribute__((fastcall)) *relstream_fn)(void *self);
 
 
 #define STATE   (((Game *)B)->stateRef())
-#define DEB     G8(0x175517)
-#define MENU    (B + 0x175518)
+#define DEB     (((Game *)B)->debounceRef())
+#define MENU    (((Game *)B)->menu())
 #define ACC     GD(0x170a54)
 
 /* Tile addressing: idx = v + u*100, pitch 0x7f (worldstate.cpp). */
@@ -327,11 +325,11 @@ Sim_GameTick(void *self, double dt, double now)
     if ((STATE == 1 || STATE == 4) && DEB != 0x1b && KEY(0x1b) != 0) {
         G8(0x48b13) = STATE;
         Sim_RewindMenuStackToRootNode(MENU);
-        G8(0x175534) = 0x1b;
+        ((Game *)B)->menu()->setLastKey(0x1b);
         STATE = 5;
-        G32(0x175524) = G32(0x170a4c);
-        G32(0x175528) = G32(0x170a50);
-        G32(0x17552c) = 1;
+        ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
+        ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+        ((Game *)B)->menu()->setLock(1);
         DEB = 0x1b;
     }
 
@@ -407,8 +405,8 @@ Sim_GameTick(void *self, double dt, double now)
             if (rem80 > 11.0L || pl->moveState() == 3) {
                 pl->setField1ca(10.0);
             } else if ((long double)pl->field1ca() > (long double)rem64) {
-                if (GP(0x13cc6c) != NULL)
-                    CStatic_TriggerPlayback((CStaticSoundbuffer *)GP(0x13cc6c), 0);
+                if (((Game *)B)->fixedSounds()->lastSeconds != NULL)
+                    CStatic_TriggerPlayback(((Game *)B)->fixedSounds()->lastSeconds, 0);
                 pl->setField1ca(crt_floor(rem64));
             }
         }
@@ -418,8 +416,8 @@ Sim_GameTick(void *self, double dt, double now)
         pl->setField6e(0);
         pl->setField72(*((Game *)B)->clock());
         ProgCtrl_Dispatch(PROGCTRL, 0);
-        if (GP(0x13cc6c) != NULL)
-            CStatic_HaltPlayback((CStaticSoundbuffer *)GP(0x13cc6c));
+        if (((Game *)B)->fixedSounds()->lastSeconds != NULL)
+            CStatic_HaltPlayback(((Game *)B)->fixedSounds()->lastSeconds);
     }
 
     /* the player's bomb drop */
@@ -528,7 +526,7 @@ Sim_GameTick(void *self, double dt, double now)
         if (pl->moveState() != 3) {
             int t = ((Game *)B)->timeLimit() * 1000;
             if (t - (int)((Game *)B)->timeElapsed() <= 0) {
-                void *snd = GP(0x13cc5c);
+                void *snd = ((Game *)B)->fixedSounds()->timeOut;
                 ((Game *)B)->setTimeElapsed((unsigned int)t);
                 pl->setMoveState(3);
                 if (snd != NULL)
@@ -538,7 +536,7 @@ Sim_GameTick(void *self, double dt, double now)
         if (pl->gemsCollected() >= ((Game *)B)->gemsRequired()) {
             if (G32(0x173b1a) == 0 && STATE != 3) {
                 int r = (int)ftol80(ACC);
-                void *snd = GP(0x13cc74 + (r % 3) * 4);
+                void *snd = ((Game *)B)->fixedSounds()->crystalBank[r % 3];
                 if (snd != NULL)
                     CStatic_TriggerPlayback((CStaticSoundbuffer *)snd, 0);
                 G32(0x173b1a) = 1;
@@ -549,8 +547,8 @@ Sim_GameTick(void *self, double dt, double now)
                 pl->moveState() == 0) {
                 pl->setFieldEf(1);
                 if ((unsigned int)pl->field14e() == 0) {
-                    if (GP(0x13cc70) != NULL)
-                        CStatic_TriggerPlayback((CStaticSoundbuffer *)GP(0x13cc70), 0);
+                    if (((Game *)B)->fixedSounds()->levelCompleted != NULL)
+                        CStatic_TriggerPlayback(((Game *)B)->fixedSounds()->levelCompleted, 0);
                     if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
                         STATE = 2;
                         if (((Game *)B)->musicOn() != 0)
@@ -566,11 +564,11 @@ Sim_GameTick(void *self, double dt, double now)
                         Sim_RewindMenuStackToRootNode(MENU);
                         Sim_PopMenuNodeFromStack(MENU);
                         Sim_PushMenuNodeOnStack(MENU, 0x28);
-                        G8(0x195734) = 0x28;
-                        G32(0x175524) = G32(0x170a4c);
-                        G32(0x175528) = G32(0x170a50);
-                        G32(0x17552c) = 1;
-                        G8(0x175535) = 0;
+                        ((Game *)B)->menu()->setNode(0x28);
+                        ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
+                        ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+                        ((Game *)B)->menu()->setLock(1);
+                        ((Game *)B)->menu()->setCursor(0);
                         Score_CalculateLevelScore(B, (char)STATE);
                         ((Game *)B)->setRestartCount(0);
                     }
@@ -607,11 +605,11 @@ Sim_GameTick(void *self, double dt, double now)
                 Sim_RewindMenuStackToRootNode(MENU);
                 Sim_PopMenuNodeFromStack(MENU);
                 Sim_PushMenuNodeOnStack(MENU, 0x28);
-                G8(0x195734) = 0x28;
-                G32(0x175524) = G32(0x170a4c);
-                G32(0x175528) = G32(0x170a50);
-                G32(0x17552c) = 1;
-                G8(0x175535) = 0;
+                ((Game *)B)->menu()->setNode(0x28);
+                ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
+                ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+                ((Game *)B)->menu()->setLock(1);
+                ((Game *)B)->menu()->setCursor(0);
                 ((Game *)B)->setTimeElapsed((unsigned int)(((Game *)B)->timeLimit() * 1000));
                 Score_CalculateLevelScore(B, (char)STATE);
                 ((Game *)B)->setRestartCount(0);
@@ -657,7 +655,7 @@ Sim_GameTick(void *self, double dt, double now)
                     sprintf(name, F_FINALDIR, (const char *)(B + 0x4215f));
                     Sim_ParseLevelFiles(B, name);
                     Sim_PushMenuNodeOnStack(MENU, 0);
-                    G8(0x195734) = 5;
+                    ((Game *)B)->menu()->setNode(5);
                     theme = S_FINAL;
                 } else {
                     STATE = 7;
@@ -694,7 +692,7 @@ Sim_GameTick(void *self, double dt, double now)
                 sprintf(name, F_FINALDIR, (const char *)(B + 0x4215f));
                 Sim_ParseLevelFiles(B, name);
                 Sim_PushMenuNodeOnStack(MENU, 0);
-                G8(0x195734) = 5;
+                ((Game *)B)->menu()->setNode(5);
                 theme = S_FINAL;
             } else {
                 STATE = 7;

@@ -52,6 +52,7 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "menutree.h"
 #include "textentry.h"
 #include "foe.h"
 #include "player.h"
@@ -64,12 +65,6 @@ Sim_PlayCDStuf(void *self, const char *caption);
 struct CDM;
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PopMenuNodeFromStack(void *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RewindMenuStackToRootNode(void *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_SetCurrentLevelName(void *self, unsigned int levelNo);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -115,7 +110,7 @@ static void enter_loaded_state(unsigned char *B, FILE *fp)
         CDM_StopTrack(CDAUDIO);
     G32(0x1964e3) = 1;
     ((Game *)B)->setCameraMode(1);
-    G8(0x175517) = 0x0d;
+    ((Game *)B)->setDebounce(0x0d);
     fclose(fp);
 }
 
@@ -161,26 +156,26 @@ Sim_HandleTypedCheatCode(void *self)
             if (((Game *)B)->musicOn() != 0)
                 Sim_PlayCDStuf(B + 0x2223f, S_GAMEOVER);
             Score_CalculateLevelScore(B, 0x28);
-            G8(0x175517) = 0x0d;
+            ((Game *)B)->setDebounce(0x0d);
             GameLog_LogMessage(GAMELOGGER, 1, F_COMPLETED,
                                (unsigned int)((Game *)B)->levelIndex() + 1,
                                (unsigned int)((Game *)B)->levelCount());
         } else {
-            G32(0x175524) = G32(0x170a4c);
-            G32(0x175528) = G32(0x170a50);
-            G32(0x17552c) = 1;
+            ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
+            ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+            ((Game *)B)->menu()->setLock(1);
             ((Game *)B)->setState(3);
             if (((Game *)B)->musicOn() != 0)
                 Sim_PlayCDStuf(B + 0x2223f, S_COMPLETED);
             ((Game *)B)->setCameraMode(2);
-            Sim_RewindMenuStackToRootNode(B + 0x175518);
-            Sim_PopMenuNodeFromStack(B + 0x175518);
-            Sim_PushMenuNodeOnStack(B + 0x175518, 0x28);
-            G32(0x175524) = G32(0x170a4c);
-            G32(0x175528) = G32(0x170a50);
-            G8(0x195734) = 0x28;
-            G8(0x175535) = 0;
-            G32(0x17552c) = 1;
+            Sim_RewindMenuStackToRootNode(((Game *)B)->menu());
+            Sim_PopMenuNodeFromStack(((Game *)B)->menu());
+            Sim_PushMenuNodeOnStack(((Game *)B)->menu(), 0x28);
+            ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a4c);
+            ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a50);
+            ((Game *)B)->menu()->setNode(0x28);
+            ((Game *)B)->menu()->setCursor(0);
+            ((Game *)B)->menu()->setLock(1);
             Score_CalculateLevelScore(B, (char)((Game *)B)->state());
             ((Game *)B)->setRestartCount(0);
             GameLog_LogMessage(GAMELOGGER, 1, F_CSL);

@@ -42,6 +42,7 @@
 #include "log.h"
 #include "soundmanager.h"
 #include "game.h"
+#include "menutree.h"
 #include "player.h"
 
 struct CStaticSoundbuffer;
@@ -109,16 +110,16 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
             log_write("fixedsounds: KAROO_SIM_FX=reportkey -- VK_L not polled\n");
     }
 
-    if (G32(0x13cc80) != 0)
+    if (((Game *)B)->fixedSounds()->loaded != 0)
         return;
 
     if ((Config_Save(B + 0x28ab2e, S_CFG) & 0xff) != 0)
         GameLog_LogMessage(GAMELOGGER, 1, F_CFG_OK);
     else
         GameLog_LogMessage(GAMELOGGER, 3, F_CFG_ERR);
-    G32(0x175524) = G32(0x170a54);
-    G32(0x175528) = G32(0x170a58);
-    G32(0x17552c) = 1;
+    ((Game *)B)->menu()->lockStartWords()[0] = G32(0x170a54);
+    ((Game *)B)->menu()->lockStartWords()[1] = G32(0x170a58);
+    ((Game *)B)->menu()->setLock(1);
     if (((Game *)B)->musicOn() != 0)
         Sim_PlayCDStuf(B + 0x2223f, S_MAIN);
     B[0x2235a] = (unsigned char)Sim_FindThemeIndexByThemeName(B + 0x2223f, S_MAIN);
@@ -127,7 +128,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
         GameLog_LogMessage(GAMELOGGER, 1, F_NOSOUND);
         ((Game *)B)->setMusicOn(0);
         if (((Game *)B)->soundCreated() == 0) {
-            G32(0x13cc80) = 1;
+            ((Game *)B)->fixedSounds()->loaded = 1;
             return;
         }
     }
@@ -137,8 +138,8 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
         /* ESI = Game+0x175327 + 4i is the Player's pickup bank +0x15e[i];
          * ESI-0x386b3 is Game+0x13cc74 + 4i, a Game field. */
         Player *pl = ((Game *)B)->player();
-        CStaticSoundbuffer **g02 = (CStaticSoundbuffer **)(B + 0x13cc74 + i * 4);
-        *g02 = bank(B, *g02, 0x465be4, suffix);                                   /* add02 */
+        FixedSounds *fs = ((Game *)B)->fixedSounds();
+        fs->crystalBank[i] = bank(B, fs->crystalBank[i], 0x465be4, suffix);       /* add02 */
 #define PBANK(k, fmt) pl->setPickupSound(Player::k, i, bank(B, pl->pickupSound(Player::k, i), fmt, suffix))
         PBANK(SND_15E, 0x465bcc);   /* add08 */
         PBANK(SND_16A, 0x465bb4);   /* add06 */
@@ -167,20 +168,20 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
     }
 
     sprintf(path, (const char *)0x00465ae4, GAMEDIR);
-    GP(0x13cc5c) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* TimeOut */
+    ((Game *)B)->fixedSounds()->timeOut = ((SoundManager *)sm)->acquireStatic(path, 0);          /* TimeOut */
     sprintf(path, (const char *)0x00465ac8, GAMEDIR);
-    GP(0x13cc6c) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* LastSeconds */
+    ((Game *)B)->fixedSounds()->lastSeconds = ((SoundManager *)sm)->acquireStatic(path, 0);          /* LastSeconds */
     sprintf(path, (const char *)0x00465ab4, GAMEDIR);
-    GP(0x13cc68) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* Count */
+    ((Game *)B)->fixedSounds()->count = ((SoundManager *)sm)->acquireStatic(path, 0);          /* Count */
     sprintf(path, (const char *)0x00465a9c, GAMEDIR);
-    GP(0x13cc64) = ORIG_ACQUIRE_POOL(sm, 5, path, 0);        /* MenuUpDown */
+    ((Game *)B)->fixedSounds()->menuUpDown = ORIG_ACQUIRE_POOL(sm, 5, path, 0);        /* MenuUpDown */
     sprintf(path, (const char *)0x00465a88, GAMEDIR);
-    GP(0x13cc60) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* Switch */
+    ((Game *)B)->fixedSounds()->switchClick = ((SoundManager *)sm)->acquireStatic(path, 0);          /* Switch */
     sprintf(path, (const char *)0x00465a6c, GAMEDIR);
-    GP(0x13cc70) = ((SoundManager *)sm)->acquireStatic(path, 0);          /* LevelCompleted */
+    ((Game *)B)->fixedSounds()->levelCompleted = ((SoundManager *)sm)->acquireStatic(path, 0);          /* LevelCompleted */
     sprintf(path, (const char *)0x00465a58, GAMEDIR);
     ((Game *)B)->player()->setSoundA7(((SoundManager *)sm)->acquireStatic(path, 1)); /* splat */
     ORIG_SOUND_SETUP(sm, ((Game *)B)->sound3D());
 
-    G32(0x13cc80) = 1;
+    ((Game *)B)->fixedSounds()->loaded = 1;
 }
