@@ -4,15 +4,22 @@
 #include <dsound.h>
 #include <stddef.h>
 
-/* WaveInfo passed to PrepareStreamBuffer by the game's script player. */
-struct WaveInfo {
+/* WaveInfo passed to PrepareStreamBuffer by the game's script player (Ghidra
+ * struct WaveInfo, 0x12 bytes).  The one it passes is embedded in the
+ * ScriptPlayer at +0x90f: "initwave" writes the file name, the fixed-sound
+ * setup the rest.  Packed, since the next ScriptPlayer field is at +0x921. */
+struct __attribute__((packed)) WaveInfo {
     IDirectSound  *pDirectsound;  // +0x00
     DWORD          dwFlags;       // +0x04
     char          *pFilename;     // +0x08
     int            nBuffer_seconds; // +0x0c
     short          wSegment_count;  // +0x10
 };
+static_assert(offsetof(WaveInfo, dwFlags) == 0x04, "WaveInfo dwFlags");
 static_assert(offsetof(WaveInfo, pFilename) == 0x08, "WaveInfo pFilename");
+static_assert(offsetof(WaveInfo, nBuffer_seconds) == 0x0c, "WaveInfo nBuffer_seconds");
+static_assert(offsetof(WaveInfo, wSegment_count) == 0x10, "WaveInfo wSegment_count");
+static_assert(sizeof(WaveInfo) == 0x12, "WaveInfo size");
 
 /*
  * CStreamSoundbuffer — 212-byte (0xD4) packed struct.

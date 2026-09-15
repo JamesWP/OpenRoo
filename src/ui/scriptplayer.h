@@ -28,9 +28,9 @@
 
 #include <stdio.h>
 #include "layout.h"
+#include "stream.h"     /* WaveInfo, CStreamSoundbuffer */
 
 class SoundManager;
-class CStreamSoundbuffer;
 
 class __attribute__((packed)) ScriptPlayer {
 public:
@@ -90,13 +90,9 @@ public:
     /* The SoundManager the script's sounds play through (the fixed-sound
      * setup stores it). */
     void           setSoundManager(SoundManager *sm) { soundManager_ = sm; }
-    /* Four fields the fixed-sound setup stores, next to the embedded
-     * stream (+0x83b): +0x90f the IDirectSound, +0x913 0, +0x91b 5 and a
-     * WORD 5 at +0x91f.  Whether they belong to the stream is not settled. */
-    void           setField90f(void *p)            { field_90f_ = p; }
-    void           setField913(unsigned int v)     { field_913_ = v; }
-    void           setField91b(unsigned int v)     { field_91b_ = v; }
-    void           setField91f(unsigned short v)   { field_91f_ = v; }
+    /* The WaveInfo every "initwave" stream is prepared from; the fixed-sound
+     * setup fills all but the file name. */
+    WaveInfo      *streamWave()                    { return &streamWave_; }
 
 private:
     ScriptPlayer() = delete;   /* game-owned; only ever reached by pointer */
@@ -105,20 +101,16 @@ private:
     const void    *vtable_;                        /* +0x000  0x45d418 */
     unsigned short splineLines_;                   /* +0x004 */
     unsigned short textBlocks_;                    /* +0x006 */
-    unsigned short field_008_;                     /* +0x008 */
+    unsigned short againLine_;                     /* +0x008  "fromhere" sets cursor+1; "again" jumps back */
     unsigned char  gap_00a[0x40a - 0x00a];
     SoundManager  *soundManager_;                  /* +0x40a */
-    unsigned char  gap_40e[0x40f - 0x40e];
+    unsigned char  waitStream_;                    /* +0x40e  the stream waitingOnStream_ waits on */
     CStreamSoundbuffer *streams_[255];             /* +0x40f */
     unsigned char  gap_80b[0x833 - 0x80b];
-    unsigned int   field_833_;                     /* +0x833 */
-    unsigned int   field_837_;                     /* +0x837 */
-    unsigned char  gap_83b[0x90f - 0x83b];         /* the embedded stream */
-    void          *field_90f_;                     /* +0x90f */
-    unsigned int   field_913_;                     /* +0x913 */
-    unsigned char  gap_917[0x91b - 0x917];
-    unsigned int   field_91b_;                     /* +0x91b */
-    unsigned short field_91f_;                     /* +0x91f */
+    unsigned int   waitingOnStream_;               /* +0x833  "playwave <id> <wait>"; the tick stalls until its thread is done */
+    unsigned int   streamReady_;                   /* +0x837  "initwave"'s PrepareStreamBuffer result */
+    unsigned char  gap_83b[0x90f - 0x83b];         /* the embedded stream, 0xd4 */
+    WaveInfo       streamWave_;                    /* +0x90f */
     unsigned char  gap_921[0x92d - 0x921];
     unsigned int   field_92d_;                     /* +0x92d */
     float          splinePoint_[3];                /* +0x931 */
@@ -126,7 +118,7 @@ private:
     int            splineActive_;                  /* +0x951 */
     unsigned int   field_955_;                     /* +0x955 */
     unsigned char  gap_959[0x9a5 - 0x959];
-    unsigned int   field_9a5_;                     /* +0x9a5 */
+    unsigned int   moving_;                        /* +0x9a5  "movetoxyz" in progress */
     unsigned char  gap_9a9[0x9b1 - 0x9a9];
     int            loaded_;                        /* +0x9b1 */
     float          cameraDistance_;                /* +0x9b5 */
@@ -135,7 +127,7 @@ private:
     unsigned char  cameraMode_;                    /* +0xdad */
     int            running_;                       /* +0xdae */
     unsigned char  gap_db2[0xdba - 0xdb2];
-    unsigned int   field_dba_;                     /* +0xdba */
+    unsigned int   waiting_;                       /* +0xdba  a timed wait in progress */
     unsigned char  gap_dbe[0xdc6 - 0xdbe];
     unsigned short cursor_;                        /* +0xdc6 */
     unsigned short lineCount_;                     /* +0xdc8 */
@@ -147,27 +139,25 @@ KAROO_LAYOUT_CHECKS(ScriptPlayer)
 {
     KAROO_LAYOUT_AT(splineLines_,    0x004);
     KAROO_LAYOUT_AT(textBlocks_,     0x006);
-    KAROO_LAYOUT_AT(field_008_,      0x008);
+    KAROO_LAYOUT_AT(againLine_,      0x008);
     KAROO_LAYOUT_AT(soundManager_,   0x40a);
+    KAROO_LAYOUT_AT(waitStream_,     0x40e);
     KAROO_LAYOUT_AT(streams_,        0x40f);
-    KAROO_LAYOUT_AT(field_833_,      0x833);
-    KAROO_LAYOUT_AT(field_837_,      0x837);
-    KAROO_LAYOUT_AT(field_90f_,      0x90f);
-    KAROO_LAYOUT_AT(field_913_,      0x913);
-    KAROO_LAYOUT_AT(field_91b_,      0x91b);
-    KAROO_LAYOUT_AT(field_91f_,      0x91f);
+    KAROO_LAYOUT_AT(waitingOnStream_, 0x833);
+    KAROO_LAYOUT_AT(streamReady_,    0x837);
+    KAROO_LAYOUT_AT(streamWave_,     0x90f);
     KAROO_LAYOUT_AT(field_92d_,      0x92d);
     KAROO_LAYOUT_AT(splinePoint_,    0x931);
     KAROO_LAYOUT_AT(splineActive_,   0x951);
     KAROO_LAYOUT_AT(field_955_,      0x955);
-    KAROO_LAYOUT_AT(field_9a5_,      0x9a5);
+    KAROO_LAYOUT_AT(moving_,         0x9a5);
     KAROO_LAYOUT_AT(loaded_,         0x9b1);
     KAROO_LAYOUT_AT(cameraDistance_, 0x9b5);
     KAROO_LAYOUT_AT(currentLine_,    0x9b9);
     KAROO_LAYOUT_AT(eye_,            0xda1);
     KAROO_LAYOUT_AT(cameraMode_,     0xdad);
     KAROO_LAYOUT_AT(running_,        0xdae);
-    KAROO_LAYOUT_AT(field_dba_,      0xdba);
+    KAROO_LAYOUT_AT(waiting_,        0xdba);
     KAROO_LAYOUT_AT(cursor_,         0xdc6);
     KAROO_LAYOUT_AT(lineCount_,      0xdc8);
     KAROO_LAYOUT_AT(scratch_,        0xdca);

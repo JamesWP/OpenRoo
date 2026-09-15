@@ -135,10 +135,10 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     }
 
     ScriptPlayer *sp = ((Game *)B)->scriptPlayer();
-    sp->setField91b(5);
-    sp->setField91f(5);
-    sp->setField90f(sm->directSound());
-    sp->setField913(0);
+    sp->streamWave()->nBuffer_seconds = 5;
+    sp->streamWave()->wSegment_count = 5;
+    sp->streamWave()->pDirectsound = sm->directSound();
+    sp->streamWave()->dwFlags = 0;
     ((Game *)B)->extraObjects()->setSoundManager(sm);
     sp->setSoundManager(sm);
 
