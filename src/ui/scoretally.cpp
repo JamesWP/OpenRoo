@@ -47,7 +47,7 @@ static int s_fx = -1;
  * what EAX carries. */
 static unsigned int ftol_low(const unsigned char *B)
 {
-    double d = *(const double *)(B + 0x170a54);
+    double d = *((Game *)B)->clock();
     return (unsigned int)(long long)d;
 }
 

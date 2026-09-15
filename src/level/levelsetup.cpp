@@ -871,7 +871,8 @@ next_row:
                            GAME->levelName());
     }
 
-    DW(G, 0x2ab576) = 0x42700000;
+    /* Config +0x20a48 (Game+0x2ab576), one dword: 60.0f. */
+    GAME->config()->setField20a48Bits(0x42700000);
 
     s_calls++;
     if (s_diag)

@@ -273,7 +273,7 @@ Sim_HandleKeypress(Game *self)
     KEY(0x27);
     KEY(0x25);
     if (NODE != 5 && NODE != 0x50)
-        G32(0x13cc88) = 0;
+        ((Game *)B)->setField13cc88(0);
 
     switch (NODE) {
     case 1:
@@ -284,9 +284,9 @@ Sim_HandleKeypress(Game *self)
         DEB = 0x0d;
         break;
     case 5:
-        if (G32(0x13cc88) == 0) {
-            G32(0x13cc8c) = 1;
-            G32(0x13cc88) = 1;
+        if (((Game *)B)->field_13cc88() == 0) {
+            ((Game *)B)->setField13cc8c(1);
+            ((Game *)B)->setField13cc88(1);
         }
         break;
     case 6:

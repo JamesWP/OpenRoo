@@ -85,14 +85,14 @@ static CStaticSoundbuffer *bank(unsigned char *B, CStaticSoundbuffer *cur,
     if (cur != NULL)
         CStatic_Reset(cur);
     sprintf(path, (const char *)fmt, GAMEDIR, suffix);
-    return ((SoundManager *)(B + 0x13cba8))->acquireStatic(path, 0);
+    return ((Game *)B)->soundManager()->acquireStatic(path, 0);
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
 {
     unsigned char *B = (unsigned char *)self;
-    void *sm = B + 0x13cba8;
+    void *sm = self->soundManager();
     char path[256];
 
     if (s_fx < 0) {

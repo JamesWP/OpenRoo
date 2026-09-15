@@ -110,7 +110,7 @@ Sim_HandleTypedCheatCode(Game *self)
 {
     unsigned char *B = (unsigned char *)self;
     Player *pl = ((Game *)B)->player();
-    unsigned char *buf = B + 0x13ccac;
+    unsigned char *buf = ((Game *)B)->cheatBuffer();
     unsigned char frame[256];
     char path[256];
 
@@ -185,9 +185,9 @@ Sim_HandleTypedCheatCode(Game *self)
             unsigned char lvl = (unsigned char)(atoi(num) - 1);
             Sim_SetCurrentLevelName((Game *)B, lvl);
             if (lvl < ((Game *)B)->levelCount()) {
-                sprintf(path, F_LVLPATH, GAMEDIR, (const char *)(B + 0x173483));
+                sprintf(path, F_LVLPATH, GAMEDIR, ((Game *)B)->levelName());
                 GameLog_LogMessage(GAMELOGGER, 3, F_LCNUM, (unsigned int)lvl,
-                                   (const char *)(B + 0x173483));
+                                   ((Game *)B)->levelName());
                 ((Game *)B)->setLevelIndex(lvl);
                 FILE *fp = fopen(path, "r");
                 if (fp != NULL) {

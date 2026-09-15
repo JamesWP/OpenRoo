@@ -375,6 +375,13 @@ public:
      * +0x13cca8 with the level builder, and copies the float +0x13cca4
      * into the camera distance when the player dies. */
     void           setField13cc90(int v)             { field_13cc90_ = v; }
+    /* keypress.cpp: +0x13cc88 is a one-shot latch (cleared, then set on
+     * the first press, which also sets +0x13cc8c).  Named by offset. */
+    int            field_13cc88() const              { return field_13cc88_; }
+    void           setField13cc88(int v)             { field_13cc88_ = v; }
+    void           setField13cc8c(int v)             { field_13cc8c_ = v; }
+    /* The buffer HandleTypedCheatCode matches typed cheats in. */
+    unsigned char *cheatBuffer()                     { return cheatBuffer_; }
     float          field_13cca4() const              { return field_13cca4_; }
     void           setField13cca8(int v)             { field_13cca8_ = v; }
     void           setJoyDeadzone(unsigned short p)  { config_.setJoyDeadzone(p); }
@@ -625,13 +632,17 @@ private:
     int           soundCreated_;                          /* 0x13cc34 */
     unsigned char gap_13cc38[0x13cc5c - 0x13cc38];        /* SoundManager tail */
     FixedSounds   fixedSounds_;                           /* 0x13cc5c */
-    unsigned char gap_13cc84[0x13cc90 - 0x13cc84];
+    unsigned char gap_13cc84[0x13cc88 - 0x13cc84];
+    int           field_13cc88_;                          /* 0x13cc88 */
+    int           field_13cc8c_;                          /* 0x13cc8c */
     int           field_13cc90_;                          /* 0x13cc90 */
     float         field_13cc94_[3];                       /* 0x13cc94 */
     unsigned char gap_13cca0[0x13cca4 - 0x13cca0];
     float         field_13cca4_;                          /* 0x13cca4 */
     int           field_13cca8_;                          /* 0x13cca8 */
-    unsigned char gap_13ccac[0x13cdac - 0x13ccac];
+    /* The typed-cheat buffer; declared up to the cheat entry that follows.
+     * Its real length is not established. */
+    unsigned char cheatBuffer_[0x13cdac - 0x13ccac];      /* 0x13ccac */
     TextEntry     cheatEntry_;                            /* 0x13cdac */
     HighScoreTable highScores_;                           /* 0x13cdbb */
     ScoreTally    tally_;                                 /* 0x1404c1 */
@@ -751,6 +762,9 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(nextLevelBonus_,   0x000014);
     KAROO_LAYOUT_AT(field_13cc90_,     0x13cc90);
     KAROO_LAYOUT_AT(field_13cca4_,     0x13cca4);
+    KAROO_LAYOUT_AT(field_13cc88_,     0x13cc88);
+    KAROO_LAYOUT_AT(cheatBuffer_,      0x13ccac);
+    KAROO_LAYOUT_AT(field_13cc8c_,     0x13cc8c);
     KAROO_LAYOUT_AT(field_13cca8_,     0x13cca8);
     KAROO_LAYOUT_AT(field_173b1a_,     0x173b1a);
     KAROO_LAYOUT_AT(tickCount_,        0x000018);
