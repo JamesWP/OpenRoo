@@ -6,8 +6,9 @@
  *   slot -- so CALL_PATCHES catches every caller and the original is
  *   UD2-stubbed.
  *
- * `this` is an interior pointer: OpenLevelFile passes Game + 0x2ab58d, so
- * cell byte 0 of tile (0,0) lands at Game + 0x2ab729.
+ * `this` is the LevelMap embedded in Game at +0x2ab58d (levelmap.h), so cell
+ * byte 0 of tile (0,0) lands at Game + 0x2ab729.  It is LevelMap::readFile;
+ * the export is a one-line shim (COHESION_PLAN.md Band 4b).
  *
  * ─── No calls into the game binary ────────────────────────────────────────
  *
@@ -24,8 +25,8 @@
  *
  * ─── The file, as the original reads it ───────────────────────────────────
  *
- *   +0x00  byte    width   -> this+0x19b
- *   +0x01  byte    height  -> this+0x19a
+ *   +0x00  byte    width   -> extentU (this+0x19b)
+ *   +0x01  byte    height  -> extentV (this+0x19a)
  *   +0x02  width*height cells of 4 bytes, y outer / x inner
  *   ...    396-byte trailer, six freads (see below)
  *
@@ -35,9 +36,12 @@
  * (0x4663f4) itself and opens with mode "rb" (0x465188).
  *
  * The grid is a fixed 100 x 100 array of 0x7f-byte tiles regardless of the
- * level's real size, based at this+0x19c:
+ * level's real size.  File x is the tile's u, file y its v:
  *
- *   cell(x, y) = this + 0x19c + y*0x7f + x*0x319c        (0x319c == 100*0x7f)
+ *   cell(x, y) = this + 0x19c + y*0x7f + x*0x319c  ==  tile(x, y)
+ *
+ * The four file bytes land in the tile's first four fields: height, kind
+ * (objectMarker), param, contents.
  *
  * ─── Defects and oddities preserved deliberately ──────────────────────────
  *
@@ -52,32 +56,32 @@
  *    consumed from the file first -- this is a post-read clear, not a skip, so
  *    the file position advances identically.
  *
- * 3. THE CELL IS WRITTEN TWICE: at the tile, and again at tile + 0x1360f0.
- *    The copy happens AFTER the border zeroing, so both copies hold zeros on
- *    the border.  Which copy is authoritative is not established; both are
- *    written because the original writes both.
+ * 3. THE CELL IS WRITTEN TWICE: at the tile, and again in the snapshot grid
+ *    (tile + 0x1360f0, LevelMap::snapshotOf).  The copy happens AFTER the
+ *    border zeroing, so both copies hold zeros on the border.  The snapshot
+ *    is the level as loaded: the restart restore copies it back.
  *
  * 4. ONLY width*height CELLS ARE FILLED, but all 10000 are zeroed first, so
  *    the remainder of the 100x100 grid reads as zero tiles.  The zeroing pass
- *    clears 4 bytes per tile (tile+0 .. tile+3), not the whole 0x7f stride.
+ *    clears the four file bytes of each tile, not the whole 0x7f record, and
+ *    not the snapshot.
  *
  * 5. EOF IS NOT DETECTED.  The cells are read with getc and the byte stored is
  *    the low byte of the return value, so a truncated file yields 0xFF cells
  *    rather than an error.  The function returns 1 for everything except a
  *    failed fopen.
  *
- * 6. THE HEADER BYTES GO TO DESCENDING OFFSETS: file byte 0 (width) to
- *    this+0x19b, byte 1 (height) to this+0x19a.  Not a typo here.
+ * 6. THE HEADER BYTES GO TO DESCENDING OFFSETS: file byte 0 (width, the u
+ *    extent) to this+0x19b, byte 1 (height, the v extent) to this+0x19a.
  *
  * ─── What is deliberately NOT claimed ─────────────────────────────────────
  *
- * What the four cell bytes MEAN is not settled, and this file does not need it
- * to be.  tools/jjm.py calls byte[2] the height (established from the engine's
- * own skirt vertices via KAROO_QUAD_DUMP) and byte[3] the type; AI_PLAN.md's
- * tile layout, read from SetupLevelObjects, would instead put the height at
- * cell byte 0.  Those two readings disagree, and resolving it is not this
- * phase's job: a byte-for-byte copy into the same addresses is correct under
- * either interpretation.  Recorded as an open question in ASSET_PLAN.md.
+ * tools/jjm.py calls cell byte[2] the height and byte[3] the type, from the
+ * engine's own skirt vertices (KAROO_QUAD_DUMP); the level builder reads byte
+ * 0 as the height and byte 1 as the kind.  The field names here follow the
+ * builder, which is the code that consumes them; the reader is a byte copy
+ * and correct under either reading.  Recorded as an open question in
+ * ASSET_PLAN.md.
  *
  * ─── Visual proof ─────────────────────────────────────────────────────────
  *
@@ -88,23 +92,9 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
+#include <stddef.h>
 #include "log.h"
-
-/* Offsets from `this` (Game + 0x2ab58d at every call site). */
-#define LM_TRAILER_C     0x00c   /* 4 bytes, read last            */
-#define LM_TRAILER_10    0x010   /* 0x80 bytes                    */
-#define LM_TRAILER_90    0x090   /* 0x80 bytes                    */
-#define LM_TRAILER_110   0x110   /* 0x80 bytes                    */
-#define LM_TRAILER_192   0x192   /* 4 bytes                       */
-#define LM_TRAILER_196   0x196   /* 4 bytes, read first           */
-#define LM_HEIGHT        0x19a   /* byte: file byte 1             */
-#define LM_WIDTH         0x19b   /* byte: file byte 0             */
-#define LM_GRID          0x19c   /* cell(0,0)                     */
-
-#define LM_ROW_STRIDE    0x7f    /* per y */
-#define LM_COL_STRIDE    0x319c  /* per x == 100 * 0x7f */
-#define LM_GRID_DIM      100
-#define LM_SHADOW_DELTA  0x1360f0 /* the second copy of every cell */
+#include "levelmap.h"
 
 #define LM_LOG_FIRST     8
 
@@ -121,10 +111,19 @@ static bool fx_flipx(void)
     return cached != 0;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-LevelMap_ReadFile(void *self, const char *path)
+/* The four file bytes of a tile, as the zeroing pass and the border clear
+ * write them. */
+static void clear_file_bytes(Tile *t)
 {
-    unsigned char *base = (unsigned char *)self;
+    t->setHeight(0);
+    t->setObjectMarker(0);
+    t->setParam(0);
+    t->setContents(0);
+}
+
+int LevelMap::readFile(const char *path)
+{
+    unsigned char *base = (unsigned char *)this;
     char name[128];              /* 128 and unchecked, exactly as the original */
     FILE *fp;
     unsigned char hdr[2];
@@ -141,57 +140,52 @@ LevelMap_ReadFile(void *self, const char *path)
     /* Header: one 2-byte fread, then the two bytes split to descending
      * offsets -- width to +0x19b, height to +0x19a. */
     fread(hdr, 2, 1, fp);
-    base[LM_WIDTH]  = hdr[0];
-    base[LM_HEIGHT] = hdr[1];
+    extentU_ = hdr[0];
+    extentV_ = hdr[1];
 
-    /* Zero all 100*100 tiles' first four bytes.  The original walks a single
-     * pointer in 0x7f steps for 10000 iterations, which is the same set of
-     * addresses as the (x, y) form below. */
-    {
-        unsigned char *p = base + LM_GRID;
-        for (int i = 0; i < LM_GRID_DIM * LM_GRID_DIM; i++) {
-            p[0] = 0; p[1] = 0; p[2] = 0; p[3] = 0;
-            p += LM_ROW_STRIDE;
-        }
-    }
+    /* Zero all 100*100 tiles' four file bytes.  The original walks a single
+     * pointer in 0x7f steps for 10000 iterations -- index v + u*100 rising,
+     * so u outer and v inner, the same addresses in the same order. */
+    for (int u = 0; u < DIM; u++)
+        for (int v = 0; v < DIM; v++)
+            clear_file_bytes(tile(u, v));
 
-    width  = base[LM_WIDTH];
-    height = base[LM_HEIGHT];
+    width  = extentU_;
+    height = extentV_;
 
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++) {
             unsigned dx = fx_flipx() ? (width - 1 - x) : x;
-            unsigned char *cell = base + LM_GRID + y * LM_ROW_STRIDE
-                                                 + dx * LM_COL_STRIDE;
+            Tile *cell = tile((int)dx, (int)y);
             /* getc, four times.  The stored byte is the low byte of the
              * return value, so EOF lands as 0xFF -- see defect 5. */
-            cell[0] = (unsigned char)fgetc(fp);
-            cell[1] = (unsigned char)fgetc(fp);
-            cell[2] = (unsigned char)fgetc(fp);
-            cell[3] = (unsigned char)fgetc(fp);
+            cell->setHeight((unsigned char)fgetc(fp));
+            cell->setObjectMarker((unsigned char)fgetc(fp));
+            cell->setParam((unsigned char)fgetc(fp));
+            cell->setContents((unsigned char)fgetc(fp));
 
             /* Border clear, AFTER the read (defect 2).  Tested against the
              * true x, not the flipped one: the original's test is on the loop
              * counter, and under flipx the border is the border either way. */
-            if (y == 0 || x == 0 || y == height - 1 || x == width - 1) {
-                cell[0] = 0; cell[1] = 0; cell[2] = 0; cell[3] = 0;
-            }
+            if (y == 0 || x == 0 || y == height - 1 || x == width - 1)
+                clear_file_bytes(cell);
 
-            /* The second copy, after the clear (defect 3). */
-            cell[LM_SHADOW_DELTA + 0] = cell[0];
-            cell[LM_SHADOW_DELTA + 1] = cell[1];
-            cell[LM_SHADOW_DELTA + 2] = cell[2];
-            cell[LM_SHADOW_DELTA + 3] = cell[3];
+            /* The snapshot copy, after the clear (defect 3). */
+            Tile *snap = snapshotOf(cell);
+            snap->setHeight(cell->height());
+            snap->setObjectMarker(cell->objectMarker());
+            snap->setParam(cell->param());
+            snap->setContents(cell->contents());
         }
     }
 
     /* Trailer, in the original's order. */
-    fread(base + LM_TRAILER_196, 4,    1, fp);
-    fread(base + LM_TRAILER_192, 4,    1, fp);
-    fread(base + LM_TRAILER_110, 0x80, 1, fp);
-    fread(base + LM_TRAILER_90,  0x80, 1, fp);
-    fread(base + LM_TRAILER_10,  0x80, 1, fp);
-    fread(base + LM_TRAILER_C,   4,    1, fp);
+    fread(base + offsetof(LevelMap, gemsRequired_),  4,    1, fp);
+    fread(base + offsetof(LevelMap, fileTimeLimit_), 4,    1, fp);
+    fread(base + offsetof(LevelMap, mapName_),       0x80, 1, fp);
+    fread(base + offsetof(LevelMap, title_),         0x80, 1, fp);
+    fread(base + offsetof(LevelMap, text010_),       0x80, 1, fp);
+    fread(base + offsetof(LevelMap, bonus_),         4,    1, fp);
 
     fclose(fp);
 
@@ -200,4 +194,10 @@ LevelMap_ReadFile(void *self, const char *path)
         log_write("levelmap: '%s' %ux%u\n", name, width, height);
     }
     return 1;
+}
+
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+LevelMap_ReadFile(LevelMap *self, const char *path)
+{
+    return self->readFile(path);
 }

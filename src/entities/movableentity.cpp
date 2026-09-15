@@ -253,6 +253,7 @@ Sim_DestroyMovableEntityBase(MovableEntity *self)
 #include "voicepool.h"
 #include "movableentity.h"
 #include "tile.h"
+#include "levelmap.h"
 
 /* ─── The constants, read out of .rdata this session ──────────────────────
  *
@@ -997,8 +998,8 @@ unsigned int MovableEntity::updateMovement()
                     }
                     int nu = (int)GU + (int)field_13f;
                     int nv = (int)GV + (int)field_140;
-                    if (nu < 0 || (int)(unsigned)Tile::at(tileBase_, 0, 0)->mapExtentU() <= nu ||
-                        nv < 0 || (int)(unsigned)Tile::at(tileBase_, 0, 0)->mapExtentV() <= nv) {
+                    if (nu < 0 || (int)(unsigned)LevelMap::fromTileBase(tileBase_)->extentU() <= nu ||
+                        nv < 0 || (int)(unsigned)LevelMap::fromTileBase(tileBase_)->extentV() <= nv) {
                         field_14e = 0;          /* off the edge of the map */
                     } else {
                         cellU_ = (signed char)(GU + field_13f);

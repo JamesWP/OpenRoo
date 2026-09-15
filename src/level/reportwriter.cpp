@@ -167,12 +167,12 @@ typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
 #define OFF_TALLY_IS      0x4220c   /* WORD, levels with an instruction script*/
 #define OFF_SCORE_TOTAL   0x42212   /* DWORD, running total                   */
 #define OFF_GAMEFILE      0x4215f   /* char[], game file name                 */
-#define OFF_LEVEL_WORLD   0x2ab69d  /* char[], world/level path               */
-#define OFF_BONUS_FLAG    0x2ab599  /* int                                    */
-#define OFF_PAR_TIME_SRC  0x2ab71f  /* int, par time before the 50% scaling   */
+/* The map name (was OFF_LEVEL_WORLD 0x2ab69d), bonus flag (OFF_BONUS_FLAG
+ * 0x2ab599), file time limit (OFF_PAR_TIME_SRC 0x2ab71f, the par time before
+ * the 50% scaling) and title (OFF_LEVEL_TITLE 0x2ab61d) are the LevelMap's
+ * (levelmap.h), through Game::map(). */
 /* OFF_PAR_COPY was Player +0x23d (player.h), the crystals count. */
 #define OFF_LEVEL_PATH    0x173483  /* char[], <World>\<Level>                */
-#define OFF_LEVEL_TITLE   0x2ab61d  /* char[], display name                   */
 
 /* The per-column field list, in the original's emission order.  Each is
  * printed with "%d\t"; the widths differ, hence the size tag. */
@@ -236,10 +236,10 @@ Report_WriteLevelReport(Game *self, const char *pathname)
 
         sprintf(buf, STR_D_TAB, n);
         fputs(buf, out);
-        fputs((char *)(g + OFF_LEVEL_WORLD), out);
+        fputs(((Game *)g)->map()->mapName(), out);
         fputs(STR_TAB, out);
 
-        if (*(int *)(g + OFF_BONUS_FLAG) == 0) {
+        if ((int)((Game *)g)->map()->bonus() == 0) {
             fputs(STR_BLANK_TAB, out);
         } else {
             fputs(STR_X_TAB, out);
@@ -284,7 +284,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
         ((Game *)g)->player()->setGemsCollected(
             ((Game *)g)->gemsRequired());
         ((Game *)g)->setVitalityPercent(0x32);
-        timeBonus = (unsigned)(*(int *)(g + OFF_PAR_TIME_SRC) * 0x32) / 100;
+        timeBonus = (unsigned)(((Game *)g)->map()->fileTimeLimit() * 0x32) / 100;
         ORIG_LOG_MESSAGE(GAME_LOGGER, 3, STR_LOG_TIME, timeBonus);
         ORIG_CALC_SCORE(self, 2);
 
@@ -321,7 +321,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
             fputs(STR_STARS, sink);
             sprintf(buf, STR_LVL_FILE, n, (char *)(g + OFF_LEVEL_PATH));
             fputs(buf, sink);
-            sprintf(buf, STR_LVL_NAME, (char *)(g + OFF_LEVEL_TITLE));
+            sprintf(buf, STR_LVL_NAME, ((Game *)g)->map()->title());
             fputs(buf, sink);
 
             if (((Game *)g)->scriptPlayer()->loaded() != 0)

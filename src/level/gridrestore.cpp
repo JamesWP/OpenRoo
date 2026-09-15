@@ -58,36 +58,37 @@ static void fx_init(void)
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_RestoreTileGridFromSnapshot(Game *self)
 {
-    unsigned char *B = (unsigned char *)self;
+    LevelMap *map = self->map();
 
     fx_init();
     ++s_calls;
     if (s_diag)
         log_write("gridrestore: call %u extents 727=%u 728=%u\n", s_calls,
-                  B[0x2ab727], B[0x2ab728]);
+                  map->extentV(), map->extentU());
 
-    for (unsigned r = 0; r < B[0x2ab727]; ++r) {
-        unsigned char *t = B + 0x2ab729 + r * 0x7f;
-        for (unsigned c = 0; c < B[0x2ab728]; ++c, t += 0x319c) {
-            unsigned char *s = t + 0x1360f0;
+    /* The outer loop runs over v (pitch 0x7f), the inner over u (0x319c). */
+    for (unsigned r = 0; r < map->extentV(); ++r) {
+        for (unsigned c = 0; c < map->extentU(); ++c) {
+            Tile *t = map->tile((int)c, (int)r);
+            Tile *s = LevelMap::snapshotOf(t);
 
-            t[0] = s[0];
-            t[1] = s[1];
-            t[2] = s[2];
-            if (s[3] == 1 && t[3] != 1 && !s_fx)
-                t[3] = 0;
-            if (s[1] == 0x17 && *(int *)(t + 0x7b) != 0) {
-                s[1] = 1;
-                t[1] = 1;
+            t->setHeight(s->height());
+            t->setObjectMarker(s->objectMarker());
+            t->setParam(s->param());
+            if (s->contents() == 1 && t->contents() != 1 && !s_fx)
+                t->setContents(0);
+            if (s->objectMarker() == 0x17 && t->field217() != 0) {
+                s->setObjectMarker(1);
+                t->setObjectMarker(1);
             }
             if (s_fx)
                 continue;               /* gridkeep: no +3 store at all */
-            if (t[0x66] != 0)
-                t[3] = t[0x66];
-            if (s[3] == 7 && t[3] != 7)
-                t[3] = 0;
-            if (s[3] != 7 && s[3] != 1)
-                t[3] = s[3];
+            if (t->field202() != 0)
+                t->setContents(t->field202());
+            if (s->contents() == 7 && t->contents() != 7)
+                t->setContents(0);
+            if (s->contents() != 7 && s->contents() != 1)
+                t->setContents(s->contents());
         }
     }
 }

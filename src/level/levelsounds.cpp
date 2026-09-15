@@ -134,7 +134,7 @@ Sim_InitLevelBasedSounds(Game *self)
     unsigned char *B = (unsigned char *)self;
     Game *game = (Game *)B;
     Player *pl = game->player();
-    const char *world = (const char *)(B + 0x2ab69d);
+    const char *world = game->map()->mapName();
 
     if (s_fx < 0) {
         char e[32];

@@ -315,10 +315,9 @@ static void fx_init(void)
 #define GU8(o)    (*(unsigned char *)(B + (o)))
 #define GPP(o)   (*(unsigned char **)(B + (o)))
 
-/* Tile addressing for the Game-relative tables (+0x2ab72c, +0x2ab7a4):
- * (v + u*100) * 0x7f, the same stride as Tile::at.  Those are Game fields,
- * Band 3's. */
-#define TILEOFF(u, v)   ((((int)(v)) + ((int)(u)) * 100) * 0x7f)
+/* The Game-relative tile tables (+0x2ab72c, +0x2ab7a4) are the LevelMap's
+ * tiles' contents and +0x217 (levelmap.h); reached through Game::map(). */
+#define MAP   (((Game *)B)->map())
 
 /* The CRT's __ftol 0x00451134: truncate toward zero into an __int64.  Only
  * the low byte is ever kept by either search, exactly as the originals'
@@ -385,8 +384,8 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 {
     unsigned char *B = (unsigned char *)self;
+    SwitchCells   *sw = self->switchCells();
     unsigned int   li = listIndex & 0xff;
-    unsigned char *pair;
     int            flagged;
     unsigned int   value;
     int            i;
@@ -402,25 +401,23 @@ Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
     if (s_fx == FX_BLOCKINVERT)
         value = !value;
 
-    if (GU8(0x170543 + li) == 0)
+    if (sw->count(li) == 0)
         return;
 
-    pair = B + li * 0x300 + 0x140544;
-    i    = 0;
+    i = 0;
     do {
-        /* Point 4: v is read AT the pointer and u one byte BELOW it, and
-         * the v read happens first.  The pointer then advances by 3. */
-        unsigned char v = pair[0];
-        unsigned char u = pair[-1];
+        /* Point 4: the original walks a pointer at the cell's v byte, reads
+         * v AT it and u one byte BELOW it -- v first -- then advances 3. */
+        unsigned char v = sw->cellV(li, (unsigned)i);
+        unsigned char u = sw->cellU(li, (unsigned)i);
 
-        pair += 3;
         ++i;
 
-        *(int *)(B + 0x2ab7a4 + TILEOFF(u, v)) = (int)value;
+        MAP->tile(u, v)->setField217((int)value);
 
         /* The bound is re-read from memory every iteration, as the
          * original's `CMP` against [+0x170543 + li] is. */
-    } while (i < (int)(unsigned)GU8(0x170543 + li));
+    } while (i < (int)(unsigned)sw->count(li));
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -435,6 +432,7 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
                                 unsigned char *pv, unsigned char maxDist)
 {
     unsigned char *B = (unsigned char *)self;
+    SwitchCells   *sw = self->switchCells();
     unsigned char  u0 = *pu;          /* saved inputs, restored on failure */
     unsigned char  v0 = *pv;
     unsigned char  best     = maxDist;
@@ -449,24 +447,23 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
 
     /* Point 1: the entry guard is `(unsigned)count + 1 > 0`, which cannot
      * fail.  Written as the original's shape rather than deleted. */
-    if ((int)((unsigned int)GU8(0x48b12) + 1) > 0) {
+    if ((int)((unsigned int)self->switchMax() + 1) > 0) {
 
         for (list = 0; ; ) {
             unsigned char inner = 0;
 
-            if (GU8(0x170543 + list) != 0) {
+            if (sw->count(list) != 0) {
                 do {
-                    int            idx = (int)(list * 0x100 + inner);
                     unsigned char  u, v;
 
-                    u = GU8(0x140543 + idx * 3);
+                    u = sw->cellU(list, inner);
                     /* Point 7: both outputs are scribbled on every
                      * iteration, not only on a win. */
                     *pu = u;
-                    v = GU8(0x140544 + idx * 3);
+                    v = sw->cellV(list, inner);
                     *pv = v;
 
-                    if (*(int *)(B + 0x2ab7a4 + TILEOFF(u, v)) != 0) {
+                    if (MAP->tile(u, v)->field217() != 0) {
                         unsigned char d =
                             tile_distance((int)u0 - (int)u,
                                           (int)v0 - (int)v);
@@ -492,14 +489,14 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
 
                     /* An 8-bit counter compared UNSIGNED against the count. */
                     ++inner;
-                } while (inner < GU8(0x170543 + list));
+                } while (inner < sw->count(list));
             }
 
             /* Point 2: an 8-bit counter, widened for a SIGNED compare
              * against a bound that is the count PLUS ONE and is re-read
              * every iteration.  So the body runs count + 1 times. */
             list = (unsigned int)(unsigned char)(list + 1);
-            if (!((int)list < (int)((unsigned int)GU8(0x48b12) + 1)))
+            if (!((int)list < (int)((unsigned int)self->switchMax() + 1)))
                 break;
         }
 
@@ -555,16 +552,15 @@ Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
 
         do {
             if (uBeg < uEnd) {
-                unsigned char  vExtent = GU8(0x2ab727);
-                unsigned char *flag    = B + 0x2ab72c + TILEOFF(uBeg, v);
+                unsigned char  vExtent = MAP->extentV();
                 int            u       = uBeg;
 
                 do {
                     /* Point 5: strictly greater than zero on both axes, so
                      * row 0 and column 0 can never be selected. */
                     if (v < (int)(unsigned)vExtent && v > 0 &&
-                        u < (int)(unsigned)GU8(0x2ab728) && u > 0 &&
-                        *flag == 1) {
+                        u < (int)(unsigned)MAP->extentU() && u > 0 &&
+                        MAP->tile(u, v)->contents() == 1) {
                         unsigned char d =
                             tile_distance((int)u0 - u, (int)v0 - v);
 
@@ -582,9 +578,9 @@ Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
                         }
                     }
 
+                    /* The original steps a pointer +0x319c (one u) here;
+                     * tile(u, v) is the same address. */
                     ++u;
-                    /* One u step is one row of 100 tiles: 100 * 0x7f. */
-                    flag += 0x319c;
                 } while (u < uEnd);
             }
             ++v;
@@ -622,7 +618,7 @@ Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
 {
     unsigned char *B     = (unsigned char *)self;
     unsigned char *tiles = GPP(0x34);
-    Tile          *hdr   = Tile::at(tiles, 0, 0);   /* the map header */
+    LevelMap      *hdr   = LevelMap::fromTileBase(tiles);
     unsigned char  u0    = *pu;
     unsigned char  v0    = *pv;
     unsigned char  bestU = *pu;       /* seeded from the inputs, not zeroed */
@@ -636,12 +632,12 @@ Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
     fx_init();
     diag_enter(Q_FAR, self);
 
-    if (hdr->mapExtentV() != 0) {
+    if (hdr->extentV() != 0) {
         v = 0;
         do {
             unsigned char u = 0;
 
-            if (hdr->mapExtentU() != 0) {
+            if (hdr->extentU() != 0) {
                 int ui = 0;
 
                 do {
@@ -673,10 +669,10 @@ Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
                     /* Point 8: an 8-bit index read back SIGN-extended. */
                     ++u;
                     ui = (int)(signed char)u;
-                } while (ui < (int)(unsigned)hdr->mapExtentU());
+                } while (ui < (int)(unsigned)hdr->extentU());
             }
             ++v;
-        } while ((int)(signed char)v < (int)(unsigned)hdr->mapExtentV());
+        } while ((int)(signed char)v < (int)(unsigned)hdr->extentV());
 
         /* Point 10: strict, and unordered-false -- a NaN best returns 0. */
         if (best > 0.0) {

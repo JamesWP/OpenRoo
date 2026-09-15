@@ -146,12 +146,13 @@
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
-#define G_ENEMY_COUNT     0x17460f
-#define G_ENEMY_IDS       0x174610
+/* The bomb ("enemy") table's count and ID list are Game::bombCount()/
+ * bombId() (game.h), formerly G_ENEMY_COUNT 0x17460f / G_ENEMY_IDS 0x174610. */
 
 #define G_GAMEFILE_NAME   0x4215f    /* the %s in the error message          */
 
-#define G_CLEAR_BLOCK     0x170543   /* 0x40 dwords zeroed by the REP STOSD  */
+/* The REP STOSD's 0x40 dwords at 0x170543 are the switch counts
+ * (switchcells.h). */
 
 /* ─── Callbacks kept at their original addresses ─────────────────────────── */
 
@@ -210,8 +211,6 @@ Sim_ClearGameState(Game *self)
 {
     unsigned char *G = (unsigned char *)self;
     unsigned char gamefile_ok;
-    u32_ua *p;
-    int n;
 
     fx_init();
     diag_tick();
@@ -220,7 +219,7 @@ Sim_ClearGameState(Game *self)
         s_logged_clear = 1;
         log_write("gamereset: first ClearGameState -- foes=%u enemies=%u "
                   "lift=%u slide=%u break=%u bridge=%u\n",
-                  (unsigned)((Game *)G)->foeCount(), (unsigned)G[G_ENEMY_COUNT],
+                  (unsigned)((Game *)G)->foeCount(), (unsigned)((Game *)G)->bombCount(),
                   (unsigned)((Game *)G)->liftCount(),
                   (unsigned)((Game *)G)->slideCount(),
                   (unsigned)((Game *)G)->breakableCount(),
@@ -263,10 +262,8 @@ Sim_ClearGameState(Game *self)
     BreakableTile::purgeAll((Game *)self);
     BridgeObject::purgeAll((Game *)self);
 
-    /* REP STOSD, ECX=0x40 -- 0x100 bytes at Game+0x170543 (unaligned base). */
-    p = (u32_ua *)(G + G_CLEAR_BLOCK);
-    for (n = 0x40; n != 0; n--)
-        *p++ = 0;
+    /* REP STOSD, ECX=0x40 -- the 256 switch counts at Game+0x170543. */
+    ((Game *)G)->switchCells()->clearCounts();
 
     while (((Game *)G)->foeCount() != 0) {
         if (s_diag && !s_logged_foedrain) {
@@ -278,18 +275,18 @@ Sim_ClearGameState(Game *self)
         Foe::remove((Game *)self, ((Game *)G)->foeId(0));
     }
 
-    while (G[G_ENEMY_COUNT] != 0) {
+    while (((Game *)G)->bombCount() != 0) {
         if (s_diag && !s_logged_enemydrain) {
             s_logged_enemydrain = 1;
             log_write("gamereset: first enemy drain -- count=%u id=%u\n",
-                      (unsigned)G[G_ENEMY_COUNT], (unsigned)G[G_ENEMY_IDS]);
+                      (unsigned)((Game *)G)->bombCount(), (unsigned)((Game *)G)->bombId(0));
         }
-        Bomb::remove((Game *)self, G[G_ENEMY_IDS]);
+        Bomb::remove((Game *)self, ((Game *)G)->bombId(0));
     }
 
     ((Game *)G)->setBreakableCount(0);
     ((Game *)G)->setFoeCount(0);
     ((Game *)G)->setLiftCount(0);
     ((Game *)G)->setSlideCount(0);
-    G[G_ENEMY_COUNT]  = 0;
+    ((Game *)G)->setBombCount(0);
 }

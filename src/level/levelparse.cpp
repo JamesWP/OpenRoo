@@ -233,14 +233,15 @@
 /* ─── Game / Level3DExtraObjects field offsets ───────────────────────────── */
 
 #define G_LEVEL_NAME      0x173483   /* the current level name, a string      */
-#define G_MAP_CHANGED     0x10       /* DWORD, set when the map name differs  */
-#define G_MAP_READER      0x2ab58d   /* the .jjm reader sub-object            */
-#define G_MAP_NAME        0x2ab69d   /* the map name the reader last loaded   */
-#define G_MAP_BONUS       0x2ab599   /* DWORD, the %d in the "loaded" line    */
+/* The map-changed flag (+0x10) and the peeked next-level bonus (+0x14) are
+ * Game::mapChanged() and Game::nextLevelBonus() (game.h). */
+
+/* The map (levelmap.h): its reader, the map name it last loaded, and the
+ * bonus DWORD (the %d in the "loaded" line). */
+#define MAP               (((Game *)G)->map())
 
 #define G_NAME_TABLE      0x3215e    /* level-name table, 0x100 per entry     */
 #define G_GAMEFILE_NAME   0x4215f    /* the game file's name, a string        */
-#define G_NEXT_BONUS      0x14       /* DWORD, the peeked next-level bonus    */
 
 
 /* ─── Game globals and string constants, at their original addresses ─────── */
@@ -279,9 +280,6 @@ GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CStatic_HaltPlayback(CStaticSoundbuffer *self);
-
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-LevelMap_ReadFile(void *self, const char *path);
 
 
 /* ─── FX / diag ──────────────────────────────────────────────────────────── */
@@ -363,27 +361,27 @@ Sim_ParseLevelFiles(Game *self, const char *name)
      * The ordering is the whole mechanism of the +0x10 flag below; the
      * `samelevel` control moves this copy after the read. */
     if (!s_fx_samelevel)
-        inline_strcpy(prev, (const char *)(G + G_MAP_NAME));
+        inline_strcpy(prev, MAP->mapName());
 
-    ok = LevelMap_ReadFile(G + G_MAP_READER, path);
+    ok = MAP->readFile(path);
 
     if (s_fx_samelevel)
-        inline_strcpy(prev, (const char *)(G + G_MAP_NAME));
+        inline_strcpy(prev, MAP->mapName());
 
     if ((char)ok != 0) {
         ((Game *)G)->extraObjects()->releaseSounds();
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LOADED,
-                           *(unsigned int *)(G + G_MAP_BONUS), path);
+                           MAP->bonus(), path);
     } else {
         GameLog_LogMessage(GAME_LOGGER_VA, 4, S_LOAD_FAILED, path);
         PostQuitMessage(1);
         /* and FALLS THROUGH -- the original does not return here */
     }
 
-    *(unsigned int *)(G + G_MAP_CHANGED) = 0;
+    ((Game *)G)->setMapChanged(0);
     if (inline_strcmp((const unsigned char *)prev,
-                      (const unsigned char *)(G + G_MAP_NAME)) != 0)
-        *(unsigned int *)(G + G_MAP_CHANGED) = 1;
+                      (const unsigned char *)MAP->mapName()) != 0)
+        ((Game *)G)->setMapChanged(1);
 
     ORIG_MAYBE_SPRINTF(path, S_FMT_SCRIPTS, GAME_DIR, name);
     ((Game *)G)->scriptPlayer()->setLoaded(0);
@@ -399,7 +397,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
         log_write("levelparse: DIAG parse #%u name=\"%s\" map=%s changed=%u "
                   "script=%u released=%u\n",
                   s_parses, name, (char)ok ? "ok" : "FAILED",
-                  *(unsigned int *)(G + G_MAP_CHANGED),
+                  ((Game *)G)->mapChanged(),
                   ((Game *)G)->scriptPlayer()->loaded(), ExtraObjects::releasedCount());
 
     /* XOR AL,AL on both paths -- success and failure are indistinguishable */
@@ -433,7 +431,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     fx_init();
 
-    *(unsigned int *)(G + G_NEXT_BONUS) = 0;
+    ((Game *)G)->setNextLevelBonus(0);
 
     /* A leftover: `path` is overwritten before it is ever read. */
     ORIG_MAYBE_SPRINTF(path, S_FMT_GAM, (const char *)(G + G_GAMEFILE_NAME));
@@ -445,14 +443,13 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
         ORIG_MAYBE_SPRINTF(path, S_FMT_LEVELS, GAME_DIR,
                            (const char *)(G + G_LEVEL_NAME));
         /* the result is deliberately not tested, as in the original */
-        LevelMap_ReadFile(G + G_MAP_READER, path);
-        *(unsigned int *)(G + G_NEXT_BONUS) =
-            *(unsigned int *)(G + G_MAP_BONUS);
+        MAP->readFile(path);
+        ((Game *)G)->setNextLevelBonus(MAP->bonus());
 
         if (s_diag)
             log_write("levelparse: bonus peek for level %u -> bonus=%u\n",
                       (unsigned)(unsigned char)(((Game *)G)->levelIndex() + 1),
-                      *(unsigned int *)(G + G_NEXT_BONUS));
+                      ((Game *)G)->nextLevelBonus());
     }
 
     Sim_SetCurrentLevelName(self, levelNo);
@@ -461,17 +458,17 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     /* Saved BEFORE the read -- see the header, and the `samelevel` control. */
     if (!s_fx_samelevel)
-        inline_strcpy(prev, (const char *)(G + G_MAP_NAME));
+        inline_strcpy(prev, MAP->mapName());
 
-    ok = LevelMap_ReadFile(G + G_MAP_READER, path);
+    ok = MAP->readFile(path);
 
     if (s_fx_samelevel)
-        inline_strcpy(prev, (const char *)(G + G_MAP_NAME));
+        inline_strcpy(prev, MAP->mapName());
 
     if ((char)ok != 0) {
         ((Game *)G)->extraObjects()->releaseSounds();
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_OPEN_LOADED,
-                           *(unsigned int *)(G + G_MAP_BONUS),
+                           MAP->bonus(),
                            levelNo & 0xff, path);
     } else {
         GameLog_LogMessage(GAME_LOGGER_VA, 4, S_OPEN_FAILED,
@@ -480,10 +477,10 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
         /* and FALLS THROUGH, as in ParseLevelFiles */
     }
 
-    *(unsigned int *)(G + G_MAP_CHANGED) = 0;
+    ((Game *)G)->setMapChanged(0);
     if (inline_strcmp((const unsigned char *)prev,
-                      (const unsigned char *)(G + G_MAP_NAME)) != 0)
-        *(unsigned int *)(G + G_MAP_CHANGED) = 1;
+                      (const unsigned char *)MAP->mapName()) != 0)
+        ((Game *)G)->setMapChanged(1);
 
     ORIG_MAYBE_SPRINTF(path, S_FMT_SCRIPTS, GAME_DIR,
                        (const char *)(G + G_LEVEL_NAME));
@@ -501,7 +498,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
                   "changed=%u script=%u released=%u\n",
                   s_opens, levelNo & 0xff, (const char *)(G + G_LEVEL_NAME),
                   (char)ok ? "ok" : "FAILED",
-                  *(unsigned int *)(G + G_MAP_CHANGED),
+                  ((Game *)G)->mapChanged(),
                   ((Game *)G)->scriptPlayer()->loaded(), ExtraObjects::releasedCount());
 
     return 0;

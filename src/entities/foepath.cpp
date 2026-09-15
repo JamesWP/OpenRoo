@@ -74,6 +74,7 @@
 #include "log.h"
 #include "foepath.h"
 #include "tile.h"
+#include "levelmap.h"
 #include "entitymath.h"   /* CheckTileIsRamp, GetTurnedDirection */
 
 /* ─── Structure ───────────────────────────────────────────────────────────
@@ -662,12 +663,12 @@ void FoePath::destroy(FoePath *p)
 
 void FoePath::populate(unsigned char *tileBase, unsigned short field04)
 {
-    const Tile *header = Tile::at(tileBase, 0, 0);
+    const LevelMap *map = LevelMap::fromTileBase(tileBase);
 
     tileBase_  = tileBase;
     field_04   = field04;
-    keyStride_ = (int)header->mapExtentU();       /* +0x19b */
-    extentV_   = (int)header->mapExtentV();       /* +0x19a */
+    keyStride_ = (int)map->extentU();             /* +0x19b */
+    extentV_   = (int)map->extentV();             /* +0x19a */
     pending_   = (PendingStack *)path_calloc(1, 9);
     found_     = 0;
     open_      = 0;

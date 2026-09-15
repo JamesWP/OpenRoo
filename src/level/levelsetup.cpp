@@ -128,11 +128,15 @@
  * **Type 3 is rewritten to type 1 mid-walk** (0x00416A3A), before the later
  * type tests in the same iteration see it.
  *
- * **The timed-item branch splits on 100.**  `d`-cells with a parameter below
- * 100 get effect 5 and a duration of `param * 1000` ms; at or above 100 they
- * get effect `param - 100` and the fixed duration 0x40b38800 (5000.0).  The
- * decompile renders the subtraction as `+ 0x9c`, a byte add of -100; the
- * listing is `SUB AL,0x64`.
+ * **The timed-spawner branch splits on 100.**  Snapshot cells with contents
+ * 0x64 and a parameter below 100 get a foe cap of 5 and a spawn interval of
+ * `param * 1000` ms; at or above 100 they get a cap of `param - 100` and the
+ * fixed interval 0x40b38800 (5000.0).  (Earlier notes called the cap an
+ * "effect" and the interval a "duration"; GameTick's spawner loop, the
+ * record's only reader, compares the foe count against the one and the time
+ * since the last spawn against the other -- levelcensus.h.)  The decompile
+ * renders the subtraction as `+ 0x9c`, a byte add of -100; the listing is
+ * `SUB AL,0x64`.
  *
  * ─── Control ─────────────────────────────────────────────────────────────
  *
@@ -177,81 +181,41 @@
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
-#define G_MODE_FLAG        0x14        /* dword; 0 -> state 2, else state 1  */
 #define G_UNK_42258        0x42258
 
-#define G_PLAYER_POS       0x2ab580    /* three floats                       */
-#define G_SOUND_LISTENER   0x13cc94    /* three floats, {0, 1000, 0}         */
-#define G_SOUND_E8         0x13cc90
-#define G_SOUND_100        0x13cca8
+/* Game fields with an owner now (game.h), formerly defined here:
+ *   G_MODE_FLAG 0x14       nextLevelBonus()  (the peeked next-level bonus)
+ *   G_PLAYER_POS 0x2ab580  cameraEye          G_SOUND_LISTENER 0x13cc94
+ *   G_SOUND_E8 0x13cc90    G_SOUND_100 0x13cca8
+ *   G_COUNT_CRYSTAL 0x42252 field_42252     G_LIFT_COUNT2 0x173b1a
+ *   G_ENEMY_COUNT/IDS 0x17460f/0x174610 bombCount()/bombId()
+ *   G_CLOCK 0x170a54 clock()                 G_LEVEL_NAME 0x173483 levelName() */
+#define GAME               ((Game *)G)
+/* The switch maximum (0x48b12), counts (0x170543) and cells (0x140543) are
+ * Game::switchMax() and Game::switchCells() (switchcells.h). */
+#define SW                 (((Game *)G)->switchCells())
 
-#define G_COUNT_CRYSTAL    0x42252     /* WORD                               */
-#define G_LIFT_COUNT2      0x173b1a
-#define G_ENEMY_COUNT      0x17460f
-#define G_ENEMY_IDS        0x174610
-#define G_SWITCH_MAX       0x48b12
-#define G_CLEAR_BLOCK      0x170543    /* 0x40 dwords, also the switch counts */
-#define G_SWITCH_CELLS     0x140543    /* 3 bytes per entry, 0x100 per switch */
 
-
-#define G_TILES            0x2ab58d    /* the map reader sub-object          */
-#define G_MAP_H            0x2ab727    /* tiles+0x19a, the v extent          */
-#define G_MAP_W            0x2ab728    /* tiles+0x19b, the u extent          */
-
-/* Per-tile field bases, Game-relative; index with TIDX(u,v). */
-#define T_HEIGHT           0x2ab729    /* tiles+0x19c                        */
-#define T_TYPE             0x2ab72a    /* tiles+0x19d                        */
-#define T_PARAM            0x2ab72b    /* tiles+0x19e                        */
-#define T_ITEM             0x2ab72c    /* tiles+0x19f                        */
-#define T_FLAG_72D         0x2ab72d
-#define T_DW_72E           0x2ab72e
-#define T_B_732            0x2ab732
-#define T_F_733            0x2ab733    /* float, the cell height             */
-#define T_DW_749           0x2ab749
-#define T_PAIR_ID          0x2ab77a
-#define T_PAIR_U           0x2ab77b
-#define T_PAIR_V           0x2ab77c
-#define T_B_77E            0x2ab77e
-#define T_B_77F            0x2ab77f
-#define T_SWITCH_IDX       0x2ab780
-#define T_DW_783           0x2ab783
-#define T_ITEM_SHADOW      0x2ab78f
-#define T_DW_790           0x2ab790
-#define T_DW_79C           0x2ab79c
-#define T_F_7A0            0x2ab7a0    /* float, rand() * 2pi / 32768        */
-#define T_DW_7A4           0x2ab7a4
-
-/* The second per-tile layer, same stride. */
-#define T2_B_1819          0x3e1819
-#define T2_B_181B          0x3e181b
-#define T2_TYPE            0x3e181c
+/* The map (Game+0x2ab58d) and its tiles are LevelMap's and Tile's
+ * (levelmap.h, tile.h).  The builder's names for the tile fields, as they
+ * were Game-relative defines here:
+ *   T_HEIGHT 0x19c height()      T_TYPE 0x19d objectMarker()
+ *   T_PARAM  0x19e param()       T_ITEM 0x19f contents()
+ *   T_FLAG_72D 0x1a0 blastHeight  T_DW_72E 0x1a1  T_B_732 0x1a5
+ *   T_F_733 0x1a6 liftLiveHeight (the cell height as a float)
+ *   T_DW_749 0x1bc slideTrack     T_PAIR_ID/U/V 0x1ed/0x1ee/0x1ef
+ *   T_B_77E 0x1f1  T_B_77F 0x1f2  T_SWITCH_IDX 0x1f3  T_DW_783 0x1f6
+ *   T_ITEM_SHADOW 0x202  T_DW_790 0x203  T_DW_79C 0x20f
+ *   T_F_7A0 0x213 itemPhase       T_DW_7A4 0x217
+ * and the "second tile layer" T2_* is the map's SNAPSHOT grid: +0 height,
+ * +2 param, +3 contents. */
 
 /* Counter words reset by ResetLevelObjectCounters. */
-#define C_TELEPORTS        0x421df
-#define C_TYPE17           0x421e1
-#define C_TYPE1            0x421e3
-/*      0x421e5 is NEVER reset -- see the header */
-#define C_TOTAL            0x421e7
-#define C_BRIDGES          0x421e9
-#define C_UNUSED_EB        0x421eb
-#define C_TYPE2            0x421ed
-#define C_TYPE10           0x421ef
-#define C_TYPE15           0x421f1
-#define C_L2_8             0x421f3
-#define C_L2_6             0x421f5
-#define C_ITEM7            0x421f7
-#define C_L2_D             0x421f9
-#define C_SHADOW1          0x421fb
-#define C_SHADOW7          0x421fd
-#define C_L2_5             0x421ff
-#define C_L2_A             0x42201
-#define C_L2_9             0x42203
-#define C_FREEBOMBS        0x42205
-#define C_TIMED            0x42207
-#define C_TYPE0E           0x42209
-
-#define G_FREEBOMBS        0x2173d     /* 0xb per entry                      */
-#define G_TIMED            0x2023d     /* 0x15 per entry                     */
+/* They are Game::census(), a LevelCensus (levelcensus.h), and keep the
+ * C_* names as fields (C_L2_D -> l2_d); 0x421e5 is NEVER reset -- see the
+ * header.  The free-bomb (0x2173d, 0xb each) and timed-spawner (0x2023d,
+ * 0x15 each) tables they index are Game::freeBomb()/timedSpawner(). */
+#define CEN                (((Game *)G)->census())
 #define G_CLOCK            0x170a54    /* the game clock, a double           */
 
 #define G_LEVEL_NAME       0x173483
@@ -363,25 +327,25 @@ static void fx_init(void)
         s_diag = 1;
 }
 
-/* Tile index.  `(v + u*100) * 0x7f`, the addressing tilequery.cpp and
- * movableentity.cpp document.  The control transposes the two terms HERE and
- * nowhere else, so every consumer moves together. */
-static inline int TIDX(unsigned u, unsigned v)
+/* The tile at (u, v), `(v + u*100) * 0x7f` from the map.  The control
+ * transposes the two terms HERE and nowhere else, so every consumer moves
+ * together. */
+static inline Tile *CELL(LevelMap *m, unsigned u, unsigned v)
 {
     if (s_fx_setupflip)
-        return (int)((u + v * 100) * 0x7f);
-    return (int)((v + u * 100) * 0x7f);
+        return m->tile((int)v, (int)u);
+    return m->tile((int)u, (int)v);
 }
 
-/* The same index formed from SIGNED bytes.  Three sites use MOVSX rather
- * than a zero-extended loop counter; on a well-formed level the values are
- * small positives and the two agree, but the sign extension is transcribed
+/* The same cell from SIGNED bytes.  Three sites use MOVSX rather than a
+ * zero-extended loop counter; on a well-formed level the values are small
+ * positives and the two agree, but the sign extension is transcribed
  * because the bytes come from level data. */
-static inline int SIDX(int u, int v)
+static inline Tile *SCELL(LevelMap *m, int u, int v)
 {
     if (s_fx_setupflip)
-        return (u + v * 100) * 0x7f;
-    return (v + u * 100) * 0x7f;
+        return m->tile(v, u);
+    return m->tile(u, v);
 }
 
 /* ═══ 0x0041ceb0 -- Game::ResetLevelObjectCounters ═════════════════════════
@@ -391,62 +355,39 @@ static inline int SIDX(int u, int v)
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_ResetLevelObjectCounters(Game *self)
 {
-    unsigned char *G = (unsigned char *)self;
-
-    W(G, 0x421df) = 0;
-    W(G, 0x421e1) = 0;
-    W(G, 0x421e3) = 0;
-    W(G, 0x421e7) = 0;
-    W(G, 0x421e9) = 0;
-    W(G, 0x421eb) = 0;
-    W(G, 0x421ed) = 0;
-    W(G, 0x421ef) = 0;
-    W(G, 0x421f1) = 0;
-    W(G, 0x421f3) = 0;
-    W(G, 0x421f5) = 0;
-    W(G, 0x421f9) = 0;
-    W(G, 0x42201) = 0;
-    W(G, 0x421ff) = 0;
-    W(G, 0x421fb) = 0;
-    W(G, 0x421fd) = 0;
-    W(G, 0x42209) = 0;
-    W(G, 0x421f7) = 0;
-    W(G, 0x42203) = 0;
-    W(G, 0x42205) = 0;
-    W(G, 0x42207) = 0;
+    self->census()->reset();
 }
 
 /* ═══ 0x0041f430 -- Game::FindTileByTypeMarker ═════════════════════════════
  *
  * `out` is written ONLY on success; the caller depends on that (see header). */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_FindTileByTypeMarker(void *tiles, unsigned int markerArg,
+Sim_FindTileByTypeMarker(LevelMap *map, unsigned int markerArg,
                          unsigned char *out)
 {
-    unsigned char *T = (unsigned char *)tiles;
     unsigned char marker = (unsigned char)markerArg;
     unsigned char v, u;
 
-    if (T[0x19a] == 0)
+    if (map->extentV() == 0)
         return 0;
 
     v = 0;
     do {
         u = 0;
-        if (T[0x19b] != 0) {
+        if (map->extentU() != 0) {
             do {
-                int off = TIDX(u, v);
-                if (T[off + 0x19d] == marker) {
+                Tile *t = CELL(map, u, v);
+                if (t->objectMarker() == marker) {
                     out[0] = u;
                     out[1] = v;
-                    out[2] = T[off + 0x19c];
+                    out[2] = t->height();
                     return 1;
                 }
                 u = (unsigned char)(u + 1);
-            } while (u < T[0x19b]);
+            } while (u < map->extentU());
         }
         v = (unsigned char)(v + 1);
-    } while (v < T[0x19a]);
+    } while (v < map->extentV());
 
     return 0;
 }
@@ -456,15 +397,16 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_SetupLevelObjects(Game *self)
 {
     unsigned char *G = (unsigned char *)self;
+    LevelMap *M = self->map();
     unsigned char v, u;
     unsigned char w, h;
-    int off;
+    Tile *t, *s;
 
     fx_init();
 
     /* ── run state ─────────────────────────────────────────────────────── */
     /* The level-completed node 0x28's child count: 2 or 1 by mode. */
-    ((Game *)G)->menu()->setChildCount(0x28, (DW(G, G_MODE_FLAG) == 0) ? 2 : 1);
+    ((Game *)G)->menu()->setChildCount(0x28, (GAME->nextLevelBonus() == 0) ? 2 : 1);
     PL->setField1ca(10.0);                /* two dwords: 0, 0x40240000 */
 
     GameLog_LogMessage(GAME_LOGGER_VA, 2, S_INIT_STARTED);
@@ -476,28 +418,28 @@ Sim_SetupLevelObjects(Game *self)
 
     /* The player position triple is zeroed, and the listener and the two
      * position globals are set from it; the listener's y is 1000.0f. */
-    DW(G, G_PLAYER_POS + 0) = 0;
-    DW(G, G_PLAYER_POS + 4) = 0;
-    DW(G, G_PLAYER_POS + 8) = 0;
+    GAME->setCameraEyeBits(0, 0);
+    GAME->setCameraEyeBits(1, 0);
+    GAME->setCameraEyeBits(2, 0);
 
-    DW(G, G_SOUND_LISTENER + 0) = 0;
-    DW(G, G_SOUND_LISTENER + 4) = 0x447a0000;   /* 1000.0f */
-    DW(G, G_SOUND_LISTENER + 8) = 0;
+    GAME->setField13cc94(0, 0.0f);
+    GAME->setField13cc94(1, 1000.0f);           /* 0x447a0000 */
+    GAME->setField13cc94(2, 0.0f);
 
     ((u32_ua *)GBL_LISTENER)[0] = 0;
     ((u32_ua *)GBL_LISTENER)[1] = 0x447a0000;
     ((u32_ua *)GBL_LISTENER)[2] = 0;
 
-    ((u32_ua *)GBL_POS)[0] = DW(G, G_PLAYER_POS + 0);
-    ((u32_ua *)GBL_POS)[1] = DW(G, G_PLAYER_POS + 4);
+    ((u32_ua *)GBL_POS)[0] = GAME->cameraEyeBits(0);
+    ((u32_ua *)GBL_POS)[1] = GAME->cameraEyeBits(1);
     GBL_C4B8 = 0;
-    ((u32_ua *)GBL_POS)[2] = DW(G, G_PLAYER_POS + 8);
+    ((u32_ua *)GBL_POS)[2] = GAME->cameraEyeBits(2);
     GBL_C4BC = 0;
 
     Sim_ResetLevelObjectCounters((Game *)G);
 
-    W(G, G_COUNT_CRYSTAL) = 0;
-    DW(G, G_LIFT_COUNT2)  = 0;
+    GAME->setField42252(0);
+    GAME->setField173b1a(0);
     PL->setField44(0);
     PL->setFieldFf(0);
     PL->setField11a(0);
@@ -509,38 +451,34 @@ Sim_SetupLevelObjects(Game *self)
     BreakableTile::purgeAll((Game *)G);
     BridgeObject::purgeAll((Game *)G);
 
-    {
-        u32_ua *p = (u32_ua *)(G + G_CLEAR_BLOCK);
-        int n;
-        for (n = 0x40; n != 0; n--)
-            *p++ = 0;
-    }
+    /* REP STOSD, 0x40 dwords: the 256 switch counts. */
+    SW->clearCounts();
 
     while (((Game *)G)->foeCount() != 0)
         Foe::remove((Game *)G, ((Game *)G)->foeId(0));
-    while (B(G, G_ENEMY_COUNT) != 0)
-        Sim_RemoveEnemyObject((Game *)G, B(G, G_ENEMY_IDS));
+    while (GAME->bombCount() != 0)
+        Sim_RemoveEnemyObject((Game *)G, GAME->bombId(0));
 
     ((Game *)G)->setBreakableCount(0);
     ((Game *)G)->setFoeCount(0);
     ((Game *)G)->setLiftCount(0);
     ((Game *)G)->setSlideCount(0);
-    B(G, G_ENEMY_COUNT) = 0;
-    B(G, G_SWITCH_MAX)  = 0;
+    GAME->setBombCount(0);
+    ((Game *)G)->setSwitchMax(0);
     PL->setField230(0);
 
-    PL->setTileBase(G + G_TILES);
+    PL->setTileBase(M->tileBase());
 
     /* ── the player start, and the marker-4 cell ───────────────────────── */
-    if (Sim_FindTileByTypeMarker(G + G_TILES, 3, PL->homeRef())) {
+    if (Sim_FindTileByTypeMarker(M, 3, PL->homeRef())) {
         /* MOVSX, not MOVZX: the index is formed from the SIGNED bytes. */
-        off = SIDX((signed char)PL->homeU(), (signed char)PL->homeV());
-        PL->setFacing(B(G, T_PARAM + off));
+        t = SCELL(M, (signed char)PL->homeU(), (signed char)PL->homeV());
+        PL->setFacing(t->param());
     }
 
     /* The return value is DISCARDED: on a level with no marker-4 cell these
      * three bytes keep the previous level's values.  Preserved. */
-    Sim_FindTileByTypeMarker(G + G_TILES, 4, PL->field142Ref());
+    Sim_FindTileByTypeMarker(M, 4, PL->field142Ref());
 
     PL->setField20e((float)(int)(signed char)PL->field142(),
                     (float)(int)(signed char)PL->field144(),
@@ -548,8 +486,7 @@ Sim_SetupLevelObjects(Game *self)
 
     PL->setCell(PL->homeU(), PL->homeV(), PL->homeH());
 
-    off = SIDX((signed char)PL->homeU(), (signed char)PL->homeV());
-    B(G, T_TYPE + off) = 1;
+    SCELL(M, (signed char)PL->homeU(), (signed char)PL->homeV())->setObjectMarker(1);
 
     PL->setPos((float)(int)PL->cellU(), (float)(int)PL->heightCell(), (float)(int)PL->cellV());
 
@@ -561,298 +498,295 @@ Sim_SetupLevelObjects(Game *self)
     ORIG_SRAND((unsigned int)hooks_GameTime(0));
 
     /* ── pass 1: clear one dword per cell ──────────────────────────────── */
-    h = B(G, G_MAP_H);
+    h = M->extentV();
     if (h != 0) {
         v = 0;
         do {
-            w = B(G, G_MAP_W);
+            w = M->extentU();
             if (w != 0) {
                 u = 0;
                 do {
-                    DW(G, T_DW_749 + TIDX(u, v)) = 0;
+                    CELL(M, u, v)->setSlideTrack(0);
                     u = (unsigned char)(u + 1);
-                } while (u < B(G, G_MAP_W));
+                } while (u < M->extentU());
             }
             v = (unsigned char)(v + 1);
-        } while (v < B(G, G_MAP_H));
+        } while (v < M->extentV());
     }
 
     /* ── pass 2: the walk ──────────────────────────────────────────────── */
-    if (B(G, G_MAP_H) != 0) {
+    if (M->extentV() != 0) {
         v = 0;
         do {
-            if (B(G, G_MAP_W) == 0)
+            if (M->extentU() == 0)
                 goto next_row;
             u = 0;
             do {
-                off = TIDX(u, v);
+                t = CELL(M, u, v);
+                s = LevelMap::snapshotOf(t);
 
-                B (G, T_B_732    + off) = 0;
-                DW(G, T_DW_783   + off) = 0;
-                DW(G, T_DW_790   + off) = 0;
-                DW(G, T_DW_79C   + off) = 0;
-                B (G, T_FLAG_72D + off) = 0;
-                DW(G, T_DW_72E   + off) = 0;
-                DW(G, T_DW_7A4   + off) = 0;
-                B (G, T_ITEM_SHADOW + off) = 0;
+                t->setField1a5(0);
+                t->setField1f6(0);
+                t->setField203(0);
+                t->setField20f(0);
+                t->setBlastHeight(0);
+                t->setField1a1(0);
+                t->setField217(0);
+                t->setField202(0);
 
-                if (B(G, T_ITEM + off) == 1) W(G, G_COUNT_CRYSTAL)++;
-                if (B(G, T_ITEM + off) == 7) W(G, C_ITEM7)++;
+                if (t->contents() == 1)
+                    GAME->setField42252((unsigned short)(GAME->field_42252() + 1));
+                if (t->contents() == 7) CEN->item7++;
 
-                if (B(G, T_TYPE + off) == 0x01) W(G, C_TYPE1)++;
-                if (B(G, T_TYPE + off) == 0x02) W(G, C_TYPE2)++;
-                if (B(G, T_TYPE + off) == 0x10) W(G, C_TYPE10)++;
-                if (B(G, T_TYPE + off) == 0x15) W(G, C_TYPE15)++;
+                if (t->objectMarker() == 0x01) CEN->type1++;
+                if (t->objectMarker() == 0x02) CEN->type2++;
+                if (t->objectMarker() == 0x10) CEN->type10++;
+                if (t->objectMarker() == 0x15) CEN->type15++;
 
-                if (B(G, T_TYPE + off) == 0x17) {
+                if (t->objectMarker() == 0x17) {
                     unsigned char item;
-                    W(G, C_TYPE17)++;
-                    DW(G, T_DW_7A4 + off) = 0;
-                    item = B(G, T_ITEM + off);
+                    CEN->type17++;
+                    t->setField217(0);
+                    item = t->contents();
                     if (s_fx_noshadow)
                         item = 0;      /* the move never happens */
                     if (item != 0) {
-                        B(G, T_ITEM_SHADOW + off) = item;
-                        B(G, T_ITEM + off) = 0;
-                        if (B(G, T_ITEM_SHADOW + off) == 1) W(G, C_SHADOW1)++;
-                        if (B(G, T_ITEM_SHADOW + off) == 7) W(G, C_SHADOW7)++;
+                        t->setField202(item);
+                        t->setContents(0);
+                        if (t->field202() == 1) CEN->shadow1++;
+                        if (t->field202() == 7) CEN->shadow7++;
                     }
                 }
 
                 /* switch cell */
-                if (B(G, T_TYPE + off) == 0x11) {
-                    unsigned char param = B(G, T_PARAM + off);
+                if (t->objectMarker() == 0x11) {
+                    unsigned char param = t->param();
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_SWITCH);
                     } else {
                         unsigned char idx = (unsigned char)(param - 1);
-                        unsigned char cnt;
-                        if (idx > B(G, G_SWITCH_MAX))
-                            B(G, G_SWITCH_MAX) = idx;
-                        B(G, T_SWITCH_IDX + off) = idx;
-                        cnt = B(G, G_CLEAR_BLOCK + idx);
-                        B(G, G_SWITCH_CELLS + 0 + ((unsigned)cnt + (unsigned)idx * 0x100) * 3) = u;
-                        cnt = B(G, G_CLEAR_BLOCK + idx);
-                        B(G, G_SWITCH_CELLS + 1 + ((unsigned)cnt + (unsigned)idx * 0x100) * 3) = v;
-                        B(G, G_CLEAR_BLOCK + idx) = (unsigned char)(B(G, G_CLEAR_BLOCK + idx) + 1);
+                        if (idx > ((Game *)G)->switchMax())
+                            ((Game *)G)->setSwitchMax(idx);
+                        t->setField1f3(idx);
+                        /* The count is re-read for each store, as the
+                         * original re-reads it. */
+                        SW->setCellU(idx, SW->count(idx), u);
+                        SW->setCellV(idx, SW->count(idx), v);
+                        SW->setCount(idx, (unsigned char)(SW->count(idx) + 1));
                     }
-                    B(G, T_PARAM + off) = 0;
+                    t->setParam(0);
                 }
 
                 /* bridges along U, then along V */
-                if (B(G, T_TYPE + off) == 0x12) {
-                    unsigned char param = B(G, T_PARAM + off);
+                if (t->objectMarker() == 0x12) {
+                    unsigned char param = t->param();
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_XBRIDGE);
                     } else {
-                        BridgeObject::spawn((Game *)G, u, v, B(G, T_HEIGHT + off),
+                        BridgeObject::spawn((Game *)G, u, v, t->height(),
                                             (unsigned char)(param - 1), 1);
-                        B(G, T_PARAM + off) = 0;
-                        W(G, C_BRIDGES)++;
+                        t->setParam(0);
+                        CEN->bridges++;
                     }
                 }
-                if (B(G, T_TYPE + off) == 0x13) {
-                    unsigned char param = B(G, T_PARAM + off);
+                if (t->objectMarker() == 0x13) {
+                    unsigned char param = t->param();
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_YBRIDGE);
                     } else {
-                        BridgeObject::spawn((Game *)G, u, v, B(G, T_HEIGHT + off),
+                        BridgeObject::spawn((Game *)G, u, v, t->height(),
                                             (unsigned char)(param - 1), 2);
-                        B(G, T_PARAM + off) = 0;
-                        W(G, C_BRIDGES)++;
+                        t->setParam(0);
+                        CEN->bridges++;
                     }
                 }
 
-                if (B(G, T_TYPE + off) == 0x10) {
-                    B(G, T_B_77F + off) = B(G, T_PARAM + off);
-                    B(G, T_PARAM + off) = 0;
+                if (t->objectMarker() == 0x10) {
+                    t->setField1f2(t->param());
+                    t->setParam(0);
                 }
 
                 /* type 3 becomes type 1, before the tests below see it */
-                if (B(G, T_TYPE + off) == 0x03)
-                    B(G, T_TYPE + off) = 1;
+                if (t->objectMarker() == 0x03)
+                    t->setObjectMarker(1);
 
-                if (B(G, T_TYPE + off) == 0x09) {
-                    LiftObject::spawn((Game *)G, u, v, B(G, T_HEIGHT + off),
-                                        B(G, T_PARAM + off));
-                    B(G, T_PARAM + off) = 0;
+                if (t->objectMarker() == 0x09) {
+                    LiftObject::spawn((Game *)G, u, v, t->height(), t->param());
+                    t->setParam(0);
                 }
 
-                if (B(G, T_TYPE + off) == 0x0e) {
-                    B(G, T_B_77E + off) = B(G, T_PARAM + off);
-                    W(G, C_TYPE0E)++;
-                    B(G, T_PARAM + off) = 0;
+                if (t->objectMarker() == 0x0e) {
+                    t->setField1f1(t->param());
+                    CEN->type0e++;
+                    t->setParam(0);
                 }
 
                 /* a cell holding an item gets a random phase */
-                if (B(G, T_ITEM + off) != 0) {
-                    long double t = (long double)(int)crt_rand();
-                    t = t * (long double)K_TWO_PI;
-                    t = t * (long double)K_INV_32K;
-                    F(G, T_F_7A0 + off) = (float)t;
+                if (t->contents() != 0) {
+                    long double ph = (long double)(int)crt_rand();
+                    ph = ph * (long double)K_TWO_PI;
+                    ph = ph * (long double)K_INV_32K;
+                    t->setItemPhase((float)ph);
                 }
 
-                if (B(G, T_TYPE + off) == 0x0a || B(G, T_TYPE + off) == 0x0b) {
-                    B(G, T_ITEM  + off) = 0;
-                    B(G, T_PARAM + off) = 0;
-                    SlideObject::spawn((Game *)G, u, v, B(G, T_HEIGHT + off),
-                                       B(G, T_TYPE + off));
-                    B(G, T_TYPE + off) = 0;
+                if (t->objectMarker() == 0x0a || t->objectMarker() == 0x0b) {
+                    t->setContents(0);
+                    t->setParam(0);
+                    SlideObject::spawn((Game *)G, u, v, t->height(),
+                                       t->objectMarker());
+                    t->setObjectMarker(0);
                 }
 
-                if (B(G, T_TYPE + off) == 0x0d)
-                    BreakableTile::spawn((Game *)G, u, v, B(G, T_HEIGHT + off),
-                                             B(G, T_PARAM + off));
+                if (t->objectMarker() == 0x0d)
+                    BreakableTile::spawn((Game *)G, u, v, t->height(), t->param());
 
                 /* teleport pairing */
-                if (B(G, T_TYPE + off) == 0x0f && B(G, T_PARAM + off) != 0) {
-                    unsigned char id = B(G, T_PARAM + off);
+                if (t->objectMarker() == 0x0f && t->param() != 0) {
+                    unsigned char id = t->param();
                     unsigned char v2;
 
                     /* cleared FIRST, which is the only reason the search
                      * below cannot match this very cell */
-                    B(G, T_PARAM   + off) = 0;
-                    B(G, T_PAIR_ID + off) = id;
+                    t->setParam(0);
+                    t->setTeleportId(id);
 
-                    if (B(G, G_MAP_H) != 0) {
+                    if (M->extentV() != 0) {
                         v2 = 0;
                         do {
-                            if (B(G, G_MAP_W) != 0) {
+                            if (M->extentU() != 0) {
                                 unsigned char u2 = 0;
                                 do {
-                                    int o2 = TIDX(u2, v2);
-                                    if (B(G, T_TYPE + o2) == 0x0f &&
-                                        B(G, T_PARAM + o2) == id) {
-                                        W(G, C_TELEPORTS)++;
-                                        B(G, T_PAIR_U + off) = u2;
-                                        B(G, T_PAIR_V + off) = v2;
-                                        B(G, T_PAIR_U + o2)  = u;
-                                        B(G, T_PAIR_V + o2)  = v;
-                                        B(G, T_PARAM  + o2)  = 0;
+                                    Tile *t2 = CELL(M, u2, v2);
+                                    if (t2->objectMarker() == 0x0f &&
+                                        t2->param() == id) {
+                                        CEN->teleports++;
+                                        t->setField1ee(u2);
+                                        t->setField1ef(v2);
+                                        t2->setField1ee(u);
+                                        t2->setField1ef(v);
+                                        t2->setParam(0);
                                     }
                                     u2 = (unsigned char)(u2 + 1);
-                                } while (u2 < B(G, G_MAP_W));
+                                } while (u2 < M->extentU());
                             }
                             v2 = (unsigned char)(v2 + 1);
-                        } while (v2 < B(G, G_MAP_H));
+                        } while (v2 < M->extentV());
                     }
                 }
 
-                /* ── the second tile layer ─────────────────────────────── */
-                if (B(G, T2_TYPE + off) == 0x0d) W(G, C_L2_D)++;
-                if (B(G, T2_TYPE + off) == 0x08) W(G, C_L2_8)++;
-                if (B(G, T2_TYPE + off) == 0x06) W(G, C_L2_6)++;
-                if (B(G, T2_TYPE + off) == 0x05) W(G, C_L2_5)++;
-                if (B(G, T2_TYPE + off) == 0x0a) W(G, C_L2_A)++;
-                if (B(G, T2_TYPE + off) == 0x09) W(G, C_L2_9)++;
+                /* ── the snapshot: the cell as the file gave it ────────── */
+                if (s->contents() == 0x0d) CEN->l2_d++;
+                if (s->contents() == 0x08) CEN->l2_8++;
+                if (s->contents() == 0x06) CEN->l2_6++;
+                if (s->contents() == 0x05) CEN->l2_5++;
+                if (s->contents() == 0x0a) CEN->l2_a++;
+                if (s->contents() == 0x09) CEN->l2_9++;
 
-                if (B(G, T2_TYPE + off) == 0x4d) {          /* free bomb */
-                    unsigned idx = W(G, C_FREEBOMBS);
-                    B (G, G_FREEBOMBS + 0 + idx * 0xb) = u;
-                    idx = W(G, C_FREEBOMBS);
-                    B (G, G_FREEBOMBS + 1 + idx * 0xb) = v;
-                    idx = W(G, C_FREEBOMBS);
-                    B (G, G_FREEBOMBS + 2 + idx * 0xb) = B(G, T2_B_181B + off);
-                    idx = W(G, C_FREEBOMBS);
-                    DW(G, G_FREEBOMBS + 3 + idx * 0xb) = DW(G, G_CLOCK + 0);
-                    DW(G, G_FREEBOMBS + 7 + idx * 0xb) = DW(G, G_CLOCK + 4);
+                if (s->contents() == 0x4d) {                /* free bomb */
+                    /* The count is re-read for every store, as the
+                     * original re-reads it. */
+                    ((Game *)G)->freeBomb(CEN->freeBombs)->u = u;
+                    ((Game *)G)->freeBomb(CEN->freeBombs)->v = v;
+                    ((Game *)G)->freeBomb(CEN->freeBombs)->param = s->param();
+                    /* Two dword MOVs of the clock in the original; one
+                     * double copy here, the same bits. */
+                    ((Game *)G)->freeBomb(CEN->freeBombs)->placedAt =
+                        *GAME->clock();
                     GameLog_LogMessage(GAME_LOGGER_VA, 3, S_FREEBOMB,
-                                       (unsigned int)W(G, C_FREEBOMBS));
-                    W(G, C_FREEBOMBS)++;
+                                       (unsigned int)CEN->freeBombs);
+                    CEN->freeBombs++;
                 }
 
-                if (B(G, T2_TYPE + off) == 0x64) {          /* timed item */
+                if (s->contents() == 0x64) {                /* timed item */
                     unsigned idx;
                     unsigned char param;
 
-                    idx = W(G, C_TIMED);
-                    B(G, G_TIMED + 0 + idx * 0x15) = u;
-                    idx = W(G, C_TIMED);
-                    B(G, G_TIMED + 1 + idx * 0x15) = v;
-                    idx = W(G, C_TIMED);
-                    B(G, G_TIMED + 2 + idx * 0x15) = B(G, T2_B_1819 + off);
+                    /* The count is re-read for every store, as the
+                     * original re-reads it. */
+                    ((Game *)G)->timedSpawner(CEN->timed)->u = u;
+                    ((Game *)G)->timedSpawner(CEN->timed)->v = v;
+                    ((Game *)G)->timedSpawner(CEN->timed)->height = s->height();
 
-                    param = B(G, T2_B_181B + off);
+                    /* +0x14 is the foe cap GameTick compares the foe count
+                     * against; the header's "effect" is this same byte. */
+                    param = s->param();
                     if (param < 0x64) {
-                        idx = W(G, C_TIMED);
-                        B(G, G_TIMED + 0x14 + idx * 0x15) = 5;
-                        param = B(G, T2_B_181B + off);
-                        idx = W(G, C_TIMED);
-                        D(G, G_TIMED + 0x0c + idx * 0x15) =
+                        ((Game *)G)->timedSpawner(CEN->timed)->maxFoes = 5;
+                        param = s->param();
+                        ((Game *)G)->timedSpawner(CEN->timed)->interval =
                             (double)(int)((unsigned)param * 1000u);
                     } else {
-                        idx = W(G, C_TIMED);
-                        B (G, G_TIMED + 0x14 + idx * 0x15) =
+                        ((Game *)G)->timedSpawner(CEN->timed)->maxFoes =
                             (unsigned char)(param - 0x64);
-                        idx = W(G, C_TIMED);
-                        DW(G, G_TIMED + 0x0c + idx * 0x15) = 0;
-                        DW(G, G_TIMED + 0x10 + idx * 0x15) = 0x40b38800;
+                        /* Two dwords in the original, 0 and 0x40b38800:
+                         * one double, 5000.0. */
+                        ((Game *)G)->timedSpawner(CEN->timed)->interval = 5000.0;
                     }
 
-                    idx = W(G, C_TIMED);
+                    /* Staggered: spawner k first fires k seconds late. */
+                    idx = CEN->timed;
                     {
-                        long double t = (long double)(int)(idx * 1000u);
-                        t = t + (long double)D(G, G_CLOCK);
-                        D(G, G_TIMED + 0x03 + idx * 0x15) = (double)t;
+                        long double when = (long double)(int)(idx * 1000u);
+                        when = when + (long double)*GAME->clock();
+                        ((Game *)G)->timedSpawner(idx)->lastSpawn = (double)when;
                     }
-                    W(G, C_TIMED)++;
+                    CEN->timed++;
                 }
 
                 /* ── foes ──────────────────────────────────────────────── */
                 {
                     int spawned2 = 0;
 
-                    if (B(G, T2_TYPE + off) == 0x02) {
-                        unsigned char param = B(G, T_PARAM + off);
+                    if (s->contents() == 0x02) {
+                        unsigned char param = t->param();
                         unsigned char hh;
 
-                        if (param == 0x0b || param == 0x07) W(G, C_SHADOW1)++;
-                        if (B(G, T_PARAM + off) == 0x4d)    W(G, C_SHADOW7)++;
+                        if (param == 0x0b || param == 0x07) CEN->shadow1++;
+                        if (t->param() == 0x4d)             CEN->shadow7++;
 
-                        param = B(G, T_PARAM + off);
-                        hh    = B(G, T_HEIGHT + off);
+                        param = t->param();
+                        hh    = t->height();
                         if (param == 0x06) {
                             unsigned char bump =
                                 (unsigned char)((unsigned char)(u + v) + 0x0a);
-                            B(G, T_PARAM + off) = 0;
+                            t->setParam(0);
                             hh = (unsigned char)(hh + bump);
                         }
-                        Foe::spawn((Game *)G, u, v, hh, 2, B(G, T_PARAM + off));
-                        B(G, T_ITEM + off) = 0;
+                        Foe::spawn((Game *)G, u, v, hh, 2, t->param());
+                        t->setContents(0);
                         spawned2 = 1;
                     }
 
-                    if (B(G, T2_TYPE + off) == 0x03) {
-                        Foe::spawn((Game *)G, u, v, B(G, T_HEIGHT + off), 3,
-                                   B(G, T_PARAM + off));
-                        B(G, T_ITEM  + off) = 0;
-                        B(G, T_PARAM + off) = 0;
+                    if (s->contents() == 0x03) {
+                        Foe::spawn((Game *)G, u, v, t->height(), 3, t->param());
+                        t->setContents(0);
+                        t->setParam(0);
                     } else if (!spawned2) {
                         /* every cell EXCEPT one that just spawned a type-2
                          * foe loses its parameter byte here */
-                        B(G, T_PARAM + off) = 0;
+                        t->setParam(0);
                     }
                 }
 
-                F(G, T_F_733 + off) = (float)(int)(unsigned)B(G, T_HEIGHT + off);
+                t->setLiftLiveHeight((float)(int)(unsigned)t->height());
 
                 u = (unsigned char)(u + 1);
-            } while (u < B(G, G_MAP_W));
+            } while (u < M->extentU());
 
 next_row:
             v = (unsigned char)(v + 1);
-        } while (v < B(G, G_MAP_H));
+        } while (v < M->extentV());
     }
 
     /* ── totals and the rest of the reset ──────────────────────────────── */
     PL->setField11e(0xff);
     DW(G, 0x173584) = 1;
 
-    W(G, C_TOTAL) = (unsigned short)(W(G, C_L2_9) + W(G, C_L2_A) +
-                                     W(G, C_SHADOW1) + W(G, C_L2_D) +
-                                     W(G, C_L2_5) + W(G, C_SHADOW7) +
-                                     W(G, C_L2_8) + W(G, C_ITEM7) +
-                                     W(G, C_L2_6) + W(G, G_COUNT_CRYSTAL));
+    CEN->total = (unsigned short)(CEN->l2_9 + CEN->l2_a +
+                                     CEN->shadow1 + CEN->l2_d +
+                                     CEN->l2_5 + CEN->shadow7 +
+                                     CEN->l2_8 + CEN->item7 +
+                                     CEN->l2_6 + GAME->field_42252());
 
     PL->setMoveState(0);
     PL->setFieldDc(*((Game *)G)->clock());
@@ -869,27 +803,27 @@ next_row:
     PL->setField9b(0);
     PL->setFieldE4(0);
     PL->setFieldD8(0);
-    ((Game *)G)->setTimeLimit((int)DW(G, 0x2ab71f));
+    ((Game *)G)->setTimeLimit(M->fileTimeLimit());
     PL->setClock(((Game *)G)->clock());
 
     if (((Game *)G)->restartCount() == 0) {
         ((Game *)G)->setFoesKilled(0);
         PL->setField21a(0);
-        ((Game *)G)->setItemTotal(W(G, C_TOTAL));
+        ((Game *)G)->setItemTotal(CEN->total);
 
         if (((Game *)G)->scriptPlayer()->loaded() == 0) {
-            F(G, G_PLAYER_POS + 0) = (float)(int)(signed char)PL->homeU();
-            F(G, G_PLAYER_POS + 4) = (float)(int)(signed char)PL->homeH();
-            F(G, G_PLAYER_POS + 8) = (float)(int)(signed char)PL->homeV();
+            GAME->setCameraEye(0, (float)(int)(signed char)PL->homeU());
+            GAME->setCameraEye(1, (float)(int)(signed char)PL->homeH());
+            GAME->setCameraEye(2, (float)(int)(signed char)PL->homeV());
         }
 
         if (((Game *)G)->cdThemes()->validateTrackLengths() == 0 &&
-            DW(G, 0xc) == 0 &&
+            GAME->field_0c() == 0 &&
             ((Game *)G)->levelIndex() > 4) {
             unsigned char cu = PL->homeU();
             unsigned char cv = PL->homeV();
             if (Sim_FindNearestFlaggedTileInRadius((Game *)G, &cu, &cv, 0x14)) {
-                B(G, T_ITEM + TIDX(cu, cv)) = 0;
+                CELL(M, cu, cv)->setContents(0);
                 GameLog_LogMessage(GAME_LOGGER_VA, 3, S_CD_MISSING,
                                    (unsigned int)cu, (unsigned int)cv);
             }
@@ -899,8 +833,7 @@ next_row:
     ((Game *)G)->setTimeElapsed(0);
     ((Game *)G)->setField170a65(0);
 
-    off = SIDX(PL->cellU(), PL->cellV());
-    DW(G, T_DW_72E + off) = 0;
+    SCELL(M, PL->cellU(), PL->cellV())->setField1a1(0);
 
     PL->setFieldE9(0);
     PL->setFieldE8(0);
@@ -915,27 +848,27 @@ next_row:
     PL->setField9a(0);
     PL->setField86(0);
     PL->setField38(500.0);                /* two dwords: 0, 0x407f4000 */
-    DW(G, G_SOUND_E8)  = 0;
-    DW(G, G_SOUND_100) = 0;
+    GAME->setField13cc90(0);
+    GAME->setField13cca8(0);
 
     GameLog_LogMessage(GAME_LOGGER_VA, 1, S_CRYSTALS,
-                       (unsigned int)W(G, G_COUNT_CRYSTAL),
+                       (unsigned int)GAME->field_42252(),
                        ((Game *)G)->gemsRequired());
 
-    if ((int)((unsigned int)PL->gemsCollected() + (unsigned int)W(G, G_COUNT_CRYSTAL)) <
+    if ((int)((unsigned int)PL->gemsCollected() + (unsigned int)GAME->field_42252()) <
         ((Game *)G)->gemsRequired())
         GameLog_LogMessage(GAME_LOGGER_VA, 3, S_WARN_CRYSTALS);
 
     /* ONE argument -- see the header. */
     if (((Game *)G)->extraObjects()->openFile(
-                                 (const char *)(G + G_LEVEL_NAME)) == 0) {
+                                 GAME->levelName()) == 0) {
         ((Game *)G)->extraObjects()->setLoaded(0);
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LEO_FAILED,
-                           (const char *)(G + G_LEVEL_NAME));
+                           GAME->levelName());
     } else {
         ((Game *)G)->extraObjects()->setLoaded(1);
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LEO_LOADED,
-                           (const char *)(G + G_LEVEL_NAME));
+                           GAME->levelName());
     }
 
     DW(G, 0x2ab576) = 0x42700000;
@@ -945,13 +878,13 @@ next_row:
         log_write("levelsetup: DIAG call #%u map=%ux%u crystals=%u total=%u "
                   "bridges=%u teleports=%u lifts=%u slides=%u breakables=%u "
                   "foes=%u freebombs=%u timed=%u switchmax=%u\n",
-                  s_calls, (unsigned)B(G, G_MAP_W), (unsigned)B(G, G_MAP_H),
-                  (unsigned)W(G, G_COUNT_CRYSTAL), (unsigned)W(G, C_TOTAL),
-                  (unsigned)W(G, C_BRIDGES), (unsigned)W(G, C_TELEPORTS),
+                  s_calls, (unsigned)M->extentU(), (unsigned)M->extentV(),
+                  (unsigned)GAME->field_42252(), (unsigned)CEN->total,
+                  (unsigned)CEN->bridges, (unsigned)CEN->teleports,
                   (unsigned)((Game *)G)->liftCount(), (unsigned)((Game *)G)->slideCount(),
                   (unsigned)((Game *)G)->breakableCount(), (unsigned)((Game *)G)->foeCount(),
-                  (unsigned)W(G, C_FREEBOMBS), (unsigned)W(G, C_TIMED),
-                  (unsigned)B(G, G_SWITCH_MAX));
+                  (unsigned)CEN->freeBombs, (unsigned)CEN->timed,
+                  (unsigned)((Game *)G)->switchMax());
 
     /* XOR AL,AL */
     return 0;

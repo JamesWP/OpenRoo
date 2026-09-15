@@ -80,7 +80,7 @@ public:
      * `homeMarks` (Game+0x3e181c) unless it is 0x64, and if removal was
      * requested stamp its drop contents (when above ground) and return
      * true -- the caller removes it. */
-    bool finishDespawn(unsigned char *homeMarks);
+    bool finishDespawn(LevelMap *map);
 
 private:
     /* The vtable.  MSVC layout: one slot, the scalar deleting destructor,

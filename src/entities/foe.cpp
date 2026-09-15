@@ -1011,14 +1011,17 @@ void Foe::checkPlayerContact(unsigned char *playerMoveState,
     }
 }
 
-bool Foe::finishDespawn(unsigned char *homeMarks)
+bool Foe::finishDespawn(LevelMap *map)
 {
     if (moveState_ == 0 || field_120 != 0)
         return false;
     field_86 = 1;
-    int idx = ((int)(signed char)homeV_ + (int)(signed char)homeU_ * 100) * 0x7f;
-    if (homeMarks[idx] != 0x64)
-        homeMarks[idx] = 0;
+    /* The home cell's contents in the map's SNAPSHOT (Game+0x3e181c), so a
+     * restart does not respawn this foe -- unless it came from a timed
+     * spawner (0x64). */
+    Tile *home = map->snapshot((signed char)homeU_, (signed char)homeV_);
+    if (home->contents() != 0x64)
+        home->setContents(0);
     if (removeRequested_ == 0)
         return false;
     if ((long double)posY_ > 0.0L)

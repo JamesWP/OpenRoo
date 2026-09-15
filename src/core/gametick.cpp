@@ -120,8 +120,8 @@ __declspec(dllexport) void __attribute__((thiscall)) CStatic_Set3DPosition(CStat
 #define MENU    (((Game *)B)->menu())
 #define ACC     (*((Game *)B)->clock())
 
-/* Tile addressing: idx = v + u*100, pitch 0x7f (worldstate.cpp). */
-#define TIDX(u, v)  (((int)(v) + (int)(u) * 100) * 0x7f)
+/* The level map and its tiles (levelmap.h). */
+#define MAP     (((Game *)B)->map())
 
 static int s_fx = -1;
 
@@ -215,11 +215,11 @@ static unsigned char completion_percent(unsigned int a, unsigned int b)
 static void trigger_switch_tile(unsigned char *B, unsigned char sw, int u, int v)
 {
     BridgeObject *br = ((Game *)B)->bridgeSlot(sw);
-    int idx = TIDX(u, v);
+    Tile *t = MAP->tile(u, v);
     if (br->phase() == 0)
-        G32(0x2ab7a4 + idx) = 1;
+        t->setField217(1);
     else
-        G32(0x2ab7a4 + idx) = 0;
+        t->setField217(0);
 }
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
@@ -276,8 +276,8 @@ Sim_GameTick(Game *self, double dt, double now)
             STATE = 1;
             if (((Game *)B)->restartCount() == 0) {
                 if (((Game *)B)->musicOn() != 0)
-                    ((Game *)B)->cdThemes()->play((const char *)(B + 0x2ab69d));
-                ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex((const char *)(B + 0x2ab69d)));
+                    ((Game *)B)->cdThemes()->play(MAP->mapName());
+                ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(MAP->mapName()));
             }
             ((Game *)B)->setCameraDistance(7.0f);
             ((Game *)B)->setCameraMode(0);
@@ -286,7 +286,7 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     if (((Game *)B)->cameraMode() == 0)
-        ((Game *)B)->setCameraDistance(camera_sway(now, GF(0x13cca4)));
+        ((Game *)B)->setCameraDistance(camera_sway(now, ((Game *)B)->field_13cca4()));
 
     if (STATE == 3) {
         Sim_HandleKeypress((Game *)B);
@@ -345,17 +345,18 @@ Sim_GameTick(Game *self, double dt, double now)
         if (((Game *)B)->cheatEntry()->active() != 0)
             Sim_HandleTypedCheatCode((Game *)B);
 
-        /* the runtime foe spawners, stride 0x15 from Game+0x20251 */
-        for (int i = 0; i < (int)G16(0x42207); ++i) {
-            unsigned char *E = B + 0x20251 + i * 0x15;
-            long double since = (long double)ACC - (long double)*(double *)(E - 0x11);
-            if (!(since > (long double)*(double *)(E - 0x08)))
+        /* the runtime foe spawners (levelcensus.h); the original walks a
+         * pointer at each record's +0x14, Game+0x20251 + i*0x15 */
+        for (int i = 0; i < (int)((Game *)B)->census()->timed; ++i) {
+            TimedSpawner *E = ((Game *)B)->timedSpawner((unsigned)i);
+            long double since = (long double)ACC - (long double)E->lastSpawn;
+            if (!(since > (long double)E->interval))
                 continue;
-            signed char u = (signed char)E[-0x14], v = (signed char)E[-0x13];
-            if (G8(0x2ab732 + TIDX(u, v)) == 0 && ((Game *)B)->foeCount() < E[0]) {
+            signed char u = (signed char)E->u, v = (signed char)E->v;
+            if (MAP->tile(u, v)->field1a5() == 0 &&((Game *)B)->foeCount() < E->maxFoes) {
                 unsigned char id = Foe::spawn((Game *)B, (unsigned char)u,
-                                              (unsigned char)v, E[-0x12], 2,
-                                              (unsigned char)(E[-0x09] + 100));
+                                              (unsigned char)v, E->height, 2,
+                                              (unsigned char)(E->field_0b + 100));
                 Foe *foe = ((Game *)B)->foeSlot(id);
                 if (((int)((Game *)B)->foesKilled() + 1) % 15 == 0)
                     foe->setDropContents(7);
@@ -365,13 +366,13 @@ Sim_GameTick(Game *self, double dt, double now)
             }
             /* The spawner's last-spawn time (read as a double above), set
              * from the clock -- two dword MOVs in the original, one double. */
-            *(double *)(E - 0x11) = *((Game *)B)->clock();
+            E->lastSpawn = *((Game *)B)->clock();
         }
 
         ((Game *)B)->config()->setField20a48Bits(((Game *)B)->config()->field20a4cBits());
         if (pl->moveState() != 0) {
-            G32(0x13cca8) = 0;
-            ((Game *)B)->setCameraDistance(*(float *)(B + 0x13cca4));
+            ((Game *)B)->setField13cca8(0);
+            ((Game *)B)->setCameraDistance(((Game *)B)->field_13cca4());
             if (pl->soundAf() != NULL) CStatic_HaltPlayback(pl->soundAf());
             if (pl->soundAb() != NULL) CStatic_HaltPlayback(pl->soundAb());
             if (pl->soundC7() != NULL) CStatic_HaltPlayback(pl->soundC7());
@@ -501,7 +502,7 @@ Sim_GameTick(Game *self, double dt, double now)
         (*slot)->dropBomb(game);
         (*slot)->checkPlayerContact(pl->moveStateRef(),
                                     pl->posU(), pl->posY(), pl->posV());
-        if ((*slot)->finishDespawn(B + 0x3e181c)) {
+        if ((*slot)->finishDespawn(MAP)) {
             Foe::remove(game, id);
             ((Game *)B)->setFoesKilled((unsigned char)(((Game *)B)->foesKilled() + 1));
         }
@@ -526,14 +527,14 @@ Sim_GameTick(Game *self, double dt, double now)
             }
         }
         if (pl->gemsCollected() >= ((Game *)B)->gemsRequired()) {
-            if (G32(0x173b1a) == 0 && STATE != 3) {
+            if (((Game *)B)->field_173b1a() == 0 && STATE != 3) {
                 int r = (int)ftol80(ACC);
                 void *snd = ((Game *)B)->fixedSounds()->crystalBank[r % 3];
                 if (snd != NULL)
                     CStatic_TriggerPlayback((CStaticSoundbuffer *)snd, 0);
-                G32(0x173b1a) = 1;
+                ((Game *)B)->setField173b1a(1);
             }
-            G32(0x2ab7a4 + TIDX((signed char)pl->field142(), (signed char)pl->field143())) = 1;
+            MAP->tile((signed char)pl->field142(), (signed char)pl->field143())->setField217(1);
             if ((unsigned char)pl->cellU() == pl->field142() && (unsigned char)pl->cellV() == pl->field143() &&
                 (unsigned char)pl->heightCell() == pl->field144() && (unsigned int)pl->field120() == 0 &&
                 pl->moveState() == 0) {
@@ -575,7 +576,7 @@ Sim_GameTick(Game *self, double dt, double now)
         if (DEB != 0x0d && KEY(0x0d) != 0 && pl->moveState() != 0 && STATE == 1) {
             ((Game *)B)->setRestartCount((unsigned char)(((Game *)B)->restartCount() + 1));
             int lives = pl->field239();
-            int bonus = GI32(0x2ab599);
+            int bonus = (int)MAP->bonus();
             int restart_tail = 1;
             if (lives > 0 && bonus == 0) {
                 pl->setField239(lives - 1);              /* the DEC at 0x4160d6 */
@@ -707,8 +708,8 @@ Sim_GameTick(Game *self, double dt, double now)
         ((Game *)B)->setCameraMode(2);
     if (KEY(DEB) == 0)
         DEB = 0;
-    G32(0x13cca8) = 0;
-    G32(0x13cc90) = 0;
+    ((Game *)B)->setField13cca8(0);
+    ((Game *)B)->setField13cc90(0);
     G32(0x48b14) = G32(0x48b14) + 1;
     G32(0x18) = G32(0x18) + 1;
     return G32(0x18) & 0xffffff00u;

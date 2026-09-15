@@ -134,6 +134,7 @@
 
 #include "static.h"
 #include "tile.h"
+#include "levelmap.h"
 #include "linkedlist.h"
 #include "crtrand.h"
 #include "player.h"
@@ -356,10 +357,13 @@ unsigned int Player::updateTileEffects()
 
         /* ── 6: time bonus ───────────────────────────────────────────── */
         if ((signed char)curTile()->contents() == 6) {
-            Tile::at(tileBase_, 0, 0)->setField004(Tile::at(tileBase_, 0, 0)->field004() + 5);
+            /* Five more seconds on the map's time limit, through the tile
+             * base (the original's `[tileBase+4]`). */
+            LevelMap *map = LevelMap::fromTileBase(tileBase_);
+            map->setTimeLimit(map->timeLimit() + 5);
             curTile()->setContents(0);
             field_21a += 1;
-            field_1ca = (double)(Tile::at(tileBase_, 0, 0)->field004() + 1);
+            field_1ca = (double)(map->timeLimit() + 1);
 
             pickupSound(pickupSounds_[SND_176]);
             field_63 = 6;

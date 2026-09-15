@@ -6,16 +6,17 @@
  *
  * ORIGIN.  The game addresses a cell as `tileBase + (v + u*100) * 0x7f` --
  * "the tile pointer" in every existing file and FIELD_CENSUS_REPORT.txt, and
- * the offsets asserted below are relative to it.  It is NOT where the cell's
- * record starts: the fields in use span +0x19a..+0x21b, wider than the 0x7f
- * stride, so the true record boundary is unsettled RE.
+ * the offsets asserted below are relative to it.  The tile base is the
+ * LevelMap (levelmap.h), whose 0x19c-byte header precedes the grid, so the
+ * cell's record starts at tile pointer +0x19c and is exactly the 0x7f stride:
+ * +0x19c..+0x21b, which is every field below.  Settled 2026-09-15 by the
+ * LevelMap's extent (header + two grids tile Game's bytes up to tallyDone
+ * exactly).  The fields that used to sit below +0x19c (+0x004, +0x19a,
+ * +0x19b) were LevelMap header fields read through cell (0, 0); they are
+ * LevelMap's now.
  *
- * For now the struct starts AT the tile pointer (ORIGIN 0) behind a leading
- * gap.  When Band 4b settles the record start, set ORIGIN to it and drop the
- * gap: at() and every KAROO_LAYOUT_AT below keep working unchanged, because
- * they are written against the game's tile pointer, not against the struct.
- * Because the fields overrun the stride, a Tile is an overlay reached only
- * through at() -- never index an array of them.
+ * The first four bytes (height, kind, param, contents) are the .jjm file's
+ * four bytes per cell; the rest is runtime state.
  */
 #pragma once
 
@@ -23,7 +24,7 @@
 
 class __attribute__((packed)) Tile {
 public:
-    static const int ORIGIN = 0;
+    static const int ORIGIN = 0x19c;
 
     /* Both axes are signed: the lift tick reads its cell as s8.  The
      * arithmetic is the original's, stated once. */
@@ -44,8 +45,15 @@ public:
      * breakable arms when it is nonzero (someone is standing on the cell). */
     unsigned char field1a5() const             { return field_1a5; }
     void setField1a5(unsigned char b)          { field_1a5 = b; }
+    /* +0x19e  the file's parameter byte: a switch's number, a bridge's
+     * switch, a lift's, a teleporter's pair id, a foe's drop.  The level
+     * builder consumes it (clears it) as it spawns what it describes. */
+    unsigned char param() const                { return param_; }
+    void setParam(unsigned char p)             { param_ = p; }
 
     /* ── published by a lift standing on this cell (liftobject.cpp) ── */
+    /* The level builder seeds it on EVERY cell with the cell's own height
+     * as a float; a lift then overwrites it on its cells. */
     void setLiftLiveHeight(float h)            { liftLiveHeight_ = h; }
     void setLiftSlot(unsigned char n)          { liftSlot_ = n; }
     signed char liftBottom() const             { return liftBottom_; }
@@ -124,11 +132,18 @@ public:
      * meaning unknown. */
     void setField1a1(int b)                    { field_1a1 = b; }
 
+    /* ── set by the level builder (levelsetup.cpp) ───────────────────── */
+    /* +0x1ed: a teleporter's pair id, moved here from param. */
+    void setTeleportId(unsigned char id)       { teleportId_ = id; }
+    void setField1ee(unsigned char u)          { field_1ee = u; }
+    void setField1ef(unsigned char v)          { field_1ef = v; }
+    void setField1f1(unsigned char b)          { field_1f1 = b; }
+    void setField1f3(unsigned char b)          { field_1f3 = b; }
+    /* +0x213: a random phase, rand() * 2pi / 32768, given to every cell
+     * holding an item. */
+    void setItemPhase(float p)                 { itemPhase_ = p; }
+
     /* ── read by the foe pathfinder (foepath.cpp) ────────────────────── */
-    /* +0x19a / +0x19b: the map header's extents -- read these only from
-     * Tile::at(base, 0, 0), which is the header's address. */
-    unsigned char mapExtentV() const           { return mapExtentV_; }
-    unsigned char mapExtentU() const           { return mapExtentU_; }
     /* +0x1f1: an elevator (kind 0x0e) cell's level byte. */
     unsigned char field1f1() const             { return field_1f1; }
     /* +0x1f2: on a bridge (kind 0x10) cell, its direction byte. */
@@ -155,30 +170,14 @@ public:
     /* +0x1f3: on a kind-0x11 cell, copied into the entity's +0xd7. */
     unsigned char field1f3() const             { return field_1f3; }
 
-    /* ── read by the player tick (player.cpp) ───────────────────── */
-    /* +0x004: read and written only at Tile::at(base, 0, 0) -- a map
-     * header field, not a cell's.  The time bonus adds 5 to it.  The tick
-     * also reads +0x19f signed; the cast is at the read site. */
-    int  field004() const                      { return field_004; }
-    void setField004(int n)                    { field_004 = n; }
-
 private:
     Tile() = delete;   /* game-owned; only ever reached through at() */
     KAROO_LAYOUT_REGISTER(Tile);
 
-    unsigned char gap_000[0x004 - 0x000];
-    /* Meaningful only at cell (0, 0), where the tile pointer is the tile
-     * base: the time bonus pickup adds 5 to it. */
-    int           field_004;          /* 0x004                              */
-    unsigned char gap_008[0x19a - 0x008];
-    /* Meaningful only at cell (0, 0), where the tile pointer is the tile
-     * base: the map header's extents (levelsetup.cpp G_MAP_H / G_MAP_W). */
-    unsigned char mapExtentV_;        /* 0x19a  the map's v extent          */
-    unsigned char mapExtentU_;        /* 0x19b  the map's u extent          */
-    unsigned char height_;            /* 0x19c                              */
-    unsigned char objectMarker_;      /* 0x19d  object kind / scan stop     */
-    unsigned char gap_19e[0x19f - 0x19e];
-    unsigned char contents_;          /* 0x19f  what can be picked up here  */
+    unsigned char height_;            /* 0x19c  file byte 0                 */
+    unsigned char objectMarker_;      /* 0x19d  file byte 1: kind / scan stop */
+    unsigned char param_;             /* 0x19e  file byte 2                 */
+    unsigned char contents_;          /* 0x19f  file byte 3: pickup here    */
     unsigned char blastHeight_;       /* 0x1a0  live blast, 0 = none        */
     int           field_1a1;          /* 0x1a1                              */
     unsigned char field_1a5;          /* 0x1a5                              */
@@ -207,7 +206,7 @@ private:
     /* One double, though the original writes it as two dwords (0 at
      * +0x1e5, 0x40977000 at +0x1e9): 0x4097700000000000 = 1500.0. */
     double        liftDwell_;         /* 0x1e5  park dwell in ms, 1500.0    */
-    unsigned char gap_1ed[0x1ee - 0x1ed];
+    unsigned char teleportId_;        /* 0x1ed  a teleporter's pair id      */
     unsigned char field_1ee;          /* 0x1ee                              */
     unsigned char field_1ef;          /* 0x1ef                              */
     unsigned char gap_1f0[0x1f1 - 0x1f0];
@@ -222,17 +221,15 @@ private:
     int           field_203;          /* 0x203                              */
     double        blastTime_;         /* 0x207  when a blast spent this cell */
     int           field_20f;          /* 0x20f                              */
-    unsigned char gap_213[0x217 - 0x213];
+    float         itemPhase_;         /* 0x213  an item's random phase      */
     int           field_217;          /* 0x217                              */
 };
 
 KAROO_LAYOUT_CHECKS(Tile)
 {
-    KAROO_LAYOUT_AT(field_004,         0x004);
-    KAROO_LAYOUT_AT(mapExtentV_,       0x19a);
-    KAROO_LAYOUT_AT(mapExtentU_,       0x19b);
     KAROO_LAYOUT_AT(height_,           0x19c);
     KAROO_LAYOUT_AT(objectMarker_,     0x19d);
+    KAROO_LAYOUT_AT(param_,            0x19e);
     KAROO_LAYOUT_AT(contents_,         0x19f);
     KAROO_LAYOUT_AT(blastHeight_,      0x1a0);
     KAROO_LAYOUT_AT(field_1a1,         0x1a1);
@@ -268,5 +265,8 @@ KAROO_LAYOUT_CHECKS(Tile)
     KAROO_LAYOUT_AT(field_203,         0x203);
     KAROO_LAYOUT_AT(blastTime_,        0x207);
     KAROO_LAYOUT_AT(field_20f,         0x20f);
+    KAROO_LAYOUT_AT(itemPhase_,        0x213);
+    KAROO_LAYOUT_AT(teleportId_,       0x1ed);
     KAROO_LAYOUT_AT(field_217,         0x217);
+    KAROO_LAYOUT_SIZE(0x7f);
 }

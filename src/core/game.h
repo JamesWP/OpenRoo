@@ -22,6 +22,9 @@
 #include "highscores.h"
 #include "config.h"
 #include "extraobjects.h"
+#include "levelmap.h"
+#include "switchcells.h"
+#include "levelcensus.h"
 
 class SoundManager;
 class LiftObject;
@@ -168,10 +171,45 @@ public:
     TickStep      *tickStep()        { return &tickStep_; }
 
     /* ── tiles ──────────────────────────────────────────────────────── */
-    /* The base Tile::at() indexes from.  Objects keep their own copy. */
-    unsigned char *tileBase()        { return tileOrigin_; }
+    /* ── level-load flags ───────────────────────────────────────────── */
+    /* +0x0c: the level builder's missing-CD check fires only while it is
+     * zero.  Not decoded. */
+    int            field_0c() const                  { return field_0c_; }
+    /* +0x10: 1 when the last level load read a different map name from the
+     * one before it (both loaders, levelparse.cpp). */
+    unsigned int   mapChanged() const                { return mapChanged_; }
+    void           setMapChanged(unsigned int c)     { mapChanged_ = c; }
+    /* +0x14: the NEXT level's bonus flag, which OpenLevelFile peeks by
+     * loading that level's map first.  SetupLevelObjects reads it to give
+     * the completed-level menu node (0x28) two children when it is 0 and
+     * one otherwise -- the builder called it a "mode flag". */
+    unsigned int   nextLevelBonus() const            { return nextLevelBonus_; }
+    void           setNextLevelBonus(unsigned int b) { nextLevelBonus_ = b; }
+    /* +0x173b1a: GameTick latches it to 1 the first time the exit
+     * condition is met in a level (and plays a crystal sound); the level
+     * builder clears it.  Named by offset. */
+    int            field_173b1a() const              { return field_173b1a_; }
+    void           setField173b1a(int v)             { field_173b1a_ = v; }
+
+    /* The level builder's census and spawn tables (levelcensus.h). */
+    LevelCensus    *census()                    { return &census_; }
+    TimedSpawner   *timedSpawner(unsigned i)    { return &timedSpawners_[i]; }
+    FreeBomb       *freeBomb(unsigned i)        { return &freeBombs_[i]; }
+
+    /* The cells each switch controls (switchcells.h), and the highest
+     * switch index the level builder saw -- the list walks run to it. */
+    SwitchCells    *switchCells()               { return &switchCells_; }
+    unsigned char   switchMax() const           { return switchMax_; }
+    void            setSwitchMax(unsigned char n) { switchMax_ = n; }
+
+    /* The level's map (levelmap.h): its header and both tile grids. */
+    LevelMap       *map()            { return &map_; }
+    const LevelMap *map() const      { return &map_; }
+    /* The base Tile::at() indexes from -- the map's address.  Objects keep
+     * their own copy. */
+    unsigned char *tileBase()        { return map_.tileBase(); }
     /* Gems the level requires (Player::gemsCollected is the other side). */
-    int            gemsRequired() const { return gemsRequired_; }
+    int            gemsRequired() const { return map_.gemsRequired(); }
 
     /* ── text entry ─────────────────────────────────────────────────── */
     /* The cheat-code entry (HandleTypedCheatCode polls it every tick) and
@@ -292,9 +330,30 @@ public:
      * (FUN_00404120 reads it as a float vector); checkpoints restore it
      * from the script player. */
     void           setCameraEye(int i, float v)      { cameraEye_[i] = v; }
+    float          cameraEye(int i) const            { return cameraEye_[i]; }
+    /* The eye as raw dwords: the level builder zeroes and copies it with
+     * dword MOVs, and a bit copy is what keeps that exact. */
+    unsigned int   cameraEyeBits(int i) const
+    {
+        typedef unsigned int __attribute__((aligned(1))) u32_ua;
+        return ((const u32_ua *)((const unsigned char *)this +
+                                 offsetof(Game, cameraEye_)))[i];
+    }
+    void           setCameraEyeBits(int i, unsigned int b)
+    {
+        typedef unsigned int __attribute__((aligned(1))) u32_ua;
+        ((u32_ua *)((unsigned char *)this + offsetof(Game, cameraEye_)))[i] = b;
+    }
     /* A float vector FUN_00404120 reads beside the eye; checkpoints
-     * restore it from the script player's spline point.  Not decoded. */
+     * restore it from the script player's spline point, and the level
+     * builder seeds it {0, 1000, 0}.  Not decoded. */
     void           setField13cc94(int i, float v)    { field_13cc94_[i] = v; }
+    /* Fields beside it, named by offset: GameTick zeroes +0x13cc90 and
+     * +0x13cca8 with the level builder, and copies the float +0x13cca4
+     * into the camera distance when the player dies. */
+    void           setField13cc90(int v)             { field_13cc90_ = v; }
+    float          field_13cca4() const              { return field_13cca4_; }
+    void           setField13cca8(int v)             { field_13cca8_ = v; }
     void           setJoyDeadzone(unsigned short p)  { config_.setJoyDeadzone(p); }
 
     /* ── the tally's inputs (CalculateLevelScore 0x41a760) ─────────── */
@@ -315,10 +374,10 @@ public:
     void           setFoesKilled(unsigned char n)    { foesKilled_ = n; }
     /* The level's time limit in seconds (SetupLevelObjects copies it from
      * +0x2ab71f) and the play time against it in milliseconds. */
-    int            timeLimit() const                 { return timeLimit_; }
-    void           setTimeLimit(int s)               { timeLimit_ = s; }
-    unsigned int   timeElapsed() const               { return timeElapsed_; }
-    void           setTimeElapsed(unsigned int ms)   { timeElapsed_ = ms; }
+    int            timeLimit() const                 { return map_.timeLimit(); }
+    void           setTimeLimit(int s)               { map_.setTimeLimit(s); }
+    unsigned int   timeElapsed() const               { return map_.timeElapsed(); }
+    void           setTimeElapsed(unsigned int ms)   { map_.setTimeElapsed(ms); }
 
     /* ── vitality and the score tally ───────────────────────────────── */
     /* The tally's "vitality" row, which pays it 1:1: Player::fieldD8 per
@@ -372,6 +431,7 @@ public:
      * (objectremove.cpp) edits them in place, and the removes re-read the
      * slot through its address exactly as the original does. */
     unsigned char  bombCount() const               { return bombCount_; }
+    void           setBombCount(unsigned char n)   { bombCount_ = n; }
     unsigned char *bombCountRef()   { return (unsigned char *)this + offsetof(Game, bombCount_); }
     unsigned char  bombId(unsigned int i) const    { return bombIds_[i]; }
     unsigned char *bombIds()        { return (unsigned char *)this + offsetof(Game, bombIds_); }
@@ -453,12 +513,20 @@ private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x02223f - 0x000000];
+    unsigned char gap_000000[0x00000c - 0x000000];
+    int           field_0c_;                              /* 0x00000c */
+    unsigned int  mapChanged_;                            /* 0x000010 */
+    unsigned int  nextLevelBonus_;                        /* 0x000014 */
+    unsigned char gap_000018[0x02023d - 0x000018];
+    TimedSpawner  timedSpawners_[256];                    /* 0x02023d */
+    FreeBomb      freeBombs_[256];                        /* 0x02173d */
+    unsigned char gap_02223d[0x02223f - 0x02223d];
     CdThemes      cdThemes_;                              /* 0x02223f */
     unsigned char parkedCameraOption_;                    /* 0x03215d */
     unsigned char gap_03215e[0x04215e - 0x03215e];
     unsigned char levelCount_;                            /* 0x04215e */
-    unsigned char gap_04215f[0x04220b - 0x04215f];
+    unsigned char gap_04215f[0x0421df - 0x04215f];
+    LevelCensus   census_;                                /* 0x0421df */
     unsigned char restartCount_;                          /* 0x04220b */
     unsigned char gap_04220c[0x04224d - 0x04220c];
     /* Foes killed this level; CalculateLevelScore pays 50 each. */
@@ -517,7 +585,9 @@ private:
     SoundAssetName soundAsset46132_;                 /* 0x046132 */
     unsigned char gap_046236[0x046baa - 0x046236];
     SoundAssetName soundAsset46baa_;                 /* 0x046baa */
-    unsigned char gap_046cae[0x048b98 - 0x046cae];
+    unsigned char gap_046cae[0x048b12 - 0x046cae];
+    unsigned char switchMax_;                             /* 0x048b12 */
+    unsigned char gap_048b13[0x048b98 - 0x048b13];
     ExtraObjects  extraObjects_;                          /* 0x048b98 */
     /* The SoundManager is embedded here; its full size is unknown (its
      * lists reach at least +0xa4), so only the bytes up to the next field
@@ -529,13 +599,17 @@ private:
     int           soundCreated_;                          /* 0x13cc34 */
     unsigned char gap_13cc38[0x13cc5c - 0x13cc38];        /* SoundManager tail */
     FixedSounds   fixedSounds_;                           /* 0x13cc5c */
-    unsigned char gap_13cc84[0x13cc94 - 0x13cc84];
+    unsigned char gap_13cc84[0x13cc90 - 0x13cc84];
+    int           field_13cc90_;                          /* 0x13cc90 */
     float         field_13cc94_[3];                       /* 0x13cc94 */
-    unsigned char gap_13cca0[0x13cdac - 0x13cca0];
+    unsigned char gap_13cca0[0x13cca4 - 0x13cca0];
+    float         field_13cca4_;                          /* 0x13cca4 */
+    int           field_13cca8_;                          /* 0x13cca8 */
+    unsigned char gap_13ccac[0x13cdac - 0x13ccac];
     TextEntry     cheatEntry_;                            /* 0x13cdac */
     HighScoreTable highScores_;                           /* 0x13cdbb */
     ScoreTally    tally_;                                 /* 0x1404c1 */
-    unsigned char gap_140543[0x170643 - 0x140543];
+    SwitchCells   switchCells_;                           /* 0x140543 */
     BridgeObject *bridgeSlots_[256];                      /* 0x170643 */
     unsigned char bridgeCount_;                           /* 0x170a43 */
     double        totalPlayTime_;                         /* 0x170a44 */
@@ -556,7 +630,7 @@ private:
     unsigned char slideCount_;                            /* 0x173718 */
     LiftObject   *liftSlots_[256];                        /* 0x173719 */
     unsigned char liftCount_;                             /* 0x173b19 */
-    unsigned char gap_173b1a[0x173b1e - 0x173b1a];
+    int           field_173b1a_;                          /* 0x173b1a */
     BreakableTile *breakableSlots_[200];                  /* 0x173b1e */
     unsigned char breakableCount_;                        /* 0x173e3e */
     Bomb         *bombSlots_[500];                        /* 0x173e3f */
@@ -581,20 +655,12 @@ private:
     Config        config_;                                /* 0x28ab2e */
     float         cameraEye_[3];                          /* 0x2ab580 */
     unsigned char state_;                                 /* 0x2ab58c */
-    /* Where Tile::at() indexes from; the tiles extend past it.  The bytes
-     * from here to the first cell look like a map header (the time limit at
-     * +0x2ab591, this quota, the extents at +0x2ab727/8), not tile fields --
-     * see COHESION_PLAN.md Band 3; not yet modelled. */
-    unsigned char tileOrigin_[0x2ab591 - 0x2ab58d];       /* 0x2ab58d */
-    /* Seconds; GameTick times the level out at timeLimit*1000 ms. */
-    int           timeLimit_;                             /* 0x2ab591 */
-    /* Milliseconds of play; CalculateLevelScore pays the unused seconds. */
-    unsigned int  timeElapsed_;                           /* 0x2ab595 */
-    unsigned char gap_2ab599[0x2ab723 - 0x2ab599];
-    /* The level's gem quota: CalculateLevelScore 0x41a760 pays 5 a gem up
-     * to it and 10 per gem the Player collects beyond it. */
-    int           gemsRequired_;                          /* 0x2ab723 */
-    unsigned char gap_2ab727[0x517909 - 0x2ab727];
+    /* The map: header, grid and snapshot grid, 0x26c37c bytes ending exactly
+     * at tallyDone_.  Its header holds the time limit (GameTick times the
+     * level out at timeLimit*1000 ms), the ms of play (CalculateLevelScore
+     * pays the unused seconds) and the gem quota (CalculateLevelScore
+     * 0x41a760 pays 5 a gem up to it and 10 per gem beyond). */
+    LevelMap      map_;                                   /* 0x2ab58d */
     int           tallyDone_;                             /* 0x517909 */
 };
 
@@ -649,11 +715,20 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(foeIds_,           0x174fd5);
     KAROO_LAYOUT_AT(field_42252_,      0x042252);
     KAROO_LAYOUT_AT(levelName_,        0x173483);
-    KAROO_LAYOUT_AT(tileOrigin_,       0x2ab58d);
-    KAROO_LAYOUT_AT(gemsRequired_,     0x2ab723);
+    KAROO_LAYOUT_AT(map_,              0x2ab58d);
+    KAROO_LAYOUT_AT(switchCells_,      0x140543);
+    KAROO_LAYOUT_AT(timedSpawners_,    0x02023d);
+    KAROO_LAYOUT_AT(freeBombs_,        0x02173d);
+    KAROO_LAYOUT_AT(census_,           0x0421df);
+    KAROO_LAYOUT_AT(field_0c_,         0x00000c);
+    KAROO_LAYOUT_AT(mapChanged_,       0x000010);
+    KAROO_LAYOUT_AT(nextLevelBonus_,   0x000014);
+    KAROO_LAYOUT_AT(field_13cc90_,     0x13cc90);
+    KAROO_LAYOUT_AT(field_13cca4_,     0x13cca4);
+    KAROO_LAYOUT_AT(field_13cca8_,     0x13cca8);
+    KAROO_LAYOUT_AT(field_173b1a_,     0x173b1a);
+    KAROO_LAYOUT_AT(switchMax_,        0x048b12);
     KAROO_LAYOUT_AT(foesKilled_,       0x04224d);
-    KAROO_LAYOUT_AT(timeLimit_,        0x2ab591);
-    KAROO_LAYOUT_AT(timeElapsed_,      0x2ab595);
     KAROO_LAYOUT_AT(restartCount_,     0x04220b);
     KAROO_LAYOUT_AT(itemTotal_,        0x042250);
     KAROO_LAYOUT_AT(tallyDone_,        0x517909);

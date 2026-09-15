@@ -66,13 +66,8 @@
 #include <string.h>
 
 
-/* Grid */
-#define OFF_V_EXTENT   0x2ab727
-#define OFF_U_EXTENT   0x2ab728
-#define OFF_TILE_HGT   0x2ab729   /* tile base - 1 */
-#define OFF_TILE_BASE  0x2ab72a
-#define OFF_PLANE2     0x3e1819   /* second plane, same idx and stride */
-#define TILE_STRIDE    0x7f
+/* Grid: the LevelMap's live tiles and its snapshot (levelmap.h), through
+ * Game::map(). */
 
 /* Entities: the foe and bomb tables are Game's (foeSlot/bombSlot, game.h). */
 
@@ -84,7 +79,7 @@
  * bytes at Game+0x1751fa are base+0x31, matching the foe layout offset for
  * offset. */
 /* Read through Game::player() (player.h). */
-#define OFF_PLR_WORLD  0x2ab580   /* float[3] (U, H, V) -- a Game field */
+/* The camera eye, Game::cameraEye() (was OFF_PLR_WORLD 0x2ab580). */
 
 /* The level exit, as (U, V, H) bytes.  SetupLevelObjects finds it by searching
  * the grid for tile kind 4 (FUN_0041f430(..., 4, Game+0x17530b)) — and there
@@ -95,7 +90,7 @@
 /* Player +0x142..+0x144 (player.h). */
 
 /* Scalars, same fields gamestate.cpp reads. */
-#define OFF_CRYSTALS   0x042252
+/* Game::field_42252() (was OFF_CRYSTALS 0x042252). */
 
 static WsTile     g_grid[WS_GRID_PITCH * WS_GRID_PITCH];
 static Observation g_obs;
@@ -115,16 +110,6 @@ static bool env_path(const char *name, char *out, DWORD n)
 }
 
 /* ── reading ────────────────────────────────────────────────────────────── */
-
-static inline const BYTE *tile_at(const BYTE *g, unsigned u, unsigned v)
-{
-    return g + (v + u * WS_GRID_PITCH) * TILE_STRIDE + OFF_TILE_BASE;
-}
-
-static inline const BYTE *plane2_at(const BYTE *g, unsigned u, unsigned v)
-{
-    return g + (v + u * WS_GRID_PITCH) * TILE_STRIDE + OFF_PLANE2;
-}
 
 /* Read one entity through the live-id list.  `foe` selects the extra fields
  * that are only confirmed for the foe class. */
@@ -196,8 +181,9 @@ bool worldstate_observe(Observation *obs)
     memset(obs, 0, sizeof(*obs));
     if (!g) return false;
 
-    BYTE rows = g[OFF_V_EXTENT];
-    BYTE cols = g[OFF_U_EXTENT];
+    const LevelMap *map = ((const Game *)g)->map();
+    BYTE rows = map->extentV();
+    BYTE cols = map->extentU();
     if (rows == 0 || cols == 0 || rows > WS_GRID_PITCH || cols > WS_GRID_PITCH)
         return false;                          /* menu, or level torn down */
 
@@ -209,19 +195,20 @@ bool worldstate_observe(Observation *obs)
 
     for (unsigned u = 0; u < cols; u++) {
         for (unsigned v = 0; v < rows; v++) {
-            const BYTE *t  = tile_at(g, u, v);
-            const BYTE *p2 = plane2_at(g, u, v);
+            const Tile *t  = map->tile((int)u, (int)v);
+            const Tile *p2 = map->snapshot((int)u, (int)v);
             WsTile *o = &g_grid[v + u * WS_GRID_PITCH];
-            o->kind     = t[0];
-            o->param    = t[1];
-            o->contents = t[2];
-            o->occupant = t[8];
-            o->height   = t[-1];
-            memcpy(&o->height_f, t + 9, sizeof(float));
-            memcpy(&o->spent, t + 0x7a, sizeof(DWORD));
-            o->spawn_a  = p2[0];
-            o->spawn_b  = p2[2];
-            o->spawn    = p2[3];
+            o->kind     = t->objectMarker();
+            o->param    = t->param();
+            o->contents = t->contents();
+            o->occupant = t->field1a5();
+            o->height   = t->height();
+            o->height_f = t->liftLiveHeight();
+            o->spent    = (DWORD)t->field217();
+            /* The snapshot: the cell as the .jjm gave it. */
+            o->spawn_a  = p2->height();
+            o->spawn_b  = p2->param();
+            o->spawn    = p2->contents();
         }
     }
 
@@ -231,7 +218,8 @@ bool worldstate_observe(Observation *obs)
     obs->player_grid[0] = pl->posU();
     obs->player_grid[1] = pl->posY();
     obs->player_grid[2] = pl->posV();
-    memcpy(obs->player_world, g + OFF_PLR_WORLD, sizeof(obs->player_world));
+    for (int k = 0; k < 3; k++)                 /* the camera eye, (U, H, V) */
+        obs->player_world[k] = ((const Game *)g)->cameraEye(k);
     obs->player_cell[0] = (BYTE)pl->cellU();
     obs->player_cell[1] = (BYTE)pl->cellV();
     obs->player_cell[2] = (BYTE)pl->heightCell();
@@ -250,7 +238,7 @@ bool worldstate_observe(Observation *obs)
     obs->foes_killed       = ((const Game *)g)->foesKilled();
     obs->lives             = (BYTE)pl->field239();
     obs->level_complete    = pl->fieldEf();
-    obs->crystals_in_level = *(const WORD  *)(g + OFF_CRYSTALS);
+    obs->crystals_in_level = ((const Game *)g)->field_42252();
     obs->freeze_timer      = (DWORD)pl->field1e6();
     return true;
 }
