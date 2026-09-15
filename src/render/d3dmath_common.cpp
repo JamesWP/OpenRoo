@@ -1,7 +1,7 @@
 /* Math helpers with no arithmetic that could round differently -- pure data
  * movement.  The address in each comment is the original it mirrors.
  */
-#include "d3dmath.h"
+#include "d3dmath_common.h"
 
 /* MatrixSetIdentity, 0x413230 */
 void m4_identity(Mat4 *d)

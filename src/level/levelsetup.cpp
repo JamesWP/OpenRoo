@@ -39,7 +39,7 @@
  * | `rand`                          | 0x45167c | CRT — reimplemented below  |
  *
  * The first four are named callbacks, the same standing ruling
- * `objectremove.cpp`, `gamereset.cpp` and `tileeffects.cpp` recorded for
+ * `objectremove.cpp`, `gamereset.cpp` and `player.cpp` recorded for
  * shared services.  `LinkedList::Clear` in particular is already documented
  * in patch.py as one of four container helpers with 43 call sites across
  * unrelated subsystems, deliberately neither replaced nor stubbed.
@@ -56,13 +56,13 @@
  * clock and destroy replay determinism, while still passing a casual read.
  * So this file calls the EXPORT.
  *
- * `rand()` is reimplemented rather than called, exactly as `tileeffects.cpp`
+ * `rand()` is reimplemented rather than called, exactly as `player.cpp`
  * does, and over the SAME global seed at 0x00469f38 — a private seed would
  * desynchronise every other `rand()` caller.
  *
  * ─── Tile addressing ─────────────────────────────────────────────────────
  *
- * The tilemap is the one `tilequery.cpp` and `entitymove.cpp` document:
+ * The tilemap is the one `tilequery.cpp` and `movableentity.cpp` document:
  * pitch 0x7f, row stride 100*0x7f, index `(v + u*100) * 0x7f`.  The extents
  * live at the map reader's +0x19a (HEIGHT, the v extent) and +0x19b (WIDTH,
  * the u extent), which are Game+0x2ab727 and Game+0x2ab728.
@@ -106,7 +106,7 @@
  * **`OpenExtraObjectsFile` takes ONE argument, not two.**  Ghidra's
  * decompile shows `OpenExtraObjectsFile(&field_0x48b98, iVar11, &name)`, but
  * 0x004171FC pushes only `EDI` (the level name).  The apparent second
- * argument is a stale register.  `leo.cpp`'s own signature agrees.
+ * argument is a stale register.  `extraobjects.cpp`'s own signature agrees.
  *
  * **A type-2 foe cell keeps its parameter byte; every other cell loses it.**
  * At 0x00416E96 the type-2 branch sets EAX=1, and 0x00416EC9 tests it: if a
@@ -166,6 +166,9 @@
 #include "player.h"
 #include "crtrand.h"
 #include "game.h"
+#include "bomb.h"
+#include "tilequery.h"
+#include "levelsetup.h"
 #include "liftobject.h"
 #include "slideobject.h"
 #include "bridgeobject.h"
@@ -175,9 +178,6 @@
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
 #define G_MODE_FLAG        0x14        /* dword; 0 -> state 2, else state 1  */
-#define G_SCRIPT_READER    0x195735
-#define G_EXTRA_OBJECTS    0x48b98
-#define G_EXTRA_LOADED     0x48b9c
 #define G_UNK_42258        0x42258
 
 #define G_PLAYER_POS       0x2ab580    /* three floats                       */
@@ -255,8 +255,6 @@
 #define G_CLOCK            0x170a54    /* the game clock, a double           */
 
 #define G_LEVEL_NAME       0x173483
-#define G_SCRIPT_COUNT     0x1960e6
-#define G_CD_OBJ           0x2223f
 
 /* Globals outside `Game`. */
 #define GBL_LISTENER    ((float *)0x0046c4a0)
@@ -289,11 +287,7 @@ struct GameLogger;
 
 /* ─── Callbacks kept at their original addresses ─────────────────────────── */
 
-typedef void (__attribute__((thiscall)) *rel_script_fn)(void *self);
-#define ORIG_RELEASE_SCRIPT ((rel_script_fn)0x0041e840)
 
-typedef int (__attribute__((thiscall)) *cd_check_fn)(void *self);
-#define ORIG_CD_CHECK      ((cd_check_fn)0x00403420)
 
 typedef int (__attribute__((thiscall)) *noop_fn)(void *self);
 #define ORIG_NOOP_440450   ((noop_fn)0x00440450)
@@ -309,17 +303,8 @@ extern "C" __declspec(dllexport) int __cdecl hooks_GameTime(int *out);
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Leo_ReleaseExtraObjectSoundBuffers(void *self);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Leo_OpenExtraObjectsFile(void *self, const char *name);
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveEnemyObject(void *self, unsigned int idArg);
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_FindNearestFlaggedTileInRadius(void *self, unsigned char *pu,
-                                   unsigned char *pv, unsigned char radius);
 
 /* ─── Unaligned accessors ────────────────────────────────────────────────── */
 
@@ -379,7 +364,7 @@ static void fx_init(void)
 }
 
 /* Tile index.  `(v + u*100) * 0x7f`, the addressing tilequery.cpp and
- * entitymove.cpp document.  The control transposes the two terms HERE and
+ * movableentity.cpp document.  The control transposes the two terms HERE and
  * nowhere else, so every consumer moves together. */
 static inline int TIDX(unsigned u, unsigned v)
 {
@@ -404,7 +389,7 @@ static inline int SIDX(int u, int v)
  * Transcribed in the original's store ORDER, which is not ascending, and
  * with 0x421e5 left out exactly as the original leaves it out. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ResetLevelObjectCounters(void *self)
+Sim_ResetLevelObjectCounters(Game *self)
 {
     unsigned char *G = (unsigned char *)self;
 
@@ -468,7 +453,7 @@ Sim_FindTileByTypeMarker(void *tiles, unsigned int markerArg,
 
 /* ═══ 0x00416420 -- Game::SetupLevelObjects ════════════════════════════════ */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_SetupLevelObjects(void *self)
+Sim_SetupLevelObjects(Game *self)
 {
     unsigned char *G = (unsigned char *)self;
     unsigned char v, u;
@@ -485,8 +470,8 @@ Sim_SetupLevelObjects(void *self)
     GameLog_LogMessage(GAME_LOGGER_VA, 2, S_INIT_STARTED);
 
     ((Game *)G)->setLevelSoundsReady(0);
-    ORIG_RELEASE_SCRIPT(G + G_SCRIPT_READER);
-    Leo_ReleaseExtraObjectSoundBuffers(G + G_EXTRA_OBJECTS);
+    ((Game *)G)->scriptPlayer()->releaseStreams();
+    ((Game *)G)->extraObjects()->releaseSounds();
     ORIG_NOOP_440450(G + G_UNK_42258);
 
     /* The player position triple is zeroed, and the listener and the two
@@ -509,7 +494,7 @@ Sim_SetupLevelObjects(void *self)
     ((u32_ua *)GBL_POS)[2] = DW(G, G_PLAYER_POS + 8);
     GBL_C4BC = 0;
 
-    Sim_ResetLevelObjectCounters(G);
+    Sim_ResetLevelObjectCounters((Game *)G);
 
     W(G, G_COUNT_CRYSTAL) = 0;
     DW(G, G_LIFT_COUNT2)  = 0;
@@ -534,7 +519,7 @@ Sim_SetupLevelObjects(void *self)
     while (((Game *)G)->foeCount() != 0)
         Foe::remove((Game *)G, ((Game *)G)->foeId(0));
     while (B(G, G_ENEMY_COUNT) != 0)
-        Sim_RemoveEnemyObject(G, B(G, G_ENEMY_IDS));
+        Sim_RemoveEnemyObject((Game *)G, B(G, G_ENEMY_IDS));
 
     ((Game *)G)->setBreakableCount(0);
     ((Game *)G)->setFoeCount(0);
@@ -892,18 +877,18 @@ next_row:
         PL->setField21a(0);
         ((Game *)G)->setItemTotal(W(G, C_TOTAL));
 
-        if (DW(G, G_SCRIPT_COUNT) == 0) {
+        if (((Game *)G)->scriptPlayer()->loaded() == 0) {
             F(G, G_PLAYER_POS + 0) = (float)(int)(signed char)PL->homeU();
             F(G, G_PLAYER_POS + 4) = (float)(int)(signed char)PL->homeH();
             F(G, G_PLAYER_POS + 8) = (float)(int)(signed char)PL->homeV();
         }
 
-        if (ORIG_CD_CHECK(G + G_CD_OBJ) == 0 &&
+        if (((Game *)G)->cdThemes()->validateTrackLengths() == 0 &&
             DW(G, 0xc) == 0 &&
             ((Game *)G)->levelIndex() > 4) {
             unsigned char cu = PL->homeU();
             unsigned char cv = PL->homeV();
-            if (Sim_FindNearestFlaggedTileInRadius(G, &cu, &cv, 0x14)) {
+            if (Sim_FindNearestFlaggedTileInRadius((Game *)G, &cu, &cv, 0x14)) {
                 B(G, T_ITEM + TIDX(cu, cv)) = 0;
                 GameLog_LogMessage(GAME_LOGGER_VA, 3, S_CD_MISSING,
                                    (unsigned int)cu, (unsigned int)cv);
@@ -942,13 +927,13 @@ next_row:
         GameLog_LogMessage(GAME_LOGGER_VA, 3, S_WARN_CRYSTALS);
 
     /* ONE argument -- see the header. */
-    if (Leo_OpenExtraObjectsFile(G + G_EXTRA_OBJECTS,
+    if (((Game *)G)->extraObjects()->openFile(
                                  (const char *)(G + G_LEVEL_NAME)) == 0) {
-        DW(G, G_EXTRA_LOADED) = 0;
+        ((Game *)G)->extraObjects()->setLoaded(0);
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LEO_FAILED,
                            (const char *)(G + G_LEVEL_NAME));
     } else {
-        DW(G, G_EXTRA_LOADED) = 1;
+        ((Game *)G)->extraObjects()->setLoaded(1);
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LEO_LOADED,
                            (const char *)(G + G_LEVEL_NAME));
     }

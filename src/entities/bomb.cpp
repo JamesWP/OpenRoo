@@ -119,7 +119,7 @@
 #include "game.h"
 #include "tile.h"
 #include "alloc.h"
-#include "entitymove.h"
+#include "movableentity.h"
 #include "objectremove.h"
 #include "soundmanager.h"
 #include "static.h"

@@ -22,7 +22,7 @@ public:
     static const int ORIGIN = 0;
     static const int CHILD_STRIDE = 0xff;
 
-    /* The four routines that take the menu as `this` (menustack.cpp,
+    /* The four routines that take the menu as `this` (menutree.cpp,
      * menunav.cpp); the Sim_* exports below are one-line shims onto them. */
     void push(unsigned char node);          /* PushMenuNodeOnStack 0x41ebd0 */
     void pop();                             /* PopMenuNodeFromStack 0x41ec00 */
@@ -111,10 +111,10 @@ KAROO_LAYOUT_CHECKS(MenuTree)
 
 /* The exports patch.py binds by name. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushMenuNodeOnStack(void *self, unsigned int nodeArg);
+Sim_PushMenuNodeOnStack(MenuTree *self, unsigned int nodeArg);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PopMenuNodeFromStack(void *self);
+Sim_PopMenuNodeFromStack(MenuTree *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RewindMenuStackToRootNode(void *self);
+Sim_RewindMenuStackToRootNode(MenuTree *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_NavigateMenuTree(void *self, int now);
+Sim_NavigateMenuTree(MenuTree *self, int now);

@@ -42,6 +42,9 @@
 #include "log.h"
 #include "soundmanager.h"
 #include "game.h"
+#include "reportwriter.h"
+#include "gamelog.h"
+#include "fixedsounds.h"
 #include "menutree.h"
 #include "player.h"
 
@@ -55,20 +58,10 @@ typedef void (__attribute__((thiscall)) *sound_setup_fn)(void *sm, int mode3d);
 #define ORIG_SOUND_SETUP   ((sound_setup_fn) 0x004439d0)   /* named callback */
 
 extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Config_Save(void *self, const char *path);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Report_WriteLevelReport(void *self, const char *pathname);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStatic_Reset(CStaticSoundbuffer *self);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf(void *self, const char *caption);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_FindThemeIndexByThemeName(void *self, const char *name);
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 
-#define GAMELOGGER ((void *)0x0046c4c0)
+#define GAMELOGGER ((GameLogger *)0x0046c4c0)
 #define GAMEDIR    ((const char *)0x004e01c4)
 #define S_CFG      ((const char *)0x004652cc)   /* "Karoo.cfg" */
 #define F_CFG_ERR  ((const char *)0x00465458)
@@ -96,7 +89,7 @@ static CStaticSoundbuffer *bank(unsigned char *B, CStaticSoundbuffer *cur,
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
+Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
 {
     unsigned char *B = (unsigned char *)self;
     void *sm = B + 0x13cba8;
@@ -113,15 +106,15 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
     if (((Game *)B)->fixedSounds()->loaded != 0)
         return;
 
-    if ((Config_Save(B + 0x28ab2e, S_CFG) & 0xff) != 0)
+    if ((Config_Save(((Game *)B)->config(), S_CFG) & 0xff) != 0)
         GameLog_LogMessage(GAMELOGGER, 1, F_CFG_OK);
     else
         GameLog_LogMessage(GAMELOGGER, 3, F_CFG_ERR);
     ((Game *)B)->menu()->setLockStart(*((Game *)B)->clock());
     ((Game *)B)->menu()->setLock(1);
     if (((Game *)B)->musicOn() != 0)
-        Sim_PlayCDStuf(B + 0x2223f, S_MAIN);
-    B[0x2235a] = (unsigned char)Sim_FindThemeIndexByThemeName(B + 0x2223f, S_MAIN);
+        ((Game *)B)->cdThemes()->play(S_MAIN);
+    ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(S_MAIN));
 
     if (((Game *)B)->soundCreated() == 0) {
         GameLog_LogMessage(GAMELOGGER, 1, F_NOSOUND);
@@ -152,18 +145,19 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(void *self)
 #undef PBANK
     }
 
-    G32(0x196050) = 5;
-    G16(0x196054) = 5;
-    G32(0x196044) = G32(0x13cbc8);
-    G32(0x196048) = 0;
-    GP(0x48ba0) = sm;
-    GP(0x195b3f) = sm;
+    ScriptPlayer *sp = ((Game *)B)->scriptPlayer();
+    sp->setField91b(5);
+    sp->setField91f(5);
+    sp->setField90f((void *)G32(0x13cbc8));
+    sp->setField913(0);
+    ((Game *)B)->extraObjects()->setSoundManager((SoundManager *)sm);
+    sp->setSoundManager((SoundManager *)sm);
 
     if (!s_fx) {
         hooks_GetAsyncKeyState(0x4c);
         hooks_GetAsyncKeyState(0x4c);
         if (hooks_GetAsyncKeyState(0x4c) != 0)
-            Report_WriteLevelReport(B, S_REPORT);
+            Report_WriteLevelReport((Game *)B, S_REPORT);
     }
 
     sprintf(path, (const char *)0x00465ae4, GAMEDIR);

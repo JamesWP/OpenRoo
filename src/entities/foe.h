@@ -14,7 +14,7 @@
  * Outside accessors remain, which is why the layout stays packed and
  * asserted (GameTick's foe loop now goes through the methods below);
  * soundobj.cpp and levelsounds.cpp attach its sounds; cheatcode.cpp forces
- * moveState; tilequery.cpp (FindFarthestOccupiedTile) and entitymove.cpp
+ * moveState; tilequery.cpp (FindFarthestOccupiedTile) and movableentity.cpp
  * (UpdateEntityMovement) treat it as a plain entity; worldstate.cpp reads the
  * table; the original RenderGameFrame draws it.  The pathfinder at +0x13b is
  * FoePath (foepath.cpp), whose fields the chase still reaches by offset.

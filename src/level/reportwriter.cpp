@@ -6,7 +6,7 @@
  *
  * ─── Why this function, and not the reader that had the problem ───────────
  *
- * Phase 4's report-side .jjs reader (karoo-hooks/jjsreport.cpp) had to call
+ * Phase 4's report-side .jjs reader (karoo-hooks/scriptplayer.cpp) had to call
  * the GAME's fputs, because the FILE * it writes to was opened by this
  * function with the game's fopen.  An MSVC FILE cannot be written by this
  * DLL's mingw CRT -- attempting it hung the level report with no crash and no
@@ -14,7 +14,7 @@
  * fixed inside the reader: whoever OPENS the file decides which CRT owns it.
  *
  * So this replaces the opener.  Both output streams -- ScriptTexts.txt and
- * the report file the caller names -- are now ours, and jjsreport.cpp drops
+ * the report file the caller names -- are now ours, and scriptplayer.cpp drops
  * ORIG_FPUTS and uses plain fputs again.  The game's stdio is out of the
  * report path entirely: our fopen, our sprintf, our fputs, our fclose.
  *
@@ -73,6 +73,10 @@
 #include "log.h"
 #include "gamelog.h"
 #include "game.h"
+#include "reportwriter.h"
+#include "levelparse.h"
+#include "levelsetup.h"
+#include "levelscore.h"
 #include "foe.h"
 #include "player.h"
 
@@ -111,9 +115,6 @@
 
 /* ─── Game logic, deliberately still the game's ──────────────────────────── */
 
-typedef void (__attribute__((thiscall)) *setname_fn)(void *self, unsigned idx);
-typedef void (__attribute__((thiscall)) *openlvl_fn)(void *self, unsigned idx);
-typedef void (__attribute__((thiscall)) *setup_fn)  (void *self);
 typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
 
 /* Was ((setname_fn) 0x004186b0) / ((openlvl_fn) 0x004186f0) -- the game's
@@ -128,21 +129,14 @@ typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
  * sites in the EXE, and the replay suite passed 16/16, because the ONLY
  * caller left was in our own DLL.  `levelreport.py` failed with nine
  * c000001d, and the UD2 stub named the address. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_SetCurrentLevelName(void *self, unsigned int levelNo);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_OpenLevelFile(void *self, unsigned int levelNo);
-
-#define ORIG_SET_LEVEL_NAME Sim_SetCurrentLevelName
-#define ORIG_OPEN_LEVEL     Sim_OpenLevelFile
+/* Both through levelparse.h. */
+#define ORIG_SET_LEVEL_NAME(s, n) Sim_SetCurrentLevelName((Game *)(s), (n))
+#define ORIG_OPEN_LEVEL(s, n)     Sim_OpenLevelFile((Game *)(s), (n))
 /* Was ((setup_fn) 0x00416420) -- the game's Game::SetupLevelObjects.
  * levelsetup.cpp owns it now (GAMETICK_PLAN.md Band B) and the original is
  * UD2-stubbed, so this goes to ours.  Third instance of the DLL-caller
  * hazard the comment below names; checked BEFORE stubbing this time. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_SetupLevelObjects(void *self);
-
-#define ORIG_SETUP_OBJECTS  Sim_SetupLevelObjects
+#define ORIG_SETUP_OBJECTS(s)     Sim_SetupLevelObjects((Game *)(s))   /* levelsetup.h */
 /* Was ((score_fn) 0x0041a760) -- the game's Game::CalculateLevelScore.
  * levelscore.cpp owns it now (GAMETICK_PLAN.md Band A) and the original is
  * UD2-stubbed, so this goes to ours.  This call is why the level report is an
@@ -160,18 +154,10 @@ Sim_SetupLevelObjects(void *self);
 #define ORIG_LOG_MESSAGE \
     ((void (__cdecl *)(void *, int, const char *, ...))GameLog_LogMessage)
 
-/* Ours since GAMETICK_PLAN.md Band A (karoo-hooks/levelscore.cpp). */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Score_CalculateLevelScore(void *self, char endReason);
+/* Score_CalculateLevelScore: ours since GAMETICK_PLAN.md Band A, declared
+ * in levelscore.h. */
 
-/* Ours since Phase 2 (karoo-hooks/playerstate.cpp). */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-HighScore_WriteFile(void *self, const char *name, char key);
 
-/* Ours since Phase 4 (karoo-hooks/jjsreport.cpp).  It now takes OUR FILE *,
- * which is the whole point of replacing this function. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-JJScript_ReadTextsForReport(void *self, const char *path, FILE *sink);
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -180,25 +166,13 @@ JJScript_ReadTextsForReport(void *self, const char *path, FILE *sink);
 #define OFF_TALLY_LEO     0x42247   /* WORD, levels with a .leo               */
 #define OFF_TALLY_IS      0x4220c   /* WORD, levels with an instruction script*/
 #define OFF_SCORE_TOTAL   0x42212   /* DWORD, running total                   */
-#define OFF_TEXTS_IN      0x19573b  /* WORD, filled by the report .jjs reader */
-#define OFF_SPLINES_IN    0x195739  /* WORD, ditto                            */
 #define OFF_GAMEFILE      0x4215f   /* char[], game file name                 */
 #define OFF_LEVEL_WORLD   0x2ab69d  /* char[], world/level path               */
 #define OFF_BONUS_FLAG    0x2ab599  /* int                                    */
-#define OFF_SCRIPT_FLAG   0x1960e6  /* int                                    */
-#define OFF_SCRIPT_ID     0x1964fd  /* WORD                                   */
-#define OFF_LEO_FLAG      0x48b9c   /* int                                    */
-#define OFF_LEO_ID        0x13cba6  /* WORD                                   */
 #define OFF_PAR_TIME_SRC  0x2ab71f  /* int, par time before the 50% scaling   */
 /* OFF_PAR_COPY was Player +0x23d (player.h), the crystals count. */
 #define OFF_LEVEL_PATH    0x173483  /* char[], <World>\<Level>                */
 #define OFF_LEVEL_TITLE   0x2ab61d  /* char[], display name                   */
-#define OFF_SCRIPT_OBJ    0x195735  /* the instruction-script object          */
-#define OFF_HSC_OBJ       0x13cdbb  /* the high-score object                  */
-#define OFF_HSC_TABLE     0x13cfaf  /* "Bernie Boulder" name slot             */
-#define OFF_HSC_LEVEL     0x13cfe5  /* BYTE, level number in that slot        */
-#define OFF_HSC_SCORE     0x13cfe1  /* int, score in that slot                */
-#define HSC_STRIDE        0x37      /* the table runs BACKWARDS at this pitch */
 
 /* The per-column field list, in the original's emission order.  Each is
  * printed with "%d\t"; the widths differ, hence the size tag. */
@@ -220,7 +194,7 @@ static unsigned read_field(const unsigned char *g, unsigned off, unsigned char s
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Report_WriteLevelReport(void *self, const char *pathname)
+Report_WriteLevelReport(Game *self, const char *pathname)
 {
     unsigned char *g = (unsigned char *)self;
     char buf[256];
@@ -238,8 +212,8 @@ Report_WriteLevelReport(void *self, const char *pathname)
     *(WORD  *)(g + OFF_TALLY_BONUS) = 0;
     *(WORD  *)(g + OFF_TALLY_LEO)   = 0;
     *(DWORD *)(g + OFF_SCORE_TOTAL) = 0;
-    *(WORD  *)(g + OFF_TEXTS_IN)    = 0;
-    *(WORD  *)(g + OFF_SPLINES_IN)  = 0;
+    ((Game *)g)->scriptPlayer()->setTextBlocks(0);
+    ((Game *)g)->scriptPlayer()->setSplineLines(0);
 
     fputs(STR_TITLE, out);
     sprintf(buf, STR_GAMEFILE, (char *)(g + OFF_GAMEFILE));
@@ -272,18 +246,18 @@ Report_WriteLevelReport(void *self, const char *pathname)
             *(short *)(g + OFF_TALLY_BONUS) += 1;
         }
 
-        if (*(int *)(g + OFF_SCRIPT_FLAG) == 0) {
+        if (((Game *)g)->scriptPlayer()->loaded() == 0) {
             fputs(STR_BLANK_TAB, out);
         } else {
-            sprintf(buf, STR_D_TAB, (unsigned)*(WORD *)(g + OFF_SCRIPT_ID));
+            sprintf(buf, STR_D_TAB, (unsigned)((Game *)g)->scriptPlayer()->lineCount());
             fputs(buf, out);
             *(short *)(g + OFF_TALLY_IS) += 1;
         }
 
-        if (*(int *)(g + OFF_LEO_FLAG) == 0) {
+        if (((Game *)g)->extraObjects()->loaded() == 0) {
             fputs(STR_BLANK_TAB, out);
         } else {
-            sprintf(buf, STR_D_TAB, (unsigned)*(WORD *)(g + OFF_LEO_ID));
+            sprintf(buf, STR_D_TAB, (unsigned)((Game *)g)->extraObjects()->objectCount());
             fputs(buf, out);
             *(short *)(g + OFF_TALLY_LEO) += 1;
         }
@@ -329,13 +303,14 @@ Report_WriteLevelReport(void *self, const char *pathname)
         fputs(buf, out);
         fputs(STR_NEWLINE, out);   /* defect 3: the title's sprintf is dead */
 
-        /* defect 4: seed the high-score table, backwards, at -0x37 */
+        /* defect 4: seed the high-score table BACKWARDS from record 9 (the
+         * original steps its pointer down by one record per 8 levels) */
         if ((idx % 8 == 0 && idx > 5) || idx == 6) {
             int k = (int)idx / 8;
-            unsigned char *slot = g - k * HSC_STRIDE;
-            strcpy((char *)(slot + OFF_HSC_TABLE), STR_BERNIE);
-            *(char *)(slot + OFF_HSC_LEVEL) = (char)(idx + 1);
-            *(int  *)(slot + OFF_HSC_SCORE) = *(int *)(g + OFF_SCORE_TOTAL);
+            HighScoreRecord *rec = ((Game *)g)->highScores()->record(9 - k);
+            strcpy(rec->name, STR_BERNIE);
+            rec->level = (unsigned char)(idx + 1);
+            rec->score = (unsigned int)*(int *)(g + OFF_SCORE_TOTAL);
         }
 
         {
@@ -349,8 +324,8 @@ Report_WriteLevelReport(void *self, const char *pathname)
             sprintf(buf, STR_LVL_NAME, (char *)(g + OFF_LEVEL_TITLE));
             fputs(buf, sink);
 
-            if (*(int *)(g + OFF_SCRIPT_FLAG) != 0)
-                JJScript_ReadTextsForReport(g + OFF_SCRIPT_OBJ, scriptPath, sink);
+            if (((Game *)g)->scriptPlayer()->loaded() != 0)
+                ((Game *)g)->scriptPlayer()->readTextsForReport(scriptPath, sink);
 
             fputs(STR_NEWLINE, sink);
             fputs(STR_NEWLINE, sink);
@@ -365,9 +340,9 @@ Report_WriteLevelReport(void *self, const char *pathname)
     fputs(buf, out);
     sprintf(buf, STR_TESTSCORES, *(int *)(g + OFF_SCORE_TOTAL));
     fputs(buf, out);
-    sprintf(buf, STR_TEXTS_IN, (unsigned)*(WORD *)(g + OFF_TEXTS_IN));
+    sprintf(buf, STR_TEXTS_IN, (unsigned)((Game *)g)->scriptPlayer()->textBlocks());
     fputs(buf, out);
-    sprintf(buf, STR_SPLINES_IN, (unsigned)*(WORD *)(g + OFF_SPLINES_IN));
+    sprintf(buf, STR_SPLINES_IN, (unsigned)((Game *)g)->scriptPlayer()->splineLines());
     fputs(buf, out);
 
     ORIG_LOG_MESSAGE(GAME_LOGGER, 3, STR_LOG_CREATED);   /* defect 2 */
@@ -376,5 +351,5 @@ Report_WriteLevelReport(void *self, const char *pathname)
     if (sink != NULL)
         fclose(sink);
 
-    HighScore_WriteFile(g + OFF_HSC_OBJ, STR_HSC_NAME, 'K');
+    ((Game *)g)->highScores()->writeFile(STR_HSC_NAME, 'K');
 }

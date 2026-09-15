@@ -17,6 +17,11 @@
 #include "textentry.h"
 #include "saveslots.h"
 #include "menutree.h"
+#include "scriptplayer.h"
+#include "cdthemes.h"
+#include "highscores.h"
+#include "config.h"
+#include "extraobjects.h"
 
 class SoundManager;
 class LiftObject;
@@ -89,11 +94,11 @@ KAROO_LAYOUT_CHECKS(ScoreTally)
 }
 
 /* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport 0x41a280 loads
- * once, Game+0x13cc5c..+0x13cc84.  Ghidra's SoundManager struct places
- * these at its +0xb4..+0xd8, but the SoundManager ctor 0x4430e0
- * initialises nothing past its second list (ending +0xb4) and only Game
- * code writes them -- so which object owns them is OPEN; they are modelled
- * here on their own rather than guessed into either. */
+ * once, Game+0x13cc5c..+0x13cc84.  They are GAME's: the SoundManager is
+ * 0xb4 bytes and ends exactly here (none of its ctor 0x4430e0, dtor
+ * 0x443180, purge 0x443520, init 0x4431f0 or setup 0x4439d0 touches past
+ * its second list at +0xa4), and only Game code writes them.  Ghidra's
+ * 288-byte SoundManager struct over-reaches into them. */
 struct CStaticSoundbuffer;
 struct VoicePool;
 struct __attribute__((packed)) FixedSounds {
@@ -173,6 +178,17 @@ public:
      * the name entry (save names and the high-score name). */
     TextEntry     *cheatEntry()                      { return &cheatEntry_; }
     TextEntry     *nameEntry()                       { return &nameEntry_; }
+    /* The level's extra 3D objects, from its .leo (extraobjects.h). */
+    ExtraObjects         *extraObjects()             { return &extraObjects_; }
+    /* The settings object (config.h); Karoo.cfg is its persisted blob. */
+    Config               *config()                   { return &config_; }
+    /* The high-score table (highscores.h). */
+    HighScoreTable       *highScores()               { return &highScores_; }
+    const HighScoreTable *highScores() const         { return &highScores_; }
+    /* The CD-music theme table (cdthemes.h). */
+    CdThemes       *cdThemes()                       { return &cdThemes_; }
+    /* The instruction-script player (scriptplayer.h). */
+    ScriptPlayer   *scriptPlayer()                   { return &scriptPlayer_; }
     /* The menu (menutree.h). */
     MenuTree       *menu()                           { return &menu_; }
     const MenuTree *menu() const                     { return &menu_; }
@@ -222,8 +238,8 @@ public:
     /* CD music on: every Sim_PlayCDStuf call is gated on it; HandleKeypress
      * toggles it, RenderGameOptions shows it, sound setup clears it on
      * failure.  A dword. */
-    int            musicOn() const                   { return musicOn_; }
-    void           setMusicOn(int on)                { musicOn_ = on; }
+    int            musicOn() const                   { return config_.musicOn(); }
+    void           setMusicOn(int on)                { config_.setMusicOn(on); }
 
     /* Total play time over the whole game, ms: each level's timeElapsed is
      * added as it ends; the save slot stores it, ClearGameState zeroes it. */
@@ -233,16 +249,16 @@ public:
     /* ── volumes (the options menu, HandleKeypress 0x3e/0x3f) ────────── */
     /* Percent, steps of 10, shown by RenderGameOptions; each has the
      * device value HandleKeypress derives from it beside it. */
-    unsigned char  cdVolume() const                  { return cdVolume_; }
-    void           setCdVolume(unsigned char p)      { cdVolume_ = p; }
+    unsigned char  cdVolume() const                  { return config_.cdVolume(); }
+    void           setCdVolume(unsigned char p)      { config_.setCdVolume(p); }
     /* CD mixer volume, 0..65536 (CDM_SetMixerVolume). */
-    unsigned int   cdMixerVolume() const             { return cdMixerVolume_; }
-    void           setCdMixerVolume(unsigned int v)  { cdMixerVolume_ = v; }
-    unsigned char  waveVolume() const                { return waveVolume_; }
-    void           setWaveVolume(unsigned char p)    { waveVolume_ = p; }
+    unsigned int   cdMixerVolume() const             { return config_.cdMixerVolume(); }
+    void           setCdMixerVolume(unsigned int v)  { config_.setCdMixerVolume(v); }
+    unsigned char  waveVolume() const                { return config_.waveVolume(); }
+    void           setWaveVolume(unsigned char p)    { config_.setWaveVolume(p); }
     /* Both channels packed, for waveOutSetVolume. */
-    unsigned int   waveOutVolume() const             { return waveOutVolume_; }
-    void           setWaveOutVolume(unsigned int v)  { waveOutVolume_ = v; }
+    unsigned int   waveOutVolume() const             { return config_.waveOutVolume(); }
+    void           setWaveOutVolume(unsigned int v)  { config_.setWaveOutVolume(v); }
 
     /* ── camera and controls ────────────────────────────────────────── */
     /* 0 = follow the player; nonzero = view from the separate eye at
@@ -258,8 +274,8 @@ public:
     /* The controls menu's camera option: 1 = the camera turns with the
      * player (UpdateViewTransform, FUN_00404120).  GameTick forces it to 1
      * while Player+0xea is set, parking the choice +10 at +0x3215d. */
-    unsigned char  cameraTurnsWithPlayer() const     { return cameraTurnsWithPlayer_; }
-    void           setCameraTurnsWithPlayer(unsigned char on) { cameraTurnsWithPlayer_ = on; }
+    unsigned char  cameraTurnsWithPlayer() const     { return config_.cameraTurnsWithPlayer(); }
+    void           setCameraTurnsWithPlayer(unsigned char on) { config_.setCameraTurnsWithPlayer(on); }
     /* Where GameTick parks cameraTurnsWithPlayer while Player+0xea forces
      * it on: the player's choice + 10, so 0 means "nothing parked".  Load
      * zeroes it. */
@@ -268,11 +284,18 @@ public:
     /* The options menu's 3D-sound switch: handed to the SoundManager's
      * setup, and InitLevelBasedSounds adds the extra-object sounds only
      * while it is on. */
-    int            sound3D() const                   { return sound3D_; }
-    void           setSound3D(int on)                { sound3D_ = on; }
+    int            sound3D() const                   { return config_.sound3D(); }
+    void           setSound3D(int on)                { config_.setSound3D(on); }
     /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
-    unsigned short joyDeadzone() const               { return joyDeadzone_; }
-    void           setJoyDeadzone(unsigned short p)  { joyDeadzone_ = p; }
+    unsigned short joyDeadzone() const               { return config_.joyDeadzone(); }
+    /* The separate eye the camera views from when cameraMode() is nonzero
+     * (FUN_00404120 reads it as a float vector); checkpoints restore it
+     * from the script player. */
+    void           setCameraEye(int i, float v)      { cameraEye_[i] = v; }
+    /* A float vector FUN_00404120 reads beside the eye; checkpoints
+     * restore it from the script player's spline point.  Not decoded. */
+    void           setField13cc94(int i, float v)    { field_13cc94_[i] = v; }
+    void           setJoyDeadzone(unsigned short p)  { config_.setJoyDeadzone(p); }
 
     /* ── the tally's inputs (CalculateLevelScore 0x41a760) ─────────── */
     /* Death restarts on this level: GameTick adds one each time ENTER
@@ -430,7 +453,8 @@ private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x03215d - 0x000000];
+    unsigned char gap_000000[0x02223f - 0x000000];
+    CdThemes      cdThemes_;                              /* 0x02223f */
     unsigned char parkedCameraOption_;                    /* 0x03215d */
     unsigned char gap_03215e[0x04215e - 0x03215e];
     unsigned char levelCount_;                            /* 0x04215e */
@@ -493,17 +517,23 @@ private:
     SoundAssetName soundAsset46132_;                 /* 0x046132 */
     unsigned char gap_046236[0x046baa - 0x046236];
     SoundAssetName soundAsset46baa_;                 /* 0x046baa */
-    unsigned char gap_046cae[0x13cba8 - 0x046cae];
+    unsigned char gap_046cae[0x048b98 - 0x046cae];
+    ExtraObjects  extraObjects_;                          /* 0x048b98 */
     /* The SoundManager is embedded here; its full size is unknown (its
      * lists reach at least +0xa4), so only the bytes up to the next field
-     * we use are declared.  soundCreated_ sits inside it at +0x8c. */
+     * we use are declared.  soundCreated_ sits inside it at +0x8c.
+     * Its real size is 0xb4 (its ctor, dtor, purge, init and setup touch
+     * nothing past the second list at +0xa4), so it ends exactly where
+     * fixedSounds_ begins. */
     unsigned char soundManagerHead_[0x13cc34 - 0x13cba8];
     int           soundCreated_;                          /* 0x13cc34 */
-    unsigned char gap_13cc38[0x13cc5c - 0x13cc38];
+    unsigned char gap_13cc38[0x13cc5c - 0x13cc38];        /* SoundManager tail */
     FixedSounds   fixedSounds_;                           /* 0x13cc5c */
-    unsigned char gap_13cc84[0x13cdac - 0x13cc84];
+    unsigned char gap_13cc84[0x13cc94 - 0x13cc84];
+    float         field_13cc94_[3];                       /* 0x13cc94 */
+    unsigned char gap_13cca0[0x13cdac - 0x13cca0];
     TextEntry     cheatEntry_;                            /* 0x13cdac */
-    unsigned char gap_13cdbb[0x1404c1 - 0x13cdbb];
+    HighScoreTable highScores_;                           /* 0x13cdbb */
     ScoreTally    tally_;                                 /* 0x1404c1 */
     unsigned char gap_140543[0x170643 - 0x140543];
     BridgeObject *bridgeSlots_[256];                      /* 0x170643 */
@@ -543,23 +573,13 @@ private:
     int           rebindActive_;                          /* 0x175513 */
     unsigned char debounce_;                              /* 0x175517 */
     MenuTree      menu_;                                  /* 0x175518 */
-    unsigned char gap_195735[0x28ab29 - 0x195735];
+    ScriptPlayer  scriptPlayer_;                          /* 0x195735 */
     float         cameraDistance_;                        /* 0x28ab29 */
     unsigned char cameraMode_;                            /* 0x28ab2d */
-    unsigned char gap_28ab2e[0x2aa156 - 0x28ab2e];
-    int           musicOn_;                               /* 0x2aa156 */
-    unsigned char cdVolume_;                              /* 0x2aa15a */
-    unsigned char gap_2aa15b[0x2aa15f - 0x2aa15b];
-    unsigned int  cdMixerVolume_;                         /* 0x2aa15f */
-    unsigned char gap_2aa163[0x2ab564 - 0x2aa163];
-    int           sound3D_;                               /* 0x2ab564 */
-    unsigned char waveVolume_;                            /* 0x2ab568 */
-    unsigned char gap_2ab569[0x2ab56d - 0x2ab569];
-    unsigned int  waveOutVolume_;                         /* 0x2ab56d */
-    unsigned char cameraTurnsWithPlayer_;                 /* 0x2ab571 */
-    unsigned char gap_2ab572[0x2ab57e - 0x2ab572];
-    unsigned short joyDeadzone_;                          /* 0x2ab57e */
-    unsigned char gap_2ab580[0x2ab58c - 0x2ab580];
+    /* The settings (config.h); music, volumes, 3D sound, the camera
+     * option and the joystick deadzone live in its persisted blob. */
+    Config        config_;                                /* 0x28ab2e */
+    float         cameraEye_[3];                          /* 0x2ab580 */
     unsigned char state_;                                 /* 0x2ab58c */
     /* Where Tile::at() indexes from; the tiles extend past it.  The bytes
      * from here to the first cell look like a map header (the time limit at
@@ -639,16 +659,8 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(tallyDone_,        0x517909);
     KAROO_LAYOUT_AT(levelCount_,       0x04215e);
     KAROO_LAYOUT_AT(levelIndex_,       0x173583);
-    KAROO_LAYOUT_AT(musicOn_,          0x2aa156);
     KAROO_LAYOUT_AT(cameraMode_,       0x28ab2d);
-    KAROO_LAYOUT_AT(joyDeadzone_,      0x2ab57e);
-    KAROO_LAYOUT_AT(cdVolume_,         0x2aa15a);
     KAROO_LAYOUT_AT(cameraDistance_,   0x28ab29);
-    KAROO_LAYOUT_AT(sound3D_,          0x2ab564);
-    KAROO_LAYOUT_AT(cameraTurnsWithPlayer_, 0x2ab571);
-    KAROO_LAYOUT_AT(cdMixerVolume_,    0x2aa15f);
-    KAROO_LAYOUT_AT(waveVolume_,       0x2ab568);
-    KAROO_LAYOUT_AT(waveOutVolume_,    0x2ab56d);
     KAROO_LAYOUT_AT(totalPlayTime_,    0x170a44);
     KAROO_LAYOUT_AT(lastTickTime_,     0x170a4c);
     KAROO_LAYOUT_AT(state_,            0x2ab58c);
@@ -663,4 +675,11 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(rebindActive_,     0x175513);
     KAROO_LAYOUT_AT(debounce_,         0x175517);
     KAROO_LAYOUT_AT(menu_,             0x175518);
+    KAROO_LAYOUT_AT(scriptPlayer_,     0x195735);
+    KAROO_LAYOUT_AT(cdThemes_,         0x02223f);
+    KAROO_LAYOUT_AT(config_,           0x28ab2e);
+    KAROO_LAYOUT_AT(extraObjects_,     0x048b98);
+    KAROO_LAYOUT_AT(highScores_,       0x13cdbb);
+    KAROO_LAYOUT_AT(cameraEye_,        0x2ab580);
+    KAROO_LAYOUT_AT(field_13cc94_,     0x13cc94);
 }

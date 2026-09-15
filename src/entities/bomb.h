@@ -15,7 +15,7 @@
  * asserted: the original RenderGameFrame reads +0x25/+0x29/+0x2d, +0x82 and
  * +0x16a and reads AND WRITES +0x7a (listing 004280DA..00428203,
  * 00428D1D..00428D5D); worldstate.cpp reads the table by raw offset;
- * UpdateEntityMovement (entitymove.cpp) treats a bomb as a plain entity.
+ * UpdateEntityMovement (movableentity.cpp) treats a bomb as a plain entity.
  */
 #pragma once
 
@@ -88,3 +88,7 @@ KAROO_LAYOUT_CHECKS(Bomb)
     /* The original's operator_new(0x172): the class tiles it exactly. */
     KAROO_LAYOUT_SIZE(0x172);
 }
+
+/* The bomb remove, Game::RemoveEnemyObject 0x417a20 (bomb.cpp). */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_RemoveEnemyObject(Game *self, unsigned int idArg);

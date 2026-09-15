@@ -39,3 +39,11 @@ static_assert(offsetof(CFaktMesh, pFrameRecords) == 0x0c, "CFaktMesh layout mism
 static_assert(offsetof(CFaktMesh, wFrameCount)   == 0x10, "CFaktMesh layout mismatch");
 static_assert(offsetof(CFaktMesh, pszName)       == 0x12, "CFaktMesh layout mismatch");
 static_assert(offsetof(CFaktMesh, pScratchVerts) == 0x76, "CFaktMesh layout mismatch");
+
+/* The two draw exports (faktmesh.cpp), for callers to include rather than
+ * redeclare (COHESION_PLAN.md template 10). */
+struct IDirect3DDevice3;
+extern "C" __declspec(dllexport) HRESULT __attribute__((thiscall))
+FaktMesh_DrawMeshBuffer(CFaktMesh *self, IDirect3DDevice3 *dev, DWORD frame);
+extern "C" __declspec(dllexport) HRESULT __attribute__((thiscall))
+FaktMesh_DrawFramedModel(CFaktMesh *self, IDirect3DDevice3 *dev, DWORD frame);

@@ -89,6 +89,8 @@
 #include <windows.h>
 #include "log.h"
 #include "game.h"
+#include "tilequery.h"
+#include "levelscore.h"
 #include "player.h"
 
 /* Inputs */
@@ -114,10 +116,9 @@ static int fx_double(void)
 }
 
 /* karoo-hooks/tilequery.cpp -- read-only coverage census, KAROO_TILEQ_DIAG=1. */
-extern "C" void tilequery_census_object_types(void *self);
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Score_CalculateLevelScore(void *self, char endReason)
+Score_CalculateLevelScore(Game *self, char endReason)
 {
     /* KAROO_TILEQ_DIAG=1 only, and read-only: censuses the object +0x62
      * types this level carries, so `tools/levelreport.py` can name the

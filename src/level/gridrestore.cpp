@@ -29,6 +29,8 @@
 #include <windows.h>
 #include <string.h>
 #include "log.h"
+#include "game.h"
+#include "gridrestore.h"
 
 static int s_fx = 0, s_diag = 0, s_init = 0;
 static unsigned s_calls = 0;
@@ -54,7 +56,7 @@ static void fx_init(void)
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RestoreTileGridFromSnapshot(void *self)
+Sim_RestoreTileGridFromSnapshot(Game *self)
 {
     unsigned char *B = (unsigned char *)self;
 

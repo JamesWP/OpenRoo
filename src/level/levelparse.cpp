@@ -53,7 +53,7 @@
  *
  * `ReleaseStaticSoundBufferForOwner` stays a named callback at its original
  * address — the same standing ruling `objectremove.cpp`, `gamereset.cpp` and
- * `tileeffects.cpp` recorded: a shared asset service with call sites across
+ * `player.cpp` recorded: a shared asset service with call sites across
  * unrelated subsystems is not simulation, and replacing it is a separate
  * decision from replacing its callers.
  *
@@ -66,8 +66,8 @@
  * at 0x004187F3 (OpenLevelFile), 0x004189A3 (ParseLevelFiles), 0x00416481
  * (SetupLevelObjects) and 0x00414CBA (Destruct) — so it is a method on the
  * `Level3DExtraObjects` sub-object at Game+0x48b98, the .leo reader's own
- * class (`karoo-hooks/leo.cpp`).  That identification is not an analogy: the
- * loop's stride is 0xf40, and leo.cpp already documents the extra-object
+ * class (`karoo-hooks/extraobjects.cpp`).  That identification is not an analogy: the
+ * loop's stride is 0xf40, and extraobjects.cpp already documents the extra-object
  * records as living at `this + n*0xf40`.
  *
  *     00425215  MOV EBX,0xff              255 iterations, NOT 256
@@ -227,6 +227,7 @@
 
 #include "log.h"
 #include "game.h"
+#include "levelparse.h"
 #include "soundmanager.h"
 
 /* ─── Game / Level3DExtraObjects field offsets ───────────────────────────── */
@@ -236,18 +237,11 @@
 #define G_MAP_READER      0x2ab58d   /* the .jjm reader sub-object            */
 #define G_MAP_NAME        0x2ab69d   /* the map name the reader last loaded   */
 #define G_MAP_BONUS       0x2ab599   /* DWORD, the %d in the "loaded" line    */
-#define G_EXTRA_OBJECTS   0x48b98    /* Level3DExtraObjects                   */
-#define G_SCRIPT_READER   0x195735   /* the .jjs reader sub-object            */
-#define G_SCRIPT_COUNT    0x1960e6   /* DWORD, nonzero once a script loaded   */
 
 #define G_NAME_TABLE      0x3215e    /* level-name table, 0x100 per entry     */
 #define G_GAMEFILE_NAME   0x4215f    /* the game file's name, a string        */
 #define G_NEXT_BONUS      0x14       /* DWORD, the peeked next-level bonus    */
 
-#define X_SOUND_MGR       0x8        /* on Level3DExtraObjects                */
-#define X_FIRST_HANDLE    0xf4a
-#define X_RECORD_STRIDE   0xf40
-#define X_RECORD_COUNT    0xff       /* 255, not 256 -- see the header        */
 
 /* ─── Game globals and string constants, at their original addresses ─────── */
 
@@ -289,8 +283,6 @@ CStatic_HaltPlayback(CStaticSoundbuffer *self);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 LevelMap_ReadFile(void *self, const char *path);
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-JJScript_ReadForLevel(void *self, const char *path);
 
 /* ─── FX / diag ──────────────────────────────────────────────────────────── */
 
@@ -301,8 +293,6 @@ static int s_init         = 0;
 
 static unsigned s_parses    = 0;
 static unsigned s_opens     = 0;
-static unsigned s_released  = 0;
-static int s_logged_release = 0;
 
 static void fx_init(void)
 {
@@ -353,39 +343,10 @@ static int inline_strcmp(const unsigned char *a, const unsigned char *b)
     return (*a < *b) ? -1 : 1;
 }
 
-/* ═══ 0x00425210 -- Level3DExtraObjects::ReleaseExtraObjectSoundBuffers ════ */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Leo_ReleaseExtraObjectSoundBuffers(void *self)
-{
-    unsigned char *X = (unsigned char *)self;
-    unsigned char *slot;
-    int i;
-
-    fx_init();
-
-    slot = X + X_FIRST_HANDLE;
-    for (i = X_RECORD_COUNT; i != 0; i--) {
-        /* the handle is re-read after HaltPlayback, exactly as the original */
-        if (*(void **)slot != 0) {
-            CStatic_HaltPlayback(*(CStaticSoundbuffer **)slot);
-            (*(SoundManager **)(X + X_SOUND_MGR))->releaseStaticForOwner(*(void **)slot, 1);
-            *(void **)slot = 0;
-
-            s_released++;
-            if (s_diag && !s_logged_release) {
-                s_logged_release = 1;
-                log_write("levelparse: first extra-object sound release "
-                          "(record %d of %d)\n",
-                          X_RECORD_COUNT - i, X_RECORD_COUNT);
-            }
-        }
-        slot += X_RECORD_STRIDE;
-    }
-}
 
 /* ═══ 0x00418910 -- Game::ParseLevelFiles ══════════════════════════════════ */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_ParseLevelFiles(void *self, const char *name)
+Sim_ParseLevelFiles(Game *self, const char *name)
 {
     unsigned char *G = (unsigned char *)self;
     char path[256];      /* [ESP+0x10]  -- 256 bytes, unbounded sprintf */
@@ -410,7 +371,7 @@ Sim_ParseLevelFiles(void *self, const char *name)
         inline_strcpy(prev, (const char *)(G + G_MAP_NAME));
 
     if ((char)ok != 0) {
-        Leo_ReleaseExtraObjectSoundBuffers(G + G_EXTRA_OBJECTS);
+        ((Game *)G)->extraObjects()->releaseSounds();
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LOADED,
                            *(unsigned int *)(G + G_MAP_BONUS), path);
     } else {
@@ -425,11 +386,11 @@ Sim_ParseLevelFiles(void *self, const char *name)
         *(unsigned int *)(G + G_MAP_CHANGED) = 1;
 
     ORIG_MAYBE_SPRINTF(path, S_FMT_SCRIPTS, GAME_DIR, name);
-    *(unsigned int *)(G + G_SCRIPT_COUNT) = 0;
-    JJScript_ReadForLevel(G + G_SCRIPT_READER, path);
+    ((Game *)G)->scriptPlayer()->setLoaded(0);
+    ((Game *)G)->scriptPlayer()->readForLevel(path);
 
     GameLog_LogMessage(GAME_LOGGER_VA, 1,
-                       *(unsigned int *)(G + G_SCRIPT_COUNT) ? S_SCRIPT_OK
+                       ((Game *)G)->scriptPlayer()->loaded() ? S_SCRIPT_OK
                                                              : S_SCRIPT_FAILED,
                        path);
 
@@ -439,7 +400,7 @@ Sim_ParseLevelFiles(void *self, const char *name)
                   "script=%u released=%u\n",
                   s_parses, name, (char)ok ? "ok" : "FAILED",
                   *(unsigned int *)(G + G_MAP_CHANGED),
-                  *(unsigned int *)(G + G_SCRIPT_COUNT), s_released);
+                  ((Game *)G)->scriptPlayer()->loaded(), ExtraObjects::releasedCount());
 
     /* XOR AL,AL on both paths -- success and failure are indistinguishable */
     return 0;
@@ -447,7 +408,7 @@ Sim_ParseLevelFiles(void *self, const char *name)
 
 /* ═══ 0x004186b0 -- Game::SetCurrentLevelName ══════════════════════════════ */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_SetCurrentLevelName(void *self, unsigned int levelNo)
+Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
 {
     unsigned char *G = (unsigned char *)self;
 
@@ -463,7 +424,7 @@ Sim_SetCurrentLevelName(void *self, unsigned int levelNo)
 
 /* ═══ 0x004186f0 -- Game::OpenLevelFile ════════════════════════════════════ */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_OpenLevelFile(void *self, unsigned int levelNo)
+Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 {
     unsigned char *G = (unsigned char *)self;
     char path[256];      /* [ESP+0x8]   -- the same two buffers, same offsets */
@@ -508,7 +469,7 @@ Sim_OpenLevelFile(void *self, unsigned int levelNo)
         inline_strcpy(prev, (const char *)(G + G_MAP_NAME));
 
     if ((char)ok != 0) {
-        Leo_ReleaseExtraObjectSoundBuffers(G + G_EXTRA_OBJECTS);
+        ((Game *)G)->extraObjects()->releaseSounds();
         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_OPEN_LOADED,
                            *(unsigned int *)(G + G_MAP_BONUS),
                            levelNo & 0xff, path);
@@ -526,11 +487,11 @@ Sim_OpenLevelFile(void *self, unsigned int levelNo)
 
     ORIG_MAYBE_SPRINTF(path, S_FMT_SCRIPTS, GAME_DIR,
                        (const char *)(G + G_LEVEL_NAME));
-    *(unsigned int *)(G + G_SCRIPT_COUNT) = 0;
-    JJScript_ReadForLevel(G + G_SCRIPT_READER, path);
+    ((Game *)G)->scriptPlayer()->setLoaded(0);
+    ((Game *)G)->scriptPlayer()->readForLevel(path);
 
     GameLog_LogMessage(GAME_LOGGER_VA, 1,
-                       *(unsigned int *)(G + G_SCRIPT_COUNT)
+                       ((Game *)G)->scriptPlayer()->loaded()
                            ? S_OPEN_SCRIPT_OK : S_OPEN_SCRIPT_BAD,
                        path);
 
@@ -541,7 +502,7 @@ Sim_OpenLevelFile(void *self, unsigned int levelNo)
                   s_opens, levelNo & 0xff, (const char *)(G + G_LEVEL_NAME),
                   (char)ok ? "ok" : "FAILED",
                   *(unsigned int *)(G + G_MAP_CHANGED),
-                  *(unsigned int *)(G + G_SCRIPT_COUNT), s_released);
+                  ((Game *)G)->scriptPlayer()->loaded(), ExtraObjects::releasedCount());
 
     return 0;
 }

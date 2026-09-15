@@ -38,6 +38,12 @@
 #include <string.h>
 #include "log.h"
 #include "game.h"
+#include "gamelog.h"
+#include "menunav.h"
+#include "levelsetup.h"
+#include "levelparse.h"
+#include "gamereset.h"
+#include "keypress.h"
 #include "menutree.h"
 #include "textentry.h"
 #include "player.h"
@@ -67,27 +73,13 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_SetMixerVolume(CDM *self, DWORD level);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf_2(void *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ClearGameState(void *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_OpenLevelFile(void *self, unsigned int levelNo);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SetupLevelObjects(void *self);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_StoreGameStateIntoSaveSlot(void *self, unsigned int slotArg);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_RestoreGameStateFromSaveSlot(void *self, unsigned int slotArg);
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogMessage(void *self, int level, const char *fmt, ...);
 
 typedef void (__attribute__((thiscall)) *sound_setup_fn)(void *sm, int mode3d);
 #define ORIG_SOUND_SETUP ((sound_setup_fn)0x004439d0)   /* named callback */
 
 #define PROGCTRL    ((ProgableControl *)0x0046c298)
 #define CDAUDIO     ((CDM *)0x004dc640)
-#define GAMELOGGER  ((void *)0x0046c4c0)
+#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 #define F_CONTINUE  ((const char *)0x00465a3c)   /* "level completed - continue" */
 
 #define G8(o)   (*(unsigned char *)(B + (o)))
@@ -123,7 +115,7 @@ static void loaded_tail(unsigned char *B)
     ((Game *)B)->setCameraDistance(7.0f);
     if (((Game *)B)->musicOn() != 0)
         CDM_StopTrack(CDAUDIO);
-    G32(0x1964e3) = 1;
+    ((Game *)B)->scriptPlayer()->setRunning(1);
     ((Game *)B)->setCameraMode(1);
     Sim_RewindMenuStackToRootNode(MENU);
 }
@@ -205,7 +197,7 @@ static void option_edit(unsigned char *B, unsigned char key)
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_HandleKeypress(void *self)
+Sim_HandleKeypress(Game *self)
 {
     unsigned char *B = (unsigned char *)self;
 
@@ -250,7 +242,7 @@ Sim_HandleKeypress(void *self)
     }
 
     if (entry) {                               /* save-name text entry */
-        ((Game *)B)->nameEntry()->poll((unsigned int)(long long)GD(0x170a54));
+        ((Game *)B)->nameEntry()->poll((unsigned int)(long long)*((Game *)B)->clock());
         if (((Game *)B)->nameEntry()->active() == 0) {
             if (((Game *)B)->nameEntry()->lastKey() == 0x0d)
                 Save_WriteAllSlotFiles(((Game *)B)->saveSlots(), (const char *)(B + 0x4215f), 0x37);
@@ -285,9 +277,9 @@ Sim_HandleKeypress(void *self)
 
     switch (NODE) {
     case 1:
-        Sim_ClearGameState(B);
-        Sim_OpenLevelFile(B, ((Game *)B)->levelIndex());
-        Sim_SetupLevelObjects(B);
+        Sim_ClearGameState((Game *)B);
+        Sim_OpenLevelFile((Game *)B, ((Game *)B)->levelIndex());
+        Sim_SetupLevelObjects((Game *)B);
         loaded_tail(B);
         DEB = 0x0d;
         break;
@@ -325,7 +317,7 @@ Sim_HandleKeypress(void *self)
         Sim_PopMenuNodeFromStack(MENU);
         break;
     case 0x47:
-        G8(0x2aa137) = G8(0x2aa137) == 0;
+        ((Game *)B)->config()->setField1f609(((Game *)B)->config()->field1f609() == 0);
         Sim_PopMenuNodeFromStack(MENU);
         break;
     case 0x3c:
@@ -341,7 +333,7 @@ Sim_HandleKeypress(void *self)
             Sim_PopMenuNodeFromStack(MENU);
             break;
         }
-        Sim_PlayCDStuf_2(B + 0x2223f);
+        ((Game *)B)->cdThemes()->replay();
         ((Game *)B)->setMusicOn(1);
         Sim_PopMenuNodeFromStack(MENU);
         break;
@@ -349,10 +341,10 @@ Sim_HandleKeypress(void *self)
         unsigned char lvl = (unsigned char)(((Game *)B)->levelIndex() + 1);
         ((Game *)B)->player()->setGemsCollected(0);
         ((Game *)B)->setLevelIndex(lvl);
-        Sim_OpenLevelFile(B, lvl);
-        Sim_SetupLevelObjects(B);
+        Sim_OpenLevelFile((Game *)B, lvl);
+        Sim_SetupLevelObjects((Game *)B);
         STATE = 4;
-        G32(0x1964e3) = 1;
+        ((Game *)B)->scriptPlayer()->setRunning(1);
         if (((Game *)B)->musicOn() != 0)
             CDM_StopTrack(CDAUDIO);
         DEB = 0x0d;
@@ -382,10 +374,10 @@ Sim_HandleKeypress(void *self)
             if (s_fx)
                 slot = (unsigned char)(slot + 1);
             if (((Game *)B)->saveSlots()->slot(slot)->inUse != 0) {
-                Sim_ClearGameState(B);
-                Sim_RestoreGameStateFromSaveSlot(B, slot);
-                Sim_OpenLevelFile(B, ((Game *)B)->levelIndex());
-                Sim_SetupLevelObjects(B);
+                Sim_ClearGameState((Game *)B);
+                Sim_RestoreGameStateFromSaveSlot((Game *)B, slot);
+                Sim_OpenLevelFile((Game *)B, ((Game *)B)->levelIndex());
+                Sim_SetupLevelObjects((Game *)B);
                 loaded_tail(B);
             }
             DEB = 0x0d;
@@ -407,7 +399,7 @@ Sim_HandleKeypress(void *self)
             ((Game *)B)->nameEntry()->setBuffer((char *)rec);
             ((Game *)B)->saveSlots()->setEditSlot(slot);
             ((Game *)B)->nameEntry()->setCursor((unsigned char)strlen((const char *)rec));
-            Sim_StoreGameStateIntoSaveSlot(B, slot);
+            Sim_StoreGameStateIntoSaveSlot((Game *)B, slot);
             ((Game *)B)->nameEntry()->setLastKey(0x0d);
             KEY(8);
             KEY(8);

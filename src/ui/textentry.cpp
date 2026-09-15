@@ -59,9 +59,9 @@ static int blink_positive(unsigned int phase)
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PollTextEntryKeys(void *self, unsigned int phase)
+Sim_PollTextEntryKeys(TextEntry *self, unsigned int phase)
 {
-    ((TextEntry *)self)->poll(phase);
+    self->poll(phase);
 }
 
 void TextEntry::poll(unsigned int phase)

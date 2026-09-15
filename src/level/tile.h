@@ -134,7 +134,7 @@ public:
     /* +0x1f2: on a bridge (kind 0x10) cell, its direction byte. */
     unsigned char field1f2() const             { return field_1f2; }
 
-    /* ── read by the movement tick (entitymove.cpp) ──────────────────── */
+    /* ── read by the movement tick (movableentity.cpp) ──────────────────── */
     /* The tick reads +0x19c, +0x19d, +0x1a5 and +0x1f1 both MOVSX and
      * MOVZX; the accessors are unsigned and the signed reads cast at the
      * read site. */
@@ -155,7 +155,7 @@ public:
     /* +0x1f3: on a kind-0x11 cell, copied into the entity's +0xd7. */
     unsigned char field1f3() const             { return field_1f3; }
 
-    /* ── read by the player tick (tileeffects.cpp) ───────────────────── */
+    /* ── read by the player tick (player.cpp) ───────────────────── */
     /* +0x004: read and written only at Tile::at(base, 0, 0) -- a map
      * header field, not a cell's.  The time bonus adds 5 to it.  The tick
      * also reads +0x19f signed; the cast is at the read site. */

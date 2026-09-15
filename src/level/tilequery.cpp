@@ -97,7 +97,7 @@
  *
  * ─── The decompiler drops both `__ftol` arguments ────────────────────────
  *
- * As in foechase.cpp, tileeffects.cpp and slidinghazard.cpp before it,
+ * As in foechase.cpp, player.cpp and slidinghazard.cpp before it,
  * `decompile_function` renders each call as a bare `lVar = __ftol();`.  The
  * argument arrives on the x87 stack and is invisible to the decompiler, so
  * both were read from the LISTING this cycle:
@@ -382,7 +382,7 @@ static void diag_hit(int which, unsigned u, unsigned v)
  * read order) both live here.
  * ────────────────────────────────────────────────────────────────────── */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_MarkListedTilesBlockedByObject(void *self, unsigned int listIndex)
+Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 {
     unsigned char *B = (unsigned char *)self;
     unsigned int   li = listIndex & 0xff;
@@ -431,7 +431,7 @@ Sim_MarkListedTilesBlockedByObject(void *self, unsigned int listIndex)
  * 1, 2, 7 and 11 all live here.
  * ────────────────────────────────────────────────────────────────────── */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_FindNearestListedObjectTile(void *self, unsigned char *pu,
+Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
                                 unsigned char *pv, unsigned char maxDist)
 {
     unsigned char *B = (unsigned char *)self;
@@ -528,7 +528,7 @@ Sim_FindNearestListedObjectTile(void *self, unsigned char *pu,
  * and the inner is u -- see the Band 0 correction above.
  * ────────────────────────────────────────────────────────────────────── */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_FindNearestFlaggedTileInRadius(void *self, unsigned char *pu,
+Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
                                    unsigned char *pv, unsigned char radius)
 {
     unsigned char *B  = (unsigned char *)self;
@@ -617,7 +617,7 @@ Sim_FindNearestFlaggedTileInRadius(void *self, unsigned char *pu,
  * calls __ftol.
  * ────────────────────────────────────────────────────────────────────── */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_FindFarthestOccupiedTile(void *self, unsigned char *pu,
+Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
                              unsigned char *pv)
 {
     unsigned char *B     = (unsigned char *)self;
@@ -720,7 +720,7 @@ Sim_FindFarthestOccupiedTile(void *self, unsigned char *pu,
  *
  * It reads only; it writes nothing and changes no game state.
  * ────────────────────────────────────────────────────────────────────── */
-extern "C" void tilequery_census_object_types(void *self)
+extern "C" void tilequery_census_object_types(Game *self)
 {
     unsigned char *B = (unsigned char *)self;
     static int seen[256];

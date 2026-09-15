@@ -147,7 +147,7 @@
 #include "foe.h"
 #include "game.h"
 #include "tile.h"
-#include "entitymove.h"
+#include "movableentity.h"
 #include "entitymath.h"
 #include "foepath.h"
 #include "voicepool.h"
