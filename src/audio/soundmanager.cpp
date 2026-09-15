@@ -43,3 +43,11 @@ VoicePool *SoundManager::acquirePool(int count, const char *name, int mode)
 {
     return ORIG_ACQUIRE_POOL(this, count, name, mode);
 }
+
+typedef int (__attribute__((thiscall)) *setup_fn)(SoundManager *sm, int mode3d);
+#define ORIG_SOUND_SETUP ((setup_fn)0x004439d0)
+
+int SoundManager::setup(int mode3d)
+{
+    return ORIG_SOUND_SETUP(this, mode3d);
+}

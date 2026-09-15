@@ -49,13 +49,6 @@
 #include "player.h"
 
 struct CStaticSoundbuffer;
-struct VoicePool;
-typedef VoicePool *(__attribute__((thiscall)) *acquire_pool_fn)(void *sm, int count,
-                                                                 const char *name,
-                                                                 int mode);
-typedef void (__attribute__((thiscall)) *sound_setup_fn)(void *sm, int mode3d);
-#define ORIG_ACQUIRE_POOL  ((acquire_pool_fn)0x00443810)   /* named callback */
-#define ORIG_SOUND_SETUP   ((sound_setup_fn) 0x004439d0)   /* named callback */
 
 extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -69,10 +62,6 @@ CStatic_Reset(CStaticSoundbuffer *self);
 #define F_NOSOUND  ((const char *)0x00465bfc)
 #define S_MAIN     ((const char *)0x00465510)   /* "Main" */
 #define S_REPORT   ((const char *)0x00465afc)   /* "LevelReport.txt" */
-
-#define G16(o) (*(unsigned short *)(B + (o)))
-#define G32(o) (*(unsigned int *)(B + (o)))
-#define GP(o)  (*(void **)(B + (o)))
 
 static int s_fx = -1;
 
@@ -92,7 +81,7 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
 {
     unsigned char *B = (unsigned char *)self;
-    void *sm = self->soundManager();
+    SoundManager *sm = self->soundManager();
     char path[256];
 
     if (s_fx < 0) {
@@ -146,12 +135,12 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     }
 
     ScriptPlayer *sp = ((Game *)B)->scriptPlayer();
-    sp->setField91b(5);
-    sp->setField91f(5);
-    sp->setField90f((void *)G32(0x13cbc8));
-    sp->setField913(0);
-    ((Game *)B)->extraObjects()->setSoundManager((SoundManager *)sm);
-    sp->setSoundManager((SoundManager *)sm);
+    sp->streamWave()->nBuffer_seconds = 5;
+    sp->streamWave()->wSegment_count = 5;
+    sp->streamWave()->pDirectsound = sm->directSound();
+    sp->streamWave()->dwFlags = 0;
+    ((Game *)B)->extraObjects()->setSoundManager(sm);
+    sp->setSoundManager(sm);
 
     if (!s_fx) {
         hooks_GetAsyncKeyState(0x4c);
@@ -161,20 +150,20 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     }
 
     sprintf(path, (const char *)0x00465ae4, GAMEDIR);
-    ((Game *)B)->fixedSounds()->timeOut = ((SoundManager *)sm)->acquireStatic(path, 0);          /* TimeOut */
+    ((Game *)B)->fixedSounds()->timeOut = sm->acquireStatic(path, 0);          /* TimeOut */
     sprintf(path, (const char *)0x00465ac8, GAMEDIR);
-    ((Game *)B)->fixedSounds()->lastSeconds = ((SoundManager *)sm)->acquireStatic(path, 0);          /* LastSeconds */
+    ((Game *)B)->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);          /* LastSeconds */
     sprintf(path, (const char *)0x00465ab4, GAMEDIR);
-    ((Game *)B)->fixedSounds()->count = ((SoundManager *)sm)->acquireStatic(path, 0);          /* Count */
+    ((Game *)B)->fixedSounds()->count = sm->acquireStatic(path, 0);          /* Count */
     sprintf(path, (const char *)0x00465a9c, GAMEDIR);
-    ((Game *)B)->fixedSounds()->menuUpDown = ORIG_ACQUIRE_POOL(sm, 5, path, 0);        /* MenuUpDown */
+    ((Game *)B)->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);        /* MenuUpDown */
     sprintf(path, (const char *)0x00465a88, GAMEDIR);
-    ((Game *)B)->fixedSounds()->switchClick = ((SoundManager *)sm)->acquireStatic(path, 0);          /* Switch */
+    ((Game *)B)->fixedSounds()->switchClick = sm->acquireStatic(path, 0);          /* Switch */
     sprintf(path, (const char *)0x00465a6c, GAMEDIR);
-    ((Game *)B)->fixedSounds()->levelCompleted = ((SoundManager *)sm)->acquireStatic(path, 0);          /* LevelCompleted */
+    ((Game *)B)->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);          /* LevelCompleted */
     sprintf(path, (const char *)0x00465a58, GAMEDIR);
-    ((Game *)B)->player()->setSoundA7(((SoundManager *)sm)->acquireStatic(path, 1)); /* splat */
-    ORIG_SOUND_SETUP(sm, ((Game *)B)->sound3D());
+    ((Game *)B)->player()->setSoundA7(sm->acquireStatic(path, 1)); /* splat */
+    sm->setup(((Game *)B)->sound3D());
 
     ((Game *)B)->fixedSounds()->loaded = 1;
 }

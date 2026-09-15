@@ -10,15 +10,30 @@
  *   +0x04  Logger *        -- its error line goes through this
  *   +0x94  sound-entry list, searched first
  *   +0xa4  sound-entry list, searched second
+ * and from SoundSetup 0x4439d0: +0x14 is an embedded CFaktSound (Ghidra,
+ * 0x78 bytes) whose IDirectSound is its +0x0c, so the device is +0x20.
  * Nothing is declared as a member until a method of ours reads it.
  */
 #pragma once
 
+#include "layout.h"
+
 struct CStaticSoundbuffer;
 struct VoicePool;
+struct IDirectSound;
 
-class SoundManager {
+class __attribute__((packed)) SoundManager {
 public:
+    static const int ORIGIN = 0;
+
+    /* 0x004439d0 SoundSetup(mode_3d).  Returns 0 if sound is not created
+     * or the 3D listener fails; otherwise, on a mode change, reloads every
+     * buffer, clone and voice pool for the new mode.  Returns 1. */
+    int setup(int mode3d);
+
+    /* The IDirectSound (CFaktSound +0x0c); the script player keeps a copy. */
+    IDirectSound *directSound() const { return directSound_; }
+
     /* 0x004432f0 ReleaseStaticSoundBufferForOwner.  Finds the buffer in
      * either entry list; with bDestroyIfUnused and no other owner left it
      * removes the entry and frees the buffer.  Logs if the buffer is in
@@ -38,4 +53,13 @@ public:
 
 private:
     SoundManager() = delete;   /* game-owned; only ever reached by pointer */
+    KAROO_LAYOUT_REGISTER(SoundManager);
+
+    unsigned char gap_00[0x20];
+    IDirectSound *directSound_;   /* +0x20  CFaktSound +0x14, its +0x0c */
 };
+
+KAROO_LAYOUT_CHECKS(SoundManager)
+{
+    KAROO_LAYOUT_AT(directSound_, 0x20);
+}

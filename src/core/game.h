@@ -156,7 +156,7 @@ public:
     /* ── time ───────────────────────────────────────────────────────── */
     /* The `now` GameTick was last called with (double, ms); the menus
      * stamp their timers from it.  Its two halves are also copied dword by
-     * dword into the menu object (+0x175524/8), which stays raw. */
+     * dword into the menu's lock start (MenuTree::setLockStart). */
     double         lastTickTime() const              { return lastTickTime_; }
     void           setLastTickTime(double t)         { lastTickTime_ = t; }
     /* The 8-byte clock accumulator.  Objects keep a pointer to it and

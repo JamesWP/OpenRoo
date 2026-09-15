@@ -168,18 +168,18 @@ int ScriptPlayer::readForLevel(const char *path)
     static int logged = 0;
 
     /* Field clear, in the original's order. */
-    field_008_   = 0;
+    againLine_   = 0;
     field_92d_   = 0;
     field_955_   = 0;
     loaded_      = 0;
     cursor_      = 0;
-    field_dba_   = 0;
+    waiting_     = 0;
     cameraMode_  = 0;
     running_     = 0;
-    field_9a5_   = 0;
+    moving_      = 0;
     splineActive_ = 0;
-    field_833_   = 0;
-    field_837_   = 0;
+    waitingOnStream_ = 0;
+    streamReady_ = 0;
 
     releaseStreams();
 
