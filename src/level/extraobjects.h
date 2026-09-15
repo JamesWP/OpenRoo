@@ -11,9 +11,9 @@
  *                                    objectCount = 0, and the sound handle
  *                                    of records 0..254 -- NOT 255 -- zeroed
  *   ParseExtraObjectEntry  0x423700  builds one record per .leo entry; still
- *                                    the game's (leo.cpp's named callback)
- *   OpenExtraObjectsFile   ours: openFile      (leo.cpp)
- *   ReleaseExtraObjectSoundBuffers 0x425210   ours: releaseSounds (levelparse.cpp)
+ *                                    the game's (a named callback)
+ *   OpenExtraObjectsFile   ours: openFile      (extraobjects.cpp)
+ *   ReleaseExtraObjectSoundBuffers 0x425210   ours: releaseSounds (extraobjects.cpp)
  *
  * The record's fields are named from ParseExtraObjectEntry, which writes
  * every one and logs most of them by name ("Model lit", "Spline mode",
@@ -33,6 +33,8 @@ enum ExtraObjectKind {
 };
 
 struct __attribute__((packed)) ExtraObjectRecord {
+    static const int ORIGIN = 0;
+
     /* The object's file: "<GameDir>\<name>" for a model, particle system
      * or sound (InitLevelBasedSounds acquires a sound by it). */
     char                 file[0x100];
@@ -51,7 +53,29 @@ struct __attribute__((packed)) ExtraObjectRecord {
     unsigned short       splinePointCount;        /* +0xf32 */
     double               soundParam;              /* +0xf34  sound; zeroed, then optional */
     CStaticSoundbuffer  *sound;                   /* +0xf3c */
+
+    KAROO_LAYOUT_REGISTER(ExtraObjectRecord);
 };
+
+/* The record tiles 0xf40 with every field ParseExtraObjectEntry writes. */
+KAROO_LAYOUT_CHECKS(ExtraObjectRecord)
+{
+    KAROO_LAYOUT_AT(position,         0x100);
+    KAROO_LAYOUT_AT(field_10c,        0x10c);
+    KAROO_LAYOUT_AT(animationFile,    0x118);
+    KAROO_LAYOUT_AT(textureFile,      0x218);
+    KAROO_LAYOUT_AT(lit,              0x318);
+    KAROO_LAYOUT_AT(kind,             0x31c);
+    KAROO_LAYOUT_AT(billboardSize,    0x31d);
+    KAROO_LAYOUT_AT(textureAddress,   0x329);
+    KAROO_LAYOUT_AT(splineMode,       0x32d);
+    KAROO_LAYOUT_AT(splineTime,       0x32e);
+    KAROO_LAYOUT_AT(splinePoints,     0x332);
+    KAROO_LAYOUT_AT(splinePointCount, 0xf32);
+    KAROO_LAYOUT_AT(soundParam,       0xf34);
+    KAROO_LAYOUT_AT(sound,            0xf3c);
+    KAROO_LAYOUT_SIZE(0xf40);
+}
 
 class __attribute__((packed)) ExtraObjects {
 public:
@@ -59,11 +83,13 @@ public:
 
     enum { RECORD_MAX = 256, RELEASE_COUNT = 255 };
 
-    /* Parse <name>.leo (leo.cpp). */
+    /* Parse <name>.leo. */
     int  openFile(const char *name);
     /* Halt and release each record's sound -- the first 255 only, as the
-     * original (levelparse.cpp). */
+     * original. */
     void releaseSounds();
+    /* Sounds releaseSounds has released so far (KAROO_LEVELPARSE_DIAG). */
+    static unsigned releasedCount();
 
     /* Nonzero when the level's .leo loaded (SetupLevelObjects sets it). */
     int            loaded() const                    { return loaded_; }
@@ -94,22 +120,6 @@ KAROO_LAYOUT_CHECKS(ExtraObjects)
     KAROO_LAYOUT_AT(objectCount_,  0xf400e);
     KAROO_LAYOUT_SIZE(0xf4010);
 }
-
-/* The record tiles 0xf40 with every field ParseExtraObjectEntry writes. */
-static_assert(offsetof(ExtraObjectRecord, position)         == 0x100, "position");
-static_assert(offsetof(ExtraObjectRecord, animationFile)    == 0x118, "animationFile");
-static_assert(offsetof(ExtraObjectRecord, textureFile)      == 0x218, "textureFile");
-static_assert(offsetof(ExtraObjectRecord, lit)              == 0x318, "lit");
-static_assert(offsetof(ExtraObjectRecord, kind)             == 0x31c, "kind");
-static_assert(offsetof(ExtraObjectRecord, billboardSize)    == 0x31d, "billboardSize");
-static_assert(offsetof(ExtraObjectRecord, textureAddress)   == 0x329, "textureAddress");
-static_assert(offsetof(ExtraObjectRecord, splineMode)       == 0x32d, "splineMode");
-static_assert(offsetof(ExtraObjectRecord, splineTime)       == 0x32e, "splineTime");
-static_assert(offsetof(ExtraObjectRecord, splinePoints)     == 0x332, "splinePoints");
-static_assert(offsetof(ExtraObjectRecord, splinePointCount) == 0xf32, "splinePointCount");
-static_assert(offsetof(ExtraObjectRecord, soundParam)       == 0xf34, "soundParam");
-static_assert(offsetof(ExtraObjectRecord, sound)            == 0xf3c, "sound");
-static_assert(sizeof(ExtraObjectRecord)                     == 0xf40, "record stride");
 
 /* The exports patch.py binds; shims onto the methods. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))

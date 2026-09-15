@@ -97,7 +97,7 @@
  *
  * ─── The decompiler drops both `__ftol` arguments ────────────────────────
  *
- * As in foechase.cpp, tileeffects.cpp and slidinghazard.cpp before it,
+ * As in foechase.cpp, player.cpp and slidinghazard.cpp before it,
  * `decompile_function` renders each call as a bare `lVar = __ftol();`.  The
  * argument arrives on the x87 stack and is invisible to the decompiler, so
  * both were read from the LISTING this cycle:

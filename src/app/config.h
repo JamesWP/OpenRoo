@@ -7,8 +7,8 @@
  *
  *   InstallConfigVtable     0x41d390  ctor: vtable 0x45d414, zeroes WORD +0x1f404
  *   FillDefaultConfigValues 0x41d520  the defaults, all inside the blob
- *   LoadConfigValues        0x41d3e0  ours: Config_LoadValues (playerstate.cpp)
- *   SaveConfig              0x41d490  ours: Config_Save       (playerstate.cpp)
+ *   LoadConfigValues        0x41d3e0  ours: Config_LoadValues (config.cpp)
+ *   SaveConfig              0x41d490  ours: Config_Save       (config.cpp)
  *
  * Karoo.cfg is the 0x144e-byte blob +0x1f604..+0x20a52 (persisted()) plus a
  * tag.  What the first 0x1f600 bytes hold is not decoded; nothing of ours
@@ -114,7 +114,7 @@ KAROO_LAYOUT_CHECKS(Config)
     KAROO_LAYOUT_SIZE(Config::PERSISTED_OFFSET + Config::PERSISTED_SIZE);
 }
 
-/* The exports patch.py binds (playerstate.cpp). */
+/* The exports patch.py binds (config.cpp). */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Config_LoadValues(Config *self, const char *path);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))

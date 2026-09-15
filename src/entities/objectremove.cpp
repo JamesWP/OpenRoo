@@ -39,7 +39,7 @@
  * `RemoveActionEntry`, `DestroyAssetEntry`, `FactAlloc::Free2` and the game's
  * `Logger`.  `ReleaseVoicePoolBufferForOwner` is the same shape with 5.
  *
- * That is exactly the case `tileeffects.cpp` already ruled on for the four
+ * That is exactly the case `player.cpp` already ruled on for the four
  * `LinkedList` methods: a shared service with call sites across unrelated
  * subsystems is kept as a NAMED CALLBACK at its original address, with the
  * reason recorded rather than left implicit.  Both are named below.

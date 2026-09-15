@@ -55,7 +55,7 @@ public:
     int removeRequested() const { return removeRequested_; }
 
     /* 0x00438770 -- the movement step every entity tick ends in (player,
-     * foe, bomb); entitymove.cpp.  Returns 1 in AL on the two early outs. */
+     * foe, bomb); movableentity.cpp.  Returns 1 in AL on the two early outs. */
     unsigned int updateMovement();
 
     /* ── readers shared by every entity (Player, Foe, Bomb) ─────────────
@@ -327,3 +327,8 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_ZeroEntitySoundSlotPointers(MovableEntity *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_DestroyMovableEntityBase(MovableEntity *self);
+
+/* UpdateEntityMovement 0x00438770, the shared movement step for every
+ * entity (player, foe, bomb): a shim over MovableEntity::updateMovement(). */
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+Sim_UpdateEntityMovement(MovableEntity *self);

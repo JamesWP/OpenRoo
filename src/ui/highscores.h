@@ -8,12 +8,12 @@
  *   InstallHighScoreTableVtable 0x41edf0  ctor: stores vtable 0x45d420, nothing else
  *   FillDefaultHighScores       0x41ee30  "Bernie Boulder" and ten fixed
  *                                         score/level pairs, for count records
- *   ReadHighScoreFile           0x41ef20  ours: readFile   (playerstate.cpp)
- *   WriteHighScoreFile          0x41efe0  ours: writeFile  (playerstate.cpp)
- *   InsertScoreIntoHighScoreTable 0x41f0a0  ours: insert (playerstate.cpp)
+ *   ReadHighScoreFile           0x41ef20  ours: readFile   (highscores.cpp)
+ *   WriteHighScoreFile          0x41efe0  ours: writeFile  (highscores.cpp)
+ *   InsertScoreIntoHighScoreTable 0x41f0a0  ours: insert (highscores.cpp)
  *
  * Game::Load sets the count to 10.  The .hsc file is the records as raw
- * bytes, count*0x37 of them, enciphered (playerstate.cpp).
+ * bytes, count*0x37 of them, enciphered (highscores.cpp).
  */
 #pragma once
 
@@ -35,7 +35,7 @@ public:
     int           readFile(const char *name, char key);
     int           writeFile(const char *name, char key);
     /* Place `score` (returns the rank in AL, 0xff when it does not place;
-     * see playerstate.cpp for the rest of EAX). */
+     * see highscores.cpp for the rest of EAX). */
     unsigned int  insert(unsigned int score, unsigned char levelId);
 
     unsigned char count() const                      { return count_; }

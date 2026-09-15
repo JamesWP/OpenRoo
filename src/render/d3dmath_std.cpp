@@ -10,7 +10,7 @@
  * billboard_vertex are pure data movement and live in d3dmath_common.cpp.
  */
 #include <math.h>
-#include "d3dmath.h"
+#include "d3dmath_std.h"
 
 void m4_mul_std(Mat4 *d, const Mat4 *a, const Mat4 *b)
 {

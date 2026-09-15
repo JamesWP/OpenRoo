@@ -5,7 +5,7 @@
  * the ctor or the tick touches past +0x23d, so +0x241 is taken as the end:
  * Game+0x175412, which keypress.cpp writes, is +0x249 and is left as Game's.
  *
- * Ours (tileeffects.cpp): the tick, Game::UpdatePlayerTileEffects
+ * Ours (player.cpp): the tick, Game::UpdatePlayerTileEffects
  * 0x0041fcb0.  The ctor (PopulatePlayerEntityDefaults 0x0041f900) and dtor
  * (0x0041fa10) are still the game's; the ctor confirms the nine three-entry
  * sound arrays (+0x15e..+0x1ca, zeroed in one loop) and the LinkedList at
@@ -34,7 +34,7 @@ public:
     static const int ORIGIN = 0;
 
     /* 0x0041fcb0 -- latch the clock, move, respawn, consume the tile
-     * underfoot, expire timed effects.  Returns 0; see tileeffects.cpp. */
+     * underfoot, expire timed effects.  Returns 0; see player.cpp. */
     unsigned int updateTileEffects();
 
     /* The tile the player stands on, from its SIGNED cell bytes -- the
@@ -62,7 +62,7 @@ public:
     void  setField38(double d)                 { field_38 = d; }
     void  setField44(int n)                    { field_44 = n; }
     void  setField58(int n)                    { field_58 = n; }
-    /* +0x66: the move duration default (entitymove.cpp copies it into
+    /* +0x66: the move duration default (movableentity.cpp copies it into
      * +0x132): 200.0 normally, 100.0 / 400.0 under pickups 0xa / 0xc. */
     void  setField66(double d)                 { field_66 = d; }
     void  setField6e(int n)                    { field_6e = n; }

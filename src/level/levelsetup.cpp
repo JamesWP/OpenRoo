@@ -39,7 +39,7 @@
  * | `rand`                          | 0x45167c | CRT — reimplemented below  |
  *
  * The first four are named callbacks, the same standing ruling
- * `objectremove.cpp`, `gamereset.cpp` and `tileeffects.cpp` recorded for
+ * `objectremove.cpp`, `gamereset.cpp` and `player.cpp` recorded for
  * shared services.  `LinkedList::Clear` in particular is already documented
  * in patch.py as one of four container helpers with 43 call sites across
  * unrelated subsystems, deliberately neither replaced nor stubbed.
@@ -56,13 +56,13 @@
  * clock and destroy replay determinism, while still passing a casual read.
  * So this file calls the EXPORT.
  *
- * `rand()` is reimplemented rather than called, exactly as `tileeffects.cpp`
+ * `rand()` is reimplemented rather than called, exactly as `player.cpp`
  * does, and over the SAME global seed at 0x00469f38 — a private seed would
  * desynchronise every other `rand()` caller.
  *
  * ─── Tile addressing ─────────────────────────────────────────────────────
  *
- * The tilemap is the one `tilequery.cpp` and `entitymove.cpp` document:
+ * The tilemap is the one `tilequery.cpp` and `movableentity.cpp` document:
  * pitch 0x7f, row stride 100*0x7f, index `(v + u*100) * 0x7f`.  The extents
  * live at the map reader's +0x19a (HEIGHT, the v extent) and +0x19b (WIDTH,
  * the u extent), which are Game+0x2ab727 and Game+0x2ab728.
@@ -106,7 +106,7 @@
  * **`OpenExtraObjectsFile` takes ONE argument, not two.**  Ghidra's
  * decompile shows `OpenExtraObjectsFile(&field_0x48b98, iVar11, &name)`, but
  * 0x004171FC pushes only `EDI` (the level name).  The apparent second
- * argument is a stale register.  `leo.cpp`'s own signature agrees.
+ * argument is a stale register.  `extraobjects.cpp`'s own signature agrees.
  *
  * **A type-2 foe cell keeps its parameter byte; every other cell loses it.**
  * At 0x00416E96 the type-2 branch sets EAX=1, and 0x00416EC9 tests it: if a
@@ -364,7 +364,7 @@ static void fx_init(void)
 }
 
 /* Tile index.  `(v + u*100) * 0x7f`, the addressing tilequery.cpp and
- * entitymove.cpp document.  The control transposes the two terms HERE and
+ * movableentity.cpp document.  The control transposes the two terms HERE and
  * nowhere else, so every consumer moves together. */
 static inline int TIDX(unsigned u, unsigned v)
 {

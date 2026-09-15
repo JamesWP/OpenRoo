@@ -53,7 +53,7 @@
  *
  * `ReleaseStaticSoundBufferForOwner` stays a named callback at its original
  * address — the same standing ruling `objectremove.cpp`, `gamereset.cpp` and
- * `tileeffects.cpp` recorded: a shared asset service with call sites across
+ * `player.cpp` recorded: a shared asset service with call sites across
  * unrelated subsystems is not simulation, and replacing it is a separate
  * decision from replacing its callers.
  *
@@ -66,8 +66,8 @@
  * at 0x004187F3 (OpenLevelFile), 0x004189A3 (ParseLevelFiles), 0x00416481
  * (SetupLevelObjects) and 0x00414CBA (Destruct) — so it is a method on the
  * `Level3DExtraObjects` sub-object at Game+0x48b98, the .leo reader's own
- * class (`karoo-hooks/leo.cpp`).  That identification is not an analogy: the
- * loop's stride is 0xf40, and leo.cpp already documents the extra-object
+ * class (`karoo-hooks/extraobjects.cpp`).  That identification is not an analogy: the
+ * loop's stride is 0xf40, and extraobjects.cpp already documents the extra-object
  * records as living at `this + n*0xf40`.
  *
  *     00425215  MOV EBX,0xff              255 iterations, NOT 256
@@ -293,8 +293,6 @@ static int s_init         = 0;
 
 static unsigned s_parses    = 0;
 static unsigned s_opens     = 0;
-static unsigned s_released  = 0;
-static int s_logged_release = 0;
 
 static void fx_init(void)
 {
@@ -345,34 +343,6 @@ static int inline_strcmp(const unsigned char *a, const unsigned char *b)
     return (*a < *b) ? -1 : 1;
 }
 
-/* ═══ 0x00425210 -- Level3DExtraObjects::ReleaseExtraObjectSoundBuffers ════ */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Leo_ReleaseExtraObjectSoundBuffers(ExtraObjects *self)
-{
-    self->releaseSounds();
-}
-
-void ExtraObjects::releaseSounds()
-{
-    fx_init();
-
-    for (int k = 0; k < RELEASE_COUNT; k++) {
-        ExtraObjectRecord *r = &records_[k];
-        /* the handle is re-read after HaltPlayback, exactly as the original */
-        if (r->sound != 0) {
-            CStatic_HaltPlayback(r->sound);
-            soundManager_->releaseStaticForOwner(r->sound, 1);
-            r->sound = 0;
-
-            s_released++;
-            if (s_diag && !s_logged_release) {
-                s_logged_release = 1;
-                log_write("levelparse: first extra-object sound release "
-                          "(record %d of %d)\n", k, (int)RELEASE_COUNT);
-            }
-        }
-    }
-}
 
 /* ═══ 0x00418910 -- Game::ParseLevelFiles ══════════════════════════════════ */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
@@ -430,7 +400,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
                   "script=%u released=%u\n",
                   s_parses, name, (char)ok ? "ok" : "FAILED",
                   *(unsigned int *)(G + G_MAP_CHANGED),
-                  ((Game *)G)->scriptPlayer()->loaded(), s_released);
+                  ((Game *)G)->scriptPlayer()->loaded(), ExtraObjects::releasedCount());
 
     /* XOR AL,AL on both paths -- success and failure are indistinguishable */
     return 0;
@@ -532,7 +502,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
                   s_opens, levelNo & 0xff, (const char *)(G + G_LEVEL_NAME),
                   (char)ok ? "ok" : "FAILED",
                   *(unsigned int *)(G + G_MAP_CHANGED),
-                  ((Game *)G)->scriptPlayer()->loaded(), s_released);
+                  ((Game *)G)->scriptPlayer()->loaded(), ExtraObjects::releasedCount());
 
     return 0;
 }

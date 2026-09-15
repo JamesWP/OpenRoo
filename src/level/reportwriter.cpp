@@ -6,7 +6,7 @@
  *
  * ─── Why this function, and not the reader that had the problem ───────────
  *
- * Phase 4's report-side .jjs reader (karoo-hooks/jjsreport.cpp) had to call
+ * Phase 4's report-side .jjs reader (karoo-hooks/scriptplayer.cpp) had to call
  * the GAME's fputs, because the FILE * it writes to was opened by this
  * function with the game's fopen.  An MSVC FILE cannot be written by this
  * DLL's mingw CRT -- attempting it hung the level report with no crash and no
@@ -14,7 +14,7 @@
  * fixed inside the reader: whoever OPENS the file decides which CRT owns it.
  *
  * So this replaces the opener.  Both output streams -- ScriptTexts.txt and
- * the report file the caller names -- are now ours, and jjsreport.cpp drops
+ * the report file the caller names -- are now ours, and scriptplayer.cpp drops
  * ORIG_FPUTS and uses plain fputs again.  The game's stdio is out of the
  * report path entirely: our fopen, our sprintf, our fputs, our fclose.
  *

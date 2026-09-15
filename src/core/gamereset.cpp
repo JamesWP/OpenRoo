@@ -34,7 +34,7 @@
  *
  * `ReleaseStaticSoundBufferForOwner` is KEPT as a named callback at its
  * original address.  That is the same ruling `objectremove.cpp` recorded for
- * it and `tileeffects.cpp` recorded for `LinkedList`: a shared asset service
+ * it and `player.cpp` recorded for `LinkedList`: a shared asset service
  * with 49 call sites across unrelated subsystems is not simulation, and
  * replacing it is a separate decision from replacing its callers.
  *

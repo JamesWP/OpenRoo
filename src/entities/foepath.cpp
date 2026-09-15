@@ -57,7 +57,7 @@
  *    deviation to document: `int` is exact.
  *
  * 3. THE INDEX IS THE FAMILIAR ONE.  LEA/LEA/LEA then SHL 7 minus itself is
- *    (v + u*100) * 0x7f, the same addressing entitymove.cpp uses and the
+ *    (v + u*100) * 0x7f, the same addressing movableentity.cpp uses and the
  *    same 0x7f tile stride; both axes are plain ints.  Note that the *node
  *    key* helper ComputeCellLinearIndex uses a different stride (this+0x1e).
  *    The two are not the same number and must not be merged.
@@ -374,7 +374,7 @@ Sim_CheckPathCellPassable(FoePath *self, int u, int v)
  * i.e. `stride * v + u`, where the stride is a full 32-bit int at this+0x1e.
  *
  * THIS IS NOT THE TILE ADDRESSING.  CheckPathCellPassable above uses the
- * game-wide `(v + u*100) * 0x7f` scheme that entitymove.cpp also uses; this
+ * game-wide `(v + u*100) * 0x7f` scheme that movableentity.cpp also uses; this
  * one uses a per-search stride read from the object.  The two numbers are
  * unrelated, they are not interchangeable, and merging them — which is
  * tempting, since both turn a cell into a scalar — would silently corrupt

@@ -8,9 +8,9 @@
  *   __ftol                         inlined (truncate the dt accumulator)
  *   PollTextEntryKeys  0x4209a0    Sim_PollTextEntryKeys      (textentry.cpp)
  *   CalculateLevelScore 0x41a760   Score_CalculateLevelScore  (levelscore.cpp)
- *   PlayCDStuf 0x403360            Sim_PlayCDStuf             (themeindex.cpp)
+ *   PlayCDStuf 0x403360            Sim_PlayCDStuf             (cdthemes.cpp)
  *   CDM::Stop 0x402d50             CDM_StopTrack              (cdm.cpp)
- *   Push/Pop/RewindMenu...         Sim_*                      (menustack.cpp)
+ *   Push/Pop/RewindMenu...         Sim_*                      (menutree.cpp)
  *   SetCurrentLevelName/OpenLevelFile/ParseLevelFiles  Sim_*  (levelparse.cpp)
  *   SetupLevelObjects 0x416420     Sim_SetupLevelObjects      (levelsetup.cpp)
  *   Log_Message 0x441b10           GameLog_LogMessage         (gamelog.cpp)
@@ -18,7 +18,7 @@
  *                                  MSVC routines; the FILE* is only tested
  *                                  and closed, and atoi runs in the C locale
  *                                  (0x00450521's ctype path)
- *   LinkedList::Append 0x4254a0    KEPT as a named callback, as tileeffects.cpp
+ *   LinkedList::Append 0x4254a0    KEPT as a named callback, as player.cpp
  *                                  keeps it (GAMETICK_PLAN.md Band A)
  *
  * Structure, in listing order, all gated on the entry widget going INACTIVE

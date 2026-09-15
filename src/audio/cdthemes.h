@@ -28,12 +28,12 @@ public:
 
     enum { THEME_MAX = 255, NAME_SIZE = 255 };
 
-    /* themeindex.cpp -- behind the Sim_* export shims. */
+    /* cdthemes.cpp -- behind the Sim_* export shims. */
     unsigned int  findThemeIndex(const char *name);   /* 0x403240 */
     unsigned int  play(const char *caption);          /* 0x403360 */
     unsigned int  replay();                           /* 0x4033e0 */
 
-    /* ValidateCDTrackLengths 0x403420 (themeindex.cpp): stores the CD's
+    /* ValidateCDTrackLengths 0x403420 (cdthemes.cpp): stores the CD's
      * track count at +0x18 and returns 1 only for the game's own 9-track
      * disc, recognised by each track's length string. */
     int           validateTrackLengths();

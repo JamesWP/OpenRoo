@@ -12,7 +12,7 @@
  *             queries, level loaders, menu stack, score, text entry, cheat,
  *             keypress, sound attachment, CD music, high scores, input
  *             dispatch, the static sound buffers, the logger)
- *   callback  ReleaseScriptStreamBuffers 0x41e840 (jjscript.cpp and
+ *   callback  ReleaseScriptStreamBuffers 0x41e840 (scriptplayer.cpp and
  *             levelsetup.cpp already keep it), and -- through the callees --
  *             the SoundManager and the script-player tick.
  *   imports   GetAsyncKeyState (via hooks_GetAsyncKeyState, the replay path),

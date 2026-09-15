@@ -14,10 +14,10 @@
  *                                        (+0x93d), zeroes cursor, splineActive,
  *                                        soundManager and the 255 stream slots
  *   TeardownScriptPlayer       0x41d680  dtor
- *   ReadInstructionScriptForLevel 0x41d720  ours: readForLevel (jjscript.cpp)
- *   ReadInstructionScriptTexts 0x41e8b0  ours: readTextsForReport (jjsreport.cpp)
+ *   ReadInstructionScriptForLevel 0x41d720  ours: readForLevel       (scriptplayer.cpp)
+ *   ReadInstructionScriptTexts 0x41e8b0  ours: readTextsForReport (scriptplayer.cpp)
  *   FUN_0041d920               the per-frame tick -- PLACEHOLDER, tick()
- *   ReleaseScriptStreamBuffers 0x41e840  ours: releaseStreams (jjscript.cpp)
+ *   ReleaseScriptStreamBuffers 0x41e840  ours: releaseStreams     (scriptplayer.cpp)
  *
  * The ctor and dtor are still the game's, run by Game's Load/Destruct.
  * Field meanings come from those functions' decompiles and from the Game
@@ -38,10 +38,10 @@ public:
 
     enum { LINE_SIZE = 1000, LINE_MAX = 1000 };
 
-    /* Parse <path>.jjs into the line table (jjscript.cpp). */
+    /* Parse <path>.jjs into the line table. */
     int  readForLevel(const char *path);
     /* The level report's reader: writes the script's texts to `sink` and
-     * counts spline lines and text blocks (jjsreport.cpp). */
+     * counts spline lines and text blocks. */
     int  readTextsForReport(const char *path, FILE *sink);
 
     /* PLACEHOLDER: FUN_0041d920, __thiscall, the per-frame tick and the
@@ -53,7 +53,7 @@ public:
         typedef void (__attribute__((thiscall)) *fn)(ScriptPlayer *, double, double);
         ((fn)0x0041d920)(this, now, dt);
     }
-    /* ReleaseScriptStreamBuffers 0x0041e840 (jjscript.cpp): stops,
+    /* ReleaseScriptStreamBuffers 0x0041e840: stops,
      * releases and deletes each of the 255 stream slots. */
     void releaseStreams();
 

@@ -22,7 +22,7 @@ public:
     static const int ORIGIN = 0;
     static const int CHILD_STRIDE = 0xff;
 
-    /* The four routines that take the menu as `this` (menustack.cpp,
+    /* The four routines that take the menu as `this` (menutree.cpp,
      * menunav.cpp); the Sim_* exports below are one-line shims onto them. */
     void push(unsigned char node);          /* PushMenuNodeOnStack 0x41ebd0 */
     void pop();                             /* PopMenuNodeFromStack 0x41ec00 */

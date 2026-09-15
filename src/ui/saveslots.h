@@ -75,7 +75,7 @@ KAROO_LAYOUT_CHECKS(SaveSlots)
     KAROO_LAYOUT_SIZE(0x2a07);
 }
 
-/* The two file routines (playerstate.cpp) patch.py binds by name. */
+/* The two file routines (saveslots.cpp) patch.py binds by name. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
