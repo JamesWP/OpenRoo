@@ -166,7 +166,7 @@ typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
 #define OFF_TALLY_LEO     0x42247   /* WORD, levels with a .leo               */
 #define OFF_TALLY_IS      0x4220c   /* WORD, levels with an instruction script*/
 #define OFF_SCORE_TOTAL   0x42212   /* DWORD, running total                   */
-#define OFF_GAMEFILE      0x4215f   /* char[], game file name                 */
+/* The game file name (was OFF_GAMEFILE 0x4215f) is Game::gameFileName(). */
 /* The map name (was OFF_LEVEL_WORLD 0x2ab69d), bonus flag (OFF_BONUS_FLAG
  * 0x2ab599), file time limit (OFF_PAR_TIME_SRC 0x2ab71f, the par time before
  * the 50% scaling) and title (OFF_LEVEL_TITLE 0x2ab61d) are the LevelMap's
@@ -216,7 +216,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     ((Game *)g)->scriptPlayer()->setSplineLines(0);
 
     fputs(STR_TITLE, out);
-    sprintf(buf, STR_GAMEFILE, (char *)(g + OFF_GAMEFILE));
+    sprintf(buf, STR_GAMEFILE, ((Game *)g)->gameFileName());
     fputs(buf, out);
     sprintf(buf, STR_LEVELS, (unsigned)((const Game *)g)->levelCount());
     fputs(buf, out);

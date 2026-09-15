@@ -780,7 +780,7 @@ next_row:
 
     /* ── totals and the rest of the reset ──────────────────────────────── */
     PL->setField11e(0xff);
-    DW(G, 0x173584) = 1;
+    GAME->setField173584(1);
 
     CEN->total = (unsigned short)(CEN->l2_9 + CEN->l2_a +
                                      CEN->shadow1 + CEN->l2_d +

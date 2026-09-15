@@ -149,7 +149,6 @@
 /* The bomb ("enemy") table's count and ID list are Game::bombCount()/
  * bombId() (game.h), formerly G_ENEMY_COUNT 0x17460f / G_ENEMY_IDS 0x174610. */
 
-#define G_GAMEFILE_NAME   0x4215f    /* the %s in the error message          */
 
 /* The REP STOSD's 0x40 dwords at 0x170543 are the switch counts
  * (switchcells.h). */
@@ -253,7 +252,7 @@ Sim_ClearGameState(Game *self)
 
     if (gamefile_ok == 0) {
         GameLog_LogMessage(GAME_LOGGER, 4, S_GAMEFILE_ERR,
-                           (const char *)(G + G_GAMEFILE_NAME));
+                           ((Game *)G)->gameFileName());
         PostQuitMessage(1);
     }
 

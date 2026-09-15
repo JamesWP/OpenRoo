@@ -191,6 +191,29 @@ public:
     int            field_173b1a() const              { return field_173b1a_; }
     void           setField173b1a(int v)             { field_173b1a_ = v; }
 
+    /* +0x173584: the level builder sets it to 1; GameTick loads the level
+     * sounds only while it and levelSoundsReady() are both 0.  Named by
+     * offset. */
+    int            field_173584() const              { return field_173584_; }
+    void           setField173584(int v)             { field_173584_ = v; }
+    /* +0x18: GameTick adds one per tick and returns it with the low byte
+     * masked off; +0x48b14 is bumped beside it.  Neither is read elsewhere
+     * in our code. */
+    unsigned int   tickCount() const                 { return tickCount_; }
+    void           setTickCount(unsigned int n)      { tickCount_ = n; }
+    unsigned int   field_48b14() const               { return field_48b14_; }
+    void           setField48b14(unsigned int n)     { field_48b14_ = n; }
+    /* The game file's name (the .gam, the save-slot files' base and the
+     * final directory's %s), 0x80 bytes up to the census. */
+    const char    *gameFileName() const              { return gameFileName_; }
+    /* The level the main menu shows behind it, which GameTick reloads on
+     * returning there; 0x80 bytes up to the extra objects. */
+    const char    *menuLevelName() const             { return menuLevelName_; }
+    /* The game state ESC interrupted (1 playing or 4 loaded); keypress.cpp
+     * restores it when the menu is left. */
+    unsigned char  stateBeforeMenu() const           { return stateBeforeMenu_; }
+    void           setStateBeforeMenu(unsigned char s) { stateBeforeMenu_ = s; }
+
     /* The level builder's census and spawn tables (levelcensus.h). */
     LevelCensus    *census()                    { return &census_; }
     TimedSpawner   *timedSpawner(unsigned i)    { return &timedSpawners_[i]; }
@@ -517,7 +540,8 @@ private:
     int           field_0c_;                              /* 0x00000c */
     unsigned int  mapChanged_;                            /* 0x000010 */
     unsigned int  nextLevelBonus_;                        /* 0x000014 */
-    unsigned char gap_000018[0x02023d - 0x000018];
+    unsigned int  tickCount_;                             /* 0x000018 */
+    unsigned char gap_00001c[0x02023d - 0x00001c];
     TimedSpawner  timedSpawners_[256];                    /* 0x02023d */
     FreeBomb      freeBombs_[256];                        /* 0x02173d */
     unsigned char gap_02223d[0x02223f - 0x02223d];
@@ -525,7 +549,7 @@ private:
     unsigned char parkedCameraOption_;                    /* 0x03215d */
     unsigned char gap_03215e[0x04215e - 0x03215e];
     unsigned char levelCount_;                            /* 0x04215e */
-    unsigned char gap_04215f[0x0421df - 0x04215f];
+    char          gameFileName_[0x0421df - 0x04215f];     /* 0x04215f */
     LevelCensus   census_;                                /* 0x0421df */
     unsigned char restartCount_;                          /* 0x04220b */
     unsigned char gap_04220c[0x04224d - 0x04220c];
@@ -587,7 +611,9 @@ private:
     SoundAssetName soundAsset46baa_;                 /* 0x046baa */
     unsigned char gap_046cae[0x048b12 - 0x046cae];
     unsigned char switchMax_;                             /* 0x048b12 */
-    unsigned char gap_048b13[0x048b98 - 0x048b13];
+    unsigned char stateBeforeMenu_;                       /* 0x048b13 */
+    unsigned int  field_48b14_;                           /* 0x048b14 */
+    char          menuLevelName_[0x048b98 - 0x048b18];    /* 0x048b18 */
     ExtraObjects  extraObjects_;                          /* 0x048b98 */
     /* The SoundManager is embedded here; its full size is unknown (its
      * lists reach at least +0xa4), so only the bytes up to the next field
@@ -625,7 +651,7 @@ private:
     /* Its length is unknown; declared only as far as the next field. */
     char          levelName_[0x173583 - 0x173483];        /* 0x173483 */
     unsigned char levelIndex_;                            /* 0x173583 */
-    unsigned char gap_173584[0x173588 - 0x173584];
+    int           field_173584_;                          /* 0x173584 */
     SlideObject  *slideSlots_[100];                       /* 0x173588 */
     unsigned char slideCount_;                            /* 0x173718 */
     LiftObject   *liftSlots_[256];                        /* 0x173719 */
@@ -727,6 +753,12 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(field_13cca4_,     0x13cca4);
     KAROO_LAYOUT_AT(field_13cca8_,     0x13cca8);
     KAROO_LAYOUT_AT(field_173b1a_,     0x173b1a);
+    KAROO_LAYOUT_AT(tickCount_,        0x000018);
+    KAROO_LAYOUT_AT(gameFileName_,     0x04215f);
+    KAROO_LAYOUT_AT(stateBeforeMenu_,  0x048b13);
+    KAROO_LAYOUT_AT(field_48b14_,      0x048b14);
+    KAROO_LAYOUT_AT(menuLevelName_,    0x048b18);
+    KAROO_LAYOUT_AT(field_173584_,     0x173584);
     KAROO_LAYOUT_AT(switchMax_,        0x048b12);
     KAROO_LAYOUT_AT(foesKilled_,       0x04224d);
     KAROO_LAYOUT_AT(restartCount_,     0x04220b);

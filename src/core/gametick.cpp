@@ -237,7 +237,7 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     Sim_AcquireFixedSoundBuffersAndMaybeReport((Game *)B);
-    if (((Game *)B)->levelSoundsReady() == 0 && G32(0x173584) == 0) {
+    if (((Game *)B)->levelSoundsReady() == 0 && ((Game *)B)->field_173584() == 0) {
         Sim_InitLevelBasedSounds((Game *)B);
         ((Game *)B)->setLevelSoundsReady(1);
         if (STATE == 0 && ((Game *)B)->musicOn() != 0)
@@ -315,7 +315,7 @@ Sim_GameTick(Game *self, double dt, double now)
         game->bridgeSlot(i)->tick();
 
     if ((STATE == 1 || STATE == 4) && DEB != 0x1b && KEY(0x1b) != 0) {
-        G8(0x48b13) = STATE;
+        ((Game *)B)->setStateBeforeMenu(STATE);
         Sim_RewindMenuStackToRootNode(MENU);
         ((Game *)B)->menu()->setLastKey(0x1b);
         STATE = 5;
@@ -455,9 +455,9 @@ Sim_GameTick(Game *self, double dt, double now)
         ((Game *)B)->setCameraMode(2);
     } else if (STATE == 1) {
         ((Game *)B)->setTimeElapsed(((Game *)B)->timeElapsed()
-            + (unsigned int)ftol80(*(double *)(B + 0x170a5c)));
+            + (unsigned int)ftol80(((Game *)B)->tickStep()->value));
         ((Game *)B)->setField170a65(((Game *)B)->field_170a65()
-            + (unsigned int)ftol80(*(double *)(B + 0x170a5c)));
+            + (unsigned int)ftol80(((Game *)B)->tickStep()->value));
     }
 
     if ((unsigned int)pl->fieldEa() != 0) {
@@ -642,9 +642,9 @@ Sim_GameTick(Game *self, double dt, double now)
             int setup = 1;
             if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount() &&
                 pl->moveState() == 0) {
-                if (G32(0x0c) == 0) {
+                if (((Game *)B)->field_0c() == 0) {
                     char name[256];
-                    sprintf(name, F_FINALDIR, (const char *)(B + 0x4215f));
+                    sprintf(name, F_FINALDIR, ((Game *)B)->gameFileName());
                     Sim_ParseLevelFiles((Game *)B, name);
                     Sim_PushMenuNodeOnStack(MENU, 0);
                     ((Game *)B)->menu()->setNode(5);
@@ -657,7 +657,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 }
             } else {
                 Sim_ClearGameState((Game *)B);
-                Sim_ParseLevelFiles((Game *)B, (const char *)(B + 0x48b18));
+                Sim_ParseLevelFiles((Game *)B, ((Game *)B)->menuLevelName());
                 theme = S_MAIN;
             }
             if (theme != NULL)
@@ -679,9 +679,9 @@ Sim_GameTick(Game *self, double dt, double now)
         Sim_RewindMenuStackToRootNode(MENU);
         const char *theme = NULL;
         if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
-            if (G32(0x0c) == 0) {
+            if (((Game *)B)->field_0c() == 0) {
                 char name[256];
-                sprintf(name, F_FINALDIR, (const char *)(B + 0x4215f));
+                sprintf(name, F_FINALDIR, ((Game *)B)->gameFileName());
                 Sim_ParseLevelFiles((Game *)B, name);
                 Sim_PushMenuNodeOnStack(MENU, 0);
                 ((Game *)B)->menu()->setNode(5);
@@ -694,7 +694,7 @@ Sim_GameTick(Game *self, double dt, double now)
             }
         } else {
             Sim_ClearGameState((Game *)B);
-            Sim_ParseLevelFiles((Game *)B, (const char *)(B + 0x48b18));
+            Sim_ParseLevelFiles((Game *)B, ((Game *)B)->menuLevelName());
             theme = S_MAIN;
         }
         if (theme != NULL)
@@ -710,7 +710,7 @@ Sim_GameTick(Game *self, double dt, double now)
         DEB = 0;
     ((Game *)B)->setField13cca8(0);
     ((Game *)B)->setField13cc90(0);
-    G32(0x48b14) = G32(0x48b14) + 1;
-    G32(0x18) = G32(0x18) + 1;
-    return G32(0x18) & 0xffffff00u;
+    ((Game *)B)->setField48b14(((Game *)B)->field_48b14() + 1);
+    ((Game *)B)->setTickCount(((Game *)B)->tickCount() + 1);
+    return ((Game *)B)->tickCount() & 0xffffff00u;
 }

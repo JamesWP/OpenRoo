@@ -241,7 +241,6 @@
 #define MAP               (((Game *)G)->map())
 
 #define G_NAME_TABLE      0x3215e    /* level-name table, 0x100 per entry     */
-#define G_GAMEFILE_NAME   0x4215f    /* the game file's name, a string        */
 
 
 /* ─── Game globals and string constants, at their original addresses ─────── */
@@ -434,7 +433,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     ((Game *)G)->setNextLevelBonus(0);
 
     /* A leftover: `path` is overwritten before it is ever read. */
-    ORIG_MAYBE_SPRINTF(path, S_FMT_GAM, (const char *)(G + G_GAMEFILE_NAME));
+    ORIG_MAYBE_SPRINTF(path, S_FMT_GAM, ((Game *)G)->gameFileName());
 
     /* The bonus peek -- load the NEXT level's map just to read its bonus. */
     if (((Game *)G)->restartCount() == 0 &&

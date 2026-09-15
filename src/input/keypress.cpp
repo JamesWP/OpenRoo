@@ -245,7 +245,7 @@ Sim_HandleKeypress(Game *self)
         ((Game *)B)->nameEntry()->poll((unsigned int)(long long)*((Game *)B)->clock());
         if (((Game *)B)->nameEntry()->active() == 0) {
             if (((Game *)B)->nameEntry()->lastKey() == 0x0d)
-                Save_WriteAllSlotFiles(((Game *)B)->saveSlots(), (const char *)(B + 0x4215f), 0x37);
+                Save_WriteAllSlotFiles(((Game *)B)->saveSlots(), ((Game *)B)->gameFileName(), 0x37);
             else
                 memcpy(((Game *)B)->saveSlots()->slot((unsigned char)((Game *)B)->saveSlots()->editSlot()),
                        ((Game *)B)->saveSlots()->edit(), sizeof(SaveSlot));
@@ -258,7 +258,7 @@ Sim_HandleKeypress(Game *self)
     if (NODE == 0) {
         ((Game *)B)->setRebindActive(0);
         if (STATE == 5 && ((Game *)B)->menu()->leave() != 0) {
-            STATE = G8(0x48b13);
+            STATE = ((Game *)B)->stateBeforeMenu();
             ((Game *)B)->player()->setPendingMove(0);
             DEB = 0x1b;
         }
@@ -295,7 +295,7 @@ Sim_HandleKeypress(Game *self)
         if (((Game *)B)->musicOn() != 0)
             CDM_StopTrack(CDAUDIO);
         DEB = 0x0d;
-        if (G32(0x0c) == 0)
+        if (((Game *)B)->field_0c() == 0)
             PostQuitMessage(1);
         break;
     case 0x14: rebind(B, (const char *)0x0046454c, 0x14, 0x26); break;
