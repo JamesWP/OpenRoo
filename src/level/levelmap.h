@@ -99,9 +99,19 @@ private:
     int           gemsRequired_;                  /* 0x196  file, read first */
     unsigned char extentV_;                       /* 0x19a  file byte 1 */
     unsigned char extentU_;                       /* 0x19b  file byte 0 */
-    unsigned char grid_[GRID_BYTES];              /* 0x19c */
-    unsigned char snapshot_[GRID_BYTES];          /* 0x13628c */
+    /* Indexed [u][v]: Tile::at's (v + u*100) * 0x7f is exactly this
+     * array's addressing, which the checks below pin.  tile()/snapshot()
+     * still go through Tile::at rather than subscripting, because the
+     * bridge and slide spawn scans are unbounded and may step outside
+     * [0, 100) on malformed data -- pointer arithmetic keeps that the
+     * original's behaviour rather than an out-of-bounds subscript. */
+    Tile          grid_[DIM][DIM];                /* 0x19c */
+    Tile          snapshot_[DIM][DIM];            /* 0x13628c */
 };
+
+static_assert(sizeof(Tile) == 0x7f, "a Tile record is the 0x7f stride");
+static_assert(sizeof(Tile[LevelMap::DIM][LevelMap::DIM]) == LevelMap::GRID_BYTES,
+              "the grid is 100 x 100 tile records");
 
 KAROO_LAYOUT_CHECKS(LevelMap)
 {
@@ -117,6 +127,10 @@ KAROO_LAYOUT_CHECKS(LevelMap)
     KAROO_LAYOUT_AT(extentU_,       0x19b);
     KAROO_LAYOUT_AT(grid_,          0x19c);
     KAROO_LAYOUT_AT(snapshot_,      0x13628c);
+    /* [u][v] is Tile::at(u, v): one step of u is 100 records. */
+    KAROO_LAYOUT_AT(grid_[1][0],    0x19c + 100 * 0x7f);
+    KAROO_LAYOUT_AT(grid_[0][1],    0x19c + 0x7f);
+    KAROO_LAYOUT_AT(snapshot_[2][3], 0x13628c + (3 + 2 * 100) * 0x7f);
     KAROO_LAYOUT_SIZE(0x26c37c);
 }
 
