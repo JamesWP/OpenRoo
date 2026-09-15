@@ -26,8 +26,16 @@
  *             ring-contract stress test: emission must stall, not corrupt)
  *   burst    — emit particles at x3 initial velocity, so every effect visibly
  *              throws further; proves the emission path, not the integration
+ *   loadflip — negate the gravity magnitude and magnet force as Load reads
+ *              them; only our Load can produce it (the tick is unchanged)
+ *
+ * Stage E4 (PARTICLE_PLAN.md § 6.10), installed by factory.cpp, not patch.py:
+ *   0x44c7f0 GravityEnvironment::Load       → Env_GravityLoad  (slot 5)
+ *   0x44cbf0 MagnetEnvironment::Load        → Env_MagnetLoad   (slot 5)
+ *   0x44c320 / 0x44c410 Gravity's two setters, called only from its Load
  */
 #include "generators.h"
+#include "assetio.h"
 #include "factory.h"
 #include "log.h"
 #include <math.h>
@@ -37,7 +45,7 @@
 
 /* ─── FX ─── */
 
-enum SimFx { FX_NONE = 0, FX_GRAVITY, FX_NOLIFE, FX_ANTIGRAV, FX_BURST };
+enum SimFx { FX_NONE = 0, FX_GRAVITY, FX_NOLIFE, FX_ANTIGRAV, FX_BURST, FX_LOADFLIP };
 
 static SimFx sim_fx(void)
 {
@@ -51,6 +59,7 @@ static SimFx sim_fx(void)
             else if (lstrcmpiA(buf, "nolife") == 0)   { cached = FX_NOLIFE;   name = "nolife";   }
             else if (lstrcmpiA(buf, "antigrav") == 0) { cached = FX_ANTIGRAV; name = "antigrav"; }
             else if (lstrcmpiA(buf, "burst") == 0)    { cached = FX_BURST;    name = "burst";    }
+            else if (lstrcmpiA(buf, "loadflip") == 0) { cached = FX_LOADFLIP; name = "loadflip"; }
         }
         if (cached != FX_NONE)
             log_write("sim: FX mode = %s\n", name);
@@ -569,11 +578,109 @@ static void cyl_gen_tick(CylinderGenerator *self, float dt)
     cylinder_emit(self, dt);
 }
 
-/* ─── Exports — vtable slot 3 thunks, installed by patch.py ─── */
+/* ─── Load (slot 5) ─── */
+
+/* One fread of `size` bytes; the originals test `!= 1` after every call and
+ * bail out with 0, leaving whatever was already read in place. */
+static bool read1(void *dst, unsigned size, void *fp)
+{
+    return hooks_fread(dst, size, 1, fp) == 1;
+}
+
+/* 0x44c320.  Stores the direction and magnitude as read, then flGravity =
+ * normalise(dir) * magnitude — or dir itself when it is exactly zero.  x87
+ * order kept: z*z + y*y + x*x, sqrt unrounded, each quotient rounded to float
+ * before the multiply. */
+static void gravity_set_vector(GravityEnvironment *self, const float dir[3], float mag)
+{
+    self->flDirection[0] = dir[0];
+    self->flDirection[1] = dir[1];
+    self->flDirection[2] = dir[2];
+    self->flMagnitude = mag;
+    if (dir[0] == 0.0f && dir[1] == 0.0f && dir[2] == 0.0f) {
+        self->flGravity[0] = dir[0];
+        self->flGravity[1] = dir[1];
+        self->flGravity[2] = dir[2];
+        return;
+    }
+    long double len = sqrtl((long double)dir[2] * dir[2] +
+                            (long double)dir[1] * dir[1] +
+                            (long double)dir[0] * dir[0]);
+    float q[3] = { (float)(dir[0] / len), (float)(dir[1] / len), (float)(dir[2] / len) };
+    self->flGravity[0] = q[0] * mag;
+    self->flGravity[1] = q[1] * mag;
+    self->flGravity[2] = q[2] * mag;
+}
+
+/* 0x44c410. */
+static void gravity_set_colour(GravityEnvironment *self, DWORD argb, float fade)
+{
+    self->dwTargetARGB   = argb;
+    self->dwTargetA      = argb >> 24;
+    self->dwTargetRGB[0] = (argb >> 16) & 0xff;
+    self->dwTargetRGB[2] = argb & 0xff;
+    self->dwTargetRGB[1] = (argb >> 8) & 0xff;
+    self->flFadeRate     = fade;
+}
+
+/* 0x44c7f0.  Does not call the base Environment::Load (0x4485c0, a bare
+ * `return 1`), and leaves flFadeAccum untouched — unlike Magnet. */
+static BOOL gravity_env_load(GravityEnvironment *self, void *fp)
+{
+    float dir[3], mag, fade;
+    DWORD argb;
+    if (!read1(dir, 12, fp))                   return FALSE;
+    if (!read1(&mag, 4, fp))                   return FALSE;
+    if (!read1(&argb, 4, fp))                  return FALSE;
+    if (!read1(&fade, 4, fp))                  return FALSE;
+    if (!read1(&self->dwFadeThreshold, 4, fp)) return FALSE;
+    if (!read1(&self->dwClipEnable[0], 4, fp)) return FALSE;
+    if (!read1(&self->dwClipEnable[1], 4, fp)) return FALSE;
+    if (!read1(&self->dwClipEnable[2], 4, fp)) return FALSE;
+    if (!read1(self->flClipMax, 12, fp))       return FALSE;
+    if (!read1(self->flClipMin, 12, fp))       return FALSE;
+    if (sim_fx() == FX_LOADFLIP)
+        mag = -mag;
+    gravity_set_vector(self, dir, mag);
+    gravity_set_colour(self, argb, fade);
+    SIM_LOG_ONCE(calls)
+        log_write("sim: GravityLoad this=%p gravity=%f,%f,%f argb=%08lX\n", self,
+                  self->flGravity[0], self->flGravity[1], self->flGravity[2], argb);
+    return TRUE;
+}
+
+/* 0x44cbf0.  Force before centre in the file.  dwTargetRGB (+0x38..+0x40) is
+ * never loaded — it keeps the constructor's value; preserved as found. */
+static BOOL magnet_env_load(MagnetEnvironment *self, void *fp)
+{
+    /* base Environment::Load (0x4485c0) is `return 1`, result ignored. */
+    if (!read1(self->flForce, 12, fp))         return FALSE;
+    if (!read1(self->flCentre, 12, fp))        return FALSE;
+    if (!read1(&self->flRange, 4, fp))         return FALSE;
+    if (!read1(&self->flFadeRate, 4, fp))      return FALSE;
+    if (!read1(&self->dwFadeThreshold, 4, fp)) return FALSE;
+    self->flFadeAccum = 0.0f;
+    if (sim_fx() == FX_LOADFLIP)
+        for (int i = 0; i < 3; i++)
+            self->flForce[i] = -self->flForce[i];
+    SIM_LOG_ONCE(calls)
+        log_write("sim: MagnetLoad this=%p force=%f,%f,%f centre=%f,%f,%f\n", self,
+                  self->flForce[0], self->flForce[1], self->flForce[2],
+                  self->flCentre[0], self->flCentre[1], self->flCentre[2]);
+    return TRUE;
+}
+
+/* ─── Exports — vtable thunks, installed by factory.cpp's clone table ─── */
 
 #define THISCALL __attribute__((thiscall))
 
 extern "C" {
+
+__declspec(dllexport) BOOL THISCALL
+Env_GravityLoad(GravityEnvironment *self, void *fp)  { return gravity_env_load(self, fp); }
+
+__declspec(dllexport) BOOL THISCALL
+Env_MagnetLoad(MagnetEnvironment *self, void *fp)    { return magnet_env_load(self, fp); }
 
 __declspec(dllexport) void THISCALL
 Env_GravityTick(GravityEnvironment *self, float dt)  { gravity_env_tick(self, dt); }

@@ -97,6 +97,8 @@ extern "C" {
     void __attribute__((thiscall)) Gen_CylinderEmit(void *, float);
     void __attribute__((thiscall)) Env_GravityTick(void *, float);
     void __attribute__((thiscall)) Env_MagnetTick(void *, float);
+    BOOL __attribute__((thiscall)) Env_GravityLoad(void *, void *);
+    BOOL __attribute__((thiscall)) Env_MagnetLoad(void *, void *);
 }
 
 struct SlotOverride {
@@ -112,6 +114,10 @@ static const SlotOverride g_override[] = {
     { VTBL_GEN_CYLINDER, GEN_VT_TICK_SLOT, (void *)Gen_CylinderEmit },
     { VTBL_ENV_GRAVITY,  GEN_VT_TICK_SLOT, (void *)Env_GravityTick  },
     { VTBL_ENV_MAGNET,   GEN_VT_TICK_SLOT, (void *)Env_MagnetTick   },
+
+    /* Stage E4 — slot 5 = Load(FILE *). */
+    { VTBL_ENV_GRAVITY,  GEN_VT_LOAD_SLOT, (void *)Env_GravityLoad  },
+    { VTBL_ENV_MAGNET,   GEN_VT_LOAD_SLOT, (void *)Env_MagnetLoad   },
 
     /* ParticleSystem — the Stage A/B render and tick path. */
     { VTBL_PARTICLE_BASE,  PS_VT_TICK,   (void *)Particle_BaseTick   },

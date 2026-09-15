@@ -71,14 +71,16 @@ struct Environment {
 static_assert(sizeof(Environment) == 0x0c, "Environment size");
 static_assert(offsetof(Environment, pRing) == 0x08, "Environment layout");
 
-/* GravityEnvironment (0x6c) — vtable 0x45f110, tick 0x44c450.
- * Fields below +0x1C recovered from the tick; +0x0c..+0x1b is never read by
- * it and stays opaque until Save/Load (0x44c6c0/0x44c7f0) are decoded. */
+/* GravityEnvironment (0x6c) — vtable 0x45f110, tick 0x44c450, load 0x44c7f0.
+ * +0x0c..+0x2c decoded from Load's two setters (0x44c320, 0x44c410): the file
+ * holds a direction and a magnitude, flGravity is their product. */
 struct GravityEnvironment {
     Environment base;             // +0x00
-    BYTE        opaque0c[0x10];   // +0x0c serialised, unread by the tick
+    float       flDirection[3];   // +0x0c as read, not normalised
+    float       flMagnitude;      // +0x18
     float       flGravity[3];     // +0x1c acceleration per second
-    BYTE        opaque28[0x08];   // +0x28 unread by the tick
+    DWORD       dwTargetARGB;     // +0x28 packed; unpacked into the next four
+    DWORD       dwTargetA;        // +0x2c unread by the tick
     DWORD       dwTargetRGB[3];   // +0x30 fade targets: R, G, B
     float       flFadeRate;       // +0x3c
     DWORD       dwFadeThreshold;  // +0x40 step must exceed this to apply
@@ -87,7 +89,9 @@ struct GravityEnvironment {
     float       flClipMin[3];     // +0x5c
     float       flFadeAccum;      // +0x68
 };
+static_assert(offsetof(GravityEnvironment, flMagnitude)  == 0x18, "Gravity layout");
 static_assert(offsetof(GravityEnvironment, flGravity)    == 0x1c, "Gravity layout");
+static_assert(offsetof(GravityEnvironment, dwTargetARGB) == 0x28, "Gravity layout");
 static_assert(offsetof(GravityEnvironment, dwTargetRGB)  == 0x30, "Gravity layout");
 static_assert(offsetof(GravityEnvironment, flFadeRate)   == 0x3c, "Gravity layout");
 static_assert(offsetof(GravityEnvironment, dwClipEnable) == 0x44, "Gravity layout");
@@ -246,6 +250,8 @@ static_assert(sizeof(CylinderGenerator) == 0x3444, "Cyl size");
  * work exactly as before. */
 /* Slot 3 = Tick(float dt) for both Generator and Environment. */
 #define GEN_VT_TICK_SLOT 3
+/* Slot 5 = BOOL Load(FILE *) for both. */
+#define GEN_VT_LOAD_SLOT 5
 
 void sim_tick_generator(Generator *gen, float dt);
 void sim_tick_environment(Environment *env, float dt);
