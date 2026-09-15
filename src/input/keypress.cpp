@@ -74,8 +74,7 @@ CDM_SetMixerVolume(CDM *self, DWORD level);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
 
-typedef void (__attribute__((thiscall)) *sound_setup_fn)(void *sm, int mode3d);
-#define ORIG_SOUND_SETUP ((sound_setup_fn)0x004439d0)   /* named callback */
+#include "soundmanager.h"
 
 #define PROGCTRL    ((ProgableControl *)0x0046c298)
 #define CDAUDIO     ((CDM *)0x004dc640)
@@ -322,7 +321,7 @@ Sim_HandleKeypress(Game *self)
         break;
     case 0x3c:
         ((Game *)B)->setSound3D(((Game *)B)->sound3D() == 0);
-        ORIG_SOUND_SETUP(B + 0x13cba8, ((Game *)B)->sound3D());
+        ((Game *)B)->soundManager()->setup(((Game *)B)->sound3D());
         ((Game *)B)->setLevelSoundsReady(0);
         Sim_PopMenuNodeFromStack(MENU);
         break;
