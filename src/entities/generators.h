@@ -337,6 +337,12 @@ Environment *env_create(const char *name);
  * own new, our constructors.  Game vtable VA on return, like env_create. */
 Generator *gen_create(const char *name);
 
+/* CloneGeneratorFromSource (0x4488b0) / the environment twin (0x448a70):
+ * build one of the same class, CopyFrom the source, and drop it again if
+ * either step fails.  ParticleSystem::CopyFrom is the only caller. */
+Generator   *gen_clone(const Generator *src);
+Environment *env_clone(const Environment *src);
+
 /* Tick a Generator or an Environment: one virtual call through slot 3.  The
  * table is ours, so this lands straight on our implementation. */
 void sim_tick_slot3(void *obj, float dt);

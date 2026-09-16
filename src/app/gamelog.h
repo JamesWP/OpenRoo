@@ -26,3 +26,10 @@ static_assert(offsetof(GameLogger, notifyHwnd)   == 0x114, "notifyHwnd");
  * game binary at 0x00441b10.  Same __cdecl variadic shape as the original. */
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
+
+/* The file/line writer (0x00441d20), same shape.  The particle Save/Load slots
+ * report failures through it, so particles.cpp calls it here rather than
+ * reaching into the game image. */
+extern "C" __declspec(dllexport) void __cdecl
+GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
+                          int line, const char *fmt, ...);

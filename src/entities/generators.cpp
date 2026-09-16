@@ -906,6 +906,8 @@ Environment *env_create(const char *name)
 
 /* ═══ Generators ═══════════════════════════════════════════════════════════ */
 
+#define THISCALL_DECL __attribute__((thiscall))
+
 /* ─── x87 helpers ─── */
 
 /* The x87 compare the originals use (FCOMP + TEST AH,0x40) treats an unordered
@@ -1769,6 +1771,36 @@ Generator *gen_create(const char *name)
     if (strcmp(name, "XStdGenerator") == 0)     return gen_new(xstd_gen_construct);
     if (strcmp(name, "CylinderGenerator") == 0) return gen_new(cyl_gen_construct);
     return NULL;
+}
+
+/* ─── Cloning (0x4488b0 / 0x448a70) ─── */
+
+typedef BOOL  (THISCALL_DECL *clone_copy_fn)(void *, const void *);
+typedef void *(THISCALL_DECL *clone_dtor_fn)(void *, unsigned);
+
+/* Shared body of both: the factory by class name, then slot 1 (CopyFrom); on
+ * refusal the new object is destroyed through its own slot 0 and NULL comes
+ * back.  A NULL from the factory is returned as-is. */
+static void *clone_by_name(void *made, const void *src)
+{
+    if (made == NULL)
+        return NULL;
+    void **vtbl = *(void ***)made;
+    if (!((clone_copy_fn)vtbl[GEN_VT_COPY_SLOT])(made, src)) {
+        ((clone_dtor_fn)vtbl[GEN_VT_DTOR_SLOT])(made, 1);
+        return NULL;
+    }
+    return made;
+}
+
+Generator *gen_clone(const Generator *src)
+{
+    return (Generator *)clone_by_name(gen_create(src->pName), src);
+}
+
+Environment *env_clone(const Environment *src)
+{
+    return (Environment *)clone_by_name(env_create(src->pName), src);
 }
 
 /* ─── Exports — vtable thunks, installed by factory.cpp's clone table ─── */
