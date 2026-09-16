@@ -146,13 +146,13 @@ Sim_InitLevelBasedSounds(Game *self)
 
     GameLog_LogMessage(GAMELOGGER, 2, F_TRYINIT);
     if (((Game *)B)->soundCreated() != 0) {
-        pl->setField15a(0);
+        pl->setWorldSoundVariant(0);
         if (strcmp(world, S_EGYPT) == 0)
-            pl->setField15a(0);
+            pl->setWorldSoundVariant(0);
         if (strcmp(world, S_SPACE) == 0)
-            pl->setField15a(s_fx ? 1 : 2);
+            pl->setWorldSoundVariant(s_fx ? 1 : 2);
         if (strcmp(world, S_CANDY) == 0)
-            pl->setField15a(s_fx ? 2 : 1);
+            pl->setWorldSoundVariant(s_fx ? 2 : 1);
 
         if (pl->pool9f() != NULL)
             ORIG_POOL_WIPE(pl->pool9f());

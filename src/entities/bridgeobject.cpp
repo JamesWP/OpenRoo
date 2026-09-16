@@ -567,7 +567,7 @@ void BridgeObject::tick()
             }
 
             t->setObjectMarker(0x14);
-            t->setField217(1);
+            t->setBusy(1);
             t->setHeight(tileHeight_);
             /* The STAMPED axis is the flipped one under deckaxis too. */
             t->setBridgeAxis(axis);
@@ -632,7 +632,7 @@ void BridgeObject::tick()
 
         /* Point 5: four of the six; +0x1f5 and +0x1f4 are left alone. */
         t->setObjectMarker(0);
-        t->setField217(0);
+        t->setBusy(0);
         t->setHeight(0);
         t->setField1f6(0);
     }

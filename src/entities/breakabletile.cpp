@@ -396,10 +396,10 @@ void BreakableTile::tick()
     const double now = now_;
 
     /* ── ARM ─────────────────────────────────────────────────────────── */
-    if ((signed char)t->field1a5() != 0 && armed_ == 0 && t->field217() == 0) {
+    if ((signed char)t->occupant() != 0 && armed_ == 0 && t->busy() == 0) {
         armedAt_ = now;
         armed_   = 1;
-        t->setField217(0);                  /* dead store, preserved */
+        t->setBusy(0);                  /* dead store, preserved */
     }
 
     justFell_      = 0;
@@ -420,7 +420,7 @@ void BreakableTile::tick()
             t->setObjectMarker(TILE_KIND_VOID);
             if (noRespawn_ == 0)
                 respawnPending_ = 1;
-            t->setField217(1);
+            t->setBusy(1);
             armed_ = 0;
         }
     }
@@ -438,7 +438,7 @@ void BreakableTile::tick()
             t->setObjectMarker(TILE_KIND_BREAKABLE);
             armed_          = 0;
             respawnPending_ = 0;
-            t->setField217(0);
+            t->setBusy(0);
         }
     }
 }

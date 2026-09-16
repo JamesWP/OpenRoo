@@ -361,84 +361,84 @@ unsigned int MovableEntity::updateMovement()
 {
     fx_init();
 
-    if (field_14e == 0 && ((signed char)moveState_) == 0)
-        field_9a = 0;
+    if (moveDir_ == 0 && ((signed char)moveState_) == 0)
+        anim_ = 0;
 
-    if (field_6e == 0 && field_fb == 0)
-        copy8(&field_132, &field_66);                    /* move duration <- default */
+    if (idleStarted_ == 0 && climbing_ == 0)
+        copy8(&animDuration_, &stepDuration_);                    /* move duration <- default */
 
     /* ─── The two early outs.  Both return 1 in AL. ─────────────────── */
-    if (field_86 != 0) {
-        if (field_82 == 0) {
-            copy8(&field_8a, &now_);
-            field_82 = 1;
+    if (dying_ != 0) {
+        if (dyingStarted_ == 0) {
+            copy8(&dyingSince_, &now_);
+            dyingStarted_ = 1;
             field_7a = (void *)1;
             pendingMove_ = 0;
-            field_14e = 0;
+            moveDir_ = 0;
             return 1;
         }
-        if (!(now_ - field_8a < K_HALF_SEC_MS))
+        if (!(now_ - dyingSince_ < K_HALF_SEC_MS))
             removeRequested_ = 1;
         pendingMove_ = 0;
-        field_14e = 0;
+        moveDir_ = 0;
         return 1;
     }
 
-    if (field_ef != 0)                      /* frozen: drop the queued move */
+    if (held_ != 0)                      /* frozen: drop the queued move */
         pendingMove_ = 0;
 
     bool turned = false;
 
-    if (field_14e != 0) {
+    if (moveDir_ != 0) {
         /* ─── A move is in progress ─────────────────────────────────── */
         if (((signed char)kind_) != 9 && ((signed char)kind_) != 3) {
             unsigned crush = CUR->blastHeight();
             if ((int)GH - 1 <= (int)crush && (int)crush <= (int)GH + 1 &&
-                field_132 * K_MS_TO_S_D < now_ - field_146)
+                animDuration_ * K_MS_TO_S_D < now_ - animStart_)
                 moveState_ = 4;
         }
 
-        if (field_132 <= now_ - field_146) {
+        if (animDuration_ <= now_ - animStart_) {
             /* the step has run its time: commit it */
-            field_44 = 0;
-            field_50 = field_132 + field_146;
+            movingBackwards_ = 0;
+            stepEnd_ = animDuration_ + animStart_;
 
-            if (facing_or_reverse(((unsigned)field_14e), facing_)) {
+            if (facing_or_reverse(((unsigned)moveDir_), facing_)) {
                 if (((signed char)kind_) != 9) {
                     /* clear the occupant of the cell being left -- see
                      * "Bugs preserved", item 5, for the index arithmetic. */
                     Tile *from = Tile::at(tileBase_,
-                        (int)GU - (int)field_13f, (int)GV - (int)field_140);
-                    from->setField1a5(0);
+                        (int)GU - (int)stepU_, (int)GV - (int)stepV_);
+                    from->setOccupant(0);
                 }
                 if (Sim_CheckTileIsRamp(CUR->objectMarker()) != 0) {
                     posY_ = (float)(int)GH + K_HALF_F;
-                } else if (field_ea == 0) {
+                } else if (gliding_ == 0) {
                     posY_ = (float)(int)GH;
                 }
-                if ((unsigned)field_108 != ((unsigned)field_14e)) {
+                if ((unsigned)lastMoveDir_ != ((unsigned)moveDir_)) {
                     posU_ = (float)(int)GU;
                     posV_ = (float)(int)GV;
                 }
-                if (field_fb != 0)
+                if (climbing_ != 0)
                     posY_ = (float)(int)GH;
                 field_d8 = field_d8 + 1;
-                field_108 = (unsigned char)field_14e;
+                lastMoveDir_ = (unsigned char)moveDir_;
             } else {
                 turned = true;
             }
 
             if (((signed char)field_124) == 0) {
-                facing_ = (unsigned char)field_14e;
+                facing_ = (unsigned char)moveDir_;
             } else {
-                int d = field_14e;
+                int d = moveDir_;
                 if (d > 10 && d < 0x14)
                     facing_ = (signed char)(d - 10);
             }
 
             if (((signed char)kind_) != 9) {
-                unsigned char a = field_9a;
-                if (((a > 0x13 && a < 0x1c && field_14e != 0) || turned) &&
+                unsigned char a = anim_;
+                if (((a > 0x13 && a < 0x1c && moveDir_ != 0) || turned) &&
                     ((VoicePool *)sound_cf_) != 0 && a != 3 && a != 5) {
                     Sim_BroadcastPoolVoiceCoordinates(((VoicePool *)sound_cf_),
                         (float)(int)GU, (float)(int)GH, -(float)(int)GV, 1);
@@ -446,7 +446,7 @@ unsigned int MovableEntity::updateMovement()
                 }
             }
 
-            field_14e = 0;
+            moveDir_ = 0;
 
             /* kind 4 re-queues whatever the input left in +0x60/+0x61 */
             Tile *t = CUR;
@@ -454,20 +454,20 @@ unsigned int MovableEntity::updateMovement()
             if (((signed char)kind_) == 4) {
                 if (k == 0x15 || k == 0x0f || k == 0x10) {
                     if ((unsigned)t->height() != (unsigned)(int)GH && k != 0x0e) {
-                        pendingMove_ = field_60;
-                        field_125 = field_61;
+                        pendingMove_ = queuedMove_;
+                        turnKind_ = queuedTurn_;
                     }
                 } else {
-                    pendingMove_ = field_60;
-                    field_125 = field_61;
+                    pendingMove_ = queuedMove_;
+                    turnKind_ = queuedTurn_;
                 }
             }
-            field_60 = 0;
-            field_61 = 0;
+            queuedMove_ = 0;
+            queuedTurn_ = 0;
         }
     }
 
-    if (field_14e == 0) {
+    if (moveDir_ == 0) {
         /* ─── LAB_00438b45: idle, standing on a tile ────────────────── */
         if (((signed char)kind_) != 9 && ((signed char)kind_) != 3) {
             unsigned crush = CUR->blastHeight();
@@ -486,19 +486,19 @@ unsigned int MovableEntity::updateMovement()
         t = CUR;
         if ((unsigned)(int)GH == (unsigned)t->height()) {
             /* --- glue pad (kind 2) --- */
-            if ((signed char)t->objectMarker() == 2 && t->field217() == 0) {
+            if ((signed char)t->objectMarker() == 2 && t->busy() == 0) {
                 if (field_126 == K_ZERO) {
                     copy8(&field_126, &now_);
                     if (field_156 != 0)
                         snd_at(sound_bf_, (float)(int)GU, (float)(int)GH,
                                -(float)(int)GV, 0);
-                    field_9a = 9;
+                    anim_ = 9;
                 }
                 if (now_ - field_126 <= K_GLUE_MS) {
                     pendingMove_ = 0;               /* stuck: drop the queued move */
                 } else {
                     memset(&field_126, 0, 8);
-                    CUR->setField217(1);        /* pad spent */
+                    CUR->setBusy(1);        /* pad spent */
                 }
             } else {
                 memset(&field_126, 0, 8);
@@ -507,17 +507,17 @@ unsigned int MovableEntity::updateMovement()
             /* --- climb (kind 0x10) --- */
             Tile *c = CUR;
             if ((signed char)c->objectMarker() == 0x10) {
-                unsigned char dir = c->field1f2();
-                if (field_fb == 0)
+                unsigned char dir = c->climbDir();
+                if (climbing_ == 0)
                     snd_at(sound_af_, (float)(int)GU, (float)(int)GH,
                            -(float)(int)GV, 1);
                 facing_  = dir;
-                field_fb = 1;
+                climbing_ = 1;
                 pendingMove_ = dir;
-                field_132 = 150.0;               /* two dwords: 0, 0x4062c000 */
+                animDuration_ = 150.0;               /* two dwords: 0, 0x4062c000 */
             } else {
-                copy8(&field_132, &field_66);
-                field_fb = 0;
+                copy8(&animDuration_, &stepDuration_);
+                climbing_ = 0;
                 if (sound_af_ != 0)
                     CStatic_HaltPlayback(sound_af_);
             }
@@ -525,43 +525,43 @@ unsigned int MovableEntity::updateMovement()
             /* --- teleporter (kind 0x0f) --- */
             if ((signed char)CUR->objectMarker() == 0x0f) {
                 pendingMove_ = 0;
-                if (((signed char)field_ff) == 1 && K_HALF_SEC_MS <= now_ - field_100) {
-                    copy8(&field_100, &now_);
-                    field_ff = 2;
-                    CUR->setField217(0);
+                if (((signed char)teleportPhase_) == 1 && K_HALF_SEC_MS <= now_ - teleportSince_) {
+                    copy8(&teleportSince_, &now_);
+                    teleportPhase_ = 2;
+                    CUR->setBusy(0);
                     unsigned char *base = tileBase_;
                     Tile *here = CUR;
-                    signed char du = (signed char)here->field1ee();
-                    signed char dv = (signed char)here->field1ef();
+                    signed char du = (signed char)here->teleportU();
+                    signed char dv = (signed char)here->teleportV();
                     signed char dh = (signed char)Tile::at(base, du, dv)->height();
                     if (((signed char)kind_) != 9)
-                        here->setField1a5(0);
+                        here->setOccupant(0);
                     cellU_ = du;
                     cellV_ = dv;
                     heightCell_ = dh;
                     posU_ = (float)(int)du;
                     posY_ = (float)(int)dh;
                     posV_ = (float)(int)dv;
-                    CUR->setField217(1);
+                    CUR->setBusy(1);
                     snd_at(sound_bb_, (float)(int)GU, (float)(int)GH,
                            -(float)(int)GV, 0);
                 }
-                if (((signed char)field_ff) == 0) {
-                    copy8(&field_100, &now_);
-                    field_ff = 1;
-                    CUR->setField217(1);
+                if (((signed char)teleportPhase_) == 0) {
+                    copy8(&teleportSince_, &now_);
+                    teleportPhase_ = 1;
+                    CUR->setBusy(1);
                     snd_at(sound_b7_, (float)(int)GU, (float)(int)GH,
                            -(float)(int)GV, 0);
                 }
-                if (((signed char)field_ff) == 2 && K_HALF_SEC_MS <= now_ - field_100) {
-                    field_ff = 0;
-                    CUR->setField217(0);
-                    pendingMove_ = field_108;
+                if (((signed char)teleportPhase_) == 2 && K_HALF_SEC_MS <= now_ - teleportSince_) {
+                    teleportPhase_ = 0;
+                    CUR->setBusy(0);
+                    pendingMove_ = lastMoveDir_;
                 }
             }
 
             /* --- attach to a moving platform (kind 0x0c) --- */
-            if (((signed char)field_11e) == -1) {
+            if (((signed char)slideSlot_) == -1) {
                 unsigned char *base = tileBase_;
                 Tile *here = CUR;
                 if ((signed char)here->objectMarker() == 0x0c) {
@@ -573,28 +573,28 @@ unsigned int MovableEntity::updateMovement()
                         fabsf((p->slidePosV() + (float)K_HALF_D) -
                               (posV_ + K_HALF_F)) <= (float)K_LINK_EPS &&
                         (float)here->height() <= posY_) {
-                        field_11e = here->slideSlot();
+                        slideSlot_ = here->slideSlot();
                     }
                 }
             }
 
             /* --- conveyor (kind 0x15) --- */
             if ((signed char)CUR->objectMarker() == 0x15) {
-                if (field_58 == 0) {
-                    pendingMove_ = field_108;
-                    field_125 = 0;
+                if (conveyorDir_ == 0) {
+                    pendingMove_ = lastMoveDir_;
+                    turnKind_ = 0;
                     snd_at(sound_ab_, (float)(int)GU, (float)(int)GH,
                            -(float)(int)GV, 1);
                 } else {
-                    unsigned char d = (unsigned char)field_58;
+                    unsigned char d = (unsigned char)conveyorDir_;
                     pendingMove_ = d;
-                    field_108 = d;
-                    field_125 = 0;
+                    lastMoveDir_ = d;
+                    turnKind_ = 0;
                 }
-                field_9a = 3;
-                field_58 = (unsigned)field_108;
+                anim_ = 3;
+                conveyorDir_ = (unsigned)lastMoveDir_;
             } else {
-                field_58 = 0;
+                conveyorDir_ = 0;
             }
         }
 
@@ -603,7 +603,7 @@ unsigned int MovableEntity::updateMovement()
             (unsigned)t2->height() != (unsigned)(int)GH) {
             if (sound_ab_ != 0)
                 CStatic_HaltPlayback(sound_ab_);
-            field_58 = 0;
+            conveyorDir_ = 0;
         }
     }
 
@@ -611,15 +611,15 @@ unsigned int MovableEntity::updateMovement()
     {
         Tile *t = CUR;
         if ((signed char)t->objectMarker() == 9 && (unsigned)t->height() == (unsigned)(int)GH)
-            field_9b = 1;
-        if (field_9b != 0 && ((signed char)moveState_) == 0) {
+            onLift_ = 1;
+        if (onLift_ != 0 && ((signed char)moveState_) == 0) {
             heightCell_ = t->height();
             posY_ = CUR->liftLiveHeight();
         }
     }
 
     /* ─── Riding a platform ─────────────────────────────────────────── */
-    if (((signed char)field_11e) != -1 && ((signed char)moveState_) == 0) {
+    if (((signed char)slideSlot_) != -1 && ((signed char)moveState_) == 0) {
         unsigned char *base = tileBase_;
         Tile *here = CUR;
         unsigned pu = here->slideOriginU();
@@ -631,23 +631,23 @@ unsigned int MovableEntity::updateMovement()
         posY_  = p->slidePosY();
         posV_  = p->slidePosV();
         if (((signed char)kind_) != 9)
-            CUR->setField1a5(((signed char)kind_));
+            CUR->setOccupant(((signed char)kind_));
         if (facing_or_reverse((unsigned)pendingMove_, facing_)) {
             if (K_SNAP_EPS < posU_ - (float)(int)GU ||
                 K_SNAP_EPS < posV_ - (float)(int)GV)
                 pendingMove_ = 0;
             else
-                field_11e = 0xff;
+                slideSlot_ = 0xff;
         }
     }
 
-    if (field_120 != 0 && field_ea == 0) {
+    if (falling_ != 0 && gliding_ == 0) {
         pendingMove_ = 0;
-        field_125 = 0;
+        turnKind_ = 0;
     }
 
     /* ─── Ground contact, falling and landing ───────────────────────── */
-    if (field_14e == 0 || field_120 != 0) {
+    if (moveDir_ == 0 || falling_ != 0) {
         signed char restore = 0;
         Tile *t = CUR;
 
@@ -666,21 +666,21 @@ unsigned int MovableEntity::updateMovement()
             signed char h    = GH;
             unsigned char th = t->height();
             go_fall = ((int)th < (int)h) ||
-                      (field_ea != 0 && field_14e != 0) ||
+                      (gliding_ != 0 && moveDir_ != 0) ||
                       ((int)h < (int)th && th != 0 && h > -100);
 
-            if (!go_fall && field_120 != 0) {
+            if (!go_fall && falling_ != 0) {
                 /* ─── LANDED ─────────────────────────────────────── */
                 if (((signed char)kind_) != 9) {
-                    field_fb = 0;
-                    if ((signed char)CUR->field1a5() != 0)
-                        field_86 = 1;           /* landed on someone */
-                    CUR->setField1a5(kind_);
+                    climbing_ = 0;
+                    if ((signed char)CUR->occupant() != 0)
+                        dying_ = 1;           /* landed on someone */
+                    CUR->setOccupant(kind_);
                 }
-                if (field_ea == 0) {
+                if (gliding_ == 0) {
                     signed char h2 = GH;
                     if ((signed char)CUR->objectMarker() == 0x0e ||
-                        ((int)((unsigned)field_111 - (int)h2) < 3 && h2 > 1)) {
+                        ((int)((unsigned)fallStartH_ - (int)h2) < 3 && h2 > 1)) {
                         moveState_ = 0;           /* survived */
                         if (((VoicePool *)sound_cf_) != 0 && ((signed char)kind_) == 4) {
                             Sim_BroadcastPoolVoiceCoordinates(((VoicePool *)sound_cf_),
@@ -703,9 +703,9 @@ unsigned int MovableEntity::updateMovement()
                 }
                 if (sound_c7_ != 0)
                     CStatic_HaltPlayback(sound_c7_);
-                field_ea  = 0;
-                field_9a   = 0;
-                field_120 = 0;
+                gliding_  = 0;
+                anim_   = 0;
+                falling_ = 0;
                 posU_ = (float)(int)GU;
                 posV_ = (float)(int)GV;
                 if (Sim_CheckTileIsRamp(CUR->objectMarker()) != 0)
@@ -717,28 +717,28 @@ unsigned int MovableEntity::updateMovement()
 
         if (go_fall) {
             /* ─── LAB_004397ec ──────────────────────────────────── */
-            if (field_120 == 0) {
+            if (falling_ == 0) {
                 /* not falling yet: start the fall */
-                copy8(&field_132, &field_66);
-                field_fb = 0;
+                copy8(&animDuration_, &stepDuration_);
+                climbing_ = 0;
                 if (sound_af_ != 0)
                     CStatic_HaltPlayback(sound_af_);
-                if (field_9b == 0) {
-                    field_5c   = -3.0f;          /* the bits 0xc0400000 */
-                    field_111  = ((unsigned char)heightCell_);       /* fall start height */
-                    field_120 = 1;
+                if (onLift_ == 0) {
+                    fallSpeed_   = -3.0f;          /* the bits 0xc0400000 */
+                    fallStartH_  = ((unsigned char)heightCell_);       /* fall start height */
+                    falling_ = 1;
                     posY_    = (float)((unsigned char)heightCell_);
-                    copy8(&field_112, &now_);
+                    copy8(&fallStart_, &now_);
                     pendingMove_  = 0;
                 }
             } else {
                 if (((signed char)kind_) != 9)
-                    CUR->setField1a5(0);
+                    CUR->setOccupant(0);
 
-                unsigned elapsed = ftol32(now_ - field_112);
+                unsigned elapsed = ftol32(now_ - fallStart_);
                 double   ms      = (double)elapsed;
 
-                if (field_ea == 0) {
+                if (gliding_ == 0) {
                     /* --- free fall --- */
                     if (sound_c3_ != 0)
                         CStatic_Set3DPosition(sound_c3_, posU_, posY_,
@@ -747,31 +747,31 @@ unsigned int MovableEntity::updateMovement()
                         pendingMove_ = 0;
 
                     double ts = ms * (double)K_MS_TO_S_F;
-                    double h  = ((double)field_5c - ts * (double)fall_accel()) * ts
-                                + (double)(unsigned)field_111;
+                    double h  = ((double)fallSpeed_ - ts * (double)fall_accel()) * ts
+                                + (double)(unsigned)fallStartH_;
                     posY_ = (float)h;
                     heightCell_ = (signed char)((unsigned char)(unsigned)(long long)h + 1);
 
-                    if (field_ea == 0 &&
-                        (int)((unsigned)field_111 - (int)GH) > 2 &&
-                        ((signed char)field_e9) != 0) {
+                    if (gliding_ == 0 &&
+                        (int)((unsigned)fallStartH_ - (int)GH) > 2 &&
+                        ((signed char)glides_) != 0) {
                         /* the paraglider opens: costs one charge */
-                        field_e9 = (signed char)(((signed char)field_e9) - 1);
-                        field_ea = 1;
+                        glides_ = (signed char)(((signed char)glides_) - 1);
+                        gliding_ = 1;
                         snd_at(sound_a3_, posU_, posY_, -posV_, 0);
                         snd_at(sound_c7_, posU_, posY_, -posV_, 1);
                     }
 
-                    int drop = (int)((unsigned)field_111 - (int)GH);
-                    if (drop > 2 && field_ea == 0 && drop < 6 && ((signed char)kind_) != 9) {
-                        field_9a = 8;
+                    int drop = (int)((unsigned)fallStartH_ - (int)GH);
+                    if (drop > 2 && gliding_ == 0 && drop < 6 && ((signed char)kind_) != 9) {
+                        anim_ = 8;
                         snd_at(sound_c3_, posU_, posY_, -posV_, 0);
                     }
 
-                    if (field_ea != 0 ||
-                        (K_GLIDE_DROP < (float)field_111 - (float)(int)GH &&
-                         ((signed char)field_e9) != 0)) {
-                        field_9a = 5;            /* LAB_00439a8f */
+                    if (gliding_ != 0 ||
+                        (K_GLIDE_DROP < (float)fallStartH_ - (float)(int)GH &&
+                         ((signed char)glides_) != 0)) {
+                        anim_ = 5;            /* LAB_00439a8f */
                     }
                 } else {
                     /* --- gliding --- */
@@ -788,8 +788,8 @@ unsigned int MovableEntity::updateMovement()
                         posY_  = (float)(int)(signed char)th;
                     }
                     if (GH < 2)
-                        field_ea = 0;
-                    field_9a = 5;
+                        gliding_ = 0;
+                    anim_ = 5;
                 }
 
                 /* a ramp lets you settle half a step lower */
@@ -804,12 +804,12 @@ unsigned int MovableEntity::updateMovement()
 
         if (restore != 0)
             CUR->setHeight(restore);
-        if (field_120 != 0 && ((signed char)kind_) != 9)
-            CUR->setField1a5(0);
+        if (falling_ != 0 && ((signed char)kind_) != 9)
+            CUR->setOccupant(0);
     }
 
     /* ─── Idle: jump pad (kind 0x0e), then start a queued move ──────── */
-    if (field_14e == 0) {
+    if (moveDir_ == 0) {
         Tile *t = CUR;
         if ((signed char)t->objectMarker() == 0x0e) {
             if ((unsigned)(int)GH == (unsigned)t->height())
@@ -819,12 +819,12 @@ unsigned int MovableEntity::updateMovement()
                 if ((unsigned)CUR->height() == (unsigned)(int)GH) {
                     snd_at(sound_b3_, (float)(int)GU, (float)(int)GH,
                            -(float)(int)GV, 0);
-                    copy8(&field_112, &now_);        /* two dword copies */
+                    copy8(&fallStart_, &now_);        /* two dword copies */
                     field_11a = 1;
                     posY_ = (float)(int)GH;
                 }
             } else {
-                double ts = (now_ - field_112) * (double)K_MS_TO_S_F;
+                double ts = (now_ - fallStart_) * (double)K_MS_TO_S_F;
                 Tile *c = CUR;
                 unsigned char top = c->field1f1();
                 if (posY_ < (float)top) {
@@ -835,16 +835,16 @@ unsigned int MovableEntity::updateMovement()
                     if (sound_b3_ != 0)
                         CStatic_Set3DPosition(sound_b3_, (float)(int)GU,
                                               (float)(int)GH, -(float)(int)GV, 1);
-                    field_9a = 0x0b;
+                    anim_ = 0x0b;
                 } else {
                     if (((signed char)kind_) != 9)
-                        c->setField1a5(0);
+                        c->setOccupant(0);
                     signed char nh = (signed char)CUR->field1f1();
                     field_11a = 0;
                     heightCell_   = nh;
                     posY_    = (float)(int)nh;
-                    pendingMove_  = field_108;
-                    field_9a   = 0x0c;
+                    pendingMove_  = lastMoveDir_;
+                    anim_   = 0x0c;
                 }
             }
         }
@@ -852,115 +852,115 @@ unsigned int MovableEntity::updateMovement()
         if (((signed char)moveState_) != 0)
             pendingMove_ = 0;
 
-        if (field_14e == 0 && pendingMove_ != 0) {
+        if (moveDir_ == 0 && pendingMove_ != 0) {
             /* ─── Start the queued move ─────────────────────────── */
             field_141 = 0;
-            field_14e = (unsigned)pendingMove_;
+            moveDir_ = (unsigned)pendingMove_;
             pendingMove_ = 0;
-            field_13f = 0;
-            field_140 = 0;
-            if (field_fb != 0)
+            stepU_ = 0;
+            stepV_ = 0;
+            if (climbing_ != 0)
                 field_141 = 0xff;
-            if (field_14e > 0x14)
-                field_14e = field_14e - 0x14;   /* subtraction, not a modulo */
-            if (field_14e == 1) field_140 = 0xff;
-            if (field_14e == 2) field_13f = 1;
-            if (field_14e == 3) field_140 = 1;
-            if (field_14e == 4) field_13f = 0xff;
+            if (moveDir_ > 0x14)
+                moveDir_ = moveDir_ - 0x14;   /* subtraction, not a modulo */
+            if (moveDir_ == 1) stepV_ = 0xff;
+            if (moveDir_ == 2) stepU_ = 1;
+            if (moveDir_ == 3) stepV_ = 1;
+            if (moveDir_ == 4) stepU_ = 0xff;
 
             Tile          *here    = CUR;
             unsigned char  h_here  = here->height();
             unsigned char  k_here  = here->objectMarker();
             Tile          *dest    = Tile::at(tileBase_,
-                (int)field_13f + (int)GU, (int)GV + (int)field_140);
+                (int)stepU_ + (int)GU, (int)GV + (int)stepV_);
             unsigned char  h_dest  = dest->height();
             unsigned char  k_dest  = dest->objectMarker();
             field_12e = 0;
 
-            if (field_ea != 0 && k_dest != 0 && (int)GH == (int)h_dest - 1)
-                field_14e = 0;
+            if (gliding_ != 0 && k_dest != 0 && (int)GH == (int)h_dest - 1)
+                moveDir_ = 0;
             if (k_dest == 0x0f)
-                field_ee = (unsigned char)field_14e;
+                field_ee = (unsigned char)moveDir_;
 
             /* occupied destination blocks, with per-kind exceptions */
-            if (facing_or_reverse(((unsigned)field_14e), facing_)) {
-                signed char occ = (signed char)dest->field1a5();
+            if (facing_or_reverse(((unsigned)moveDir_), facing_)) {
+                signed char occ = (signed char)dest->occupant();
                 if (occ != 0) {
                     signed char me = ((signed char)kind_);
                     if (me == 3 || (me == 4 && occ == 3) || (me == 2 && occ != 4))
-                        field_14e = 0;
+                        moveDir_ = 0;
                 }
             }
-            if (field_d3 != 0 && facing_or_reverse(((unsigned)field_14e), facing_))
+            if (field_d3 != 0 && facing_or_reverse(((unsigned)moveDir_), facing_))
                 field_d3 = 0;
 
             if (k_dest == 0x10 && k_here == 0x10) {
-                field_9a = 4;
+                anim_ = 4;
             } else {
-                if (k_here == 9 && facing_or_reverse(((unsigned)field_14e), facing_)) {
+                if (k_here == 9 && facing_or_reverse(((unsigned)moveDir_), facing_)) {
                     if ((float)K_RAMP_EPS < fabsf(posY_ - (float)(int)GH) ||
                         (int)GH == (int)h_dest - 1)
-                        field_14e = 0;
+                        moveDir_ = 0;
                     else
-                        field_9b = 0;
+                        onLift_ = 0;
                 }
                 if (k_dest == 0x16 ||
-                    (k_dest == 0x17 && dest->field217() == 0))
-                    field_14e = 0;
+                    (k_dest == 0x17 && dest->busy() == 0))
+                    moveDir_ = 0;
             }
 
-            if (field_14e != 0 && field_9a > 0xf9)
-                field_9a = 0;
+            if (moveDir_ != 0 && anim_ > 0xf9)
+                anim_ = 0;
 
             /* ─── Ramp bookkeeping: which climb animation, and may we ── */
             if (Sim_CheckTileIsRamp(k_here) != 0) {
                 if (Sim_CheckTileIsRamp(k_dest) == 0 && h_here == h_dest)
-                    field_9a = 0x1b;
-                if (((unsigned)field_14e) == (unsigned)(k_here - 4) ||
-                    ((unsigned)field_14e) == (unsigned)Sim_GetTurnedDirection(
+                    anim_ = 0x1b;
+                if (((unsigned)moveDir_) == (unsigned)(k_here - 4) ||
+                    ((unsigned)moveDir_) == (unsigned)Sim_GetTurnedDirection(
                                       (unsigned char)(k_here - 4), 2)) {
                     if (h_here < h_dest) {
                         field_141  = 1;
                         field_12e = 1;
-                        if (((signed char)field_9a) == 0)
-                            field_9a = (unsigned char)
+                        if (((signed char)anim_) == 0)
+                            anim_ = (unsigned char)
                                 ((-(Sim_CheckTileIsRamp(k_dest) != 0) & 0xfeU) + 0x1a);
                     }
                     if (h_dest == h_here) {
-                        if (((signed char)field_9a) == 0)
-                            field_9a = (unsigned char)
+                        if (((signed char)anim_) == 0)
+                            anim_ = (unsigned char)
                                 ((-(Sim_CheckTileIsRamp(k_dest) != 0) & 0xfeU) + 0x1b);
                         field_12e = 2;
                     }
                 } else if ((unsigned)h_dest == (unsigned)h_here + 1) {
-                    field_14e = 0;
+                    moveDir_ = 0;
                 }
             }
 
             if (Sim_CheckTileIsRamp(k_dest) == 0) {
-                if (field_ea == 0 && Sim_CheckTileIsRamp(k_here) == 0 &&
+                if (gliding_ == 0 && Sim_CheckTileIsRamp(k_here) == 0 &&
                     Sim_CheckTileIsRamp(k_dest) == 0) {
-                    if (((signed char)field_9a) == 0) {
-                        if (((unsigned)field_14e) == (unsigned)facing_)
-                            field_9a = 0x14;
-                        if (((unsigned)field_14e) ==
+                    if (((signed char)anim_) == 0) {
+                        if (((unsigned)moveDir_) == (unsigned)facing_)
+                            anim_ = 0x14;
+                        if (((unsigned)moveDir_) ==
                             (unsigned)Sim_GetTurnedDirection(facing_, 2))
-                            field_9a = 0x15;
+                            anim_ = 0x15;
                     }
                     if ((unsigned)h_dest == (unsigned)h_here + 1)
-                        field_14e = 0;
+                        moveDir_ = 0;
                 }
             } else {
                 if (h_dest < h_here) {
-                    if (((signed char)field_9a) == 0)
-                        field_9a = (unsigned char)
+                    if (((signed char)anim_) == 0)
+                        anim_ = (unsigned char)
                             ((-(Sim_CheckTileIsRamp(k_here) != 0) & 2U) + 0x17);
                     field_141  = 0xff;
                     field_12e = 2;
                 }
                 if (h_dest == h_here) {
-                    if (((signed char)field_9a) == 0)
-                        field_9a = (unsigned char)
+                    if (((signed char)anim_) == 0)
+                        anim_ = (unsigned char)
                             ((-(Sim_CheckTileIsRamp(k_here) != 0) & 2U) + 0x16);
                     field_12e = 1;
                 }
@@ -968,106 +968,106 @@ unsigned int MovableEntity::updateMovement()
 
             /* a second occupancy test, this one on the real step only */
             {
-                signed char occ = (signed char)dest->field1a5();
-                if (occ != 0 && (field_13f != 0 || field_140 != 0) &&
+                signed char occ = (signed char)dest->occupant();
+                if (occ != 0 && (stepU_ != 0 || stepV_ != 0) &&
                     ((signed char)kind_) != 9) {
                     if (field_156 == 0) {
                         if (occ != 4)
-                            field_14e = 0;
+                            moveDir_ = 0;
                     } else if (occ == 3) {
-                        field_14e = 0;
+                        moveDir_ = 0;
                     }
                 }
             }
 
-            if (field_fb != 0 && k_dest != 0x10)
-                field_9a = 0x14;
+            if (climbing_ != 0 && k_dest != 0x10)
+                anim_ = 0x14;
 
-            if (field_14e != 0) {
+            if (moveDir_ != 0) {
                 /* commit: pick the step's start time and move the grid cell */
-                double since = now_ - field_50;
-                if (since <= K_ZERO || field_48 <= since)
-                    copy8(&field_146, &now_);
+                double since = now_ - stepEnd_;
+                if (since <= K_ZERO || stepGrace_ <= since)
+                    copy8(&animStart_, &now_);
                 else
-                    copy8(&field_146, &field_50);
+                    copy8(&animStart_, &stepEnd_);
 
-                if (((signed char)field_11e) == -1) {
-                    if ((unsigned)field_108 != ((unsigned)field_14e)) {
+                if (((signed char)slideSlot_) == -1) {
+                    if ((unsigned)lastMoveDir_ != ((unsigned)moveDir_)) {
                         posU_ = (float)(int)GU;
                         posV_ = (float)(int)GV;
                     }
-                    int nu = (int)GU + (int)field_13f;
-                    int nv = (int)GV + (int)field_140;
+                    int nu = (int)GU + (int)stepU_;
+                    int nv = (int)GV + (int)stepV_;
                     if (nu < 0 || (int)(unsigned)LevelMap::fromTileBase(tileBase_)->extentU() <= nu ||
                         nv < 0 || (int)(unsigned)LevelMap::fromTileBase(tileBase_)->extentV() <= nv) {
-                        field_14e = 0;          /* off the edge of the map */
+                        moveDir_ = 0;          /* off the edge of the map */
                     } else {
-                        cellU_ = (signed char)(GU + field_13f);
-                        cellV_ = (signed char)(GV + field_140);
+                        cellU_ = (signed char)(GU + stepU_);
+                        cellV_ = (signed char)(GV + stepV_);
                         heightCell_ = (signed char)(GH + field_141);
                     }
                 }
 
-                field_44 = (((signed char)field_125) == 3) ? 1 : 0;
+                movingBackwards_ = (((signed char)turnKind_) == 3) ? 1 : 0;
 
-                if (field_ea == 0) {
-                    if (((signed char)field_125) == 2) field_9a = 0x1e;
-                    if (((signed char)field_125) == 4) field_9a = 0x1f;
+                if (gliding_ == 0) {
+                    if (((signed char)turnKind_) == 2) anim_ = 0x1e;
+                    if (((signed char)turnKind_) == 4) anim_ = 0x1f;
                 } else {
-                    field_9a = 5;
+                    anim_ = 5;
                 }
 
                 if (((signed char)kind_) != 9)
-                    CUR->setField1a5(((signed char)kind_));
+                    CUR->setOccupant(((signed char)kind_));
 
-                field_6e = 0;
-                copy8(&field_72, &now_);
+                idleStarted_ = 0;
+                copy8(&lastActive_, &now_);
             }
         }
     }
 
     /* ─── Height curves for the animation states ────────────────────── */
     field_40 = 0;
-    if (((unsigned)field_14e) == 0) {
-        if (field_48 <= now_ - field_50 && ((signed char)field_11e) == -1) {
+    if (((unsigned)moveDir_) == 0) {
+        if (stepGrace_ <= now_ - stepEnd_ && ((signed char)slideSlot_) == -1) {
             posU_ = (float)(int)GU;
             posV_ = (float)(int)GV;
         }
-    } else if (facing_or_reverse(((unsigned)field_14e), facing_)) {
-        double dur  = field_132 * K_TWO_MS;
+    } else if (facing_or_reverse(((unsigned)moveDir_), facing_)) {
+        double dur  = animDuration_ * K_TWO_MS;
         double inv  = K_ONE / dur;
-        double tsec = (now_ - field_146) * K_MS_TO_S_D;
+        double tsec = (now_ - animStart_) * K_MS_TO_S_D;
         double bias = K_ZERO;
-        double frac = now_ - field_146;
+        double frac = now_ - animStart_;
         double gh   = (double)(int)GH;
 
         if (((signed char)kind_) == 9 && field_d8 == 0) {
             bias = tsec * inv - (inv / dur) * tsec * tsec * K_HALF_D;
             posY_ = (float)(gh + bias);
         }
-        switch (((signed char)field_9a)) {
+        switch (((signed char)anim_)) {
         case 0x16:
-            posY_ = (float)(gh + (K_ONE / field_132) * frac * K_HALF_D + bias);
+            posY_ = (float)(gh + (K_ONE / animDuration_) * frac * K_HALF_D + bias);
             break;
         case 0x17:
             posY_ = (float)((gh + bias + K_ONE)
-                              - (K_ONE / field_132) * frac * K_HALF_D);
+                              - (K_ONE / animDuration_) * frac * K_HALF_D);
             break;
         case 0x1a:
             posY_ = (float)((gh + bias) - K_HALF_D
-                              + (K_HALF_D / field_132) * frac);
+                              + (K_HALF_D / animDuration_) * frac);
             break;
         case 0x1b:
             posY_ = (float)(((gh + bias) - K_HALF_D + K_ONE)
-                              - (K_ONE / field_132) * frac * K_HALF_D);
+                              - (K_ONE / animDuration_) * frac * K_HALF_D);
             break;
         case 0x18:
             posY_ = (float)((gh + bias) - K_HALF_D
-                              + (K_ONE / field_132) * frac);
+                              + (K_ONE / animDuration_) * frac);
             break;
         case 0x19:
             posY_ = (float)((gh + bias + K_ONE_HALF)
-                              - (K_ONE / field_132) * frac);
+                              - (K_ONE / animDuration_) * frac);
             break;
         default:
             break;
@@ -1076,31 +1076,31 @@ unsigned int MovableEntity::updateMovement()
 
     /* ─── Interpolate the horizontal position across the step ───────── */
     {
-        double frac = (now_ - field_146) / field_132;
-        switch (field_14e - 1) {
+        double frac = (now_ - animStart_) / animDuration_;
+        switch (moveDir_ - 1) {
         case 0: posV_ = (float)((double)(GV + 1) - frac); break;
         case 1: posU_ = (float)(frac + (double)(GU - 1)); break;
         case 2: posV_ = (float)(frac + (double)(GV - 1)); break;
         case 3: posU_ = (float)((double)(GU + 1) - frac); break;
         default: break;
         }
-        if (field_fb != 0)                      /* climbing: interpolate H */
+        if (climbing_ != 0)                      /* climbing: interpolate H */
             posY_ = (float)((double)(GH + 1) - frac);
     }
 
     /* ─── Footstep / idle bookkeeping ───────────────────────────────── */
-    if (field_44 != 0) {
-        signed char a = ((signed char)field_9a);
+    if (movingBackwards_ != 0) {
+        signed char a = ((signed char)anim_);
         if (a == 0x19 || a == 0x17 || a == 0x1a || a == 0x16 || a == 0x18)
             field_40 = 1;
     }
     {
-        unsigned char a = field_9a;
+        unsigned char a = anim_;
         if (a == 0x17) field_40 = 1;
         if (a == 4)    field_40 = 1;
         if (a < 0xfa && a != 0) {
-            copy8(&field_72, &now_);
-            field_6e = 0;
+            copy8(&lastActive_, &now_);
+            idleStarted_ = 0;
         }
     }
 
@@ -1110,27 +1110,27 @@ unsigned int MovableEntity::updateMovement()
      * reached either by falling out of the `anim == 0` branch or through
      * LAB_0043a90d, and is skipped entirely when +0x6e is clear. */
     bool run_idle;
-    if (field_9a == 0) {
-        double dv = now_ - field_72;
+    if (anim_ == 0) {
+        double dv = now_ - lastActive_;
         if (dv < K_IDLE_MS) {
-            run_idle = (field_6e != 0);          /* LAB_0043a90d */
-        } else if (field_6e == 0) {
-            copy8(&field_146, &now_);
-            field_6e = 1;
+            run_idle = (idleStarted_ != 0);          /* LAB_0043a90d */
+        } else if (idleStarted_ == 0) {
+            copy8(&animStart_, &now_);
+            idleStarted_ = 1;
             run_idle = true;                      /* LAB_0043a90d, now set */
         } else {
             run_idle = true;                      /* falls into the block */
         }
     } else {
-        run_idle = (field_6e != 0);              /* LAB_0043a90d */
+        run_idle = (idleStarted_ != 0);              /* LAB_0043a90d */
     }
 
     if (run_idle) {
-        double dur = field_38;
-        field_9a   = 0xfa;
-        field_132   = dur;
-        if (now_ - field_146 >= dur)
-            copy8(&field_146, &now_);
+        double dur = idleDuration_;
+        anim_   = 0xfa;
+        animDuration_   = dur;
+        if (now_ - animStart_ >= dur)
+            copy8(&animStart_, &now_);
     }
 
     return 0;

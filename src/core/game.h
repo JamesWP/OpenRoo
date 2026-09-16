@@ -397,7 +397,7 @@ public:
     unsigned char  restartCount() const              { return restartCount_; }
     void           setRestartCount(unsigned char n)  { restartCount_ = n; }
     /* Items the level holds (SetupLevelObjects copies its census total);
-     * the all-items bonus needs Player::field21a to reach it. */
+     * the all-items bonus needs Player::itemsCollected to reach it. */
     unsigned short itemTotal() const                 { return itemTotal_; }
     void           setItemTotal(unsigned short n)    { itemTotal_ = n; }
     unsigned char  foesKilled() const                { return foesKilled_; }

@@ -116,11 +116,11 @@ private:
 KAROO_LAYOUT_CHECKS(Foe)
 {
     /* The base sits at 0 (its own fields are asserted in MovableEntity). */
-    KAROO_LAYOUT_AT(posU_,         0x025);
-    KAROO_LAYOUT_AT(pathfinder_,   0x13b);
-    KAROO_LAYOUT_AT(dropContents_, 0x15a);
-    KAROO_LAYOUT_AT(targetU_,      0x15b);
-    KAROO_LAYOUT_AT(targetV_,      0x15c);
+    KAROO_LAYOUT_AT(posU_,             0x025);
+    KAROO_LAYOUT_AT(pathfinder_,       0x13b);
+    KAROO_LAYOUT_AT(dropContents_,     0x15a);
+    KAROO_LAYOUT_AT(targetU_,          0x15b);
+    KAROO_LAYOUT_AT(targetV_,          0x15c);
     /* The original's operator_new(0x15e): the class tiles it exactly. */
     KAROO_LAYOUT_SIZE(0x15e);
 }

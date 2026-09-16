@@ -230,7 +230,7 @@ Sim_ClearGameState(Game *self)
     gamefile_ok = ((Game *)G)->levelCount();
 
     Player *pl = ((Game *)G)->player();
-    pl->setField239(2);                    /* lives */
+    pl->setLives(2);                    /* lives */
     ((Game *)G)->setCameraMode(2);
     /* +0x126 and +0x66 are doubles the original writes as two dwords each,
      * split across this block (+0x1752ef/+0x1752f3, +0x17522f/+0x175233).
@@ -243,11 +243,11 @@ Sim_ClearGameState(Game *self)
     ((Game *)G)->setRestartCount(0);
     pl->setGemsCollected(0);
     pl->setFacing(1);
-    pl->setField14e(0);
-    pl->setField120(0);
+    pl->setMoveDir(0);
+    pl->setFalling(0);
     pl->setMoveState(0);
-    pl->setField66(200.0);                 /* bits 0x4069000000000000 */
-    pl->setField22c(0);
+    pl->setStepDuration(200.0);                 /* bits 0x4069000000000000 */
+    pl->setScore(0);
     *(unsigned int *)(G + 0x170a48) = 0;
 
     if (gamefile_ok == 0) {

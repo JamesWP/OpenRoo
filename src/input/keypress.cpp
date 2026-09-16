@@ -311,7 +311,7 @@ Sim_HandleKeypress(Game *self)
     case 0x1f: rebind(B, (const char *)0x004644c0, 0x1f, -1); break;
     case 0x20: rebind(B, (const char *)0x004644b4, 0x20, -1); break;
     case 0x21:
-        if (((Game *)B)->player()->fieldEa() == 0)
+        if (((Game *)B)->player()->gliding() == 0)
             ((Game *)B)->setCameraTurnsWithPlayer(((Game *)B)->cameraTurnsWithPlayer() == 0);
         Sim_PopMenuNodeFromStack(MENU);
         break;

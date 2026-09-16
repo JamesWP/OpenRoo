@@ -413,7 +413,7 @@ Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 
         ++i;
 
-        MAP->tile(u, v)->setField217((int)value);
+        MAP->tile(u, v)->setBusy((int)value);
 
         /* The bound is re-read from memory every iteration, as the
          * original's `CMP` against [+0x170543 + li] is. */
@@ -463,7 +463,7 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
                     v = sw->cellV(list, inner);
                     *pv = v;
 
-                    if (MAP->tile(u, v)->field217() != 0) {
+                    if (MAP->tile(u, v)->busy() != 0) {
                         unsigned char d =
                             tile_distance((int)u0 - (int)u,
                                           (int)v0 - (int)v);
@@ -644,7 +644,7 @@ Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
                     /* Outer index sits in the v slot, inner in the u slot. */
                     Tile *t = Tile::at(tiles, ui, (int)(signed char)v);
 
-                    if (t->objectMarker() != 0 && t->field1a5() == 0) {
+                    if (t->objectMarker() != 0 && t->occupant() == 0) {
                         /* Point 9: the candidate is the full 80-bit FSQRT
                          * result and is COMPARED at that width... */
                         long double d = sqrtl((long double)(int)(

@@ -37,8 +37,8 @@ Sim_StoreGameStateIntoSaveSlot(Game *self, unsigned int slotArg)
     S->levelIndex          = (unsigned char)(game->levelIndex() + 1);
     S->elapsedGameTime     = (unsigned int)(long long)game->totalPlayTime();
     S->completionNumerator = (unsigned int)game->player()->fieldD8();
-    S->totalScore          = (unsigned int)game->player()->field22c();
-    S->livesRemaining      = (unsigned char)game->player()->field239();
+    S->totalScore          = (unsigned int)game->player()->score();
+    S->livesRemaining      = (unsigned char)game->player()->lives();
     S->inUse               = 1;
     return 1;
 }

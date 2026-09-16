@@ -219,29 +219,29 @@ Bomb::Bomb()
     blastSound_       = 0;                  /* +0x15e */
     zeroSoundSlots();                       /* 0x43ad60 */
     field_7a          = 0;
-    field_82          = 0;
+    dyingStarted_          = 0;
     removeRequested_  = 0;
-    field_86          = 0;
+    dying_          = 0;
     zoneCleared_      = 0;
     field_124         = 1;
     facing_           = 1;
     field_126         = 0.0;                /* two zero dwords */
-    field_58          = 0;
-    field_14e         = 0;
-    field_fb          = 0;
-    field_120         = 0;
+    conveyorDir_          = 0;
+    moveDir_         = 0;
+    climbing_          = 0;
+    falling_         = 0;
     moveState_        = 0;
-    field_ef          = 0;
+    held_          = 0;
     field_e8          = 0;
-    field_66          = 200.0;              /* 0 at +0x66, 0x40690000 at +0x6a */
+    stepDuration_          = 200.0;              /* 0 at +0x66, 0x40690000 at +0x6a */
     field_e4          = 0;
-    field_ff          = 0;
+    teleportPhase_          = 0;
     field_156         = 0;
-    field_e9          = 0;
-    field_11e         = 0xff;
+    glides_          = 0;
+    slideSlot_         = 0xff;
     field_11a         = 0;
-    field_ea          = 0;
-    field_9b          = 0;
+    gliding_          = 0;
+    onLift_          = 0;
     kind_             = 9;
     blastSoundPlayed_ = 0;
     sound_ab_         = 0;                  /* the redundant second clear */
@@ -254,7 +254,7 @@ Bomb::Bomb()
     sound_c7_         = 0;
     sound_cb_         = 0;
     field_d8          = 0;
-    field_48          = 50.0;               /* 0 at +0x48, 0x40490000 at +0x4c */
+    stepGrace_          = 50.0;               /* 0 at +0x48, 0x40490000 at +0x4c */
 }
 
 void *Bomb::scalarDeletingDtor(Bomb *self, unsigned int flags)
@@ -468,7 +468,7 @@ void Bomb::tick()
                               (float)(int)heightCell_,
                               -(float)(int)cellV_,
                               1);
-        if (field_86 == 0)                  /* raised by the BLAST below */
+        if (dying_ == 0)                  /* raised by the BLAST below */
             CStatic_TriggerPlayback(rollSound_, 0);
         else
             CStatic_HaltPlayback(rollSound_);
@@ -479,16 +479,16 @@ void Bomb::tick()
     if (!(diff >= fuse_ms())) {
         pendingMove_ = facing_;
         updateMovement();
-        if (field_14e != 0)
-            field_ef = 1;
+        if (moveDir_ != 0)
+            held_ = 1;
         return;
     }
 
     /* ── BLAST ───────────────────────────────────────────────────────── */
-    field_11e    = 0xff;
-    field_ef     = 1;
-    field_86     = 1;                       /* halts the roll sound */
-    field_14e    = 0;
+    slideSlot_    = 0xff;
+    held_     = 1;
+    dying_     = 1;                       /* halts the roll sound */
+    moveDir_    = 0;
     pendingMove_ = 0;
 
     if (blastSoundPlayed_ == 0) {
@@ -515,9 +515,9 @@ void Bomb::tick()
 
             if ((signed char)t->objectMarker() == TILE_KIND_DESTRUCTIBLE &&
                 (int)heightCell_ == (int)t->height() &&
-                t->field217() == 0) {
+                t->busy() == 0) {
 
-                t->setField217(1);                    /* spent */
+                t->setBusy(1);                    /* spent */
                 t->setBlastTime(now_);
                 t->setField203(1);
                 t->setField20f(1);

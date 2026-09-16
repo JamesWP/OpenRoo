@@ -69,10 +69,13 @@ public:
     signed char cellV() const                  { return cellV_; }
     signed char heightCell() const             { return heightCell_; }
     unsigned char type() const                 { return type_; }
-    int   field82() const                      { return field_82; }
-    /* +0xef: the foe's hold flag; the Player's level-complete flag. */
-    int   fieldEf() const                      { return field_ef; }
-    int   field14e() const                     { return field_14e; }
+    int   dyingStarted() const                 { return dyingStarted_; }
+    /* +0xef: the foe's hold flag; the Player's level-complete flag.
+     * Either way updateMovement() drops the queued move. */
+    int   held() const                         { return held_; }
+    /* +0x14e: the direction being moved in, 0 while still.  1 = -V,
+     * 2 = +U, 3 = +V, 4 = -U (updateMovement's stepU_/stepV_ table). */
+    int   moveDir() const                      { return moveDir_; }
     unsigned char kind() const                 { return kind_; }
     unsigned char homeU() const                { return homeU_; }
     unsigned char homeV() const                { return homeV_; }
@@ -133,38 +136,46 @@ protected:
     unsigned char      *tileBase_;        /* +0x034  Game::tileBase()       */
     /* One double, though the foe ctor writes it as two dwords: 1000.0
      * (0 at +0x38, 0x408f4000 at +0x3c). */
-    double              field_38;         /* +0x038                         */
+    double              idleDuration_; /* +0x038  ms the idle anim runs   */
     int                 field_40;         /* +0x040                         */
-    int                 field_44;         /* +0x044                         */
+    int                 movingBackwards_; /* +0x044  turnKind_ 3: reversing */
     /* One double, though the ctors write it as two dwords: bomb 50.0
      * (0x40490000 at +0x4c), foe and player 20.0 (0x40340000). */
-    double              field_48;         /* +0x048                         */
-    double              field_50;         /* +0x050                         */
-    int                 field_58;         /* +0x058                         */
+    double              stepGrace_;    /* +0x048  } the window after a    */
+    double              stepEnd_;      /* +0x050  } step (animStart_ +
+                                       *   animDuration_) ends          */
+    int                 conveyorDir_;  /* +0x058  conveyor: last way sent */
     /* Set as the bits 0xc0400000, i.e. -3.0f, and read as a float. */
-    float               field_5c;         /* +0x05c                         */
-    unsigned char       field_60;         /* +0x060                         */
-    unsigned char       field_61;         /* +0x061                         */
+    float               fallSpeed_;    /* +0x05c  fall velocity, -3.0     */
+    unsigned char       queuedMove_;   /* +0x060  } re-queued by kind 4   */
+    unsigned char       queuedTurn_;   /* +0x061  } after a blocked step  */
     /* The foe's behaviour type (1 escort, 2 seek listed tile, 3 seek
      * flagged tile, 4 return to post, 5 follow, 7 farthest -- GameTick's
      * foe loop).  Read signed by the step and the chase. */
     unsigned char       type_;            /* +0x062                         */
-    unsigned char       field_63;         /* +0x063  foe: consumed a tile   */
-    unsigned short      field_64;         /* +0x064  foe: chase speed       */
+    unsigned char       pickedUp_;    /* +0x063  the tile contents taken
+                                       * this tick, 0 if none          */
+    unsigned short      chaseSpeed_;  /* +0x064  foe: chase speed        */
     /* One double: 200.0 for bomb and player (0x40690000 at +0x6a); the foe
      * spawn stores 500.0 (kind 2) or 700.0 (kind 3). */
-    double              field_66;         /* +0x066                         */
-    int                 field_6e;         /* +0x06e                         */
-    double              field_72;         /* +0x072  foe: spawn time        */
+    /* +0x066: ms one cell step takes -- animDuration_ resets to it.
+     * Player 100/200/400 by state, foe 500/700 by type, bomb 200. */
+    double              stepDuration_;
+    int                 idleStarted_;  /* +0x06e  the idle anim is running */
+    /* +0x072: the clock the idle timeout counts from.  The foe spawner
+     * staggers it by 1500 ms per foe, so idle animations do not sync. */
+    double              lastActive_;
     void               *field_7a;         /* +0x07a  RenderGameFrame reads
                                                      and writes it          */
     int                 removeRequested_; /* +0x07e                         */
-    int                 field_82;         /* +0x082  read by RenderGameFrame */
-    int                 field_86;         /* +0x086                         */
-    double              field_8a;         /* +0x08a                         */
+    int                 dyingStarted_; /* +0x082  read by RenderGameFrame */
+    int                 dying_;        /* +0x086  crushed / blasted       */
+    double              dyingSince_;   /* +0x08a  removed 0.5 s later     */
     unsigned char       gap_092[0x09a - 0x092];
-    unsigned char       field_9a;         /* +0x09a                         */
-    int                 field_9b;         /* +0x09b                         */
+    /* +0x09a: the animation state.  0 = still, 0xfa = the idle anim;
+     * 0x16..0x1b carry the height curves updateMovement() interpolates. */
+    unsigned char       anim_;
+    int                 onLift_;       /* +0x09b  riding a lift (kind 9)  */
     VoicePool          *pool_9f_;         /* +0x09f  foe: a voice pool      */
     CStaticSoundbuffer *sound_a3_;        /* +0x0a3  } the twelve handles   */
     CStaticSoundbuffer *sound_a7_;        /* +0x0a7  } zeroSoundSlots()     */
@@ -181,42 +192,44 @@ protected:
     int                 field_d3;         /* +0x0d3                         */
     unsigned char       field_d7;         /* +0x0d7  foe: switch it is on   */
     int                 field_d8;         /* +0x0d8                         */
-    double              field_dc;         /* +0x0dc  foe: last contact time */
+    double              lastContact_;  /* +0x0dc  foe: last contact time  */
     int                 field_e4;         /* +0x0e4                         */
     unsigned char       field_e8;         /* +0x0e8                         */
-    unsigned char       field_e9;         /* +0x0e9                         */
-    int                 field_ea;         /* +0x0ea                         */
+    unsigned char       glides_;       /* +0x0e9  paraglider charges      */
+    int                 gliding_;      /* +0x0ea  the paraglider is open  */
     unsigned char       field_ee;         /* +0x0ee                         */
-    int                 field_ef;         /* +0x0ef                         */
+    int                 held_;         /* +0x0ef  queued moves dropped    */
     unsigned char       gap_0f3[0x0fb - 0x0f3];
-    int                 field_fb;         /* +0x0fb                         */
-    unsigned char       field_ff;         /* +0x0ff                         */
-    double              field_100;        /* +0x100                         */
-    unsigned char       field_108;        /* +0x108                         */
+    int                 climbing_;     /* +0x0fb  stepping up a height    */
+    unsigned char       teleportPhase_;/* +0x0ff 0 idle, 1 armed, 2 sent  */
+    double              teleportSince_;/* +0x100 clock the phase began    */
+    unsigned char       lastMoveDir_;  /* +0x108  the last direction moved */
     unsigned char       gap_109[0x111 - 0x109];
-    unsigned char       field_111;        /* +0x111                         */
-    double              field_112;        /* +0x112                         */
+    unsigned char       fallStartH_;   /* +0x111  height the fall began at*/
+    double              fallStart_;    /* +0x112  clock the fall began    */
     int                 field_11a;        /* +0x11a                         */
-    unsigned char       field_11e;        /* +0x11e                         */
+    unsigned char       slideSlot_;    /* +0x11e  slide ridden, 0xff none */
     unsigned char       moveState_;       /* +0x11f  4 = despawn            */
-    int                 field_120;        /* +0x120                         */
+    int                 falling_;      /* +0x120  in the air              */
     unsigned char       field_124;        /* +0x124                         */
-    unsigned char       field_125;        /* +0x125                         */
+    /* +0x125: pendingMove_ relative to facing_ -- 1 forward, 2 and 4 the
+     * two turns, 3 reverse.  0 when the move needs no turn. */
+    unsigned char       turnKind_;
     /* One double, though the ctors write it as two zero dwords. */
     double              field_126;        /* +0x126                         */
     int                 field_12e;        /* +0x12e                         */
-    double              field_132;        /* +0x132                         */
+    double              animDuration_; /* +0x132  ms the phase lasts      */
     unsigned char       gap_13a[0x13b - 0x13a];
     FoePath            *pathfinder_;      /* +0x13b  foe: its FoePath       */
-    signed char         field_13f;        /* +0x13f  } a cell offset, read  */
-    signed char         field_140;        /* +0x140  } signed               */
+    signed char         stepU_;        /* +0x13f  } moveDir_ as a cell   */
+    signed char         stepV_;        /* +0x140  } step, -1 / 0 / +1    */
     signed char         field_141;        /* +0x141  }                      */
-    unsigned char       field_142;        /* +0x142  } player: the marker-4 */
-    unsigned char       field_143;        /* +0x143  } cell (u, v, h)       */
-    unsigned char       field_144;        /* +0x144  }                      */
+    unsigned char       markerCellU_;  /* +0x142  } player: the marker-4 */
+    unsigned char       markerCellV_;  /* +0x143  } cell (u, v, h)       */
+    unsigned char       markerCellH_;  /* +0x144  }                      */
     unsigned char       pendingMove_;     /* +0x145                         */
-    double              field_146;        /* +0x146                         */
-    int                 field_14e;        /* +0x14e                         */
+    double              animStart_;    /* +0x146  clock the phase began   */
+    int                 moveDir_;     /* +0x14e  0 = still, else 1..4   */
     unsigned char       kind_;            /* +0x152  bomb 9; foe from spawn */
     unsigned char       homeU_;           /* +0x153  } foe: its spawn cell  */
     unsigned char       homeV_;           /* +0x154  }                      */
@@ -229,93 +242,93 @@ private:
 
 KAROO_LAYOUT_CHECKS(MovableEntity)
 {
-    KAROO_LAYOUT_AT(now_,             0x004);
-    KAROO_LAYOUT_AT(clock_,           0x00c);
-    KAROO_LAYOUT_AT(tickStep_,          0x010);
-    KAROO_LAYOUT_AT(facing_,          0x014);
-    KAROO_LAYOUT_AT(tickStepCopy_,      0x015);
-    KAROO_LAYOUT_AT(posU_,            0x025);
-    KAROO_LAYOUT_AT(posY_,            0x029);
-    KAROO_LAYOUT_AT(posV_,            0x02d);
-    KAROO_LAYOUT_AT(cellU_,           0x031);
-    KAROO_LAYOUT_AT(cellV_,           0x032);
-    KAROO_LAYOUT_AT(heightCell_,      0x033);
-    KAROO_LAYOUT_AT(tileBase_,        0x034);
-    KAROO_LAYOUT_AT(field_38,         0x038);
-    KAROO_LAYOUT_AT(field_40,         0x040);
-    KAROO_LAYOUT_AT(field_44,         0x044);
-    KAROO_LAYOUT_AT(field_48,         0x048);
-    KAROO_LAYOUT_AT(field_50,         0x050);
-    KAROO_LAYOUT_AT(field_58,         0x058);
-    KAROO_LAYOUT_AT(field_5c,         0x05c);
-    KAROO_LAYOUT_AT(field_60,         0x060);
-    KAROO_LAYOUT_AT(field_61,         0x061);
-    KAROO_LAYOUT_AT(type_,            0x062);
-    KAROO_LAYOUT_AT(field_63,         0x063);
-    KAROO_LAYOUT_AT(field_64,         0x064);
-    KAROO_LAYOUT_AT(field_66,         0x066);
-    KAROO_LAYOUT_AT(field_6e,         0x06e);
-    KAROO_LAYOUT_AT(field_72,         0x072);
-    KAROO_LAYOUT_AT(field_7a,         0x07a);
-    KAROO_LAYOUT_AT(removeRequested_, 0x07e);
-    KAROO_LAYOUT_AT(field_82,         0x082);
-    KAROO_LAYOUT_AT(field_86,         0x086);
-    KAROO_LAYOUT_AT(field_8a,         0x08a);
-    KAROO_LAYOUT_AT(field_9a,         0x09a);
-    KAROO_LAYOUT_AT(field_9b,         0x09b);
-    KAROO_LAYOUT_AT(pool_9f_,         0x09f);
-    KAROO_LAYOUT_AT(sound_a3_,        0x0a3);
-    KAROO_LAYOUT_AT(sound_a7_,        0x0a7);
-    KAROO_LAYOUT_AT(sound_ab_,        0x0ab);
-    KAROO_LAYOUT_AT(sound_af_,        0x0af);
-    KAROO_LAYOUT_AT(sound_b3_,        0x0b3);
-    KAROO_LAYOUT_AT(sound_b7_,        0x0b7);
-    KAROO_LAYOUT_AT(sound_bb_,        0x0bb);
-    KAROO_LAYOUT_AT(sound_bf_,        0x0bf);
-    KAROO_LAYOUT_AT(sound_c3_,        0x0c3);
-    KAROO_LAYOUT_AT(sound_c7_,        0x0c7);
-    KAROO_LAYOUT_AT(sound_cb_,        0x0cb);
-    KAROO_LAYOUT_AT(sound_cf_,        0x0cf);
-    KAROO_LAYOUT_AT(field_d3,         0x0d3);
-    KAROO_LAYOUT_AT(field_d7,         0x0d7);
-    KAROO_LAYOUT_AT(field_d8,         0x0d8);
-    KAROO_LAYOUT_AT(field_dc,         0x0dc);
-    KAROO_LAYOUT_AT(field_e4,         0x0e4);
-    KAROO_LAYOUT_AT(field_e8,         0x0e8);
-    KAROO_LAYOUT_AT(field_e9,         0x0e9);
-    KAROO_LAYOUT_AT(field_ea,         0x0ea);
-    KAROO_LAYOUT_AT(field_ee,         0x0ee);
-    KAROO_LAYOUT_AT(field_ef,         0x0ef);
-    KAROO_LAYOUT_AT(field_fb,         0x0fb);
-    KAROO_LAYOUT_AT(field_ff,         0x0ff);
-    KAROO_LAYOUT_AT(field_100,        0x100);
-    KAROO_LAYOUT_AT(field_108,        0x108);
-    KAROO_LAYOUT_AT(field_111,        0x111);
-    KAROO_LAYOUT_AT(field_112,        0x112);
-    KAROO_LAYOUT_AT(field_11a,        0x11a);
-    KAROO_LAYOUT_AT(field_11e,        0x11e);
-    KAROO_LAYOUT_AT(moveState_,       0x11f);
-    KAROO_LAYOUT_AT(field_120,        0x120);
-    KAROO_LAYOUT_AT(field_124,        0x124);
-    KAROO_LAYOUT_AT(field_125,        0x125);
-    KAROO_LAYOUT_AT(field_126,        0x126);
-    KAROO_LAYOUT_AT(field_12e,        0x12e);
-    KAROO_LAYOUT_AT(field_132,        0x132);
-    KAROO_LAYOUT_AT(pathfinder_,      0x13b);
-    KAROO_LAYOUT_AT(field_13f,        0x13f);
-    KAROO_LAYOUT_AT(field_140,        0x140);
-    KAROO_LAYOUT_AT(field_141,        0x141);
-    KAROO_LAYOUT_AT(field_142,        0x142);
-    KAROO_LAYOUT_AT(field_143,        0x143);
-    KAROO_LAYOUT_AT(field_144,        0x144);
-    KAROO_LAYOUT_AT(pendingMove_,     0x145);
-    KAROO_LAYOUT_AT(field_146,        0x146);
-    KAROO_LAYOUT_AT(field_14e,        0x14e);
-    KAROO_LAYOUT_AT(kind_,            0x152);
-    KAROO_LAYOUT_AT(homeU_,           0x153);
-    KAROO_LAYOUT_AT(homeV_,           0x154);
-    KAROO_LAYOUT_AT(homeH_,           0x155);
-    KAROO_LAYOUT_AT(field_156,        0x156);
+    KAROO_LAYOUT_AT(now_,              0x004);
+    KAROO_LAYOUT_AT(clock_,            0x00c);
+    KAROO_LAYOUT_AT(tickStep_,         0x010);
+    KAROO_LAYOUT_AT(facing_,           0x014);
+    KAROO_LAYOUT_AT(tickStepCopy_,     0x015);
+    KAROO_LAYOUT_AT(posU_,             0x025);
+    KAROO_LAYOUT_AT(posY_,             0x029);
+    KAROO_LAYOUT_AT(posV_,             0x02d);
+    KAROO_LAYOUT_AT(cellU_,            0x031);
+    KAROO_LAYOUT_AT(cellV_,            0x032);
+    KAROO_LAYOUT_AT(heightCell_,       0x033);
+    KAROO_LAYOUT_AT(tileBase_,         0x034);
+    KAROO_LAYOUT_AT(idleDuration_,          0x038);
+    KAROO_LAYOUT_AT(field_40,          0x040);
+    KAROO_LAYOUT_AT(movingBackwards_,  0x044);
+    KAROO_LAYOUT_AT(stepGrace_,          0x048);
+    KAROO_LAYOUT_AT(stepEnd_,          0x050);
+    KAROO_LAYOUT_AT(conveyorDir_,      0x058);
+    KAROO_LAYOUT_AT(fallSpeed_,        0x05c);
+    KAROO_LAYOUT_AT(queuedMove_,       0x060);
+    KAROO_LAYOUT_AT(queuedTurn_,       0x061);
+    KAROO_LAYOUT_AT(type_,             0x062);
+    KAROO_LAYOUT_AT(pickedUp_,         0x063);
+    KAROO_LAYOUT_AT(chaseSpeed_,       0x064);
+    KAROO_LAYOUT_AT(stepDuration_,     0x066);
+    KAROO_LAYOUT_AT(idleStarted_,      0x06e);
+    KAROO_LAYOUT_AT(lastActive_,       0x072);
+    KAROO_LAYOUT_AT(field_7a,          0x07a);
+    KAROO_LAYOUT_AT(removeRequested_,  0x07e);
+    KAROO_LAYOUT_AT(dyingStarted_,     0x082);
+    KAROO_LAYOUT_AT(dying_,            0x086);
+    KAROO_LAYOUT_AT(dyingSince_,       0x08a);
+    KAROO_LAYOUT_AT(anim_,             0x09a);
+    KAROO_LAYOUT_AT(onLift_,           0x09b);
+    KAROO_LAYOUT_AT(pool_9f_,          0x09f);
+    KAROO_LAYOUT_AT(sound_a3_,         0x0a3);
+    KAROO_LAYOUT_AT(sound_a7_,         0x0a7);
+    KAROO_LAYOUT_AT(sound_ab_,         0x0ab);
+    KAROO_LAYOUT_AT(sound_af_,         0x0af);
+    KAROO_LAYOUT_AT(sound_b3_,         0x0b3);
+    KAROO_LAYOUT_AT(sound_b7_,         0x0b7);
+    KAROO_LAYOUT_AT(sound_bb_,         0x0bb);
+    KAROO_LAYOUT_AT(sound_bf_,         0x0bf);
+    KAROO_LAYOUT_AT(sound_c3_,         0x0c3);
+    KAROO_LAYOUT_AT(sound_c7_,         0x0c7);
+    KAROO_LAYOUT_AT(sound_cb_,         0x0cb);
+    KAROO_LAYOUT_AT(sound_cf_,         0x0cf);
+    KAROO_LAYOUT_AT(field_d3,          0x0d3);
+    KAROO_LAYOUT_AT(field_d7,          0x0d7);
+    KAROO_LAYOUT_AT(field_d8,          0x0d8);
+    KAROO_LAYOUT_AT(lastContact_,          0x0dc);
+    KAROO_LAYOUT_AT(field_e4,          0x0e4);
+    KAROO_LAYOUT_AT(field_e8,          0x0e8);
+    KAROO_LAYOUT_AT(glides_,           0x0e9);
+    KAROO_LAYOUT_AT(gliding_,          0x0ea);
+    KAROO_LAYOUT_AT(field_ee,          0x0ee);
+    KAROO_LAYOUT_AT(held_,             0x0ef);
+    KAROO_LAYOUT_AT(climbing_,         0x0fb);
+    KAROO_LAYOUT_AT(teleportPhase_,    0x0ff);
+    KAROO_LAYOUT_AT(teleportSince_,    0x100);
+    KAROO_LAYOUT_AT(lastMoveDir_,      0x108);
+    KAROO_LAYOUT_AT(fallStartH_,       0x111);
+    KAROO_LAYOUT_AT(fallStart_,        0x112);
+    KAROO_LAYOUT_AT(field_11a,         0x11a);
+    KAROO_LAYOUT_AT(slideSlot_,        0x11e);
+    KAROO_LAYOUT_AT(moveState_,        0x11f);
+    KAROO_LAYOUT_AT(falling_,          0x120);
+    KAROO_LAYOUT_AT(field_124,         0x124);
+    KAROO_LAYOUT_AT(turnKind_,         0x125);
+    KAROO_LAYOUT_AT(field_126,         0x126);
+    KAROO_LAYOUT_AT(field_12e,         0x12e);
+    KAROO_LAYOUT_AT(animDuration_,     0x132);
+    KAROO_LAYOUT_AT(pathfinder_,       0x13b);
+    KAROO_LAYOUT_AT(stepU_,            0x13f);
+    KAROO_LAYOUT_AT(stepV_,            0x140);
+    KAROO_LAYOUT_AT(field_141,         0x141);
+    KAROO_LAYOUT_AT(markerCellU_,         0x142);
+    KAROO_LAYOUT_AT(markerCellV_,         0x143);
+    KAROO_LAYOUT_AT(markerCellH_,         0x144);
+    KAROO_LAYOUT_AT(pendingMove_,      0x145);
+    KAROO_LAYOUT_AT(animStart_,        0x146);
+    KAROO_LAYOUT_AT(moveDir_,          0x14e);
+    KAROO_LAYOUT_AT(kind_,             0x152);
+    KAROO_LAYOUT_AT(homeU_,            0x153);
+    KAROO_LAYOUT_AT(homeV_,            0x154);
+    KAROO_LAYOUT_AT(homeH_,            0x155);
+    KAROO_LAYOUT_AT(field_156,         0x156);
     /* Relied on: every derived class's own fields start here. */
     KAROO_LAYOUT_SIZE(0x15a);
 }
