@@ -410,9 +410,9 @@ public:
     void           setTimeElapsed(unsigned int ms)   { map_.setTimeElapsed(ms); }
 
     /* ── vitality and the score tally ───────────────────────────────── */
-    /* The tally's "vitality" row, which pays it 1:1: Player::fieldD8 per
-     * second of field_170a65, times 25, capped at 100 -- a RATE, not
-     * health (gamestate.cpp's note: it varies with movement).  Named for
+    /* The tally's "vitality" row, which pays it 1:1:
+     * Player::completionNumerator per second of field_170a65, times 25,
+     * capped at 100 -- a RATE, not health (gamestate.cpp's note: it varies with movement).  Named for
      * the row it feeds, as determinism.cpp and the manifest already do. */
     unsigned char  vitalityPercent() const           { return vitalityPercent_; }
     void           setVitalityPercent(unsigned char p) { vitalityPercent_ = p; }

@@ -275,7 +275,7 @@ Foe::Foe()
     moveState_       = 0;
     held_         = 0;
     field_e8         = 0;
-    field_e4         = 0;
+    bombDropRequest_         = 0;
     teleportPhase_         = 0;
     field_156        = 0;
     glides_         = 0;
@@ -586,7 +586,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     now_        = *clock_;
 
     /* ── 2. The contact test ─────────────────────────────────────────── */
-    if ((signed char)kind_ == 3 && held_ == 0 && field_e4 == 0) {
+    if ((signed char)kind_ == 3 && held_ == 0 && bombDropRequest_ == 0) {
         /* b: the player zero-extended, the foe's own sign-extended. */
         if (iabs_orig((int)playerU - (int)cellU_) < 2 &&
             iabs_orig((int)playerV - (int)cellV_) < 2) {
@@ -605,7 +605,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
                 }
                 if (!s_fx_nocontact) {
                     lastContact_ = now_;          /* two dword MOVs originally */
-                    field_e4 = 1;
+                    bombDropRequest_ = 1;
                 }
             }
         }
@@ -967,7 +967,7 @@ void Foe::chooseTarget(Game *game, int hold,
 /* The same "too late leaves the flag" shape as the player's bomb drop. */
 void Foe::dropBomb(Game *game)
 {
-    if (field_e4 == 0 || type_ == 2)
+    if (bombDropRequest_ == 0 || type_ == 2)
         return;
     int spawn = 1, offset = 0;
     if (moveDir_ != 0) {
@@ -987,7 +987,7 @@ void Foe::dropBomb(Game *game)
     else
         Bomb::spawn(game, (unsigned char)cellU_, (unsigned char)cellV_,
                           (unsigned char)heightCell_, facing_);
-    field_e4 = 0;
+    bombDropRequest_ = 0;
 }
 
 /* sqrt((dz^2 + dy^2) + dx^2) < 0.5, at 80 bits. */

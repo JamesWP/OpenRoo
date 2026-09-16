@@ -441,9 +441,9 @@ Sim_SetupLevelObjects(Game *self)
     GAME->setField42252(0);
     GAME->setField173b1a(0);
     PL->setMovingBackwards(0);
-    PL->setFieldFf(0);
+    PL->setTeleportPhase(0);
     PL->setField11a(0);
-    PL->setField58(0);
+    PL->setConveyorDir(0);
 
     /* ── tear down the previous level ──────────────────────────────────── */
     LiftObject::purgeAll((Game *)G);
@@ -480,7 +480,7 @@ Sim_SetupLevelObjects(Game *self)
      * three bytes keep the previous level's values.  Preserved. */
     Sim_FindTileByTypeMarker(M, 4, PL->markerCellRef());
 
-    PL->setField20e((float)(int)(signed char)PL->markerCellU(),
+    PL->setMarker((float)(int)(signed char)PL->markerCellU(),
                     (float)(int)(signed char)PL->markerCellH(),
                     (float)(int)(signed char)PL->markerCellV());
 
@@ -801,8 +801,8 @@ next_row:
     PL->setSwitchSlot(0xff);
     PL->setFieldD3(0);
     PL->setOnLift(0);
-    PL->setFieldE4(0);
-    PL->setFieldD8(0);
+    PL->setBombDropRequest(0);
+    PL->setCompletionNumerator(0);
     ((Game *)G)->setTimeLimit(M->fileTimeLimit());
     PL->setClock(((Game *)G)->clock());
 

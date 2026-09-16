@@ -20,7 +20,7 @@ struct __attribute__((packed)) SaveSlot {
     unsigned char levelIndex;           /* +0x14  the level to resume at */
     unsigned char livesRemaining;       /* +0x15 */
     unsigned int  totalScore;           /* +0x16 */
-    unsigned int  completionNumerator;  /* +0x1a  Player::fieldD8 */
+    unsigned int  completionNumerator;  /* +0x1a  Player::completionNumerator */
     unsigned int  elapsedGameTime;      /* +0x1e  (int)Game::totalPlayTime */
     unsigned int  inUse;                /* +0x22  1 = loadable */
     unsigned int  unusedTail;           /* +0x26  never read or written */
