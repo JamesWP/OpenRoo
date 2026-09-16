@@ -407,7 +407,7 @@ Sim_SetupLevelObjects(Game *self)
     /* ── run state ─────────────────────────────────────────────────────── */
     /* The level-completed node 0x28's child count: 2 or 1 by mode. */
     ((Game *)G)->menu()->setChildCount(0x28, (GAME->nextLevelBonus() == 0) ? 2 : 1);
-    PL->setField1ca(10.0);                /* two dwords: 0, 0x40240000 */
+    PL->setLastSecondsMark(10.0);                /* two dwords: 0, 0x40240000 */
 
     GameLog_LogMessage(GAME_LOGGER_VA, 2, S_INIT_STARTED);
 
@@ -465,7 +465,7 @@ Sim_SetupLevelObjects(Game *self)
     ((Game *)G)->setSlideCount(0);
     GAME->setBombCount(0);
     ((Game *)G)->setSwitchMax(0);
-    PL->setField230(0);
+    PL->setLastRoll(0);
 
     PL->setTileBase(M->tileBase());
 
@@ -794,10 +794,10 @@ next_row:
     PL->clearEffects();
 
     PL->setTickStep(((Game *)G)->tickStep());
-    PL->setField1e6(0);
-    PL->setField1da(0);
-    PL->setField20a(0);
-    PL->setField1fe(0);
+    PL->setEffect8Active(0);
+    PL->setEffectBActive(0);
+    PL->setEffectAActive(0);
+    PL->setEffectCActive(0);
     PL->setSwitchSlot(0xff);
     PL->setFieldD3(0);
     PL->setOnLift(0);
@@ -837,7 +837,7 @@ next_row:
 
     PL->setGlides(0);
     PL->setFieldE8(0);
-    PL->setClimbDir(0);
+    PL->setEffectDActive(0);
     PL->setFalling(0);
     PL->setIdleStarted(0);
     PL->setGliding(0);

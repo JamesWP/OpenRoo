@@ -396,11 +396,11 @@ Sim_GameTick(Game *self, double dt, double now)
                                 (long double)k001;
             double rem64 = (double)rem80;
             if (rem80 > 11.0L || pl->moveState() == 3) {
-                pl->setField1ca(10.0);
-            } else if ((long double)pl->field1ca() > (long double)rem64) {
+                pl->setLastSecondsMark(10.0);
+            } else if ((long double)pl->lastSecondsMark() > (long double)rem64) {
                 if (((Game *)B)->fixedSounds()->lastSeconds != NULL)
                     CStatic_TriggerPlayback(((Game *)B)->fixedSounds()->lastSeconds, 0);
-                pl->setField1ca(crt_floor(rem64));
+                pl->setLastSecondsMark(crt_floor(rem64));
             }
         }
         if (pl->moveState() == 0)
@@ -490,7 +490,7 @@ Sim_GameTick(Game *self, double dt, double now)
             }
         }
 
-        int hold = ((unsigned int)pl->field1e6() == 0 && STATE == 1) ? 0 : 1;
+        int hold = ((unsigned int)pl->effect8Active() == 0 && STATE == 1) ? 0 : 1;
         if (STATE == 3)
             hold = 1;
         if (pl->moveState() != 0)
@@ -575,11 +575,11 @@ Sim_GameTick(Game *self, double dt, double now)
     if (STATE != 2) {
         if (DEB != 0x0d && KEY(0x0d) != 0 && pl->moveState() != 0 && STATE == 1) {
             ((Game *)B)->setRestartCount((unsigned char)(((Game *)B)->restartCount() + 1));
-            int lives = pl->field239();
+            int lives = pl->lives();
             int bonus = (int)MAP->bonus();
             int restart_tail = 1;
             if (lives > 0 && bonus == 0) {
-                pl->setField239(lives - 1);              /* the DEC at 0x4160d6 */
+                pl->setLives(lives - 1);              /* the DEC at 0x4160d6 */
                 Sim_RestoreTileGridFromSnapshot((Game *)B);
                 Sim_SetupLevelObjects((Game *)B);
             } else if (lives <= 0 && bonus == 0) {
@@ -623,7 +623,7 @@ Sim_GameTick(Game *self, double dt, double now)
         }
     } else if (DEB != 0x0d && KEY(0x0d) != 0 && ((Game *)B)->tallyDone() != 0) {
         unsigned int r = ((Game *)B)->highScores()->insert(
-            (unsigned int)pl->field22c(), (unsigned char)(((Game *)B)->levelIndex() + 1));
+            (unsigned int)pl->score(), (unsigned char)(((Game *)B)->levelIndex() + 1));
         if ((unsigned char)r < 0xff) {
             STATE = 6;
             if (((Game *)B)->musicOn() != 0)

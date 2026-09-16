@@ -236,10 +236,10 @@ bool worldstate_observe(Observation *obs)
     obs->gems_collected    = pl->gemsCollected();
     obs->gems_required     = ((Game *)g)->gemsRequired();
     obs->foes_killed       = ((const Game *)g)->foesKilled();
-    obs->lives             = (BYTE)pl->field239();
+    obs->lives             = (BYTE)pl->lives();
     obs->level_complete    = pl->held();
     obs->crystals_in_level = ((const Game *)g)->field_42252();
-    obs->freeze_timer      = (DWORD)pl->field1e6();
+    obs->freeze_timer      = (DWORD)pl->effect8Active();
     return true;
 }
 

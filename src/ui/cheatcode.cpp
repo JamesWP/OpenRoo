@@ -224,19 +224,19 @@ Sim_HandleTypedCheatCode(Game *self)
     }
 
     if (streq(buf, "mausuruh"))
-        pl->setField239(pl->field239() + (s_fx ? 2 : 1));
+        pl->setLives(pl->lives() + (s_fx ? 2 : 1));
     if (streq(buf, "sportsman"))
         pl->setGlides((unsigned char)(pl->glides() + 1));
     if (streq(buf, "boommaker"))
         pl->setFieldE8((unsigned char)(pl->fieldE8() + 10));
 
     if (streq(buf, "notme")) {
-        if (pl->climbDir() == 0)
+        if (pl->effectDActive() == 0)
             pl->appendEffect(0x0d);
-        pl->setClimbDir(1);
+        pl->setEffectDActive(1);
         pl->setKind(3);
         pl->curTile()->setOccupant(3);
-        pl->setField1ea(*((Game *)B)->clock());
+        pl->setEffectDStart(*((Game *)B)->clock());
     }
 
     memset(buf, 0, 0x100);

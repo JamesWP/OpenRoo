@@ -14,8 +14,9 @@
  * Every Player field our code touches goes through the accessors below,
  * except determinism.cpp's hash table, which hashes opaque byte ranges by
  * design (see there).
- * COHESION_PLAN.md Band 4b pass 1: names are field_<off> / fieldXxx()
- * unless the code already relied on a meaning.  The original
+ * COHESION_PLAN.md Band 4b pass 2 named the timed pickup effects, the
+ * score, lives and marker cell; what is left is field_<off> / fieldXxx(),
+ * one name per offset whose meaning is not settled.  The original
  * RenderGameFrame still reads the Player by offset, so the layout stays
  * packed.
  */
@@ -123,8 +124,8 @@ public:
     /* ── the Player's own fields ────────────────────────────────────── */
     /* +0x15a: the world's sound variant (0 Egypt, 1 Candy, 2 Space --
      * levelsounds.cpp); indexes bank SND_19A. */
-    int   field15a() const                     { return field_15a; }
-    void  setField15a(int n)                   { field_15a = n; }
+    int   worldSoundVariant() const                     { return worldSoundVariant_; }
+    void  setWorldSoundVariant(int n)                   { worldSoundVariant_ = n; }
 
     /* The nine three-entry pickup sound banks, +0x15e + 0x0c * bank. */
     enum PickupBank {
@@ -134,23 +135,23 @@ public:
     CStaticSoundbuffer *pickupSound(int bank, int i) const { return pickupSounds_[bank][i]; }
     void  setPickupSound(int bank, int i, CStaticSoundbuffer *p) { pickupSounds_[bank][i] = p; }
 
-    double field1ca() const                    { return field_1ca; }
-    void  setField1ca(double d)                { field_1ca = d; }
-    void  setField1da(int n)                   { field_1da = n; }
+    double lastSecondsMark() const                    { return lastSecondsMark_; }
+    void  setLastSecondsMark(double d)                { lastSecondsMark_ = d; }
+    void  setEffectBActive(int n)                   { effectBActive_ = n; }
     /* +0x1e6: effect 8's flag; worldstate.cpp's freeze timer. */
-    int   field1e6() const                     { return field_1e6; }
-    void  setField1e6(int n)                   { field_1e6 = n; }
-    void  setField1ea(double d)                { field_1ea = d; }
-    int   climbDir() const                     { return climbDir_; }
-    void  setClimbDir(int n)                   { climbDir_ = n; }
-    void  setField1fe(int n)                   { field_1fe = n; }
-    void  setField20a(int n)                   { field_20a = n; }
+    int   effect8Active() const                     { return effect8Active_; }
+    void  setEffect8Active(int n)                   { effect8Active_ = n; }
+    void  setEffectDStart(double d)                { effectDStart_ = d; }
+    int   effectDActive() const                     { return effectDActive_; }
+    void  setEffectDActive(int n)                   { effectDActive_ = n; }
+    void  setEffectCActive(int n)                   { effectCActive_ = n; }
+    void  setEffectAActive(int n)                   { effectAActive_ = n; }
     /* Stored in the order +0x20e, +0x212, +0x216, as the caller does. */
     void  setField20e(float a, float b, float c)
     {
-        field_20e = a;
-        field_212 = b;
-        field_216 = c;
+        markerU_ = a;
+        markerH_ = b;
+        markerV_ = c;
     }
     /* +0x21a: the pickup counter. */
     unsigned short itemsCollected() const            { return itemsCollected_; }
@@ -159,13 +160,13 @@ public:
     void  appendEffect(int code);
     void  clearEffects();
     /* +0x22c: the running score total, persisted to .sav. */
-    int   field22c() const                     { return field_22c; }
-    void  setField22c(int n)                   { field_22c = n; }
-    void  setField230(signed char c)           { field_230 = c; }
+    int   score() const                     { return score_; }
+    void  setScore(int n)                   { score_ = n; }
+    void  setLastRoll(signed char c)           { lastRoll_ = c; }
     void  setField231(double d)                { field_231 = d; }
     /* +0x239: lives (a dword; byte readers take the low byte). */
-    int   field239() const                     { return field_239; }
-    void  setField239(int n)                   { field_239 = n; }
+    int   lives() const                     { return lives_; }
+    void  setLives(int n)                   { lives_ = n; }
     /* +0x23d: crystals collected. */
     int   gemsCollected() const                     { return gemsCollected_; }
     void  setGemsCollected(int n)                   { gemsCollected_ = n; }
@@ -186,58 +187,60 @@ private:
     LinkedList *effects() { return (LinkedList *)effectList_; }
     void  endEffect(int code);
 
-    int                 field_15a;        /* +0x15a  world sound variant    */
+    int                 worldSoundVariant_; /* +0x15a  which world's sounds */
     SoundRef            pickupSounds_[9][3]; /* +0x15e  PickupBank          */
-    double              field_1ca;        /* +0x1ca                         */
-    double              field_1d2;        /* +0x1d2  } effect 0xb start/flag */
-    int                 field_1da;        /* +0x1da  }                      */
-    double              field_1de;        /* +0x1de  } effect 8             */
-    int                 field_1e6;        /* +0x1e6  }                      */
-    double              field_1ea;        /* +0x1ea  } effect 0xd           */
-    int                 climbDir_;        /* +0x1f2  }                      */
-    double              field_1f6;        /* +0x1f6  } effect 0xc           */
-    int                 field_1fe;        /* +0x1fe  }                      */
-    double              field_202;        /* +0x202  } effect 0xa           */
-    int                 field_20a;        /* +0x20a  }                      */
-    float               field_20e;        /* +0x20e  } the marker-4 cell as */
-    float               field_212;        /* +0x212  } floats (u, h, v)     */
-    float               field_216;        /* +0x216  }                      */
+    /* +0x1ca: the seconds-remaining the countdown beep last fired at.
+     * Held at 10.0 while more than 11 s remain. */
+    double              lastSecondsMark_;
+    double              effectBStart_;  /* +0x1d2  } effect 0xb: start,  */
+    int                 effectBActive_; /* +0x1da  }   then running     */
+    double              effect8Start_;  /* +0x1de  } effect 8            */
+    int                 effect8Active_; /* +0x1e6  }                     */
+    double              effectDStart_;  /* +0x1ea  } effect 0xd          */
+    int                 effectDActive_; /* +0x1f2  }                     */
+    double              effectCStart_;  /* +0x1f6  } effect 0xc          */
+    int                 effectCActive_; /* +0x1fe  }                     */
+    double              effectAStart_;  /* +0x202  } effect 0xa          */
+    int                 effectAActive_; /* +0x20a  }                     */
+    float               markerU_;     /* +0x20e  } the marker-4 cell as */
+    float               markerH_;     /* +0x212  } floats (u, h, v)     */
+    float               markerV_;     /* +0x216  }                      */
     unsigned short      itemsCollected_;  /* +0x21a  items picked up this level;
                                            the all-items bonus tests it */
     /* The game's LinkedList (linkedlist.h, 16 bytes) of active effect
      * codes; only ever handed to the game's LinkedList methods. */
     unsigned char       effectList_[16];  /* +0x21c                         */
-    int                 field_22c;        /* +0x22c  running score          */
-    signed char         field_230;        /* +0x230  last random roll       */
+    int                 score_;       /* +0x22c  the running score      */
+    signed char         lastRoll_;    /* +0x230  last random roll       */
     double              field_231;        /* +0x231                         */
-    int                 field_239;        /* +0x239  lives                  */
+    int                 lives_;       /* +0x239  lives remaining        */
     int                 gemsCollected_;        /* +0x23d  crystals               */
 };
 
 KAROO_LAYOUT_CHECKS(Player)
 {
-    KAROO_LAYOUT_AT(field_15a,         0x15a);
+    KAROO_LAYOUT_AT(worldSoundVariant_,         0x15a);
     KAROO_LAYOUT_AT(pickupSounds_,     0x15e);
-    KAROO_LAYOUT_AT(field_1ca,         0x1ca);
-    KAROO_LAYOUT_AT(field_1d2,         0x1d2);
-    KAROO_LAYOUT_AT(field_1da,         0x1da);
-    KAROO_LAYOUT_AT(field_1de,         0x1de);
-    KAROO_LAYOUT_AT(field_1e6,         0x1e6);
-    KAROO_LAYOUT_AT(field_1ea,         0x1ea);
-    KAROO_LAYOUT_AT(climbDir_,         0x1f2);
-    KAROO_LAYOUT_AT(field_1f6,         0x1f6);
-    KAROO_LAYOUT_AT(field_1fe,         0x1fe);
-    KAROO_LAYOUT_AT(field_202,         0x202);
-    KAROO_LAYOUT_AT(field_20a,         0x20a);
-    KAROO_LAYOUT_AT(field_20e,         0x20e);
-    KAROO_LAYOUT_AT(field_212,         0x212);
-    KAROO_LAYOUT_AT(field_216,         0x216);
+    KAROO_LAYOUT_AT(lastSecondsMark_,         0x1ca);
+    KAROO_LAYOUT_AT(effectBStart_,         0x1d2);
+    KAROO_LAYOUT_AT(effectBActive_,         0x1da);
+    KAROO_LAYOUT_AT(effect8Start_,         0x1de);
+    KAROO_LAYOUT_AT(effect8Active_,         0x1e6);
+    KAROO_LAYOUT_AT(effectDStart_,         0x1ea);
+    KAROO_LAYOUT_AT(effectDActive_,         0x1f2);
+    KAROO_LAYOUT_AT(effectCStart_,         0x1f6);
+    KAROO_LAYOUT_AT(effectCActive_,         0x1fe);
+    KAROO_LAYOUT_AT(effectAStart_,         0x202);
+    KAROO_LAYOUT_AT(effectAActive_,         0x20a);
+    KAROO_LAYOUT_AT(markerU_,         0x20e);
+    KAROO_LAYOUT_AT(markerH_,         0x212);
+    KAROO_LAYOUT_AT(markerV_,         0x216);
     KAROO_LAYOUT_AT(itemsCollected_,   0x21a);
     KAROO_LAYOUT_AT(effectList_,       0x21c);
-    KAROO_LAYOUT_AT(field_22c,         0x22c);
-    KAROO_LAYOUT_AT(field_230,         0x230);
+    KAROO_LAYOUT_AT(score_,         0x22c);
+    KAROO_LAYOUT_AT(lastRoll_,         0x230);
     KAROO_LAYOUT_AT(field_231,         0x231);
-    KAROO_LAYOUT_AT(field_239,         0x239);
+    KAROO_LAYOUT_AT(lives_,         0x239);
     KAROO_LAYOUT_AT(gemsCollected_,    0x23d);
     KAROO_LAYOUT_SIZE(0x241);
 }

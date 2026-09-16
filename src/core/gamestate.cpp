@@ -208,8 +208,8 @@ static bool read_state(GameState *s)
     s->foes_killed    = ((const Game *)g)->foesKilled();
     s->time_limit_s   = ((const Game *)g)->timeLimit();
     s->elapsed_ms     = ((const Game *)g)->timeElapsed();
-    s->lives          = (BYTE)pl->field239();
-    s->total_score    = pl->field22c();
+    s->lives          = (BYTE)pl->lives();
+    s->total_score    = pl->score();
     s->level_score    = *(const int   *)(g + 0x140536);
     s->vitality       = ((const Game *)g)->vitalityPercent();
     {   /* four bytes from +0x11f: the move state and the low three of +0x120 */

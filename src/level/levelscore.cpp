@@ -192,7 +192,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
                     + t->score[TALLY_SURPLUS]  + t->score[TALLY_VITALITY]
                     + t->score[TALLY_TIME]     + t->score[TALLY_GEMS];
 
-    const int running = ((Game *)self)->player()->field22c();
+    const int running = ((Game *)self)->player()->score();
     t->levelTotal = total;
     t->grandTotal = total + running;
 
@@ -205,7 +205,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
 
     t->shownBase       = running;
     t->shownGrandTotal = running;
-    ((Game *)self)->player()->setField22c(total + running);
+    ((Game *)self)->player()->setScore(total + running);
 
     /* ── hand the tally animation its stage 0 and start timestamp ────── */
     t->stage      = 0;

@@ -278,11 +278,11 @@ unsigned int Player::updateTileEffects()
     if (moveState_ != 0) {
         curTile()->setOccupant(0);
 
-        field_1da = 0;
-        field_1e6 = 0;
-        climbDir_ = 0;
-        field_1fe = 0;
-        field_20a = 0;
+        effectBActive_ = 0;
+        effect8Active_ = 0;
+        effectDActive_ = 0;
+        effectCActive_ = 0;
+        effectAActive_ = 0;
 
         clearEffects();
 
@@ -351,7 +351,7 @@ unsigned int Player::updateTileEffects()
             /* 8-bit add, exactly as `add $0x5,%dl`. */
             signed char rolled = (signed char)((char)(r / 0x7FFF) + 5);
 
-            field_230 = rolled;
+            lastRoll_ = rolled;
             curTile()->setContents((unsigned char)rolled);
         }
 
@@ -363,7 +363,7 @@ unsigned int Player::updateTileEffects()
             map->setTimeLimit(map->timeLimit() + 5);
             curTile()->setContents(0);
             itemsCollected_ += 1;
-            field_1ca = (double)(map->timeLimit() + 1);
+            lastSecondsMark_ = (double)(map->timeLimit() + 1);
 
             pickupSound(pickupSounds_[SND_176]);
             pickedUp_ = 6;
@@ -389,7 +389,7 @@ unsigned int Player::updateTileEffects()
 
         /* ── 7 ───────────────────────────────────────────────────────── */
         if ((signed char)curTile()->contents() == 7) {
-            field_239 += 1;
+            lives_ += 1;
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
@@ -404,10 +404,10 @@ unsigned int Player::updateTileEffects()
             itemsCollected_ += 1;
 
             {
-                CStaticSoundbuffer *buf = pickupSounds_[SND_19A][field_15a];
+                CStaticSoundbuffer *buf = pickupSounds_[SND_19A][worldSoundVariant_];
                 if (buf != NULL) {
                     playAtCell(buf);
-                    CStatic_TriggerPlayback(pickupSounds_[SND_19A][field_15a], 0);
+                    CStatic_TriggerPlayback(pickupSounds_[SND_19A][worldSoundVariant_], 0);
                 }
             }
             pickedUp_ = 5;
@@ -429,10 +429,10 @@ unsigned int Player::updateTileEffects()
 
         /* ── 8: timed ────────────────────────────────────────────────── */
         if ((signed char)curTile()->contents() == 8) {
-            if (field_1e6 == 0)
+            if (effect8Active_ == 0)
                 appendEffect(8);
-            copy8(&field_1de, &now_);
-            field_1e6 = 1;
+            copy8(&effect8Start_, &now_);
+            effect8Active_ = 1;
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
@@ -442,10 +442,10 @@ unsigned int Player::updateTileEffects()
 
         /* ── 0xb: timed, reverses PlayerMoveForward ──────────────────── */
         if ((signed char)curTile()->contents() == 0xb) {
-            if (field_1da == 0)
+            if (effectBActive_ == 0)
                 appendEffect(0xb);
-            copy8(&field_1d2, &now_);
-            field_1da = 1;
+            copy8(&effectBStart_, &now_);
+            effectBActive_ = 1;
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
@@ -455,10 +455,10 @@ unsigned int Player::updateTileEffects()
 
         /* ── 0xa: timed, speed change ────────────────────────────────── */
         if ((signed char)curTile()->contents() == 0xa) {
-            if (field_20a == 0)
+            if (effectAActive_ == 0)
                 appendEffect(0xa);
-            copy8(&field_202, &now_);
-            field_20a = 1;
+            copy8(&effectAStart_, &now_);
+            effectAActive_ = 1;
             stepDuration_ = 100.0;                     /* two dwords: 0, 0x40590000 */
             curTile()->setContents(0);
             itemsCollected_ += 1;
@@ -469,10 +469,10 @@ unsigned int Player::updateTileEffects()
 
         /* ── 0xc: timed, speed change ────────────────────────────────── */
         if ((signed char)curTile()->contents() == 0xc) {
-            if (field_1fe == 0)
+            if (effectCActive_ == 0)
                 appendEffect(0xc);
-            copy8(&field_1f6, &now_);
-            field_1fe = 1;
+            copy8(&effectCStart_, &now_);
+            effectCActive_ = 1;
             stepDuration_ = 400.0;                     /* two dwords: 0, 0x40790000 */
             curTile()->setContents(0);
             itemsCollected_ += 1;
@@ -483,16 +483,16 @@ unsigned int Player::updateTileEffects()
 
         /* ── 0xd: timed, transforms the player and the tile occupant ─── */
         if ((signed char)curTile()->contents() == 0xd) {
-            if (climbDir_ == 0)
+            if (effectDActive_ == 0)
                 appendEffect(0xd);
 
-            climbDir_ = 1;
+            effectDActive_ = 1;
             kind_     = 3;
             curTile()->setOccupant(3);
 
             /* NOTE the start time is stamped AFTER the flag, unlike the
              * other four. */
-            copy8(&field_1ea, &now_);
+            copy8(&effectDStart_, &now_);
 
             curTile()->setContents(0);
             itemsCollected_ += 1;
@@ -508,39 +508,39 @@ expire:
      * Effect 8 ends at >= 5000 ms; the other four end at > 10000 ms.  See
      * the header -- the asymmetry is in the original's `test` masks. */
 
-    if (field_1e6 != 0) {
-        if (now_ - field_1de >= K_EFFECT8_MS) {
-            field_1e6 = 0;
+    if (effect8Active_ != 0) {
+        if (now_ - effect8Start_ >= K_EFFECT8_MS) {
+            effect8Active_ = 0;
             endEffect(8);
         }
     }
 
-    if (field_1da != 0) {
-        if (now_ - field_1d2 > K_EFFECT_MS) {
-            field_1da = 0;
+    if (effectBActive_ != 0) {
+        if (now_ - effectBStart_ > K_EFFECT_MS) {
+            effectBActive_ = 0;
             endEffect(0xb);
         }
     }
 
-    if (field_20a != 0) {
-        if (now_ - field_202 > K_EFFECT_MS) {
+    if (effectAActive_ != 0) {
+        if (now_ - effectAStart_ > K_EFFECT_MS) {
             stepDuration_  = 200.0;                    /* two dwords: 0, 0x40690000 */
-            field_20a = 0;
+            effectAActive_ = 0;
             endEffect(0xa);
         }
     }
 
-    if (field_1fe != 0) {
-        if (now_ - field_1f6 > K_EFFECT_MS) {
+    if (effectCActive_ != 0) {
+        if (now_ - effectCStart_ > K_EFFECT_MS) {
             stepDuration_  = 200.0;                    /* two dwords: 0, 0x40690000 */
-            field_1fe = 0;
+            effectCActive_ = 0;
             endEffect(0xc);
         }
     }
 
-    if (climbDir_ != 0) {
-        if (now_ - field_1ea > K_EFFECT_MS) {
-            climbDir_ = 0;
+    if (effectDActive_ != 0) {
+        if (now_ - effectDStart_ > K_EFFECT_MS) {
+            effectDActive_ = 0;
             kind_     = 4;
             curTile()->setOccupant(4);
             endEffect(0xd);
