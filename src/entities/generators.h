@@ -6,16 +6,28 @@
 /* Generator / Environment simulation structs — PARTICLE_PLAN.md § 4.
  *
  * Layouts from the corrected Ghidra project (see § 4.1 for the four facts that
- * were previously documented wrongly).  Only the fields the per-frame tick
- * touches are asserted; table construction (Save/Load/Copy) stays game-owned.
+ * were previously documented wrongly).  Since Stage E4 the lifecycle slots
+ * (dtor / CopyFrom / Save / Load, and the table builders Load drives) are ours
+ * too — see generators.cpp's header for the list.
  */
 
-/* Class identity — see the VTBL_PARTICLE_* note in particles.h. */
+/* Slot counts, fixed by the game's own call sites (§ 6.2). */
+#define GEN_VTBL_SLOTS 10
+#define ENV_VTBL_SLOTS  6
+
+/* The game vtable VAs these classes were built on.  Since E5 nothing stores
+ * them — our constructors install our own tables (gen_vtbl_* / env_vtbl_* in
+ * generators.cpp) — so these are documentation, and the addresses the UD2
+ * stubs sit behind. */
 #define VTBL_GEN_STD         0x0045f094
 #define VTBL_GEN_XSTD        0x0045f0bc
 #define VTBL_GEN_CYLINDER    0x0045f0e8
 #define VTBL_ENV_GRAVITY     0x0045f110
 #define VTBL_ENV_MAGNET      0x0045f128
+#define VTBL_ENV_BASE        0x0045f01c   /* plain Environment; also every dtor's last store */
+#define VTBL_GEN_BASE        0x0045eff4   /* plain Generator; also every gen dtor's last store */
+#define VTBL_GEN_POINT       0x0045f044   /* PointGenerator — no shipping .par names it */
+#define VTBL_GEN_BOX         0x0045f06c   /* BoxGenerator — no shipping .par names it */
 
 /* RingBuffer now lives in particles.h — it is ParticleSystem::ring, and the
  * pointer below is that same object.  AttachGeneratorRing (0x4483c0) /
@@ -71,14 +83,16 @@ struct Environment {
 static_assert(sizeof(Environment) == 0x0c, "Environment size");
 static_assert(offsetof(Environment, pRing) == 0x08, "Environment layout");
 
-/* GravityEnvironment (0x6c) — vtable 0x45f110, tick 0x44c450.
- * Fields below +0x1C recovered from the tick; +0x0c..+0x1b is never read by
- * it and stays opaque until Save/Load (0x44c6c0/0x44c7f0) are decoded. */
+/* GravityEnvironment (0x6c) — vtable 0x45f110, tick 0x44c450, load 0x44c7f0.
+ * +0x0c..+0x2c decoded from Load's two setters (0x44c320, 0x44c410): the file
+ * holds a direction and a magnitude, flGravity is their product. */
 struct GravityEnvironment {
     Environment base;             // +0x00
-    BYTE        opaque0c[0x10];   // +0x0c serialised, unread by the tick
+    float       flDirection[3];   // +0x0c as read, not normalised
+    float       flMagnitude;      // +0x18
     float       flGravity[3];     // +0x1c acceleration per second
-    BYTE        opaque28[0x08];   // +0x28 unread by the tick
+    DWORD       dwTargetARGB;     // +0x28 packed; unpacked into the next four
+    DWORD       dwTargetA;        // +0x2c unread by the tick
     DWORD       dwTargetRGB[3];   // +0x30 fade targets: R, G, B
     float       flFadeRate;       // +0x3c
     DWORD       dwFadeThreshold;  // +0x40 step must exceed this to apply
@@ -87,7 +101,9 @@ struct GravityEnvironment {
     float       flClipMin[3];     // +0x5c
     float       flFadeAccum;      // +0x68
 };
+static_assert(offsetof(GravityEnvironment, flMagnitude)  == 0x18, "Gravity layout");
 static_assert(offsetof(GravityEnvironment, flGravity)    == 0x1c, "Gravity layout");
+static_assert(offsetof(GravityEnvironment, dwTargetARGB) == 0x28, "Gravity layout");
 static_assert(offsetof(GravityEnvironment, dwTargetRGB)  == 0x30, "Gravity layout");
 static_assert(offsetof(GravityEnvironment, flFadeRate)   == 0x3c, "Gravity layout");
 static_assert(offsetof(GravityEnvironment, dwClipEnable) == 0x44, "Gravity layout");
@@ -127,8 +143,8 @@ static_assert(sizeof(MagnetEnvironment) == 0x50, "Magnet size");
  *
  * The four lookup tables tile the struct exactly from +0x78 to +0x3408 with no
  * gaps, which is what pins the layout: emit only ever indexes them, never
- * recomputes the values.  Table *construction* stays game-owned — Load (slot 5)
- * fills them from the .par parameters and we do not touch it.
+ * recomputes the values.  Load (slot 5, ours since E4) fills them from the .par
+ * parameters by sampling with the game's rand().
  *
  * NOTE the names: flPosTable was "pSphTable" and flVelTable "pBoxTable" in
  * earlier RE, which had position and velocity the wrong way round.  Emit writes
@@ -205,13 +221,19 @@ static_assert(sizeof(XStdGenerator) == 0x3438, "XStd size");
  * inner loop (out[c] = sum_r M[r][c] * v[r]). */
 struct CylinderGenerator {
     Generator base;               // +0x0000
-    float     flOrigin[3];        // +0x0010 added after the transform
-    BYTE      opaque1c[0x0c];     // +0x001c unread by emit
+    float     flOrigin[3];        // +0x0010 added after the transform; slot 6
+    float     flDirection[3];     // +0x001c as given to slot 8 (SetDirection)
     float     flScale;            // +0x0028 applied before the transform
-    float     flMatrix[16];       // +0x002c row-major 4x4
-    BYTE      opaque6c[0x28];     // +0x006c unread by emit
+    float     flMatrix[16];       // +0x002c row-major 4x4, rebuilt by slot 8
+    float     flVelMin[3];        // +0x006c } serialised; Load builds the
+    float     flVelMax[3];        // +0x0078 } velocity table from these
+    float     flLifeMin;          // +0x0084 } (speed spread)
+    float     flLifeMax;          // +0x0088 }
+    float     flEmitRateMin;      // +0x008c } and pLifeTable from these
+    float     flEmitRateMax;      // +0x0090 }
     float     flDtScale;          // +0x0094
-    BYTE      opaque98[0x08];     // +0x0098 unread by emit
+    void     *pTypeTable;         // +0x0098 (colour, weight) pairs
+    DWORD     dwTypeTableCount;   // +0x009c
     float     flAccumulator;      // +0x00a0
     float     flPosTable[1500];   // +0x00a4 500 x xyz
     float     flVelTable[1500];   // +0x1814 500 x xyz (untransformed)
@@ -234,6 +256,59 @@ static_assert(offsetof(CylinderGenerator, dwPosIdx)      == 0x3434, "Cyl layout"
 static_assert(offsetof(CylinderGenerator, dwProbIdx)     == 0x3440, "Cyl layout");
 static_assert(sizeof(CylinderGenerator) == 0x3444, "Cyl size");
 
+/* PointGenerator (0x1184) — vtable 0x45f044, emit 0x449200.  Dead content: no
+ * shipping .par file names it, and it has no Load of its own (slot 5 is the
+ * shared `return 1`), so its tables are never filled — its constructor sets
+ * only flAccumulator and dwDiffuse.  Layout from the emit's operands. */
+struct PointGenerator {
+    Generator base;               // +0x0000
+    float     flEmitPos[3];       // +0x0010 copied verbatim to the node position
+    float     flVelBias[3];       // +0x001c added to the sampled velocity
+    float     flEmitRate;         // +0x0028
+    BYTE      opaque2c[0x0c];     // +0x002c never touched
+    DWORD     dwDiffuse;          // +0x0038 ctor: 0xFFFFFFFF
+    float     flAccumulator;      // +0x003c
+    BYTE      opaque40[0x04];     // +0x0040 never touched
+    float     flVelTable[1000];   // +0x0044 indexed per axis, steps 1/2/3
+    DWORD     dwLifeTable[100];   // +0x0fe4 raw bits into flLife
+    DWORD     dwVelIdx[3];        // +0x1174
+    DWORD     dwLifeIdx;          // +0x1180 runs 0..101: reads two past the table
+};
+static_assert(offsetof(PointGenerator, flEmitRate)    == 0x0028, "Point layout");
+static_assert(offsetof(PointGenerator, dwDiffuse)     == 0x0038, "Point layout");
+static_assert(offsetof(PointGenerator, flVelTable)    == 0x0044, "Point layout");
+static_assert(offsetof(PointGenerator, dwLifeTable)   == 0x0fe4, "Point layout");
+static_assert(offsetof(PointGenerator, dwVelIdx)      == 0x1174, "Point layout");
+static_assert(sizeof(PointGenerator) == 0x1184, "Point size");
+
+/* BoxGenerator (0x244c) — vtable 0x45f06c, emit 0x449420.  Dead content like
+ * Point: no .par names it, no Load, and its constructor initialises nothing
+ * past the base.  Layout from the emit's operands. */
+struct BoxGenerator {
+    Generator base;               // +0x0000
+    BYTE      opaque10[0x18];     // +0x0010 never touched
+    float     flVelBias[3];       // +0x0028
+    float     flEmitRate;         // +0x0034
+    float     flAccumulator;      // +0x0038
+    DWORD     dwPosX[500];        // +0x003c raw bits into the node position
+    DWORD     dwPosY[500];        // +0x080c
+    DWORD     dwPosZ[500];        // +0x0fdc
+    float     flVelTable[500];    // +0x17ac indexed per axis, steps 1/2/3
+    DWORD     dwLifeTable[100];   // +0x1f7c
+    DWORD     dwDiffuse[200];     // +0x210c
+    DWORD     dwPosIdx[3];        // +0x242c
+    DWORD     dwVelIdx[3];        // +0x2438
+    DWORD     dwLifeIdx;          // +0x2444
+    DWORD     dwDiffuseIdx;       // +0x2448
+};
+static_assert(offsetof(BoxGenerator, flVelBias)    == 0x0028, "Box layout");
+static_assert(offsetof(BoxGenerator, dwPosX)       == 0x003c, "Box layout");
+static_assert(offsetof(BoxGenerator, flVelTable)   == 0x17ac, "Box layout");
+static_assert(offsetof(BoxGenerator, dwDiffuse)    == 0x210c, "Box layout");
+static_assert(offsetof(BoxGenerator, dwPosIdx)     == 0x242c, "Box layout");
+static_assert(offsetof(BoxGenerator, dwDiffuseIdx) == 0x2448, "Box layout");
+static_assert(sizeof(BoxGenerator) == 0x244c, "Box size");
+
 /* ─── Internal (non-virtual) entry points ──────────────────────────────────
  *
  * Every live Generator and Environment class is ours (PARTICLE_PLAN.md § 4.8:
@@ -246,6 +321,34 @@ static_assert(sizeof(CylinderGenerator) == 0x3444, "Cyl size");
  * work exactly as before. */
 /* Slot 3 = Tick(float dt) for both Generator and Environment. */
 #define GEN_VT_TICK_SLOT 3
+/* Lifecycle slots, same for both (§ 6.2): 0 = scalar deleting dtor(flags),
+ * 1 = BOOL CopyFrom(src), 4 = BOOL Save(FILE *), 5 = BOOL Load(FILE *). */
+#define GEN_VT_DTOR_SLOT 0
+#define GEN_VT_COPY_SLOT 1
+#define GEN_VT_SAVE_SLOT 4
+#define GEN_VT_LOAD_SLOT 5
 
-void sim_tick_generator(Generator *gen, float dt);
-void sim_tick_environment(Environment *env, float dt);
+/* EnvironmentFactoryCreate (0x4488f0), ours: allocate with our own new and
+ * construct the named class, or NULL for an unknown name.  The object comes
+ * back carrying its *game* vtable VA; factory.cpp swaps in our table. */
+Environment *env_create(const char *name);
+
+/* GeneratorFactoryCreate (0x4485d0), ours: the same six names and sizes, our
+ * own new, our constructors.  Game vtable VA on return, like env_create. */
+Generator *gen_create(const char *name);
+
+/* CloneGeneratorFromSource (0x4488b0) / the environment twin (0x448a70):
+ * build one of the same class, CopyFrom the source, and drop it again if
+ * either step fails.  ParticleSystem::CopyFrom is the only caller. */
+Generator   *gen_clone(const Generator *src);
+Environment *env_clone(const Environment *src);
+
+/* 0x438170 — the Gaussian sampler's only caller outside the particle code.
+ * Lives here because it is a thin wrapper over this file's gauss_fill; its
+ * owning class (CvtSyms TU) is otherwise unreverse-engineered. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Gen_FillGaussianField(void *self, float mu, float sigma);
+
+/* Tick a Generator or an Environment: one virtual call through slot 3.  The
+ * table is ours, so this lands straight on our implementation. */
+void sim_tick_slot3(void *obj, float dt);

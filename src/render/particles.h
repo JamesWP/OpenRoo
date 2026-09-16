@@ -29,8 +29,10 @@ static_assert(offsetof(ParticleNode, dwDiffuse)    == 0x24, "ParticleNode layout
 static_assert(offsetof(ParticleNode, dwShapeIndex) == 0x28, "ParticleNode layout");
 static_assert(sizeof(ParticleNode) == 0x2C, "ParticleNode size");
 
-/* FVF 0x1e2 vertex, 0x20 bytes.  The originals only write xyz + diffuse;
- * psize/specular/u/v stay uninitialised — we preserve that. */
+/* FVF 0x1e2 vertex, 0x20 bytes.  Fill only ever writes xyz + diffuse, leaving
+ * psize and specular uninitialised — preserved.  u/v are not touched by Fill
+ * either: the Face and XFace vertex allocators bake the texture corners in
+ * once, at allocation (see quad_alloc_verts in particles.cpp). */
 struct ParticleVertex {
     float flX, flY, flZ;   // +0x00..+0x08
     float flPsize;         // +0x0c  (never written)
@@ -152,6 +154,20 @@ static_assert(sizeof(XFaceParticleSystem) == 0x96, "XFace size");
 void  ps_fill(ParticleSystem *self);
 DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev);
 
+/* ParticleSystemFactoryCreate (0x448ab0), ours: the same four names and sizes,
+ * our own new, our constructors, and one of our vtables installed. */
+ParticleSystem *ps_create(const char *name);
+
+/* The two ways the game builds a system: CloneParticleSystem (0x448ca0) and
+ * LoadParticleSystemFromFile (0x448ce0), both ours, both __cdecl. */
+ParticleSystem *ps_clone(const ParticleSystem *src);
+ParticleSystem *ps_load_file(const char *path, struct GameLogger *log);
+
+extern "C" {
+__declspec(dllexport) ParticleSystem *__cdecl Particle_CloneSystem(const ParticleSystem *);
+__declspec(dllexport) ParticleSystem *__cdecl Particle_LoadFromFile(const char *, struct GameLogger *);
+}
+
 /* ─── Vtable exports ───────────────────────────────────────────────────────
  *
  * Declared here so factory.cpp can install them into the vtables it owns
@@ -173,9 +189,73 @@ void  PS_THISCALL Particle_FaceTransformCorners(FaceParticleSystem *self,
 DWORD PS_THISCALL Particle_PointDraw(PointParticleSystem *self, IDirect3DDevice3 *d); /* slot 12 */
 DWORD PS_THISCALL Particle_FaceDraw(FaceParticleSystem *self, IDirect3DDevice3 *d);
 DWORD PS_THISCALL Particle_XFaceDraw(XFaceParticleSystem *self, IDirect3DDevice3 *d);
+
+/* Stage E6 — the lifecycle slots (0-6, 9, 12, 13, 14).  Slots 5 and 6 are one
+ * function each across all four classes; slot 1 is shared by Point and Face. */
+struct GameLogger;
+void *PS_THISCALL Particle_BaseDtor(ParticleSystem *, unsigned);
+void  PS_THISCALL Particle_BaseRelease(ParticleSystem *, int);
+BOOL  PS_THISCALL Particle_BaseCopyFrom(ParticleSystem *, const ParticleSystem *);
+BOOL  PS_THISCALL Particle_BaseSetCapacity(ParticleSystem *, DWORD);
+BOOL  PS_THISCALL Particle_BaseResize(ParticleSystem *, DWORD);
+BOOL  PS_THISCALL Particle_SetGenerator(ParticleSystem *, void *);
+BOOL  PS_THISCALL Particle_SetEnvironment(ParticleSystem *, void *);
+BOOL  PS_THISCALL Particle_BaseSave(ParticleSystem *, void *, GameLogger *);
+BOOL  PS_THISCALL Particle_BaseLoad(ParticleSystem *, void *, GameLogger *);
+void  PS_THISCALL Particle_BaseFill(ParticleSystem *);
+DWORD PS_THISCALL Particle_BaseDrawNull(ParticleSystem *, IDirect3DDevice3 *);
+void  PS_THISCALL Particle_QuadRelease(ParticleSystem *, int);
+void  PS_THISCALL Particle_NopVec3(ParticleSystem *, float, float, float);
+void  PS_THISCALL Particle_NopPtr(ParticleSystem *, void *);
+struct Generator *PS_THISCALL Particle_GetGenerator(ParticleSystem *, const char *);
+void  PS_THISCALL Particle_EnableRenderNode(ParticleSystem *);
+void  PS_THISCALL Particle_DisableRenderNode(ParticleSystem *);
+
+void *PS_THISCALL Particle_PointDtor(PointParticleSystem *, unsigned);
+BOOL  PS_THISCALL Particle_PointCopyFrom(PointParticleSystem *, const ParticleSystem *);
+BOOL  PS_THISCALL Particle_PointSetCapacity(PointParticleSystem *, DWORD);
+BOOL  PS_THISCALL Particle_PointResize(PointParticleSystem *, DWORD);
+BOOL  PS_THISCALL Particle_PointSave(PointParticleSystem *, void *, GameLogger *);
+BOOL  PS_THISCALL Particle_PointLoad(PointParticleSystem *, void *, GameLogger *);
+
+void *PS_THISCALL Particle_FaceDtor(FaceParticleSystem *, unsigned);
+BOOL  PS_THISCALL Particle_FaceCopyFrom(FaceParticleSystem *, const FaceParticleSystem *);
+BOOL  PS_THISCALL Particle_FaceSetCapacity(FaceParticleSystem *, DWORD);
+BOOL  PS_THISCALL Particle_FaceResize(FaceParticleSystem *, DWORD);
+BOOL  PS_THISCALL Particle_FaceSave(FaceParticleSystem *, void *, GameLogger *);
+BOOL  PS_THISCALL Particle_FaceLoad(FaceParticleSystem *, void *, GameLogger *);
+
+void *PS_THISCALL Particle_XFaceDtor(XFaceParticleSystem *, unsigned);
+void  PS_THISCALL Particle_XFaceRelease(XFaceParticleSystem *, int);
+BOOL  PS_THISCALL Particle_XFaceCopyFrom(XFaceParticleSystem *, const XFaceParticleSystem *);
+BOOL  PS_THISCALL Particle_XFaceSetCapacity(XFaceParticleSystem *, DWORD);
+BOOL  PS_THISCALL Particle_XFaceResize(XFaceParticleSystem *, DWORD);
+BOOL  PS_THISCALL Particle_XFaceSave(XFaceParticleSystem *, void *, GameLogger *);
+BOOL  PS_THISCALL Particle_XFaceLoad(XFaceParticleSystem *, void *, GameLogger *);
 }
 
-/* ParticleSystem vtable slot numbers (15-slot table, § 6.2 / PARTICLE_PLAN § 1.3). */
+/* ParticleSystem vtable slot numbers (15-slot table, § 6.2 / PARTICLE_PLAN § 1.3).
+ *
+ * Slots 0-6 and 13/14 are the lifecycle half, recovered from the four vtables
+ * and their call sites:
+ *   0  ~dtor(flags)            MSVC scalar deleting
+ *   1  Release(flags)          drop generator + environment, free the ring
+ *   2  CopyFrom(src)           type-name gate, then clone both sub-objects
+ *   3  SetCapacity(n)          size the ring
+ *   4  Resize(n)               free and re-make the ring and the vertex buffer
+ *   5  SetGenerator(gen)       shared 0x447d30 across all four classes
+ *   6  SetEnvironment(env)     shared 0x447d80
+ *  13  Save(FILE *, log)       names of both sub-objects, then their Save
+ *  14  Load(FILE *, log)       names, factory, their Load, then attach */
+#define PS_VT_DTOR    0
+#define PS_VT_RELEASE 1
+#define PS_VT_COPY    2
+#define PS_VT_SETCAP  3
+#define PS_VT_RESIZE  4
+#define PS_VT_SETGEN  5
+#define PS_VT_SETENV  6
+#define PS_VT_SAVE   13
+#define PS_VT_LOAD   14
 #define PS_VT_TICK    7
 #define PS_VT_RENDER  8
 #define PS_VT_FILL    9

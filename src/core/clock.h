@@ -13,3 +13,8 @@ double clock_seconds(void);
 /* Frame index — one per clock_seconds() call, i.e. one per rendered frame.
  * The shared frame number for the hash log, the state log and recordings. */
 unsigned clock_frame(void);
+
+/* The game's time() at 0x0045169a, ours (patch.py routes its call sites here).
+ * Seconds; also stored through `out` when non-NULL.  The particle samplers
+ * seed rand() from it, exactly where the originals called 0x0045169a. */
+extern "C" int __cdecl hooks_GameTime(int *out);
