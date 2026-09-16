@@ -1773,6 +1773,20 @@ Generator *gen_create(const char *name)
     return NULL;
 }
 
+/* ─── The Gaussian sampler's one caller outside the particle code ───
+ *
+ * 0x438170 is a 15-instruction method of a class in the CvtSyms TU that is
+ * otherwise untouched; it is here because it exists only to fill a 30-entry
+ * table with gauss_fill, and it is the last thing keeping the sampler
+ * (0x448fb0) and its density (0x448f30) alive in the game.  Only two facts
+ * about its owner are needed, both visible in those instructions: the table is
+ * at +0x14 and a DWORD index at +0x8c is reset. */
+static void fill_gaussian_field(void *self, float mu, float sigma)
+{
+    gauss_fill((float *)((BYTE *)self + 0x14), 30, mu, sigma, 0.01f);
+    *(DWORD *)((BYTE *)self + 0x8c) = 0;
+}
+
 /* ─── Cloning (0x4488b0 / 0x448a70) ─── */
 
 typedef BOOL  (THISCALL_DECL *clone_copy_fn)(void *, const void *);
@@ -1874,6 +1888,10 @@ __declspec(dllexport) BOOL THISCALL Gen_ReturnTrue(void *, void *)              
 
 __declspec(dllexport) BOOL THISCALL
 Gen_AttachRing(Generator *self, RingBuffer *ring)        { return gen_attach_ring(self, ring); }
+
+/* 0x438170, reached by CALL_PATCHES (2 sites) — see fill_gaussian_field. */
+__declspec(dllexport) void THISCALL
+Gen_FillGaussianField(void *self, float mu, float sigma) { fill_gaussian_field(self, mu, sigma); }
 
 __declspec(dllexport) BOOL THISCALL
 Gen_BaseCopyFrom(Generator *self, const Generator *src)  { return gen_copy_base(self, src); }

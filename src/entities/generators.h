@@ -343,6 +343,12 @@ Generator *gen_create(const char *name);
 Generator   *gen_clone(const Generator *src);
 Environment *env_clone(const Environment *src);
 
+/* 0x438170 — the Gaussian sampler's only caller outside the particle code.
+ * Lives here because it is a thin wrapper over this file's gauss_fill; its
+ * owning class (CvtSyms TU) is otherwise unreverse-engineered. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Gen_FillGaussianField(void *self, float mu, float sigma);
+
 /* Tick a Generator or an Environment: one virtual call through slot 3.  The
  * table is ours, so this lands straight on our implementation. */
 void sim_tick_slot3(void *obj, float dt);

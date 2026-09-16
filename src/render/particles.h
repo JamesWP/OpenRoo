@@ -158,6 +158,16 @@ DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev);
  * our own new, our constructors, and one of our vtables installed. */
 ParticleSystem *ps_create(const char *name);
 
+/* The two ways the game builds a system: CloneParticleSystem (0x448ca0) and
+ * LoadParticleSystemFromFile (0x448ce0), both ours, both __cdecl. */
+ParticleSystem *ps_clone(const ParticleSystem *src);
+ParticleSystem *ps_load_file(const char *path, struct GameLogger *log);
+
+extern "C" {
+__declspec(dllexport) ParticleSystem *__cdecl Particle_CloneSystem(const ParticleSystem *);
+__declspec(dllexport) ParticleSystem *__cdecl Particle_LoadFromFile(const char *, struct GameLogger *);
+}
+
 /* ─── Vtable exports ───────────────────────────────────────────────────────
  *
  * Declared here so factory.cpp can install them into the vtables it owns

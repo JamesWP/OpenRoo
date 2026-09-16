@@ -1346,8 +1346,95 @@ ParticleSystem *ps_create(const char *name)
     return NULL;
 }
 
+/* ─── The two entry points that build a system (§ 6.8) ───
+ *
+ * CloneParticleSystem (0x448ca0, 1 site) and LoadParticleSystemFromFile
+ * (0x448ce0, 2 sites) are the only two ways the game ever makes a particle
+ * system; both go through the factory, so with these ours nothing in the
+ * particle subsystem is still the game's. */
+
+#define PS_OPENSAVE_FILE ((const char *)0x00468e64)  /* ...\OpenSave.cpp */
+#define PS_MSG_STARTREAD ((const char *)0x00468f24)
+#define PS_MSG_NOOPEN    ((const char *)0x00468ee0)
+#define PS_MSG_NOCLOSE   ((const char *)0x00468e9c)
+#define PS_MSG_NODATA    ((const char *)0x00468fe0)
+#define PS_MSG_NAMEREAD  ((const char *)0x00468fa0)
+#define PS_MSG_NOSYSTEM  ((const char *)0x00468f58)
+
+typedef BOOL (THISCALL *ps_load_fn)(void *, void *, GameLogger *);
+
+/* 0x448d80 — length-prefixed class name, then the factory, then slot 14. */
+static ParticleSystem *ps_load_stream(void *fp, GameLogger *log)
+{
+    DWORD len;
+    if (hooks_fread(&len, 4, 1, fp) != 1) {
+        GameLog_LogSourceLocation(log, 4, PS_OPENSAVE_FILE, 0xb5, PS_MSG_NODATA);
+        return NULL;
+    }
+    char *name = (char *)::operator new(len, std::nothrow);
+    if (hooks_fread(name, 1, len, fp) != len) {
+        ::operator delete(name);
+        GameLog_LogSourceLocation(log, 4, PS_OPENSAVE_FILE, 0xbd, PS_MSG_NAMEREAD);
+        return NULL;
+    }
+    ParticleSystem *ps = ps_create(name);
+    if (ps == NULL) {
+        /* logged BEFORE the free here — unlike Deserialize's two branches */
+        GameLog_LogSourceLocation(log, 4, PS_OPENSAVE_FILE, 0xc6, PS_MSG_NOSYSTEM, name);
+        ::operator delete(name);
+        return NULL;
+    }
+    ::operator delete(name);
+    if (!((ps_load_fn)ps->pVtable[PS_VT_LOAD])(ps, fp, log)) {
+        sub_object_delete(ps);
+        return NULL;
+    }
+    return ps;
+}
+
+/* 0x448ce0 — the .par entry point.  A failed fclose discards the system that
+ * was read, which is the original's behaviour. */
+ParticleSystem *ps_load_file(const char *path, GameLogger *log)
+{
+    GameLog_LogMessage(log, 2, PS_MSG_STARTREAD, path);
+    void *fp = hooks_fopen(path, "r");       /* the game's mode string at 0x464200 */
+    if (fp == NULL) {
+        GameLog_LogSourceLocation(log, 4, PS_OPENSAVE_FILE, 0x9b, PS_MSG_NOOPEN, path);
+        return NULL;
+    }
+    ParticleSystem *ps = ps_load_stream(fp, log);
+    if (hooks_fclose(fp) != 0) {
+        GameLog_LogSourceLocation(log, 3, PS_OPENSAVE_FILE, 0xa4, PS_MSG_NOCLOSE, path);
+        if (ps)
+            sub_object_delete(ps);
+        return NULL;
+    }
+    return ps;
+}
+
+/* 0x448ca0 — build one of the same class and CopyFrom (slot 2). */
+ParticleSystem *ps_clone(const ParticleSystem *src)
+{
+    ParticleSystem *made = ps_create(src->pName);
+    if (made == NULL)
+        return NULL;
+    if (!((ps_attach_fn)made->pVtable[PS_VT_COPY])(made, (void *)src)) {
+        sub_object_delete(made);
+        return NULL;
+    }
+    return made;
+}
+
 /* ─── Stage E6 exports — the lifecycle slots ─── */
 extern "C" {
+
+/* The two __cdecl entry points, reached by CALL_PATCHES (3 sites). */
+__declspec(dllexport) ParticleSystem *__cdecl
+Particle_CloneSystem(const ParticleSystem *src)            { return ps_clone(src); }
+
+__declspec(dllexport) ParticleSystem *__cdecl
+Particle_LoadFromFile(const char *path, GameLogger *log)   { return ps_load_file(path, log); }
+
 
 /* Base ParticleSystem */
 __declspec(dllexport) void *THISCALL
