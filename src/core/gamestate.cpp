@@ -213,13 +213,13 @@ static bool read_state(GameState *s)
     s->level_score    = *(const int   *)(g + 0x140536);
     s->vitality       = ((const Game *)g)->vitalityPercent();
     {   /* four bytes from +0x11f: the move state and the low three of +0x120 */
-        int f120 = pl->field120();
+        int f120 = pl->falling();
         s->death_raw[0] = pl->moveState();
         memcpy(s->death_raw + 1, &f120, 3);
     }
-    s->complete_flag  = pl->fieldEf();
+    s->complete_flag  = pl->held();
     s->extra_count    = ((const Game *)g)->itemTotal();
-    s->extra_cap      = pl->field21a();
+    s->extra_cap      = pl->itemsCollected();
     s->extra_block    = ((const Game *)g)->restartCount();
     s->pos[0]         = pl->posU();
     s->pos[1]         = pl->posY();

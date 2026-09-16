@@ -43,8 +43,8 @@ public:
     void setObjectMarker(unsigned char k)      { objectMarker_ = k; }
     /* +0x1a5  cleared with the marker when a slide vacates a cell.  A
      * breakable arms when it is nonzero (someone is standing on the cell). */
-    unsigned char field1a5() const             { return field_1a5; }
-    void setField1a5(unsigned char b)          { field_1a5 = b; }
+    unsigned char occupant() const             { return occupant_; }
+    void setOccupant(unsigned char b)          { occupant_ = b; }
     /* +0x19e  the file's parameter byte: a switch's number, a bridge's
      * switch, a lift's, a teleporter's pair id, a foe's drop.  The level
      * builder consumes it (clears it) as it spawns what it describes. */
@@ -93,7 +93,7 @@ public:
         slidePosV_ = v;
     }
     /* Cleared by the spawn on the spawn cell only; meaning unknown. */
-    void setField1f2(unsigned char b)          { field_1f2 = b; }
+    void setClimbDir(unsigned char b)          { climbDir_ = b; }
     void setField202(unsigned char b)          { field_202 = b; }
 
     /* ── a bridge deck cell (bridgeobject.cpp) ──────────────────────── */
@@ -103,10 +103,10 @@ public:
     void setBridgeAxis(unsigned char a)        { bridgeAxis_ = a; }
     /* Meaning unknown: 1 on an extended deck cell, 0 otherwise. */
     void setField1f6(int b)                    { field_1f6 = b; }
-    void setField217(int b)                    { field_217 = b; }
+    void setBusy(int b)                    { busy_ = b; }
     /* A breakable sets it when it falls and clears it when it respawns
      * (breakabletile.cpp), and will not arm while it is set. */
-    int  field217() const                      { return field_217; }
+    int  busy() const                      { return busy_; }
 
     /* ── a bomb's blast (bomb.cpp) ──────────────────────────────────── */
     /* +0x1a0: the blasting bomb's height while its 3x3 is live, else 0. */
@@ -135,8 +135,8 @@ public:
     /* ── set by the level builder (levelsetup.cpp) ───────────────────── */
     /* +0x1ed: a teleporter's pair id, moved here from param. */
     void setTeleportId(unsigned char id)       { teleportId_ = id; }
-    void setField1ee(unsigned char u)          { field_1ee = u; }
-    void setField1ef(unsigned char v)          { field_1ef = v; }
+    void setTeleportU(unsigned char u)          { teleportU_ = u; }
+    void setTeleportV(unsigned char v)          { teleportV_ = v; }
     void setField1f1(unsigned char b)          { field_1f1 = b; }
     void setField1f3(unsigned char b)          { field_1f3 = b; }
     /* +0x213: a random phase, rand() * 2pi / 32768, given to every cell
@@ -147,7 +147,7 @@ public:
     /* +0x1f1: an elevator (kind 0x0e) cell's level byte. */
     unsigned char field1f1() const             { return field_1f1; }
     /* +0x1f2: on a bridge (kind 0x10) cell, its direction byte. */
-    unsigned char field1f2() const             { return field_1f2; }
+    unsigned char climbDir() const             { return climbDir_; }
 
     /* ── read by the movement tick (movableentity.cpp) ──────────────────── */
     /* The tick reads +0x19c, +0x19d, +0x1a5 and +0x1f1 both MOVSX and
@@ -165,8 +165,8 @@ public:
     float  slidePosV() const                   { return slidePosV_; }
     /* +0x1ee / +0x1ef: on a teleporter (kind 0x0f) cell, read as the u and
      * v of the cell it sends the entity to. */
-    unsigned char field1ee() const             { return field_1ee; }
-    unsigned char field1ef() const             { return field_1ef; }
+    unsigned char teleportU() const             { return teleportU_; }
+    unsigned char teleportV() const             { return teleportV_; }
     /* +0x1f3: on a kind-0x11 cell, copied into the entity's +0xd7. */
     unsigned char field1f3() const             { return field_1f3; }
 
@@ -180,7 +180,7 @@ private:
     unsigned char contents_;          /* 0x19f  file byte 3: pickup here    */
     unsigned char blastHeight_;       /* 0x1a0  live blast, 0 = none        */
     int           field_1a1;          /* 0x1a1                              */
-    unsigned char field_1a5;          /* 0x1a5                              */
+    unsigned char occupant_;          /* 0x1a5  the entity kind standing here*/
     float         liftLiveHeight_;    /* 0x1a6  the lift's live height      */
     unsigned char slideSlot_;         /* 0x1aa  which slide's track this is */
     unsigned char slideHeight_;       /* 0x1ab                              */
@@ -207,11 +207,11 @@ private:
      * +0x1e5, 0x40977000 at +0x1e9): 0x4097700000000000 = 1500.0. */
     double        liftDwell_;         /* 0x1e5  park dwell in ms, 1500.0    */
     unsigned char teleportId_;        /* 0x1ed  a teleporter's pair id      */
-    unsigned char field_1ee;          /* 0x1ee                              */
-    unsigned char field_1ef;          /* 0x1ef                              */
+    unsigned char teleportU_;         /* 0x1ee  } teleporter destination     */
+    unsigned char teleportV_;         /* 0x1ef  }                            */
     unsigned char gap_1f0[0x1f1 - 0x1f0];
     unsigned char field_1f1;          /* 0x1f1  an elevator's level byte    */
-    unsigned char field_1f2;          /* 0x1f2                              */
+    unsigned char climbDir_;          /* 0x1f2  climb tile: which way up     */
     unsigned char field_1f3;          /* 0x1f3                              */
     unsigned char bridgeSlot_;        /* 0x1f4  the bridge's switch slot    */
     unsigned char bridgeAxis_;        /* 0x1f5  1 = along U, 2 = along V    */
@@ -222,7 +222,7 @@ private:
     double        blastTime_;         /* 0x207  when a blast spent this cell */
     int           field_20f;          /* 0x20f                              */
     float         itemPhase_;         /* 0x213  an item's random phase      */
-    int           field_217;          /* 0x217                              */
+    int           busy_;              /* 0x217  a pad/teleporter is in use    */
 };
 
 KAROO_LAYOUT_CHECKS(Tile)
@@ -233,7 +233,7 @@ KAROO_LAYOUT_CHECKS(Tile)
     KAROO_LAYOUT_AT(contents_,         0x19f);
     KAROO_LAYOUT_AT(blastHeight_,      0x1a0);
     KAROO_LAYOUT_AT(field_1a1,         0x1a1);
-    KAROO_LAYOUT_AT(field_1a5,         0x1a5);
+    KAROO_LAYOUT_AT(occupant_,         0x1a5);
     KAROO_LAYOUT_AT(liftLiveHeight_,   0x1a6);
     KAROO_LAYOUT_AT(slideSlot_,        0x1aa);
     KAROO_LAYOUT_AT(slideHeight_,      0x1ab);
@@ -254,9 +254,9 @@ KAROO_LAYOUT_CHECKS(Tile)
     KAROO_LAYOUT_AT(liftParkedSince_,  0x1dd);
     KAROO_LAYOUT_AT(liftDwell_,        0x1e5);
     KAROO_LAYOUT_AT(field_1f1,         0x1f1);
-    KAROO_LAYOUT_AT(field_1ee,         0x1ee);
-    KAROO_LAYOUT_AT(field_1ef,         0x1ef);
-    KAROO_LAYOUT_AT(field_1f2,         0x1f2);
+    KAROO_LAYOUT_AT(teleportU_,        0x1ee);
+    KAROO_LAYOUT_AT(teleportV_,        0x1ef);
+    KAROO_LAYOUT_AT(climbDir_,         0x1f2);
     KAROO_LAYOUT_AT(field_1f3,         0x1f3);
     KAROO_LAYOUT_AT(bridgeSlot_,       0x1f4);
     KAROO_LAYOUT_AT(bridgeAxis_,       0x1f5);
@@ -267,6 +267,6 @@ KAROO_LAYOUT_CHECKS(Tile)
     KAROO_LAYOUT_AT(field_20f,         0x20f);
     KAROO_LAYOUT_AT(itemPhase_,        0x213);
     KAROO_LAYOUT_AT(teleportId_,       0x1ed);
-    KAROO_LAYOUT_AT(field_217,         0x217);
+    KAROO_LAYOUT_AT(busy_,             0x217);
     KAROO_LAYOUT_SIZE(0x7f);
 }

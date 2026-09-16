@@ -258,31 +258,31 @@ Foe::Foe()
     vtable_          = &VTABLE;
     zeroSoundSlots();                       /* 0x43ad60 */
     field_7a         = 0;
-    field_82         = 0;
+    dyingStarted_         = 0;
     removeRequested_ = 0;
-    field_86         = 0;
-    field_58         = 0;
+    dying_         = 0;
+    conveyorDir_         = 0;
     field_124        = 1;
-    field_14e        = 0;
+    moveDir_        = 0;
     pendingMove_     = 0;
     field_126        = 0.0;             /* two zero dwords */
-    field_fb         = 0;
-    field_120        = 0;
-    field_11e        = 0xff;
+    climbing_         = 0;
+    falling_        = 0;
+    slideSlot_        = 0xff;
     field_d7         = 0xff;
     field_48         = 20.0;                /* 0 at +0x48 ... */
     field_38         = 1000.0;              /* 0 at +0x38 ... */
     moveState_       = 0;
-    field_ef         = 0;
+    held_         = 0;
     field_e8         = 0;
     field_e4         = 0;
-    field_ff         = 0;
+    teleportPhase_         = 0;
     field_156        = 0;
-    field_e9         = 0;
+    glides_         = 0;
     field_11a        = 0;
-    field_ea         = 0;
+    gliding_         = 0;
     field_d3         = 0;
-    field_9b         = 0;
+    onLift_         = 0;
     pool_9f_         = 0;
     sound_ab_        = 0;                   /* the redundant second clear */
     sound_af_        = 0;
@@ -294,9 +294,9 @@ Foe::Foe()
     sound_c7_        = 0;
     sound_cb_        = 0;
     sound_cf_        = 0;
-    field_9a         = 0;
-    field_6e         = 0;
-    field_63         = 0;
+    anim_         = 0;
+    idleStarted_         = 0;
+    pickedUp_         = 0;
     dropContents_    = 0;
     type_            = 0;
     /* ... 0x40340000 at +0x4c (00412117) */
@@ -309,8 +309,8 @@ void Foe::destroy()
     FoePath *pf;
 
     tile(cellU_, cellV_)->setField1a1(0);
-    tile(cellU_, cellV_)->setField1a5(0);
-    tile(cellU_ - field_13f, cellV_ - field_140)->setField1a5(0);
+    tile(cellU_, cellV_)->setOccupant(0);
+    tile(cellU_ - stepU_, cellV_ - stepV_)->setOccupant(0);
 
     pf = pathfinder_;
     if (pf != 0)
@@ -407,17 +407,17 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     (*slot)->tickStep_ = game->tickStep();
 
     /* Detail 2: i * 1500, as a signed int, plus the clock. */
-    (*slot)->field_72 = (double)(int)(i * 0x5dc) + *game->clock();
+    (*slot)->lastActive_ = (double)(int)(i * 0x5dc) + *game->clock();
 
     (*slot)->kind_ = (unsigned char)kind;
     if (kind == 2) {
-        (*slot)->field_66 = 500.0;          /* 0 at +0x66, 0x407f4000 at +0x6a */
+        (*slot)->stepDuration_ = 500.0;          /* 0 at +0x66, 0x407f4000 at +0x6a */
         if (s_diag_spawn && !s_logged_kind2) {
             s_logged_kind2 = 1;
             log_write("foe: first kind-2 foe\n");
         }
     } else if (kind == 3) {
-        (*slot)->field_66 = 700.0;          /* 0 at +0x66, 0x4085e000 at +0x6a */
+        (*slot)->stepDuration_ = 700.0;          /* 0 at +0x66, 0x4085e000 at +0x6a */
         if (s_diag_spawn && !s_logged_kind3) {
             s_logged_kind3 = 1;
             log_write("foe: first kind-3 foe\n");
@@ -460,7 +460,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     (*slot)->posV_ = (float)(int)(unsigned int)v;
 
     /* Detail 4: the kind byte, re-read from the slot, into the spawn cell. */
-    Tile::at(game->tileBase(), (int)u, (int)v)->setField1a5((*slot)->kind_);
+    Tile::at(game->tileBase(), (int)u, (int)v)->setOccupant((*slot)->kind_);
 
     /* AttachFoePathfinderToEntity 0x43a970: allocate and construct (reading
      * the foe's tile base), then store -- NULL on a failed allocation. */
@@ -586,7 +586,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     now_        = *clock_;
 
     /* ── 2. The contact test ─────────────────────────────────────────── */
-    if ((signed char)kind_ == 3 && field_ef == 0 && field_e4 == 0) {
+    if ((signed char)kind_ == 3 && held_ == 0 && field_e4 == 0) {
         /* b: the player zero-extended, the foe's own sign-extended. */
         if (iabs_orig((int)playerU - (int)cellU_) < 2 &&
             iabs_orig((int)playerV - (int)cellV_) < 2) {
@@ -612,8 +612,8 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     }
 
     /* ── 3. The pickup ───────────────────────────────────────────────── */
-    field_63 = 0;
-    if ((signed char)type_ == 3 && field_14e == 0) {
+    pickedUp_ = 0;
+    if ((signed char)type_ == 3 && moveDir_ == 0) {
         Tile *t = tile(cellU_, cellV_);
 
         /* d: +0x33 signed, the tile's height unsigned. */
@@ -636,26 +636,26 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
                                                   1);
                 Sim_VoicePoolCycle(pool_9f_, 0);
             }
-            field_63 = 1;
+            pickedUp_ = 1;
         }
     }
 
     /* ── 4. Clear the move; a frozen foe goes straight to movement ───── */
     pendingMove_ = 0;
-    if (field_14e != 0) {
+    if (moveDir_ != 0) {
         if (s_diag_step && !s_logged_frozen) {
             s_logged_frozen = 1;
             log_write("foe: first FROZEN foe -- +0x14e=%d cell=(%d,%d)\n",
-                      field_14e, (int)cellU_, (int)cellV_);
+                      moveDir_, (int)cellU_, (int)cellV_);
         }
     }
-    if (field_14e != 0 && !s_fx_unfreeze) {
+    if (moveDir_ != 0 && !s_fx_unfreeze) {
         updateMovement();
         return;
     }
 
     /* ── 5. The chase ────────────────────────────────────────────────── */
-    chase(playerU, playerV, field_64);
+    chase(playerU, playerV, chaseSpeed_);
 
     if ((signed char)pendingMove_ != 0) {
         if (s_diag_step && !s_logged_chase) {
@@ -684,27 +684,27 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
                           (int)cellU_, (int)cellV_);
             }
 
-            if ((signed char)field_108 != 0)
-                pendingMove_ = Sim_GetTurnedDirection(field_108, 2);
+            if ((signed char)lastMoveDir_ != 0)
+                pendingMove_ = Sim_GetTurnedDirection(lastMoveDir_, 2);
 
             facing = facing_;
 
             /* c: four SEQUENTIAL ifs, each able to rewrite pendingMove. */
             if (pendingMove_ == facing) {
                 pendingMove_ = facing;
-                field_125    = 1;
+                turnKind_    = 1;
             }
             if (pendingMove_ == Sim_GetTurnedDirection(facing, 1)) {
-                field_125    = 2;
+                turnKind_    = 2;
                 pendingMove_ = (unsigned char)(Sim_GetTurnedDirection(facing_, 1) + 10);
             }
             if (pendingMove_ == Sim_GetTurnedDirection(facing_, 3)) {
-                field_125    = 4;
+                turnKind_    = 4;
                 pendingMove_ = (unsigned char)(Sim_GetTurnedDirection(facing_, 3) + 10);
             }
             /* Tests turn 2 but WRITES turn 1 -- the original's. */
             if (pendingMove_ == Sim_GetTurnedDirection(facing_, 2)) {
-                field_125    = 2;
+                turnKind_    = 2;
                 pendingMove_ = (unsigned char)(Sim_GetTurnedDirection(facing_, 1) + 10);
             }
         }
@@ -717,7 +717,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
             log_write("foe: first return-to-post -- target=(%u,%u)\n",
                       (unsigned)targetU_, (unsigned)targetV_);
         }
-        chase(targetU_, targetV_, field_64);
+        chase(targetU_, targetV_, chaseSpeed_);
     }
 
     /* ── 8. Every path ends here ─────────────────────────────────────── */
@@ -745,7 +745,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
         pathfinder_->setMode((field_d3 != 0) ? 0 : 2);
 
     /* 2. A move already in flight wins. */
-    if (field_14e != 0)
+    if (moveDir_ != 0)
         return pendingMove_;
 
     /* 3. Search -- backward, from the target to the foe. */
@@ -783,23 +783,23 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
 
         if (pendingMove_ == facing) {
             pendingMove_ = facing;
-            field_125    = 1;
+            turnKind_    = 1;
         }
         if (pendingMove_ == Sim_GetTurnedDirection(facing, 2)) {
             pendingMove_ = Sim_GetTurnedDirection(facing_, 2);
-            field_125    = 3;
+            turnKind_    = 3;
         }
         if (pendingMove_ == Sim_GetTurnedDirection(facing_, 1)) {
-            field_125    = 2;
+            turnKind_    = 2;
             pendingMove_ = (unsigned char)(Sim_GetTurnedDirection(facing_, 1) + 10);
         }
         if (pendingMove_ == Sim_GetTurnedDirection(facing_, 3)) {
-            field_125    = 4;
+            turnKind_    = 4;
             pendingMove_ = (unsigned char)(Sim_GetTurnedDirection(facing_, 3) + 10);
         }
         /* Tests with delta 2, stores with delta 1 -- the original's. */
         if (pendingMove_ == Sim_GetTurnedDirection(facing_, 2)) {
-            field_125    = 2;
+            turnKind_    = 2;
             pendingMove_ = (unsigned char)(Sim_GetTurnedDirection(facing_, 1) + 10);
         }
     }
@@ -817,7 +817,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
 
     if (step->objectMarker() == 0)
         pendingMove_ = 0;
-    if (field_11e != 0xff && step->slideTrack() != 0)       /* e */
+    if (slideSlot_ != 0xff && step->slideTrack() != 0)       /* e */
         pendingMove_ = 0;
     if (here->objectMarker() == 0x0e)
         pendingMove_ = 0;
@@ -826,7 +826,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
         const unsigned a = ftol32(step->liftParkedSince());
         const unsigned b = ftol32(now_ - (double)a);
         const unsigned c = ftol32(step->liftDwell());
-        const unsigned d = ftol32(field_132);
+        const unsigned d = ftol32(animDuration_);
         if ((int)(c - b) < (int)d)
             pendingMove_ = 0;
         if ((unsigned)step->height() != (unsigned)(int)heightCell_)
@@ -846,7 +846,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
         const unsigned e = ftol32(step->slideParkedSince());
         const unsigned f = ftol32(now_ - (double)e);
         const unsigned g = ftol32(step->slideDwell());
-        const unsigned h = ftol32(field_132);
+        const unsigned h = ftol32(animDuration_);
         if ((int)(g - f) >= (int)h)
             return pendingMove_;
     }
@@ -897,28 +897,28 @@ void Foe::chooseTarget(Game *game, int hold,
 {
     unsigned char tu = playerU, tv = playerV;
 
-    field_ef = hold;
-    field_64 = 0x32;
+    held_ = hold;
+    chaseSpeed_ = 0x32;
     if (type_ == 1) {
         tu = escortU;
         tv = escortV;
-        field_64 = 400;
+        chaseSpeed_ = 400;
     }
     if (type_ == 2) {
         tu = (unsigned char)cellU_;
         tv = (unsigned char)cellV_;
         if (Sim_FindNearestListedObjectTile(game, &tu, &tv, 7) != 0) {
-            field_64 = 100;
+            chaseSpeed_ = 100;
             chase(tu, tv, 100);
-            if (field_d3 == 0 && pendingMove_ == 0 && field_125 == 0) {
+            if (field_d3 == 0 && pendingMove_ == 0 && turnKind_ == 0) {
                 tu = playerU;
                 tv = playerV;
-                field_64 = 0x32;
+                chaseSpeed_ = 0x32;
             }
         } else {
             tu = playerU;
             tv = playerV;
-            field_64 = 100;
+            chaseSpeed_ = 100;
         }
     }
     if (type_ == 3) {
@@ -927,38 +927,38 @@ void Foe::chooseTarget(Game *game, int hold,
         if (Sim_FindNearestFlaggedTileInRadius(game, &tu, &tv, 5) == 0) {
             tu = playerU;
             tv = playerV;
-            field_64 = 100;
+            chaseSpeed_ = 100;
         } else {
-            field_64 = 0x96;
+            chaseSpeed_ = 0x96;
             chase(tu, tv, 0x96);
             if (pendingMove_ == 0) {
                 tu = playerU;
                 tv = playerV;
-                field_64 = 100;
+                chaseSpeed_ = 100;
             }
         }
     }
     if (type_ == 5) {
         int found = 0;
-        field_ef = 0;
+        held_ = 0;
         for (int j = 0; j < (int)game->foeCount(); ++j) {
             Foe *other = game->foeSlot(game->foeId(j));
             if (other->kind_ == 2) {
                 found = 1;
                 tu = (unsigned char)other->cellU_;
                 tv = (unsigned char)other->cellV_;
-                field_64 = 0x96;
+                chaseSpeed_ = 0x96;
             }
         }
         if (!found)
-            field_ef = 1;
+            held_ = 1;
     }
     if (type_ == 7) {
-        field_ef = 0;
+        held_ = 0;
         if (Sim_FindFarthestOccupiedTile(this, &tu, &tv) != 0)
-            field_64 = 0x96;
+            chaseSpeed_ = 0x96;
         else
-            field_ef = 1;
+            held_ = 1;
     }
     *pu = tu;
     *pv = tv;
@@ -970,8 +970,8 @@ void Foe::dropBomb(Game *game)
     if (field_e4 == 0 || type_ == 2)
         return;
     int spawn = 1, offset = 0;
-    if (field_14e != 0) {
-        long double since = (long double)*game->clock() - (long double)field_146;
+    if (moveDir_ != 0) {
+        long double since = (long double)*game->clock() - (long double)animStart_;
         if (since < 50.0L)
             offset = 1;
         else
@@ -980,8 +980,8 @@ void Foe::dropBomb(Game *game)
     if (!spawn)
         return;
     if (offset)
-        Bomb::spawn(game, (unsigned char)((unsigned char)cellU_ - (unsigned char)field_13f),
-                          (unsigned char)((unsigned char)cellV_ - (unsigned char)field_140),
+        Bomb::spawn(game, (unsigned char)((unsigned char)cellU_ - (unsigned char)stepU_),
+                          (unsigned char)((unsigned char)cellV_ - (unsigned char)stepV_),
                           (unsigned char)((unsigned char)heightCell_ - (unsigned char)field_141),
                           facing_);
     else
@@ -1006,16 +1006,16 @@ void Foe::checkPlayerContact(unsigned char *playerMoveState,
             if (dist < 0.5L)
                 *playerMoveState = 1;
         }
-    } else if (field_14e == 0) {
-        field_9a = 0x28;
+    } else if (moveDir_ == 0) {
+        anim_ = 0x28;
     }
 }
 
 bool Foe::finishDespawn(LevelMap *map)
 {
-    if (moveState_ == 0 || field_120 != 0)
+    if (moveState_ == 0 || falling_ != 0)
         return false;
-    field_86 = 1;
+    dying_ = 1;
     /* The home cell's contents in the map's SNAPSHOT (Game+0x3e181c), so a
      * restart does not respawn this foe -- unless it came from a timed
      * spawner (0x64). */

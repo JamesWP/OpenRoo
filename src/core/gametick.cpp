@@ -217,9 +217,9 @@ static void trigger_switch_tile(unsigned char *B, unsigned char sw, int u, int v
     BridgeObject *br = ((Game *)B)->bridgeSlot(sw);
     Tile *t = MAP->tile(u, v);
     if (br->phase() == 0)
-        t->setField217(1);
+        t->setBusy(1);
     else
-        t->setField217(0);
+        t->setBusy(0);
 }
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
@@ -353,7 +353,7 @@ Sim_GameTick(Game *self, double dt, double now)
             if (!(since > (long double)E->interval))
                 continue;
             signed char u = (signed char)E->u, v = (signed char)E->v;
-            if (MAP->tile(u, v)->field1a5() == 0 &&((Game *)B)->foeCount() < E->maxFoes) {
+            if (MAP->tile(u, v)->occupant() == 0 &&((Game *)B)->foeCount() < E->maxFoes) {
                 unsigned char id = Foe::spawn((Game *)B, (unsigned char)u,
                                               (unsigned char)v, E->height, 2,
                                               (unsigned char)(E->field_0b + 100));
@@ -378,7 +378,7 @@ Sim_GameTick(Game *self, double dt, double now)
             if (pl->soundC7() != NULL) CStatic_HaltPlayback(pl->soundC7());
         }
 
-        if ((unsigned int)pl->fieldEa() != 0) {
+        if ((unsigned int)pl->gliding() != 0) {
             if (((Game *)B)->parkedCameraOption() == 0) {
                 ((Game *)B)->setParkedCameraOption((unsigned char)(((Game *)B)->cameraTurnsWithPlayer() + 10));
                 ((Game *)B)->setCameraTurnsWithPlayer(1);
@@ -406,8 +406,8 @@ Sim_GameTick(Game *self, double dt, double now)
         if (pl->moveState() == 0)
             ProgCtrl_Dispatch(PROGCTRL, (unsigned short)STATE);
     } else {
-        pl->setField6e(0);
-        pl->setField72(*((Game *)B)->clock());
+        pl->setIdleStarted(0);
+        pl->setLastActive(*((Game *)B)->clock());
         ProgCtrl_Dispatch(PROGCTRL, 0);
         if (((Game *)B)->fixedSounds()->lastSeconds != NULL)
             CStatic_HaltPlayback(((Game *)B)->fixedSounds()->lastSeconds);
@@ -415,10 +415,10 @@ Sim_GameTick(Game *self, double dt, double now)
 
     /* the player's bomb drop */
     if ((unsigned int)pl->fieldE4() != 0) {
-        unsigned int timed = (unsigned int)pl->field14e();
+        unsigned int timed = (unsigned int)pl->moveDir();
         int spawn = 1, offset = 0;
         if (timed != 0) {
-            long double since = (long double)ACC - (long double)pl->field146();
+            long double since = (long double)ACC - (long double)pl->animStart();
             if (since < 50.0L)
                 offset = 1;
             else
@@ -426,8 +426,8 @@ Sim_GameTick(Game *self, double dt, double now)
         }
         if (spawn) {
             if (offset)
-                Bomb::spawn((Game *)B,(unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->field13f()),
-                                    (unsigned char)((unsigned char)pl->cellV() - (unsigned char)pl->field140()),
+                Bomb::spawn((Game *)B,(unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
+                                    (unsigned char)((unsigned char)pl->cellV() - (unsigned char)pl->stepV()),
                                     (unsigned char)((unsigned char)pl->heightCell() - (unsigned char)pl->field141()),
                                     pl->facing());
             else
@@ -460,10 +460,10 @@ Sim_GameTick(Game *self, double dt, double now)
             + (unsigned int)ftol80(((Game *)B)->tickStep()->value));
     }
 
-    if ((unsigned int)pl->fieldEa() != 0) {
+    if ((unsigned int)pl->gliding() != 0) {
         ((Game *)B)->setCameraMode(0);
-    } else if ((unsigned int)pl->field120() != 0) {
-        long double d = (long double)(int)pl->field111() - (long double)(int)pl->heightCell();
+    } else if ((unsigned int)pl->falling() != 0) {
+        long double d = (long double)(int)pl->fallStartH() - (long double)(int)pl->heightCell();
         if (d > 2.0L) {
             ((Game *)B)->setCameraMode(1);
             ((Game *)B)->setCameraEye(0, pl->posU());
@@ -510,7 +510,7 @@ Sim_GameTick(Game *self, double dt, double now)
 
     /* ─── playing: camera follow, time-out, exit ─── */
     if (STATE == 1) {
-        if ((unsigned int)pl->field120() == 0 && pl->moveState() == 0) {
+        if ((unsigned int)pl->falling() == 0 && pl->moveState() == 0) {
             ((Game *)B)->setCameraEye(0, pl->posU());
             ((Game *)B)->setCameraEye(1, pl->posY());
             ((Game *)B)->setCameraEye(2, pl->posV());
@@ -534,12 +534,12 @@ Sim_GameTick(Game *self, double dt, double now)
                     CStatic_TriggerPlayback((CStaticSoundbuffer *)snd, 0);
                 ((Game *)B)->setField173b1a(1);
             }
-            MAP->tile((signed char)pl->field142(), (signed char)pl->field143())->setField217(1);
+            MAP->tile((signed char)pl->field142(), (signed char)pl->field143())->setBusy(1);
             if ((unsigned char)pl->cellU() == pl->field142() && (unsigned char)pl->cellV() == pl->field143() &&
-                (unsigned char)pl->heightCell() == pl->field144() && (unsigned int)pl->field120() == 0 &&
+                (unsigned char)pl->heightCell() == pl->field144() && (unsigned int)pl->falling() == 0 &&
                 pl->moveState() == 0) {
-                pl->setFieldEf(1);
-                if ((unsigned int)pl->field14e() == 0) {
+                pl->setHeld(1);
+                if ((unsigned int)pl->moveDir() == 0) {
                     if (((Game *)B)->fixedSounds()->levelCompleted != NULL)
                         CStatic_TriggerPlayback(((Game *)B)->fixedSounds()->levelCompleted, 0);
                     if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {

@@ -440,7 +440,7 @@ Sim_SetupLevelObjects(Game *self)
 
     GAME->setField42252(0);
     GAME->setField173b1a(0);
-    PL->setField44(0);
+    PL->setMovingBackwards(0);
     PL->setFieldFf(0);
     PL->setField11a(0);
     PL->setField58(0);
@@ -490,9 +490,9 @@ Sim_SetupLevelObjects(Game *self)
 
     PL->setPos((float)(int)PL->cellU(), (float)(int)PL->heightCell(), (float)(int)PL->cellV());
 
-    PL->setField108(0);
+    PL->setLastMoveDir(0);
     PL->setKind(4);
-    PL->setField66(200.0);                /* two dwords: 0, 0x40690000 */
+    PL->setStepDuration(200.0);                /* two dwords: 0, 0x40690000 */
 
     /* time() through OUR hook, so KAROO_SEED still governs the run. */
     ORIG_SRAND((unsigned int)hooks_GameTime(0));
@@ -525,13 +525,13 @@ Sim_SetupLevelObjects(Game *self)
                 t = CELL(M, u, v);
                 s = LevelMap::snapshotOf(t);
 
-                t->setField1a5(0);
+                t->setOccupant(0);
                 t->setField1f6(0);
                 t->setField203(0);
                 t->setField20f(0);
                 t->setBlastHeight(0);
                 t->setField1a1(0);
-                t->setField217(0);
+                t->setBusy(0);
                 t->setField202(0);
 
                 if (t->contents() == 1)
@@ -546,7 +546,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == 0x17) {
                     unsigned char item;
                     CEN->type17++;
-                    t->setField217(0);
+                    t->setBusy(0);
                     item = t->contents();
                     if (s_fx_noshadow)
                         item = 0;      /* the move never happens */
@@ -602,7 +602,7 @@ Sim_SetupLevelObjects(Game *self)
                 }
 
                 if (t->objectMarker() == 0x10) {
-                    t->setField1f2(t->param());
+                    t->setClimbDir(t->param());
                     t->setParam(0);
                 }
 
@@ -660,10 +660,10 @@ Sim_SetupLevelObjects(Game *self)
                                     if (t2->objectMarker() == 0x0f &&
                                         t2->param() == id) {
                                         CEN->teleports++;
-                                        t->setField1ee(u2);
-                                        t->setField1ef(v2);
-                                        t2->setField1ee(u);
-                                        t2->setField1ef(v);
+                                        t->setTeleportU(u2);
+                                        t->setTeleportV(v2);
+                                        t2->setTeleportU(u);
+                                        t2->setTeleportV(v);
                                         t2->setParam(0);
                                     }
                                     u2 = (unsigned char)(u2 + 1);
@@ -779,7 +779,7 @@ next_row:
     }
 
     /* ── totals and the rest of the reset ──────────────────────────────── */
-    PL->setField11e(0xff);
+    PL->setSlideSlot(0xff);
     GAME->setField173584(1);
 
     CEN->total = (unsigned short)(CEN->l2_9 + CEN->l2_a +
@@ -800,7 +800,7 @@ next_row:
     PL->setField1fe(0);
     PL->setSwitchSlot(0xff);
     PL->setFieldD3(0);
-    PL->setField9b(0);
+    PL->setOnLift(0);
     PL->setFieldE4(0);
     PL->setFieldD8(0);
     ((Game *)G)->setTimeLimit(M->fileTimeLimit());
@@ -808,7 +808,7 @@ next_row:
 
     if (((Game *)G)->restartCount() == 0) {
         ((Game *)G)->setFoesKilled(0);
-        PL->setField21a(0);
+        PL->setItemsCollected(0);
         ((Game *)G)->setItemTotal(CEN->total);
 
         if (((Game *)G)->scriptPlayer()->loaded() == 0) {
@@ -835,18 +835,18 @@ next_row:
 
     SCELL(M, PL->cellU(), PL->cellV())->setField1a1(0);
 
-    PL->setFieldE9(0);
+    PL->setGlides(0);
     PL->setFieldE8(0);
-    PL->setField1f2(0);
-    PL->setField120(0);
-    PL->setField6e(0);
-    PL->setFieldEa(0);
-    PL->setFieldEf(0);
-    PL->setField14e(0);
+    PL->setClimbDir(0);
+    PL->setFalling(0);
+    PL->setIdleStarted(0);
+    PL->setGliding(0);
+    PL->setHeld(0);
+    PL->setMoveDir(0);
     PL->setPendingMove(0);
     PL->setField12e(0);
-    PL->setField9a(0);
-    PL->setField86(0);
+    PL->setAnim(0);
+    PL->setDying(0);
     PL->setField38(500.0);                /* two dwords: 0, 0x407f4000 */
     GAME->setField13cc90(0);
     GAME->setField13cca8(0);

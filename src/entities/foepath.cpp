@@ -341,19 +341,19 @@ int FoePath::passable(int u, int v)
         return 0;
     if (kind == 0x16)
         return 0;
-    if (kind == 0x17 && t->field217() == 0)
+    if (kind == 0x17 && t->busy() == 0)
         return 0;
 
     const unsigned char mode = mode_;
 
     if (mode == 7) {
-        const unsigned char occupant = t->field1a5();
+        const unsigned char occupant = t->occupant();
         if (occupant == 4 || occupant == 3)
             return 0;
     }
 
     if (mode == 2 && kind == 0x11 &&
-        t->field217() == 0 && t->field1a5() != 4)
+        t->busy() == 0 && t->occupant() != 4)
         return 0;
 
     return 1;
@@ -1384,7 +1384,7 @@ Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned cha
 
     /* Bridge / conveyor: only passable along its own direction byte. */
     if (from->objectMarker() == 0x10 && from->height() == to->height()) {
-        const unsigned char dir = from->field1f2();
+        const unsigned char dir = from->climbDir();
         if (v_from < v_to && dir == 1)
             flag = 1;
         else if (u_from < u_to && dir == 4)
@@ -1425,12 +1425,12 @@ Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned cha
 
     /* Unoccupied jump pad: the answer is about the cell behind, and nothing
      * decided above survives. */
-    if (from->objectMarker() == 2 && from->field1a5() == 0) {
+    if (from->objectMarker() == 2 && from->occupant() == 0) {
         const signed char du = (signed char)(u_from - u_to);
         const signed char dv = (signed char)(v_from - v_to);
         const int up = (int)u_to + (int)du * 2;
         const int vp = (int)v_to + (int)dv * 2;
-        return Tile::at(base, up, vp)->field1a5() == 4;
+        return Tile::at(base, up, vp)->occupant() == 4;
     }
 
     return flag;

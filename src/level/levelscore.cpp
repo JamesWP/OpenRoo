@@ -165,7 +165,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
 
     /* ── all-items bonus ─────────────────────────────────────────────── */
     const unsigned short itemTotal = ((Game *)self)->itemTotal();
-    if (itemTotal > ((Game *)self)->player()->field21a() || ((Game *)self)->restartCount() != 0) {
+    if (itemTotal > ((Game *)self)->player()->itemsCollected() || ((Game *)self)->restartCount() != 0) {
         t->score[TALLY_ALLITEMS] = 0;
         t->count[TALLY_ALLITEMS] = 0;
     } else {

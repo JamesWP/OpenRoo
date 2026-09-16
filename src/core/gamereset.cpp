@@ -243,10 +243,10 @@ Sim_ClearGameState(Game *self)
     ((Game *)G)->setRestartCount(0);
     pl->setGemsCollected(0);
     pl->setFacing(1);
-    pl->setField14e(0);
-    pl->setField120(0);
+    pl->setMoveDir(0);
+    pl->setFalling(0);
     pl->setMoveState(0);
-    pl->setField66(200.0);                 /* bits 0x4069000000000000 */
+    pl->setStepDuration(200.0);                 /* bits 0x4069000000000000 */
     pl->setField22c(0);
     *(unsigned int *)(G + 0x170a48) = 0;
 

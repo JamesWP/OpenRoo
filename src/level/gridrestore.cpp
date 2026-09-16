@@ -77,7 +77,7 @@ Sim_RestoreTileGridFromSnapshot(Game *self)
             t->setParam(s->param());
             if (s->contents() == 1 && t->contents() != 1 && !s_fx)
                 t->setContents(0);
-            if (s->objectMarker() == 0x17 && t->field217() != 0) {
+            if (s->objectMarker() == 0x17 && t->busy() != 0) {
                 s->setObjectMarker(1);
                 t->setObjectMarker(1);
             }

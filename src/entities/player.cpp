@@ -271,31 +271,31 @@ unsigned int Player::updateTileEffects()
 
     pendingMove_ = 0;
 
-    if ((signed char)field_9a != 10)
+    if ((signed char)anim_ != 10)
         updateMovement();
 
     /* ── 2. Respawn ──────────────────────────────────────────────────── */
     if (moveState_ != 0) {
-        curTile()->setField1a5(0);
+        curTile()->setOccupant(0);
 
         field_1da = 0;
         field_1e6 = 0;
-        field_1f2 = 0;
+        climbDir_ = 0;
         field_1fe = 0;
         field_20a = 0;
 
         clearEffects();
 
-        copy8(&field_72, &now_);
-        field_6e = 0;
+        copy8(&lastActive_, &now_);
+        idleStarted_ = 0;
 
         if (posY_ <= K_LAND_Y) {
-            field_9a = 8;
+            anim_ = 8;
         } else {
             /* The `<` is evaluated BEFORE the state store in the original;
              * kept in that order although nothing here reads +0x9a. */
             int rising = (posY_ < K_RESPAWN_TOP);
-            field_9a = 10;
+            anim_ = 10;
             if (rising)
                 posY_ = (float)(load_double(&tickStepCopy_) * (double)K_RISE_RATE
                                 + (double)posY_);
@@ -303,7 +303,7 @@ unsigned int Player::updateTileEffects()
     }
 
     /* ── 3. The tile gate ────────────────────────────────────────────── */
-    field_63 = 0;
+    pickedUp_ = 0;
 
     {
         Tile *t = curTile();
@@ -336,7 +336,7 @@ unsigned int Player::updateTileEffects()
                 centred = (sqrt(d * d * (double)K_CENTRE_W) < (double)K_CENTRE_TOL);
             }
 
-            onTile = centred || (field_14e == 0);
+            onTile = centred || (moveDir_ == 0);
         }
 
         if (s_fx_nopickup)
@@ -362,18 +362,18 @@ unsigned int Player::updateTileEffects()
             LevelMap *map = LevelMap::fromTileBase(tileBase_);
             map->setTimeLimit(map->timeLimit() + 5);
             curTile()->setContents(0);
-            field_21a += 1;
+            itemsCollected_ += 1;
             field_1ca = (double)(map->timeLimit() + 1);
 
             pickupSound(pickupSounds_[SND_176]);
-            field_63 = 6;
+            pickedUp_ = 6;
         }
 
         /* ── 1: crystal (VoicePool, not a static buffer) ─────────────── */
         if ((signed char)curTile()->contents() == 1) {
             gemsCollected_ += 1;
             curTile()->setContents(0);
-            field_21a += 1;
+            itemsCollected_ += 1;
 
             if (pool_9f_ != NULL) {
                 Sim_BroadcastPoolVoiceCoordinates(
@@ -384,24 +384,24 @@ unsigned int Player::updateTileEffects()
                     1);
                 Sim_VoicePoolCycle(pool_9f_, 0);
             }
-            field_63 = 1;
+            pickedUp_ = 1;
         }
 
         /* ── 7 ───────────────────────────────────────────────────────── */
         if ((signed char)curTile()->contents() == 7) {
             field_239 += 1;
             curTile()->setContents(0);
-            field_21a += 1;
+            itemsCollected_ += 1;
 
             pickupSound(pickupSounds_[SND_16A]);
-            field_63 = 7;
+            pickedUp_ = 7;
         }
 
         /* ── 5: gated on +0x120, and its sound is indexed by +0x15a ──── */
-        if ((signed char)curTile()->contents() == 5 && field_120 == 0) {
-            field_e9 += 1;
+        if ((signed char)curTile()->contents() == 5 && falling_ == 0) {
+            glides_ += 1;
             curTile()->setContents(0);
-            field_21a += 1;
+            itemsCollected_ += 1;
 
             {
                 CStaticSoundbuffer *buf = pickupSounds_[SND_19A][field_15a];
@@ -410,17 +410,17 @@ unsigned int Player::updateTileEffects()
                     CStatic_TriggerPlayback(pickupSounds_[SND_19A][field_15a], 0);
                 }
             }
-            field_63 = 5;
+            pickedUp_ = 5;
         }
 
         /* ── 9 ───────────────────────────────────────────────────────── */
         if ((signed char)curTile()->contents() == 9) {
             field_e8 += 3;
             curTile()->setContents(0);
-            field_21a += 1;
+            itemsCollected_ += 1;
 
             pickupSound(pickupSounds_[SND_1A6]);
-            field_63 = 9;
+            pickedUp_ = 9;
         }
 
         /* Timed effects: push the code onto the active list only if the
@@ -434,10 +434,10 @@ unsigned int Player::updateTileEffects()
             copy8(&field_1de, &now_);
             field_1e6 = 1;
             curTile()->setContents(0);
-            field_21a += 1;
+            itemsCollected_ += 1;
 
             pickupSound(pickupSounds_[SND_15E]);
-            field_63 = 8;
+            pickedUp_ = 8;
         }
 
         /* ── 0xb: timed, reverses PlayerMoveForward ──────────────────── */
@@ -447,10 +447,10 @@ unsigned int Player::updateTileEffects()
             copy8(&field_1d2, &now_);
             field_1da = 1;
             curTile()->setContents(0);
-            field_21a += 1;
+            itemsCollected_ += 1;
 
             pickupSound(pickupSounds_[SND_1B2]);
-            field_63 = 0xb;
+            pickedUp_ = 0xb;
         }
 
         /* ── 0xa: timed, speed change ────────────────────────────────── */
@@ -459,12 +459,12 @@ unsigned int Player::updateTileEffects()
                 appendEffect(0xa);
             copy8(&field_202, &now_);
             field_20a = 1;
-            field_66 = 100.0;                     /* two dwords: 0, 0x40590000 */
+            stepDuration_ = 100.0;                     /* two dwords: 0, 0x40590000 */
             curTile()->setContents(0);
-            field_21a += 1;
+            itemsCollected_ += 1;
 
             pickupSound(pickupSounds_[SND_182]);
-            field_63 = 0xa;
+            pickedUp_ = 0xa;
         }
 
         /* ── 0xc: timed, speed change ────────────────────────────────── */
@@ -473,32 +473,32 @@ unsigned int Player::updateTileEffects()
                 appendEffect(0xc);
             copy8(&field_1f6, &now_);
             field_1fe = 1;
-            field_66 = 400.0;                     /* two dwords: 0, 0x40790000 */
+            stepDuration_ = 400.0;                     /* two dwords: 0, 0x40790000 */
             curTile()->setContents(0);
-            field_21a += 1;
+            itemsCollected_ += 1;
 
             pickupSound(pickupSounds_[SND_18E]);
-            field_63 = 0xc;
+            pickedUp_ = 0xc;
         }
 
         /* ── 0xd: timed, transforms the player and the tile occupant ─── */
         if ((signed char)curTile()->contents() == 0xd) {
-            if (field_1f2 == 0)
+            if (climbDir_ == 0)
                 appendEffect(0xd);
 
-            field_1f2 = 1;
+            climbDir_ = 1;
             kind_     = 3;
-            curTile()->setField1a5(3);
+            curTile()->setOccupant(3);
 
             /* NOTE the start time is stamped AFTER the flag, unlike the
              * other four. */
             copy8(&field_1ea, &now_);
 
             curTile()->setContents(0);
-            field_21a += 1;
+            itemsCollected_ += 1;
 
             pickupSound(pickupSounds_[SND_1BE]);
-            field_63 = 0xd;
+            pickedUp_ = 0xd;
         }
     }
 
@@ -524,7 +524,7 @@ expire:
 
     if (field_20a != 0) {
         if (now_ - field_202 > K_EFFECT_MS) {
-            field_66  = 200.0;                    /* two dwords: 0, 0x40690000 */
+            stepDuration_  = 200.0;                    /* two dwords: 0, 0x40690000 */
             field_20a = 0;
             endEffect(0xa);
         }
@@ -532,17 +532,17 @@ expire:
 
     if (field_1fe != 0) {
         if (now_ - field_1f6 > K_EFFECT_MS) {
-            field_66  = 200.0;                    /* two dwords: 0, 0x40690000 */
+            stepDuration_  = 200.0;                    /* two dwords: 0, 0x40690000 */
             field_1fe = 0;
             endEffect(0xc);
         }
     }
 
-    if (field_1f2 != 0) {
+    if (climbDir_ != 0) {
         if (now_ - field_1ea > K_EFFECT_MS) {
-            field_1f2 = 0;
+            climbDir_ = 0;
             kind_     = 4;
-            curTile()->setField1a5(4);
+            curTile()->setOccupant(4);
             endEffect(0xd);
         }
     }

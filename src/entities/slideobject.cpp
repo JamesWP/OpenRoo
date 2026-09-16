@@ -355,7 +355,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     /* Detail 1: four tile fields cleared BEFORE the allocation. */
     tile->setHeight(0);
     tile->setSlideTrack(0);
-    tile->setField1f2(0);
+    tile->setClimbDir(0);
     tile->setField202(0);
 
     obj = create();
@@ -521,7 +521,7 @@ void SlideObject::vacate()
                   (int)cellU_, (int)cellV_);
     }
     Tile::at(tileBase_, cellU_, cellV_)->setObjectMarker(0);
-    Tile::at(tileBase_, cellU_, cellV_)->setField1a5(0);
+    Tile::at(tileBase_, cellU_, cellV_)->setOccupant(0);
 }
 
 void SlideObject::tick()

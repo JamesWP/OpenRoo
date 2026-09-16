@@ -120,16 +120,16 @@ static void read_entity(const MovableEntity *obj, BYTE slot, WsEntity *e)
     memset(e, 0, sizeof(*e));
     e->slot    = slot;
     e->facing  = obj->facing();
-    e->moving  = (BYTE)obj->field14e();
+    e->moving  = (BYTE)obj->moveDir();
     e->gu      = (BYTE)obj->cellU();
     e->gv      = (BYTE)obj->cellV();
     e->gh      = (BYTE)obj->heightCell();
     e->pos[0]  = obj->posU();
     e->pos[1]  = obj->posY();
     e->pos[2]  = obj->posV();
-    e->hidden  = (DWORD)obj->field82();
+    e->hidden  = (DWORD)obj->dyingStarted();
     e->subtype = obj->type();
-    e->frozen  = (DWORD)obj->fieldEf();
+    e->frozen  = (DWORD)obj->held();
 }
 
 static void read_foe(const Foe *foe, BYTE slot, WsEntity *e)
@@ -201,10 +201,10 @@ bool worldstate_observe(Observation *obs)
             o->kind     = t->objectMarker();
             o->param    = t->param();
             o->contents = t->contents();
-            o->occupant = t->field1a5();
+            o->occupant = t->occupant();
             o->height   = t->height();
             o->height_f = t->liftLiveHeight();
-            o->spent    = (DWORD)t->field217();
+            o->spent    = (DWORD)t->busy();
             /* The snapshot: the cell as the .jjm gave it. */
             o->spawn_a  = p2->height();
             o->spawn_b  = p2->param();
@@ -214,7 +214,7 @@ bool worldstate_observe(Observation *obs)
 
     const Player *pl = ((const Game *)g)->player();
     obs->player_facing  = pl->facing();
-    obs->player_moving  = (BYTE)pl->field14e();
+    obs->player_moving  = (BYTE)pl->moveDir();
     obs->player_grid[0] = pl->posU();
     obs->player_grid[1] = pl->posY();
     obs->player_grid[2] = pl->posV();
@@ -237,7 +237,7 @@ bool worldstate_observe(Observation *obs)
     obs->gems_required     = ((Game *)g)->gemsRequired();
     obs->foes_killed       = ((const Game *)g)->foesKilled();
     obs->lives             = (BYTE)pl->field239();
-    obs->level_complete    = pl->fieldEf();
+    obs->level_complete    = pl->held();
     obs->crystals_in_level = ((const Game *)g)->field_42252();
     obs->freeze_timer      = (DWORD)pl->field1e6();
     return true;
