@@ -62,7 +62,7 @@ public:
      * double store is the same bits (COHESION_PLAN.md, template 3). */
     void  setIdleDuration(double d)                 { idleDuration_ = d; }
     void  setMovingBackwards(int n)                    { movingBackwards_ = n; }
-    void  setField58(int n)                    { conveyorDir_ = n; }
+    void  setConveyorDir(int n)                { conveyorDir_ = n; }
     /* +0x66: the move duration default (movableentity.cpp copies it into
      * +0x132): 200.0 normally, 100.0 / 400.0 under pickups 0xa / 0xc. */
     void  setStepDuration(double d)                 { stepDuration_ = d; }
@@ -75,12 +75,12 @@ public:
     /* +0xd7: the switch the player stands on, 0xff = none. */
     unsigned char switchSlot() const           { return field_d7; }
     void  setSwitchSlot(unsigned char s)       { field_d7 = s; }
-    int   fieldD8() const                      { return field_d8; }
-    void  setFieldD8(int n)                    { field_d8 = n; }
+    int   completionNumerator() const          { return field_d8; }
+    void  setCompletionNumerator(int n)        { field_d8 = n; }
     void  setLastContact(double d)                 { lastContact_ = d; }
     /* +0xe4: the player's bomb-drop request. */
-    int   fieldE4() const                      { return field_e4; }
-    void  setFieldE4(int n)                    { field_e4 = n; }
+    int   bombDropRequest() const              { return bombDropRequest_; }
+    void  setBombDropRequest(int n)            { bombDropRequest_ = n; }
     unsigned char fieldE8() const              { return field_e8; }
     void  setFieldE8(unsigned char b)          { field_e8 = b; }
     unsigned char glides() const              { return glides_; }
@@ -89,7 +89,7 @@ public:
     void  setGliding(int n)                    { gliding_ = n; }
     /* +0xef: gamestate.cpp's level-complete flag (0 -> 1 on exit). */
     void  setHeld(int n)                    { held_ = n; }
-    void  setFieldFf(unsigned char b)          { teleportPhase_ = b; }
+    void  setTeleportPhase(unsigned char b)    { teleportPhase_ = b; }
     void  setLastMoveDir(unsigned char b)      { lastMoveDir_ = b; }
     unsigned char fallStartH() const             { return fallStartH_; }
     void  setField11a(int n)                   { field_11a = n; }
@@ -147,7 +147,7 @@ public:
     void  setEffectCActive(int n)                   { effectCActive_ = n; }
     void  setEffectAActive(int n)                   { effectAActive_ = n; }
     /* Stored in the order +0x20e, +0x212, +0x216, as the caller does. */
-    void  setField20e(float a, float b, float c)
+    void  setMarker(float a, float b, float c)
     {
         markerU_ = a;
         markerH_ = b;

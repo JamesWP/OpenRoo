@@ -193,7 +193,7 @@ protected:
     unsigned char       field_d7;         /* +0x0d7  foe: switch it is on   */
     int                 field_d8;         /* +0x0d8                         */
     double              lastContact_;  /* +0x0dc  foe: last contact time  */
-    int                 field_e4;         /* +0x0e4                         */
+    int                 bombDropRequest_; /* +0x0e4  drop a bomb this tick       */
     unsigned char       field_e8;         /* +0x0e8                         */
     unsigned char       glides_;       /* +0x0e9  paraglider charges      */
     int                 gliding_;      /* +0x0ea  the paraglider is open  */
@@ -293,7 +293,7 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(field_d7,          0x0d7);
     KAROO_LAYOUT_AT(field_d8,          0x0d8);
     KAROO_LAYOUT_AT(lastContact_,          0x0dc);
-    KAROO_LAYOUT_AT(field_e4,          0x0e4);
+    KAROO_LAYOUT_AT(bombDropRequest_, 0x0e4);
     KAROO_LAYOUT_AT(field_e8,          0x0e8);
     KAROO_LAYOUT_AT(glides_,           0x0e9);
     KAROO_LAYOUT_AT(gliding_,          0x0ea);

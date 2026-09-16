@@ -333,7 +333,7 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     {
-        unsigned char pct = completion_percent((unsigned int)pl->fieldD8(), ((Game *)B)->field_170a65());
+        unsigned char pct = completion_percent((unsigned int)pl->completionNumerator(), ((Game *)B)->field_170a65());
         ((Game *)B)->setVitalityPercent(pct);
         if (pct > 100)
             ((Game *)B)->setVitalityPercent(100);
@@ -414,7 +414,7 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     /* the player's bomb drop */
-    if ((unsigned int)pl->fieldE4() != 0) {
+    if ((unsigned int)pl->bombDropRequest() != 0) {
         unsigned int timed = (unsigned int)pl->moveDir();
         int spawn = 1, offset = 0;
         if (timed != 0) {
@@ -433,7 +433,7 @@ Sim_GameTick(Game *self, double dt, double now)
             else
                 Bomb::spawn((Game *)B,(unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
                                     pl->facing());
-            pl->setFieldE4(0);
+            pl->setBombDropRequest(0);
         }
     }
 

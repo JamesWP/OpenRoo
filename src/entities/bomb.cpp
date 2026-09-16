@@ -234,7 +234,7 @@ Bomb::Bomb()
     held_          = 0;
     field_e8          = 0;
     stepDuration_          = 200.0;              /* 0 at +0x66, 0x40690000 at +0x6a */
-    field_e4          = 0;
+    bombDropRequest_          = 0;
     teleportPhase_          = 0;
     field_156         = 0;
     glides_          = 0;
