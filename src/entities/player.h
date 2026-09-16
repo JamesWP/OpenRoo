@@ -60,7 +60,7 @@ public:
     /* ── MovableEntity fields, meanings unknown unless noted ────────── */
     /* The doubles are written by some callers as two dword stores; one
      * double store is the same bits (COHESION_PLAN.md, template 3). */
-    void  setField38(double d)                 { field_38 = d; }
+    void  setIdleDuration(double d)                 { idleDuration_ = d; }
     void  setMovingBackwards(int n)                    { movingBackwards_ = n; }
     void  setField58(int n)                    { conveyorDir_ = n; }
     /* +0x66: the move duration default (movableentity.cpp copies it into
@@ -77,7 +77,7 @@ public:
     void  setSwitchSlot(unsigned char s)       { field_d7 = s; }
     int   fieldD8() const                      { return field_d8; }
     void  setFieldD8(int n)                    { field_d8 = n; }
-    void  setFieldDc(double d)                 { field_dc = d; }
+    void  setLastContact(double d)                 { lastContact_ = d; }
     /* +0xe4: the player's bomb-drop request. */
     int   fieldE4() const                      { return field_e4; }
     void  setFieldE4(int n)                    { field_e4 = n; }
@@ -106,10 +106,10 @@ public:
     signed char field141() const               { return field_141; }
     /* +0x142..+0x144: the marker-4 cell SetupLevelObjects looks up (u, v,
      * h) -- worldstate.cpp's level exit.  Written through the pointer. */
-    unsigned char field142() const             { return field_142; }
-    unsigned char field143() const             { return field_143; }
-    unsigned char field144() const             { return field_144; }
-    unsigned char *field142Ref()               { return &field_142; }
+    unsigned char markerCellU() const             { return markerCellU_; }
+    unsigned char markerCellV() const             { return markerCellV_; }
+    unsigned char markerCellH() const             { return markerCellH_; }
+    unsigned char *markerCellRef()               { return &markerCellU_; }
     void  setPendingMove(unsigned char m)      { pendingMove_ = m; }
     double animStart() const                    { return animStart_; }
     void  setMoveDir(int n)                    { moveDir_ = n; }

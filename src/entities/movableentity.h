@@ -136,13 +136,14 @@ protected:
     unsigned char      *tileBase_;        /* +0x034  Game::tileBase()       */
     /* One double, though the foe ctor writes it as two dwords: 1000.0
      * (0 at +0x38, 0x408f4000 at +0x3c). */
-    double              field_38;         /* +0x038                         */
+    double              idleDuration_; /* +0x038  ms the idle anim runs   */
     int                 field_40;         /* +0x040                         */
     int                 movingBackwards_; /* +0x044  turnKind_ 3: reversing */
     /* One double, though the ctors write it as two dwords: bomb 50.0
      * (0x40490000 at +0x4c), foe and player 20.0 (0x40340000). */
-    double              field_48;         /* +0x048                         */
-    double              field_50;         /* +0x050                         */
+    double              stepGrace_;    /* +0x048  } the window after a    */
+    double              stepEnd_;      /* +0x050  } step (animStart_ +
+                                       *   animDuration_) ends          */
     int                 conveyorDir_;  /* +0x058  conveyor: last way sent */
     /* Set as the bits 0xc0400000, i.e. -3.0f, and read as a float. */
     float               fallSpeed_;    /* +0x05c  fall velocity, -3.0     */
@@ -191,7 +192,7 @@ protected:
     int                 field_d3;         /* +0x0d3                         */
     unsigned char       field_d7;         /* +0x0d7  foe: switch it is on   */
     int                 field_d8;         /* +0x0d8                         */
-    double              field_dc;         /* +0x0dc  foe: last contact time */
+    double              lastContact_;  /* +0x0dc  foe: last contact time  */
     int                 field_e4;         /* +0x0e4                         */
     unsigned char       field_e8;         /* +0x0e8                         */
     unsigned char       glides_;       /* +0x0e9  paraglider charges      */
@@ -223,9 +224,9 @@ protected:
     signed char         stepU_;        /* +0x13f  } moveDir_ as a cell   */
     signed char         stepV_;        /* +0x140  } step, -1 / 0 / +1    */
     signed char         field_141;        /* +0x141  }                      */
-    unsigned char       field_142;        /* +0x142  } player: the marker-4 */
-    unsigned char       field_143;        /* +0x143  } cell (u, v, h)       */
-    unsigned char       field_144;        /* +0x144  }                      */
+    unsigned char       markerCellU_;  /* +0x142  } player: the marker-4 */
+    unsigned char       markerCellV_;  /* +0x143  } cell (u, v, h)       */
+    unsigned char       markerCellH_;  /* +0x144  }                      */
     unsigned char       pendingMove_;     /* +0x145                         */
     double              animStart_;    /* +0x146  clock the phase began   */
     int                 moveDir_;     /* +0x14e  0 = still, else 1..4   */
@@ -253,11 +254,11 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(cellV_,            0x032);
     KAROO_LAYOUT_AT(heightCell_,       0x033);
     KAROO_LAYOUT_AT(tileBase_,         0x034);
-    KAROO_LAYOUT_AT(field_38,          0x038);
+    KAROO_LAYOUT_AT(idleDuration_,          0x038);
     KAROO_LAYOUT_AT(field_40,          0x040);
     KAROO_LAYOUT_AT(movingBackwards_,  0x044);
-    KAROO_LAYOUT_AT(field_48,          0x048);
-    KAROO_LAYOUT_AT(field_50,          0x050);
+    KAROO_LAYOUT_AT(stepGrace_,          0x048);
+    KAROO_LAYOUT_AT(stepEnd_,          0x050);
     KAROO_LAYOUT_AT(conveyorDir_,      0x058);
     KAROO_LAYOUT_AT(fallSpeed_,        0x05c);
     KAROO_LAYOUT_AT(queuedMove_,       0x060);
@@ -291,7 +292,7 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(field_d3,          0x0d3);
     KAROO_LAYOUT_AT(field_d7,          0x0d7);
     KAROO_LAYOUT_AT(field_d8,          0x0d8);
-    KAROO_LAYOUT_AT(field_dc,          0x0dc);
+    KAROO_LAYOUT_AT(lastContact_,          0x0dc);
     KAROO_LAYOUT_AT(field_e4,          0x0e4);
     KAROO_LAYOUT_AT(field_e8,          0x0e8);
     KAROO_LAYOUT_AT(glides_,           0x0e9);
@@ -317,9 +318,9 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(stepU_,            0x13f);
     KAROO_LAYOUT_AT(stepV_,            0x140);
     KAROO_LAYOUT_AT(field_141,         0x141);
-    KAROO_LAYOUT_AT(field_142,         0x142);
-    KAROO_LAYOUT_AT(field_143,         0x143);
-    KAROO_LAYOUT_AT(field_144,         0x144);
+    KAROO_LAYOUT_AT(markerCellU_,         0x142);
+    KAROO_LAYOUT_AT(markerCellV_,         0x143);
+    KAROO_LAYOUT_AT(markerCellH_,         0x144);
     KAROO_LAYOUT_AT(pendingMove_,      0x145);
     KAROO_LAYOUT_AT(animStart_,        0x146);
     KAROO_LAYOUT_AT(moveDir_,          0x14e);

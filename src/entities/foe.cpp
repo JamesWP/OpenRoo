@@ -270,8 +270,8 @@ Foe::Foe()
     falling_        = 0;
     slideSlot_        = 0xff;
     field_d7         = 0xff;
-    field_48         = 20.0;                /* 0 at +0x48 ... */
-    field_38         = 1000.0;              /* 0 at +0x38 ... */
+    stepGrace_         = 20.0;                /* 0 at +0x48 ... */
+    idleDuration_         = 1000.0;              /* 0 at +0x38 ... */
     moveState_       = 0;
     held_         = 0;
     field_e8         = 0;
@@ -592,7 +592,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
             iabs_orig((int)playerV - (int)cellV_) < 2) {
 
             /* a: truncated, subtracted, compared UNSIGNED. */
-            int last = ftol_i(field_dc);
+            int last = ftol_i(lastContact_);
             int now  = ftol_i(now_);
 
             if ((unsigned int)(now - last) >= 0x7d0u) {
@@ -604,7 +604,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
                               (unsigned)playerU, (unsigned)playerV);
                 }
                 if (!s_fx_nocontact) {
-                    field_dc = now_;          /* two dword MOVs originally */
+                    lastContact_ = now_;          /* two dword MOVs originally */
                     field_e4 = 1;
                 }
             }

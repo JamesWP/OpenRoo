@@ -254,7 +254,7 @@ Bomb::Bomb()
     sound_c7_         = 0;
     sound_cb_         = 0;
     field_d8          = 0;
-    field_48          = 50.0;               /* 0 at +0x48, 0x40490000 at +0x4c */
+    stepGrace_          = 50.0;               /* 0 at +0x48, 0x40490000 at +0x4c */
 }
 
 void *Bomb::scalarDeletingDtor(Bomb *self, unsigned int flags)

@@ -401,7 +401,7 @@ unsigned int MovableEntity::updateMovement()
         if (animDuration_ <= now_ - animStart_) {
             /* the step has run its time: commit it */
             movingBackwards_ = 0;
-            field_50 = animDuration_ + animStart_;
+            stepEnd_ = animDuration_ + animStart_;
 
             if (facing_or_reverse(((unsigned)moveDir_), facing_)) {
                 if (((signed char)kind_) != 9) {
@@ -985,11 +985,11 @@ unsigned int MovableEntity::updateMovement()
 
             if (moveDir_ != 0) {
                 /* commit: pick the step's start time and move the grid cell */
-                double since = now_ - field_50;
-                if (since <= K_ZERO || field_48 <= since)
+                double since = now_ - stepEnd_;
+                if (since <= K_ZERO || stepGrace_ <= since)
                     copy8(&animStart_, &now_);
                 else
-                    copy8(&animStart_, &field_50);
+                    copy8(&animStart_, &stepEnd_);
 
                 if (((signed char)slideSlot_) == -1) {
                     if ((unsigned)lastMoveDir_ != ((unsigned)moveDir_)) {
@@ -1029,7 +1029,7 @@ unsigned int MovableEntity::updateMovement()
     /* ─── Height curves for the animation states ────────────────────── */
     field_40 = 0;
     if (((unsigned)moveDir_) == 0) {
-        if (field_48 <= now_ - field_50 && ((signed char)slideSlot_) == -1) {
+        if (stepGrace_ <= now_ - stepEnd_ && ((signed char)slideSlot_) == -1) {
             posU_ = (float)(int)GU;
             posV_ = (float)(int)GV;
         }
@@ -1126,7 +1126,7 @@ unsigned int MovableEntity::updateMovement()
     }
 
     if (run_idle) {
-        double dur = field_38;
+        double dur = idleDuration_;
         anim_   = 0xfa;
         animDuration_   = dur;
         if (now_ - animStart_ >= dur)

@@ -223,9 +223,9 @@ bool worldstate_observe(Observation *obs)
     obs->player_cell[0] = (BYTE)pl->cellU();
     obs->player_cell[1] = (BYTE)pl->cellV();
     obs->player_cell[2] = (BYTE)pl->heightCell();
-    obs->exit_cell[0]   = pl->field142();
-    obs->exit_cell[1]   = pl->field143();
-    obs->exit_cell[2]   = pl->field144();
+    obs->exit_cell[0]   = pl->markerCellU();
+    obs->exit_cell[1]   = pl->markerCellV();
+    obs->exit_cell[2]   = pl->markerCellH();
 
     const Game *game = (const Game *)g;
     obs->n_foes    = read_table(game, game->foeCount(), &Game::foeId,

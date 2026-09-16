@@ -496,7 +496,7 @@ Sim_GameTick(Game *self, double dt, double now)
         if (pl->moveState() != 0)
             hold = 1;
         (*slot)->chooseTarget(game, hold, (unsigned char)pl->cellU(), (unsigned char)pl->cellV(),
-                              pl->field142(), pl->field143(), &tu, &tv);
+                              pl->markerCellU(), pl->markerCellV(), &tu, &tv);
 
         (*slot)->step(tu, tv);
         (*slot)->dropBomb(game);
@@ -534,9 +534,9 @@ Sim_GameTick(Game *self, double dt, double now)
                     CStatic_TriggerPlayback((CStaticSoundbuffer *)snd, 0);
                 ((Game *)B)->setField173b1a(1);
             }
-            MAP->tile((signed char)pl->field142(), (signed char)pl->field143())->setBusy(1);
-            if ((unsigned char)pl->cellU() == pl->field142() && (unsigned char)pl->cellV() == pl->field143() &&
-                (unsigned char)pl->heightCell() == pl->field144() && (unsigned int)pl->falling() == 0 &&
+            MAP->tile((signed char)pl->markerCellU(), (signed char)pl->markerCellV())->setBusy(1);
+            if ((unsigned char)pl->cellU() == pl->markerCellU() && (unsigned char)pl->cellV() == pl->markerCellV() &&
+                (unsigned char)pl->heightCell() == pl->markerCellH() && (unsigned int)pl->falling() == 0 &&
                 pl->moveState() == 0) {
                 pl->setHeld(1);
                 if ((unsigned int)pl->moveDir() == 0) {

@@ -478,11 +478,11 @@ Sim_SetupLevelObjects(Game *self)
 
     /* The return value is DISCARDED: on a level with no marker-4 cell these
      * three bytes keep the previous level's values.  Preserved. */
-    Sim_FindTileByTypeMarker(M, 4, PL->field142Ref());
+    Sim_FindTileByTypeMarker(M, 4, PL->markerCellRef());
 
-    PL->setField20e((float)(int)(signed char)PL->field142(),
-                    (float)(int)(signed char)PL->field144(),
-                    (float)(int)(signed char)PL->field143());
+    PL->setField20e((float)(int)(signed char)PL->markerCellU(),
+                    (float)(int)(signed char)PL->markerCellH(),
+                    (float)(int)(signed char)PL->markerCellV());
 
     PL->setCell(PL->homeU(), PL->homeV(), PL->homeH());
 
@@ -789,7 +789,7 @@ next_row:
                                      CEN->l2_6 + GAME->field_42252());
 
     PL->setMoveState(0);
-    PL->setFieldDc(*((Game *)G)->clock());
+    PL->setLastContact(*((Game *)G)->clock());
 
     PL->clearEffects();
 
@@ -847,7 +847,7 @@ next_row:
     PL->setField12e(0);
     PL->setAnim(0);
     PL->setDying(0);
-    PL->setField38(500.0);                /* two dwords: 0, 0x407f4000 */
+    PL->setIdleDuration(500.0);                /* two dwords: 0, 0x407f4000 */
     GAME->setField13cc90(0);
     GAME->setField13cca8(0);
 
