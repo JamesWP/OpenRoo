@@ -10,6 +10,7 @@ RENDER_PLAN.md, PARTICLE_PLAN.md) hold the full story behind each result.
 | `KAROO_PARTICLE_FX=antigrav` | gravity integration (particles rise) |
 | `KAROO_PARTICLE_FX=burst` | emission (x3 initial velocity) |
 | `KAROO_PARTICLE_FX=loadflip` | environment `Load` (slot 5): negates the loaded gravity magnitude and magnet force, so falling effects rise and magnets repel |
+| `KAROO_PARTICLE_FX=fastemit` | generator `Load` (slot 5, Std/XStd/Cylinder): x5 the loaded emit rate. Moves a counter, not a coordinate, so it is safe for `levelreport.py` |
 | `KAROO_PARTICLE_FX=tint` / `spin` | render fill / XFace tick |
 | `KAROO_FAKTMESH_FX=half` | mesh draw |
 | `KAROO_TEXTURE_FX=solid` | SceneTexture loaders (fills every texture magenta) |
