@@ -11,7 +11,14 @@
  * too — see generators.cpp's header for the list.
  */
 
-/* Class identity — see the VTBL_PARTICLE_* note in particles.h. */
+/* Slot counts, fixed by the game's own call sites (§ 6.2). */
+#define GEN_VTBL_SLOTS 10
+#define ENV_VTBL_SLOTS  6
+
+/* The game vtable VAs these classes were built on.  Since E5 nothing stores
+ * them — our constructors install our own tables (gen_vtbl_* / env_vtbl_* in
+ * generators.cpp) — so these are documentation, and the addresses the UD2
+ * stubs sit behind. */
 #define VTBL_GEN_STD         0x0045f094
 #define VTBL_GEN_XSTD        0x0045f0bc
 #define VTBL_GEN_CYLINDER    0x0045f0e8
@@ -330,5 +337,6 @@ Environment *env_create(const char *name);
  * own new, our constructors.  Game vtable VA on return, like env_create. */
 Generator *gen_create(const char *name);
 
-void sim_tick_generator(Generator *gen, float dt);
-void sim_tick_environment(Environment *env, float dt);
+/* Tick a Generator or an Environment: one virtual call through slot 3.  The
+ * table is ours, so this lands straight on our implementation. */
+void sim_tick_slot3(void *obj, float dt);

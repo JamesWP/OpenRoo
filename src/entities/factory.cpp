@@ -6,24 +6,16 @@
  *   0x4488f0 EnvironmentFactoryCreate   → Env_FactoryCreate  (2 E8 sites)
  *   0x448ab0 ParticleSystemFactoryCreate → PS_FactoryCreate   (2 E8 sites)
  *
- * Since E4 the Environment factory is wholly ours: env_create (generators.cpp)
- * allocates with our own new and constructs, and the original is UD2.  The
- * Generator and ParticleSystem factories still call straight through to the
- * original for allocation and construction.  All three then swap the finished
- * object's vtable pointer for a table of our own.  That is the whole point of the step — after it, the
- * game's virtual calls on these objects go through a table in this DLL, so
- * changing a slot no longer needs a binary patch.
+ * Generators and Environments are wholly ours since E4: gen_create / env_create
+ * (generators.cpp) allocate with our own new, construct, and install one of our
+ * own vtables.  Nothing is cloned or patched for them — this file just forwards
+ * the two factory call sites.
  *
- * The clone starts as a straight copy of the game's vtable, then the slots we
- * have replaced are written into it from g_override[] below.  Since E2 those
- * five entries are the *only* thing installing our simulation code: patch.py no
- * longer patches a single generator or environment vtable, because it no longer
- * has to.  Adding a sixth replaced slot now means one line in that table and a
- * rebuild — no change to Karoo.exe at all.
- *
- * Classes we do not recognise (the base Generator/Environment, and the dead
- * PointGenerator / BoxGenerator) keep the game's own vtable untouched — they
- * simply fall out of the clone table below and are returned as-is.
+ * ParticleSystem construction is still the game's, so its objects arrive on a
+ * game vtable and are adopted here: the clone below starts as a copy of the
+ * game's table, and the slots we have replaced are written into it from
+ * g_override[].  That machinery exists only for ParticleSystem now, and goes
+ * when PS construction follows the other two families.
  */
 #include "factory.h"
 #include "generators.h"
@@ -37,14 +29,10 @@
 typedef void *(__cdecl *factory_fn)(const char *name);
 #define ORIG_PARTICLESYSTEM_FACTORY ((factory_fn)0x00448ab0)
 
-/* Generator vtables have 10 slots, Environment 6 (§ 6.2), ParticleSystem 15. */
-#define GEN_VTBL_SLOTS  10
-#define ENV_VTBL_SLOTS   6
-
-/* Clone table.  Small and fixed: at most six generator classes and three
- * environment classes exist, and each gets one clone the first time it is
- * constructed.  Storage is static so nothing is allocated at load time and the
- * tables outlive every object that points at them. */
+/* Clone table.  Small and fixed: four ParticleSystem classes exist, and each
+ * gets one clone the first time it is constructed.  Storage is static so
+ * nothing is allocated at load time and the tables outlive every object that
+ * points at them. */
 #define MAX_CLONES      12
 #define MAX_CLONE_SLOTS 16
 
@@ -86,63 +74,8 @@ static void **clone_vtable(DWORD game_vtbl, int slots)
     return c->slot;
 }
 
-/* Slots this DLL implements, keyed by the game vtable of the owning class.
- *
- * This replaces the VTABLE_PATCHES entries that used to install these five
- * functions by rewriting Karoo.exe.  Extending it costs one line; extending
- * VTABLE_PATCHES cost a binary patch and a patdiff audit. */
-extern "C" {
-    void __attribute__((thiscall)) Gen_StdEmit(void *, float);
-    void __attribute__((thiscall)) Gen_XStdEmit(void *, float);
-    void __attribute__((thiscall)) Gen_CylinderEmit(void *, float);
-    void __attribute__((thiscall)) Env_GravityTick(void *, float);
-    void __attribute__((thiscall)) Env_MagnetTick(void *, float);
-    BOOL __attribute__((thiscall)) Env_GravityLoad(void *, void *);
-    BOOL __attribute__((thiscall)) Env_MagnetLoad(void *, void *);
-    void *__attribute__((thiscall)) Env_GravityDtor(void *, unsigned);
-    void *__attribute__((thiscall)) Env_MagnetDtor(void *, unsigned);
-    BOOL __attribute__((thiscall)) Env_GravityCopyFrom(void *, const void *);
-    BOOL __attribute__((thiscall)) Env_MagnetCopyFrom(void *, const void *);
-    BOOL __attribute__((thiscall)) Env_GravitySave(void *, void *);
-    BOOL __attribute__((thiscall)) Env_MagnetSave(void *, void *);
-    void *__attribute__((thiscall)) Env_BaseDtor(void *, unsigned);
-    BOOL __attribute__((thiscall)) Env_BaseCopyFrom(void *, const void *);
-    BOOL __attribute__((thiscall)) Env_AttachRing(void *, void *);
-    void __attribute__((thiscall)) Env_BaseTick(void *, float);
-    BOOL __attribute__((thiscall)) Env_BaseSave(void *, void *);
-    BOOL __attribute__((thiscall)) Env_BaseLoad(void *, void *);
-
-    void __attribute__((thiscall)) Gen_Nop1(void *, float);
-    void __attribute__((thiscall)) Gen_Nop3(void *, float, float, float);
-    void __attribute__((thiscall)) Gen_Nop4(void *, float, float, float, float);
-    BOOL __attribute__((thiscall)) Gen_ReturnTrue(void *, void *);
-    BOOL __attribute__((thiscall)) Gen_AttachRing(void *, void *);
-    BOOL __attribute__((thiscall)) Gen_BaseCopyFrom(void *, const void *);
-    void *__attribute__((thiscall)) Gen_BaseDtor(void *, unsigned);
-    void *__attribute__((thiscall)) Gen_PointDtor(void *, unsigned);
-    void *__attribute__((thiscall)) Gen_BoxDtor(void *, unsigned);
-    void *__attribute__((thiscall)) Gen_StdDtor(void *, unsigned);
-    void *__attribute__((thiscall)) Gen_XStdDtor(void *, unsigned);
-    void __attribute__((thiscall)) Gen_PointEmit(void *, float);
-    void __attribute__((thiscall)) Gen_BoxEmit(void *, float);
-    BOOL __attribute__((thiscall)) Gen_StdCopyFrom(void *, const void *);
-    BOOL __attribute__((thiscall)) Gen_StdSave(void *, void *);
-    BOOL __attribute__((thiscall)) Gen_StdLoad(void *, void *);
-    BOOL __attribute__((thiscall)) Gen_XStdCopyFrom(void *, const void *);
-    BOOL __attribute__((thiscall)) Gen_XStdSave(void *, void *);
-    BOOL __attribute__((thiscall)) Gen_XStdLoad(void *, void *);
-    void __attribute__((thiscall)) Gen_XStdSetPosition(void *, float, float, float);
-    void __attribute__((thiscall)) Gen_XStdSetVelocity(void *, float, float, float, float);
-    void __attribute__((thiscall)) Gen_XStdSetDirection(void *, float, float, float);
-    void __attribute__((thiscall)) Gen_XStdSetSpeed(void *, float);
-    void *__attribute__((thiscall)) Gen_CylDtor(void *, unsigned);
-    BOOL __attribute__((thiscall)) Gen_CylCopyFrom(void *, const void *);
-    BOOL __attribute__((thiscall)) Gen_CylSave(void *, void *);
-    BOOL __attribute__((thiscall)) Gen_CylLoad(void *, void *);
-    void __attribute__((thiscall)) Gen_CylSetPosition(void *, float, float, float);
-    void __attribute__((thiscall)) Gen_CylSetDirection(void *, float, float, float);
-}
-
+/* Slots this DLL implements, keyed by the game vtable of the owning class —
+ * ParticleSystem only, the one family whose objects the game still builds. */
 struct SlotOverride {
     DWORD game_vtbl;   /* class identity */
     int   slot;
@@ -150,53 +83,6 @@ struct SlotOverride {
 };
 
 static const SlotOverride g_override[] = {
-    /* Generator / Environment slot 3 = Tick(float dt) — emit / integrate. */
-    { VTBL_GEN_STD,      GEN_VT_TICK_SLOT, (void *)Gen_StdEmit      },
-    { VTBL_GEN_XSTD,     GEN_VT_TICK_SLOT, (void *)Gen_XStdEmit     },
-    { VTBL_GEN_CYLINDER, GEN_VT_TICK_SLOT, (void *)Gen_CylinderEmit },
-    { VTBL_ENV_GRAVITY,  GEN_VT_TICK_SLOT, (void *)Env_GravityTick  },
-    { VTBL_ENV_MAGNET,   GEN_VT_TICK_SLOT, (void *)Env_MagnetTick   },
-
-    /* Stage E4 — generators: all ten slots of all six classes are ours. */
-#define GEN_ROW(v, s0, s1, s3, s4, s5, s6, s7, s8, s9) \
-    { v, 0, (void *)s0 }, { v, 1, (void *)s1 }, { v, 2, (void *)Gen_AttachRing }, \
-    { v, 3, (void *)s3 }, { v, 4, (void *)s4 }, { v, 5, (void *)s5 }, \
-    { v, 6, (void *)s6 }, { v, 7, (void *)s7 }, { v, 8, (void *)s8 }, { v, 9, (void *)s9 }
-    GEN_ROW(VTBL_GEN_BASE,  Gen_BaseDtor,  Gen_BaseCopyFrom, Gen_Nop1,
-            Gen_ReturnTrue, Gen_ReturnTrue, Gen_Nop3, Gen_Nop4, Gen_Nop3, Gen_Nop1),
-    GEN_ROW(VTBL_GEN_POINT, Gen_PointDtor, Gen_BaseCopyFrom, Gen_PointEmit,
-            Gen_ReturnTrue, Gen_ReturnTrue, Gen_Nop3, Gen_Nop4, Gen_Nop3, Gen_Nop1),
-    GEN_ROW(VTBL_GEN_BOX,   Gen_BoxDtor,   Gen_BaseCopyFrom, Gen_BoxEmit,
-            Gen_ReturnTrue, Gen_ReturnTrue, Gen_Nop3, Gen_Nop4, Gen_Nop3, Gen_Nop1),
-    GEN_ROW(VTBL_GEN_STD,   Gen_StdDtor,   Gen_StdCopyFrom,  Gen_StdEmit,
-            Gen_StdSave, Gen_StdLoad, Gen_Nop3, Gen_Nop4, Gen_Nop3, Gen_Nop1),
-    GEN_ROW(VTBL_GEN_XSTD,  Gen_XStdDtor,  Gen_XStdCopyFrom, Gen_XStdEmit,
-            Gen_XStdSave, Gen_XStdLoad, Gen_XStdSetPosition, Gen_XStdSetVelocity,
-            Gen_XStdSetDirection, Gen_XStdSetSpeed),
-    GEN_ROW(VTBL_GEN_CYLINDER, Gen_CylDtor, Gen_CylCopyFrom, Gen_CylinderEmit,
-            Gen_CylSave, Gen_CylLoad, Gen_CylSetPosition, Gen_Nop4,
-            Gen_CylSetDirection, Gen_Nop1),
-#undef GEN_ROW
-
-    /* Stage E4 — every slot of all three environment classes is ours, so the
-     * clone of an environment vtable holds no game address at all. */
-    { VTBL_ENV_BASE,     GEN_VT_DTOR_SLOT, (void *)Env_BaseDtor        },
-    { VTBL_ENV_BASE,     GEN_VT_COPY_SLOT, (void *)Env_BaseCopyFrom    },
-    { VTBL_ENV_BASE,     2,                (void *)Env_AttachRing      },
-    { VTBL_ENV_BASE,     GEN_VT_TICK_SLOT, (void *)Env_BaseTick        },
-    { VTBL_ENV_BASE,     GEN_VT_SAVE_SLOT, (void *)Env_BaseSave        },
-    { VTBL_ENV_BASE,     GEN_VT_LOAD_SLOT, (void *)Env_BaseLoad        },
-    { VTBL_ENV_GRAVITY,  2,                (void *)Env_AttachRing      },
-    { VTBL_ENV_MAGNET,   2,                (void *)Env_AttachRing      },
-    { VTBL_ENV_GRAVITY,  GEN_VT_DTOR_SLOT, (void *)Env_GravityDtor     },
-    { VTBL_ENV_GRAVITY,  GEN_VT_COPY_SLOT, (void *)Env_GravityCopyFrom },
-    { VTBL_ENV_GRAVITY,  GEN_VT_SAVE_SLOT, (void *)Env_GravitySave     },
-    { VTBL_ENV_GRAVITY,  GEN_VT_LOAD_SLOT, (void *)Env_GravityLoad     },
-    { VTBL_ENV_MAGNET,   GEN_VT_DTOR_SLOT, (void *)Env_MagnetDtor      },
-    { VTBL_ENV_MAGNET,   GEN_VT_COPY_SLOT, (void *)Env_MagnetCopyFrom  },
-    { VTBL_ENV_MAGNET,   GEN_VT_SAVE_SLOT, (void *)Env_MagnetSave      },
-    { VTBL_ENV_MAGNET,   GEN_VT_LOAD_SLOT, (void *)Env_MagnetLoad      },
-
     /* ParticleSystem — the Stage A/B render and tick path. */
     { VTBL_PARTICLE_BASE,  PS_VT_TICK,   (void *)Particle_BaseTick   },
     { VTBL_PARTICLE_BASE,  PS_VT_RENDER, (void *)Particle_BaseRender },
@@ -263,7 +149,6 @@ Gen_FactoryCreate(const char *name)
     if (InterlockedExchange(&once, 1) == 0)
         log_write("factory: Gen_FactoryCreate active (first = \"%s\" -> %p)\n",
                   name ? name : "(null)", obj);
-    adopt_vtable(obj, GEN_VTBL_SLOTS);
     return obj;
 }
 
@@ -289,7 +174,6 @@ Env_FactoryCreate(const char *name)
     if (InterlockedExchange(&once, 1) == 0)
         log_write("factory: Env_FactoryCreate active (first = \"%s\" -> %p)\n",
                   name ? name : "(null)", obj);
-    adopt_vtable(obj, ENV_VTBL_SLOTS);
     return obj;
 }
 

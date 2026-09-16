@@ -388,9 +388,9 @@ static void base_tick(ParticleSystem *self, float dt)
         log_write("particle: BaseTick active (this=%p dt=%f gen=%p env=%p)\n",
                   self, dt, self->pGenerator, self->pEnvironment);
     if (self->pGenerator)
-        sim_tick_generator(self->pGenerator, dt);
+        sim_tick_slot3(self->pGenerator, dt);
     if (self->pEnvironment)
-        sim_tick_environment(self->pEnvironment, dt);
+        sim_tick_slot3(self->pEnvironment, dt);
     dethash_particles(self);
 }
 

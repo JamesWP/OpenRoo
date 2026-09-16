@@ -10,9 +10,15 @@
  * an object whose +0x00 points at a table *we* own, so from then on every
  * virtual call the game makes lands wherever we point it, with no binary patch.
  *
- * E1 (this step) keeps behaviour bit-identical: our table starts as a copy of
- * the game's, so the same functions run in the same order.  What changes is who
- * owns the table.  E2 can then replace entries without touching Karoo.exe.
+ * E1 kept behaviour bit-identical: our table started as a copy of the game's,
+ * so the same functions ran in the same order.  What changed was who owns the
+ * table, which let E2 replace entries without touching Karoo.exe.
+ *
+ * E5 finishes the thought for two of the three families: our factories build
+ * Generators and Environments themselves, onto static vtables of our own
+ * (generators.cpp), so there is nothing to clone or override for them.  The
+ * clone path below now exists solely for ParticleSystem, whose objects the
+ * game still constructs.
  */
 
 /* Identity of a class, for dispatchers that switch on the vtable address.
@@ -21,5 +27,9 @@
  * the VTBL_* constants name, so a raw comparison would stop matching.  This maps
  * a table pointer back to the game vtable VA it was cloned from, and returns the
  * pointer unchanged for anything we did not clone.  Callers keep switching on
- * the VTBL_* constants exactly as before. */
+ * the VTBL_* constants exactly as before.
+ *
+ * ParticleSystem only since E5.  Generators and Environments are constructed by
+ * us onto vtables we own outright (generators.cpp), and dispatch to them is a
+ * plain virtual call — nothing switches on their identity any more. */
 DWORD vtbl_identity(const void *vtbl);

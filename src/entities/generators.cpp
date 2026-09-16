@@ -81,6 +81,19 @@
 
 #define SIM_LOG_FIRST 8
 
+/* Our vtables, defined at the foot of this file — one per class, in the game's
+ * slot order.  Every constructor installs one of these; no object of ours ever
+ * carries a game vtable address. */
+extern void *const gen_vtbl_base[];
+extern void *const gen_vtbl_point[];
+extern void *const gen_vtbl_box[];
+extern void *const gen_vtbl_std[];
+extern void *const gen_vtbl_xstd[];
+extern void *const gen_vtbl_cylinder[];
+extern void *const env_vtbl_base[];
+extern void *const env_vtbl_gravity[];
+extern void *const env_vtbl_magnet[];
+
 /* ─── FX ─── */
 
 enum SimFx { FX_NONE = 0, FX_GRAVITY, FX_NOLIFE, FX_ANTIGRAV, FX_BURST, FX_LOADFLIP,
@@ -484,10 +497,9 @@ static void cylinder_emit(CylinderGenerator *self, float dt)
 /* ─── One definition per class ─────────────────────────────────────────────
  *
  * Each of these is the single implementation of that class's tick, logging
- * included.  Both entry paths run it: the exported vtable thunk below (when
- * the game dispatches) and sim_tick_generator / sim_tick_environment (when we
- * dispatch from Particle_BaseTick).  Behaviour is therefore identical
- * whichever way the call arrives. */
+ * included.  Every caller reaches it the same way — through slot 3 of the
+ * class's vtable, which is one of ours — whether the game dispatches or
+ * Particle_BaseTick does via sim_tick_slot3. */
 
 #define SIM_LOG_ONCE(counter) \
     static LONG counter = 0; \
@@ -786,7 +798,7 @@ static BOOL magnet_env_copy_from(MagnetEnvironment *self, const MagnetEnvironmen
 /* 0x4484d0, the base Environment dtor body: a single store of the base vtable. */
 static void base_env_destruct(Environment *self)
 {
-    self->pVtable = (void **)VTBL_ENV_BASE;
+    self->pVtable = (void **)env_vtbl_base;
 }
 
 /* 0x44c240 / 0x44ca60.  Each restores its own game vtable, then runs the base
@@ -795,15 +807,15 @@ static void base_env_destruct(Environment *self)
  * EH-state -1 exit) — harmless, kept. */
 static void gravity_env_destruct(GravityEnvironment *self)
 {
-    self->base.pVtable = (void **)VTBL_ENV_GRAVITY;
-    self->base.pVtable = (void **)VTBL_ENV_BASE;
+    self->base.pVtable = (void **)env_vtbl_gravity;
+    self->base.pVtable = (void **)env_vtbl_base;
 }
 
 static void magnet_env_destruct(MagnetEnvironment *self)
 {
-    self->base.pVtable = (void **)VTBL_ENV_MAGNET;
-    self->base.pVtable = (void **)VTBL_ENV_BASE;
-    self->base.pVtable = (void **)VTBL_ENV_BASE;
+    self->base.pVtable = (void **)env_vtbl_magnet;
+    self->base.pVtable = (void **)env_vtbl_base;
+    self->base.pVtable = (void **)env_vtbl_base;
 }
 
 /* 0x4484b0 / 0x44c220 / 0x44ca40, MSVC scalar deleting dtor: destruct, and if
@@ -839,7 +851,7 @@ static BOOL env_attach_ring(Environment *self, RingBuffer *ring)
 /* 0x448490. */
 static void base_env_construct(Environment *self)
 {
-    self->pVtable = (void **)VTBL_ENV_BASE;
+    self->pVtable = (void **)env_vtbl_base;
     self->pName   = NAME_ENVIRONMENT;
     self->pRing   = NULL;
 }
@@ -851,7 +863,7 @@ static void base_env_construct(Environment *self)
 static void gravity_env_construct(GravityEnvironment *self)
 {
     base_env_construct(&self->base);
-    self->base.pVtable = (void **)VTBL_ENV_GRAVITY;
+    self->base.pVtable = (void **)env_vtbl_gravity;
     memset((BYTE *)self + sizeof(Environment), 0,
            sizeof(GravityEnvironment) - sizeof(Environment));
     self->base.pName = NAME_GRAVITY_ENV;
@@ -861,7 +873,7 @@ static void gravity_env_construct(GravityEnvironment *self)
 static void magnet_env_construct(MagnetEnvironment *self)
 {
     base_env_construct(&self->base);
-    self->base.pVtable = (void **)VTBL_ENV_MAGNET;
+    self->base.pVtable = (void **)env_vtbl_magnet;
     memset((BYTE *)self + sizeof(Environment), 0,
            sizeof(MagnetEnvironment) - sizeof(Environment));
     self->base.pName = NAME_MAGNET_ENV;
@@ -1017,7 +1029,7 @@ static void uniform_fill(float *out, int n, float a, float b)
 /* 0x4483b0, the base Generator dtor body. */
 static void base_gen_destruct(Generator *self)
 {
-    self->pVtable = (void **)VTBL_GEN_BASE;
+    self->pVtable = (void **)gen_vtbl_base;
 }
 
 /* The scalar deleting dtors' tail.  gen_create allocated the block with our
@@ -1240,7 +1252,7 @@ static void std_build_rate(StdGenerator *self, float lo, float hi)
 /* 0x449800 — dtor body. */
 static void std_gen_destruct(StdGenerator *self)
 {
-    self->base.pVtable = (void **)VTBL_GEN_STD;
+    self->base.pVtable = (void **)gen_vtbl_std;
     if (self->pTypeTable)
         ::operator delete(self->pTypeTable);
     base_gen_destruct(&self->base);
@@ -1310,7 +1322,7 @@ static BOOL std_gen_load(StdGenerator *self, void *fp)
 /* 0x44a6e0 — dtor body: own vtable, then Std's body. */
 static void xstd_gen_destruct(XStdGenerator *self)
 {
-    self->base.base.pVtable = (void **)VTBL_GEN_XSTD;
+    self->base.base.pVtable = (void **)gen_vtbl_xstd;
     std_gen_destruct(&self->base);
 }
 
@@ -1499,7 +1511,7 @@ static void box_gen_emit(BoxGenerator *self, float dt)
 /* 0x44aef0 — dtor body. */
 static void cyl_gen_destruct(CylinderGenerator *self)
 {
-    self->base.pVtable = (void **)VTBL_GEN_CYLINDER;
+    self->base.pVtable = (void **)gen_vtbl_cylinder;
     if (self->pTypeTable)
         ::operator delete(self->pTypeTable);
     base_gen_destruct(&self->base);
@@ -1663,7 +1675,7 @@ static BOOL cyl_gen_load(CylinderGenerator *self, void *fp)
 /* 0x448370. */
 static void base_gen_construct(Generator *self)
 {
-    self->pVtable = (void **)VTBL_GEN_BASE;
+    self->pVtable = (void **)gen_vtbl_base;
     self->pName = NAME_GENERATOR;
     self->pRing = NULL;
     self->dwEnabled = 1;
@@ -1674,7 +1686,7 @@ static void base_gen_construct(Generator *self)
 static void point_gen_construct(PointGenerator *self)
 {
     base_gen_construct(&self->base);
-    self->base.pVtable = (void **)VTBL_GEN_POINT;
+    self->base.pVtable = (void **)gen_vtbl_point;
     self->base.pName = NAME_POINT_GEN;
     self->flAccumulator = 0.0f;
     self->dwDiffuse = 0xFFFFFFFF;
@@ -1684,7 +1696,7 @@ static void point_gen_construct(PointGenerator *self)
 static void box_gen_construct(BoxGenerator *self)
 {
     base_gen_construct(&self->base);
-    self->base.pVtable = (void **)VTBL_GEN_BOX;
+    self->base.pVtable = (void **)gen_vtbl_box;
     self->base.pName = NAME_BOX_GEN;
 }
 
@@ -1692,7 +1704,7 @@ static void box_gen_construct(BoxGenerator *self)
 static void std_gen_construct(StdGenerator *self)
 {
     base_gen_construct(&self->base);
-    self->base.pVtable = (void **)VTBL_GEN_STD;
+    self->base.pVtable = (void **)gen_vtbl_std;
     memset((BYTE *)self + sizeof(Generator), 0, sizeof(StdGenerator) - sizeof(Generator));
     self->base.pName = NAME_STD_GEN;
     for (int i = 0; i < 200; i++)
@@ -1703,7 +1715,7 @@ static void std_gen_construct(StdGenerator *self)
 static void xstd_gen_construct(XStdGenerator *self)
 {
     std_gen_construct(&self->base);
-    self->base.base.pVtable = (void **)VTBL_GEN_XSTD;
+    self->base.base.pVtable = (void **)gen_vtbl_xstd;
     memset(self->flPosOffset, 0, sizeof self->flPosOffset);
     memset(self->flVelOffset, 0, sizeof self->flVelOffset);
     self->base.base.pName = NAME_XSTD_GEN;
@@ -1717,7 +1729,7 @@ static void xstd_gen_construct(XStdGenerator *self)
 static void cyl_gen_construct(CylinderGenerator *self)
 {
     base_gen_construct(&self->base);
-    self->base.pVtable = (void **)VTBL_GEN_CYLINDER;
+    self->base.pVtable = (void **)gen_vtbl_cylinder;
     memset((BYTE *)self + sizeof(Generator), 0,
            sizeof(CylinderGenerator) - sizeof(Generator));
     self->base.pName = NAME_CYL_GEN;
@@ -1844,7 +1856,7 @@ Gen_BaseDtor(Generator *self, unsigned flags)
 __declspec(dllexport) void *THISCALL
 Gen_PointDtor(PointGenerator *self, unsigned flags)
 {
-    self->base.pVtable = (void **)VTBL_GEN_POINT;
+    self->base.pVtable = (void **)gen_vtbl_point;
     base_gen_destruct(&self->base);
     return gen_scalar_delete(self, flags);
 }
@@ -1852,7 +1864,7 @@ Gen_PointDtor(PointGenerator *self, unsigned flags)
 __declspec(dllexport) void *THISCALL
 Gen_BoxDtor(BoxGenerator *self, unsigned flags)
 {
-    self->base.pVtable = (void **)VTBL_GEN_BOX;
+    self->base.pVtable = (void **)gen_vtbl_box;
     base_gen_destruct(&self->base);
     return gen_scalar_delete(self, flags);
 }
@@ -1952,63 +1964,106 @@ Gen_XStdEmit(XStdGenerator *self, float dt)          { xstd_gen_tick(self, dt); 
 
 } // extern "C"
 
-/* ─── Direct dispatch ──────────────────────────────────────────────────────
+/* ─── Our vtables ──────────────────────────────────────────────────────────
  *
- * Every live Generator and Environment class is ours, so dispatching slot 3
- * through the game's vtable only leaves this DLL and comes straight back —
- * via a .khook trampoline, an IAT entry and an indirect call.  Recognise the
- * class by its vtable address and call the implementation directly.
+ * One table per class, in the game's slot order, installed by the constructors
+ * above.  These replace both the vtable patches (gone since E2) and the clone
+ * machinery in factory.cpp (gone for these classes since E5): an object of ours
+ * carries a DLL address at +0x00 and every virtual call the game makes on it
+ * lands directly on our code.
  *
- * NOTE it must be the *vtable* address, not the slot contents: patch.py does
- * not write DLL addresses into the slots, it writes trampolines inside the
- * game image, so comparing slots never matches.
+ * Built by hand rather than with C++ virtuals on purpose (§ 6.6): the game
+ * calls `(*(code **)(*obj + 0x0c))(...)` with MSVC __thiscall, and neither
+ * mingw's slot order nor its calling convention is guaranteed to match.  Each
+ * entry is one of the __attribute__((thiscall)) exports defined above.
  *
- * Since Stage E1 the object's +0x00 may be one of our cloned tables rather than
- * the game VA, so the address goes through vtbl_identity() first, which maps a
- * clone back to the game vtable it was cloned from.
- *
- * A vtable we do not know still gets a genuine virtual call, which is what
- * keeps the dead PointGenerator / BoxGenerator classes (and anything replaced
- * later) working unchanged. */
+ * The originals stay UD2-stubbed, so a slot we get wrong still dies loudly
+ * rather than silently doing the wrong thing — but only if it reaches a
+ * *stubbed* function.  The static_asserts below are the guard against the
+ * other mistake, an initialiser that is one entry short: a missing slot would
+ * otherwise be a silent NULL.  Slot meanings are in generators.h. */
 
-#define GEN_VT_TICK 3  /* Generator/Environment vtable slot +0x0c */
+extern void *const gen_vtbl_base[] = {
+    (void *)Gen_BaseDtor,  (void *)Gen_BaseCopyFrom, (void *)Gen_AttachRing,
+    (void *)Gen_Nop1,      (void *)Gen_ReturnTrue,   (void *)Gen_ReturnTrue,
+    (void *)Gen_Nop3,      (void *)Gen_Nop4,         (void *)Gen_Nop3,
+    (void *)Gen_Nop1,
+};
+
+extern void *const gen_vtbl_point[] = {
+    (void *)Gen_PointDtor, (void *)Gen_BaseCopyFrom, (void *)Gen_AttachRing,
+    (void *)Gen_PointEmit, (void *)Gen_ReturnTrue,   (void *)Gen_ReturnTrue,
+    (void *)Gen_Nop3,      (void *)Gen_Nop4,         (void *)Gen_Nop3,
+    (void *)Gen_Nop1,
+};
+
+extern void *const gen_vtbl_box[] = {
+    (void *)Gen_BoxDtor,   (void *)Gen_BaseCopyFrom, (void *)Gen_AttachRing,
+    (void *)Gen_BoxEmit,   (void *)Gen_ReturnTrue,   (void *)Gen_ReturnTrue,
+    (void *)Gen_Nop3,      (void *)Gen_Nop4,         (void *)Gen_Nop3,
+    (void *)Gen_Nop1,
+};
+
+extern void *const gen_vtbl_std[] = {
+    (void *)Gen_StdDtor,   (void *)Gen_StdCopyFrom,  (void *)Gen_AttachRing,
+    (void *)Gen_StdEmit,   (void *)Gen_StdSave,      (void *)Gen_StdLoad,
+    (void *)Gen_Nop3,      (void *)Gen_Nop4,         (void *)Gen_Nop3,
+    (void *)Gen_Nop1,
+};
+
+extern void *const gen_vtbl_xstd[] = {
+    (void *)Gen_XStdDtor,  (void *)Gen_XStdCopyFrom, (void *)Gen_AttachRing,
+    (void *)Gen_XStdEmit,  (void *)Gen_XStdSave,     (void *)Gen_XStdLoad,
+    (void *)Gen_XStdSetPosition, (void *)Gen_XStdSetVelocity,
+    (void *)Gen_XStdSetDirection, (void *)Gen_XStdSetSpeed,
+};
+
+extern void *const gen_vtbl_cylinder[] = {
+    (void *)Gen_CylDtor,   (void *)Gen_CylCopyFrom,  (void *)Gen_AttachRing,
+    (void *)Gen_CylinderEmit, (void *)Gen_CylSave,   (void *)Gen_CylLoad,
+    (void *)Gen_CylSetPosition, (void *)Gen_Nop4,
+    (void *)Gen_CylSetDirection, (void *)Gen_Nop1,
+};
+
+extern void *const env_vtbl_base[] = {
+    (void *)Env_BaseDtor,    (void *)Env_BaseCopyFrom,    (void *)Env_AttachRing,
+    (void *)Env_BaseTick,    (void *)Env_BaseSave,        (void *)Env_BaseLoad,
+};
+
+extern void *const env_vtbl_gravity[] = {
+    (void *)Env_GravityDtor, (void *)Env_GravityCopyFrom, (void *)Env_AttachRing,
+    (void *)Env_GravityTick, (void *)Env_GravitySave,     (void *)Env_GravityLoad,
+};
+
+extern void *const env_vtbl_magnet[] = {
+    (void *)Env_MagnetDtor,  (void *)Env_MagnetCopyFrom,  (void *)Env_AttachRing,
+    (void *)Env_MagnetTick,  (void *)Env_MagnetSave,      (void *)Env_MagnetLoad,
+};
+
+#define SLOT_COUNT(t) (sizeof (t) / sizeof *(t))
+static_assert(SLOT_COUNT(gen_vtbl_base)     == GEN_VTBL_SLOTS, "Generator vtable");
+static_assert(SLOT_COUNT(gen_vtbl_point)    == GEN_VTBL_SLOTS, "Point vtable");
+static_assert(SLOT_COUNT(gen_vtbl_box)      == GEN_VTBL_SLOTS, "Box vtable");
+static_assert(SLOT_COUNT(gen_vtbl_std)      == GEN_VTBL_SLOTS, "Std vtable");
+static_assert(SLOT_COUNT(gen_vtbl_xstd)     == GEN_VTBL_SLOTS, "XStd vtable");
+static_assert(SLOT_COUNT(gen_vtbl_cylinder) == GEN_VTBL_SLOTS, "Cylinder vtable");
+static_assert(SLOT_COUNT(env_vtbl_base)     == ENV_VTBL_SLOTS, "Environment vtable");
+static_assert(SLOT_COUNT(env_vtbl_gravity)  == ENV_VTBL_SLOTS, "Gravity vtable");
+static_assert(SLOT_COUNT(env_vtbl_magnet)   == ENV_VTBL_SLOTS, "Magnet vtable");
+#undef SLOT_COUNT
+
+/* ─── Dispatch ─────────────────────────────────────────────────────────────
+ *
+ * One virtual call.  Generators and Environments share slot 3 (Tick / emit)
+ * and both carry one of the tables above, so this is a direct call into this
+ * DLL — no class switch, no identity lookup, no trampoline.  It replaces the
+ * sim_tick_generator / sim_tick_environment pair and the Stage D "is this
+ * vtable ours?" test they needed. */
 
 typedef void (THISCALL *sim_tick_fn)(void *, float);
 
-/* One line per kind, the first time through, recording which path was taken.
- * "direct" is the point of this layer; a "virtual" line means a class we do
- * not own is in play and the fallback did its job. */
-static void log_path_once(LONG *once, const char *what, bool direct, void *slot)
+void sim_tick_slot3(void *obj, float dt)
 {
-    if (InterlockedExchange(once, 1) == 0)
-        log_write("sim: %s dispatch = %s (vtbl=%p)\n",
-                  what, direct ? "direct" : "virtual", slot);
-}
-
-void sim_tick_generator(Generator *gen, float dt)
-{
-    DWORD vtbl = vtbl_identity(gen->pVtable);
-    static LONG once = 0;
-    log_path_once(&once, "generator",
-                  vtbl == VTBL_GEN_STD || vtbl == VTBL_GEN_XSTD ||
-                  vtbl == VTBL_GEN_CYLINDER, gen->pVtable);
-    switch (vtbl) {
-    case VTBL_GEN_STD:      std_gen_tick((StdGenerator *)gen, dt);      return;
-    case VTBL_GEN_XSTD:     xstd_gen_tick((XStdGenerator *)gen, dt);    return;
-    case VTBL_GEN_CYLINDER: cyl_gen_tick((CylinderGenerator *)gen, dt); return;
-    }
-    ((sim_tick_fn)gen->pVtable[GEN_VT_TICK])(gen, dt);  /* not ours — virtual */
-}
-
-void sim_tick_environment(Environment *env, float dt)
-{
-    DWORD vtbl = vtbl_identity(env->pVtable);
-    static LONG once = 0;
-    log_path_once(&once, "environment",
-                  vtbl == VTBL_ENV_GRAVITY || vtbl == VTBL_ENV_MAGNET, env->pVtable);
-    switch (vtbl) {
-    case VTBL_ENV_GRAVITY: gravity_env_tick((GravityEnvironment *)env, dt); return;
-    case VTBL_ENV_MAGNET:  magnet_env_tick((MagnetEnvironment *)env, dt);   return;
-    }
-    ((sim_tick_fn)env->pVtable[GEN_VT_TICK])(env, dt);
+    void **vtbl = *(void ***)obj;
+    ((sim_tick_fn)vtbl[GEN_VT_TICK_SLOT])(obj, dt);
 }
