@@ -240,10 +240,6 @@ struct GameLogger;
 /* ─── Callbacks kept at their original addresses ─────────────────────────── */
 
 
-typedef int (__attribute__((thiscall)) *noop_fn)(void *self);
-#define ORIG_NOOP_440450   ((noop_fn)0x00440450)
-
-
 /* time(), but through OUR hook -- see the header. */
 extern "C" __declspec(dllexport) int __cdecl hooks_GameTime(int *out);
 
@@ -395,7 +391,10 @@ Sim_SetupLevelObjects(Game *self)
     self->setLevelSoundsReady(0);
     self->scriptPlayer()->releaseStreams();
     self->extraObjects()->releaseSounds();
-    ORIG_NOOP_440450(self->field42258());
+    /* The original calls 0x00440450 here on Game +0x042258.  That function is
+     * three bytes -- `xor eax,eax; ret` -- and ignores its receiver, so the
+     * call is observation-free and is not made (COHESION_PLAN 7d.4).  The
+     * original keeps its bytes: patch.py must never UD2-stub a shared no-op. */
 
     /* The player position triple is zeroed, and the listener and the two
      * position globals are set from it; the listener's y is 1000.0f. */

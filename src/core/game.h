@@ -331,9 +331,6 @@ public:
     int            reportScoreTotal() const          { return reportScoreTotal_; }
     void        setReportScoreTotal(int n)           { reportScoreTotal_ = n; }
 
-    /* The no-op 0x00440450's argument; see the field. */
-    unsigned char *field42258()                      { return field_42258_; }
-
     /* ── video quality (the options menu; config.h has the derivation) ─ */
     unsigned char &videoShadows()                    { return config_.videoShadows(); }
     unsigned char &videoReflection()                 { return config_.videoReflection(); }
