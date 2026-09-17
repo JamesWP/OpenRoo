@@ -146,14 +146,16 @@
 
 #include "log.h"
 #include "objectremove.h"
+#include "movableentity.h"
 
 /* The two sound-manager release calls the removes make are SoundManager
  * methods now (soundmanager.h), called from foe.cpp and bomb.cpp. */
 
-/* The object's own scalar deleting destructor, vtable slot 0.  The game
- * constructed these objects and still owns their vtables, so this dispatches
- * through the pointer the object carries rather than through anything here. */
-typedef void (__attribute__((thiscall)) *scalar_dtor_fn)(void *self, int flags);
+/* The slot-0 dispatch is MovableEntity::destroyViaVtable (movableentity.h):
+ * every object that reaches here is one, since the only callers of the tail
+ * below hold Foe ** and Bomb **.  The slot array itself stays `void **` --
+ * Bomb ** does not convert to MovableEntity **, and pretending it does
+ * would be worse than the erasure (COHESION_PLAN.md Band 7d). */
 
 /* ─── KAROO_SIM_FX / KAROO_REMOVE_DIAG, read by value ────────────────────
  * By VALUE, never by presence (RENDER_PLAN.md, 2026-09-02). */
@@ -207,13 +209,13 @@ void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
 
     /* `MOV EDX,[ECX]; PUSH 1; CALL [EDX]` -- vtable slot 0, argument 1. */
     if (obj != 0) {
-        scalar_dtor_fn *vtbl = *(scalar_dtor_fn **)obj;
         if (s_diag && !s_logged_dtor) {
+            void **vtbl = *(void ***)obj;
             s_logged_dtor = 1;
             log_write("objectremove: first virtual dtor -- obj=%p vtbl=%p "
-                      "slot0=%p\n", obj, (void *)vtbl, (void *)vtbl[0]);
+                      "slot0=%p\n", obj, (void *)vtbl, vtbl[0]);
         }
-        vtbl[0](obj, 1);
+        ((MovableEntity *)obj)->destroyViaVtable(1);
     }
 
     if (bNullSlot)

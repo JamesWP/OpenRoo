@@ -611,14 +611,8 @@ static void ps_base_destruct(ParticleSystem *self)
     ring_free(&self->ring);
 }
 
-/* The scalar deleting dtors' tail.  ps_create allocated the object with our
- * own operator new, so it goes back the same way. */
-static void *ps_scalar_delete(void *self, unsigned flags)
-{
-    if (flags & 1)
-        ::operator delete(self);
-    return self;
-}
+/* The scalar deleting dtors' tail is factory.h's scalar_delete<T>;
+ * ps_create allocated the object with our own operator new. */
 
 /* 0x447ba0 — slot 3, SetCapacity: size the ring, no shape indices. */
 static BOOL ps_set_capacity(ParticleSystem *self, DWORD count)
@@ -1441,7 +1435,7 @@ __declspec(dllexport) void *THISCALL
 Particle_BaseDtor(ParticleSystem *self, unsigned flags)
 {
     ps_base_destruct(self);
-    return ps_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) void THISCALL
@@ -1510,7 +1504,7 @@ __declspec(dllexport) void *THISCALL
 Particle_PointDtor(PointParticleSystem *self, unsigned flags)
 {
     quad_destruct(&self->base, VTBL_PARTICLE_POINT);
-    return ps_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) BOOL THISCALL
@@ -1536,7 +1530,7 @@ __declspec(dllexport) void *THISCALL
 Particle_FaceDtor(FaceParticleSystem *self, unsigned flags)
 {
     quad_destruct(&self->base, VTBL_PARTICLE_FACE);
-    return ps_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) BOOL THISCALL
@@ -1562,7 +1556,7 @@ __declspec(dllexport) void *THISCALL
 Particle_XFaceDtor(XFaceParticleSystem *self, unsigned flags)
 {
     xface_destruct(self);
-    return ps_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) void THISCALL

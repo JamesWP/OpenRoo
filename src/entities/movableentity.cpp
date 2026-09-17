@@ -81,6 +81,25 @@ void MovableEntity::destroyBaseForGame()
     vtable_ = GAME_LEVELOBJECT_VTBL;       /* 0x401060 */
 }
 
+/* See the header.  The typedef is __thiscall because the game's slot 0 is;
+ * `self` is typed MovableEntity * because every object that reaches here is
+ * one -- Object_DestroyAndCompactId's only callers hold Foe ** and Bomb **,
+ * and both derive from this class. */
+typedef void (__attribute__((thiscall)) *scalar_dtor_fn)(MovableEntity *self,
+                                                         int flags);
+
+void MovableEntity::destroyViaVtable(int flags)
+{
+    /* Through a void * first: the class is __attribute__((packed)), so
+     * casting `this` straight to a function-pointer pointer trips
+     * -Waddress-of-packed-member.  The vtable pointer is the object's first
+     * dword either way. */
+    void *raw = this;
+
+    scalar_dtor_fn *vtbl = *(scalar_dtor_fn **)raw;
+    vtbl[0](this, flags);
+}
+
 void MovableEntity::zeroSoundSlots()
 {
     sound_a7_ = 0;

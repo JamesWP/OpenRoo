@@ -82,7 +82,7 @@
 
 /* ─── Game data (DATA references, not calls) ─────────────────────────────── */
 
-#define GAME_LOGGER   ((void *)0x0046c4c0)
+#define GAME_LOGGER   ((GameLogger *)0x0046c4c0)
 #define GAME_DIR      ((const char *)0x004e01c4)
 
 #define STR_SCRIPTTEXTS ((const char *)0x0046601c)  /* "ScriptTexts.txt"      */
@@ -113,51 +113,46 @@
 #define STR_HSC_NAME    ((const char *)0x00465cdc)  /* "jj.hsc"              */
 #define STR_IS_PATH     ((const char *)0x00465878)  /* "%s\InstructionScripts\%s" */
 
-/* ─── Game logic, deliberately still the game's ──────────────────────────── */
+/* ─── Game logic this file drives — all of it ours now ───────────────────── */
 
-/* Was ((setname_fn) 0x004186b0) / ((openlvl_fn) 0x004186f0) -- the game's
- * Game::SetCurrentLevelName and Game::OpenLevelFile.  levelparse.cpp owns
- * both now (GAMETICK_PLAN.md Band B) and the originals are UD2-stubbed, so
- * these go to ours -- the same move the score call below already made, and
- * for the same reason.
+/* This section used to be "deliberately still the game's", behind five
+ * ORIG_* macros.  Every one of those five has since been replaced, so the
+ * macros were calling our own exports under a name that said "original"
+ * (COHESION_PLAN.md Band 7c).  They are gone; the calls below name the
+ * function they reach:
  *
- * These two calls are why the level report is an 80-level acceptance test for
- * the loader replacements.  They are also the second instance of the hazard
- * the comment below names: the cycle that replaced them patched all 20 E8
- * sites in the EXE, and the replay suite passed 16/16, because the ONLY
- * caller left was in our own DLL.  `levelreport.py` failed with nine
- * c000001d, and the UD2 stub named the address. */
-/* Both through levelparse.h. */
-#define ORIG_SET_LEVEL_NAME(s, n) Sim_SetCurrentLevelName((Game *)(s), (n))
-#define ORIG_OPEN_LEVEL(s, n)     Sim_OpenLevelFile((Game *)(s), (n))
-/* Was ((setup_fn) 0x00416420) -- the game's Game::SetupLevelObjects.
- * levelsetup.cpp owns it now (GAMETICK_PLAN.md Band B) and the original is
- * UD2-stubbed, so this goes to ours.  Third instance of the DLL-caller
- * hazard the comment below names; checked BEFORE stubbing this time. */
-#define ORIG_SETUP_OBJECTS(s)     Sim_SetupLevelObjects((Game *)(s))   /* levelsetup.h */
-/* Was a ((score_fn) 0x0041a760) call -- the game's Game::CalculateLevelScore.
- * levelscore.cpp owns it now (GAMETICK_PLAN.md Band A) and the original is
- * UD2-stubbed, so this goes to ours.  This call is why the level report is an
- * 80-level acceptance test for that replacement.
+ *   Sim_SetCurrentLevelName  0x004186b0  levelparse.h   GAMETICK_PLAN.md B
+ *   Sim_OpenLevelFile        0x004186f0  levelparse.h   GAMETICK_PLAN.md B
+ *   Sim_SetupLevelObjects    0x00416420  levelsetup.h   GAMETICK_PLAN.md B
+ *   Score_CalculateLevelScore 0x0041a760 levelscore.h   GAMETICK_PLAN.md A
+ *   GameLog_LogMessage       0x00441b10  gamelog.h
  *
- * The absolute-address call here is exactly the kind an `xref.py` scan of the
- * EXE cannot see: it lives in our DLL, so the exe holds no reference to
- * 0x0041a760 at all -- not an E8, not a 68 imm32, not even the raw four bytes.
- * Stubbing the original trapped at `call eax` with eax = 0041a760 and nothing
- * in the binary to explain it.  When replacing anything, grep karoo-hooks/ for
- * its address as well as running xref.py over the exe. */
-/* Through levelscore.h, typed -- no cast, so a signature change here is a
- * compile error rather than a crash. */
-#define ORIG_CALC_SCORE(s, m)     Score_CalculateLevelScore((s), (m))
-/* Was ((logmsg_fn) 0x00441b10) -- the game's Logger::LogMessage.  gamelog.cpp
- * owns that class now and the original is UD2-stubbed, so this goes to ours. */
-#define ORIG_LOG_MESSAGE \
-    ((void (__cdecl *)(void *, int, const char *, ...))GameLog_LogMessage)
-
-/* Score_CalculateLevelScore: ours since GAMETICK_PLAN.md Band A, declared
- * in levelscore.h. */
-
-
+ * Each also dropped a cast.  Three carried a `(Game *)` on an argument that
+ * is already a `Game *`, and the logger carried a whole function-pointer
+ * cast to `(void *, int, const char *, ...)` — needed only because
+ * GAME_LOGGER above was typed `void *`, which it no longer is.  A cast over
+ * a typed export is the trap described below in its worst form: it converts
+ * a signature change from a compile error into a crash.
+ *
+ * ── Why this file is an 80-level acceptance test ──────────────────────────
+ *
+ * These calls are why `levelreport.py` gates the loader and scoring
+ * replacements, and they are where the DLL-caller hazard was found twice.
+ *
+ * An absolute-address call from our own DLL is exactly the kind an `xref.py`
+ * scan of the EXE cannot see: the exe holds no reference to the address at
+ * all — not an E8, not a `68 imm32`, not even the raw four bytes.
+ *
+ *  - Score_CalculateLevelScore: stubbing 0x0041a760 trapped at `call eax`
+ *    with eax = 0041a760 and nothing in the binary to explain it.
+ *  - SetCurrentLevelName / OpenLevelFile: the cycle that replaced them
+ *    patched all 20 E8 sites in the EXE and the replay suite passed 16/16,
+ *    because the ONLY caller left was here. `levelreport.py` failed with
+ *    nine c000001d and the UD2 stub named the address.
+ *  - SetupLevelObjects was the third instance — checked BEFORE stubbing.
+ *
+ * When replacing anything, grep karoo-hooks/ for its address as well as
+ * running xref.py over the exe. */
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -206,7 +201,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     if (out == NULL)
         return;
 
-    ORIG_LOG_MESSAGE(GAME_LOGGER, 3, STR_LOG_CREATE);
+    GameLog_LogMessage(GAME_LOGGER, 3, STR_LOG_CREATE);
 
     *(WORD  *)(g + OFF_TALLY_A)     = 0;
     *(WORD  *)(g + OFF_TALLY_BONUS) = 0;
@@ -229,10 +224,10 @@ Report_WriteLevelReport(Game *self, const char *pathname)
         unsigned char catchByte = 0;   /* defect 5: a byte */
         int total;
 
-        ORIG_SET_LEVEL_NAME(self, idx);
-        ORIG_OPEN_LEVEL(self, idx);
-        ORIG_SETUP_OBJECTS(self);
-        ORIG_CALC_SCORE(self, 3);
+        Sim_SetCurrentLevelName(self, idx);
+        Sim_OpenLevelFile(self, idx);
+        Sim_SetupLevelObjects(self);
+        Score_CalculateLevelScore(self, 3);
 
         sprintf(buf, STR_D_TAB, n);
         fputs(buf, out);
@@ -285,8 +280,8 @@ Report_WriteLevelReport(Game *self, const char *pathname)
             ((Game *)g)->gemsRequired());
         ((Game *)g)->setVitalityPercent(0x32);
         timeBonus = (unsigned)(((Game *)g)->map()->fileTimeLimit() * 0x32) / 100;
-        ORIG_LOG_MESSAGE(GAME_LOGGER, 3, STR_LOG_TIME, timeBonus);
-        ORIG_CALC_SCORE(self, 2);
+        GameLog_LogMessage(GAME_LOGGER, 3, STR_LOG_TIME, timeBonus);
+        Score_CalculateLevelScore(self, 2);
 
         sprintf(buf, STR_D_TAB, timeBonus);
         fputs(buf, out);
@@ -298,7 +293,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
         sprintf(buf, STR_D_TAB, (unsigned)total);
         fputs(buf, out);
 
-        ORIG_SET_LEVEL_NAME(self, idx);
+        Sim_SetCurrentLevelName(self, idx);
         sprintf(buf, STR_S_TAB, (char *)(g + OFF_LEVEL_PATH));
         fputs(buf, out);
         fputs(STR_NEWLINE, out);   /* defect 3: the title's sprintf is dead */
@@ -345,7 +340,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     sprintf(buf, STR_SPLINES_IN, (unsigned)((Game *)g)->scriptPlayer()->splineLines());
     fputs(buf, out);
 
-    ORIG_LOG_MESSAGE(GAME_LOGGER, 3, STR_LOG_CREATED);   /* defect 2 */
+    GameLog_LogMessage(GAME_LOGGER, 3, STR_LOG_CREATED);   /* defect 2 */
 
     fclose(out);
     if (sink != NULL)

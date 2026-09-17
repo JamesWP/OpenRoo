@@ -50,6 +50,20 @@ public:
     void populateBaseForGame();
     void destroyBaseForGame();
 
+    /* Destroy through the object's OWN vtable slot 0 -- the game built these
+     * objects and still owns their vtables, so the call has to go through
+     * the pointer the object carries, not through anything of ours.
+     *
+     * `MOV EDX,[ECX]; PUSH flags; CALL [EDX]` in the original.  `flags` is
+     * the MSVC scalar-deleting-destructor flag word; the removes pass 1.
+     *
+     * This is the one place a MovableEntity is destroyed by a caller that
+     * does not know which subclass it holds (Object_DestroyAndCompactId,
+     * objectremove.cpp, reached from both foe.cpp and bomb.cpp).  It lives
+     * here because the vtable is the base's field -- COHESION_PLAN.md Band
+     * 7d, which moved it out of a `void *self` typedef in that file. */
+    void destroyViaVtable(int flags);
+
     /* +0x7e, read by GameTick after a bomb's tick: nonzero = remove me.
      * UpdateEntityMovement raises it once moveState reaches 4. */
     int removeRequested() const { return removeRequested_; }
