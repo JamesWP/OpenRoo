@@ -201,7 +201,7 @@ static void diag_tick(void)
  * liftobject.cpp, Game::PurgeSlideObjects 0x004181b0 in slideobject.cpp,
  * Game::PurgeBreakableObjects 0x004183f0 in breakabletile.cpp (details 1
  * and 2 above went with it) and Game::PurgeBridgeObjects 0x0041a190 in
- * bridgeobject.cpp (detail 3).  Each honours `keepobjects` it(self). */
+ * bridgeobject.cpp (detail 3).  Each honours `keepobjects` itself. */
 
 /* ═══ 0x00418580 -- Game::ClearGameState ═══════════════════════════════════ */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))

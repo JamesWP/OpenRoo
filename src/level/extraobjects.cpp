@@ -25,7 +25,7 @@
  * construction: it strtok's the entry, dispatches on "Sound" / "Particle" /
  * "Model" / "Billboard", parses floats and spline points, formats the model,
  * texture and animation paths, and builds the object records at
- * this + n*0xf40.  It also opens the .ani file it(self) (via FUN_00401070 in
+ * this + n*0xf40.  It also opens the .ani file itself (via FUN_00401070 in
  * the same family), which is why ASSET_PLAN.md moved .ani here from Phase 3.
  *
  * That is object construction, not file reading, and taking it over is a

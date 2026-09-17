@@ -115,7 +115,7 @@
  *
  *  7. Only imageType 2 (uncompressed true-colour) and 0x0a (RLE true-colour)
  *     are accepted by ImportSceneTextures; every other TGA type is rejected
- *     silently, before ParseTGAFile — which it(self) would happily read types
+ *     silently, before ParseTGAFile — which itself would happily read types
  *     1/3/9/11 as one uncompressed block.  The gate is here, not there.
  *
  *  8. ImportSceneTextures rejects the file only AFTER calling
@@ -461,7 +461,7 @@ Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
 
 /* ─── SceneTexture::ImportSceneTextures (0x43f770) ─────────────────────────
  *
- * The TGA path.  Reads the 18-byte header it(self) — twelve separate freads, the
+ * The TGA path.  Reads the 18-byte header itself — twelve separate freads, the
  * same sequence ParseTGAFile repeats moments later — to get the dimensions and
  * to reject anything that is not a true-colour image, then builds the surface
  * and hands the file to ParseTGAFile to decode.

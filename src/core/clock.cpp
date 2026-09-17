@@ -20,7 +20,7 @@
  *
  * All of the original's state (0x46c434 shift, 0x46c438 period, 0x46c444 last
  * tick, 0x46c448 accumulator, 0x46c450 previous, 0x46c440 stall counter,
- * 0x4645a4 first-call flag) is read and written *only* by 0x404040 it(self) and
+ * 0x4645a4 first-call flag) is read and written *only* by 0x404040 itself and
  * its initialiser 0x00403fa0 — confirmed with get_xrefs_to on each — so
  * keeping our own copy here is self-contained and the original can be
  * UD2-stubbed.
@@ -56,7 +56,7 @@ static DWORD     g_last;         /* previous shifted tick     (was 0x46c444) */
 static double    g_accum;        /* elapsed seconds           (was 0x46c448) */
 /* NOT a DLL-local, unlike every other field above.
  *
- * RenderGameFrame derives its per-frame dt by reading this global *it(self)*,
+ * RenderGameFrame derives its per-frame dt by reading this global *itself*,
  * before calling us:
  *
  *   00426f8c  FLD   double ptr [0x0046c450]   ; previous frame's seconds
@@ -208,7 +208,7 @@ double clock_seconds(void)
  * rand() — MSVC's LCG at 0x0045167C (state 0x00469F38), unnamed in the binary,
  * which is why the plan's search_functions("rand") missed it.
  *
- * The LCG it(self) is deterministic.  The leak is the seed: 0x0045169A is time()
+ * The LCG itself is deterministic.  The leak is the seed: 0x0045169A is time()
  * (GetLocalTime/GetSystemTime folded to epoch seconds), and it feeds srand at
  * five sites — SetupLevelObjects (0x0041672B), FUN_004479F0 (0x004479FA),
  * FUN_00448E80 (0x00448EC5, one-shot), CloneTypeTable (0x00449F22) and

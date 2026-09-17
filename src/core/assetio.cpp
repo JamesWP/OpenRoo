@@ -126,7 +126,7 @@ static void asset_log(const char *fmt, ...)
 
 /* Small and fixed: the game never has more than a handful of files open at
  * once (the log, plus one asset).  Overflow is logged, not grown -- an
- * unexpected number of concurrent opens is it(self) a finding. */
+ * unexpected number of concurrent opens is itself a finding. */
 #define ASSET_SLOTS 32
 
 struct AssetSlot {

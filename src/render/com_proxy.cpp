@@ -567,7 +567,7 @@ static HRESULT WINAPI NOINLINE wd3_SetLightState(IDirect3DDevice3 *s, D3DLIGHTST
  * The cap is read from the environment so a run can be widened without a
  * rebuild.  The wrappers pass __builtin_return_address(0) explicitly rather
  * than having the helper walk up a frame: the wrappers are NOINLINE, but the
- * helper it(self) may still be inlined into them.
+ * helper itself may still be inlined into them.
  */
 static int trace_budget(const char *var, int dflt)
 {

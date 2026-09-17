@@ -27,7 +27,7 @@
  *
  * The VK_L polls go through hooks_GetAsyncKeyState, which is where
  * levelreport.cpp answers them under KAROO_LEVEL_REPORT=1 -- so
- * tools/levelreport.py passing is it(self) the proof this path is ours.
+ * tools/levelreport.py passing is itself the proof this path is ours.
  *
  * Callbacks kept (the sound manager is not ours): AcquireSoundBuffer
  * 0x443660, AcquireVoicePool 0x443810, SoundSetup 0x4439d0.

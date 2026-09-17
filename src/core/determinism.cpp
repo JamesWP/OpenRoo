@@ -24,7 +24,7 @@
  *
  * Ordering is part of the hash.  Systems are folded in the order the game ticks
  * them and nodes in ring order, both of which are deterministic within a run;
- * if scene construction order ever varied, that would it(self) be a determinism
+ * if scene construction order ever varied, that would itself be a determinism
  * bug worth catching here.
  */
 #include "determinism.h"

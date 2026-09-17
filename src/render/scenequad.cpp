@@ -30,7 +30,7 @@
  * coordinate set the FVF declares, beyond the one the game actually fills, at
  * set 0's array.  Rendering is unchanged — only texture stage 0 is enabled at
  * this draw, so coordinate set 1 is never sampled; it just has to be readable.
- * The FVF it(self) is left at 0x242 so the vertex layout D3D builds is exactly
+ * The FVF itself is left at 0x242 so the vertex layout D3D builds is exactly
  * the one the game asked for.
  *
  * Everything else is deliberately bit-identical to the original: same device

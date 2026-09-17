@@ -91,7 +91,7 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Texture_ReleaseSurfaces(LoadedImage *self);
 
 /* The inline REPNE SCASB the originals use, so no CRT/import dependency is
- * introduced for something the original computes it(self). */
+ * introduced for something the original computes itself. */
 static unsigned int dib_strlen(const char *s)
 {
     const char *p = s;

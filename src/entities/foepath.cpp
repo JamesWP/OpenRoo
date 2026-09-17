@@ -56,7 +56,7 @@
  *    partial AL.  So unlike UpdateEntityMovement there is no garbage-byte
  *    deviation to document: `int` is exact.
  *
- * 3. THE INDEX IS THE FAMILIAR ONE.  LEA/LEA/LEA then SHL 7 minus it(self) is
+ * 3. THE INDEX IS THE FAMILIAR ONE.  LEA/LEA/LEA then SHL 7 minus itself is
  *    (v + u*100) * 0x7f, the same addressing movableentity.cpp uses and the
  *    same 0x7f tile stride; both axes are plain ints.  Note that the *node
  *    key* helper ComputeCellLinearIndex uses a different stride (this+0x1e).
@@ -499,7 +499,7 @@ Sim_PopBestOpenPathNode(FoePath *self)
  *
  * The original allocates every pathfinder block with the game's calloc
  * 0x004507ff (Ghidra AllocateZeroedHeapBlock) and frees it with
- * FactAlloc::Free 0x0045087c, and the FoePath object it(self) with
+ * FactAlloc::Free 0x0045087c, and the FoePath object itself with
  * operator_new / Free2.  Those were kept as callbacks while the game's code
  * owned one end.  It no longer does:
  *
@@ -687,7 +687,7 @@ void FoePath::populate(unsigned char *tileBase, unsigned short field04)
  *
  * __thiscall (ECX), no stack arguments, no return value read.  The
  * worklist block was calloc'd by populate(), so it goes back through our
- * free (see the allocator note).  The FoePath it(self) is NOT freed here: the
+ * free (see the allocator note).  The FoePath itself is NOT freed here: the
  * Foe frees it afterwards (destroy()), and the Player dtor would Free2 it --
  * but never holds one.  Nothing is nulled: pending_ and the
  * list headers are left dangling, as in the original -- the object is freed
@@ -735,7 +735,7 @@ Sim_DisposeFoePathSearchState(FoePath *self)
  *    `JZ`), so the signedness of the key never matters — which is just as
  *    well, since ComputeCellLinearIndex's IMUL can produce a negative one.
  *
- * The header node it(self) is never a candidate: the walk starts at
+ * The header node itself is never a candidate: the walk starts at
  * hdr->next.  So a key that happened to match whatever lies at hdr+0x18 is
  * not returned, and the two lists' headers are pure sentinels.
  *
@@ -1481,7 +1481,7 @@ void FoePath::expand(PathNode *n, int goalU, int goalV)
     /* KAROO_SIM_FX=revexpand reverses the neighbour order.  Every path stays
      * exactly as short — only which equal-cost node is queued first changes —
      * so this isolates the tie-breaking claim in the comment above from the
-     * expansion it(self).  If it were unobservable, the claim that this order
+     * expansion itself.  If it were unobservable, the claim that this order
      * decides a foe's route would be unsupported. */
     if (fx_revexpand()) {
         for (int i = 0; i < 2; ++i) {
@@ -1665,7 +1665,7 @@ Sim_SearchPathNodeGraph(FoePath *self, int uFoe, int vFoe, int uTarget, int vTar
  *    This is the one place the stride mismatch documented on
  *    ComputeCellLinearIndex could produce visible behaviour, which is why
  *    that helper's stride must not be "corrected" to 100.
- * 3. THE PREVIOUS SEARCH'S NODES ARE FREED HERE, not by the search it(self),
+ * 3. THE PREVIOUS SEARCH'S NODES ARE FREED HERE, not by the search itself,
  *    and only once both endpoint checks have passed.  An early failure
  *    therefore LEAVES THE LAST SEARCH'S NODES ALLOCATED AND LINKED, and the
  *    next successful call frees them then.  Reproduced exactly.

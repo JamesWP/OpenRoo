@@ -135,7 +135,7 @@
  * return value.  We return a plain 0.  Callers test AL only.
  *
  * (The one case where the game's CRT is still required is a FILE * the game
- * it(self) opened and handed us -- see karoo-hooks/reportwriter.cpp for how that
+ * itself opened and handed us -- see karoo-hooks/reportwriter.cpp for how that
  * one was resolved, by moving the open rather than reaching across.) */
 
 

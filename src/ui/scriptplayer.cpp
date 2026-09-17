@@ -30,7 +30,7 @@
  * that follows the ';' in every shipped script.
  *
  * The path argument arrives WITHOUT an extension; this reader appends ".jjs"
- * (0x4661e0) it(self), like the .jjm reader appends ".jjm".
+ * (0x4661e0) itself, like the .jjm reader appends ".jjm".
  *
  * ─── Calls into the game binary ───────────────────────────────────────────
  *
@@ -48,13 +48,13 @@
  *
  * ─── Defects and oddities preserved deliberately ──────────────────────────
  *
- * 1. THE ACCUMULATION INDEX IS MASKED TO 16 BITS while the counter it(self) is
+ * 1. THE ACCUMULATION INDEX IS MASKED TO 16 BITS while the counter itself is
  *    32-bit (`MOV EDX,EBX; AND EDX,0xffff; INC EBX`).  The original's buffer
  *    is 1000 bytes, so any entry longer than that writes past it into its own
  *    frame; at 65536 characters the index wraps instead.
  *
  *    Reproduced faithfully up to the point where the original would corrupt
- *    it(self): the buffer here is a full 64 KB, so the masked index can never
+ *    itself: the buffer here is a full 64 KB, so the masked index can never
  *    leave it.  For every input the original handles without smashing its
  *    stack -- which is every entry up to 998 characters -- the bytes stored
  *    and the record written are identical.  Measured over the shipped

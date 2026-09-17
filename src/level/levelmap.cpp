@@ -33,7 +33,7 @@
  *   len(file) == 398 + width*height*4, over every shipped level (jjm.py).
  *
  * The path argument arrives WITHOUT an extension: the reader appends ".jjm"
- * (0x4663f4) it(self) and opens with mode "rb" (0x465188).
+ * (0x4663f4) itself and opens with mode "rb" (0x465188).
  *
  * The grid is a fixed 100 x 100 array of 0x7f-byte tiles regardless of the
  * level's real size.  File x is the tile's u, file y its v:

@@ -150,7 +150,7 @@ bool policy_active(void)
  * bombstart-crash's menu keystrokes to reach a level, which meant the run only
  * started if SavedGames happened to hold what that recording expected — the
  * cause of every "wedged at the main menu" failure.  Now the policy navigates
- * the menu it(self): KAROO_MENU_SLOT=<k> asks for node 200+k, which is the
+ * the menu itself: KAROO_MENU_SLOT=<k> asks for node 200+k, which is the
  * "load save slot k" leaf.
  *
  * Game+0x2ab58c is the screen enum: 2 = game over, 3 = level completed,

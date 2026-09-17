@@ -79,7 +79,7 @@
  *     +0x2ab727 (V);  inner runs over [*pu - r, *pu + r) and is checked
  *     against +0x2ab728 (U).  Both correct.
  *     The "local_25 = local_24" the decompile shows is not a mis-assignment
- *     of u into v -- local_24 was it(self) just set from the OUTER (v) index.
+ *     of u into v -- local_24 was itself just set from the OUTER (v) index.
  *     It is one value living in two stack slots, which is what a compiler
  *     emits, and *pv duly receives v.
  *
@@ -241,7 +241,7 @@
  * The three near/far modes deliberately do NOT flip the accept test or the
  * success test.  They keep the same candidate set and the same "did we
  * beat the threshold" answer, and change only WHICH member of that set
- * wins.  Flipping the comparison it(self) would empty the set and degrade the
+ * wins.  Flipping the comparison itself would empty the set and degrade the
  * control into "always fail", which proves far less -- the same reasoning
  * that made `keyclash` break injectivity rather than perturb a value.
  *

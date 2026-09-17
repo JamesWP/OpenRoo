@@ -45,7 +45,7 @@
  *                        plan's "death / time-out" label is at best misaligned.
  *                        Logged as 4 raw bytes.
  *
- * The gem reading it(self) (collected at +0x175406, required at +0x2AB723) is
+ * The gem reading itself (collected at +0x175406, required at +0x2AB723) is
  * consistent with the arithmetic — the score is min(collected, required) * 5 —
  * but that is still an inference from the shape of the code.  Everything here
  * is logged, nothing is asserted, until a play session shows the counter move
@@ -96,13 +96,13 @@ struct GameState {
  * So instead of naming candidates up front, snapshot the
  * whole Game object during play and diff it the moment a death registers.  A
  * lives counter is then simply a dword that dropped by exactly 1 across the
- * death, and it names it(self).
+ * death, and it names itself.
  *
  * Scan byte-wise, not dword-wise.  The first version compared aligned dwords
  * only, and that very nearly lost the answer: lives is a byte, so its 2 -> 1
  * step showed up as the dword at +0x175400 moving 147624 -> 82088, a delta of
  * -65536 buried among the large-delta noise instead of being flagged as a
- * step.  Byte granularity is what makes a counter announce it(self).
+ * step.  Byte granularity is what makes a counter announce itself.
  *
  * KAROO_DEATH_DIFF=1 enables it.  The snapshot refreshes every SNAP_EVERY
  * frames while alive, so the diff window is short and the noise stays low.
@@ -331,7 +331,7 @@ void gamestate_deathdiff(void)
     } else if (cause == 0 && g_prev_death != 0) {
         g_respawn_at = g_frame;                 /* restart began — hold the snapshot */
     } else if (g_respawn_at && g_frame - g_respawn_at >= REPORT_AFTER) {
-        /* The decrement happens in here, not at the death it(self). */
+        /* The decrement happens in here, not at the death itself. */
         deathdiff_report(game, g_prev_death, "after respawn");
         g_respawn_at = 0;
     } else if (cause == 0 && !g_respawn_at && (g_frame % SNAP_EVERY) == 0) {

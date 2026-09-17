@@ -118,7 +118,7 @@
  * ordering: 0x00416B32 zeroes this cell's parameter byte BEFORE the search
  * begins, and the search matches on that byte, so the self-comparison always
  * fails.  Move the clear after the search and every teleport pairs with
- * it(self).  Preserved as written.
+ * itself.  Preserved as written.
  *
  * **Type 0x17 moves the item byte to a shadow slot.**  It copies
  * tile+0x2ab72c into tile+0x2ab78f, zeroes the original, and then counts the

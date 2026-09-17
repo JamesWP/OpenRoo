@@ -21,7 +21,7 @@
  * The level-object base 0x401000 / 0x401060 is NOT taken: its other callers
  * are the four level-object ctors and dtors, all ours and UD2-stubbed, plus
  * 0x401043 inside its own scalar deleting dtor.  The movable base simply does
- * its field work it(self), as those four classes already do.
+ * its field work itself, as those four classes already do.
  *
  * ─── Who calls what ──────────────────────────────────────────────────────
  *

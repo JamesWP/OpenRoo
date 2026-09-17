@@ -1,4 +1,4 @@
-/* GAMETICK_PLAN.md Band C — Game::GameTick it(self).
+/* GAMETICK_PLAN.md Band C — Game::GameTick itself.
  *
  *   Game::GameTick  0x00414df0   1 E8 site (0x00427007, RenderGameFrame)
  *

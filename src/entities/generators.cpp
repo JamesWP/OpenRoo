@@ -641,7 +641,7 @@ static bool read1(void *dst, unsigned size, void *fp)
 }
 
 /* 0x44c320.  Stores the direction and magnitude as read, then flGravity =
- * normalise(dir) * magnitude — or dir it(self) when it is exactly zero.  x87
+ * normalise(dir) * magnitude — or dir itself when it is exactly zero.  x87
  * order kept (z*z + y*y + x*x); intermediates in double, each quotient
  * rounded to float before the multiply, as the original does. */
 static void gravity_set_vector(GravityEnvironment *self, const float dir[3], float mag)
@@ -825,7 +825,7 @@ static void magnet_env_destruct(MagnetEnvironment *self)
 /* ─── Base Environment slots 1-5 ─── */
 
 /* 0x4484e0, AttachEnvironmentRing — slot 2 of all three classes.  A NULL ring
- * is refused (returns the NULL it(self), i.e. 0) and leaves pRing alone. */
+ * is refused (returns the NULL itself, i.e. 0) and leaves pRing alone. */
 static BOOL env_attach_ring(Environment *self, RingBuffer *ring)
 {
     if (ring == NULL)
@@ -912,7 +912,7 @@ static const float GAUSS_STEP  = 0.001f;
 static const float GAUSS_PI    = 3.14159265358979f;
 static const float TINY_LENGTH = 1.1920928955078125e-07f;
 
-/* 0x448f30 — a Gaussian density, with the variance slot holding sigma it(self):
+/* 0x448f30 — a Gaussian density, with the variance slot holding sigma itself:
  * exp(-(x-mu)^2 / (2 sigma)) / (sqrt(2 pi) sigma).  The 2-sigma denominator is
  * the game's (not 2 sigma^2); kept.  sigma zero (or NaN, per the x87 compare)
  * degenerates to an indicator on x == mu.
@@ -1528,7 +1528,7 @@ static float direction_cosine(const float *v, const float *e)
 
 /* 0x44b0c0 — slot 8, SetDirection.  Stores the direction as given, then
  * rebuilds flMatrix's upper 3x3 as three rows of direction cosines against the
- * world axes: a = d x r, then d it(self), then b = d x a, where r is the Y axis
+ * world axes: a = d x r, then d itself, then b = d x a, where r is the Y axis
  * when d is exactly (1,0,0) (x87 compare: NaN counts as equal) and the X axis
  * otherwise.  d is not normalised and a, b are rounded to float, as found; the
  * fourth row and column are identity. */
