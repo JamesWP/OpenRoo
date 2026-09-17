@@ -79,6 +79,7 @@
 #include "gamestr.h"
 #include <math.h>
 #include <stdlib.h>
+#include "gamecrt.h"
 
 #define SIM_LOG_FIRST 8
 
@@ -728,12 +729,10 @@ static BOOL magnet_env_load(MagnetEnvironment *self, void *fp)
 /* The game's CRT fwrite.  A callback, and a deliberate one: the FILE * is the
  * game's static-CRT stream, which no other fwrite can write to (texturetga.cpp
  * and friends reach the same function the same way). */
-typedef unsigned (__cdecl *fwrite_fn)(const void *, unsigned, unsigned, void *);
-#define ORIG_FWRITE ((fwrite_fn)0x004513c7)
 
 static bool write1(const void *src, unsigned size, void *fp)
 {
-    return ORIG_FWRITE(src, size, 1, fp) == 1;
+    return GC_FWRITE(src, size, 1, (FILE *)fp) == 1;
 }
 
 /* 0x44c6c0.  The exact mirror of Load: raw direction and magnitude, the packed
@@ -1102,7 +1101,7 @@ static BOOL type_table_save(void *table, const DWORD *pcount, void *fp)
         return FALSE;
     if (!write1(pcount, 4, fp))
         return FALSE;
-    return ORIG_FWRITE(table, 8, *pcount, fp) == *pcount;
+    return GC_FWRITE(table, 8, *pcount, (FILE *)fp) == *pcount;
 }
 
 /* 0x44a530 (Std) / 0x44c0a0 (Cylinder) — read count and pairs, then clone them

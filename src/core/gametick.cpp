@@ -72,23 +72,10 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 
-struct CStaticSoundbuffer;
-struct ProgableControl;
-struct CDM;
-
-extern "C" {
-__declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
-
-
-__declspec(dllexport) void __attribute__((thiscall)) ProgCtrl_Dispatch(ProgableControl *s, unsigned short game_state);
-__declspec(dllexport) void __attribute__((thiscall)) CDM_StopTrack(CDM *self);
-
-__declspec(dllexport) int __attribute__((thiscall)) CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
-__declspec(dllexport) void __attribute__((thiscall)) CStatic_HaltPlayback(CStaticSoundbuffer *self);
-__declspec(dllexport) void __attribute__((thiscall)) CStatic_Set3DPosition(CStaticSoundbuffer *self, float x, float y, float z, DWORD dwApply);
-}
-
-
+#include "record.h"
+#include "progctrl.h"
+#include "cdm.h"
+#include "static.h"
 
 #define KEY(k)  hooks_GetAsyncKeyState(k)
 
@@ -288,7 +275,7 @@ Sim_GameTick(Game *self, double dt, double now)
 
     if ((self->stateRef() == 1 || self->stateRef() == 4) && self->debounceRef() != 0x1b && KEY(0x1b) != 0) {
         self->setStateBeforeMenu(self->stateRef());
-        Sim_RewindMenuStackToRootNode(self->menu());
+        self->menu()->rewind();
         self->menu()->setLastKey(0x1b);
         self->stateRef() = 5;
         self->menu()->setLockStart(self->lastTickTime());
@@ -526,9 +513,9 @@ Sim_GameTick(Game *self, double dt, double now)
                     } else {
                         self->stateRef() = 3;
                         self->setCameraMode(2);
-                        Sim_RewindMenuStackToRootNode(self->menu());
-                        Sim_PopMenuNodeFromStack(self->menu());
-                        Sim_PushMenuNodeOnStack(self->menu(), 0x28);
+                        self->menu()->rewind();
+                        self->menu()->pop();
+                        self->menu()->push(0x28);
                         self->menu()->setNode(0x28);
                         self->menu()->setLockStart(self->lastTickTime());
                         self->menu()->setLock(1);
@@ -566,9 +553,9 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->stateRef() = 3;
                 if (self->musicOn() != 0)
                     self->cdThemes()->play(GS_GAME_COMPLETED);
-                Sim_RewindMenuStackToRootNode(self->menu());
-                Sim_PopMenuNodeFromStack(self->menu());
-                Sim_PushMenuNodeOnStack(self->menu(), 0x28);
+                self->menu()->rewind();
+                self->menu()->pop();
+                self->menu()->push(0x28);
                 self->menu()->setNode(0x28);
                 self->menu()->setLockStart(self->lastTickTime());
                 self->menu()->setLock(1);
@@ -609,7 +596,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->highScores()->record(self->highScores()->lastRank())->name);
         } else {
             self->stateRef() = 0;
-            Sim_RewindMenuStackToRootNode(self->menu());
+            self->menu()->rewind();
             const char *theme = NULL;
             int setup = 1;
             if ((unsigned int)self->levelIndex() + 1 == (unsigned int)self->levelCount() &&
@@ -618,7 +605,7 @@ Sim_GameTick(Game *self, double dt, double now)
                     char name[256];
                     sprintf(name, GS_GAME_FINAL_DIR, self->gameFileName());
                     Sim_ParseLevelFiles(self, name);
-                    Sim_PushMenuNodeOnStack(self->menu(), 0);
+                    self->menu()->push(0);
                     self->menu()->setNode(5);
                     theme = GS_GAME_FINAL;
                 } else {
@@ -648,14 +635,14 @@ Sim_GameTick(Game *self, double dt, double now)
     if (self->stateRef() == 6 && self->debounceRef() != 0x0d && KEY(0x0d) != 0) {
         self->highScores()->writeFile(GS_GAME_HSFILE, 0x4b);
         self->stateRef() = 0;
-        Sim_RewindMenuStackToRootNode(self->menu());
+        self->menu()->rewind();
         const char *theme = NULL;
         if ((unsigned int)self->levelIndex() + 1 == (unsigned int)self->levelCount()) {
             if (self->field_0c() == 0) {
                 char name[256];
                 sprintf(name, GS_GAME_FINAL_DIR, self->gameFileName());
                 Sim_ParseLevelFiles(self, name);
-                Sim_PushMenuNodeOnStack(self->menu(), 0);
+                self->menu()->push(0);
                 self->menu()->setNode(5);
                 theme = GS_GAME_FINAL;
             } else {

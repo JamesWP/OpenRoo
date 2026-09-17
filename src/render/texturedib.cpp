@@ -66,6 +66,7 @@
 #include "alloc.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "gamecrt.h"
 
 /* The CRT's fwrite — __cdecl(const void *buf, size_t size, size_t count,
  * FILE *stream).  This address was called "ImageLogger::Log" here until
@@ -74,14 +75,10 @@
  * call sites read like a logger; 0x469cf8 is the log FILE *, not a sink
  * object.  Settled by ASSET_PLAN.md Phase 2: SaveConfig calls the same address
  * as fwrite(blob, 0x144e, 1, fp).  Left live in the binary. */
-typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, FILE *);
-#define ORIG_FWRITE ((fwrite_fn)0x004513c7)
 
 /* operator new — __cdecl(size_t); FactAlloc::Free2 — __cdecl(void *);
  * MaybeSprintf — __cdecl(char *, const char *fmt, ...).  Shared helpers that
  * stay live for the rest of the binary. */
-typedef int (__cdecl *sprintf_fn)(char *, const char *, ...);
-#define ORIG_MAYBE_SPRINTF ((sprintf_fn)0x00450655)
 
 /* The strings BlitDIBToSurface logs, at their original addresses so the
  * pointer handed to the logger is identical to the original's. */
@@ -142,7 +139,7 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
     IDirectDrawSurface4 *tmp = NULL;
     HRESULT hr = dd->CreateSurface(&ddsd, &tmp, NULL);
     if (hr < 0) {
-        unsigned int r = ORIG_FWRITE(GS_TEX_CREATESURFACE_FAILED,
+        unsigned int r = GC_FWRITE(GS_TEX_CREATESURFACE_FAILED,
                                         (int)dib_strlen(GS_TEX_CREATESURFACE_FAILED),
                                         1, GG_LOG_STREAM);
         self->loadStatus = 3;
@@ -152,7 +149,7 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
     HDC hdcDst = NULL;
     hr = tmp->GetDC(&hdcDst);
     if (hr < 0) {
-        unsigned int r = ORIG_FWRITE(GS_TEX_GETDC_FAILED,
+        unsigned int r = GC_FWRITE(GS_TEX_GETDC_FAILED,
                                         (int)dib_strlen(GS_TEX_GETDC_FAILED),
                                         1, GG_LOG_STREAM);
         self->loadStatus = 4;
@@ -233,7 +230,7 @@ TextureDIB_CreateSurface(LoadedImage *self, IDirectDraw4 *dd, LPCSTR name,
     /* strlen+1: the original's `not ecx` with no matching `dec ecx`. */
     char *copy = (char *)game_operator_new(dib_strlen(name) + 1u);
     self->ImageName = copy;
-    ORIG_MAYBE_SPRINTF(copy, GS_FMT_S, name);
+    GC_SPRINTF(copy, GS_FMT_S, name);
 
     self->loadedState = 1;
 

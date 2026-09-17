@@ -85,6 +85,7 @@
 #include "game.h"
 #include "textrenderer.h"
 #include "gamestr.h"
+#include "gamecrt.h"
 
 #define OVERLAY_FVF   0x1c4     /* XYZRHW | DIFFUSE | SPECULAR | TEX1 */
 #define SCORE_LOG_FIRST 4
@@ -124,9 +125,7 @@
 
 /* The four text entry points are TextRenderer methods (textrenderer.h);
  * only the CRT sprintf is still reached by address here. */
-typedef int (__cdecl *sprintf_fn)(char *, const char *, ...);
 
-#define ORIG_MAYBE_SPRINTF   ((sprintf_fn)0x00450655)
 
 /* ─── FX mode ────────────────────────────────────────────────────────────── */
 
@@ -244,15 +243,15 @@ Score_DrawHighScoreTable(Game *g, void *game, Direct3D *d3d,
         const BYTE *rec = (const BYTE *)g->highScores()->record(row);
         const float y = ((float)dy + 180.0f) * w * VSCALE;
 
-        ORIG_MAYBE_SPRINTF(buf, GS_FMT_S, rec + HS_NAME_OFF);
+        GC_SPRINTF(buf, GS_FMT_S, rec + HS_NAME_OFF);
         text->drawLeft(xName, y, cellW, cellH, 0.75f, buf, d3d, 0,
                        GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
 
-        ORIG_MAYBE_SPRINTF(buf, GS_FMT_D, (unsigned)rec[HS_LEVEL_OFF]);
+        GC_SPRINTF(buf, GS_FMT_D, (unsigned)rec[HS_LEVEL_OFF]);
         text->drawRight(xLevel, y, cellW, cellH, 0.75f, buf, d3d, 0,
                         GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
 
-        ORIG_MAYBE_SPRINTF(buf, GS_FMT_D, *(const DWORD *)(rec + HS_SCORE_OFF));
+        GC_SPRINTF(buf, GS_FMT_D, *(const DWORD *)(rec + HS_SCORE_OFF));
         text->drawRight(xScore, y, cellW, cellH, 0.75f, buf, d3d, 0,
                         GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
 
@@ -327,7 +326,7 @@ Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
         text->drawLeft(xLabel, y, cellW, cellH, 0.75f, r.label, d3d, 0,
                        GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
 
-        ORIG_MAYBE_SPRINTF(buf, GS_FMT_D, GO_V(r.valOff));
+        GC_SPRINTF(buf, GS_FMT_D, GO_V(r.valOff));
         text->drawRight(r.mul ? xValue : xProd, y, cellW, cellH, 0.75f,
                         buf, d3d, 0,
                         GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
@@ -335,7 +334,7 @@ Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
         if (r.mul) {
             text->drawLeft(xValue, y, cellW, cellH, 0.75f, r.mul, d3d, 0,
                            GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
-            ORIG_MAYBE_SPRINTF(buf, GS_FMT_D, GO_V(r.prodOff));
+            GC_SPRINTF(buf, GS_FMT_D, GO_V(r.prodOff));
             text->drawRight(xProd, y, cellW, cellH, 0.75f, buf, d3d, 0,
                             GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
         }

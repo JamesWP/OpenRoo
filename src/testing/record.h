@@ -35,3 +35,9 @@ bool replay_async(int vkey, SHORT *value);
 
 /* True once the replay file is exhausted — the harness ends the run here. */
 bool record_replay_finished(void);
+
+/* The GetAsyncKeyState replacement itself (record.cpp).  patch.py redirects
+ * every one of the game's 16 call sites here, and our own replacements of
+ * those callers call it directly -- declared once, by its owner, rather than
+ * in each of the five files that poll keys (COHESION_PLAN.md template 5). */
+extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
