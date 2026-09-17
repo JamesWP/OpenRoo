@@ -97,6 +97,7 @@
 #include "direct3d.h"
 #include "log.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 #include <string.h>
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -111,9 +112,8 @@ typedef unsigned (__attribute__((thiscall)) *d3dlog_fn)(Direct3D *, const char *
 typedef int (__cdecl *sprintf_fn)(char *, const char *, ...);
 #define ORIG_SPRINTF ((sprintf_fn)0x00450655)
 
-typedef unsigned (__cdecl *imglog_fn)(const char *, unsigned, unsigned, void *);
-#define ORIG_IMAGELOGGER_LOG ((imglog_fn)0x004513c7)
-#define G_LOGSTREAM ((void *)0x00469cf8)
+typedef unsigned (__cdecl *fwrite_fn)(const char *, unsigned, unsigned, FILE *);
+#define ORIG_FWRITE ((fwrite_fn)0x004513c7)
 
 #define ORIG_ENUMDISPLAYMODES_CB ((LPDDENUMMODESCALLBACK2)0x00413000)
 #define ORIG_ENUMZBUFFER_CB      ((LPD3DENUMPIXELFORMATSCALLBACK)0x00413100)
@@ -132,7 +132,7 @@ typedef unsigned (__cdecl *imglog_fn)(const char *, unsigned, unsigned, void *);
  * bytes of it to the image log.  Both helpers are shared and stay live. */
 static void d3d_imagelog(const char *s)
 {
-    ORIG_IMAGELOGGER_LOG(s, (unsigned)lstrlenA(s), 1, G_LOGSTREAM);
+    ORIG_FWRITE(s, (unsigned)lstrlenA(s), 1, GG_LOG_STREAM);
 }
 
 /* ── KAROO_D3DDEV_FX — visual proof ──

@@ -70,6 +70,7 @@
 #include "tilequery.h"
 #include "soundobj.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 struct CStaticSoundbuffer;
 struct ProgableControl;
@@ -88,9 +89,6 @@ __declspec(dllexport) void __attribute__((thiscall)) CStatic_Set3DPosition(CStat
 }
 
 
-#define PROGCTRL    ((ProgableControl *)0x0046c298)
-#define CDAUDIO     ((CDM *)0x004dc640)
-#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 
 #define G8(o)   (*(unsigned char *)(B + (o)))
 #define GS8(o)  (*(signed char *)(B + (o)))
@@ -233,7 +231,7 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     if (STATE == 7 && DEB != 0x0d && KEY(0x0d) != 0) {
-        GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_JJ_GAME_END);
+        GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_JJ_GAME_END);
         PostQuitMessage(1);
     }
 
@@ -392,11 +390,11 @@ Sim_GameTick(Game *self, double dt, double now)
             }
         }
         if (pl->moveState() == 0)
-            ProgCtrl_Dispatch(PROGCTRL, (unsigned short)STATE);
+            ProgCtrl_Dispatch(GG_PROGCTRL, (unsigned short)STATE);
     } else {
         pl->setIdleStarted(0);
         pl->setLastActive(*((Game *)B)->clock());
-        ProgCtrl_Dispatch(PROGCTRL, 0);
+        ProgCtrl_Dispatch(GG_PROGCTRL, 0);
         if (((Game *)B)->fixedSounds()->lastSeconds != NULL)
             CStatic_HaltPlayback(((Game *)B)->fixedSounds()->lastSeconds);
     }
@@ -429,7 +427,7 @@ Sim_GameTick(Game *self, double dt, double now)
     {
         unsigned char sw = pl->switchSlot();
         if (sw < 0xff && ((Game *)B)->bridgeSlot(sw)->armed() == 0) {
-            GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_SWITCH_TRIGGERED, (unsigned int)sw);
+            GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_SWITCH_TRIGGERED, (unsigned int)sw);
             trigger_switch_tile(B, pl->switchSlot(), pl->cellU(), pl->cellV());
             BridgeObject *br = ((Game *)B)->bridgeSlot(pl->switchSlot());
             br->arm(((Game *)B)->clock());
@@ -470,7 +468,7 @@ Sim_GameTick(Game *self, double dt, double now)
         {
             unsigned char sw = (*slot)->switchSlot();
             if (sw < 0xff && game->bridgeSlot(sw)->armed() == 0) {
-                GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_SWITCH_TRIGGERED, (unsigned int)sw);
+                GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_SWITCH_TRIGGERED, (unsigned int)sw);
                 trigger_switch_tile(B, (*slot)->switchSlot(), (*slot)->cellU(), (*slot)->cellV());
                 game->bridgeSlot((*slot)->switchSlot())->arm(game->clock());
                 Sim_MarkListedTilesBlockedByObject((Game *)B, (*slot)->switchSlot());
@@ -536,7 +534,7 @@ Sim_GameTick(Game *self, double dt, double now)
                             ((Game *)B)->cdThemes()->play(GS_GAME_GAMEOVER);
                         Score_CalculateLevelScore((Game *)B, 3);
                         DEB = 0x0d;
-                        GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_COMPLETED_AT_LEVEL,
+                        GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_COMPLETED_AT_LEVEL,
                                            (unsigned int)((Game *)B)->levelIndex() + 1,
                                            (unsigned int)((Game *)B)->levelCount());
                     } else {
@@ -594,7 +592,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 ((Game *)B)->setRestartCount(0);
                 ((Game *)B)->setTotalPlayTime((double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
                                         (long double)((Game *)B)->totalPlayTime()));
-                GameLog_LogMessage(GAMELOGGER, 2, GS_GAME_DONE_LOG,
+                GameLog_LogMessage(GG_LOGGER, 2, GS_GAME_DONE_LOG,
                                    (unsigned int)((Game *)B)->levelIndex(), (unsigned int)((Game *)B)->levelCount());
                 if ((unsigned int)((Game *)B)->levelIndex() == (unsigned int)((Game *)B)->levelCount() - 1) {
                     STATE = 2;
@@ -615,7 +613,7 @@ Sim_GameTick(Game *self, double dt, double now)
         if ((unsigned char)r < 0xff) {
             STATE = 6;
             if (((Game *)B)->musicOn() != 0)
-                CDM_StopTrack(CDAUDIO);
+                CDM_StopTrack(GG_CDAUDIO);
             ((Game *)B)->nameEntry()->setMaxLength(0x0f);
             ((Game *)B)->nameEntry()->setActive(1);
             ((Game *)B)->nameEntry()->setCursor(0);
@@ -640,7 +638,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 } else {
                     STATE = 7;
                     if (((Game *)B)->musicOn() != 0)
-                        CDM_StopTrack(CDAUDIO);
+                        CDM_StopTrack(GG_CDAUDIO);
                     DEB = 0x0d;
                 }
             } else {
@@ -677,7 +675,7 @@ Sim_GameTick(Game *self, double dt, double now)
             } else {
                 STATE = 7;
                 if (((Game *)B)->musicOn() != 0)
-                    CDM_StopTrack(CDAUDIO);
+                    CDM_StopTrack(GG_CDAUDIO);
                 DEB = 0x0d;
             }
         } else {

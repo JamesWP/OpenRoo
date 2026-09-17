@@ -31,6 +31,7 @@
 #include "cdthemes.h"
 #include "cdm.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 static int s_fx = -1;
 
@@ -96,8 +97,6 @@ CDM_StopTrack(CDM *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_PlayTrack(CDM *self, int track, bool loop);
 
-#define CDAUDIO     ((CDM *)0x004dc640)
-#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_PlayCDStuf(CdThemes *self, const char *caption)
@@ -111,12 +110,12 @@ unsigned int CdThemes::play(const char *caption)
 
     if (count_ == 0)
         return 0;
-    CDM_StopTrack(CDAUDIO);
+    CDM_StopTrack(GG_CDAUDIO);
     idx = findThemeIndex(caption);
     currentTrack_ = (unsigned char)idx;
-    GameLog_LogMessage(GAMELOGGER, 2, GS_CD_TRY_TRACK, idx & 0xff, caption);
+    GameLog_LogMessage(GG_LOGGER, 2, GS_CD_TRY_TRACK, idx & 0xff, caption);
     if (currentTrack_ != 0)
-        CDM_PlayTrack(CDAUDIO, currentTrack_, true);
+        CDM_PlayTrack(GG_CDAUDIO, currentTrack_, true);
     return 1;
 }
 
@@ -129,9 +128,9 @@ Sim_PlayCDStuf_2(CdThemes *self)
 unsigned int CdThemes::replay()
 {
     if (count_ != 0) {
-        CDM_StopTrack(CDAUDIO);
+        CDM_StopTrack(GG_CDAUDIO);
         if (currentTrack_ != 0)
-            CDM_PlayTrack(CDAUDIO, currentTrack_, true);
+            CDM_PlayTrack(GG_CDAUDIO, currentTrack_, true);
     }
     return 0;
 }
@@ -167,12 +166,12 @@ int CdThemes::validateTrackLengths()
 {
     char *len;
 
-    trackCount_ = CDM_GetTrackCount(CDAUDIO);
+    trackCount_ = CDM_GetTrackCount(GG_CDAUDIO);
     if (trackCount_ != 9)
         return 0;
-    CDM_GetTrackLength(CDAUDIO, &len, 1);
+    CDM_GetTrackLength(GG_CDAUDIO, &len, 1);
     for (int t = 2; t <= 9; ++t) {
-        CDM_GetTrackLength(CDAUDIO, &len, t);
+        CDM_GetTrackLength(GG_CDAUDIO, &len, t);
         if (strcmp(len, k_trackLength[t]) != 0)
             return 0;
     }

@@ -55,6 +55,7 @@
 #include "bridgeobject.h"
 #include "breakabletile.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 struct CStaticSoundbuffer;
 struct VoicePool;
@@ -69,7 +70,6 @@ CStatic_Set3DPosition(CStaticSoundbuffer *self, float x, float y, float z,
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 
-#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 
 #define G8(o)   (*(unsigned char *)(B + (o)))
 #define G16(o)  (*(unsigned short *)(B + (o)))
@@ -138,7 +138,7 @@ Sim_InitLevelBasedSounds(Game *self)
             log_write("levelsounds: KAROO_SIM_FX=worldcode -- Space/Candy swapped\n");
     }
 
-    GameLog_LogMessage(GAMELOGGER, 2, GS_SND_TRY_INIT);
+    GameLog_LogMessage(GG_LOGGER, 2, GS_SND_TRY_INIT);
     if (((Game *)B)->soundCreated() != 0) {
         pl->setWorldSoundVariant(0);
         if (strcmp(world, GS_SND_EGYPT) == 0)
@@ -190,7 +190,7 @@ Sim_InitLevelBasedSounds(Game *self)
                         game->soundAsset42ffe());
 
         if (game->restartCount() == 0 && game->sound3D() != 0) {
-            GameLog_LogMessage(GAMELOGGER, 1, GS_SND_TRY_LEO);
+            GameLog_LogMessage(GG_LOGGER, 1, GS_SND_TRY_LEO);
             /* The count is re-read every pass, as the original's is. */
             ExtraObjects *xo = game->extraObjects();
             for (unsigned short i = 0; i < xo->objectCount(); ++i) {
@@ -198,7 +198,7 @@ Sim_InitLevelBasedSounds(Game *self)
                 if (E->kind != EXTRA_SOUND)
                     continue;
                 const char *nm = E->file;
-                GameLog_LogMessage(GAMELOGGER, 1, GS_SND_LEO_SOUND, nm);
+                GameLog_LogMessage(GG_LOGGER, 1, GS_SND_LEO_SOUND, nm);
                 CStaticSoundbuffer *p = game->soundManager()->acquireStatic(nm, 1);
                 E->sound = p;
                 if (p != NULL) {
@@ -209,6 +209,6 @@ Sim_InitLevelBasedSounds(Game *self)
             }
         }
     }
-    GameLog_LogMessage(GAMELOGGER, 2, GS_SND_INIT_DONE);
+    GameLog_LogMessage(GG_LOGGER, 2, GS_SND_INIT_DONE);
     return 0;
 }

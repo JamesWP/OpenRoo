@@ -101,6 +101,7 @@
 #include "log.h"
 #include "alloc.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 #include <stdio.h>
 
 /* ─── Originals left live in the binary ────────────────────────────────────
@@ -138,10 +139,10 @@
  * one was resolved, by moving the open rather than reaching across.) */
 
 
-/* ImageLogger::Log — __cdecl(const char *, int len, int, int *sink). */
-typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
-#define ORIG_FWRITE ((fwrite_fn)0x004513c7)
-#define GAME_LOG_FILE ((int *)0x00469cf8)
+typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, FILE *);
+#define ORIG_FWRITE ((fwrite_fn)0x004513c7)   /* the static CRT fwrite; the
+                                               * stream is GG_LOG_STREAM --
+                                               * see gameglobals.h */
 
 
 /* The inline REPNE SCASB the original uses for the two log calls: `not ecx`
@@ -251,7 +252,7 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
     if (dd->CreateSurface(&ddsd, &tmp, NULL) < 0) {
         ORIG_FWRITE(GS_TEX_CREATESURFACE_FAILED,
                        (int)tga_strlen(GS_TEX_CREATESURFACE_FAILED),
-                       1, GAME_LOG_FILE);
+                       1, GG_LOG_STREAM);
         if (fp != NULL) fclose(fp);
         return 0;
     }
@@ -261,7 +262,7 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
      * dwWidth, dwHeight, lPitch, lpSurface and the four channel masks. */
     if (tmp->Lock(NULL, &ddsd, 0, NULL) < 0) {
         ORIG_FWRITE(GS_TEX_LOCK_FAILED, (int)tga_strlen(GS_TEX_LOCK_FAILED),
-                       1, GAME_LOG_FILE);
+                       1, GG_LOG_STREAM);
         if (tmp != NULL)
             tmp->Release();
         if (fp != NULL) fclose(fp);

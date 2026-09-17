@@ -76,10 +76,8 @@ CDM_StopTrack(CDM *self);
 
 #include "soundmanager.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
-#define PROGCTRL    ((ProgableControl *)0x0046c298)
-#define CDAUDIO     ((CDM *)0x004dc640)
-#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 
 #define G8(o)   (*(unsigned char *)(B + (o)))
 #define G16(o)  (*(unsigned short *)(B + (o)))
@@ -113,7 +111,7 @@ static void loaded_tail(unsigned char *B)
     STATE = 4;
     ((Game *)B)->setCameraDistance(7.0f);
     if (((Game *)B)->musicOn() != 0)
-        CDM_StopTrack(CDAUDIO);
+        CDM_StopTrack(GG_CDAUDIO);
     ((Game *)B)->scriptPlayer()->setRunning(1);
     ((Game *)B)->setCameraMode(1);
     Sim_RewindMenuStackToRootNode(MENU);
@@ -125,21 +123,21 @@ static void option_edit(unsigned char *B, unsigned char key)
     case 0x22: {                               /* sfx % -> joystick deadzone */
         if (DEB != 0x27 && KEY(0x27) != 0 && ((Game *)B)->joyDeadzone() < 0x5a) {
             ((Game *)B)->setJoyDeadzone((unsigned short)(((Game *)B)->joyDeadzone() + 10));
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 0, ((Game *)B)->joyDeadzone() * 100);
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 4, ((Game *)B)->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 0, ((Game *)B)->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 4, ((Game *)B)->joyDeadzone() * 100);
             DEB = 0x27;
         }
         if (DEB != 0x25 && KEY(0x25) != 0 && ((Game *)B)->joyDeadzone() > 10) {
             ((Game *)B)->setJoyDeadzone((unsigned short)(((Game *)B)->joyDeadzone() - 10));
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 0, ((Game *)B)->joyDeadzone() * 100);
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 4, ((Game *)B)->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 0, ((Game *)B)->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 4, ((Game *)B)->joyDeadzone() * 100);
             DEB = 0x25;
         }
         break;
     }
     case 0x3e: {                               /* CD volume */
         int changed = 0;
-        CDM_GetMixerDetails(CDAUDIO);          /* result discarded, as shipped */
+        CDM_GetMixerDetails(GG_CDAUDIO);          /* result discarded, as shipped */
         if (DEB != 0x27 && KEY(0x27) != 0 && ((Game *)B)->cdVolume() < 100) {
             DEB = 0x27;
             ((Game *)B)->setCdVolume((unsigned char)(((Game *)B)->cdVolume() + 10));
@@ -156,7 +154,7 @@ static void option_edit(unsigned char *B, unsigned char key)
             ((Game *)B)->setCdMixerVolume(v);
             if (v > 65536u)
                 ((Game *)B)->setCdMixerVolume(65536u);
-            CDM_SetMixerVolume(CDAUDIO, ((Game *)B)->cdMixerVolume());
+            CDM_SetMixerVolume(GG_CDAUDIO, ((Game *)B)->cdMixerVolume());
         }
         break;
     }
@@ -292,7 +290,7 @@ Sim_HandleKeypress(Game *self)
         Sim_PopMenuNodeFromStack(MENU);
         STATE = 7;
         if (((Game *)B)->musicOn() != 0)
-            CDM_StopTrack(CDAUDIO);
+            CDM_StopTrack(GG_CDAUDIO);
         DEB = 0x0d;
         if (((Game *)B)->field_0c() == 0)
             PostQuitMessage(1);
@@ -328,7 +326,7 @@ Sim_HandleKeypress(Game *self)
     case 0x3d:
         if (((Game *)B)->musicOn() != 0) {
             ((Game *)B)->setMusicOn(0);
-            CDM_StopTrack(CDAUDIO);
+            CDM_StopTrack(GG_CDAUDIO);
             Sim_PopMenuNodeFromStack(MENU);
             break;
         }
@@ -345,13 +343,13 @@ Sim_HandleKeypress(Game *self)
         STATE = 4;
         ((Game *)B)->scriptPlayer()->setRunning(1);
         if (((Game *)B)->musicOn() != 0)
-            CDM_StopTrack(CDAUDIO);
+            CDM_StopTrack(GG_CDAUDIO);
         DEB = 0x0d;
         ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
         ((Game *)B)->setCameraMode(1);
         ((Game *)B)->menu()->setLock(1);
         Sim_PopMenuNodeFromStack(MENU);
-        GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_LEVEL_DONE_CONTINUE);
+        GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_LEVEL_DONE_CONTINUE);
         if (((Game *)B)->fixedSounds()->levelCompleted != NULL)
             CStatic_HaltPlayback(((Game *)B)->fixedSounds()->levelCompleted);
         break;
@@ -409,8 +407,8 @@ Sim_HandleKeypress(Game *self)
 
     /* key-rebind capture */
     if (((Game *)B)->rebindActive() != 0 && KEY(0x0d) == 0) {
-        ProgCtrl_ClearBindings(PROGCTRL, 1, ((Game *)B)->rebindAction());
-        if (ProgCtrl_CaptureBinding(PROGCTRL, 1, ((Game *)B)->rebindAction(),
+        ProgCtrl_ClearBindings(GG_PROGCTRL, 1, ((Game *)B)->rebindAction());
+        if (ProgCtrl_CaptureBinding(GG_PROGCTRL, 1, ((Game *)B)->rebindAction(),
                                     100, 10, 0) != 0)
             ((Game *)B)->setRebindActive(0);
     }

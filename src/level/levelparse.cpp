@@ -230,6 +230,7 @@
 #include "levelparse.h"
 #include "soundmanager.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 /* ─── Game / Level3DExtraObjects field offsets ───────────────────────────── */
 
@@ -246,7 +247,6 @@
 
 /* ─── Game globals and string constants, at their original addresses ─────── */
 
-#define GAME_LOGGER_VA  ((GameLogger *)0x0046c4c0)
 
 
 /* OpenLevelFile's own message set -- different strings from ParseLevelFiles's,
@@ -358,10 +358,10 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     if ((char)ok != 0) {
         ((Game *)G)->extraObjects()->releaseSounds();
-        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_OPEN_LOADED_NAME,
+        GameLog_LogMessage(GG_LOGGER, 1, GS_OPEN_LOADED_NAME,
                            MAP->bonus(), path);
     } else {
-        GameLog_LogMessage(GAME_LOGGER_VA, 4, GS_OPEN_FAILED_NAME, path);
+        GameLog_LogMessage(GG_LOGGER, 4, GS_OPEN_FAILED_NAME, path);
         PostQuitMessage(1);
         /* and FALLS THROUGH -- the original does not return here */
     }
@@ -375,7 +375,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
     ((Game *)G)->scriptPlayer()->setLoaded(0);
     ((Game *)G)->scriptPlayer()->readForLevel(path);
 
-    GameLog_LogMessage(GAME_LOGGER_VA, 1,
+    GameLog_LogMessage(GG_LOGGER, 1,
                        ((Game *)G)->scriptPlayer()->loaded() ? GS_OPEN_SCRIPT_OK_NAME
                                                              : GS_OPEN_SCRIPT_BAD_NAME,
                        path);
@@ -455,11 +455,11 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     if ((char)ok != 0) {
         ((Game *)G)->extraObjects()->releaseSounds();
-        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_OPEN_LOADED_NUM,
+        GameLog_LogMessage(GG_LOGGER, 1, GS_OPEN_LOADED_NUM,
                            MAP->bonus(),
                            levelNo & 0xff, path);
     } else {
-        GameLog_LogMessage(GAME_LOGGER_VA, 4, GS_OPEN_FAILED_NUM,
+        GameLog_LogMessage(GG_LOGGER, 4, GS_OPEN_FAILED_NUM,
                            levelNo & 0xff, path);
         PostQuitMessage(1);
         /* and FALLS THROUGH, as in ParseLevelFiles */
@@ -475,7 +475,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     ((Game *)G)->scriptPlayer()->setLoaded(0);
     ((Game *)G)->scriptPlayer()->readForLevel(path);
 
-    GameLog_LogMessage(GAME_LOGGER_VA, 1,
+    GameLog_LogMessage(GG_LOGGER, 1,
                        ((Game *)G)->scriptPlayer()->loaded()
                            ? GS_OPEN_SCRIPT_OK_NUM : GS_OPEN_SCRIPT_BAD_NUM,
                        path);

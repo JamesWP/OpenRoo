@@ -63,14 +63,13 @@
 #include "player.h"
 #include "tile.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 struct CDM;
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
 
 
-#define CDAUDIO     ((CDM *)0x004dc640)
-#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 
 #define G8(o)   (*(unsigned char *)(B + (o)))
 #define G32(o)  (*(unsigned int *)(B + (o)))
@@ -91,7 +90,7 @@ static void enter_loaded_state(unsigned char *B, FILE *fp)
     ((Game *)B)->setCameraDistance(7.0f);
     ((Game *)B)->setState(4);
     if (((Game *)B)->musicOn() != 0)
-        CDM_StopTrack(CDAUDIO);
+        CDM_StopTrack(GG_CDAUDIO);
     ((Game *)B)->scriptPlayer()->setRunning(1);
     ((Game *)B)->setCameraMode(1);
     ((Game *)B)->setDebounce(0x0d);
@@ -141,7 +140,7 @@ Sim_HandleTypedCheatCode(Game *self)
                 ((Game *)B)->cdThemes()->play(GS_GAME_GAMEOVER);
             Score_CalculateLevelScore((Game *)B, 0x28);
             ((Game *)B)->setDebounce(0x0d);
-            GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_COMPLETED_AT_LEVEL,
+            GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_COMPLETED_AT_LEVEL,
                                (unsigned int)((Game *)B)->levelIndex() + 1,
                                (unsigned int)((Game *)B)->levelCount());
         } else {
@@ -160,7 +159,7 @@ Sim_HandleTypedCheatCode(Game *self)
             ((Game *)B)->menu()->setLock(1);
             Score_CalculateLevelScore((Game *)B, (char)((Game *)B)->state());
             ((Game *)B)->setRestartCount(0);
-            GameLog_LogMessage(GAMELOGGER, 1, GS_CHEAT_C_SL);
+            GameLog_LogMessage(GG_LOGGER, 1, GS_CHEAT_C_SL);
         }
         ((Game *)B)->setTotalPlayTime((double)(unsigned long long)((Game *)B)->timeElapsed() + ((Game *)B)->totalPlayTime());
     }
@@ -179,7 +178,7 @@ Sim_HandleTypedCheatCode(Game *self)
             Sim_SetCurrentLevelName((Game *)B, lvl);
             if (lvl < ((Game *)B)->levelCount()) {
                 sprintf(path, GS_CHEAT_FMT_LVL_PATH, GS_GAME_DIR, ((Game *)B)->levelName());
-                GameLog_LogMessage(GAMELOGGER, 3, GS_CHEAT_LC_BY_NUMBER, (unsigned int)lvl,
+                GameLog_LogMessage(GG_LOGGER, 3, GS_CHEAT_LC_BY_NUMBER, (unsigned int)lvl,
                                    ((Game *)B)->levelName());
                 ((Game *)B)->setLevelIndex(lvl);
                 FILE *fp = fopen(path, "r");
@@ -203,7 +202,7 @@ Sim_HandleTypedCheatCode(Game *self)
         if (len > 6) {
             memcpy(frame, buf + 6, len - 6);
             frame[len - 6] = 0;
-            GameLog_LogMessage(GAMELOGGER, 3, GS_CHEAT_LC, (const char *)frame);
+            GameLog_LogMessage(GG_LOGGER, 3, GS_CHEAT_LC, (const char *)frame);
             sprintf(path, GS_CHEAT_FMT_LVL_PATH, GS_GAME_DIR, (const char *)frame);
             FILE *fp = fopen(path, "r");
             if (fp != NULL) {

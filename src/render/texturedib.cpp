@@ -65,6 +65,7 @@
 #include "log.h"
 #include "alloc.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 /* The CRT's fwrite — __cdecl(const void *buf, size_t size, size_t count,
  * FILE *stream).  This address was called "ImageLogger::Log" here until
@@ -73,9 +74,8 @@
  * call sites read like a logger; 0x469cf8 is the log FILE *, not a sink
  * object.  Settled by ASSET_PLAN.md Phase 2: SaveConfig calls the same address
  * as fwrite(blob, 0x144e, 1, fp).  Left live in the binary. */
-typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
+typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, FILE *);
 #define ORIG_FWRITE ((fwrite_fn)0x004513c7)
-#define GAME_LOG_FILE ((int *)0x00469cf8)
 
 /* operator new — __cdecl(size_t); FactAlloc::Free2 — __cdecl(void *);
  * MaybeSprintf — __cdecl(char *, const char *fmt, ...).  Shared helpers that
@@ -144,9 +144,9 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
     if (hr < 0) {
         unsigned int r = ORIG_FWRITE(GS_TEX_CREATESURFACE_FAILED,
                                         (int)dib_strlen(GS_TEX_CREATESURFACE_FAILED),
-                                        1, GAME_LOG_FILE);
+                                        1, GG_LOG_STREAM);
         self->loadStatus = 3;
-        return r & 0xffffff00u;             /* upper bytes: ImageLogger::Log */
+        return r & 0xffffff00u;             /* upper bytes: the CRT fwrite  */
     }
 
     HDC hdcDst = NULL;
@@ -154,9 +154,9 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
     if (hr < 0) {
         unsigned int r = ORIG_FWRITE(GS_TEX_GETDC_FAILED,
                                         (int)dib_strlen(GS_TEX_GETDC_FAILED),
-                                        1, GAME_LOG_FILE);
+                                        1, GG_LOG_STREAM);
         self->loadStatus = 4;
-        return r & 0xffffff00u;             /* upper bytes: ImageLogger::Log */
+        return r & 0xffffff00u;             /* upper bytes: the CRT fwrite  */
     }
 
     BitBlt(hdcDst, 0, 0, bm.bmWidth, bm.bmHeight, hdcSrc, 0, 0, SRCCOPY);

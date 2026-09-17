@@ -179,6 +179,7 @@
 #include "breakabletile.h"
 #include "foe.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -237,7 +238,6 @@
 /* ─── Strings and the logger, at their original addresses ────────────────── */
 
 struct GameLogger;
-#define GAME_LOGGER_VA  ((GameLogger *)0x0046c4c0)
 
 
 /* ─── Callbacks kept at their original addresses ─────────────────────────── */
@@ -397,7 +397,7 @@ Sim_SetupLevelObjects(Game *self)
     ((Game *)G)->menu()->setChildCount(0x28, (GAME->nextLevelBonus() == 0) ? 2 : 1);
     PL->setLastSecondsMark(10.0);                /* two dwords: 0, 0x40240000 */
 
-    GameLog_LogMessage(GAME_LOGGER_VA, 2, GS_LVL_INIT_STARTED);
+    GameLog_LogMessage(GG_LOGGER, 2, GS_LVL_INIT_STARTED);
 
     ((Game *)G)->setLevelSoundsReady(0);
     ((Game *)G)->scriptPlayer()->releaseStreams();
@@ -550,7 +550,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_SWITCH) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_WARN_SWITCH);
+                        GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_WARN_SWITCH);
                     } else {
                         unsigned char idx = (unsigned char)(param - 1);
                         if (idx > ((Game *)G)->switchMax())
@@ -569,7 +569,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_BRIDGE_U) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_WARN_XBRIDGE);
+                        GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_WARN_XBRIDGE);
                     } else {
                         BridgeObject::spawn((Game *)G, u, v, t->height(),
                                             (unsigned char)(param - 1), 1);
@@ -580,7 +580,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_BRIDGE_V) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_WARN_YBRIDGE);
+                        GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_WARN_YBRIDGE);
                     } else {
                         BridgeObject::spawn((Game *)G, u, v, t->height(),
                                             (unsigned char)(param - 1), 2);
@@ -680,7 +680,7 @@ Sim_SetupLevelObjects(Game *self)
                      * double copy here, the same bits. */
                     ((Game *)G)->freeBomb(CEN->freeBombs)->placedAt =
                         *GAME->clock();
-                    GameLog_LogMessage(GAME_LOGGER_VA, 3, GS_LVL_FREEBOMB,
+                    GameLog_LogMessage(GG_LOGGER, 3, GS_LVL_FREEBOMB,
                                        (unsigned int)CEN->freeBombs);
                     CEN->freeBombs++;
                 }
@@ -814,7 +814,7 @@ next_row:
             unsigned char cv = PL->homeV();
             if (Sim_FindNearestFlaggedTileInRadius((Game *)G, &cu, &cv, 0x14)) {
                 CELL(M, cu, cv)->setContents(0);
-                GameLog_LogMessage(GAME_LOGGER_VA, 3, GS_LVL_CD_MISSING,
+                GameLog_LogMessage(GG_LOGGER, 3, GS_LVL_CD_MISSING,
                                    (unsigned int)cu, (unsigned int)cv);
             }
         }
@@ -841,23 +841,23 @@ next_row:
     GAME->setField13cc90(0);
     GAME->setField13cca8(0);
 
-    GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_CRYSTALS,
+    GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_CRYSTALS,
                        (unsigned int)GAME->field_42252(),
                        ((Game *)G)->gemsRequired());
 
     if ((int)((unsigned int)PL->gemsCollected() + (unsigned int)GAME->field_42252()) <
         ((Game *)G)->gemsRequired())
-        GameLog_LogMessage(GAME_LOGGER_VA, 3, GS_LVL_WARN_CRYSTALS);
+        GameLog_LogMessage(GG_LOGGER, 3, GS_LVL_WARN_CRYSTALS);
 
     /* ONE argument -- see the header. */
     if (((Game *)G)->extraObjects()->openFile(
                                  GAME->levelName()) == 0) {
         ((Game *)G)->extraObjects()->setLoaded(0);
-        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_LEO_FAILED,
+        GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_LEO_FAILED,
                            GAME->levelName());
     } else {
         ((Game *)G)->extraObjects()->setLoaded(1);
-        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_LEO_LOADED,
+        GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_LEO_LOADED,
                            GAME->levelName());
     }
 

@@ -144,6 +144,7 @@
 #include "foe.h"
 #include "player.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -162,7 +163,6 @@ struct GameLogger;
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
-#define GAME_LOGGER   ((GameLogger *)0x0046c4c0)
 
 typedef unsigned int __attribute__((aligned(1))) u32_ua;
 
@@ -250,7 +250,7 @@ Sim_ClearGameState(Game *self)
     *(unsigned int *)(G + 0x170a48) = 0;
 
     if (gamefile_ok == 0) {
-        GameLog_LogMessage(GAME_LOGGER, 4, GS_GAME_GAMEFILE_ERR,
+        GameLog_LogMessage(GG_LOGGER, 4, GS_GAME_GAMEFILE_ERR,
                            ((Game *)G)->gameFileName());
         PostQuitMessage(1);
     }

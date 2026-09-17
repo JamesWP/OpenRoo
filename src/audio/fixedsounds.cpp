@@ -48,6 +48,7 @@
 #include "menutree.h"
 #include "player.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 struct CStaticSoundbuffer;
 
@@ -55,7 +56,6 @@ extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStatic_Reset(CStaticSoundbuffer *self);
 
-#define GAMELOGGER ((GameLogger *)0x0046c4c0)
 
 static int s_fx = -1;
 
@@ -90,9 +90,9 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         return;
 
     if ((Config_Save(((Game *)B)->config(), GS_CFG_FILE) & 0xff) != 0)
-        GameLog_LogMessage(GAMELOGGER, 1, GS_CFG_SAVE_OK);
+        GameLog_LogMessage(GG_LOGGER, 1, GS_CFG_SAVE_OK);
     else
-        GameLog_LogMessage(GAMELOGGER, 3, GS_CFG_SAVE_ERR);
+        GameLog_LogMessage(GG_LOGGER, 3, GS_CFG_SAVE_ERR);
     ((Game *)B)->menu()->setLockStart(*((Game *)B)->clock());
     ((Game *)B)->menu()->setLock(1);
     if (((Game *)B)->musicOn() != 0)
@@ -100,7 +100,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(GS_GAME_MAIN));
 
     if (((Game *)B)->soundCreated() == 0) {
-        GameLog_LogMessage(GAMELOGGER, 1, GS_CFG_NO_SOUND);
+        GameLog_LogMessage(GG_LOGGER, 1, GS_CFG_NO_SOUND);
         ((Game *)B)->setMusicOn(0);
         if (((Game *)B)->soundCreated() == 0) {
             ((Game *)B)->fixedSounds()->loaded = 1;

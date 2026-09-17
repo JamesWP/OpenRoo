@@ -80,10 +80,10 @@
 #include "foe.h"
 #include "player.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 /* ─── Game data (DATA references, not calls) ─────────────────────────────── */
 
-#define GAME_LOGGER   ((GameLogger *)0x0046c4c0)
 
 
 /* ─── Game logic this file drives — all of it ours now ───────────────────── */
@@ -103,7 +103,7 @@
  * Each also dropped a cast.  Three carried a `(Game *)` on an argument that
  * is already a `Game *`, and the logger carried a whole function-pointer
  * cast to `(void *, int, const char *, ...)` — needed only because
- * GAME_LOGGER above was typed `void *`, which it no longer is.  A cast over
+ * GG_LOGGER above was typed `void *`, which it no longer is.  A cast over
  * a typed export is the trap described below in its worst form: it converts
  * a signature change from a compile error into a crash.
  *
@@ -174,7 +174,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     if (out == NULL)
         return;
 
-    GameLog_LogMessage(GAME_LOGGER, 3, GS_RPT_LOG_CREATE);
+    GameLog_LogMessage(GG_LOGGER, 3, GS_RPT_LOG_CREATE);
 
     *(WORD  *)(g + OFF_TALLY_A)     = 0;
     *(WORD  *)(g + OFF_TALLY_BONUS) = 0;
@@ -253,7 +253,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
             ((Game *)g)->gemsRequired());
         ((Game *)g)->setVitalityPercent(0x32);
         timeBonus = (unsigned)(((Game *)g)->map()->fileTimeLimit() * 0x32) / 100;
-        GameLog_LogMessage(GAME_LOGGER, 3, GS_RPT_LOG_TIME, timeBonus);
+        GameLog_LogMessage(GG_LOGGER, 3, GS_RPT_LOG_TIME, timeBonus);
         Score_CalculateLevelScore(self, 2);
 
         sprintf(buf, GS_RPT_D_TAB, timeBonus);
@@ -313,7 +313,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     sprintf(buf, GS_RPT_SPLINES_IN, (unsigned)((Game *)g)->scriptPlayer()->splineLines());
     fputs(buf, out);
 
-    GameLog_LogMessage(GAME_LOGGER, 3, GS_RPT_LOG_CREATED);   /* defect 2 */
+    GameLog_LogMessage(GG_LOGGER, 3, GS_RPT_LOG_CREATED);   /* defect 2 */
 
     fclose(out);
     if (sink != NULL)
