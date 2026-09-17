@@ -644,7 +644,7 @@ Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
                     /* Outer index sits in the v slot, inner in the u slot. */
                     Tile *t = Tile::at(tiles, ui, (int)(signed char)v);
 
-                    if (t->objectMarker() != 0 && t->occupant() == 0) {
+                    if (t->objectMarker() != TILE_EMPTY && t->occupant() == 0) {
                         /* Point 9: the candidate is the full 80-bit FSQRT
                          * result and is COMPARED at that width... */
                         long double d = sqrtl((long double)(int)(

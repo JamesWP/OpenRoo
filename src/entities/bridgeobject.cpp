@@ -321,14 +321,14 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     if (axis == 1) {
         obj->step_ = 1;
         obj->endU_ = (unsigned char)u;
-        if (Tile::at(base, (int)u - 1, (int)v)->objectMarker() == 0) {
+        if (Tile::at(base, (int)u - 1, (int)v)->objectMarker() == TILE_EMPTY) {
             obj->step_ = (signed char)0xff;
             obj->endU_ = (unsigned char)(u + 1);
         }
         obj->span_ = 0;
 
         var = u;
-        while (Tile::at(base, (int)var, (int)v)->objectMarker() == 0) {
+        while (Tile::at(base, (int)var, (int)v)->objectMarker() == TILE_EMPTY) {
             var = (unsigned int)(var + (int)obj->step_);
             obj->span_ = (signed char)(obj->span_ + 1);
         }
@@ -341,14 +341,14 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     } else if (axis == 2) {
         obj->step_ = 1;
         obj->endV_ = (unsigned char)v;
-        if (Tile::at(base, (int)u, (int)v - 1)->objectMarker() == 0) {
+        if (Tile::at(base, (int)u, (int)v - 1)->objectMarker() == TILE_EMPTY) {
             obj->step_ = (signed char)0xff;
             obj->endV_ = (unsigned char)(v + 1);
         }
         obj->span_ = 0;
 
         var = v;
-        while (Tile::at(base, (int)u, (int)var)->objectMarker() == 0) {
+        while (Tile::at(base, (int)u, (int)var)->objectMarker() == TILE_EMPTY) {
             var = (unsigned int)(var + (int)obj->step_);
             obj->span_ = (signed char)(obj->span_ + 1);
         }

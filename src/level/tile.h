@@ -16,11 +16,103 @@
  * LevelMap's now.
  *
  * The first four bytes (height, kind, param, contents) are the .jjm file's
- * four bytes per cell; the rest is runtime state.
+ * four bytes per cell; the rest is runtime state.  The kind byte's values
+ * are `enum TileKind` below.  The contents byte has its OWN value space --
+ * the same number means different things in the two bytes -- and is not yet
+ * an enum (COHESION_PLAN.md Band 7a).
  */
 #pragma once
 
 #include "layout.h"
+
+/* The cell's kind byte (+0x19d, `objectMarker()`) -- .jjm file byte 1, and
+ * the value every file used to compare as bare hex (COHESION_PLAN.md Band
+ * 7a).
+ *
+ * Named from the code that ACTS on each value, never from the value:
+ * SetupLevelObjects (levelsetup.cpp) is the authority, since it spawns one
+ * object per kind, with MovableEntity::updateMovement, FoePath and
+ * worldstate.cpp settling the rest.  Where nothing settles a value it keeps
+ * a neutral TILE_KIND_<hex> name -- a wrong name is worse than a number
+ * (Band 4b pass 2).
+ *
+ * `objectMarker()` returns `unsigned char`, and several call sites compare
+ * it as `(signed char)`, exactly as the original does.  These constants are
+ * therefore plain ints in the enum and the casts at the call sites are left
+ * alone: this band renames, it does not change an expression.
+ */
+enum TileKind {
+    /* A void cell.  FoePath treats it as blocked unless something bridges
+     * it (the +0x1bc slide track is nonzero). */
+    TILE_EMPTY       = 0x00,
+    /* Censused as type1.  SetupLevelObjects rewrites TILE_KIND_03 to this
+     * before any later test sees it; nothing else reads it. */
+    TILE_KIND_01     = 0x01,
+    /* The pad that freezes whoever stands on it until it is spent.  Derived
+     * in worldstate.h, which has named it WS_TILE_GLUE since before this
+     * enum; that macro is now defined from this. */
+    TILE_GLUE        = 0x02,
+    /* Only ever seen being rewritten to TILE_KIND_01 at load. */
+    TILE_KIND_03     = 0x03,
+
+    /* Ramps, one per facing: `kind - 4` is the direction, 1..4, and
+     * worldstate.cpp's ws_is_ramp() is `kind > 4 && kind < 9`.  A step off a
+     * ramp is exempt from the fall rule only along the ramp's own axis. */
+    TILE_RAMP_1      = 0x05,
+    TILE_RAMP_2      = 0x06,
+    TILE_RAMP_3      = 0x07,
+    TILE_RAMP_4      = 0x08,
+
+    /* LiftObject::spawn takes the cell; the param is the lift's. */
+    TILE_LIFT        = 0x09,
+    /* The two slide spawns.  The kind IS the track axis: 0x0a walks U (the
+     * row), 0x0b walks V (the column), and the V scan clears the markers
+     * along its track while the U scan leaves them standing (slideobject.cpp
+     * -- a preserved asymmetry, not a tidy-up). */
+    TILE_SLIDE_U     = 0x0a,
+    TILE_SLIDE_V     = 0x0b,
+    /* Stamped by a slide onto every cell of its track.  An entity standing
+     * on one attaches to the moving platform. */
+    TILE_SLIDE_TRACK = 0x0c,
+    /* BreakableTile::spawn -- the falling tile.  worldstate.h has called it
+     * WS_TILE_FALLING since before this enum; that macro is now defined from
+     * this.  NOTE: contents 0x0d is a different thing entirely (worldstate's
+     * WS_TILE_TRANSFORM) -- the same number in the other byte, which is one
+     * of the reasons for splitting the two enums. */
+    TILE_BREAKABLE   = 0x0d,
+    /* The jump pad: landing on it survives any drop, and it cancels a queued
+     * move.  updateMovement names it; worldstate.h's WS_TILE_SOFT_LAND is
+     * the same kind seen from the fall rule, and is now defined from this. */
+    TILE_JUMP_PAD    = 0x0e,
+    /* Paired by the builder through the param byte; the pair's cell lands in
+     * teleportU/teleportV. */
+    TILE_TELEPORTER  = 0x0f,
+    /* Climbable.  The builder moves the param byte into climbDir(). */
+    TILE_CLIMB       = 0x10,
+    /* A numbered switch; the builder files its cell into SwitchCells and
+     * leaves the index in +0x1f3. */
+    TILE_SWITCH      = 0x11,
+    /* BridgeObject::spawn, axis argument 1 and 2 respectively. */
+    TILE_BRIDGE_U    = 0x12,
+    TILE_BRIDGE_V    = 0x13,
+    /* Carries whoever stands on it along conveyorDir. */
+    TILE_CONVEYOR    = 0x15,
+    /* Blocked unconditionally, by both FoePath and worldstate.  Named for
+     * what the code does with it; what it IS on screen is not settled. */
+    TILE_IMPASSABLE  = 0x16,
+    /* A destructible block, and the game's own word for it is "obstacle":
+     * Bomb's blast logs "GAME: obstacle is exploding at:%d,%d,%d" as it
+     * marks one spent and promotes its hidden contents (+0x202) into
+     * contents() so they can be picked up.  The builder is what hid them
+     * there at load.  Blocked until spent, in both FoePath and worldstate.
+     *
+     * Named from bomb.cpp, not from the builder: the builder only hides the
+     * contents, which is why an earlier draft of this enum called it
+     * TILE_SHADOW after the level census's shadow1/shadow7 counters.  Those
+     * count the hidden CONTENTS, not the tile -- the code that destroys the
+     * thing is what names it. */
+    TILE_DESTRUCTIBLE = 0x17,
+};
 
 class __attribute__((packed)) Tile {
 public:
@@ -144,9 +236,16 @@ public:
     void setItemPhase(float p)                 { itemPhase_ = p; }
 
     /* ── read by the foe pathfinder (foepath.cpp) ────────────────────── */
-    /* +0x1f1: an elevator (kind 0x0e) cell's level byte. */
+    /* +0x1f1: set from the param byte on a TILE_JUMP_PAD cell.  An earlier
+     * comment here called kind 0x0e an "elevator"; nothing supports that --
+     * updateMovement names it the jump pad and worldstate.cpp reads it as
+     * the fall exemption.  What this byte is FOR is still unsettled, so it
+     * keeps its offset name. */
     unsigned char field1f1() const             { return field_1f1; }
-    /* +0x1f2: on a bridge (kind 0x10) cell, its direction byte. */
+    /* +0x1f2: on a TILE_CLIMB cell, its direction byte.  (This said "on a
+     * bridge (kind 0x10) cell" -- wrong: the bridges are TILE_BRIDGE_U and
+     * TILE_BRIDGE_V, 0x12/0x13.  The builder moves the param byte here and
+     * updateMovement's climb block is the only reader.) */
     unsigned char climbDir() const             { return climbDir_; }
 
     /* ── read by the movement tick (movableentity.cpp) ──────────────────── */
@@ -163,11 +262,11 @@ public:
     float  slidePosU() const                   { return slidePosU_; }
     float  slidePosY() const                   { return slidePosY_; }
     float  slidePosV() const                   { return slidePosV_; }
-    /* +0x1ee / +0x1ef: on a teleporter (kind 0x0f) cell, read as the u and
+    /* +0x1ee / +0x1ef: on a TILE_TELEPORTER cell, read as the u and
      * v of the cell it sends the entity to. */
     unsigned char teleportU() const             { return teleportU_; }
     unsigned char teleportV() const             { return teleportV_; }
-    /* +0x1f3: on a kind-0x11 cell, copied into the entity's +0xd7. */
+    /* +0x1f3: on a TILE_SWITCH cell, copied into the entity's +0xd7. */
     unsigned char field1f3() const             { return field_1f3; }
 
 private:
@@ -210,7 +309,7 @@ private:
     unsigned char teleportU_;         /* 0x1ee  } teleporter destination     */
     unsigned char teleportV_;         /* 0x1ef  }                            */
     unsigned char gap_1f0[0x1f1 - 0x1f0];
-    unsigned char field_1f1;          /* 0x1f1  an elevator's level byte    */
+    unsigned char field_1f1;          /* 0x1f1  set from param on a jump pad */
     unsigned char climbDir_;          /* 0x1f2  climb tile: which way up     */
     unsigned char field_1f3;          /* 0x1f3                              */
     unsigned char bridgeSlot_;        /* 0x1f4  the bridge's switch slot    */

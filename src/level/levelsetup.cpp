@@ -538,12 +538,12 @@ Sim_SetupLevelObjects(Game *self)
                     GAME->setField42252((unsigned short)(GAME->field_42252() + 1));
                 if (t->contents() == 7) CEN->item7++;
 
-                if (t->objectMarker() == 0x01) CEN->type1++;
-                if (t->objectMarker() == 0x02) CEN->type2++;
-                if (t->objectMarker() == 0x10) CEN->type10++;
-                if (t->objectMarker() == 0x15) CEN->type15++;
+                if (t->objectMarker() == TILE_KIND_01) CEN->type1++;
+                if (t->objectMarker() == TILE_GLUE) CEN->type2++;
+                if (t->objectMarker() == TILE_CLIMB) CEN->type10++;
+                if (t->objectMarker() == TILE_CONVEYOR) CEN->type15++;
 
-                if (t->objectMarker() == 0x17) {
+                if (t->objectMarker() == TILE_DESTRUCTIBLE) {
                     unsigned char item;
                     CEN->type17++;
                     t->setBusy(0);
@@ -559,7 +559,7 @@ Sim_SetupLevelObjects(Game *self)
                 }
 
                 /* switch cell */
-                if (t->objectMarker() == 0x11) {
+                if (t->objectMarker() == TILE_SWITCH) {
                     unsigned char param = t->param();
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_SWITCH);
@@ -578,7 +578,7 @@ Sim_SetupLevelObjects(Game *self)
                 }
 
                 /* bridges along U, then along V */
-                if (t->objectMarker() == 0x12) {
+                if (t->objectMarker() == TILE_BRIDGE_U) {
                     unsigned char param = t->param();
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_XBRIDGE);
@@ -589,7 +589,7 @@ Sim_SetupLevelObjects(Game *self)
                         CEN->bridges++;
                     }
                 }
-                if (t->objectMarker() == 0x13) {
+                if (t->objectMarker() == TILE_BRIDGE_V) {
                     unsigned char param = t->param();
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_YBRIDGE);
@@ -601,21 +601,21 @@ Sim_SetupLevelObjects(Game *self)
                     }
                 }
 
-                if (t->objectMarker() == 0x10) {
+                if (t->objectMarker() == TILE_CLIMB) {
                     t->setClimbDir(t->param());
                     t->setParam(0);
                 }
 
                 /* type 3 becomes type 1, before the tests below see it */
-                if (t->objectMarker() == 0x03)
+                if (t->objectMarker() == TILE_KIND_03)
                     t->setObjectMarker(1);
 
-                if (t->objectMarker() == 0x09) {
+                if (t->objectMarker() == TILE_LIFT) {
                     LiftObject::spawn((Game *)G, u, v, t->height(), t->param());
                     t->setParam(0);
                 }
 
-                if (t->objectMarker() == 0x0e) {
+                if (t->objectMarker() == TILE_JUMP_PAD) {
                     t->setField1f1(t->param());
                     CEN->type0e++;
                     t->setParam(0);
@@ -629,7 +629,7 @@ Sim_SetupLevelObjects(Game *self)
                     t->setItemPhase((float)ph);
                 }
 
-                if (t->objectMarker() == 0x0a || t->objectMarker() == 0x0b) {
+                if (t->objectMarker() == TILE_SLIDE_U || t->objectMarker() == TILE_SLIDE_V) {
                     t->setContents(0);
                     t->setParam(0);
                     SlideObject::spawn((Game *)G, u, v, t->height(),
@@ -637,11 +637,11 @@ Sim_SetupLevelObjects(Game *self)
                     t->setObjectMarker(0);
                 }
 
-                if (t->objectMarker() == 0x0d)
+                if (t->objectMarker() == TILE_BREAKABLE)
                     BreakableTile::spawn((Game *)G, u, v, t->height(), t->param());
 
                 /* teleport pairing */
-                if (t->objectMarker() == 0x0f && t->param() != 0) {
+                if (t->objectMarker() == TILE_TELEPORTER && t->param() != 0) {
                     unsigned char id = t->param();
                     unsigned char v2;
 
@@ -657,7 +657,7 @@ Sim_SetupLevelObjects(Game *self)
                                 unsigned char u2 = 0;
                                 do {
                                     Tile *t2 = CELL(M, u2, v2);
-                                    if (t2->objectMarker() == 0x0f &&
+                                    if (t2->objectMarker() == TILE_TELEPORTER &&
                                         t2->param() == id) {
                                         CEN->teleports++;
                                         t->setTeleportU(u2);

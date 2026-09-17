@@ -136,7 +136,6 @@ static const double K_FUSE_MS   = 2000.0;
 static const double K_CLEAR_MS  = 2400.0;
 static const double K_REMOVE_MS = 2600.0;
 
-#define TILE_KIND_DESTRUCTIBLE 0x17
 
 /* ─── Controls and diags, read by VALUE, never by presence ──────────────── */
 static int s_fx_shortfuse = 0;
@@ -513,7 +512,7 @@ void Bomb::tick()
             /* Plain byte store of the height -- bug 5. */
             t->setBlastHeight((unsigned char)heightCell_);
 
-            if ((signed char)t->objectMarker() == TILE_KIND_DESTRUCTIBLE &&
+            if ((signed char)t->objectMarker() == TILE_DESTRUCTIBLE &&
                 (int)heightCell_ == (int)t->height() &&
                 t->busy() == 0) {
 
@@ -546,7 +545,7 @@ void Bomb::tick()
                 t->setBlastHeight(0);
 
                 /* No `spent` test here -- bug 3. */
-                if ((signed char)t->objectMarker() == TILE_KIND_DESTRUCTIBLE &&
+                if ((signed char)t->objectMarker() == TILE_DESTRUCTIBLE &&
                     (int)heightCell_ == (int)t->height())
                     t->setField203(0);
             }
