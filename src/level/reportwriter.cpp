@@ -115,8 +115,6 @@
 
 /* ─── Game logic, deliberately still the game's ──────────────────────────── */
 
-typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
-
 /* Was ((setname_fn) 0x004186b0) / ((openlvl_fn) 0x004186f0) -- the game's
  * Game::SetCurrentLevelName and Game::OpenLevelFile.  levelparse.cpp owns
  * both now (GAMETICK_PLAN.md Band B) and the originals are UD2-stubbed, so
@@ -137,7 +135,7 @@ typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
  * UD2-stubbed, so this goes to ours.  Third instance of the DLL-caller
  * hazard the comment below names; checked BEFORE stubbing this time. */
 #define ORIG_SETUP_OBJECTS(s)     Sim_SetupLevelObjects((Game *)(s))   /* levelsetup.h */
-/* Was ((score_fn) 0x0041a760) -- the game's Game::CalculateLevelScore.
+/* Was a ((score_fn) 0x0041a760) call -- the game's Game::CalculateLevelScore.
  * levelscore.cpp owns it now (GAMETICK_PLAN.md Band A) and the original is
  * UD2-stubbed, so this goes to ours.  This call is why the level report is an
  * 80-level acceptance test for that replacement.
@@ -148,7 +146,9 @@ typedef void (__attribute__((thiscall)) *score_fn)  (void *self, char mode);
  * Stubbing the original trapped at `call eax` with eax = 0041a760 and nothing
  * in the binary to explain it.  When replacing anything, grep karoo-hooks/ for
  * its address as well as running xref.py over the exe. */
-#define ORIG_CALC_SCORE     ((score_fn)  Score_CalculateLevelScore)
+/* Through levelscore.h, typed -- no cast, so a signature change here is a
+ * compile error rather than a crash. */
+#define ORIG_CALC_SCORE(s, m)     Score_CalculateLevelScore((s), (m))
 /* Was ((logmsg_fn) 0x00441b10) -- the game's Logger::LogMessage.  gamelog.cpp
  * owns that class now and the original is UD2-stubbed, so this goes to ours. */
 #define ORIG_LOG_MESSAGE \
