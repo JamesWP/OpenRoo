@@ -595,7 +595,7 @@ Texture_SelectTextureLoader(SceneTexture *self, IDirectDraw4 *dd,
     }
 
     /* Note 6: no NULL check on the result. */
-    const unsigned char *ext = (const unsigned char *)GC_STRRCHR(name, '.');
+    const unsigned char *ext = (const unsigned char *)strrchr(name, '.');
 
     if (st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_BMP_LOWER) == 0 ||
         st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_BMP_UPPER) == 0)
