@@ -124,12 +124,11 @@
 #include "soundmanager.h"
 #include "static.h"
 #include "gamelog.h"
+#include "gameglobals.h"
 #include "log.h"
 
 #include <new>               /* std::nothrow */
 
-/* The game's own logger instance, Logger at 0x0046c4c0. */
-#define GAME_LOGGER   ((GameLogger *)0x0046c4c0)
 
 /* DAT_0045d2b0 / 0045d2a8 / 0045d2a0: 409f4.., 40a2c.., 40a45.. */
 static const double K_FUSE_MS   = 2000.0;
@@ -521,7 +520,7 @@ void Bomb::tick()
                 t->setField203(1);
                 t->setField20f(1);
 
-                GameLog_LogMessage(GAME_LOGGER, 1,
+                GameLog_LogMessage(GG_LOGGER, 1,
                                    "GAME: obstacle is exploding at:%d,%d,%d",
                                    u, v, (int)t->height());
 

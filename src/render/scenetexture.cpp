@@ -145,6 +145,7 @@
 #include "log.h"
 #include "alloc.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 /* ─── Originals left live in the binary ──────────────────────────────────── */
 
@@ -165,10 +166,10 @@ typedef char *(__cdecl *strrchr_fn)(const char *, int);
 #define ORIG_MAYBE_SPRINTF ((sprintf_fn)0x00450655)
 #define ORIG_STRRCHR       ((strrchr_fn)0x00451a50)
 
-/* ImageLogger::Log — __cdecl(const char *, int len, int, int *sink). */
-typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
-#define ORIG_FWRITE ((fwrite_fn)0x004513c7)
-#define GAME_LOG_FILE ((int *)0x00469cf8)
+typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, FILE *);
+#define ORIG_FWRITE ((fwrite_fn)0x004513c7)   /* the static CRT fwrite; the
+                                               * stream is GG_LOG_STREAM --
+                                               * see gameglobals.h */
 
 /* See the header note: __stdcall, not __thiscall. */
 typedef void (__stdcall *enumfmt_fn)(IDirect3DDevice3 *, DWORD, DWORD, DDPIXELFORMAT *);
@@ -209,7 +210,7 @@ static unsigned int st_strlen(const char *s)
 
 static void st_log_str(const char *s)
 {
-    ORIG_FWRITE(s, (int)st_strlen(s), 1, GAME_LOG_FILE);
+    ORIG_FWRITE(s, (int)st_strlen(s), 1, GG_LOG_STREAM);
 }
 
 /* The game's inlined strcmp: 0 when equal, otherwise -1 or 1 from the

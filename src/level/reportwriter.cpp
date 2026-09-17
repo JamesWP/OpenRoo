@@ -80,10 +80,10 @@
 #include "foe.h"
 #include "player.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 /* ─── Game data (DATA references, not calls) ─────────────────────────────── */
 
-#define GAME_LOGGER   ((GameLogger *)0x0046c4c0)
 
 
 /* ─── Game logic this file drives — all of it ours now ───────────────────── */
@@ -103,7 +103,7 @@
  * Each also dropped a cast.  Three carried a `(Game *)` on an argument that
  * is already a `Game *`, and the logger carried a whole function-pointer
  * cast to `(void *, int, const char *, ...)` — needed only because
- * GAME_LOGGER above was typed `void *`, which it no longer is.  A cast over
+ * GG_LOGGER above was typed `void *`, which it no longer is.  A cast over
  * a typed export is the trap described below in its worst form: it converts
  * a signature change from a compile error into a crash.
  *
@@ -129,18 +129,16 @@
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
-#define OFF_TALLY_A       0x42243   /* WORD, zeroed, never written after      */
-#define OFF_TALLY_BONUS   0x42245   /* WORD, levels with a bonus              */
-#define OFF_TALLY_LEO     0x42247   /* WORD, levels with a .leo               */
-#define OFF_TALLY_IS      0x4220c   /* WORD, levels with an instruction script*/
-#define OFF_SCORE_TOTAL   0x42212   /* DWORD, running total                   */
+/* The five report tallies (was OFF_TALLY_A 0x42243, OFF_TALLY_BONUS 0x42245,
+ * OFF_TALLY_LEO 0x42247, OFF_TALLY_IS 0x4220c, OFF_SCORE_TOTAL 0x42212) are
+ * Game's; this file is their only writer.  See game.h. */
 /* The game file name (was OFF_GAMEFILE 0x4215f) is Game::gameFileName(). */
 /* The map name (was OFF_LEVEL_WORLD 0x2ab69d), bonus flag (OFF_BONUS_FLAG
  * 0x2ab599), file time limit (OFF_PAR_TIME_SRC 0x2ab71f, the par time before
  * the 50% scaling) and title (OFF_LEVEL_TITLE 0x2ab61d) are the LevelMap's
  * (levelmap.h), through Game::map(). */
 /* OFF_PAR_COPY was Player +0x23d (player.h), the crystals count. */
-#define OFF_LEVEL_PATH    0x173483  /* char[], <World>\<Level>                */
+/* The level path (was OFF_LEVEL_PATH 0x173483) is Game::levelNameBuffer(). */
 
 /* The per-column field list, in the original's emission order.  Each is
  * printed with "%d\t"; the widths differ, hence the size tag. */
@@ -154,6 +152,10 @@ static const struct { unsigned off; unsigned char size; } COLUMNS[] = {
 };
 #define COLUMN_COUNT (sizeof(COLUMNS) / sizeof(COLUMNS[0]))
 
+/* The one place in this file that really is byte-addressed: COLUMNS is a
+ * table of (offset, width) pairs, so there is no field expression to call.
+ * Growing game.h twenty-two more times to name columns the report only
+ * prints would not buy a reader anything. */
 static unsigned read_field(const unsigned char *g, unsigned off, unsigned char size)
 {
     if (size == 1) return *(const unsigned char *)(g + off);
@@ -164,7 +166,6 @@ static unsigned read_field(const unsigned char *g, unsigned off, unsigned char s
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Report_WriteLevelReport(Game *self, const char *pathname)
 {
-    unsigned char *g = (unsigned char *)self;
     char buf[256];
     FILE *sink, *out;
     unsigned idx;
@@ -174,25 +175,25 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     if (out == NULL)
         return;
 
-    GameLog_LogMessage(GAME_LOGGER, 3, GS_RPT_LOG_CREATE);
+    GameLog_LogMessage(GG_LOGGER, 3, GS_RPT_LOG_CREATE);
 
-    *(WORD  *)(g + OFF_TALLY_A)     = 0;
-    *(WORD  *)(g + OFF_TALLY_BONUS) = 0;
-    *(WORD  *)(g + OFF_TALLY_LEO)   = 0;
-    *(DWORD *)(g + OFF_SCORE_TOTAL) = 0;
-    ((Game *)g)->scriptPlayer()->setTextBlocks(0);
-    ((Game *)g)->scriptPlayer()->setSplineLines(0);
+    self->setReportTallyA(0);
+    self->setReportLevelsWithBonus(0);
+    self->setReportLevelsWithLeo(0);
+    self->setReportScoreTotal(0);
+    self->scriptPlayer()->setTextBlocks(0);
+    self->scriptPlayer()->setSplineLines(0);
 
     fputs(GS_RPT_TITLE, out);
-    sprintf(buf, GS_RPT_GAMEFILE, ((Game *)g)->gameFileName());
+    sprintf(buf, GS_RPT_GAMEFILE, self->gameFileName());
     fputs(buf, out);
-    sprintf(buf, GS_RPT_LEVELS, (unsigned)((const Game *)g)->levelCount());
+    sprintf(buf, GS_RPT_LEVELS, (unsigned)self->levelCount());
     fputs(buf, out);
     fputs(GS_RPT_COLHDR1, out);
     fputs(GS_RPT_COLHDR2, out);
     fputs(GS_RPT_RULE, out);
 
-    for (idx = 0; idx < (unsigned)((const Game *)g)->levelCount(); idx++) {
+    for (idx = 0; idx < (unsigned)self->levelCount(); idx++) {
         unsigned catches = 0, timeBonus, n = idx + 1;
         unsigned char catchByte = 0;   /* defect 5: a byte */
         int total;
@@ -204,33 +205,33 @@ Report_WriteLevelReport(Game *self, const char *pathname)
 
         sprintf(buf, GS_RPT_D_TAB, n);
         fputs(buf, out);
-        fputs(((Game *)g)->map()->mapName(), out);
+        fputs(self->map()->mapName(), out);
         fputs(GS_FMT_TAB, out);
 
-        if ((int)((Game *)g)->map()->bonus() == 0) {
+        if ((int)self->map()->bonus() == 0) {
             fputs(GS_RPT_BLANK_TAB, out);
         } else {
             fputs(GS_RPT_X_TAB, out);
-            *(short *)(g + OFF_TALLY_BONUS) += 1;
+            self->setReportLevelsWithBonus((unsigned short)(self->reportLevelsWithBonus() + 1));
         }
 
-        if (((Game *)g)->scriptPlayer()->loaded() == 0) {
+        if (self->scriptPlayer()->loaded() == 0) {
             fputs(GS_RPT_BLANK_TAB, out);
         } else {
-            sprintf(buf, GS_RPT_D_TAB, (unsigned)((Game *)g)->scriptPlayer()->lineCount());
+            sprintf(buf, GS_RPT_D_TAB, (unsigned)self->scriptPlayer()->lineCount());
             fputs(buf, out);
-            *(short *)(g + OFF_TALLY_IS) += 1;
+            self->setReportLevelsWithScript((unsigned short)(self->reportLevelsWithScript() + 1));
         }
 
-        if (((Game *)g)->extraObjects()->loaded() == 0) {
+        if (self->extraObjects()->loaded() == 0) {
             fputs(GS_RPT_BLANK_TAB, out);
         } else {
-            sprintf(buf, GS_RPT_D_TAB, (unsigned)((Game *)g)->extraObjects()->objectCount());
+            sprintf(buf, GS_RPT_D_TAB, (unsigned)self->extraObjects()->objectCount());
             fputs(buf, out);
-            *(short *)(g + OFF_TALLY_LEO) += 1;
+            self->setReportLevelsWithLeo((unsigned short)(self->reportLevelsWithLeo() + 1));
         }
 
-        Game *G = (Game *)g;
+        Game *G = self;
         if (G->foeCount() != 0) {
             for (int i = 0; i < (int)G->foeCount(); i++) {
                 /* kind 2 == "catch"; read signed, as the original does. */
@@ -245,29 +246,31 @@ Report_WriteLevelReport(Game *self, const char *pathname)
         fputs(buf, out);
 
         for (unsigned c = 0; c < COLUMN_COUNT; c++) {
-            sprintf(buf, GS_RPT_D_TAB, read_field(g, COLUMNS[c].off, COLUMNS[c].size));
+            sprintf(buf, GS_RPT_D_TAB,
+                    read_field((const unsigned char *)self,
+                               COLUMNS[c].off, COLUMNS[c].size));
             fputs(buf, out);
         }
 
-        ((Game *)g)->player()->setGemsCollected(
-            ((Game *)g)->gemsRequired());
-        ((Game *)g)->setVitalityPercent(0x32);
-        timeBonus = (unsigned)(((Game *)g)->map()->fileTimeLimit() * 0x32) / 100;
-        GameLog_LogMessage(GAME_LOGGER, 3, GS_RPT_LOG_TIME, timeBonus);
+        self->player()->setGemsCollected(
+            self->gemsRequired());
+        self->setVitalityPercent(0x32);
+        timeBonus = (unsigned)(self->map()->fileTimeLimit() * 0x32) / 100;
+        GameLog_LogMessage(GG_LOGGER, 3, GS_RPT_LOG_TIME, timeBonus);
         Score_CalculateLevelScore(self, 2);
 
         sprintf(buf, GS_RPT_D_TAB, timeBonus);
         fputs(buf, out);
 
-        total = *(int *)(g + OFF_SCORE_TOTAL)
-              + ((((Game *)g)->tally()->score[TALLY_GEMS] + 0x78 + (int)timeBonus * 2
-                  + ((Game *)g)->tally()->score[TALLY_VITALITY]) - (int)idx);   /* defect 6 */
-        *(int *)(g + OFF_SCORE_TOTAL) = total;
+        total = self->reportScoreTotal()
+              + ((self->tally()->score[TALLY_GEMS] + 0x78 + (int)timeBonus * 2
+                  + self->tally()->score[TALLY_VITALITY]) - (int)idx);   /* defect 6 */
+        self->setReportScoreTotal(total);
         sprintf(buf, GS_RPT_D_TAB, (unsigned)total);
         fputs(buf, out);
 
         Sim_SetCurrentLevelName(self, idx);
-        sprintf(buf, GS_RPT_S_TAB, (char *)(g + OFF_LEVEL_PATH));
+        sprintf(buf, GS_RPT_S_TAB, self->levelNameBuffer());
         fputs(buf, out);
         fputs(GS_FMT_NEWLINE, out);   /* defect 3: the title's sprintf is dead */
 
@@ -275,25 +278,25 @@ Report_WriteLevelReport(Game *self, const char *pathname)
          * original steps its pointer down by one record per 8 levels) */
         if ((idx % 8 == 0 && idx > 5) || idx == 6) {
             int k = (int)idx / 8;
-            HighScoreRecord *rec = ((Game *)g)->highScores()->record(9 - k);
+            HighScoreRecord *rec = self->highScores()->record(9 - k);
             strcpy(rec->name, GS_RPT_BERNIE);
             rec->level = (unsigned char)(idx + 1);
-            rec->score = (unsigned int)*(int *)(g + OFF_SCORE_TOTAL);
+            rec->score = (unsigned int)self->reportScoreTotal();
         }
 
         {
             char scriptPath[256];
             sprintf(scriptPath, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR,
-                    (char *)(g + OFF_LEVEL_PATH));
+                    self->levelNameBuffer());
 
             fputs(GS_RPT_STARS, sink);
-            sprintf(buf, GS_RPT_LVL_FILE, n, (char *)(g + OFF_LEVEL_PATH));
+            sprintf(buf, GS_RPT_LVL_FILE, n, self->levelNameBuffer());
             fputs(buf, sink);
-            sprintf(buf, GS_RPT_LVL_NAME, ((Game *)g)->map()->title());
+            sprintf(buf, GS_RPT_LVL_NAME, self->map()->title());
             fputs(buf, sink);
 
-            if (((Game *)g)->scriptPlayer()->loaded() != 0)
-                ((Game *)g)->scriptPlayer()->readTextsForReport(scriptPath, sink);
+            if (self->scriptPlayer()->loaded() != 0)
+                self->scriptPlayer()->readTextsForReport(scriptPath, sink);
 
             fputs(GS_FMT_NEWLINE, sink);
             fputs(GS_FMT_NEWLINE, sink);
@@ -302,22 +305,22 @@ Report_WriteLevelReport(Game *self, const char *pathname)
 
     fputs(GS_RPT_RULE, out);
     sprintf(buf, GS_RPT_TALLY,
-            (unsigned)*(WORD *)(g + OFF_TALLY_BONUS),
-            (unsigned)*(WORD *)(g + OFF_TALLY_IS),
-            (unsigned)*(WORD *)(g + OFF_TALLY_LEO));
+            (unsigned)self->reportLevelsWithBonus(),
+            (unsigned)self->reportLevelsWithScript(),
+            (unsigned)self->reportLevelsWithLeo());
     fputs(buf, out);
-    sprintf(buf, GS_RPT_TESTSCORES, *(int *)(g + OFF_SCORE_TOTAL));
+    sprintf(buf, GS_RPT_TESTSCORES, self->reportScoreTotal());
     fputs(buf, out);
-    sprintf(buf, GS_RPT_TEXTS_IN, (unsigned)((Game *)g)->scriptPlayer()->textBlocks());
+    sprintf(buf, GS_RPT_TEXTS_IN, (unsigned)self->scriptPlayer()->textBlocks());
     fputs(buf, out);
-    sprintf(buf, GS_RPT_SPLINES_IN, (unsigned)((Game *)g)->scriptPlayer()->splineLines());
+    sprintf(buf, GS_RPT_SPLINES_IN, (unsigned)self->scriptPlayer()->splineLines());
     fputs(buf, out);
 
-    GameLog_LogMessage(GAME_LOGGER, 3, GS_RPT_LOG_CREATED);   /* defect 2 */
+    GameLog_LogMessage(GG_LOGGER, 3, GS_RPT_LOG_CREATED);   /* defect 2 */
 
     fclose(out);
     if (sink != NULL)
         fclose(sink);
 
-    ((Game *)g)->highScores()->writeFile(GS_RPT_HSC_NAME, 'K');
+    self->highScores()->writeFile(GS_RPT_HSC_NAME, 'K');
 }

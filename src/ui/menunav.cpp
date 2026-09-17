@@ -46,15 +46,16 @@ Sim_StoreGameStateIntoSaveSlot(Game *self, unsigned int slotArg)
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_RestoreGameStateFromSaveSlot(Game *self, unsigned int slotArg)
 {
-    unsigned char *B = (unsigned char *)self;
-    SaveSlot *S = ((Game *)B)->saveSlots()->slot((unsigned char)slotArg);
+    SaveSlot *S = self->saveSlots()->slot((unsigned char)slotArg);
 
-    ((Game *)B)->setLevelIndex(S->levelIndex);
-    ((Game *)B)->setTotalPlayTime((double)(unsigned long long)S->elapsedGameTime);
-    *(unsigned int *)(B + 0x1752a1) = S->completionNumerator;
-    *(unsigned int *)(B + 0x1753f5) = S->totalScore;
-    *(unsigned int *)(B + 0x175402) = S->livesRemaining;
+    self->setLevelIndex(S->levelIndex);
+    self->setTotalPlayTime((double)(unsigned long long)S->elapsedGameTime);
+    self->player()->setCompletionNumerator(S->completionNumerator);
+    self->player()->setScore(S->totalScore);
+    self->player()->setLives(S->livesRemaining);
     /* EAX's low byte is 1; the rest is what the original left in it:
-     * Game + slot*0x2a, the base it indexed every field from. */
-    return ((unsigned int)(unsigned long)(B + (slotArg & 0xff) * 0x2a) & 0xffffff00u) | 1u;
+     * Game + slot*0x2a, the base it indexed every field from -- so this one
+     * expression really is byte arithmetic, not a field. */
+    return ((unsigned int)(unsigned long)((unsigned char *)self + (slotArg & 0xff) * 0x2a)
+            & 0xffffff00u) | 1u;
 }

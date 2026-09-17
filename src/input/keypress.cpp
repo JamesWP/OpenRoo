@@ -55,11 +55,11 @@ struct CDM;
 
 extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
+CStatic_TriggerPlayback(CStaticSoundbuffer *game, DWORD dwLoopFlags);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *self);
+CStatic_HaltPlayback(CStaticSoundbuffer *game);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_VoicePoolCycle(VoicePool *self, DWORD dwLoopFlags);
+Sim_VoicePoolCycle(VoicePool *game, DWORD dwLoopFlags);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 ProgCtrl_SetJoyDeadzone(ProgableControl *s, DWORD axis, int zone);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -68,125 +68,121 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 ProgCtrl_CaptureBinding(ProgableControl *s, unsigned int mode, const char *name,
                         int strength, int allow_axis, int flags);
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-CDM_GetMixerDetails(CDM *self);   /* bare RET */
+CDM_GetMixerDetails(CDM *game);   /* bare RET */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_SetMixerVolume(CDM *self, DWORD level);
+CDM_SetMixerVolume(CDM *game, DWORD level);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_StopTrack(CDM *self);
+CDM_StopTrack(CDM *game);
 
 #include "soundmanager.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
-#define PROGCTRL    ((ProgableControl *)0x0046c298)
-#define CDAUDIO     ((CDM *)0x004dc640)
-#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 
-#define G8(o)   (*(unsigned char *)(B + (o)))
-#define G16(o)  (*(unsigned short *)(B + (o)))
-#define G32(o)  (*(unsigned int *)(B + (o)))
-#define GP(o)   (*(void **)(B + (o)))
-#define GD(o)   (*(double *)(B + (o)))
 #define KEY(k)  hooks_GetAsyncKeyState(k)
 
-#define MENU    (((Game *)B)->menu())
-#define DEB     (((Game *)B)->debounceRef())
-#define NODE    (((Game *)B)->menu()->nodeRef())
-#define STATE   (((Game *)B)->stateRef())
 
 static int s_fx = -1;
 
 /* The rebind prompts 0x14..0x20: copy the action name, arm capture, pop.
  * Four of them also set +0x175534 (the key to highlight). */
-static void rebind(unsigned char *B, const char *name, unsigned char code, int hl)
+static void rebind(Game *game, const char *name, unsigned char code, int hl)
 {
-    strcpy(((Game *)B)->rebindAction(), name);
-    ((Game *)B)->setRebindActive(1);
-    ((Game *)B)->setRebindCode(code);
+    strcpy(game->rebindAction(), name);
+    game->setRebindActive(1);
+    game->setRebindCode(code);
     if (hl >= 0)
-        ((Game *)B)->menu()->setLastKey((unsigned char)hl);
-    Sim_PopMenuNodeFromStack(MENU);
+        game->menu()->setLastKey((unsigned char)hl);
+    Sim_PopMenuNodeFromStack(game->menu());
 }
 
 /* The "level loaded, flythrough armed" tail shared by new-game and load. */
-static void loaded_tail(unsigned char *B)
+static void loaded_tail(Game *game)
 {
-    STATE = 4;
-    ((Game *)B)->setCameraDistance(7.0f);
-    if (((Game *)B)->musicOn() != 0)
-        CDM_StopTrack(CDAUDIO);
-    ((Game *)B)->scriptPlayer()->setRunning(1);
-    ((Game *)B)->setCameraMode(1);
-    Sim_RewindMenuStackToRootNode(MENU);
+    game->stateRef() = 4;
+    game->setCameraDistance(7.0f);
+    if (game->musicOn() != 0)
+        CDM_StopTrack(GG_CDAUDIO);
+    game->scriptPlayer()->setRunning(1);
+    game->setCameraMode(1);
+    Sim_RewindMenuStackToRootNode(game->menu());
 }
 
-static void option_edit(unsigned char *B, unsigned char key)
+static void option_edit(Game *game, unsigned char key)
 {
     switch (key) {
     case 0x22: {                               /* sfx % -> joystick deadzone */
-        if (DEB != 0x27 && KEY(0x27) != 0 && ((Game *)B)->joyDeadzone() < 0x5a) {
-            ((Game *)B)->setJoyDeadzone((unsigned short)(((Game *)B)->joyDeadzone() + 10));
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 0, ((Game *)B)->joyDeadzone() * 100);
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 4, ((Game *)B)->joyDeadzone() * 100);
-            DEB = 0x27;
+        if (game->debounceRef() != 0x27 && KEY(0x27) != 0 && game->joyDeadzone() < 0x5a) {
+            game->setJoyDeadzone((unsigned short)(game->joyDeadzone() + 10));
+            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 0, game->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 4, game->joyDeadzone() * 100);
+            game->debounceRef() = 0x27;
         }
-        if (DEB != 0x25 && KEY(0x25) != 0 && ((Game *)B)->joyDeadzone() > 10) {
-            ((Game *)B)->setJoyDeadzone((unsigned short)(((Game *)B)->joyDeadzone() - 10));
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 0, ((Game *)B)->joyDeadzone() * 100);
-            ProgCtrl_SetJoyDeadzone(PROGCTRL, 4, ((Game *)B)->joyDeadzone() * 100);
-            DEB = 0x25;
+        if (game->debounceRef() != 0x25 && KEY(0x25) != 0 && game->joyDeadzone() > 10) {
+            game->setJoyDeadzone((unsigned short)(game->joyDeadzone() - 10));
+            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 0, game->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 4, game->joyDeadzone() * 100);
+            game->debounceRef() = 0x25;
         }
         break;
     }
     case 0x3e: {                               /* CD volume */
         int changed = 0;
-        CDM_GetMixerDetails(CDAUDIO);          /* result discarded, as shipped */
-        if (DEB != 0x27 && KEY(0x27) != 0 && ((Game *)B)->cdVolume() < 100) {
-            DEB = 0x27;
-            ((Game *)B)->setCdVolume((unsigned char)(((Game *)B)->cdVolume() + 10));
+        CDM_GetMixerDetails(GG_CDAUDIO);          /* result discarded, as shipped */
+        if (game->debounceRef() != 0x27 && KEY(0x27) != 0 && game->cdVolume() < 100) {
+            game->debounceRef() = 0x27;
+            game->setCdVolume((unsigned char)(game->cdVolume() + 10));
             changed = 1;
         }
-        if (DEB != 0x25 && KEY(0x25) != 0 && ((Game *)B)->cdVolume() != 0) {
-            DEB = 0x25;
-            ((Game *)B)->setCdVolume((unsigned char)(((Game *)B)->cdVolume() - 10));
+        if (game->debounceRef() != 0x25 && KEY(0x25) != 0 && game->cdVolume() != 0) {
+            game->debounceRef() = 0x25;
+            game->setCdVolume((unsigned char)(game->cdVolume() - 10));
         } else if (!changed) {
             break;
         }
         {
-            unsigned int v = ((unsigned int)((Game *)B)->cdVolume() * 65536u) / 100u;
-            ((Game *)B)->setCdMixerVolume(v);
+            unsigned int v = ((unsigned int)game->cdVolume() * 65536u) / 100u;
+            game->setCdMixerVolume(v);
             if (v > 65536u)
-                ((Game *)B)->setCdMixerVolume(65536u);
-            CDM_SetMixerVolume(CDAUDIO, ((Game *)B)->cdMixerVolume());
+                game->setCdMixerVolume(65536u);
+            CDM_SetMixerVolume(GG_CDAUDIO, game->cdMixerVolume());
         }
         break;
     }
     case 0x3f: {                               /* wave volume */
         int changed = 0;
-        if (DEB != 0x27 && KEY(0x27) != 0 && ((Game *)B)->waveVolume() < 100) {
-            DEB = 0x27;
-            ((Game *)B)->setWaveVolume((unsigned char)(((Game *)B)->waveVolume() + 10));
+        if (game->debounceRef() != 0x27 && KEY(0x27) != 0 && game->waveVolume() < 100) {
+            game->debounceRef() = 0x27;
+            game->setWaveVolume((unsigned char)(game->waveVolume() + 10));
             changed = 1;
         }
-        if (DEB != 0x25 && KEY(0x25) != 0 && ((Game *)B)->waveVolume() != 0) {
-            DEB = 0x25;
-            ((Game *)B)->setWaveVolume((unsigned char)(((Game *)B)->waveVolume() - 10));
+        if (game->debounceRef() != 0x25 && KEY(0x25) != 0 && game->waveVolume() != 0) {
+            game->debounceRef() = 0x25;
+            game->setWaveVolume((unsigned char)(game->waveVolume() - 10));
         } else if (!changed) {
             break;
         }
-        ((Game *)B)->setWaveOutVolume((unsigned int)((Game *)B)->waveVolume() * 0x28f028fu);
-        if (((Game *)B)->soundCreated() != 0)
-            waveOutSetVolume((HWAVEOUT)0, ((Game *)B)->waveOutVolume());
+        game->setWaveOutVolume((unsigned int)game->waveVolume() * 0x28f028fu);
+        if (game->soundCreated() != 0)
+            waveOutSetVolume((HWAVEOUT)0, game->waveOutVolume());
         break;
     }
-    case 0x48: case 0x49: case 0x4a: {         /* three 0..2 byte options */
-        unsigned int f = key == 0x48 ? 0x2aa136 : key == 0x49 ? 0x2aa138 : 0x2aa139;
-        if (DEB != 0x27 && KEY(0x27) != 0 && G8(f) < 2) {
-            DEB = 0x27;
-            G8(f) = (unsigned char)(G8(f) + 1);
+    /* The three 0..2 video-quality sliders.  The original picks the byte
+     * with a computed offset (0x2aa136 / 0x2aa138 / 0x2aa139) and shares one
+     * body; the key already distinguishes them, so the choice is three named
+     * options instead -- same three bytes, same order.  The skipped
+     * +0x2aa137 is Reflection, a 0/1 toggle on its own key (below). */
+    case 0x48: case 0x49: case 0x4a: {
+        unsigned char &opt = key == 0x48 ? game->videoShadows()
+                           : key == 0x49 ? game->videoHighlights()
+                                         : game->videoParticles();
+        if (game->debounceRef() != 0x27 && KEY(0x27) != 0 && opt < 2) {
+            game->debounceRef() = 0x27;
+            opt = (unsigned char)(opt + 1);
         }
-        if (DEB != 0x25 && KEY(0x25) != 0 && G8(f) != 0) {
-            G8(f) = (unsigned char)(G8(f) - 1);
-            DEB = 0x25;
+        if (game->debounceRef() != 0x25 && KEY(0x25) != 0 && opt != 0) {
+            opt = (unsigned char)(opt - 1);
+            game->debounceRef() = 0x25;
         }
         break;
     }
@@ -198,7 +194,6 @@ static void option_edit(unsigned char *B, unsigned char key)
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_HandleKeypress(Game *self)
 {
-    unsigned char *B = (unsigned char *)self;
 
     if (s_fx < 0) {
         char e[32];
@@ -209,156 +204,156 @@ Sim_HandleKeypress(Game *self)
     }
 
     int entry = 0;
-    if (((Game *)B)->rebindActive() == 0 && ((Game *)B)->textEntryActive() == 0) {
-        if (KEY(0x1b) != 0 && DEB != 0x1b && ((Game *)B)->menu()->changed() != 0) {
-            if (((Game *)B)->fixedSounds()->switchClick != NULL)
-                CStatic_TriggerPlayback(((Game *)B)->fixedSounds()->switchClick, 0);
-            DEB = 0x1b;
+    if (self->rebindActive() == 0 && self->textEntryActive() == 0) {
+        if (KEY(0x1b) != 0 && self->debounceRef() != 0x1b && self->menu()->changed() != 0) {
+            if (self->fixedSounds()->switchClick != NULL)
+                CStatic_TriggerPlayback(self->fixedSounds()->switchClick, 0);
+            self->debounceRef() = 0x1b;
         }
-        if (NODE != 5 && NODE != 3 && ((Game *)B)->menu()->childCount(NODE) > 1) {
-            if (KEY(0x26) != 0 && DEB != 0x26) {
-                if (((Game *)B)->fixedSounds()->menuUpDown != NULL)
-                    Sim_VoicePoolCycle(((Game *)B)->fixedSounds()->menuUpDown, 0);
-                DEB = 0x26;
+        if (self->menu()->nodeRef() != 5 && self->menu()->nodeRef() != 3 && self->menu()->childCount(self->menu()->nodeRef()) > 1) {
+            if (KEY(0x26) != 0 && self->debounceRef() != 0x26) {
+                if (self->fixedSounds()->menuUpDown != NULL)
+                    Sim_VoicePoolCycle(self->fixedSounds()->menuUpDown, 0);
+                self->debounceRef() = 0x26;
             }
-            if (KEY(0x28) != 0 && DEB != 0x28) {
-                if (((Game *)B)->fixedSounds()->menuUpDown != NULL)
-                    Sim_VoicePoolCycle(((Game *)B)->fixedSounds()->menuUpDown, 0);
-                DEB = 0x28;
+            if (KEY(0x28) != 0 && self->debounceRef() != 0x28) {
+                if (self->fixedSounds()->menuUpDown != NULL)
+                    Sim_VoicePoolCycle(self->fixedSounds()->menuUpDown, 0);
+                self->debounceRef() = 0x28;
             }
         }
-        if (KEY(0x0d) != 0 && DEB != 0x0d && ((Game *)B)->menu()->changed() != 0 &&
-            (unsigned short)NODE == ((Game *)B)->menu()->lastNodeSeen()) {
-            if (((Game *)B)->fixedSounds()->switchClick != NULL)
-                CStatic_TriggerPlayback(((Game *)B)->fixedSounds()->switchClick, 0);
-            DEB = 0x0d;
+        if (KEY(0x0d) != 0 && self->debounceRef() != 0x0d && self->menu()->changed() != 0 &&
+            (unsigned short)self->menu()->nodeRef() == self->menu()->lastNodeSeen()) {
+            if (self->fixedSounds()->switchClick != NULL)
+                CStatic_TriggerPlayback(self->fixedSounds()->switchClick, 0);
+            self->debounceRef() = 0x0d;
         }
-        Sim_NavigateMenuTree(MENU, (int)(long long)((Game *)B)->lastTickTime());
-        ((Game *)B)->menu()->setLastNodeSeen((unsigned short)NODE);
-        entry = ((Game *)B)->textEntryActive() != 0;
+        Sim_NavigateMenuTree(self->menu(), (int)(long long)self->lastTickTime());
+        self->menu()->setLastNodeSeen((unsigned short)self->menu()->nodeRef());
+        entry = self->textEntryActive() != 0;
     } else {
-        entry = ((Game *)B)->textEntryActive() != 0;
+        entry = self->textEntryActive() != 0;
     }
 
     if (entry) {                               /* save-name text entry */
-        ((Game *)B)->nameEntry()->poll((unsigned int)(long long)*((Game *)B)->clock());
-        if (((Game *)B)->nameEntry()->active() == 0) {
-            if (((Game *)B)->nameEntry()->lastKey() == 0x0d)
-                Save_WriteAllSlotFiles(((Game *)B)->saveSlots(), ((Game *)B)->gameFileName(), 0x37);
+        self->nameEntry()->poll((unsigned int)(long long)*self->clock());
+        if (self->nameEntry()->active() == 0) {
+            if (self->nameEntry()->lastKey() == 0x0d)
+                Save_WriteAllSlotFiles(self->saveSlots(), self->gameFileName(), 0x37);
             else
-                memcpy(((Game *)B)->saveSlots()->slot((unsigned char)((Game *)B)->saveSlots()->editSlot()),
-                       ((Game *)B)->saveSlots()->edit(), sizeof(SaveSlot));
-            ((Game *)B)->setTextEntryActive(0);
-            Sim_PopMenuNodeFromStack(MENU);
-            ((Game *)B)->menu()->setCursor(0);
+                memcpy(self->saveSlots()->slot((unsigned char)self->saveSlots()->editSlot()),
+                       self->saveSlots()->edit(), sizeof(SaveSlot));
+            self->setTextEntryActive(0);
+            Sim_PopMenuNodeFromStack(self->menu());
+            self->menu()->setCursor(0);
         }
     }
 
-    if (NODE == 0) {
-        ((Game *)B)->setRebindActive(0);
-        if (STATE == 5 && ((Game *)B)->menu()->leave() != 0) {
-            STATE = ((Game *)B)->stateBeforeMenu();
-            ((Game *)B)->player()->setPendingMove(0);
-            DEB = 0x1b;
+    if (self->menu()->nodeRef() == 0) {
+        self->setRebindActive(0);
+        if (self->stateRef() == 5 && self->menu()->leave() != 0) {
+            self->stateRef() = self->stateBeforeMenu();
+            self->player()->setPendingMove(0);
+            self->debounceRef() = 0x1b;
         }
     }
 
     {
-        unsigned char key = ((Game *)B)->menu()->child(NODE, ((Game *)B)->menu()->cursor());
+        unsigned char key = self->menu()->child(self->menu()->nodeRef(), self->menu()->cursor());
         if ((unsigned int)key - 0x22 <= 0x28)
-            option_edit(B, key);
+            option_edit(self, key);
     }
 
     KEY(0x27);
     KEY(0x25);
-    if (NODE != 5 && NODE != 0x50)
-        ((Game *)B)->setField13cc88(0);
+    if (self->menu()->nodeRef() != 5 && self->menu()->nodeRef() != 0x50)
+        self->setField13cc88(0);
 
-    switch (NODE) {
+    switch (self->menu()->nodeRef()) {
     case 1:
-        Sim_ClearGameState((Game *)B);
-        Sim_OpenLevelFile((Game *)B, ((Game *)B)->levelIndex());
-        Sim_SetupLevelObjects((Game *)B);
-        loaded_tail(B);
-        DEB = 0x0d;
+        Sim_ClearGameState(self);
+        Sim_OpenLevelFile(self, self->levelIndex());
+        Sim_SetupLevelObjects(self);
+        loaded_tail(self);
+        self->debounceRef() = 0x0d;
         break;
     case 5:
-        if (((Game *)B)->field_13cc88() == 0) {
-            ((Game *)B)->setField13cc8c(1);
-            ((Game *)B)->setField13cc88(1);
+        if (self->field_13cc88() == 0) {
+            self->setField13cc8c(1);
+            self->setField13cc88(1);
         }
         break;
     case 6:
-        Sim_PopMenuNodeFromStack(MENU);
-        STATE = 7;
-        if (((Game *)B)->musicOn() != 0)
-            CDM_StopTrack(CDAUDIO);
-        DEB = 0x0d;
-        if (((Game *)B)->field_0c() == 0)
+        Sim_PopMenuNodeFromStack(self->menu());
+        self->stateRef() = 7;
+        if (self->musicOn() != 0)
+            CDM_StopTrack(GG_CDAUDIO);
+        self->debounceRef() = 0x0d;
+        if (self->field_0c() == 0)
             PostQuitMessage(1);
         break;
-    case 0x14: rebind(B, GS_KEY_MOVE_FORWARD, 0x14, 0x26); break;
-    case 0x15: rebind(B, GS_KEY_MOVE_BACK, 0x15, 0x28); break;
-    case 0x16: rebind(B, GS_KEY_TURN_RIGHT, 0x16, 0x27); break;
-    case 0x17: rebind(B, GS_KEY_TURN_LEFT, 0x17, 0x25); break;
-    case 0x18: rebind(B, GS_KEY_ZOOM_IN, 0x18, -1); break;
-    case 0x19: rebind(B, GS_KEY_ZOOM_OUT, 0x19, -1); break;
-    case 0x1a: rebind(B, GS_KEY_RELEASE_BOMB, 0x1a, -1); break;
-    case 0x1b: rebind(B, GS_KEY_HARAKIRI, 0x1b, -1); break;
-    case 0x1c: rebind(B, GS_KEY_OVERVIEW, 0x1c, -1); break;
-    case 0x1d: rebind(B, GS_KEY_CAM_MODE_LEFT, 0x1d, -1); break;
-    case 0x1e: rebind(B, GS_KEY_CAM_MODE_RIGHT, 0x1e, -1); break;
-    case 0x1f: rebind(B, GS_KEY_CAM_MODE_UP, 0x1f, -1); break;
-    case 0x20: rebind(B, GS_KEY_CAM_MODE_DOWN, 0x20, -1); break;
+    case 0x14: rebind(self, GS_KEY_MOVE_FORWARD, 0x14, 0x26); break;
+    case 0x15: rebind(self, GS_KEY_MOVE_BACK, 0x15, 0x28); break;
+    case 0x16: rebind(self, GS_KEY_TURN_RIGHT, 0x16, 0x27); break;
+    case 0x17: rebind(self, GS_KEY_TURN_LEFT, 0x17, 0x25); break;
+    case 0x18: rebind(self, GS_KEY_ZOOM_IN, 0x18, -1); break;
+    case 0x19: rebind(self, GS_KEY_ZOOM_OUT, 0x19, -1); break;
+    case 0x1a: rebind(self, GS_KEY_RELEASE_BOMB, 0x1a, -1); break;
+    case 0x1b: rebind(self, GS_KEY_HARAKIRI, 0x1b, -1); break;
+    case 0x1c: rebind(self, GS_KEY_OVERVIEW, 0x1c, -1); break;
+    case 0x1d: rebind(self, GS_KEY_CAM_MODE_LEFT, 0x1d, -1); break;
+    case 0x1e: rebind(self, GS_KEY_CAM_MODE_RIGHT, 0x1e, -1); break;
+    case 0x1f: rebind(self, GS_KEY_CAM_MODE_UP, 0x1f, -1); break;
+    case 0x20: rebind(self, GS_KEY_CAM_MODE_DOWN, 0x20, -1); break;
     case 0x21:
-        if (((Game *)B)->player()->gliding() == 0)
-            ((Game *)B)->setCameraTurnsWithPlayer(((Game *)B)->cameraTurnsWithPlayer() == 0);
-        Sim_PopMenuNodeFromStack(MENU);
+        if (self->player()->gliding() == 0)
+            self->setCameraTurnsWithPlayer(self->cameraTurnsWithPlayer() == 0);
+        Sim_PopMenuNodeFromStack(self->menu());
         break;
     case 0x47:
-        ((Game *)B)->config()->setField1f609(((Game *)B)->config()->field1f609() == 0);
-        Sim_PopMenuNodeFromStack(MENU);
+        self->videoReflection() = (self->videoReflection() == 0);
+        Sim_PopMenuNodeFromStack(self->menu());
         break;
     case 0x3c:
-        ((Game *)B)->setSound3D(((Game *)B)->sound3D() == 0);
-        ((Game *)B)->soundManager()->setup(((Game *)B)->sound3D());
-        ((Game *)B)->setLevelSoundsReady(0);
-        Sim_PopMenuNodeFromStack(MENU);
+        self->setSound3D(self->sound3D() == 0);
+        self->soundManager()->setup(self->sound3D());
+        self->setLevelSoundsReady(0);
+        Sim_PopMenuNodeFromStack(self->menu());
         break;
     case 0x3d:
-        if (((Game *)B)->musicOn() != 0) {
-            ((Game *)B)->setMusicOn(0);
-            CDM_StopTrack(CDAUDIO);
-            Sim_PopMenuNodeFromStack(MENU);
+        if (self->musicOn() != 0) {
+            self->setMusicOn(0);
+            CDM_StopTrack(GG_CDAUDIO);
+            Sim_PopMenuNodeFromStack(self->menu());
             break;
         }
-        ((Game *)B)->cdThemes()->replay();
-        ((Game *)B)->setMusicOn(1);
-        Sim_PopMenuNodeFromStack(MENU);
+        self->cdThemes()->replay();
+        self->setMusicOn(1);
+        Sim_PopMenuNodeFromStack(self->menu());
         break;
     case 0x29: {
-        unsigned char lvl = (unsigned char)(((Game *)B)->levelIndex() + 1);
-        ((Game *)B)->player()->setGemsCollected(0);
-        ((Game *)B)->setLevelIndex(lvl);
-        Sim_OpenLevelFile((Game *)B, lvl);
-        Sim_SetupLevelObjects((Game *)B);
-        STATE = 4;
-        ((Game *)B)->scriptPlayer()->setRunning(1);
-        if (((Game *)B)->musicOn() != 0)
-            CDM_StopTrack(CDAUDIO);
-        DEB = 0x0d;
-        ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
-        ((Game *)B)->setCameraMode(1);
-        ((Game *)B)->menu()->setLock(1);
-        Sim_PopMenuNodeFromStack(MENU);
-        GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_LEVEL_DONE_CONTINUE);
-        if (((Game *)B)->fixedSounds()->levelCompleted != NULL)
-            CStatic_HaltPlayback(((Game *)B)->fixedSounds()->levelCompleted);
+        unsigned char lvl = (unsigned char)(self->levelIndex() + 1);
+        self->player()->setGemsCollected(0);
+        self->setLevelIndex(lvl);
+        Sim_OpenLevelFile(self, lvl);
+        Sim_SetupLevelObjects(self);
+        self->stateRef() = 4;
+        self->scriptPlayer()->setRunning(1);
+        if (self->musicOn() != 0)
+            CDM_StopTrack(GG_CDAUDIO);
+        self->debounceRef() = 0x0d;
+        self->menu()->setLockStart(self->lastTickTime());
+        self->setCameraMode(1);
+        self->menu()->setLock(1);
+        Sim_PopMenuNodeFromStack(self->menu());
+        GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_LEVEL_DONE_CONTINUE);
+        if (self->fixedSounds()->levelCompleted != NULL)
+            CStatic_HaltPlayback(self->fixedSounds()->levelCompleted);
         break;
     }
     case 0x22: case 0x32: case 0x3e: case 0x3f:
     case 0x48: case 0x49: case 0x4a: case 0x50:
-        Sim_PopMenuNodeFromStack(MENU);
+        Sim_PopMenuNodeFromStack(self->menu());
         break;
     default:
         break;
@@ -366,52 +361,52 @@ Sim_HandleKeypress(Game *self)
 
     /* save-slot LOAD nodes 200 .. 200+n-1 */
     {
-        unsigned int n = ((Game *)B)->saveSlots()->count();
-        unsigned int node = NODE;
+        unsigned int n = self->saveSlots()->count();
+        unsigned int node = self->menu()->nodeRef();
         if (node >= 200 && (int)node < (int)(n + 200)) {
             unsigned char slot = (unsigned char)(node + 0x38);
             if (s_fx)
                 slot = (unsigned char)(slot + 1);
-            if (((Game *)B)->saveSlots()->slot(slot)->inUse != 0) {
-                Sim_ClearGameState((Game *)B);
-                Sim_RestoreGameStateFromSaveSlot((Game *)B, slot);
-                Sim_OpenLevelFile((Game *)B, ((Game *)B)->levelIndex());
-                Sim_SetupLevelObjects((Game *)B);
-                loaded_tail(B);
+            if (self->saveSlots()->slot(slot)->inUse != 0) {
+                Sim_ClearGameState(self);
+                Sim_RestoreGameStateFromSaveSlot(self, slot);
+                Sim_OpenLevelFile(self, self->levelIndex());
+                Sim_SetupLevelObjects(self);
+                loaded_tail(self);
             }
-            DEB = 0x0d;
-            Sim_PopMenuNodeFromStack(MENU);
+            self->debounceRef() = 0x0d;
+            Sim_PopMenuNodeFromStack(self->menu());
         }
     }
 
     /* save-slot SAVE nodes 200+n .. 200+2n-1 */
     {
-        unsigned int n = ((Game *)B)->saveSlots()->count();
-        unsigned int node = NODE;
+        unsigned int n = self->saveSlots()->count();
+        unsigned int node = self->menu()->nodeRef();
         if ((int)node >= (int)(n + 200) && (int)node < (int)(2 * n + 200)) {
             unsigned char slot = (unsigned char)(node - n + 0x38);
-            unsigned char *rec = (unsigned char *)((Game *)B)->saveSlots()->slot(slot);
-            ((Game *)B)->nameEntry()->setMaxLength(10);
-            ((Game *)B)->setTextEntryActive(1);
-            ((Game *)B)->nameEntry()->setActive(1);
-            memcpy(((Game *)B)->saveSlots()->edit(), rec, sizeof(SaveSlot));
-            ((Game *)B)->nameEntry()->setBuffer((char *)rec);
-            ((Game *)B)->saveSlots()->setEditSlot(slot);
-            ((Game *)B)->nameEntry()->setCursor((unsigned char)strlen((const char *)rec));
-            Sim_StoreGameStateIntoSaveSlot((Game *)B, slot);
-            ((Game *)B)->nameEntry()->setLastKey(0x0d);
+            unsigned char *rec = (unsigned char *)self->saveSlots()->slot(slot);
+            self->nameEntry()->setMaxLength(10);
+            self->setTextEntryActive(1);
+            self->nameEntry()->setActive(1);
+            memcpy(self->saveSlots()->edit(), rec, sizeof(SaveSlot));
+            self->nameEntry()->setBuffer((char *)rec);
+            self->saveSlots()->setEditSlot(slot);
+            self->nameEntry()->setCursor((unsigned char)strlen((const char *)rec));
+            Sim_StoreGameStateIntoSaveSlot(self, slot);
+            self->nameEntry()->setLastKey(0x0d);
             KEY(8);
             KEY(8);
             KEY(8);
-            Sim_PopMenuNodeFromStack(MENU);
+            Sim_PopMenuNodeFromStack(self->menu());
         }
     }
 
     /* key-rebind capture */
-    if (((Game *)B)->rebindActive() != 0 && KEY(0x0d) == 0) {
-        ProgCtrl_ClearBindings(PROGCTRL, 1, ((Game *)B)->rebindAction());
-        if (ProgCtrl_CaptureBinding(PROGCTRL, 1, ((Game *)B)->rebindAction(),
+    if (self->rebindActive() != 0 && KEY(0x0d) == 0) {
+        ProgCtrl_ClearBindings(GG_PROGCTRL, 1, self->rebindAction());
+        if (ProgCtrl_CaptureBinding(GG_PROGCTRL, 1, self->rebindAction(),
                                     100, 10, 0) != 0)
-            ((Game *)B)->setRebindActive(0);
+            self->setRebindActive(0);
     }
 }

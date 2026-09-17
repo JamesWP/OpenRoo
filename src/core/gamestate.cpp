@@ -199,28 +199,28 @@ unsigned short gamestate_mode(void) { return g_mode; }
 
 static bool read_state(GameState *s)
 {
-    const unsigned char *g = (const unsigned char *)Game::instance();
+    const Game *g = Game::instance();
     if (!g) return false;
 
-    const Player *pl = ((const Game *)g)->player();
+    const Player *pl = g->player();
     s->gems_collected = pl->gemsCollected();
-    s->gems_required  = ((Game *)g)->gemsRequired();
-    s->foes_killed    = ((const Game *)g)->foesKilled();
-    s->time_limit_s   = ((const Game *)g)->timeLimit();
-    s->elapsed_ms     = ((const Game *)g)->timeElapsed();
+    s->gems_required  = g->gemsRequired();
+    s->foes_killed    = g->foesKilled();
+    s->time_limit_s   = g->timeLimit();
+    s->elapsed_ms     = g->timeElapsed();
     s->lives          = (BYTE)pl->lives();
     s->total_score    = pl->score();
-    s->level_score    = *(const int   *)(g + 0x140536);
-    s->vitality       = ((const Game *)g)->vitalityPercent();
+    s->level_score    = g->tally()->levelTotal;
+    s->vitality       = g->vitalityPercent();
     {   /* four bytes from +0x11f: the move state and the low three of +0x120 */
         int f120 = pl->falling();
         s->death_raw[0] = pl->moveState();
         memcpy(s->death_raw + 1, &f120, 3);
     }
     s->complete_flag  = pl->held();
-    s->extra_count    = ((const Game *)g)->itemTotal();
+    s->extra_count    = g->itemTotal();
     s->extra_cap      = pl->itemsCollected();
-    s->extra_block    = ((const Game *)g)->restartCount();
+    s->extra_block    = g->restartCount();
     s->pos[0]         = pl->posU();
     s->pos[1]         = pl->posY();
     s->pos[2]         = pl->posV();

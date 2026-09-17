@@ -312,12 +312,9 @@ static void fx_init(void)
 #include "foe.h"
 #include "tile.h"
 
-#define GU8(o)    (*(unsigned char *)(B + (o)))
-#define GPP(o)   (*(unsigned char **)(B + (o)))
 
 /* The Game-relative tile tables (+0x2ab72c, +0x2ab7a4) are the LevelMap's
  * tiles' contents and +0x217 (levelmap.h); reached through Game::map(). */
-#define MAP   (((Game *)B)->map())
 
 /* The CRT's __ftol 0x00451134: truncate toward zero into an __int64.  Only
  * the low byte is ever kept by either search, exactly as the originals'
@@ -383,7 +380,6 @@ static void diag_hit(int which, unsigned u, unsigned v)
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 {
-    unsigned char *B = (unsigned char *)self;
     SwitchCells   *sw = self->switchCells();
     unsigned int   li = listIndex & 0xff;
     int            flagged;
@@ -395,7 +391,7 @@ Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 
     /* Point 3: the flag is (object->+0x58 == 0) -- set when the field is
      * ZERO.  Read once, before the loop, exactly as the original does. */
-    flagged = ((Game *)B)->bridgeSlot(li)->phase();
+    flagged = self->bridgeSlot(li)->phase();
     value   = (unsigned int)(flagged == 0);
 
     if (s_fx == FX_BLOCKINVERT)
@@ -413,7 +409,7 @@ Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 
         ++i;
 
-        MAP->tile(u, v)->setBusy((int)value);
+        self->map()->tile(u, v)->setBusy((int)value);
 
         /* The bound is re-read from memory every iteration, as the
          * original's `CMP` against [+0x170543 + li] is. */
@@ -431,7 +427,6 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
                                 unsigned char *pv, unsigned char maxDist)
 {
-    unsigned char *B = (unsigned char *)self;
     SwitchCells   *sw = self->switchCells();
     unsigned char  u0 = *pu;          /* saved inputs, restored on failure */
     unsigned char  v0 = *pv;
@@ -463,7 +458,7 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
                     v = sw->cellV(list, inner);
                     *pv = v;
 
-                    if (MAP->tile(u, v)->busy() != 0) {
+                    if (self->map()->tile(u, v)->busy() != 0) {
                         unsigned char d =
                             tile_distance((int)u0 - (int)u,
                                           (int)v0 - (int)v);
@@ -528,7 +523,6 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
                                    unsigned char *pv, unsigned char radius)
 {
-    unsigned char *B  = (unsigned char *)self;
     unsigned char  u0 = *pu;
     unsigned char  v0 = *pv;
     unsigned char  best    = radius;
@@ -552,15 +546,15 @@ Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
 
         do {
             if (uBeg < uEnd) {
-                unsigned char  vExtent = MAP->extentV();
+                unsigned char  vExtent = self->map()->extentV();
                 int            u       = uBeg;
 
                 do {
                     /* Point 5: strictly greater than zero on both axes, so
                      * row 0 and column 0 can never be selected. */
                     if (v < (int)(unsigned)vExtent && v > 0 &&
-                        u < (int)(unsigned)MAP->extentU() && u > 0 &&
-                        MAP->tile(u, v)->contents() == CONTENTS_CRYSTAL) {
+                        u < (int)(unsigned)self->map()->extentU() && u > 0 &&
+                        self->map()->tile(u, v)->contents() == CONTENTS_CRYSTAL) {
                         unsigned char d =
                             tile_distance((int)u0 - u, (int)v0 - v);
 
@@ -616,8 +610,7 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
                              unsigned char *pv)
 {
-    unsigned char *B     = (unsigned char *)self;
-    unsigned char *tiles = GPP(0x34);
+    unsigned char *tiles = self->tileBase();
     LevelMap      *hdr   = LevelMap::fromTileBase(tiles);
     unsigned char  u0    = *pu;
     unsigned char  v0    = *pv;
@@ -718,7 +711,6 @@ Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
  * ────────────────────────────────────────────────────────────────────── */
 extern "C" void tilequery_census_object_types(Game *self)
 {
-    unsigned char *B = (unsigned char *)self;
     static int seen[256];
     static int announced = 0;
     static unsigned int level = 0;
@@ -750,7 +742,7 @@ extern "C" void tilequery_census_object_types(Game *self)
      * Recorded here because the mistake is an easy one to repeat: the
      * object-list array is what MarkListedTilesBlockedByObject uses, and it
      * sits only a few hundred bytes away from the foe table in Game. */
-    Game *g = (Game *)B;
+    Game *g = self;
     count = (unsigned int)g->foeCount();
     for (i = 0; i < count; ++i) {
         const Foe     *foe = g->foeSlot(g->foeId(i));

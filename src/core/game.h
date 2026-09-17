@@ -306,6 +306,39 @@ public:
      * added as it ends; the save slot stores it, ClearGameState zeroes it. */
     double         totalPlayTime() const             { return totalPlayTime_; }
     void           setTotalPlayTime(double ms)       { totalPlayTime_ = ms; }
+    /* ClearGameState zeroes the two halves as separate dword stores with
+     * unrelated stores between them, so they cannot be merged into one
+     * double store (template 3: preserve the original's shape).  These are
+     * the only callers, and gamereset.cpp says why at each. */
+    unsigned int  &totalPlayTimeLowDword()  { return ((unsigned int *)&totalPlayTime_)[0]; }
+    unsigned int  &totalPlayTimeHighDword() { return ((unsigned int *)&totalPlayTime_)[1]; }
+
+    /* SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
+    char          *levelNameBuffer()                 { return levelName_; }
+    char          *levelNameTableEntry(unsigned char i) { return levelNameTable_[i]; }
+
+    /* The level-report tallies (reportwriter.cpp owns all of them).  Get/set
+     * rather than a reference: Game is packed, so a `short &` into it will
+     * not bind. */
+    unsigned short reportLevelsWithScript() const    { return reportLevelsWithScript_; }
+    void        setReportLevelsWithScript(unsigned short n) { reportLevelsWithScript_ = n; }
+    unsigned short reportLevelsWithBonus() const     { return reportLevelsWithBonus_; }
+    void        setReportLevelsWithBonus(unsigned short n)  { reportLevelsWithBonus_ = n; }
+    unsigned short reportLevelsWithLeo() const       { return reportLevelsWithLeo_; }
+    void        setReportLevelsWithLeo(unsigned short n)    { reportLevelsWithLeo_ = n; }
+    unsigned short reportTallyA() const              { return reportTallyA_; }
+    void        setReportTallyA(unsigned short n)    { reportTallyA_ = n; }
+    int            reportScoreTotal() const          { return reportScoreTotal_; }
+    void        setReportScoreTotal(int n)           { reportScoreTotal_ = n; }
+
+    /* The no-op 0x00440450's argument; see the field. */
+    unsigned char *field42258()                      { return field_42258_; }
+
+    /* ── video quality (the options menu; config.h has the derivation) ─ */
+    unsigned char &videoShadows()                    { return config_.videoShadows(); }
+    unsigned char &videoReflection()                 { return config_.videoReflection(); }
+    unsigned char &videoHighlights()                 { return config_.videoHighlights(); }
+    unsigned char &videoParticles()                  { return config_.videoParticles(); }
 
     /* ── volumes (the options menu, HandleKeypress 0x3e/0x3f) ────────── */
     /* Percent, steps of 10, shown by RenderGameOptions; each has the
@@ -554,19 +587,33 @@ private:
     unsigned char gap_02223d[0x02223f - 0x02223d];
     CdThemes      cdThemes_;                              /* 0x02223f */
     unsigned char parkedCameraOption_;                    /* 0x03215d */
-    unsigned char gap_03215e[0x04215e - 0x03215e];
+    /* 256 level names, 0x100 each, tiling 0x03215e..0x04215e exactly.
+     * SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
+    char          levelNameTable_[256][0x100];            /* 0x03215e */
     unsigned char levelCount_;                            /* 0x04215e */
     char          gameFileName_[0x0421df - 0x04215f];     /* 0x04215f */
     LevelCensus   census_;                                /* 0x0421df */
     unsigned char restartCount_;                          /* 0x04220b */
-    unsigned char gap_04220c[0x04224d - 0x04220c];
+    /* The level-report tallies, zeroed and accumulated by
+     * Report_WriteLevelReport (reportwriter.cpp) and by nothing else. */
+    unsigned short reportLevelsWithScript_;               /* 0x04220c */
+    unsigned char gap_04220e[0x042212 - 0x04220e];
+    int            reportScoreTotal_;                     /* 0x042212 */
+    unsigned char gap_042216[0x042243 - 0x042216];
+    unsigned short reportTallyA_;                         /* 0x042243 */
+    unsigned short reportLevelsWithBonus_;                /* 0x042245 */
+    unsigned short reportLevelsWithLeo_;                  /* 0x042247 */
+    unsigned char gap_042249[0x04224d - 0x042249];
     /* Foes killed this level; CalculateLevelScore pays 50 each. */
     unsigned char foesKilled_;                            /* 0x04224d */
     unsigned char gap_04224e[0x042250 - 0x04224e];
     unsigned short itemTotal_;                            /* 0x042250 */
     unsigned short field_42252_;                          /* 0x042252 */
     int           levelSoundsReady_;                      /* 0x042254 */
-    unsigned char gap_042258[0x042262 - 0x042258];
+    /* Handed to the no-op 0x00440450 by SetupLevelObjects, and read by
+     * nothing: ten bytes of unknown meaning kept only so the call keeps
+     * its argument.  See levelsetup.cpp. */
+    unsigned char field_42258_[0x042262 - 0x042258];      /* 0x042258 */
     SoundAssetName soundAsset42262_;                 /* 0x042262 */
     unsigned char gap_042366[0x04236e - 0x042366];
     SoundAssetName soundAsset4236e_;                 /* 0x04236e */
@@ -752,6 +799,13 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(foeIds_,           0x174fd5);
     KAROO_LAYOUT_AT(field_42252_,      0x042252);
     KAROO_LAYOUT_AT(levelName_,        0x173483);
+    KAROO_LAYOUT_AT(levelNameTable_,   0x03215e);
+    KAROO_LAYOUT_AT(reportLevelsWithScript_, 0x04220c);
+    KAROO_LAYOUT_AT(reportScoreTotal_,       0x042212);
+    KAROO_LAYOUT_AT(reportTallyA_,           0x042243);
+    KAROO_LAYOUT_AT(reportLevelsWithBonus_,  0x042245);
+    KAROO_LAYOUT_AT(reportLevelsWithLeo_,    0x042247);
+    KAROO_LAYOUT_AT(field_42258_,            0x042258);
     KAROO_LAYOUT_AT(map_,              0x2ab58d);
     KAROO_LAYOUT_AT(switchCells_,      0x140543);
     KAROO_LAYOUT_AT(timedSpawners_,    0x02023d);

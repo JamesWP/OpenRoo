@@ -63,18 +63,14 @@
 #include "player.h"
 #include "tile.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 struct CDM;
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
 
 
-#define CDAUDIO     ((CDM *)0x004dc640)
-#define GAMELOGGER  ((GameLogger *)0x0046c4c0)
 
-#define G8(o)   (*(unsigned char *)(B + (o)))
-#define G32(o)  (*(unsigned int *)(B + (o)))
-#define GD(o)   (*(double *)(B + (o)))
 
 static int s_fx = -1;
 
@@ -86,24 +82,23 @@ static int streq(const unsigned char *a, const char *b)
 
 /* GameTick/cheat tail shared by both loaders: the level is loaded, go to
  * state 4 with the flythrough armed. */
-static void enter_loaded_state(unsigned char *B, FILE *fp)
+static void enter_loaded_state(Game *game, FILE *fp)
 {
-    ((Game *)B)->setCameraDistance(7.0f);
-    ((Game *)B)->setState(4);
-    if (((Game *)B)->musicOn() != 0)
-        CDM_StopTrack(CDAUDIO);
-    ((Game *)B)->scriptPlayer()->setRunning(1);
-    ((Game *)B)->setCameraMode(1);
-    ((Game *)B)->setDebounce(0x0d);
+    game->setCameraDistance(7.0f);
+    game->setState(4);
+    if (game->musicOn() != 0)
+        CDM_StopTrack(GG_CDAUDIO);
+    game->scriptPlayer()->setRunning(1);
+    game->setCameraMode(1);
+    game->setDebounce(0x0d);
     fclose(fp);
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_HandleTypedCheatCode(Game *self)
 {
-    unsigned char *B = (unsigned char *)self;
-    Player *pl = ((Game *)B)->player();
-    unsigned char *buf = ((Game *)B)->cheatBuffer();
+    Player *pl = self->player();
+    unsigned char *buf = self->cheatBuffer();
     unsigned char frame[256];
     char path[256];
 
@@ -115,13 +110,13 @@ Sim_HandleTypedCheatCode(Game *self)
             log_write("cheatcode: KAROO_SIM_FX=cheatlife -- mausuruh gives 2\n");
     }
 
-    ((Game *)B)->cheatEntry()->poll((unsigned int)(long long)*((Game *)B)->clock());
-    if (((Game *)B)->cheatEntry()->active() != 0)
+    self->cheatEntry()->poll((unsigned int)(long long)*self->clock());
+    if (self->cheatEntry()->active() != 0)
         return;
 
     /* kaputo */
     if (streq(buf, "kaputo")) {
-        Game *g = (Game *)B;
+        Game *g = self;
         unsigned char i = 0;
         /* The count is re-read every pass, as the original's CMP is. */
         if (g->foeCount() != 0) {
@@ -135,34 +130,34 @@ Sim_HandleTypedCheatCode(Game *self)
 
     /* supa */
     if (streq(buf, "supa")) {
-        if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
-            ((Game *)B)->setState(2);
-            if (((Game *)B)->musicOn() != 0)
-                ((Game *)B)->cdThemes()->play(GS_GAME_GAMEOVER);
-            Score_CalculateLevelScore((Game *)B, 0x28);
-            ((Game *)B)->setDebounce(0x0d);
-            GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_COMPLETED_AT_LEVEL,
-                               (unsigned int)((Game *)B)->levelIndex() + 1,
-                               (unsigned int)((Game *)B)->levelCount());
+        if ((unsigned int)self->levelIndex() + 1 == (unsigned int)self->levelCount()) {
+            self->setState(2);
+            if (self->musicOn() != 0)
+                self->cdThemes()->play(GS_GAME_GAMEOVER);
+            Score_CalculateLevelScore(self, 0x28);
+            self->setDebounce(0x0d);
+            GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_COMPLETED_AT_LEVEL,
+                               (unsigned int)self->levelIndex() + 1,
+                               (unsigned int)self->levelCount());
         } else {
-            ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
-            ((Game *)B)->menu()->setLock(1);
-            ((Game *)B)->setState(3);
-            if (((Game *)B)->musicOn() != 0)
-                ((Game *)B)->cdThemes()->play(GS_GAME_COMPLETED);
-            ((Game *)B)->setCameraMode(2);
-            Sim_RewindMenuStackToRootNode(((Game *)B)->menu());
-            Sim_PopMenuNodeFromStack(((Game *)B)->menu());
-            Sim_PushMenuNodeOnStack(((Game *)B)->menu(), 0x28);
-            ((Game *)B)->menu()->setLockStart(((Game *)B)->lastTickTime());
-            ((Game *)B)->menu()->setNode(0x28);
-            ((Game *)B)->menu()->setCursor(0);
-            ((Game *)B)->menu()->setLock(1);
-            Score_CalculateLevelScore((Game *)B, (char)((Game *)B)->state());
-            ((Game *)B)->setRestartCount(0);
-            GameLog_LogMessage(GAMELOGGER, 1, GS_CHEAT_C_SL);
+            self->menu()->setLockStart(self->lastTickTime());
+            self->menu()->setLock(1);
+            self->setState(3);
+            if (self->musicOn() != 0)
+                self->cdThemes()->play(GS_GAME_COMPLETED);
+            self->setCameraMode(2);
+            Sim_RewindMenuStackToRootNode(self->menu());
+            Sim_PopMenuNodeFromStack(self->menu());
+            Sim_PushMenuNodeOnStack(self->menu(), 0x28);
+            self->menu()->setLockStart(self->lastTickTime());
+            self->menu()->setNode(0x28);
+            self->menu()->setCursor(0);
+            self->menu()->setLock(1);
+            Score_CalculateLevelScore(self, (char)self->state());
+            self->setRestartCount(0);
+            GameLog_LogMessage(GG_LOGGER, 1, GS_CHEAT_C_SL);
         }
-        ((Game *)B)->setTotalPlayTime((double)(unsigned long long)((Game *)B)->timeElapsed() + ((Game *)B)->totalPlayTime());
+        self->setTotalPlayTime((double)(unsigned long long)self->timeElapsed() + self->totalPlayTime());
     }
 
     /* jjmapnr -- 7-byte prefix, then load by number */
@@ -176,18 +171,18 @@ Sim_HandleTypedCheatCode(Game *self)
             memcpy(num, buf + 8, len - 8);
             num[len - 8] = 0;
             unsigned char lvl = (unsigned char)(atoi(num) - 1);
-            Sim_SetCurrentLevelName((Game *)B, lvl);
-            if (lvl < ((Game *)B)->levelCount()) {
-                sprintf(path, GS_CHEAT_FMT_LVL_PATH, GS_GAME_DIR, ((Game *)B)->levelName());
-                GameLog_LogMessage(GAMELOGGER, 3, GS_CHEAT_LC_BY_NUMBER, (unsigned int)lvl,
-                                   ((Game *)B)->levelName());
-                ((Game *)B)->setLevelIndex(lvl);
+            Sim_SetCurrentLevelName(self, lvl);
+            if (lvl < self->levelCount()) {
+                sprintf(path, GS_CHEAT_FMT_LVL_PATH, GS_GAME_DIR, self->levelName());
+                GameLog_LogMessage(GG_LOGGER, 3, GS_CHEAT_LC_BY_NUMBER, (unsigned int)lvl,
+                                   self->levelName());
+                self->setLevelIndex(lvl);
                 FILE *fp = fopen(path, "r");
                 if (fp != NULL) {
                     pl->setGemsCollected(0);
-                    Sim_OpenLevelFile((Game *)B, ((Game *)B)->levelIndex());
-                    Sim_SetupLevelObjects((Game *)B);
-                    enter_loaded_state(B, fp);
+                    Sim_OpenLevelFile(self, self->levelIndex());
+                    Sim_SetupLevelObjects(self);
+                    enter_loaded_state(self, fp);
                 }
             }
             buf[0] = 0;
@@ -203,14 +198,14 @@ Sim_HandleTypedCheatCode(Game *self)
         if (len > 6) {
             memcpy(frame, buf + 6, len - 6);
             frame[len - 6] = 0;
-            GameLog_LogMessage(GAMELOGGER, 3, GS_CHEAT_LC, (const char *)frame);
+            GameLog_LogMessage(GG_LOGGER, 3, GS_CHEAT_LC, (const char *)frame);
             sprintf(path, GS_CHEAT_FMT_LVL_PATH, GS_GAME_DIR, (const char *)frame);
             FILE *fp = fopen(path, "r");
             if (fp != NULL) {
                 pl->setGemsCollected(0);
-                Sim_ParseLevelFiles((Game *)B, (const char *)frame);
-                Sim_SetupLevelObjects((Game *)B);
-                enter_loaded_state(B, fp);
+                Sim_ParseLevelFiles(self, (const char *)frame);
+                Sim_SetupLevelObjects(self);
+                enter_loaded_state(self, fp);
             }
             buf[0] = 0;
         }
@@ -229,12 +224,12 @@ Sim_HandleTypedCheatCode(Game *self)
         pl->setEffectDActive(1);
         pl->setKind(3);
         pl->curTile()->setOccupant(3);
-        pl->setEffectDStart(*((Game *)B)->clock());
+        pl->setEffectDStart(*self->clock());
     }
 
     memset(buf, 0, 0x100);
-    ((Game *)B)->cheatEntry()->setCursor(0);
-    *(unsigned char **)(B + 0x13cdb0) = buf;
-    ((Game *)B)->cheatEntry()->setActive(1);
-    ((Game *)B)->cheatEntry()->setLastKey(0x0d);
+    self->cheatEntry()->setCursor(0);
+    self->cheatEntry()->setBuffer((char *)buf);
+    self->cheatEntry()->setActive(1);
+    self->cheatEntry()->setLastKey(0x0d);
 }
