@@ -212,7 +212,7 @@
 
 /* Counter words reset by ResetLevelObjectCounters. */
 /* They are Game::census(), a LevelCensus (levelcensus.h), and keep the
- * C_* names as fields (C_L2_D -> l2_d); 0x421e5 is NEVER reset -- see the
+ * C_* names as fields (C_L2_D -> transforms); 0x421e5 is NEVER reset -- see the
  * header.  The free-bomb (0x2173d, 0xb each) and timed-spawner (0x2023d,
  * 0x15 each) tables they index are Game::freeBomb()/timedSpawner(). */
 #define CEN                (((Game *)G)->census())
@@ -536,16 +536,16 @@ Sim_SetupLevelObjects(Game *self)
 
                 if (t->contents() == CONTENTS_CRYSTAL)
                     GAME->setField42252((unsigned short)(GAME->field_42252() + 1));
-                if (t->contents() == CONTENTS_EXTRA_LIFE) CEN->item7++;
+                if (t->contents() == CONTENTS_EXTRA_LIFE) CEN->extraLives++;
 
-                if (t->objectMarker() == TILE_KIND_01) CEN->type1++;
-                if (t->objectMarker() == TILE_GLUE) CEN->type2++;
-                if (t->objectMarker() == TILE_CLIMB) CEN->type10++;
-                if (t->objectMarker() == TILE_CONVEYOR) CEN->type15++;
+                if (t->objectMarker() == TILE_KIND_01) CEN->kind01++;
+                if (t->objectMarker() == TILE_GLUE) CEN->gluePads++;
+                if (t->objectMarker() == TILE_CLIMB) CEN->climbTiles++;
+                if (t->objectMarker() == TILE_CONVEYOR) CEN->conveyors++;
 
                 if (t->objectMarker() == TILE_DESTRUCTIBLE) {
                     unsigned char item;
-                    CEN->type17++;
+                    CEN->destructibles++;
                     t->setBusy(0);
                     item = t->contents();
                     if (s_fx_noshadow)
@@ -617,7 +617,7 @@ Sim_SetupLevelObjects(Game *self)
 
                 if (t->objectMarker() == TILE_JUMP_PAD) {
                     t->setField1f1(t->param());
-                    CEN->type0e++;
+                    CEN->jumpPads++;
                     t->setParam(0);
                 }
 
@@ -675,12 +675,12 @@ Sim_SetupLevelObjects(Game *self)
                 }
 
                 /* ── the snapshot: the cell as the file gave it ────────── */
-                if (s->contents() == CONTENTS_TRANSFORM) CEN->l2_d++;
-                if (s->contents() == CONTENTS_EFFECT_8) CEN->l2_8++;
-                if (s->contents() == CONTENTS_TIME_BONUS) CEN->l2_6++;
-                if (s->contents() == CONTENTS_PARAGLIDER) CEN->l2_5++;
-                if (s->contents() == CONTENTS_SPEED_UP) CEN->l2_a++;
-                if (s->contents() == CONTENTS_GRANT_09) CEN->l2_9++;
+                if (s->contents() == CONTENTS_TRANSFORM) CEN->transforms++;
+                if (s->contents() == CONTENTS_EFFECT_8) CEN->effect8Items++;
+                if (s->contents() == CONTENTS_TIME_BONUS) CEN->timeBonuses++;
+                if (s->contents() == CONTENTS_PARAGLIDER) CEN->paragliders++;
+                if (s->contents() == CONTENTS_SPEED_UP) CEN->speedUps++;
+                if (s->contents() == CONTENTS_GRANT_09) CEN->grant09Items++;
 
                 if (s->contents() == CONTENTS_FREE_BOMB) {
                     /* The count is re-read for every store, as the
@@ -782,11 +782,13 @@ next_row:
     PL->setSlideSlot(0xff);
     GAME->setField173584(1);
 
-    CEN->total = (unsigned short)(CEN->l2_9 + CEN->l2_a +
-                                     CEN->shadow1 + CEN->l2_d +
-                                     CEN->l2_5 + CEN->shadow7 +
-                                     CEN->l2_8 + CEN->item7 +
-                                     CEN->l2_6 + GAME->field_42252());
+    /* The collectable-item count; see LevelCensus.  Summed in the
+     * original's order, which is not the field order. */
+    CEN->total = (unsigned short)(CEN->grant09Items + CEN->speedUps +
+                                  CEN->shadow1      + CEN->transforms +
+                                  CEN->paragliders  + CEN->shadow7 +
+                                  CEN->effect8Items + CEN->extraLives +
+                                  CEN->timeBonuses  + GAME->field_42252());
 
     PL->setMoveState(0);
     PL->setLastContact(*((Game *)G)->clock());

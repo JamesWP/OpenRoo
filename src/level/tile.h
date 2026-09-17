@@ -45,7 +45,8 @@ enum TileKind {
     /* A void cell.  FoePath treats it as blocked unless something bridges
      * it (the +0x1bc slide track is nonzero). */
     TILE_EMPTY       = 0x00,
-    /* Censused as type1.  SetupLevelObjects rewrites TILE_KIND_03 to this
+    /* Censused as LevelCensus::kind01.  SetupLevelObjects rewrites
+     * TILE_KIND_03 to this
      * before any later test sees it; nothing else reads it. */
     TILE_KIND_01     = 0x01,
     /* The pad that freezes whoever stands on it until it is spent.  Derived
