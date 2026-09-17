@@ -22,7 +22,7 @@
  * Both surfaces are com_proxy surface proxies (every surface is wrapped at
  * w4_CreateSurface / ws4_GetAttachedSurface), and img->pTextureSurface is a
  * proxy too.  Calling through them is deliberate: the proxy Blt forwarder
- * unwraps the peer argument itself, so presentation stays visible to the
+ * unwraps the peer argument it(self), so presentation stays visible to the
  * proxy layer exactly as it was before the replacement.
  *
  * KAROO_FLIP_FX=noblt skips the Blt and flips whatever is already on the

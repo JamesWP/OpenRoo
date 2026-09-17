@@ -246,7 +246,7 @@ void BridgeObject::destroy()
  *
  * ─── Negative control: `bridgespan`, after `bridgeaxis` was REJECTED ────
  *
- * `bridgespan` exchanges the two arms that compute +0x38; the scan itself is
+ * `bridgespan` exchanges the two arms that compute +0x38; the scan it(self) is
  * untouched, so it stays in bounds.  **15/16** (`bridge01` fails: the player
  * falls, lives 3->2, vitality 87->0), `levelreport.py` PASS.
  *

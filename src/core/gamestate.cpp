@@ -45,7 +45,7 @@
  *                        plan's "death / time-out" label is at best misaligned.
  *                        Logged as 4 raw bytes.
  *
- * The gem reading itself (collected at +0x175406, required at +0x2AB723) is
+ * The gem reading it(self) (collected at +0x175406, required at +0x2AB723) is
  * consistent with the arithmetic — the score is min(collected, required) * 5 —
  * but that is still an inference from the shape of the code.  Everything here
  * is logged, nothing is asserted, until a play session shows the counter move
@@ -96,13 +96,13 @@ struct GameState {
  * So instead of naming candidates up front, snapshot the
  * whole Game object during play and diff it the moment a death registers.  A
  * lives counter is then simply a dword that dropped by exactly 1 across the
- * death, and it names itself.
+ * death, and it names it(self).
  *
  * Scan byte-wise, not dword-wise.  The first version compared aligned dwords
  * only, and that very nearly lost the answer: lives is a byte, so its 2 -> 1
  * step showed up as the dword at +0x175400 moving 147624 -> 82088, a delta of
  * -65536 buried among the large-delta noise instead of being flagged as a
- * step.  Byte granularity is what makes a counter announce itself.
+ * step.  Byte granularity is what makes a counter announce it(self).
  *
  * KAROO_DEATH_DIFF=1 enables it.  The snapshot refreshes every SNAP_EVERY
  * frames while alive, so the diff window is short and the noise stays low.
@@ -199,28 +199,28 @@ unsigned short gamestate_mode(void) { return g_mode; }
 
 static bool read_state(GameState *s)
 {
-    const unsigned char *g = (const unsigned char *)Game::instance();
+    const Game *g = Game::instance();
     if (!g) return false;
 
-    const Player *pl = ((const Game *)g)->player();
+    const Player *pl = g->player();
     s->gems_collected = pl->gemsCollected();
-    s->gems_required  = ((Game *)g)->gemsRequired();
-    s->foes_killed    = ((const Game *)g)->foesKilled();
-    s->time_limit_s   = ((const Game *)g)->timeLimit();
-    s->elapsed_ms     = ((const Game *)g)->timeElapsed();
+    s->gems_required  = g->gemsRequired();
+    s->foes_killed    = g->foesKilled();
+    s->time_limit_s   = g->timeLimit();
+    s->elapsed_ms     = g->timeElapsed();
     s->lives          = (BYTE)pl->lives();
     s->total_score    = pl->score();
-    s->level_score    = *(const int   *)(g + 0x140536);
-    s->vitality       = ((const Game *)g)->vitalityPercent();
+    s->level_score    = g->tally()->levelTotal;
+    s->vitality       = g->vitalityPercent();
     {   /* four bytes from +0x11f: the move state and the low three of +0x120 */
         int f120 = pl->falling();
         s->death_raw[0] = pl->moveState();
         memcpy(s->death_raw + 1, &f120, 3);
     }
     s->complete_flag  = pl->held();
-    s->extra_count    = ((const Game *)g)->itemTotal();
+    s->extra_count    = g->itemTotal();
     s->extra_cap      = pl->itemsCollected();
-    s->extra_block    = ((const Game *)g)->restartCount();
+    s->extra_block    = g->restartCount();
     s->pos[0]         = pl->posU();
     s->pos[1]         = pl->posY();
     s->pos[2]         = pl->posV();
@@ -331,7 +331,7 @@ void gamestate_deathdiff(void)
     } else if (cause == 0 && g_prev_death != 0) {
         g_respawn_at = g_frame;                 /* restart began — hold the snapshot */
     } else if (g_respawn_at && g_frame - g_respawn_at >= REPORT_AFTER) {
-        /* The decrement happens in here, not at the death itself. */
+        /* The decrement happens in here, not at the death it(self). */
         deathdiff_report(game, g_prev_death, "after respawn");
         g_respawn_at = 0;
     } else if (cause == 0 && !g_respawn_at && (g_frame % SNAP_EVERY) == 0) {

@@ -55,7 +55,8 @@
  *   +0x58 dword     draw gate
  *   +0x60 int8      axis: == 1 runs along X, otherwise along Z
  * And on a LevelObject: +0x5ad gates ZWRITEENABLE, +0x5b5 gates
- * SPECULARENABLE (together with the byte at game+0x2aa138).
+ * SPECULARENABLE (together with the "Highlights" video option,
+ * Game +0x2aa138 -- Game::videoHighlights(), config.h).
  *
  * Preserved oddities, deliberately not cleaned up:
  *   - The identity world matrix is built into scratch by the game's matrix
@@ -95,7 +96,6 @@
 #define LVL_OFF_BRIDGE_OBJECTS  0x6c9bc
 #define LOBJ_OFF_ZWRITE_GATE    0x5ad
 #define LOBJ_OFF_SPECULAR_GATE  0x5b5
-#define GAME_OFF_SPECULAR_OPT   0x2aa138
 
 enum BridgeFxMode { BRIDGE_FX_OFF = 0, BRIDGE_FX_TINT, BRIDGE_FX_NODRAW,
                     BRIDGE_FX_BACKWARD };
@@ -159,7 +159,7 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Direct3D_DrawBridgeSurfaces(void *game, void *lvl, Direct3D *d3d, double t)
+Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, Direct3D *d3d, double t)
 {
     D3DMATRIX world;
     ZeroMemory(&world, sizeof(world));
@@ -180,7 +180,7 @@ Direct3D_DrawBridgeSurfaces(void *game, void *lvl, Direct3D *d3d, double t)
             continue;
 
         if (*(DWORD *)(obj + LOBJ_OFF_SPECULAR_GATE) != 0
-            && *(BYTE *)((BYTE *)game + GAME_OFF_SPECULAR_OPT) != 0)
+            && game->videoHighlights() != 0)
             d3d->pDevice->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 1);
 
         d3d->pDevice->SetRenderState(
@@ -226,9 +226,9 @@ Direct3D_DrawBridgeSurfaces(void *game, void *lvl, Direct3D *d3d, double t)
                 }
 
                 for (DWORD k = 0;
-                     k < ((Game *)game)->bridgeCount();
+                     k < game->bridgeCount();
                      k++) {
-                    const BridgeObject *cv = ((Game *)game)->bridgeSlot(k);
+                    const BridgeObject *cv = game->bridgeSlot(k);
 
                     /* The vertex build is the bridge's own -- see
                      * BridgeObject::buildSurface. */

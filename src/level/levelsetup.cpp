@@ -118,7 +118,7 @@
  * ordering: 0x00416B32 zeroes this cell's parameter byte BEFORE the search
  * begins, and the search matches on that byte, so the self-comparison always
  * fails.  Move the clear after the search and every teleport pairs with
- * itself.  Preserved as written.
+ * it(self).  Preserved as written.
  *
  * **Type 0x17 moves the item byte to a shadow slot.**  It copies
  * tile+0x2ab72c into tile+0x2ab78f, zeroes the original, and then counts the
@@ -183,7 +183,6 @@
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
-#define G_UNK_42258        0x42258
 
 /* Game fields with an owner now (game.h), formerly defined here:
  *   G_MODE_FLAG 0x14       nextLevelBonus()  (the peeked next-level bonus)
@@ -192,10 +191,8 @@
  *   G_COUNT_CRYSTAL 0x42252 field_42252     G_LIFT_COUNT2 0x173b1a
  *   G_ENEMY_COUNT/IDS 0x17460f/0x174610 bombCount()/bombId()
  *   G_CLOCK 0x170a54 clock()                 G_LEVEL_NAME 0x173483 levelName() */
-#define GAME               ((Game *)G)
 /* The switch maximum (0x48b12), counts (0x170543) and cells (0x140543) are
  * Game::switchMax() and Game::switchCells() (switchcells.h). */
-#define SW                 (((Game *)G)->switchCells())
 
 
 /* The map (Game+0x2ab58d) and its tiles are LevelMap's and Tile's
@@ -217,7 +214,6 @@
  * C_* names as fields (C_L2_D -> transforms); 0x421e5 is NEVER reset -- see the
  * header.  The free-bomb (0x2173d, 0xb each) and timed-spawner (0x2023d,
  * 0x15 each) tables they index are Game::freeBomb()/timedSpawner(). */
-#define CEN                (((Game *)G)->census())
 #define G_CLOCK            0x170a54    /* the game clock, a double           */
 
 #define G_LEVEL_NAME       0x173483
@@ -275,7 +271,6 @@ typedef double         __attribute__((aligned(1))) f64_ua;
 
 /* The Player, embedded in Game (player.h).  Every function here names the
  * Game `G`; the Player is a fixed address inside it. */
-#define PL  (((Game *)G)->player())
 
 /* ─── FX / diag ──────────────────────────────────────────────────────────── */
 
@@ -384,7 +379,6 @@ Sim_FindTileByTypeMarker(LevelMap *map, unsigned int markerArg,
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_SetupLevelObjects(Game *self)
 {
-    unsigned char *G = (unsigned char *)self;
     LevelMap *M = self->map();
     unsigned char v, u;
     unsigned char w, h;
@@ -394,93 +388,93 @@ Sim_SetupLevelObjects(Game *self)
 
     /* ── run state ─────────────────────────────────────────────────────── */
     /* The level-completed node 0x28's child count: 2 or 1 by mode. */
-    ((Game *)G)->menu()->setChildCount(0x28, (GAME->nextLevelBonus() == 0) ? 2 : 1);
-    PL->setLastSecondsMark(10.0);                /* two dwords: 0, 0x40240000 */
+    self->menu()->setChildCount(0x28, (self->nextLevelBonus() == 0) ? 2 : 1);
+    self->player()->setLastSecondsMark(10.0);                /* two dwords: 0, 0x40240000 */
 
     GameLog_LogMessage(GG_LOGGER, 2, GS_LVL_INIT_STARTED);
 
-    ((Game *)G)->setLevelSoundsReady(0);
-    ((Game *)G)->scriptPlayer()->releaseStreams();
-    ((Game *)G)->extraObjects()->releaseSounds();
-    ORIG_NOOP_440450(G + G_UNK_42258);
+    self->setLevelSoundsReady(0);
+    self->scriptPlayer()->releaseStreams();
+    self->extraObjects()->releaseSounds();
+    ORIG_NOOP_440450(self->field42258());
 
     /* The player position triple is zeroed, and the listener and the two
      * position globals are set from it; the listener's y is 1000.0f. */
-    GAME->setCameraEyeBits(0, 0);
-    GAME->setCameraEyeBits(1, 0);
-    GAME->setCameraEyeBits(2, 0);
+    self->setCameraEyeBits(0, 0);
+    self->setCameraEyeBits(1, 0);
+    self->setCameraEyeBits(2, 0);
 
-    GAME->setField13cc94(0, 0.0f);
-    GAME->setField13cc94(1, 1000.0f);           /* 0x447a0000 */
-    GAME->setField13cc94(2, 0.0f);
+    self->setField13cc94(0, 0.0f);
+    self->setField13cc94(1, 1000.0f);           /* 0x447a0000 */
+    self->setField13cc94(2, 0.0f);
 
     ((u32_ua *)GBL_LISTENER)[0] = 0;
     ((u32_ua *)GBL_LISTENER)[1] = 0x447a0000;
     ((u32_ua *)GBL_LISTENER)[2] = 0;
 
-    ((u32_ua *)GBL_POS)[0] = GAME->cameraEyeBits(0);
-    ((u32_ua *)GBL_POS)[1] = GAME->cameraEyeBits(1);
+    ((u32_ua *)GBL_POS)[0] = self->cameraEyeBits(0);
+    ((u32_ua *)GBL_POS)[1] = self->cameraEyeBits(1);
     GBL_C4B8 = 0;
-    ((u32_ua *)GBL_POS)[2] = GAME->cameraEyeBits(2);
+    ((u32_ua *)GBL_POS)[2] = self->cameraEyeBits(2);
     GBL_C4BC = 0;
 
-    Sim_ResetLevelObjectCounters((Game *)G);
+    Sim_ResetLevelObjectCounters(self);
 
-    GAME->setField42252(0);
-    GAME->setField173b1a(0);
-    PL->setMovingBackwards(0);
-    PL->setTeleportPhase(0);
-    PL->setField11a(0);
-    PL->setConveyorDir(0);
+    self->setField42252(0);
+    self->setField173b1a(0);
+    self->player()->setMovingBackwards(0);
+    self->player()->setTeleportPhase(0);
+    self->player()->setField11a(0);
+    self->player()->setConveyorDir(0);
 
     /* ── tear down the previous level ──────────────────────────────────── */
-    LiftObject::purgeAll((Game *)G);
-    SlideObject::purgeAll((Game *)G);
-    BreakableTile::purgeAll((Game *)G);
-    BridgeObject::purgeAll((Game *)G);
+    LiftObject::purgeAll(self);
+    SlideObject::purgeAll(self);
+    BreakableTile::purgeAll(self);
+    BridgeObject::purgeAll(self);
 
     /* REP STOSD, 0x40 dwords: the 256 switch counts. */
-    SW->clearCounts();
+    self->switchCells()->clearCounts();
 
-    while (((Game *)G)->foeCount() != 0)
-        Foe::remove((Game *)G, ((Game *)G)->foeId(0));
-    while (GAME->bombCount() != 0)
-        Sim_RemoveEnemyObject((Game *)G, GAME->bombId(0));
+    while (self->foeCount() != 0)
+        Foe::remove(self, self->foeId(0));
+    while (self->bombCount() != 0)
+        Sim_RemoveEnemyObject(self, self->bombId(0));
 
-    ((Game *)G)->setBreakableCount(0);
-    ((Game *)G)->setFoeCount(0);
-    ((Game *)G)->setLiftCount(0);
-    ((Game *)G)->setSlideCount(0);
-    GAME->setBombCount(0);
-    ((Game *)G)->setSwitchMax(0);
-    PL->setLastRoll(0);
+    self->setBreakableCount(0);
+    self->setFoeCount(0);
+    self->setLiftCount(0);
+    self->setSlideCount(0);
+    self->setBombCount(0);
+    self->setSwitchMax(0);
+    self->player()->setLastRoll(0);
 
-    PL->setTileBase(M->tileBase());
+    self->player()->setTileBase(M->tileBase());
 
     /* ── the player start, and the marker-4 cell ───────────────────────── */
-    if (Sim_FindTileByTypeMarker(M, 3, PL->homeRef())) {
+    if (Sim_FindTileByTypeMarker(M, 3, self->player()->homeRef())) {
         /* MOVSX, not MOVZX: the index is formed from the SIGNED bytes. */
-        t = SCELL(M, (signed char)PL->homeU(), (signed char)PL->homeV());
-        PL->setFacing(t->param());
+        t = SCELL(M, (signed char)self->player()->homeU(), (signed char)self->player()->homeV());
+        self->player()->setFacing(t->param());
     }
 
     /* The return value is DISCARDED: on a level with no marker-4 cell these
      * three bytes keep the previous level's values.  Preserved. */
-    Sim_FindTileByTypeMarker(M, 4, PL->markerCellRef());
+    Sim_FindTileByTypeMarker(M, 4, self->player()->markerCellRef());
 
-    PL->setMarker((float)(int)(signed char)PL->markerCellU(),
-                    (float)(int)(signed char)PL->markerCellH(),
-                    (float)(int)(signed char)PL->markerCellV());
+    self->player()->setMarker((float)(int)(signed char)self->player()->markerCellU(),
+                    (float)(int)(signed char)self->player()->markerCellH(),
+                    (float)(int)(signed char)self->player()->markerCellV());
 
-    PL->setCell(PL->homeU(), PL->homeV(), PL->homeH());
+    self->player()->setCell(self->player()->homeU(), self->player()->homeV(), self->player()->homeH());
 
-    SCELL(M, (signed char)PL->homeU(), (signed char)PL->homeV())->setObjectMarker(1);
+    SCELL(M, (signed char)self->player()->homeU(), (signed char)self->player()->homeV())->setObjectMarker(1);
 
-    PL->setPos((float)(int)PL->cellU(), (float)(int)PL->heightCell(), (float)(int)PL->cellV());
+    self->player()->setPos((float)(int)self->player()->cellU(), (float)(int)self->player()->heightCell(), (float)(int)self->player()->cellV());
 
-    PL->setLastMoveDir(0);
-    PL->setKind(4);
-    PL->setStepDuration(200.0);                /* two dwords: 0, 0x40690000 */
+    self->player()->setLastMoveDir(0);
+    self->player()->setKind(4);
+    self->player()->setStepDuration(200.0);                /* two dwords: 0, 0x40690000 */
 
     /* time() through OUR hook, so KAROO_SEED still governs the run. */
     ORIG_SRAND((unsigned int)hooks_GameTime(0));
@@ -523,17 +517,17 @@ Sim_SetupLevelObjects(Game *self)
                 t->setField202(0);
 
                 if (t->contents() == CONTENTS_CRYSTAL)
-                    GAME->setField42252((unsigned short)(GAME->field_42252() + 1));
-                if (t->contents() == CONTENTS_EXTRA_LIFE) CEN->extraLives++;
+                    self->setField42252((unsigned short)(self->field_42252() + 1));
+                if (t->contents() == CONTENTS_EXTRA_LIFE) self->census()->extraLives++;
 
-                if (t->objectMarker() == TILE_KIND_01) CEN->kind01++;
-                if (t->objectMarker() == TILE_GLUE) CEN->gluePads++;
-                if (t->objectMarker() == TILE_CLIMB) CEN->climbTiles++;
-                if (t->objectMarker() == TILE_CONVEYOR) CEN->conveyors++;
+                if (t->objectMarker() == TILE_KIND_01) self->census()->kind01++;
+                if (t->objectMarker() == TILE_GLUE) self->census()->gluePads++;
+                if (t->objectMarker() == TILE_CLIMB) self->census()->climbTiles++;
+                if (t->objectMarker() == TILE_CONVEYOR) self->census()->conveyors++;
 
                 if (t->objectMarker() == TILE_DESTRUCTIBLE) {
                     unsigned char item;
-                    CEN->destructibles++;
+                    self->census()->destructibles++;
                     t->setBusy(0);
                     item = t->contents();
                     if (s_fx_noshadow)
@@ -541,8 +535,8 @@ Sim_SetupLevelObjects(Game *self)
                     if (item != 0) {
                         t->setField202(item);
                         t->setContents(0);
-                        if (t->field202() == CONTENTS_CRYSTAL) CEN->shadow1++;
-                        if (t->field202() == CONTENTS_EXTRA_LIFE) CEN->shadow7++;
+                        if (t->field202() == CONTENTS_CRYSTAL) self->census()->shadow1++;
+                        if (t->field202() == CONTENTS_EXTRA_LIFE) self->census()->shadow7++;
                     }
                 }
 
@@ -553,14 +547,14 @@ Sim_SetupLevelObjects(Game *self)
                         GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_WARN_SWITCH);
                     } else {
                         unsigned char idx = (unsigned char)(param - 1);
-                        if (idx > ((Game *)G)->switchMax())
-                            ((Game *)G)->setSwitchMax(idx);
+                        if (idx > self->switchMax())
+                            self->setSwitchMax(idx);
                         t->setField1f3(idx);
                         /* The count is re-read for each store, as the
                          * original re-reads it. */
-                        SW->setCellU(idx, SW->count(idx), u);
-                        SW->setCellV(idx, SW->count(idx), v);
-                        SW->setCount(idx, (unsigned char)(SW->count(idx) + 1));
+                        self->switchCells()->setCellU(idx, self->switchCells()->count(idx), u);
+                        self->switchCells()->setCellV(idx, self->switchCells()->count(idx), v);
+                        self->switchCells()->setCount(idx, (unsigned char)(self->switchCells()->count(idx) + 1));
                     }
                     t->setParam(0);
                 }
@@ -571,10 +565,10 @@ Sim_SetupLevelObjects(Game *self)
                     if (param == 0) {
                         GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_WARN_XBRIDGE);
                     } else {
-                        BridgeObject::spawn((Game *)G, u, v, t->height(),
+                        BridgeObject::spawn(self, u, v, t->height(),
                                             (unsigned char)(param - 1), 1);
                         t->setParam(0);
-                        CEN->bridges++;
+                        self->census()->bridges++;
                     }
                 }
                 if (t->objectMarker() == TILE_BRIDGE_V) {
@@ -582,10 +576,10 @@ Sim_SetupLevelObjects(Game *self)
                     if (param == 0) {
                         GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_WARN_YBRIDGE);
                     } else {
-                        BridgeObject::spawn((Game *)G, u, v, t->height(),
+                        BridgeObject::spawn(self, u, v, t->height(),
                                             (unsigned char)(param - 1), 2);
                         t->setParam(0);
-                        CEN->bridges++;
+                        self->census()->bridges++;
                     }
                 }
 
@@ -599,13 +593,13 @@ Sim_SetupLevelObjects(Game *self)
                     t->setObjectMarker(1);
 
                 if (t->objectMarker() == TILE_LIFT) {
-                    LiftObject::spawn((Game *)G, u, v, t->height(), t->param());
+                    LiftObject::spawn(self, u, v, t->height(), t->param());
                     t->setParam(0);
                 }
 
                 if (t->objectMarker() == TILE_JUMP_PAD) {
                     t->setField1f1(t->param());
-                    CEN->jumpPads++;
+                    self->census()->jumpPads++;
                     t->setParam(0);
                 }
 
@@ -620,13 +614,13 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_SLIDE_U || t->objectMarker() == TILE_SLIDE_V) {
                     t->setContents(0);
                     t->setParam(0);
-                    SlideObject::spawn((Game *)G, u, v, t->height(),
+                    SlideObject::spawn(self, u, v, t->height(),
                                        t->objectMarker());
                     t->setObjectMarker(0);
                 }
 
                 if (t->objectMarker() == TILE_BREAKABLE)
-                    BreakableTile::spawn((Game *)G, u, v, t->height(), t->param());
+                    BreakableTile::spawn(self, u, v, t->height(), t->param());
 
                 /* teleport pairing */
                 if (t->objectMarker() == TILE_TELEPORTER && t->param() != 0) {
@@ -647,7 +641,7 @@ Sim_SetupLevelObjects(Game *self)
                                     Tile *t2 = CELL(M, u2, v2);
                                     if (t2->objectMarker() == TILE_TELEPORTER &&
                                         t2->param() == id) {
-                                        CEN->teleports++;
+                                        self->census()->teleports++;
                                         t->setTeleportU(u2);
                                         t->setTeleportV(v2);
                                         t2->setTeleportU(u);
@@ -663,26 +657,26 @@ Sim_SetupLevelObjects(Game *self)
                 }
 
                 /* ── the snapshot: the cell as the file gave it ────────── */
-                if (s->contents() == CONTENTS_TRANSFORM) CEN->transforms++;
-                if (s->contents() == CONTENTS_EFFECT_8) CEN->effect8Items++;
-                if (s->contents() == CONTENTS_TIME_BONUS) CEN->timeBonuses++;
-                if (s->contents() == CONTENTS_PARAGLIDER) CEN->paragliders++;
-                if (s->contents() == CONTENTS_SPEED_UP) CEN->speedUps++;
-                if (s->contents() == CONTENTS_GRANT_09) CEN->grant09Items++;
+                if (s->contents() == CONTENTS_TRANSFORM) self->census()->transforms++;
+                if (s->contents() == CONTENTS_EFFECT_8) self->census()->effect8Items++;
+                if (s->contents() == CONTENTS_TIME_BONUS) self->census()->timeBonuses++;
+                if (s->contents() == CONTENTS_PARAGLIDER) self->census()->paragliders++;
+                if (s->contents() == CONTENTS_SPEED_UP) self->census()->speedUps++;
+                if (s->contents() == CONTENTS_GRANT_09) self->census()->grant09Items++;
 
                 if (s->contents() == CONTENTS_FREE_BOMB) {
                     /* The count is re-read for every store, as the
                      * original re-reads it. */
-                    ((Game *)G)->freeBomb(CEN->freeBombs)->u = u;
-                    ((Game *)G)->freeBomb(CEN->freeBombs)->v = v;
-                    ((Game *)G)->freeBomb(CEN->freeBombs)->param = s->param();
+                    self->freeBomb(self->census()->freeBombs)->u = u;
+                    self->freeBomb(self->census()->freeBombs)->v = v;
+                    self->freeBomb(self->census()->freeBombs)->param = s->param();
                     /* Two dword MOVs of the clock in the original; one
                      * double copy here, the same bits. */
-                    ((Game *)G)->freeBomb(CEN->freeBombs)->placedAt =
-                        *GAME->clock();
+                    self->freeBomb(self->census()->freeBombs)->placedAt =
+                        *self->clock();
                     GameLog_LogMessage(GG_LOGGER, 3, GS_LVL_FREEBOMB,
-                                       (unsigned int)CEN->freeBombs);
-                    CEN->freeBombs++;
+                                       (unsigned int)self->census()->freeBombs);
+                    self->census()->freeBombs++;
                 }
 
                 if (s->contents() == CONTENTS_TIMED_SPAWN) {
@@ -691,34 +685,34 @@ Sim_SetupLevelObjects(Game *self)
 
                     /* The count is re-read for every store, as the
                      * original re-reads it. */
-                    ((Game *)G)->timedSpawner(CEN->timed)->u = u;
-                    ((Game *)G)->timedSpawner(CEN->timed)->v = v;
-                    ((Game *)G)->timedSpawner(CEN->timed)->height = s->height();
+                    self->timedSpawner(self->census()->timed)->u = u;
+                    self->timedSpawner(self->census()->timed)->v = v;
+                    self->timedSpawner(self->census()->timed)->height = s->height();
 
                     /* +0x14 is the foe cap GameTick compares the foe count
                      * against; the header's "effect" is this same byte. */
                     param = s->param();
                     if (param < 0x64) {
-                        ((Game *)G)->timedSpawner(CEN->timed)->maxFoes = 5;
+                        self->timedSpawner(self->census()->timed)->maxFoes = 5;
                         param = s->param();
-                        ((Game *)G)->timedSpawner(CEN->timed)->interval =
+                        self->timedSpawner(self->census()->timed)->interval =
                             (double)(int)((unsigned)param * 1000u);
                     } else {
-                        ((Game *)G)->timedSpawner(CEN->timed)->maxFoes =
+                        self->timedSpawner(self->census()->timed)->maxFoes =
                             (unsigned char)(param - 0x64);
                         /* Two dwords in the original, 0 and 0x40b38800:
                          * one double, 5000.0. */
-                        ((Game *)G)->timedSpawner(CEN->timed)->interval = 5000.0;
+                        self->timedSpawner(self->census()->timed)->interval = 5000.0;
                     }
 
                     /* Staggered: spawner k first fires k seconds late. */
-                    idx = CEN->timed;
+                    idx = self->census()->timed;
                     {
                         long double when = (long double)(int)(idx * 1000u);
-                        when = when + (long double)*GAME->clock();
-                        ((Game *)G)->timedSpawner(idx)->lastSpawn = (double)when;
+                        when = when + (long double)*self->clock();
+                        self->timedSpawner(idx)->lastSpawn = (double)when;
                     }
-                    CEN->timed++;
+                    self->census()->timed++;
                 }
 
                 /* ── foes ──────────────────────────────────────────────── */
@@ -729,8 +723,8 @@ Sim_SetupLevelObjects(Game *self)
                         unsigned char param = t->param();
                         unsigned char hh;
 
-                        if (param == 0x0b || param == 0x07) CEN->shadow1++;
-                        if (t->param() == 0x4d)             CEN->shadow7++;
+                        if (param == 0x0b || param == 0x07) self->census()->shadow1++;
+                        if (t->param() == 0x4d)             self->census()->shadow7++;
 
                         param = t->param();
                         hh    = t->height();
@@ -740,13 +734,13 @@ Sim_SetupLevelObjects(Game *self)
                             t->setParam(0);
                             hh = (unsigned char)(hh + bump);
                         }
-                        Foe::spawn((Game *)G, u, v, hh, 2, t->param());
+                        Foe::spawn(self, u, v, hh, 2, t->param());
                         t->setContents(0);
                         spawned2 = 1;
                     }
 
                     if (s->contents() == CONTENTS_FOE_TYPE3) {
-                        Foe::spawn((Game *)G, u, v, t->height(), 3, t->param());
+                        Foe::spawn(self, u, v, t->height(), 3, t->param());
                         t->setContents(0);
                         t->setParam(0);
                     } else if (!spawned2) {
@@ -767,52 +761,52 @@ next_row:
     }
 
     /* ── totals and the rest of the reset ──────────────────────────────── */
-    PL->setSlideSlot(0xff);
-    GAME->setField173584(1);
+    self->player()->setSlideSlot(0xff);
+    self->setField173584(1);
 
     /* The collectable-item count; see LevelCensus.  Summed in the
      * original's order, which is not the field order. */
-    CEN->total = (unsigned short)(CEN->grant09Items + CEN->speedUps +
-                                  CEN->shadow1      + CEN->transforms +
-                                  CEN->paragliders  + CEN->shadow7 +
-                                  CEN->effect8Items + CEN->extraLives +
-                                  CEN->timeBonuses  + GAME->field_42252());
+    self->census()->total = (unsigned short)(self->census()->grant09Items + self->census()->speedUps +
+                                  self->census()->shadow1      + self->census()->transforms +
+                                  self->census()->paragliders  + self->census()->shadow7 +
+                                  self->census()->effect8Items + self->census()->extraLives +
+                                  self->census()->timeBonuses  + self->field_42252());
 
-    PL->setMoveState(0);
-    PL->setLastContact(*((Game *)G)->clock());
+    self->player()->setMoveState(0);
+    self->player()->setLastContact(*self->clock());
 
-    PL->clearEffects();
+    self->player()->clearEffects();
 
-    PL->setTickStep(((Game *)G)->tickStep());
-    PL->setEffect8Active(0);
-    PL->setEffectBActive(0);
-    PL->setEffectAActive(0);
-    PL->setEffectCActive(0);
-    PL->setSwitchSlot(0xff);
-    PL->setFieldD3(0);
-    PL->setOnLift(0);
-    PL->setBombDropRequest(0);
-    PL->setCompletionNumerator(0);
-    ((Game *)G)->setTimeLimit(M->fileTimeLimit());
-    PL->setClock(((Game *)G)->clock());
+    self->player()->setTickStep(self->tickStep());
+    self->player()->setEffect8Active(0);
+    self->player()->setEffectBActive(0);
+    self->player()->setEffectAActive(0);
+    self->player()->setEffectCActive(0);
+    self->player()->setSwitchSlot(0xff);
+    self->player()->setFieldD3(0);
+    self->player()->setOnLift(0);
+    self->player()->setBombDropRequest(0);
+    self->player()->setCompletionNumerator(0);
+    self->setTimeLimit(M->fileTimeLimit());
+    self->player()->setClock(self->clock());
 
-    if (((Game *)G)->restartCount() == 0) {
-        ((Game *)G)->setFoesKilled(0);
-        PL->setItemsCollected(0);
-        ((Game *)G)->setItemTotal(CEN->total);
+    if (self->restartCount() == 0) {
+        self->setFoesKilled(0);
+        self->player()->setItemsCollected(0);
+        self->setItemTotal(self->census()->total);
 
-        if (((Game *)G)->scriptPlayer()->loaded() == 0) {
-            GAME->setCameraEye(0, (float)(int)(signed char)PL->homeU());
-            GAME->setCameraEye(1, (float)(int)(signed char)PL->homeH());
-            GAME->setCameraEye(2, (float)(int)(signed char)PL->homeV());
+        if (self->scriptPlayer()->loaded() == 0) {
+            self->setCameraEye(0, (float)(int)(signed char)self->player()->homeU());
+            self->setCameraEye(1, (float)(int)(signed char)self->player()->homeH());
+            self->setCameraEye(2, (float)(int)(signed char)self->player()->homeV());
         }
 
-        if (((Game *)G)->cdThemes()->validateTrackLengths() == 0 &&
-            GAME->field_0c() == 0 &&
-            ((Game *)G)->levelIndex() > 4) {
-            unsigned char cu = PL->homeU();
-            unsigned char cv = PL->homeV();
-            if (Sim_FindNearestFlaggedTileInRadius((Game *)G, &cu, &cv, 0x14)) {
+        if (self->cdThemes()->validateTrackLengths() == 0 &&
+            self->field_0c() == 0 &&
+            self->levelIndex() > 4) {
+            unsigned char cu = self->player()->homeU();
+            unsigned char cv = self->player()->homeV();
+            if (Sim_FindNearestFlaggedTileInRadius(self, &cu, &cv, 0x14)) {
                 CELL(M, cu, cv)->setContents(0);
                 GameLog_LogMessage(GG_LOGGER, 3, GS_LVL_CD_MISSING,
                                    (unsigned int)cu, (unsigned int)cv);
@@ -820,49 +814,49 @@ next_row:
         }
     }
 
-    ((Game *)G)->setTimeElapsed(0);
-    ((Game *)G)->setField170a65(0);
+    self->setTimeElapsed(0);
+    self->setField170a65(0);
 
-    SCELL(M, PL->cellU(), PL->cellV())->setField1a1(0);
+    SCELL(M, self->player()->cellU(), self->player()->cellV())->setField1a1(0);
 
-    PL->setGlides(0);
-    PL->setFieldE8(0);
-    PL->setEffectDActive(0);
-    PL->setFalling(0);
-    PL->setIdleStarted(0);
-    PL->setGliding(0);
-    PL->setHeld(0);
-    PL->setMoveDir(0);
-    PL->setPendingMove(0);
-    PL->setField12e(0);
-    PL->setAnim(0);
-    PL->setDying(0);
-    PL->setIdleDuration(500.0);                /* two dwords: 0, 0x407f4000 */
-    GAME->setField13cc90(0);
-    GAME->setField13cca8(0);
+    self->player()->setGlides(0);
+    self->player()->setFieldE8(0);
+    self->player()->setEffectDActive(0);
+    self->player()->setFalling(0);
+    self->player()->setIdleStarted(0);
+    self->player()->setGliding(0);
+    self->player()->setHeld(0);
+    self->player()->setMoveDir(0);
+    self->player()->setPendingMove(0);
+    self->player()->setField12e(0);
+    self->player()->setAnim(0);
+    self->player()->setDying(0);
+    self->player()->setIdleDuration(500.0);                /* two dwords: 0, 0x407f4000 */
+    self->setField13cc90(0);
+    self->setField13cca8(0);
 
     GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_CRYSTALS,
-                       (unsigned int)GAME->field_42252(),
-                       ((Game *)G)->gemsRequired());
+                       (unsigned int)self->field_42252(),
+                       self->gemsRequired());
 
-    if ((int)((unsigned int)PL->gemsCollected() + (unsigned int)GAME->field_42252()) <
-        ((Game *)G)->gemsRequired())
+    if ((int)((unsigned int)self->player()->gemsCollected() + (unsigned int)self->field_42252()) <
+        self->gemsRequired())
         GameLog_LogMessage(GG_LOGGER, 3, GS_LVL_WARN_CRYSTALS);
 
     /* ONE argument -- see the header. */
-    if (((Game *)G)->extraObjects()->openFile(
-                                 GAME->levelName()) == 0) {
-        ((Game *)G)->extraObjects()->setLoaded(0);
+    if (self->extraObjects()->openFile(
+                                 self->levelName()) == 0) {
+        self->extraObjects()->setLoaded(0);
         GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_LEO_FAILED,
-                           GAME->levelName());
+                           self->levelName());
     } else {
-        ((Game *)G)->extraObjects()->setLoaded(1);
+        self->extraObjects()->setLoaded(1);
         GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_LEO_LOADED,
-                           GAME->levelName());
+                           self->levelName());
     }
 
     /* Config +0x20a48 (Game+0x2ab576), one dword: 60.0f. */
-    GAME->config()->setField20a48Bits(0x42700000);
+    self->config()->setField20a48Bits(0x42700000);
 
     s_calls++;
     if (s_diag)
@@ -870,12 +864,12 @@ next_row:
                   "bridges=%u teleports=%u lifts=%u slides=%u breakables=%u "
                   "foes=%u freebombs=%u timed=%u switchmax=%u\n",
                   s_calls, (unsigned)M->extentU(), (unsigned)M->extentV(),
-                  (unsigned)GAME->field_42252(), (unsigned)CEN->total,
-                  (unsigned)CEN->bridges, (unsigned)CEN->teleports,
-                  (unsigned)((Game *)G)->liftCount(), (unsigned)((Game *)G)->slideCount(),
-                  (unsigned)((Game *)G)->breakableCount(), (unsigned)((Game *)G)->foeCount(),
-                  (unsigned)CEN->freeBombs, (unsigned)CEN->timed,
-                  (unsigned)((Game *)G)->switchMax());
+                  (unsigned)self->field_42252(), (unsigned)self->census()->total,
+                  (unsigned)self->census()->bridges, (unsigned)self->census()->teleports,
+                  (unsigned)self->liftCount(), (unsigned)self->slideCount(),
+                  (unsigned)self->breakableCount(), (unsigned)self->foeCount(),
+                  (unsigned)self->census()->freeBombs, (unsigned)self->census()->timed,
+                  (unsigned)self->switchMax());
 
     /* XOR AL,AL */
     return 0;

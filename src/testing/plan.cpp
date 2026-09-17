@@ -125,7 +125,7 @@ static int   g_prev[CELLS];
 static int   g_queue[CELLS];
 
 /* Fill g_dist/g_prev from (su,sv).  `avoid` skips dangerous cells except the
- * start itself — standing in danger must not make the whole grid unreachable. */
+ * start it(self) — standing in danger must not make the whole grid unreachable. */
 static void bfs(const Observation *o, int su, int sv, bool avoid,
                 bool ignore_foes = false)
 {

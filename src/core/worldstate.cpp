@@ -234,7 +234,7 @@ bool worldstate_observe(Observation *obs)
                                 &Game::bombSlot, read_bomb, obs->enemies);
 
     obs->gems_collected    = pl->gemsCollected();
-    obs->gems_required     = ((Game *)g)->gemsRequired();
+    obs->gems_required     = game->gemsRequired();
     obs->foes_killed       = ((const Game *)g)->foesKilled();
     obs->lives             = (BYTE)pl->lives();
     obs->level_complete    = pl->held();

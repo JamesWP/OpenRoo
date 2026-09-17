@@ -105,7 +105,7 @@
  * invisible in C: the destination `list[i-1]` is addressed as
  * `[EAX + <count offset>]`, and the count byte sits immediately BELOW the
  * list (0x174fd4 vs 0x174fd5).  At i == 0 that store would land on the count
- * itself.  It cannot, because `found` is still 0 at i == 0 -- but the guard
+ * it(self).  It cannot, because `found` is still 0 at i == 0 -- but the guard
  * is there, and both are kept.
  *
  * `while (i < count)` is `CMP DL,AL; JC`, i.e. UNSIGNED, over bytes; the
@@ -153,7 +153,7 @@
 
 /* The slot-0 dispatch is MovableEntity::destroyViaVtable (movableentity.h):
  * every object that reaches here is one, since the only callers of the tail
- * below hold Foe ** and Bomb **.  The slot array itself stays `void **` --
+ * below hold Foe ** and Bomb **.  The slot array it(self) stays `void **` --
  * Bomb ** does not convert to MovableEntity **, and pretending it does
  * would be worse than the erasure (COHESION_PLAN.md Band 7d). */
 

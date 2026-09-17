@@ -99,7 +99,6 @@
 /* The counts, scores, totals and animation state are Game::tally()
  * (game.h, ScoreTally). */
 
-#define GAME            ((Game *)(self))
 
 static int s_fxDouble = -1;
 
@@ -127,10 +126,10 @@ Score_CalculateLevelScore(Game *self, char endReason)
     tilequery_census_object_types(self);
 
     /* ── gems and surplus ────────────────────────────────────────────── */
-    const int collected = ((Game *)self)->player()->gemsCollected();
-    const int quota     = ((Game *)self)->gemsRequired();
+    const int collected = self->player()->gemsCollected();
+    const int quota     = self->gemsRequired();
 
-    ScoreTally *t = GAME->tally();
+    ScoreTally *t = self->tally();
 
     if (collected > quota) {
         t->score[TALLY_GEMS]    = quota * 5;
@@ -146,14 +145,14 @@ Score_CalculateLevelScore(Game *self, char endReason)
     }
 
     /* ── foes ────────────────────────────────────────────────────────── */
-    const unsigned foes = GAME->foesKilled();
+    const unsigned foes = self->foesKilled();
     t->score[TALLY_FOES] = (int)(foes * 50u);
     t->count[TALLY_FOES] = (int)foes;
 
     /* ── time, only when the level ended by reaching the exit ────────── */
     if (endReason == 3) {
-        const unsigned q = GAME->timeElapsed() / 1000u;   /* magic divide */
-        const unsigned limit = (unsigned)GAME->timeLimit();
+        const unsigned q = self->timeElapsed() / 1000u;   /* magic divide */
+        const unsigned limit = (unsigned)self->timeLimit();
         /* defect 2: the ((-q) << 31) term is shifted away by the * 2 */
         const unsigned acc = ((0u - q) << 31) - q + limit;
         t->score[TALLY_TIME] = (int)(acc * 2u);
@@ -164,8 +163,8 @@ Score_CalculateLevelScore(Game *self, char endReason)
     }
 
     /* ── all-items bonus ─────────────────────────────────────────────── */
-    const unsigned short itemTotal = ((Game *)self)->itemTotal();
-    if (itemTotal > ((Game *)self)->player()->itemsCollected() || ((Game *)self)->restartCount() != 0) {
+    const unsigned short itemTotal = self->itemTotal();
+    if (itemTotal > self->player()->itemsCollected() || self->restartCount() != 0) {
         t->score[TALLY_ALLITEMS] = 0;
         t->count[TALLY_ALLITEMS] = 0;
     } else {
@@ -174,7 +173,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
     }
 
     /* ── vitality: the clamped percentage scores one point each ──────── */
-    const unsigned vitality = GAME->vitalityPercent();
+    const unsigned vitality = self->vitalityPercent();
     t->shownScore[TALLY_GEMS] = 0;         /* zeroed here, before the rest */
     t->score[TALLY_VITALITY]  = (int)vitality;
     t->count[TALLY_VITALITY]  = (int)vitality;
@@ -192,7 +191,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
                     + t->score[TALLY_SURPLUS]  + t->score[TALLY_VITALITY]
                     + t->score[TALLY_TIME]     + t->score[TALLY_GEMS];
 
-    const int running = ((Game *)self)->player()->score();
+    const int running = self->player()->score();
     t->levelTotal = total;
     t->grandTotal = total + running;
 
@@ -205,10 +204,10 @@ Score_CalculateLevelScore(Game *self, char endReason)
 
     t->shownBase       = running;
     t->shownGrandTotal = running;
-    ((Game *)self)->player()->setScore(total + running);
+    self->player()->setScore(total + running);
 
     /* ── hand the tally animation its stage 0 and start timestamp ────── */
     t->stage      = 0;
     t->stageStart = (int)(*(double *)((char *)self + OFF_CLOCK_MS));
-    ((Game *)self)->setTallyDone(1);
+    self->setTallyDone(1);
 }

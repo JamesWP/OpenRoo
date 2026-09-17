@@ -27,7 +27,7 @@
  *
  * The VK_L polls go through hooks_GetAsyncKeyState, which is where
  * levelreport.cpp answers them under KAROO_LEVEL_REPORT=1 -- so
- * tools/levelreport.py passing is itself the proof this path is ours.
+ * tools/levelreport.py passing is it(self) the proof this path is ours.
  *
  * Callbacks kept (the sound manager is not ours): AcquireSoundBuffer
  * 0x443660, AcquireVoicePool 0x443810, SoundSetup 0x4439d0.
@@ -61,20 +61,19 @@ static int s_fx = -1;
 
 /* Reset-if-set, then acquire from a "%s\\waves\\...%s.wav" format.  The
  * caller stores the result back into the slot it passed. */
-static CStaticSoundbuffer *bank(unsigned char *B, CStaticSoundbuffer *cur,
+static CStaticSoundbuffer *bank(Game *game, CStaticSoundbuffer *cur,
                                 unsigned int fmt, const char *suffix)
 {
     char path[256];
     if (cur != NULL)
         CStatic_Reset(cur);
     sprintf(path, (const char *)fmt, GS_GAME_DIR, suffix);
-    return ((Game *)B)->soundManager()->acquireStatic(path, 0);
+    return game->soundManager()->acquireStatic(path, 0);
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
 {
-    unsigned char *B = (unsigned char *)self;
     SoundManager *sm = self->soundManager();
     char path[256];
 
@@ -86,24 +85,24 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
             log_write("fixedsounds: KAROO_SIM_FX=reportkey -- VK_L not polled\n");
     }
 
-    if (((Game *)B)->fixedSounds()->loaded != 0)
+    if (self->fixedSounds()->loaded != 0)
         return;
 
-    if ((Config_Save(((Game *)B)->config(), GS_CFG_FILE) & 0xff) != 0)
+    if ((Config_Save(self->config(), GS_CFG_FILE) & 0xff) != 0)
         GameLog_LogMessage(GG_LOGGER, 1, GS_CFG_SAVE_OK);
     else
         GameLog_LogMessage(GG_LOGGER, 3, GS_CFG_SAVE_ERR);
-    ((Game *)B)->menu()->setLockStart(*((Game *)B)->clock());
-    ((Game *)B)->menu()->setLock(1);
-    if (((Game *)B)->musicOn() != 0)
-        ((Game *)B)->cdThemes()->play(GS_GAME_MAIN);
-    ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(GS_GAME_MAIN));
+    self->menu()->setLockStart(*self->clock());
+    self->menu()->setLock(1);
+    if (self->musicOn() != 0)
+        self->cdThemes()->play(GS_GAME_MAIN);
+    self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(GS_GAME_MAIN));
 
-    if (((Game *)B)->soundCreated() == 0) {
+    if (self->soundCreated() == 0) {
         GameLog_LogMessage(GG_LOGGER, 1, GS_CFG_NO_SOUND);
-        ((Game *)B)->setMusicOn(0);
-        if (((Game *)B)->soundCreated() == 0) {
-            ((Game *)B)->fixedSounds()->loaded = 1;
+        self->setMusicOn(0);
+        if (self->soundCreated() == 0) {
+            self->fixedSounds()->loaded = 1;
             return;
         }
     }
@@ -112,10 +111,10 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         char suffix[2] = { (char)('A' + i), 0 };
         /* ESI = Game+0x175327 + 4i is the Player's pickup bank +0x15e[i];
          * ESI-0x386b3 is Game+0x13cc74 + 4i, a Game field. */
-        Player *pl = ((Game *)B)->player();
-        FixedSounds *fs = ((Game *)B)->fixedSounds();
-        fs->crystalBank[i] = bank(B, fs->crystalBank[i], 0x465be4, suffix);       /* add02 */
-#define PBANK(k, fmt) pl->setPickupSound(Player::k, i, bank(B, pl->pickupSound(Player::k, i), fmt, suffix))
+        Player *pl = self->player();
+        FixedSounds *fs = self->fixedSounds();
+        fs->crystalBank[i] = bank(self, fs->crystalBank[i], 0x465be4, suffix);       /* add02 */
+#define PBANK(k, fmt) pl->setPickupSound(Player::k, i, bank(self, pl->pickupSound(Player::k, i), fmt, suffix))
         PBANK(SND_15E, 0x465bcc);   /* add08 */
         PBANK(SND_16A, 0x465bb4);   /* add06 */
         PBANK(SND_176, 0x465b9c);   /* add07 */
@@ -128,36 +127,36 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
 #undef PBANK
     }
 
-    ScriptPlayer *sp = ((Game *)B)->scriptPlayer();
+    ScriptPlayer *sp = self->scriptPlayer();
     sp->streamWave()->nBuffer_seconds = 5;
     sp->streamWave()->wSegment_count = 5;
     sp->streamWave()->pDirectsound = sm->directSound();
     sp->streamWave()->dwFlags = 0;
-    ((Game *)B)->extraObjects()->setSoundManager(sm);
+    self->extraObjects()->setSoundManager(sm);
     sp->setSoundManager(sm);
 
     if (!s_fx) {
         hooks_GetAsyncKeyState(0x4c);
         hooks_GetAsyncKeyState(0x4c);
         if (hooks_GetAsyncKeyState(0x4c) != 0)
-            Report_WriteLevelReport((Game *)B, GS_RPT_FILE);
+            Report_WriteLevelReport(self, GS_RPT_FILE);
     }
 
     sprintf(path, GS_WAV_TIME_OUT, GS_GAME_DIR);
-    ((Game *)B)->fixedSounds()->timeOut = sm->acquireStatic(path, 0);          /* TimeOut */
+    self->fixedSounds()->timeOut = sm->acquireStatic(path, 0);          /* TimeOut */
     sprintf(path, GS_WAV_LAST_SECONDS, GS_GAME_DIR);
-    ((Game *)B)->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);          /* LastSeconds */
+    self->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);          /* LastSeconds */
     sprintf(path, GS_WAV_COUNT, GS_GAME_DIR);
-    ((Game *)B)->fixedSounds()->count = sm->acquireStatic(path, 0);          /* Count */
+    self->fixedSounds()->count = sm->acquireStatic(path, 0);          /* Count */
     sprintf(path, GS_WAV_MENU_UP_DOWN, GS_GAME_DIR);
-    ((Game *)B)->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);        /* MenuUpDown */
+    self->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);        /* MenuUpDown */
     sprintf(path, GS_WAV_SWITCH, GS_GAME_DIR);
-    ((Game *)B)->fixedSounds()->switchClick = sm->acquireStatic(path, 0);          /* Switch */
+    self->fixedSounds()->switchClick = sm->acquireStatic(path, 0);          /* Switch */
     sprintf(path, GS_WAV_LEVEL_COMPLETED, GS_GAME_DIR);
-    ((Game *)B)->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);          /* LevelCompleted */
+    self->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);          /* LevelCompleted */
     sprintf(path, GS_WAV_SPLAT, GS_GAME_DIR);
-    ((Game *)B)->player()->setSoundA7(sm->acquireStatic(path, 1)); /* splat */
-    sm->setup(((Game *)B)->sound3D());
+    self->player()->setSoundA7(sm->acquireStatic(path, 1)); /* splat */
+    sm->setup(self->sound3D());
 
-    ((Game *)B)->fixedSounds()->loaded = 1;
+    self->fixedSounds()->loaded = 1;
 }

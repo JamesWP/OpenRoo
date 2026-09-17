@@ -40,20 +40,18 @@ CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 
 static int s_fx = -1;
 
-#define G32(o)  (*(unsigned int *)(B + (o)))
-#define G8(o)   (*(unsigned char *)(B + (o)))
 
 /* The CRT's __ftol: truncate toward zero into an __int64; the low dword is
  * what EAX carries. */
-static unsigned int ftol_low(const unsigned char *B)
+static unsigned int ftol_low(Game *game)
 {
-    double d = *((Game *)B)->clock();
+    double d = *game->clock();
     return (unsigned int)(long long)d;
 }
 
-static void tick_sound(unsigned char *B)
+static void tick_sound(Game *game)
 {
-    CStaticSoundbuffer *s = ((Game *)B)->fixedSounds()->count;
+    CStaticSoundbuffer *s = game->fixedSounds()->count;
     if (s != NULL)
         CStatic_TriggerPlayback(s, 0);
 }
@@ -61,7 +59,6 @@ static void tick_sound(unsigned char *B)
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_AnimateScoreTallyStages(Game *self)
 {
-    unsigned char *B = (unsigned char *)self;
     unsigned int now, el, lim, n;
     unsigned char st;
 
@@ -74,9 +71,9 @@ Sim_AnimateScoreTallyStages(Game *self)
     }
 #define LIM(x)  (s_fx ? (x) / 10 : (x))
 
-    ScoreTally *T = ((Game *)B)->tally();
+    ScoreTally *T = self->tally();
 
-    now = ftol_low(B);
+    now = ftol_low(self);
     el  = now - (unsigned int)T->stageStart;
     st  = T->stage;
 
@@ -89,7 +86,7 @@ Sim_AnimateScoreTallyStages(Game *self)
             T->shownCount[TALLY_GEMS] = (int)n;
             T->shownScore[TALLY_GEMS] = T->score[TALLY_GEMS];
         } else {
-            tick_sound(B);
+            tick_sound(self);
             T->shownCount[TALLY_GEMS] = (int)(el / 50);
             T->shownScore[TALLY_GEMS] = (int)((el / 50) * 5);
         }
@@ -104,7 +101,7 @@ Sim_AnimateScoreTallyStages(Game *self)
             T->shownCount[TALLY_SURPLUS] = (int)n;
             T->shownScore[TALLY_SURPLUS] = T->score[TALLY_SURPLUS];
         } else {
-            tick_sound(B);
+            tick_sound(self);
             T->shownCount[TALLY_SURPLUS] = (int)(el / 50);
             T->shownScore[TALLY_SURPLUS] = (int)((el / 50) * 10);
         }
@@ -119,7 +116,7 @@ Sim_AnimateScoreTallyStages(Game *self)
             T->shownScore[TALLY_FOES] = T->score[TALLY_FOES];
             T->shownCount[TALLY_FOES] = (int)n;
         } else {
-            tick_sound(B);
+            tick_sound(self);
             T->shownCount[TALLY_FOES] = (int)(el / 100);
             T->shownScore[TALLY_FOES] = (int)((el / 100) * 50);
         }
@@ -132,11 +129,11 @@ Sim_AnimateScoreTallyStages(Game *self)
         lim = LIM((n * 5 + 5) * 2);
         if (el >= lim) {
             T->stage = 4;
-            T->stageStart = (int)ftol_low(B);
+            T->stageStart = (int)ftol_low(self);
             T->shownCount[TALLY_TIME] = (int)n;
             T->shownScore[TALLY_TIME] = T->score[TALLY_TIME];
         } else {
-            tick_sound(B);
+            tick_sound(self);
             T->shownCount[TALLY_TIME] = (int)(el / 10);
             T->shownScore[TALLY_TIME] = (int)((el / 10) * 2);
         }
@@ -145,11 +142,11 @@ Sim_AnimateScoreTallyStages(Game *self)
         lim = LIM((n * 5 + 5) * 20);
         if (el >= lim) {
             T->stage = 5;
-            T->stageStart = (int)ftol_low(B);
+            T->stageStart = (int)ftol_low(self);
             T->shownCount[TALLY_ALLITEMS] = (int)n;
             T->shownScore[TALLY_ALLITEMS] = T->score[TALLY_ALLITEMS];
         } else {
-            tick_sound(B);
+            tick_sound(self);
             T->shownCount[TALLY_ALLITEMS] = (int)(el / 100);
             T->shownScore[TALLY_ALLITEMS] = (int)((el / 100) * 5);
         }
@@ -158,12 +155,12 @@ Sim_AnimateScoreTallyStages(Game *self)
         lim = LIM((n * 5 + 5) * 10);
         if (el >= lim) {
             T->stage = 6;
-            T->stageStart = (int)ftol_low(B);
+            T->stageStart = (int)ftol_low(self);
             T->shownCount[TALLY_VITALITY] = (int)n;
             T->shownScore[TALLY_VITALITY] = T->score[TALLY_VITALITY];
-            ((Game *)B)->setTallyDone(1);
+            self->setTallyDone(1);
         } else {
-            tick_sound(B);
+            tick_sound(self);
             T->shownCount[TALLY_VITALITY] = (int)(el / 50);
             T->shownScore[TALLY_VITALITY] = (int)(el / 50);
         }
@@ -180,8 +177,8 @@ totals:
                        + (unsigned int)T->shownScore[TALLY_VITALITY];
         T->shownLevelTotal = (int)t;
         T->shownGrandTotal = (int)((unsigned int)T->shownBase + t);
-        if (((Game *)B)->debounce() != 0x0d && hooks_GetAsyncKeyState(0x0d) != 0)
-            ((Game *)B)->setTallyDone(1);
+        if (self->debounce() != 0x0d && hooks_GetAsyncKeyState(0x0d) != 0)
+            self->setTallyDone(1);
         return (t & 0xffffff00u) | 0xffu;
     }
 #undef LIM

@@ -68,7 +68,7 @@
  * either one alone changes behaviour, and fixing both is a no-op, which is
  * precisely why neither is touched.
  *
- * Also unguarded: a pop at depth 0 reads the depth byte itself as a node id
+ * Also unguarded: a pop at depth 0 reads the depth byte it(self) as a node id
  * and underflows the depth to 0xff.  Preserved.
  *
  * RewindMenuStackToRootNode  0x0041edd0, __thiscall, RET 0:
@@ -130,7 +130,7 @@
  *                         call with the running push/pop/rewind counts and the
  *                         deepest depth reached.  Every call, not a sample:
  *                         the family is called under a dozen times in a whole
- *                         recording, which is itself the reason `stacktop`
+ *                         recording, which is it(self) the reason `stacktop`
  *                         cannot be seen.
  */
 
@@ -189,7 +189,7 @@ static void diag_census(void)
         return;
     /* Every call, not a sampled census: the whole family is called a few
      * dozen times in a recording, so a 1-in-500 sample would report nothing.
-     * That scarcity is itself the finding -- see the plan. */
+     * That scarcity is it(self) the finding -- see the plan. */
     log_write("menustack: DIAG push=%u pop=%u rewind=%u maxdepth=%u\n",
               s_pushes, s_pops, s_rewinds, s_maxdepth);
 }

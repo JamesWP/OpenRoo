@@ -38,6 +38,11 @@ class __attribute__((packed)) MovableEntity {
 public:
     static const int ORIGIN = 0;
 
+    /* The level's tile array, copied in at spawn from Game::tileBase().
+     * Public because tilequery.cpp's farthest-tile search takes a
+     * MovableEntity and reaches the map through it. */
+    unsigned char *tileBase() const { return tileBase_; }
+
     /* 0x0043ad60 -- zero the twelve sound handles, in the original's store
      * order.  Public: the Foe and Player ctors (still the game's) call it
      * through Sim_ZeroEntitySoundSlotPointers. */

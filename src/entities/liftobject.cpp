@@ -68,7 +68,7 @@
  *    deterministic, and exactly the kind of thing a replay diverges on much
  *    later.  Both calls below take the pre-rounding `long double`.
  *
- *    (As everywhere else in this plan, the argument itself is invisible to
+ *    (As everywhere else in this plan, the argument it(self) is invisible to
  *    the decompiler -- it arrives on the x87 stack, so `decompile_function`
  *    renders both as a bare `__ftol()`.  Read from the listing.)
  *
@@ -166,7 +166,7 @@ static const double K_PARK_DWELL   = 1500.0;    /* 0x0045d2e0 */
  * GetEnvironmentVariableA returns 0 for empty and unset alike
  * (RENDER_PLAN.md, 2026-09-02).  placeaxis and keepobjects are shared with
  * the sibling spawns/purges in objectplace.cpp and gamereset.cpp; each file
- * reads the flag itself. */
+ * reads the flag it(self). */
 static int s_fx_liftflip    = 0;
 static int s_fx_placeaxis   = 0;
 static int s_fx_keepobjects = 0;
@@ -432,7 +432,7 @@ void LiftObject::tick()
     /* ─── State 1: RISING ───────────────────────────────────────────── */
     if (state_ == 1) {
         /* Point 1: h is the 80-bit value.  height_ gets the rounded float
-         * (FST), but the ftol below consumes h itself. */
+         * (FST), but the ftol below consumes h it(self). */
         long double h = ((long double)now_ - (long double)phaseStart_)
                         * (long double)K_MS_TO_HEIGHT
                         + (long double)(int)baseHeight_;

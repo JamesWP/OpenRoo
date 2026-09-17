@@ -201,13 +201,12 @@ static void diag_tick(void)
  * liftobject.cpp, Game::PurgeSlideObjects 0x004181b0 in slideobject.cpp,
  * Game::PurgeBreakableObjects 0x004183f0 in breakabletile.cpp (details 1
  * and 2 above went with it) and Game::PurgeBridgeObjects 0x0041a190 in
- * bridgeobject.cpp (detail 3).  Each honours `keepobjects` itself. */
+ * bridgeobject.cpp (detail 3).  Each honours `keepobjects` it(self). */
 
 /* ═══ 0x00418580 -- Game::ClearGameState ═══════════════════════════════════ */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_ClearGameState(Game *self)
 {
-    unsigned char *G = (unsigned char *)self;
     unsigned char gamefile_ok;
 
     fx_init();
@@ -217,29 +216,30 @@ Sim_ClearGameState(Game *self)
         s_logged_clear = 1;
         log_write("gamereset: first ClearGameState -- foes=%u enemies=%u "
                   "lift=%u slide=%u break=%u bridge=%u\n",
-                  (unsigned)((Game *)G)->foeCount(), (unsigned)((Game *)G)->bombCount(),
-                  (unsigned)((Game *)G)->liftCount(),
-                  (unsigned)((Game *)G)->slideCount(),
-                  (unsigned)((Game *)G)->breakableCount(),
-                  (unsigned)((Game *)G)->bridgeCount());
+                  (unsigned)self->foeCount(), (unsigned)self->bombCount(),
+                  (unsigned)self->liftCount(),
+                  (unsigned)self->slideCount(),
+                  (unsigned)self->breakableCount(),
+                  (unsigned)self->bridgeCount());
     }
 
     /* The guard byte is READ here, at 0x00418597, before the stores -- the
      * branch on it is sunk to 0x004185f8.  See the header. */
-    gamefile_ok = ((Game *)G)->levelCount();
+    gamefile_ok = self->levelCount();
 
-    Player *pl = ((Game *)G)->player();
+    Player *pl = self->player();
     pl->setLives(2);                    /* lives */
-    ((Game *)G)->setCameraMode(2);
+    self->setCameraMode(2);
     /* +0x126 and +0x66 are doubles the original writes as two dwords each,
      * split across this block (+0x1752ef/+0x1752f3, +0x17522f/+0x175233).
      * Nothing reads between, so each is one double store (template 3). */
     pl->setField126(0.0);
-    /* Game::totalPlayTime's LOW dword only (0x4185a9 is a dword MOV), so
-     * not setTotalPlayTime(0): the high half survives, as in the original. */
-    *(unsigned int *)(G + 0x170a44) = 0;
-    ((Game *)G)->setLevelIndex(0);
-    ((Game *)G)->setRestartCount(0);
+    /* Game::totalPlayTime's LOW dword only (0x4185a9 is a dword MOV); the
+     * high half is zeroed further down, with unrelated stores between, so
+     * the two cannot become one setTotalPlayTime(0.0). */
+    self->totalPlayTimeLowDword() = 0;
+    self->setLevelIndex(0);
+    self->setRestartCount(0);
     pl->setGemsCollected(0);
     pl->setFacing(1);
     pl->setMoveDir(0);
@@ -247,44 +247,44 @@ Sim_ClearGameState(Game *self)
     pl->setMoveState(0);
     pl->setStepDuration(200.0);                 /* bits 0x4069000000000000 */
     pl->setScore(0);
-    *(unsigned int *)(G + 0x170a48) = 0;
+    self->totalPlayTimeHighDword() = 0;
 
     if (gamefile_ok == 0) {
         GameLog_LogMessage(GG_LOGGER, 4, GS_GAME_GAMEFILE_ERR,
-                           ((Game *)G)->gameFileName());
+                           self->gameFileName());
         PostQuitMessage(1);
     }
 
-    LiftObject::purgeAll((Game *)self);
-    SlideObject::purgeAll((Game *)self);
-    BreakableTile::purgeAll((Game *)self);
-    BridgeObject::purgeAll((Game *)self);
+    LiftObject::purgeAll(self);
+    SlideObject::purgeAll(self);
+    BreakableTile::purgeAll(self);
+    BridgeObject::purgeAll(self);
 
     /* REP STOSD, ECX=0x40 -- the 256 switch counts at Game+0x170543. */
-    ((Game *)G)->switchCells()->clearCounts();
+    self->switchCells()->clearCounts();
 
-    while (((Game *)G)->foeCount() != 0) {
+    while (self->foeCount() != 0) {
         if (s_diag && !s_logged_foedrain) {
             s_logged_foedrain = 1;
             log_write("gamereset: first foe drain -- count=%u id=%u\n",
-                      (unsigned)((Game *)G)->foeCount(),
-                      (unsigned)((Game *)G)->foeId(0));
+                      (unsigned)self->foeCount(),
+                      (unsigned)self->foeId(0));
         }
-        Foe::remove((Game *)self, ((Game *)G)->foeId(0));
+        Foe::remove(self, self->foeId(0));
     }
 
-    while (((Game *)G)->bombCount() != 0) {
+    while (self->bombCount() != 0) {
         if (s_diag && !s_logged_enemydrain) {
             s_logged_enemydrain = 1;
             log_write("gamereset: first enemy drain -- count=%u id=%u\n",
-                      (unsigned)((Game *)G)->bombCount(), (unsigned)((Game *)G)->bombId(0));
+                      (unsigned)self->bombCount(), (unsigned)self->bombId(0));
         }
-        Bomb::remove((Game *)self, ((Game *)G)->bombId(0));
+        Bomb::remove(self, self->bombId(0));
     }
 
-    ((Game *)G)->setBreakableCount(0);
-    ((Game *)G)->setFoeCount(0);
-    ((Game *)G)->setLiftCount(0);
-    ((Game *)G)->setSlideCount(0);
-    ((Game *)G)->setBombCount(0);
+    self->setBreakableCount(0);
+    self->setFoeCount(0);
+    self->setLiftCount(0);
+    self->setSlideCount(0);
+    self->setBombCount(0);
 }

@@ -57,8 +57,31 @@ public:
     /* Undecoded blob fields Game code reaches: HandleKeypress toggles
      * +0x1f609 (0 <-> 1); GameTick copies the float +0x20a4c (default 50.0)
      * into +0x20a48, as one dword. */
-    unsigned char  field1f609() const                  { return field_1f608_[1]; }
-    void           setField1f609(unsigned char v)      { field_1f608_[1] = v; }
+    /* ── the four video-quality options ─────────────────────────────────
+     * One byte each, persisted, defaults 2,1,2,2; the options screen
+     * (RenderCameraOverlay 0x0042e9f0) draws them in the order Reflection,
+     * Shadows, Highlights, Particles, and HandleKeypress edits them.
+     * Shadows/Highlights/Particles are 0..2 sliders on keys 0x48/0x49/0x4a;
+     * Reflection is a 0/1 toggle on its own key.
+     *
+     * The pairing, and how it was settled (COHESION_PLAN.md Band 8c):
+     * CONFIRMED -- 0x1f60a (Game +0x2aa138) gates D3DRENDERSTATE_SPECULARENABLE
+     * in DrawBridgeSurfaces (0x0040964d) and at 0x0040b039, and specular IS
+     * "Highlights"; that anchors the label at 0x00466b38 to the byte read at
+     * 0x0042fd15, i.e. each label is pushed BEFORE the byte it describes is
+     * read.  The other three then follow by position, each label's push
+     * followed by exactly one option read, 1:1 and in order:
+     *   "Reflection" 0x00466b4c @0x0042eacf -> 0x0042edd6 reads +0x1f609
+     *   "Shadows"    0x00466b44 @0x0042ee90 -> 0x0042f3a8 reads +0x1f608
+     *   "Highlights" 0x00466b38 @0x0042f9d9 -> 0x0042fd15 reads +0x1f60a
+     *   "Particles"  0x00466b2c @0x004301a8 -> 0x00430399 reads +0x1f60b
+     * Corroborated twice: the reverse pairing leaves "Reflection" with no
+     * read at all, and Reflection is the one option HandleKeypress toggles
+     * 0/1 rather than stepping 0..2 -- which is byte [1], +0x1f609. */
+    unsigned char &videoShadows()                      { return videoOptions_[0]; }
+    unsigned char &videoReflection()                   { return videoOptions_[1]; }
+    unsigned char &videoHighlights()                   { return videoOptions_[2]; }
+    unsigned char &videoParticles()                    { return videoOptions_[3]; }
     unsigned int   field20a4cBits() const              { unsigned int b; memcpy(&b, &field_20a4c_, 4); return b; }
     void           setField20a48Bits(unsigned int b)   { memcpy(field_20a48_, &b, 4); }
 
@@ -72,7 +95,8 @@ private:
     unsigned char  gap_1f406[0x1f604 - 0x1f406];
     /* ── the persisted blob ── */
     unsigned int   field_1f604_;                     /* +0x1f604  default 1 */
-    unsigned char  field_1f608_[4];                  /* +0x1f608  defaults 2,1,2,2 */
+    /* Shadows, Reflection, Highlights, Particles -- see the accessors. */
+    unsigned char  videoOptions_[4];                 /* +0x1f608  defaults 2,1,2,2 */
     float          cameraDistanceSetting_;           /* +0x1f60c  5.0 */
     unsigned char  gap_1f610[0x1f624 - 0x1f610];
     unsigned int   field_1f624_;                     /* +0x1f624  default 1 */
@@ -96,7 +120,7 @@ KAROO_LAYOUT_CHECKS(Config)
 {
     KAROO_LAYOUT_AT(field_1f404_,           0x1f404);
     KAROO_LAYOUT_AT(field_1f604_,           0x1f604);
-    KAROO_LAYOUT_AT(field_1f608_,           0x1f608);
+    KAROO_LAYOUT_AT(videoOptions_,          0x1f608);
     KAROO_LAYOUT_AT(cameraDistanceSetting_, 0x1f60c);
     KAROO_LAYOUT_AT(field_1f624_,           0x1f624);
     KAROO_LAYOUT_AT(musicOn_,               0x1f628);

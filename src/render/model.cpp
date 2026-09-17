@@ -29,7 +29,7 @@
  * "allocator" kind, the one the rule keeps.  Everything else -- open, read,
  * close, the string copy, and the free path below -- is ours.
  *
- * FreeThing2 itself is NOT called and NOT stubbed: it stays live for its two
+ * FreeThing2 it(self) is NOT called and NOT stubbed: it stays live for its two
  * other referrers (0x437b36 JMP from the destructor, 0x4386f7 CALL).  Its
  * body is inlined below instead, which is four Free2 calls and five stores.
  *

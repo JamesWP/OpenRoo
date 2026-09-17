@@ -71,11 +71,6 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 
 
-#define G8(o)   (*(unsigned char *)(B + (o)))
-#define G16(o)  (*(unsigned short *)(B + (o)))
-#define G32(o)  (*(unsigned int *)(B + (o)))
-#define GP(o)   (*(void **)(B + (o)))
-#define GF(o)   (*(float *)(B + (o)))
 
 static int s_fx = -1;
 
@@ -125,8 +120,7 @@ static void attachLoopSound(Game *game,
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_InitLevelBasedSounds(Game *self)
 {
-    unsigned char *B = (unsigned char *)self;
-    Game *game = (Game *)B;
+    Game *game = self;
     Player *pl = game->player();
     const char *world = game->map()->mapName();
 
@@ -139,7 +133,7 @@ Sim_InitLevelBasedSounds(Game *self)
     }
 
     GameLog_LogMessage(GG_LOGGER, 2, GS_SND_TRY_INIT);
-    if (((Game *)B)->soundCreated() != 0) {
+    if (self->soundCreated() != 0) {
         pl->setWorldSoundVariant(0);
         if (strcmp(world, GS_SND_EGYPT) == 0)
             pl->setWorldSoundVariant(0);
