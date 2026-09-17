@@ -146,6 +146,7 @@
 #include "alloc.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "gamecrt.h"
 
 /* ─── Originals left live in the binary ──────────────────────────────────── */
 
@@ -161,15 +162,7 @@
  * forced to 0, so the upper three bytes of EAX carry Close's value; we return
  * a plain 0.  Callers test AL only. */
 
-typedef int   (__cdecl *sprintf_fn)(char *, const char *, ...);
-typedef char *(__cdecl *strrchr_fn)(const char *, int);
-#define ORIG_MAYBE_SPRINTF ((sprintf_fn)0x00450655)
-#define ORIG_STRRCHR       ((strrchr_fn)0x00451a50)
 
-typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, FILE *);
-#define ORIG_FWRITE ((fwrite_fn)0x004513c7)   /* the static CRT fwrite; the
-                                               * stream is GG_LOG_STREAM --
-                                               * see gameglobals.h */
 
 /* See the header note: __stdcall, not __thiscall. */
 typedef void (__stdcall *enumfmt_fn)(IDirect3DDevice3 *, DWORD, DWORD, DDPIXELFORMAT *);
@@ -210,7 +203,7 @@ static unsigned int st_strlen(const char *s)
 
 static void st_log_str(const char *s)
 {
-    ORIG_FWRITE(s, (int)st_strlen(s), 1, GG_LOG_STREAM);
+    GC_FWRITE(s, (int)st_strlen(s), 1, GG_LOG_STREAM);
 }
 
 /* The game's inlined strcmp: 0 when equal, otherwise -1 or 1 from the
@@ -233,7 +226,7 @@ static void st_set_image_name(LoadedImage *self, LPCSTR name)
         game_free2(self->ImageName);
     char *copy = (char *)game_operator_new(st_strlen(name) + 1u);
     self->ImageName = copy;
-    ORIG_MAYBE_SPRINTF(copy, GS_FMT_S, name);
+    GC_SPRINTF(copy, GS_FMT_S, name);
 }
 
 /* DDSCAPS for the texture surface, from the hardware device description.
@@ -515,10 +508,10 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
 
     char msg[256];
     unsigned int w = h.width;
-    ORIG_MAYBE_SPRINTF(msg, GS_TEX_FMT_X_SIZE, w, st_size_report_value(w));
+    GC_SPRINTF(msg, GS_TEX_FMT_X_SIZE, w, st_size_report_value(w));
     st_log_str(msg);
     unsigned int ht = h.height;
-    ORIG_MAYBE_SPRINTF(msg, GS_TEX_FMT_Y_SIZE, ht, st_size_report_value(ht));
+    GC_SPRINTF(msg, GS_TEX_FMT_Y_SIZE, ht, st_size_report_value(ht));
     st_log_str(msg);
 
     DDSURFACEDESC2 ddsd;
@@ -602,7 +595,7 @@ Texture_SelectTextureLoader(SceneTexture *self, IDirectDraw4 *dd,
     }
 
     /* Note 6: no NULL check on the result. */
-    const unsigned char *ext = (const unsigned char *)ORIG_STRRCHR(name, '.');
+    const unsigned char *ext = (const unsigned char *)GC_STRRCHR(name, '.');
 
     if (st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_BMP_LOWER) == 0 ||
         st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_BMP_UPPER) == 0)

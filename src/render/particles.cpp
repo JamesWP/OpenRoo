@@ -38,6 +38,7 @@
 #include <math.h>
 #include <string.h>
 #include <new>
+#include "gamecrt.h"
 
 #define PARTICLE_FVF       0x1e2  /* XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1 — 0x20 stride */
 #define PARTICLE_LOG_FIRST 8
@@ -484,12 +485,10 @@ extern void *const ps_vtbl_xface[];
 
 /* The game's CRT fwrite, as in generators.cpp: the FILE * is the game's
  * static-CRT stream, so no other fwrite can write to it. */
-typedef unsigned (__cdecl *ps_fwrite_fn)(const void *, unsigned, unsigned, void *);
-#define PS_FWRITE ((ps_fwrite_fn)0x004513c7)
 
 static bool ps_write(const void *src, unsigned size, void *fp)
 {
-    return PS_FWRITE(src, size, 1, fp) == 1;
+    return GC_FWRITE(src, size, 1, (FILE *)fp) == 1;
 }
 
 static bool ps_read(void *dst, unsigned size, void *fp)
@@ -697,7 +696,7 @@ static BOOL ps_write_sub_object(const void *obj, void *fp)
     DWORD len = (DWORD)strlen(name) + 1;
     if (!ps_write(&len, 4, fp))
         return FALSE;
-    if (PS_FWRITE(name, 1, len, fp) != len)
+    if (GC_FWRITE(name, 1, len, (FILE *)fp) != len)
         return FALSE;
     if (obj) {
         void **vtbl = *(void ***)obj;

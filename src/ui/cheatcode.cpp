@@ -146,9 +146,9 @@ Sim_HandleTypedCheatCode(Game *self)
             if (self->musicOn() != 0)
                 self->cdThemes()->play(GS_GAME_COMPLETED);
             self->setCameraMode(2);
-            Sim_RewindMenuStackToRootNode(self->menu());
-            Sim_PopMenuNodeFromStack(self->menu());
-            Sim_PushMenuNodeOnStack(self->menu(), 0x28);
+            self->menu()->rewind();
+            self->menu()->pop();
+            self->menu()->push(0x28);
             self->menu()->setLockStart(self->lastTickTime());
             self->menu()->setNode(0x28);
             self->menu()->setCursor(0);

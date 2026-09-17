@@ -139,6 +139,7 @@
 
 #include "log.h"
 #include "menutree.h"
+#include "record.h"
 
 /* ─── FX / diag ──────────────────────────────────────────────────────────── */
 
@@ -314,7 +315,6 @@ void MenuTree::rewind()
  * of wrapping to 0.  A navigation change: a recording that wraps the menu
  * would land on a different node.
  */
-extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 
 #define KEY(k)  hooks_GetAsyncKeyState(k)
 

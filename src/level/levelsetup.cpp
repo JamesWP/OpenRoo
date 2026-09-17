@@ -180,6 +180,7 @@
 #include "foe.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "gamecrt.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -242,8 +243,6 @@ struct GameLogger;
 typedef int (__attribute__((thiscall)) *noop_fn)(void *self);
 #define ORIG_NOOP_440450   ((noop_fn)0x00440450)
 
-typedef void (__cdecl *srand_fn)(unsigned int);
-#define ORIG_SRAND         ((srand_fn)0x00451672)
 
 /* time(), but through OUR hook -- see the header. */
 extern "C" __declspec(dllexport) int __cdecl hooks_GameTime(int *out);
@@ -418,7 +417,7 @@ Sim_SetupLevelObjects(Game *self)
     ((u32_ua *)GBL_POS)[2] = self->cameraEyeBits(2);
     GBL_C4BC = 0;
 
-    Sim_ResetLevelObjectCounters(self);
+    self->census()->reset();
 
     self->setField42252(0);
     self->setField173b1a(0);
@@ -439,7 +438,7 @@ Sim_SetupLevelObjects(Game *self)
     while (self->foeCount() != 0)
         Foe::remove(self, self->foeId(0));
     while (self->bombCount() != 0)
-        Sim_RemoveEnemyObject(self, self->bombId(0));
+        Bomb::remove(self, self->bombId(0));
 
     self->setBreakableCount(0);
     self->setFoeCount(0);
@@ -477,7 +476,7 @@ Sim_SetupLevelObjects(Game *self)
     self->player()->setStepDuration(200.0);                /* two dwords: 0, 0x40690000 */
 
     /* time() through OUR hook, so KAROO_SEED still governs the run. */
-    ORIG_SRAND((unsigned int)hooks_GameTime(0));
+    GC_SRAND((unsigned int)hooks_GameTime(0));
 
     /* ── pass 1: clear one dword per cell ──────────────────────────────── */
     h = M->extentV();

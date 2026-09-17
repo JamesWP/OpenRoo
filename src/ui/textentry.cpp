@@ -32,8 +32,8 @@
 #include <string.h>
 #include "log.h"
 #include "textentry.h"
+#include "record.h"
 
-extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 
 static int s_fx = -1;
 

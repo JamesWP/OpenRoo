@@ -103,6 +103,7 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 #include <stdio.h>
+#include "gamecrt.h"
 
 /* ─── Originals left live in the binary ────────────────────────────────────
  *
@@ -139,10 +140,6 @@
  * one was resolved, by moving the open rather than reaching across.) */
 
 
-typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, FILE *);
-#define ORIG_FWRITE ((fwrite_fn)0x004513c7)   /* the static CRT fwrite; the
-                                               * stream is GG_LOG_STREAM --
-                                               * see gameglobals.h */
 
 
 /* The inline REPNE SCASB the original uses for the two log calls: `not ecx`
@@ -250,7 +247,7 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 
     IDirectDrawSurface4 *tmp = NULL;
     if (dd->CreateSurface(&ddsd, &tmp, NULL) < 0) {
-        ORIG_FWRITE(GS_TEX_CREATESURFACE_FAILED,
+        GC_FWRITE(GS_TEX_CREATESURFACE_FAILED,
                        (int)tga_strlen(GS_TEX_CREATESURFACE_FAILED),
                        1, GG_LOG_STREAM);
         if (fp != NULL) fclose(fp);
@@ -261,7 +258,7 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
      * surface's real geometry, which is what the conversion loop below reads:
      * dwWidth, dwHeight, lPitch, lpSurface and the four channel masks. */
     if (tmp->Lock(NULL, &ddsd, 0, NULL) < 0) {
-        ORIG_FWRITE(GS_TEX_LOCK_FAILED, (int)tga_strlen(GS_TEX_LOCK_FAILED),
+        GC_FWRITE(GS_TEX_LOCK_FAILED, (int)tga_strlen(GS_TEX_LOCK_FAILED),
                        1, GG_LOG_STREAM);
         if (tmp != NULL)
             tmp->Release();

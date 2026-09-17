@@ -48,35 +48,16 @@
 #include "textentry.h"
 #include "player.h"
 
-struct CStaticSoundbuffer;
-struct VoicePool;
-struct ProgableControl;
-struct CDM;
+#include "static.h"
+#include "voicepool.h"
+#include "progctrl.h"
+#include "cdm.h"
 
-extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *game, DWORD dwLoopFlags);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *game);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_VoicePoolCycle(VoicePool *game, DWORD dwLoopFlags);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetJoyDeadzone(ProgableControl *s, DWORD axis, int zone);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_ClearBindings(ProgableControl *s, unsigned short mode, const char *name);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_CaptureBinding(ProgableControl *s, unsigned int mode, const char *name,
-                        int strength, int allow_axis, int flags);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-CDM_GetMixerDetails(CDM *game);   /* bare RET */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_SetMixerVolume(CDM *game, DWORD level);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_StopTrack(CDM *game);
 
 #include "soundmanager.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "record.h"
 
 
 #define KEY(k)  hooks_GetAsyncKeyState(k)
@@ -93,7 +74,7 @@ static void rebind(Game *game, const char *name, unsigned char code, int hl)
     game->setRebindCode(code);
     if (hl >= 0)
         game->menu()->setLastKey((unsigned char)hl);
-    Sim_PopMenuNodeFromStack(game->menu());
+    game->menu()->pop();
 }
 
 /* The "level loaded, flythrough armed" tail shared by new-game and load. */
@@ -105,7 +86,7 @@ static void loaded_tail(Game *game)
         CDM_StopTrack(GG_CDAUDIO);
     game->scriptPlayer()->setRunning(1);
     game->setCameraMode(1);
-    Sim_RewindMenuStackToRootNode(game->menu());
+    game->menu()->rewind();
 }
 
 static void option_edit(Game *game, unsigned char key)
@@ -228,7 +209,7 @@ Sim_HandleKeypress(Game *self)
                 CStatic_TriggerPlayback(self->fixedSounds()->switchClick, 0);
             self->debounceRef() = 0x0d;
         }
-        Sim_NavigateMenuTree(self->menu(), (int)(long long)self->lastTickTime());
+        self->menu()->navigate((int)(long long)self->lastTickTime());
         self->menu()->setLastNodeSeen((unsigned short)self->menu()->nodeRef());
         entry = self->textEntryActive() != 0;
     } else {
@@ -244,7 +225,7 @@ Sim_HandleKeypress(Game *self)
                 memcpy(self->saveSlots()->slot((unsigned char)self->saveSlots()->editSlot()),
                        self->saveSlots()->edit(), sizeof(SaveSlot));
             self->setTextEntryActive(0);
-            Sim_PopMenuNodeFromStack(self->menu());
+            self->menu()->pop();
             self->menu()->setCursor(0);
         }
     }
@@ -284,7 +265,7 @@ Sim_HandleKeypress(Game *self)
         }
         break;
     case 6:
-        Sim_PopMenuNodeFromStack(self->menu());
+        self->menu()->pop();
         self->stateRef() = 7;
         if (self->musicOn() != 0)
             CDM_StopTrack(GG_CDAUDIO);
@@ -308,28 +289,28 @@ Sim_HandleKeypress(Game *self)
     case 0x21:
         if (self->player()->gliding() == 0)
             self->setCameraTurnsWithPlayer(self->cameraTurnsWithPlayer() == 0);
-        Sim_PopMenuNodeFromStack(self->menu());
+        self->menu()->pop();
         break;
     case 0x47:
         self->videoReflection() = (self->videoReflection() == 0);
-        Sim_PopMenuNodeFromStack(self->menu());
+        self->menu()->pop();
         break;
     case 0x3c:
         self->setSound3D(self->sound3D() == 0);
         self->soundManager()->setup(self->sound3D());
         self->setLevelSoundsReady(0);
-        Sim_PopMenuNodeFromStack(self->menu());
+        self->menu()->pop();
         break;
     case 0x3d:
         if (self->musicOn() != 0) {
             self->setMusicOn(0);
             CDM_StopTrack(GG_CDAUDIO);
-            Sim_PopMenuNodeFromStack(self->menu());
+            self->menu()->pop();
             break;
         }
         self->cdThemes()->replay();
         self->setMusicOn(1);
-        Sim_PopMenuNodeFromStack(self->menu());
+        self->menu()->pop();
         break;
     case 0x29: {
         unsigned char lvl = (unsigned char)(self->levelIndex() + 1);
@@ -345,7 +326,7 @@ Sim_HandleKeypress(Game *self)
         self->menu()->setLockStart(self->lastTickTime());
         self->setCameraMode(1);
         self->menu()->setLock(1);
-        Sim_PopMenuNodeFromStack(self->menu());
+        self->menu()->pop();
         GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_LEVEL_DONE_CONTINUE);
         if (self->fixedSounds()->levelCompleted != NULL)
             CStatic_HaltPlayback(self->fixedSounds()->levelCompleted);
@@ -353,7 +334,7 @@ Sim_HandleKeypress(Game *self)
     }
     case 0x22: case 0x32: case 0x3e: case 0x3f:
     case 0x48: case 0x49: case 0x4a: case 0x50:
-        Sim_PopMenuNodeFromStack(self->menu());
+        self->menu()->pop();
         break;
     default:
         break;
@@ -375,7 +356,7 @@ Sim_HandleKeypress(Game *self)
                 loaded_tail(self);
             }
             self->debounceRef() = 0x0d;
-            Sim_PopMenuNodeFromStack(self->menu());
+            self->menu()->pop();
         }
     }
 
@@ -398,7 +379,7 @@ Sim_HandleKeypress(Game *self)
             KEY(8);
             KEY(8);
             KEY(8);
-            Sim_PopMenuNodeFromStack(self->menu());
+            self->menu()->pop();
         }
     }
 

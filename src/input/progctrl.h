@@ -64,3 +64,18 @@ static_assert(sizeof(ProgableControl)                   == 0x194, "ProgableContr
 
 /* Original vtable at PTR_ScalarDtorProgControl @ 0x0045efb0 */
 static const void *const PROGCTRL_VTABLE = reinterpret_cast<const void*>(0x45efb0);
+
+/* Exports of progctrl.cpp other files call (COHESION_PLAN.md template 10). */
+extern "C" {
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_SetJoyDeadzone(ProgableControl *self, DWORD axis, int zone);
+__declspec(dllexport) void __attribute__((thiscall))
+ProgCtrl_Dispatch(ProgableControl *self, unsigned short game_state);
+__declspec(dllexport) void __attribute__((thiscall))
+ProgCtrl_ClearBindings(ProgableControl *self, unsigned short mode,
+                       const char *name);
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_CaptureBinding(ProgableControl *self, unsigned int mode,
+                        const char *name, int strength, int allow_axis,
+                        int flags);
+}

@@ -49,10 +49,10 @@
 #include "player.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "record.h"
 
 struct CStaticSoundbuffer;
 
-extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStatic_Reset(CStaticSoundbuffer *self);
 

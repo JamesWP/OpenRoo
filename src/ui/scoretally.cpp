@@ -33,8 +33,8 @@
 #include "game.h"
 #include "scoretally.h"
 #include "menutree.h"
+#include "record.h"
 
-extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 

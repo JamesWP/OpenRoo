@@ -40,3 +40,10 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CDM_GetTrackCount(CDM *self);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CDM_GetTrackLength(CDM *self, char **out_ptr, int track);
+/* GetMixerDetails returns 0 on any mixer error -- see cdm.cpp. */
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+CDM_GetMixerDetails(CDM *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CDM_SetMixerVolume(CDM *self, DWORD level);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CDM_StopTrack(CDM *self);

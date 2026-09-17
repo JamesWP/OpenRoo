@@ -231,6 +231,7 @@
 #include "soundmanager.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "gamecrt.h"
 
 /* ─── Game / Level3DExtraObjects field offsets ───────────────────────────── */
 
@@ -254,8 +255,6 @@
 struct CStaticSoundbuffer;
 
 
-typedef int (__cdecl *sprintf_fn)(char *, const char *, ...);
-#define ORIG_MAYBE_SPRINTF ((sprintf_fn)0x00450655)
 
 /* ─── Already ours -- called as exports, the originals carry UD2 stubs ───── */
 
@@ -339,7 +338,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     inline_strcpy(self->levelNameBuffer(), name);
 
-    ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR, name);
+    GC_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR, name);
 
     /* SAVE the previously loaded map name BEFORE the read overwrites it.
      * The ordering is the whole mechanism of the +0x10 flag below; the
@@ -367,7 +366,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
                       (const unsigned char *)self->map()->mapName()) != 0)
         self->setMapChanged(1);
 
-    ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR, name);
+    GC_SPRINTF(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR, name);
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);
 
@@ -416,13 +415,13 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     self->setNextLevelBonus(0);
 
     /* A leftover: `path` is overwritten before it is ever read. */
-    ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_GAM, self->gameFileName());
+    GC_SPRINTF(path, GS_OPEN_FMT_GAM, self->gameFileName());
 
     /* The bonus peek -- load the NEXT level's map just to read its bonus. */
     if (self->restartCount() == 0 &&
         (unsigned int)(self->levelIndex()) + 1 != (unsigned int)self->levelCount()) {
         Sim_SetCurrentLevelName(self, (unsigned char)(self->levelIndex() + 1));
-        ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
+        GC_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
                            self->levelName());
         /* the result is deliberately not tested, as in the original */
         self->map()->readFile(path);
@@ -435,7 +434,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     }
 
     Sim_SetCurrentLevelName(self, levelNo);
-    ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
+    GC_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
                        self->levelName());
 
     /* Saved BEFORE the read -- see the header, and the `samelevel` control. */
@@ -464,7 +463,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
                       (const unsigned char *)self->map()->mapName()) != 0)
         self->setMapChanged(1);
 
-    ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR,
+    GC_SPRINTF(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR,
                        self->levelName());
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);
