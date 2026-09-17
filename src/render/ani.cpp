@@ -107,10 +107,14 @@
 
 /* The game's logger.  This used to be the one callback in this file, reaching
  * into Karoo.exe at 0x00441b10; since gamelog.cpp replaced the Logger class
- * that original is UD2-stubbed, and this calls our own writer instead. */
+ * that original is UD2-stubbed, and this calls our own writer instead.
+ *
+ * It called it through an ORIG_LOG_MESSAGE macro that cast the export to
+ * (void *, int, const char *, ...).  The name said "original" when it was
+ * already ours, and the cast would have turned a signature change into a
+ * crash rather than a compile error (COHESION_PLAN.md Band 7c), so both are
+ * gone and GameLog_LogMessage is called by name. */
 #include "gamelog.h"
-#define ORIG_LOG_MESSAGE \
-    ((void (__cdecl *)(void *, int, const char *, ...))GameLog_LogMessage)
 #define STR_ANI_LOADED   ((const char *)0x004640b0)   /* "ANI: %s loaded" */
 
 #define ANI_TABLE_SIZE   0x180      /* 24 slots x 0x10, and it tiles exactly */
@@ -161,7 +165,7 @@ static char *ani_strlwr(char *s)
 }
 
 extern "C" __declspec(dllexport) int __cdecl
-Ani_LoadAnimationFile(void *dest, const char *path, void *logger)
+Ani_LoadAnimationFile(void *dest, const char *path, GameLogger *logger)
 {
     unsigned char *table = (unsigned char *)dest;
     char line[ANI_LINE_MAX];
@@ -252,7 +256,7 @@ Ani_LoadAnimationFile(void *dest, const char *path, void *logger)
     }
 
     if (logger != NULL)
-        ORIG_LOG_MESSAGE(logger, 1, STR_ANI_LOADED, path);
+        GameLog_LogMessage(logger, 1, STR_ANI_LOADED, path);
 
     if (logged < ANI_LOG_FIRST) {
         logged++;

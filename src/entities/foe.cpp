@@ -410,13 +410,13 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     (*slot)->lastActive_ = (double)(int)(i * 0x5dc) + *game->clock();
 
     (*slot)->kind_ = (unsigned char)kind;
-    if (kind == 2) {
+    if (kind == 2) {          /* the FOE's kind, not a TileKind */
         (*slot)->stepDuration_ = 500.0;          /* 0 at +0x66, 0x407f4000 at +0x6a */
         if (s_diag_spawn && !s_logged_kind2) {
             s_logged_kind2 = 1;
             log_write("foe: first kind-2 foe\n");
         }
-    } else if (kind == 3) {
+    } else if (kind == 3) {   /* the FOE's kind, not a TileKind */
         (*slot)->stepDuration_ = 700.0;          /* 0 at +0x66, 0x4085e000 at +0x6a */
         if (s_diag_spawn && !s_logged_kind3) {
             s_logged_kind3 = 1;
@@ -618,7 +618,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
 
         /* d: +0x33 signed, the tile's height unsigned. */
         if ((int)heightCell_ == (int)t->height() &&
-            (signed char)t->contents() == 1) {
+            (signed char)t->contents() == CONTENTS_CRYSTAL) {
 
             t->setContents(0);
 
@@ -675,7 +675,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     if ((signed char)type_ == 2) {
         Tile *t = tile(cellU_, cellV_);
 
-        if ((signed char)t->objectMarker() == 0x11) {
+        if ((signed char)t->objectMarker() == TILE_SWITCH) {
             unsigned char facing;
 
             if (s_diag_step && !s_logged_turn) {
@@ -815,14 +815,14 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
     Tile *step = Tile::at(tileBase_, (int)nu, (int)nv);
     Tile *here = tile(cellU_, cellV_);
 
-    if (step->objectMarker() == 0)
+    if (step->objectMarker() == TILE_EMPTY)
         pendingMove_ = 0;
     if (slideSlot_ != 0xff && step->slideTrack() != 0)       /* e */
         pendingMove_ = 0;
-    if (here->objectMarker() == 0x0e)
+    if (here->objectMarker() == TILE_JUMP_PAD)
         pendingMove_ = 0;
 
-    if (step->objectMarker() == 9) {
+    if (step->objectMarker() == TILE_LIFT) {
         const unsigned a = ftol32(step->liftParkedSince());
         const unsigned b = ftol32(now_ - (double)a);
         const unsigned c = ftol32(step->liftDwell());
@@ -834,12 +834,12 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
     }
 
     /* g: runs on the FOE'S cell kind, but tests the STEP cell's height. */
-    if (here->objectMarker() == 9) {
+    if (here->objectMarker() == TILE_LIFT) {
         if ((unsigned)step->height() != (unsigned)(int)heightCell_)
             pendingMove_ = 0;
     }
 
-    if (step->objectMarker() != 0x0c)
+    if (step->objectMarker() != TILE_SLIDE_TRACK)
         return pendingMove_;
 
     {
@@ -1020,7 +1020,7 @@ bool Foe::finishDespawn(LevelMap *map)
      * restart does not respawn this foe -- unless it came from a timed
      * spawner (0x64). */
     Tile *home = map->snapshot((signed char)homeU_, (signed char)homeV_);
-    if (home->contents() != 0x64)
+    if (home->contents() != CONTENTS_TIMED_SPAWN)
         home->setContents(0);
     if (removeRequested_ == 0)
         return false;

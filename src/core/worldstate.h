@@ -1,4 +1,6 @@
 #pragma once
+
+#include "tile.h"   /* enum TileKind */
 #include <windows.h>
 
 /* World-state reader — AI_PLAN.md Stages 1-3.
@@ -69,7 +71,9 @@
  *
  * Foes run the same entity code, so a foe crossing one is frozen too — which
  * is the basis for luring them onto a pad, not implemented here. */
-#define WS_TILE_GLUE 0x02
+/* The same kind as tile.h's TILE_GLUE; defined from it so the two
+ * vocabularies cannot drift (COHESION_PLAN.md Band 7a). */
+#define WS_TILE_GLUE TILE_GLUE
 
 /* Kind 0x0d is the falling tile — SetupLevelObjects hands each one to
  * SpawnBreakableObject.  Stand on it and a few ticks later it drops away and
@@ -91,7 +95,7 @@
  * The practical consequence for planning is that a severed route is usually
  * temporary, so a plan must be allowed to recover rather than being computed
  * once — see plan.cpp. */
-#define WS_TILE_FALLING 0x0d
+#define WS_TILE_FALLING TILE_BREAKABLE
 
 /* Contents 7 is the extra life.  UpdatePlayerTileEffects does
  * `entity+0x239 += 1` for it, and the player entity is Game+0x1751c9, so that
@@ -101,14 +105,18 @@
  * This is why a scan for writes to the absolute address 0x175402 came up with
  * only level init, the "mausuruh" cheat, the death decrement and save-restore:
  * the pickup writes it through the entity pointer. */
-#define WS_TILE_EXTRA_LIFE 0x07
+#define WS_TILE_EXTRA_LIFE CONTENTS_EXTRA_LIFE
 
-#define WS_TILE_TRANSFORM 0x0d
+/* CONTENTS 0x0d, not a kind -- this is NOT TILE_BREAKABLE, which is kind
+ * 0x0d.  The clash of the two 0x0d meanings under one WS_TILE_ prefix is
+ * what drove the two enums apart (COHESION_PLAN.md Band 7a); both halves
+ * are now defined from theirs. */
+#define WS_TILE_TRANSFORM CONTENTS_TRANSFORM
 static inline bool ws_is_pickup(BYTE contents)
 {
     return contents != 0 && contents != WS_TILE_TRANSFORM;
 }
-#define WS_TILE_SOFT_LAND 0x0e
+#define WS_TILE_SOFT_LAND TILE_JUMP_PAD
 
 #define WS_DIR_MIN 1
 #define WS_DIR_MAX 4

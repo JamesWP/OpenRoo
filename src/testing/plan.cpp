@@ -269,7 +269,7 @@ static void build_tour(const Observation *o, int pu, int pv)
         bool guarded = ws_foe_on_cell(o, gu, gv);
         for (int d = 0; d < 4 && !guarded; d++)
             if (ws_foe_on_cell(o, gu + DU[d], gv + DV[d])) guarded = true;
-        rank[i] = (o->grid[g_stop[i]].contents != 1) ? 2 : (guarded ? 1 : 0);
+        rank[i] = (o->grid[g_stop[i]].contents != CONTENTS_CRYSTAL) ? 2 : (guarded ? 1 : 0);
     }
 
     /* Nearest neighbour, guarded stops first. */
@@ -335,7 +335,7 @@ static void build_tour(const Observation *o, int pu, int pv)
                   rank[order[i]] == 2 ? " SPECIAL" : rank[order[i]] ? " GUARDED" : "",
                   g_cost[i == 0 ? 0 : order[i-1] + 1][order[i] + 1]);
     for (int i = 0; i < n; i++)
-        if (o->grid[g_stop[i]].contents != 1)
+        if (o->grid[g_stop[i]].contents != CONTENTS_CRYSTAL)
             log_write("plan:   special contents=%u at (%d,%d) reachable=%s%s\n",
                       o->grid[g_stop[i]].contents,
                       g_stop[i] / WS_GRID_PITCH, g_stop[i] % WS_GRID_PITCH,

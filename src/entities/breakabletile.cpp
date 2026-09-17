@@ -117,8 +117,6 @@
 static const double FALL_DELAY_MS    = 1500.0;
 static const double RESPAWN_DELAY_MS = 5000.0;
 
-#define TILE_KIND_VOID      0x00
-#define TILE_KIND_BREAKABLE 0x0d
 
 /* ─── Controls and diags, read by VALUE, never by presence ──────────────── */
 static int s_fx_slowfall    = 0;
@@ -292,7 +290,7 @@ unsigned int BreakableTile::spawn(Game *game, unsigned int uArg,
     obj->cellV_ = (signed char)v;
 
     idx = v + u * 100;
-    Tile::at(game->tileBase(), (int)u, (int)v)->setObjectMarker(TILE_KIND_BREAKABLE);
+    Tile::at(game->tileBase(), (int)u, (int)v)->setObjectMarker(TILE_BREAKABLE);
 
     game->setBreakableCount((unsigned char)(n + 1));
 
@@ -417,7 +415,7 @@ void BreakableTile::tick()
             if (respawnPending_ == 0 && fallSound_ != 0)
                 playAtTile(fallSound_, t);
 
-            t->setObjectMarker(TILE_KIND_VOID);
+            t->setObjectMarker(TILE_EMPTY);
             if (noRespawn_ == 0)
                 respawnPending_ = 1;
             t->setBusy(1);
@@ -435,7 +433,7 @@ void BreakableTile::tick()
             if (respawnSound_ != 0)
                 playAtTile(respawnSound_, t);
 
-            t->setObjectMarker(TILE_KIND_BREAKABLE);
+            t->setObjectMarker(TILE_BREAKABLE);
             armed_          = 0;
             respawnPending_ = 0;
             t->setBusy(0);

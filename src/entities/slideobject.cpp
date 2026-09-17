@@ -259,8 +259,8 @@ void SlideObject::destroy()
  * stamping every cell on the way.  The object's +0x38 is the SPAN between
  * where the scan started (+0x41) and the last cell it scanned (+0x40).
  *
- *   kind == 0x0a   walks U (the row index), idx = v + var*100
- *   kind == 0x0b   walks V (the column),    idx = var + u*100
+ *   kind == TILE_SLIDE_U   walks U (the row index), idx = v + var*100
+ *   kind == TILE_SLIDE_V   walks V (the column),    idx = var + u*100
  *   anything else  no scan at all
  *
  * ─── The asymmetry between the two scans, from the LISTING ───────────────
@@ -268,10 +268,10 @@ void SlideObject::destroy()
  *   The marker clear at 0x00417f3f happens BEFORE the kind dispatch, so it
  *   fires for every kind.  It clears the SPAWN cell's marker only.
  *
- *   The kind == 0x0b loop clears the marker AGAIN, at 0x00417ff1, from
+ *   The kind == TILE_SLIDE_V loop clears the marker AGAIN, at 0x00417ff1, from
  *   INSIDE the loop body, so it wipes the marker of every cell it steps onto.
  *
- *   The kind == 0x0a loop does NOT.  Its body (0x00417f52) has no such store.
+ *   The kind == TILE_SLIDE_U loop does NOT.  Its body (0x00417f52) has no such store.
  *
  * So the V scan erases the markers along its track and the U scan leaves
  * them standing.  Both are transcribed as written.
@@ -343,9 +343,9 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     /* The single point the two track axes are distinguished. */
     if (s_fx_slideaxis) {
-        if (kind == 0x0a)
+        if (kind == TILE_SLIDE_U)
             kind = 0x0b;
-        else if (kind == 0x0b)
+        else if (kind == TILE_SLIDE_V)
             kind = 0x0a;
     }
 
@@ -374,8 +374,8 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         log_write("slideobject: slide spawn #%d -- slot=%u u=%u v=%u "
                   "height=%u kind=0x%x %s\n",
                   s_logged_spawn, (unsigned)n, u, v, height, kind,
-                  (kind == 0x0a) ? "SCAN-U" :
-                  (kind == 0x0b) ? "SCAN-V" : "no-scan");
+                  (kind == TILE_SLIDE_U) ? "SCAN-U" :
+                  (kind == TILE_SLIDE_V) ? "SCAN-V" : "no-scan");
     }
 
     obj->clock_    = game->clock();
@@ -387,7 +387,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     /* Fires for EVERY kind, including the ones that never scan. */
     tile->setObjectMarker(0);
 
-    if (kind == 0x0a) {
+    if (kind == TILE_SLIDE_U) {
         /* Walk U.  Does NOT clear the marker as it goes. */
         var = (unsigned char)u;
         for (;;) {
@@ -399,12 +399,12 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
             last = var;
             var  = (unsigned char)(var + 1);
             tile = Tile::at(base, (int)var, (int)v);
-            if (tile->objectMarker() != 0)
+            if (tile->objectMarker() != TILE_EMPTY)
                 break;
         }
         obj->trackStart_ = (unsigned char)u;
         obj->limit_      = last;
-    } else if (kind == 0x0b) {
+    } else if (kind == TILE_SLIDE_V) {
         /* Walk V.  DOES clear the marker of every cell it steps onto. */
         var = (unsigned char)v;
         for (;;) {
@@ -417,7 +417,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
             last = var;
             var  = (unsigned char)(var + 1);
             tile = Tile::at(base, (int)u, (int)var);
-            if (tile->objectMarker() != 0)
+            if (tile->objectMarker() != TILE_EMPTY)
                 break;
         }
         obj->trackStart_ = (unsigned char)v;

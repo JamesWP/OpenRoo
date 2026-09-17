@@ -346,7 +346,7 @@ unsigned int Player::updateTileEffects()
             goto expire;
 
         /* ── The random roll for a -1 tile ───────────────────────────── */
-        if ((signed char)t->contents() == -1) {
+        if ((signed char)t->contents() == CONTENTS_RANDOM) {
             int r = (int)crt_rand() * 8;
             /* 8-bit add, exactly as `add $0x5,%dl`. */
             signed char rolled = (signed char)((char)(r / 0x7FFF) + 5);
@@ -356,7 +356,7 @@ unsigned int Player::updateTileEffects()
         }
 
         /* ── 6: time bonus ───────────────────────────────────────────── */
-        if ((signed char)curTile()->contents() == 6) {
+        if ((signed char)curTile()->contents() == CONTENTS_TIME_BONUS) {
             /* Five more seconds on the map's time limit, through the tile
              * base (the original's `[tileBase+4]`). */
             LevelMap *map = LevelMap::fromTileBase(tileBase_);
@@ -370,7 +370,7 @@ unsigned int Player::updateTileEffects()
         }
 
         /* ── 1: crystal (VoicePool, not a static buffer) ─────────────── */
-        if ((signed char)curTile()->contents() == 1) {
+        if ((signed char)curTile()->contents() == CONTENTS_CRYSTAL) {
             gemsCollected_ += 1;
             curTile()->setContents(0);
             itemsCollected_ += 1;
@@ -388,7 +388,7 @@ unsigned int Player::updateTileEffects()
         }
 
         /* ── 7 ───────────────────────────────────────────────────────── */
-        if ((signed char)curTile()->contents() == 7) {
+        if ((signed char)curTile()->contents() == CONTENTS_EXTRA_LIFE) {
             lives_ += 1;
             curTile()->setContents(0);
             itemsCollected_ += 1;
@@ -398,7 +398,7 @@ unsigned int Player::updateTileEffects()
         }
 
         /* ── 5: gated on +0x120, and its sound is indexed by +0x15a ──── */
-        if ((signed char)curTile()->contents() == 5 && falling_ == 0) {
+        if ((signed char)curTile()->contents() == CONTENTS_PARAGLIDER && falling_ == 0) {
             glides_ += 1;
             curTile()->setContents(0);
             itemsCollected_ += 1;
@@ -414,7 +414,7 @@ unsigned int Player::updateTileEffects()
         }
 
         /* ── 9 ───────────────────────────────────────────────────────── */
-        if ((signed char)curTile()->contents() == 9) {
+        if ((signed char)curTile()->contents() == CONTENTS_GRANT_09) {
             field_e8 += 3;
             curTile()->setContents(0);
             itemsCollected_ += 1;
@@ -428,7 +428,7 @@ unsigned int Player::updateTileEffects()
          * flag. */
 
         /* ── 8: timed ────────────────────────────────────────────────── */
-        if ((signed char)curTile()->contents() == 8) {
+        if ((signed char)curTile()->contents() == CONTENTS_EFFECT_8) {
             if (effect8Active_ == 0)
                 appendEffect(8);
             copy8(&effect8Start_, &now_);
@@ -441,7 +441,7 @@ unsigned int Player::updateTileEffects()
         }
 
         /* ── 0xb: timed, reverses PlayerMoveForward ──────────────────── */
-        if ((signed char)curTile()->contents() == 0xb) {
+        if ((signed char)curTile()->contents() == CONTENTS_REVERSED) {
             if (effectBActive_ == 0)
                 appendEffect(0xb);
             copy8(&effectBStart_, &now_);
@@ -454,7 +454,7 @@ unsigned int Player::updateTileEffects()
         }
 
         /* ── 0xa: timed, speed change ────────────────────────────────── */
-        if ((signed char)curTile()->contents() == 0xa) {
+        if ((signed char)curTile()->contents() == CONTENTS_SPEED_UP) {
             if (effectAActive_ == 0)
                 appendEffect(0xa);
             copy8(&effectAStart_, &now_);
@@ -468,7 +468,7 @@ unsigned int Player::updateTileEffects()
         }
 
         /* ── 0xc: timed, speed change ────────────────────────────────── */
-        if ((signed char)curTile()->contents() == 0xc) {
+        if ((signed char)curTile()->contents() == CONTENTS_SPEED_DOWN) {
             if (effectCActive_ == 0)
                 appendEffect(0xc);
             copy8(&effectCStart_, &now_);
@@ -482,7 +482,7 @@ unsigned int Player::updateTileEffects()
         }
 
         /* ── 0xd: timed, transforms the player and the tile occupant ─── */
-        if ((signed char)curTile()->contents() == 0xd) {
+        if ((signed char)curTile()->contents() == CONTENTS_TRANSFORM) {
             if (effectDActive_ == 0)
                 appendEffect(0xd);
 

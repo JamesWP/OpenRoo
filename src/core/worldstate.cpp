@@ -268,7 +268,7 @@ static bool ws_passable_impl(const Observation *o, int fu, int fv,
     const WsTile *from = &o->grid[fv + fu * WS_GRID_PITCH];
     const WsTile *to   = &o->grid[tv + tu * WS_GRID_PITCH];
 
-    if (to->kind == 0)      return false;   /* no floor — confirmed by falling into one */
+    if (to->kind == TILE_EMPTY)      return false;   /* no floor — confirmed by falling into one */
     /* The occupant byte means "an entity is standing here": UpdateEntityMovement
      * writes the entity's kind (+0x152) into it on arrival and zeroes it on
      * departure, and SpawnFoeObject seeds it.  It is not used for scenery.
@@ -285,8 +285,8 @@ static bool ws_passable_impl(const Observation *o, int fu, int fv,
      * a foe or enemy is actually reported there. */
     if (to->occupant != 0 && !ignore_foes && ws_foe_on_cell(o, tu, tv))
         return false;
-    if (to->kind == 0x16)   return false;
-    if (to->kind == 0x17 && to->spent == 0) return false;
+    if (to->kind == TILE_IMPASSABLE)   return false;
+    if (to->kind == TILE_DESTRUCTIBLE && to->spent == 0) return false;
 
     /* Glue: an unspent pad freezes whoever stands on it, which on a level with
      * foes about is how you get caught.  A spent one is inert and safe. */
@@ -365,7 +365,7 @@ static void map_check(const BYTE *g, const Observation *obs)
     unsigned from_tiles = 0;
     for (unsigned u = 0; u < obs->cols; u++)
         for (unsigned v = 0; v < obs->rows; v++)
-            if (g_grid[v + u * WS_GRID_PITCH].contents == 1) from_tiles++;
+            if (g_grid[v + u * WS_GRID_PITCH].contents == CONTENTS_CRYSTAL) from_tiles++;
 
     unsigned from_foes = 0;
     const Game *game = (const Game *)g;

@@ -81,6 +81,25 @@ void MovableEntity::destroyBaseForGame()
     vtable_ = GAME_LEVELOBJECT_VTBL;       /* 0x401060 */
 }
 
+/* See the header.  The typedef is __thiscall because the game's slot 0 is;
+ * `self` is typed MovableEntity * because every object that reaches here is
+ * one -- Object_DestroyAndCompactId's only callers hold Foe ** and Bomb **,
+ * and both derive from this class. */
+typedef void (__attribute__((thiscall)) *scalar_dtor_fn)(MovableEntity *self,
+                                                         int flags);
+
+void MovableEntity::destroyViaVtable(int flags)
+{
+    /* Through a void * first: the class is __attribute__((packed)), so
+     * casting `this` straight to a function-pointer pointer trips
+     * -Waddress-of-packed-member.  The vtable pointer is the object's first
+     * dword either way. */
+    void *raw = this;
+
+    scalar_dtor_fn *vtbl = *(scalar_dtor_fn **)raw;
+    vtbl[0](this, flags);
+}
+
 void MovableEntity::zeroSoundSlots()
 {
     sound_a7_ = 0;
@@ -476,7 +495,7 @@ unsigned int MovableEntity::updateMovement()
         }
 
         Tile *t = CUR;
-        if ((signed char)t->objectMarker() == 0x11 && (unsigned)t->height() == (unsigned)(int)GH &&
+        if ((signed char)t->objectMarker() == TILE_SWITCH && (unsigned)t->height() == (unsigned)(int)GH &&
             ((signed char)kind_) != 9 && field_d3 == 0) {
             field_d7 = t->field1f3();
             snd_at(sound_cb_, (float)(int)GU, (float)(int)GH, -(float)(int)GV, 0);
@@ -486,7 +505,7 @@ unsigned int MovableEntity::updateMovement()
         t = CUR;
         if ((unsigned)(int)GH == (unsigned)t->height()) {
             /* --- glue pad (kind 2) --- */
-            if ((signed char)t->objectMarker() == 2 && t->busy() == 0) {
+            if ((signed char)t->objectMarker() == TILE_GLUE && t->busy() == 0) {
                 if (field_126 == K_ZERO) {
                     copy8(&field_126, &now_);
                     if (field_156 != 0)
@@ -506,7 +525,7 @@ unsigned int MovableEntity::updateMovement()
 
             /* --- climb (kind 0x10) --- */
             Tile *c = CUR;
-            if ((signed char)c->objectMarker() == 0x10) {
+            if ((signed char)c->objectMarker() == TILE_CLIMB) {
                 unsigned char dir = c->climbDir();
                 if (climbing_ == 0)
                     snd_at(sound_af_, (float)(int)GU, (float)(int)GH,
@@ -523,7 +542,7 @@ unsigned int MovableEntity::updateMovement()
             }
 
             /* --- teleporter (kind 0x0f) --- */
-            if ((signed char)CUR->objectMarker() == 0x0f) {
+            if ((signed char)CUR->objectMarker() == TILE_TELEPORTER) {
                 pendingMove_ = 0;
                 if (((signed char)teleportPhase_) == 1 && K_HALF_SEC_MS <= now_ - teleportSince_) {
                     copy8(&teleportSince_, &now_);
@@ -564,7 +583,7 @@ unsigned int MovableEntity::updateMovement()
             if (((signed char)slideSlot_) == -1) {
                 unsigned char *base = tileBase_;
                 Tile *here = CUR;
-                if ((signed char)here->objectMarker() == 0x0c) {
+                if ((signed char)here->objectMarker() == TILE_SLIDE_TRACK) {
                     unsigned pu = here->slideOriginU();
                     unsigned pv = here->slideOriginV();
                     Tile *p = Tile::at(base, pu, pv);
@@ -579,7 +598,7 @@ unsigned int MovableEntity::updateMovement()
             }
 
             /* --- conveyor (kind 0x15) --- */
-            if ((signed char)CUR->objectMarker() == 0x15) {
+            if ((signed char)CUR->objectMarker() == TILE_CONVEYOR) {
                 if (conveyorDir_ == 0) {
                     pendingMove_ = lastMoveDir_;
                     turnKind_ = 0;
@@ -599,7 +618,7 @@ unsigned int MovableEntity::updateMovement()
         }
 
         Tile *t2 = CUR;
-        if ((signed char)t2->objectMarker() != 0x15 ||
+        if ((signed char)t2->objectMarker() != TILE_CONVEYOR ||
             (unsigned)t2->height() != (unsigned)(int)GH) {
             if (sound_ab_ != 0)
                 CStatic_HaltPlayback(sound_ab_);
@@ -610,7 +629,7 @@ unsigned int MovableEntity::updateMovement()
     /* ─── Ladder / lift tile (kind 9) ───────────────────────────────── */
     {
         Tile *t = CUR;
-        if ((signed char)t->objectMarker() == 9 && (unsigned)t->height() == (unsigned)(int)GH)
+        if ((signed char)t->objectMarker() == TILE_LIFT && (unsigned)t->height() == (unsigned)(int)GH)
             onLift_ = 1;
         if (onLift_ != 0 && ((signed char)moveState_) == 0) {
             heightCell_ = t->height();
@@ -651,7 +670,7 @@ unsigned int MovableEntity::updateMovement()
         signed char restore = 0;
         Tile *t = CUR;
 
-        if ((signed char)t->objectMarker() == 0 && (signed char)t->height() != 0) {
+        if ((signed char)t->objectMarker() == TILE_EMPTY && (signed char)t->height() != 0) {
             restore = (signed char)t->height();
             t->setHeight(0);
         }
@@ -660,7 +679,7 @@ unsigned int MovableEntity::updateMovement()
 
         t = CUR;
         bool go_fall;
-        if ((signed char)t->objectMarker() == 0 && GH > -100) {
+        if ((signed char)t->objectMarker() == TILE_EMPTY && GH > -100) {
             go_fall = true;
         } else {
             signed char h    = GH;
@@ -679,7 +698,7 @@ unsigned int MovableEntity::updateMovement()
                 }
                 if (gliding_ == 0) {
                     signed char h2 = GH;
-                    if ((signed char)CUR->objectMarker() == 0x0e ||
+                    if ((signed char)CUR->objectMarker() == TILE_JUMP_PAD ||
                         ((int)((unsigned)fallStartH_ - (int)h2) < 3 && h2 > 1)) {
                         moveState_ = 0;           /* survived */
                         if (((VoicePool *)sound_cf_) != 0 && ((signed char)kind_) == 4) {
@@ -811,7 +830,7 @@ unsigned int MovableEntity::updateMovement()
     /* ─── Idle: jump pad (kind 0x0e), then start a queued move ──────── */
     if (moveDir_ == 0) {
         Tile *t = CUR;
-        if ((signed char)t->objectMarker() == 0x0e) {
+        if ((signed char)t->objectMarker() == TILE_JUMP_PAD) {
             if ((unsigned)(int)GH == (unsigned)t->height())
                 pendingMove_ = 0;
 

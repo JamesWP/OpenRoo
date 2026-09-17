@@ -39,11 +39,11 @@
  * Read from the listing at 0x00401cd0, not from the decompile.  A cell is
  * blocked when any of these holds, and walkable otherwise:
  *
- *   kind == 0x00 and blocker(+0x1bc) == 0    void with nothing bridging it
- *   kind == 0x16
- *   kind == 0x17 and spent(+0x217) == 0
+ *   kind == TILE_EMPTY and blocker(+0x1bc) == 0    void with nothing bridging it
+ *   kind == TILE_IMPASSABLE
+ *   kind == TILE_DESTRUCTIBLE and spent(+0x217) == 0
  *   mode == 7    and occupant(+0x1a5) is 3 or 4
- *   mode == 2    and kind == 0x11 and spent == 0 and occupant != 4
+ *   mode == 2    and kind == TILE_SWITCH and spent == 0 and occupant != 4
  *
  * Four exactness points, all from the listing:
  *
@@ -63,7 +63,7 @@
  *    The two are not the same number and must not be merged.
  *
  * 4. THE FIELD READS ARE LAZY IN THE ORIGINAL.  blocker(+0x1bc) is loaded
- *    only when kind == 0, and spent(+0x217) only on the two branches that
+ *    only when kind == TILE_EMPTY, and spent(+0x217) only on the two branches that
  *    test it.  This transcription keeps that order rather than hoisting the
  *    loads, so an out-of-range cell touches exactly the bytes the original
  *    touched.
@@ -337,11 +337,11 @@ int FoePath::passable(int u, int v)
     const unsigned char kind = t->objectMarker();
 
     /* Void cell with nothing bridging it (+0x1bc read only here: lazy). */
-    if (kind == 0 && t->slideTrack() == 0)
+    if (kind == TILE_EMPTY && t->slideTrack() == 0)
         return 0;
-    if (kind == 0x16)
+    if (kind == TILE_IMPASSABLE)
         return 0;
-    if (kind == 0x17 && t->busy() == 0)
+    if (kind == TILE_DESTRUCTIBLE && t->busy() == 0)
         return 0;
 
     const unsigned char mode = mode_;
@@ -352,7 +352,7 @@ int FoePath::passable(int u, int v)
             return 0;
     }
 
-    if (mode == 2 && kind == 0x11 &&
+    if (mode == 2 && kind == TILE_SWITCH &&
         t->busy() == 0 && t->occupant() != 4)
         return 0;
 
@@ -1351,13 +1351,13 @@ Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned cha
     /* Flat step, or a kind-9 step whose two step heights bracket the move.
      * The lift bytes +0x1d3/+0x1d4 are compared as UNSIGNED bytes here,
      * though Tile types them signed for the lift tick. */
-    if (from->objectMarker() != 0x10 && from->height() == to->height())
+    if (from->objectMarker() != TILE_CLIMB && from->height() == to->height())
         flag = 1;
-    else if (to->objectMarker() == 9 &&
+    else if (to->objectMarker() == TILE_LIFT &&
              ((unsigned char)to->liftBottom() == from->height() ||
               (unsigned char)to->liftTop() == from->height()))
         flag = 1;
-    else if (from->objectMarker() == 9 &&
+    else if (from->objectMarker() == TILE_LIFT &&
              ((unsigned char)from->liftBottom() == to->height() ||
               (unsigned char)from->liftTop() == to->height()))
         flag = 1;
@@ -1378,12 +1378,12 @@ Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned cha
         }
     } else {
         const int d = (int)to->height() - (int)from->height();
-        if (from->objectMarker() != 0x10 && d < 3 && d > 0)
+        if (from->objectMarker() != TILE_CLIMB && d < 3 && d > 0)
             flag = (from->slideTrack() == 0);
     }
 
     /* Bridge / conveyor: only passable along its own direction byte. */
-    if (from->objectMarker() == 0x10 && from->height() == to->height()) {
+    if (from->objectMarker() == TILE_CLIMB && from->height() == to->height()) {
         const unsigned char dir = from->climbDir();
         if (v_from < v_to && dir == 1)
             flag = 1;
@@ -1397,11 +1397,11 @@ Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned cha
             flag = 0;                    /* clears earlier clauses */
     }
 
-    if (to->objectMarker() == 0x10)
+    if (to->objectMarker() == TILE_CLIMB)
         flag = 1;
 
     /* Elevator: its level byte must match the height of the cell behind. */
-    if (from->objectMarker() == 0x0e) {
+    if (from->objectMarker() == TILE_JUMP_PAD) {
         const unsigned char lvl = from->field1f1();
         const Tile *nu_pos = Tile::at(base, u_from + 1, v_from);
         const Tile *nu_neg = Tile::at(base, u_from - 1, v_from);
@@ -1420,12 +1420,12 @@ Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned cha
             flag = 0;                    /* clears earlier clauses */
     }
 
-    if (to->objectMarker() == 0x0e)
+    if (to->objectMarker() == TILE_JUMP_PAD)
         flag = 1;
 
     /* Unoccupied jump pad: the answer is about the cell behind, and nothing
      * decided above survives. */
-    if (from->objectMarker() == 2 && from->occupant() == 0) {
+    if (from->objectMarker() == TILE_GLUE && from->occupant() == 0) {
         const signed char du = (signed char)(u_from - u_to);
         const signed char dv = (signed char)(v_from - v_to);
         const int up = (int)u_to + (int)du * 2;

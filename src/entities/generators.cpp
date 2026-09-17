@@ -818,15 +818,8 @@ static void magnet_env_destruct(MagnetEnvironment *self)
     self->base.pVtable = (void **)env_vtbl_base;
 }
 
-/* 0x4484b0 / 0x44c220 / 0x44ca40, MSVC scalar deleting dtor: destruct, and if
- * bit 0 of the flags is set, free the block.  env_create allocated it with our
- * own operator new, so it goes back with our own delete.  Returns this. */
-static void *env_scalar_delete(void *self, unsigned flags)
-{
-    if (flags & 1)
-        ::operator delete(self);
-    return self;
-}
+/* 0x4484b0 / 0x44c220 / 0x44ca40 are the Environment family's MSVC scalar
+ * deleting dtors; their shared tail is factory.h's scalar_delete<T>. */
 
 /* ─── Base Environment slots 1-5 ─── */
 
@@ -1034,14 +1027,7 @@ static void base_gen_destruct(Generator *self)
     self->pVtable = (void **)gen_vtbl_base;
 }
 
-/* The scalar deleting dtors' tail.  gen_create allocated the block with our
- * own operator new. */
-static void *gen_scalar_delete(void *self, unsigned flags)
-{
-    if (flags & 1)
-        ::operator delete(self);
-    return self;
-}
+/* The scalar deleting dtors' tail is factory.h's scalar_delete<T>. */
 
 /* 0x4483e0, Generator's base CopyFrom: the type-name gate, then dwEnabled. */
 static BOOL gen_copy_base(Generator *self, const Generator *src)
@@ -1781,10 +1767,10 @@ Generator *gen_create(const char *name)
  * (0x448fb0) and its density (0x448f30) alive in the game.  Only two facts
  * about its owner are needed, both visible in those instructions: the table is
  * at +0x14 and a DWORD index at +0x8c is reset. */
-static void fill_gaussian_field(void *self, float mu, float sigma)
+static void fill_gaussian_field(GaussianFieldHost *self, float mu, float sigma)
 {
-    gauss_fill((float *)((BYTE *)self + 0x14), 30, mu, sigma, 0.01f);
-    *(DWORD *)((BYTE *)self + 0x8c) = 0;
+    gauss_fill(self->samples, 30, mu, sigma, 0.01f);
+    self->cursor = 0;
 }
 
 /* ─── Cloning (0x4488b0 / 0x448a70) ─── */
@@ -1829,7 +1815,7 @@ __declspec(dllexport) void *THISCALL
 Env_BaseDtor(Environment *self, unsigned flags)
 {
     base_env_destruct(self);
-    return env_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) BOOL THISCALL
@@ -1853,14 +1839,14 @@ __declspec(dllexport) void *THISCALL
 Env_GravityDtor(GravityEnvironment *self, unsigned flags)
 {
     gravity_env_destruct(self);
-    return env_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) void *THISCALL
 Env_MagnetDtor(MagnetEnvironment *self, unsigned flags)
 {
     magnet_env_destruct(self);
-    return env_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) BOOL THISCALL
@@ -1891,7 +1877,10 @@ Gen_AttachRing(Generator *self, RingBuffer *ring)        { return gen_attach_rin
 
 /* 0x438170, reached by CALL_PATCHES (2 sites) — see fill_gaussian_field. */
 __declspec(dllexport) void THISCALL
-Gen_FillGaussianField(void *self, float mu, float sigma) { fill_gaussian_field(self, mu, sigma); }
+Gen_FillGaussianField(GaussianFieldHost *self, float mu, float sigma)
+{
+    fill_gaussian_field(self, mu, sigma);
+}
 
 __declspec(dllexport) BOOL THISCALL
 Gen_BaseCopyFrom(Generator *self, const Generator *src)  { return gen_copy_base(self, src); }
@@ -1900,7 +1889,7 @@ __declspec(dllexport) void *THISCALL
 Gen_BaseDtor(Generator *self, unsigned flags)
 {
     base_gen_destruct(self);
-    return gen_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) void *THISCALL
@@ -1908,7 +1897,7 @@ Gen_PointDtor(PointGenerator *self, unsigned flags)
 {
     self->base.pVtable = (void **)gen_vtbl_point;
     base_gen_destruct(&self->base);
-    return gen_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) void *THISCALL
@@ -1916,21 +1905,21 @@ Gen_BoxDtor(BoxGenerator *self, unsigned flags)
 {
     self->base.pVtable = (void **)gen_vtbl_box;
     base_gen_destruct(&self->base);
-    return gen_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) void *THISCALL
 Gen_StdDtor(StdGenerator *self, unsigned flags)
 {
     std_gen_destruct(self);
-    return gen_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) void *THISCALL
 Gen_XStdDtor(XStdGenerator *self, unsigned flags)
 {
     xstd_gen_destruct(self);
-    return gen_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) void THISCALL
@@ -1973,7 +1962,7 @@ __declspec(dllexport) void *THISCALL
 Gen_CylDtor(CylinderGenerator *self, unsigned flags)
 {
     cyl_gen_destruct(self);
-    return gen_scalar_delete(self, flags);
+    return scalar_delete(self, flags);
 }
 
 __declspec(dllexport) BOOL THISCALL

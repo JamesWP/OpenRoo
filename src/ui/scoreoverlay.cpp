@@ -3,7 +3,7 @@
  * The two end-of-game overlays, and the last pair of "overlay quad + text"
  * functions in the render closure.  Both are
  *
- *   __cdecl(GameGlobal *g, Game *game, Direct3D *d3d, TextRenderer *text, int n)
+ *   __cdecl(Game *g, void *game, Direct3D *d3d, TextRenderer *text, int n)
  *
  * — FIVE dword args, not the three the closure table in RENDER_PLAN.md
  * credits them with.  The extra two were found in the disassembly, not the
@@ -58,14 +58,18 @@
  * The four text entry points (0x413690 RenderText, 0x413E30, 0x413D90,
  * 0x413D00 DrawCenteredText) and the sprintf at 0x450655 stay the game's and
  * are called through, so all glyph traffic still reaches the proxy layer the
- * same way.  All five are __thiscall/__cdecl exactly as declared below; the
- * text ones are callee-cleanup, confirmed by the caller reading [ESP+0x1dc]
- * as arg1 immediately after each call.
+ * same way.  The four now have an owner -- TextRenderer, a placeholder class
+ * in textrenderer.h, on the SoundManager pattern -- so this file calls
+ * methods and no call site changes when one is replaced.  All five are
+ * __thiscall/__cdecl exactly as declared there; the text ones are
+ * callee-cleanup, confirmed by the caller reading [ESP+0x1dc] as arg1
+ * immediately after each call.
  *
- * The two argument pointers stay opaque byte bases: the fields live at
- * offsets like +0x1404DD and +0x6F984 in structures nothing in this project
- * has mapped, and inventing a layout for them would be a guess.  They are
- * named by what the code does with them, and read at the literal offsets.
+ * arg1 is the Game (Game::instance(), *0x0046c498), so it is typed.  `game`
+ * stays an opaque byte base: its fields live at offsets like +0x6F984 in a
+ * structure nothing in this project has mapped, and inventing a layout for
+ * it would be a guess.  It is named by what the code does with it, and read
+ * at the literal offsets.
  *
  * KAROO_SCORE_FX visual-proof modes (read by value, never by presence):
  *   tint   — backdrop quad diffuse magenta instead of 0xFFFFFFFF.  Only these
@@ -79,8 +83,7 @@
 #include "texture.h"
 #include "log.h"
 #include "game.h"
-
-#define THISCALL __attribute__((thiscall))
+#include "textrenderer.h"
 
 #define OVERLAY_FVF   0x1c4     /* XYZRHW | DIFFUSE | SPECULAR | TEX1 */
 #define SCORE_LOG_FIRST 4
@@ -97,17 +100,18 @@
 #define g_pPanelVerts   ((const void *)0x004e0580)
 #define g_pPanelTexture (*(IDirect3DTexture2 **)0x004e0760)
 
-/* GameGlobal (*0x0046C498) — high-score table (highscores.h); offsets
- * within one HighScoreRecord. */
+/* Game (Game::instance(), *0x0046C498) — high-score table (highscores.h);
+ * offsets within one HighScoreRecord. */
 #define HS_NAME_OFF    0x00       /* char[0x32], %s                           */
 #define HS_SCORE_OFF   0x32       /* DWORD, %d, drawn in the last column      */
 #define HS_LEVEL_OFF   0x36       /* BYTE,  %d, drawn in the middle column    */
 
-/* GameGlobal — game-over score breakdown.  Unaligned dwords, in the order the
+/* Game — game-over score breakdown.  Unaligned dwords, in the order the
  * original reads them (which is not the order they sit in memory). */
 #define GO_V(off)  (*(const DWORD *)((const BYTE *)g + (off)))
 
-/* Game (0x0046C890) — the fonts and the overlay texture. */
+/* `game` (*0x0046C890) — the fonts and the overlay texture.  Not the Game;
+ * an unmapped object, so it stays an opaque byte base. */
 #define GM_P(off)  (*(void **)((BYTE *)game + (off)))
 #define GM_OVERLAY_TEX  0x6f8a8   /* SceneTexture* for the backdrop quad      */
 #define GM_HS_FONT_A    0x6f914   /* high-score rows                          */
@@ -117,23 +121,12 @@
 #define GM_PE_FONT_A    0x6f8cc   /* "...press Enter"                         */
 #define GM_PE_FONT_B    0x6f8d0
 
-/* ─── The game's own text entry points, called through ───────────────────── */
+/* ─── The game's own entry points, called through ────────────────────────── */
 
-typedef void (THISCALL *text_fn)(void *self, float x, float y,
-                                 float cellW, float cellH, float scale,
-                                 const char *str, Direct3D *d3d, DWORD zero,
-                                 void *fontA, void *fontB);
-typedef void (THISCALL *bigtext_fn)(void *self, float x, float y,
-                                    float cellW, float cellH, float scale,
-                                    const char *str, Direct3D *d3d, DWORD zero,
-                                    DWORD colourA, DWORD colourB,
-                                    float outline, float wobble, int n);
+/* The four text entry points are TextRenderer methods (textrenderer.h);
+ * only the CRT sprintf is still reached by address here. */
 typedef int (__cdecl *sprintf_fn)(char *, const char *, ...);
 
-#define ORIG_RENDER_TEXT     ((text_fn)0x00413690)     /* left-aligned        */
-#define ORIG_RENDER_TEXT_R   ((text_fn)0x00413e30)     /* the value columns   */
-#define ORIG_DRAW_BIG_TEXT   ((bigtext_fn)0x00413d90)  /* "GAME OVER"         */
-#define ORIG_DRAW_CENTERED   ((text_fn)0x00413d00)     /* "...press Enter"    */
 #define ORIG_MAYBE_SPRINTF   ((sprintf_fn)0x00450655)
 
 /* ─── FX mode ────────────────────────────────────────────────────────────── */
@@ -209,7 +202,8 @@ static void setup_overlay_state(Direct3D *d3d, void *game)
 /* ─── DrawHighScoreTable (0x434f90) ──────────────────────────────────────── */
 
 extern "C" __declspec(dllexport) void __cdecl
-Score_DrawHighScoreTable(void *g, void *game, Direct3D *d3d, void *text, int n)
+Score_DrawHighScoreTable(Game *g, void *game, Direct3D *d3d,
+                         TextRenderer *text, int n)
 {
     (void)n;   /* arg5 is pushed by the caller and never read here. */
 
@@ -232,11 +226,11 @@ Score_DrawHighScoreTable(void *g, void *game, Direct3D *d3d, void *text, int n)
     static LONG calls = 0;
     if (InterlockedIncrement(&calls) <= SCORE_LOG_FIRST)
         log_write("scoreoverlay: highscore %.0fx%.0f entries=%u\n",
-                   w, h, (unsigned)((const Game *)g)->highScores()->count());
+                   w, h, (unsigned)g->highScores()->count());
 
     /* Unsigned early-out, then a signed loop against a re-read count — both
      * as in the original. */
-    if (((const Game *)g)->highScores()->count() == 0)
+    if (g->highScores()->count() == 0)
         return;
 
     const float cellW = (float)(d3d->pSelectedMode->dwWidth * 12) * VSCALE;
@@ -248,24 +242,24 @@ Score_DrawHighScoreTable(void *g, void *game, Direct3D *d3d, void *text, int n)
     char buf[256];
     int row = 0, dy = 0;
     do {
-        const BYTE *rec = (const BYTE *)((const Game *)g)->highScores()->record(row);
+        const BYTE *rec = (const BYTE *)g->highScores()->record(row);
         const float y = ((float)dy + 180.0f) * w * VSCALE;
 
         ORIG_MAYBE_SPRINTF(buf, FMT_S, rec + HS_NAME_OFF);
-        ORIG_RENDER_TEXT(text, xName, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                         GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
+        text->drawLeft(xName, y, cellW, cellH, 0.75f, buf, d3d, 0,
+                       GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
 
         ORIG_MAYBE_SPRINTF(buf, FMT_D, (unsigned)rec[HS_LEVEL_OFF]);
-        ORIG_RENDER_TEXT_R(text, xLevel, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                           GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
+        text->drawRight(xLevel, y, cellW, cellH, 0.75f, buf, d3d, 0,
+                        GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
 
         ORIG_MAYBE_SPRINTF(buf, FMT_D, *(const DWORD *)(rec + HS_SCORE_OFF));
-        ORIG_RENDER_TEXT_R(text, xScore, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                           GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
+        text->drawRight(xScore, y, cellW, cellH, 0.75f, buf, d3d, 0,
+                        GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
 
         dy += 20;
         row++;
-    } while (row < (int)(unsigned)((const Game *)g)->highScores()->count());
+    } while (row < (int)(unsigned)g->highScores()->count());
 }
 
 /* ─── DrawGameOverScore (0x435420) ───────────────────────────────────────── */
@@ -276,9 +270,9 @@ Score_DrawHighScoreTable(void *g, void *game, Direct3D *d3d, void *text, int n)
 struct ScoreRow {
     float        vy;        /* virtual y / 640 — the original's own constant */
     const char  *label;     /* caption at x = 130                            */
-    unsigned     valOff;    /* GameGlobal offset of the count (unaligned)     */
+    unsigned     valOff;    /* Game offset of the count (unaligned)           */
     const char  *mul;       /* caption at x = 380, or NULL                   */
-    unsigned     prodOff;   /* GameGlobal offset of the product, if mul       */
+    unsigned     prodOff;   /* Game offset of the product, if mul             */
 };
 
 static const ScoreRow k_rows[] = {
@@ -293,7 +287,8 @@ static const ScoreRow k_rows[] = {
 };
 
 extern "C" __declspec(dllexport) void __cdecl
-Score_DrawGameOverScore(void *g, void *game, Direct3D *d3d, void *text, int n)
+Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
+                        TextRenderer *text, int n)
 {
     const DWORD dwWidth = d3d->pSelectedMode->dwWidth;
     const float w = (float)dwWidth;
@@ -315,9 +310,9 @@ Score_DrawGameOverScore(void *g, void *game, Direct3D *d3d, void *text, int n)
 
     /* "GAME OVER" — 24-unit cell, scale 0.8, two colours and two extra
      * floats the smaller entry point does not take. */
-    ORIG_DRAW_BIG_TEXT(text, w * 0.5f, S * 130.0f, S * 24.0f, S * 24.0f, 0.8f,
-                       (const char *)0x00466cfc, d3d, 0,
-                       0xffffff00, 0xffff0000, S * 3.0f, 0.01f, n);
+    text->drawBig(w * 0.5f, S * 130.0f, S * 24.0f, S * 24.0f, 0.8f,
+                  (const char *)0x00466cfc, d3d, 0,
+                  0xffffff00, 0xffff0000, S * 3.0f, 0.01f, n);
 
     const float cellW = (float)(dwWidth * 12) * VSCALE;
     const float cellH = (float)(dwWidth * 14) * VSCALE;
@@ -330,24 +325,24 @@ Score_DrawGameOverScore(void *g, void *game, Direct3D *d3d, void *text, int n)
         const ScoreRow &r = k_rows[i];
         const float y = w * r.vy;
 
-        ORIG_RENDER_TEXT(text, xLabel, y, cellW, cellH, 0.75f, r.label, d3d, 0,
-                         GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
+        text->drawLeft(xLabel, y, cellW, cellH, 0.75f, r.label, d3d, 0,
+                       GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
 
         ORIG_MAYBE_SPRINTF(buf, FMT_D, GO_V(r.valOff));
-        ORIG_RENDER_TEXT_R(text, r.mul ? xValue : xProd, y, cellW, cellH, 0.75f,
-                           buf, d3d, 0,
-                           GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
+        text->drawRight(r.mul ? xValue : xProd, y, cellW, cellH, 0.75f,
+                        buf, d3d, 0,
+                        GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
 
         if (r.mul) {
-            ORIG_RENDER_TEXT(text, xValue, y, cellW, cellH, 0.75f, r.mul, d3d, 0,
-                             GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
+            text->drawLeft(xValue, y, cellW, cellH, 0.75f, r.mul, d3d, 0,
+                           GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
             ORIG_MAYBE_SPRINTF(buf, FMT_D, GO_V(r.prodOff));
-            ORIG_RENDER_TEXT_R(text, xProd, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                               GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
+            text->drawRight(xProd, y, cellW, cellH, 0.75f, buf, d3d, 0,
+                            GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
         }
     }
 
-    ORIG_DRAW_CENTERED(text, w * 0.5f, w * 0.59375f, cellW, cellH, 0.75f,
+    text->drawCentered(w * 0.5f, w * 0.59375f, cellW, cellH, 0.75f,
                        (const char *)0x00466898, d3d, 0,
                        GM_P(GM_PE_FONT_A), GM_P(GM_PE_FONT_B));
 }

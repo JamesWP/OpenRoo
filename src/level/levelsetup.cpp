@@ -212,7 +212,7 @@
 
 /* Counter words reset by ResetLevelObjectCounters. */
 /* They are Game::census(), a LevelCensus (levelcensus.h), and keep the
- * C_* names as fields (C_L2_D -> l2_d); 0x421e5 is NEVER reset -- see the
+ * C_* names as fields (C_L2_D -> transforms); 0x421e5 is NEVER reset -- see the
  * header.  The free-bomb (0x2173d, 0xb each) and timed-spawner (0x2023d,
  * 0x15 each) tables they index are Game::freeBomb()/timedSpawner(). */
 #define CEN                (((Game *)G)->census())
@@ -534,18 +534,18 @@ Sim_SetupLevelObjects(Game *self)
                 t->setBusy(0);
                 t->setField202(0);
 
-                if (t->contents() == 1)
+                if (t->contents() == CONTENTS_CRYSTAL)
                     GAME->setField42252((unsigned short)(GAME->field_42252() + 1));
-                if (t->contents() == 7) CEN->item7++;
+                if (t->contents() == CONTENTS_EXTRA_LIFE) CEN->extraLives++;
 
-                if (t->objectMarker() == 0x01) CEN->type1++;
-                if (t->objectMarker() == 0x02) CEN->type2++;
-                if (t->objectMarker() == 0x10) CEN->type10++;
-                if (t->objectMarker() == 0x15) CEN->type15++;
+                if (t->objectMarker() == TILE_KIND_01) CEN->kind01++;
+                if (t->objectMarker() == TILE_GLUE) CEN->gluePads++;
+                if (t->objectMarker() == TILE_CLIMB) CEN->climbTiles++;
+                if (t->objectMarker() == TILE_CONVEYOR) CEN->conveyors++;
 
-                if (t->objectMarker() == 0x17) {
+                if (t->objectMarker() == TILE_DESTRUCTIBLE) {
                     unsigned char item;
-                    CEN->type17++;
+                    CEN->destructibles++;
                     t->setBusy(0);
                     item = t->contents();
                     if (s_fx_noshadow)
@@ -553,13 +553,13 @@ Sim_SetupLevelObjects(Game *self)
                     if (item != 0) {
                         t->setField202(item);
                         t->setContents(0);
-                        if (t->field202() == 1) CEN->shadow1++;
-                        if (t->field202() == 7) CEN->shadow7++;
+                        if (t->field202() == CONTENTS_CRYSTAL) CEN->shadow1++;
+                        if (t->field202() == CONTENTS_EXTRA_LIFE) CEN->shadow7++;
                     }
                 }
 
                 /* switch cell */
-                if (t->objectMarker() == 0x11) {
+                if (t->objectMarker() == TILE_SWITCH) {
                     unsigned char param = t->param();
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_SWITCH);
@@ -578,7 +578,7 @@ Sim_SetupLevelObjects(Game *self)
                 }
 
                 /* bridges along U, then along V */
-                if (t->objectMarker() == 0x12) {
+                if (t->objectMarker() == TILE_BRIDGE_U) {
                     unsigned char param = t->param();
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_XBRIDGE);
@@ -589,7 +589,7 @@ Sim_SetupLevelObjects(Game *self)
                         CEN->bridges++;
                     }
                 }
-                if (t->objectMarker() == 0x13) {
+                if (t->objectMarker() == TILE_BRIDGE_V) {
                     unsigned char param = t->param();
                     if (param == 0) {
                         GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_YBRIDGE);
@@ -601,35 +601,35 @@ Sim_SetupLevelObjects(Game *self)
                     }
                 }
 
-                if (t->objectMarker() == 0x10) {
+                if (t->objectMarker() == TILE_CLIMB) {
                     t->setClimbDir(t->param());
                     t->setParam(0);
                 }
 
                 /* type 3 becomes type 1, before the tests below see it */
-                if (t->objectMarker() == 0x03)
+                if (t->objectMarker() == TILE_KIND_03)
                     t->setObjectMarker(1);
 
-                if (t->objectMarker() == 0x09) {
+                if (t->objectMarker() == TILE_LIFT) {
                     LiftObject::spawn((Game *)G, u, v, t->height(), t->param());
                     t->setParam(0);
                 }
 
-                if (t->objectMarker() == 0x0e) {
+                if (t->objectMarker() == TILE_JUMP_PAD) {
                     t->setField1f1(t->param());
-                    CEN->type0e++;
+                    CEN->jumpPads++;
                     t->setParam(0);
                 }
 
                 /* a cell holding an item gets a random phase */
-                if (t->contents() != 0) {
+                if (t->contents() != CONTENTS_NONE) {
                     long double ph = (long double)(int)crt_rand();
                     ph = ph * (long double)K_TWO_PI;
                     ph = ph * (long double)K_INV_32K;
                     t->setItemPhase((float)ph);
                 }
 
-                if (t->objectMarker() == 0x0a || t->objectMarker() == 0x0b) {
+                if (t->objectMarker() == TILE_SLIDE_U || t->objectMarker() == TILE_SLIDE_V) {
                     t->setContents(0);
                     t->setParam(0);
                     SlideObject::spawn((Game *)G, u, v, t->height(),
@@ -637,11 +637,11 @@ Sim_SetupLevelObjects(Game *self)
                     t->setObjectMarker(0);
                 }
 
-                if (t->objectMarker() == 0x0d)
+                if (t->objectMarker() == TILE_BREAKABLE)
                     BreakableTile::spawn((Game *)G, u, v, t->height(), t->param());
 
                 /* teleport pairing */
-                if (t->objectMarker() == 0x0f && t->param() != 0) {
+                if (t->objectMarker() == TILE_TELEPORTER && t->param() != 0) {
                     unsigned char id = t->param();
                     unsigned char v2;
 
@@ -657,7 +657,7 @@ Sim_SetupLevelObjects(Game *self)
                                 unsigned char u2 = 0;
                                 do {
                                     Tile *t2 = CELL(M, u2, v2);
-                                    if (t2->objectMarker() == 0x0f &&
+                                    if (t2->objectMarker() == TILE_TELEPORTER &&
                                         t2->param() == id) {
                                         CEN->teleports++;
                                         t->setTeleportU(u2);
@@ -675,14 +675,14 @@ Sim_SetupLevelObjects(Game *self)
                 }
 
                 /* ── the snapshot: the cell as the file gave it ────────── */
-                if (s->contents() == 0x0d) CEN->l2_d++;
-                if (s->contents() == 0x08) CEN->l2_8++;
-                if (s->contents() == 0x06) CEN->l2_6++;
-                if (s->contents() == 0x05) CEN->l2_5++;
-                if (s->contents() == 0x0a) CEN->l2_a++;
-                if (s->contents() == 0x09) CEN->l2_9++;
+                if (s->contents() == CONTENTS_TRANSFORM) CEN->transforms++;
+                if (s->contents() == CONTENTS_EFFECT_8) CEN->effect8Items++;
+                if (s->contents() == CONTENTS_TIME_BONUS) CEN->timeBonuses++;
+                if (s->contents() == CONTENTS_PARAGLIDER) CEN->paragliders++;
+                if (s->contents() == CONTENTS_SPEED_UP) CEN->speedUps++;
+                if (s->contents() == CONTENTS_GRANT_09) CEN->grant09Items++;
 
-                if (s->contents() == 0x4d) {                /* free bomb */
+                if (s->contents() == CONTENTS_FREE_BOMB) {
                     /* The count is re-read for every store, as the
                      * original re-reads it. */
                     ((Game *)G)->freeBomb(CEN->freeBombs)->u = u;
@@ -697,7 +697,7 @@ Sim_SetupLevelObjects(Game *self)
                     CEN->freeBombs++;
                 }
 
-                if (s->contents() == 0x64) {                /* timed item */
+                if (s->contents() == CONTENTS_TIMED_SPAWN) {
                     unsigned idx;
                     unsigned char param;
 
@@ -737,7 +737,7 @@ Sim_SetupLevelObjects(Game *self)
                 {
                     int spawned2 = 0;
 
-                    if (s->contents() == 0x02) {
+                    if (s->contents() == CONTENTS_FOE_TYPE2) {
                         unsigned char param = t->param();
                         unsigned char hh;
 
@@ -757,7 +757,7 @@ Sim_SetupLevelObjects(Game *self)
                         spawned2 = 1;
                     }
 
-                    if (s->contents() == 0x03) {
+                    if (s->contents() == CONTENTS_FOE_TYPE3) {
                         Foe::spawn((Game *)G, u, v, t->height(), 3, t->param());
                         t->setContents(0);
                         t->setParam(0);
@@ -782,11 +782,13 @@ next_row:
     PL->setSlideSlot(0xff);
     GAME->setField173584(1);
 
-    CEN->total = (unsigned short)(CEN->l2_9 + CEN->l2_a +
-                                     CEN->shadow1 + CEN->l2_d +
-                                     CEN->l2_5 + CEN->shadow7 +
-                                     CEN->l2_8 + CEN->item7 +
-                                     CEN->l2_6 + GAME->field_42252());
+    /* The collectable-item count; see LevelCensus.  Summed in the
+     * original's order, which is not the field order. */
+    CEN->total = (unsigned short)(CEN->grant09Items + CEN->speedUps +
+                                  CEN->shadow1      + CEN->transforms +
+                                  CEN->paragliders  + CEN->shadow7 +
+                                  CEN->effect8Items + CEN->extraLives +
+                                  CEN->timeBonuses  + GAME->field_42252());
 
     PL->setMoveState(0);
     PL->setLastContact(*((Game *)G)->clock());

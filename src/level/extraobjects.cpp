@@ -77,7 +77,8 @@
 
 /* ParseExtraObjectEntry (0x423700) -- scene construction, deliberately still
  * the game's.  __thiscall(this, char *entry). */
-typedef int (__attribute__((thiscall)) *leoentry_fn)(void *self, char *entry);
+typedef int (__attribute__((thiscall)) *leoentry_fn)(ExtraObjects *self,
+                                                     char *entry);
 #define ORIG_PARSE_LEO_ENTRY ((leoentry_fn)0x00423700)
 
 #define GAME_DIR         ((const char *)0x004e01c4)
