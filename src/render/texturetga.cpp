@@ -100,6 +100,7 @@
 #include "tga.h"
 #include "log.h"
 #include "alloc.h"
+#include "gamestr.h"
 #include <stdio.h>
 
 /* ─── Originals left live in the binary ────────────────────────────────────
@@ -142,8 +143,6 @@ typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
 #define ORIG_FWRITE ((fwrite_fn)0x004513c7)
 #define GAME_LOG_FILE ((int *)0x00469cf8)
 
-#define STR_CREATESURFACE_FAILED ((const char *)0x0046718c)
-#define STR_LOCK_FAILED          ((const char *)0x004671a4)
 
 /* The inline REPNE SCASB the original uses for the two log calls: `not ecx`
  * followed by `dec ecx`, i.e. the true length. */
@@ -204,7 +203,6 @@ static unsigned int ftol8(long double v)
 }
 
 
-
 extern "C" {
 
 __declspec(dllexport) unsigned int __attribute__((thiscall))
@@ -251,8 +249,8 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 
     IDirectDrawSurface4 *tmp = NULL;
     if (dd->CreateSurface(&ddsd, &tmp, NULL) < 0) {
-        ORIG_FWRITE(STR_CREATESURFACE_FAILED,
-                       (int)tga_strlen(STR_CREATESURFACE_FAILED),
+        ORIG_FWRITE(GS_TEX_CREATESURFACE_FAILED,
+                       (int)tga_strlen(GS_TEX_CREATESURFACE_FAILED),
                        1, GAME_LOG_FILE);
         if (fp != NULL) fclose(fp);
         return 0;
@@ -262,7 +260,7 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
      * surface's real geometry, which is what the conversion loop below reads:
      * dwWidth, dwHeight, lPitch, lpSurface and the four channel masks. */
     if (tmp->Lock(NULL, &ddsd, 0, NULL) < 0) {
-        ORIG_FWRITE(STR_LOCK_FAILED, (int)tga_strlen(STR_LOCK_FAILED),
+        ORIG_FWRITE(GS_TEX_LOCK_FAILED, (int)tga_strlen(GS_TEX_LOCK_FAILED),
                        1, GAME_LOG_FILE);
         if (tmp != NULL)
             tmp->Release();

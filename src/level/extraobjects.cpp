@@ -74,6 +74,7 @@
 #include "extraobjects.h"
 #include "static.h"
 #include "soundmanager.h"
+#include "gamestr.h"
 
 /* ParseExtraObjectEntry (0x423700) -- scene construction, deliberately still
  * the game's.  __thiscall(this, char *entry). */
@@ -81,7 +82,6 @@ typedef int (__attribute__((thiscall)) *leoentry_fn)(ExtraObjects *self,
                                                      char *entry);
 #define ORIG_PARSE_LEO_ENTRY ((leoentry_fn)0x00423700)
 
-#define GAME_DIR         ((const char *)0x004e01c4)
 #define LEO_LOG_FIRST    6
 
 static char s_entry[0x10000];      /* the 16-bit index's full range */
@@ -118,7 +118,7 @@ int ExtraObjects::openFile(const char *name)
     objectCount_ = 0;
     entries_    = 0;
 
-    sprintf(path, "%s\\Level3DExtraObjects\\%s.leo", GAME_DIR, name);
+    sprintf(path, "%s\\Level3DExtraObjects\\%s.leo", GS_GAME_DIR, name);
 
     fp = fopen(path, "r");
     if (fp == NULL)

@@ -62,6 +62,7 @@
 #include "foe.h"
 #include "player.h"
 #include "tile.h"
+#include "gamestr.h"
 
 struct CDM;
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -70,14 +71,6 @@ CDM_StopTrack(CDM *self);
 
 #define CDAUDIO     ((CDM *)0x004dc640)
 #define GAMELOGGER  ((GameLogger *)0x0046c4c0)
-#define GAMEDIR     ((const char *)0x004e01c4)
-#define S_GAMEOVER  ((const char *)0x00465574)   /* "gameover"  */
-#define S_COMPLETED ((const char *)0x00465548)   /* "completed" */
-#define F_COMPLETED ((const char *)0x00465554)   /* "GAME: completed at level %d/%d" */
-#define F_CSL       ((const char *)0x00465cbc)   /* "GAME: c - sl" */
-#define F_LVLPATH   ((const char *)0x00465ca0)   /* "%s\\Levels\\%s.jjm" */
-#define F_LCNUM     ((const char *)0x00465c80)   /* "GAME: lc by number %d name:%s" */
-#define F_LC        ((const char *)0x00465c6c)   /* "GAME: lc %s" */
 
 #define G8(o)   (*(unsigned char *)(B + (o)))
 #define G32(o)  (*(unsigned int *)(B + (o)))
@@ -145,10 +138,10 @@ Sim_HandleTypedCheatCode(Game *self)
         if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
             ((Game *)B)->setState(2);
             if (((Game *)B)->musicOn() != 0)
-                ((Game *)B)->cdThemes()->play(S_GAMEOVER);
+                ((Game *)B)->cdThemes()->play(GS_GAME_GAMEOVER);
             Score_CalculateLevelScore((Game *)B, 0x28);
             ((Game *)B)->setDebounce(0x0d);
-            GameLog_LogMessage(GAMELOGGER, 1, F_COMPLETED,
+            GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_COMPLETED_AT_LEVEL,
                                (unsigned int)((Game *)B)->levelIndex() + 1,
                                (unsigned int)((Game *)B)->levelCount());
         } else {
@@ -156,7 +149,7 @@ Sim_HandleTypedCheatCode(Game *self)
             ((Game *)B)->menu()->setLock(1);
             ((Game *)B)->setState(3);
             if (((Game *)B)->musicOn() != 0)
-                ((Game *)B)->cdThemes()->play(S_COMPLETED);
+                ((Game *)B)->cdThemes()->play(GS_GAME_COMPLETED);
             ((Game *)B)->setCameraMode(2);
             Sim_RewindMenuStackToRootNode(((Game *)B)->menu());
             Sim_PopMenuNodeFromStack(((Game *)B)->menu());
@@ -167,7 +160,7 @@ Sim_HandleTypedCheatCode(Game *self)
             ((Game *)B)->menu()->setLock(1);
             Score_CalculateLevelScore((Game *)B, (char)((Game *)B)->state());
             ((Game *)B)->setRestartCount(0);
-            GameLog_LogMessage(GAMELOGGER, 1, F_CSL);
+            GameLog_LogMessage(GAMELOGGER, 1, GS_CHEAT_C_SL);
         }
         ((Game *)B)->setTotalPlayTime((double)(unsigned long long)((Game *)B)->timeElapsed() + ((Game *)B)->totalPlayTime());
     }
@@ -185,8 +178,8 @@ Sim_HandleTypedCheatCode(Game *self)
             unsigned char lvl = (unsigned char)(atoi(num) - 1);
             Sim_SetCurrentLevelName((Game *)B, lvl);
             if (lvl < ((Game *)B)->levelCount()) {
-                sprintf(path, F_LVLPATH, GAMEDIR, ((Game *)B)->levelName());
-                GameLog_LogMessage(GAMELOGGER, 3, F_LCNUM, (unsigned int)lvl,
+                sprintf(path, GS_CHEAT_FMT_LVL_PATH, GS_GAME_DIR, ((Game *)B)->levelName());
+                GameLog_LogMessage(GAMELOGGER, 3, GS_CHEAT_LC_BY_NUMBER, (unsigned int)lvl,
                                    ((Game *)B)->levelName());
                 ((Game *)B)->setLevelIndex(lvl);
                 FILE *fp = fopen(path, "r");
@@ -210,8 +203,8 @@ Sim_HandleTypedCheatCode(Game *self)
         if (len > 6) {
             memcpy(frame, buf + 6, len - 6);
             frame[len - 6] = 0;
-            GameLog_LogMessage(GAMELOGGER, 3, F_LC, (const char *)frame);
-            sprintf(path, F_LVLPATH, GAMEDIR, (const char *)frame);
+            GameLog_LogMessage(GAMELOGGER, 3, GS_CHEAT_LC, (const char *)frame);
+            sprintf(path, GS_CHEAT_FMT_LVL_PATH, GS_GAME_DIR, (const char *)frame);
             FILE *fp = fopen(path, "r");
             if (fp != NULL) {
                 pl->setGemsCollected(0);

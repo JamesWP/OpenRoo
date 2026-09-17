@@ -79,39 +79,12 @@
 #include "levelscore.h"
 #include "foe.h"
 #include "player.h"
+#include "gamestr.h"
 
 /* ─── Game data (DATA references, not calls) ─────────────────────────────── */
 
 #define GAME_LOGGER   ((GameLogger *)0x0046c4c0)
-#define GAME_DIR      ((const char *)0x004e01c4)
 
-#define STR_SCRIPTTEXTS ((const char *)0x0046601c)  /* "ScriptTexts.txt"      */
-#define STR_MODE_W      ((const char *)0x0046602c)  /* "w+t"                 */
-#define STR_LOG_CREATE  ((const char *)0x00466000)  /* "GAME: create a ..."  */
-#define STR_LOG_CREATED ((const char *)0x00465ce4)  /* "GAME: level report created" */
-#define STR_LOG_TIME    ((const char *)0x00465de8)  /* "GAME: time:%d"       */
-#define STR_TITLE       ((const char *)0x00465fe4)  /* "***** level report ******\n\n" */
-#define STR_GAMEFILE    ((const char *)0x00465fd4)  /* "gamefile:%s\n"       */
-#define STR_LEVELS      ((const char *)0x00465fc8)  /* "Levels:%d\n\n"       */
-#define STR_COLHDR1     ((const char *)0x00465f14)  /* "level-\tworld\t..."  */
-#define STR_COLHDR2     ((const char *)0x00465f04)  /* "nr\t \tlevel \n"     */
-#define STR_RULE        ((const char *)0x00465e08)  /* 249 dashes + "\n"     */
-#define STR_D_TAB       ((const char *)0x00465e04)  /* "%d\t"                */
-#define STR_TAB         ((const char *)0x00465e00)  /* "\t"                  */
-#define STR_BLANK_TAB   ((const char *)0x00465df8)  /* " \t"                 */
-#define STR_X_TAB       ((const char *)0x00465dfc)  /* "X\t"                 */
-#define STR_S_TAB       ((const char *)0x00465de4)  /* "%s\t"                */
-#define STR_NEWLINE     ((const char *)0x00465160)  /* "\n"                  */
-#define STR_BERNIE      ((const char *)0x00465dd4)  /* "Bernie Boulder"      */
-#define STR_STARS       ((const char *)0x00465d8c)  /* "****...****\n"       */
-#define STR_LVL_FILE    ((const char *)0x00465d70)  /* "** Level %d  Filename:%s \n" */
-#define STR_LVL_NAME    ((const char *)0x00465d5c)  /* "** Levelname: %s\n"  */
-#define STR_TALLY       ((const char *)0x00465d40)  /* "\t\t%d\t%d\t%d\n"    */
-#define STR_TESTSCORES  ((const char *)0x00465d30)  /* "\nTestscores:%d"     */
-#define STR_TEXTS_IN    ((const char *)0x00465d18)  /* "\nTexts in Scripts:%d" */
-#define STR_SPLINES_IN  ((const char *)0x00465d00)  /* "\nSplines in Scripts:%d" */
-#define STR_HSC_NAME    ((const char *)0x00465cdc)  /* "jj.hsc"              */
-#define STR_IS_PATH     ((const char *)0x00465878)  /* "%s\InstructionScripts\%s" */
 
 /* ─── Game logic this file drives — all of it ours now ───────────────────── */
 
@@ -196,12 +169,12 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     FILE *sink, *out;
     unsigned idx;
 
-    sink = fopen(STR_SCRIPTTEXTS, STR_MODE_W);   /* defect 1: not checked */
-    out  = fopen(pathname, STR_MODE_W);
+    sink = fopen(GS_RPT_SCRIPTTEXTS, GS_RPT_MODE_W);   /* defect 1: not checked */
+    out  = fopen(pathname, GS_RPT_MODE_W);
     if (out == NULL)
         return;
 
-    GameLog_LogMessage(GAME_LOGGER, 3, STR_LOG_CREATE);
+    GameLog_LogMessage(GAME_LOGGER, 3, GS_RPT_LOG_CREATE);
 
     *(WORD  *)(g + OFF_TALLY_A)     = 0;
     *(WORD  *)(g + OFF_TALLY_BONUS) = 0;
@@ -210,14 +183,14 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     ((Game *)g)->scriptPlayer()->setTextBlocks(0);
     ((Game *)g)->scriptPlayer()->setSplineLines(0);
 
-    fputs(STR_TITLE, out);
-    sprintf(buf, STR_GAMEFILE, ((Game *)g)->gameFileName());
+    fputs(GS_RPT_TITLE, out);
+    sprintf(buf, GS_RPT_GAMEFILE, ((Game *)g)->gameFileName());
     fputs(buf, out);
-    sprintf(buf, STR_LEVELS, (unsigned)((const Game *)g)->levelCount());
+    sprintf(buf, GS_RPT_LEVELS, (unsigned)((const Game *)g)->levelCount());
     fputs(buf, out);
-    fputs(STR_COLHDR1, out);
-    fputs(STR_COLHDR2, out);
-    fputs(STR_RULE, out);
+    fputs(GS_RPT_COLHDR1, out);
+    fputs(GS_RPT_COLHDR2, out);
+    fputs(GS_RPT_RULE, out);
 
     for (idx = 0; idx < (unsigned)((const Game *)g)->levelCount(); idx++) {
         unsigned catches = 0, timeBonus, n = idx + 1;
@@ -229,30 +202,30 @@ Report_WriteLevelReport(Game *self, const char *pathname)
         Sim_SetupLevelObjects(self);
         Score_CalculateLevelScore(self, 3);
 
-        sprintf(buf, STR_D_TAB, n);
+        sprintf(buf, GS_RPT_D_TAB, n);
         fputs(buf, out);
         fputs(((Game *)g)->map()->mapName(), out);
-        fputs(STR_TAB, out);
+        fputs(GS_FMT_TAB, out);
 
         if ((int)((Game *)g)->map()->bonus() == 0) {
-            fputs(STR_BLANK_TAB, out);
+            fputs(GS_RPT_BLANK_TAB, out);
         } else {
-            fputs(STR_X_TAB, out);
+            fputs(GS_RPT_X_TAB, out);
             *(short *)(g + OFF_TALLY_BONUS) += 1;
         }
 
         if (((Game *)g)->scriptPlayer()->loaded() == 0) {
-            fputs(STR_BLANK_TAB, out);
+            fputs(GS_RPT_BLANK_TAB, out);
         } else {
-            sprintf(buf, STR_D_TAB, (unsigned)((Game *)g)->scriptPlayer()->lineCount());
+            sprintf(buf, GS_RPT_D_TAB, (unsigned)((Game *)g)->scriptPlayer()->lineCount());
             fputs(buf, out);
             *(short *)(g + OFF_TALLY_IS) += 1;
         }
 
         if (((Game *)g)->extraObjects()->loaded() == 0) {
-            fputs(STR_BLANK_TAB, out);
+            fputs(GS_RPT_BLANK_TAB, out);
         } else {
-            sprintf(buf, STR_D_TAB, (unsigned)((Game *)g)->extraObjects()->objectCount());
+            sprintf(buf, GS_RPT_D_TAB, (unsigned)((Game *)g)->extraObjects()->objectCount());
             fputs(buf, out);
             *(short *)(g + OFF_TALLY_LEO) += 1;
         }
@@ -266,13 +239,13 @@ Report_WriteLevelReport(Game *self, const char *pathname)
             }
             catches = catchByte;
         }
-        sprintf(buf, STR_D_TAB, catches);
+        sprintf(buf, GS_RPT_D_TAB, catches);
         fputs(buf, out);
-        sprintf(buf, STR_D_TAB, (unsigned)(G->foeCount() - catches));
+        sprintf(buf, GS_RPT_D_TAB, (unsigned)(G->foeCount() - catches));
         fputs(buf, out);
 
         for (unsigned c = 0; c < COLUMN_COUNT; c++) {
-            sprintf(buf, STR_D_TAB, read_field(g, COLUMNS[c].off, COLUMNS[c].size));
+            sprintf(buf, GS_RPT_D_TAB, read_field(g, COLUMNS[c].off, COLUMNS[c].size));
             fputs(buf, out);
         }
 
@@ -280,71 +253,71 @@ Report_WriteLevelReport(Game *self, const char *pathname)
             ((Game *)g)->gemsRequired());
         ((Game *)g)->setVitalityPercent(0x32);
         timeBonus = (unsigned)(((Game *)g)->map()->fileTimeLimit() * 0x32) / 100;
-        GameLog_LogMessage(GAME_LOGGER, 3, STR_LOG_TIME, timeBonus);
+        GameLog_LogMessage(GAME_LOGGER, 3, GS_RPT_LOG_TIME, timeBonus);
         Score_CalculateLevelScore(self, 2);
 
-        sprintf(buf, STR_D_TAB, timeBonus);
+        sprintf(buf, GS_RPT_D_TAB, timeBonus);
         fputs(buf, out);
 
         total = *(int *)(g + OFF_SCORE_TOTAL)
               + ((((Game *)g)->tally()->score[TALLY_GEMS] + 0x78 + (int)timeBonus * 2
                   + ((Game *)g)->tally()->score[TALLY_VITALITY]) - (int)idx);   /* defect 6 */
         *(int *)(g + OFF_SCORE_TOTAL) = total;
-        sprintf(buf, STR_D_TAB, (unsigned)total);
+        sprintf(buf, GS_RPT_D_TAB, (unsigned)total);
         fputs(buf, out);
 
         Sim_SetCurrentLevelName(self, idx);
-        sprintf(buf, STR_S_TAB, (char *)(g + OFF_LEVEL_PATH));
+        sprintf(buf, GS_RPT_S_TAB, (char *)(g + OFF_LEVEL_PATH));
         fputs(buf, out);
-        fputs(STR_NEWLINE, out);   /* defect 3: the title's sprintf is dead */
+        fputs(GS_FMT_NEWLINE, out);   /* defect 3: the title's sprintf is dead */
 
         /* defect 4: seed the high-score table BACKWARDS from record 9 (the
          * original steps its pointer down by one record per 8 levels) */
         if ((idx % 8 == 0 && idx > 5) || idx == 6) {
             int k = (int)idx / 8;
             HighScoreRecord *rec = ((Game *)g)->highScores()->record(9 - k);
-            strcpy(rec->name, STR_BERNIE);
+            strcpy(rec->name, GS_RPT_BERNIE);
             rec->level = (unsigned char)(idx + 1);
             rec->score = (unsigned int)*(int *)(g + OFF_SCORE_TOTAL);
         }
 
         {
             char scriptPath[256];
-            sprintf(scriptPath, STR_IS_PATH, GAME_DIR,
+            sprintf(scriptPath, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR,
                     (char *)(g + OFF_LEVEL_PATH));
 
-            fputs(STR_STARS, sink);
-            sprintf(buf, STR_LVL_FILE, n, (char *)(g + OFF_LEVEL_PATH));
+            fputs(GS_RPT_STARS, sink);
+            sprintf(buf, GS_RPT_LVL_FILE, n, (char *)(g + OFF_LEVEL_PATH));
             fputs(buf, sink);
-            sprintf(buf, STR_LVL_NAME, ((Game *)g)->map()->title());
+            sprintf(buf, GS_RPT_LVL_NAME, ((Game *)g)->map()->title());
             fputs(buf, sink);
 
             if (((Game *)g)->scriptPlayer()->loaded() != 0)
                 ((Game *)g)->scriptPlayer()->readTextsForReport(scriptPath, sink);
 
-            fputs(STR_NEWLINE, sink);
-            fputs(STR_NEWLINE, sink);
+            fputs(GS_FMT_NEWLINE, sink);
+            fputs(GS_FMT_NEWLINE, sink);
         }
     }
 
-    fputs(STR_RULE, out);
-    sprintf(buf, STR_TALLY,
+    fputs(GS_RPT_RULE, out);
+    sprintf(buf, GS_RPT_TALLY,
             (unsigned)*(WORD *)(g + OFF_TALLY_BONUS),
             (unsigned)*(WORD *)(g + OFF_TALLY_IS),
             (unsigned)*(WORD *)(g + OFF_TALLY_LEO));
     fputs(buf, out);
-    sprintf(buf, STR_TESTSCORES, *(int *)(g + OFF_SCORE_TOTAL));
+    sprintf(buf, GS_RPT_TESTSCORES, *(int *)(g + OFF_SCORE_TOTAL));
     fputs(buf, out);
-    sprintf(buf, STR_TEXTS_IN, (unsigned)((Game *)g)->scriptPlayer()->textBlocks());
+    sprintf(buf, GS_RPT_TEXTS_IN, (unsigned)((Game *)g)->scriptPlayer()->textBlocks());
     fputs(buf, out);
-    sprintf(buf, STR_SPLINES_IN, (unsigned)((Game *)g)->scriptPlayer()->splineLines());
+    sprintf(buf, GS_RPT_SPLINES_IN, (unsigned)((Game *)g)->scriptPlayer()->splineLines());
     fputs(buf, out);
 
-    GameLog_LogMessage(GAME_LOGGER, 3, STR_LOG_CREATED);   /* defect 2 */
+    GameLog_LogMessage(GAME_LOGGER, 3, GS_RPT_LOG_CREATED);   /* defect 2 */
 
     fclose(out);
     if (sink != NULL)
         fclose(sink);
 
-    ((Game *)g)->highScores()->writeFile(STR_HSC_NAME, 'K');
+    ((Game *)g)->highScores()->writeFile(GS_RPT_HSC_NAME, 'K');
 }

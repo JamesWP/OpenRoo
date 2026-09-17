@@ -75,11 +75,11 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
 
 #include "soundmanager.h"
+#include "gamestr.h"
 
 #define PROGCTRL    ((ProgableControl *)0x0046c298)
 #define CDAUDIO     ((CDM *)0x004dc640)
 #define GAMELOGGER  ((GameLogger *)0x0046c4c0)
-#define F_CONTINUE  ((const char *)0x00465a3c)   /* "level completed - continue" */
 
 #define G8(o)   (*(unsigned char *)(B + (o)))
 #define G16(o)  (*(unsigned short *)(B + (o)))
@@ -297,19 +297,19 @@ Sim_HandleKeypress(Game *self)
         if (((Game *)B)->field_0c() == 0)
             PostQuitMessage(1);
         break;
-    case 0x14: rebind(B, (const char *)0x0046454c, 0x14, 0x26); break;
-    case 0x15: rebind(B, (const char *)0x0046453c, 0x15, 0x28); break;
-    case 0x16: rebind(B, (const char *)0x00464560, 0x16, 0x27); break;
-    case 0x17: rebind(B, (const char *)0x00464570, 0x17, 0x25); break;
-    case 0x18: rebind(B, (const char *)0x0046452c, 0x18, -1); break;
-    case 0x19: rebind(B, (const char *)0x0046451c, 0x19, -1); break;
-    case 0x1a: rebind(B, (const char *)0x00464508, 0x1a, -1); break;
-    case 0x1b: rebind(B, (const char *)0x004644f8, 0x1b, -1); break;
-    case 0x1c: rebind(B, (const char *)0x004644e8, 0x1c, -1); break;
-    case 0x1d: rebind(B, (const char *)0x004644cc, 0x1d, -1); break;
-    case 0x1e: rebind(B, (const char *)0x004644d8, 0x1e, -1); break;
-    case 0x1f: rebind(B, (const char *)0x004644c0, 0x1f, -1); break;
-    case 0x20: rebind(B, (const char *)0x004644b4, 0x20, -1); break;
+    case 0x14: rebind(B, GS_KEY_MOVE_FORWARD, 0x14, 0x26); break;
+    case 0x15: rebind(B, GS_KEY_MOVE_BACK, 0x15, 0x28); break;
+    case 0x16: rebind(B, GS_KEY_TURN_RIGHT, 0x16, 0x27); break;
+    case 0x17: rebind(B, GS_KEY_TURN_LEFT, 0x17, 0x25); break;
+    case 0x18: rebind(B, GS_KEY_ZOOM_IN, 0x18, -1); break;
+    case 0x19: rebind(B, GS_KEY_ZOOM_OUT, 0x19, -1); break;
+    case 0x1a: rebind(B, GS_KEY_RELEASE_BOMB, 0x1a, -1); break;
+    case 0x1b: rebind(B, GS_KEY_HARAKIRI, 0x1b, -1); break;
+    case 0x1c: rebind(B, GS_KEY_OVERVIEW, 0x1c, -1); break;
+    case 0x1d: rebind(B, GS_KEY_CAM_MODE_LEFT, 0x1d, -1); break;
+    case 0x1e: rebind(B, GS_KEY_CAM_MODE_RIGHT, 0x1e, -1); break;
+    case 0x1f: rebind(B, GS_KEY_CAM_MODE_UP, 0x1f, -1); break;
+    case 0x20: rebind(B, GS_KEY_CAM_MODE_DOWN, 0x20, -1); break;
     case 0x21:
         if (((Game *)B)->player()->gliding() == 0)
             ((Game *)B)->setCameraTurnsWithPlayer(((Game *)B)->cameraTurnsWithPlayer() == 0);
@@ -351,7 +351,7 @@ Sim_HandleKeypress(Game *self)
         ((Game *)B)->setCameraMode(1);
         ((Game *)B)->menu()->setLock(1);
         Sim_PopMenuNodeFromStack(MENU);
-        GameLog_LogMessage(GAMELOGGER, 1, F_CONTINUE);
+        GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_LEVEL_DONE_CONTINUE);
         if (((Game *)B)->fixedSounds()->levelCompleted != NULL)
             CStatic_HaltPlayback(((Game *)B)->fixedSounds()->levelCompleted);
         break;

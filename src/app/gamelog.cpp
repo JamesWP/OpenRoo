@@ -124,6 +124,7 @@
 #include "gamelog.h"
 #include "log.h"
 #include "alloc.h"
+#include "gamestr.h"
 
 /* The game's LoggerVtable at 0x0045ef98.  One slot -- the scalar-deleting
  * destructor -- confirmed by reading the four dwords there: 0x00441840 is
@@ -140,13 +141,6 @@
  * Named here as CLAUDE.md's no-callback rule requires. */
 
 /* The game's format strings, for the first-use audit below. */
-#define STR_BANNER  ((const char *)0x00467390)
-#define STR_LINE    ((const char *)0x004673fc)
-#define STR_SRCLINE ((const char *)0x00467438)
-#define STR_ERRLINE ((const char *)0x004675ac)
-#define STR_MODE_WC ((const char *)0x004673e0)
-#define STR_MB_TEXT ((const char *)0x00467360)
-#define STR_MB_CAPT ((const char *)0x0046737c)
 
 /* Our copies.  These are what actually get used; the audit proves them equal
  * to the game's.  Kept as literals rather than read from .rdata because the FX
@@ -175,11 +169,11 @@ static void verify_format_strings(void)
     if (done)
         return;
     done = 1;
-    verify_one(FMT_BANNER,  STR_BANNER,  "banner");
-    verify_one(FMT_LINE,    STR_LINE,    "line");
-    verify_one(FMT_SRCLINE, STR_SRCLINE, "srcline");
-    verify_one(FMT_ERRLINE, STR_ERRLINE, "errline");
-    verify_one(MODE_WC,     STR_MODE_WC, "mode");
+    verify_one(FMT_BANNER,  GS_LOG_BANNER,  "banner");
+    verify_one(FMT_LINE,    GS_LOG_LINE,    "line");
+    verify_one(FMT_SRCLINE, GS_LOG_SRCLINE, "srcline");
+    verify_one(FMT_ERRLINE, GS_LOG_ERRLINE, "errline");
+    verify_one(MODE_WC,     GS_LOG_MODE_WC, "mode");
 }
 
 /* ─── KAROO_GAMELOG_FX ────────────────────────────────────────────────────── */
@@ -333,7 +327,7 @@ GameLog_OpenLogFile(GameLogger *self, const char *filename, const char *mode)
     self->fp = fopen(self->fileName, mode);
     if (self->fp == NULL) {
         log_write("gamelog: could not open %s (mode %s)\n", self->fileName, mode);
-        MessageBoxA(NULL, STR_MB_TEXT, STR_MB_CAPT, 0);
+        MessageBoxA(NULL, GS_LOG_MB_TEXT, GS_LOG_MB_CAPT, 0);
         return 0;
     }
 
@@ -419,23 +413,23 @@ extern "C" __declspec(dllexport) const char * __cdecl
 GameLog_DSErrorToString(HRESULT hr)
 {
     switch ((unsigned)hr) {
-    case 0x80004001u: return (const char *)0x00467584; /* DSERR_UNSUPPORTED        */
-    case 0x80004002u: return (const char *)0x00467598; /* DSERR_NOINTERFACE        */
-    case 0x80004005u: return (const char *)0x00467574; /* DSERR_GENERIC            */
-    case 0x80040110u: return (const char *)0x00467560; /* DSERR_NOAGGREGATION      */
-    case 0x8007000Eu: return (const char *)0x0046754c; /* DSERR_OUTOFMEMORY        */
-    case 0x80070057u: return (const char *)0x00467510; /* DSERR_INVALIDPARAM       */
-    case 0x8878000Au: return (const char *)0x00467524; /* DSERR_ALLOCATED          */
-    case 0x8878001Eu: return (const char *)0x00467534; /* DSERR_CONTROLUNAVAIL     */
-    case 0x88780032u: return (const char *)0x004674fc; /* DSERR_INVALIDCALL        */
-    case 0x88780046u: return (const char *)0x004674e4; /* DSERR_PRIOLEVELNEEDED    */
-    case 0x88780064u: return (const char *)0x004674d4; /* DSERR_BADFORMAT          */
-    case 0x88780078u: return (const char *)0x004674c4; /* DSERR_NODRIVER           */
-    case 0x88780082u: return (const char *)0x004674a8; /* DSERR_ALREADYINITIALIZED */
-    case 0x88780096u: return (const char *)0x00467494; /* DSERR_BUFFERLOST         */
-    case 0x887800A0u: return (const char *)0x0046747c; /* DSERR_OTHERAPPHASPRIO    */
-    case 0x887800AAu: return (const char *)0x00467468; /* DSERR_UNINITIALIZED      */
-    default:          return (const char *)0x00467458; /* "Unknown HRESULT"        */
+    case 0x80004001u: return GS_LOG_DSERR_UNSUPPORTED; /* DSERR_UNSUPPORTED        */
+    case 0x80004002u: return GS_LOG_DSERR_NOINTERFACE; /* DSERR_NOINTERFACE        */
+    case 0x80004005u: return GS_LOG_DSERR_GENERIC; /* DSERR_GENERIC            */
+    case 0x80040110u: return GS_LOG_DSERR_NOAGGREGATION; /* DSERR_NOAGGREGATION      */
+    case 0x8007000Eu: return GS_LOG_DSERR_OUTOFMEMORY; /* DSERR_OUTOFMEMORY        */
+    case 0x80070057u: return GS_LOG_DSERR_INVALIDPARAM; /* DSERR_INVALIDPARAM       */
+    case 0x8878000Au: return GS_LOG_DSERR_ALLOCATED; /* DSERR_ALLOCATED          */
+    case 0x8878001Eu: return GS_LOG_DSERR_CONTROLUNAVAIL; /* DSERR_CONTROLUNAVAIL     */
+    case 0x88780032u: return GS_LOG_DSERR_INVALIDCALL; /* DSERR_INVALIDCALL        */
+    case 0x88780046u: return GS_LOG_DSERR_PRIOLEVELNEEDED; /* DSERR_PRIOLEVELNEEDED    */
+    case 0x88780064u: return GS_LOG_DSERR_BADFORMAT; /* DSERR_BADFORMAT          */
+    case 0x88780078u: return GS_LOG_DSERR_NODRIVER; /* DSERR_NODRIVER           */
+    case 0x88780082u: return GS_LOG_DSERR_ALREADYINITIALIZED; /* DSERR_ALREADYINITIALIZED */
+    case 0x88780096u: return GS_LOG_DSERR_BUFFERLOST; /* DSERR_BUFFERLOST         */
+    case 0x887800A0u: return GS_LOG_DSERR_OTHERAPPHASPRIO; /* DSERR_OTHERAPPHASPRIO    */
+    case 0x887800AAu: return GS_LOG_DSERR_UNINITIALIZED; /* DSERR_UNINITIALIZED      */
+    default:          return GS_LOG_HR_UNKNOWN; /* "Unknown HRESULT"        */
     }
 }
 

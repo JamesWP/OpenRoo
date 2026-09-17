@@ -144,6 +144,7 @@
 #include "tga.h"
 #include "log.h"
 #include "alloc.h"
+#include "gamestr.h"
 
 /* ─── Originals left live in the binary ──────────────────────────────────── */
 
@@ -163,7 +164,6 @@ typedef int   (__cdecl *sprintf_fn)(char *, const char *, ...);
 typedef char *(__cdecl *strrchr_fn)(const char *, int);
 #define ORIG_MAYBE_SPRINTF ((sprintf_fn)0x00450655)
 #define ORIG_STRRCHR       ((strrchr_fn)0x00451a50)
-#define FMT_PERCENT_S      ((const char *)0x004641f8)
 
 /* ImageLogger::Log — __cdecl(const char *, int len, int, int *sink). */
 typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
@@ -178,17 +178,6 @@ typedef IDirectDrawPalette *(__stdcall *dibpal_fn)(IDirectDraw4 *, HBITMAP);
 
 /* Strings at their original addresses, so the pointer handed to the logger is
  * identical to the original's. */
-#define STR_NEWLINE            ((const char *)0x00465160)
-#define STR_TYPE_OK            ((const char *)0x00467280)  /* "Type ok\n" */
-#define STR_FMT_X_SIZE         ((const char *)0x00467268)  /* "x-Size:%d(%g) ...ok\n" */
-#define STR_FMT_Y_SIZE         ((const char *)0x00467250)  /* "y-Size:%d(%g) ...ok\n" */
-#define STR_NO_TEXTURE_SURFACE ((const char *)0x0046722c)
-#define STR_NO_TGA_COPY        ((const char *)0x00467218)
-#define STR_NO_TEXTURE_IFACE   ((const char *)0x00467200)
-#define STR_DOT_TGA_UPPER      ((const char *)0x0046728c)  /* ".TGA" */
-#define STR_DOT_TGA_LOWER      ((const char *)0x00467294)  /* ".tga" */
-#define STR_DOT_BMP_UPPER      ((const char *)0x0046729c)  /* ".BMP" */
-#define STR_DOT_BMP_LOWER      ((const char *)0x004672a4)  /* ".bmp" */
 
 /* Already-replaced neighbours; their originals are UD2-stubbed. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -243,7 +232,7 @@ static void st_set_image_name(LoadedImage *self, LPCSTR name)
         game_free2(self->ImageName);
     char *copy = (char *)game_operator_new(st_strlen(name) + 1u);
     self->ImageName = copy;
-    ORIG_MAYBE_SPRINTF(copy, FMT_PERCENT_S, name);
+    ORIG_MAYBE_SPRINTF(copy, GS_FMT_S, name);
 }
 
 /* DDSCAPS for the texture surface, from the hardware device description.
@@ -482,7 +471,7 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
                             DWORD alphaFlag, UINT bpp, DWORD textureStage)
 {
     st_log_str(name);
-    st_log_str(STR_NEWLINE);
+    st_log_str(GS_FMT_NEWLINE);
 
     FILE *fp = fopen(name, "rb");
     if (fp == NULL)
@@ -521,14 +510,14 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
         return 0;
     }
 
-    st_log_str(STR_TYPE_OK);
+    st_log_str(GS_TEX_TYPE_OK);
 
     char msg[256];
     unsigned int w = h.width;
-    ORIG_MAYBE_SPRINTF(msg, STR_FMT_X_SIZE, w, st_size_report_value(w));
+    ORIG_MAYBE_SPRINTF(msg, GS_TEX_FMT_X_SIZE, w, st_size_report_value(w));
     st_log_str(msg);
     unsigned int ht = h.height;
-    ORIG_MAYBE_SPRINTF(msg, STR_FMT_Y_SIZE, ht, st_size_report_value(ht));
+    ORIG_MAYBE_SPRINTF(msg, GS_TEX_FMT_Y_SIZE, ht, st_size_report_value(ht));
     st_log_str(msg);
 
     DDSURFACEDESC2 ddsd;
@@ -559,13 +548,13 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
 
     HRESULT hr = dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
     if (hr < 0) {
-        st_log_str(STR_NO_TEXTURE_SURFACE);
+        st_log_str(GS_TEX_NO_TEXTURE_SURFACE);
         if (fp != NULL) fclose(fp);
         return 0;
     }
 
     if ((TextureTGA_Parse(&self->base, name) & 0xff) == 0) {
-        st_log_str(STR_NO_TGA_COPY);
+        st_log_str(GS_TEX_NO_TGA_COPY);
         Texture_ReleaseD3DTexture(self);
         if (fp != NULL) fclose(fp);
         return 0;
@@ -579,7 +568,7 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
     if (hr < 0) {
         /* Release first, then log — that order is the original's. */
         Texture_ReleaseD3DTexture(self);
-        st_log_str(STR_NO_TEXTURE_IFACE);
+        st_log_str(GS_TEX_NO_TEXTURE_IFACE);
         if (fp != NULL) fclose(fp);
         return 0;
     }
@@ -614,14 +603,14 @@ Texture_SelectTextureLoader(SceneTexture *self, IDirectDraw4 *dd,
     /* Note 6: no NULL check on the result. */
     const unsigned char *ext = (const unsigned char *)ORIG_STRRCHR(name, '.');
 
-    if (st_strcmp(ext, (const unsigned char *)STR_DOT_BMP_LOWER) == 0 ||
-        st_strcmp(ext, (const unsigned char *)STR_DOT_BMP_UPPER) == 0)
+    if (st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_BMP_LOWER) == 0 ||
+        st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_BMP_UPPER) == 0)
         return Texture_BindTextureResource(self, dd, dev, name, bpp, 0);
 
-    if (st_strcmp(ext, (const unsigned char *)STR_DOT_TGA_LOWER) == 0)
+    if (st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_TGA_LOWER) == 0)
         return Texture_ImportSceneTextures(self, dd, dev, name, 0, bpp, 0);
 
-    int cmp = st_strcmp(ext, (const unsigned char *)STR_DOT_TGA_UPPER);
+    int cmp = st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_TGA_UPPER);
     if (cmp != 0)
         return (unsigned int)cmp & 0xffffff00u;   /* al cleared, upper: strcmp */
 

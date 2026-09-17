@@ -69,6 +69,7 @@
 #include "player.h"
 #include "tilequery.h"
 #include "soundobj.h"
+#include "gamestr.h"
 
 struct CStaticSoundbuffer;
 struct ProgableControl;
@@ -76,9 +77,6 @@ struct CDM;
 
 extern "C" {
 __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
-
-
-
 
 
 __declspec(dllexport) void __attribute__((thiscall)) ProgCtrl_Dispatch(ProgableControl *s, unsigned short game_state);
@@ -93,16 +91,6 @@ __declspec(dllexport) void __attribute__((thiscall)) CStatic_Set3DPosition(CStat
 #define PROGCTRL    ((ProgableControl *)0x0046c298)
 #define CDAUDIO     ((CDM *)0x004dc640)
 #define GAMELOGGER  ((GameLogger *)0x0046c4c0)
-#define F_GAMEEND   ((const char *)0x0046559c)   /* "GAME: GameActions - JJ_GAME_END" */
-#define F_SWITCH    ((const char *)0x00465580)   /* "GAME: switch triggered %d" */
-#define F_COMPLETED ((const char *)0x00465554)   /* "GAME: completed at level %d/%d" */
-#define F_GAMEDONE  ((const char *)0x0046552c)   /* "GAME: game completed %d %d" */
-#define S_GAMEOVER  ((const char *)0x00465574)
-#define S_COMPLETE  ((const char *)0x00465548)
-#define S_MAIN      ((const char *)0x00465510)
-#define S_FINAL     ((const char *)0x00465518)
-#define F_FINALDIR  ((const char *)0x00465520)   /* "Final\\%s" */
-#define S_HSFILE    ((const char *)0x0046550c)   /* "jj" */
 
 #define G8(o)   (*(unsigned char *)(B + (o)))
 #define GS8(o)  (*(signed char *)(B + (o)))
@@ -245,7 +233,7 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     if (STATE == 7 && DEB != 0x0d && KEY(0x0d) != 0) {
-        GameLog_LogMessage(GAMELOGGER, 1, F_GAMEEND);
+        GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_JJ_GAME_END);
         PostQuitMessage(1);
     }
 
@@ -441,7 +429,7 @@ Sim_GameTick(Game *self, double dt, double now)
     {
         unsigned char sw = pl->switchSlot();
         if (sw < 0xff && ((Game *)B)->bridgeSlot(sw)->armed() == 0) {
-            GameLog_LogMessage(GAMELOGGER, 1, F_SWITCH, (unsigned int)sw);
+            GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_SWITCH_TRIGGERED, (unsigned int)sw);
             trigger_switch_tile(B, pl->switchSlot(), pl->cellU(), pl->cellV());
             BridgeObject *br = ((Game *)B)->bridgeSlot(pl->switchSlot());
             br->arm(((Game *)B)->clock());
@@ -482,7 +470,7 @@ Sim_GameTick(Game *self, double dt, double now)
         {
             unsigned char sw = (*slot)->switchSlot();
             if (sw < 0xff && game->bridgeSlot(sw)->armed() == 0) {
-                GameLog_LogMessage(GAMELOGGER, 1, F_SWITCH, (unsigned int)sw);
+                GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_SWITCH_TRIGGERED, (unsigned int)sw);
                 trigger_switch_tile(B, (*slot)->switchSlot(), (*slot)->cellU(), (*slot)->cellV());
                 game->bridgeSlot((*slot)->switchSlot())->arm(game->clock());
                 Sim_MarkListedTilesBlockedByObject((Game *)B, (*slot)->switchSlot());
@@ -545,10 +533,10 @@ Sim_GameTick(Game *self, double dt, double now)
                     if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
                         STATE = 2;
                         if (((Game *)B)->musicOn() != 0)
-                            ((Game *)B)->cdThemes()->play(S_GAMEOVER);
+                            ((Game *)B)->cdThemes()->play(GS_GAME_GAMEOVER);
                         Score_CalculateLevelScore((Game *)B, 3);
                         DEB = 0x0d;
-                        GameLog_LogMessage(GAMELOGGER, 1, F_COMPLETED,
+                        GameLog_LogMessage(GAMELOGGER, 1, GS_GAME_COMPLETED_AT_LEVEL,
                                            (unsigned int)((Game *)B)->levelIndex() + 1,
                                            (unsigned int)((Game *)B)->levelCount());
                     } else {
@@ -585,7 +573,7 @@ Sim_GameTick(Game *self, double dt, double now)
             } else if (lives <= 0 && bonus == 0) {
                 STATE = 2;
                 if (((Game *)B)->musicOn() != 0)
-                    ((Game *)B)->cdThemes()->play(S_GAMEOVER);
+                    ((Game *)B)->cdThemes()->play(GS_GAME_GAMEOVER);
                 Score_CalculateLevelScore((Game *)B, (char)STATE);
                 DEB = 0x0d;
                 restart_tail = 0;                        /* JMP 0x4162b3 */
@@ -593,7 +581,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 ((Game *)B)->setCameraMode(2);
                 STATE = 3;
                 if (((Game *)B)->musicOn() != 0)
-                    ((Game *)B)->cdThemes()->play(S_COMPLETE);
+                    ((Game *)B)->cdThemes()->play(GS_GAME_COMPLETED);
                 Sim_RewindMenuStackToRootNode(MENU);
                 Sim_PopMenuNodeFromStack(MENU);
                 Sim_PushMenuNodeOnStack(MENU, 0x28);
@@ -606,12 +594,12 @@ Sim_GameTick(Game *self, double dt, double now)
                 ((Game *)B)->setRestartCount(0);
                 ((Game *)B)->setTotalPlayTime((double)((long double)(unsigned long long)((Game *)B)->timeElapsed() +
                                         (long double)((Game *)B)->totalPlayTime()));
-                GameLog_LogMessage(GAMELOGGER, 2, F_GAMEDONE,
+                GameLog_LogMessage(GAMELOGGER, 2, GS_GAME_DONE_LOG,
                                    (unsigned int)((Game *)B)->levelIndex(), (unsigned int)((Game *)B)->levelCount());
                 if ((unsigned int)((Game *)B)->levelIndex() == (unsigned int)((Game *)B)->levelCount() - 1) {
                     STATE = 2;
                     if (((Game *)B)->musicOn() != 0)
-                        ((Game *)B)->cdThemes()->play(S_GAMEOVER);
+                        ((Game *)B)->cdThemes()->play(GS_GAME_GAMEOVER);
                 }
                 ((Game *)B)->setRestartCount(0);
             }
@@ -644,11 +632,11 @@ Sim_GameTick(Game *self, double dt, double now)
                 pl->moveState() == 0) {
                 if (((Game *)B)->field_0c() == 0) {
                     char name[256];
-                    sprintf(name, F_FINALDIR, ((Game *)B)->gameFileName());
+                    sprintf(name, GS_GAME_FINAL_DIR, ((Game *)B)->gameFileName());
                     Sim_ParseLevelFiles((Game *)B, name);
                     Sim_PushMenuNodeOnStack(MENU, 0);
                     ((Game *)B)->menu()->setNode(5);
-                    theme = S_FINAL;
+                    theme = GS_GAME_FINAL;
                 } else {
                     STATE = 7;
                     if (((Game *)B)->musicOn() != 0)
@@ -658,7 +646,7 @@ Sim_GameTick(Game *self, double dt, double now)
             } else {
                 Sim_ClearGameState((Game *)B);
                 Sim_ParseLevelFiles((Game *)B, ((Game *)B)->menuLevelName());
-                theme = S_MAIN;
+                theme = GS_GAME_MAIN;
             }
             if (theme != NULL)
                 ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(theme));
@@ -674,18 +662,18 @@ Sim_GameTick(Game *self, double dt, double now)
 
     /* ─── ENTER after high-score name entry ─── */
     if (STATE == 6 && DEB != 0x0d && KEY(0x0d) != 0) {
-        ((Game *)B)->highScores()->writeFile(S_HSFILE, 0x4b);
+        ((Game *)B)->highScores()->writeFile(GS_GAME_HSFILE, 0x4b);
         STATE = 0;
         Sim_RewindMenuStackToRootNode(MENU);
         const char *theme = NULL;
         if ((unsigned int)((Game *)B)->levelIndex() + 1 == (unsigned int)((Game *)B)->levelCount()) {
             if (((Game *)B)->field_0c() == 0) {
                 char name[256];
-                sprintf(name, F_FINALDIR, ((Game *)B)->gameFileName());
+                sprintf(name, GS_GAME_FINAL_DIR, ((Game *)B)->gameFileName());
                 Sim_ParseLevelFiles((Game *)B, name);
                 Sim_PushMenuNodeOnStack(MENU, 0);
                 ((Game *)B)->menu()->setNode(5);
-                theme = S_FINAL;
+                theme = GS_GAME_FINAL;
             } else {
                 STATE = 7;
                 if (((Game *)B)->musicOn() != 0)
@@ -695,7 +683,7 @@ Sim_GameTick(Game *self, double dt, double now)
         } else {
             Sim_ClearGameState((Game *)B);
             Sim_ParseLevelFiles((Game *)B, ((Game *)B)->menuLevelName());
-            theme = S_MAIN;
+            theme = GS_GAME_MAIN;
         }
         if (theme != NULL)
             ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(theme));

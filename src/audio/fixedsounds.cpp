@@ -47,6 +47,7 @@
 #include "fixedsounds.h"
 #include "menutree.h"
 #include "player.h"
+#include "gamestr.h"
 
 struct CStaticSoundbuffer;
 
@@ -55,13 +56,6 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStatic_Reset(CStaticSoundbuffer *self);
 
 #define GAMELOGGER ((GameLogger *)0x0046c4c0)
-#define GAMEDIR    ((const char *)0x004e01c4)
-#define S_CFG      ((const char *)0x004652cc)   /* "Karoo.cfg" */
-#define F_CFG_ERR  ((const char *)0x00465458)
-#define F_CFG_OK   ((const char *)0x004654b0)
-#define F_NOSOUND  ((const char *)0x00465bfc)
-#define S_MAIN     ((const char *)0x00465510)   /* "Main" */
-#define S_REPORT   ((const char *)0x00465afc)   /* "LevelReport.txt" */
 
 static int s_fx = -1;
 
@@ -73,7 +67,7 @@ static CStaticSoundbuffer *bank(unsigned char *B, CStaticSoundbuffer *cur,
     char path[256];
     if (cur != NULL)
         CStatic_Reset(cur);
-    sprintf(path, (const char *)fmt, GAMEDIR, suffix);
+    sprintf(path, (const char *)fmt, GS_GAME_DIR, suffix);
     return ((Game *)B)->soundManager()->acquireStatic(path, 0);
 }
 
@@ -95,18 +89,18 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     if (((Game *)B)->fixedSounds()->loaded != 0)
         return;
 
-    if ((Config_Save(((Game *)B)->config(), S_CFG) & 0xff) != 0)
-        GameLog_LogMessage(GAMELOGGER, 1, F_CFG_OK);
+    if ((Config_Save(((Game *)B)->config(), GS_CFG_FILE) & 0xff) != 0)
+        GameLog_LogMessage(GAMELOGGER, 1, GS_CFG_SAVE_OK);
     else
-        GameLog_LogMessage(GAMELOGGER, 3, F_CFG_ERR);
+        GameLog_LogMessage(GAMELOGGER, 3, GS_CFG_SAVE_ERR);
     ((Game *)B)->menu()->setLockStart(*((Game *)B)->clock());
     ((Game *)B)->menu()->setLock(1);
     if (((Game *)B)->musicOn() != 0)
-        ((Game *)B)->cdThemes()->play(S_MAIN);
-    ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(S_MAIN));
+        ((Game *)B)->cdThemes()->play(GS_GAME_MAIN);
+    ((Game *)B)->cdThemes()->setCurrentTrack((unsigned char)((Game *)B)->cdThemes()->findThemeIndex(GS_GAME_MAIN));
 
     if (((Game *)B)->soundCreated() == 0) {
-        GameLog_LogMessage(GAMELOGGER, 1, F_NOSOUND);
+        GameLog_LogMessage(GAMELOGGER, 1, GS_CFG_NO_SOUND);
         ((Game *)B)->setMusicOn(0);
         if (((Game *)B)->soundCreated() == 0) {
             ((Game *)B)->fixedSounds()->loaded = 1;
@@ -146,22 +140,22 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         hooks_GetAsyncKeyState(0x4c);
         hooks_GetAsyncKeyState(0x4c);
         if (hooks_GetAsyncKeyState(0x4c) != 0)
-            Report_WriteLevelReport((Game *)B, S_REPORT);
+            Report_WriteLevelReport((Game *)B, GS_RPT_FILE);
     }
 
-    sprintf(path, (const char *)0x00465ae4, GAMEDIR);
+    sprintf(path, GS_WAV_TIME_OUT, GS_GAME_DIR);
     ((Game *)B)->fixedSounds()->timeOut = sm->acquireStatic(path, 0);          /* TimeOut */
-    sprintf(path, (const char *)0x00465ac8, GAMEDIR);
+    sprintf(path, GS_WAV_LAST_SECONDS, GS_GAME_DIR);
     ((Game *)B)->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);          /* LastSeconds */
-    sprintf(path, (const char *)0x00465ab4, GAMEDIR);
+    sprintf(path, GS_WAV_COUNT, GS_GAME_DIR);
     ((Game *)B)->fixedSounds()->count = sm->acquireStatic(path, 0);          /* Count */
-    sprintf(path, (const char *)0x00465a9c, GAMEDIR);
+    sprintf(path, GS_WAV_MENU_UP_DOWN, GS_GAME_DIR);
     ((Game *)B)->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);        /* MenuUpDown */
-    sprintf(path, (const char *)0x00465a88, GAMEDIR);
+    sprintf(path, GS_WAV_SWITCH, GS_GAME_DIR);
     ((Game *)B)->fixedSounds()->switchClick = sm->acquireStatic(path, 0);          /* Switch */
-    sprintf(path, (const char *)0x00465a6c, GAMEDIR);
+    sprintf(path, GS_WAV_LEVEL_COMPLETED, GS_GAME_DIR);
     ((Game *)B)->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);          /* LevelCompleted */
-    sprintf(path, (const char *)0x00465a58, GAMEDIR);
+    sprintf(path, GS_WAV_SPLAT, GS_GAME_DIR);
     ((Game *)B)->player()->setSoundA7(sm->acquireStatic(path, 1)); /* splat */
     sm->setup(((Game *)B)->sound3D());
 

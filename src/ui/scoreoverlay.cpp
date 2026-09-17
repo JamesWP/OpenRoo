@@ -84,6 +84,7 @@
 #include "log.h"
 #include "game.h"
 #include "textrenderer.h"
+#include "gamestr.h"
 
 #define OVERLAY_FVF   0x1c4     /* XYZRHW | DIFFUSE | SPECULAR | TEX1 */
 #define SCORE_LOG_FIRST 4
@@ -93,8 +94,6 @@
 
 /* Format strings and captions, referenced at their own addresses so the
  * bytes handed to the game's sprintf are literally the game's own. */
-#define FMT_S    ((const char *)0x004641f8)   /* "%s" */
-#define FMT_D    ((const char *)0x004668b8)   /* "%d" */
 
 /* .bss globals: the leaderboard panel's pre-built quad and its texture. */
 #define g_pPanelVerts   ((const void *)0x004e0580)
@@ -245,15 +244,15 @@ Score_DrawHighScoreTable(Game *g, void *game, Direct3D *d3d,
         const BYTE *rec = (const BYTE *)g->highScores()->record(row);
         const float y = ((float)dy + 180.0f) * w * VSCALE;
 
-        ORIG_MAYBE_SPRINTF(buf, FMT_S, rec + HS_NAME_OFF);
+        ORIG_MAYBE_SPRINTF(buf, GS_FMT_S, rec + HS_NAME_OFF);
         text->drawLeft(xName, y, cellW, cellH, 0.75f, buf, d3d, 0,
                        GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
 
-        ORIG_MAYBE_SPRINTF(buf, FMT_D, (unsigned)rec[HS_LEVEL_OFF]);
+        ORIG_MAYBE_SPRINTF(buf, GS_FMT_D, (unsigned)rec[HS_LEVEL_OFF]);
         text->drawRight(xLevel, y, cellW, cellH, 0.75f, buf, d3d, 0,
                         GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
 
-        ORIG_MAYBE_SPRINTF(buf, FMT_D, *(const DWORD *)(rec + HS_SCORE_OFF));
+        ORIG_MAYBE_SPRINTF(buf, GS_FMT_D, *(const DWORD *)(rec + HS_SCORE_OFF));
         text->drawRight(xScore, y, cellW, cellH, 0.75f, buf, d3d, 0,
                         GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
 
@@ -276,14 +275,14 @@ struct ScoreRow {
 };
 
 static const ScoreRow k_rows[] = {
-    { 0.28125f, (const char *)0x00466ce0, 0x1404dd, (const char *)0x00466cd8, 0x1404c1 },
-    { 0.3125f, (const char *)0x00466cc8, 0x1404e1, (const char *)0x00466cc0, 0x1404c5 },
-    { 0.34375f, (const char *)0x00466cac, 0x1404e9, (const char *)0x00466ca4, 0x1404cd },
-    { 0.375f, (const char *)0x00466c98, 0x1404e5, (const char *)0x00466c90, 0x1404c9 },
-    { 0.40625f, (const char *)0x00466c80, 0x1404ed, (const char *)0x00466cd8, 0x1404d1 },
-    { 0.4375f, (const char *)0x00466c74, 0x1404f1, (const char *)0x00466c6c, 0x1404d5 },
-    { 0.46875f, (const char *)0x00466c5c, 0x1404f5, NULL,                     0 },
-    { 0.515625f, (const char *)0x00466c4c, 0x1404f9, NULL,                     0 },
+    { 0.28125f, GS_HUD_CRYSTALS, 0x1404dd, GS_HUD_TIMES_5, 0x1404c1 },
+    { 0.3125f, GS_HUD_EXTRA_CRYSTALS, 0x1404e1, GS_HUD_TIMES_10, 0x1404c5 },
+    { 0.34375f, GS_HUD_DESTROYED_ENEMIES, 0x1404e9, GS_HUD_TIMES_50, 0x1404cd },
+    { 0.375f, GS_HUD_TIME_LEFT, 0x1404e5, GS_HUD_TIMES_2, 0x1404c9 },
+    { 0.40625f, GS_HUD_SISYPHUS_BONUS, 0x1404ed, GS_HUD_TIMES_5, 0x1404d1 },
+    { 0.4375f, GS_HUD_VITALITY, 0x1404f1, GS_HUD_TIMES_1, 0x1404d5 },
+    { 0.46875f, GS_HUD_LEVEL_SCORE, 0x1404f5, NULL,                     0 },
+    { 0.515625f, GS_HUD_TOTAL_SCORE, 0x1404f9, NULL,                     0 },
 };
 
 extern "C" __declspec(dllexport) void __cdecl
@@ -311,7 +310,7 @@ Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
     /* "GAME OVER" — 24-unit cell, scale 0.8, two colours and two extra
      * floats the smaller entry point does not take. */
     text->drawBig(w * 0.5f, S * 130.0f, S * 24.0f, S * 24.0f, 0.8f,
-                  (const char *)0x00466cfc, d3d, 0,
+                  GS_HUD_GAME_OVER, d3d, 0,
                   0xffffff00, 0xffff0000, S * 3.0f, 0.01f, n);
 
     const float cellW = (float)(dwWidth * 12) * VSCALE;
@@ -328,7 +327,7 @@ Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
         text->drawLeft(xLabel, y, cellW, cellH, 0.75f, r.label, d3d, 0,
                        GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
 
-        ORIG_MAYBE_SPRINTF(buf, FMT_D, GO_V(r.valOff));
+        ORIG_MAYBE_SPRINTF(buf, GS_FMT_D, GO_V(r.valOff));
         text->drawRight(r.mul ? xValue : xProd, y, cellW, cellH, 0.75f,
                         buf, d3d, 0,
                         GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
@@ -336,13 +335,13 @@ Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
         if (r.mul) {
             text->drawLeft(xValue, y, cellW, cellH, 0.75f, r.mul, d3d, 0,
                            GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
-            ORIG_MAYBE_SPRINTF(buf, FMT_D, GO_V(r.prodOff));
+            ORIG_MAYBE_SPRINTF(buf, GS_FMT_D, GO_V(r.prodOff));
             text->drawRight(xProd, y, cellW, cellH, 0.75f, buf, d3d, 0,
                             GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
         }
     }
 
     text->drawCentered(w * 0.5f, w * 0.59375f, cellW, cellH, 0.75f,
-                       (const char *)0x00466898, d3d, 0,
+                       GS_HUD_PRESS_ENTER, d3d, 0,
                        GM_P(GM_PE_FONT_A), GM_P(GM_PE_FONT_B));
 }

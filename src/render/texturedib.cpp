@@ -64,6 +64,7 @@
 #include "texture.h"
 #include "log.h"
 #include "alloc.h"
+#include "gamestr.h"
 
 /* The CRT's fwrite — __cdecl(const void *buf, size_t size, size_t count,
  * FILE *stream).  This address was called "ImageLogger::Log" here until
@@ -81,12 +82,9 @@ typedef unsigned int (__cdecl *fwrite_fn)(const char *, int, int, int *);
  * stay live for the rest of the binary. */
 typedef int (__cdecl *sprintf_fn)(char *, const char *, ...);
 #define ORIG_MAYBE_SPRINTF ((sprintf_fn)0x00450655)
-#define FMT_PERCENT_S ((const char *)0x004641f8)
 
 /* The strings BlitDIBToSurface logs, at their original addresses so the
  * pointer handed to the logger is identical to the original's. */
-#define STR_CREATESURFACE_FAILED ((const char *)0x0046718c)
-#define STR_GETDC_FAILED         ((const char *)0x0046717c)
 
 /* Defined in texture.cpp; the original's 0x43ebb0 is UD2-stubbed. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -144,8 +142,8 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
     IDirectDrawSurface4 *tmp = NULL;
     HRESULT hr = dd->CreateSurface(&ddsd, &tmp, NULL);
     if (hr < 0) {
-        unsigned int r = ORIG_FWRITE(STR_CREATESURFACE_FAILED,
-                                        (int)dib_strlen(STR_CREATESURFACE_FAILED),
+        unsigned int r = ORIG_FWRITE(GS_TEX_CREATESURFACE_FAILED,
+                                        (int)dib_strlen(GS_TEX_CREATESURFACE_FAILED),
                                         1, GAME_LOG_FILE);
         self->loadStatus = 3;
         return r & 0xffffff00u;             /* upper bytes: ImageLogger::Log */
@@ -154,8 +152,8 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
     HDC hdcDst = NULL;
     hr = tmp->GetDC(&hdcDst);
     if (hr < 0) {
-        unsigned int r = ORIG_FWRITE(STR_GETDC_FAILED,
-                                        (int)dib_strlen(STR_GETDC_FAILED),
+        unsigned int r = ORIG_FWRITE(GS_TEX_GETDC_FAILED,
+                                        (int)dib_strlen(GS_TEX_GETDC_FAILED),
                                         1, GAME_LOG_FILE);
         self->loadStatus = 4;
         return r & 0xffffff00u;             /* upper bytes: ImageLogger::Log */
@@ -235,7 +233,7 @@ TextureDIB_CreateSurface(LoadedImage *self, IDirectDraw4 *dd, LPCSTR name,
     /* strlen+1: the original's `not ecx` with no matching `dec ecx`. */
     char *copy = (char *)game_operator_new(dib_strlen(name) + 1u);
     self->ImageName = copy;
-    ORIG_MAYBE_SPRINTF(copy, FMT_PERCENT_S, name);
+    ORIG_MAYBE_SPRINTF(copy, GS_FMT_S, name);
 
     self->loadedState = 1;
 

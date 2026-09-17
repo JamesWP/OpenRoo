@@ -96,6 +96,7 @@
  */
 #include "direct3d.h"
 #include "log.h"
+#include "gamestr.h"
 #include <string.h>
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -126,29 +127,6 @@ typedef unsigned (__cdecl *imglog_fn)(const char *, unsigned, unsigned, void *);
 /* Format strings, at their original addresses — the German error messages go
  * to Direct3D::Log (which also copies them into this->pLastError), the
  * English progress lines to the image log. */
-#define S_ERR_DDRAW_CREATE   ((const char *)0x00465134)
-#define S_ERR_DD4_IFACE      ((const char *)0x00465108)
-#define S_ERR_COOP_LEVEL     ((const char *)0x004650dc)
-#define S_RENDER_BITDEPTH    ((const char *)0x004650bc)
-#define S_START_ENUMMODES    ((const char *)0x004650a4)
-#define S_ERR_ENUMMODES      ((const char *)0x00465070)
-#define S_END_ENUMMODES      ((const char *)0x00465058)
-#define S_TRYING_MODE        ((const char *)0x00465038)
-#define S_FAILED_HR          ((const char *)0x00465028)
-#define S_TRYING_FIRST_MODE  ((const char *)0x00465004)
-#define S_ERR_SET_MODE       ((const char *)0x00464fe0)
-#define S_NO_MODE_SPECIFIED  ((const char *)0x00464fa8)
-#define S_DONE               ((const char *)0x00464f9c)
-#define S_ERR_PRIMARY        ((const char *)0x00464f6c)
-#define S_ERR_BACKBUFFER     ((const char *)0x00464f44)
-#define S_ERR_D3D3_IFACE     ((const char *)0x00464f1c)
-#define S_ERR_ZBUF_FORMAT    ((const char *)0x00464ef0)
-#define S_ZBUF_BITDEPTH      ((const char *)0x00464ed4)
-#define S_STENCIL_BITDEPTH   ((const char *)0x00464eb0)
-#define S_ERR_ZBUF_SURFACE   ((const char *)0x00464e8c)
-#define S_ERR_ATTACH_ZBUF    ((const char *)0x00464e50)
-#define S_ERR_CREATE_DEVICE  ((const char *)0x00464e2c)
-#define S_ERR_CREATE_VP      ((const char *)0x00464e04)
 
 /* The original's log idiom: sprintf into a stack buffer, then write strlen
  * bytes of it to the image log.  Both helpers are shared and stay live. */
@@ -210,17 +188,17 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     if (FAILED(hr)) {
         hr = ORIG_DIRECTDRAWCREATE(NULL, &dd1, NULL);
         if (FAILED(hr))
-            return ORIG_D3D_LOG(self, S_ERR_DDRAW_CREATE);
+            return ORIG_D3D_LOG(self, GS_D3D_ERR_DDRAW_CREATE);
     }
 
     hr = dd1->QueryInterface(IID_DD4, (void **)&self->pDD4);
     if (FAILED(hr))
-        return ORIG_D3D_LOG(self, S_ERR_DD4_IFACE);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_DD4_IFACE);
     dd1->Release();
 
     hr = self->pDD4->SetCooperativeLevel(hWnd, 0x811);
     if (FAILED(hr))
-        return ORIG_D3D_LOG(self, S_ERR_COOP_LEVEL);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_COOP_LEVEL);
 
     /* ── FindDevice(HAL), for dwDeviceRenderBitDepth only ── */
     IDirect3D3 *d3dTmp = NULL;
@@ -251,16 +229,16 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     d3dTmp->Release();
 
     self->dwModeFilterFlags = hwDesc.dwDeviceRenderBitDepth;
-    ORIG_SPRINTF(msg, S_RENDER_BITDEPTH, self->dwModeFilterFlags);
+    ORIG_SPRINTF(msg, GS_D3D_RENDER_BITDEPTH, self->dwModeFilterFlags);
     d3d_imagelog(msg);
 
     /* ── Enumerate display modes into self->modeList ── */
-    ORIG_SPRINTF(msg, S_START_ENUMMODES);
+    ORIG_SPRINTF(msg, GS_D3D_START_ENUMMODES);
     d3d_imagelog(msg);
     hr = self->pDD4->EnumDisplayModes(0, NULL, self, ORIG_ENUMDISPLAYMODES_CB);
     if (FAILED(hr))
-        return ORIG_D3D_LOG(self, S_ERR_ENUMMODES);
-    ORIG_SPRINTF(msg, S_END_ENUMMODES);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_ENUMMODES);
+    ORIG_SPRINTF(msg, GS_D3D_END_ENUMMODES);
     d3d_imagelog(msg);
 
     /* ── Pick the mode, and set it ──
@@ -275,7 +253,7 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     self->pSelectedMode = mode;
 
     if (mode != NULL) {
-        ORIG_SPRINTF(msg2, S_TRYING_MODE,
+        ORIG_SPRINTF(msg2, GS_D3D_TRYING_MODE,
                      mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
         d3d_imagelog(msg2);
 
@@ -283,33 +261,33 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
         hr = self->pDD4->SetDisplayMode(mode->dwWidth, mode->dwHeight,
                                         mode->dwBitDepth, 0, 0);
         if (FAILED(hr)) {
-            ORIG_SPRINTF(msg2, S_FAILED_HR, hr);
+            ORIG_SPRINTF(msg2, GS_D3D_FAILED_HR, hr);
             d3d_imagelog(msg2);
 
             mode = self->modeList.pHead
                  ? (DisplayModeNode *)self->modeList.pHead->pValue : NULL;
-            ORIG_SPRINTF(msg, S_TRYING_FIRST_MODE,
+            ORIG_SPRINTF(msg, GS_D3D_TRYING_FIRST_MODE,
                          mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
             d3d_imagelog(msg);
             hr = self->pDD4->SetDisplayMode(mode->dwWidth, mode->dwHeight,
                                             mode->dwBitDepth, 0, 0);
             if (FAILED(hr))
-                return ORIG_D3D_LOG(self, S_ERR_SET_MODE);
+                return ORIG_D3D_LOG(self, GS_D3D_ERR_SET_MODE);
             self->pSelectedMode = mode;
         }
     } else {
         mode = self->modeList.pHead
              ? (DisplayModeNode *)self->modeList.pHead->pValue : NULL;
-        ORIG_SPRINTF(msg, S_NO_MODE_SPECIFIED,
+        ORIG_SPRINTF(msg, GS_D3D_NO_MODE_SPECIFIED,
                      mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
         d3d_imagelog(msg);
         hr = self->pDD4->SetDisplayMode(mode->dwWidth, mode->dwHeight,
                                         mode->dwBitDepth, 0, 0);
         if (FAILED(hr))
-            return ORIG_D3D_LOG(self, S_ERR_SET_MODE);
+            return ORIG_D3D_LOG(self, GS_D3D_ERR_SET_MODE);
         self->pSelectedMode = mode;
     }
-    d3d_imagelog(S_DONE);
+    d3d_imagelog(GS_D3D_DONE);
 
     /* ── Primary (flipping, complex, 3D) + its attached back buffer ── */
     DDSURFACEDESC2 dd;
@@ -320,7 +298,7 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     dd.dwBackBufferCount = 1;
     hr = self->pDD4->CreateSurface(&dd, &self->pPrimary, NULL);
     if (FAILED(hr))
-        return ORIG_D3D_LOG(self, S_ERR_PRIMARY);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_PRIMARY);
 
     /* Only dwCaps is written; the rest of the DDSCAPS2 is whatever the stack
      * held.  Preserved. */
@@ -328,12 +306,12 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     caps.dwCaps = 4;                          /* DDSCAPS_BACKBUFFER */
     hr = self->pPrimary->GetAttachedSurface(&caps, &self->pZBuffer);
     if (FAILED(hr))
-        return ORIG_D3D_LOG(self, S_ERR_BACKBUFFER);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_BACKBUFFER);
 
     /* ── Direct3D3, and the z-buffer pixel format ── */
     hr = self->pDD4->QueryInterface(IID_D3D3, (void **)&self->pD3D);
     if (FAILED(hr))
-        return ORIG_D3D_LOG(self, S_ERR_D3D3_IFACE);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_D3D3_IFACE);
 
     if (bHardware) {
         self->pD3D->EnumZBufferFormats(IID_D3D_HAL, ORIG_ENUMZBUFFER_CB,
@@ -346,7 +324,7 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
                                            self->zbufFmt);
     }
     if (self->zbufFmt[0] != 0x20)             /* DDPIXELFORMAT.dwSize */
-        return ORIG_D3D_LOG(self, S_ERR_ZBUF_FORMAT);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_ZBUF_FORMAT);
 
     /* ── The z-buffer surface ── */
     dd.dwSize         = 0x7c;
@@ -356,18 +334,18 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     dd.ddsCaps.dwCaps = (bHardware ? 0x3800 : 0) + 0x20800;  /* add, not OR */
     memcpy(&dd.ddpfPixelFormat, self->zbufFmt, 8 * sizeof(DWORD));
 
-    ORIG_SPRINTF(msg, S_ZBUF_BITDEPTH,    self->zbufFmt[3]);  /* +0x20 */
+    ORIG_SPRINTF(msg, GS_D3D_ZBUF_BITDEPTH,    self->zbufFmt[3]);  /* +0x20 */
     d3d_imagelog(msg);
-    ORIG_SPRINTF(msg, S_STENCIL_BITDEPTH, self->zbufFmt[4]);  /* +0x24 */
+    ORIG_SPRINTF(msg, GS_D3D_STENCIL_BITDEPTH, self->zbufFmt[4]);  /* +0x24 */
     d3d_imagelog(msg);
 
     hr = self->pDD4->CreateSurface(&dd, &self->pBackBuffer, NULL);
     if (FAILED(hr))
-        return ORIG_D3D_LOG(self, S_ERR_ZBUF_SURFACE);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_ZBUF_SURFACE);
 
     hr = self->pZBuffer->AddAttachedSurface(self->pBackBuffer);
     if (FAILED(hr))
-        return ORIG_D3D_LOG(self, S_ERR_ATTACH_ZBUF);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_ATTACH_ZBUF);
 
     /* ── The device, on the back buffer as render target ── */
     if (bHardware) {
@@ -381,7 +359,7 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
                                           &self->pDevice, NULL);
     }
     if (FAILED(hr))
-        return ORIG_D3D_LOG(self, S_ERR_CREATE_DEVICE);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_CREATE_DEVICE);
 
     /* ── The viewport ──
      * aspect = (double)height / (double)width, via FILD/FIDIV: both operands
@@ -409,7 +387,7 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
 
     hr = self->pD3D->CreateViewport(&self->pViewport, NULL);
     if (FAILED(hr))
-        return ORIG_D3D_LOG(self, S_ERR_CREATE_VP);
+        return ORIG_D3D_LOG(self, GS_D3D_ERR_CREATE_VP);
 
     self->pDevice->AddViewport(self->pViewport);
     self->pViewport->SetViewport2(&vp);
