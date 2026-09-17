@@ -75,7 +75,7 @@ Sim_RestoreTileGridFromSnapshot(Game *self)
             t->setHeight(s->height());
             t->setObjectMarker(s->objectMarker());
             t->setParam(s->param());
-            if (s->contents() == 1 && t->contents() != 1 && !s_fx)
+            if (s->contents() == CONTENTS_CRYSTAL && t->contents() != CONTENTS_CRYSTAL && !s_fx)
                 t->setContents(0);
             if (s->objectMarker() == TILE_DESTRUCTIBLE && t->busy() != 0) {
                 s->setObjectMarker(1);
@@ -83,11 +83,11 @@ Sim_RestoreTileGridFromSnapshot(Game *self)
             }
             if (s_fx)
                 continue;               /* gridkeep: no +3 store at all */
-            if (t->field202() != 0)
+            if (t->field202() != CONTENTS_NONE)
                 t->setContents(t->field202());
-            if (s->contents() == 7 && t->contents() != 7)
+            if (s->contents() == CONTENTS_EXTRA_LIFE && t->contents() != CONTENTS_EXTRA_LIFE)
                 t->setContents(0);
-            if (s->contents() != 7 && s->contents() != 1)
+            if (s->contents() != CONTENTS_EXTRA_LIFE && s->contents() != CONTENTS_CRYSTAL)
                 t->setContents(s->contents());
         }
     }

@@ -560,7 +560,7 @@ Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
                      * row 0 and column 0 can never be selected. */
                     if (v < (int)(unsigned)vExtent && v > 0 &&
                         u < (int)(unsigned)MAP->extentU() && u > 0 &&
-                        MAP->tile(u, v)->contents() == 1) {
+                        MAP->tile(u, v)->contents() == CONTENTS_CRYSTAL) {
                         unsigned char d =
                             tile_distance((int)u0 - u, (int)v0 - v);
 

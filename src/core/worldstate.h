@@ -105,13 +105,13 @@
  * This is why a scan for writes to the absolute address 0x175402 came up with
  * only level init, the "mausuruh" cheat, the death decrement and save-restore:
  * the pickup writes it through the entity pointer. */
-#define WS_TILE_EXTRA_LIFE 0x07
+#define WS_TILE_EXTRA_LIFE CONTENTS_EXTRA_LIFE
 
-/* CONTENTS 0x0d, not a kind -- the contents byte has its own value space and
- * this is NOT TILE_BREAKABLE, which is kind 0x0d.  The clash of the two 0x0d
- * meanings under one WS_TILE_ prefix is why the kind byte got an enum first
- * and the contents byte is getting its own (COHESION_PLAN.md Band 7a). */
-#define WS_TILE_TRANSFORM 0x0d
+/* CONTENTS 0x0d, not a kind -- this is NOT TILE_BREAKABLE, which is kind
+ * 0x0d.  The clash of the two 0x0d meanings under one WS_TILE_ prefix is
+ * what drove the two enums apart (COHESION_PLAN.md Band 7a); both halves
+ * are now defined from theirs. */
+#define WS_TILE_TRANSFORM CONTENTS_TRANSFORM
 static inline bool ws_is_pickup(BYTE contents)
 {
     return contents != 0 && contents != WS_TILE_TRANSFORM;

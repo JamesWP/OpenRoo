@@ -114,6 +114,73 @@ enum TileKind {
     TILE_DESTRUCTIBLE = 0x17,
 };
 
+/* The cell's contents byte (+0x19f, `contents()`) -- .jjm file byte 3.
+ *
+ * A DIFFERENT VALUE SPACE from TileKind above: the same number means
+ * unrelated things in the two bytes, and 0x0d is the standing example --
+ * kind 0x0d is TILE_BREAKABLE, contents 0x0d is CONTENTS_TRANSFORM.  The
+ * prefixes are deliberately unalike so no site can mix them up
+ * (COHESION_PLAN.md Band 7a).
+ *
+ * Named from the code that CONSUMES each value.  Player::updateTileEffects
+ * (player.cpp) is the authority for everything a player can pick up -- it
+ * is one `if` per value, each granting its own thing -- and
+ * SetupLevelObjects consumes the four that are level-build markers rather
+ * than pickups.  Where only a census reads a value it keeps a neutral name.
+ *
+ * `contents()` returns `unsigned char`; the call sites compare it as
+ * `(signed char)`, exactly as the original does, which is why
+ * CONTENTS_RANDOM is -1 and not 0xff.  Its byte in the file is 0xff; the
+ * only site that reads it does so through that cast.
+ */
+enum TileContents {
+    CONTENTS_NONE        = 0x00,
+    /* The crystal, and the level's own goal: it is the only thing that
+     * raises gemsCollected_.  A VoicePool, not a static buffer. */
+    CONTENTS_CRYSTAL     = 0x01,
+    /* Not pickups -- the builder spawns a foe of that type here and clears
+     * the byte.  The param byte carries the foe's own parameter. */
+    CONTENTS_FOE_TYPE2   = 0x02,
+    CONTENTS_FOE_TYPE3   = 0x03,
+    /* One paraglider charge (glides_).  Refused while falling. */
+    CONTENTS_PARAGLIDER  = 0x05,
+    /* Five more seconds on the map's time limit. */
+    CONTENTS_TIME_BONUS  = 0x06,
+    /* An extra life.  worldstate.h's WS_TILE_EXTRA_LIFE is this, and is now
+     * defined from it. */
+    CONTENTS_EXTRA_LIFE  = 0x07,
+    /* Timed, and what it does is NOT settled: the tick only stamps its
+     * start and raises effect8Active_.  worldstate.cpp guesses "freeze
+     * timer", which nothing here confirms -- so it keeps a neutral name.
+     * (Band 4b pass 2 stopped at exactly this point for the same reason.) */
+    CONTENTS_EFFECT_8    = 0x08,
+    /* Grants 3 of whatever MovableEntity's +0x0e8 counts, which no reader
+     * we own settles.  Neutral until one does. */
+    CONTENTS_GRANT_09    = 0x09,
+    /* Timed speed changes: stepDuration_ to 100.0 and 400.0 against the
+     * player's default 200.0, so 0x0a is faster and 0x0c slower. */
+    CONTENTS_SPEED_UP    = 0x0a,
+    /* Timed; reverses PlayerMoveForward. */
+    CONTENTS_REVERSED    = 0x0b,
+    CONTENTS_SPEED_DOWN  = 0x0c,
+    /* Timed; transforms the player (kind_ = 3) and the cell's occupant.
+     * worldstate.h's WS_TILE_TRANSFORM is this, and ws_is_pickup() excludes
+     * it -- it is the one contents value that is not an item. */
+    CONTENTS_TRANSFORM   = 0x0d,
+    /* A build marker: the builder files the cell into Game's free-bomb
+     * list and stamps the clock. */
+    CONTENTS_FREE_BOMB   = 0x4d,
+    /* A build marker: the cell becomes a timed item spawner. */
+    CONTENTS_TIMED_SPAWN = 0x64,
+
+    /* A tile that rolls its own contents when the player arrives:
+     *   rand() * 8 / 0x7FFF + 5, an 8-bit add
+     * which is a uniform pick over 5..12 -- exactly CONTENTS_PARAGLIDER
+     * through CONTENTS_SPEED_DOWN.  It cannot roll CONTENTS_TRANSFORM, and
+     * it cannot roll itself. */
+    CONTENTS_RANDOM      = -1,
+};
+
 class __attribute__((packed)) Tile {
 public:
     static const int ORIGIN = 0x19c;

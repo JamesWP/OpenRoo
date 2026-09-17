@@ -534,9 +534,9 @@ Sim_SetupLevelObjects(Game *self)
                 t->setBusy(0);
                 t->setField202(0);
 
-                if (t->contents() == 1)
+                if (t->contents() == CONTENTS_CRYSTAL)
                     GAME->setField42252((unsigned short)(GAME->field_42252() + 1));
-                if (t->contents() == 7) CEN->item7++;
+                if (t->contents() == CONTENTS_EXTRA_LIFE) CEN->item7++;
 
                 if (t->objectMarker() == TILE_KIND_01) CEN->type1++;
                 if (t->objectMarker() == TILE_GLUE) CEN->type2++;
@@ -553,8 +553,8 @@ Sim_SetupLevelObjects(Game *self)
                     if (item != 0) {
                         t->setField202(item);
                         t->setContents(0);
-                        if (t->field202() == 1) CEN->shadow1++;
-                        if (t->field202() == 7) CEN->shadow7++;
+                        if (t->field202() == CONTENTS_CRYSTAL) CEN->shadow1++;
+                        if (t->field202() == CONTENTS_EXTRA_LIFE) CEN->shadow7++;
                     }
                 }
 
@@ -622,7 +622,7 @@ Sim_SetupLevelObjects(Game *self)
                 }
 
                 /* a cell holding an item gets a random phase */
-                if (t->contents() != 0) {
+                if (t->contents() != CONTENTS_NONE) {
                     long double ph = (long double)(int)crt_rand();
                     ph = ph * (long double)K_TWO_PI;
                     ph = ph * (long double)K_INV_32K;
@@ -675,14 +675,14 @@ Sim_SetupLevelObjects(Game *self)
                 }
 
                 /* ── the snapshot: the cell as the file gave it ────────── */
-                if (s->contents() == 0x0d) CEN->l2_d++;
-                if (s->contents() == 0x08) CEN->l2_8++;
-                if (s->contents() == 0x06) CEN->l2_6++;
-                if (s->contents() == 0x05) CEN->l2_5++;
-                if (s->contents() == 0x0a) CEN->l2_a++;
-                if (s->contents() == 0x09) CEN->l2_9++;
+                if (s->contents() == CONTENTS_TRANSFORM) CEN->l2_d++;
+                if (s->contents() == CONTENTS_EFFECT_8) CEN->l2_8++;
+                if (s->contents() == CONTENTS_TIME_BONUS) CEN->l2_6++;
+                if (s->contents() == CONTENTS_PARAGLIDER) CEN->l2_5++;
+                if (s->contents() == CONTENTS_SPEED_UP) CEN->l2_a++;
+                if (s->contents() == CONTENTS_GRANT_09) CEN->l2_9++;
 
-                if (s->contents() == 0x4d) {                /* free bomb */
+                if (s->contents() == CONTENTS_FREE_BOMB) {
                     /* The count is re-read for every store, as the
                      * original re-reads it. */
                     ((Game *)G)->freeBomb(CEN->freeBombs)->u = u;
@@ -697,7 +697,7 @@ Sim_SetupLevelObjects(Game *self)
                     CEN->freeBombs++;
                 }
 
-                if (s->contents() == 0x64) {                /* timed item */
+                if (s->contents() == CONTENTS_TIMED_SPAWN) {
                     unsigned idx;
                     unsigned char param;
 
@@ -737,7 +737,7 @@ Sim_SetupLevelObjects(Game *self)
                 {
                     int spawned2 = 0;
 
-                    if (s->contents() == 0x02) {
+                    if (s->contents() == CONTENTS_FOE_TYPE2) {
                         unsigned char param = t->param();
                         unsigned char hh;
 
@@ -757,7 +757,7 @@ Sim_SetupLevelObjects(Game *self)
                         spawned2 = 1;
                     }
 
-                    if (s->contents() == 0x03) {
+                    if (s->contents() == CONTENTS_FOE_TYPE3) {
                         Foe::spawn((Game *)G, u, v, t->height(), 3, t->param());
                         t->setContents(0);
                         t->setParam(0);

@@ -618,7 +618,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
 
         /* d: +0x33 signed, the tile's height unsigned. */
         if ((int)heightCell_ == (int)t->height() &&
-            (signed char)t->contents() == 1) {
+            (signed char)t->contents() == CONTENTS_CRYSTAL) {
 
             t->setContents(0);
 
@@ -1020,7 +1020,7 @@ bool Foe::finishDespawn(LevelMap *map)
      * restart does not respawn this foe -- unless it came from a timed
      * spawner (0x64). */
     Tile *home = map->snapshot((signed char)homeU_, (signed char)homeV_);
-    if (home->contents() != 0x64)
+    if (home->contents() != CONTENTS_TIMED_SPAWN)
         home->setContents(0);
     if (removeRequested_ == 0)
         return false;

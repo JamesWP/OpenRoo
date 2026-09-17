@@ -365,7 +365,7 @@ static void map_check(const BYTE *g, const Observation *obs)
     unsigned from_tiles = 0;
     for (unsigned u = 0; u < obs->cols; u++)
         for (unsigned v = 0; v < obs->rows; v++)
-            if (g_grid[v + u * WS_GRID_PITCH].contents == 1) from_tiles++;
+            if (g_grid[v + u * WS_GRID_PITCH].contents == CONTENTS_CRYSTAL) from_tiles++;
 
     unsigned from_foes = 0;
     const Game *game = (const Game *)g;
