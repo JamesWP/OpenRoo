@@ -76,6 +76,7 @@
 #include <new>
 #include "factory.h"
 #include "log.h"
+#include "gamestr.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -837,15 +838,12 @@ static BOOL env_attach_ring(Environment *self, RingBuffer *ring)
 
 /* The game's own type-name strings; pName keeps pointing at them, exactly as
  * the constructors leave it (read-only data, never freed). */
-#define NAME_ENVIRONMENT  ((char *)0x00468a54)   /* "Environment" */
-#define NAME_GRAVITY_ENV  ((char *)0x00469078)   /* "GravityEnvironment" */
-#define NAME_MAGNET_ENV   ((char *)0x0046908c)   /* "MagnetEnvironment" */
 
 /* 0x448490. */
 static void base_env_construct(Environment *self)
 {
     self->pVtable = (void **)env_vtbl_base;
-    self->pName   = NAME_ENVIRONMENT;
+    self->pName   = GS_PSNAME_ENVIRONMENT;
     self->pRing   = NULL;
 }
 
@@ -859,7 +857,7 @@ static void gravity_env_construct(GravityEnvironment *self)
     self->base.pVtable = (void **)env_vtbl_gravity;
     memset((BYTE *)self + sizeof(Environment), 0,
            sizeof(GravityEnvironment) - sizeof(Environment));
-    self->base.pName = NAME_GRAVITY_ENV;
+    self->base.pName = GS_PSNAME_GRAVITY_ENV;
     self->dwFadeThreshold = 10;
 }
 
@@ -869,7 +867,7 @@ static void magnet_env_construct(MagnetEnvironment *self)
     self->base.pVtable = (void **)env_vtbl_magnet;
     memset((BYTE *)self + sizeof(Environment), 0,
            sizeof(MagnetEnvironment) - sizeof(Environment));
-    self->base.pName = NAME_MAGNET_ENV;
+    self->base.pName = GS_PSNAME_MAGNET_ENV;
     self->dwFadeThreshold = 10;
 }
 
@@ -1650,12 +1648,6 @@ static BOOL cyl_gen_load(CylinderGenerator *self, void *fp)
 /* ─── Generator construction ─── */
 
 /* The game's type-name strings; pName points at them as the ctors leave it. */
-#define NAME_GENERATOR    ((char *)0x00468a48)   /* "Generator" */
-#define NAME_POINT_GEN    ((char *)0x00469024)   /* "PointGenerator" */
-#define NAME_BOX_GEN      ((char *)0x00469034)   /* "BoxGenerator" */
-#define NAME_STD_GEN      ((char *)0x00469044)   /* "StdGenerator" */
-#define NAME_XSTD_GEN     ((char *)0x00469054)   /* "XStdGenerator" */
-#define NAME_CYL_GEN      ((char *)0x00469064)   /* "CylinderGenerator" */
 
 /* Each original ctor also builds and destroys a throwaway base-class temporary
  * on its own stack — no effect outside the frame, omitted throughout. */
@@ -1664,7 +1656,7 @@ static BOOL cyl_gen_load(CylinderGenerator *self, void *fp)
 static void base_gen_construct(Generator *self)
 {
     self->pVtable = (void **)gen_vtbl_base;
-    self->pName = NAME_GENERATOR;
+    self->pName = GS_PSNAME_GENERATOR;
     self->pRing = NULL;
     self->dwEnabled = 1;
 }
@@ -1675,7 +1667,7 @@ static void point_gen_construct(PointGenerator *self)
 {
     base_gen_construct(&self->base);
     self->base.pVtable = (void **)gen_vtbl_point;
-    self->base.pName = NAME_POINT_GEN;
+    self->base.pName = GS_PSNAME_POINT_GEN;
     self->flAccumulator = 0.0f;
     self->dwDiffuse = 0xFFFFFFFF;
 }
@@ -1685,7 +1677,7 @@ static void box_gen_construct(BoxGenerator *self)
 {
     base_gen_construct(&self->base);
     self->base.pVtable = (void **)gen_vtbl_box;
-    self->base.pName = NAME_BOX_GEN;
+    self->base.pName = GS_PSNAME_BOX_GEN;
 }
 
 /* 0x449670 — every member zero, except pEmitProb, which is all -1. */
@@ -1694,7 +1686,7 @@ static void std_gen_construct(StdGenerator *self)
     base_gen_construct(&self->base);
     self->base.pVtable = (void **)gen_vtbl_std;
     memset((BYTE *)self + sizeof(Generator), 0, sizeof(StdGenerator) - sizeof(Generator));
-    self->base.pName = NAME_STD_GEN;
+    self->base.pName = GS_PSNAME_STD_GEN;
     for (int i = 0; i < 200; i++)
         self->pEmitProb[i] = 0xFFFFFFFF;
 }
@@ -1706,7 +1698,7 @@ static void xstd_gen_construct(XStdGenerator *self)
     self->base.base.pVtable = (void **)gen_vtbl_xstd;
     memset(self->flPosOffset, 0, sizeof self->flPosOffset);
     memset(self->flVelOffset, 0, sizeof self->flVelOffset);
-    self->base.base.pName = NAME_XSTD_GEN;
+    self->base.base.pName = GS_PSNAME_XSTD_GEN;
 }
 
 /* 0x44aca0 — everything zero, pEmitProb -1; SetDirection(0, 1, 0), whose
@@ -1720,7 +1712,7 @@ static void cyl_gen_construct(CylinderGenerator *self)
     self->base.pVtable = (void **)gen_vtbl_cylinder;
     memset((BYTE *)self + sizeof(Generator), 0,
            sizeof(CylinderGenerator) - sizeof(Generator));
-    self->base.pName = NAME_CYL_GEN;
+    self->base.pName = GS_PSNAME_CYL_GEN;
     cyl_set_direction(self, 0.0f, 1.0f, 0.0f);
     static const float IDENTITY[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 };
     memcpy(self->flMatrix, IDENTITY, sizeof IDENTITY);

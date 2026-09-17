@@ -115,7 +115,7 @@
  * crash rather than a compile error (COHESION_PLAN.md Band 7c), so both are
  * gone and GameLog_LogMessage is called by name. */
 #include "gamelog.h"
-#define STR_ANI_LOADED   ((const char *)0x004640b0)   /* "ANI: %s loaded" */
+#include "gamestr.h"
 
 #define ANI_TABLE_SIZE   0x180      /* 24 slots x 0x10, and it tiles exactly */
 #define ANI_LINE_MAX     0x100
@@ -256,7 +256,7 @@ Ani_LoadAnimationFile(void *dest, const char *path, GameLogger *logger)
     }
 
     if (logger != NULL)
-        GameLog_LogMessage(logger, 1, STR_ANI_LOADED, path);
+        GameLog_LogMessage(logger, 1, GS_ANI_LOADED, path);
 
     if (logged < ANI_LOG_FIRST) {
         logged++;

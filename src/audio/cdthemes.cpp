@@ -30,6 +30,7 @@
 #include "gamelog.h"
 #include "cdthemes.h"
 #include "cdm.h"
+#include "gamestr.h"
 
 static int s_fx = -1;
 
@@ -97,7 +98,6 @@ CDM_PlayTrack(CDM *self, int track, bool loop);
 
 #define CDAUDIO     ((CDM *)0x004dc640)
 #define GAMELOGGER  ((GameLogger *)0x0046c4c0)
-#define FMT_CDTRACK ((const char *)0x00464398)
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_PlayCDStuf(CdThemes *self, const char *caption)
@@ -114,7 +114,7 @@ unsigned int CdThemes::play(const char *caption)
     CDM_StopTrack(CDAUDIO);
     idx = findThemeIndex(caption);
     currentTrack_ = (unsigned char)idx;
-    GameLog_LogMessage(GAMELOGGER, 2, FMT_CDTRACK, idx & 0xff, caption);
+    GameLog_LogMessage(GAMELOGGER, 2, GS_CD_TRY_TRACK, idx & 0xff, caption);
     if (currentTrack_ != 0)
         CDM_PlayTrack(CDAUDIO, currentTrack_, true);
     return 1;
@@ -157,10 +157,10 @@ unsigned int CdThemes::replay()
  */
 static const char *const k_trackLength[10] = {
     NULL, NULL,
-    (const char *)0x00464418, (const char *)0x0046440c,
-    (const char *)0x00464400, (const char *)0x004643f4,
-    (const char *)0x004643e8, (const char *)0x004643dc,
-    (const char *)0x004643d0, (const char *)0x004643c4,
+    GS_CD_TRACK2_LEN, GS_CD_TRACK3_LEN,
+    GS_CD_TRACK4_LEN, GS_CD_TRACK5_LEN,
+    GS_CD_TRACK6_LEN, GS_CD_TRACK7_LEN,
+    GS_CD_TRACK8_LEN, GS_CD_TRACK9_LEN,
 };
 
 int CdThemes::validateTrackLengths()

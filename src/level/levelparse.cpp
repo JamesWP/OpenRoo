@@ -229,6 +229,7 @@
 #include "game.h"
 #include "levelparse.h"
 #include "soundmanager.h"
+#include "gamestr.h"
 
 /* ─── Game / Level3DExtraObjects field offsets ───────────────────────────── */
 
@@ -245,23 +246,11 @@
 
 /* ─── Game globals and string constants, at their original addresses ─────── */
 
-#define GAME_DIR        ((const char *)0x004e01c4)
 #define GAME_LOGGER_VA  ((GameLogger *)0x0046c4c0)
 
-#define S_FMT_LEVELS    ((const char *)0x00465924)  /* "%s\Levels\%s"         */
-#define S_FMT_SCRIPTS   ((const char *)0x00465878)  /* "%s\InstructionScripts\%s" */
-#define S_LOADED        ((const char *)0x00465a0c)
-#define S_LOAD_FAILED   ((const char *)0x004659bc)
-#define S_SCRIPT_OK     ((const char *)0x00465994)
-#define S_SCRIPT_FAILED ((const char *)0x0046593c)
 
 /* OpenLevelFile's own message set -- different strings from ParseLevelFiles's,
  * because they carry the level NUMBER as well as the path. */
-#define S_FMT_GAM         ((const char *)0x00465934)  /* "%s.gam"             */
-#define S_OPEN_LOADED     ((const char *)0x004658ec)
-#define S_OPEN_FAILED     ((const char *)0x00465894)
-#define S_OPEN_SCRIPT_OK  ((const char *)0x00465850)
-#define S_OPEN_SCRIPT_BAD ((const char *)0x004657fc)
 
 /* ─── Callbacks and CRT helpers kept at their original addresses ─────────── */
 
@@ -354,7 +343,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     inline_strcpy((char *)(G + G_LEVEL_NAME), name);
 
-    ORIG_MAYBE_SPRINTF(path, S_FMT_LEVELS, GAME_DIR, name);
+    ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR, name);
 
     /* SAVE the previously loaded map name BEFORE the read overwrites it.
      * The ordering is the whole mechanism of the +0x10 flag below; the
@@ -369,10 +358,10 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     if ((char)ok != 0) {
         ((Game *)G)->extraObjects()->releaseSounds();
-        GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LOADED,
+        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_OPEN_LOADED_NAME,
                            MAP->bonus(), path);
     } else {
-        GameLog_LogMessage(GAME_LOGGER_VA, 4, S_LOAD_FAILED, path);
+        GameLog_LogMessage(GAME_LOGGER_VA, 4, GS_OPEN_FAILED_NAME, path);
         PostQuitMessage(1);
         /* and FALLS THROUGH -- the original does not return here */
     }
@@ -382,13 +371,13 @@ Sim_ParseLevelFiles(Game *self, const char *name)
                       (const unsigned char *)MAP->mapName()) != 0)
         ((Game *)G)->setMapChanged(1);
 
-    ORIG_MAYBE_SPRINTF(path, S_FMT_SCRIPTS, GAME_DIR, name);
+    ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR, name);
     ((Game *)G)->scriptPlayer()->setLoaded(0);
     ((Game *)G)->scriptPlayer()->readForLevel(path);
 
     GameLog_LogMessage(GAME_LOGGER_VA, 1,
-                       ((Game *)G)->scriptPlayer()->loaded() ? S_SCRIPT_OK
-                                                             : S_SCRIPT_FAILED,
+                       ((Game *)G)->scriptPlayer()->loaded() ? GS_OPEN_SCRIPT_OK_NAME
+                                                             : GS_OPEN_SCRIPT_BAD_NAME,
                        path);
 
     s_parses++;
@@ -433,13 +422,13 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     ((Game *)G)->setNextLevelBonus(0);
 
     /* A leftover: `path` is overwritten before it is ever read. */
-    ORIG_MAYBE_SPRINTF(path, S_FMT_GAM, ((Game *)G)->gameFileName());
+    ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_GAM, ((Game *)G)->gameFileName());
 
     /* The bonus peek -- load the NEXT level's map just to read its bonus. */
     if (((Game *)G)->restartCount() == 0 &&
         (unsigned int)(((Game *)G)->levelIndex()) + 1 != (unsigned int)((Game *)G)->levelCount()) {
         Sim_SetCurrentLevelName(self, (unsigned char)(((Game *)G)->levelIndex() + 1));
-        ORIG_MAYBE_SPRINTF(path, S_FMT_LEVELS, GAME_DIR,
+        ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
                            (const char *)(G + G_LEVEL_NAME));
         /* the result is deliberately not tested, as in the original */
         MAP->readFile(path);
@@ -452,7 +441,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     }
 
     Sim_SetCurrentLevelName(self, levelNo);
-    ORIG_MAYBE_SPRINTF(path, S_FMT_LEVELS, GAME_DIR,
+    ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
                        (const char *)(G + G_LEVEL_NAME));
 
     /* Saved BEFORE the read -- see the header, and the `samelevel` control. */
@@ -466,11 +455,11 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     if ((char)ok != 0) {
         ((Game *)G)->extraObjects()->releaseSounds();
-        GameLog_LogMessage(GAME_LOGGER_VA, 1, S_OPEN_LOADED,
+        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_OPEN_LOADED_NUM,
                            MAP->bonus(),
                            levelNo & 0xff, path);
     } else {
-        GameLog_LogMessage(GAME_LOGGER_VA, 4, S_OPEN_FAILED,
+        GameLog_LogMessage(GAME_LOGGER_VA, 4, GS_OPEN_FAILED_NUM,
                            levelNo & 0xff, path);
         PostQuitMessage(1);
         /* and FALLS THROUGH, as in ParseLevelFiles */
@@ -481,14 +470,14 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
                       (const unsigned char *)MAP->mapName()) != 0)
         ((Game *)G)->setMapChanged(1);
 
-    ORIG_MAYBE_SPRINTF(path, S_FMT_SCRIPTS, GAME_DIR,
+    ORIG_MAYBE_SPRINTF(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR,
                        (const char *)(G + G_LEVEL_NAME));
     ((Game *)G)->scriptPlayer()->setLoaded(0);
     ((Game *)G)->scriptPlayer()->readForLevel(path);
 
     GameLog_LogMessage(GAME_LOGGER_VA, 1,
                        ((Game *)G)->scriptPlayer()->loaded()
-                           ? S_OPEN_SCRIPT_OK : S_OPEN_SCRIPT_BAD,
+                           ? GS_OPEN_SCRIPT_OK_NUM : GS_OPEN_SCRIPT_BAD_NUM,
                        path);
 
     s_opens++;

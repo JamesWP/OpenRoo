@@ -34,6 +34,7 @@
 #include "clock.h"
 #include "crtrand.h"
 #include "gamelog.h"
+#include "gamestr.h"
 #include <math.h>
 #include <string.h>
 #include <new>
@@ -685,17 +686,6 @@ static BOOL ps_copy_from(ParticleSystem *self, const ParticleSystem *src)
 
 /* Both slots take (FILE *, GameLogger *) and return BOOL; the base ignores the
  * logger, the subclasses report through it.  Strings are the game's own. */
-#define PS_NAME_NULL   ((const char *)0x00468a60)   /* "NULL" — no sub-object */
-#define PS_SRC_FILE    ((const char *)0x00468cf4)   /* ...\ParticleSystems.cpp */
-#define PS_MSG_NOCOUNT ((const char *)0x00468d34)
-#define PS_MSG_NORING  ((const char *)0x00468ca4)
-#define PS_MSG_NOLEN   ((const char *)0x00468c60)
-#define PS_MSG_NONAME  ((const char *)0x00468c0c)
-#define PS_MSG_NOGEN   ((const char *)0x00468bb4)
-#define PS_MSG_GENLOAD ((const char *)0x00468b68)
-#define PS_MSG_NOENV   ((const char *)0x00468b10)
-#define PS_MSG_ENVNAME ((const char *)0x00468ab4)
-#define PS_MSG_ENVLOAD ((const char *)0x00468a68)
 
 /* Write one sub-object's class name: length INCLUDING the terminator, then
  * that many bytes — so the NUL goes to the file too.  A missing sub-object
@@ -703,7 +693,7 @@ static BOOL ps_copy_from(ParticleSystem *self, const ParticleSystem *src)
 static BOOL ps_write_sub_object(const void *obj, void *fp)
 {
     const char *name = obj ? *(const char *const *)((const BYTE *)obj + 4)
-                           : PS_NAME_NULL;
+                           : GS_PS_NAME_NULL;
     DWORD len = (DWORD)strlen(name) + 1;
     if (!ps_write(&len, 4, fp))
         return FALSE;
@@ -736,12 +726,12 @@ static char *ps_read_name(void *fp, GameLogger *log, int line_len,
 {
     DWORD len;
     if (!ps_read(&len, 4, fp)) {
-        GameLog_LogSourceLocation(log, 4, PS_SRC_FILE, line_len, PS_MSG_NOLEN);
+        GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, line_len, GS_PS_MSG_NOLEN);
         return NULL;
     }
     char *name = (char *)::operator new(len, std::nothrow);
     if (hooks_fread(name, 1, len, fp) != len) {
-        GameLog_LogSourceLocation(log, 4, PS_SRC_FILE, line_name, msg_name);
+        GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, line_name, msg_name);
         ::operator delete(name);
         return NULL;
     }
@@ -761,21 +751,21 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
 
     DWORD count;
     if (!ps_read(&count, 4, fp)) {
-        GameLog_LogSourceLocation(log, 4, PS_SRC_FILE, 0x11f, PS_MSG_NOCOUNT);
+        GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, 0x11f, GS_PS_MSG_NOCOUNT);
         return FALSE;
     }
     if (!ring_alloc(&self->ring, count, 0)) {
-        GameLog_LogSourceLocation(log, 4, PS_SRC_FILE, 0x125, PS_MSG_NORING);
+        GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, 0x125, GS_PS_MSG_NORING);
         return FALSE;
     }
 
-    char *name = ps_read_name(fp, log, 0x130, 0x137, PS_MSG_NONAME);
+    char *name = ps_read_name(fp, log, 0x130, 0x137, GS_PS_MSG_NONAME);
     if (name == NULL)
         return FALSE;
-    if (strcmp(name, PS_NAME_NULL) != 0) {
+    if (strcmp(name, GS_PS_NAME_NULL) != 0) {
         Generator *gen = gen_create(name);
         if (gen == NULL) {
-            GameLog_LogSourceLocation(log, 4, PS_SRC_FILE, 0x142, PS_MSG_NOGEN, name);
+            GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, 0x142, GS_PS_MSG_NOGEN, name);
             ::operator delete(name);
             return FALSE;
         }
@@ -788,7 +778,7 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
              * the suppression rather than a fix. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuse-after-free"
-            GameLog_LogSourceLocation(log, 4, PS_SRC_FILE, 0x14a, PS_MSG_GENLOAD, name);
+            GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, 0x14a, GS_PS_MSG_GENLOAD, name);
 #pragma GCC diagnostic pop
             sub_object_delete(gen);
             return FALSE;
@@ -797,13 +787,13 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
     }
     /* the "NULL" branch drops `name` on the floor — the original's leak */
 
-    name = ps_read_name(fp, log, 0x158, 0x15f, PS_MSG_NOENV);
+    name = ps_read_name(fp, log, 0x158, 0x15f, GS_PS_MSG_NOENV);
     if (name == NULL)
         return FALSE;
-    if (strcmp(name, PS_NAME_NULL) != 0) {
+    if (strcmp(name, GS_PS_NAME_NULL) != 0) {
         Environment *env = env_create(name);
         if (env == NULL) {
-            GameLog_LogSourceLocation(log, 4, PS_SRC_FILE, 0x16a, PS_MSG_ENVNAME, name);
+            GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, 0x16a, GS_PS_MSG_ENVNAME, name);
             ::operator delete(name);
             return FALSE;
         }
@@ -813,7 +803,7 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
             /* same preserved use-after-free as the generator branch above */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuse-after-free"
-            GameLog_LogSourceLocation(log, 4, PS_SRC_FILE, 0x172, PS_MSG_ENVLOAD, name);
+            GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, 0x172, GS_PS_MSG_ENVLOAD, name);
 #pragma GCC diagnostic pop
             sub_object_delete(env);
             return FALSE;
@@ -826,12 +816,7 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
 /* ─── PointParticleSystem and FaceParticleSystem lifecycles ─── */
 
 /* The Save/Load strings and source file of ParticleSystems.cpp (the subclass
- * half; the base half lives in ParticleSystem.cpp, PS_SRC_FILE above). */
-#define PS_SUB_FILE     ((const char *)0x004690dc)
-#define PS_MSG_PTVERTS  ((const char *)0x0046911c)
-#define PS_MSG_SAVESIZE ((const char *)0x0046916c)
-#define PS_MSG_VERTARR  ((const char *)0x004691ac)
-#define PS_MSG_FACESIZE ((const char *)0x004691f4)
+ * half; the base half lives in ParticleSystem.cpp, GS_PS_SRC_FILE above). */
 
 /* 0x44d0e0 — Point's vertex buffer: one 0x20-byte vertex per ring node.  The
  * count field is not touched here; Fill maintains it. */
@@ -940,7 +925,7 @@ static BOOL point_deserialize(PointParticleSystem *self, void *fp, GameLogger *l
     if (!ps_deserialize(&self->base, fp, log))
         return FALSE;
     if (!point_alloc_verts(self)) {
-        GameLog_LogSourceLocation(log, 4, PS_SUB_FILE, 0x6d, PS_MSG_PTVERTS);
+        GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, 0x6d, GS_PS_MSG_PTVERTS);
         return FALSE;
     }
     return TRUE;
@@ -984,7 +969,7 @@ static BOOL face_serialize(FaceParticleSystem *self, void *fp, GameLogger *log)
 {
     ps_serialize(&self->base, fp, log);
     if (!ps_write(&self->flScale, 4, fp)) {
-        GameLog_LogSourceLocation(log, 4, PS_SUB_FILE, 0x150, PS_MSG_SAVESIZE);
+        GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, 0x150, GS_PS_MSG_SAVESIZE);
         return FALSE;
     }
     return TRUE;
@@ -996,11 +981,11 @@ static BOOL face_deserialize(FaceParticleSystem *self, void *fp, GameLogger *log
     if (!ps_deserialize(&self->base, fp, log))
         return FALSE;
     if (!ps_read(&self->flScale, 4, fp)) {
-        GameLog_LogSourceLocation(log, 4, PS_SUB_FILE, 0x15e, PS_MSG_FACESIZE);
+        GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, 0x15e, GS_PS_MSG_FACESIZE);
         return FALSE;
     }
     if (!face_alloc_verts(self)) {
-        GameLog_LogSourceLocation(log, 4, PS_SUB_FILE, 0x165, PS_MSG_VERTARR);
+        GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, 0x165, GS_PS_MSG_VERTARR);
         return FALSE;
     }
     return TRUE;
@@ -1008,8 +993,6 @@ static BOOL face_deserialize(FaceParticleSystem *self, void *fp, GameLogger *log
 
 /* ─── XFaceParticleSystem lifecycle ─── */
 
-#define PS_MSG_XSAVE ((const char *)0x0046923c)
-#define PS_MSG_XLOAD ((const char *)0x00469280)
 
 static BOOL xface_alloc_verts(XFaceParticleSystem *self)
 {
@@ -1210,7 +1193,7 @@ static BOOL xface_serialize(XFaceParticleSystem *self, void *fp, GameLogger *log
             goto failed;
     return TRUE;
 failed:
-    GameLog_LogSourceLocation(log, 4, PS_SUB_FILE, 0x2a9, PS_MSG_XSAVE);
+    GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, 0x2a9, GS_PS_MSG_XSAVE);
     return FALSE;
 }
 
@@ -1227,7 +1210,7 @@ static BOOL xface_deserialize(XFaceParticleSystem *self, void *fp, GameLogger *l
                (self, self->base.ring.dwRingCount);
 failed:
     ((ps_release_fn)self->base.pVtable[PS_VT_RELEASE])(self, 1);
-    GameLog_LogSourceLocation(log, 4, PS_SUB_FILE, 0x2c4, PS_MSG_XLOAD);
+    GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, 0x2c4, GS_PS_MSG_XLOAD);
     return FALSE;
 }
 
@@ -1260,10 +1243,6 @@ static void ps_set_render_node(ParticleSystem *self, DWORD enabled)
 /* ─── Construction (the four ctors and the factory) ─── */
 
 /* The game's type-name strings; pName points at them as the ctors leave it. */
-#define PS_NAME_BASE  ((char *)0x00468a38)   /* "ParticleSystem"      */
-#define PS_NAME_POINT ((char *)0x00468e40)   /* "PointParticleSystem" */
-#define PS_NAME_FACE  ((char *)0x004690b4)   /* "FaceParticleSystem"  */
-#define PS_NAME_XFACE ((char *)0x004690c8)   /* "XFaceParticleSystem" */
 
 /* 0x447aa0.  Each subclass ctor also builds and destroys a throwaway base
  * temporary on its own stack — no effect outside the frame, omitted (as with
@@ -1275,7 +1254,7 @@ static void ps_base_construct(ParticleSystem *self)
     self->pGenerator   = NULL;
     self->pEnvironment = NULL;
     self->pField24     = NULL;
-    self->pName        = PS_NAME_BASE;
+    self->pName        = GS_PSNAME_SYSTEM;
 }
 
 /* 0x44cfd0 */
@@ -1286,7 +1265,7 @@ static void point_construct(PointParticleSystem *self)
     self->base.pField24 = NULL;
     self->dwVertexCount = 0;
     self->pVerts        = NULL;
-    self->base.pName    = PS_NAME_POINT;
+    self->base.pName    = GS_PSNAME_POINT_SYSTEM;
 }
 
 /* 0x44d2c0 — pField24 is 1 here, and the six corners start zeroed. */
@@ -1296,7 +1275,7 @@ static void face_construct(FaceParticleSystem *self)
     self->base.pVtable  = (void **)ps_vtbl_face;
     self->pVerts        = NULL;
     self->nVertexCount  = 0;
-    self->base.pName    = PS_NAME_FACE;
+    self->base.pName    = GS_PSNAME_FACE_SYSTEM;
     self->base.pField24 = (void *)1;
     self->flScale       = 1.0f;
     memset(self->flCorner, 0, sizeof self->flCorner);
@@ -1317,7 +1296,7 @@ static void xface_construct(XFaceParticleSystem *self)
     ranges[2] = ranges[3] = 0.0f;                       /* lifetime       */
     ranges[4] = ranges[5] = 0.0f;                       /* speed          */
     ranges[6] = ranges[7] = 0.0f;                       /* rotation       */
-    self->base.pName = PS_NAME_XFACE;
+    self->base.pName = GS_PSNAME_XFACE_SYSTEM;
 }
 
 template <typename T>
@@ -1347,13 +1326,6 @@ ParticleSystem *ps_create(const char *name)
  * system; both go through the factory, so with these ours nothing in the
  * particle subsystem is still the game's. */
 
-#define PS_OPENSAVE_FILE ((const char *)0x00468e64)  /* ...\OpenSave.cpp */
-#define PS_MSG_STARTREAD ((const char *)0x00468f24)
-#define PS_MSG_NOOPEN    ((const char *)0x00468ee0)
-#define PS_MSG_NOCLOSE   ((const char *)0x00468e9c)
-#define PS_MSG_NODATA    ((const char *)0x00468fe0)
-#define PS_MSG_NAMEREAD  ((const char *)0x00468fa0)
-#define PS_MSG_NOSYSTEM  ((const char *)0x00468f58)
 
 typedef BOOL (THISCALL *ps_load_fn)(void *, void *, GameLogger *);
 
@@ -1362,19 +1334,19 @@ static ParticleSystem *ps_load_stream(void *fp, GameLogger *log)
 {
     DWORD len;
     if (hooks_fread(&len, 4, 1, fp) != 1) {
-        GameLog_LogSourceLocation(log, 4, PS_OPENSAVE_FILE, 0xb5, PS_MSG_NODATA);
+        GameLog_LogSourceLocation(log, 4, GS_PS_OPENSAVE_FILE, 0xb5, GS_PS_MSG_NODATA);
         return NULL;
     }
     char *name = (char *)::operator new(len, std::nothrow);
     if (hooks_fread(name, 1, len, fp) != len) {
         ::operator delete(name);
-        GameLog_LogSourceLocation(log, 4, PS_OPENSAVE_FILE, 0xbd, PS_MSG_NAMEREAD);
+        GameLog_LogSourceLocation(log, 4, GS_PS_OPENSAVE_FILE, 0xbd, GS_PS_MSG_NAMEREAD);
         return NULL;
     }
     ParticleSystem *ps = ps_create(name);
     if (ps == NULL) {
         /* logged BEFORE the free here — unlike Deserialize's two branches */
-        GameLog_LogSourceLocation(log, 4, PS_OPENSAVE_FILE, 0xc6, PS_MSG_NOSYSTEM, name);
+        GameLog_LogSourceLocation(log, 4, GS_PS_OPENSAVE_FILE, 0xc6, GS_PS_MSG_NOSYSTEM, name);
         ::operator delete(name);
         return NULL;
     }
@@ -1390,15 +1362,15 @@ static ParticleSystem *ps_load_stream(void *fp, GameLogger *log)
  * was read, which is the original's behaviour. */
 ParticleSystem *ps_load_file(const char *path, GameLogger *log)
 {
-    GameLog_LogMessage(log, 2, PS_MSG_STARTREAD, path);
+    GameLog_LogMessage(log, 2, GS_PS_MSG_STARTREAD, path);
     void *fp = hooks_fopen(path, "r");       /* the game's mode string at 0x464200 */
     if (fp == NULL) {
-        GameLog_LogSourceLocation(log, 4, PS_OPENSAVE_FILE, 0x9b, PS_MSG_NOOPEN, path);
+        GameLog_LogSourceLocation(log, 4, GS_PS_OPENSAVE_FILE, 0x9b, GS_PS_MSG_NOOPEN, path);
         return NULL;
     }
     ParticleSystem *ps = ps_load_stream(fp, log);
     if (hooks_fclose(fp) != 0) {
-        GameLog_LogSourceLocation(log, 3, PS_OPENSAVE_FILE, 0xa4, PS_MSG_NOCLOSE, path);
+        GameLog_LogSourceLocation(log, 3, GS_PS_OPENSAVE_FILE, 0xa4, GS_PS_MSG_NOCLOSE, path);
         if (ps)
             sub_object_delete(ps);
         return NULL;

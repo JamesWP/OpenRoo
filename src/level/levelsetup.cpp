@@ -178,6 +178,7 @@
 #include "bridgeobject.h"
 #include "breakabletile.h"
 #include "foe.h"
+#include "gamestr.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -238,19 +239,8 @@
 struct GameLogger;
 #define GAME_LOGGER_VA  ((GameLogger *)0x0046c4c0)
 
-#define S_INIT_STARTED  ((const char *)0x00465788)
-#define S_WARN_SWITCH   ((const char *)0x00465750)
-#define S_WARN_XBRIDGE  ((const char *)0x00465718)
-#define S_WARN_YBRIDGE  ((const char *)0x004656e0)
-#define S_FREEBOMB      ((const char *)0x004656b8)
-#define S_CD_MISSING    ((const char *)0x00465684)
-#define S_CRYSTALS      ((const char *)0x00465658)
-#define S_WARN_CRYSTALS ((const char *)0x00465618)
-#define S_LEO_FAILED    ((const char *)0x004655d8)
-#define S_LEO_LOADED    ((const char *)0x004655bc)
 
 /* ─── Callbacks kept at their original addresses ─────────────────────────── */
-
 
 
 typedef int (__attribute__((thiscall)) *noop_fn)(void *self);
@@ -266,8 +256,6 @@ extern "C" __declspec(dllexport) int __cdecl hooks_GameTime(int *out);
 
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
-
-
 
 
 /* ─── Unaligned accessors ────────────────────────────────────────────────── */
@@ -409,7 +397,7 @@ Sim_SetupLevelObjects(Game *self)
     ((Game *)G)->menu()->setChildCount(0x28, (GAME->nextLevelBonus() == 0) ? 2 : 1);
     PL->setLastSecondsMark(10.0);                /* two dwords: 0, 0x40240000 */
 
-    GameLog_LogMessage(GAME_LOGGER_VA, 2, S_INIT_STARTED);
+    GameLog_LogMessage(GAME_LOGGER_VA, 2, GS_LVL_INIT_STARTED);
 
     ((Game *)G)->setLevelSoundsReady(0);
     ((Game *)G)->scriptPlayer()->releaseStreams();
@@ -562,7 +550,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_SWITCH) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_SWITCH);
+                        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_WARN_SWITCH);
                     } else {
                         unsigned char idx = (unsigned char)(param - 1);
                         if (idx > ((Game *)G)->switchMax())
@@ -581,7 +569,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_BRIDGE_U) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_XBRIDGE);
+                        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_WARN_XBRIDGE);
                     } else {
                         BridgeObject::spawn((Game *)G, u, v, t->height(),
                                             (unsigned char)(param - 1), 1);
@@ -592,7 +580,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_BRIDGE_V) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        GameLog_LogMessage(GAME_LOGGER_VA, 1, S_WARN_YBRIDGE);
+                        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_WARN_YBRIDGE);
                     } else {
                         BridgeObject::spawn((Game *)G, u, v, t->height(),
                                             (unsigned char)(param - 1), 2);
@@ -692,7 +680,7 @@ Sim_SetupLevelObjects(Game *self)
                      * double copy here, the same bits. */
                     ((Game *)G)->freeBomb(CEN->freeBombs)->placedAt =
                         *GAME->clock();
-                    GameLog_LogMessage(GAME_LOGGER_VA, 3, S_FREEBOMB,
+                    GameLog_LogMessage(GAME_LOGGER_VA, 3, GS_LVL_FREEBOMB,
                                        (unsigned int)CEN->freeBombs);
                     CEN->freeBombs++;
                 }
@@ -826,7 +814,7 @@ next_row:
             unsigned char cv = PL->homeV();
             if (Sim_FindNearestFlaggedTileInRadius((Game *)G, &cu, &cv, 0x14)) {
                 CELL(M, cu, cv)->setContents(0);
-                GameLog_LogMessage(GAME_LOGGER_VA, 3, S_CD_MISSING,
+                GameLog_LogMessage(GAME_LOGGER_VA, 3, GS_LVL_CD_MISSING,
                                    (unsigned int)cu, (unsigned int)cv);
             }
         }
@@ -853,23 +841,23 @@ next_row:
     GAME->setField13cc90(0);
     GAME->setField13cca8(0);
 
-    GameLog_LogMessage(GAME_LOGGER_VA, 1, S_CRYSTALS,
+    GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_CRYSTALS,
                        (unsigned int)GAME->field_42252(),
                        ((Game *)G)->gemsRequired());
 
     if ((int)((unsigned int)PL->gemsCollected() + (unsigned int)GAME->field_42252()) <
         ((Game *)G)->gemsRequired())
-        GameLog_LogMessage(GAME_LOGGER_VA, 3, S_WARN_CRYSTALS);
+        GameLog_LogMessage(GAME_LOGGER_VA, 3, GS_LVL_WARN_CRYSTALS);
 
     /* ONE argument -- see the header. */
     if (((Game *)G)->extraObjects()->openFile(
                                  GAME->levelName()) == 0) {
         ((Game *)G)->extraObjects()->setLoaded(0);
-        GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LEO_FAILED,
+        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_LEO_FAILED,
                            GAME->levelName());
     } else {
         ((Game *)G)->extraObjects()->setLoaded(1);
-        GameLog_LogMessage(GAME_LOGGER_VA, 1, S_LEO_LOADED,
+        GameLog_LogMessage(GAME_LOGGER_VA, 1, GS_LVL_LEO_LOADED,
                            GAME->levelName());
     }
 
