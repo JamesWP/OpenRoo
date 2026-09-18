@@ -100,7 +100,6 @@
 #include "gameglobals.h"
 #include <stdio.h>
 #include <string.h>
-#include "gamecrt.h"
 
 typedef HRESULT (WINAPI *ddcreate_fn)(GUID *, LPDIRECTDRAW *, IUnknown *);
 #define ORIG_DIRECTDRAWCREATE ((ddcreate_fn)0x004417fe)
@@ -224,16 +223,16 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     d3dTmp->Release();
 
     self->dwModeFilterFlags = hwDesc.dwDeviceRenderBitDepth;
-    GC_SPRINTF(msg, GS_D3D_RENDER_BITDEPTH, self->dwModeFilterFlags);
+    sprintf(msg, GS_D3D_RENDER_BITDEPTH, self->dwModeFilterFlags);
     d3d_imagelog(msg);
 
     /* ── Enumerate display modes into self->modeList ── */
-    GC_SPRINTF(msg, GS_D3D_START_ENUMMODES);
+    sprintf(msg, GS_D3D_START_ENUMMODES);
     d3d_imagelog(msg);
     hr = self->pDD4->EnumDisplayModes(0, NULL, self, ORIG_ENUMDISPLAYMODES_CB);
     if (FAILED(hr))
         return ORIG_D3D_LOG(self, GS_D3D_ERR_ENUMMODES);
-    GC_SPRINTF(msg, GS_D3D_END_ENUMMODES);
+    sprintf(msg, GS_D3D_END_ENUMMODES);
     d3d_imagelog(msg);
 
     /* ── Pick the mode, and set it ──
@@ -248,7 +247,7 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     self->pSelectedMode = mode;
 
     if (mode != NULL) {
-        GC_SPRINTF(msg2, GS_D3D_TRYING_MODE,
+        sprintf(msg2, GS_D3D_TRYING_MODE,
                      mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
         d3d_imagelog(msg2);
 
@@ -256,12 +255,12 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
         hr = self->pDD4->SetDisplayMode(mode->dwWidth, mode->dwHeight,
                                         mode->dwBitDepth, 0, 0);
         if (FAILED(hr)) {
-            GC_SPRINTF(msg2, GS_D3D_FAILED_HR, hr);
+            sprintf(msg2, GS_D3D_FAILED_HR, hr);
             d3d_imagelog(msg2);
 
             mode = self->modeList.pHead
                  ? (DisplayModeNode *)self->modeList.pHead->pValue : NULL;
-            GC_SPRINTF(msg, GS_D3D_TRYING_FIRST_MODE,
+            sprintf(msg, GS_D3D_TRYING_FIRST_MODE,
                          mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
             d3d_imagelog(msg);
             hr = self->pDD4->SetDisplayMode(mode->dwWidth, mode->dwHeight,
@@ -273,7 +272,7 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     } else {
         mode = self->modeList.pHead
              ? (DisplayModeNode *)self->modeList.pHead->pValue : NULL;
-        GC_SPRINTF(msg, GS_D3D_NO_MODE_SPECIFIED,
+        sprintf(msg, GS_D3D_NO_MODE_SPECIFIED,
                      mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
         d3d_imagelog(msg);
         hr = self->pDD4->SetDisplayMode(mode->dwWidth, mode->dwHeight,
@@ -329,9 +328,9 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     dd.ddsCaps.dwCaps = (bHardware ? 0x3800 : 0) + 0x20800;  /* add, not OR */
     memcpy(&dd.ddpfPixelFormat, self->zbufFmt, 8 * sizeof(DWORD));
 
-    GC_SPRINTF(msg, GS_D3D_ZBUF_BITDEPTH,    self->zbufFmt[3]);  /* +0x20 */
+    sprintf(msg, GS_D3D_ZBUF_BITDEPTH,    self->zbufFmt[3]);  /* +0x20 */
     d3d_imagelog(msg);
-    GC_SPRINTF(msg, GS_D3D_STENCIL_BITDEPTH, self->zbufFmt[4]);  /* +0x24 */
+    sprintf(msg, GS_D3D_STENCIL_BITDEPTH, self->zbufFmt[4]);  /* +0x24 */
     d3d_imagelog(msg);
 
     hr = self->pDD4->CreateSurface(&dd, &self->pBackBuffer, NULL);

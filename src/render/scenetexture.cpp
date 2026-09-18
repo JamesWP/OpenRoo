@@ -146,7 +146,6 @@
 #include "alloc.h"
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "gamecrt.h"
 
 /* ─── Originals left live in the binary ──────────────────────────────────── */
 
@@ -226,7 +225,7 @@ static void st_set_image_name(LoadedImage *self, LPCSTR name)
         game_free2(self->ImageName);
     char *copy = (char *)game_operator_new(st_strlen(name) + 1u);
     self->ImageName = copy;
-    GC_SPRINTF(copy, GS_FMT_S, name);
+    sprintf(copy, GS_FMT_S, name);
 }
 
 /* DDSCAPS for the texture surface, from the hardware device description.
@@ -508,10 +507,10 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
 
     char msg[256];
     unsigned int w = h.width;
-    GC_SPRINTF(msg, GS_TEX_FMT_X_SIZE, w, st_size_report_value(w));
+    sprintf(msg, GS_TEX_FMT_X_SIZE, w, st_size_report_value(w));
     st_log_str(msg);
     unsigned int ht = h.height;
-    GC_SPRINTF(msg, GS_TEX_FMT_Y_SIZE, ht, st_size_report_value(ht));
+    sprintf(msg, GS_TEX_FMT_Y_SIZE, ht, st_size_report_value(ht));
     st_log_str(msg);
 
     DDSURFACEDESC2 ddsd;

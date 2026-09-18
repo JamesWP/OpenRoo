@@ -223,6 +223,7 @@
  */
 
 #include <windows.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "log.h"
@@ -231,7 +232,6 @@
 #include "soundmanager.h"
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "gamecrt.h"
 
 /* ─── Game / Level3DExtraObjects field offsets ───────────────────────────── */
 
@@ -269,6 +269,7 @@ CStatic_HaltPlayback(CStaticSoundbuffer *self);
 /* ─── FX / diag ──────────────────────────────────────────────────────────── */
 
 static int s_fx_samelevel  = 0;
+static int s_fx_crtpath    = 0;
 static int s_fx_levelshift = 0;
 static int s_diag         = 0;
 static int s_init         = 0;
@@ -298,6 +299,25 @@ static void fx_init(void)
                       "lookup reads entry N+1, so every load opens the NEXT "
                       "level's map and script\n");
         }
+    }
+
+    /* KAROO_CRT_FX=path -- the negative control for CRT_PLAN.md Stage C.
+     *
+     * Stage C moved 24 sprintf sites off the game's CRT onto ours.  Most of
+     * them format log lines, which go to a stderr this process discards, so
+     * a control there would prove nothing.  These level paths are the
+     * exception: a gate reads them, because a path that does not resolve is
+     * a level that does not load.
+     *
+     * It swaps the two %s arguments rather than perturbing a character --
+     * for a pure function, break the structure, not a value.  The result is
+     * "<name>\Levels\<gamedir>", so every recording fails at load. */
+    n = GetEnvironmentVariableA("KAROO_CRT_FX", buf, sizeof(buf));
+    if (n > 0 && n < sizeof(buf) && strcmp(buf, "path") == 0) {
+        s_fx_crtpath = 1;
+        log_write("levelparse: KAROO_CRT_FX=path -- the two %%s arguments to "
+                  "our sprintf are swapped, so every level path is "
+                  "nonsense\n");
     }
 
     n = GetEnvironmentVariableA("KAROO_LEVELPARSE_DIAG", buf, sizeof(buf));
@@ -338,7 +358,10 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     inline_strcpy(self->levelNameBuffer(), name);
 
-    GC_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR, name);
+    if (s_fx_crtpath)
+        sprintf(path, GS_OPEN_FMT_LEVELS, name, GS_GAME_DIR);
+    else
+        sprintf(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR, name);
 
     /* SAVE the previously loaded map name BEFORE the read overwrites it.
      * The ordering is the whole mechanism of the +0x10 flag below; the
@@ -366,7 +389,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
                       (const unsigned char *)self->map()->mapName()) != 0)
         self->setMapChanged(1);
 
-    GC_SPRINTF(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR, name);
+    sprintf(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR, name);
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);
 
@@ -415,13 +438,13 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     self->setNextLevelBonus(0);
 
     /* A leftover: `path` is overwritten before it is ever read. */
-    GC_SPRINTF(path, GS_OPEN_FMT_GAM, self->gameFileName());
+    sprintf(path, GS_OPEN_FMT_GAM, self->gameFileName());
 
     /* The bonus peek -- load the NEXT level's map just to read its bonus. */
     if (self->restartCount() == 0 &&
         (unsigned int)(self->levelIndex()) + 1 != (unsigned int)self->levelCount()) {
         Sim_SetCurrentLevelName(self, (unsigned char)(self->levelIndex() + 1));
-        GC_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
+        sprintf(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
                            self->levelName());
         /* the result is deliberately not tested, as in the original */
         self->map()->readFile(path);
@@ -434,7 +457,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     }
 
     Sim_SetCurrentLevelName(self, levelNo);
-    GC_SPRINTF(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
+    sprintf(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
                        self->levelName());
 
     /* Saved BEFORE the read -- see the header, and the `samelevel` control. */
@@ -463,7 +486,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
                       (const unsigned char *)self->map()->mapName()) != 0)
         self->setMapChanged(1);
 
-    GC_SPRINTF(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR,
+    sprintf(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR,
                        self->levelName());
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);

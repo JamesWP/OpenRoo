@@ -67,7 +67,6 @@
 #include <stdio.h>
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "gamecrt.h"
 
 /* The CRT's fwrite — __cdecl(const void *buf, size_t size, size_t count,
  * FILE *stream).  This address was called "ImageLogger::Log" here until
@@ -231,7 +230,7 @@ TextureDIB_CreateSurface(LoadedImage *self, IDirectDraw4 *dd, LPCSTR name,
     /* strlen+1: the original's `not ecx` with no matching `dec ecx`. */
     char *copy = (char *)game_operator_new(dib_strlen(name) + 1u);
     self->ImageName = copy;
-    GC_SPRINTF(copy, GS_FMT_S, name);
+    sprintf(copy, GS_FMT_S, name);
 
     self->loadedState = 1;
 
