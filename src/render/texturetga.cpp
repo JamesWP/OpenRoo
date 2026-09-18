@@ -99,10 +99,10 @@
 #include "texture.h"
 #include "tga.h"
 #include "log.h"
-#include "alloc.h"
 #include "gamestr.h"
 #include "gameglobals.h"
 #include <stdio.h>
+#include <new>
 
 /* ─── Originals left live in the binary ────────────────────────────────────
  *
@@ -272,7 +272,13 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
      * `cdq; and edx,7; add; sar 3` idiom, not a shift. */
     int bits = (int)((unsigned int)h.bpp * (unsigned int)h.height
                                          * (unsigned int)h.width);
-    char *buf = (char *)game_operator_new((unsigned int)((bits + ((bits >> 31) & 7)) >> 3));
+    /* Ours on both sides -- allocated and freed inside this function, never
+     * handed to game code -- so plain new/delete, not alloc.h (COHESION_PLAN
+     * template 6).  `nothrow` keeps the original's contract: the game's
+     * operator new at 0x450e9d returns NULL on failure, and the free below
+     * is guarded against exactly that. */
+    char *buf = new (std::nothrow)
+                    char[(unsigned int)((bits + ((bits >> 31) & 7)) >> 3)];
 
     if (h.imageType == 0x0a) {
         /* RLE true-colour.  `i` is the running pixel index; the loop
@@ -421,7 +427,7 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
     }
 
     if (buf != NULL)
-        game_free2(buf);
+        delete[] buf;
 
     if (tmp->Unlock(NULL) < 0) {
         if (tmp != NULL)
