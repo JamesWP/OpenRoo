@@ -59,9 +59,9 @@
 #include "direct3d.h"
 #include "log.h"
 #include "scenetexture.h"   /* Texture_ImportSceneTextures, through its owner header */
-#include "gamecrt.h"        /* GC_FOPEN / GC_FGETS / GC_FCLOSE */
 #include "gamestr.h"        /* GS_FON_MODE_READ */
 
+#include <stdio.h>
 #include <string.h>
 
 /* The FVF the original declares, and the vertex it really writes. */
@@ -326,31 +326,24 @@ unsigned int TextRenderer::load(const char *path, Direct3D *d3d)
     ++g_nLoad;
     { static unsigned long seen; text_first("ReadBitmapFontFile", &seen); }
 
-    FILE *fp = GC_FOPEN(path, GS_FON_MODE_READ);
+    FILE *fp = fopen(path, "r");
     if (fp == NULL)
         return 0;
 
     char line[0x100];
 
     /* Line 1 -- the atlas image. */
-    if (GC_FGETS(line, 0xff, fp) == NULL)
+    if (fgets(line, 0xff, fp) == NULL)
         return 0;                              /* leaks fp, as the original does */
     line[strlen(line) - 1] = '\0';
 
-    /* The atlas by address rather than `&atlas_`: the class is packed for the
-     * layout checks, so GCC warns about taking a member's address even though
-     * this one cannot be misaligned -- the object is 4-aligned and 0x0c is a
-     * multiple of 4.  KAROO_LAYOUT_AT(atlas_, 0x0c) in the header is what
-     * keeps the literal honest. */
-    SceneTexture *atlas = (SceneTexture *)((char *)this + 0x0c);
-
     const unsigned int ok = Texture_ImportSceneTextures(
-        atlas, d3d->pDD4, d3d->pDevice, line, 1, 0, 0);
+        this->atlas(), d3d->pDD4, d3d->pDevice, line, 1, 0, 0);
     if ((ok & 0xffu) == 0)
         return ok;                             /* its result, upper bytes and all */
 
     /* Line 2 -- columns. */
-    if (GC_FGETS(line, 0xff, fp) == NULL)
+    if (fgets(line, 0xff, fp) == NULL)
         return 0;
     line[strlen(line) - 1] = '\0';
     cols_ = (unsigned int)font_atoi(line);
@@ -358,7 +351,7 @@ unsigned int TextRenderer::load(const char *path, Direct3D *d3d)
         return 0;
 
     /* Line 3 -- rows. */
-    if (GC_FGETS(line, 0xff, fp) == NULL)
+    if (fgets(line, 0xff, fp) == NULL)
         return 0;
     line[strlen(line) - 1] = '\0';
     rows_ = (unsigned int)font_atoi(line);
@@ -377,7 +370,7 @@ unsigned int TextRenderer::load(const char *path, Direct3D *d3d)
 
     /* `MOV AL,1` over fclose's return: the low byte is the success flag and
      * the upper three are fclose's, which is what the original hands back. */
-    const unsigned int closed = (unsigned int)GC_FCLOSE(fp);
+    const unsigned int closed = (unsigned int)fclose(fp);
     return (closed & 0xffffff00u) | 1u;
 }
 

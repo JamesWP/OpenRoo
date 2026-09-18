@@ -87,6 +87,12 @@ private:
     SceneTexture  atlas_;       /* +0x0c  .pTexture2 lands on +0x24           */
 
     TextRenderer() = delete;    /* game-owned; only ever reached by pointer */
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+    SceneTexture* atlas() { return &atlas_; }
+#pragma GCC diagnostic pop
+
 };
 
 KAROO_LAYOUT_CHECKS(TextRenderer)
