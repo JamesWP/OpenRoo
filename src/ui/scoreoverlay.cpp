@@ -113,13 +113,19 @@
 /* `game` (*0x0046C890) — the fonts and the overlay texture.  Not the Game;
  * an unmapped object, so it stays an opaque byte base. */
 #define GM_P(off)  (*(void **)((BYTE *)game + (off)))
+#define GM_D(off)  (*(DWORD *)((BYTE *)game + (off)))
 #define GM_OVERLAY_TEX  0x6f8a8   /* SceneTexture* for the backdrop quad      */
-#define GM_HS_FONT_A    0x6f914   /* high-score rows                          */
-#define GM_HS_FONT_B    0x6f918
-#define GM_GO_FONT_A    0x6f984   /* game-over rows                           */
-#define GM_GO_FONT_B    0x6f988
-#define GM_PE_FONT_A    0x6f8cc   /* "...press Enter"                         */
-#define GM_PE_FONT_B    0x6f8d0
+/* These are the text entry points' last two arguments, and they are COLOURS,
+ * not fonts: D3DCOLORs for the glyph quad's top and bottom vertices.  The old
+ * FONT_A/FONT_B names came from textrenderer.h's placeholder signature and
+ * were wrong; the decompile of 0x00413690 writes both straight into the
+ * vertex DIFFUSE.  See textrenderer.h. */
+#define GM_HS_COL_TOP   0x6f914   /* high-score rows                          */
+#define GM_HS_COL_BOT   0x6f918
+#define GM_GO_COL_TOP   0x6f984   /* game-over rows                           */
+#define GM_GO_COL_BOT   0x6f988
+#define GM_PE_COL_TOP   0x6f8cc   /* "...press Enter"                         */
+#define GM_PE_COL_BOT   0x6f8d0
 
 /* ─── The game's own entry points, called through ────────────────────────── */
 
@@ -245,15 +251,15 @@ Score_DrawHighScoreTable(Game *g, void *game, Direct3D *d3d,
 
         sprintf(buf, GS_FMT_S, rec + HS_NAME_OFF);
         text->drawLeft(xName, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                       GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
+                       GM_D(GM_HS_COL_TOP), GM_D(GM_HS_COL_BOT));
 
         sprintf(buf, GS_FMT_D, (unsigned)rec[HS_LEVEL_OFF]);
         text->drawRight(xLevel, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                        GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
+                        GM_D(GM_HS_COL_TOP), GM_D(GM_HS_COL_BOT));
 
         sprintf(buf, GS_FMT_D, *(const DWORD *)(rec + HS_SCORE_OFF));
         text->drawRight(xScore, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                        GM_P(GM_HS_FONT_A), GM_P(GM_HS_FONT_B));
+                        GM_D(GM_HS_COL_TOP), GM_D(GM_HS_COL_BOT));
 
         dy += 20;
         row++;
@@ -324,23 +330,23 @@ Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
         const float y = w * r.vy;
 
         text->drawLeft(xLabel, y, cellW, cellH, 0.75f, r.label, d3d, 0,
-                       GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
+                       GM_D(GM_GO_COL_TOP), GM_D(GM_GO_COL_BOT));
 
         sprintf(buf, GS_FMT_D, GO_V(r.valOff));
         text->drawRight(r.mul ? xValue : xProd, y, cellW, cellH, 0.75f,
                         buf, d3d, 0,
-                        GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
+                        GM_D(GM_GO_COL_TOP), GM_D(GM_GO_COL_BOT));
 
         if (r.mul) {
             text->drawLeft(xValue, y, cellW, cellH, 0.75f, r.mul, d3d, 0,
-                           GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
+                           GM_D(GM_GO_COL_TOP), GM_D(GM_GO_COL_BOT));
             sprintf(buf, GS_FMT_D, GO_V(r.prodOff));
             text->drawRight(xProd, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                            GM_P(GM_GO_FONT_A), GM_P(GM_GO_FONT_B));
+                            GM_D(GM_GO_COL_TOP), GM_D(GM_GO_COL_BOT));
         }
     }
 
     text->drawCentered(w * 0.5f, w * 0.59375f, cellW, cellH, 0.75f,
                        GS_HUD_PRESS_ENTER, d3d, 0,
-                       GM_P(GM_PE_FONT_A), GM_P(GM_PE_FONT_B));
+                       GM_D(GM_PE_COL_TOP), GM_D(GM_PE_COL_BOT));
 }
