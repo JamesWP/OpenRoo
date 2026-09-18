@@ -32,8 +32,9 @@
  * deliberate hold rather than an oversight.
  */
 #include "linkedlist.h"
-#include "alloc.h"
+#include "alloc.h"        /* still needed: the object itself, not its nodes */
 #include <stddef.h>
+#include <stdlib.h>
 #include <windows.h>
 #include "log.h"
 
@@ -121,12 +122,20 @@ static ListFx list_fx(void)
 
 extern "C" {
 
+/* Forward declaration: the vtable below needs its address. */
+__declspec(dllexport) LinkedList *__attribute__((thiscall))
+List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf);
+
+/* Our own one-slot vtable -- see linkedlist.h for why it is ours and why the
+ * game's table at 0x0045d460 is left pointing at a UD2. */
+static void *const g_ListVtable[1] = { (void *)&List_ScalarDestructor };
+
 __declspec(dllexport) void __attribute__((thiscall))
 List_Init(LinkedList *self)
 {
     ++g_nInit;
     { static unsigned long seen; list_first("Init", &seen); }
-    self->vtable  = (void **)LINKEDLIST_VTABLE;
+    self->vtable  = (void **)g_ListVtable;
     self->pHead   = NULL;
     self->pTail   = NULL;
     self->dwCount = 0;
@@ -140,7 +149,7 @@ List_Clear(LinkedList *self)
     LinkedListNode *p = self->pHead;
     while (p != NULL) {
         LinkedListNode *next = p->pNextNode;
-        game_free2(p);
+        free(p);
         p = next;
     }
     self->pHead   = NULL;
@@ -153,7 +162,7 @@ List_Destruct(LinkedList *self)
 {
     ++g_nDestruct;
     { static unsigned long seen; list_first("Destruct", &seen); }
-    self->vtable = (void **)LINKEDLIST_VTABLE;
+    self->vtable = (void **)g_ListVtable;
     List_Clear(self);
 }
 
@@ -164,8 +173,12 @@ List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf)
     { static unsigned long seen; list_first("ScalarDestructor", &seen); }
     List_Destruct(self);
     if ((bFreeSelf & 1) != 0)
-        game_free2(self);           /* the object itself is the game's --
-                                     * its owners are not ours yet */
+        /* NOT `delete`.  The nodes above are ours end to end, but the
+         * LinkedList *object* is not: whatever allocated it with bFreeSelf
+         * set did so on the game's heap, and those allocators are still
+         * game code.  Freeing it with our `delete` would be a mismatched
+         * free -- heap corruption, not a test failure. */
+        game_free2(self);
     return self;
 }
 
@@ -176,8 +189,22 @@ List_Append(LinkedList *self, void *pValue)
     { static unsigned long seen; list_first("Append", &seen); }
     list_census();
 
-    /* Unchecked by design -- see the header comment. */
-    LinkedListNode *node = (LinkedListNode *)game_operator_new(12);
+    /* Ours on both sides now, so our own heap rather than alloc.h -- but
+     * malloc/free, not new/delete, and the reason is measured rather than
+     * stylistic:
+     *
+     *   new (std::nothrow)   ~67 s per recording
+     *   new (throwing)       ~8 s
+     *   malloc               ~8 s      (baseline is ~8 s)
+     *
+     * libstdc++ implements the nothrow form as a try/catch around the
+     * throwing one, and a try/catch per node on a path this hot costs ~7x
+     * across the whole suite.  Plain `new` is fast but throws on exhaustion,
+     * and the original returned NULL and then stored through it -- so an
+     * out-of-memory Append FAULTED, and bit-exactness (CLAUDE.md) means
+     * reproducing that rather than unwinding a bad_alloc out through game
+     * frames.  malloc gives both: NULL on failure, no exception machinery. */
+    LinkedListNode *node = (LinkedListNode *)malloc(sizeof(LinkedListNode));
     node->pValue    = pValue;
     node->pNextNode = NULL;
     node->pPrevNode = NULL;
@@ -220,7 +247,7 @@ List_Unlink(LinkedList *self, LinkedListNode *pNode)
         else
             pNode->pNextNode->pPrevNode = pNode->pPrevNode;
 
-        game_free2(pNode);
+        free(pNode);
         self->dwCount = self->dwCount - 1;
     }
     return 0;
