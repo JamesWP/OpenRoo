@@ -110,22 +110,68 @@
  * original reads them (which is not the order they sit in memory). */
 #define GO_V(off)  (*(const DWORD *)((const BYTE *)g + (off)))
 
-/* `game` (*0x0046C890) — the fonts and the overlay texture.  Not the Game;
- * an unmapped object, so it stays an opaque byte base. */
+/* `game` — the theme/environment object.  NOT a pointer: 0x0046C890 IS the
+ * object, a global in `.data`, pushed as an immediate at all 14 of its sites
+ * (RenderGameFrame's three `PUSH 0x46c890` are how it reaches us).  An earlier
+ * comment here wrote it `*0x0046C890`, which misdescribed a global as a
+ * pointer.
+ *
+ * It is unmapped and stays an opaque byte base, but its outline is now known,
+ * from the static-initialiser ctor at 0x004259a0 (reached by the thunk at
+ * 0x004256c0, `MOV ECX,0x46c890; JMP`, run before WinMain; 0x004256e0 is the
+ * matching atexit teardown):
+ *
+ *   +0x00000              header, 0x104 bytes
+ *   +0x104 + i * 0x2ef0   38 sub-objects, i = 0..37, each
+ *                         { vtable 0x0045d6f8, ?, Element[0x5dd] of 8 bytes }
+ *                         built by __ehvec_ctor (0x00451db5)
+ *   +0x6f8a4..            the theme scalars below, in the gap after the array
+ *   +0x6f99d              one further object, ctor 0x0043c560
+ *
+ * That runs to roughly 0x6f9a0 — about 457 KB, some 88% of the whole `.data`
+ * section, and the largest structure in the binary.  It is also the owner of
+ * the "38-element array of stride 0x2ef0" that ENDGAME_PLAN.md E1's TU audit
+ * found ctor/dtor loops for without being able to name.
+ *
+ * Mapping it is ThemeFileLoader 0x0040c110's job, not ours: that function is
+ * its only writer and is ASSET_PLAN.md Phase 5.  Until then, reading literal
+ * offsets into a byte base is the honest position — inventing a layout for
+ * 457 KB from three colour fields would be a guess. */
 #define GM_P(off)  (*(void **)((BYTE *)game + (off)))
 #define GM_D(off)  (*(DWORD *)((BYTE *)game + (off)))
 #define GM_OVERLAY_TEX  0x6f8a8   /* SceneTexture* for the backdrop quad      */
 /* These are the text entry points' last two arguments, and they are COLOURS,
- * not fonts: D3DCOLORs for the glyph quad's top and bottom vertices.  The old
- * FONT_A/FONT_B names came from textrenderer.h's placeholder signature and
- * were wrong; the decompile of 0x00413690 writes both straight into the
- * vertex DIFFUSE.  See textrenderer.h. */
-#define GM_HS_COL_TOP   0x6f914   /* high-score rows                          */
+ * not fonts: the glyph quad's top and bottom vertex DIFFUSE (textrenderer.h).
+ *
+ * The theme files settle it, and they also name the fields.  Each is parsed
+ * by ThemeFileLoader 0x0040c110 with strtol(base 16) out of a TextColors
+ * line in the themes directory, whose value is a pair of six-hex-digit RGBs:
+ *
+ *   +0x6f8cc/+0x6f8d0  HUDTextColors                    Space: FFFFFF 8080FF
+ *   +0x6f914/+0x6f918  MenuHighscoresEntriesTextColors  Space: FF0000 FFFF00
+ *   +0x6f984/+0x6f988  MenuSummaryEntriesTextColors     Space: FFFFFF 8080FF
+ *
+ * So the names below are the theme's own, not a guess from the call site --
+ * and the PE_ pair was mis-labelled "...press Enter" on first reading: that
+ * caption happens to use the HUD pair, which is shared.
+ *
+ * They CANNOT become literals here: all three differ per theme (Candy's HUD
+ * pair is FFFFFF/00FFFF, Water's highscore pair FFFF00/00FFFF, and so on
+ * across the six shipped .thm files), which is exactly why the game keeps
+ * them in the object and re-reads them every draw.
+ *
+ * Note the stored dword is 0x00RRGGBB -- alpha zero, because the file gives
+ * six digits and nothing ORs in 0xFF000000.  The glyphs are not invisible, so
+ * the blend's alpha does not come from here; the D3D default alpha stage
+ * (ALPHAOP = SELECTARG1, ALPHAARG1 = TEXTURE) would take it from the font
+ * atlas instead.  That is the likely explanation and is NOT verified -- no
+ * one has read back the stage state at a text draw. */
+#define GM_HUD_COL_TOP  0x6f8cc   /* HUDTextColors; also "...press Enter"     */
+#define GM_HUD_COL_BOT  0x6f8d0
+#define GM_HS_COL_TOP   0x6f914   /* MenuHighscoresEntriesTextColors          */
 #define GM_HS_COL_BOT   0x6f918
-#define GM_GO_COL_TOP   0x6f984   /* game-over rows                           */
+#define GM_GO_COL_TOP   0x6f984   /* MenuSummaryEntriesTextColors             */
 #define GM_GO_COL_BOT   0x6f988
-#define GM_PE_COL_TOP   0x6f8cc   /* "...press Enter"                         */
-#define GM_PE_COL_BOT   0x6f8d0
 
 /* ─── The game's own entry points, called through ────────────────────────── */
 
@@ -348,5 +394,5 @@ Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
 
     text->drawCentered(w * 0.5f, w * 0.59375f, cellW, cellH, 0.75f,
                        GS_HUD_PRESS_ENTER, d3d, 0,
-                       GM_D(GM_PE_COL_TOP), GM_D(GM_PE_COL_BOT));
+                       GM_D(GM_HUD_COL_TOP), GM_D(GM_HUD_COL_BOT));
 }
