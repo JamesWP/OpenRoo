@@ -103,7 +103,6 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 #include <stdio.h>
-#include "gamecrt.h"
 
 /* ─── Originals left live in the binary ────────────────────────────────────
  *
@@ -247,9 +246,9 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 
     IDirectDrawSurface4 *tmp = NULL;
     if (dd->CreateSurface(&ddsd, &tmp, NULL) < 0) {
-        GC_FWRITE(GS_TEX_CREATESURFACE_FAILED,
+        fwrite(GS_TEX_CREATESURFACE_FAILED,
                        (int)tga_strlen(GS_TEX_CREATESURFACE_FAILED),
-                       1, GG_LOG_STREAM);
+                       1, stderr);
         if (fp != NULL) fclose(fp);
         return 0;
     }
@@ -258,8 +257,8 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
      * surface's real geometry, which is what the conversion loop below reads:
      * dwWidth, dwHeight, lPitch, lpSurface and the four channel masks. */
     if (tmp->Lock(NULL, &ddsd, 0, NULL) < 0) {
-        GC_FWRITE(GS_TEX_LOCK_FAILED, (int)tga_strlen(GS_TEX_LOCK_FAILED),
-                       1, GG_LOG_STREAM);
+        fwrite(GS_TEX_LOCK_FAILED, (int)tga_strlen(GS_TEX_LOCK_FAILED),
+                       1, stderr);
         if (tmp != NULL)
             tmp->Release();
         if (fp != NULL) fclose(fp);

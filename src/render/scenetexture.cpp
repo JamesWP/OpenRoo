@@ -203,7 +203,7 @@ static unsigned int st_strlen(const char *s)
 
 static void st_log_str(const char *s)
 {
-    GC_FWRITE(s, (int)st_strlen(s), 1, GG_LOG_STREAM);
+    fwrite(s, (int)st_strlen(s), 1, stderr);
 }
 
 /* The game's inlined strcmp: 0 when equal, otherwise -1 or 1 from the

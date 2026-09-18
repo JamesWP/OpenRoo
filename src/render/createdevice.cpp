@@ -98,6 +98,7 @@
 #include "log.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include <stdio.h>
 #include <string.h>
 #include "gamecrt.h"
 
@@ -126,7 +127,7 @@ typedef unsigned (__attribute__((thiscall)) *d3dlog_fn)(Direct3D *, const char *
  * bytes of it to the image log.  Both helpers are shared and stay live. */
 static void d3d_imagelog(const char *s)
 {
-    GC_FWRITE(s, (unsigned)lstrlenA(s), 1, GG_LOG_STREAM);
+    fwrite(s, (unsigned)lstrlenA(s), 1, stderr);
 }
 
 /* ── KAROO_D3DDEV_FX — visual proof ──
