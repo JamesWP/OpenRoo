@@ -180,7 +180,6 @@
 #include "foe.h"
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "gamecrt.h"
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */
 
@@ -370,6 +369,53 @@ Sim_FindTileByTypeMarker(LevelMap *map, unsigned int markerArg,
     return 0;
 }
 
+/* KAROO_CRT_FX=seed -- negative control for CRT_PLAN.md Stage A.
+ *
+ * Flips the low bit of the level seed handed to crt_srand().
+ *
+ * Measured, not assumed: with the flip on, the replay suite still passes
+ * 16/16.  CRT_PLAN.md predicted "every replay diverges"; that was wrong.
+ * Nothing the recordings assert is downstream of this seed -- the level
+ * layout comes from the .jjm, and the rand() consumers it feeds move only
+ * unasserted detail.  So this control is **live but unobserved** by either
+ * gate, which is the case CLAUDE.md says to resolve with a census rather
+ * than to leave ambiguous: KAROO_CRT_DIAG below is that census.
+ *
+ * Read by value, never by presence. */
+static unsigned int levelsetup_seed_fx(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        char buf[16];
+        cached = 0;
+        if (GetEnvironmentVariableA("KAROO_CRT_FX", buf, sizeof(buf)) &&
+            lstrcmpiA(buf, "seed") == 0)
+            cached = 1;
+        log_write("levelsetup: CRT FX seed xor = %d\n", cached);
+    }
+    return (unsigned int)cached;
+}
+
+/* KAROO_CRT_DIAG=1 -- the census that tells "live but unobserved" from "dead".
+ *
+ * Logs the word actually standing in the game's CRT seed global (0x00469f38,
+ * crtrand.h) immediately after our crt_srand() stores it.  A read-back, not
+ * a copy of the argument: it is the store into the *game's* global that the
+ * replacement has to get right, and the one thing the libc srand() would not
+ * have done.  Reading the global is free of side effects -- calling
+ * crt_rand() to prove the point would consume the sequence and change the
+ * run it is meant to observe. */
+static void levelsetup_seed_diag(unsigned int seed)
+{
+    char buf[16];
+    if (GetEnvironmentVariableA("KAROO_CRT_DIAG", buf, sizeof(buf)) == 0 ||
+        buf[0] == '0')
+        return;
+
+    log_write("levelsetup: crt_srand(%u) -> CRT seed global 0x00469f38 = %u\n",
+              seed, CRT_RAND_SEED);
+}
+
 /* ═══ 0x00416420 -- Game::SetupLevelObjects ════════════════════════════════ */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_SetupLevelObjects(Game *self)
@@ -474,8 +520,15 @@ Sim_SetupLevelObjects(Game *self)
     self->player()->setKind(4);
     self->player()->setStepDuration(200.0);                /* two dwords: 0, 0x40690000 */
 
-    /* time() through OUR hook, so KAROO_SEED still governs the run. */
-    GC_SRAND((unsigned int)hooks_GameTime(0));
+    /* time() through OUR hook, so KAROO_SEED still governs the run.  The
+     * seed lands in the game's own CRT global (crtrand.h), which is what
+     * every remaining rand() caller reads -- see CRT_PLAN.md Stage A. */
+    {
+        const unsigned int seed =
+            (unsigned int)hooks_GameTime(0) ^ levelsetup_seed_fx();
+        crt_srand(seed);
+        levelsetup_seed_diag(seed);
+    }
 
     /* ── pass 1: clear one dword per cell ──────────────────────────────── */
     h = M->extentV();

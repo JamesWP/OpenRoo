@@ -41,24 +41,29 @@ struct ProgableControl;
  * GameLog_LogSourceLocation (gamelog.h), which are ours. */
 static GameLogger *const GG_LOGGER = (GameLogger *)0x0046c4c0;
 
-/* The static CRT's log stream -- a FILE object in the game's own CRT data,
- * not a pointer to one, which is why it is passed straight to fwrite.
+/* 0x00469cf8 was GG_LOG_STREAM, "the static CRT's log stream".  It is
+ * `stderr`, and naming it settled CRT_PLAN.md Stage B outright.
  *
- * It was called a "sink" and typed `int *`/`void *` because the function
- * that takes it, 0x004513c7, was once read as `ImageLogger::Log`.  It is
- * the statically linked CRT `fwrite`: the texture loaders log by calling
- * fwrite(msg, strlen(msg), 1, stream), so the "(message, len, 1, sink)"
- * shape reconstructed from those two call sites was fwrite's own
- * (buffer, size, count, stream) with size=strlen and count=1.  Settled in
- * Ghidra 2026-09-04 (ASSET_PLAN.md Phase 2) by the call sites that are not
- * log messages at all: SaveConfig (0x41d490) calls it as
- * fwrite(blob, 0x144e, 1, fp), and the save-slot and high-score writers
- * call it a byte at a time.  The four dwords the decompile indexes are
- * _iobuf's: [3] _flag, [4] _file, [6] _bufsiz.
+ * The CRT's `_ioinit` (0x00451524) fills `__piob[i] = &_iob[i]` by walking
+ * EAX from 0x00469cb8 in steps of 0x20 while EAX < 0x00469f38 -- so _iob is
+ * 20 entries of 32 bytes based at 0x00469cb8, and 0x00469cf8 is entry
+ * **2**.  The static initialisers agree: entries 0/1/2 carry _file = 0/1/2
+ * with _flag 0x101 (_IOREAD) on the first and 0x2 (_IOWRT) on the other
+ * two.  Two independent reads, which is why this is stated and not guessed.
  *
- * No other fwrite can write to this stream -- it belongs to the game's CRT
- * copy, not ours -- which is why the calls to 0x004513c7 stay callbacks. */
-static FILE *const GG_LOG_STREAM = (FILE *)0x00469cf8;
+ * (The walk's end sentinel, 0x00469f38, is the CRT rand seed from
+ * crtrand.h: _iob ends exactly where the seed begins.)
+ *
+ * The consequence is that the old comment here was wrong in the way that
+ * mattered.  "No other fwrite can write to this stream" is false: stderr is
+ * not a shared object needing the game's CRT to touch it, it is fd 2.  Our
+ * CRT's `stderr` reaches the same OS handle, so our log writers just call
+ * our own fwrite and hand nothing across the boundary.  What the old
+ * comment got right -- and what still holds -- is the *shape*: 0x004513c7
+ * is fwrite, called as fwrite(msg, strlen(msg), 1, stream), settled by the
+ * call sites that are not log messages at all (SaveConfig 0x41d490 writes a
+ * 0x144e-byte blob; the save-slot and high-score writers go a byte at a
+ * time).  Those save-file callers are Stage D and still use GC_FWRITE. */
 
 /* The CD audio device (`CdAudioGlobal`); cdm.cpp owns its methods. */
 static CDM *const GG_CDAUDIO = (CDM *)0x004dc640;
