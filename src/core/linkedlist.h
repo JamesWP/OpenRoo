@@ -62,10 +62,22 @@ struct LinkedList {
 };
 static_assert(sizeof(LinkedList) == 16, "LinkedList size mismatch");
 
-/* The game's one-slot vtable at 0x0045d460; slot 0 is the scalar deleting
- * destructor.  Our Init and Destruct install this same address, because game
- * code still holds these objects and may compare the pointer. */
-#define LINKEDLIST_VTABLE 0x0045d460
+/* The vtable is OURS.  The game does not require the table address to stay
+ * stable, so `Init` and `Destruct` install a one-slot table defined in
+ * linkedlist.cpp rather than writing the game's 0x0045d460 back into the
+ * object.  Slot 0 is the scalar deleting destructor, and it is ours, so the
+ * table needs nothing from the game at all.
+ *
+ * That leaves the game's table at 0x0045d460 still holding the original
+ * 0x00425470 -- which is UD2-stubbed.  Deliberately: it is now a tripwire.
+ * Nothing should ever read that table again, and if something does it faults
+ * as c000001d rather than quietly working, which is the positive proof
+ * CLAUDE.md asks a stub to provide.  There is correspondingly no
+ * VTABLE_PATCHES entry for LinkedList.
+ *
+ * (A partially-replaced class could not do this so cheaply: its own table
+ * would have to carry the game's pointers for the slots still theirs.
+ * LinkedList's table is one slot and that slot is ours.) */
 
 /* 0x00425450 Init -- vtable + three zeroed fields.  RET 0. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
