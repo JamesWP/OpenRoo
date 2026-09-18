@@ -2,11 +2,11 @@
  * RenderGameFrame hands to every overlay as its text `this` (scoreoverlay.cpp's
  * arg4).  It is a font atlas, not a general text engine: a SceneTexture whose
  * image is a `cols` x `rows` grid of fixed-size glyph cells, loaded from a
- * .fon by ReadBitmapFontFile (0x00413520, still the original).
+ * .fon by ReadBitmapFontFile (0x00413520), which is ours as of ENDGAME_PLAN.md E1.
  *
- * Three of the four entry points are ours as of ENDGAME_PLAN.md E1;
- * drawBig still calls the original, because the renderer it forwards to
- * (FUN_00413990) has not been replaced yet.
+ * Four of the five entry points are ours; drawBig still calls the original,
+ * because the renderer it forwards to (FUN_00413990) has not been replaced
+ * yet.
  *
  * ── The two arguments this header used to get wrong ─────────────────────────
  * It described arg8 as `zero` and args 9/10 as `fontA`/`fontB`, "the two font
@@ -60,6 +60,13 @@ public:
     void drawCentered(float x, float y, float cellW, float cellH, float spacing,
                       const char *str, Direct3D *d3d, char firstChar,
                       DWORD colourTop, DWORD colourBottom);
+
+    /* 0x00413520 ReadBitmapFontFile -- load a .fon: line 1 is the atlas's
+     * texture path, line 2 the column count, line 3 the row count.  Returns
+     * non-zero in the low byte on success.  Both shipped fonts are three
+     * lines long (fonts/FONT1.FON is textures\font2.tga, 16, 16;
+     * fonts/NUMBERS.FON is textures\numbers.tga, 4, 3). */
+    unsigned int load(const char *path, Direct3D *d3d);
 
     /* 0x00413d90 DrawBigText -- centred like drawCentered, but forwarding to
      * the larger renderer at 0x00413990 (still the original), which takes
@@ -115,3 +122,8 @@ Text_DrawRightAligned(TextRenderer *self, float x, float y, float cellW,
                       float cellH, float spacing, const char *str,
                       Direct3D *d3d, char firstChar,
                       DWORD colourTop, DWORD colourBottom);
+
+/* 0x00413520 is __thiscall with `RET 8` -- two stack arguments, the path and
+ * the Direct3D the atlas is created against. */
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+Text_LoadFont(TextRenderer *self, const char *path, Direct3D *d3d);

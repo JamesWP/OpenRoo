@@ -140,7 +140,7 @@
  */
 #include <string.h>
 #include <stdio.h>
-#include "texture.h"
+#include "scenetexture.h"   /* our own owner header; brings in texture.h */
 #include "tga.h"
 #include "log.h"
 #include "alloc.h"

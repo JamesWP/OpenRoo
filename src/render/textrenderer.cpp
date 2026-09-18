@@ -58,6 +58,9 @@
 #include "com_proxy.h"
 #include "direct3d.h"
 #include "log.h"
+#include "scenetexture.h"   /* Texture_ImportSceneTextures, through its owner header */
+#include "gamecrt.h"        /* GC_FOPEN / GC_FGETS / GC_FCLOSE */
+#include "gamestr.h"        /* GS_FON_MODE_READ */
 
 #include <string.h>
 
@@ -87,12 +90,21 @@ static_assert(TEXT_FVF == 0x1c4, "FVF constant must match the original's");
  *              entered.  The wrappers are unaffected, which is itself the
  *              point -- centring still uses the true width.
  *
+ *   loadswap -- the .fon loader stores the grid transposed, columns into
+ *              rows and back.  Also a direction change rather than a value
+ *              perturbation, and it can only come from the loader: the glyph
+ *              loop divides by `cols`, so a transposed grid re-indexes every
+ *              character of the numbers font (4x3 becomes 3x4).  font1 is
+ *              16x16 and so is its own transpose, which is itself useful --
+ *              it says the control acts on the file's contents rather than
+ *              on the code path.
+ *
  * Blast radius, chosen against the gate that hosts it: this moves glyph quads
  * only.  It writes no coordinate, axis or tile index back into the world, so
  * it cannot reach the unbounded bridge/slide spawn scans that crash
  * levelreport.py.
  */
-enum TextFx { TEXT_FX_OFF = 0, TEXT_FX_MIRROR = 1 };
+enum TextFx { TEXT_FX_OFF = 0, TEXT_FX_MIRROR = 1, TEXT_FX_LOADSWAP = 2 };
 
 static TextFx text_fx(void)
 {
@@ -103,10 +115,12 @@ static TextFx text_fx(void)
     DWORD n = GetEnvironmentVariableA("KAROO_TEXT_FX", buf, sizeof(buf));
     TextFx fx = TEXT_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
-        if (lstrcmpiA(buf, "mirror") == 0) fx = TEXT_FX_MIRROR;
+        if (lstrcmpiA(buf, "mirror") == 0)   fx = TEXT_FX_MIRROR;
+        if (lstrcmpiA(buf, "loadswap") == 0) fx = TEXT_FX_LOADSWAP;
     }
     log_write("textrenderer: FX mode = %s\n",
-              fx == TEXT_FX_MIRROR ? "mirror" : "off");
+              fx == TEXT_FX_MIRROR   ? "mirror" :
+              fx == TEXT_FX_LOADSWAP ? "loadswap" : "off");
     cached = (int)fx;
     return fx;
 }
@@ -131,6 +145,7 @@ static bool text_diag(void)
 }
 
 static unsigned long g_nRender, g_nGlyphs, g_nEmpty, g_nCentred, g_nRight;
+static unsigned long g_nLoad;
 
 static void text_first(const char *fn, unsigned long *pSeen)
 {
@@ -148,8 +163,8 @@ static void text_census(void)
     if (!(n == 1 || n == 100 || n == 1000 || n == 10000 || n % 20000 == 0))
         return;
     log_write("textrenderer: census render=%lu (empty %lu) glyphs=%lu "
-              "centred=%lu right=%lu\n",
-              g_nRender, g_nEmpty, g_nGlyphs, g_nCentred, g_nRight);
+              "centred=%lu right=%lu load=%lu\n",
+              g_nRender, g_nEmpty, g_nGlyphs, g_nCentred, g_nRight, g_nLoad);
 }
 
 /* The width the two wrappers shift by: `len` cells, less the overlap that a
@@ -228,6 +243,144 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
     text_census();
 }
 
+/* ─── ReadBitmapFontFile 0x00413520 ───────────────────────────────────────
+ *
+ * Three lines of text: the atlas's texture path, the column count, the row
+ * count.  Both shipped fonts are exactly that (fonts/FONT1.FON =
+ * textures\font2.tga / 16 / 16; fonts/NUMBERS.FON = textures\numbers.tga /
+ * 4 / 3), and the file is opened in TEXT mode -- 0x00464200 is "r", read out
+ * rather than assumed -- which is load-bearing: the .fon files are CRLF, and
+ * only text mode's CRLF -> LF translation makes "strip the last character"
+ * leave a usable path instead of one ending in CR.
+ *
+ * Bugs and quirks preserved deliberately:
+ *
+ *   - EVERY failure path after the fopen LEAKS THE FILE HANDLE.  Only the
+ *     success path reaches fclose (0x0041366e).  Six early returns, six
+ *     leaks; reproduced exactly, including the order of the tests.
+ *   - `line[strlen(line) - 1] = 0` is an unguarded strip.  On an empty line
+ *     it writes one byte BEFORE the buffer.  fgets never returns "" -- it
+ *     returns NULL instead -- so the index cannot go negative here, which is
+ *     why the original gets away with it.  Kept as the original wrote it.
+ *   - A zero column or row count is treated as failure, so a font whose
+ *     grid is legitimately "0" cannot load.  That is the original's test.
+ *   - The return value is a byte in AL with the upper three bytes left as
+ *     whatever happened to be in EAX.  On success that is fclose's return
+ *     (0x00413673 `MOV AL,1` over it), and on the ImportSceneTextures
+ *     failure it is that call's own result.  Both are reproduced rather than
+ *     normalised to 0/1: a caller that reads the full dword would see the
+ *     original's bytes.
+ *
+ * The three CRT calls: fopen/fclose/fgets all stay the game's, through
+ * gamecrt.h.  fgets is stateful in the strongest sense -- it inlines getc,
+ * walking `fp->_cnt` and `fp->_ptr` directly -- so it must be the CRT that
+ * owns the FILE.  That is gamecrt.h's own rule, not a new exception.
+ *
+ * `parseintfromstring` 0x004505ac is NOT called: it is pure (char * in, int
+ * out), which by the same rule makes it ours, and it is reimplemented below.
+ */
+
+/* MSVC's `atoi` (0x00450521, behind the 0x004505ac thunk), reimplemented.
+ *
+ * Classification goes through the GAME's own ctype table rather than our
+ * CRT's, so "which bytes are space" and "which are digits" are identical by
+ * construction rather than by assumption: the table pointer is the game's
+ * `_pctype` at 0x00469f64, whose entries are 16-bit and are indexed here a
+ * byte at a time with stride 2 -- exactly as the original indexes them.
+ * Masks 8 and 4 are _SPACE and _DIGIT.
+ *
+ * The original also has an MBCS branch, taken when the game CRT's
+ * `__mbcurmax` at 0x0046a170 is >= 2.  That branch is UNREACHABLE and this
+ * is a static fact, not an assumption: the value is 1 in `.data` and a scan
+ * of the whole of `.text` finds fifteen references to 0x0046a170, every one
+ * of them a read.  Nothing in the binary writes it, so the single-byte path
+ * is the only one that can run.  It is therefore the only one implemented,
+ * and this comment is the record of why.
+ *
+ * Overflow wraps, because the original's accumulator is a plain `int`.
+ */
+#define GAME_CTYPE_TABLE  (*(const unsigned char *const *)0x00469f64)
+#define GAME_MB_CUR_MAX   (*(const int *)0x0046a170)
+
+static int font_atoi(const char *p)
+{
+    const unsigned char *ctype = GAME_CTYPE_TABLE;
+
+    while (ctype[(unsigned char)*p * 2] & 8)   /* _SPACE */
+        ++p;
+
+    const unsigned char sign = (unsigned char)*p;
+    if (sign == '-' || sign == '+')
+        ++p;
+
+    int acc = 0;
+    while (ctype[(unsigned char)*p * 2] & 4) { /* _DIGIT */
+        acc = acc * 10 + ((unsigned char)*p - '0');
+        ++p;
+    }
+    return sign == '-' ? -acc : acc;
+}
+
+unsigned int TextRenderer::load(const char *path, Direct3D *d3d)
+{
+    ++g_nLoad;
+    { static unsigned long seen; text_first("ReadBitmapFontFile", &seen); }
+
+    FILE *fp = GC_FOPEN(path, GS_FON_MODE_READ);
+    if (fp == NULL)
+        return 0;
+
+    char line[0x100];
+
+    /* Line 1 -- the atlas image. */
+    if (GC_FGETS(line, 0xff, fp) == NULL)
+        return 0;                              /* leaks fp, as the original does */
+    line[strlen(line) - 1] = '\0';
+
+    /* The atlas by address rather than `&atlas_`: the class is packed for the
+     * layout checks, so GCC warns about taking a member's address even though
+     * this one cannot be misaligned -- the object is 4-aligned and 0x0c is a
+     * multiple of 4.  KAROO_LAYOUT_AT(atlas_, 0x0c) in the header is what
+     * keeps the literal honest. */
+    SceneTexture *atlas = (SceneTexture *)((char *)this + 0x0c);
+
+    const unsigned int ok = Texture_ImportSceneTextures(
+        atlas, d3d->pDD4, d3d->pDevice, line, 1, 0, 0);
+    if ((ok & 0xffu) == 0)
+        return ok;                             /* its result, upper bytes and all */
+
+    /* Line 2 -- columns. */
+    if (GC_FGETS(line, 0xff, fp) == NULL)
+        return 0;
+    line[strlen(line) - 1] = '\0';
+    cols_ = (unsigned int)font_atoi(line);
+    if (cols_ == 0)
+        return 0;
+
+    /* Line 3 -- rows. */
+    if (GC_FGETS(line, 0xff, fp) == NULL)
+        return 0;
+    line[strlen(line) - 1] = '\0';
+    rows_ = (unsigned int)font_atoi(line);
+    if (rows_ == 0)
+        return 0;
+
+    if (text_fx() == TEXT_FX_LOADSWAP) {
+        const unsigned int t = cols_;
+        cols_ = rows_;
+        rows_ = t;
+    }
+
+    if (text_diag())
+        log_write("textrenderer: loaded %s -- %u x %u cells\n",
+                  path, cols_, rows_);
+
+    /* `MOV AL,1` over fclose's return: the low byte is the success flag and
+     * the upper three are fclose's, which is what the original hands back. */
+    const unsigned int closed = (unsigned int)GC_FCLOSE(fp);
+    return (closed & 0xffffff00u) | 1u;
+}
+
 void TextRenderer::drawCentered(float x, float y, float cellW, float cellH,
                                 float spacing, const char *str, Direct3D *d3d,
                                 char firstChar, DWORD colourTop,
@@ -282,6 +435,12 @@ Text_DrawRightAligned(TextRenderer *self, float x, float y, float cellW,
 {
     self->drawRight(x, y, cellW, cellH, spacing, str, d3d, firstChar,
                     colourTop, colourBottom);
+}
+
+__declspec(dllexport) unsigned int __attribute__((thiscall))
+Text_LoadFont(TextRenderer *self, const char *path, Direct3D *d3d)
+{
+    return self->load(path, d3d);
 }
 
 } /* extern "C" */

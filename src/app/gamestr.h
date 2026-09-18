@@ -35,6 +35,7 @@ static const char *const GS_ANI_LOADED                    = (const char *)0x0046
 
 /* --- FMT: shared one-conversion formats, used by several files --- */
 static const char *const GS_FMT_S                         = (const char *)0x004641f8;  /* "%s" */
+static const char *const GS_FON_MODE_READ                 = (const char *)0x00464200;  /* "r" -- ReadBitmapFontFile's fopen mode; TEXT mode, which is what turns the .fon's CRLFs into a single \n so the newline strip leaves a clean name */
 static const char *const GS_FMT_NEWLINE                   = (const char *)0x00465160;  /* "\n" */
 static const char *const GS_FMT_TAB                       = (const char *)0x00465e00;  /* "\t" */
 static const char *const GS_FMT_D                         = (const char *)0x004668b8;  /* "%d" */
