@@ -12,7 +12,8 @@
  *   AcquireObjectSoundBuffersForIndex Sim_*               (soundobj.cpp)
  *   SoundManager::AcquireSoundBuffer 0x443660  } named callbacks -- the
  *   SoundManager::AcquireVoicePool   0x443810  } sound manager is not ours
- *   VoicePool::VoicePoolWipe         0x442a20  } (see soundobj.cpp)
+ *   (VoicePool::VoicePoolWipe is ours as of ENDGAME_PLAN E1 -- it comes
+ *    from voicepool.h now, not from an absolute address.)
  *
  * Order, all gated on SoundManager created (+0x13cc34):
  *   +0x175323 world code: 0, then 0 again for "Egypt", 2 for "Space", 1 for
@@ -58,9 +59,7 @@
 #include "gameglobals.h"
 
 struct CStaticSoundbuffer;
-struct VoicePool;
-typedef void (__attribute__((thiscall)) *pool_wipe_fn)(VoicePool *vp);
-#define ORIG_POOL_WIPE     ((pool_wipe_fn)   0x00442a20)   /* named callback */
+#include "voicepool.h"
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStatic_Reset(CStaticSoundbuffer *self);
@@ -143,11 +142,11 @@ Sim_InitLevelBasedSounds(Game *self)
             pl->setWorldSoundVariant(s_fx ? 2 : 1);
 
         if (pl->pool9f() != NULL)
-            ORIG_POOL_WIPE(pl->pool9f());
+            Sim_VoicePoolWipe(pl->pool9f());
         if (game->soundAsset441ca()->enabled != 0)
             pl->setPool9f(acq_pool(game, 3, game->soundAsset441ca()));
         if (pl->poolCf() != NULL)
-            ORIG_POOL_WIPE(pl->poolCf());
+            Sim_VoicePoolWipe(pl->poolCf());
         if (game->soundAsset4236e()->enabled != 0)
             pl->setPoolCf(acq_pool(game, 10, game->soundAsset4236e()));
 

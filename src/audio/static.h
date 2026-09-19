@@ -42,6 +42,15 @@ static const void *const STATIC_VTABLE = reinterpret_cast<const void*>(0x45ef9c)
  * static.cpp uses are listed; add others as callers are converted.
  */
 extern "C" {
+__declspec(dllexport) CStaticSoundbuffer * __attribute__((thiscall))
+CStatic_Init(CStaticSoundbuffer *self);   /* a ctor: returns `this` */
+__declspec(dllexport) int  __attribute__((thiscall))
+CStatic_CreateAndLoad3DSoundFile(CStaticSoundbuffer *self,
+                                 IDirectSound *pDS, DWORD dwDsFlags,
+                                 const char *filename, void *logger);
+__declspec(dllexport) void * __attribute__((thiscall))
+CStatic_Copy(CStaticSoundbuffer *self,
+             IDirectSound *pDS, CStaticSoundbuffer *other, int flag);
 __declspec(dllexport) int  __attribute__((thiscall))
 CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 __declspec(dllexport) void __attribute__((thiscall))
