@@ -72,6 +72,23 @@ __declspec(dllexport) int  __attribute__((thiscall))
 CStatic_CreateAndLoad3DSoundFile(CStaticSoundbuffer *self,
                                  IDirectSound *pDS, DWORD dwDsFlags,
                                  const char *filename, void *logger);
+/* Load `filename` into a fresh buffer.  The 2D and 3D forms differ only in
+ * whether DSBCAPS_CTRL3D is demanded and a 3D interface queried. */
+__declspec(dllexport) int  __attribute__((thiscall))
+CStatic_CreateAndLoadFile(CStaticSoundbuffer *self,
+                          IDirectSound *pDS, DWORD dwDsFlags,
+                          const char *filename, void *logger);
+/* Reload THIS buffer's own remembered filename/flags under a new 3D mode --
+ * the mode-switch path, not the first load. */
+__declspec(dllexport) int  __attribute__((thiscall))
+CStatic_CreateAndLoad(CStaticSoundbuffer *self, IDirectSound *pDS, DWORD set3D);
+/* Turn the 3D interface on or off on an already-loaded buffer. */
+__declspec(dllexport) int  __attribute__((thiscall))
+CStatic_Apply3DMode(CStaticSoundbuffer *self, int enable3D);
+/* Duplicate `other` into `self`.  Returns `other` on success and NULL on
+ * failure -- NOT `self`, which is what makes the callers' `ret == src` test
+ * a success test.  `flag` non-zero suppresses the reload-from-file fallback
+ * when DuplicateSoundBuffer fails; both SoundManager call sites pass 1. */
 __declspec(dllexport) void * __attribute__((thiscall))
 CStatic_Copy(CStaticSoundbuffer *self,
              IDirectSound *pDS, CStaticSoundbuffer *other, int flag);

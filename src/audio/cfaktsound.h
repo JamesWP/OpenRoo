@@ -37,5 +37,11 @@ static_assert(offsetof(CFaktSound, directsound3dlistener) == 0x74, "directsound3
 static_assert(sizeof(CFaktSound)                          == 0x78, "CFaktSound size");
 static_assert(sizeof(DSCAPS)                              == 0x60, "DSCAPS size");
 
+/* Turn the 3D listener on or off.  Returns 0 on failure; SoundManager::setup
+ * gives up when it does.  Declared here, by the owning header, rather than
+ * redeclared at the call site (COHESION_PLAN template 10). */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+CFaktSound_Create3DListener(CFaktSound *self, int enable);
+
 /* Original vtable at 0x45efa8 — slot 0: ScalarDeletingDtor @ 0x444fb0. */
-static const void *CFAKTSOUND_VTABLE = reinterpret_cast<const void*>(0x45efa8);
+static const void *const CFAKTSOUND_VTABLE = reinterpret_cast<const void*>(0x45efa8);
