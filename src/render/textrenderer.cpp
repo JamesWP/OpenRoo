@@ -64,6 +64,7 @@
 #include "gamestr.h"        /* GS_FON_MODE_READ */
 
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 
 /* The FVF the original declares, and the vertex it really writes. */
@@ -510,38 +511,31 @@ Text_LoadFont(TextRenderer *self, const char *path, Direct3D *d3d)
  *     to [ESP+0x170]); by-value `x` here reproduces that exactly, since the
  *     caller's copy is a push the callee owns.
  *
- * ── The x87 chains ──────────────────────────────────────────────────────────
- * Both are written as inline asm rather than as C, for the reason gametick.cpp
- * gives: FSIN is not sinf, and the original's rounding is one extended-
- * precision chain with a single FSTP to float at the end.  Both counters are
- * FILD'd as QWORDS with the high dword written as zero (0x413a33, 0x413b3a),
- * so they are unsigned 64-bit loads, not sign-extended ints -- reproduced.
+ * ── The two arithmetic chains ───────────────────────────────────────────────
+ * Plain C.  The original computes both on the x87 stack in extended precision
+ * with a single FSTP to float at the end, and `sin` here is not the same
+ * function as the original's FSIN, so the last bit or two of `dy` may differ.
+ * That does not matter: dy is a screen coordinate handed straight to
+ * DrawPrimitive, so the visible consequence is bounded by a sub-pixel, and
+ * nothing downstream reads it back.  Readable code is worth more than a
+ * bit-identical float here -- an asm chain would buy precision nobody can
+ * observe at the cost of a function nobody can read.
+ *
+ * What IS preserved is the part that changes results rather than rounding:
+ * both counters are FILD'd as QWORDS with the high dword written as zero
+ * (0x413a33, 0x413b3a), so they are UNSIGNED 64-bit loads rather than
+ * sign-extended ints.  `n` comes in as a signed int and a negative one would
+ * take a different branch entirely if it were sign-extended, so the cast is
+ * load-bearing and stays.
  */
 static float wobble_phase(unsigned int n, float rate)
 {
-    unsigned long long q = n;   /* FILD qword, high dword zeroed as the listing */
-    float out;
-    __asm__ volatile(
-        "fildq %1\n\t"
-        "fmuls %2\n\t"
-        "fstps %0\n\t"
-        : "=m"(out) : "m"(q), "m"(rate) : "st");
-    return out;
+    return (float)((double)n * rate);
 }
 
 static float wobble_dy(int i2, float phase, float amplitude, float halfH)
 {
-    unsigned long long q = (unsigned int)i2;
-    float out;
-    __asm__ volatile(
-        "fildq %1\n\t"
-        "fadds %2\n\t"
-        "fsin\n\t"
-        "fmuls %3\n\t"
-        "fadds %4\n\t"
-        "fstps %0\n\t"
-        : "=m"(out) : "m"(q), "m"(phase), "m"(amplitude), "m"(halfH) : "st");
-    return out;
+    return (float)(sin((double)(unsigned int)i2 + phase) * amplitude + halfH);
 }
 
 void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
