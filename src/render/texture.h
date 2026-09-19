@@ -13,3 +13,32 @@ struct SceneTexture {
 
 static_assert(offsetof(SceneTexture, pTexture2) == 0x18, "SceneTexture layout");
 static_assert(sizeof(SceneTexture) == 0x1c, "SceneTexture stride mismatch");
+
+/* ─── texture.cpp's exports other files call (COHESION_PLAN template 10) ───
+ *
+ * The LoadedImage ctor/dtor family.  scenetexture.cpp's SceneTexture family
+ * is the only outside caller: its Constructor chains to the base ctor and its
+ * DtorBody tail-calls the base dtor body, exactly as the originals do. */
+extern "C" __declspec(dllexport) LoadedImage *__attribute__((thiscall))
+Texture_ImageCtor(LoadedImage *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Texture_ImageDtorBody(LoadedImage *self);
+extern "C" __declspec(dllexport) LoadedImage *__attribute__((thiscall))
+Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags);
+
+/* 0x43ea50 LoadedImage::CreatePaletteFromDIBColorTable -- __stdcall, ret 8.
+ * scenetexture.cpp's BindTextureResource is the only caller. */
+extern "C" __declspec(dllexport) IDirectDrawPalette *__stdcall
+Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp);
+
+/* The vtable pointer LoadedImage's ctor and dtor body install, and the same
+ * question for SceneTexture: normally our own one-slot table in this DLL,
+ * or the game's UD2-backed address under KAROO_IMAGE_FX=gamevtbl.  Shared so
+ * the derived class in scenetexture.cpp answers it the same way. */
+extern "C" __declspec(dllexport) void *Texture_ImageVtable(void);
+extern "C" __declspec(dllexport) int  Texture_ImageFxGameVtable(void);
+
+/* KAROO_IMAGE_DIAG's first-call announcement, shared so the census covers all
+ * six ctor/dtor entry points through one implementation. */
+extern "C" __declspec(dllexport) void Texture_ImageFirstCall(const char *who,
+                                                             unsigned long *seen);

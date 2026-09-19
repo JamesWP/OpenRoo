@@ -72,9 +72,10 @@
  *   0x43ea50  __stdcall(IDirectDraw4 *dd, HBITMAP hbmp) -> IDirectDrawPalette *
  *             GetDIBColorTable + IDirectDraw4::CreatePalette.
  *
- * Both stay live in the binary and are called through; neither makes a draw
- * call, and the format picker in particular is a scoring loop with no bearing
- * on the two functions replaced here.
+ * 0x43ea50 stays live in the binary and is called through.  0x43f720 does
+ * NOT any more: it and its enumeration callback 0x43f590 are reimplemented
+ * below (2026-09-19, ENDGAME_PLAN E1), which is why this file's only
+ * remaining ORIG_ is the palette helper.
  *
  * ─── Preserved deliberately ───────────────────────────────────────────────
  *
@@ -163,11 +164,11 @@
 
 
 
-/* See the header note: __stdcall, not __thiscall. */
-typedef void (__stdcall *enumfmt_fn)(IDirect3DDevice3 *, DWORD, DWORD, DDPIXELFORMAT *);
-typedef IDirectDrawPalette *(__stdcall *dibpal_fn)(IDirectDraw4 *, HBITMAP);
-#define ORIG_PICK_TEXTURE_FORMAT    ((enumfmt_fn)0x0043f720)
-#define ORIG_CREATE_PALETTE_FROMDIB ((dibpal_fn)0x0043ea50)
+/* See the header note: __stdcall, not __thiscall.  Both helpers are gone as
+ * originals now — 0x43f720 and its callback are reimplemented below, and
+ * 0x43ea50 is Texture_CreatePaletteFromDIB in texture.cpp (it belongs to the
+ * LoadedImage TU, and it was the last function in it).  This file calls no
+ * game address any more. */
 
 /* Strings at their original addresses, so the pointer handed to the logger is
  * identical to the original's. */
@@ -271,7 +272,7 @@ static double st_size_report_value(unsigned int n)
  * not depend on the format picker honouring anything — it writes the surface
  * this function created, through the pointer this function owns, so if the
  * textures come out flat magenta then this code ran, full stop. */
-enum TextureFx { TEXFX_OFF = 0, TEXFX_BPP16, TEXFX_SOLID };
+enum TextureFx { TEXFX_OFF = 0, TEXFX_BPP16, TEXFX_SOLID, TEXFX_DEEPFMT };
 
 static int texture_fx_mode(void)
 {
@@ -284,10 +285,13 @@ static int texture_fx_mode(void)
                 cached = TEXFX_BPP16;
             else if (lstrcmpiA(buf, "solid") == 0)
                 cached = TEXFX_SOLID;
+            else if (lstrcmpiA(buf, "deepfmt") == 0)
+                cached = TEXFX_DEEPFMT;
         }
         log_write("scenetexture: FX mode = %s\n",
                   cached == TEXFX_BPP16 ? "bpp16" :
-                  cached == TEXFX_SOLID ? "solid" : "off");
+                  cached == TEXFX_SOLID ? "solid" :
+                  cached == TEXFX_DEEPFMT ? "deepfmt" : "off");
     }
     return cached;
 }
@@ -352,7 +356,277 @@ static void texture_fx_fill_solid(IDirectDrawSurface4 *surf)
     surf->Unlock(NULL);
 }
 
+/* ─── The texture-format picker: 0x43f720 and its callback 0x43f590 ────────
+ *
+ * PickTextureFormatForDepth enumerates the device's texture formats and keeps
+ * one; EnumTextureFormatsPickerCallback is the scoring function that decides
+ * which.  They are replaced as a pair for the reason ENDGAME_PLAN records for
+ * DrawBigText: 0x43f590's ONLY reference in the whole binary is the
+ * `PUSH 0x43f590` at 0x43f74e inside 0x43f720 (xref.py), so replacing the
+ * outer function alone would have moved the callback rather than retired it.
+ *
+ * 0x43f720's two call sites, 0x43faaa and 0x43fd55, are inside
+ * ImportSceneTextures and BindTextureResource — both already ours — so no
+ * CALL_PATCHES entry is needed and none is added.  Both get a SAFETY_STUB
+ * anyway, so a site nobody found faults as c000001d instead of quietly
+ * running game code.
+ *
+ * ─── The context, and its one deliberate oddity ───────────────────────────
+ *
+ * 0x43f720 builds a 0x25-byte context on its stack: a DWORD request, a BYTE
+ * alpha flag, and an UNALIGNED DDPIXELFORMAT at +5.  It zeroes it with
+ * `mov ecx,9; rep stosd` — 0x24 bytes, one short — and then `stosb`s the
+ * alpha flag byte into the 0x25th, which is the TOP BYTE of the kept format's
+ * dwRGBAlphaBitMask.  The `mov [ctx+4],cl` two instructions later is the one
+ * the callback actually reads; the stosb is a stray.  It is observable only
+ * when the enumeration keeps nothing at all, in which case the caller's
+ * DDPIXELFORMAT comes back all zero except for alphaFlag << 24 in the alpha
+ * mask.  Reproduced, per CLAUDE.md's "preserve bugs".
+ *
+ * ─── What the callback accepts, and then what it prefers ──────────────────
+ *
+ * Two stages, and they are separate: an eligibility gate, then a preference.
+ *
+ * Gate: DDPF_ALPHA (0x2) formats are always skipped.  At 8 bits or fewer the
+ * format must be palettised (DDPF_PALETTEINDEXED4|8, 0x28) AND exactly 8 bits
+ * wide — the `cmp edi,8 / jbe` then `jnc` pair means a 4-bit palettised format
+ * reaches the second test and fails it.  Above 8 bits it must be DDPF_RGB.
+ *
+ * Preference, with nothing kept yet: take it.  Otherwise, when no alpha is
+ * asked for, the format must be at least as deep as the request and strictly
+ * CLOSER to it than the kept one — so the smallest depth at or above the
+ * request wins and the first of a tie keeps its place.  When alpha IS asked
+ * for and the candidate is not strictly closer, it gets a second chance as an
+ * equal-depth alternative: same bit count, strictly more alpha bits than the
+ * kept one, and no more alpha bits than a quarter of its own depth.
+ *
+ * All the arithmetic is unsigned, including `bits - request` where the kept
+ * format is shallower than the request and the subtraction wraps.  That is a
+ * semantic, not a rounding artefact, so it is preserved as written.
+ *
+ * The log line goes through the same stderr path as the rest of this file
+ * (CRT_PLAN Stage B/C): sprintf into the original's 100-byte stack buffer,
+ * then fwrite of strlen bytes.  Both branches of the original log the same
+ * six fields from the CANDIDATE, before it becomes the kept one.
+ */
+
+/* 0x43e140, __cdecl(DWORD) -> int — Kernighan's popcount, `lea edx,[ecx-1];
+ * and ecx,edx` per bit.  texturetga.cpp has the same helper as mask_popcount;
+ * this copy is scenetexture.cpp's because the original's other four call
+ * sites are inside the already-stubbed ParseTGAFile, which makes 0x43e140 a
+ * DEAD_STUBS candidate once these two callers are ours.  The callers truncate
+ * the result to AX, and that truncation is reproduced. */
+static unsigned int st_mask_popcount(DWORD mask)
+{
+    unsigned int n = 0;
+    while (mask != 0) {
+        mask &= mask - 1;
+        ++n;
+    }
+    return n;
+}
+
+#pragma pack(push, 1)
+struct PickFormatCtx {
+    DWORD         dwRequestedBpp;   /* +0x00 */
+    BYTE          bWantAlpha;       /* +0x04 */
+    DDPIXELFORMAT kept;             /* +0x05 .. +0x24, deliberately unaligned */
+};
+#pragma pack(pop)
+static_assert(sizeof(DDPIXELFORMAT) == 0x20, "DDPIXELFORMAT must be 0x20 bytes");
+static_assert(sizeof(PickFormatCtx) == 0x25, "the picker context is 0x25 bytes");
+static_assert(__builtin_offsetof(PickFormatCtx, kept) == 5, "kept format at +5");
+
+/* KAROO_TEXTURE_FX=deepfmt reverses the preference: among the formats at or
+ * above the request, keep the one FURTHEST above it instead of the closest.
+ * A direction change rather than a value perturbation, per CLAUDE.md, and one
+ * only this callback can make — nothing else in the binary chooses a texture
+ * format.  Its blast radius is a pixel format, so it moves no geometry and
+ * cannot reach the bridge/slide spawn scans that crash levelreport.py.  The
+ * eligibility gate is untouched, so the chosen format is still an RGB format
+ * the device offered. */
+static bool st_fmt_preferred(DWORD cand, DWORD kept)
+{
+    return texture_fx_mode() == TEXFX_DEEPFMT ? (cand > kept) : (cand < kept);
+}
+
+/* 0x43f590 — LPD3DENUMPIXELFORMATSCALLBACK.  Always returns D3DENUMRET_OK;
+ * the original has no early-out and enumerates every format every time. */
+static HRESULT WINAPI st_enum_texture_formats_picker(LPDDPIXELFORMAT pf,
+                                                     LPVOID param)
+{
+    DWORD flags = pf->dwFlags;
+    if (flags & 0x02)                       /* DDPF_ALPHA: test dl,0x2 */
+        return D3DENUMRET_OK;
+
+    DWORD bits = pf->dwRGBBitCount;
+    if (bits <= 8) {
+        if (!(flags & 0x28))                /* DDPF_PALETTEINDEXED4|8 */
+            return D3DENUMRET_OK;
+        if (bits != 8)                      /* 4-bit palettised is rejected */
+            return D3DENUMRET_OK;
+    } else {
+        if (!(flags & 0x40))                /* DDPF_RGB */
+            return D3DENUMRET_OK;
+    }
+
+    PickFormatCtx *ctx = (PickFormatCtx *)param;
+    DWORD req  = ctx->dwRequestedBpp;
+    DWORD kept = ctx->kept.dwRGBBitCount;   /* 0 until something is kept */
+
+    if (ctx->bWantAlpha == 0) {
+        if (kept != 0) {
+            if (bits < req)
+                return D3DENUMRET_OK;
+            if (!st_fmt_preferred(bits - req, kept - req))
+                return D3DENUMRET_OK;
+        }
+    } else if (kept != 0) {
+        bool closer = (bits >= req) && st_fmt_preferred(bits - req, kept - req);
+        if (!closer) {
+            if (bits != kept)
+                return D3DENUMRET_OK;
+            /* Equal depth: strictly more alpha bits wins, but only up to a
+             * quarter of the depth.  Both comparisons are on the 16-bit
+             * truncation of the popcount, as the original's `mov di,ax` /
+             * `cmp ax,di` and `and eax,0xffff` do it. */
+            unsigned short keptAlpha =
+                (unsigned short)st_mask_popcount(ctx->kept.dwRGBAlphaBitMask);
+            unsigned short candAlpha =
+                (unsigned short)st_mask_popcount(pf->dwRGBAlphaBitMask);
+            if (candAlpha <= keptAlpha)
+                return D3DENUMRET_OK;
+            if ((DWORD)candAlpha > (bits >> 2))
+                return D3DENUMRET_OK;
+        }
+    }
+
+    char msg[100];                          /* the original's 0x64 frame */
+    sprintf(msg, GS_TEX_FMT_PIXELFORMAT, (int)flags, (int)bits,
+            (unsigned int)pf->dwRBitMask, (unsigned int)pf->dwGBitMask,
+            (unsigned int)pf->dwBBitMask, (unsigned int)pf->dwRGBAlphaBitMask);
+    st_log_str(msg);
+
+    memcpy(&ctx->kept, pf, 0x20);           /* rep movsd, 8 dwords */
+    return D3DENUMRET_OK;
+}
+
+/* 0x43f720 — __stdcall, not __thiscall; see the header note. */
+static void __stdcall st_pick_texture_format(IDirect3DDevice3 *dev, DWORD bpp,
+                                             DWORD alphaFlag,
+                                             DDPIXELFORMAT *out)
+{
+    PickFormatCtx ctx;
+    memset(&ctx, 0, 0x24);                          /* mov ecx,9; rep stosd */
+    ((BYTE *)&ctx)[0x24] = (BYTE)alphaFlag;         /* the stray stosb */
+    ctx.bWantAlpha     = (BYTE)alphaFlag;
+    ctx.dwRequestedBpp = bpp;
+
+    dev->EnumTextureFormats(st_enum_texture_formats_picker, &ctx);
+
+    memcpy(out, &ctx.kept, 0x20);                   /* rep movsd, 8 dwords */
+}
+
 extern "C" {
+
+/* ─── The SceneTexture ctor/dtor family — the TU's last three ─────────────
+ *
+ *   0x43f540 SceneTexture::Constructor          __thiscall(this) -> this
+ *   0x43f580 SceneTexture::DtorBody             __thiscall(this), ret 0
+ *   0x43f560 SceneTexture::ScalarDeletingDtor   __thiscall(this, flags), ret 4
+ *
+ * Replaced together with LoadedImage's three (texture.cpp) — Constructor
+ * CALLs 0x43dde0 and DtorBody tail-JMPs to 0x43de20, so the derived class on
+ * its own would have created two callbacks instead of retiring any.  With
+ * these the SceneTexture TU is at 100%.
+ *
+ * ─── The reference audit, and why this one needed all three lists ─────────
+ *
+ * This is the first group in this file where CALL_PATCHES alone was not
+ * enough, so the counts are worth recording (xref.py over Karoo.exe.orig):
+ *
+ *   0x43f540  14 refs — 9 CALL, 4 JMP, and a PUSH at 0x43c56d
+ *   0x43f580  15 refs — 8 CALL, 5 JMP, and PUSHes at 0x43c568 and 0x43c856
+ *   0x43f560   0 refs — vtable slot 0 only
+ *
+ * With LoadedImage's 4 and 5 that is 38 references for the six functions, and
+ * patch.py reports 38 rewrites — 19 CALL, 16 JMP, 3 PUSH.  The two counts
+ * agreeing is the check; they did not on the first pass, and the split above
+ * is the corrected one.
+ *
+ * The JMPs are compiler thunks in the 0x425c90-0x425fb5 and 0x42d850-0x42d953
+ * blocks — the array-of-member ctor/dtor loops the LinkedList audit named as
+ * the static-initialiser region.  JMP_PATCHES handles them exactly as it does
+ * Sim_DestroyMovableEntityBase's five.
+ *
+ * The three PUSHes are the case CLAUDE.md says to read by USE rather than by
+ * type, and here the use is unambiguous: 0x43c568/0x43c56d are consecutive
+ * `push 0x43f580; push 0x43f540; push 6; push 0x1c; push ptr` feeding
+ * 0x00451db5, MSVC's vector-constructor iterator.  They are genuine function
+ * pointers for an array of SIX SceneTextures at +8 of the object whose vtable
+ * is 0x45d6fc, with stride 0x1c — which independently confirms this file's
+ * `sizeof(SceneTexture) == 0x1c`.  0x43c856 is the matching dtor-only push.
+ * PUSH_PATCHES, not a mis-read RGB constant.
+ *
+ * And 0x43f560 is the LinkedList::ScalarDestructor case again: no CALL, no
+ * JMP, reachable only through the vtable.  An E8/E9 scan would have missed it.
+ *
+ * ─── The vtable is ours ───────────────────────────────────────────────────
+ *
+ * 0x0045d71c is exactly one slot — its only writers are this class's
+ * Constructor and DtorBody (Ghidra xrefs), and the neighbouring dwords belong
+ * to BridgeObject's table below it and to another class's above it, not to
+ * this one.  That slot is ours, so ENDGAME_PLAN's licence applies: we install
+ * g_SceneTextureVtable and leave the game's slot pointing at the UD2.
+ *
+ * Preserved deliberately: DtorBody writes the SceneTexture vtable and then
+ * tail-calls the base dtor body, which immediately overwrites it with the
+ * LoadedImage one.  The first store is dead in every reachable path.  It is
+ * MSVC's standard codegen for a derived dtor and it is reproduced rather than
+ * elided — the net state of the object is the base vtable, either way.
+ */
+
+/* Forward declaration: the vtable below needs its address. */
+__declspec(dllexport) SceneTexture *__attribute__((thiscall))
+Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
+
+static void *const g_SceneTextureVtable[1] = { (void *)&Texture_SceneScalarDtor };
+
+/* Same question as texture.cpp's, answered the same way: ours normally, the
+ * game's UD2-backed 0x0045d71c under KAROO_IMAGE_FX=gamevtbl. */
+static void *scene_vtable(void)
+{
+    return Texture_ImageFxGameVtable() ? (void *)0x0045d71c
+                                       : (void *)g_SceneTextureVtable;
+}
+
+__declspec(dllexport) SceneTexture *__attribute__((thiscall))
+Texture_SceneCtor(SceneTexture *self)
+{
+    static unsigned long seen; Texture_ImageFirstCall("SceneTexture::Constructor", &seen);
+    Texture_ImageCtor(&self->base);                       /* CALL 0x43dde0 */
+    self->base.unknown00 = scene_vtable();
+    self->pTexture2      = NULL;
+    return self;
+}
+
+__declspec(dllexport) void __attribute__((thiscall))
+Texture_SceneDtorBody(SceneTexture *self)
+{
+    static unsigned long seen; Texture_ImageFirstCall("SceneTexture::DtorBody", &seen);
+    self->base.unknown00 = scene_vtable();                /* dead store, kept */
+    Texture_ImageDtorBody(&self->base);                   /* JMP 0x43de20 */
+}
+
+__declspec(dllexport) SceneTexture *__attribute__((thiscall))
+Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags)
+{
+    static unsigned long seen; Texture_ImageFirstCall("SceneTexture::ScalarDeletingDtor", &seen);
+    Texture_SceneDtorBody(self);
+    if ((flags & 1) != 0)
+        game_free2(self);     /* the object is the game's, not ours */
+    return self;
+}
 
 /* ─── SceneTexture::BindTextureResource (0x43fc70) ─────────────────────────
  *
@@ -403,7 +677,7 @@ Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
     if (texture_fx_bpp16())
         bpp = 16;
 
-    ORIG_PICK_TEXTURE_FORMAT(dev, bpp, 0, &ddsd.ddpfPixelFormat);
+    st_pick_texture_format(dev, bpp, 0, &ddsd.ddpfPixelFormat);
     texture_log_format("Bind", bpp, &ddsd.ddpfPixelFormat);
 
     DevDescRaw hw, sw;
@@ -425,7 +699,7 @@ Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
      * pTexturePalette is typed IDirectDrawSurface4 * in the struct — a
      * misnaming inherited from HOOKS.md; it holds an IDirectDrawPalette *. */
     if (ddsd.ddpfPixelFormat.dwRGBBitCount <= 8) {
-        IDirectDrawPalette *pal = ORIG_CREATE_PALETTE_FROMDIB(dd, (HBITMAP)hbmp);
+        IDirectDrawPalette *pal = Texture_CreatePaletteFromDIB(dd, (HBITMAP)hbmp);
         self->base.pTexturePalette = (IDirectDrawSurface4 *)pal;
         if (pal != NULL)
             self->base.pTextureSurface->SetPalette(pal);
@@ -527,7 +801,7 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
     if (texture_fx_bpp16())
         bpp = 16;
 
-    ORIG_PICK_TEXTURE_FORMAT(dev, bpp, alphaFlag, &ddsd.ddpfPixelFormat);
+    st_pick_texture_format(dev, bpp, alphaFlag, &ddsd.ddpfPixelFormat);
     texture_log_format("Import", bpp, &ddsd.ddpfPixelFormat);
 
     DevDescRaw hw, sw;

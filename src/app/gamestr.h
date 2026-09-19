@@ -209,6 +209,7 @@ static const char *const GS_HUD_GAME_OVER                 = (const char *)0x0046
 static const char *const GS_TEX_GETDC_FAILED              = (const char *)0x0046717c;  /* "GetDC Failed\n" */
 static const char *const GS_TEX_CREATESURFACE_FAILED      = (const char *)0x0046718c;  /* "CreateSurface Failed\n" */
 static const char *const GS_TEX_LOCK_FAILED               = (const char *)0x004671a4;  /* "Lock Failed\n" */
+static const char *const GS_TEX_FMT_PIXELFORMAT           = (const char *)0x004671b4;  /* ": Flags: %d, RGBBitCount: %d, RMask: %x, GMask: %x, BMask: %x, AMask: %x\n" */
 static const char *const GS_TEX_NO_TEXTURE_IFACE          = (const char *)0x00467200;  /* "no Texture-Interface\n" */
 static const char *const GS_TEX_NO_TGA_COPY               = (const char *)0x00467218;  /* "couldn't copy TGA\n" */
 static const char *const GS_TEX_NO_TEXTURE_SURFACE        = (const char *)0x0046722c;  /* "couldn't create Texture-Surface\n" */

@@ -181,8 +181,17 @@ static const DWORD s_finddev[131] = {
 struct PixFmtRec { DWORD flags, fourcc, bits, r, g, b, a; };
 
 /* IDirect3DDevice3::EnumTextureFormats, in order.  PickTextureFormatForDepth
- * (0x43f720) walks this and takes the first acceptable match for the
- * requested depth, so ORDER IS LOAD-BEARING. */
+ * (0x43f720) walks this, so ORDER IS LOAD-BEARING.
+ *
+ * "The first acceptable match for the requested depth" -- what this comment
+ * said until 2026-09-19, when the picker was replaced -- is not the rule.  The
+ * callback takes the FIRST eligible format unconditionally (nothing is kept
+ * yet), and thereafter keeps whichever is closest to the request FROM ABOVE;
+ * when alpha is asked for, an equal-depth format with strictly more alpha bits
+ * also wins, up to a quarter of its own depth.  With this list and a 32-bit
+ * request-with-alpha it climbs 16-555 -> 16-1555 -> 16-4444 -> 32-888 ->
+ * 32-8888 and ends on the last, which is what karoo_hooks.log records.
+ * See scenetexture.cpp for the full rule. */
 static const PixFmtRec s_texfmt[] = {
     { 0x00000040, 0,          16, 0x00007C00, 0x000003E0, 0x0000001F, 0x00000000 },
     { 0x00000041, 0,          16, 0x00007C00, 0x000003E0, 0x0000001F, 0x00008000 },
