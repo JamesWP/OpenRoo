@@ -1,8 +1,10 @@
-/* TextRenderer -- three of the four entry points reimplemented.
+/* TextRenderer -- every entry point reimplemented.
  *
  *   0x00413690 RenderText            __thiscall(this, 10 args)  RET 0x28
  *   0x00413d00 DrawCenteredText      __thiscall(this, 10 args)  RET 0x28
  *   0x00413e30 DrawRightAlignedText  __thiscall(this, 10 args)  RET 0x28
+ *   0x00413d90 DrawBigText           __thiscall(this, 13 args)  RET 0x34
+ *   0x00413990 DrawWobbleGlyphRow    __thiscall(this, 13 args)  RET 0x34
  *
  * Each signature was read off the original's `RET n` and off the caller-side
  * push order, not off the decompiler's parameter list.  ENDGAME_PLAN.md E1;
@@ -99,12 +101,21 @@ static_assert(TEXT_FVF == 0x1c4, "FVF constant must match the original's");
  *              it says the control acts on the file's contents rather than
  *              on the code path.
  *
+ *   bigwave -- DrawWobbleGlyphRow's per-glyph phase steps by -2 instead of
+ *              +2, so the vertical wave travels along the string the other
+ *              way.  A direction change again, and one only this loop can
+ *              produce: drawBig and the wrapper arithmetic are untouched, the
+ *              pen advance is untouched, and the amplitude is untouched --
+ *              the string keeps its position and its size, and only the
+ *              travelling direction of the wave reverses.
+ *
  * Blast radius, chosen against the gate that hosts it: this moves glyph quads
  * only.  It writes no coordinate, axis or tile index back into the world, so
  * it cannot reach the unbounded bridge/slide spawn scans that crash
  * levelreport.py.
  */
-enum TextFx { TEXT_FX_OFF = 0, TEXT_FX_MIRROR = 1, TEXT_FX_LOADSWAP = 2 };
+enum TextFx { TEXT_FX_OFF = 0, TEXT_FX_MIRROR = 1, TEXT_FX_LOADSWAP = 2,
+              TEXT_FX_BIGWAVE = 3 };
 
 static TextFx text_fx(void)
 {
@@ -117,10 +128,12 @@ static TextFx text_fx(void)
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "mirror") == 0)   fx = TEXT_FX_MIRROR;
         if (lstrcmpiA(buf, "loadswap") == 0) fx = TEXT_FX_LOADSWAP;
+        if (lstrcmpiA(buf, "bigwave") == 0)  fx = TEXT_FX_BIGWAVE;
     }
     log_write("textrenderer: FX mode = %s\n",
               fx == TEXT_FX_MIRROR   ? "mirror" :
-              fx == TEXT_FX_LOADSWAP ? "loadswap" : "off");
+              fx == TEXT_FX_LOADSWAP ? "loadswap" :
+              fx == TEXT_FX_BIGWAVE  ? "bigwave" : "off");
     cached = (int)fx;
     return fx;
 }
@@ -146,6 +159,7 @@ static bool text_diag(void)
 
 static unsigned long g_nRender, g_nGlyphs, g_nEmpty, g_nCentred, g_nRight;
 static unsigned long g_nLoad;
+static unsigned long g_nBig, g_nWobble, g_nWobbleGlyphs;
 
 static void text_first(const char *fn, unsigned long *pSeen)
 {
@@ -163,8 +177,10 @@ static void text_census(void)
     if (!(n == 1 || n == 100 || n == 1000 || n == 10000 || n % 20000 == 0))
         return;
     log_write("textrenderer: census render=%lu (empty %lu) glyphs=%lu "
-              "centred=%lu right=%lu load=%lu\n",
-              g_nRender, g_nEmpty, g_nGlyphs, g_nCentred, g_nRight, g_nLoad);
+              "centred=%lu right=%lu load=%lu big=%lu wobble=%lu "
+              "wobbleGlyphs=%lu\n",
+              g_nRender, g_nEmpty, g_nGlyphs, g_nCentred, g_nRight, g_nLoad,
+              g_nBig, g_nWobble, g_nWobbleGlyphs);
 }
 
 /* The width the two wrappers shift by: `len` cells, less the overlap that a
@@ -438,31 +454,208 @@ Text_LoadFont(TextRenderer *self, const char *path, Direct3D *d3d)
 
 } /* extern "C" */
 
-/* ─── The class methods the rest of karoo-hooks/ calls ────────────────────
+/* ─── The big-text pair: 0x00413d90 and 0x00413990 ────────────────────────
  *
- * Call our own reimplementations through the owning header, never by
- * redeclaring the export (CLAUDE.md).  drawBig is the one still forwarding to
- * the game: 0x00413d90 is a centring wrapper exactly like drawCentered, but
- * around FUN_00413990 (207 instructions, one reference, its only reference
- * being that wrapper).  Replacing the wrapper without the renderer would just
- * move the callback, so both go in the next cycle.
+ * ENDGAME_PLAN.md E1's last text cycle.  0x00413d90 was a `callback` -- our
+ * textrenderer.cpp called it by absolute address -- and it had to go with
+ * 0x00413990 rather than before it: the wrapper's whole body is a tail call
+ * into the renderer, so replacing it alone would have swapped one callback
+ * for another rather than retiring one.
+ *
+ * xref.py over Karoo.exe.orig: 0x00413d90 has two CALL sites (0x434046,
+ * 0x4356a6) and nothing else; 0x00413990 has exactly ONE reference in the
+ * entire binary and it is the wrapper's own CALL at 0x413e17.  No JMP, no
+ * DATA push, no vtable slot for either.  A grep of karoo-hooks/ for both
+ * addresses found only this file's own ORIG_DRAW_BIG_TEXT, now gone --
+ * CLAUDE.md's "xref.py cannot see callers inside our DLL" step, which is the
+ * one that has bitten twice.
+ *
+ * ── The renderer, from the disassembly ──────────────────────────────────────
+ * The decompiler puts this function's thirteen stack arguments in the wrong
+ * places -- `unaff_retaddr`, `in_stack_0000001c` and a `float *piVar2` used
+ * as a float are the giveaways -- so, exactly as with RenderText, the frame
+ * was recovered by counting from the prologue instead.  `SUB ESP,0x15c` plus
+ * four pushes puts the argument block at [ESP+0x170] upwards:
+ *
+ *   +0x170 x   +0x174 y   +0x178 cellW  +0x17c cellH  +0x180 spacing
+ *   +0x184 str +0x188 d3d +0x18c firstChar
+ *   +0x190 colourTop  +0x194 colourBottom
+ *   +0x198 amplitude  +0x19c rate  +0x1a0 n
+ *
+ * Which is what settles the two names this file's own header had wrong.
+ * +0x198 is the multiplier applied to FSIN's RESULT (0x413b8e) -- an
+ * amplitude.  +0x19c multiplies `n` ONCE, before the loop (0x413a5d), to form
+ * the starting phase -- a rate.  Neither is an outline width; there is no
+ * second pass and no outline anywhere in the function.
+ *
+ * ── What it draws ───────────────────────────────────────────────────────────
+ * Per glyph, with g = (unsigned char)(str[i] - firstChar) and i2 = 2 * i:
+ *
+ *   dy   = cellH * 0.5f + amplitude * sin(n * rate + i2)
+ *   quad = (x, y-dy) (x+cellW, y-dy) (x+cellW, y+dy) (x, y+dy)
+ *
+ * so `y` is the row's CENTRE here, where RenderText's `y` is its top, and
+ * each glyph's quad grows and shrinks vertically about that centre two
+ * radians out of phase with its neighbour.  Everything else is RenderText's:
+ * FVF 0x1C4 (32 bytes -- XYZRHW | DIFFUSE | SPECULAR | TEX1), z = 0.1f,
+ * rhw = 10.0f, specular = 0xff000000 in all four, colourTop on the two top
+ * vertices and colourBottom on the two bottom ones, D3DPT_TRIANGLEFAN of 4.
+ *
+ * Quirks preserved, and they are RenderText's quirks in the same order:
+ *   - SetTexture and the three SetRenderState calls precede the empty-string
+ *     test (0x4139e6..0x413a26), so drawing "" still leaves alpha blending on
+ *     and the atlas bound.
+ *   - strlen is re-run on every iteration (0x413cd9) rather than hoisted.
+ *   - the pen position is advanced IN THE ARGUMENT SLOT (0x413cdb writes back
+ *     to [ESP+0x170]); by-value `x` here reproduces that exactly, since the
+ *     caller's copy is a push the callee owns.
+ *
+ * ── The x87 chains ──────────────────────────────────────────────────────────
+ * Both are written as inline asm rather than as C, for the reason gametick.cpp
+ * gives: FSIN is not sinf, and the original's rounding is one extended-
+ * precision chain with a single FSTP to float at the end.  Both counters are
+ * FILD'd as QWORDS with the high dword written as zero (0x413a33, 0x413b3a),
+ * so they are unsigned 64-bit loads, not sign-extended ints -- reproduced.
  */
-#define THISCALL __attribute__((thiscall))
+static float wobble_phase(unsigned int n, float rate)
+{
+    unsigned long long q = n;   /* FILD qword, high dword zeroed as the listing */
+    float out;
+    __asm__ volatile(
+        "fildq %1\n\t"
+        "fmuls %2\n\t"
+        "fstps %0\n\t"
+        : "=m"(out) : "m"(q), "m"(rate) : "st");
+    return out;
+}
 
-typedef void (THISCALL *bigtext_fn)(TextRenderer *self, float x, float y,
-                                    float cellW, float cellH, float spacing,
-                                    const char *str, Direct3D *d3d,
-                                    char firstChar, DWORD colourTop,
-                                    DWORD colourBottom, float outline,
-                                    float wobble, int n);
+static float wobble_dy(int i2, float phase, float amplitude, float halfH)
+{
+    unsigned long long q = (unsigned int)i2;
+    float out;
+    __asm__ volatile(
+        "fildq %1\n\t"
+        "fadds %2\n\t"
+        "fsin\n\t"
+        "fmuls %3\n\t"
+        "fadds %4\n\t"
+        "fstps %0\n\t"
+        : "=m"(out) : "m"(q), "m"(phase), "m"(amplitude), "m"(halfH) : "st");
+    return out;
+}
 
-#define ORIG_DRAW_BIG_TEXT   ((bigtext_fn)0x00413d90)
+void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
+                              float spacing, const char *str, Direct3D *d3d,
+                              char firstChar, DWORD colourTop,
+                              DWORD colourBottom, float amplitude, float rate,
+                              int n)
+{
+    ++g_nWobble;
+    { static unsigned long seen; text_first("DrawWobbleGlyphRow", &seen); }
+
+    const float invCols = 1.0f / (float)(int)cols_;
+    const float invRows = 1.0f / (float)(int)rows_;
+
+    IDirect3DDevice3 *dev = d3d->pDevice;
+    dev->SetTexture(0, atlas_.pTexture2);
+    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND,         D3DBLEND_SRCALPHA);
+    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND,        D3DBLEND_INVSRCALPHA);
+    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
+
+    if (strlen(str) == 0)
+        return;
+
+    const float phase = wobble_phase((unsigned int)n, rate);
+    const float halfH = cellH * 0.5f;
+    const float advance = cellW * spacing;
+
+    /* The per-glyph phase step.  +2 is the original's; bigwave makes it -2,
+     * which reverses the direction the wave travels along the string without
+     * moving the string, changing its size, or touching the pen. */
+    const int step = (text_fx() == TEXT_FX_BIGWAVE) ? -2 : 2;
+
+    TextVertex quad[4];
+    for (int k = 0; k < 4; k++) {
+        quad[k].z        = 0.1f;
+        quad[k].rhw      = 10.0f;
+        quad[k].specular = 0xff000000;
+    }
+    quad[0].diffuse = colourTop;
+    quad[1].diffuse = colourTop;
+    quad[2].diffuse = colourBottom;
+    quad[3].diffuse = colourBottom;
+
+    unsigned int i = 0;
+    int i2 = 0;
+    do {
+        const unsigned int g = (unsigned char)(str[i] - firstChar);
+        const float u  = (float)(int)(g % cols_) * invCols;
+        const float v  = (float)(int)(g / cols_) * invRows;
+        const float dy = wobble_dy(i2, phase, amplitude, halfH);
+
+        quad[0].x = x;          quad[0].y = y - dy;
+        quad[1].x = x + cellW;  quad[1].y = y - dy;
+        quad[2].x = x + cellW;  quad[2].y = y + dy;
+        quad[3].x = x;          quad[3].y = y + dy;
+
+        quad[0].u = u;            quad[0].v = v;
+        quad[1].u = u + invCols;  quad[1].v = v;
+        quad[2].u = u + invCols;  quad[2].v = v + invRows;
+        quad[3].u = u;            quad[3].v = v + invRows;
+
+        dev->DrawPrimitive(D3DPT_TRIANGLEFAN, TEXT_FVF, quad, 4, 0);
+        ++g_nWobbleGlyphs;
+
+        i2 += step;
+        ++i;
+        x += advance;
+        /* strlen every iteration, as the original does. */
+    } while (i < strlen(str));
+}
 
 void TextRenderer::drawBig(float x, float y, float cellW, float cellH,
                            float spacing, const char *str, Direct3D *d3d,
                            char firstChar, DWORD colourTop, DWORD colourBottom,
-                           float outline, float wobble, int n)
+                           float amplitude, float rate, int n)
 {
-    ORIG_DRAW_BIG_TEXT(this, x, y, cellW, cellH, spacing, str, d3d, firstChar,
-                       colourTop, colourBottom, outline, wobble, n);
+    ++g_nBig;
+    { static unsigned long seen; text_first("DrawBigText", &seen); }
+
+    /* Bit for bit drawCentered's arithmetic -- the same `len -
+     * (len - 1) * (1 - spacing)` width, the same FMUL by the 0.5f at
+     * 0x0045d318 -- with the three extra arguments passed straight through. */
+    drawWobble(x - text_width(str, cellW, spacing) * 0.5f, y, cellW, cellH,
+               spacing, str, d3d, firstChar, colourTop, colourBottom,
+               amplitude, rate, n);
 }
+
+/* ─── The two exports patch.py redirects to ────────────────────────────────
+ *
+ * Only Text_DrawBigText has game call sites; Text_DrawWobbleGlyphRow exists so
+ * that the inner original can be UD2-stubbed with a named replacement behind
+ * it, which is what makes progress.py count it `replaced` rather than `dead`.
+ */
+extern "C" {
+
+__declspec(dllexport) void __attribute__((thiscall))
+Text_DrawBigText(TextRenderer *self, float x, float y, float cellW,
+                 float cellH, float spacing, const char *str, Direct3D *d3d,
+                 char firstChar, DWORD colourTop, DWORD colourBottom,
+                 float amplitude, float rate, int n)
+{
+    self->drawBig(x, y, cellW, cellH, spacing, str, d3d, firstChar,
+                  colourTop, colourBottom, amplitude, rate, n);
+}
+
+__declspec(dllexport) void __attribute__((thiscall))
+Text_DrawWobbleGlyphRow(TextRenderer *self, float x, float y, float cellW,
+                        float cellH, float spacing, const char *str,
+                        Direct3D *d3d, char firstChar, DWORD colourTop,
+                        DWORD colourBottom, float amplitude, float rate,
+                        int n)
+{
+    self->drawWobble(x, y, cellW, cellH, spacing, str, d3d, firstChar,
+                     colourTop, colourBottom, amplitude, rate, n);
+}
+
+} /* extern "C" */
