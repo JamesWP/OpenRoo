@@ -89,6 +89,8 @@ static const char *const GS_D3D_RENDER_BITDEPTH           = (const char *)0x0046
 static const char *const GS_D3D_ERR_COOP_LEVEL            = (const char *)0x004650dc;  /* "Fehler beim Setzen der Kooperationsebene." */
 static const char *const GS_D3D_ERR_DD4_IFACE             = (const char *)0x00465108;  /* "DirectDraw4-Schnittstelle nicht gefunden." */
 static const char *const GS_D3D_ERR_DDRAW_CREATE          = (const char *)0x00465134;  /* "Fehler beim Anlegen des DirectDraw-Objekts." */
+static const char *const GS_D3D_FOUND_MODE                = (const char *)0x00465164;  /* "found mode %dx%dx%d\n" */
+static const char *const GS_D3D_ZBUF_FMT                  = (const char *)0x0046517c;  /* "Z:%d S:%d\n" */
 
 /* --- CFG: fixedsounds.cpp -- Karoo.cfg --- */
 static const char *const GS_CFG_FILE                      = (const char *)0x004652cc;  /* "Karoo.cfg" */
