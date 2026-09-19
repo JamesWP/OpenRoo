@@ -141,10 +141,10 @@ extern "C" __declspec(dllexport) doublesoundbuff * __attribute__((thiscall))
 Dsb_Init(doublesoundbuff *self)
 {
     ++g_nInit; { static unsigned long seen; dsb_first("Init", &seen); }
-    CStatic_Init(&self->masterBuf);
-    CStatic_Init(&self->spareBuf);
-    List_Init(&self->cloneList);
-    List_Init(&self->voicePoolList);
+    CStatic_Init(self->master());
+    CStatic_Init(self->spare());
+    List_Init(self->clones());
+    List_Init(self->pools());
     self->dwMasterTaken = 0;
     self->dwSpareTaken  = 0;
     return self;
@@ -160,10 +160,10 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Dsb_Clear(doublesoundbuff *self)
 {
     ++g_nClear; { static unsigned long seen; dsb_first("Clear", &seen); }
-    Dsb_PurgeCloneList(&self->cloneList);
-    Dsb_PurgeVoicePoolList(&self->voicePoolList);
-    CStatic_Reset(&self->masterBuf);
-    CStatic_Reset(&self->spareBuf);
+    Dsb_PurgeCloneList(self->clones());
+    Dsb_PurgeVoicePoolList(self->pools());
+    CStatic_Reset(self->master());
+    CStatic_Reset(self->spare());
     self->dwMasterTaken = 0;
     self->dwSpareTaken  = 0;
     dsb_census();
@@ -182,10 +182,10 @@ Dsb_Destruct(doublesoundbuff *self)
 {
     ++g_nDestruct; { static unsigned long seen; dsb_first("Destruct", &seen); }
     Dsb_Clear(self);
-    List_Destruct(&self->voicePoolList);
-    List_Destruct(&self->cloneList);
-    CStatic_ReinitBuffer(&self->spareBuf);
-    CStatic_ReinitBuffer(&self->masterBuf);
+    List_Destruct(self->pools());
+    List_Destruct(self->clones());
+    CStatic_ReinitBuffer(self->spare());
+    CStatic_ReinitBuffer(self->master());
     dsb_census();
 }
 
@@ -254,20 +254,20 @@ Dsb_ReleaseStatic(doublesoundbuff *self, CStaticSoundbuffer *buf)
 {
     ++g_nRelStatic; { static unsigned long seen; dsb_first("ReleaseStatic", &seen); }
 
-    LinkedListNode *node = List_Find(&self->cloneList, buf, 0);
+    LinkedListNode *node = List_Find(self->clones(), buf, 0);
     if (node != 0) {
-        List_Unlink(&self->cloneList, node);
+        List_Unlink(self->clones(), node);
         if (buf != 0)
             virtual_delete_static(buf);
         ++g_nRelStaticHit;
         return 1;
     }
-    if (buf == &self->masterBuf) {
+    if (buf == self->master()) {
         self->dwMasterTaken = 0;
         ++g_nMasterLent; ++g_nRelStaticHit;
         return 1;
     }
-    if (buf == &self->spareBuf) {
+    if (buf == self->spare()) {
         self->dwSpareTaken = 0;
         ++g_nSpareLent; ++g_nRelStaticHit;
         return 1;
@@ -286,10 +286,10 @@ Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool)
 {
     ++g_nRelPool; { static unsigned long seen; dsb_first("ReleasePool", &seen); }
 
-    LinkedListNode *node = List_Find(&self->voicePoolList, pool, 0);
+    LinkedListNode *node = List_Find(self->pools(), pool, 0);
     if (node == 0)
         return 0;
-    List_Unlink(&self->voicePoolList, node);
+    List_Unlink(self->pools(), node);
     if (pool != 0) {
         Sim_VoicePoolWipe(pool);
         game_free2(pool);

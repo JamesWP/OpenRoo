@@ -23,28 +23,53 @@
  */
 #pragma once
 
+#include "layout.h"
 #include "static.h"
 #include "linkedlist.h"
 
 struct VoicePool;
 
-#pragma pack(push, 1)
-struct doublesoundbuff {
+/* The game allocates this itself (AcquireSoundBuffer's `operator new(0x58)`),
+ * so the size is relied on as well as the offsets -- hence KAROO_LAYOUT_SIZE.
+ * ORIGIN is 0: our first byte is the pointer `operator new` returned, which
+ * is also `this` for every method below. */
+struct __attribute__((packed)) doublesoundbuff {
+    static const int ORIGIN = 0;
+
     CStaticSoundbuffer masterBuf;       // +0x00
     CStaticSoundbuffer spareBuf;        // +0x18
     unsigned long      dwMasterTaken;   // +0x30
     unsigned long      dwSpareTaken;    // +0x34
     LinkedList         cloneList;       // +0x38
     LinkedList         voicePoolList;   // +0x48
-};
-#pragma pack(pop)
 
-static_assert(offsetof(doublesoundbuff, spareBuf)      == 0x18, "spareBuf offset");
-static_assert(offsetof(doublesoundbuff, dwMasterTaken) == 0x30, "dwMasterTaken offset");
-static_assert(offsetof(doublesoundbuff, dwSpareTaken)  == 0x34, "dwSpareTaken offset");
-static_assert(offsetof(doublesoundbuff, cloneList)     == 0x38, "cloneList offset");
-static_assert(offsetof(doublesoundbuff, voicePoolList) == 0x48, "voicePoolList offset");
-static_assert(sizeof(doublesoundbuff)                  == 0x58, "doublesoundbuff size");
+    /* The four sub-objects are addressed through accessors so the one
+     * -Waddress-of-packed-member suppression lives here rather than at every
+     * use (the textrenderer.h / game.h idiom).  Nothing is actually
+     * misaligned: all four offsets -- 0, 0x18, 0x38, 0x48 -- are 4-aligned,
+     * and the layout checks below are what hold them there. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+    CStaticSoundbuffer *master() { return &masterBuf; }
+    CStaticSoundbuffer *spare()  { return &spareBuf; }
+    LinkedList         *clones() { return &cloneList; }
+    LinkedList         *pools()  { return &voicePoolList; }
+#pragma GCC diagnostic pop
+
+private:
+    KAROO_LAYOUT_REGISTER(doublesoundbuff);
+};
+
+KAROO_LAYOUT_CHECKS(doublesoundbuff)
+{
+    KAROO_LAYOUT_AT(masterBuf,     0x00);
+    KAROO_LAYOUT_AT(spareBuf,      0x18);
+    KAROO_LAYOUT_AT(dwMasterTaken, 0x30);
+    KAROO_LAYOUT_AT(dwSpareTaken,  0x34);
+    KAROO_LAYOUT_AT(cloneList,     0x38);
+    KAROO_LAYOUT_AT(voicePoolList, 0x48);
+    KAROO_LAYOUT_SIZE(0x58);
+}
 
 /* ─── Our reimplementations, defined in doublesoundbuff.cpp ─────────────── */
 extern "C" {
