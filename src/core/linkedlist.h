@@ -47,20 +47,51 @@
  */
 #pragma once
 
-struct LinkedListNode {
+#include "layout.h"
+
+struct __attribute__((packed)) LinkedListNode {
+    static const int ORIGIN = 0;
+
     void           *pValue;    // +0x00
     LinkedListNode *pNextNode; // +0x04
     LinkedListNode *pPrevNode; // +0x08
-};
-static_assert(sizeof(LinkedListNode) == 12, "LinkedListNode size mismatch");
 
-struct LinkedList {
+private:
+    KAROO_LAYOUT_REGISTER(LinkedListNode);
+};
+
+/* Size matters here: Append allocates a node with the game's operator new,
+ * which asks for 12. */
+KAROO_LAYOUT_CHECKS(LinkedListNode)
+{
+    KAROO_LAYOUT_AT(pValue,    0x00);
+    KAROO_LAYOUT_AT(pNextNode, 0x04);
+    KAROO_LAYOUT_AT(pPrevNode, 0x08);
+    KAROO_LAYOUT_SIZE(12);
+}
+
+struct __attribute__((packed)) LinkedList {
+    static const int ORIGIN = 0;
+
     void           **vtable;   // +0x00
     LinkedListNode  *pHead;    // +0x04
     LinkedListNode  *pTail;    // +0x08
     unsigned long    dwCount;  // +0x0c
+
+private:
+    KAROO_LAYOUT_REGISTER(LinkedList);
 };
-static_assert(sizeof(LinkedList) == 16, "LinkedList size mismatch");
+
+/* 16 is what every embedder tiles around -- doublesoundbuff's two lists sit
+ * at +0x38 and +0x48. */
+KAROO_LAYOUT_CHECKS(LinkedList)
+{
+    KAROO_LAYOUT_AT(vtable,  0x00);
+    KAROO_LAYOUT_AT(pHead,   0x04);
+    KAROO_LAYOUT_AT(pTail,   0x08);
+    KAROO_LAYOUT_AT(dwCount, 0x0c);
+    KAROO_LAYOUT_SIZE(16);
+}
 
 /* The vtable is OURS.  The game does not require the table address to stay
  * stable, so `Init` and `Destruct` install a one-slot table defined in

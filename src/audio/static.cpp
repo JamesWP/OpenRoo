@@ -241,7 +241,7 @@ static int CStatic_CreateAndLoad3DSoundFile_impl(CStaticSoundbuffer *self,
 
     /* Obtain the 3D interface. */
     GUID iid3D = IID_IDirectSound3DBuffer;
-    HRESULT hr = self->soundbuffer->QueryInterface(iid3D, (void**)&self->threeDBuffer);
+    HRESULT hr = self->soundbuffer->QueryInterface(iid3D, (void**)self->threeDBufferSlot());
     if (FAILED(hr)) {
         log_write("CStatic::CreateAndLoad3DSoundFile: QueryInterface IID_IDirectSound3DBuffer hr=0x%lx\n",
                   (unsigned long)hr);
@@ -270,7 +270,7 @@ static void* CStatic_Copy_impl(CStaticSoundbuffer *self,
     if (!other || !other->soundbuffer) return NULL;
 
     /* Attempt to duplicate the DirectSound buffer. */
-    HRESULT hr = pDS->DuplicateSoundBuffer(other->soundbuffer, &self->soundbuffer);
+    HRESULT hr = pDS->DuplicateSoundBuffer(other->soundbuffer, self->soundbufferSlot());
     if (SUCCEEDED(hr)) {
         /* Duplicate succeeded: copy metadata and re-acquire 3D interface if needed. */
         self->filename  = heap_strdup(other->filename);
@@ -279,7 +279,7 @@ static void* CStatic_Copy_impl(CStaticSoundbuffer *self,
 
         if (other->threeDBuffer) {
             GUID iid3D = IID_IDirectSound3DBuffer;
-            hr = self->soundbuffer->QueryInterface(iid3D, (void**)&self->threeDBuffer);
+            hr = self->soundbuffer->QueryInterface(iid3D, (void**)self->threeDBufferSlot());
             if (FAILED(hr)) {
                 log_write("CStatic::Copy: QueryInterface 3D failed hr=0x%lx\n",
                           (unsigned long)hr);

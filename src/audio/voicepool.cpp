@@ -31,28 +31,7 @@ CStatic_Reset(CStaticSoundbuffer *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStatic_HaltPlayback(CStaticSoundbuffer *self);
 
-/* VoicePool — 20 bytes (0x14). */
-#pragma pack(push, 1)
-struct VoicePool {
-    void               *logger;        // +0x00  opaque Logger*
-    CStaticSoundbuffer *pBufs;         // +0x04  array of dwVoiceCount voices
-    int                 dwCurrentIdx;  // +0x08  round-robin cursor
-    int                 dwNestDepth;   // +0x0c  not touched by either method
-    int                 dwVoiceCount;  // +0x10
-};
-#pragma pack(pop)
-
-static_assert(offsetof(VoicePool, logger)       == 0x00, "logger offset");
-static_assert(offsetof(VoicePool, pBufs)        == 0x04, "pBufs offset");
-static_assert(offsetof(VoicePool, dwCurrentIdx) == 0x08, "dwCurrentIdx offset");
-static_assert(offsetof(VoicePool, dwNestDepth)  == 0x0c, "dwNestDepth offset");
-static_assert(offsetof(VoicePool, dwVoiceCount) == 0x10, "dwVoiceCount offset");
-static_assert(sizeof(VoicePool)                 == 0x14, "VoicePool size");
-
-/* The disassembly indexes pBufs with LEA EAX,[EAX+EAX*2] then
- * LEA ECX,[ECX+EAX*8] — a multiply by 24.  If CStaticSoundbuffer ever grew,
- * plain C++ pointer arithmetic below would silently stop matching, so pin it. */
-static_assert(sizeof(CStaticSoundbuffer) == 0x18, "pBufs stride must stay 0x18");
+/* The VoicePool struct and its layout checks live in voicepool.h. */
 
 /* ─── KAROO_POOL_DIAG — the census ────────────────────────────────────────
  *
