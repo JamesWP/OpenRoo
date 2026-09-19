@@ -24,3 +24,15 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
                             IDirect3DDevice3 *dev, LPCSTR name,
                             DWORD alphaFlag, UINT bpp, DWORD textureStage);
+
+/* The SceneTexture ctor/dtor family (0x43f540 / 0x43f580 / 0x43f560).
+ * Declared here so patch.py's names have one home and check_homes.py has one
+ * answer; nothing outside scenetexture.cpp calls them today — the game
+ * reaches them through the call sites patch.py rewrites and through the
+ * vtable slot this file installs. */
+extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
+Texture_SceneCtor(SceneTexture *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Texture_SceneDtorBody(SceneTexture *self);
+extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
+Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
