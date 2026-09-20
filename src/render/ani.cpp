@@ -92,46 +92,36 @@
  * 6. Every keyword comparison lowercases token[0] again, in place -- 24 times
  *    for an unmatched line.  Harmless, and kept.
  *
- * ─── THE TYPES HERE ARE TEMPORARY ─────────────────────────────────────────
+ * ─── THE TYPES, NOW THAT THERE ARE SOME ────────────────────────────────
  *
- * Everything in this file addresses the animation table as a `void *` or an
- * `int` plus a hex offset -- `table + 0xa0`, `slot[0xc] = 1`, a size of
- * 0x180 that is asserted only as "24 x 0x10".  That is not a style choice
- * and it is not finished work: **the animation structures have not been
- * reverse-engineered yet**, so there is no type to name.  The offsets are
- * what we know; the shape they belong to is not.
- *
- * What this should become, once the structures are read:
- *
- *   - an `AnimSlot` struct with the four fields the loader fills (+0x0, +0x4,
- *     +0x8, and the +0xc flag that "r" sets), replacing every hex offset
- *     inside a slot;
- *   - an `AnimTable` of 24 such slots -- named members, not offsets -- whose
- *     `sizeof` replaces the 0x180 and whose layout `KAROO_LAYOUT_CHECKS`
- *     asserts, the way every reversed class in this tree already does;
- *   - `Ani_LookupAnimDescriptor` returning `AnimSlot *`, not `int`.  Its
- *     callers are doing pointer arithmetic on an integer today purely
- *     because we cannot spell the pointee;
- *   - `Ani_LoadAnimationFile`'s `void *dest` becoming `AnimTable *`.
- *
- * Until then, read every `int` in this file as "an address we cannot yet
- * type" and every hex constant as "a member we cannot yet name".  Treat the
- * arithmetic as a placeholder to be deleted, not as an interface: code that
- * grows to depend on the integer form is code that has to be unpicked when
- * the struct lands.  The same warning applies to any new caller -- prefer
- * adding the struct to adding another offset.
+ * This file used to address the table as a `void *` plus hex offsets because
+ * the animation structures had not been reverse-engineered.  They have been:
+ * `AnimSlot`, `AnimTable` and the animation codes live in `ani.h`, which also
+ * carries the evidence summary, and every offset in this file is gone.  The
+ * loader's `dest` is an `AnimTable *`; `Ani_LookupAnimDescriptor` returns an
+ * `AnimSlot *`.  ANIM_PLAN.md holds the rest -- in particular which animation
+ * code is still read out of the game binary rather than ours.
  *
  * ─── Visual proof ─────────────────────────────────────────────────────────
  *
- * KAROO_ANI_FX=freeze forces every slot's end frame to equal its start frame,
- * so animated models stop animating while everything else about them stays.
- * A motion change, not a colour.
+ * KAROO_ANI_FX=freeze forces every loaded slot to a single frame
+ * (numFrames = 1), so animated models hold their first frame while everything
+ * else about them -- position, path, texture, lighting -- stays.  A motion
+ * change, not a colour, and it is a change only this code can make: nothing
+ * else writes the table.
+ *
+ * It used to set numFrames = firstFrame, described as "end frame = start
+ * frame".  That was a misreading of a slot whose fields were unnamed: +0x4 is
+ * a COUNT, not an end frame, so the old control froze nothing -- it gave each
+ * animation a new arbitrary length (and, for the common firstFrame = 0, the
+ * numFrames = 0 that means "no animation at all").
  */
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <math.h>
 #include "log.h"
 
 /* The game's logger.  This used to be the one callback in this file, reaching
@@ -145,8 +135,8 @@
  * gone and GameLog_LogMessage is called by name. */
 #include "gamelog.h"
 #include "gamestr.h"
+#include "ani.h"
 
-#define ANI_TABLE_SIZE   0x180      /* 24 slots x 0x10, and it tiles exactly */
 #define ANI_LINE_MAX     0x100
 #define ANI_TOKEN_SLOTS  64         /* the original has 16; see defect 1 */
 #define ANI_TOKEN_SIZE   0x100
@@ -194,14 +184,14 @@ static char *ani_strlwr(char *s)
 }
 
 extern "C" __declspec(dllexport) int __cdecl
-Ani_LoadAnimationFile(void *dest, const char *path, GameLogger *logger)
+Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger)
 {
     unsigned char *table = (unsigned char *)dest;
     char line[ANI_LINE_MAX];
     FILE *fp;
     static int logged = 0;
 
-    memset(table, 0, ANI_TABLE_SIZE);
+    memset(table, 0, sizeof(AnimTable));
 
     if (path == NULL || path[0] == '\0')
         return 0;                                  /* defect 4 */
@@ -213,7 +203,7 @@ Ani_LoadAnimationFile(void *dest, const char *path, GameLogger *logger)
     while (!feof(fp)) {
         char *tok;
         unsigned count = 0;
-        unsigned char *slot = NULL;
+        AnimSlot *slot = NULL;
 
         if (fgets(line, ANI_LINE_MAX, fp) == NULL)
             continue;                              /* defect 3: not a break */
@@ -242,22 +232,22 @@ Ani_LoadAnimationFile(void *dest, const char *path, GameLogger *logger)
 
         for (unsigned i = 0; i < ANI_SLOT_COUNT; i++) {
             if (strcmp(ani_strlwr(s_tokens[0]), ANI_SLOTS[i].key) == 0) {
-                slot = table + ANI_SLOTS[i].off;   /* defect 6 */
+                slot = (AnimSlot *)(table + ANI_SLOTS[i].off);  /* defect 6 */
                 break;
             }
         }
         if (slot == NULL)
             continue;
 
-        ((int *)slot)[0] = atoi(s_tokens[1]);
-        ((int *)slot)[1] = atoi(s_tokens[2]);
-        ((int *)slot)[2] = atoi(s_tokens[3]);
+        slot->firstFrame = atoi(s_tokens[1]);
+        slot->numFrames  = atoi(s_tokens[2]);
+        slot->fps        = atoi(s_tokens[3]);
 
         if (fx_freeze())
-            ((int *)slot)[1] = ((int *)slot)[0];   /* end frame = start frame */
+            slot->numFrames = 1;                   /* hold the first frame */
 
         if (count > 4 && strcmp(ani_strlwr(s_tokens[4]), "r") == 0)
-            ((int *)slot)[3] = 1;
+            slot->reverse = 1;
     }
 
     fclose(fp);
@@ -271,7 +261,7 @@ Ani_LoadAnimationFile(void *dest, const char *path, GameLogger *logger)
                                    OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
             if (h != INVALID_HANDLE_VALUE) {
                 unsigned long hash = 2166136261UL;
-                for (unsigned i = 0; i < ANI_TABLE_SIZE; i++) {
+                for (unsigned i = 0; i < sizeof(AnimTable); i++) {
                     hash ^= table[i];
                     hash *= 16777619UL;
                 }
@@ -309,9 +299,9 @@ Ani_LoadAnimationFile(void *dest, const char *path, GameLogger *logger)
  * every code outside the table -- including code 0 -- returns 0, because EAX
  * is zeroed before the dispatch and the default arm is the bare RET.
  *
- * The `int` in and the `int` out are both placeholders -- see "THE TYPES
- * HERE ARE TEMPORARY" in the file header.  This returns the ADDRESS of a
- * slot, and it should return an `AnimSlot *` as soon as there is one.
+ * The original computes `table + offset` and never dereferences either, so
+ * it has no NULL check and neither does this: the arms are `&table->slot`
+ * and a NULL table would fault in the caller exactly as before.
  *
  * The slot offsets are the ones the loader above fills, which is what names
  * the codes: 0x14 walk_forward, 0x15 walk_backward, 0xb jump, 9 glue,
@@ -320,29 +310,73 @@ Ani_LoadAnimationFile(void *dest, const char *path, GameLogger *logger)
  * Note that the four speed_/slow_ slots (+0x20..+0x50) and celebration
  * (+0x60) have NO code: nothing can reach them through this function.
  */
-extern "C" __declspec(dllexport) int __cdecl
-Ani_LookupAnimDescriptor(int table, unsigned int code)
+extern "C" __declspec(dllexport) AnimSlot * __cdecl
+Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code)
 {
     switch (code & 0xff) {
-    case 0x14: return table + 0x000;   /* walk_forward     */
-    case 0x15: return table + 0x010;   /* walk_backward    */
-    case 0x0b: return table + 0x070;   /* jump             */
-    case 0x09: return table + 0x080;   /* glue             */
-    case 0x0a: return table + 0x090;   /* ghost            */
-    case 0x03: return table + 0x0a0;   /* ice              */
-    case 0x08: return table + 0x0b0;   /* fall             */
-    case 0x05: return table + 0x0c0;   /* paraglide        */
-    case 0x04: return table + 0x0d0;   /* slide            */
-    case 0xfa: return table + 0x0e0;   /* idle1            */
-    case 0xfb: return table + 0x0f0;   /* idle2            */
-    case 0x16: return table + 0x100;   /* field_stair_up   */
-    case 0x17: return table + 0x110;   /* field_stair_down */
-    case 0x18: return table + 0x120;   /* stair_stair_up   */
-    case 0x19: return table + 0x130;   /* stair_stair_down */
-    case 0x1a: return table + 0x140;   /* stair_field_up   */
-    case 0x1b: return table + 0x150;   /* stair_field_down */
-    case 0x1f: return table + 0x160;   /* turn_left        */
-    case 0x1e: return table + 0x170;   /* turn_right       */
-    default:   return 0;               /* code 0 included  */
+    case ANIM_WALK_FORWARD:     return &table->walkForward;
+    case ANIM_WALK_BACKWARD:    return &table->walkBackward;
+    case ANIM_JUMP:             return &table->jump;
+    case ANIM_GLUE:             return &table->glue;
+    case ANIM_GHOST:            return &table->ghost;
+    case ANIM_ICE:              return &table->ice;
+    case ANIM_FALL:             return &table->fall;
+    case ANIM_PARAGLIDE:        return &table->paraglide;
+    case ANIM_SLIDE:            return &table->slide;
+    case ANIM_IDLE1:            return &table->idle1;
+    case ANIM_IDLE2:            return &table->idle2;
+    case ANIM_FIELD_STAIR_UP:   return &table->fieldStairUp;
+    case ANIM_FIELD_STAIR_DOWN: return &table->fieldStairDown;
+    case ANIM_STAIR_STAIR_UP:   return &table->stairStairUp;
+    case ANIM_STAIR_STAIR_DOWN: return &table->stairStairDown;
+    case ANIM_STAIR_FIELD_UP:   return &table->stairFieldUp;
+    case ANIM_STAIR_FIELD_DOWN: return &table->stairFieldDown;
+    case ANIM_TURN_LEFT:        return &table->turnLeft;
+    case ANIM_TURN_RIGHT:       return &table->turnRight;
+    default:                    return NULL;   /* code 0 included */
     }
+}
+
+/* ─── The two evaluators ─────────────────────────────────────────────────
+ *
+ * Neither is called from the game binary: they are the arithmetic the four
+ * remaining consumer call sites open-code, lifted here so the replacements
+ * of those functions (ANIM_PLAN.md) share one copy.  They are written from
+ * the disassembly of RenderSceneObjects 0x40a0e7 / 0x40a165, which
+ * DrawObjectShadows 0x43c39a / 0x43c418 repeats instruction for instruction.
+ *
+ * `0.001` is the constant at 0x45d368 -- milliseconds to seconds, so `fps`
+ * really is frames per second.
+ *
+ * Both originals FILD a QWORD whose high dword they have just zeroed, which
+ * is an UNSIGNED load of the dword below it: a negative FirstFrame, NumFrames
+ * or FPS in a .ani reads as a huge positive number, not as a negative.  That
+ * is semantics, not rounding, so the casts below are deliberate.  (No shipped
+ * .ani has a negative field; `atoi` would accept one.)
+ *
+ * The original's float-to-int step is __ftol (0x451134), i.e. truncation
+ * toward zero, which is what a C cast does. */
+
+int Anim_FrameOnClock(const AnimSlot *slot, double timeMs)
+{
+    if (slot == NULL || slot->numFrames == 0)
+        return 0;                                  /* both guards are the
+                                                    * caller's, not ours */
+
+    double count = (double)(unsigned)slot->numFrames;
+    double v = (double)(unsigned)slot->fps * timeMs * 0.001 / count;
+    return (int)(fmod(v, 1.0) * count);
+}
+
+int Anim_FrameAtPhase(const AnimSlot *slot, float phase)
+{
+    if (slot == NULL || slot->numFrames == 0)
+        return 0;
+
+    double count = (double)(unsigned)slot->numFrames;
+    double first = (double)(unsigned)slot->firstFrame;
+
+    if (slot->reverse)
+        return (int)(first - count * (double)phase);
+    return (int)(count * (double)phase + first);
 }
