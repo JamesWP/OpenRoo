@@ -60,6 +60,7 @@
 #include <windows.h>
 #include "log.h"
 #include "gamecrt.h"
+#include "theme.h"
 
 /* ─── The originals ──────────────────────────────────────────────────────── */
 
@@ -172,6 +173,10 @@ hooks_fopen(const char *path, const char *mode)
 {
     void *caller = __builtin_return_address(0);
     void *fp = GC_FOPEN(path, mode);
+
+    /* ASSET_PLAN Phase 5's .thm reader.  Inert unless KAROO_THEME_DIAG is set;
+     * it reopens the file itself and never touches this FILE or the game. */
+    theme_diag_on_open(path);
 
     if (asset_log_enabled()) {
         DWORD size = (path != NULL) ? file_size_of(path) : 0;
