@@ -1,7 +1,7 @@
 /* CdThemes -- the CD-music theme table embedded in Game at +0x2223f
  * (COHESION_PLAN.md Band 3, the fifth sub-object; Ghidra's AutoClass5).
  *
- * ParseThemeFile 0x403040 reads CDTracks\<name>.cdt: each line is a CD
+ * ReadCdTrackThemeTable 0x403040 reads CDTracks\<name>.cdt: each line is a CD
  * track number and a theme name ("main", "gameover", a map name ...).
  * Theme i's track is trackOf_[i], its name names_[i]; count_ is how many
  * were read.  PlayCDStuf plays a theme by name and remembers its track in

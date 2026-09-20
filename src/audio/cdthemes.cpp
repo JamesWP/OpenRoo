@@ -190,7 +190,7 @@ Sim_ValidateCDTrackLengths(CdThemes *self)
  * Three functions that do nothing but move the vtable pointer, and that is
  * the whole class's construction: Game::Load 0x004145f4 calls the ctor on
  * Game+0x2223f and no field below +0x18 is ever written again.  The theme
- * table is left uninitialised until ParseThemeFile fills it — a defect kept,
+ * table is left uninitialised until ReadCdTrackThemeTable fills it — a defect kept,
  * not a gap in this reimplementation.
  */
 void CdThemes::construct()
