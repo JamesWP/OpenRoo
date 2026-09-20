@@ -92,6 +92,35 @@
  * 6. Every keyword comparison lowercases token[0] again, in place -- 24 times
  *    for an unmatched line.  Harmless, and kept.
  *
+ * ─── THE TYPES HERE ARE TEMPORARY ─────────────────────────────────────────
+ *
+ * Everything in this file addresses the animation table as a `void *` or an
+ * `int` plus a hex offset -- `table + 0xa0`, `slot[0xc] = 1`, a size of
+ * 0x180 that is asserted only as "24 x 0x10".  That is not a style choice
+ * and it is not finished work: **the animation structures have not been
+ * reverse-engineered yet**, so there is no type to name.  The offsets are
+ * what we know; the shape they belong to is not.
+ *
+ * What this should become, once the structures are read:
+ *
+ *   - an `AnimSlot` struct with the four fields the loader fills (+0x0, +0x4,
+ *     +0x8, and the +0xc flag that "r" sets), replacing every hex offset
+ *     inside a slot;
+ *   - an `AnimTable` of 24 such slots -- named members, not offsets -- whose
+ *     `sizeof` replaces the 0x180 and whose layout `KAROO_LAYOUT_CHECKS`
+ *     asserts, the way every reversed class in this tree already does;
+ *   - `Ani_LookupAnimDescriptor` returning `AnimSlot *`, not `int`.  Its
+ *     callers are doing pointer arithmetic on an integer today purely
+ *     because we cannot spell the pointee;
+ *   - `Ani_LoadAnimationFile`'s `void *dest` becoming `AnimTable *`.
+ *
+ * Until then, read every `int` in this file as "an address we cannot yet
+ * type" and every hex constant as "a member we cannot yet name".  Treat the
+ * arithmetic as a placeholder to be deleted, not as an interface: code that
+ * grows to depend on the integer form is code that has to be unpicked when
+ * the struct lands.  The same warning applies to any new caller -- prefer
+ * adding the struct to adding another offset.
+ *
  * ─── Visual proof ─────────────────────────────────────────────────────────
  *
  * KAROO_ANI_FX=freeze forces every slot's end frame to equal its start frame,
@@ -279,6 +308,10 @@ Ani_LoadAnimationFile(void *dest, const char *path, GameLogger *logger)
  * range test (`AND ECX,0xff`), so 0x114 is code 0x14, not out of range; and
  * every code outside the table -- including code 0 -- returns 0, because EAX
  * is zeroed before the dispatch and the default arm is the bare RET.
+ *
+ * The `int` in and the `int` out are both placeholders -- see "THE TYPES
+ * HERE ARE TEMPORARY" in the file header.  This returns the ADDRESS of a
+ * slot, and it should return an `AnimSlot *` as soon as there is one.
  *
  * The slot offsets are the ones the loader above fills, which is what names
  * the codes: 0x14 walk_forward, 0x15 walk_backward, 0xb jump, 9 glue,
