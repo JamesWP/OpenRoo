@@ -1,6 +1,28 @@
 #include <windows.h>
+#include <string.h>
 #include "movie.h"
 #include "log.h"
+#include "alloc.h"
+
+/* FaktMovie::FaktMovie 0x0044f3e0 — field init, called by the ctor proper and
+   (dead now) from the teardown path.  It zeroes +0x4 through +0x134 and sets
+   +0x138 to 0xfd; the vtable at +0 is the caller's job.  The original leaves
+   EAX zero on return, so the "constructor" hands back a NULL `this` — nothing
+   reads it, and the two callers use their own register.  Bug preserved by
+   returning void. */
+void FaktMovie::construct()
+{
+    memset((char *)this + 4, 0, 0x134);
+    notify_msg = 0xfd;
+}
+
+/* FaktMovie::~FaktMovie 0x0044f3d0 — restore the vtable, tail-jump to the COM
+   teardown at 0x0044f430 (our teardown()). */
+void FaktMovie::destruct()
+{
+    vtable = FAKTMOVIE_VTABLE;
+    teardown();
+}
 
 void FaktMovie::teardown()
 {
@@ -51,6 +73,32 @@ void FaktMovie::setWindow(void *surface)
 
 /* ─── Exports — thin thiscall wrappers so patch.py import names resolve ─── */
 extern "C" {
+
+/* FaktMovie::FaktMovie 0x0044f390 — the constructor proper: install the
+   vtable, then the field init.  Reached only through the static-initialiser
+   thunk at 0x00425600, which builds the one global FaktMovie at 0x0046c5d8. */
+__declspec(dllexport) FaktMovie * __attribute__((thiscall))
+Movie_Construct(FaktMovie *self)
+{
+    self->vtable = FAKTMOVIE_VTABLE;
+    self->construct();
+    return self;
+}
+
+__declspec(dllexport) void __attribute__((thiscall))
+Movie_Destruct(FaktMovie *self) { self->destruct(); }
+
+/* FaktMovie::ScalarDeletingDtor 0x0044f3b0 — vtable slot 0.  The only
+   FaktMovie is the static global, so the free branch never runs; it is kept
+   faithful anyway, and the block would have come from the game heap. */
+__declspec(dllexport) FaktMovie * __attribute__((thiscall))
+Movie_ScalarDeletingDtor(FaktMovie *self, unsigned int flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}
 
 __declspec(dllexport) void __attribute__((thiscall))
 Movie_Teardown(FaktMovie *self) { self->teardown(); }

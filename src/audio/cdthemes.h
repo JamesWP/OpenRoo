@@ -15,8 +15,13 @@
  * +0x1c + 255 = +0x11b, over currentTrack_, and its name past the object.
  * Unreachable with the shipped .cdt files; not "fixed".
  *
- * Nothing constructs it: +0x00..+0x18 are not written by any of its
- * functions, and +0x18 is the track count ValidateCDTrackLengths stores.
+ * It IS constructed, and the earlier note here that "nothing constructs it"
+ * was wrong: 0x403000 writes the vtable 0x0045d2c4 at +0x00 and nothing else,
+ * from Game::Load 0x004145f4 on the member at Game+0x2223f.  0x403030 is the
+ * destructor (the same store, nothing more) and 0x403010 the slot-0 deleting
+ * one.  All three sat in the CDM TU's address range purely by address; they
+ * are this class's, and tu_map.txt now says so.  +0x04..+0x18 really are
+ * untouched, and +0x18 is the track count ValidateCDTrackLengths stores.
  */
 #pragma once
 
@@ -29,6 +34,9 @@ public:
     enum { THEME_MAX = 255, NAME_SIZE = 255 };
 
     /* cdthemes.cpp -- behind the Sim_* export shims. */
+    void          construct();                        /* 0x403000 */
+    void          destruct();                         /* 0x403030 */
+
     unsigned int  findThemeIndex(const char *name);   /* 0x403240 */
     unsigned int  play(const char *caption);          /* 0x403360 */
     unsigned int  replay();                           /* 0x4033e0 */
@@ -46,7 +54,8 @@ private:
     CdThemes() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(CdThemes);
 
-    unsigned char gap_00[0x18 - 0x00];
+    void         *vtable_;                             /* +0x00 */
+    unsigned char gap_04[0x18 - 0x04];
     int           trackCount_;                         /* +0x18 */
     unsigned char trackOf_[THEME_MAX];                 /* +0x1c */
     unsigned char currentTrack_;                       /* +0x11b */
@@ -56,6 +65,7 @@ private:
 
 KAROO_LAYOUT_CHECKS(CdThemes)
 {
+    KAROO_LAYOUT_AT(vtable_,       0x00);
     KAROO_LAYOUT_AT(trackCount_,   0x18);
     KAROO_LAYOUT_AT(trackOf_,      0x1c);
     KAROO_LAYOUT_AT(currentTrack_, 0x11b);
@@ -73,3 +83,16 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_PlayCDStuf_2(CdThemes *self);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Sim_ValidateCDTrackLengths(CdThemes *self);
+extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
+Sim_CdThemesConstruct(CdThemes *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_CdThemesDestruct(CdThemes *self);
+extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
+Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags);
+
+/* CdThemes' vtable: ONE slot at 0x0045d2c4, immediately after CDM's three-slot
+   table at 0x0045d2b8 and for a long time mistaken for its slot 3 (see cdm.h).
+   It is this class's: the ctor 0x403000 and dtor 0x403030 both store 0x45d2c4,
+   and slot 0 is 0x403010, the deleting dtor those two call.  patch.py
+   redirects the slot at file offset 0x5D2C4. */
+static const void *const CDTHEMES_VTABLE = reinterpret_cast<const void*>(0x0045d2c4);

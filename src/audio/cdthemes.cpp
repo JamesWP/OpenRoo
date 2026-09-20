@@ -32,6 +32,7 @@
 #include "cdm.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "alloc.h"
 
 static int s_fx = -1;
 
@@ -182,4 +183,46 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Sim_ValidateCDTrackLengths(CdThemes *self)
 {
     return self->validateTrackLengths();
+}
+
+/* ─── Lifecycle — 0x403000 / 0x403030 / 0x403010 ────────────────────────────
+ *
+ * Three functions that do nothing but move the vtable pointer, and that is
+ * the whole class's construction: Game::Load 0x004145f4 calls the ctor on
+ * Game+0x2223f and no field below +0x18 is ever written again.  The theme
+ * table is left uninitialised until ParseThemeFile fills it — a defect kept,
+ * not a gap in this reimplementation.
+ */
+void CdThemes::construct()
+{
+    vtable_ = const_cast<void*>(CDTHEMES_VTABLE);
+}
+
+void CdThemes::destruct()
+{
+    vtable_ = const_cast<void*>(CDTHEMES_VTABLE);
+}
+
+extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
+Sim_CdThemesConstruct(CdThemes *self)
+{
+    self->construct();
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_CdThemesDestruct(CdThemes *self)
+{
+    self->destruct();
+}
+
+/* Vtable slot 0.  The only CdThemes is Game's embedded member, so the free
+   branch never runs; kept faithful, and the block would be the game heap's. */
+extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
+Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }
