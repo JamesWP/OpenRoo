@@ -38,6 +38,7 @@
 #include "d3dmath.h"
 #include "log.h"
 #include "faktmesh.h"
+#include "ani.h"
 
 #define SCENE_LIST_HEAD (*(struct SceneNode **)0x0046c45c)
 
@@ -170,18 +171,23 @@ static void object_rotation(Mat4 *m, float rx, float ry, float rz)
 
 static DWORD animation_frame(const unsigned char *o, double t)
 {
+    /* +0xd is set to 1 by BuildSceneObjectList when the object's .ani loaded;
+     * +0x11 is the AnimTable it loaded into (ani.h), which runs to +0x191 --
+     * exactly where the position below begins. */
     if (ob_d(o, O_ANIMGATE) == 0)
         return 0;
-    /* LookupAnimDescriptor(o + 0x11, 0x14) is a switch that returns its first
-     * argument unchanged for kind 0x14, so the descriptor is o + 0x11 and no
-     * lookup is needed.  It can never be NULL, so that check cannot fire. */
-    const unsigned char *desc = o + O_ANIMDESC;
-    DWORD count = ob_d(desc, 4);
-    if (count == 0)
+    /* LookupAnimDescriptor(o + 0x11, 0x14) is a switch whose walk_forward arm
+     * is the table's first slot, so the descriptor is o + 0x11 and no lookup
+     * is needed.  It can never be NULL, so that check cannot fire. */
+    const AnimSlot *slot = (const AnimSlot *)(o + O_ANIMDESC);
+    if (slot->numFrames == 0)
         return 0;
-    DWORD scale = ob_d(desc, 8);
-    double v = t * K_ANIM_SCALE * (double)scale;
-    double r = m_fmod(v, (double)count);
+    /* Anim_FrameOnClock is the same function written as the other three call
+     * sites write it, fmod(v/n, 1)*n; this one is fmod(v, n) and is kept in
+     * its own form because it is the arithmetic this function was verified
+     * against. */
+    double v = t * K_ANIM_SCALE * (double)(unsigned)slot->fps;
+    double r = m_fmod(v, (double)(unsigned)slot->numFrames);
     return (DWORD)(unsigned short)(int)r;      /* __ftol, then truncated to 16 bits */
 }
 
