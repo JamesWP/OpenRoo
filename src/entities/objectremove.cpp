@@ -160,6 +160,7 @@
 /* ─── KAROO_SIM_FX / KAROO_REMOVE_DIAG, read by value ────────────────────
  * By VALUE, never by presence (RENDER_PLAN.md, 2026-09-02). */
 static int s_fx_keepid = 0;
+static int s_fx_lowid  = 0;
 static int s_diag      = 0;
 static int s_init      = 0;
 
@@ -180,10 +181,115 @@ static void fx_init(void)
                   "removed ID and every later tick addresses the wrong "
                   "object\n");
     }
+    if (n > 0 && n < sizeof(buf) && strcmp(buf, "lowid") == 0) {
+        s_fx_lowid = 1;
+        log_write("objectremove: KAROO_SIM_FX=lowid -- the ID allocator's gap "
+                  "scan BREAKS on the first hit, so it issues the lowest "
+                  "unused ID instead of the highest\n");
+    }
 
     n = GetEnvironmentVariableA("KAROO_REMOVE_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
         s_diag = 1;
+}
+
+static unsigned s_claims              = 0;
+static unsigned s_claims_with_gap     = 0;
+static unsigned s_claims_lowid_differs = 0;
+
+/* ─── The allocator: ClaimSpareObjectIdSlot 0x00417250 ───────────────────
+ *
+ * The counterpart of the compaction below, and the reason it lives here
+ * rather than on `Game`: one function hands an ID out, the other takes it
+ * back, and between them they are the whole free-list.  Both spawns call it.
+ *
+ * WRITTEN FROM THE LISTING, not the decompile.  Ghidra types it void, and
+ * GAMETICK_PLAN.md kept it as a callback on the grounds that "which local is
+ * in AL at a void RET" is a compiler artefact.  The listing settles it: AL is
+ * the byte the function itself stores into the array
+ * (`MOV byte ptr [ECX + EBP*0x1],AL` at 0x004172b7), so the value both
+ * callers read is the ID that was just recorded, not an accident.
+ *
+ * Its `this` is dead -- the first instruction, `MOV ECX,[ESP+8]`, overwrites
+ * ECX with the count pointer before reading it -- so this is a free function
+ * with two arguments, which is what it is declared as.
+ *
+ * PRESERVED DEFECT 1: the gap scan does not break.  It tries every candidate
+ * 0..count-1 and assigns each unused one over the last, so the ID issued is
+ * the HIGHEST unused value below the count, not the lowest.  "Find the first
+ * free slot" is the obvious reading and is wrong whenever two or more IDs are
+ * free at once -- the state after several foes are removed in one frame.
+ *
+ * PRESERVED DEFECT 2: with count == 0 the max scan is skipped with AL still
+ * 0, but the `INC AL` at 0x0041727e still runs, so the first ID ever issued
+ * is 1, not 0.  0 is only ever reachable later, as a gap.
+ *
+ * KAROO_SIM_FX=lowid breaks exactly defect 1: the gap scan gets the `break`
+ * the original lacks, so the allocator issues the lowest unused ID.  Every ID
+ * it issues is still unused and still below the count, so no slot collides
+ * and nothing is destroyed twice -- the control changes WHICH valid ID an
+ * object gets, never whether it is valid.  That keeps its blast radius off
+ * the unbounded spawn scans that `setupflip` crashes levelreport.py with. */
+unsigned char Object_ClaimSpareId(unsigned char *ids, unsigned char *count)
+{
+    unsigned char n = *count;
+    unsigned char id;
+    unsigned int  i;
+
+    fx_init();
+
+    id = 0;
+    for (i = 0; i < n; ++i)          /* AL = max(ids[0..n-1]) */
+        if (ids[i] > id)
+            id = ids[i];
+    ++id;                            /* fallback: max + 1 */
+
+    for (unsigned char cand = 0; cand < n; ++cand) {
+        unsigned char used = 0;
+        for (i = 0; i < n; ++i)
+            if (ids[i] == cand)
+                used = 1;            /* no break -- as the original */
+        if (!used) {
+            id = cand;
+            if (s_fx_lowid)          /* the break the original lacks */
+                break;
+        }
+    }
+
+    /* KAROO_REMOVE_DIAG census.  `lowid` can only differ from the original
+     * when the scan finds TWO OR MORE gaps, so counting claims is not enough:
+     * the census counts how many gaps each claim saw, and how often the
+     * lowest and the highest disagree -- the exact population the control
+     * acts on.  Without it, "lowid passes 16/16" cannot be told apart from
+     * "lowid never fires". */
+    if (s_diag) {
+        unsigned char lowest = id, gaps = 0;
+        for (unsigned char cand = 0; cand < n; ++cand) {
+            unsigned char used = 0;
+            for (i = 0; i < n; ++i)
+                if (ids[i] == cand)
+                    used = 1;
+            if (!used) {
+                if (gaps == 0)
+                    lowest = cand;
+                ++gaps;
+            }
+        }
+        ++s_claims;
+        if (gaps > 0)
+            ++s_claims_with_gap;
+        if (lowest != id)
+            ++s_claims_lowid_differs;
+        log_write("objectremove: claim #%u -- count=%u issued=%u gaps=%u "
+                  "lowest=%u (differs=%u of %u claims, %u with a gap)\n",
+                  s_claims, (unsigned)n, (unsigned)id, (unsigned)gaps,
+                  (unsigned)lowest, s_claims_lowid_differs, s_claims,
+                  s_claims_with_gap);
+    }
+
+    ids[n] = id;
+    *count = (unsigned char)(n + 1);
+    return id;
 }
 
 static int s_logged_dtor     = 0;

@@ -74,9 +74,8 @@
  *    256-byte buffer; the enabled flag right after each name stops it.
  *
  * Allocation is our own `new` (see "Construction and destruction" below).
- * Kept as callbacks: ClaimSpareObjectIdSlot
- * (Game::claimSpareObjectId; its AL return is a compiler artefact, see
- * objectspawn.cpp) and AcquireSoundBuffer (SoundManager::acquireStatic).
+ * The ID comes from Object_ClaimSpareId (objectremove.h), which is ours.
+ * Kept as a callback: AcquireSoundBuffer (SoundManager::acquireStatic).
  *
  * The original's MSVC EH frame around the allocation is not reproduced: the
  * allocator returns NULL rather than throwing, so the frame is unobservable.
@@ -102,7 +101,7 @@
  * KAROO_SIM_FX=shortfuse halves all three thresholds (2000/2400/2600 ->
  * 1000/1200/1300 ms) -- a measurement: it moves WHEN tiles become lethal.
  * KAROO_SIM_FX=spawnswap exchanges u and v in the spawn (shared with the foe
- * spawn in objectspawn.cpp).  KAROO_SIM_FX=keepid lives in the shared remove
+ * spawn in objectspawn.cpp).  KAROO_SIM_FX=keepid and =lowid live in the remove
  * tail (objectremove.cpp).
  *
  * KAROO_BOMB_DIAG=1 logs the first blast and a tick count every 5000;
@@ -312,7 +311,7 @@ void Bomb::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         unsigned char t = u; u = v; v = t;
     }
 
-    id = game->claimSpareObjectId(game->bombIds(), game->bombCountRef());
+    id = Object_ClaimSpareId(game->bombIds(), game->bombCountRef());
 
     p = create();
 

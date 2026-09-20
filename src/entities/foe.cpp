@@ -16,11 +16,9 @@
  *
  * Allocation and construction are ours (see "Construction and destruction"
  * below), and so is the pathfinder's: AttachFoePathfinderToEntity 0x43a970
- * is FoePath::create() plus the store into +0x13b.  Kept as a callback:
- * ClaimSpareObjectIdSlot 0x417250 through Game::claimSpareObjectId.  It is
- * typed void in Ghidra but both spawns read AL as the new ID; "which local
- * is in AL at a void RET" is a compiler artefact, so it is called through
- * rather than rewritten from a decompile that does not model the return.
+ * is FoePath::create() plus the store into +0x13b.  So is the ID:
+ * ClaimSpareObjectIdSlot 0x417250 is Object_ClaimSpareId (objectremove.h),
+ * which is where the ID free-list's other half already lived.
  *
  * The MSVC EH frame around the allocation is not reproduced: the allocator
  * returns NULL rather than throwing, so the frame is unobservable.
@@ -130,7 +128,8 @@
  * KAROO_SIM_FX=foeunfreeze  the freeze gate is ignored.
  * KAROO_SIM_FX=chaseback  reverses the delta-to-facing table: foes step away.
  *                         Matched case-insensitively, as foechase.cpp did.
- * KAROO_SIM_FX=keepid     lives in the shared remove tail (objectremove.cpp).
+ * KAROO_SIM_FX=keepid     lives in the shared remove tail (objectremove.cpp),
+ *                         as does KAROO_SIM_FX=lowid, the ID allocator's.
  *
  * KAROO_SPAWN_DIAG=1   spawn count every 500, each foe type once with the
  *                      level it first appears in, every (level, type > 0x64)
@@ -366,7 +365,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         unsigned char t = u; u = v; v = t;
     }
 
-    id = game->claimSpareObjectId(game->foeIds(), game->foeCountRef());
+    id = Object_ClaimSpareId(game->foeIds(), game->foeCountRef());
 
     p = create();
 

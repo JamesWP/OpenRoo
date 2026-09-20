@@ -558,16 +558,6 @@ public:
     const SoundAssetName *soundAsset46132() const { return &soundAsset46132_; }
     const SoundAssetName *soundAsset46baa() const { return &soundAsset46baa_; }
 
-    /* ── game code still called ─────────────────────────────────────── */
-    /* PLACEHOLDER: ClaimSpareObjectIdSlot 0x00417250, __thiscall on Game.
-     * Ghidra types it void, but both spawns read AL as the new ID -- see
-     * objectspawn.cpp for why it is called through rather than rewritten. */
-    unsigned char claimSpareObjectId(unsigned char *ids, unsigned char *count)
-    {
-        typedef unsigned char (__attribute__((thiscall)) *fn)(Game *, unsigned char *,
-                                                              unsigned char *);
-        return ((fn)0x00417250)(this, ids, count);
-    }
 
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
