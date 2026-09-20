@@ -30,6 +30,11 @@ struct FaktMovie {
 static_assert(offsetof(FaktMovie, state) == 0x110, "FaktMovie layout mismatch");
 static_assert(offsetof(FaktMovie, notify_msg) == 0x138, "FaktMovie layout mismatch");
 
-/* The class vtable, still the game's data at 0x0045f200; slot 0 (the scalar
-   deleting destructor) is redirected to us by patch.py's VTABLE_PATCHES. */
+/* FaktMovie's vtable: ONE slot at 0x0045f200, holding the scalar deleting
+   destructor 0x0044f3b0, which is that function's only reference anywhere
+   (xref.py finds no CALL and no JMP).  patch.py redirects the slot at file
+   offset 0x5F200.  The class is otherwise built and torn down only by the two
+   static-initialiser thunks at 0x00425600 / 0x00425620 ("mov ecx,0x46c5d8;
+   jmp"), for the single global FaktMovie at 0x0046c5d8 — E9 sites, so they
+   are JMP_PATCHES rather than CALL_PATCHES. */
 #define FAKTMOVIE_VTABLE ((void *)0x0045f200)

@@ -90,6 +90,9 @@ Sim_CdThemesDestruct(CdThemes *self);
 extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
 Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags);
 
-/* The one-slot table at 0x0045d2c4, immediately after CDM's three-slot one
-   at 0x0045d2b8.  Slot 0 is the deleting dtor; patch.py redirects it. */
+/* CdThemes' vtable: ONE slot at 0x0045d2c4, immediately after CDM's three-slot
+   table at 0x0045d2b8 and for a long time mistaken for its slot 3 (see cdm.h).
+   It is this class's: the ctor 0x403000 and dtor 0x403030 both store 0x45d2c4,
+   and slot 0 is 0x403010, the deleting dtor those two call.  patch.py
+   redirects the slot at file offset 0x5D2C4. */
 static const void *const CDTHEMES_VTABLE = reinterpret_cast<const void*>(0x0045d2c4);
