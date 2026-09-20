@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "cdm.h"
 #include "log.h"
+#include "alloc.h"
 
 CDM* CDM::construct()
 {
@@ -129,6 +130,19 @@ CDM_Constructor(CDM *self) { return self->construct(); }
 
 __declspec(dllexport) void __attribute__((thiscall))
 CDM_Destructor(CDM *self) { self->stopAndClose(); }
+
+/* CDM::DestructAndFree 0x402c40 -- vtable slot 0 of the three-slot table at
+   0x0045d2b8, and its only reference anywhere: xref.py reports no CALL and no
+   JMP.  Calls stopAndClose, then frees on bit 0.  The one CDM is the global
+   the static initialiser at 0x00425f10 builds, so the free never happens. */
+__declspec(dllexport) CDM * __attribute__((thiscall))
+CDM_ScalarDeletingDtor(CDM *self, unsigned int flags)
+{
+    self->stopAndClose();
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}
 
 __declspec(dllexport) void __attribute__((thiscall))
 CDM_SetWindowHandle(CDM *self, HWND hwnd) { self->setWindowHandle(hwnd); }

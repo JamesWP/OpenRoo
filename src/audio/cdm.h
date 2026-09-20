@@ -20,6 +20,7 @@ struct CDM {
 
     CDM*  construct();
     void  stopAndClose();
+    /* CDM::DestructAndFree 0x402c40 -- vtable slot 0. */
     void  setWindowHandle(HWND hwnd);
     int   getTrackCount();
     int   getTrackLength(char **out_ptr, int track);
@@ -47,3 +48,5 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_SetMixerVolume(CDM *self, DWORD level);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
+extern "C" __declspec(dllexport) CDM * __attribute__((thiscall))
+CDM_ScalarDeletingDtor(CDM *self, unsigned int flags);
