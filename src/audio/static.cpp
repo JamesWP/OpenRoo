@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "static.h"
+#include "alloc.h"
 #include "log.h"
 
 /* ── WAV file parser ────────────────────────────────────────────────────── */
@@ -139,6 +140,130 @@ static IDirectSoundBuffer *create_ds_buffer(IDirectSound *pDS,
     return pBuf;
 }
 
+static void CStatic_ReinitBuffer_impl(CStaticSoundbuffer *self);
+
+/* ── KAROO_SOUND_FX / KAROO_SOUND_DIAG ──────────────────────────────────
+ *
+ * Both sound classes own their vtable now, and neither writes anything that
+ * can be seen; the pointer they install is the only thing they own outright,
+ * so it is what the control moves — the KAROO_IMAGE_FX=gamevtbl measurement,
+ * applied to the sound objects.  `gamevtbl` installs the game's tables
+ * (0x45ef9c / 0x45efa4), whose one slot each points at a UD2-stubbed
+ * original, so any dispatch through the table faults as c000001d.  A clean
+ * run says nothing read the table; a fault names the reader.
+ *
+ * Blast radius: one pointer field per object, no geometry, so levelreport.py
+ * is safe (CLAUDE.md's rule about which gate may host a control).
+ *
+ * KAROO_SOUND_DIAG=1 is the census that tells "ran and agreed" from "never
+ * ran": each destructor entry point announces its first call.  Read by VALUE.
+ */
+static bool sound_fx_gamevtbl(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        char buf[16];
+        cached = 0;
+        if (GetEnvironmentVariableA("KAROO_SOUND_FX", buf, sizeof(buf)) &&
+            lstrcmpiA(buf, "gamevtbl") == 0)
+            cached = 1;
+        log_write("sound: SOUND_FX mode = %s\n", cached ? "gamevtbl" : "off");
+    }
+    return cached != 0;
+}
+
+static bool sound_diag(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        char buf[16];
+        cached = (GetEnvironmentVariableA("KAROO_SOUND_DIAG", buf, sizeof(buf))
+                  && buf[0] == '1') ? 1 : 0;
+    }
+    return cached != 0;
+}
+
+extern "C" {
+
+__declspec(dllexport) int CStatic_SoundFxGameVtable(void)
+{
+    return sound_fx_gamevtbl() ? 1 : 0;
+}
+
+/* First call, then a running tally — never a purely periodic sample, which
+ * reads zero forever for anything first reached late (linkedlist.cpp). */
+__declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
+                                                  unsigned long *seen)
+{
+    if (sound_diag() && (*seen)++ == 0)
+        log_write("sound: DIAG first call -- %s\n", who);
+}
+
+/* Forward declaration: the table below needs the slot's address. */
+__declspec(dllexport) void * __attribute__((thiscall))
+CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
+
+/* Our own one-slot table. */
+static void *const g_CStaticVtable[1] = { (void *)&CStatic_ScalarVectorDtor };
+
+__declspec(dllexport) void *CStatic_Vtable(void)
+{
+    return sound_fx_gamevtbl() ? (void *)0x0045ef9c : (void *)g_CStaticVtable;
+}
+
+/* ─── CStaticSoundbuffer::ScalarVectorDtor (0x00442a80) ──────────────────
+ *
+ * MSVC's combined scalar/vector deleting destructor, and the last function of
+ * the VoicePool TU.  Two shapes, chosen by bit 1 of `flags`:
+ *
+ *   flags & 2   an ARRAY.  The block VoicePool::Fill3D allocated is
+ *               `count*0x18 + 4`; the count sits in the leading dword and
+ *               pBufs is base+4, so the header is at `self[-1].threeDBuffer`
+ *               — four bytes below the first element.  The original hands
+ *               (self, 0x18, count, ReinitBuffer) to the CRT's vector-dtor
+ *               iterator 0x00451e37, which walks the elements in REVERSE
+ *               (`ptr += size*count`, then `--count; js out; ptr -= size`).
+ *               The loop is written out here instead of calling that helper:
+ *               it would be a new CRT callback, which E1 exists to remove,
+ *               and the helper's SEH frame exists only for a destructor that
+ *               throws — ReinitBuffer cannot.  The return is the block base,
+ *               not `self`.
+ *   otherwise   one object: ReinitBuffer, then free.
+ *
+ * Bit 0 frees the block.  The free is `FactAlloc::Free2` through alloc.h and
+ * stays there: the array came from the game's `operator new` in Fill3D and
+ * Clone, so the game's heap owns the other side (alloc.h's own rule).  Note
+ * the 3-flag call in VoicePoolWipe passes both bits, so the array path is
+ * the one the game actually takes.
+ */
+__declspec(dllexport) void * __attribute__((thiscall))
+CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
+{
+    static unsigned long seen;
+    CStatic_SoundFirstCall("CStaticSoundbuffer::ScalarVectorDtor", &seen);
+
+    if (flags & 2) {
+        /* The count header, four bytes below the first element. */
+        void *base  = (char *)self - 4;
+        int   count = *(int *)base;
+
+        /* Reverse order, exactly as the iterator walks it. */
+        for (int i = count - 1; i >= 0; --i)
+            CStatic_ReinitBuffer_impl(&self[i]);
+
+        if (flags & 1)
+            game_free2(base);
+        return base;
+    }
+
+    CStatic_ReinitBuffer_impl(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}
+
+} // extern "C"
+
 /* ── Forward declarations ──────────────────────────────────────────────── */
 
 static void CStatic_Reset_impl(CStaticSoundbuffer *self);
@@ -154,13 +279,13 @@ static int  CStatic_CreateAndLoad3DSoundFile_impl(CStaticSoundbuffer *self,
 static CStaticSoundbuffer* CStatic_Init_impl(CStaticSoundbuffer *self)
 {
     memset(self, 0, sizeof(*self));
-    self->vtable = const_cast<void*>(STATIC_VTABLE);
+    self->vtable = CStatic_Vtable();
     return self;
 }
 
 static void CStatic_ReinitBuffer_impl(CStaticSoundbuffer *self)
 {
-    self->vtable = const_cast<void*>(STATIC_VTABLE);
+    self->vtable = CStatic_Vtable();
     CStatic_Reset_impl(self);
 }
 

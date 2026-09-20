@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdio.h>
 #include "stream.h"
+#include "static.h"   /* the shared KAROO_SOUND_FX / _DIAG helpers */
+#include "alloc.h"
 #include "log.h"
 
 #define FOURCC(a,b,c,d) \
@@ -114,6 +116,46 @@ static DWORD WINAPI WatcherProc(LPVOID param)
     return 0;
 }
 
+
+/* ─── The vtable, and CStreamSoundbuffer::ScalarDeletingDtor (0x00443da0) ──
+ *
+ * The last function of the CStreamSoundbuffer TU.  The original is eleven
+ * instructions: DeinitInstance, then `FactAlloc::Free2(this)` when bit 0 of
+ * the flag word is set, returning `this` either way.  There is no array form
+ * here -- unlike CStaticSoundbuffer, nothing allocates these in blocks -- so
+ * bit 1 is not tested, and that asymmetry is the original's, not ours.
+ *
+ * The free stays on the GAME heap through alloc.h: the object it frees came
+ * from the game's `operator new(0xD4)`, so the other side of the lifetime is
+ * still theirs (alloc.h's own rule).  It retires with that allocation.
+ */
+extern "C" {
+
+__declspec(dllexport) void * __attribute__((thiscall))
+CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
+
+static void *const g_CStreamVtable[1] = { (void *)&CStream_ScalarDeletingDtor };
+
+__declspec(dllexport) void *CStream_Vtable(void)
+{
+    return CStatic_SoundFxGameVtable() ? (void *)0x0045efa4
+                                       : (void *)g_CStreamVtable;
+}
+
+__declspec(dllexport) void * __attribute__((thiscall))
+CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
+{
+    static unsigned long seen;
+    CStatic_SoundFirstCall("CStreamSoundbuffer::ScalarDeletingDtor", &seen);
+
+    CStream_DeinitInstance(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}
+
+} // extern "C"
+
 /* ── Method implementations ─────────────────────────────────────────────── */
 
 static void CStream_Stop_impl(CStreamSoundbuffer *self);
@@ -123,7 +165,7 @@ static CStreamSoundbuffer* CStream_Initialize_impl(CStreamSoundbuffer *self)
 {
     log_write("CStream::Initialize(this=%p)\n", self);
     memset(self, 0, sizeof(*self));
-    self->vtable       = const_cast<void*>(STREAM_VTABLE);
+    self->vtable       = CStream_Vtable();
     self->dwThread_done = 1;
     InitializeCriticalSection(&self->cs);
     return self;
@@ -262,7 +304,7 @@ static void CStream_ReleaseResources_impl(CStreamSoundbuffer *self)
 static void CStream_DeinitInstance_impl(CStreamSoundbuffer *self)
 {
     log_write("CStream::DeinitInstance(this=%p)\n", self);
-    self->vtable = const_cast<void*>(STREAM_VTABLE);
+    self->vtable = CStream_Vtable();
     CStream_ReleaseResources_impl(self);
     DeleteCriticalSection(&self->cs);
 }
