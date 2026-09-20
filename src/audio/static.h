@@ -47,13 +47,14 @@ KAROO_LAYOUT_CHECKS(CStaticSoundbuffer)
     KAROO_LAYOUT_SIZE(0x18);
 }
 
-/*
- * Original vtable at 0x45ef9c — one slot: ScalarVectorDtor @ 0x442a80.
- * We leave the vtable untouched: ScalarVectorDtor calls ReinitBuffer, which
- * patch.py redirects to our CStatic_ReinitBuffer, so virtual dtor cleanup
- * reaches our code without a vtable patch.
- */
-static const void *const STATIC_VTABLE = reinterpret_cast<const void*>(0x45ef9c);
+/* The vtable is ours (ENDGAME_PLAN.md, "The vtable address of our objects may
+ * be our own").  The game's table at 0x45ef9c is one slot, ScalarVectorDtor
+ * 0x442a80, and that slot is now ours, which is the licence's condition.  The
+ * game's table is left pointing at the UD2 stub so a reader we failed to find
+ * faults instead of quietly working.
+ *
+ * KAROO_SOUND_FX=gamevtbl installs 0x45ef9c instead; see static.cpp. */
+extern "C" __declspec(dllexport) void *CStatic_Vtable(void);
 
 /* ─── Our reimplementations, defined in static.cpp ───────────────────────
  *
@@ -62,6 +63,19 @@ static const void *const STATIC_VTABLE = reinterpret_cast<const void*>(0x45ef9c)
  * static.cpp uses are listed; add others as callers are converted.
  */
 extern "C" {
+/* 0x00442a80 vtable slot 0: MSVC's scalar/vector deleting destructor.  Bit 1
+ * = "this is an array", bit 0 = "free the block".  Returns the block it
+ * destroyed -- `this`, or the array base, which is four bytes below the first
+ * element (the count header). */
+__declspec(dllexport) void * __attribute__((thiscall))
+CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
+
+/* KAROO_SOUND_FX / KAROO_SOUND_DIAG, shared with stream.cpp so both sound
+ * classes answer the vtable question and the census the same way. */
+__declspec(dllexport) int  CStatic_SoundFxGameVtable(void);
+__declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
+                                                  unsigned long *seen);
+
 __declspec(dllexport) CStaticSoundbuffer * __attribute__((thiscall))
 CStatic_Init(CStaticSoundbuffer *self);   /* a ctor: returns `this` */
 __declspec(dllexport) void __attribute__((thiscall))

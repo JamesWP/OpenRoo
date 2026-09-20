@@ -257,6 +257,24 @@ __declspec(dllexport) int __cdecl hooks_GameTime(int *out)
     return game_time(out);
 }
 
+/* Replaces 0x00403fa0, the clock's initialiser, whose one CALL site is at
+ * 0x0042d4de.  Everything it does, clock_init() above already does -- the
+ * shift/period search is mirrored from it line for line -- so the export is
+ * the eager form of the lazy init the first clock_seconds() would have done,
+ * and calling it twice changes nothing.
+ *
+ * One field of the original is deliberately NOT reproduced: DAT_0046c430,
+ * `GetVersionExA().dwPlatformId == 2` (i.e. "this is NT").  A byte scan of
+ * Karoo.exe.orig for the literal 0x0046c430 finds exactly one occurrence,
+ * 0x40402f, inside this initialiser itself -- the flag is written and never
+ * read by anything.  Writing it would be reproducing a store, not behaviour;
+ * the omission is recorded here so it is a decision rather than an oversight.
+ */
+__declspec(dllexport) void __cdecl hooks_ClockInit(void)
+{
+    if (g_fixed_dt < 0.0) clock_init();
+}
+
 /* Replaces 0x00404040.  __cdecl, no arguments, double returned in st(0) —
  * exactly what both call sites expect (they FMUL the result straight away). */
 __declspec(dllexport) double __cdecl hooks_ClockSeconds(void)

@@ -56,7 +56,21 @@ static_assert(offsetof(CStreamSoundbuffer, dwThread_done)== 0xa6,  "dwThread_don
 static_assert(offsetof(CStreamSoundbuffer, cs)           == 0xba,  "cs offset");
 static_assert(sizeof(CStreamSoundbuffer)                 == 0xD4,  "CStreamSoundbuffer size");
 
-static const void *const STREAM_VTABLE =reinterpret_cast<const void*>(0x45efa4);
+/* The vtable is ours (ENDGAME_PLAN.md, "The vtable address of our objects may
+ * be our own").  The game's table at 0x45efa4 has one slot, ScalarDeletingDtor
+ * 0x443da0, and that slot is now ours.  The game's table is left pointing at
+ * the UD2 stub, so a reader we failed to find faults rather than quietly
+ * working.  KAROO_SOUND_FX=gamevtbl installs 0x45efa4 instead (static.cpp). */
+extern "C" __declspec(dllexport) void *CStream_Vtable(void);
+
+/* 0x00443da0 vtable slot 0: MSVC's scalar deleting destructor -- the dtor
+ * body, then free when bit 0 of `flags` is set.  Returns `this`. */
+extern "C" __declspec(dllexport) void * __attribute__((thiscall))
+CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
+
+/* 0x00443dc0 -- the dtor body, called by the slot above. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CStream_DeinitInstance(CStreamSoundbuffer *self);
 
 /* Exports of stream.cpp other files call (COHESION_PLAN.md template 10). */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))

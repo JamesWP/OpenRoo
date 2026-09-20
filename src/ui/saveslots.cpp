@@ -12,6 +12,7 @@
 #include "log.h"
 #include "saveslots.h"
 #include "gamestr.h"
+#include "alloc.h"
 
 /* Game data the path formats consume.  A DATA read, not a call. */
 
@@ -83,3 +84,50 @@ Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
     return 1;
 }
 
+
+/* ─── The ctor / dtor / deleting-dtor trio (ENDGAME_PLAN.md E2) ──────────
+ *
+ * Three functions, five instructions between them.  See saveslots.h for the
+ * vtable argument; the summary is that only these two functions install the
+ * table, so it may be ours, and the game's 0x45d6f4 is left pointing at the
+ * UD2 stub as the tripwire.
+ *
+ * The deleting dtor is unverified by test, like every other slot 0 in this
+ * batch: it has no CALL or JMP anywhere in the binary, and the table is the
+ * only way in.  Nothing in the game deletes the save-slot table -- it is
+ * embedded in Game at +0x170a7c, not separately allocated -- so bit 0 of the
+ * flag word should never be set here.  The Free2 is reproduced anyway,
+ * because "should never" is not "cannot", and a wrong free is louder than a
+ * missing one.
+ */
+extern "C" {
+
+static void *const g_SaveSlotsVtable[1] = { (void *)&SaveSlots_ScalarDtor };
+
+__declspec(dllexport) void *SaveSlots_Vtable(void)
+{
+    return (void *)g_SaveSlotsVtable;
+}
+
+__declspec(dllexport) void __attribute__((thiscall))
+SaveSlots_InstallVtable(SaveSlots *self)
+{
+    *(const void **)self = SaveSlots_Vtable();
+}
+
+__declspec(dllexport) void __attribute__((thiscall))
+SaveSlots_RestoreVtable(SaveSlots *self)
+{
+    *(const void **)self = SaveSlots_Vtable();
+}
+
+__declspec(dllexport) void *__attribute__((thiscall))
+SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags)
+{
+    SaveSlots_RestoreVtable(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}
+
+} // extern "C"

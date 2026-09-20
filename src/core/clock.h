@@ -10,6 +10,10 @@
  */
 double clock_seconds(void);
 
+/* The clock's initialiser 0x00403fa0 (one CALL site, 0x0042d4de): the eager
+ * form of clock_seconds()'s lazy first-call init. */
+extern "C" void __cdecl hooks_ClockInit(void);
+
 /* Frame index — one per clock_seconds() call, i.e. one per rendered frame.
  * The shared frame number for the hash log, the state log and recordings. */
 unsigned clock_frame(void);

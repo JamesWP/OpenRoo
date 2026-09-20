@@ -92,6 +92,35 @@
  * 6. Every keyword comparison lowercases token[0] again, in place -- 24 times
  *    for an unmatched line.  Harmless, and kept.
  *
+ * ─── THE TYPES HERE ARE TEMPORARY ─────────────────────────────────────────
+ *
+ * Everything in this file addresses the animation table as a `void *` or an
+ * `int` plus a hex offset -- `table + 0xa0`, `slot[0xc] = 1`, a size of
+ * 0x180 that is asserted only as "24 x 0x10".  That is not a style choice
+ * and it is not finished work: **the animation structures have not been
+ * reverse-engineered yet**, so there is no type to name.  The offsets are
+ * what we know; the shape they belong to is not.
+ *
+ * What this should become, once the structures are read:
+ *
+ *   - an `AnimSlot` struct with the four fields the loader fills (+0x0, +0x4,
+ *     +0x8, and the +0xc flag that "r" sets), replacing every hex offset
+ *     inside a slot;
+ *   - an `AnimTable` of 24 such slots -- named members, not offsets -- whose
+ *     `sizeof` replaces the 0x180 and whose layout `KAROO_LAYOUT_CHECKS`
+ *     asserts, the way every reversed class in this tree already does;
+ *   - `Ani_LookupAnimDescriptor` returning `AnimSlot *`, not `int`.  Its
+ *     callers are doing pointer arithmetic on an integer today purely
+ *     because we cannot spell the pointee;
+ *   - `Ani_LoadAnimationFile`'s `void *dest` becoming `AnimTable *`.
+ *
+ * Until then, read every `int` in this file as "an address we cannot yet
+ * type" and every hex constant as "a member we cannot yet name".  Treat the
+ * arithmetic as a placeholder to be deleted, not as an interface: code that
+ * grows to depend on the integer form is code that has to be unpicked when
+ * the struct lands.  The same warning applies to any new caller -- prefer
+ * adding the struct to adding another offset.
+ *
  * ─── Visual proof ─────────────────────────────────────────────────────────
  *
  * KAROO_ANI_FX=freeze forces every slot's end frame to equal its start frame,
@@ -263,4 +292,57 @@ Ani_LoadAnimationFile(void *dest, const char *path, GameLogger *logger)
         log_write("ani: '%s' loaded\n", path);
     }
     return 1;
+}
+
+/* ─── LookupAnimDescriptor 0x00401970 ────────────────────────────────────
+ *
+ * The reader half of the table above: an animation CODE in, the address of
+ * that animation's 0x10-byte slot out, or 0 for "this code has no animation".
+ * Five CALL sites (0x40a0e7, 0x40a165, 0x421c8b, 0x43c39a, 0x43c418), no
+ * other reference; __cdecl with a plain RET, so the caller cleans up.
+ *
+ * The original is a 0xfc-entry byte index at 0x401ab0 feeding a 22-entry
+ * jump table at 0x401a5c; each arm is `LEA EAX,[arg + slot]; RET`.  A switch
+ * is the same program and reads as what it is.  Two details are semantics,
+ * not shape, and are preserved: the argument is masked to a BYTE before the
+ * range test (`AND ECX,0xff`), so 0x114 is code 0x14, not out of range; and
+ * every code outside the table -- including code 0 -- returns 0, because EAX
+ * is zeroed before the dispatch and the default arm is the bare RET.
+ *
+ * The `int` in and the `int` out are both placeholders -- see "THE TYPES
+ * HERE ARE TEMPORARY" in the file header.  This returns the ADDRESS of a
+ * slot, and it should return an `AnimSlot *` as soon as there is one.
+ *
+ * The slot offsets are the ones the loader above fills, which is what names
+ * the codes: 0x14 walk_forward, 0x15 walk_backward, 0xb jump, 9 glue,
+ * 10 ghost, 3 ice, 8 fall, 5 paraglide, 4 slide, 0xfa idle1, 0xfb idle2,
+ * 0x16..0x1b the six stair transitions, 0x1f turn_left, 0x1e turn_right.
+ * Note that the four speed_/slow_ slots (+0x20..+0x50) and celebration
+ * (+0x60) have NO code: nothing can reach them through this function.
+ */
+extern "C" __declspec(dllexport) int __cdecl
+Ani_LookupAnimDescriptor(int table, unsigned int code)
+{
+    switch (code & 0xff) {
+    case 0x14: return table + 0x000;   /* walk_forward     */
+    case 0x15: return table + 0x010;   /* walk_backward    */
+    case 0x0b: return table + 0x070;   /* jump             */
+    case 0x09: return table + 0x080;   /* glue             */
+    case 0x0a: return table + 0x090;   /* ghost            */
+    case 0x03: return table + 0x0a0;   /* ice              */
+    case 0x08: return table + 0x0b0;   /* fall             */
+    case 0x05: return table + 0x0c0;   /* paraglide        */
+    case 0x04: return table + 0x0d0;   /* slide            */
+    case 0xfa: return table + 0x0e0;   /* idle1            */
+    case 0xfb: return table + 0x0f0;   /* idle2            */
+    case 0x16: return table + 0x100;   /* field_stair_up   */
+    case 0x17: return table + 0x110;   /* field_stair_down */
+    case 0x18: return table + 0x120;   /* stair_stair_up   */
+    case 0x19: return table + 0x130;   /* stair_stair_down */
+    case 0x1a: return table + 0x140;   /* stair_field_up   */
+    case 0x1b: return table + 0x150;   /* stair_field_down */
+    case 0x1f: return table + 0x160;   /* turn_left        */
+    case 0x1e: return table + 0x170;   /* turn_right       */
+    default:   return 0;               /* code 0 included  */
+    }
 }

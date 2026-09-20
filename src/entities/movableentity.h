@@ -360,6 +360,11 @@ Sim_ZeroEntitySoundSlotPointers(MovableEntity *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_DestroyMovableEntityBase(MovableEntity *self);
 
+/* 0x00438740 -- vtable slot 0 of the base's own (now ours) one-slot table:
+ * the dtor body, then the game heap's Free2 when bit 0 is set. */
+extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
+Sim_DeleteMovableEntityWithFlags(MovableEntity *self, unsigned int flags);
+
 /* UpdateEntityMovement 0x00438770, the shared movement step for every
  * entity (player, foe, bomb): a shim over MovableEntity::updateMovement(). */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))

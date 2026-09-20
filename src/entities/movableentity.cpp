@@ -45,18 +45,38 @@
  * the unwinder's return address on the stack -- exactly a __thiscall call
  * with no arguments, which is what the export is.
  *
- * DeleteMovableEntityWithFlags 0x438740 (vtable 0x45d6a4, one slot) is left
- * alone: it would run only for a bare MovableEntity, which nothing creates;
- * its one E8 into the dtor is rewritten with the rest.
+ * DeleteMovableEntityWithFlags 0x438740 (vtable 0x45d6a4, one slot) is OURS
+ * as of ENDGAME_PLAN E2, and it closes the TU.  It would run only for a bare
+ * MovableEntity, which nothing creates -- but "nothing creates one" is an
+ * argument for a stub, not for leaving the game's table installed, and the
+ * table is the only thing that can reach it.  So the base installs our own
+ * one-slot table instead (the licence in ENDGAME_PLAN.md), the game's table
+ * at 0x45d6a4 keeps pointing at the UD2, and a reader we failed to find
+ * faults instead of quietly working.
+ *
+ * A byte scan of Karoo.exe.orig for the literal 0x0045d6a4 finds exactly two
+ * occurrences, 0x3872a and 0x38762 -- inside 0x438720 and 0x438760, the two
+ * functions this file already owns.  Nothing else in the binary installs that
+ * table, which is what makes swapping it ours a local decision.
  */
 
 #include "movableentity.h"
+#include "alloc.h"
+#include "levelobjbase.h"
 
 /* The game's vtables these functions store.  Both stores are transient --
  * a derived ctor overwrites the pointer next, and a derived dtor's free
  * follows -- but they are stores, so they are reproduced. */
-#define GAME_LEVELOBJECT_VTBL ((const void *)0x0045d290)
-#define GAME_MOVABLE_VTBL     ((const void *)0x0045d6a4)
+/* The level-object base table is ours too now; see levelobject.h. */
+#define GAME_LEVELOBJECT_VTBL ((const void *)LevelObjBase_Vtable())
+
+/* Our own one-slot table, replacing the game's 0x45d6a4 in the two stores
+ * below.  Slot 0 is the scalar deleting destructor, 0x438740 (declared in
+ * the header, with the rest of this file's exports). */
+static void *const g_MovableVtable[1] =
+    { (void *)&Sim_DeleteMovableEntityWithFlags };
+
+#define GAME_MOVABLE_VTBL     ((const void *)g_MovableVtable)
 
 MovableEntity::MovableEntity()
 {
@@ -135,6 +155,32 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_DestroyMovableEntityBase(MovableEntity *self)
 {
     self->destroyBaseForGame();
+}
+
+/* ─── DeleteMovableEntityWithFlags 0x00438740 ─────────────────────────────
+ *
+ * Vtable slot 0, and the TU's last function.  Three statements in the
+ * original: the dtor body, then FactAlloc::Free2 when bit 0 of the flag word
+ * is set, returning `this` either way.  There is no array form -- bit 1 is
+ * not tested, unlike CStaticSoundbuffer's combined scalar/vector dtor.
+ *
+ * The free stays on the GAME heap through alloc.h: a MovableEntity is only
+ * ever the base of a Foe, a Player or a Bomb, and the game's `operator new`
+ * allocated all three, so the other side of the lifetime is still theirs.
+ *
+ * Nothing calls it: xref.py reports no reference of any kind, our table's
+ * slot 0 is the only way in, and no derived object carries our table for
+ * longer than the two straight-line stores in the ctor and dtor above.  It
+ * is therefore reimplemented but unverified by test -- exactly the position
+ * LinkedList::ScalarDestructor is in, and recorded rather than papered over.
+ */
+extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
+Sim_DeleteMovableEntityWithFlags(MovableEntity *self, unsigned int flags)
+{
+    self->destroyBaseForGame();
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }
 
 /* ═══ UpdateEntityMovement 0x00438770 (was entitymove.cpp) ═══════════════ */
