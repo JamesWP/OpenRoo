@@ -29,9 +29,12 @@
  * "allocator" kind, the one the rule keeps.  Everything else -- open, read,
  * close, the string copy, and the free path below -- is ours.
  *
- * FreeThing2 itself is NOT called and NOT stubbed: it stays live for its two
- * other referrers (0x437b36 JMP from the destructor, 0x4386f7 CALL).  Its
- * body is inlined below instead, which is four Free2 calls and five stores.
+ * FreeThing2 is now OURS (faktmesh.cpp's FaktMesh_ReleaseModelBuffers,
+ * ENDGAME_PLAN.md E2) and this file calls it through faktmesh.h instead of
+ * carrying the hand-kept inline copy it used to.  What has not changed is
+ * which heap the four blocks come from: the release still uses
+ * FactAlloc::Free2, so the allocations here still use the game's operator
+ * new, and 0x004386f7 -- still game code -- still calls the release.
  *
  * ─── The file ─────────────────────────────────────────────────────────────
  *
@@ -113,20 +116,11 @@ static unsigned long fnv1a(const void *p, unsigned len)
     return h;
 }
 
-/* FreeThing2 (0x437fb0), inlined -- see the header comment for why it is not
- * called.  Frees the four heap fields, then resets the two scalars. */
+/* 0x437fb0 is ours now (faktmesh.cpp, ENDGAME_PLAN.md E2); this used to be a
+ * hand-maintained inline copy of it.  Called through the owning header. */
 static void model_release(CFaktMesh *m)
 {
-    if (m->pVertexData)   game_free2(m->pVertexData);
-    m->pVertexData = NULL;
-    if (m->pFrameRecords) game_free2(m->pFrameRecords);
-    m->pFrameRecords = NULL;
-    if (m->pScratchVerts) game_free2(m->pScratchVerts);
-    m->pScratchVerts = NULL;
-    if (m->pszName)       game_free2(m->pszName);
-    m->pszName = NULL;
-    m->dwVertexCount = 0;
-    m->wFrameCount   = 1;
+    FaktMesh_ReleaseModelBuffers(m);
 }
 
 extern "C" __declspec(dllexport) int __attribute__((thiscall))

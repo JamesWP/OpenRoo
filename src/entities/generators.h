@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include "particles.h"
 #include "layout.h"
+#include "shadowmesh.h"
 
 /* Generator / Environment simulation structs — PARTICLE_PLAN.md § 4.
  *
@@ -344,45 +345,21 @@ Generator *gen_create(const char *name);
 Generator   *gen_clone(const Generator *src);
 Environment *env_clone(const Environment *src);
 
-/* The object 0x438170 is a method of.  Its class lives in the CvtSyms TU and
- * is otherwise unreverse-engineered, so this models only what those fifteen
- * instructions prove — but that is two real fields, which is two more than
- * the `void *` it replaces (COHESION_PLAN.md Band 7d).
+/* The object 0x438170 is a method of is `ShadowMesh` (shadowmesh.h), whose
+ * constructor, both destructors and buffer release were replaced in
+ * ENDGAME_PLAN.md E2.  This header used to carry a two-field `GaussianFieldHost`
+ * modelled from those fifteen instructions alone; the full layout, the
+ * evidence for the name and the class's own layout checks now live in
+ * shadowmesh.h, and there is one definition rather than two views of it.
  *
- *   FillGaussianFieldTable(this, mu, sigma):
- *     FillGaussianSamples((float *)(this + 0x14), 0x1e, mu, sigma, 0.01);
- *     *(DWORD *)(this + 0x8c) = 0;
- *
- * The two tile: 0x14 + 30 * 4 == 0x8c exactly, so the cursor sits on the end
- * of the table rather than somewhere past it.  Nothing before +0x14 or after
- * +0x90 is known, so there is no KAROO_LAYOUT_SIZE — the object is bigger
- * than this and the size is not relied on.
- *
- * Not `packed`, unlike the rest of the template's classes: both modelled
- * fields are naturally aligned at their game offsets (0x14 and 0x8c are both
- * multiples of 4), so packing would add nothing and would make `samples`
- * decay to an under-aligned float * — a real -Waddress-of-packed-member.
- * The two KAROO_LAYOUT_ATs are the guarantee either way. */
-struct GaussianFieldHost {
-    static const int ORIGIN = 0;
-
-    unsigned char gap_00[0x14];
-    float         samples[30];   /* +0x14  refilled whole, never in part */
-    DWORD         cursor;        /* +0x8c  reset to 0 by the same call   */
-
-    KAROO_LAYOUT_REGISTER(GaussianFieldHost);
-};
-
-KAROO_LAYOUT_CHECKS(GaussianFieldHost)
-{
-    KAROO_LAYOUT_AT(samples, 0x14);
-    KAROO_LAYOUT_AT(cursor,  0x8c);
-}
+ * The one fact this file still relies on is unchanged and still asserted
+ * there: the 30-float table at +0x14 and its DWORD cursor at +0x8c tile
+ * exactly, 0x14 + 30*4 == 0x8c. */
 
 /* 0x438170 — the Gaussian sampler's only caller outside the particle code.
  * Lives here because it is a thin wrapper over this file's gauss_fill. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Gen_FillGaussianField(GaussianFieldHost *self, float mu, float sigma);
+Gen_FillGaussianField(ShadowMesh *self, float mu, float sigma);
 
 /* Tick a Generator or an Environment: one virtual call through slot 3.  The
  * table is ours, so this lands straight on our implementation. */

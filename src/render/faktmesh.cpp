@@ -13,13 +13,43 @@
  *
  * KAROO_FAKTMESH_FX=half draws only the first half of each mesh's triangles,
  * as visual proof the pixels come from this reimplementation.
+ *
+ * ─── The lifecycle four (ENDGAME_PLAN.md E2, 2026-09-20) ─────────────────
+ *
+ *   0x00437ad0  Init                 constructor
+ *   0x00437b10  scalar deleting dtor vtable slot 0, no code reference
+ *   0x00437b30  destructor body      re-install the table, then release
+ *   0x00437fb0  ReleaseModelBuffers  free the four heap fields
+ *
+ * These close the two LoadedModel TU rows and end model.cpp's private copy
+ * of the free path: `model_release` was an inline of 0x437fb0 kept in step
+ * by hand, and a copy kept in step by hand is a bug waiting for the next
+ * field.  model.cpp now calls FaktMesh_ReleaseModelBuffers through this
+ * header, which is the owner rule doing its job.
+ *
+ * WHAT DOES NOT CHANGE IS THE HEAP.  The four buffers are the game's --
+ * model.cpp allocates them with the game's operator new precisely because
+ * 0x437fb0 frees them with FactAlloc::Free2, and now that the free is ours
+ * the pairing is merely visible rather than implicit.  Moving both sides to
+ * our heap is a separate decision: 0x004386f7, still game code, calls the
+ * release on a mesh we did not necessarily fill.
+ *
+ * Quirks preserved, both from the listing:
+ *   - Init sets wFrameCount to ONE, not zero, and so does the release.  A
+ *     mesh that has never been loaded therefore claims one frame.
+ *   - Init writes the four strided-data strides FIRST, before the vtable,
+ *     and never touches the other eight entries or their lpvData pointers --
+ *     they are left uninitialised, which for an embedded mesh means whatever
+ *     the container had there.
  */
 #include "faktmesh.h"
 #include "com_proxy.h"
+#include "alloc.h"
 #include "log.h"
 
 #define MESH_FVF        0x212  /* XYZ | NORMAL | TEX2 — 0x28-byte stride */
 #define MESH_LOG_FIRST  8
+#define MDL_VERTEX_STRIDE 0x28   /* the FVF 0x212 stride the ctor writes */
 
 static bool fx_half(void)
 {
@@ -127,6 +157,90 @@ __declspec(dllexport) HRESULT __attribute__((thiscall))
 FaktMesh_DrawFramedModel(CFaktMesh *self, IDirect3DDevice3 *dev, DWORD frame)
 {
     return draw_mesh(self, dev, frame, 0x18, "DrawFramedModel");
+}
+
+} // extern "C"
+
+/* ─── The lifecycle four ─────────────────────────────────────────────────
+ *
+ * The vtable is ours.  0x0045d694 has ONE slot and the literal occurs in
+ * exactly two places in the image -- 0x437ae7 and 0x437b32, the two
+ * functions below -- so nothing else installs it and the game's table is
+ * left holding a UD2 as a tripwire (faktmesh.h). */
+
+extern "C" {
+
+static void *const g_FaktMeshVtable[1] = { (void *)&FaktMesh_ScalarDtor };
+
+__declspec(dllexport) void *FaktMesh_Vtable(void)
+{
+    return (void *)g_FaktMeshVtable;
+}
+
+/* 0x00437fb0.  Four guarded frees, each followed by a NULL, then the two
+ * scalars.  wFrameCount goes to 1 (see the header). */
+__declspec(dllexport) void __attribute__((thiscall))
+FaktMesh_ReleaseModelBuffers(CFaktMesh *self)
+{
+    if (self->pVertexData)   game_free2(self->pVertexData);
+    self->pVertexData = NULL;
+    if (self->pFrameRecords) game_free2(self->pFrameRecords);
+    self->pFrameRecords = NULL;
+    if (self->pScratchVerts) game_free2(self->pScratchVerts);
+    self->pScratchVerts = NULL;
+    if (self->pszName)       game_free2(self->pszName);
+    self->pszName = NULL;
+    self->dwVertexCount = 0;
+    self->wFrameCount   = 1;
+}
+
+/* 0x00437ad0.  Written in the original's order because the order is the
+ * evidence: the four strides come first, and they are what identified the
+ * 0x60 bytes at +0x16 as a D3DDRAWPRIMITIVESTRIDEDDATA. */
+__declspec(dllexport) CFaktMesh *__attribute__((thiscall))
+FaktMesh_Init(CFaktMesh *self)
+{
+    self->strided[MESH_STRIDED_POSITION].dwStride = MDL_VERTEX_STRIDE;
+    self->strided[MESH_STRIDED_NORMAL].dwStride   = MDL_VERTEX_STRIDE;
+    self->strided[MESH_STRIDED_TEX0].dwStride     = MDL_VERTEX_STRIDE;
+    self->strided[MESH_STRIDED_TEX1].dwStride     = MDL_VERTEX_STRIDE;
+
+    self->unknown00      = FaktMesh_Vtable();
+    self->pVertexData    = NULL;
+    self->dwVertexCount  = 0;
+    self->pFrameRecords  = NULL;
+    self->wFrameCount    = 1;
+    self->pScratchVerts  = NULL;
+    self->pszName        = NULL;
+
+    static LONG logged = 0;
+    if (InterlockedIncrement(&logged) <= MESH_LOG_FIRST)
+        log_write("faktmesh: Init this=%p\n", self);
+    return self;
+}
+
+/* 0x00437b30.  Re-install the table, then release. */
+__declspec(dllexport) void __attribute__((thiscall))
+FaktMesh_DtorBody(CFaktMesh *self)
+{
+    self->unknown00 = FaktMesh_Vtable();
+    FaktMesh_ReleaseModelBuffers(self);
+}
+
+/* 0x00437b10 -- vtable slot 0.
+ *
+ * Unverified by test, and said plainly: xref.py finds no reference of any
+ * kind to 0x00437b10, our table's slot 0 is the only way in, and the free is
+ * the game heap's because a heap-allocated CFaktMesh would have come from
+ * the game's operator new.  Same position as LevelObjBase_ScalarDtor and
+ * Wrapper_ScalarDtor. */
+__declspec(dllexport) void *__attribute__((thiscall))
+FaktMesh_ScalarDtor(CFaktMesh *self, unsigned int flags)
+{
+    FaktMesh_DtorBody(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }
 
 } // extern "C"
