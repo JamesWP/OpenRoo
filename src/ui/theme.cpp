@@ -321,12 +321,123 @@ static int ends_with_thm(const char *path)
     return n >= 4 && lstrcmpiA(path + n - 4, ".thm") == 0;
 }
 
-void theme_diag_on_open(const char *path)
+static char s_thmPath[MAX_PATH] = "";
+
+bool theme_diag_on_open(const char *path)
 {
+    s_thmPath[0] = '\0';
+    if (path != NULL && ends_with_thm(path))
+        lstrcpynA(s_thmPath, path, sizeof(s_thmPath));
+
     if (path == NULL || !ends_with_thm(path))
-        return;
+        return false;
     int verbose = mode_verbose();
     if (verbose == 0)
-        return;
+        return true;
     theme_scan(path, verbose);
+
+    return true;
+}
+
+static int struct_diag_enabled(void)
+{
+    char v[32];
+    DWORD n = GetEnvironmentVariableA("KAROO_THEME_STRUCT_DIAG", v, sizeof(v));
+    if (n == 0 || n >= sizeof(v))
+        return 0;
+    return v[0] != '0';
+}
+
+static int ptr_plausible(const void *p)
+{
+    return p == NULL || (ULONG_PTR)p >= 0x10000;
+}
+
+static int str_plausible(const char *p)
+{
+    return p == NULL || (ULONG_PTR)p >= 0x10000 || strlen(p) < 9999;
+}
+
+static int float_plausible(float f)
+{
+    return !(f != f) && f > -1.0e6f && f < 1.0e6f;   /* f != f catches NaN */
+}
+
+static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
+{
+    const char *kindNote = (r.dwKind <= 4) ? "" : "  SUSPICIOUS dwKind";
+    log_write("THEME_STRUCT:   %s[%d] dwKind=%lu%s pMesh=%p%s subobj=%lu%s\n",
+              slotName, i, (unsigned long)r.dwKind, kindNote, (void *)r.pMesh,
+              ptr_plausible(r.pMesh) ? "" : "  SUSPICIOUS pMesh",
+              (unsigned long)r.dwSubObjectCount,
+              r.dwSubObjectCount <= 8 ? "" : "  SUSPICIOUS dwSubObjectCount");
+    log_write("THEME_STRUCT:   %s[%d] pos=(%g,%g,%g)%s scale=(%g,%g,%g)%s rot=(%g,%g,%g)%s\n",
+              slotName, i, r.flPosX, r.flPosY, r.flPosZ,
+              (float_plausible(r.flPosX) && float_plausible(r.flPosY) && float_plausible(r.flPosZ)) ? "" : "  SUSPICIOUS pos",
+              r.flScaleX, r.flScaleY, r.flScaleZ,
+              (float_plausible(r.flScaleX) && float_plausible(r.flScaleY) && float_plausible(r.flScaleZ)) ? "" : "  SUSPICIOUS scale",
+              r.flRotRateX, r.flRotRateY, r.flRotRateZ,
+              (float_plausible(r.flRotRateX) && float_plausible(r.flRotRateY) && float_plausible(r.flRotRateZ)) ? "" : "  SUSPICIOUS rot");
+}
+
+static void dump_slot(const char *name, const ThemeObjectTypeSlot &slot)
+{
+    log_write("THEME_STRUCT: slot %-12s dwInstanceCount=%lu%s\n", name,
+              (unsigned long)slot.dwInstanceCount,
+              slot.dwInstanceCount <= 8 ? "" : "  SUSPICIOUS dwInstanceCount");
+    unsigned shown = slot.dwInstanceCount <= 8 ? slot.dwInstanceCount : 8;
+    for (unsigned i = 0; i < shown; i++)
+        dump_record(name, i, slot.records[i]);
+}
+
+/* Reads the live theme block at its fixed address, DAT_0046c890 -- no patch,
+ * no allocation, this DLL and Karoo.exe share one address space.  Prints a
+ * plausibility report, not a correctness proof: the point is to catch a
+ * struct offset that is simply wrong (a pointer that looks like a small
+ * integer, a float that is NaN, a dwKind that is not 0..4) before trusting
+ * this layout for anything that writes.  Gated by KAROO_THEME_STRUCT_DIAG,
+ * read by value per CLAUDE.md; fires once per real .thm close, i.e. after
+ * the game's own ThemeFileLoader has fully populated the block. */
+static void theme_struct_dump(const char *path)
+{
+    const ThemeAssetBlock *block = (const ThemeAssetBlock *)0x46c890;
+
+    log_write("THEME_STRUCT: after close of %s\n", path);
+    log_write("THEME_STRUCT: themeName=\"%.255s\" dwUnknown100=0x%08lx\n",
+              block->themeName, (unsigned long)block->dwUnknown100);
+
+    dump_slot("john", block->slots[THEME_OBJ_JOHN]);
+    dump_slot("bridge", block->slots[THEME_OBJ_BRIDGE]);
+    dump_slot("explosion", block->slots[THEME_OBJ_EXPLOSION]);
+
+    log_write("THEME_STRUCT: images[HUD]=%p%s images[MENU]=%p%s\n",
+              (void *)block->images[THEME_IMG_HUD],
+              ptr_plausible(block->images[THEME_IMG_HUD]) ? "" : "  SUSPICIOUS",
+              (void *)block->images[THEME_IMG_MENU],
+              ptr_plausible(block->images[THEME_IMG_MENU]) ? "" : "  SUSPICIOUS");
+    log_write("THEME_STRUCT: textColors[HUD]=%08lx/%08lx textColors[MENUSUMMARYSAVE]=%08lx/%08lx\n",
+              (unsigned long)block->textColors[THEME_COLOR_HUD].color1,
+              (unsigned long)block->textColors[THEME_COLOR_HUD].color2,
+              (unsigned long)block->textColors[THEME_COLOR_MENUSUMMARYSAVE].color1,
+              (unsigned long)block->textColors[THEME_COLOR_MENUSUMMARYSAVE].color2);
+    log_write("THEME_STRUCT: bFogEnabled=%u%s flSideHeight=%g%s sky.faces[0]=%p%s sky.faces[0](name)= %s%s\n",
+              (unsigned)block->bFogEnabled, block->bFogEnabled <= 1 ? "" : "  SUSPICIOUS",
+              block->flSideHeight, float_plausible(block->flSideHeight) ? "" : "  SUSPICIOUS",
+              (void *)block->sky.faces[0].base.pTextureSurface,
+              ptr_plausible(block->sky.faces[0].base.pTextureSurface) ? "" : "  SUSPICIOUS",
+              (const char *)block->sky.faces[0].base.ImageName,
+              str_plausible(block->sky.faces[0].base.ImageName) ? "" : "  SUSPICIOUS");
+}
+
+void theme_diag_on_close(void)
+{
+    if (s_thmPath[0] == '\0')
+        return;
+    char path[MAX_PATH];
+    lstrcpynA(path, s_thmPath, sizeof(path));
+    s_thmPath[0] = '\0';
+
+    if (!struct_diag_enabled())
+        return;
+    theme_struct_dump(path);
 }
