@@ -1,3 +1,19 @@
+/* The theme asset block -- everything ThemeFileLoader (0x0040c110) builds
+ * from a .thm, in one fixed global at 0x0046c890.  ReleaseThemeAssetBlock
+ * (0x0040bf30) tears it down; the loader calls it first, so a load is always
+ * release + parse.  The .thm grammar lives on the loader's Ghidra plate and in
+ * tools/thmparse.py.
+ *
+ * Reading the decompile: the loader addresses a record field as
+ * `slot + i*0x5dd + X`, where `slot` is the ThemeObjectTypeSlot -- so the
+ * field's offset in ThemeLevelObject is X - 8.  Block-level fields (images,
+ * colours, fog, sky, sideheight) are addressed directly.  Checked live with
+ * KAROO_THEME_STRUCT_DIAG against Forest and Space.
+ *
+ * BUG KEPT: depth-3 `environment` and `textureadress` skip the NULL-record
+ * check every other handler makes, so inside `environment { }` they would
+ * write near address 0.  No shipped theme does.
+ */
 #pragma once
 
 #include <windows.h>
@@ -9,6 +25,7 @@
 #include "faktmesh.h"
 #include "levelobject.h"
 #include "particles.h"
+#include "shadowmesh.h"
 
 void theme_diag_on_open(const char *path, void *fp);
 void theme_diag_on_close(void *fp);
@@ -22,6 +39,8 @@ enum ThemeObjectKind : DWORD {
 };
 static_assert(sizeof(ThemeObjectKind) == 4, "ThemeObjectKind must stay DWORD-sized");
 
+/* One `model` / `field` / `billboard` / `particlesystem` entry.  0x5dd bytes:
+ * the release zeroes 8 of them plus the slot header as 0x2ef0. */
 class __attribute__((packed)) ThemeLevelObject {
 public:
     static const int ORIGIN = 0;
@@ -29,7 +48,9 @@ public:
     ThemeObjectKind kind;
     CFaktMesh   *pMesh;
     WrapperObject wrapper;
-    BYTE         gap_015[0xc1 - 0x08 - sizeof(WrapperObject)];
+    ShadowMesh   explode;           // set up only by `explode`; needs pMesh first
+    DWORD        bExplode;
+    float        flExplodeDir[3];   // (t4,t5,t6) rotated -90 deg about X
 
     AnimTable    animTable;
     float        flBillboardScale;
@@ -70,6 +91,9 @@ KAROO_LAYOUT_CHECKS(ThemeLevelObject)
     KAROO_LAYOUT_AT(kind,             0x000);
     KAROO_LAYOUT_AT(pMesh,            0x004);
     KAROO_LAYOUT_AT(wrapper,          0x008);
+    KAROO_LAYOUT_AT(explode,          0x015);
+    KAROO_LAYOUT_AT(bExplode,         0x0b1);
+    KAROO_LAYOUT_AT(flExplodeDir,     0x0b5);
     KAROO_LAYOUT_AT(animTable,        0x0c1);
     KAROO_LAYOUT_AT(flBillboardScale, 0x241);
     KAROO_LAYOUT_AT(pParticleSystems, 0x245);
@@ -98,8 +122,8 @@ class __attribute__((packed)) ThemeObjectTypeSlot {
 public:
     static const int ORIGIN = 0;
 
-    DWORD            dwUnknownHeader0;
-    DWORD            dwInstanceCount;
+    DWORD            dwUnknownHeader0;  // never written by the loader
+    DWORD            dwInstanceCount;   // last record index + 1
     ThemeLevelObject records[8];
 private:
     KAROO_LAYOUT_REGISTER(ThemeObjectTypeSlot);
@@ -112,6 +136,8 @@ KAROO_LAYOUT_CHECKS(ThemeObjectTypeSlot)
     KAROO_LAYOUT_SIZE(0x2ef0);
 }
 
+/* The header is speculative: the six faces are known, the 8 bytes before
+ * them are not written by the loader. */
 class __attribute__((packed)) SkyCube {
 public:
     static const int ORIGIN = 0;
@@ -128,6 +154,7 @@ KAROO_LAYOUT_CHECKS(SkyCube)
     KAROO_LAYOUT_SIZE(8 + 6 * sizeof(SceneTexture));
 }
 
+/* Slot order is address order, matching the depth-0 keywords. */
 enum ThemeObjectType {
     THEME_OBJ_JOHN, THEME_OBJ_CATCHER, THEME_OBJ_CATCHERFX, THEME_OBJ_THROWER,
     THEME_OBJ_THROWERFX, THEME_OBJ_PLATE, THEME_OBJ_SIDE, THEME_OBJ_PLATFORM,
@@ -139,6 +166,8 @@ enum ThemeObjectType {
     THEME_OBJ_COLLFX, THEME_OBJ_LIFE, THEME_OBJ_SWITCH, THEME_OBJ_TIME,
     THEME_OBJ_ICE, THEME_OBJ_OBSTACLE, THEME_OBJ_OBSTACLEFX, THEME_OBJ_PROTECTION,
     THEME_OBJ_PROTECTIONFX, THEME_OBJ_BRIDGE,
+    /* BUG KEPT: ReleaseThemeAssetBlock releases 37 slots -- EXPLOSION's is
+     * never released or zeroed between theme loads. */
     THEME_OBJ_COUNT
 };
 
@@ -173,10 +202,11 @@ class __attribute__((packed)) ThemeAssetBlock {
 public:
     static const int ORIGIN = 0;
 
-    char                 themeName[0x100];
-    DWORD                dwUnknown100;
+    char                 themeName[0x100];  // strcpy'd from the path after fclose
+    DWORD                dwUnknown100;      // never written by the loader
     ThemeObjectTypeSlot  slots[THEME_OBJ_COUNT];
 
+    /* Block-level fields are written only inside `environment { }`. */
     SceneTexture        *images[THEME_IMG_COUNT];
     ThemeTextColorPair   textColors[THEME_COLOR_COUNT];
     BYTE                 bFogEnabled;

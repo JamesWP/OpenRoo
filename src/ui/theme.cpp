@@ -385,6 +385,24 @@ static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
               slotName, i, r.flOscillationAmplitude, r.flOscillationFrequency,
               r.flOscillationPhase, (unsigned long)r.bOscillateRandom,
               r.flPump[0], r.flPump[1], r.flPump[2], r.flPump[3]);
+    if (r.bExplode)
+        log_write("THEME_STRUCT:   %s[%d] explode=%lu dir=(%g,%g,%g) verts=%d scaled=%g%s\n",
+                  slotName, i, (unsigned long)r.bExplode,
+                  r.flExplodeDir[0], r.flExplodeDir[1], r.flExplodeDir[2],
+                  r.explode.nVertexCount, r.explode.flExplodeScaledCount,
+                  (r.pMesh != NULL && r.explode.nVertexCount > 0) ? "" : "  SUSPICIOUS explode");
+    for (DWORD k = 0; k < r.dwSubObjectCount && k < 8; k++) {
+        const SceneSubObject &so = r.pSubObjects[k];
+        log_write("THEME_STRUCT:   %s[%d].sub[%lu] cond=%lu tex=%p blend=%lu/%lu addr=%lu effect=%lu (%g,%g,%g)%s\n",
+                  slotName, i, (unsigned long)k, (unsigned long)so.dwVisibilityGate,
+                  (void *)so.pTexture, (unsigned long)so.dwBlendSrc,
+                  (unsigned long)so.dwBlendDst, (unsigned long)so.dwTexAddress,
+                  (unsigned long)so.effect, so.flEffectParams[0],
+                  so.flEffectParams[1], so.flEffectParams[2],
+                  (so.dwVisibilityGate <= 6 && so.dwBlendSrc <= 13 && so.dwBlendDst <= 11 &&
+                   so.dwTexAddress <= 4 && so.effect <= SUBOBJ_EFFECT_SCROLL &&
+                   ptr_plausible(so.pTexture)) ? "" : "  SUSPICIOUS sub");
+    }
 }
 
 static void dump_slot(const char *name, const ThemeObjectTypeSlot &slot)
