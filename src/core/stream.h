@@ -73,6 +73,12 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStream_DeinitInstance(CStreamSoundbuffer *self);
 
 /* Exports of stream.cpp other files call (COHESION_PLAN.md template 10). */
+extern "C" __declspec(dllexport) CStreamSoundbuffer * __attribute__((thiscall))
+CStream_Initialize(CStreamSoundbuffer *self);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+CStream_Prepare(CStreamSoundbuffer *self, WaveInfo *wi);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CStream_Play(CStreamSoundbuffer *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStream_Stop(CStreamSoundbuffer *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
