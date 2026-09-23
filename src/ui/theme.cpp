@@ -639,7 +639,7 @@ Theme_RegisterSound(Game *game, char *eventName, const char *waveName)
     return false;
 }
 
-/* ─── The parser ─────────────────────────────────────────────────────────── */
+/* ─── The parser: tables ───────────────────────────────────────────────── */
 
 enum { FOG_NONE = 0, FOG_EXP = 1, FOG_EXP2 = 2, FOG_LINEAR = 3 };
 
@@ -741,34 +741,82 @@ static DWORD float_bits(float f)
     return d;
 }
 
+/* The parser mirrors the file's nesting: each `{` calls the next level's
+ * block function, which reads lines until its own `}`, applies that brace's
+ * effects and returns.  The call stack IS the depth.  At end of file every
+ * level returns false and unwinds WITHOUT its closing effects -- the
+ * original simply stopped, so a block cut off by EOF never stores a count.
+ *
+ *   parseFile            depth 0   pick the object type, or `environment`
+ *   parseObjectBlock     depth 1   records and block-level settings
+ *   parseRecordBlock     depth 2   one record's placement and look
+ *   parseSubObjectBlock  depth 3   one sub-object's render state
+ *
+ * Braces are tested before the keyword handlers.  The original tested them
+ * last, but no keyword is a brace, so the order cannot matter.  A `{` at
+ * depth 3 and a `}` at depth 0 are ordinary unknown tokens, as they were.
+ *
+ * All parse state is on the stack.  `slot` (the object block being filled,
+ * NULL for `environment` or an unknown keyword) and `inEnvironment` are
+ * parseFile's locals, set by depth-0 keywords and handed down; the depth-1
+ * `}` returning is what clears them.
+ *
+ * The cursors are locals of the block that owns them: parseObjectBlock's
+ * Cursor<ThemeLevelObject> is the record the last model/field/billboard/
+ * particlesystem line opened, parseRecordBlock's Cursor<SceneSubObject> the
+ * sub-object the last depth-2 texture line opened.  `count` is how many have
+ * been opened, which is what the closing brace stores.  Each starts at "one
+ * before the first" -- the original's index was always -1 on entry to a
+ * block, so this is where it would have been anyway.  Neither is bounds- or
+ * NULL-checked (DEFECTS KEPT): with slot == NULL they point near address 0,
+ * as the original's arithmetic did, and a ninth record runs into the next
+ * slot. */
+template <typename T> struct Cursor {
+    T   *at;
+    int  count;
+};
 struct ThemeParser {
     Game            *game;
     Direct3D        *d3d;
     ThemeAssetBlock *block;
     GameLogger      *logger;
-
-    int   depth         = 0;
-    ThemeObjectTypeSlot *slot = NULL;  /* NULL outside an object block */
-    bool  inEnvironment = false;
-    int   record        = -1;
-    int   sub           = -1;
+    FILE            *fp;
 
     char     tok[TOKEN_SLOTS][TOKEN_MAX];
     unsigned ntok;
 
-    /* Unchecked on purpose: see "DEFECTS KEPT".  With slot == NULL these
-     * point near address 0, as the original's arithmetic did. */
-    ThemeLevelObject *rec() const
+    bool nextLine();
+
+    void parseFile();
+    bool parseObjectBlock(ThemeObjectTypeSlot *slot, bool inEnvironment);
+    bool parseRecordBlock(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec);
+    bool parseSubObjectBlock(ThemeObjectTypeSlot *slot, SceneSubObject *sub);
+
+    void selectTarget(ThemeObjectTypeSlot *&slot, bool &inEnvironment);
+    void objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment, Cursor<ThemeLevelObject> &rec);
+    void recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec, Cursor<SceneSubObject> &sub);
+    void subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *sub);
+
+    static void open(Cursor<ThemeLevelObject> &c, ThemeObjectTypeSlot *slot)
+    {
+        c.at = recordAt(slot, c.count++);
+    }
+    static void open(Cursor<SceneSubObject> &c, ThemeLevelObject *rec)
+    {
+        c.at = subObjectAt(rec, c.count++);
+    }
+
+    static ThemeLevelObject *recordAt(ThemeObjectTypeSlot *s, int i)
     {
         return reinterpret_cast<ThemeLevelObject *>(
-            reinterpret_cast<BYTE *>(slot) + offsetof(ThemeObjectTypeSlot, records)
-            + record * (int)sizeof(ThemeLevelObject));
+            reinterpret_cast<BYTE *>(s) + offsetof(ThemeObjectTypeSlot, records)
+            + i * (int)sizeof(ThemeLevelObject));
     }
-    SceneSubObject *subobj() const
+    static SceneSubObject *subObjectAt(ThemeLevelObject *r, int i)
     {
         return reinterpret_cast<SceneSubObject *>(
-            reinterpret_cast<BYTE *>(rec()) + offsetof(ThemeLevelObject, pSubObjects)
-            + sub * (int)sizeof(SceneSubObject));
+            reinterpret_cast<BYTE *>(r) + offsetof(ThemeLevelObject, pSubObjects)
+            + i * (int)sizeof(SceneSubObject));
     }
 
     SceneTexture *loadTexture(char *name, char *alphaTok)
@@ -778,18 +826,59 @@ struct ThemeParser {
                                         name, alpha, 0, 0);
     }
 
-    void line();
-    void depth0();
-    void depth1();
-    void depth2();
-    void depth3();
-    void fog();
-    void sky();
-    void particleSystem();
-    void explode();
+    void fog(bool inEnvironment);
+    void sky(bool inEnvironment);
+    void particleSystem(ThemeObjectTypeSlot *slot, Cursor<ThemeLevelObject> &rec);
+    void explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec);
 };
 
-void ThemeParser::depth0()
+/* The next line that is not blank or a comment, tokenized; false at EOF.
+ * A whitespace-only last line with no newline is NOT skipped: it yields zero
+ * tokens and an empty tok[0], exactly as in the original. */
+bool ThemeParser::nextLine()
+{
+    char buf[LINE_MAX];
+    while (!feof(fp)) {
+        if (fgets(buf, LINE_MAX, fp) == NULL)
+            continue;
+        memset(tok, 0, sizeof(tok));
+        ntok = 0;
+
+        char *s = buf;
+        while (*s == ' ' || *s == '\t')
+            s++;
+        if ((s[0] == '/' && s[1] == '/') || s[0] == '\n')
+            continue;
+        for (char *t = strtok(s, " \t\n"); t != NULL; t = strtok(NULL, " \t\n")) {
+            if (ntok < TOKEN_SLOTS)
+                strcpy(tok[ntok], t);
+            ntok++;
+        }
+        return true;
+    }
+    return false;
+}
+
+/* ─── Depth 0 ─────────────────────────────────────────────────────────────── */
+
+void ThemeParser::parseFile()
+{
+    ThemeObjectTypeSlot *slot = NULL;   /* the object block being filled; NULL = none */
+    bool inEnvironment = false;         /* gates the block-level keywords */
+    while (nextLine()) {
+        if (is(tok[0], "{")) {
+            if (!parseObjectBlock(slot, inEnvironment))
+                return;
+            /* The depth-1 `}`: back at the top, nothing selected. */
+            slot = NULL;
+            inEnvironment = false;
+        } else {
+            selectTarget(slot, inEnvironment);
+        }
+    }
+}
+
+void ThemeParser::selectTarget(ThemeObjectTypeSlot *&slot, bool &inEnvironment)
 {
     for (const auto &k : kObjectKeywords) {
         if (is(tok[0], k.name)) {
@@ -800,41 +889,66 @@ void ThemeParser::depth0()
     if (is(tok[0], "environment")) {
         inEnvironment = true;
         slot = NULL;
-    } else if (is(tok[0], "{")) {
-        depth = 1;
     } else {
         slot = NULL;
     }
 }
 
-void ThemeParser::particleSystem()
+/* ─── Depth 1 ─────────────────────────────────────────────────────────────── */
+
+bool ThemeParser::parseObjectBlock(ThemeObjectTypeSlot *slot, bool inEnvironment)
+{
+    Cursor<ThemeLevelObject> rec = { recordAt(slot, -1), 0 };
+    while (nextLine()) {
+        if (is(tok[0], "{")) {
+            /* Applies to the current record -- records[-1] if none is open. */
+            if (slot) {
+                rec.at->flScaleX = 1.0f;
+                rec.at->flScaleY = 1.0f;
+                rec.at->flScaleZ = 1.0f;
+            }
+            if (!parseRecordBlock(slot, rec.at))
+                return false;
+        } else if (is(tok[0], "}")) {
+            if (slot)
+                slot->dwInstanceCount = rec.count;
+            return true;
+        } else {
+            objectKeyword(slot, inEnvironment, rec);
+        }
+    }
+    return false;
+}
+
+void ThemeParser::particleSystem(ThemeObjectTypeSlot *slot, Cursor<ThemeLevelObject> &c)
 {
     if (ntok <= 1)
         return;
-    record++;
+    open(c, slot);
+    ThemeLevelObject *rec = c.at;
     ParticleSystem *ps = Particle_LoadFromFile(tok[1], logger);
     if (ps == NULL) {
-        if (slot) rec()->kind = THEME_KIND_NONE;
+        if (slot) rec->kind = THEME_KIND_NONE;
         return;
     }
     if (slot) {
-        rec()->kind = THEME_KIND_PARTICLESYSTEM;
-        rec()->pParticleSystems[0] = ps;
+        rec->kind = THEME_KIND_PARTICLESYSTEM;
+        rec->pParticleSystems[0] = ps;
     }
-    if (is(tok[2], "movable1") && slot) rec()->dwMovableType = 1;
-    if (is(tok[2], "movable2") && slot) rec()->dwMovableType = 2;
+    if (is(tok[2], "movable1") && slot) rec->dwMovableType = 1;
+    if (is(tok[2], "movable2") && slot) rec->dwMovableType = 2;
 
     unsigned count = (unsigned)atoi(tok[3]);
     if (count < 2 || count > 16) {
-        if (slot) rec()->dwInstanceCount = 1;
+        if (slot) rec->dwInstanceCount = 1;
     } else {
         for (unsigned i = 1; i < count; i++)
-            if (slot) rec()->pParticleSystems[i] = Particle_CloneSystem(ps);
-        if (slot) rec()->dwInstanceCount = count;
+            if (slot) rec->pParticleSystems[i] = Particle_CloneSystem(ps);
+        if (slot) rec->dwInstanceCount = count;
     }
 }
 
-void ThemeParser::fog()
+void ThemeParser::fog(bool inEnvironment)
 {
     if (!inEnvironment || ntok <= 3)
         return;
@@ -859,7 +973,7 @@ void ThemeParser::fog()
     dev->SetRenderState(D3DRENDERSTATE_FOGCOLOR, (DWORD)strtol(colourTok, &end, 16));
 }
 
-void ThemeParser::sky()
+void ThemeParser::sky(bool inEnvironment)
 {
     if (!inEnvironment || ntok <= 1)
         return;
@@ -882,42 +996,43 @@ void ThemeParser::sky()
     }
 }
 
-void ThemeParser::depth1()
+void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
+                                Cursor<ThemeLevelObject> &rec)
 {
     if (is(tok[0], "model")) {
         if (slot == NULL || ntok <= 1)
             return;
-        record++;
+        open(rec, slot);
         CFaktMesh *mesh = ModelManager_FindOrImport(GG_MODEL_MANAGER, tok[1]);
         if (mesh == NULL) {
-            rec()->kind = THEME_KIND_NONE;
+            rec.at->kind = THEME_KIND_NONE;
             return;
         }
-        rec()->kind  = THEME_KIND_MODEL;
-        rec()->pMesh = mesh;
-        Wrapper_SetMesh(&rec()->wrapper, mesh);
-        Ani_LoadAnimationFile(&rec()->animTable, tok[2], logger);
+        rec.at->kind  = THEME_KIND_MODEL;
+        rec.at->pMesh = mesh;
+        Wrapper_SetMesh(&rec.at->wrapper, mesh);
+        Ani_LoadAnimationFile(&rec.at->animTable, tok[2], logger);
         if (is(tok[3], "nomovestates"))
-            rec()->bNoMoveStates = 1;
+            rec.at->bNoMoveStates = 1;
         return;
     }
     if (is(tok[0], "field")) {
-        record++;
-        if (slot) rec()->kind = THEME_KIND_FIELD;
+        open(rec, slot);
+        if (slot) rec.at->kind = THEME_KIND_FIELD;
         return;
     }
     if (is(tok[0], "billboard")) {
         if (ntok <= 1)
             return;
-        record++;
+        open(rec, slot);
         if (slot) {
-            rec()->kind = THEME_KIND_BILLBOARD;
-            rec()->flBillboardScale = atof_f(tok[1]);
+            rec.at->kind = THEME_KIND_BILLBOARD;
+            rec.at->flBillboardScale = atof_f(tok[1]);
         }
         return;
     }
     if (is(tok[0], "particlesystem")) {
-        particleSystem();
+        particleSystem(slot, rec);
         return;
     }
     for (const auto &k : kImageKeywords) {
@@ -938,30 +1053,36 @@ void ThemeParser::depth1()
         }
     }
     if (is(tok[0], "fog")) {
-        fog();
+        fog(inEnvironment);
     } else if (is(tok[0], "sky")) {
-        sky();
+        sky(inEnvironment);
     } else if (is(tok[0], "sideheight")) {
         if (inEnvironment && ntok > 1)
             block->flSideHeight = atof_f(tok[1]);
     } else if (is(tok[0], "sound")) {
         if (inEnvironment && ntok > 2)
             Theme_RegisterSound(game, tok[1], tok[2]);
-    } else if (is(tok[0], "{")) {
-        depth = 2;
-        if (slot) {
-            rec()->flScaleX = 1.0f;
-            rec()->flScaleY = 1.0f;
-            rec()->flScaleZ = 1.0f;
-        }
-    } else if (is(tok[0], "}")) {
-        if (slot)
-            slot->dwInstanceCount = record + 1;
-        slot = NULL;
-        inEnvironment = false;
-        record = -1;
-        depth = 0;
     }
+}
+
+/* ─── Depth 2 ─────────────────────────────────────────────────────────────── */
+
+bool ThemeParser::parseRecordBlock(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec)
+{
+    Cursor<SceneSubObject> sub = { subObjectAt(rec, -1), 0 };
+    while (nextLine()) {
+        if (is(tok[0], "{")) {
+            if (!parseSubObjectBlock(slot, sub.at))
+                return false;
+        } else if (is(tok[0], "}")) {
+            if (slot)
+                rec->dwSubObjectCount = sub.count;
+            return true;
+        } else {
+            recordKeyword(slot, rec, sub);
+        }
+    }
+    return false;
 }
 
 /* The explode direction: (t4, t5, t6, 1) times an X rotation by the float
@@ -969,15 +1090,14 @@ void ThemeParser::depth1()
  * with cos()/sin(); the original's x87 chain differs only in the last bits.
  * The original also formats "VECTOR(%f, %f, %f)\n" into a stack buffer
  * nothing reads; that is omitted. */
-void ThemeParser::explode()
+void ThemeParser::explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec)
 {
-    if (ntok <= 6 || slot == NULL || rec()->pMesh == NULL)
+    if (ntok <= 6 || slot == NULL || rec->pMesh == NULL)
         return;
-    ThemeLevelObject *r = rec();
-    r->bExplode = 1;
-    ShadowMesh_AllocateExplodeBuffers(&r->explode, r->pMesh);
-    Gen_FillGaussianField(&r->explode, atof_f(tok[1]), atof_f(tok[2]));
-    ShadowMesh_StoreExplodeScaledCount(&r->explode, atof_f(tok[3]));
+    rec->bExplode = 1;
+    ShadowMesh_AllocateExplodeBuffers(&rec->explode, rec->pMesh);
+    Gen_FillGaussianField(&rec->explode, atof_f(tok[1]), atof_f(tok[2]));
+    ShadowMesh_StoreExplodeScaledCount(&rec->explode, atof_f(tok[3]));
 
     const double a = (double)-1.5707963705062866f;
     const double c = cos(a), s = sin(a);
@@ -986,126 +1106,118 @@ void ThemeParser::explode()
     const float w = 1.0f;
     if (w != 1.0f)
         for (float &v : out) v /= w;
-    r->flExplodeDir[0] = out[0];
-    r->flExplodeDir[1] = out[1];
-    r->flExplodeDir[2] = out[2];
+    rec->flExplodeDir[0] = out[0];
+    rec->flExplodeDir[1] = out[1];
+    rec->flExplodeDir[2] = out[2];
 }
 
-void ThemeParser::depth2()
+void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec,
+                                Cursor<SceneSubObject> &sub)
 {
-    ThemeLevelObject *r = rec();
     if (is(tok[0], "texture")) {
         if (ntok <= 1)
             return;
-        sub++;
+        open(sub, rec);
         DWORD alpha = is(tok[2], "alpha") ? 1 : 0;
         if (slot)
-            subobj()->pTexture = TextureManager_GetOrLoad(GG_TEXTURE_MANAGER, d3d->pDD4,
-                                                          d3d->pDevice, tok[1], alpha, 0, 0);
+            sub.at->pTexture = TextureManager_GetOrLoad(GG_TEXTURE_MANAGER, d3d->pDD4,
+                                                     d3d->pDevice, tok[1], alpha, 0, 0);
     } else if (is(tok[0], "position")) {
         if (ntok > 3 && slot) {
-            r->flPosX = atof_f(tok[1]); r->flPosY = atof_f(tok[2]); r->flPosZ = atof_f(tok[3]);
+            rec->flPosX = atof_f(tok[1]); rec->flPosY = atof_f(tok[2]); rec->flPosZ = atof_f(tok[3]);
         }
     } else if (is(tok[0], "scale")) {
         if (ntok > 3 && slot) {
-            r->flScaleX = atof_f(tok[1]); r->flScaleY = atof_f(tok[2]); r->flScaleZ = atof_f(tok[3]);
+            rec->flScaleX = atof_f(tok[1]); rec->flScaleY = atof_f(tok[2]); rec->flScaleZ = atof_f(tok[3]);
         }
     } else if (is(tok[0], "rotate")) {
         if (ntok > 3 && slot) {
-            r->flRotRateX = atof_f(tok[1]); r->flRotRateY = atof_f(tok[2]); r->flRotRateZ = atof_f(tok[3]);
+            rec->flRotRateX = atof_f(tok[1]); rec->flRotRateY = atof_f(tok[2]); rec->flRotRateZ = atof_f(tok[3]);
         }
     } else if (is(tok[0], "randomyangle")) {
-        if (slot) r->bRandomYAngle = 1;
+        if (slot) rec->bRandomYAngle = 1;
     } else if (is(tok[0], "nozwrite")) {
-        if (slot) r->bNoZWrite = 1;
+        if (slot) rec->bNoZWrite = 1;
     } else if (is(tok[0], "noshadow")) {
-        if (slot) r->bNoShadow = 1;
+        if (slot) rec->bNoShadow = 1;
     } else if (is(tok[0], "oscillate")) {
         if (ntok <= 2)
             return;
         if (slot) {
-            r->flOscillationAmplitude = atof_f(tok[1]);
-            r->flOscillationFrequency = atof_f(tok[2]);
+            rec->flOscillationAmplitude = atof_f(tok[1]);
+            rec->flOscillationFrequency = atof_f(tok[2]);
         }
         /* No slot check from here on (DEFECTS KEPT). */
         if (is(tok[3], "random"))
-            r->bOscillateRandom = 1;
-        r->flOscillationPhase = (ntok < 5) ? 0.0f : atof_f(tok[4]);
+            rec->bOscillateRandom = 1;
+        rec->flOscillationPhase = (ntok < 5) ? 0.0f : atof_f(tok[4]);
     } else if (is(tok[0], "pump")) {
         if (ntok > 4 && slot)
             for (int i = 0; i < 4; i++)
-                r->flPump[i] = atof_f(tok[1 + i]);
+                rec->flPump[i] = atof_f(tok[1 + i]);
     } else if (is(tok[0], "lit")) {
-        if (slot) r->bLit = 1;
+        if (slot) rec->bLit = 1;
     } else if (is(tok[0], "specular")) {
-        if (slot) r->bSpecular = 1;
+        if (slot) rec->bSpecular = 1;
     } else if (is(tok[0], "explode")) {
-        explode();
-    } else if (is(tok[0], "{")) {
-        depth = 3;
-    } else if (is(tok[0], "}")) {
-        if (slot)
-            r->dwSubObjectCount = sub + 1;
-        sub = -1;
-        depth = 1;
+        explode(slot, rec);
     }
 }
 
-void ThemeParser::depth3()
+/* ─── Depth 3 ─────────────────────────────────────────────────────────────── */
+
+bool ThemeParser::parseSubObjectBlock(ThemeObjectTypeSlot *slot, SceneSubObject *sub)
 {
-    SceneSubObject *so = subobj();
+    while (nextLine()) {
+        if (is(tok[0], "}"))
+            return true;
+        subObjectKeyword(slot, sub);
+    }
+    return false;
+}
+
+void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *sub)
+{
     DWORD v;
     if (is(tok[0], "srcblend")) {
         if (ntok > 1 && lookup(tok[1], kBlends, 12, &v) && slot)
-            so->dwBlendSrc = v;
+            sub->dwBlendSrc = v;
     } else if (is(tok[0], "destblend")) {
         if (ntok > 1 && lookup(tok[1], kBlends, 11, &v) && slot)
-            so->dwBlendDst = v;
+            sub->dwBlendDst = v;
     } else if (is(tok[0], "condition")) {
         if (ntok > 1 && lookup(tok[1], kConditions, 6, &v) && slot)
-            so->dwVisibilityGate = v;
+            sub->dwVisibilityGate = v;
     } else if (is(tok[0], "flash")) {
         if (ntok > 3 && slot) {
-            so->effect = SUBOBJ_EFFECT_FLASH;
-            for (int i = 0; i < 3; i++) so->flEffectParams[i] = atof_f(tok[1 + i]);
+            sub->effect = SUBOBJ_EFFECT_FLASH;
+            for (int i = 0; i < 3; i++) sub->flEffectParams[i] = atof_f(tok[1 + i]);
         }
     } else if (is(tok[0], "pulse")) {
         if (ntok > 1 && slot) {
-            so->effect = SUBOBJ_EFFECT_PULSE;
-            for (int i = 0; i < 2; i++) so->flEffectParams[i] = atof_f(tok[1 + i]);
+            sub->effect = SUBOBJ_EFFECT_PULSE;
+            for (int i = 0; i < 2; i++) sub->flEffectParams[i] = atof_f(tok[1 + i]);
         }
     } else if (is(tok[0], "wobble")) {
         if (ntok > 3 && slot) {
-            so->effect = SUBOBJ_EFFECT_WOBBLE;
-            for (int i = 0; i < 3; i++) so->flEffectParams[i] = atof_f(tok[1 + i]);
+            sub->effect = SUBOBJ_EFFECT_WOBBLE;
+            for (int i = 0; i < 3; i++) sub->flEffectParams[i] = atof_f(tok[1 + i]);
         }
     } else if (is(tok[0], "turn")) {
         if (ntok > 1 && slot) {
-            so->effect = SUBOBJ_EFFECT_TURN;
-            so->flEffectParams[0] = atof_f(tok[1]);
+            sub->effect = SUBOBJ_EFFECT_TURN;
+            sub->flEffectParams[0] = atof_f(tok[1]);
         }
     } else if (is(tok[0], "environment")) {
-        so->effect = SUBOBJ_EFFECT_ENVIRONMENT;          /* no slot check */
+        sub->effect = SUBOBJ_EFFECT_ENVIRONMENT;         /* no slot check */
     } else if (is(tok[0], "scroll")) {
         if (ntok > 2 && slot) {
-            so->effect = SUBOBJ_EFFECT_SCROLL;
-            for (int i = 0; i < 2; i++) so->flEffectParams[i] = atof_f(tok[1 + i]);
+            sub->effect = SUBOBJ_EFFECT_SCROLL;
+            for (int i = 0; i < 2; i++) sub->flEffectParams[i] = atof_f(tok[1 + i]);
         }
     } else if (is(tok[0], "textureadress")) {
         if (ntok > 1 && lookup(tok[1], kTextureAddress, 4, &v))
-            so->dwTexAddress = v;                        /* no slot check */
-    } else if (is(tok[0], "}")) {
-        depth = 2;
-    }
-}
-
-void ThemeParser::line()
-{
-    switch (depth) {
-    case 0: depth0(); break;
-    case 1: depth1(); break;
-    case 2: depth2(); break;
-    case 3: depth3(); break;
+            sub->dwTexAddress = v;                       /* no slot check */
     }
 }
 
@@ -1126,27 +1238,8 @@ Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block, char *path,
 
     ThemeParser &p = s_parser;
     p = ThemeParser();
-    p.game = game; p.d3d = d3d; p.block = block; p.logger = logger;
-
-    char buf[LINE_MAX];
-    while (!feof(fp)) {
-        if (fgets(buf, LINE_MAX, fp) == NULL)
-            continue;
-        memset(p.tok, 0, sizeof(p.tok));
-        p.ntok = 0;
-
-        char *s = buf;
-        while (*s == ' ' || *s == '\t')
-            s++;
-        if ((s[0] == '/' && s[1] == '/') || s[0] == '\n')
-            continue;
-        for (char *t = strtok(s, " \t\n"); t != NULL; t = strtok(NULL, " \t\n")) {
-            if (p.ntok < TOKEN_SLOTS)
-                strcpy(p.tok[p.ntok], t);
-            p.ntok++;
-        }
-        p.line();
-    }
+    p.game = game; p.d3d = d3d; p.block = block; p.logger = logger; p.fp = fp;
+    p.parseFile();
 
     theme_diag_on_close(fp);
     fclose(fp);
