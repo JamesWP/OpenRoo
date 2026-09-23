@@ -19,6 +19,11 @@
  *   0x0042df80  DrawMenuBackdrop        shared    Menu_DrawBackdrop
  *   0x00437390  DrawMenuCursorMarkers   shared    Menu_DrawCursorMarkers
  *   0x0042e190  RenderMainMenu          node 0    Menu_RenderMainMenu
+ *   0x0042e710  RenderRestoreSlotList   node 2    Menu_RenderRestoreSlotList
+ *   0x0042e500  RenderOptionsMenu       node 4    Menu_RenderOptionsMenu
+ *   0x0042e880  RenderSaveSlotList      node 0x2a Menu_RenderSaveSlotList
+ *   0x00433dc0  RenderLevelComplete     node 0x28 Menu_RenderLevelComplete
+ *               (in scoreoverlay.cpp: its body is DrawGameOverScore's)
  *   0x00436550  RenderCreditsScroll     node 5    Menu_RenderCreditsScroll
  */
 
@@ -39,6 +44,21 @@ Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset);
 extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderMainMenu(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
                     DWORD ms);
+
+/* 0x0042e500 -- menu node 4: Controls / Video / Audio. */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderOptionsMenu(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
+                       DWORD ms);
+
+/* 0x0042e710 -- menu node 2, Load Game: the save-slot names. */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderRestoreSlotList(Game *g, void *theme, Direct3D *d3d,
+                           TextRenderer *text, DWORD ms);
+
+/* 0x0042e880 -- menu node 0x2a, Save Game (level-complete "Save"). */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderSaveSlotList(Game *g, void *theme, Direct3D *d3d,
+                        TextRenderer *text, DWORD ms);
 
 /* 0x00436550 -- cdecl; DispatchGameState passes the millisecond clock. */
 extern "C" __declspec(dllexport) void __cdecl

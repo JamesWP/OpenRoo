@@ -72,6 +72,7 @@
 #include "textrenderer.h"
 #include "texture.h"
 #include "menutree.h"
+#include "saveslots.h"
 #include <math.h>
 
 #define K640          (1.0f / 640.0f)
@@ -80,8 +81,14 @@
 #define g_panelQuad    ((void *)0x004e0580)
 #define g_panelTexture (*(IDirect3DTexture2 **)0x004e0538)
 #define g_markerTexture (*(IDirect3DTexture2 **)0x004e0578)
+#define g_listQuad     ((void *)0x004e0600)
+#define g_optionsTexture (*(IDirect3DTexture2 **)0x004e0760)
+#define g_saveTexture  (*(IDirect3DTexture2 **)0x004e04e0)
 #define THEME_BACKDROP_TEX 0x6f8a8   /* SceneTexture* */
 #define THEME_MAINMENU_COL 0x6f8d4   /* six (top, bottom) colour pairs */
+#define THEME_RESTORE_COL  0x6f904   /* one pair, every slot row */
+#define THEME_SAVE_COL     0x6f90c   /* one pair, every slot row */
+#define THEME_OPTIONS_COL  0x6f91c   /* three pairs */
 
 static inline DWORD mode_width(Direct3D *d3d)
 {
@@ -145,37 +152,107 @@ Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
     d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, p, 4, 0);
 }
 
-/* ── RenderMainMenu 0x0042e190 ─────────────────────────────────────────────
- * Backdrop, then the blend block AGAIN (redundant -- the backdrop just set
- * it; kept), the panel quad 0x4e0580 with texture *0x4e0538, six centred
- * rows at x = w/2, y = w * {0.28125 .. 0.53125 step 0.05} (i.e. 180 + 32i
- * virtual), each with its own theme colour pair, and the cursor markers. */
+/* ── The list screens ─────────────────────────────────────────────────────
+ * RenderMainMenu 0x0042e190, RenderOptionsMenu 0x0042e500,
+ * RenderRestoreSlotList 0x0042e710 and RenderSaveSlotList 0x0042e880 are one
+ * shape: backdrop; the blend block AGAIN (redundant -- the backdrop just set
+ * it; kept); a panel quad with its own texture; centred rows at x = w/2 with
+ * 12x14 cells; the cursor markers with rowOffset 0.
+ *
+ *   screen   node  panel quad  panel texture  rows
+ *   main     0     0x4e0580    *0x4e0538      6 fixed, own colour pair each
+ *   options  4     0x4e0600    *0x4e0760      3 fixed, own colour pair each
+ *   restore  2     0x4e0600    *0x4e0538      save-slot names, one pair
+ *   save     0x2a  0x4e0600    *0x4e04e0      save-slot names, one pair
+ *
+ * Fixed rows sit at y = w * {0.28125 + 0.05 i} (180 + 32 i virtual), the
+ * cell sizes re-reading the width per row as the original does.  The slot
+ * rows accumulate y = 180, +32 per row in 640-space and scale as w*y*K;
+ * the count is the SaveSlots byte, re-read every iteration, unsigned. */
+static const float k_rowY[6] = {
+    0.28125f, 0.33125001f, 0.38124999f, 0.43125001f, 0.48124999f, 0.53125f,
+};
+
+static void draw_panel(Direct3D *d3d, void *theme, IDirect3DTexture2 *tex,
+                       void *quad)
+{
+    Menu_DrawBackdrop(d3d, theme);
+    set_blend(d3d);
+    d3d->pDevice->SetTexture(0, tex);
+    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, quad, 4, 0);
+}
+
+static void draw_fixed_rows(Direct3D *d3d, void *theme, TextRenderer *text,
+                            const char *const *rows, int n, unsigned colOff)
+{
+    const float fw = (float)mode_width(d3d);
+    const DWORD *col = (const DWORD *)((BYTE *)theme + colOff);
+    for (int i = 0; i < n; i++) {
+        const DWORD wr = mode_width(d3d);
+        const float cw = (float)(wr * 12) * K640, ch = (float)(wr * 14) * K640;
+        text->drawCentered(fw * 0.5f, fw * k_rowY[i], cw, ch, 0.75f,
+                           rows[i], d3d, 0, col[2 * i], col[2 * i + 1]);
+    }
+}
+
+static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
+                           TextRenderer *text, unsigned colOff)
+{
+    SaveSlots *ss = g->saveSlots();
+    if (ss->count() == 0)
+        return;
+    const float fw = (float)mode_width(d3d);
+    const float x  = fw * 0.5f;
+    const DWORD top = *(const DWORD *)((BYTE *)theme + colOff);
+    const DWORD bot = *(const DWORD *)((BYTE *)theme + colOff + 4);
+    float y = 180.0f;
+    for (unsigned i = 0; i < ss->count(); i++) {
+        const DWORD wr = mode_width(d3d);
+        const float cw = (float)(wr * 12) * K640, ch = (float)(wr * 14) * K640;
+        text->drawCentered(x, fw * y * K640, cw, ch, 0.75f,
+                           ss->slot((unsigned char)i)->name, d3d, 0, top, bot);
+        y += 32.0f;
+    }
+}
+
 static const char *const k_mainMenuRows[6] = {
     "New Game", "Load Game", "Highscores", "Options", "Credits", "Quit",
 };
-static const float k_mainMenuY[6] = {
-    0.28125f, 0.33125001f, 0.38124999f, 0.43125001f, 0.48124999f, 0.53125f,
-};
+static const char *const k_optionsRows[3] = { "Controls", "Video", "Audio" };
 
 extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderMainMenu(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
                     DWORD ms)
 {
-    Menu_DrawBackdrop(d3d, theme);
-    set_blend(d3d);
-    d3d->pDevice->SetTexture(0, g_panelTexture);
-    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, g_panelQuad, 4, 0);
+    draw_panel(d3d, theme, g_panelTexture, g_panelQuad);
+    draw_fixed_rows(d3d, theme, text, k_mainMenuRows, 6, THEME_MAINMENU_COL);
+    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+}
 
-    const DWORD w  = mode_width(d3d);
-    const float fw = (float)w;
-    const DWORD *col = (const DWORD *)((BYTE *)theme + THEME_MAINMENU_COL);
-    for (int i = 0; i < 6; i++) {
-        /* the cell sizes re-read the width per row, as the original does */
-        const DWORD wr = mode_width(d3d);
-        const float cw = (float)(wr * 12) * K640, ch = (float)(wr * 14) * K640;
-        text->drawCentered(fw * 0.5f, fw * k_mainMenuY[i], cw, ch, 0.75f,
-                           k_mainMenuRows[i], d3d, 0, col[2 * i], col[2 * i + 1]);
-    }
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderOptionsMenu(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
+                       DWORD ms)
+{
+    draw_panel(d3d, theme, g_optionsTexture, g_listQuad);
+    draw_fixed_rows(d3d, theme, text, k_optionsRows, 3, THEME_OPTIONS_COL);
+    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+}
+
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderRestoreSlotList(Game *g, void *theme, Direct3D *d3d,
+                           TextRenderer *text, DWORD ms)
+{
+    draw_panel(d3d, theme, g_panelTexture, g_listQuad);
+    draw_slot_rows(g, d3d, theme, text, THEME_RESTORE_COL);
+    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+}
+
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderSaveSlotList(Game *g, void *theme, Direct3D *d3d,
+                        TextRenderer *text, DWORD ms)
+{
+    draw_panel(d3d, theme, g_saveTexture, g_listQuad);
+    draw_slot_rows(g, d3d, theme, text, THEME_SAVE_COL);
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
