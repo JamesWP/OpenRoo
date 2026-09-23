@@ -57,6 +57,7 @@
 #include "soundmanager.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "levelselect.h"
 #include "record.h"
 
 
@@ -184,6 +185,20 @@ Sim_HandleKeypress(Game *self)
             log_write("keypress: KAROO_SIM_FX=slotshift -- load restores slot k+1\n");
     }
 
+    /* Our level-select page (levelselect.h) takes the whole frame while open. */
+    if (LevelSelect_Active(self)) {
+        int level = LevelSelect_Poll(self);
+        if (level >= 0) {                      /* as New Game, at `level` */
+            Sim_ClearGameState(self);
+            self->setLevelIndex((unsigned char)level);
+            Sim_OpenLevelFile(self, self->levelIndex());
+            Sim_SetupLevelObjects(self);
+            loaded_tail(self);
+            self->debounceRef() = 0x0d;
+        }
+        return;
+    }
+
     int entry = 0;
     if (self->rebindActive() == 0 && self->textEntryActive() == 0) {
         if (KEY(0x1b) != 0 && self->debounceRef() != 0x1b && self->menu()->changed() != 0) {
@@ -245,7 +260,11 @@ Sim_HandleKeypress(Game *self)
             option_edit(self, key);
     }
 
-    KEY(0x27);
+    /* The original discards this RIGHT poll; we read it to open the level
+     * select from Load Game, so no poll is added to the recorded stream. */
+    if (KEY(0x27) != 0 && self->menu()->nodeRef() == 2 &&
+        self->rebindActive() == 0 && self->textEntryActive() == 0)
+        LevelSelect_Open(self);
     KEY(0x25);
     if (self->menu()->nodeRef() != 5 && self->menu()->nodeRef() != 0x50)
         self->setField13cc88(0);

@@ -74,6 +74,7 @@
 #include "texture.h"
 #include "menutree.h"
 #include "saveslots.h"
+#include "levelselect.h"
 #include "d3dmath.h"
 #include "progctrl.h"
 #include "scenetexture.h"
@@ -242,6 +243,37 @@ static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
     }
 }
 
+/* Our level-select page (levelselect.h), drawn over Load Game's panel: the
+ * theme as "< name >" at 120, then its levels from 160 at 20 apiece in
+ * 640-space -- the longest theme (16) ends at 460, inside 480.  Rows use the
+ * slot-list colours; the selected one is bracketed in the main menu's first
+ * pair, since the shared cursor markers assume 32-unit rows. */
+static void draw_level_select(Game *g, Direct3D *d3d, void *theme,
+                              TextRenderer *text)
+{
+    LevelSelectView v;
+    LevelSelect_View(g, &v);
+    draw_panel(d3d, theme, g_panelTexture, g_listQuad);
+    const DWORD w  = mode_width(d3d);
+    const float fw = (float)w, x = fw * 0.5f;
+    const DWORD *rowCol = (const DWORD *)((BYTE *)theme + THEME_RESTORE_COL);
+    const DWORD *selCol = (const DWORD *)((BYTE *)theme + THEME_MAINMENU_COL);
+    char line[300];
+
+    snprintf(line, sizeof(line), "< %s >", v.theme);
+    text->drawCentered(x, fw * 120.0f * K640, (float)(w * 14) * K640,
+                       (float)(w * 16) * K640, 0.75f, line, d3d, 0,
+                       selCol[0], selCol[1]);
+    for (int i = 0; i < v.count; i++) {
+        const bool sel = i == v.selected;
+        snprintf(line, sizeof(line), sel ? "> %s <" : "%s", v.rows[i]);
+        text->drawCentered(x, fw * (160.0f + 20.0f * i) * K640,
+                           (float)(w * 10) * K640, (float)(w * 12) * K640,
+                           0.75f, line, d3d, 0,
+                           sel ? selCol[0] : rowCol[0], sel ? selCol[1] : rowCol[1]);
+    }
+}
+
 static const char *const k_mainMenuRows[6] = {
     "New Game", "Load Game", "Highscores", "Options", "Credits", "Quit",
 };
@@ -269,6 +301,10 @@ extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderRestoreSlotList(Game *g, void *theme, Direct3D *d3d,
                            TextRenderer *text, DWORD ms)
 {
+    if (LevelSelect_Active(g)) {
+        draw_level_select(g, d3d, theme, text);
+        return;
+    }
     draw_panel(d3d, theme, g_panelTexture, g_listQuad);
     draw_slot_rows(g, d3d, theme, text, THEME_RESTORE_COL);
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
