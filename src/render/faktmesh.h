@@ -51,6 +51,7 @@ struct CFaktMesh {
 };
 #pragma pack(pop)
 
+static_assert(sizeof(CFaktMesh) == 0x7a, "CFaktMesh size: ModelManager operator new(0x7a)");
 static_assert(offsetof(CFaktMesh, pVertexData)   == 0x04, "CFaktMesh layout mismatch");
 static_assert(offsetof(CFaktMesh, dwVertexCount) == 0x08, "CFaktMesh layout mismatch");
 static_assert(offsetof(CFaktMesh, pFrameRecords) == 0x0c, "CFaktMesh layout mismatch");

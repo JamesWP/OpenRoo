@@ -147,6 +147,7 @@
 #include "alloc.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "gamelog.h"
 
 /* ─── Originals left live in the binary ──────────────────────────────────── */
 
@@ -174,8 +175,6 @@
  * identical to the original's. */
 
 /* Already-replaced neighbours; their originals are UD2-stubbed. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Texture_ReleaseD3DTexture(SceneTexture *self);
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp);
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
@@ -885,3 +884,77 @@ Texture_SelectTextureLoader(SceneTexture *self, IDirectDraw4 *dd,
 }
 
 } // extern "C"
+
+/* ─── TextureManager (0x004400d0, 0x00440220) ──────────────────────────────
+ *
+ * GetOrLoad walks the cache comparing names case-insensitively the way the
+ * original does: by lowercasing BOTH strings IN PLACE and then strcmp'ing.
+ * So the caller's buffer and every cached ImageName are permanently
+ * lowercased -- which is why "TM: %s loaded" logs the lowercased name.  Kept.
+ *
+ * alphaFlag is a BYTE in the original's push (only AL is meaningful); the
+ * upper bytes are passed through to ImportSceneTextures as the original's
+ * stack slot carried them, which for the theme loader is always zero. */
+static void tm_lower_inplace(char *s)
+{
+    /* CrtStrLwr's C-locale loop: 'A'..'Z' only. */
+    for (; *s; s++)
+        if (*s > '@' && *s < '[')
+            *s += ' ';
+}
+
+typedef void *(__attribute__((thiscall)) *tm_scalar_dtor_fn)(void *self, unsigned int flags);
+
+static void tm_delete(SceneTexture *t)
+{
+    tm_scalar_dtor_fn dtor = *(tm_scalar_dtor_fn *)t->base.unknown00;
+    dtor(t, 1);
+}
+
+extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
+TextureManager_GetOrLoad(TextureManager *self, IDirectDraw4 *dd,
+                         IDirect3DDevice3 *dev, char *filename,
+                         DWORD alphaFlag, UINT bpp, DWORD textureStage)
+{
+    for (LinkedListNode *node = self->cache.pHead; node != NULL; ) {
+        SceneTexture *cached = (SceneTexture *)node->pValue;
+        node = node->pNextNode;
+        tm_lower_inplace(filename);
+        tm_lower_inplace(cached->base.ImageName);
+        if (strcmp(cached->base.ImageName, filename) == 0) {
+            if (self->pLogger != NULL)
+                GameLog_LogMessage(self->pLogger, 1, GS_TM_FOUND, filename);
+            return cached;
+        }
+    }
+
+    void *mem = game_operator_new(sizeof(SceneTexture));
+    SceneTexture *tex = (mem != NULL) ? Texture_SceneCtor((SceneTexture *)mem) : NULL;
+    unsigned int ok = Texture_ImportSceneTextures(tex, dd, dev, filename,
+                                                  alphaFlag, bpp, textureStage);
+    if ((ok & 0xff) == 0) {
+        if (tex != NULL)
+            tm_delete(tex);
+        if (self->pLogger != NULL)
+            GameLog_LogMessage(self->pLogger, 3, GS_TM_FAILED, filename);
+        return NULL;
+    }
+    if (self->pLogger != NULL)
+        GameLog_LogMessage(self->pLogger, 1, GS_TM_LOADED, filename);
+    LinkedList_Append(&self->cache, tex);
+    return tex;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+TextureManager_ReleaseAll(TextureManager *self)
+{
+    for (LinkedListNode *node = self->cache.pHead; node != NULL; ) {
+        SceneTexture *tex = (SceneTexture *)node->pValue;
+        node = node->pNextNode;
+        if (tex != NULL) {
+            Texture_ReleaseD3DTexture(tex);
+            tm_delete(tex);
+        }
+    }
+    LinkedList_Clear(&self->cache);
+}

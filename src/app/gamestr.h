@@ -299,4 +299,25 @@ static char *const GS_PSNAME_XFACE_SYSTEM       = (char *)0x004690c8;  /* "XFace
  * printed against it.  Was GAMEDIR in two files and GAME_DIR in five. */
 static const char *const GS_GAME_DIR = (const char *)0x004e01c4;
 
+/* --- THEME: the .thm loader and the caches it fills (theme.cpp, model.cpp,
+ *     scenetexture.cpp) --- */
+static const char *const GS_THEME_SKY_LOADED              = (const char *)0x00464784;  /* "SKY: %s loaded" */
+static const char *const GS_THEME_SKY_FAILED              = (const char *)0x00464794;  /* "SKY: *ERROR* failed loading %s" */
+static const char *const GS_THEME_SKY_UP                  = (const char *)0x004647f0;  /* "%s_UP.tga" */
+static const char *const GS_THEME_SKY_DN                  = (const char *)0x004647e4;  /* "%s_DN.tga" */
+static const char *const GS_THEME_SKY_FR                  = (const char *)0x004647d8;  /* "%s_FR.tga" */
+static const char *const GS_THEME_SKY_BK                  = (const char *)0x004647cc;  /* "%s_BK.tga" */
+static const char *const GS_THEME_SKY_LF                  = (const char *)0x004647c0;  /* "%s_LF.tga" */
+static const char *const GS_THEME_SKY_RT                  = (const char *)0x004647b4;  /* "%s_RT.tga" */
+static const char *const GS_THEME_VECTOR                  = (const char *)0x004646d8;  /* "VECTOR(%f, %f, %f)\n" */
+static const char *const GS_THEME_SOUND_PATH              = (const char *)0x00466614;  /* "%s\\%s" */
+static const char *const GS_THEME_SOUND_NONE              = (const char *)0x00467310;  /* "NONE" */
+static const char *const GS_THEME_SOUND_ADD               = (const char *)0x004672ec;  /* "TSM: add called (Index=%d/fn=%s)" */
+static const char *const GS_TM_LOADED                     = (const char *)0x004672ac;  /* "TM: %s loaded" */
+static const char *const GS_TM_FOUND                      = (const char *)0x004672bc;  /* "TM: %s found" */
+static const char *const GS_TM_FAILED                     = (const char *)0x004672cc;  /* "TM: *ERROR* failed loading %s" */
+static const char *const GS_MM_LOADED                     = (const char *)0x00466fe0;  /* "MM: %s loaded" */
+static const char *const GS_MM_FOUND                      = (const char *)0x00466ff0;  /* "MM: %s found" */
+static const char *const GS_MM_FAILED                     = (const char *)0x00467000;  /* "MM: *ERROR* failed loading %s" */
+
 #endif  /* KAROO_GAMESTR_H */

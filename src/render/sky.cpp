@@ -69,12 +69,12 @@
 #include "direct3d.h"
 #include "sky.h"
 #include "log.h"
+#include "scenetexture.h"
 
 #include <math.h>
 
 #define SKY_FVF        0x1e2
 #define SKY_QUADS      6
-#define SKY_QUAD_BYTES 0x80   /* 4 verts * 32-byte FVF 0x1e2 stride */
 #define SKY_LOG_FIRST  8
 
 static bool fx_one_quad(void)
@@ -123,7 +123,7 @@ Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
         IDirect3DTexture2 *tex = self->Textures[i].pTexture2;
         dev->SetTexture(0, tex);
         HRESULT hr = dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, SKY_FVF,
-                                        self->QuadVerts + i * SKY_QUAD_BYTES,
+                                        self->QuadVerts[i],
                                         4, 8);
 
         static LONG logged = 0;
@@ -134,4 +134,57 @@ Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
 
     dev->SetRenderState(D3DRENDERSTATE_ZENABLE, 1);
     return self->WorldMatrix;
+}
+
+/* ─── Sky_BuildFromFaceNames (0x0043c870) ─────────────────────────────────
+ *
+ * The cube is +-55 on each axis.  Each face is a 4-vertex strip with UVs
+ * (1,0) (1,1) (0,0) (0,1); the corners below are the original's stores,
+ * in vertex order.  Every vertex is white with a black, opaque-alpha
+ * specular.  The matrix is identity until DrawSkyBackground rebuilds it. */
+static const signed char kSkyCorners[24][3] = {
+    {-1, 1,-1}, { 1, 1,-1}, {-1, 1, 1}, { 1, 1, 1},   /* UP */
+    { 1,-1,-1}, {-1,-1,-1}, { 1,-1, 1}, {-1,-1, 1},   /* DN */
+    {-1, 1,-1}, {-1,-1,-1}, { 1, 1,-1}, { 1,-1,-1},   /* FR */
+    { 1, 1, 1}, { 1,-1, 1}, {-1, 1, 1}, {-1,-1, 1},   /* BK */
+    {-1, 1, 1}, {-1,-1, 1}, {-1, 1,-1}, {-1,-1,-1},   /* LF */
+    { 1, 1,-1}, { 1,-1,-1}, { 1, 1, 1}, { 1,-1, 1},   /* RT */
+};
+static const float kSkyUV[4][2] = { {1, 0}, {1, 1}, {0, 0}, {0, 1} };
+
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
+                       IDirect3DDevice3 *dev, const char *up, const char *dn,
+                       const char *fr, const char *bk, const char *lf,
+                       const char *rt, UINT bpp)
+{
+    for (int i = 0; i < 16; i++)
+        self->WorldMatrix[i] = (i % 5 == 0) ? 1.0f : 0.0f;
+
+    for (int f = 0; f < 6; f++) {
+        for (int k = 0; k < 4; k++) {
+            SkyVertex &v = self->QuadVerts[f][k];
+            v.diffuse  = 0xffffffff;
+            v.specular = 0xff000000;
+            v.u = kSkyUV[k][0];
+            v.v = kSkyUV[k][1];
+            v.x = 55.0f * kSkyCorners[f * 4 + k][0];
+            v.y = 55.0f * kSkyCorners[f * 4 + k][1];
+            v.z = 55.0f * kSkyCorners[f * 4 + k][2];
+        }
+    }
+
+    for (int f = 0; f < 6; f++)
+        Texture_ReleaseD3DTexture(&self->Textures[f]);
+
+    const char *names[6] = { up, dn, fr, bk, lf, rt };
+    unsigned int r = 0;
+    for (int f = 0; f < 6; f++) {
+        r = Texture_SelectTextureLoader(&self->Textures[f], dd, dev, names[f], bpp, 0);
+        if ((r & 0xff) == 0)
+            return r;
+    }
+    /* The last face's result is normalised to 0/1 in AL; the upper bytes
+     * are the loader's.  Only AL is ever tested. */
+    return (r & 0xffffff00u) | 1u;
 }

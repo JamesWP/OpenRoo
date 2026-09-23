@@ -83,9 +83,11 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "faktmesh.h"
+#include "model.h"      /* our own owner header; brings in faktmesh.h */
 #include "log.h"
 #include "alloc.h"
+#include "gamelog.h"
+#include "gamestr.h"
 
 /* The game's heap.  Allocations here are freed by FreeThing2 (0x437fb0) via
  * FactAlloc::Free2, so they must come from the matching allocator. */
@@ -214,4 +216,69 @@ Model_ImportSceneModels(CFaktMesh *self, const char *path)
         log_write("model: '%s' frames=%u verts=%u\n", path, frames, verts);
     }
     return 1;
+}
+
+/* ─── ModelManager (0x004385b0, 0x004386e0) ────────────────────────────────
+ *
+ * The lookup lowercases the caller's name and every cached name IN PLACE
+ * before comparing, exactly as TextureManager_GetOrLoad does; the logged
+ * name is therefore the lowercased one.  The original's __try around the
+ * ctor only frees the 0x7a bytes if Init throws, which ours cannot. */
+static void mm_lower_inplace(char *s)
+{
+    for (; *s; s++)
+        if (*s > '@' && *s < '[')
+            *s += ' ';
+}
+
+typedef void *(__attribute__((thiscall)) *mm_scalar_dtor_fn)(void *self, unsigned int flags);
+
+static void mm_delete(CFaktMesh *m)
+{
+    mm_scalar_dtor_fn dtor = *(mm_scalar_dtor_fn *)m->unknown00;
+    dtor(m, 1);
+}
+
+extern "C" __declspec(dllexport) CFaktMesh *__attribute__((thiscall))
+ModelManager_FindOrImport(ModelManager *self, char *name)
+{
+    for (LinkedListNode *node = self->cache.pHead; node != NULL; ) {
+        CFaktMesh *cached = (CFaktMesh *)node->pValue;
+        node = node->pNextNode;
+        mm_lower_inplace(name);
+        mm_lower_inplace(cached->pszName);
+        if (strcmp(cached->pszName, name) == 0) {
+            if (self->pLogger != NULL)
+                GameLog_LogMessage(self->pLogger, 1, GS_MM_FOUND, name);
+            return cached;
+        }
+    }
+
+    void *mem = game_operator_new(sizeof(CFaktMesh));
+    CFaktMesh *mesh = (mem != NULL) ? FaktMesh_Init((CFaktMesh *)mem) : NULL;
+    if ((Model_ImportSceneModels(mesh, name) & 0xff) == 0) {
+        if (mesh != NULL)
+            mm_delete(mesh);
+        if (self->pLogger != NULL)
+            GameLog_LogMessage(self->pLogger, 3, GS_MM_FAILED, name);
+        return NULL;
+    }
+    if (self->pLogger != NULL)
+        GameLog_LogMessage(self->pLogger, 1, GS_MM_LOADED, name);
+    LinkedList_Append(&self->cache, mesh);
+    return mesh;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+ModelManager_ClearReleaseFree(ModelManager *self)
+{
+    for (LinkedListNode *node = self->cache.pHead; node != NULL; ) {
+        CFaktMesh *mesh = (CFaktMesh *)node->pValue;
+        node = node->pNextNode;
+        if (mesh != NULL) {
+            FaktMesh_ReleaseModelBuffers(mesh);
+            mm_delete(mesh);
+        }
+    }
+    LinkedList_Clear(&self->cache);
 }

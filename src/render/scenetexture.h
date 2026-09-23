@@ -36,3 +36,47 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Texture_SceneDtorBody(SceneTexture *self);
 extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
 Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
+
+/* 0x0043feb0 -- by extension (mode 0), DIB (1) or TGA (2).  The sky builder
+ * (sky.cpp) is its one outside caller. */
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+Texture_SelectTextureLoader(SceneTexture *self, IDirectDraw4 *dd,
+                            IDirect3DDevice3 *dev, LPCSTR name, UINT bpp,
+                            int mode);
+
+/* ─── TextureManager -- the name-keyed SceneTexture cache ──────────────────
+ *
+ * One instance, g_TextureManagerGlobal at 0x004dc628, game-constructed.  The
+ * theme loader and BuildSceneObjectList (0x00420c50) fetch through it; the
+ * theme release and FreeSceneObjects (0x00420ee0) empty it.  Same shape as
+ * ModelManager (model.h). */
+#include "linkedlist.h"
+struct GameLogger;
+
+class __attribute__((packed)) TextureManager {
+public:
+    static const int ORIGIN = 0;
+
+    void        *vtable;    // +0x00
+    LinkedList   cache;     // +0x04  SceneTexture *, game-heap nodes
+    GameLogger  *pLogger;   // +0x14  NULL = silent
+private:
+    KAROO_LAYOUT_REGISTER(TextureManager);
+};
+
+KAROO_LAYOUT_CHECKS(TextureManager)
+{
+    KAROO_LAYOUT_AT(cache,   0x04);
+    KAROO_LAYOUT_AT(pLogger, 0x14);
+    KAROO_LAYOUT_SIZE(0x18);
+}
+
+static TextureManager *const GG_TEXTURE_MANAGER = (TextureManager *)0x004dc628;
+
+/* 0x004400d0 / 0x00440220. */
+extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
+TextureManager_GetOrLoad(TextureManager *self, IDirectDraw4 *dd,
+                         IDirect3DDevice3 *dev, char *filename,
+                         DWORD alphaFlag, UINT bpp, DWORD textureStage);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+TextureManager_ReleaseAll(TextureManager *self);

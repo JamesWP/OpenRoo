@@ -26,6 +26,7 @@
 #include "levelobject.h"
 #include "particles.h"
 #include "shadowmesh.h"
+#include "sky.h"
 
 void theme_diag_on_open(const char *path, void *fp);
 void theme_diag_on_close(void *fp);
@@ -136,24 +137,6 @@ KAROO_LAYOUT_CHECKS(ThemeObjectTypeSlot)
     KAROO_LAYOUT_SIZE(0x2ef0);
 }
 
-/* The header is speculative: the six faces are known, the 8 bytes before
- * them are not written by the loader. */
-class __attribute__((packed)) SkyCube {
-public:
-    static const int ORIGIN = 0;
-
-    BYTE          header[8];
-    SceneTexture  faces[6];
-private:
-    KAROO_LAYOUT_REGISTER(SkyCube);
-};
-
-KAROO_LAYOUT_CHECKS(SkyCube)
-{
-    KAROO_LAYOUT_AT(faces, 0x8);
-    KAROO_LAYOUT_SIZE(8 + 6 * sizeof(SceneTexture));
-}
-
 /* Slot order is address order, matching the depth-0 keywords. */
 enum ThemeObjectType {
     THEME_OBJ_JOHN, THEME_OBJ_CATCHER, THEME_OBJ_CATCHERFX, THEME_OBJ_THROWER,
@@ -210,8 +193,7 @@ public:
     SceneTexture        *images[THEME_IMG_COUNT];
     ThemeTextColorPair   textColors[THEME_COLOR_COUNT];
     BYTE                 bFogEnabled;
-    SkyCube              sky;
-    unsigned char        gap_6fa4d[0x6fd8d - 0x6f99d - sizeof(SkyCube)];
+    SkyBackground        sky;               // built by Sky_BuildFromFaceNames; drawn by sky.cpp
     float                flSideHeight;
 private:
     KAROO_LAYOUT_REGISTER(ThemeAssetBlock);
@@ -248,3 +230,32 @@ KAROO_LAYOUT_CHECKS(ThemeAssetBlock)
     KAROO_LAYOUT_AT(flSideHeight, 0x6fd8d);
     KAROO_LAYOUT_SIZE(0x6fd91);
 }
+
+/* ─── The loader and its helpers (ASSET_PLAN Phase 5) ─────────────────────
+ *
+ * The block is the global at 0x0046c890; the loader's one caller
+ * (0x00426d8b) passes it with the path buffer and the game logger. */
+class Game;
+struct Direct3D;
+struct GameLogger;
+struct ThemeSoundTable;
+
+static ThemeAssetBlock *const GG_THEME_BLOCK = (ThemeAssetBlock *)0x0046c890;
+
+/* 0x0040c110 */
+extern "C" __declspec(dllexport) bool __cdecl
+Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block,
+           char *path, GameLogger *logger);
+/* 0x0040bf30 -- also called from WinMain's shutdown (0x0042d651). */
+extern "C" __declspec(dllexport) void __cdecl
+Theme_ReleaseBlock(ThemeAssetBlock *block);
+/* 0x0043b720 -- also called by the slot's static destructor 0x0043b6c0. */
+extern "C" __declspec(dllexport) void __attribute__((fastcall))
+Theme_ReleaseSlot(ThemeObjectTypeSlot *slot);
+/* 0x004113e0 -- the `sound` keyword: event name -> id, then ThemeSound_Add. */
+extern "C" __declspec(dllexport) bool __cdecl
+Theme_RegisterSound(Game *game, char *eventName, const char *waveName);
+/* 0x004402d0 */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
+               DWORD arg3, DWORD arg4);

@@ -28,6 +28,10 @@ Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags);
 
 /* 0x43ea50 LoadedImage::CreatePaletteFromDIBColorTable -- __stdcall, ret 8.
  * scenetexture.cpp's BindTextureResource is the only caller. */
+/* 0x00440050 -- release the IDirect3DTexture2 and both surfaces. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Texture_ReleaseD3DTexture(SceneTexture *self);
+
 extern "C" __declspec(dllexport) IDirectDrawPalette *__stdcall
 Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp);
 

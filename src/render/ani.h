@@ -23,13 +23,15 @@
  *     (0x420d38) with +0xd set to 1 on success.  +0x11 + 0x180 = +0x191,
  *     which is exactly where the object's position begins (dsoscene.cpp's
  *     O_POS) -- the table tiles the gap.
- *   - LevelObject (stride 0x5dd), at +0xc9, loaded by ThemeFileLoader
- *     (0x40d0ae).
+ *   - ThemeLevelObject (stride 0x5dd, theme.h), at +0xc1, loaded by
+ *     ThemeFileLoader (0x40d0ae).  The loader's code shows +0xc9 because it
+ *     addresses records from their ThemeObjectTypeSlot, 8 bytes earlier.
  *
  * Both bases are odd addresses, so every field is potentially unaligned; the
  * struct is packed and must only ever be reached through a pointer.
  *
- * NOMOVESTATES.  LevelObject +0x5b1 is a flag ThemeFileLoader sets from the
+ * NOMOVESTATES.  ThemeLevelObject::bNoMoveStates (+0x5a9; +0x5b1 in the
+ * loader's slot-relative code) is a flag ThemeFileLoader sets from the
  * .thm keyword "nomovestates" (0x464b78, compared at 0x40d0d9).  It selects
  * which of the two evaluators below a model gets, and it is the whole reason
  * there are two.
@@ -156,7 +158,7 @@ Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code);
 /* ── The two evaluators ───────────────────────────────────────────────────
  *
  * Both take a slot and return a mesh frame index.  Which one a model gets is
- * decided by LevelObject +0x5b1 ("nomovestates"), and the call sites are
+ * decided by ThemeLevelObject::bNoMoveStates ("nomovestates"), and the call sites are
  * pairwise identical in RenderSceneObjects (0x40a0e7 / 0x40a165) and
  * DrawObjectShadows (0x43c39a / 0x43c418).
  *
