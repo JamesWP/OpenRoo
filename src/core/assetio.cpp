@@ -176,7 +176,7 @@ hooks_fopen(const char *path, const char *mode)
 
     /* ASSET_PLAN Phase 5's .thm reader.  Inert unless KAROO_THEME_DIAG is set;
      * it reopens the file itself and never touches this FILE or the game. */
-    theme_diag_on_open(path);
+    theme_diag_on_open(path, fp);
 
     if (asset_log_enabled()) {
         DWORD size = (path != NULL) ? file_size_of(path) : 0;
@@ -224,5 +224,10 @@ hooks_fclose(void *fp)
             s->fp = NULL;
         }
     }
+
+    /* Inert unless KAROO_THEME_STRUCT_DIAG is set.  By the time the game
+     * closes a .thm, ThemeFileLoader has populated the whole block. */
+    theme_diag_on_close(fp);
+
     return GC_FCLOSE((FILE *)fp);
 }

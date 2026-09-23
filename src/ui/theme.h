@@ -10,23 +10,22 @@
 #include "levelobject.h"
 #include "particles.h"
 
-bool theme_diag_on_open(const char *path);
-void theme_diag_on_close();
+void theme_diag_on_open(const char *path, void *fp);
+void theme_diag_on_close(void *fp);
 
 class __attribute__((packed)) ThemeLevelObject {
 public:
     static const int ORIGIN = 0;
 
-    BYTE         gap_000_pumpOverflowTarget[8];
     DWORD        dwKind;
     CFaktMesh   *pMesh;
     WrapperObject wrapper;
-    BYTE         gap_01d[0xc9 - 0x10 - sizeof(WrapperObject)];
+    BYTE         gap_015[0xc1 - 0x08 - sizeof(WrapperObject)];
 
     AnimTable    animTable;
     float        flBillboardScale;
     ParticleSystem *pParticleSystems[16];
-    BYTE         gap_28d[0x39d - 0x28d];
+    BYTE         gap_285[0x395 - 0x285];
 
     DWORD  dwInstanceCount;
     DWORD  dwMovableType;
@@ -52,37 +51,37 @@ public:
     float  flOscillationAmplitude;
     float  flOscillationFrequency;
     float  flOscillationPhase;
-    float  flPump[2];
+    float  flPump[4];
 private:
     KAROO_LAYOUT_REGISTER(ThemeLevelObject);
 };
 
 KAROO_LAYOUT_CHECKS(ThemeLevelObject)
 {
-    KAROO_LAYOUT_AT(dwKind,           0x008);
-    KAROO_LAYOUT_AT(pMesh,            0x00c);
-    KAROO_LAYOUT_AT(wrapper,          0x010);
-    KAROO_LAYOUT_AT(animTable,        0x0c9);
-    KAROO_LAYOUT_AT(flBillboardScale, 0x249);
-    KAROO_LAYOUT_AT(pParticleSystems, 0x24d);
-    KAROO_LAYOUT_AT(dwInstanceCount,  0x39d);
-    KAROO_LAYOUT_AT(dwMovableType,    0x3a1);
-    KAROO_LAYOUT_AT(flPosX,           0x3a5);
-    KAROO_LAYOUT_AT(flScaleX,         0x3b1);
-    KAROO_LAYOUT_AT(flRotRateX,       0x3bd);
-    KAROO_LAYOUT_AT(dwSubObjectCount, 0x3c9);
-    KAROO_LAYOUT_AT(pSubObjects,      0x3cd);
-    KAROO_LAYOUT_AT(bLit,             0x5ad);
-    KAROO_LAYOUT_AT(bNoMoveStates,    0x5b1);
-    KAROO_LAYOUT_AT(bNoZWrite,        0x5b5);
-    KAROO_LAYOUT_AT(bNoShadow,        0x5b9);
-    KAROO_LAYOUT_AT(bSpecular,        0x5bd);
-    KAROO_LAYOUT_AT(bRandomYAngle,    0x5c1);
-    KAROO_LAYOUT_AT(bOscillateRandom, 0x5c5);
-    KAROO_LAYOUT_AT(flOscillationAmplitude, 0x5c9);
-    KAROO_LAYOUT_AT(flOscillationFrequency, 0x5cd);
-    KAROO_LAYOUT_AT(flOscillationPhase,     0x5d1);
-    KAROO_LAYOUT_AT(flPump,           0x5d5);
+    KAROO_LAYOUT_AT(dwKind,           0x000);
+    KAROO_LAYOUT_AT(pMesh,            0x004);
+    KAROO_LAYOUT_AT(wrapper,          0x008);
+    KAROO_LAYOUT_AT(animTable,        0x0c1);
+    KAROO_LAYOUT_AT(flBillboardScale, 0x241);
+    KAROO_LAYOUT_AT(pParticleSystems, 0x245);
+    KAROO_LAYOUT_AT(dwInstanceCount,  0x395);
+    KAROO_LAYOUT_AT(dwMovableType,    0x399);
+    KAROO_LAYOUT_AT(flPosX,           0x39d);
+    KAROO_LAYOUT_AT(flScaleX,         0x3a9);
+    KAROO_LAYOUT_AT(flRotRateX,       0x3b5);
+    KAROO_LAYOUT_AT(dwSubObjectCount, 0x3c1);
+    KAROO_LAYOUT_AT(pSubObjects,      0x3c5);
+    KAROO_LAYOUT_AT(bLit,             0x5a5);
+    KAROO_LAYOUT_AT(bNoMoveStates,    0x5a9);
+    KAROO_LAYOUT_AT(bNoZWrite,        0x5ad);
+    KAROO_LAYOUT_AT(bNoShadow,        0x5b1);
+    KAROO_LAYOUT_AT(bSpecular,        0x5b5);
+    KAROO_LAYOUT_AT(bRandomYAngle,    0x5b9);
+    KAROO_LAYOUT_AT(bOscillateRandom, 0x5bd);
+    KAROO_LAYOUT_AT(flOscillationAmplitude, 0x5c1);
+    KAROO_LAYOUT_AT(flOscillationFrequency, 0x5c5);
+    KAROO_LAYOUT_AT(flOscillationPhase,     0x5c9);
+    KAROO_LAYOUT_AT(flPump,           0x5cd);
     KAROO_LAYOUT_SIZE(0x5dd);
 }
 
@@ -90,7 +89,7 @@ class __attribute__((packed)) ThemeObjectTypeSlot {
 public:
     static const int ORIGIN = 0;
 
-    DWORD            dwUnknownHeader0_prevSlotPumpOverflowTarget;
+    DWORD            dwUnknownHeader0;
     DWORD            dwInstanceCount;
     ThemeLevelObject records[8];
 private:
