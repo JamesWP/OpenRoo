@@ -1,8 +1,7 @@
 /* The theme asset block -- everything ThemeFileLoader (0x0040c110) builds
  * from a .thm, in one fixed global at 0x0046c890.  ReleaseThemeAssetBlock
  * (0x0040bf30) tears it down; the loader calls it first, so a load is always
- * release + parse.  The .thm grammar lives on the loader's Ghidra plate and in
- * tools/thmparse.py.
+ * release + parse.  The .thm grammar lives on the loader's Ghidra plate.
  *
  * Reading the decompile: the loader addresses a record field as
  * `slot + i*0x5dd + X`, where `slot` is the ThemeObjectTypeSlot -- so the
@@ -28,8 +27,6 @@
 #include "shadowmesh.h"
 #include "sky.h"
 
-void theme_diag_on_open(const char *path, void *fp);
-void theme_diag_on_close(void *fp);
 
 enum ThemeObjectKind : DWORD {
     THEME_KIND_NONE           = 0,
