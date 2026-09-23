@@ -1,9 +1,7 @@
 /* Level select -- see levelselect.h.  Our feature; no original behind it.
  *
- * Input goes through hooks_GetAsyncKeyState like every other menu poll, so a
- * recording made on this page replays.  Edges are our own (s_lastKey): the
- * page never touches the navigator's debounce except on the way out, where
- * it hands the held key over so the navigator does not act on it too.
+ * The theme nodes are filled on the way in, every time, from the JJ.GAM
+ * table the game has loaded.  Nothing but this file reads or writes them.
  */
 #include <windows.h>
 #include <string.h>
@@ -11,20 +9,11 @@
 #include "game.h"
 #include "menutree.h"
 #include "log.h"
-#include "record.h"
 
-#define KEY(k)  hooks_GetAsyncKeyState(k)
-
-#define MAX_THEMES 32
-
-static bool s_open;
-static int  s_theme;                    /* index into s_themeFirst */
-static int  s_row;                      /* within the theme */
-static int  s_top;                      /* first visible row */
-static int  s_lastKey;                  /* our own debounce */
 static int  s_themeCount;
-static int  s_themeFirst[MAX_THEMES + 1];   /* JJ.GAM index each theme starts at */
-static char s_themeName[MAX_THEMES][64];
+static int  s_themeFirst[LS_MAX_THEMES + 1];    /* JJ.GAM index each starts at */
+static char s_themeName[LS_MAX_THEMES][64];
+static int  s_top;                              /* first visible row */
 
 /* The folder part of a level name, into out; the whole name if it has none. */
 static void theme_of(const char *name, char *out, size_t n)
@@ -37,18 +26,22 @@ static void theme_of(const char *name, char *out, size_t n)
     out[len] = 0;
 }
 
+static int theme_size(int t) { return s_themeFirst[t + 1] - s_themeFirst[t]; }
+
 /* JJ.GAM lists each theme's levels contiguously, so a theme is a run of
  * equal folder names.  A folder that came back later would get a second
- * page rather than be merged -- fine, and none does. */
-static void build_groups(Game *g)
+ * page rather than be merged -- fine, and none does.  Each theme becomes
+ * node 0x60 + t with one LS_START child per level. */
+static void build_nodes(Game *g)
 {
+    MenuTree *m = g->menu();
     s_themeCount = 0;
     char prev[64] = "";
     for (int i = 0; i < g->levelCount(); i++) {
         char t[64];
         theme_of(g->levelNameTableEntry((unsigned char)i), t, sizeof(t));
         if (s_themeCount == 0 || strcmp(t, prev) != 0) {
-            if (s_themeCount == MAX_THEMES)
+            if (s_themeCount == LS_MAX_THEMES)
                 break;
             s_themeFirst[s_themeCount] = i;
             strcpy(s_themeName[s_themeCount], t);
@@ -56,94 +49,84 @@ static void build_groups(Game *g)
             strcpy(prev, t);
         }
     }
-    s_themeFirst[s_themeCount] = g->levelCount();
+    s_themeFirst[s_themeCount] = s_themeCount ? g->levelCount() : 0;
+
+    for (int t = 0; t < s_themeCount; t++) {
+        const unsigned char node = (unsigned char)(LS_THEME_NODE + t);
+        m->setChildCount(node, (unsigned char)theme_size(t));
+        for (int i = 0; i < theme_size(t); i++)
+            m->setChild(node, (unsigned char)i, LS_START);
+    }
 }
 
-static int theme_size(int t) { return s_themeFirst[t + 1] - s_themeFirst[t]; }
-
-bool LevelSelect_Active(Game *g)
+bool LevelSelect_IsThemeNode(unsigned char node)
 {
-    if (s_open && g->menu()->node() != 2)
-        s_open = false;
-    return s_open;
+    return node >= LS_THEME_NODE && node < LS_THEME_NODE + s_themeCount;
 }
 
-void LevelSelect_Open(Game *g)
+void LevelSelect_Turn(Game *g, int dir)
 {
-    build_groups(g);
-    if (s_themeCount == 0)
+    MenuTree *m = g->menu();
+    if (m->node() == 2) {
+        if (dir < 0)
+            return;
+        build_nodes(g);
+        if (s_themeCount == 0)
+            return;
+        /* Open on the theme of the level the game last had loaded. */
+        int t = 0;
+        for (int i = 0; i < s_themeCount; i++)
+            if (g->levelIndex() >= s_themeFirst[i])
+                t = i;
+        /* Descend as the navigator's ENTER does. */
+        m->setSavedCursor(2, m->cursor());
+        m->setCursor(0);
+        m->push(2);
+        m->setNode((unsigned char)(LS_THEME_NODE + t));
+        s_top = 0;
+        log_write("levelselect: open, %d themes, %d levels\n",
+                  s_themeCount, (int)g->levelCount());
         return;
-    /* Open on the theme of the level the game last had loaded. */
-    s_theme = 0;
-    for (int t = 0; t < s_themeCount; t++)
-        if (g->levelIndex() >= s_themeFirst[t])
-            s_theme = t;
-    s_row = 0;
-    s_top = 0;
-    s_lastKey = 0x27;                   /* the RIGHT that opened it */
-    s_open = true;
-    log_write("levelselect: open, %d themes, %d levels\n",
-              s_themeCount, (int)g->levelCount());
+    }
+    if (!LevelSelect_IsThemeNode(m->node()))
+        return;
+    /* Sideways: replace the page, the stack is untouched, so ESC still
+     * goes back to Load Game. */
+    int t = (m->node() - LS_THEME_NODE + dir + s_themeCount) % s_themeCount;
+    m->setNode((unsigned char)(LS_THEME_NODE + t));
+    if (m->cursor() >= theme_size(t))
+        m->setCursor((unsigned char)(theme_size(t) - 1));
 }
 
-int LevelSelect_Poll(Game *g)
+int LevelSelect_Chosen(Game *g)
 {
-    static const int keys[] = { 0x0d, 0x1b, 0x25, 0x26, 0x27, 0x28 };
-    int down = 0;
-    for (int k : keys)
-        if (KEY(k) != 0 && down == 0)
-            down = k;
-    if (down == s_lastKey)
-        return -1;                      /* still held, or nothing */
-    s_lastKey = down;
-
-    switch (down) {
-    case 0x26:
-        s_row = s_row ? s_row - 1 : theme_size(s_theme) - 1;
-        break;
-    case 0x28:
-        s_row = s_row + 1 < theme_size(s_theme) ? s_row + 1 : 0;
-        break;
-    case 0x25:
-    case 0x27:
-        s_theme = (s_theme + (down == 0x27 ? 1 : s_themeCount - 1)) % s_themeCount;
-        if (s_row >= theme_size(s_theme))
-            s_row = theme_size(s_theme) - 1;
-        break;
-    case 0x1b:
-        /* Hand the held ESC to the navigator so it does not also pop the
-         * Load Game screen on the next frame. */
-        g->menu()->setLastKey(0x1b);
-        s_open = false;
-        break;
-    case 0x0d: {
-        int level = s_themeFirst[s_theme] + s_row;
-        log_write("levelselect: start level %d (%s)\n",
-                  level, g->levelNameTableEntry((unsigned char)level));
-        s_open = false;
-        return level;
-    }
-    }
-    return -1;
+    MenuTree *m = g->menu();
+    m->pop();                           /* node = theme page, cursor = row */
+    int level = s_themeFirst[m->node() - LS_THEME_NODE] + m->cursor();
+    log_write("levelselect: start level %d (%s)\n",
+              level, g->levelNameTableEntry((unsigned char)level));
+    return level;
 }
 
 void LevelSelect_View(Game *g, LevelSelectView *v)
 {
-    const int n = theme_size(s_theme);
+    const int t   = g->menu()->node() - LS_THEME_NODE;
+    const int n   = theme_size(t);
+    const int row = g->menu()->cursor();
     /* Scroll only as far as it takes to keep the selection visible. */
-    if (s_row < s_top)
-        s_top = s_row;
-    if (s_row >= s_top + LEVELSELECT_ROWS)
-        s_top = s_row - LEVELSELECT_ROWS + 1;
+    if (row < s_top)
+        s_top = row;
+    if (row >= s_top + LEVELSELECT_ROWS)
+        s_top = row - LEVELSELECT_ROWS + 1;
     if (s_top > n - LEVELSELECT_ROWS)
         s_top = n > LEVELSELECT_ROWS ? n - LEVELSELECT_ROWS : 0;
 
-    v->theme = s_themeName[s_theme];
+    v->theme = s_themeName[t];
     v->count = n - s_top < LEVELSELECT_ROWS ? n - s_top : LEVELSELECT_ROWS;
     for (int i = 0; i < v->count; i++) {
-        const char *name = g->levelNameTableEntry((unsigned char)(s_themeFirst[s_theme] + s_top + i));
+        const char *name = g->levelNameTableEntry((unsigned char)(s_themeFirst[t] + s_top + i));
         const char *bs = strchr(name, '\\');
         v->rows[i] = bs ? bs + 1 : name;
     }
-    v->selected = s_row - s_top;
+    v->selected = row - s_top;
 }

@@ -185,20 +185,6 @@ Sim_HandleKeypress(Game *self)
             log_write("keypress: KAROO_SIM_FX=slotshift -- load restores slot k+1\n");
     }
 
-    /* Our level-select page (levelselect.h) takes the whole frame while open. */
-    if (LevelSelect_Active(self)) {
-        int level = LevelSelect_Poll(self);
-        if (level >= 0) {                      /* as New Game, at `level` */
-            Sim_ClearGameState(self);
-            self->setLevelIndex((unsigned char)level);
-            Sim_OpenLevelFile(self, self->levelIndex());
-            Sim_SetupLevelObjects(self);
-            loaded_tail(self);
-            self->debounceRef() = 0x0d;
-        }
-        return;
-    }
-
     int entry = 0;
     if (self->rebindActive() == 0 && self->textEntryActive() == 0) {
         if (KEY(0x1b) != 0 && self->debounceRef() != 0x1b && self->menu()->changed() != 0) {
@@ -260,12 +246,22 @@ Sim_HandleKeypress(Game *self)
             option_edit(self, key);
     }
 
-    /* The original discards this RIGHT poll; we read it to open the level
-     * select from Load Game, so no poll is added to the recorded stream. */
-    if (KEY(0x27) != 0 && self->menu()->nodeRef() == 2 &&
-        self->rebindActive() == 0 && self->textEntryActive() == 0)
-        LevelSelect_Open(self);
-    KEY(0x25);
+    /* The original discards these RIGHT and LEFT polls; the level select
+     * (levelselect.h) reads them, so no poll is added to the recorded
+     * stream.  Edges are its own: the game's debounce belongs to the
+     * option pages that share these keys. */
+    {
+        static bool s_right, s_left;
+        const bool right = KEY(0x27) != 0, left = KEY(0x25) != 0;
+        if (self->rebindActive() == 0 && self->textEntryActive() == 0) {
+            if (right && !s_right)
+                LevelSelect_Turn(self, +1);
+            if (left && !s_left)
+                LevelSelect_Turn(self, -1);
+        }
+        s_right = right;
+        s_left = left;
+    }
     if (self->menu()->nodeRef() != 5 && self->menu()->nodeRef() != 0x50)
         self->setField13cc88(0);
 
@@ -357,6 +353,17 @@ Sim_HandleKeypress(Game *self)
         break;
     default:
         break;
+    }
+
+    /* Our level select's action node: as New Game, at the chosen level. */
+    if (self->menu()->nodeRef() == LS_START) {
+        int level = LevelSelect_Chosen(self);
+        Sim_ClearGameState(self);
+        self->setLevelIndex((unsigned char)level);
+        Sim_OpenLevelFile(self, self->levelIndex());
+        Sim_SetupLevelObjects(self);
+        loaded_tail(self);
+        self->debounceRef() = 0x0d;
     }
 
     /* save-slot LOAD nodes 200 .. 200+n-1 */

@@ -75,6 +75,7 @@
 #include "menutree.h"
 #include "saveslots.h"
 #include "levelselect.h"
+#include "scoreoverlay.h"
 #include "d3dmath.h"
 #include "progctrl.h"
 #include "scenetexture.h"
@@ -243,7 +244,7 @@ static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
     }
 }
 
-/* Our level-select page (levelselect.h): the slot list's panel and 12x14
+/* Menu_RenderLevelSelect -- our level-select pages (levelselect.h): the slot list's panel and 12x14
  * text, packed tighter.  The panel texture carries its own "Load Game"
  * heading above the list, so the page starts where the slot rows do: the
  * theme as "< name >" at 180, then LEVELSELECT_ROWS levels at 208 + 20 i
@@ -258,8 +259,8 @@ static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
 #define LS_MARKER_SPREAD 1.3f       /* level names run wider than menu rows */
 #define LS_ROW_Y    208.0f
 #define LS_ROW_STEP  20.0f
-static void draw_level_select(Game *g, Direct3D *d3d, void *theme,
-                              TextRenderer *text, DWORD ms)
+void Menu_RenderLevelSelect(Game *g, void *theme, Direct3D *d3d,
+                            TextRenderer *text, DWORD ms)
 {
     LevelSelectView v;
     LevelSelect_View(g, &v);
@@ -311,10 +312,6 @@ extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderRestoreSlotList(Game *g, void *theme, Direct3D *d3d,
                            TextRenderer *text, DWORD ms)
 {
-    if (LevelSelect_Active(g)) {
-        draw_level_select(g, d3d, theme, text, ms);
-        return;
-    }
     draw_panel(d3d, theme, g_panelTexture, g_listQuad);
     draw_slot_rows(g, d3d, theme, text, THEME_RESTORE_COL);
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
@@ -785,4 +782,41 @@ Menu_RenderCreditsScroll(Game *game, Direct3D *d3d, TextRenderer *text,
 
     if (g_creditsScroll < -1800.0f)
         g_creditsStartMs = nowMs;
+}
+
+/* ═══ DispatchGameState 0x0042e000, 1 E8 site (0x0042CA10, RenderGameFrame) ═══
+ *
+ * A byte table (0x42e158, nodes 0..0x2a) into a jump table (0x42e130) of
+ * nine tail calls, each forwarding its own five arguments; any other node
+ * draws nothing.  Credits alone drops `theme`.  The caller discards EAX.
+ *
+ *   node  0     RenderMainMenu        node  0xa   RenderControlsRemap
+ *   node  2     RenderRestoreSlotList node  0xb   RenderVideoOptions
+ *   node  4     RenderOptionsMenu     node  0xc   RenderSoundOptions
+ *   node  5     RenderCreditsScroll   node  0x28  RenderLevelComplete
+ *                                     node  0x2a  RenderSaveSlotList
+ *
+ * Our addition: the level select's theme nodes (0x60 + t) draw
+ * Menu_RenderLevelSelect -- the game never reaches them.
+ */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_DispatchGameState(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
+                       DWORD ms)
+{
+    const unsigned char node = g->menu()->node();
+    switch (node) {
+    case 0:    Menu_RenderMainMenu(g, theme, d3d, text, ms); break;
+    case 2:    Menu_RenderRestoreSlotList(g, theme, d3d, text, ms); break;
+    case 4:    Menu_RenderOptionsMenu(g, theme, d3d, text, ms); break;
+    case 5:    Menu_RenderCreditsScroll(g, d3d, text, ms); break;
+    case 0xa:  Menu_RenderControlsRemap(g, theme, d3d, text, ms); break;
+    case 0xb:  Menu_RenderVideoOptions(g, theme, d3d, text, ms); break;
+    case 0xc:  Menu_RenderSoundOptions(g, theme, d3d, text, ms); break;
+    case 0x28: Menu_RenderLevelComplete(g, theme, d3d, text, ms); break;
+    case 0x2a: Menu_RenderSaveSlotList(g, theme, d3d, text, ms); break;
+    default:
+        if (LevelSelect_IsThemeNode(node))
+            Menu_RenderLevelSelect(g, theme, d3d, text, ms);
+        break;
+    }
 }

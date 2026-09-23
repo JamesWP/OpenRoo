@@ -30,6 +30,10 @@
  *   0x00433dc0  RenderLevelComplete     node 0x28 Menu_RenderLevelComplete
  *               (in scoreoverlay.cpp: its body is DrawGameOverScore's)
  *   0x00436550  RenderCreditsScroll     node 5    Menu_RenderCreditsScroll
+ *   0x0042e000  DispatchGameState       all       Menu_DispatchGameState
+ *
+ * Our addition, no original: Menu_RenderLevelSelect, the level-select pages
+ * (levelselect.h, nodes 0x60 + t).
  */
 
 class Game;
@@ -93,3 +97,12 @@ Menu_RenderSoundOptions(Game *g, void *theme, Direct3D *d3d,
 extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderCreditsScroll(Game *game, Direct3D *d3d, TextRenderer *text,
                          DWORD nowMs);
+
+/* 0x0042e000 -- picks the screen for the current menu node. */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_DispatchGameState(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
+                       DWORD ms);
+
+/* Ours: a level-select theme page (levelselect.h). */
+void Menu_RenderLevelSelect(Game *g, void *theme, Direct3D *d3d,
+                            TextRenderer *text, DWORD ms);

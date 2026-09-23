@@ -49,11 +49,19 @@ public:
     void           setLastKey(unsigned char k)      { lastKey_ = k; }
     unsigned char  cursor() const                   { return cursor_; }
     void           setCursor(unsigned char c)       { cursor_ = c; }
+    unsigned char  savedCursor(unsigned char node) const { return savedCursor_[node]; }
+    void           setSavedCursor(unsigned char node, unsigned char c) { savedCursor_[node] = c; }
     unsigned char  childCount(unsigned char node) const { return childCount_[node]; }
     void           setChildCount(unsigned char node, unsigned char n) { childCount_[node] = n; }
     unsigned char  child(unsigned char node, unsigned char i) const
     {
         return children_[(unsigned)node * CHILD_STRIDE + i];
+    }
+    /* Our addition, for the level select's nodes (levelselect.h), which
+     * the game's builder never fills. */
+    void           setChild(unsigned char node, unsigned char i, unsigned char c)
+    {
+        children_[(unsigned)node * CHILD_STRIDE + i] = c;
     }
     /* A node's row of children, for callers that copy it whole (menu.cpp
      * copies 256 bytes -- one past the 0xff-byte row, as it always has). */

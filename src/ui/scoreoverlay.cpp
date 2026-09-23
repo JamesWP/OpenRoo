@@ -80,6 +80,7 @@
  *            and every text row untouched: the panels vanish, the text stays.
  */
 #include <stdio.h>
+#include "scoreoverlay.h"
 #include "direct3d.h"
 #include "texture.h"
 #include "log.h"
