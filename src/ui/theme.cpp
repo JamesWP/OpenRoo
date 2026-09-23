@@ -364,9 +364,9 @@ static int float_plausible(float f)
 
 static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
 {
-    const char *kindNote = (r.dwKind <= 4) ? "" : "  SUSPICIOUS dwKind";
-    log_write("THEME_STRUCT:   %s[%d] dwKind=%lu%s pMesh=%p%s subobj=%lu%s\n",
-              slotName, i, (unsigned long)r.dwKind, kindNote, (void *)r.pMesh,
+    const char *kindNote = (r.kind <= THEME_KIND_PARTICLESYSTEM) ? "" : "  SUSPICIOUS kind";
+    log_write("THEME_STRUCT:   %s[%d] kind=%lu%s pMesh=%p%s subobj=%lu%s\n",
+              slotName, i, (unsigned long)r.kind, kindNote, (void *)r.pMesh,
               ptr_plausible(r.pMesh) ? "" : "  SUSPICIOUS pMesh",
               (unsigned long)r.dwSubObjectCount,
               r.dwSubObjectCount <= 8 ? "" : "  SUSPICIOUS dwSubObjectCount");
@@ -401,7 +401,7 @@ static void dump_slot(const char *name, const ThemeObjectTypeSlot &slot)
  * no allocation, this DLL and Karoo.exe share one address space.  Prints a
  * plausibility report, not a correctness proof: the point is to catch a
  * struct offset that is simply wrong (a pointer that looks like a small
- * integer, a float that is NaN, a dwKind that is not 0..4) before trusting
+ * integer, a float that is NaN, a kind that is not 0..4) before trusting
  * this layout for anything that writes.  Gated by KAROO_THEME_STRUCT_DIAG,
  * read by value per CLAUDE.md; fires once per real .thm close, i.e. after
  * the game's own ThemeFileLoader has fully populated the block. */

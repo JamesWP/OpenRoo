@@ -13,11 +13,20 @@
 void theme_diag_on_open(const char *path, void *fp);
 void theme_diag_on_close(void *fp);
 
+enum ThemeObjectKind : DWORD {
+    THEME_KIND_NONE           = 0,
+    THEME_KIND_MODEL          = 1,
+    THEME_KIND_FIELD          = 2,
+    THEME_KIND_BILLBOARD      = 3,
+    THEME_KIND_PARTICLESYSTEM = 4,
+};
+static_assert(sizeof(ThemeObjectKind) == 4, "ThemeObjectKind must stay DWORD-sized");
+
 class __attribute__((packed)) ThemeLevelObject {
 public:
     static const int ORIGIN = 0;
 
-    DWORD        dwKind;
+    ThemeObjectKind kind;
     CFaktMesh   *pMesh;
     WrapperObject wrapper;
     BYTE         gap_015[0xc1 - 0x08 - sizeof(WrapperObject)];
@@ -58,7 +67,7 @@ private:
 
 KAROO_LAYOUT_CHECKS(ThemeLevelObject)
 {
-    KAROO_LAYOUT_AT(dwKind,           0x000);
+    KAROO_LAYOUT_AT(kind,             0x000);
     KAROO_LAYOUT_AT(pMesh,            0x004);
     KAROO_LAYOUT_AT(wrapper,          0x008);
     KAROO_LAYOUT_AT(animTable,        0x0c1);
