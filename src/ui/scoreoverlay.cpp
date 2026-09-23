@@ -86,6 +86,7 @@
 #include "game.h"
 #include "textrenderer.h"
 #include "gamestr.h"
+#include "menuscreens.h"
 
 #define OVERLAY_FVF   0x1c4     /* XYZRHW | DIFFUSE | SPECULAR | TEX1 */
 #define SCORE_LOG_FIRST 4
@@ -336,9 +337,15 @@ static const ScoreRow k_rows[] = {
     { 0.515625f, GS_HUD_TOTAL_SCORE, 0x1404f9, NULL,                     0 },
 };
 
-extern "C" __declspec(dllexport) void __cdecl
-Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
-                        TextRenderer *text, int n)
+/* The body game-over and level-complete share: backdrop, title, the eight
+ * tally rows.  RenderLevelComplete 0x433dc0 is this function's twin -- the
+ * same stack backdrop, the same drawBig title (cell 24, 0.8, yellow/red,
+ * wobble 3 and 0.01, phase n), the same row y constants (0x45d520 ..
+ * 0x45d568 read back equal to the table below), strings, offsets, columns
+ * and colour pair; checked call by call against both listings.  Only the
+ * title text and what follows the rows differ. */
+static void draw_summary(Game *g, void *game, Direct3D *d3d,
+                         TextRenderer *text, int n, const char *title)
 {
     const DWORD dwWidth = d3d->pSelectedMode->dwWidth;
     const float w = (float)dwWidth;
@@ -352,16 +359,12 @@ Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
         d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, OVERLAY_FVF,
                                     quad, 4, 0);
 
-    static LONG calls = 0;
-    if (InterlockedIncrement(&calls) <= SCORE_LOG_FIRST)
-        log_write("scoreoverlay: gameover %.0fx%.0f n=%d\n", w, h, n);
-
     const float S = w * VSCALE;          /* one virtual unit, in pixels */
 
-    /* "GAME OVER" — 24-unit cell, scale 0.8, two colours and two extra
-     * floats the smaller entry point does not take. */
+    /* 24-unit cell, scale 0.8, two colours and two extra floats the smaller
+     * entry point does not take. */
     text->drawBig(w * 0.5f, S * 130.0f, S * 24.0f, S * 24.0f, 0.8f,
-                  GS_HUD_GAME_OVER, d3d, 0,
+                  title, d3d, 0,
                   0xffffff00, 0xffff0000, S * 3.0f, 0.01f, n);
 
     const float cellW = (float)(dwWidth * 12) * VSCALE;
@@ -391,8 +394,60 @@ Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
                             GM_D(GM_GO_COL_TOP), GM_D(GM_GO_COL_BOT));
         }
     }
+}
 
-    text->drawCentered(w * 0.5f, w * 0.59375f, cellW, cellH, 0.75f,
+extern "C" __declspec(dllexport) void __cdecl
+Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
+                        TextRenderer *text, int n)
+{
+    static LONG calls = 0;
+    if (InterlockedIncrement(&calls) <= SCORE_LOG_FIRST)
+        log_write("scoreoverlay: gameover %lux%lu n=%d\n",
+                  (unsigned long)d3d->pSelectedMode->dwWidth,
+                  (unsigned long)d3d->pSelectedMode->dwHeight, n);
+
+    draw_summary(g, game, d3d, text, n, GS_HUD_GAME_OVER);
+
+    const DWORD dwWidth = d3d->pSelectedMode->dwWidth;
+    const float w = (float)dwWidth;
+    text->drawCentered(w * 0.5f, w * 0.59375f,
+                       (float)(dwWidth * 12) * VSCALE,
+                       (float)(dwWidth * 14) * VSCALE, 0.75f,
                        GS_HUD_PRESS_ENTER, d3d, 0,
                        GM_D(GM_HUD_COL_TOP), GM_D(GM_HUD_COL_BOT));
+}
+
+/* ─── RenderLevelComplete (0x433dc0) ─────────────────────────────────────── */
+
+/* Menu node 0x28 (ENDGAME_PLAN.md E6).  A MenuScreens function -- dispatched
+ * by DispatchGameState with the usual five arguments -- but it lives here
+ * because its body IS draw_summary.  Afterwards: "Next" centred at 0.59375
+ * in the theme pair at +0x6f98c (theme key not looked up), "Save" at
+ * 0.64375 in its own pair
+ * (+0x6f994) only when Game+0x14 (nextLevelBonus) is 0, and the cursor
+ * markers 200 virtual units down.  The row cells re-read the width per call
+ * in the original; the width does not change within a frame. */
+#define GM_NEXT_COL_TOP 0x6f98c
+#define GM_NEXT_COL_BOT 0x6f990
+#define GM_SAVE_COL_TOP 0x6f994
+#define GM_SAVE_COL_BOT 0x6f998
+
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderLevelComplete(Game *g, void *game, Direct3D *d3d,
+                         TextRenderer *text, DWORD ms)
+{
+    draw_summary(g, game, d3d, text, (int)ms, "LEVEL COMPLETED");
+
+    const DWORD dwWidth = d3d->pSelectedMode->dwWidth;
+    const float w = (float)dwWidth;
+    const float cellW = (float)(dwWidth * 12) * VSCALE;
+    const float cellH = (float)(dwWidth * 14) * VSCALE;
+    text->drawCentered(w * 0.5f, w * 0.59375f, cellW, cellH, 0.75f, "Next",
+                       d3d, 0, GM_D(GM_NEXT_COL_TOP), GM_D(GM_NEXT_COL_BOT));
+    if (g->nextLevelBonus() == 0)
+        text->drawCentered(w * 0.5f, w * 0.64375001f, cellW, cellH, 0.75f,
+                           "Save", d3d, 0,
+                           GM_D(GM_SAVE_COL_TOP), GM_D(GM_SAVE_COL_BOT));
+
+    Menu_DrawCursorMarkers(g, d3d, ms, 200.0f);
 }

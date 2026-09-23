@@ -74,6 +74,11 @@ ProgCtrl_Dispatch(ProgableControl *self, unsigned short game_state);
 __declspec(dllexport) void __attribute__((thiscall))
 ProgCtrl_ClearBindings(ProgableControl *self, unsigned short mode,
                        const char *name);
+/* 0x446830 GetActionAssignmentString: the action's bound key names, joined,
+ * into buf (at most bufsz bytes). */
+__declspec(dllexport) void __attribute__((thiscall))
+ProgCtrl_GetBindingStr(ProgableControl *self, int mode, const char *name,
+                       char *buf, unsigned int bufsz);
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_CaptureBinding(ProgableControl *self, unsigned int mode,
                         const char *name, int strength, int allow_axis,
