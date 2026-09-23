@@ -24,7 +24,7 @@ void LevelSelect_Open(Game *g);
 int LevelSelect_Poll(Game *g);
 
 /* How many rows the page shows; a longer theme scrolls. */
-static const int LEVELSELECT_ROWS = 9;
+static const int LEVELSELECT_ROWS = 8;
 
 /* What the page draws: the current theme's name, the visible window of its
  * levels, and the selected row's position within that window. */

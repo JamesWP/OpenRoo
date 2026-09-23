@@ -153,14 +153,10 @@ static void draw_markers(Direct3D *d3d, float y0, float left, float right)
     d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, p, 4, 0);
 }
 
-/* The body of DrawCursorMarkers at an explicit row; the level select
- * (not a menu-tree node, so not the menu's cursor) calls it directly. */
-static void cursor_markers_at_row(Direct3D *d3d, DWORD ms, unsigned row,
-                                  float rowOffset)
+/* The animated pair at top y0 (pixels): DrawCursorMarkers' tail, shared
+ * with the level select, which places it by its own row spacing. */
+static void animated_markers(Direct3D *d3d, DWORD ms, float y0)
 {
-    const DWORD w  = mode_width(d3d);
-    const float y0 = (float)(w * 172) * K640
-                   + ((float)row * 0.05f + rowOffset * K640) * (float)w;
     const double t = (double)ms * 0.01;
     draw_markers(d3d, y0, (float)(sin(t) * 4.0 + 244.0),
                  (float)(sin(t + 3.14159274101257) * 4.0 + 396.0));
@@ -169,7 +165,10 @@ static void cursor_markers_at_row(Direct3D *d3d, DWORD ms, unsigned row,
 extern "C" __declspec(dllexport) void __cdecl
 Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
 {
-    cursor_markers_at_row(d3d, ms, g->menu()->cursor(), rowOffset);
+    const DWORD w  = mode_width(d3d);
+    const float y0 = (float)(w * 172) * K640
+                   + ((float)g->menu()->cursor() * 0.05f + rowOffset * K640) * (float)w;
+    animated_markers(d3d, ms, y0);
 }
 
 /* ── DrawControlsCursorMarkers 0x00437740 ─────────────────────────────────
@@ -251,11 +250,15 @@ static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
     }
 }
 
-/* Our level-select page (levelselect.h), drawn as the slot list is: the
- * same panel, 12x14 rows at 180 + 32 i in 640-space, and the menus' own
- * cursor markers at the selected row.  Nine rows fit; longer themes scroll
- * (LevelSelect_View picks the window).  The theme sits above as "< name >"
- * at 140 in the main menu's first colour pair. */
+/* Our level-select page (levelselect.h): the slot list's panel and 12x14
+ * text, packed tighter -- the theme as "< name >" at 140, then
+ * LEVELSELECT_ROWS levels at 168 + 20 i in 640-space, the last at 308, where
+ * the panel's usable band ends.  Longer themes scroll (LevelSelect_View picks
+ * the window).  The menus' cursor markers sit 8 above the row, as they do
+ * on the 32-unit menus (172 against 180). */
+#define LS_TITLE_Y  140.0f
+#define LS_ROW_Y    168.0f
+#define LS_ROW_STEP  20.0f
 static void draw_level_select(Game *g, Direct3D *d3d, void *theme,
                               TextRenderer *text, DWORD ms)
 {
@@ -270,12 +273,13 @@ static void draw_level_select(Game *g, Direct3D *d3d, void *theme,
     char title[80];
 
     snprintf(title, sizeof(title), "< %s >", v.theme);
-    text->drawCentered(x, fw * 140.0f * K640, cw, ch, 0.75f, title, d3d, 0,
+    text->drawCentered(x, fw * LS_TITLE_Y * K640, cw, ch, 0.75f, title, d3d, 0,
                        themeCol[0], themeCol[1]);
     for (int i = 0; i < v.count; i++)
-        text->drawCentered(x, fw * (180.0f + 32.0f * i) * K640, cw, ch, 0.75f,
+        text->drawCentered(x, fw * (LS_ROW_Y + LS_ROW_STEP * i) * K640, cw, ch, 0.75f,
                            v.rows[i], d3d, 0, rowCol[0], rowCol[1]);
-    cursor_markers_at_row(d3d, ms, (unsigned)v.selected, 0.0f);
+    animated_markers(d3d, ms,
+                     fw * (LS_ROW_Y - 8.0f + LS_ROW_STEP * v.selected) * K640);
 }
 
 static const char *const k_mainMenuRows[6] = {
