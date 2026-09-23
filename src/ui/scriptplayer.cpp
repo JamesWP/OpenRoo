@@ -85,6 +85,12 @@
 #include "log.h"
 #include "scriptplayer.h"
 #include "stream.h"
+#include "alloc.h"
+#include "gamelog.h"
+#include "gameglobals.h"
+#include "splinepath.h"
+#include <stdlib.h>
+#include <math.h>
 
 /* ─── ReleaseScriptStreamBuffers 0x0041e840 ─────────────────────────────
  *
@@ -444,4 +450,343 @@ int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
                   (unsigned)splineLines_);
     }
     return 0;                                /* defect 1 */
+}
+
+/* ─── The player: TickScriptPlayer 0x41d920 and PlayScript 0x41dbe0 ───────
+ *
+ * The script is read whole at level load (readForLevel above) and executed a
+ * line at a time as the level plays.  The original's two functions split the
+ * same way this code does, just less visibly:
+ *
+ *   playScript()   runs ONE line.  It only fills in state -- a glide target,
+ *                  a wait, a new spline, a camera value -- and returns.
+ *   the updates    advance that state by one frame: the stream wait, the
+ *                  spline, the timed wait, the glide.
+ *   tick()         orders them.
+ *
+ * The order in tick() is the original's and it is observable, so it is kept
+ * exactly: the spline runs every frame *alongside* later commands (only the
+ * stream wait, the timed wait and the glide hold the next line back); at
+ * most one line runs per frame; and a frame that fetches a line does no
+ * waiting or gliding, while a wait that expires this frame fetches the next
+ * line only on the following one.
+ *
+ * Game bugs kept on purpose (CLAUDE.md "preserve bugs"), each marked BUG:
+ * movetoxyz truncates its target to 0..255; the spline's end negates eye y;
+ * "distance" compares the raw line rather than the token; "text" on a line
+ * of under six characters copies a negative length; initwave keeps a pointer
+ * into a stack buffer.  An all-delimiter line reaches strcmp with NULL, as it
+ * does in the original.
+ *
+ * Every callee is ours: the SplinePath methods, the stream exports, the
+ * logger.  The one game-heap site is initwave's operator new(0xd4): the
+ * stream's deleting dtor frees with game_free2 because InitStreamSoundBuffer
+ * 0x443c70 -- still the game's -- allocates the same class.  It retires with
+ * that function (ENDGAME_PLAN "alloc.h retires by attrition").
+ *
+ * KAROO_JJS_FX=glide reverses every movetoxyz direction (a result only this
+ * code can produce).  KAROO_JJS_DIAG=1 logs each executed command.
+ */
+
+/* The player's position, which splinexyz takes as its first point.
+ * levelsetup.cpp calls the same three floats GBL_LISTENER. */
+#define GBL_PLAYER_POS ((const float *)0x0046c4a0)
+
+static const char JJS_DELIMS[] = " ,\t\n;";
+
+static bool jjs_fx_glide(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        char buf[16];
+        cached = GetEnvironmentVariableA("KAROO_JJS_FX", buf, sizeof(buf))
+                 && lstrcmpiA(buf, "glide") == 0;
+    }
+    return cached != 0;
+}
+
+static bool jjs_diag(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        char buf[16];
+        cached = GetEnvironmentVariableA("KAROO_JJS_DIAG", buf, sizeof(buf))
+                 && buf[0] == '1';
+    }
+    return cached != 0;
+}
+
+/* __ftol: truncate toward zero to 64 bits; callers keep the bits they need. */
+static long long ftol64(double v) { return (long long)v; }
+
+static float next_float(void) { return (float)atof(strtok(NULL, JJS_DELIMS)); }
+
+unsigned char ScriptPlayer::playScript(const char *line)
+{
+    char buf[LINE_SIZE];
+    strcpy(buf, line);
+    const char *cmd = strtok(buf, JJS_DELIMS);
+    SplinePath *spline = (SplinePath *)((char *)this + 0x93d);
+
+    if (jjs_diag())
+        log_write("jjscript: line %u cmd %s\n", cursor_, cmd ? cmd : "(null)");
+
+    if (strcmp(cmd, "fromhere") == 0) {
+        againLine_ = cursor_ + 1;
+        return 0x37;
+    }
+    if (strcmp(cmd, "gotoxyz") == 0) {
+        eye_[0] = next_float();
+        eye_[1] = next_float();
+        eye_[2] = next_float();
+        return 2;
+    }
+    if (strcmp(cmd, "movetoxyz") == 0) {
+        /* BUG: each target coordinate keeps only its low byte. */
+        for (int i = 0; i < 3; ++i)
+            target_[i] = (float)(int)(ftol64(atof(strtok(NULL, JJS_DELIMS))) & 0xff);
+        float speed = next_float();
+        moving_ = 1;
+        speed_ = speed;
+        memcpy(from_, eye_, sizeof(from_));
+        start_ = now_;
+        float dx = target_[0] - eye_[0];
+        float dy = target_[1] - eye_[1];
+        float dz = target_[2] - eye_[2];
+        float len = (float)sqrt((double)dx * dx + (double)dy * dy + (double)dz * dz);
+        /* A 32-bit ftol result loaded as unsigned (FILD qword, high dword 0). */
+        duration_ = (double)(unsigned int)ftol64(len / (speed * 0.001f));
+        dir_[0] = dx / len;
+        dir_[1] = dy / len;
+        dir_[2] = dz / len;
+        if (jjs_fx_glide())
+            for (int i = 0; i < 3; ++i)
+                dir_[i] = -dir_[i];
+        return 3;
+    }
+    if (strcmp(cmd, "observe") == 0) {
+        cameraMode_ = (unsigned char)ftol64(atof(strtok(NULL, JJS_DELIMS)));
+        splineActive_ = (cameraMode_ == 0);
+        return 5;
+    }
+    if (strcmp(cmd, "setcamposxyz") == 0) {
+        splinePoint_[0] = next_float();
+        splinePoint_[1] = (float)-atof(strtok(NULL, JJS_DELIMS));
+        splinePoint_[2] = next_float();
+        return 0xc;
+    }
+    if (strcmp(cmd, "setcamtargetxyz") == 0) {
+        eye_[0] = next_float();
+        eye_[1] = (float)-atof(strtok(NULL, JJS_DELIMS));
+        eye_[2] = next_float();
+        return 0xd;
+    }
+    if (strcmp(cmd, "again") == 0) {
+        running_ = 1;
+        cursor_ = againLine_;
+        return 6;
+    }
+    if (strcmp(cmd, "break") == 0) {
+        cursor_ = 0;
+        running_ = 0;
+        return 7;
+    }
+    /* BUG: compares the whole buffer, not the token -- the same unless the
+     * line begins with a delimiter. */
+    if (strcmp(buf, "distance") == 0) {
+        cameraDistance_ = next_float();
+        return 8;
+    }
+    if (strcmp(cmd, "text") == 0) {
+        /* Drops "text " and the trailing "\n" the reader appended.
+         * BUG: a line under six characters gives a negative length. */
+        size_t n = strlen(line) - 6;
+        memcpy(scratch_, line + 5, n);
+        scratch_[n] = '\0';
+        return 9;
+    }
+    if (strcmp(cmd, "wait") == 0) {
+        waitStart_ = now_;
+        waiting_ = 1;
+        waitSeconds_ = atof(strtok(NULL, JJS_DELIMS));
+        return 4;
+    }
+    if (strcmp(cmd, "anglexyz") == 0) {
+        angle_[0] = next_float();
+        angle_[1] = next_float();
+        angle_[2] = next_float();
+        return 10;
+    }
+    if (strcmp(cmd, "splinexyz") == 0) {
+        field_92d_ = 1;
+        Spline_PurgeControlPoints(spline);
+        memcpy(splinePoint_, GBL_PLAYER_POS, sizeof(splinePoint_));
+        start_ = now_;
+        /* An int product loaded as unsigned (FILD qword, high dword 0). */
+        duration_ = (double)(unsigned int)(atoi(strtok(NULL, JJS_DELIMS)) * 1000);
+        float x = next_float();
+        float y = (float)-atof(strtok(NULL, JJS_DELIMS));
+        char *tz = strtok(NULL, JJS_DELIMS);
+        float z = (float)atof(tz);
+        Spline_AddControlPoint(spline, x, z, y);      /* (x, z, -y) */
+        /* Further triples; a point is added only when all three parsed, and
+         * a missing one keeps the previous value.  Ends when z is absent. */
+        while (tz != NULL) {
+            int got = 0;
+            char *t = strtok(NULL, JJS_DELIMS);
+            if (t) { x = (float)atof(t); ++got; }
+            t = strtok(NULL, JJS_DELIMS);
+            if (t) { y = (float)-atof(t); ++got; }
+            tz = strtok(NULL, JJS_DELIMS);
+            if (tz) { z = (float)atof(tz); ++got; }
+            if (got == 3)
+                Spline_AddControlPoint(spline, x, z, y);
+        }
+        splineActive_ = 1;
+        return 0xb;
+    }
+    if (strcmp(cmd, "initwave") == 0) {
+        GameLog_LogMessage(GG_LOGGER, 1, "IS: initwave noticed");
+        char *name = strtok(NULL, JJS_DELIMS);
+        if (name) {
+            if (soundManager_)
+                streamWave_.pFilename = name;   /* BUG: points into buf */
+            char *tid = strtok(NULL, JJS_DELIMS);
+            if (tid) {
+                unsigned char id = (unsigned char)atoi(tid);
+                if (!soundManager_) {
+                    durations_[id] = 10;
+                    return 0xc;
+                }
+                if (streams_[id]) {
+                    GameLog_LogMessage(GG_LOGGER, 3,
+                        "IS: warning - Stream sound buffer width id %d already initialized!", id);
+                    return 0xc;
+                }
+                void *mem = game_operator_new(0xd4);
+                CStreamSoundbuffer *s = mem ? CStream_Initialize((CStreamSoundbuffer *)mem) : NULL;
+                streams_[id] = s;
+                streamReady_ = CStream_Prepare(s, &streamWave_);
+                if (streamReady_)
+                    GameLog_LogMessage(GG_LOGGER, 1,
+                        "IS: Stream buffer width name %s successfully initialized, ID=%d",
+                        streamWave_.pFilename, id);
+                else
+                    GameLog_LogMessage(GG_LOGGER, 1,
+                        "IS: warning - Stream sound buffer width name %s could not initialized !",
+                        streamWave_.pFilename);
+            }
+        }
+        return 0xc;
+    }
+    if (strcmp(cmd, "playwave") == 0) {
+        char *tid = strtok(NULL, JJS_DELIMS);
+        if (tid) {
+            unsigned char id = (unsigned char)atoi(tid);
+            if (!soundManager_) {
+                /* Soundless: "WAIT" waits the id's nominal duration. */
+                char *w = strtok(NULL, JJS_DELIMS);
+                if (w && strcmp(w, "WAIT") == 0) {
+                    waitStart_ = now_;
+                    waiting_ = 1;
+                    waitSeconds_ = (double)durations_[id];
+                }
+            } else if (streams_[id]) {
+                CStream_Play(streams_[id]);
+                waitingOnStream_ = 0;
+                char *w = strtok(NULL, JJS_DELIMS);
+                if (w && strcmp(w, "WAIT") == 0) {
+                    waitingOnStream_ = 1;
+                    waitStream_ = id;
+                }
+                GameLog_LogMessage(GG_LOGGER, 1,
+                    "IS: Stream sound buffer width ID=%d started,wait=%d", id, waitingOnStream_);
+            }
+        }
+        return 0xd;
+    }
+    if (cmd[0] == '/' && cmd[1] == '/')
+        return 0xff;
+    return 0;
+}
+
+/* A "playwave <id> WAIT" stream wait ends when that stream's thread is done. */
+void ScriptPlayer::updateStreamWait()
+{
+    if (waitingOnStream_ && streams_[waitStream_]->dwThread_done) {
+        waitingOnStream_ = 0;
+        streamReady_ = 0;
+    }
+}
+
+/* The camera spline, evaluated at the elapsed fraction of its duration. */
+void ScriptPlayer::updateSpline()
+{
+    if (!splineActive_ || !cameraMode_)
+        return;
+    double elapsed = now_ - start_;
+    if (elapsed < duration_) {
+        float out[3];
+        const float *p = (const float *)Spline_EvalBezierPath(
+            (SplinePath *)((char *)this + 0x93d), out, (float)(elapsed / duration_));
+        memcpy(splinePoint_, p, sizeof(splinePoint_));
+    } else {
+        eye_[1] = -eye_[1];                     /* BUG, kept */
+        splineActive_ = 0;
+    }
+}
+
+/* A "wait <seconds>" ends once that many seconds of the clock have passed. */
+void ScriptPlayer::updateWait()
+{
+    if (waiting_ && waitSeconds_ * 1000.0 <= now_ - waitStart_)
+        waiting_ = 0;
+}
+
+/* The movetoxyz glide: step along dir_, snap to the target when time is up. */
+void ScriptPlayer::updateGlide()
+{
+    if (!moving_)
+        return;
+    if (duration_ <= now_ - start_) {
+        moving_ = 0;
+        memcpy(eye_, target_, sizeof(eye_));
+        return;
+    }
+    float dt = (float)dt_;
+    float step = speed_ * 0.001f;
+    for (int i = 0; i < 3; ++i)
+        eye_[i] = dt * dir_[i] * step + eye_[i];
+}
+
+/* Fetch the line at the cursor and run it; log it if playScript refuses. */
+void ScriptPlayer::runNextCommand()
+{
+    if (lineCount_ < cursor_)
+        return;
+    strcpy(currentLine_, lines_[cursor_]);
+    ++cursor_;
+    if (lineCount_ < cursor_)
+        running_ = 0;
+    if (playScript(currentLine_))
+        return;
+    currentLine_[strlen(currentLine_) - 1] = '\0';   /* drop the "\n" */
+    GameLog_LogMessage(GG_LOGGER, 3, "IS:** error at command %d:%s **",
+                       (int)cursor_, currentLine_);
+}
+
+void ScriptPlayer::tick(double now, double dt)
+{
+    now_ = now;
+    dt_ = dt;
+    updateStreamWait();
+    updateSpline();
+    if (waitingOnStream_)
+        return;
+    if (!waiting_ && !moving_) {
+        runNextCommand();
+        return;
+    }
+    updateWait();
+    updateGlide();
 }

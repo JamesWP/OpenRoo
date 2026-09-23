@@ -98,8 +98,12 @@ enum TileKind {
     TILE_BRIDGE_V    = 0x13,
     /* Carries whoever stands on it along conveyorDir. */
     TILE_CONVEYOR    = 0x15,
-    /* Blocked unconditionally, by both FoePath and worldstate.  Named for
-     * what the code does with it; what it IS on screen is not settled. */
+    /* Blocked unconditionally, by both FoePath and worldstate.  On screen
+     * it is whatever the level's .leo stands on that cell -- a crate, the
+     * beehive, a stacked busch_* bush-tree: in Forest\Start the six 0x16
+     * cells are exactly the six .leo object sites (.leo x,y = map column,
+     * row).  Nothing links the two files; the level designers placed both,
+     * so under KAROO_LEO_FX=nomodels the cells stay blocked and bare. */
     TILE_IMPASSABLE  = 0x16,
     /* A destructible block, and the game's own word for it is "obstacle":
      * Bomb's blast logs "GAME: obstacle is exploding at:%d,%d,%d" as it

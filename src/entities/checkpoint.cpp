@@ -6,10 +6,8 @@
  * __fastcall, Game base in ECX, bare RET.  Transcribed from the LISTING.
  *
  * Its one callee, the script-player tick 0x0041d920, is the entry into the
- * whole script interpreter (PlayScript and the camera spline).  It is KEPT
- * as a named callback, ScriptPlayer::tick (scriptplayer.h): replacing it
- * means replacing the interpreter, which is ASSET_PLAN/jjscript territory,
- * not a GameTick band.
+ * whole script interpreter (PlayScript and the camera spline).  Both are
+ * ours: ScriptPlayer::tick (scriptplayer.cpp).
  *
  *   if script running && script loaded:          (ScriptPlayer +0xdae, +0x9b1)
  *     script->tick(clock, dt)
