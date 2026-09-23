@@ -913,9 +913,8 @@ void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *su
 /* One parser per call; 4 KB of tokens, so not on the stack. */
 static ThemeParser s_parser;
 
-extern "C" __declspec(dllexport) bool __cdecl
-Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block, char *path,
-           GameLogger *logger)
+static bool theme_load(Game *game, Direct3D *d3d, ThemeAssetBlock *block,
+                       char *path, GameLogger *logger)
 {
     Theme_ReleaseBlock(block);
     d3d->pDevice->SetRenderState(D3DRENDERSTATE_FOGENABLE, 0);
@@ -933,6 +932,24 @@ Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block, char *path,
     fclose(fp);
     strcpy(block->themeName, path);   /* unbounded, as the original */
     return true;
+}
+
+/* The export: the load above, timed.  The time goes to karoo_hooks.log only
+ * and never into game state, so it is not a replay-determinism input. */
+extern "C" __declspec(dllexport) bool __cdecl
+Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block, char *path,
+           GameLogger *logger)
+{
+    LARGE_INTEGER freq, t0, t1;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&t0);
+
+    bool ok = theme_load(game, d3d, block, path, logger);
+
+    QueryPerformanceCounter(&t1);
+    double ms = (double)(t1.QuadPart - t0.QuadPart) * 1000.0 / (double)freq.QuadPart;
+    log_write("theme: %s %s in %.2f ms\n", path, ok ? "loaded" : "NOT opened", ms);
+    return ok;
 }
 
 #pragma GCC diagnostic pop
