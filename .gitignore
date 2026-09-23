@@ -29,6 +29,7 @@ replaytest-*.json
 # it is compared against lives in tests/levelreport/ (tools/levelreport.py).
 LevelReport.txt
 ScriptTexts.txt
+LeoRecords.txt
 !tests/levelreport/*.txt
 
 # DrawSceneObjects golden-output fixture run output (karoo-hooks/dsogolden.cpp).

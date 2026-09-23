@@ -10,8 +10,8 @@
  *                                    spline points, vtable 0x45d450,
  *                                    objectCount = 0, and the sound handle
  *                                    of records 0..254 -- NOT 255 -- zeroed
- *   ParseExtraObjectEntry  0x423700  builds one record per .leo entry; still
- *                                    the game's (a named callback)
+ *   ParseExtraObjectEntry  0x423700  ours: parseEntry, one record per entry
+ *                                    (extraobjects.cpp, with its three helpers)
  *   OpenExtraObjectsFile   ours: openFile      (extraobjects.cpp)
  *   ReleaseExtraObjectSoundBuffers 0x425210   ours: releaseSounds (extraobjects.cpp)
  *
@@ -45,7 +45,8 @@ struct __attribute__((packed)) ExtraObjectRecord {
     int                  lit;                     /* +0x318  model */
     unsigned char        kind;                    /* +0x31c  ExtraObjectKind */
     float                billboardSize;           /* +0x31d */
-    unsigned char        gap_321[0x329 - 0x321];
+    int                  srcBlend;                /* +0x321  D3DBLEND 1..13, 0 = NONE/unknown */
+    int                  destBlend;               /* +0x325  written only when srcBlend != 0 */
     unsigned int         textureAddress;          /* +0x329 */
     unsigned char        splineMode;              /* +0x32d  0 none, 1 dynamic, 2 static */
     int                  splineTime;              /* +0x32e */
@@ -67,6 +68,8 @@ KAROO_LAYOUT_CHECKS(ExtraObjectRecord)
     KAROO_LAYOUT_AT(lit,              0x318);
     KAROO_LAYOUT_AT(kind,             0x31c);
     KAROO_LAYOUT_AT(billboardSize,    0x31d);
+    KAROO_LAYOUT_AT(srcBlend,         0x321);
+    KAROO_LAYOUT_AT(destBlend,        0x325);
     KAROO_LAYOUT_AT(textureAddress,   0x329);
     KAROO_LAYOUT_AT(splineMode,       0x32d);
     KAROO_LAYOUT_AT(splineTime,       0x32e);
@@ -101,6 +104,21 @@ public:
 
 private:
     ExtraObjects() = delete;   /* game-owned; only ever reached by pointer */
+    void recDump(const char *path);
+    /* ParseExtraObjectEntry 0x423700 and its helpers (extraobjects.cpp). */
+    int  parseEntry(const char *entry);
+    void parseSound();
+    void parseParticle();
+    void parseModel();
+    void parseBillboard();
+    void parseSpline(const char *mode);
+    bool readSixFloats();
+    void setBlend(const char *src, const char *dest);
+    static int blendFromName(const char *name);
+    static unsigned int addressFromName(const char *name);
+    /* The record being built: re-read at every use, as the original does --
+     * it matters once, where a Billboard bumps the count mid-entry. */
+    ExtraObjectRecord *current() { return &records_[objectCount_]; }
     KAROO_LAYOUT_REGISTER(ExtraObjects);
 
     const void        *vtable_;                    /* +0x00  0x45d450 */

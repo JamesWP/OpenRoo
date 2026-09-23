@@ -47,6 +47,7 @@ launching and restores them afterwards --- including on a crash or a Ctrl-C.
 import argparse
 import filecmp
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -56,8 +57,12 @@ import time
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = os.path.join(REPO, "tests", "levelreport")
 
-# The two files WriteLevelReport produces, relative to the game directory.
-OUTPUTS = ["LevelReport.txt", "ScriptTexts.txt"]
+# The two files WriteLevelReport produces, relative to the game directory,
+# plus LeoRecords.txt: our KAROO_LEO_RECDUMP of every .leo record the run
+# builds -- the oracle for the ParseExtraObjectEntry replacement, captured
+# from the original handler (extraobjects.cpp recDump).
+LEO_DUMP = "LeoRecords.txt"
+OUTPUTS = ["LevelReport.txt", "ScriptTexts.txt", LEO_DUMP]
 
 # Directories the run mutates as a side effect and that must be put back.
 SIDE_EFFECTS = ["highscores", "SavedGames"]
@@ -133,6 +138,7 @@ def launch(headless=True):
 
     env = dict(os.environ)
     env["KAROO_LEVEL_REPORT"] = "1"
+    env["KAROO_LEO_RECDUMP"] = "Z:" + os.path.join(REPO, LEO_DUMP).replace("/", "\\")
     # The report is not a timed run and draws nothing worth watching; unpin the
     # frame rate from the display refresh so the menu walk is not vsync-paced.
     env.setdefault("vblank_mode", "0")
@@ -223,6 +229,19 @@ def diff(name):
     return "  %s: DIFFERS (%d diff lines)\n%s" % (name, len(lines), head)
 
 
+def normalise_leo_dump():
+    """Make the dump's per-file headers repo-relative, so the baseline does
+    not depend on where the checkout lives."""
+    path = os.path.join(REPO, LEO_DUMP)
+    if not os.path.exists(path):
+        return
+    with open(path, "rb") as f:
+        data = f.read()
+    data = re.sub(rb"(?m)^== .*?\\Level3DExtraObjects", b"== Level3DExtraObjects", data)
+    with open(path, "wb") as f:
+        f.write(data)
+
+
 def bless():
     os.makedirs(BASELINE, exist_ok=True)
     for f in OUTPUTS:
@@ -281,6 +300,7 @@ def main():
     print("  trigger delivered, report written%s" %
           ("" if clean_exit else " (but the run had to be killed)"))
 
+    normalise_leo_dump()
     rc = bless() if args.bless else report_diffs()
 
     if not args.keep and not args.bless:
@@ -299,7 +319,7 @@ def report_diffs():
         for d in bad:
             print(d)
         return 1
-    print("PASS: both files match tests/levelreport/")
+    print("PASS: all three files match tests/levelreport/")
     return 0
 
 
