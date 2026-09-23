@@ -12,10 +12,11 @@
  * specular 0.  Device calls go through d3d->pDevice (the proxy), re-read per
  * call as the original does.
  *
- * The vertex arrays and textures these read by address (0x4e06c8, 0x4e0580,
- * 0x4e0538, 0x4e0578) are .bss the menu geometry builder fills (writers at
- * 0x42d98c and 0x42dc31); they stay game-owned until that builder is
- * replaced.
+ * The vertex arrays, the widget model and the textures these read by address
+ * are .bss that BuildMenuGeometry (below) fills once per device.  Each
+ * texture is the IDirect3DTexture2 at +0x18 of one of nine game-global
+ * SceneTexture objects; the objects themselves (their ctors, dtors and the
+ * release at shutdown) stay the game's.
  *
  * ── DrawMenuBackdrop 0x0042df80 ──────────────────────────────────────────
  * Alpha blend on, SRCALPHA/INVSRCALPHA, the theme's backdrop texture (theme
@@ -73,17 +74,22 @@
 #include "texture.h"
 #include "menutree.h"
 #include "saveslots.h"
+#include "d3dmath.h"
+#include "progctrl.h"
+#include "scenetexture.h"
+#include <stdio.h>
+#include "gameglobals.h"
 #include <math.h>
 
 #define K640          (1.0f / 640.0f)
 #define MENU_FVF      0x1c4        /* XYZRHW | DIFFUSE | SPECULAR | TEX1 */
 #define g_backdropQuad ((void *)0x004e06c8)
 #define g_panelQuad    ((void *)0x004e0580)
-#define g_panelTexture (*(IDirect3DTexture2 **)0x004e0538)
-#define g_markerTexture (*(IDirect3DTexture2 **)0x004e0578)
+#define g_panelTexture (*(IDirect3DTexture2 **)0x004e0538)   /* menu_1.tga */
+#define g_markerTexture (*(IDirect3DTexture2 **)0x004e0578)  /* selector.tga */
 #define g_listQuad     ((void *)0x004e0600)
-#define g_optionsTexture (*(IDirect3DTexture2 **)0x004e0760)
-#define g_saveTexture  (*(IDirect3DTexture2 **)0x004e04e0)
+#define g_optionsTexture (*(IDirect3DTexture2 **)0x004e0760) /* menu_2.tga */
+#define g_saveTexture  (*(IDirect3DTexture2 **)0x004e04e0)   /* menu_4.tga */
 #define THEME_BACKDROP_TEX 0x6f8a8   /* SceneTexture* */
 #define THEME_MAINMENU_COL 0x6f8d4   /* six (top, bottom) colour pairs */
 #define THEME_RESTORE_COL  0x6f904   /* one pair, every slot row */
@@ -121,18 +127,12 @@ Menu_DrawBackdrop(Direct3D *d3d, void *theme)
                                 g_backdropQuad, 4, 0);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
-Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
+/* The marker pair itself: top y0 in pixels, centres in 640-space. */
+static void draw_markers(Direct3D *d3d, float y0, float left, float right)
 {
     const DWORD w  = mode_width(d3d);
     const float fw = (float)w;
-    const float y0 = (float)(w * 172) * K640
-                   + ((float)g->menu()->cursor() * 0.05f + rowOffset * K640) * fw;
     const float y1 = (float)(w << 5) * K640 + y0;
-
-    const double t = (double)ms * 0.01;
-    const float left  = (float)(sin(t) * 4.0 + 244.0);
-    const float right = (float)(sin(t + 3.14159274101257) * 4.0 + 396.0);
 
     set_blend(d3d);
 
@@ -150,6 +150,33 @@ Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
         tlv(r1, y0, 1.0f, 0.0f), tlv(r1, y1, 1.0f, 1.0f),
     };
     d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, p, 4, 0);
+}
+
+extern "C" __declspec(dllexport) void __cdecl
+Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
+{
+    const DWORD w  = mode_width(d3d);
+    const float y0 = (float)(w * 172) * K640
+                   + ((float)g->menu()->cursor() * 0.05f + rowOffset * K640) * (float)w;
+    const double t = (double)ms * 0.01;
+    draw_markers(d3d, y0, (float)(sin(t) * 4.0 + 244.0),
+                 (float)(sin(t + 3.14159274101257) * 4.0 + 396.0));
+}
+
+/* ── DrawControlsCursorMarkers 0x00437740 ─────────────────────────────────
+ * The controls page's own marker pair: the same two quads, but on its
+ * 20-unit row pitch from y 102, and at the page's edges (centres 40 and 600)
+ * so they bracket the whole label ... binding row:
+ *   top y = 102*w*K + cursor * w * 0.03125 */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_DrawControlsCursorMarkers(Game *g, Direct3D *d3d, DWORD ms)
+{
+    const DWORD w  = mode_width(d3d);
+    const float y0 = (float)(w * 102) * K640
+                   + (float)g->menu()->cursor() * (float)w * 0.03125f;
+    const double t = (double)ms * 0.01;
+    draw_markers(d3d, y0, (float)(sin(t) * 4.0 + 40.0),
+                 (float)(sin(t + 3.14159274101257) * 4.0 + 600.0));
 }
 
 /* ── The list screens ─────────────────────────────────────────────────────
@@ -254,6 +281,345 @@ Menu_RenderSaveSlotList(Game *g, void *theme, Direct3D *d3d,
     draw_panel(d3d, theme, g_saveTexture, g_listQuad);
     draw_slot_rows(g, d3d, theme, text, THEME_SAVE_COL);
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+}
+
+/* ── The options widgets ───────────────────────────────────────────────────
+ * The sound, video and controls pages draw their values as textured quads,
+ * each the same four-point model at 0x4e04e8 (.bss, filled by the geometry
+ * builder) pushed through a matrix and drawn as a strip with UVs
+ * (1,0) (1,1) (0,0) (0,1), rhw 10, white:
+ *
+ *   p' = (p, 1) * M,   then p'.xyz /= p'.w unless p'.w == 1.0
+ *
+ * (the original's test is against a double 1.0 at 0x45d2e8, not 0 -- a
+ * divide by 1 that it skips; the result is the same either way).  M is a
+ * translation, or for a knob RotZ(a) * T -- rotate about the model's own
+ * centre, then place.  RotZ is [[c,-s],[s,c]]: that is what 0x4234c0 builds
+ * (named BuildXRotationMatrix until 2026-09-23 -- the names of
+ * the X and Z builders were swapped) and what RenderSoundOptions
+ * builds inline for its first knob.  MatrixMultiply4x4 0x4132d0 returns its
+ * SECOND argument times its first, and the knob call passes (T, R): R*T.
+ *
+ * Knob angle = 3pi/4 - v * 3pi/200 (0x45d548, 0x45d54c) for a 0..100 value:
+ * a 270-degree sweep.  cos/sin in double; the lost x87 bits move a knob by
+ * far less than a pixel. */
+#define g_widgetModel  ((const Vec3 *)0x004e04e8)
+#define g_texOn        (*(IDirect3DTexture2 **)0x004e06c0)   /* knopf_ein.tga */
+#define g_texOff       (*(IDirect3DTexture2 **)0x004e07a0)   /* knopf_aus.tga */
+#define g_texKnobBase  (*(IDirect3DTexture2 **)0x004e06a0)   /* scale.tga */
+#define g_texKnob      (*(IDirect3DTexture2 **)0x004e0558)   /* drehknopf.tga */
+
+struct Affine { float c, s, tx, ty; };   /* RotZ(c,s) * T(tx,ty,0) */
+
+static Affine place(float tx, float ty)  { Affine a = { 1.0f, 0.0f, tx, ty }; return a; }
+static Affine knob(float tx, float ty, unsigned value)
+{
+    const double ang = (double)(2.3561945f - (float)value * 0.0471238904f);
+    Affine a = { (float)cos(ang), (float)sin(ang), tx, ty };
+    return a;
+}
+
+/* The three-position knobs on the video page (0/1/2) use fixed angles
+ * +3pi/4, none, -3pi/4 -- the ends and middle of the same 270-degree sweep.
+ * Any other value leaves the widget's plain placement matrix in force. */
+static Affine knob3(float tx, float ty, unsigned char value)
+{
+    if (value == 0) { Affine a = { (float)cos(2.35619449615478515625),
+                                   (float)sin(2.35619449615478515625), tx, ty }; return a; }
+    if (value == 2) { Affine a = { (float)cos(-2.35619449615478515625),
+                                   (float)sin(-2.35619449615478515625), tx, ty }; return a; }
+    return place(tx, ty);
+}
+
+static void draw_widget(Direct3D *d3d, const Affine &m, IDirect3DTexture2 *tex,
+                        DWORD colour = 0xffffffff)
+{
+    /* Row vector times [[c,-s,0,0],[s,c,0,0],[0,0,1,0],[tx,ty,0,1]]: w stays
+     * exactly 1, so the original's divide never happens. */
+    static const float uv[4][2] = { {1, 0}, {1, 1}, {0, 0}, {0, 1} };
+    D3DTLVERTEX q[4];
+    for (int i = 0; i < 4; i++) {
+        const Vec3 &p = g_widgetModel[i];
+        q[i] = tlv(p.x * m.c + p.y * m.s + m.tx,
+                   -p.x * m.s + p.y * m.c + m.ty, uv[i][0], uv[i][1]);
+        q[i].sz = p.z;
+        q[i].color = colour;
+    }
+    d3d->pDevice->SetTexture(0, tex);
+    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, q, 4, 0);
+}
+
+/* A left-aligned option label in the 12x14 cell, at x = xv virtual. */
+static void draw_label_c(Direct3D *d3d, TextRenderer *text, float xv,
+                         float yK, const char *str, DWORD top, DWORD bot)
+{
+    const DWORD w = mode_width(d3d);
+    text->drawLeft((float)(DWORD)(w * (DWORD)xv) * K640, (float)w * yK,
+                   (float)(w * 12) * K640, (float)(w * 14) * K640, 0.75f,
+                   str, d3d, 0, top, bot);
+}
+
+static void draw_label(Direct3D *d3d, void *theme, TextRenderer *text,
+                       float xv, float yK, const char *str, unsigned colOff)
+{
+    const DWORD *col = (const DWORD *)((BYTE *)theme + colOff);
+    draw_label_c(d3d, text, xv, yK, str, col[0], col[1]);
+}
+
+/* ── RenderSoundOptions 0x00430600 ───────────────────────────────────────────
+ * Menu node 0xc.  Panel quad 0x4e0580 with texture *0x4e04e0, then four
+ * label rows at x 262 (theme pairs +0x6f964, 96c, 974, 97c) each with its
+ * widget column at x 368, 0.0125*w below the label:
+ *   3D Sound   toggle  *0x4e06c0 on / *0x4e07a0 off     Config sound3D
+ *   Sound Vol. base *0x4e06a0 + knob *0x4e0558          Config waveVolume
+ *   CD Music   toggle                                   Config musicOn
+ *   CD Vol.    base + knob                              Config cdVolume */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderSoundOptions(Game *g, void *theme, Direct3D *d3d,
+                        TextRenderer *text, DWORD ms)
+{
+    draw_panel(d3d, theme, g_saveTexture, g_panelQuad);
+
+    const DWORD w  = mode_width(d3d);
+    const float fw = (float)w;
+    const float tx = (float)(w * 368) * K640;
+
+    draw_label(d3d, theme, text, 262.0f, 0.28125f, "3D Sound", 0x6f964);
+    draw_widget(d3d, place(tx, fw * 0.29374999f),
+                g->sound3D() != 0 ? g_texOn : g_texOff);
+
+    draw_label(d3d, theme, text, 262.0f, 0.33125001f, "Sound Vol.", 0x6f96c);
+    draw_widget(d3d, place(tx, fw * 0.34375f), g_texKnobBase);
+    draw_widget(d3d, knob(tx, fw * 0.34375f, g->waveVolume()), g_texKnob);
+
+    draw_label(d3d, theme, text, 262.0f, 0.38124999f, "CD Music", 0x6f974);
+    draw_widget(d3d, place(tx, fw * 0.39375001f),
+                g->musicOn() != 0 ? g_texOn : g_texOff);
+
+    draw_label(d3d, theme, text, 262.0f, 0.43125001f, "CD Vol.", 0x6f97c);
+    draw_widget(d3d, place(tx, fw * 0.44374999f), g_texKnobBase);
+    draw_widget(d3d, knob(tx, fw * 0.44374999f, g->cdVolume()), g_texKnob);
+
+    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+}
+
+/* ── RenderVideoOptions 0x0042e9f0 ───────────────────────────────────────────
+ * Menu node 0xb.  Panel quad 0x4e0600 with texture *0x4e0780; labels at x
+ * 262 (theme pairs +0x6f944, 94c, 954, 95c), widgets at x 368:
+ *   Reflection  toggle on/off                          Config video byte 1
+ *   Shadows     base + three-position knob             byte 0
+ *   Highlights  base + knob                            byte 2
+ *   Particles   base + knob                            byte 3
+ *
+ * Shadows depends on the hardware: it is available only when the device's
+ * z-buffer format has stencil bits (d3d+0x24 -- dwStencilBitDepth of the
+ * DDPIXELFORMAT stored at +0x14) AND the mode is deeper than 16 bpp.  When it
+ * is not, the label is drawn in a fixed translucent grey (0x80555555 top,
+ * 0x80aaaaaa bottom) instead of its theme colours, the base in 0x80808080,
+ * and the knob not at all.  Both tests are re-made at each use, as in the
+ * original; neither can change within a frame. */
+#define g_videoTexture (*(IDirect3DTexture2 **)0x004e0780)   /* menu_3.tga */
+
+static bool shadows_available(Direct3D *d3d)
+{
+    return d3d->zbufFmt[4] != 0 && d3d->pSelectedMode->dwBitDepth > 16;
+}
+
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderVideoOptions(Game *g, void *theme, Direct3D *d3d,
+                        TextRenderer *text, DWORD ms)
+{
+    draw_panel(d3d, theme, g_videoTexture, g_listQuad);
+
+    const DWORD w  = mode_width(d3d);
+    const float fw = (float)w;
+    const float tx = (float)(w * 368) * K640;
+
+    draw_label(d3d, theme, text, 262.0f, 0.28125f, "Reflection", 0x6f944);
+    draw_widget(d3d, place(tx, fw * 0.29374999f),
+                g->videoReflection() != 0 ? g_texOn : g_texOff);
+
+    if (shadows_available(d3d))
+        draw_label(d3d, theme, text, 262.0f, 0.33125001f, "Shadows", 0x6f94c);
+    else
+        draw_label_c(d3d, text, 262.0f, 0.33125001f, "Shadows",
+                     0x80555555, 0x80aaaaaa);
+    draw_widget(d3d, place(tx, fw * 0.34375f), g_texKnobBase,
+                shadows_available(d3d) ? 0xffffffff : 0x80808080);
+    if (shadows_available(d3d))
+        draw_widget(d3d, knob3(tx, fw * 0.34375f, g->videoShadows()), g_texKnob);
+
+    draw_label(d3d, theme, text, 262.0f, 0.38124999f, "Highlights", 0x6f954);
+    draw_widget(d3d, place(tx, fw * 0.39375001f), g_texKnobBase);
+    draw_widget(d3d, knob3(tx, fw * 0.39375001f, g->videoHighlights()), g_texKnob);
+
+    draw_label(d3d, theme, text, 262.0f, 0.43125001f, "Particles", 0x6f95c);
+    draw_widget(d3d, place(tx, fw * 0.44374999f), g_texKnobBase);
+    draw_widget(d3d, knob3(tx, fw * 0.44374999f, g->videoParticles()), g_texKnob);
+
+    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+}
+
+/* ── RenderControlsRemap 0x00431a60 ─────────────────────────────────────────
+ * Menu node 0xa.  Unlike the other pages it opens with the stack-built
+ * backdrop (DrawGameOverScore's: the full screen sampling the middle of the
+ * theme's backdrop texture, UVs 0.4..0.6) and a header strip from the top
+ * half of *0x4e0780 at x 0.6w..0.4w, y 0.065625w..0.165625w.  Then:
+ *
+ *   13 action labels  left at x = 0.09375w (60), y = w * (0.171875 + i/32)
+ *                     -- 110 + 20i -- theme pair +0x6f934
+ *   following camera  label at x 180, y 0.578125w, pair +0x6f93c; toggle at
+ *                     x 450, 0.590625w, on/off by cameraTurnsWithPlayer
+ *   joystick deathzone label at x 180, y 0.609375w; base + knob at x 450,
+ *                     0.621875w, the knob from the ushort deadzone
+ *   13 bindings       right-aligned at x = 0.90625w (580) on the label rows,
+ *                     label colours: ProgableControl's mode-1 key names for
+ *                     the action, or "???" while that row is being rebound
+ *                     (Game rebindActive and rebindCode == the row's node)
+ *
+ * and its own marker pair, 0x437740.  The rebind nodes are NOT in row order
+ * (turn left is 0x17, turn right 0x16; overview 0x1c, bomb 0x1a, suicide
+ * 0x1b) -- they are the menu tree's children, taken as the original
+ * compares them. */
+struct ControlRow { const char *label; const char *action; unsigned char node; };
+static const ControlRow k_controls[13] = {
+    { "forwards",     "John_Move_Forward", 0x14 },
+    { "backwards",    "John_Move_Back",    0x15 },
+    { "turn left",    "John_Turn_Left",    0x17 },
+    { "turn right",   "John_Turn_Right",   0x16 },
+    { "zoom in",      "John_Zoom_In",      0x18 },
+    { "zoom out",     "John_Zoom_Out",     0x19 },
+    { "overview",     "John_OverView",     0x1c },
+    { "bomb",         "John_Release_Bomb", 0x1a },
+    { "suicide",      "John_Harakiri",     0x1b },
+    { "camera left",  "CamModeLeft",       0x1d },
+    { "camera right", "CamModeRight",      0x1e },
+    { "camera up",    "CamModeUp",         0x1f },
+    { "camera down",  "CamModeDown",       0x20 },
+};
+
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderControlsRemap(Game *g, void *theme, Direct3D *d3d,
+                         TextRenderer *text, DWORD ms)
+{
+    const DWORD w  = mode_width(d3d);
+    const float fw = (float)w;
+    const float fh = (float)d3d->pSelectedMode->dwHeight;
+
+    D3DTLVERTEX back[4] = {
+        tlv(fw, 0.0f, 0.6f, 0.4f), tlv(fw, fh, 0.6f, 0.6f),
+        tlv(0.0f, 0.0f, 0.4f, 0.4f), tlv(0.0f, fh, 0.4f, 0.6f),
+    };
+    set_blend(d3d);
+    SceneTexture *tex = *(SceneTexture **)((BYTE *)theme + THEME_BACKDROP_TEX);
+    d3d->pDevice->SetTexture(0, tex ? tex->pTexture2 : NULL);
+    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, back, 4, 0);
+
+    const float hx0 = fw * 0.60000002f, hx1 = fw * 0.40000001f;
+    const float hy0 = fw * 0.065624997f, hy1 = fw * 0.16562501f;
+    D3DTLVERTEX head[4] = {
+        tlv(hx0, hy0, 1.0f, 0.0f), tlv(hx0, hy1, 1.0f, 0.5f),
+        tlv(hx1, hy0, 0.0f, 0.0f), tlv(hx1, hy1, 0.0f, 0.5f),
+    };
+    d3d->pDevice->SetTexture(0, g_videoTexture);
+    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, head, 4, 0);
+
+    const DWORD *col = (const DWORD *)((BYTE *)theme + 0x6f934);
+    float rowY[13];
+    for (int i = 0; i < 13; i++) {
+        rowY[i] = fw * (0.171875f + 0.03125f * (float)i);
+        const DWORD wr = mode_width(d3d);
+        text->drawLeft(fw * 0.09375f, rowY[i],
+                       (float)(wr * 12) * K640, (float)(wr * 14) * K640, 0.75f,
+                       k_controls[i].label, d3d, 0, col[0], col[1]);
+    }
+
+    const float tx = (float)(w * 450) * K640;
+    draw_label(d3d, theme, text, 180.0f, 0.578125f, "following camera", 0x6f93c);
+    draw_widget(d3d, place(tx, fw * 0.59062499f),
+                g->cameraTurnsWithPlayer() != 0 ? g_texOn : g_texOff);
+
+    draw_label(d3d, theme, text, 180.0f, 0.609375f, "joystick deathzone", 0x6f93c);
+    draw_widget(d3d, place(tx, fw * 0.62187499f), g_texKnobBase);
+    draw_widget(d3d, knob(tx, fw * 0.62187499f, g->joyDeadzone()), g_texKnob);
+
+    char buf[0x100];
+    for (int i = 0; i < 13; i++) {
+        ProgCtrl_GetBindingStr(GG_PROGCTRL, 1, k_controls[i].action, buf, sizeof(buf));
+        const bool asking = g->rebindActive() != 0 && g->rebindCode() == k_controls[i].node;
+        const DWORD wr = mode_width(d3d);
+        text->drawRight(fw * 0.90625f, rowY[i],
+                        (float)(wr * 12) * K640, (float)(wr * 14) * K640, 0.75f,
+                        asking ? "???" : buf, d3d, 0, col[0], col[1]);
+    }
+
+    Menu_DrawControlsCursorMarkers(g, d3d, ms);
+}
+
+/* ── BuildMenuGeometry 0x0042d960 ──────────────────────────────────────────────
+ * Called once when the device is set up (1 E8 site, 0x4260A0), cdecl
+ * (Direct3D*, theme path prefix).  Fills every static quad the screens above
+ * draw and loads the nine menu textures.  All in 640-space x w, with fw the
+ * UNSIGNED width; every vertex z 0, rhw 10, white:
+ *
+ *   0x4e0580  panel quad   x 0.6..0.4  y 0.175..0.275  v 0..0.5 (top half)
+ *   0x4e0600  list quad    the same rectangle          v 0.5..1 (bottom half)
+ *   0x4e06c8  backdrop     x 0.7..0.3  y 0.175..0.575  v 0..1
+ *   0x4e04e8  widget model the square (+-w/64, +-w/64, 0) -- 10 virtual
+ *
+ * Strip order in each quad: (x0,y0) (x0,y1) (x1,y0) (x1,y1), u 1 1 0 0.
+ * Ghidra's decompile puts 0.7w into the list quad's last vertex -- wrong: the
+ * listing writes that vertex from the scratch slot before the 0.7 is stored.
+ *
+ * Textures: "<prefix>\textures\<file>" imported into each object with
+ * alpha flag 1, bpp 0, stage 0.  The path buffer is 260 bytes and unbounded,
+ * as in the original (sprintf, no length). */
+struct MenuTextureLoad { SceneTexture *obj; const char *file; };
+static const MenuTextureLoad k_menuTextures[9] = {
+    { (SceneTexture *)0x004e0520, "menu_1.tga" },
+    { (SceneTexture *)0x004e0748, "menu_2.tga" },
+    { (SceneTexture *)0x004e0768, "menu_3.tga" },
+    { (SceneTexture *)0x004e04c8, "menu_4.tga" },
+    { (SceneTexture *)0x004e0560, "selector.tga" },
+    { (SceneTexture *)0x004e06a8, "knopf_ein.tga" },
+    { (SceneTexture *)0x004e0788, "knopf_aus.tga" },
+    { (SceneTexture *)0x004e0540, "drehknopf.tga" },
+    { (SceneTexture *)0x004e0688, "scale.tga" },
+};
+
+static void fill_quad(D3DTLVERTEX *q, float x0, float x1, float y0, float y1,
+                      float v0, float v1)
+{
+    q[0] = tlv(x0, y0, 1.0f, v0);
+    q[1] = tlv(x0, y1, 1.0f, v1);
+    q[2] = tlv(x1, y0, 0.0f, v0);
+    q[3] = tlv(x1, y1, 0.0f, v1);
+}
+
+extern "C" __declspec(dllexport) void __cdecl
+Menu_BuildMenuGeometry(Direct3D *d3d, const char *prefix)
+{
+    const float fw = (float)d3d->pSelectedMode->dwWidth;
+
+    fill_quad((D3DTLVERTEX *)g_panelQuad, fw * 0.60000002f, fw * 0.40000001f,
+              fw * 0.17499999f, fw * 0.27500001f, 0.0f, 0.5f);
+    fill_quad((D3DTLVERTEX *)g_listQuad, fw * 0.60000002f, fw * 0.40000001f,
+              fw * 0.17499999f, fw * 0.27500001f, 0.5f, 1.0f);
+    fill_quad((D3DTLVERTEX *)g_backdropQuad, fw * 0.69999999f, fw * 0.30000001f,
+              fw * 0.17499999f, fw * 0.57499999f, 0.0f, 1.0f);
+
+    const float sp = fw * 0.015625f, sn = fw * -0.015625f;
+    Vec3 *m = (Vec3 *)g_widgetModel;
+    m[0].x = sp; m[0].y = sn; m[0].z = 0.0f;
+    m[1].x = sp; m[1].y = sp; m[1].z = 0.0f;
+    m[2].x = sn; m[2].y = sn; m[2].z = 0.0f;
+    m[3].x = sn; m[3].y = sp; m[3].z = 0.0f;
+
+    char path[260];
+    for (const MenuTextureLoad &t : k_menuTextures) {
+        sprintf(path, "%s\\textures\\%s", prefix, t.file);
+        Texture_ImportSceneTextures(t.obj, d3d->pDD4, d3d->pDevice, path, 1, 0, 0);
+    }
 }
 
 enum CreditAlign { CR_CENTRE, CR_RIGHT, CR_LEFT };

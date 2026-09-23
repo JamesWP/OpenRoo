@@ -279,6 +279,7 @@ public:
      * it.  RenderControlsRemap reads the flag. */
     int            rebindActive() const              { return rebindActive_; }
     void           setRebindActive(int a)            { rebindActive_ = a; }
+    unsigned char  rebindCode() const                { return rebindCode_; }
     void           setRebindCode(unsigned char c)    { rebindCode_ = c; }
     char          *rebindAction()                    { return rebindAction_; }
     /* The save-slot table (saveslots.h). */

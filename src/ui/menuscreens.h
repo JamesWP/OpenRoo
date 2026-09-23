@@ -22,6 +22,11 @@
  *   0x0042e710  RenderRestoreSlotList   node 2    Menu_RenderRestoreSlotList
  *   0x0042e500  RenderOptionsMenu       node 4    Menu_RenderOptionsMenu
  *   0x0042e880  RenderSaveSlotList      node 0x2a Menu_RenderSaveSlotList
+ *   0x0042d960  BuildMenuGeometry       setup     Menu_BuildMenuGeometry
+ *   0x00431a60  RenderControlsRemap     node 0xa  Menu_RenderControlsRemap
+ *   0x00437740  DrawControlsCursorMarkers     Menu_DrawControlsCursorMarkers
+ *   0x0042e9f0  RenderVideoOptions      node 0xb  Menu_RenderVideoOptions
+ *   0x00430600  RenderSoundOptions      node 0xc  Menu_RenderSoundOptions
  *   0x00433dc0  RenderLevelComplete     node 0x28 Menu_RenderLevelComplete
  *               (in scoreoverlay.cpp: its body is DrawGameOverScore's)
  *   0x00436550  RenderCreditsScroll     node 5    Menu_RenderCreditsScroll
@@ -58,6 +63,30 @@ Menu_RenderRestoreSlotList(Game *g, void *theme, Direct3D *d3d,
 /* 0x0042e880 -- menu node 0x2a, Save Game (level-complete "Save"). */
 extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderSaveSlotList(Game *g, void *theme, Direct3D *d3d,
+                        TextRenderer *text, DWORD ms);
+
+/* 0x0042d960 -- the static quads, widget model and nine textures the menu
+ * screens draw with; once per device, from 0x4260A0. */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_BuildMenuGeometry(Direct3D *d3d, const char *prefix);
+
+/* 0x00431a60 -- menu node 0xa, the key-binding page. */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderControlsRemap(Game *g, void *theme, Direct3D *d3d,
+                         TextRenderer *text, DWORD ms);
+
+/* 0x00437740 -- that page's own cursor markers (its only caller). */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_DrawControlsCursorMarkers(Game *g, Direct3D *d3d, DWORD ms);
+
+/* 0x0042e9f0 -- menu node 0xb, the video page. */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderVideoOptions(Game *g, void *theme, Direct3D *d3d,
+                        TextRenderer *text, DWORD ms);
+
+/* 0x00430600 -- menu node 0xc, the audio page. */
+extern "C" __declspec(dllexport) void __cdecl
+Menu_RenderSoundOptions(Game *g, void *theme, Direct3D *d3d,
                         TextRenderer *text, DWORD ms);
 
 /* 0x00436550 -- cdecl; DispatchGameState passes the millisecond clock. */
