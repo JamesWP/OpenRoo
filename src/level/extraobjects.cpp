@@ -70,9 +70,11 @@
  *
  * ─── Visual proof ─────────────────────────────────────────────────────────
  *
- * KAROO_LEO_FX=nomodels drops every entry whose first token is "Model", so
- * the level's extra models vanish while its billboards, particles and sounds
- * stay.  A selective change only this code path can make.
+ * KAROO_LEO_FX=nomodels drops every entry whose kind word is "Model" (tested
+ * in parseEntry), so the level's extra models vanish while its particles and
+ * sounds stay.  Until 2026-09-23 it tested whether the entry TEXT began with
+ * "Model", which missed every entry preceded by whitespace -- 19 of 26 in
+ * Forest\Start.leo, the boxes and bush-trees James saw survive it.
  */
 #include <windows.h>
 #include <stdio.h>
@@ -185,8 +187,7 @@ int ExtraObjects::openFile(const char *name)
                 s_hash *= 16777619UL;
             }
 
-            if (!fx_nomodels() || strncmp(s_entry, "Model", 5) != 0)
-                parseEntry(s_entry);
+            parseEntry(s_entry);
 
             fgetc(fp);                     /* the discarded character */
         } else {
@@ -562,7 +563,11 @@ int ExtraObjects::parseEntry(const char *entry)
     for (char *w = strtok(buf, LEO_DELIMS); w != NULL; w = leo_tok()) {
         if (strcmp(w, "Sound") == 0)          parseSound();
         else if (strcmp(w, "Particle") == 0)  parseParticle();
-        else if (strcmp(w, "Model") == 0)     parseModel();
+        else if (strcmp(w, "Model") == 0) {
+            if (fx_nomodels())
+                return 1;               /* KAROO_LEO_FX=nomodels: no record */
+            parseModel();
+        }
         else if (strcmp(w, "Billboard") == 0) parseBillboard();
         else continue;
         objectCount_++;
