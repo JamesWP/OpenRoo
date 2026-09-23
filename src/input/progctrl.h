@@ -65,10 +65,6 @@ static_assert(sizeof(ProgableControl)                   == 0x194, "ProgableContr
 /* Original vtable at PTR_ScalarDtorProgControl @ 0x0045efb0 */
 static const void *const PROGCTRL_VTABLE = reinterpret_cast<const void*>(0x45efb0);
 
-/* Read-only lookup of one action's entry (its bindings hang off ->kbd), or
- * NULL.  For observers such as menuscreen.cpp; not a game entry point. */
-const ActionEntry *ProgCtrl_FindAction(ProgableControl *self, int mode, const char *name);
-
 /* Exports of progctrl.cpp other files call (COHESION_PLAN.md template 10). */
 extern "C" {
 __declspec(dllexport) int  __attribute__((thiscall))

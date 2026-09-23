@@ -59,7 +59,7 @@ public:
      * into +0x20a48, as one dword. */
     /* ── the four video-quality options ─────────────────────────────────
      * One byte each, persisted, defaults 2,1,2,2; the options screen
-     * (RenderCameraOverlay 0x0042e9f0) draws them in the order Reflection,
+     * (RenderVideoOptions 0x0042e9f0) draws them in the order Reflection,
      * Shadows, Highlights, Particles, and HandleKeypress edits them.
      * Shadows/Highlights/Particles are 0..2 sliders on keys 0x48/0x49/0x4a;
      * Reflection is a 0/1 toggle on its own key.

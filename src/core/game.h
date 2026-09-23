@@ -279,7 +279,6 @@ public:
      * it.  RenderControlsRemap reads the flag. */
     int            rebindActive() const              { return rebindActive_; }
     void           setRebindActive(int a)            { rebindActive_ = a; }
-    unsigned char  rebindCode() const                { return rebindCode_; }
     void           setRebindCode(unsigned char c)    { rebindCode_ = c; }
     char          *rebindAction()                    { return rebindAction_; }
     /* The save-slot table (saveslots.h). */
@@ -313,7 +312,7 @@ public:
     void           setLevelIndex(unsigned char i)    { levelIndex_ = i; }
     unsigned char  levelCount() const                { return levelCount_; }
     /* CD music on: every Sim_PlayCDStuf call is gated on it; HandleKeypress
-     * toggles it, RenderGameOptions shows it, sound setup clears it on
+     * toggles it, RenderSoundOptions shows it, sound setup clears it on
      * failure.  A dword. */
     int            musicOn() const                   { return config_.musicOn(); }
     void           setMusicOn(int on)                { config_.setMusicOn(on); }
@@ -354,7 +353,7 @@ public:
     unsigned char &videoParticles()                  { return config_.videoParticles(); }
 
     /* ── volumes (the options menu, HandleKeypress 0x3e/0x3f) ────────── */
-    /* Percent, steps of 10, shown by RenderGameOptions; each has the
+    /* Percent, steps of 10, shown by RenderSoundOptions; each has the
      * device value HandleKeypress derives from it beside it. */
     unsigned char  cdVolume() const                  { return config_.cdVolume(); }
     void           setCdVolume(unsigned char p)      { config_.setCdVolume(p); }

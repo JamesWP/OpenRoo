@@ -46,7 +46,6 @@
 #include "worldstate.h"
 #include "policy.h"
 #include "menu.h"
-#include "menuscreen.h"
 #include "levelreport.h"
 #include "launcher.h"
 #include "record.h"
@@ -142,7 +141,6 @@ double clock_seconds(void)
     policy_menu_tick();
     levelreport_tick();   /* may set a menu goal; must precede menu_tick */
     menu_tick();
-    menuscreen_tick();
     record_frame_boundary();
 
     /* Stage E.  A replay must end on the recording's own length, never on
