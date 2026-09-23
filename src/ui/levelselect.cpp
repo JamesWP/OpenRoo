@@ -20,6 +20,7 @@
 static bool s_open;
 static int  s_theme;                    /* index into s_themeFirst */
 static int  s_row;                      /* within the theme */
+static int  s_top;                      /* first visible row */
 static int  s_lastKey;                  /* our own debounce */
 static int  s_themeCount;
 static int  s_themeFirst[MAX_THEMES + 1];   /* JJ.GAM index each theme starts at */
@@ -78,6 +79,7 @@ void LevelSelect_Open(Game *g)
         if (g->levelIndex() >= s_themeFirst[t])
             s_theme = t;
     s_row = 0;
+    s_top = 0;
     s_lastKey = 0x27;                   /* the RIGHT that opened it */
     s_open = true;
     log_write("levelselect: open, %d themes, %d levels\n",
@@ -127,12 +129,21 @@ int LevelSelect_Poll(Game *g)
 
 void LevelSelect_View(Game *g, LevelSelectView *v)
 {
+    const int n = theme_size(s_theme);
+    /* Scroll only as far as it takes to keep the selection visible. */
+    if (s_row < s_top)
+        s_top = s_row;
+    if (s_row >= s_top + LEVELSELECT_ROWS)
+        s_top = s_row - LEVELSELECT_ROWS + 1;
+    if (s_top > n - LEVELSELECT_ROWS)
+        s_top = n > LEVELSELECT_ROWS ? n - LEVELSELECT_ROWS : 0;
+
     v->theme = s_themeName[s_theme];
-    v->count = theme_size(s_theme);
+    v->count = n - s_top < LEVELSELECT_ROWS ? n - s_top : LEVELSELECT_ROWS;
     for (int i = 0; i < v->count; i++) {
-        const char *name = g->levelNameTableEntry((unsigned char)(s_themeFirst[s_theme] + i));
+        const char *name = g->levelNameTableEntry((unsigned char)(s_themeFirst[s_theme] + s_top + i));
         const char *bs = strchr(name, '\\');
         v->rows[i] = bs ? bs + 1 : name;
     }
-    v->selected = s_row;
+    v->selected = s_row - s_top;
 }

@@ -23,12 +23,15 @@ void LevelSelect_Open(Game *g);
 /* One frame of the page's input.  Returns the JJ.GAM index to start, or -1. */
 int LevelSelect_Poll(Game *g);
 
-/* What the page draws: the current theme's name and its rows, the selected
- * row's index within them. */
+/* How many rows the page shows; a longer theme scrolls. */
+static const int LEVELSELECT_ROWS = 9;
+
+/* What the page draws: the current theme's name, the visible window of its
+ * levels, and the selected row's position within that window. */
 struct LevelSelectView {
     const char *theme;
     int         count;
-    const char *rows[256];
+    const char *rows[LEVELSELECT_ROWS];
     int         selected;
 };
 void LevelSelect_View(Game *g, LevelSelectView *v);

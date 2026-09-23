@@ -153,15 +153,23 @@ static void draw_markers(Direct3D *d3d, float y0, float left, float right)
     d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, p, 4, 0);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
-Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
+/* The body of DrawCursorMarkers at an explicit row; the level select
+ * (not a menu-tree node, so not the menu's cursor) calls it directly. */
+static void cursor_markers_at_row(Direct3D *d3d, DWORD ms, unsigned row,
+                                  float rowOffset)
 {
     const DWORD w  = mode_width(d3d);
     const float y0 = (float)(w * 172) * K640
-                   + ((float)g->menu()->cursor() * 0.05f + rowOffset * K640) * (float)w;
+                   + ((float)row * 0.05f + rowOffset * K640) * (float)w;
     const double t = (double)ms * 0.01;
     draw_markers(d3d, y0, (float)(sin(t) * 4.0 + 244.0),
                  (float)(sin(t + 3.14159274101257) * 4.0 + 396.0));
+}
+
+extern "C" __declspec(dllexport) void __cdecl
+Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
+{
+    cursor_markers_at_row(d3d, ms, g->menu()->cursor(), rowOffset);
 }
 
 /* ── DrawControlsCursorMarkers 0x00437740 ─────────────────────────────────
@@ -243,35 +251,31 @@ static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
     }
 }
 
-/* Our level-select page (levelselect.h), drawn over Load Game's panel: the
- * theme as "< name >" at 120, then its levels from 160 at 20 apiece in
- * 640-space -- the longest theme (16) ends at 460, inside 480.  Rows use the
- * slot-list colours; the selected one is bracketed in the main menu's first
- * pair, since the shared cursor markers assume 32-unit rows. */
+/* Our level-select page (levelselect.h), drawn as the slot list is: the
+ * same panel, 12x14 rows at 180 + 32 i in 640-space, and the menus' own
+ * cursor markers at the selected row.  Nine rows fit; longer themes scroll
+ * (LevelSelect_View picks the window).  The theme sits above as "< name >"
+ * at 140 in the main menu's first colour pair. */
 static void draw_level_select(Game *g, Direct3D *d3d, void *theme,
-                              TextRenderer *text)
+                              TextRenderer *text, DWORD ms)
 {
     LevelSelectView v;
     LevelSelect_View(g, &v);
     draw_panel(d3d, theme, g_panelTexture, g_listQuad);
     const DWORD w  = mode_width(d3d);
     const float fw = (float)w, x = fw * 0.5f;
-    const DWORD *rowCol = (const DWORD *)((BYTE *)theme + THEME_RESTORE_COL);
-    const DWORD *selCol = (const DWORD *)((BYTE *)theme + THEME_MAINMENU_COL);
-    char line[300];
+    const float cw = (float)(w * 12) * K640, ch = (float)(w * 14) * K640;
+    const DWORD *rowCol   = (const DWORD *)((BYTE *)theme + THEME_RESTORE_COL);
+    const DWORD *themeCol = (const DWORD *)((BYTE *)theme + THEME_MAINMENU_COL);
+    char title[80];
 
-    snprintf(line, sizeof(line), "< %s >", v.theme);
-    text->drawCentered(x, fw * 120.0f * K640, (float)(w * 14) * K640,
-                       (float)(w * 16) * K640, 0.75f, line, d3d, 0,
-                       selCol[0], selCol[1]);
-    for (int i = 0; i < v.count; i++) {
-        const bool sel = i == v.selected;
-        snprintf(line, sizeof(line), sel ? "> %s <" : "%s", v.rows[i]);
-        text->drawCentered(x, fw * (160.0f + 20.0f * i) * K640,
-                           (float)(w * 10) * K640, (float)(w * 12) * K640,
-                           0.75f, line, d3d, 0,
-                           sel ? selCol[0] : rowCol[0], sel ? selCol[1] : rowCol[1]);
-    }
+    snprintf(title, sizeof(title), "< %s >", v.theme);
+    text->drawCentered(x, fw * 140.0f * K640, cw, ch, 0.75f, title, d3d, 0,
+                       themeCol[0], themeCol[1]);
+    for (int i = 0; i < v.count; i++)
+        text->drawCentered(x, fw * (180.0f + 32.0f * i) * K640, cw, ch, 0.75f,
+                           v.rows[i], d3d, 0, rowCol[0], rowCol[1]);
+    cursor_markers_at_row(d3d, ms, (unsigned)v.selected, 0.0f);
 }
 
 static const char *const k_mainMenuRows[6] = {
@@ -302,7 +306,7 @@ Menu_RenderRestoreSlotList(Game *g, void *theme, Direct3D *d3d,
                            TextRenderer *text, DWORD ms)
 {
     if (LevelSelect_Active(g)) {
-        draw_level_select(g, d3d, theme, text);
+        draw_level_select(g, d3d, theme, text, ms);
         return;
     }
     draw_panel(d3d, theme, g_panelTexture, g_listQuad);
