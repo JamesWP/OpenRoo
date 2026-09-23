@@ -153,22 +153,15 @@ static void draw_markers(Direct3D *d3d, float y0, float left, float right)
     d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, p, 4, 0);
 }
 
-/* The animated pair at top y0 (pixels): DrawCursorMarkers' tail, shared
- * with the level select, which places it by its own row spacing. */
-static void animated_markers(Direct3D *d3d, DWORD ms, float y0)
-{
-    const double t = (double)ms * 0.01;
-    draw_markers(d3d, y0, (float)(sin(t) * 4.0 + 244.0),
-                 (float)(sin(t + 3.14159274101257) * 4.0 + 396.0));
-}
-
 extern "C" __declspec(dllexport) void __cdecl
 Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
 {
     const DWORD w  = mode_width(d3d);
     const float y0 = (float)(w * 172) * K640
                    + ((float)g->menu()->cursor() * 0.05f + rowOffset * K640) * (float)w;
-    animated_markers(d3d, ms, y0);
+    const double t = (double)ms * 0.01;
+    draw_markers(d3d, y0, (float)(sin(t) * 4.0 + 244.0),
+                 (float)(sin(t + 3.14159274101257) * 4.0 + 396.0));
 }
 
 /* ── DrawControlsCursorMarkers 0x00437740 ─────────────────────────────────
@@ -257,8 +250,12 @@ static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
  * in 640-space, the last at 328 -- inside the 180..340 the six slot rows
  * already occupy.  Longer themes scroll (LevelSelect_View picks the window).
  * The menus' cursor markers sit 8 above the row, as they do on the 32-unit
- * menus (172 against 180). */
+ * menus (172 against 180), spread LS_MARKER_SPREAD wider.  The title is a
+ * fixed gold so it reads apart from the rows. */
 #define LS_TITLE_Y  180.0f
+#define LS_TITLE_TOP 0xffffd040u    /* gold, fixed: not a theme colour */
+#define LS_TITLE_BOT 0xffc08000u
+#define LS_MARKER_SPREAD 1.3f       /* level names run wider than menu rows */
 #define LS_ROW_Y    208.0f
 #define LS_ROW_STEP  20.0f
 static void draw_level_select(Game *g, Direct3D *d3d, void *theme,
@@ -271,17 +268,20 @@ static void draw_level_select(Game *g, Direct3D *d3d, void *theme,
     const float fw = (float)w, x = fw * 0.5f;
     const float cw = (float)(w * 12) * K640, ch = (float)(w * 14) * K640;
     const DWORD *rowCol   = (const DWORD *)((BYTE *)theme + THEME_RESTORE_COL);
-    const DWORD *themeCol = (const DWORD *)((BYTE *)theme + THEME_MAINMENU_COL);
     char title[80];
 
     snprintf(title, sizeof(title), "< %s >", v.theme);
     text->drawCentered(x, fw * LS_TITLE_Y * K640, cw, ch, 0.75f, title, d3d, 0,
-                       themeCol[0], themeCol[1]);
+                       LS_TITLE_TOP, LS_TITLE_BOT);
     for (int i = 0; i < v.count; i++)
         text->drawCentered(x, fw * (LS_ROW_Y + LS_ROW_STEP * i) * K640, cw, ch, 0.75f,
                            v.rows[i], d3d, 0, rowCol[0], rowCol[1]);
-    animated_markers(d3d, ms,
-                     fw * (LS_ROW_Y - 8.0f + LS_ROW_STEP * v.selected) * K640);
+    /* DrawCursorMarkers' centres (320 -+ 76, 4-unit wobble), spread wider. */
+    const double t = (double)ms * 0.01;
+    const float half = 76.0f * LS_MARKER_SPREAD;
+    draw_markers(d3d, fw * (LS_ROW_Y - 8.0f + LS_ROW_STEP * v.selected) * K640,
+                 (float)(sin(t) * 4.0) + 320.0f - half,
+                 (float)(sin(t + 3.14159274101257) * 4.0) + 320.0f + half);
 }
 
 static const char *const k_mainMenuRows[6] = {
