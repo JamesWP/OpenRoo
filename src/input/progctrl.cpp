@@ -22,6 +22,12 @@ static ActionEntry *find_entry(ActionTable *t, const char *name)
     return nullptr;
 }
 
+const ActionEntry *ProgCtrl_FindAction(ProgableControl *self, int mode, const char *name)
+{
+    if (mode < 0 || mode >= 5) return nullptr;
+    return find_entry(&self->action_tables[mode], name);
+}
+
 static ActionEntry *get_or_create(ActionTable *t, const char *name)
 {
     /* Walk to tail, checking for duplicates on the way. */

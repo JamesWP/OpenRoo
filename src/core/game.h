@@ -279,6 +279,7 @@ public:
      * it.  RenderControlsRemap reads the flag. */
     int            rebindActive() const              { return rebindActive_; }
     void           setRebindActive(int a)            { rebindActive_ = a; }
+    unsigned char  rebindCode() const                { return rebindCode_; }
     void           setRebindCode(unsigned char c)    { rebindCode_ = c; }
     char          *rebindAction()                    { return rebindAction_; }
     /* The save-slot table (saveslots.h). */
@@ -424,6 +425,7 @@ public:
      * the first press, which also sets +0x13cc8c).  Named by offset. */
     int            field_13cc88() const              { return field_13cc88_; }
     void           setField13cc88(int v)             { field_13cc88_ = v; }
+    int            field_13cc8c() const              { return field_13cc8c_; }
     void           setField13cc8c(int v)             { field_13cc8c_ = v; }
     /* The buffer HandleTypedCheatCode matches typed cheats in. */
     unsigned char *cheatBuffer()                     { return cheatBuffer_; }
