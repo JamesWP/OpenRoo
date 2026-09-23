@@ -251,13 +251,15 @@ static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
 }
 
 /* Our level-select page (levelselect.h): the slot list's panel and 12x14
- * text, packed tighter -- the theme as "< name >" at 140, then
- * LEVELSELECT_ROWS levels at 168 + 20 i in 640-space, the last at 308, where
- * the panel's usable band ends.  Longer themes scroll (LevelSelect_View picks
- * the window).  The menus' cursor markers sit 8 above the row, as they do
- * on the 32-unit menus (172 against 180). */
-#define LS_TITLE_Y  140.0f
-#define LS_ROW_Y    168.0f
+ * text, packed tighter.  The panel texture carries its own "Load Game"
+ * heading above the list, so the page starts where the slot rows do: the
+ * theme as "< name >" at 180, then LEVELSELECT_ROWS levels at 208 + 20 i
+ * in 640-space, the last at 328 -- inside the 180..340 the six slot rows
+ * already occupy.  Longer themes scroll (LevelSelect_View picks the window).
+ * The menus' cursor markers sit 8 above the row, as they do on the 32-unit
+ * menus (172 against 180). */
+#define LS_TITLE_Y  180.0f
+#define LS_ROW_Y    208.0f
 #define LS_ROW_STEP  20.0f
 static void draw_level_select(Game *g, Direct3D *d3d, void *theme,
                               TextRenderer *text, DWORD ms)
