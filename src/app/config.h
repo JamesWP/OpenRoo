@@ -35,13 +35,11 @@ public:
     }
 
     /* Game::Load copies it into Game's cameraDistance.  Default 5.0. */
-    float          cameraDistanceSetting() const       { return cameraDistanceSetting_; }
 
     int            musicOn() const                     { return musicOn_; }
     void           setMusicOn(int on)                  { musicOn_ = on; }
     unsigned char  cdVolume() const                    { return cdVolume_; }
     void           setCdVolume(unsigned char p)        { cdVolume_ = p; }
-    unsigned int   cdMixerVolume() const               { return cdMixerVolume_; }
     void           setCdMixerVolume(unsigned int v)    { cdMixerVolume_ = v; }
     int            sound3D() const                     { return sound3D_; }
     void           setSound3D(int on)                  { sound3D_ = on; }
@@ -90,6 +88,22 @@ public:
     void           setCameraPitch(float a)             { cameraPitch_ = a; }
     void           setField20a48Bits(unsigned int b)   { memcpy(field_20a48_, &b, 4); }
 
+
+    /* Game-embedded lifecycle, called only by Game_Construct / Game_Destruct
+     * (gamelife.cpp).  The vtable installed is ours (one slot, the scalar
+     * dtor below); the game's is left as a tripwire. */
+    void construct();   /* 0x41d390 */
+    void destruct();    /* 0x41d3d0 */
+    /* 0x41d520 -- the defaults Karoo.cfg.default also holds. */
+    void fillDefaults();
+    unsigned int   savedCdMixerVolume() const          { return savedCdMixerVolume_; }
+    void           setSavedCdMixerVolume(unsigned int v) { savedCdMixerVolume_ = v; }
+    unsigned int  *savedWaveOutVolumeRef()             { return &savedWaveOutVolume_; }
+    unsigned int   savedWaveOutVolume() const          { return savedWaveOutVolume_; }
+    void           setCameraDistanceSetting(float d)   { cameraDistanceSetting_ = d; }
+    unsigned int   cdMixerVolume() const               { return cdMixerVolume_; }
+    float          cameraDistanceSetting() const       { return cameraDistanceSetting_; }
+
 private:
     Config() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Config);
@@ -107,12 +121,12 @@ private:
     unsigned int   field_1f624_;                     /* +0x1f624  default 1 */
     int            musicOn_;                         /* +0x1f628  Game 0x2aa156 */
     unsigned char  cdVolume_;                        /* +0x1f62c  Game 0x2aa15a */
-    unsigned char  gap_1f62d[0x1f631 - 0x1f62d];
+    unsigned int   savedCdMixerVolume_;              /* +0x1f62d  Game 0x2aa15b; restored at exit */
     unsigned int   cdMixerVolume_;                   /* +0x1f631  Game 0x2aa15f */
     unsigned char  gap_1f635[0x20a36 - 0x1f635];
     int            sound3D_;                         /* +0x20a36  Game 0x2ab564 */
     unsigned char  waveVolume_;                      /* +0x20a3a  Game 0x2ab568 */
-    unsigned char  gap_20a3b[0x20a3f - 0x20a3b];
+    unsigned int   savedWaveOutVolume_;              /* +0x20a3b  Game 0x2ab569; restored at exit */
     unsigned int   waveOutVolume_;                   /* +0x20a3f  Game 0x2ab56d */
     unsigned char  cameraTurnsWithPlayer_;           /* +0x20a43  Game 0x2ab571 */
     float          cameraYaw_;                       /* +0x20a44  default 0; CamModeLeft/Right */
@@ -148,3 +162,7 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Config_LoadValues(Config *self, const char *path);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Config_Save(Config *self, const char *path);
+
+/* 0x41d3b0, slot 0 of our Config table. */
+extern "C" __declspec(dllexport) Config *__attribute__((thiscall))
+Config_ScalarDestructor(Config *self, unsigned char flags);

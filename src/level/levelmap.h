@@ -83,11 +83,18 @@ public:
     int          fileTimeLimit() const       { return fileTimeLimit_; }
     int          gemsRequired() const        { return gemsRequired_; }
 
+
+    /* Game-embedded lifecycle, called only by Game_Construct / Game_Destruct
+     * (gamelife.cpp).  The vtable installed is ours (one slot, the scalar
+     * dtor below); the game's is left as a tripwire. */
+    void construct();   /* 0x41f140 */
+    void destruct();    /* 0x41f180 */
+
 private:
     LevelMap() = delete;   /* game-owned; embedded in Game */
     KAROO_LAYOUT_REGISTER(LevelMap);
 
-    unsigned char gap_000[0x004 - 0x000];
+    const void   *vtable_;                        /* 0x000  ours, one slot */
     int           timeLimit_;                     /* 0x004 */
     unsigned int  timeElapsed_;                   /* 0x008 */
     unsigned int  bonus_;                         /* 0x00c  file, read last */
@@ -137,3 +144,7 @@ KAROO_LAYOUT_CHECKS(LevelMap)
 /* The export patch.py binds (3 E8 sites), a shim over readFile(). */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 LevelMap_ReadFile(LevelMap *self, const char *path);
+
+/* 0x41f160, slot 0 of our LevelMap table. */
+extern "C" __declspec(dllexport) LevelMap *__attribute__((thiscall))
+LevelMap_ScalarDestructor(LevelMap *self, unsigned char flags);

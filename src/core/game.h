@@ -583,16 +583,31 @@ public:
     ThemeSoundTable      *themeSounds()             { return &themeSounds_; }
 
 
+
+    /* ── the lifecycle (game.cpp) ───────────────────────────────────────
+     * Game::Load 0x4145c0 is the constructor: build every member, read the
+     * .gam, save slots, Karoo.cfg and high scores, then enter the first
+     * level.  Destruct 0x414b70 saves the scores and config and tears it
+     * all down.  The vtable is ours (one slot; 0x45d3b8 is a tripwire). */
+    Game *construct(const char *gameName);
+    void  destruct();
+
+private:
+    int   loadGameFile(const char *name);   /* LoadGameFile 0x41cbf0 */
+    void  releaseAllSounds();               /* ReleaseAllSoundBuffers 0x41b3b0 */
+
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x00000c - 0x000000];
+    const void   *vtable_;                                /* 0x000000  ours, one slot */
+    double        field_04_;                              /* 0x000004  Load sets 1.0; reader not decoded */
     int           field_0c_;                              /* 0x00000c */
     unsigned int  mapChanged_;                            /* 0x000010 */
     unsigned int  nextLevelBonus_;                        /* 0x000014 */
     unsigned int  tickCount_;                             /* 0x000018 */
-    unsigned char gap_00001c[0x02023d - 0x00001c];
+    MenuTree      rootMenu_;                              /* 0x00001c  constructed, never navigated */
+    int           initialised_;                           /* 0x020239  0 until Load completes */
     TimedSpawner  timedSpawners_[256];                    /* 0x02023d */
     FreeBomb      freeBombs_[256];                        /* 0x02173d */
     unsigned char gap_02223d[0x02223f - 0x02223d];
@@ -637,7 +652,7 @@ private:
     int           soundCreated_;                          /* 0x13cc34 */
     unsigned char gap_13cc38[0x13cc5c - 0x13cc38];        /* SoundManager tail */
     FixedSounds   fixedSounds_;                           /* 0x13cc5c */
-    unsigned char gap_13cc84[0x13cc88 - 0x13cc84];
+    int           field_13cc84_;                          /* 0x13cc84  Load zeroes; reader not decoded */
     int           field_13cc88_;                          /* 0x13cc88 */
     int           field_13cc8c_;                          /* 0x13cc8c */
     int           field_13cc90_;                          /* 0x13cc90 */
@@ -708,6 +723,10 @@ private:
 
 KAROO_LAYOUT_CHECKS(Game)
 {
+    KAROO_LAYOUT_AT(field_04_,         0x000004);
+    KAROO_LAYOUT_AT(rootMenu_,         0x00001c);
+    KAROO_LAYOUT_AT(initialised_,      0x020239);
+    KAROO_LAYOUT_AT(field_13cc84_,     0x13cc84);
     KAROO_LAYOUT_AT(soundManagerHead_, 0x13cba8);
     KAROO_LAYOUT_AT(soundCreated_,     0x13cc34);
     KAROO_LAYOUT_AT(fixedSounds_,      0x13cc5c);
@@ -794,3 +813,13 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(cameraEye_,        0x2ab580);
     KAROO_LAYOUT_AT(field_13cc94_,     0x13cc94);
 }
+
+/* The lifecycle exports (game.cpp): 0x4145c0 (thiscall, RET 4, returns
+ * this), 0x414b70, and 0x414b50 -- slot 0 of our Game table, which WinMain's
+ * `delete game` calls through. */
+extern "C" __declspec(dllexport) Game *__attribute__((thiscall))
+Game_Construct(Game *self, const char *gameName);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Game_Destruct(Game *self);
+extern "C" __declspec(dllexport) Game *__attribute__((thiscall))
+Game_ScalarDestructor(Game *self, unsigned char flags);

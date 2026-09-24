@@ -94,6 +94,7 @@
 #include <string.h>
 #include "log.h"
 #include "highscores.h"
+#include "alloc.h"
 #include "gamestr.h"
 
 /* Game data the path formats consume.  DATA reads, not calls. */
@@ -238,4 +239,35 @@ unsigned int HighScoreTable::insert(unsigned int score, unsigned char levelId)
     records_[rank].level = levelId;
     lastRank_ = (unsigned char)rank;
     return ((rank * 11 + 11) & 0xffffff00u) | (rank & 0xffu);
+}
+
+/* ─── Lifecycle and defaults (Game TU) ────────────────────────────────────── */
+static void *const g_HighScoreVtable[1] = { (void *)&HighScoreTable_ScalarDestructor };
+
+void HighScoreTable::construct() { vtable_ = g_HighScoreVtable; }
+void HighScoreTable::destruct()  { vtable_ = g_HighScoreVtable; }
+
+extern "C" __declspec(dllexport) HighScoreTable *__attribute__((thiscall))
+HighScoreTable_ScalarDestructor(HighScoreTable *self, unsigned char flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}
+
+/* The ten defaults are written whatever count() is; the name only into the
+ * first count() records. */
+void HighScoreTable::fillDefaults()
+{
+    static const struct { unsigned int score; unsigned char level; } def[10] = {
+        { 10770, 80 }, { 9785, 71 }, { 8750, 64 }, { 7840, 55 }, { 6120, 42 },
+        {  5235, 33 }, { 3685, 20 }, { 2785, 15 }, { 1815, 11 }, {  970,  6 },
+    };
+    for (int i = 0; i < (int)count_; i++)
+        strcpy(records_[i].name, GS_HIGHSCORE_DEFAULT_NAME);
+    for (int i = 0; i < 10; i++) {
+        records_[i].score = def[i].score;
+        records_[i].level = def[i].level;
+    }
 }

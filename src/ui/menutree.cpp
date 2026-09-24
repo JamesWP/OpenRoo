@@ -139,6 +139,7 @@
 
 #include "log.h"
 #include "menutree.h"
+#include "alloc.h"
 #include "record.h"
 
 /* ─── FX / diag ──────────────────────────────────────────────────────────── */
@@ -404,3 +405,69 @@ void MenuTree::navigate(int now)
 #undef COUNT
 }
 
+/* ─── Lifecycle and the default graph (Game TU) ───────────────────────────── */
+static void *const g_MenuTreeVtable[1] = { (void *)&MenuTree_ScalarDestructor };
+
+/* 0x41eb70: vtable, then these seven stores; nothing else is touched. */
+void MenuTree::construct()
+{
+    vtable_       = g_MenuTreeVtable;
+    depth_        = 0;
+    cursor_       = 0;
+    lastKey_      = 0;
+    leave_        = 0;
+    lock_         = 0;
+    lastNodeSeen_ = 0;
+}
+
+void MenuTree::destruct()
+{
+    vtable_ = g_MenuTreeVtable;
+}
+
+/* Reached only through our vtable; both trees are embedded in Game. */
+extern "C" __declspec(dllexport) MenuTree *__attribute__((thiscall))
+MenuTree_ScalarDestructor(MenuTree *self, unsigned char flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}
+
+/* 0x418ab0.  Children are node ids; 0xc8 + i is save slot i's entry.
+ * The store order is the original's; only the final state matters. */
+void MenuTree::buildDefaultGraph(unsigned char saveSlots)
+{
+    static const unsigned char root[]     = { 1, 2, 3, 4, 5, 6 };
+    static const unsigned char n10[]      = { 0x14, 0x15, 0x17, 0x16, 0x18, 0x19, 0x1c, 0x1a,
+                                              0x1b, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22 };
+    static const unsigned char n11[]      = { 0x47, 0x48, 0x49, 0x4a };
+    static const unsigned char n12[]      = { 0x3c, 0x3f, 0x3d, 0x3e };
+
+    for (unsigned i = 0; i < sizeof root; i++) setChild(0, i, root[i]);
+    childCount_[0] = 6;
+    for (unsigned i = 0; i < saveSlots; i++) setChild(2, i, (unsigned char)(i + 0xc8));
+    childCount_[2] = saveSlots;
+    setChild(40, 0, 0x29);
+    setChild(40, 1, 0x2a);
+    childCount_[40] = 2;
+    for (unsigned i = 0; i < saveSlots; i++) setChild(42, i, (unsigned char)(saveSlots + i + 0xc8));
+    setChild(4, 0, 10);
+    childCount_[42] = saveSlots;
+    setChild(3, 0, 0x32);
+    childCount_[3] = 1;
+    setChild(5, 0, 0x50);
+    childCount_[5] = 1;
+    setChild(4, 1, 0x0b);
+    setChild(4, 2, 0x0c);
+    childCount_[4] = 3;
+    for (unsigned i = 0; i < sizeof n10; i++) setChild(10, i, n10[i]);
+    childCount_[10] = sizeof n10;
+    for (unsigned i = 0; i < sizeof n11; i++) setChild(11, i, n11[i]);
+    childCount_[11] = sizeof n11;
+    for (unsigned i = 0; i < sizeof n12; i++) setChild(12, i, n12[i]);
+    childCount_[12] = sizeof n12;
+    node_ = 0;
+    push(0);
+}

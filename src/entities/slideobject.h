@@ -128,3 +128,7 @@ KAROO_LAYOUT_CHECKS(SlideObject)
     /* No size check: the object is ours to allocate, so nothing relies on
      * it being the original's 0x55. */
 }
+
+/* 0x4181b0 -- destroy every slot and zero the count; Game's destructor calls it. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_PurgeSlideObjects(Game *self);

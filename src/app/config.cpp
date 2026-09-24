@@ -11,6 +11,8 @@
 #include <string.h>
 #include "log.h"
 #include "config.h"
+#include "alloc.h"
+#include <math.h>
 
 /* The blob is Config::persisted(), Config::PERSISTED_SIZE bytes. */
 #define CFG_BLOB_SIZE  Config::PERSISTED_SIZE
@@ -70,3 +72,48 @@ Config_Save(Config *self, const char *path)
     return 1;
 }
 
+/* ─── Lifecycle and defaults (Game TU) ────────────────────────────────────── */
+static void *const g_ConfigVtable[1] = { (void *)&Config_ScalarDestructor };
+
+void Config::construct()
+{
+    vtable_      = g_ConfigVtable;
+    field_1f404_ = 0;
+}
+
+void Config::destruct()
+{
+    vtable_ = g_ConfigVtable;
+}
+
+extern "C" __declspec(dllexport) Config *__attribute__((thiscall))
+Config_ScalarDestructor(Config *self, unsigned char flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}
+
+/* 0x41d520.  The CD mixer default is pow(2, 16) * 50, truncated, / 100 --
+ * 32768, computed the original's way (_CIpow, ftol, unsigned divide). */
+void Config::fillDefaults()
+{
+    field_1f604_           = 1;
+    videoOptions_[1]       = 1;   /* reflection */
+    videoOptions_[2]       = 2;   /* highlights */
+    cameraDistanceSetting_ = 5.0f;
+    videoOptions_[3]       = 2;   /* particles */
+    videoOptions_[0]       = 2;   /* shadows */
+    sound3D_               = 1;
+    field_1f624_           = 1;
+    waveVolume_            = 100;
+    waveOutVolume_         = 0xffffffff;
+    musicOn_               = 1;
+    cdVolume_              = 50;
+    cdMixerVolume_         = (unsigned int)(long long)(pow(2.0, 16.0) * 50.0) / 100;
+    cameraPitch_           = 50.0f;
+    cameraYaw_             = 0.0f;
+    cameraTurnsWithPlayer_ = 1;
+    joyDeadzone_           = 50;
+}

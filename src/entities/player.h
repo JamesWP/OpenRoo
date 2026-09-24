@@ -48,6 +48,13 @@ public:
     void actHarakiri();
     void actReleaseBomb();
 
+    /* Game-embedded lifecycle, called only by Game_Construct / Game_Destruct
+     * (gamelife.cpp); the vtable is ours, one slot (the game's 0x45d428 is a
+     * tripwire). */
+    void construct();       /* PopulatePlayerEntityDefaults 0x41f900 */
+    void clearPathfinder()  { pathfinder_ = NULL; }
+    void destruct();        /* RestorePlayerVtableBeforeEntityDtor 0x41fa10 */
+
     /* The tile the player stands on, from its SIGNED cell bytes -- the
      * arithmetic every caller used by hand. */
     Tile *curTile() const;
@@ -268,3 +275,7 @@ __declspec(dllexport) void __cdecl Player_ActTurnRight(int key, int strength, vo
 __declspec(dllexport) void __cdecl Player_ActHarakiri(int key, int strength, void *player);
 __declspec(dllexport) void __cdecl Player_ActReleaseBomb(int key, int strength, void *player);
 }
+
+/* 0x41f9f0, slot 0 of our Player table. */
+extern "C" __declspec(dllexport) Player *__attribute__((thiscall))
+Player_ScalarDestructor(Player *self, unsigned char flags);

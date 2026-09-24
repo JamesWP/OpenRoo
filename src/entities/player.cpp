@@ -139,6 +139,8 @@
 #include "crtrand.h"
 #include "player.h"
 #include "entitymath.h"
+#include "foepath.h"
+#include "alloc.h"
 #include "voicepool.h"
 #include "log.h"
 
@@ -670,4 +672,57 @@ __declspec(dllexport) void __cdecl Player_ActTurnLeft(int, int, void *p)    { ((
 __declspec(dllexport) void __cdecl Player_ActTurnRight(int, int, void *p)   { ((Player *)p)->actTurnRight(); }
 __declspec(dllexport) void __cdecl Player_ActHarakiri(int, int, void *p)    { ((Player *)p)->actHarakiri(); }
 __declspec(dllexport) void __cdecl Player_ActReleaseBomb(int, int, void *p) { ((Player *)p)->actReleaseBomb(); }
+}
+
+/* ─── Lifecycle (Game TU) ─────────────────────────────────────────────────
+ *
+ * 0x41f900 / 0x41fa10, from the listing.  The base's game-shaped ctor/dtor
+ * keep the transient vtable stores the original makes; ours is written over
+ * them.  zeroSoundSlots() runs twice in the original and here. */
+static void *const g_PlayerVtable[1] = { (void *)&Player_ScalarDestructor };
+
+void Player::construct()
+{
+    populateBaseForGame();
+    List_Init((LinkedList *)effectList_);
+    vtable_  = g_PlayerVtable;
+    pool_9f_ = NULL;
+    memset(pickupSounds_, 0, sizeof(pickupSounds_));
+    zeroSoundSlots();
+    field_126      = 0.0;
+    stepDuration_  = 200.0;
+    field_156      = 1;
+    gemsCollected_ = 0;
+    field_124      = 1;
+    facing_        = 1;
+    moveDir_       = 0;
+    teleportPhase_ = 0;
+    climbing_      = 0;
+    falling_       = 0;
+    moveState_     = 0;
+    zeroSoundSlots();
+    stepGrace_     = 20.0;
+    pathfinder_    = NULL;
+}
+
+/* A path-finder is freed on the game heap, the Foe precedent: whoever built
+ * it used the game's operator new. */
+void Player::destruct()
+{
+    vtable_ = g_PlayerVtable;
+    if (pathfinder_ != NULL) {
+        pathfinder_->dispose();
+        game_free2(pathfinder_);
+    }
+    List_Destruct((LinkedList *)effectList_);
+    destroyBaseForGame();
+}
+
+extern "C" __declspec(dllexport) Player *__attribute__((thiscall))
+Player_ScalarDestructor(Player *self, unsigned char flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }

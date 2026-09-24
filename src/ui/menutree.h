@@ -29,6 +29,15 @@ public:
     void rewind();                          /* RewindMenuStackToRootNode 0x41edd0 */
     void navigate(int now);                 /* NavigateMenuTree 0x41ec40 */
 
+    /* Game-embedded lifecycle, called only by Game_Construct / Game_Destruct
+     * (gamelife.cpp).  The vtable installed is ours (one slot, the scalar
+     * dtor below); the game's is left as a tripwire. */
+    void construct();                       /* 0x41eb70 */
+    void destruct();                        /* 0x41ebc0 */
+    /* 0x418ab0 -- the fixed menu graph, then push(0).  Nodes 2 (Load
+     * Game) and 42 get one child per save slot. */
+    void buildDefaultGraph(unsigned char saveSlots);
+
     /* Set by a navigation that moved the cursor into a new node. */
     unsigned int   changed() const                  { return changed_; }
     /* HandleKeypress's copy of the node as of its last pass, so ENTER on
@@ -126,3 +135,7 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_RewindMenuStackToRootNode(MenuTree *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_NavigateMenuTree(MenuTree *self, int now);
+
+/* 0x41eba0, slot 0 of our MenuTree table. */
+extern "C" __declspec(dllexport) MenuTree *__attribute__((thiscall))
+MenuTree_ScalarDestructor(MenuTree *self, unsigned char flags);
