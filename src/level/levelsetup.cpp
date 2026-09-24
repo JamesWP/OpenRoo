@@ -881,7 +881,7 @@ next_row:
     self->player()->setDying(0);
     self->player()->setIdleDuration(500.0);                /* two dwords: 0, 0x407f4000 */
     self->setField13cc90(0);
-    self->setField13cca8(0);
+    self->setOverviewActive(0);
 
     GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_CRYSTALS,
                        (unsigned int)self->field_42252(),

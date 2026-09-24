@@ -38,6 +38,16 @@ public:
      * underfoot, expire timed effects.  Returns 0; see player.cpp. */
     unsigned int updateTileEffects();
 
+    /* The six player actions DirectInputSetup registers (player.cpp):
+     * 0x41fa90 forward, 0x41faf0 back, 0x41fb50 left, 0x41fbf0 right,
+     * 0x41fc90 harakiri, 0x4208f0 release bomb. */
+    void actMoveForward();
+    void actMoveBack();
+    void actTurnLeft();
+    void actTurnRight();
+    void actHarakiri();
+    void actReleaseBomb();
+
     /* The tile the player stands on, from its SIGNED cell bytes -- the
      * arithmetic every caller used by hand. */
     Tile *curTile() const;
@@ -247,3 +257,14 @@ KAROO_LAYOUT_CHECKS(Player)
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_UpdatePlayerTileEffects(Player *self);
+
+/* The ActionCallback shims for the six (progctrl.h's __cdecl(key, strength,
+ * context); context = the Player). */
+extern "C" {
+__declspec(dllexport) void __cdecl Player_ActMoveForward(int key, int strength, void *player);
+__declspec(dllexport) void __cdecl Player_ActMoveBack(int key, int strength, void *player);
+__declspec(dllexport) void __cdecl Player_ActTurnLeft(int key, int strength, void *player);
+__declspec(dllexport) void __cdecl Player_ActTurnRight(int key, int strength, void *player);
+__declspec(dllexport) void __cdecl Player_ActHarakiri(int key, int strength, void *player);
+__declspec(dllexport) void __cdecl Player_ActReleaseBomb(int key, int strength, void *player);
+}

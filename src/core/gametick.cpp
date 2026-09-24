@@ -245,7 +245,7 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     if (self->cameraMode() == 0)
-        self->setCameraDistance(camera_sway(now, self->field_13cca4()));
+        self->setCameraDistance(camera_sway(now, self->zoomDistance()));
 
     if (self->stateRef() == 3) {
         Sim_HandleKeypress(self);
@@ -330,8 +330,8 @@ Sim_GameTick(Game *self, double dt, double now)
 
         self->config()->setField20a48Bits(self->config()->field20a4cBits());
         if (pl->moveState() != 0) {
-            self->setField13cca8(0);
-            self->setCameraDistance(self->field_13cca4());
+            self->setOverviewActive(0);
+            self->setCameraDistance(self->zoomDistance());
             if (pl->soundAf() != NULL) CStatic_HaltPlayback(pl->soundAf());
             if (pl->soundAb() != NULL) CStatic_HaltPlayback(pl->soundAb());
             if (pl->soundC7() != NULL) CStatic_HaltPlayback(pl->soundC7());
@@ -667,7 +667,7 @@ Sim_GameTick(Game *self, double dt, double now)
         self->setCameraMode(2);
     if (KEY(self->debounceRef()) == 0)
         self->debounceRef() = 0;
-    self->setField13cca8(0);
+    self->setOverviewActive(0);
     self->setField13cc90(0);
     self->setField48b14(self->field_48b14() + 1);
     self->setTickCount(self->tickCount() + 1);

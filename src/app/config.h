@@ -82,7 +82,12 @@ public:
     unsigned char &videoReflection()                   { return videoOptions_[1]; }
     unsigned char &videoHighlights()                   { return videoOptions_[2]; }
     unsigned char &videoParticles()                    { return videoOptions_[3]; }
-    unsigned int   field20a4cBits() const              { unsigned int b; memcpy(&b, &field_20a4c_, 4); return b; }
+    unsigned int   field20a4cBits() const              { unsigned int b; memcpy(&b, &cameraPitch_, 4); return b; }
+    /* The orbit camera's angles, in degrees (camerainput.cpp steps them). */
+    float          cameraYaw() const                   { return cameraYaw_; }
+    void           setCameraYaw(float a)               { cameraYaw_ = a; }
+    float          cameraPitch() const                 { return cameraPitch_; }
+    void           setCameraPitch(float a)             { cameraPitch_ = a; }
     void           setField20a48Bits(unsigned int b)   { memcpy(field_20a48_, &b, 4); }
 
 private:
@@ -110,9 +115,9 @@ private:
     unsigned char  gap_20a3b[0x20a3f - 0x20a3b];
     unsigned int   waveOutVolume_;                   /* +0x20a3f  Game 0x2ab56d */
     unsigned char  cameraTurnsWithPlayer_;           /* +0x20a43  Game 0x2ab571 */
-    unsigned int   field_20a44_;                     /* +0x20a44  default 0 */
+    float          cameraYaw_;                       /* +0x20a44  default 0; CamModeLeft/Right */
     unsigned char  field_20a48_[4];                  /* +0x20a48  gets +0x20a4c */
-    float          field_20a4c_;                     /* +0x20a4c  default 50.0 */
+    float          cameraPitch_;                     /* +0x20a4c  default 50.0; CamModeUp/Down, 50..89 */
     unsigned short joyDeadzone_;                     /* +0x20a50  Game 0x2ab57e */
 };
 
@@ -130,9 +135,9 @@ KAROO_LAYOUT_CHECKS(Config)
     KAROO_LAYOUT_AT(waveVolume_,            0x20a3a);
     KAROO_LAYOUT_AT(waveOutVolume_,         0x20a3f);
     KAROO_LAYOUT_AT(cameraTurnsWithPlayer_, 0x20a43);
-    KAROO_LAYOUT_AT(field_20a44_,           0x20a44);
+    KAROO_LAYOUT_AT(cameraYaw_,           0x20a44);
     KAROO_LAYOUT_AT(field_20a48_,           0x20a48);
-    KAROO_LAYOUT_AT(field_20a4c_,           0x20a4c);
+    KAROO_LAYOUT_AT(cameraPitch_,           0x20a4c);
     KAROO_LAYOUT_AT(joyDeadzone_,           0x20a50);
     /* The blob is the object's tail. */
     KAROO_LAYOUT_SIZE(Config::PERSISTED_OFFSET + Config::PERSISTED_SIZE);

@@ -421,10 +421,17 @@ public:
      * restore it from the script player's spline point, and the level
      * builder seeds it {0, 1000, 0}.  Not decoded. */
     void           setField13cc94(int i, float v)    { field_13cc94_[i] = v; }
-    /* Fields beside it, named by offset: GameTick zeroes +0x13cc90 and
-     * +0x13cca8 with the level builder, and copies the float +0x13cca4
-     * into the camera distance when the player dies. */
+    /* +0x13cca4 is the zoom distance the Zoom In/Out actions step (clamped
+     * 2..20); GameTick eases cameraDistance towards it and copies it back
+     * when the overview ends.  +0x13cca8 is the overview flag the OverView
+     * action raises (with cameraDistance 40); GameTick and the level
+     * builder clear it.  +0x13cc90 is set by both zoom actions and cleared
+     * by the same two; its reader is not decoded. */
     void           setField13cc90(int v)             { field_13cc90_ = v; }
+    float          zoomDistance() const              { return zoomDistance_; }
+    void           setZoomDistance(float d)          { zoomDistance_ = d; }
+    int            overviewActive() const            { return overviewActive_; }
+    void           setOverviewActive(int v)          { overviewActive_ = v; }
     /* keypress.cpp: +0x13cc88 is a one-shot latch (cleared, then set on
      * the first press, which also sets +0x13cc8c).  Named by offset. */
     int            field_13cc88() const              { return field_13cc88_; }
@@ -433,8 +440,6 @@ public:
     void           setField13cc8c(int v)             { field_13cc8c_ = v; }
     /* The buffer HandleTypedCheatCode matches typed cheats in. */
     unsigned char *cheatBuffer()                     { return cheatBuffer_; }
-    float          field_13cca4() const              { return field_13cca4_; }
-    void           setField13cca8(int v)             { field_13cca8_ = v; }
     void           setJoyDeadzone(unsigned short p)  { config_.setJoyDeadzone(p); }
 
     /* ── the tally's inputs (CalculateLevelScore 0x41a760) ─────────── */
@@ -638,8 +643,8 @@ private:
     int           field_13cc90_;                          /* 0x13cc90 */
     float         field_13cc94_[3];                       /* 0x13cc94 */
     unsigned char gap_13cca0[0x13cca4 - 0x13cca0];
-    float         field_13cca4_;                          /* 0x13cca4 */
-    int           field_13cca8_;                          /* 0x13cca8 */
+    float         zoomDistance_;                          /* 0x13cca4 */
+    int           overviewActive_;                        /* 0x13cca8 */
     /* The typed-cheat buffer; declared up to the cheat entry that follows.
      * Its real length is not established. */
     unsigned char cheatBuffer_[0x13cdac - 0x13ccac];      /* 0x13ccac */
@@ -746,11 +751,11 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(mapChanged_,       0x000010);
     KAROO_LAYOUT_AT(nextLevelBonus_,   0x000014);
     KAROO_LAYOUT_AT(field_13cc90_,     0x13cc90);
-    KAROO_LAYOUT_AT(field_13cca4_,     0x13cca4);
+    KAROO_LAYOUT_AT(zoomDistance_,     0x13cca4);
     KAROO_LAYOUT_AT(field_13cc88_,     0x13cc88);
     KAROO_LAYOUT_AT(cheatBuffer_,      0x13ccac);
     KAROO_LAYOUT_AT(field_13cc8c_,     0x13cc8c);
-    KAROO_LAYOUT_AT(field_13cca8_,     0x13cca8);
+    KAROO_LAYOUT_AT(overviewActive_,   0x13cca8);
     KAROO_LAYOUT_AT(field_173b1a_,     0x173b1a);
     KAROO_LAYOUT_AT(tickCount_,        0x000018);
     KAROO_LAYOUT_AT(gameFileName_,     0x04215f);

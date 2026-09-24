@@ -58,6 +58,22 @@ static const char *const GS_CD_THEME_TRACK              = (const char *)0x004643
 static const char *const GS_CD_TRACK_COUNT              = (const char *)0x0046443c;  /* "CDM: number of tracks %d" */
 static const char *const GS_CD_TRACK_LENGTH             = (const char *)0x00464424;  /* "CDM: track %d lenght:%s" */
 static const char *const GS_CONTROL_SAVE_SETTINGS       = (const char *)0x00464580;  /* "CONTROL: trying to save settings" */
+static const char *const GS_ACT_TURN_LEFT                  = (const char *)0x00464570;  /* "John_Turn_Left" */
+static const char *const GS_ACT_TURN_RIGHT                 = (const char *)0x00464560;  /* "John_Turn_Right" */
+static const char *const GS_ACT_MOVE_FORWARD               = (const char *)0x0046454c;  /* "John_Move_Forward" */
+static const char *const GS_ACT_MOVE_BACK                  = (const char *)0x0046453c;  /* "John_Move_Back" */
+static const char *const GS_ACT_ZOOM_IN                    = (const char *)0x0046452c;  /* "John_Zoom_In" */
+static const char *const GS_ACT_ZOOM_OUT                   = (const char *)0x0046451c;  /* "John_Zoom_Out" */
+static const char *const GS_ACT_RELEASE_BOMB               = (const char *)0x00464508;  /* "John_Release_Bomb" */
+static const char *const GS_ACT_HARAKIRI                   = (const char *)0x004644f8;  /* "John_Harakiri" */
+static const char *const GS_ACT_OVERVIEW                   = (const char *)0x004644e8;  /* "John_OverView" */
+static const char *const GS_ACT_CAM_RIGHT                  = (const char *)0x004644d8;  /* "CamModeRight" */
+static const char *const GS_ACT_CAM_LEFT                   = (const char *)0x004644cc;  /* "CamModeLeft" */
+static const char *const GS_ACT_CAM_UP                     = (const char *)0x004644c0;  /* "CamModeUp" */
+static const char *const GS_ACT_CAM_DOWN                   = (const char *)0x004644b4;  /* "CamModeDown" */
+static const char *const GS_CONTROL_NO_DEVICES          = (const char *)0x00464480;  /* "Eingabegeraete konnten nicht belegt werden" */
+static const char *const GS_CONTROL_NO_INPUT            = (const char *)0x00464458;  /* "Steuerung konnte nicht erstellt werden" */
+static const char *const GS_CONTROL_ERROR_CAPTION       = (const char *)0x004644ac;  /* "Error!" */
 
 /* --- KEY: keypress.cpp -- the configured action names --- */
 static const char *const GS_KEY_CAM_MODE_DOWN             = (const char *)0x004644b4;  /* "CamModeDown" */
