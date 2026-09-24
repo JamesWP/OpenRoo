@@ -33,4 +33,15 @@ __declspec(dllexport) double __cdecl Math_Vec3SqLen(const Vec3 *v);
 __declspec(dllexport) double __cdecl Math_Vec3Dot(const Vec3 *a, const Vec3 *b);
 /* 0x403830, cdecl: d = a x b, returns d. */
 __declspec(dllexport) Vec3 *__cdecl Math_Vec3Cross(Vec3 *d, const Vec3 *a, const Vec3 *b);
+/* 0x407f70, cdecl: d = v / s, returns d. */
+__declspec(dllexport) Vec3 *__cdecl Math_Vec3Div(Vec3 *d, const Vec3 *v, float s);
+/* 0x406480, thiscall, RET 0x40: all sixteen elements, row-major, returns
+ * self.  (Ghidra's "MatrixBuildIdentity" -- it builds whatever it is given.) */
+__declspec(dllexport) Mat4 *__attribute__((thiscall))
+Math_Mat4Set(Mat4 *self, float m00, float m01, float m02, float m03,
+             float m10, float m11, float m12, float m13,
+             float m20, float m21, float m22, float m23,
+             float m30, float m31, float m32, float m33);
+/* 0x406500, cdecl: zero d (through a zeroed temporary), returns d. */
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4Zero(Mat4 *d);
 }
