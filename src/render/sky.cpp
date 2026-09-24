@@ -70,6 +70,7 @@
 #include "sky.h"
 #include "log.h"
 #include "scenetexture.h"
+#include "alloc.h"
 
 #include <math.h>
 
@@ -152,11 +153,12 @@ static const signed char kSkyCorners[24][3] = {
 };
 static const float kSkyUV[4][2] = { {1, 0}, {1, 1}, {0, 0}, {0, 1} };
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
-                       IDirect3DDevice3 *dev, const char *up, const char *dn,
-                       const char *fr, const char *bk, const char *lf,
-                       const char *rt, UINT bpp)
+/* Identity matrix and the cube's 24 vertices.  The ctor (0x43c560) and
+ * BuildFromFaceNames store exactly the same values -- checked store by
+ * store against both listings; only the order of the stores differs, which
+ * nothing can observe.  flYawAngle and each vertex's `reserved` are left
+ * alone by both. */
+static void sky_fill_geometry(SkyBackground *self)
 {
     for (int i = 0; i < 16; i++)
         self->WorldMatrix[i] = (i % 5 == 0) ? 1.0f : 0.0f;
@@ -173,6 +175,15 @@ Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
             v.z = 55.0f * kSkyCorners[f * 4 + k][2];
         }
     }
+}
+
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
+                       IDirect3DDevice3 *dev, const char *up, const char *dn,
+                       const char *fr, const char *bk, const char *lf,
+                       const char *rt, UINT bpp)
+{
+    sky_fill_geometry(self);
 
     for (int f = 0; f < 6; f++)
         Texture_ReleaseD3DTexture(&self->Textures[f]);
@@ -187,4 +198,40 @@ Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
     /* The last face's result is normalised to 0/1 in AL; the upper bytes
      * are the loader's.  Only AL is ever tested. */
     return (r & 0xffffff00u) | 1u;
+}
+
+/* ─── The lifecycle: 0x43c560 ctor, 0x43c850 dtor body, 0x43c830 scalar ─────
+ *
+ * The one instance is ThemeAssetBlock::sky, built and destroyed by the
+ * block's aggregate ctor/dtor (theme.cpp).  The six face textures went
+ * through MSVC's vector iterators (0x451db5 / 0x451e37); plain loops here,
+ * the dtor last to first as the iterator walks.  Own one-slot vtable, the
+ * game's 0x45d6fc a tripwire (byte scan: only these two write it). */
+static void *const g_SkyVtable[1] = { (void *)&Sky_ScalarDtor };
+
+extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
+Sky_Construct(SkyBackground *self)
+{
+    for (int f = 0; f < 6; f++)
+        Texture_SceneCtor(&self->Textures[f]);
+    self->pVtable = g_SkyVtable;
+    sky_fill_geometry(self);
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sky_DtorBody(SkyBackground *self)
+{
+    self->pVtable = g_SkyVtable;
+    for (int f = 6; f-- > 0; )
+        Texture_SceneDtorBody(&self->Textures[f]);
+}
+
+extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
+Sky_ScalarDtor(SkyBackground *self, unsigned int flags)
+{
+    Sky_DtorBody(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }

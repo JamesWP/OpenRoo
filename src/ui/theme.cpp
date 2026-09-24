@@ -311,6 +311,27 @@ Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
     return self;
 }
 
+/* ─── 0x4259a0 / 0x4256f0: the block's aggregate ctor and dtor ────────────
+ *
+ * Members only: 38 slots in order, then the sky; the dtor in reverse.  The
+ * images, colours and scalars between them are plain data and untouched. */
+extern "C" __declspec(dllexport) ThemeAssetBlock *__attribute__((thiscall))
+Theme_BlockConstruct(ThemeAssetBlock *self)
+{
+    for (int i = 0; i < THEME_OBJ_COUNT; i++)
+        Theme_SlotConstruct(&self->slots[i]);
+    Sky_Construct(&self->sky);
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Theme_BlockDestruct(ThemeAssetBlock *self)
+{
+    Sky_DtorBody(&self->sky);
+    for (int i = THEME_OBJ_COUNT; i-- > 0; )
+        Theme_SlotDestruct(&self->slots[i]);
+}
+
 /* 0x0040bf30.  BUG KEPT: EXPLOSION's slot is not in the list, so its
  * particle systems and explode buffers are never released -- though the
  * memset below still zeroes it.  The order is the original's. */

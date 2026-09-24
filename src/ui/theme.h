@@ -266,6 +266,13 @@ extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
 Theme_RecordConstruct(ThemeLevelObject *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Theme_RecordDestruct(ThemeLevelObject *self);
+/* The block's compiler-generated aggregate ctor/dtor, for the one global
+ * GG_THEME_BLOCK: 0x004259a0 / 0x004256f0, each reached by one E9 from its
+ * static-init / atexit thunk. */
+extern "C" __declspec(dllexport) ThemeAssetBlock *__attribute__((thiscall))
+Theme_BlockConstruct(ThemeAssetBlock *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Theme_BlockDestruct(ThemeAssetBlock *self);
 /* 0x004113e0 -- the `sound` keyword: event name -> id, then ThemeSound_Add. */
 extern "C" __declspec(dllexport) bool __cdecl
 Theme_RegisterSound(Game *game, char *eventName, const char *waveName);

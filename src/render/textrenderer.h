@@ -38,9 +38,9 @@
  * like and not what an (outline, amplitude) pair does.
  *
  * ── The layout ──────────────────────────────────────────────────────────────
- * Only the three fields the replaced functions read are named.  +0x00 is
- * untouched by all four entry points and stays unknown; the object's total
- * size is not asserted because no allocation site has been read yet.
+ * +0x00 is the vtable (one slot, the scalar dtor 0x004134f0).  The two
+ * instances are globals, 0x004e0480 and 0x004e02e8, built by a static-init
+ * thunk -- 0x28 bytes each, the atlas ending the object.
  *
  * `cellW`/`cellH` are the quad's size in screen pixels and `spacing` is the
  * tracking: the pen advances by `cellW * spacing`, so a spacing below 1
@@ -109,10 +109,14 @@ public:
                     DWORD colourTop, DWORD colourBottom,
                     float amplitude, float rate, int n);
 
+    /* 0x004134d0 ctor / 0x00413510 dtor body (textrenderer.cpp). */
+    void construct();
+    void destruct();
+
 private:
     KAROO_LAYOUT_REGISTER(TextRenderer);
 
-    void         *unknown00_;   /* +0x00  untouched by all four entry points */
+    const void   *vtable_;      /* +0x00  our one-slot table (game's 0x45d3a8) */
     unsigned int  cols_;        /* +0x04  atlas columns; also the cell divisor */
     unsigned int  rows_;        /* +0x08  atlas rows                          */
     SceneTexture  atlas_;       /* +0x0c  .pTexture2 lands on +0x24           */
@@ -181,3 +185,11 @@ Text_DrawWobbleGlyphRow(TextRenderer *self, float x, float y, float cellW,
                         Direct3D *d3d, char firstChar, DWORD colourTop,
                         DWORD colourBottom, float amplitude, float rate,
                         int n);
+
+/* The lifecycle, for the two global fonts (0x004e0480, 0x004e02e8). */
+extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
+Text_Construct(TextRenderer *self);                          /* 0x004134d0 */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Text_DtorBody(TextRenderer *self);                           /* 0x00413510 */
+extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
+Text_ScalarDtor(TextRenderer *self, unsigned int flags);     /* 0x004134f0 */
