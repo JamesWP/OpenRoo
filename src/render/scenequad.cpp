@@ -42,6 +42,7 @@
  *   KAROO_SCENEQUAD_FX=drop  skips the draw — the animated billboard quads vanish
  *   KAROO_SCENEQUAD_FX=tint  forces their vertex diffuse to magenta
  */
+#include "scenequad.h"
 #include "com_proxy.h"
 #include "log.h"
 

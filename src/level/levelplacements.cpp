@@ -49,6 +49,10 @@
 #include "tile.h"
 #include "theme.h"
 #include "log.h"
+#include "sceneobjects.h"
+#include "liftobject.h"
+#include "slideobject.h"
+#include <math.h>
 
 /* ─── Grid access ───────────────────────────────────────────────────────── */
 
@@ -418,3 +422,49 @@ LevelPlacements_StaticInit(void)
         GG_LEVEL_PLACEMENTS->tileQuad[i].d[3] = 0xffffffff;
     }
 }
+
+/* The placement block is packed but 4-aligned in memory (a .bss global);
+ * its head is the quad RenderSceneObjects animates. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+
+/* ─── 0x408870 / 0x408920: the lift and slide passes ──────────────────────
+ *
+ * The lists' counts are compared unsigned, as the originals' JB/JBE do.
+ * Both hand the placement block itself as RenderSceneObjects' quad (its
+ * tileQuad heads it). */
+extern "C" __declspec(dllexport) void __cdecl
+LevelPlacements_DrawLifts(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
+                          Direct3D *d3d, double now)
+{
+    for (unsigned int i = 0; i < (unsigned int)p->lifts.count; i++) {
+        const LiftObject *lift = g->liftSlot(i);
+        p->lifts.pos[i][0] = lift->posU();
+        p->lifts.pos[i][1] = lift->height();
+        p->lifts.pos[i][2] = -lift->posV();
+    }
+    Scene_RenderSceneObjects(g, (SceneQuadVertex *)(void *)p,   /* tileQuad, at +0 */
+                             (const Vec3 *)p->lifts.pos, (const Vec3 *)p->lifts.rot,
+                             p->lifts.count, &theme->slots[THEME_OBJ_ELEVATOR],
+                             d3d, now, 0.0f, 0, 0);
+}
+
+extern "C" __declspec(dllexport) void __cdecl
+LevelPlacements_DrawSlides(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
+                           Direct3D *d3d, double now)
+{
+    for (unsigned int i = 0; i < (unsigned int)p->slides.count; i++) {
+        const SlideObject *slide = g->slideSlot(i);
+        p->slides.pos[i][0] = slide->posU();
+        p->slides.pos[i][1] = slide->posY();
+        p->slides.pos[i][2] = -slide->posV();
+        if (slide->kind() == 0x0a)
+            p->slides.rot[i][1] = 1.5707963705062866f;   /* 0x3fc90fdb */
+    }
+    float animTime = (float)fmod(now * (double)0.002f, 1.0);
+    Scene_RenderSceneObjects(g, (SceneQuadVertex *)(void *)p,   /* tileQuad, at +0 */
+                             (const Vec3 *)p->slides.pos, (const Vec3 *)p->slides.rot,
+                             p->slides.count, &theme->slots[THEME_OBJ_PLATFORM],
+                             d3d, now, animTime, 0x14, 0);
+}
+#pragma GCC diagnostic pop
