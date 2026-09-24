@@ -43,6 +43,8 @@
 #include "alloc.h"
 #include "faktmesh.h"
 #include <string.h>
+#include <math.h>
+#include <d3d.h>
 
 extern "C" {
 
@@ -137,6 +139,105 @@ ExplodeDebris_ScalarDtor(ExplodeDebris *self, unsigned int flags)
     if (flags & 1)
         game_free2(self);
     return self;
+}
+
+/* ─── The effect: 0x4381d0 begin, 0x4383e0 advance, 0x4384d0 draw ─────────
+ *
+ * Vertices are FVF 0x212 (0x28 bytes, position first); the velocity table
+ * holds one float[3] per triangle.  Written as plain float C -- the
+ * original's x87 keeps the length and the last quotient in extended
+ * precision, a difference in the last bits of a debris velocity that
+ * nothing downstream compares. */
+static float *debris_vertex(ExplodeDebris *self, int i)
+{
+    return (float *)((BYTE *)self->pVertexCopy + i * 0x28);
+}
+
+static float *debris_velocity(ExplodeDebris *self, int tri)
+{
+    return (float *)((BYTE *)self->pFaceRecords + tri * 0xc);
+}
+
+__declspec(dllexport) int __attribute__((thiscall))
+ExplodeDebris_Begin(ExplodeDebris *self, CFaktMesh *mesh,
+                    unsigned short frame, const float *origin)
+{
+    if (frame >= mesh->wFrameCount)
+        return 0;
+    if ((DWORD)self->nVertexCount != mesh->dwVertexCount)
+        return 0;
+    if (self->pVertexCopy == NULL)
+        return 0;
+
+    /* BUG KEPT: the source offset is frame * count * 0x640, forty times a
+     * frame's real size (count * 0x28).  Frame 0 is right; any other frame
+     * reads far past the mesh's vertex data. */
+    DWORD count = mesh->dwVertexCount;
+    memcpy(self->pVertexCopy,
+           (BYTE *)mesh->pVertexData + (DWORD)frame * count * 0x640,
+           count * 0x28);
+
+    for (DWORD t = 0; t < (DWORD)self->nVertexCount / 3; t++) {
+        float *r = debris_velocity(self, t);
+        const float *v0 = debris_vertex(self, t * 3);
+        const float *v1 = v0 + 10, *v2 = v0 + 20;
+        for (int k = 0; k < 3; k++) r[k] = v0[k] - origin[k];
+        for (int k = 0; k < 3; k++) r[k] = (v1[k] - origin[k]) + r[k];
+        for (int k = 0; k < 3; k++) r[k] = (v2[k] - origin[k]) + r[k];
+
+        float speed = self->samples[self->cursor];
+        float len = sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
+        self->cursor++;
+        for (int k = 0; k < 3; k++)
+            r[k] = speed * (r[k] / len);   /* len 0 gives NaN, as the original */
+        if (self->cursor >= 30)
+            self->cursor = 0;
+    }
+
+    self->bActive       = 1;
+    self->nLiveVertices = self->nVertexCount;
+    self->flDropAccum   = 0.0f;
+    return 1;
+}
+
+__declspec(dllexport) void __attribute__((thiscall))
+ExplodeDebris_Advance(ExplodeDebris *self, float dt)
+{
+    if (self->bActive == 0 || self->nLiveVertices <= 0)
+        return;
+
+    for (int i = 0; i < self->nLiveVertices; i++) {
+        float *v = debris_vertex(self, i);
+        const float *r = debris_velocity(self, i / 3);
+        for (int k = 0; k < 3; k++)
+            v[k] = dt * r[k] + v[k];
+    }
+
+    /* Whole triangles owed: floor, then the CRT's truncating __ftol. */
+    self->flDropAccum = dt * self->flExplodeScaledCount + self->flDropAccum;
+    int n = (int)floor((double)self->flDropAccum);
+    self->nLiveVertices -= n * 3;
+    self->flDropAccum = self->flDropAccum - (float)n;
+    if (self->nLiveVertices < 0)
+        self->nLiveVertices = 0;
+}
+
+__declspec(dllexport) HRESULT __attribute__((thiscall))
+ExplodeDebris_Draw(ExplodeDebris *self, IDirect3DDevice3 *dev)
+{
+    if (self->bActive == 0)
+        return (HRESULT)0x800401f0;       /* CO_E_NOTINITIALIZED */
+
+    DWORD saved;
+    dev->GetRenderState(D3DRENDERSTATE_SRCBLEND, &saved);
+    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
+    dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0x212, self->pVertexCopy,
+                       self->nLiveVertices, D3DDP_DONOTLIGHT);
+    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_DESTALPHA);
+    dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0x212, self->pVertexCopy,
+                       self->nLiveVertices, D3DDP_DONOTLIGHT);
+    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, saved);
+    return 0;
 }
 
 } // extern "C"

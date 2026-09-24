@@ -109,4 +109,16 @@ ExplodeDebris_AllocateExplodeBuffers(ExplodeDebris *self, struct CFaktMesh *mesh
 __declspec(dllexport) void __attribute__((thiscall))
 ExplodeDebris_StoreExplodeScaledCount(ExplodeDebris *self, float scale);
 
+/* 0x004381d0 -- begin: copy one frame, give every triangle a velocity.
+ * Returns 1, or 0 if the frame, the vertex count or the buffer is wrong. */
+__declspec(dllexport) int __attribute__((thiscall))
+ExplodeDebris_Begin(ExplodeDebris *self, struct CFaktMesh *mesh,
+                    unsigned short frame, const float *origin);
+/* 0x004383e0 -- advance by dt: move, then drop whole triangles. */
+__declspec(dllexport) void __attribute__((thiscall))
+ExplodeDebris_Advance(ExplodeDebris *self, float dt);
+/* 0x004384d0 -- draw the live triangles twice; 0x800401f0 if inactive. */
+__declspec(dllexport) HRESULT __attribute__((thiscall))
+ExplodeDebris_Draw(ExplodeDebris *self, struct IDirect3DDevice3 *dev);
+
 } // extern "C"
