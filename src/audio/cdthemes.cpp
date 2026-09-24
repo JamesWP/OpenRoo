@@ -233,14 +233,17 @@ Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
  *
  * Opens the .cdt with the original's mode "r+t" (text, and -- needlessly --
  * writable).  Defects kept:
- *   - the line buffer starts as a copy of the global string at 0x46c290 and
- *     is parsed even when the first fgets reads nothing;
+ *   - the line buffer starts empty (a copy of the never-written empty
+ *     string at 0x46c290) and is parsed even when the first fgets reads
+ *     nothing;
  *   - the EOF test comes before fgets, so a file ending in a newline has one
  *     failed fgets whose unchanged buffer is parsed again: strtok resumes
  *     after the first token's NUL and the LAST THEME IS ADDED TWICE;
  *   - the newline chop drops the last character unconditionally (a line cut
  *     at 0xff chars loses a real one), and runs on an empty buffer's [-1];
- *   - the index is a byte, so a 256th theme stores its track over +0x11b.
+ *   - the index is a byte and unchecked: a 256th theme stores its track in
+ *     currentTrack_ (the byte after trackOf_) and its name one row past
+ *     names_, beyond the object.  Kept; no shipped .cdt comes close.
  * The missing-file path zeroes all 255 names (0xfe01 bytes) and returns 0
  * without touching count_ past the initial zero. */
 extern "C" __declspec(dllexport) unsigned char __attribute__((thiscall))
@@ -260,7 +263,7 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
     unsigned char n = 0;
     FILE *fp = fopen(path, GS_CD_TRACKFILE_MODE);
     count_ = 0;
-    strcpy(line, (const char *)0x0046c290);
+    line[0] = '\0';   /* the original strcpy's the empty .data string 0x46c290 */
 
     if (fp == NULL) {
         GameLog_LogMessage(GG_LOGGER, 3, GS_CD_TRACKFILE_MISSING, path);
@@ -279,8 +282,11 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
         tok = strtok(NULL, delims);
         if (tok == NULL)
             continue;
-        ((unsigned char *)this)[0x1c + n] = track;   /* trackOf_[n], n may be 255 */
-        char *dst = (char *)this + 0x11d + n * NAME_SIZE;
+        if (n < THEME_MAX)
+            trackOf_[n] = track;
+        else
+            currentTrack_ = track;       /* trackOf_[255] in the original */
+        char *dst = names_[n];
         strcpy(dst, tok);
         GameLog_LogMessage(GG_LOGGER, 2, GS_CD_THEME_TRACK, dst, (unsigned)track);
         n++;
