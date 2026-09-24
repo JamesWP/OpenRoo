@@ -1,5 +1,8 @@
-/* SceneMaterial::CreateSceneMaterial / ReleaseSceneMaterial reimplementation.
+/* SceneMaterial -- the whole class.
  *
+ *   0x42d690 Construct          __thiscall(this) -> this, ret 0
+ *   0x42d720 DestructBody       __thiscall(this) -> void: vtable, then Release
+ *   0x42d700 ScalarDtor         __thiscall(this, flags) -> this, ret 4
  *   0x42d760 CreateSceneMaterial
  *       __thiscall(this, IDirect3D3 *, IDirect3DDevice3 *) -> uint, ret 8
  *   0x42d730 ReleaseSceneMaterial
@@ -25,6 +28,7 @@
  * destructor thunk at 0x42d720; patch.py covers the latter via JMP_PATCHES.
  * Unlike the light, Release here NULLs pMaterial unconditionally.
  */
+#include <string.h>
 #include "scenematerial.h"
 #include "log.h"
 #include "alloc.h"
@@ -73,6 +77,59 @@ SceneMaterial_Create(SceneMaterial *self, IDirect3D3 *pD3D,
               (unsigned long)self->hMaterial, hrSet);
 
     return ((unsigned int)hrSet & 0xffffff00u) | 1u;
+}
+
+/* ─── Construction and teardown (ENDGAME E4/E5) ────────────────────────────
+ *
+ * The one instance is the global at 0x4e0390, built by the static-init thunk
+ * at 0x425db0 and torn down by the atexit thunk at 0x425dd0 (tail JMPs,
+ * JMP_PATCHES).  Same shape as the light: our own one-slot vtable, the
+ * game's 0x45d4e8 left as a tripwire, the scalar dtor unreached.
+ *
+ * The ctor zeroes the D3DMATERIAL and sets dwSize 80, diffuse and ambient
+ * (0.5, 0.5, 0.5, 1), specular (1, 1, 1, 1), power 0, dwRampSize 1.
+ * pHeapData stays game-heap: nothing in the image writes it by absolute
+ * address, but a pointer-relative writer is not ruled out -- ENDGAME_PLAN's
+ * alloc.h table keeps it until that audit is done. */
+SceneMaterial *__attribute__((thiscall)) SceneMaterial_ScalarDtor(SceneMaterial *self,
+                                                                   unsigned char flags);
+
+static void *const g_SceneMaterialVtable[1] = { (void *)&SceneMaterial_ScalarDtor };
+
+__declspec(dllexport) SceneMaterial *__attribute__((thiscall))
+SceneMaterial_Construct(SceneMaterial *self)
+{
+    self->pVtable   = (void *)g_SceneMaterialVtable;
+    self->pHeapData = NULL;
+    self->pMaterial = NULL;
+    self->hMaterial = 0;
+    memset(&self->mat, 0, sizeof self->mat);
+    self->mat.dwSize = sizeof(D3DMATERIAL);
+    self->mat.diffuse.a  = 1.0f;
+    self->mat.ambient.a  = 1.0f;
+    self->mat.specular.r = self->mat.specular.g =
+    self->mat.specular.b = self->mat.specular.a = 1.0f;
+    self->mat.power = 0.0f;
+    self->mat.diffuse.r = self->mat.diffuse.g = self->mat.diffuse.b = 0.5f;
+    self->mat.ambient.r = self->mat.ambient.g = self->mat.ambient.b = 0.5f;
+    self->mat.dwRampSize = 1;
+    return self;
+}
+
+__declspec(dllexport) void __attribute__((thiscall))
+SceneMaterial_DtorBody(SceneMaterial *self)
+{
+    self->pVtable = (void *)g_SceneMaterialVtable;
+    SceneMaterial_Release(self);
+}
+
+__declspec(dllexport) SceneMaterial *__attribute__((thiscall))
+SceneMaterial_ScalarDtor(SceneMaterial *self, unsigned char flags)
+{
+    SceneMaterial_DtorBody(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }
 
 } // extern "C"

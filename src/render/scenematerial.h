@@ -25,3 +25,10 @@ static_assert(offsetof(SceneMaterial, hMaterial) == 0x08, "SceneMaterial layout"
 static_assert(offsetof(SceneMaterial, mat)       == 0x0c, "SceneMaterial layout");
 static_assert(offsetof(SceneMaterial, pHeapData) == 0x5c, "SceneMaterial layout");
 static_assert(sizeof(SceneMaterial) == 96, "SceneMaterial size mismatch");
+
+/* The fields the constructor (0x42d690) writes, by their object offset. */
+static_assert(0x0c + offsetof(D3DMATERIAL, diffuse)    == 0x10, "SceneMaterial ctor");
+static_assert(0x0c + offsetof(D3DMATERIAL, ambient)    == 0x20, "SceneMaterial ctor");
+static_assert(0x0c + offsetof(D3DMATERIAL, specular)   == 0x30, "SceneMaterial ctor");
+static_assert(0x0c + offsetof(D3DMATERIAL, power)      == 0x50, "SceneMaterial ctor");
+static_assert(0x0c + offsetof(D3DMATERIAL, dwRampSize) == 0x58, "SceneMaterial ctor");
