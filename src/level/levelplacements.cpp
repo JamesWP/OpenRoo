@@ -402,3 +402,19 @@ LevelPlacements_Build(LevelPlacements *p, const Game *g,
 
     build_walls(p, g, theme->flSideHeight);
 }
+
+/* ─── 0x425680: static-init table entry 7 ─────────────────────────────────
+ *
+ * The compiler's default construction of tileQuad's four vertices: every
+ * dword zero except d[3] (the diffuse), 0xffffffff.  Nothing else in the
+ * object is touched -- it is zero-initialised static storage -- and nothing
+ * is registered with atexit.  The builder later overwrites all four. */
+extern "C" __declspec(dllexport) void __cdecl
+LevelPlacements_StaticInit(void)
+{
+    for (int i = 0; i < 4; i++) {
+        for (int k = 0; k < 8; k++)
+            GG_LEVEL_PLACEMENTS->tileQuad[i].d[k] = 0;
+        GG_LEVEL_PLACEMENTS->tileQuad[i].d[3] = 0xffffffff;
+    }
+}

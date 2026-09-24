@@ -62,6 +62,7 @@
 #include "log.h"
 #include "scenetexture.h"   /* Texture_ImportSceneTextures, through its owner header */
 #include "gamestr.h"        /* GS_FON_MODE_READ */
+#include "alloc.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -653,3 +654,47 @@ Text_DrawWobbleGlyphRow(TextRenderer *self, float x, float y, float cellW,
 }
 
 } /* extern "C" */
+
+/* ─── The lifecycle: 0x4134d0 ctor, 0x413510 dtor body, 0x4134f0 scalar ────
+ *
+ * Reached only from the static-init / atexit thunks (0x425e30, 0x425e60).
+ * Own one-slot vtable; the game's 0x45d3a8 is a tripwire (byte scan: only
+ * the replaced ctor and dtor write it).  The scalar dtor is unreached -- a
+ * global is never deleted -- and frees on the game heap by precedent. */
+static void *const g_TextVtable[1] = { (void *)&Text_ScalarDtor };
+
+void TextRenderer::construct()
+{
+    Texture_SceneCtor(atlas());
+    vtable_ = g_TextVtable;
+    rows_ = 0;
+    cols_ = 0;
+}
+
+void TextRenderer::destruct()
+{
+    vtable_ = g_TextVtable;
+    Texture_SceneDtorBody(atlas());
+}
+
+extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
+Text_Construct(TextRenderer *self)
+{
+    self->construct();
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Text_DtorBody(TextRenderer *self)
+{
+    self->destruct();
+}
+
+extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
+Text_ScalarDtor(TextRenderer *self, unsigned int flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}

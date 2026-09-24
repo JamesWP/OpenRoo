@@ -131,3 +131,29 @@ SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags)
 }
 
 } // extern "C"
+
+/* ─── 0x0043b560 InitialiseEmptySaveSlotTable ───────────────────────────────
+ *
+ * Blanks the first count_ records -- count_ is whatever Game::Load set, the
+ * loop bound is re-read each pass.  Per record, in the original's order:
+ * inUse, levelIndex, livesRemaining, the name "..........", then
+ * completionNumerator and elapsedGameTime.  totalScore and unusedTail are
+ * NOT touched (kept: a blank slot keeps a stale score). */
+void SaveSlots::initialiseEmpty()
+{
+    for (int i = 0; i < count_; ++i) {
+        SaveSlot &s = slots_[i];
+        s.inUse          = 0;
+        s.levelIndex     = 0;
+        s.livesRemaining = 0;
+        strcpy(s.name, "..........");
+        s.completionNumerator = 0;
+        s.elapsedGameTime     = 0;
+    }
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+SaveSlots_InitialiseEmpty(SaveSlots *self)
+{
+    self->initialiseEmpty();
+}

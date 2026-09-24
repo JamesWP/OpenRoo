@@ -24,7 +24,7 @@
 #include "faktmesh.h"
 #include "levelobject.h"
 #include "particles.h"
-#include "shadowmesh.h"
+#include "explodedebris.h"
 #include "sky.h"
 
 
@@ -46,7 +46,7 @@ public:
     ThemeObjectKind kind;
     CFaktMesh   *pMesh;
     WrapperObject wrapper;
-    ShadowMesh   explode;           // set up only by `explode`; needs pMesh first
+    ExplodeDebris   explode;           // set up only by `explode`; needs pMesh first
     DWORD        bExplode;
     float        flExplodeDir[3];   // (t4,t5,t6) rotated -90 deg about X
 
@@ -120,7 +120,7 @@ class __attribute__((packed)) ThemeObjectTypeSlot {
 public:
     static const int ORIGIN = 0;
 
-    DWORD            dwUnknownHeader0;  // never written by the loader
+    void            *pVtable;           // our one-slot table (game's 0x45d6f8)
     DWORD            dwInstanceCount;   // last record index + 1
     ThemeLevelObject records[8];
 private:
@@ -249,6 +249,30 @@ Theme_ReleaseBlock(ThemeAssetBlock *block);
 /* 0x0043b720 -- also called by the slot's static destructor 0x0043b6c0. */
 extern "C" __declspec(dllexport) void __attribute__((fastcall))
 Theme_ReleaseSlot(ThemeObjectTypeSlot *slot);
+/* The slot's and its records' lifecycles (theme.cpp):
+ *   0x0043b5d0 slot ctor       38 E8, the static-init block 0x4259c3..
+ *   0x0043b6c0 slot dtor       1 E8 (scalar dtor) + 76 E9 (atexit thunks,
+ *                              SEH funclets)
+ *   0x0043b600 slot scalar dtor  vtable slot 0 only
+ *   0x0043b620 record ctor / 0x0043b670 record dtor  -- only ever pushed to
+ *                              MSVC's vector ctor/dtor iterators */
+extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
+Theme_SlotConstruct(ThemeObjectTypeSlot *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Theme_SlotDestruct(ThemeObjectTypeSlot *self);
+extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
+Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags);
+extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
+Theme_RecordConstruct(ThemeLevelObject *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Theme_RecordDestruct(ThemeLevelObject *self);
+/* The block's compiler-generated aggregate ctor/dtor, for the one global
+ * GG_THEME_BLOCK: 0x004259a0 / 0x004256f0, each reached by one E9 from its
+ * static-init / atexit thunk. */
+extern "C" __declspec(dllexport) ThemeAssetBlock *__attribute__((thiscall))
+Theme_BlockConstruct(ThemeAssetBlock *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Theme_BlockDestruct(ThemeAssetBlock *self);
 /* 0x004113e0 -- the `sound` keyword: event name -> id, then ThemeSound_Add. */
 extern "C" __declspec(dllexport) bool __cdecl
 Theme_RegisterSound(Game *game, char *eventName, const char *waveName);

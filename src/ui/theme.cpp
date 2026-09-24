@@ -4,7 +4,7 @@
  * 0x0040bf30, Theme_ReleaseSlot 0x0043b720, Theme_RegisterSound 0x004113e0
  * and ThemeSound_Add 0x004402d0.  Its other callees were replaced in the same
  * batch in their owners' files (model.cpp, scenetexture.cpp, sky.cpp,
- * shadowmesh.cpp).  The .thm grammar is on the loader's Ghidra plate; theme.h
+ * explodedebris.cpp).  The .thm grammar is on the loader's Ghidra plate; theme.h
  * holds the block it fills.
  *
  * The reader: fgets(line, 0x100) on a TEXT-mode FILE (the CRT folds CRLF --
@@ -25,6 +25,7 @@
 #include <stdlib.h>
 
 #include "theme.h"
+#include "alloc.h"
 #include "log.h"
 #include "game.h"
 #include "direct3d.h"
@@ -212,7 +213,7 @@ static void theme_struct_dump_if_enabled(const char *path)
  * token COUNT still counts them, as the original's did.
  */
 
-/* Sub-objects of the block (ShadowMesh, WrapperObject, AnimTable, sky
+/* Sub-objects of the block (ExplodeDebris, WrapperObject, AnimTable, sky
  * textures) are handed to their owners by address.  Unlike the idiom in
  * doublesoundbuff.h, these really are misaligned -- the game packed the
  * block, and e.g. records sit at odd offsets -- which x86 tolerates and the
@@ -235,7 +236,7 @@ Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
 {
     for (int i = 0; i < 8; i++) {
         ThemeLevelObject &r = slot->records[i];
-        ShadowMesh_Release(&r.explode);
+        ExplodeDebris_Release(&r.explode);
         Wrapper_ReleaseSnapshot(&r.wrapper);
         for (DWORD k = 0; k < r.dwInstanceCount; k++) {
             if (r.pParticleSystems[k] != NULL) {
@@ -245,6 +246,90 @@ Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
         }
     }
     memset(slot, 0, sizeof(*slot));
+}
+
+/* ─── The slot and record lifecycles: 0x43b5d0 0x43b600 0x43b620 0x43b670
+ *     0x43b6c0 ────────────────────────────────────────────────────────────
+ *
+ * Every slot is a member of the global ThemeAssetBlock, built by the
+ * static-init block and torn down by atexit thunks.  The record ctor/dtor
+ * were only ever function pointers handed to MSVC's vector iterators
+ * (0x451db5 / 0x451e37), which are plain loops here -- the dtor iterator
+ * walks the array last to first, and so does this.  The iterators' EH
+ * cleanup (destroy the constructed prefix if a ctor throws) has no
+ * counterpart: none of these ctors can throw.
+ *
+ * Own one-slot vtable; the game's 0x45d6f8 is left as a tripwire (byte
+ * scan: written only by 0x43b5ef and 0x43b6df, the replaced ctor and dtor).
+ * The scalar dtor is unreached (a global is never deleted), its free on the
+ * game heap by the LinkedList precedent.
+ *
+ * Kept: the dtor installs the vtable and then Theme_ReleaseSlot memsets the
+ * whole slot, vtable and every record's sub-object tables included, so the
+ * record dtors that follow run on zeroed members. */
+static void *const g_ThemeSlotVtable[1] = { (void *)&Theme_SlotScalarDtor };
+
+extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
+Theme_RecordConstruct(ThemeLevelObject *self)
+{
+    Wrapper_Construct(&self->wrapper);
+    ExplodeDebris_Construct(&self->explode);
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Theme_RecordDestruct(ThemeLevelObject *self)
+{
+    ExplodeDebris_DtorBody(&self->explode);
+    Wrapper_DtorBody(&self->wrapper);
+}
+
+extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
+Theme_SlotConstruct(ThemeObjectTypeSlot *self)
+{
+    for (int i = 0; i < 8; i++)
+        Theme_RecordConstruct(&self->records[i]);
+    self->pVtable = (void *)g_ThemeSlotVtable;
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Theme_SlotDestruct(ThemeObjectTypeSlot *self)
+{
+    self->pVtable = (void *)g_ThemeSlotVtable;
+    Theme_ReleaseSlot(self);
+    for (int i = 8; i-- > 0; )
+        Theme_RecordDestruct(&self->records[i]);
+}
+
+extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
+Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
+{
+    Theme_SlotDestruct(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}
+
+/* ─── 0x4259a0 / 0x4256f0: the block's aggregate ctor and dtor ────────────
+ *
+ * Members only: 38 slots in order, then the sky; the dtor in reverse.  The
+ * images, colours and scalars between them are plain data and untouched. */
+extern "C" __declspec(dllexport) ThemeAssetBlock *__attribute__((thiscall))
+Theme_BlockConstruct(ThemeAssetBlock *self)
+{
+    for (int i = 0; i < THEME_OBJ_COUNT; i++)
+        Theme_SlotConstruct(&self->slots[i]);
+    Sky_Construct(&self->sky);
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Theme_BlockDestruct(ThemeAssetBlock *self)
+{
+    Sky_DtorBody(&self->sky);
+    for (int i = THEME_OBJ_COUNT; i-- > 0; )
+        Theme_SlotDestruct(&self->slots[i]);
 }
 
 /* 0x0040bf30.  BUG KEPT: EXPLOSION's slot is not in the list, so its
@@ -784,9 +869,9 @@ void ThemeParser::explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec)
     if (ntok <= 6 || slot == NULL || rec->pMesh == NULL)
         return;
     rec->bExplode = 1;
-    ShadowMesh_AllocateExplodeBuffers(&rec->explode, rec->pMesh);
+    ExplodeDebris_AllocateExplodeBuffers(&rec->explode, rec->pMesh);
     Gen_FillGaussianField(&rec->explode, atof_f(tok[1]), atof_f(tok[2]));
-    ShadowMesh_StoreExplodeScaledCount(&rec->explode, atof_f(tok[3]));
+    ExplodeDebris_StoreExplodeScaledCount(&rec->explode, atof_f(tok[3]));
 
     const double a = (double)-1.5707963705062866f;
     const double c = cos(a), s = sin(a);

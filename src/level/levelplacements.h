@@ -110,3 +110,7 @@ LevelPlacements_Release(LevelPlacements *p);
 extern "C" __declspec(dllexport) void __cdecl
 LevelPlacements_Build(LevelPlacements *p, const Game *g,
                       const ThemeAssetBlock *theme);
+/* 0x00425680 -- the static initialiser (C++ init-table entry 7, via the
+ * thunk 0x00425670's E9): default-constructs tileQuad[4].  No dtor. */
+extern "C" __declspec(dllexport) void __cdecl
+LevelPlacements_StaticInit(void);

@@ -312,6 +312,7 @@ public:
     /* +0x213: a random phase, rand() * 2pi / 32768, given to every cell
      * holding an item. */
     void setItemPhase(float p)                 { itemPhase_ = p; }
+    float itemPhase() const                    { return itemPhase_; }
 
     /* ── read by the foe pathfinder (foepath.cpp) ────────────────────── */
     /* +0x1f1: set from the param byte on a TILE_JUMP_PAD cell.  An earlier

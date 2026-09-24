@@ -92,6 +92,12 @@ public:
     /* +0xef: the foe's hold flag; the Player's level-complete flag.
      * Either way updateMovement() drops the queued move. */
     int   held() const                         { return held_; }
+    /* +0x9a: the animation state (see the field); 10 is the dying anim that
+     * DrawObjectShadows' `dead`/`alive` conditions test. */
+    unsigned char anim() const                 { return anim_; }
+    /* +0xe9 / +0xea: paraglider charges, and whether it is open. */
+    unsigned char glides() const               { return glides_; }
+    int   gliding() const                      { return gliding_; }
     /* +0x14e: the direction being moved in, 0 while still.  1 = -V,
      * 2 = +U, 3 = +V, 4 = -U (updateMovement's stepU_/stepV_ table). */
     int   moveDir() const                      { return moveDir_; }

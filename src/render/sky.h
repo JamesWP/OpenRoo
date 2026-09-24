@@ -22,7 +22,7 @@ struct SkyVertex {
 static_assert(sizeof(SkyVertex) == 0x20, "SkyVertex stride");
 
 struct SkyBackground {
-    DWORD           field0;         // +0x000
+    const void     *pVtable;        // +0x000 our one-slot table (game's 0x45d6fc)
     float           flYawAngle;     // +0x004 radians; drives the Y rotation
     SceneTexture    Textures[6];    // +0x008 .. +0x0b0 (stride 0x1c)
     SkyVertex       QuadVerts[6][4];     // +0x0b0 .. +0x3b0  one strip per face
@@ -46,3 +46,11 @@ Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
                        IDirect3DDevice3 *dev, const char *up, const char *dn,
                        const char *fr, const char *bk, const char *lf,
                        const char *rt, UINT bpp);
+
+/* The lifecycle of the one instance, ThemeAssetBlock::sky (sky.cpp). */
+extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
+Sky_Construct(SkyBackground *self);                          /* 0x0043c560 */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sky_DtorBody(SkyBackground *self);                           /* 0x0043c850 */
+extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
+Sky_ScalarDtor(SkyBackground *self, unsigned int flags);     /* 0x0043c830 */

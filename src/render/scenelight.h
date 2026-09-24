@@ -26,3 +26,10 @@ static_assert(offsetof(SceneSpotLight, bNotInScene) == 0x58, "SceneSpotLight lay
  * as "the fields reach exactly 89 bytes before padding". */
 static_assert(offsetof(SceneSpotLight, bNotInScene) + 1 == 89,
               "SceneSpotLight fields do not tile to the game's 89 bytes");
+
+/* The fields the constructor (0x425380) writes, by their object offset. */
+static_assert(4 + offsetof(D3DLIGHT2, dvRange)        == 0x34, "SceneSpotLight ctor");
+static_assert(4 + offsetof(D3DLIGHT2, dvFalloff)      == 0x38, "SceneSpotLight ctor");
+static_assert(4 + offsetof(D3DLIGHT2, dvAttenuation0) == 0x3c, "SceneSpotLight ctor");
+static_assert(4 + offsetof(D3DLIGHT2, dvAttenuation2) == 0x44, "SceneSpotLight ctor");
+static_assert(4 + offsetof(D3DLIGHT2, dwFlags)        == 0x50, "SceneSpotLight ctor");
