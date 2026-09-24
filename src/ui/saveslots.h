@@ -57,6 +57,8 @@ public:
     SaveSlot      *edit()                          { return &edit_; }
     unsigned short editSlot() const                { return editSlot_; }
     void           setEditSlot(unsigned short i)   { editSlot_ = i; }
+    /* 0x0043b560 -- blank the first count() records (saveslots.cpp). */
+    void           initialiseEmpty();
 
 private:
     SaveSlots() = delete;   /* game-owned; only ever reached by pointer */
@@ -104,3 +106,7 @@ SaveSlots_RestoreVtable(SaveSlots *self);       /* 0x0043b3c0 */
  * the GAME heap, since Game owns this object. */
 extern "C" __declspec(dllexport) void *__attribute__((thiscall))
 SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags);
+
+/* 0x0043b560 InitialiseEmptySaveSlotTable -- one E8, Game::Load 0x4148c8. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+SaveSlots_InitialiseEmpty(SaveSlots *self);
