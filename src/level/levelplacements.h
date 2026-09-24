@@ -40,7 +40,9 @@ KAROO_LAYOUT_CHECKS(PlacementList)
     KAROO_LAYOUT_SIZE(0x0c);
 }
 
-/* 0x20-byte vertex.  Two formats share the size:
+/* PLACEHOLDER, not a decoded type -- to be replaced once the readers in
+ * RenderGameFrame say what each vertex array is.  0x20 bytes; what the
+ * builders write suggests two formats share the size:
  *   the tile-top template: x,y,z, diffuse 0xffffffff, (u0,v0), (u1,v1)
  *   everything else:       BbVertex (d3dmath.h), FVF 0x1e2 --
  *                          x,y,z, 0, diffuse 0x00ffffff, specular 0, u, v */
@@ -52,8 +54,8 @@ struct __attribute__((packed)) LevelPlacements {
     PlacementVertex tileQuad[4];         /* +0x000  unit quad at y=0, +-0.5 */
     int             kind01Count;         /* +0x080  TILE_KIND_01 cells */
     PlacementVertex *kind01Verts;        /* +0x084  6 per cell (two tris) */
-    float           kind04Pos[3];        /* +0x088  the single kind-4 cell */
-    float           kind04Rot[3];        /* +0x094 */
+    float           exitPos[3];          /* +0x088  the TILE_EXIT cell (the last one wins) */
+    float           exitRot[3];          /* +0x094  always 0 */
     PlacementList   lifts;               /* +0x0a0  TILE_LIFT; pos/rot all 0 */
     PlacementList   slides;              /* +0x0ac  count = Game slideCount,
                                                     NOT a cell count; rot zeroed */
@@ -76,8 +78,8 @@ KAROO_LAYOUT_CHECKS(LevelPlacements)
 {
     KAROO_LAYOUT_AT(kind01Count,    0x080);
     KAROO_LAYOUT_AT(kind01Verts,    0x084);
-    KAROO_LAYOUT_AT(kind04Pos,      0x088);
-    KAROO_LAYOUT_AT(kind04Rot,      0x094);
+    KAROO_LAYOUT_AT(exitPos,        0x088);
+    KAROO_LAYOUT_AT(exitRot,        0x094);
     KAROO_LAYOUT_AT(lifts,          0x0a0);
     KAROO_LAYOUT_AT(slides,         0x0ac);
     KAROO_LAYOUT_AT(breakables,     0x0b8);

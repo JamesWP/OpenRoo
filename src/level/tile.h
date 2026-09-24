@@ -46,15 +46,21 @@ enum TileKind {
      * it (the +0x1bc slide track is nonzero). */
     TILE_EMPTY       = 0x00,
     /* Censused as LevelCensus::kind01.  SetupLevelObjects rewrites
-     * TILE_KIND_03 to this
+     * TILE_START to this
      * before any later test sees it; nothing else reads it. */
     TILE_KIND_01     = 0x01,
     /* The pad that freezes whoever stands on it until it is spent.  Derived
      * in worldstate.h, which has named it WS_TILE_GLUE since before this
      * enum; that macro is now defined from this. */
     TILE_GLUE        = 0x02,
-    /* Only ever seen being rewritten to TILE_KIND_01 at load. */
-    TILE_KIND_03     = 0x03,
+    /* The player's start (James, from the game).  SetupLevelObjects
+     * rewrites it to TILE_KIND_01 before any later test sees it, so nothing
+     * after the level build ever reads this value. */
+    TILE_START       = 0x03,
+    /* The level exit (James, from the game).  BuildLevelPlacementLists
+     * 0x404dd0 keeps its single position and BuildLevelWallStrips 0x406530
+     * counts it as solid (levelplacements.h). */
+    TILE_EXIT        = 0x04,
 
     /* Ramps, one per facing: `kind - 4` is the direction, 1..4, and
      * worldstate.cpp's ws_is_ramp() is `kind > 4 && kind < 9`.  A step off a

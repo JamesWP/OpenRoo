@@ -639,8 +639,8 @@ Sim_SetupLevelObjects(Game *self)
                     t->setParam(0);
                 }
 
-                /* type 3 becomes type 1, before the tests below see it */
-                if (t->objectMarker() == TILE_KIND_03)
+                /* the start becomes type 1, before the tests below see it */
+                if (t->objectMarker() == TILE_START)
                     t->setObjectMarker(1);
 
                 if (t->objectMarker() == TILE_LIFT) {
