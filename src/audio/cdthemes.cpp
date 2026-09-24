@@ -305,7 +305,7 @@ Sim_ListTrackLengths(CdThemes *self)
 
 int CdThemes::listTrackLengths()
 {
-    char *len = (char *)this;   /* the original's slot starts as `this` */
+    char *len = NULL;   /* always written by CDM_GetTrackLength before use */
     trackCount_ = CDM_GetTrackCount(GG_CDAUDIO);
     GameLog_LogMessage(GG_LOGGER, 3, GS_CD_TRACK_COUNT, trackCount_);
     for (unsigned t = 1; (unsigned)trackCount_ != 0; t++) {
