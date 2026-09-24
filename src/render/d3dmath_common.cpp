@@ -1,6 +1,7 @@
 /* Math helpers with no arithmetic that could round differently -- pure data
  * movement.  The address in each comment is the original it mirrors.
  */
+#include <math.h>
 #include "d3dmath_common.h"
 
 /* MatrixSetIdentity, 0x413230 */
@@ -134,6 +135,40 @@ Math_Mat4Zero(Mat4 *d)
     for (int i = 0; i < 16; i++)
         d->m[i] = 0.0f;
     return d;
+}
+
+/* Written from the listing; each step rounds to float where the original
+ * stores to memory. */
+__declspec(dllexport) void __cdecl
+Math_BuildBillboardQuad(Vec3 *out, float dx, float dy, float dz, float scale)
+{
+    Vec3 up = { 1.0f, 0.0f, 0.0f };
+    if (dx == 1.0f && dy == 0.0f && dz == 0.0f)
+        up = (Vec3){ 0.0f, 1.0f, 0.0f };
+
+    Vec3 d = { dx, dy, dz };
+    double len = sqrt(Math_Vec3SqLen(&d));
+    Vec3 n = { (float)(dx / len), (float)(dy / len), (float)(dz / len) };
+
+    Vec3 *r = &out[2], *u = &out[1];
+    r->x = (float)((double)up.z * n.y - (double)n.z * up.y);
+    r->y = (float)((double)n.z * up.x - (double)up.z * n.x);
+    r->z = (float)((double)up.y * n.x - (double)n.y * up.x);
+    u->x = (float)((double)n.y * r->z - (double)n.z * r->y);
+    u->y = (float)((double)n.z * r->x - (double)n.x * r->z);
+    u->z = (float)((double)n.x * r->y - (double)n.y * r->x);
+    out[0] = (Vec3){ 0.0f, 0.0f, 0.0f };
+
+    Vec3 t;
+    Math_Vec3Div(&t, r, (float)sqrt(Math_Vec3SqLen(r)));
+    *r = (Vec3){ t.x * scale, t.y * scale, t.z * scale };
+    Math_Vec3Div(&t, u, (float)sqrt(Math_Vec3SqLen(u)));
+    *u = (Vec3){ t.x * scale, t.y * scale, t.z * scale };
+
+    out[3] = (Vec3){ r->x + u->x, r->y + u->y, r->z + u->z };
+    Vec3 c = { out[3].x * 0.5f, out[3].y * 0.5f, out[3].z * 0.5f };
+    for (int i = 0; i < 4; i++)
+        v3_sub_inplace(&out[i], &c);
 }
 
 }

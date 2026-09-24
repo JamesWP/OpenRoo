@@ -44,4 +44,12 @@ Math_Mat4Set(Mat4 *self, float m00, float m01, float m02, float m03,
              float m30, float m31, float m32, float m33);
 /* 0x406500, cdecl: zero d (through a zeroed temporary), returns d. */
 __declspec(dllexport) Mat4 *__cdecl Math_Mat4Zero(Mat4 *d);
+/* BuildBillboardMatrix 0x4268e0, cdecl(out, dir by value, scale): the four
+ * corners of a quad facing `dir`, centred on the origin -- out[0] = 0,
+ * out[1] = u, out[2] = r, out[3] = r + u, then each minus (r + u) / 2,
+ * where r = |dir x up| * scale, u = |dir x r| * scale and up is (1,0,0),
+ * or (0,1,0) when dir is exactly (1,0,0).  Callers: RenderSceneObjects'
+ * billboards and 0x421064.  (0x426c20, its in-place subtract, is inlined.) */
+__declspec(dllexport) void __cdecl
+Math_BuildBillboardQuad(Vec3 *out, float dx, float dy, float dz, float scale);
 }

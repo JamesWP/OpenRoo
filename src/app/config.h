@@ -98,7 +98,10 @@ public:
     void fillDefaults();
     unsigned int   savedCdMixerVolume() const          { return savedCdMixerVolume_; }
     void           setSavedCdMixerVolume(unsigned int v) { savedCdMixerVolume_ = v; }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
     unsigned int  *savedWaveOutVolumeRef()             { return &savedWaveOutVolume_; }
+#pragma GCC diagnostic pop
     unsigned int   savedWaveOutVolume() const          { return savedWaveOutVolume_; }
     void           setCameraDistanceSetting(float d)   { cameraDistanceSetting_ = d; }
     unsigned int   cdMixerVolume() const               { return cdMixerVolume_; }
