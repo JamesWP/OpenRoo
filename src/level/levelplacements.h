@@ -1,6 +1,6 @@
 /* levelplacements.h -- the per-level placement lists at 0x004e0070, built on
  * level entry and read ~100 times by RenderGameFrame (ENDGAME_PLAN.md E4,
- * the level-load chain).  Not yet replaced: this header is the layout only.
+ * the level-load chain).  The builders are ours: levelplacements.cpp.
  *
  *   0x00426c50  PrepareLevelAssetsOnEntry   calls the builder, once per level
  *   0x00404dd0  BuildLevelPlacementLists    free, count, allocate, fill;
@@ -97,3 +97,16 @@ KAROO_LAYOUT_CHECKS(LevelPlacements)
 }
 
 static LevelPlacements *const GG_LEVEL_PLACEMENTS = (LevelPlacements *)0x004e0070;
+
+class Game;
+class ThemeAssetBlock;
+
+/* 0x00407fc0 -- free every array and zero every count.  Callers: the
+ * builder, and WinMain's shutdown (0x42d62f). */
+extern "C" __declspec(dllexport) void __cdecl
+LevelPlacements_Release(LevelPlacements *p);
+/* 0x00404dd0 -- release, count, allocate, fill, then the wall strips
+ * (0x00406530).  One caller: PrepareLevelAssetsOnEntry 0x426dc9. */
+extern "C" __declspec(dllexport) void __cdecl
+LevelPlacements_Build(LevelPlacements *p, const Game *g,
+                      const ThemeAssetBlock *theme);

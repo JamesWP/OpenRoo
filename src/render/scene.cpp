@@ -24,7 +24,7 @@
 #include "extraobjects.h"
 #include "particles.h"
 #include "ani.h"
-#include "levelplacements.h"   /* the next cycle's layout; registered here until it has a .cpp */
+
 
 /* ─── Construction and teardown ─────────────────────────────────────────── */
 
