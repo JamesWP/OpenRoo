@@ -59,3 +59,51 @@ void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
     d->specular = specular;
     d->u = u;  d->v = v;
 }
+
+/* ─── The exported vec3 helpers (d3dmath_common.h) ─────────────────────────
+ *
+ * The originals keep SqLen/Dot in the x87's 80-bit registers; ours are
+ * double.  Only the last bits of a float the callers immediately round can
+ * differ, which CLAUDE.md accepts. */
+extern "C" {
+
+__declspec(dllexport) Vec3 *__attribute__((thiscall))
+Math_Vec3Set(Vec3 *self, float x, float y, float z)
+{
+    v3_set(self, x, y, z);
+    return self;
+}
+
+__declspec(dllexport) Vec3 *__cdecl
+Math_Vec3Sub(Vec3 *d, const Vec3 *a, const Vec3 *b)
+{
+    Vec3 t;
+    v3_sub(&t, a, b);
+    *d = t;
+    return d;
+}
+
+__declspec(dllexport) double __cdecl
+Math_Vec3SqLen(const Vec3 *v)
+{
+    return ((double)v->x * v->x + (double)v->y * v->y) + (double)v->z * v->z;
+}
+
+__declspec(dllexport) double __cdecl
+Math_Vec3Dot(const Vec3 *a, const Vec3 *b)
+{
+    return ((double)a->z * b->z + (double)a->y * b->y) + (double)a->x * b->x;
+}
+
+__declspec(dllexport) Vec3 *__cdecl
+Math_Vec3Cross(Vec3 *d, const Vec3 *a, const Vec3 *b)
+{
+    Vec3 t;
+    t.x = (float)((double)b->z * a->y - (double)a->z * b->y);
+    t.y = (float)((double)a->z * b->x - (double)b->z * a->x);
+    t.z = (float)((double)a->x * b->y - (double)b->x * a->y);
+    *d = t;
+    return d;
+}
+
+}

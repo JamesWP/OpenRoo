@@ -17,3 +17,20 @@ void  v3_sub(Vec3 *d, const Vec3 *a, const Vec3 *b);
 /* BuildBillboardVertex, 0x421ef0 -- one 0x20-byte FVF 0x1e2 vertex. */
 void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
                       DWORD specular, float u, float v);
+
+/* The vec3 helpers of the AutoClass5 TU (0x403770..0x403890), exported for
+ * the game's remaining call sites.  Each result is built in temporaries and
+ * then stored, so an output that aliases an input is safe, as there. */
+extern "C" {
+/* 0x403770, thiscall, RET 0xc: set and return `self`. */
+__declspec(dllexport) Vec3 *__attribute__((thiscall))
+Math_Vec3Set(Vec3 *self, float x, float y, float z);
+/* 0x403790, cdecl: d = a - b, returns d. */
+__declspec(dllexport) Vec3 *__cdecl Math_Vec3Sub(Vec3 *d, const Vec3 *a, const Vec3 *b);
+/* 0x4037e0, cdecl: (x*x + y*y) + z*z, in ST0. */
+__declspec(dllexport) double __cdecl Math_Vec3SqLen(const Vec3 *v);
+/* 0x403810, cdecl: (az*bz + ay*by) + ax*bx, in ST0. */
+__declspec(dllexport) double __cdecl Math_Vec3Dot(const Vec3 *a, const Vec3 *b);
+/* 0x403830, cdecl: d = a x b, returns d. */
+__declspec(dllexport) Vec3 *__cdecl Math_Vec3Cross(Vec3 *d, const Vec3 *a, const Vec3 *b);
+}

@@ -79,6 +79,11 @@ ProgCtrl_ClearBindings(ProgableControl *self, unsigned short mode,
 __declspec(dllexport) void __attribute__((thiscall))
 ProgCtrl_GetBindingStr(ProgableControl *self, int mode, const char *name,
                        char *buf, unsigned int bufsz);
+/* 0x4472f0 / 0x445910 -- save the bindings; release every device. */
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_WriteBindings(ProgableControl *self);
+__declspec(dllexport) void __attribute__((thiscall))
+ProgCtrl_Shutdown(ProgableControl *self);
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_CaptureBinding(ProgableControl *self, unsigned int mode,
                         const char *name, int strength, int allow_axis,

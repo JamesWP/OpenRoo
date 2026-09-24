@@ -46,6 +46,12 @@ public:
      * disc, recognised by each track's length string. */
     int           validateTrackLengths();
 
+    /* ReadCdTrackThemeTable 0x403040: fill the table from
+     * <gamedir>\CDTracks\<name>.cdt; returns the theme count. */
+    unsigned char readTrackThemeTable(const char *name);
+    /* ListTrackLengths 0x4036f0: store the track count, log each length. */
+    int           listTrackLengths();
+
     /* The track PlayCDStuf last picked (0 = none). */
     unsigned char currentTrack() const               { return currentTrack_; }
     void          setCurrentTrack(unsigned char t)   { currentTrack_ = t; }
@@ -83,6 +89,10 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_PlayCDStuf_2(CdThemes *self);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Sim_ValidateCDTrackLengths(CdThemes *self);
+extern "C" __declspec(dllexport) unsigned char __attribute__((thiscall))
+Sim_ReadCdTrackThemeTable(CdThemes *self, const char *name);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_ListTrackLengths(CdThemes *self);
 extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
 Sim_CdThemesConstruct(CdThemes *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))

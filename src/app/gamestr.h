@@ -49,6 +49,15 @@ static const char *const GS_CD_TRACK5_LEN                 = (const char *)0x0046
 static const char *const GS_CD_TRACK4_LEN                 = (const char *)0x00464400;  /* "03:28:39" */
 static const char *const GS_CD_TRACK3_LEN                 = (const char *)0x0046440c;  /* "02:59:12" */
 static const char *const GS_CD_TRACK2_LEN                 = (const char *)0x00464418;  /* "04:38:71" */
+static const char *const GS_CD_TRACKFILE_PATH           = (const char *)0x00464384;  /* "%s\\CDTracks\\%s.cdt" */
+static const char *const GS_CD_TRACKFILE_DELIMS         = (const char *)0x0046437c;  /* " ,\t\n;" */
+static const char *const GS_CD_TRACKFILE_MODE           = (const char *)0x00464378;  /* "r+t" */
+static const char *const GS_CD_TRACKFILE_MISSING        = (const char *)0x004642fc;  /* "CDM: warning - track-file named as %s was not found" */
+static const char *const GS_CD_TRACKFILE_FOUND          = (const char *)0x00464350;  /* "CDM: track-file named as %s was found" */
+static const char *const GS_CD_THEME_TRACK              = (const char *)0x00464330;  /* "CDM: theme %s is cd track %d" */
+static const char *const GS_CD_TRACK_COUNT              = (const char *)0x0046443c;  /* "CDM: number of tracks %d" */
+static const char *const GS_CD_TRACK_LENGTH             = (const char *)0x00464424;  /* "CDM: track %d lenght:%s" */
+static const char *const GS_CONTROL_SAVE_SETTINGS       = (const char *)0x00464580;  /* "CONTROL: trying to save settings" */
 
 /* --- KEY: keypress.cpp -- the configured action names --- */
 static const char *const GS_KEY_CAM_MODE_DOWN             = (const char *)0x004644b4;  /* "CamModeDown" */
