@@ -32,6 +32,7 @@
 #include "splinepath.h"
 #include "model.h"
 #include "scenetexture.h"
+#include "ani.h"
 
 struct Direct3D;
 struct GameLogger;
@@ -47,7 +48,7 @@ struct __attribute__((packed)) SceneObject {
     void          *particle;         /* +0x005  particle system */
     float          billboardRadius;  /* +0x009  billboard */
     DWORD          animLoaded;       /* +0x00d  1 when the .ani loaded */
-    unsigned char  anim[0x180];      /* +0x011  AnimTable (ani.h) */
+    AnimTable      anim;             /* +0x011  loaded from the .ani (ani.h) */
     float          pos[3];           /* +0x191 */
     float          rot[3];           /* +0x19d */
     SceneTexture  *texture;          /* +0x1a9 */

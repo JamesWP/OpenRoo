@@ -96,7 +96,7 @@ Scene_BuildObjectList(Direct3D *d3d, ExtraObjects *leo, GameLogger *logger)
             o->billboardRadius = r->billboardSize;
 
         if (r->animationFile[0] != 0
-            && (char)Ani_LoadAnimationFile((AnimTable *)o->anim,
+            && (char)Ani_LoadAnimationFile(&o->anim,
                                            r->animationFile, logger))
             o->animLoaded = 1;
 
