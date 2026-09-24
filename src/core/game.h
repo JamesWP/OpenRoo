@@ -55,14 +55,18 @@ static_assert(sizeof(SoundAssetName) == 0x10c, "SoundAssetName stride");
 /* The theme sound table ("TSM" in its log line), Game+0x42258.  A .thm
  * `Sound <event> <wave>` line fills entries[id] through ThemeSound_Add
  * (theme.cpp); the id is RegisterThemeSound's event number, so e.g. entry 0
- * is movecatcher and entry 70 explosionbomb.  72 entries is the largest id
- * the event table produces (0x47) + 1; nothing in Game sits inside them. */
-#define THEME_SOUND_COUNT 72
+ * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
+ * 0x47, but the table holds 100 entries: ReleaseAll 0x440400 clears exactly
+ * 100, ending at Game+0x48b12 where switchMax_ begins.  Lifecycle in
+ * theme.cpp; the vtable is ours, one slot. */
+#define THEME_SOUND_COUNT 100
 struct __attribute__((packed)) ThemeSoundTable {
-    BYTE           header[10];   /* handed to the no-op 0x00440450; unread */
+    void          *vtable;       /* +0 */
+    DWORD          unknown4;     /* +4  never written */
+    WORD           unknown8;     /* +8  zeroed by the ctor, never read */
     SoundAssetName entries[THEME_SOUND_COUNT];
 };
-static_assert(sizeof(ThemeSoundTable) == 10 + 72 * 0x10c, "ThemeSoundTable size");
+static_assert(sizeof(ThemeSoundTable) == 10 + 100 * 0x10c, "ThemeSoundTable size");
 
 /* The end-of-level score tally, Game+0x1404c1..+0x140543.  Six rows, each
  * with a real COUNT and SCORE (CalculateLevelScore 0x41a760) and a SHOWN
@@ -613,7 +617,6 @@ private:
     unsigned short field_42252_;                          /* 0x042252 */
     int           levelSoundsReady_;                      /* 0x042254 */
     ThemeSoundTable themeSounds_;                         /* 0x042258 */
-    unsigned char gap_046dc2[0x048b12 - 0x046dc2];
     unsigned char switchMax_;                             /* 0x048b12 */
     unsigned char stateBeforeMenu_;                       /* 0x048b13 */
     unsigned int  field_48b14_;                           /* 0x048b14 */

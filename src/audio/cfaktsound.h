@@ -43,5 +43,23 @@ static_assert(sizeof(DSCAPS)                              == 0x60, "DSCAPS size"
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CFaktSound_Create3DListener(CFaktSound *self, int enable);
 
+/* The lifecycle and startup the SoundManager's own lifecycle
+ * (soundmanager.cpp) is written on. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CFaktSound_BlankFields(CFaktSound *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CFaktSound_ClearState(CFaktSound *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CFaktSound_ReleaseComRefs(CFaktSound *self);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+CFaktSound_Initialize(CFaktSound *self, HWND window, UINT bufferflags,
+                      short channels, int samplespersec,
+                      USHORT bitspersample, void *logger);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+CFaktSound_InitializeWith3DAudio(CFaktSound *self, HWND window,
+                                 UINT bufferflags, short channels,
+                                 int samplespersec, USHORT bitspersample,
+                                 void *logger);
+
 /* Original vtable at 0x45efa8 — slot 0: ScalarDeletingDtor @ 0x444fb0. */
 static const void *const CFAKTSOUND_VTABLE = reinterpret_cast<const void*>(0x45efa8);

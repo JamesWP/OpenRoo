@@ -313,6 +313,9 @@ static const char *const GS_THEME_VECTOR                  = (const char *)0x0046
 static const char *const GS_THEME_SOUND_PATH              = (const char *)0x00466614;  /* "%s\\%s" */
 static const char *const GS_THEME_SOUND_NONE              = (const char *)0x00467310;  /* "NONE" */
 static const char *const GS_THEME_SOUND_ADD               = (const char *)0x004672ec;  /* "TSM: add called (Index=%d/fn=%s)" */
+static const char *const GS_THEME_SOUND_RELEASING         = (const char *)0x00467334;  /* "TSM: trying to release all sounds" */
+static const char *const GS_THEME_SOUND_RELEASED          = (const char *)0x00467318;  /* "TSM: all sounds released" */
+static const char *const GS_SOUNDMGR_LOG_NAME            = (const char *)0x004678a0;  /* "SoundManager.log" */
 static const char *const GS_TM_LOADED                     = (const char *)0x004672ac;  /* "TM: %s loaded" */
 static const char *const GS_TM_FOUND                      = (const char *)0x004672bc;  /* "TM: %s found" */
 static const char *const GS_TM_FAILED                     = (const char *)0x004672cc;  /* "TM: *ERROR* failed loading %s" */

@@ -1038,3 +1038,50 @@ Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block, char *path,
 }
 
 #pragma GCC diagnostic pop
+
+/* ─── The theme sound table's lifecycle, 0x440280..0x440450 ───────────────
+ *
+ * ReleaseAll 0x440400 clears name[0] and enabled of all 100 entries between
+ * two log lines and returns 0; arg3/arg4 are left as they were.  The ctor
+ * writes the vtable, zeroes the word at +8, calls the shared no-op 0x440450
+ * (dropped: `xor eax,eax; ret`, result unused), then ReleaseAll.  The dtor
+ * body only rewrites the vtable. */
+static void *const g_ThemeSoundVtable[1] = { (void *)&ThemeSound_ScalarDestructor };
+
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+ThemeSound_ReleaseAll(ThemeSoundTable *self)
+{
+    GameLog_LogMessage(GG_LOGGER, 1, GS_THEME_SOUND_RELEASING);
+    for (int i = 0; i < THEME_SOUND_COUNT; i++) {
+        self->entries[i].enabled = 0;
+        self->entries[i].name[0] = 0;
+    }
+    GameLog_LogMessage(GG_LOGGER, 1, GS_THEME_SOUND_RELEASED);
+    return 0;
+}
+
+extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
+ThemeSound_Construct(ThemeSoundTable *self)
+{
+    self->vtable    = (void *)g_ThemeSoundVtable;
+    self->unknown8  = 0;
+    ThemeSound_ReleaseAll(self);
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+ThemeSound_Destruct(ThemeSoundTable *self)
+{
+    self->vtable = (void *)g_ThemeSoundVtable;
+}
+
+/* Reached only through our vtable, which nothing calls through: the table
+ * is embedded in Game.  Reimplemented, not exercised. */
+extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
+ThemeSound_ScalarDestructor(ThemeSoundTable *self, unsigned char flags)
+{
+    ThemeSound_Destruct(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}

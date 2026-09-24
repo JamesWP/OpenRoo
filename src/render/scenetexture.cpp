@@ -990,3 +990,24 @@ TextureManager_ScalarDestructor(TextureManager *self, unsigned char flags)
         game_free2(self);
     return self;
 }
+
+/* 0x4400c0: pLogger = logger.  Two E8, both in the D3D setup at 0x426072 /
+ * 0x426081 (the global manager and the Scene's). */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+TextureManager_SetLogger(TextureManager *self, GameLogger *logger)
+{
+    self->pLogger = logger;
+}
+
+/* 0x440260: Texture_Load every non-NULL cached image, head to tail.  The
+ * next pointer is read before the load, as the original does. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+TextureManager_LoadAll(TextureManager *self)
+{
+    for (LinkedListNode *n = self->cache.pHead; n != NULL; ) {
+        LoadedImage *img = (LoadedImage *)n->pValue;
+        n = n->pNextNode;
+        if (img != NULL)
+            Texture_Load(img);
+    }
+}

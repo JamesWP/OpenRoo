@@ -71,9 +71,9 @@ class __attribute__((packed)) SoundManager {
 public:
     static const int ORIGIN = 0;
 
-    unsigned char  gap_00[0x04];
+    void          *vtable_;           /* +0x00  ours, one slot */
     GameLogger    *logger_;           /* +0x04 */
-    unsigned char  gap_08[0x04];
+    unsigned long  ownsLogger_;       /* +0x08  1 iff init made logger_ */
     unsigned long  dwMode3D_;         /* +0x0c  the live listener mode */
     unsigned long  dwPendingMode3D_;  /* +0x10  set alongside it by setup() */
     CFaktSound     cfaktSound_;       /* +0x14  0x78 bytes */
@@ -179,5 +179,22 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
 /* 0x004439d0, RET 4. */
 __declspec(dllexport) int __attribute__((thiscall))
 SoundMgr_Setup(SoundManager *self, int mode3d);
+
+/* The lifecycle: 0x004430e0 ctor (Game::Load), 0x00443180 dtor body (Game's
+ * dtor + two SEH funclets), 0x00443160 scalar dtor (slot 0 of the game's
+ * one-slot table 0x45efa0, now a tripwire), 0x00443520 purge (RET 0), and
+ * 0x004431f0 InitSoundManager (WinMain, RET 0x1c). */
+__declspec(dllexport) SoundManager *__attribute__((thiscall))
+SoundMgr_Construct(SoundManager *self);
+__declspec(dllexport) void __attribute__((thiscall))
+SoundMgr_Destruct(SoundManager *self);
+__declspec(dllexport) SoundManager *__attribute__((thiscall))
+SoundMgr_ScalarDestructor(SoundManager *self, unsigned char flags);
+__declspec(dllexport) void __attribute__((thiscall))
+SoundMgr_PurgeAssets(SoundManager *self);
+__declspec(dllexport) int __attribute__((thiscall))
+SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
+              UINT bufferflags, short channels, int samplespersec,
+              USHORT bitspersample, GameLogger *logger);
 
 }
