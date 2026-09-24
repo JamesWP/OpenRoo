@@ -33,6 +33,7 @@
 #include <stdio.h>
 
 struct GameLogger;
+struct LoadedImage;
 struct CDM;
 struct ProgableControl;
 
@@ -71,5 +72,19 @@ static CDM *const GG_CDAUDIO = (CDM *)0x004dc640;
 /* The programmable-control singleton (`ProgableControlGlobal`); see
  * progctrl.h. */
 static ProgableControl *const GG_PROGCTRL = (ProgableControl *)0x0046c298;
+
+/* The level-entry globals (PrepareLevelAssetsOnEntry, levelentry.cpp).
+ * The camera block beside them has a layout, so it lives in camera.h. */
+
+/* The loading screen: bitmaps\<map>.bmp is loaded into the first; the
+ * second is shown when that fails. */
+static LoadedImage *const GG_LOADING_IMAGE  = (LoadedImage *)0x004e0428;
+static LoadedImage *const GG_FALLBACK_IMAGE = (LoadedImage *)0x0046c798;
+/* A copy of the LevelMap's title, made at level entry. */
+static char   *const GG_LEVEL_TITLE    = (char *)0x0046c714;
+/* The clock at level entry, in milliseconds. */
+static double *const GG_LEVEL_START_MS = (double *)0x004e04b0;
+/* Nine dwords the level entry zeroes; their reader is not yet known. */
+static unsigned long *const GG_UNKNOWN_4E01A0 = (unsigned long *)0x004e01a0;
 
 #endif /* KAROO_GAMEGLOBALS_H */

@@ -163,6 +163,7 @@
  *                         control cannot see it".
  */
 
+#include "camera.h"
 #include <windows.h>
 #include <string.h>
 
@@ -218,11 +219,6 @@
 
 #define G_LEVEL_NAME       0x173483
 
-/* Globals outside `Game`. */
-#define GBL_LISTENER    ((float *)0x0046c4a0)
-#define GBL_POS         ((float *)0x0046c4ac)
-#define GBL_C4B8        (*(unsigned int *)0x0046c4b8)
-#define GBL_C4BC        (*(unsigned int *)0x0046c4bc)
 
 /* The two float constants the rand path multiplies by, read at their own
  * addresses so the bit patterns are exactly the game's:
@@ -452,15 +448,16 @@ Sim_SetupLevelObjects(Game *self)
     self->setField13cc94(1, 1000.0f);           /* 0x447a0000 */
     self->setField13cc94(2, 0.0f);
 
-    ((u32_ua *)GBL_LISTENER)[0] = 0;
-    ((u32_ua *)GBL_LISTENER)[1] = 0x447a0000;
-    ((u32_ua *)GBL_LISTENER)[2] = 0;
+    CameraGlobals *cam = GG_CAMERA;   /* camera.h: note the eye/target conflict */
+    ((u32_ua *)cam->eye)[0] = 0;
+    ((u32_ua *)cam->eye)[1] = 0x447a0000;   /* 1000.0f */
+    ((u32_ua *)cam->eye)[2] = 0;
 
-    ((u32_ua *)GBL_POS)[0] = self->cameraEyeBits(0);
-    ((u32_ua *)GBL_POS)[1] = self->cameraEyeBits(1);
-    GBL_C4B8 = 0;
-    ((u32_ua *)GBL_POS)[2] = self->cameraEyeBits(2);
-    GBL_C4BC = 0;
+    ((u32_ua *)cam->target)[0] = self->cameraEyeBits(0);
+    ((u32_ua *)cam->target)[1] = self->cameraEyeBits(1);
+    cam->field_18 = 0;
+    ((u32_ua *)cam->target)[2] = self->cameraEyeBits(2);
+    cam->field_1c = 0;
 
     self->census()->reset();
 
@@ -639,8 +636,8 @@ Sim_SetupLevelObjects(Game *self)
                     t->setParam(0);
                 }
 
-                /* type 3 becomes type 1, before the tests below see it */
-                if (t->objectMarker() == TILE_KIND_03)
+                /* the start becomes type 1, before the tests below see it */
+                if (t->objectMarker() == TILE_START)
                     t->setObjectMarker(1);
 
                 if (t->objectMarker() == TILE_LIFT) {

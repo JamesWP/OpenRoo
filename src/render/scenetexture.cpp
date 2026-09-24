@@ -958,3 +958,35 @@ TextureManager_ReleaseAll(TextureManager *self)
     }
     LinkedList_Clear(&self->cache);
 }
+
+/* ─── TextureManager lifecycle: 0x440070 ctor, 0x4400b0 dtor body, 0x440090 scalar ──────────────
+ *
+ * Every instance is static (see scenetexture.h), so nothing ever deletes one and the
+ * scalar dtor's free is unreached -- reimplemented, not exercised.  It stays
+ * on the game heap, the LinkedList precedent: no allocator of one is ours. */
+static void *const g_TextureManagerVtable[1] = { (void *)&TextureManager_ScalarDestructor };
+
+extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
+TextureManager_Construct(TextureManager *self)
+{
+    List_Init(&self->cache);
+    self->vtable  = (void *)g_TextureManagerVtable;
+    self->pLogger = NULL;
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+TextureManager_Destruct(TextureManager *self)
+{
+    self->vtable = (void *)g_TextureManagerVtable;
+    List_Destruct(&self->cache);
+}
+
+extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
+TextureManager_ScalarDestructor(TextureManager *self, unsigned char flags)
+{
+    TextureManager_Destruct(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}

@@ -44,3 +44,15 @@ extern "C" __declspec(dllexport) CFaktMesh *__attribute__((thiscall))
 ModelManager_FindOrImport(ModelManager *self, char *name);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 ModelManager_ClearReleaseFree(ModelManager *self);
+
+/* The lifecycle three (0x438560 ctor, 0x4385a0 dtor body, 0x438580 scalar
+ * deleting dtor = vtable slot 0).  The vtable is OURS, one slot; the game's
+ * 0x0045d6a0 is left holding the UD2 at 0x438580 as a tripwire.  Instances:
+ * the theme's at 0x4e03f0 (static init thunks 0x425ed0 / 0x425ef0) and the
+ * Scene's (scene.h). */
+extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
+ModelManager_Construct(ModelManager *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+ModelManager_Destruct(ModelManager *self);
+extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
+ModelManager_ScalarDestructor(ModelManager *self, unsigned char flags);

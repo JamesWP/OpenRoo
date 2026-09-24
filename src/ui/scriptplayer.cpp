@@ -79,6 +79,7 @@
  * so the in-game instruction panels come up empty while everything else about
  * the level is unchanged.  Only this code path fills those records.
  */
+#include "camera.h"
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -488,9 +489,6 @@ int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
  * code can produce).  KAROO_JJS_DIAG=1 logs each executed command.
  */
 
-/* The player's position, which splinexyz takes as its first point.
- * levelsetup.cpp calls the same three floats GBL_LISTENER. */
-#define GBL_PLAYER_POS ((const float *)0x0046c4a0)
 
 static const char JJS_DELIMS[] = " ,\t\n;";
 
@@ -620,7 +618,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
     if (strcmp(cmd, "splinexyz") == 0) {
         field_92d_ = 1;
         Spline_PurgeControlPoints(spline);
-        memcpy(splinePoint_, GBL_PLAYER_POS, sizeof(splinePoint_));
+        memcpy(splinePoint_, GG_CAMERA->eye, sizeof(splinePoint_));   /* camera.h */
         start_ = now_;
         /* An int product loaded as unsigned (FILD qword, high dword 0). */
         duration_ = (double)(unsigned int)(atoi(strtok(NULL, JJS_DELIMS)) * 1000);

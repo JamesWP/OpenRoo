@@ -86,6 +86,7 @@
 #include "gamestr.h"
 #include "gamelog.h"
 #include "gameglobals.h"
+#include "alloc.h"
 #include <stdlib.h>
 
 
@@ -574,4 +575,50 @@ int ExtraObjects::parseEntry(const char *entry)
         return 1;
     }
     return 1;
+}
+
+/* ─── Construction and teardown: 0x423560, 0x4235e0, 0x4235c0 ──────────────
+ *
+ * ExtraObjects is embedded in Game (+0x48b98): Game::Load constructs it and
+ * Game::Destruct destroys it; two SEH funclets also jump to the dtor.  The
+ * scalar dtor is vtable slot 0 only, and nothing deletes an embedded member,
+ * so its free is reimplemented but unreached -- on the game heap, the
+ * LinkedList precedent. */
+static void *const g_LeoVtable[1] = { (void *)&Leo_ScalarDestructor };
+
+void ExtraObjects::construct()
+{
+    /* The EH-vector init of every record's splinePoints runs 0x424de0 on
+     * each point, which does nothing: omitted. */
+    vtable_ = g_LeoVtable;
+    objectCount_ = 0;
+    for (int i = 0; i < RELEASE_COUNT; ++i)     /* 255: record 255 keeps its */
+        records_[i].sound = NULL;
+}
+
+void ExtraObjects::destruct()
+{
+    vtable_ = g_LeoVtable;
+}
+
+extern "C" __declspec(dllexport) ExtraObjects *__attribute__((thiscall))
+Leo_Construct(ExtraObjects *self)
+{
+    self->construct();
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Leo_Destruct(ExtraObjects *self)
+{
+    self->destruct();
+}
+
+extern "C" __declspec(dllexport) ExtraObjects *__attribute__((thiscall))
+Leo_ScalarDestructor(ExtraObjects *self, unsigned char flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }

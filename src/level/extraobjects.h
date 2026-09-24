@@ -6,10 +6,15 @@
  * +0xf400e, and the object ends exactly where the SoundManager begins
  * (Game +0x13cba8).  KAROO_LAYOUT_SIZE asserts both it and the record.
  *
- *   BuildExtraObjectTable  0x423560  ctor: an EH-vector init of each record's
- *                                    spline points, vtable 0x45d450,
- *                                    objectCount = 0, and the sound handle
- *                                    of records 0..254 -- NOT 255 -- zeroed
+ *   BuildExtraObjectTable  0x423560  ours: construct.  An EH-vector init of
+ *                                    each record's spline points (element
+ *                                    ctor 0x424de0 is `mov eax,ecx; ret`,
+ *                                    so a no-op), the vtable, objectCount =
+ *                                    0, and the sound handle of records
+ *                                    0..254 -- NOT 255 -- zeroed
+ *   dtor 0x4235e0 / scalar 0x4235c0  ours: destruct / Leo_ScalarDestructor.
+ *                                    The vtable is OURS, one slot; the
+ *                                    game's 0x45d450 is left as a tripwire
  *   ParseExtraObjectEntry  0x423700  ours: parseEntry, one record per entry
  *                                    (extraobjects.cpp, with its three helpers)
  *   OpenExtraObjectsFile   ours: openFile      (extraobjects.cpp)
@@ -86,6 +91,9 @@ public:
 
     enum { RECORD_MAX = 256, RELEASE_COUNT = 255 };
 
+    /* BuildExtraObjectTable 0x423560 / the dtor body 0x4235e0. */
+    void construct();
+    void destruct();
     /* Parse <name>.leo. */
     int  openFile(const char *name);
     /* Halt and release each record's sound -- the first 255 only, as the
@@ -140,6 +148,12 @@ KAROO_LAYOUT_CHECKS(ExtraObjects)
 }
 
 /* The exports patch.py binds; shims onto the methods. */
+extern "C" __declspec(dllexport) ExtraObjects *__attribute__((thiscall))
+Leo_Construct(ExtraObjects *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Leo_Destruct(ExtraObjects *self);
+extern "C" __declspec(dllexport) ExtraObjects *__attribute__((thiscall))
+Leo_ScalarDestructor(ExtraObjects *self, unsigned char flags);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Leo_OpenExtraObjectsFile(ExtraObjects *self, const char *name);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))

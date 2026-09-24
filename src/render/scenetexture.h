@@ -80,3 +80,15 @@ TextureManager_GetOrLoad(TextureManager *self, IDirectDraw4 *dd,
                          DWORD alphaFlag, UINT bpp, DWORD textureStage);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 TextureManager_ReleaseAll(TextureManager *self);
+
+/* The lifecycle three (0x440070 ctor, 0x4400b0 dtor body, 0x440090 scalar
+ * deleting dtor = vtable slot 0).  The vtable is OURS, one slot; the game's
+ * 0x0045d720 is left holding the UD2 at 0x440090 as a tripwire.  Instances:
+ * g_TextureManagerGlobal (static init thunks 0x425e90 / 0x425eb0) and the
+ * Scene's (scene.h). */
+extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
+TextureManager_Construct(TextureManager *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+TextureManager_Destruct(TextureManager *self);
+extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
+TextureManager_ScalarDestructor(TextureManager *self, unsigned char flags);

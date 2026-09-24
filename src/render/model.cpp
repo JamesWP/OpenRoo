@@ -282,3 +282,35 @@ ModelManager_ClearReleaseFree(ModelManager *self)
     }
     LinkedList_Clear(&self->cache);
 }
+
+/* ─── ModelManager lifecycle: 0x438560 ctor, 0x4385a0 dtor body, 0x438580 scalar ──────────────
+ *
+ * Every instance is static (see model.h), so nothing ever deletes one and the
+ * scalar dtor's free is unreached -- reimplemented, not exercised.  It stays
+ * on the game heap, the LinkedList precedent: no allocator of one is ours. */
+static void *const g_ModelManagerVtable[1] = { (void *)&ModelManager_ScalarDestructor };
+
+extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
+ModelManager_Construct(ModelManager *self)
+{
+    List_Init(&self->cache);
+    self->vtable  = (void *)g_ModelManagerVtable;
+    self->pLogger = NULL;
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+ModelManager_Destruct(ModelManager *self)
+{
+    self->vtable = (void *)g_ModelManagerVtable;
+    List_Destruct(&self->cache);
+}
+
+extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
+ModelManager_ScalarDestructor(ModelManager *self, unsigned char flags)
+{
+    ModelManager_Destruct(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}

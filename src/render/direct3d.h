@@ -68,6 +68,10 @@ static_assert(sizeof(LoadedImage) == 0x18, "LoadedImage base size mismatch");
 
 #define g_pDirect3D (*(Direct3D **)0x004e04ac)
 
+/* FlipPrimaryFrame 0x425fc0 -- present `img` full-screen (direct3d.cpp). */
+extern "C" __declspec(dllexport) void __cdecl
+Direct3D_FlipPrimaryFrame(LoadedImage *img);
+
 /* Exports of direct3d.cpp other files call (COHESION_PLAN.md template 10). */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Direct3D_ReleaseResources(Direct3D *self);
