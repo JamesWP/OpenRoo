@@ -8,9 +8,9 @@
  *   0x00406530  BuildLevelWallStrips        the vertical faces at height steps
  *   0x00407fc0  ReleaseLevelPlacementArrays     also WinMain's shutdown 0x42d62f
  *
- * The grid walk is the same in all three: rows v < Game+0x2ab727 step 0x7f,
- * columns u < Game+0x2ab728 step 0x319c, from Game+0x2ab729 (height) /
- * +0x2ab72a (kind) -- Tile's +0x19c/+0x19d.  Kinds are tile.h's TileKind.
+ * The grid walk is the same in all three: rows v < LevelMap::extentV(),
+ * columns u < extentU(), cells through LevelMap::tile() (tile.h's
+ * TileKind for the kind byte).
  *
  * Every list is a count followed by one or two arrays from the GAME's
  * operator new, freed only by ReleaseLevelPlacementArrays.  "pos" entries are

@@ -25,17 +25,7 @@
 #include "gamelog.h"
 #include "gameglobals.h"
 #include "clock.h"
-
-/* Game-owned globals, still read by RenderGameFrame. */
-static LoadedImage *const GG_LOADING_IMAGE  = (LoadedImage *)0x004e0428;
-static LoadedImage *const GG_FALLBACK_IMAGE = (LoadedImage *)0x0046c798;
-static char   *const GG_LEVEL_TITLE   = (char *)0x0046c714;
-static double *const GG_LEVEL_START_MS = (double *)0x004e04b0;
-static float  *const GG_CAMERA_EYE    = (float *)0x0046c4a0;
-static float  *const GG_CAMERA_TARGET = (float *)0x0046c4ac;
-static DWORD  *const GG_CAMERA_4B8    = (DWORD *)0x0046c4b8;
-static float  *const GG_CAMERA_FOV    = (float *)0x0046c4bc;
-static DWORD  *const GG_4E01A0        = (DWORD *)0x004e01a0;   /* 9 dwords */
+#include "camera.h"
 
 extern "C" __declspec(dllexport) void __cdecl
 LevelEntry_PrepareAssets(void)
@@ -74,7 +64,7 @@ LevelEntry_PrepareAssets(void)
     strcpy(GG_LEVEL_TITLE, map->title());
     *GG_LEVEL_START_MS = clock_seconds() * 1000.0;
 
-    /* 5. The camera: a fixed offset (0, 6, -4) scaled to 255/sqrt(52),
+    /* 5. The camera (camera.h): a fixed offset (0, 6, -4) scaled to 255/sqrt(52),
      *    placed over the middle of the grid.  The original divides in
      *    extended precision and stores some terms to float on the way; the
      *    difference is below a float's last bit at these magnitudes. */
@@ -85,13 +75,14 @@ LevelEntry_PrepareAssets(void)
     const float x = (float)((float)map->extentU() * 0.5f + offX);
     const float z = (float)((float)(-(int)map->extentV()) * 0.5f + offZ);
 
-    GG_CAMERA_TARGET[0] = x;
-    GG_CAMERA_TARGET[1] = offY;
-    GG_CAMERA_TARGET[2] = z;
-    GG_CAMERA_EYE[0] = x;
-    GG_CAMERA_EYE[1] = offY + 6.0f;
-    GG_CAMERA_EYE[2] = z - 4.0f;
-    memset(GG_4E01A0, 0, 9 * sizeof(DWORD));
-    *GG_CAMERA_4B8 = 0;
-    *GG_CAMERA_FOV = 1.0471976f;   /* 0x3f860a92, pi/3 */
+    CameraGlobals *cam = GG_CAMERA;
+    cam->target[0] = x;
+    cam->target[1] = offY;
+    cam->target[2] = z;
+    cam->eye[0] = x;
+    cam->eye[1] = offY + 6.0f;
+    cam->eye[2] = z - 4.0f;
+    memset(GG_UNKNOWN_4E01A0, 0, 9 * sizeof(unsigned long));
+    cam->field_18 = 0;
+    cam->field_1c = 0x3f860a92;   /* pi/3 as a float */
 }

@@ -52,14 +52,9 @@
 
 /* ─── Grid access ───────────────────────────────────────────────────────── */
 
-/* Cell (u, v)'s record: [0] height, [1] kind, [0x56] climbDir. */
-static const unsigned char *cell(const Game *g, unsigned u, unsigned v)
-{
-    const unsigned char *grid = (const unsigned char *)g->map() + Tile::ORIGIN;
-    return grid + (v + u * 100) * 0x7f;
-}
-static const long ROW_STEP = 0x7f;     /* v + 1 */
-static const long COL_STEP = 0x319c;   /* u + 1 */
+/* Cells come from LevelMap::tile(), which takes signed axes: the wall
+ * builder's edge neighbours (u-1 at u = 0, and so on) are the same
+ * out-of-row addresses the original reads (defect 4). */
 
 static const float K_HALF = 0.5f;      /* 0x45d318 */
 static const float K_NEG  = -1.0f;     /* 0x45d344 */
@@ -144,13 +139,13 @@ static bool solid(unsigned char kind)
     return false;
 }
 
-/* The cell at `k` (its kind byte) is solid at height L, and its neighbour at
- * `k + step` is not solid at the same height. */
-static bool face(const unsigned char *k, long step, unsigned L)
+/* Cell `t` is solid at height L, and its neighbour `n` is not solid at the
+ * same height. */
+static bool face(const Tile *t, const Tile *n, unsigned L)
 {
-    if (k[-1] != L || !solid(k[0]))
+    if (t->height() != L || !solid(t->objectMarker()))
         return false;
-    return k[step - 1] != k[-1] || !solid(k[step]);
+    return n->height() != t->height() || !solid(n->objectMarker());
 }
 
 struct Run { float s[6]; };
@@ -168,14 +163,15 @@ static void build_walls(LevelPlacements *p, const Game *g, float depth)
 {
     std::vector<Run> lists[4];   /* row -v, row +v, column -u, column +u */
     RunSlot a = { false, {{0}} }, b = { false, {{0}} };
-    const unsigned V = g->map()->extentV(), U = g->map()->extentU();
+    const LevelMap *map = g->map();
+    const unsigned V = map->extentV(), U = map->extentU();
 
     for (unsigned L = 0; L < 0x100; ++L) {
         for (unsigned v = 0; v < V; ++v)
             for (unsigned u = 0; u < U; ++u) {
-                const unsigned char *k = cell(g, u, v) + 1;
+                const Tile *t = map->tile(u, v);
                 float fu = (float)u, fv = (float)v, fL = (float)L;
-                if (face(k, -ROW_STEP, L)) {
+                if (face(t, map->tile(u, (int)v - 1), L)) {
                     if (a.open) set3(&a.r.s[3], fu + K_HALF, fL, K_HALF - fv);
                     else {
                         set3(&a.r.s[0], fu - K_HALF, fL, K_HALF - fv);
@@ -183,7 +179,7 @@ static void build_walls(LevelPlacements *p, const Game *g, float depth)
                         a.open = true;
                     }
                 } else close_run(&a, &lists[0]);
-                if (face(k, ROW_STEP, L)) {
+                if (face(t, map->tile(u, v + 1), L)) {
                     if (b.open) set3(&b.r.s[3], fu + K_HALF, fL, -fv - K_HALF);
                     else {
                         set3(&b.r.s[0], fu - K_HALF, fL, -fv - K_HALF);
@@ -196,9 +192,9 @@ static void build_walls(LevelPlacements *p, const Game *g, float depth)
 
         for (unsigned u = 0; u < U; ++u)
             for (unsigned v = 0; v < V; ++v) {
-                const unsigned char *k = cell(g, u, v) + 1;
+                const Tile *t = map->tile(u, v);
                 float fu = (float)u, fv = (float)v, fL = (float)L;
-                if (face(k, -COL_STEP, L)) {
+                if (face(t, map->tile((int)u - 1, v), L)) {
                     if (a.open) set3(&a.r.s[3], fu - K_HALF, fL, -fv - K_HALF);
                     else {
                         set3(&a.r.s[0], fu - K_HALF, fL, K_HALF - fv);
@@ -206,7 +202,7 @@ static void build_walls(LevelPlacements *p, const Game *g, float depth)
                         a.open = true;
                     }
                 } else close_run(&a, &lists[2]);
-                if (face(k, COL_STEP, L)) {
+                if (face(t, map->tile(u + 1, v), L)) {
                     if (b.open) set3(&b.r.s[3], fu + K_HALF, fL, -fv - K_HALF);
                     else {
                         set3(&b.r.s[0], fu + K_HALF, fL, K_HALF - fv);
@@ -287,13 +283,14 @@ LevelPlacements_Build(LevelPlacements *p, const Game *g,
 {
     LevelPlacements_Release(p);
 
-    const unsigned V = g->map()->extentV(), U = g->map()->extentU();
+    const LevelMap *map = g->map();
+    const unsigned V = map->extentV(), U = map->extentU();
 
     /* Pass 1: count. */
     unsigned trackCells = 0;
     for (unsigned v = 0; v < V; ++v)
         for (unsigned u = 0; u < U; ++u) {
-            unsigned char k = cell(g, u, v)[1];
+            unsigned char k = map->tile(u, v)->objectMarker();
             if (k == TILE_LIFT)         ++p->lifts.count;
             if (k == TILE_KIND_01)      ++p->kind01Count;
             if (k == TILE_GLUE)         ++p->glue.count;
@@ -349,11 +346,11 @@ LevelPlacements_Build(LevelPlacements *p, const Game *g,
     for (unsigned L = 0; L < 0x100; ++L)
         for (unsigned v = 0; v < V; ++v)
             for (unsigned u = 0; u < U; ++u) {
-                const unsigned char *c = cell(g, u, v);
-                if (c[0] != L)
+                const Tile *t = map->tile(u, v);
+                if (t->height() != L)
                     continue;
-                const float x = (float)u, y = (float)c[0], z = (float)v * K_NEG;
-                switch (c[1]) {
+                const float x = (float)u, y = (float)t->height(), z = (float)v * K_NEG;
+                switch (t->objectMarker()) {
                 case TILE_KIND_01: {
                     /* Two triangles over the cell, BbVertex-shaped. */
                     const float A = x + K_HALF, B = z - K_HALF;
@@ -387,7 +384,7 @@ LevelPlacements_Build(LevelPlacements *p, const Game *g,
                 case TILE_TELEPORTER: put_entry(&p->teleporters, &nTele, x, y, z, 0.0f); break;
                 case TILE_CLIMB: {
                     float yaw;
-                    switch (c[0x56]) {             /* climbDir */
+                    switch (t->climbDir()) {
                     case 1:  yaw = YAW_NEG_QUARTER; break;
                     case 2:  yaw = YAW_HALF; break;
                     case 3:  yaw = YAW_QUARTER; break;
