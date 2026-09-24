@@ -24,7 +24,7 @@
 #include "faktmesh.h"
 #include "levelobject.h"
 #include "particles.h"
-#include "shadowmesh.h"
+#include "explodedebris.h"
 #include "sky.h"
 
 
@@ -46,7 +46,7 @@ public:
     ThemeObjectKind kind;
     CFaktMesh   *pMesh;
     WrapperObject wrapper;
-    ShadowMesh   explode;           // set up only by `explode`; needs pMesh first
+    ExplodeDebris   explode;           // set up only by `explode`; needs pMesh first
     DWORD        bExplode;
     float        flExplodeDir[3];   // (t4,t5,t6) rotated -90 deg about X
 

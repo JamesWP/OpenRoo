@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include "particles.h"
 #include "layout.h"
-#include "shadowmesh.h"
+#include "explodedebris.h"
 
 /* Generator / Environment simulation structs — PARTICLE_PLAN.md § 4.
  *
@@ -345,12 +345,12 @@ Generator *gen_create(const char *name);
 Generator   *gen_clone(const Generator *src);
 Environment *env_clone(const Environment *src);
 
-/* The object 0x438170 is a method of is `ShadowMesh` (shadowmesh.h), whose
+/* The object 0x438170 is a method of is `ExplodeDebris` (explodedebris.h), whose
  * constructor, both destructors and buffer release were replaced in
  * ENDGAME_PLAN.md E2.  This header used to carry a two-field `GaussianFieldHost`
  * modelled from those fifteen instructions alone; the full layout, the
  * evidence for the name and the class's own layout checks now live in
- * shadowmesh.h, and there is one definition rather than two views of it.
+ * explodedebris.h, and there is one definition rather than two views of it.
  *
  * The one fact this file still relies on is unchanged and still asserted
  * there: the 30-float table at +0x14 and its DWORD cursor at +0x8c tile
@@ -359,7 +359,7 @@ Environment *env_clone(const Environment *src);
 /* 0x438170 — the Gaussian sampler's only caller outside the particle code.
  * Lives here because it is a thin wrapper over this file's gauss_fill. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Gen_FillGaussianField(ShadowMesh *self, float mu, float sigma);
+Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma);
 
 /* Tick a Generator or an Environment: one virtual call through slot 3.  The
  * table is ours, so this lands straight on our implementation. */

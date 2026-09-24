@@ -1752,13 +1752,13 @@ Generator *gen_create(const char *name)
 
 /* ─── The Gaussian sampler's one caller outside the particle code ───
  *
- * 0x438170 is a 15-instruction method of ShadowMesh (shadowmesh.h, whose
+ * 0x438170 is a 15-instruction method of ExplodeDebris (explodedebris.h, whose
  * constructor calls it with mu = 2.0, sigma = 1.0); it is here because it
  * exists only to fill a 30-entry table with gauss_fill, and it is the last
  * thing keeping the sampler (0x448fb0) and its density (0x448f30) alive in
  * the game.  Only two of that class's fields are needed here: the table at
  * +0x14 and the DWORD cursor at +0x8c. */
-static void fill_gaussian_field(ShadowMesh *self, float mu, float sigma)
+static void fill_gaussian_field(ExplodeDebris *self, float mu, float sigma)
 {
     gauss_fill(self->samples, 30, mu, sigma, 0.01f);
     self->cursor = 0;
@@ -1868,7 +1868,7 @@ Gen_AttachRing(Generator *self, RingBuffer *ring)        { return gen_attach_rin
 
 /* 0x438170, reached by CALL_PATCHES (2 sites) — see fill_gaussian_field. */
 __declspec(dllexport) void THISCALL
-Gen_FillGaussianField(ShadowMesh *self, float mu, float sigma)
+Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma)
 {
     fill_gaussian_field(self, mu, sigma);
 }

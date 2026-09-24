@@ -4,7 +4,7 @@
  * 0x0040bf30, Theme_ReleaseSlot 0x0043b720, Theme_RegisterSound 0x004113e0
  * and ThemeSound_Add 0x004402d0.  Its other callees were replaced in the same
  * batch in their owners' files (model.cpp, scenetexture.cpp, sky.cpp,
- * shadowmesh.cpp).  The .thm grammar is on the loader's Ghidra plate; theme.h
+ * explodedebris.cpp).  The .thm grammar is on the loader's Ghidra plate; theme.h
  * holds the block it fills.
  *
  * The reader: fgets(line, 0x100) on a TEXT-mode FILE (the CRT folds CRLF --
@@ -213,7 +213,7 @@ static void theme_struct_dump_if_enabled(const char *path)
  * token COUNT still counts them, as the original's did.
  */
 
-/* Sub-objects of the block (ShadowMesh, WrapperObject, AnimTable, sky
+/* Sub-objects of the block (ExplodeDebris, WrapperObject, AnimTable, sky
  * textures) are handed to their owners by address.  Unlike the idiom in
  * doublesoundbuff.h, these really are misaligned -- the game packed the
  * block, and e.g. records sit at odd offsets -- which x86 tolerates and the
@@ -236,7 +236,7 @@ Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
 {
     for (int i = 0; i < 8; i++) {
         ThemeLevelObject &r = slot->records[i];
-        ShadowMesh_Release(&r.explode);
+        ExplodeDebris_Release(&r.explode);
         Wrapper_ReleaseSnapshot(&r.wrapper);
         for (DWORD k = 0; k < r.dwInstanceCount; k++) {
             if (r.pParticleSystems[k] != NULL) {
@@ -273,14 +273,14 @@ extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
 Theme_RecordConstruct(ThemeLevelObject *self)
 {
     Wrapper_Construct(&self->wrapper);
-    ShadowMesh_Construct(&self->explode);
+    ExplodeDebris_Construct(&self->explode);
     return self;
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Theme_RecordDestruct(ThemeLevelObject *self)
 {
-    ShadowMesh_DtorBody(&self->explode);
+    ExplodeDebris_DtorBody(&self->explode);
     Wrapper_DtorBody(&self->wrapper);
 }
 
@@ -869,9 +869,9 @@ void ThemeParser::explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec)
     if (ntok <= 6 || slot == NULL || rec->pMesh == NULL)
         return;
     rec->bExplode = 1;
-    ShadowMesh_AllocateExplodeBuffers(&rec->explode, rec->pMesh);
+    ExplodeDebris_AllocateExplodeBuffers(&rec->explode, rec->pMesh);
     Gen_FillGaussianField(&rec->explode, atof_f(tok[1]), atof_f(tok[2]));
-    ShadowMesh_StoreExplodeScaledCount(&rec->explode, atof_f(tok[3]));
+    ExplodeDebris_StoreExplodeScaledCount(&rec->explode, atof_f(tok[3]));
 
     const double a = (double)-1.5707963705062866f;
     const double c = cos(a), s = sin(a);
