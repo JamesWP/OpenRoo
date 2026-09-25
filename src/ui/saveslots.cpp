@@ -12,6 +12,7 @@
 #include "log.h"
 #include "saveslots.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 #include "alloc.h"
 
 /* Game data the path formats consume.  A DATA read, not a call. */
@@ -41,7 +42,7 @@ Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
 
     for (slot = 0; slot < (int)table->count(); slot++) {
         FILE *fp;
-        sprintf(path, "%s\\SavedGames\\%s%d.sav", GS_GAME_DIR, name, slot);
+        sprintf(path, "%s\\SavedGames\\%s%d.sav", GG_GAME_DIR, name, slot);
         fp = fopen(path, "r");
         if (fp == NULL) {
             ps_log("sav load", path, 0);
@@ -68,7 +69,7 @@ Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
         /* Recomputed per slot, unlike the reader -- defect 4. */
         unsigned char *rec = (unsigned char *)table->slot((unsigned char)slot);
         FILE *fp;
-        sprintf(path, "%s\\SavedGames\\%s%d.sav", GS_GAME_DIR, name, slot);
+        sprintf(path, "%s\\SavedGames\\%s%d.sav", GG_GAME_DIR, name, slot);
         fp = fopen(path, "w+");
         if (fp == NULL) {
             ps_log("sav save", path, 0);

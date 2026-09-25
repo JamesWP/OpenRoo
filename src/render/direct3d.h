@@ -83,6 +83,5 @@ Direct3D_Destruct(Direct3D *self);
 extern "C" __declspec(dllexport) Direct3D *__attribute__((thiscall))
 Direct3D_ScalarDestructor(Direct3D *self, unsigned char flags);
 
-extern "C" __declspec(dllexport) Direct3D *__attribute__((thiscall))
-Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
-                         int nModeIndex, char bHardware);
+/* CreateD3DDevice lives in its own TU; its declaration comes with this one. */
+#include "createdevice.h"
