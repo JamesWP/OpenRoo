@@ -83,6 +83,6 @@ LevelEntry_PrepareAssets(void)
     cam->eye[1] = offY + 6.0f;
     cam->eye[2] = z - 4.0f;
     memset(GG_UNKNOWN_4E01A0, 0, 9 * sizeof(unsigned long));
-    cam->field_18 = 0;
-    cam->field_1c = 0x3f860a92;   /* pi/3 as a float */
+    cam->yaw   = 0.0f;
+    cam->pitch = 1.0471976f;      /* pi/3, bits 0x3f860a92 */
 }

@@ -455,9 +455,9 @@ Sim_SetupLevelObjects(Game *self)
 
     ((u32_ua *)cam->target)[0] = self->cameraEyeBits(0);
     ((u32_ua *)cam->target)[1] = self->cameraEyeBits(1);
-    cam->field_18 = 0;
+    cam->yaw = 0.0f;
     ((u32_ua *)cam->target)[2] = self->cameraEyeBits(2);
-    cam->field_1c = 0;
+    cam->pitch = 0.0f;
 
     self->census()->reset();
 

@@ -87,6 +87,9 @@ public:
     signed char cellU() const                  { return cellU_; }
     signed char cellV() const                  { return cellV_; }
     signed char heightCell() const             { return heightCell_; }
+    /* +0x40: nonzero stops UpdateViewTransform lifting the camera over a
+     * blocking cell (the player's copy, Game+0x175209). */
+    int   field40() const                      { return field_40; }
     unsigned char type() const                 { return type_; }
     int   dyingStarted() const                 { return dyingStarted_; }
     /* +0xef: the foe's hold flag; the Player's level-complete flag.

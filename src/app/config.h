@@ -87,6 +87,9 @@ public:
     float          cameraPitch() const                 { return cameraPitch_; }
     void           setCameraPitch(float a)             { cameraPitch_ = a; }
     void           setField20a48Bits(unsigned int b)   { memcpy(field_20a48_, &b, 4); }
+    /* +0x20a48 read as a float, degrees: UpdateViewTransform's pitch target
+     * (x pi/180) and its occlusion probe's tilt (x -pi/180). */
+    float          field20a48() const                  { float f; memcpy(&f, field_20a48_, 4); return f; }
 
 
     /* Game-embedded lifecycle, called only by Game_Construct / Game_Destruct

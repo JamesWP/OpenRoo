@@ -191,9 +191,29 @@ static DWORD animation_frame(const unsigned char *o, double t)
     return (DWORD)(unsigned short)(int)r;      /* __ftol, then truncated to 16 bits */
 }
 
+/* KAROO_CAM_DIAG=1: log the camera globals (eye, target, yaw, pitch) as raw
+ * bits every frame.  Called here because RenderGameFrame reaches this after
+ * UpdateViewTransform whether that is the original or camera.cpp's, so two
+ * runs -- one with camera.cpp's patch entries withdrawn -- diff directly. */
+static void cam_diag(const float *cam)
+{
+    static int on = -1;
+    if (on < 0) {
+        char buf[8];
+        DWORD n = GetEnvironmentVariableA("KAROO_CAM_DIAG", buf, sizeof(buf));
+        on = (n > 0 && n < sizeof(buf) && buf[0] == '1') ? 1 : 0;
+    }
+    if (!on)
+        return;
+    const DWORD *b = (const DWORD *)cam;
+    log_write("CAM %08lx %08lx %08lx  %08lx %08lx %08lx  %08lx %08lx\n",
+              b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
+}
+
 extern "C" __declspec(dllexport) void __cdecl
 Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double t)
 {
+    cam_diag(cam);
     for (SceneNode *node = SCENE_LIST_HEAD; node != NULL; node = node->pNextNode) {
         unsigned char *o = node->pValue;
         if (o == NULL)
