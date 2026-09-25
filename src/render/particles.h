@@ -282,3 +282,8 @@ static inline void ps_vrender(ParticleSystem *ps, IDirect3DDevice3 *dev)
     typedef DWORD (__attribute__((thiscall)) *fn)(ParticleSystem *, IDirect3DDevice3 *);
     ((fn)ps->pVtable[PS_VT_RENDER])(ps, dev);
 }
+static inline void ps_vtransform_corners(ParticleSystem *ps, float *matrix)
+{
+    typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float *);
+    ((fn)ps->pVtable[PS_VT_XFORM])(ps, matrix);
+}
