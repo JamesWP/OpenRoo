@@ -32,6 +32,7 @@
 #include <string.h>
 #include "log.h"
 #include "textentry.h"
+#include "alloc.h"
 #include "record.h"
 
 
@@ -128,4 +129,31 @@ void TextEntry::poll(unsigned int phase)
 #undef CUR
 #undef MAXL
 #undef ACTIVE
+}
+
+/* ─── Lifecycle (Game TU) ─────────────────────────────────────────────────── */
+static void *const g_TextEntryVtable[1] = { (void *)&TextEntry_ScalarDestructor };
+
+/* 0x420950: buffer_ is left as it was. */
+void TextEntry::construct()
+{
+    vtable_    = g_TextEntryVtable;
+    active_    = 0;
+    lastKey_   = 0;
+    cursor_    = 0;
+    maxLength_ = 0;
+}
+
+void TextEntry::destruct()
+{
+    vtable_ = g_TextEntryVtable;
+}
+
+extern "C" __declspec(dllexport) TextEntry *__attribute__((thiscall))
+TextEntry_ScalarDestructor(TextEntry *self, unsigned char flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }

@@ -77,6 +77,7 @@
 #include <stddef.h>
 #include <windows.h>
 #include "log.h"
+#include "gamestr.h"
 
 /* The original's own source file and line numbers, used verbatim so the log
  * lines this produces are byte-identical to the game's. */
@@ -188,9 +189,8 @@ static void destroy_entry(doublesoundbuff *entry)
 {
     ++g_entriesDestroyed;
     Dsb_Destruct(entry);
-    /* Still alloc.h: the entry came from the game's operator new below, and
-     * that allocator is still the game's.  soundmanager.h's note applies. */
-    game_free2(entry);
+    /* Our heap: every allocator and freer of an entry is in this file. */
+    operator delete(entry);
 }
 
 extern "C" {
@@ -351,7 +351,7 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
 
         ++g_acqStaticNew;
         doublesoundbuff *fresh =
-            (doublesoundbuff *)game_operator_new(sizeof(doublesoundbuff));
+            (doublesoundbuff *)operator new(sizeof(doublesoundbuff));
         if (fresh != NULL)
             fresh = Dsb_Init(fresh);
         /* fresh may be NULL here, and is passed on regardless -- the
@@ -446,7 +446,7 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
 
         ++g_acqPoolNew;
         doublesoundbuff *fresh =
-            (doublesoundbuff *)game_operator_new(sizeof(doublesoundbuff));
+            (doublesoundbuff *)operator new(sizeof(doublesoundbuff));
         if (fresh != NULL)
             fresh = Dsb_Init(fresh);
 
@@ -462,7 +462,7 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
                 return NULL;
             Dsb_Destruct(fresh);
             ++g_entriesDestroyed;
-            game_free2(fresh);
+            operator delete(fresh);
             return NULL;
         }
         NamedList_Insert(list, name, fresh);
@@ -637,3 +637,125 @@ VoicePool *SoundManager::acquirePool(int count, const char *name, int bWant3D)
 
 int SoundManager::setup(int mode3d)
 { return SoundMgr_Setup(this, mode3d); }
+
+/* ─── The lifecycle, 0x004430e0..0x004435f0 ───────────────────────────────
+ *
+ * Read from the disassembly.  The originals' SEH frames guard only the
+ * member ctors/dtors, which cannot throw here, so they are dropped.  The
+ * vtable is ours (one slot); 0x45efa0 is written nowhere else (a byte scan
+ * finds exactly the ctor's and dtor's two immediates). */
+static void *const g_SoundMgrVtable[1] = { (void *)&SoundMgr_ScalarDestructor };
+
+/* Destroy every payload of one entry list, then empty it.  The next
+ * pointer is read before the payload is destroyed, as the original does. */
+static void purge_list(NamedEntryList *list)
+{
+    for (NamedEntry *e = list->pHead; e != NULL; ) {
+        doublesoundbuff *payload = (doublesoundbuff *)e->pPayload;
+        e = e->pNext;
+        if (payload != NULL) {
+            Dsb_Clear(payload);
+            Dsb_Destruct(payload);
+            operator delete(payload);
+        }
+    }
+    NamedList_Clear(list);
+}
+
+extern "C" {
+
+__declspec(dllexport) SoundManager *__attribute__((thiscall))
+SoundMgr_Construct(SoundManager *self)
+{
+    CFaktSound_BlankFields(self->cfaktSound());
+    NamedList_Construct(&self->entriesPlain_);
+    NamedList_Construct(&self->entries3D_);
+    self->logger_           = NULL;
+    self->ownsLogger_       = 0;
+    self->dwMode3D_         = 0;
+    self->dwPendingMode3D_  = 0;
+    self->dwCreated_        = 0;
+    self->vtable_           = (void *)g_SoundMgrVtable;
+    self->dwDefaultDsFlags_ = 2;   /* DSBCAPS_STATIC */
+    return self;
+}
+
+/* 0x443520.  Also the reset: InitSoundManager runs it first, and Game's
+ * teardown (0x414ce2) runs it on its own.  An owned logger is deleted
+ * through its vtable slot 0 with flag 1. */
+__declspec(dllexport) void __attribute__((thiscall))
+SoundMgr_PurgeAssets(SoundManager *self)
+{
+    purge_list(&self->entriesPlain_);
+    purge_list(&self->entries3D_);
+    CFaktSound_ReleaseComRefs(self->cfaktSound());
+    if (self->ownsLogger_ != 0 && self->logger_ != NULL) {
+        typedef void *(__attribute__((thiscall)) *ScalarDtor)(void *, int);
+        (*(ScalarDtor *)*(void **)self->logger_)(self->logger_, 1);
+    }
+    self->logger_           = NULL;
+    self->ownsLogger_       = 0;
+    self->dwMode3D_         = 0;
+    self->dwPendingMode3D_  = 0;
+    self->dwCreated_        = 0;
+    self->dwDefaultDsFlags_ = 2;
+}
+
+__declspec(dllexport) void __attribute__((thiscall))
+SoundMgr_Destruct(SoundManager *self)
+{
+    self->vtable_ = (void *)g_SoundMgrVtable;
+    SoundMgr_PurgeAssets(self);
+    NamedList_DtorBody(&self->entries3D_);
+    NamedList_DtorBody(&self->entriesPlain_);
+    CFaktSound_ClearState(self->cfaktSound());
+}
+
+/* Reached only through our vtable; the manager is embedded in Game, so
+ * nothing deletes one.  Reimplemented, not exercised. */
+__declspec(dllexport) SoundManager *__attribute__((thiscall))
+SoundMgr_ScalarDestructor(SoundManager *self, unsigned char flags)
+{
+    SoundMgr_Destruct(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}
+
+/* 0x4431f0.  With no logger passed, it makes its own "SoundManager.log" on
+ * the game heap -- still alloc.h: the owned logger is freed through its
+ * scalar dtor, GameLog_ScalarDeletingDtor, which frees with the game's
+ * Free2 for every logger.  A failed allocation leaves logger_ NULL and
+ * ownsLogger_ 1, as the original does. */
+__declspec(dllexport) int __attribute__((thiscall))
+SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
+              UINT bufferflags, short channels, int samplespersec,
+              USHORT bitspersample, GameLogger *logger)
+{
+    SoundMgr_PurgeAssets(self);
+    self->logger_ = logger;
+    if (logger == NULL) {
+        GameLogger *own = (GameLogger *)game_operator_new(0x118);
+        if (own != NULL)
+            own = (GameLogger *)GameLog_Initialize(own, GS_SOUNDMGR_LOG_NAME, NULL);
+        self->logger_     = own;
+        self->ownsLogger_ = 1;
+    }
+    /* Ghidra types the argument `bool`; the listing tests the whole dword
+     * (`test edi,edi`) and stores the whole dword below. */
+    int ok = enable3d == 0
+        ? CFaktSound_Initialize(self->cfaktSound(), window, bufferflags,
+                                channels, samplespersec, bitspersample,
+                                self->logger_)
+        : CFaktSound_InitializeWith3DAudio(self->cfaktSound(), window,
+                                bufferflags, channels, samplespersec,
+                                bitspersample, self->logger_);
+    if (ok == 0)
+        return 0;
+    self->dwPendingMode3D_ = enable3d;
+    self->dwMode3D_        = enable3d;
+    self->dwCreated_       = 1;
+    return 1;
+}
+
+}

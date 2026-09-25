@@ -121,3 +121,7 @@ KAROO_LAYOUT_CHECKS(BreakableTile)
     /* No size check: the object is ours to allocate, so nothing relies on
      * it being the original's 0x65. */
 }
+
+/* 0x4183f0 -- destroy every slot and zero the count; Game's destructor calls it. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_PurgeBreakableObjects(Game *self);

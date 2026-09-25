@@ -280,3 +280,15 @@ Theme_RegisterSound(Game *game, char *eventName, const char *waveName);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
                DWORD arg3, DWORD arg4);
+/* The table's lifecycle (Game+0x42258, built by Game::Load, torn down by
+ * Game's dtor and two SEH funclets): 0x440280 ctor, 0x4402c0 dtor body,
+ * 0x4402a0 scalar dtor (slot 0 of the game's one-slot table 0x45d724, now a
+ * tripwire -- ours is installed instead), 0x440400 release-all. */
+extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
+ThemeSound_Construct(ThemeSoundTable *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+ThemeSound_Destruct(ThemeSoundTable *self);
+extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
+ThemeSound_ScalarDestructor(ThemeSoundTable *self, unsigned char flags);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+ThemeSound_ReleaseAll(ThemeSoundTable *self);

@@ -36,6 +36,13 @@ public:
     int            active() const                  { return active_; }
     void           setActive(int a)                { active_ = a; }
 
+
+    /* Game-embedded lifecycle, called only by Game_Construct / Game_Destruct
+     * (gamelife.cpp).  The vtable installed is ours (one slot, the scalar
+     * dtor below); the game's is left as a tripwire. */
+    void construct();   /* 0x420950 */
+    void destruct();    /* 0x420990 */
+
 private:
     TextEntry() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(TextEntry);
@@ -61,3 +68,7 @@ KAROO_LAYOUT_CHECKS(TextEntry)
 /* The export patch.py binds; a shim onto TextEntry::poll. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PollTextEntryKeys(TextEntry *self, unsigned int phase);
+
+/* 0x420970, slot 0 of our TextEntry table. */
+extern "C" __declspec(dllexport) TextEntry *__attribute__((thiscall))
+TextEntry_ScalarDestructor(TextEntry *self, unsigned char flags);

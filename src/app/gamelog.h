@@ -27,6 +27,10 @@ static_assert(offsetof(GameLogger, notifyHwnd)   == 0x114, "notifyHwnd");
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
+/* 0x00441860 -- construct and open in one (SoundManager's own log). */
+extern "C" __declspec(dllexport) void * __attribute__((thiscall))
+GameLog_Initialize(GameLogger *self, const char *filename, const char *mode);
+
 /* The file/line writer (0x00441d20), same shape.  The particle Save/Load slots
  * report failures through it, so particles.cpp calls it here rather than
  * reaching into the game image. */

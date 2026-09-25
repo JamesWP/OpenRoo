@@ -114,3 +114,17 @@ LevelPlacements_Build(LevelPlacements *p, const Game *g,
  * thunk 0x00425670's E9): default-constructs tileQuad[4].  No dtor. */
 extern "C" __declspec(dllexport) void __cdecl
 LevelPlacements_StaticInit(void);
+
+/* 0x408870 / 0x408920 -- copy every live lift's / slide's position into
+ * its list (v negated to z), then draw the list with RenderSceneObjects
+ * (sceneobjects.cpp) on theme slot ELEVATOR / PLATFORM.  A slide along U
+ * (kind 0x0a) gets a quarter-turn yaw; slides animate code 0x14 on
+ * fmod(now * 0.002, 1).  __cdecl; RenderGameFrame is the only caller. */
+class ThemeAssetBlock;
+struct Direct3D;
+extern "C" __declspec(dllexport) void __cdecl
+LevelPlacements_DrawLifts(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
+                          Direct3D *d3d, double now);
+extern "C" __declspec(dllexport) void __cdecl
+LevelPlacements_DrawSlides(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
+                           Direct3D *d3d, double now);

@@ -79,6 +79,32 @@ ProgCtrl_ClearBindings(ProgableControl *self, unsigned short mode,
 __declspec(dllexport) void __attribute__((thiscall))
 ProgCtrl_GetBindingStr(ProgableControl *self, int mode, const char *name,
                        char *buf, unsigned int bufsz);
+/* DirectInputSetup's calls (inputsetup.cpp), in its order. */
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_InitDInput(ProgableControl *self, HINSTANCE hInstance);
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_SetupKbd(ProgableControl *self, HWND hwnd);
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_SetupMouse(ProgableControl *self, HWND hwnd);
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_SetupJoy(ProgableControl *self, HWND hwnd);
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_SetJoyRange(ProgableControl *self, int axis, int lo, int hi);
+__declspec(dllexport) void __attribute__((thiscall))
+ProgCtrl_RegisterAction(ProgableControl *self, unsigned short mode,
+                        const char *name, ActionCallback cb, void *ctx);
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_ReadBindings(ProgableControl *self);
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_BindKey(ProgableControl *self, unsigned short mode,
+                 const char *name, int sc, int strength);
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_AcquireAll(ProgableControl *self);
+/* 0x4472f0 / 0x445910 -- save the bindings; release every device. */
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_WriteBindings(ProgableControl *self);
+__declspec(dllexport) void __attribute__((thiscall))
+ProgCtrl_Shutdown(ProgableControl *self);
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_CaptureBinding(ProgableControl *self, unsigned int mode,
                         const char *name, int strength, int allow_axis,

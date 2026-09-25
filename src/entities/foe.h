@@ -124,3 +124,7 @@ KAROO_LAYOUT_CHECKS(Foe)
     /* The original's operator_new(0x15e): the class tiles it exactly. */
     KAROO_LAYOUT_SIZE(0x15e);
 }
+
+/* 0x417530 -- remove the foe with this id and compact the id table. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_RemoveFoeObject(Game *self, unsigned int idArg);

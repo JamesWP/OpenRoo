@@ -43,6 +43,11 @@ public:
     /* +0x3a, attached by InitLevelBasedSounds (levelsounds.cpp). */
     void setSound(CStaticSoundbuffer *p) { sound_ = p; }
 
+    /* Where it is drawn (LevelPlacements_DrawLifts): u, live height, v. */
+    float posU() const   { return posU_; }
+    float height() const { return height_; }
+    float posV() const   { return posV_; }
+
 private:
 
     /* The vtable.  MSVC layout: one slot, the scalar deleting destructor,
@@ -111,3 +116,7 @@ KAROO_LAYOUT_CHECKS(LiftObject)
     /* No size check: the object is ours to allocate, so nothing relies on
      * it being the original's 0x4c. */
 }
+
+/* 0x417d90 -- destroy every slot and zero the count; Game's destructor calls it. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_PurgeLiftObjects(Game *self);

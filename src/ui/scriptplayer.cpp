@@ -524,7 +524,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
     char buf[LINE_SIZE];
     strcpy(buf, line);
     const char *cmd = strtok(buf, JJS_DELIMS);
-    SplinePath *spline = (SplinePath *)((char *)this + 0x93d);
+    SplinePath *spline = &spline_;
 
     if (jjs_diag())
         log_write("jjscript: line %u cmd %s\n", cursor_, cmd ? cmd : "(null)");
@@ -726,7 +726,7 @@ void ScriptPlayer::updateSpline()
     if (elapsed < duration_) {
         float out[3];
         const float *p = (const float *)Spline_EvalBezierPath(
-            (SplinePath *)((char *)this + 0x93d), out, (float)(elapsed / duration_));
+            &spline_, out, (float)(elapsed / duration_));
         memcpy(splinePoint_, p, sizeof(splinePoint_));
     } else {
         eye_[1] = -eye_[1];                     /* BUG, kept */
@@ -787,4 +787,48 @@ void ScriptPlayer::tick(double now, double dt)
     }
     updateWait();
     updateGlide();
+}
+
+/* ─── Lifecycle (Game TU) ─────────────────────────────────────────────────── */
+static void *const g_ScriptPlayerVtable[1] = { (void *)&ScriptPlayer_ScalarDestructor };
+
+/* 0x41d5e0: the stream and the spline, then these stores. */
+void ScriptPlayer::construct()
+{
+    CStream_Initialize(&stream_);
+    Spline_Construct(&spline_);
+    cursor_       = 0;
+    splineActive_ = 0;
+    soundManager_ = NULL;
+    vtable_       = g_ScriptPlayerVtable;
+    clearStreams();
+}
+
+/* 0x41d680: a prepared stream still playing (dwThread_done == 0) is
+ * stopped and released first; one that finished is left to
+ * DeinitInstance. */
+void ScriptPlayer::destruct()
+{
+    vtable_ = g_ScriptPlayerVtable;
+    if (streamReady_ != 0 && stream_.dwThread_done == 0) {
+        CStream_Stop(&stream_);
+        CStream_ReleaseResources(&stream_);
+        streamReady_ = 0;
+    }
+    Spline_Destruct(&spline_);
+    CStream_DeinitInstance(&stream_);
+}
+
+void ScriptPlayer::clearStreams()
+{
+    memset(streams_, 0, sizeof(streams_));
+}
+
+extern "C" __declspec(dllexport) ScriptPlayer *__attribute__((thiscall))
+ScriptPlayer_ScalarDestructor(ScriptPlayer *self, unsigned char flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }

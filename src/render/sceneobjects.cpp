@@ -1,0 +1,421 @@
+/* sceneobjects.cpp -- Game::RenderSceneObjects 0x4095f0; see sceneobjects.h.
+ *
+ * Written from the listing (the decompile misattributes most of the stack).
+ * For every record of the slot, every sub-object and every position:
+ *
+ *   per record    SPECULARENABLE on if the record asks and Highlights is on;
+ *                 ZWRITEENABLE = !bNoZWrite; SPECULARENABLE off afterwards.
+ *   per sub       skipped whole if its effect is 5 and Reflection is off;
+ *                 TEXTUREADDRESSU/V = dwTexAddress, 0 meaning CLAMP (3).
+ *   per position  the visibility gate against the tile under it and the
+ *                 player; SetTexture; alpha blend iff both factors are set;
+ *                 then the record's kind:
+ *     1 model      World = Scale * RotA * RotB * RotC * Translate, the frame
+ *                  from the AnimTable, the sub-object's vertex effect, then
+ *                  either the explode debris or the mesh.
+ *     3 billboard  a camera-facing quad (Math_BuildBillboardQuad).
+ *     2 quad       the caller's four vertices, UV/colour-animated by the
+ *                  sub-object's effect, drawn strided from the SECOND
+ *                  coordinate pair (hooks_SceneQuadDrawStrided repairs the
+ *                  undeclared set -- CRASH.md).
+ *
+ * The rotation matrices are stored exactly as the original builds them
+ * (transposed relative to D3DX's), and the tile under a position is
+ * Tile::at(map, (int)x, -(int)z).  Where the original keeps a partial
+ * result in an x87 register this uses double; where it stores a float, so
+ * does this.  None of that reaches a comparison.
+ *
+ * Kept: the quad path's alpha of 0x0f; the billboard's alpha of 0; the
+ * "fmod(.., 1.0)" frame wrap; ftol truncation everywhere a frame is taken.
+ */
+#include "direct3d.h"   /* first: it sets DIRECTDRAW_VERSION */
+#include <windows.h>
+#include <d3d.h>
+#include <math.h>
+#include <string.h>
+
+#include "sceneobjects.h"
+#include "scenequad.h"
+#include "game.h"
+#include "config.h"
+#include "levelmap.h"
+#include "tile.h"
+#include "player.h"
+#include "theme.h"
+#include "levelobject.h"
+#include "texture.h"
+#include "camera.h"
+#include "ani.h"
+#include "faktmesh.h"
+#include "wrapperobject.h"
+#include "explodedebris.h"
+#include "d3dmath.h"
+
+/* ThemeLevelObject is packed; its embedded members (wrapper, explode,
+ * animTable, the sub-objects) are 1-aligned by declaration only -- the
+ * record stride 0x5dd makes that unavoidable, as theme.cpp notes. */
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+
+enum { KIND_MODEL = 1, KIND_QUAD = 2, KIND_BILLBOARD = 3 };
+static const float HALF_PI   = 1.5707963705062866f;   /* 0x45d2cc */
+static const float PHASE_K   = 4.0f;                   /* 0x45d370 */
+static const float QUAD_HALF = 0.4f;                   /* 0x3ecccccd */
+
+/* R = A * B, row-major; each element summed k = 0..3 from zero. */
+static void mat_mul(Mat4 *r, const Mat4 *a, const Mat4 *b)
+{
+    Mat4 t;
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++) {
+            double s = 0.0;
+            for (int k = 0; k < 4; k++)
+                s += (double)a->m[i * 4 + k] * b->m[k * 4 + j];
+            t.m[i * 4 + j] = (float)s;
+        }
+    *r = t;
+}
+
+static void mat_translate(Mat4 *m, float x, float y, float z)
+{
+    m4_identity(m);
+    m->m[12] = x;
+    m->m[13] = y;
+    m->m[14] = z;
+}
+
+/* The sub-object's `condition` against the tile and the player. */
+static bool gate_passes(DWORD gate, const Tile *tile, const Player *pl)
+{
+    switch (gate) {
+    case 0: return true;
+    case 1: return tile->busy() != 0;
+    case 2: return tile->busy() == 0;
+    case 3: return pl->anim() == 10;
+    case 4: return pl->anim() != 10;
+    case 5: return pl->anim() != 10 && (pl->glides() != 0 || pl->gliding() != 0);
+    case 6: return pl->anim() != 10 && pl->effectDActive() != 0;
+    default: return false;
+    }
+}
+
+/* The record's vertical oscillation, added to `y`. */
+static float oscillate(const ThemeLevelObject *rec, const Tile *tile, double now, float y)
+{
+    if (rec->flOscillationAmplitude == 0.0f)
+        return y;
+    double arg = rec->flOscillationFrequency * now;
+    if (rec->bOscillateRandom)
+        arg += (double)tile->itemPhase() * PHASE_K;
+    arg += rec->flOscillationPhase;
+    return (float)(sin(arg) * rec->flOscillationAmplitude + y);
+}
+
+/* The mesh frame.  With bNoMoveStates the record loops its code-0x14 range
+ * on the clock; otherwise it plays the caller's code at the caller's time.
+ * The counts are unsigned (FILD of a zero-extended qword). */
+static unsigned int anim_frame(ThemeLevelObject *rec, double now, float animTime,
+                               unsigned int animCode)
+{
+    if (rec->bNoMoveStates) {
+        AnimSlot *a = Ani_LookupAnimDescriptor(&rec->animTable, 0x14);
+        if (a == NULL)
+            return 0;
+        double n = (double)(unsigned int)a->numFrames;
+        double v = (double)(unsigned int)a->fps * now * 0.001 / n;
+        return (unsigned int)(long long)(fmod(v, 1.0) * n);
+    }
+    AnimSlot *a = Ani_LookupAnimDescriptor(&rec->animTable, animCode);
+    if (a == NULL || a->numFrames == 0)
+        return 0;
+    double v;
+    if (a->reverse != 0)
+        v = (double)(unsigned int)a->firstFrame
+          - (double)(unsigned int)a->numFrames * animTime;
+    else
+        v = (double)(unsigned int)a->numFrames * animTime + (double)a->firstFrame;
+    return (unsigned int)(long long)v;
+}
+
+static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
+                       const Tile *tile, const Vec3 *pos, const Vec3 *rot,
+                       IDirect3DDevice3 *dev, double now, float animTime,
+                       unsigned int animCode, unsigned int dtMs)
+{
+    Vec3 P = { rec->flPosX, rec->flPosY, rec->flPosZ };
+    float h  = rec->bRandomYAngle ? tile->itemPhase() : 0.0f;
+    float rx = (float)(now * rec->flRotRateX);
+    float ry = (float)(now * rec->flRotRateY + h);
+    float rz = (float)(now * rec->flRotRateZ);
+    P.y = oscillate(rec, tile, now, P.y);
+
+    Vec3 S;
+    if (rec->flPump[3] != 0.0f) {
+        double w = (sin(rec->flPump[3] * now) + 1.0) * 0.5;
+        S.x = (float)(w * rec->flPump[0]) + rec->flScaleX;
+        S.y = (float)(w * rec->flPump[1]) + rec->flScaleY;
+        S.z = (float)(w * rec->flPump[2] + rec->flScaleZ);
+    } else {
+        S = (Vec3){ rec->flScaleX, rec->flScaleY, rec->flScaleZ };
+    }
+
+    Mat4 M, R;
+    m4_identity(&M);
+    M.m[0] = S.x; M.m[5] = S.y; M.m[10] = S.z;
+
+    double a = (double)rx + rot->x + HALF_PI;
+    float c = (float)cos(a), s = (float)sin(a);
+    m4_identity(&R);
+    R.m[5] = c; R.m[6] = -s; R.m[9] = s; R.m[10] = c;
+    mat_mul(&M, &M, &R);
+
+    a = (double)ry + rot->y;
+    c = (float)cos(a); s = (float)sin(a);
+    m4_identity(&R);
+    R.m[0] = c; R.m[2] = s; R.m[8] = -s; R.m[10] = c;
+    mat_mul(&M, &M, &R);
+
+    a = (double)rz + rot->z;
+    c = (float)cos(a); s = (float)sin(a);
+    m4_identity(&R);
+    R.m[0] = c; R.m[1] = -s; R.m[4] = s; R.m[5] = c;
+    mat_mul(&M, &M, &R);
+
+    mat_translate(&R, P.x + pos->x, P.y + pos->y, P.z + pos->z);
+    mat_mul(&M, &M, &R);
+    dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&M);
+
+    unsigned int frame = anim_frame(rec, now, animTime, animCode);
+    const float *p = sub->flEffectParams;
+    switch (sub->effect) {
+    case 0:
+        Wrapper_Flush(&rec->wrapper);
+        break;
+    case 4:
+        Wrapper_ApplySineWave(&rec->wrapper, (unsigned int)(long long)now, p[0], p[1], p[2]);
+        break;
+    case 5:
+        if (!game->config()->videoReflection())
+            return;
+        Wrapper_UpdateObjectTransform(&rec->wrapper, dev, (unsigned short)frame);
+        break;
+    case 6:
+        Wrapper_ScrollUVs(&rec->wrapper, (unsigned int)(long long)now, p[0] != 0.0f ? 1 : 0, p[1]);
+        break;
+    default:
+        break;
+    }
+
+    if (rec->bExplode) {
+        ExplodeDebris_Advance(&rec->explode, (float)((double)dtMs * (double)0.001f));
+        ExplodeDebris_Draw(&rec->explode, dev);
+        return;
+    }
+    if (rec->bLit)
+        FaktMesh_DrawFramedModel(rec->pMesh, dev, frame);
+    else
+        FaktMesh_DrawMeshBuffer(rec->pMesh, dev, frame);
+}
+
+static void draw_billboard(ThemeLevelObject *rec, const Tile *tile, const Vec3 *pos,
+                           IDirect3DDevice3 *dev, double now)
+{
+    Vec3 corner[4];
+    Math_BuildBillboardQuad(corner,
+                            GG_CAMERA->target[0] - GG_CAMERA->eye[0],
+                            GG_CAMERA->target[1] - GG_CAMERA->eye[1],
+                            GG_CAMERA->target[2] - GG_CAMERA->eye[2],
+                            rec->flBillboardScale);
+    BbVertex v[4];
+    billboard_vertex(&v[0], &corner[0], 0x00ffffff, 0, 0.0f, 1.0f);
+    billboard_vertex(&v[1], &corner[1], 0x00ffffff, 0, 0.0f, 0.0f);
+    billboard_vertex(&v[2], &corner[2], 0x00ffffff, 0, 1.0f, 1.0f);
+    billboard_vertex(&v[3], &corner[3], 0x00ffffff, 0, 1.0f, 0.0f);
+
+    float y = oscillate(rec, tile, now, rec->flPosY);
+    Mat4 T;
+    mat_translate(&T, rec->flPosX + pos->x, y + pos->y, rec->flPosZ + pos->z);
+    dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&T);
+    dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0x1e2, v, 4, 0);
+}
+
+/* Effect 3's corner: (x, y, 0, 1) through M, divided by w unless w is 1,
+ * recentred on (0.5, 0.5). */
+static void rotated_corner(const Mat4 *M, float x, float y, float *u, float *v)
+{
+    const float in[4] = { x, y, 0.0f, 1.0f };
+    float out[4];
+    for (int j = 0; j < 4; j++) {
+        double s = 0.0;
+        for (int i = 0; i < 4; i++)
+            s += (double)in[i] * M->m[i * 4 + j];
+        out[j] = (float)s;
+    }
+    if ((double)out[3] != 1.0) {
+        out[0] = out[0] / out[3];
+        out[1] = out[1] / out[3];
+    }
+    *u = out[0] + 0.5f;
+    *v = out[1] + 0.5f;
+}
+
+static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
+                      IDirect3DDevice3 *dev, double now)
+{
+    Mat4 T;
+    mat_translate(&T, pos->x, pos->y, pos->z);
+    dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&T);
+    for (int i = 0; i < 4; i++)
+        q[i].diffuse = 0x0fffffff;
+
+    if (sub->effect == 0) {
+        dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0x242, q, 4, 0);
+        return;
+    }
+
+    const float *p = sub->flEffectParams;
+    switch (sub->effect) {
+    case 1: {   /* scroll, one of four directions */
+        float r = (float)fmod(p[1] * now, 1.0);
+        float v = r * p[0];
+        switch ((int)(long long)p[2]) {
+        case 1:
+            q[0].u1 = -v;     q[0].v1 = 1.0f;
+            q[1].u1 = -v;     q[1].v1 = 0.0f;
+            q[2].u1 = 1 - v;  q[2].v1 = 1.0f;
+            q[3].u1 = 1 - v;  q[3].v1 = 0.0f;
+            break;
+        case 2:
+            q[0].u1 = 0.0f;   q[0].v1 = v;
+            q[1].u1 = 0.0f;   q[1].v1 = -v;
+            q[2].u1 = 1.0f;   q[2].v1 = v;
+            q[3].u1 = 1.0f;   q[3].v1 = -v;
+            break;
+        case 3:
+            q[0].u1 = -v;     q[0].v1 = 1 + v;
+            q[1].u1 = 0.0f;   q[1].v1 = 0.0f;
+            q[2].u1 = 1.0f;   q[2].v1 = 1.0f;
+            q[3].u1 = 1 + v;  q[3].v1 = -v;
+            break;
+        case 4:
+            q[0].u1 = 0.0f;   q[0].v1 = 0.0f;
+            q[1].u1 = -v;     q[1].v1 = 1 + v;
+            q[2].u1 = 1 + v;  q[2].v1 = -v;
+            q[3].u1 = 1.0f;   q[3].v1 = 1.0f;
+            break;
+        default:
+            break;
+        }
+        break;
+    }
+    case 2: {   /* a grey flash, alpha 0xff */
+        unsigned int b = (unsigned int)(long long)
+            ((sin(p[0] * now + p[1]) + 1.0) * 0.5 * 255.0);
+        unsigned int col = ((((b | 0xffffff00u) << 8) | b) << 8) | b;
+        for (int i = 0; i < 4; i++)
+            q[i].diffuse = col;
+        q[0].u1 = 0.0f; q[0].v1 = 1.0f;
+        q[1].u1 = 0.0f; q[1].v1 = 0.0f;
+        q[2].u1 = 1.0f; q[2].v1 = 1.0f;
+        q[3].u1 = 1.0f; q[3].v1 = 0.0f;
+        break;
+    }
+    case 3: {   /* the UV corners rotated about the centre */
+        double a = p[0] * now;
+        float c = (float)cos(a), s = (float)sin(a);
+        Mat4 M;
+        m4_identity(&M);
+        M.m[0] = c; M.m[1] = -s; M.m[4] = s; M.m[5] = c;
+        rotated_corner(&M, -QUAD_HALF,  QUAD_HALF, &q[0].u1, &q[0].v1);
+        rotated_corner(&M, -QUAD_HALF, -QUAD_HALF, &q[1].u1, &q[1].v1);
+        rotated_corner(&M,  QUAD_HALF,  QUAD_HALF, &q[2].u1, &q[2].v1);
+        rotated_corner(&M,  QUAD_HALF, -QUAD_HALF, &q[3].u1, &q[3].v1);
+        break;
+    }
+    case 4: {   /* rotation about a pivot, from the listing's arithmetic */
+        double a = p[0] * now;
+        float s = (float)sin(a), c = (float)cos(a);
+        double pv = p[2], qv = p[1];
+        double A  = (qv - pv) * s;
+        float  B  = (float)((pv + qv) * s + 1.0);
+        float  C1 = (float)(c * qv + pv * s);
+        float  D  = (float)((c * qv + 1.0) - pv * s);
+        q[0].u1 = (float)A; q[0].v1 = D;
+        q[1].u1 = (float)A; q[1].v1 = C1;
+        q[2].u1 = B;        q[2].v1 = D;
+        q[3].u1 = B;        q[3].v1 = C1;
+        break;
+    }
+    default:
+        break;
+    }
+
+    D3DDRAWPRIMITIVESTRIDEDDATA sd;
+    memset(&sd, 0, sizeof(sd));
+    sd.position.lpvData         = &q[0].x;
+    sd.position.dwStride        = sizeof(SceneQuadVertex);
+    sd.diffuse.lpvData          = &q[0].diffuse;
+    sd.diffuse.dwStride         = sizeof(SceneQuadVertex);
+    sd.textureCoords[0].lpvData = &q[0].u1;
+    sd.textureCoords[0].dwStride = sizeof(SceneQuadVertex);
+    hooks_SceneQuadDrawStrided(dev, D3DPT_TRIANGLESTRIP, 0x242, &sd, 4, 0);
+}
+
+extern "C" __declspec(dllexport) void __cdecl
+Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *positions,
+                         const Vec3 *rotations, unsigned int count,
+                         ThemeObjectTypeSlot *slot, Direct3D *d3d, double now,
+                         float animTime, unsigned int animCode, unsigned int dtMs)
+{
+    Config *cfg = game->config();
+    const Player *pl = game->player();
+
+    for (unsigned int i = 0; i < slot->dwInstanceCount; i++) {
+        ThemeLevelObject *rec = &slot->records[i];
+        IDirect3DDevice3 *dev = d3d->pDevice;
+        if (rec->bSpecular && cfg->videoHighlights())
+            dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 1);
+        dev->SetRenderState(D3DRENDERSTATE_ZWRITEENABLE, rec->bNoZWrite ? 0 : 1);
+
+        for (unsigned int s = 0; s < rec->dwSubObjectCount; s++) {
+            SceneSubObject *sub = &rec->pSubObjects[s];
+            if (sub->effect == 5 && !cfg->videoReflection())
+                continue;
+            DWORD addr = sub->dwTexAddress != 0 ? sub->dwTexAddress : (DWORD)D3DTADDRESS_CLAMP;
+            d3d->pDevice->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSU, addr);
+            d3d->pDevice->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSV, addr);
+
+            for (unsigned int k = 0; k < count; k++) {
+                const Vec3 *pos = &positions[k];
+                const Tile *tile = game->map()->tile((int)pos->x, -(int)pos->z);
+                if (!gate_passes(sub->dwVisibilityGate, tile, pl))
+                    continue;
+
+                dev = d3d->pDevice;
+                dev->SetTexture(0, sub->pTexture != NULL ? sub->pTexture->pTexture2 : NULL);
+                if (sub->dwBlendSrc != 0 && sub->dwBlendDst != 0) {
+                    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
+                    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, sub->dwBlendSrc);
+                    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, sub->dwBlendDst);
+                } else {
+                    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
+                }
+
+                switch (rec->kind) {
+                case KIND_MODEL:
+                    draw_model(game, rec, sub, tile, pos, &rotations[k], dev,
+                               now, animTime, animCode, dtMs);
+                    break;
+                case KIND_BILLBOARD:
+                    draw_billboard(rec, tile, pos, dev, now);
+                    break;
+                case KIND_QUAD:
+                    draw_quad(quad, sub, pos, dev, now);
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+        d3d->pDevice->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
+    }
+}

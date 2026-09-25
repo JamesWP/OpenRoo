@@ -39,10 +39,21 @@ public:
     unsigned int  insert(unsigned int score, unsigned char levelId);
 
     unsigned char count() const                      { return count_; }
+    void          setCount(unsigned char n)          { count_ = n; }
     /* The rank insert() last placed a score at. */
     unsigned char lastRank() const                   { return lastRank_; }
     HighScoreRecord       *record(unsigned int i)       { return &records_[i]; }
     const HighScoreRecord *record(unsigned int i) const { return &records_[i]; }
+
+
+    /* Game-embedded lifecycle, called only by Game_Construct / Game_Destruct
+     * (gamelife.cpp).  The vtable installed is ours (one slot, the scalar
+     * dtor below); the game's is left as a tripwire. */
+    void construct();   /* 0x41edf0 */
+    void destruct();    /* 0x41ee20 */
+    /* 0x41ee30 -- "Bernie Boulder" in the first count() names, then ten
+     * fixed score/level pairs.  Its four stack arguments are ignored. */
+    void fillDefaults();
 
 private:
     HighScoreTable() = delete;   /* game-owned; only ever reached by pointer */
@@ -70,3 +81,7 @@ HighScore_WriteFile(HighScoreTable *self, const char *name, char key);
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_InsertScoreIntoHighScoreTable(HighScoreTable *self, unsigned int score,
                                   unsigned char levelId);
+
+/* 0x41ee00, slot 0 of our HighScoreTable table. */
+extern "C" __declspec(dllexport) HighScoreTable *__attribute__((thiscall))
+HighScoreTable_ScalarDestructor(HighScoreTable *self, unsigned char flags);

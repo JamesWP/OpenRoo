@@ -92,3 +92,8 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 TextureManager_Destruct(TextureManager *self);
 extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
 TextureManager_ScalarDestructor(TextureManager *self, unsigned char flags);
+/* 0x004400c0 / 0x00440260. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+TextureManager_SetLogger(TextureManager *self, GameLogger *logger);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+TextureManager_LoadAll(TextureManager *self);

@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include "layout.h"
 #include "stream.h"     /* WaveInfo, CStreamSoundbuffer */
+#include "splinepath.h"
 
 class SoundManager;
 
@@ -90,6 +91,16 @@ public:
      * setup fills all but the file name. */
     WaveInfo      *streamWave()                    { return &streamWave_; }
 
+
+    /* The embedded members, for the few callers that hand them on. */
+    SplinePath         *spline()                   { return &spline_; }
+
+    /* Game-embedded lifecycle, called only by Game_Construct / Game_Destruct
+     * (gamelife.cpp); the vtable is ours, one slot. */
+    void construct();       /* BuildScriptPlayer 0x41d5e0 */
+    void destruct();        /* TeardownScriptPlayer 0x41d680 */
+    void clearStreams();    /* 0x41e890 -- zero streams_[] */
+
 private:
     ScriptPlayer() = delete;   /* game-owned; only ever reached by pointer */
     unsigned char playScript(const char *line);
@@ -113,12 +124,12 @@ private:
     unsigned char  gap_80b[0x833 - 0x80b];
     unsigned int   waitingOnStream_;               /* +0x833  "playwave <id> <wait>"; the tick stalls until its thread is done */
     unsigned int   streamReady_;                   /* +0x837  "initwave"'s PrepareStreamBuffer result */
-    unsigned char  gap_83b[0x90f - 0x83b];         /* the embedded stream, 0xd4 */
+    CStreamSoundbuffer stream_;                    /* +0x83b  the embedded stream, 0xd4 */
     WaveInfo       streamWave_;                    /* +0x90f */
     unsigned char  gap_921[0x92d - 0x921];
     unsigned int   field_92d_;                     /* +0x92d */
     float          splinePoint_[3];                /* +0x931 */
-    unsigned char  gap_93d[0x951 - 0x93d];         /* the SplinePath */
+    SplinePath     spline_;                        /* +0x93d */
     int            splineActive_;                  /* +0x951 */
     unsigned int   field_955_;                     /* +0x955 */
     float          angle_[3];                      /* +0x959  "anglexyz"; nothing here reads it */
@@ -195,3 +206,7 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 JJScript_ReleaseScriptStreamBuffers(ScriptPlayer *self);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 JJScript_ReadTextsForReport(ScriptPlayer *self, const char *path, FILE *sink);
+
+/* 0x41d660, slot 0 of our ScriptPlayer table. */
+extern "C" __declspec(dllexport) ScriptPlayer *__attribute__((thiscall))
+ScriptPlayer_ScalarDestructor(ScriptPlayer *self, unsigned char flags);

@@ -55,14 +55,18 @@ static_assert(sizeof(SoundAssetName) == 0x10c, "SoundAssetName stride");
 /* The theme sound table ("TSM" in its log line), Game+0x42258.  A .thm
  * `Sound <event> <wave>` line fills entries[id] through ThemeSound_Add
  * (theme.cpp); the id is RegisterThemeSound's event number, so e.g. entry 0
- * is movecatcher and entry 70 explosionbomb.  72 entries is the largest id
- * the event table produces (0x47) + 1; nothing in Game sits inside them. */
-#define THEME_SOUND_COUNT 72
+ * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
+ * 0x47, but the table holds 100 entries: ReleaseAll 0x440400 clears exactly
+ * 100, ending at Game+0x48b12 where switchMax_ begins.  Lifecycle in
+ * theme.cpp; the vtable is ours, one slot. */
+#define THEME_SOUND_COUNT 100
 struct __attribute__((packed)) ThemeSoundTable {
-    BYTE           header[10];   /* handed to the no-op 0x00440450; unread */
+    void          *vtable;       /* +0 */
+    DWORD          unknown4;     /* +4  never written */
+    WORD           unknown8;     /* +8  zeroed by the ctor, never read */
     SoundAssetName entries[THEME_SOUND_COUNT];
 };
-static_assert(sizeof(ThemeSoundTable) == 10 + 72 * 0x10c, "ThemeSoundTable size");
+static_assert(sizeof(ThemeSoundTable) == 10 + 100 * 0x10c, "ThemeSoundTable size");
 
 /* The end-of-level score tally, Game+0x1404c1..+0x140543.  Six rows, each
  * with a real COUNT and SCORE (CalculateLevelScore 0x41a760) and a SHOWN
@@ -417,10 +421,17 @@ public:
      * restore it from the script player's spline point, and the level
      * builder seeds it {0, 1000, 0}.  Not decoded. */
     void           setField13cc94(int i, float v)    { field_13cc94_[i] = v; }
-    /* Fields beside it, named by offset: GameTick zeroes +0x13cc90 and
-     * +0x13cca8 with the level builder, and copies the float +0x13cca4
-     * into the camera distance when the player dies. */
+    /* +0x13cca4 is the zoom distance the Zoom In/Out actions step (clamped
+     * 2..20); GameTick eases cameraDistance towards it and copies it back
+     * when the overview ends.  +0x13cca8 is the overview flag the OverView
+     * action raises (with cameraDistance 40); GameTick and the level
+     * builder clear it.  +0x13cc90 is set by both zoom actions and cleared
+     * by the same two; its reader is not decoded. */
     void           setField13cc90(int v)             { field_13cc90_ = v; }
+    float          zoomDistance() const              { return zoomDistance_; }
+    void           setZoomDistance(float d)          { zoomDistance_ = d; }
+    int            overviewActive() const            { return overviewActive_; }
+    void           setOverviewActive(int v)          { overviewActive_ = v; }
     /* keypress.cpp: +0x13cc88 is a one-shot latch (cleared, then set on
      * the first press, which also sets +0x13cc8c).  Named by offset. */
     int            field_13cc88() const              { return field_13cc88_; }
@@ -429,8 +440,6 @@ public:
     void           setField13cc8c(int v)             { field_13cc8c_ = v; }
     /* The buffer HandleTypedCheatCode matches typed cheats in. */
     unsigned char *cheatBuffer()                     { return cheatBuffer_; }
-    float          field_13cca4() const              { return field_13cca4_; }
-    void           setField13cca8(int v)             { field_13cca8_ = v; }
     void           setJoyDeadzone(unsigned short p)  { config_.setJoyDeadzone(p); }
 
     /* ── the tally's inputs (CalculateLevelScore 0x41a760) ─────────── */
@@ -574,16 +583,31 @@ public:
     ThemeSoundTable      *themeSounds()             { return &themeSounds_; }
 
 
+
+    /* ── the lifecycle (game.cpp) ───────────────────────────────────────
+     * Game::Load 0x4145c0 is the constructor: build every member, read the
+     * .gam, save slots, Karoo.cfg and high scores, then enter the first
+     * level.  Destruct 0x414b70 saves the scores and config and tears it
+     * all down.  The vtable is ours (one slot; 0x45d3b8 is a tripwire). */
+    Game *construct(const char *gameName);
+    void  destruct();
+
+private:
+    int   loadGameFile(const char *name);   /* LoadGameFile 0x41cbf0 */
+    void  releaseAllSounds();               /* ReleaseAllSoundBuffers 0x41b3b0 */
+
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
     KAROO_LAYOUT_REGISTER(Game);
 
-    unsigned char gap_000000[0x00000c - 0x000000];
+    const void   *vtable_;                                /* 0x000000  ours, one slot */
+    double        field_04_;                              /* 0x000004  Load sets 1.0; reader not decoded */
     int           field_0c_;                              /* 0x00000c */
     unsigned int  mapChanged_;                            /* 0x000010 */
     unsigned int  nextLevelBonus_;                        /* 0x000014 */
     unsigned int  tickCount_;                             /* 0x000018 */
-    unsigned char gap_00001c[0x02023d - 0x00001c];
+    MenuTree      rootMenu_;                              /* 0x00001c  constructed, never navigated */
+    int           initialised_;                           /* 0x020239  0 until Load completes */
     TimedSpawner  timedSpawners_[256];                    /* 0x02023d */
     FreeBomb      freeBombs_[256];                        /* 0x02173d */
     unsigned char gap_02223d[0x02223f - 0x02223d];
@@ -613,7 +637,6 @@ private:
     unsigned short field_42252_;                          /* 0x042252 */
     int           levelSoundsReady_;                      /* 0x042254 */
     ThemeSoundTable themeSounds_;                         /* 0x042258 */
-    unsigned char gap_046dc2[0x048b12 - 0x046dc2];
     unsigned char switchMax_;                             /* 0x048b12 */
     unsigned char stateBeforeMenu_;                       /* 0x048b13 */
     unsigned int  field_48b14_;                           /* 0x048b14 */
@@ -629,14 +652,14 @@ private:
     int           soundCreated_;                          /* 0x13cc34 */
     unsigned char gap_13cc38[0x13cc5c - 0x13cc38];        /* SoundManager tail */
     FixedSounds   fixedSounds_;                           /* 0x13cc5c */
-    unsigned char gap_13cc84[0x13cc88 - 0x13cc84];
+    int           field_13cc84_;                          /* 0x13cc84  Load zeroes; reader not decoded */
     int           field_13cc88_;                          /* 0x13cc88 */
     int           field_13cc8c_;                          /* 0x13cc8c */
     int           field_13cc90_;                          /* 0x13cc90 */
     float         field_13cc94_[3];                       /* 0x13cc94 */
     unsigned char gap_13cca0[0x13cca4 - 0x13cca0];
-    float         field_13cca4_;                          /* 0x13cca4 */
-    int           field_13cca8_;                          /* 0x13cca8 */
+    float         zoomDistance_;                          /* 0x13cca4 */
+    int           overviewActive_;                        /* 0x13cca8 */
     /* The typed-cheat buffer; declared up to the cheat entry that follows.
      * Its real length is not established. */
     unsigned char cheatBuffer_[0x13cdac - 0x13ccac];      /* 0x13ccac */
@@ -700,6 +723,10 @@ private:
 
 KAROO_LAYOUT_CHECKS(Game)
 {
+    KAROO_LAYOUT_AT(field_04_,         0x000004);
+    KAROO_LAYOUT_AT(rootMenu_,         0x00001c);
+    KAROO_LAYOUT_AT(initialised_,      0x020239);
+    KAROO_LAYOUT_AT(field_13cc84_,     0x13cc84);
     KAROO_LAYOUT_AT(soundManagerHead_, 0x13cba8);
     KAROO_LAYOUT_AT(soundCreated_,     0x13cc34);
     KAROO_LAYOUT_AT(fixedSounds_,      0x13cc5c);
@@ -743,11 +770,11 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(mapChanged_,       0x000010);
     KAROO_LAYOUT_AT(nextLevelBonus_,   0x000014);
     KAROO_LAYOUT_AT(field_13cc90_,     0x13cc90);
-    KAROO_LAYOUT_AT(field_13cca4_,     0x13cca4);
+    KAROO_LAYOUT_AT(zoomDistance_,     0x13cca4);
     KAROO_LAYOUT_AT(field_13cc88_,     0x13cc88);
     KAROO_LAYOUT_AT(cheatBuffer_,      0x13ccac);
     KAROO_LAYOUT_AT(field_13cc8c_,     0x13cc8c);
-    KAROO_LAYOUT_AT(field_13cca8_,     0x13cca8);
+    KAROO_LAYOUT_AT(overviewActive_,   0x13cca8);
     KAROO_LAYOUT_AT(field_173b1a_,     0x173b1a);
     KAROO_LAYOUT_AT(tickCount_,        0x000018);
     KAROO_LAYOUT_AT(gameFileName_,     0x04215f);
@@ -786,3 +813,13 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(cameraEye_,        0x2ab580);
     KAROO_LAYOUT_AT(field_13cc94_,     0x13cc94);
 }
+
+/* The lifecycle exports (game.cpp): 0x4145c0 (thiscall, RET 4, returns
+ * this), 0x414b70, and 0x414b50 -- slot 0 of our Game table, which WinMain's
+ * `delete game` calls through. */
+extern "C" __declspec(dllexport) Game *__attribute__((thiscall))
+Game_Construct(Game *self, const char *gameName);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Game_Destruct(Game *self);
+extern "C" __declspec(dllexport) Game *__attribute__((thiscall))
+Game_ScalarDestructor(Game *self, unsigned char flags);

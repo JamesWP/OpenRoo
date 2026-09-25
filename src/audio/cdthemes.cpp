@@ -26,6 +26,8 @@
  */
 #include <windows.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "log.h"
 #include "gamelog.h"
 #include "cdthemes.h"
@@ -225,4 +227,92 @@ Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
     if (flags & 1)
         game_free2(self);
     return self;
+}
+
+/* ─── ReadCdTrackThemeTable 0x403040 (thiscall, RET 4) ───────────────────
+ *
+ * Opens the .cdt with the original's mode "r+t" (text, and -- needlessly --
+ * writable).  Defects kept:
+ *   - the line buffer starts empty (a copy of the never-written empty
+ *     string at 0x46c290) and is parsed even when the first fgets reads
+ *     nothing;
+ *   - the EOF test comes before fgets, so a file ending in a newline has one
+ *     failed fgets whose unchanged buffer is parsed again: strtok resumes
+ *     after the first token's NUL and the LAST THEME IS ADDED TWICE;
+ *   - the newline chop drops the last character unconditionally (a line cut
+ *     at 0xff chars loses a real one), and runs on an empty buffer's [-1];
+ *   - the index is a byte and unchecked: a 256th theme stores its track in
+ *     currentTrack_ (the byte after trackOf_) and its name one row past
+ *     names_, beyond the object.  Kept; no shipped .cdt comes close.
+ * The missing-file path zeroes all 255 names (0xfe01 bytes) and returns 0
+ * without touching count_ past the initial zero. */
+extern "C" __declspec(dllexport) unsigned char __attribute__((thiscall))
+Sim_ReadCdTrackThemeTable(CdThemes *self, const char *name)
+{
+    return self->readTrackThemeTable(name);
+}
+
+unsigned char CdThemes::readTrackThemeTable(const char *name)
+{
+    char path[256];
+    char line[256];
+    char delims[8];
+
+    sprintf(path, GS_CD_TRACKFILE_PATH, GS_GAME_DIR, name);
+    memcpy(delims, GS_CD_TRACKFILE_DELIMS, 6);
+    unsigned char n = 0;
+    FILE *fp = fopen(path, GS_CD_TRACKFILE_MODE);
+    count_ = 0;
+    line[0] = '\0';   /* the original strcpy's the empty .data string 0x46c290 */
+
+    if (fp == NULL) {
+        GameLog_LogMessage(GG_LOGGER, 3, GS_CD_TRACKFILE_MISSING, path);
+        memset(names_, 0, sizeof(names_));
+        return 0;
+    }
+    GameLog_LogMessage(GG_LOGGER, 2, GS_CD_TRACKFILE_FOUND, path);
+    while (!feof(fp)) {
+        fgets(line, 0x100, fp);
+        if (!feof(fp))
+            line[strlen(line) - 1] = '\0';
+        char *tok = strtok(line, delims);
+        if (tok == NULL)
+            continue;
+        unsigned char track = (unsigned char)atoi(tok);
+        tok = strtok(NULL, delims);
+        if (tok == NULL)
+            continue;
+        if (n < THEME_MAX)
+            trackOf_[n] = track;
+        else
+            currentTrack_ = track;       /* trackOf_[255] in the original */
+        char *dst = names_[n];
+        strcpy(dst, tok);
+        GameLog_LogMessage(GG_LOGGER, 2, GS_CD_THEME_TRACK, dst, (unsigned)track);
+        n++;
+    }
+    count_ = n;
+    fclose(fp);
+    return count_;
+}
+
+/* ─── ListTrackLengths 0x4036f0 (thiscall, RET 0) ───────────────────────── */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Sim_ListTrackLengths(CdThemes *self)
+{
+    return self->listTrackLengths();
+}
+
+int CdThemes::listTrackLengths()
+{
+    char *len = NULL;   /* always written by CDM_GetTrackLength before use */
+    trackCount_ = CDM_GetTrackCount(GG_CDAUDIO);
+    GameLog_LogMessage(GG_LOGGER, 3, GS_CD_TRACK_COUNT, trackCount_);
+    for (unsigned t = 1; (unsigned)trackCount_ != 0; t++) {
+        CDM_GetTrackLength(GG_CDAUDIO, &len, t);
+        GameLog_LogMessage(GG_LOGGER, 3, GS_CD_TRACK_LENGTH, t, len);
+        if (!(t < (unsigned)trackCount_))
+            break;
+    }
+    return 1;
 }

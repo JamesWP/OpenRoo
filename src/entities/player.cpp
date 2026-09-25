@@ -138,6 +138,9 @@
 #include "linkedlist.h"
 #include "crtrand.h"
 #include "player.h"
+#include "entitymath.h"
+#include "foepath.h"
+#include "alloc.h"
 #include "voicepool.h"
 #include "log.h"
 
@@ -556,4 +559,170 @@ extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_UpdatePlayerTileEffects(Player *self)
 {
     return self->updateTileEffects();
+}
+
+/* ─── The player actions, 0x41fa90..0x420950 ──────────────────────────────
+ *
+ * Written from the listing.  turnKind_ says what pendingMove_ is relative to
+ * the facing: 1 forward, 3 reversing, 2 / 4 a right / left turn (whose
+ * pendingMove_ is the new facing + 10).  With effect B (reversed controls)
+ * active, forward/back and left/right swap.  A turn pressed while moving is
+ * queued in queuedMove_/queuedTurn_ unless one is queued or under way. */
+
+void Player::actMoveForward()
+{
+    if (moveDir_ != 0)
+        return;
+    if (effectBActive_ == 0) {
+        pendingMove_ = facing_;
+        turnKind_ = 1;
+    } else {
+        pendingMove_ = Sim_GetTurnedDirection(facing_, 2);
+        turnKind_ = 3;
+    }
+    updateMovement();
+}
+
+void Player::actMoveBack()
+{
+    if (moveDir_ != 0)
+        return;
+    if (effectBActive_ == 0) {
+        pendingMove_ = Sim_GetTurnedDirection(facing_, 2);
+        turnKind_ = 3;
+    } else {
+        pendingMove_ = facing_;
+        turnKind_ = 1;
+    }
+    updateMovement();
+}
+
+/* `delta` 3 turns left, 1 right; `kind` 4 left, 2 right. */
+static inline unsigned char turned_plus_10(unsigned char facing, unsigned char delta)
+{
+    return (unsigned char)(Sim_GetTurnedDirection(facing, delta) + 10);
+}
+
+void Player::actTurnLeft()
+{
+    if (moveDir_ != 0) {
+        if (turnKind_ == 2 || turnKind_ == 4 || queuedTurn_ != 0)
+            return;
+        queuedMove_ = turned_plus_10(facing_, 3);
+        queuedTurn_ = 4;
+        return;
+    }
+    queuedMove_ = 0;
+    queuedTurn_ = 0;
+    if (effectBActive_ == 0) {
+        pendingMove_ = turned_plus_10(facing_, 3);
+        turnKind_ = 4;
+    } else {
+        pendingMove_ = turned_plus_10(facing_, 1);
+        turnKind_ = 2;
+    }
+    updateMovement();
+}
+
+void Player::actTurnRight()
+{
+    if (moveDir_ != 0) {
+        if (turnKind_ == 4 || turnKind_ == 2 || queuedTurn_ != 0)
+            return;
+        queuedMove_ = turned_plus_10(facing_, 1);
+        queuedTurn_ = 2;
+        return;
+    }
+    queuedMove_ = 0;
+    queuedTurn_ = 0;
+    if (effectBActive_ == 0) {
+        pendingMove_ = turned_plus_10(facing_, 1);
+        turnKind_ = 2;
+    } else {
+        pendingMove_ = turned_plus_10(facing_, 3);
+        turnKind_ = 4;
+    }
+    updateMovement();
+}
+
+/* Only while standing still: moveState 6. */
+void Player::actHarakiri()
+{
+    if (moveDir_ == 0)
+        moveState_ = 6;
+}
+
+/* At most one bomb per 2000 ms of the entity clock, only while alive, and
+ * only with bombs left (field_e8).  The drop itself happens in the tick. */
+void Player::actReleaseBomb()
+{
+    if (!(now_ - lastContact_ >= 2000.0))   /* unordered skips too, as FCOMP's C0 */
+        return;
+    if (moveState_ != 0 || field_e8 == 0)
+        return;
+    lastContact_ = now_;
+    bombDropRequest_ = 1;
+    field_e8--;
+}
+
+extern "C" {
+__declspec(dllexport) void __cdecl Player_ActMoveForward(int, int, void *p) { ((Player *)p)->actMoveForward(); }
+__declspec(dllexport) void __cdecl Player_ActMoveBack(int, int, void *p)    { ((Player *)p)->actMoveBack(); }
+__declspec(dllexport) void __cdecl Player_ActTurnLeft(int, int, void *p)    { ((Player *)p)->actTurnLeft(); }
+__declspec(dllexport) void __cdecl Player_ActTurnRight(int, int, void *p)   { ((Player *)p)->actTurnRight(); }
+__declspec(dllexport) void __cdecl Player_ActHarakiri(int, int, void *p)    { ((Player *)p)->actHarakiri(); }
+__declspec(dllexport) void __cdecl Player_ActReleaseBomb(int, int, void *p) { ((Player *)p)->actReleaseBomb(); }
+}
+
+/* ─── Lifecycle (Game TU) ─────────────────────────────────────────────────
+ *
+ * 0x41f900 / 0x41fa10, from the listing.  The base's game-shaped ctor/dtor
+ * keep the transient vtable stores the original makes; ours is written over
+ * them.  zeroSoundSlots() runs twice in the original and here. */
+static void *const g_PlayerVtable[1] = { (void *)&Player_ScalarDestructor };
+
+void Player::construct()
+{
+    populateBaseForGame();
+    List_Init((LinkedList *)effectList_);
+    vtable_  = g_PlayerVtable;
+    pool_9f_ = NULL;
+    memset(pickupSounds_, 0, sizeof(pickupSounds_));
+    zeroSoundSlots();
+    field_126      = 0.0;
+    stepDuration_  = 200.0;
+    field_156      = 1;
+    gemsCollected_ = 0;
+    field_124      = 1;
+    facing_        = 1;
+    moveDir_       = 0;
+    teleportPhase_ = 0;
+    climbing_      = 0;
+    falling_       = 0;
+    moveState_     = 0;
+    zeroSoundSlots();
+    stepGrace_     = 20.0;
+    pathfinder_    = NULL;
+}
+
+/* A path-finder is freed on the game heap, the Foe precedent: whoever built
+ * it used the game's operator new. */
+void Player::destruct()
+{
+    vtable_ = g_PlayerVtable;
+    if (pathfinder_ != NULL) {
+        pathfinder_->dispose();
+        game_free2(pathfinder_);
+    }
+    List_Destruct((LinkedList *)effectList_);
+    destroyBaseForGame();
+}
+
+extern "C" __declspec(dllexport) Player *__attribute__((thiscall))
+Player_ScalarDestructor(Player *self, unsigned char flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }

@@ -169,3 +169,7 @@ KAROO_LAYOUT_CHECKS(BridgeObject)
     /* No size check: the object is ours to allocate, so nothing relies on
      * it being the original's 0x61 -- which the fields above tile exactly. */
 }
+
+/* 0x41a190 -- destroy every slot and zero the count; Game's destructor calls it. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_PurgeBridgeObjects(Game *self);

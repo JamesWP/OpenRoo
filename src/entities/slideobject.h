@@ -40,6 +40,13 @@ public:
     /* UpdateSlideObject 0x0043ae00 -- one tick. */
     void tick();
 
+    /* Where it is drawn (LevelPlacements_DrawSlides), and its axis:
+     * kind 0x0a runs along U, anything else along V. */
+    float posU() const          { return posU_; }
+    float posY() const          { return posY_; }
+    float posV() const          { return posV_; }
+    signed char kind() const    { return kind_; }
+
     /* +0x39, attached by InitLevelBasedSounds (levelsounds.cpp). */
     void setSound(CStaticSoundbuffer *p) { sound_ = p; }
 
@@ -128,3 +135,7 @@ KAROO_LAYOUT_CHECKS(SlideObject)
     /* No size check: the object is ours to allocate, so nothing relies on
      * it being the original's 0x55. */
 }
+
+/* 0x4181b0 -- destroy every slot and zero the count; Game's destructor calls it. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Sim_PurgeSlideObjects(Game *self);

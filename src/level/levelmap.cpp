@@ -95,6 +95,7 @@
 #include <stddef.h>
 #include "log.h"
 #include "levelmap.h"
+#include "alloc.h"
 
 #define LM_LOG_FIRST     8
 
@@ -200,4 +201,29 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 LevelMap_ReadFile(LevelMap *self, const char *path)
 {
     return self->readFile(path);
+}
+
+/* ─── Lifecycle (Game TU) ─────────────────────────────────────────────────── */
+static void *const g_LevelMapVtable[1] = { (void *)&LevelMap_ScalarDestructor };
+
+/* 0x41f140: vtable and the two extent bytes; the rest is left as it was. */
+void LevelMap::construct()
+{
+    vtable_  = g_LevelMapVtable;
+    extentV_ = 0;
+    extentU_ = 0;
+}
+
+void LevelMap::destruct()
+{
+    vtable_ = g_LevelMapVtable;
+}
+
+extern "C" __declspec(dllexport) LevelMap *__attribute__((thiscall))
+LevelMap_ScalarDestructor(LevelMap *self, unsigned char flags)
+{
+    self->destruct();
+    if (flags & 1)
+        game_free2(self);
+    return self;
 }

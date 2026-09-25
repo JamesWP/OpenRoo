@@ -49,6 +49,7 @@ public:
     static const int MAX_SLOTS = 255;
 
     unsigned char  count() const                   { return count_; }
+    void           setCount(unsigned char n)       { count_ = n; }
     /* By a BYTE index: the load menu forms it as (node + 0x38), which wraps
      * node 200 to slot 0 -- do not widen it. */
     SaveSlot      *slot(unsigned char i)           { return &slots_[i]; }

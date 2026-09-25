@@ -26,6 +26,11 @@ Texture_ImageDtorBody(LoadedImage *self);
 extern "C" __declspec(dllexport) LoadedImage *__attribute__((thiscall))
 Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags);
 
+/* 0x43eb00 LoadedImage::Load -- surface-lost Restore + reload.
+ * TextureManager_LoadAll (scenetexture.cpp) is the outside caller. */
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+Texture_Load(LoadedImage *self);
+
 /* 0x43ea50 LoadedImage::CreatePaletteFromDIBColorTable -- __stdcall, ret 8.
  * scenetexture.cpp's BindTextureResource is the only caller. */
 /* 0x00440050 -- release the IDirect3DTexture2 and both surfaces. */
