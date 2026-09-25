@@ -8,3 +8,8 @@
 extern "C" __declspec(dllexport) int WINAPI
 Main_WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine,
              int nCmdShow);
+
+/* 0x0042ce20 WindowsMessageProcessor, the main window's class proc.  Only
+ * reference: WinMain's WNDCLASSA store (0x0042d134). */
+extern "C" __declspec(dllexport) LRESULT CALLBACK
+Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

@@ -12,13 +12,12 @@
  * stack read after them is off by 0x18 (the `piVar9 = &DAT_0045d748` and
  * `_DAT_0046c704 = hIcon` lines are both artefacts of that).
  *
- * Every callee is ours.  Two things WinMain hands to Windows are still the
- * game's, and are the only callbacks this file holds:
- *   WindowsMessageProcessor 0x0042ce20  WNDCLASSA.lpfnWndProc
- *   LauncherDlgProc         0x0043d650  DialogBoxParamA's dialog proc
- * They are the next two E8 cycles.  Until then the two globals they share
- * with WinMain -- the movie-playing flag 0x004dc7c0 and the movie surface
- * 0x004e04a8 -- stay the game's.
+ * The window class proc, WindowsMessageProcessor 0x0042ce20, is here too
+ * (Main_WindowProc): it was the same source file, and it is the other half of
+ * the movie-playing flag 0x004dc7c0 and the movie surface 0x004e04a8.
+ *
+ * Every callee is ours, and so is everything WinMain hands to Windows: the
+ * launcher's dialog proc is LauncherDlg_Proc (launcherdialogs.cpp).
  *
  * CreateWindowExA and DialogBoxParamA go through our hooks, as the two
  * CALL_IAT_REDIRECT_PATCHES inside the original did (headless window,
@@ -52,14 +51,14 @@
 #include "theme.h"
 #include "rendergameframe.h"
 #include "launcher.h"
+#include "launcherdialogs.h"
 #include "nullddraw.h"
+#include "progctrl.h"
+#include "texture.h"
+#include "scenetexture.h"
 #include "log.h"
 
-/* Callbacks into the game -- see the header comment. */
-static const WNDPROC GAME_WNDPROC    = (WNDPROC)0x0042ce20;
-static const DLGPROC GAME_LAUNCHERDP = (DLGPROC)0x0043d650;
-
-/* Read and written by the original WindowsMessageProcessor too. */
+/* Shared by WinMain and the WndProc; nothing else reads either. */
 static volatile int *const GG_MOVIE_PLAYING = (volatile int *)0x004dc7c0;
 static IDirectDrawSurface **const GG_MOVIE_SURFACE =
     (IDirectDrawSurface **)0x004e04a8;
@@ -81,6 +80,112 @@ static bool winmain_fx_norender()
 static void delete_game(Game *g)       { if (g) Game_ScalarDestructor(g, 1); }
 static void delete_d3d(Direct3D *d3d)  { if (d3d) Direct3D_ScalarDestructor(d3d, 1); }
 
+/* ── WindowsMessageProcessor 0x0042ce20 ──────────────────────────────────
+ *
+ * Everything the game does on focus changes, plus the movie and CD-audio
+ * notifications.  Every path ends in DefWindowProcA, including the handled
+ * ones -- the original never returns its own value.
+ *
+ * The surfaces restored on activation, in the original's order: two base
+ * images, a SceneTexture[6] (0x4dc235, stride 0x1c), a table of ten image
+ * pointers (0x4dc134) visited in a scrambled order and skipping NULLs, both
+ * texture managers, then ten SceneTextures -- karoo128 and the menu's nine
+ * (menuscreens.cpp names them). */
+static LoadedImage *const GG_IMAGE_4E048C = (LoadedImage *)0x004e048c;
+static LoadedImage *const GG_IMAGE_4E02F4 = (LoadedImage *)0x004e02f4;
+static SceneTexture *const GG_TEXTURES_4DC235 = (SceneTexture *)0x004dc235;
+static LoadedImage **const GG_IMAGE_PTRS_4DC134 = (LoadedImage **)0x004dc134;
+static const int IMAGE_PTR_ORDER[10] = { 2, 5, 0, 6, 1, 4, 7, 3, 8, 9 };
+static const DWORD TAIL_TEXTURES[10] = {
+    0x004e0408, 0x004e0520, 0x004e0748, 0x004e0768, 0x004e04c8,
+    0x004e0560, 0x004e06a8, 0x004e0788, 0x004e0540, 0x004e0688,
+};
+
+/* FaktMovie::state == 1 is "finished" (movie.h). */
+static const DWORD MOVIE_STATE_FINISHED = 1;
+static const UINT  WM_MOVIE_EVENT       = 0x464;
+
+static void restore_surfaces()
+{
+    Texture_Load(GG_IMAGE_4E048C);
+    Texture_Load(GG_IMAGE_4E02F4);
+    for (int i = 0; i < 6; i++)
+        Texture_Load(&GG_TEXTURES_4DC235[i].base);
+    for (int i = 0; i < 10; i++) {
+        LoadedImage *img = GG_IMAGE_PTRS_4DC134[IMAGE_PTR_ORDER[i]];
+        if (img)
+            Texture_Load(img);
+    }
+    TextureManager_LoadAll(GG_TEXTURE_MANAGER);
+    TextureManager_LoadAll(GG_TEXTURE_MANAGER2);
+    for (int i = 0; i < 10; i++)
+        Texture_Load((LoadedImage *)TAIL_TEXTURES[i]);
+}
+
+/* KAROO_WNDPROC_FX=noquit -- WM_DESTROY skips PostQuitMessage, so the
+ * window goes but WinMain's loop never sees WM_QUIT.  Only this WndProc
+ * turns a closed window into the end of the run. */
+static bool wndproc_fx_noquit()
+{
+    static int cached = -1;
+    if (cached < 0) {
+        char buf[16];
+        cached = GetEnvironmentVariableA("KAROO_WNDPROC_FX", buf, sizeof(buf))
+                 && lstrcmpiA(buf, "noquit") == 0;
+        log_write("wndproc: FX mode = %s\n", cached ? "noquit" : "off");
+    }
+    return cached != 0;
+}
+
+extern "C" __declspec(dllexport) LRESULT CALLBACK
+Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg) {
+    case WM_DESTROY:
+        if (!wndproc_fx_noquit())
+            PostQuitMessage(1);
+        break;
+
+    case WM_ACTIVATE:
+        /* Exactly WA_ACTIVE: a click-activation (2) counts as losing focus. */
+        if ((WORD)wParam == WA_ACTIVE) {
+            ProgCtrl_AcquireAll(GG_PROGCTRL);
+            restore_surfaces();
+            if (*GG_MOVIE_PLAYING) {
+                Movie_SetWindow(GG_MOVIE, *GG_MOVIE_SURFACE);
+                Movie_Play(GG_MOVIE);
+            }
+        } else {
+            ProgCtrl_UnacquireAll(GG_PROGCTRL);
+            if (*GG_MOVIE_PLAYING)
+                Movie_Pause(GG_MOVIE);
+        }
+        break;
+
+    case WM_KEYUP:   /* any key skips the intro */
+        if (*GG_MOVIE_PLAYING) {
+            Movie_Stop(GG_MOVIE);
+            Movie_Teardown(GG_MOVIE);
+            *GG_MOVIE_PLAYING = 0;
+        }
+        break;
+
+    case MM_MCINOTIFY:   /* a track ended: restart it if it repeats */
+        if (wParam == MCI_NOTIFY_SUCCESSFUL && GG_CDAUDIO->repeat)
+            CDM_PlayTrack(GG_CDAUDIO, GG_CDAUDIO->tracknumber, true);
+        break;
+
+    case WM_MOVIE_EVENT:
+        if (*GG_MOVIE_PLAYING)
+            Movie_Notify(GG_MOVIE, (DWORD)hWnd, wParam, lParam);
+        /* Checked whether or not a movie was playing. */
+        if (GG_MOVIE->state == MOVIE_STATE_FINISHED)
+            *GG_MOVIE_PLAYING = 0;
+        break;
+    }
+    return DefWindowProcA(hWnd, msg, wParam, lParam);
+}
+
 extern "C" __declspec(dllexport) int WINAPI
 Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 {
@@ -89,7 +194,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 
     WNDCLASSA wc;
     wc.style         = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc   = GAME_WNDPROC;
+    wc.lpfnWndProc   = Main_WindowProc;
     wc.cbClsExtra    = 0;
     wc.cbWndExtra    = 0;
     wc.hInstance     = hInstance;
@@ -138,7 +243,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 
     /* Cancel: the one early exit that destroys the window, and returns 1. */
     if (hooks_DialogBoxParamA(hInstance, MAKEINTRESOURCEA(0x68), NULL,
-                              GAME_LAUNCHERDP, 0) == 0) {
+                              LauncherDlg_Proc, 0) == 0) {
         DestroyWindow(hWnd);
         delete_game(game);
         return 1;
@@ -153,12 +258,13 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 
     /* The ladder: the launcher's adapter and mode, then the default adapter
      * in that mode, then the default adapter in mode 0.  Game is re-read from
-     * the global between rungs in the original; nothing can change it. */
+     * the global between rungs in the original; nothing can change it.  The
+     * mode index is a DWORD field, but the original pushes only its low
+     * byte (`mov dl, [game+0x2aa14e]`). */
     Config *cfg = game->config();
-    if (!Direct3D_CreateD3DDevice(d3d, hWnd, cfg->adapterGuid(),
-                                  cfg->displayModeIndex(), true)
-        && !Direct3D_CreateD3DDevice(d3d, hWnd, NULL,
-                                     cfg->displayModeIndex(), true)
+    const unsigned char mode = (unsigned char)cfg->displayModeIndex();
+    if (!Direct3D_CreateD3DDevice(d3d, hWnd, cfg->adapterGuid(), mode, true)
+        && !Direct3D_CreateD3DDevice(d3d, hWnd, NULL, mode, true)
         && !Direct3D_CreateD3DDevice(d3d, hWnd, NULL, 0, true)) {
         GameLog_LogSourceLocation(GG_LOGGER, 4,
             "E:\\WORK\\VC++\\JumpinJohn\\JumpinJohn\\main.cpp", 0x73f,

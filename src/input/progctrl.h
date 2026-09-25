@@ -100,6 +100,8 @@ ProgCtrl_BindKey(ProgableControl *self, unsigned short mode,
                  const char *name, int sc, int strength);
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_AcquireAll(ProgableControl *self);
+__declspec(dllexport) int  __attribute__((thiscall))
+ProgCtrl_UnacquireAll(ProgableControl *self);
 /* 0x4472f0 / 0x445910 -- save the bindings; release every device. */
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_WriteBindings(ProgableControl *self);

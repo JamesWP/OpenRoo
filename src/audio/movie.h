@@ -51,3 +51,12 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Movie_Play(FaktMovie *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Movie_SetWindow(FaktMovie *self, void *surface);
+/* The exports the WndProc drives. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Movie_Teardown(FaktMovie *self);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Movie_Notify(FaktMovie *self, DWORD a, DWORD b, DWORD c);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Movie_Pause(FaktMovie *self);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Movie_Stop(FaktMovie *self);
