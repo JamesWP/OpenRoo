@@ -72,12 +72,12 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4Translate(Mat4 *out, float x, float
 __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotX(Mat4 *out, float angle);
 __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotY(Mat4 *out, float angle);
 __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle);
-/* 0x42cd60, thiscall, RET 0x18: a 32-byte FVF 0x1C4 vertex -- *pos, then
- * the five dwords rhw, diffuse, specular, u, v, stored as given.  Returns
- * self.  36 E8 sites, 17 of them in RenderGameFrame. */
-__declspec(dllexport) void *__attribute__((thiscall))
-Math_VertexSet(void *self, const Vec3 *pos, DWORD rhw, DWORD diffuse,
-               DWORD specular, DWORD u, DWORD v);
+/* 0x42cd60, thiscall, RET 0x18: a D3DTLVERTEX (FVF 0x1C4) from *pos and
+ * rhw, colour, specular, tu, tv, stored as given -- the callers push rhw
+ * 10.0f.  Returns self.  36 E8 sites, 17 of them in RenderGameFrame. */
+__declspec(dllexport) D3DTLVERTEX *__attribute__((thiscall))
+Math_VertexSet(D3DTLVERTEX *self, const Vec3 *pos, float rhw, D3DCOLOR color,
+               D3DCOLOR specular, float tu, float tv);
 /* 0x42cda0, thiscall, RET 4: self *= k in place, returns self. */
 __declspec(dllexport) Vec3 *__attribute__((thiscall))
 Math_Vec3ScaleInPlace(Vec3 *self, float k);

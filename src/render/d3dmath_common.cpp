@@ -240,14 +240,18 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle)
 /* ─── RenderGameFrame's three small helpers (ENDGAME E7) ─────────────────── */
 extern "C" {
 
-__declspec(dllexport) void *__attribute__((thiscall))
-Math_VertexSet(void *self, const Vec3 *pos, DWORD rhw, DWORD diffuse,
-               DWORD specular, DWORD u, DWORD v)
+__declspec(dllexport) D3DTLVERTEX *__attribute__((thiscall))
+Math_VertexSet(D3DTLVERTEX *self, const Vec3 *pos, float rhw, D3DCOLOR color,
+               D3DCOLOR specular, float tu, float tv)
 {
-    DWORD *d = (DWORD *)self;
-    const DWORD *p = (const DWORD *)pos;
-    d[0] = p[0]; d[1] = p[1]; d[2] = p[2];
-    d[3] = rhw; d[4] = diffuse; d[5] = specular; d[6] = u; d[7] = v;
+    self->sx = pos->x;
+    self->sy = pos->y;
+    self->sz = pos->z;
+    self->rhw = rhw;
+    self->color = color;
+    self->specular = specular;
+    self->tu = tu;
+    self->tv = tv;
     return self;
 }
 
