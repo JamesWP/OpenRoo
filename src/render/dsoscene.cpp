@@ -304,3 +304,132 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
         }
     }
 }
+
+/* ─── DrawSceneParticleSystems, 0x421f30 (Ghidra's "DrawTerrainTiles") ─────
+ *
+ * The type-1 twin of the function above: same list, same object fields, but
+ * the thing at +0x05 is a particle system driven through its own vtable.
+ * cdecl with six dword slots, (dev, cam = 0x46c4a0, double dt_ms, double t);
+ * the one call site (0x42abc0, RenderGameFrame) cleans 0x18.  Written from
+ * the listing -- the decompiler would not complete on it.
+ *
+ * Differences from the type-0 path, all deliberate:
+ *  - SPECULARENABLE is cleared once before the loop, not per object, and
+ *    there is no TEXTUREADDRESS state.
+ *  - Objects other than type 1, and type 1 with a NULL system, are skipped
+ *    BEFORE any state change (type 0/2 run the whole prologue first) -- but
+ *    a NULL system is tested after the blend and texture state is set.
+ *  - The static path's RotX is NOT biased by pi/2: RotX(rx).RotY(ry).RotZ(rz).T.
+ *    The plain spline path is unbiased too; only the oriented one adds pi/2
+ *    (to the pitch), as type 0 does.
+ *  - The spline path sets texture NULL and an identity world, polls F3/F4
+ *    (debug draws of the path and its control polygon), then re-selects the
+ *    object's texture before setting the real world.  The static path jumps
+ *    past all of that.
+ *
+ * The system's slots: 7 (+0x1c) tick with (float)(dt_ms * 0.001), 10 (+0x28)
+ * with the view direction cam[3..5] - cam[0..2] as three floats, 8 (+0x20)
+ * render. */
+#include "splinepath.h"
+#include "record.h"
+
+#define O_PSYS  0x005
+
+typedef void (__attribute__((thiscall)) *ps_tick_fn)(void *, float);
+typedef void (__attribute__((thiscall)) *ps_view_fn)(void *, float, float, float);
+typedef void (__attribute__((thiscall)) *ps_render_fn)(void *, void *);
+
+static void rotation_xyz(Mat4 *m, float rx, float ry, float rz)
+{
+    Mat4 a, b, c, t;
+    m4_rot_x(&a, rx);
+    m4_rot_y(&b, ry);
+    compose(&t, &a, &b);
+    m4_rot_z(&c, rz);
+    compose(m, &t, &c);
+}
+
+extern "C" __declspec(dllexport) void __cdecl
+Scene_DrawParticleSystems(void *dev, float *cam, double dt_ms, double t)
+{
+    set_rs(dev, RS_SPECULARENABLE, 0);
+
+    for (SceneNode *node = SCENE_LIST_HEAD; node != NULL; node = node->pNextNode) {
+        unsigned char *o = node->pValue;
+        if (o == NULL || o[0] != 1)
+            continue;
+
+        DWORD src = ob_d(o, O_SRCBLEND), dst = ob_d(o, O_DESTBLEND);
+        if (src != 0 && dst != 0) {
+            set_rs(dev, RS_ALPHABLENDENABLE, 1);
+            set_rs(dev, RS_SRCBLEND, src);
+            set_rs(dev, RS_DESTBLEND, dst);
+        } else {
+            set_rs(dev, RS_ALPHABLENDENABLE, 0);
+        }
+
+        DWORD tex = ob_d(o, O_TEXTURE);
+        if (tex != 0)
+            set_tex(dev, 0, (void *)ob_d((const unsigned char *)tex, 0x18));
+
+        void *ps = (void *)ob_d(o, O_PSYS);
+        if (ps == NULL)
+            continue;
+
+        Mat4 world;
+        if (ob_d(o, O_USEPATH) == 0) {
+            rotation_xyz(&world, ob_f(o, O_ROT), ob_f(o, O_ROT + 4), ob_f(o, O_ROT + 8));
+            Mat4 tr;
+            m4_translate(&tr, ob_f(o, O_POS), ob_f(o, O_POS + 4), ob_f(o, O_POS + 8));
+            compose(&world, &world, &tr);
+        } else {
+            DWORD period = ob_d(o, O_PERIOD);
+            Vec3 pos;
+            eval_path(o, path_param(t, period, 0.0), &pos);
+
+            if (o[O_ORIENT] == 1) {
+                Vec3 ahead;
+                eval_path(o, path_param(t, period, K_TANGENT_STEP), &ahead);
+                Vec3 d;  v3_sub(&d, &ahead, &pos);
+
+                float heading, pitch;
+                heading_angles(&d, &heading, &pitch);
+
+                Mat4 a, b, c, tmp;
+                m4_rot_x_biased(&a, pitch, K_HALF_PI);
+                m4_rot_y(&b, heading);
+                compose(&tmp, &a, &b);
+                m4_rot_z(&c, (float)K_ORIENT_ROLL);
+                compose(&world, &tmp, &c);
+            } else {
+                rotation_xyz(&world, ob_f(o, O_ROT), ob_f(o, O_ROT + 4), ob_f(o, O_ROT + 8));
+            }
+
+            Mat4 tr;
+            m4_translate(&tr, pos.x, pos.y, pos.z);
+            compose(&world, &world, &tr);
+
+            set_tex(dev, 0, NULL);
+            Mat4 ident;
+            m4_identity(&ident);
+            set_xf(dev, D3DTRANSFORMSTATE_WORLD, &ident);
+
+            SplinePath *sp = (SplinePath *)(o + O_SPLINE);
+            if (hooks_GetAsyncKeyState(VK_F3) & 0x8000)
+                Spline_DrawSplinePath(sp, (IDirect3DDevice3 *)dev, 100, 0xffffffff);
+            if (hooks_GetAsyncKeyState(VK_F4) & 0x8000)
+                Spline_DrawControlPolygon(sp, (IDirect3DDevice3 *)dev, 0xff808080);
+
+            if (tex != 0)
+                set_tex(dev, 0, (void *)ob_d((const unsigned char *)tex, 0x18));
+        }
+
+        set_xf(dev, D3DTRANSFORMSTATE_WORLD, &world);
+
+        void **vt = *(void ***)ps;
+        ((ps_tick_fn)vt[0x1c / 4])(ps, (float)(dt_ms * K_ANIM_SCALE));
+        Vec3 dir = { cam[3] - cam[0], cam[4] - cam[1], cam[5] - cam[2] };
+        ((ps_view_fn)vt[0x28 / 4])(ps, dir.x, dir.y, dir.z);
+        ((ps_render_fn)vt[0x20 / 4])(ps, dev);
+    }
+}
