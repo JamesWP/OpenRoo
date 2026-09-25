@@ -108,14 +108,45 @@ static bool fx_nomodels(void)
 }
 
 /* KAROO_LEO_RECDUMP=<path> -- appends every record the entry handler built,
- * field by field, plus an FNV-1a hash over each record's raw 0xf40 bytes.
+ * field by field, plus an FNV-1a hash over each record.
  * Records 0..objectCount INCLUSIVE: the one past the end is where a textured
  * Billboard's spline lands (ParseExtraObjectEntry bumps the count twice).
- * Raw bytes include stale data from earlier levels and fields the handler
- * leaves unwritten -- deliberately: the load order is deterministic, so a
- * replacement that writes one byte the original did not is caught.
+ * Every byte outside the three path strings is hashed raw, stale data from
+ * earlier levels included -- deliberately: the load order is deterministic,
+ * so a replacement that writes one byte the original did not is caught.
+ * The path strings are hashed (and printed) up to their terminator with the
+ * game directory stripped, so the dump is the same in every checkout.
  * The oracle for the ParseExtraObjectEntry replacement: captured from the
- * original into tests/leo/records.txt, compared after. */
+ * original, now tests/levelreport/LeoRecords.txt. */
+
+/* `s` with a leading "<game dir>\" removed, compared case-insensitively. */
+static const char *strip_game_dir(const char *s)
+{
+    static char dir[MAX_PATH];
+    static size_t n = (size_t)-1;
+    if (n == (size_t)-1) {
+        DWORD len = GetModuleFileNameA(NULL, dir, sizeof(dir));
+        char *slash = strrchr(dir, '\\');
+        n = (len && slash) ? (size_t)(slash - dir + 1) : 0;   /* through the backslash */
+    }
+    return (n && _strnicmp(s, dir, n) == 0) ? s + n : s;
+}
+
+static void fnv(unsigned long *h, const void *p, size_t n)
+{
+    for (size_t k = 0; k < n; k++) {
+        *h ^= ((const unsigned char *)p)[k];
+        *h *= 16777619UL;
+    }
+}
+
+/* A path field: its game-dir-relative text and one terminator. */
+static void fnv_path(unsigned long *h, const char *field, size_t size)
+{
+    const char *s = strip_game_dir(field);
+    fnv(h, s, strnlen(s, size - (size_t)(s - field)) + 1);
+}
+
 void ExtraObjects::recDump(const char *path)
 {
     char out[MAX_PATH];
@@ -127,17 +158,23 @@ void ExtraObjects::recDump(const char *path)
     fprintf(f, "== %s objects=%u entries=%u\n", path, objectCount_, entries_);
     for (unsigned i = 0; i <= objectCount_ && i < RECORD_MAX; i++) {
         const ExtraObjectRecord *r = &records_[i];
+        const unsigned char *b = (const unsigned char *)r;
         unsigned long h = 2166136261UL;
-        for (unsigned k = 0; k < sizeof(*r); k++) {
-            h ^= ((const unsigned char *)r)[k];
-            h *= 16777619UL;
-        }
+        fnv_path(&h, r->file, sizeof(r->file));
+        fnv(&h, b + offsetof(ExtraObjectRecord, position),
+            offsetof(ExtraObjectRecord, animationFile) - offsetof(ExtraObjectRecord, position));
+        fnv_path(&h, r->animationFile, sizeof(r->animationFile));
+        fnv_path(&h, r->textureFile, sizeof(r->textureFile));
+        fnv(&h, b + offsetof(ExtraObjectRecord, lit),
+            sizeof(*r) - offsetof(ExtraObjectRecord, lit));
+
         fprintf(f, "[%u] hash=%08lx kind=%u file=%.64s pos=%g,%g,%g v2=%g,%g,%g\n",
-                i, h, r->kind, r->file, r->position[0], r->position[1], r->position[2],
+                i, h, r->kind, strip_game_dir(r->file),
+                r->position[0], r->position[1], r->position[2],
                 r->field_10c[0], r->field_10c[1], r->field_10c[2]);
         fprintf(f, "    anim=%.64s tex=%.64s lit=%d blend=%d,%d addr=%u size=%g\n",
-                r->animationFile, r->textureFile, r->lit, r->srcBlend, r->destBlend,
-                r->textureAddress, r->billboardSize);
+                strip_game_dir(r->animationFile), strip_game_dir(r->textureFile),
+                r->lit, r->srcBlend, r->destBlend, r->textureAddress, r->billboardSize);
         fprintf(f, "    spline=%u time=%d points=%u sound=%g\n",
                 r->splineMode, r->splineTime, r->splinePointCount, r->soundParam);
         for (unsigned p = 0; p < r->splinePointCount && p < 0x100; p++)
