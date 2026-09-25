@@ -325,7 +325,7 @@ static HRESULT WINAPI d3d_enum_zbuffer_cb(LPDDPIXELFORMAT pFmt, LPVOID ctx)
 
 extern "C" __declspec(dllexport) unsigned __attribute__((thiscall))
 Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
-                         int nModeIndex, char bHardware)
+                         int nModeIndex, bool bHardware)
 {
     char msg[256];
     char msg2[260];
@@ -544,10 +544,10 @@ Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
     self->pViewport->SetViewport2(&vp);
     hr = self->pDevice->SetCurrentViewport(self->pViewport);
 
-    log_write("direct3d: CreateD3DDevice hwnd=%p guid=%p mode=%d hw=%d -> "
+    log_write("direct3d: CreateD3DDevice hwnd=%p guid=%p mode=%d hw=%s -> "
               "%lux%lux%lu dd4=%p d3d=%p dev=%p vp=%p primary=%p "
               "surf34=%p surf3c=%p filter=%08lX zdepth=%lu stencil=%lu\n",
-              hWnd, pDriverGuid, nModeIndex & 0xff, (int)bHardware,
+              hWnd, pDriverGuid, nModeIndex & 0xff, bHardware?"TRUE":"FALSE",
               self->pSelectedMode->dwWidth, self->pSelectedMode->dwHeight,
               self->pSelectedMode->dwBitDepth,
               self->pDD4, self->pD3D, self->pDevice, self->pViewport,
