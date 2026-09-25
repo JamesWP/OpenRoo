@@ -27,6 +27,10 @@ static_assert(offsetof(GameLogger, notifyHwnd)   == 0x114, "notifyHwnd");
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
+/* 0x004418b0 -- open (or reopen) the log file; WinMain opens "JJ.log". */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+GameLog_OpenLogFile(GameLogger *self, const char *filename, const char *mode);
+
 /* 0x00441860 -- construct and open in one (SoundManager's own log). */
 extern "C" __declspec(dllexport) void * __attribute__((thiscall))
 GameLog_Initialize(GameLogger *self, const char *filename, const char *mode);

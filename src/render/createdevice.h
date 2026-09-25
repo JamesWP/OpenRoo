@@ -7,4 +7,4 @@ struct Direct3D;
 /* Nonzero on success -- WinMain's three-rung ladder tests AL. */
 extern "C" __declspec(dllexport) unsigned __attribute__((thiscall))
 Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
-                         int nModeIndex, char bHardware);
+                         int nModeIndex, bool bHardware);

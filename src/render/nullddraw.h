@@ -8,3 +8,9 @@ bool nulldd_enabled(void);
 /* Returns the null IDirectDraw (v1) — the object hooks_DirectDrawCreate hands
  * back in headless mode.  Never fails; the object is static. */
 IDirectDraw *nulldd_create(void);
+
+/* WinMain's window: a message-only window when headless, else passthrough. */
+extern "C" __declspec(dllexport) HWND WINAPI hooks_CreateWindowExA(
+        DWORD exStyle, LPCSTR className, LPCSTR windowName, DWORD style,
+        int x, int y, int w, int h, HWND parent, HMENU menu,
+        HINSTANCE inst, LPVOID param);

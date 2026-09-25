@@ -72,3 +72,6 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CFaktSound_SetPosition(CFaktSound *self, vec3d *pos, DWORD dwApply);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CFaktSound_SetOrientation(CFaktSound *self, vec3d *front, vec3d *top, DWORD dwApply);
+/* 0x445420 -- WinMain sets 0.3 on the SoundManager's CFaktSound. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CFaktSound_Apply3DRolloffParams(CFaktSound *self, float rolloff_factor, DWORD dwApply);
