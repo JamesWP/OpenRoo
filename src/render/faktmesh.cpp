@@ -44,7 +44,7 @@
  */
 #include "faktmesh.h"
 #include "com_proxy.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 
 #define MESH_FVF        0x212  /* XYZ | NORMAL | TEX2 — 0x28-byte stride */
@@ -182,13 +182,13 @@ __declspec(dllexport) void *FaktMesh_Vtable(void)
 __declspec(dllexport) void __attribute__((thiscall))
 FaktMesh_ReleaseModelBuffers(CFaktMesh *self)
 {
-    if (self->pVertexData)   game_free2(self->pVertexData);
+    if (self->pVertexData)   free(self->pVertexData);
     self->pVertexData = NULL;
-    if (self->pFrameRecords) game_free2(self->pFrameRecords);
+    if (self->pFrameRecords) free(self->pFrameRecords);
     self->pFrameRecords = NULL;
-    if (self->pScratchVerts) game_free2(self->pScratchVerts);
+    if (self->pScratchVerts) free(self->pScratchVerts);
     self->pScratchVerts = NULL;
-    if (self->pszName)       game_free2(self->pszName);
+    if (self->pszName)       free(self->pszName);
     self->pszName = NULL;
     self->dwVertexCount = 0;
     self->wFrameCount   = 1;
@@ -239,7 +239,7 @@ FaktMesh_ScalarDtor(CFaktMesh *self, unsigned int flags)
 {
     FaktMesh_DtorBody(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

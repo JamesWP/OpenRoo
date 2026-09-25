@@ -86,7 +86,7 @@
 #include "gamestr.h"
 #include "gamelog.h"
 #include "gameglobals.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include <stdlib.h>
 
 
@@ -656,6 +656,6 @@ Leo_ScalarDestructor(ExtraObjects *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

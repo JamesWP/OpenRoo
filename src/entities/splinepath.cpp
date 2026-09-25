@@ -55,7 +55,7 @@
 #include <stdlib.h>
 
 #include "splinepath.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 
 /* ─── KAROO_SIM_FX / KAROO_SPLINE_DIAG, read by value ─────────────────────
@@ -153,7 +153,7 @@ Spline_ScalarDestructor(SplinePath *self, unsigned char bFreeSelf)
 {
     Spline_Destruct(self);
     if (bFreeSelf & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 
@@ -163,7 +163,7 @@ void __attribute__((thiscall))
 Spline_AddControlPoint(SplinePath *self, float x, float y, float z)
 {
     SplineControlPoint *p =
-        (SplineControlPoint *)game_operator_new(sizeof(SplineControlPoint));
+        (SplineControlPoint *)malloc(sizeof(SplineControlPoint));
 
     fx_init();
     if (s_diag)
@@ -191,7 +191,7 @@ void __attribute__((thiscall)) Spline_PurgeControlPoints(SplinePath *self)
         void *value = node->pValue;
         node = node->pNextNode;
         if (value != 0)
-            game_free2(value);
+            free(value);
     }
     List_Clear(&self->controlPointList);
 }
@@ -396,7 +396,7 @@ Spline_DrawSplinePath(SplinePath *self, IDirect3DDevice3 *dev,
                       unsigned int numsegments, unsigned long color)
 {
     SplineVertex *verts =
-        (SplineVertex *)game_operator_new((numsegments + 1) * 32);
+        (SplineVertex *)malloc((numsegments + 1) * 32);
     /* `FILD qword` over numsegments with a zeroed high dword -- unsigned,
      * and a zero divides by zero here exactly as it does in the original. */
     float        step = (float)(1.0 / (double)numsegments);
@@ -419,7 +419,7 @@ Spline_DrawSplinePath(SplinePath *self, IDirect3DDevice3 *dev,
         ++s_draws;
     hr = draw_strip(dev, verts, numsegments + 1);
     if (verts != 0)
-        game_free2(verts);
+        free(verts);
     return hr;
 }
 
@@ -429,7 +429,7 @@ Spline_DrawControlPolygon(SplinePath *self, IDirect3DDevice3 *dev,
                           unsigned long color)
 {
     unsigned int    n     = (unsigned int)self->controlPointList.dwCount;
-    SplineVertex   *verts = (SplineVertex *)game_operator_new(n * 32);
+    SplineVertex   *verts = (SplineVertex *)malloc(n * 32);
     LinkedListNode *node  = self->controlPointList.pHead;
     unsigned int    i     = 0;
     long            hr;
@@ -451,6 +451,6 @@ Spline_DrawControlPolygon(SplinePath *self, IDirect3DDevice3 *dev,
         ++s_draws;
     hr = draw_strip(dev, verts, n);
     if (verts != 0)
-        game_free2(verts);
+        free(verts);
     return hr;
 }

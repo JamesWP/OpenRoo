@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include "stream.h"
 #include "static.h"   /* the shared KAROO_SOUND_FX / _DIAG helpers */
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 
 #define FOURCC(a,b,c,d) \
@@ -150,7 +150,7 @@ CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
 
     CStream_DeinitInstance(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

@@ -79,7 +79,7 @@
 #include "gamestr.h"
 #include <math.h>
 #include <stdlib.h>
-#include "gamecrt.h"
+#include <stdio.h>
 
 #define SIM_LOG_FIRST 8
 
@@ -732,7 +732,7 @@ static BOOL magnet_env_load(MagnetEnvironment *self, void *fp)
 
 static bool write1(const void *src, unsigned size, void *fp)
 {
-    return GC_FWRITE(src, size, 1, (FILE *)fp) == 1;
+    return fwrite(src, size, 1, (FILE *)fp) == 1;
 }
 
 /* 0x44c6c0.  The exact mirror of Load: raw direction and magnitude, the packed
@@ -1101,7 +1101,7 @@ static BOOL type_table_save(void *table, const DWORD *pcount, void *fp)
         return FALSE;
     if (!write1(pcount, 4, fp))
         return FALSE;
-    return GC_FWRITE(table, 8, *pcount, (FILE *)fp) == *pcount;
+    return fwrite(table, 8, *pcount, (FILE *)fp) == *pcount;
 }
 
 /* 0x44a530 (Std) / 0x44c0a0 (Cylinder) — read count and pairs, then clone them

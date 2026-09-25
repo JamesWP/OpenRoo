@@ -34,7 +34,7 @@
 #include "cdm.h"
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 static int s_fx = -1;
 
@@ -225,7 +225,7 @@ Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

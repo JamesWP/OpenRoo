@@ -13,7 +13,7 @@
 #include "saveslots.h"
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 /* Game data the path formats consume.  A DATA read, not a call. */
 
@@ -127,7 +127,7 @@ SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags)
 {
     SaveSlots_RestoreVtable(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

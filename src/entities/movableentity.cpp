@@ -62,7 +62,7 @@
 
 #include "movableentity.h"
 #include "ani.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "levelobjbase.h"
 
 /* The game's vtables these functions store.  Both stores are transient --
@@ -180,7 +180,7 @@ Sim_DeleteMovableEntityWithFlags(MovableEntity *self, unsigned int flags)
 {
     self->destroyBaseForGame();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

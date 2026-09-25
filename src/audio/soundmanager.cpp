@@ -73,7 +73,7 @@
 #include "linkedlist.h"
 #include "gamelog.h"
 #include "cfaktsound.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include <stddef.h>
 #include <windows.h>
 #include "log.h"
@@ -380,7 +380,7 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
 
     CStaticSoundbuffer *clone = NULL;
     CStaticSoundbuffer *raw =
-        (CStaticSoundbuffer *)game_operator_new(sizeof(CStaticSoundbuffer));
+        (CStaticSoundbuffer *)malloc(sizeof(CStaticSoundbuffer));
     if (raw != NULL)
         clone = CStatic_Init(raw);
 
@@ -474,7 +474,7 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
     doublesoundbuff *entry = (doublesoundbuff *)e->pPayload;
 
     VoicePool *pool = NULL;
-    VoicePool *raw  = (VoicePool *)game_operator_new(0x14);
+    VoicePool *raw  = (VoicePool *)malloc(0x14);
     if (raw != NULL)
         pool = Sim_VoicePoolBlank(raw);
 
@@ -497,7 +497,7 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
     if (pool == NULL)
         return NULL;
     Sim_VoicePoolWipe(pool);
-    game_free2(pool);
+    free(pool);
     return NULL;
 }
 
@@ -718,7 +718,7 @@ SoundMgr_ScalarDestructor(SoundManager *self, unsigned char flags)
 {
     SoundMgr_Destruct(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 
@@ -735,7 +735,7 @@ SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
     SoundMgr_PurgeAssets(self);
     self->logger_ = logger;
     if (logger == NULL) {
-        GameLogger *own = (GameLogger *)game_operator_new(0x118);
+        GameLogger *own = (GameLogger *)malloc(0x118);
         if (own != NULL)
             own = (GameLogger *)GameLog_Initialize(own, GS_SOUNDMGR_LOG_NAME, NULL);
         self->logger_     = own;

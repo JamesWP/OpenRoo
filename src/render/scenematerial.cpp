@@ -31,7 +31,7 @@
 #include <string.h>
 #include "scenematerial.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 /* FactAlloc::Free2 — __cdecl(void *), confirmed from the call site
  * (0x42d74e: push eax / call 0x4504c0 / add esp,4).  The original is left
@@ -48,7 +48,7 @@ SceneMaterial_Release(SceneMaterial *self)
     self->pMaterial = NULL;          /* unconditional, unlike the light */
 
     if (self->pHeapData != NULL)
-        game_free2(self->pHeapData);
+        free(self->pHeapData);
     self->pHeapData = NULL;
 }
 
@@ -128,7 +128,7 @@ SceneMaterial_ScalarDtor(SceneMaterial *self, unsigned char flags)
 {
     SceneMaterial_DtorBody(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

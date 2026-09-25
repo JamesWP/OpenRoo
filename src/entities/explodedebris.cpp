@@ -40,7 +40,7 @@
 
 #include "explodedebris.h"
 #include "generators.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "faktmesh.h"
 #include <string.h>
 #include <math.h>
@@ -60,9 +60,9 @@ __declspec(dllexport) void __attribute__((thiscall))
 ExplodeDebris_Release(ExplodeDebris *self)
 {
     if (self->pVertexCopy)
-        game_free2(self->pVertexCopy);
+        free(self->pVertexCopy);
     if (self->pFaceRecords)
-        game_free2(self->pFaceRecords);
+        free(self->pFaceRecords);
     self->pVertexCopy  = NULL;
     self->nVertexCount = 0;
     self->bActive      = 0;
@@ -81,11 +81,11 @@ ExplodeDebris_AllocateExplodeBuffers(ExplodeDebris *self, CFaktMesh *mesh)
     ExplodeDebris_Release(self);
 
     DWORD n = mesh->dwVertexCount;
-    void *verts = game_operator_new(n * 0x28);
+    void *verts = malloc(n * 0x28);
     if (verts != NULL && (int)n > 0)
         memset(verts, 0, n * 0x28);
     self->pVertexCopy  = verts;
-    self->pFaceRecords = game_operator_new((n / 3) * 0xc);
+    self->pFaceRecords = malloc((n / 3) * 0xc);
     self->nVertexCount = (int)mesh->dwVertexCount;
 
     memset(self->pVertexCopy, 0, (((DWORD)self->nVertexCount * 5) & 0x1fffffffu) * 2 * 4);
@@ -137,7 +137,7 @@ ExplodeDebris_ScalarDtor(ExplodeDebris *self, unsigned int flags)
 {
     ExplodeDebris_DtorBody(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

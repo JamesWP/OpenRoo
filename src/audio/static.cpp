@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "static.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 
 /* ── WAV file parser ────────────────────────────────────────────────────── */
@@ -252,13 +252,13 @@ CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
             CStatic_ReinitBuffer_impl(&self[i]);
 
         if (flags & 1)
-            game_free2(base);
+            free(base);
         return base;
     }
 
     CStatic_ReinitBuffer_impl(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

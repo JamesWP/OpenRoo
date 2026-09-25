@@ -32,7 +32,7 @@
 #include <string.h>
 #include "log.h"
 #include "textentry.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "record.h"
 
 
@@ -154,6 +154,6 @@ TextEntry_ScalarDestructor(TextEntry *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

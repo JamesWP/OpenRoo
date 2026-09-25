@@ -2,7 +2,7 @@
 #include <string.h>
 #include "movie.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 /* FaktMovie::FaktMovie 0x0044f3e0 — field init, called by the ctor proper and
    (dead now) from the teardown path.  It zeroes +0x4 through +0x134 and sets
@@ -96,7 +96,7 @@ Movie_ScalarDeletingDtor(FaktMovie *self, unsigned int flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

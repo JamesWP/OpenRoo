@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "cdm.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 CDM* CDM::construct()
 {
@@ -140,7 +140,7 @@ CDM_ScalarDeletingDtor(CDM *self, unsigned int flags)
 {
     self->stopAndClose();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

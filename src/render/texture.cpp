@@ -115,7 +115,7 @@
  */
 #include "texture.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 /* FactAlloc::Free2 — __cdecl(void *), shared helper left live in the binary. */
 
@@ -261,7 +261,7 @@ Texture_ImageDtorBody(LoadedImage *self)
     static unsigned long seen; image_first("LoadedImage::DtorBody", &seen);
     self->unknown00 = Texture_ImageVtable();
     if (self->ImageName != NULL)
-        game_free2(self->ImageName);    /* note 2: NOT nulled */
+        free(self->ImageName);    /* note 2: NOT nulled */
 }
 
 /* ─── LoadedImage::ScalarDeletingDtor (0x43de00) ───────────────────────────
@@ -275,7 +275,7 @@ Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags)
     static unsigned long seen; image_first("LoadedImage::ScalarDeletingDtor", &seen);
     Texture_ImageDtorBody(self);
     if ((flags & 1) != 0)
-        game_free2(self);               /* note 3: the game's heap */
+        free(self);               /* note 3 */
     return self;
 }
 
@@ -293,7 +293,7 @@ Texture_ReleaseSurfaces(LoadedImage *self)
     self->pTexturePalette = NULL;          /* unconditional */
 
     if (self->ImageName != NULL) {
-        game_free2(self->ImageName);
+        free(self->ImageName);
         self->ImageName = NULL;            /* only inside the check */
     }
 

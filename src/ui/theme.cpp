@@ -25,7 +25,7 @@
 #include <stdlib.h>
 
 #include "theme.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 #include "game.h"
 #include "direct3d.h"
@@ -307,7 +307,7 @@ Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
 {
     Theme_SlotDestruct(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 
@@ -1082,6 +1082,6 @@ ThemeSound_ScalarDestructor(ThemeSoundTable *self, unsigned char flags)
 {
     ThemeSound_Destruct(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

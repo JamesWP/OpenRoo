@@ -70,7 +70,7 @@
 #include "sky.h"
 #include "log.h"
 #include "scenetexture.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 #include <math.h>
 
@@ -232,6 +232,6 @@ Sky_ScalarDtor(SkyBackground *self, unsigned int flags)
 {
     Sky_DtorBody(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

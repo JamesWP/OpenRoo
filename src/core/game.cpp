@@ -26,7 +26,7 @@
 #include "gamestr.h"
 #include "gamelog.h"
 #include "gameglobals.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "cdm.h"
 #include "cdthemes.h"
 #include "theme.h"
@@ -362,6 +362,6 @@ Game_ScalarDestructor(Game *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

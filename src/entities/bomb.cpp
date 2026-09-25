@@ -117,7 +117,7 @@
 #include "bomb.h"
 #include "game.h"
 #include "tile.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "movableentity.h"
 #include "objectremove.h"
 #include "soundmanager.h"

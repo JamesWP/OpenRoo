@@ -139,7 +139,7 @@
 
 #include "log.h"
 #include "menutree.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "record.h"
 
 /* ─── FX / diag ──────────────────────────────────────────────────────────── */
@@ -431,7 +431,7 @@ MenuTree_ScalarDestructor(MenuTree *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

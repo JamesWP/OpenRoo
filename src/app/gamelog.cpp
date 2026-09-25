@@ -123,7 +123,7 @@
 #include <stddef.h>
 #include "gamelog.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "gamestr.h"
 
 /* The game's LoggerVtable at 0x0045ef98.  One slot -- the scalar-deleting
@@ -299,7 +299,7 @@ GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags)
 {
     GameLog_CloseAndRebindVtable(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

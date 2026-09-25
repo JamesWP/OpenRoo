@@ -86,7 +86,7 @@
 #include "log.h"
 #include "scriptplayer.h"
 #include "stream.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "gamelog.h"
 #include "gameglobals.h"
 #include "splinepath.h"
@@ -661,7 +661,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
                         "IS: warning - Stream sound buffer width id %d already initialized!", id);
                     return 0xc;
                 }
-                void *mem = game_operator_new(0xd4);
+                void *mem = malloc(0xd4);
                 CStreamSoundbuffer *s = mem ? CStream_Initialize((CStreamSoundbuffer *)mem) : NULL;
                 streams_[id] = s;
                 streamReady_ = CStream_Prepare(s, &streamWave_);
@@ -829,6 +829,6 @@ ScriptPlayer_ScalarDestructor(ScriptPlayer *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

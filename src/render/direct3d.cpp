@@ -31,7 +31,7 @@
  */
 #include "direct3d.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 #define FLIP_LOG_FIRST 8
 
@@ -113,7 +113,7 @@ Direct3D_ReleaseResources(Direct3D *self)
         void *value = n->pValue;
         n = n->pNextNode;
         if (value)
-            game_free2(value);
+            free(value);
     }
     LinkedList_Clear(&self->modeList);
 
@@ -173,6 +173,6 @@ Direct3D_ScalarDestructor(Direct3D *self, unsigned char flags)
 {
     Direct3D_Destruct(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

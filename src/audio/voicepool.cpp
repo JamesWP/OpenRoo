@@ -20,7 +20,7 @@
 #include <dsound.h>
 #include "static.h"
 #include "voicepool.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 
 /* Our own replacements come from static.h, their owner (COHESION_PLAN
@@ -381,7 +381,7 @@ Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
         /* count*0x18 + 4: the leading dword is the array-count header that
          * ScalarVectorDtor reads back.  NULL is not checked by the original
          * before the test below, and the test is the only guard. */
-        void *block = game_operator_new((unsigned)(count * 0x18 + 4));
+        void *block = malloc((unsigned)(count * 0x18 + 4));
         CStaticSoundbuffer *bufs = 0;
         if (block != 0) {
             *(int *)block = count;
@@ -482,7 +482,7 @@ Sim_VoicePoolClone(VoicePool *self, int count, IDirectSound *pDS,
     self->logger       = src->logger;
 
     {
-        void *block = game_operator_new((unsigned)(count * 0x18 + 4));
+        void *block = malloc((unsigned)(count * 0x18 + 4));
         CStaticSoundbuffer *bufs = 0;
         if (block != 0) {
             *(int *)block = count;

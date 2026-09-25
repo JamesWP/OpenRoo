@@ -140,7 +140,7 @@
 #include "player.h"
 #include "entitymath.h"
 #include "foepath.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "voicepool.h"
 #include "log.h"
 
@@ -712,7 +712,7 @@ void Player::destruct()
     vtable_ = g_PlayerVtable;
     if (pathfinder_ != NULL) {
         pathfinder_->dispose();
-        game_free2(pathfinder_);
+        free(pathfinder_);
     }
     List_Destruct((LinkedList *)effectList_);
     destroyBaseForGame();
@@ -723,6 +723,6 @@ Player_ScalarDestructor(Player *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

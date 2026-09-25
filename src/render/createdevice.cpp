@@ -106,7 +106,7 @@
 #include "log.h"
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -275,7 +275,7 @@ static HRESULT WINAPI d3d_enum_display_modes_cb(LPDDSURFACEDESC2 pDesc, LPVOID c
     if (!(aspect < 1.4f && aspect > 1.3f))    /* 0x0045d3a0 / 0x0045d39c */
         return DDENUMRET_OK;
 
-    DisplayModeNode *mode = (DisplayModeNode *)game_operator_new(0xc);
+    DisplayModeNode *mode = (DisplayModeNode *)malloc(0xc);
     mode->dwWidth    = pDesc->dwWidth;
     mode->dwHeight   = pDesc->dwHeight;
     mode->dwBitDepth = bpp;

@@ -85,7 +85,7 @@
 #include <string.h>
 #include "model.h"      /* our own owner header; brings in faktmesh.h */
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "gamelog.h"
 #include "gamestr.h"
 
@@ -146,15 +146,15 @@ Model_ImportSceneModels(CFaktMesh *self, const char *path)
     total  = frames * verts;
 
     /* Per-frame records: allocated, NOT zero-filled (defect 2). */
-    self->pFrameRecords = game_operator_new(frames * MDL_FRAME_REC_SIZE);
+    self->pFrameRecords = malloc(frames * MDL_FRAME_REC_SIZE);
 
     /* Vertex array: zero-filled, 10 dwords per vertex. */
-    self->pVertexData = game_operator_new(total * MDL_VERTEX_SIZE);
+    self->pVertexData = malloc(total * MDL_VERTEX_SIZE);
     if (self->pVertexData != NULL && total != 0)
         memset(self->pVertexData, 0, total * MDL_VERTEX_SIZE);
 
     /* Scratch vertices: one frame's worth, zero-filled. */
-    self->pScratchVerts = game_operator_new(verts * MDL_VERTEX_SIZE);
+    self->pScratchVerts = malloc(verts * MDL_VERTEX_SIZE);
     if (self->pScratchVerts != NULL && verts != 0)
         memset(self->pScratchVerts, 0, verts * MDL_VERTEX_SIZE);
 
@@ -184,7 +184,7 @@ Model_ImportSceneModels(CFaktMesh *self, const char *path)
     /* strdup onto the game's heap: FreeThing2 frees this pointer. */
     {
         unsigned n = (unsigned)strlen(path) + 1;
-        char *name = (char *)game_operator_new(n);
+        char *name = (char *)malloc(n);
         self->pszName = name;
         if (name != NULL)
             memcpy(name, path, n);
@@ -254,7 +254,7 @@ ModelManager_FindOrImport(ModelManager *self, char *name)
         }
     }
 
-    void *mem = game_operator_new(sizeof(CFaktMesh));
+    void *mem = malloc(sizeof(CFaktMesh));
     CFaktMesh *mesh = (mem != NULL) ? FaktMesh_Init((CFaktMesh *)mem) : NULL;
     if ((Model_ImportSceneModels(mesh, name) & 0xff) == 0) {
         if (mesh != NULL)
@@ -311,6 +311,6 @@ ModelManager_ScalarDestructor(ModelManager *self, unsigned char flags)
 {
     ModelManager_Destruct(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

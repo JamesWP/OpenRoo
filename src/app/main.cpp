@@ -32,7 +32,7 @@
 #include <ddraw.h>
 #include <stdio.h>
 #include "main.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "gameglobals.h"
 #include "gamelog.h"
 #include "game.h"
@@ -76,8 +76,8 @@ static bool winmain_fx_norender()
     return on;
 }
 
-/* The scalar deleting dtors free to the game heap (game_free2), which is why
- * both objects come from game_operator_new below. */
+/* The scalar deleting dtors free() their object, which is why both objects
+ * come from malloc below. */
 static void delete_game(Game *g)       { if (g) Game_ScalarDestructor(g, 1); }
 static void delete_d3d(Direct3D *d3d)  { if (d3d) Direct3D_ScalarDestructor(d3d, 1); }
 
@@ -223,7 +223,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
         return 0;
     }
 
-    Game *game = (Game *)game_operator_new(GAME_ALLOC_SIZE);
+    Game *game = (Game *)malloc(GAME_ALLOC_SIZE);
     Game::set_instance(game ? game->construct(lpCmdLine) : NULL);
     if (Game::instance() == NULL)
         return 0;
@@ -253,7 +253,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
     ShowWindow(hWnd, SW_HIDE);
     UpdateWindow(hWnd);
 
-    Direct3D *d3d = (Direct3D *)game_operator_new(D3D_ALLOC_SIZE);
+    Direct3D *d3d = (Direct3D *)malloc(D3D_ALLOC_SIZE);
     g_pDirect3D = d3d ? Direct3D_Construct(d3d) : NULL;
     d3d = g_pDirect3D;
 

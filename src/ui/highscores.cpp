@@ -94,7 +94,7 @@
 #include <string.h>
 #include "log.h"
 #include "highscores.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "gamestr.h"
 #include "gameglobals.h"
 
@@ -253,7 +253,7 @@ HighScoreTable_ScalarDestructor(HighScoreTable *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 
