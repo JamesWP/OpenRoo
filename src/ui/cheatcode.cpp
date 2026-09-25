@@ -173,7 +173,7 @@ Sim_HandleTypedCheatCode(Game *self)
             unsigned char lvl = (unsigned char)(atoi(num) - 1);
             Sim_SetCurrentLevelName(self, lvl);
             if (lvl < self->levelCount()) {
-                sprintf(path, GS_CHEAT_FMT_LVL_PATH, GS_GAME_DIR, self->levelName());
+                sprintf(path, GS_CHEAT_FMT_LVL_PATH, GG_GAME_DIR, self->levelName());
                 GameLog_LogMessage(GG_LOGGER, 3, GS_CHEAT_LC_BY_NUMBER, (unsigned int)lvl,
                                    self->levelName());
                 self->setLevelIndex(lvl);
@@ -199,7 +199,7 @@ Sim_HandleTypedCheatCode(Game *self)
             memcpy(frame, buf + 6, len - 6);
             frame[len - 6] = 0;
             GameLog_LogMessage(GG_LOGGER, 3, GS_CHEAT_LC, (const char *)frame);
-            sprintf(path, GS_CHEAT_FMT_LVL_PATH, GS_GAME_DIR, (const char *)frame);
+            sprintf(path, GS_CHEAT_FMT_LVL_PATH, GG_GAME_DIR, (const char *)frame);
             FILE *fp = fopen(path, "r");
             if (fp != NULL) {
                 pl->setGemsCollected(0);

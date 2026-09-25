@@ -345,10 +345,6 @@ static char *const GS_PSNAME_XFACE_SYSTEM       = (char *)0x004690c8;  /* "XFace
 
 /* --- not a literal: the game's own mutable buffers --- */
 
-/* The install directory, filled by WinMain; every path format above is
- * printed against it.  Was GAMEDIR in two files and GAME_DIR in five. */
-static const char *const GS_GAME_DIR = (const char *)0x004e01c4;
-
 /* --- THEME: the .thm loader and the caches it fills (theme.cpp, model.cpp,
  *     scenetexture.cpp) --- */
 static const char *const GS_THEME_SKY_LOADED              = (const char *)0x00464784;  /* "SKY: %s loaded" */

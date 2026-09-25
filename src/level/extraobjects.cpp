@@ -203,7 +203,7 @@ int ExtraObjects::openFile(const char *name)
     objectCount_ = 0;
     entries_    = 0;
 
-    sprintf(path, "%s\\Level3DExtraObjects\\%s.leo", GS_GAME_DIR, name);
+    sprintf(path, "%s\\Level3DExtraObjects\\%s.leo", GG_GAME_DIR, name);
 
     fp = fopen(path, "r");
     if (fp == NULL)
@@ -450,7 +450,7 @@ void ExtraObjects::parseSound()
     current()->kind = EXTRA_SOUND;
     char *z = NULL;
     char *name = leo_tok();
-    sprintf(current()->file, "%s\\%s", GS_GAME_DIR, name);
+    sprintf(current()->file, "%s\\%s", GG_GAME_DIR, name);
     if (name != NULL) {
         char *t = leo_tok();
         current()->position[0] = (float)atof(t);
@@ -478,7 +478,7 @@ void ExtraObjects::parseParticle()
     current()->kind = EXTRA_PARTICLE;
     char *tex = NULL;
     char *name = leo_tok();
-    sprintf(current()->file, "%s\\%s", GS_GAME_DIR, name);
+    sprintf(current()->file, "%s\\%s", GG_GAME_DIR, name);
     GameLog_LogMessage(GG_LOGGER, 1, "LEO: Particle-Filename:%s", current()->file);
     if (name != NULL && readSixFloats()) {
         char src[0x100];
@@ -487,7 +487,7 @@ void ExtraObjects::parseParticle()
         setBlend(src, dest);
         if (dest != NULL) {
             tex = leo_tok();
-            sprintf(current()->textureFile, "%s\\%s", GS_GAME_DIR, tex);
+            sprintf(current()->textureFile, "%s\\%s", GG_GAME_DIR, tex);
             GameLog_LogMessage(GG_LOGGER, 1, "LEO: Particle-Texture-Filename:%s",
                                current()->textureFile);
         }

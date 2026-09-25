@@ -63,7 +63,7 @@ Render_ConfigureRenderState(void)
     TextureManager_SetLogger(GG_TEXTURE_MANAGER, GG_LOGGER);
     TextureManager_SetLogger((TextureManager *)GG_MODEL_MANAGER, GG_LOGGER);
     memset(GG_LEVEL_PLACEMENTS, 0, 0x12c);
-    Menu_BuildMenuGeometry(d3d, GS_GAME_DIR);
+    Menu_BuildMenuGeometry(d3d, GG_GAME_DIR);
 
     /* 3. */
     Mat4 world;
@@ -133,9 +133,9 @@ Render_ConfigureRenderState(void)
     Model_ImportSceneModels(GG_MESH_ENEMY, "models\\Enemy.mdl");
 
     char path[0x100];
-    sprintf(path, "%s\\textures\\shadow.tga", GS_GAME_DIR);
+    sprintf(path, "%s\\textures\\shadow.tga", GG_GAME_DIR);
     Texture_ImportSceneTextures(GG_TEX_SHADOW, d3d->pDD4, d3d->pDevice, path, 1, 0, 0);
-    sprintf(path, "%s\\textures\\karoo128.tga", GS_GAME_DIR);
+    sprintf(path, "%s\\textures\\karoo128.tga", GG_GAME_DIR);
     Texture_ImportSceneTextures(GG_TEX_KAROO128, d3d->pDD4, d3d->pDevice, path, 1, 0, 0);
 
     SceneMaterial *mat = GG_MATERIAL;

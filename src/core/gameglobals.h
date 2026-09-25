@@ -88,4 +88,11 @@ static char   *const GG_LEVEL_TITLE    = (char *)0x0046c714;
  * resets it so the first frame of a level ticks from there. */
 static double *const GG_LAST_TICK_MS = (double *)0x004e04b0;
 
+/* The install directory, filled by WinMain; every path format above is
+ * printed against it.  Was GAMEDIR in two files and GAME_DIR in five. */
+static char *const GG_GAME_DIR = (char*) 0x004e01c4;
+static const size_t GG_GAME_DIR_LEN = 0x104;
+
+static HINSTANCE* const ModuleInstanceGlobal = (HINSTANCE*)0x46c49c;
+
 #endif /* KAROO_GAMEGLOBALS_H */

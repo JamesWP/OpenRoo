@@ -165,6 +165,7 @@ public:
      * (NULL until the game has built it).  The only place that address is
      * named. */
     static Game *instance()          { return *(Game **)0x0046c498; }
+    static void set_instance(Game* g) { *((Game**)0x0046c498) = g; }
 
     /* ── sound ──────────────────────────────────────────────────────── */
     SoundManager *soundManager()     { return (SoundManager *)soundManagerHead_; }
@@ -542,6 +543,8 @@ public:
 
     /* The current level's path; diagnostics only. */
     const char    *levelName() const               { return levelName_; }
+
+    bool initialised() const {return initialised_; }
 
     /* The theme sound entries the spawns and level sounds acquire, named
      * by their old Game offsets; the index is the theme event id. */

@@ -322,6 +322,7 @@ static HRESULT WINAPI d3d_enum_zbuffer_cb(LPDDPIXELFORMAT pFmt, LPVOID ctx)
     return D3DENUMRET_OK;
 }
 
+// This implementation needs to be moved into direct3d.cpp
 extern "C" __declspec(dllexport) unsigned __attribute__((thiscall))
 Direct3D_CreateD3DDevice(Direct3D *self, HWND hWnd, GUID *pDriverGuid,
                          int nModeIndex, char bHardware)

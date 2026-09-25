@@ -359,9 +359,9 @@ Sim_ParseLevelFiles(Game *self, const char *name)
     inline_strcpy(self->levelNameBuffer(), name);
 
     if (s_fx_crtpath)
-        sprintf(path, GS_OPEN_FMT_LEVELS, name, GS_GAME_DIR);
+        sprintf(path, GS_OPEN_FMT_LEVELS, name, GG_GAME_DIR);
     else
-        sprintf(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR, name);
+        sprintf(path, GS_OPEN_FMT_LEVELS, GG_GAME_DIR, name);
 
     /* SAVE the previously loaded map name BEFORE the read overwrites it.
      * The ordering is the whole mechanism of the +0x10 flag below; the
@@ -389,7 +389,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
                       (const unsigned char *)self->map()->mapName()) != 0)
         self->setMapChanged(1);
 
-    sprintf(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR, name);
+    sprintf(path, GS_OPEN_FMT_SCRIPTS, GG_GAME_DIR, name);
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);
 
@@ -444,7 +444,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     if (self->restartCount() == 0 &&
         (unsigned int)(self->levelIndex()) + 1 != (unsigned int)self->levelCount()) {
         Sim_SetCurrentLevelName(self, (unsigned char)(self->levelIndex() + 1));
-        sprintf(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
+        sprintf(path, GS_OPEN_FMT_LEVELS, GG_GAME_DIR,
                            self->levelName());
         /* the result is deliberately not tested, as in the original */
         self->map()->readFile(path);
@@ -457,7 +457,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     }
 
     Sim_SetCurrentLevelName(self, levelNo);
-    sprintf(path, GS_OPEN_FMT_LEVELS, GS_GAME_DIR,
+    sprintf(path, GS_OPEN_FMT_LEVELS, GG_GAME_DIR,
                        self->levelName());
 
     /* Saved BEFORE the read -- see the header, and the `samelevel` control. */
@@ -486,7 +486,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
                       (const unsigned char *)self->map()->mapName()) != 0)
         self->setMapChanged(1);
 
-    sprintf(path, GS_OPEN_FMT_SCRIPTS, GS_GAME_DIR,
+    sprintf(path, GS_OPEN_FMT_SCRIPTS, GG_GAME_DIR,
                        self->levelName());
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);

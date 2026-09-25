@@ -371,7 +371,7 @@ ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
                DWORD arg3, DWORD arg4)
 {
     char path[256];
-    sprintf(path, GS_THEME_SOUND_PATH, GS_GAME_DIR, waveName);
+    sprintf(path, GS_THEME_SOUND_PATH, GG_GAME_DIR, waveName);
 
     SoundAssetName &e = self->entries[id & 0xffff];
     if (strcmp(waveName, GS_THEME_SOUND_NONE) == 0) {

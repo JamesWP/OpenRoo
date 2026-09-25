@@ -258,7 +258,7 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
     char line[256];
     char delims[8];
 
-    sprintf(path, GS_CD_TRACKFILE_PATH, GS_GAME_DIR, name);
+    sprintf(path, GS_CD_TRACKFILE_PATH, GG_GAME_DIR, name);
     memcpy(delims, GS_CD_TRACKFILE_DELIMS, 6);
     unsigned char n = 0;
     FILE *fp = fopen(path, GS_CD_TRACKFILE_MODE);

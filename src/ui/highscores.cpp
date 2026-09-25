@@ -96,6 +96,7 @@
 #include "highscores.h"
 #include "alloc.h"
 #include "gamestr.h"
+#include "gameglobals.h"
 
 /* Game data the path formats consume.  DATA reads, not calls. */
 
@@ -130,7 +131,7 @@ int HighScoreTable::readFile(const char *name, char key)
     unsigned char b;                              /* defect 2 */
     unsigned i = 0;
 
-    sprintf(path, "%s\\Highscores\\%s.hsc", GS_GAME_DIR, name);
+    sprintf(path, "%s\\Highscores\\%s.hsc", GG_GAME_DIR, name);
     FILE *fp = fopen(path, "r");
     if (fp == NULL) {
         ps_log("hsc load", path, 0);
@@ -159,7 +160,7 @@ int HighScoreTable::writeFile(const char *name, char key)
     char path[128];
     unsigned i = 0;
 
-    sprintf(path, "%s\\Highscores\\%s.hsc", GS_GAME_DIR, name);
+    sprintf(path, "%s\\Highscores\\%s.hsc", GG_GAME_DIR, name);
     FILE *fp = fopen(path, "w+");
     if (fp == NULL) {
         ps_log("hsc save", path, 0);

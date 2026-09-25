@@ -255,7 +255,7 @@ int Game::loadGameFile(const char *name)
     unsigned char hdr[4];
 
     levelCount_ = 0;
-    sprintf(path, GS_GAME_FILE_PATH, GS_GAME_DIR, name);
+    sprintf(path, GS_GAME_FILE_PATH, GG_GAME_DIR, name);
     GameLog_LogMessage(GG_LOGGER, 2, GS_GAME_FILE_LOADING, path);
     FILE *fp = fopen(path, GS_MODE_READ);
     if (fp == NULL)
