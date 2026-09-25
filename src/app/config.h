@@ -50,6 +50,12 @@ public:
     unsigned char  cameraTurnsWithPlayer() const       { return cameraTurnsWithPlayer_; }
     void           setCameraTurnsWithPlayer(unsigned char on) { cameraTurnsWithPlayer_ = on; }
     unsigned short joyDeadzone() const                 { return joyDeadzone_; }
+    /* The launcher's device choice (WinMain -> CreateD3DDevice). */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+    GUID          *adapterGuid()                       { return &adapterGuid_; }
+#pragma GCC diagnostic pop
+    unsigned char  displayModeIndex() const            { return displayModeIndex_; }
     void           setJoyDeadzone(unsigned short p)    { joyDeadzone_ = p; }
 
     /* Undecoded blob fields Game code reaches: HandleKeypress toggles
@@ -125,7 +131,12 @@ private:
     /* Shadows, Reflection, Highlights, Particles -- see the accessors. */
     unsigned char  videoOptions_[4];                 /* +0x1f608  defaults 2,1,2,2 */
     float          cameraDistanceSetting_;           /* +0x1f60c  5.0 */
-    unsigned char  gap_1f610[0x1f624 - 0x1f610];
+    /* The launcher's device choice, handed to CreateD3DDevice by WinMain's
+     * first rung: GUID -> DirectDrawCreate, mode index -> the mode-list
+     * walk (KAROO_D3D_FX=mode0, RENDER_PLAN.md). */
+    GUID           adapterGuid_;                     /* +0x1f610  Game 0x2aa13e */
+    unsigned char  displayModeIndex_;                /* +0x1f620  Game 0x2aa14e */
+    unsigned char  gap_1f621[0x1f624 - 0x1f621];
     unsigned int   field_1f624_;                     /* +0x1f624  default 1 */
     int            musicOn_;                         /* +0x1f628  Game 0x2aa156 */
     unsigned char  cdVolume_;                        /* +0x1f62c  Game 0x2aa15a */
@@ -149,6 +160,8 @@ KAROO_LAYOUT_CHECKS(Config)
     KAROO_LAYOUT_AT(field_1f604_,           0x1f604);
     KAROO_LAYOUT_AT(videoOptions_,          0x1f608);
     KAROO_LAYOUT_AT(cameraDistanceSetting_, 0x1f60c);
+    KAROO_LAYOUT_AT(adapterGuid_,           0x1f610);
+    KAROO_LAYOUT_AT(displayModeIndex_,      0x1f620);
     KAROO_LAYOUT_AT(field_1f624_,           0x1f624);
     KAROO_LAYOUT_AT(musicOn_,               0x1f628);
     KAROO_LAYOUT_AT(cdVolume_,              0x1f62c);
