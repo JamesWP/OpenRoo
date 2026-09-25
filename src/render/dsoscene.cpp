@@ -42,16 +42,10 @@
 #include "scene.h"
 #include "texture.h"
 #include "extraobjects.h"
+#include "particles.h"
 
 /* The scene list is GG_SCENE->objects; each value is a SceneObject
  * (scene.h, layout-checked against the 0x1da-byte allocation). */
-
-#define RS_SRCBLEND         19
-#define RS_DESTBLEND        20
-#define RS_ALPHABLENDENABLE 27
-#define RS_SPECULARENABLE   29
-#define RS_TEXADDR_U        44
-#define RS_TEXADDR_V        45
 
 static const float K_HALF_PI = 1.5707964f;   /* 0x45d2cc */
 static const float K_TWO_PI  = 6.2831855f;   /* 0x45d2f8 */
@@ -67,30 +61,6 @@ static void compose(Mat4 *d, const Mat4 *left, const Mat4 *right)
 {
     m4_mul(d, right, left);
 }
-
-typedef void (__attribute__((thiscall)) *mesh_draw_fn)(void *mesh, void *dev, DWORD frame);
-
-/* Minimal view of the device vtable.  Only the four slots this function
- * dispatches are named; confirmed empirically by the golden fixture, whose
- * recording device traps all 42 and never sees another one. */
-struct DevVtbl {
-    void *slot[42];
-};
-struct Dev { DevVtbl *lpVtbl; };
-
-typedef HRESULT (WINAPI *SetRS_fn)(void *, DWORD, DWORD);
-typedef HRESULT (WINAPI *SetTX_fn)(void *, DWORD, Mat4 *);
-typedef HRESULT (WINAPI *DrawP_fn)(void *, DWORD, DWORD, void *, DWORD, DWORD);
-typedef HRESULT (WINAPI *SetTex_fn)(void *, DWORD, void *);
-
-static inline void set_rs(void *dev, DWORD s, DWORD v)
-{ ((SetRS_fn)((Dev *)dev)->lpVtbl->slot[0x58 / 4])(dev, s, v); }
-static inline void set_xf(void *dev, DWORD s, Mat4 *m)
-{ ((SetTX_fn)((Dev *)dev)->lpVtbl->slot[0x64 / 4])(dev, s, m); }
-static inline void draw_prim(void *dev, DWORD pt, DWORD fvf, void *v, DWORD n, DWORD f)
-{ ((DrawP_fn)((Dev *)dev)->lpVtbl->slot[0x70 / 4])(dev, pt, fvf, v, n, f); }
-static inline void set_tex(void *dev, DWORD stage, void *t)
-{ ((SetTex_fn)((Dev *)dev)->lpVtbl->slot[0x98 / 4])(dev, stage, t); }
 
 /* fmod(t / period, 1.0), the path parameter.  `period` is divided in as a
  * 32-bit integer (fidiv), so a zero period is a divide fault in the original
@@ -108,9 +78,9 @@ static void eval_path(const SceneObject *o, float t, Vec3 *out)
 }
 
 /* The object's texture as the device wants it. */
-static void select_texture(void *dev, const SceneObject *o)
+static void select_texture(IDirect3DDevice3 *dev, const SceneObject *o)
 {
-    set_tex(dev, 0, ((const SceneTexture *)o->texture)->pTexture2);
+    dev->SetTexture(0, ((const SceneTexture *)o->texture)->pTexture2);
 }
 
 /* Heading and pitch from the path tangent.
@@ -204,7 +174,7 @@ static void cam_diag(const float *cam)
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double t)
+Scene_DrawSceneObjects(IDirect3DDevice3 *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double t)
 {
     cam_diag(cam);
     for (LinkedListNode *node = GG_SCENE->objects.pHead; node != NULL; node = node->pNextNode) {
@@ -214,16 +184,16 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
 
         DWORD src = o->srcBlend, dst = o->destBlend;
         if (src != 0 && dst != 0) {
-            set_rs(dev, RS_ALPHABLENDENABLE, 1);
-            set_rs(dev, RS_SRCBLEND, src);
-            set_rs(dev, RS_DESTBLEND, dst);
+            dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
+            dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, src);
+            dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, dst);
         } else {
-            set_rs(dev, RS_ALPHABLENDENABLE, 0);
+            dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
         }
 
         DWORD ta = o->textureAddress;
-        set_rs(dev, RS_TEXADDR_U, ta);
-        set_rs(dev, RS_TEXADDR_V, ta);
+        dev->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSU, ta);
+        dev->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSV, ta);
 
         if (o->texture != NULL)
             select_texture(dev, o);
@@ -274,14 +244,14 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
                     select_texture(dev, o);
             }
 
-            set_xf(dev, D3DTRANSFORMSTATE_WORLD, &world);
+            dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&world);
             DWORD frame = animation_frame(o, t);
-            set_rs(dev, RS_SPECULARENABLE, 0);
+            dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
 
             if (o->lit != 0)
-                FaktMesh_DrawFramedModel(mesh, (IDirect3DDevice3 *)dev, frame);
+                FaktMesh_DrawFramedModel(mesh, dev, frame);
             else
-                FaktMesh_DrawMeshBuffer(mesh, (IDirect3DDevice3 *)dev, frame);
+                FaktMesh_DrawMeshBuffer(mesh, dev, frame);
 
         } else if (type == EXTRA_BILLBOARD) {
             Vec3 target = { cam[3], cam[4], cam[5] };
@@ -307,9 +277,9 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
             }
 
             m4_translate(&world, px, py, pz);
-            set_xf(dev, D3DTRANSFORMSTATE_WORLD, &world);
-            set_rs(dev, RS_SPECULARENABLE, 0);
-            draw_prim(dev, D3DPT_TRIANGLESTRIP, 0x1e2, quad, 4, 0);
+            dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&world);
+            dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
+            dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0x1e2, quad, 4, 0);
         }
     }
 }
@@ -336,16 +306,13 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
  *    object's texture before setting the real world.  The static path jumps
  *    past all of that.
  *
- * The system's slots: 7 (+0x1c) tick with (float)(dt_ms * 0.001), 10 (+0x28)
- * with the view direction cam[3..5] - cam[0..2] as three floats, 8 (+0x20)
- * render. */
+ * The system is driven through its own vtable (particles.h): tick with
+ * (float)(dt_ms * 0.001), set-vector with the view direction
+ * cam[3..5] - cam[0..2], then render. */
 #include "splinepath.h"
 #include "record.h"
 
 
-typedef void (__attribute__((thiscall)) *ps_tick_fn)(void *, float);
-typedef void (__attribute__((thiscall)) *ps_view_fn)(void *, float, float, float);
-typedef void (__attribute__((thiscall)) *ps_render_fn)(void *, void *);
 
 static void rotation_xyz(Mat4 *m, float rx, float ry, float rz)
 {
@@ -358,9 +325,9 @@ static void rotation_xyz(Mat4 *m, float rx, float ry, float rz)
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Scene_DrawParticleSystems(void *dev, float *cam, double dt_ms, double t)
+Scene_DrawParticleSystems(IDirect3DDevice3 *dev, float *cam, double dt_ms, double t)
 {
-    set_rs(dev, RS_SPECULARENABLE, 0);
+    dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
 
     for (LinkedListNode *node = GG_SCENE->objects.pHead; node != NULL; node = node->pNextNode) {
         const SceneObject *o = (const SceneObject *)node->pValue;
@@ -369,17 +336,17 @@ Scene_DrawParticleSystems(void *dev, float *cam, double dt_ms, double t)
 
         DWORD src = o->srcBlend, dst = o->destBlend;
         if (src != 0 && dst != 0) {
-            set_rs(dev, RS_ALPHABLENDENABLE, 1);
-            set_rs(dev, RS_SRCBLEND, src);
-            set_rs(dev, RS_DESTBLEND, dst);
+            dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
+            dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, src);
+            dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, dst);
         } else {
-            set_rs(dev, RS_ALPHABLENDENABLE, 0);
+            dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
         }
 
         if (o->texture != NULL)
             select_texture(dev, o);
 
-        void *ps = o->particle;
+        ParticleSystem *ps = o->particle;
         if (ps == NULL)
             continue;
 
@@ -416,27 +383,26 @@ Scene_DrawParticleSystems(void *dev, float *cam, double dt_ms, double t)
             m4_translate(&tr, pos.x, pos.y, pos.z);
             compose(&world, &world, &tr);
 
-            set_tex(dev, 0, NULL);
+            dev->SetTexture(0, NULL);
             Mat4 ident;
             m4_identity(&ident);
-            set_xf(dev, D3DTRANSFORMSTATE_WORLD, &ident);
+            dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&ident);
 
             SplinePath *sp = (SplinePath *)&o->spline;
             if (hooks_GetAsyncKeyState(VK_F3) & 0x8000)
-                Spline_DrawSplinePath(sp, (IDirect3DDevice3 *)dev, 100, 0xffffffff);
+                Spline_DrawSplinePath(sp, dev, 100, 0xffffffff);
             if (hooks_GetAsyncKeyState(VK_F4) & 0x8000)
-                Spline_DrawControlPolygon(sp, (IDirect3DDevice3 *)dev, 0xff808080);
+                Spline_DrawControlPolygon(sp, dev, 0xff808080);
 
             if (o->texture != NULL)
                 select_texture(dev, o);
         }
 
-        set_xf(dev, D3DTRANSFORMSTATE_WORLD, &world);
+        dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&world);
 
-        void **vt = *(void ***)ps;
-        ((ps_tick_fn)vt[0x1c / 4])(ps, (float)(dt_ms * K_ANIM_SCALE));
+        ps_vtick(ps, (float)(dt_ms * K_ANIM_SCALE));
         Vec3 dir = { cam[3] - cam[0], cam[4] - cam[1], cam[5] - cam[2] };
-        ((ps_view_fn)vt[0x28 / 4])(ps, dir.x, dir.y, dir.z);
-        ((ps_render_fn)vt[0x20 / 4])(ps, dev);
+        ps_vset_vector(ps, dir.x, dir.y, dir.z);
+        ps_vrender(ps, dev);
     }
 }

@@ -35,6 +35,7 @@
 #include "ani.h"
 
 struct Direct3D;
+struct ParticleSystem;
 struct GameLogger;
 class ExtraObjects;
 
@@ -45,7 +46,7 @@ struct __attribute__((packed)) SceneObject {
 
     unsigned char  type;             /* +0x000  ExtraObjectKind 0..2 */
     CFaktMesh     *mesh;             /* +0x001  model */
-    void          *particle;         /* +0x005  particle system */
+    ParticleSystem *particle;        /* +0x005  particle system */
     float          billboardRadius;  /* +0x009  billboard */
     DWORD          animLoaded;       /* +0x00d  1 when the .ani loaded */
     AnimTable      anim;             /* +0x011  loaded from the .ani (ani.h) */
