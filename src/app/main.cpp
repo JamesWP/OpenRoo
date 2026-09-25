@@ -302,17 +302,17 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
     d3d->pPrimary->QueryInterface(IID_IDirectDrawSurface,
                                   (void **)GG_MOVIE_SURFACE);
 
-    /* FaktMovie +0x124..+0x134 (globals 0x46c6fc..0x46c70c).  Write-only:
-     * Ghidra finds no reader in the binary and movie.cpp reads none of them.
-     * The original's +0x12c store is `mov eax,[esp+0x40]` -- the MSG's
-     * `message` field, before the MSG is first written, i.e. uninitialised
-     * stack.  It is left unwritten here: nothing reads it, and stack garbage
-     * cannot be reproduced anyway. */
-    DWORD *movieTail = GG_MOVIE->_tail;   /* [0] is +0x114 */
-    movieTail[4] = 1;   /* +0x124 */
-    movieTail[5] = 2;   /* +0x128 */
-    movieTail[7] = 0;   /* +0x130 */
-    movieTail[8] = 0;   /* +0x134 */
+    /* FaktMovie's overlay colour key (movie.h): use it, CK_RGB, black..black.
+     * The original MaybeLoadVideo hands it to IMixerPinConfig::SetColorKey;
+     * our movie.cpp plays nothing, so it is unread today, but it is set so a
+     * real player could use it.  The original's PaletteIndex store is
+     * `mov eax,[esp+0x40]` -- the MSG's `message`, before the MSG is first
+     * written, i.e. uninitialised stack.  CK_RGB ignores PaletteIndex, so it
+     * is left as the ctor's zero. */
+    GG_MOVIE->useColorKey = 1;
+    GG_MOVIE->colorKey[0] = 2;   /* CK_RGB */
+    GG_MOVIE->colorKey[2] = 0;
+    GG_MOVIE->colorKey[3] = 0;
 
     bool playing = false;
     if (Movie_Setup(GG_MOVIE, GG_LOGGER)) {

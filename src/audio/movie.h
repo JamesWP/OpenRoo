@@ -11,7 +11,15 @@ struct FaktMovie {
     BYTE   _pad[0x104]; // +0x00c..+0x10f  (the ctor's 0x41-dword REP STOSD)
     DWORD  state;       // +0x110  3=playing (Movie_Notify acts),
                         //         1=finished (WndProc zeros movie-active flag)
-    DWORD  _tail[9];    // +0x114..+0x134
+    DWORD  _tail[4];    // +0x114..+0x120
+    /* The overlay colour key, filled by WinMain before Setup.  The original
+       MaybeLoadVideo (0x4501ce) reads them: if useColorKey, it QIs the
+       overlay mixer pin for IMixerPinConfig (IID 0x4612e0) and calls
+       SetColorKey (slot 0x1c) with &colorKey.  Our loadVideo is a stub that
+       plays nothing, so nothing reads them now. */
+    DWORD  useColorKey;  // +0x124  WinMain: 1
+    DWORD  colorKey[4];  // +0x128  COLORKEY {KeyType=2 CK_RGB, PaletteIndex
+                         //         (WinMain: uninitialised stack), Low=0, High=0}
     DWORD  notify_msg;  // +0x138  ctor's one non-zero init: 0xfd
 
     void construct();   // 0x0044f3e0 — field init only, no vtable
@@ -28,6 +36,8 @@ struct FaktMovie {
 };
 
 static_assert(offsetof(FaktMovie, state) == 0x110, "FaktMovie layout mismatch");
+static_assert(offsetof(FaktMovie, useColorKey) == 0x124, "FaktMovie layout mismatch");
+static_assert(offsetof(FaktMovie, colorKey) == 0x128, "FaktMovie layout mismatch");
 static_assert(offsetof(FaktMovie, notify_msg) == 0x138, "FaktMovie layout mismatch");
 
 /* FaktMovie's vtable: ONE slot at 0x0045f200, holding the scalar deleting
