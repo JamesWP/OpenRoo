@@ -126,3 +126,53 @@ Direct3D_ReleaseResources(Direct3D *self)
 
     log_write("direct3d: ReleaseResources this=%p done\n", self);
 }
+
+/* ─── Construction and teardown: 0x412680, 0x412730, 0x412710 ──────────────
+ *
+ * WinMain allocates the 0x238-byte object with the game's operator new
+ * (0x42d32d), constructs it (one E8, 0x42D33B), and deletes it through
+ * vtable slot 0 with flag 1 -- so the scalar dtor frees on the game heap
+ * (alloc.h, mixed ownership until WinMain is ours).  The game's one-slot
+ * table 0x45d398 is left pointing at the stubbed original, a tripwire.
+ *
+ * Quirk preserved: the ctor Clears the mode list it has just Init'd. */
+static void *const g_D3DVtable[1] = { (void *)&Direct3D_ScalarDestructor };
+
+extern "C" __declspec(dllexport) Direct3D *__attribute__((thiscall))
+Direct3D_Construct(Direct3D *self)
+{
+    List_Init(&self->modeList);
+    self->vtable = (void **)g_D3DVtable;
+    self->hWnd = NULL;
+    self->pDD4 = NULL;
+    self->pLastError[0] = '\0';
+    List_Clear(&self->modeList);
+    self->pSelectedMode = NULL;
+    *(DWORD *)((BYTE *)self + 0xcc) = 0;
+    self->pD3D = NULL;
+    self->pViewport = NULL;
+    self->pDevice = NULL;
+    self->dwModeFilterFlags = 0;
+    for (int i = 0; i < 8; i++)
+        self->zbufFmt[i] = 0;
+    self->pBackBuffer = NULL;
+    self->pPrimary = NULL;
+    self->pZBuffer = NULL;
+    return self;
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Direct3D_Destruct(Direct3D *self)
+{
+    self->vtable = (void **)g_D3DVtable;
+    List_Destruct(&self->modeList);
+}
+
+extern "C" __declspec(dllexport) Direct3D *__attribute__((thiscall))
+Direct3D_ScalarDestructor(Direct3D *self, unsigned char flags)
+{
+    Direct3D_Destruct(self);
+    if (flags & 1)
+        game_free2(self);
+    return self;
+}

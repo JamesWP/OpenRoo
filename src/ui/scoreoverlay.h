@@ -12,3 +12,11 @@ class TextRenderer;
 extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderLevelComplete(Game *g, void *game, Direct3D *d3d,
                          TextRenderer *text, DWORD ms);
+
+/* The in-game overlays RenderGameFrame draws (scoreoverlay.cpp). */
+extern "C" __declspec(dllexport) void __cdecl
+Score_DrawHighScoreTable(Game *g, void *game, Direct3D *d3d,
+                         TextRenderer *text, int n);
+extern "C" __declspec(dllexport) void __cdecl
+Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
+                        TextRenderer *text, int n);

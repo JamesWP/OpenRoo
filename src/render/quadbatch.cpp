@@ -14,7 +14,7 @@
  *                     SetRenderState(SRCBLEND, src)
  *                     SetRenderState(DESTBLEND, dst) }
  *   else             { SetRenderState(ALPHABLENDENABLE, 0) }
- *   if (obj->dwType == 2) { SetTransform(WORLD, &g_dwWorldIdentity)
+ *   if (obj->dwType == 2) { SetTransform(WORLD, GG_WORLD_IDENTITY)
  *                          DrawPrimitive(TRIANGLELIST, 0x1e2,
  *                                        verts->pData, verts->dwQuads * 6, 0) }
  *
@@ -46,7 +46,9 @@
  *             exactly as before.  The quads vanish; nothing else changes.
  *             This is the mode that actually proves the draw is ours.
  */
+#include "quadbatch.h"
 #include "direct3d.h"
+#include "d3dmath.h"
 #include "levelobject.h"
 #include "log.h"
 
@@ -62,7 +64,6 @@ struct QuadVerts {
 static_assert(offsetof(QuadVerts, dwQuads) == 0x124, "QuadVerts layout");
 static_assert(offsetof(QuadVerts, pData)   == 0x128, "QuadVerts layout");
 
-#define g_dwWorldIdentity (*(D3DMATRIX *)0x004e0440)
 
 /* KAROO_QUAD_DUMP=<path> — write every vertex of the first frame's quad batch
  * to a file, once.  FVF 0x1e2 is a 32-byte vertex: xyz(12) + reserved(4) +
@@ -180,7 +181,7 @@ Direct3D_DrawQuadBatch(QuadVerts *verts, void *game, Direct3D *d3d)
 
             if (*(DWORD *)(obj + LOBJ_OFF_DRAWKIND) == 2) {
                 d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD,
-                                           &g_dwWorldIdentity);
+                                           GG_WORLD_IDENTITY);
                 quad_dump(verts->pData, verts->dwQuads);
                 HRESULT hr = S_OK;
                 if (quad_fx() != QUAD_FX_NODRAW)

@@ -80,9 +80,12 @@ static ProgableControl *const GG_PROGCTRL = (ProgableControl *)0x0046c298;
  * second is shown when that fails. */
 static LoadedImage *const GG_LOADING_IMAGE  = (LoadedImage *)0x004e0428;
 static LoadedImage *const GG_FALLBACK_IMAGE = (LoadedImage *)0x0046c798;
+/* bitmaps\demo.bmp, loaded once at startup (renderstate.cpp). */
+static LoadedImage *const GG_DEMO_IMAGE     = (LoadedImage *)0x004dc7a8;
 /* A copy of the LevelMap's title, made at level entry. */
 static char   *const GG_LEVEL_TITLE    = (char *)0x0046c714;
-/* The clock at level entry, in milliseconds. */
-static double *const GG_LEVEL_START_MS = (double *)0x004e04b0;
+/* The clock (ms) of the last GameTick RenderGameFrame ran; the level entry
+ * resets it so the first frame of a level ticks from there. */
+static double *const GG_LAST_TICK_MS = (double *)0x004e04b0;
 
 #endif /* KAROO_GAMEGLOBALS_H */

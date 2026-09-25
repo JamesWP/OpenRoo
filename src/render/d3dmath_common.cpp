@@ -236,3 +236,38 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle)
 }
 
 }
+
+/* ─── RenderGameFrame's three small helpers (ENDGAME E7) ─────────────────── */
+extern "C" {
+
+__declspec(dllexport) D3DTLVERTEX *__attribute__((thiscall))
+Math_VertexSet(D3DTLVERTEX *self, const Vec3 *pos, float rhw, D3DCOLOR color,
+               D3DCOLOR specular, float tu, float tv)
+{
+    self->sx = pos->x;
+    self->sy = pos->y;
+    self->sz = pos->z;
+    self->rhw = rhw;
+    self->color = color;
+    self->specular = specular;
+    self->tu = tu;
+    self->tv = tv;
+    return self;
+}
+
+__declspec(dllexport) Vec3 *__attribute__((thiscall))
+Math_Vec3ScaleInPlace(Vec3 *self, float k)
+{
+    self->x = self->x * k;
+    self->y = self->y * k;
+    self->z = self->z * k;
+    return self;
+}
+
+__declspec(dllexport) double __cdecl
+Math_Vec3Length(const Vec3 *v)
+{
+    return sqrt(Math_Vec3SqLen(v));
+}
+
+}

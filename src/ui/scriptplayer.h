@@ -63,10 +63,14 @@ public:
      * armed), cleared by ENTER and by the tick once the last line has been
      * fetched.  The checkpoint restore needs it and loaded() both. */
     int            running() const                 { return running_; }
+    /* +0xdca: the caption "text" shows while the script runs (the HUD
+     * panel, RenderGameFrame). */
+    const char    *caption() const                 { return scratch_; }
     void           setRunning(int r)               { running_ = r; }
     /* The camera spline is being evaluated (the tick drives it while this
      * and cameraMode() are set). */
     void           setSplineActive(int a)          { splineActive_ = a; }
+    int            splineActive() const            { return splineActive_; }
 
     /* What the checkpoint restore copies into Game: the camera mode, the
      * distance, the eye and the point the spline last produced. */

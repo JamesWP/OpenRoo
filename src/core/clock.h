@@ -9,10 +9,15 @@
  * call, making the whole simulation a fixed-timestep one.
  */
 double clock_seconds(void);
+/* The seconds clock_seconds() returned last time -- RenderGameFrame reads it
+ * before calling again, to time the frame. */
+double clock_previous_seconds(void);
 
 /* The clock's initialiser 0x00403fa0 (one CALL site, 0x0042d4de): the eager
  * form of clock_seconds()'s lazy first-call init. */
 extern "C" void __cdecl hooks_ClockInit(void);
+/* Replaces 0x00404040: the seconds clock, as the game reads it. */
+extern "C" __declspec(dllexport) double __cdecl hooks_ClockSeconds(void);
 
 /* Frame index — one per clock_seconds() call, i.e. one per rendered frame.
  * The shared frame number for the hash log, the state log and recordings. */

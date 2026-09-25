@@ -49,6 +49,11 @@ struct CFaktMesh {
     struct { void *lpvData; DWORD dwStride; } strided[12];
     void  *pScratchVerts;  // +0x76 dwVertexCount vertices, stride 0x28, zeroed
 };
+
+/* The two character meshes, loaded once at startup (renderstate.cpp):
+ * models\John.mdl and models\Enemy.mdl. */
+static CFaktMesh *const GG_MESH_PLAYER = (CFaktMesh *)0x0046c7b0;
+static CFaktMesh *const GG_MESH_ENEMY  = (CFaktMesh *)0x004e0310;
 #pragma pack(pop)
 
 static_assert(sizeof(CFaktMesh) == 0x7a, "CFaktMesh size: ModelManager operator new(0x7a)");

@@ -109,6 +109,13 @@ public:
                     DWORD colourTop, DWORD colourBottom,
                     float amplitude, float rate, int n);
 
+    /* 0x00413eb0 DrawTextPanel -- a multi-line caption over two full-width
+     * backdrop strips (textrenderer.cpp). */
+    void drawPanel(float x, float y, float cellW, float cellH, float spacing,
+                   float lineH, const char *str, Direct3D *d3d,
+                   DWORD colourTop, DWORD colourBottom,
+                   SceneTexture *panelTex, SceneTexture *frameTex);
+
     /* 0x004134d0 ctor / 0x00413510 dtor body (textrenderer.cpp). */
     void construct();
     void destruct();
@@ -193,3 +200,14 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Text_DtorBody(TextRenderer *self);                           /* 0x00413510 */
 extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
 Text_ScalarDtor(TextRenderer *self, unsigned int flags);     /* 0x004134f0 */
+
+/* 0x00413eb0, thiscall with twelve stack arguments, RET 0x30. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Text_DrawPanelText(TextRenderer *self, float x, float y, float cellW,
+                   float cellH, float spacing, float lineH, const char *str,
+                   Direct3D *d3d, DWORD colourTop, DWORD colourBottom,
+                   SceneTexture *panelTex, SceneTexture *frameTex);
+
+/* The two fonts: fonts\font1.fon and fonts\numbers.fon. */
+static TextRenderer *const GG_FONT_MAIN    = (TextRenderer *)0x004e0480;
+static TextRenderer *const GG_FONT_NUMBERS = (TextRenderer *)0x004e02e8;

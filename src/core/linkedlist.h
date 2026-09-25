@@ -156,3 +156,13 @@ static inline int LinkedList_Unlink(LinkedList *self, LinkedListNode *pNode)
 static inline LinkedListNode *LinkedList_Find(LinkedList *self, void *pValue,
                                               LinkedListNode *pAfterNode)
 { return List_Find(self, pValue, pAfterNode); }
+
+/* 0x0042ce00 GetHead -- returns pHead.  RET 0.  One E8, RenderGameFrame. */
+extern "C" __declspec(dllexport) LinkedListNode *__attribute__((thiscall))
+List_GetHead(LinkedList *self);
+
+/* 0x0042ce10 NextValue -- thiscall(list, LinkedListNode **it), RET 4: returns
+ * (*it)->pValue and advances *it to the next node; the list is not read.
+ * One E8, RenderGameFrame. */
+extern "C" __declspec(dllexport) void *__attribute__((thiscall))
+List_NextValue(LinkedList *self, LinkedListNode **it);

@@ -160,6 +160,17 @@ public:
     void  setEffect8Active(int n)                   { effect8Active_ = n; }
     void  setEffectDStart(double d)                { effectDStart_ = d; }
     int   effectDActive() const                     { return effectDActive_; }
+    int   effectAActive() const                     { return effectAActive_; }
+    /* When each timed effect started (clock ms); the HUD counts down from
+     * them: B inverse 10 s, 8 freeze 5 s, D protection, C slowdown, A speed
+     * 10 s each. */
+    double effectBStart() const                     { return effectBStart_; }
+    double effect8Start() const                     { return effect8Start_; }
+    double effectDStart() const                     { return effectDStart_; }
+    double effectCStart() const                     { return effectCStart_; }
+    double effectAStart() const                     { return effectAStart_; }
+    /* +0x21c: the active timed-effect codes (byte values), for the HUD. */
+    LinkedList *effectList()                        { return effects(); }
     void  setEffectDActive(int n)                   { effectDActive_ = n; }
     void  setEffectCActive(int n)                   { effectCActive_ = n; }
     void  setEffectAActive(int n)                   { effectAActive_ = n; }

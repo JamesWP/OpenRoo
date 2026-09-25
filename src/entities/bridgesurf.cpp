@@ -82,6 +82,7 @@
  *   backward — negate the scroll phase f.  A *direction* change: it proves
  *              the fmod/clock arithmetic, which a colour cannot.
  */
+#include "bridgesurf.h"
 #include "direct3d.h"
 #include "levelobject.h"
 #include "game.h"

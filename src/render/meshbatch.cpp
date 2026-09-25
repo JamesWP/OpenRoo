@@ -62,7 +62,9 @@
  * seen on a level that actually has a non-NULL mesh-batch object, which none of
  * the recordings do.
  */
+#include "meshbatch.h"
 #include "direct3d.h"
+#include "d3dmath.h"
 #include "levelobject.h"
 #include "faktmesh.h"
 #include "log.h"
@@ -88,7 +90,6 @@
 #define CTX_OFF_POS_Y           0x8c
 #define CTX_OFF_POS_Z           0x90
 
-#define g_dwWorldIdentity (*(D3DMATRIX *)0x004e0440)
 #define g_flMeshBatchAngle (*(const double *)0x0045d348)
 
 
@@ -157,7 +158,7 @@ Direct3D_DrawMeshBatch(void *ctx, void *game, Direct3D *d3d)
             CFaktMesh *mesh = *(CFaktMesh **)(obj + MOBJ_OFF_MESH);
             if (mesh == NULL) {
                 d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD,
-                                           &g_dwWorldIdentity);
+                                           GG_WORLD_IDENTITY);
                 d3d->pDevice->DrawPrimitive(
                     D3DPT_TRIANGLELIST, MESH_QUAD_FVF,
                     *(void **)(c + CTX_OFF_QUAD_VERTS),

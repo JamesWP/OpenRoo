@@ -35,6 +35,7 @@
  *    prologue before being skipped, as do type-0 objects with a NULL mesh.
  *    The state changes are real and observable, so they are not hoisted.
  */
+#include "dsoscene.h"
 #include "d3dmath.h"
 #include "log.h"
 #include "faktmesh.h"

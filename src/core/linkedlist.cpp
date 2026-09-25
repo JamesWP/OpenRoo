@@ -271,3 +271,17 @@ List_Find(LinkedList *self, void *pValue, LinkedListNode *pAfterNode)
 }
 
 } // extern "C"
+
+extern "C" __declspec(dllexport) LinkedListNode *__attribute__((thiscall))
+List_GetHead(LinkedList *self)
+{
+    return self->pHead;
+}
+
+extern "C" __declspec(dllexport) void *__attribute__((thiscall))
+List_NextValue(LinkedList * /*self*/, LinkedListNode **it)
+{
+    LinkedListNode *n = *it;
+    *it = n->pNextNode;
+    return n->pValue;
+}

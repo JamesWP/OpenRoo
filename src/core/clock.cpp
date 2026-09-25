@@ -283,3 +283,8 @@ __declspec(dllexport) double __cdecl hooks_ClockSeconds(void)
 }
 
 } // extern "C"
+
+double clock_previous_seconds(void)
+{
+    return g_prev;
+}

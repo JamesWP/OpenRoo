@@ -289,6 +289,10 @@ public:
      * drops again when the blast clears. */
     void setField203(int b)                    { field_203 = b; }
     void setField20f(int b)                    { field_20f = b; }
+    /* Read by RenderGameFrame: +0x203 while the destructible block is
+     * blasted it draws the fx model; +0x20f starts the debris burst once. */
+    int  field203() const                      { return field_203; }
+    int  field20f() const                      { return field_20f; }
     void setBlastTime(double t)                { blastTime_ = t; }
 
     /* ── read by a foe (foe.cpp) ─────────────────────────────────────── */

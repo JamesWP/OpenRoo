@@ -337,6 +337,13 @@ static inline void gen_vset_position(Generator *g, float x, float y, float z)
     typedef void (__attribute__((thiscall)) *fn)(Generator *, float, float, float);
     ((fn)g->pVtable[GEN_VT_SETPOS_SLOT])(g, x, y, z);
 }
+/* Slot 8 = SetDirection(vec3 by value): stores it and rebuilds the matrix. */
+#define GEN_VT_SETDIR_SLOT 8
+static inline void gen_vset_direction(Generator *g, float x, float y, float z)
+{
+    typedef void (__attribute__((thiscall)) *fn)(Generator *, float, float, float);
+    ((fn)g->pVtable[GEN_VT_SETDIR_SLOT])(g, x, y, z);
+}
 
 /* EnvironmentFactoryCreate (0x4488f0), ours: allocate with our own new and
  * construct the named class, or NULL for an unknown name.  The object comes
