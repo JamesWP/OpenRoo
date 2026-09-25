@@ -161,7 +161,8 @@ static inline LinkedListNode *LinkedList_Find(LinkedList *self, void *pValue,
 extern "C" __declspec(dllexport) LinkedListNode *__attribute__((thiscall))
 List_GetHead(LinkedList *self);
 
-/* 0x0042ce10 NextValue -- cdecl(LinkedListNode **it): returns (*it)->pValue
- * and advances *it to the next node.  One E8, RenderGameFrame. */
-extern "C" __declspec(dllexport) void *__cdecl
-List_NextValue(LinkedListNode **it);
+/* 0x0042ce10 NextValue -- thiscall(list, LinkedListNode **it), RET 4: returns
+ * (*it)->pValue and advances *it to the next node; the list is not read.
+ * One E8, RenderGameFrame. */
+extern "C" __declspec(dllexport) void *__attribute__((thiscall))
+List_NextValue(LinkedList *self, LinkedListNode **it);

@@ -278,8 +278,8 @@ List_GetHead(LinkedList *self)
     return self->pHead;
 }
 
-extern "C" __declspec(dllexport) void *__cdecl
-List_NextValue(LinkedListNode **it)
+extern "C" __declspec(dllexport) void *__attribute__((thiscall))
+List_NextValue(LinkedList * /*self*/, LinkedListNode **it)
 {
     LinkedListNode *n = *it;
     *it = n->pNextNode;

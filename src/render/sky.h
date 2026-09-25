@@ -53,3 +53,8 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sky_DtorBody(SkyBackground *self);                           /* 0x0043c850 */
 extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
 Sky_ScalarDtor(SkyBackground *self, unsigned int flags);     /* 0x0043c830 */
+
+/* 0x0043cc00, thiscall(self, dev, eye by value); returns self (sky.cpp). */
+extern "C" __declspec(dllexport) float * __attribute__((thiscall))
+Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
+                      float flCentreX, float flCentreY, float flCentreZ);

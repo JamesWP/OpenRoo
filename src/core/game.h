@@ -410,6 +410,7 @@ public:
      * checkpoints restore it from the script player's spline point, and the
      * level builder seeds it {0, 1000, 0}.  Not decoded. */
     void           setField13cc94(int i, float v)    { field_13cc94_[i] = v; }
+    float          field13cc94(int i) const          { return field_13cc94_[i]; }
     /* +0x13cca4 is the zoom distance the Zoom In/Out actions step (clamped
      * 2..20); GameTick eases cameraDistance towards it and copies it back
      * when the overview ends.  +0x13cca8 is the overview flag the OverView

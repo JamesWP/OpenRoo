@@ -46,6 +46,7 @@
  *             exactly as before.  The quads vanish; nothing else changes.
  *             This is the mode that actually proves the draw is ours.
  */
+#include "quadbatch.h"
 #include "direct3d.h"
 #include "d3dmath.h"
 #include "levelobject.h"

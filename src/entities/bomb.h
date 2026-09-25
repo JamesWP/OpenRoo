@@ -42,6 +42,10 @@ public:
     /* Game::UpdateBombFuseAndBlast 0x00402870 -- one tick. */
     void tick();
 
+    /* +0x16a: the clock when it was dropped; RenderGameFrame switches its
+     * model 2 s after. */
+    double droppedAt() const { return droppedAt_; }
+
 private:
     /* The vtable.  MSVC layout: one slot, the scalar deleting destructor,
      * __thiscall with a flags argument (bit 0 = free the memory).  The remove

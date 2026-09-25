@@ -62,6 +62,7 @@
  * seen on a level that actually has a non-NULL mesh-batch object, which none of
  * the recordings do.
  */
+#include "meshbatch.h"
 #include "direct3d.h"
 #include "d3dmath.h"
 #include "levelobject.h"

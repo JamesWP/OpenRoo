@@ -63,3 +63,12 @@ CFaktSound_InitializeWith3DAudio(CFaktSound *self, HWND window,
 
 /* Original vtable at 0x45efa8 — slot 0: ScalarDeletingDtor @ 0x444fb0. */
 static const void *const CFAKTSOUND_VTABLE = reinterpret_cast<const void*>(0x45efa8);
+
+/* The 3D listener: position, orientation, then the deferred commit
+ * (cfaktsound.cpp).  RenderGameFrame moves the listener with the camera. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CFaktSound_CommitSettings(CFaktSound *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CFaktSound_SetPosition(CFaktSound *self, vec3d *pos, DWORD dwApply);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CFaktSound_SetOrientation(CFaktSound *self, vec3d *front, vec3d *top, DWORD dwApply);

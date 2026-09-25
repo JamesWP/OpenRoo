@@ -102,6 +102,12 @@ public:
     /* +0x9a: the animation state (see the field); 10 is the dying anim that
      * DrawObjectShadows' `dead`/`alive` conditions test. */
     unsigned char anim() const                 { return anim_; }
+    /* +0x63: the tile contents picked up this tick (1 = a crystal). */
+    unsigned char pickedUp() const             { return pickedUp_; }
+    /* +0x7a: RenderGameFrame's "start the explosion debris" latch -- set by
+     * the tick, consumed (zeroed) by the next frame. */
+    bool  debrisPending() const                { return field_7a != NULL; }
+    void  clearDebrisPending()                 { field_7a = NULL; }
     /* +0xe9 / +0xea: paraglider charges, and whether it is open. */
     unsigned char glides() const               { return glides_; }
     int   gliding() const                      { return gliding_; }

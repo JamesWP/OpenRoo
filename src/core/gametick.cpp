@@ -41,6 +41,7 @@
  * in the opposite order (slides first).  Both mutate the tile map, so the
  * order is observable; this proves the per-frame dispatch is ours.
  */
+#include "gametick.h"
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>

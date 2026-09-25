@@ -62,7 +62,7 @@ LevelEntry_PrepareAssets(void)
     Scene_BuildObjectList(d3d, g->extraObjects(), GG_LOGGER);
 
     strcpy(GG_LEVEL_TITLE, map->title());
-    *GG_LEVEL_START_MS = clock_seconds() * 1000.0;
+    *GG_LAST_TICK_MS = clock_seconds() * 1000.0;
 
     /* 5. The camera (camera.h): a fixed offset (0, 6, -4) scaled to 255/sqrt(52),
      *    placed over the middle of the grid.  The original divides in

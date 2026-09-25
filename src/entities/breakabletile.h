@@ -42,6 +42,13 @@ public:
     void setFallSound(CStaticSoundbuffer *p)    { fallSound_ = p; }
     void setRespawnSound(CStaticSoundbuffer *p) { respawnSound_ = p; }
 
+    /* Read by RenderGameFrame to spawn a destruct-field burst the tick a
+     * breakable falls: the flag, and the cell (read signed). */
+    int  justFell() const                      { return justFell_; }
+    signed char cellU() const                  { return cellU_; }
+    signed char cellV() const                  { return cellV_; }
+    signed char heightCell() const             { return heightCell_; }
+
 private:
 
     /* The vtable.  MSVC layout: one slot, the scalar deleting destructor,

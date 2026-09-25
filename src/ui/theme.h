@@ -39,6 +39,13 @@ static_assert(sizeof(ThemeObjectKind) == 4, "ThemeObjectKind must stay DWORD-siz
 
 /* One `model` / `field` / `billboard` / `particlesystem` entry.  0x5dd bytes:
  * the release zeroes 8 of them plus the slot header as 0x2ef0. */
+struct __attribute__((packed)) FxBurst {
+    float pos[3];      /* +0x00 */
+    int   msLeft;      /* +0x0c  1000 at spawn */
+    BYTE  active;      /* +0x10 */
+};
+static_assert(sizeof(FxBurst) == 0x11, "FxBurst stride");
+
 class __attribute__((packed)) ThemeLevelObject {
 public:
     static const int ORIGIN = 0;
@@ -53,7 +60,11 @@ public:
     AnimTable    animTable;
     float        flBillboardScale;
     ParticleSystem *pParticleSystems[16];
-    BYTE         gap_285[0x395 - 0x285];
+    /* +0x285: sixteen short-lived bursts of this record's particle systems,
+     * one per pParticleSystems[] entry, spawned and aged by RenderGameFrame
+     * (rendergameframe.cpp): a position, the ms left, and whether it is live.
+     * They tile the old gap exactly (16 * 0x11 = 0x110). */
+    FxBurst      bursts[16];
 
     DWORD  dwInstanceCount;
     DWORD  dwMovableType;
@@ -95,6 +106,7 @@ KAROO_LAYOUT_CHECKS(ThemeLevelObject)
     KAROO_LAYOUT_AT(animTable,        0x0c1);
     KAROO_LAYOUT_AT(flBillboardScale, 0x241);
     KAROO_LAYOUT_AT(pParticleSystems, 0x245);
+    KAROO_LAYOUT_AT(bursts,           0x285);
     KAROO_LAYOUT_AT(dwInstanceCount,  0x395);
     KAROO_LAYOUT_AT(dwMovableType,    0x399);
     KAROO_LAYOUT_AT(flPosX,           0x39d);
