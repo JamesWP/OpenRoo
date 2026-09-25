@@ -74,7 +74,7 @@ static double    g_accum;        /* elapsed seconds           (was 0x46c448) */
  * get_xrefs_to confirms this is the only one of the clock's globals with an
  * outside reader: 0x46c434/438/440/444/448 are touched solely by 0x404040 and
  * its initialiser 0x403fa0, and stay local here. */
-#define g_prev (*(double *)0x0046c450)
+static double g_prevClock;   /* was 0x0046c450 */
 static int       g_same;         /* identical-result run      (was 0x46c440) */
 static BYTE      g_shift;        /* frequency shift           (was 0x46c434) */
 static double    g_period;       /* seconds per shifted tick  (was 0x46c438) */
@@ -161,7 +161,7 @@ double clock_seconds(void)
         /* Virtual clock.  First call returns 0.0, as the original does. */
         if (!g_started) { g_started = true; return g_accum; }
         g_accum += g_fixed_dt;
-        g_prev = g_accum;   /* keep RenderGameFrame's dt source current */
+        g_prevClock = g_accum;   /* keep RenderGameFrame's dt source current */
         return g_accum;
     }
 
@@ -185,7 +185,7 @@ double clock_seconds(void)
     g_last  = cur;
     g_accum = (double)delta * g_period + g_accum;
 
-    if (g_accum == g_prev) {
+    if (g_accum == g_prevClock) {
         /* Original: INC; CMP 0x186a0; JLE keep — so the bump fires on the
          * 100001st identical result, and only then is the counter reset. */
         if (++g_same > 0x186a0) {
@@ -196,7 +196,7 @@ double clock_seconds(void)
         g_same = 0;
     }
 
-    g_prev = g_accum;
+    g_prevClock = g_accum;
     return g_accum;
 }
 
@@ -286,5 +286,5 @@ __declspec(dllexport) double __cdecl hooks_ClockSeconds(void)
 
 double clock_previous_seconds(void)
 {
-    return g_prev;
+    return g_prevClock;
 }

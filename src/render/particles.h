@@ -65,17 +65,9 @@ static_assert(offsetof(RingBuffer, pRingCurrent) == 0x10, "RingBuffer layout");
 struct Generator;
 struct Environment;
 
-/* Class identity = the vtable address stored at +0x00.  The game image has no
- * relocations and is always mapped at 0x400000, so these are constants at
- * runtime; the dispatchers in particles.cpp / generators.cpp use them to
- * recognise a class without going back out through the vtable.
- *
- * They must stay in step with patch.py's VTABLE_PATCHES (file offset = VA -
- * 0x400000).  Anything not listed here falls back to a real virtual call. */
-#define VTBL_PARTICLE_BASE   0x0045efb8
-#define VTBL_PARTICLE_POINT  0x0045f140
-#define VTBL_PARTICLE_FACE   0x0045f17c
-#define VTBL_PARTICLE_XFACE  0x0045f1b8
+/* The game vtables these classes were built on -- ParticleSystem 0x0045efb8,
+ * Point 0x0045f140, Face 0x0045f17c, XFace 0x0045f1b8.  Nothing uses them:
+ * every constructor and destructor installs our own ps_vtbl_* (particles.cpp). */
 
 /* Base class, 0x28 bytes. */
 struct ParticleSystem {

@@ -359,9 +359,9 @@ Sim_ParseLevelFiles(Game *self, const char *name)
     inline_strcpy(self->levelNameBuffer(), name);
 
     if (s_fx_crtpath)
-        sprintf(path, GS_OPEN_FMT_LEVELS, name, GG_GAME_DIR);
+        sprintf(path, GS_OPEN_FMT_LEVELS, name, g_gameDir);
     else
-        sprintf(path, GS_OPEN_FMT_LEVELS, GG_GAME_DIR, name);
+        sprintf(path, GS_OPEN_FMT_LEVELS, g_gameDir, name);
 
     /* SAVE the previously loaded map name BEFORE the read overwrites it.
      * The ordering is the whole mechanism of the +0x10 flag below; the
@@ -376,10 +376,10 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     if ((char)ok != 0) {
         self->extraObjects()->releaseSounds();
-        GameLog_LogMessage(GG_LOGGER, 1, GS_OPEN_LOADED_NAME,
+        GameLog_LogMessage(&g_logger, 1, GS_OPEN_LOADED_NAME,
                            self->map()->bonus(), path);
     } else {
-        GameLog_LogMessage(GG_LOGGER, 4, GS_OPEN_FAILED_NAME, path);
+        GameLog_LogMessage(&g_logger, 4, GS_OPEN_FAILED_NAME, path);
         PostQuitMessage(1);
         /* and FALLS THROUGH -- the original does not return here */
     }
@@ -389,11 +389,11 @@ Sim_ParseLevelFiles(Game *self, const char *name)
                       (const unsigned char *)self->map()->mapName()) != 0)
         self->setMapChanged(1);
 
-    sprintf(path, GS_OPEN_FMT_SCRIPTS, GG_GAME_DIR, name);
+    sprintf(path, GS_OPEN_FMT_SCRIPTS, g_gameDir, name);
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);
 
-    GameLog_LogMessage(GG_LOGGER, 1,
+    GameLog_LogMessage(&g_logger, 1,
                        self->scriptPlayer()->loaded() ? GS_OPEN_SCRIPT_OK_NAME
                                                              : GS_OPEN_SCRIPT_BAD_NAME,
                        path);
@@ -444,7 +444,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     if (self->restartCount() == 0 &&
         (unsigned int)(self->levelIndex()) + 1 != (unsigned int)self->levelCount()) {
         Sim_SetCurrentLevelName(self, (unsigned char)(self->levelIndex() + 1));
-        sprintf(path, GS_OPEN_FMT_LEVELS, GG_GAME_DIR,
+        sprintf(path, GS_OPEN_FMT_LEVELS, g_gameDir,
                            self->levelName());
         /* the result is deliberately not tested, as in the original */
         self->map()->readFile(path);
@@ -457,7 +457,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     }
 
     Sim_SetCurrentLevelName(self, levelNo);
-    sprintf(path, GS_OPEN_FMT_LEVELS, GG_GAME_DIR,
+    sprintf(path, GS_OPEN_FMT_LEVELS, g_gameDir,
                        self->levelName());
 
     /* Saved BEFORE the read -- see the header, and the `samelevel` control. */
@@ -471,11 +471,11 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     if ((char)ok != 0) {
         self->extraObjects()->releaseSounds();
-        GameLog_LogMessage(GG_LOGGER, 1, GS_OPEN_LOADED_NUM,
+        GameLog_LogMessage(&g_logger, 1, GS_OPEN_LOADED_NUM,
                            self->map()->bonus(),
                            levelNo & 0xff, path);
     } else {
-        GameLog_LogMessage(GG_LOGGER, 4, GS_OPEN_FAILED_NUM,
+        GameLog_LogMessage(&g_logger, 4, GS_OPEN_FAILED_NUM,
                            levelNo & 0xff, path);
         PostQuitMessage(1);
         /* and FALLS THROUGH, as in ParseLevelFiles */
@@ -486,12 +486,12 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
                       (const unsigned char *)self->map()->mapName()) != 0)
         self->setMapChanged(1);
 
-    sprintf(path, GS_OPEN_FMT_SCRIPTS, GG_GAME_DIR,
+    sprintf(path, GS_OPEN_FMT_SCRIPTS, g_gameDir,
                        self->levelName());
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);
 
-    GameLog_LogMessage(GG_LOGGER, 1,
+    GameLog_LogMessage(&g_logger, 1,
                        self->scriptPlayer()->loaded()
                            ? GS_OPEN_SCRIPT_OK_NUM : GS_OPEN_SCRIPT_BAD_NUM,
                        path);

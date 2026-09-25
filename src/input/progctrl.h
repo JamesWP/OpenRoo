@@ -63,7 +63,7 @@ static_assert(offsetof(ProgableControl, action_tables)  == 0x144, "action_tables
 static_assert(sizeof(ProgableControl)                   == 0x194, "ProgableControl size");
 
 /* Original vtable at PTR_ScalarDtorProgControl @ 0x0045efb0 */
-static const void *const PROGCTRL_VTABLE = reinterpret_cast<const void*>(0x45efb0);
+extern const void *const PROGCTRL_VTABLE;   /* our own table; was the game's at 0x0045efb0 */
 
 /* Exports of progctrl.cpp other files call (COHESION_PLAN.md template 10). */
 extern "C" {
@@ -112,3 +112,8 @@ ProgCtrl_CaptureBinding(ProgableControl *self, unsigned int mode,
                         const char *name, int strength, int allow_axis,
                         int flags);
 }
+
+/* Constructor and destructor body, driven by staticinit.cpp for the one
+ * global instance (the original's static-init/atexit thunks). */
+extern "C" __declspec(dllexport) void *__attribute__((thiscall)) ProgCtrl_Setup(ProgableControl *s, int logger_or_0);   /* 0x004456f0 */
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) ProgCtrl_Teardown(ProgableControl *s);   /* 0x00445880 */

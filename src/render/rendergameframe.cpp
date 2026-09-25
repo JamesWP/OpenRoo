@@ -75,7 +75,7 @@
  * globals; pitch and yaw recovered by acos; a plain LookAt with +Y up. */
 static void scripted_camera(Game *g, Direct3D *d3d)
 {
-    CameraGlobals *cam = GG_CAMERA;
+    CameraGlobals *cam = &g_camera;
     for (int i = 0; i < 3; ++i) {
         cam->eye[i]    = g->field13cc94(i);
         cam->target[i] = g->cameraEye(i);
@@ -103,7 +103,7 @@ static void scripted_camera(Game *g, Direct3D *d3d)
  * unless it is exactly 1.  (Those are the listing's element stores.) */
 static void update_listener(Game *g)
 {
-    CameraGlobals *cam = GG_CAMERA;
+    CameraGlobals *cam = &g_camera;
     vec3d front = { cam->target[0] - cam->eye[0],
                     cam->target[1] - cam->eye[1],
                     cam->target[2] - cam->eye[2] };
@@ -151,7 +151,7 @@ static void update_listener(Game *g)
 
 static ThemeObjectTypeSlot *slot(ThemeObjectType t)
 {
-    return &GG_THEME_BLOCK->slots[t];
+    return &g_themeBlock.slots[t];
 }
 
 /* Every model pass goes through RenderSceneObjects with the placement block
@@ -160,7 +160,7 @@ static void rso(const void *pos, const void *rot, unsigned count, ThemeObjectTyp
                 double now, float animTime = 0.0f, unsigned animCode = 0,
                 unsigned dtMs = 0)
 {
-    Scene_RenderSceneObjects(Game::instance(), (SceneQuadVertex *)GG_LEVEL_PLACEMENTS,
+    Scene_RenderSceneObjects(Game::instance(), (SceneQuadVertex *)&g_levelPlacements,
                              (const Vec3 *)pos, (const Vec3 *)rot, count, slot(t),
                              g_pDirect3D, now, animTime, animCode, dtMs);
 }
@@ -226,10 +226,10 @@ static void set_rs(DWORD s, DWORD v)
 
 static void opaque_passes(Game *g, double now, double elapsed)
 {
-    LevelPlacements *pl = GG_LEVEL_PLACEMENTS;
+    LevelPlacements *pl = &g_levelPlacements;
     Direct3D *d3d = g_pDirect3D;
 
-    Direct3D_DrawMeshBatch(pl, GG_THEME_BLOCK, d3d);
+    Direct3D_DrawMeshBatch(pl, &g_themeBlock, d3d);
     rso_list(pl->switches,    THEME_OBJ_SWITCH,        now);
     rso_list(pl->conveyors,   THEME_OBJ_ICE,           now);
     rso_list(pl->glue,        THEME_OBJ_GLUE,          now);
@@ -238,10 +238,10 @@ static void opaque_passes(Game *g, double now, double elapsed)
     rso(pl->jumpPads.pos, pl->jumpPads.rot, pl->jumpPads.count, THEME_OBJ_JUMPPAD, now,
         (float)fmod(now * 0.002, 1.0), 0x14, 0);
     rso_list(pl->teleporters, THEME_OBJ_TELEPORTER,    now);
-    Direct3D_DrawQuadBatch((QuadVerts *)pl, GG_THEME_BLOCK, d3d);
+    Direct3D_DrawQuadBatch((QuadVerts *)pl, &g_themeBlock, d3d);
     rso_list(pl->ramps,       THEME_OBJ_STAIR,         now);
-    LevelPlacements_DrawLifts(g, pl, GG_THEME_BLOCK, d3d, now);
-    LevelPlacements_DrawSlides(g, pl, GG_THEME_BLOCK, d3d, now);
+    LevelPlacements_DrawLifts(g, pl, &g_themeBlock, d3d, now);
+    LevelPlacements_DrawSlides(g, pl, &g_themeBlock, d3d, now);
 
     /* The destructible blocks: whole, or (while the cell's +0x203 is set)
      * the fx model, starting the debris on the cell's +0x20f latch.  Only
@@ -275,7 +275,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
 
     /* The player: CameraFocus f[2..4] is its position, f[1] its yaw, f[0]
      * its animation time; the animation code is its anim byte. */
-    CameraFocus *focus = GG_CAMERA_FOCUS;
+    CameraFocus *focus = &g_cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
     rso(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
         g->player()->anim(), 0);
@@ -312,7 +312,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
     /* The foes, from the poses FramePose_Foes wrote. */
     for (unsigned char i = 0; i < g->foeCount(); ++i) {
         Foe *f = g->foeSlot(g->foeId(i));
-        FoePose *p = &GG_FOE_POSES[i];
+        FoePose *p = &g_foePoses[i];
         const bool dying = f->dyingStarted() != 0;
         ThemeObjectType ty;
         if (!foe_slot(p->kind, dying, &ty))
@@ -331,7 +331,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
 static void shadow(const void *pos, const void *rot, ThemeObjectType t, double now,
                    float phase, unsigned animKey)
 {
-    Shadows_DrawObjectShadows(Game::instance(), GG_LEVEL_PLACEMENTS,
+    Shadows_DrawObjectShadows(Game::instance(), &g_levelPlacements,
                               (const float *)pos, (const float *)rot, 1, slot(t),
                               g_pDirect3D, now, phase, animKey, 0);
 }
@@ -339,12 +339,12 @@ static void shadow(const void *pos, const void *rot, ThemeObjectType t, double n
 static void effects_and_shadows(Game *g, double now, double dt)
 {
     Direct3D *d3d = g_pDirect3D;
-    Scene_DrawSceneObjects(d3d->pDevice, GG_CAMERA->eye,
+    Scene_DrawSceneObjects(d3d->pDevice, g_camera.eye,
                            ((DWORD *)&dt)[0], ((DWORD *)&dt)[1], now);
     set_rs(D3DRENDERSTATE_STENCILENABLE, 0);
-    Direct3D_DrawBridgeSurfaces(g, GG_THEME_BLOCK, d3d, now);
+    Direct3D_DrawBridgeSurfaces(g, &g_themeBlock, d3d, now);
 
-    CameraFocus *focus = GG_CAMERA_FOCUS;
+    CameraFocus *focus = &g_cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
     Player *pl = g->player();
     if (pl->effectDActive() != 0 && pl->anim() != 10)
@@ -355,7 +355,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
     /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
     if (d3d->zbufFmt[4] != 0 && d3d->pSelectedMode->dwBitDepth > 16 &&
         g->videoShadows() != 0) {
-        d3d->pDevice->SetTexture(0, GG_TEX_SHADOW->pTexture2);
+        d3d->pDevice->SetTexture(0, g_texShadow.pTexture2);
         set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
         set_rs(D3DRENDERSTATE_SRCBLEND,         D3DBLEND_SRCALPHA);
         set_rs(D3DRENDERSTATE_DESTBLEND,        D3DBLEND_INVSRCALPHA);
@@ -369,7 +369,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
 
         for (unsigned char i = 0; i < g->foeCount(); ++i) {
             Foe *f = g->foeSlot(g->foeId(i));
-            FoePose *p = &GG_FOE_POSES[i];
+            FoePose *p = &g_foePoses[i];
             ThemeObjectType ty;
             if (f->dyingStarted() != 0 || !foe_slot(p->kind, false, &ty))
                 continue;
@@ -400,7 +400,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
 static void particles(const void *pos, const void *rot, unsigned count, ThemeObjectType t,
                       double now, double elapsed)
 {
-    Theme_DrawParticleObjects(Game::instance(), GG_LEVEL_PLACEMENTS,
+    Theme_DrawParticleObjects(Game::instance(), &g_levelPlacements,
                               (const float (*)[3])pos, (const float (*)[3])rot, count,
                               slot(t), g_pDirect3D, now, elapsed, 0);
 }
@@ -460,7 +460,7 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
     set_rs(D3DRENDERSTATE_DESTBLEND, dst);
     set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
 
-    CameraGlobals *cam = GG_CAMERA;
+    CameraGlobals *cam = &g_camera;
     for (unsigned char j = 0; j < rec->dwInstanceCount; ++j) {
         FxBurst *b = &rec->bursts[j];
         if (b->msLeft <= 0) {
@@ -496,8 +496,8 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
 
 static void translucent_passes(Game *g, double now, double elapsed, double dt)
 {
-    LevelPlacements *pl = GG_LEVEL_PLACEMENTS;
-    CameraFocus *focus = GG_CAMERA_FOCUS;
+    LevelPlacements *pl = &g_levelPlacements;
+    CameraFocus *focus = &g_cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
 
     if (g->videoParticles() != 0) {
@@ -515,7 +515,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
         for (unsigned char i = 0; i < g->foeCount(); ++i) {
             Foe *f = g->foeSlot(g->foeId(i));
-            FoePose *p = &GG_FOE_POSES[i];
+            FoePose *p = &g_foePoses[i];
             ThemeObjectType ty;
             if (foe_slot(p->kind, f->dyingStarted() != 0, &ty))
                 particles(pose_pos(p), pose_rot(p), 1, ty, now, elapsed);
@@ -553,7 +553,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
         for (unsigned char i = 0; i < g->foeCount(); ++i) {
             Foe *f = g->foeSlot(g->foeId(i));
             if (f->pickedUp() == 1 && crystal != NULL) {
-                const float *p = pose_pos(&GG_FOE_POSES[i]);
+                const float *p = pose_pos(&g_foePoses[i]);
                 spawn_burst(crystal, p[0], p[1], p[2]);
             }
         }
@@ -616,13 +616,13 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             gen_vset_direction(gen, o[0], o[1], o[2]);
 
             IDirect3DDevice3 *dev = g_pDirect3D->pDevice;
-            dev->SetTransform(D3DTRANSFORMSTATE_WORLD, GG_WORLD_IDENTITY);
+            dev->SetTransform(D3DTRANSFORMSTATE_WORLD, &g_worldIdentity);
             dev->SetTexture(0, speed->pSubObjects[0].pTexture->pTexture2);
             set_rs(D3DRENDERSTATE_SRCBLEND, D3DBLEND_ONE);
             set_rs(D3DRENDERSTATE_DESTBLEND, D3DBLEND_ONE);
             set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
             ps_vtick(ps, (float)(elapsed * 0.001));
-            CameraGlobals *cam = GG_CAMERA;
+            CameraGlobals *cam = &g_camera;
             ps_vset_vector(ps, cam->target[0] - cam->eye[0],
                            cam->target[1] - cam->eye[1],
                            cam->target[2] - cam->eye[2]);
@@ -631,7 +631,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
         }
     }
 
-    Scene_DrawParticleSystems(g_pDirect3D->pDevice, GG_CAMERA->eye, dt, now);
+    Scene_DrawParticleSystems(g_pDirect3D->pDevice, g_camera.eye, dt, now);
 
     Player *player = g->player();
     if (player->effectDActive() != 0 && player->anim() != 10)
@@ -671,7 +671,7 @@ static void blend_on(void)
 
 static IDirect3DTexture2 *image(ThemeImageSlot s)
 {
-    SceneTexture *t = GG_THEME_BLOCK->images[s];
+    SceneTexture *t = g_themeBlock.images[s];
     return t ? t->pTexture2 : NULL;
 }
 
@@ -699,7 +699,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     Player *pl = g->player();
 
     /* The two corner panels, mirrored halves of the HUD image. */
-    if (GG_THEME_BLOCK->images[THEME_IMG_HUD] != NULL) {
+    if (g_themeBlock.images[THEME_IMG_HUD] != NULL) {
         dev->SetTexture(0, image(THEME_IMG_HUD));
         blend_on();
         const float a  = hudH + hudH;
@@ -724,7 +724,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
 
     /* The vitality needle: a quad about the origin, turned by
      * 0.9519978 - vitality% * 0.019039957 and moved to (541/640 W, 92/480 H). */
-    if (GG_THEME_BLOCK->images[THEME_IMG_POINTER] != NULL) {
+    if (g_themeBlock.images[THEME_IMG_POINTER] != NULL) {
         float p[4][3] = {
             { W * 0.1f,  H * -0.13333334f, 0.0f },
             { W * 0.1f,  H * 0.13333334f,  0.0f },
@@ -766,9 +766,9 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
 
     /* The radar, centred at (0.9 W, 0.8667 H). */
     const float cx = W * 0.9f, cy = H * 0.8666667f;
-    CameraFocus *focus = GG_CAMERA_FOCUS;
+    CameraFocus *focus = &g_cameraFocus;
     Vec3 me = { focus->f[2], focus->f[3], focus->f[4] };
-    if (GG_THEME_BLOCK->images[THEME_IMG_RADAR] != NULL) {
+    if (g_themeBlock.images[THEME_IMG_RADAR] != NULL) {
         const float r = hudH * 0.5f;
         me.y = 0.0f;
         D3DTLVERTEX q[4] = {
@@ -787,7 +787,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     /* A blip for every foe within 13 cells, turned into the camera's frame
      * (RotY(-yaw)) and scaled by 4; drawn untextured. */
     for (unsigned char i = 0; i < g->foeCount(); ++i) {
-        const float *fp = pose_pos(&GG_FOE_POSES[i]);
+        const float *fp = pose_pos(&g_foePoses[i]);
         Vec3 a = { fp[0], 0.0f, fp[2] }, d;
         Math_Vec3Sub(&d, &a, &me);
         if (!(Math_Vec3Length(&d) < 13.0))
@@ -820,44 +820,44 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     char *buf = s_text;
     sprintf(buf, "%02.0f:%02.0f;%d", (double)mins, (double)secs, tenths);
     const DWORD tc = ms > 10000u ? 0xffffffff : 0xffff0000;
-    hud_text(GG_FONT_NUMBERS, 0, W * 0.5f, 0.0f, W * 0.05f, W * 0.06666667f, 1.0f,
+    hud_text(&g_fontNumbers, 0, W * 0.5f, 0.0f, W * 0.05f, W * 0.06666667f, 1.0f,
              buf, '0', tc, tc);
 
-    const ThemeTextColorPair &hc = GG_THEME_BLOCK->textColors[THEME_COLOR_HUD];
+    const ThemeTextColorPair &hc = g_themeBlock.textColors[THEME_COLOR_HUD];
     const float cw = W * 0.025f, ch = H * 0.033333335f;
     sprintf(buf, "x%d", pl->lives());
-    hud_text(GG_FONT_MAIN, -1, wx(w, 490), W * 0.009375f, cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
+    hud_text(&g_fontMain, -1, wx(w, 490), W * 0.009375f, cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
     sprintf(buf, "%d/%d", pl->gemsCollected(), map->gemsRequired());
-    hud_text(GG_FONT_MAIN, -1, wx(w, 10), wx(w, 32), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
+    hud_text(&g_fontMain, -1, wx(w, 10), wx(w, 32), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
     sprintf(buf, "x%d", pl->glides());
-    hud_text(GG_FONT_MAIN, -1, wx(w, 121), wx(w, 38), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
+    hud_text(&g_fontMain, -1, wx(w, 121), wx(w, 38), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
     sprintf(buf, "%d", g->levelIndex() + 1);
-    hud_text(GG_FONT_MAIN, 1, wx(w, 630), wx(w, 23), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
+    hud_text(&g_fontMain, 1, wx(w, 630), wx(w, 23), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
     sprintf(buf, "%dx", pl->fieldE8());
-    hud_text(GG_FONT_MAIN, 0, wx(w, 32), wx(w, 62), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
+    hud_text(&g_fontMain, 0, wx(w, 32), wx(w, 62), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
 }
 
 /* The frame counter: frames over each second of timeGetTime, shown while
  * F1 is held.  Its three globals stay at their game addresses. */
-#define GG_FPS         (*(float *)0x004e04b8)
-#define GG_FPS_MARK    (*(float *)0x004e04bc)
-#define GG_FPS_FRAMES  (*(DWORD *)0x004e04c0)
+static float g_fps;   /* was 0x004e04b8 */
+static float g_fpsMark;   /* was 0x004e04bc */
+static DWORD g_fpsFrames;   /* was 0x004e04c0 */
 
 static void draw_fps(float W, float H)
 {
     const float t = (float)((double)timeGetTime() * 0.001f);
-    GG_FPS_FRAMES++;
-    const double span = (double)t - GG_FPS_MARK;
+    g_fpsFrames++;
+    const double span = (double)t - g_fpsMark;
     if (span > 1.0) {
-        const DWORD n = GG_FPS_FRAMES;
-        GG_FPS_FRAMES = 0;
-        GG_FPS = (float)((double)n / span);
-        GG_FPS_MARK = t;
+        const DWORD n = g_fpsFrames;
+        g_fpsFrames = 0;
+        g_fps = (float)((double)n / span);
+        g_fpsMark = t;
     }
     if (hooks_GetAsyncKeyState(VK_F1) & 0x8000) {
         char *buf = s_text;
-        sprintf(buf, "%.1f fps", (double)GG_FPS);
-        hud_text(GG_FONT_MAIN, 0, W * 0.5f, H * 0.96041667f, W * 0.025f, H * 0.033333335f,
+        sprintf(buf, "%.1f fps", (double)g_fps);
+        hud_text(&g_fontMain, 0, W * 0.5f, H * 0.96041667f, W * 0.025f, H * 0.033333335f,
                  0.75f, buf, 0, 0xffffffff, 0xffffffff);
     }
 }
@@ -865,25 +865,25 @@ static void draw_fps(float W, float H)
 /* The captions and the timed-effect icons down the left edge. */
 static void draw_messages(Game *g, float W, float H, float pad)
 {
-    const ThemeTextColorPair &hc = GG_THEME_BLOCK->textColors[THEME_COLOR_HUD];
+    const ThemeTextColorPair &hc = g_themeBlock.textColors[THEME_COLOR_HUD];
     const float cw = W * 0.025f, ch = H * 0.033333335f;
     ScriptPlayer *sp = g->scriptPlayer();
     Player *pl = g->player();
 
     if (sp->running() != 0) {
-        hud_text(GG_FONT_MAIN, 0, W * 0.5f, W * 0.0015625f * 3.0f, cw, ch, 0.75f,
+        hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 3.0f, cw, ch, 0.75f,
                  g->map()->title(), 0, hc.color1, hc.color2);
         if (sp->caption()[0] != '\0')
-            Text_DrawPanelText(GG_FONT_MAIN, pad, H - pad, cw, ch, 0.75f, H * 0.03750938f,
+            Text_DrawPanelText(&g_fontMain, pad, H - pad, cw, ch, 0.75f, H * 0.03750938f,
                                sp->caption(), g_pDirect3D, hc.color1, hc.color2,
-                               GG_THEME_BLOCK->images[THEME_IMG_MENU],
-                               GG_THEME_BLOCK->images[THEME_IMG_EDGE]);
+                               g_themeBlock.images[THEME_IMG_MENU],
+                               g_themeBlock.images[THEME_IMG_EDGE]);
     }
     if ((g->state() == 4 && sp->running() == 0) || (g->state() == 1 && pl->moveState() != 0))
-        hud_text(GG_FONT_MAIN, 0, W * 0.5f, W * 0.0015625f * 232.0f, cw, ch, 0.75f,
+        hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 232.0f, cw, ch, 0.75f,
                  "...press Enter", 0, hc.color1, hc.color2);
     if (g->state() == 4 && g->map()->bonus() != 0)
-        hud_text(GG_FONT_MAIN, 0, W * 0.5f, W * 0.0015625f * 200.0f, cw, ch, 0.75f,
+        hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 200.0f, cw, ch, 0.75f,
                  "BONUSLEVEL", 0, hc.color1, hc.color2);
 
     /* One icon per active effect, bottom up, with its seconds left.  An
@@ -909,7 +909,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
         case 13: img = THEME_IMG_PROTECTION;     start = pl->effectDStart(); break;
         default: icon = false; img = THEME_IMG_HUD; break;
         }
-        if (icon && GG_THEME_BLOCK->images[img] != NULL) {
+        if (icon && g_themeBlock.images[img] != NULL) {
             g_pDirect3D->pDevice->SetTexture(0, image(img));
             sprintf(buf, "%.1f", span - (*g->clock() - start) * 0.001);
         }
@@ -921,7 +921,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
         };
         blend_on();
         draw_strip(q);
-        hud_text(GG_FONT_MAIN, -1, xText, y - textLift, cw, ch, 0.75f, buf, 0,
+        hud_text(&g_fontMain, -1, xText, y - textLift, cw, ch, 0.75f, buf, 0,
                  hc.color1, hc.color2);
         y -= rowStep;
     }
@@ -939,7 +939,7 @@ static void draw_logo(Game *g, float H, float hudH, float pad)
         tl(pad, yb, 0xffffffff, 0.0f, 1.0f),
     };
     blend_on();
-    g_pDirect3D->pDevice->SetTexture(0, GG_TEX_KAROO128->pTexture2);
+    g_pDirect3D->pDevice->SetTexture(0, g_texKaroo128.pTexture2);
     if (g->state() == 0 || g->state() == 5)
         draw_strip(q);
     set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
@@ -961,17 +961,17 @@ Render_RenderGameFrame(void)
     const double prevMs = clock_previous_seconds() * 1000.0;
     const double now = hooks_ClockSeconds() * 1000.0;
     const double elapsed = now - prevMs;
-    double dt = now - *GG_LAST_TICK_MS;
+    double dt = now - g_lastTickMs;
 
     if (dt > 0.0) {
-        *GG_LAST_TICK_MS = now;
+        g_lastTickMs = now;
         Sim_GameTick(g, dt, now);
         if (g->field_173584() != 0)
             return;
-        FramePose_Player(g, now, dt, GG_CAMERA_FOCUS);
-        FramePose_Foes(g, now, dt, GG_FOE_POSES);
+        FramePose_Player(g, now, dt, &g_cameraFocus);
+        FramePose_Foes(g, now, dt, g_foePoses);
         if (g->scriptPlayer()->splineActive() == 0)
-            Camera_UpdateViewTransform(GG_CAMERA, g_pDirect3D, g, *GG_CAMERA_FOCUS, dt);
+            Camera_UpdateViewTransform(&g_camera, g_pDirect3D, g, g_cameraFocus, dt);
         else
             scripted_camera(g, g_pDirect3D);
         if (g->soundCreated() != 0)
@@ -994,9 +994,9 @@ Render_RenderGameFrame(void)
     set_rs(D3DRENDERSTATE_FOGENABLE,        0);
     set_rs(D3DRENDERSTATE_SPECULARENABLE,   0);
     set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
-    CameraGlobals *cam = GG_CAMERA;
-    Sky_DrawSkyBackground(&GG_THEME_BLOCK->sky, d3d->pDevice, cam->eye[0], cam->eye[1], cam->eye[2]);
-    if (GG_THEME_BLOCK->bFogEnabled)
+    CameraGlobals *cam = &g_camera;
+    Sky_DrawSkyBackground(&g_themeBlock.sky, d3d->pDevice, cam->eye[0], cam->eye[1], cam->eye[2]);
+    if (g_themeBlock.bFogEnabled)
         set_rs(D3DRENDERSTATE_FOGENABLE, 1);
     set_rs(D3DRENDERSTATE_STENCILENABLE, 1);
     set_rs(D3DRENDERSTATE_STENCILFUNC,   D3DCMP_ALWAYS);
@@ -1030,17 +1030,17 @@ Render_RenderGameFrame(void)
 
     const DWORD ms = (DWORD)(long long)now;
     if (st == 0 || st == 5 || st == 3)
-        Menu_DispatchGameState(g, GG_THEME_BLOCK, d3d, GG_FONT_MAIN, ms);
+        Menu_DispatchGameState(g, &g_themeBlock, d3d, &g_fontMain, ms);
     if (g->state() == 2)
-        Score_DrawGameOverScore(g, GG_THEME_BLOCK, d3d, GG_FONT_MAIN, ms);
+        Score_DrawGameOverScore(g, &g_themeBlock, d3d, &g_fontMain, ms);
     if (g->menu()->node() == 3 || g->state() == 6)
-        Score_DrawHighScoreTable(g, GG_THEME_BLOCK, d3d, GG_FONT_MAIN, ms);
+        Score_DrawHighScoreTable(g, &g_themeBlock, d3d, &g_fontMain, ms);
 
     set_rs(D3DRENDERSTATE_ZENABLE, 1);
     d3d->pDevice->EndScene();
     if (g->state() == 7) {
         if (g->field_0c() != 0)
-            Direct3D_FlipPrimaryFrame(GG_DEMO_IMAGE);
+            Direct3D_FlipPrimaryFrame(&g_demoImage);
         return;
     }
     d3d->pPrimary->Flip(NULL, DDFLIP_WAIT);

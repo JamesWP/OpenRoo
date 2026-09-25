@@ -84,7 +84,7 @@ static void loaded_tail(Game *game)
     game->stateRef() = 4;
     game->setCameraDistance(7.0f);
     if (game->musicOn() != 0)
-        CDM_StopTrack(GG_CDAUDIO);
+        CDM_StopTrack(&g_cdAudio);
     game->scriptPlayer()->setRunning(1);
     game->setCameraMode(1);
     game->menu()->rewind();
@@ -96,21 +96,21 @@ static void option_edit(Game *game, unsigned char key)
     case 0x22: {                               /* sfx % -> joystick deadzone */
         if (game->debounceRef() != 0x27 && KEY(0x27) != 0 && game->joyDeadzone() < 0x5a) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() + 10));
-            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 0, game->joyDeadzone() * 100);
-            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 4, game->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(&g_progCtrl, 0, game->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(&g_progCtrl, 4, game->joyDeadzone() * 100);
             game->debounceRef() = 0x27;
         }
         if (game->debounceRef() != 0x25 && KEY(0x25) != 0 && game->joyDeadzone() > 10) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() - 10));
-            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 0, game->joyDeadzone() * 100);
-            ProgCtrl_SetJoyDeadzone(GG_PROGCTRL, 4, game->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(&g_progCtrl, 0, game->joyDeadzone() * 100);
+            ProgCtrl_SetJoyDeadzone(&g_progCtrl, 4, game->joyDeadzone() * 100);
             game->debounceRef() = 0x25;
         }
         break;
     }
     case 0x3e: {                               /* CD volume */
         int changed = 0;
-        CDM_GetMixerDetails(GG_CDAUDIO);          /* result discarded, as shipped */
+        CDM_GetMixerDetails(&g_cdAudio);          /* result discarded, as shipped */
         if (game->debounceRef() != 0x27 && KEY(0x27) != 0 && game->cdVolume() < 100) {
             game->debounceRef() = 0x27;
             game->setCdVolume((unsigned char)(game->cdVolume() + 10));
@@ -127,7 +127,7 @@ static void option_edit(Game *game, unsigned char key)
             game->setCdMixerVolume(v);
             if (v > 65536u)
                 game->setCdMixerVolume(65536u);
-            CDM_SetMixerVolume(GG_CDAUDIO, game->cdMixerVolume());
+            CDM_SetMixerVolume(&g_cdAudio, game->cdMixerVolume());
         }
         break;
     }
@@ -283,7 +283,7 @@ Sim_HandleKeypress(Game *self)
         self->menu()->pop();
         self->stateRef() = 7;
         if (self->musicOn() != 0)
-            CDM_StopTrack(GG_CDAUDIO);
+            CDM_StopTrack(&g_cdAudio);
         self->debounceRef() = 0x0d;
         if (self->field_0c() == 0)
             PostQuitMessage(1);
@@ -319,7 +319,7 @@ Sim_HandleKeypress(Game *self)
     case 0x3d:
         if (self->musicOn() != 0) {
             self->setMusicOn(0);
-            CDM_StopTrack(GG_CDAUDIO);
+            CDM_StopTrack(&g_cdAudio);
             self->menu()->pop();
             break;
         }
@@ -336,13 +336,13 @@ Sim_HandleKeypress(Game *self)
         self->stateRef() = 4;
         self->scriptPlayer()->setRunning(1);
         if (self->musicOn() != 0)
-            CDM_StopTrack(GG_CDAUDIO);
+            CDM_StopTrack(&g_cdAudio);
         self->debounceRef() = 0x0d;
         self->menu()->setLockStart(self->lastTickTime());
         self->setCameraMode(1);
         self->menu()->setLock(1);
         self->menu()->pop();
-        GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_LEVEL_DONE_CONTINUE);
+        GameLog_LogMessage(&g_logger, 1, GS_GAME_LEVEL_DONE_CONTINUE);
         if (self->fixedSounds()->levelCompleted != NULL)
             CStatic_HaltPlayback(self->fixedSounds()->levelCompleted);
         break;
@@ -411,8 +411,8 @@ Sim_HandleKeypress(Game *self)
 
     /* key-rebind capture */
     if (self->rebindActive() != 0 && KEY(0x0d) == 0) {
-        ProgCtrl_ClearBindings(GG_PROGCTRL, 1, self->rebindAction());
-        if (ProgCtrl_CaptureBinding(GG_PROGCTRL, 1, self->rebindAction(),
+        ProgCtrl_ClearBindings(&g_progCtrl, 1, self->rebindAction());
+        if (ProgCtrl_CaptureBinding(&g_progCtrl, 1, self->rebindAction(),
                                     100, 10, 0) != 0)
             self->setRebindActive(0);
     }

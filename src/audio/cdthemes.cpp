@@ -113,12 +113,12 @@ unsigned int CdThemes::play(const char *caption)
 
     if (count_ == 0)
         return 0;
-    CDM_StopTrack(GG_CDAUDIO);
+    CDM_StopTrack(&g_cdAudio);
     idx = findThemeIndex(caption);
     currentTrack_ = (unsigned char)idx;
-    GameLog_LogMessage(GG_LOGGER, 2, GS_CD_TRY_TRACK, idx & 0xff, caption);
+    GameLog_LogMessage(&g_logger, 2, GS_CD_TRY_TRACK, idx & 0xff, caption);
     if (currentTrack_ != 0)
-        CDM_PlayTrack(GG_CDAUDIO, currentTrack_, true);
+        CDM_PlayTrack(&g_cdAudio, currentTrack_, true);
     return 1;
 }
 
@@ -131,9 +131,9 @@ Sim_PlayCDStuf_2(CdThemes *self)
 unsigned int CdThemes::replay()
 {
     if (count_ != 0) {
-        CDM_StopTrack(GG_CDAUDIO);
+        CDM_StopTrack(&g_cdAudio);
         if (currentTrack_ != 0)
-            CDM_PlayTrack(GG_CDAUDIO, currentTrack_, true);
+            CDM_PlayTrack(&g_cdAudio, currentTrack_, true);
     }
     return 0;
 }
@@ -169,12 +169,12 @@ int CdThemes::validateTrackLengths()
 {
     char *len;
 
-    trackCount_ = CDM_GetTrackCount(GG_CDAUDIO);
+    trackCount_ = CDM_GetTrackCount(&g_cdAudio);
     if (trackCount_ != 9)
         return 0;
-    CDM_GetTrackLength(GG_CDAUDIO, &len, 1);
+    CDM_GetTrackLength(&g_cdAudio, &len, 1);
     for (int t = 2; t <= 9; ++t) {
-        CDM_GetTrackLength(GG_CDAUDIO, &len, t);
+        CDM_GetTrackLength(&g_cdAudio, &len, t);
         if (strcmp(len, k_trackLength[t]) != 0)
             return 0;
     }
@@ -258,7 +258,7 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
     char line[256];
     char delims[8];
 
-    sprintf(path, GS_CD_TRACKFILE_PATH, GG_GAME_DIR, name);
+    sprintf(path, GS_CD_TRACKFILE_PATH, g_gameDir, name);
     memcpy(delims, GS_CD_TRACKFILE_DELIMS, 6);
     unsigned char n = 0;
     FILE *fp = fopen(path, GS_CD_TRACKFILE_MODE);
@@ -266,11 +266,11 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
     line[0] = '\0';   /* the original strcpy's the empty .data string 0x46c290 */
 
     if (fp == NULL) {
-        GameLog_LogMessage(GG_LOGGER, 3, GS_CD_TRACKFILE_MISSING, path);
+        GameLog_LogMessage(&g_logger, 3, GS_CD_TRACKFILE_MISSING, path);
         memset(names_, 0, sizeof(names_));
         return 0;
     }
-    GameLog_LogMessage(GG_LOGGER, 2, GS_CD_TRACKFILE_FOUND, path);
+    GameLog_LogMessage(&g_logger, 2, GS_CD_TRACKFILE_FOUND, path);
     while (!feof(fp)) {
         fgets(line, 0x100, fp);
         if (!feof(fp))
@@ -288,7 +288,7 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
             currentTrack_ = track;       /* trackOf_[255] in the original */
         char *dst = names_[n];
         strcpy(dst, tok);
-        GameLog_LogMessage(GG_LOGGER, 2, GS_CD_THEME_TRACK, dst, (unsigned)track);
+        GameLog_LogMessage(&g_logger, 2, GS_CD_THEME_TRACK, dst, (unsigned)track);
         n++;
     }
     count_ = n;
@@ -306,13 +306,19 @@ Sim_ListTrackLengths(CdThemes *self)
 int CdThemes::listTrackLengths()
 {
     char *len = NULL;   /* always written by CDM_GetTrackLength before use */
-    trackCount_ = CDM_GetTrackCount(GG_CDAUDIO);
-    GameLog_LogMessage(GG_LOGGER, 3, GS_CD_TRACK_COUNT, trackCount_);
+    trackCount_ = CDM_GetTrackCount(&g_cdAudio);
+    GameLog_LogMessage(&g_logger, 3, GS_CD_TRACK_COUNT, trackCount_);
     for (unsigned t = 1; (unsigned)trackCount_ != 0; t++) {
-        CDM_GetTrackLength(GG_CDAUDIO, &len, t);
-        GameLog_LogMessage(GG_LOGGER, 3, GS_CD_TRACK_LENGTH, t, len);
+        CDM_GetTrackLength(&g_cdAudio, &len, t);
+        GameLog_LogMessage(&g_logger, 3, GS_CD_TRACK_LENGTH, t, len);
         if (!(t < (unsigned)trackCount_))
             break;
     }
     return 1;
 }
+
+/* CDTHEMES_VTABLE: our own 1-slot table (the game's was at 0x0045d2c4, same slots). */
+static void *const cdthemes_vtable_slots[1] = {
+    (void *)&Sim_CdThemesScalarDeletingDtor,
+};
+extern const void *const CDTHEMES_VTABLE = cdthemes_vtable_slots;

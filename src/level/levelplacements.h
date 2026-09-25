@@ -96,7 +96,7 @@ KAROO_LAYOUT_CHECKS(LevelPlacements)
     KAROO_LAYOUT_SIZE(0x12c);
 }
 
-static LevelPlacements *const GG_LEVEL_PLACEMENTS = (LevelPlacements *)0x004e0070;
+extern LevelPlacements g_levelPlacements;   /* was 0x004e0070 */
 
 class Game;
 class ThemeAssetBlock;

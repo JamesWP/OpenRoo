@@ -148,6 +148,7 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 #include "gamelog.h"
+TextureManager g_textureManager;   /* was 0x004dc628 */
 
 /* ─── Originals left live in the binary ──────────────────────────────────── */
 
@@ -591,12 +592,9 @@ Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
 
 static void *const g_SceneTextureVtable[1] = { (void *)&Texture_SceneScalarDtor };
 
-/* Same question as texture.cpp's, answered the same way: ours normally, the
- * game's UD2-backed 0x0045d71c under KAROO_IMAGE_FX=gamevtbl. */
 static void *scene_vtable(void)
 {
-    return Texture_ImageFxGameVtable() ? (void *)0x0045d71c
-                                       : (void *)g_SceneTextureVtable;
+    return (void *)g_SceneTextureVtable;
 }
 
 __declspec(dllexport) SceneTexture *__attribute__((thiscall))

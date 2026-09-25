@@ -138,8 +138,7 @@ static void *const g_CStreamVtable[1] = { (void *)&CStream_ScalarDeletingDtor };
 
 __declspec(dllexport) void *CStream_Vtable(void)
 {
-    return CStatic_SoundFxGameVtable() ? (void *)0x0045efa4
-                                       : (void *)g_CStreamVtable;
+    return (void *)g_CStreamVtable;
 }
 
 __declspec(dllexport) void * __attribute__((thiscall))

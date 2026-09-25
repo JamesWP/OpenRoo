@@ -41,3 +41,8 @@ GameLog_Initialize(GameLogger *self, const char *filename, const char *mode);
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
                           int line, const char *fmt, ...);
+
+/* Constructor and destructor body, driven by staticinit.cpp for the one
+ * global instance (the original's static-init/atexit thunks). */
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) GameLog_Construct(GameLogger *self);   /* 0x00441810 */
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) GameLog_CloseAndRebindVtable(GameLogger *self);   /* 0x00441a00 */

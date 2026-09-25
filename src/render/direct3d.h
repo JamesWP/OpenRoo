@@ -65,7 +65,7 @@ struct LoadedImage {
 static_assert(offsetof(LoadedImage, pTextureSurface) == 0x04, "LoadedImage layout mismatch");
 static_assert(sizeof(LoadedImage) == 0x18, "LoadedImage base size mismatch");
 
-#define g_pDirect3D (*(Direct3D **)0x004e04ac)
+extern Direct3D* g_pDirect3D;   /* was 0x004e04ac */
 
 /* FlipPrimaryFrame 0x425fc0 -- present `img` full-screen (direct3d.cpp). */
 extern "C" __declspec(dllexport) void __cdecl

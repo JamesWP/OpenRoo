@@ -994,7 +994,7 @@ static void gauss_fill(float *out, int n, float mu, float sigma, float step)
 
 /* The one-shot "seed from the clock" flag 0x448e80 consumes (game .data,
  * initially 1).  Shared with nothing else we replace. */
-#define UNIFORM_SEED_PENDING (*(volatile BYTE *)0x00469020)
+static volatile BYTE g_uniformSeedPending = 1;   /* was 0x00469020 */
 
 /* 0x448e80 — n samples uniform on [a, b] (either order), centred on the
  * midpoint.  The first call ever reseeds from the game clock; every call then
@@ -1005,9 +1005,9 @@ static void uniform_fill(float *out, int n, float a, float b)
     float span = (float)((double)b - a);
     if (!(span >= 0.0f))
         span = (float)((double)span * -1.0f);
-    if (UNIFORM_SEED_PENDING) {
+    if (g_uniformSeedPending) {
         CRT_RAND_SEED = (unsigned)hooks_GameTime(NULL);
-        UNIFORM_SEED_PENDING = 0;
+        g_uniformSeedPending = 0;
     }
     CRT_RAND_SEED = crt_rand();
     for (; n > 0; n--) {

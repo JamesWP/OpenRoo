@@ -64,7 +64,7 @@ static bool gate_open(DWORD gate, const Player *p, const Tile *cell)
 
 static void camera_view_dir(float d[3])
 {
-    const CameraGlobals *c = GG_CAMERA;
+    const CameraGlobals *c = &g_camera;
     for (int i = 0; i < 3; i++)
         d[i] = c->target[i] - c->eye[i];
 }

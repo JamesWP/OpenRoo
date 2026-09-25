@@ -53,6 +53,7 @@
 #include "liftobject.h"
 #include "slideobject.h"
 #include <math.h>
+LevelPlacements g_levelPlacements;   /* was 0x004e0070 */
 
 /* ─── Grid access ───────────────────────────────────────────────────────── */
 
@@ -418,8 +419,8 @@ LevelPlacements_StaticInit(void)
 {
     for (int i = 0; i < 4; i++) {
         for (int k = 0; k < 8; k++)
-            GG_LEVEL_PLACEMENTS->tileQuad[i].d[k] = 0;
-        GG_LEVEL_PLACEMENTS->tileQuad[i].d[3] = 0xffffffff;
+            g_levelPlacements.tileQuad[i].d[k] = 0;
+        g_levelPlacements.tileQuad[i].d[3] = 0xffffffff;
     }
 }
 

@@ -15,8 +15,8 @@ static_assert(offsetof(SceneTexture, pTexture2) == 0x18, "SceneTexture layout");
 
 /* textures\shadow.tga and textures\karoo128.tga, loaded once at startup
  * (renderstate.cpp). */
-static SceneTexture *const GG_TEX_SHADOW   = (SceneTexture *)0x004e02c8;
-static SceneTexture *const GG_TEX_KAROO128 = (SceneTexture *)0x004e0408;
+extern SceneTexture g_texShadow;   /* was 0x004e02c8 */
+extern SceneTexture g_texKaroo128;   /* was 0x004e0408 */
 static_assert(sizeof(SceneTexture) == 0x1c, "SceneTexture stride mismatch");
 
 /* ─── texture.cpp's exports other files call (COHESION_PLAN template 10) ───
@@ -46,11 +46,8 @@ extern "C" __declspec(dllexport) IDirectDrawPalette *__stdcall
 Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp);
 
 /* The vtable pointer LoadedImage's ctor and dtor body install, and the same
- * question for SceneTexture: normally our own one-slot table in this DLL,
- * or the game's UD2-backed address under KAROO_IMAGE_FX=gamevtbl.  Shared so
- * the derived class in scenetexture.cpp answers it the same way. */
+ * question for SceneTexture: our own one-slot table in this DLL. */
 extern "C" __declspec(dllexport) void *Texture_ImageVtable(void);
-extern "C" __declspec(dllexport) int  Texture_ImageFxGameVtable(void);
 
 /* KAROO_IMAGE_DIAG's first-call announcement, shared so the census covers all
  * six ctor/dtor entry points through one implementation. */

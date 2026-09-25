@@ -106,7 +106,7 @@ KAROO_LAYOUT_CHECKS(Scene)
     KAROO_LAYOUT_SIZE(0x40);
 }
 
-static Scene *const GG_SCENE = (Scene *)0x0046c458;
+extern Scene g_scene;   /* was 0x0046c458 */
 
 /* The exports patch.py binds. */
 extern "C" __declspec(dllexport) Scene *__attribute__((thiscall))

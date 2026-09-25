@@ -12,9 +12,9 @@
 extern "C" __declspec(dllexport) void __cdecl
 Input_TrySaveSettings(void)
 {
-    GameLog_LogMessage(GG_LOGGER, 1, GS_CONTROL_SAVE_SETTINGS);
-    ProgCtrl_WriteBindings(GG_PROGCTRL);
-    ProgCtrl_Shutdown(GG_PROGCTRL);
+    GameLog_LogMessage(&g_logger, 1, GS_CONTROL_SAVE_SETTINGS);
+    ProgCtrl_WriteBindings(&g_progCtrl);
+    ProgCtrl_Shutdown(&g_progCtrl);
 }
 
 /* The joystick's ranges and null zones are set only if its setup succeeds;
@@ -24,7 +24,7 @@ Input_TrySaveSettings(void)
 extern "C" __declspec(dllexport) int __cdecl
 Input_DirectInputSetup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
 {
-    ProgableControl *pc = GG_PROGCTRL;
+    ProgableControl *pc = &g_progCtrl;
     if (!ProgCtrl_InitDInput(pc, hInstance) || !ProgCtrl_SetupKbd(pc, hwnd) ||
         !ProgCtrl_SetupMouse(pc, hwnd)) {
         MessageBoxA(NULL, GS_CONTROL_NO_INPUT, GS_CONTROL_ERROR_CAPTION, MB_ICONHAND);

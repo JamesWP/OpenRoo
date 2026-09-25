@@ -52,8 +52,8 @@ struct CFaktMesh {
 
 /* The two character meshes, loaded once at startup (renderstate.cpp):
  * models\John.mdl and models\Enemy.mdl. */
-static CFaktMesh *const GG_MESH_PLAYER = (CFaktMesh *)0x0046c7b0;
-static CFaktMesh *const GG_MESH_ENEMY  = (CFaktMesh *)0x004e0310;
+extern CFaktMesh g_meshPlayer;   /* was 0x0046c7b0 */
+extern CFaktMesh g_meshEnemy;   /* was 0x004e0310 */
 #pragma pack(pop)
 
 static_assert(sizeof(CFaktMesh) == 0x7a, "CFaktMesh size: ModelManager operator new(0x7a)");

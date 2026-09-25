@@ -32,6 +32,7 @@
 #include "direct3d.h"
 #include "log.h"
 #include <stdlib.h>
+Direct3D* g_pDirect3D;   /* was 0x004e04ac */
 
 #define FLIP_LOG_FIRST 8
 

@@ -90,7 +90,7 @@
 #define CTX_OFF_POS_Y           0x8c
 #define CTX_OFF_POS_Z           0x90
 
-#define g_flMeshBatchAngle (*(const double *)0x0045d348)
+#define g_flMeshBatchAngle 0x1.921fb6p+0   /* the image's double at 0x0045d348: (double)(float)(pi/2) */
 
 
 static bool fx_norot(void)
@@ -158,7 +158,7 @@ Direct3D_DrawMeshBatch(void *ctx, void *game, Direct3D *d3d)
             CFaktMesh *mesh = *(CFaktMesh **)(obj + MOBJ_OFF_MESH);
             if (mesh == NULL) {
                 d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD,
-                                           GG_WORLD_IDENTITY);
+                                           &g_worldIdentity);
                 d3d->pDevice->DrawPrimitive(
                     D3DPT_TRIANGLELIST, MESH_QUAD_FVF,
                     *(void **)(c + CTX_OFF_QUAD_VERTS),

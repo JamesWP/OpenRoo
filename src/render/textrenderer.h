@@ -57,6 +57,7 @@ struct Direct3D;
 
 class __attribute__((packed)) TextRenderer {
 public:
+    SceneTexture* atlas() { return &atlas_; }
     static const int ORIGIN = 0;   /* our first byte is the game's +0x00 */
 
     /* 0x00413690 RenderText -- left-aligned: (x, y) is the first cell's
@@ -128,11 +129,9 @@ private:
     unsigned int  rows_;        /* +0x08  atlas rows                          */
     SceneTexture  atlas_;       /* +0x0c  .pTexture2 lands on +0x24           */
 
-    TextRenderer() = delete;    /* game-owned; only ever reached by pointer */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-    SceneTexture* atlas() { return &atlas_; }
 #pragma GCC diagnostic pop
 
 };
@@ -209,5 +208,5 @@ Text_DrawPanelText(TextRenderer *self, float x, float y, float cellW,
                    SceneTexture *panelTex, SceneTexture *frameTex);
 
 /* The two fonts: fonts\font1.fon and fonts\numbers.fon. */
-static TextRenderer *const GG_FONT_MAIN    = (TextRenderer *)0x004e0480;
-static TextRenderer *const GG_FONT_NUMBERS = (TextRenderer *)0x004e02e8;
+extern TextRenderer g_fontMain;   /* was 0x004e0480 */
+extern TextRenderer g_fontNumbers;   /* was 0x004e02e8 */

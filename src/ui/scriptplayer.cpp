@@ -135,7 +135,7 @@ JJScript_ReleaseScriptStreamBuffers(ScriptPlayer *self)
 
 /* A global scratch string the game copies into the script object before the
  * parse.  A DATA read, not a call. */
-#define GLOBAL_SCRATCH_STR ((const char *)0x0046c290)
+#define GLOBAL_SCRATCH_STR ""   /* was the empty .data string 0x0046c290 */
 
 /* The record table, count, loaded flag and scratch string are ScriptPlayer
  * fields (scriptplayer.h): lines_ at +0x11b4 (1000 x 1000), lineCount_ at
@@ -618,7 +618,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
     if (strcmp(cmd, "splinexyz") == 0) {
         field_92d_ = 1;
         Spline_PurgeControlPoints(spline);
-        memcpy(splinePoint_, GG_CAMERA->eye, sizeof(splinePoint_));   /* camera.h */
+        memcpy(splinePoint_, g_camera.eye, sizeof(splinePoint_));   /* camera.h */
         start_ = now_;
         /* An int product loaded as unsigned (FILD qword, high dword 0). */
         duration_ = (double)(unsigned int)(atoi(strtok(NULL, JJS_DELIMS)) * 1000);
@@ -644,7 +644,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
         return 0xb;
     }
     if (strcmp(cmd, "initwave") == 0) {
-        GameLog_LogMessage(GG_LOGGER, 1, "IS: initwave noticed");
+        GameLog_LogMessage(&g_logger, 1, "IS: initwave noticed");
         char *name = strtok(NULL, JJS_DELIMS);
         if (name) {
             if (soundManager_)
@@ -657,7 +657,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
                     return 0xc;
                 }
                 if (streams_[id]) {
-                    GameLog_LogMessage(GG_LOGGER, 3,
+                    GameLog_LogMessage(&g_logger, 3,
                         "IS: warning - Stream sound buffer width id %d already initialized!", id);
                     return 0xc;
                 }
@@ -666,11 +666,11 @@ unsigned char ScriptPlayer::playScript(const char *line)
                 streams_[id] = s;
                 streamReady_ = CStream_Prepare(s, &streamWave_);
                 if (streamReady_)
-                    GameLog_LogMessage(GG_LOGGER, 1,
+                    GameLog_LogMessage(&g_logger, 1,
                         "IS: Stream buffer width name %s successfully initialized, ID=%d",
                         streamWave_.pFilename, id);
                 else
-                    GameLog_LogMessage(GG_LOGGER, 1,
+                    GameLog_LogMessage(&g_logger, 1,
                         "IS: warning - Stream sound buffer width name %s could not initialized !",
                         streamWave_.pFilename);
             }
@@ -697,7 +697,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
                     waitingOnStream_ = 1;
                     waitStream_ = id;
                 }
-                GameLog_LogMessage(GG_LOGGER, 1,
+                GameLog_LogMessage(&g_logger, 1,
                     "IS: Stream sound buffer width ID=%d started,wait=%d", id, waitingOnStream_);
             }
         }
@@ -769,7 +769,7 @@ void ScriptPlayer::runNextCommand()
     if (playScript(currentLine_))
         return;
     currentLine_[strlen(currentLine_) - 1] = '\0';   /* drop the "\n" */
-    GameLog_LogMessage(GG_LOGGER, 3, "IS:** error at command %d:%s **",
+    GameLog_LogMessage(&g_logger, 3, "IS:** error at command %d:%s **",
                        (int)cursor_, currentLine_);
 }
 

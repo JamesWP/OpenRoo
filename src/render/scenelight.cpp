@@ -28,6 +28,7 @@
 #include "direct3d.h"
 #include <stdlib.h>
 #include "log.h"
+SceneSpotLight g_light;   /* was 0x0046c830 */
 
 extern "C" {
 

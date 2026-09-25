@@ -250,7 +250,7 @@ Sim_ClearGameState(Game *self)
     self->totalPlayTimeHighDword() = 0;
 
     if (gamefile_ok == 0) {
-        GameLog_LogMessage(GG_LOGGER, 4, GS_GAME_GAMEFILE_ERR,
+        GameLog_LogMessage(&g_logger, 4, GS_GAME_GAMEFILE_ERR,
                            self->gameFileName());
         PostQuitMessage(1);
     }

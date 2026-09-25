@@ -597,3 +597,9 @@ ProgCtrl_ReadBindings(ProgableControl *s)
     { return ReadBindings_impl(s); }
 
 } /* extern "C" */
+
+/* PROGCTRL_VTABLE: our own 1-slot table (the game's was at 0x0045efb0, same slots). */
+static void *const progctrl_vtable_slots[1] = {
+    (void *)&ProgCtrl_ScalarDtor,
+};
+extern const void *const PROGCTRL_VTABLE = progctrl_vtable_slots;

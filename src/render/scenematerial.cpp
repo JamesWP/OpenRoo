@@ -32,6 +32,7 @@
 #include "scenematerial.h"
 #include "log.h"
 #include <stdlib.h>
+SceneMaterial g_material;   /* was 0x004e0390 */
 
 /* FactAlloc::Free2 — __cdecl(void *), confirmed from the call site
  * (0x42d74e: push eax / call 0x4504c0 / add esp,4).  The original is left

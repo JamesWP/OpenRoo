@@ -43,7 +43,7 @@ static_assert(offsetof(CDM, tracknumber)  == 0x15D, "CDM layout mismatch");
    stores.  Read the ctor's store, not the table's shape — reading the shape
    is how this became "a base-class vtable swapped in during teardown" in
    HOOKS.md, which it never was. */
-static const void *const CDM_VTABLE = reinterpret_cast<const void*>(0x45D2B8);
+extern const void *const CDM_VTABLE;   /* our own table; was the game's at 0x0045d2b8 */
 
 /* Exports of cdm.cpp other files call (COHESION_PLAN.md template 10). */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
@@ -65,3 +65,8 @@ CDM_SetWindowHandle(CDM *self, HWND hwnd);
 /* 0x402cb0 -- the WndProc restarts a repeating track on MM_MCINOTIFY. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_PlayTrack(CDM *self, int track, bool loop);
+
+/* Constructor and destructor body, driven by staticinit.cpp for the one
+ * global instance (the original's static-init/atexit thunks). */
+extern "C" __declspec(dllexport) CDM *__attribute__((thiscall)) CDM_Constructor(CDM *self);   /* 0x00402bd0 */
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) CDM_Destructor(CDM *self);   /* 0x00402c60 */

@@ -165,12 +165,12 @@ static void cam_diag(const float *cam)
               b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
     /* framepose.cpp's outputs: the focus block, and an FNV-1a hash over the
      * live foes' pose records. */
-    const DWORD *f = (const DWORD *)GG_CAMERA_FOCUS->f;
+    const DWORD *f = (const DWORD *)g_cameraFocus.f;
     log_write("FOCUS %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n",
               f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8]);
     const Game *game = Game::instance();
     unsigned n = game ? game->foeCount() : 0;
-    const unsigned char *r = (const unsigned char *)GG_FOE_POSES;
+    const unsigned char *r = (const unsigned char *)g_foePoses;
     DWORD h = 2166136261u;
     for (unsigned i = 0; i < n * 0x1d; i++)
         h = (h ^ r[i]) * 16777619u;
@@ -181,7 +181,7 @@ extern "C" __declspec(dllexport) void __cdecl
 Scene_DrawSceneObjects(IDirect3DDevice3 *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double t)
 {
     cam_diag(cam);
-    for (LinkedListNode *node = GG_SCENE->objects.pHead; node != NULL; node = node->pNextNode) {
+    for (LinkedListNode *node = g_scene.objects.pHead; node != NULL; node = node->pNextNode) {
         const SceneObject *o = (const SceneObject *)node->pValue;
         if (o == NULL)
             continue;
@@ -333,7 +333,7 @@ Scene_DrawParticleSystems(IDirect3DDevice3 *dev, float *cam, double dt_ms, doubl
 {
     dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
 
-    for (LinkedListNode *node = GG_SCENE->objects.pHead; node != NULL; node = node->pNextNode) {
+    for (LinkedListNode *node = g_scene.objects.pHead; node != NULL; node = node->pNextNode) {
         const SceneObject *o = (const SceneObject *)node->pValue;
         if (o == NULL || o->type != EXTRA_PARTICLE)
             continue;

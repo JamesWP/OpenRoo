@@ -17,19 +17,15 @@
 #define GEN_VTBL_SLOTS 10
 #define ENV_VTBL_SLOTS  6
 
-/* The game vtable VAs these classes were built on.  Since E5 nothing stores
- * them — our constructors install our own tables (gen_vtbl_* / env_vtbl_* in
- * generators.cpp) — so these are documentation, and the addresses the UD2
- * stubs sit behind. */
-#define VTBL_GEN_STD         0x0045f094
-#define VTBL_GEN_XSTD        0x0045f0bc
-#define VTBL_GEN_CYLINDER    0x0045f0e8
-#define VTBL_ENV_GRAVITY     0x0045f110
-#define VTBL_ENV_MAGNET      0x0045f128
-#define VTBL_ENV_BASE        0x0045f01c   /* plain Environment; also every dtor's last store */
-#define VTBL_GEN_BASE        0x0045eff4   /* plain Generator; also every gen dtor's last store */
-#define VTBL_GEN_POINT       0x0045f044   /* PointGenerator — no shipping .par names it */
-#define VTBL_GEN_BOX         0x0045f06c   /* BoxGenerator — no shipping .par names it */
+/* The game vtables these classes were built on.  Nothing uses them: our
+ * constructors install our own tables (gen_vtbl_* / env_vtbl_* in
+ * generators.cpp).  Kept as provenance:
+ *
+ *   0x0045f094  StdGenerator          0x0045f110  GravityEnvironment
+ *   0x0045f0bc  XStdGenerator         0x0045f128  MagnetEnvironment
+ *   0x0045f0e8  CylinderGenerator     0x0045f01c  Environment (every dtor's last store)
+ *   0x0045f044  PointGenerator        0x0045eff4  Generator   (every gen dtor's last store)
+ *   0x0045f06c  BoxGenerator          (no shipping .par names the last two) */
 
 /* RingBuffer now lives in particles.h — it is ParticleSystem::ring, and the
  * pointer below is that same object.  AttachGeneratorRing (0x4483c0) /

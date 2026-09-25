@@ -877,7 +877,7 @@ static void quad_release(ParticleSystem *self, int flags)
 
 /* 0x44d060 / 0x44d360 — the two dtor bodies: own vtable, the shared release
  * (called directly, not virtually), then the base body. */
-static void quad_destruct(ParticleSystem *self, DWORD vtbl)
+static void quad_destruct(ParticleSystem *self, void *const *vtbl)
 {
     self->pVtable = (void **)vtbl;
     quad_release(self, 1);
@@ -1474,7 +1474,7 @@ Particle_QuadRelease(ParticleSystem *self, int flags)        { quad_release(self
 __declspec(dllexport) void *THISCALL
 Particle_PointDtor(PointParticleSystem *self, unsigned flags)
 {
-    quad_destruct(&self->base, VTBL_PARTICLE_POINT);
+    quad_destruct(&self->base, ps_vtbl_point);
     return scalar_delete(self, flags);
 }
 
@@ -1500,7 +1500,7 @@ Particle_PointLoad(PointParticleSystem *self, void *fp, GameLogger *log)
 __declspec(dllexport) void *THISCALL
 Particle_FaceDtor(FaceParticleSystem *self, unsigned flags)
 {
-    quad_destruct(&self->base, VTBL_PARTICLE_FACE);
+    quad_destruct(&self->base, ps_vtbl_face);
     return scalar_delete(self, flags);
 }
 

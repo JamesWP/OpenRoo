@@ -42,7 +42,7 @@ Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
 
     for (slot = 0; slot < (int)table->count(); slot++) {
         FILE *fp;
-        sprintf(path, "%s\\SavedGames\\%s%d.sav", GG_GAME_DIR, name, slot);
+        sprintf(path, "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
         fp = fopen(path, "r");
         if (fp == NULL) {
             ps_log("sav load", path, 0);
@@ -69,7 +69,7 @@ Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
         /* Recomputed per slot, unlike the reader -- defect 4. */
         unsigned char *rec = (unsigned char *)table->slot((unsigned char)slot);
         FILE *fp;
-        sprintf(path, "%s\\SavedGames\\%s%d.sav", GG_GAME_DIR, name, slot);
+        sprintf(path, "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
         fp = fopen(path, "w+");
         if (fp == NULL) {
             ps_log("sav save", path, 0);

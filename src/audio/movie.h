@@ -47,10 +47,11 @@ static_assert(offsetof(FaktMovie, notify_msg) == 0x138, "FaktMovie layout mismat
    static-initialiser thunks at 0x00425600 / 0x00425620 ("mov ecx,0x46c5d8;
    jmp"), for the single global FaktMovie at 0x0046c5d8 — E9 sites, so they
    are JMP_PATCHES rather than CALL_PATCHES. */
-#define FAKTMOVIE_VTABLE ((void *)0x0045f200)
+extern void *const g_faktMovieVtable[1];   /* our own one-slot table; was the game's at 0x0045f200 */
+#define FAKTMOVIE_VTABLE ((void *)g_faktMovieVtable)
 
 /* The single global FaktMovie. */
-static FaktMovie *const GG_MOVIE = (FaktMovie *)0x0046c5d8;
+extern FaktMovie g_movie;   /* was 0x0046c5d8 */
 
 /* The exports WinMain drives (movie.cpp). */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
@@ -70,3 +71,8 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Movie_Pause(FaktMovie *self);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Movie_Stop(FaktMovie *self);
+
+/* Constructor and destructor body, driven by staticinit.cpp for the one
+ * global instance (the original's static-init/atexit thunks). */
+extern "C" __declspec(dllexport) FaktMovie *__attribute__((thiscall)) Movie_Construct(FaktMovie *self);   /* 0x0044f390 */
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) Movie_Destruct(FaktMovie *self);   /* 0x0044f3d0 */

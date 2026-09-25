@@ -117,11 +117,14 @@ static unsigned __attribute__((thiscall)) d3d_log(Direct3D *self, const char *ms
 static HRESULT WINAPI d3d_enum_display_modes_cb(LPDDSURFACEDESC2 pDesc, LPVOID ctx);
 static HRESULT WINAPI d3d_enum_zbuffer_cb(LPDDPIXELFORMAT pFmt, LPVOID ctx);
 
-#define IID_D3D_RGB  (*(const GUID *)0x0045daa8)
-#define IID_D3D_HAL  (*(const GUID *)0x0045dab8)
-#define IID_D3D_MMX  (*(const GUID *)0x0045dac8)
-#define IID_D3D3     (*(const IID  *)0x0045da88)
-#define IID_DD4      (*(const IID  *)0x0045d768)
+/* The five GUIDs the original read from its .rdata (0x0045daa8, 0x0045dab8,
+ * 0x0045dac8, 0x0045da88, 0x0045d768) are byte-identical to the SDK's
+ * (checked against mingw's ddraw.h / d3d.h), so they are the SDK's own. */
+#define IID_D3D_RGB  IID_IDirect3DRGBDevice
+#define IID_D3D_HAL  IID_IDirect3DHALDevice
+#define IID_D3D_MMX  IID_IDirect3DMMXDevice
+#define IID_D3D3     IID_IDirect3D3
+#define IID_DD4      IID_IDirectDraw4
 
 /* Format strings, at their original addresses — the German error messages go
  * to Direct3D::Log (which also copies them into this->pLastError), the

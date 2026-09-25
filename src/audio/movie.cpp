@@ -1,8 +1,11 @@
 #include <windows.h>
 #include <string.h>
 #include "movie.h"
+#include "gameglobals.h"
+#include "cdm.h"
 #include "log.h"
 #include <stdlib.h>
+FaktMovie g_movie;   /* was 0x0046c5d8 */
 
 /* FaktMovie::FaktMovie 0x0044f3e0 — field init, called by the ctor proper and
    (dead now) from the teardown path.  It zeroes +0x4 through +0x134 and sets
@@ -50,7 +53,7 @@ void FaktMovie::notify(DWORD a, DWORD b, DWORD c)
 
 void FaktMovie::play()
 {
-    HWND hwnd = *(HWND *)0x004dc698;  /* CdAudioGlobal(0x4dc640) + notify_hwnd(+0x58) */
+    HWND hwnd = g_cdAudio.windowhandle;
     state = 3;
     log_write("FaktMovie::play(this=%p) — posting 0x464 to HWND %p\n", this, hwnd);
     PostMessageA(hwnd, 0x464, 0, 0);
@@ -136,3 +139,6 @@ __declspec(dllexport) void __attribute__((thiscall))
 Movie_SetWindow(FaktMovie *self, void *surface) { self->setWindow(surface); }
 
 } // extern "C"
+
+/* FaktMovie's one-slot table (the game's was at 0x0045f200, same slot). */
+void *const g_faktMovieVtable[1] = { (void *)&Movie_ScalarDeletingDtor };

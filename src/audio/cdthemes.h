@@ -105,4 +105,4 @@ Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags);
    It is this class's: the ctor 0x403000 and dtor 0x403030 both store 0x45d2c4,
    and slot 0 is 0x403010, the deleting dtor those two call.  patch.py
    redirects the slot at file offset 0x5D2C4. */
-static const void *const CDTHEMES_VTABLE = reinterpret_cast<const void*>(0x0045d2c4);
+extern const void *const CDTHEMES_VTABLE;   /* our own table; was the game's at 0x0045d2c4 */

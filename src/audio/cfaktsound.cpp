@@ -278,3 +278,9 @@ CFaktSound_Apply3DRolloffParams(CFaktSound *self, float rolloff_factor, DWORD dw
     { CFaktSound_Apply3DRolloffParams_impl(self, rolloff_factor, dwApply); }
 
 } // extern "C"
+
+/* CFAKTSOUND_VTABLE: our own 1-slot table (the game's was at 0x0045efa8, same slots). */
+static void *const cfaktsound_vtable_slots[1] = {
+    (void *)&CFaktSound_ScalarDeletingDtor,
+};
+extern const void *const CFAKTSOUND_VTABLE = cfaktsound_vtable_slots;

@@ -181,7 +181,7 @@ Direct3D_DrawQuadBatch(QuadVerts *verts, void *game, Direct3D *d3d)
 
             if (*(DWORD *)(obj + LOBJ_OFF_DRAWKIND) == 2) {
                 d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD,
-                                           GG_WORLD_IDENTITY);
+                                           &g_worldIdentity);
                 quad_dump(verts->pData, verts->dwQuads);
                 HRESULT hr = S_OK;
                 if (quad_fx() != QUAD_FX_NODRAW)

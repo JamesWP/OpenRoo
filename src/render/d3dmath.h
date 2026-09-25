@@ -18,7 +18,7 @@ struct Vec3 { float x, y, z; };
 
 /* The identity WORLD matrix, set at startup (renderstate.cpp) and re-applied
  * by the batch passes. */
-static D3DMATRIX *const GG_WORLD_IDENTITY = (D3DMATRIX *)0x004e0440;
+extern D3DMATRIX g_worldIdentity;   /* was 0x004e0440 */
 
 /* A control-point list node (SplinePath's list). */
 struct ListNodeM { void *pValue; ListNodeM *pNext; };

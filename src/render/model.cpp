@@ -88,6 +88,7 @@
 #include <stdlib.h>
 #include "gamelog.h"
 #include "gamestr.h"
+ModelManager g_modelManager;   /* was 0x004e03f0 */
 
 /* The game's heap.  Allocations here are freed by FreeThing2 (0x437fb0) via
  * FactAlloc::Free2, so they must come from the matching allocator. */

@@ -46,6 +46,8 @@
 #include "com_proxy.h"
 #include <stdlib.h>
 #include "log.h"
+CFaktMesh g_meshEnemy;   /* was 0x004e0310 */
+CFaktMesh g_meshPlayer;   /* was 0x0046c7b0 */
 
 #define MESH_FVF        0x212  /* XYZ | NORMAL | TEX2 — 0x28-byte stride */
 #define MESH_LOG_FIRST  8

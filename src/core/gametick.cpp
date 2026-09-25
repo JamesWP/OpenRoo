@@ -205,7 +205,7 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     if (self->stateRef() == 7 && self->debounceRef() != 0x0d && KEY(0x0d) != 0) {
-        GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_JJ_GAME_END);
+        GameLog_LogMessage(&g_logger, 1, GS_GAME_JJ_GAME_END);
         PostQuitMessage(1);
     }
 
@@ -364,11 +364,11 @@ Sim_GameTick(Game *self, double dt, double now)
             }
         }
         if (pl->moveState() == 0)
-            ProgCtrl_Dispatch(GG_PROGCTRL, (unsigned short)self->stateRef());
+            ProgCtrl_Dispatch(&g_progCtrl, (unsigned short)self->stateRef());
     } else {
         pl->setIdleStarted(0);
         pl->setLastActive(*self->clock());
-        ProgCtrl_Dispatch(GG_PROGCTRL, 0);
+        ProgCtrl_Dispatch(&g_progCtrl, 0);
         if (self->fixedSounds()->lastSeconds != NULL)
             CStatic_HaltPlayback(self->fixedSounds()->lastSeconds);
     }
@@ -401,7 +401,7 @@ Sim_GameTick(Game *self, double dt, double now)
     {
         unsigned char sw = pl->switchSlot();
         if (sw < 0xff && self->bridgeSlot(sw)->armed() == 0) {
-            GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_SWITCH_TRIGGERED, (unsigned int)sw);
+            GameLog_LogMessage(&g_logger, 1, GS_GAME_SWITCH_TRIGGERED, (unsigned int)sw);
             trigger_switch_tile(self, pl->switchSlot(), pl->cellU(), pl->cellV());
             BridgeObject *br = self->bridgeSlot(pl->switchSlot());
             br->arm(self->clock());
@@ -442,7 +442,7 @@ Sim_GameTick(Game *self, double dt, double now)
         {
             unsigned char sw = (*slot)->switchSlot();
             if (sw < 0xff && game->bridgeSlot(sw)->armed() == 0) {
-                GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_SWITCH_TRIGGERED, (unsigned int)sw);
+                GameLog_LogMessage(&g_logger, 1, GS_GAME_SWITCH_TRIGGERED, (unsigned int)sw);
                 trigger_switch_tile(self, (*slot)->switchSlot(), (*slot)->cellU(), (*slot)->cellV());
                 game->bridgeSlot((*slot)->switchSlot())->arm(game->clock());
                 Sim_MarkListedTilesBlockedByObject(self, (*slot)->switchSlot());
@@ -508,7 +508,7 @@ Sim_GameTick(Game *self, double dt, double now)
                             self->cdThemes()->play(GS_GAME_GAMEOVER);
                         Score_CalculateLevelScore(self, 3);
                         self->debounceRef() = 0x0d;
-                        GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_COMPLETED_AT_LEVEL,
+                        GameLog_LogMessage(&g_logger, 1, GS_GAME_COMPLETED_AT_LEVEL,
                                            (unsigned int)self->levelIndex() + 1,
                                            (unsigned int)self->levelCount());
                     } else {
@@ -566,7 +566,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->setRestartCount(0);
                 self->setTotalPlayTime((double)((long double)(unsigned long long)self->timeElapsed() +
                                         (long double)self->totalPlayTime()));
-                GameLog_LogMessage(GG_LOGGER, 2, GS_GAME_DONE_LOG,
+                GameLog_LogMessage(&g_logger, 2, GS_GAME_DONE_LOG,
                                    (unsigned int)self->levelIndex(), (unsigned int)self->levelCount());
                 if ((unsigned int)self->levelIndex() == (unsigned int)self->levelCount() - 1) {
                     self->stateRef() = 2;
@@ -587,7 +587,7 @@ Sim_GameTick(Game *self, double dt, double now)
         if ((unsigned char)r < 0xff) {
             self->stateRef() = 6;
             if (self->musicOn() != 0)
-                CDM_StopTrack(GG_CDAUDIO);
+                CDM_StopTrack(&g_cdAudio);
             self->nameEntry()->setMaxLength(0x0f);
             self->nameEntry()->setActive(1);
             self->nameEntry()->setCursor(0);
@@ -612,7 +612,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 } else {
                     self->stateRef() = 7;
                     if (self->musicOn() != 0)
-                        CDM_StopTrack(GG_CDAUDIO);
+                        CDM_StopTrack(&g_cdAudio);
                     self->debounceRef() = 0x0d;
                 }
             } else {
@@ -649,7 +649,7 @@ Sim_GameTick(Game *self, double dt, double now)
             } else {
                 self->stateRef() = 7;
                 if (self->musicOn() != 0)
-                    CDM_StopTrack(GG_CDAUDIO);
+                    CDM_StopTrack(&g_cdAudio);
                 self->debounceRef() = 0x0d;
             }
         } else {
