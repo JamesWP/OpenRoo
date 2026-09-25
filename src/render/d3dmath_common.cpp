@@ -236,3 +236,34 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle)
 }
 
 }
+
+/* ─── RenderGameFrame's three small helpers (ENDGAME E7) ─────────────────── */
+extern "C" {
+
+__declspec(dllexport) void *__attribute__((thiscall))
+Math_VertexSet(void *self, const Vec3 *pos, DWORD rhw, DWORD diffuse,
+               DWORD specular, DWORD u, DWORD v)
+{
+    DWORD *d = (DWORD *)self;
+    const DWORD *p = (const DWORD *)pos;
+    d[0] = p[0]; d[1] = p[1]; d[2] = p[2];
+    d[3] = rhw; d[4] = diffuse; d[5] = specular; d[6] = u; d[7] = v;
+    return self;
+}
+
+__declspec(dllexport) Vec3 *__attribute__((thiscall))
+Math_Vec3ScaleInPlace(Vec3 *self, float k)
+{
+    self->x = self->x * k;
+    self->y = self->y * k;
+    self->z = self->z * k;
+    return self;
+}
+
+__declspec(dllexport) double __cdecl
+Math_Vec3Length(const Vec3 *v)
+{
+    return sqrt(Math_Vec3SqLen(v));
+}
+
+}
