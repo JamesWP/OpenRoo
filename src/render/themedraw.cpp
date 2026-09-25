@@ -89,18 +89,18 @@ Theme_DrawParticleObjects(Game *g, void * /*unused*/, const float (*pos)[3],
             ps_vtick(rec->pParticleSystems[system], (float)(dt * K_MS));
 
         for (DWORD s = 0; s < rec->dwSubObjectCount; s++) {
-            const SceneSubObject *sub = &rec->pSubObjects[s];
+            const SceneSubObject sub = rec->pSubObjects[s];   /* packed member: copied */
             for (DWORD n = 0; n < count; n++) {
                 const float *ip = pos[n], *ir = rot[n];
                 const Tile *cell = map->tile((int)ip[0], -(int)ip[2]);
-                if (!gate_open(sub->dwVisibilityGate, player, cell))
+                if (!gate_open(sub.dwVisibilityGate, player, cell))
                     continue;
 
-                dev->SetTexture(0, sub->pTexture ? sub->pTexture->pTexture2 : NULL);
-                if (sub->dwBlendSrc != 0 && sub->dwBlendDst != 0) {
+                dev->SetTexture(0, sub.pTexture ? sub.pTexture->pTexture2 : NULL);
+                if (sub.dwBlendSrc != 0 && sub.dwBlendDst != 0) {
                     dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-                    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, sub->dwBlendSrc);
-                    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, sub->dwBlendDst);
+                    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, sub.dwBlendSrc);
+                    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, sub.dwBlendDst);
                 } else {
                     dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
                 }

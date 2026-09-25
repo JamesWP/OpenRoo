@@ -28,7 +28,7 @@
  * Kept: the quad path's alpha of 0x0f; the billboard's alpha of 0; the
  * "fmod(.., 1.0)" frame wrap; ftol truncation everywhere a frame is taken.
  */
-#include "direct3d.h"   /* first: it sets DIRECTDRAW_VERSION */
+#include "direct3d.h"
 #include <windows.h>
 #include <d3d.h>
 #include <math.h>
