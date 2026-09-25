@@ -87,9 +87,9 @@ public:
     signed char cellU() const                  { return cellU_; }
     signed char cellV() const                  { return cellV_; }
     signed char heightCell() const             { return heightCell_; }
-    /* +0x40: nonzero stops UpdateViewTransform lifting the camera over a
-     * blocking cell (the player's copy, Game+0x175209). */
-    int   field40() const                      { return field_40; }
+    /* +0x40: taking a stair or sliding this tick (the player's is
+     * Game+0x175209); stops UpdateViewTransform's camera lift. */
+    int   onStairOrSlide() const               { return onStairOrSlide_; }
     /* The step phase framepose.cpp turns into a 0..1 fraction. */
     unsigned char turnKind() const             { return turnKind_; }
     double animDuration() const                { return animDuration_; }
@@ -169,7 +169,10 @@ protected:
     /* One double, though the foe ctor writes it as two dwords: 1000.0
      * (0 at +0x38, 0x408f4000 at +0x3c). */
     double              idleDuration_; /* +0x038  ms the idle anim runs   */
-    int                 field_40;         /* +0x040                         */
+    /* +0x040: recomputed every movement tick -- 1 while taking a stair
+     * or sliding (see updateMovement); UpdateViewTransform then skips its
+     * lift-over-a-blocking-cell. */
+    int                 onStairOrSlide_;
     int                 movingBackwards_; /* +0x044  turnKind_ 3: reversing */
     /* One double, though the ctors write it as two dwords: bomb 50.0
      * (0x40490000 at +0x4c), foe and player 20.0 (0x40340000). */
@@ -287,7 +290,7 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(heightCell_,       0x033);
     KAROO_LAYOUT_AT(tileBase_,         0x034);
     KAROO_LAYOUT_AT(idleDuration_,          0x038);
-    KAROO_LAYOUT_AT(field_40,          0x040);
+    KAROO_LAYOUT_AT(onStairOrSlide_,   0x040);
     KAROO_LAYOUT_AT(movingBackwards_,  0x044);
     KAROO_LAYOUT_AT(stepGrace_,          0x048);
     KAROO_LAYOUT_AT(stepEnd_,          0x050);

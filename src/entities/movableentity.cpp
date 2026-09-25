@@ -61,6 +61,7 @@
  */
 
 #include "movableentity.h"
+#include "ani.h"
 #include "alloc.h"
 #include "levelobjbase.h"
 
@@ -1092,7 +1093,7 @@ unsigned int MovableEntity::updateMovement()
     }
 
     /* ─── Height curves for the animation states ────────────────────── */
-    field_40 = 0;
+    onStairOrSlide_ = 0;
     if (((unsigned)moveDir_) == 0) {
         if (stepGrace_ <= now_ - stepEnd_ && ((signed char)slideSlot_) == -1) {
             posU_ = (float)(int)GU;
@@ -1156,13 +1157,15 @@ unsigned int MovableEntity::updateMovement()
     /* ─── Footstep / idle bookkeeping ───────────────────────────────── */
     if (movingBackwards_ != 0) {
         signed char a = ((signed char)anim_);
-        if (a == 0x19 || a == 0x17 || a == 0x1a || a == 0x16 || a == 0x18)
-            field_40 = 1;
+        if (a == ANIM_STAIR_STAIR_DOWN || a == ANIM_FIELD_STAIR_DOWN ||
+            a == ANIM_STAIR_FIELD_UP || a == ANIM_FIELD_STAIR_UP ||
+            a == ANIM_STAIR_STAIR_UP)
+            onStairOrSlide_ = 1;
     }
     {
         unsigned char a = anim_;
-        if (a == 0x17) field_40 = 1;
-        if (a == 4)    field_40 = 1;
+        if (a == ANIM_FIELD_STAIR_DOWN) onStairOrSlide_ = 1;
+        if (a == ANIM_SLIDE)            onStairOrSlide_ = 1;
         if (a < 0xfa && a != 0) {
             copy8(&lastActive_, &now_);
             idleStarted_ = 0;

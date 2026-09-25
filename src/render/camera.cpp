@@ -16,7 +16,7 @@
  *      (0,0,-d) with p0 the configured tilt, is stepped one height unit at a
  *      time from the player's height cell + 1 up to the eye's height; a cell
  *      whose kind byte is nonzero and whose height equals the step (or the
- *      step + 1) blocks it -- unless the player's +0x40 is set.  Then the
+ *      step + 1) blocks it -- unless the player is on a stair or sliding.  Then the
  *      same ray is tested against every scene model (SegmentHitsAnyModel),
  *      which forces it unconditionally.
  *   5. pitch eases towards that (0.005 * dt), clamped above at 1.569051.
@@ -165,7 +165,7 @@ Camera_UpdateViewTransform(CameraGlobals *cam, Direct3D *d3d, Game *g,
                             const Tile *t = map->tile((int)cu, (int)cv);
                             if (t->objectMarker() != 0 &&
                                 (t->height() == i || t->height() == i + 1)) {
-                                if (g->player()->field40() == 0)
+                                if (g->player()->onStairOrSlide() == 0)
                                     pitchTarget = K_PITCH_MAX;
                                 i = 2000;       /* ends the scan */
                             }
