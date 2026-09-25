@@ -1,5 +1,5 @@
 /* CdThemes -- the CD-music theme table embedded in Game at +0x2223f
- * (COHESION_PLAN.md Band 3, the fifth sub-object; Ghidra's AutoClass5).
+ * (COHESION_PLAN.md Band 3, the fifth sub-object; Ghidra's AutoClass5 -- that class still needs renaming in the Ghidra UI).
  *
  * ReadCdTrackThemeTable 0x403040 reads CDTracks\<name>.cdt: each line is a CD
  * track number and a theme name ("main", "gameover", a map name ...).

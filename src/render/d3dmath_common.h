@@ -18,7 +18,7 @@ void  v3_sub(Vec3 *d, const Vec3 *a, const Vec3 *b);
 void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
                       DWORD specular, float u, float v);
 
-/* The vec3 helpers of the AutoClass5 TU (0x403770..0x403890), exported for
+/* The vec3 helpers of the CdThemes TU (0x403770..0x403890), exported for
  * the game's remaining call sites.  Each result is built in temporaries and
  * then stored, so an output that aliases an input is safe, as there. */
 extern "C" {
