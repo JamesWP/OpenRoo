@@ -74,3 +74,11 @@ Direct3D_FlipPrimaryFrame(LoadedImage *img);
 /* Exports of direct3d.cpp other files call (COHESION_PLAN.md template 10). */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Direct3D_ReleaseResources(Direct3D *self);
+
+/* Lifecycle, 0x412680 / 0x412730 / 0x412710 (direct3d.cpp). */
+extern "C" __declspec(dllexport) Direct3D *__attribute__((thiscall))
+Direct3D_Construct(Direct3D *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Direct3D_Destruct(Direct3D *self);
+extern "C" __declspec(dllexport) Direct3D *__attribute__((thiscall))
+Direct3D_ScalarDestructor(Direct3D *self, unsigned char flags);
