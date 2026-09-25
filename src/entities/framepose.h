@@ -39,6 +39,9 @@ KAROO_LAYOUT_CHECKS(FoePose)
     KAROO_LAYOUT_SIZE(0x1d);
 }
 
+/* One record per live foe, in foe-list order; RenderGameFrame draws from it. */
+static FoePose *const GG_FOE_POSES = (FoePose *)0x004dc7c8;
+
 extern "C" {
 __declspec(dllexport) void __cdecl
 FramePose_Player(Game *g, double t, double dt, CameraFocus *out);

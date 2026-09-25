@@ -52,6 +52,9 @@ class Game;
  * passes BY VALUE to UpdateViewTransform: [5] is the yaw the camera turns
  * towards, [6..8] the point `target` follows.  [0..4] are not read here. */
 struct CameraFocus { float f[9]; };
+static_assert(sizeof(CameraFocus) == 0x24, "CameraFocus size");
+/* The level entry zeroes it; FramePose_Player fills it every frame. */
+static CameraFocus *const GG_CAMERA_FOCUS = (CameraFocus *)0x004e01a0;
 
 extern "C" {
 /* 0x407b20, cdecl(out, eye, at, up by value, roll) -> out: a left-handed

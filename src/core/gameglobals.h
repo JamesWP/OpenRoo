@@ -84,7 +84,5 @@ static LoadedImage *const GG_FALLBACK_IMAGE = (LoadedImage *)0x0046c798;
 static char   *const GG_LEVEL_TITLE    = (char *)0x0046c714;
 /* The clock at level entry, in milliseconds. */
 static double *const GG_LEVEL_START_MS = (double *)0x004e04b0;
-/* Nine dwords the level entry zeroes; their reader is not yet known. */
-static unsigned long *const GG_UNKNOWN_4E01A0 = (unsigned long *)0x004e01a0;
 
 #endif /* KAROO_GAMEGLOBALS_H */
