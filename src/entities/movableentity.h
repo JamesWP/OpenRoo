@@ -90,6 +90,10 @@ public:
     /* +0x40: nonzero stops UpdateViewTransform lifting the camera over a
      * blocking cell (the player's copy, Game+0x175209). */
     int   field40() const                      { return field_40; }
+    /* The step phase framepose.cpp turns into a 0..1 fraction. */
+    unsigned char turnKind() const             { return turnKind_; }
+    double animDuration() const                { return animDuration_; }
+    double animStart() const                   { return animStart_; }
     unsigned char type() const                 { return type_; }
     int   dyingStarted() const                 { return dyingStarted_; }
     /* +0xef: the foe's hold flag; the Player's level-complete flag.

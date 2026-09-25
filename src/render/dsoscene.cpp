@@ -208,6 +208,18 @@ static void cam_diag(const float *cam)
     const DWORD *b = (const DWORD *)cam;
     log_write("CAM %08lx %08lx %08lx  %08lx %08lx %08lx  %08lx %08lx\n",
               b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
+    /* framepose.cpp's outputs: the focus block, and an FNV-1a hash over the
+     * live foes' pose records (count from Game+0x174fd4). */
+    const DWORD *f = (const DWORD *)0x004e01a0;
+    log_write("FOCUS %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n",
+              f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8]);
+    const unsigned char *game = *(const unsigned char **)0x0046c498;
+    unsigned n = game ? game[0x174fd4] : 0;
+    const unsigned char *r = (const unsigned char *)0x004dc7c8;
+    DWORD h = 2166136261u;
+    for (unsigned i = 0; i < n * 0x1d; i++)
+        h = (h ^ r[i]) * 16777619u;
+    log_write("FOES %u %08lx\n", n, h);
 }
 
 extern "C" __declspec(dllexport) void __cdecl
