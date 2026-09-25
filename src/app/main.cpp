@@ -57,6 +57,7 @@
 #include "texture.h"
 #include "scenetexture.h"
 #include "log.h"
+#include "resources.h"
 
 /* Shared by WinMain and the WndProc; nothing else reads either. */
 static volatile int *const GG_MOVIE_PLAYING = (volatile int *)0x004dc7c0;
@@ -198,7 +199,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
     wc.cbClsExtra    = 0;
     wc.cbWndExtra    = 0;
     wc.hInstance     = hInstance;
-    wc.hIcon         = LoadIconA(hInstance, MAKEINTRESOURCEA(0x6a));
+    wc.hIcon         = LoadIconA(Resources_Module(), MAKEINTRESOURCEA(0x6a));
     wc.hCursor       = LoadCursorA(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     wc.lpszMenuName  = NULL;
@@ -242,7 +243,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
     }
 
     /* Cancel: the one early exit that destroys the window, and returns 1. */
-    if (hooks_DialogBoxParamA(hInstance, MAKEINTRESOURCEA(0x68), NULL,
+    if (hooks_DialogBoxParamA(Resources_Module(), MAKEINTRESOURCEA(0x68), NULL,
                               LauncherDlg_Proc, 0) == 0) {
         DestroyWindow(hWnd);
         delete_game(game);
