@@ -328,7 +328,7 @@ Sim_GameTick(Game *self, double dt, double now)
             E->lastSpawn = *self->clock();
         }
 
-        self->config()->setField20a48Bits(self->config()->field20a4cBits());
+        self->config()->setActiveCameraPitch(self->config()->cameraPitch());
         if (pl->moveState() != 0) {
             self->setOverviewActive(0);
             self->setCameraDistance(self->zoomDistance());

@@ -10,7 +10,7 @@
  *      after first wrapping itself into [0, 2pi); otherwise it is set.
  *   3. distance: the current |target - eye| eases towards
  *      Game::cameraDistance (0.005 * dt), then < 0 (or NaN) -> 1, > 255 -> 255.
- *   4. pitch target = config +0x20a48 degrees -> radians.  In cameraMode 0
+ *   4. pitch target = Config::activeCameraPitch() degrees -> radians.  In cameraMode 0
  *      an occlusion probe may force it to 1.569051 (just under pi/2, straight
  *      down): the ray target -> target + P, P = RotX(-p0).RotY(yaw) applied to
  *      (0,0,-d) with p0 the configured tilt, is stepped one height unit at a
@@ -142,7 +142,7 @@ Camera_UpdateViewTransform(CameraGlobals *cam, Direct3D *d3d, Game *g,
     const float negdist = (float)-dist;
 
     /* 4. pitch target, and the occlusion probe */
-    const float tilt = g->config()->field20a48();
+    const float tilt = g->config()->activeCameraPitch();
     Vec3 probe = orbit_offset((float)(tilt * K_NEG_DEG), cam->yaw, negdist);
     float pitchTarget = (float)(tilt * K_DEG);
 

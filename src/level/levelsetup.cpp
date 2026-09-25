@@ -903,8 +903,8 @@ next_row:
                            self->levelName());
     }
 
-    /* Config +0x20a48 (Game+0x2ab576), one dword: 60.0f. */
-    self->config()->setField20a48Bits(0x42700000);
+    /* The tilt in effect starts at 60 degrees (one dword MOV, 0x42700000). */
+    self->config()->setActiveCameraPitch(60.0f);
 
     s_calls++;
     if (s_diag)

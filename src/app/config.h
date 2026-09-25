@@ -53,8 +53,9 @@ public:
     void           setJoyDeadzone(unsigned short p)    { joyDeadzone_ = p; }
 
     /* Undecoded blob fields Game code reaches: HandleKeypress toggles
-     * +0x1f609 (0 <-> 1); GameTick copies the float +0x20a4c (default 50.0)
-     * into +0x20a48, as one dword. */
+     * +0x1f609 (0 <-> 1).  (GameTick's dword copy of cameraPitch_ into
+     * activeCameraPitch_ is now a float assignment -- the same bits for
+     * every value a pitch can hold.) */
     /* ── the four video-quality options ─────────────────────────────────
      * One byte each, persisted, defaults 2,1,2,2; the options screen
      * (RenderVideoOptions 0x0042e9f0) draws them in the order Reflection,
@@ -80,16 +81,17 @@ public:
     unsigned char &videoReflection()                   { return videoOptions_[1]; }
     unsigned char &videoHighlights()                   { return videoOptions_[2]; }
     unsigned char &videoParticles()                    { return videoOptions_[3]; }
-    unsigned int   field20a4cBits() const              { unsigned int b; memcpy(&b, &cameraPitch_, 4); return b; }
     /* The orbit camera's angles, in degrees (camerainput.cpp steps them). */
     float          cameraYaw() const                   { return cameraYaw_; }
     void           setCameraYaw(float a)               { cameraYaw_ = a; }
     float          cameraPitch() const                 { return cameraPitch_; }
     void           setCameraPitch(float a)             { cameraPitch_ = a; }
-    void           setField20a48Bits(unsigned int b)   { memcpy(field_20a48_, &b, 4); }
-    /* +0x20a48 read as a float, degrees: UpdateViewTransform's pitch target
-     * (x pi/180) and its occlusion probe's tilt (x -pi/180). */
-    float          field20a48() const                  { float f; memcpy(&f, field_20a48_, 4); return f; }
+    /* The tilt in effect, degrees: the level builder seeds 60, GameTick
+     * copies cameraPitch() in every tick, and UpdateViewTransform eases the
+     * camera's pitch towards it (x pi/180; its occlusion probe tilts by
+     * x -pi/180). */
+    float          activeCameraPitch() const           { return activeCameraPitch_; }
+    void           setActiveCameraPitch(float a)       { activeCameraPitch_ = a; }
 
 
     /* Game-embedded lifecycle, called only by Game_Construct / Game_Destruct
@@ -136,7 +138,7 @@ private:
     unsigned int   waveOutVolume_;                   /* +0x20a3f  Game 0x2ab56d */
     unsigned char  cameraTurnsWithPlayer_;           /* +0x20a43  Game 0x2ab571 */
     float          cameraYaw_;                       /* +0x20a44  default 0; CamModeLeft/Right */
-    unsigned char  field_20a48_[4];                  /* +0x20a48  gets +0x20a4c */
+    float          activeCameraPitch_;               /* +0x20a48  Game 0x2ab576; the tilt in effect, degrees */
     float          cameraPitch_;                     /* +0x20a4c  default 50.0; CamModeUp/Down, 50..89 */
     unsigned short joyDeadzone_;                     /* +0x20a50  Game 0x2ab57e */
 };
@@ -156,7 +158,7 @@ KAROO_LAYOUT_CHECKS(Config)
     KAROO_LAYOUT_AT(waveOutVolume_,         0x20a3f);
     KAROO_LAYOUT_AT(cameraTurnsWithPlayer_, 0x20a43);
     KAROO_LAYOUT_AT(cameraYaw_,           0x20a44);
-    KAROO_LAYOUT_AT(field_20a48_,           0x20a48);
+    KAROO_LAYOUT_AT(activeCameraPitch_,     0x20a48);
     KAROO_LAYOUT_AT(cameraPitch_,           0x20a4c);
     KAROO_LAYOUT_AT(joyDeadzone_,           0x20a50);
     /* The blob is the object's tail. */
