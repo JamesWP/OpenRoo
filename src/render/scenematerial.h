@@ -31,3 +31,9 @@ static_assert(0x0c + offsetof(D3DMATERIAL, ambient)    == 0x20, "SceneMaterial c
 static_assert(0x0c + offsetof(D3DMATERIAL, specular)   == 0x30, "SceneMaterial ctor");
 static_assert(0x0c + offsetof(D3DMATERIAL, power)      == 0x50, "SceneMaterial ctor");
 static_assert(0x0c + offsetof(D3DMATERIAL, dwRampSize) == 0x58, "SceneMaterial ctor");
+
+/* 0x42d760, thiscall(self, pD3D, pDevice): CreateMaterial + GetHandle
+ * (scenematerial.cpp). */
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+SceneMaterial_Create(SceneMaterial *self, IDirect3D3 *pD3D,
+                     IDirect3DDevice3 *pDevice);

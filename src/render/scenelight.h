@@ -3,6 +3,7 @@
 #include <ddraw.h>
 #include <d3d.h>
 #include <stddef.h>
+struct Direct3D;
 
 /* SceneSpotLight — the scene's spot light wrapper.  Layout from the Ghidra
  * struct (89 bytes), which tiles exactly: vtable, an inline D3DLIGHT2, the
@@ -32,3 +33,8 @@ static_assert(4 + offsetof(D3DLIGHT2, dvFalloff)      == 0x38, "SceneSpotLight c
 static_assert(4 + offsetof(D3DLIGHT2, dvAttenuation0) == 0x3c, "SceneSpotLight ctor");
 static_assert(4 + offsetof(D3DLIGHT2, dvAttenuation2) == 0x44, "SceneSpotLight ctor");
 static_assert(4 + offsetof(D3DLIGHT2, dwFlags)        == 0x50, "SceneSpotLight ctor");
+
+/* 0x425400, thiscall(self, d3d): Release, then pD3D->CreateLight.  True on
+ * success (scenelight.cpp). */
+extern "C" __declspec(dllexport) bool __attribute__((thiscall))
+SceneLight_Create(SceneSpotLight *self, Direct3D *d3d);

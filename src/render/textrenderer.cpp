@@ -698,3 +698,116 @@ Text_ScalarDtor(TextRenderer *self, unsigned int flags)
         game_free2(self);
     return self;
 }
+
+/* ─── 0x00413eb0 DrawTextPanel (ENDGAME E5) ────────────────────────────────
+ *
+ * __thiscall, twelve stack arguments, RET 0x30.  One caller, RenderGameFrame
+ * 0x42C2CF.  Written from the listing.  A multi-line caption over two
+ * full-width backdrop strips:
+ *
+ *   - lines = 1 + the '\n' count; the text block is raised so its last line
+ *     sits at y: y -= lines * lineH.
+ *   - SRCBLEND 5 / DESTBLEND 6 / ALPHABLEND 1.
+ *   - strip 1 (panelTex, or no texture): screen width W, from
+ *     y - W*0.009375 down to the screen height H, diffuse white, specular 0,
+ *     z 0 / rhw 10, uv the atlas's centre (0.4..0.6).  Strip order is
+ *     (W,top) (W,H) (0,top) (0,H), a TRIANGLESTRIP.
+ *   - strip 2, only when frameTex is non-NULL: y - W*0.015625 to
+ *     y - W*0.00625, uv 0..1, same strip order.
+ *   - the glyphs: the atlas texture, one TRIANGLEFAN per character, the cell
+ *     index the raw unsigned byte (no firstChar here, unlike drawLeft), the
+ *     cell uv from unsigned divides; '\n' returns x to the start and moves
+ *     y down one lineH.  The pen advances cellW * spacing.
+ *   - ALPHABLENDENABLE 0.
+ *
+ * The strip vertices' z is 0 while the glyphs' is 0.1: both as the original. */
+void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
+                             float spacing, float lineH, const char *str,
+                             Direct3D *d3d, DWORD colourTop, DWORD colourBottom,
+                             SceneTexture *panelTex, SceneTexture *frameTex)
+{
+    const float du = 1.0f / (float)cols_;      /* FILD qword: unsigned */
+    const float dv = 1.0f / (float)rows_;
+
+    unsigned int lines = 1;
+    for (unsigned int i = 0; i < strlen(str); ++i)
+        if (str[i] == '\n')
+            ++lines;
+    const float x0 = x;
+    y = y - (float)lines * lineH;
+
+    IDirect3DDevice3 *dev = d3d->pDevice;
+    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND,         D3DBLEND_SRCALPHA);
+    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND,        D3DBLEND_INVSRCALPHA);
+    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
+
+    const float W = (float)d3d->pSelectedMode->dwWidth;
+    const float H = (float)d3d->pSelectedMode->dwHeight;
+
+    TextVertex strip[4];
+    for (int k = 0; k < 4; k++) {
+        strip[k].z        = 0.0f;
+        strip[k].rhw      = 10.0f;
+        strip[k].diffuse  = 0xffffffff;
+        strip[k].specular = 0;
+    }
+
+    const float top1 = y - W * 0.009375f;
+    strip[0].x = W; strip[0].y = top1; strip[0].u = 0.6f; strip[0].v = 0.4f;
+    strip[1].x = W; strip[1].y = H;    strip[1].u = 0.6f; strip[1].v = 0.6f;
+    strip[2].x = 0; strip[2].y = top1; strip[2].u = 0.4f; strip[2].v = 0.4f;
+    strip[3].x = 0; strip[3].y = H;    strip[3].u = 0.4f; strip[3].v = 0.6f;
+    dev->SetTexture(0, panelTex ? panelTex->pTexture2 : NULL);
+    dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, TEXT_FVF, strip, 4, 0);
+
+    const float top2 = y - W * 0.015625f;
+    const float bot2 = y - W * 0.00625f;
+    strip[0].x = W; strip[0].y = top2; strip[0].u = 1.0f; strip[0].v = 0.0f;
+    strip[1].x = W; strip[1].y = bot2; strip[1].u = 1.0f; strip[1].v = 1.0f;
+    strip[2].x = 0; strip[2].y = top2; strip[2].u = 0.0f; strip[2].v = 0.0f;
+    strip[3].x = 0; strip[3].y = bot2; strip[3].u = 0.0f; strip[3].v = 1.0f;
+    if (frameTex) {
+        dev->SetTexture(0, frameTex->pTexture2);
+        dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, TEXT_FVF, strip, 4, 0);
+    }
+
+    dev->SetTexture(0, atlas_.pTexture2);
+
+    TextVertex quad[4];
+    for (int k = 0; k < 4; k++) {
+        quad[k].z        = 0.1f;
+        quad[k].rhw      = 10.0f;
+        quad[k].specular = 0xff000000;
+    }
+    for (unsigned int i = 0; i < strlen(str); ++i) {
+        const unsigned char ch = (unsigned char)str[i];
+        if (ch == '\n') {
+            y += lineH;
+            x = x0;
+            continue;
+        }
+        const float u = (float)(ch % cols_) * du;
+        const float v = (float)(ch / cols_) * dv;
+        const float x1 = x + cellW, y1 = y + cellH;
+
+        quad[0].x = x;  quad[0].y = y;  quad[0].u = u;      quad[0].v = v;      quad[0].diffuse = colourTop;
+        quad[1].x = x1; quad[1].y = y;  quad[1].u = u + du; quad[1].v = v;      quad[1].diffuse = colourTop;
+        quad[2].x = x1; quad[2].y = y1; quad[2].u = u + du; quad[2].v = v + dv; quad[2].diffuse = colourBottom;
+        quad[3].x = x;  quad[3].y = y1; quad[3].u = u;      quad[3].v = v + dv; quad[3].diffuse = colourBottom;
+        dev->DrawPrimitive(D3DPT_TRIANGLEFAN, TEXT_FVF, quad, 4, 0);
+
+        x += cellW * spacing;
+    }
+
+    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
+}
+
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Text_DrawPanelText(TextRenderer *self, float x, float y, float cellW,
+                   float cellH, float spacing, float lineH, const char *str,
+                   Direct3D *d3d, DWORD colourTop, DWORD colourBottom,
+                   SceneTexture *panelTex, SceneTexture *frameTex)
+{
+    self->drawPanel(x, y, cellW, cellH, spacing, lineH, str, d3d,
+                    colourTop, colourBottom, panelTex, frameTex);
+}
