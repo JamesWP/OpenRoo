@@ -59,3 +59,6 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
 extern "C" __declspec(dllexport) CDM * __attribute__((thiscall))
 CDM_ScalarDeletingDtor(CDM *self, unsigned int flags);
+/* 0x402ca0 -- the HWND MM_MCINOTIFY is posted to; WinMain sets it. */
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+CDM_SetWindowHandle(CDM *self, HWND hwnd);

@@ -1,4 +1,5 @@
 #pragma once
+#include <windows.h>
 /* Unattended-run support.
  *
  * KAROO_SKIP_LAUNCHER=1 makes hooks_DialogBoxParamA return IDOK without
@@ -17,3 +18,8 @@ void launcher_init(void);
  * window so the game's own shutdown path runs (Stage E asserts on a clean
  * shutdown, so ExitProcess is only the fallback). */
 void launcher_end_run(const char *why);
+
+/* WinMain's launcher dialog (and the device dialog's): IDOK without showing
+ * it under KAROO_SKIP_LAUNCHER, else passthrough. */
+extern "C" __declspec(dllexport) INT_PTR WINAPI hooks_DialogBoxParamA(
+        HINSTANCE inst, LPCSTR tmpl, HWND parent, DLGPROC proc, LPARAM param);

@@ -38,3 +38,16 @@ static_assert(offsetof(FaktMovie, notify_msg) == 0x138, "FaktMovie layout mismat
    jmp"), for the single global FaktMovie at 0x0046c5d8 — E9 sites, so they
    are JMP_PATCHES rather than CALL_PATCHES. */
 #define FAKTMOVIE_VTABLE ((void *)0x0045f200)
+
+/* The single global FaktMovie. */
+static FaktMovie *const GG_MOVIE = (FaktMovie *)0x0046c5d8;
+
+/* The exports WinMain drives (movie.cpp). */
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Movie_Setup(FaktMovie *self, void *log_obj);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Movie_LoadVideo(FaktMovie *self, void *arg1, void *arg2, void *arg3, const char *path);
+extern "C" __declspec(dllexport) int __attribute__((thiscall))
+Movie_Play(FaktMovie *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall))
+Movie_SetWindow(FaktMovie *self, void *surface);
