@@ -15,6 +15,9 @@ struct SceneSpotLight {
     BYTE            bNotInScene;  // +0x58
 };
 
+/* The one instance (scenelight.cpp), set up by renderstate.cpp. */
+static SceneSpotLight *const GG_LIGHT = (SceneSpotLight *)0x0046c830;
+
 static_assert(sizeof(D3DLIGHT2) == 80, "D3DLIGHT2 size mismatch");
 static_assert(offsetof(SceneSpotLight, pLight)      == 0x54, "SceneSpotLight layout");
 static_assert(offsetof(SceneSpotLight, bNotInScene) == 0x58, "SceneSpotLight layout");

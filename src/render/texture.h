@@ -12,6 +12,11 @@ struct SceneTexture {
 };
 
 static_assert(offsetof(SceneTexture, pTexture2) == 0x18, "SceneTexture layout");
+
+/* textures\shadow.tga and textures\karoo128.tga, loaded once at startup
+ * (renderstate.cpp). */
+static SceneTexture *const GG_TEX_SHADOW   = (SceneTexture *)0x004e02c8;
+static SceneTexture *const GG_TEX_KAROO128 = (SceneTexture *)0x004e0408;
 static_assert(sizeof(SceneTexture) == 0x1c, "SceneTexture stride mismatch");
 
 /* ─── texture.cpp's exports other files call (COHESION_PLAN template 10) ───

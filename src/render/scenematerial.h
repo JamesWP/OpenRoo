@@ -18,6 +18,9 @@ struct SceneMaterial {
     void                *pHeapData;  // +0x5c  freed by FactAlloc::Free2
 };
 
+/* The one instance (scenematerial.cpp), set up by renderstate.cpp. */
+static SceneMaterial *const GG_MATERIAL = (SceneMaterial *)0x004e0390;
+
 static_assert(sizeof(D3DMATERIAL) == 80, "D3DMATERIAL size mismatch");
 static_assert(offsetof(SceneMaterial, pMaterial) == 0x04, "SceneMaterial layout");
 static_assert(offsetof(SceneMaterial, hMaterial) == 0x08, "SceneMaterial layout");

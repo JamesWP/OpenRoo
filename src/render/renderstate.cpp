@@ -47,16 +47,6 @@
 #include "camera.h"
 #include "d3dmath_common.h"
 
-#define GG_DEMO_IMAGE     ((LoadedImage *)0x004dc7a8)
-#define GG_MESH_PLAYER    ((CFaktMesh *)0x0046c7b0)
-#define GG_MESH_ENEMY     ((CFaktMesh *)0x004e0310)
-#define GG_TEX_SHADOW     ((SceneTexture *)0x004e02c8)
-#define GG_TEX_KAROO128   ((SceneTexture *)0x004e0408)
-#define GG_MATERIAL       ((SceneMaterial *)0x004e0390)
-#define GG_LIGHT          ((SceneSpotLight *)0x0046c830)
-#define GG_FONT_MAIN      ((TextRenderer *)0x004e0480)
-#define GG_FONT_NUMBERS   ((TextRenderer *)0x004e02e8)
-#define GG_WORLD_IDENTITY ((D3DMATRIX *)0x004e0440)
 
 extern "C" __declspec(dllexport) void __cdecl
 Render_ConfigureRenderState(void)

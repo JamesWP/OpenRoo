@@ -207,3 +207,7 @@ Text_DrawPanelText(TextRenderer *self, float x, float y, float cellW,
                    float cellH, float spacing, float lineH, const char *str,
                    Direct3D *d3d, DWORD colourTop, DWORD colourBottom,
                    SceneTexture *panelTex, SceneTexture *frameTex);
+
+/* The two fonts: fonts\font1.fon and fonts\numbers.fon. */
+static TextRenderer *const GG_FONT_MAIN    = (TextRenderer *)0x004e0480;
+static TextRenderer *const GG_FONT_NUMBERS = (TextRenderer *)0x004e02e8;
