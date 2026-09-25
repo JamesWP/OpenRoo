@@ -440,24 +440,23 @@ Sim_SetupLevelObjects(Game *self)
 
     /* The player position triple is zeroed, and the listener and the two
      * position globals are set from it; the listener's y is 1000.0f. */
-    self->setCameraEyeBits(0, 0);
-    self->setCameraEyeBits(1, 0);
-    self->setCameraEyeBits(2, 0);
+    self->setCameraEye(0, 0.0f);
+    self->setCameraEye(1, 0.0f);
+    self->setCameraEye(2, 0.0f);
 
     self->setField13cc94(0, 0.0f);
     self->setField13cc94(1, 1000.0f);           /* 0x447a0000 */
     self->setField13cc94(2, 0.0f);
 
     CameraGlobals *cam = GG_CAMERA;   /* camera.h: note the eye/target conflict */
-    ((u32_ua *)cam->eye)[0] = 0;
-    ((u32_ua *)cam->eye)[1] = 0x447a0000;   /* 1000.0f */
-    ((u32_ua *)cam->eye)[2] = 0;
+    cam->eye[0] = 0.0f;
+    cam->eye[1] = 1000.0f;
+    cam->eye[2] = 0.0f;
 
-    ((u32_ua *)cam->target)[0] = self->cameraEyeBits(0);
-    ((u32_ua *)cam->target)[1] = self->cameraEyeBits(1);
-    cam->field_18 = 0;
-    ((u32_ua *)cam->target)[2] = self->cameraEyeBits(2);
-    cam->field_1c = 0;
+    for (int i = 0; i < 3; i++)
+        cam->target[i] = self->cameraEye(i);
+    cam->yaw = 0.0f;
+    cam->pitch = 0.0f;
 
     self->census()->reset();
 
@@ -903,8 +902,8 @@ next_row:
                            self->levelName());
     }
 
-    /* Config +0x20a48 (Game+0x2ab576), one dword: 60.0f. */
-    self->config()->setField20a48Bits(0x42700000);
+    /* The tilt in effect starts at 60 degrees (one dword MOV, 0x42700000). */
+    self->config()->setActiveCameraPitch(60.0f);
 
     s_calls++;
     if (s_diag)

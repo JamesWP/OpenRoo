@@ -329,6 +329,14 @@ static_assert(sizeof(BoxGenerator) == 0x244c, "Box size");
 #define GEN_VT_COPY_SLOT 1
 #define GEN_VT_SAVE_SLOT 4
 #define GEN_VT_LOAD_SLOT 5
+/* Slot 6 = SetPosition(vec3 by value); Std no-ops it. */
+#define GEN_VT_SETPOS_SLOT 6
+
+static inline void gen_vset_position(Generator *g, float x, float y, float z)
+{
+    typedef void (__attribute__((thiscall)) *fn)(Generator *, float, float, float);
+    ((fn)g->pVtable[GEN_VT_SETPOS_SLOT])(g, x, y, z);
+}
 
 /* EnvironmentFactoryCreate (0x4488f0), ours: allocate with our own new and
  * construct the named class, or NULL for an unknown name.  The object comes

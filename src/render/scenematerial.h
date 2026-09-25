@@ -1,5 +1,4 @@
 #pragma once
-#define DIRECTDRAW_VERSION 0x0100
 #include <windows.h>
 #include <ddraw.h>
 #include <d3d.h>

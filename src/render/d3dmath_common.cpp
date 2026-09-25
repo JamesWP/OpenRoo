@@ -171,4 +171,68 @@ Math_BuildBillboardQuad(Vec3 *out, float dx, float dy, float dz, float scale)
         v3_sub_inplace(&out[i], &c);
 }
 
+/* ─── ENDGAME #5: the matrix builders ─────────────────────────────────────
+ *
+ * The originals take cos/sin with FCOS/FSIN and accumulate products in the
+ * x87's 80-bit registers, rounding once per stored element; ours go through
+ * double and cosf/sinf.  Only last bits of values that feed rendering can
+ * differ.  What is kept: the operand order of the multiply, the w == 1.0
+ * test (a float compared with a double 1.0, NaN skipping the divide), and a
+ * zero w dividing to inf/NaN as there. */
+
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4Identity(Mat4 *out)
+{
+    m4_identity(out);
+    return out;
+}
+
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4Mul(Mat4 *out, Mat4 a, Mat4 b)
+{
+    m4_mul(out, &a, &b);        /* b * a, as m4_mul_std sums it */
+    return out;
+}
+
+__declspec(dllexport) Vec3 *__cdecl Math_Vec3TransformPoint(Vec3 *out, Mat4 m, Vec3 v)
+{
+    const float in[4] = { v.x, v.y, v.z, 1.0f };
+    float o[4];
+    for (int c = 0; c < 4; c++) {
+        double sum = 0.0;
+        for (int k = 0; k < 4; k++)
+            sum += (double)in[k] * (double)m.m[k * 4 + c];
+        o[c] = (float)sum;
+    }
+    const float w = o[3];
+    if (!(w == 1.0 || w != w)) {
+        o[0] = o[0] / w;
+        o[1] = o[1] / w;
+        o[2] = o[2] / w;
+    }
+    out->x = o[0];  out->y = o[1];  out->z = o[2];
+    return out;
+}
+
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4Translate(Mat4 *out, float x, float y, float z)
+{
+    Mat4 t;
+    m4_translate(&t, x, y, z);
+    *out = t;
+    return out;
+}
+
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4RotX(Mat4 *out, float angle)
+{
+    Mat4 t;  m4_rot_x(&t, angle);  *out = t;  return out;
+}
+
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4RotY(Mat4 *out, float angle)
+{
+    Mat4 t;  m4_rot_y(&t, angle);  *out = t;  return out;
+}
+
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle)
+{
+    Mat4 t;  m4_rot_z(&t, angle);  *out = t;  return out;
+}
+
 }

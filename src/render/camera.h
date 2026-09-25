@@ -11,9 +11,12 @@
  *     these names are wrong; nothing read so far settles which.  Those
  *     values are overwritten one frame later by the level entry.
  *
- * The last two dwords are named neutrally: 0x4b8 is only ever zeroed, and
- * 0x4bc is 0 after SetupLevelObjects and pi/3 (0x3f860a92) after the level
- * entry -- a FOV is plausible but unconfirmed.
+ * The last two dwords are the orbit angles, in radians, that
+ * UpdateViewTransform 0x404470 (camera.cpp) eases every frame: yaw (0 after
+ * setup and level entry) and pitch (0 after SetupLevelObjects, pi/3 after the
+ * level entry, clamped at 1.569051).  That function also settles the naming
+ * above: it eases `target` towards the player and places `eye` at
+ * target + RotX(-pitch).RotY(yaw) applied to (0, 0, -distance).
  */
 #pragma once
 
@@ -25,8 +28,8 @@ struct __attribute__((packed)) CameraGlobals {
 
     float  eye[3];      /* 0x46c4a0 */
     float  target[3];   /* 0x46c4ac */
-    DWORD  field_18;    /* 0x46c4b8 */
-    DWORD  field_1c;    /* 0x46c4bc */
+    float  yaw;         /* 0x46c4b8 */
+    float  pitch;       /* 0x46c4bc */
 
     KAROO_LAYOUT_REGISTER(CameraGlobals);
 };
@@ -34,9 +37,37 @@ struct __attribute__((packed)) CameraGlobals {
 KAROO_LAYOUT_CHECKS(CameraGlobals)
 {
     KAROO_LAYOUT_AT(target,   0x0c);
-    KAROO_LAYOUT_AT(field_18, 0x18);
-    KAROO_LAYOUT_AT(field_1c, 0x1c);
+    KAROO_LAYOUT_AT(yaw,      0x18);
+    KAROO_LAYOUT_AT(pitch,    0x1c);
     KAROO_LAYOUT_SIZE(0x20);
 }
 
 static CameraGlobals *const GG_CAMERA = (CameraGlobals *)0x0046c4a0;
+
+struct Mat4;
+struct Direct3D;
+class Game;
+
+/* The 9-float block at 0x4e01a0 that RenderGameFrame's 0x404120 fills and
+ * passes BY VALUE to UpdateViewTransform: [5] is the yaw the camera turns
+ * towards, [6..8] the point `target` follows.  [0..4] are not read here. */
+struct CameraFocus { float f[9]; };
+static_assert(sizeof(CameraFocus) == 0x24, "CameraFocus size");
+/* The level entry zeroes it; FramePose_Player fills it every frame. */
+static CameraFocus *const GG_CAMERA_FOCUS = (CameraFocus *)0x004e01a0;
+
+extern "C" {
+/* 0x407b20, cdecl(out, eye, at, up by value, roll) -> out: a left-handed
+ * LookAt (x = up x fwd, y = fwd x x, z = fwd, each normalised), then
+ * * RotZ(-roll) when roll != 0. */
+__declspec(dllexport) Mat4 *__cdecl
+Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
+                   float ax, float ay, float az,
+                   float ux, float uy, float uz, float roll);
+/* UpdateViewTransform 0x404470, cdecl(cam, d3d, game, focus BY VALUE,
+ * double dt): eases the orbit camera and sets the VIEW transform.  One
+ * caller, RenderGameFrame 0x42747d (add esp,0x38). */
+__declspec(dllexport) void __cdecl
+Camera_UpdateViewTransform(CameraGlobals *cam, Direct3D *d3d, Game *g,
+                           CameraFocus focus, double dt);
+}

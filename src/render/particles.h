@@ -263,3 +263,27 @@ BOOL  PS_THISCALL Particle_XFaceLoad(XFaceParticleSystem *, void *, GameLogger *
 #define PS_VT_XFORM  11
 #define PS_VT_DRAW   12
 #define PS_VTBL_SLOTS 15
+
+/* Virtual dispatch for callers outside particles.cpp: through the object's
+ * own table, so each class's override runs.  The tick's argument is a
+ * float in every slot 7 (the exports take it as DWORD bits; same ABI). */
+static inline void ps_vtick(ParticleSystem *ps, float dt)
+{
+    typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float);
+    ((fn)ps->pVtable[PS_VT_TICK])(ps, dt);
+}
+static inline void ps_vset_vector(ParticleSystem *ps, float x, float y, float z)
+{
+    typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float, float, float);
+    ((fn)ps->pVtable[PS_VT_SETVEC])(ps, x, y, z);
+}
+static inline void ps_vrender(ParticleSystem *ps, IDirect3DDevice3 *dev)
+{
+    typedef DWORD (__attribute__((thiscall)) *fn)(ParticleSystem *, IDirect3DDevice3 *);
+    ((fn)ps->pVtable[PS_VT_RENDER])(ps, dev);
+}
+static inline void ps_vtransform_corners(ParticleSystem *ps, float *matrix)
+{
+    typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float *);
+    ((fn)ps->pVtable[PS_VT_XFORM])(ps, matrix);
+}

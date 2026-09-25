@@ -373,7 +373,7 @@ public:
 
     /* ── camera and controls ────────────────────────────────────────── */
     /* 0 = follow the player; nonzero = view from the separate eye at
-     * +0x2ab580 (FUN_00404120 / UpdateViewTransform), and 2 also spins the
+     * +0x2ab580 (FramePose_Player 0x404120 / UpdateViewTransform), and 2 also spins the
      * yaw -- the menus and the tally.  Checkpoints restore it. */
     unsigned char  cameraMode() const                { return cameraMode_; }
     void           setCameraMode(unsigned char m)    { cameraMode_ = m; }
@@ -383,7 +383,7 @@ public:
     float          cameraDistance() const            { return cameraDistance_; }
     void           setCameraDistance(float d)        { cameraDistance_ = d; }
     /* The controls menu's camera option: 1 = the camera turns with the
-     * player (UpdateViewTransform, FUN_00404120).  GameTick forces it to 1
+     * player (UpdateViewTransform, FramePose_Player 0x404120).  GameTick forces it to 1
      * while Player+0xea is set, parking the choice +10 at +0x3215d. */
     unsigned char  cameraTurnsWithPlayer() const     { return config_.cameraTurnsWithPlayer(); }
     void           setCameraTurnsWithPlayer(unsigned char on) { config_.setCameraTurnsWithPlayer(on); }
@@ -400,26 +400,15 @@ public:
     /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
     unsigned short joyDeadzone() const               { return config_.joyDeadzone(); }
     /* The separate eye the camera views from when cameraMode() is nonzero
-     * (FUN_00404120 reads it as a float vector); checkpoints restore it
-     * from the script player. */
+     * (FramePose_Player 0x404120 makes it the camera's focus, z negated);
+     * checkpoints restore it from the script player. */
     void           setCameraEye(int i, float v)      { cameraEye_[i] = v; }
     float          cameraEye(int i) const            { return cameraEye_[i]; }
-    /* The eye as raw dwords: the level builder zeroes and copies it with
-     * dword MOVs, and a bit copy is what keeps that exact. */
-    unsigned int   cameraEyeBits(int i) const
-    {
-        typedef unsigned int __attribute__((aligned(1))) u32_ua;
-        return ((const u32_ua *)((const unsigned char *)this +
-                                 offsetof(Game, cameraEye_)))[i];
-    }
-    void           setCameraEyeBits(int i, unsigned int b)
-    {
-        typedef unsigned int __attribute__((aligned(1))) u32_ua;
-        ((u32_ua *)((unsigned char *)this + offsetof(Game, cameraEye_)))[i] = b;
-    }
-    /* A float vector FUN_00404120 reads beside the eye; checkpoints
-     * restore it from the script player's spline point, and the level
-     * builder seeds it {0, 1000, 0}.  Not decoded. */
+    /* A float vector RenderGameFrame's scripted-camera branch (0x427059,
+     * taken instead of UpdateViewTransform when Game+0x196086 is set) reads
+     * beside the eye -- not 0x404120, as this comment used to say;
+     * checkpoints restore it from the script player's spline point, and the
+     * level builder seeds it {0, 1000, 0}.  Not decoded. */
     void           setField13cc94(int i, float v)    { field_13cc94_[i] = v; }
     /* +0x13cca4 is the zoom distance the Zoom In/Out actions step (clamped
      * 2..20); GameTick eases cameraDistance towards it and copies it back

@@ -18,7 +18,7 @@ void  v3_sub(Vec3 *d, const Vec3 *a, const Vec3 *b);
 void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
                       DWORD specular, float u, float v);
 
-/* The vec3 helpers of the AutoClass5 TU (0x403770..0x403890), exported for
+/* The vec3 helpers of the CdThemes TU (0x403770..0x403890), exported for
  * the game's remaining call sites.  Each result is built in temporaries and
  * then stored, so an output that aliases an input is safe, as there. */
 extern "C" {
@@ -52,4 +52,24 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4Zero(Mat4 *d);
  * billboards and 0x421064.  (0x426c20, its in-place subtract, is inlined.) */
 __declspec(dllexport) void __cdecl
 Math_BuildBillboardQuad(Vec3 *out, float dx, float dy, float dz, float scale);
+
+/* ENDGAME #5: the Direct3D TU's matrix trio and Scene's four builders.  All
+ * cdecl, all return their first argument, all build into a temporary and
+ * copy out (so an `out` aliasing an input is safe, as there). */
+/* MatrixSetIdentity 0x413230. */
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4Identity(Mat4 *out);
+/* MatrixMultiply4x4 0x4132d0: both operands BY VALUE, and the product is
+ * b * a -- the second argument times the first. */
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4Mul(Mat4 *out, Mat4 a, Mat4 b);
+/* 0x413350: out = (v, 1) * m, then xyz /= w unless w == 1.0 (or unordered:
+ * FCOMP sets C3 for NaN too, so a NaN w skips the divide).  m and v by
+ * value. */
+__declspec(dllexport) Vec3 *__cdecl Math_Vec3TransformPoint(Vec3 *out, Mat4 m, Vec3 v);
+/* BuildTranslateMatrix 0x4232b0: identity with row 3 = (x, y, z, 1). */
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4Translate(Mat4 *out, float x, float y, float z);
+/* BuildX/Y/ZRotationMatrix 0x423380 / 0x423420 / 0x4234c0 -- the layouts of
+ * m4_rot_x/y/z_std (re-read from each listing's store offsets). */
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4RotX(Mat4 *out, float angle);
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4RotY(Mat4 *out, float angle);
+__declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle);
 }

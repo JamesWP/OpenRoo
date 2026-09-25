@@ -1,10 +1,10 @@
 /* GAMETICK_PLAN.md Band B reopened — theme name -> theme index.
  *
- *   AutoClass5::FindThemeIndexByThemeName  0x00403240   5 E8 sites
+ *   CdThemes::FindThemeIndexByThemeName  0x00403240   5 E8 sites
  *     0x0040337F (theme loader), 0x00414FA0 (GameTick), 0x0041626A,
  *     0x0041639C, 0x0041A310 -- every one stores AL and nothing more.
  *
- * __thiscall(AutoClass5*, const char *name), RET 4.  Its only callee is the
+ * __thiscall(CdThemes*, const char *name), RET 4.  Its only callee is the
  * CRT's _strlwr (0x004505b7 -- it LOWERcases, the old plate comment said
  * "uppercases").  _strlwr's locale branch is taken only when the code page
  * global at 0x004e0950 is non-zero; see the note on it below.
@@ -77,12 +77,12 @@ unsigned int CdThemes::findThemeIndex(const char *name)
     return 0;
 }
 
-/* ─── AutoClass5::PlayCDStuf 0x00403360 / PlayCDStuf_2 0x004033e0 ─────────
+/* ─── CdThemes::PlayCDStuf 0x00403360 / PlayCDStuf_2 0x004033e0 ─────────
  *
  * The CD-music pair.  Both were listed in GAMETICK_PLAN.md's "already ours"
  * table as cdm.cpp -- they are NOT: patch.py never took them.  cdm.cpp owns
  * the CDM class they call (Stop 0x00402d50 and PlayTrack 0x00402cb0, both
- * exported there); these two AutoClass5 wrappers stayed in the binary.
+ * exported there); these two CdThemes wrappers stayed in the binary.
  *
  * PlayCDStuf(this, caption), __thiscall RET 4, 8 E8 sites:
  *   count byte +0x11c == 0 -> return 0 (EAX cleared);

@@ -1,5 +1,5 @@
 /* inputsetup -- WinMain's input glue around the ProgableControl singleton,
- * from the AutoClass5 TU (0x403000..0x403ce0).
+ * from the CdThemes TU (0x403000..0x403ce0).
  *
  *   0x00403940  DirectInputSetup         inputsetup.cpp
  *   0x00403cb0  ControlTrySaveSettings   inputsetup.cpp
