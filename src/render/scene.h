@@ -38,8 +38,8 @@ struct Direct3D;
 struct GameLogger;
 class ExtraObjects;
 
-/* One placed object.  Read field-by-field by dsoscene.cpp (O_* offsets),
- * which predates this struct.  The type byte at +0 misaligns everything. */
+/* One placed object; dsoscene.cpp draws them.  The type byte at +0
+ * misaligns everything, hence packed. */
 struct __attribute__((packed)) SceneObject {
     static const int ORIGIN = 0;
 
@@ -56,7 +56,8 @@ struct __attribute__((packed)) SceneObject {
     DWORD          destBlend;        /* +0x1b1 */
     DWORD          textureAddress;   /* +0x1b5 */
     DWORD          onPath;           /* +0x1b9  splineMode != 0 */
-    DWORD          lit;              /* +0x1bd */
+    DWORD          lit;              /* +0x1bd  the .leo "lit" flag: draw as a
+                                                framed (lit) model, not a plain mesh */
     unsigned char  splineMode;       /* +0x1c1 */
     DWORD          splineTime;       /* +0x1c2 */
     SplinePath     spline;           /* +0x1c6 */

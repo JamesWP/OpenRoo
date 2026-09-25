@@ -39,38 +39,12 @@
 #include "log.h"
 #include "faktmesh.h"
 #include "ani.h"
+#include "scene.h"
+#include "texture.h"
+#include "extraobjects.h"
 
-#define SCENE_LIST_HEAD (*(struct SceneNode **)0x0046c45c)
-
-struct SceneNode { unsigned char *pValue; SceneNode *pNextNode; };
-
-/* Field accessors.  The offsets are unaligned -- the type byte at +0x00 shifts
- * everything by one -- so every read goes through memcpy rather than a struct,
- * which would need packing attributes to be correct here. */
-static inline DWORD ob_d(const unsigned char *o, int off)
-{ DWORD v; memcpy(&v, o + off, 4); return v; }
-static inline float ob_f(const unsigned char *o, int off)
-{ float v; memcpy(&v, o + off, 4); return v; }
-
-#define O_MESH      0x001
-#define O_SIZE      0x009
-#define O_ANIMGATE  0x00d
-#define O_ANIMDESC  0x011
-#define O_POS       0x191
-#define O_ROT       0x19d
-#define O_TEXTURE   0x1a9
-#define O_SRCBLEND  0x1ad
-#define O_DESTBLEND 0x1b1
-#define O_TEXADDR   0x1b5
-#define O_USEPATH   0x1b9
-#define O_FRAMED    0x1bd
-#define O_ORIENT    0x1c1
-#define O_PERIOD    0x1c2
-#define O_SPLINE    0x1c6
-
-/* SplinePath: pVtable, then LinkedList{vtable, pHead, pTail, dwCount}. */
-#define SP_HEAD  (O_SPLINE + 0x08)
-#define SP_COUNT (O_SPLINE + 0x10)
+/* The scene list is GG_SCENE->objects; each value is a SceneObject
+ * (scene.h, layout-checked against the 0x1da-byte allocation). */
 
 #define RS_SRCBLEND         19
 #define RS_DESTBLEND        20
@@ -127,9 +101,16 @@ static float path_param(double t, DWORD period, double bias)
     return (float)m_fmod((double)v, K_PATH_MODULUS);
 }
 
-static void eval_path(const unsigned char *o, float t, Vec3 *out)
+static void eval_path(const SceneObject *o, float t, Vec3 *out)
 {
-    bezier_eval((const ListNodeM *)ob_d(o, SP_HEAD), ob_d(o, SP_COUNT), t, out);
+    const LinkedList *cp = &o->spline.controlPointList;
+    bezier_eval((const ListNodeM *)cp->pHead, cp->dwCount, t, out);
+}
+
+/* The object's texture as the device wants it. */
+static void select_texture(void *dev, const SceneObject *o)
+{
+    set_tex(dev, 0, ((const SceneTexture *)o->texture)->pTexture2);
 }
 
 /* Heading and pitch from the path tangent.
@@ -169,17 +150,17 @@ static void object_rotation(Mat4 *m, float rx, float ry, float rz)
     compose(m, &t, &c);
 }
 
-static DWORD animation_frame(const unsigned char *o, double t)
+static DWORD animation_frame(const SceneObject *o, double t)
 {
     /* +0xd is set to 1 by BuildSceneObjectList when the object's .ani loaded;
      * +0x11 is the AnimTable it loaded into (ani.h), which runs to +0x191 --
      * exactly where the position below begins. */
-    if (ob_d(o, O_ANIMGATE) == 0)
+    if (o->animLoaded == 0)
         return 0;
     /* LookupAnimDescriptor(o + 0x11, 0x14) is a switch whose walk_forward arm
      * is the table's first slot, so the descriptor is o + 0x11 and no lookup
      * is needed.  It can never be NULL, so that check cannot fire. */
-    const AnimSlot *slot = (const AnimSlot *)(o + O_ANIMDESC);
+    const AnimSlot *slot = (const AnimSlot *)&o->anim;
     if (slot->numFrames == 0)
         return 0;
     /* Anim_FrameOnClock is the same function written as the other three call
@@ -226,12 +207,12 @@ extern "C" __declspec(dllexport) void __cdecl
 Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double t)
 {
     cam_diag(cam);
-    for (SceneNode *node = SCENE_LIST_HEAD; node != NULL; node = node->pNextNode) {
-        unsigned char *o = node->pValue;
+    for (LinkedListNode *node = GG_SCENE->objects.pHead; node != NULL; node = node->pNextNode) {
+        const SceneObject *o = (const SceneObject *)node->pValue;
         if (o == NULL)
             continue;
 
-        DWORD src = ob_d(o, O_SRCBLEND), dst = ob_d(o, O_DESTBLEND);
+        DWORD src = o->srcBlend, dst = o->destBlend;
         if (src != 0 && dst != 0) {
             set_rs(dev, RS_ALPHABLENDENABLE, 1);
             set_rs(dev, RS_SRCBLEND, src);
@@ -240,35 +221,32 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
             set_rs(dev, RS_ALPHABLENDENABLE, 0);
         }
 
-        DWORD ta = ob_d(o, O_TEXADDR);
+        DWORD ta = o->textureAddress;
         set_rs(dev, RS_TEXADDR_U, ta);
         set_rs(dev, RS_TEXADDR_V, ta);
 
-        DWORD tex = ob_d(o, O_TEXTURE);
-        if (tex != 0)
-            set_tex(dev, 0, (void *)ob_d((const unsigned char *)tex, 0x18));
+        if (o->texture != NULL)
+            select_texture(dev, o);
 
-        unsigned char type = o[0];
+        unsigned char type = o->type;
         Mat4 world;
 
-        if (type == 0) {
-            void *mesh = (void *)ob_d(o, O_MESH);
+        if (type == EXTRA_MODEL) {
+            CFaktMesh *mesh = o->mesh;
             if (mesh == NULL)
                 continue;
 
-            if (ob_d(o, O_USEPATH) == 0) {
-                object_rotation(&world, ob_f(o, O_ROT), ob_f(o, O_ROT + 4),
-                                ob_f(o, O_ROT + 8));
+            if (o->onPath == 0) {
+                object_rotation(&world, o->rot[0], o->rot[1], o->rot[2]);
                 Mat4 tr;
-                m4_translate(&tr, ob_f(o, O_POS), ob_f(o, O_POS + 4),
-                             ob_f(o, O_POS + 8));
+                m4_translate(&tr, o->pos[0], o->pos[1], o->pos[2]);
                 compose(&world, &world, &tr);
             } else {
-                DWORD period = ob_d(o, O_PERIOD);
+                DWORD period = o->splineTime;
                 Vec3 pos;
                 eval_path(o, path_param(t, period, 0.0), &pos);
 
-                if (o[O_ORIENT] == 1) {
+                if (o->splineMode == 1) {
                     Vec3 ahead;
                     eval_path(o, path_param(t, period, K_TANGENT_STEP), &ahead);
                     Vec3 d;  v3_sub(&d, &ahead, &pos);
@@ -283,8 +261,7 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
                     m4_rot_z(&c, (float)K_ORIENT_ROLL);
                     compose(&world, &tmp, &c);
                 } else {
-                    object_rotation(&world, ob_f(o, O_ROT), ob_f(o, O_ROT + 4),
-                                    ob_f(o, O_ROT + 8));
+                    object_rotation(&world, o->rot[0], o->rot[1], o->rot[2]);
                 }
 
                 Mat4 tr;
@@ -293,26 +270,26 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
 
                 /* The spline path re-selects the texture; the static path
                  * jumps past this. */
-                if (tex != 0)
-                    set_tex(dev, 0, (void *)ob_d((const unsigned char *)tex, 0x18));
+                if (o->texture != NULL)
+                    select_texture(dev, o);
             }
 
             set_xf(dev, D3DTRANSFORMSTATE_WORLD, &world);
             DWORD frame = animation_frame(o, t);
             set_rs(dev, RS_SPECULARENABLE, 0);
 
-            if (ob_d(o, O_FRAMED) != 0)
-                FaktMesh_DrawFramedModel((CFaktMesh *)mesh, (IDirect3DDevice3 *)dev, frame);
+            if (o->lit != 0)
+                FaktMesh_DrawFramedModel(mesh, (IDirect3DDevice3 *)dev, frame);
             else
-                FaktMesh_DrawMeshBuffer((CFaktMesh *)mesh, (IDirect3DDevice3 *)dev, frame);
+                FaktMesh_DrawMeshBuffer(mesh, (IDirect3DDevice3 *)dev, frame);
 
-        } else if (type == 2) {
+        } else if (type == EXTRA_BILLBOARD) {
             Vec3 target = { cam[3], cam[4], cam[5] };
             Vec3 eye    = { cam[0], cam[1], cam[2] };
             Vec3 dir;   v3_sub(&dir, &target, &eye);
 
             Vec3 corner[4];
-            billboard_corners(corner, dir.x, dir.y, dir.z, ob_f(o, O_SIZE));
+            billboard_corners(corner, dir.x, dir.y, dir.z, o->billboardRadius);
 
             BbVertex quad[4];
             billboard_vertex(&quad[0], &corner[0], 0xffffff, 0, 0.0f, 1.0f);
@@ -321,11 +298,11 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
             billboard_vertex(&quad[3], &corner[3], 0xffffff, 0, 1.0f, 0.0f);
 
             float px, py, pz;
-            if (ob_d(o, O_USEPATH) == 0) {
-                px = ob_f(o, O_POS);  py = ob_f(o, O_POS + 4);  pz = ob_f(o, O_POS + 8);
+            if (o->onPath == 0) {
+                px = o->pos[0];  py = o->pos[1];  pz = o->pos[2];
             } else {
                 Vec3 pos;
-                eval_path(o, path_param(t, ob_d(o, O_PERIOD), 0.0), &pos);
+                eval_path(o, path_param(t, o->splineTime, 0.0), &pos);
                 px = pos.x;  py = pos.y;  pz = pos.z;
             }
 
@@ -365,7 +342,6 @@ Scene_DrawSceneObjects(void *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double
 #include "splinepath.h"
 #include "record.h"
 
-#define O_PSYS  0x005
 
 typedef void (__attribute__((thiscall)) *ps_tick_fn)(void *, float);
 typedef void (__attribute__((thiscall)) *ps_view_fn)(void *, float, float, float);
@@ -386,12 +362,12 @@ Scene_DrawParticleSystems(void *dev, float *cam, double dt_ms, double t)
 {
     set_rs(dev, RS_SPECULARENABLE, 0);
 
-    for (SceneNode *node = SCENE_LIST_HEAD; node != NULL; node = node->pNextNode) {
-        unsigned char *o = node->pValue;
-        if (o == NULL || o[0] != 1)
+    for (LinkedListNode *node = GG_SCENE->objects.pHead; node != NULL; node = node->pNextNode) {
+        const SceneObject *o = (const SceneObject *)node->pValue;
+        if (o == NULL || o->type != EXTRA_PARTICLE)
             continue;
 
-        DWORD src = ob_d(o, O_SRCBLEND), dst = ob_d(o, O_DESTBLEND);
+        DWORD src = o->srcBlend, dst = o->destBlend;
         if (src != 0 && dst != 0) {
             set_rs(dev, RS_ALPHABLENDENABLE, 1);
             set_rs(dev, RS_SRCBLEND, src);
@@ -400,26 +376,25 @@ Scene_DrawParticleSystems(void *dev, float *cam, double dt_ms, double t)
             set_rs(dev, RS_ALPHABLENDENABLE, 0);
         }
 
-        DWORD tex = ob_d(o, O_TEXTURE);
-        if (tex != 0)
-            set_tex(dev, 0, (void *)ob_d((const unsigned char *)tex, 0x18));
+        if (o->texture != NULL)
+            select_texture(dev, o);
 
-        void *ps = (void *)ob_d(o, O_PSYS);
+        void *ps = o->particle;
         if (ps == NULL)
             continue;
 
         Mat4 world;
-        if (ob_d(o, O_USEPATH) == 0) {
-            rotation_xyz(&world, ob_f(o, O_ROT), ob_f(o, O_ROT + 4), ob_f(o, O_ROT + 8));
+        if (o->onPath == 0) {
+            rotation_xyz(&world, o->rot[0], o->rot[1], o->rot[2]);
             Mat4 tr;
-            m4_translate(&tr, ob_f(o, O_POS), ob_f(o, O_POS + 4), ob_f(o, O_POS + 8));
+            m4_translate(&tr, o->pos[0], o->pos[1], o->pos[2]);
             compose(&world, &world, &tr);
         } else {
-            DWORD period = ob_d(o, O_PERIOD);
+            DWORD period = o->splineTime;
             Vec3 pos;
             eval_path(o, path_param(t, period, 0.0), &pos);
 
-            if (o[O_ORIENT] == 1) {
+            if (o->splineMode == 1) {
                 Vec3 ahead;
                 eval_path(o, path_param(t, period, K_TANGENT_STEP), &ahead);
                 Vec3 d;  v3_sub(&d, &ahead, &pos);
@@ -434,7 +409,7 @@ Scene_DrawParticleSystems(void *dev, float *cam, double dt_ms, double t)
                 m4_rot_z(&c, (float)K_ORIENT_ROLL);
                 compose(&world, &tmp, &c);
             } else {
-                rotation_xyz(&world, ob_f(o, O_ROT), ob_f(o, O_ROT + 4), ob_f(o, O_ROT + 8));
+                rotation_xyz(&world, o->rot[0], o->rot[1], o->rot[2]);
             }
 
             Mat4 tr;
@@ -446,14 +421,14 @@ Scene_DrawParticleSystems(void *dev, float *cam, double dt_ms, double t)
             m4_identity(&ident);
             set_xf(dev, D3DTRANSFORMSTATE_WORLD, &ident);
 
-            SplinePath *sp = (SplinePath *)(o + O_SPLINE);
+            SplinePath *sp = (SplinePath *)&o->spline;
             if (hooks_GetAsyncKeyState(VK_F3) & 0x8000)
                 Spline_DrawSplinePath(sp, (IDirect3DDevice3 *)dev, 100, 0xffffffff);
             if (hooks_GetAsyncKeyState(VK_F4) & 0x8000)
                 Spline_DrawControlPolygon(sp, (IDirect3DDevice3 *)dev, 0xff808080);
 
-            if (tex != 0)
-                set_tex(dev, 0, (void *)ob_d((const unsigned char *)tex, 0x18));
+            if (o->texture != NULL)
+                select_texture(dev, o);
         }
 
         set_xf(dev, D3DTRANSFORMSTATE_WORLD, &world);
