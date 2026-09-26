@@ -1,4 +1,3 @@
-/* ProgableControl replacement — DirectInput 8, simple action/binding tables */
 #define DIRECTINPUT_VERSION 0x0800
 #include <windows.h>
 #include <dinput.h>
@@ -13,8 +12,6 @@
 
 static const char SAVE_FILE[] = "ProgableControl.sav";
 
-/* ── action table helpers ─────────────────────────────────────────────────── */
-
 static ActionEntry *find_entry(ActionTable *t, const char *name)
 {
     for (ActionEntry *e = t->head; e; e = e->chain)
@@ -24,7 +21,6 @@ static ActionEntry *find_entry(ActionTable *t, const char *name)
 
 static ActionEntry *get_or_create(ActionTable *t, const char *name)
 {
-    /* Walk to tail, checking for duplicates on the way. */
     ActionEntry **tail = &t->head;
     for (ActionEntry *e = t->head; e; e = e->chain) {
         if (!_stricmp(e->name, name)) return e;
@@ -33,7 +29,7 @@ static ActionEntry *get_or_create(ActionTable *t, const char *name)
     ActionEntry *e = (ActionEntry *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*e));
     if (!e) return nullptr;
     strncpy(e->name, name, 255);
-    *tail = e;  /* append — preserves registration order in the file */
+    *tail = e;  // appended, so the file keeps registration order
     t->entry_count++;
     return e;
 }
@@ -58,19 +54,14 @@ static void free_table(ActionTable *t)
 
 static void release_devices(ProgableControl *s)
 {
-    //log_write("ProgCtrl: release_devices(kbd=%p mouse=%p joy=%p di=%p)\n",
-    //          s->pKeyboard, s->pMouse, s->pJoystick, s->directinput);
     if (s->pKeyboard) { s->pKeyboard->Unacquire(); s->pKeyboard->Release(); s->pKeyboard = nullptr; }
     if (s->pMouse)    { s->pMouse->Unacquire();    s->pMouse->Release();    s->pMouse    = nullptr; }
     if (s->pJoystick) { s->pJoystick->Unacquire(); s->pJoystick->Release(); s->pJoystick = nullptr; }
     if (s->directinput) { s->directinput->Release(); s->directinput = nullptr; }
 }
 
-/* ── method bodies ────────────────────────────────────────────────────────── */
-
-static void *Setup_impl(ProgableControl *s, int /*logger_or_0*/)
+static void *Setup_impl(ProgableControl *s, int )
 {
-    //log_write("ProgCtrl::Setup(this=%p logger_or_0=%d)\n", s, logger_or_0);
     s->vtable        = const_cast<void*>(PROGCTRL_VTABLE);
     s->pLogger       = nullptr;
     s->dwOwns_logger = 0;
@@ -95,7 +86,6 @@ static void *Setup_impl(ProgableControl *s, int /*logger_or_0*/)
 
 static void Teardown_impl(ProgableControl *s)
 {
-    //log_write("ProgCtrl::Teardown(this=%p)\n", s);
     s->vtable = const_cast<void*>(PROGCTRL_VTABLE);
     release_devices(s);
     for (int i = 0; i < 5; i++) free_table(&s->action_tables[i]);
@@ -103,7 +93,6 @@ static void Teardown_impl(ProgableControl *s)
 
 static void ScalarDtor_impl(ProgableControl *s, int free_or_not)
 {
-    //log_write("ProgCtrl::ScalarDtor(this=%p free_or_not=%d)\n", s, free_or_not);
     Teardown_impl(s);
     if (free_or_not & 1)
         HeapFree(GetProcessHeap(), 0, s);
@@ -111,13 +100,11 @@ static void ScalarDtor_impl(ProgableControl *s, int free_or_not)
 
 static void Shutdown_impl(ProgableControl *s)
 {
-    //log_write("ProgCtrl::Shutdown(this=%p)\n", s);
     release_devices(s);
 }
 
 static int InitDInput_impl(ProgableControl *s, HINSTANCE hInstance)
 {
-    //log_write("ProgCtrl::InitDInput(this=%p hInstance=%p)\n", s, hInstance);
     HRESULT hr = DirectInput8Create(hInstance, DIRECTINPUT_VERSION,
                                     IID_IDirectInput8A,
                                     reinterpret_cast<void**>(&s->directinput), nullptr);
@@ -131,7 +118,6 @@ static int InitDInput_impl(ProgableControl *s, HINSTANCE hInstance)
 
 static int SetupKbd_impl(ProgableControl *s, HWND hwnd)
 {
-    //log_write("ProgCtrl::SetupKbd(this=%p hwnd=%p)\n", s, hwnd);
     if (!s->directinput) {
         log_write("ProgCtrl::SetupKbd: no directinput interface\n");
         return 0;
@@ -156,7 +142,6 @@ static int SetupKbd_impl(ProgableControl *s, HWND hwnd)
 
 static int SetupMouse_impl(ProgableControl *s, HWND hwnd)
 {
-    //log_write("ProgCtrl::SetupMouse(this=%p hwnd=%p)\n", s, hwnd);
     if (!s->directinput) {
         log_write("ProgCtrl::SetupMouse: no directinput interface\n");
         return 0;
@@ -207,7 +192,6 @@ static int UnacquireAll_impl(ProgableControl *s)
 static void RegisterAction_impl(ProgableControl *s, unsigned short mode,
                                  const char *name, ActionCallback cb, void *ctx)
 {
-    //log_write("ProgCtrl::RegisterAction(mode=%u name='%s' cb=%p ctx=%p)\n", mode, name, cb, ctx);
     if (mode >= 5) return;
     ActionEntry *e = get_or_create(&s->action_tables[mode], name);
     if (!e) {
@@ -221,7 +205,6 @@ static void RegisterAction_impl(ProgableControl *s, unsigned short mode,
 static int BindKey_impl(ProgableControl *s, unsigned short mode,
                          const char *name, int sc, int strength)
 {
-    //log_write("ProgCtrl::BindKey(mode=%u name='%s' sc=0x%02X strength=%d)\n", mode, name, sc, strength);
     if (mode >= 5) return 0;
     ActionEntry *e = find_entry(&s->action_tables[mode], name);
     if (!e) return 0;
@@ -282,28 +265,22 @@ static void GetBindingStr_impl(ProgableControl *s, int mode, const char *name,
 
 static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
 {
-    /* Captured before the early return so paused/cutscene modes are visible. */
-    gamestate_note_mode(game_state);
+    gamestate_note_mode(game_state);  // before the early return, so paused and cutscene modes are seen
 
     BYTE ks[256];
     if (record_replaying() && !policy_in_control(clock_frame())) {
-        /* Replay drives the scancode array and the mode from the recording,
-         * so the real keyboard is not touched at all. */
+        // Replay supplies both the key array and the mode; the real keyboard
+        // is not read.
         unsigned short recorded = game_state;
         if (!replay_keys(&recorded, ks)) return;
         game_state = recorded;
         if (game_state >= 5) return;
     } else if (policy_in_control(clock_frame())) {
-        /* The policy owns the run from here: the recording (if any) only
-         * existed to supply the menu prefix that got us into a level.  The
-         * real keyboard is not read, so this is reproducible in the same way a
-         * replay is. */
+        // The autoplay policy drives.  The watcher's own keys are merged on
+        // top, so they can still steer; the recording sees the merged array,
+        // so a recorded policy run replays exactly.
         if (game_state >= 5) return;
 
-        /* Read the human's keys first, then merge the policy's on top.  The
-         * policy drives, but whoever is watching can still steer, and — more
-         * importantly — is not locked out of their own game.  Recording sees
-         * the merged array, so a recorded policy run still replays exactly. */
         BYTE human[256];
         memset(human, 0, sizeof(human));
         if (s->pKeyboard) {
@@ -331,11 +308,9 @@ static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
             hr = s->pKeyboard->GetDeviceState(256, ks);
         }
         if (FAILED(hr)) return;
-        /* Stage 4: the policy overwrites the buffer the game was about to be
-         * given.  It runs *before* record_keys so a policy-driven run is
-         * captured to a .rec exactly as a hand-played one is — replaying that
-         * file back is the check that perception, decision and injection all
-         * agree.  It declines outside a level, so menus stay hand-driven. */
+        // The policy may overwrite the keys (it declines outside a level), and
+        // runs before recording so a policy-driven run records like a
+        // hand-played one.
         policy_keys(s, game_state, ks);
         record_keys(game_state, ks);
     }
@@ -351,7 +326,7 @@ static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
 }
 
 static int CaptureBinding_impl(ProgableControl *s, unsigned int mode, const char *name,
-                                int strength, int /*allow_axis*/, int /*flags*/)
+                                int strength, int , int )
 {
     if (mode >= 5 || !s->pKeyboard) return 0;
 
@@ -370,13 +345,10 @@ static int CaptureBinding_impl(ProgableControl *s, unsigned int mode, const char
     return 0;
 }
 
-/* ── save / load ──────────────────────────────────────────────────────────── */
-
-/* Read one action entry's binding block in the original game format:
- *   DWORD kbd_count;  kbd_count × (DWORD key_id + DWORD strength)
- *   DWORD axis_count; axis_count × (DWORD axis_id + 8 bytes) — skipped
- *   DWORD btn_count;  btn_count  × (DWORD btn_id  + 8 bytes) — skipped
- */
+/* FORMAT: one action's bindings in ProgableControl.sav:
+ *   DWORD kbd_count;  kbd_count x (DWORD scan code, DWORD strength)
+ *   DWORD axis_count; axis_count x 12 bytes, skipped
+ *   DWORD btn_count;  btn_count x 12 bytes, skipped */
 static int read_orig_entry_bindings(HANDLE f, ProgableControl *s, int mode, ActionEntry *e)
 {
     DWORD n;
@@ -452,13 +424,10 @@ static int WriteBindings_impl(ProgableControl *s)
         return 0;
     }
     DWORD n;
-    /* Original format: no header.
-     *   DWORD entry_count
-     *   For each entry:
-     *     char  name[256]
-     *     DWORD kbd_count;  kbd_count × (DWORD key_id, DWORD strength)
-     *     DWORD axis_count; (always 0)
-     *     DWORD btn_count;  (always 0) */
+    // FORMAT: no header.  For each of the five modes:
+    //   DWORD entry_count
+    //   per entry: char name[256], then the bindings as read above,
+    //   with axis_count and btn_count always 0.
     const DWORD zero = 0;
     for (int m = 0; m < 5; m++) {
         ActionTable *t = &s->action_tables[m];
@@ -480,8 +449,8 @@ static int WriteBindings_impl(ProgableControl *s)
                 if (!WriteFile(f, &key_id,   4, &n, nullptr)) goto fail;
                 if (!WriteFile(f, &strength, 4, &n, nullptr)) goto fail;
             }
-            if (!WriteFile(f, &zero, 4, &n, nullptr)) goto fail; /* axis_count = 0 */
-            if (!WriteFile(f, &zero, 4, &n, nullptr)) goto fail; /* btn_count  = 0 */
+            if (!WriteFile(f, &zero, 4, &n, nullptr)) goto fail;
+            if (!WriteFile(f, &zero, 4, &n, nullptr)) goto fail;
         }
     }
     CloseHandle(f);
@@ -507,8 +476,6 @@ static int ReadBindings_impl(ProgableControl *s)
     if (ok) log_write("ProgCtrl::ReadBindings: done\n");
     return ok;
 }
-
-/* ── exports ─────────────────────────────────────────────────────────────── */
 
 extern "C" {
 
@@ -596,9 +563,8 @@ __declspec(dllexport) int __attribute__((thiscall))
 ProgCtrl_ReadBindings(ProgableControl *s)
     { return ReadBindings_impl(s); }
 
-} /* extern "C" */
+}
 
-/* PROGCTRL_VTABLE: our own 1-slot table (the game's was at 0x0045efb0, same slots). */
 static void *const progctrl_vtable_slots[1] = {
     (void *)&ProgCtrl_ScalarDtor,
 };
