@@ -406,9 +406,11 @@ static bool device_init(HWND hDlg)
 {
     SetWindowPos(hDlg, HWND_TOPMOST, 400, 300, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
+    /* LoadLibrary, not GetModuleHandle: the original imported ddraw.dll, so
+     * it was always loaded; KarooOwn.exe does not import it. */
     typedef HRESULT (WINAPI *enum_fn)(LPDDENUMCALLBACKA, LPVOID);
     enum_fn enumerate = (enum_fn)(void (*)(void))
-        GetProcAddress(GetModuleHandleA("ddraw.dll"), "DirectDrawEnumerateA");
+        GetProcAddress(LoadLibraryA("ddraw.dll"), "DirectDrawEnumerateA");
     if (!enumerate
         || FAILED(enumerate(driver_enum_cb, GetDlgItem(hDlg, IDC_DRIVERS))))
         return false;
