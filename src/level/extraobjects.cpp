@@ -119,17 +119,12 @@ static bool fx_nomodels(void)
  * The oracle for the ParseExtraObjectEntry replacement: captured from the
  * original, now tests/levelreport/LeoRecords.txt. */
 
-/* `s` with a leading "<game dir>\" removed, compared case-insensitively. */
+/* `s` with a leading "<game dir>\" removed, compared case-insensitively.
+ * The paths are built from g_gameDir, so that is the prefix to strip. */
 static const char *strip_game_dir(const char *s)
 {
-    static char dir[MAX_PATH];
-    static size_t n = (size_t)-1;
-    if (n == (size_t)-1) {
-        DWORD len = GetModuleFileNameA(NULL, dir, sizeof(dir));
-        char *slash = strrchr(dir, '\\');
-        n = (len && slash) ? (size_t)(slash - dir + 1) : 0;   /* through the backslash */
-    }
-    return (n && _strnicmp(s, dir, n) == 0) ? s + n : s;
+    size_t n = strlen(g_gameDir);
+    return (_strnicmp(s, g_gameDir, n) == 0 && s[n] == '\\') ? s + n + 1 : s;
 }
 
 static void fnv(unsigned long *h, const void *p, size_t n)

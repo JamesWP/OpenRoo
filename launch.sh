@@ -33,9 +33,9 @@ done
 EXE=KarooOwn.exe
 [[ -f "$EXE" ]] || { echo "ERROR: $EXE missing — run make in karoo-hooks first"; exit 1; }
 
-# A ddraw.dll here would be loaded in preference to stock Wine ddraw, even under
+# A ddraw.dll beside the game would be loaded in preference to stock Wine ddraw, even under
 # ddraw=b.
-if [[ -f ddraw.dll ]]; then
+if [[ -f ddraw.dll || -f run/ddraw.dll ]]; then
   echo "ERROR: ddraw.dll present in the game directory — it would be loaded instead of" >&2
   echo "       stock Wine ddraw (Wine logs it from this path as \"builtin\"). Remove it." >&2
   exit 1
@@ -51,17 +51,38 @@ roll_log() {
   > "${base}"
 }
 
-# Karoo.cfg is gitignored, so a fresh clone or git worktree has none. Without it
-# Game::Load falls back to FUN_0041d520, which sets sound and gamma defaults but
-# leaves the video mode index and adapter GUID at their zero-initialised values —
-# so the game silently comes up in whatever mode DirectDraw enumerates first.
-# Install a known-good config instead. Only when absent: never overwrite a
-# config the player has since changed through the launcher.
-if [[ ! -f Karoo.cfg ]]; then
-  echo "Karoo.cfg missing — installing Karoo.cfg.default (1024x768x32)"
-  cp Karoo.cfg.default Karoo.cfg
+# ─── The run directory ────────────────────────────────────────────────────
+#
+# The game runs in run/ (gitignored) and never writes to game/, the data
+# imported from your own copy by tools/import_assets.py.  run/ holds what the
+# game writes -- Karoo.cfg, SavedGames/, highscores/, ProgableControl.sav,
+# every log and report -- and a symlink to each read-only data entry in
+# game/, so the game's relative paths resolve exactly as they did in an
+# install.  The executable is copied in, so its directory is the cwd too.
+[[ -d game ]] || { echo "ERROR: game/ missing — run tools/import_assets.py --from <your Ka'roo>" >&2; exit 1; }
+mkdir -p run/SavedGames run/highscores
+for _entry in game/*; do
+  _name=$(basename "$_entry")
+  case "$_name" in
+    SavedGames|highscores|ProgableControl.sav|Karoo.exe) continue ;;
+  esac
+  [[ -L "run/$_name" ]] || ln -s "../game/$_name" "run/$_name"
+done
+# The input bindings: the game rewrites this file, so run/ gets a copy.
+[[ -f run/ProgableControl.sav ]] || cp game/ProgableControl.sav run/
+cp -p "$EXE" run/
+
+# Karoo.cfg is ours, not the game's.  Without it Game::Load leaves the video
+# mode index and adapter GUID zero-initialised, so the game comes up in
+# whatever mode DirectDraw enumerates first.  Install a known-good config
+# (1024x768x32, music off) -- only when absent: never overwrite a config the
+# player has since changed through the launcher.
+if [[ ! -f run/Karoo.cfg ]]; then
+  echo "run/Karoo.cfg missing — installing Karoo.cfg.default (1024x768x32)"
+  cp Karoo.cfg.default run/Karoo.cfg
 fi
 
+cd run
 roll_log JJ.log
 roll_log StreamSoundBuffer.log
 roll_log steam-123456.log
@@ -161,7 +182,7 @@ PROTON_RUN=(
 
 if (( DEBUG )); then
   roll_log debug.log
-  [[ -f debug.gdb ]] || { echo "ERROR: debug.gdb missing"; exit 1; }
+  [[ -f ../debug.gdb ]] || { echo "ERROR: debug.gdb missing"; exit 1; }
   command -v gdb >/dev/null || { echo "ERROR: gdb not installed (apt install gdb)"; exit 1; }
 
   PORT="${WINEDBG_PORT:-9999}"
@@ -187,7 +208,7 @@ if (( DEBUG )); then
   done
 
   echo "Attaching gdb (probes log to ./debug.log)..."
-  gdb -q -x debug.gdb
+  gdb -q -x ../debug.gdb
   cleanup
   exit 0
 fi

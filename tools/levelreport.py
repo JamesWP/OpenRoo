@@ -56,6 +56,7 @@ import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = os.path.join(REPO, "tests", "levelreport")
+RUN = os.path.join(REPO, "run")     # launch.sh runs the game here
 
 # The two files WriteLevelReport produces, relative to the game directory,
 # plus LeoRecords.txt: our KAROO_LEO_RECDUMP of every .leo record the run
@@ -84,20 +85,20 @@ class Sandbox:
     """
 
     def __init__(self, names):
-        self.names = [n for n in names if os.path.isdir(os.path.join(REPO, n))]
+        self.names = [n for n in names if os.path.isdir(os.path.join(RUN, n))]
         self.tmp = None
 
     def __enter__(self):
-        self.tmp = os.path.join(REPO, ".levelreport-sandbox")
+        self.tmp = os.path.join(RUN, ".levelreport-sandbox")
         shutil.rmtree(self.tmp, ignore_errors=True)
         os.makedirs(self.tmp)
         for n in self.names:
-            shutil.copytree(os.path.join(REPO, n), os.path.join(self.tmp, n))
+            shutil.copytree(os.path.join(RUN, n), os.path.join(self.tmp, n))
         return self
 
     def __exit__(self, *exc):
         for n in self.names:
-            dst = os.path.join(REPO, n)
+            dst = os.path.join(RUN, n)
             shutil.rmtree(dst, ignore_errors=True)
             shutil.copytree(os.path.join(self.tmp, n), dst)
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -130,13 +131,13 @@ def launch(headless=True):
     """Run the game with the trigger set.  Returns True if it exited by itself."""
     for f in OUTPUTS:
         try:
-            os.unlink(os.path.join(REPO, f))
+            os.unlink(os.path.join(RUN, f))
         except FileNotFoundError:
             pass
 
     env = dict(os.environ)
     env["KAROO_LEVEL_REPORT"] = "1"
-    env["KAROO_LEO_RECDUMP"] = "Z:" + os.path.join(REPO, LEO_DUMP).replace("/", "\\")
+    env["KAROO_LEO_RECDUMP"] = "Z:" + os.path.join(RUN, LEO_DUMP).replace("/", "\\")
     # The report is not a timed run and draws nothing worth watching; unpin the
     # frame rate from the display refresh so the menu walk is not vsync-paced.
     env.setdefault("vblank_mode", "0")
@@ -193,12 +194,12 @@ def triggered():
     """
     ok_dll = ok_game = False
     try:
-        with open(os.path.join(REPO, "karoo_hooks.log"), errors="replace") as fh:
+        with open(os.path.join(RUN, "karoo_hooks.log"), errors="replace") as fh:
             ok_dll = "levelreport: trigger delivered" in fh.read()
     except OSError:
         pass
     try:
-        with open(os.path.join(REPO, "JJ.log"), errors="replace") as fh:
+        with open(os.path.join(RUN, "JJ.log"), errors="replace") as fh:
             ok_game = "level report created" in fh.read()
     except OSError:
         pass
@@ -209,7 +210,7 @@ def triggered():
 
 def diff(name):
     """Return a short unified diff of baseline vs produced, or None if equal."""
-    got = os.path.join(REPO, name)
+    got = os.path.join(RUN, name)
     want = os.path.join(BASELINE, name)
     if not os.path.exists(got):
         return "  %s: not produced by the run" % name
@@ -230,7 +231,7 @@ def diff(name):
 def normalise_leo_dump():
     """Make the dump's per-file headers repo-relative, so the baseline does
     not depend on where the checkout lives."""
-    path = os.path.join(REPO, LEO_DUMP)
+    path = os.path.join(RUN, LEO_DUMP)
     if not os.path.exists(path):
         return
     with open(path, "rb") as f:
@@ -243,7 +244,7 @@ def normalise_leo_dump():
 def bless():
     os.makedirs(BASELINE, exist_ok=True)
     for f in OUTPUTS:
-        src = os.path.join(REPO, f)
+        src = os.path.join(RUN, f)
         if not os.path.exists(src):
             print("  ! %s was not produced; not blessing" % f)
             return 1
@@ -304,7 +305,7 @@ def main():
     if not args.keep and not args.bless:
         for f in OUTPUTS:
             try:
-                os.unlink(os.path.join(REPO, f))
+                os.unlink(os.path.join(RUN, f))
             except FileNotFoundError:
                 pass
     return rc

@@ -202,7 +202,13 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
 {
     g_moduleInstance = hInstance;
-    GetCurrentDirectoryA(GG_GAME_DIR_LEN, g_gameDir);
+    /* The original stored the absolute current directory here and prefixed
+     * it onto every data path, which it then copied into fixed buffers as
+     * small as 0x80 bytes: a long enough install path overflowed them (the
+     * script-text reader's overflow reached its text counter).  Nothing
+     * changes the current directory, so "." names the same files at any
+     * install depth. */
+    strcpy(g_gameDir, ".");
 
     WNDCLASSA wc;
     wc.style         = CS_HREDRAW | CS_VREDRAW;

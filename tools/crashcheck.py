@@ -25,6 +25,7 @@ a crash rate, loop it and count:
 import argparse, os, re, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RUN = os.path.join(REPO, "run")     # launch.sh runs the game here
 
 # A clean shutdown always writes all three, in this order.
 SHUTDOWN_MARKERS = [
@@ -60,8 +61,8 @@ def main():
     args = ap.parse_args()
 
     suffix = "" if args.gen == 0 else ".%d" % args.gen
-    hooks_path = os.path.join(REPO, "karoo_hooks.log" + suffix)
-    steam_path = os.path.join(REPO, "steam-123456.log" + suffix)
+    hooks_path = os.path.join(RUN, "karoo_hooks.log" + suffix)
+    steam_path = os.path.join(RUN, "steam-123456.log" + suffix)
     hooks, steam = read(hooks_path), read(steam_path)
 
     def say(*a):

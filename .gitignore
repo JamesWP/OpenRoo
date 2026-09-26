@@ -45,3 +45,6 @@ KarooOwn.exe
 
 # The game data, imported from your own copy by tools/import_assets.py
 /game/
+
+# Where launch.sh runs the game: what it writes, plus links into game/
+/run/

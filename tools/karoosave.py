@@ -690,8 +690,8 @@ def cmd_verify(args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--gam", default=os.path.join(REPO, "JJ.GAM"))
-    ap.add_argument("--saves", default=os.path.join(REPO, "SavedGames"))
+    ap.add_argument("--gam", default=os.path.join(REPO, "game", "JJ.GAM"))
+    ap.add_argument("--saves", default=os.path.join(REPO, "run", "SavedGames"))
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("levels", help="list every level with its index")
