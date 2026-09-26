@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Lint src/ comments against the comment policy (OPEN_PLAN.md Part C).
 
-    python3 tools/commentlint.py [FILES...]      exit 1 on a finding
+    python3 tools/commentlint.py [FILES or DIRS...]   exit 1 on a finding
 
 Fails on what the policy says never goes in a comment: addresses in the
 original executable, decompiler names, the reverse-engineering tools and
@@ -43,7 +43,12 @@ def lint(path):
 
 
 def main(argv):
-    files = argv or sorted(glob.glob(os.path.join(ROOT, "src", "*", "*.[ch]*")))
+    files = []
+    for a in argv or [os.path.join(ROOT, "src")]:
+        if os.path.isdir(a):
+            files += sorted(glob.glob(os.path.join(a, "**", "*.[ch]*"), recursive=True))
+        else:
+            files.append(a)
     total = 0
     for f in files:
         for line, name, what in lint(f):

@@ -1,17 +1,22 @@
 #pragma once
-/* The game's own logger ("CProto") -- see gamelog.cpp for the derivation. */
+
+/* The game's own logger (the game calls it CProto).  It writes the "Protokoll"
+ * files: JJ.log from WinMain, StreamSoundBuffer.log from the sound code, and a
+ * few more on setup paths that rarely fire.  Each line is a local timestamp
+ * and the message; a message logs only if its level is at least minLevel (1).
+ */
 #include <windows.h>
 #include <stdio.h>
 #include <stddef.h>
 
 #pragma pack(push, 1)
 struct GameLogger {
-    void  *pVtable;          /* +0x000  LoggerVtable (0x0045ef98)            */
-    int    minLevel;         /* +0x004  a message logs iff level >= this     */
-    char   fileName[0x104];  /* +0x008  the path handed to OpenLogFile       */
-    FILE  *fp;               /* +0x10c  NULL until OpenLogFile succeeds      */
-    UINT   notifyWParam;     /* +0x110  WM_COPYDATA wParam; 0 disables       */
-    HWND   notifyHwnd;       /* +0x114  WM_COPYDATA target; NULL disables    */
+    void  *pVtable;          // our one-slot table
+    int    minLevel;         // a message logs if level >= this
+    char   fileName[0x104];  // the path given to OpenLogFile
+    FILE  *fp;               // NULL until OpenLogFile succeeds
+    UINT   notifyWParam;     // WM_COPYDATA mirror wParam; 0 disables
+    HWND   notifyHwnd;       // WM_COPYDATA mirror target; nothing ever sets it
 };
 #pragma pack(pop)
 
@@ -22,27 +27,25 @@ static_assert(offsetof(GameLogger, fp)           == 0x10c, "fp");
 static_assert(offsetof(GameLogger, notifyWParam) == 0x110, "notifyWParam");
 static_assert(offsetof(GameLogger, notifyHwnd)   == 0x114, "notifyHwnd");
 
-/* The replacement writer, for other hooks sources that used to reach into the
- * game binary at 0x00441b10.  Same __cdecl variadic shape as the original. */
+/* Formats and writes one line: "HH:MM:SS : message". */
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
-/* 0x004418b0 -- open (or reopen) the log file; WinMain opens "JJ.log". */
+/* Opens (or reopens) the log file and writes the date banner.  Returns 0,
+ * after a message box, if the file cannot be opened. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 GameLog_OpenLogFile(GameLogger *self, const char *filename, const char *mode);
 
-/* 0x00441860 -- construct and open in one (SoundManager's own log). */
+/* Constructs and opens in one. */
 extern "C" __declspec(dllexport) void * __attribute__((thiscall))
 GameLog_Initialize(GameLogger *self, const char *filename, const char *mode);
 
-/* The file/line writer (0x00441d20), same shape.  The particle Save/Load slots
- * report failures through it, so particles.cpp calls it here rather than
- * reaching into the game image. */
+/* Writes "HH:MM:SS : File: <file>, Line: <line>: message". */
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
                           int line, const char *fmt, ...);
 
-/* Constructor and destructor body, driven by staticinit.cpp for the one
- * global instance (the original's static-init/atexit thunks). */
-extern "C" __declspec(dllexport) void __attribute__((thiscall)) GameLog_Construct(GameLogger *self);   /* 0x00441810 */
-extern "C" __declspec(dllexport) void __attribute__((thiscall)) GameLog_CloseAndRebindVtable(GameLogger *self);   /* 0x00441a00 */
+/* Construction and destruction of the global logger, driven by staticinit.cpp.
+ */
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) GameLog_Construct(GameLogger *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) GameLog_CloseAndRebindVtable(GameLogger *self);

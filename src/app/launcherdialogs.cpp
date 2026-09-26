@@ -1,29 +1,12 @@
-/* The launcher dialogs, TU 0x0043ce10..0x0043dde0 (ENDGAME_PLAN.md E8):
+/* The launcher window (a shaped window with bitmap buttons: play, setup, quit,
+ * and a link to the publisher's site) and the display device dialog it opens.
  *
- *   0x0043ce10  DriverEnumCallback     LauncherDlg's DirectDrawEnumerateA callback
- *   0x0043cea0  ModeEnumCallback       IDirectDraw4::EnumDisplayModes callback
- *   0x0043cfa0  DeviceSelectDlgProc    LauncherDlg_DeviceSelectProc
- *   0x0043d590  ReadWholeBmpFileValidated  load_bmp_file
- *   0x0043d650  LauncherDlgProc        LauncherDlg_Proc
+ * Neither test gate reaches this code: --skip-launcher and --headless both
+ * skip the launcher (launcher.cpp).  It is checked by hand.
  *
- * The two enum callbacks were never functions in Ghidra -- each is reachable
- * only as a pushed address inside DeviceSelectDlgProc -- so the progress
- * report did not know they existed until this cycle created them.
- *
- * Written from the listings (the decompiler times out on both procs).  Every
- * global the TU owns -- seven bitmap pointers 0x4e07a4..0x4e07c4, the mode
- * counter 0x4e07a8, the checkbox flag 0x4e07ac -- is referenced nowhere
- * outside it (byte scan of Karoo.exe.orig), so they are file statics here.
- * The heap blocks (bitmaps, GUID copies) are ours on both sides, so they
- * come from our malloc rather than the game's 0x451f15.
- *
- * Neither gate reaches this code: --skip-launcher and --headless both skip
- * the launcher (launcher.cpp).  It is checked by hand.
- *
- * KAROO_LAUNCHERDLG_FX=allaspect -- ModeEnumCallback keeps every aspect
- * ratio instead of only 1.3 < w/h < 1.4, so the device dialog's mode list
- * gains the 16:9 / 16:10 / 5:4 modes.  Only this callback builds that list.
- */
+ * KAROO_LAUNCHERDLG_FX=allaspect is a negative control: the device dialog
+ * lists every aspect ratio instead of 4:3 only. */
+
 #include <windows.h>
 #include <mmsystem.h>
 #include <ddraw.h>
@@ -40,10 +23,9 @@
 #include "log.h"
 #include "resources.h"
 
-/* ── dialog item ids ── */
-static const int IDC_PLAY       = 0x3f5;   /* "spielen" */
-static const int IDC_SETUP      = 0x3f2;   /* "setup"; also the mode combo */
-static const int IDC_QUIT       = IDCANCEL; /* "ende" */
+static const int IDC_PLAY       = 0x3f5;     // "spielen"
+static const int IDC_SETUP      = 0x3f2;     // "setup"; the same id as the mode combo
+static const int IDC_QUIT       = IDCANCEL;  // "ende"
 static const int IDC_DRIVERS    = 0x3f0;
 static const int IDC_HWCHECK    = 0x3f1;
 static const int IDC_MODES      = 0x3f2;
@@ -54,13 +36,13 @@ static const char SND_SWITCH[] = "waves\\switch.wav";
 static const char SND_IMPACT[] = "waves\\mineimpact.wav";
 static const char SND_UGH[]    = "waves\\ugh.wav";
 
-/* ── the TU's globals ── */
-static BYTE *s_menuBmp;                     /* 0x4e07b8 */
-static BYTE *s_playOff,  *s_playFoc;        /* 0x4e07a4 / 0x4e07c4 */
-static BYTE *s_setupOff, *s_setupFoc;       /* 0x4e07b4 / 0x4e07bc */
-static BYTE *s_quitOff,  *s_quitFoc;        /* 0x4e07c0 / 0x4e07b0 */
-static int   s_modeCounter;                 /* 0x4e07a8 */
-/* 0x4e07ac: the hardware checkbox on OK.  Write-only in the original. */
+static BYTE *s_menuBmp;
+static BYTE *s_playOff,  *s_playFoc;
+static BYTE *s_setupOff, *s_setupFoc;
+static BYTE *s_quitOff,  *s_quitFoc;
+static int   s_modeCounter;
+
+/* The hardware checkbox's state on OK.  Nothing reads it. */
 static unsigned char s_hwChecked;
 
 static bool fx_allaspect()
@@ -75,9 +57,8 @@ static bool fx_allaspect()
     return cached != 0;
 }
 
-/* 0x0043d590 -- read a whole .bmp; NULL unless it is one, whole.  Checks
- * bfType == 'BM' and bfSize == the file's size.  Files over 4 GB (a nonzero
- * high size dword) are refused before allocating. */
+/* Reads a whole .bmp file; NULL unless the type is "BM" and the header's size
+ * is the file's size.  Files over 4 GB are refused before allocating. */
 static BYTE *load_bmp_file(const char *path)
 {
     HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
@@ -98,15 +79,15 @@ static BYTE *load_bmp_file(const char *path)
     DWORD got = 0;
     BOOL ok = ReadFile(h, buf, size, &got, NULL);
     CloseHandle(h);
-    if (ok && got == size && *(WORD *)buf == 0x4d42 /* "BM" */
+    if (ok && got == size && *(WORD *)buf == 0x4d42  // "BM"
         && *(DWORD *)(buf + 2) == size)
         return buf;
     free(buf);
     return NULL;
 }
 
-/* A file's BITMAPINFO (after the 14-byte file header) and its size, OS/2
- * core headers included; the height is taken absolute. */
+/* A file's BITMAPINFO (after the 14-byte file header) and its size, OS/2 core
+ * headers included; the height is taken absolute. */
 static void dib_size(const BYTE *hdr, int *w, int *h)
 {
     if (*(const DWORD *)hdr == sizeof(BITMAPCOREHEADER)) {
@@ -127,10 +108,10 @@ static void stretch_bmp(HDC hdc, int destW, int destH, const BYTE *hdr,
                   (const BITMAPINFO *)hdr, DIB_RGB_COLORS, SRCCOPY);
 }
 
-/* WM_DRAWITEM for one owner-drawn button.  Pressed and focused both show
- * the focus bitmap -- but pressed takes its pixel offset (bfOffBits) from
- * the *off* bitmap and applies it to the focus one.  A defect, harmless
- * while the two files share a header layout (they do); preserved. */
+/* WM_DRAWITEM for one owner-drawn button.  Pressed and focused both show the
+ * focus bitmap.  PRESERVED: pressed takes its pixel offset from the off bitmap
+ * and applies it to the focus one; harmless while both files share a header
+ * layout, which they do. */
 static void draw_button(const DRAWITEMSTRUCT *di, const BYTE *off, const BYTE *foc)
 {
     if (!off || !foc)
@@ -161,7 +142,7 @@ static void starter_init(HWND hDlg)
     s_quitOff  = load_bmp_file("bitmaps\\ende_off.bmp");
     s_quitFoc  = load_bmp_file("bitmaps\\ende_foc.bmp");
 
-    /* Centred, 400x400, topmost; SWP_NOZORDER makes the HWND_TOPMOST moot. */
+    // Centred, 400x400; SWP_NOZORDER makes HWND_TOPMOST moot.
     int y = GetSystemMetrics(SM_CYSCREEN) / 2 - 200;
     int x = GetSystemMetrics(SM_CXSCREEN) / 2 - 200;
     SetWindowPos(hDlg, HWND_TOPMOST, x, y, 400, 400, SWP_NOZORDER);
@@ -170,16 +151,14 @@ static void starter_init(HWND hDlg)
     MoveWindow(GetDlgItem(hDlg, IDC_SETUP), 0x47, 0xcb,  0x106, 0x35, TRUE);
     MoveWindow(GetDlgItem(hDlg, IDC_QUIT),  0x47, 0x101, 0x106, 0x32, TRUE);
 
-    /* The window shape: the RGN resource, scaled from its 150x163 design
-     * size by what 100 dialog units come to on this system. */
+    // The window shape: the RGN resource, scaled from its 150x163 design size
+    // by what 100 dialog units come to on this system.
     RECT r = { 0, 0, 100, 100 };
     MapDialogRect(hDlg, &r);
     float sx = (float)r.right  * (1.0f / 150.0f);
     float sy = (float)r.bottom * (1.0f / 163.0f);
-    GetClientRect(hDlg, &r);   /* result unused, as in the original */
+    GetClientRect(hDlg, &r);  // PRESERVED: result unused
 
-    /* The original passed NULL (its own exe) to LoadResource; the region
-     * now lives in our module, so both calls name it. */
     HRSRC res = FindResourceA(Resources_Module(), MAKEINTRESOURCEA(IDR_REGION), "RGN");
     HGLOBAL hg = LoadResource(Resources_Module(), res);
     if (!hg)
@@ -193,7 +172,7 @@ static void starter_init(HWND hDlg)
     FreeResource(hg);
 }
 
-/* The link hot-spot, in client pixels (unsigned 16-bit compares). */
+/* The link hot spot, in client pixels (unsigned 16-bit compares). */
 static bool over_link(LPARAM lParam)
 {
     WORD x = LOWORD(lParam), y = HIWORD(lParam);
@@ -215,7 +194,7 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_DESTROY:
-        /* Freed, not cleared: WM_INITDIALOG reloads them all. */
+        // Freed, not cleared: WM_INITDIALOG reloads them all.
         free(s_playOff);  free(s_playFoc);
         free(s_setupOff); free(s_setupFoc);
         free(s_quitOff);  free(s_quitFoc);
@@ -246,8 +225,8 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND: {
         int id = LOWORD(wParam), code = HIWORD(wParam);
         if (id == IDOK) {
-            /* Enter: act on whichever button has focus.  Not exclusive --
-             * each test runs even after an earlier one ended the dialog. */
+            // Enter acts on whichever button has focus.  The tests are not
+            // exclusive: each runs even after an earlier one ended the dialog.
             HWND focus = GetFocus();
             if (GetDlgItem(hDlg, IDC_PLAY) == focus) {
                 sndPlaySoundA(SND_IMPACT, SND_ASYNC | SND_NODEFAULT);
@@ -288,7 +267,7 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 
     case WM_LBUTTONDOWN:
         if (over_link(lParam)) {
-            /* The handles are never closed, as in the original. */
+            // PRESERVED: the process handles are never closed.
             char cmd[] = "explorer.exe http:\\\\www.fakt-software.de";
             STARTUPINFOA si;
             PROCESS_INFORMATION pi;
@@ -301,11 +280,9 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-/* ── the device dialog ─────────────────────────────────────────────────── */
-
-/* 0x0043ce10 -- one combo entry per DirectDraw driver; its item data is a
- * heap copy of the GUID (NULL for the primary driver).  The copies are never
- * freed, as in the original. */
+/* One combo entry per DirectDraw driver; its item data is a heap copy of the
+ * GUID (NULL for the primary driver).  PRESERVED: the copies are never freed.
+ */
 static BOOL WINAPI driver_enum_cb(GUID *guid, LPSTR desc, LPSTR, LPVOID ctx)
 {
     HWND combo = (HWND)ctx;
@@ -325,20 +302,19 @@ static BOOL WINAPI driver_enum_cb(GUID *guid, LPSTR desc, LPSTR, LPVOID ctx)
 
 struct ModeEnumCtx {
     HWND  combo;
-    DWORD renderDepths;   /* the HAL device's dwDeviceRenderBitDepth */
+    DWORD renderDepths;  // the HAL device's dwDeviceRenderBitDepth
 };
 
-/* 0x0043cea0 -- list the modes the HAL device can render to, 4:3 only.
- * The item data is a running count, s_modeCounter, which is the index
- * CreateD3DDevice's own mode filter must agree with. */
+/* Lists the modes the HAL device can render to, 4:3 only.  The item data is a
+ * running count, which must agree with the device creation's own mode index.
+ */
 static HRESULT WINAPI mode_enum_cb(LPDDSURFACEDESC2 d, LPVOID ctxp)
 {
     const ModeEnumCtx *ctx = (const ModeEnumCtx *)ctxp;
     DWORD w = d->dwWidth, h = d->dwHeight;
     DWORD bpp = d->ddpfPixelFormat.dwRGBBitCount;
-    /* FILD qword (unsigned width) / FIDIV dword (signed height), stored as
-     * float.  Double instead of x87 extended: only 4:3 matters, and it is
-     * nowhere near either bound. */
+    // Unsigned width over signed height, stored as float.  Only whether it
+    // lies between 1.3 and 1.4 matters, so double precision is enough.
     float aspect = (float)((double)w / (double)(int)h);
 
     if (bpp == 32 && !(ctx->renderDepths & DDBD_32)) return DDENUMRET_OK;
@@ -358,11 +334,10 @@ static HRESULT WINAPI mode_enum_cb(LPDDSURFACEDESC2 d, LPVOID ctxp)
     return DDENUMRET_OK;
 }
 
-/* The mode list for the driver selected in IDC_DRIVERS: create it (falling
- * back to the primary driver), find its HAL device, and enumerate modes
- * against that device's render depths.  False where the original returns 0
- * from the dialog proc; the interfaces it had are leaked on that path, as
- * in the original. */
+/* The mode list for the selected driver: create it (falling back to the
+ * primary driver), find its HAL device, and enumerate the modes it can render.
+ * Returns false where the dialog should fail.  PRESERVED: on that path the
+ * interfaces already obtained are leaked. */
 static bool fill_modes(HWND hDlg)
 {
     LRESULT sel = SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETCURSEL, 0, 0);
@@ -390,8 +365,7 @@ static bool fill_modes(HWND hDlg)
     search.guid    = IID_IDirect3DHALDevice;
     if (FAILED(d3d->FindDevice(&search, &found)))
         return false;
-    /* With no HAL description the original reads its copy uninitialised;
-     * zero here, which lists no 16/24/32-bit mode at all. */
+    // Without a HAL description the depths are zero, which lists no mode.
     DWORD depths = found.ddHwDesc.dwFlags ? found.ddHwDesc.dwDeviceRenderBitDepth : 0;
     d3d->Release();
 
@@ -406,8 +380,8 @@ static bool device_init(HWND hDlg)
 {
     SetWindowPos(hDlg, HWND_TOPMOST, 400, 300, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
-    /* LoadLibrary, not GetModuleHandle: the original imported ddraw.dll, so
-     * it was always loaded; KarooOwn.exe does not import it. */
+    // LoadLibrary, not GetModuleHandle: the executable does not import
+    // ddraw.dll, so it may not be loaded yet.
     typedef HRESULT (WINAPI *enum_fn)(LPDDENUMCALLBACKA, LPVOID);
     enum_fn enumerate = (enum_fn)(void (*)(void))
         GetProcAddress(LoadLibraryA("ddraw.dll"), "DirectDrawEnumerateA");
@@ -415,7 +389,7 @@ static bool device_init(HWND hDlg)
         || FAILED(enumerate(driver_enum_cb, GetDlgItem(hDlg, IDC_DRIVERS))))
         return false;
 
-    /* Select the configured driver: the last entry whose GUID matches. */
+    // Select the configured driver: the last entry whose GUID matches.
     const GUID *want = Game::instance()->config()->adapterGuid();
     LRESULT count = SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETCOUNT, 0, 0);
     LRESULT pick = 0;
@@ -427,9 +401,8 @@ static bool device_init(HWND hDlg)
     }
     SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_SETCURSEL, pick, 0);
 
-    /* The original does not reset s_modeCounter here, only on a driver
-     * change: open the dialog twice and the second list's indices start
-     * where the first's stopped.  Preserved. */
+    // PRESERVED: the mode counter is reset only on a driver change, so opening
+    // the dialog twice numbers the second list from where the first stopped.
     if (!fill_modes(hDlg))
         return false;
     SendDlgItemMessageA(hDlg, IDC_MODES, CB_SETCURSEL,

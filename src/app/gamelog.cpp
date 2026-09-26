@@ -1,120 +1,25 @@
-/* ═══════════════════════════════════════════════════════════════════════════
- * gamelog.cpp -- the game's own logger, reimplemented.
+/* Everything below the logger is CRT stdio and Win32: the class is the whole
+ * of the game's logging.
  *
- * The game class is `CProto` -- the name survives in an error-box caption at
- * 0x0046737c, "CProto::CProto(...)"; Ghidra calls it `Logger`.  It writes the
- * German-titled "Protokoll" files found in the game directory: JJ.log and
- * StreamSoundBuffer.log in a normal run, plus SoundManager.log, CFaktSound.log,
- * ProgableControl.log and FaktMovie.log on paths that do not fire in our
- * configuration.
+ * PRESERVED:
+ *   1. Both variadic writers vsprintf the caller's format into a fixed
+ *      3000-byte stack buffer with no bound.
+ *   2. The file gets strlen(line) bytes, the WM_COPYDATA mirror
+ *      strlen(line) + 1.
+ *   3. OpenLogFile formats the banner, and so reads the date, before it
+ *      opens the file.
+ *   4. The default fopen mode is "wc", MSVC's commit-on-flush extension.
+ *   5. Initialize builds and tears down a throwaway logger on the stack.
  *
- * ─── Why the class is the right seam ───────────────────────────────────────
+ * The WM_COPYDATA mirror is dead in the game (its target is never set) and the
+ * "Could not open Protofile" box and most of the DirectSound error table have
+ * never been seen to fire.
  *
- * ABOVE it are ~230 call sites spread across the whole game -- level parsing,
- * sound, movie, input, the level report -- all of which stay the game's.
- * BELOW it there is no game code at all: every callee is CRT (fopen, fwrite,
- * fflush, fclose, vsprintf, sprintf, strlen, strcpy) or Win32 (GetLocalTime,
- * SendMessageA, MessageBoxA).  Taking the class whole therefore replaces every
- * line of logging logic AND leaves nothing of it behind, and the replacement
- * calls back into Karoo.exe in exactly one place (see the dtor).
- *
- * Going lower -- hooking the CRT stdio the logger sits on -- would have been
- * wrong twice over: it would leave the message formatting, the level gate, the
- * banner and the WM_COPYDATA mirror in the game binary, and it would catch
- * every other fwrite in the program as collateral.  Going higher is not
- * possible; above this class there is no logging code, only callers.
- *
- * ─── The ten functions ─────────────────────────────────────────────────────
- *
- *   0x00441810  Logger()                  default ctor                 3 refs
- *   0x00441840  ~Logger(byte)             scalar-deleting dtor   vtable slot 0
- *   0x00441860  Initialize(name, mode)    ctor + open                  4 refs
- *   0x004418b0  OpenLogFile(name, mode)                                3 refs
- *   0x004419c0  CloseLogFile()                            internal callers only
- *   0x00441a00  CloseAndRebindVtable()    dtor body                    4 refs
- *   0x00441b10  LogMessage(log, lvl, fmt, ...)                      ~180 refs
- *   0x00441d20  LogSourceLocation(log, lvl, file, line, fmt, ...)     28 refs
- *   0x00441e30  DSErrorToString(HRESULT)                  internal callers only
- *   0x00441f90  LogWithErrorCode(lvl, msg, hr)                        14 refs
- *
- * ─── Layout, confirmed arithmetically ──────────────────────────────────────
- *
- * `operator new(0x118)` at 0x00443219 is ground truth, and the fields tile it
- * exactly: vtable 4 + minLevel 4 + fileName 0x104 + fp 4 + wParam 4 + hwnd 4
- * = 0x118.  Every offset is static_assert'd in gamelog.h.
- *
- * The two variadic writers share a 0x17fc stack frame that also tiles exactly,
- * which is how the buffer sizes below were derived rather than guessed:
- *
- *   +0x0000  0x00c  COPYDATASTRUCT for the WM_COPYDATA mirror
- *   +0x000c  0x080  the "HH:MM:SS" timestamp (FormatTime writes 9 bytes)
- *   +0x008c  0xbb8  the assembled output line          (3000 bytes)
- *   +0x0c44  0xbb8  the vsprintf'd caller message      (3000 bytes)
- *                                                       = 0x17fc
- *
- * ─── Preserved defects ─────────────────────────────────────────────────────
- *
- * 1. Both variadic writers vsprintf a caller-controlled format into a fixed
- *    3000-byte stack buffer with no bound.  Reproduced, including the buffer
- *    size, so an overflow lands the way it always did.
- *
- * 2. The fwrite length is strlen(out), but the WM_COPYDATA cbData is
- *    strlen(out) + 1 -- the NUL is counted for the window mirror and not for
- *    the file.  They differ by one in the original; they differ by one here.
- *
- * 3. OpenLogFile formats the banner -- and so samples the date -- BEFORE it
- *    opens the file, so a failed open still burned a GetLocalTime.  Harmless,
- *    kept because reordering it would be a change without a reason.
- *
- * 4. The default fopen mode is "wc": MSVC's commit-on-flush extension, not
- *    standard C.  Passed through verbatim; msvcrt accepts it and the byte
- *    content is identical either way.
- *
- * 5. Logger::Initialize builds and immediately destroys a throwaway logger on
- *    the stack -- a base subobject whose ctor/dtor pair the compiler did not
- *    elide.  It has no effect.  Kept so the shape matches.
- *
- * ─── Deliberate deviations ─────────────────────────────────────────────────
- *
- * LogWithErrorCode's scratch buffer comes from malloc/free here rather than
- * the game's operator new / FactAlloc::Free2.  The buffer is allocated and
- * freed inside the one function and never escapes, so the heap it lives on is
- * unobservable -- and using ours removes two callbacks into the binary.  The
- * SIZE arithmetic (strlen + 0x31) is the original's and is NOT widened.
- *
- * DSErrorToString is a flat switch; the original is a compiled binary search.
- * The mapping is what is observable, and the returned pointers are the game's
- * own .rdata strings either way.
- *
- * ─── Coverage ──────────────────────────────────────────────────────────────
- *
- * Exercised by any run: the ctor, OpenLogFile, LogMessage, both close paths.
- * NOT exercised, and transcribed from the decompile rather than observed:
- *   - the WM_COPYDATA mirror in all three writers.  notifyHwnd is never set --
- *     nothing in the binary writes +0x110 or +0x114 outside the ctor's zeroing,
- *     so this is dead code in the shipped game and is kept for fidelity only.
- *   - the MessageBoxA "Could not open Protofile" failure path.
- *   - most of DSErrorToString's table, beyond what DirectSound actually returns.
- *   - LogSourceLocation and LogWithErrorCode fire only from sound/movie setup.
- *
- * ─── Proof ─────────────────────────────────────────────────────────────────
- *
- * The proof is in the log rather than on screen, because that is where this
- * code's entire effect lives.
- *
- *   KAROO_GAMELOG_FX=mark   prefixes every line this file writes with "KHOOK ".
- *                           Diff JJ.log: every line is marked => every line is
- *                           ours, and none is coming from the original.
- *   KAROO_GAMELOG_FX=off    suppresses the file writes only.  JJ.log keeps its
- *                           banner and gains nothing else -- that proves the
- *                           gate rather than the fill, and distinguishes "our
- *                           writer runs" from "our opener runs".
- *
- * On top of that, verify_format_strings() below compares our format literals
- * against the game's own .rdata at first use and complains to karoo_hooks.log
- * on any mismatch, so a typo in a format string cannot silently reshape the
- * log.
- * ═══════════════════════════════════════════════════════════════════════════ */
+ * KAROO_GAMELOG_FX is a negative control: "mark" prefixes every line with
+ * "KHOOK "; "off" suppresses every write but the banner.  At first use the
+ * format strings are compared with the game's (gamestr.h), and any mismatch is
+ * logged to karoo_hooks.log. */
+
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -126,38 +31,21 @@
 #include <stdlib.h>
 #include "gamestr.h"
 
-/* The game's LoggerVtable at 0x0045ef98.  One slot -- the scalar-deleting
- * destructor -- confirmed by reading the four dwords there: 0x00441840 is
- * followed immediately by 0x00442a80, the next class's vtable.
- *
- * Objects we construct keep pointing at the GAME's vtable rather than a clone
- * of our own: patch.py overwrites that single slot to reach us anyway, and an
- * object our ctor builds must compare equal to one the game already holds. */
-/* Our own one-slot table; the game's was at 0x0045ef98. */
+/* The one-slot vtable: the scalar deleting destructor. */
 extern "C" __declspec(dllexport) void * __attribute__((thiscall)) GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags);
 static void *const game_logger_vtable_slots[1] = { (void *)&GameLog_ScalarDeletingDtor };
 #define GAME_LOGGER_VTABLE ((void *)game_logger_vtable_slots)
 
-/* FactAlloc::Free2 -- __cdecl(void *).  THE one callback into the game binary
- * in this file, and unavoidable: the object being deleted came from the game's
- * operator new at its construction site, so it must go back to that heap.
- * Named here as CLAUDE.md's no-callback rule requires. */
-
-/* The game's format strings, for the first-use audit below. */
-
-/* Our copies.  These are what actually get used; the audit proves them equal
- * to the game's.  Kept as literals rather than read from .rdata because the FX
- * prefix has to splice into them. */
+/* FORMAT: the line formats, as the game's; checked against gamestr.h at first
+ * use.  Kept as literals so the control's prefix can splice in. */
 #define FMT_BANNER  "\n***************** Protokollierung gestartet am : %s ***********************\n"
 #define FMT_LINE    "%s : %s\r\n"
 #define FMT_SRCLINE "%s : File: %s, Line: %d: %s \r\n"
 #define FMT_ERRLINE "%s : Error %s: %s \r\n"
 #define MODE_WC     "wc"
 
-#define LOG_BUF      3000    /* both 0xbb8 buffers in the 0x17fc frame */
+#define LOG_BUF      3000  // the game's buffer size
 #define WM_COPYDATA_ 0x4a
-
-/* ─── First-use audit ─────────────────────────────────────────────────────── */
 
 static void verify_one(const char *ours, const char *theirs, const char *what)
 {
@@ -179,8 +67,6 @@ static void verify_format_strings(void)
     verify_one(MODE_WC,     GS_LOG_MODE_WC, "mode");
 }
 
-/* ─── KAROO_GAMELOG_FX ────────────────────────────────────────────────────── */
-
 enum GameLogFx { FX_NONE = 0, FX_MARK, FX_OFF };
 
 static GameLogFx gamelog_fx(void)
@@ -188,8 +74,8 @@ static GameLogFx gamelog_fx(void)
     static int cached = -1;
     if (cached < 0) {
         char v[32];
-        /* By value, never by presence -- GetEnvironmentVariableA returns 0 for
-         * empty and unset alike.  See CLAUDE.md, "Read flags by value". */
+        // By value, never by presence: an empty and an unset variable look
+        // alike.
         DWORD n = GetEnvironmentVariableA("KAROO_GAMELOG_FX", v, sizeof(v));
         cached = FX_NONE;
         if (n > 0 && n < sizeof(v)) {
@@ -205,9 +91,7 @@ static const char *fx_prefix(void)
     return gamelog_fx() == FX_MARK ? "KHOOK " : "";
 }
 
-/* ─── Time helpers (the game's FormatTime 0x452259 / date 0x4520c8) ───────── */
-
-/* "HH:MM:SS" + NUL, digit by digit exactly as the original does it. */
+/* "HH:MM:SS", digit by digit. */
 static char *format_time(char *out)
 {
     SYSTEMTIME st;
@@ -224,7 +108,7 @@ static char *format_time(char *out)
     return out;
 }
 
-/* "MM/DD/YY" + NUL -- US order, two-digit year, as shipped. */
+/* "MM/DD/YY": US order, two-digit year. */
 static char *format_date(char *out)
 {
     SYSTEMTIME st;
@@ -241,38 +125,37 @@ static char *format_date(char *out)
     return out;
 }
 
-/* The tail every writer shares: fwrite + fflush, then the window mirror.
- * In the original it is inlined three times, identically. */
+/* What every writer ends with: write and flush the line, then mirror it to the
+ * notify window. */
 static void emit(GameLogger *self, int level, const char *line)
 {
     if (self->fp && gamelog_fx() != FX_OFF) {
         fwrite(line, 1, strlen(line), self->fp);
         fflush(self->fp);
     }
-    /* Dead in the shipped game -- nothing ever sets these two fields. */
+    // Dead in the game: nothing sets these two fields.
     if (self->notifyHwnd && self->notifyWParam) {
         COPYDATASTRUCT cds;
         cds.dwData = (ULONG_PTR)level;
-        cds.cbData = (DWORD)(strlen(line) + 1);   /* defect 2: +1 here only */
+        cds.cbData = (DWORD)(strlen(line) + 1);  // PRESERVED: +1 here only
         cds.lpData = (PVOID)line;
         SendMessageA(self->notifyHwnd, WM_COPYDATA_, (WPARAM)self->notifyWParam,
                      (LPARAM)&cds);
     }
 }
 
-/* ═══ 0x00441a00 -- close the file and (re)bind the vtable ═════════════════ */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 GameLog_CloseAndRebindVtable(GameLogger *self)
 {
     self->pVtable = GAME_LOGGER_VTABLE;
     if (self->fp)
         fclose(self->fp);
-    /* fp is deliberately NOT cleared: the original leaves it dangling here.
-     * The only path that reuses the object afterwards (OpenLogFile) goes
-     * through GameLog_CloseLogFile below, which does clear it. */
+
+/* PRESERVED: fp is left dangling.  The only reuse, OpenLogFile, goes through
+ * CloseLogFile, which clears it. */
 }
 
-/* ═══ 0x004419c0 -- close the file and clear the sink fields ═══════════════ */
+/* Closes the file and clears the sink fields. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 GameLog_CloseLogFile(GameLogger *self)
 {
@@ -283,20 +166,18 @@ GameLog_CloseLogFile(GameLogger *self)
     self->notifyHwnd   = NULL;
 }
 
-/* ═══ 0x00441810 -- default constructor ════════════════════════════════════ */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 GameLog_Construct(GameLogger *self)
 {
     verify_format_strings();
     self->pVtable      = GAME_LOGGER_VTABLE;
-    self->minLevel     = 1;      /* so level-0 messages are off by default */
-    self->fileName[0]  = '\0';   /* byte 0 only; the rest stays uninitialised */
+    self->minLevel     = 1;     // level-0 messages are off by default
+    self->fileName[0]  = '\0';  // PRESERVED: only byte 0; the rest stays uninitialised
     self->fp           = NULL;
     self->notifyWParam = 0;
     self->notifyHwnd   = NULL;
 }
 
-/* ═══ 0x00441840 -- scalar-deleting destructor (vtable slot 0) ═════════════ */
 extern "C" __declspec(dllexport) void * __attribute__((thiscall))
 GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags)
 {
@@ -306,7 +187,6 @@ GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags)
     return self;
 }
 
-/* ═══ 0x004418b0 -- open (or reopen) the log file ══════════════════════════ */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 GameLog_OpenLogFile(GameLogger *self, const char *filename, const char *mode)
 {
@@ -317,11 +197,11 @@ GameLog_OpenLogFile(GameLogger *self, const char *filename, const char *mode)
     GameLog_CloseLogFile(self);
 
     if (mode == NULL)
-        mode = MODE_WC;            /* defect 4: MSVC's "wc" */
+        mode = MODE_WC;  // PRESERVED: MSVC's "wc"
 
     self->minLevel = 1;
 
-    /* defect 3: the banner is built before the open, not after. */
+    // PRESERVED: the banner is built before the open.
     format_date(date);
     sprintf(banner, FMT_BANNER, date);
 
@@ -340,7 +220,6 @@ GameLog_OpenLogFile(GameLogger *self, const char *filename, const char *mode)
     return 1;
 }
 
-/* ═══ 0x00441860 -- construct and open in one ══════════════════════════════ */
 extern "C" __declspec(dllexport) void * __attribute__((thiscall))
 GameLog_Initialize(GameLogger *self, const char *filename, const char *mode)
 {
@@ -348,7 +227,7 @@ GameLog_Initialize(GameLogger *self, const char *filename, const char *mode)
 
     self->pVtable = GAME_LOGGER_VTABLE;
 
-    /* defect 5: the throwaway stack logger, built and torn down for nothing. */
+    // PRESERVED: the throwaway stack logger, built and torn down for nothing.
     GameLog_Construct(&scratch);
     GameLog_CloseAndRebindVtable(&scratch);
 
@@ -358,7 +237,6 @@ GameLog_Initialize(GameLogger *self, const char *filename, const char *mode)
     return self;
 }
 
-/* ═══ 0x00441b10 -- the main variadic writer ═══════════════════════════════ */
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...)
 {
@@ -373,18 +251,14 @@ GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...)
     format_time(timebuf);
 
     va_start(ap, fmt);
-    vsprintf(msg, fmt, ap);          /* defect 1: unbounded, as shipped */
+    vsprintf(msg, fmt, ap);  // PRESERVED: unbounded
     va_end(ap);
 
     sprintf(out, "%s" FMT_LINE, fx_prefix(), timebuf, msg);
     emit(self, level, out);
 }
 
-/* ═══ 0x00441d20 -- the file/line variadic writer ══════════════════════════
- * Argument order was taken from the disassembly, not from the decompiler's
- * reconstruction, which mislabels this frame: the sprintf pushes at
- * 0x00441d80..0x00441d8f give (time, arg3, arg4, msg) against
- * "%s : File: %s, Line: %d: %s \r\n", so arg3 is the file and arg4 the line. */
+/* The file comes before the line: (time, file, line, message). */
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
                           int line, const char *fmt, ...)
@@ -400,46 +274,40 @@ GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
     format_time(timebuf);
 
     va_start(ap, fmt);
-    vsprintf(msg, fmt, ap);          /* defect 1 again */
+    vsprintf(msg, fmt, ap);  // PRESERVED: unbounded
     va_end(ap);
 
     sprintf(out, "%s" FMT_SRCLINE, fx_prefix(), timebuf, file, line, msg);
     emit(self, level, out);
 }
 
-/* ═══ 0x00441e30 -- HRESULT -> DirectSound error name ══════════════════════
- * The pointers returned are the game's own .rdata strings, so the bytes that
- * reach the log are identical to the original's regardless of the search
- * shape.  Codes are the decompile's negative constants, written here as the
- * DSERR values they are. */
+/* HRESULT to DirectSound error name, as the game's strings. */
 extern "C" __declspec(dllexport) const char * __cdecl
 GameLog_DSErrorToString(HRESULT hr)
 {
     switch ((unsigned)hr) {
-    case 0x80004001u: return GS_LOG_DSERR_UNSUPPORTED; /* DSERR_UNSUPPORTED        */
-    case 0x80004002u: return GS_LOG_DSERR_NOINTERFACE; /* DSERR_NOINTERFACE        */
-    case 0x80004005u: return GS_LOG_DSERR_GENERIC; /* DSERR_GENERIC            */
-    case 0x80040110u: return GS_LOG_DSERR_NOAGGREGATION; /* DSERR_NOAGGREGATION      */
-    case 0x8007000Eu: return GS_LOG_DSERR_OUTOFMEMORY; /* DSERR_OUTOFMEMORY        */
-    case 0x80070057u: return GS_LOG_DSERR_INVALIDPARAM; /* DSERR_INVALIDPARAM       */
-    case 0x8878000Au: return GS_LOG_DSERR_ALLOCATED; /* DSERR_ALLOCATED          */
-    case 0x8878001Eu: return GS_LOG_DSERR_CONTROLUNAVAIL; /* DSERR_CONTROLUNAVAIL     */
-    case 0x88780032u: return GS_LOG_DSERR_INVALIDCALL; /* DSERR_INVALIDCALL        */
-    case 0x88780046u: return GS_LOG_DSERR_PRIOLEVELNEEDED; /* DSERR_PRIOLEVELNEEDED    */
-    case 0x88780064u: return GS_LOG_DSERR_BADFORMAT; /* DSERR_BADFORMAT          */
-    case 0x88780078u: return GS_LOG_DSERR_NODRIVER; /* DSERR_NODRIVER           */
-    case 0x88780082u: return GS_LOG_DSERR_ALREADYINITIALIZED; /* DSERR_ALREADYINITIALIZED */
-    case 0x88780096u: return GS_LOG_DSERR_BUFFERLOST; /* DSERR_BUFFERLOST         */
-    case 0x887800A0u: return GS_LOG_DSERR_OTHERAPPHASPRIO; /* DSERR_OTHERAPPHASPRIO    */
-    case 0x887800AAu: return GS_LOG_DSERR_UNINITIALIZED; /* DSERR_UNINITIALIZED      */
-    default:          return GS_LOG_HR_UNKNOWN; /* "Unknown HRESULT"        */
+    case 0x80004001u: return GS_LOG_DSERR_UNSUPPORTED;
+    case 0x80004002u: return GS_LOG_DSERR_NOINTERFACE;
+    case 0x80004005u: return GS_LOG_DSERR_GENERIC;
+    case 0x80040110u: return GS_LOG_DSERR_NOAGGREGATION;
+    case 0x8007000Eu: return GS_LOG_DSERR_OUTOFMEMORY;
+    case 0x80070057u: return GS_LOG_DSERR_INVALIDPARAM;
+    case 0x8878000Au: return GS_LOG_DSERR_ALLOCATED;
+    case 0x8878001Eu: return GS_LOG_DSERR_CONTROLUNAVAIL;
+    case 0x88780032u: return GS_LOG_DSERR_INVALIDCALL;
+    case 0x88780046u: return GS_LOG_DSERR_PRIOLEVELNEEDED;
+    case 0x88780064u: return GS_LOG_DSERR_BADFORMAT;
+    case 0x88780078u: return GS_LOG_DSERR_NODRIVER;
+    case 0x88780082u: return GS_LOG_DSERR_ALREADYINITIALIZED;
+    case 0x88780096u: return GS_LOG_DSERR_BUFFERLOST;
+    case 0x887800A0u: return GS_LOG_DSERR_OTHERAPPHASPRIO;
+    case 0x887800AAu: return GS_LOG_DSERR_UNINITIALIZED;
+    default:          return GS_LOG_HR_UNKNOWN;
     }
 }
 
-/* ═══ 0x00441f90 -- log a message with a DirectSound error code ════════════
- * Returns its `level` argument.  That is not a designed return value: the
- * original's EAX simply still holds the parameter (it is reused as the scratch
- * for FactAlloc::Free2's result).  No caller reads it.  Reproduced anyway. */
+/* Logs "HH:MM:SS : Error <name>: message".  Returns level, which no caller
+ * reads. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 GameLog_LogWithErrorCode(GameLogger *self, int level, const char *message,
                          HRESULT hr)
@@ -453,11 +321,9 @@ GameLog_LogWithErrorCode(GameLogger *self, int level, const char *message,
 
     format_time(timebuf);
 
-    /* The original sizes this strlen(message) + 0x31 -- room for the
-     * timestamp, " : Error ", the code name and CRLF.  A long DSERR name plus
-     * a long message can still overrun it; that is the original's arithmetic
-     * and it is reproduced rather than widened.  The FX prefix is added on top
-     * so that the diagnostic mode cannot be what overflows it. */
+    // PRESERVED: sized strlen(message) + 0x31, which a long error name and a
+    // long message can overrun.  The control's prefix is added on top, so the
+    // control cannot be what overflows it.
     out = (char *)malloc(strlen(message) + 0x31 + strlen(fx_prefix()));
     if (out == NULL)
         return level;
