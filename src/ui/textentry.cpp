@@ -1,33 +1,17 @@
-/* GAMETICK_PLAN.md Band B reopened — the text-entry widget tick.
+/* DETERMINISM: every key poll goes through hooks_GetAsyncKeyState, so replays
+ * see them, and their order is part of the recording: Return, Escape,
+ * Backspace, Space, A..[ , 0..: , then the debounce release.
  *
- *   PollTextEntryKeys  0x004209a0   3 E8 sites (0x00415041 GameTick,
- *                                   0x00418E6F HandleKeypress,
- *                                   0x0041ACBB HandleTypedCheatCode)
+ * PRESERVED:
+ *   - '[' and ':' are accepted along with the letters and digits.
+ *   - Shift is polled only after a letter is accepted; unshifted adds 0x20.
+ *   - Backspace clears the byte after the new cursor (where the blink
+ *     character was), not the one the cursor now sits on.
+ *   - The debounce release is tested even when the entry is inactive.
  *
- * __thiscall(widget, uint phase), RET 4.  Its only callee is the
- * GetAsyncKeyState import, hoisted into EBP -- which patch.py already
- * redirects to hooks_GetAsyncKeyState (record.cpp).  This replacement calls
- * that hook directly, NOT user32: calling the DLL's own import would bypass
- * replay input and the recording would diverge.
- *
- * Widget: +4 char *buffer, +8 BYTE debounce key, +9 BYTE cursor, +0xa BYTE
- * max, +0xb DWORD active.  Transcribed from the LISTING:
- *
- *  - The cursor blink is FILD qword{phase,0} * float 0.01f, FSIN, all at
- *    80 bits, then FCOMP against double 0.0 with TEST AH,0x41: '_' only when
- *    strictly greater (and not unordered), ' ' otherwise.  Done in x87 asm so
- *    the precision is the original's -- sinl() is not guaranteed to be FSIN.
- *  - RETURN, ESCAPE, BACKSPACE, SPACE, then A..[ (0x41..0x5b -- '[' is
- *    included, as in the original), then 0..: (0x30..0x3a -- ':' included).
- *  - Shift is polled only after a letter is accepted; unshifted adds 0x20.
- *  - Backspace clears buffer[cursor+1] after the decrement, i.e. the byte
- *    that held the blink character -- not the one the cursor now sits on.
- *  - The debounce release test runs even when inactive.
- *
- * Control: KAROO_SIM_FX=entrycase -- shift sense inverted (letters come out
- * uppercase unshifted).  Changes what is TYPED, so a cheat or name compare
- * downstream sees a different string.
- */
+ * KAROO_SIM_FX=entrycase is a negative control: the shift sense is inverted,
+ * so what is typed, and any cheat or name compared downstream, changes. */
+
 #include <windows.h>
 #include <string.h>
 #include "log.h"
@@ -35,13 +19,15 @@
 #include <stdlib.h>
 #include "record.h"
 
-
 static int s_fx = -1;
 
+/* True when sin(phase * 0.01) > 0: the cursor shows '_', else ' '.  The x87
+ * FSIN on an extended value, as the game computes it; it only chooses the
+ * blink character, which Return and Escape overwrite. */
 static int blink_positive(unsigned int phase)
 {
-    unsigned long long q = phase;       /* high dword zeroed, as the listing */
-    static const float k = 0.0099999998f;   /* DAT_0045d400 */
+    unsigned long long q = phase;  // the high word zeroed: an unsigned load
+    static const float k = 0.0099999998f;
     unsigned short sw;
 
     __asm__ volatile(
@@ -49,13 +35,10 @@ static int blink_positive(unsigned int phase)
         "fmuls %2\n\t"
         "fsin\n\t"
         "fldz\n\t"
-        "fcompp\n\t"                    /* compares ST0(0.0) with ST1(sin)  */
+        "fcompp\n\t"  // compares 0.0 with sin
         "fnstsw %0\n\t"
         : "=a"(sw) : "m"(q), "m"(k) : "st", "st(1)");
-    /* fcompp above compared 0.0 against sin: C0 set when 0.0 < sin.  The
-     * original's FCOMP sin-vs-0.0 jumps to ' ' on (C0|C3), i.e. sin <= 0 or
-     * unordered; '_' exactly when sin > 0 and ordered.  With the operands
-     * swapped that is: C0 set and C2 clear. */
+    // C0 set (0 < sin) and C2 clear (ordered).
     return (sw & 0x0100) && !(sw & 0x0400);
 }
 
@@ -131,10 +114,9 @@ void TextEntry::poll(unsigned int phase)
 #undef ACTIVE
 }
 
-/* ─── Lifecycle (Game TU) ─────────────────────────────────────────────────── */
 static void *const g_TextEntryVtable[1] = { (void *)&TextEntry_ScalarDestructor };
 
-/* 0x420950: buffer_ is left as it was. */
+/* buffer_ is left as it was. */
 void TextEntry::construct()
 {
     vtable_    = g_TextEntryVtable;

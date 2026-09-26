@@ -1,8 +1,5 @@
-/* Level select -- see levelselect.h.  Our feature; no original behind it.
- *
- * The theme nodes are filled on the way in, every time, from the JJ.GAM
- * table the game has loaded.  Nothing but this file reads or writes them.
- */
+/* The theme nodes are rebuilt from the loaded JJ.GAM table every time the page
+ * opens.  Nothing else reads or writes them. */
 #include <windows.h>
 #include <string.h>
 #include "levelselect.h"
@@ -11,11 +8,11 @@
 #include "log.h"
 
 static int  s_themeCount;
-static int  s_themeFirst[LS_MAX_THEMES + 1];    /* JJ.GAM index each starts at */
+static int  s_themeFirst[LS_MAX_THEMES + 1];  // JJ.GAM index each theme starts at
 static char s_themeName[LS_MAX_THEMES][64];
-static int  s_top;                              /* first visible row */
+static int  s_top;  // first visible row
 
-/* The folder part of a level name, into out; the whole name if it has none. */
+/* The folder part of a level name; the whole name if it has none. */
 static void theme_of(const char *name, char *out, size_t n)
 {
     const char *bs = strchr(name, '\\');
@@ -28,10 +25,8 @@ static void theme_of(const char *name, char *out, size_t n)
 
 static int theme_size(int t) { return s_themeFirst[t + 1] - s_themeFirst[t]; }
 
-/* JJ.GAM lists each theme's levels contiguously, so a theme is a run of
- * equal folder names.  A folder that came back later would get a second
- * page rather than be merged -- fine, and none does.  Each theme becomes
- * node 0x60 + t with one LS_START child per level. */
+/* JJ.GAM lists each theme's levels together, so a theme is a run of equal
+ * folder names; a folder that recurred later would get a second page. */
 static void build_nodes(Game *g)
 {
     MenuTree *m = g->menu();
@@ -73,12 +68,12 @@ void LevelSelect_Turn(Game *g, int dir)
         build_nodes(g);
         if (s_themeCount == 0)
             return;
-        /* Open on the theme of the level the game last had loaded. */
+        // Open on the theme of the level last loaded.
         int t = 0;
         for (int i = 0; i < s_themeCount; i++)
             if (g->levelIndex() >= s_themeFirst[i])
                 t = i;
-        /* Descend as the navigator's ENTER does. */
+        // Descend as the navigator's Enter does.
         m->setSavedCursor(2, m->cursor());
         m->setCursor(0);
         m->push(2);
@@ -90,8 +85,8 @@ void LevelSelect_Turn(Game *g, int dir)
     }
     if (!LevelSelect_IsThemeNode(m->node()))
         return;
-    /* Sideways: replace the page, the stack is untouched, so ESC still
-     * goes back to Load Game. */
+    // Sideways replaces the page and leaves the stack, so Escape still goes
+    // back to Load Game.
     int t = (m->node() - LS_THEME_NODE + dir + s_themeCount) % s_themeCount;
     m->setNode((unsigned char)(LS_THEME_NODE + t));
     if (m->cursor() >= theme_size(t))
@@ -101,7 +96,7 @@ void LevelSelect_Turn(Game *g, int dir)
 int LevelSelect_Chosen(Game *g)
 {
     MenuTree *m = g->menu();
-    m->pop();                           /* node = theme page, cursor = row */
+    m->pop();  // node is the theme page, cursor the row
     int level = s_themeFirst[m->node() - LS_THEME_NODE] + m->cursor();
     log_write("levelselect: start level %d (%s)\n",
               level, g->levelNameTableEntry((unsigned char)level));
@@ -113,7 +108,7 @@ void LevelSelect_View(Game *g, LevelSelectView *v)
     const int t   = g->menu()->node() - LS_THEME_NODE;
     const int n   = theme_size(t);
     const int row = g->menu()->cursor();
-    /* Scroll only as far as it takes to keep the selection visible. */
+    // Scroll only as far as keeps the selection visible.
     if (row < s_top)
         s_top = row;
     if (row >= s_top + LEVELSELECT_ROWS)

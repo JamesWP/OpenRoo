@@ -1,5 +1,5 @@
-/* The score overlays (scoreoverlay.cpp).  Declared here for the callers
- * outside that file: our DispatchGameState (menuscreens.cpp). */
+/* The score overlays: the level-complete screen, the game-over score and the
+ * high-score table. */
 #pragma once
 #include <windows.h>
 
@@ -7,13 +7,13 @@ class Game;
 struct Direct3D;
 class TextRenderer;
 
-/* 0x00433dc0 -- menu node 0x28; `game` is DispatchGameState's theme argument,
- * as in the other screens.  Its body is DrawGameOverScore's. */
+/* The level-complete screen (menu node 0x28).  game is the theme argument the
+ * screen dispatch passes to every screen. */
 extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderLevelComplete(Game *g, void *game, Direct3D *d3d,
                          TextRenderer *text, DWORD ms);
 
-/* The in-game overlays RenderGameFrame draws (scoreoverlay.cpp). */
+/* The in-game overlays the frame renderer draws. */
 extern "C" __declspec(dllexport) void __cdecl
 Score_DrawHighScoreTable(Game *g, void *game, Direct3D *d3d,
                          TextRenderer *text, int n);
