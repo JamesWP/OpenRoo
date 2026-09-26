@@ -1,31 +1,20 @@
-/* GAMETICK_PLAN.md Band B reopened — the end-of-level score tally animation.
+/* Six stages, one per tally line (crystals, surplus crystals, foes, time, all
+ * items, vitality).  Each counts its line up with the count sound over a time
+ * proportional to its count, then moves on; Enter skips to the end.  Elapsed
+ * time is whole milliseconds of the game clock since the stage began, compared
+ * unsigned.
  *
- *   AnimateScoreTallyStages  0x0041a970   2 E8 sites (0x00415011, 0x00415021,
- *                                         both in GameTick; the return is
- *                                         never read)
+ * PRESERVED:
+ *   - Stages 0 and 1 go straight to the totals; stage 2 falls through to
+ *     the stage 3 test, so finishing stage 2 runs stage 3 in the same call
+ *     with the same elapsed time.
+ *   - Stages 3..5 read the clock again for the next stage's start; 0..2 use
+ *     the reading they began with.
+ *   - Enter's skip is debounced on the Game's shared debounce byte.
  *
- * __fastcall, Game base in ECX, bare RET.  Callees: __ftol (inlined here),
- * TriggerPlayback (ours: CStatic_TriggerPlayback) and the GetAsyncKeyState
- * import (reached through hooks_GetAsyncKeyState, so replay input holds).
- *
- * Transcribed from the LISTING.  Points the decompile blurs:
- *
- *  - `now` is __ftol of the double at +0x170a54 (the dt accumulator), and
- *    elapsed = now - start as an UNSIGNED dword; every stage compares it
- *    unsigned (JC).
- *  - Stages 0 and 1 JMP to the totals; stage 2 does NOT -- both its paths
- *    fall into the stage-3 test, so a stage-2 completion runs stage 3 in the
- *    same call against the SAME elapsed value.  Preserved.
- *  - Stages 3..5 on completion re-evaluate __ftol(+0x170a54) for the new
- *    start rather than reusing `now` -- the same number, kept anyway.
- *  - Stage 5's count stores the same quotient into both fields (x1).
- *  - Stage 0..2 completions store the saved start from the FIRST __ftol.
- *  - The ENTER skip is debounced on +0x175517, not on a field of its own.
- *
- * Control: KAROO_SIM_FX=tallyfast -- every stage's duration is divided by
- * ten, so the tally finishes early.  A measured change: the frame at which
- * +0x517909 goes to 1 moves.
- */
+ * KAROO_SIM_FX=tallyfast is a negative control: every stage takes a tenth of
+ * the time, so the frame at which the tally finishes moves. */
+
 #include <windows.h>
 #include <string.h>
 #include "static.h"
@@ -40,9 +29,7 @@ CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 
 static int s_fx = -1;
 
-
-/* The CRT's __ftol: truncate toward zero into an __int64; the low dword is
- * what EAX carries. */
+/* The clock truncated to whole milliseconds, low word. */
 static unsigned int ftol_low(Game *game)
 {
     double d = *game->clock();
@@ -120,7 +107,8 @@ Sim_AnimateScoreTallyStages(Game *self)
             T->shownCount[TALLY_FOES] = (int)(el / 100);
             T->shownScore[TALLY_FOES] = (int)((el / 100) * 50);
         }
-        /* no jump: falls into the stage-3 test with the same `el` */
+    // PRESERVED: no jump; falls into the stage 3 test with the same elapsed
+    // time.
     }
 
     st = T->stage;
@@ -162,13 +150,13 @@ Sim_AnimateScoreTallyStages(Game *self)
         } else {
             tick_sound(self);
             T->shownCount[TALLY_VITALITY] = (int)(el / 50);
-            T->shownScore[TALLY_VITALITY] = (int)(el / 50);
+            T->shownScore[TALLY_VITALITY] = (int)(el / 50);  // PRESERVED: the same quotient into both
         }
     }
 
 totals:
     {
-        /* Summed unsigned, in the original's order. */
+        // Summed unsigned, in this order.
         unsigned int t = (unsigned int)T->shownScore[TALLY_TIME]
                        + (unsigned int)T->shownScore[TALLY_FOES]
                        + (unsigned int)T->shownScore[TALLY_GEMS]
