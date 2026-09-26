@@ -1,138 +1,14 @@
-/* GAMETICK_PLAN.md Band B — the menu node stack, all three functions:
+/* The node stack and the navigator.  The rewind leaves node 0 on the stack at
+ * depth 1, which is why the navigator's back-out test is depth < 2.
  *
- *     Game::PushMenuNodeOnStack        0x0041ebd0
- *     Game::PopMenuNodeFromStack       0x0041ec00
- *     Game::RewindMenuStackToRootNode  0x0041edd0
- *
- * ─── Why one cycle ───────────────────────────────────────────────────────
- *
- * They are the push, the pop and the reset of ONE array.  Callee lists, read
- * from Ghidra this session per the plan's standing rule:
- *
- *   PushMenuNodeOnStack        (none — a true leaf)
- *   PopMenuNodeFromStack       (none — a true leaf)
- *   RewindMenuStackToRootNode  PushMenuNodeOnStack 0x0041ebd0
- *
- * So the family is closed: the only game callee any of them has is another
- * member.  Taking the push without the rewind would leave the rewind calling
- * a UD2 stub; taking the rewind without the push would mean our rewind
- * calling back into the game binary, which the no-callback rule forbids.
- * Our rewind calls our push directly, so the original's one call site at
- * 0x0041EDE5 becomes dead code behind its own UD2 stub.
- *
- * ─── `this` is the MENU base, not `Game` ─────────────────────────────────
- *
- * All three take the menu sub-object, Game+0x175518.  Every offset below is
- * relative to THAT.  The map is `src/ui/menu.cpp`'s, derived
- * independently from the navigator `NavigateMenuTree 0x0041ec40` and
- * `Game::HandleKeypress` — two unrelated decompiles agreeing on the depth
- * byte, the stack array, the current-node byte and the cursor:
- *
- *   +0x18     leave-menu flag   (DWORD)     Game + 0x175530
- *   +0x1d     cursor            (BYTE)      Game + 0x175535
- *   +0x1e     saved cursor[node]            Game + 0x175536 + node
- *   +0x2001d  stack depth       (BYTE)      Game + 0x195535
- *   +0x2001e  node stack[]                  Game + 0x195536 + i
- *   +0x2021c  current node      (BYTE)      Game + 0x195734
- *
- * ─── Read from the LISTING ───────────────────────────────────────────────
- *
- * PushMenuNodeOnStack  0x0041ebd0, __thiscall, RET 4:
- *
- *   0041ebd6  MOV AL,byte [ECX+0x2001d]              depth
- *   0041ebdc  MOV byte [EAX+ECX+0x2001e],DL          stack[depth] = node
- *   0041ebe3  MOV AL,byte [ECX+0x2001d]              RE-READ the depth
- *   0041ebe9  INC AL
- *   0041ebeb  MOV byte [ECX+0x2001d],AL
- *
- * The depth byte is loaded twice, not held in a register across the store.
- * Transcribed literally; it cannot differ here, but it is what the code does.
- * No bounds check: the array is 0x1fe bytes to the current-node byte and the
- * depth is a byte, so a runaway push walks past it.  Preserved.
- *
- * PopMenuNodeFromStack  0x0041ec00, __thiscall, RET 0:
- *
- *   0041ec01  MOV DL,byte [ECX+0x2001d]              depth
- *   0041ec09  AND EAX,0xff                           EAX = depth (zero-ext)
- *   0041ec0e  DEC DL                                 depth-1, NOT yet stored
- *   0041ec10  MOV AL,byte [EAX+ECX+0x2001d]          <- base 0x2001d, not 1e
- *   0041ec17  MOV byte [ECX+0x2001d],DL              store depth-1
- *   0041ec21  MOV byte [ECX+0x2021c],AL              current node = popped
- *   0041ec31  MOV DL,byte [EDX+ECX+0x1e]             saved cursor[node]
- *   0041ec35  MOV byte [ECX+0x1d],DL
- *
- * DEFECT TO PRESERVE: the load at 0x0041ec10 indexes from the DEPTH BYTE
- * ITSELF (+0x2001d), one below the stack array, using the UN-decremented
- * depth.  The two errors cancel and it reads stack[depth-1], the correct
- * element.  Both halves are transcribed exactly as they stand — "fixing"
- * either one alone changes behaviour, and fixing both is a no-op, which is
- * precisely why neither is touched.
- *
- * Also unguarded: a pop at depth 0 reads the depth byte itself as a node id
- * and underflows the depth to 0xff.  Preserved.
- *
- * RewindMenuStackToRootNode  0x0041edd0, __thiscall, RET 0:
- *
- *   depth = 0; cursor = 0; current node = 0; leave-menu flag (DWORD) = 0;
- *   then push(0)
- *
- * so it ends at depth 1 with node 0 on the stack.  The root IS an entry,
- * which is why the navigator's back-out test is "depth < 2" rather than
- * "depth == 0".
- *
- * ─── Controls ────────────────────────────────────────────────────────────
- *
- * NEITHER control can fail the suite for the right reason.  Both were run and
- * both are recorded here, because the *reasons* are the finding.
- *
- * KAROO_SIM_FX=stacktop   the pop reads stack[depth] instead of stack[depth-1]
- *                         — the correctly-based array indexed by the
- *                         un-decremented depth, so it returns one entry PAST
- *                         the top.  This is the only single-sided edit that
- *                         changes anything: correcting the base AND the index
- *                         together is a no-op (see above), so a control built
- *                         that way would prove nothing.
- *
- *                         `replaytest.py --headless` gives **16/16**.  Not
- *                         weak coverage — structural, and the diag says so:
- *                         `bridge01` makes 6 pushes, 2 pops and 2 rewinds,
- *                         maxdepth 3, and BOTH pops sit at a transition where
- *                         the popped node is immediately overwritten — one at
- *                         the load-slot commit (same millisecond as a rewind)
- *                         and one at the final teardown, 44 ms before the
- *                         end-state dump.  No asserted field ever reads what
- *                         the pop returned.  Same category as `nocostfix` and
- *                         `keepobjects`: live code, unobservable output.
- *
- * KAROO_SIM_FX=menuroot   REJECTED, and kept only as the record of why.  The
- *                         rewind seeds the cursor at 1 instead of 0, so every
- *                         menu opens on the second item.  It gives **0/16** —
- *                         which looks like the strongest control in the plan
- *                         and is worth nothing.  Every asserted field in every
- *                         recording still matches the baseline EXACTLY; the
- *                         only difference is `frames_run` +1.  Our own menu
- *                         driver (`menu.cpp`) routes by breadth-first search
- *                         from wherever the cursor actually is, so it simply
- *                         re-routes around the moved cursor and spends one
- *                         extra pulse getting there.  The recording still
- *                         loads the right slot and plays the same game.
- *
- *                         `frames_run` +1 with nothing else moving is the
- *                         SAME signature CLAUDE.md documents for a music-on
- *                         config.  A control whose whole effect is one extra
- *                         menu frame is a timing artefact, not a divergence,
- *                         and the pass column cannot tell them apart — the
- *                         `bridgeaxis` lesson in the other direction: there a
- *                         healthy 15/16 hid a crash, here a perfect 0/16 hides
- *                         a no-op.  Read the failing FIELDS, not the count.
- *
- * KAROO_MENUSTACK_DIAG=1  logs the first push, pop and rewind and then EVERY
- *                         call with the running push/pop/rewind counts and the
- *                         deepest depth reached.  Every call, not a sample:
- *                         the family is called under a dozen times in a whole
- *                         recording, which is itself the reason `stacktop`
- *                         cannot be seen.
- */
+ * Negative controls (KAROO_SIM_FX), both unable to fail the suite, as
+ * docs/CONTROLS.md records: "stacktop" makes the pop read one past the top,
+ * but every pop in the recordings is overwritten before anything reads it;
+ * "menuroot" opens every menu on its second item, but the autoplay driver
+ * routes from wherever the cursor is, so only frames_run moves (+1, the
+ * music-on signature).  "menuwrap" stops Down wrapping at the last entry.
+ * KAROO_MENUSTACK_DIAG=1 logs every push, pop and rewind with running counts
+ * and the deepest depth reached. */
 
 #include <windows.h>
 #include <string.h>
@@ -141,8 +17,6 @@
 #include "menutree.h"
 #include <stdlib.h>
 #include "record.h"
-
-/* ─── FX / diag ──────────────────────────────────────────────────────────── */
 
 static int s_fx_menuroot = 0;
 static int s_fx_stacktop = 0;
@@ -189,14 +63,11 @@ static void diag_census(void)
 {
     if (!s_diag)
         return;
-    /* Every call, not a sampled census: the whole family is called a few
-     * dozen times in a recording, so a 1-in-500 sample would report nothing.
-     * That scarcity is itself the finding -- see the plan. */
+    // Every call, not a sample: the stack is used a few dozen times a run.
     log_write("menustack: DIAG push=%u pop=%u rewind=%u maxdepth=%u\n",
               s_pushes, s_pops, s_rewinds, s_maxdepth);
 }
 
-/* ═══ 0x0041ebd0 -- Game::PushMenuNodeOnStack ══════════════════════════════ */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PushMenuNodeOnStack(MenuTree *self, unsigned int nodeArg)
 {
@@ -211,7 +82,7 @@ void MenuTree::push(unsigned char node)
 
     depth = depth_;
     stack_[depth] = node;
-    /* the original re-loads the depth byte here rather than reusing it */
+    // PRESERVED: the depth is read again, not reused.
     depth_ = (unsigned char)(depth_ + 1);
 
     s_pushes++;
@@ -225,7 +96,6 @@ void MenuTree::push(unsigned char node)
     diag_census();
 }
 
-/* ═══ 0x0041ec00 -- Game::PopMenuNodeFromStack ═════════════════════════════ */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PopMenuNodeFromStack(MenuTree *self)
 {
@@ -240,8 +110,10 @@ void MenuTree::pop()
     fx_init();
 
     depth = depth_;
-    /* base the DEPTH BYTE, index the UN-decremented depth: the preserved
-     * off-by-one pair that together read stack[depth-1].  See the header. */
+    // PRESERVED: indexes from the depth byte itself, one below the array, with
+    // the depth not yet decremented.  The two errors cancel and read
+    // stack[depth - 1]; fixing either alone would change behaviour.  A pop at
+    // depth 0 reads the depth byte as a node and wraps the depth to 0xff.
     node = s_fx_stacktop ? stack_[depth] : (&depth_)[depth];
     depth_  = (unsigned char)(depth - 1);
     node_   = node;
@@ -256,7 +128,6 @@ void MenuTree::pop()
     diag_census();
 }
 
-/* ═══ 0x0041edd0 -- Game::RewindMenuStackToRootNode ════════════════════════ */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_RewindMenuStackToRootNode(MenuTree *self)
 {
@@ -282,40 +153,11 @@ void MenuTree::rewind()
     push(0);
 }
 
-/* ═══ NavigateMenuTree 0x0041ec40, 1 E8 site (0x00418E3D; was menunav.cpp) ═══
- *
- * ─── NavigateMenuTree(this = Game+0x175518, int now), RET 4 ─────────────
- *
- * Every key poll goes through hooks_GetAsyncKeyState: the original hoists
- * the IAT pointer into EDI (0x41EC58 / 0x41ED9E), which patch.py already
- * redirects, so calling the hook here is the same input path.
- *
- *   +0x04 = 0 (changed flag) on entry.
- *   Lock timer +0x14 set: if (unsigned)(now - __ftol(double +0x0c)) > 200
- *     clear it; poll UP, DOWN, ESC, ENTER for their side effect only (the
- *     originals discard the result -- it primes GetAsyncKeyState's "pressed
- *     since last call" bit, so the polls are kept, in order).
- *   Unlocked:
- *     ENTER (debounce != 0x0d): child = children[node][cursor];
- *       saved[node] = cursor; cursor = 0; changed = 1; push(node);
- *       node = child; debounce = 0x0d
- *     ESC   (debounce != 0x1b): depth <= 1 ? leave = 1 : (pop, changed = 1);
- *       debounce = 0x1b
- *     UP    (debounce != 0x26): cursor = cursor ? cursor-1 : count-1;
- *       debounce = 0x26; then polls LEFT and RIGHT (discarded)
- *     DOWN  (debounce != 0x28): cursor+1 < count ? cursor+1 : 0 (signed
- *       compare of cursor against count-1, JGE); debounce = 0x28; LEFT, RIGHT
- *   Finally debounce is cleared when its own key reads up.
- *
- *   NOTE the ENTER path's `changed = 1` store is EBP, set to 1 on the ENTER
- *   branch AND on its fall-through -- so ESC's `changed`/`leave` stores are
- *   always 1.  Nothing here depends on it, but the listing does it that way.
- *
- *
- * Control: KAROO_SIM_FX=menuwrap -- DOWN at the last entry stays put instead
- * of wrapping to 0.  A navigation change: a recording that wraps the menu
- * would land on a different node.
- */
+/* DETERMINISM: every key poll goes through hooks_GetAsyncKeyState, in this
+ * order, and the discarded polls are part of the recording: while locked, Up,
+ * Down, Escape and Enter are polled for nothing; after Up or Down, Left and
+ * Right are.  The lock clears once now is more than 200 ms past its start
+ * (unsigned).  Down's wrap test is a signed compare. */
 
 #define KEY(k)  hooks_GetAsyncKeyState(k)
 
@@ -405,10 +247,9 @@ void MenuTree::navigate(int now)
 #undef COUNT
 }
 
-/* ─── Lifecycle and the default graph (Game TU) ───────────────────────────── */
 static void *const g_MenuTreeVtable[1] = { (void *)&MenuTree_ScalarDestructor };
 
-/* 0x41eb70: vtable, then these seven stores; nothing else is touched. */
+/* The vtable and these six fields; nothing else is touched. */
 void MenuTree::construct()
 {
     vtable_       = g_MenuTreeVtable;
@@ -425,7 +266,6 @@ void MenuTree::destruct()
     vtable_ = g_MenuTreeVtable;
 }
 
-/* Reached only through our vtable; both trees are embedded in Game. */
 extern "C" __declspec(dllexport) MenuTree *__attribute__((thiscall))
 MenuTree_ScalarDestructor(MenuTree *self, unsigned char flags)
 {
@@ -435,8 +275,8 @@ MenuTree_ScalarDestructor(MenuTree *self, unsigned char flags)
     return self;
 }
 
-/* 0x418ab0.  Children are node ids; 0xc8 + i is save slot i's entry.
- * The store order is the original's; only the final state matters. */
+/* Children are node ids; 0xc8 + i is save slot i's entry.  Node 2 is
+ * Load Game, 42 Save Game, 40 the level-complete choice. */
 void MenuTree::buildDefaultGraph(unsigned char saveSlots)
 {
     static const unsigned char root[]     = { 1, 2, 3, 4, 5, 6 };
