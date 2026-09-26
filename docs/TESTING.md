@@ -141,8 +141,12 @@ python3 tools/karoosave.py verify   tests/saves/<name>   # exit 1 if it drifted
 
 Since the 42-byte save record is fully decoded (see HOOKS.md), a fixture is
 **generated, not stored**. `FIXTURE` declares each save file's decoded slot
-fields — name, level, lives, score, time, in-use — and `restore` synthesises
-the bytes with `build_slot`. A fixture directory holds that one file and no
+fields and `restore` synthesises the bytes with `build_slot`.  Since
+version 3 an in-use slot stores only **name, level and lives**; score,
+completion, time and the unused tail are written as 0 (in use 1), so a
+fixture carries no played history.  An empty slot is the word `empty`.
+`snapshot` refuses a slot with history unless given `--trim`; `convert`
+rewrites a version-2 fixture this way. A fixture directory holds that one file and no
 `.sav` copies, so it is readable and diffable in review: you can see at a
 glance which level slot 4 points at.
 
