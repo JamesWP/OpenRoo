@@ -1,13 +1,16 @@
-/* The level loaders (levelparse.cpp).
- * The export(s) patch.py binds, typed on the Game they take in ECX
- * (COHESION_PLAN.md, the void *self metric). */
+/* The level loaders: the map file (.jjm) and the level's script (.jjs). */
 #pragma once
 
 class Game;
 
+/* Loads the level by name (the menu backdrop's demo level). */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_ParseLevelFiles(Game *self, const char *name);
+
+/* Copies level levelNo's name from the game file's table into the Game. */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_SetCurrentLevelName(Game *self, unsigned int levelNo);
+
+/* Loads level levelNo by number: every gameplay level goes through here. */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_OpenLevelFile(Game *self, unsigned int levelNo);

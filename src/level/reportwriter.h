@@ -1,8 +1,11 @@
-/* The level report (reportwriter.cpp): the export patch.py binds, typed on
- * the Game it takes in ECX. */
+/* The level report: holding L while the fixed sounds load writes it. */
 #pragma once
 
 class Game;
 
+/* Loads every level in turn and writes LevelReport.txt (pathname: one row of
+ * object counts, time bonus and cumulative score per level) and
+ * ScriptTexts.txt (every script's texts), then seeds and saves the high-score
+ * table. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Report_WriteLevelReport(Game *self, const char *pathname);
