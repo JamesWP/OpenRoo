@@ -1,13 +1,11 @@
-/* camerainput -- the seven camera actions DirectInputSetup 0x403940
- * registers with the ProgableControl (context = the Game), from the Game TU:
+/* Camera controls: the seven camera actions the input system binds to keys
+ * (zoom, overview, rotate, tilt).
  *
- *   0x00419c30  CameraZoomOut       0x00419c70  CameraZoomIn
- *   0x00419cb0  CameraOverview
- *   0x00419ce0  CameraRotateRight   0x00419d00  CameraRotateLeft
- *   0x00419d20  CameraTiltUp        0x00419d80  CameraTiltDown
- *
- * Each is an ActionCallback (progctrl.h): __cdecl(key, strength, context);
- * only the context is read.  Every step is scaled by the tick step dt. */
+ * Each is an ActionCallback (progctrl.h) registered with the Game as its
+ * context; the key and strength arguments are ignored.  Every step is
+ * scaled by the tick step, so holding a key moves the camera at a rate, not
+ * per frame. */
+
 #pragma once
 
 extern "C" {

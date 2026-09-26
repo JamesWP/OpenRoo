@@ -1,4 +1,3 @@
-/* inputsetup.cpp -- see inputsetup.h. */
 #include <windows.h>
 #include "inputsetup.h"
 #include "progctrl.h"
@@ -17,10 +16,9 @@ Input_TrySaveSettings(void)
     ProgCtrl_Shutdown(&g_progCtrl);
 }
 
-/* The joystick's ranges and null zones are set only if its setup succeeds;
- * a failed keyboard or mouse setup is fatal, a missing joystick is not.
- * The player actions get the Player as context, the camera ones the Game.
- * The default keys (DIK_ codes) bind only when no saved bindings load. */
+/* The player actions get the Player as their context, the camera actions
+ * the Game.  Default keys (DirectInput scan codes) are bound only when no
+ * saved bindings load. */
 extern "C" __declspec(dllexport) int __cdecl
 Input_DirectInputSetup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
 {
@@ -55,19 +53,19 @@ Input_DirectInputSetup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
     ProgCtrl_RegisterAction(pc, 1, GS_ACT_CAM_DOWN,     Camera_TiltDown,       game);
 
     if (!ProgCtrl_ReadBindings(pc)) {
-        ProgCtrl_BindKey(pc, 1, GS_ACT_MOVE_FORWARD, 0xc8, 100);  /* Up */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_MOVE_BACK,    0xd0, 100);  /* Down */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_TURN_LEFT,    0xcb, 100);  /* Left */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_TURN_RIGHT,   0xcd, 100);  /* Right */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_ZOOM_IN,      0x1e, 100);  /* A */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_ZOOM_OUT,     0x2c, 100);  /* Z (Y on German) */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_RELEASE_BOMB, 0x30, 100);  /* B */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_HARAKIRI,     0xd3, 100);  /* Delete */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_OVERVIEW,     0x0f, 100);  /* Tab */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_CAM_RIGHT,    0x2e, 100);  /* C */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_CAM_LEFT,     0x2d, 100);  /* X */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_CAM_UP,       0xc9, 100);  /* PgUp */
-        ProgCtrl_BindKey(pc, 1, GS_ACT_CAM_DOWN,     0xd1, 100);  /* PgDn */
+        ProgCtrl_BindKey(pc, 1, GS_ACT_MOVE_FORWARD, 0xc8, 100);  // Up
+        ProgCtrl_BindKey(pc, 1, GS_ACT_MOVE_BACK,    0xd0, 100);  // Down
+        ProgCtrl_BindKey(pc, 1, GS_ACT_TURN_LEFT,    0xcb, 100);  // Left
+        ProgCtrl_BindKey(pc, 1, GS_ACT_TURN_RIGHT,   0xcd, 100);  // Right
+        ProgCtrl_BindKey(pc, 1, GS_ACT_ZOOM_IN,      0x1e, 100);  // A
+        ProgCtrl_BindKey(pc, 1, GS_ACT_ZOOM_OUT,     0x2c, 100);  // Z (Y on a German keyboard)
+        ProgCtrl_BindKey(pc, 1, GS_ACT_RELEASE_BOMB, 0x30, 100);  // B
+        ProgCtrl_BindKey(pc, 1, GS_ACT_HARAKIRI,     0xd3, 100);  // Delete
+        ProgCtrl_BindKey(pc, 1, GS_ACT_OVERVIEW,     0x0f, 100);  // Tab
+        ProgCtrl_BindKey(pc, 1, GS_ACT_CAM_RIGHT,    0x2e, 100);  // C
+        ProgCtrl_BindKey(pc, 1, GS_ACT_CAM_LEFT,     0x2d, 100);  // X
+        ProgCtrl_BindKey(pc, 1, GS_ACT_CAM_UP,       0xc9, 100);  // Page Up
+        ProgCtrl_BindKey(pc, 1, GS_ACT_CAM_DOWN,     0xd1, 100);  // Page Down
     }
     if (!ProgCtrl_AcquireAll(pc)) {
         MessageBoxA(NULL, GS_CONTROL_NO_DEVICES, GS_CONTROL_ERROR_CAPTION, MB_ICONHAND);
