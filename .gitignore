@@ -42,3 +42,6 @@ karoo_dso_golden.txt
 PROGRESS.md
 progress.html
 KarooOwn.exe
+
+# The game data, imported from your own copy by tools/import_assets.py
+/game/

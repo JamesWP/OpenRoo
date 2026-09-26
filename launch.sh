@@ -20,9 +20,6 @@ while [[ $# -gt 0 ]]; do
     # so nothing here touches X, nothing takes focus, and no desktop mode is
     # switched.  This is what to use for a background test run.
     --headless) HEADLESS=1; SKIP_LAUNCHER=1 ;;
-    # Run our own executable, KarooOwn.exe (karoo-hooks/exemain.cpp), instead
-    # of the patched Karoo.exe + karoo_hooks.dll.  ENDGAME_PLAN.md "Direction".
-    --own) EXE=KarooOwn.exe ;;
     --auto-exit)
       shift
       [[ $# -gt 0 ]] || { echo "ERROR: --auto-exit requires a seconds argument" >&2; exit 1; }
@@ -33,15 +30,11 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-EXE="${EXE:-Karoo.exe}"
-if [[ "$EXE" == Karoo.exe ]]; then
-  [[ -f karoo_hooks.dll ]] || { echo "ERROR: karoo_hooks.dll missing — run build.sh first"; exit 1; }
-else
-  [[ -f "$EXE" ]] || { echo "ERROR: $EXE missing — run make in karoo-hooks first"; exit 1; }
-fi
+EXE=KarooOwn.exe
+[[ -f "$EXE" ]] || { echo "ERROR: $EXE missing — run make in karoo-hooks first"; exit 1; }
 
 # A ddraw.dll here would be loaded in preference to stock Wine ddraw, even under
-# ddraw=b, silently reinstating the old patched build.
+# ddraw=b.
 if [[ -f ddraw.dll ]]; then
   echo "ERROR: ddraw.dll present in the game directory — it would be loaded instead of" >&2
   echo "       stock Wine ddraw (Wine logs it from this path as \"builtin\"). Remove it." >&2

@@ -1,0 +1,6087 @@
+{
+ "version": 1,
+ "files": [
+  {
+   "path": "bitmaps/CANDY.BMP",
+   "sha256": "e3e496c5774f050171a759fb037a05fb69eea0b4a21a315713f0cd876632653a",
+   "size": 921656,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/CASTLE.BMP",
+   "sha256": "83a667e7e72e17e2684c3bc7698b9df8311eb02e0f040ab7178287de0b5c420e",
+   "size": 921656,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/EGYPT.BMP",
+   "sha256": "06b8e59d7cc85c201d7852f23c3cac0ba0237ff6f1df59c44d131a47f3cfb1cc",
+   "size": 921656,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/ENDE_FOC.BMP",
+   "sha256": "9f50e97260136cc1570d4ab81fa6c02cb3b16fa05cab0e4f7f309e7c2e80b612",
+   "size": 14280,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/ENDE_OFF.BMP",
+   "sha256": "1efdf7ed208d1ad85a6d033c8a3733668d051282ccfdf215ccc5d9b36d2a63d9",
+   "size": 14280,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/FOREST.BMP",
+   "sha256": "439da1af807102b6c34404fd987ca86449dade3790924bb190fb5387bb8b8496",
+   "size": 921656,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/LOADING.BMP",
+   "sha256": "1e9393c19f51b4936f72b12ac51564d18c5dbd6834496b0b0125e2bb6fab3544",
+   "size": 921656,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/MENU.BMP",
+   "sha256": "675b23128b0fbced00de5de5f7ef5ec9d70259df5735ea14e64d3bc0ba80622f",
+   "size": 161080,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/menu_mask.bmp",
+   "sha256": "5778efa7c722e665be05082fa3ab91978284d732d93b06b169fa7b1df1d49a8e",
+   "size": 20864,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/setup_foc.bmp",
+   "sha256": "1860afd19b3cfc2d1cb07a63aef9dcf1d189167b44beb234cf5aa5d32024904b",
+   "size": 15072,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/setup_off.bmp",
+   "sha256": "7286937a70f1e750fa26285af31037c71c8da17d91ccb74709bd113967c6acdd",
+   "size": 15072,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/SPACE.BMP",
+   "sha256": "bd496443e82e93da283de9f8cf8a399dee4a25f58df1bf80a1980c07330a67c0",
+   "size": 921656,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/spielen_foc.bmp",
+   "sha256": "347c442e6120e8b99952bd4e851a5d87baee8dcb688a386b52749e5e2d094041",
+   "size": 15336,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/spielen_off.bmp",
+   "sha256": "24b34fab6dc8e534152e68bcef9ab4f46faad9c0e96b6824b24d91642aab9400",
+   "size": 15336,
+   "class": "required"
+  },
+  {
+   "path": "bitmaps/WATER.BMP",
+   "sha256": "7d36aa40864e5156a6d1c49d7cd3c8921a8722be204ea7190dbaa14ef7057434",
+   "size": 921656,
+   "class": "required"
+  },
+  {
+   "path": "CDTracks/JJ.CDT",
+   "sha256": "ca2c895d63c255853de88032c9a1749da16e19ff91adafa2d39e49d3a299d873",
+   "size": 98,
+   "class": "required"
+  },
+  {
+   "path": "CDTracks/Track 1.wav",
+   "sha256": "cb31f6d8464dc7e1eceb33bdd99ac1f4fb24fc908fa08cac4faf472f86a6beaa",
+   "size": 49206400,
+   "class": "optional"
+  },
+  {
+   "path": "CDTracks/Track 2.wav",
+   "sha256": "61f3682873b9c46fa6435c454700c6642a1c62982a393ca19d50ed416721a442",
+   "size": 31604032,
+   "class": "optional"
+  },
+  {
+   "path": "CDTracks/Track 3.wav",
+   "sha256": "6b4810179a370eaa7ad7f41a08d08d561b1477aee5e4784dab9b79d7e2a3d4f8",
+   "size": 36783136,
+   "class": "optional"
+  },
+  {
+   "path": "CDTracks/Track 4.wav",
+   "sha256": "aea7039304282ae9ba5ae124e01c524e1f8aa9fab678566ccdfea5893159673d",
+   "size": 29442544,
+   "class": "optional"
+  },
+  {
+   "path": "CDTracks/Track 5.wav",
+   "sha256": "a007ef9552b8b13ec1eb4988b3e8fbd4fbd8fbced8389bb4542ad22bff9493fc",
+   "size": 33290416,
+   "class": "optional"
+  },
+  {
+   "path": "CDTracks/Track 6.wav",
+   "sha256": "2f01934a643b1f12b8a5634fc53a4e0ce3c1036defef87787fe2c6775aa9b1eb",
+   "size": 37538128,
+   "class": "optional"
+  },
+  {
+   "path": "CDTracks/Track 7.wav",
+   "sha256": "5918587e1b6be94195bec709a983280c046ea552b86ad04c37454e530666659d",
+   "size": 42510256,
+   "class": "optional"
+  },
+  {
+   "path": "CDTracks/Track 8.wav",
+   "sha256": "a337759661420a87b305f55faacf56693f2195a71e78b82fe6f2105b55bae90f",
+   "size": 24341056,
+   "class": "optional"
+  },
+  {
+   "path": "ENGLISH.FIS",
+   "sha256": "43620ccd2da20e4a109580aff908821b0870658fd0da8712f9e7958200304979",
+   "size": 3320,
+   "class": "required"
+  },
+  {
+   "path": "fonts/FONT1.FON",
+   "sha256": "cab85e9d320d5ec6afa13231ede0ec01d6ab3fa54a3ae949826b4432f35be4d7",
+   "size": 28,
+   "class": "required"
+  },
+  {
+   "path": "fonts/NUMBERS.FON",
+   "sha256": "3fc5a5a51250237444963dbb9666e67f8c69c7972dfc277ce4f6240393592b9f",
+   "size": 28,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Candy01.jjs",
+   "sha256": "876cc6e62201f9a70555b79d7e1e5f2dec81b34ae66fb602580da797c952c19a",
+   "size": 528,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Candy02.jjs",
+   "sha256": "dc2b7f5affe4a19d710ccae260a12648a15238b791e82c472a212b5ffeccd6c9",
+   "size": 274,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Candy03.jjs",
+   "sha256": "c84a0362d734267d05f88f4aee9d64295db9aec067d9fe10a658c27f59984b90",
+   "size": 274,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Candy04.jjs",
+   "sha256": "5e1932bfe7c0d0f84c922aee453d6513c8e2ba634acfd5139f90997363ae7fe8",
+   "size": 273,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Candy06.jjs",
+   "sha256": "217ddb218ae0cc3a1ed5a231f91e92a01900e3df62f206b0275c96d2019debe1",
+   "size": 528,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Candy07.jjs",
+   "sha256": "a45c8b6f828ff4d36d850d34f3565d317e2379bc216d4f62f64797068c0f5235",
+   "size": 288,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Collect01.jjs",
+   "sha256": "22100d95536395b8b97432711c21ede3f36a5dff05c3a5ecf93f66034217641c",
+   "size": 802,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Elevatormania.jjs",
+   "sha256": "9aadb8f1f10475cf656ba4b1c260600e4d4e52cf9d096abdc4f9dbc24db4c8f6",
+   "size": 653,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Final.jjs",
+   "sha256": "103fd4cae07e9b81d23cd370ee19abc5acf9d0f14f20fc1d8b861937b200edb5",
+   "size": 636,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Paraglide02.jjs",
+   "sha256": "f913c23610a40ccbebbfe989011f288abdf5c6993ec017c0859684e53cd59e90",
+   "size": 636,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Sandra01.jjs",
+   "sha256": "535d5e96ce17d98174dd5ef70086a9a5eee441d3b96d7cca0bc0193d41ffd8eb",
+   "size": 259,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Teleporta.jjs",
+   "sha256": "3a84127fdad61fc2db8c1576ff5cb4ef1bc850777432f1fc3a25926eb69024a0",
+   "size": 246,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Candy/Thrower02.jjs",
+   "sha256": "fae93e20cf0e7f5d73b042c9061481933e087fa51e639ccf65900c3ba7b8b942",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/DestrTotalStart.jjs",
+   "sha256": "317c48a600d4993b66bb2941b152deae3def97d10d397d0ada7757b4f5f7fe8f",
+   "size": 528,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/Elev&Platf01.jjs",
+   "sha256": "e29320805edab915f59868d796729f261d074b5ba15474a35e101f40a2a452a1",
+   "size": 447,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/Elev&PlatfStart.jjs",
+   "sha256": "042b60a7470f085e36e5816b5dad118a82006bebe993975784df88211040d2f7",
+   "size": 552,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/EnemyVsEnemy.jjs",
+   "sha256": "f06f18c665e34dd726d6bca382de85561fb78cb6eb05f8a1f73e745db2379546",
+   "size": 635,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/Glue&Enemy02.jjs",
+   "sha256": "c541c01de602b0360f8b2627686dd8423503174e48b4c9ce4394b802fcd4de73",
+   "size": 268,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/ObstacleStart.jjs",
+   "sha256": "39531d45320385d88bf7b64e26ac871344dc8b583df0eb2d8b586d7b524bc538",
+   "size": 720,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/Something.jjs",
+   "sha256": "42c54375cbe59c45cc2edbc9916c8a5fe6e2b3896d89ad36eb7f8975565da9d7",
+   "size": 470,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/Sprenggebiet.jjs",
+   "sha256": "2c0de55847e1a02e6dd607ad4053506ccbc4dd496af845aea70e5561ac508ac0",
+   "size": 785,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/ThrowerStart.jjs",
+   "sha256": "4fe5de782b55097a7a9672b2708225e0b1e2da4aed6c26f386c8e93916c43831",
+   "size": 535,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/TimeBonus.jjs",
+   "sha256": "4fb0684eae1921e8ae1b70877f2aa003c93f312fc48184ca3544024c1c999683",
+   "size": 1108,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Castle/Tower.jjs",
+   "sha256": "17a153069cdad585f490bf2c0b8a7de26450c6cf5462cdc9c1a9c84f2e5695e9",
+   "size": 242,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/DemoLevelForest.jjs",
+   "sha256": "f506d1b3be35ece4f5bbcad291eae55cd304ba4310850d7cf4cac9b66c17d1f1",
+   "size": 223,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/CarpetRide.jjs",
+   "sha256": "abe818d9aa102bb13139d9f0033a21152623b6cf70c52d9cb810ae69a5bdf66f",
+   "size": 432,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/CollectIt.jjs",
+   "sha256": "ba59af29fdbadebaaf0ade2bc9dab33752661779d4027e6432aa2708d1a171d2",
+   "size": 426,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/GreatPyramid.jjs",
+   "sha256": "321210d3c6daddce260f524a7885be766524a13ea34d1932774217a5edf9ec17",
+   "size": 409,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/ParaglideStart.jjs",
+   "sha256": "3e6eed3a9887c73ade69acec44ff5064b262c0fe6c5bae0d2b98913cfcb32246",
+   "size": 677,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/ProtectionStart.jjs",
+   "sha256": "71e1227bb891a5fd71a37f9180b753ebf53469db17d9cc63796011387334a7e2",
+   "size": 737,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/Pyramid01.jjs",
+   "sha256": "25ef461183d1022af830373fbe45d62f965abcdee6bcfe615a9706b3d0a84f70",
+   "size": 245,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/Pyramid02.jjs",
+   "sha256": "40d03365d2eba9e57dcae2fad22278eb69b9828a181a1bdabf82a6a636feec26",
+   "size": 284,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/Pyramid03.jjs",
+   "sha256": "b07600faab3cb39bb927441ad1024dcf9af04885b8d76aaa7f7b643673b6e266",
+   "size": 539,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/Race.jjs",
+   "sha256": "48469c854a4086a861a60fa69a5cab993c795c0c31209f5ad0e0deb902384b79",
+   "size": 510,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/SlideStart.jjs",
+   "sha256": "6045efcd65d4a9f3cf1c234f526c4596e6f83e0bb1a5ea7239e828fdd7406ca5",
+   "size": 748,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Egypt/TimeBonus03.jjs",
+   "sha256": "3725b448081a077af5fde8a19c9bc880ee53274b00da0a3433e318764015c2d3",
+   "size": 247,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Final/JJ.JJS",
+   "sha256": "dfb098a84bf4d892a11641d04c259d46e7f41ee5b618d1a1d5154c9ac749e239",
+   "size": 219,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Forest/BombStart.jjs",
+   "sha256": "c420588a69c798b4f242bfe6cddb8f5efb094360e3164141928da96717b1af63",
+   "size": 882,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Forest/DestrStart.jjs",
+   "sha256": "c2c3611a055e399e1d8ee9302dff8e32ae516d5f762e7354749135d79df19b9f",
+   "size": 688,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Forest/EnemyStart.jjs",
+   "sha256": "27be2da7b6bdd28b9bd69f2084eb2a47a18c07fbe3c8f94a1c787ae54d54dbd0",
+   "size": 809,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Forest/Forest01.jjs",
+   "sha256": "2e3e4c7e088aecdbcc595da15dbc498dfc92628fc9eec5edb838e005003efbf5",
+   "size": 373,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Forest/Forest02.jjs",
+   "sha256": "5b891196e0fab4422af5125f22f88afb9cdc219c736714e9f1325e1437e870c5",
+   "size": 510,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Forest/FreezeStart.jjs",
+   "sha256": "8f1572b6f3074d898bdeebc84b7badf7a4d9b88d102e5f19ee2acf895e47cc40",
+   "size": 653,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Forest/Glue&Enemy01.jjs",
+   "sha256": "e59bed1fd9fecdc2de136d4288d404262a3448c17a57b81968ea19a6827b84c0",
+   "size": 373,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Forest/Glue&EnemyStart.jjs",
+   "sha256": "ba7ec993a35c763209046b9dbc63ca98ede053cb0e5dc93d38daf608035be89e",
+   "size": 455,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Forest/StairsStart.jjs",
+   "sha256": "90086eae85cebf43aee0f50317bd910052b514cc0e06983fe0cd356e7a2c3b40",
+   "size": 504,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Forest/Start.jjs",
+   "sha256": "4dc05316269656099d5c540b85194c7b3620be9106a5e8e10de60471598be533",
+   "size": 1021,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/Bridge01.jjs",
+   "sha256": "fa33a136c3ba93f596e241b0f44c9f35ccbd32af6077e1707ddae2fcf60ceae6",
+   "size": 502,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/Bridges&Enemies01.jjs",
+   "sha256": "d671c1eb1c8648dc5cbd8046f54e61a1dab337b9d22756b206a9698fcd06f03a",
+   "size": 370,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/Bridges&EnemiesStart.jjs",
+   "sha256": "63f4b8840e4bf3f2f3d750ee248a63b5208d67d94979f2753f52f7e3d48e6cba",
+   "size": 503,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/EnemyFactory.jjs",
+   "sha256": "b7bcb1e4999ee61948e42e20a0c835e7bdc44ac082cf66bf2a627f7f71aa2215",
+   "size": 715,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/Fakt.jjs",
+   "sha256": "33c9aabcecb212b868a17263d95a3064d4a3265b311cf6f3f1a45132c15da5d1",
+   "size": 391,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/Freeze03.jjs",
+   "sha256": "67881ac04d2d73c28d88e8ee38d3ca2feb6860b7f813a087a5785ca1a3c8e351",
+   "size": 571,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/Jump01.jjs",
+   "sha256": "b1ff6ae9f00ee7f0442ccd6f4bb8ca3768ed2572f9f6cde5003c911c8c306ae8",
+   "size": 246,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/JumpStart.jjs",
+   "sha256": "5ba52fd2836940076d86c2184d6612984b07a507de0c60edaba4f32d2d773c68",
+   "size": 889,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/Protect02.jjs",
+   "sha256": "520bd43924667a2785750ffcbfe1bfc9adf9b44af54199905adcc3a809eb5e86",
+   "size": 286,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/Sandra02.jjs",
+   "sha256": "f99ae5d4f4395ef8db2ce09b2f7ff7c2fe0ec4975d1c84533e9208abd819ea20",
+   "size": 294,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/Space01.jjs",
+   "sha256": "8c89ffd30902ea3339c2e6c9d869300c57734455d9ea57b07b46eaa3afaffc7a",
+   "size": 455,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/Space02.jjs",
+   "sha256": "5e044aa7b70ed13ff3cc28c4b0612bd91eaaf63f9d7b87d7d0bf063836c714bb",
+   "size": 504,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/SuperEnemy.jjs",
+   "sha256": "7055f10a71d1acf01314aef33dbd0162cafa4d124fb5f7562392dbdc7cba119b",
+   "size": 544,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Space/SwitchStart.jjs",
+   "sha256": "2a1c59626d985d364138cc531f5fa0b7fbfbea0c011e9afffa055a512efd4915",
+   "size": 604,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/Elev&Platf02.jjs",
+   "sha256": "df9b38153dd2ec4183f4b2f937742f8809555c06e0bf33d0b93afad9af0e05a5",
+   "size": 561,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/Freeze01.jjs",
+   "sha256": "0cf77ad761034b6a3188829bcb25810fe54fb5e4427dabe06041fe9d9b6e2031",
+   "size": 632,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/Freeze04.jjs",
+   "sha256": "a8264638fde54ab31753ad707e1a75820631fc0a97f7d4fa84a3153cac36e1a9",
+   "size": 389,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/Ice&Bombs.jjs",
+   "sha256": "6956b3ff71fae8f0bba8fe52549ab8db4f0fb5cb5901e5c70583012b5dd5de63",
+   "size": 446,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/IceStart.jjs",
+   "sha256": "e91674bbffc1cb53b971362f80615dce07a8a8a542d9f64943a7d179d128f28c",
+   "size": 477,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/Obstacle&Bonus.jjs",
+   "sha256": "c80f11e5e2c2d88c54e997b0a69c2d0411cb77581f06eadf87ed0599f24ca92a",
+   "size": 495,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/Speed01.jjs",
+   "sha256": "1e063ff9890c2707dc1294a9b033989de5fd692e9cfbadc8ec48ee920a105e76",
+   "size": 443,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/SpeedStart.jjs",
+   "sha256": "6f94e991770e65c803512d322473d8b4f8e1f085d5f1ed9ad8427aa9e52c5f00",
+   "size": 716,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/TeleporterStart.jjs",
+   "sha256": "e7a84256e7173894580857c5a888ebf508c174e85b80cc4e82a43c3aedbe4d49",
+   "size": 646,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/Thrower01.jjs",
+   "sha256": "97d21716ff21d0d59fafe2f4c121e88d560a6c16cbacfbb6b01f3c7b0d399038",
+   "size": 485,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/Thrower02.jjs",
+   "sha256": "f66c42c470b02f7c3ea19e0c4c1e92f9929423ba0382592999b7f0d928be0a5b",
+   "size": 378,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/TimeBonus02.jjs",
+   "sha256": "73eb5e7ac4aa51bbcfee1050229588d99402ad7bf8dc53ad72965c48ec154f7c",
+   "size": 544,
+   "class": "required"
+  },
+  {
+   "path": "InstructionScripts/Water/Water01.jjs",
+   "sha256": "d48856d43537e222f9c8c54b1be9f130a31772354b2437221b4ff61d179280f3",
+   "size": 629,
+   "class": "required"
+  },
+  {
+   "path": "JJ.GAM",
+   "sha256": "856e39ed6bb99c7b2b2f0c5c452e56862f7614d85d66ab45dab5d35d24df74b1",
+   "size": 20484,
+   "class": "required"
+  },
+  {
+   "path": "Karoo.exe",
+   "sha256": "b2ec66816f1655052771f77f9967ed67e4d4505de521882136733e3562d41098",
+   "size": 458752,
+   "class": "required",
+   "from": [
+    "Karoo.exe.orig",
+    "Karoo.exe.bak"
+   ]
+  },
+  {
+   "path": "Level3DExtraObjects/Candy/Candy01.leo",
+   "sha256": "ccb1d6886418e5b3df57e1c5257bf4f97b06f5eeb9f2cb45d028df4b8291c077",
+   "size": 237,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Castle/Elev&PlatfStart.leo",
+   "sha256": "2d44a27a2f708ab5250b691db031ec0903480dba94cd1711843c2428d3685a77",
+   "size": 443,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Castle/EnemyVSEnemy.leo",
+   "sha256": "0a8c47efa794f6475c0312b90aa7c3d26eb16b5ee190d880092e652267f880f4",
+   "size": 229,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Castle/Something.leo",
+   "sha256": "f90f5a33ddc2e37485d6c4207b713692f69028d073caafb5e7e528c8524d93b2",
+   "size": 1574,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Castle/SprengGebiet.leo",
+   "sha256": "30da54d372b6c0858a60faebcd01a798eea82fdebb4bdbb5d2bc035d960615db",
+   "size": 536,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Castle/ThrowerStart.leo",
+   "sha256": "f44a287f09587c15c2e6eaf2d8c95dba9226559bf19ca08bcf7f36fb82a227ce",
+   "size": 1148,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Castle/TimeBonus.leo",
+   "sha256": "0e7d4ea0da611281b93cc178d9f4391ccf5edad67d8a1964479a7de05d089cd1",
+   "size": 1622,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Castle/Tower.leo",
+   "sha256": "de1a0d76b28ac48f4261121ba1026617634a1a24c987752fceff5ff0ed975e25",
+   "size": 1789,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/DemoLevelForest.leo",
+   "sha256": "94b37936020c107d70dc04d51266816e96d320d31a21a244266d4032866fb854",
+   "size": 1637,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Egypt/CarpetRide.leo",
+   "sha256": "e38e9f1bad2a5b010bc482a688f02d756d916c5fd3c4f2ad907dbdbf5e18c7a3",
+   "size": 1180,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Egypt/Collectit.leo",
+   "sha256": "47be41576510b65d525fbab0acd5cbddbe2ee27a7a63ad37af8fa0eb4bd5f16d",
+   "size": 938,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Egypt/GreatPyramid.leo",
+   "sha256": "e09d03874db711f35bd0692dab6885fb1f250f5c7c9ed5dd004c75f5659b628b",
+   "size": 235,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Egypt/ParaglideStart.leo",
+   "sha256": "8ea4485c40ebc4b3ffd5e938b8227921a78f8b66f3b99f079fb0b5fb14d6a158",
+   "size": 449,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Egypt/ProtectionStart.leo",
+   "sha256": "37656b61ac33aae7dac051744e7e6e3fefb01760ffa197b3e80edca2b81d9a16",
+   "size": 2170,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Egypt/Pyramid01.leo",
+   "sha256": "f4d88865042b4be75f9ae400639a879dc3fcb11d7d5e347859291f25aea4989c",
+   "size": 100,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Egypt/Pyramid02.leo",
+   "sha256": "b40b5c800f6a11cd6b06000e10a0c01255cce83018bfe1024c7d8a031753f4bd",
+   "size": 882,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Egypt/Pyramid03.leo",
+   "sha256": "f338aa498922b238669fae05df00e5dfa0624cb724290a879a9cd571f291f93f",
+   "size": 1761,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Egypt/Race.leo",
+   "sha256": "6e33921f3a50cb713cd979588805b90dd3ff4b8632ec647496763daf9ad26fda",
+   "size": 1986,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Final/JJ.LEO",
+   "sha256": "cbf0a42d9c3010790f46b13d81fcfedf2067ee43becb6ae647aa0572ad0ebd3c",
+   "size": 2099,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Forest/EnemyStart.leo",
+   "sha256": "158b3364da3cef607e88bee9d50cfd7b3de857dc32d0496f2695f2f3fc275b28",
+   "size": 1639,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Forest/Forest01.leo",
+   "sha256": "959bfcd5ec7904479e997f58e4dc0ea23833071b170d9a3ea734b713997733a3",
+   "size": 5375,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Forest/Start.leo",
+   "sha256": "15da4fa04f5860e6f1f612b1cfe5490005dd02873908fa5d8516fda7ba2bee4e",
+   "size": 3542,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Space/BonusEscape.leo",
+   "sha256": "cadef8091cd0765e36da5b365d726a60911faed4bf040f595fbd6b3739aaf831",
+   "size": 567,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Space/Bridge01.leo",
+   "sha256": "1142a3b998b632196673c67d3424058770a4a9b60b9a94f049c3e31be6878066",
+   "size": 574,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Space/Bridges&Enemies01.leo",
+   "sha256": "95ee6a55e3c8861c39f4ef4a92ccfb3c00a29db86de50ef4076821e0d6ba9c15",
+   "size": 225,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Space/EnemyFactory.leo",
+   "sha256": "a9285a95a6e131ea9ec178e7ec8feacbf33cf20974884144f878c0f326ec5acc",
+   "size": 1153,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Space/SwitchStart.leo",
+   "sha256": "e3c6277cd2b60208566a672cf1d9991ba427657871dbbbdcc0e0452b9c1350c8",
+   "size": 253,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Water/BonusObstacles.leo",
+   "sha256": "a0f09cad42d9b3ae20e05bd59d9ebd57a392c0f125993bf63094124330e6f827",
+   "size": 232,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Water/Elev&Platf02.leo",
+   "sha256": "187270e28e0da4208c5b3dd50c7cd29cbab87c2fb3cabdbc62001f549f0e62cc",
+   "size": 1155,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Water/IceStart.leo",
+   "sha256": "746f8381dc39ce07a71ac3b068763dd9bd47aba92085f8972f3f7c252d6c6d70",
+   "size": 230,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Water/Thrower01.leo",
+   "sha256": "e3bc9330df0cfa1f4ee8142b3dd65be7dacfa57b8158658200f8a71a6fbe146f",
+   "size": 576,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Water/Thrower02.leo",
+   "sha256": "5e92d17aa13cd19fc04f46298fdfd2ebdea3d5f92b59ad9c2a56959038b45745",
+   "size": 484,
+   "class": "required"
+  },
+  {
+   "path": "Level3DExtraObjects/Water/Water01.leo",
+   "sha256": "b5bcb7277f95d01a3e52cce7a978f0d34296812da1fd6607da07f1bf92dbe3ca",
+   "size": 290,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/BonusDestr.jjm",
+   "sha256": "a07410452558e77066967c660f974b4b42bc33729af831977f943a51e80a2162",
+   "size": 1198,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/BonusStairs.jjm",
+   "sha256": "68e4392202187ba28bc4a6c5cdf54a63df2cb6b7efe3ae0632caa920e1184a6b",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/BonusSurprise.jjm",
+   "sha256": "beef455f19e83c4bee1c27df201dcaeedacf79f33da15c658000abf02a7a9b93",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Candy01.jjm",
+   "sha256": "52116b9296398d29a580615d56295d7068864b4fcae632bb0d6ee7cf91b4708f",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Candy02.jjm",
+   "sha256": "8102bee7491010b948ebb97a4cfc35f9c0a39054219da29c6f6be338f37ccb90",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Candy03.jjm",
+   "sha256": "403f221c84a6725e4f2df26da7c5c39079a67e88d9145c6efe2b03c73d1b1a3f",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Candy04.jjm",
+   "sha256": "5dc38595c5fd076fd3b1dd0673f9fb51d7c88467b5ca6bdb27a60f3a5a0d5dd9",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Candy05.jjm",
+   "sha256": "d55a1cffcb1d785bcabeac44624a295e3444a0a4fde6b1f0d4d20681326c0efb",
+   "size": 2898,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Candy06.jjm",
+   "sha256": "74124ec29b6ccaa91d490776939be570fa74c9822b05cf2519ee0e0343fd3819",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Candy07.jjm",
+   "sha256": "105fe0532fd26643d31613411a173b20f995bd81b503c7979c22fb62a1427f26",
+   "size": 2798,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Collect01.jjm",
+   "sha256": "173c7d9ec04207fbcfac5f175a1567cc3e4234f6e637403a41a1d74be0b4c436",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Elevatormania.jjm",
+   "sha256": "73001e0dbc73ca08480f9b648ea1b5169c4b31d89ee3788ae61688e29b5f512b",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Final.jjm",
+   "sha256": "69e2d10f95a3dcbceef2207b6bd83634d058091e830245f6dc0ed4e29470740a",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Paraglide02.jjm",
+   "sha256": "e22f70ccfac9c544d7b8806a9993cefad4e2ecee1dcf1172b35735372ca0def3",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Sandra01.jjm",
+   "sha256": "725a224b86b36e1a50cc3d108efaa7ca944739137a72bd265c1204102259a49a",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Teleporta.jjm",
+   "sha256": "ee9667a666cb6764e12ac78589aae0745633bafa6adf608bfc28dc5b9a93d93c",
+   "size": 2798,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Thrower&Slides.jjm",
+   "sha256": "cb13089d74a695c2700af860cb99427dd7d3355f8d62d22242769cf46cdd72a2",
+   "size": 2398,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Candy/Thrower02.jjm",
+   "sha256": "f73b4e4e071a894df3c1a4cdd438ffdfd431ba5ed4af32d112c8dec818e4a1cf",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/BonusBomb.jjm",
+   "sha256": "51d98e81a8849086c46bda54abcc85e44747a94170719e518f573a7058d3389f",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/DestrTotalStart.jjm",
+   "sha256": "87078e9a2d0c297820441e8dff21fb29b39ec21424f5b0d5e0b387a958029f30",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/Elev&Platf01.jjm",
+   "sha256": "98ee12d33e71f9950eaa86359a6e8d40bb850422f67c7956d2cf0eac9a58cb81",
+   "size": 1742,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/Elev&PlatfStart.jjm",
+   "sha256": "85598a222c951ff8d0f55e9d580642f8a12d266550bd3fe94375171ec9d2809c",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/EnemyVsEnemy.jjm",
+   "sha256": "8328e0be42d51aa22bd85d7258da12c50848ea00535a8b5c8be651dc61e9201c",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/Glue&Enemy02.jjm",
+   "sha256": "73532e56c51875ca61d39b76f4547789061f8ebec61dd34e65b0febf08d8d272",
+   "size": 2798,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/ObstacleStart.jjm",
+   "sha256": "1d0f74c6c90340ac1d9c771aa5cfd49013f00dc8b2a034222a976aad51e71f46",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/Something.jjm",
+   "sha256": "ee55d5b483fc41bdae91e43aa7ca552200ce82ede9f7b018777ab6a4aaa5fc5c",
+   "size": 2398,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/SprengGebiet.jjm",
+   "sha256": "c876bad607f033588e7bf02a42de907633906bbd7c2b8b50b4d13bc19037c2a8",
+   "size": 1598,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/ThrowerStart.jjm",
+   "sha256": "b52f6613f57f7c0c3d7e8c9f3ca2a2018bb8edd376954bd1c2619a27fc0ef042",
+   "size": 2158,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/TimeBonus.jjm",
+   "sha256": "bf162d3b4727732259f1a98245e93f7e43845f256ba3a87e65f39acdbb3c3068",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Castle/Tower.jjm",
+   "sha256": "414c9eb6e99bdff70f2aa9db4b8c01002f00f7f7046ca9db916eb05dfc3284ef",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/DemoLevelForest.jjm",
+   "sha256": "f3058442174c54a5daf8b75f20749ce66659a5529ecabed4ef4c5d99c352b468",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/BonusParaglide.jjm",
+   "sha256": "361de3c3338fe450ddb012a848f3b3d995c23eaac9f3d2316ae361f07a54c619",
+   "size": 3038,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/BonusSlide.jjm",
+   "sha256": "3dd77be58d8d812c9a6e381c048f4eb166b94caa713ac93e9cd44c5f2368f794",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/CarpetRide.jjm",
+   "sha256": "178e8fbedc0ccba10e82cfc8fed08aa708ba927d05a9c1966f7e458873595d5f",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/Collectit.jjm",
+   "sha256": "5c9e1c63defaa68e1db07749ead88f4301770a9bccfab929567b23f6110b3a20",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/Freeze03.jjm",
+   "sha256": "c99e43806c493af44c98de9814645c20af1531e594bcd24b547b5a45369951ec",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/GreatPyramid.jjm",
+   "sha256": "53d91cd1e600595afb789f448ac1a91817195e104f98896f3c8f9e7d607998d7",
+   "size": 3598,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/ParaglideStart.jjm",
+   "sha256": "f945f6c857dc81f4b59c419ed1c549a1edcf2ab9dff77007b881b46aa23302c0",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/ProtectionStart.jjm",
+   "sha256": "3fb013153513888e2a071432501b11f9276a43cc769c2fd22613a2fe6f6be7cd",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/Pyramid01.jjm",
+   "sha256": "9ee482ebc7716d096aceb0cae42de383e9b3a40233063a911d64deb02738cc6d",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/Pyramid02.jjm",
+   "sha256": "0dd2ff27d33ba35c01e9827044d5ea0bb61ac7a05886cd73843dea286cd2ba0c",
+   "size": 3918,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/Pyramid03.jjm",
+   "sha256": "efd81243985a260463cfcbaf5093a5723cc37a260618f7c4077b5775de65269a",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/Race.jjm",
+   "sha256": "b82409de3f5476cdee5e2b938fd8d4be97c5643b9734447f43bc33345b9e9341",
+   "size": 3842,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/SlideStart.jjm",
+   "sha256": "9c9e3f30065154a7d9e265abbbb827f6ac7adcef7590125a0bde856995295021",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/Thrower&Platf.jjm",
+   "sha256": "e8e43f5f4649a38c08b192d014d9b80f9badeb4739dc3b6453bc89235b7799a5",
+   "size": 1198,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Egypt/TimeBonus03.jjm",
+   "sha256": "be40b9a1fe5ea401050ad9a10235cb6d0b95f92c59c8531cd9218df5af101a7f",
+   "size": 2198,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Final/JJ.JJM",
+   "sha256": "be722a62aa7360314bda46a4e264498e254f969ce742e20ef8b6b7b009cc1b19",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/BombStart.jjm",
+   "sha256": "550a5c15e9eaccc92c24fe6c6237fdef47b616fec71adc44ddf589f4275d54b2",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/BonusWay.jjm",
+   "sha256": "18321e2d05f0d8dc9f7111c4bba43575b0d0104c729ef9ff5a1b472a60892cb3",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/DestrStart.jjm",
+   "sha256": "3ea5adb6cf08c4ccc6381778bfa1ceef0745734a8fb273b73481f411e7606153",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/EnemyStart.jjm",
+   "sha256": "7b6750f8c4beeb5fce0970c7462be1cd613aa1c4584075bc383bf8a50fc4bc0a",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/Forest01.jjm",
+   "sha256": "b7e0baa045e10a2ca65f8c81db50c7e06751d3b2f0cd886578fc0dc926a2e04d",
+   "size": 2398,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/Forest02.jjm",
+   "sha256": "1a1231b84c76cef640755f17cc3e495af5066b8cad6c6441fe2cba40a58539e9",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/FreezeStart.jjm",
+   "sha256": "b9c8280ddc25c540a3c38e811cbc63198d9393a542968ede4f1537465b3ca946",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/Glue&Enemy01.jjm",
+   "sha256": "96f17a1e47f5535e1687f5fbca571a6226de360c58b714185efd515360b174ba",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/Glue&EnemyStart.jjm",
+   "sha256": "54d145a454dd5544cffd87caaf69ffeb2b2d5cbd6a6a0c37aa393f107e37f7eb",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/StairsStart.jjm",
+   "sha256": "0afebfc5006c9fa2f342ec1839b58c807d47087b1466cfef273ba2c0cb6faec7",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Forest/Start.jjm",
+   "sha256": "507dceee8b2ca7010d80fc67c7a23a0f29157bd0e40513fbdcab9901b23fbb99",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Bonus.jjm",
+   "sha256": "73e88230556f571c2043e8b89aa630b52f157b8192c52848416541df1fd2d086",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/BonusEscape.jjm",
+   "sha256": "5b3374a33f606f583e14db83d6f156476161b2ad4af0615d15ca6ba76d3a8930",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Bridge01.jjm",
+   "sha256": "8fb07cd7109bbca3d223b6fb84b4e428c6f43f134d66db689d87004d109dd546",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Bridges&Enemies01.jjm",
+   "sha256": "bb0360a04a3ce04a61085bbab34399216c590303871dd47a7f25c86491b914bb",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Bridges&EnemiesStart.jjm",
+   "sha256": "34391d0797122913caf043021d0cc22eb6d03c0928718476981524e87a70f347",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/EnemyFactory.jjm",
+   "sha256": "9c112f713144afcfb9ca66146446081119fa8284d49caf29fbbd5d620fbb0d20",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Fakt.jjm",
+   "sha256": "d9e341e7a1a83146f29e269a3802a68026b6bcf90b4056013488afd12bcc6933",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Freeze02.jjm",
+   "sha256": "cf012c69e754145f339f53c52d5502e8146ebefb35ae50d1f4fc127e9aa80f64",
+   "size": 1598,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Freeze03.jjm",
+   "sha256": "e1233574e3cbf950289690e5ce1ded6a8db41d26ee2ebf4cbd6381cdb42bf4f4",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Jump01.jjm",
+   "sha256": "44638446f4d429002a3fb15579c0c715052ada5db9caae2c060374c94057195d",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/JumpStart.jjm",
+   "sha256": "394635352b3d66a5bf43c6a51dca5254e7ea8ff5b25a148ed3d45fe75ffca5e3",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Protect02.jjm",
+   "sha256": "a3afbce0e05c5c302abe43689e46d8f5a2355ce88cda79a29ced5f43a37acb66",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/RobotRain.jjm",
+   "sha256": "4bffa77275c044238bb8e4e3b1666b8a502408a6887b6df926c19f807cc5eb9f",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Sandra02.jjm",
+   "sha256": "e4c82471bf625a317407961d40889b719670f7d4439ba224ffccc251b8b2f809",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Space01.jjm",
+   "sha256": "f52733215b840a97c5bd3c9cd6dc30e848976c2234e3dedd62eea3a26638381c",
+   "size": 2798,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Space02.jjm",
+   "sha256": "cb56e3238039197d9108b5ef58ec21e6efd410614128e092bb63479c4b574d76",
+   "size": 2798,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/Superenemy.jjm",
+   "sha256": "5a484e7dbdcbfa7b25c4d77a4a8d1ae0fa8f7566aa65e9141b57794f6fc646fe",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Space/SwitchStart.jjm",
+   "sha256": "266ce4ed2d5ea8a22c53a75cee8485e3bea83eb925d896243716884c845ed5c5",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/BonusObstacles.jjm",
+   "sha256": "4f2982895147177c5b456d6080c8d4deec95adfb411e5eab75155ac2f001723e",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/Elev&Platf02.jjm",
+   "sha256": "eb5d541ae6dd6cc95cf44c5a356846b9a76f97b26d6ebbc22adaf9d78f561e98",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/Elevator.jjm",
+   "sha256": "d8fba68e143f103545c0628383af7e1a9861896d2ab2356bb5fc8cfecf6408e6",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/Freeze01.jjm",
+   "sha256": "99522e536864360a0e22211ccfbd70a753e80e31c39f8776685c11bc59a86ee6",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/Ice&Bombs.jjm",
+   "sha256": "499a99e3f668e61900d2f1974db6f251bc55af8cbe2d054a1fe8977d4effed42",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/IceStart.jjm",
+   "sha256": "4ceab7f6ef3af8158290b200cfe4652c96f22759bf251c95f30a24754726818e",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/Obstacle&Bonus.jjm",
+   "sha256": "c5dd945ab642550c74e82dff3848e6603ddad2b85a0d34051f80c95dcb1785e8",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/Speed01.jjm",
+   "sha256": "bafda02ecbea37b5c8065b9a8e1133c4bb342a582f275216d38315f1dc21b745",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/SpeedStart.jjm",
+   "sha256": "c2919fde03aa77b63fa1b5185f63b15020f0411235b3260c8c5a2f8dce54d139",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/TeleporterStart.jjm",
+   "sha256": "034ec2b3b367aab3d4d76d1a34dc122cc874f631026ae58d02e1a13430689b98",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/Thrower01.jjm",
+   "sha256": "69d80ba29033cbcfd3ae26be6c192914c29b9539cc66dfdea047ca901803b0f5",
+   "size": 2798,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/Thrower02.jjm",
+   "sha256": "928e0957651a6d64c606b594a4cd73b2b535507997518cfca1d817278d4565bb",
+   "size": 1998,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/TimeBonus02.jjm",
+   "sha256": "9de2a3afb7f879f1136d85876451136053d28c0932b2aff41835745b24e16ab3",
+   "size": 1298,
+   "class": "required"
+  },
+  {
+   "path": "Levels/Water/Water01.jjm",
+   "sha256": "1abbac5259410ff8c8eb1566399c6e2a2e5fc18fd0310b50b9f31f1bdce885ed",
+   "size": 2798,
+   "class": "required"
+  },
+  {
+   "path": "models/BONUS01.MDL",
+   "sha256": "d6132bd1bdf9359ce33d9c0cd35d2a1255db695c4d3eedf57fb8feb035d6e79a",
+   "size": 14430,
+   "class": "required"
+  },
+  {
+   "path": "models/BONUS03.MDL",
+   "sha256": "d311c1368851f04be10583db3a443f3538cd1248ef5ad7ef2482d42227c85616",
+   "size": 7230,
+   "class": "required"
+  },
+  {
+   "path": "models/BONUS04.MDL",
+   "sha256": "54e43069997b57ba791c218c8c61d59465dcd15beec3b18aab8bc5c0baad2e64",
+   "size": 10590,
+   "class": "required"
+  },
+  {
+   "path": "models/bonus05_1.MDL",
+   "sha256": "48c328f86bae4e7a6798f4c6f47c1c5bbe2d11e6522169e6fc3c50af3529ad37",
+   "size": 2910,
+   "class": "required"
+  },
+  {
+   "path": "models/bonus05_2.MDL",
+   "sha256": "f228ace2fd2a47be8ca1cecc12a6d0de8f04e564c0d30d861e1cd9225668806b",
+   "size": 3870,
+   "class": "required"
+  },
+  {
+   "path": "models/BONUS06.MDL",
+   "sha256": "326b309579abd61fdc97d30e94c7ccab0e32a547d3c9dcaeb0a37321e4cefe73",
+   "size": 6990,
+   "class": "required"
+  },
+  {
+   "path": "models/Bonus1.par",
+   "sha256": "21855cdaa49ae279c2c78b601cc40fe78da972a61593a6c0410177b10706c78b",
+   "size": 274,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/Ausgang.par",
+   "sha256": "ed44331badd8d547c43eeeafe3968e5188ade64bbb8394b307be44d66ee52805",
+   "size": 249,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/Ausgang2.par",
+   "sha256": "2c1ac6c9b94dfb2e154eae50be877c628606b36283937490251466d2623dc1c7",
+   "size": 249,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/BONBON.MDL",
+   "sha256": "7afb85a548765a96cd08ff362c251c8aa7abffa5092204ec097db9b74e055c6a",
+   "size": 18750,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/Candy_bomb.MDL",
+   "sha256": "b3ca2eaf9a363ef5cf0eca6eae578aae9ecbc05169511edf4f3214ae62036f83",
+   "size": 19230,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/Candy_bomb.par",
+   "sha256": "56d0ef569a076b788a239f9bd3ebaa041b291aeef7042bfb5e85fd3f84535e29",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/collFX.par",
+   "sha256": "0d2329e30bb49688657b706d6e24ff2a7ae6623e86038a6041fb8ed61ee65428",
+   "size": 250,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/crystalFX.par",
+   "sha256": "32309c21fb247071c204afb8465a187b3593f45f96bf640593eb17d71f2b4c6a",
+   "size": 279,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/destrFX.par",
+   "sha256": "ac6f4fd2e929eac869c0ec3d135efe5c21268dc19c5983bbbb28f64c50cfa4a9",
+   "size": 273,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/DONUT.ANI",
+   "sha256": "c16525d355f2b35b26e315cb127b2a77054c00ae57ab5c4923eb6645522fb29f",
+   "size": 583,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/DONUT.MDL",
+   "sha256": "10d80f3af84388bf48f80bfde1828a22879124118c6a028b87e4eed9d616046e",
+   "size": 855798,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/gummibaer.ani",
+   "sha256": "ce0072250f73fc9465f90b674b4c35ac51a58ef61d1b623a79ef3fe85e586c47",
+   "size": 606,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/gummibaer.MDL",
+   "sha256": "c420fbe75ab328992bc891cf6c479f26e7502e161b5c0c778e3fa8029af156e4",
+   "size": 695862,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/JUMPPAD.ANI",
+   "sha256": "86dd97be8fd779177eba48ee6ff273ce45a9ff7e35d15fd35e24e2cd2799419c",
+   "size": 506,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/JUMPPAD.MDL",
+   "sha256": "1b8be9af513529f06b336bd67dcfdd057eac73c6b9c37268aed74397a2eef73f",
+   "size": 336606,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/KEKS.MDL",
+   "sha256": "a816a0f9a4d3b847cf8b0b2343fd556a316e79ce5ffc6b8267d63109d8d0785a",
+   "size": 3390,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/LUTSCHER.MDL",
+   "sha256": "ba36857b7e3d8f82699035304547ae1bb8002b8c0b337e1f29be57a983ff3fc6",
+   "size": 9150,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/RUTSCHE.MDL",
+   "sha256": "a8183a81e33c186838e2455cc70cef654448fd94dc1ad4e76b5ed56124899140",
+   "size": 9630,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/SCHIRM2.MDL",
+   "sha256": "06ea41864c1fdaac902540ef7cdf141fcfb4e991e3c8630bc64cb39fc6e288e1",
+   "size": 16590,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/SCHIRM3.MDL",
+   "sha256": "7596b584a0ce6e7b598dc1fd0716734e668db7d6275851b173a7434c6f3ceb14",
+   "size": 677454,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/schirmchen.MDL",
+   "sha256": "c4ae9a8927b592f86924b48e9658b42eb0eca153c14c57374407220787202a82",
+   "size": 16590,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/schokolade.MDL",
+   "sha256": "3c3b4bc1f878499a42bb4173993549839912f7d74af9f8953e740ecca84bbde7",
+   "size": 16590,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/Smarti_tele4.par",
+   "sha256": "474ebeca3072306336516f3a8ef41a5ba7b51de9184f58dc786b3128d2643639",
+   "size": 236,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/Tortenschachtel.MDL",
+   "sha256": "024923622fefce66a1e1e8e97dcf200aa7beb429a4d776efb31cdae7c0d7920a",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/Tortenschachtel2.MDL",
+   "sha256": "024923622fefce66a1e1e8e97dcf200aa7beb429a4d776efb31cdae7c0d7920a",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/tr_seiten.MDL",
+   "sha256": "57112b15126a07bb180861056bcc7361fb7f5a2822dc8cb608c6412929099cb2",
+   "size": 2430,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/tr_stufen.MDL",
+   "sha256": "4bf36e735c1076378da61ca44eefe57663c040ff9071a9d4ab0dd6a73451a5fc",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/CANDY/zuckerstange.mdl",
+   "sha256": "ef4059a4173d8859df1e94c9888872069bb64d8d112752ec2527e1933e984d17",
+   "size": 23790,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Ausgang.par",
+   "sha256": "77b5df99db1ebcec4b3fe180f000d7d868ebfd115401e3f5a209f688da4bedeb",
+   "size": 249,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Bombenkiste.MDL",
+   "sha256": "385a6d5a7091ad71db68c9bf9a96f7336a5d9531533f5676d9bd2491100fc426",
+   "size": 2430,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Bonus.par",
+   "sha256": "5eabdbd274c4fe2ded7490f14663f1646319a8d94f4b27acc7b64a14feb9180a",
+   "size": 276,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Brunnen.MDL",
+   "sha256": "6c74f0839f20ae9ca8a7c4f307c97169d2c1217c57ecfeffef2214a0eede8daa",
+   "size": 4350,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/BRUNNEN2.MDL",
+   "sha256": "6a1bc56125deb2d6798619c2dc1a799e354cf41430a7042cff0e3ccf5426c244",
+   "size": 16350,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Brunnen_boden.MDL",
+   "sha256": "129f3bda93740236da435fbfe52ad811a571ce86c3d44adb4e44eda66c34bdeb",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Brunnen_wasser.MDL",
+   "sha256": "823725f91c1a47c986898a772d643cb5b23399af59efd8411c3c5010e3127c17",
+   "size": 750,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/castle_bomb.MDL",
+   "sha256": "f8f79b67318dd0255e6c11fde34133c60fcb20349657902fa45a915fb5696fde",
+   "size": 12990,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Castle_Destroy.MDL",
+   "sha256": "9a52b13d380050e703c7be2b5da1916df2f84318c5c3ee7d0cb6fe5a5f9c12c2",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Castle_Kreuz.MDL",
+   "sha256": "eec85c5da21e394726f607eaa5456610c7d720df1e542a792eeb1a8e3e10d1e2",
+   "size": 13470,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Castle_Plattform.MDL",
+   "sha256": "44be91bd5147465f818bba4f3151b21095fc042d65e87a9dfe8f3893c2c44bb9",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/crystalFX.par",
+   "sha256": "039f9decdf0bdf53865f5d4e7237a2b4e576e9815f1aa74007e88edef906a4c2",
+   "size": 290,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Destroy.par",
+   "sha256": "1d6e364a7006b2ca9cbb8b0c8819fbbab19407e7ddf6bf75aabef8b4d1357150",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Fahne.ani",
+   "sha256": "c87237772b10455ec08aae457b47515b85f98c7c88e16483c4e6436bfd3d7fcd",
+   "size": 514,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Fahne.MDL",
+   "sha256": "5b9856e6bda0c0de0a2357a040670be4eb426236d160934eff162f5a354519c1",
+   "size": 100590,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Fahrstuhl.MDL",
+   "sha256": "a7da4b01d28d8f65f1504c6e71c6c0cacf0ec3f46fae0fe86053ea245fc64111",
+   "size": 6270,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/FLAG.ANI",
+   "sha256": "b8eb25ec25deba7a2139704d50f774d813e4068bf49f9e4e32d16a66546b1475",
+   "size": 576,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/FLAG.MDL",
+   "sha256": "ae4e31388fa888eee0c180fd56e31ae00cd2eaccf92b37658fad0f570e783a5e",
+   "size": 623238,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/GEIST.ANI",
+   "sha256": "f980b1ab7919089939d2fa62a85f5e96c796ea671a2e4133fd70e0ecfa14822d",
+   "size": 231,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Geist.MDL",
+   "sha256": "f8d11e7a85070625335c1a611af7ace8a31806c6b6549d3af75830a93bdf7086",
+   "size": 1993590,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Geist2.ani",
+   "sha256": "6ce6e5c27960957b272e313e33534479589aab2980b52fc97bd666008bb7b1d2",
+   "size": 231,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/GEIST2.MDL",
+   "sha256": "31c5ae2a61b9999638a09583c19f7ac555f026194891fbe0ad725fb2a83520a0",
+   "size": 1176198,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/HARNISCH.MDL",
+   "sha256": "35534938b19576fd487aac5158589e4fc584bf546cdc5c280c84060d44d2af49",
+   "size": 840414,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Kanone.ani",
+   "sha256": "426d4a0fd12a53073730896992c6a13d50936cffe08056f4364ada551351b5ce",
+   "size": 589,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Kanone_gestell.ani",
+   "sha256": "7a2144e17c30348871b5eb95fc82af45deb0fa46ef8c9c8d742ccd8de801c5a0",
+   "size": 529,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Kanone_gestell.MDL",
+   "sha256": "61ac7f4a6b60fe8da58593b200b15dfc53dc376ca697ef9d698122f576e6222b",
+   "size": 1467150,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Kanone_rohr.MDL",
+   "sha256": "c6d73f3d53d5cc881cb8d4689658fc17cd4b520aff14db1c1cdc7133b02655c4",
+   "size": 1092270,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Kerze.MDL",
+   "sha256": "d828384219e7c5e05b22b785b058b9319655545e0d581fac276c004fb18e4cf8",
+   "size": 2910,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Kerze.par",
+   "sha256": "f3a0d1d5cb39163ceb835334053ef55901b30d28f8a81c2f96f895b0bd2ce5f0",
+   "size": 254,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Kerze_links.par",
+   "sha256": "480e660821b402aad111ff39d3fb3e705e3633e9c052cb91d10817b31bbf46cd",
+   "size": 254,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Kerze_rechts.par",
+   "sha256": "4c74d3c7b8c245fe738e0ae929eb53f032559534ef050eee0e641a0de906e066",
+   "size": 254,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Kreuz.MDL",
+   "sha256": "e5ebd75fad5b7f3dd4fa4136c888b55fdffd0603cbe980c9ba4919f42451b5dc",
+   "size": 13470,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Lunte2.par",
+   "sha256": "b6436fefba5f7b1015a3ff56d254d126ebf9965bba688ec134385216686803db",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/obstacle_bomb.par",
+   "sha256": "fb87ea03a1e488ff65a2974cad8909b62bdcd726fbd27989f489fd91ad857e8c",
+   "size": 244,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/ritterhelm.MDL",
+   "sha256": "0b872b8b20f35b37c9d0dd754b071214bc5b2169b9eaf4e1dd1e4538b922adf0",
+   "size": 1236174,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/RUESTUNG.MDL",
+   "sha256": "314976d8301d1e62a338e0c7bd98e3afff41fa362032d5f50b5b72009a3f65ae",
+   "size": 933534,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Spinnweben.MDL",
+   "sha256": "d19dc6284780269fc2ce3feef8f241a8488742cddd42349a839aea8ef7502cad",
+   "size": 2190,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Springbrunnen.par",
+   "sha256": "e67d557a2ae73532f98256544899e974a5bfc4ff48cb3c809305c35719bbecf9",
+   "size": 261,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Springbrunnen_klein.par",
+   "sha256": "4368dd62e775518a7b0687739015b594271fb68e86adb9d164123531ba6e4e4b",
+   "size": 261,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Steinhaufen.MDL",
+   "sha256": "0f97fada8f62b91463a79c330f6fed2813479db853d3396eec477802ba7cc2f6",
+   "size": 16110,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Treppe.MDL",
+   "sha256": "0650d2941e82fbf1e8579a343fac59641a2ac817b9c6211f549d76f064401051",
+   "size": 4110,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Treppe_Kerzen.MDL",
+   "sha256": "562ff66ba0892294fc95676a5746013b9294ab9129dc1cb5bcbc91553a37c087",
+   "size": 3630,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Turm_Dach.MDL",
+   "sha256": "004419e6583c0f30f47913426a491740cd6d1801d209563eb551ecf081a44ad3",
+   "size": 990,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Turm_eckig.MDL",
+   "sha256": "8beff05124b283a744037f9de1bbcc88b1586e42eb58aca5e8fe5c201dfc88f7",
+   "size": 22590,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Turm_Fahne.MDL",
+   "sha256": "56cfd2ff4701f4ad6153995a9f5d1b229477462b2cf16acebac1be720fe9bbb6",
+   "size": 91446,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Turm_Koerper.MDL",
+   "sha256": "c1cd0cd1692ad635c8787d2b2474b7ffee6b5f8c36e0e3c5f717f129e5383faf",
+   "size": 18750,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Turm_rund_dach.MDL",
+   "sha256": "dc254c8d2fb9cfa39b03a418be1c2e2e586dc9796eba9fac617ea25257d15803",
+   "size": 11550,
+   "class": "required"
+  },
+  {
+   "path": "models/CASTLE/Turm_rund_Koerper.MDL",
+   "sha256": "c22f66b09f73fd489f6727e685e63ab604c795e2f31e91ac1ef9ef1fa762961e",
+   "size": 12030,
+   "class": "required"
+  },
+  {
+   "path": "models/CollFX.par",
+   "sha256": "eb185b70a4443d0e4e08cffb8880515b719ae60390a2ffeee6d8acf933f24edc",
+   "size": 276,
+   "class": "required"
+  },
+  {
+   "path": "models/CUBE.MDL",
+   "sha256": "8fb6e26666f020404633f0dec3d5dc98a8632f6f1f301b87edc64257e09071f6",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/Ausgang.par",
+   "sha256": "691c46bbb39b728365c73daba8276e336b4f4e09858c596347e7738f5e471350",
+   "size": 233,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/BRILLE.MDL",
+   "sha256": "bfc0d8a2937cf001c989e75c4f4aafabf9310450b196ebc1eb7a70e35ec63ef6",
+   "size": 281694,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/DestroyStone.par",
+   "sha256": "e81c015c63979b2489d1a1bade4f4508686768d6b64ef11eeac9e1671569e774",
+   "size": 252,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/ELEVATOR.MDL",
+   "sha256": "0be84667ed63f65e232f91a55ee3c7507aa61a2674a3bf4cafae43f7823f6632",
+   "size": 6270,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/Fallschirm.MDL",
+   "sha256": "5cadec885528d1a63fd17067511386fb5828ac541a3b4db39090275f56f0374d",
+   "size": 8670,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/MUMMY.ANI",
+   "sha256": "86df296f3c96fb116622ae24e3fe5a11b59db47ba92cb1ba82091328158cc610",
+   "size": 617,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/MUMMY.MDL",
+   "sha256": "c294f63d4a69f559c53b92c5130e0da0b6bdc282e6c0973d818726276228b56a",
+   "size": 7303926,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/OBELISK.MDL",
+   "sha256": "32bfc89ade9093d163c31b3c856ea3999ed41c75e17131c52285276e5b72b71c",
+   "size": 2670,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/Opferschale.par",
+   "sha256": "68d70e9b8122569add21f9d39536cb676aa9a35472c8aa8980b5b9ab8396be1a",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/PALME.MDL",
+   "sha256": "65aa98c2aede30294daa2c97bbbd326f5db3a94d8d99faa160a880fd21f6826e",
+   "size": 17430,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/PYRAMID.MDL",
+   "sha256": "3af584ad32c14d436c39ab61a3242a9d93ea1ba7ae7576b167a020898f80c7b6",
+   "size": 990,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/Rubin_FX.par",
+   "sha256": "654c3cc0a947fd5bf79b96b3e02094f1602b3c20bb5578363cbb373ab72b458d",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/RUTSCHE.MDL",
+   "sha256": "763b3f411e9dd6c653dab32e86e1d03ecc740367933c5de6b7488aad15c65f03",
+   "size": 3390,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/scarabeus.MDL",
+   "sha256": "fa8da35591d014a80f76104e81b43e466ffd5cc9de0c6b19f931ff4ffb92cfff",
+   "size": 34590,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/Schale.MDL",
+   "sha256": "4d429d3c69f417dd547f848058a4e245db6dea5b3c82b6c51d4ee1cb65ab58d9",
+   "size": 5790,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/SKELETON.ANI",
+   "sha256": "1b7a9c383f22d2720d1784367060984370e5b27655daaa38d11dce9c12afa8ba",
+   "size": 620,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/SKELETON.MDL",
+   "sha256": "23c8f8361daecd84232b4851b27040e21ffa06bb5415b7bfa28471b178ece3aa",
+   "size": 10443486,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/Sockel.MDL",
+   "sha256": "a434b217d8bf129c82cb79c82f6257b5cfe931e427347c3c7944f969dc84e0d9",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/STATUE.MDL",
+   "sha256": "9d00950e34fe0b8d3f077bef0cbde3cb2edd3e7d28400be8f5027639fcd41d31",
+   "size": 139710,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/SURPRISE.MDL",
+   "sha256": "79448af18fbe91f0ee2091d5154dfc0fdd2adc4f333229ebbf47864587f385d7",
+   "size": 9870,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/teleporter.MDL",
+   "sha256": "eeff8ded19656c22b015f983d7903ead7a9f2a4e6bdcbb7f57292358eb206387",
+   "size": 1950,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/teleporter.par",
+   "sha256": "7dc9e4e75c911092e31e54617532cc183e23cd1f6d0388c96314bd9f21bac325",
+   "size": 241,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/TEPISCH.ANI",
+   "sha256": "dcdc4bb045c3bf8fb487c901c0b76b39048a728c0ae37cb4a5179c23258d88d5",
+   "size": 567,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/TEPISCH.MDL",
+   "sha256": "1019f38eb6d272fdfabb0340d9d50dcf0b3c53529b0d3aeb027825d7113f094d",
+   "size": 24246,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/TREPPE.MDL",
+   "sha256": "303def13e111230105ce3365dcfdb51f1c4ec4e1e46f5b4d38106e2059d5214e",
+   "size": 2910,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/TUCH.MDL",
+   "sha256": "445aa2ea537bdb42b943a2d246bd8996634fcdc2bdc6eb67538c89198654c80e",
+   "size": 840414,
+   "class": "required"
+  },
+  {
+   "path": "models/EGYPT/VASE.MDL",
+   "sha256": "4d45f3f09abb1dc75a636f09dbb32abfdc88dfcd9d8442ecef96554a719cf7dd",
+   "size": 16350,
+   "class": "required"
+  },
+  {
+   "path": "models/ENERGY.MDL",
+   "sha256": "7d4b4ca083112e39f05b5b7cbc7981d1d1cb6f8c34ef48a60f210a80ba867fe9",
+   "size": 990,
+   "class": "required"
+  },
+  {
+   "path": "models/env_platte.mdl",
+   "sha256": "88cd06313a2347153d8f1f13a2eb7071a038294135d0bb63b7924d9c36fe8f18",
+   "size": 270,
+   "class": "required"
+  },
+  {
+   "path": "models/Explosion.par",
+   "sha256": "8a516a7e0478e95f5a13477fb72de6be8236da46976227e912112134fe925334",
+   "size": 269,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/Feuerwerk.par",
+   "sha256": "9d04253dc6341cd3a72351beb87f249839a0a33defecbd37d93aef0c7845fe00",
+   "size": 268,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/Feuerwerk2.par",
+   "sha256": "70f2745056cc4bb295b6139ecf2223f6c3fe98ce825d8ce39053c6c59fe1773d",
+   "size": 268,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/Feuerwerk3.par",
+   "sha256": "3491de27c15132aad331fee74829838c0814abc634f5de02bcc0a3b11a9407ca",
+   "size": 284,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/Feuerwerk4.par",
+   "sha256": "3d37ba0ff25ed23880ccc4716bbe2cba084b46b71c9004600a4f0161712dacaf",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/Feuerwerk5.par",
+   "sha256": "22f53383c5de5e79b510c39024c7d2435787b18f59373436051eff1a1469d225",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/Feuerwerk6.par",
+   "sha256": "cc6651cf1be2a09febd391c7878ec015413ec2b1ba1de48b1361d8243171b1b3",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/Feuerwerk7.par",
+   "sha256": "fe7518b20c3d3becbc1df08b510d2ca1bc6e7b534d2f0fa4f796586b1e98dac4",
+   "size": 268,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/Feuerwerk8.par",
+   "sha256": "d4f0ce3c956d62ba823b4d03f2e0307ec0f1775fe4310d26a7dbd7395e75a3cb",
+   "size": 284,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/Feuerwerk9.par",
+   "sha256": "2c5d9742ca77d8081b8c483b0c8970d3f7f5e14bfa3643545a82ea0eb38db288",
+   "size": 252,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/Goldregen.par",
+   "sha256": "f00c0361701a999709054ec5c3c78c0463a52b2575945eacb3a801095612770d",
+   "size": 271,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/K_CEL.ANI",
+   "sha256": "5d16ce3355e4ba3fee7d8b25472f02a04317e89b840ecb4c2f3e3aefcde3edce",
+   "size": 506,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/k_CEL.MDL",
+   "sha256": "8a3db37e0c1d4b3700a4f10f0320befb30e9d4d2e459880abd464f86a995958f",
+   "size": 12154254,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/LOGO.MDL",
+   "sha256": "d1b808a0a9cbac4f933d16ca88c77394ec30b4a5e004978fffd1c24dbfc5e0ab",
+   "size": 53790,
+   "class": "required"
+  },
+  {
+   "path": "models/FINAL/TREPPE.MDL",
+   "sha256": "f37fe2d6dc5cc63386bb4ad2b07d939ebe1fcd230c905f42a2173318f2619300",
+   "size": 3150,
+   "class": "required"
+  },
+  {
+   "path": "models/FLUEGEL.ANI",
+   "sha256": "e77d469e83231eb5104d856913452df15d101043b79aa76d4cf9d41713869584",
+   "size": 597,
+   "class": "required"
+  },
+  {
+   "path": "models/FLUEGEL.MDL",
+   "sha256": "c1ee81eb3a4ddb016f0fda85097c4abb21349b7e0d3824afb99c7a2ede1a1d5d",
+   "size": 36606,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/Ausgang2.par",
+   "sha256": "3df946874dc1e92dc69bbea9edcf3253601a94584ae0464ff12e5e2fcd205968",
+   "size": 241,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/BIENEN.PAR",
+   "sha256": "f6665a78a499c6594c30d5ad411095562519c145b001e7d9190c724e20b8b96c",
+   "size": 215,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/bienenkorb.MDL",
+   "sha256": "aa925cf76db6f0bf51818f197304a97a2c55dc108946c233eea4ccb1a8f8fb06",
+   "size": 14430,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/BLATT01.MDL",
+   "sha256": "128c107d0073c4f06158fbb487594c5b9a87635cf4ba5cd77ff3120b0e0f647d",
+   "size": 150,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/BLATT02.MDL",
+   "sha256": "63bda34f959f62442db1f91dc64729eaf88d9a10590b4611ead5f05bb6e760b4",
+   "size": 150,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/BOMB01.MDL",
+   "sha256": "debf0228a696b20113962b65d676fcca2c0fbffb0cc4908a07ba541e05390b64",
+   "size": 10110,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/bomben_pack.MDL",
+   "sha256": "18370b2cf2a2e2fdb1dc0bd2477fab86687d70df5dbe9e8fb99aba8550e40bfc",
+   "size": 25950,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/BRETT.MDL",
+   "sha256": "7f092fdf2d01180de57ce8c977a3f3cfefc5286ebbf27f0be48d5f1191427f84",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/busch_a01.MDL",
+   "sha256": "925cf36abae9c4ab7facd09be9b3455b26c16b0e384a9ece3b3029db63f4bfbe",
+   "size": 3150,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/busch_a02.MDL",
+   "sha256": "ed6429f327d84dbdf7df681b6cc3cf3dff51fd80e4f8f44114b8c7f643f69ac2",
+   "size": 4350,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/busch_a03.MDL",
+   "sha256": "c55c3e0a3b5b4e6ef9b0f0f4cf200a13a438e23e978e7092327d076a7b777271",
+   "size": 2190,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/busch_b01.MDL",
+   "sha256": "25219e7cfe17006cd0a2f0f3273c0f83919afc016eb5958ed5c1afd21ca9b860",
+   "size": 2430,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/busch_b02.MDL",
+   "sha256": "a207035336f0e12ef6d452c3eba273d681fad68085c0a5858a4aeaf6a2a4eb41",
+   "size": 3630,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/busch_b03.MDL",
+   "sha256": "319e2e1f14c71c6f3e5562d73df39d33052a1fab4f7bd200c633d4f357fde64c",
+   "size": 2430,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/collFX.par",
+   "sha256": "1b6c0da3d76517979158454d9a1344ac84dfec09788d2e793adfd4c9ab333351",
+   "size": 261,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/crytalFX.par",
+   "sha256": "5412bd43e4f811043be125fb91f633037c40c6559e24f1780bce9be70b07be30",
+   "size": 255,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/destrucFX.par",
+   "sha256": "2b9d7408d6d2ad6533d5d84145c68da0e781fab941d9ee4e6627819ad48dd4bd",
+   "size": 295,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/Fackel.par",
+   "sha256": "7185fb3c917029f5731c4ad64886722edf245649db38cf5d15027f844040ff19",
+   "size": 294,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/Fackel2.par",
+   "sha256": "50f715d3b4c742ef139fdfda15b8803b3ef5e35bd3c0dc2eecb4a4f82cef481e",
+   "size": 268,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/FROSCH.ANI",
+   "sha256": "a3252a6f1e699774f2523a4f3dd2686467cb43b608b3aa2d5d910c5bec93e29f",
+   "size": 586,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/FROSCH.MDL",
+   "sha256": "f4e928d8bc9aa3e6a6b86d6e1ed6747ea02b153daec8e5e241ebbd1b92da1bfa",
+   "size": 3571782,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/Herbst.par",
+   "sha256": "4c1b3d8b81c6719a405bd52c68ff954dc70c478df5573cde11c08ec32b880b37",
+   "size": 277,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/Herbst2.par",
+   "sha256": "6130a233fd2d83e06e3f7602fc6dce5c9c3ccd596c8a74f603652ad4db54c0ca",
+   "size": 301,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/Herbst4.par",
+   "sha256": "1aa85171a7458a4c270caf5960f88df78889097528fff2165626b61676992a0f",
+   "size": 326,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/Lunte.par",
+   "sha256": "e60f3e5b86958c5af25fb38cc7ba66b97ab990068c86dec0bc1ba412a71a2ee8",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/Lunte2.par",
+   "sha256": "f0b7a5e14a4153f036a61eb970fea30f6de0c6a1ad59a8d4db4731fae5099473",
+   "size": 260,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/PFAHL.MDL",
+   "sha256": "f538d42c7e92d3cc39c71be83b0032f0c92720743db181bd31854e9a3e8c81b3",
+   "size": 1230,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/schmetterling.ani",
+   "sha256": "b2279919997f7d4a1632f302d547d555b0f5c74fa0fea855463d5b53b1d682df",
+   "size": 520,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/schmetterling.mdl",
+   "sha256": "c2e9fe2bede12b47457fd51ac0499941235b1d46f774d5d26e4ebaf5a98c9840",
+   "size": 47238,
+   "class": "required"
+  },
+  {
+   "path": "models/FOREST/TREPPE.MDL",
+   "sha256": "83678539f5ca04fcf2b8d6438b176329d44557aba5f4b7d242f0581f1553220e",
+   "size": 6750,
+   "class": "required"
+  },
+  {
+   "path": "models/K.ANI",
+   "sha256": "5e99d29c507ac0053478ee060244fa92f61e236af877a348e69cf76c8ea8d58f",
+   "size": 650,
+   "class": "required"
+  },
+  {
+   "path": "models/K.MDL",
+   "sha256": "d15ac93a54a45caf01fdeaf974e8b693d324ac853abd41c32be40921fea53e0e",
+   "size": 11316414,
+   "class": "required"
+  },
+  {
+   "path": "models/KISTE02.MDL",
+   "sha256": "0bcaf7de8985e56d45771d1627f1d984aec345ae1849542342f9f56b12646b0e",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/KOPF.ANI",
+   "sha256": "5b0dbde311cda555e2fd338bd143ae1f4c98e5d3545796baf0ecde38090c1932",
+   "size": 638,
+   "class": "required"
+  },
+  {
+   "path": "models/KOPF.MDL",
+   "sha256": "d603316f714cd65a2040fbc2a6598524c7018ae0c3e03ffc9f66c549bd9e2754",
+   "size": 2237214,
+   "class": "required"
+  },
+  {
+   "path": "models/PLATTE.MDL",
+   "sha256": "d8998a19a655f0039c8fab776d5b0fe223cfceaefee11d40b85ec0d943e6b9db",
+   "size": 270,
+   "class": "required"
+  },
+  {
+   "path": "models/RUCKSACK.MDL",
+   "sha256": "a0ef769ef728f53ed6fc2c350276b945783bf53db39797677275183b665c5b13",
+   "size": 677454,
+   "class": "required"
+  },
+  {
+   "path": "models/Shield3.par",
+   "sha256": "c692feb3e50cb431c0cf82ac85684b71f8ac1de1bea478b41d3b20fb272fd712",
+   "size": 258,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/Asteroid.MDL",
+   "sha256": "89b66921d670e2022113b4d971c2c3cd9d3fb9fb1d20298ccbd8b9f0097ef770",
+   "size": 9630,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/Ausgang.par",
+   "sha256": "1448f50343d6816b40509e023613289d81fe786ca7d9b3627cf70c97d7d54d1f",
+   "size": 225,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/BOMB.MDL",
+   "sha256": "629ce079acd6fcc613229f90ad62f99d49f14703850b42819e2b5b2f1bb5f326",
+   "size": 10830,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/BOMB01.MDL",
+   "sha256": "bc3d0f58686cfe75bf3306925755983e78c8a39b3e47bfde75c0ec37a5e7676e",
+   "size": 9630,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/bomb01_gl.MDL",
+   "sha256": "22898642f6cf127609639f26ba7b16fa379846d7b88038520a68cd8317dc51b0",
+   "size": 270,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/Bomber.mdl",
+   "sha256": "981d2a1abb5a83d4dfc36bc18e5abf9a518a1b24cff6507be7c43cf36ef92a8b",
+   "size": 8430,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/CollFX.par",
+   "sha256": "a63c0cda9b856dcd53f95f1e37a386cbae51811c7554e59a12376f3cf88421e3",
+   "size": 231,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/crystalFX.par",
+   "sha256": "d62580a7e698533b4e3efd02627d23cfccf9a8ff7102d648882b320b49ebf856",
+   "size": 254,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/ELEVATOR.MDL",
+   "sha256": "432dadc8f4e44a124d669835476c32ca32b5e06d9f8038a0cbd5680aa46c0952",
+   "size": 1950,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/HELM.MDL",
+   "sha256": "7fa58010c79e43d09e7a97e08800a286bd3bcffed1e9a45253a2d650eb712af2",
+   "size": 1399134,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/helm_visir.MDL",
+   "sha256": "abc0ba9637a07d45c2ad437a533dab684c92965ee442290aa9882e1e221ec1f3",
+   "size": 747294,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/KISTE01.MDL",
+   "sha256": "ab6cc8357810a5ccd379632133c8d8bc88cbede320c65401fbeab60f40831c32",
+   "size": 8670,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/Obstacle_bomb.par",
+   "sha256": "3dfdce43c658c63dbb4bde63431b789f2234c87023c8869c329ee8bafa1feb3f",
+   "size": 268,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/Obstacle_frame.MDL",
+   "sha256": "10e30dd07640057161e1c604c9c5d52b9a71dc94877298791bf4ac764a60b620",
+   "size": 7950,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/Obstacle_innen.MDL",
+   "sha256": "91c3cd52377a92ebb9c3b8c1c0b5acb1ccada9e35e4ea915dcc6a47e2f84cab7",
+   "size": 1470,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/Robot.ani",
+   "sha256": "44d36fb68366dd0618cb557bfc66eb875ade46e19df925a7546ee6d0eb1fdf4d",
+   "size": 724,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/ROBOT.MDL",
+   "sha256": "01644f2391d3d8ddeb26390da243c7ee75c1cc4e7dea8df4041b1a35709107a1",
+   "size": 2664630,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/ROCKET.MDL",
+   "sha256": "b0b13d81e15211286b58f4c48ef7f07f031b8724bad09b60dfd39444cc26b332",
+   "size": 23790,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/rutsche01.MDL",
+   "sha256": "468c00912e8a6519c95d9d6e2c8b5e966208d00cc0fa36060dbd3e24999bc979",
+   "size": 5550,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/rutsche01_innen.MDL",
+   "sha256": "7157f8266ae506e553f1872b62d77497e95e5ce0be49d1088eafd10487c30f6f",
+   "size": 1710,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/teleporter.par",
+   "sha256": "619effed1433423dc204240f381ffce416d1c12f58ae908eead13f21836231e6",
+   "size": 284,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/THROWER.MDL",
+   "sha256": "4460caa10465a9448bc20375630d98be2470b756f2f756913e9f069125fe4c88",
+   "size": 392766,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/thrower_haube.mdl",
+   "sha256": "1fce7c1c35e5333c43e7a2046c8750e84d6470dc1ee91491479c288db2e3e2c3",
+   "size": 90366,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/thrower_light.mdl",
+   "sha256": "33bc68518a75d7848c5ed25a54931a76cf86ce604bc525c38ada39c1b323d5df",
+   "size": 43566,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/TREPPE.MDL",
+   "sha256": "668508a4e75da2f1d9d34d119bdc5f0efbe4fbe6dc11eebe958a82b2891767e6",
+   "size": 4830,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/triebwerk.par",
+   "sha256": "7e21a623fe04a8ad1ce781b4917a39ea4dfed34fe528a354bd9b8ab0d70c6a95",
+   "size": 285,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/triebwerk_fall_links.par",
+   "sha256": "5cd4420a092177675de1b62f424319200970c2e1e98cdcd56eff894127a91e73",
+   "size": 270,
+   "class": "required"
+  },
+  {
+   "path": "models/SPACE/triebwerk_fall_rechts.par",
+   "sha256": "44705dea829cc89129d2e19a1ff185ce4223eda92c463e4ffd3125763a494bec",
+   "size": 270,
+   "class": "required"
+  },
+  {
+   "path": "models/SPEED.PAR",
+   "sha256": "c078350758726a4dfb7e16bec7e7656d6000652d2fadc4b1366d53eb3fd1b011",
+   "size": 283,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/ANKER.MDL",
+   "sha256": "754d01575228703f1a805139d6759bae00b64ffcb2980bc149a1076fcc4d8e3c",
+   "size": 22110,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/AUSGANG.PAR",
+   "sha256": "8f3dd3d87af3fbc409669002293fd495891ca9c203e269b58fab1775cc18f906",
+   "size": 250,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/crytalFX.par",
+   "sha256": "c3deb3be8c7cdb3207a2359355968a99eeb9037323a28406cc726c147db6ec12",
+   "size": 253,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/FISCH01.ANI",
+   "sha256": "75f01cbbe7299baefca9a3c8b74d80243686792fbb131169919f484d50ce094d",
+   "size": 512,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/FISCH01.MDL",
+   "sha256": "5a4821da4d373d89d24dbe9f3e088857cb273e9f291803bd9383f580a4e68e39",
+   "size": 78606,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/FISCH02.ANI",
+   "sha256": "95461f2be46b76257cf776faa7a6435a3584e39347d69e7e9bf31f3c60c483ac",
+   "size": 512,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/FISCH02.MDL",
+   "sha256": "e17b617c5160480707f1c448510c5b06e5365656101e65509f29969438cb6cfe",
+   "size": 47118,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/helmblubber.par",
+   "sha256": "552154a31fe353ca3b10f6a7ea270028c922783a02d86d4471c93fe07e6b5b5d",
+   "size": 278,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/helmscheibe.MDL",
+   "sha256": "d01518918aa817eaa4066bfa68cefc1ef812e5de7c2a536b169221921f0edfac",
+   "size": 95454,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/KRAKE.ANI",
+   "sha256": "9b2c7d4a4323ecd8d8a31d54f678641236f44ba29cc88bf331ddb081a6c1f5b5",
+   "size": 510,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/KRAKE.MDL",
+   "sha256": "37d671ef6796b5a907462200fd0d79ffc4a4b0508327d7ee22d924b347bcc3a6",
+   "size": 3105822,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/muschel_fs.mdl",
+   "sha256": "654b259e776a9a87c1df4e55f8b20b7674c1d69583dd9d957b80bb435283ce0e",
+   "size": 6510,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/muschel_obs.MDL",
+   "sha256": "5acd58d94611a1a73087555a6926b7f299e5594f4761a9153fdaa8fe89aa79b2",
+   "size": 15150,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/QUALLE.ANI",
+   "sha256": "da2bdda4750e74b9bde2ce4cadd5fe066f6e7a538c8100974902b799573ab63d",
+   "size": 597,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/QUALLE.MDL",
+   "sha256": "cd8f4698e95bfb4a08f47cd75e91ef1ace56a6aab89e0bcd7ce10b12f4fadd6c",
+   "size": 2048550,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/ROCHEN.ANI",
+   "sha256": "6c55e31c4f8551b2abec73bf7756c2be3d19d9ffe7c6ec3eef7990a2a5b32f05",
+   "size": 561,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/ROCHEN.MDL",
+   "sha256": "70e519247c81f541cd6c9b4e38cac64aab40113d98c823805a9e49976f17ed7a",
+   "size": 277542,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/submarine.MDL",
+   "sha256": "24815ffdfb1e296c311cf736473beeb6f358758eb4b6c481477ff1ad241c786d",
+   "size": 30750,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/taucherhelm.MDL",
+   "sha256": "63b23987cf18c2caf511ea3ad3f19d509e9193409aff28ff13242f79a3b8a00a",
+   "size": 2493294,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/teleblubber.par",
+   "sha256": "6a6608ed81d34177e12a08c9ac7f358202c333b7bd3aac9509580e13ac421cee",
+   "size": 241,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/TR_SIDES.MDL",
+   "sha256": "d1b68cbd59d5dafa504405946a0b30acc20c2a34bc3f6a9131f46b9972f2ce6a",
+   "size": 2430,
+   "class": "required"
+  },
+  {
+   "path": "models/WATER/TR_TOP.MDL",
+   "sha256": "12cc152cbe4a5239a31a04eb133cd85c2581b5a5bba80b5190f2e79a57c3ad32",
+   "size": 750,
+   "class": "required"
+  },
+  {
+   "path": "models/xtra_life.MDL",
+   "sha256": "49c2bfff5d9d279a85800c235d0aa07a7d6dc12723b418b60db78b415cc8ac8d",
+   "size": 22110,
+   "class": "required"
+  },
+  {
+   "path": "ProgableControl.sav",
+   "sha256": "819c46c7881cee8f8b8cc56ebd2ea7a0b9876d9fa80a459a4b0e1a2bc6977abc",
+   "size": 3608,
+   "class": "required"
+  },
+  {
+   "path": "textures/Blow.tga",
+   "sha256": "13dbc391f834ab74c290c06f96684e8c3e5e00f687e58bcab83480a5e6d659d0",
+   "size": 812,
+   "class": "required"
+  },
+  {
+   "path": "textures/Blow2.tga",
+   "sha256": "f22f292aaff3acefb9ac7ce626fce37db59766a2ed3c01d8d8cde471d5998038",
+   "size": 812,
+   "class": "required"
+  },
+  {
+   "path": "textures/Blow2a.tga",
+   "sha256": "5dae72cf07bad5c426c18419ec7894dd47142fe71f34ac5343258ef67e1608c8",
+   "size": 1068,
+   "class": "required"
+  },
+  {
+   "path": "textures/Blow_a.tga",
+   "sha256": "7af1ab83d2655b8982a865e730c46a77e5ed3fa5b2ff2761e1b40671f32c232d",
+   "size": 1068,
+   "class": "required"
+  },
+  {
+   "path": "textures/BLUE.TGA",
+   "sha256": "e93b8bc615a9ff2e1601eff30f551bddc3fa6a3151f4f35cad6bf8386978eea4",
+   "size": 56,
+   "class": "required"
+  },
+  {
+   "path": "textures/BONUS03.TGA",
+   "sha256": "28a1fe5bf4fde6a4582cd783969ccc3f29bb52f0f361ca5c6f5fe13a5bd9bec0",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/BONUS04.TGA",
+   "sha256": "34ace153f6c770ee9408255fe3f7c94253feb690411000eb10bc837ebf7ec07f",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/BONUS05.TGA",
+   "sha256": "7df7a49839aecbade7729752aa63b560758a28285be7058c40a6c35d3bd0b4e1",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/BOMB64.TGA",
+   "sha256": "ff281e5c68c8ce01520a5df04a843bfdc19294db7ca0137a588551865b6e6f1a",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/BONBON16.TGA",
+   "sha256": "626e62ec6ae6c76cb0d3d4315c4425c69eb57005bedc25f31001891b45583357",
+   "size": 812,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/bonusFreezeIcon.tga",
+   "sha256": "d7d8b761d3b3d9a05f9f22e5482b6f922163745bc9a38f98eb0d1cc68f7b2466",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/bonusInvIcon.tga",
+   "sha256": "095ee2d2b4ec2b091fbbe542bf395ab13786061890a5dc0d300f88302c268ecb",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/bonusProtectionIcon.tga",
+   "sha256": "d3f5577dffcfda0cd062073323c1139afefafa1f398e6994363dcfc04855754b",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/bonusSlowIcon.tga",
+   "sha256": "495c615507a6f21a3ce02d06ea3d203caaae77e09ddb4b9efc04d212fe87e1af",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/bonusSpeedIcon.tga",
+   "sha256": "aefa3cc5c000286a8a493ea6b6516de7cc079bb309cfd92592d14e61682ebb6a",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/BRIDGE64.TGA",
+   "sha256": "05aec040b856c33c7207938803fe165b4bfbe51cc50cca3860051131f640f3f7",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/Candy_Exit_Glow1.tga",
+   "sha256": "1c4ac2266fa1ab825487fc23b1c895c0e83a43b30b922bfc5793ccc19c8d4bcd",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/Candy_Exit_Glow2.tga",
+   "sha256": "29f039405bf03e8b56647287299eba0044b1541646990bc971a8c63fca4b9742",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/Candy_Tele_in5.tga",
+   "sha256": "f3989b74eb955b17781004a224a6868c77cf00078ea29e995dde754ca59b898e",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/Candy_Tele_in5a.tga",
+   "sha256": "7224720618c90d679b5de04386ca00d17cbe2d10ee09db9d4591a1b54e5647be",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/Candy_Tele_out5.tga",
+   "sha256": "843a643c4b0111a5a7421ba1f58481e3be74ad3eb88d992642fc1ef35ca40ca2",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/DONUT128.TGA",
+   "sha256": "37fa762adb459515b898e3ec451eeadf5efe02a272e4c3585654bd2b0449410a",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/ENERGY32.TGA",
+   "sha256": "2e6fde19c2cd3186e60a870fbccc2c693450fdfc215e977624969dd11466f598",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/ENV/candyland_BK.tga",
+   "sha256": "77ca2bef73f7af088ac887a8c323711eea9bbe8cff0a9851057ae50b1c750c08",
+   "size": 167952,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/ENV/candyland_DN.tga",
+   "sha256": "664ffb6c0e5ea8a04fa30494c4c8f658ce426c6506c624ff848ba7d0c6bc02d4",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/ENV/candyland_FR.tga",
+   "sha256": "c8ffaaae2e4589c583c18543fdfeeadadd62d81dd2f4838781d3836b4e32c2ee",
+   "size": 157711,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/ENV/candyland_LF.tga",
+   "sha256": "8f2f37500354b8273b55371c04f3e28529c4479fc207c9fa03c02258c98d8c3a",
+   "size": 165098,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/ENV/candyland_RT.tga",
+   "sha256": "a2d15121d0626e6ef5e4e840587ef6362f908c214b8543ea17a51e04337be321",
+   "size": 168135,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/ENV/candyland_UP.tga",
+   "sha256": "03d57ce221b59175025af9aef66c6eec669e76c5e272e73cca830e712038b7a3",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/EXIT64.TGA",
+   "sha256": "405a1610106e67c9fbfd5efc4b738a13ded256f718781b9e91c89083c1c75a43",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/hud_all_candy.tga",
+   "sha256": "2e7ad8c475ef74c2f77c2f45780002d074c653b56909fe2f09027af94106b686",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/ICE64.TGA",
+   "sha256": "6cbe46d0a087ae26f979023c1ac0a870aa967966d6332c87ed8c46bade1c9ace",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/jumppad64.tga",
+   "sha256": "642e59afa7cc79229899e157a113fdaf88a72cce16c678a005e22c0c43ed9904",
+   "size": 12694,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/KEKS64.TGA",
+   "sha256": "0144b62f6b72c960946337a9dbd2e8ecfbad1e5ae7491f22fbbb7961ec9e55a2",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/KLEBE64.TGA",
+   "sha256": "2aab00543c6d097ef17f096089c504be218ccfc856af9c810a295912d34a3c21",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/klebe_base64.tga",
+   "sha256": "718b2d5e17f5171ccbdb6e1ff50927c1e01889774f740a9dee8b22a37321f0af",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/klebe_close64.tga",
+   "sha256": "326fdb993deaa4ec826e0b5a88351889472521b69207621b2b31355cefc4fd46",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/kruemel16.tga",
+   "sha256": "61da1339a12c29e5f82425cd0f579376eb01f964a9867a8fbd7f9c9507ec7148",
+   "size": 1068,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/MENU.TGA",
+   "sha256": "202d3e89ea0b556e326cb20ef01cc33cf899ec7f10b2b4ee7ebfc0a6ed1b42b4",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/radar_candy.tga",
+   "sha256": "1329a24a31249a66ab2dc9aa3f609835151d43f1c0ba08b3ff0bf9ad02c27b23",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/rutsche64.tga",
+   "sha256": "7ce0b053efeca49c31295bc1a10e4a1c4896b44b1c9e65647214b7bcca0ec84e",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/schalter_base64.tga",
+   "sha256": "716e77fb99921803422e9ab6c5f0f2015215c570f7a528b35ad82602320cdadf",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/schalter_in64.tga",
+   "sha256": "e785ff1e3d9155b719b0e5754c9ae9a8eed591f97813a171565d1e0f6b25112f",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/schalter_sh64.tga",
+   "sha256": "3c643e8d1a822c024cddcfb58544e7cce60645090d128c1e96aa8879c68ae0dd",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/schirmchen.tga",
+   "sha256": "2b40d4b522d574efac690ee4e42b46216240b2f16ce413466541492a903023a8",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/SCHOKO2.TGA",
+   "sha256": "0236a07a7645d86fcee47352c58745201d9d01439260beb9f0af5f92dc5ec6f7",
+   "size": 56,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/schokolade64.tga",
+   "sha256": "9edadd68145b25c399b4bca559979b068405f4e8ea68a48d5d2b51099334a7a0",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/schokolade_w64.tga",
+   "sha256": "4afa9f27b63b02dc7b6b441776df1f2b24a0603c4453b4dce934aa2d8e4be18b",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/surprise64.tga",
+   "sha256": "e60ab5d16e89ffb27822c6b623ad09409be666ae1cc7b79eeb14aa9e5b3be509",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/TeleRing.tga",
+   "sha256": "2e263e184ebd2b3b39c200d97e3fb02e044576a31dc3200d786cd34dbb480e95",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/Tortenschachtel.tga",
+   "sha256": "a2ea22714e8ea28654c39d654f8d46caefa64e440df109fbb3935ff367d796b6",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/waffel01_64.tga",
+   "sha256": "fd78c2523c9af7b5eab4ee4f75950f5abe1771c166d27869fe426d00a6205e32",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/waffel01_side.tga",
+   "sha256": "f87904715af284fb071ffb39f5c06f2cde173e4ab1e5fac4b0a923b5df01c68c",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/zuckerstange_blau.tga",
+   "sha256": "528e5920d99fbae7e76c7ff1eeac730f5b84d8199e6dace4f6b85b8a37928c8a",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/zuckerstange_gelb.tga",
+   "sha256": "0ecb06ddee59f8ba20e719e3a0ecd2dc264696fc34d875b0e2c3605e32870625",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/zuckerstange_gruen.tga",
+   "sha256": "f8fbe23e437d84da889f44169991f1a5206a2c06e3301d79640241d08f057e9c",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Candy/zuckerstange_rot.tga",
+   "sha256": "6695521f62988538ffecd93a8af3087d20e298061e4b9f0fb6c6d3a3d2633a13",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Bombenkiste.tga",
+   "sha256": "4e8c56f6be5951f57faf95b27935f3ffea86de76eb47576001b3b58bb2ef8efe",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/BRUNNEN2.TGA",
+   "sha256": "ff7533da4fcfa7ec7e0ab81288bd165606d980f690cb6d5df222006bf1a0e0a0",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/castle_bomb.tga",
+   "sha256": "15cd4e978bd69c074cc06b27c924bebb09387424e199f11a05a15e5f2e1aa360",
+   "size": 56,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Castle_destroy.tga",
+   "sha256": "842c88c9ff83a1f51a9f5048cf1e9c246a28e0d60947ddbbc9019d26f9ad5ba2",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Castle_energy.tga",
+   "sha256": "8640e3941092a7cc252ade19300a5e73b7a6d78a682588651636dbf16c0527de",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Castle_exit.tga",
+   "sha256": "b1845b831437e87ab1fb88b5b4eabba3d60bbf48c97a4c80a061d358f7472b73",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Castle_exit_glow1.tga",
+   "sha256": "39e925a82660b7660d6ed0f6ff5e7f73a6c11286fa8df1709c6309a6e00919f3",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Castle_exit_glow2.tga",
+   "sha256": "f7f25c02abbf5433a07fb5cdabc636b73c03cb2d0c8a5389b22bc7a0b29c65b8",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Castle_Fahrstuhl.tga",
+   "sha256": "20d88e58483247550f1b4eae227829c74c7d48d0406892508385f027159ebd48",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Castle_Kanone.tga",
+   "sha256": "70b9ad8a5a5d1c633da5348683fe899d50584fb4d1fbda08c7825b83d73102d9",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Castle_platte.tga",
+   "sha256": "4e0c71e0245871063055d5ea8724988c19728c7ef976b8c314dc953b218c047e",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Castle_side.tga",
+   "sha256": "8d6d5c36734e4e398cf9649aba994274672b6bd4f8e4f90b78d1dfd7170d15ae",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Castle_Treppe.tga",
+   "sha256": "276f2898012f469ce362f4519e9fdda40e9333fd6f96b7e1841b0149a791b44d",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Fahne.tga",
+   "sha256": "7b9f361d23b86ee355541e8e86c4f351d479f6d73fa167dd83e02a9b9041d706",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/FLAG.TGA",
+   "sha256": "8d343b5a2ce39e644428f348253d62bacc91bbf6baa84bd0c9cf085c67110619",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/flag_blue.tga",
+   "sha256": "4419c93b62a4b513e8ef1ede4b31175c472b462f5c82254553fc737ec653880b",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/flag_blue2.tga",
+   "sha256": "8a83fde74ba6b01722d53d53aeb8108a40264a5672d2619e18b941cc1ea49c85",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/flag_green.tga",
+   "sha256": "5235c36ecefed931e1f0e77316fb2a0d121383b440133b27f4a5719596a32e4f",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/flag_green2.tga",
+   "sha256": "5fd968ce9aa9ea32768e56946816dc8c924c2a6f8673568980b0591f5188db30",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/FLAG_RED.TGA",
+   "sha256": "64cae97d95f933f8c51bea59cac3b615d26c095f1eb9e2040901f298de907d3c",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/flag_red2.tga",
+   "sha256": "5fd372fc84708a2b6cf816f63e48d86a970fac4d909e1f7088f4d48dc40aabd1",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Geist.tga",
+   "sha256": "6a72f93409efa0a8c843ce634fe322293b85af23d4f9b15483f940e90cb95737",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Helm.tga",
+   "sha256": "00d30d62be937c80012b00c3f88e960eb1f0df79fdb86acdd2414ea6b3d02e67",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Hud_all_Castle.tga",
+   "sha256": "db7269e1041a7af53c66ec61176a8cb95f45b0f5429d25c08e8054be16e20ee8",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Kerze.tga",
+   "sha256": "2fb69d4a547e68d943b5efa783a53589a7e19c6878679cef79dcf89fa26d6d13",
+   "size": 236,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Kreuz.tga",
+   "sha256": "9642fff7f768105381d8b0afbccf6456774bb83a9d3285a81ccf21043a55cccd",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/MAUER.TGA",
+   "sha256": "adb49f4231d51bcb2462afe01d0a3d32b00c867e20d28cd89d1bf9d2cfda57d7",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/mauer_kaputt.tga",
+   "sha256": "f789e4a63e853b3966c0cbccf16026c96cab75dbd57a8471ff9bc888c14b64da",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Menu.tga",
+   "sha256": "5ab88fa94e9f7d24689c231e4b4c74f447331643fed2990e237ae1718a89d7ab",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Radar.tga",
+   "sha256": "b7b59d56e7c9833cc73c075e62a35610db470eb22bece542106a8b247c2a8f63",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/SKY/schloss_BK.tga",
+   "sha256": "d5bca55db9e12f3b8a216636f71ad30da96319dcd2d8f3917c2a97e870db3a3a",
+   "size": 189853,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/SKY/schloss_DN.tga",
+   "sha256": "9085be11c06afd295b73b13612b5a55ea073b884bea20fd73b9e1551280c54c9",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/SKY/schloss_FR.tga",
+   "sha256": "797d08c964b8bd1fae5e6936812cfe0be2a417a62e10c4d82b2048f180629e33",
+   "size": 190774,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/SKY/schloss_LF.tga",
+   "sha256": "c5e419ac1a00453264a0a91f9421e3df6c4b2f909d76bebb90da418ecba91947",
+   "size": 188475,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/SKY/schloss_RT.tga",
+   "sha256": "4467d7fe7e5140c1c170301048b032c7ac0ee12a5ac0e0621728eb0eedbe63c9",
+   "size": 185797,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/SKY/schloss_UP.tga",
+   "sha256": "b0300e01af4dabffc2168cc288ba9fc22d53e81e8054305f241bb6b341888d23",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Spinnweben.tga",
+   "sha256": "0b9dbb3b03218b138b6c87a324c341caed32b1e60682a77c659daab754dcf44d",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Star4_32.tga",
+   "sha256": "7a4f380d602ee6159d47779e6efbe1d8e8da507a43159f5db18c82bce5c11016",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Turm_dach.tga",
+   "sha256": "e43ef2016a061e4ff948daf727668368a9f8922b9e8008e73bc4a2834eedef91",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Turm_mauer.tga",
+   "sha256": "a36efc799dc12901c1e286ccfc9ee21068e40f2d2cb2f4c5f91c629c17475956",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Castle/Wasser.tga",
+   "sha256": "d9beec5e9aa00640f9771eac2e44b34b51cf7dfb8a320d59468a91714b4d4283",
+   "size": 812,
+   "class": "required"
+  },
+  {
+   "path": "textures/drehknopf.tga",
+   "sha256": "20e3b856ba4ef35d45bfeaafbb4152f19708b155431de65f40e68ad4c94dd5a8",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/baumscheibe.tga",
+   "sha256": "88dff30459107c482994c5678b08d5f940560463ffefb727df24e9f5f2c3eafe",
+   "size": 12807,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/bonusFreezeIcon.tga",
+   "sha256": "719a0c958397619254595e0c78b0dac6d7c08473d83c6d43ad14a94253a266cf",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/bonusInvIcon.tga",
+   "sha256": "51ee1cac03003dfc4d2acf6143d08f5cdb3c13085edabd897bd995cda355e564",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/bonusProtectionIcon.tga",
+   "sha256": "0e0ce253795ce08665818d05792abfbd51ebeaf5df10ac0d481749f6aec2921e",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/bonusSlowIcon.tga",
+   "sha256": "1577bf86d3ff87241804aa1354a332ad1974f06443c6c288b4268407d157d7c4",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/bonusSpeedIcon.tga",
+   "sha256": "883d3a25acbf721ae45a0aa690477c60d26ceb8164fc2c4e0256c18d913efc06",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/DESTRUCT.TGA",
+   "sha256": "fca34a0e459fb3ca79486ed004d967c936723a71f0ca08d49b7f5eb89e17c99e",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/ELEVATOR.TGA",
+   "sha256": "fa8d7a83e8ba1168995cc250aa9698921ce6916c4d4ed353adf9d9786a9b586d",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/EXIT.TGA",
+   "sha256": "0677c4ea0dbabd7e15712161038e1ba87188f80204830fe1a54716c09d0272cb",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/Fallschirm.tga",
+   "sha256": "3a6874ddcf7da13010cdcb6cc1dc078100aaafb9b7b0e5b66388fd02264d68ef",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/GOLD.TGA",
+   "sha256": "b76264b002edc538b872030d5907e47934a7e0db43b6bd5f4ce4aa374dca1d68",
+   "size": 56,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/hud_all_egypt.tga",
+   "sha256": "3f5a2312d382447a18f351368867ce60b5a0494a6e0696e39d01ddaf51838bde",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/jj_statue.tga",
+   "sha256": "29fe17e5129c542eaa9ea61dc8022dec811aebba48af0938ec94df0fe38d4169",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/KANTE.TGA",
+   "sha256": "de1aab387a084fd2c4b714fd08eb4a064e7d10f36b600016a1dc33136f1ce713",
+   "size": 300,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/KORB.TGA",
+   "sha256": "2658106ce6b38a9aaa25816ac34110e036c4b4c5841f11a96c0c03aa94f60e5d",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/menu_egypt.tga",
+   "sha256": "348e29a33865e438f20449065913b581e757964db8a7f6c6af6c682174898ac9",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/MUMMY.TGA",
+   "sha256": "797a10957f2d97150397692a51e6253ad46367f67892dfd2b55f0ebd315a655e",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/OBELISK.TGA",
+   "sha256": "867510507629333730d330ba6c526dfd09fa0f8d9359be059fdbfc51c1480486",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/PALME.TGA",
+   "sha256": "28e9d21da6109ee7ae379c6354becc1ff0fc18604b9627545a490739ff123214",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/PLATTE.TGA",
+   "sha256": "f948afe22d6d9b61e9b1254e8247010ffd7448ec30f61ab7b07000af2024de9a",
+   "size": 12825,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/radar_egypt.tga",
+   "sha256": "5e3666696fb51dfa0b711c54f75d72c0e37910b71a705e705b530682a3e717a3",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/RING.TGA",
+   "sha256": "b6ebd7a8e29c0b1aeddef64c0add14f8cc3d50494f76cf04f9004a81cffe75ef",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/RUBIN.TGA",
+   "sha256": "88c537d8fab1c5cade85f6daa02b82a65a86420dafd387a3092ba2f352f72ffa",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/Schale.tga",
+   "sha256": "0658cf2780158bee1656393737b315b14d469944fe05382a86635f405c9e632f",
+   "size": 56,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/SKELETON.TGA",
+   "sha256": "94a3a0febc31b567e81cec76ad53ca8c736c1a6822fdf5da9faef4aaeb270506",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/SKY/egypt_BK.tga",
+   "sha256": "340f3f13ad8364d2e82aa4ad510ffb589cc169beb8a39a2184ad4e35ea4f3346",
+   "size": 170130,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/SKY/egypt_DN.tga",
+   "sha256": "5bb52dbdf313443d7ddc4a029bf1d3c54138bf455e5f659a73cba9db94067191",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/SKY/egypt_FR.tga",
+   "sha256": "18f8afce967dc919ed8ec674123eba82f298b8155dfb90aba598f969b151c433",
+   "size": 164648,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/SKY/egypt_LF.tga",
+   "sha256": "1356d5eb2422530244aaf4b58c6c839e04355af54e0091293109d216df8a3f53",
+   "size": 169678,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/SKY/egypt_RT.tga",
+   "sha256": "7a389855ecf71d5221e81e400fab008ec67cc8fca266f1e20d8d1b3acee172c8",
+   "size": 164429,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/SKY/egypt_UP.tga",
+   "sha256": "60c2810f8d98e85e4a3f82f0bcd4d8138379e40414bbf3167fcdbf818363e133",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/Sockel.tga",
+   "sha256": "a7af67af904385135235b7dd48f880d3a90835be54849b9a0b1d27cfc77be3c8",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/teleporter1.tga",
+   "sha256": "b1599db768a434b327ca62e412afea19bdd855cc0f133afd9087524c68f7828b",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/teleporter2.tga",
+   "sha256": "a17b0a4c8fd5ac152a8bce715515e36fef872253a45d95a42a3c49901ae40653",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/teleporter3.tga",
+   "sha256": "ceab5af55c860c7c4f067fbdf97ad58824f8ec4c77cee3038cf2985e1f6f578e",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/TEPISCH.TGA",
+   "sha256": "355b6c9b84f62bd8d141a2dd0e8ae23fad65e12d604cc10daf0c64615f6ea974",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/TREPPE.TGA",
+   "sha256": "e770f58f72c1e87065c6ffd8fbfe159e7a57b3dea1fbbd38eb2921e2d494e547",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Egypt/VASE.TGA",
+   "sha256": "f706a07ff40d8ac19bc0b6c06c8be9d1aabba02aac35e94c86593ff0c2beed05",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/fakt-logo2.tga",
+   "sha256": "1b6a8c8d2af6c685a39ee8f83c5be0277bbb772f43cde4202bbac6e9763ddf29",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/FINAL/ENV/env_final_BK.tga",
+   "sha256": "c69b74f0ccd2b5d7af7aba6e408c98afe58892ad62c849ae6dcb70a28e3489b3",
+   "size": 135849,
+   "class": "required"
+  },
+  {
+   "path": "textures/FINAL/ENV/env_final_DN.tga",
+   "sha256": "2a8f01b5e04893580134ad88b428fbb4ab9a4c345667ed48daa2d378898c3747",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/FINAL/ENV/env_final_FR.tga",
+   "sha256": "ce0f41ecbe5440d9fb55ef6fe45a02c93c4cfb75b6e7e6777abc09d0532046ce",
+   "size": 159261,
+   "class": "required"
+  },
+  {
+   "path": "textures/FINAL/ENV/env_final_LF.tga",
+   "sha256": "bed4b624c949c61eaaeaad7c1d7e38266eda77fd384aee8071f5a6c68b1d38dc",
+   "size": 157719,
+   "class": "required"
+  },
+  {
+   "path": "textures/FINAL/ENV/env_final_RT.tga",
+   "sha256": "3b427f46717b49a2e142116b31e9bd54ab40a798fec878acd7fba06ccb076cac",
+   "size": 147680,
+   "class": "required"
+  },
+  {
+   "path": "textures/FINAL/ENV/env_final_UP.tga",
+   "sha256": "5f2abfa658a9da81dfd6dea3f3136563918f6b2de3c786bc71eb5aac431eb6e7",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/FINAL/FLAG128.TGA",
+   "sha256": "a55281c5499d0aa4e6f8e067275e81d5573251c3c7668488a44058edcf794a04",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/FINAL/marmor128.tga",
+   "sha256": "8b890e4e7c0421129c382a80b2eb660ade33115e6b8d65f30479d655b02ba2d5",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/FINAL/SIDE128.TGA",
+   "sha256": "c8499921b998f888028a43bec3900fc21b1d38846acdc7fc9131ec42fcc11bea",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/flare01_16x16.tga",
+   "sha256": "460f01ac8e3c2b24dd3474a866729756ac7f672f7d0de09e94db6344e454a6d3",
+   "size": 812,
+   "class": "required"
+  },
+  {
+   "path": "textures/flare01_64x64.tga",
+   "sha256": "e55e0eeadb5124894ad9a702cf4a48c1b1a4ff87d9ae4edbc6636e30fc36cd85",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/flare01_8x8.tga",
+   "sha256": "7d531cffdbe6bb53baff6d0a6fe5b8723a55e73a7b865932e4a90b214b34c37a",
+   "size": 236,
+   "class": "required"
+  },
+  {
+   "path": "textures/fluegel64.tga",
+   "sha256": "6e5d253580f2542e0ad67d7a58d1330cc9752fae5367b8990a042a9ce1ec0916",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/FONT2.TGA",
+   "sha256": "9ba17fb13e92e0060431398e3743c3bbf5729037c969ada75605b37f60fb1204",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/bienenkorb.tga",
+   "sha256": "dec8aca65266ada8c04b00bd9aba2496b633d77648a4fd2271cf308388345cd7",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/BLATT01.TGA",
+   "sha256": "2efd9972f29c60a7744ad2ef100239c67bb20566f7ac1573502698494505be3d",
+   "size": 300,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/BLATT02.TGA",
+   "sha256": "a7f15917310240ef0a1f6313e4ba4b3508ee90041fc76150b4536ae6075f16c7",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/BOMB01.TGA",
+   "sha256": "4660258c2c72746580e01beed033c98751cd630a73bd6a83a02cf75fe49945b1",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/BONUS06.TGA",
+   "sha256": "f3f5723f83748a094b7683775e13c4d6ff08a141874ccf908ea0e849040ca478",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/BonusFreezeKreis.tga",
+   "sha256": "f95547c0706ea43bd2d78339361447aef312e2189bac0293951f41d5996c78b7",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/BonusInvKreis.tga",
+   "sha256": "4b72e7b2407ee6914367f323da7e25495fb0d9f0a48968a45237625a1a0066b1",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/BonusProtectionKreis.tga",
+   "sha256": "2b9155a07c8a770f628f19ea8c48bb31882e5c4a63b268a93fdf7831a8d68b55",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/BonusSlowKreis.tga",
+   "sha256": "c879400f50261a3b67760cf27e31d887f88e0ce5324a612de7d9800c8fb906b5",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/BonusSpeedKreis.tga",
+   "sha256": "0330cc118db72e557f34e10c64bcd8931de862bc3939ea61aef5150bb9565e54",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/Busch.tga",
+   "sha256": "396e8ef72c94365c494a391803a51be3755c3050e32bdde65e7dcd50acb4e60c",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/destruction.tga",
+   "sha256": "4fa257411cf1970fc963926fa3a4b79ba6ec4285829270d53f43831e7f677d5c",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/ENERGY.TGA",
+   "sha256": "d06c5c9cf7cb4f8c2ef843ac015a589897d330e8203c3d1aa38be8df28a04340",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/EXIT.TGA",
+   "sha256": "0428ee3529d59a8b260a3bc74bd36b54b89076f539f2dd042c0abdad261ac1b7",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/exit_gl01.tga",
+   "sha256": "bce740a518d1bb829902d93cac9504a87ae8ff45b827d2f29e6b8295a1fafa3c",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/exit_gl02.tga",
+   "sha256": "dd1433f7a7725ca4d9931307e4046b1ec7629d968e3946762c9853ffac2d9bda",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/FROSCH.TGA",
+   "sha256": "ddf2f3cab10d23dad78109897dfb61f12924c0cc67e13a2ab8aa5bc05b23199e",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/HUD_ALL.TGA",
+   "sha256": "3c1c1ad62d25dc4d18e87b48673485ca2d0d3820dfb69416217f5ff757914793",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/JJ.TGA",
+   "sha256": "405ffd7e919f472713a40e199c40c4e90a65295ea8aaea292a9fce1c9bccd0f0",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/KANTE8.TGA",
+   "sha256": "c7696c6fe45730297893a3dc5080d0112b0a079634f23cece0c3d45043507461",
+   "size": 300,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/KISTE02.TGA",
+   "sha256": "bb02e8af591387451f5cdd9be1fa68fa669073edd5ab2fb774c5778fe359864e",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/KLEB.TGA",
+   "sha256": "99b3b0681e55dec8dea2342e08c31b1016d16700eec69eb32c79bf4dd790f5c9",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/LICHT01.TGA",
+   "sha256": "f328d221e3c6393533beea9210d8ed3d95f5e0c11fd67d6e992384b99b30be10",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/Menu.tga",
+   "sha256": "dd96e3cf5b3aa6abc3153a83c925eb7a647e645e1da3523b5aa62151ddde5bba",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/PLATTE.TGA",
+   "sha256": "92ce0c6f32ec5d6ff347395e5382292e368305f86f52c894d2dd0b3a8f3796d4",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/PLATTE64.TGA",
+   "sha256": "d304ae99c9a0f7b911d4e1924f4bea6df68f3c904a252cae15b452e7b8bc575a",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/RADAR.TGA",
+   "sha256": "a5730a526afee96c98450d3d7fe92bee5429681be8f39159573339ec46ed7a1c",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/RAHMEN64.TGA",
+   "sha256": "8d28c3a2b2bda085ba6233158ef76b00aa502b774b42554bd8606df4c42f636c",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/rahmen_gitter64.tga",
+   "sha256": "bb84f5d6ef6cd2def711c27fc12d95c137d9408bb77452aefb6bc00f5412032e",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/schmetterling_128.tga",
+   "sha256": "4543e057e4b5c6ab399849d9c4241f1fc39f97b3a6e652d55b4dc4b1d088bbc9",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/SIDE64.TGA",
+   "sha256": "51c4d8d9d44c0f051798d596473c6348bd8701cfd5815d4594ebe62ec13bb4be",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/SKY/wald01_BK.tga",
+   "sha256": "f5ef06a6698490baab06ba904c3dbf8ead6bf0e9c870416574526e7a05ca48df",
+   "size": 258236,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/SKY/wald01_DN.tga",
+   "sha256": "cc867b3e502a07c27066a21006f5bd66ff39e5b7b8133fffaff483e1c0238a65",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/SKY/wald01_FR.tga",
+   "sha256": "91a0c56b6f9ee274dd2222728662615e99b9aec1adb6f7d1d48dbea057db25f0",
+   "size": 256989,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/SKY/wald01_LF.tga",
+   "sha256": "abbabb8c0a980c9ca9afb0269d3bad608fe1db06047678089e19316c45fa4134",
+   "size": 258094,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/SKY/wald01_RT.tga",
+   "sha256": "0404923784b48844f9a91037117bde35cf86c6f18561e25a66f48360f0d57d4d",
+   "size": 257615,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/SKY/wald01_UP.tga",
+   "sha256": "46f46134a6e010456986f40c7a7e031ec5335094c7b96626292c4e75a55b43c0",
+   "size": 254762,
+   "class": "required"
+  },
+  {
+   "path": "textures/FOREST/TREPPE.TGA",
+   "sha256": "58a6598ddd040f9a4c332436da5a33a4d23441f8139016f375c46ffe3f2cff10",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/GREY.TGA",
+   "sha256": "0352ba73fff26e80a38dcba5cfbbc4d0fca7b8e0eb3f068279789dff63ef2663",
+   "size": 56,
+   "class": "required"
+  },
+  {
+   "path": "textures/k_normal256.tga",
+   "sha256": "6f35e1746615c5d90e51c7d0b2df59a891d1fd2ecb252f2d1ff67f40258dfbae",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/k_ritter256.tga",
+   "sha256": "5d6d532a1c7f5a681da56ce610634a59cc52bfa18be35551ddfff60095b81806",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/k_space256.tga",
+   "sha256": "34835aa9fe6c1747f5d83e09da4a186686616ef8be26d4601284e7217de87ed6",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/k_water256.tga",
+   "sha256": "9cc3a167529bb31dea66a9dcafd894429e291f7ac213e0767e1f5c82e54c5949",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/Karoo128.tga",
+   "sha256": "a630bf876dc034188e5471e165320277056049cb87a4f76b90c3ca862b317acf",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/knopf_aus.tga",
+   "sha256": "975d51f96602825dd3c1c9c564be3b928e3d3633b611490cc7b30c27d53faec1",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/knopf_ein.tga",
+   "sha256": "2a8bae92e947cab9628bad379d12fac11523211b7804152d426d065c1bbfdcfc",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/MENU_1.TGA",
+   "sha256": "e6004bdfd7863c888275e67f2e7dcc36b9e6d24f3bae4311db5d5daf9a603290",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/MENU_2.TGA",
+   "sha256": "993bccfc3db3d5fbfc038e5782bc3221687feac6b3ef57f33dc5604a8de7d812",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/MENU_3.TGA",
+   "sha256": "80098e98d98e73e6ebd936ae26c828d219af7bf9f7bff9ebac509489818f1da5",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/MENU_4.TGA",
+   "sha256": "6e5415784bbb8803773c6008f1b45db46d8f825d8c2ac0fee1e1a1a7adb74e8e",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/NUMBERS.TGA",
+   "sha256": "4d1267469b12155720ee8c1639cb4f9866d33877213374462e033215fc54f40c",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/RED.TGA",
+   "sha256": "9cf3bfa2f3f0c74e4b568496e28502e50198e249d11509f1050cba7415f8c51d",
+   "size": 56,
+   "class": "required"
+  },
+  {
+   "path": "textures/RED_A.TGA",
+   "sha256": "331485d41ed29a411cdeca811fa0cad0890a1eee7484008f510621dae6287f4f",
+   "size": 60,
+   "class": "required"
+  },
+  {
+   "path": "textures/reflect_mittel32.tga",
+   "sha256": "c6f5f3e12f26976b693892221413cfb3347db9eee3583914422c2d96f93575ee",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/reflect_mittel64.tga",
+   "sha256": "4d7dc44f94421c5042ea4db2a085f2afc85870fdf9309a81c3197039d93ad34e",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/reflect_schwach32.tga",
+   "sha256": "a38e3bba8fc47d10748d200f1c25cb97e6e47634aa32752419385c31755afa11",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/reflect_schwach64.tga",
+   "sha256": "000eae269f70644454bddfa5d9cf3215ce04d0b211d9cab3a9ef5a003f74e3d1",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/reflect_stark32.tga",
+   "sha256": "24c098f2b4de748d7c10dd09f8dcbadb950f23ea05a135389073dda52b966f25",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/reflect_stark64.tga",
+   "sha256": "81b4ede9b5aacbc1ac0e2087ac3565c739b30b014d1449539a3fba0948aea596",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Saiga_Blast.tga",
+   "sha256": "a10eaa55f80d82f28d9e649e9b536c4b5c8ffaee4299375254e89ff89de5da51",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/SCALE.TGA",
+   "sha256": "ec7775aa758fb98b967008f2f8d84034c2e22f3325414e7637aee3477d49df2f",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/SELECTOR.TGA",
+   "sha256": "18b1554e2f76ee120b5c2320ba06f50a371da507897ce000a0497e3d9d3a1734",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/SHADOW.TGA",
+   "sha256": "1bc6aac1ce0936d84ee5514fc7687f0a70e4f1479ea9332280652ec027b1a27c",
+   "size": 60,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/Asteroid.tga",
+   "sha256": "c0ea07e889ca7c91a546fdc296e48fe9acedc03f0f656a680a113e6fca467906",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/BOMB01.TGA",
+   "sha256": "87bce52f960418866d76751467f00926cd2125dffc4e33f761dc40ce2972e46c",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/bomb01_glow.tga",
+   "sha256": "eb173148c4486fb0d14a74390156daaf30d0ae02028a90cc846b1de6f2134af9",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/Bomber.tga",
+   "sha256": "2394092d2d673d9cdc07cc4565fb3938977c0281c67429b994c2cdc152ee2bf2",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/BONUS06.TGA",
+   "sha256": "bdec9551c66ddeb600faf7499c9cc4c10e8e8dedad0a5e7ce58052bbc9d89144",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/BonusFreezeKreis.tga",
+   "sha256": "75e0dd04df8304cf9263c3626980311086fa403b6d02bf970212cb3ffbe26932",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/BonusInvKreis.tga",
+   "sha256": "228bd40170c2ef9ab78c5770d0879c20802a8328dcca5e4c0ce5e4537c88b531",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/BonusProtectionKreis.tga",
+   "sha256": "a5a6b195282769533e2984462a31277b3a76e6ca7c0a889f235eb8fca426294f",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/BonusSlowKreis.tga",
+   "sha256": "d479afe4d50fbd5cba4e1bd8bfe117b6d2f39d0ba57eb8c017a31975b16035ac",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/BonusSpeedKreis.tga",
+   "sha256": "df5e82000508d73ff20bf81fba299f0c970825790bc5c4e256078d6f537a2275",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/DIAMOND.TGA",
+   "sha256": "a8a8599bd24292cdc9fe0af70a4c5205c5793d86c826c28441fcfcd0352a3ab5",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/ELEVATOR.TGA",
+   "sha256": "17ac6cb0aef8d30de2b3ee0735965dbb3d9a99b95d177c97b295288a2839077e",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/EXIT.TGA",
+   "sha256": "963e19b2ff9d3c8b8059d1c3b05890d7f5538a05cd894439dd440493e3af905a",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/EXIT2.TGA",
+   "sha256": "d62bdeb04f637ccea38efc64e0023a29f8964abb72b96c12765abf1f224e27da",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/exit_glow1.tga",
+   "sha256": "323aadc4dfca14114f5a8b35b56059b0c890983bfb6acaa265a1b02d11f24ee0",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/exit_glow2.tga",
+   "sha256": "6ce32fd28b2148b1c95fa8feb6388eb3365c0bbebd3ecfdd1dd884bfcf88a2a2",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/exit_glow3.tga",
+   "sha256": "6ce32fd28b2148b1c95fa8feb6388eb3365c0bbebd3ecfdd1dd884bfcf88a2a2",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/GLIBBER.TGA",
+   "sha256": "2215db975445c46728db1eb3c6a71c68787e79534fd2954cc598b14a84460080",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/HELM.TGA",
+   "sha256": "004eb16aa7d48784a5769b1632fa4b882042de61fca542052142c4857336735d",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/HUD_ALL.TGA",
+   "sha256": "9cec00858a38ea070bbd9f8ce8db590dd473afc38bbafdd36ebfb2d95ec0f91a",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/JP_GLOW.TGA",
+   "sha256": "0f4b2e35b6fbfb331b7792f26513a6dd72ad56763b4165b15d7b243fb63b70df",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/JP_TOP.TGA",
+   "sha256": "690b842b00d985dc92308fb797670ab3ec53a38b2d6e509b448f2277d127212b",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/KANTE8.TGA",
+   "sha256": "960ba5b4909f6c4c58204cee3826fc99f85eca56cfc3934f29eda130c26cfc4b",
+   "size": 300,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/KISTE01.TGA",
+   "sha256": "e90803abad3121d57d2df5db3a238a2ab7eb2f254e3c6f5de05ab9396ba8c45a",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/kiste02_64.tga",
+   "sha256": "0a711982ff8c235d8078967819b0ea6318e9aec94a54f46d3a8c7253a166af0f",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/lightrays.tga",
+   "sha256": "a382878658f214974c33c5903739a17eded55c1be9fb0575f85a00440d9fea14",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/MENU.TGA",
+   "sha256": "096cacc448c9acfeadcd1223ec6fd5eac22dd96f24bcf7e743074aeb44deb444",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/Obstacle.tga",
+   "sha256": "e29a35a28deee84b3639fb9e098912b861e89e63238117337efe3006cc871465",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/PLATFORM.TGA",
+   "sha256": "c8f598906722983886a6731a74c23a8077dd27f04f115689f72f1955c25e0d48",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/PLATTE.TGA",
+   "sha256": "3e05514a3e3206673f8bc54051419351065b9ad3bcea52f924435cfd898989fc",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/RADAR.TGA",
+   "sha256": "2ad3b995b7d83caab036aa69a1db0667a90a2c2a82d836fa8cf10549adfca524",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/rahmen_gitter.tga",
+   "sha256": "b725b78739aa932d4467b7d48033d237110872c161564806e659382b27dc7eb1",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/ROBOT01.TGA",
+   "sha256": "1d0558b4b3d84d9ed76b19ce3d13caddb50390d969da7f1c45e951173cb2b14b",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/ROCKET.TGA",
+   "sha256": "8825386e929f35b800b2879c3c05908128cf01fa933e1785311e002131993a5c",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/rutsche64.tga",
+   "sha256": "817d67ca053f1b75580e2cbc70d9c3a914a6e64f26815a782017cb20de57c4ed",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/rutsche_glow64.tga",
+   "sha256": "6318764476d0b825aab527473645485fe8fc28e3943b4f23aab80b344263a3e1",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/SCHALTER.TGA",
+   "sha256": "d903b7e6756e62e9e5fc5a964857029de8345df1c6bf1fbbf1366b5f037a8e55",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/schalter_glow.tga",
+   "sha256": "b74069d217536716b16823b2eaa96b2c0ff86b116d3f0c3d22b44914fe1e2320",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/SKY/sky2_BK.tga",
+   "sha256": "59ed4e247d28998b6bc1e35e47cf4bc7881a4fb575dbf27e6d57080fe5c6f134",
+   "size": 161941,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/SKY/sky2_DN.tga",
+   "sha256": "0ffa33dff62ef27277b9ba6a4e3c2a184a2555437a4396620f5d74f9d0c93b6c",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/SKY/sky2_FR.tga",
+   "sha256": "a497dcd8f1480de73c86190dd0b7915d410b901d821b037c2554c7048ffd65eb",
+   "size": 148962,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/SKY/sky2_LF.tga",
+   "sha256": "f2c55edbf60e7058dc1cc38896ae24efed6926ff574ffabe169247c3a4cc8f89",
+   "size": 155410,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/SKY/sky2_RT.tga",
+   "sha256": "9beda8bd126a5f6817b6b0eb7090247ad01618720e660f53f225ff3db469844b",
+   "size": 164065,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/SKY/sky2_UP.tga",
+   "sha256": "c6e491fc8db28e2302d149f5fd7081e15b8eb449baad9abd63d7eb7993616c0c",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/space_bridge.tga",
+   "sha256": "f037e098511e9697b8c7433845faa62db47aaf3f106da144ad663c3140c7e91a",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/space_energie.tga",
+   "sha256": "78b211fd1cb27e2728a34570782c1b11a808dbfc9eeeede1611b8f642f732a12",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/space_environment.tga",
+   "sha256": "523e25cb2172d79c96cc9c60de9d482364efd9b3e0d059100873dbaa5d3851d0",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/space_gitter.tga",
+   "sha256": "6b144f5163a56e305c10f56331cc1c3aef71123ca0b747cf0e216e9da3e06f1b",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/space_ice.tga",
+   "sha256": "3df279c911c43692302460f5f29be4459fba5c0ce11fdd7d122c5e4a6a853866",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/space_ice_gl1.tga",
+   "sha256": "f25d1262c8646e139a968f57d6df26dae57017d5d8aabd7467d0839bf35ba650",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/space_ice_gl2.tga",
+   "sha256": "ae9d05825b37989111de3fd8e1e5434dfafc4561578cac98730a9a5c2591791d",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/space_platte.tga",
+   "sha256": "a77dd6046ce6e0e225d8db4e55348d8c965cbb343fac622d04a94d327cef9b61",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/space_side.tga",
+   "sha256": "62a7623d33e2dd1508af55d5a8d631d1716a8c1cc4bd6ab18837fb0adaed30df",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/teleporter_in.tga",
+   "sha256": "768f944294aba585042f13c5d2e7ab1e473b8f63e133f360aac2ec932052f679",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/teleporter_out.tga",
+   "sha256": "beb7e290d4f1463d2a21e698c918defb8a2b1fd8e4025e555915004fd45daf9e",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/THROWER.TGA",
+   "sha256": "817a4e7fb1cb39c4c0c2512f7748a7ad0f63906d24892fb4ee0c49337dba6f5f",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/TR01.TGA",
+   "sha256": "0fcc2bb47196157fbfc13ee6eabce8bf2ef7af42cfe412b2a4da558bcd009e6b",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/SPACE/VISIR.TGA",
+   "sha256": "ca4f736bf5998b569d05c95cf8b2a0d666840c915fa81ad48a0fd8fd892871f4",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Star3_32.tga",
+   "sha256": "76f09bf93fe8d913e04597791dc5db3b71a5b41426986beafb8b5096ac5783fb",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Star6_16.tga",
+   "sha256": "fe26de1301012e9b1f31e7ae740a5de47309127d3144644b6e0486c6610e61c6",
+   "size": 812,
+   "class": "required"
+  },
+  {
+   "path": "textures/STAR6_32.TGA",
+   "sha256": "bf926334669790186a3d6078afe680a26ab2d105e05d277b2a56e43039186356",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Star8_32.tga",
+   "sha256": "68c0f2e5e2484e12fc63f04b98f9e4f165ee7ac37150cc5de0f74b5cd1230d90",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/TUCH.TGA",
+   "sha256": "e3d46b1ce0ac50c3b6855b6594b2000e5567c1f59d592336ff57727587ed1528",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/BLUB16.TGA",
+   "sha256": "2842c0d1438b8c5d250918aab5b582c33e3ff6453a218dc1db07157b0115c33c",
+   "size": 812,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/BLUB16A.TGA",
+   "sha256": "6e6aaf3c909186fd492eaefd3ede3f8394cd6c638bdcdc6c22a0384d5e9f0029",
+   "size": 1068,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/Blub2_16.tga",
+   "sha256": "4642af90d4dd2fba4865f9f444320f7e2297db5723be6d797823941db65dc622",
+   "size": 812,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/BLUB32.TGA",
+   "sha256": "3226bf7a496e3aeda0dcfb742dad0aa4b46c00174808f2fe7347efada70b158f",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/bonusFreezeIcon.tga",
+   "sha256": "91f474191e01afbd66e320edbb5d8b215ff026c7379e1e92fb445fdcc07dc336",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/bonusInvIcon.tga",
+   "sha256": "4bdfd09f534a3a7e0c167044746a29389eff06703efbb7d675841eff051494f6",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/bonusProtectionIcon.tga",
+   "sha256": "40c4b0e66c87525ca42f0bacae468f758abcf480a1858db21fcf7c3fa087a724",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/bonusSlowIcon.tga",
+   "sha256": "fa1d4b5aa854faaa33ed7403bec24af3b671360a76697edc44c7b192cab279ee",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/bonusSpeedIcon.tga",
+   "sha256": "18384199cdf66ab66e67277547e16f10f3068a7e9851d7616bfd20c923b700b3",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/EIS64.TGA",
+   "sha256": "4120930604c53af15cfaacb23675b05fe03a86ac1eaa80692b0f68a81cb3a459",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/ENERGY32.TGA",
+   "sha256": "5786014d6e65e037c7db79821a7e28aa725287918bf7bc29b01978f6ea07f86d",
+   "size": 4140,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/ENV/underwater_BK.tga",
+   "sha256": "db42818ee34e6c0ef237c72245792b3011b8f749c4dfd98a44866d9beb6e4526",
+   "size": 189697,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/ENV/underwater_DN.tga",
+   "sha256": "51cce8150489c43cbb847a3f08ac403d46b4d22b1fbff84eae91594bdc2d64e0",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/ENV/underwater_FR.tga",
+   "sha256": "13cc942104b4b66ad8b0fa28d15b62fc8a53b68806fa987c2e772f752546d7af",
+   "size": 193120,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/ENV/underwater_LF.tga",
+   "sha256": "c419bd8c42a8d1e2027f7ad8c1ac20ead0d25da63f048454678dde692ae2fad4",
+   "size": 192250,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/ENV/underwater_RT.tga",
+   "sha256": "ba8a07846ccf8638da09b63fcc5e403b709a424193552b571b6cea5db99b018c",
+   "size": 189250,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/ENV/underwater_UP.tga",
+   "sha256": "f738faebff919468fb5b656d47dac05c5966343a4c7680193e8502547333ed5c",
+   "size": 196652,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/EXIT64.TGA",
+   "sha256": "ec5795dcf6830f7c49ed07db74c2abe3ea372f37638dc633ae3fcca6ba5dc774",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/exit_glowin64.tga",
+   "sha256": "c57417f6274f3c8a4fa980d3028f5c6565cddb2317683b663bd59ef7619da614",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/exit_glowout64.tga",
+   "sha256": "6f4b19719ab3298a8e76fa87f1192d29664a7aeec0308d42f0b89ec848e02690",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/fische01_128.tga",
+   "sha256": "998c51afdcb6a2113340ed3e4d79eab1fdf0b2bfb33f5e718d94c26b5af0c4b0",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/herzmuschel64.tga",
+   "sha256": "81f9d9ecee220e5b6b756a32804a95ffb519c13466ab6b938927c9167477e665",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/hud_all_water.tga",
+   "sha256": "9f6248b9a1f6456914bcd7ed795b8fcac7e8da964b6a1251efc5ed8461b0a19e",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/kammmuschel128.tga",
+   "sha256": "efd56abf9d391b1b6f80ff9aa0bd75fb455b0b29879bf108cfe4f1199d83cd02",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/KRAKE128.TGA",
+   "sha256": "e8a6641c1276309f4fcf65d1dde7f3e70827a5773344108be07f2fde74b9c416",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/menu_water.tga",
+   "sha256": "9981fca06bb23869975a680a5a21b825ab588c66cf672b94f6a046f3ab0750c8",
+   "size": 262188,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/PERLE32.TGA",
+   "sha256": "582be555d836c77c0f71425461834561e881939135447b0ab64211a97b269865",
+   "size": 3116,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/PLATTE64.TGA",
+   "sha256": "b4ffbfbf7d0dcb225fd276029ad58d7aabffcfe90ba60666d8582a237bd2e953",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/qualle128.tga",
+   "sha256": "bd8eb965c7c4b2eacb7f7c8639a483f880ea023dd3963124f8a74ebcbdcec7a9",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/radar_water.tga",
+   "sha256": "fe3c093a9c34490fb49f36dbd9d1ebf3c9c93961ed81b3256504a0f31908266f",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/RAHMEN64.TGA",
+   "sha256": "7a14991fea9bbffea53e4267fcf839213e52ab1a7d1a8cff3bcb850e92098af6",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/rochen128.tga",
+   "sha256": "41408972f6bc1953688ee08cf3b4258bace7ede1433c07b105cdd79fe80f4f6a",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/SIDE64.TGA",
+   "sha256": "1106c1bdedef2b74f67994d6c3fef8d152fcb21603b823d7e2a2d32fd9f69109",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/submarine.tga",
+   "sha256": "964a41558de69765007b11ae0ba8ba3f52dde9ef88b2b33e5d9519e9844c84d2",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/taucherhelm128.tga",
+   "sha256": "d8c5b5dda89a182a12941cd65f3dec38ba2e3c3129af8e86e90d88b5851e9d1c",
+   "size": 49196,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/teleporter64.tga",
+   "sha256": "dd376fd9bc4582b5ae7037f84297429c02cb1d748e4f19b9e540c0a73a3cabd8",
+   "size": 12332,
+   "class": "required"
+  },
+  {
+   "path": "textures/Water/venusmuschel64.tga",
+   "sha256": "4915857677f0d420afc896437da136141681a547dd523ac38cfd796f9aae9b43",
+   "size": 16428,
+   "class": "required"
+  },
+  {
+   "path": "textures/ZEIGER.TGA",
+   "sha256": "59ea608aeb585c31fc6ad8a7de391a9527c976e38be3ec1fb3910768d3f9a762",
+   "size": 65580,
+   "class": "required"
+  },
+  {
+   "path": "themes/Candy.thm",
+   "sha256": "cda8c5667879561540a2554899881cdd70eb86d51af93b614530774c038d4b85",
+   "size": 19461,
+   "class": "required"
+  },
+  {
+   "path": "themes/Castle.thm",
+   "sha256": "2ed33f29e55fe6592627deb59247f0521033e5aacc523c57bdfb3bba234a6b9e",
+   "size": 17918,
+   "class": "required"
+  },
+  {
+   "path": "themes/Egypt.thm",
+   "sha256": "60df1d1104d3feba08b44d998a158e8467b685ce16ab31c6bf3062b8e66f98ef",
+   "size": 17150,
+   "class": "required"
+  },
+  {
+   "path": "themes/FINAL.THM",
+   "sha256": "555695b30852d2879e57a3b89977c80c4056a89b2271ab932df9e86fd99132f6",
+   "size": 10922,
+   "class": "required"
+  },
+  {
+   "path": "themes/Forest.thm",
+   "sha256": "14fd45fde06de349a3665e66caf19d2eb59f64f3d1ee9a0b0e7cdd82b38e4279",
+   "size": 14161,
+   "class": "required"
+  },
+  {
+   "path": "themes/Space.thm",
+   "sha256": "daf5e5d79363ca809aa751c87a97994a126da5adb2efcb8bbd09bd71acfb58fb",
+   "size": 20621,
+   "class": "required"
+  },
+  {
+   "path": "themes/Water.thm",
+   "sha256": "18ad495a8d751217e54d3e08620b8a518c6eaf101537c73dd026acd0b40e9412",
+   "size": 16784,
+   "class": "required"
+  },
+  {
+   "path": "video/INTRO.AVI",
+   "sha256": "f7535f8859c3548a17b029e8aa288ba27830dc750be94774a7894d7942a18d5f",
+   "size": 17199860,
+   "class": "optional"
+  },
+  {
+   "path": "waves/ADD01A.WAV",
+   "sha256": "07fd5a74b75870f8aee621b5bb1aeaa2031deb3cfbf8bf77a3d424fe4904a2c7",
+   "size": 76332,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD01B.WAV",
+   "sha256": "131a51ec0f286be4b18d9c09a123ef969a91e995bf273e0ec175e718060598ff",
+   "size": 95724,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD01C.WAV",
+   "sha256": "52c4acb3fab2fb9837cd67596827c29dd5d33d06f8465054a5c9ebc0d4a8ff4a",
+   "size": 115788,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD02A.WAV",
+   "sha256": "2571ae7493843bccf5f52464edd5842157a967c48e248289e375ef907d4ba05a",
+   "size": 92204,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD02B.WAV",
+   "sha256": "4d5e2462aaef20d9fe1a56aefc4b863e9b2f90d480b7337e504e85a73e98e713",
+   "size": 131628,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD02C.WAV",
+   "sha256": "5c4ded7d9241b1ac5314f7c9d8ee0b57c41d66f3627cb1eabfe246de2857a47e",
+   "size": 155180,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD03A.WAV",
+   "sha256": "158f029c186deb2bc783e9d46bdd6ecd8e62033872be6c76cac15a863f581d9d",
+   "size": 118060,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD03B.WAV",
+   "sha256": "94c68f3bf0e4a7ad3f8cd16458053abcbb255971c56a3b9405cc2d5496cfcdb1",
+   "size": 148012,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD03C.WAV",
+   "sha256": "90f18c4e11edad26f3c84a5526532e663deadcd293d807962a1b1082646a58b8",
+   "size": 152692,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD04A.WAV",
+   "sha256": "c248335af77e03004eb02e14cb5951eb8af5c71986c6445aabe967479d4cbca9",
+   "size": 75532,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD04B.WAV",
+   "sha256": "b64176eb947b7aad82f86693e0d83c2e8f5e060c88d06bb2feb5fc0bc0a115ba",
+   "size": 82444,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD04C.WAV",
+   "sha256": "6a739f687bb1b9116dd1fe339a49c7c55f2f59bf963470681c45d627b3498831",
+   "size": 103980,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD05A.WAV",
+   "sha256": "4eb2e3895f2d70420c88cc1275a18f114e5e16fb9f2825e0e1b27ea714174ccc",
+   "size": 44588,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD05B.WAV",
+   "sha256": "0b2b2b351f484b905a1a52dd3ec5867b9f1ea4d25714d8f1b1102393afa18547",
+   "size": 58412,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD05C.WAV",
+   "sha256": "7ef5facd6038a2eb12b294beeb9c16828b92a40d6654224083fb8a7e8126acfe",
+   "size": 52780,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD06A.WAV",
+   "sha256": "8ff8fff9025cc495e269dff844463d65d0ba073de7a27b56b9582048b1803867",
+   "size": 93612,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD06B.WAV",
+   "sha256": "8dec7f71ec01082ec8f2fd55fe880d5067958bc0990101d19d12819ad44b7a72",
+   "size": 135692,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD06C.WAV",
+   "sha256": "5a21c05c0f019893385989c392ab00bfdde3379f4c1f63d1e81bc7f0eb413c8a",
+   "size": 138972,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD07A.WAV",
+   "sha256": "d2d3ede80e94ff1beaf72a2b4f64d078f4d145fba3565ecf2631268f2a54228e",
+   "size": 97020,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD07B.WAV",
+   "sha256": "7a58e9c0d408fe6895d8ffea1f80c13ef73ee97a4b248b0a3911c09a0de977f8",
+   "size": 118636,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD07C.WAV",
+   "sha256": "f34670be09702681b9634577531be6576fc458949c14ae08b079e37fcfbadb94",
+   "size": 153132,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD08A.WAV",
+   "sha256": "3ccbd96e6f1eae6b49bc586968e990373d914435ea6ecaf367200363f2613277",
+   "size": 126316,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD08B.WAV",
+   "sha256": "29b4bd3857dfb0575b07e87ebca296f77f35cc53db490715d731e85c80d9b4f2",
+   "size": 143140,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD08C.WAV",
+   "sha256": "c0c9e46c69259e307be6f96fb9579cdf295e86d8300c55dda63364998490ac14",
+   "size": 109158,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD09A.WAV",
+   "sha256": "2d14fe1adccf4185029c35cfebb1658731256ae13171aca352a3b2698560ae3d",
+   "size": 128364,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD09B.WAV",
+   "sha256": "a95b440ee11b7978de1be3290ae90d4ce8c150cf74bec05630640e9b8f519a93",
+   "size": 154668,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD09C.WAV",
+   "sha256": "bfec79a031941cb4eb73878f4f041e9cab976b0d88a44c444409df1b3979717c",
+   "size": 148844,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD10A.WAV",
+   "sha256": "aa5a62adbec29d46533bd9a1a23804717bf74b73628fcd9a9bc47f1d4ba634af",
+   "size": 134444,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD10B.WAV",
+   "sha256": "3a1456db8f1ca852295fe07144b243f1b274c87244a4535f4a1702d70f6633ed",
+   "size": 140844,
+   "class": "required"
+  },
+  {
+   "path": "waves/ADD10C.WAV",
+   "sha256": "96cb4f8cbc9550883f3d46551161f21fc7dd5e11c551fb19f91381c1231e99ca",
+   "size": 203820,
+   "class": "required"
+  },
+  {
+   "path": "waves/BombExplosion.wav",
+   "sha256": "c2332d967dffb01e1b2202914177bcd3bf4e2b971247d3038c7ca9e0e33b47ed",
+   "size": 45890,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Destruct.wav",
+   "sha256": "db0d5ccb61a1a3ba9f1aa979746e1e1456cbc09e8b271965065216eda85005e8",
+   "size": 48160,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Donut.wav",
+   "sha256": "b2fe05a056e7300d10cbea9732bfbf030844994187fdaf45c5b1d3cfcc62da3b",
+   "size": 15218,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/DonutFall.wav",
+   "sha256": "52bb3391409417357ca4bcde6e18edc9018fa914764bd2eb5d5d6f66338a9adb",
+   "size": 38248,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Gummibear.wav",
+   "sha256": "93d396675c67e83d761f165217ba3c94093b2d67ab1782c1e17b2f0ea51851d8",
+   "size": 13532,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/JumpPad.wav",
+   "sha256": "43cf4be220b3485129e23808786873a01988d14e3b3594c00d1e08b439e775b9",
+   "size": 35248,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Ohoh.wav",
+   "sha256": "dedc85b0cbac5d3e64f87365eb4183c96cf4fd93ccd3e4533e3d77f765808fc7",
+   "size": 36518,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Regen.wav",
+   "sha256": "3928bef880de752f93f1972e92e147c36b42091e5d199c231bf458af3dc8853c",
+   "size": 48160,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/67_01.WAV",
+   "sha256": "6d60765986915df3de44f894218fdd02f5491f6baa18c53111d2456ba703d751",
+   "size": 531692,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/67_02.WAV",
+   "sha256": "206fd82998dc3d18ef36a4ec19b2468da3f122fb866462583a518a246da78801",
+   "size": 281150,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/70_01.WAV",
+   "sha256": "98f064f1f85bbfc49c85270de82ad9de4f9a5d074ebc6ddd32c7705e48330235",
+   "size": 252332,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/70_02.WAV",
+   "sha256": "28da35460ef317ab0bc6e4e59803615789102c1208c8fd86295fef7be4a93336",
+   "size": 274498,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/70_03.WAV",
+   "sha256": "d9dfef937955576368424c5fd94a2fd007bb084f70c9c1122ae456bd308ce437",
+   "size": 415084,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/70_04.WAV",
+   "sha256": "8b71630096ae876fb611b8bfc225a363492673f3cdc2b4ec133a2805d6ebb4ce",
+   "size": 624292,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/72_01.WAV",
+   "sha256": "041ddff29567a64fbb3b01a6976e506a7b00ce5e1d6fbfff8ed9022c15977983",
+   "size": 175724,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/72_02.WAV",
+   "sha256": "a5ba8ee120cd47f27653f3b6c6988957f6a33bbc672a752e9ad564be36e63362",
+   "size": 207140,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/72_03.WAV",
+   "sha256": "0195bb2b1c5d16aca4c81f61b04708ac3689f533ef835bcaf6039b30fbd4613e",
+   "size": 396204,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/74_01.WAV",
+   "sha256": "078b8c9eb7280e8fdaa8f92154e13dbe5bb886aa9f58b6bb5014944c03aa5bc8",
+   "size": 273068,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/74_02.WAV",
+   "sha256": "04c0edb4bb97dd4af373f01a9a57f65947065eae744cf2b443090a77656de5ff",
+   "size": 295724,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/77_01.WAV",
+   "sha256": "eaad6d12cf5a9559fe33de5f5e96e6ee64df910008e972179a3617dcda2fec0b",
+   "size": 303628,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/77_02.WAV",
+   "sha256": "ea881bfc86920ef7be4d2a9d093be166ff0a2ff9e4c3581e9b85e4c8b7aeb5e6",
+   "size": 238788,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/77_03.WAV",
+   "sha256": "0d23e38b7e707de10373e75cb320d0c0ff862b39d423d6b909953a66e610a49a",
+   "size": 403612,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/80_01.WAV",
+   "sha256": "7f09fe5dc4bb0c0b6b57ca9e96c89096a126b3ea03192dce5f38eb447e8eac8b",
+   "size": 415980,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/80_02.WAV",
+   "sha256": "c52de70ebfa9784c1b5555f7f5c0940eefd25b68b9823b32cf73033bf57b3308",
+   "size": 309964,
+   "class": "required"
+  },
+  {
+   "path": "waves/Candy/Voice/80_03.WAV",
+   "sha256": "078b6f96d3128a35afdeaa5912e7693d7c506e0c3c8b9ac54c3b55b7612711b5",
+   "size": 388076,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Destruct.wav",
+   "sha256": "8bbf38009c93b2bfde025ba0f88b87df850a416ea703d2cf93e6db0cf96429da",
+   "size": 34134,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Door.wav",
+   "sha256": "2c9b57b7facfcdb3be0822873e9e12e10298f302ec2d45151c6413b0425dfa3a",
+   "size": 613884,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/geistfall.wav",
+   "sha256": "aeabc6efb96bf96e54033a797926b631871f79123e5337a2c78e61c631bbb1a9",
+   "size": 108848,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Grusel01.wav",
+   "sha256": "2f18a90da098eb2b19c8e731895a88d50ca3a00ab673e9f9eecfe8583d9602e9",
+   "size": 292606,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/GruselLach.wav",
+   "sha256": "5a2d70f40ffd92a492c2b7d688f35920fe78666fe393476bd64e2d620267df1b",
+   "size": 487604,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Kanone.WAV",
+   "sha256": "d8143dcd60ca03dd286c887dd8ff1decb1fc753240d968c5621ff1cd5e295928",
+   "size": 67736,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Kanonenfall.wav",
+   "sha256": "478d96e8d02e38bb8cb398ef8045da2c77bcde5ba59cbbc3698a2b378424d91a",
+   "size": 37884,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Regen.wav",
+   "sha256": "c8d666c70fd9508250dcddc2e95e59723041ec144aad617c6bb8842a1766b86d",
+   "size": 34134,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Spinnennetz.WAV",
+   "sha256": "6cca6727e87f7bf5c58fc624317da16ebd82a4932ae0decae1ffa556f7b5d4f7",
+   "size": 75824,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Springbrunnen.WAV",
+   "sha256": "3ee74e370b8b5a839318783a663c123b98983591eebc5c04c8313b1b0399b41d",
+   "size": 65712,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/12_01.WAV",
+   "sha256": "e24fdb95de1ab8c3c3ab4b9f68941371aa82db4c16599fe9e0d09790749c3c04",
+   "size": 677164,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/12_02.WAV",
+   "sha256": "68aea90dc72bad47ad734a14bc719a90e2414423aeb803b605a5280f966116cc",
+   "size": 1089814,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/13_01.WAV",
+   "sha256": "f319023a5726b17998e4f68a263973da9643d5b232786dc867554c38d06ecc2a",
+   "size": 651564,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/14_01.WAV",
+   "sha256": "1b8813e6fb1d33092ab40d420f3ac11784dbb9a1e84448b526377cdee66de46c",
+   "size": 508870,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/15_01.WAV",
+   "sha256": "801051022aba730da6323c762d4ca438be322564f5e2ed03a87e93e74d9aec2e",
+   "size": 249704,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/15_02.WAV",
+   "sha256": "bc4c247d3f3a91c2d280bcefc374be511be53ad12de4da55a0ec01750d43be0c",
+   "size": 548140,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/16_01.WAV",
+   "sha256": "b188deb9d917b20691d3689fa28ac70eb15d21ca232905eb3c5e930232bb77b7",
+   "size": 370540,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/16_02.WAV",
+   "sha256": "1313626925e0e14fd1e20772578d59cb7e695a5666668f138dabbfeb57b46772",
+   "size": 457620,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/16_03.WAV",
+   "sha256": "171b6fd1cb6f4a9f799ca4abaf683f5801095d276a0242ed1bf7b9dfc39376f3",
+   "size": 373004,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/19_01.WAV",
+   "sha256": "a0d0966b77d607199f6b1fce8965c18ee5147b8e4323c84e3f5218bfe6487e58",
+   "size": 298156,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/19_02.WAV",
+   "sha256": "4adde747d6f89634279a383b57cbd8d3edb2baf8a17e38f1a17e2a9d66c0ac91",
+   "size": 236332,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/19_03.WAV",
+   "sha256": "572693c0c5150891a73daa969ac822538b76259690aac1bd318d0d4010c99a58",
+   "size": 386860,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/21_01.WAV",
+   "sha256": "a3e62b4f116afd670b398c39e26a614a539e8076b65b2cf57272a6edcdeb0175",
+   "size": 353700,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/21_02.WAV",
+   "sha256": "02cee65f75df2ea6cd28d615aa0019aa5d7d8075e2d72ffe0c195d2e6e36e63e",
+   "size": 592172,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/22_01.WAV",
+   "sha256": "ccba0a8a92384a6615485598cd40ff03d2a85008642f9ff43c1bd92622a07232",
+   "size": 299052,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/22_02.WAV",
+   "sha256": "848f61ae01212ad9e9bcd6d663e9b7ee49718051a12b83d5936c228e6404a511",
+   "size": 293804,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/22_03.WAV",
+   "sha256": "5e628e98667c12ee6de972b196f8da8479da45160eb5b39d0859c5d0127a639f",
+   "size": 369196,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/22_04.WAV",
+   "sha256": "ae480037de2dfdb2621655d41533ee6547d7e56ac17ea31a0445b4a8035ec398",
+   "size": 236844,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/23_01.WAV",
+   "sha256": "fd13aafffcc5b182f952abbfeb602b6d6ca3488c6c12075d75baff74e380ab86",
+   "size": 421228,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/23_02.WAV",
+   "sha256": "128f6b9ca96e36a166a81651585e096199f3849280a2bd7748864237a22bb850",
+   "size": 357836,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/23_03.WAV",
+   "sha256": "4a67e01bda13dba115bf43d45515c28f0be7ce1997d9789eecae3a5bb3767bf7",
+   "size": 531692,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/23_04.WAV",
+   "sha256": "52965093ea22650e5a8d9e3cf3a11e689770cf085e1663daf74d5537238883f3",
+   "size": 500972,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Voice/23_05.WAV",
+   "sha256": "695c3304e4556cfe9110b0321d50e2326470085302849d7dc997ff230f521647",
+   "size": 561676,
+   "class": "required"
+  },
+  {
+   "path": "waves/Castle/Wind.wav",
+   "sha256": "13f3e099b068aecb0f74bfe1cd638199330f061f294d41cbaf6b19875ed82555",
+   "size": 244736,
+   "class": "required"
+  },
+  {
+   "path": "waves/Count.wav",
+   "sha256": "e24d53aa328c867d9e6c6d9facaed6fcfc88604cac110a90facae484e0786571",
+   "size": 5754,
+   "class": "required"
+  },
+  {
+   "path": "waves/Crystal.wav",
+   "sha256": "26e776fb0c310ee9e2100b145b89f5788bb18d8f6cd5d5ab68c6e7961b70b046",
+   "size": 37552,
+   "class": "required"
+  },
+  {
+   "path": "waves/DestructRegenerate.wav",
+   "sha256": "124ea4ae936902e3e80e7ecb0e3bec0aef7bce47578f005b0bb5b152a3f2866f",
+   "size": 36056,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/BombTick.wav",
+   "sha256": "9a65551bc36de64a583bf75dd5fdecea99078f0e77ed1f5089a4fdc485a6c70b",
+   "size": 59840,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Destruct.wav",
+   "sha256": "49fe6bc0a4e861515b8901d3edd5743ae667eab9e9ca92cba2779f4cc4267606",
+   "size": 25060,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Flug.wav",
+   "sha256": "693bff84e8c49065e31730c135b7ddfe9c74d018628661673fd73ac553fa2930",
+   "size": 31528,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Mumie.wav",
+   "sha256": "b25c0e6fe1e5bce5f3abd3ea9979738eaf9c43188d879ca3f030d7586a59d08b",
+   "size": 26198,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/MumieFall.wav",
+   "sha256": "f77b100238f21bb25a6915d6c69b22cb1b2be93bc50b9806c135915bb125e9c0",
+   "size": 84676,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/ParaglideStart.wav",
+   "sha256": "14ac077e772acf334885b3b3e60fdab3ecd2408caa813d349f082cfb9ee7b79c",
+   "size": 8966,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Regen.wav",
+   "sha256": "5b68959347b5ae094a21517c96105e69be088110bb1b5e7fd115c4702fc9a1cf",
+   "size": 25060,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/STATUE.WAV",
+   "sha256": "6dac7a581bc322cc21239d4c1adcc5767355c785f09927c19c0016f50104a777",
+   "size": 532306,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/38_01.WAV",
+   "sha256": "4494f93500f3b72f2f13cea1a21b42fec055cd539f00bbcb9519cb34e010a27e",
+   "size": 588136,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/38_02.WAV",
+   "sha256": "cc6e9ce2cbeb3280878dfa825abc5311746468eb7451faabd60bcd8c9c79c9ed",
+   "size": 377388,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/38_03.WAV",
+   "sha256": "b2695a240b769d8fce9c71a661c5a7d085be61472dfb7d7aaf3dc706b5729722",
+   "size": 727714,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/41_01.WAV",
+   "sha256": "fe5544a4321e0c30ca7def7f1a033f0e25476a1085f97d43886097fcdea1a756",
+   "size": 341836,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/41_02.WAV",
+   "sha256": "1948f24719cadcc4112b10163ee173531db6ea15b3d4bf238ed1ad86c8fe92fc",
+   "size": 238586,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/41_03.WAV",
+   "sha256": "5c06ff094a67e9a5b59a0eb850d0ed85b9bcaff25e17c6107b45cfd5e6605695",
+   "size": 627948,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/41_04.WAV",
+   "sha256": "e0278eefc5634b13c4ffb56f3b7c322c5b41ba623d6f00639a194b45280255e2",
+   "size": 350764,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/42_01.WAV",
+   "sha256": "e4afb127dec0a8e9266d16937026fa24d9bb57e86028c6fa811286095b816612",
+   "size": 517164,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/43_01.WAV",
+   "sha256": "7362cb991e51ef52ca63c48ee870c7900e4571720ba4bb1c5eef48da572b193c",
+   "size": 459308,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/43_02.WAV",
+   "sha256": "d7099ebbc2caaa624b87cfebcc15cdb60f3c2ab03be24fbf0d217b8171b1e534",
+   "size": 194828,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/44_01.WAV",
+   "sha256": "d562b4f580601209c11d604de02ed4f3ea1d40a4a6a13faf46c18c474b286823",
+   "size": 839340,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/45_01.WAV",
+   "sha256": "c997794c3fc07fba79db9876d6794a6ba63ea1724e7b72ee6ffc3d3eb1b848b1",
+   "size": 355436,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/45_02.WAV",
+   "sha256": "d656b79dcfaf95ecb8302a86f008d0dce5d1f6e4094363714de165da1bd19421",
+   "size": 199148,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/45_03.WAV",
+   "sha256": "7a5f2630daa00b609b55a84a2202e68993d31689dbfc4355a452836c1ebf538c",
+   "size": 435548,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/45_04.WAV",
+   "sha256": "a65cc4868456304af0fd8cb2830a6fcd060e016002ef57fbc905699f546ba72e",
+   "size": 240188,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/47_01.WAV",
+   "sha256": "2706afd96df0a749c67f34a08dc8c56c0e830574de5f07206c335542a5fd5dfd",
+   "size": 379948,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/47_02.WAV",
+   "sha256": "d49267f23a66f67ce24bb4230da73fdc7bb4ce4f058025327b3776649bcdf4b7",
+   "size": 481330,
+   "class": "required"
+  },
+  {
+   "path": "waves/Egypt/Voice/48_01.WAV",
+   "sha256": "d4880bfe4fe17ba0387721ad4bec519235af3abfa62e54bf12a92d06e5602557",
+   "size": 309292,
+   "class": "required"
+  },
+  {
+   "path": "waves/Elevator.wav",
+   "sha256": "5c9b084b7a95c13ce1f28def1157e6f7cc5087ad198e9a9b272833ae0ac5c574",
+   "size": 15400,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Bienen.wav",
+   "sha256": "a07270eaf10e20601504f92cfa7b19556d3fe1f9486ccc9cbb41b7a4357eebd8",
+   "size": 585224,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Destruct.wav",
+   "sha256": "5584ff9902ba804a6d7835a1a9e573b4641b21548f74ab4c92d3bc92c9cff6b3",
+   "size": 25680,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/FrogJump.wav",
+   "sha256": "acd85581ab880f845ef00a3dc97df42f9987385352237cd19c2900b5f3a6914a",
+   "size": 13282,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/FroschQuak.WAV",
+   "sha256": "355829120e52347116fcd9c64a3ed7194ddcf5c1a4dd54707850296db98a61d4",
+   "size": 21276,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Kleb.wav",
+   "sha256": "35765e0aa1d2857e1cbc1b3d5a1ceedc6d157cf15f2b08c527c8dd7729cc869b",
+   "size": 30148,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Kukuk.wav",
+   "sha256": "619930ecc8b1859482caea59a22fa368f85bfeb84f206c2ca731f60582499b0c",
+   "size": 490828,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Regen.wav",
+   "sha256": "fc1580d7a790ee03427e6094a23835cc6b797024ee3a7fe22e1e19ea1bb1b0e8",
+   "size": 25680,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Vogel01.wav",
+   "sha256": "e57bc661278e25eea2ace17af03e597a2f4db28538cf18c46b190c7ea087441a",
+   "size": 679234,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Vogel02.wav",
+   "sha256": "38aee450fecdc6a89be328dd67cf1185a0cdc57454d1cb28904e170a339a9ad7",
+   "size": 322912,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/01_01.WAV",
+   "sha256": "0905f0381bc60e68e046d1c7e3008a37b2e71b069043f143aa3ef4a78c6bef60",
+   "size": 196786,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/01_02.WAV",
+   "sha256": "e270c01a44219141e65428c7e81d79a72e4c1a3726e35f7e4df407c63ea638cf",
+   "size": 564506,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/01_03.WAV",
+   "sha256": "4853d6b138bb249e3dc65bc64823edd60b5b9169c18a7d115932aad0e2842c4b",
+   "size": 531214,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/01_04.WAV",
+   "sha256": "c112f7e6657d1438ae32da2154b34a680158384f44ab14d26bd134d14e1150a2",
+   "size": 559564,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/01_05.WAV",
+   "sha256": "62569fe3a1631d8010bf11e319774340d7eaa92141c1351f5973a7e11cf40c53",
+   "size": 209102,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/02_01.WAV",
+   "sha256": "0b8c158fc0e6498134466dcb60906ee3120c9e93568582ed54eb6c1ee7533c1e",
+   "size": 410668,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/02_02.WAV",
+   "sha256": "68ccb9fa1fc9fe35b835ae74556c9932128ea590dc5418b676f886b00d502bfc",
+   "size": 253278,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/03_01.WAV",
+   "sha256": "51c42bec54e48896d083c378eb5865d1feb92335da7ea82553c3de29bddf5fca",
+   "size": 628514,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/04_01.WAV",
+   "sha256": "07c5e0a16543812ae48d491d7f6b0e777c43cc575b2fe3aec6ebe2a64e30d88b",
+   "size": 214316,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/04_02.WAV",
+   "sha256": "acdd6af50d233668b9a5c6d83aa0ac3ec744ee185ec390b9abb39d13ecf82af6",
+   "size": 221860,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/04_03.WAV",
+   "sha256": "c217cfe0abb8f0c3bb0c1ea1ad7770491d85735ad94c091f9c1bc22a1f4707de",
+   "size": 329852,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/04_04.WAV",
+   "sha256": "7a49b21e2e05e0cf4d04dcee65701526fb474802ed7b83d8ad7c90e1824729a4",
+   "size": 329644,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/04_05.WAV",
+   "sha256": "72429c89d15abd62e4dd54909485aec20991adf096293f6d48629f3b568490d0",
+   "size": 632532,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/05_01.WAV",
+   "sha256": "649f5128e796bf966b686cb981ac62e72bd8d1262d67cfcecc5e018fe040f2b2",
+   "size": 855246,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/06_01.WAV",
+   "sha256": "59caa663539a4dcc5499616f5fd6a7208d91d83481bb1407d8a4d5829312c65d",
+   "size": 321340,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/06_02.WAV",
+   "sha256": "34f12f6867568f97972c002e03e3c65fb85bee0f20ea855fbacae0706fe82d4a",
+   "size": 293548,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/08_01.WAV",
+   "sha256": "a7922504ea876c64f019ff9e5b2aef0a3a96323660626bb766a311adfee4e6ac",
+   "size": 499120,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/08_02.WAV",
+   "sha256": "bcad005636575aa50bd64bcedc27a97ad3b97e6fee29895248ae83f4320d5700",
+   "size": 633810,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/09_01.WAV",
+   "sha256": "787487a366f4750f76df0a09f4aa30341e91000124f68e9a0c318bd35de47da5",
+   "size": 261960,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/09_02.WAV",
+   "sha256": "ee0af3037741ec17e8d45a1b4dd332ff80dc4fe24b746e52227bdcbca3f735b0",
+   "size": 285312,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/09_03.WAV",
+   "sha256": "fe7fb7471cb55cbb736725c760e9190f9e59f860abb187e028d352915982b45a",
+   "size": 802250,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/10_01.WAV",
+   "sha256": "5beb43c2f248b8b5e9ea82caf05e0c64a65103d80832f02c3aac1accc1e94453",
+   "size": 278518,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/10_02.WAV",
+   "sha256": "776b3cbd2e99feb6254ee131e906c04beffe1e3ce59320c0bc97d69be912860f",
+   "size": 236098,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/10_03.WAV",
+   "sha256": "630d71b26aa6d90fa0d5728e1dc546ea2dc13f14abdf484b703eea7be1ccbb95",
+   "size": 495690,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/10_04.WAV",
+   "sha256": "b3287085c37649fe38ded5e5e74a66779121d1757892abe8b4912d7e9fd8c8f6",
+   "size": 314284,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/10_05.WAV",
+   "sha256": "e3bf2b56af935c34d159c668ad6d3c6b2cb3c129b61b6ec0e89ea93adfa7b925",
+   "size": 251436,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/11_01.WAV",
+   "sha256": "1618fd5b5a88aa60755879909d56d2392bed264c0b162a091afa32e229a6d580",
+   "size": 329324,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Voice/11_02.WAV",
+   "sha256": "37ace01fff861aec3eb71c89782048a8d278e6bd8a35a65d9d17a696951c8586",
+   "size": 89900,
+   "class": "required"
+  },
+  {
+   "path": "waves/Forest/Zuendschnur.wav",
+   "sha256": "16bc4b8e11bb8b16b2006327a41a58c83e6d7e213c554348723fb37928b48015",
+   "size": 54422,
+   "class": "required"
+  },
+  {
+   "path": "waves/Glue.wav",
+   "sha256": "35765e0aa1d2857e1cbc1b3d5a1ceedc6d157cf15f2b08c527c8dd7729cc869b",
+   "size": 30148,
+   "class": "required"
+  },
+  {
+   "path": "waves/JJJump.wav",
+   "sha256": "9d860bec1e1f43764c57a979ac5b550e42a1814db63f916a5f530a0a419db969",
+   "size": 15216,
+   "class": "required"
+  },
+  {
+   "path": "waves/JumpPad.wav",
+   "sha256": "84dedefe35af04021b283d4cf088ffdff15e419d6cffa5d71c6a453578a8b075",
+   "size": 23286,
+   "class": "required"
+  },
+  {
+   "path": "waves/LASER.WAV",
+   "sha256": "858764c05eb02acd468e4787730fcce9a8e56b073932571401eb3d85e4c8ca91",
+   "size": 11636,
+   "class": "required"
+  },
+  {
+   "path": "waves/LastSeconds.wav",
+   "sha256": "fde1cb77c71fac8a12fce543e95bc1c5a403588f0083d40950b1e8c0329aa53d",
+   "size": 7122,
+   "class": "required"
+  },
+  {
+   "path": "waves/LevelCompleted.wav",
+   "sha256": "93ebc7924ebecdc5165389531e1e272767e390f5d8284aaffcc6b97aa1faa2c1",
+   "size": 126980,
+   "class": "required"
+  },
+  {
+   "path": "waves/MenuUpDown.wav",
+   "sha256": "11526f6e0e7afb2ac4bf0fb3e55da10e329f598c5402ab0c4dc61eedc928958d",
+   "size": 15698,
+   "class": "required"
+  },
+  {
+   "path": "waves/mineimpact.wav",
+   "sha256": "728bb3e684ad17503f096dbc45d420410eb63dc3ffb933414c2d422022fe457a",
+   "size": 5710,
+   "class": "required"
+  },
+  {
+   "path": "waves/Rutsche.wav",
+   "sha256": "56a44fff5c1d3253a439fc7cefc419c4b0681aee43985cd1b4cbabd37bf9b9d0",
+   "size": 39038,
+   "class": "required"
+  },
+  {
+   "path": "waves/Scifi13.wav",
+   "sha256": "6dea3439ea92dcb3d9e24677fc3d259e29aa999821f5766ea49a24aac02e81e5",
+   "size": 931648,
+   "class": "required"
+  },
+  {
+   "path": "waves/Slide.wav",
+   "sha256": "e71568cc8e9c93212e79db4e121f11bdbc3ba41ec8d57ee3bf4aeafe6669e119",
+   "size": 47164,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Bridge.wav",
+   "sha256": "80d40abb26c469da13d6a518aeb1268a37d27a55c0ae5a46a5f21bfe624c8318",
+   "size": 17996,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Destruct.wav",
+   "sha256": "54dde5347ec3155a1c4d6a490333b01600060f629c21b88f69d81eccc1d71a50",
+   "size": 47792,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/DestructTouched.wav",
+   "sha256": "93874439487e8b86ba2cc61e6f7a5cee7f5c5eb7cff938eae58f993810f72092",
+   "size": 81182,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Elevator.wav",
+   "sha256": "b773562cb73addb54b7b6a5e264c1b11ae6266405b55051f0d6569b4f413e81f",
+   "size": 59788,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/JJJump.wav",
+   "sha256": "4ad7c55f701e57bc6ad0ba8b8a60f3161a393de7308830643294c000d52c1037",
+   "size": 22338,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/JumpPad.wav",
+   "sha256": "decf5e34c6fd50d0d07e1375521385ba4c0d0951c56337c40f492cc4c762a86a",
+   "size": 44184,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/MINETICK.WAV",
+   "sha256": "e7de86cee07321635b349b6330b05c877914692080795a9509874b0186074288",
+   "size": 6894,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Platform.wav",
+   "sha256": "37273c3f6c4f59a03b6a36d193be6d26443274e20c95f943ae9333dc6e953a32",
+   "size": 25816,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Regen.wav",
+   "sha256": "b8e4bdc13a907405be5eacd6d491b3a189ed7dd516bd704a08287fc2ad50a02b",
+   "size": 47792,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/RobotFall.wav",
+   "sha256": "c06f992f56b46cea530561ff2775e8da6714b02a247c7293eac9bf72d19445d3",
+   "size": 190976,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/RobotSplat.wav",
+   "sha256": "18b3872c3dc0c0a61716209fedeaca60faa9c838e945dde3a48a7493feb8d273",
+   "size": 63234,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/RobotWalk.wav",
+   "sha256": "635090b5b6db46aaa6fe32ef288869c1fecf5288a0c68176ff199ff6afa534df",
+   "size": 26106,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/SwitchBridge.wav",
+   "sha256": "858764c05eb02acd468e4787730fcce9a8e56b073932571401eb3d85e4c8ca91",
+   "size": 11636,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Teleport.wav",
+   "sha256": "54c4def7ac8298104c826d29f52b886af42ed6c23d9921d4dddba7de3e8edeee",
+   "size": 129356,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Triebwerk.wav",
+   "sha256": "a9bb439fb88fc37bb624d7c09bff4c6a95aaa57e02e89615047d49c41a0ab335",
+   "size": 42780,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/51_01.WAV",
+   "sha256": "6e953324b314f2a29c6eb9640da59e27d709908cf40595b181e5c1ce649719ef",
+   "size": 1110860,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/51_02.WAV",
+   "sha256": "5a3f1806627b0dd6dfa25c6218128f2fbcb26d21deefd1b8bba85d1c2513f375",
+   "size": 321836,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/51_03.WAV",
+   "sha256": "9715e36cd6551854bfcb208d4df7669a3fb7f759fd36af55d8e42c95718abe1e",
+   "size": 185516,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/55_01.WAV",
+   "sha256": "140a3d86ebb357d4619549cf202816de87bdb887d35ad0594c993ea2166cfa09",
+   "size": 475436,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/55_02.WAV",
+   "sha256": "b72f49bb42b663e32f27da740ad5eab81d65dfa737b8cf3b99e872a2c3336d8b",
+   "size": 319916,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/55_03.WAV",
+   "sha256": "0c5042e0af62135e12b3c971a56a17fbf769950a1f21108b3136d0275c69879c",
+   "size": 335948,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/56_01.WAV",
+   "sha256": "8794415b5ef92705e2b47f74fe8ef4c961e67dbfb6dbab49f3a84b56b76b13e7",
+   "size": 242988,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/56_02.WAV",
+   "sha256": "5cc95d36140cb4d429ab0e78c43339a2e890f79248376a94daa4e306c1303840",
+   "size": 282156,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/57_01.WAV",
+   "sha256": "11cb2e4d0545dc4f9099d4c7481207330469d2ac1ba9fad6956d1d31b2386993",
+   "size": 509412,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/57_02.WAV",
+   "sha256": "4e2381e5c3d4212ac73b7c37d12bcd8e17638d1564d07c836b5b3cad12de3872",
+   "size": 106956,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/59_01.WAV",
+   "sha256": "ed9736416cd05444a30a2de5d32699a5a80ed75571a40a46ec4ecdf91561c293",
+   "size": 451596,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/59_02.WAV",
+   "sha256": "e6940adc389e382aee47e9f9e6bc352ef136c859a1e52375329a0b76245e3df5",
+   "size": 244268,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/60_01.WAV",
+   "sha256": "2ac820b3e0dcdb14a148077801a217c6aca35f77b6a9ec2490267048d04301dd",
+   "size": 313164,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/60_02.WAV",
+   "sha256": "34d7efeb280538c8eef909579a2e50ec5312a9cffab3871839f2bcacb3e721f5",
+   "size": 299740,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/62_01.WAV",
+   "sha256": "a76f7c2e77389289643b06abcf7214468ca574ed542acd87c2f19322f96d3c76",
+   "size": 291500,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/64_01.WAV",
+   "sha256": "ad3bbed132f36648d85be98eb0506e50b8fc2334a6b75e0a3424008545e5c7c7",
+   "size": 339724,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/65_01.WAV",
+   "sha256": "e646e0a9c3250d1d6418d0d367cc5e5b536fb2db76e7680591c5439b741412c7",
+   "size": 368734,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/65_02.WAV",
+   "sha256": "7103c8c1a31d30337bd2ac1f97d915f6eccb8b2c169ee41e7a2b4b73950da032",
+   "size": 183660,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/66_01.WAV",
+   "sha256": "0c6cf2aa4b235f8811edd7318a6c65f872ae987670d0ec3eeb74e5b62a93c84a",
+   "size": 325812,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/66_02.WAV",
+   "sha256": "a6e6649186230fae46dacfee6ce6f0280b5e7566eb5286bd0cf3ccd55506b096",
+   "size": 629092,
+   "class": "required"
+  },
+  {
+   "path": "waves/Space/Voice/66_03.WAV",
+   "sha256": "2d12b9add795481d141823884e4088dd7664611b1b23aa3050908ff36c5ef222",
+   "size": 483116,
+   "class": "required"
+  },
+  {
+   "path": "waves/SPLAT.WAV",
+   "sha256": "4e390262e3733ba0070dcba55727cf927d18fd6142b6b552fcfe9f8cc61cbcd7",
+   "size": 18800,
+   "class": "required"
+  },
+  {
+   "path": "waves/Switch.wav",
+   "sha256": "9b2da74ca05dbc7967499c9d1c3e83bbe4d1a2f4959f61e961e6719941479f73",
+   "size": 17212,
+   "class": "required"
+  },
+  {
+   "path": "waves/Tarzan.wav",
+   "sha256": "455408caf484fbf196c659d49f21b1c4368ea322406e4da887522e3be795609c",
+   "size": 154646,
+   "class": "required"
+  },
+  {
+   "path": "waves/TimeOut.wav",
+   "sha256": "9701fcff162561f3f9b95f4ed901dfed29f99758df7075901e66ee44e4b4b727",
+   "size": 207696,
+   "class": "required"
+  },
+  {
+   "path": "waves/Ugh.wav",
+   "sha256": "35765e0aa1d2857e1cbc1b3d5a1ceedc6d157cf15f2b08c527c8dd7729cc869b",
+   "size": 30148,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Blubber.wav",
+   "sha256": "28a34f710acd8ddcd96c9d0165595cd5248913c1ba2aa8ea4d91227b4d18f9a4",
+   "size": 72450,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/BombenLunte.wav",
+   "sha256": "2d8ef570b9e7bdf05f5f21258154cc1d5a0dbfb16b5f0c87553e9b90d54a58a8",
+   "size": 51202,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Eis.wav",
+   "sha256": "56a44fff5c1d3253a439fc7cefc419c4b0681aee43985cd1b4cbabd37bf9b9d0",
+   "size": 39038,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/IceSliding.wav",
+   "sha256": "84dedefe35af04021b283d4cf088ffdff15e419d6cffa5d71c6a453578a8b075",
+   "size": 23286,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/JJJump.WAV",
+   "sha256": "cb74a222b292607f129dbfb8f76a7a306cc0c01e0ea19a842feccf65d850d9c2",
+   "size": 6518,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Krake.WAV",
+   "sha256": "1082bbf5554374d39274af9025be6f3b4a729e0027f35ba35a4e6dc08d4c2290",
+   "size": 22940,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Obstacle.wav",
+   "sha256": "afdda1e3eaa4894e396622917ddf87ccbde77afe0837a2bef2eb215ecfeba6b0",
+   "size": 71222,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/24_01.WAV",
+   "sha256": "614e3cee2bdc006d9085700813f212a89a817fe686d03455b2fd2c6cb1f1d5a6",
+   "size": 208188,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/24_02.WAV",
+   "sha256": "f8513062d5af63185ec7d9069423a55e396bcfa448a79903ae2fbfda67c19937",
+   "size": 581644,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/24_03.WAV",
+   "sha256": "e1fb83cc4a2f9db30b2486455a3ef9f3a24069a0ac725f4cb12b9795bce80a42",
+   "size": 251948,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/25_01.WAV",
+   "sha256": "4a9e218d75f6ac675634b4bae40d6a6548c5df0f4ffc1f51a0b8afbc847953df",
+   "size": 310444,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/25_02.WAV",
+   "sha256": "1fc3e42d9209ac516bf628832c4034e216ebaf304ece8f6f5db4f6a1e5694d25",
+   "size": 427860,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/26_01.WAV",
+   "sha256": "5a2303b5101c50f5b05e372957491fef95f0c4a753e25c96c2e53fc0f5e36bd1",
+   "size": 552908,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/26_02.WAV",
+   "sha256": "aae2116a406ad04efb456a75bda9bd0144461bfb3e8dc749a4672af954ae2411",
+   "size": 129252,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/26_03.WAV",
+   "sha256": "cea255e6d774c64d5def487f6cc92252da6d88fb6beded3d5670bb688916be1c",
+   "size": 806700,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/27_01.WAV",
+   "sha256": "872d426f3b09f49eab08ba59acbbd98613573de2c45cdf821b9376d09bcb0143",
+   "size": 331884,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/27_02.WAV",
+   "sha256": "35d6bc5601d40b0756f6ac04077034979cfdb5501adb3bef639ee59d70780a94",
+   "size": 203868,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/28_01.WAV",
+   "sha256": "c3fb2f241943ce0b469e7ae18f2943b10fac81f65088f83d058a49b4421e3548",
+   "size": 410812,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/28_02.WAV",
+   "sha256": "004b2589a5995904829a7a8aaa0bbf697f2a84012822f9d2a9f7ab0434f05d7d",
+   "size": 223220,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/30_01.WAV",
+   "sha256": "fe8f4c06da44ebe369cd8e7c26eea02193cae0eefac91282f97107748e423c79",
+   "size": 452782,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/30_02.WAV",
+   "sha256": "3bb137738539618d98f5d4c334938c45d35ea9a08f5b5e85e8e7f9efdad9d27e",
+   "size": 878104,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/30_03.WAV",
+   "sha256": "402d2030216136d785d161c9ec5d9da860c9ec3ac1fa611248bc02ffb3b443c4",
+   "size": 309024,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/31_01.WAV",
+   "sha256": "d87dfbbea12e0ce1c96f7dcf58da1ff839de70e3592e8939172c7a853b1b80c9",
+   "size": 361480,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/32_01.WAV",
+   "sha256": "d9bcd743b7c165f71b7973c306873f30af0db1ad1246e25eb65c7dd9bdd3deb8",
+   "size": 397392,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/32_02.WAV",
+   "sha256": "4f70f15e542b1b93989efa6491b144c70d42192fafe94903d0cb57df556b655d",
+   "size": 246508,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/33_01.WAV",
+   "sha256": "7cc971d13b4709bb7aa7b5660682f0e8f61a806546014a3bbf70a1a06d62165d",
+   "size": 336302,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/34_01.WAV",
+   "sha256": "b9937e166e2162354467f1e12f0cef004d49d5491bc2741202f515b2587417f2",
+   "size": 194092,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/34_02.WAV",
+   "sha256": "2e03692a66db82cd07ffec7256008e69de65255c2f29190a56167ad221fd7b96",
+   "size": 391314,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/35_01.WAV",
+   "sha256": "02452e56169b85902bd3d603725c51d6bbda5ed940324975d835f8619e4e778b",
+   "size": 557932,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/35_02.WAV",
+   "sha256": "b042079d9d1352d4979c1da677a017a9941149bdc9b17ac0481a244febcf68c0",
+   "size": 172332,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/36_01.WAV",
+   "sha256": "176ce5a9116488709cc02266b2990a729fd6f7f5233016f282a36dc09441f5f0",
+   "size": 227372,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/36_02.WAV",
+   "sha256": "9fc08b5874590bb1e6648ab60a1d693e6581b299dd0afab093a710989206cf06",
+   "size": 301100,
+   "class": "required"
+  },
+  {
+   "path": "waves/Water/Voice/36_03.WAV",
+   "sha256": "7c08e8e0855e679ca183723f000cbef84790aad0d0aa227e6ee3c3c51e376086",
+   "size": 177644,
+   "class": "required"
+  }
+ ]
+}
