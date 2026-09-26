@@ -1349,7 +1349,9 @@ extern "C" __declspec(dllexport) HRESULT WINAPI hooks_DirectDrawCreate(
         return DD_OK;
     }
 
-    HMODULE ddraw = GetModuleHandleA("ddraw.dll");
+    /* LoadLibrary, not GetModuleHandle: Karoo.exe imports ddraw.dll, but our
+     * own KarooOwn.exe does not, so there it is not loaded yet. */
+    HMODULE ddraw = LoadLibraryA("ddraw.dll");
     DirectDrawCreate_t real_fn = ddraw
         ? (DirectDrawCreate_t)(void (*)(void))GetProcAddress(ddraw, "DirectDrawCreate")
         : NULL;

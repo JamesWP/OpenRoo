@@ -37,7 +37,7 @@ KAROO_LAYOUT_CHECKS(ModelManager)
     KAROO_LAYOUT_SIZE(0x18);
 }
 
-static ModelManager *const GG_MODEL_MANAGER = (ModelManager *)0x004e03f0;
+extern ModelManager g_modelManager;   /* was 0x004e03f0 */
 
 /* 0x004385b0 / 0x004386e0. */
 extern "C" __declspec(dllexport) CFaktMesh *__attribute__((thiscall))

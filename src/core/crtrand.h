@@ -23,7 +23,11 @@
  */
 #pragma once
 
-#define CRT_RAND_SEED  (*(unsigned int *)0x00469f38)
+/* The seed was the game CRT's holdrand at 0x00469f38, initially 1.  No
+ * game code reads it any more (tools/xref.py: no references), so it is ours;
+ * inline gives one object across every TU. */
+inline unsigned int g_crtRandSeed = 1;
+#define CRT_RAND_SEED  g_crtRandSeed
 
 static inline unsigned int crt_rand(void)
 {

@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "static.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 
 /* ── WAV file parser ────────────────────────────────────────────────────── */
@@ -146,7 +146,8 @@ static void CStatic_ReinitBuffer_impl(CStaticSoundbuffer *self);
  *
  * Both sound classes own their vtable now, and neither writes anything that
  * can be seen; the pointer they install is the only thing they own outright,
- * so it is what the control moves — the KAROO_IMAGE_FX=gamevtbl measurement,
+ * so it was what the control moved (retired with the game's tables,
+ * ENDGAME_PLAN.md "Direction") — the KAROO_IMAGE_FX=gamevtbl measurement,
  * applied to the sound objects.  `gamevtbl` installs the game's tables
  * (0x45ef9c / 0x45efa4), whose one slot each points at a UD2-stubbed
  * original, so any dispatch through the table faults as c000001d.  A clean
@@ -158,20 +159,6 @@ static void CStatic_ReinitBuffer_impl(CStaticSoundbuffer *self);
  * KAROO_SOUND_DIAG=1 is the census that tells "ran and agreed" from "never
  * ran": each destructor entry point announces its first call.  Read by VALUE.
  */
-static bool sound_fx_gamevtbl(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (GetEnvironmentVariableA("KAROO_SOUND_FX", buf, sizeof(buf)) &&
-            lstrcmpiA(buf, "gamevtbl") == 0)
-            cached = 1;
-        log_write("sound: SOUND_FX mode = %s\n", cached ? "gamevtbl" : "off");
-    }
-    return cached != 0;
-}
-
 static bool sound_diag(void)
 {
     static int cached = -1;
@@ -184,11 +171,6 @@ static bool sound_diag(void)
 }
 
 extern "C" {
-
-__declspec(dllexport) int CStatic_SoundFxGameVtable(void)
-{
-    return sound_fx_gamevtbl() ? 1 : 0;
-}
 
 /* First call, then a running tally — never a purely periodic sample, which
  * reads zero forever for anything first reached late (linkedlist.cpp). */
@@ -208,7 +190,7 @@ static void *const g_CStaticVtable[1] = { (void *)&CStatic_ScalarVectorDtor };
 
 __declspec(dllexport) void *CStatic_Vtable(void)
 {
-    return sound_fx_gamevtbl() ? (void *)0x0045ef9c : (void *)g_CStaticVtable;
+    return (void *)g_CStaticVtable;
 }
 
 /* ─── CStaticSoundbuffer::ScalarVectorDtor (0x00442a80) ──────────────────
@@ -252,13 +234,13 @@ CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
             CStatic_ReinitBuffer_impl(&self[i]);
 
         if (flags & 1)
-            game_free2(base);
+            free(base);
         return base;
     }
 
     CStatic_ReinitBuffer_impl(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

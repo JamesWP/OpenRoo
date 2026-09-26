@@ -1,0 +1,32 @@
+/* karoo.rc -- the resources of Karoo.exe.orig, carried in our own binary.
+ *
+ * Each is the original's resource data byte for byte (extracted to res/),
+ * compiled as raw data under its original numeric type, id and language, so
+ * the templates, icons and region are exactly what the game shipped.
+ * resources.h says which module holds them.
+ *
+ *   type 5  RT_DIALOG      102 (de), 104 launcher (de), 110 device (en),
+ *                          117 (fr), 118 (it), 119 (es) -- only 104 and 110
+ *                          are used; the rest are the unused localisations
+ *   type 3  RT_ICON        1, 2       type 14  RT_GROUP_ICON  106
+ *   "RGN"                  111 launcher window shape (RGNDATA)
+ *   type 16 RT_VERSION     1
+ */
+
+LANGUAGE 0x07, 0x01
+102 5  "res/dialog_102.bin"
+104 5  "res/dialog_104.bin"
+1   3  "res/icon_1.bin"
+2   3  "res/icon_2.bin"
+106 14 "res/group_icon_106.bin"
+111 RGN "res/rgn_111.bin"
+1   16 "res/version_1.bin"
+
+LANGUAGE 0x09, 0x01
+110 5  "res/dialog_110.bin"
+LANGUAGE 0x0c, 0x01
+117 5  "res/dialog_117.bin"
+LANGUAGE 0x10, 0x01
+118 5  "res/dialog_118.bin"
+LANGUAGE 0x0a, 0x03
+119 5  "res/dialog_119.bin"

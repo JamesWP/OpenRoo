@@ -177,7 +177,7 @@ static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
 }
 
 static int       g_on = -1;
-static GameState g_prev;
+static GameState g_prevClock;
 static bool      g_have_prev;
 static unsigned short g_mode;
 static DWORD     g_frame;
@@ -295,7 +295,7 @@ void gamestate_tick(void)
 
     /* Elapsed time moves every frame; comparing it would log every frame and
      * bury the events worth seeing.  It is still printed on each line. */
-    GameState a = s, b = g_prev;
+    GameState a = s, b = g_prevClock;
     a.elapsed_ms = b.elapsed_ms = 0;
     if (g_have_prev && memcmp(&a, &b, sizeof(a)) == 0) return;
 
@@ -313,7 +313,7 @@ void gamestate_tick(void)
               s.death_raw[0], s.death_raw[1], s.death_raw[2], s.death_raw[3],
               s.pos[0], s.pos[1], s.pos[2]);
 
-    g_prev      = s;
+    g_prevClock      = s;
     g_have_prev = true;
 }
 

@@ -38,6 +38,7 @@
 #include "game.h"
 #include "config.h"
 #include "log.h"
+#include "resources.h"
 
 /* ── dialog item ids ── */
 static const int IDC_PLAY       = 0x3f5;   /* "spielen" */
@@ -177,9 +178,10 @@ static void starter_init(HWND hDlg)
     float sy = (float)r.bottom * (1.0f / 163.0f);
     GetClientRect(hDlg, &r);   /* result unused, as in the original */
 
-    /* LoadResource with a NULL module -- the exe's own, which is right. */
-    HRSRC res = FindResourceA(*ModuleInstanceGlobal, MAKEINTRESOURCEA(IDR_REGION), "RGN");
-    HGLOBAL hg = LoadResource(NULL, res);
+    /* The original passed NULL (its own exe) to LoadResource; the region
+     * now lives in our module, so both calls name it. */
+    HRSRC res = FindResourceA(Resources_Module(), MAKEINTRESOURCEA(IDR_REGION), "RGN");
+    HGLOBAL hg = LoadResource(Resources_Module(), res);
     if (!hg)
         return;
     const RGNDATA *rgn = (const RGNDATA *)LockResource(hg);
@@ -200,7 +202,7 @@ static bool over_link(LPARAM lParam)
 
 static void open_device_dialog(HWND hDlg)
 {
-    hooks_DialogBoxParamA(*ModuleInstanceGlobal, MAKEINTRESOURCEA(IDD_DEVICE),
+    hooks_DialogBoxParamA(Resources_Module(), MAKEINTRESOURCEA(IDD_DEVICE),
                           hDlg, LauncherDlg_DeviceSelectProc, 0);
 }
 
@@ -404,9 +406,11 @@ static bool device_init(HWND hDlg)
 {
     SetWindowPos(hDlg, HWND_TOPMOST, 400, 300, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
+    /* LoadLibrary, not GetModuleHandle: the original imported ddraw.dll, so
+     * it was always loaded; KarooOwn.exe does not import it. */
     typedef HRESULT (WINAPI *enum_fn)(LPDDENUMCALLBACKA, LPVOID);
     enum_fn enumerate = (enum_fn)(void (*)(void))
-        GetProcAddress(GetModuleHandleA("ddraw.dll"), "DirectDrawEnumerateA");
+        GetProcAddress(LoadLibraryA("ddraw.dll"), "DirectDrawEnumerateA");
     if (!enumerate
         || FAILED(enumerate(driver_enum_cb, GetDlgItem(hDlg, IDC_DRIVERS))))
         return false;

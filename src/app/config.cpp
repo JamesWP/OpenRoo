@@ -11,7 +11,7 @@
 #include <string.h>
 #include "log.h"
 #include "config.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include <math.h>
 
 /* The blob is Config::persisted(), Config::PERSISTED_SIZE bytes. */
@@ -91,7 +91,7 @@ Config_ScalarDestructor(Config *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

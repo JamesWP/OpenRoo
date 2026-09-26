@@ -36,6 +36,23 @@
  * (levelselect.h, nodes 0x60 + t).
  */
 
+#include <d3d.h>
+#include "texture.h"
+
+/* The menu's nine textures (built by the static init that was 0x42d840 /
+ * 0x42d8e0) and the panel quad scoreoverlay.cpp shares -- ours since
+ * ENDGAME_PLAN.md "Direction"; the old addresses are kept as provenance. */
+extern SceneTexture g_menuTex4;   /* was 0x004e04c8 */
+extern SceneTexture g_menuTex1;   /* was 0x004e0520 */
+extern SceneTexture g_menuTexKnob;   /* was 0x004e0540 */
+extern SceneTexture g_menuTexSelector;   /* was 0x004e0560 */
+extern D3DTLVERTEX g_panelQuad[4];   /* was 0x004e0580 */
+extern SceneTexture g_menuTexScale;   /* was 0x004e0688 */
+extern SceneTexture g_menuTexOn;   /* was 0x004e06a8 */
+extern SceneTexture g_menuTex2;   /* was 0x004e0748 */
+extern SceneTexture g_menuTex3;   /* was 0x004e0768 */
+extern SceneTexture g_menuTexOff;   /* was 0x004e0788 */
+
 class Game;
 struct Direct3D;
 class TextRenderer;

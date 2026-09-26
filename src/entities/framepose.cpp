@@ -20,6 +20,7 @@
 #include "config.h"
 #include "player.h"
 #include "foe.h"
+FoePose g_foePoses[500];   /* was 0x004dc7c8 */
 
 static const float K_HALF_PI  = 1.5707964f;   /* 0x45d2cc */
 static const double K_WRAP    = 6.2831854820251465;   /* 0x45d300 (double) */

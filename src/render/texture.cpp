@@ -115,7 +115,9 @@
  */
 #include "texture.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
+SceneTexture g_texKaroo128;   /* was 0x004e0408 */
+SceneTexture g_texShadow;   /* was 0x004e02c8 */
 
 /* FactAlloc::Free2 — __cdecl(void *), shared helper left live in the binary. */
 
@@ -128,8 +130,9 @@ extern "C" {
  * own outright is the vtable pointer, and that turns into an unusually direct
  * measurement.
  *
- * `KAROO_IMAGE_FX=gamevtbl` makes the ctors and dtor bodies install the GAME's
- * table address (0x0045d708 / 0x0045d71c) instead of ours.  Those slots point
+ * `KAROO_IMAGE_FX=gamevtbl` (retired with the game's tables, ENDGAME_PLAN.md
+ * "Direction"; its answer is in CONTROLS.md) made the ctors and dtor bodies
+ * install the GAME's table address (0x0045d708 / 0x0045d71c) instead of ours.  Those slots point
  * at the UD2-stubbed originals, so under this mode any code that dispatches
  * through the table faults as c000001d.  The control therefore answers a
  * question rather than perturbing a value: a clean run says nothing read the
@@ -147,20 +150,6 @@ extern "C" {
  * reachable only through vtable slot 0.
  *
  * Read by VALUE, never by presence: launch.sh forwards every set KAROO_*. */
-static bool image_fx_gamevtbl(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (GetEnvironmentVariableA("KAROO_IMAGE_FX", buf, sizeof(buf)) &&
-            lstrcmpiA(buf, "gamevtbl") == 0)
-            cached = 1;
-        log_write("texture: IMAGE_FX mode = %s\n", cached ? "gamevtbl" : "off");
-    }
-    return cached != 0;
-}
-
 static bool image_diag(void)
 {
     static int cached = -1;
@@ -228,16 +217,9 @@ Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags);
 /* Our own one-slot vtable; see the header note for why it is ours. */
 static void *const g_LoadedImageVtable[1] = { (void *)&Texture_ImageScalarDtor };
 
-/* The game's own table, used only by KAROO_IMAGE_FX=gamevtbl.  Its one slot
- * still holds the UD2-stubbed 0x0043de00. */
-__declspec(dllexport) int Texture_ImageFxGameVtable(void)
-{
-    return image_fx_gamevtbl() ? 1 : 0;
-}
-
 __declspec(dllexport) void *Texture_ImageVtable(void)
 {
-    return image_fx_gamevtbl() ? (void *)0x0045d708 : (void *)g_LoadedImageVtable;
+    return (void *)g_LoadedImageVtable;
 }
 
 /* ─── LoadedImage::Ctor (0x43dde0) ─────────────────────────────────────── */
@@ -261,7 +243,7 @@ Texture_ImageDtorBody(LoadedImage *self)
     static unsigned long seen; image_first("LoadedImage::DtorBody", &seen);
     self->unknown00 = Texture_ImageVtable();
     if (self->ImageName != NULL)
-        game_free2(self->ImageName);    /* note 2: NOT nulled */
+        free(self->ImageName);    /* note 2: NOT nulled */
 }
 
 /* ─── LoadedImage::ScalarDeletingDtor (0x43de00) ───────────────────────────
@@ -275,7 +257,7 @@ Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags)
     static unsigned long seen; image_first("LoadedImage::ScalarDeletingDtor", &seen);
     Texture_ImageDtorBody(self);
     if ((flags & 1) != 0)
-        game_free2(self);               /* note 3: the game's heap */
+        free(self);               /* note 3 */
     return self;
 }
 
@@ -293,7 +275,7 @@ Texture_ReleaseSurfaces(LoadedImage *self)
     self->pTexturePalette = NULL;          /* unconditional */
 
     if (self->ImageName != NULL) {
-        game_free2(self->ImageName);
+        free(self->ImageName);
         self->ImageName = NULL;            /* only inside the check */
     }
 

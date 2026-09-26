@@ -59,7 +59,7 @@
  */
 #include <windows.h>
 #include "log.h"
-#include "gamecrt.h"
+#include <stdio.h>
 
 /* ─── The originals ──────────────────────────────────────────────────────── */
 
@@ -171,7 +171,7 @@ extern "C" __declspec(dllexport) void * __cdecl
 hooks_fopen(const char *path, const char *mode)
 {
     void *caller = __builtin_return_address(0);
-    void *fp = GC_FOPEN(path, mode);
+    void *fp = fopen(path, mode);
 
     if (asset_log_enabled()) {
         DWORD size = (path != NULL) ? file_size_of(path) : 0;
@@ -188,7 +188,7 @@ hooks_fopen(const char *path, const char *mode)
 extern "C" __declspec(dllexport) unsigned __cdecl
 hooks_fread(void *buf, unsigned size, unsigned count, void *fp)
 {
-    unsigned got = GC_FREAD(buf, size, count, (FILE *)fp);
+    unsigned got = fread(buf, size, count, (FILE *)fp);
 
     if (asset_log_enabled()) {
         AssetSlot *s = slot_find(fp);
@@ -220,5 +220,5 @@ hooks_fclose(void *fp)
         }
     }
 
-    return GC_FCLOSE((FILE *)fp);
+    return fclose((FILE *)fp);
 }

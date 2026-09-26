@@ -24,6 +24,7 @@
 #include "extraobjects.h"
 #include "particles.h"
 #include "ani.h"
+Scene g_scene;   /* was 0x0046c458 */
 
 
 /* ─── Construction and teardown ─────────────────────────────────────────── */
@@ -51,7 +52,7 @@ Scene_Destruct(Scene *self)
 
 static void free_scene_objects()
 {
-    Scene *s = GG_SCENE;
+    Scene *s = &g_scene;
     for (LinkedListNode *n = s->objects.pHead; n != NULL; ) {
         SceneObject *o = (SceneObject *)n->pValue;
         n = n->pNextNode;
@@ -74,7 +75,7 @@ static void free_scene_objects()
 extern "C" __declspec(dllexport) void __cdecl
 Scene_BuildObjectList(Direct3D *d3d, ExtraObjects *leo, GameLogger *logger)
 {
-    Scene *s = GG_SCENE;
+    Scene *s = &g_scene;
     free_scene_objects();
     s->models.pLogger = logger;
     s->textures.pLogger = logger;
@@ -211,7 +212,7 @@ Scene_SegmentHitsModel(float px, float py, float pz,
                        float dx, float dy, float dz)
 {
     const float p[3] = { px, py, pz }, d[3] = { dx, dy, dz };
-    for (LinkedListNode *n = GG_SCENE->objects.pHead; n != NULL; n = n->pNextNode) {
+    for (LinkedListNode *n = g_scene.objects.pHead; n != NULL; n = n->pNextNode) {
         const SceneObject *o = (const SceneObject *)n->pValue;
         if (o->type == EXTRA_MODEL && segment_hits_object(o, p, d))
             return 1;

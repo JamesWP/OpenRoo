@@ -71,10 +71,9 @@ KAROO_LAYOUT_CHECKS(TextureManager)
     KAROO_LAYOUT_SIZE(0x18);
 }
 
-static TextureManager *const GG_TEXTURE_MANAGER = (TextureManager *)0x004dc628;
+extern TextureManager g_textureManager;   /* was 0x004dc628 */
 /* The second instance (Ghidra g_TextureManagerGlobal2); the WndProc reloads
  * both on WM_ACTIVATE. */
-static TextureManager *const GG_TEXTURE_MANAGER2 = (TextureManager *)0x0046c480;
 
 /* 0x004400d0 / 0x00440220. */
 extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))

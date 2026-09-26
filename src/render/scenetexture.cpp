@@ -144,10 +144,11 @@
 #include "scenetexture.h"   /* our own owner header; brings in texture.h */
 #include "tga.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "gamestr.h"
 #include "gameglobals.h"
 #include "gamelog.h"
+TextureManager g_textureManager;   /* was 0x004dc628 */
 
 /* ─── Originals left live in the binary ──────────────────────────────────── */
 
@@ -222,8 +223,8 @@ static int st_strcmp(const unsigned char *a, const unsigned char *b)
 static void st_set_image_name(LoadedImage *self, LPCSTR name)
 {
     if (self->ImageName != NULL)
-        game_free2(self->ImageName);
-    char *copy = (char *)game_operator_new(st_strlen(name) + 1u);
+        free(self->ImageName);
+    char *copy = (char *)malloc(st_strlen(name) + 1u);
     self->ImageName = copy;
     sprintf(copy, GS_FMT_S, name);
 }
@@ -591,12 +592,9 @@ Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
 
 static void *const g_SceneTextureVtable[1] = { (void *)&Texture_SceneScalarDtor };
 
-/* Same question as texture.cpp's, answered the same way: ours normally, the
- * game's UD2-backed 0x0045d71c under KAROO_IMAGE_FX=gamevtbl. */
 static void *scene_vtable(void)
 {
-    return Texture_ImageFxGameVtable() ? (void *)0x0045d71c
-                                       : (void *)g_SceneTextureVtable;
+    return (void *)g_SceneTextureVtable;
 }
 
 __declspec(dllexport) SceneTexture *__attribute__((thiscall))
@@ -623,7 +621,7 @@ Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags)
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::ScalarDeletingDtor", &seen);
     Texture_SceneDtorBody(self);
     if ((flags & 1) != 0)
-        game_free2(self);     /* the object is the game's, not ours */
+        free(self);     /* flag 1: heap-allocated by its factory */
     return self;
 }
 
@@ -928,7 +926,7 @@ TextureManager_GetOrLoad(TextureManager *self, IDirectDraw4 *dd,
         }
     }
 
-    void *mem = game_operator_new(sizeof(SceneTexture));
+    void *mem = malloc(sizeof(SceneTexture));
     SceneTexture *tex = (mem != NULL) ? Texture_SceneCtor((SceneTexture *)mem) : NULL;
     unsigned int ok = Texture_ImportSceneTextures(tex, dd, dev, filename,
                                                   alphaFlag, bpp, textureStage);
@@ -987,7 +985,7 @@ TextureManager_ScalarDestructor(TextureManager *self, unsigned char flags)
 {
     TextureManager_Destruct(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

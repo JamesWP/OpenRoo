@@ -36,7 +36,7 @@
 #include <dsound.h>
 #include "doublesoundbuff.h"
 #include "voicepool.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 
 /* A CStaticSoundbuffer's vtable has a single slot, the scalar/vector deleting
@@ -230,7 +230,7 @@ Dsb_PurgeVoicePoolList(LinkedList *list)
         if (pool != 0) {
             ++g_nPoolsFreed;
             Sim_VoicePoolWipe(pool);
-            game_free2(pool);
+            free(pool);
         }
     }
     List_Clear(list);
@@ -292,7 +292,7 @@ Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool)
     List_Unlink(self->pools(), node);
     if (pool != 0) {
         Sim_VoicePoolWipe(pool);
-        game_free2(pool);
+        free(pool);
     }
     ++g_nRelPoolHit;
     return 1;

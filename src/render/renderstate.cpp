@@ -54,21 +54,21 @@ Render_ConfigureRenderState(void)
     Direct3D *d3d = g_pDirect3D;
 
     /* 1. */
-    if (!(char)TextureDIB_CreateSurface(GG_FALLBACK_IMAGE, d3d->pDD4, "bitmaps\\loading.bmp", 1))
-        GameLog_LogMessage(GG_LOGGER, 3, "SUR: *ERROR* couldn't load loading.bmp");
-    Direct3D_FlipPrimaryFrame(GG_FALLBACK_IMAGE);
-    TextureDIB_CreateSurface(GG_DEMO_IMAGE, d3d->pDD4, "bitmaps\\demo.bmp", 1);
+    if (!(char)TextureDIB_CreateSurface(&g_fallbackImage, d3d->pDD4, "bitmaps\\loading.bmp", 1))
+        GameLog_LogMessage(&g_logger, 3, "SUR: *ERROR* couldn't load loading.bmp");
+    Direct3D_FlipPrimaryFrame(&g_fallbackImage);
+    TextureDIB_CreateSurface(&g_demoImage, d3d->pDD4, "bitmaps\\demo.bmp", 1);
 
     /* 2. 0x4400c0 serves both caches. */
-    TextureManager_SetLogger(GG_TEXTURE_MANAGER, GG_LOGGER);
-    TextureManager_SetLogger((TextureManager *)GG_MODEL_MANAGER, GG_LOGGER);
-    memset(GG_LEVEL_PLACEMENTS, 0, 0x12c);
-    Menu_BuildMenuGeometry(d3d, GG_GAME_DIR);
+    TextureManager_SetLogger(&g_textureManager, &g_logger);
+    TextureManager_SetLogger((TextureManager *)&g_modelManager, &g_logger);
+    memset(&g_levelPlacements, 0, 0x12c);
+    Menu_BuildMenuGeometry(d3d, g_gameDir);
 
     /* 3. */
     Mat4 world;
     m4_identity(&world);
-    *GG_WORLD_IDENTITY = *(D3DMATRIX *)&world;
+    g_worldIdentity = *(D3DMATRIX *)&world;
 
     const LevelMap *map = Game::instance()->map();
     const double s = sqrt(52.0);
@@ -78,7 +78,7 @@ Render_ConfigureRenderState(void)
     const float x = (float)((float)map->extentU() * 0.5f + offX);
     const float z = (float)((float)(-(int)map->extentV()) * 0.5f + offZ);
 
-    CameraGlobals *cam = GG_CAMERA;
+    CameraGlobals *cam = &g_camera;
     cam->target[0] = x;
     cam->target[1] = offY;
     cam->target[2] = z;
@@ -105,7 +105,7 @@ Render_ConfigureRenderState(void)
     proj.m[11] = sn;
     proj.m[14] = (float)(q * -0.10000000149011612);
 
-    CameraFocus *f = GG_CAMERA_FOCUS;
+    CameraFocus *f = &g_cameraFocus;
     memset(f, 0, sizeof *f);
     f->f[3] = 5000.0f;
     f->f[5] = cam->yaw;
@@ -114,7 +114,7 @@ Render_ConfigureRenderState(void)
     f->f[8] = cam->eye[2];
 
     IDirect3DDevice3 *dev = d3d->pDevice;
-    dev->SetTransform(D3DTRANSFORMSTATE_WORLD, GG_WORLD_IDENTITY);
+    dev->SetTransform(D3DTRANSFORMSTATE_WORLD, &g_worldIdentity);
     dev->SetTransform(D3DTRANSFORMSTATE_VIEW, (D3DMATRIX *)&view);
     dev->SetTransform(D3DTRANSFORMSTATE_PROJECTION, (D3DMATRIX *)&proj);
 
@@ -129,16 +129,16 @@ Render_ConfigureRenderState(void)
         dev->SetRenderState((D3DRENDERSTATETYPE)states[i][0], states[i][1]);
 
     /* 6. */
-    Model_ImportSceneModels(GG_MESH_PLAYER, "models\\John.mdl");
-    Model_ImportSceneModels(GG_MESH_ENEMY, "models\\Enemy.mdl");
+    Model_ImportSceneModels(&g_meshPlayer, "models\\John.mdl");
+    Model_ImportSceneModels(&g_meshEnemy, "models\\Enemy.mdl");
 
     char path[0x100];
-    sprintf(path, "%s\\textures\\shadow.tga", GG_GAME_DIR);
-    Texture_ImportSceneTextures(GG_TEX_SHADOW, d3d->pDD4, d3d->pDevice, path, 1, 0, 0);
-    sprintf(path, "%s\\textures\\karoo128.tga", GG_GAME_DIR);
-    Texture_ImportSceneTextures(GG_TEX_KAROO128, d3d->pDD4, d3d->pDevice, path, 1, 0, 0);
+    sprintf(path, "%s\\textures\\shadow.tga", g_gameDir);
+    Texture_ImportSceneTextures(&g_texShadow, d3d->pDD4, d3d->pDevice, path, 1, 0, 0);
+    sprintf(path, "%s\\textures\\karoo128.tga", g_gameDir);
+    Texture_ImportSceneTextures(&g_texKaroo128, d3d->pDD4, d3d->pDevice, path, 1, 0, 0);
 
-    SceneMaterial *mat = GG_MATERIAL;
+    SceneMaterial *mat = &g_material;
     SceneMaterial_Create(mat, d3d->pD3D, d3d->pDevice);
     mat->mat.dwSize = 0x50;
     mat->mat.diffuse.r = 0.9f; mat->mat.diffuse.g = 1.0f;
@@ -149,7 +149,7 @@ Render_ConfigureRenderState(void)
     mat->pMaterial->SetMaterial(&mat->mat);
     dev->SetLightState(D3DLIGHTSTATE_MATERIAL, mat->hMaterial);
 
-    SceneSpotLight *light = GG_LIGHT;
+    SceneSpotLight *light = &g_light;
     SceneLight_Create(light, d3d);
     D3DLIGHT2 &l = light->light;
     l.dwSize = 0x50;
@@ -168,12 +168,12 @@ Render_ConfigureRenderState(void)
     light->pLight->SetLight((D3DLIGHT *)&l);       /* twice, as the original */
     d3d->pViewport->AddLight(light->pLight);
 
-    if (!(char)Text_LoadFont(GG_FONT_MAIN, "fonts\\font1.fon", d3d)) {
-        GameLog_LogMessage(GG_LOGGER, 4, "Couldn't create Font font1.fon");
+    if (!(char)Text_LoadFont(&g_fontMain, "fonts\\font1.fon", d3d)) {
+        GameLog_LogMessage(&g_logger, 4, "Couldn't create Font font1.fon");
         PostQuitMessage(1);
     }
-    if (!(char)Text_LoadFont(GG_FONT_NUMBERS, "fonts\\numbers.fon", d3d)) {
-        GameLog_LogMessage(GG_LOGGER, 4, "Couldn't create Font numbers.fon");
+    if (!(char)Text_LoadFont(&g_fontNumbers, "fonts\\numbers.fon", d3d)) {
+        GameLog_LogMessage(&g_logger, 4, "Couldn't create Font numbers.fon");
         PostQuitMessage(1);
     }
 }

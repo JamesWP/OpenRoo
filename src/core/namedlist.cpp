@@ -47,7 +47,7 @@
  *     tested, so a plain byte loop is the same program.
  */
 #include "namedlist.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 #include <windows.h>
@@ -179,7 +179,7 @@ NamedList_Clear(NamedEntryList *self)
     while (p != NULL) {
         NamedEntry *next = p->pNext;
         ++g_nClearFreed;
-        game_free2(p);
+        free(p);
         p = next;
     }
     self->pHead   = NULL;
@@ -211,7 +211,7 @@ NamedList_ScalarDtor(NamedEntryList *self, unsigned char bFreeSelf)
         /* Not `delete`: whatever allocated the list object with the flag set
          * did so on the game's heap.  linkedlist.cpp's ScalarDestructor
          * carries the identical note and retires with the same owners. */
-        game_free2(self);
+        free(self);
     return self;
 }
 
@@ -239,7 +239,7 @@ NamedList_Insert(NamedEntryList *self, const char *pszName, void *pPayload)
     }
 
     /* No NULL check, and the copy is len+1 -- both the original's. */
-    NamedEntry *entry = (NamedEntry *)game_operator_new(sizeof(NamedEntry));
+    NamedEntry *entry = (NamedEntry *)malloc(sizeof(NamedEntry));
     memcpy(entry->szName, pszName, len + 1);
     entry->pPayload = pPayload;
     entry->pNext    = NULL;
@@ -277,7 +277,7 @@ NamedList_Remove(NamedEntryList *self, NamedEntry *pEntry)
         else
             pEntry->pNext->pPrev = pEntry->pPrev;
 
-        game_free2(pEntry);
+        free(pEntry);
         self->dwCount = self->dwCount - 1;
     }
     return 0;

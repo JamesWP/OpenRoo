@@ -117,7 +117,7 @@
 #include "bomb.h"
 #include "game.h"
 #include "tile.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "movableentity.h"
 #include "objectremove.h"
 #include "soundmanager.h"
@@ -519,7 +519,7 @@ void Bomb::tick()
                 t->setField203(1);
                 t->setField20f(1);
 
-                GameLog_LogMessage(GG_LOGGER, 1,
+                GameLog_LogMessage(&g_logger, 1,
                                    "GAME: obstacle is exploding at:%d,%d,%d",
                                    u, v, (int)t->height());
 

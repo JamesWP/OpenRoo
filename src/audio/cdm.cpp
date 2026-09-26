@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "cdm.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 CDM* CDM::construct()
 {
@@ -140,7 +140,7 @@ CDM_ScalarDeletingDtor(CDM *self, unsigned int flags)
 {
     self->stopAndClose();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 
@@ -193,3 +193,11 @@ CDM_GetMixerDetails(CDM *self)
                                          0x80000000);
     return r != 0 ? 0 : (unsigned int)value;
 }
+
+/* CDM_VTABLE: our own 3-slot table (the game's was at 0x0045d2b8, same slots). */
+static void *const cdm_vtable_slots[3] = {
+    (void *)&CDM_ScalarDeletingDtor,
+    (void *)&CDM_GetTrackCount,
+    (void *)&CDM_GetTrackLength,
+};
+extern const void *const CDM_VTABLE = cdm_vtable_slots;

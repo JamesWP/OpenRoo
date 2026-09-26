@@ -62,11 +62,13 @@
 #include "log.h"
 #include "scenetexture.h"   /* Texture_ImportSceneTextures, through its owner header */
 #include "gamestr.h"        /* GS_FON_MODE_READ */
-#include "alloc.h"
+#include <stdlib.h>
 
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+TextRenderer g_fontMain;   /* was 0x004e0480 */
+TextRenderer g_fontNumbers;   /* was 0x004e02e8 */
 
 /* The FVF the original declares, and the vertex it really writes. */
 #define TEXT_FVF  (D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | \
@@ -289,10 +291,9 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
  *     normalised to 0/1: a caller that reads the full dword would see the
  *     original's bytes.
  *
- * The three CRT calls: fopen/fclose/fgets all stay the game's, through
- * gamecrt.h.  fgets is stateful in the strongest sense -- it inlines getc,
- * walking `fp->_cnt` and `fp->_ptr` directly -- so it must be the CRT that
- * owns the FILE.  That is gamecrt.h's own rule, not a new exception.
+ * The three CRT calls: fopen/fclose/fgets are our own CRT's.  The game's
+ * CRT is no longer called for file I/O anywhere (its FILE is not shared
+ * with any live game code).
  *
  * `parseintfromstring` 0x004505ac is NOT called: it is pure (char * in, int
  * out), which by the same rule makes it ours, and it is reimplemented below.
@@ -317,14 +318,15 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
  *
  * Overflow wraps, because the original's accumulator is a plain `int`.
  */
-#define GAME_CTYPE_TABLE  (*(const unsigned char *const *)0x00469f64)
-#define GAME_MB_CUR_MAX   (*(const int *)0x0046a170)
+/* The game's CRT classified through its C-locale ctype table (0x00469f64);
+ * read out of the image, its _SPACE set is 9..13 and 32 and its _DIGIT set
+ * '0'..'9', nothing above 0x7f -- so these two tests are that table. */
+static bool c_space(unsigned char c) { return c == ' ' || (c >= 9 && c <= 13); }
+static bool c_digit(unsigned char c) { return c >= '0' && c <= '9'; }
 
 static int font_atoi(const char *p)
 {
-    const unsigned char *ctype = GAME_CTYPE_TABLE;
-
-    while (ctype[(unsigned char)*p * 2] & 8)   /* _SPACE */
+    while (c_space((unsigned char)*p))
         ++p;
 
     const unsigned char sign = (unsigned char)*p;
@@ -332,7 +334,7 @@ static int font_atoi(const char *p)
         ++p;
 
     int acc = 0;
-    while (ctype[(unsigned char)*p * 2] & 4) { /* _DIGIT */
+    while (c_digit((unsigned char)*p)) {
         acc = acc * 10 + ((unsigned char)*p - '0');
         ++p;
     }
@@ -695,7 +697,7 @@ Text_ScalarDtor(TextRenderer *self, unsigned int flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

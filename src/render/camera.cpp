@@ -39,6 +39,8 @@
 #include "levelmap.h"
 #include "player.h"
 #include "scene.h"
+CameraFocus g_cameraFocus;   /* was 0x004e01a0 */
+CameraGlobals g_camera;   /* was 0x0046c4a0 */
 
 static const float K_TARGET_RATE = 0.004f;       /* 0x45d340 */
 static const double K_YAW_WRAP   = 6.2831854820251465;   /* 0x45d300 (double) */

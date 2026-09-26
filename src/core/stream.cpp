@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include "stream.h"
 #include "static.h"   /* the shared KAROO_SOUND_FX / _DIAG helpers */
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 
 #define FOURCC(a,b,c,d) \
@@ -138,8 +138,7 @@ static void *const g_CStreamVtable[1] = { (void *)&CStream_ScalarDeletingDtor };
 
 __declspec(dllexport) void *CStream_Vtable(void)
 {
-    return CStatic_SoundFxGameVtable() ? (void *)0x0045efa4
-                                       : (void *)g_CStreamVtable;
+    return (void *)g_CStreamVtable;
 }
 
 __declspec(dllexport) void * __attribute__((thiscall))
@@ -150,7 +149,7 @@ CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
 
     CStream_DeinitInstance(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

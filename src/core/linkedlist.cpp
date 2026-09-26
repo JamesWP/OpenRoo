@@ -32,7 +32,7 @@
  * deliberate hold rather than an oversight.
  */
 #include "linkedlist.h"
-#include "alloc.h"        /* still needed: the object itself, not its nodes */
+#include <stdlib.h>        /* still needed: the object itself, not its nodes */
 #include <stddef.h>
 #include <stdlib.h>
 #include <windows.h>
@@ -178,7 +178,7 @@ List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf)
          * set did so on the game's heap, and those allocators are still
          * game code.  Freeing it with our `delete` would be a mismatched
          * free -- heap corruption, not a test failure. */
-        game_free2(self);
+        free(self);
     return self;
 }
 

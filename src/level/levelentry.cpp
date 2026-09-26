@@ -46,23 +46,23 @@ LevelEntry_PrepareAssets(void)
     char thm[0x100], bmp[0x124];
     sprintf(thm, "themes\\%s.thm", map->mapName());
     sprintf(bmp, "bitmaps\\%s.bmp", map->mapName());
-    unsigned ok = TextureDIB_CreateSurface(GG_LOADING_IMAGE, d3d->pDD4, bmp, 1);
-    Direct3D_FlipPrimaryFrame((char)ok ? GG_LOADING_IMAGE : GG_FALLBACK_IMAGE);
+    unsigned ok = TextureDIB_CreateSurface(&g_loadingImage, d3d->pDD4, bmp, 1);
+    Direct3D_FlipPrimaryFrame((char)ok ? &g_loadingImage : &g_fallbackImage);
 
     /* 3. The theme, only when it changed.  The block keeps the path it was
      *    loaded from. */
-    if (strcmp(GG_THEME_BLOCK->themeName, thm) != 0) {
-        GameLog_LogMessage(GG_LOGGER, 1, "THM: *** Theme: %s ***", map->mapName());
-        if (!Theme_Load(g, d3d, GG_THEME_BLOCK, thm, GG_LOGGER))
-            GameLog_LogMessage(GG_LOGGER, 4, "Couldn't load theme %s.", map->mapName());
+    if (strcmp(g_themeBlock.themeName, thm) != 0) {
+        GameLog_LogMessage(&g_logger, 1, "THM: *** Theme: %s ***", map->mapName());
+        if (!Theme_Load(g, d3d, &g_themeBlock, thm, &g_logger))
+            GameLog_LogMessage(&g_logger, 4, "Couldn't load theme %s.", map->mapName());
     }
 
     /* 4. What RenderGameFrame draws. */
-    LevelPlacements_Build(GG_LEVEL_PLACEMENTS, g, GG_THEME_BLOCK);
-    Scene_BuildObjectList(d3d, g->extraObjects(), GG_LOGGER);
+    LevelPlacements_Build(&g_levelPlacements, g, &g_themeBlock);
+    Scene_BuildObjectList(d3d, g->extraObjects(), &g_logger);
 
-    strcpy(GG_LEVEL_TITLE, map->title());
-    *GG_LAST_TICK_MS = clock_seconds() * 1000.0;
+    strcpy(g_levelTitle, map->title());
+    g_lastTickMs = clock_seconds() * 1000.0;
 
     /* 5. The camera (camera.h): a fixed offset (0, 6, -4) scaled to 255/sqrt(52),
      *    placed over the middle of the grid.  The original divides in
@@ -75,14 +75,14 @@ LevelEntry_PrepareAssets(void)
     const float x = (float)((float)map->extentU() * 0.5f + offX);
     const float z = (float)((float)(-(int)map->extentV()) * 0.5f + offZ);
 
-    CameraGlobals *cam = GG_CAMERA;
+    CameraGlobals *cam = &g_camera;
     cam->target[0] = x;
     cam->target[1] = offY;
     cam->target[2] = z;
     cam->eye[0] = x;
     cam->eye[1] = offY + 6.0f;
     cam->eye[2] = z - 4.0f;
-    memset(GG_CAMERA_FOCUS, 0, sizeof(*GG_CAMERA_FOCUS));
+    memset(&g_cameraFocus, 0, sizeof(g_cameraFocus));
     cam->yaw   = 0.0f;
     cam->pitch = 1.0471976f;      /* pi/3, bits 0x3f860a92 */
 }

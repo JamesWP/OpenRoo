@@ -30,6 +30,7 @@
 #ifndef KAROO_GAMEGLOBALS_H
 #define KAROO_GAMEGLOBALS_H
 
+#include <windows.h>
 #include <stdio.h>
 
 struct GameLogger;
@@ -40,7 +41,8 @@ struct ProgableControl;
 /* The game's own logger instance ("CProto"), constructed at startup and
  * never replaced.  Written through GameLog_LogMessage /
  * GameLog_LogSourceLocation (gamelog.h), which are ours. */
-static GameLogger *const GG_LOGGER = (GameLogger *)0x0046c4c0;
+extern GameLogger g_logger;   /* was 0x0046c4c0 */
+extern GameLogger g_soundLogger;   /* was 0x004e07e0: the stream logger, static init 0x443c60 */
 
 /* 0x00469cf8 was GG_LOG_STREAM, "the static CRT's log stream".  It is
  * `stderr`, and naming it settled CRT_PLAN.md Stage B outright.
@@ -67,32 +69,32 @@ static GameLogger *const GG_LOGGER = (GameLogger *)0x0046c4c0;
  * time).  Those save-file callers are Stage D and still use GC_FWRITE. */
 
 /* The CD audio device (`CdAudioGlobal`); cdm.cpp owns its methods. */
-static CDM *const GG_CDAUDIO = (CDM *)0x004dc640;
+extern CDM g_cdAudio;   /* was 0x004dc640 */
 
 /* The programmable-control singleton (`ProgableControlGlobal`); see
  * progctrl.h. */
-static ProgableControl *const GG_PROGCTRL = (ProgableControl *)0x0046c298;
+extern ProgableControl g_progCtrl;   /* was 0x0046c298 */
 
 /* The level-entry globals (PrepareLevelAssetsOnEntry, levelentry.cpp).
  * The camera block beside them has a layout, so it lives in camera.h. */
 
 /* The loading screen: bitmaps\<map>.bmp is loaded into the first; the
  * second is shown when that fails. */
-static LoadedImage *const GG_LOADING_IMAGE  = (LoadedImage *)0x004e0428;
-static LoadedImage *const GG_FALLBACK_IMAGE = (LoadedImage *)0x0046c798;
+extern LoadedImage g_loadingImage;   /* was 0x004e0428 */
+extern LoadedImage g_fallbackImage;   /* was 0x0046c798 */
 /* bitmaps\demo.bmp, loaded once at startup (renderstate.cpp). */
-static LoadedImage *const GG_DEMO_IMAGE     = (LoadedImage *)0x004dc7a8;
+extern LoadedImage g_demoImage;   /* was 0x004dc7a8 */
 /* A copy of the LevelMap's title, made at level entry. */
-static char   *const GG_LEVEL_TITLE    = (char *)0x0046c714;
+extern char g_levelTitle[128];   /* was 0x0046c714 */
 /* The clock (ms) of the last GameTick RenderGameFrame ran; the level entry
  * resets it so the first frame of a level ticks from there. */
-static double *const GG_LAST_TICK_MS = (double *)0x004e04b0;
+extern double g_lastTickMs;   /* was 0x004e04b0 */
 
 /* The install directory, filled by WinMain; every path format above is
  * printed against it.  Was GAMEDIR in two files and GAME_DIR in five. */
-static char *const GG_GAME_DIR = (char*) 0x004e01c4;
+extern char g_gameDir[260];   /* was 0x004e01c4 */
 static const size_t GG_GAME_DIR_LEN = 0x104;
 
-static HINSTANCE* const ModuleInstanceGlobal = (HINSTANCE*)0x46c49c;
+extern HINSTANCE g_moduleInstance;   /* was 0x0046c49c */
 
 #endif /* KAROO_GAMEGLOBALS_H */

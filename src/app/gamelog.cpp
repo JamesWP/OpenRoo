@@ -123,7 +123,7 @@
 #include <stddef.h>
 #include "gamelog.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "gamestr.h"
 
 /* The game's LoggerVtable at 0x0045ef98.  One slot -- the scalar-deleting
@@ -133,7 +133,10 @@
  * Objects we construct keep pointing at the GAME's vtable rather than a clone
  * of our own: patch.py overwrites that single slot to reach us anyway, and an
  * object our ctor builds must compare equal to one the game already holds. */
-#define GAME_LOGGER_VTABLE ((void *)0x0045ef98)
+/* Our own one-slot table; the game's was at 0x0045ef98. */
+extern "C" __declspec(dllexport) void * __attribute__((thiscall)) GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags);
+static void *const game_logger_vtable_slots[1] = { (void *)&GameLog_ScalarDeletingDtor };
+#define GAME_LOGGER_VTABLE ((void *)game_logger_vtable_slots)
 
 /* FactAlloc::Free2 -- __cdecl(void *).  THE one callback into the game binary
  * in this file, and unavoidable: the object being deleted came from the game's
@@ -299,7 +302,7 @@ GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags)
 {
     GameLog_CloseAndRebindVtable(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

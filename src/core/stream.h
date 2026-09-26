@@ -60,7 +60,7 @@ static_assert(sizeof(CStreamSoundbuffer)                 == 0xD4,  "CStreamSound
  * be our own").  The game's table at 0x45efa4 has one slot, ScalarDeletingDtor
  * 0x443da0, and that slot is now ours.  The game's table is left pointing at
  * the UD2 stub, so a reader we failed to find faults rather than quietly
- * working.  KAROO_SOUND_FX=gamevtbl installs 0x45efa4 instead (static.cpp). */
+ * working. */
 extern "C" __declspec(dllexport) void *CStream_Vtable(void);
 
 /* 0x00443da0 vtable slot 0: MSVC's scalar deleting destructor -- the dtor

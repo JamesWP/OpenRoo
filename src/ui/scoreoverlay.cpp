@@ -93,14 +93,14 @@
 #define SCORE_LOG_FIRST 4
 
 /* 1/640 — the virtual-space scale, float at 0x0045D4C4. */
-#define VSCALE (*(const float *)0x0045d4c4)
+#define VSCALE 0x1.99999ap-10f   /* the image's float at 0x0045d4c4 (1/640), bit for bit */
 
 /* Format strings and captions, referenced at their own addresses so the
  * bytes handed to the game's sprintf are literally the game's own. */
 
 /* .bss globals: the leaderboard panel's pre-built quad and its texture. */
-#define g_pPanelVerts   ((const void *)0x004e0580)
-#define g_pPanelTexture (*(IDirect3DTexture2 **)0x004e0760)
+#define g_pPanelVerts   ((const void *)g_panelQuad)
+#define g_pPanelTexture (g_menuTex2.pTexture2)
 
 /* Game (Game::instance(), *0x0046C498) — high-score table (highscores.h);
  * offsets within one HighScoreRecord. */

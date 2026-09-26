@@ -87,7 +87,7 @@ static void enter_loaded_state(Game *game, FILE *fp)
     game->setCameraDistance(7.0f);
     game->setState(4);
     if (game->musicOn() != 0)
-        CDM_StopTrack(GG_CDAUDIO);
+        CDM_StopTrack(&g_cdAudio);
     game->scriptPlayer()->setRunning(1);
     game->setCameraMode(1);
     game->setDebounce(0x0d);
@@ -136,7 +136,7 @@ Sim_HandleTypedCheatCode(Game *self)
                 self->cdThemes()->play(GS_GAME_GAMEOVER);
             Score_CalculateLevelScore(self, 0x28);
             self->setDebounce(0x0d);
-            GameLog_LogMessage(GG_LOGGER, 1, GS_GAME_COMPLETED_AT_LEVEL,
+            GameLog_LogMessage(&g_logger, 1, GS_GAME_COMPLETED_AT_LEVEL,
                                (unsigned int)self->levelIndex() + 1,
                                (unsigned int)self->levelCount());
         } else {
@@ -155,7 +155,7 @@ Sim_HandleTypedCheatCode(Game *self)
             self->menu()->setLock(1);
             Score_CalculateLevelScore(self, (char)self->state());
             self->setRestartCount(0);
-            GameLog_LogMessage(GG_LOGGER, 1, GS_CHEAT_C_SL);
+            GameLog_LogMessage(&g_logger, 1, GS_CHEAT_C_SL);
         }
         self->setTotalPlayTime((double)(unsigned long long)self->timeElapsed() + self->totalPlayTime());
     }
@@ -173,8 +173,8 @@ Sim_HandleTypedCheatCode(Game *self)
             unsigned char lvl = (unsigned char)(atoi(num) - 1);
             Sim_SetCurrentLevelName(self, lvl);
             if (lvl < self->levelCount()) {
-                sprintf(path, GS_CHEAT_FMT_LVL_PATH, GG_GAME_DIR, self->levelName());
-                GameLog_LogMessage(GG_LOGGER, 3, GS_CHEAT_LC_BY_NUMBER, (unsigned int)lvl,
+                sprintf(path, GS_CHEAT_FMT_LVL_PATH, g_gameDir, self->levelName());
+                GameLog_LogMessage(&g_logger, 3, GS_CHEAT_LC_BY_NUMBER, (unsigned int)lvl,
                                    self->levelName());
                 self->setLevelIndex(lvl);
                 FILE *fp = fopen(path, "r");
@@ -198,8 +198,8 @@ Sim_HandleTypedCheatCode(Game *self)
         if (len > 6) {
             memcpy(frame, buf + 6, len - 6);
             frame[len - 6] = 0;
-            GameLog_LogMessage(GG_LOGGER, 3, GS_CHEAT_LC, (const char *)frame);
-            sprintf(path, GS_CHEAT_FMT_LVL_PATH, GG_GAME_DIR, (const char *)frame);
+            GameLog_LogMessage(&g_logger, 3, GS_CHEAT_LC, (const char *)frame);
+            sprintf(path, GS_CHEAT_FMT_LVL_PATH, g_gameDir, (const char *)frame);
             FILE *fp = fopen(path, "r");
             if (fp != NULL) {
                 pl->setGemsCollected(0);

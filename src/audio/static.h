@@ -52,8 +52,7 @@ KAROO_LAYOUT_CHECKS(CStaticSoundbuffer)
  * 0x442a80, and that slot is now ours, which is the licence's condition.  The
  * game's table is left pointing at the UD2 stub so a reader we failed to find
  * faults instead of quietly working.
- *
- * KAROO_SOUND_FX=gamevtbl installs 0x45ef9c instead; see static.cpp. */
+ */
 extern "C" __declspec(dllexport) void *CStatic_Vtable(void);
 
 /* ─── Our reimplementations, defined in static.cpp ───────────────────────
@@ -70,9 +69,8 @@ extern "C" {
 __declspec(dllexport) void * __attribute__((thiscall))
 CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
 
-/* KAROO_SOUND_FX / KAROO_SOUND_DIAG, shared with stream.cpp so both sound
- * classes answer the vtable question and the census the same way. */
-__declspec(dllexport) int  CStatic_SoundFxGameVtable(void);
+/* KAROO_SOUND_DIAG, shared with stream.cpp so both sound classes answer the
+ * census the same way. */
 __declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
                                                   unsigned long *seen);
 

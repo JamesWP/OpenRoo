@@ -40,7 +40,7 @@ KAROO_LAYOUT_CHECKS(FoePose)
 }
 
 /* One record per live foe, in foe-list order; RenderGameFrame draws from it. */
-static FoePose *const GG_FOE_POSES = (FoePose *)0x004dc7c8;
+extern FoePose g_foePoses[500];   /* was 0x004dc7c8 */
 
 extern "C" {
 __declspec(dllexport) void __cdecl

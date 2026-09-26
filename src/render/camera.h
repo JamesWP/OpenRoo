@@ -42,7 +42,7 @@ KAROO_LAYOUT_CHECKS(CameraGlobals)
     KAROO_LAYOUT_SIZE(0x20);
 }
 
-static CameraGlobals *const GG_CAMERA = (CameraGlobals *)0x0046c4a0;
+extern CameraGlobals g_camera;   /* was 0x0046c4a0 */
 
 struct Mat4;
 struct Direct3D;
@@ -54,7 +54,7 @@ class Game;
 struct CameraFocus { float f[9]; };
 static_assert(sizeof(CameraFocus) == 0x24, "CameraFocus size");
 /* The level entry zeroes it; FramePose_Player fills it every frame. */
-static CameraFocus *const GG_CAMERA_FOCUS = (CameraFocus *)0x004e01a0;
+extern CameraFocus g_cameraFocus;   /* was 0x004e01a0 */
 
 extern "C" {
 /* 0x407b20, cdecl(out, eye, at, up by value, roll) -> out: a left-handed

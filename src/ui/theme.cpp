@@ -25,7 +25,7 @@
 #include <stdlib.h>
 
 #include "theme.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 #include "game.h"
 #include "direct3d.h"
@@ -36,6 +36,7 @@
 #include "scenetexture.h"
 #include "generators.h"
 #include <math.h>
+ThemeAssetBlock g_themeBlock;   /* was 0x0046c890 */
 
 /* The original's exact limits.  LINE_MAX is fgets' n; TOKEN_SLOTS is the
  * 0x1000-byte token area divided by the 0x100 slot stride. */
@@ -141,7 +142,7 @@ static void dump_slot(const char *name, const ThemeObjectTypeSlot &slot)
  * the game's own ThemeFileLoader has fully populated the block. */
 static void theme_struct_dump(const char *path)
 {
-    const ThemeAssetBlock *block = (const ThemeAssetBlock *)0x46c890;
+    const ThemeAssetBlock *block = &g_themeBlock;
 
     log_write("THEME_STRUCT: after close of %s\n", path);
     log_write("THEME_STRUCT: themeName=\"%.255s\" dwUnknown100=0x%08lx\n",
@@ -307,7 +308,7 @@ Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
 {
     Theme_SlotDestruct(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 
@@ -354,8 +355,8 @@ static_assert(sizeof(kReleaseOrder) / sizeof(kReleaseOrder[0]) == THEME_OBJ_COUN
 extern "C" __declspec(dllexport) void __cdecl
 Theme_ReleaseBlock(ThemeAssetBlock *block)
 {
-    TextureManager_ReleaseAll(GG_TEXTURE_MANAGER);
-    ModelManager_ClearReleaseFree(GG_MODEL_MANAGER);
+    TextureManager_ReleaseAll(&g_textureManager);
+    ModelManager_ClearReleaseFree(&g_modelManager);
     for (ThemeObjectType t : kReleaseOrder)
         Theme_ReleaseSlot(&block->slots[t]);
     for (int f = 0; f < 6; f++)
@@ -371,14 +372,14 @@ ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
                DWORD arg3, DWORD arg4)
 {
     char path[256];
-    sprintf(path, GS_THEME_SOUND_PATH, GG_GAME_DIR, waveName);
+    sprintf(path, GS_THEME_SOUND_PATH, g_gameDir, waveName);
 
     SoundAssetName &e = self->entries[id & 0xffff];
     if (strcmp(waveName, GS_THEME_SOUND_NONE) == 0) {
         e.enabled = 0;
         return 0;
     }
-    GameLog_LogMessage(GG_LOGGER, 1, GS_THEME_SOUND_ADD, id & 0xffff, path);
+    GameLog_LogMessage(&g_logger, 1, GS_THEME_SOUND_ADD, id & 0xffff, path);
     strcpy(e.name, path);
     e.unknown104 = arg4;
     e.unknown108 = arg3;
@@ -596,7 +597,7 @@ struct ThemeParser {
     SceneTexture *loadTexture(char *name, char *alphaTok)
     {
         DWORD alpha = is(alphaTok, "alpha") ? 1 : 0;
-        return TextureManager_GetOrLoad(GG_TEXTURE_MANAGER, d3d->pDD4, d3d->pDevice,
+        return TextureManager_GetOrLoad(&g_textureManager, d3d->pDD4, d3d->pDevice,
                                         name, alpha, 0, 0);
     }
 
@@ -777,7 +778,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         if (slot == NULL || ntok <= 1)
             return;
         open(rec, slot);
-        CFaktMesh *mesh = ModelManager_FindOrImport(GG_MODEL_MANAGER, tok[1]);
+        CFaktMesh *mesh = ModelManager_FindOrImport(&g_modelManager, tok[1]);
         if (mesh == NULL) {
             rec.at->kind = THEME_KIND_NONE;
             return;
@@ -894,7 +895,7 @@ void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec
         open(sub, rec);
         DWORD alpha = is(tok[2], "alpha") ? 1 : 0;
         if (slot)
-            sub.at->pTexture = TextureManager_GetOrLoad(GG_TEXTURE_MANAGER, d3d->pDD4,
+            sub.at->pTexture = TextureManager_GetOrLoad(&g_textureManager, d3d->pDD4,
                                                      d3d->pDevice, tok[1], alpha, 0, 0);
     } else if (is(tok[0], "position")) {
         if (ntok > 3 && slot) {
@@ -1051,12 +1052,12 @@ static void *const g_ThemeSoundVtable[1] = { (void *)&ThemeSound_ScalarDestructo
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 ThemeSound_ReleaseAll(ThemeSoundTable *self)
 {
-    GameLog_LogMessage(GG_LOGGER, 1, GS_THEME_SOUND_RELEASING);
+    GameLog_LogMessage(&g_logger, 1, GS_THEME_SOUND_RELEASING);
     for (int i = 0; i < THEME_SOUND_COUNT; i++) {
         self->entries[i].enabled = 0;
         self->entries[i].name[0] = 0;
     }
-    GameLog_LogMessage(GG_LOGGER, 1, GS_THEME_SOUND_RELEASED);
+    GameLog_LogMessage(&g_logger, 1, GS_THEME_SOUND_RELEASED);
     return 0;
 }
 
@@ -1082,6 +1083,6 @@ ThemeSound_ScalarDestructor(ThemeSoundTable *self, unsigned char flags)
 {
     ThemeSound_Destruct(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

@@ -26,8 +26,9 @@
 #include <string.h>
 #include "scenelight.h"
 #include "direct3d.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
+SceneSpotLight g_light;   /* was 0x0046c830 */
 
 extern "C" {
 
@@ -104,7 +105,7 @@ SceneLight_ScalarDtor(SceneSpotLight *self, unsigned char flags)
 {
     SceneLight_DtorBody(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

@@ -82,16 +82,25 @@
 #include <stdio.h>
 #include "gameglobals.h"
 #include <math.h>
+SceneTexture g_menuTexOff;   /* was 0x004e0788 */
+SceneTexture g_menuTex3;   /* was 0x004e0768 */
+SceneTexture g_menuTex2;   /* was 0x004e0748 */
+SceneTexture g_menuTexOn;   /* was 0x004e06a8 */
+SceneTexture g_menuTexScale;   /* was 0x004e0688 */
+SceneTexture g_menuTexSelector;   /* was 0x004e0560 */
+SceneTexture g_menuTexKnob;   /* was 0x004e0540 */
+SceneTexture g_menuTex1;   /* was 0x004e0520 */
+SceneTexture g_menuTex4;   /* was 0x004e04c8 */
 
 #define K640          (1.0f / 640.0f)
 #define MENU_FVF      0x1c4        /* XYZRHW | DIFFUSE | SPECULAR | TEX1 */
-#define g_backdropQuad ((void *)0x004e06c8)
-#define g_panelQuad    ((void *)0x004e0580)
-#define g_panelTexture (*(IDirect3DTexture2 **)0x004e0538)   /* menu_1.tga */
-#define g_markerTexture (*(IDirect3DTexture2 **)0x004e0578)  /* selector.tga */
-#define g_listQuad     ((void *)0x004e0600)
-#define g_optionsTexture (*(IDirect3DTexture2 **)0x004e0760) /* menu_2.tga */
-#define g_saveTexture  (*(IDirect3DTexture2 **)0x004e04e0)   /* menu_4.tga */
+static D3DTLVERTEX g_backdropQuad[4];   /* was 0x004e06c8 */
+D3DTLVERTEX g_panelQuad[4];   /* was 0x004e0580 */
+#define g_panelTexture (g_menuTex1.pTexture2)   /* menu_1.tga */
+#define g_markerTexture (g_menuTexSelector.pTexture2)  /* selector.tga */
+static D3DTLVERTEX g_listQuad[4];   /* was 0x004e0600 */
+#define g_optionsTexture (g_menuTex2.pTexture2) /* menu_2.tga */
+#define g_saveTexture  (g_menuTex4.pTexture2)   /* menu_4.tga */
 #define THEME_BACKDROP_TEX 0x6f8a8   /* SceneTexture* */
 #define THEME_MAINMENU_COL 0x6f8d4   /* six (top, bottom) colour pairs */
 #define THEME_RESTORE_COL  0x6f904   /* one pair, every slot row */
@@ -346,11 +355,11 @@ Menu_RenderSaveSlotList(Game *g, void *theme, Direct3D *d3d,
  * Knob angle = 3pi/4 - v * 3pi/200 (0x45d548, 0x45d54c) for a 0..100 value:
  * a 270-degree sweep.  cos/sin in double; the lost x87 bits move a knob by
  * far less than a pixel. */
-#define g_widgetModel  ((const Vec3 *)0x004e04e8)
-#define g_texOn        (*(IDirect3DTexture2 **)0x004e06c0)   /* knopf_ein.tga */
-#define g_texOff       (*(IDirect3DTexture2 **)0x004e07a0)   /* knopf_aus.tga */
-#define g_texKnobBase  (*(IDirect3DTexture2 **)0x004e06a0)   /* scale.tga */
-#define g_texKnob      (*(IDirect3DTexture2 **)0x004e0558)   /* drehknopf.tga */
+static Vec3 g_widgetModel[4];   /* was 0x004e04e8 */
+#define g_texOn        (g_menuTexOn.pTexture2)   /* knopf_ein.tga */
+#define g_texOff       (g_menuTexOff.pTexture2)   /* knopf_aus.tga */
+#define g_texKnobBase  (g_menuTexScale.pTexture2)   /* scale.tga */
+#define g_texKnob      (g_menuTexKnob.pTexture2)   /* drehknopf.tga */
 
 struct Affine { float c, s, tx, ty; };   /* RotZ(c,s) * T(tx,ty,0) */
 
@@ -461,7 +470,7 @@ Menu_RenderSoundOptions(Game *g, void *theme, Direct3D *d3d,
  * 0x80aaaaaa bottom) instead of its theme colours, the base in 0x80808080,
  * and the knob not at all.  Both tests are re-made at each use, as in the
  * original; neither can change within a frame. */
-#define g_videoTexture (*(IDirect3DTexture2 **)0x004e0780)   /* menu_3.tga */
+#define g_videoTexture (g_menuTex3.pTexture2)   /* menu_3.tga */
 
 static bool shadows_available(Direct3D *d3d)
 {
@@ -588,7 +597,7 @@ Menu_RenderControlsRemap(Game *g, void *theme, Direct3D *d3d,
 
     char buf[0x100];
     for (int i = 0; i < 13; i++) {
-        ProgCtrl_GetBindingStr(GG_PROGCTRL, 1, k_controls[i].action, buf, sizeof(buf));
+        ProgCtrl_GetBindingStr(&g_progCtrl, 1, k_controls[i].action, buf, sizeof(buf));
         const bool asking = g->rebindActive() != 0 && g->rebindCode() == k_controls[i].node;
         const DWORD wr = mode_width(d3d);
         text->drawRight(fw * 0.90625f, rowY[i],
@@ -619,15 +628,15 @@ Menu_RenderControlsRemap(Game *g, void *theme, Direct3D *d3d,
  * as in the original (sprintf, no length). */
 struct MenuTextureLoad { SceneTexture *obj; const char *file; };
 static const MenuTextureLoad k_menuTextures[9] = {
-    { (SceneTexture *)0x004e0520, "menu_1.tga" },
-    { (SceneTexture *)0x004e0748, "menu_2.tga" },
-    { (SceneTexture *)0x004e0768, "menu_3.tga" },
-    { (SceneTexture *)0x004e04c8, "menu_4.tga" },
-    { (SceneTexture *)0x004e0560, "selector.tga" },
-    { (SceneTexture *)0x004e06a8, "knopf_ein.tga" },
-    { (SceneTexture *)0x004e0788, "knopf_aus.tga" },
-    { (SceneTexture *)0x004e0540, "drehknopf.tga" },
-    { (SceneTexture *)0x004e0688, "scale.tga" },
+    { &g_menuTex1, "menu_1.tga" },
+    { &g_menuTex2, "menu_2.tga" },
+    { &g_menuTex3, "menu_3.tga" },
+    { &g_menuTex4, "menu_4.tga" },
+    { &g_menuTexSelector, "selector.tga" },
+    { &g_menuTexOn, "knopf_ein.tga" },
+    { &g_menuTexOff, "knopf_aus.tga" },
+    { &g_menuTexKnob, "drehknopf.tga" },
+    { &g_menuTexScale, "scale.tga" },
 };
 
 static void fill_quad(D3DTLVERTEX *q, float x0, float x1, float y0, float y1,

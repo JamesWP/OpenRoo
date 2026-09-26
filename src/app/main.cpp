@@ -32,7 +32,7 @@
 #include <ddraw.h>
 #include <stdio.h>
 #include "main.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "gameglobals.h"
 #include "gamelog.h"
 #include "game.h"
@@ -56,12 +56,16 @@
 #include "progctrl.h"
 #include "texture.h"
 #include "scenetexture.h"
+#include "scene.h"
+#include "textrenderer.h"
+#include "menuscreens.h"
 #include "log.h"
+#include "resources.h"
+#include "staticinit.h"
 
 /* Shared by WinMain and the WndProc; nothing else reads either. */
-static volatile int *const GG_MOVIE_PLAYING = (volatile int *)0x004dc7c0;
-static IDirectDrawSurface **const GG_MOVIE_SURFACE =
-    (IDirectDrawSurface **)0x004e04a8;
+static volatile int g_moviePlaying;   /* was 0x004dc7c0 */
+static IDirectDrawSurface* g_movieSurface;   /* was 0x004e04a8 */
 
 static const unsigned GAME_ALLOC_SIZE = 0x51790d;
 static const unsigned D3D_ALLOC_SIZE  = 0x238;
@@ -75,8 +79,8 @@ static bool winmain_fx_norender()
     return on;
 }
 
-/* The scalar deleting dtors free to the game heap (game_free2), which is why
- * both objects come from game_operator_new below. */
+/* The scalar deleting dtors free() their object, which is why both objects
+ * come from malloc below. */
 static void delete_game(Game *g)       { if (g) Game_ScalarDestructor(g, 1); }
 static void delete_d3d(Direct3D *d3d)  { if (d3d) Direct3D_ScalarDestructor(d3d, 1); }
 
@@ -91,14 +95,10 @@ static void delete_d3d(Direct3D *d3d)  { if (d3d) Direct3D_ScalarDestructor(d3d,
  * pointers (0x4dc134) visited in a scrambled order and skipping NULLs, both
  * texture managers, then ten SceneTextures -- karoo128 and the menu's nine
  * (menuscreens.cpp names them). */
-static LoadedImage *const GG_IMAGE_4E048C = (LoadedImage *)0x004e048c;
-static LoadedImage *const GG_IMAGE_4E02F4 = (LoadedImage *)0x004e02f4;
-static SceneTexture *const GG_TEXTURES_4DC235 = (SceneTexture *)0x004dc235;
-static LoadedImage **const GG_IMAGE_PTRS_4DC134 = (LoadedImage **)0x004dc134;
 static const int IMAGE_PTR_ORDER[10] = { 2, 5, 0, 6, 1, 4, 7, 3, 8, 9 };
-static const DWORD TAIL_TEXTURES[10] = {
-    0x004e0408, 0x004e0520, 0x004e0748, 0x004e0768, 0x004e04c8,
-    0x004e0560, 0x004e06a8, 0x004e0788, 0x004e0540, 0x004e0688,
+static SceneTexture *const TAIL_TEXTURES[10] = {
+    &g_texKaroo128, &g_menuTex1, &g_menuTex2, &g_menuTex3, &g_menuTex4,
+    &g_menuTexSelector, &g_menuTexOn, &g_menuTexOff, &g_menuTexKnob, &g_menuTexScale,
 };
 
 /* FaktMovie::state == 1 is "finished" (movie.h). */
@@ -107,19 +107,19 @@ static const UINT  WM_MOVIE_EVENT       = 0x464;
 
 static void restore_surfaces()
 {
-    Texture_Load(GG_IMAGE_4E048C);
-    Texture_Load(GG_IMAGE_4E02F4);
+    Texture_Load(&g_fontMain.atlas()->base);
+    Texture_Load(&g_fontNumbers.atlas()->base);
     for (int i = 0; i < 6; i++)
-        Texture_Load(&GG_TEXTURES_4DC235[i].base);
+        Texture_Load(&g_themeBlock.sky.Textures[i].base);
     for (int i = 0; i < 10; i++) {
-        LoadedImage *img = GG_IMAGE_PTRS_4DC134[IMAGE_PTR_ORDER[i]];
+        SceneTexture *img = g_themeBlock.images[IMAGE_PTR_ORDER[i]];
         if (img)
-            Texture_Load(img);
+            Texture_Load(&img->base);
     }
-    TextureManager_LoadAll(GG_TEXTURE_MANAGER);
-    TextureManager_LoadAll(GG_TEXTURE_MANAGER2);
+    TextureManager_LoadAll(&g_textureManager);
+    TextureManager_LoadAll(&g_scene.textures);
     for (int i = 0; i < 10; i++)
-        Texture_Load((LoadedImage *)TAIL_TEXTURES[i]);
+        Texture_Load(&TAIL_TEXTURES[i]->base);
 }
 
 /* KAROO_WNDPROC_FX=noquit -- WM_DESTROY skips PostQuitMessage, so the
@@ -149,48 +149,60 @@ Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_ACTIVATE:
         /* Exactly WA_ACTIVE: a click-activation (2) counts as losing focus. */
         if ((WORD)wParam == WA_ACTIVE) {
-            ProgCtrl_AcquireAll(GG_PROGCTRL);
+            ProgCtrl_AcquireAll(&g_progCtrl);
             restore_surfaces();
-            if (*GG_MOVIE_PLAYING) {
-                Movie_SetWindow(GG_MOVIE, *GG_MOVIE_SURFACE);
-                Movie_Play(GG_MOVIE);
+            if (g_moviePlaying) {
+                Movie_SetWindow(&g_movie, g_movieSurface);
+                Movie_Play(&g_movie);
             }
         } else {
-            ProgCtrl_UnacquireAll(GG_PROGCTRL);
-            if (*GG_MOVIE_PLAYING)
-                Movie_Pause(GG_MOVIE);
+            ProgCtrl_UnacquireAll(&g_progCtrl);
+            if (g_moviePlaying)
+                Movie_Pause(&g_movie);
         }
         break;
 
     case WM_KEYUP:   /* any key skips the intro */
-        if (*GG_MOVIE_PLAYING) {
-            Movie_Stop(GG_MOVIE);
-            Movie_Teardown(GG_MOVIE);
-            *GG_MOVIE_PLAYING = 0;
+        if (g_moviePlaying) {
+            Movie_Stop(&g_movie);
+            Movie_Teardown(&g_movie);
+            g_moviePlaying = 0;
         }
         break;
 
     case MM_MCINOTIFY:   /* a track ended: restart it if it repeats */
-        if (wParam == MCI_NOTIFY_SUCCESSFUL && GG_CDAUDIO->repeat)
-            CDM_PlayTrack(GG_CDAUDIO, GG_CDAUDIO->tracknumber, true);
+        if (wParam == MCI_NOTIFY_SUCCESSFUL && g_cdAudio.repeat)
+            CDM_PlayTrack(&g_cdAudio, g_cdAudio.tracknumber, true);
         break;
 
     case WM_MOVIE_EVENT:
-        if (*GG_MOVIE_PLAYING)
-            Movie_Notify(GG_MOVIE, (DWORD)hWnd, wParam, lParam);
+        if (g_moviePlaying)
+            Movie_Notify(&g_movie, (DWORD)hWnd, wParam, lParam);
         /* Checked whether or not a movie was playing. */
-        if (GG_MOVIE->state == MOVIE_STATE_FINISHED)
-            *GG_MOVIE_PLAYING = 0;
+        if (g_movie.state == MOVIE_STATE_FINISHED)
+            *&g_moviePlaying = 0;
         break;
     }
     return DefWindowProcA(hWnd, msg, wParam, lParam);
 }
 
+static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine);
+
+/* The original's global objects were built before WinMain and torn down
+ * after it returned (staticinit.h); every return path goes through here. */
 extern "C" __declspec(dllexport) int WINAPI
 Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 {
-    *ModuleInstanceGlobal = hInstance;
-    GetCurrentDirectoryA(GG_GAME_DIR_LEN, GG_GAME_DIR);
+    StaticInit_Construct();
+    int r = winmain_body(hInstance, lpCmdLine);
+    StaticInit_Destruct();
+    return r;
+}
+
+static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
+{
+    g_moduleInstance = hInstance;
+    GetCurrentDirectoryA(GG_GAME_DIR_LEN, g_gameDir);
 
     WNDCLASSA wc;
     wc.style         = CS_HREDRAW | CS_VREDRAW;
@@ -198,7 +210,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
     wc.cbClsExtra    = 0;
     wc.cbWndExtra    = 0;
     wc.hInstance     = hInstance;
-    wc.hIcon         = LoadIconA(hInstance, MAKEINTRESOURCEA(0x6a));
+    wc.hIcon         = LoadIconA(Resources_Module(), MAKEINTRESOURCEA(0x6a));
     wc.hCursor       = LoadCursorA(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     wc.lpszMenuName  = NULL;
@@ -212,7 +224,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
     if (hWnd == NULL)
         return 0;
 
-    GameLog_OpenLogFile(GG_LOGGER, "JJ.log", NULL);
+    GameLog_OpenLogFile(&g_logger, "JJ.log", NULL);
 
     /* The original tests the first character, not the pointer.  None of the
      * early returns below destroys the window. */
@@ -222,7 +234,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
         return 0;
     }
 
-    Game *game = (Game *)game_operator_new(GAME_ALLOC_SIZE);
+    Game *game = (Game *)malloc(GAME_ALLOC_SIZE);
     Game::set_instance(game ? game->construct(lpCmdLine) : NULL);
     if (Game::instance() == NULL)
         return 0;
@@ -242,7 +254,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
     }
 
     /* Cancel: the one early exit that destroys the window, and returns 1. */
-    if (hooks_DialogBoxParamA(hInstance, MAKEINTRESOURCEA(0x68), NULL,
+    if (hooks_DialogBoxParamA(Resources_Module(), MAKEINTRESOURCEA(0x68), NULL,
                               LauncherDlg_Proc, 0) == 0) {
         DestroyWindow(hWnd);
         delete_game(game);
@@ -252,7 +264,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
     ShowWindow(hWnd, SW_HIDE);
     UpdateWindow(hWnd);
 
-    Direct3D *d3d = (Direct3D *)game_operator_new(D3D_ALLOC_SIZE);
+    Direct3D *d3d = (Direct3D *)malloc(D3D_ALLOC_SIZE);
     g_pDirect3D = d3d ? Direct3D_Construct(d3d) : NULL;
     d3d = g_pDirect3D;
 
@@ -266,7 +278,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
     if (!Direct3D_CreateD3DDevice(d3d, hWnd, cfg->adapterGuid(), mode, true)
         && !Direct3D_CreateD3DDevice(d3d, hWnd, NULL, mode, true)
         && !Direct3D_CreateD3DDevice(d3d, hWnd, NULL, 0, true)) {
-        GameLog_LogSourceLocation(GG_LOGGER, 4,
+        GameLog_LogSourceLocation(&g_logger, 4,
             "E:\\WORK\\VC++\\JumpinJohn\\JumpinJohn\\main.cpp", 0x73f,
             "Creation of Direct3D failed");
         d3d->pDD4->RestoreDisplayMode();
@@ -277,7 +289,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
         return 1;
     }
 
-    if (Input_DirectInputSetup(hInstance, hWnd, (DWORD)GG_LOGGER, game) == 0) {
+    if (Input_DirectInputSetup(hInstance, hWnd, (DWORD)&g_logger, game) == 0) {
         Direct3D_ReleaseResources(d3d);
         delete_d3d(d3d);
         delete_game(game);
@@ -286,10 +298,10 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 
     /* 3D sound, 22050 Hz, 16-bit stereo; rolloff 0.3 if it came up. */
     SoundManager *snd = game->soundManager();
-    if (SoundMgr_Init(snd, 1, hWnd, 0, 2, 22050, 16, GG_LOGGER))
+    if (SoundMgr_Init(snd, 1, hWnd, 0, 2, 22050, 16, &g_logger))
         CFaktSound_Apply3DRolloffParams(snd->cfaktSound(), 0.3f, DS3D_IMMEDIATE);
 
-    CDM_SetWindowHandle(GG_CDAUDIO, hWnd);
+    CDM_SetWindowHandle(&g_cdAudio, hWnd);
     ShowWindow(hWnd, SW_SHOW);
     Render_ConfigureRenderState();
     hooks_ClockInit();
@@ -300,7 +312,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
     IDirectDraw *dd1 = NULL;
     d3d->pDD4->QueryInterface(IID_IDirectDraw, (void **)&dd1);
     d3d->pPrimary->QueryInterface(IID_IDirectDrawSurface,
-                                  (void **)GG_MOVIE_SURFACE);
+                                  (void **)&g_movieSurface);
 
     /* FaktMovie's overlay colour key (movie.h): use it, CK_RGB, black..black.
      * The original MaybeLoadVideo hands it to IMixerPinConfig::SetColorKey;
@@ -309,28 +321,28 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
      * `mov eax,[esp+0x40]` -- the MSG's `message`, before the MSG is first
      * written, i.e. uninitialised stack.  CK_RGB ignores PaletteIndex, so it
      * is left as the ctor's zero. */
-    GG_MOVIE->useColorKey = 1;
-    GG_MOVIE->colorKey[0] = 2;   /* CK_RGB */
-    GG_MOVIE->colorKey[2] = 0;
-    GG_MOVIE->colorKey[3] = 0;
+    g_movie.useColorKey = 1;
+    g_movie.colorKey[0] = 2;   /* CK_RGB */
+    g_movie.colorKey[2] = 0;
+    g_movie.colorKey[3] = 0;
 
     bool playing = false;
-    if (Movie_Setup(GG_MOVIE, GG_LOGGER)) {
+    if (Movie_Setup(&g_movie, &g_logger)) {
         /* The original sprintfs into a 128-byte stack buffer and overruns it
          * for an install path past ~110 characters; ours is MAX_PATH-sized so
          * the same path loads instead of smashing the frame. */
         char path[MAX_PATH + 32];
-        snprintf(path, sizeof(path), "%s\\Video\\intro.avi", GG_GAME_DIR);
-        if (Movie_LoadVideo(GG_MOVIE, hWnd, dd1, *GG_MOVIE_SURFACE, path) >= 0)
+        snprintf(path, sizeof(path), "%s\\Video\\intro.avi", g_gameDir);
+        if (Movie_LoadVideo(&g_movie, hWnd, dd1, g_movieSurface, path) >= 0)
             playing = true;
         else
-            GameLog_LogMessage(GG_LOGGER, 3, "MAIN: Couldn't load %s .", path);
+            GameLog_LogMessage(&g_logger, 3, "MAIN: Couldn't load %s .", path);
     }
-    *GG_MOVIE_PLAYING = playing ? 1 : 0;
+    g_moviePlaying = playing ? 1 : 0;
     dd1->Release();
     if (playing) {
-        Movie_SetWindow(GG_MOVIE, *GG_MOVIE_SURFACE);
-        Movie_Play(GG_MOVIE);
+        Movie_SetWindow(&g_movie, g_movieSurface);
+        Movie_Play(&g_movie);
     }
 
     const bool norender = winmain_fx_norender();
@@ -343,16 +355,16 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
             DispatchMessageA(&msg);
         }
         /* Cleared by WindowsMessageProcessor when the movie finishes. */
-        if (*GG_MOVIE_PLAYING == 0 && !norender)
+        if (g_moviePlaying == 0 && !norender)
             Render_RenderGameFrame();
     }
 
     /* Shutdown order is the original's: settings are saved after Game is
      * gone, and the device goes last. */
-    LevelPlacements_Release(GG_LEVEL_PLACEMENTS);
+    LevelPlacements_Release(&g_levelPlacements);
     delete_game(Game::instance());
     Input_TrySaveSettings();
-    Theme_ReleaseBlock(GG_THEME_BLOCK);
+    Theme_ReleaseBlock(&g_themeBlock);
     Direct3D_ReleaseResources(g_pDirect3D);
     delete_d3d(g_pDirect3D);
     return (int)msg.wParam;

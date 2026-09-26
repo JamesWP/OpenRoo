@@ -3,6 +3,7 @@
  */
 #include <math.h>
 #include "d3dmath_common.h"
+D3DMATRIX g_worldIdentity;   /* was 0x004e0440 */
 
 /* MatrixSetIdentity, 0x413230 */
 void m4_identity(Mat4 *d)

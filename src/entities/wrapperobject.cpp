@@ -94,7 +94,7 @@
 #include <new>
 
 #include "wrapperobject.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "log.h"
 
 /* ─── Layout ──────────────────────────────────────────────────────────── */
@@ -436,7 +436,7 @@ Wrapper_ScalarDtor(WrapperObject *self, unsigned int flags)
 {
     Wrapper_DtorBody(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

@@ -19,7 +19,7 @@ struct SceneMaterial {
 };
 
 /* The one instance (scenematerial.cpp), set up by renderstate.cpp. */
-static SceneMaterial *const GG_MATERIAL = (SceneMaterial *)0x004e0390;
+extern SceneMaterial g_material;   /* was 0x004e0390 */
 
 static_assert(sizeof(D3DMATERIAL) == 80, "D3DMATERIAL size mismatch");
 static_assert(offsetof(SceneMaterial, pMaterial) == 0x04, "SceneMaterial layout");
@@ -40,3 +40,8 @@ static_assert(0x0c + offsetof(D3DMATERIAL, dwRampSize) == 0x58, "SceneMaterial c
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 SceneMaterial_Create(SceneMaterial *self, IDirect3D3 *pD3D,
                      IDirect3DDevice3 *pDevice);
+
+/* Constructor and destructor body, driven by staticinit.cpp for the one
+ * global instance (the original's static-init/atexit thunks). */
+extern "C" __declspec(dllexport) SceneMaterial *__attribute__((thiscall)) SceneMaterial_Construct(SceneMaterial *self);   /* 0x0042d690 */
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) SceneMaterial_DtorBody(SceneMaterial *self);   /* 0x0042d720 */

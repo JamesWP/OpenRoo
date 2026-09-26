@@ -16,7 +16,7 @@ struct SceneSpotLight {
 };
 
 /* The one instance (scenelight.cpp), set up by renderstate.cpp. */
-static SceneSpotLight *const GG_LIGHT = (SceneSpotLight *)0x0046c830;
+extern SceneSpotLight g_light;   /* was 0x0046c830 */
 
 static_assert(sizeof(D3DLIGHT2) == 80, "D3DLIGHT2 size mismatch");
 static_assert(offsetof(SceneSpotLight, pLight)      == 0x54, "SceneSpotLight layout");
@@ -41,3 +41,8 @@ static_assert(4 + offsetof(D3DLIGHT2, dwFlags)        == 0x50, "SceneSpotLight c
  * success (scenelight.cpp). */
 extern "C" __declspec(dllexport) bool __attribute__((thiscall))
 SceneLight_Create(SceneSpotLight *self, Direct3D *d3d);
+
+/* Constructor and destructor body, driven by staticinit.cpp for the one
+ * global instance (the original's static-init/atexit thunks). */
+extern "C" __declspec(dllexport) SceneSpotLight *__attribute__((thiscall)) SceneLight_Construct(SceneSpotLight *self);   /* 0x00425380 */
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) SceneLight_DtorBody(SceneSpotLight *self);   /* 0x004253f0 */

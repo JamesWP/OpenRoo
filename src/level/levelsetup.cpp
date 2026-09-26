@@ -224,8 +224,8 @@
  * addresses so the bit patterns are exactly the game's:
  *   0x0045d2f8  6.2831855f   (2 pi)
  *   0x0045d3ec  3.0518509e-5 (very nearly 1/32768) */
-#define K_TWO_PI   (*(const float *)0x0045d2f8)
-#define K_INV_32K  (*(const float *)0x0045d3ec)
+#define K_TWO_PI   0x1.921fb6p+2f   /* the image's float at 0x0045d2f8, bit for bit */
+#define K_INV_32K  0x1.0002p-15f    /* the image's float at 0x0045d3ec (1/32767), bit for bit */
 
 /* ─── Strings and the logger, at their original addresses ────────────────── */
 
@@ -428,7 +428,7 @@ Sim_SetupLevelObjects(Game *self)
     self->menu()->setChildCount(0x28, (self->nextLevelBonus() == 0) ? 2 : 1);
     self->player()->setLastSecondsMark(10.0);                /* two dwords: 0, 0x40240000 */
 
-    GameLog_LogMessage(GG_LOGGER, 2, GS_LVL_INIT_STARTED);
+    GameLog_LogMessage(&g_logger, 2, GS_LVL_INIT_STARTED);
 
     self->setLevelSoundsReady(0);
     self->scriptPlayer()->releaseStreams();
@@ -448,7 +448,7 @@ Sim_SetupLevelObjects(Game *self)
     self->setField13cc94(1, 1000.0f);           /* 0x447a0000 */
     self->setField13cc94(2, 0.0f);
 
-    CameraGlobals *cam = GG_CAMERA;   /* camera.h: note the eye/target conflict */
+    CameraGlobals *cam = &g_camera;   /* camera.h: note the eye/target conflict */
     cam->eye[0] = 0.0f;
     cam->eye[1] = 1000.0f;
     cam->eye[2] = 0.0f;
@@ -591,7 +591,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_SWITCH) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_WARN_SWITCH);
+                        GameLog_LogMessage(&g_logger, 1, GS_LVL_WARN_SWITCH);
                     } else {
                         unsigned char idx = (unsigned char)(param - 1);
                         if (idx > self->switchMax())
@@ -610,7 +610,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_BRIDGE_U) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_WARN_XBRIDGE);
+                        GameLog_LogMessage(&g_logger, 1, GS_LVL_WARN_XBRIDGE);
                     } else {
                         BridgeObject::spawn(self, u, v, t->height(),
                                             (unsigned char)(param - 1), 1);
@@ -621,7 +621,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_BRIDGE_V) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_WARN_YBRIDGE);
+                        GameLog_LogMessage(&g_logger, 1, GS_LVL_WARN_YBRIDGE);
                     } else {
                         BridgeObject::spawn(self, u, v, t->height(),
                                             (unsigned char)(param - 1), 2);
@@ -721,7 +721,7 @@ Sim_SetupLevelObjects(Game *self)
                      * double copy here, the same bits. */
                     self->freeBomb(self->census()->freeBombs)->placedAt =
                         *self->clock();
-                    GameLog_LogMessage(GG_LOGGER, 3, GS_LVL_FREEBOMB,
+                    GameLog_LogMessage(&g_logger, 3, GS_LVL_FREEBOMB,
                                        (unsigned int)self->census()->freeBombs);
                     self->census()->freeBombs++;
                 }
@@ -855,7 +855,7 @@ next_row:
             unsigned char cv = self->player()->homeV();
             if (Sim_FindNearestFlaggedTileInRadius(self, &cu, &cv, 0x14)) {
                 CELL(M, cu, cv)->setContents(0);
-                GameLog_LogMessage(GG_LOGGER, 3, GS_LVL_CD_MISSING,
+                GameLog_LogMessage(&g_logger, 3, GS_LVL_CD_MISSING,
                                    (unsigned int)cu, (unsigned int)cv);
             }
         }
@@ -882,23 +882,23 @@ next_row:
     self->setField13cc90(0);
     self->setOverviewActive(0);
 
-    GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_CRYSTALS,
+    GameLog_LogMessage(&g_logger, 1, GS_LVL_CRYSTALS,
                        (unsigned int)self->field_42252(),
                        self->gemsRequired());
 
     if ((int)((unsigned int)self->player()->gemsCollected() + (unsigned int)self->field_42252()) <
         self->gemsRequired())
-        GameLog_LogMessage(GG_LOGGER, 3, GS_LVL_WARN_CRYSTALS);
+        GameLog_LogMessage(&g_logger, 3, GS_LVL_WARN_CRYSTALS);
 
     /* ONE argument -- see the header. */
     if (self->extraObjects()->openFile(
                                  self->levelName()) == 0) {
         self->extraObjects()->setLoaded(0);
-        GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_LEO_FAILED,
+        GameLog_LogMessage(&g_logger, 1, GS_LVL_LEO_FAILED,
                            self->levelName());
     } else {
         self->extraObjects()->setLoaded(1);
-        GameLog_LogMessage(GG_LOGGER, 1, GS_LVL_LEO_LOADED,
+        GameLog_LogMessage(&g_logger, 1, GS_LVL_LEO_LOADED,
                            self->levelName());
     }
 

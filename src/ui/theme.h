@@ -249,7 +249,7 @@ struct Direct3D;
 struct GameLogger;
 struct ThemeSoundTable;
 
-static ThemeAssetBlock *const GG_THEME_BLOCK = (ThemeAssetBlock *)0x0046c890;
+extern ThemeAssetBlock g_themeBlock;   /* was 0x0046c890 */
 
 /* 0x0040c110 */
 extern "C" __declspec(dllexport) bool __cdecl

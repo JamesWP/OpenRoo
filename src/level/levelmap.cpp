@@ -95,7 +95,7 @@
 #include <stddef.h>
 #include "log.h"
 #include "levelmap.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 #define LM_LOG_FIRST     8
 
@@ -224,6 +224,6 @@ LevelMap_ScalarDestructor(LevelMap *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }

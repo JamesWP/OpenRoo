@@ -13,7 +13,7 @@
  */
 #include <windows.h>
 #include "levelobjbase.h"
-#include "alloc.h"
+#include <stdlib.h>
 
 extern "C" {
 
@@ -43,7 +43,7 @@ LevelObjBase_ScalarDtor(void *self, unsigned int flags)
 {
     LevelObjBase_DtorBody(self);
     if (flags & 1)
-        game_free2(self);
+        free(self);
     return self;
 }
 

@@ -121,7 +121,7 @@ bool plan_is_dangerous(const Observation *o, int u, int v)
 /* ── breadth-first distance field ───────────────────────────────────────── */
 
 static int   g_dist[CELLS];
-static int   g_prev[CELLS];
+static int   g_prevClock[CELLS];
 static int   g_queue[CELLS];
 
 /* Fill g_dist/g_prev from (su,sv).  `avoid` skips dangerous cells except the
@@ -129,7 +129,7 @@ static int   g_queue[CELLS];
 static void bfs(const Observation *o, int su, int sv, bool avoid,
                 bool ignore_foes = false)
 {
-    for (int i = 0; i < CELLS; i++) { g_dist[i] = UNREACHED; g_prev[i] = -1; }
+    for (int i = 0; i < CELLS; i++) { g_dist[i] = UNREACHED; g_prevClock[i] = -1; }
     if (su < 0 || sv < 0 || su >= o->cols || sv >= o->rows) return;
     mark_danger(o);
 
@@ -153,7 +153,7 @@ static void bfs(const Observation *o, int su, int sv, bool avoid,
             if (avoid && g_danger[adj]) continue;
             if (adj == g_avoid_cell) continue;
             g_dist[adj] = g_dist[cur] + 1;
-            g_prev[adj] = cur;
+            g_prevClock[adj] = cur;
             g_queue[tail++] = adj;
         }
     }
@@ -351,9 +351,9 @@ static bool first_hop(int start, int goal, int *nu, int *nv)
 {
     if (goal < 0 || goal == start || g_dist[goal] == UNREACHED) return false;
     int cur = goal;
-    while (g_prev[cur] != start) {
-        if (g_prev[cur] < 0) return false;
-        cur = g_prev[cur];
+    while (g_prevClock[cur] != start) {
+        if (g_prevClock[cur] < 0) return false;
+        cur = g_prevClock[cur];
     }
     *nu = cur / WS_GRID_PITCH;
     *nv = cur % WS_GRID_PITCH;

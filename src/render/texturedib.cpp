@@ -63,7 +63,7 @@
 #include <string.h>
 #include "texture.h"
 #include "log.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include <stdio.h>
 #include "gamestr.h"
 #include "gameglobals.h"
@@ -225,10 +225,10 @@ TextureDIB_CreateSurface(LoadedImage *self, IDirectDraw4 *dd, LPCSTR name,
     }
 
     if (self->ImageName != NULL)
-        game_free2(self->ImageName);
+        free(self->ImageName);
 
     /* strlen+1: the original's `not ecx` with no matching `dec ecx`. */
-    char *copy = (char *)game_operator_new(dib_strlen(name) + 1u);
+    char *copy = (char *)malloc(dib_strlen(name) + 1u);
     self->ImageName = copy;
     sprintf(copy, GS_FMT_S, name);
 

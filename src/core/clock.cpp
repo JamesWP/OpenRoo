@@ -39,6 +39,7 @@
  * that advances by exactly that much per call.  Recording and replay must both
  * use it (see REPLAY_PLAN.md); the game then runs as fast as the CPU allows.
  */
+#include <time.h>
 #include "clock.h"
 #include "log.h"
 #include "determinism.h"
@@ -74,7 +75,7 @@ static double    g_accum;        /* elapsed seconds           (was 0x46c448) */
  * get_xrefs_to confirms this is the only one of the clock's globals with an
  * outside reader: 0x46c434/438/440/444/448 are touched solely by 0x404040 and
  * its initialiser 0x403fa0, and stay local here. */
-#define g_prev (*(double *)0x0046c450)
+static double g_prevClock;   /* was 0x0046c450 */
 static int       g_same;         /* identical-result run      (was 0x46c440) */
 static BYTE      g_shift;        /* frequency shift           (was 0x46c434) */
 static double    g_period;       /* seconds per shifted tick  (was 0x46c438) */
@@ -161,7 +162,7 @@ double clock_seconds(void)
         /* Virtual clock.  First call returns 0.0, as the original does. */
         if (!g_started) { g_started = true; return g_accum; }
         g_accum += g_fixed_dt;
-        g_prev = g_accum;   /* keep RenderGameFrame's dt source current */
+        g_prevClock = g_accum;   /* keep RenderGameFrame's dt source current */
         return g_accum;
     }
 
@@ -185,7 +186,7 @@ double clock_seconds(void)
     g_last  = cur;
     g_accum = (double)delta * g_period + g_accum;
 
-    if (g_accum == g_prev) {
+    if (g_accum == g_prevClock) {
         /* Original: INC; CMP 0x186a0; JLE keep — so the bump fires on the
          * 100001st identical result, and only then is the counter reset. */
         if (++g_same > 0x186a0) {
@@ -196,7 +197,7 @@ double clock_seconds(void)
         g_same = 0;
     }
 
-    g_prev = g_accum;
+    g_prevClock = g_accum;
     return g_accum;
 }
 
@@ -218,12 +219,11 @@ double clock_seconds(void)
  * KAROO_SEED=<int> returns that constant instead of the wall clock.  Replay
  * needs it *and* KAROO_FIXED_DT — they fix independent sources.
  *
- * Unset, we call the original at 0x0045169A through.  It is deliberately NOT
- * UD2-stubbed: calling through keeps the real behaviour bit-exact, including
- * the timezone/DST globals it caches at 0x004E0910..0x004E0924, which a
- * reimplementation would leave stale.
+ * Unset, it is our CRT's time().  The original called the game CRT's time()
+ * at 0x0045169A; the only use is seeding srand, and both return the same
+ * seconds since 1970.  The timezone/DST globals that one cached
+ * (0x004E0910..0x004E0924) have no other reader in our code.
  */
-#define GAME_TIME_ORIGINAL ((int (__cdecl *)(int *))0x0045169A)
 
 static int  g_seed      = 0;
 static bool g_seed_set  = false;
@@ -243,7 +243,7 @@ static int game_time(int *out)
     }
 
     if (!g_seed_set)
-        return GAME_TIME_ORIGINAL(out);
+        return (int)time((time_t *)out);
 
     if (out) *out = g_seed;
     return g_seed;
@@ -286,5 +286,5 @@ __declspec(dllexport) double __cdecl hooks_ClockSeconds(void)
 
 double clock_previous_seconds(void)
 {
-    return g_prev;
+    return g_prevClock;
 }

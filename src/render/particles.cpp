@@ -29,7 +29,7 @@
 #include "com_proxy.h"
 #include "log.h"
 #include "determinism.h"
-#include "alloc.h"
+#include <stdlib.h>
 #include "assetio.h"
 #include "clock.h"
 #include "crtrand.h"
@@ -38,7 +38,7 @@
 #include <math.h>
 #include <string.h>
 #include <new>
-#include "gamecrt.h"
+#include <stdio.h>
 
 #define PARTICLE_FVF       0x1e2  /* XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1 — 0x20 stride */
 #define PARTICLE_LOG_FIRST 8
@@ -488,7 +488,7 @@ extern void *const ps_vtbl_xface[];
 
 static bool ps_write(const void *src, unsigned size, void *fp)
 {
-    return GC_FWRITE(src, size, 1, (FILE *)fp) == 1;
+    return fwrite(src, size, 1, (FILE *)fp) == 1;
 }
 
 static bool ps_read(void *dst, unsigned size, void *fp)
@@ -696,7 +696,7 @@ static BOOL ps_write_sub_object(const void *obj, void *fp)
     DWORD len = (DWORD)strlen(name) + 1;
     if (!ps_write(&len, 4, fp))
         return FALSE;
-    if (GC_FWRITE(name, 1, len, (FILE *)fp) != len)
+    if (fwrite(name, 1, len, (FILE *)fp) != len)
         return FALSE;
     if (obj) {
         void **vtbl = *(void ***)obj;
@@ -877,7 +877,7 @@ static void quad_release(ParticleSystem *self, int flags)
 
 /* 0x44d060 / 0x44d360 — the two dtor bodies: own vtable, the shared release
  * (called directly, not virtually), then the base body. */
-static void quad_destruct(ParticleSystem *self, DWORD vtbl)
+static void quad_destruct(ParticleSystem *self, void *const *vtbl)
 {
     self->pVtable = (void **)vtbl;
     quad_release(self, 1);
@@ -1474,7 +1474,7 @@ Particle_QuadRelease(ParticleSystem *self, int flags)        { quad_release(self
 __declspec(dllexport) void *THISCALL
 Particle_PointDtor(PointParticleSystem *self, unsigned flags)
 {
-    quad_destruct(&self->base, VTBL_PARTICLE_POINT);
+    quad_destruct(&self->base, ps_vtbl_point);
     return scalar_delete(self, flags);
 }
 
@@ -1500,7 +1500,7 @@ Particle_PointLoad(PointParticleSystem *self, void *fp, GameLogger *log)
 __declspec(dllexport) void *THISCALL
 Particle_FaceDtor(FaceParticleSystem *self, unsigned flags)
 {
-    quad_destruct(&self->base, VTBL_PARTICLE_FACE);
+    quad_destruct(&self->base, ps_vtbl_face);
     return scalar_delete(self, flags);
 }
 
