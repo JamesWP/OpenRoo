@@ -27,7 +27,7 @@ Exit code is the point: 0 = both files match the baseline, 1 = they do not.
 
 How the run is driven
 ---------------------
-KAROO_LEVEL_REPORT=1 makes karoo_hooks.dll answer exactly the three VK_L
+KAROO_LEVEL_REPORT=1 makes KarooOwn.exe answer exactly the three VK_L
 queries LoadSounds makes (levelreport.cpp), then --- once the report is
 written --- drive the menu's Quit node so the game shuts down on its own.  It
 has to be a real quit, not a kill: the "GAME: level report created" log line is
@@ -108,17 +108,15 @@ class Sandbox:
 
 def preflight():
     problems = []
-    if not os.path.exists(os.path.join(REPO, "karoo_hooks.dll")):
-        problems.append("karoo_hooks.dll missing - run build.sh")
-    if not os.path.exists(os.path.join(REPO, "Karoo.exe")):
-        problems.append("Karoo.exe missing - run patch.py")
+    if not os.path.exists(os.path.join(REPO, "KarooOwn.exe")):
+        problems.append("KarooOwn.exe missing - run make in karoo-hooks")
     return problems
 
 
 def wait_for_quiet(timeout=30):
     """A previous Karoo.exe still running would wedge this launch."""
     for _ in range(timeout):
-        r = subprocess.run(["pgrep", "-f", "Karoo.exe"],
+        r = subprocess.run(["pgrep", "-f", r"Karoo(Own)?\.exe"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if r.returncode != 0:
             time.sleep(2)              # let wineserver finish behind it
@@ -181,7 +179,7 @@ def launch(headless=True):
             break
         except subprocess.TimeoutExpired:
             continue
-    subprocess.run(["pkill", "-f", "Karoo.exe"],
+    subprocess.run(["pkill", "-f", r"Karoo(Own)?\.exe"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     wait_for_quiet()
     return False

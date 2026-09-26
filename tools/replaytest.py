@@ -667,13 +667,8 @@ def main():
     ap.add_argument("--bless", action="store_true",
                     help="write the run's own end state into the manifest as "
                          "the expectation — only after you believe the run")
-    ap.add_argument("--own", action="store_true",
-                    help="run our own executable KarooOwn.exe (launch.sh --own) "
-                         "instead of the patched Karoo.exe + karoo_hooks.dll")
     ap.add_argument("--verbose", "-v", dest="verbose", default=False, action="store_true")
     args = ap.parse_args()
-    if args.own:
-        os.environ["EXE"] = "KarooOwn.exe"   # launch.sh picks it up
 
     m = load_manifest()
     if args.list:
