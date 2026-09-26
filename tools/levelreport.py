@@ -234,15 +234,16 @@ def triggered():
 
 # The report's columns, in file order, under our names.  The row ends with
 # the level's file name, which is not a count.  Each row carries one more
-# number than the game's header labels, between Bomb and Time; it is named
-# for what we know of it until a decompile of the writer says more.
+# number than the game's header labels: the level's time-bonus item count,
+# between Bomb and Time (src/level/reportwriter.cpp).  "Time" is the time
+# bonus, half the level file's time limit; "IS" is the script's line count.
 REPORT_FIELDS = [
-    "level", "world", "bonus", "instruction_scripts", "leo_objects",
+    "level", "world", "bonus", "script_lines", "leo_objects",
     "catchers", "throwers", "crystals", "hidden_crystals", "needed_crystals",
     "hidden_lives", "fields", "obstacles", "elevators", "platforms",
     "destructibles", "glue", "jumps", "teleporters", "slides", "ice",
-    "bridges", "lives", "freeze", "protect", "paraglide", "speed", "bombs", "unlabelled",
-    "par_time", "cumulative_score", "file"]
+    "bridges", "lives", "freeze", "protect", "paraglide", "speed", "bombs", "time_bonus_items",
+    "time_bonus", "cumulative_score", "file"]
 
 
 def _lines(path):

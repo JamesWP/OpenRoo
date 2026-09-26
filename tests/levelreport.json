@@ -273,26 +273,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 34,
     "jumps": 0,
     "leo_objects": 30,
     "level": 1,
     "lives": 0,
     "needed_crystals": 10,
     "obstacles": 0,
-    "par_time": 70,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 34,
     "script_texts_parsed": 5,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 70,
+    "time_bonus_items": 0
    },
    "file": "Forest/Start",
-   "sha256": "94f5f9f4a9dc4fd47f694ee3d0c995257dc9ee4214897e65bd76e4fd72f75813"
+   "sha256": "f716c147d65b1206e8a90e45cc05830e6887c0f45ba92522ed59d9670a6f212f"
   },
   "10": {
    "counts": {
@@ -309,25 +309,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 36,
     "jumps": 0,
     "level": 10,
     "lives": 0,
     "needed_crystals": 0,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 36,
     "script_texts_parsed": 5,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Forest/BombStart",
-   "sha256": "4554ad1e29a520536605738d01aff06ae4a5eb46f0c8d959115f4d219e5b5063"
+   "sha256": "4dc009b20ef65bebb54d9d3a0fd7411c93272cb6521d0f3c8d39c308ff3fb7d0"
   },
   "11": {
    "counts": {
@@ -344,25 +344,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 23,
     "jumps": 0,
     "level": 11,
     "lives": 0,
     "needed_crystals": 8,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 23,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Forest/Forest02",
-   "sha256": "c1ea18541480357f619088fc835486cbbbe83a35d64e1070cce6f8b4b0e09edf"
+   "sha256": "8fa0460d8b03b9f8c65aa934c8df53375abdddcabbd4624a3d466289d5a9cb1a"
   },
   "12": {
    "counts": {
@@ -379,26 +379,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 13,
     "jumps": 0,
     "leo_objects": 4,
     "level": 12,
     "lives": 1,
     "needed_crystals": 48,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 2,
     "protect": 0,
+    "script_lines": 13,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Castle/Elev&PlatfStart",
-   "sha256": "a616a2df5597ea910a7378345e89e7d1e33cc82a9591bc29a0704de3fa9d2110"
+   "sha256": "0ef0a511404a8878bd4dc7316240f8eb3dff4ca5badb32614f742b5ca4deaf73"
   },
   "13": {
    "counts": {
@@ -415,26 +415,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 13,
     "jumps": 0,
     "leo_objects": 13,
     "level": 13,
     "lives": 1,
     "needed_crystals": 40,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 3,
     "protect": 0,
+    "script_lines": 13,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Castle/Something",
-   "sha256": "f6c0463a8c93efd720a202fc23991a9d9c2e8587cc323ceeef9bfc3a5ab2feb2"
+   "sha256": "c0b153cd52684031b745633fbbb8cbdba72c51fc8894e468c274b76dfca5e3d7"
   },
   "14": {
    "counts": {
@@ -451,25 +451,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 17,
     "jumps": 0,
     "level": 14,
     "lives": 0,
     "needed_crystals": 50,
     "obstacles": 0,
-    "par_time": 130,
     "paraglide": 0,
     "platforms": 3,
     "protect": 0,
+    "script_lines": 17,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 130,
+    "time_bonus_items": 0
    },
    "file": "Castle/Elev&Platf01",
-   "sha256": "3815808e809973e4004f025673ad23478e9a2cf782864a9f8b16624a97a77216"
+   "sha256": "d69cf61452d388209ed7d203de76bb125fd98a68323bd0c9df1ec195914e647b"
   },
   "15": {
    "counts": {
@@ -486,26 +486,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 21,
     "jumps": 0,
     "leo_objects": 11,
     "level": 15,
     "lives": 1,
     "needed_crystals": 16,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 21,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 1,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Castle/ThrowerStart",
-   "sha256": "94d861c32a8566f8aab4ff06f68f4e671d6c12150771f299ed57fa1aaa807212"
+   "sha256": "c859da2cd1a3a1e97e404ad1b18c2c318ffffe721bf23ed03a26291994b1703f"
   },
   "16": {
    "counts": {
@@ -522,25 +522,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 25,
     "jumps": 0,
     "level": 16,
     "lives": 0,
     "needed_crystals": 4,
     "obstacles": 5,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 25,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Castle/ObstacleStart",
-   "sha256": "72b7f0bb8a036b6d7cb757ba29e22b2b7b0b385a95baa1b5d07011509ed98dfb"
+   "sha256": "ed33cdb88cca042b17e9b125b1c85e64336637664ae56c24210b8ac0ca9fef4d"
   },
   "17": {
    "counts": {
@@ -557,26 +557,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 11,
     "jumps": 0,
     "leo_objects": 12,
     "level": 17,
     "lives": 0,
     "needed_crystals": 12,
     "obstacles": 8,
-    "par_time": 90,
     "paraglide": 0,
     "platforms": 4,
     "protect": 0,
+    "script_lines": 11,
     "script_texts_parsed": 0,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 90,
+    "time_bonus_items": 0
    },
    "file": "Castle/Tower",
-   "sha256": "7bfd5b6d4de76531581cc42d7ca4b1ce2f9eda4a597c91b06e475b0ceb2d3a07"
+   "sha256": "3c26567724c4b953862d3465790684b3211d869e97ee080b82e0f36f6144d1de"
   },
   "18": {
    "counts": {
@@ -593,25 +593,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 11,
     "jumps": 0,
     "level": 18,
     "lives": 0,
     "needed_crystals": 80,
     "obstacles": 0,
-    "par_time": 110,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 11,
     "script_texts_parsed": 0,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 110,
+    "time_bonus_items": 0
    },
    "file": "Castle/Glue&Enemy02",
-   "sha256": "665f5d68c0382993220315dbf76a422e0e4e8572cb933494f3d8469107822ad3"
+   "sha256": "85484c960683b68dfdba66b4b8a8035e45d6c2226873a6ed0e31edce49e42010"
   },
   "19": {
    "counts": {
@@ -628,26 +628,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 25,
     "jumps": 0,
     "leo_objects": 2,
     "level": 19,
     "lives": 0,
     "needed_crystals": 9,
     "obstacles": 2,
-    "par_time": 70,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 25,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 1,
-    "unlabelled": 0
+    "time_bonus": 70,
+    "time_bonus_items": 0
    },
    "file": "Castle/EnemyVsEnemy",
-   "sha256": "bd9acbc812d3c0ead8cb19f14e06157856844b2a6f44772c36fa466a074bfa64"
+   "sha256": "24c72e532d984386bb9196c2fe33e932ade2297e2a5e2eb3a47019d215b4ac04"
   },
   "2": {
    "counts": {
@@ -664,25 +664,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 21,
     "jumps": 0,
     "level": 2,
     "lives": 0,
     "needed_crystals": 13,
     "obstacles": 0,
-    "par_time": 90,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 21,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 90,
+    "time_bonus_items": 0
    },
    "file": "Forest/StairsStart",
-   "sha256": "0d826abd4106ecfa1318bd65b672dbe3e2b568fb1c1bbed0f89a2fee675322cb"
+   "sha256": "9e931e21b87fd56d6bdbe4c6438a2ec1052248a278e8c562a86096492e6191f4"
   },
   "20": {
    "counts": {
@@ -704,7 +704,6 @@
     "lives": 1,
     "needed_crystals": 25,
     "obstacles": 0,
-    "par_time": 150,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
@@ -713,10 +712,11 @@
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 150,
+    "time_bonus_items": 0
    },
    "file": "Castle/BonusBomb",
-   "sha256": "e8dc2e29ccf9caebdef55a20aefd281576ffc71c753f883a2e189f232baf9714"
+   "sha256": "8b714fea13f01f0f27701ff3dac6787f88f7709f48bd2d9abe40cae3bf9f6e0c"
   },
   "21": {
    "counts": {
@@ -733,25 +733,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 23,
     "jumps": 0,
     "level": 21,
     "lives": 0,
     "needed_crystals": 5,
     "obstacles": 0,
-    "par_time": 30,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 23,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 30,
+    "time_bonus_items": 0
    },
    "file": "Castle/DestrTotalStart",
-   "sha256": "3b87c5ccee85a1d3a0105b67ef534ca46d506c8401e17fdfd270d851cdb5f9fc"
+   "sha256": "cb361c0d409a70242f1a9a5da3b526b90ffeef644ce338583470c19f1d3071b8"
   },
   "22": {
    "counts": {
@@ -768,26 +768,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 29,
     "jumps": 0,
     "leo_objects": 4,
     "level": 22,
     "lives": 0,
     "needed_crystals": 23,
     "obstacles": 49,
-    "par_time": 105,
     "paraglide": 0,
     "platforms": 1,
     "protect": 0,
+    "script_lines": 29,
     "script_texts_parsed": 4,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 105,
+    "time_bonus_items": 0
    },
    "file": "Castle/Sprenggebiet",
-   "sha256": "55c564bf93c5712d31945dfedf84517e117efb89c190e6c956a99f02086a2e5b"
+   "sha256": "9959592c90134eacb3430d0acf2de3d84a396f7a9e548ab2993dbb969e288e21"
   },
   "23": {
    "counts": {
@@ -804,26 +804,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 45,
     "jumps": 0,
     "leo_objects": 12,
     "level": 23,
     "lives": 1,
     "needed_crystals": 10,
     "obstacles": 0,
-    "par_time": 8,
     "paraglide": 0,
     "platforms": 1,
     "protect": 0,
+    "script_lines": 45,
     "script_texts_parsed": 5,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 6
+    "time_bonus": 8,
+    "time_bonus_items": 6
    },
    "file": "Castle/TimeBonus",
-   "sha256": "4443e0a05f24e39af0bf00ea940f38f67d6090dbe79d7c5ce5d103be18a3995c"
+   "sha256": "1cda1b77133fd5e743d8cdb004ae7282cfd94efda3e586994b8ecf222e8ac6ad"
   },
   "24": {
    "counts": {
@@ -840,26 +840,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 23,
     "jumps": 0,
     "leo_objects": 1,
     "level": 24,
     "lives": 0,
     "needed_crystals": 15,
     "obstacles": 0,
-    "par_time": 50,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 23,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 50,
+    "time_bonus_items": 0
    },
    "file": "Water/Water01",
-   "sha256": "d9642c51f68ea738cd2b3e7fd3a9579a4a3163d9f976e87fa7ba9bccd873ca73"
+   "sha256": "79654baf3fb6f9fc012b28f7d84ffdb32d0cfadeab3175cb9fb8c838c0cb955e"
   },
   "25": {
    "counts": {
@@ -876,26 +876,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 21,
     "jumps": 0,
     "leo_objects": 10,
     "level": 25,
     "lives": 0,
     "needed_crystals": 12,
     "obstacles": 0,
-    "par_time": 110,
     "paraglide": 0,
     "platforms": 13,
     "protect": 0,
+    "script_lines": 21,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 110,
+    "time_bonus_items": 0
    },
    "file": "Water/Elev&Platf02",
-   "sha256": "945b68b57e18024fea2ea8e0ab7750202aecf4531dd0a7857e8f21785da56d52"
+   "sha256": "47d4704da9a8c2992b068b6982659bf925112e197814f3d0ada9f44472838265"
   },
   "26": {
    "counts": {
@@ -912,25 +912,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 24,
     "jumps": 0,
     "level": 26,
     "lives": 0,
     "needed_crystals": 25,
     "obstacles": 0,
-    "par_time": 45,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 24,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 0,
     "teleporters": 3,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 45,
+    "time_bonus_items": 0
    },
    "file": "Water/TeleporterStart",
-   "sha256": "d1d524a92fd20a374fdc20df3aab9b4317ac8e20613c81a09875c5bccee8f1ca"
+   "sha256": "acb0aea3b2a6f3ccd63989b6e6b968868674b0adf64968d6c1764c98698a7bf2"
   },
   "27": {
    "counts": {
@@ -947,26 +947,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 2,
     "ice": 0,
-    "instruction_scripts": 20,
     "jumps": 0,
     "leo_objects": 5,
     "level": 27,
     "lives": 0,
     "needed_crystals": 11,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 20,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 1,
     "throwers": 4,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Water/Thrower01",
-   "sha256": "f279e8a4ce8db6f82539cc35b07fdc437188a329a5fbbb4c1f5d153722859e98"
+   "sha256": "fd82ba523ea1b2eb50e3016e9ab28196ad52f0e8cc53cbeb2007a38aa0459ac7"
   },
   "28": {
    "counts": {
@@ -983,26 +983,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 34,
-    "instruction_scripts": 20,
     "jumps": 0,
     "leo_objects": 1,
     "level": 28,
     "lives": 0,
     "needed_crystals": 18,
     "obstacles": 0,
-    "par_time": 45,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 20,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 45,
+    "time_bonus_items": 0
    },
    "file": "Water/IceStart",
-   "sha256": "6dc2737ace18882926b024d62a4c18e3d4a3aa5a6d7606b81796593fec37f3d7"
+   "sha256": "20901bf528de55b38b1175bc1164129821b39d70261a6c6fc54435313a037af3"
   },
   "29": {
    "counts": {
@@ -1024,7 +1024,6 @@
     "lives": 2,
     "needed_crystals": 0,
     "obstacles": 0,
-    "par_time": 55,
     "paraglide": 0,
     "platforms": 1,
     "protect": 0,
@@ -1033,10 +1032,11 @@
     "speed": 0,
     "teleporters": 1,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 55,
+    "time_bonus_items": 0
    },
    "file": "Water/Elevator",
-   "sha256": "cea7489fefd80fd8ae9c92efad93b78f10430388afac4074e3845d54f93a65df"
+   "sha256": "d5fe04a46ac974c4e4c17d7c63978d33c6af0edd74b51e2bbb2e15c4e41d5140"
   },
   "3": {
    "counts": {
@@ -1053,26 +1053,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 17,
     "jumps": 0,
     "leo_objects": 51,
     "level": 3,
     "lives": 1,
     "needed_crystals": 13,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 17,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Forest/Forest01",
-   "sha256": "6008e4023995db4ec8eead1a22e2cf640495bf53a044439c52adfb8980548d31"
+   "sha256": "120b6386076b777c62d32b5417d06c73784b4fbc7fefec78a4ee2b203d90c02b"
   },
   "30": {
    "counts": {
@@ -1089,25 +1089,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 26,
     "jumps": 0,
     "level": 30,
     "lives": 1,
     "needed_crystals": 10,
     "obstacles": 0,
-    "par_time": 30,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 26,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 5,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 30,
+    "time_bonus_items": 0
    },
    "file": "Water/SpeedStart",
-   "sha256": "2509241d816d3393520a82f32ae4cd6b4d8198328c28d09d898d86848c146be5"
+   "sha256": "3a3931f8f65d3e90d285753f87dab60992aaab6d8767aa583d85663b4d5428c6"
   },
   "31": {
    "counts": {
@@ -1124,25 +1124,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 17,
     "jumps": 0,
     "level": 31,
     "lives": 1,
     "needed_crystals": 45,
     "obstacles": 0,
-    "par_time": 25,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 17,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 4,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 25,
+    "time_bonus_items": 0
    },
    "file": "Water/Speed01",
-   "sha256": "051388afb004e6cb202aebe914e72a7df6fa575fbc1ea37f03a722a278b7814e"
+   "sha256": "d71186abc8c4c7d261c7983c0591d5408370abf6ac967dcf667814169e289eec"
   },
   "32": {
    "counts": {
@@ -1159,25 +1159,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 7,
-    "instruction_scripts": 21,
     "jumps": 0,
     "level": 32,
     "lives": 1,
     "needed_crystals": 1,
     "obstacles": 0,
-    "par_time": 5,
     "paraglide": 0,
     "platforms": 2,
     "protect": 0,
+    "script_lines": 21,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 1,
     "throwers": 0,
-    "unlabelled": 5
+    "time_bonus": 5,
+    "time_bonus_items": 5
    },
    "file": "Water/TimeBonus02",
-   "sha256": "d28a2f2f7c5e17cd464555c8e0829d5e0ed23c6adcb42809db54a33e4004b667"
+   "sha256": "5bd8b92044dde18a32674e42a737065ddb9f3c65e947c96716934c6f231999e4"
   },
   "33": {
    "counts": {
@@ -1194,26 +1194,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 16,
     "jumps": 0,
     "leo_objects": 2,
     "level": 33,
     "lives": 1,
     "needed_crystals": 24,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 1,
     "protect": 0,
+    "script_lines": 16,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 2,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Water/Thrower02",
-   "sha256": "4becca2b98e0f062ad87369884628800fcd19a7290b42df91f9c8786c0cb1f5d"
+   "sha256": "2f6259b7d80c571dfed012c2173b3a8a5d12e99c09ee76886bbb93c6b13968a3"
   },
   "34": {
    "counts": {
@@ -1230,25 +1230,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 23,
-    "instruction_scripts": 19,
     "jumps": 0,
     "level": 34,
     "lives": 0,
     "needed_crystals": 5,
     "obstacles": 0,
-    "par_time": 40,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 19,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 1,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 40,
+    "time_bonus_items": 0
    },
    "file": "Water/Ice&Bombs",
-   "sha256": "99d8072021cf277ed43ccc43426cc4b8e51ae0433918b7103d0a36537b0ba11f"
+   "sha256": "2f914b9563bada3ed5221f119b95742dc8f98b94d344196004c57497e681ff7e"
   },
   "35": {
    "counts": {
@@ -1265,25 +1265,25 @@
     "hidden_crystals": 5,
     "hidden_lives": 1,
     "ice": 0,
-    "instruction_scripts": 19,
     "jumps": 0,
     "level": 35,
     "lives": 1,
     "needed_crystals": 5,
     "obstacles": 17,
-    "par_time": 40,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 19,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 40,
+    "time_bonus_items": 0
    },
    "file": "Water/Obstacle&Bonus",
-   "sha256": "179039cd7407b0744a270d665442e30b817d05c3c811362a17feca216207cd47"
+   "sha256": "e10b79aff8fe224daa88db164afe0ba82e2d70621559f7a75ba1abb9c4b0b0f6"
   },
   "36": {
    "counts": {
@@ -1300,25 +1300,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 26,
     "jumps": 0,
     "level": 36,
     "lives": 0,
     "needed_crystals": 0,
     "obstacles": 0,
-    "par_time": 90,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 26,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 90,
+    "time_bonus_items": 0
    },
    "file": "Water/Freeze01",
-   "sha256": "3e34600f9f173cd04642df2945aea41a136c022e54ceeaa06675a8882f45aab1"
+   "sha256": "2d09ea721333fa27be7feae62da6be61004a56a87b8f9844af6c963f38529e1d"
   },
   "37": {
    "counts": {
@@ -1341,7 +1341,6 @@
     "lives": 1,
     "needed_crystals": 1,
     "obstacles": 18,
-    "par_time": 40,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
@@ -1350,10 +1349,11 @@
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 40,
+    "time_bonus_items": 0
    },
    "file": "Water/BonusObstacles",
-   "sha256": "d888de0db22d9fe79bab105ef45287e94062b7228f6a512d02be4bf5b3ebc1a2"
+   "sha256": "cd23126eb964015e9ee2247aebed2bf6ba56d8268faad798da3bc615e99a60a2"
   },
   "38": {
    "counts": {
@@ -1370,25 +1370,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 23,
     "jumps": 0,
     "level": 38,
     "lives": 0,
     "needed_crystals": 10,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 23,
     "script_texts_parsed": 3,
     "slides": 45,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Egypt/SlideStart",
-   "sha256": "e3ed76f648b754012dc8b8cfe786ea94e55a5f4fb263d7c109d977b54e91d4f1"
+   "sha256": "4677258f703bdd9f344826b7f1714a21a668a0ae6b13239b191ebc84406d9cce"
   },
   "39": {
    "counts": {
@@ -1405,26 +1405,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 9,
     "jumps": 0,
     "leo_objects": 1,
     "level": 39,
     "lives": 0,
     "needed_crystals": 40,
     "obstacles": 0,
-    "par_time": 100,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 9,
     "script_texts_parsed": 0,
     "slides": 26,
     "speed": 0,
     "teleporters": 2,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 100,
+    "time_bonus_items": 0
    },
    "file": "Egypt/Pyramid01",
-   "sha256": "7063c9c7166a78c92749e5c50ca5ee41671c78c2b84f0c1a5f1d76cbc4472559"
+   "sha256": "8c4aa54437c5f6038862176be422edb14285b07666569af83cf0bb2beedd7d4c"
   },
   "4": {
    "counts": {
@@ -1441,26 +1441,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 31,
     "jumps": 0,
     "leo_objects": 16,
     "level": 4,
     "lives": 0,
     "needed_crystals": 8,
     "obstacles": 0,
-    "par_time": 30,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 31,
     "script_texts_parsed": 5,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 30,
+    "time_bonus_items": 0
    },
    "file": "Forest/EnemyStart",
-   "sha256": "d412fcc91e27ae6708745427bf377f668e08e031187818e4d0db530ffe7e3df1"
+   "sha256": "50eaf2dc0b933d824874f39eb7d8f964a6814e9564d18577d0dadd73866a72af"
   },
   "40": {
    "counts": {
@@ -1477,26 +1477,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 11,
     "jumps": 0,
     "leo_objects": 8,
     "level": 40,
     "lives": 1,
     "needed_crystals": 5,
     "obstacles": 5,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 11,
     "script_texts_parsed": 0,
     "slides": 0,
     "speed": 0,
     "teleporters": 1,
     "throwers": 1,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Egypt/Pyramid02",
-   "sha256": "d3a3814ee8ce96f465cee54f9f608cb83986e783f797eb41b9f6958aa8ebf323"
+   "sha256": "bf53d371d6fed592ba0d7f9546f758a7ba2406ae97f535099b1c4e2a9d4f71df"
   },
   "41": {
    "counts": {
@@ -1513,26 +1513,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 32,
     "jumps": 0,
     "leo_objects": 16,
     "level": 41,
     "lives": 0,
     "needed_crystals": 12,
     "obstacles": 0,
-    "par_time": 50,
     "paraglide": 0,
     "platforms": 0,
     "protect": 5,
+    "script_lines": 32,
     "script_texts_parsed": 4,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 2,
-    "unlabelled": 0
+    "time_bonus": 50,
+    "time_bonus_items": 0
    },
    "file": "Egypt/ProtectionStart",
-   "sha256": "90530e269fc9accd06d98eaed6dd4addae7c381c67d3831dba70272b4b9b1b7d"
+   "sha256": "eb836da06c6de9da20915e0db193d2f697f6952f2d73b0f54f1e41b71b9ad59e"
   },
   "42": {
    "counts": {
@@ -1549,26 +1549,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 17,
     "jumps": 0,
     "leo_objects": 10,
     "level": 42,
     "lives": 0,
     "needed_crystals": 10,
     "obstacles": 0,
-    "par_time": 75,
     "paraglide": 0,
     "platforms": 8,
     "protect": 0,
+    "script_lines": 17,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 75,
+    "time_bonus_items": 0
    },
    "file": "Egypt/CarpetRide",
-   "sha256": "5812bc80675cab3828a506982b47541b3e6a2ff3cb23df4e91cf5dd48690207e"
+   "sha256": "d8bdb03793fd3df5ae094eb19b421a23d6612833ef32d63b4c0c30b69970bd5b"
   },
   "43": {
    "counts": {
@@ -1585,26 +1585,26 @@
     "hidden_crystals": 2,
     "hidden_lives": 1,
     "ice": 0,
-    "instruction_scripts": 21,
     "jumps": 0,
     "leo_objects": 16,
     "level": 43,
     "lives": 1,
     "needed_crystals": 5,
     "obstacles": 8,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 21,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Egypt/Pyramid03",
-   "sha256": "f22dcb825acfce61f0a4b88bdd196d643b6c5de9c9892931de59836d5994591a"
+   "sha256": "f380b33dd00130d3c1e2b553d7f116c77ebbf87fcff6b4cf0ae0cd0b58786cff"
   },
   "44": {
    "counts": {
@@ -1621,26 +1621,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 16,
     "jumps": 0,
     "leo_objects": 18,
     "level": 44,
     "lives": 0,
     "needed_crystals": 0,
     "obstacles": 0,
-    "par_time": 17,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 16,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 17,
+    "time_bonus_items": 0
    },
    "file": "Egypt/Race",
-   "sha256": "99ac7f3f622e24e0eaa1d12c4b77e3e08fa79252a57fb63a3e6a59cc51eef493"
+   "sha256": "4e60affb23bf8b4e13de853d64e33b46c2734ffdb631815b52992fb288eee74c"
   },
   "45": {
    "counts": {
@@ -1657,26 +1657,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 28,
     "jumps": 0,
     "leo_objects": 4,
     "level": 45,
     "lives": 1,
     "needed_crystals": 40,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 5,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 28,
     "script_texts_parsed": 4,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Egypt/ParaglideStart",
-   "sha256": "ed1f1880b750f070098ee41e3672d6a917c9a6a609536874b3855d55a883d73b"
+   "sha256": "fc0c0c7af26dfae07f98941670507d50b618ffbffb5d11fb703f6f02ce1eae0b"
   },
   "46": {
    "counts": {
@@ -1698,7 +1698,6 @@
     "lives": 1,
     "needed_crystals": 0,
     "obstacles": 0,
-    "par_time": 5,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
@@ -1707,10 +1706,11 @@
     "speed": 0,
     "teleporters": 4,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 5,
+    "time_bonus_items": 0
    },
    "file": "Egypt/BonusSlide",
-   "sha256": "16c41ceed477ec6019c5388af40129dc0469cd67f844e2e9114c929ee3ff79c6"
+   "sha256": "afc56ce8d6310c83ec35f5ab83c41e15b93508bd94c2853aae258f5d521d9742"
   },
   "47": {
    "counts": {
@@ -1727,26 +1727,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 18,
     "jumps": 0,
     "leo_objects": 8,
     "level": 47,
     "lives": 0,
     "needed_crystals": 30,
     "obstacles": 0,
-    "par_time": 32,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 18,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 1,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 32,
+    "time_bonus_items": 0
    },
    "file": "Egypt/CollectIt",
-   "sha256": "b50a98b04d8ce180e2feaa42cd470c659b21f0a036a3f54089ebc14b5cc26d5c"
+   "sha256": "176d6995c90e42169e7ecfbca180b9f981cd6536af05cf075d522cd10f804998"
   },
   "48": {
    "counts": {
@@ -1763,26 +1763,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 16,
     "jumps": 0,
     "leo_objects": 2,
     "level": 48,
     "lives": 0,
     "needed_crystals": 10,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 16,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 0,
     "teleporters": 1,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Egypt/GreatPyramid",
-   "sha256": "ddbd6e73b31274a5000e75af081fcb655e9ffd359e25b64b1e6fa97f6a4dae38"
+   "sha256": "98cda4e95d0da582fc01f618922cc02606e1074e2a532012e3661d830141635a"
   },
   "49": {
    "counts": {
@@ -1799,25 +1799,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 12,
     "jumps": 0,
     "level": 49,
     "lives": 0,
     "needed_crystals": 15,
     "obstacles": 0,
-    "par_time": 30,
     "paraglide": 0,
     "platforms": 2,
     "protect": 0,
+    "script_lines": 12,
     "script_texts_parsed": 0,
     "slides": 9,
     "speed": 0,
     "teleporters": 0,
     "throwers": 1,
-    "unlabelled": 5
+    "time_bonus": 30,
+    "time_bonus_items": 5
    },
    "file": "Egypt/TimeBonus03",
-   "sha256": "0a943e7ffe4185d427224d1b34cde5428f07750a037e19dbfdf69070a33a36e8"
+   "sha256": "1655db978c8fde4ae83db028e420312f6a2b7ee5053082f588b93f626a273848"
   },
   "5": {
    "counts": {
@@ -1834,25 +1834,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 19,
     "jumps": 0,
     "level": 5,
     "lives": 0,
     "needed_crystals": 40,
     "obstacles": 0,
-    "par_time": 90,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 19,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 90,
+    "time_bonus_items": 0
    },
    "file": "Forest/Glue&EnemyStart",
-   "sha256": "95f4ce91762bbfb8989e1e49fb66009433a8353947f76310601afffe62776287"
+   "sha256": "8f846029a5822b0014ad0f2164fc24f1f43dedaeffe61d5984c76e6e20ea2993"
   },
   "50": {
    "counts": {
@@ -1874,7 +1874,6 @@
     "lives": 2,
     "needed_crystals": 1,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 2,
     "platforms": 0,
     "protect": 0,
@@ -1883,10 +1882,11 @@
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Egypt/BonusParaglide",
-   "sha256": "e1314465f44a6979c1f3449110ed7eafd6de59e01fc85cec5eb7079b5cd210a7"
+   "sha256": "257033518d68d53a3d81d1fec5b805355dc080c748a7f71fb2357a31b75cda28"
   },
   "51": {
    "counts": {
@@ -1903,25 +1903,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 43,
     "jumps": 5,
     "level": 51,
     "lives": 0,
     "needed_crystals": 30,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 43,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Space/JumpStart",
-   "sha256": "8f3fd5e5f05ab59bd6a179f22752faf2019cd5640bd34547a77815fa7a42ecd0"
+   "sha256": "db8a6cdff293f5cbc8a334fe26ba7e8af08c5db6b976bf42a43b75412780eb64"
   },
   "52": {
    "counts": {
@@ -1938,25 +1938,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 11,
     "jumps": 6,
     "level": 52,
     "lives": 0,
     "needed_crystals": 10,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 11,
     "script_texts_parsed": 0,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Space/Jump01",
-   "sha256": "63025ab4d904ae178616103f2820f121241f28ed51b7f86d0df1c2ae333827ef"
+   "sha256": "74cbabca81d2ca24b7c7fdb5504e655de49b9190a6aa1254363adc1a7ce5fa2b"
   },
   "53": {
    "counts": {
@@ -1973,25 +1973,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 11,
     "jumps": 0,
     "level": 53,
     "lives": 0,
     "needed_crystals": 36,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 1,
     "platforms": 0,
     "protect": 5,
+    "script_lines": 11,
     "script_texts_parsed": 0,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 4,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Space/Protect02",
-   "sha256": "146d9b97a7468a7bb8fd8d4618c6a262bb2fbb52fc2050c7deeb1e798b24b2e5"
+   "sha256": "99bb0a614b84b46a01c1ca0653e961aa590f428074b9fb0af54d7fa22bbabb33"
   },
   "54": {
    "counts": {
@@ -2014,7 +2014,6 @@
     "lives": 0,
     "needed_crystals": 3,
     "obstacles": 0,
-    "par_time": 300,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
@@ -2023,10 +2022,11 @@
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 300,
+    "time_bonus_items": 0
    },
    "file": "Space/BonusEscape",
-   "sha256": "75a25fa2b856c41b4567d5ee2b60ef56149ffd9b4c1085d977531ba68fd2e906"
+   "sha256": "c44fae582947edf3af3f8dfe6da70ac14a54b106706e060c4df4a35cede7cc05"
   },
   "55": {
    "counts": {
@@ -2043,26 +2043,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 25,
     "jumps": 0,
     "leo_objects": 1,
     "level": 55,
     "lives": 0,
     "needed_crystals": 4,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 25,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Space/SwitchStart",
-   "sha256": "5d6b70d187518f62a20b0660285b931b3b3f7bc247c3401f8c797b6671ea1e92"
+   "sha256": "54253cd368a9448bbe177ce6b2511b8fd00639475fbd9b7676788d03eb6cf54a"
   },
   "56": {
    "counts": {
@@ -2079,26 +2079,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 20,
     "jumps": 0,
     "leo_objects": 5,
     "level": 56,
     "lives": 1,
     "needed_crystals": 25,
     "obstacles": 0,
-    "par_time": 150,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 20,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 150,
+    "time_bonus_items": 0
    },
    "file": "Space/Bridge01",
-   "sha256": "7de6a15b441e59720bb422f04d7c074d6ece3a8587e2aabdb83eb63f4921da0e"
+   "sha256": "492bdbb4cfd7c3189e7fd114bf82f0d6b9ef94129bbac15ebadab6295f377478"
   },
   "57": {
    "counts": {
@@ -2115,25 +2115,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 21,
     "jumps": 0,
     "level": 57,
     "lives": 1,
     "needed_crystals": 8,
     "obstacles": 0,
-    "par_time": 70,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 21,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 1,
-    "unlabelled": 0
+    "time_bonus": 70,
+    "time_bonus_items": 0
    },
    "file": "Space/Bridges&EnemiesStart",
-   "sha256": "56dc3a61f99c8bfe39da195bcbc6a117dc1df396cd59622f9c94594127ef8e2e"
+   "sha256": "a74d79268039b668a306aa0fcfd1047ecd524b8411ed101583cc6397362b3fac"
   },
   "58": {
    "counts": {
@@ -2150,25 +2150,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 2,
     "ice": 0,
-    "instruction_scripts": 16,
     "jumps": 1,
     "level": 58,
     "lives": 1,
     "needed_crystals": 30,
     "obstacles": 1,
-    "par_time": 90,
     "paraglide": 0,
     "platforms": 1,
     "protect": 0,
+    "script_lines": 16,
     "script_texts_parsed": 0,
     "slides": 14,
     "speed": 2,
     "teleporters": 2,
     "throwers": 0,
-    "unlabelled": 2
+    "time_bonus": 90,
+    "time_bonus_items": 2
    },
    "file": "Space/Sandra02",
-   "sha256": "d66f640fae87c5a0208574a24931d349a54ef3082039c85c15de1f9b6b0d908e"
+   "sha256": "00d751cd27f47b25fd1f3c3e801979993dfb79f8932446abbd38ccd0f5966ae7"
   },
   "59": {
    "counts": {
@@ -2185,25 +2185,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 3,
-    "instruction_scripts": 23,
     "jumps": 1,
     "level": 59,
     "lives": 0,
     "needed_crystals": 4,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 23,
     "script_texts_parsed": 2,
     "slides": 5,
     "speed": 0,
     "teleporters": 0,
     "throwers": 4,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Space/Freeze03",
-   "sha256": "2cb65a537cc51f225b32de66a55199853bfc36bfbc992f9d5f69974cb8314561"
+   "sha256": "f7b7a3926df75e2f20561978477b3b61558130127063425115aee62821f5779b"
   },
   "6": {
    "counts": {
@@ -2220,25 +2220,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 17,
     "jumps": 0,
     "level": 6,
     "lives": 0,
     "needed_crystals": 50,
     "obstacles": 0,
-    "par_time": 110,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 17,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 110,
+    "time_bonus_items": 0
    },
    "file": "Forest/Glue&Enemy01",
-   "sha256": "aff107f000285c54cfe25e61ac7000b09eb600f92bb9ec5778398e4d334f2284"
+   "sha256": "12eab07ce45904d9658b7600388fc6c327e5e3951c67fe053da91859c4e40fa6"
   },
   "60": {
    "counts": {
@@ -2255,25 +2255,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 22,
     "jumps": 0,
     "level": 60,
     "lives": 0,
     "needed_crystals": 8,
     "obstacles": 0,
-    "par_time": 40,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 22,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 8,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 40,
+    "time_bonus_items": 0
    },
    "file": "Space/Superenemy",
-   "sha256": "a39f675f0aae6ed93625b72f1f915b9e23364429c4874ff334c7831b12986ab6"
+   "sha256": "ad4d15dacf10be381b451829e4025acb94ce6322f7bb72f0a0af6a0e62114415"
   },
   "61": {
    "counts": {
@@ -2295,7 +2295,6 @@
     "lives": 0,
     "needed_crystals": 4,
     "obstacles": 0,
-    "par_time": 300,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
@@ -2304,10 +2303,11 @@
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 300,
+    "time_bonus_items": 0
    },
    "file": "Space/Bonus",
-   "sha256": "8be3e1bdefc33436af50a766e722f0d2ddfcafdf0bf05fa050c6f3014e980fef"
+   "sha256": "862cb059dad3697bde37ff53ebf5a86caa9c531ac03880628b47d4e56628fef0"
   },
   "62": {
    "counts": {
@@ -2324,25 +2324,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 17,
     "jumps": 0,
     "level": 62,
     "lives": 0,
     "needed_crystals": 3,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 17,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Space/Fakt",
-   "sha256": "6869fd9fd626e43c60446d4e0be6ccedaf72026c6dc2823525be29aa189f0692"
+   "sha256": "b3acf7406b2e53039c79a2f5a6cb1f2940106d5ba4dc96dc8982779e2ec7be09"
   },
   "63": {
    "counts": {
@@ -2359,26 +2359,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 21,
     "jumps": 0,
     "leo_objects": 2,
     "level": 63,
     "lives": 0,
     "needed_crystals": 10,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 1,
     "protect": 0,
+    "script_lines": 21,
     "script_texts_parsed": 0,
     "slides": 42,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Space/Bridges&Enemies01",
-   "sha256": "d9fdcfa3f5624bb4dc3840337fa68001778e28283959e117450b2895a80e69a1"
+   "sha256": "ef2c171bb736cc2a2db5f1fb1c5b704425cc4d5d20f3eb67a42bd4f9588efe3a"
   },
   "64": {
    "counts": {
@@ -2395,25 +2395,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 19,
-    "instruction_scripts": 19,
     "jumps": 0,
     "level": 64,
     "lives": 0,
     "needed_crystals": 40,
     "obstacles": 0,
-    "par_time": 210,
     "paraglide": 1,
     "platforms": 1,
     "protect": 0,
+    "script_lines": 19,
     "script_texts_parsed": 1,
     "slides": 0,
     "speed": 0,
     "teleporters": 3,
     "throwers": 2,
-    "unlabelled": 0
+    "time_bonus": 210,
+    "time_bonus_items": 0
    },
    "file": "Space/Space01",
-   "sha256": "1b0e8d756d57d019db637d96d836a78f9fab9ad8b15f0a50e1ff8b74d9a9a245"
+   "sha256": "6b2403b0e6dfbf307f3ffaaadda3ba0154547cec1fb96911865d4cc1a68a5e4e"
   },
   "65": {
    "counts": {
@@ -2430,25 +2430,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 8,
-    "instruction_scripts": 22,
     "jumps": 2,
     "level": 65,
     "lives": 1,
     "needed_crystals": 0,
     "obstacles": 0,
-    "par_time": 120,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 22,
     "script_texts_parsed": 2,
     "slides": 10,
     "speed": 0,
     "teleporters": 2,
     "throwers": 2,
-    "unlabelled": 5
+    "time_bonus": 120,
+    "time_bonus_items": 5
    },
    "file": "Space/Space02",
-   "sha256": "b741c6563eed6b1ea789d76ab77c5370e1e6a9c6d073a0b7e7fa5e25e389a946"
+   "sha256": "670754cd35af6027966130328f3256c123b7dffa84cdf5a7497dd0aa0240a974"
   },
   "66": {
    "counts": {
@@ -2465,26 +2465,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 26,
     "jumps": 0,
     "leo_objects": 9,
     "level": 66,
     "lives": 0,
     "needed_crystals": 20,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 26,
     "script_texts_parsed": 3,
     "slides": 10,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Space/EnemyFactory",
-   "sha256": "bcd86ff77d3912ebed29f0bb21fef201de23725f9c544c349feed61259383cdd"
+   "sha256": "fe9c288f7f31d5920aab99c101bcb764a9b07c4ef6eab2f3e142def361921805"
   },
   "67": {
    "counts": {
@@ -2501,26 +2501,26 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 20,
     "jumps": 3,
     "leo_objects": 2,
     "level": 67,
     "lives": 1,
     "needed_crystals": 36,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 1,
     "platforms": 2,
     "protect": 0,
+    "script_lines": 20,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Candy/Candy01",
-   "sha256": "ed84b252cb11f3c5564cfb2e1dfcbd00a91a555334c147e0f1e12107b9a89fa3"
+   "sha256": "469d9c9d645556a261af0754b37ac2ecb5d53ef7640e8fc41225d925b0f96e41"
   },
   "68": {
    "counts": {
@@ -2542,7 +2542,6 @@
     "lives": 1,
     "needed_crystals": 0,
     "obstacles": 0,
-    "par_time": 20,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
@@ -2551,10 +2550,11 @@
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 20,
+    "time_bonus_items": 0
    },
    "file": "Candy/BonusStairs",
-   "sha256": "621f26bebe3256a21afda25af1bbe1a38b38b2cb252a41a17d50b432db1ade0d"
+   "sha256": "d8dc8a4e7940e649ff0293bb34c9ba350e679fe4e27832a6669ba6bba8c8edbe"
   },
   "69": {
    "counts": {
@@ -2571,25 +2571,25 @@
     "hidden_crystals": 1,
     "hidden_lives": 1,
     "ice": 0,
-    "instruction_scripts": 15,
     "jumps": 3,
     "level": 69,
     "lives": 1,
     "needed_crystals": 11,
     "obstacles": 1,
-    "par_time": 80,
     "paraglide": 0,
     "platforms": 1,
     "protect": 1,
+    "script_lines": 15,
     "script_texts_parsed": 0,
     "slides": 11,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 80,
+    "time_bonus_items": 0
    },
    "file": "Candy/Candy04",
-   "sha256": "08a69cbefe438ac1f0c628ef772c361c2c025c32732832ec58cd0b5443862e91"
+   "sha256": "39c935aa534e2c532ea9c74f59255cd8489a6d4be68b9edb44f1adbf36a60bbc"
   },
   "7": {
    "counts": {
@@ -2611,7 +2611,6 @@
     "lives": 1,
     "needed_crystals": 25,
     "obstacles": 0,
-    "par_time": 30,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
@@ -2620,10 +2619,11 @@
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 30,
+    "time_bonus_items": 0
    },
    "file": "Forest/BonusWay",
-   "sha256": "aaad1c475d9ef87fe3387cc065fb86a984081bec8e94155ca8ef9312416ceae9"
+   "sha256": "57686d7d7df2a5b2ea8122c8a8c98b8e88a590cdb5cf52bbe25a59248381ceb4"
   },
   "70": {
    "counts": {
@@ -2640,25 +2640,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 27,
     "jumps": 0,
     "level": 70,
     "lives": 0,
     "needed_crystals": 35,
     "obstacles": 0,
-    "par_time": 30,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 27,
     "script_texts_parsed": 4,
     "slides": 0,
     "speed": 4,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 30,
+    "time_bonus_items": 0
    },
    "file": "Candy/Collect01",
-   "sha256": "8f19159a505193024dd18ae1d76de83e46896ef403a8c9efbbba54f54e707d81"
+   "sha256": "3bd64c1f901b43401ff8d71c58ca7caa25bded6ea98ffb4d44b280acfe6939a8"
   },
   "71": {
    "counts": {
@@ -2675,25 +2675,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 1,
     "ice": 0,
-    "instruction_scripts": 11,
     "jumps": 0,
     "level": 71,
     "lives": 1,
     "needed_crystals": 30,
     "obstacles": 1,
-    "par_time": 80,
     "paraglide": 0,
     "platforms": 8,
     "protect": 0,
+    "script_lines": 11,
     "script_texts_parsed": 0,
     "slides": 11,
     "speed": 2,
     "teleporters": 4,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 80,
+    "time_bonus_items": 0
    },
    "file": "Candy/Sandra01",
-   "sha256": "8dcacbde018c97eeb15f4e02195a984727215bb47349371d0a97f0e3b427424e"
+   "sha256": "f9c19eebb4d688da25c920c620a4c44368ef0b691aa1e5b02fb088237f3be054"
   },
   "72": {
    "counts": {
@@ -2710,25 +2710,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 24,
     "jumps": 0,
     "level": 72,
     "lives": 0,
     "needed_crystals": 30,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 13,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 24,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Candy/Paraglide02",
-   "sha256": "2c2b79466c5d05c318c271df5d83405b4fdac03f9531adc9d101a93719383baf"
+   "sha256": "9604782b6d0b3682082647922b4e7d98fc992a8c94f11d593aa6bbd398b9ebaf"
   },
   "73": {
    "counts": {
@@ -2750,7 +2750,6 @@
     "lives": 1,
     "needed_crystals": 0,
     "obstacles": 0,
-    "par_time": 15,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
@@ -2759,10 +2758,11 @@
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 15,
+    "time_bonus_items": 0
    },
    "file": "Candy/BonusDestr",
-   "sha256": "1650aebb1a22062f949dd4827f142e75d85ad226a8d3e98e3980c8514c049625"
+   "sha256": "8bbd2649173e0726b69349aa4a3f9852923699098e96e9c13f1eda4b3a50e379"
   },
   "74": {
    "counts": {
@@ -2779,25 +2779,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 22,
     "jumps": 0,
     "level": 74,
     "lives": 1,
     "needed_crystals": 1,
     "obstacles": 0,
-    "par_time": 80,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 22,
     "script_texts_parsed": 2,
     "slides": 53,
     "speed": 0,
     "teleporters": 1,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 80,
+    "time_bonus_items": 0
    },
    "file": "Candy/Candy06",
-   "sha256": "a1dba4ba06bae2d65fec71b547d78caa5c3bd5e518bb25fb2c945317afab33ec"
+   "sha256": "2108cb95f145d0b4854d8628b9896bc073358133da8fcc5fcaaee9a82e45a635"
   },
   "75": {
    "counts": {
@@ -2814,25 +2814,25 @@
     "hidden_crystals": 1,
     "hidden_lives": 0,
     "ice": 1,
-    "instruction_scripts": 11,
     "jumps": 3,
     "level": 75,
     "lives": 2,
     "needed_crystals": 10,
     "obstacles": 2,
-    "par_time": 110,
     "paraglide": 2,
     "platforms": 3,
     "protect": 0,
+    "script_lines": 11,
     "script_texts_parsed": 0,
     "slides": 8,
     "speed": 0,
     "teleporters": 3,
     "throwers": 1,
-    "unlabelled": 0
+    "time_bonus": 110,
+    "time_bonus_items": 0
    },
    "file": "Candy/Thrower02",
-   "sha256": "d836cbb5a66dca49a9e2d7e7545778d5db0ba764525e3c45ecd840b47b27788a"
+   "sha256": "c085180d8cf626c1c1cdc984934fd612643a2303a422c1a4f04f6fc6b4882f2d"
   },
   "76": {
    "counts": {
@@ -2849,25 +2849,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 11,
     "jumps": 2,
     "level": 76,
     "lives": 0,
     "needed_crystals": 12,
     "obstacles": 0,
-    "par_time": 100,
     "paraglide": 1,
     "platforms": 3,
     "protect": 0,
+    "script_lines": 11,
     "script_texts_parsed": 0,
     "slides": 38,
     "speed": 0,
     "teleporters": 1,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 100,
+    "time_bonus_items": 0
    },
    "file": "Candy/Candy07",
-   "sha256": "46a90dc634af47094866e35ea9d43142012a736f981ccc0987e11e83ed14a58c"
+   "sha256": "d9e23256b773847f2c471bf5b2b868549040a4e1cc14511d6c13f44e26265bad"
   },
   "77": {
    "counts": {
@@ -2884,25 +2884,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 24,
     "jumps": 0,
     "level": 77,
     "lives": 0,
     "needed_crystals": 25,
     "obstacles": 0,
-    "par_time": 270,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 24,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 0,
     "teleporters": 1,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 270,
+    "time_bonus_items": 0
    },
    "file": "Candy/Elevatormania",
-   "sha256": "a8ac5482813bb8dd7ccbfbb3adb827d89a4846d72baba998792e82d9271e6eb0"
+   "sha256": "826c4c6ea737688b68b0143804bd7bde9bf8b0dab97d4db322e10e3e29a95ead"
   },
   "78": {
    "counts": {
@@ -2919,25 +2919,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 44,
-    "instruction_scripts": 11,
     "jumps": 1,
     "level": 78,
     "lives": 1,
     "needed_crystals": 20,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 1,
     "protect": 0,
+    "script_lines": 11,
     "script_texts_parsed": 0,
     "slides": 0,
     "speed": 0,
     "teleporters": 5,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Candy/Teleporta",
-   "sha256": "b670d39e297e81c73bcb2c63917bb71984e05d04eba78e7729c883a3da7e9067"
+   "sha256": "a230b29fe9d6c8c08965fe967d2c35378da68d0354d0a03b6b754936dcd88425"
   },
   "79": {
    "counts": {
@@ -2959,7 +2959,6 @@
     "lives": 1,
     "needed_crystals": 1,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
@@ -2968,10 +2967,11 @@
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Candy/BonusSurprise",
-   "sha256": "7fe9e3223e01f909f5f0577ae64bdd2329e42062c78b51c13996986fddabb6b0"
+   "sha256": "df44d57ef4fc81b9ea7d4a13616f4e06fab609ea3505d8e8540aacfbd8086967"
   },
   "8": {
    "counts": {
@@ -2988,25 +2988,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 26,
     "jumps": 0,
     "level": 8,
     "lives": 0,
     "needed_crystals": 56,
     "obstacles": 0,
-    "par_time": 50,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 26,
     "script_texts_parsed": 2,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 50,
+    "time_bonus_items": 0
    },
    "file": "Forest/FreezeStart",
-   "sha256": "76c1ee2dadec33703605cda974bb142788c97cd94f0fd897665c5f04810c04aa"
+   "sha256": "f4793d13c9ae7069aeafb41c21c894e2f42d98bbb7cf26a2bff319619493de61"
   },
   "80": {
    "counts": {
@@ -3023,25 +3023,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 24,
     "jumps": 0,
     "level": 80,
     "lives": 0,
     "needed_crystals": 10,
     "obstacles": 0,
-    "par_time": 150,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 24,
     "script_texts_parsed": 3,
     "slides": 30,
     "speed": 0,
     "teleporters": 4,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 150,
+    "time_bonus_items": 0
    },
    "file": "Candy/Final",
-   "sha256": "ca123cde20701cb840bd5c663326481ed17a94f7848f26440f39a64aff1932f1"
+   "sha256": "9b772ee760d6560b8ec423340ec9f6544d39b26429ccaae5e44252355a1b547d"
   },
   "9": {
    "counts": {
@@ -3058,25 +3058,25 @@
     "hidden_crystals": 0,
     "hidden_lives": 0,
     "ice": 0,
-    "instruction_scripts": 28,
     "jumps": 0,
     "level": 9,
     "lives": 1,
     "needed_crystals": 30,
     "obstacles": 0,
-    "par_time": 60,
     "paraglide": 0,
     "platforms": 0,
     "protect": 0,
+    "script_lines": 28,
     "script_texts_parsed": 3,
     "slides": 0,
     "speed": 0,
     "teleporters": 0,
     "throwers": 0,
-    "unlabelled": 0
+    "time_bonus": 60,
+    "time_bonus_items": 0
    },
    "file": "Forest/DestrStart",
-   "sha256": "40868b69b85bf395aec24feaa37392d708c24e15459f6a600dd10a7b0701ba6a"
+   "sha256": "942d506b9ffeae2eb84859ad0270a2b129e8d45ab3e9f83322322df91e7002ca"
   }
  },
  "summary": {
