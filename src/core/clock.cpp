@@ -39,6 +39,7 @@
  * that advances by exactly that much per call.  Recording and replay must both
  * use it (see REPLAY_PLAN.md); the game then runs as fast as the CPU allows.
  */
+#include <time.h>
 #include "clock.h"
 #include "log.h"
 #include "determinism.h"
@@ -218,12 +219,11 @@ double clock_seconds(void)
  * KAROO_SEED=<int> returns that constant instead of the wall clock.  Replay
  * needs it *and* KAROO_FIXED_DT — they fix independent sources.
  *
- * Unset, we call the original at 0x0045169A through.  It is deliberately NOT
- * UD2-stubbed: calling through keeps the real behaviour bit-exact, including
- * the timezone/DST globals it caches at 0x004E0910..0x004E0924, which a
- * reimplementation would leave stale.
+ * Unset, it is our CRT's time().  The original called the game CRT's time()
+ * at 0x0045169A; the only use is seeding srand, and both return the same
+ * seconds since 1970.  The timezone/DST globals that one cached
+ * (0x004E0910..0x004E0924) have no other reader in our code.
  */
-#define GAME_TIME_ORIGINAL ((int (__cdecl *)(int *))0x0045169A)
 
 static int  g_seed      = 0;
 static bool g_seed_set  = false;
@@ -243,7 +243,7 @@ static int game_time(int *out)
     }
 
     if (!g_seed_set)
-        return GAME_TIME_ORIGINAL(out);
+        return (int)time((time_t *)out);
 
     if (out) *out = g_seed;
     return g_seed;

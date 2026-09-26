@@ -160,7 +160,7 @@ def wait_for_quiet(timeout=60):
     import time
     deadline = time.time() + timeout
     while time.time() < deadline:
-        r = subprocess.run(["pgrep", "-f", "Karoo.exe"],
+        r = subprocess.run(["pgrep", "-f", r"Karoo(Own)?\.exe"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if r.returncode != 0:          # nothing matched
             time.sleep(2)              # let wineserver finish behind it
@@ -343,7 +343,7 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
         except subprocess.TimeoutExpired:
             continue
     # Backstop: the game can outlive the launcher script.
-    subprocess.run(["pkill", "-f", "Karoo.exe"],
+    subprocess.run(["pkill", "-f", r"Karoo(Own)?\.exe"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     wait_for_quiet()
     return True
@@ -667,8 +667,13 @@ def main():
     ap.add_argument("--bless", action="store_true",
                     help="write the run's own end state into the manifest as "
                          "the expectation — only after you believe the run")
+    ap.add_argument("--own", action="store_true",
+                    help="run our own executable KarooOwn.exe (launch.sh --own) "
+                         "instead of the patched Karoo.exe + karoo_hooks.dll")
     ap.add_argument("--verbose", "-v", dest="verbose", default=False, action="store_true")
     args = ap.parse_args()
+    if args.own:
+        os.environ["EXE"] = "KarooOwn.exe"   # launch.sh picks it up
 
     m = load_manifest()
     if args.list:

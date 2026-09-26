@@ -110,8 +110,10 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef HRESULT (WINAPI *ddcreate_fn)(GUID *, LPDIRECTDRAW *, IUnknown *);
-#define ORIG_DIRECTDRAWCREATE ((ddcreate_fn)0x004417fe)
+#include "com_proxy.h"
+/* The original called DirectDrawCreate through its import thunk 0x004417fe,
+ * which patch.py redirected to hooks_DirectDrawCreate; we call that directly. */
+#define ORIG_DIRECTDRAWCREATE hooks_DirectDrawCreate
 
 static unsigned __attribute__((thiscall)) d3d_log(Direct3D *self, const char *msg);
 static HRESULT WINAPI d3d_enum_display_modes_cb(LPDDSURFACEDESC2 pDesc, LPVOID ctx);
