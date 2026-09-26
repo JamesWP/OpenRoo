@@ -1,10 +1,6 @@
-/* process.h -- process-wide setup and teardown for our code.
- *
- * What karoo_hooks.dll's DllMain did on attach and detach: open the log,
- * install the VEH, the CRT probe, the launcher/auto-exit setup; then the
- * end-of-run state dump.  dllmain.cpp calls these for the DLL build and
- * exemain.cpp for our own executable, so both run the same code.
- */
+/* Process-wide setup and teardown around the game: open our log, install the
+ * exception logger and the test launcher's hooks at start; dump the end state
+ * and close the log at exit. */
 #pragma once
 
 void Process_Attach(const char *log_name);

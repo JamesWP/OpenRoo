@@ -1,11 +1,5 @@
-/* Karoo.cfg -- the settings object's persisted blob (config.h).  Split from
- * the old playerstate.cpp; ASSET_PLAN.md Phase 2's notes on the format --
- * TEXT mode, the "End" tag, the six uninitialised tag bytes -- are in
- * highscores.cpp's header.
- *
- *   0x41d3e0  LoadConfigValues   (this, path)   ret 4   1 site
- *   0x41d490  SaveConfig         (this, path)   ret 4   2 sites
- */
+/* FORMAT: Karoo.cfg is the persisted blob followed by a 10-byte tag holding
+ * "End".  Both directions use text mode, as the game does. */
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,7 +8,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-/* The blob is Config::persisted(), Config::PERSISTED_SIZE bytes. */
 #define CFG_BLOB_SIZE  Config::PERSISTED_SIZE
 #define CFG_TAG_SIZE   0xa
 #define CFG_TAG        "End"
@@ -31,8 +24,6 @@ static void ps_log(const char *what, const char *path, int ok)
     }
 }
 
-/* ─── Karoo.cfg ──────────────────────────────────────────────────────────── */
-
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Config_LoadValues(Config *self, const char *path)
 {
@@ -47,8 +38,7 @@ Config_LoadValues(Config *self, const char *path)
     fread(tag, CFG_TAG_SIZE, 1, fp);
     fclose(fp);
 
-    /* The original's inlined strcmp compares until a NUL, so only the first
-     * four bytes of the tag can matter. */
+    // Only the bytes up to the tag's NUL are compared.
     ps_log("cfg load", path, 1);
     return strcmp(tag, CFG_TAG) == 0 ? 1 : 0;
 }
@@ -56,7 +46,7 @@ Config_LoadValues(Config *self, const char *path)
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Config_Save(Config *self, const char *path)
 {
-    char tag[CFG_TAG_SIZE];      /* deliberately uninitialised -- defect 1 */
+    char tag[CFG_TAG_SIZE];  // PRESERVED: uninitialised
     FILE *fp = fopen(path, "w");
 
     if (fp == NULL) {
@@ -64,7 +54,7 @@ Config_Save(Config *self, const char *path)
         return 0;
     }
     fwrite(self->persisted(), CFG_BLOB_SIZE, 1, fp);
-    strcpy(tag, CFG_TAG);        /* 4 bytes of 10; the rest stay as they were */
+    strcpy(tag, CFG_TAG);  // FORMAT: 4 bytes of 10; the rest are whatever the stack held
     fwrite(tag, CFG_TAG_SIZE, 1, fp);
     fclose(fp);
 
@@ -72,7 +62,6 @@ Config_Save(Config *self, const char *path)
     return 1;
 }
 
-/* ─── Lifecycle and defaults (Game TU) ────────────────────────────────────── */
 static void *const g_ConfigVtable[1] = { (void *)&Config_ScalarDestructor };
 
 void Config::construct()
@@ -95,16 +84,15 @@ Config_ScalarDestructor(Config *self, unsigned char flags)
     return self;
 }
 
-/* 0x41d520.  The CD mixer default is pow(2, 16) * 50, truncated, / 100 --
- * 32768, computed the original's way (_CIpow, ftol, unsigned divide). */
+/* The CD mixer default is pow(2, 16) * 50, truncated, / 100: 32768. */
 void Config::fillDefaults()
 {
     field_1f604_           = 1;
-    videoOptions_[1]       = 1;   /* reflection */
-    videoOptions_[2]       = 2;   /* highlights */
+    videoOptions_[1]       = 1;
+    videoOptions_[2]       = 2;
     cameraDistanceSetting_ = 5.0f;
-    videoOptions_[3]       = 2;   /* particles */
-    videoOptions_[0]       = 2;   /* shadows */
+    videoOptions_[3]       = 2;
+    videoOptions_[0]       = 2;
     sound3D_               = 1;
     field_1f624_           = 1;
     waveVolume_            = 100;

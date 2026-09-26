@@ -1,4 +1,3 @@
-/* resources.cpp -- see resources.h. */
 #include "resources.h"
 
 HMODULE Resources_Module()
