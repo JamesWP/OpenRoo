@@ -1,18 +1,12 @@
-/* The theme asset block -- everything ThemeFileLoader (0x0040c110) builds
- * from a .thm, in one fixed global at 0x0046c890.  ReleaseThemeAssetBlock
- * (0x0040bf30) tears it down; the loader calls it first, so a load is always
- * release + parse.  The .thm grammar lives on the loader's Ghidra plate.
+/* The theme asset block: everything a theme file (themes\<name>.thm) defines,
+ * in one global.  For each of 38 object types (the player, foes, tiles,
+ * pickups...) up to eight records of meshes, animations, billboards and
+ * particle systems; then the HUD and menu images, the text colours, fog, the
+ * sky and the side height.  Loading a theme releases the old one first.
  *
- * Reading the decompile: the loader addresses a record field as
- * `slot + i*0x5dd + X`, where `slot` is the ThemeObjectTypeSlot -- so the
- * field's offset in ThemeLevelObject is X - 8.  Block-level fields (images,
- * colours, fog, sky, sideheight) are addressed directly.  Checked live with
- * KAROO_THEME_STRUCT_DIAG against Forest and Space.
- *
- * BUG KEPT: depth-3 `environment` and `textureadress` skip the NULL-record
- * check every other handler makes, so inside `environment { }` they would
- * write near address 0.  No shipped theme does.
- */
+ * PRESERVED: inside `environment { }`, the depth-3 `environment` and
+ * `textureadress` keywords skip the check for a missing record every other
+ * handler makes, and would write near address 0.  No shipped theme does it. */
 #pragma once
 
 #include <windows.h>
@@ -27,7 +21,6 @@
 #include "explodedebris.h"
 #include "sky.h"
 
-
 enum ThemeObjectKind : DWORD {
     THEME_KIND_NONE           = 0,
     THEME_KIND_MODEL          = 1,
@@ -37,15 +30,16 @@ enum ThemeObjectKind : DWORD {
 };
 static_assert(sizeof(ThemeObjectKind) == 4, "ThemeObjectKind must stay DWORD-sized");
 
-/* One `model` / `field` / `billboard` / `particlesystem` entry.  0x5dd bytes:
- * the release zeroes 8 of them plus the slot header as 0x2ef0. */
+/* A short-lived particle burst: a position, the milliseconds left and whether
+ * it is live. */
 struct __attribute__((packed)) FxBurst {
-    float pos[3];      /* +0x00 */
-    int   msLeft;      /* +0x0c  1000 at spawn */
-    BYTE  active;      /* +0x10 */
+    float pos[3];
+    int   msLeft;  // 1000 at spawn
+    BYTE  active;
 };
 static_assert(sizeof(FxBurst) == 0x11, "FxBurst stride");
 
+/* One `model`, `field`, `billboard` or `particlesystem` entry. */
 class __attribute__((packed)) ThemeLevelObject {
 public:
     static const int ORIGIN = 0;
@@ -53,17 +47,15 @@ public:
     ThemeObjectKind kind;
     CFaktMesh   *pMesh;
     WrapperObject wrapper;
-    ExplodeDebris   explode;           // set up only by `explode`; needs pMesh first
+    ExplodeDebris   explode;  // set up only by `explode`, which needs the mesh first
     DWORD        bExplode;
-    float        flExplodeDir[3];   // (t4,t5,t6) rotated -90 deg about X
+    float        flExplodeDir[3];  // (t4, t5, t6) rotated -90 degrees about X
 
     AnimTable    animTable;
     float        flBillboardScale;
     ParticleSystem *pParticleSystems[16];
-    /* +0x285: sixteen short-lived bursts of this record's particle systems,
-     * one per pParticleSystems[] entry, spawned and aged by RenderGameFrame
-     * (rendergameframe.cpp): a position, the ms left, and whether it is live.
-     * They tile the old gap exactly (16 * 0x11 = 0x110). */
+    // Sixteen bursts of this record's particle systems, one per system,
+    // spawned and aged by the frame renderer.
     FxBurst      bursts[16];
 
     DWORD  dwInstanceCount;
@@ -132,8 +124,8 @@ class __attribute__((packed)) ThemeObjectTypeSlot {
 public:
     static const int ORIGIN = 0;
 
-    void            *pVtable;           // our one-slot table (game's 0x45d6f8)
-    DWORD            dwInstanceCount;   // last record index + 1
+    void            *pVtable;          // our one-slot table
+    DWORD            dwInstanceCount;  // last record index + 1
     ThemeLevelObject records[8];
 private:
     KAROO_LAYOUT_REGISTER(ThemeObjectTypeSlot);
@@ -146,7 +138,7 @@ KAROO_LAYOUT_CHECKS(ThemeObjectTypeSlot)
     KAROO_LAYOUT_SIZE(0x2ef0);
 }
 
-/* Slot order is address order, matching the depth-0 keywords. */
+/* Slot order is the theme file's keyword order. */
 enum ThemeObjectType {
     THEME_OBJ_JOHN, THEME_OBJ_CATCHER, THEME_OBJ_CATCHERFX, THEME_OBJ_THROWER,
     THEME_OBJ_THROWERFX, THEME_OBJ_PLATE, THEME_OBJ_SIDE, THEME_OBJ_PLATFORM,
@@ -158,8 +150,8 @@ enum ThemeObjectType {
     THEME_OBJ_COLLFX, THEME_OBJ_LIFE, THEME_OBJ_SWITCH, THEME_OBJ_TIME,
     THEME_OBJ_ICE, THEME_OBJ_OBSTACLE, THEME_OBJ_OBSTACLEFX, THEME_OBJ_PROTECTION,
     THEME_OBJ_PROTECTIONFX, THEME_OBJ_BRIDGE,
-    /* BUG KEPT: ReleaseThemeAssetBlock releases 37 slots -- EXPLOSION's is
-     * never released or zeroed between theme loads. */
+    // PRESERVED: the release covers only 37 slots; EXPLOSION's is never
+    // released or cleared between theme loads.
     THEME_OBJ_COUNT
 };
 
@@ -194,15 +186,15 @@ class __attribute__((packed)) ThemeAssetBlock {
 public:
     static const int ORIGIN = 0;
 
-    char                 themeName[0x100];  // strcpy'd from the path after fclose
-    DWORD                dwUnknown100;      // never written by the loader
+    char                 themeName[0x100];  // copied from the path after the file is read
+    DWORD                dwUnknown100;      // never written
     ThemeObjectTypeSlot  slots[THEME_OBJ_COUNT];
 
-    /* Block-level fields are written only inside `environment { }`. */
+    // Written only inside `environment { }`.
     SceneTexture        *images[THEME_IMG_COUNT];
     ThemeTextColorPair   textColors[THEME_COLOR_COUNT];
     BYTE                 bFogEnabled;
-    SkyBackground        sky;               // built by Sky_BuildFromFaceNames; drawn by sky.cpp
+    SkyBackground        sky;  // built from the face names; drawn by sky.cpp
     float                flSideHeight;
 private:
     KAROO_LAYOUT_REGISTER(ThemeAssetBlock);
@@ -240,34 +232,29 @@ KAROO_LAYOUT_CHECKS(ThemeAssetBlock)
     KAROO_LAYOUT_SIZE(0x6fd91);
 }
 
-/* ─── The loader and its helpers (ASSET_PLAN Phase 5) ─────────────────────
- *
- * The block is the global at 0x0046c890; the loader's one caller
- * (0x00426d8b) passes it with the path buffer and the game logger. */
+/* The loader and its helpers. */
 class Game;
 struct Direct3D;
 struct GameLogger;
 struct ThemeSoundTable;
 
-extern ThemeAssetBlock g_themeBlock;   /* was 0x0046c890 */
+extern ThemeAssetBlock g_themeBlock;
 
-/* 0x0040c110 */
+/* Releases the block, parses the theme file at path into it, and builds its
+ * meshes, textures and sounds. */
 extern "C" __declspec(dllexport) bool __cdecl
 Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block,
            char *path, GameLogger *logger);
-/* 0x0040bf30 -- also called from WinMain's shutdown (0x0042d651). */
+
+/* Releases everything the block holds.  Also called at shutdown. */
 extern "C" __declspec(dllexport) void __cdecl
 Theme_ReleaseBlock(ThemeAssetBlock *block);
-/* 0x0043b720 -- also called by the slot's static destructor 0x0043b6c0. */
+
+/* Releases one type's records. */
 extern "C" __declspec(dllexport) void __attribute__((fastcall))
 Theme_ReleaseSlot(ThemeObjectTypeSlot *slot);
-/* The slot's and its records' lifecycles (theme.cpp):
- *   0x0043b5d0 slot ctor       38 E8, the static-init block 0x4259c3..
- *   0x0043b6c0 slot dtor       1 E8 (scalar dtor) + 76 E9 (atexit thunks,
- *                              SEH funclets)
- *   0x0043b600 slot scalar dtor  vtable slot 0 only
- *   0x0043b620 record ctor / 0x0043b670 record dtor  -- only ever pushed to
- *                              MSVC's vector ctor/dtor iterators */
+
+/* The lifecycles of a type slot and its records. */
 extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
 Theme_SlotConstruct(ThemeObjectTypeSlot *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -278,24 +265,23 @@ extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
 Theme_RecordConstruct(ThemeLevelObject *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Theme_RecordDestruct(ThemeLevelObject *self);
-/* The block's compiler-generated aggregate ctor/dtor, for the one global
- * GG_THEME_BLOCK: 0x004259a0 / 0x004256f0, each reached by one E9 from its
- * static-init / atexit thunk. */
+
+/* The block's aggregate construction and destruction, for g_themeBlock. */
 extern "C" __declspec(dllexport) ThemeAssetBlock *__attribute__((thiscall))
 Theme_BlockConstruct(ThemeAssetBlock *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Theme_BlockDestruct(ThemeAssetBlock *self);
-/* 0x004113e0 -- the `sound` keyword: event name -> id, then ThemeSound_Add. */
+
+/* The `sound` keyword: event name to id, then ThemeSound_Add. */
 extern "C" __declspec(dllexport) bool __cdecl
 Theme_RegisterSound(Game *game, char *eventName, const char *waveName);
-/* 0x004402d0 */
+
+/* Adds (or replaces) the wave for a theme sound id. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
                DWORD arg3, DWORD arg4);
-/* The table's lifecycle (Game+0x42258, built by Game::Load, torn down by
- * Game's dtor and two SEH funclets): 0x440280 ctor, 0x4402c0 dtor body,
- * 0x4402a0 scalar dtor (slot 0 of the game's one-slot table 0x45d724, now a
- * tripwire -- ours is installed instead), 0x440400 release-all. */
+
+/* The theme sound table's lifecycle; it is a Game member. */
 extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
 ThemeSound_Construct(ThemeSoundTable *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))

@@ -1,24 +1,19 @@
-/* ASSET_PLAN.md Phase 5 -- the .thm loader.
+/* The theme file loader.
  *
- * Theme_Load (0x0040c110) and the helpers only it reaches: Theme_ReleaseBlock
- * 0x0040bf30, Theme_ReleaseSlot 0x0043b720, Theme_RegisterSound 0x004113e0
- * and ThemeSound_Add 0x004402d0.  Its other callees were replaced in the same
- * batch in their owners' files (model.cpp, scenetexture.cpp, sky.cpp,
- * explodedebris.cpp).  The .thm grammar is on the loader's Ghidra plate; theme.h
- * holds the block it fills.
+ * FORMAT: a .thm is text, read with fgets into 0x100-byte lines in text mode
+ * (the delimiters " \t\n" have no '\r', so binary mode would match nothing).
+ * Leading spaces and tabs are skipped, "//" lines and blank lines dropped, and
+ * each line split into up to 16 tokens.
  *
- * The reader: fgets(line, 0x100) on a TEXT-mode FILE (the CRT folds CRLF --
- * the delimiters " \t\n" have no '\r', so binary mode would match nothing),
- * skip leading ' '/'\t', drop "//" and blank lines, strtok into 16 slots of
- * 0x100.  Tokenizer defects kept:
- *   - a line longer than 0x100 is split; its tail parses as a new line;
- *   - the whitespace skip runs BEFORE the comment test, so "   // x" is a
+ * PRESERVED in the tokenizer:
+ *   - a line longer than 0x100 is split, and its tail parses as a new line;
+ *   - the whitespace skip comes before the comment test, so "   // x" is a
  *     comment but "Model x // y" yields "//" and "y" as ordinary tokens;
- *   - an unrecognised keyword is silently ignored at every depth.
+ *   - an unknown keyword is ignored at every depth.
  *
- * KAROO_THEME_STRUCT_DIAG=1 dumps the populated block after each load (see
- * theme_struct_dump below and CONTROLS.md).
- */
+ * KAROO_THEME_STRUCT_DIAG=1 dumps a plausibility report of the loaded block
+ * after each load (see docs/CONTROLS.md). */
+
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -36,19 +31,17 @@
 #include "scenetexture.h"
 #include "generators.h"
 #include <math.h>
-ThemeAssetBlock g_themeBlock;   /* was 0x0046c890 */
+ThemeAssetBlock g_themeBlock;
 
-/* The original's exact limits.  LINE_MAX is fgets' n; TOKEN_SLOTS is the
- * 0x1000-byte token area divided by the 0x100 slot stride. */
+/* The fixed limits: fgets' line length, and 16 token slots of 0x100. */
 #define LINE_MAX     0x100
 #define TOKEN_SLOTS  16
 #define TOKEN_MAX    0x100
 
 static char lower_one(char c)
 {
-    /* CrtStrLwr 0x4505b7's C-locale loop, byte for byte: strictly between
-     * '@' and '[' on a SIGNED char compare.  Not tolower(), which is
-     * locale-dependent and would also fold bytes >= 0x80. */
+    // The C-locale lowercase: strictly between '@' and '[' on a signed char.
+    // Not tolower(), which depends on the locale and folds bytes >= 0x80.
     return (c > '@' && c < '[') ? (char)(c + ' ') : c;
 }
 
@@ -58,7 +51,7 @@ static void lower_inplace(char *s)
         *s = lower_one(*s);
 }
 
-/* ─── KAROO_THEME_STRUCT_DIAG ─────────────────────────────────────────────── */
+/* KAROO_THEME_STRUCT_DIAG. */
 
 static int struct_diag_enabled(void)
 {
@@ -76,7 +69,7 @@ static int ptr_plausible(const void *p)
 
 static int float_plausible(float f)
 {
-    return !(f != f) && f > -1.0e6f && f < 1.0e6f;   /* f != f catches NaN */
+    return !(f != f) && f > -1.0e6f && f < 1.0e6f;  // f != f catches NaN
 }
 
 static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
@@ -132,14 +125,9 @@ static void dump_slot(const char *name, const ThemeObjectTypeSlot &slot)
         dump_record(name, i, slot.records[i]);
 }
 
-/* Reads the live theme block at its fixed address, DAT_0046c890 -- no patch,
- * no allocation, this DLL and Karoo.exe share one address space.  Prints a
- * plausibility report, not a correctness proof: the point is to catch a
- * struct offset that is simply wrong (a pointer that looks like a small
- * integer, a float that is NaN, a kind that is not 0..4) before trusting
- * this layout for anything that writes.  Gated by KAROO_THEME_STRUCT_DIAG,
- * read by value per CLAUDE.md; fires once per real .thm close, i.e. after
- * the game's own ThemeFileLoader has fully populated the block. */
+/* A plausibility report on the loaded block, not a proof: it catches a field
+ * offset that is plainly wrong (a pointer that looks like a small integer, a
+ * NaN float, a kind outside 0..4). */
 static void theme_struct_dump(const char *path)
 {
     const ThemeAssetBlock *block = &g_themeBlock;
@@ -192,34 +180,24 @@ static void theme_struct_dump_if_enabled(const char *path)
         theme_struct_dump(path);
 }
 
-/* ═══ The loader (0x0040c110) and its helpers ═══════════════════════════════
+/* What each keyword writes.  rec is the record the last model, field,
+ * billboard or particlesystem line opened; sub the sub-object the last depth-2
+ * texture line opened.
  *
- * Written from the decompile and, where Ghidra gave up (the fog handler),
- * the listing: what each keyword WRITES.  Record fields are ThemeLevelObject's
- * (theme.h); `rec` is the record the last model/field/billboard/
- * particlesystem line opened, `sub` the sub-object the last depth-2 texture
- * line opened.
- *
- * DEFECTS KEPT, beyond the tokenizer's (see the top of this file):
+ * PRESERVED, beyond the tokenizer's:
  *   - the record and sub-object cursors are never bounds-checked: a ninth
- *     record in a block runs into the next slot, a ninth texture into bLit;
- *   - oscillate's `random` flag and phase, and depth-3 `environment` and
- *     `textureadress`, write through the record with no NULL-slot check, so
- *     inside `environment { }` they would fault near address 0;
- *   - `particlesystem` loads the .par even when there is no slot to keep it
- *     in (inside `environment`), and leaks it;
+ *     record runs into the next slot, a ninth texture into bLit;
+ *   - oscillate's `random` flag and phase, and the depth-3 `environment`
+ *     and `textureadress`, write through the record with no check for a
+ *     missing slot, so inside `environment { }` they would fault near 0;
+ *   - `particlesystem` loads the .par even when there is no slot to keep
+ *     it (inside `environment`), and leaks it;
  *   - the model and texture caches lowercase the token buffers in place.
- * One deliberate difference: tokens past the 16th are dropped, where the
- * original wrote them past its token area (no shipped theme has one).  The
- * token COUNT still counts them, as the original's did.
- */
+ * Tokens past the 16th are dropped, but still counted. */
 
-/* Sub-objects of the block (ExplodeDebris, WrapperObject, AnimTable, sky
- * textures) are handed to their owners by address.  Unlike the idiom in
- * doublesoundbuff.h, these really are misaligned -- the game packed the
- * block, and e.g. records sit at odd offsets -- which x86 tolerates and the
- * owners have always been called with.  Hence one suppression for the
- * loader, rather than at every call. */
+/* The block's sub-objects are handed to their owners by address, and really
+ * are misaligned: the block is packed.  One warning suppression for the
+ * loader. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 
@@ -231,7 +209,7 @@ static void delete_via_vtable(void *obj)
     dtor(obj, 1);
 }
 
-/* 0x0043b720 */
+/* Releases one type's records. */
 extern "C" __declspec(dllexport) void __attribute__((fastcall))
 Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
 {
@@ -249,25 +227,11 @@ Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
     memset(slot, 0, sizeof(*slot));
 }
 
-/* ─── The slot and record lifecycles: 0x43b5d0 0x43b600 0x43b620 0x43b670
- *     0x43b6c0 ────────────────────────────────────────────────────────────
- *
- * Every slot is a member of the global ThemeAssetBlock, built by the
- * static-init block and torn down by atexit thunks.  The record ctor/dtor
- * were only ever function pointers handed to MSVC's vector iterators
- * (0x451db5 / 0x451e37), which are plain loops here -- the dtor iterator
- * walks the array last to first, and so does this.  The iterators' EH
- * cleanup (destroy the constructed prefix if a ctor throws) has no
- * counterpart: none of these ctors can throw.
- *
- * Own one-slot vtable; the game's 0x45d6f8 is left as a tripwire (byte
- * scan: written only by 0x43b5ef and 0x43b6df, the replaced ctor and dtor).
- * The scalar dtor is unreached (a global is never deleted), its free on the
- * game heap by the LinkedList precedent.
- *
- * Kept: the dtor installs the vtable and then Theme_ReleaseSlot memsets the
- * whole slot, vtable and every record's sub-object tables included, so the
- * record dtors that follow run on zeroed members. */
+/* Every slot is a member of the global block.  Records are constructed in
+ * order and destroyed last to first, as MSVC's vector iterators do; none of
+ * the constructors can throw.  PRESERVED: the slot destructor installs the
+ * vtable, then the release zeroes the whole slot, so the record destructors
+ * that follow run on zeroed members. */
 static void *const g_ThemeSlotVtable[1] = { (void *)&Theme_SlotScalarDtor };
 
 extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
@@ -312,10 +276,8 @@ Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
     return self;
 }
 
-/* ─── 0x4259a0 / 0x4256f0: the block's aggregate ctor and dtor ────────────
- *
- * Members only: 38 slots in order, then the sky; the dtor in reverse.  The
- * images, colours and scalars between them are plain data and untouched. */
+/* Members only: the 38 slots in order, then the sky; destruction in reverse.
+ * The plain data between them is left alone. */
 extern "C" __declspec(dllexport) ThemeAssetBlock *__attribute__((thiscall))
 Theme_BlockConstruct(ThemeAssetBlock *self)
 {
@@ -333,9 +295,8 @@ Theme_BlockDestruct(ThemeAssetBlock *self)
         Theme_SlotDestruct(&self->slots[i]);
 }
 
-/* 0x0040bf30.  BUG KEPT: EXPLOSION's slot is not in the list, so its
- * particle systems and explode buffers are never released -- though the
- * memset below still zeroes it.  The order is the original's. */
+/* PRESERVED: EXPLOSION's slot is not in the list, so its particle systems and
+ * explode buffers are never released, though the memset still zeroes them. */
 static const ThemeObjectType kReleaseOrder[] = {
     THEME_OBJ_JOHN, THEME_OBJ_CATCHER, THEME_OBJ_CATCHERFX, THEME_OBJ_THROWER,
     THEME_OBJ_THROWERFX, THEME_OBJ_BOMB, THEME_OBJ_DESTRUCTFIELD,
@@ -364,9 +325,8 @@ Theme_ReleaseBlock(ThemeAssetBlock *block)
     memset(block, 0, sizeof(*block));
 }
 
-/* 0x004402d0.  "NONE" (case-exact, on the raw wave name) disables the entry
- * and does not log.  The path buffer is 256 bytes and the sprintf is
- * unbounded, as in the original. */
+/* "NONE" (case-exact, on the raw wave name) disables the entry without
+ * logging.  PRESERVED: the path is formatted unbounded into 256 bytes. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
                DWORD arg3, DWORD arg4)
@@ -387,8 +347,8 @@ ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
     return 0;
 }
 
-/* 0x004113e0.  The event ids, in the original's test order.  An unknown
- * event registers nothing and returns false. */
+/* The event ids, in test order.  An unknown event registers nothing and
+ * returns false. */
 static const struct { const char *name; unsigned id; } kSoundEvents[] = {
     { "movejj", 1 },            { "movecatcher", 0 },     { "movethrower", 2 },
     { "moveicesliding", 3 },    { "movesliding", 4 },     { "moveparagliding", 5 },
@@ -414,13 +374,13 @@ Theme_RegisterSound(Game *game, char *eventName, const char *waveName)
     return false;
 }
 
-/* ─── The parser: tables ───────────────────────────────────────────────── */
+/* The parser's keyword tables. */
 
 enum { FOG_NONE = 0, FOG_EXP = 1, FOG_EXP2 = 2, FOG_LINEAR = 3 };
 
 struct KeywordValue { const char *name; DWORD value; };
 
-/* srcblend's list; destblend's is the same minus its last entry. */
+/* srcblend's list; destblend's is the same without the last entry. */
 static const KeywordValue kBlends[] = {
     { "zero", 1 }, { "one", 2 }, { "srccolor", 3 }, { "invsrccolor", 4 },
     { "srcalpha", 5 }, { "invsrcalpha", 6 }, { "destalpha", 7 },
@@ -488,7 +448,7 @@ static const char *const kTextColorKeywords[THEME_COLOR_COUNT] = {
     "menusummarysavetextcolors",
 };
 
-/* Look `tok` up (lowercased in place first); *out untouched on a miss. */
+/* Looks tok up, lowercasing it in place first; *out is untouched on a miss. */
 static bool lookup(char *tok, const KeywordValue *tab, int n, DWORD *out)
 {
     lower_inplace(tok);
@@ -516,36 +476,23 @@ static DWORD float_bits(float f)
     return d;
 }
 
-/* The parser mirrors the file's nesting: each `{` calls the next level's
- * block function, which reads lines until its own `}`, applies that brace's
- * effects and returns.  The call stack IS the depth.  At end of file every
- * level returns false and unwinds WITHOUT its closing effects -- the
- * original simply stopped, so a block cut off by EOF never stores a count.
+/* The parser follows the file's nesting: each `{` calls the next level's block
+ * function, which reads lines until its own `}`, applies that brace's effects
+ * and returns, so the call stack is the depth.  At end of file every level
+ * returns false without its closing effects: a block cut off by the end of the
+ * file never stores a count.
  *
  *   parseFile            depth 0   pick the object type, or `environment`
  *   parseObjectBlock     depth 1   records and block-level settings
  *   parseRecordBlock     depth 2   one record's placement and look
  *   parseSubObjectBlock  depth 3   one sub-object's render state
  *
- * Braces are tested before the keyword handlers.  The original tested them
- * last, but no keyword is a brace, so the order cannot matter.  A `{` at
- * depth 3 and a `}` at depth 0 are ordinary unknown tokens, as they were.
+ * A `{` at depth 3 and a `}` at depth 0 are ordinary unknown tokens.
  *
- * All parse state is on the stack.  `slot` (the object block being filled,
- * NULL for `environment` or an unknown keyword) and `inEnvironment` are
- * parseFile's locals, set by depth-0 keywords and handed down; the depth-1
- * `}` returning is what clears them.
- *
- * The cursors are locals of the block that owns them: parseObjectBlock's
- * Cursor<ThemeLevelObject> is the record the last model/field/billboard/
- * particlesystem line opened, parseRecordBlock's Cursor<SceneSubObject> the
- * sub-object the last depth-2 texture line opened.  `count` is how many have
- * been opened, which is what the closing brace stores.  Each starts at "one
- * before the first" -- the original's index was always -1 on entry to a
- * block, so this is where it would have been anyway.  Neither is bounds- or
- * NULL-checked (DEFECTS KEPT): with slot == NULL they point near address 0,
- * as the original's arithmetic did, and a ninth record runs into the next
- * slot. */
+ * A cursor is the record (or sub-object) the last opening line opened; count
+ * is how many have been opened, which the closing brace stores.  Each starts
+ * one before the first.  PRESERVED: neither is bounds- or NULL-checked; with
+ * no slot they point near address 0. */
 template <typename T> struct Cursor {
     T   *at;
     int  count;
@@ -607,9 +554,9 @@ struct ThemeParser {
     void explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec);
 };
 
-/* The next line that is not blank or a comment, tokenized; false at EOF.
- * A whitespace-only last line with no newline is NOT skipped: it yields zero
- * tokens and an empty tok[0], exactly as in the original. */
+/* The next line that is not blank or a comment, tokenized; false at the end.
+ * A whitespace-only last line with no newline is not skipped: it yields no
+ * tokens and an empty tok[0]. */
 bool ThemeParser::nextLine()
 {
     char buf[LINE_MAX];
@@ -634,17 +581,17 @@ bool ThemeParser::nextLine()
     return false;
 }
 
-/* ─── Depth 0 ─────────────────────────────────────────────────────────────── */
+/* Depth 0. */
 
 void ThemeParser::parseFile()
 {
-    ThemeObjectTypeSlot *slot = NULL;   /* the object block being filled; NULL = none */
-    bool inEnvironment = false;         /* gates the block-level keywords */
+    ThemeObjectTypeSlot *slot = NULL;  // the object block being filled; NULL for none
+    bool inEnvironment = false;        // gates the block-level keywords
     while (nextLine()) {
         if (is(tok[0], "{")) {
             if (!parseObjectBlock(slot, inEnvironment))
                 return;
-            /* The depth-1 `}`: back at the top, nothing selected. */
+            // The depth-1 `}`: back at the top, nothing selected.
             slot = NULL;
             inEnvironment = false;
         } else {
@@ -669,14 +616,14 @@ void ThemeParser::selectTarget(ThemeObjectTypeSlot *&slot, bool &inEnvironment)
     }
 }
 
-/* ─── Depth 1 ─────────────────────────────────────────────────────────────── */
+/* Depth 1. */
 
 bool ThemeParser::parseObjectBlock(ThemeObjectTypeSlot *slot, bool inEnvironment)
 {
     Cursor<ThemeLevelObject> rec = { recordAt(slot, -1), 0 };
     while (nextLine()) {
         if (is(tok[0], "{")) {
-            /* Applies to the current record -- records[-1] if none is open. */
+            // Applies to the current record: records[-1] if none is open.
             if (slot) {
                 rec.at->flScaleX = 1.0f;
                 rec.at->flScaleY = 1.0f;
@@ -752,7 +699,7 @@ void ThemeParser::sky(bool inEnvironment)
 {
     if (!inEnvironment || ntok <= 1)
         return;
-    /* 0x100 each and unbounded, as the original's stack buffers were. */
+    // PRESERVED: 0x100 each and unbounded.
     char up[0x100], dn[0x100], fr[0x100], bk[0x100], lf[0x100], rt[0x100];
     sprintf(up, GS_THEME_SKY_UP, tok[1]);
     sprintf(dn, GS_THEME_SKY_DN, tok[1]);
@@ -840,7 +787,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
     }
 }
 
-/* ─── Depth 2 ─────────────────────────────────────────────────────────────── */
+/* Depth 2. */
 
 bool ThemeParser::parseRecordBlock(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec)
 {
@@ -860,11 +807,10 @@ bool ThemeParser::parseRecordBlock(ThemeObjectTypeSlot *slot, ThemeLevelObject *
     return false;
 }
 
-/* The explode direction: (t4, t5, t6, 1) times an X rotation by the float
- * -pi/2, as a row vector, then divided by w (always 1).  Computed in double
- * with cos()/sin(); the original's x87 chain differs only in the last bits.
- * The original also formats "VECTOR(%f, %f, %f)\n" into a stack buffer
- * nothing reads; that is omitted. */
+/* The explode direction: (t4, t5, t6, 1) times a rotation about X by the float
+ * -pi/2, as a row vector, divided by w (always 1).  Double precision with
+ * cos() and sin(); the game's x87 chain differs only in the last bits, which
+ * nothing observes. */
 void ThemeParser::explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec)
 {
     if (ntok <= 6 || slot == NULL || rec->pMesh == NULL)
@@ -922,7 +868,7 @@ void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec
             rec->flOscillationAmplitude = atof_f(tok[1]);
             rec->flOscillationFrequency = atof_f(tok[2]);
         }
-        /* No slot check from here on (DEFECTS KEPT). */
+        // PRESERVED: no slot check from here on.
         if (is(tok[3], "random"))
             rec->bOscillateRandom = 1;
         rec->flOscillationPhase = (ntok < 5) ? 0.0f : atof_f(tok[4]);
@@ -939,7 +885,7 @@ void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec
     }
 }
 
-/* ─── Depth 3 ─────────────────────────────────────────────────────────────── */
+/* Depth 3. */
 
 bool ThemeParser::parseSubObjectBlock(ThemeObjectTypeSlot *slot, SceneSubObject *sub)
 {
@@ -984,7 +930,7 @@ void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *su
             sub->flEffectParams[0] = atof_f(tok[1]);
         }
     } else if (is(tok[0], "environment")) {
-        sub->effect = SUBOBJ_EFFECT_ENVIRONMENT;         /* no slot check */
+        sub->effect = SUBOBJ_EFFECT_ENVIRONMENT;  // PRESERVED: no slot check
     } else if (is(tok[0], "scroll")) {
         if (ntok > 2 && slot) {
             sub->effect = SUBOBJ_EFFECT_SCROLL;
@@ -992,11 +938,11 @@ void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *su
         }
     } else if (is(tok[0], "textureadress")) {
         if (ntok > 1 && lookup(tok[1], kTextureAddress, 4, &v))
-            sub->dwTexAddress = v;                       /* no slot check */
+            sub->dwTexAddress = v;  // PRESERVED: no slot check
     }
 }
 
-/* One parser per call; 4 KB of tokens, so not on the stack. */
+/* One parser for every call; 4 KB of tokens, so not on the stack. */
 static ThemeParser s_parser;
 
 static bool theme_load(Game *game, Direct3D *d3d, ThemeAssetBlock *block,
@@ -1005,7 +951,7 @@ static bool theme_load(Game *game, Direct3D *d3d, ThemeAssetBlock *block,
     Theme_ReleaseBlock(block);
     d3d->pDevice->SetRenderState(D3DRENDERSTATE_FOGENABLE, 0);
 
-    FILE *fp = fopen(path, "r");      /* TEXT mode: the CRT folds CRLF */
+    FILE *fp = fopen(path, "r");  // text mode: the CRT folds CRLF
     if (fp == NULL)
         return false;
 
@@ -1016,12 +962,11 @@ static bool theme_load(Game *game, Direct3D *d3d, ThemeAssetBlock *block,
 
     theme_struct_dump_if_enabled(path);
     fclose(fp);
-    strcpy(block->themeName, path);   /* unbounded, as the original */
+    strcpy(block->themeName, path);  // PRESERVED: unbounded
     return true;
 }
 
-/* The export: the load above, timed.  The time goes to karoo_hooks.log only
- * and never into game state, so it is not a replay-determinism input. */
+/* The load, timed.  The time goes only to our log, never into game state. */
 extern "C" __declspec(dllexport) bool __cdecl
 Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block, char *path,
            GameLogger *logger)
@@ -1040,13 +985,9 @@ Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block, char *path,
 
 #pragma GCC diagnostic pop
 
-/* ─── The theme sound table's lifecycle, 0x440280..0x440450 ───────────────
- *
- * ReleaseAll 0x440400 clears name[0] and enabled of all 100 entries between
- * two log lines and returns 0; arg3/arg4 are left as they were.  The ctor
- * writes the vtable, zeroes the word at +8, calls the shared no-op 0x440450
- * (dropped: `xor eax,eax; ret`, result unused), then ReleaseAll.  The dtor
- * body only rewrites the vtable. */
+/* The theme sound table's lifecycle.  ReleaseAll clears the name and the
+ * enabled flag of all 100 entries between two log lines, leaving the other
+ * fields, and returns 0. */
 static void *const g_ThemeSoundVtable[1] = { (void *)&ThemeSound_ScalarDestructor };
 
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
@@ -1076,8 +1017,7 @@ ThemeSound_Destruct(ThemeSoundTable *self)
     self->vtable = (void *)g_ThemeSoundVtable;
 }
 
-/* Reached only through our vtable, which nothing calls through: the table
- * is embedded in Game.  Reimplemented, not exercised. */
+/* Reached only through the vtable; the table is embedded in the Game. */
 extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
 ThemeSound_ScalarDestructor(ThemeSoundTable *self, unsigned char flags)
 {
