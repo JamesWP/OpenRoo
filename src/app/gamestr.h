@@ -44,7 +44,7 @@ inline const char GS_CD_THEME_TRACK[] = "CDM: theme %s is cd track %d";  /* 0x00
 inline const char GS_CD_TRACK_COUNT[] = "CDM: number of tracks %d";  /* 0x0046443c: "CDM: number of tracks %d" */
 inline const char GS_CD_TRACK_LENGTH[] = "CDM: track %d lenght:%s";  /* 0x00464424: "CDM: track %d lenght:%s" */
 inline const char GS_CONTROL_SAVE_SETTINGS[] = "CONTROL: trying to save settings";  /* 0x00464580: "CONTROL: trying to save settings" */
-inline const char GS_HIGHSCORE_DEFAULT_NAME[] = "Bernie Boulder";  /* 0x00465dd4: "Bernie Boulder" */
+inline const char GS_HIGHSCORE_DEFAULT_NAME[] = "Open Roo";
 /* Game's lifecycle (game.cpp). */
 inline const char GS_GAME_CD_OK[] = "GAME: original CD is in the drive - OK";  /* 0x004653f8: "GAME: original CD is in the drive - OK" */
 inline const char GS_GAME_CD_MISSING[] = "GAME: * warning * - the original CD is not in drive";  /* 0x004653c4: "GAME: * warning * - the original CD is not in drive" */
@@ -199,7 +199,7 @@ inline const char GS_RPT_TALLY[] = "\011\011%d\011%d\011%d\012";  /* 0x00465d40:
 inline const char GS_RPT_LVL_NAME[] = "** Levelname: %s\012";  /* 0x00465d5c: "** Levelname: %s\n" */
 inline const char GS_RPT_LVL_FILE[] = "** Level %d  Filename:%s \012";  /* 0x00465d70: "** Level %d  Filename:%s \n" */
 inline const char GS_RPT_STARS[] = "*********************************************************************\012";  /* 0x00465d8c: "**********************************************************..." */
-inline const char GS_RPT_BERNIE[] = "Bernie Boulder";  /* 0x00465dd4: "Bernie Boulder" */
+inline const char GS_RPT_DEFAULT_NAME[] = "Open Roo";
 inline const char GS_RPT_S_TAB[] = "%s\011";  /* 0x00465de4: "%s\t" */
 inline const char GS_RPT_LOG_TIME[] = "GAME: time:%d";  /* 0x00465de8: "GAME: time:%d" */
 inline const char GS_RPT_BLANK_TAB[] = " \011";  /* 0x00465df8: " \t" */

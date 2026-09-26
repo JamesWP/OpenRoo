@@ -6,7 +6,7 @@
  * KAROO_LAYOUT_SIZE asserts it.
  *
  *   InstallHighScoreTableVtable 0x41edf0  ctor: stores vtable 0x45d420, nothing else
- *   FillDefaultHighScores       0x41ee30  "Bernie Boulder" and ten fixed
+ *   FillDefaultHighScores       0x41ee30  the default name and ten fixed
  *                                         score/level pairs, for count records
  *   ReadHighScoreFile           0x41ef20  ours: readFile   (highscores.cpp)
  *   WriteHighScoreFile          0x41efe0  ours: writeFile  (highscores.cpp)
@@ -51,7 +51,7 @@ public:
      * dtor below); the game's is left as a tripwire. */
     void construct();   /* 0x41edf0 */
     void destruct();    /* 0x41ee20 */
-    /* 0x41ee30 -- "Bernie Boulder" in the first count() names, then ten
+    /* 0x41ee30 -- the default name in the first count() names, then ten
      * fixed score/level pairs.  Its four stack arguments are ignored. */
     void fillDefaults();
 

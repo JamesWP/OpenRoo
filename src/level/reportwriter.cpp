@@ -58,7 +58,7 @@
  *    "level:%d %s".  They are dead stores into a local buffer with no
  *    observable effect, so they are simply not performed here; nothing the
  *    game can see distinguishes the two.
- * 4. The "Bernie Boulder" seeding of the high-score table runs for level 6 and
+ * 4. The the default name seeding of the high-score table runs for level 6 and
  *    every eighth level after 5, writing backwards through the table at a
  *    stride of -0x37.  It is a side effect of generating the report, not part
  *    of it, and tools/levelreport.py snapshots highscores/ because of it.
@@ -279,7 +279,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
         if ((idx % 8 == 0 && idx > 5) || idx == 6) {
             int k = (int)idx / 8;
             HighScoreRecord *rec = self->highScores()->record(9 - k);
-            strcpy(rec->name, GS_RPT_BERNIE);
+            strcpy(rec->name, GS_RPT_DEFAULT_NAME);
             rec->level = (unsigned char)(idx + 1);
             rec->score = (unsigned int)self->reportScoreTotal();
         }
