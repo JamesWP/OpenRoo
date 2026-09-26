@@ -141,7 +141,7 @@ List_Unlink(LinkedList *self, LinkedListNode *pNode);
 extern "C" __declspec(dllexport) LinkedListNode *__attribute__((thiscall))
 List_Find(LinkedList *self, void *pValue, LinkedListNode *pAfterNode);
 
-/* Names the rest of karoo-hooks/ already uses.  Kept as thin aliases so this
+/* Names the rest of src/ already uses.  Kept as thin aliases so this
  * cycle does not also churn direct3d.cpp and player.cpp; they now resolve to
  * our own code rather than to an absolute address in the game binary. */
 static inline void LinkedList_Append(LinkedList *self, void *pValue)

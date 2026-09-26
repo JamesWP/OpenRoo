@@ -23,7 +23,7 @@
  * ─── `this` is the MENU base, not `Game` ─────────────────────────────────
  *
  * All three take the menu sub-object, Game+0x175518.  Every offset below is
- * relative to THAT.  The map is `karoo-hooks/menu.cpp`'s, derived
+ * relative to THAT.  The map is `src/ui/menu.cpp`'s, derived
  * independently from the navigator `NavigateMenuTree 0x0041ec40` and
  * `Game::HandleKeypress` — two unrelated decompiles agreeing on the depth
  * byte, the stack array, the current-node byte and the cursor:

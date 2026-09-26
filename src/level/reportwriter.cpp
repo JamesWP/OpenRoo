@@ -6,7 +6,7 @@
  *
  * ─── Why this function, and not the reader that had the problem ───────────
  *
- * Phase 4's report-side .jjs reader (karoo-hooks/scriptplayer.cpp) had to call
+ * Phase 4's report-side .jjs reader (src/ui/scriptplayer.cpp) had to call
  * the GAME's fputs, because the FILE * it writes to was opened by this
  * function with the game's fopen.  An MSVC FILE cannot be written by this
  * DLL's mingw CRT -- attempting it hung the level report with no crash and no
@@ -124,7 +124,7 @@
  *    nine c000001d and the UD2 stub named the address.
  *  - SetupLevelObjects was the third instance — checked BEFORE stubbing.
  *
- * When replacing anything, grep karoo-hooks/ for its address as well as
+ * When replacing anything, grep src/ for its address as well as
  * running xref.py over the exe. */
 
 /* ─── Game field offsets ─────────────────────────────────────────────────── */

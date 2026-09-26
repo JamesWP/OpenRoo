@@ -5,7 +5,7 @@
  * body reads a double at argument offset +0x10.  a3/a4 are never read; they
  * are declared so the stack shape matches exactly.
  *
- * All math goes through karoo-hooks/d3dmath.h -- our own code, never the
+ * All math goes through src/render/d3dmath.h -- our own code, never the
  * game's helpers.  The shipped build uses the standard backend
  * (d3dmath_std.cpp): plain float and the C library.  It is not bit-exact
  * against the original and does not need to be; it was accepted on the bar

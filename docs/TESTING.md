@@ -45,7 +45,7 @@ say so explicitly.
 
 `--fast` stops the game *asking* the driver to draw. `--headless` removes the
 driver: `hooks_DirectDrawCreate` hands back an in-DLL null DirectDraw
-(`karoo-hooks/nullddraw.cpp`) rather than loading `ddraw.dll`, and the game's
+(`src/render/nullddraw.cpp`) rather than loading `ddraw.dll`, and the game's
 one window is created message-only so Wine needs no display driver for it.
 Nothing appears on screen, nothing takes focus, no desktop mode is switched,
 and the run works with `DISPLAY` unset entirely.

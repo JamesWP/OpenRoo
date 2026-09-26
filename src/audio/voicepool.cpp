@@ -219,7 +219,7 @@ Sim_BroadcastPoolVoiceCoordinates(VoicePool *self,
  * the `.fon` loader and the big-text pair both established.
  *
  * Reference audit, `tools/xref.py` over Karoo.exe.orig, plus the grep of
- * karoo-hooks/ that CLAUDE.md pairs with it:
+ * src/ that CLAUDE.md pairs with it:
  *
  *   0x4429f0 Blank        1 ref   1 CALL (0x44391d)
  *   0x442a10 thunk        3 refs  3 CALL — incremental-linker JMP to Wipe

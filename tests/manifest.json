@@ -3,7 +3,7 @@
   "_comment": [
     "The test-recording catalogue.  One entry per recording; tools/replaytest.py",
     "runs them.  Add entries with `replaytest.py record <name> --description ...`,",
-    "remove them by deleting the entry and its .rec file.  See tests/README.md.",
+    "remove them by deleting the entry and its .rec file.  See docs/TESTING.md.",
     "",
     "Fields:",
     "  name         identifier used on the command line",
@@ -59,7 +59,7 @@
           "completed_a_level": false
         }
       },
-      "notes": "Named for the crash it used to reproduce; kept under that name because tests/README.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced byte-identical 1036-frame hash logs and identical end-state dumps. --fast is the suite default, and this entry sets \"fast\": false to opt out of it: --fast skips the ddraw draw calls, and the fault this recording guards happened INSIDE DrawPrimitiveStrided, so running it fast would silently retire the only render-path crash guard the suite has. Costs about 10 s. Remove the field to make the whole suite fast unconditionally.",
+      "notes": "Named for the crash it used to reproduce; kept under that name because docs/TESTING.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced byte-identical 1036-frame hash logs and identical end-state dumps. --fast is the suite default, and this entry sets \"fast\": false to opt out of it: --fast skips the ddraw draw calls, and the fault this recording guards happened INSIDE DrawPrimitiveStrided, so running it fast would silently retire the only render-path crash guard the suite has. Costs about 10 s. Remove the field to make the whole suite fast unconditionally.",
       "fast": false
     },
     {
@@ -99,7 +99,7 @@
       "file": "castle-something.rec",
       "saves": "tests/saves/castle-something",
       "level": "Castle\\Something",
-      "description": "Hand-played by James, 2026-08-31. Navigates the main menu, loads save slot 4 (Castle\\Something), collects 8 of the 41 items and quits about 11 seconds in without completing the level (8/40 gems, no foes killed, vitality down to 70 from damage taken). 1033 records over 1035 frames, 439 with a key held. Covers the menu, the save-slot load and the first seconds of Castle-theme gameplay; the level is never completed, so completed_a_level is false and there is no at_completion block. This is the only recording that exercises DrawQuadBatch's dwType==2 draw path (116 quads per frame) -- Forest\\BombStart and Water\\Water01 have no such object, so a change to karoo-hooks/quadbatch.cpp is only covered here.",
+      "description": "Hand-played by James, 2026-08-31. Navigates the main menu, loads save slot 4 (Castle\\Something), collects 8 of the 41 items and quits about 11 seconds in without completing the level (8/40 gems, no foes killed, vitality down to 70 from damage taken). 1033 records over 1035 frames, 439 with a key held. Covers the menu, the save-slot load and the first seconds of Castle-theme gameplay; the level is never completed, so completed_a_level is false and there is no at_completion block. This is the only recording that exercises DrawQuadBatch's dwType==2 draw path (116 quads per frame) -- Forest\\BombStart and Water\\Water01 have no such object, so a change to src/render/quadbatch.cpp is only covered here.",
       "scenario": "Hand-played by James, 2026-08-31. Navigates the main menu, loads save slot 4 (Castle\\Something), collects a few gems and then quits without completing the level. Covers the menu, the save-slot load and the first seconds of Castle-theme gameplay; the level is never completed, so there is no at_completion block. Captured to give the Castle theme's content coverage the Forest and Water recordings lack.",
       "expect": {
         "crash": "none",
@@ -386,7 +386,7 @@
           "completed_a_level": false
         }
       },
-      "notes": "Captured 1491 frames, blessed on 18 fields. The ONLY recording that reaches the game-over overlay (bGame_state 2), so it is the only automated coverage of karoo-hooks/scoreoverlay.cpp Score_DrawGameOverScore -- the four capped \"scoreoverlay: gameover\" lines in karoo_hooks.log are how you check it still runs. One life, so the single death ends the game rather than respawning; lives=0 and death_cause=1 are the fields that say so. Scores are non-zero (4 gems, level_score 94) deliberately, so the breakdown draws real numbers in its count and product columns rather than a screen of zeros. The high-score half of that file is NOT covered here -- reach it with KAROO_MENU_NODE=3."
+      "notes": "Captured 1491 frames, blessed on 18 fields. The ONLY recording that reaches the game-over overlay (bGame_state 2), so it is the only automated coverage of src/ui/scoreoverlay.cpp Score_DrawGameOverScore -- the four capped \"scoreoverlay: gameover\" lines in karoo_hooks.log are how you check it still runs. One life, so the single death ends the game rather than respawning; lives=0 and death_cause=1 are the fields that say so. Scores are non-zero (4 gems, level_score 94) deliberately, so the breakdown draws real numbers in its count and product columns rather than a screen of zeros. The high-score half of that file is NOT covered here -- reach it with KAROO_MENU_NODE=3."
     },
     {
       "name": "protectionstart",
@@ -482,7 +482,7 @@
           "completed_a_level": false
         }
       },
-      "notes": "Captured 1796 frames. Covers foe type 2 (+0x62 == 2), the gate at 0x00415751 (foe+0xd7 == 0xff -> retarget) and the type-2 arm at 0x004158a3, which calls FindNearestListedObjectTile with the foe's own cell and radius 7. The census in karoo-hooks/tilequery.cpp names five levels carrying a gated foe type; this is one of the two type-2 levels. Types 3 and 5 still have no recording -- see Egypt\\CollectIt / Candy\\Collect01 and Castle\\EnemyVsEnemy."
+      "notes": "Captured 1796 frames. Covers foe type 2 (+0x62 == 2), the gate at 0x00415751 (foe+0xd7 == 0xff -> retarget) and the type-2 arm at 0x004158a3, which calls FindNearestListedObjectTile with the foe's own cell and radius 7. The census in src/level/tilequery.cpp names five levels carrying a gated foe type; this is one of the two type-2 levels. Types 3 and 5 still have no recording -- see Egypt\\CollectIt / Candy\\Collect01 and Castle\\EnemyVsEnemy."
     },
     {
       "name": "thrower02",

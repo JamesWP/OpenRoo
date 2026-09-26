@@ -327,7 +327,7 @@ int ScriptPlayer::readForLevel(const char *path)
  * (0x451776), which no amount of work inside this file could have avoided:
  * whoever OPENS a file decides which CRT owns it.
  *
- * karoo-hooks/reportwriter.cpp now replaces WriteLevelReport, so both output
+ * src/level/reportwriter.cpp now replaces WriteLevelReport, so both output
  * streams are opened by us and the sink is an ordinary FILE * from our own
  * CRT.  The callback is gone and this reader is fully self-contained.
  *

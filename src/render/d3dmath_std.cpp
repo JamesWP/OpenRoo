@@ -4,7 +4,7 @@
  * Its correctness bar is that the game looks and plays the same; these
  * matrices feed rendering only, so the replay suite is unaffected.  A
  * bit-exact x87 backend existed until 2026-09-13 (RENDER_PLAN.md) and is in
- * git history as karoo-hooks/d3dmath.cpp if a last-bit question ever needs it.
+ * git history as src/render/d3dmath.cpp if a last-bit question ever needs it.
  *
  * m4_identity, m4_translate, v3_set, v3_sub, v3_div, v3_sub_inplace and
  * billboard_vertex are pure data movement and live in d3dmath_common.cpp.

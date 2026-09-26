@@ -12,7 +12,7 @@
  * Character-at-a-time fgetc, ';' terminates an entry, the entry is
  * NUL-terminated and "\n" appended, and ONE MORE CHARACTER is consumed and
  * discarded after the ';'.  Identical in shape to
- * ReadInstructionScriptForLevel (0x41d720, karoo-hooks/scriptplayer.cpp), down to
+ * ReadInstructionScriptForLevel (0x41d720, src/ui/scriptplayer.cpp), down to
  * the 16-bit-masked accumulation index.
  *
  * The one structural difference is what happens to a finished entry: the .jjs

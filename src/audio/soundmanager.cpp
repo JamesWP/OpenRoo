@@ -617,7 +617,7 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
 
 /* ─── The class methods callers already speak to ─────────────────────────
  *
- * These were the placeholder's whole purpose: every caller in karoo-hooks
+ * These were the placeholder's whole purpose: every caller in src/
  * already goes through SoundManager::, so replacing the bodies changed no
  * call site.  They now forward to our own code instead of to an absolute
  * address in the game binary.

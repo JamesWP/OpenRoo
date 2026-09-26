@@ -6,7 +6,7 @@
  * All gameplay input reaches the game through exactly two paths, and both are
  * ours already:
  *   1. ProgableControl::DispatchInputActions — a 256-byte DirectInput scancode
- *      array, read once per frame (karoo-hooks/progctrl.cpp).
+ *      array, read once per frame (src/input/progctrl.cpp).
  *   2. GetAsyncKeyState — 16 call sites, all through one IAT slot
  *      (0x0045D1B0), carrying ENTER/ESC decisions the dispatcher never sees.
  *

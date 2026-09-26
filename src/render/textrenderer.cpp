@@ -197,7 +197,7 @@ static float text_width(const char *str, float cellW, float spacing)
 
 /* The bodies live on the class -- they read private fields, and the exports
  * below are thin forwarders.  That way there is exactly one implementation and
- * the rest of karoo-hooks/ reaches it through the owning header, which is the
+ * the rest of src/ reaches it through the owning header, which is the
  * arrangement CLAUDE.md asks for. */
 
 void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
@@ -469,7 +469,7 @@ Text_LoadFont(TextRenderer *self, const char *path, Direct3D *d3d)
  * xref.py over Karoo.exe.orig: 0x00413d90 has two CALL sites (0x434046,
  * 0x4356a6) and nothing else; 0x00413990 has exactly ONE reference in the
  * entire binary and it is the wrapper's own CALL at 0x413e17.  No JMP, no
- * DATA push, no vtable slot for either.  A grep of karoo-hooks/ for both
+ * DATA push, no vtable slot for either.  A grep of src/ for both
  * addresses found only this file's own ORIG_DRAW_BIG_TEXT, now gone --
  * CLAUDE.md's "xref.py cannot see callers inside our DLL" step, which is the
  * one that has bitten twice.

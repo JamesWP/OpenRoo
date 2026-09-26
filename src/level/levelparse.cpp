@@ -66,7 +66,7 @@
  * at 0x004187F3 (OpenLevelFile), 0x004189A3 (ParseLevelFiles), 0x00416481
  * (SetupLevelObjects) and 0x00414CBA (Destruct) — so it is a method on the
  * `Level3DExtraObjects` sub-object at Game+0x48b98, the .leo reader's own
- * class (`karoo-hooks/extraobjects.cpp`).  That identification is not an analogy: the
+ * class (`src/level/extraobjects.cpp`).  That identification is not an analogy: the
  * loop's stride is 0xf40, and extraobjects.cpp already documents the extra-object
  * records as living at `this + n*0xf40`.
  *
