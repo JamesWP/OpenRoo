@@ -1,6 +1,6 @@
 #pragma once
 
-/* The game's own logger (the game calls it CProto).  It writes the "Protokoll"
+/* The game's own logger (the game calls it CProto).  It writes the log
  * files: JJ.log from WinMain, StreamSoundBuffer.log from the sound code, and a
  * few more on setup paths that rarely fire.  Each line is a local timestamp
  * and the message; a message logs only if its level is at least minLevel (1).

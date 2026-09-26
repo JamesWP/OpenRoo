@@ -84,7 +84,7 @@ __declspec(dllexport) void __attribute__((thiscall))
 ProgCtrl_ClearBindings(ProgableControl *self, unsigned short mode,
                        const char *name);
 
-/* The action's bound key names, joined with " oder ", into buf (at most bufsz
+/* The action's bound key names, joined with " or ", into buf (at most bufsz
  * bytes).  Empty if the mode or action is unknown. */
 __declspec(dllexport) void __attribute__((thiscall))
 ProgCtrl_GetBindingStr(ProgableControl *self, int mode, const char *name,
