@@ -382,9 +382,21 @@ game directory:
 python3 tools/levelreport.py            # run and compare against the baseline
 python3 tools/levelreport.py --bless    # re-baseline (say so in the commit)
 python3 tools/levelreport.py --keep     # leave the produced files in place
+python3 tools/levelreport.py --baseline # keep this run's text in run/levelreport-baseline/
+python3 tools/levelreport.py --from DIR # compare outputs already in DIR, no run
 ```
 
-Exit 0 means both files match `tests/levelreport/`. The whole thing takes about
+**The gate is `tests/levelreport.json`**, not the text.  The harness parses the
+outputs (plus `LeoRecords.txt`) into its own canonical record per level and per
+`.leo` file and stores only a SHA-256 of each, with the counts that make a
+failure readable.  A failure names the level and the counts that moved, or says
+"counts equal; content moved" when only script text or record detail changed.
+The game's own text lives only in `tests/levelreport/` in the private repo; when
+that directory (or `run/levelreport-baseline/`) exists it is diffed too, and a
+difference fails the run.  `--bless` rewrites the JSON and, where it exists,
+`tests/levelreport/`.
+
+Exit 0 means the run matches. The whole thing takes about
 **17 seconds** — the dump itself is ~9 s — so there is no reason to skip it.
 
 **It needs no determinism settings.** Unlike a replay there is no clock, no
