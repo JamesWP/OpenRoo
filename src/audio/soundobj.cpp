@@ -1,43 +1,10 @@
-/* GAMETICK_PLAN.md Band B reopened — per-object sound attachment.
+/* Each sound is loaded from a stack copy of its name, and only when its
+ * "enabled" word is set.
  *
- *   AcquireObjectSoundBuffersForIndex  0x0041cf50
- *     callers: GameTick (the runtime foe spawner) and InitLevelBasedSounds
- *
- * __thiscall(Game*, uint objectIndex), RET 4.  Transcribed from the LISTING.
- *
- * The SoundManager embedded at Game+0x13cba8 is NOT ours: its two acquire
- * methods are placeholders in soundmanager.h that call the originals --
- *   acquireStatic  AcquireSoundBuffer 0x00443660  (name, mode)        -> CStatic*
- *   acquirePool    AcquireVoicePool   0x00443810  (count, name, mode) -> VoicePool*
- * Replacing the sound manager is its own piece of work, not a GameTick one.
- *
- * Each acquisition is gated on the dword right after a 0x100-byte name
- * (name+0x100) and passes a stack COPY of the name, as the listing does.
- * The name blocks are Game fields, `Game::soundAsset<offset>()`, named by
- * offset until their meanings are decoded:
- *
- *   +0x441ca VoicePool(3) -> pool9f       +0x429b6 -> soundB3
- *   +0x42ac2 -> soundB7, then re-tests the SAME guard and acquires the SAME
- *            name again into soundBb -- two buffers on one file (preserved)
- *   +0x42586 -> soundAb                   +0x42692 -> soundAf
- *   kind() == 2 : +0x457c6 -> soundC3, +0x42262 VoicePool(5) -> poolCf,
- *                 +0x44d4e -> soundA7
- *   otherwise   : +0x458d2 -> soundC3, +0x4247a VoicePool(5) -> poolCf,
- *                 +0x44e5a -> soundA7
- *   +0x42de6 -> soundCb
- *
- * The listing reloads the slot ([EBX+EDX*4+0x174804]) for the first five
- * stores, then holds the slot ADDRESS and dereferences it per store.  Both
- * read the same pointer, since the acquires never write the slot table;
- * here every store re-reads it through Game::foeSlot.
- *
- * Return: MOV AL,1 over whatever EAX last held -- the final acquire's result
- * when the +0x42ee6 guard was set, else that guard dword (0).
- *
- * Control: KAROO_SIM_FX=soundswap -- soundAb and soundAf swap names.  Sound
- * is outside every asserted field, so this is expected not to fail the
- * suite: the function's effects are audible, not simulated.
- */
+ * KAROO_SIM_FX=soundswap is a negative control: two of the foe's sounds swap
+ * names.  Sound is outside every asserted field, so the suite is expected to
+ * pass: the effect is audible, not simulated. */
+
 #include <windows.h>
 #include <string.h>
 #include "log.h"
@@ -88,6 +55,8 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
         g->foeSlot(idx)->setSoundB3(acq(g, g->soundAsset429b6()));
     if (g->soundAsset42ac2()->enabled) {
         g->foeSlot(idx)->setSoundB7(acq(g, g->soundAsset42ac2()));
+        // PRESERVED: the same guard is tested again and the same name loaded a
+        // second time, so two buffers play one file.
         if (g->soundAsset42ac2()->enabled)
             g->foeSlot(idx)->setSoundBb(acq(g, g->soundAsset42ac2()));
     }
@@ -112,6 +81,8 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
             g->foeSlot(idx)->setSoundA7(acq(g, g->soundAsset44e5a()));
     }
 
+    // PRESERVED: the low byte is 1 over whatever the last acquire left: its
+    // result if the final sound was set, else 0.
     last = (unsigned int)g->soundAsset42de6()->enabled;
     if (last != 0) {
         CStaticSoundbuffer *p = acq(g, g->soundAsset42de6());

@@ -5,15 +5,11 @@
 #include "cfaktsound.h"
 #include "log.h"
 
-/* ── Forward declarations ───────────────────────────────────────────────── */
-
 static void CFaktSound_ReleaseComRefs_impl(CFaktSound *self);
 static int  CFaktSound_Initialize_impl(CFaktSound *self, HWND window,
                                        UINT bufferflags, short channels,
                                        int samplespersec, USHORT bitspersample,
                                        void *logger);
-
-/* ── Method implementations ─────────────────────────────────────────────── */
 
 static void CFaktSound_BlankFields_impl(CFaktSound *self)
 {
@@ -21,9 +17,9 @@ static void CFaktSound_BlankFields_impl(CFaktSound *self)
     self->vtable = const_cast<void*>(CFAKTSOUND_VTABLE);
 }
 
-static CFaktSound *CFaktSound_ScalarDeletingDtor_impl(CFaktSound *self, DWORD /*free_memory*/)
+static CFaktSound *CFaktSound_ScalarDeletingDtor_impl(CFaktSound *self, DWORD )
 {
-    /* CFaktSound objects are always embedded — free_memory is always 0 in practice. */
+    // Always embedded: the free flag is ignored.
     CFaktSound_ReleaseComRefs_impl(self);
     self->vtable = const_cast<void*>(CFAKTSOUND_VTABLE);
     return self;
@@ -49,8 +45,7 @@ static void CFaktSound_ReleaseComRefs_impl(CFaktSound *self)
         self->directsound->Release();
         self->directsound = NULL;
     }
-    /* We never set logger_initialized=1, so we never own the logger.
-     * Just clear both fields unconditionally. */
+    // The logger is never owned, so both fields are simply cleared.
     self->logger_initialized = 0;
     self->logger = NULL;
 }
@@ -66,10 +61,8 @@ static int CFaktSound_Initialize_impl(CFaktSound *self, HWND window,
 
     CFaktSound_ReleaseComRefs_impl(self);
 
-    /* Store caller-provided logger (not owned; logger_initialized stays 0). */
     self->logger = logger;
 
-    /* Create the DirectSound device. */
     HMODULE hDSound = GetModuleHandleA("dsound.dll");
     log_write("CFaktSound::Initialize: dsound.dll loaded at %p\n", (void*)hDSound);
 
@@ -125,6 +118,7 @@ static int CFaktSound_Initialize_impl(CFaktSound *self, HWND window,
                       (unsigned long)hr);
     }
 
+    // The primary buffer plays for as long as the device lives.
     self->soundbuffer->Play(0, 0, DSBPLAY_LOOPING);
     log_write("CFaktSound::Initialize: OK\n");
     return 1;
@@ -163,7 +157,7 @@ static int CFaktSound_InitializeWith3DAudio_impl(CFaktSound *self, HWND window,
 static int CFaktSound_Create3DListener_impl(CFaktSound *self, int enable)
 {
     if (enable) {
-        if (self->directsound3dlistener) return 1; /* already enabled */
+        if (self->directsound3dlistener) return 1;
         if (!self->soundbuffer) return 0;
         GUID iid = IID_IDirectSound3DListener;
         HRESULT hr = self->soundbuffer->QueryInterface(iid,
@@ -185,16 +179,12 @@ static int CFaktSound_Create3DListener_impl(CFaktSound *self, int enable)
 
 static void CFaktSound_CommitSettings_impl(CFaktSound *self)
 {
-    //log_write("CFaktSound::CommitSettings(this=%p listener=%p)\n",
-    //          self, self->directsound3dlistener);
     if (self->directsound3dlistener)
         self->directsound3dlistener->CommitDeferredSettings();
 }
 
 static void CFaktSound_SetPosition_impl(CFaktSound *self, vec3d *pos, DWORD dwApply)
 {
-    //log_write("CFaktSound::SetPosition(this=%p pos=(%.3f,%.3f,%.3f) apply=%lu)\n",
-    //          self, pos->x, pos->y, pos->z, (unsigned long)dwApply);
     if (self->directsound3dlistener)
         self->directsound3dlistener->SetPosition(
             pos->x, pos->y, pos->z, dwApply);
@@ -203,9 +193,6 @@ static void CFaktSound_SetPosition_impl(CFaktSound *self, vec3d *pos, DWORD dwAp
 static void CFaktSound_SetOrientation_impl(CFaktSound *self,
                                            vec3d *front, vec3d *top, DWORD dwApply)
 {
-    //log_write("CFaktSound::SetOrientation(this=%p front=(%.3f,%.3f,%.3f) top=(%.3f,%.3f,%.3f) apply=%lu)\n",
-    //          self, front->x, front->y, front->z, top->x, top->y, top->z,
-    //          (unsigned long)dwApply);
     if (self->directsound3dlistener)
         self->directsound3dlistener->SetOrientation(
             front->x, front->y, front->z,
@@ -216,13 +203,10 @@ static void CFaktSound_SetOrientation_impl(CFaktSound *self,
 static void CFaktSound_Apply3DRolloffParams_impl(CFaktSound *self,
                                                  float rolloff_factor, DWORD dwApply)
 {
-    //log_write("CFaktSound::Apply3DRolloffParams(this=%p rolloff=%.3f apply=%lu)\n",
-    //          self, rolloff_factor, (unsigned long)dwApply);
     if (self->directsound3dlistener)
         self->directsound3dlistener->SetRolloffFactor(rolloff_factor, dwApply);
 }
 
-/* ── Exports — extern "C" thiscall wrappers ─────────────────────────────── */
 extern "C" {
 
 __declspec(dllexport) void __attribute__((thiscall))
@@ -277,9 +261,8 @@ __declspec(dllexport) void __attribute__((thiscall))
 CFaktSound_Apply3DRolloffParams(CFaktSound *self, float rolloff_factor, DWORD dwApply)
     { CFaktSound_Apply3DRolloffParams_impl(self, rolloff_factor, dwApply); }
 
-} // extern "C"
+}
 
-/* CFAKTSOUND_VTABLE: our own 1-slot table (the game's was at 0x0045efa8, same slots). */
 static void *const cfaktsound_vtable_slots[1] = {
     (void *)&CFaktSound_ScalarDeletingDtor,
 };

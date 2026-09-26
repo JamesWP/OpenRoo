@@ -38,22 +38,23 @@ void CDM::setWindowHandle(HWND hwnd)
 int CDM::getTrackCount()
 {
     log_write("CDM::getTrackCount → 9\n");
-    return 9;  // original CD has 9 tracks (1 data + 8 audio); ValidateCDTrackLengths checks for exactly 9
+    return 9;  // the CD has 9 tracks, 1 data and 8 audio; the check wants exactly 9
 }
 
+/* The CD's track lengths, which the game checks to recognise its CD. */
 static const char *track_len(int track)
 {
     static const char *lens[] = {
-        /* 0 */ NULL,
-        /* 1 */ "04:38:71",  // not compared; overwritten by track 2
-        /* 2 */ "04:38:71",  // VA 0x464418
-        /* 3 */ "02:59:12",  // VA 0x46440C
-        /* 4 */ "03:28:39",  // VA 0x464400
-        /* 5 */ "02:46:68",  // VA 0x4643F4
-        /* 6 */ "03:08:54",  // VA 0x4643E8
-        /* 7 */ "03:32:60",  // VA 0x4643DC
-        /* 8 */ "04:00:74",  // VA 0x4643D0
-        /* 9 */ "02:17:74",  // VA 0x4643C4
+         NULL,
+         "04:38:71",  // never compared
+         "04:38:71",
+         "02:59:12",
+         "03:28:39",
+         "02:46:68",
+         "03:08:54",
+         "03:32:60",
+         "04:00:74",
+         "02:17:74",
     };
     if (track < 1 || track > 9) return "00:00:00";
     return lens[track];
@@ -73,14 +74,14 @@ void CDM::playTrack(int track, bool loop)
 {
     log_write("CDM::playTrack(track=%d, loop=%d, windowhandle=0x%p)\n", track, (int)loop, windowhandle);
 
-    // Stop and close any currently open alias before opening a new one.
+    // Close whatever is open before opening the new track.
     mciSendStringA("stop km", NULL, 0, NULL);
     mciSendStringA("close km", NULL, 0, NULL);
 
     tracknumber = track;
     repeat      = loop;
 
-    // CD track 2 → CDTracks\Track 1.wav, track 3 → Track 2.wav, …
+    // CD track 2 is CDTracks\Track 1.wav, and so on.
     int wav = track - 1;
     if (wav < 1 || wav > 8) {
         log_write("CDM::playTrack: track %d out of WAV range\n", track);
@@ -96,9 +97,8 @@ void CDM::playTrack(int track, bool loop)
         return;
     }
 
-    // Play non-blocking with notify. The game's WndProc (0x42CE20) handles
-    // MM_MCINOTIFY: on MCI_NOTIFY_SUCCESSFUL it checks CDM::repeat and if set
-    // re-calls CDM::PlayTrack with CDM::tracknumber, driving the loop.
+    // Plays without blocking; the window procedure gets MM_MCINOTIFY when it
+    // ends and restarts it if repeat is set.
     mciSendStringA("play km notify", NULL, 0, windowhandle);
     log_write("CDM::playTrack done\n");
 }
@@ -106,24 +106,22 @@ void CDM::playTrack(int track, bool loop)
 void CDM::stop()
 {
     log_write("CDM::stop\n");
-    // Zero repeat so any pending MM_MCINOTIFY does not re-trigger playback.
+    // Clear repeat so a pending notification does not restart it.
     repeat = false;
     mciSendStringA("stop km", NULL, 0, NULL);
     mciSendStringA("close km", NULL, 0, NULL);
     log_write("CDM::stop done\n");
 }
 
-// Volume control: the game calls this via CDM_SetMixerVolume (patched call sites
-// at 0x402ED0). MCI waveaudio exposes no per-alias volume API so this is a no-op.
+/* MCI waveaudio has no per-alias volume, so this does nothing. */
 void CDM::setMixerVolume(DWORD level)
 {
     log_write("CDM::setMixerVolume(level=0x%lX) — not implemented\n", level);
 }
 
-/* ─── Exports — thin thiscall wrappers so patch.py import names resolve ─── */
 extern "C" {
 
-__declspec(dllexport) void KarooHooksLoad() {}
+__declspec(dllexport) void KarooHooksLoad() {}  // unused
 
 __declspec(dllexport) CDM* __attribute__((thiscall))
 CDM_Constructor(CDM *self) { return self->construct(); }
@@ -131,10 +129,7 @@ CDM_Constructor(CDM *self) { return self->construct(); }
 __declspec(dllexport) void __attribute__((thiscall))
 CDM_Destructor(CDM *self) { self->stopAndClose(); }
 
-/* CDM::DestructAndFree 0x402c40 -- vtable slot 0 of the three-slot table at
-   0x0045d2b8, and its only reference anywhere: xref.py reports no CALL and no
-   JMP.  Calls stopAndClose, then frees on bit 0.  The one CDM is the global
-   the static initialiser at 0x00425f10 builds, so the free never happens. */
+/* Frees on bit 0; the one CDM is a global, so it never does. */
 __declspec(dllexport) CDM * __attribute__((thiscall))
 CDM_ScalarDeletingDtor(CDM *self, unsigned int flags)
 {
@@ -162,19 +157,10 @@ CDM_StopTrack(CDM *self) { self->stop(); }
 __declspec(dllexport) void __attribute__((thiscall))
 CDM_SetMixerVolume(CDM *self, DWORD level) { self->setMixerVolume(level); }
 
-} // extern "C"
+}
 
-/* ─── CDM::GetMixerDetails 0x00402e60 ─────────────────────────────────────
- * GAMETICK_PLAN.md Band B reopened (HandleKeypress's CD-volume option, and
- * Game::Load at 0x00414A36).  __thiscall(CDM*), BARE RET -- no stack
- * argument.  The decompile shows an `int param_1`; the listing's plain RET
- * and both callers (MOV ECX,0x4dc640 / CALL, nothing pushed) say otherwise.
- * An earlier draft trusted the decompile, compiled to RET 4, and unbalanced
- * Game::Load's stack -- every replay died 4 s in with no VEH dump.
- * No mixers -> 0.  Otherwise one MIXERCONTROLDETAILS (cbStruct 0x18, one
- * channel, cbDetails 4) on mixers[0], MIXER_GETCONTROLDETAILSF_VALUE with
- * MIXER_OBJECTF_HMIXER (0x80000000), and the value -- or 0 on any MMRESULT
- * error, which is what `~-(r != 0) & value` computes. */
+/* No stack argument.  The first mixer's volume value, or 0 with no mixer or on
+ * any error. */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 CDM_GetMixerDetails(CDM *self)
 {
@@ -194,7 +180,6 @@ CDM_GetMixerDetails(CDM *self)
     return r != 0 ? 0 : (unsigned int)value;
 }
 
-/* CDM_VTABLE: our own 3-slot table (the game's was at 0x0045d2b8, same slots). */
 static void *const cdm_vtable_slots[3] = {
     (void *)&CDM_ScalarDeletingDtor,
     (void *)&CDM_GetTrackCount,

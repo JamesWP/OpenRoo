@@ -8,7 +8,8 @@
 #include <stdlib.h>
 #include "log.h"
 
-/* ── WAV file parser ────────────────────────────────────────────────────── */
+/* The .wav parser: RIFF/WAVE with a fmt and a data chunk; other chunks are
+ * skipped (padded to even length). */
 
 #define FOURCC(a,b,c,d) \
     ((DWORD)(BYTE)(a) | ((DWORD)(BYTE)(b) << 8) | \
@@ -24,10 +25,8 @@ static bool wav_read_dword(HANDLE f, DWORD *out) {
     return ReadFile(f, out, 4, &n, NULL) && n == 4;
 }
 
-/*
- * Parses a WAV file.  Returns true on success; caller frees *fmt_out and
- * *pcm_out with HeapFree(GetProcessHeap(), ...).
- */
+/* Returns true on success; the caller frees *fmt_out and *pcm_out with
+ * HeapFree. */
 static bool parse_wav(const char *path,
                       WAVEFORMATEX **fmt_out, BYTE **pcm_out, DWORD *pcm_sz_out)
 {
@@ -86,8 +85,6 @@ free_and_fail:
     return false;
 }
 
-/* ── Helpers ─────────────────────────────────────────────────────────────── */
-
 static char *heap_strdup(const char *s)
 {
     if (!s) return NULL;
@@ -97,11 +94,8 @@ static char *heap_strdup(const char *s)
     return out;
 }
 
-/*
- * Creates a DirectSound buffer, loads PCM from parse_wav output, and returns
- * the buffer. On failure, returns NULL and frees fmt/pcm.  On success, fmt
- * and pcm are freed by this function.
- */
+/* Creates a buffer and fills it from the parsed file.  Frees fmt and pcm
+ * either way; returns NULL on failure. */
 static IDirectSoundBuffer *create_ds_buffer(IDirectSound *pDS,
                                             DWORD dwFlags,
                                             WAVEFORMATEX *fmt,
@@ -142,23 +136,8 @@ static IDirectSoundBuffer *create_ds_buffer(IDirectSound *pDS,
 
 static void CStatic_ReinitBuffer_impl(CStaticSoundbuffer *self);
 
-/* ── KAROO_SOUND_FX / KAROO_SOUND_DIAG ──────────────────────────────────
- *
- * Both sound classes own their vtable now, and neither writes anything that
- * can be seen; the pointer they install is the only thing they own outright,
- * so it was what the control moved (retired with the game's tables,
- * ENDGAME_PLAN.md "Direction") — the KAROO_IMAGE_FX=gamevtbl measurement,
- * applied to the sound objects.  `gamevtbl` installs the game's tables
- * (0x45ef9c / 0x45efa4), whose one slot each points at a UD2-stubbed
- * original, so any dispatch through the table faults as c000001d.  A clean
- * run says nothing read the table; a fault names the reader.
- *
- * Blast radius: one pointer field per object, no geometry, so levelreport.py
- * is safe (CLAUDE.md's rule about which gate may host a control).
- *
- * KAROO_SOUND_DIAG=1 is the census that tells "ran and agreed" from "never
- * ran": each destructor entry point announces its first call.  Read by VALUE.
- */
+/* KAROO_SOUND_DIAG=1 logs the first call to each destructor entry point, to
+ * tell "ran" from "never ran". */
 static bool sound_diag(void)
 {
     static int cached = -1;
@@ -172,8 +151,8 @@ static bool sound_diag(void)
 
 extern "C" {
 
-/* First call, then a running tally — never a purely periodic sample, which
- * reads zero forever for anything first reached late (linkedlist.cpp). */
+/* First call only, then a running tally: a periodic sample reads zero forever
+ * for anything first reached late. */
 __declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
                                                   unsigned long *seen)
 {
@@ -181,11 +160,9 @@ __declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
         log_write("sound: DIAG first call -- %s\n", who);
 }
 
-/* Forward declaration: the table below needs the slot's address. */
 __declspec(dllexport) void * __attribute__((thiscall))
 CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
 
-/* Our own one-slot table. */
 static void *const g_CStaticVtable[1] = { (void *)&CStatic_ScalarVectorDtor };
 
 __declspec(dllexport) void *CStatic_Vtable(void)
@@ -193,31 +170,9 @@ __declspec(dllexport) void *CStatic_Vtable(void)
     return (void *)g_CStaticVtable;
 }
 
-/* ─── CStaticSoundbuffer::ScalarVectorDtor (0x00442a80) ──────────────────
- *
- * MSVC's combined scalar/vector deleting destructor, and the last function of
- * the VoicePool TU.  Two shapes, chosen by bit 1 of `flags`:
- *
- *   flags & 2   an ARRAY.  The block VoicePool::Fill3D allocated is
- *               `count*0x18 + 4`; the count sits in the leading dword and
- *               pBufs is base+4, so the header is at `self[-1].threeDBuffer`
- *               — four bytes below the first element.  The original hands
- *               (self, 0x18, count, ReinitBuffer) to the CRT's vector-dtor
- *               iterator 0x00451e37, which walks the elements in REVERSE
- *               (`ptr += size*count`, then `--count; js out; ptr -= size`).
- *               The loop is written out here instead of calling that helper:
- *               it would be a new CRT callback, which E1 exists to remove,
- *               and the helper's SEH frame exists only for a destructor that
- *               throws — ReinitBuffer cannot.  The return is the block base,
- *               not `self`.
- *   otherwise   one object: ReinitBuffer, then free.
- *
- * Bit 0 frees the block.  The free is `FactAlloc::Free2` through alloc.h and
- * stays there: the array came from the game's `operator new` in Fill3D and
- * Clone, so the game's heap owns the other side (alloc.h's own rule).  Note
- * the 3-flag call in VoicePoolWipe passes both bits, so the array path is
- * the one the game actually takes.
- */
+/* For an array, the count header sits four bytes below the first element and
+ * the elements are destroyed in reverse, as MSVC's vector destructor does.
+ * Voice pools destroy with flag 3, so the array path is the one taken. */
 __declspec(dllexport) void * __attribute__((thiscall))
 CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
 {
@@ -225,11 +180,11 @@ CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
     CStatic_SoundFirstCall("CStaticSoundbuffer::ScalarVectorDtor", &seen);
 
     if (flags & 2) {
-        /* The count header, four bytes below the first element. */
+        // The count header, four bytes below the first element.
         void *base  = (char *)self - 4;
         int   count = *(int *)base;
 
-        /* Reverse order, exactly as the iterator walks it. */
+        // Reverse order.
         for (int i = count - 1; i >= 0; --i)
             CStatic_ReinitBuffer_impl(&self[i]);
 
@@ -244,9 +199,7 @@ CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
     return self;
 }
 
-} // extern "C"
-
-/* ── Forward declarations ──────────────────────────────────────────────── */
+}
 
 static void CStatic_Reset_impl(CStaticSoundbuffer *self);
 static int  CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
@@ -255,8 +208,6 @@ static int  CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
 static int  CStatic_CreateAndLoad3DSoundFile_impl(CStaticSoundbuffer *self,
                                                   IDirectSound *pDS, DWORD dwDsFlags,
                                                   const char *filename, void *logger);
-
-/* ── Method implementations ─────────────────────────────────────────────── */
 
 static CStaticSoundbuffer* CStatic_Init_impl(CStaticSoundbuffer *self)
 {
@@ -293,7 +244,6 @@ static int CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
                                           IDirectSound *pDS, DWORD dwDsFlags,
                                           const char *filename, void *logger)
 {
-    //log_write("CStatic::CreateAndLoadFile(this=%p, file='%s')\n", self, filename ? filename : "<null>");
 
     CStatic_Reset_impl(self);
 
@@ -316,8 +266,7 @@ static int CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
         return 0;
     }
 
-    /* Build buffer flags: always GETCURRENTPOSITION2 + GLOBALFOCUS + STATIC.
-     * If caller requested CTRL3D (bit 4), add it and drop CTRLPAN (mutually exclusive). */
+    // Always GETCURRENTPOSITION2, GLOBALFOCUS and STATIC; CTRL3D if asked for.
     DWORD bufFlags = DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_GLOBALFOCUS | DSBCAPS_STATIC;
     if (dwDsFlags & DSBCAPS_CTRL3D)
         bufFlags |= DSBCAPS_CTRL3D;
@@ -329,8 +278,6 @@ static int CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
         return 0;
     }
 
-    //log_write("CStatic::CreateAndLoadFile: OK '%s' dsflags=0x%lx\n",
-    //          filename, (unsigned long)bufFlags);
     return 1;
 }
 
@@ -338,15 +285,12 @@ static int CStatic_CreateAndLoad3DSoundFile_impl(CStaticSoundbuffer *self,
                                                  IDirectSound *pDS, DWORD dwDsFlags,
                                                  const char *filename, void *logger)
 {
-    //log_write("CStatic::CreateAndLoad3DSoundFile(this=%p, file='%s')\n",
-    //          self, filename ? filename : "<null>");
 
-    /* Force CTRL3D flag then create the base buffer. */
+    // Forces CTRL3D, then queries the 3D interface.
     int ok = CStatic_CreateAndLoadFile_impl(self, pDS, dwDsFlags | DSBCAPS_CTRL3D,
                                             filename, logger);
     if (!ok) return 0;
 
-    /* Obtain the 3D interface. */
     GUID iid3D = IID_IDirectSound3DBuffer;
     HRESULT hr = self->soundbuffer->QueryInterface(iid3D, (void**)self->threeDBufferSlot());
     if (FAILED(hr)) {
@@ -356,30 +300,25 @@ static int CStatic_CreateAndLoad3DSoundFile_impl(CStaticSoundbuffer *self,
         return 0;
     }
 
-    //log_write("CStatic::CreateAndLoad3DSoundFile: OK '%s'\n", filename);
     return 1;
 }
 
-/*
- * Copy(other, pDS, flag)
- *   flag != 0 → no file-based fallback if DuplicateSoundBuffer fails.
- *   flag == 0 → fallback to CreateAndLoad*File.
- */
+/* Returns other on success.  flag != 0: no reload from the file if duplication
+ * fails; flag == 0: reload, and return self. */
 static void* CStatic_Copy_impl(CStaticSoundbuffer *self,
                                 CStaticSoundbuffer *other,
                                 IDirectSound *pDS,
                                 int flag)
 {
-    //log_write("CStatic::Copy(this=%p, other=%p, flag=%d)\n", self, other, flag);
 
     CStatic_Reset_impl(self);
 
     if (!other || !other->soundbuffer) return NULL;
 
-    /* Attempt to duplicate the DirectSound buffer. */
     HRESULT hr = pDS->DuplicateSoundBuffer(other->soundbuffer, self->soundbufferSlot());
     if (SUCCEEDED(hr)) {
-        /* Duplicate succeeded: copy metadata and re-acquire 3D interface if needed. */
+        // Duplicated: copy the file details and query the 3D interface if the
+        // source had one.
         self->filename  = heap_strdup(other->filename);
         self->logger    = other->logger;
         self->dwDsFlags = other->dwDsFlags;
@@ -394,17 +333,16 @@ static void* CStatic_Copy_impl(CStaticSoundbuffer *self,
                 return NULL;
             }
         }
-        return other; /* matches original return semantics */
+        return other;  // not self: see static.h
     }
 
-    /* DuplicateSoundBuffer failed. */
     log_write("CStatic::Copy: DuplicateSoundBuffer failed hr=0x%lx\n", (unsigned long)hr);
     if (flag != 0) {
         CStatic_Reset_impl(self);
         return NULL;
     }
 
-    /* Fallback: reload from file. */
+    // Reload from the file.
     int ok;
     if (other->threeDBuffer) {
         ok = CStatic_CreateAndLoad3DSoundFile_impl(self, pDS,
@@ -420,20 +358,15 @@ static void* CStatic_Copy_impl(CStaticSoundbuffer *self,
     return self;
 }
 
-/*
- * CreateAndLoad(pDS, set3D)
- *   set3D == 0 → ensure buffer is 2D (release 3D interface if present)
- *   set3D != 0 → ensure buffer is 3D (acquire 3D interface if absent)
- */
+/* set3D == 0: make the buffer 2D, reloading it without CTRL3D if it is 3D.
+ * set3D != 0: make it 3D, reloading with CTRL3D if it is not. */
 static int CStatic_CreateAndLoad_impl(CStaticSoundbuffer *self,
                                       IDirectSound *pDS, DWORD set3D)
 {
     if (!self->soundbuffer) return 0;
 
     if (set3D == 0) {
-        /* Want 2D — already 2D? */
         if (!self->threeDBuffer) return 1;
-        /* Reload without CTRL3D. */
         char *fn     = heap_strdup(self->filename);
         void *logger = self->logger;
         DWORD flags  = self->dwDsFlags & ~DSBCAPS_CTRL3D;
@@ -442,9 +375,7 @@ static int CStatic_CreateAndLoad_impl(CStaticSoundbuffer *self,
         HeapFree(GetProcessHeap(), 0, fn);
         return ok;
     } else {
-        /* Want 3D — already 3D? */
         if (self->threeDBuffer) return 1;
-        /* Reload with CTRL3D. */
         char *fn     = heap_strdup(self->filename);
         void *logger = self->logger;
         DWORD flags  = self->dwDsFlags;
@@ -459,10 +390,11 @@ static int CStatic_Apply3DMode_impl(CStaticSoundbuffer *self, int enable3D)
 {
     if (!self->threeDBuffer) return 0;
     DWORD mode = enable3D ? DS3DMODE_NORMAL : DS3DMODE_DISABLE;
-    self->threeDBuffer->SetMode(mode, 0 /* DS3DAPPLY_NOW */);
+    self->threeDBuffer->SetMode(mode, 0 );  // DS3DAPPLY_NOW
     return 1;
 }
 
+/* Restores a lost buffer and refills it from the file. */
 static int CStatic_RestoreBuffer_impl(CStaticSoundbuffer *self)
 {
     if (!self->soundbuffer) return 0;
@@ -497,7 +429,6 @@ static int CStatic_RestoreBuffer_impl(CStaticSoundbuffer *self)
 
     HeapFree(GetProcessHeap(), 0, fmt);
     HeapFree(GetProcessHeap(), 0, pcm);
-    //log_write("CStatic::RestoreBuffer: OK '%s'\n", self->filename);
     return 1;
 }
 
@@ -505,10 +436,8 @@ static int CStatic_TriggerPlayback_impl(CStaticSoundbuffer *self, DWORD dwLoopFl
 {
     if (!self->soundbuffer) return 0;
 
-    //log_write("CStatic::TriggerPlayback(this=%p, file='%s', loop=%lu)\n",
-    //          self, self->filename ? self->filename : "<null>",
-    //          (unsigned long)dwLoopFlags);
     HRESULT hr = self->soundbuffer->Play(0, 0, dwLoopFlags);
+    // A lost buffer is restored, refilled and played again once.
     if (hr == DSERR_BUFFERLOST) {
         log_write("CStatic::TriggerPlayback: buffer lost, restoring '%s'\n",
                   self->filename ? self->filename : "<null>");
@@ -534,7 +463,6 @@ static void CStatic_Set3DPosition_impl(CStaticSoundbuffer *self,
         self->threeDBuffer->SetPosition(x, y, z, dwApply);
 }
 
-/* ── Exports — extern "C" thiscall wrappers ─────────────────────────────── */
 extern "C" {
 
 __declspec(dllexport) CStaticSoundbuffer* __attribute__((thiscall))
@@ -592,4 +520,4 @@ CStatic_Set3DPosition(CStaticSoundbuffer *self,
                       float x, float y, float z, DWORD dwApply)
     { CStatic_Set3DPosition_impl(self, x, y, z, dwApply); }
 
-} // extern "C"
+}

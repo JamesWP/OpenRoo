@@ -2,28 +2,23 @@
 #include <windows.h>
 #include <stddef.h>
 
-/* FaktMovie object layout (from disassembly of 0x0044f430–0x00450420).
-   Only the fields referenced by our hooks are named; the rest is padding. */
+/* The intro movie.  No video is played: loading always fails, so WinMain goes
+ * straight to the game.  The object keeps the game's shape so the window
+ * procedure's movie handling works unchanged.  One global instance. */
 struct FaktMovie {
-    void  *vtable;      // +0x000
-    void  *log_obj;     // +0x004
-    DWORD  field_0x8;   // +0x008
-    BYTE   _pad[0x104]; // +0x00c..+0x10f  (the ctor's 0x41-dword REP STOSD)
-    DWORD  state;       // +0x110  3=playing (Movie_Notify acts),
-                        //         1=finished (WndProc zeros movie-active flag)
-    DWORD  _tail[4];    // +0x114..+0x120
-    /* The overlay colour key, filled by WinMain before Setup.  The original
-       MaybeLoadVideo (0x4501ce) reads them: if useColorKey, it QIs the
-       overlay mixer pin for IMixerPinConfig (IID 0x4612e0) and calls
-       SetColorKey (slot 0x1c) with &colorKey.  Our loadVideo is a stub that
-       plays nothing, so nothing reads them now. */
-    DWORD  useColorKey;  // +0x124  WinMain: 1
-    DWORD  colorKey[4];  // +0x128  COLORKEY {KeyType=2 CK_RGB, PaletteIndex
-                         //         (WinMain: uninitialised stack), Low=0, High=0}
-    DWORD  notify_msg;  // +0x138  ctor's one non-zero init: 0xfd
+    void  *vtable;
+    void  *log_obj;  // the logger given to Setup
+    DWORD  field_0x8;
+    BYTE   _pad[0x104];  // zeroed by the constructor
+    DWORD  state;  // 3 playing (Notify acts), 1 finished (the window procedure clears its flag)
+    DWORD  _tail[4];
+    // The overlay colour key, set by WinMain for a player that would use it.
+    DWORD  useColorKey;  // WinMain sets 1
+    DWORD  colorKey[4];  // COLORKEY {CK_RGB, palette index 0, low 0, high 0}
+    DWORD  notify_msg;   // the constructor's one non-zero value, 0xfd
 
-    void construct();   // 0x0044f3e0 — field init only, no vtable
-    void destruct();    // 0x0044f3d0 — restore vtable, then teardown()
+    void construct();  // fields only, not the vtable
+    void destruct();   // restores the vtable, then teardown()
 
     void setup(void *log_obj_arg);
     int  loadVideo(void *arg1, void *arg2, void *arg3, const char *path);
@@ -40,20 +35,13 @@ static_assert(offsetof(FaktMovie, useColorKey) == 0x124, "FaktMovie layout misma
 static_assert(offsetof(FaktMovie, colorKey) == 0x128, "FaktMovie layout mismatch");
 static_assert(offsetof(FaktMovie, notify_msg) == 0x138, "FaktMovie layout mismatch");
 
-/* FaktMovie's vtable: ONE slot at 0x0045f200, holding the scalar deleting
-   destructor 0x0044f3b0, which is that function's only reference anywhere
-   (xref.py finds no CALL and no JMP).  patch.py redirects the slot at file
-   offset 0x5F200.  The class is otherwise built and torn down only by the two
-   static-initialiser thunks at 0x00425600 / 0x00425620 ("mov ecx,0x46c5d8;
-   jmp"), for the single global FaktMovie at 0x0046c5d8 — E9 sites, so they
-   are JMP_PATCHES rather than CALL_PATCHES. */
-extern void *const g_faktMovieVtable[1];   /* our own one-slot table; was the game's at 0x0045f200 */
+/* The one-slot vtable: the deleting destructor. */
+extern void *const g_faktMovieVtable[1];
 #define FAKTMOVIE_VTABLE ((void *)g_faktMovieVtable)
 
-/* The single global FaktMovie. */
-extern FaktMovie g_movie;   /* was 0x0046c5d8 */
+extern FaktMovie g_movie;
 
-/* The exports WinMain drives (movie.cpp). */
+/* Called by WinMain.  Loading returns 0: no movie. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Movie_Setup(FaktMovie *self, void *log_obj);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
@@ -62,7 +50,8 @@ extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Movie_Play(FaktMovie *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Movie_SetWindow(FaktMovie *self, void *surface);
-/* The exports the WndProc drives. */
+
+/* Called by the window procedure. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Movie_Teardown(FaktMovie *self);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
@@ -72,7 +61,7 @@ Movie_Pause(FaktMovie *self);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Movie_Stop(FaktMovie *self);
 
-/* Constructor and destructor body, driven by staticinit.cpp for the one
- * global instance (the original's static-init/atexit thunks). */
-extern "C" __declspec(dllexport) FaktMovie *__attribute__((thiscall)) Movie_Construct(FaktMovie *self);   /* 0x0044f390 */
-extern "C" __declspec(dllexport) void __attribute__((thiscall)) Movie_Destruct(FaktMovie *self);   /* 0x0044f3d0 */
+/* Construction and destruction of the global instance, driven by
+ * staticinit.cpp. */
+extern "C" __declspec(dllexport) FaktMovie *__attribute__((thiscall)) Movie_Construct(FaktMovie *self);
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) Movie_Destruct(FaktMovie *self);

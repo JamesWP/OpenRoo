@@ -1,26 +1,7 @@
-/* doublesoundbuff -- the SoundManager's sound-asset entry (0x58 bytes).
- *
- * One of these hangs off every sound entry in the manager's two entry lists,
- * at entry+0x100.  It holds the loaded file twice -- a `master` buffer and a
- * `spare` used for the alternate 2D/3D flag set -- plus the two lists of
- * things currently borrowing it:
- *
- *   +0x00  masterBuf      CStaticSoundbuffer, the file as first loaded
- *   +0x18  spareBuf       CStaticSoundbuffer, the same file, other flags
- *   +0x30  dwMasterTaken  non-zero while masterBuf itself is lent out
- *   +0x34  dwSpareTaken   the same for spareBuf
- *   +0x38  cloneList      LinkedList of CStaticSoundbuffer* duplicates
- *   +0x48  voicePoolList  LinkedList of VoicePool* built from it
- *
- * The TU (progress.py's `doublesoundbuff`, 0x00442e60..0x004430e0) is nine
- * functions and an island: every reference to any of them comes either from
- * inside it or from the SoundManager TU above it.  Nothing else in the game
- * knows the type exists.
- *
- * `dwMasterTaken` / `dwSpareTaken` are *only ever cleared* by
- * ReleaseCloneOrOwnBuffer and Clear; AcquireSoundBuffer sets the master one
- * to 1 when it hands the master out directly rather than a clone.
- */
+/* A sound manager asset entry: one loaded sound file, held twice (a master
+ * buffer and a spare with the other 2D/3D flags), and the lists of duplicates
+ * and voice pools currently borrowed from it.  The sound manager
+ * (soundmanager.h) hands these out and takes them back. */
 #pragma once
 
 #include "layout.h"
@@ -29,25 +10,19 @@
 
 struct VoicePool;
 
-/* The game allocates this itself (AcquireSoundBuffer's `operator new(0x58)`),
- * so the size is relied on as well as the offsets -- hence KAROO_LAYOUT_SIZE.
- * ORIGIN is 0: our first byte is the pointer `operator new` returned, which
- * is also `this` for every method below. */
+/* Allocated by the sound manager with a fixed size of 0x58. */
 struct __attribute__((packed)) doublesoundbuff {
     static const int ORIGIN = 0;
 
-    CStaticSoundbuffer masterBuf;       // +0x00
-    CStaticSoundbuffer spareBuf;        // +0x18
-    unsigned long      dwMasterTaken;   // +0x30
-    unsigned long      dwSpareTaken;    // +0x34
-    LinkedList         cloneList;       // +0x38
-    LinkedList         voicePoolList;   // +0x48
+    CStaticSoundbuffer masterBuf;      // the file as first loaded
+    CStaticSoundbuffer spareBuf;       // the same file, the other flag set
+    unsigned long      dwMasterTaken;  // non-zero while the master itself is lent out
+    unsigned long      dwSpareTaken;   // the same for the spare
+    LinkedList         cloneList;      // CStaticSoundbuffer* duplicates lent out
+    LinkedList         voicePoolList;  // VoicePool* built from it
 
-    /* The four sub-objects are addressed through accessors so the one
-     * -Waddress-of-packed-member suppression lives here rather than at every
-     * use (the textrenderer.h / game.h idiom).  Nothing is actually
-     * misaligned: all four offsets -- 0, 0x18, 0x38, 0x48 -- are 4-aligned,
-     * and the layout checks below are what hold them there. */
+/* The sub-objects' addresses, behind accessors so the packed-member warning is
+ * suppressed once; all four offsets are 4-aligned. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
     CStaticSoundbuffer *master() { return &masterBuf; }
@@ -71,50 +46,42 @@ KAROO_LAYOUT_CHECKS(doublesoundbuff)
     KAROO_LAYOUT_SIZE(0x58);
 }
 
-/* ─── Our reimplementations, defined in doublesoundbuff.cpp ─────────────── */
 extern "C" {
 
-/* 0x00442e60 Init -- the ctor.  Returns `self`.  RET 0. */
+/* The constructor.  Returns self. */
 __declspec(dllexport) doublesoundbuff * __attribute__((thiscall))
 Dsb_Init(doublesoundbuff *self);
 
-/* 0x00442ed0 DestroyAssetEntry -- the dtor body; does NOT free `self`.
- * RET 0. */
+/* The destructor body; does not free self. */
 __declspec(dllexport) void __attribute__((thiscall))
 Dsb_Destruct(doublesoundbuff *self);
 
-/* 0x00442f40 ClearSoundEntry -- purge both borrower lists, release both
- * buffers, clear both taken flags.  RET 0. */
+/* Purges both borrower lists, releases both buffers and clears both taken
+ * flags. */
 __declspec(dllexport) void __attribute__((thiscall))
 Dsb_Clear(doublesoundbuff *self);
 
-/* 0x00442f70 PurgeCloneList -- virtual-delete every clone, then empty the
- * list.  `__stdcall`, RET 4. */
+/* Deletes every duplicate through its vtable, then empties the list. */
 __declspec(dllexport) void __attribute__((stdcall))
 Dsb_PurgeCloneList(LinkedList *list);
 
-/* 0x00442fa0 PurgeVoicePoolList -- Wipe + game-free every pool, then empty
- * the list.  `__stdcall`, RET 4. */
+/* Wipes and frees every pool, then empties the list. */
 __declspec(dllexport) void __attribute__((stdcall))
 Dsb_PurgeVoicePoolList(LinkedList *list);
 
-/* 0x00442fe0 ReleaseCloneOrOwnBuffer -- give back one static buffer.
- * RET 4.  1 if it belonged to this entry, 0 if not. */
+/* Gives back one static buffer: 1 if it belonged to this entry, else 0. */
 __declspec(dllexport) int __attribute__((thiscall))
 Dsb_ReleaseStatic(doublesoundbuff *self, CStaticSoundbuffer *buf);
 
-/* 0x00443050 ReleaseVoicePoolFromEntry -- the voice-pool counterpart.
- * RET 4. */
+/* Gives back one voice pool: 1 if it belonged to this entry, else 0. */
 __declspec(dllexport) int __attribute__((thiscall))
 Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool);
 
-/* 0x004430a0 CountEntryBorrowers -- voicePoolList.dwCount +
- * cloneList.dwCount.  RET 0. */
+/* The number of duplicates and pools lent out. */
 __declspec(dllexport) int __attribute__((thiscall))
 Dsb_BorrowerCount(doublesoundbuff *self);
 
-/* 0x004430b0 EntryIsFullyReleased -- no borrowers and neither buffer lent
- * out.  RET 0. */
+/* True with no borrowers and neither buffer lent out. */
 __declspec(dllexport) int __attribute__((thiscall))
 Dsb_IsFullyReleased(doublesoundbuff *self);
 
