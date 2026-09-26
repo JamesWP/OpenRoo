@@ -256,7 +256,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
         && !Direct3D_CreateD3DDevice(d3d, hWnd, NULL, mode, true)
         && !Direct3D_CreateD3DDevice(d3d, hWnd, NULL, 0, true)) {
         GameLog_LogSourceLocation(&g_logger, 4,
-            "E:\\WORK\\VC++\\JumpinJohn\\JumpinJohn\\main.cpp", 0x73f,
+            "src/app/main.cpp", __LINE__,
             "Creation of Direct3D failed");
         d3d->pDD4->RestoreDisplayMode();
         MessageBoxA(NULL, d3d->pLastError, "Error!", MB_ICONHAND);

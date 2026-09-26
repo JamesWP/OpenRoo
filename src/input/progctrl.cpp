@@ -69,10 +69,10 @@ static void *Setup_impl(ProgableControl *s, int )
     s->pKeyboard     = nullptr;
     s->pMouse        = nullptr;
     s->pJoystick     = nullptr;
-    strncpy(s->sep_or,          " oder ",    sizeof(s->sep_or)          - 1);
+    strncpy(s->sep_or,          " or ",    sizeof(s->sep_or)          - 1);
     strncpy(s->prefix_joystick, "JOYSTICK ", sizeof(s->prefix_joystick) - 1);
-    strncpy(s->suffix_positive, " Positiv",  sizeof(s->suffix_positive) - 1);
-    strncpy(s->suffix_negative, " Negativ",  sizeof(s->suffix_negative) - 1);
+    strncpy(s->suffix_positive, " positive",  sizeof(s->suffix_positive) - 1);
+    strncpy(s->suffix_negative, " negative",  sizeof(s->suffix_negative) - 1);
     memset(s->axis_midpoints, 0, sizeof(s->axis_midpoints));
     memset(s->_joystick_list, 0, sizeof(s->_joystick_list));
     for (int i = 0; i < 5; i++) {

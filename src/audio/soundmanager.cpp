@@ -35,10 +35,9 @@
 #include "log.h"
 #include "gamestr.h"
 
-/* FORMAT: the game's source path, logged with its own line numbers, so the log
- * lines are the game's. */
+/* The source file named in error lines, with __LINE__. */
 static const char SRCFILE[] =
-    "E:\\WORK\\VC++\\JumpinJohn\\Ra\\FAKTSound\\SoundManager.cpp";
+    "src/audio/soundmanager.cpp";
 
 /* KAROO_SNDMGR_FX=nosharemaster is a negative control: the first acquirer
  * never gets the master, only a duplicate like everyone else.  It only costs
@@ -193,7 +192,7 @@ SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
 
     ++g_relStaticLost;
     sndmgr_census();
-    GameLog_LogSourceLocation((GameLogger *)self->logger_, 3, SRCFILE, 0xd1,
+    GameLog_LogSourceLocation((GameLogger *)self->logger_, 3, SRCFILE, __LINE__,
         "Could not release StaticSoundbuffer '%s', because the buffer was "
         "not found !", buf->filename);
 }
@@ -234,7 +233,7 @@ SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
     // PRESERVED: voice 0 is used unchecked, so reporting on an empty pool
     // faults.
     CStaticSoundbuffer *voice0 = Sim_VoicePoolGetVoiceAt(pool, 0);
-    GameLog_LogSourceLocation((GameLogger *)self->logger_, 3, SRCFILE, 0x102,
+    GameLog_LogSourceLocation((GameLogger *)self->logger_, 3, SRCFILE, __LINE__,
         "Could not release MultiStaticSoundbuffer '%s', because the buffer "
         "was not found !", voice0->filename);
 }
@@ -437,7 +436,7 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
             if (!CStatic_CreateAndLoad(entry->master(), self->directSound(),
                                        mode3d))
                 GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
-                    SRCFILE, 0x1e8,
+                    SRCFILE, __LINE__,
                     "CSoundManager::Set3D_LoadNew(...) switch 3D of "
                     "OrgSoundBuffer failed");
 
@@ -445,7 +444,7 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
                 && !CStatic_CreateAndLoad(entry->spare(),
                                           self->directSound(), mode3d))
                 GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
-                    SRCFILE, 0x1ee,
+                    SRCFILE, __LINE__,
                     "CSoundManager::Set3D_LoadNew(...) switch 3D of "
                     "SecOrgSoundBuffer failed");
 
@@ -464,7 +463,7 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
 
                 if (src == entry->spare()) {
                     GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
-                        SRCFILE, 0x1ff,
+                        SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
                     continue;  // already on the spare: nothing left to try
@@ -474,7 +473,7 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
                             src->filename, spare_flags(src->dwDsFlags),
                             mode3d))
                     GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
-                        SRCFILE, 0x209,
+                        SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
                 src = entry->spare();
@@ -494,7 +493,7 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
 
                 if (src == entry->spare()) {
                     GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
-                        SRCFILE, 0x221,
+                        SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
                     continue;
@@ -504,7 +503,7 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
                             src->filename, spare_flags(src->dwDsFlags),
                             mode3d))
                     GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
-                        SRCFILE, 0x22b,
+                        SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
                 src = entry->spare();

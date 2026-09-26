@@ -38,7 +38,7 @@ static void *const game_logger_vtable_slots[1] = { (void *)&GameLog_ScalarDeleti
 
 /* FORMAT: the line formats, as the game's; checked against gamestr.h at first
  * use.  Kept as literals so the control's prefix can splice in. */
-#define FMT_BANNER  "\n***************** Protokollierung gestartet am : %s ***********************\n"
+#define FMT_BANNER  "\n***************** Log started on %s ***********************\n"
 #define FMT_LINE    "%s : %s\r\n"
 #define FMT_SRCLINE "%s : File: %s, Line: %d: %s \r\n"
 #define FMT_ERRLINE "%s : Error %s: %s \r\n"
