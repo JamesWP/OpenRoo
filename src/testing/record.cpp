@@ -1,34 +1,22 @@
-/* Input recording / replay (REPLAY_PLAN.md Stages C and D).
- *
- * Format — little-endian, written with WriteFile, decoded by tools/replay.py:
- *
+/* FORMAT: a recording, little-endian, decoded by tools/replay.py.
  *   header (80 bytes)
  *     char   magic[4]      "KROO"
  *     u32    version       RECORD_VERSION
  *     double fixed_dt      KAROO_FIXED_DT at record time (0 = real clock)
  *     u32    seed          KAROO_SEED at record time
- *     u32    flags         bit 0: seed was set
- *     char   label[56]     free text from KAROO_RECORD_LABEL, NUL-padded
- *   then one frame record, repeated:
+ *     u32    flags         bit 0: the seed was set
+ *     char   label[56]     KAROO_RECORD_LABEL, NUL-padded
+ *   then one record per frame that polled input:
  *     u32    frame_index
  *     u8     game_state
  *     u8     keys[256]
  *     u8     async_count
  *            async_count x { u8 vkey; u8 down }
  *
- * This differs from the plan in one place: the plan's header carries the level
- * name and the --seed-from slot.  Neither is reliably readable from the Game
- * object yet (the level-name field is not confirmed), so rather than write a
- * guess into a file format, the header carries a free-text label the caller
- * supplies via KAROO_RECORD_LABEL.  tools/replaytest.py can put the level there
- * because it is the thing that seeded the slot in the first place.
- *
- * `down` is stored as the sign bit of GetAsyncKeyState's return (0x8000),
- * which is the only bit the game's 16 call sites test.  The low "was pressed
- * since last call" bit is deliberately not replayed: it is consumed state, and
- * reproducing it from a recording would need the same call ordering, which the
- * frame boundary does not guarantee.
- */
+ * `down` is the sign bit of GetAsyncKeyState's answer, the only bit the game
+ * tests.  The pressed-since-last-call bit is not replayed: it is consumed
+ * state, and reproducing it would need the same call order within a frame. */
+
 #include "record.h"
 #include "policy.h"
 #include "menu.h"
@@ -47,20 +35,21 @@ struct FrameRec {
     BYTE  game_state;
     BYTE  keys[256];
     BYTE  async_count;
-    BYTE  async[ASYNC_MAX][2];   /* vkey, down */
+    BYTE  async[ASYNC_MAX][2];  // vkey, down
 };
 
-static int      g_mode = -1;     /* 0 none, 1 record, 2 replay */
+static int      g_mode = -1;  // 0 none, 1 record, 2 replay
 static HANDLE   g_fh   = INVALID_HANDLE_VALUE;
-static FrameRec g_cur;           /* frame being accumulated (record) */
-static FrameRec g_play;          /* frame being served (replay) */
+static FrameRec g_cur;   // the frame being accumulated (record)
+static FrameRec g_play;  // the frame being served (replay)
 static bool     g_have_play;
-static FrameRec g_pending;       /* record read ahead, not yet due */
+static FrameRec g_pending;  // read ahead, not yet due
 static bool     g_have_pending;
 static bool     g_finished;
 static BYTE     g_async_used[ASYNC_MAX];
 static bool     g_keys_seen;
 
+/* KAROO_INPUT_DEBUG=1 logs the first few replayed frames and key polls. */
 static int      g_dbg = -1;
 static bool input_debug(void)
 {
@@ -150,8 +139,8 @@ static void open_replay(const char *path)
     }
     log_write("record: replaying %s (recorded dt=%.9f seed=%u label='%s')\n",
               path, rdt, (unsigned)seed, (const char *)hdr + 24);
-    /* A replay under different determinism settings than the recording will
-     * diverge; say so rather than let it look like a real mismatch. */
+    // A replay under different determinism settings will diverge; say so, so
+    // it does not look like a real mismatch.
     if (rdt != g_dt)
         log_write("record: WARNING — replaying at dt=%.9f but recorded at %.9f\n",
                   g_dt, rdt);
@@ -180,11 +169,9 @@ bool record_recording(void)      { init(); return g_mode == 1; }
 bool record_replaying(void)      { init(); return g_mode == 2; }
 bool record_replay_finished(void){ return g_finished; }
 
-/* ── recording ─────────────────────────────────────────────────────────── */
-
 static void flush_frame(void)
 {
-    if (!g_keys_seen) return;         /* nothing ticked this frame */
+    if (!g_keys_seen) return;  // nothing polled input this frame
     BYTE buf[4 + 1 + 256 + 1 + ASYNC_MAX * 2];
     int  n = 0;
     *(DWORD *)(buf + n) = g_cur.frame;      n += 4;
@@ -219,10 +206,8 @@ void record_async(int vkey, SHORT value)
     g_cur.async[g_cur.async_count][0] = (BYTE)(vkey & 0xff);
     g_cur.async[g_cur.async_count][1] = (value & 0x8000) ? 1 : 0;
     g_cur.async_count++;
-    g_keys_seen = true;               /* async-only frames are still frames */
+    g_keys_seen = true;  // a frame with only key polls is still a frame
 }
-
-/* ── replay ────────────────────────────────────────────────────────────── */
 
 static bool read_exact(void *dst, DWORD n)
 {
@@ -242,18 +227,11 @@ static bool read_one(FrameRec *r)
     return true;
 }
 
-/* Serve records by FRAME INDEX, not in bare sequence.
- *
- * A recording can skip frames: flush_frame() writes nothing for a frame in
- * which the game neither polled the keyboard nor called GetAsyncKeyState, and
- * a real hand-played run did exactly that once (frame 231 of 1147).  Consuming
- * records sequentially would then shift every later frame by one and desync
- * the whole replay.  So a record is only applied on the frame it was recorded
- * on; frames with no record get no input, which is what actually happened.
- *
- * The `<=` guard means a record whose frame has already passed is consumed
- * rather than stalling the replay behind it forever.
- */
+/* Records are served by frame index, not in sequence.  A frame in which the
+ * game polled no input writes no record, so consuming records in order would
+ * shift every later frame.  A record applies only on the frame it was recorded
+ * on; a frame with none gets no input, as happened.  A record whose frame has
+ * already passed is consumed rather than stalling the replay. */
 static void load_frame(void)
 {
     g_have_play = false;
@@ -308,7 +286,7 @@ bool replay_async(int vkey, SHORT *value)
         *value = g_play.async[i][1] ? (SHORT)0x8000 : (SHORT)0;
         return true;
     }
-    *value = 0;   /* not queried in the recording at this frame */
+    *value = 0;  // not polled in the recording on this frame
     return true;
 }
 
@@ -319,14 +297,11 @@ void record_frame_boundary(void)
     else if (g_mode == 2) load_frame();
 }
 
-/* ── GetAsyncKeyState interception ─────────────────────────────────────── */
-
 extern "C" {
 
-/* Replaces the GetAsyncKeyState IAT slot (0x0045D1B0, 16 call sites). */
 __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
 {
-    if (input_debug()) {   /* which of the 16 call sites actually execute */
+    if (input_debug()) {  // which call sites actually execute
         static int n = 0;
         if (n < 40) {
             n++;
@@ -334,15 +309,14 @@ __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
                       clock_frame(), vKey, __builtin_return_address(0));
         }
     }
-    /* The menu driver answers first: it is synthesising an edge that the
-     * navigator's debounce depends on, and neither a recording nor the real
-     * keyboard must contradict it. */
+    // The menu driver answers first: it is synthesising an edge the menu's
+    // debounce depends on, which neither a recording nor the keyboard may
+    // contradict.
     SHORT mv;
     if (menu_async_override(vKey, &mv)) return mv;
 
-    /* The level-report trigger is answered before the recording is consulted:
-     * it fires inside Game::LoadSounds, which runs before the first frame
-     * boundary, so there is no recorded frame to answer it from anyway. */
+    // The level-report trigger comes next: it fires before the first frame
+    // boundary, so no recorded frame could answer it.
     if (levelreport_async_override(vKey, &mv)) return mv;
 
     SHORT v;
@@ -350,16 +324,12 @@ __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
         replay_async(vKey, &v);
         return v;
     }
-    /* Under policy control the recording's answers must not reach the game —
-     * the prefix recording ends by quitting, and replaying that answer killed
-     * the policy run at exactly the recording's length.  But the *real*
-     * keyboard must still be read, and the first version returned 0 here
-     * instead: that took ESC and ENTER away from the person watching, who then
-     * had no way to quit a policy run at all and had to kill the window.
-     * Falling through reads the real keyboard, which is what we want. */
+    // Under autoplay the recording's answers must not reach the game (the
+    // prefix recording ends by quitting), but the real keyboard is still read,
+    // so whoever is watching can still press Escape.
     v = GetAsyncKeyState(vKey);
     record_async(vKey, v);
     return v;
 }
 
-} // extern "C"
+}
