@@ -21,7 +21,7 @@ Cell (4 bytes):
 
 **Height is byte[2], not byte[3].** That was established by dumping the
 vertices the engine actually builds for the tile-side skirts
-(KAROO_QUAD_DUMP=<path>, see karoo-hooks/quadbatch.cpp) and comparing the set
+(KAROO_QUAD_DUMP=<path>, see src/render/quadbatch.cpp) and comparing the set
 of quad top-Y values against the file: for Castle\\Something the engine emits
 skirt tops at y in {5,6,7,8,9,10,19,20}, which is exactly the set of distinct
 byte[2] values, including the distinctive 19/20 pair.  byte[3]'s value set does

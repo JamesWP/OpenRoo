@@ -49,6 +49,7 @@ import time
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTS = os.path.join(REPO, "tests")
 MANIFEST = os.path.join(TESTS, "manifest.json")
+RECORDINGS = os.path.join(TESTS, "recordings")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import replay as recfmt          # noqa: E402  — the recording decoder
@@ -294,7 +295,7 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
     env["KAROO_SEED"] = str(cfg.get("seed", ""))
     auto_exit = int(cfg.get("timeout", 120))
     # --headless replaces DirectDraw with the in-DLL null device
-    # (karoo-hooks/nullddraw.cpp) and makes the game's window message-only, so
+    # (src/render/nullddraw.cpp) and makes the game's window message-only, so
     # the run needs no display, opens nothing on screen and takes no focus.
     # It implies --skip-launcher.  Orthogonal to --fast: fast skips the draw
     # CALLS, headless removes the driver underneath them.
@@ -391,7 +392,7 @@ def compare_state(expected, actual):
 def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
     cfg = entry_defaults(m, entry)
     name = entry["name"]
-    rec_path = os.path.join(TESTS, entry["file"])
+    rec_path = os.path.join(RECORDINGS, entry["file"])
     dump_path = os.path.join(REPO, "replaytest-%s.json" % name)
     hash_path = os.path.join(REPO, "replaytest-%s.hash" % name)
 
@@ -531,7 +532,7 @@ Capturing a recording
        python3 tools/karoosave.py snapshot tests/saves/<name>
 
 2. Run this command.  The game launches windowed, with the fixed clock and the
-   fixed seed already set, recording to tests/<name>.rec.  Play the scenario,
+   fixed seed already set, recording to tests/recordings/<name>.rec.  Play the scenario,
    then quit the game normally.
 
 3. The entry is written into tests/manifest.json with your --description.  It
@@ -552,7 +553,7 @@ def cmd_record(args):
     cfg = m.get("defaults", {})
     dt = args.dt or cfg.get("dt", "0.016667")
     seed = args.seed or cfg.get("seed", "12345")
-    rec_path = os.path.join(TESTS, args.name + ".rec")
+    rec_path = os.path.join(RECORDINGS, args.name + ".rec")
 
     if args.saves:
         fixture = os.path.join(REPO, args.saves)

@@ -133,8 +133,8 @@ class Sandbox:
 
 def preflight():
     problems = []
-    if not os.path.exists(os.path.join(REPO, "KarooOwn.exe")):
-        problems.append("KarooOwn.exe missing - run make in karoo-hooks")
+    if not os.path.exists(os.path.join(REPO, "build", "KarooOwn.exe")):
+        problems.append("KarooOwn.exe missing - run make")
     return problems
 
 
@@ -172,7 +172,7 @@ def launch(headless=True):
     # no display needed and nothing takes focus, which is what makes this
     # runnable from a background job.  It is not merely --skip-launcher with
     # the window hidden -- DirectDraw is replaced by the in-DLL null device
-    # (karoo-hooks/nullddraw.cpp), so no driver is involved at all.  The report
+    # (src/render/nullddraw.cpp), so no driver is involved at all.  The report
     # is produced by the game's own WriteLevelReport and draws nothing anyone
     # needs to watch, so there is no reason to want a display by default;
     # --no-headless falls back to --skip-launcher when you do.

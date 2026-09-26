@@ -16,7 +16,7 @@ while [[ $# -gt 0 ]]; do
     --skip-launcher) SKIP_LAUNCHER=1 ;;
     # Truly headless: no window, no graphics, no display needed.  Implies
     # --skip-launcher (the dialog is a window too).  DirectDraw is replaced
-    # wholesale by the in-DLL null device -- see karoo-hooks/nullddraw.cpp --
+    # wholesale by the in-DLL null device -- see src/render/nullddraw.cpp --
     # so nothing here touches X, nothing takes focus, and no desktop mode is
     # switched.  This is what to use for a background test run.
     --headless) HEADLESS=1; SKIP_LAUNCHER=1 ;;
@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 EXE=KarooOwn.exe
-[[ -f "$EXE" ]] || { echo "ERROR: $EXE missing — run make in karoo-hooks first"; exit 1; }
+[[ -f "build/$EXE" ]] || { echo "ERROR: build/$EXE missing — run make first"; exit 1; }
 
 # A ddraw.dll beside the game would be loaded in preference to stock Wine ddraw, even under
 # ddraw=b.
@@ -70,7 +70,7 @@ for _entry in game/*; do
 done
 # The input bindings: the game rewrites this file, so run/ gets a copy.
 [[ -f run/ProgableControl.sav ]] || cp game/ProgableControl.sav run/
-cp -p "$EXE" run/
+cp -p "build/$EXE" run/
 
 # Karoo.cfg is ours, not the game's.  Without it Game::Load leaves the video
 # mode index and adapter GUID zero-initialised, so the game comes up in
@@ -79,7 +79,7 @@ cp -p "$EXE" run/
 # player has since changed through the launcher.
 if [[ ! -f run/Karoo.cfg ]]; then
   echo "run/Karoo.cfg missing — installing Karoo.cfg.default (1024x768x32)"
-  cp Karoo.cfg.default run/Karoo.cfg
+  cp data/Karoo.cfg.default run/Karoo.cfg
 fi
 
 cd run

@@ -1,10 +1,8 @@
 *.log
 *.log.[1-9]
 **/*.sav
-karoo-hooks/karoo_hooks.dll
 karoo_hooks.dll
-karoo-hooks/layouttest.exe
-karoo-hooks/obj/
+/build/
 Karoo.exe
 Karoo.cfg
 Karoo.exe.orig.xml
@@ -17,7 +15,7 @@ debug.gdb
 *.rec
 *.hash
 replaytest-*.json
-!tests/*.rec
+!tests/recordings/*.rec
 
 # Save fixtures are committed test data, not the live SavedGames/ slots that
 # **/*.sav above deliberately ignores. Without this, restoring a fixture would
@@ -32,7 +30,7 @@ ScriptTexts.txt
 LeoRecords.txt
 !tests/levelreport/*.txt
 
-# DrawSceneObjects golden-output fixture run output (karoo-hooks/dsogolden.cpp).
+# DrawSceneObjects golden-output fixture run output (dsogolden.cpp, since removed).
 # A test output, like LevelReport.txt above: the baseline it is compared
 # against lives in tests/rendertrace/ (tools/dsogolden.py).
 karoo_dso_golden.txt

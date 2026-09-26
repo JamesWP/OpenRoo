@@ -7,7 +7,8 @@ Ka'roo is a 1990s Windows DirectDraw game running under Linux via Proton/Wine.
 **Build the game:**
 
 ```bash
-cd karoo-hooks && make
+python3 tools/import_assets.py --from KaRoo.zip   # once: fill game/
+make                                              # build/KarooOwn.exe
 ```
 
 **Launch it:**
@@ -18,7 +19,7 @@ bash launch.sh
 
 ## How it works
 
-`KarooOwn.exe` is a reimplementation of the game, built from `karoo-hooks/`.
+`KarooOwn.exe` is a reimplementation of the game, built from `src/`.
 It contains no code from the original executable and runs on stock Wine
 ddraw. The earlier route — patching `Karoo.exe` to call into a hooks DLL — is
 retired; the last commit that builds it is tagged `hybrid-final`.
