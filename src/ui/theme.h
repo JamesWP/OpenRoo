@@ -21,6 +21,10 @@
 #include "explodedebris.h"
 #include "sky.h"
 
+class Game;
+class RenderDevice;
+class GameLogger;
+
 enum ThemeObjectKind : DWORD {
     THEME_KIND_NONE           = 0,
     THEME_KIND_MODEL          = 1,
@@ -83,6 +87,11 @@ public:
     float  flOscillationFrequency;
     float  flOscillationPhase;
     float  flPump[4];
+
+    ThemeLevelObject *construct();
+
+    void destruct();
+
 private:
     KAROO_LAYOUT_REGISTER(ThemeLevelObject);
 };
@@ -127,6 +136,18 @@ public:
     void            *pVtable;          // our one-slot table
     DWORD            dwInstanceCount;  // last record index + 1
     ThemeLevelObject records[8];
+
+    /* Releases one type's records. */
+    void release();
+
+    /* The lifecycles of a type slot and its records. */
+    ThemeObjectTypeSlot *construct();
+
+    void destruct();
+
+    static ThemeObjectTypeSlot *__attribute__((thiscall))
+    scalarDtor(ThemeObjectTypeSlot *self, unsigned int flags);
+
 private:
     KAROO_LAYOUT_REGISTER(ThemeObjectTypeSlot);
 };
@@ -196,7 +217,22 @@ public:
     BYTE                 bFogEnabled;
     SkyBackground        sky;  // built from the face names; drawn by sky.cpp
     float                flSideHeight;
+
+    /* Releases the block, parses the theme file at path into it, and builds its
+     * meshes, textures and sounds. */
+    bool load(Game *game, RenderDevice *d3d, char *path, GameLogger *logger);
+
+    /* Releases everything the block holds.  Also called at shutdown. */
+    void release();
+
+    /* The block's aggregate construction and destruction, for g_themeBlock. */
+    ThemeAssetBlock *construct();
+
+    void destruct();
+
 private:
+    bool themeLoad(Game *game, RenderDevice *d3d, char *path, GameLogger *logger);
+
     KAROO_LAYOUT_REGISTER(ThemeAssetBlock);
 };
 
@@ -233,44 +269,9 @@ KAROO_LAYOUT_CHECKS(ThemeAssetBlock)
 }
 
 /* The loader and its helpers. */
-class Game;
-class RenderDevice;
-class GameLogger;
 struct ThemeSoundTable;
 
 extern ThemeAssetBlock g_themeBlock;
-
-/* Releases the block, parses the theme file at path into it, and builds its
- * meshes, textures and sounds. */
-extern "C" __declspec(dllexport) bool __cdecl
-Theme_Load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block,
-           char *path, GameLogger *logger);
-
-/* Releases everything the block holds.  Also called at shutdown. */
-extern "C" __declspec(dllexport) void __cdecl
-Theme_ReleaseBlock(ThemeAssetBlock *block);
-
-/* Releases one type's records. */
-extern "C" __declspec(dllexport) void __attribute__((fastcall))
-Theme_ReleaseSlot(ThemeObjectTypeSlot *slot);
-
-/* The lifecycles of a type slot and its records. */
-extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
-Theme_SlotConstruct(ThemeObjectTypeSlot *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_SlotDestruct(ThemeObjectTypeSlot *self);
-extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
-Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags);
-extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
-Theme_RecordConstruct(ThemeLevelObject *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_RecordDestruct(ThemeLevelObject *self);
-
-/* The block's aggregate construction and destruction, for g_themeBlock. */
-extern "C" __declspec(dllexport) ThemeAssetBlock *__attribute__((thiscall))
-Theme_BlockConstruct(ThemeAssetBlock *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_BlockDestruct(ThemeAssetBlock *self);
 
 /* The `sound` keyword: event name to id, then ThemeSound_Add. */
 extern "C" __declspec(dllexport) bool __cdecl

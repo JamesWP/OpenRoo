@@ -210,11 +210,10 @@ static void delete_via_vtable(void *obj)
 }
 
 /* Releases one type's records. */
-extern "C" __declspec(dllexport) void __attribute__((fastcall))
-Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
+void ThemeObjectTypeSlot::release()
 {
     for (int i = 0; i < 8; i++) {
-        ThemeLevelObject &r = slot->records[i];
+        ThemeLevelObject &r = records[i];
         r.explode.release();
         r.wrapper.releaseSnapshot();
         for (DWORD k = 0; k < r.dwInstanceCount; k++) {
@@ -224,7 +223,7 @@ Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
             }
         }
     }
-    memset(slot, 0, sizeof(*slot));
+    memset(this, 0, sizeof(*this));
 }
 
 /* Every slot is a member of the global block.  Records are constructed in
@@ -232,45 +231,41 @@ Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
  * the constructors can throw.  PRESERVED: the slot destructor installs the
  * vtable, then the release zeroes the whole slot, so the record destructors
  * that follow run on zeroed members. */
-static void *const g_ThemeSlotVtable[1] = { (void *)&Theme_SlotScalarDtor };
+static void *const g_ThemeSlotVtable[1] = { (void *)&ThemeObjectTypeSlot::scalarDtor };
 
-extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
-Theme_RecordConstruct(ThemeLevelObject *self)
+ThemeLevelObject *ThemeLevelObject::construct()
 {
-    self->wrapper.construct();
-    self->explode.construct();
-    return self;
+    wrapper.construct();
+    explode.construct();
+    return this;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_RecordDestruct(ThemeLevelObject *self)
+void ThemeLevelObject::destruct()
 {
-    self->explode.dtorBody();
-    self->wrapper.dtorBody();
+    explode.dtorBody();
+    wrapper.dtorBody();
 }
 
-extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
-Theme_SlotConstruct(ThemeObjectTypeSlot *self)
+ThemeObjectTypeSlot *ThemeObjectTypeSlot::construct()
 {
     for (int i = 0; i < 8; i++)
-        Theme_RecordConstruct(&self->records[i]);
-    self->pVtable = (void *)g_ThemeSlotVtable;
-    return self;
+        records[i].construct();
+    pVtable = (void *)g_ThemeSlotVtable;
+    return this;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_SlotDestruct(ThemeObjectTypeSlot *self)
+void ThemeObjectTypeSlot::destruct()
 {
-    self->pVtable = (void *)g_ThemeSlotVtable;
-    Theme_ReleaseSlot(self);
+    pVtable = (void *)g_ThemeSlotVtable;
+    release();
     for (int i = 8; i-- > 0; )
-        Theme_RecordDestruct(&self->records[i]);
+        records[i].destruct();
 }
 
-extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
-Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
+ThemeObjectTypeSlot * __attribute__((thiscall))
+ThemeObjectTypeSlot::scalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
 {
-    Theme_SlotDestruct(self);
+    self->destruct();
     if (flags & 1)
         free(self);
     return self;
@@ -278,21 +273,19 @@ Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
 
 /* Members only: the 38 slots in order, then the sky; destruction in reverse.
  * The plain data between them is left alone. */
-extern "C" __declspec(dllexport) ThemeAssetBlock *__attribute__((thiscall))
-Theme_BlockConstruct(ThemeAssetBlock *self)
+ThemeAssetBlock *ThemeAssetBlock::construct()
 {
     for (int i = 0; i < THEME_OBJ_COUNT; i++)
-        Theme_SlotConstruct(&self->slots[i]);
-    self->sky.construct();
-    return self;
+        slots[i].construct();
+    sky.construct();
+    return this;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_BlockDestruct(ThemeAssetBlock *self)
+void ThemeAssetBlock::destruct()
 {
-    self->sky.dtorBody();
+    sky.dtorBody();
     for (int i = THEME_OBJ_COUNT; i-- > 0; )
-        Theme_SlotDestruct(&self->slots[i]);
+        slots[i].destruct();
 }
 
 /* PRESERVED: EXPLOSION's slot is not in the list, so its particle systems and
@@ -313,16 +306,15 @@ static const ThemeObjectType kReleaseOrder[] = {
 static_assert(sizeof(kReleaseOrder) / sizeof(kReleaseOrder[0]) == THEME_OBJ_COUNT - 1,
               "every slot but EXPLOSION");
 
-extern "C" __declspec(dllexport) void __cdecl
-Theme_ReleaseBlock(ThemeAssetBlock *block)
+void ThemeAssetBlock::release()
 {
     g_textureManager.releaseAll();
     g_modelManager.clearReleaseFree();
     for (ThemeObjectType t : kReleaseOrder)
-        Theme_ReleaseSlot(&block->slots[t]);
+        slots[t].release();
     for (int f = 0; f < 6; f++)
-        block->sky.textures()[f].releaseD3DTexture();
-    memset(block, 0, sizeof(*block));
+        sky.textures()[f].releaseD3DTexture();
+    memset(this, 0, sizeof(*this));
 }
 
 /* "NONE" (case-exact, on the raw wave name) disables the entry without
@@ -944,10 +936,10 @@ void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *su
 /* One parser for every call; 4 KB of tokens, so not on the stack. */
 static ThemeParser s_parser;
 
-static bool theme_load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block,
+bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
                        char *path, GameLogger *logger)
 {
-    Theme_ReleaseBlock(block);
+    release();
     d3d->SetRenderState(RS::FogEnable, 0);
 
     FILE *fp = fopen(path, "r");  // text mode: the CRT folds CRLF
@@ -956,25 +948,24 @@ static bool theme_load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block,
 
     ThemeParser &p = s_parser;
     p = ThemeParser();
-    p.game = game; p.d3d = d3d; p.block = block; p.logger = logger; p.fp = fp;
+    p.game = game; p.d3d = d3d; p.block = this; p.logger = logger; p.fp = fp;
     p.parseFile();
 
     theme_struct_dump_if_enabled(path);
     fclose(fp);
-    strcpy(block->themeName, path);  // PRESERVED: unbounded
+    strcpy(themeName, path);  // PRESERVED: unbounded
     return true;
 }
 
 /* The load, timed.  The time goes only to our log, never into game state. */
-extern "C" __declspec(dllexport) bool __cdecl
-Theme_Load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block, char *path,
+bool ThemeAssetBlock::load(Game *game, RenderDevice *d3d, char *path,
            GameLogger *logger)
 {
     LARGE_INTEGER freq, t0, t1;
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&t0);
 
-    bool ok = theme_load(game, d3d, block, path, logger);
+    bool ok = themeLoad(game, d3d, path, logger);
 
     QueryPerformanceCounter(&t1);
     double ms = (double)(t1.QuadPart - t0.QuadPart) * 1000.0 / (double)freq.QuadPart;
