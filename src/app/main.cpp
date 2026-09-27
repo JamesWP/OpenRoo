@@ -121,14 +121,14 @@ Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_ACTIVATE:
         // Exactly WA_ACTIVE: a click activation (2) counts as losing focus.
         if ((WORD)wParam == WA_ACTIVE) {
-            ProgCtrl_AcquireAll(&g_progCtrl);
+            g_progCtrl.acquireAll();
             restore_surfaces();
             if (g_moviePlaying) {
                 Movie_SetWindow(&g_movie, g_movieSurface);
                 Movie_Play(&g_movie);
             }
         } else {
-            ProgCtrl_UnacquireAll(&g_progCtrl);
+            g_progCtrl.unacquireAll();
             if (g_moviePlaying)
                 Movie_Pause(&g_movie);
         }

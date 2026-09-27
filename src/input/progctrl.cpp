@@ -12,17 +12,17 @@
 
 static const char SAVE_FILE[] = "ProgableControl.sav";
 
-static ActionEntry *find_entry(ActionTable *t, const char *name)
+ActionEntry *ActionTable::find(const char *name)
 {
-    for (ActionEntry *e = t->head; e; e = e->chain)
+    for (ActionEntry *e = head; e; e = e->chain)
         if (!_stricmp(e->name, name)) return e;
     return nullptr;
 }
 
-static ActionEntry *get_or_create(ActionTable *t, const char *name)
+ActionEntry *ActionTable::getOrCreate(const char *name)
 {
-    ActionEntry **tail = &t->head;
-    for (ActionEntry *e = t->head; e; e = e->chain) {
+    ActionEntry **tail = &head;
+    for (ActionEntry *e = head; e; e = e->chain) {
         if (!_stricmp(e->name, name)) return e;
         tail = &e->chain;
     }
@@ -30,7 +30,7 @@ static ActionEntry *get_or_create(ActionTable *t, const char *name)
     if (!e) return nullptr;
     strncpy(e->name, name, 255);
     *tail = e;  // appended, so the file keeps registration order
-    t->entry_count++;
+    entry_count++;
     return e;
 }
 
@@ -39,161 +39,171 @@ static void free_keybinds(KeyBind *kb)
     while (kb) { KeyBind *n = kb->next; HeapFree(GetProcessHeap(), 0, kb); kb = n; }
 }
 
-static void free_table(ActionTable *t)
+void ActionTable::freeAll()
 {
-    ActionEntry *e = t->head;
+    ActionEntry *e = head;
     while (e) {
         ActionEntry *n = e->chain;
         free_keybinds(e->kbd);
         HeapFree(GetProcessHeap(), 0, e);
         e = n;
     }
-    t->head        = nullptr;
-    t->entry_count = 0;
+    head        = nullptr;
+    entry_count = 0;
 }
 
-static void release_devices(ProgableControl *s)
+void ProgableControl::releaseDevices()
 {
-    if (s->pKeyboard) { s->pKeyboard->Unacquire(); s->pKeyboard->Release(); s->pKeyboard = nullptr; }
-    if (s->pMouse)    { s->pMouse->Unacquire();    s->pMouse->Release();    s->pMouse    = nullptr; }
-    if (s->pJoystick) { s->pJoystick->Unacquire(); s->pJoystick->Release(); s->pJoystick = nullptr; }
-    if (s->directinput) { s->directinput->Release(); s->directinput = nullptr; }
+    if (pKeyboard) { pKeyboard->Unacquire(); pKeyboard->Release(); pKeyboard = nullptr; }
+    if (pMouse)    { pMouse->Unacquire();    pMouse->Release();    pMouse    = nullptr; }
+    if (pJoystick) { pJoystick->Unacquire(); pJoystick->Release(); pJoystick = nullptr; }
+    if (directinput) { directinput->Release(); directinput = nullptr; }
 }
 
-static void *Setup_impl(ProgableControl *s, int )
+void *ProgableControl::setup(int)
 {
-    s->vtable        = const_cast<void*>(PROGCTRL_VTABLE);
-    s->pLogger       = nullptr;
-    s->dwOwns_logger = 0;
-    s->directinput   = nullptr;
-    s->pKeyboard     = nullptr;
-    s->pMouse        = nullptr;
-    s->pJoystick     = nullptr;
-    strncpy(s->sep_or,          " or ",    sizeof(s->sep_or)          - 1);
-    strncpy(s->prefix_joystick, "JOYSTICK ", sizeof(s->prefix_joystick) - 1);
-    strncpy(s->suffix_positive, " positive",  sizeof(s->suffix_positive) - 1);
-    strncpy(s->suffix_negative, " negative",  sizeof(s->suffix_negative) - 1);
-    memset(s->axis_midpoints, 0, sizeof(s->axis_midpoints));
-    memset(s->_joystick_list, 0, sizeof(s->_joystick_list));
+    vtable        = const_cast<void*>(PROGCTRL_VTABLE);
+    pLogger       = nullptr;
+    dwOwns_logger = 0;
+    directinput   = nullptr;
+    pKeyboard     = nullptr;
+    pMouse        = nullptr;
+    pJoystick     = nullptr;
+    strncpy(sep_or,          " or ",    sizeof(sep_or)          - 1);
+    strncpy(prefix_joystick, "JOYSTICK ", sizeof(prefix_joystick) - 1);
+    strncpy(suffix_positive, " positive",  sizeof(suffix_positive) - 1);
+    strncpy(suffix_negative, " negative",  sizeof(suffix_negative) - 1);
+    memset(axis_midpoints, 0, sizeof(axis_midpoints));
+    memset(_joystick_list, 0, sizeof(_joystick_list));
     for (int i = 0; i < 5; i++) {
-        s->action_tables[i].head        = nullptr;
-        s->action_tables[i].entry_count = 0;
-        s->action_tables[i]._pad[0]     = 0;
-        s->action_tables[i]._pad[1]     = 0;
+        action_tables[i].head        = nullptr;
+        action_tables[i].entry_count = 0;
+        action_tables[i]._pad[0]     = 0;
+        action_tables[i]._pad[1]     = 0;
     }
-    return s;
+    return this;
 }
 
-static void Teardown_impl(ProgableControl *s)
+void ProgableControl::teardown()
 {
-    s->vtable = const_cast<void*>(PROGCTRL_VTABLE);
-    release_devices(s);
-    for (int i = 0; i < 5; i++) free_table(&s->action_tables[i]);
+    vtable = const_cast<void*>(PROGCTRL_VTABLE);
+    releaseDevices();
+    for (int i = 0; i < 5; i++) action_tables[i].freeAll();
 }
 
-static void ScalarDtor_impl(ProgableControl *s, int free_or_not)
+void __attribute__((thiscall))
+ProgableControl::scalarDtor(ProgableControl *s, int free_or_not)
 {
-    Teardown_impl(s);
+    s->teardown();
     if (free_or_not & 1)
         HeapFree(GetProcessHeap(), 0, s);
 }
 
-static void Shutdown_impl(ProgableControl *s)
+void ProgableControl::shutdown()
 {
-    release_devices(s);
+    releaseDevices();
 }
 
-static int InitDInput_impl(ProgableControl *s, HINSTANCE hInstance)
+int ProgableControl::initDInput(HINSTANCE hInstance)
 {
     HRESULT hr = DirectInput8Create(hInstance, DIRECTINPUT_VERSION,
                                     IID_IDirectInput8A,
-                                    reinterpret_cast<void**>(&s->directinput), nullptr);
+                                    reinterpret_cast<void**>(&directinput), nullptr);
     if (FAILED(hr)) {
         log_write("ProgCtrl::InitDInput: DirectInput8Create FAILED hr=0x%08lx\n", hr);
-        s->directinput = nullptr;
+        directinput = nullptr;
         return 0;
     }
     return 1;
 }
 
-static int SetupKbd_impl(ProgableControl *s, HWND hwnd)
+int ProgableControl::setupKbd(HWND hwnd)
 {
-    if (!s->directinput) {
+    if (!directinput) {
         log_write("ProgCtrl::SetupKbd: no directinput interface\n");
         return 0;
     }
-    HRESULT hr = s->directinput->CreateDevice(GUID_SysKeyboard, &s->pKeyboard, nullptr);
+    HRESULT hr = directinput->CreateDevice(GUID_SysKeyboard, &pKeyboard, nullptr);
     if (FAILED(hr)) {
         log_write("ProgCtrl::SetupKbd: CreateDevice FAILED hr=0x%08lx\n", hr);
         return 0;
     }
-    hr = s->pKeyboard->SetDataFormat(&c_dfDIKeyboard);
+    hr = pKeyboard->SetDataFormat(&c_dfDIKeyboard);
     if (FAILED(hr)) {
         log_write("ProgCtrl::SetupKbd: SetDataFormat FAILED hr=0x%08lx\n", hr);
-        s->pKeyboard->Release(); s->pKeyboard = nullptr; return 0;
+        pKeyboard->Release(); pKeyboard = nullptr; return 0;
     }
-    hr = s->pKeyboard->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
+    hr = pKeyboard->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
     if (FAILED(hr)) {
         log_write("ProgCtrl::SetupKbd: SetCooperativeLevel FAILED hr=0x%08lx\n", hr);
-        s->pKeyboard->Release(); s->pKeyboard = nullptr; return 0;
+        pKeyboard->Release(); pKeyboard = nullptr; return 0;
     }
     return 1;
 }
 
-static int SetupMouse_impl(ProgableControl *s, HWND hwnd)
+int ProgableControl::setupMouse(HWND hwnd)
 {
-    if (!s->directinput) {
+    if (!directinput) {
         log_write("ProgCtrl::SetupMouse: no directinput interface\n");
         return 0;
     }
-    HRESULT hr = s->directinput->CreateDevice(GUID_SysMouse, &s->pMouse, nullptr);
+    HRESULT hr = directinput->CreateDevice(GUID_SysMouse, &pMouse, nullptr);
     if (FAILED(hr)) {
         log_write("ProgCtrl::SetupMouse: CreateDevice FAILED hr=0x%08lx\n", hr);
         return 0;
     }
-    hr = s->pMouse->SetDataFormat(&c_dfDIMouse);
+    hr = pMouse->SetDataFormat(&c_dfDIMouse);
     if (FAILED(hr)) {
         log_write("ProgCtrl::SetupMouse: SetDataFormat FAILED hr=0x%08lx\n", hr);
-        s->pMouse->Release(); s->pMouse = nullptr; return 0;
+        pMouse->Release(); pMouse = nullptr; return 0;
     }
-    hr = s->pMouse->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
+    hr = pMouse->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
     if (FAILED(hr)) {
         log_write("ProgCtrl::SetupMouse: SetCooperativeLevel FAILED hr=0x%08lx\n", hr);
-        s->pMouse->Release(); s->pMouse = nullptr; return 0;
+        pMouse->Release(); pMouse = nullptr; return 0;
     }
     return 1;
 }
 
-static int SetupJoy_impl(ProgableControl *, HWND)          { return 1; }
-static int SetJoyRange_impl(ProgableControl *, int, int, int) { return 1; }
-static int SetJoyDeadzone_impl(ProgableControl *, DWORD, int) { return 1; }
-
-static int AcquireAll_impl(ProgableControl *s)
+int ProgableControl::setupJoy(HWND)
 {
-    if (s->pKeyboard) {
-        HRESULT hr = s->pKeyboard->Acquire();
+    return 1;
+}
+int ProgableControl::setJoyRange(int, int, int)
+{
+    return 1;
+}
+int ProgableControl::setJoyDeadzone(DWORD, int)
+{
+    return 1;
+}
+
+int ProgableControl::acquireAll()
+{
+    if (pKeyboard) {
+        HRESULT hr = pKeyboard->Acquire();
         if (FAILED(hr)) {
             log_write("ProgCtrl::AcquireAll: keyboard Acquire FAILED hr=0x%08lx\n", hr);
             return 0;
         }
     }
-    if (s->pMouse) s->pMouse->Acquire();
+    if (pMouse) pMouse->Acquire();
     return 1;
 }
 
-static int UnacquireAll_impl(ProgableControl *s)
+int ProgableControl::unacquireAll()
 {
-    if (s->pKeyboard) s->pKeyboard->Unacquire();
-    if (s->pMouse)    s->pMouse->Unacquire();
-    if (s->pJoystick) s->pJoystick->Unacquire();
+    if (pKeyboard) pKeyboard->Unacquire();
+    if (pMouse)    pMouse->Unacquire();
+    if (pJoystick) pJoystick->Unacquire();
     return 1;
 }
 
-static void RegisterAction_impl(ProgableControl *s, unsigned short mode,
+void ProgableControl::registerAction(unsigned short mode,
                                  const char *name, ActionCallback cb, void *ctx)
 {
     if (mode >= 5) return;
-    ActionEntry *e = get_or_create(&s->action_tables[mode], name);
+    ActionEntry *e = action_tables[mode].getOrCreate(name);
     if (!e) {
         log_write("ProgCtrl::RegisterAction: HeapAlloc failed for '%s'\n", name);
         return;
@@ -202,11 +212,11 @@ static void RegisterAction_impl(ProgableControl *s, unsigned short mode,
     e->context  = ctx;
 }
 
-static int BindKey_impl(ProgableControl *s, unsigned short mode,
+int ProgableControl::bindKey(unsigned short mode,
                          const char *name, int sc, int strength)
 {
     if (mode >= 5) return 0;
-    ActionEntry *e = find_entry(&s->action_tables[mode], name);
+    ActionEntry *e = action_tables[mode].find(name);
     if (!e) return 0;
     for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
         if (kb->scancode == sc) { kb->strength = strength; return 1; }
@@ -220,31 +230,31 @@ static int BindKey_impl(ProgableControl *s, unsigned short mode,
     return 1;
 }
 
-static void ClearBindings_impl(ProgableControl *s, unsigned short mode, const char *name)
+void ProgableControl::clearBindings(unsigned short mode, const char *name)
 {
     if (mode >= 5) return;
-    ActionEntry *e = find_entry(&s->action_tables[mode], name);
+    ActionEntry *e = action_tables[mode].find(name);
     if (!e) return;
     free_keybinds(e->kbd);
     e->kbd = nullptr;
 }
 
-static void GetBindingStr_impl(ProgableControl *s, int mode, const char *name,
+void ProgableControl::getBindingStr(int mode, const char *name,
                                 char *buf, unsigned int bufsz)
 {
     if (!buf || bufsz == 0) return;
     buf[0] = '\0';
     if (mode < 0 || mode >= 5) return;
-    ActionEntry *e = find_entry(&s->action_tables[mode], name);
+    ActionEntry *e = action_tables[mode].find(name);
     if (!e) return;
 
     bool first = true;
     for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
         char keyname[MAX_PATH] = "?";
-        if (s->pKeyboard) {
+        if (pKeyboard) {
             DIDEVICEOBJECTINSTANCEA doi;
             doi.dwSize = sizeof(doi);
-            HRESULT hr = s->pKeyboard->GetObjectInfo(&doi, (DWORD)kb->scancode, DIPH_BYOFFSET);
+            HRESULT hr = pKeyboard->GetObjectInfo(&doi, (DWORD)kb->scancode, DIPH_BYOFFSET);
             if (SUCCEEDED(hr))
                 strncpy(keyname, doi.tszName, sizeof(keyname) - 1);
             else
@@ -252,9 +262,9 @@ static void GetBindingStr_impl(ProgableControl *s, int mode, const char *name,
                           kb->scancode, hr);
         }
         if (!first) {
-            size_t cur = strlen(buf), sep = strlen(s->sep_or);
+            size_t cur = strlen(buf), sep = strlen(sep_or);
             if (cur + sep + 1 <= bufsz)
-                strncat(buf, s->sep_or, bufsz - cur - 1);
+                strncat(buf, sep_or, bufsz - cur - 1);
         }
         first = false;
         size_t cur = strlen(buf);
@@ -263,7 +273,7 @@ static void GetBindingStr_impl(ProgableControl *s, int mode, const char *name,
     }
 }
 
-static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
+void ProgableControl::dispatch(unsigned short game_state)
 {
     gamestate_note_mode(game_state);  // before the early return, so paused and cutscene modes are seen
 
@@ -283,39 +293,39 @@ static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
 
         BYTE human[256];
         memset(human, 0, sizeof(human));
-        if (s->pKeyboard) {
-            HRESULT hr = s->pKeyboard->GetDeviceState(256, human);
+        if (pKeyboard) {
+            HRESULT hr = pKeyboard->GetDeviceState(256, human);
             if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
-                s->pKeyboard->Acquire();
-                hr = s->pKeyboard->GetDeviceState(256, human);
+                pKeyboard->Acquire();
+                hr = pKeyboard->GetDeviceState(256, human);
             }
             if (FAILED(hr)) memset(human, 0, sizeof(human));
         }
 
         memset(ks, 0, sizeof(ks));
-        if (!policy_keys(s, game_state, ks)) {
+        if (!policy_keys(this, game_state, ks)) {
             memcpy(ks, human, sizeof(ks));
         } else {
             for (int i = 0; i < 256; i++) ks[i] |= human[i];
         }
         record_keys(game_state, ks);
     } else {
-        if (game_state >= 5 || !s->pKeyboard) return;
+        if (game_state >= 5 || !pKeyboard) return;
 
-        HRESULT hr = s->pKeyboard->GetDeviceState(256, ks);
+        HRESULT hr = pKeyboard->GetDeviceState(256, ks);
         if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
-            s->pKeyboard->Acquire();
-            hr = s->pKeyboard->GetDeviceState(256, ks);
+            pKeyboard->Acquire();
+            hr = pKeyboard->GetDeviceState(256, ks);
         }
         if (FAILED(hr)) return;
         // The policy may overwrite the keys (it declines outside a level), and
         // runs before recording so a policy-driven run records like a
         // hand-played one.
-        policy_keys(s, game_state, ks);
+        policy_keys(this, game_state, ks);
         record_keys(game_state, ks);
     }
 
-    for (ActionEntry *e = s->action_tables[game_state].head; e; e = e->chain) {
+    for (ActionEntry *e = action_tables[game_state].head; e; e = e->chain) {
         for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
             if (kb->scancode >= 0 && kb->scancode < 256 && (ks[kb->scancode] & 0x80)) {
                 if (e->callback) e->callback(kb->scancode, kb->strength, e->context);
@@ -325,22 +335,22 @@ static void Dispatch_impl(ProgableControl *s, unsigned short game_state)
     }
 }
 
-static int CaptureBinding_impl(ProgableControl *s, unsigned int mode, const char *name,
-                                int strength, int , int )
+int ProgableControl::captureBinding(unsigned int mode, const char *name,
+                                int strength, int , int)
 {
-    if (mode >= 5 || !s->pKeyboard) return 0;
+    if (mode >= 5 || !pKeyboard) return 0;
 
     BYTE ks[256];
-    HRESULT hr = s->pKeyboard->GetDeviceState(256, ks);
+    HRESULT hr = pKeyboard->GetDeviceState(256, ks);
     if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
-        s->pKeyboard->Acquire();
-        hr = s->pKeyboard->GetDeviceState(256, ks);
+        pKeyboard->Acquire();
+        hr = pKeyboard->GetDeviceState(256, ks);
     }
     if (FAILED(hr)) return 0;
 
     for (int sc = 0; sc < 256; sc++) {
         if (ks[sc] & 0x80)
-            return BindKey_impl(s, (unsigned short)mode, name, sc, strength);
+            return bindKey((unsigned short)mode, name, sc, strength);
     }
     return 0;
 }
@@ -349,7 +359,7 @@ static int CaptureBinding_impl(ProgableControl *s, unsigned int mode, const char
  *   DWORD kbd_count;  kbd_count x (DWORD scan code, DWORD strength)
  *   DWORD axis_count; axis_count x 12 bytes, skipped
  *   DWORD btn_count;  btn_count x 12 bytes, skipped */
-static int read_orig_entry_bindings(HANDLE f, ProgableControl *s, int mode, ActionEntry *e)
+int ProgableControl::readOrigEntryBindings(HANDLE f, int mode, ActionEntry *e)
 {
     DWORD n;
 
@@ -362,7 +372,7 @@ static int read_orig_entry_bindings(HANDLE f, ProgableControl *s, int mode, Acti
         if (!ReadFile(f, &strength, 4, &n, nullptr) || n != 4) return 0;
         log_write("ProgCtrl::ReadBindings(orig):       key=0x%02lX strength=%lu -> %s\n",
                   key_id, strength, e ? "applied" : "skipped");
-        if (e) BindKey_impl(s, (unsigned short)mode, e->name, (int)key_id, (int)strength);
+        if (e) bindKey((unsigned short)mode, e->name, (int)key_id, (int)strength);
     }
 
     DWORD axis_count;
@@ -384,7 +394,7 @@ static int read_orig_entry_bindings(HANDLE f, ProgableControl *s, int mode, Acti
     return 1;
 }
 
-static int read_orig_format(HANDLE f, ProgableControl *s)
+int ProgableControl::readOrigFormat(HANDLE f)
 {
     DWORD n;
     log_write("ProgCtrl::ReadBindings: reading\n");
@@ -401,10 +411,10 @@ static int read_orig_format(HANDLE f, ProgableControl *s)
                 log_write("ProgCtrl::ReadBindings(orig): read error on name\n");
                 return 0;
             }
-            ActionEntry *e = find_entry(&s->action_tables[m], namebuf);
+            ActionEntry *e = action_tables[m].find(namebuf);
             log_write("ProgCtrl::ReadBindings(orig):   '%s'%s\n",
                       namebuf, e ? "" : " (not registered, bindings discarded)");
-            if (!read_orig_entry_bindings(f, s, m, e)) {
+            if (!readOrigEntryBindings(f, m, e)) {
                 log_write("ProgCtrl::ReadBindings(orig): read error in bindings for '%s'\n", namebuf);
                 return 0;
             }
@@ -414,9 +424,9 @@ static int read_orig_format(HANDLE f, ProgableControl *s)
     return 1;
 }
 
-static int WriteBindings_impl(ProgableControl *s)
+int ProgableControl::writeBindings()
 {
-    log_write("ProgCtrl::WriteBindings(this=%p) -> '%s'\n", s, SAVE_FILE);
+    log_write("ProgCtrl::WriteBindings(this=%p) -> '%s'\n", this, SAVE_FILE);
     HANDLE f = CreateFileA(SAVE_FILE, GENERIC_WRITE, 0,
                            nullptr, CREATE_ALWAYS, 0, nullptr);
     if (f == INVALID_HANDLE_VALUE) {
@@ -430,7 +440,7 @@ static int WriteBindings_impl(ProgableControl *s)
     //   with axis_count and btn_count always 0.
     const DWORD zero = 0;
     for (int m = 0; m < 5; m++) {
-        ActionTable *t = &s->action_tables[m];
+        ActionTable *t = &action_tables[m];
         DWORD cnt = t->entry_count;
         log_write("ProgCtrl::WriteBindings: mode %d: %lu entries\n", m, cnt);
         if (!WriteFile(f, &cnt, 4, &n, nullptr)) goto fail;
@@ -462,110 +472,22 @@ fail:
     return 0;
 }
 
-static int ReadBindings_impl(ProgableControl *s)
+int ProgableControl::readBindings()
 {
-    log_write("ProgCtrl::ReadBindings(this=%p) <- '%s'\n", s, SAVE_FILE);
+    log_write("ProgCtrl::ReadBindings(this=%p) <- '%s'\n", this, SAVE_FILE);
     HANDLE f = CreateFileA(SAVE_FILE, GENERIC_READ, FILE_SHARE_READ,
                            nullptr, OPEN_EXISTING, 0, nullptr);
     if (f == INVALID_HANDLE_VALUE) {
         log_write("ProgCtrl::ReadBindings: no save file (err=%lu)\n", GetLastError());
         return 0;
     }
-    int ok = read_orig_format(f, s);
+    int ok = readOrigFormat(f);
     CloseHandle(f);
     if (ok) log_write("ProgCtrl::ReadBindings: done\n");
     return ok;
 }
 
-extern "C" {
-
-__declspec(dllexport) void * __attribute__((thiscall))
-ProgCtrl_Setup(ProgableControl *s, int logger_or_0)
-    { return Setup_impl(s, logger_or_0); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_ScalarDtor(ProgableControl *s, int free_or_not)
-    { ScalarDtor_impl(s, free_or_not); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_Teardown(ProgableControl *s)
-    { Teardown_impl(s); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_Shutdown(ProgableControl *s)
-    { Shutdown_impl(s); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_InitDInput(ProgableControl *s, HINSTANCE hInstance)
-    { return InitDInput_impl(s, hInstance); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetupKbd(ProgableControl *s, HWND hwnd)
-    { return SetupKbd_impl(s, hwnd); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetupMouse(ProgableControl *s, HWND hwnd)
-    { return SetupMouse_impl(s, hwnd); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetupJoy(ProgableControl *s, HWND hwnd)
-    { return SetupJoy_impl(s, hwnd); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetJoyRange(ProgableControl *s, int axis, int lo, int hi)
-    { return SetJoyRange_impl(s, axis, lo, hi); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetJoyDeadzone(ProgableControl *s, DWORD axis, int zone)
-    { return SetJoyDeadzone_impl(s, axis, zone); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_AcquireAll(ProgableControl *s)
-    { return AcquireAll_impl(s); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_UnacquireAll(ProgableControl *s)
-    { return UnacquireAll_impl(s); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_Dispatch(ProgableControl *s, unsigned short game_state)
-    { Dispatch_impl(s, game_state); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_RegisterAction(ProgableControl *s, unsigned short mode, const char *name,
-                        ActionCallback cb, void *ctx)
-    { RegisterAction_impl(s, mode, name, cb, ctx); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_ClearBindings(ProgableControl *s, unsigned short mode, const char *name)
-    { ClearBindings_impl(s, mode, name); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_GetBindingStr(ProgableControl *s, int mode, const char *name,
-                       char *buf, unsigned int bufsz)
-    { GetBindingStr_impl(s, mode, name, buf, bufsz); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_BindKey(ProgableControl *s, unsigned short mode, const char *name,
-                 int sc, int strength)
-    { return BindKey_impl(s, mode, name, sc, strength); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_CaptureBinding(ProgableControl *s, unsigned int mode, const char *name,
-                        int strength, int allow_axis, int flags)
-    { return CaptureBinding_impl(s, mode, name, strength, allow_axis, flags); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_WriteBindings(ProgableControl *s)
-    { return WriteBindings_impl(s); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_ReadBindings(ProgableControl *s)
-    { return ReadBindings_impl(s); }
-
-}
-
 static void *const progctrl_vtable_slots[1] = {
-    (void *)&ProgCtrl_ScalarDtor,
+    (void *)&ProgableControl::scalarDtor,
 };
 extern const void *const PROGCTRL_VTABLE = progctrl_vtable_slots;

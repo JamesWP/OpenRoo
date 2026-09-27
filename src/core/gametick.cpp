@@ -333,11 +333,11 @@ Sim_GameTick(Game *self, double dt, double now)
             }
         }
         if (pl->moveState() == 0)
-            ProgCtrl_Dispatch(&g_progCtrl, (unsigned short)self->stateRef());
+            g_progCtrl.dispatch((unsigned short)self->stateRef());
     } else {
         pl->setIdleStarted(0);
         pl->setLastActive(*self->clock());
-        ProgCtrl_Dispatch(&g_progCtrl, 0);
+        g_progCtrl.dispatch(0);
         if (self->fixedSounds()->lastSeconds != NULL)
             CStatic_HaltPlayback(self->fixedSounds()->lastSeconds);
     }

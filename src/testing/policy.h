@@ -9,7 +9,7 @@
 #pragma once
 #include <windows.h>
 
-struct ProgableControl;
+class ProgableControl;
 
 /* True when KAROO_POLICY names a known policy. */
 bool policy_active(void);
