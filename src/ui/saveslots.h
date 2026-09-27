@@ -55,6 +55,19 @@ public:
     static void *__attribute__((thiscall))
     scalarDeletingDtor(SaveSlots *self, unsigned int flags);
 
+    /* Loads and saves every slot's file, enciphered with key.  See saveslots.cpp.
+     */
+    int loadAllSlotFiles(const char *name, char key);
+
+    int writeAllSlotFiles(const char *name, char key);
+
+    /* The constructor and destructor body both only install the vtable. */
+    static void *vtbl(void);
+
+    void installVtable();
+
+    void restoreVtable();
+
 private:
     SaveSlots() = delete;  // only ever reached through the Game
     KAROO_LAYOUT_REGISTER(SaveSlots);
@@ -74,20 +87,4 @@ KAROO_LAYOUT_CHECKS(SaveSlots)
     KAROO_LAYOUT_AT(slots_,    0x31);
     KAROO_LAYOUT_SIZE(0x2a07);
 }
-
-/* Loads and saves every slot's file, enciphered with key.  See saveslots.cpp.
- */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key);
-
-/* The constructor and destructor body both only install the vtable. */
-extern "C" __declspec(dllexport) void *SaveSlots_Vtable(void);
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-SaveSlots_InstallVtable(SaveSlots *self);
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-SaveSlots_RestoreVtable(SaveSlots *self);
 

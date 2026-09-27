@@ -68,12 +68,6 @@ static void diag_census(void)
               s_pushes, s_pops, s_rewinds, s_maxdepth);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushMenuNodeOnStack(MenuTree *self, unsigned int nodeArg)
-{
-    self->push((unsigned char)nodeArg);
-}
-
 void MenuTree::push(unsigned char node)
 {
     unsigned char depth;
