@@ -21,6 +21,7 @@
 #include "levelmap.h"
 #include "switchcells.h"
 #include "levelcensus.h"
+#include "theme.h"
 
 class SoundManager;
 class LiftObject;
@@ -37,32 +38,6 @@ class BreakableTile;
 struct __attribute__((packed)) TickStep {
     double value;
 };
-
-/* A sound asset's file name and, immediately after it, its enabled flag.
- * The spawn's unbounded strcpy of `name` relies on the flag to stop it. */
-struct __attribute__((packed)) SoundAssetName {
-    char name[256];
-    int  enabled;
-    DWORD unknown104;   /* ThemeSound_Add's arg4; the .thm path passes 1 */
-    DWORD unknown108;   /* ThemeSound_Add's arg3; the .thm path passes 1 */
-};
-static_assert(sizeof(SoundAssetName) == 0x10c, "SoundAssetName stride");
-
-/* The theme sound table ("TSM" in its log line), Game+0x42258.  A .thm
- * `Sound <event> <wave>` line fills entries[id] through ThemeSound_Add
- * (theme.cpp); the id is RegisterThemeSound's event number, so e.g. entry 0
- * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
- * 0x47, but the table holds 100 entries: ReleaseAll clears exactly
- * 100, ending at Game+0x48b12 where switchMax_ begins.  Lifecycle in
- * theme.cpp; the vtable is ours, one slot. */
-#define THEME_SOUND_COUNT 100
-struct __attribute__((packed)) ThemeSoundTable {
-    void          *vtable;       /* +0 */
-    DWORD          unknown4;     /* +4  never written */
-    WORD           unknown8;     /* +8  zeroed by the ctor, never read */
-    SoundAssetName entries[THEME_SOUND_COUNT];
-};
-static_assert(sizeof(ThemeSoundTable) == 10 + 100 * 0x10c, "ThemeSoundTable size");
 
 /* The end-of-level score tally, Game+0x1404c1..+0x140543.  Six rows, each
  * with a real COUNT and SCORE (CalculateLevelScore) and a SHOWN
@@ -541,31 +516,31 @@ public:
 
     /* The theme sound entries the spawns and level sounds acquire, named
      * by their old Game offsets; the index is the theme event id. */
-    const SoundAssetName *soundAsset42262() const { return &themeSounds_.entries[0]; }
-    const SoundAssetName *soundAsset4236e() const { return &themeSounds_.entries[1]; }
-    const SoundAssetName *soundAsset4247a() const { return &themeSounds_.entries[2]; }
-    const SoundAssetName *soundAsset42586() const { return &themeSounds_.entries[3]; }
-    const SoundAssetName *soundAsset42692() const { return &themeSounds_.entries[4]; }
-    const SoundAssetName *soundAsset4279e() const { return &themeSounds_.entries[5]; }
-    const SoundAssetName *soundAsset428aa() const { return &themeSounds_.entries[6]; }
-    const SoundAssetName *soundAsset429b6() const { return &themeSounds_.entries[7]; }
-    const SoundAssetName *soundAsset42ac2() const { return &themeSounds_.entries[8]; }
-    const SoundAssetName *soundAsset42bce() const { return &themeSounds_.entries[9]; }
-    const SoundAssetName *soundAsset42cda() const { return &themeSounds_.entries[10]; }
-    const SoundAssetName *soundAsset42de6() const { return &themeSounds_.entries[11]; }
-    const SoundAssetName *soundAsset42ef2() const { return &themeSounds_.entries[12]; }
-    const SoundAssetName *soundAsset42ffe() const { return &themeSounds_.entries[13]; }
-    const SoundAssetName *soundAsset4310a() const { return &themeSounds_.entries[14]; }
-    const SoundAssetName *soundAsset43216() const { return &themeSounds_.entries[15]; }
-    const SoundAssetName *soundAsset441ca() const { return &themeSounds_.entries[30]; }
-    const SoundAssetName *soundAsset44c42() const { return &themeSounds_.entries[40]; }
-    const SoundAssetName *soundAsset44d4e() const { return &themeSounds_.entries[41]; }
-    const SoundAssetName *soundAsset44e5a() const { return &themeSounds_.entries[42]; }
-    const SoundAssetName *soundAsset456ba() const { return &themeSounds_.entries[50]; }
-    const SoundAssetName *soundAsset457c6() const { return &themeSounds_.entries[51]; }
-    const SoundAssetName *soundAsset458d2() const { return &themeSounds_.entries[52]; }
-    const SoundAssetName *soundAsset46132() const { return &themeSounds_.entries[60]; }
-    const SoundAssetName *soundAsset46baa() const { return &themeSounds_.entries[70]; }
+    const SoundAssetName *soundAsset42262() const { return themeSounds_.entry(0); }
+    const SoundAssetName *soundAsset4236e() const { return themeSounds_.entry(1); }
+    const SoundAssetName *soundAsset4247a() const { return themeSounds_.entry(2); }
+    const SoundAssetName *soundAsset42586() const { return themeSounds_.entry(3); }
+    const SoundAssetName *soundAsset42692() const { return themeSounds_.entry(4); }
+    const SoundAssetName *soundAsset4279e() const { return themeSounds_.entry(5); }
+    const SoundAssetName *soundAsset428aa() const { return themeSounds_.entry(6); }
+    const SoundAssetName *soundAsset429b6() const { return themeSounds_.entry(7); }
+    const SoundAssetName *soundAsset42ac2() const { return themeSounds_.entry(8); }
+    const SoundAssetName *soundAsset42bce() const { return themeSounds_.entry(9); }
+    const SoundAssetName *soundAsset42cda() const { return themeSounds_.entry(10); }
+    const SoundAssetName *soundAsset42de6() const { return themeSounds_.entry(11); }
+    const SoundAssetName *soundAsset42ef2() const { return themeSounds_.entry(12); }
+    const SoundAssetName *soundAsset42ffe() const { return themeSounds_.entry(13); }
+    const SoundAssetName *soundAsset4310a() const { return themeSounds_.entry(14); }
+    const SoundAssetName *soundAsset43216() const { return themeSounds_.entry(15); }
+    const SoundAssetName *soundAsset441ca() const { return themeSounds_.entry(30); }
+    const SoundAssetName *soundAsset44c42() const { return themeSounds_.entry(40); }
+    const SoundAssetName *soundAsset44d4e() const { return themeSounds_.entry(41); }
+    const SoundAssetName *soundAsset44e5a() const { return themeSounds_.entry(42); }
+    const SoundAssetName *soundAsset456ba() const { return themeSounds_.entry(50); }
+    const SoundAssetName *soundAsset457c6() const { return themeSounds_.entry(51); }
+    const SoundAssetName *soundAsset458d2() const { return themeSounds_.entry(52); }
+    const SoundAssetName *soundAsset46132() const { return themeSounds_.entry(60); }
+    const SoundAssetName *soundAsset46baa() const { return themeSounds_.entry(70); }
     ThemeSoundTable      *themeSounds()             { return &themeSounds_; }
 
     /* ── the lifecycle (game.cpp) ───────────────────────────────────────
@@ -745,9 +720,8 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(reportLevelsWithBonus_,  0x042245);
     KAROO_LAYOUT_AT(reportLevelsWithLeo_,    0x042247);
     KAROO_LAYOUT_AT(themeSounds_,            0x042258);
-    KAROO_LAYOUT_AT(themeSounds_.entries[0],  0x042262);
-    KAROO_LAYOUT_AT(themeSounds_.entries[30], 0x0441ca);
-    KAROO_LAYOUT_AT(themeSounds_.entries[70], 0x046baa);
+    /* entries[0], [30] and [70] land at 0x042262, 0x0441ca and 0x046baa:
+     * ThemeSoundTable (theme.h) asserts its entries at +0x0a, stride 0x10c. */
     KAROO_LAYOUT_AT(map_,              0x2ab58d);
     KAROO_LAYOUT_AT(switchCells_,      0x140543);
     KAROO_LAYOUT_AT(timedSpawners_,    0x02023d);

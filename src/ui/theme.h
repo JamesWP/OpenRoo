@@ -269,7 +269,51 @@ KAROO_LAYOUT_CHECKS(ThemeAssetBlock)
 }
 
 /* The loader and its helpers. */
-struct ThemeSoundTable;
+
+/* A sound asset's file name and, immediately after it, its enabled flag.
+ * The spawn's unbounded strcpy of `name` relies on the flag to stop it. */
+struct __attribute__((packed)) SoundAssetName {
+    char name[256];
+    int  enabled;
+    DWORD unknown104;   /* ThemeSound_Add's arg4; the .thm path passes 1 */
+    DWORD unknown108;   /* ThemeSound_Add's arg3; the .thm path passes 1 */
+};
+static_assert(sizeof(SoundAssetName) == 0x10c, "SoundAssetName stride");
+
+/* The theme sound table ("TSM" in its log line), Game+0x42258.  A .thm
+ * `Sound <event> <wave>` line fills entries[id] through ThemeSound_Add
+ * (theme.cpp); the id is RegisterThemeSound's event number, so e.g. entry 0
+ * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
+ * 0x47, but the table holds 100 entries: ReleaseAll clears exactly
+ * 100, ending at Game+0x48b12 where switchMax_ begins.  Lifecycle in
+ * theme.cpp; the vtable is ours, one slot. */
+#define THEME_SOUND_COUNT 100
+class __attribute__((packed)) ThemeSoundTable {
+public:
+    /* Adds (or replaces) the wave for a theme sound id. */
+    int add(unsigned int id, const char *waveName, DWORD arg3, DWORD arg4);
+
+    /* The theme sound table's lifecycle; it is a Game member. */
+    ThemeSoundTable *construct();
+
+    void destruct();
+    static ThemeSoundTable * __attribute__((thiscall))
+    scalarDestructor(ThemeSoundTable *self, unsigned char flags);
+
+    int releaseAll();
+
+    void          *vtable() const { return vtable_; }
+
+    /* The entry for theme event id. */
+    const SoundAssetName *entry(int id) const { return &entries_[id]; }
+
+private:
+    void          *vtable_;       /* +0 */
+    DWORD          unknown4_;     /* +4  never written */
+    WORD           unknown8_;     /* +8  zeroed by the ctor, never read */
+    SoundAssetName entries_[THEME_SOUND_COUNT];
+};
+static_assert(sizeof(ThemeSoundTable) == 10 + 100 * 0x10c, "ThemeSoundTable size");
 
 extern ThemeAssetBlock g_themeBlock;
 
@@ -277,17 +321,3 @@ extern ThemeAssetBlock g_themeBlock;
 extern "C" __declspec(dllexport) bool __cdecl
 Theme_RegisterSound(Game *game, char *eventName, const char *waveName);
 
-/* Adds (or replaces) the wave for a theme sound id. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
-               DWORD arg3, DWORD arg4);
-
-/* The theme sound table's lifecycle; it is a Game member. */
-extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
-ThemeSound_Construct(ThemeSoundTable *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ThemeSound_Destruct(ThemeSoundTable *self);
-extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
-ThemeSound_ScalarDestructor(ThemeSoundTable *self, unsigned char flags);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-ThemeSound_ReleaseAll(ThemeSoundTable *self);
