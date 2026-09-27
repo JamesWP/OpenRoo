@@ -1,30 +1,12 @@
-/* MovableEntity -- the base shared by every moving entity: Bomb, Foe and the
- * Player.  Ghidra struct `MovableEntity`, 0x15a bytes (the derived classes'
- * own fields start at +0x15a: the bomb's two sound handles, the foe's type
- * byte).
+/* MovableEntity: the base Bomb, Foe and Player share -- a position on the
+ * grid, the step and animation in progress, and twelve sound handles.
+ * updateMovement() is the step every entity tick ends in.
  *
- * The base's own code is small, and all of it is ours (movableentity.cpp):
- *
- *   PopulateMovableEntityBase    0x00438720  ctor: the level-object base ctor
- *                                            0x401000 (vtable 0x45d290, zero
- *                                            +0x25/+0x29/+0x2d), then vtable
- *                                            0x45d6a4
- *   ZeroEntitySoundSlotPointers  0x0043ad60  zero the twelve sound handles
- *                                            +0xa3..+0xcf
- *   DestroyMovableEntityBase     0x00438760  dtor: vtable 0x45d6a4, then the
- *                                            level-object base dtor 0x401060
- *                                            (vtable 0x45d290)
- *
- * Bomb derives from it in C++ and constructs through MovableEntity().  The
- * Foe (0x411ff0 / 0x412160) and Player (0x41f900 / 0x41fa10) ctors and dtors
- * are still the game's; they reach the base through the three exports below,
- * which patch.py routes every E8 and E9 site to -- including the five EH
- * unwind funclets that undo a partly built entity.
- *
- * The fields are every entity field a converted class touches.  Most are
- * also read by still-raw code -- the foe files, and the original RenderGameFrame -- so the layout is packed and
- * asserted.  Names are the ones the code relies on; field_<off> otherwise.
- */
+ * The class is packed and its layout asserted below: RenderGameFrame and the
+ * snapshot hash read entities by offset, and each derived class's own fields
+ * begin right after this one.  A field whose meaning is unsettled is named
+ * field_<offset>. */
+
 #pragma once
 
 #include "layout.h"
@@ -34,52 +16,46 @@ struct CStaticSoundbuffer;
 struct VoicePool;
 class FoePath;
 
+/* One moving entity's shared state.  Derived classes set the vtable. */
 class __attribute__((packed)) MovableEntity {
 public:
     static const int ORIGIN = 0;
 
-    /* The level's tile array, copied in at spawn from Game::tileBase().
-     * Public because tilequery.cpp's farthest-tile search takes a
-     * MovableEntity and reaches the map through it. */
+    // The level's tile array, copied in at spawn from Game::tileBase().
+    // Public because tilequery.cpp's farthest-tile search takes a
+    // MovableEntity and reaches the map through it.
     unsigned char *tileBase() const { return tileBase_; }
 
-    /* 0x0043ad60 -- zero the twelve sound handles, in the original's store
-     * order.  Public: the Foe and Player ctors (still the game's) call it
-     * through Sim_ZeroEntitySoundSlotPointers. */
+    // Zero the twelve sound handles.
     void zeroSoundSlots();
 
-    /* 0x00438720 and 0x00438760 exactly as the game's derived ctors and dtors
-     * expect them, including the transient vtable stores (0x45d290, then
-     * 0x45d6a4 / the reverse) that the derived class overwrites or that the
-     * free follows.  Not used by our own subclasses. */
+    // The base half of Player::construct and Player::destruct.  PRESERVED:
+    // includes the original's transient vtable stores, which the derived class
+    // overwrites at once.
     void populateBaseForGame();
     void destroyBaseForGame();
 
-    /* Destroy through the object's OWN vtable slot 0 -- the game built these
-     * objects and still owns their vtables, so the call has to go through
-     * the pointer the object carries, not through anything of ours.
-     *
-     * `MOV EDX,[ECX]; PUSH flags; CALL [EDX]` in the original.  `flags` is
-     * the MSVC scalar-deleting-destructor flag word; the removes pass 1.
-     *
-     * This is the one place a MovableEntity is destroyed by a caller that
-     * does not know which subclass it holds (Object_DestroyAndCompactId,
-     * objectremove.cpp, reached from both foe.cpp and bomb.cpp).  It lives
-     * here because the vtable is the base's field -- COHESION_PLAN.md Band
-     * 7d, which moved it out of a `void *self` typedef in that file. */
+    // Destroy through the object's own vtable slot 0: the game built these
+    // objects and still owns their vtables, so destruction must go through the
+    // pointer the object carries rather than a fixed function.  `flags` is the
+    // MSVC scalar-deleting-destructor flag word; every caller passes 1.  This
+    // is the one place a MovableEntity is destroyed by code that does not know
+    // which subclass it holds (Object_DestroyAndCompactId, reached from both
+    // foe.cpp and bomb.cpp).
     void destroyViaVtable(int flags);
 
-    /* +0x7e, read by GameTick after a bomb's tick: nonzero = remove me.
-     * UpdateEntityMovement raises it once moveState reaches 4. */
+    // Nonzero once this tick should remove the entity.  Read by GameTick after
+    // a bomb's tick.
     int removeRequested() const { return removeRequested_; }
 
-    /* 0x00438770 -- the movement step every entity tick ends in (player,
-     * foe, bomb); movableentity.cpp.  Returns 1 in AL on the two early outs. */
+    // The movement step every entity tick ends in (player, foe, bomb).
+    // Returns 1 on the two early outs taken while the entity is dying, 0
+    // otherwise.
     unsigned int updateMovement();
 
-    /* ── readers shared by every entity (Player, Foe, Bomb) ─────────────
-     * worldstate.cpp's snapshot reads foes and bombs through these; the
-     * Player's callers too.  Meanings unknown unless noted. */
+    // Readers shared by every entity.  worldstate.cpp's snapshot reads foes
+    // and bombs through these; the Player's own callers use them too.  Meaning
+    // is noted below only where the name does not already say it.
     unsigned char facing() const               { return facing_; }
     float posU() const                         { return posU_; }
     float posY() const                         { return posY_; }
@@ -87,44 +63,44 @@ public:
     signed char cellU() const                  { return cellU_; }
     signed char cellV() const                  { return cellV_; }
     signed char heightCell() const             { return heightCell_; }
-    /* +0x40: taking a stair or sliding this tick (the player's is
-     * Game+0x175209); stops UpdateViewTransform's camera lift. */
+    // Recomputed every movement tick: taking a stair or sliding this tick.
+    // Stops UpdateViewTransform's camera lift while it holds.
     int   onStairOrSlide() const               { return onStairOrSlide_; }
-    /* The step phase framepose.cpp turns into a 0..1 fraction. */
+    // The step phase, which framepose.cpp turns into a 0..1 fraction.
     unsigned char turnKind() const             { return turnKind_; }
     double animDuration() const                { return animDuration_; }
     double animStart() const                   { return animStart_; }
     unsigned char type() const                 { return type_; }
     int   dyingStarted() const                 { return dyingStarted_; }
-    /* +0xef: the foe's hold flag; the Player's level-complete flag.
-     * Either way updateMovement() drops the queued move. */
+    // The foe's hold flag, or the Player's level-complete flag.  Either way,
+    // updateMovement() drops the queued move while it is set.
     int   held() const                         { return held_; }
-    /* +0x9a: the animation state (see the field); 10 is the dying anim that
-     * DrawObjectShadows' `dead`/`alive` conditions test. */
+    // The animation state (see the field below); 10 is the dying animation
+    // that DrawObjectShadows' dead/alive conditions test.
     unsigned char anim() const                 { return anim_; }
-    /* +0x63: the tile contents picked up this tick (1 = a crystal). */
+    // The tile contents picked up this tick, 0 if none (1 = a crystal).
     unsigned char pickedUp() const             { return pickedUp_; }
-    /* +0x7a: RenderGameFrame's "start the explosion debris" latch -- set by
-     * the tick, consumed (zeroed) by the next frame. */
+    // RenderGameFrame's "start the explosion debris" latch: set by the tick,
+    // consumed (cleared) by the next frame.
     bool  debrisPending() const                { return field_7a != NULL; }
     void  clearDebrisPending()                 { field_7a = NULL; }
-    /* +0xe9 / +0xea: paraglider charges, and whether it is open. */
+    // Paraglider charges, and whether it is open.
     unsigned char glides() const               { return glides_; }
     int   gliding() const                      { return gliding_; }
-    /* +0x14e: the direction being moved in, 0 while still.  1 = -V,
-     * 2 = +U, 3 = +V, 4 = -U (updateMovement's stepU_/stepV_ table). */
+    // The direction being moved in, 0 while still.  1 = -V, 2 = +U, 3 = +V, 4
+    // = -U, matching updateMovement()'s stepU_/stepV_ table.
     int   moveDir() const                      { return moveDir_; }
     unsigned char kind() const                 { return kind_; }
     unsigned char homeU() const                { return homeU_; }
     unsigned char homeV() const                { return homeV_; }
     unsigned char homeH() const                { return homeH_; }
-    /* +0x11f: 4 = despawn (the "kaputo" cheat sets it on every foe); the
-     * Player's is nonzero while dead / timed out (3 = time-out). */
+    // 4 = despawn (the "kaputo" cheat sets it on every foe); the Player's is
+    // nonzero while dead or respawning.
     unsigned char moveState() const            { return moveState_; }
     void  setMoveState(unsigned char s)        { moveState_ = s; }
 
-    /* ── the sound handles (soundobj.cpp for foes; levelsounds.cpp and
-     *    fixedsounds.cpp for the Player) ──────────────────────────────── */
+    // The sound handles: soundobj.cpp writes them for foes, levelsounds.cpp
+    // and fixedsounds.cpp for the Player.
     VoicePool *pool9f() const                  { return pool_9f_; }
     void  setPool9f(VoicePool *p)              { pool_9f_ = p; }
     CStaticSoundbuffer *soundA3() const        { return sound_a3_; }
@@ -149,133 +125,125 @@ public:
     void  setSoundC7(CStaticSoundbuffer *p)    { sound_c7_ = p; }
     CStaticSoundbuffer *soundCb() const        { return sound_cb_; }
     void  setSoundCb(CStaticSoundbuffer *p)    { sound_cb_ = p; }
-    /* +0xcf holds a voice pool on the player and on a foe. */
+    // Also holds a voice pool, on both the Player and a foe.
     VoicePool *poolCf() const                  { return (VoicePool *)sound_cf_; }
     void  setPoolCf(VoicePool *p)              { sound_cf_ = (CStaticSoundbuffer *)p; }
 
 protected:
-    /* Our own subclasses: the base's only field work, the three zeroed
-     * floats of 0x401000.  The vtable is the subclass's to set. */
+    // Our own subclasses use only the base's field work, the three zeroed
+    // position floats.  The vtable is left for the subclass to set.
     MovableEntity();
 
-    const void         *vtable_;          /* +0x000                         */
-    double              now_;             /* +0x004  latched from *clock_   */
-    double             *clock_;           /* +0x00c  Game::clock()          */
-    TickStep        *tickStep_;          /* +0x010  Game::tickStep()     */
-    unsigned char       facing_;          /* +0x014                         */
-    TickStep         tickStepCopy_;      /* +0x015  copied from *tickStep_   */
+    const void         *vtable_;
+    double              now_;
+    double             *clock_;
+    TickStep        *tickStep_;
+    unsigned char       facing_;
+    TickStep         tickStepCopy_;
     unsigned char       gap_01d[0x025 - 0x01d];
-    float               posU_;            /* +0x025  } world position, read */
-    float               posY_;            /* +0x029  } by RenderGameFrame   */
-    float               posV_;            /* +0x02d  }                      */
-    signed char         cellU_;           /* +0x031                         */
-    signed char         cellV_;           /* +0x032                         */
-    signed char         heightCell_;      /* +0x033  read SIGNED (MOVSX)    */
-    unsigned char      *tileBase_;        /* +0x034  Game::tileBase()       */
-    /* One double, though the foe ctor writes it as two dwords: 1000.0
-     * (0 at +0x38, 0x408f4000 at +0x3c). */
-    double              idleDuration_; /* +0x038  ms the idle anim runs   */
-    /* +0x040: recomputed every movement tick -- 1 while taking a stair
-     * or sliding (see updateMovement); UpdateViewTransform then skips its
-     * lift-over-a-blocking-cell. */
+    // World position (U, height, V), read every frame by RenderGameFrame.
+    float               posU_;
+    float               posY_;
+    float               posV_;
+    signed char         cellU_;
+    signed char         cellV_;
+    signed char         heightCell_;
+    unsigned char      *tileBase_;
+    double              idleDuration_;  // ms the idle animation runs.
     int                 onStairOrSlide_;
-    int                 movingBackwards_; /* +0x044  turnKind_ 3: reversing */
-    /* One double, though the ctors write it as two dwords: bomb 50.0
-     * (0x40490000 at +0x4c), foe and player 20.0 (0x40340000). */
-    double              stepGrace_;    /* +0x048  } the window after a    */
-    double              stepEnd_;      /* +0x050  } step (animStart_ +
-                                       *   animDuration_) ends          */
-    int                 conveyorDir_;  /* +0x058  conveyor: last way sent */
-    /* Set as the bits 0xc0400000, i.e. -3.0f, and read as a float. */
-    float               fallSpeed_;    /* +0x05c  fall velocity, -3.0     */
-    unsigned char       queuedMove_;   /* +0x060  } re-queued by kind 4   */
-    unsigned char       queuedTurn_;   /* +0x061  } after a blocked step  */
-    /* The foe's behaviour type (1 escort, 2 seek listed tile, 3 seek
-     * flagged tile, 4 return to post, 5 follow, 7 farthest -- GameTick's
-     * foe loop).  Read signed by the step and the chase. */
-    unsigned char       type_;            /* +0x062                         */
-    unsigned char       pickedUp_;    /* +0x063  the tile contents taken
-                                       * this tick, 0 if none          */
-    unsigned short      chaseSpeed_;  /* +0x064  foe: chase speed        */
-    /* One double: 200.0 for bomb and player (0x40690000 at +0x6a); the foe
-     * spawn stores 500.0 (kind 2) or 700.0 (kind 3). */
-    /* +0x066: ms one cell step takes -- animDuration_ resets to it.
-     * Player 100/200/400 by state, foe 500/700 by type, bomb 200. */
+    int                 movingBackwards_;  // Set when turnKind_ is 3 (reversing this step).
+    // stepGrace_: the window after a step ends (animStart_ + animDuration_)
+    // during which the next step may start without a fresh delay.  stepEnd_:
+    // the clock value that window is measured from.
+    double              stepGrace_;
+    double              stepEnd_;
+    int                 conveyorDir_;  // Conveyor: the last direction sent.
+    float               fallSpeed_;    // Fall velocity; starts at -3.0.
+    // Re-queued from here once kind 4 is released from a blocked step.
+    unsigned char       queuedMove_;
+    unsigned char       queuedTurn_;
+    // The foe's behaviour type: 1 escort, 2 seek a listed tile, 3 seek a
+    // flagged tile, 4 return to post, 5 follow, 7 seek the farthest tile
+    // (GameTick's foe loop).  Read signed by the step and the chase.
+    unsigned char       type_;
+    unsigned char       pickedUp_;
+    unsigned short      chaseSpeed_;
+    // ms one cell step takes; animDuration_ resets to this by kind and state
+    // elsewhere.
     double              stepDuration_;
-    int                 idleStarted_;  /* +0x06e  the idle anim is running */
-    /* +0x072: the clock the idle timeout counts from.  The foe spawner
-     * staggers it by 1500 ms per foe, so idle animations do not sync. */
+    int                 idleStarted_;
+    // The clock the idle timeout counts from.
     double              lastActive_;
-    void               *field_7a;         /* +0x07a  RenderGameFrame reads
-                                                     and writes it          */
-    int                 removeRequested_; /* +0x07e                         */
-    int                 dyingStarted_; /* +0x082  read by RenderGameFrame */
-    int                 dying_;        /* +0x086  crushed / blasted       */
-    double              dyingSince_;   /* +0x08a  removed 0.5 s later     */
+    void               *field_7a;
+    int                 removeRequested_;
+    int                 dyingStarted_;  // Read by RenderGameFrame once the entity starts dying.
+    int                 dying_;  // Set on being crushed or blasted; starts the death sequence.
+    double              dyingSince_;  // Dying clock; removeRequested_ is set once it is half a second old.
     unsigned char       gap_092[0x09a - 0x092];
-    /* +0x09a: the animation state.  0 = still, 0xfa = the idle anim;
-     * 0x16..0x1b carry the height curves updateMovement() interpolates. */
+    // The animation state: 0 = still, 0xfa = the idle animation; 0x16..0x1b
+    // carry the height curves updateMovement() interpolates between.
     unsigned char       anim_;
-    int                 onLift_;       /* +0x09b  riding a lift (kind 9)  */
-    VoicePool          *pool_9f_;         /* +0x09f  foe: a voice pool      */
-    CStaticSoundbuffer *sound_a3_;        /* +0x0a3  } the twelve handles   */
-    CStaticSoundbuffer *sound_a7_;        /* +0x0a7  } zeroSoundSlots()     */
-    CStaticSoundbuffer *sound_ab_;        /* +0x0ab  } clears               */
-    CStaticSoundbuffer *sound_af_;        /* +0x0af  }                      */
-    CStaticSoundbuffer *sound_b3_;        /* +0x0b3  }                      */
-    CStaticSoundbuffer *sound_b7_;        /* +0x0b7  }                      */
-    CStaticSoundbuffer *sound_bb_;        /* +0x0bb  }                      */
-    CStaticSoundbuffer *sound_bf_;        /* +0x0bf  }                      */
-    CStaticSoundbuffer *sound_c3_;        /* +0x0c3  }                      */
-    CStaticSoundbuffer *sound_c7_;        /* +0x0c7  }                      */
-    CStaticSoundbuffer *sound_cb_;        /* +0x0cb  }                      */
-    CStaticSoundbuffer *sound_cf_;        /* +0x0cf  } (a voice pool on a foe) */
-    int                 field_d3;         /* +0x0d3                         */
-    unsigned char       field_d7;         /* +0x0d7  foe: switch it is on   */
-    int                 field_d8;         /* +0x0d8                         */
-    double              lastContact_;  /* +0x0dc  foe: last contact time  */
-    int                 bombDropRequest_; /* +0x0e4  drop a bomb this tick       */
-    unsigned char       field_e8;         /* +0x0e8                         */
-    unsigned char       glides_;       /* +0x0e9  paraglider charges      */
-    int                 gliding_;      /* +0x0ea  the paraglider is open  */
-    unsigned char       field_ee;         /* +0x0ee                         */
-    int                 held_;         /* +0x0ef  queued moves dropped    */
+    int                 onLift_;  // Riding a lift (kind 9).
+    VoicePool          *pool_9f_;
+    CStaticSoundbuffer *sound_a3_;
+    CStaticSoundbuffer *sound_a7_;
+    CStaticSoundbuffer *sound_ab_;
+    CStaticSoundbuffer *sound_af_;
+    CStaticSoundbuffer *sound_b3_;
+    CStaticSoundbuffer *sound_b7_;
+    CStaticSoundbuffer *sound_bb_;
+    CStaticSoundbuffer *sound_bf_;
+    CStaticSoundbuffer *sound_c3_;
+    CStaticSoundbuffer *sound_c7_;
+    CStaticSoundbuffer *sound_cb_;
+    CStaticSoundbuffer *sound_cf_;
+    int                 field_d3;
+    unsigned char       field_d7;  // The switch this foe is standing on, when it is standing on one.
+    int                 field_d8;
+    double              lastContact_;      // Foe: the clock of its last contact.
+    int                 bombDropRequest_;  // Requests a bomb be dropped this tick.
+    unsigned char       field_e8;
+    unsigned char       glides_;
+    int                 gliding_;
+    unsigned char       field_ee;
+    int                 held_;
     unsigned char       gap_0f3[0x0fb - 0x0f3];
-    int                 climbing_;     /* +0x0fb  stepping up a height    */
-    unsigned char       teleportPhase_;/* +0x0ff 0 idle, 1 armed, 2 sent  */
-    double              teleportSince_;/* +0x100 clock the phase began    */
-    unsigned char       lastMoveDir_;  /* +0x108  the last direction moved */
+    int                 climbing_;
+    unsigned char       teleportPhase_;  // 0 idle, 1 armed, 2 sent.
+    double              teleportSince_;  // The clock the current teleport phase began.
+    unsigned char       lastMoveDir_;  // The last direction actually moved (as opposed to a turn on the spot).
     unsigned char       gap_109[0x111 - 0x109];
-    unsigned char       fallStartH_;   /* +0x111  height the fall began at*/
-    double              fallStart_;    /* +0x112  clock the fall began    */
-    int                 field_11a;        /* +0x11a                         */
-    unsigned char       slideSlot_;    /* +0x11e  slide ridden, 0xff none */
-    unsigned char       moveState_;       /* +0x11f  4 = despawn            */
-    int                 falling_;      /* +0x120  in the air              */
-    unsigned char       field_124;        /* +0x124                         */
-    /* +0x125: pendingMove_ relative to facing_ -- 1 forward, 2 and 4 the
-     * two turns, 3 reverse.  0 when the move needs no turn. */
+    unsigned char       fallStartH_;  // The height the current fall began at.
+    double              fallStart_;   // The clock the current fall began.
+    int                 field_11a;
+    unsigned char       slideSlot_;  // The slide being ridden, 0xff for none.
+    unsigned char       moveState_;
+    int                 falling_;
+    unsigned char       field_124;
+    // pendingMove_'s turn relative to facing_: 1 forward, 2 and 4 the two
+    // turns, 3 reverse, 0 when the move needs no turn at all.
     unsigned char       turnKind_;
-    /* One double, though the ctors write it as two zero dwords. */
-    double              field_126;        /* +0x126                         */
-    int                 field_12e;        /* +0x12e                         */
-    double              animDuration_; /* +0x132  ms the phase lasts      */
+    double              field_126;  // The clock the glue pad caught this entity; zero while not stuck.
+    int                 field_12e;
+    double              animDuration_;  // ms the current animation phase lasts.
     unsigned char       gap_13a[0x13b - 0x13a];
-    FoePath            *pathfinder_;      /* +0x13b  foe: its FoePath       */
-    signed char         stepU_;        /* +0x13f  } moveDir_ as a cell   */
-    signed char         stepV_;        /* +0x140  } step, -1 / 0 / +1    */
-    signed char         field_141;        /* +0x141  }                      */
-    unsigned char       markerCellU_;  /* +0x142  } player: the marker-4 */
-    unsigned char       markerCellV_;  /* +0x143  } cell (u, v, h)       */
-    unsigned char       markerCellH_;  /* +0x144  }                      */
-    unsigned char       pendingMove_;     /* +0x145                         */
-    double              animStart_;    /* +0x146  clock the phase began   */
-    int                 moveDir_;     /* +0x14e  0 = still, else 1..4   */
-    unsigned char       kind_;            /* +0x152  bomb 9; foe from spawn */
-    unsigned char       homeU_;           /* +0x153  } foe: its spawn cell  */
-    unsigned char       homeV_;           /* +0x154  }                      */
-    unsigned char       homeH_;           /* +0x155  }                      */
-    int                 field_156;        /* +0x156                         */
+    FoePath            *pathfinder_;  // Foe: its FoePath.
+    // stepU_ / stepV_: moveDir_ resolved to a cell step, each -1, 0 or +1.
+    signed char         stepU_;
+    signed char         stepV_;
+    signed char         field_141;
+    unsigned char       markerCellU_;
+    unsigned char       markerCellV_;
+    unsigned char       markerCellH_;
+    unsigned char       pendingMove_;
+    double              animStart_;  // The clock the current animation phase began.
+    int                 moveDir_;
+    unsigned char       kind_;  // 9 identifies a bomb; a foe's is set from its spawn kind.
+    // homeU_ / homeV_ / homeH_: the foe's spawn cell.
+    unsigned char       homeU_;
+    unsigned char       homeV_;
+    unsigned char       homeH_;
+    int                 field_156;
 
 private:
     KAROO_LAYOUT_REGISTER(MovableEntity);
@@ -370,11 +338,12 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_AT(homeV_,            0x154);
     KAROO_LAYOUT_AT(homeH_,            0x155);
     KAROO_LAYOUT_AT(field_156,         0x156);
-    /* Relied on: every derived class's own fields start here. */
+    // Derived classes' own fields begin immediately after this size.
     KAROO_LAYOUT_SIZE(0x15a);
 }
 
-/* ─── Exports -- patch.py routes the three originals here ─────────────── */
+/* The exported entry points the game's Foe and Player construction and
+ * destruction reach the base through. */
 extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
 Sim_PopulateMovableEntityBase(MovableEntity *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -382,12 +351,12 @@ Sim_ZeroEntitySoundSlotPointers(MovableEntity *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_DestroyMovableEntityBase(MovableEntity *self);
 
-/* 0x00438740 -- vtable slot 0 of the base's own (now ours) one-slot table:
- * the dtor body, then the game heap's Free2 when bit 0 is set. */
+/* Vtable slot 0 of the base's one-slot table: destroys the base state, then
+ * frees to the game heap when bit 0 of `flags` is set. */
 extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
 Sim_DeleteMovableEntityWithFlags(MovableEntity *self, unsigned int flags);
 
-/* UpdateEntityMovement 0x00438770, the shared movement step for every
- * entity (player, foe, bomb): a shim over MovableEntity::updateMovement(). */
+/* The shared movement step for every entity (player, foe, bomb): a thin shim
+ * over MovableEntity::updateMovement(). */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_UpdateEntityMovement(MovableEntity *self);
