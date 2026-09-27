@@ -65,6 +65,8 @@ private:
 
 inline void CFaktSound::checkLayout()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
     static_assert(offsetof(CFaktSound, vtable_)                == 0x00, "vtable offset");
     static_assert(offsetof(CFaktSound, logger_initialized_)     == 0x04, "logger_initialized offset");
     static_assert(offsetof(CFaktSound, logger_)                == 0x08, "logger offset");
@@ -72,6 +74,7 @@ inline void CFaktSound::checkLayout()
     static_assert(offsetof(CFaktSound, soundbuffer_)           == 0x10, "soundbuffer offset");
     static_assert(offsetof(CFaktSound, caps_check_)            == 0x14, "caps_check offset");
     static_assert(offsetof(CFaktSound, directsound3dlistener_) == 0x74, "directsound3dlistener offset");
+#pragma GCC diagnostic pop
 }
 
 static_assert(sizeof(CFaktSound)                          == 0x78, "CFaktSound size");

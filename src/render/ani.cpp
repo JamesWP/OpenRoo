@@ -227,25 +227,25 @@ AnimSlot *AnimTable::lookup(unsigned int code)
  * in a .ani reads as a huge positive number.  That changes the result, so the
  * casts are deliberate.  The float-to-int step truncates toward zero. */
 
-int AnimSlot::frameOnClock(double timeMs) const
+int AnimSlot::frameOnClock(const AnimSlot *slot, double timeMs)
 {
-    if (this == NULL || numFrames_ == 0)
+    if (slot == NULL || slot->numFrames_ == 0)
         return 0;
 
-    double count = (double)(unsigned)numFrames_;
-    double v = (double)(unsigned)fps_ * timeMs * 0.001 / count;
+    double count = (double)(unsigned)slot->numFrames_;
+    double v = (double)(unsigned)slot->fps_ * timeMs * 0.001 / count;
     return (int)(fmod(v, 1.0) * count);
 }
 
-int AnimSlot::frameAtPhase(float phase) const
+int AnimSlot::frameAtPhase(const AnimSlot *slot, float phase)
 {
-    if (this == NULL || numFrames_ == 0)
+    if (slot == NULL || slot->numFrames_ == 0)
         return 0;
 
-    double count = (double)(unsigned)numFrames_;
-    double first = (double)(unsigned)firstFrame_;
+    double count = (double)(unsigned)slot->numFrames_;
+    double first = (double)(unsigned)slot->firstFrame_;
 
-    if (reverse_)
+    if (slot->reverse_)
         return (int)(first - count * (double)phase);
     return (int)(count * (double)phase + first);
 }

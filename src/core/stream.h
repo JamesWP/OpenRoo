@@ -82,11 +82,14 @@ private:
 
 inline void CStreamSoundbuffer::checkLayout()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
     static_assert(offsetof(CStreamSoundbuffer, vtable_)       == 0x00,  "vtable offset");
     static_assert(offsetof(CStreamSoundbuffer, pSoundbuffer_) == 0x08,  "pSoundbuffer offset");
     static_assert(offsetof(CStreamSoundbuffer, dwBuffer_size_)== 0x1a,  "dwBuffer_size offset");
     static_assert(offsetof(CStreamSoundbuffer, dwThread_done_)== 0xa6,  "dwThread_done offset");
     static_assert(offsetof(CStreamSoundbuffer, cs_)           == 0xba,  "cs offset");
+#pragma GCC diagnostic pop
 }
 
 static_assert(sizeof(CStreamSoundbuffer)                 == 0xD4,  "CStreamSoundbuffer size");
