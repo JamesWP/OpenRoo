@@ -2,8 +2,8 @@
 
 /* The 18-byte TGA header, in file order.  Both TGA paths read it field by
  * field (twelve separate freads, not one block read):
- * TextureTGA_Parse (texturetga.cpp) and ImportSceneTextures (scenetexture.cpp,
- * frame slot B+0x1c). */
+ * TextureTGA_Parse (texturetga.cpp) and ImportSceneTextures
+ * (scenetexture.cpp). */
 struct TgaHeader {
     unsigned char  idLength;
     unsigned char  colourMapType;

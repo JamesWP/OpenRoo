@@ -151,11 +151,8 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                 if (rec->explodes() == 0) {
                     rec->mesh()->drawMeshBuffer(dev, (DWORD)frame);
                 } else {
- 
- 
                     rec->explodeDebris().advance((float)(unsigned long long)debrisMs * K_DEBRIS_MS);
                     rec->explodeDebris().draw(dev);
- 
                 }
             }
         }

@@ -55,7 +55,6 @@ static void clear_file_bytes(Tile *t)
 
 int LevelMap::readFile(const char *path)
 {
-    unsigned char *base = (unsigned char *)this;
     char name[128];  // PRESERVED: 128 bytes, unchecked
     FILE *fp;
     unsigned char hdr[2];
@@ -109,12 +108,12 @@ int LevelMap::readFile(const char *path)
     }
 
     // The trailer, in file order.
-    fread(base + offsetof(LevelMap, gemsRequired_),  4,    1, fp);
-    fread(base + offsetof(LevelMap, fileTimeLimit_), 4,    1, fp);
-    fread(base + offsetof(LevelMap, mapName_),       0x80, 1, fp);
-    fread(base + offsetof(LevelMap, title_),         0x80, 1, fp);
-    fread(base + offsetof(LevelMap, text010_),       0x80, 1, fp);
-    fread(base + offsetof(LevelMap, bonus_),         4,    1, fp);
+    fread(&gemsRequired_,  4,    1, fp);
+    fread(&fileTimeLimit_, 4,    1, fp);
+    fread(&mapName_,       0x80, 1, fp);
+    fread(&title_,         0x80, 1, fp);
+    fread(&text010_,       0x80, 1, fp);
+    fread(&bonus_,         4,    1, fp);
 
     fclose(fp);
 

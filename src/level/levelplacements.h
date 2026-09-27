@@ -14,7 +14,7 @@ class RenderDevice;
 struct ThemeAssetBlock;
 
 /* A position and rotation list, one entry per cell of one kind. */
-class __attribute__((packed)) PlacementList {
+class PlacementList {
 public:
      
 
@@ -41,7 +41,7 @@ private:
  * specular 0, u, v. */
 struct PlacementVertex { DWORD d[8]; };
 
-class __attribute__((packed)) LevelPlacements {
+class LevelPlacements {
 public:
      
 

@@ -11,7 +11,7 @@
 class VoicePool;
 
 /* Allocated by the sound manager with a fixed size of 0x58. */
-class __attribute__((packed)) doublesoundbuff {
+class doublesoundbuff {
 public:
      
 

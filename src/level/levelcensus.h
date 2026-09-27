@@ -8,7 +8,7 @@
  
 
 /* A timed foe spawner: a snapshot cell whose contents are 0x64. */
-struct __attribute__((packed)) TimedSpawner {
+struct TimedSpawner {
     unsigned char u;
     unsigned char v;
     unsigned char height;     // the snapshot cell's height
@@ -21,7 +21,7 @@ struct __attribute__((packed)) TimedSpawner {
 };
 
 /* A free bomb: a snapshot cell whose contents are 0x4d. */
-struct __attribute__((packed)) FreeBomb {
+struct FreeBomb {
     unsigned char u;
     unsigned char v;
     unsigned char param;     // the snapshot cell's param
@@ -31,7 +31,7 @@ struct __attribute__((packed)) FreeBomb {
 /* The per-level object counts.  Each counts one tile kind or contents value
  * (tile.h) over either the live grid or the map's snapshot grid (levelmap.h),
  * as marked.  The level report prints them. */
-struct __attribute__((packed)) LevelCensus {
+struct LevelCensus {
     // Kind counts, over the live grid.
     unsigned short teleports;      // TILE_TELEPORTER, paired only
     unsigned short destructibles;  // TILE_DESTRUCTIBLE

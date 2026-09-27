@@ -5,9 +5,7 @@
  * before the game starts. */
 #pragma once
 
- 
-
-class __attribute__((packed)) CdThemes {
+class CdThemes {
 public:
      
 
@@ -49,7 +47,6 @@ private:
      
 
     void         *vtable_;
-    unsigned char gap_04[0x18 - 0x04];  // never written
     int           trackCount_;          // set by validateTrackLengths
     unsigned char trackOf_[THEME_MAX];  // theme i's CD track
     unsigned char currentTrack_;

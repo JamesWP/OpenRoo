@@ -10,7 +10,7 @@
 #include <stddef.h>
 #include "tile.h"
 
-class __attribute__((packed)) LevelMap {
+class LevelMap {
 public:
      
 
@@ -76,7 +76,6 @@ private:
     char          text010_[0x80];  // from the file; unread
     char          title_[0x80];    // the display title
     char          mapName_[0x80];  // the map name: the theme and CD-track key
-    unsigned char gap_190[0x192 - 0x190];
     int           fileTimeLimit_;  // the time limit as the file gives it, s
     int           gemsRequired_;   // crystals needed to open the exit
     unsigned char extentV_;        // the v extent (file byte 1)

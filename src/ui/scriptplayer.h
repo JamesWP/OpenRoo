@@ -12,7 +12,7 @@
 
 class SoundManager;
 
-class __attribute__((packed)) ScriptPlayer {
+class ScriptPlayer {
 public:
      
 
@@ -95,16 +95,13 @@ private:
     unsigned short textBlocks_;
     unsigned short againLine_;       // "fromhere" sets it to cursor + 1; "again" jumps back to it
     unsigned int   durations_[255];  // seconds a soundless "playwave WAIT" waits, by id
-    unsigned char  gap_406[0x40a - 0x406];
     SoundManager  *soundManager_;       // set by the fixed sound setup
     unsigned char  waitStream_;         // the stream waitingOnStream_ waits on
     CStreamSoundbuffer *streams_[255];  // by id
-    unsigned char  gap_80b[0x833 - 0x80b];
     unsigned int   waitingOnStream_;  // "playwave <id> <wait>": the tick stalls until its stream finishes
     unsigned int   streamReady_;      // "initwave"'s prepare result
     CStreamSoundbuffer stream_;       // the embedded stream
     WaveInfo       streamWave_;
-    unsigned char  gap_921[0x92d - 0x921];
     unsigned int   field_92d_;  // never read
     float          splinePoint_[3];
     SplinePath     spline_;
@@ -131,6 +128,6 @@ private:
     double         waitStart_;  // now_ when it began
     unsigned short cursor_;     // the next line to play
     unsigned short lineCount_;
-    char           scratch_[0x11b4 - 0xdca];  // the caption, and scratch for parsing
+    char           scratch_[0x3ea];  // the caption, and scratch for parsing
     char           lines_[LINE_MAX][LINE_SIZE];
 };

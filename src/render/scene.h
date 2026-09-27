@@ -16,37 +16,29 @@ struct ParticleSystem;
 class GameLogger;
 class ExtraObjects;
 
-/* One placed object; dsoscene.cpp draws them.  The type byte at +0
- * misaligns everything, hence packed. */
-struct __attribute__((packed)) SceneObject {
-     
-
-    unsigned char  type;             /* +0x000  ExtraObjectKind 0..2 */
-    CFaktMesh     *mesh;             /* +0x001  model */
-    ParticleSystem *particle;        /* +0x005  particle system */
-    float          billboardRadius;  /* +0x009  billboard */
-    DWORD          animLoaded;       /* +0x00d  1 when the .ani loaded */
-    AnimTable      anim;             /* +0x011  loaded from the .ani (ani.h) */
-    float          pos[3];           /* +0x191 */
-    float          rot[3];           /* +0x19d */
-    SceneTexture  *texture;          /* +0x1a9 */
-    DWORD          srcBlend;         /* +0x1ad */
-    DWORD          destBlend;        /* +0x1b1 */
-    DWORD          textureAddress;   /* +0x1b5 */
-    DWORD          onPath;           /* +0x1b9  splineMode != 0 */
-    DWORD          lit;              /* +0x1bd  the .leo "lit" flag: draw as a
-                                                framed (lit) model, not a plain mesh */
-    unsigned char  splineMode;       /* +0x1c1 */
-    DWORD          splineTime;       /* +0x1c2 */
-    SplinePath     spline;           /* +0x1c6 */
-
-     
+struct SceneObject {
+    unsigned char  type;             /* ExtraObjectKind 0..2 */
+    CFaktMesh     *mesh;             /* model */
+    ParticleSystem *particle;        /* particle system */
+    float          billboardRadius;  /* billboard */
+    DWORD          animLoaded;       /* 1 when the .ani loaded */
+    AnimTable      anim;             /* loaded from the .ani (ani.h) */
+    float          pos[3];
+    float          rot[3];
+    SceneTexture  *texture;
+    DWORD          srcBlend;
+    DWORD          destBlend;
+    DWORD          textureAddress;
+    DWORD          onPath;           /* splineMode != 0 */
+    DWORD          lit;              /* the .leo "lit" flag: draw as a
+                                        framed (lit) model, not a plain mesh */
+    unsigned char  splineMode;
+    DWORD          splineTime;
+    SplinePath     spline;
 };
 
-/* The object is allocated at exactly 0x1da bytes. */
- 
 
-class __attribute__((packed)) Scene {
+class Scene {
 public:
      
 

@@ -168,9 +168,9 @@ int VoicePool::fill3D(int count, IDirectSound *pDS,
     dwVoiceCount_ = count;
 
     {
-        // count * 0x18 + 4: the leading word is the count the vector
+        // A leading word, then the voices: the word is the count the vector
         // destructor reads back.
-        void *block = malloc((unsigned)(count * 0x18 + 4));
+        void *block = malloc((unsigned)(count * sizeof(CStaticSoundbuffer) + 4));
         CStaticSoundbuffer *bufs = 0;
         if (block != 0) {
             *(int *)block = count;
@@ -242,7 +242,7 @@ void *VoicePool::clone(int count, IDirectSound *pDS,
     logger_       = src->logger();
 
     {
-        void *block = malloc((unsigned)(count * 0x18 + 4));
+        void *block = malloc((unsigned)(count * sizeof(CStaticSoundbuffer) + 4));
         CStaticSoundbuffer *bufs = 0;
         if (block != 0) {
             *(int *)block = count;

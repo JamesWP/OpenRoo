@@ -1,8 +1,6 @@
 /* SkyBackground: the six-faced cube of sky textures drawn behind a level,
  * yaw-rotated and re-centred on the viewer every frame.  ThemeAssetBlock owns
- * the one instance per theme (sky.cpp has its lifecycle and the draw).  The
- * vertex and matrix layouts below are load-bearing: the struct must tile
- * exactly to the sizes the  s check. */
+ * the one instance per theme (sky.cpp has its lifecycle and the draw). */
 
 #pragma once
 #include <windows.h>
@@ -23,7 +21,7 @@ struct SkyVertex {
 /* One cube of six faces, four vertices each, plus the world matrix
  * DrawSkyBackground rebuilds from flYawAngle and the viewer position every
  * call. */
-class __attribute__((packed)) SkyBackground {
+class SkyBackground {
 public:
     /* Fills the geometry and matrix, then loads the six faces (UP, DN, FR, BK,
      * LF, RT) through the texture loader.  Stops at the first face that fails

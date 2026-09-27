@@ -195,13 +195,7 @@ static void theme_struct_dump_if_enabled(const char *path)
  *   - the model and texture caches lowercase the token buffers in place.
  * Tokens past the 16th are dropped, but still counted. */
 
-/* The block's sub-objects are handed to their owners by address, and really
- * are misaligned: the block is packed.  One warning suppression for the
- * loader. */
- 
- 
-
-typedef void *(  *theme_scalar_dtor_fn)(void *self, unsigned int flags);
+typedef void *(*theme_scalar_dtor_fn)(void *self, unsigned int flags);
 
 static void delete_via_vtable(void *obj)
 {
@@ -530,15 +524,11 @@ private:
 
     static ThemeLevelObject *recordAt(ThemeObjectTypeSlot *s, int i)
     {
-        return reinterpret_cast<ThemeLevelObject *>(
-            reinterpret_cast<BYTE *>(s) + offsetof(ThemeObjectTypeSlot, records_)
-            + i * (int)sizeof(ThemeLevelObject));
+        return s->records() + i;
     }
     static SceneSubObject *subObjectAt(ThemeLevelObject *r, int i)
     {
-        return reinterpret_cast<SceneSubObject *>(
-            reinterpret_cast<BYTE *>(r) + offsetof(ThemeLevelObject, pSubObjects_)
-            + i * (int)sizeof(SceneSubObject));
+        return r->subObjects() + i;
     }
 
     SceneTexture *loadTexture(char *name, char *alphaTok)
@@ -977,8 +967,6 @@ bool ThemeAssetBlock::load(Game *game, RenderDevice *d3d, char *path,
     log_write("theme: %s %s in %.2f ms\n", path, ok ? "loaded" : "NOT opened", ms);
     return ok;
 }
-
- 
 
 /* The theme sound table's lifecycle.  ReleaseAll clears the name and the
  * enabled flag of all 100 entries between two log lines, leaving the other

@@ -35,14 +35,14 @@ enum ThemeObjectKind : DWORD {
 
 /* A short-lived particle burst: a position, the milliseconds left and whether
  * it is live. */
-struct __attribute__((packed)) FxBurst {
+struct FxBurst {
     float pos[3];
     int   msLeft;  // 1000 at spawn
     BYTE  active;
 };
 
 /* One `model`, `field`, `billboard` or `particlesystem` entry. */
-class __attribute__((packed)) ThemeLevelObject {
+class ThemeLevelObject {
 public:
      
 
@@ -154,7 +154,7 @@ private:
      
 };
 
-class __attribute__((packed)) ThemeObjectTypeSlot {
+class ThemeObjectTypeSlot {
 public:
      
 
@@ -211,7 +211,7 @@ enum ThemeImageSlot {
     THEME_IMG_COUNT
 };
 
-struct __attribute__((packed)) ThemeTextColorPair {
+struct ThemeTextColorPair {
     DWORD color1;
     DWORD color2;
 };
@@ -230,7 +230,7 @@ enum ThemeTextColorSlot {
     THEME_COLOR_COUNT
 };
 
-class __attribute__((packed)) ThemeAssetBlock {
+class ThemeAssetBlock {
 public:
      
 

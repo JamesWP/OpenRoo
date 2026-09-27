@@ -293,7 +293,7 @@ int Game::loadGameFile(const char *name)
 void Game::releaseAllSounds()
 {
     SoundManager *sm = soundManager();
-    if (soundCreated_ != 0) {
+    if (soundCreated() != 0) {
         Player *p = player();
         CStaticSoundbuffer *statics1[] = {
             fixedSounds_.timeOut, fixedSounds_.lastSeconds,

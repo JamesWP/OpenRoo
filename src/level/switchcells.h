@@ -7,13 +7,13 @@
  
 
 /* One cell: its grid position.  The third byte is never used. */
-struct __attribute__((packed)) SwitchCell {
+struct SwitchCell {
     unsigned char u;
     unsigned char v;
     unsigned char field_2;
 };
 
-class __attribute__((packed)) SwitchCells {
+class SwitchCells {
 public:
     static const int ORIGIN   = 0;
     static const int SWITCHES = 256;

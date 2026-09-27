@@ -491,7 +491,7 @@ static void *const g_PlayerVtable[1] = { (void *)&Player::scalarDeletingDtor };
 void Player::construct()
 {
     populateBaseForGame();
-    ((LinkedList *)effectList_)->init();
+    ((LinkedList *)&effectList_)->init();
     vtable_  = g_PlayerVtable;
     pool_9f_ = NULL;
     memset(pickupSounds_, 0, sizeof(pickupSounds_));
@@ -520,7 +520,7 @@ void Player::destruct()
         pathfinder_->dispose();
         free(pathfinder_);
     }
-    ((LinkedList *)effectList_)->destruct();
+    ((LinkedList *)&effectList_)->destruct();
     destroyBaseForGame();
 }
 

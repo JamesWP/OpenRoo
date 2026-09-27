@@ -386,11 +386,6 @@ void LevelPlacements::initTileQuad()
     }
 }
 
-/* The block is packed but 4-aligned in memory; its head is the quad the scene
- * renderer animates. */
- 
- 
-
 /* The lift and slide passes.  Counts compare unsigned.  The block itself is
  * passed as the scene renderer's quad: tileQuad heads it. */
 void LevelPlacements::drawLifts(Game *g, ThemeAssetBlock *theme,
@@ -425,4 +420,3 @@ void LevelPlacements::drawSlides(Game *g, ThemeAssetBlock *theme,
                              slides_.count_, theme->slot(THEME_OBJ_PLATFORM),
                              d3d, now, animTime, 0x14, 0);
 }
- 
