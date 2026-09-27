@@ -425,7 +425,7 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
 
     if ((unsigned long)mode3d != self->dwMode3D_) {
         ++g_setupModeChange;
-        if (!CFaktSound_Create3DListener(self->cfaktSound(), mode3d))
+        if (!self->cfaktSound()->create3DListener(mode3d))
             return 0;
 
         for (NamedEntry *n = self->entries3D_.head(); n != NULL; ) {
@@ -563,7 +563,7 @@ extern "C" {
 __declspec(dllexport) SoundManager *__attribute__((thiscall))
 SoundMgr_Construct(SoundManager *self)
 {
-    CFaktSound_BlankFields(self->cfaktSound());
+    self->cfaktSound()->blankFields();
     self->entriesPlain_.construct();
     self->entries3D_.construct();
     self->logger_           = NULL;
@@ -583,7 +583,7 @@ SoundMgr_PurgeAssets(SoundManager *self)
 {
     purge_list(&self->entriesPlain_);
     purge_list(&self->entries3D_);
-    CFaktSound_ReleaseComRefs(self->cfaktSound());
+    self->cfaktSound()->releaseComRefs();
     if (self->ownsLogger_ != 0 && self->logger_ != NULL) {
         typedef void *(__attribute__((thiscall)) *ScalarDtor)(void *, int);
         (*(ScalarDtor *)*(void **)self->logger_)(self->logger_, 1);
@@ -603,7 +603,7 @@ SoundMgr_Destruct(SoundManager *self)
     SoundMgr_PurgeAssets(self);
     self->entries3D_.dtorBody();
     self->entriesPlain_.dtorBody();
-    CFaktSound_ClearState(self->cfaktSound());
+    self->cfaktSound()->clearState();
 }
 
 /* Reached only through the vtable; the manager is embedded in the Game, so
@@ -635,10 +635,10 @@ SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
     }
     // enable3d is tested and stored as a whole word.
     int ok = enable3d == 0
-        ? CFaktSound_Initialize(self->cfaktSound(), window, bufferflags,
+        ? self->cfaktSound()->initialize(window, bufferflags,
                                 channels, samplespersec, bitspersample,
                                 self->logger_)
-        : CFaktSound_InitializeWith3DAudio(self->cfaktSound(), window,
+        : self->cfaktSound()->initializeWith3DAudio(window,
                                 bufferflags, channels, samplespersec,
                                 bitspersample, self->logger_);
     if (ok == 0)

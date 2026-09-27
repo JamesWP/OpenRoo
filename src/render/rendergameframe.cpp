@@ -134,9 +134,9 @@ static void update_listener(Game *g)
     }
 
     CFaktSound *snd = g->soundManager()->cfaktSound();
-    CFaktSound_SetPosition(snd, (vec3d *)cam->eye, 1);
-    CFaktSound_SetOrientation(snd, &front, &top, 1);
-    CFaktSound_CommitSettings(snd);
+    snd->setPosition((vec3d *)cam->eye, 1);
+    snd->setOrientation(&front, &top, 1);
+    snd->commitSettings();
 }
 
 /* ─── Section 3: the opaque passes ──────────────────────────────────────── */

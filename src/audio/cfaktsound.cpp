@@ -5,52 +5,47 @@
 #include "cfaktsound.h"
 #include "log.h"
 
-static void CFaktSound_ReleaseComRefs_impl(CFaktSound *self);
-static int  CFaktSound_Initialize_impl(CFaktSound *self, HWND window,
-                                       UINT bufferflags, short channels,
-                                       int samplespersec, USHORT bitspersample,
-                                       void *logger);
-
-static void CFaktSound_BlankFields_impl(CFaktSound *self)
+void CFaktSound::blankFields()
 {
-    memset(self, 0, sizeof(*self));
-    self->vtable = const_cast<void*>(CFAKTSOUND_VTABLE);
+    memset(this, 0, sizeof(*this));
+    vtable_ = const_cast<void*>(CFAKTSOUND_VTABLE);
 }
 
-static CFaktSound *CFaktSound_ScalarDeletingDtor_impl(CFaktSound *self, DWORD )
+CFaktSound *__attribute__((thiscall))
+CFaktSound::scalarDeletingDtor(CFaktSound *self, DWORD )
 {
     // Always embedded: the free flag is ignored.
-    CFaktSound_ReleaseComRefs_impl(self);
-    self->vtable = const_cast<void*>(CFAKTSOUND_VTABLE);
+    self->releaseComRefs();
+    self->vtable_ = const_cast<void*>(CFAKTSOUND_VTABLE);
     return self;
 }
 
-static void CFaktSound_ClearState_impl(CFaktSound *self)
+void CFaktSound::clearState()
 {
-    self->vtable = const_cast<void*>(CFAKTSOUND_VTABLE);
-    CFaktSound_ReleaseComRefs_impl(self);
+    vtable_ = const_cast<void*>(CFAKTSOUND_VTABLE);
+    releaseComRefs();
 }
 
-static void CFaktSound_ReleaseComRefs_impl(CFaktSound *self)
+void CFaktSound::releaseComRefs()
 {
-    if (self->directsound3dlistener) {
-        self->directsound3dlistener->Release();
-        self->directsound3dlistener = NULL;
+    if (directsound3dlistener_) {
+        directsound3dlistener_->Release();
+        directsound3dlistener_ = NULL;
     }
-    if (self->soundbuffer) {
-        self->soundbuffer->Release();
-        self->soundbuffer = NULL;
+    if (soundbuffer_) {
+        soundbuffer_->Release();
+        soundbuffer_ = NULL;
     }
-    if (self->directsound) {
-        self->directsound->Release();
-        self->directsound = NULL;
+    if (directsound_) {
+        directsound_->Release();
+        directsound_ = NULL;
     }
     // The logger is never owned, so both fields are simply cleared.
-    self->logger_initialized = 0;
-    self->logger = NULL;
+    logger_initialized_ = 0;
+    logger_ = NULL;
 }
 
-static int CFaktSound_Initialize_impl(CFaktSound *self, HWND window,
+int CFaktSound::initialize(HWND window,
                                       UINT bufferflags, short channels,
                                       int samplespersec, USHORT bitspersample,
                                       void *logger)
@@ -59,21 +54,21 @@ static int CFaktSound_Initialize_impl(CFaktSound *self, HWND window,
               (void*)window, (unsigned long)bufferflags,
               (int)channels, samplespersec, (int)bitspersample);
 
-    CFaktSound_ReleaseComRefs_impl(self);
+    releaseComRefs();
 
-    self->logger = logger;
+    logger_ = logger;
 
     HMODULE hDSound = GetModuleHandleA("dsound.dll");
     log_write("CFaktSound::Initialize: dsound.dll loaded at %p\n", (void*)hDSound);
 
-    HRESULT hr = DirectSoundCreate(NULL, &self->directsound, NULL);
+    HRESULT hr = DirectSoundCreate(NULL, &directsound_, NULL);
     if (FAILED(hr)) {
         log_write("CFaktSound::Initialize: DirectSoundCreate failed hr=0x%lx\n",
                   (unsigned long)hr);
         goto fail;
     }
 
-    hr = self->directsound->SetCooperativeLevel(window, DSSCL_PRIORITY);
+    hr = directsound_->SetCooperativeLevel(window, DSSCL_PRIORITY);
     if (FAILED(hr)) {
         log_write("CFaktSound::Initialize: SetCooperativeLevel failed hr=0x%lx\n",
                   (unsigned long)hr);
@@ -87,7 +82,7 @@ static int CFaktSound_Initialize_impl(CFaktSound *self, HWND window,
         desc.dwBufferBytes = 0;
         desc.lpwfxFormat   = NULL;
 
-        hr = self->directsound->CreateSoundBuffer(&desc, &self->soundbuffer, NULL);
+        hr = directsound_->CreateSoundBuffer(&desc, &soundbuffer_, NULL);
         if (FAILED(hr)) {
             log_write("CFaktSound::Initialize: CreateSoundBuffer (primary) failed hr=0x%lx\n",
                       (unsigned long)hr);
@@ -104,49 +99,49 @@ static int CFaktSound_Initialize_impl(CFaktSound *self, HWND window,
         wfx.nBlockAlign     = (WORD)((bitspersample >> 3) * channels);
         wfx.nAvgBytesPerSec = wfx.nBlockAlign * (DWORD)samplespersec;
         wfx.cbSize          = 0;
-        hr = self->soundbuffer->SetFormat(&wfx);
+        hr = soundbuffer_->SetFormat(&wfx);
         if (FAILED(hr))
             log_write("CFaktSound::Initialize: SetFormat failed hr=0x%lx (continuing)\n",
                       (unsigned long)hr);
     }
 
     {
-        self->caps_check.dwSize = sizeof(DSCAPS);
-        hr = self->directsound->GetCaps(&self->caps_check);
+        caps_check_.dwSize = sizeof(DSCAPS);
+        hr = directsound_->GetCaps(&caps_check_);
         if (FAILED(hr))
             log_write("CFaktSound::Initialize: GetCaps failed hr=0x%lx (continuing)\n",
                       (unsigned long)hr);
     }
 
     // The primary buffer plays for as long as the device lives.
-    self->soundbuffer->Play(0, 0, DSBPLAY_LOOPING);
+    soundbuffer_->Play(0, 0, DSBPLAY_LOOPING);
     log_write("CFaktSound::Initialize: OK\n");
     return 1;
 
 fail:
-    CFaktSound_ReleaseComRefs_impl(self);
+    releaseComRefs();
     return 0;
 }
 
-static int CFaktSound_InitializeWith3DAudio_impl(CFaktSound *self, HWND window,
+int CFaktSound::initializeWith3DAudio(HWND window,
                                                  UINT bufferflags, short channels,
                                                  int samplespersec, USHORT bitspersample,
                                                  void *logger)
 {
     log_write("CFaktSound::InitializeWith3DAudio\n");
 
-    int ok = CFaktSound_Initialize_impl(self, window,
+    int ok = initialize(window,
                                         bufferflags | DSBCAPS_CTRL3D,
                                         channels, samplespersec, bitspersample, logger);
     if (!ok) return 0;
 
     GUID iid = IID_IDirectSound3DListener;
-    HRESULT hr = self->soundbuffer->QueryInterface(iid,
-                     (void**)&self->directsound3dlistener);
+    HRESULT hr = soundbuffer_->QueryInterface(iid,
+                     (void**)&directsound3dlistener_);
     if (FAILED(hr)) {
         log_write("CFaktSound::InitializeWith3DAudio: QueryInterface 3DListener failed hr=0x%lx\n",
                   (unsigned long)hr);
-        CFaktSound_ReleaseComRefs_impl(self);
+        releaseComRefs();
         return 0;
     }
 
@@ -154,116 +149,58 @@ static int CFaktSound_InitializeWith3DAudio_impl(CFaktSound *self, HWND window,
     return 1;
 }
 
-static int CFaktSound_Create3DListener_impl(CFaktSound *self, int enable)
+int CFaktSound::create3DListener(int enable)
 {
     if (enable) {
-        if (self->directsound3dlistener) return 1;
-        if (!self->soundbuffer) return 0;
+        if (directsound3dlistener_) return 1;
+        if (!soundbuffer_) return 0;
         GUID iid = IID_IDirectSound3DListener;
-        HRESULT hr = self->soundbuffer->QueryInterface(iid,
-                         (void**)&self->directsound3dlistener);
+        HRESULT hr = soundbuffer_->QueryInterface(iid,
+                         (void**)&directsound3dlistener_);
         if (FAILED(hr)) {
             log_write("CFaktSound::Create3DListener: QueryInterface failed hr=0x%lx\n",
                       (unsigned long)hr);
-            CFaktSound_ReleaseComRefs_impl(self);
+            releaseComRefs();
             return 0;
         }
     } else {
-        if (self->directsound3dlistener) {
-            self->directsound3dlistener->Release();
-            self->directsound3dlistener = NULL;
+        if (directsound3dlistener_) {
+            directsound3dlistener_->Release();
+            directsound3dlistener_ = NULL;
         }
     }
     return 1;
 }
 
-static void CFaktSound_CommitSettings_impl(CFaktSound *self)
+void CFaktSound::commitSettings()
 {
-    if (self->directsound3dlistener)
-        self->directsound3dlistener->CommitDeferredSettings();
+    if (directsound3dlistener_)
+        directsound3dlistener_->CommitDeferredSettings();
 }
 
-static void CFaktSound_SetPosition_impl(CFaktSound *self, vec3d *pos, DWORD dwApply)
+void CFaktSound::setPosition(vec3d *pos, DWORD dwApply)
 {
-    if (self->directsound3dlistener)
-        self->directsound3dlistener->SetPosition(
+    if (directsound3dlistener_)
+        directsound3dlistener_->SetPosition(
             pos->x, pos->y, pos->z, dwApply);
 }
 
-static void CFaktSound_SetOrientation_impl(CFaktSound *self,
-                                           vec3d *front, vec3d *top, DWORD dwApply)
+void CFaktSound::setOrientation(vec3d *front, vec3d *top, DWORD dwApply)
 {
-    if (self->directsound3dlistener)
-        self->directsound3dlistener->SetOrientation(
+    if (directsound3dlistener_)
+        directsound3dlistener_->SetOrientation(
             front->x, front->y, front->z,
             top->x,   top->y,   top->z,
             dwApply);
 }
 
-static void CFaktSound_Apply3DRolloffParams_impl(CFaktSound *self,
-                                                 float rolloff_factor, DWORD dwApply)
+void CFaktSound::apply3DRolloffParams(float rolloff_factor, DWORD dwApply)
 {
-    if (self->directsound3dlistener)
-        self->directsound3dlistener->SetRolloffFactor(rolloff_factor, dwApply);
-}
-
-extern "C" {
-
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_BlankFields(CFaktSound *self)
-    { CFaktSound_BlankFields_impl(self); }
-
-__declspec(dllexport) CFaktSound * __attribute__((thiscall))
-CFaktSound_ScalarDeletingDtor(CFaktSound *self, DWORD free_memory)
-    { return CFaktSound_ScalarDeletingDtor_impl(self, free_memory); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_ClearState(CFaktSound *self)
-    { CFaktSound_ClearState_impl(self); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_ReleaseComRefs(CFaktSound *self)
-    { CFaktSound_ReleaseComRefs_impl(self); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-CFaktSound_Initialize(CFaktSound *self, HWND window,
-                      UINT bufferflags, short channels,
-                      int samplespersec, USHORT bitspersample,
-                      void *logger)
-    { return CFaktSound_Initialize_impl(self, window, bufferflags,
-                                        channels, samplespersec, bitspersample, logger); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-CFaktSound_InitializeWith3DAudio(CFaktSound *self, HWND window,
-                                 UINT bufferflags, short channels,
-                                 int samplespersec, USHORT bitspersample,
-                                 void *logger)
-    { return CFaktSound_InitializeWith3DAudio_impl(self, window, bufferflags,
-                                                   channels, samplespersec, bitspersample, logger); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-CFaktSound_Create3DListener(CFaktSound *self, int enable)
-    { return CFaktSound_Create3DListener_impl(self, enable); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_CommitSettings(CFaktSound *self)
-    { CFaktSound_CommitSettings_impl(self); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_SetPosition(CFaktSound *self, vec3d *pos, DWORD dwApply)
-    { CFaktSound_SetPosition_impl(self, pos, dwApply); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_SetOrientation(CFaktSound *self, vec3d *front, vec3d *top, DWORD dwApply)
-    { CFaktSound_SetOrientation_impl(self, front, top, dwApply); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_Apply3DRolloffParams(CFaktSound *self, float rolloff_factor, DWORD dwApply)
-    { CFaktSound_Apply3DRolloffParams_impl(self, rolloff_factor, dwApply); }
-
+    if (directsound3dlistener_)
+        directsound3dlistener_->SetRolloffFactor(rolloff_factor, dwApply);
 }
 
 static void *const cfaktsound_vtable_slots[1] = {
-    (void *)&CFaktSound_ScalarDeletingDtor,
+    (void *)&CFaktSound::scalarDeletingDtor,
 };
 extern const void *const CFAKTSOUND_VTABLE = cfaktsound_vtable_slots;
