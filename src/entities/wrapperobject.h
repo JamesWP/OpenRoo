@@ -61,6 +61,13 @@ public:
 
     CFaktMesh *mesh() const { return pMesh_; }
 
+    /* The vtable, installed by the ctor and the dtor body. */
+    static void *vtbl();
+
+    /* Vtable slot 0.  Returns self; bit 0 of flags frees. */
+    static void *__attribute__((thiscall))
+    scalarDtor(WrapperObject *self, unsigned int flags);
+
 private:
     KAROO_LAYOUT_REGISTER(WrapperObject);
 
@@ -70,13 +77,3 @@ private:
     BYTE       dirty_;    // +0x0c  set by the three animating modes
 };
 
-extern "C" {
-
-/* The vtable, installed by the ctor and the dtor body. */
-__declspec(dllexport) void *Wrapper_Vtable(void);
-
-/* Vtable slot 0.  Returns self; bit 0 of flags frees. */
-__declspec(dllexport) void *__attribute__((thiscall))
-Wrapper_ScalarDtor(WrapperObject *self, unsigned int flags);
-
-}
