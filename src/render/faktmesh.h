@@ -90,6 +90,8 @@ private:
 
 inline void CFaktMesh::checkLayout()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
     static_assert(offsetof(CFaktMesh, pVertexData_)   == 0x04, "CFaktMesh layout mismatch");
     static_assert(offsetof(CFaktMesh, dwVertexCount_) == 0x08, "CFaktMesh layout mismatch");
     static_assert(offsetof(CFaktMesh, pFrameRecords_) == 0x0c, "CFaktMesh layout mismatch");
@@ -101,6 +103,7 @@ inline void CFaktMesh::checkLayout()
     static_assert(offsetof(CFaktMesh, strided_[MESH_STRIDED_NORMAL].dwStride)   == 0x22, "strided");
     static_assert(offsetof(CFaktMesh, strided_[MESH_STRIDED_TEX0].dwStride)     == 0x3a, "strided");
     static_assert(offsetof(CFaktMesh, strided_[MESH_STRIDED_TEX1].dwStride)     == 0x42, "strided");
+#pragma GCC diagnostic pop
 }
 
 /* The two character meshes, loaded once at startup (renderstate.cpp):

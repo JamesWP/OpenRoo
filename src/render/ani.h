@@ -45,13 +45,13 @@ public:
 
     /* The clock form: the model has no movement states, so its single
      * walk_forward range runs continuously off the millisecond clock. */
-    int frameOnClock(double timeMs) const;
+    static int frameOnClock(const AnimSlot *slot, double timeMs);
 
     /* The phase form: the entity's own animation state supplies a phase in
      * [0,1] across the slot's range, forwards or (with "r") backwards.  No
      * shipped .ani sets the flag, so the reverse arm is dead for the shipped
      * content. */
-    int frameAtPhase(float phase) const;
+    static int frameAtPhase(const AnimSlot *slot, float phase);
 
     int firstFrame() const { return firstFrame_; }
     int numFrames() const { return numFrames_; }

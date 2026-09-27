@@ -50,10 +50,13 @@ private:
 
 inline void FaktMovie::checkLayout()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
     static_assert(offsetof(FaktMovie, state) == 0x110, "FaktMovie layout mismatch");
     static_assert(offsetof(FaktMovie, useColorKey) == 0x124, "FaktMovie layout mismatch");
     static_assert(offsetof(FaktMovie, colorKey) == 0x128, "FaktMovie layout mismatch");
     static_assert(offsetof(FaktMovie, notify_msg) == 0x138, "FaktMovie layout mismatch");
+#pragma GCC diagnostic pop
 }
 
 extern void *const g_faktMovieVtable[1];

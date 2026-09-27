@@ -55,11 +55,14 @@ private:
 
 inline void GameLogger::checkLayout()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
     static_assert(offsetof(GameLogger, minLevel_)     == 0x004, "minLevel");
     static_assert(offsetof(GameLogger, fileName_)     == 0x008, "fileName");
     static_assert(offsetof(GameLogger, fp_)           == 0x10c, "fp");
     static_assert(offsetof(GameLogger, notifyWParam_) == 0x110, "notifyWParam");
     static_assert(offsetof(GameLogger, notifyHwnd_)   == 0x114, "notifyHwnd");
+#pragma GCC diagnostic pop
 }
 
 static_assert(sizeof(GameLogger) == 0x118, "must match operator new(0x118)");

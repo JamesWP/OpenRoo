@@ -69,10 +69,13 @@ private:
 
 inline void SkyBackground::checkLayout()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
     static_assert(offsetof(SkyBackground, flYawAngle_)  == 0x004, "SkyBackground layout");
     static_assert(offsetof(SkyBackground, Textures_)    == 0x008, "SkyBackground layout");
     static_assert(offsetof(SkyBackground, QuadVerts_)   == 0x0b0, "SkyBackground layout");
     static_assert(offsetof(SkyBackground, WorldMatrix_) == 0x3b0, "SkyBackground layout");
+#pragma GCC diagnostic pop
 }
 
 static_assert(sizeof(SkyBackground) == 0x3f0, "SkyBackground size mismatch");
