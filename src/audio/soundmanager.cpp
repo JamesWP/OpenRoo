@@ -381,7 +381,7 @@ VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
     doublesoundbuff *entry = (doublesoundbuff *)e->payload();
 
     VoicePool *pool = NULL;
-    VoicePool *raw  = (VoicePool *)malloc(0x14);
+    VoicePool *raw  = (VoicePool *)malloc(sizeof(VoicePool));
     if (raw != NULL)
         pool = raw->blank();
 
@@ -598,7 +598,7 @@ int SoundManager::init(int enable3d, HWND window,
     purgeAssets();
     logger_ = logger;
     if (logger == NULL) {
-        GameLogger *own = (GameLogger *)malloc(0x118);
+        GameLogger *own = (GameLogger *)malloc(sizeof(GameLogger));
         if (own != NULL)
             own = (GameLogger *)own->initialize(GS_SOUNDMGR_LOG_NAME, NULL);
         logger_     = own;

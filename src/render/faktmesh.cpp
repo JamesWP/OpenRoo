@@ -21,7 +21,7 @@ CFaktMesh g_meshPlayer;
 
 #define MESH_FVF        VertexFormat::Normal2  // XYZ | NORMAL | TEX2
 #define MESH_LOG_FIRST  8
-#define MDL_VERTEX_STRIDE 0x28
+#define MDL_VERTEX_STRIDE sizeof(MeshVertex)
 
 static bool fx_half(void)
 {
@@ -60,8 +60,8 @@ HRESULT CFaktMesh::drawMesh(RenderDevice *dev, DWORD frame,
     frame &= 0xffff;
     if (frame >= wFrameCount_)
         frame = 0;
-    void *verts = (char *)pVertexData_ + frame * dwVertexCount_ * 0x28;
-    DWORD count = dwVertexCount_;
+    MeshVertex *verts = (MeshVertex *)this->vertexData() + frame * this->vertexCount();
+    DWORD count = this->vertexCount();
     if (fx_half())
         count = (count / 2 / 3) * 3;  // keep it a whole number of triangles
 

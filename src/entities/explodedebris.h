@@ -10,13 +10,12 @@
 #pragma once
 
 #include <windows.h>
+#include "faktmesh.h"
  
 class RenderDevice;
 
 class __attribute__((packed)) ExplodeDebris {
 public:
-     
-
     /* The one-slot vtable, installed by the ctor and the dtor body. */
     static void *vtbl();
 
@@ -67,8 +66,8 @@ private:
     float *debrisVelocity(int tri);
 
     void         *vtable_;                // +0x00  the one-slot vtable
-    void         *pVertexCopy_;           // +0x04  nVertexCount * 0x28 (FVF 0x212)
-    void         *pFaceRecords_;  // +0x08  a velocity per triangle, (nVertexCount / 3) * 0xc
+    MeshVertex   *pVertexCopy_;           // +0x04  nVertexCount * 0x28 (FVF 0x212)
+    float       (*pFaceRecords_)[3];      // +0x08  a velocity per triangle, (nVertexCount / 3) * 0xc
     int           nVertexCount_;          // +0x0c  as it was when the buffers were built
     DWORD         bActive_;               // +0x10  set by begin; cleared by the ctor and release
     float         samples_[30];  // +0x14  Gaussian speeds, mu 2.0, sigma 1.0; refilled whole

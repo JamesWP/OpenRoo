@@ -21,8 +21,15 @@ class RenderDevice;
  * texCoords[1] to 0x28 -- the four components of the mesh FVF 0x212
  * (XYZ | NORMAL | TEX2) -- and nothing else.  Nothing draws through it.
  */
-/* The four strided entries the constructor gives a stride: position, normal,
- * textureCoords[0] and textureCoords[1] -- indices 0, 1, 4 and 5. */
+/* One FVF 0x212 vertex: position, normal, two texture-coordinate sets. */
+struct MeshVertex {
+    float pos[3];
+    float normal[3];
+    float uv0[2];
+    float uv1[2];
+};
+static_assert(sizeof(MeshVertex) == 0x28, "MeshVertex is the FVF 0x212 stride");
+
 #define MESH_STRIDED_POSITION 0
 #define MESH_STRIDED_NORMAL   1
 #define MESH_STRIDED_TEX0     4
