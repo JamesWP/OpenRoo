@@ -54,8 +54,7 @@ static void model_release(CFaktMesh *m)
     FaktMesh_ReleaseModelBuffers(m);
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Model_ImportSceneModels(CFaktMesh *self, const char *path)
+int Model_ImportSceneModels(CFaktMesh *self, const char *path)
 {
     FILE *fp;
     unsigned frames, verts, total;
@@ -162,7 +161,7 @@ static void mm_lower_inplace(char *s)
             *s += ' ';
 }
 
-typedef void *(__attribute__((thiscall)) *mm_scalar_dtor_fn)(void *self, unsigned int flags);
+typedef void *(*mm_scalar_dtor_fn)(void *self, unsigned int flags);
 
 static void mm_delete(CFaktMesh *m)
 {
@@ -170,8 +169,7 @@ static void mm_delete(CFaktMesh *m)
     dtor(m, 1);
 }
 
-extern "C" __declspec(dllexport) CFaktMesh *__attribute__((thiscall))
-ModelManager_FindOrImport(ModelManager *self, char *name)
+CFaktMesh *ModelManager_FindOrImport(ModelManager *self, char *name)
 {
     for (LinkedListNode *node = self->cache.pHead; node != NULL; ) {
         CFaktMesh *cached = (CFaktMesh *)node->pValue;
@@ -200,8 +198,7 @@ ModelManager_FindOrImport(ModelManager *self, char *name)
     return mesh;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ModelManager_ClearReleaseFree(ModelManager *self)
+void ModelManager_ClearReleaseFree(ModelManager *self)
 {
     for (LinkedListNode *node = self->cache.pHead; node != NULL; ) {
         CFaktMesh *mesh = (CFaktMesh *)node->pValue;
@@ -220,8 +217,7 @@ ModelManager_ClearReleaseFree(ModelManager *self)
  * dtor's free is never reached. */
 static void *const g_ModelManagerVtable[1] = { (void *)&ModelManager_ScalarDestructor };
 
-extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
-ModelManager_Construct(ModelManager *self)
+ModelManager *ModelManager_Construct(ModelManager *self)
 {
     List_Init(&self->cache);
     self->vtable  = (void *)g_ModelManagerVtable;
@@ -229,14 +225,13 @@ ModelManager_Construct(ModelManager *self)
     return self;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ModelManager_Destruct(ModelManager *self)
+void ModelManager_Destruct(ModelManager *self)
 {
     self->vtable = (void *)g_ModelManagerVtable;
     List_Destruct(&self->cache);
 }
 
-extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
+ModelManager *
 ModelManager_ScalarDestructor(ModelManager *self, unsigned char flags)
 {
     ModelManager_Destruct(self);

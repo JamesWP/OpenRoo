@@ -84,8 +84,7 @@ static QuadFxMode quad_fx(void)
     return (QuadFxMode)cached;
 }
 
-extern "C" __declspec(dllexport) void __cdecl
-QuadBatch_Draw(QuadVerts *verts, void *game, RenderDevice *d3d)
+void QuadBatch_Draw(QuadVerts *verts, void *game, RenderDevice *d3d)
 {
     DWORD nobj = *(DWORD *)((BYTE *)game + GAME_OFF_QUAD_COUNT);
     if (nobj == 0)

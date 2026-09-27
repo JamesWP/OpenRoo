@@ -18,18 +18,16 @@
 #include <math.h>
 #include "renderdevice.h"
 
-extern "C" {
 
 static void *const g_ExplodeDebrisVtable[1] = { (void *)&ExplodeDebris_ScalarDtor };
 
-__declspec(dllexport) void *ExplodeDebris_Vtable(void)
+void *ExplodeDebris_Vtable(void)
 {
     return (void *)g_ExplodeDebrisVtable;
 }
 
 /* Guarded frees, then three of the four stores. */
-__declspec(dllexport) void __attribute__((thiscall))
-ExplodeDebris_Release(ExplodeDebris *self)
+void ExplodeDebris_Release(ExplodeDebris *self)
 {
     if (self->pVertexCopy)
         free(self->pVertexCopy);
@@ -46,8 +44,7 @@ ExplodeDebris_Release(ExplodeDebris *self)
  * allocation is checked before the zeroing after the second; the vertex buffer
  * is zeroed twice, the second time as (n*5 & 0x1fffffff)*2 dwords, which is
  * n*10 only while n*5 fits in 29 bits. */
-__declspec(dllexport) void __attribute__((thiscall))
-ExplodeDebris_AllocateExplodeBuffers(ExplodeDebris *self, CFaktMesh *mesh)
+void ExplodeDebris_AllocateExplodeBuffers(ExplodeDebris *self, CFaktMesh *mesh)
 {
     ExplodeDebris_Release(self);
 
@@ -63,16 +60,14 @@ ExplodeDebris_AllocateExplodeBuffers(ExplodeDebris *self, CFaktMesh *mesh)
 }
 
 /* The drop rate: the count, converted unsigned, times arg / 300. */
-__declspec(dllexport) void __attribute__((thiscall))
-ExplodeDebris_StoreExplodeScaledCount(ExplodeDebris *self, float scale)
+void ExplodeDebris_StoreExplodeScaledCount(ExplodeDebris *self, float scale)
 {
     const float kOneOver300 = 1.0f / 300.0f;
     self->flExplodeScaledCount = (float)(DWORD)self->nVertexCount * scale * kOneOver300;
 }
 
 /* The stores in a fixed order, then the table seed. */
-__declspec(dllexport) ExplodeDebris *__attribute__((thiscall))
-ExplodeDebris_Construct(ExplodeDebris *self)
+ExplodeDebris *ExplodeDebris_Construct(ExplodeDebris *self)
 {
     self->vtable       = ExplodeDebris_Vtable();
     self->pVertexCopy  = NULL;
@@ -87,8 +82,7 @@ ExplodeDebris_Construct(ExplodeDebris *self)
 }
 
 /* Re-install the vtable, then release. */
-__declspec(dllexport) void __attribute__((thiscall))
-ExplodeDebris_DtorBody(ExplodeDebris *self)
+void ExplodeDebris_DtorBody(ExplodeDebris *self)
 {
     self->vtable = ExplodeDebris_Vtable();
     ExplodeDebris_Release(self);
@@ -96,8 +90,7 @@ ExplodeDebris_DtorBody(ExplodeDebris *self)
 
 /* Vtable slot 0.  Every ExplodeDebris is embedded in a larger object, so bit 0
  * is never set and this path is not exercised. */
-__declspec(dllexport) void *__attribute__((thiscall))
-ExplodeDebris_ScalarDtor(ExplodeDebris *self, unsigned int flags)
+void *ExplodeDebris_ScalarDtor(ExplodeDebris *self, unsigned int flags)
 {
     ExplodeDebris_DtorBody(self);
     if (flags & 1)
@@ -119,9 +112,8 @@ static float *debris_velocity(ExplodeDebris *self, int tri)
     return (float *)((BYTE *)self->pFaceRecords + tri * 0xc);
 }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ExplodeDebris_Begin(ExplodeDebris *self, CFaktMesh *mesh,
-                    unsigned short frame, const float *origin)
+int ExplodeDebris_Begin(ExplodeDebris *self, CFaktMesh *mesh,
+                        unsigned short frame, const float *origin)
 {
     if (frame >= mesh->wFrameCount)
         return 0;
@@ -161,8 +153,7 @@ ExplodeDebris_Begin(ExplodeDebris *self, CFaktMesh *mesh,
     return 1;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-ExplodeDebris_Advance(ExplodeDebris *self, float dt)
+void ExplodeDebris_Advance(ExplodeDebris *self, float dt)
 {
     if (self->bActive == 0 || self->nLiveVertices <= 0)
         return;
@@ -183,8 +174,7 @@ ExplodeDebris_Advance(ExplodeDebris *self, float dt)
         self->nLiveVertices = 0;
 }
 
-__declspec(dllexport) HRESULT __attribute__((thiscall))
-ExplodeDebris_Draw(ExplodeDebris *self, RenderDevice *dev)
+HRESULT ExplodeDebris_Draw(ExplodeDebris *self, RenderDevice *dev)
 {
     if (self->bActive == 0)
         return (HRESULT)0x800401f0;  // CO_E_NOTINITIALIZED
@@ -201,4 +191,3 @@ ExplodeDebris_Draw(ExplodeDebris *self, RenderDevice *dev)
     return 0;
 }
 
-}

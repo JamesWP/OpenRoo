@@ -52,34 +52,27 @@ static_assert(offsetof(CStreamSoundbuffer, cs)           == 0xba,  "cs offset");
 static_assert(sizeof(CStreamSoundbuffer)                 == 0xD4,  "CStreamSoundbuffer size");
 
 /* The one-slot vtable: the scalar deleting destructor. */
-extern "C" __declspec(dllexport) void *CStream_Vtable(void);
+void *CStream_Vtable(void);
 
 /* The deinit, then free() when bit 0 of flags is set; returns self. */
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
+void *CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
 
 /* Releases everything, as CStream_ReleaseResources, and deletes the lock. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStream_DeinitInstance(CStreamSoundbuffer *self);
+void CStream_DeinitInstance(CStreamSoundbuffer *self);
 
 /* Zeroes the object, sets its vtable and lock, and marks it done; returns
  * self. */
-extern "C" __declspec(dllexport) CStreamSoundbuffer * __attribute__((thiscall))
-CStream_Initialize(CStreamSoundbuffer *self);
+CStreamSoundbuffer *CStream_Initialize(CStreamSoundbuffer *self);
 
 /* Releases any earlier file, then loads wi's WAV file into a new buffer.
  * Returns nonzero on success. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStream_Prepare(CStreamSoundbuffer *self, WaveInfo *wi);
+int CStream_Prepare(CStreamSoundbuffer *self, WaveInfo *wi);
 
 /* Plays from the start and starts the watcher thread. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStream_Play(CStreamSoundbuffer *self);
+void CStream_Play(CStreamSoundbuffer *self);
 
 /* Stops playback and the watcher. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStream_Stop(CStreamSoundbuffer *self);
+void CStream_Stop(CStreamSoundbuffer *self);
 
 /* Stops, then releases the buffer, the stop event and the file name. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStream_ReleaseResources(CStreamSoundbuffer *self);
+void CStream_ReleaseResources(CStreamSoundbuffer *self);

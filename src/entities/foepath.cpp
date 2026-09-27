@@ -241,8 +241,7 @@ int FoePath::passable(int u, int v)
     return 1;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_CheckPathCellPassable(FoePath *self, int u, int v)
+int Sim_CheckPathCellPassable(FoePath *self, int u, int v)
 {
     return self->passable(u, v);
 }
@@ -257,8 +256,7 @@ int FoePath::cellKey(int u, int v)
     return stride * v + u;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_ComputeCellLinearIndex(FoePath *self, int u, int v)
+int Sim_ComputeCellLinearIndex(FoePath *self, int u, int v)
 {
     return self->cellKey(u, v);
 }
@@ -288,8 +286,7 @@ PathNode *FoePath::popBestOpen()
     return head;
 }
 
-extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
-Sim_PopBestOpenPathNode(FoePath *self)
+PathNode *Sim_PopBestOpenPathNode(FoePath *self)
 {
     return self->popBestOpen();
 }
@@ -339,8 +336,7 @@ void FoePath::releaseLists()
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ReleasePathSearchNodeLists(FoePath *self)
+void Sim_ReleasePathSearchNodeLists(FoePath *self)
 {
     self->releaseLists();
 }
@@ -381,8 +377,7 @@ void FoePath::dispose()
     free(pending_);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_DisposeFoePathSearchState(FoePath *self)
+void Sim_DisposeFoePathSearchState(FoePath *self)
 {
     self->dispose();
 }
@@ -413,14 +408,12 @@ PathNode *FoePath::findClosed(int key)
     return findByKey(closed_, key);
 }
 
-extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
-Sim_FindOpenPathNodeByKey(FoePath *self, int key)
+PathNode *Sim_FindOpenPathNodeByKey(FoePath *self, int key)
 {
     return self->findOpen(key);
 }
 
-extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
-Sim_FindClosedPathNodeByKey(FoePath *self, int key)
+PathNode *Sim_FindClosedPathNodeByKey(FoePath *self, int key)
 {
     return self->findClosed(key);
 }
@@ -456,8 +449,7 @@ void FoePath::insertOpenByCost(PathNode *n)
     prev->next = n;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_InsertOpenPathNodeByCost(FoePath *self, PathNode *node)
+void Sim_InsertOpenPathNodeByCost(FoePath *self, PathNode *node)
 {
     self->insertOpenByCost(node);
 }
@@ -491,14 +483,12 @@ PathNode *FoePath::popPending()
     return node;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushPendingPathNode(FoePath *self, PathNode *node)
+void Sim_PushPendingPathNode(FoePath *self, PathNode *node)
 {
     self->pushPending(node);
 }
 
-extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
-Sim_PopPendingPathNode(FoePath *self)
+PathNode *Sim_PopPendingPathNode(FoePath *self)
 {
     return self->popPending();
 }
@@ -557,8 +547,7 @@ void FoePath::propagate(PathNode *p)
     diag_report();
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PropagateImprovedPathCosts(FoePath *self, PathNode *node)
+void Sim_PropagateImprovedPathCosts(FoePath *self, PathNode *node)
 {
     self->propagate(node);
 }
@@ -617,9 +606,8 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
     p->recordChild(n);  // recorded last here, unlike the two branches above
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RelaxPathNeighbourCell(FoePath *self, PathNode *parent, int u, int v,
-                           int goalU, int goalV)
+void Sim_RelaxPathNeighbourCell(FoePath *self, PathNode *parent, int u, int v,
+                                int goalU, int goalV)
 {
     self->relax(parent, u, v, goalU, goalV);
 }
@@ -629,7 +617,7 @@ Sim_RelaxPathNeighbourCell(FoePath *self, PathNode *parent, int u, int v,
  * bug in either: this result is compared against a ramp-orientation code, a
  * different enumeration from entity facing, and reconciling the two would
  * misclassify every ramp. */
-extern "C" __declspec(dllexport) int __attribute__((stdcall))
+int __attribute__((stdcall))
 Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
                              unsigned char u_to,   unsigned char v_to)
 {
@@ -657,7 +645,7 @@ Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
  * tests ORed together: a later clause can overwrite an earlier "legal" back to
  * "illegal" (the bridge and jump-pad blocks both do, on their failure path),
  * so reordering them changes the answer. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
+int
 Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned char v_from,
                          unsigned char u_to, unsigned char v_to)
 {
@@ -785,7 +773,7 @@ void FoePath::expand(PathNode *n, int goalU, int goalV)
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
+void
 Sim_ExpandPathNodeNeighbours(FoePath *self, PathNode *node, int goalU, int goalV)
 {
     self->expand(node, goalU, goalV);
@@ -852,7 +840,7 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
     return 0;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
+int
 Sim_SearchPathNodeGraph(FoePath *self, int uFoe, int vFoe, int uTarget, int vTarget)
 {
     return self->search(uFoe, vFoe, uTarget, vTarget);
@@ -888,9 +876,8 @@ int FoePath::find(int uFoe, int vFoe, int uTarget, int vTarget)
     return 0;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_FindFoePathBetweenCells(FoePath *self, int uFoe, int vFoe,
-                            int uTarget, int vTarget)
+int Sim_FindFoePathBetweenCells(FoePath *self, int uFoe, int vFoe,
+                                int uTarget, int vTarget)
 {
     return self->find(uFoe, vFoe, uTarget, vTarget);
 }

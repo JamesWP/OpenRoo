@@ -43,31 +43,23 @@ static_assert(offsetof(CDM, tracknumber)  == 0x15D, "CDM layout mismatch");
 /* The three-slot vtable: deleting destructor, track count, track length. */
 extern const void *const CDM_VTABLE;
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CDM_GetTrackCount(CDM *self);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CDM_GetTrackLength(CDM *self, char **out_ptr, int track);
+int CDM_GetTrackCount(CDM *self);
+int CDM_GetTrackLength(CDM *self, char **out_ptr, int track);
 
 /* The first mixer's volume value, or 0 with no mixer or on any error. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-CDM_GetMixerDetails(CDM *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_SetMixerVolume(CDM *self, DWORD level);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_StopTrack(CDM *self);
-extern "C" __declspec(dllexport) CDM * __attribute__((thiscall))
-CDM_ScalarDeletingDtor(CDM *self, unsigned int flags);
+unsigned int CDM_GetMixerDetails(CDM *self);
+void CDM_SetMixerVolume(CDM *self, DWORD level);
+void CDM_StopTrack(CDM *self);
+CDM *CDM_ScalarDeletingDtor(CDM *self, unsigned int flags);
 
 /* The window MM_MCINOTIFY is posted to. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_SetWindowHandle(CDM *self, HWND hwnd);
+void CDM_SetWindowHandle(CDM *self, HWND hwnd);
 
 /* Plays CD track 2..9, which is CDTracks\Track <track-1>.wav.  loop sets
  * repeat. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_PlayTrack(CDM *self, int track, bool loop);
+void CDM_PlayTrack(CDM *self, int track, bool loop);
 
 /* Construction and destruction of the global instance, driven by
  * staticinit.cpp. */
-extern "C" __declspec(dllexport) CDM *__attribute__((thiscall)) CDM_Constructor(CDM *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall)) CDM_Destructor(CDM *self);
+CDM *CDM_Constructor(CDM *self);
+void CDM_Destructor(CDM *self);

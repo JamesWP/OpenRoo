@@ -37,8 +37,7 @@
 #include "gameglobals.h"
 
 struct CDM;
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_StopTrack(CDM *self);
+void CDM_StopTrack(CDM *self);
 
 static int s_fx = -1;
 
@@ -61,8 +60,7 @@ static void enter_loaded_state(Game *game, FILE *fp)
     fclose(fp);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_HandleTypedCheatCode(Game *self)
+void Sim_HandleTypedCheatCode(Game *self)
 {
     Player *pl = self->player();
     unsigned char *buf = self->cheatBuffer();

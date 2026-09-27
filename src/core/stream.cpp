@@ -110,20 +110,17 @@ static DWORD WINAPI WatcherProc(LPVOID param)
 
 /* There is no array form of the destructor: nothing allocates these in blocks,
  * so bit 1 of the flags is not tested. */
-extern "C" {
 
-__declspec(dllexport) void * __attribute__((thiscall))
-CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
+void *CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
 
 static void *const g_CStreamVtable[1] = { (void *)&CStream_ScalarDeletingDtor };
 
-__declspec(dllexport) void *CStream_Vtable(void)
+void *CStream_Vtable(void)
 {
     return (void *)g_CStreamVtable;
 }
 
-__declspec(dllexport) void * __attribute__((thiscall))
-CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
+void *CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
 {
     static unsigned long seen;
     CStatic_SoundFirstCall("CStreamSoundbuffer::ScalarDeletingDtor", &seen);
@@ -134,7 +131,6 @@ CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
     return self;
 }
 
-}
 
 static void CStream_Stop_impl(CStreamSoundbuffer *self);
 static void CStream_ReleaseResources_impl(CStreamSoundbuffer *self);
@@ -287,30 +283,22 @@ static void CStream_DeinitInstance_impl(CStreamSoundbuffer *self)
     DeleteCriticalSection(&self->cs);
 }
 
-extern "C" {
 
-__declspec(dllexport) CStreamSoundbuffer* __attribute__((thiscall))
-CStream_Initialize(CStreamSoundbuffer *self)
+CStreamSoundbuffer*CStream_Initialize(CStreamSoundbuffer *self)
     { return CStream_Initialize_impl(self); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CStream_Prepare(CStreamSoundbuffer *self, WaveInfo *wi)
+int CStream_Prepare(CStreamSoundbuffer *self, WaveInfo *wi)
     { return CStream_Prepare_impl(self, wi); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CStream_Play(CStreamSoundbuffer *self)
+void CStream_Play(CStreamSoundbuffer *self)
     { CStream_Play_impl(self); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CStream_Stop(CStreamSoundbuffer *self)
+void CStream_Stop(CStreamSoundbuffer *self)
     { CStream_Stop_impl(self); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CStream_ReleaseResources(CStreamSoundbuffer *self)
+void CStream_ReleaseResources(CStreamSoundbuffer *self)
     { CStream_ReleaseResources_impl(self); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CStream_DeinitInstance(CStreamSoundbuffer *self)
+void CStream_DeinitInstance(CStreamSoundbuffer *self)
     { CStream_DeinitInstance_impl(self); }
 
-}

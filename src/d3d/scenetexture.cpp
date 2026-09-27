@@ -28,10 +28,8 @@
 #include "ddrawdiag.h"
 TextureManager g_textureManager;
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureTGA_Parse(LoadedImage *self, LPCSTR path);
+unsigned int TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp);
+unsigned int TextureTGA_Parse(LoadedImage *self, LPCSTR path);
 
 /* D3DDEVICEDESC as 0x3f raw dwords, zeroed, dwSize at [0], so the size used is
  * 0xfc whatever the SDK header defines.  Only dcmColorModel is read. */
@@ -307,14 +305,12 @@ static void __stdcall st_pick_texture_format(RenderDevice *dev, DWORD bpp,
     *out = ctx.kept;
 }
 
-extern "C" {
 
 /* ─── The SceneTexture lifecycle ────────────────────────────────────────────
  *
  * The scalar deleting destructor is reachable only through the vtable. */
 
-__declspec(dllexport) SceneTexture *__attribute__((thiscall))
-Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
+SceneTexture *Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
 
 static void *const g_SceneTextureVtable[1] = { (void *)&Texture_SceneScalarDtor };
 
@@ -323,8 +319,7 @@ static void *scene_vtable(void)
     return (void *)g_SceneTextureVtable;
 }
 
-__declspec(dllexport) SceneTexture *__attribute__((thiscall))
-Texture_SceneCtor(SceneTexture *self)
+SceneTexture *Texture_SceneCtor(SceneTexture *self)
 {
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::Constructor", &seen);
     Texture_ImageCtor(&self->base);
@@ -333,16 +328,14 @@ Texture_SceneCtor(SceneTexture *self)
     return self;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-Texture_SceneDtorBody(SceneTexture *self)
+void Texture_SceneDtorBody(SceneTexture *self)
 {
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::DtorBody", &seen);
     self->base.unknown00 = scene_vtable();  // dead: DtorBody installs the base table
     Texture_ImageDtorBody(&self->base);
 }
 
-__declspec(dllexport) SceneTexture *__attribute__((thiscall))
-Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags)
+SceneTexture *Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags)
 {
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::ScalarDeletingDtor", &seen);
     Texture_SceneDtorBody(self);
@@ -356,7 +349,7 @@ Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags)
  * The BMP/DIB path.  Load the file, create a texture surface matching its
  * dimensions and the device's chosen pixel format, attach a palette if the
  * format is 8-bit or less, blit the DIB in and query the IDirect3DTexture2. */
-__declspec(dllexport) unsigned int __attribute__((thiscall))
+unsigned int
 Texture_BindTextureResource(SceneTexture *self, RenderDevice *dev, LPCSTR name, UINT bpp,
                             DWORD textureStage)
 {
@@ -453,7 +446,7 @@ Texture_BindTextureResource(SceneTexture *self, RenderDevice *dev, LPCSTR name, 
  * The TGA path.  Reads the header itself to get the dimensions and to reject
  * anything that is not a true-colour image, then builds the surface and hands
  * the file to TextureTGA_Parse to decode. */
-__declspec(dllexport) unsigned int __attribute__((thiscall))
+unsigned int
 Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
                             DWORD alphaFlag, UINT bpp, DWORD textureStage)
 {
@@ -576,7 +569,7 @@ Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
  * mode 0 picks by extension, 1 forces the DIB loader, 2 forces the TGA loader,
  * anything else fails silently.  The extension test is four case-exact
  * compares against ".bmp", ".BMP", ".tga", ".TGA", so ".Bmp" is rejected. */
-__declspec(dllexport) unsigned int __attribute__((thiscall))
+unsigned int
 Texture_SelectTextureLoader(SceneTexture *self, RenderDevice *dev, LPCSTR name, UINT bpp,
                             int mode)
 {
@@ -606,7 +599,6 @@ Texture_SelectTextureLoader(SceneTexture *self, RenderDevice *dev, LPCSTR name, 
     return Texture_ImportSceneTextures(self, dev, name, 0, bpp, 0);
 }
 
-}  // extern "C"
 
 /* ─── TextureManager ───────────────────────────────────────────────────────
  *
@@ -623,7 +615,7 @@ static void tm_lower_inplace(char *s)
             *s += ' ';
 }
 
-typedef void *(__attribute__((thiscall)) *tm_scalar_dtor_fn)(void *self, unsigned int flags);
+typedef void *(*tm_scalar_dtor_fn)(void *self, unsigned int flags);
 
 static void tm_delete(SceneTexture *t)
 {
@@ -631,7 +623,7 @@ static void tm_delete(SceneTexture *t)
     dtor(t, 1);
 }
 
-extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
+SceneTexture *
 TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename,
                          DWORD alphaFlag, UINT bpp, DWORD textureStage)
 {
@@ -664,8 +656,7 @@ TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename
     return tex;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_ReleaseAll(TextureManager *self)
+void TextureManager_ReleaseAll(TextureManager *self)
 {
     for (LinkedListNode *node = self->cache.pHead; node != NULL; ) {
         SceneTexture *tex = (SceneTexture *)node->pValue;
@@ -684,8 +675,7 @@ TextureManager_ReleaseAll(TextureManager *self)
  * scalar dtor's free is never reached. */
 static void *const g_TextureManagerVtable[1] = { (void *)&TextureManager_ScalarDestructor };
 
-extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
-TextureManager_Construct(TextureManager *self)
+TextureManager *TextureManager_Construct(TextureManager *self)
 {
     List_Init(&self->cache);
     self->vtable  = (void *)g_TextureManagerVtable;
@@ -693,14 +683,13 @@ TextureManager_Construct(TextureManager *self)
     return self;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_Destruct(TextureManager *self)
+void TextureManager_Destruct(TextureManager *self)
 {
     self->vtable = (void *)g_TextureManagerVtable;
     List_Destruct(&self->cache);
 }
 
-extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
+TextureManager *
 TextureManager_ScalarDestructor(TextureManager *self, unsigned char flags)
 {
     TextureManager_Destruct(self);
@@ -710,16 +699,14 @@ TextureManager_ScalarDestructor(TextureManager *self, unsigned char flags)
 }
 
 /* pLogger = logger. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_SetLogger(TextureManager *self, GameLogger *logger)
+void TextureManager_SetLogger(TextureManager *self, GameLogger *logger)
 {
     self->pLogger = logger;
 }
 
 /* Texture_Load every non-NULL cached image, head to tail, reading the next
  * pointer before the load. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_LoadAll(TextureManager *self)
+void TextureManager_LoadAll(TextureManager *self)
 {
     for (LinkedListNode *n = self->cache.pHead; n != NULL; ) {
         LoadedImage *img = (LoadedImage *)n->pValue;

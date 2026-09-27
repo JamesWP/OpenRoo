@@ -144,75 +144,70 @@ ParticleSystem *ps_create(const char *name);
 ParticleSystem *ps_clone(const ParticleSystem *src);
 ParticleSystem *ps_load_file(const char *path, struct GameLogger *log);
 
-extern "C" {
-__declspec(dllexport) ParticleSystem *__cdecl Particle_CloneSystem(const ParticleSystem *);
-__declspec(dllexport) ParticleSystem *__cdecl Particle_LoadFromFile(const char *, struct GameLogger *);
-}
+ParticleSystem *Particle_CloneSystem(const ParticleSystem *);
+ParticleSystem *Particle_LoadFromFile(const char *, struct GameLogger *);
 
 /* ─── Vtable exports ───────────────────────────────────────────────────────
  *
  * The vtable slot functions.  Their signatures are the slot signatures and
  * must match the definitions in particles.cpp exactly. */
-#define PS_THISCALL __attribute__((thiscall))
-extern "C" {
-void  PS_THISCALL Particle_BaseTick(ParticleSystem *self, DWORD dt);              /* slot 7 */
-void  PS_THISCALL Particle_XFaceTick(XFaceParticleSystem *self, DWORD dt);        /* slot 7 */
-DWORD PS_THISCALL Particle_BaseRender(ParticleSystem *self, RenderDevice *d); /* slot 8 */
-DWORD PS_THISCALL Particle_PointRender(PointParticleSystem *self, RenderDevice *d);
-void  PS_THISCALL Particle_PointFill(PointParticleSystem *self);                  /* slot 9 */
-void  PS_THISCALL Particle_FaceFill(FaceParticleSystem *self);
-void  PS_THISCALL Particle_XFaceFill(XFaceParticleSystem *self);
-void  PS_THISCALL Particle_FaceSetVector(FaceParticleSystem *self,
-                                         float x, float y, float z);              /* slot 10 */
-void  PS_THISCALL Particle_FaceTransformCorners(FaceParticleSystem *self,
-                                                float *matrix);                   /* slot 11 */
-DWORD PS_THISCALL Particle_PointDraw(PointParticleSystem *self, RenderDevice *d); /* slot 12 */
-DWORD PS_THISCALL Particle_FaceDraw(FaceParticleSystem *self, RenderDevice *d);
-DWORD PS_THISCALL Particle_XFaceDraw(XFaceParticleSystem *self, RenderDevice *d);
+void  Particle_BaseTick(ParticleSystem *self, DWORD dt);              /* slot 7 */
+void  Particle_XFaceTick(XFaceParticleSystem *self, DWORD dt);        /* slot 7 */
+DWORD Particle_BaseRender(ParticleSystem *self, RenderDevice *d); /* slot 8 */
+DWORD Particle_PointRender(PointParticleSystem *self, RenderDevice *d);
+void  Particle_PointFill(PointParticleSystem *self);                  /* slot 9 */
+void  Particle_FaceFill(FaceParticleSystem *self);
+void  Particle_XFaceFill(XFaceParticleSystem *self);
+void  Particle_FaceSetVector(FaceParticleSystem *self,
+                             float x, float y, float z);              /* slot 10 */
+void  Particle_FaceTransformCorners(FaceParticleSystem *self,
+                                    float *matrix);                   /* slot 11 */
+DWORD Particle_PointDraw(PointParticleSystem *self, RenderDevice *d); /* slot 12 */
+DWORD Particle_FaceDraw(FaceParticleSystem *self, RenderDevice *d);
+DWORD Particle_XFaceDraw(XFaceParticleSystem *self, RenderDevice *d);
 
 /* The lifecycle slots (0-6, 9, 12, 13, 14).  Slots 5 and 6 are one
  * function each across all four classes; slot 1 is shared by Point and Face. */
 struct GameLogger;
-void *PS_THISCALL Particle_BaseDtor(ParticleSystem *, unsigned);
-void  PS_THISCALL Particle_BaseRelease(ParticleSystem *, int);
-BOOL  PS_THISCALL Particle_BaseCopyFrom(ParticleSystem *, const ParticleSystem *);
-BOOL  PS_THISCALL Particle_BaseSetCapacity(ParticleSystem *, DWORD);
-BOOL  PS_THISCALL Particle_BaseResize(ParticleSystem *, DWORD);
-BOOL  PS_THISCALL Particle_SetGenerator(ParticleSystem *, void *);
-BOOL  PS_THISCALL Particle_SetEnvironment(ParticleSystem *, void *);
-BOOL  PS_THISCALL Particle_BaseSave(ParticleSystem *, void *, GameLogger *);
-BOOL  PS_THISCALL Particle_BaseLoad(ParticleSystem *, void *, GameLogger *);
-void  PS_THISCALL Particle_BaseFill(ParticleSystem *);
-DWORD PS_THISCALL Particle_BaseDrawNull(ParticleSystem *, RenderDevice *);
-void  PS_THISCALL Particle_QuadRelease(ParticleSystem *, int);
-void  PS_THISCALL Particle_NopVec3(ParticleSystem *, float, float, float);
-void  PS_THISCALL Particle_NopPtr(ParticleSystem *, void *);
-struct Generator *PS_THISCALL Particle_GetGenerator(ParticleSystem *, const char *);
-void  PS_THISCALL Particle_EnableRenderNode(ParticleSystem *);
-void  PS_THISCALL Particle_DisableRenderNode(ParticleSystem *);
+void *Particle_BaseDtor(ParticleSystem *, unsigned);
+void  Particle_BaseRelease(ParticleSystem *, int);
+BOOL  Particle_BaseCopyFrom(ParticleSystem *, const ParticleSystem *);
+BOOL  Particle_BaseSetCapacity(ParticleSystem *, DWORD);
+BOOL  Particle_BaseResize(ParticleSystem *, DWORD);
+BOOL  Particle_SetGenerator(ParticleSystem *, void *);
+BOOL  Particle_SetEnvironment(ParticleSystem *, void *);
+BOOL  Particle_BaseSave(ParticleSystem *, void *, GameLogger *);
+BOOL  Particle_BaseLoad(ParticleSystem *, void *, GameLogger *);
+void  Particle_BaseFill(ParticleSystem *);
+DWORD Particle_BaseDrawNull(ParticleSystem *, RenderDevice *);
+void  Particle_QuadRelease(ParticleSystem *, int);
+void  Particle_NopVec3(ParticleSystem *, float, float, float);
+void  Particle_NopPtr(ParticleSystem *, void *);
+struct Generator *Particle_GetGenerator(ParticleSystem *, const char *);
+void  Particle_EnableRenderNode(ParticleSystem *);
+void  Particle_DisableRenderNode(ParticleSystem *);
 
-void *PS_THISCALL Particle_PointDtor(PointParticleSystem *, unsigned);
-BOOL  PS_THISCALL Particle_PointCopyFrom(PointParticleSystem *, const ParticleSystem *);
-BOOL  PS_THISCALL Particle_PointSetCapacity(PointParticleSystem *, DWORD);
-BOOL  PS_THISCALL Particle_PointResize(PointParticleSystem *, DWORD);
-BOOL  PS_THISCALL Particle_PointSave(PointParticleSystem *, void *, GameLogger *);
-BOOL  PS_THISCALL Particle_PointLoad(PointParticleSystem *, void *, GameLogger *);
+void *Particle_PointDtor(PointParticleSystem *, unsigned);
+BOOL  Particle_PointCopyFrom(PointParticleSystem *, const ParticleSystem *);
+BOOL  Particle_PointSetCapacity(PointParticleSystem *, DWORD);
+BOOL  Particle_PointResize(PointParticleSystem *, DWORD);
+BOOL  Particle_PointSave(PointParticleSystem *, void *, GameLogger *);
+BOOL  Particle_PointLoad(PointParticleSystem *, void *, GameLogger *);
 
-void *PS_THISCALL Particle_FaceDtor(FaceParticleSystem *, unsigned);
-BOOL  PS_THISCALL Particle_FaceCopyFrom(FaceParticleSystem *, const FaceParticleSystem *);
-BOOL  PS_THISCALL Particle_FaceSetCapacity(FaceParticleSystem *, DWORD);
-BOOL  PS_THISCALL Particle_FaceResize(FaceParticleSystem *, DWORD);
-BOOL  PS_THISCALL Particle_FaceSave(FaceParticleSystem *, void *, GameLogger *);
-BOOL  PS_THISCALL Particle_FaceLoad(FaceParticleSystem *, void *, GameLogger *);
+void *Particle_FaceDtor(FaceParticleSystem *, unsigned);
+BOOL  Particle_FaceCopyFrom(FaceParticleSystem *, const FaceParticleSystem *);
+BOOL  Particle_FaceSetCapacity(FaceParticleSystem *, DWORD);
+BOOL  Particle_FaceResize(FaceParticleSystem *, DWORD);
+BOOL  Particle_FaceSave(FaceParticleSystem *, void *, GameLogger *);
+BOOL  Particle_FaceLoad(FaceParticleSystem *, void *, GameLogger *);
 
-void *PS_THISCALL Particle_XFaceDtor(XFaceParticleSystem *, unsigned);
-void  PS_THISCALL Particle_XFaceRelease(XFaceParticleSystem *, int);
-BOOL  PS_THISCALL Particle_XFaceCopyFrom(XFaceParticleSystem *, const XFaceParticleSystem *);
-BOOL  PS_THISCALL Particle_XFaceSetCapacity(XFaceParticleSystem *, DWORD);
-BOOL  PS_THISCALL Particle_XFaceResize(XFaceParticleSystem *, DWORD);
-BOOL  PS_THISCALL Particle_XFaceSave(XFaceParticleSystem *, void *, GameLogger *);
-BOOL  PS_THISCALL Particle_XFaceLoad(XFaceParticleSystem *, void *, GameLogger *);
-}
+void *Particle_XFaceDtor(XFaceParticleSystem *, unsigned);
+void  Particle_XFaceRelease(XFaceParticleSystem *, int);
+BOOL  Particle_XFaceCopyFrom(XFaceParticleSystem *, const XFaceParticleSystem *);
+BOOL  Particle_XFaceSetCapacity(XFaceParticleSystem *, DWORD);
+BOOL  Particle_XFaceResize(XFaceParticleSystem *, DWORD);
+BOOL  Particle_XFaceSave(XFaceParticleSystem *, void *, GameLogger *);
+BOOL  Particle_XFaceLoad(XFaceParticleSystem *, void *, GameLogger *);
 
 /* ParticleSystem vtable slot numbers (15-slot table).
  *
@@ -249,21 +244,21 @@ BOOL  PS_THISCALL Particle_XFaceLoad(XFaceParticleSystem *, void *, GameLogger *
  * float in every slot 7 (the exports take it as DWORD bits; same ABI). */
 static inline void ps_vtick(ParticleSystem *ps, float dt)
 {
-    typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float);
+    typedef void (*fn)(ParticleSystem *, float);
     ((fn)ps->pVtable[PS_VT_TICK])(ps, dt);
 }
 static inline void ps_vset_vector(ParticleSystem *ps, float x, float y, float z)
 {
-    typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float, float, float);
+    typedef void (*fn)(ParticleSystem *, float, float, float);
     ((fn)ps->pVtable[PS_VT_SETVEC])(ps, x, y, z);
 }
 static inline void ps_vrender(ParticleSystem *ps, RenderDevice *dev)
 {
-    typedef DWORD (__attribute__((thiscall)) *fn)(ParticleSystem *, RenderDevice *);
+    typedef DWORD (*fn)(ParticleSystem *, RenderDevice *);
     ((fn)ps->pVtable[PS_VT_RENDER])(ps, dev);
 }
 static inline void ps_vtransform_corners(ParticleSystem *ps, float *matrix)
 {
-    typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float *);
+    typedef void (*fn)(ParticleSystem *, float *);
     ((fn)ps->pVtable[PS_VT_XFORM])(ps, matrix);
 }

@@ -78,8 +78,7 @@ static char *ani_strlwr(char *s)
     return s;
 }
 
-extern "C" __declspec(dllexport) int __cdecl
-Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger)
+int Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger)
 {
     unsigned char *table = (unsigned char *)dest;
     char line[ANI_LINE_MAX];
@@ -193,8 +192,7 @@ Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger)
  *
  * The four speed_/slow_ slots and celebration have no code, so nothing can
  * reach them through this function. */
-extern "C" __declspec(dllexport) AnimSlot * __cdecl
-Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code)
+AnimSlot *Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code)
 {
     switch (code & 0xff) {
     case ANIM_WALK_FORWARD:     return &table->walkForward;

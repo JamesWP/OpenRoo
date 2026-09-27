@@ -477,93 +477,74 @@ static int ReadBindings_impl(ProgableControl *s)
     return ok;
 }
 
-extern "C" {
 
-__declspec(dllexport) void * __attribute__((thiscall))
-ProgCtrl_Setup(ProgableControl *s, int logger_or_0)
+void *ProgCtrl_Setup(ProgableControl *s, int logger_or_0)
     { return Setup_impl(s, logger_or_0); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_ScalarDtor(ProgableControl *s, int free_or_not)
+void ProgCtrl_ScalarDtor(ProgableControl *s, int free_or_not)
     { ScalarDtor_impl(s, free_or_not); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_Teardown(ProgableControl *s)
+void ProgCtrl_Teardown(ProgableControl *s)
     { Teardown_impl(s); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_Shutdown(ProgableControl *s)
+void ProgCtrl_Shutdown(ProgableControl *s)
     { Shutdown_impl(s); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_InitDInput(ProgableControl *s, HINSTANCE hInstance)
+int ProgCtrl_InitDInput(ProgableControl *s, HINSTANCE hInstance)
     { return InitDInput_impl(s, hInstance); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetupKbd(ProgableControl *s, HWND hwnd)
+int ProgCtrl_SetupKbd(ProgableControl *s, HWND hwnd)
     { return SetupKbd_impl(s, hwnd); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetupMouse(ProgableControl *s, HWND hwnd)
+int ProgCtrl_SetupMouse(ProgableControl *s, HWND hwnd)
     { return SetupMouse_impl(s, hwnd); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetupJoy(ProgableControl *s, HWND hwnd)
+int ProgCtrl_SetupJoy(ProgableControl *s, HWND hwnd)
     { return SetupJoy_impl(s, hwnd); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetJoyRange(ProgableControl *s, int axis, int lo, int hi)
+int ProgCtrl_SetJoyRange(ProgableControl *s, int axis, int lo, int hi)
     { return SetJoyRange_impl(s, axis, lo, hi); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_SetJoyDeadzone(ProgableControl *s, DWORD axis, int zone)
+int ProgCtrl_SetJoyDeadzone(ProgableControl *s, DWORD axis, int zone)
     { return SetJoyDeadzone_impl(s, axis, zone); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_AcquireAll(ProgableControl *s)
+int ProgCtrl_AcquireAll(ProgableControl *s)
     { return AcquireAll_impl(s); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_UnacquireAll(ProgableControl *s)
+int ProgCtrl_UnacquireAll(ProgableControl *s)
     { return UnacquireAll_impl(s); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_Dispatch(ProgableControl *s, unsigned short game_state)
+void ProgCtrl_Dispatch(ProgableControl *s, unsigned short game_state)
     { Dispatch_impl(s, game_state); }
 
-__declspec(dllexport) void __attribute__((thiscall))
+void
 ProgCtrl_RegisterAction(ProgableControl *s, unsigned short mode, const char *name,
                         ActionCallback cb, void *ctx)
     { RegisterAction_impl(s, mode, name, cb, ctx); }
 
-__declspec(dllexport) void __attribute__((thiscall))
+void
 ProgCtrl_ClearBindings(ProgableControl *s, unsigned short mode, const char *name)
     { ClearBindings_impl(s, mode, name); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_GetBindingStr(ProgableControl *s, int mode, const char *name,
-                       char *buf, unsigned int bufsz)
+void ProgCtrl_GetBindingStr(ProgableControl *s, int mode, const char *name,
+                            char *buf, unsigned int bufsz)
     { GetBindingStr_impl(s, mode, name, buf, bufsz); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_BindKey(ProgableControl *s, unsigned short mode, const char *name,
-                 int sc, int strength)
+int ProgCtrl_BindKey(ProgableControl *s, unsigned short mode, const char *name,
+                     int sc, int strength)
     { return BindKey_impl(s, mode, name, sc, strength); }
 
-__declspec(dllexport) int __attribute__((thiscall))
+int
 ProgCtrl_CaptureBinding(ProgableControl *s, unsigned int mode, const char *name,
                         int strength, int allow_axis, int flags)
     { return CaptureBinding_impl(s, mode, name, strength, allow_axis, flags); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_WriteBindings(ProgableControl *s)
+int ProgCtrl_WriteBindings(ProgableControl *s)
     { return WriteBindings_impl(s); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-ProgCtrl_ReadBindings(ProgableControl *s)
+int ProgCtrl_ReadBindings(ProgableControl *s)
     { return ReadBindings_impl(s); }
 
-}
 
 static void *const progctrl_vtable_slots[1] = {
     (void *)&ProgCtrl_ScalarDtor,

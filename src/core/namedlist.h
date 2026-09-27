@@ -54,33 +54,28 @@ KAROO_LAYOUT_CHECKS(NamedEntryList)
 }
 
 /* Sets the vtable and zeroes the three fields. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-NamedList_Construct(NamedEntryList *self);
+void NamedList_Construct(NamedEntryList *self);
 
 /* DtorBody, then frees self when bit 0 of bFreeSelf is set.  Returns self. */
-extern "C" __declspec(dllexport) NamedEntryList *__attribute__((thiscall))
+NamedEntryList *
 NamedList_ScalarDtor(NamedEntryList *self, unsigned char bFreeSelf);
 
 /* Re-installs the vtable, then Clear. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-NamedList_DtorBody(NamedEntryList *self);
+void NamedList_DtorBody(NamedEntryList *self);
 
 /* Makes an entry holding a copy of pszName and pPayload, and links it at the
  * tail.  Returns the entry, or NULL when the name is too long; no caller reads
  * it. */
-extern "C" __declspec(dllexport) NamedEntry *__attribute__((thiscall))
+NamedEntry *
 NamedList_Insert(NamedEntryList *self, const char *pszName, void *pPayload);
 
 /* Frees every entry, not their payloads: an owner of the payloads destroys
  * them first. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-NamedList_Clear(NamedEntryList *self);
+void NamedList_Clear(NamedEntryList *self);
 
 /* Unlinks and frees pEntry and decrements the count.  A NULL pEntry does
  * nothing.  Always returns 0. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-NamedList_Remove(NamedEntryList *self, NamedEntry *pEntry);
+int NamedList_Remove(NamedEntryList *self, NamedEntry *pEntry);
 
 /* The first entry whose name equals pszName (case-sensitive), or NULL. */
-extern "C" __declspec(dllexport) NamedEntry *__attribute__((thiscall))
-NamedList_Find(NamedEntryList *self, const char *pszName);
+NamedEntry *NamedList_Find(NamedEntryList *self, const char *pszName);

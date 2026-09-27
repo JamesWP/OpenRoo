@@ -65,10 +65,8 @@ static float wrap(double v)
     return (y < 0.0) ? (float)(y + K_TWO_PI) : (float)y;
 }
 
-extern "C" {
 
-__declspec(dllexport) void __cdecl
-FramePose_Player(Game *g, double , double dt, CameraFocus *out)
+void FramePose_Player(Game *g, double , double dt, CameraFocus *out)
 {
     const Player *p = g->player();
     float *f = out->f;
@@ -109,8 +107,7 @@ FramePose_Player(Game *g, double , double dt, CameraFocus *out)
     }
 }
 
-__declspec(dllexport) void __cdecl
-FramePose_Foes(Game *g, double , double , FoePose *out)
+void FramePose_Foes(Game *g, double , double , FoePose *out)
 {
     const unsigned n = g->foeCount();
     for (unsigned i = 0; i < n; i++) {
@@ -135,4 +132,3 @@ FramePose_Foes(Game *g, double , double , FoePose *out)
     }
 }
 
-}

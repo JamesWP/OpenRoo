@@ -71,12 +71,10 @@ static Vec3 orbit_offset(float pitch, float yaw, float z)
     return out;
 }
 
-extern "C" {
 
-__declspec(dllexport) Mat4 *__cdecl
-Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
-                   float ax, float ay, float az,
-                   float ux, float uy, float uz, float roll)
+Mat4 *Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
+                         float ax, float ay, float az,
+                         float ux, float uy, float uz, float roll)
 {
     Vec3 f = { ax - ex, ay - ey, az - ez };
     Vec3 n;  v3_div(&n, &f, (float)sqrt(Math_Vec3SqLen(&f)));
@@ -106,9 +104,8 @@ Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
     return out;
 }
 
-__declspec(dllexport) void __cdecl
-Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
-                           CameraFocus focus, double dt)
+void Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
+                                CameraFocus focus, double dt)
 {
     const float dtf = (float)dt;
 
@@ -199,4 +196,3 @@ Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
     d3d->SetTransform(Transform::View, &view);
 }
 
-}

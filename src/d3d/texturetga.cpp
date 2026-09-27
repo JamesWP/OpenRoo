@@ -73,10 +73,8 @@ static unsigned int ftol8(long double v)
     return (unsigned int)(long long)v & 0xffu;
 }
 
-extern "C" {
 
-__declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureTGA_Parse(LoadedImage *self, LPCSTR path)
+unsigned int TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 {
     DDSURFACEDESC2 ddsd;
     ddsd.dwSize = sizeof(DDSURFACEDESC2);  // written before the open
@@ -313,4 +311,3 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
     return 1;
 }
 
-}  // extern "C"

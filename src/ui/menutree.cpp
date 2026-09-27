@@ -68,8 +68,7 @@ static void diag_census(void)
               s_pushes, s_pops, s_rewinds, s_maxdepth);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushMenuNodeOnStack(MenuTree *self, unsigned int nodeArg)
+void Sim_PushMenuNodeOnStack(MenuTree *self, unsigned int nodeArg)
 {
     self->push((unsigned char)nodeArg);
 }
@@ -96,8 +95,7 @@ void MenuTree::push(unsigned char node)
     diag_census();
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PopMenuNodeFromStack(MenuTree *self)
+void Sim_PopMenuNodeFromStack(MenuTree *self)
 {
     self->pop();
 }
@@ -128,8 +126,7 @@ void MenuTree::pop()
     diag_census();
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RewindMenuStackToRootNode(MenuTree *self)
+void Sim_RewindMenuStackToRootNode(MenuTree *self)
 {
     self->rewind();
 }
@@ -163,8 +160,7 @@ void MenuTree::rewind()
 
 static int s_fx_menuwrap = -1;
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_NavigateMenuTree(MenuTree *self, int now)
+void Sim_NavigateMenuTree(MenuTree *self, int now)
 {
     self->navigate(now);
 }
@@ -266,8 +262,7 @@ void MenuTree::destruct()
     vtable_ = g_MenuTreeVtable;
 }
 
-extern "C" __declspec(dllexport) MenuTree *__attribute__((thiscall))
-MenuTree_ScalarDestructor(MenuTree *self, unsigned char flags)
+MenuTree *MenuTree_ScalarDestructor(MenuTree *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

@@ -15,8 +15,7 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Texture_ReleaseSurfaces(LoadedImage *self);
+void Texture_ReleaseSurfaces(LoadedImage *self);
 
 /* The name-copy length, computed here rather than by the CRT. */
 static unsigned int dib_strlen(const char *s)
@@ -27,15 +26,13 @@ static unsigned int dib_strlen(const char *s)
     return (unsigned int)(p - s);
 }
 
-extern "C" {
 
 /* ─── BlitToSurface ─────────────────────────────────────────────────────────
  *
  * Blits a GDI bitmap into pTextureSurface by way of a temporary system-memory
  * DirectDraw surface: create it with the destination's pixel format, GetDC it,
  * BitBlt the DIB in, then BltFast the result across. */
-__declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
+unsigned int TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
 {
     DDSURFACEDESC2 ddsd;
     ddsd.dwSize = sizeof(DDSURFACEDESC2);  // written before GetObjectA
@@ -100,7 +97,7 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
  * Loads a BMP, creates a matching DirectDraw surface for it, fills it via
  * BlitToSurface and records the file name.  bSysMem adds DDSCAPS_SYSTEMMEMORY
  * to DDSCAPS_OFFSCREENPLAIN. */
-__declspec(dllexport) unsigned int __attribute__((thiscall))
+unsigned int
 TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
                          char bSysMem)
 {
@@ -164,4 +161,3 @@ TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
     return (last & 0xffffff00u) | 1u;  // upper bytes: DeleteObject
 }
 
-}  // extern "C"

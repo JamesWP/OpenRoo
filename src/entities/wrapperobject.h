@@ -71,40 +71,29 @@ private:
     BYTE       dirty_;    // +0x0c  set by the three animating modes
 };
 
-extern "C" {
 
 /* The vtable, installed by the ctor and the dtor body. */
-__declspec(dllexport) void *Wrapper_Vtable(void);
+void *Wrapper_Vtable(void);
 
-__declspec(dllexport) WrapperObject *__attribute__((thiscall))
-Wrapper_Construct(WrapperObject *self);
+WrapperObject *Wrapper_Construct(WrapperObject *self);
 
 /* Vtable slot 0.  Returns self; bit 0 of flags frees. */
-__declspec(dllexport) void *__attribute__((thiscall))
-Wrapper_ScalarDtor(WrapperObject *self, unsigned int flags);
+void *Wrapper_ScalarDtor(WrapperObject *self, unsigned int flags);
 
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_DtorBody(WrapperObject *self);
+void Wrapper_DtorBody(WrapperObject *self);
 
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_SetMesh(WrapperObject *self, CFaktMesh *mesh);
+void Wrapper_SetMesh(WrapperObject *self, CFaktMesh *mesh);
 
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_ReleaseSnapshot(WrapperObject *self);
+void Wrapper_ReleaseSnapshot(WrapperObject *self);
 
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_Flush(WrapperObject *self);
+void Wrapper_Flush(WrapperObject *self);
 
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_ApplySineWave(WrapperObject *self, unsigned int ticks, float rate,
-                      float amplitude, float skew);
+void Wrapper_ApplySineWave(WrapperObject *self, unsigned int ticks, float rate,
+                           float amplitude, float skew);
 
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_ScrollUVs(WrapperObject *self, unsigned int ticks, int axisU,
-                  float speed);
+void Wrapper_ScrollUVs(WrapperObject *self, unsigned int ticks, int axisU,
+                       float speed);
 
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_UpdateObjectTransform(WrapperObject *self, RenderDevice *dev,
-                              unsigned short frame);
+void Wrapper_UpdateObjectTransform(WrapperObject *self, RenderDevice *dev,
+                                   unsigned short frame);
 
-}

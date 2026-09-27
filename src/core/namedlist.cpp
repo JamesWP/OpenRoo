@@ -91,17 +91,15 @@ static void namedlist_census(void)
               g_nRemoveNull, g_nFind, g_nFindHit, g_nMaxLen);
 }
 
-extern "C" {
 
 /* The vtable below needs its address. */
-__declspec(dllexport) NamedEntryList *__attribute__((thiscall))
+NamedEntryList *
 NamedList_ScalarDtor(NamedEntryList *self, unsigned char bFreeSelf);
 
 /* The one-slot vtable. */
 static void *const g_NamedListVtable[1] = { (void *)&NamedList_ScalarDtor };
 
-__declspec(dllexport) void __attribute__((thiscall))
-NamedList_Construct(NamedEntryList *self)
+void NamedList_Construct(NamedEntryList *self)
 {
     ++g_nConstruct;
     { static unsigned long seen; namedlist_first("Construct", &seen); }
@@ -111,8 +109,7 @@ NamedList_Construct(NamedEntryList *self)
     self->dwCount = 0;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-NamedList_Clear(NamedEntryList *self)
+void NamedList_Clear(NamedEntryList *self)
 {
     ++g_nClear;
     { static unsigned long seen; namedlist_first("Clear", &seen); }
@@ -131,8 +128,7 @@ NamedList_Clear(NamedEntryList *self)
     namedlist_census();
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-NamedList_DtorBody(NamedEntryList *self)
+void NamedList_DtorBody(NamedEntryList *self)
 {
     ++g_nDtorBody;
     { static unsigned long seen; namedlist_first("DtorBody", &seen); }
@@ -140,7 +136,7 @@ NamedList_DtorBody(NamedEntryList *self)
     NamedList_Clear(self);
 }
 
-__declspec(dllexport) NamedEntryList *__attribute__((thiscall))
+NamedEntryList *
 NamedList_ScalarDtor(NamedEntryList *self, unsigned char bFreeSelf)
 {
     ++g_nScalarDtor;
@@ -153,7 +149,7 @@ NamedList_ScalarDtor(NamedEntryList *self, unsigned char bFreeSelf)
     return self;
 }
 
-__declspec(dllexport) NamedEntry *__attribute__((thiscall))
+NamedEntry *
 NamedList_Insert(NamedEntryList *self, const char *pszName, void *pPayload)
 {
     ++g_nInsert;
@@ -194,8 +190,7 @@ NamedList_Insert(NamedEntryList *self, const char *pszName, void *pPayload)
     return entry;
 }
 
-__declspec(dllexport) int __attribute__((thiscall))
-NamedList_Remove(NamedEntryList *self, NamedEntry *pEntry)
+int NamedList_Remove(NamedEntryList *self, NamedEntry *pEntry)
 {
     ++g_nRemove;
     { static unsigned long seen; namedlist_first("Remove", &seen); }
@@ -218,8 +213,7 @@ NamedList_Remove(NamedEntryList *self, NamedEntry *pEntry)
     return 0;
 }
 
-__declspec(dllexport) NamedEntry *__attribute__((thiscall))
-NamedList_Find(NamedEntryList *self, const char *pszName)
+NamedEntry *NamedList_Find(NamedEntryList *self, const char *pszName)
 {
     ++g_nFind;
     { static unsigned long seen; namedlist_first("Find", &seen); }
@@ -236,4 +230,3 @@ NamedList_Find(NamedEntryList *self, const char *pszName)
     return NULL;
 }
 
-}

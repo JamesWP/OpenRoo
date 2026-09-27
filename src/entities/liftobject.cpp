@@ -366,21 +366,18 @@ void LiftObject::tick()
     posV_ = (float)(int)cellV_;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_UpdateVerticalLiftObject(LiftObject *self)
+void Sim_UpdateVerticalLiftObject(LiftObject *self)
 {
     self->tick();
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnLiftObject(Game *self, unsigned int uArg, unsigned int vArg,
-                    unsigned int baseArg, unsigned int topArg)
+void Sim_SpawnLiftObject(Game *self, unsigned int uArg, unsigned int vArg,
+                         unsigned int baseArg, unsigned int topArg)
 {
     LiftObject::spawn(self, uArg, vArg, baseArg, topArg);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeLiftObjects(Game *self)
+void Sim_PurgeLiftObjects(Game *self)
 {
     LiftObject::purgeAll(self);
 }

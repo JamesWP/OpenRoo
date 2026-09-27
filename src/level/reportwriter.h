@@ -7,5 +7,4 @@ class Game;
  * object counts, time bonus and cumulative score per level) and
  * ScriptTexts.txt (every script's texts), then seeds and saves the high-score
  * table. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Report_WriteLevelReport(Game *self, const char *pathname);
+void Report_WriteLevelReport(Game *self, const char *pathname);

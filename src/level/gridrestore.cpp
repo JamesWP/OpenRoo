@@ -42,8 +42,7 @@ static void fx_init(void)
         s_diag = 1;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RestoreTileGridFromSnapshot(Game *self)
+void Sim_RestoreTileGridFromSnapshot(Game *self)
 {
     LevelMap *map = self->map();
 

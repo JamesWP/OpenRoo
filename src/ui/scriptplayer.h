@@ -173,13 +173,11 @@ KAROO_LAYOUT_CHECKS(ScriptPlayer)
     KAROO_LAYOUT_SIZE(0xf53f4);
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-JJScript_ReadForLevel(ScriptPlayer *self, const char *path);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-JJScript_ReleaseScriptStreamBuffers(ScriptPlayer *self);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
+int JJScript_ReadForLevel(ScriptPlayer *self, const char *path);
+void JJScript_ReleaseScriptStreamBuffers(ScriptPlayer *self);
+int
 JJScript_ReadTextsForReport(ScriptPlayer *self, const char *path, FILE *sink);
 
 /* The one slot of ScriptPlayer's vtable. */
-extern "C" __declspec(dllexport) ScriptPlayer *__attribute__((thiscall))
+ScriptPlayer *
 ScriptPlayer_ScalarDestructor(ScriptPlayer *self, unsigned char flags);

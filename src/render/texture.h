@@ -37,32 +37,27 @@ extern SceneTexture g_texKaroo128;
  * The LoadedImage ctor/dtor family.  scenetexture.cpp's SceneTexture family
  * is the only outside caller: its Constructor chains to the base ctor and its
  * DtorBody tail-calls the base dtor body, exactly as the originals do. */
-extern "C" __declspec(dllexport) LoadedImage *__attribute__((thiscall))
-Texture_ImageCtor(LoadedImage *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Texture_ImageDtorBody(LoadedImage *self);
-extern "C" __declspec(dllexport) LoadedImage *__attribute__((thiscall))
-Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags);
+LoadedImage *Texture_ImageCtor(LoadedImage *self);
+void Texture_ImageDtorBody(LoadedImage *self);
+LoadedImage *Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags);
 
 /* Restore a lost surface and reload its image.
  * TextureManager_LoadAll (scenetexture.cpp) is the outside caller. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_Load(LoadedImage *self);
+unsigned int Texture_Load(LoadedImage *self);
 
 /* Release the IDirect3DTexture2 and both surfaces. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Texture_ReleaseD3DTexture(SceneTexture *self);
+void Texture_ReleaseD3DTexture(SceneTexture *self);
 
 /* A palette from the DIB's colour table.  scenetexture.cpp's
  * BindTextureResource is the only caller. */
-extern "C" __declspec(dllexport) IDirectDrawPalette *__stdcall
+IDirectDrawPalette *__stdcall
 Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp);
 
 /* The vtable pointer LoadedImage's ctor and dtor body install, and the same
  * question for SceneTexture: our own one-slot table in this DLL. */
-extern "C" __declspec(dllexport) void *Texture_ImageVtable(void);
+void *Texture_ImageVtable(void);
 
 /* KAROO_IMAGE_DIAG's first-call announcement, shared so the census covers all
  * six ctor/dtor entry points through one implementation. */
-extern "C" __declspec(dllexport) void Texture_ImageFirstCall(const char *who,
-                                                             unsigned long *seen);
+void Texture_ImageFirstCall(const char *who,
+                            unsigned long *seen);

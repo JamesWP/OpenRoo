@@ -29,9 +29,8 @@
 #define PARTICLE_LOG_FIRST 8
 #define FX_TINT_COLOUR     0xFFFF00FF
 
-#define THISCALL __attribute__((thiscall))
-typedef void  (THISCALL *ps_fill_fn)(ParticleSystem *);
-typedef DWORD (THISCALL *ps_draw_fn)(ParticleSystem *, RenderDevice *);
+typedef void  (*ps_fill_fn)(ParticleSystem *);
+typedef DWORD (*ps_draw_fn)(ParticleSystem *, RenderDevice *);
 
 static bool fx_tint(void)
 {
@@ -173,32 +172,24 @@ static DWORD xface_draw(XFaceParticleSystem *self, RenderDevice *dev)
 
 /* ─── Render exports ───────────────────────────────────────────────────────
  */
-extern "C" {
 
-__declspec(dllexport) void THISCALL
-Particle_PointFill(PointParticleSystem *self)  { point_fill(self); }
+void Particle_PointFill(PointParticleSystem *self)  { point_fill(self); }
 
-__declspec(dllexport) void THISCALL
-Particle_FaceFill(FaceParticleSystem *self)    { face_fill(self); }
+void Particle_FaceFill(FaceParticleSystem *self)    { face_fill(self); }
 
-__declspec(dllexport) void THISCALL
-Particle_XFaceFill(XFaceParticleSystem *self)  { xface_fill(self); }
+void Particle_XFaceFill(XFaceParticleSystem *self)  { xface_fill(self); }
 
-__declspec(dllexport) DWORD THISCALL
-Particle_PointDraw(PointParticleSystem *self, RenderDevice *dev)
+DWORD Particle_PointDraw(PointParticleSystem *self, RenderDevice *dev)
 { return point_draw(self, dev); }
 
-__declspec(dllexport) DWORD THISCALL
-Particle_FaceDraw(FaceParticleSystem *self, RenderDevice *dev)
+DWORD Particle_FaceDraw(FaceParticleSystem *self, RenderDevice *dev)
 { return face_draw(self, dev); }
 
-__declspec(dllexport) DWORD THISCALL
-Particle_XFaceDraw(XFaceParticleSystem *self, RenderDevice *dev)
+DWORD Particle_XFaceDraw(XFaceParticleSystem *self, RenderDevice *dev)
 { return xface_draw(self, dev); }
 
 /* Base Render (Face/XFace slot 8): fill then draw, through slots 9 and 12. */
-__declspec(dllexport) DWORD THISCALL
-Particle_BaseRender(ParticleSystem *self, RenderDevice *dev)
+DWORD Particle_BaseRender(ParticleSystem *self, RenderDevice *dev)
 {
     ps_fill(self);
     return ps_draw(self, dev);
@@ -206,14 +197,12 @@ Particle_BaseRender(ParticleSystem *self, RenderDevice *dev)
 
 /* Point Render (slot 8 override): fills through the vtable but draws the
  * POINTLIST itself, never calling slot 12. */
-__declspec(dllexport) DWORD THISCALL
-Particle_PointRender(PointParticleSystem *self, RenderDevice *dev)
+DWORD Particle_PointRender(PointParticleSystem *self, RenderDevice *dev)
 {
     ps_fill(&self->base);
     return point_draw(self, dev);
 }
 
-}  // extern "C"
 
 /* ─── Dispatch ─────────────────────────────────────────────────────────────
  *
@@ -508,11 +497,11 @@ static BOOL ring_alloc(RingBuffer *ring, DWORD count, DWORD shapes)
 
 /* ─── ParticleSystem, the base class ───────────────────────────────────────
  */
-typedef void  (THISCALL *ps_dtor_fn)(void *, unsigned);
-typedef void  (THISCALL *ps_release_fn)(void *, int);
-typedef BOOL  (THISCALL *ps_attach_fn)(void *, void *);
-typedef BOOL  (THISCALL *ps_stream_fn)(void *, void *);
-typedef BOOL  (THISCALL *ps_count_fn)(void *, DWORD);
+typedef void  (*ps_dtor_fn)(void *, unsigned);
+typedef void  (*ps_release_fn)(void *, int);
+typedef BOOL  (*ps_attach_fn)(void *, void *);
+typedef BOOL  (*ps_stream_fn)(void *, void *);
+typedef BOOL  (*ps_count_fn)(void *, DWORD);
 
 /* Drop a Generator or an Environment through its own slot 0. */
 static void sub_object_delete(void *obj)
@@ -1224,7 +1213,7 @@ ParticleSystem *ps_create(const char *name)
 /* ─── The two ways the game builds a system ────────────────────────────────
  *
  * Clone and load from a .par file; both go through the factory. */
-typedef BOOL (THISCALL *ps_load_fn)(void *, void *, GameLogger *);
+typedef BOOL (*ps_load_fn)(void *, void *, GameLogger *);
 
 /* Length-prefixed class name, then the factory, then slot 14. */
 static ParticleSystem *ps_load_stream(void *fp, GameLogger *log)
@@ -1289,178 +1278,154 @@ ParticleSystem *ps_clone(const ParticleSystem *src)
 
 /* ─── Lifecycle exports ────────────────────────────────────────────────────
  */
-extern "C" {
 
-/* The two __cdecl entry points. */
-__declspec(dllexport) ParticleSystem *__cdecl
+/* The two entry points. */
+ParticleSystem *
 Particle_CloneSystem(const ParticleSystem *src)            { return ps_clone(src); }
 
-__declspec(dllexport) ParticleSystem *__cdecl
+ParticleSystem *
 Particle_LoadFromFile(const char *path, GameLogger *log)   { return ps_load_file(path, log); }
 
 /* Base ParticleSystem */
-__declspec(dllexport) void *THISCALL
-Particle_BaseDtor(ParticleSystem *self, unsigned flags)
+void *Particle_BaseDtor(ParticleSystem *self, unsigned flags)
 {
     ps_base_destruct(self);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void THISCALL
+void
 Particle_BaseRelease(ParticleSystem *self, int flags)        { ps_release(self, flags); }
 
-__declspec(dllexport) BOOL THISCALL
-Particle_BaseCopyFrom(ParticleSystem *self, const ParticleSystem *src)
+BOOL Particle_BaseCopyFrom(ParticleSystem *self, const ParticleSystem *src)
 { return ps_copy_from(self, src); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_BaseSetCapacity(ParticleSystem *self, DWORD n)      { return ps_set_capacity(self, n); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_BaseResize(ParticleSystem *self, DWORD n)           { return ps_resize(self, n); }
 
 /* Slots 5 and 6: one function each across all four classes. */
-__declspec(dllexport) BOOL THISCALL
-Particle_SetGenerator(ParticleSystem *self, void *gen)
+BOOL Particle_SetGenerator(ParticleSystem *self, void *gen)
 { return ps_set_sub_object((void **)&self->pGenerator, &self->ring, gen); }
 
-__declspec(dllexport) BOOL THISCALL
-Particle_SetEnvironment(ParticleSystem *self, void *env)
+BOOL Particle_SetEnvironment(ParticleSystem *self, void *env)
 { return ps_set_sub_object((void **)&self->pEnvironment, &self->ring, env); }
 
-__declspec(dllexport) BOOL THISCALL
-Particle_BaseSave(ParticleSystem *self, void *fp, GameLogger *log)
+BOOL Particle_BaseSave(ParticleSystem *self, void *fp, GameLogger *log)
 { return ps_serialize(self, fp, log); }
 
-__declspec(dllexport) BOOL THISCALL
-Particle_BaseLoad(ParticleSystem *self, void *fp, GameLogger *log)
+BOOL Particle_BaseLoad(ParticleSystem *self, void *fp, GameLogger *log)
 { return ps_deserialize(self, fp, log); }
 
 /* The base class's own fill and draw: nothing, and 0. */
-__declspec(dllexport) void THISCALL
-Particle_BaseFill(ParticleSystem *)                          { }
+void Particle_BaseFill(ParticleSystem *)                          { }
 
-__declspec(dllexport) DWORD THISCALL
-Particle_BaseDrawNull(ParticleSystem *, RenderDevice *)  { return 0; }
+DWORD Particle_BaseDrawNull(ParticleSystem *, RenderDevice *)  { return 0; }
 
 /* Slots 10 and 11 where the class does not override them (base, Point, XFace):
  * shared no-ops with the same argument counts, so the same callee cleanup. */
-__declspec(dllexport) void THISCALL
-Particle_NopVec3(ParticleSystem *, float, float, float)      { }
+void Particle_NopVec3(ParticleSystem *, float, float, float)      { }
 
-__declspec(dllexport) void THISCALL
-Particle_NopPtr(ParticleSystem *, void *)                    { }
+void Particle_NopPtr(ParticleSystem *, void *)                    { }
 
 /* The three non-virtual entry points. */
-__declspec(dllexport) Generator *THISCALL
-Particle_GetGenerator(ParticleSystem *self, const char *name)
+Generator *Particle_GetGenerator(ParticleSystem *self, const char *name)
 { return ps_get_generator(self, name); }
 
-__declspec(dllexport) void THISCALL
+void
 Particle_EnableRenderNode(ParticleSystem *self)              { ps_set_render_node(self, 1); }
 
-__declspec(dllexport) void THISCALL
+void
 Particle_DisableRenderNode(ParticleSystem *self)             { ps_set_render_node(self, 0); }
 
 /* Slot 1 for Point and Face. */
-__declspec(dllexport) void THISCALL
+void
 Particle_QuadRelease(ParticleSystem *self, int flags)        { quad_release(self, flags); }
 
 /* PointParticleSystem */
-__declspec(dllexport) void *THISCALL
-Particle_PointDtor(PointParticleSystem *self, unsigned flags)
+void *Particle_PointDtor(PointParticleSystem *self, unsigned flags)
 {
     quad_destruct(&self->base, ps_vtbl_point);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_PointCopyFrom(PointParticleSystem *self, const ParticleSystem *src)
 { return point_copy_from(self, src); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_PointSetCapacity(PointParticleSystem *self, DWORD n) { return point_set_capacity(self, n); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_PointResize(PointParticleSystem *self, DWORD n)      { return point_resize(self, n); }
 
-__declspec(dllexport) BOOL THISCALL
-Particle_PointSave(PointParticleSystem *self, void *fp, GameLogger *log)
+BOOL Particle_PointSave(PointParticleSystem *self, void *fp, GameLogger *log)
 { return point_serialize(self, fp, log); }
 
-__declspec(dllexport) BOOL THISCALL
-Particle_PointLoad(PointParticleSystem *self, void *fp, GameLogger *log)
+BOOL Particle_PointLoad(PointParticleSystem *self, void *fp, GameLogger *log)
 { return point_deserialize(self, fp, log); }
 
 /* FaceParticleSystem */
-__declspec(dllexport) void *THISCALL
-Particle_FaceDtor(FaceParticleSystem *self, unsigned flags)
+void *Particle_FaceDtor(FaceParticleSystem *self, unsigned flags)
 {
     quad_destruct(&self->base, ps_vtbl_face);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_FaceCopyFrom(FaceParticleSystem *self, const FaceParticleSystem *src)
 { return face_copy_from(self, src); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_FaceSetCapacity(FaceParticleSystem *self, DWORD n)  { return face_set_capacity(self, n); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_FaceResize(FaceParticleSystem *self, DWORD n)       { return face_resize(self, n); }
 
-__declspec(dllexport) BOOL THISCALL
-Particle_FaceSave(FaceParticleSystem *self, void *fp, GameLogger *log)
+BOOL Particle_FaceSave(FaceParticleSystem *self, void *fp, GameLogger *log)
 { return face_serialize(self, fp, log); }
 
-__declspec(dllexport) BOOL THISCALL
-Particle_FaceLoad(FaceParticleSystem *self, void *fp, GameLogger *log)
+BOOL Particle_FaceLoad(FaceParticleSystem *self, void *fp, GameLogger *log)
 { return face_deserialize(self, fp, log); }
 
 /* XFaceParticleSystem */
-__declspec(dllexport) void *THISCALL
-Particle_XFaceDtor(XFaceParticleSystem *self, unsigned flags)
+void *Particle_XFaceDtor(XFaceParticleSystem *self, unsigned flags)
 {
     xface_destruct(self);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void THISCALL
+void
 Particle_XFaceRelease(XFaceParticleSystem *self, int flags)  { xface_release(self, flags); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_XFaceCopyFrom(XFaceParticleSystem *self, const XFaceParticleSystem *src)
 { return xface_copy_from(self, src); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_XFaceSetCapacity(XFaceParticleSystem *self, DWORD n) { return xface_set_capacity(self, n); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Particle_XFaceResize(XFaceParticleSystem *self, DWORD n)      { return xface_resize(self, n); }
 
-__declspec(dllexport) BOOL THISCALL
-Particle_XFaceSave(XFaceParticleSystem *self, void *fp, GameLogger *log)
+BOOL Particle_XFaceSave(XFaceParticleSystem *self, void *fp, GameLogger *log)
 { return xface_serialize(self, fp, log); }
 
-__declspec(dllexport) BOOL THISCALL
-Particle_XFaceLoad(XFaceParticleSystem *self, void *fp, GameLogger *log)
+BOOL Particle_XFaceLoad(XFaceParticleSystem *self, void *fp, GameLogger *log)
 { return xface_deserialize(self, fp, log); }
 
-}  // extern "C"
 
 /* ─── Tick and corner exports ──────────────────────────────────────────────
  */
-extern "C" {
 
-__declspec(dllexport) void THISCALL
+void
 Particle_BaseTick(ParticleSystem *self, DWORD dt)  { base_tick(self, relay_dt(dt)); }
 
-__declspec(dllexport) void THISCALL
+void
 Particle_XFaceTick(XFaceParticleSystem *self, DWORD dt)  { xface_tick(self, relay_dt(dt)); }
 
-__declspec(dllexport) void THISCALL
-Particle_FaceSetVector(FaceParticleSystem *self, float x, float y, float z)
+void Particle_FaceSetVector(FaceParticleSystem *self, float x, float y, float z)
 {
     static LONG once = 0;
     if (InterlockedExchange(&once, 1) == 0)
@@ -1469,8 +1434,7 @@ Particle_FaceSetVector(FaceParticleSystem *self, float x, float y, float z)
     face_set_vector(self, x, y, z);
 }
 
-__declspec(dllexport) void THISCALL
-Particle_FaceTransformCorners(FaceParticleSystem *self, float *matrix)
+void Particle_FaceTransformCorners(FaceParticleSystem *self, float *matrix)
 {
     static LONG once = 0;
     if (InterlockedExchange(&once, 1) == 0)
@@ -1479,13 +1443,12 @@ Particle_FaceTransformCorners(FaceParticleSystem *self, float *matrix)
         transform_point(self->flCorner[c], matrix);
 }
 
-}  // extern "C"
 
 /* ─── The vtables ─────────────────────────────────────────────────────────
  *
  * One table per class, in the slot order particles.h names, installed by the
- * constructors above.  Hand-built rather than C++ virtuals: the callers use
- * __thiscall and this slot order.  The static_asserts below catch an
+ * constructors above.  Hand-built rather than C++ virtuals: the callers index
+ * the table by this slot order.  The static_asserts below catch an
  * initialiser that is one entry short, which would otherwise leave a silent
  * NULL slot. */
 extern void *const ps_vtbl_base[] = {

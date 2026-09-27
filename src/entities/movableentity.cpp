@@ -41,12 +41,10 @@ void MovableEntity::destroyBaseForGame()
     vtable_ = GAME_LEVELOBJECT_VTBL;
 }
 
-/* The typedef is __thiscall to match the vtable slot; `self` is typed
- * MovableEntity * because every object that reaches here is one --
+/* `self` is typed MovableEntity * because every object that reaches here is one --
  * Object_DestroyAndCompactId's only callers hold Foe ** and Bomb **, and both
  * derive from this class. */
-typedef void (__attribute__((thiscall)) *scalar_dtor_fn)(MovableEntity *self,
-                                                         int flags);
+typedef void (*scalar_dtor_fn)(MovableEntity *self, int flags);
 
 void MovableEntity::destroyViaVtable(int flags)
 {
@@ -77,28 +75,25 @@ void MovableEntity::zeroSoundSlots()
 }
 
 /* === Exports -- thin ABI shims === */
-extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
-Sim_PopulateMovableEntityBase(MovableEntity *self)
+MovableEntity *Sim_PopulateMovableEntityBase(MovableEntity *self)
 {
     self->populateBaseForGame();
     return self;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ZeroEntitySoundSlotPointers(MovableEntity *self)
+void Sim_ZeroEntitySoundSlotPointers(MovableEntity *self)
 {
     self->zeroSoundSlots();
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_DestroyMovableEntityBase(MovableEntity *self)
+void Sim_DestroyMovableEntityBase(MovableEntity *self)
 {
     self->destroyBaseForGame();
 }
 
 /* No code path in this codebase reaches this except through the vtable
  * installed above. */
-extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
+MovableEntity *
 Sim_DeleteMovableEntityWithFlags(MovableEntity *self, unsigned int flags)
 {
     self->destroyBaseForGame();
@@ -1009,8 +1004,7 @@ unsigned int MovableEntity::updateMovement()
     return 0;
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_UpdateEntityMovement(MovableEntity *self)
+unsigned int Sim_UpdateEntityMovement(MovableEntity *self)
 {
     return self->updateMovement();
 }

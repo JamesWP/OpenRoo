@@ -78,8 +78,7 @@ static void release_list(PlacementList *l)
     l->count = 0;
 }
 
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_Release(LevelPlacements *p)
+void LevelPlacements_Release(LevelPlacements *p)
 {
     ::operator delete(p->kind01Verts);
     p->kind01Verts = NULL;
@@ -252,9 +251,8 @@ static void put_entry(PlacementList *l, unsigned *next, float x, float y,
     ++*next;
 }
 
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_Build(LevelPlacements *p, const Game *g,
-                      const ThemeAssetBlock *theme)
+void LevelPlacements_Build(LevelPlacements *p, const Game *g,
+                           const ThemeAssetBlock *theme)
 {
     LevelPlacements_Release(p);
 
@@ -380,8 +378,7 @@ LevelPlacements_Build(LevelPlacements *p, const Game *g,
 
 /* Before WinMain: every dword of the template zero but the diffuse,
  * 0xffffffff.  The builder overwrites all four later. */
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_StaticInit(void)
+void LevelPlacements_StaticInit(void)
 {
     for (int i = 0; i < 4; i++) {
         for (int k = 0; k < 8; k++)
@@ -397,7 +394,7 @@ LevelPlacements_StaticInit(void)
 
 /* The lift and slide passes.  Counts compare unsigned.  The block itself is
  * passed as the scene renderer's quad: tileQuad heads it. */
-extern "C" __declspec(dllexport) void __cdecl
+void
 LevelPlacements_DrawLifts(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
                           RenderDevice *d3d, double now)
 {
@@ -413,7 +410,7 @@ LevelPlacements_DrawLifts(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
                              d3d, now, 0.0f, 0, 0);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+void
 LevelPlacements_DrawSlides(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
                            RenderDevice *d3d, double now)
 {

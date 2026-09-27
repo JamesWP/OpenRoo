@@ -84,47 +84,37 @@ KAROO_LAYOUT_CHECKS(SoundManager)
 /* No size: the object continues with the fixed sounds. */
 }
 
-extern "C" {
 
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
-                               int bDestroyIfUnused);
+void SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
+                                    int bDestroyIfUnused);
 
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
-                             int bDestroyIfUnused);
+void SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
+                                  int bDestroyIfUnused);
 
 /* Loads filename into an entry's master buffer (or, given the spare's address,
  * the spare), in 3D or 2D, and applies the pending 3D mode on success. */
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_LoadEntryMaster(SoundManager *self, void *entry,
-                         const char *filename, unsigned long dwDsFlags,
-                         int bDo3D);
+int SoundMgr_LoadEntryMaster(SoundManager *self, void *entry,
+                             const char *filename, unsigned long dwDsFlags,
+                             int bDo3D);
 
-__declspec(dllexport) CStaticSoundbuffer *__attribute__((thiscall))
+CStaticSoundbuffer *
 SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D);
 
-__declspec(dllexport) VoicePool *__attribute__((thiscall))
+VoicePool *
 SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
                      int bWant3D);
 
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_Setup(SoundManager *self, int mode3d);
+int SoundMgr_Setup(SoundManager *self, int mode3d);
 
 /* Construction and destruction, the asset purge (also the reset), and
  * start-up.  Init creates the device, with the 3D listener if enable3d; with
  * no logger it creates its own, SoundManager.log. */
-__declspec(dllexport) SoundManager *__attribute__((thiscall))
-SoundMgr_Construct(SoundManager *self);
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_Destruct(SoundManager *self);
-__declspec(dllexport) SoundManager *__attribute__((thiscall))
+SoundManager *SoundMgr_Construct(SoundManager *self);
+void SoundMgr_Destruct(SoundManager *self);
+SoundManager *
 SoundMgr_ScalarDestructor(SoundManager *self, unsigned char flags);
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_PurgeAssets(SoundManager *self);
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
-              UINT bufferflags, short channels, int samplespersec,
-              USHORT bitspersample, GameLogger *logger);
+void SoundMgr_PurgeAssets(SoundManager *self);
+int SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
+                  UINT bufferflags, short channels, int samplespersec,
+                  USHORT bitspersample, GameLogger *logger);
 
-}

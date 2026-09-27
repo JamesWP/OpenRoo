@@ -69,23 +69,19 @@ void FaktMovie::setWindow(void *surface)
     log_write("FaktMovie::setWindow(this=%p, surface=%p)\n", this, surface);
 }
 
-extern "C" {
 
 /* Installs the vtable, then the fields. */
-__declspec(dllexport) FaktMovie * __attribute__((thiscall))
-Movie_Construct(FaktMovie *self)
+FaktMovie *Movie_Construct(FaktMovie *self)
 {
     self->vtable = FAKTMOVIE_VTABLE;
     self->construct();
     return self;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-Movie_Destruct(FaktMovie *self) { self->destruct(); }
+void Movie_Destruct(FaktMovie *self) { self->destruct(); }
 
 /* Frees on bit 0; the one movie is a global, so it never does. */
-__declspec(dllexport) FaktMovie * __attribute__((thiscall))
-Movie_ScalarDeletingDtor(FaktMovie *self, unsigned int flags)
+FaktMovie *Movie_ScalarDeletingDtor(FaktMovie *self, unsigned int flags)
 {
     self->destruct();
     if (flags & 1)
@@ -93,41 +89,34 @@ Movie_ScalarDeletingDtor(FaktMovie *self, unsigned int flags)
     return self;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-Movie_Teardown(FaktMovie *self) { self->teardown(); }
+void Movie_Teardown(FaktMovie *self) { self->teardown(); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-Movie_Setup(FaktMovie *self, void *log_obj)
+int Movie_Setup(FaktMovie *self, void *log_obj)
 {
     self->setup(log_obj);
     return 1;
 }
 
-__declspec(dllexport) int __attribute__((thiscall))
+int
 Movie_LoadVideo(FaktMovie *self, void *arg1, void *arg2, void *arg3, const char *path)
 {
     return self->loadVideo(arg1, arg2, arg3, path);
 }
 
-__declspec(dllexport) int __attribute__((thiscall))
-Movie_Notify(FaktMovie *self, DWORD a, DWORD b, DWORD c)
+int Movie_Notify(FaktMovie *self, DWORD a, DWORD b, DWORD c)
 {
     self->notify(a, b, c);
     return 0;
 }
 
-__declspec(dllexport) int __attribute__((thiscall))
-Movie_Play(FaktMovie *self) { self->play(); return 0; }
+int Movie_Play(FaktMovie *self) { self->play(); return 0; }
 
-__declspec(dllexport) int __attribute__((thiscall))
-Movie_Pause(FaktMovie *self) { self->pause(); return 0; }
+int Movie_Pause(FaktMovie *self) { self->pause(); return 0; }
 
-__declspec(dllexport) int __attribute__((thiscall))
-Movie_Stop(FaktMovie *self) { self->stop(); return 0; }
+int Movie_Stop(FaktMovie *self) { self->stop(); return 0; }
 
-__declspec(dllexport) void __attribute__((thiscall))
+void
 Movie_SetWindow(FaktMovie *self, void *surface) { self->setWindow(surface); }
 
-}
 
 void *const g_faktMovieVtable[1] = { (void *)&Movie_ScalarDeletingDtor };

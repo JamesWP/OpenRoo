@@ -6,12 +6,10 @@
 
 /* The one-slot table, installed by the destructor body and by the movable
  * entities' base construction. */
-extern "C" __declspec(dllexport) void *LevelObjBase_Vtable(void);
+void *LevelObjBase_Vtable(void);
 
 /* Reinstalls the base table. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-LevelObjBase_DtorBody(void *self);
+void LevelObjBase_DtorBody(void *self);
 
 /* The deleting destructor: returns this; bit 0 of flags frees. */
-extern "C" __declspec(dllexport) void *__attribute__((thiscall))
-LevelObjBase_ScalarDtor(void *self, unsigned int flags);
+void *LevelObjBase_ScalarDtor(void *self, unsigned int flags);

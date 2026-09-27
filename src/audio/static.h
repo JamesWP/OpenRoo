@@ -47,57 +47,46 @@ KAROO_LAYOUT_CHECKS(CStaticSoundbuffer)
 }
 
 /* The one-slot vtable every buffer carries. */
-extern "C" __declspec(dllexport) void *CStatic_Vtable(void);
+void *CStatic_Vtable(void);
 
-extern "C" {
 /* The scalar/vector deleting destructor: bit 1 means an array, bit 0 frees the
  * block.  Returns the block destroyed: this, or for an array the count header
  * four bytes below the first element. */
-__declspec(dllexport) void * __attribute__((thiscall))
-CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
+void *CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
 
 /* KAROO_SOUND_DIAG=1: logs each caller's first call.  Shared with the
  * streaming buffer (stream.cpp). */
-__declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
-                                                  unsigned long *seen);
+void CStatic_SoundFirstCall(const char *who,
+                            unsigned long *seen);
 
-__declspec(dllexport) CStaticSoundbuffer * __attribute__((thiscall))
-CStatic_Init(CStaticSoundbuffer *self);  // returns this
-__declspec(dllexport) void __attribute__((thiscall))
+CStaticSoundbuffer *CStatic_Init(CStaticSoundbuffer *self);  // returns this
+void
 CStatic_ReinitBuffer(CStaticSoundbuffer *self);  // sets the vtable, then Reset
-__declspec(dllexport) void __attribute__((thiscall))
+void
 CStatic_Reset(CStaticSoundbuffer *self);  // releases the buffers and frees the file name
-__declspec(dllexport) int  __attribute__((thiscall))
-CStatic_CreateAndLoad3DSoundFile(CStaticSoundbuffer *self,
-                                 IDirectSound *pDS, DWORD dwDsFlags,
-                                 const char *filename, void *logger);
+int CStatic_CreateAndLoad3DSoundFile(CStaticSoundbuffer *self,
+                                     IDirectSound *pDS, DWORD dwDsFlags,
+                                     const char *filename, void *logger);
 
 /* Loads filename into a fresh buffer; returns 1 or 0.  The 3D form adds
  * DSBCAPS_CTRL3D and queries the 3D interface. */
-__declspec(dllexport) int  __attribute__((thiscall))
-CStatic_CreateAndLoadFile(CStaticSoundbuffer *self,
-                          IDirectSound *pDS, DWORD dwDsFlags,
-                          const char *filename, void *logger);
+int CStatic_CreateAndLoadFile(CStaticSoundbuffer *self,
+                              IDirectSound *pDS, DWORD dwDsFlags,
+                              const char *filename, void *logger);
 
 /* Reloads this buffer's own file under a new 3D mode, if it differs. */
-__declspec(dllexport) int  __attribute__((thiscall))
+int
 CStatic_CreateAndLoad(CStaticSoundbuffer *self, IDirectSound *pDS, DWORD set3D);
 
 /* Turns the 3D processing on or off on a loaded 3D buffer. */
-__declspec(dllexport) int  __attribute__((thiscall))
-CStatic_Apply3DMode(CStaticSoundbuffer *self, int enable3D);
+int CStatic_Apply3DMode(CStaticSoundbuffer *self, int enable3D);
 
 /* Duplicates other into self.  Returns other on success and NULL on failure,
  * which is what makes the callers' `== src` test a success test.  A non-zero
  * flag suppresses the reload-from-file fallback when duplication fails. */
-__declspec(dllexport) void * __attribute__((thiscall))
-CStatic_Copy(CStaticSoundbuffer *self,
-             IDirectSound *pDS, CStaticSoundbuffer *other, int flag);
-__declspec(dllexport) int  __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *self);
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_Set3DPosition(CStaticSoundbuffer *self,
-                      float x, float y, float z, DWORD dwApply);
-}
+void *CStatic_Copy(CStaticSoundbuffer *self,
+                   IDirectSound *pDS, CStaticSoundbuffer *other, int flag);
+int CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
+void CStatic_HaltPlayback(CStaticSoundbuffer *self);
+void CStatic_Set3DPosition(CStaticSoundbuffer *self,
+                           float x, float y, float z, DWORD dwApply);

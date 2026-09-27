@@ -11,8 +11,7 @@ struct GameLogger;
 
 /* Load `path` into `self`; the low byte of the result is the
  * success flag. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Model_ImportSceneModels(CFaktMesh *self, const char *path);
+int Model_ImportSceneModels(CFaktMesh *self, const char *path);
 
 /* ─── ModelManager -- the name-keyed CFaktMesh cache ───────────────────────
  *
@@ -38,17 +37,13 @@ KAROO_LAYOUT_CHECKS(ModelManager)
 
 extern ModelManager g_modelManager;
 
-extern "C" __declspec(dllexport) CFaktMesh *__attribute__((thiscall))
-ModelManager_FindOrImport(ModelManager *self, char *name);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ModelManager_ClearReleaseFree(ModelManager *self);
+CFaktMesh *ModelManager_FindOrImport(ModelManager *self, char *name);
+void ModelManager_ClearReleaseFree(ModelManager *self);
 
 /* Constructor, destructor body and scalar deleting destructor (the one
  * vtable slot).  Instances: g_modelManager, constructed by staticinit.cpp,
  * and the Scene's (scene.h). */
-extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
-ModelManager_Construct(ModelManager *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ModelManager_Destruct(ModelManager *self);
-extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
+ModelManager *ModelManager_Construct(ModelManager *self);
+void ModelManager_Destruct(ModelManager *self);
+ModelManager *
 ModelManager_ScalarDestructor(ModelManager *self, unsigned char flags);

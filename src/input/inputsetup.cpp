@@ -8,8 +8,7 @@
 #include "player.h"
 #include "camerainput.h"
 
-extern "C" __declspec(dllexport) void __cdecl
-Input_TrySaveSettings(void)
+void Input_TrySaveSettings(void)
 {
     GameLog_LogMessage(&g_logger, 1, GS_CONTROL_SAVE_SETTINGS);
     ProgCtrl_WriteBindings(&g_progCtrl);
@@ -19,8 +18,7 @@ Input_TrySaveSettings(void)
 /* The player actions get the Player as their context, the camera actions
  * the Game.  Default keys (DirectInput scan codes) are bound only when no
  * saved bindings load. */
-extern "C" __declspec(dllexport) int __cdecl
-Input_DirectInputSetup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
+int Input_DirectInputSetup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
 {
     ProgableControl *pc = &g_progCtrl;
     if (!ProgCtrl_InitDInput(pc, hInstance) || !ProgCtrl_SetupKbd(pc, hwnd) ||

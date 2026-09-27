@@ -570,22 +570,19 @@ bool BridgeObject::buildSurface(BridgeVertex v[4], double t, bool backward,
 }
 
 /* C-linkage entry points. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_UpdateBridgeObject(BridgeObject *self)
+void Sim_UpdateBridgeObject(BridgeObject *self)
 {
     self->tick();
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnBridgeObject(Game *self, unsigned int uArg, unsigned int vArg,
-                      unsigned int heightArg, unsigned int slotArg,
-                      unsigned int axisArg)
+void Sim_SpawnBridgeObject(Game *self, unsigned int uArg, unsigned int vArg,
+                           unsigned int heightArg, unsigned int slotArg,
+                           unsigned int axisArg)
 {
     BridgeObject::spawn(self, uArg, vArg, heightArg, slotArg, axisArg);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeBridgeObjects(Game *self)
+void Sim_PurgeBridgeObjects(Game *self)
 {
     BridgeObject::purgeAll(self);
 }

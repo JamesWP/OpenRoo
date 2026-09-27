@@ -53,8 +53,7 @@ static unsigned read_field(const unsigned char *g, unsigned off, unsigned char s
     return *(const unsigned int *)(g + off);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Report_WriteLevelReport(Game *self, const char *pathname)
+void Report_WriteLevelReport(Game *self, const char *pathname)
 {
     char buf[256];
     FILE *sink, *out;

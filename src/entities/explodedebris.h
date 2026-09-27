@@ -43,46 +43,36 @@ KAROO_LAYOUT_CHECKS(ExplodeDebris)
     KAROO_LAYOUT_SIZE(0x9c);
 }
 
-extern "C" {
 
 /* The one-slot vtable, installed by the ctor and the dtor body. */
-__declspec(dllexport) void *ExplodeDebris_Vtable(void);
+void *ExplodeDebris_Vtable(void);
 
-__declspec(dllexport) ExplodeDebris *__attribute__((thiscall))
-ExplodeDebris_Construct(ExplodeDebris *self);
+ExplodeDebris *ExplodeDebris_Construct(ExplodeDebris *self);
 
 /* Vtable slot 0.  Returns self; bit 0 of flags frees. */
-__declspec(dllexport) void *__attribute__((thiscall))
-ExplodeDebris_ScalarDtor(ExplodeDebris *self, unsigned int flags);
+void *ExplodeDebris_ScalarDtor(ExplodeDebris *self, unsigned int flags);
 
-__declspec(dllexport) void __attribute__((thiscall))
-ExplodeDebris_DtorBody(ExplodeDebris *self);
+void ExplodeDebris_DtorBody(ExplodeDebris *self);
 
 /* Frees the two scratch buffers.  See the .cpp for the field it does not
  * clear. */
-__declspec(dllexport) void __attribute__((thiscall))
-ExplodeDebris_Release(ExplodeDebris *self);
+void ExplodeDebris_Release(ExplodeDebris *self);
 
 /* The theme loader's "explode": size the buffers, and store the drop rate (the
  * keyword's third argument). */
-__declspec(dllexport) void __attribute__((thiscall))
+void
 ExplodeDebris_AllocateExplodeBuffers(ExplodeDebris *self, struct CFaktMesh *mesh);
-__declspec(dllexport) void __attribute__((thiscall))
-ExplodeDebris_StoreExplodeScaledCount(ExplodeDebris *self, float scale);
+void ExplodeDebris_StoreExplodeScaledCount(ExplodeDebris *self, float scale);
 
 /* Copies one mesh frame and gives every triangle a velocity.  Returns 1, or 0
  * if the frame, the vertex count or the buffer is wrong. */
-__declspec(dllexport) int __attribute__((thiscall))
-ExplodeDebris_Begin(ExplodeDebris *self, struct CFaktMesh *mesh,
-                    unsigned short frame, const float *origin);
+int ExplodeDebris_Begin(ExplodeDebris *self, struct CFaktMesh *mesh,
+                        unsigned short frame, const float *origin);
 
 /* Advances by dt: moves the live vertices, then drops whole triangles. */
-__declspec(dllexport) void __attribute__((thiscall))
-ExplodeDebris_Advance(ExplodeDebris *self, float dt);
+void ExplodeDebris_Advance(ExplodeDebris *self, float dt);
 
 /* Draws the live triangles twice (SRCALPHA, then DESTALPHA); 0x800401f0 if
  * inactive. */
-__declspec(dllexport) HRESULT __attribute__((thiscall))
-ExplodeDebris_Draw(ExplodeDebris *self, RenderDevice *dev);
+HRESULT ExplodeDebris_Draw(ExplodeDebris *self, RenderDevice *dev);
 
-}

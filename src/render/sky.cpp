@@ -32,9 +32,8 @@ static bool fx_one_quad(void)
     return cached != 0;
 }
 
-extern "C" __declspec(dllexport) float * __attribute__((thiscall))
-Sky_DrawSkyBackground(SkyBackground *self, RenderDevice *dev,
-                      float flCentreX, float flCentreY, float flCentreZ)
+float *Sky_DrawSkyBackground(SkyBackground *self, RenderDevice *dev,
+                             float flCentreX, float flCentreY, float flCentreZ)
 {
     dev->SetRenderState(RS::ZEnable, 0);
 
@@ -114,7 +113,7 @@ static void sky_fill_geometry(SkyBackground *self)
     }
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+unsigned int
 Sky_BuildFromFaceNames(SkyBackground *self, RenderDevice *dev, const char *up, const char *dn,
                        const char *fr, const char *bk, const char *lf,
                        const char *rt, UINT bpp)
@@ -142,8 +141,7 @@ Sky_BuildFromFaceNames(SkyBackground *self, RenderDevice *dev, const char *up, c
  * last to first. */
 static void *const g_SkyVtable[1] = { (void *)&Sky_ScalarDtor };
 
-extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
-Sky_Construct(SkyBackground *self)
+SkyBackground *Sky_Construct(SkyBackground *self)
 {
     for (int f = 0; f < 6; f++)
         Texture_SceneCtor(&self->Textures[f]);
@@ -152,16 +150,14 @@ Sky_Construct(SkyBackground *self)
     return self;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sky_DtorBody(SkyBackground *self)
+void Sky_DtorBody(SkyBackground *self)
 {
     self->pVtable = g_SkyVtable;
     for (int f = 6; f-- > 0; )
         Texture_SceneDtorBody(&self->Textures[f]);
 }
 
-extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
-Sky_ScalarDtor(SkyBackground *self, unsigned int flags)
+SkyBackground *Sky_ScalarDtor(SkyBackground *self, unsigned int flags)
 {
     Sky_DtorBody(self);
     if (flags & 1)

@@ -125,8 +125,7 @@ int LevelMap::readFile(const char *path)
     return 1;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-LevelMap_ReadFile(LevelMap *self, const char *path)
+int LevelMap_ReadFile(LevelMap *self, const char *path)
 {
     return self->readFile(path);
 }
@@ -146,8 +145,7 @@ void LevelMap::destruct()
     vtable_ = g_LevelMapVtable;
 }
 
-extern "C" __declspec(dllexport) LevelMap *__attribute__((thiscall))
-LevelMap_ScalarDestructor(LevelMap *self, unsigned char flags)
+LevelMap *LevelMap_ScalarDestructor(LevelMap *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

@@ -22,8 +22,7 @@
 #include "clock.h"
 #include "camera.h"
 
-extern "C" __declspec(dllexport) void __cdecl
-LevelEntry_PrepareAssets(void)
+void LevelEntry_PrepareAssets(void)
 {
     RenderDevice *d3d = g_renderDevice;
     Game *g = Game::instance();

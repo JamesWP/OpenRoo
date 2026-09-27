@@ -144,11 +144,10 @@ enum AnimCode {
 
 /* ani.cpp: __cdecl, and a null descriptor for a code the table has no slot
  * for. */
-extern "C" __declspec(dllexport) int __cdecl
+int
 Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger);
 
-extern "C" __declspec(dllexport) AnimSlot * __cdecl
-Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code);
+AnimSlot *Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code);
 
 /* ── The two evaluators ───────────────────────────────────────────────────
  *

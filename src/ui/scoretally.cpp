@@ -24,8 +24,7 @@
 #include "menutree.h"
 #include "record.h"
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
+int CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 
 static int s_fx = -1;
 
@@ -43,8 +42,7 @@ static void tick_sound(Game *game)
         CStatic_TriggerPlayback(s, 0);
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_AnimateScoreTallyStages(Game *self)
+unsigned int Sim_AnimateScoreTallyStages(Game *self)
 {
     unsigned int now, el, lim, n;
     unsigned char st;

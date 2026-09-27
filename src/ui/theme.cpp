@@ -201,7 +201,7 @@ static void theme_struct_dump_if_enabled(const char *path)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 
-typedef void *(__attribute__((thiscall)) *theme_scalar_dtor_fn)(void *self, unsigned int flags);
+typedef void *(*theme_scalar_dtor_fn)(void *self, unsigned int flags);
 
 static void delete_via_vtable(void *obj)
 {
@@ -210,7 +210,7 @@ static void delete_via_vtable(void *obj)
 }
 
 /* Releases one type's records. */
-extern "C" __declspec(dllexport) void __attribute__((fastcall))
+void __attribute__((fastcall))
 Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
 {
     for (int i = 0; i < 8; i++) {
@@ -234,23 +234,20 @@ Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
  * that follow run on zeroed members. */
 static void *const g_ThemeSlotVtable[1] = { (void *)&Theme_SlotScalarDtor };
 
-extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
-Theme_RecordConstruct(ThemeLevelObject *self)
+ThemeLevelObject *Theme_RecordConstruct(ThemeLevelObject *self)
 {
     Wrapper_Construct(&self->wrapper);
     ExplodeDebris_Construct(&self->explode);
     return self;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_RecordDestruct(ThemeLevelObject *self)
+void Theme_RecordDestruct(ThemeLevelObject *self)
 {
     ExplodeDebris_DtorBody(&self->explode);
     Wrapper_DtorBody(&self->wrapper);
 }
 
-extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
-Theme_SlotConstruct(ThemeObjectTypeSlot *self)
+ThemeObjectTypeSlot *Theme_SlotConstruct(ThemeObjectTypeSlot *self)
 {
     for (int i = 0; i < 8; i++)
         Theme_RecordConstruct(&self->records[i]);
@@ -258,8 +255,7 @@ Theme_SlotConstruct(ThemeObjectTypeSlot *self)
     return self;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_SlotDestruct(ThemeObjectTypeSlot *self)
+void Theme_SlotDestruct(ThemeObjectTypeSlot *self)
 {
     self->pVtable = (void *)g_ThemeSlotVtable;
     Theme_ReleaseSlot(self);
@@ -267,7 +263,7 @@ Theme_SlotDestruct(ThemeObjectTypeSlot *self)
         Theme_RecordDestruct(&self->records[i]);
 }
 
-extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
+ThemeObjectTypeSlot *
 Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
 {
     Theme_SlotDestruct(self);
@@ -278,8 +274,7 @@ Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
 
 /* Members only: the 38 slots in order, then the sky; destruction in reverse.
  * The plain data between them is left alone. */
-extern "C" __declspec(dllexport) ThemeAssetBlock *__attribute__((thiscall))
-Theme_BlockConstruct(ThemeAssetBlock *self)
+ThemeAssetBlock *Theme_BlockConstruct(ThemeAssetBlock *self)
 {
     for (int i = 0; i < THEME_OBJ_COUNT; i++)
         Theme_SlotConstruct(&self->slots[i]);
@@ -287,8 +282,7 @@ Theme_BlockConstruct(ThemeAssetBlock *self)
     return self;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_BlockDestruct(ThemeAssetBlock *self)
+void Theme_BlockDestruct(ThemeAssetBlock *self)
 {
     Sky_DtorBody(&self->sky);
     for (int i = THEME_OBJ_COUNT; i-- > 0; )
@@ -313,8 +307,7 @@ static const ThemeObjectType kReleaseOrder[] = {
 static_assert(sizeof(kReleaseOrder) / sizeof(kReleaseOrder[0]) == THEME_OBJ_COUNT - 1,
               "every slot but EXPLOSION");
 
-extern "C" __declspec(dllexport) void __cdecl
-Theme_ReleaseBlock(ThemeAssetBlock *block)
+void Theme_ReleaseBlock(ThemeAssetBlock *block)
 {
     TextureManager_ReleaseAll(&g_textureManager);
     ModelManager_ClearReleaseFree(&g_modelManager);
@@ -327,9 +320,8 @@ Theme_ReleaseBlock(ThemeAssetBlock *block)
 
 /* "NONE" (case-exact, on the raw wave name) disables the entry without
  * logging.  PRESERVED: the path is formatted unbounded into 256 bytes. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
-               DWORD arg3, DWORD arg4)
+int ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
+                   DWORD arg3, DWORD arg4)
 {
     char path[256];
     sprintf(path, GS_THEME_SOUND_PATH, g_gameDir, waveName);
@@ -361,8 +353,7 @@ static const struct { const char *name; unsigned id; } kSoundEvents[] = {
     { "bombtick", 0x3c },       { "explosionbomb", 0x46 }, { "explosioncatcher", 0x47 },
 };
 
-extern "C" __declspec(dllexport) bool __cdecl
-Theme_RegisterSound(Game *game, char *eventName, const char *waveName)
+bool Theme_RegisterSound(Game *game, char *eventName, const char *waveName)
 {
     lower_inplace(eventName);
     for (const auto &ev : kSoundEvents) {
@@ -966,7 +957,7 @@ static bool theme_load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block,
 }
 
 /* The load, timed.  The time goes only to our log, never into game state. */
-extern "C" __declspec(dllexport) bool __cdecl
+bool
 Theme_Load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block, char *path,
            GameLogger *logger)
 {
@@ -989,8 +980,7 @@ Theme_Load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block, char *path,
  * fields, and returns 0. */
 static void *const g_ThemeSoundVtable[1] = { (void *)&ThemeSound_ScalarDestructor };
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-ThemeSound_ReleaseAll(ThemeSoundTable *self)
+int ThemeSound_ReleaseAll(ThemeSoundTable *self)
 {
     GameLog_LogMessage(&g_logger, 1, GS_THEME_SOUND_RELEASING);
     for (int i = 0; i < THEME_SOUND_COUNT; i++) {
@@ -1001,8 +991,7 @@ ThemeSound_ReleaseAll(ThemeSoundTable *self)
     return 0;
 }
 
-extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
-ThemeSound_Construct(ThemeSoundTable *self)
+ThemeSoundTable *ThemeSound_Construct(ThemeSoundTable *self)
 {
     self->vtable    = (void *)g_ThemeSoundVtable;
     self->unknown8  = 0;
@@ -1010,14 +999,13 @@ ThemeSound_Construct(ThemeSoundTable *self)
     return self;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ThemeSound_Destruct(ThemeSoundTable *self)
+void ThemeSound_Destruct(ThemeSoundTable *self)
 {
     self->vtable = (void *)g_ThemeSoundVtable;
 }
 
 /* Reached only through the vtable; the table is embedded in the Game. */
-extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
+ThemeSoundTable *
 ThemeSound_ScalarDestructor(ThemeSoundTable *self, unsigned char flags)
 {
     ThemeSound_Destruct(self);

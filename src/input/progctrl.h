@@ -71,70 +71,51 @@ static_assert(sizeof(ProgableControl)                   == 0x194, "ProgableContr
 /* The one-slot vtable: the scalar deleting destructor. */
 extern const void *const PROGCTRL_VTABLE;
 
-extern "C" {
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_SetJoyDeadzone(ProgableControl *self, DWORD axis, int zone);
+int ProgCtrl_SetJoyDeadzone(ProgableControl *self, DWORD axis, int zone);
 
 /* Reads the keyboard (or the replay, or the autoplay policy) and calls every
  * action in this mode with a bound key held; the first held key of each action
  * wins.  Modes of 5 and above do nothing. */
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_Dispatch(ProgableControl *self, unsigned short game_state);
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_ClearBindings(ProgableControl *self, unsigned short mode,
-                       const char *name);
+void ProgCtrl_Dispatch(ProgableControl *self, unsigned short game_state);
+void ProgCtrl_ClearBindings(ProgableControl *self, unsigned short mode,
+                            const char *name);
 
 /* The action's bound key names, joined with " or ", into buf (at most bufsz
  * bytes).  Empty if the mode or action is unknown. */
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_GetBindingStr(ProgableControl *self, int mode, const char *name,
-                       char *buf, unsigned int bufsz);
+void ProgCtrl_GetBindingStr(ProgableControl *self, int mode, const char *name,
+                            char *buf, unsigned int bufsz);
 
 /* The setup calls, in the order inputsetup.cpp makes them.  Each returns 1 on
  * success, 0 on failure. */
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_InitDInput(ProgableControl *self, HINSTANCE hInstance);
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_SetupKbd(ProgableControl *self, HWND hwnd);
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_SetupMouse(ProgableControl *self, HWND hwnd);
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_SetupJoy(ProgableControl *self, HWND hwnd);
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_SetJoyRange(ProgableControl *self, int axis, int lo, int hi);
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_RegisterAction(ProgableControl *self, unsigned short mode,
-                        const char *name, ActionCallback cb, void *ctx);
+int ProgCtrl_InitDInput(ProgableControl *self, HINSTANCE hInstance);
+int ProgCtrl_SetupKbd(ProgableControl *self, HWND hwnd);
+int ProgCtrl_SetupMouse(ProgableControl *self, HWND hwnd);
+int ProgCtrl_SetupJoy(ProgableControl *self, HWND hwnd);
+int ProgCtrl_SetJoyRange(ProgableControl *self, int axis, int lo, int hi);
+void ProgCtrl_RegisterAction(ProgableControl *self, unsigned short mode,
+                             const char *name, ActionCallback cb, void *ctx);
 
 /* Loads ProgableControl.sav into the registered actions; returns 0 if the file
  * is missing or short.  Bindings for unregistered names are discarded. */
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_ReadBindings(ProgableControl *self);
+int ProgCtrl_ReadBindings(ProgableControl *self);
 
 /* Adds a key to an action, or updates the strength of one already bound. */
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_BindKey(ProgableControl *self, unsigned short mode,
-                 const char *name, int sc, int strength);
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_AcquireAll(ProgableControl *self);
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_UnacquireAll(ProgableControl *self);
+int ProgCtrl_BindKey(ProgableControl *self, unsigned short mode,
+                     const char *name, int sc, int strength);
+int ProgCtrl_AcquireAll(ProgableControl *self);
+int ProgCtrl_UnacquireAll(ProgableControl *self);
 
 /* Saves the bindings; releases every input device. */
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_WriteBindings(ProgableControl *self);
-__declspec(dllexport) void __attribute__((thiscall))
-ProgCtrl_Shutdown(ProgableControl *self);
+int ProgCtrl_WriteBindings(ProgableControl *self);
+void ProgCtrl_Shutdown(ProgableControl *self);
 
 /* Binds the first key currently held to the action.  Returns 1 if one was.
  * The axis and flags arguments are ignored. */
-__declspec(dllexport) int  __attribute__((thiscall))
-ProgCtrl_CaptureBinding(ProgableControl *self, unsigned int mode,
-                        const char *name, int strength, int allow_axis,
-                        int flags);
-}
+int ProgCtrl_CaptureBinding(ProgableControl *self, unsigned int mode,
+                            const char *name, int strength, int allow_axis,
+                            int flags);
 
 /* Construction and destruction of the one global instance, driven by
  * staticinit.cpp. */
-extern "C" __declspec(dllexport) void *__attribute__((thiscall)) ProgCtrl_Setup(ProgableControl *s, int logger_or_0);
-extern "C" __declspec(dllexport) void __attribute__((thiscall)) ProgCtrl_Teardown(ProgableControl *s);
+void *ProgCtrl_Setup(ProgableControl *s, int logger_or_0);
+void ProgCtrl_Teardown(ProgableControl *s);

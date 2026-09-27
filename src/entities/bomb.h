@@ -37,8 +37,8 @@ private:
     // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
     // frees the memory).  The remove destroys through it.
     struct Vtbl {
-        void *(__attribute__((thiscall)) *scalarDeletingDtor)(Bomb *self,
-                                                              unsigned int flags);
+        void *(*scalarDeletingDtor)(Bomb *self,
+                                    unsigned int flags);
     };
     static const Vtbl VTABLE;
 
@@ -46,8 +46,8 @@ private:
     static Bomb *create();
     Bomb();
     // Vtable slot 0.
-    static void *__attribute__((thiscall)) scalarDeletingDtor(Bomb *self,
-                                                              unsigned int flags);
+    static void *scalarDeletingDtor(Bomb *self,
+                                    unsigned int flags);
 
     // The cell (u, v) from this bomb's tile base, both read signed.
     Tile *tile(int u, int v) const;
@@ -79,5 +79,4 @@ KAROO_LAYOUT_CHECKS(Bomb)
 }
 
 /* The bomb remove, for callers outside the class. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveEnemyObject(Game *self, unsigned int idArg);
+void Sim_RemoveEnemyObject(Game *self, unsigned int idArg);

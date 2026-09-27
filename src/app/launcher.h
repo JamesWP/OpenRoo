@@ -15,5 +15,5 @@ void launcher_end_run(const char *why);
 
 /* The game's DialogBoxParamA: returns IDOK without showing the dialog under
  * KAROO_SKIP_LAUNCHER, else shows it. */
-extern "C" __declspec(dllexport) INT_PTR WINAPI hooks_DialogBoxParamA(
+INT_PTR WINAPI hooks_DialogBoxParamA(
         HINSTANCE inst, LPCSTR tmpl, HWND parent, DLGPROC proc, LPARAM param);

@@ -79,11 +79,10 @@ static int animation_frame(ThemeLevelObject *rec, double t, float phase,
     return Anim_FrameAtPhase(s, phase);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
-Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
-                          const float *pos, const float *rot, unsigned int count,
-                          ThemeObjectTypeSlot *slot, RenderDevice *d3d, double t,
-                          float phase, unsigned int animKey, unsigned int debrisMs)
+void Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
+                               const float *pos, const float *rot, unsigned int count,
+                               ThemeObjectTypeSlot *slot, RenderDevice *d3d, double t,
+                               float phase, unsigned int animKey, unsigned int debrisMs)
 {
     RenderDevice *dev = d3d;
     dev->SetRenderState(RS::SpecularEnable, 0);

@@ -154,8 +154,7 @@ static void trigger_switch_tile(Game *game, unsigned char sw, int u, int v)
         t->setBusy(0);
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_GameTick(Game *self, double dt, double now)
+unsigned int Sim_GameTick(Game *self, double dt, double now)
 {
     Player *pl = self->player();
 

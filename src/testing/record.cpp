@@ -297,9 +297,8 @@ void record_frame_boundary(void)
     else if (g_mode == 2) load_frame();
 }
 
-extern "C" {
 
-__declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
+SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
 {
     if (input_debug()) {  // which call sites actually execute
         static int n = 0;
@@ -332,4 +331,3 @@ __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
     return v;
 }
 
-}

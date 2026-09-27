@@ -33,8 +33,7 @@ static void ps_log(const char *what, const char *path, int ok)
     }
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-HighScore_ReadFile(HighScoreTable *self, const char *name, char key)
+int HighScore_ReadFile(HighScoreTable *self, const char *name, char key)
 {
     return self->readFile(name, key);
 }
@@ -63,8 +62,7 @@ int HighScoreTable::readFile(const char *name, char key)
     return 1;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-HighScore_WriteFile(HighScoreTable *self, const char *name, char key)
+int HighScore_WriteFile(HighScoreTable *self, const char *name, char key)
 {
     return self->writeFile(name, key);
 }
@@ -100,7 +98,7 @@ int HighScoreTable::writeFile(const char *name, char key)
  * never asks for a name. */
 static int s_hs_fx = -1;
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+unsigned int
 Sim_InsertScoreIntoHighScoreTable(HighScoreTable *self, unsigned int score,
                                   unsigned char levelId)
 {
@@ -147,7 +145,7 @@ static void *const g_HighScoreVtable[1] = { (void *)&HighScoreTable_ScalarDestru
 void HighScoreTable::construct() { vtable_ = g_HighScoreVtable; }
 void HighScoreTable::destruct()  { vtable_ = g_HighScoreVtable; }
 
-extern "C" __declspec(dllexport) HighScoreTable *__attribute__((thiscall))
+HighScoreTable *
 HighScoreTable_ScalarDestructor(HighScoreTable *self, unsigned char flags)
 {
     self->destruct();

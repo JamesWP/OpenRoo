@@ -23,8 +23,7 @@
 
 struct CStaticSoundbuffer;
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Reset(CStaticSoundbuffer *self);
+void CStatic_Reset(CStaticSoundbuffer *self);
 
 static int s_fx = -1;
 
@@ -41,8 +40,7 @@ static CStaticSoundbuffer *bank(Game *game, CStaticSoundbuffer *cur,
     return game->soundManager()->acquireStatic(path, 0);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
+void Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
 {
     SoundManager *sm = self->soundManager();
     char path[256];

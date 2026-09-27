@@ -6,8 +6,7 @@
 #include "player.h"
 #include "menutree.h"
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_StoreGameStateIntoSaveSlot(Game *self, unsigned int slotArg)
+unsigned int Sim_StoreGameStateIntoSaveSlot(Game *self, unsigned int slotArg)
 {
     Game     *game = (Game *)self;
     SaveSlot *S    = game->saveSlots()->slot((unsigned char)slotArg);
@@ -23,8 +22,7 @@ Sim_StoreGameStateIntoSaveSlot(Game *self, unsigned int slotArg)
     return 1;
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_RestoreGameStateFromSaveSlot(Game *self, unsigned int slotArg)
+unsigned int Sim_RestoreGameStateFromSaveSlot(Game *self, unsigned int slotArg)
 {
     SaveSlot *S = self->saveSlots()->slot((unsigned char)slotArg);
 

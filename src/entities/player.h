@@ -245,19 +245,15 @@ KAROO_LAYOUT_CHECKS(Player)
     KAROO_LAYOUT_SIZE(0x241);
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_UpdatePlayerTileEffects(Player *self);
+unsigned int Sim_UpdatePlayerTileEffects(Player *self);
 
 /* The ActionCallback shims for the six actions (progctrl.h's __cdecl(key,
  * strength, context), context = the Player). */
-extern "C" {
-__declspec(dllexport) void __cdecl Player_ActMoveForward(int key, int strength, void *player);
-__declspec(dllexport) void __cdecl Player_ActMoveBack(int key, int strength, void *player);
-__declspec(dllexport) void __cdecl Player_ActTurnLeft(int key, int strength, void *player);
-__declspec(dllexport) void __cdecl Player_ActTurnRight(int key, int strength, void *player);
-__declspec(dllexport) void __cdecl Player_ActHarakiri(int key, int strength, void *player);
-__declspec(dllexport) void __cdecl Player_ActReleaseBomb(int key, int strength, void *player);
-}
+void Player_ActMoveForward(int key, int strength, void *player);
+void Player_ActMoveBack(int key, int strength, void *player);
+void Player_ActTurnLeft(int key, int strength, void *player);
+void Player_ActTurnRight(int key, int strength, void *player);
+void Player_ActHarakiri(int key, int strength, void *player);
+void Player_ActReleaseBomb(int key, int strength, void *player);
 
-extern "C" __declspec(dllexport) Player *__attribute__((thiscall))
-Player_ScalarDestructor(Player *self, unsigned char flags);
+Player *Player_ScalarDestructor(Player *self, unsigned char flags);

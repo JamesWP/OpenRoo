@@ -82,17 +82,14 @@ static ListFx list_fx(void)
     return fx;
 }
 
-extern "C" {
 
 /* The vtable below needs its address. */
-__declspec(dllexport) LinkedList *__attribute__((thiscall))
-List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf);
+LinkedList *List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf);
 
 /* The one-slot vtable. */
 static void *const g_ListVtable[1] = { (void *)&List_ScalarDestructor };
 
-__declspec(dllexport) void __attribute__((thiscall))
-List_Init(LinkedList *self)
+void List_Init(LinkedList *self)
 {
     ++g_nInit;
     { static unsigned long seen; list_first("Init", &seen); }
@@ -102,8 +99,7 @@ List_Init(LinkedList *self)
     self->dwCount = 0;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-List_Clear(LinkedList *self)
+void List_Clear(LinkedList *self)
 {
     ++g_nClear;
     { static unsigned long seen; list_first("Clear", &seen); }
@@ -118,8 +114,7 @@ List_Clear(LinkedList *self)
     self->dwCount = 0;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-List_Destruct(LinkedList *self)
+void List_Destruct(LinkedList *self)
 {
     ++g_nDestruct;
     { static unsigned long seen; list_first("Destruct", &seen); }
@@ -127,8 +122,7 @@ List_Destruct(LinkedList *self)
     List_Clear(self);
 }
 
-__declspec(dllexport) LinkedList *__attribute__((thiscall))
-List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf)
+LinkedList *List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf)
 {
     ++g_nScalarDtor;
     { static unsigned long seen; list_first("ScalarDestructor", &seen); }
@@ -140,8 +134,7 @@ List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf)
     return self;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-List_Append(LinkedList *self, void *pValue)
+void List_Append(LinkedList *self, void *pValue)
 {
     ++g_nAppend;
     { static unsigned long seen; list_first("Append", &seen); }
@@ -176,8 +169,7 @@ List_Append(LinkedList *self, void *pValue)
     self->dwCount = self->dwCount + 1;
 }
 
-__declspec(dllexport) int __attribute__((thiscall))
-List_Unlink(LinkedList *self, LinkedListNode *pNode)
+int List_Unlink(LinkedList *self, LinkedListNode *pNode)
 {
     ++g_nUnlink;
     { static unsigned long seen; list_first("Unlink", &seen); }
@@ -200,7 +192,7 @@ List_Unlink(LinkedList *self, LinkedListNode *pNode)
     return 0;
 }
 
-__declspec(dllexport) LinkedListNode *__attribute__((thiscall))
+LinkedListNode *
 List_Find(LinkedList *self, void *pValue, LinkedListNode *pAfterNode)
 {
     LinkedListNode *p = (pAfterNode != NULL) ? pAfterNode->pNextNode
@@ -217,16 +209,13 @@ List_Find(LinkedList *self, void *pValue, LinkedListNode *pAfterNode)
     return NULL;
 }
 
-}
 
-extern "C" __declspec(dllexport) LinkedListNode *__attribute__((thiscall))
-List_GetHead(LinkedList *self)
+LinkedListNode *List_GetHead(LinkedList *self)
 {
     return self->pHead;
 }
 
-extern "C" __declspec(dllexport) void *__attribute__((thiscall))
-List_NextValue(LinkedList * , LinkedListNode **it)
+void *List_NextValue(LinkedList * , LinkedListNode **it)
 {
     LinkedListNode *n = *it;
     *it = n->pNextNode;

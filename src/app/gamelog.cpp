@@ -32,7 +32,7 @@
 #include "gamestr.h"
 
 /* The one-slot vtable: the scalar deleting destructor. */
-extern "C" __declspec(dllexport) void * __attribute__((thiscall)) GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags);
+void * GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags);
 static void *const game_logger_vtable_slots[1] = { (void *)&GameLog_ScalarDeletingDtor };
 #define GAME_LOGGER_VTABLE ((void *)game_logger_vtable_slots)
 
@@ -144,8 +144,7 @@ static void emit(GameLogger *self, int level, const char *line)
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-GameLog_CloseAndRebindVtable(GameLogger *self)
+void GameLog_CloseAndRebindVtable(GameLogger *self)
 {
     self->pVtable = GAME_LOGGER_VTABLE;
     if (self->fp)
@@ -156,8 +155,7 @@ GameLog_CloseAndRebindVtable(GameLogger *self)
 }
 
 /* Closes the file and clears the sink fields. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-GameLog_CloseLogFile(GameLogger *self)
+void GameLog_CloseLogFile(GameLogger *self)
 {
     if (self->fp)
         fclose(self->fp);
@@ -166,8 +164,7 @@ GameLog_CloseLogFile(GameLogger *self)
     self->notifyHwnd   = NULL;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-GameLog_Construct(GameLogger *self)
+void GameLog_Construct(GameLogger *self)
 {
     verify_format_strings();
     self->pVtable      = GAME_LOGGER_VTABLE;
@@ -178,8 +175,7 @@ GameLog_Construct(GameLogger *self)
     self->notifyHwnd   = NULL;
 }
 
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags)
+void *GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags)
 {
     GameLog_CloseAndRebindVtable(self);
     if (flags & 1)
@@ -187,7 +183,7 @@ GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags)
     return self;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
+int
 GameLog_OpenLogFile(GameLogger *self, const char *filename, const char *mode)
 {
     char date[16];
@@ -220,7 +216,7 @@ GameLog_OpenLogFile(GameLogger *self, const char *filename, const char *mode)
     return 1;
 }
 
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
+void *
 GameLog_Initialize(GameLogger *self, const char *filename, const char *mode)
 {
     GameLogger scratch;
@@ -237,8 +233,7 @@ GameLog_Initialize(GameLogger *self, const char *filename, const char *mode)
     return self;
 }
 
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...)
+void GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...)
 {
     char timebuf[0x80];
     char msg[LOG_BUF];
@@ -259,9 +254,8 @@ GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...)
 }
 
 /* The file comes before the line: (time, file, line, message). */
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
-                          int line, const char *fmt, ...)
+void GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
+                               int line, const char *fmt, ...)
 {
     char timebuf[0x80];
     char msg[LOG_BUF];
@@ -282,8 +276,7 @@ GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
 }
 
 /* HRESULT to DirectSound error name, as the game's strings. */
-extern "C" __declspec(dllexport) const char * __cdecl
-GameLog_DSErrorToString(HRESULT hr)
+const char *GameLog_DSErrorToString(HRESULT hr)
 {
     switch ((unsigned)hr) {
     case 0x80004001u: return GS_LOG_DSERR_UNSUPPORTED;
@@ -308,9 +301,8 @@ GameLog_DSErrorToString(HRESULT hr)
 
 /* Logs "HH:MM:SS : Error <name>: message".  Returns level, which no caller
  * reads. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-GameLog_LogWithErrorCode(GameLogger *self, int level, const char *message,
-                         HRESULT hr)
+int GameLog_LogWithErrorCode(GameLogger *self, int level, const char *message,
+                             HRESULT hr)
 {
     char timebuf[0x80];
     const char *err;

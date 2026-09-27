@@ -1533,7 +1533,7 @@ static void nulldd_build_vtables(void)
  *
  * Outside headless mode this is a pure passthrough.
  */
-extern "C" __declspec(dllexport) HWND WINAPI hooks_CreateWindowExA(
+HWND WINAPI hooks_CreateWindowExA(
         DWORD exStyle, LPCSTR className, LPCSTR windowName, DWORD style,
         int x, int y, int w, int h, HWND parent, HMENU menu,
         HINSTANCE inst, LPVOID param)

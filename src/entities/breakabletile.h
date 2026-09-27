@@ -43,8 +43,8 @@ private:
     // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
     // frees the memory).
     struct Vtbl {
-        void *(__attribute__((thiscall)) *scalarDeletingDtor)(BreakableTile *self,
-                                                              unsigned int flags);
+        void *(*scalarDeletingDtor)(BreakableTile *self,
+                                    unsigned int flags);
     };
     static const Vtbl VTABLE;
 
@@ -52,8 +52,8 @@ private:
     static BreakableTile *create();
     BreakableTile();
     // Vtable slot 0.
-    static void *__attribute__((thiscall)) scalarDeletingDtor(BreakableTile *self,
-                                                              unsigned int flags);
+    static void *scalarDeletingDtor(BreakableTile *self,
+                                    unsigned int flags);
     // Destroys through the object's own vtable, flags 1.
     void destroy();
 
@@ -117,5 +117,4 @@ KAROO_LAYOUT_CHECKS(BreakableTile)
 }
 
 /* Destroys every breakable and zeroes the count; Game's teardown calls it. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeBreakableObjects(Game *self);
+void Sim_PurgeBreakableObjects(Game *self);

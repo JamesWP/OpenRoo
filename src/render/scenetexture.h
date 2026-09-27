@@ -12,22 +12,19 @@ class RenderDevice;
 /* The TGA path: build the surface from `name`, decode into it, and leave the
  * IDirect3DTexture2 in `self->pTexture2`.  Only the low byte of the result is
  * the success flag. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+unsigned int
 Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
                             DWORD alphaFlag, UINT bpp, DWORD textureStage);
 
 /* The SceneTexture constructor, destructor body and scalar deleting
  * destructor (the one vtable slot). */
-extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
-Texture_SceneCtor(SceneTexture *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Texture_SceneDtorBody(SceneTexture *self);
-extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
-Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
+SceneTexture *Texture_SceneCtor(SceneTexture *self);
+void Texture_SceneDtorBody(SceneTexture *self);
+SceneTexture *Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
 
 /* Load by extension (mode 0), DIB (1) or TGA (2).  The sky builder
  * (sky.cpp) is its one outside caller. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+unsigned int
 Texture_SelectTextureLoader(SceneTexture *self, RenderDevice *dev, LPCSTR name, UINT bpp,
                             int mode);
 
@@ -59,21 +56,16 @@ KAROO_LAYOUT_CHECKS(TextureManager)
 
 extern TextureManager g_textureManager;
 
-extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
+SceneTexture *
 TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename,
                          DWORD alphaFlag, UINT bpp, DWORD textureStage);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_ReleaseAll(TextureManager *self);
+void TextureManager_ReleaseAll(TextureManager *self);
 
 /* Constructor, destructor body and scalar deleting destructor (the one
  * vtable slot). */
-extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
-TextureManager_Construct(TextureManager *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_Destruct(TextureManager *self);
-extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
+TextureManager *TextureManager_Construct(TextureManager *self);
+void TextureManager_Destruct(TextureManager *self);
+TextureManager *
 TextureManager_ScalarDestructor(TextureManager *self, unsigned char flags);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_SetLogger(TextureManager *self, GameLogger *logger);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_LoadAll(TextureManager *self);
+void TextureManager_SetLogger(TextureManager *self, GameLogger *logger);
+void TextureManager_LoadAll(TextureManager *self);

@@ -50,8 +50,7 @@ static int fx_double(void)
 
 /* The level report's type census (tilequery.cpp). */
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Score_CalculateLevelScore(Game *self, char endReason)
+void Score_CalculateLevelScore(Game *self, char endReason)
 {
     // KAROO_TILEQ_DIAG=1 only, read-only: the census of foe types this level
     // carries.

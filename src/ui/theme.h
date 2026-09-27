@@ -242,51 +242,38 @@ extern ThemeAssetBlock g_themeBlock;
 
 /* Releases the block, parses the theme file at path into it, and builds its
  * meshes, textures and sounds. */
-extern "C" __declspec(dllexport) bool __cdecl
-Theme_Load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block,
-           char *path, GameLogger *logger);
+bool Theme_Load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block,
+                char *path, GameLogger *logger);
 
 /* Releases everything the block holds.  Also called at shutdown. */
-extern "C" __declspec(dllexport) void __cdecl
-Theme_ReleaseBlock(ThemeAssetBlock *block);
+void Theme_ReleaseBlock(ThemeAssetBlock *block);
 
 /* Releases one type's records. */
-extern "C" __declspec(dllexport) void __attribute__((fastcall))
+void __attribute__((fastcall))
 Theme_ReleaseSlot(ThemeObjectTypeSlot *slot);
 
 /* The lifecycles of a type slot and its records. */
-extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
-Theme_SlotConstruct(ThemeObjectTypeSlot *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_SlotDestruct(ThemeObjectTypeSlot *self);
-extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
+ThemeObjectTypeSlot *Theme_SlotConstruct(ThemeObjectTypeSlot *self);
+void Theme_SlotDestruct(ThemeObjectTypeSlot *self);
+ThemeObjectTypeSlot *
 Theme_SlotScalarDtor(ThemeObjectTypeSlot *self, unsigned int flags);
-extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
-Theme_RecordConstruct(ThemeLevelObject *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_RecordDestruct(ThemeLevelObject *self);
+ThemeLevelObject *Theme_RecordConstruct(ThemeLevelObject *self);
+void Theme_RecordDestruct(ThemeLevelObject *self);
 
 /* The block's aggregate construction and destruction, for g_themeBlock. */
-extern "C" __declspec(dllexport) ThemeAssetBlock *__attribute__((thiscall))
-Theme_BlockConstruct(ThemeAssetBlock *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Theme_BlockDestruct(ThemeAssetBlock *self);
+ThemeAssetBlock *Theme_BlockConstruct(ThemeAssetBlock *self);
+void Theme_BlockDestruct(ThemeAssetBlock *self);
 
 /* The `sound` keyword: event name to id, then ThemeSound_Add. */
-extern "C" __declspec(dllexport) bool __cdecl
-Theme_RegisterSound(Game *game, char *eventName, const char *waveName);
+bool Theme_RegisterSound(Game *game, char *eventName, const char *waveName);
 
 /* Adds (or replaces) the wave for a theme sound id. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
-               DWORD arg3, DWORD arg4);
+int ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
+                   DWORD arg3, DWORD arg4);
 
 /* The theme sound table's lifecycle; it is a Game member. */
-extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
-ThemeSound_Construct(ThemeSoundTable *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ThemeSound_Destruct(ThemeSoundTable *self);
-extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
+ThemeSoundTable *ThemeSound_Construct(ThemeSoundTable *self);
+void ThemeSound_Destruct(ThemeSoundTable *self);
+ThemeSoundTable *
 ThemeSound_ScalarDestructor(ThemeSoundTable *self, unsigned char flags);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-ThemeSound_ReleaseAll(ThemeSoundTable *self);
+int ThemeSound_ReleaseAll(ThemeSoundTable *self);

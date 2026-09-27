@@ -85,12 +85,9 @@ KAROO_LAYOUT_CHECKS(Scene)
 
 extern Scene g_scene;
 
-extern "C" __declspec(dllexport) Scene *__attribute__((thiscall))
-Scene_Construct(Scene *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Scene_Destruct(Scene *self);
-extern "C" __declspec(dllexport) void __cdecl
+Scene *Scene_Construct(Scene *self);
+void Scene_Destruct(Scene *self);
+void
 Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger);
-extern "C" __declspec(dllexport) int __cdecl
-Scene_SegmentHitsModel(float px, float py, float pz,
-                       float dx, float dy, float dz);
+int Scene_SegmentHitsModel(float px, float py, float pz,
+                           float dx, float dy, float dz);

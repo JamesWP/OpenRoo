@@ -479,21 +479,18 @@ void SlideObject::tick()
 }
 
 /* C-linkage entry points. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_UpdatePushedBlockObject(SlideObject *self)
+void Sim_UpdatePushedBlockObject(SlideObject *self)
 {
     self->tick();
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnSlideObject(Game *self, unsigned int uArg, unsigned int vArg,
-                     unsigned int heightArg, unsigned int kindArg)
+void Sim_SpawnSlideObject(Game *self, unsigned int uArg, unsigned int vArg,
+                          unsigned int heightArg, unsigned int kindArg)
 {
     SlideObject::spawn(self, uArg, vArg, heightArg, kindArg);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeSlideObjects(Game *self)
+void Sim_PurgeSlideObjects(Game *self)
 {
     SlideObject::purgeAll(self);
 }

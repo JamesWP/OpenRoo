@@ -12,7 +12,6 @@
 SceneTexture g_texKaroo128;
 SceneTexture g_texShadow;
 
-extern "C" {
 
 /* KAROO_IMAGE_DIAG=1: every one of the six lifecycle functions announces its
  * first call -- the census that tells "ran and agreed" from "never ran".  The
@@ -30,8 +29,8 @@ static bool image_diag(void)
 }
 
 /* First-call announcement plus a running tally. */
-__declspec(dllexport) void Texture_ImageFirstCall(const char *who,
-                                                  unsigned long *seen)
+void Texture_ImageFirstCall(const char *who,
+                            unsigned long *seen)
 {
     if (!image_diag())
         return;
@@ -45,7 +44,7 @@ __declspec(dllexport) void Texture_ImageFirstCall(const char *who,
  * __stdcall.  Reads the DIB's colour table off a scratch DC, rewrites each
  * RGBQUAD in place as a PALETTEENTRY, and hands the result to
  * IDirectDraw4::CreatePalette. */
-__declspec(dllexport) IDirectDrawPalette *__stdcall
+IDirectDrawPalette *__stdcall
 Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp)
 {
     IDirectDrawPalette *pal = NULL;
@@ -86,21 +85,19 @@ Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp)
     return pal;
 }
 
-__declspec(dllexport) LoadedImage *__attribute__((thiscall))
-Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags);
+LoadedImage *Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags);
 
 /* One slot: the scalar deleting destructor. */
 static void *const g_LoadedImageVtable[1] = { (void *)&Texture_ImageScalarDtor };
 
-__declspec(dllexport) void *Texture_ImageVtable(void)
+void *Texture_ImageVtable(void)
 {
     return (void *)g_LoadedImageVtable;
 }
 
 /* ─── LoadedImage lifecycle ──────────────────────────────────────────────────
  */
-__declspec(dllexport) LoadedImage *__attribute__((thiscall))
-Texture_ImageCtor(LoadedImage *self)
+LoadedImage *Texture_ImageCtor(LoadedImage *self)
 {
     static unsigned long seen; image_first("LoadedImage::Ctor", &seen);
     self->unknown00       = Texture_ImageVtable();
@@ -112,8 +109,7 @@ Texture_ImageCtor(LoadedImage *self)
     return self;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-Texture_ImageDtorBody(LoadedImage *self)
+void Texture_ImageDtorBody(LoadedImage *self)
 {
     static unsigned long seen; image_first("LoadedImage::DtorBody", &seen);
     self->unknown00 = Texture_ImageVtable();
@@ -122,8 +118,7 @@ Texture_ImageDtorBody(LoadedImage *self)
 }
 
 /* Reachable only through vtable slot 0. */
-__declspec(dllexport) LoadedImage *__attribute__((thiscall))
-Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags)
+LoadedImage *Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags)
 {
     static unsigned long seen; image_first("LoadedImage::ScalarDeletingDtor", &seen);
     Texture_ImageDtorBody(self);
@@ -132,8 +127,7 @@ Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags)
     return self;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-Texture_ReleaseSurfaces(LoadedImage *self)
+void Texture_ReleaseSurfaces(LoadedImage *self)
 {
     IDirectDrawSurface4 *surf = self->pTextureSurface;
     if (surf != NULL)
@@ -154,8 +148,7 @@ Texture_ReleaseSurfaces(LoadedImage *self)
     self->loadStatus  = 0;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-Texture_ReleaseD3DTexture(SceneTexture *self)
+void Texture_ReleaseD3DTexture(SceneTexture *self)
 {
     IDirect3DTexture2 *tex = self->pTexture2;
     if (tex != NULL)
@@ -165,7 +158,6 @@ Texture_ReleaseD3DTexture(SceneTexture *self)
     Texture_ReleaseSurfaces(&self->base);
 }
 
-}  // extern "C"
 
 /* ─── Load ─────────────────────────────────────────────────────────────────
  *
@@ -176,14 +168,11 @@ Texture_ReleaseD3DTexture(SceneTexture *self)
  * Only the low byte of the result is the success flag.  The upper bytes are
  * whatever the last call left: Restore's HRESULT, DeleteObject's result, or
  * the TGA loader's value.  Any loadedState other than 1 or 2 returns true. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureDIB_BlitToSurface(LoadedImage *, HANDLE);
+unsigned int TextureDIB_BlitToSurface(LoadedImage *, HANDLE);
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureTGA_Parse(LoadedImage *, LPCSTR);
+unsigned int TextureTGA_Parse(LoadedImage *, LPCSTR);
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_Load(LoadedImage *self)
+unsigned int Texture_Load(LoadedImage *self)
 {
     IDirectDrawSurface4 *surf = self->pTextureSurface;
     if (surf == NULL)

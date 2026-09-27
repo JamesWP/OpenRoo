@@ -473,21 +473,18 @@ void Bomb::tick()
 
 /* The exports. */
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_UpdateBombFuseAndBlast(Bomb *self)
+void Sim_UpdateBombFuseAndBlast(Bomb *self)
 {
     self->tick();
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnBombObject(Game *self, unsigned int uArg, unsigned int vArg,
-                    unsigned int hArg, unsigned int flagArg)
+void Sim_SpawnBombObject(Game *self, unsigned int uArg, unsigned int vArg,
+                         unsigned int hArg, unsigned int flagArg)
 {
     Bomb::spawn(self, uArg, vArg, hArg, flagArg);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveEnemyObject(Game *self, unsigned int idArg)
+void Sim_RemoveEnemyObject(Game *self, unsigned int idArg)
 {
     Bomb::remove(self, idArg);
 }

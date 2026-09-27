@@ -123,13 +123,8 @@ KAROO_LAYOUT_CHECKS(ExtraObjects)
     KAROO_LAYOUT_SIZE(0xf4010);
 }
 
-extern "C" __declspec(dllexport) ExtraObjects *__attribute__((thiscall))
-Leo_Construct(ExtraObjects *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Leo_Destruct(ExtraObjects *self);
-extern "C" __declspec(dllexport) ExtraObjects *__attribute__((thiscall))
-Leo_ScalarDestructor(ExtraObjects *self, unsigned char flags);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Leo_OpenExtraObjectsFile(ExtraObjects *self, const char *name);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Leo_ReleaseExtraObjectSoundBuffers(ExtraObjects *self);
+ExtraObjects *Leo_Construct(ExtraObjects *self);
+void Leo_Destruct(ExtraObjects *self);
+ExtraObjects *Leo_ScalarDestructor(ExtraObjects *self, unsigned char flags);
+int Leo_OpenExtraObjectsFile(ExtraObjects *self, const char *name);
+void Leo_ReleaseExtraObjectSoundBuffers(ExtraObjects *self);

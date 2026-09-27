@@ -45,11 +45,9 @@
 struct CStaticSoundbuffer;
 
 struct GameLogger;
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
+void GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *self);
+int CStatic_HaltPlayback(CStaticSoundbuffer *self);
 
 static int s_fx_samelevel  = 0;
 static int s_fx_crtpath    = 0;
@@ -119,8 +117,7 @@ static int inline_strcmp(const unsigned char *a, const unsigned char *b)
     return (*a < *b) ? -1 : 1;
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_ParseLevelFiles(Game *self, const char *name)
+unsigned int Sim_ParseLevelFiles(Game *self, const char *name)
 {
     char path[256];  // PRESERVED: 256 bytes, unbounded
     char prev[256];  // the map name before the read
@@ -181,8 +178,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
     return 0;
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
+unsigned int Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
 {
 
     if (s_fx_levelshift)
@@ -195,8 +191,7 @@ Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
     return 0;
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_OpenLevelFile(Game *self, unsigned int levelNo)
+unsigned int Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 {
     char path[256];  // PRESERVED: 256 bytes, unbounded
     char prev[256];  // the map name before the read

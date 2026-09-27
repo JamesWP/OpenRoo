@@ -59,7 +59,7 @@ static void fx_init(void)
 
 static void *s_vtable[1] = { (void *)&Spline_ScalarDestructor };
 
-SplinePath *__attribute__((thiscall)) Spline_Construct(SplinePath *self)
+SplinePath *Spline_Construct(SplinePath *self)
 {
     fx_init();
     if (s_diag)
@@ -69,7 +69,7 @@ SplinePath *__attribute__((thiscall)) Spline_Construct(SplinePath *self)
     return self;
 }
 
-void __attribute__((thiscall)) Spline_Destruct(SplinePath *self)
+void Spline_Destruct(SplinePath *self)
 {
     fx_init();
     if (s_diag)
@@ -79,8 +79,7 @@ void __attribute__((thiscall)) Spline_Destruct(SplinePath *self)
     List_Destruct(&self->controlPointList);
 }
 
-SplinePath *__attribute__((thiscall))
-Spline_ScalarDestructor(SplinePath *self, unsigned char bFreeSelf)
+SplinePath *Spline_ScalarDestructor(SplinePath *self, unsigned char bFreeSelf)
 {
     Spline_Destruct(self);
     if (bFreeSelf & 1)
@@ -88,8 +87,7 @@ Spline_ScalarDestructor(SplinePath *self, unsigned char bFreeSelf)
     return self;
 }
 
-void __attribute__((thiscall))
-Spline_AddControlPoint(SplinePath *self, float x, float y, float z)
+void Spline_AddControlPoint(SplinePath *self, float x, float y, float z)
 {
     SplineControlPoint *p =
         (SplineControlPoint *)malloc(sizeof(SplineControlPoint));
@@ -104,7 +102,7 @@ Spline_AddControlPoint(SplinePath *self, float x, float y, float z)
     List_Append(&self->controlPointList, p);
 }
 
-void __attribute__((thiscall)) Spline_PurgeControlPoints(SplinePath *self)
+void Spline_PurgeControlPoints(SplinePath *self)
 {
     LinkedListNode *node = self->controlPointList.pHead;
 
@@ -121,8 +119,7 @@ void __attribute__((thiscall)) Spline_PurgeControlPoints(SplinePath *self)
     List_Clear(&self->controlPointList);
 }
 
-float *__attribute__((thiscall))
-Spline_EvalBezierPath(SplinePath *self, float *out, float t)
+float *Spline_EvalBezierPath(SplinePath *self, float *out, float t)
 {
     unsigned int    n    = (unsigned int)self->controlPointList.dwCount;
     LinkedListNode *node = self->controlPointList.pHead;
@@ -276,9 +273,8 @@ static long draw_strip(void *dev, void *verts, DWORD count)
 /* On a failed allocation the original writes through the null pointer and
  * faults; that cannot be expressed in C, so the stores are guarded and only
  * the null buffer reaches DrawPrimitive.  No gate reaches the path. */
-long __attribute__((thiscall))
-Spline_DrawSplinePath(SplinePath *self, RenderDevice *dev,
-                      unsigned int numsegments, unsigned long color)
+long Spline_DrawSplinePath(SplinePath *self, RenderDevice *dev,
+                           unsigned int numsegments, unsigned long color)
 {
     SplineVertex *verts =
         (SplineVertex *)malloc((numsegments + 1) * 32);
@@ -307,9 +303,8 @@ Spline_DrawSplinePath(SplinePath *self, RenderDevice *dev,
     return hr;
 }
 
-long __attribute__((thiscall))
-Spline_DrawControlPolygon(SplinePath *self, RenderDevice *dev,
-                          unsigned long color)
+long Spline_DrawControlPolygon(SplinePath *self, RenderDevice *dev,
+                               unsigned long color)
 {
     unsigned int    n     = (unsigned int)self->controlPointList.dwCount;
     SplineVertex   *verts = (SplineVertex *)malloc(n * 32);

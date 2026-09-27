@@ -26,8 +26,7 @@
 #include "camera.h"
 #include "d3dmath_common.h"
 
-extern "C" __declspec(dllexport) void __cdecl
-Render_ConfigureRenderState(void)
+void Render_ConfigureRenderState(void)
 {
     RenderDevice *d3d = g_renderDevice;
 

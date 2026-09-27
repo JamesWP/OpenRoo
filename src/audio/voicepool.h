@@ -41,38 +41,30 @@ static_assert(sizeof(CStaticSoundbuffer) == 0x18, "pBufs stride must stay 0x18")
 
 /* Halts and re-triggers the current voice, then advances the cursor.  Returns
  * the trigger's HRESULT, or DSERR_UNINITIALIZED with no voices. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_VoicePoolCycle(VoicePool *self, DWORD dwLoopFlags);
+int Sim_VoicePoolCycle(VoicePool *self, DWORD dwLoopFlags);
 
 /* Zeroes the pool; returns it. */
-extern "C" __declspec(dllexport) VoicePool * __attribute__((thiscall))
-Sim_VoicePoolBlank(VoicePool *self);
+VoicePool *Sim_VoicePoolBlank(VoicePool *self);
 
 /* Resets and frees every voice and clears the pool, except the nesting depth.
  */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_VoicePoolWipe(VoicePool *self);
+void Sim_VoicePoolWipe(VoicePool *self);
 
 /* Loads count voices of one file: voice 0 from disk, the rest duplicated from
  * it (reloading any the duplicate refuses).  Returns 1, or 0 on failure. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
-                    DWORD dwDsFlags, const char *filename, void *logger);
+int Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
+                        DWORD dwDsFlags, const char *filename, void *logger);
 
 /* Fills the pool with count duplicates of src.  Non-NULL on success. */
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-Sim_VoicePoolClone(VoicePool *self, int count, IDirectSound *pDS,
-                   CStaticSoundbuffer *src, int noFallback);
+void *Sim_VoicePoolClone(VoicePool *self, int count, IDirectSound *pDS,
+                         CStaticSoundbuffer *src, int noFallback);
 
 /* The voice at index, or NULL if out of range. */
-extern "C" __declspec(dllexport) CStaticSoundbuffer * __attribute__((thiscall))
-Sim_VoicePoolGetVoiceAt(VoicePool *self, int index);
+CStaticSoundbuffer *Sim_VoicePoolGetVoiceAt(VoicePool *self, int index);
 
 /* Voice 0's file name, or NULL for an empty pool. */
-extern "C" __declspec(dllexport) char * __attribute__((thiscall))
-Sim_VoicePoolFirstFilename(VoicePool *self);
+char *Sim_VoicePoolFirstFilename(VoicePool *self);
 
 /* Positions every voice in 3D space. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_BroadcastPoolVoiceCoordinates(VoicePool *self,
-                                  float x, float y, float z, DWORD dwApply);
+void Sim_BroadcastPoolVoiceCoordinates(VoicePool *self,
+                                       float x, float y, float z, DWORD dwApply);

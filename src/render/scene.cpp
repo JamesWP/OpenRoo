@@ -12,8 +12,7 @@ Scene g_scene;
 
 /* ─── Construction and teardown ─────────────────────────────────────────── */
 
-extern "C" __declspec(dllexport) Scene *__attribute__((thiscall))
-Scene_Construct(Scene *self)
+Scene *Scene_Construct(Scene *self)
 {
     List_Init(&self->objects);
     ModelManager_Construct(&self->models);
@@ -23,8 +22,7 @@ Scene_Construct(Scene *self)
 
 /* Members in reverse.  The objects themselves are not freed -- only the list's
  * nodes, by List_Destruct. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Scene_Destruct(Scene *self)
+void Scene_Destruct(Scene *self)
 {
     TextureManager_Destruct(&self->textures);
     ModelManager_Destruct(&self->models);
@@ -53,7 +51,7 @@ static void free_scene_objects()
  * One SceneObject per .leo record that is not a sound.  Position and the third
  * rotation are Z-negated on the way in, as are the spline points, whose file
  * order is (x, z, y) -- the record stores y at [2]. */
-extern "C" __declspec(dllexport) void __cdecl
+void
 Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
 {
     Scene *s = &g_scene;
@@ -187,9 +185,8 @@ static bool segment_hits_object(const SceneObject *o, const float p[3],
 
 /* Only kind 0 (model) objects are tested.  PRESERVED: no null check on the
  * list's values. */
-extern "C" __declspec(dllexport) int __cdecl
-Scene_SegmentHitsModel(float px, float py, float pz,
-                       float dx, float dy, float dz)
+int Scene_SegmentHitsModel(float px, float py, float pz,
+                           float dx, float dy, float dz)
 {
     const float p[3] = { px, py, pz }, d[3] = { dx, dy, dz };
     for (LinkedListNode *n = g_scene.objects.pHead; n != NULL; n = n->pNextNode) {

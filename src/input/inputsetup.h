@@ -10,8 +10,8 @@ struct Game;
 /* Returns 1, or 0 after showing an error box when the keyboard, mouse or
  * device acquisition fails.  A missing joystick is not an error.  The third
  * argument is unused. */
-extern "C" __declspec(dllexport) int __cdecl
+int
 Input_DirectInputSetup(HINSTANCE hInstance, HWND hwnd, DWORD unused, Game *game);
 
 /* Logs, writes the bindings file and releases every input device. */
-extern "C" __declspec(dllexport) void __cdecl Input_TrySaveSettings(void);
+void Input_TrySaveSettings(void);

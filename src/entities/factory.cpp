@@ -13,10 +13,8 @@ static void log_first(LONG *once, const char *what, const char *name, void *obj)
                   what, name ? name : "(null)", obj);
 }
 
-extern "C" {
 
-__declspec(dllexport) void *__cdecl
-Gen_FactoryCreate(const char *name)
+void *Gen_FactoryCreate(const char *name)
 {
     void *obj = gen_create(name);
     static LONG once = 0;
@@ -24,8 +22,7 @@ Gen_FactoryCreate(const char *name)
     return obj;
 }
 
-__declspec(dllexport) void *__cdecl
-Env_FactoryCreate(const char *name)
+void *Env_FactoryCreate(const char *name)
 {
     void *obj = env_create(name);
     static LONG once = 0;
@@ -33,8 +30,7 @@ Env_FactoryCreate(const char *name)
     return obj;
 }
 
-__declspec(dllexport) void *__cdecl
-PS_FactoryCreate(const char *name)
+void *PS_FactoryCreate(const char *name)
 {
     void *obj = ps_create(name);
     static LONG once = 0;
@@ -42,4 +38,3 @@ PS_FactoryCreate(const char *name)
     return obj;
 }
 
-}

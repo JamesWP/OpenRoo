@@ -28,8 +28,7 @@
 #include "gameglobals.h"
 
 struct GameLogger;
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
+void GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
 typedef unsigned int __attribute__((aligned(1))) u32_ua;
 
@@ -62,8 +61,7 @@ static void diag_tick(void)
         log_write("gamereset: %u clear calls\n", s_calls);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ClearGameState(Game *self)
+void Sim_ClearGameState(Game *self)
 {
     unsigned char gamefile_ok;
 

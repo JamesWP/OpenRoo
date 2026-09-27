@@ -55,8 +55,7 @@ static bool fx_norot(void)
     return cached != 0;
 }
 
-extern "C" __declspec(dllexport) void __cdecl
-MeshBatch_Draw(void *ctx, void *game, RenderDevice *d3d)
+void MeshBatch_Draw(void *ctx, void *game, RenderDevice *d3d)
 {
     BYTE *c = (BYTE *)ctx;
 

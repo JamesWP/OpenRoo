@@ -119,19 +119,15 @@ void CDM::setMixerVolume(DWORD level)
     log_write("CDM::setMixerVolume(level=0x%lX) — not implemented\n", level);
 }
 
-extern "C" {
 
-__declspec(dllexport) void KarooHooksLoad() {}  // unused
+void KarooHooksLoad() {}  // unused
 
-__declspec(dllexport) CDM* __attribute__((thiscall))
-CDM_Constructor(CDM *self) { return self->construct(); }
+CDM*CDM_Constructor(CDM *self) { return self->construct(); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CDM_Destructor(CDM *self) { self->stopAndClose(); }
+void CDM_Destructor(CDM *self) { self->stopAndClose(); }
 
 /* Frees on bit 0; the one CDM is a global, so it never does. */
-__declspec(dllexport) CDM * __attribute__((thiscall))
-CDM_ScalarDeletingDtor(CDM *self, unsigned int flags)
+CDM *CDM_ScalarDeletingDtor(CDM *self, unsigned int flags)
 {
     self->stopAndClose();
     if (flags & 1)
@@ -139,30 +135,24 @@ CDM_ScalarDeletingDtor(CDM *self, unsigned int flags)
     return self;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CDM_SetWindowHandle(CDM *self, HWND hwnd) { self->setWindowHandle(hwnd); }
+void CDM_SetWindowHandle(CDM *self, HWND hwnd) { self->setWindowHandle(hwnd); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CDM_GetTrackCount(CDM *self) { return self->getTrackCount(); }
+int CDM_GetTrackCount(CDM *self) { return self->getTrackCount(); }
 
-__declspec(dllexport) int __attribute__((thiscall))
+int
 CDM_GetTrackLength(CDM *self, char **out_ptr, int track) { return self->getTrackLength(out_ptr, track); }
 
-__declspec(dllexport) void __attribute__((thiscall))
+void
 CDM_PlayTrack(CDM *self, int track, bool loop) { self->playTrack(track, loop); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CDM_StopTrack(CDM *self) { self->stop(); }
+void CDM_StopTrack(CDM *self) { self->stop(); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CDM_SetMixerVolume(CDM *self, DWORD level) { self->setMixerVolume(level); }
+void CDM_SetMixerVolume(CDM *self, DWORD level) { self->setMixerVolume(level); }
 
-}
 
 /* No stack argument.  The first mixer's volume value, or 0 with no mixer or on
  * any error. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-CDM_GetMixerDetails(CDM *self)
+unsigned int CDM_GetMixerDetails(CDM *self)
 {
     MIXERCONTROLDETAILS d;
     DWORD value;

@@ -138,8 +138,7 @@ static void diag_hit(int which, unsigned u, unsigned v)
 }
 
 /* Recomputes the blocked word of one list's tiles from its bridge. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
+void Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 {
     SwitchCells   *sw = self->switchCells();
     unsigned int   li = listIndex & 0xff;
@@ -176,9 +175,8 @@ Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 
 /* The listed tile nearest the one passed in, among tiles whose blocked word is
  * non-zero, within maxDist. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
-                                unsigned char *pv, unsigned char maxDist)
+unsigned int Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
+                                             unsigned char *pv, unsigned char maxDist)
 {
     SwitchCells   *sw = self->switchCells();
     unsigned char  u0 = *pu;  // saved inputs, restored on failure
@@ -262,9 +260,8 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
 
 /* The nearest tile with flag 1 in a square window around the one passed in.
  * Outer loop v, inner u. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
-                                   unsigned char *pv, unsigned char radius)
+unsigned int Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
+                                                unsigned char *pv, unsigned char radius)
 {
     unsigned char  u0 = *pu;
     unsigned char  v0 = *pv;
@@ -340,7 +337,7 @@ Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
 
 /* The occupied, unmarked tile farthest from the one passed in, over the whole
  * grid.  The only query that keeps a real distance. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+unsigned int
 Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
                              unsigned char *pv)
 {
@@ -420,7 +417,7 @@ Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
  * naming every level with a type 2, 3 or 5 (the types whose queries the game
  * makes).  Called for every level by the level report, so it names the levels
  * a recording would need to reach these queries.  Read-only. */
-extern "C" void tilequery_census_object_types(Game *self)
+void tilequery_census_object_types(Game *self)
 {
     static int seen[256];
     static int announced = 0;

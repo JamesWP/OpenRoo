@@ -149,23 +149,21 @@ static bool sound_diag(void)
     return cached != 0;
 }
 
-extern "C" {
 
 /* First call only, then a running tally: a periodic sample reads zero forever
  * for anything first reached late. */
-__declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
-                                                  unsigned long *seen)
+void CStatic_SoundFirstCall(const char *who,
+                            unsigned long *seen)
 {
     if (sound_diag() && (*seen)++ == 0)
         log_write("sound: DIAG first call -- %s\n", who);
 }
 
-__declspec(dllexport) void * __attribute__((thiscall))
-CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
+void *CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
 
 static void *const g_CStaticVtable[1] = { (void *)&CStatic_ScalarVectorDtor };
 
-__declspec(dllexport) void *CStatic_Vtable(void)
+void *CStatic_Vtable(void)
 {
     return (void *)g_CStaticVtable;
 }
@@ -173,8 +171,7 @@ __declspec(dllexport) void *CStatic_Vtable(void)
 /* For an array, the count header sits four bytes below the first element and
  * the elements are destroyed in reverse, as MSVC's vector destructor does.
  * Voice pools destroy with flag 3, so the array path is the one taken. */
-__declspec(dllexport) void * __attribute__((thiscall))
-CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
+void *CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
 {
     static unsigned long seen;
     CStatic_SoundFirstCall("CStaticSoundbuffer::ScalarVectorDtor", &seen);
@@ -199,7 +196,6 @@ CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
     return self;
 }
 
-}
 
 static void CStatic_Reset_impl(CStaticSoundbuffer *self);
 static int  CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
@@ -463,61 +459,47 @@ static void CStatic_Set3DPosition_impl(CStaticSoundbuffer *self,
         self->threeDBuffer->SetPosition(x, y, z, dwApply);
 }
 
-extern "C" {
 
-__declspec(dllexport) CStaticSoundbuffer* __attribute__((thiscall))
-CStatic_Init(CStaticSoundbuffer *self)
+CStaticSoundbuffer*CStatic_Init(CStaticSoundbuffer *self)
     { return CStatic_Init_impl(self); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_ReinitBuffer(CStaticSoundbuffer *self)
+void CStatic_ReinitBuffer(CStaticSoundbuffer *self)
     { CStatic_ReinitBuffer_impl(self); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_Reset(CStaticSoundbuffer *self)
+void CStatic_Reset(CStaticSoundbuffer *self)
     { CStatic_Reset_impl(self); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_CreateAndLoadFile(CStaticSoundbuffer *self,
-                          IDirectSound *pDS, DWORD dwDsFlags,
-                          const char *filename, void *logger)
+int CStatic_CreateAndLoadFile(CStaticSoundbuffer *self,
+                              IDirectSound *pDS, DWORD dwDsFlags,
+                              const char *filename, void *logger)
     { return CStatic_CreateAndLoadFile_impl(self, pDS, dwDsFlags, filename, logger); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_CreateAndLoad3DSoundFile(CStaticSoundbuffer *self,
-                                 IDirectSound *pDS, DWORD dwDsFlags,
-                                 const char *filename, void *logger)
+int CStatic_CreateAndLoad3DSoundFile(CStaticSoundbuffer *self,
+                                     IDirectSound *pDS, DWORD dwDsFlags,
+                                     const char *filename, void *logger)
     { return CStatic_CreateAndLoad3DSoundFile_impl(self, pDS, dwDsFlags, filename, logger); }
 
-__declspec(dllexport) void* __attribute__((thiscall))
-CStatic_Copy(CStaticSoundbuffer *self,
-             IDirectSound *pDS, CStaticSoundbuffer *other, int flag)
+void*CStatic_Copy(CStaticSoundbuffer *self,
+                  IDirectSound *pDS, CStaticSoundbuffer *other, int flag)
     { return CStatic_Copy_impl(self, other, pDS, flag); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_CreateAndLoad(CStaticSoundbuffer *self,
-                      IDirectSound *pDS, DWORD set3D)
+int CStatic_CreateAndLoad(CStaticSoundbuffer *self,
+                          IDirectSound *pDS, DWORD set3D)
     { return CStatic_CreateAndLoad_impl(self, pDS, set3D); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_Apply3DMode(CStaticSoundbuffer *self, int enable3D)
+int CStatic_Apply3DMode(CStaticSoundbuffer *self, int enable3D)
     { return CStatic_Apply3DMode_impl(self, enable3D); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_RestoreBuffer(CStaticSoundbuffer *self)
+int CStatic_RestoreBuffer(CStaticSoundbuffer *self)
     { return CStatic_RestoreBuffer_impl(self); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags)
+int CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags)
     { return CStatic_TriggerPlayback_impl(self, dwLoopFlags); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *self)
+void CStatic_HaltPlayback(CStaticSoundbuffer *self)
     { CStatic_HaltPlayback_impl(self); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_Set3DPosition(CStaticSoundbuffer *self,
-                      float x, float y, float z, DWORD dwApply)
+void CStatic_Set3DPosition(CStaticSoundbuffer *self,
+                           float x, float y, float z, DWORD dwApply)
     { CStatic_Set3DPosition_impl(self, x, y, z, dwApply); }
 
-}

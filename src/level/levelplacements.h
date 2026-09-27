@@ -84,18 +84,15 @@ class Game;
 class ThemeAssetBlock;
 
 /* Frees every array and zeroes every count.  Also called at shutdown. */
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_Release(LevelPlacements *p);
+void LevelPlacements_Release(LevelPlacements *p);
 
 /* Releases, counts, allocates and fills the lists, then the wall strips.
  * Called on level entry. */
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_Build(LevelPlacements *p, const Game *g,
-                      const ThemeAssetBlock *theme);
+void LevelPlacements_Build(LevelPlacements *p, const Game *g,
+                           const ThemeAssetBlock *theme);
 
 /* Default-constructs the tile-top template, before WinMain. */
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_StaticInit(void);
+void LevelPlacements_StaticInit(void);
 
 /* Copies every live lift's (or slide's) position into its list, v negated to
  * z, then draws the list with the theme's ELEVATOR (PLATFORM) records.  A
@@ -103,9 +100,9 @@ LevelPlacements_StaticInit(void);
  * 1). */
 class ThemeAssetBlock;
 class RenderDevice;
-extern "C" __declspec(dllexport) void __cdecl
+void
 LevelPlacements_DrawLifts(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
                           RenderDevice *d3d, double now);
-extern "C" __declspec(dllexport) void __cdecl
+void
 LevelPlacements_DrawSlides(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
                            RenderDevice *d3d, double now);

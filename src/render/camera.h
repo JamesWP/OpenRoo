@@ -47,17 +47,13 @@ static_assert(sizeof(CameraFocus) == 0x24, "CameraFocus size");
 /* The level entry zeroes it; FramePose_Player fills it every frame. */
 extern CameraFocus g_cameraFocus;
 
-extern "C" {
 /* cdecl(out, eye, at, up by value, roll) -> out: a left-handed
  * LookAt (x = up x fwd, y = fwd x x, z = fwd, each normalised), then
  * * RotZ(-roll) when roll != 0. */
-__declspec(dllexport) Mat4 *__cdecl
-Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
-                   float ax, float ay, float az,
-                   float ux, float uy, float uz, float roll);
+Mat4 *Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
+                         float ax, float ay, float az,
+                         float ux, float uy, float uz, float roll);
 /* cdecl(cam, d3d, game, focus BY VALUE, double dt): eases the orbit camera
  * and sets the VIEW transform.  One caller, RenderGameFrame. */
-__declspec(dllexport) void __cdecl
-Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
-                           CameraFocus focus, double dt);
-}
+void Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
+                                CameraFocus focus, double dt);

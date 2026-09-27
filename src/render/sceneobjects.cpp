@@ -349,7 +349,7 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
     SceneQuad_Draw(dev, &sv, 4);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+void
 Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *positions,
                          const Vec3 *rotations, unsigned int count,
                          ThemeObjectTypeSlot *slot, RenderDevice *d3d, double now,

@@ -16,8 +16,6 @@ inline void *scalar_delete(T *self, unsigned flags)
     return self;
 }
 
-extern "C" {
-__declspec(dllexport) void *__cdecl Gen_FactoryCreate(const char *name);
-__declspec(dllexport) void *__cdecl Env_FactoryCreate(const char *name);
-__declspec(dllexport) void *__cdecl PS_FactoryCreate(const char *name);
-}
+void *Gen_FactoryCreate(const char *name);
+void *Env_FactoryCreate(const char *name);
+void *PS_FactoryCreate(const char *name);

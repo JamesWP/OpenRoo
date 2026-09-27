@@ -28,13 +28,10 @@
 struct CStaticSoundbuffer;
 #include "voicepool.h"
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Reset(CStaticSoundbuffer *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Set3DPosition(CStaticSoundbuffer *self, float x, float y, float z,
-                      DWORD dwApply);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
+void CStatic_Reset(CStaticSoundbuffer *self);
+void CStatic_Set3DPosition(CStaticSoundbuffer *self, float x, float y, float z,
+                           DWORD dwApply);
+int CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 
 static int s_fx = -1;
 
@@ -78,8 +75,7 @@ static void attachLoopSound(Game *game,
     }
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_InitLevelBasedSounds(Game *self)
+unsigned int Sim_InitLevelBasedSounds(Game *self)
 {
     Game *game = self;
     Player *pl = game->player();

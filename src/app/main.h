@@ -5,10 +5,10 @@
 /* Builds the globals, runs the launcher dialog, creates the window and runs
  * the message loop.  Returns WM_QUIT's wParam, or 0 or 1 from an early exit.
  */
-extern "C" __declspec(dllexport) int WINAPI
+int WINAPI
 Main_WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine,
              int nCmdShow);
 
 /* The main window's class procedure. */
-extern "C" __declspec(dllexport) LRESULT CALLBACK
+LRESULT CALLBACK
 Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

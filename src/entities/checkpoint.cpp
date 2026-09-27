@@ -15,8 +15,7 @@
 
 static int s_fx = -1;
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RestoreCheckpointStateBlocks(Game *self)
+void Sim_RestoreCheckpointStateBlocks(Game *self)
 {
     Game         *g  = self;
     ScriptPlayer *sp = g->scriptPlayer();

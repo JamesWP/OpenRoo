@@ -46,43 +46,34 @@ KAROO_LAYOUT_CHECKS(doublesoundbuff)
     KAROO_LAYOUT_SIZE(0x58);
 }
 
-extern "C" {
 
 /* The constructor.  Returns self. */
-__declspec(dllexport) doublesoundbuff * __attribute__((thiscall))
-Dsb_Init(doublesoundbuff *self);
+doublesoundbuff *Dsb_Init(doublesoundbuff *self);
 
 /* The destructor body; does not free self. */
-__declspec(dllexport) void __attribute__((thiscall))
-Dsb_Destruct(doublesoundbuff *self);
+void Dsb_Destruct(doublesoundbuff *self);
 
 /* Purges both borrower lists, releases both buffers and clears both taken
  * flags. */
-__declspec(dllexport) void __attribute__((thiscall))
-Dsb_Clear(doublesoundbuff *self);
+void Dsb_Clear(doublesoundbuff *self);
 
 /* Deletes every duplicate through its vtable, then empties the list. */
-__declspec(dllexport) void __attribute__((stdcall))
+void __attribute__((stdcall))
 Dsb_PurgeCloneList(LinkedList *list);
 
 /* Wipes and frees every pool, then empties the list. */
-__declspec(dllexport) void __attribute__((stdcall))
+void __attribute__((stdcall))
 Dsb_PurgeVoicePoolList(LinkedList *list);
 
 /* Gives back one static buffer: 1 if it belonged to this entry, else 0. */
-__declspec(dllexport) int __attribute__((thiscall))
-Dsb_ReleaseStatic(doublesoundbuff *self, CStaticSoundbuffer *buf);
+int Dsb_ReleaseStatic(doublesoundbuff *self, CStaticSoundbuffer *buf);
 
 /* Gives back one voice pool: 1 if it belonged to this entry, else 0. */
-__declspec(dllexport) int __attribute__((thiscall))
-Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool);
+int Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool);
 
 /* The number of duplicates and pools lent out. */
-__declspec(dllexport) int __attribute__((thiscall))
-Dsb_BorrowerCount(doublesoundbuff *self);
+int Dsb_BorrowerCount(doublesoundbuff *self);
 
 /* True with no borrowers and neither buffer lent out. */
-__declspec(dllexport) int __attribute__((thiscall))
-Dsb_IsFullyReleased(doublesoundbuff *self);
+int Dsb_IsFullyReleased(doublesoundbuff *self);
 
-}

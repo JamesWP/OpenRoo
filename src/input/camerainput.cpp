@@ -17,10 +17,8 @@ static const float  PITCH_MIN  = 50.0f;
 
 static inline double dt(Game *g) { return g->tickStep()->value; }
 
-extern "C" {
 
-__declspec(dllexport) void __cdecl
-Camera_ZoomOut(int, int, void *ctx)
+void Camera_ZoomOut(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
     if (g->zoomDistance() < ZOOM_MAX)
@@ -28,8 +26,7 @@ Camera_ZoomOut(int, int, void *ctx)
     g->setField13cc90(1);  // PRESERVED: set on every zoom; nothing reads it
 }
 
-__declspec(dllexport) void __cdecl
-Camera_ZoomIn(int, int, void *ctx)
+void Camera_ZoomIn(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
     if (g->zoomDistance() > ZOOM_MIN)
@@ -38,8 +35,7 @@ Camera_ZoomIn(int, int, void *ctx)
 }
 
 /* Only on a normal (non-bonus) level, and only while the player is alive. */
-__declspec(dllexport) void __cdecl
-Camera_Overview(int, int, void *ctx)
+void Camera_Overview(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
     if (g->map()->bonus() != 0 || g->player()->moveState() != 0)
@@ -48,16 +44,14 @@ Camera_Overview(int, int, void *ctx)
     g->setCameraDistance(40.0f);
 }
 
-__declspec(dllexport) void __cdecl
-Camera_RotateRight(int, int, void *ctx)
+void Camera_RotateRight(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
     Config *c = g->config();
     c->setCameraYaw((float)(dt(g) * TURN_RATE + c->cameraYaw()));
 }
 
-__declspec(dllexport) void __cdecl
-Camera_RotateLeft(int, int, void *ctx)
+void Camera_RotateLeft(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
     Config *c = g->config();
@@ -66,8 +60,7 @@ Camera_RotateLeft(int, int, void *ctx)
 
 /* Only while playing.  Steps while at or below the limit, then clamps, so
  * one step may overshoot before the clamp. */
-__declspec(dllexport) void __cdecl
-Camera_TiltUp(int, int, void *ctx)
+void Camera_TiltUp(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
     if (g->state() != 1)
@@ -79,8 +72,7 @@ Camera_TiltUp(int, int, void *ctx)
         c->setCameraPitch(PITCH_MAX);
 }
 
-__declspec(dllexport) void __cdecl
-Camera_TiltDown(int, int, void *ctx)
+void Camera_TiltDown(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
     if (g->state() != 1)
@@ -92,4 +84,3 @@ Camera_TiltDown(int, int, void *ctx)
         c->setCameraPitch(PITCH_MIN);
 }
 
-}

@@ -31,8 +31,7 @@ static void ps_log(const char *what, const char *path, int ok)
     }
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
+int Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
 {
     SaveSlots *table = self;
     unsigned char *rec = (unsigned char *)table->slot(0);  // PRESERVED: runs on across slots
@@ -58,8 +57,7 @@ Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
     return 1;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
+int Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
 {
     SaveSlots *table = self;
     char path[128];
@@ -87,29 +85,25 @@ Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
 
 /* The table is embedded in the Game, so the deleting destructor never frees in
  * practice. */
-extern "C" {
 
 static void *const g_SaveSlotsVtable[1] = { (void *)&SaveSlots_ScalarDtor };
 
-__declspec(dllexport) void *SaveSlots_Vtable(void)
+void *SaveSlots_Vtable(void)
 {
     return (void *)g_SaveSlotsVtable;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-SaveSlots_InstallVtable(SaveSlots *self)
+void SaveSlots_InstallVtable(SaveSlots *self)
 {
     *(const void **)self = SaveSlots_Vtable();
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-SaveSlots_RestoreVtable(SaveSlots *self)
+void SaveSlots_RestoreVtable(SaveSlots *self)
 {
     *(const void **)self = SaveSlots_Vtable();
 }
 
-__declspec(dllexport) void *__attribute__((thiscall))
-SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags)
+void *SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags)
 {
     SaveSlots_RestoreVtable(self);
     if (flags & 1)
@@ -117,7 +111,6 @@ SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags)
     return self;
 }
 
-}
 
 /* Blanks the first count_ records, re-reading the count each pass.  PRESERVED:
  * the score and unused tail are not touched, so a blank slot keeps a stale
@@ -135,8 +128,7 @@ void SaveSlots::initialiseEmpty()
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-SaveSlots_InitialiseEmpty(SaveSlots *self)
+void SaveSlots_InitialiseEmpty(SaveSlots *self)
 {
     self->initialiseEmpty();
 }

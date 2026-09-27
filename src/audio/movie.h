@@ -42,26 +42,19 @@ extern void *const g_faktMovieVtable[1];
 extern FaktMovie g_movie;
 
 /* Called by WinMain.  Loading returns 0: no movie. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Movie_Setup(FaktMovie *self, void *log_obj);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
+int Movie_Setup(FaktMovie *self, void *log_obj);
+int
 Movie_LoadVideo(FaktMovie *self, void *arg1, void *arg2, void *arg3, const char *path);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Movie_Play(FaktMovie *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Movie_SetWindow(FaktMovie *self, void *surface);
+int Movie_Play(FaktMovie *self);
+void Movie_SetWindow(FaktMovie *self, void *surface);
 
 /* Called by the window procedure. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Movie_Teardown(FaktMovie *self);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Movie_Notify(FaktMovie *self, DWORD a, DWORD b, DWORD c);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Movie_Pause(FaktMovie *self);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Movie_Stop(FaktMovie *self);
+void Movie_Teardown(FaktMovie *self);
+int Movie_Notify(FaktMovie *self, DWORD a, DWORD b, DWORD c);
+int Movie_Pause(FaktMovie *self);
+int Movie_Stop(FaktMovie *self);
 
 /* Construction and destruction of the global instance, driven by
  * staticinit.cpp. */
-extern "C" __declspec(dllexport) FaktMovie *__attribute__((thiscall)) Movie_Construct(FaktMovie *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall)) Movie_Destruct(FaktMovie *self);
+FaktMovie *Movie_Construct(FaktMovie *self);
+void Movie_Destruct(FaktMovie *self);

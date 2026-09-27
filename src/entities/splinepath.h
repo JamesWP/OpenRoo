@@ -47,32 +47,24 @@ KAROO_LAYOUT_CHECKS(SplinePath)
 
 /* Construct, the scalar deleting destructor, and the destructor (which purges
  * the points). */
-extern "C" __declspec(dllexport) SplinePath *__attribute__((thiscall))
-Spline_Construct(SplinePath *self);
+SplinePath *Spline_Construct(SplinePath *self);
 
-extern "C" __declspec(dllexport) SplinePath *__attribute__((thiscall))
-Spline_ScalarDestructor(SplinePath *self, unsigned char bFreeSelf);
+SplinePath *Spline_ScalarDestructor(SplinePath *self, unsigned char bFreeSelf);
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Spline_Destruct(SplinePath *self);
+void Spline_Destruct(SplinePath *self);
 
 /* The point at t along the path, written to out; returns out. */
-extern "C" __declspec(dllexport) float *__attribute__((thiscall))
-Spline_EvalBezierPath(SplinePath *self, float *out, float t);
+float *Spline_EvalBezierPath(SplinePath *self, float *out, float t);
 
 /* Appends a control point. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Spline_AddControlPoint(SplinePath *self, float x, float y, float z);
+void Spline_AddControlPoint(SplinePath *self, float x, float y, float z);
 
 /* Frees every control point and empties the list. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Spline_PurgeControlPoints(SplinePath *self);
+void Spline_PurgeControlPoints(SplinePath *self);
 
 /* Draws the path as numsegments line segments, and its control polygon. */
-extern "C" __declspec(dllexport) long __attribute__((thiscall))
-Spline_DrawSplinePath(SplinePath *self, RenderDevice *dev,
-                      unsigned int numsegments, unsigned long color);
+long Spline_DrawSplinePath(SplinePath *self, RenderDevice *dev,
+                           unsigned int numsegments, unsigned long color);
 
-extern "C" __declspec(dllexport) long __attribute__((thiscall))
-Spline_DrawControlPolygon(SplinePath *self, RenderDevice *dev,
-                          unsigned long color);
+long Spline_DrawControlPolygon(SplinePath *self, RenderDevice *dev,
+                               unsigned long color);

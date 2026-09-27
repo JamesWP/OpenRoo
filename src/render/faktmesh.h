@@ -63,9 +63,9 @@ static_assert(offsetof(CFaktMesh, strided[MESH_STRIDED_TEX0].dwStride)     == 0x
 static_assert(offsetof(CFaktMesh, strided[MESH_STRIDED_TEX1].dwStride)     == 0x42, "strided");
 
 /* The two draw exports (faktmesh.cpp). */
-extern "C" __declspec(dllexport) HRESULT __attribute__((thiscall))
+HRESULT
 FaktMesh_DrawMeshBuffer(CFaktMesh *self, RenderDevice *dev, DWORD frame);
-extern "C" __declspec(dllexport) HRESULT __attribute__((thiscall))
+HRESULT
 FaktMesh_DrawFramedModel(CFaktMesh *self, RenderDevice *dev, DWORD frame);
 
 /* ─── The lifecycle four ───────────────────────────────────────────────────
@@ -77,17 +77,13 @@ FaktMesh_DrawFramedModel(CFaktMesh *self, RenderDevice *dev, DWORD frame);
  *
  * model.cpp allocates the four buffers with the allocator this frees them
  * with. */
-extern "C" __declspec(dllexport) CFaktMesh *__attribute__((thiscall))
-FaktMesh_Init(CFaktMesh *self);
+CFaktMesh *FaktMesh_Init(CFaktMesh *self);
 
-extern "C" __declspec(dllexport) void *__attribute__((thiscall))
-FaktMesh_ScalarDtor(CFaktMesh *self, unsigned int flags);
+void *FaktMesh_ScalarDtor(CFaktMesh *self, unsigned int flags);
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-FaktMesh_DtorBody(CFaktMesh *self);
+void FaktMesh_DtorBody(CFaktMesh *self);
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-FaktMesh_ReleaseModelBuffers(CFaktMesh *self);
+void FaktMesh_ReleaseModelBuffers(CFaktMesh *self);
 
 /* Our one-slot table, installed by Init and the destructor body. */
-extern "C" __declspec(dllexport) void *FaktMesh_Vtable(void);
+void *FaktMesh_Vtable(void);

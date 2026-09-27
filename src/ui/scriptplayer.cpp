@@ -35,7 +35,7 @@
  * vtable. */
 void ScriptPlayer::releaseStreams()
 {
-    typedef void (__attribute__((thiscall)) *deleting_dtor_fn)(void *, int);
+    typedef void (*deleting_dtor_fn)(void *, int);
 
     for (int i = 0; i < 255; ++i) {
         if (streams_[i] == NULL)
@@ -49,8 +49,7 @@ void ScriptPlayer::releaseStreams()
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-JJScript_ReleaseScriptStreamBuffers(ScriptPlayer *self)
+void JJScript_ReleaseScriptStreamBuffers(ScriptPlayer *self)
 {
     self->releaseStreams();
 }
@@ -77,8 +76,7 @@ static bool fx_blank(void)
     return cached != 0;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-JJScript_ReadForLevel(ScriptPlayer *self, const char *path)
+int JJScript_ReadForLevel(ScriptPlayer *self, const char *path)
 {
     return self->readForLevel(path);
 }
@@ -200,7 +198,7 @@ int ScriptPlayer::readForLevel(const char *path)
 #define JJSR_LINE_MAX   0x80
 #define JJSR_LOG_FIRST  4
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
+int
 JJScript_ReadTextsForReport(ScriptPlayer *self, const char *path, FILE *sink)
 {
     return self->readTextsForReport(path, sink);
@@ -621,7 +619,7 @@ void ScriptPlayer::clearStreams()
     memset(streams_, 0, sizeof(streams_));
 }
 
-extern "C" __declspec(dllexport) ScriptPlayer *__attribute__((thiscall))
+ScriptPlayer *
 ScriptPlayer_ScalarDestructor(ScriptPlayer *self, unsigned char flags)
 {
     self->destruct();

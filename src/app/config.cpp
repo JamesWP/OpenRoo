@@ -24,8 +24,7 @@ static void ps_log(const char *what, const char *path, int ok)
     }
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Config_LoadValues(Config *self, const char *path)
+int Config_LoadValues(Config *self, const char *path)
 {
     char tag[CFG_TAG_SIZE];
     FILE *fp = fopen(path, "r");
@@ -43,8 +42,7 @@ Config_LoadValues(Config *self, const char *path)
     return strcmp(tag, CFG_TAG) == 0 ? 1 : 0;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Config_Save(Config *self, const char *path)
+int Config_Save(Config *self, const char *path)
 {
     char tag[CFG_TAG_SIZE];  // PRESERVED: uninitialised
     FILE *fp = fopen(path, "w");
@@ -75,8 +73,7 @@ void Config::destruct()
     vtable_ = g_ConfigVtable;
 }
 
-extern "C" __declspec(dllexport) Config *__attribute__((thiscall))
-Config_ScalarDestructor(Config *self, unsigned char flags)
+Config *Config_ScalarDestructor(Config *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

@@ -13,7 +13,7 @@
  * the object too. */
 static void virtual_delete_static(void *obj)
 {
-    typedef void (__attribute__((thiscall)) *dtor_fn)(void *self, int flags);
+    typedef void (*dtor_fn)(void *self, int flags);
     void **vtbl = *(void ***)obj;
     ((dtor_fn)vtbl[0])(obj, 1);
 }
@@ -83,8 +83,7 @@ static DsbFx dsb_fx(void)
 }
 
 /* Both buffers, then both lists, then the two lent-out flags. */
-extern "C" __declspec(dllexport) doublesoundbuff * __attribute__((thiscall))
-Dsb_Init(doublesoundbuff *self)
+doublesoundbuff *Dsb_Init(doublesoundbuff *self)
 {
     ++g_nInit; { static unsigned long seen; dsb_first("Init", &seen); }
     CStatic_Init(self->master());
@@ -99,8 +98,7 @@ Dsb_Init(doublesoundbuff *self)
 /* Drops every borrower, releases both buffers and forgets that either was lent
  * out.  Also used by the sound manager to recycle an entry when the 2D/3D mode
  * changes. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Dsb_Clear(doublesoundbuff *self)
+void Dsb_Clear(doublesoundbuff *self)
 {
     ++g_nClear; { static unsigned long seen; dsb_first("Clear", &seen); }
     Dsb_PurgeCloneList(self->clones());
@@ -114,8 +112,7 @@ Dsb_Clear(doublesoundbuff *self)
 
 /* Clear, then the lists and buffers in reverse order of construction.
  * ReinitBuffer, unlike Reset, reinstalls the vtable first. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Dsb_Destruct(doublesoundbuff *self)
+void Dsb_Destruct(doublesoundbuff *self)
 {
     ++g_nDestruct; { static unsigned long seen; dsb_first("Destruct", &seen); }
     Dsb_Clear(self);
@@ -129,7 +126,7 @@ Dsb_Destruct(doublesoundbuff *self)
 /* Takes the list, not the entry.  The next node is read before the delete, so
  * a destructor that unlinked its own node would not strand the walk;
  * List_Clear frees the nodes afterwards. */
-extern "C" __declspec(dllexport) void __attribute__((stdcall))
+void __attribute__((stdcall))
 Dsb_PurgeCloneList(LinkedList *list)
 {
     ++g_nPurgeClone; { static unsigned long seen; dsb_first("PurgeCloneList", &seen); }
@@ -146,7 +143,7 @@ Dsb_PurgeCloneList(LinkedList *list)
 }
 
 /* The same walk; a pool has no vtable, so it is wiped and freed. */
-extern "C" __declspec(dllexport) void __attribute__((stdcall))
+void __attribute__((stdcall))
 Dsb_PurgeVoicePoolList(LinkedList *list)
 {
     ++g_nPurgePool; { static unsigned long seen; dsb_first("PurgeVoicePoolList", &seen); }
@@ -166,8 +163,7 @@ Dsb_PurgeVoicePoolList(LinkedList *list)
 /* Gives back one buffer.  It is recognised if it is on the duplicate list
  * (unlinked and deleted) or is the master or spare itself (its taken flag
  * cleared).  Otherwise 0, and the caller tries the manager's other list. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Dsb_ReleaseStatic(doublesoundbuff *self, CStaticSoundbuffer *buf)
+int Dsb_ReleaseStatic(doublesoundbuff *self, CStaticSoundbuffer *buf)
 {
     ++g_nRelStatic; { static unsigned long seen; dsb_first("ReleaseStatic", &seen); }
 
@@ -194,8 +190,7 @@ Dsb_ReleaseStatic(doublesoundbuff *self, CStaticSoundbuffer *buf)
 
 /* A pool is always built for a borrower, so there is no identity case: if it
  * is not on the list it is not this entry's. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool)
+int Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool)
 {
     ++g_nRelPool; { static unsigned long seen; dsb_first("ReleasePool", &seen); }
 
@@ -212,16 +207,14 @@ Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool)
 }
 
 /* DETERMINISM: summed as signed ints; the caller's compare is signed. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Dsb_BorrowerCount(doublesoundbuff *self)
+int Dsb_BorrowerCount(doublesoundbuff *self)
 {
     ++g_nBorrowerCount;
     return (int)self->voicePoolList.dwCount + (int)self->cloneList.dwCount;
 }
 
 /* The single predicate that lets the sound manager destroy a loaded sound. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Dsb_IsFullyReleased(doublesoundbuff *self)
+int Dsb_IsFullyReleased(doublesoundbuff *self)
 {
     ++g_nFullyReleased; { static unsigned long seen; dsb_first("IsFullyReleased", &seen); }
 

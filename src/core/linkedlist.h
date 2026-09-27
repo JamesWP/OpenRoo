@@ -51,33 +51,27 @@ KAROO_LAYOUT_CHECKS(LinkedList)
 }
 
 /* Sets the vtable and zeroes the three fields. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-List_Init(LinkedList *self);
+void List_Init(LinkedList *self);
 
 /* Destruct, then frees self when bit 0 of flags is set.  Returns self. */
-extern "C" __declspec(dllexport) LinkedList *__attribute__((thiscall))
-List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf);
+LinkedList *List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf);
 
 /* Re-installs the vtable, then Clear. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-List_Destruct(LinkedList *self);
+void List_Destruct(LinkedList *self);
 
 /* Appends a new node holding pValue at the tail. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-List_Append(LinkedList *self, void *pValue);
+void List_Append(LinkedList *self, void *pValue);
 
 /* Frees the nodes, not their values. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-List_Clear(LinkedList *self);
+void List_Clear(LinkedList *self);
 
 /* Unlinks and frees pNode and decrements the count.  A NULL pNode does
  * nothing.  Always returns 0. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-List_Unlink(LinkedList *self, LinkedListNode *pNode);
+int List_Unlink(LinkedList *self, LinkedListNode *pNode);
 
 /* The first node after pAfterNode (NULL: from the head) whose value is pValue,
  * or NULL. */
-extern "C" __declspec(dllexport) LinkedListNode *__attribute__((thiscall))
+LinkedListNode *
 List_Find(LinkedList *self, void *pValue, LinkedListNode *pAfterNode);
 
 /* Shorter names for the calls above. */
@@ -95,10 +89,8 @@ static inline LinkedListNode *LinkedList_Find(LinkedList *self, void *pValue,
 { return List_Find(self, pValue, pAfterNode); }
 
 /* The head node. */
-extern "C" __declspec(dllexport) LinkedListNode *__attribute__((thiscall))
-List_GetHead(LinkedList *self);
+LinkedListNode *List_GetHead(LinkedList *self);
 
 /* Returns (*it)'s value and advances *it to the next node; the list itself is
  * not read. */
-extern "C" __declspec(dllexport) void *__attribute__((thiscall))
-List_NextValue(LinkedList *self, LinkedListNode **it);
+void *List_NextValue(LinkedList *self, LinkedListNode **it);

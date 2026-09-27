@@ -30,11 +30,9 @@
 #include "log.h"
 
 #include "movableentity.h"
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Set3DPosition(CStaticSoundbuffer *self,
-                      float x, float y, float z, DWORD dwApply);
+int CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
+void CStatic_Set3DPosition(CStaticSoundbuffer *self,
+                           float x, float y, float z, DWORD dwApply);
 
 /* Durations in ms; the rise rate is per ms. */
 static const float  K_LAND_Y      = 1.0f;
@@ -384,8 +382,7 @@ expire:
     return 0;
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_UpdatePlayerTileEffects(Player *self)
+unsigned int Sim_UpdatePlayerTileEffects(Player *self)
 {
     return self->updateTileEffects();
 }
@@ -490,14 +487,12 @@ void Player::actReleaseBomb()
     field_e8--;
 }
 
-extern "C" {
-__declspec(dllexport) void __cdecl Player_ActMoveForward(int, int, void *p) { ((Player *)p)->actMoveForward(); }
-__declspec(dllexport) void __cdecl Player_ActMoveBack(int, int, void *p)    { ((Player *)p)->actMoveBack(); }
-__declspec(dllexport) void __cdecl Player_ActTurnLeft(int, int, void *p)    { ((Player *)p)->actTurnLeft(); }
-__declspec(dllexport) void __cdecl Player_ActTurnRight(int, int, void *p)   { ((Player *)p)->actTurnRight(); }
-__declspec(dllexport) void __cdecl Player_ActHarakiri(int, int, void *p)    { ((Player *)p)->actHarakiri(); }
-__declspec(dllexport) void __cdecl Player_ActReleaseBomb(int, int, void *p) { ((Player *)p)->actReleaseBomb(); }
-}
+void Player_ActMoveForward(int, int, void *p) { ((Player *)p)->actMoveForward(); }
+void Player_ActMoveBack(int, int, void *p)    { ((Player *)p)->actMoveBack(); }
+void Player_ActTurnLeft(int, int, void *p)    { ((Player *)p)->actTurnLeft(); }
+void Player_ActTurnRight(int, int, void *p)   { ((Player *)p)->actTurnRight(); }
+void Player_ActHarakiri(int, int, void *p)    { ((Player *)p)->actHarakiri(); }
+void Player_ActReleaseBomb(int, int, void *p) { ((Player *)p)->actReleaseBomb(); }
 
 /* PRESERVED: the ctor and dtor keep the original's transient vtable stores,
  * and zeroSoundSlots() runs twice. */
@@ -539,8 +534,7 @@ void Player::destruct()
     destroyBaseForGame();
 }
 
-extern "C" __declspec(dllexport) Player *__attribute__((thiscall))
-Player_ScalarDestructor(Player *self, unsigned char flags)
+Player *Player_ScalarDestructor(Player *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

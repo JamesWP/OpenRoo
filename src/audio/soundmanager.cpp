@@ -128,14 +128,12 @@ static void destroy_entry(doublesoundbuff *entry)
     operator delete(entry);
 }
 
-extern "C" {
 
 /* entry is either an entry or the address of an entry's spare buffer, which
  * works because the master is at offset 0. */
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_LoadEntryMaster(SoundManager *self, void *entry,
-                         const char *filename, unsigned long dwDsFlags,
-                         int bDo3D)
+int SoundMgr_LoadEntryMaster(SoundManager *self, void *entry,
+                             const char *filename, unsigned long dwDsFlags,
+                             int bDo3D)
 {
     ++g_loadMaster;
     { static unsigned long seen; sndmgr_first("LoadEntryMaster", &seen); }
@@ -162,9 +160,8 @@ SoundMgr_LoadEntryMaster(SoundManager *self, void *entry,
 }
 
 /* The buffer's own file name is the lookup key. */
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
-                               int bDestroyIfUnused)
+void SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
+                                    int bDestroyIfUnused)
 {
     ++g_relStatic;
     { static unsigned long seen; sndmgr_first("ReleaseStaticForOwner", &seen); }
@@ -198,9 +195,8 @@ SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
 }
 
 /* The key is the pool's voice 0's file name, fetched again for each list. */
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
-                             int bDestroyIfUnused)
+void SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
+                                  int bDestroyIfUnused)
 {
     ++g_relPool;
     { static unsigned long seen; sndmgr_first("ReleasePoolForOwner", &seen); }
@@ -240,7 +236,7 @@ SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
 
 /* Finds or creates the entry, then hands out its master once, or a fresh
  * duplicate added to its borrower list. */
-__declspec(dllexport) CStaticSoundbuffer *__attribute__((thiscall))
+CStaticSoundbuffer *
 SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
 {
     ++g_acqStatic;
@@ -321,7 +317,7 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
     ++g_cloneFail;
     if (clone != NULL) {
         // Deleted through its own vtable, with the free flag.
-        typedef void (__attribute__((thiscall)) *dtor_fn)(void *, int);
+        typedef void (*dtor_fn)(void *, int);
         (*(dtor_fn *)clone->vtable)(clone, 1);
     }
     return NULL;
@@ -329,7 +325,7 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
 
 /* The same find-or-create, then a pool of nVoices duplicates.  There is no
  * master shortcut: a pool is always built. */
-__declspec(dllexport) VoicePool *__attribute__((thiscall))
+VoicePool *
 SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
                      int bWant3D)
 {
@@ -414,8 +410,7 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
 }
 
 /* Switches the 3D listener mode and reloads everything in the 3D list. */
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_Setup(SoundManager *self, int mode3d)
+int SoundMgr_Setup(SoundManager *self, int mode3d)
 {
     ++g_setup;
     { static unsigned long seen; sndmgr_first("Setup", &seen); }
@@ -521,7 +516,6 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
     return 1;
 }
 
-}
 
 /* The methods callers use. */
 void SoundManager::releaseStaticForOwner(void *buffer, int bDestroyIfUnused)
@@ -559,10 +553,8 @@ static void purge_list(NamedEntryList *list)
     NamedList_Clear(list);
 }
 
-extern "C" {
 
-__declspec(dllexport) SoundManager *__attribute__((thiscall))
-SoundMgr_Construct(SoundManager *self)
+SoundManager *SoundMgr_Construct(SoundManager *self)
 {
     CFaktSound_BlankFields(self->cfaktSound());
     NamedList_Construct(&self->entriesPlain_);
@@ -579,14 +571,13 @@ SoundMgr_Construct(SoundManager *self)
 
 /* Also the reset: Init runs it first, and the Game's teardown on its own.  An
  * owned logger is deleted through its vtable with the free flag. */
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_PurgeAssets(SoundManager *self)
+void SoundMgr_PurgeAssets(SoundManager *self)
 {
     purge_list(&self->entriesPlain_);
     purge_list(&self->entries3D_);
     CFaktSound_ReleaseComRefs(self->cfaktSound());
     if (self->ownsLogger_ != 0 && self->logger_ != NULL) {
-        typedef void *(__attribute__((thiscall)) *ScalarDtor)(void *, int);
+        typedef void *(*ScalarDtor)(void *, int);
         (*(ScalarDtor *)*(void **)self->logger_)(self->logger_, 1);
     }
     self->logger_           = NULL;
@@ -597,8 +588,7 @@ SoundMgr_PurgeAssets(SoundManager *self)
     self->dwDefaultDsFlags_ = 2;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_Destruct(SoundManager *self)
+void SoundMgr_Destruct(SoundManager *self)
 {
     self->vtable_ = (void *)g_SoundMgrVtable;
     SoundMgr_PurgeAssets(self);
@@ -609,8 +599,7 @@ SoundMgr_Destruct(SoundManager *self)
 
 /* Reached only through the vtable; the manager is embedded in the Game, so
  * nothing deletes one. */
-__declspec(dllexport) SoundManager *__attribute__((thiscall))
-SoundMgr_ScalarDestructor(SoundManager *self, unsigned char flags)
+SoundManager *SoundMgr_ScalarDestructor(SoundManager *self, unsigned char flags)
 {
     SoundMgr_Destruct(self);
     if (flags & 1)
@@ -620,10 +609,9 @@ SoundMgr_ScalarDestructor(SoundManager *self, unsigned char flags)
 
 /* PRESERVED: a failed logger allocation leaves logger_ NULL and ownsLogger_ 1.
  */
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
-              UINT bufferflags, short channels, int samplespersec,
-              USHORT bitspersample, GameLogger *logger)
+int SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
+                  UINT bufferflags, short channels, int samplespersec,
+                  USHORT bitspersample, GameLogger *logger)
 {
     SoundMgr_PurgeAssets(self);
     self->logger_ = logger;
@@ -650,4 +638,3 @@ SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
     return 1;
 }
 
-}

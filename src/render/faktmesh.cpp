@@ -72,31 +72,27 @@ static HRESULT draw_mesh(CFaktMesh *mesh, RenderDevice *dev, DWORD frame,
 
 /* ─── Exports ───────────────────────────────────────────────────────────────
  */
-extern "C" {
 
-__declspec(dllexport) HRESULT __attribute__((thiscall))
-FaktMesh_DrawMeshBuffer(CFaktMesh *self, RenderDevice *dev, DWORD frame)
+HRESULT FaktMesh_DrawMeshBuffer(CFaktMesh *self, RenderDevice *dev, DWORD frame)
 {
     return draw_mesh(self, dev, frame, DrawFlag::NoUpdateExtents, "DrawMeshBuffer");
 }
 
-__declspec(dllexport) HRESULT __attribute__((thiscall))
+HRESULT
 FaktMesh_DrawFramedModel(CFaktMesh *self, RenderDevice *dev, DWORD frame)
 {
     return draw_mesh(self, dev, frame, DrawFlag::NoUpdateExtents | DrawFlag::NoLight,
                      "DrawFramedModel");
 }
 
-}  // extern "C"
 
 /* ─── The lifecycle four ────────────────────────────────────────────────────
  */
 
-extern "C" {
 
 static void *const g_FaktMeshVtable[1] = { (void *)&FaktMesh_ScalarDtor };
 
-__declspec(dllexport) void *FaktMesh_Vtable(void)
+void *FaktMesh_Vtable(void)
 {
     return (void *)g_FaktMeshVtable;
 }
@@ -104,8 +100,7 @@ __declspec(dllexport) void *FaktMesh_Vtable(void)
 /* Four guarded frees, each followed by a NULL, then the two scalars.
  * PRESERVED: wFrameCount goes to 1, not 0, so an empty mesh claims one frame.
  */
-__declspec(dllexport) void __attribute__((thiscall))
-FaktMesh_ReleaseModelBuffers(CFaktMesh *self)
+void FaktMesh_ReleaseModelBuffers(CFaktMesh *self)
 {
     if (self->pVertexData)   free(self->pVertexData);
     self->pVertexData = NULL;
@@ -121,8 +116,7 @@ FaktMesh_ReleaseModelBuffers(CFaktMesh *self)
 
 /* Only the four strides are set; the other eight strided entries and every
  * lpvData are left uninitialised.  PRESERVED: wFrameCount starts at 1. */
-__declspec(dllexport) CFaktMesh *__attribute__((thiscall))
-FaktMesh_Init(CFaktMesh *self)
+CFaktMesh *FaktMesh_Init(CFaktMesh *self)
 {
     self->strided[MESH_STRIDED_POSITION].dwStride = MDL_VERTEX_STRIDE;
     self->strided[MESH_STRIDED_NORMAL].dwStride   = MDL_VERTEX_STRIDE;
@@ -144,16 +138,14 @@ FaktMesh_Init(CFaktMesh *self)
 }
 
 /* Re-install the table, then release. */
-__declspec(dllexport) void __attribute__((thiscall))
-FaktMesh_DtorBody(CFaktMesh *self)
+void FaktMesh_DtorBody(CFaktMesh *self)
 {
     self->unknown00 = FaktMesh_Vtable();
     FaktMesh_ReleaseModelBuffers(self);
 }
 
 /* The one vtable slot. */
-__declspec(dllexport) void *__attribute__((thiscall))
-FaktMesh_ScalarDtor(CFaktMesh *self, unsigned int flags)
+void *FaktMesh_ScalarDtor(CFaktMesh *self, unsigned int flags)
 {
     FaktMesh_DtorBody(self);
     if (flags & 1)
@@ -161,4 +153,3 @@ FaktMesh_ScalarDtor(CFaktMesh *self, unsigned int flags)
     return self;
 }
 
-}  // extern "C"

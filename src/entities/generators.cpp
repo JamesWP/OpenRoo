@@ -1,7 +1,6 @@
 /* Every Generator and Environment virtual — Tick/emit, Save, Load, CopyFrom,
  * the dtors and constructors — plus the vtables the constructors install, the
- * ring helpers the two environment ticks share, and the exported thiscall
- * thunks the vtables point at.
+ * ring helpers the two environment ticks share, and the thunks the vtables point at.
  *
  * The ring is one NULL-terminated doubly-linked list, partitioned as
  * [pRingHead, pRingCurrent) live and [pRingCurrent, pRingTail] free.  An
@@ -818,7 +817,6 @@ Environment *env_create(const char *name)
     return NULL;
 }
 
-#define THISCALL_DECL __attribute__((thiscall))
 
 /* PRESERVED: the game's float compare treats an unordered operand (NaN) as
  * equal, so this treats NaN the same as exactly zero, unlike a plain `== 0`.
@@ -1632,8 +1630,8 @@ static void fill_gaussian_field(ExplodeDebris *self, float mu, float sigma)
 
 /* ─── Cloning ─── */
 
-typedef BOOL  (THISCALL_DECL *clone_copy_fn)(void *, const void *);
-typedef void *(THISCALL_DECL *clone_dtor_fn)(void *, unsigned);
+typedef BOOL  (*clone_copy_fn)(void *, const void *);
+typedef void *(*clone_dtor_fn)(void *, unsigned);
 
 /* Shared body of both: the factory by class name, then slot 1 (CopyFrom); on
  * refusal the new object is destroyed through its own slot 0 and NULL comes
@@ -1662,200 +1660,185 @@ Environment *env_clone(const Environment *src)
 
 /* ─── Exports — vtable thunks ─── */
 
-#define THISCALL __attribute__((thiscall))
 
-extern "C" {
 
 /* All six slots, so a plain Environment never falls through to unimplemented
  * behaviour either. */
-__declspec(dllexport) void *THISCALL
-Env_BaseDtor(Environment *self, unsigned flags)
+void *Env_BaseDtor(Environment *self, unsigned flags)
 {
     base_env_destruct(self);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Env_BaseCopyFrom(Environment *self, const Environment *src) { return env_same_name(self, src); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Env_AttachRing(Environment *self, RingBuffer *ring)         { return env_attach_ring(self, ring); }
 
-__declspec(dllexport) void THISCALL
-Env_BaseTick(Environment *, float)                          { }
+void Env_BaseTick(Environment *, float)                          { }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Env_BaseSave(Environment *, void *)                         { return TRUE; }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Env_BaseLoad(Environment *, void *)                         { return TRUE; }
 
-__declspec(dllexport) void *THISCALL
-Env_GravityDtor(GravityEnvironment *self, unsigned flags)
+void *Env_GravityDtor(GravityEnvironment *self, unsigned flags)
 {
     gravity_env_destruct(self);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void *THISCALL
-Env_MagnetDtor(MagnetEnvironment *self, unsigned flags)
+void *Env_MagnetDtor(MagnetEnvironment *self, unsigned flags)
 {
     magnet_env_destruct(self);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Env_GravityCopyFrom(GravityEnvironment *self, const GravityEnvironment *src)
 { return gravity_env_copy_from(self, src); }
 
-__declspec(dllexport) BOOL THISCALL
-Env_MagnetCopyFrom(MagnetEnvironment *self, const MagnetEnvironment *src)
+BOOL Env_MagnetCopyFrom(MagnetEnvironment *self, const MagnetEnvironment *src)
 { return magnet_env_copy_from(self, src); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Env_GravitySave(GravityEnvironment *self, void *fp)  { return gravity_env_save(self, fp); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Env_MagnetSave(MagnetEnvironment *self, void *fp)    { return magnet_env_save(self, fp); }
 
-/* Shared no-op bodies for the base classes' do-nothing slots; the argument
- * counts match so callee cleanup stays correct under thiscall. */
-__declspec(dllexport) void THISCALL Gen_Nop1(void *, float)                      { }
-__declspec(dllexport) void THISCALL Gen_Nop3(void *, float, float, float)        { }
-__declspec(dllexport) void THISCALL Gen_Nop4(void *, float, float, float, float) { }
-__declspec(dllexport) BOOL THISCALL Gen_ReturnTrue(void *, void *)               { return TRUE; }
+/* Shared no-op bodies for the base classes' do-nothing slots, one per slot
+ * signature. */
+void Gen_Nop1(void *, float)                      { }
+void Gen_Nop3(void *, float, float, float)        { }
+void Gen_Nop4(void *, float, float, float, float) { }
+BOOL Gen_ReturnTrue(void *, void *)               { return TRUE; }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_AttachRing(Generator *self, RingBuffer *ring)        { return gen_attach_ring(self, ring); }
 
 /* Called directly by explodedebris.cpp and theme.cpp — see
  * fill_gaussian_field. */
-__declspec(dllexport) void THISCALL
-Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma)
+void Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma)
 {
     fill_gaussian_field(self, mu, sigma);
 }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_BaseCopyFrom(Generator *self, const Generator *src)  { return gen_copy_base(self, src); }
 
-__declspec(dllexport) void *THISCALL
-Gen_BaseDtor(Generator *self, unsigned flags)
+void *Gen_BaseDtor(Generator *self, unsigned flags)
 {
     base_gen_destruct(self);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void *THISCALL
-Gen_PointDtor(PointGenerator *self, unsigned flags)
+void *Gen_PointDtor(PointGenerator *self, unsigned flags)
 {
     self->base.pVtable = (void **)gen_vtbl_point;
     base_gen_destruct(&self->base);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void *THISCALL
-Gen_BoxDtor(BoxGenerator *self, unsigned flags)
+void *Gen_BoxDtor(BoxGenerator *self, unsigned flags)
 {
     self->base.pVtable = (void **)gen_vtbl_box;
     base_gen_destruct(&self->base);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void *THISCALL
-Gen_StdDtor(StdGenerator *self, unsigned flags)
+void *Gen_StdDtor(StdGenerator *self, unsigned flags)
 {
     std_gen_destruct(self);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void *THISCALL
-Gen_XStdDtor(XStdGenerator *self, unsigned flags)
+void *Gen_XStdDtor(XStdGenerator *self, unsigned flags)
 {
     xstd_gen_destruct(self);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_PointEmit(PointGenerator *self, float dt)             { point_gen_emit(self, dt); }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_BoxEmit(BoxGenerator *self, float dt)                 { box_gen_emit(self, dt); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_StdCopyFrom(StdGenerator *self, const StdGenerator *src)   { return std_gen_copy_from(self, src); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_StdSave(StdGenerator *self, void *fp)                 { return std_gen_save(self, fp); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_StdLoad(StdGenerator *self, void *fp)                 { return std_gen_load(self, fp); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_XStdCopyFrom(XStdGenerator *self, const XStdGenerator *src) { return xstd_gen_copy_from(self, src); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_XStdSave(XStdGenerator *self, void *fp)               { return xstd_gen_save(self, fp); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_XStdLoad(XStdGenerator *self, void *fp)               { return xstd_gen_load(self, fp); }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_XStdSetPosition(XStdGenerator *self, float x, float y, float z) { xstd_set_position(self, x, y, z); }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_XStdSetVelocity(XStdGenerator *self, float x, float y, float z, float m) { xstd_set_velocity(self, x, y, z, m); }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_XStdSetDirection(XStdGenerator *self, float x, float y, float z) { xstd_set_direction(self, x, y, z); }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_XStdSetSpeed(XStdGenerator *self, float m)            { xstd_set_speed(self, m); }
 
-__declspec(dllexport) void *THISCALL
-Gen_CylDtor(CylinderGenerator *self, unsigned flags)
+void *Gen_CylDtor(CylinderGenerator *self, unsigned flags)
 {
     cyl_gen_destruct(self);
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_CylCopyFrom(CylinderGenerator *self, const CylinderGenerator *src) { return cyl_gen_copy_from(self, src); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_CylSave(CylinderGenerator *self, void *fp)            { return cyl_gen_save(self, fp); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Gen_CylLoad(CylinderGenerator *self, void *fp)            { return cyl_gen_load(self, fp); }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_CylSetPosition(CylinderGenerator *self, float x, float y, float z) { cyl_set_position(self, x, y, z); }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_CylSetDirection(CylinderGenerator *self, float x, float y, float z) { cyl_set_direction(self, x, y, z); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Env_GravityLoad(GravityEnvironment *self, void *fp)  { return gravity_env_load(self, fp); }
 
-__declspec(dllexport) BOOL THISCALL
+BOOL
 Env_MagnetLoad(MagnetEnvironment *self, void *fp)    { return magnet_env_load(self, fp); }
 
-__declspec(dllexport) void THISCALL
+void
 Env_GravityTick(GravityEnvironment *self, float dt)  { gravity_env_tick(self, dt); }
 
-__declspec(dllexport) void THISCALL
+void
 Env_MagnetTick(MagnetEnvironment *self, float dt)    { magnet_env_tick(self, dt); }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_StdEmit(StdGenerator *self, float dt)            { std_gen_tick(self, dt); }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_CylinderEmit(CylinderGenerator *self, float dt)  { cyl_gen_tick(self, dt); }
 
-__declspec(dllexport) void THISCALL
+void
 Gen_XStdEmit(XStdGenerator *self, float dt)          { xstd_gen_tick(self, dt); }
 
-}  // extern "C"
 
 /* ─── Our vtables ──────────────────────────────────────────────────────────
  *
@@ -1863,10 +1846,8 @@ Gen_XStdEmit(XStdGenerator *self, float dt)          { xstd_gen_tick(self, dt); 
  * above: every object of ours carries a DLL address at +0x00, so every virtual
  * call the game makes on it lands directly in this code.
  *
- * Built by hand rather than through C++ virtuals: the game calls `(*(code
- * **)(*obj + 0x0c))(...)` under MSVC __thiscall, and neither mingw's slot
- * layout nor its calling convention is guaranteed to match, so each entry
- * below is one of the explicit thiscall exports above.
+ * Built by hand rather than through C++ virtuals: callers index the table by
+ * slot, so each entry below is one of the thunks above, in slot order.
  *
  * The static_asserts guard against an initialiser one entry short, which would
  * otherwise leave a slot silently NULL.  Slot meanings are in generators.h. */
@@ -1944,7 +1925,7 @@ static_assert(SLOT_COUNT(env_vtbl_magnet)   == ENV_VTBL_SLOTS, "Magnet vtable");
  * the tables above, so this is a direct call into this DLL — no class switch
  * or identity lookup needed. */
 
-typedef void (THISCALL *sim_tick_fn)(void *, float);
+typedef void (*sim_tick_fn)(void *, float);
 
 void sim_tick_slot3(void *obj, float dt)
 {

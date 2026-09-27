@@ -136,11 +136,8 @@ KAROO_LAYOUT_CHECKS(Config)
 }
 
 /* Karoo.cfg: returns 1 when the file loads and ends with the tag. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Config_LoadValues(Config *self, const char *path);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Config_Save(Config *self, const char *path);
+int Config_LoadValues(Config *self, const char *path);
+int Config_Save(Config *self, const char *path);
 
 /* The one slot of Config's vtable. */
-extern "C" __declspec(dllexport) Config *__attribute__((thiscall))
-Config_ScalarDestructor(Config *self, unsigned char flags);
+Config *Config_ScalarDestructor(Config *self, unsigned char flags);

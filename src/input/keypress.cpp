@@ -147,8 +147,7 @@ static void option_edit(Game *game, unsigned char key)
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_HandleKeypress(Game *self)
+void Sim_HandleKeypress(Game *self)
 {
 
     if (s_fx < 0) {

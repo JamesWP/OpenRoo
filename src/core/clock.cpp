@@ -184,27 +184,25 @@ static int game_time(int *out)
     return g_seed;
 }
 
-extern "C" {
 
 /* time(), as the game calls it. */
-__declspec(dllexport) int __cdecl hooks_GameTime(int *out)
+int hooks_GameTime(int *out)
 {
     return game_time(out);
 }
 
 /* Starts the clock now; a later call, or the first read, does nothing more. */
-__declspec(dllexport) void __cdecl hooks_ClockInit(void)
+void hooks_ClockInit(void)
 {
     if (g_fixed_dt < 0.0) clock_init();
 }
 
 /* clock_seconds(), for the game's callers. */
-__declspec(dllexport) double __cdecl hooks_ClockSeconds(void)
+double hooks_ClockSeconds(void)
 {
     return clock_seconds();
 }
 
-}
 
 double clock_previous_seconds(void)
 {

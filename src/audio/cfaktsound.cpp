@@ -207,61 +207,50 @@ static void CFaktSound_Apply3DRolloffParams_impl(CFaktSound *self,
         self->directsound3dlistener->SetRolloffFactor(rolloff_factor, dwApply);
 }
 
-extern "C" {
 
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_BlankFields(CFaktSound *self)
+void CFaktSound_BlankFields(CFaktSound *self)
     { CFaktSound_BlankFields_impl(self); }
 
-__declspec(dllexport) CFaktSound * __attribute__((thiscall))
-CFaktSound_ScalarDeletingDtor(CFaktSound *self, DWORD free_memory)
+CFaktSound *CFaktSound_ScalarDeletingDtor(CFaktSound *self, DWORD free_memory)
     { return CFaktSound_ScalarDeletingDtor_impl(self, free_memory); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_ClearState(CFaktSound *self)
+void CFaktSound_ClearState(CFaktSound *self)
     { CFaktSound_ClearState_impl(self); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_ReleaseComRefs(CFaktSound *self)
+void CFaktSound_ReleaseComRefs(CFaktSound *self)
     { CFaktSound_ReleaseComRefs_impl(self); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CFaktSound_Initialize(CFaktSound *self, HWND window,
-                      UINT bufferflags, short channels,
-                      int samplespersec, USHORT bitspersample,
-                      void *logger)
+int CFaktSound_Initialize(CFaktSound *self, HWND window,
+                          UINT bufferflags, short channels,
+                          int samplespersec, USHORT bitspersample,
+                          void *logger)
     { return CFaktSound_Initialize_impl(self, window, bufferflags,
                                         channels, samplespersec, bitspersample, logger); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CFaktSound_InitializeWith3DAudio(CFaktSound *self, HWND window,
-                                 UINT bufferflags, short channels,
-                                 int samplespersec, USHORT bitspersample,
-                                 void *logger)
+int CFaktSound_InitializeWith3DAudio(CFaktSound *self, HWND window,
+                                     UINT bufferflags, short channels,
+                                     int samplespersec, USHORT bitspersample,
+                                     void *logger)
     { return CFaktSound_InitializeWith3DAudio_impl(self, window, bufferflags,
                                                    channels, samplespersec, bitspersample, logger); }
 
-__declspec(dllexport) int __attribute__((thiscall))
-CFaktSound_Create3DListener(CFaktSound *self, int enable)
+int CFaktSound_Create3DListener(CFaktSound *self, int enable)
     { return CFaktSound_Create3DListener_impl(self, enable); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_CommitSettings(CFaktSound *self)
+void CFaktSound_CommitSettings(CFaktSound *self)
     { CFaktSound_CommitSettings_impl(self); }
 
-__declspec(dllexport) void __attribute__((thiscall))
-CFaktSound_SetPosition(CFaktSound *self, vec3d *pos, DWORD dwApply)
+void CFaktSound_SetPosition(CFaktSound *self, vec3d *pos, DWORD dwApply)
     { CFaktSound_SetPosition_impl(self, pos, dwApply); }
 
-__declspec(dllexport) void __attribute__((thiscall))
+void
 CFaktSound_SetOrientation(CFaktSound *self, vec3d *front, vec3d *top, DWORD dwApply)
     { CFaktSound_SetOrientation_impl(self, front, top, dwApply); }
 
-__declspec(dllexport) void __attribute__((thiscall))
+void
 CFaktSound_Apply3DRolloffParams(CFaktSound *self, float rolloff_factor, DWORD dwApply)
     { CFaktSound_Apply3DRolloffParams_impl(self, rolloff_factor, dwApply); }
 
-}
 
 static void *const cfaktsound_vtable_slots[1] = {
     (void *)&CFaktSound_ScalarDeletingDtor,

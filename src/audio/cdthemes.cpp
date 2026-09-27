@@ -22,8 +22,7 @@ static void crt_strlwr(char *p)
             *p = (char)(*p + ' ');
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_FindThemeIndexByThemeName(CdThemes *self, const char *name)
+unsigned int Sim_FindThemeIndexByThemeName(CdThemes *self, const char *name)
 {
     return self->findThemeIndex(name);
 }
@@ -56,13 +55,10 @@ unsigned int CdThemes::findThemeIndex(const char *name)
 }
 
 struct CDM;
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_StopTrack(CDM *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_PlayTrack(CDM *self, int track, bool loop);
+void CDM_StopTrack(CDM *self);
+void CDM_PlayTrack(CDM *self, int track, bool loop);
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf(CdThemes *self, const char *caption)
+unsigned int Sim_PlayCDStuf(CdThemes *self, const char *caption)
 {
     return self->play(caption);
 }
@@ -82,8 +78,7 @@ unsigned int CdThemes::play(const char *caption)
     return 1;
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf_2(CdThemes *self)
+unsigned int Sim_PlayCDStuf_2(CdThemes *self)
 {
     return self->replay();
 }
@@ -124,8 +119,7 @@ int CdThemes::validateTrackLengths()
     return 1;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_ValidateCDTrackLengths(CdThemes *self)
+int Sim_ValidateCDTrackLengths(CdThemes *self)
 {
     return self->validateTrackLengths();
 }
@@ -142,22 +136,19 @@ void CdThemes::destruct()
     vtable_ = const_cast<void*>(CDTHEMES_VTABLE);
 }
 
-extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
-Sim_CdThemesConstruct(CdThemes *self)
+CdThemes *Sim_CdThemesConstruct(CdThemes *self)
 {
     self->construct();
     return self;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_CdThemesDestruct(CdThemes *self)
+void Sim_CdThemesDestruct(CdThemes *self)
 {
     self->destruct();
 }
 
 /* Frees on bit 0; the only CdThemes is the Game's, so it never does. */
-extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
-Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
+CdThemes *Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
 {
     self->destruct();
     if (flags & 1)
@@ -176,8 +167,7 @@ Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
  *     currentTrack_ and its name past the object.  No shipped file comes
  *     close.
  * A missing file zeroes all 255 names and returns 0. */
-extern "C" __declspec(dllexport) unsigned char __attribute__((thiscall))
-Sim_ReadCdTrackThemeTable(CdThemes *self, const char *name)
+unsigned char Sim_ReadCdTrackThemeTable(CdThemes *self, const char *name)
 {
     return self->readTrackThemeTable(name);
 }
@@ -226,8 +216,7 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
     return count_;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_ListTrackLengths(CdThemes *self)
+int Sim_ListTrackLengths(CdThemes *self)
 {
     return self->listTrackLengths();
 }

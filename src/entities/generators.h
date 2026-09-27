@@ -251,13 +251,13 @@ static_assert(sizeof(BoxGenerator) == 0x244c, "Box size");
 
 static inline void gen_vset_position(Generator *g, float x, float y, float z)
 {
-    typedef void (__attribute__((thiscall)) *fn)(Generator *, float, float, float);
+    typedef void (*fn)(Generator *, float, float, float);
     ((fn)g->pVtable[GEN_VT_SETPOS_SLOT])(g, x, y, z);
 }
 #define GEN_VT_SETDIR_SLOT 8
 static inline void gen_vset_direction(Generator *g, float x, float y, float z)
 {
-    typedef void (__attribute__((thiscall)) *fn)(Generator *, float, float, float);
+    typedef void (*fn)(Generator *, float, float, float);
     ((fn)g->pVtable[GEN_VT_SETDIR_SLOT])(g, x, y, z);
 }
 
@@ -275,8 +275,7 @@ Environment *env_clone(const Environment *src);
 
 /* Gen_FillGaussianField writes into an ExplodeDebris (explodedebris.h); its
  * layout and the offsets this relies on are asserted there. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma);
+void Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma);
 
 /* Both classes' Tick is slot GEN_VT_TICK_SLOT. */
 void sim_tick_slot3(void *obj, float dt);

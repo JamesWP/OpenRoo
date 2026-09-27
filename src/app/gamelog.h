@@ -28,24 +28,22 @@ static_assert(offsetof(GameLogger, notifyWParam) == 0x110, "notifyWParam");
 static_assert(offsetof(GameLogger, notifyHwnd)   == 0x114, "notifyHwnd");
 
 /* Formats and writes one line: "HH:MM:SS : message". */
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
+void GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
 /* Opens (or reopens) the log file and writes the date banner.  Returns 0,
  * after a message box, if the file cannot be opened. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
+int
 GameLog_OpenLogFile(GameLogger *self, const char *filename, const char *mode);
 
 /* Constructs and opens in one. */
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
+void *
 GameLog_Initialize(GameLogger *self, const char *filename, const char *mode);
 
 /* Writes "HH:MM:SS : File: <file>, Line: <line>: message". */
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
-                          int line, const char *fmt, ...);
+void GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
+                               int line, const char *fmt, ...);
 
 /* Construction and destruction of the global logger, driven by staticinit.cpp.
  */
-extern "C" __declspec(dllexport) void __attribute__((thiscall)) GameLog_Construct(GameLogger *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall)) GameLog_CloseAndRebindVtable(GameLogger *self);
+void GameLog_Construct(GameLogger *self);
+void GameLog_CloseAndRebindVtable(GameLogger *self);

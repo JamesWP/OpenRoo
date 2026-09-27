@@ -344,19 +344,15 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
 
 /* The exported entry points the game's Foe and Player construction and
  * destruction reach the base through. */
-extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
-Sim_PopulateMovableEntityBase(MovableEntity *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ZeroEntitySoundSlotPointers(MovableEntity *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_DestroyMovableEntityBase(MovableEntity *self);
+MovableEntity *Sim_PopulateMovableEntityBase(MovableEntity *self);
+void Sim_ZeroEntitySoundSlotPointers(MovableEntity *self);
+void Sim_DestroyMovableEntityBase(MovableEntity *self);
 
 /* Vtable slot 0 of the base's one-slot table: destroys the base state, then
  * frees to the game heap when bit 0 of `flags` is set. */
-extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
+MovableEntity *
 Sim_DeleteMovableEntityWithFlags(MovableEntity *self, unsigned int flags);
 
 /* The shared movement step for every entity (player, foe, bomb): a thin shim
  * over MovableEntity::updateMovement(). */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_UpdateEntityMovement(MovableEntity *self);
+unsigned int Sim_UpdateEntityMovement(MovableEntity *self);
