@@ -1,97 +1,27 @@
-/* ASSET_PLAN.md Phase 3 — the .mdl reader.
+/* The .mdl reader (ImportSceneModels) and ModelManager (model.h).
  *
- *   0x437bc0  LoadedModel::ImportSceneModels(this, LPCSTR path) -> BOOL
- *             __thiscall, ret 4.  3 E8 call sites (0x426622, 0x426631 in
- *             ConfigureRenderState's model setup, 0x438655), no E9, no PUSH,
- *             no vtable slot.  UD2-stubbed.
- *
- * The object is the same CFaktMesh whose draw path we already own
- * (faktmesh.cpp); Ghidra names it LoadedModel here.  One struct, one header.
- * That is what makes this phase small: the destination was already
- * static_assert'd, so this is "fill a struct we own from a file".
- *
- * ─── Scope correction: .ani is NOT in this phase ──────────────────────────
- *
- * ASSET_PLAN.md paired .mdl and .ani, expecting "the same reader family".
- * There is no .ani reader to replace.  Phase 0's log showed the 18 .ani opens
- * coming from inside the .leo parser (FUN_00401070), and that function's
- * callee list is fopen/fclose plus the CRT's text-parsing helpers
- * (0x4505b7, 0x4506a7, 0x450743, 0x4507d0) -- it opens and parses the
- * animation inline, with no separable function.  .ani therefore moves to
- * Phase 4, with the .leo parser that contains it.
- *
- * ─── Calls into the game binary: the allocator, and only the allocator ────
- *
- * Four heap blocks are allocated here and freed by the game's FreeThing2
- * (0x437fb0), which uses FactAlloc::Free2.  They cross the ownership
- * boundary, so under ASSET_PLAN.md's no-callback rule they must come from the
- * game's heap: operator new (0x450e9d) is called for all four.  That is the
- * "allocator" kind, the one the rule keeps.  Everything else -- open, read,
- * close, the string copy, and the free path below -- is ours.
- *
- * FreeThing2 is now OURS (faktmesh.cpp's FaktMesh_ReleaseModelBuffers,
- * ENDGAME_PLAN.md E2) and this file calls it through faktmesh.h instead of
- * carrying the hand-kept inline copy it used to.  What has not changed is
- * which heap the four blocks come from: the release still uses
- * FactAlloc::Free2, so the allocations here still use the game's operator
- * new, and 0x004386f7 -- still game code -- still calls the release.
- *
- * ─── The file ─────────────────────────────────────────────────────────────
- *
- *   +0x00  WORD   frameCount     -> this->wFrameCount   (+0x10)
- *   +0x02  DWORD  vertexCount    -> this->dwVertexCount (+0x08)
+ * FORMAT: the .mdl file.
+ *   +0x00  WORD   frameCount     -> this->wFrameCount
+ *   +0x02  DWORD  vertexCount    -> this->dwVertexCount
  *   then, for each frame f:
  *          6 x DWORD             -> pFrameRecords + f*0x18
  *          for each vertex v:
  *              10 x DWORD        -> pVertexData + (f*vertexCount + v)*0x28
- *
- * Opened "rb" (0x465188) -- binary, unlike the Phase 2 player-state files.
- * Every read is a separate 4-byte fread; the header's two are 2 and 4 bytes.
- *
- * Three buffers are allocated before the read:
- *   pFrameRecords  frameCount * 0x18
- *   pVertexData    frameCount * vertexCount * 0x28   (zero-filled)
- *   pScratchVerts  vertexCount * 0x28                (zero-filled)
- * and one after it: pszName = strlen(path)+1 bytes, holding the path.
- *
- * ─── Defects and oddities preserved deliberately ──────────────────────────
- *
- * 1. NO READ IS CHECKED, and neither is the file's size.  A truncated .mdl
- *    leaves the remaining vertices at whatever the zero-fill left them, and
- *    the function still returns 1.  Only a failed open returns 0.
- * 2. pFrameRecords IS NOT ZERO-FILLED, while the other two buffers are.  A
- *    frame whose 0x18-byte record is not present in the file therefore reads
- *    as heap garbage rather than zeros.  Asymmetric in the original; kept.
- * 3. A NULL from operator new is stored as NULL and the code carries on to
- *    dereference it on the next read.  The original tests the result only to
- *    skip its zero-fill loop, never to bail out.
- * 4. THE FRAME COUNTER IS 16-BIT.  The outer loop compares AX against
- *    wFrameCount, so the count is masked to 16 bits; the vertex index is a
- *    full 32-bit compare against dwVertexCount.
- * 5. dwVertexCount IS RE-READ FROM THE OBJECT on every vertex iteration
- *    rather than hoisted.  Harmless -- nothing writes it during the loop --
- *    but reproduced.
- * 6. FreeThing2 runs BEFORE the open, so a failed open leaves the model
- *    cleared, not unchanged: any previously loaded mesh is already gone.
- *
- * ─── Visual proof ─────────────────────────────────────────────────────────
+ * Opened "rb".  Every read is a separate 4-byte fread; the header's two are 2
+ * and 4 bytes.
  *
  * KAROO_MDL_FX=scale halves every vertex position as it is read, so every
- * model in the game comes out at half size.  A geometry change, and one only
- * this code path can produce.
- */
+ * model comes out at half size. */
+
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "model.h"      /* our own owner header; brings in faktmesh.h */
+#include "model.h"
 #include "log.h"
 #include <stdlib.h>
 #include "gamelog.h"
 #include "gamestr.h"
-ModelManager g_modelManager;   /* was 0x004e03f0 */
-
-/* The game's heap.  Allocations here are freed by FreeThing2 (0x437fb0) via
- * FactAlloc::Free2, so they must come from the matching allocator. */
+ModelManager g_modelManager;
 
 #define MDL_FRAME_REC_SIZE 0x18
 #define MDL_VERTEX_SIZE    0x28
@@ -119,8 +49,6 @@ static unsigned long fnv1a(const void *p, unsigned len)
     return h;
 }
 
-/* 0x437fb0 is ours now (faktmesh.cpp, ENDGAME_PLAN.md E2); this used to be a
- * hand-maintained inline copy of it.  Called through the owning header. */
 static void model_release(CFaktMesh *m)
 {
     FaktMesh_ReleaseModelBuffers(m);
@@ -133,12 +61,17 @@ Model_ImportSceneModels(CFaktMesh *self, const char *path)
     unsigned frames, verts, total;
     static int logged = 0;
 
-    model_release(self);                       /* defect 6: before the open */
+    // PRESERVED: the release runs before the open, so a failed open leaves the
+    // mesh cleared, not unchanged.
+    model_release(self);
 
     fp = fopen(path, "rb");
     if (fp == NULL)
         return 0;
 
+    // PRESERVED: no read is checked, and neither is the file's size: a
+    // truncated .mdl leaves the rest of the vertices zero and still returns 1.
+    // A NULL allocation is stored and then read into.
     fread(&self->wFrameCount,   2, 1, fp);
     fread(&self->dwVertexCount, 4, 1, fp);
 
@@ -146,33 +79,31 @@ Model_ImportSceneModels(CFaktMesh *self, const char *path)
     verts  = self->dwVertexCount;
     total  = frames * verts;
 
-    /* Per-frame records: allocated, NOT zero-filled (defect 2). */
+    // PRESERVED: the frame records are not zero-filled, unlike the two vertex
+    // buffers, so a record missing from the file reads as heap garbage.
     self->pFrameRecords = malloc(frames * MDL_FRAME_REC_SIZE);
 
-    /* Vertex array: zero-filled, 10 dwords per vertex. */
     self->pVertexData = malloc(total * MDL_VERTEX_SIZE);
     if (self->pVertexData != NULL && total != 0)
         memset(self->pVertexData, 0, total * MDL_VERTEX_SIZE);
 
-    /* Scratch vertices: one frame's worth, zero-filled. */
     self->pScratchVerts = malloc(verts * MDL_VERTEX_SIZE);
     if (self->pScratchVerts != NULL && verts != 0)
         memset(self->pScratchVerts, 0, verts * MDL_VERTEX_SIZE);
 
-    for (unsigned f = 0; f < (frames & 0xffff); f++) {   /* defect 4 */
+    for (unsigned f = 0; f < (frames & 0xffff); f++) {
         unsigned char *rec = (unsigned char *)self->pFrameRecords
                            + f * MDL_FRAME_REC_SIZE;
         for (int i = 0; i < 6; i++)
-            fread(rec + i * 4, 4, 1, fp);                /* defect 1 */
+            fread(rec + i * 4, 4, 1, fp);
 
-        for (unsigned v = 0; v < self->dwVertexCount; v++) {  /* defect 5 */
+        for (unsigned v = 0; v < self->dwVertexCount; v++) {
             unsigned char *vert = (unsigned char *)self->pVertexData
                                 + (f * self->dwVertexCount + v) * MDL_VERTEX_SIZE;
             for (int i = 0; i < 10; i++)
                 fread(vert + i * 4, 4, 1, fp);
 
             if (fx_scale()) {
-                /* xyz are the first three dwords of the FVF 0x212 vertex. */
                 ((float *)vert)[0] *= 0.5f;
                 ((float *)vert)[1] *= 0.5f;
                 ((float *)vert)[2] *= 0.5f;
@@ -182,7 +113,7 @@ Model_ImportSceneModels(CFaktMesh *self, const char *path)
 
     fclose(fp);
 
-    /* strdup onto the game's heap: FreeThing2 frees this pointer. */
+    // pszName is the path, freed by FaktMesh_ReleaseModelBuffers.
     {
         unsigned n = (unsigned)strlen(path) + 1;
         char *name = (char *)malloc(n);
@@ -191,9 +122,9 @@ Model_ImportSceneModels(CFaktMesh *self, const char *path)
             memcpy(name, path, n);
     }
 
-    /* KAROO_MDL_DUMP=<path> -- one line per load: the two heap buffers hashed
-     * (FNV-1a 32), so an independent parse of the same .mdl can be compared
-     * against what actually landed in memory.  See ASSET_PLAN.md Phase 3. */
+    // KAROO_MDL_DUMP=<path>: one line per load, the two heap buffers hashed
+    // (FNV-1a 32), to compare an independent parse of the same .mdl against
+    // what landed in memory.
     {
         char dump[MAX_PATH];
         if (GetEnvironmentVariableA("KAROO_MDL_DUMP", dump, sizeof(dump))) {
@@ -219,12 +150,11 @@ Model_ImportSceneModels(CFaktMesh *self, const char *path)
     return 1;
 }
 
-/* ─── ModelManager (0x004385b0, 0x004386e0) ────────────────────────────────
+/* ─── ModelManager ──────────────────────────────────────────────────────────
  *
- * The lookup lowercases the caller's name and every cached name IN PLACE
- * before comparing, exactly as TextureManager_GetOrLoad does; the logged
- * name is therefore the lowercased one.  The original's __try around the
- * ctor only frees the 0x7a bytes if Init throws, which ours cannot. */
+ * The lookup lowercases the caller's name and every cached name in place
+ * before comparing, as TextureManager_GetOrLoad does; the logged name is
+ * therefore the lowercased one. */
 static void mm_lower_inplace(char *s)
 {
     for (; *s; s++)
@@ -284,11 +214,10 @@ ModelManager_ClearReleaseFree(ModelManager *self)
     LinkedList_Clear(&self->cache);
 }
 
-/* ─── ModelManager lifecycle: 0x438560 ctor, 0x4385a0 dtor body, 0x438580 scalar ──────────────
+/* ─── ModelManager lifecycle ───────────────────────────────────────────────
  *
- * Every instance is static (see model.h), so nothing ever deletes one and the
- * scalar dtor's free is unreached -- reimplemented, not exercised.  It stays
- * on the game heap, the LinkedList precedent: no allocator of one is ours. */
+ * Every instance is static (model.h), so nothing deletes one and the scalar
+ * dtor's free is never reached. */
 static void *const g_ModelManagerVtable[1] = { (void *)&ModelManager_ScalarDestructor };
 
 extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
