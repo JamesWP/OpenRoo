@@ -1,46 +1,26 @@
-/* GAMETICK_PLAN.md Band C — Game::GameTick itself.
+/* Game::GameTick: one simulation step, called once a frame by RenderGameFrame
+ * with dt and the clock.  It ticks the bombs, the timed foe spawners, the
+ * countdown, the player's bomb drop and switches, the foes, the lifts and
+ * slides; then, by game state, the camera and exit while playing, the restart
+ * or game-over tally on ENTER, and high-score entry.
  *
- *   Game::GameTick  0x00414df0   1 E8 site (0x00427007, RenderGameFrame)
+ * The x87 helpers keep a value on the FPU across a chain where the result
+ * depends on it, rather than trusting the compiler's spills.
  *
- * uint __thiscall(Game*, double dt, double now), RET 0x10.  Transcribed from
- * the LISTING (0x414df0-0x416414), not the decompile: the decompile drops
- * every __ftol argument, invents a fourth argument for two Log_Message calls,
- * and folds several fall-throughs that the listing keeps separate.
+ * PRESERVED:
+ *   - lives drop at the restart after a death (ENTER), not at the death;
+ *   - the bomb and foe loops re-read their counts every pass and do not step
+ *     back after a removal, so the entry moved into a removed slot is skipped
+ *     for one tick;
+ *   - a bomb drop or foe bomb refused as too soon also leaves its request
+ *     flag set;
+ *   - the game-over branch of the restart skips the camera reset;
+ *   - leaving game over with ENTER adds the level time to the total play time;
+ *     ENTER after high-score name entry does not.
  *
- * Every callee is now either ours or a NAMED callback:
- *   ours      the whole of Bands A and B (entity ticks, spawns, removes, tile
- *             queries, level loaders, menu stack, score, text entry, cheat,
- *             keypress, sound attachment, CD music, high scores, input
- *             dispatch, the static sound buffers, the logger)
- *   callback  ReleaseScriptStreamBuffers 0x41e840 (scriptplayer.cpp and
- *             levelsetup.cpp already keep it), and -- through the callees --
- *             the SoundManager and the script-player tick.
- *   imports   GetAsyncKeyState (via hooks_GetAsyncKeyState, the replay path),
- *             PostQuitMessage.
- *   CRT       __ftol and floor, reproduced with the same x87 instructions.
- *
- * x87 fidelity.  The game runs with the FPU at 53-bit precision (control
- * word 0x27f), and this DLL shares the thread, so long-double arithmetic here
- * executes the same instructions under the same control word.  Where the
- * original keeps a value on the x87 stack across a compare (the countdown,
- * the contact distance, the camera sway) the helpers below do the same in
- * inline asm rather than trusting gcc's spill behaviour.
- *
- * Preserved behaviour worth naming:
- *  - lives are DEC'd during the RESTART (after ENTER), not at death (HOOKS.md)
- *  - the enemy and foe loops re-read their counts every iteration and do
- *    NOT step back after a removal, so the entry compacted into the removed
- *    slot is skipped for one tick
- *  - the bomb-drop and foe-bomb "too soon" tests skip the spawn AND leave the
- *    request flag set (the jump bypasses the clear)
- *  - the game-over branch of the restart path skips the camera-reset tail
- *  - the ENTER-to-leave-game-over path adds the level time to +0x170a44; the
- *    ENTER-after-name-entry path does not
- *
- * Control: KAROO_SIM_FX=tickorder -- the lift and slide tick loops run
- * in the opposite order (slides first).  Both mutate the tile map, so the
- * order is observable; this proves the per-frame dispatch is ours.
- */
+ * KAROO_SIM_FX=tickorder, a negative control: the lift and slide loops run in
+ * the other order.  Both change the tile map, so the order is observable. */
+
 #include "gametick.h"
 #include <windows.h>
 #include <stdio.h>
@@ -80,15 +60,9 @@
 
 #define KEY(k)  hooks_GetAsyncKeyState(k)
 
-
-
-/* The level map and its tiles (levelmap.h). */
-
 static int s_fx = -1;
 
-/* ─── x87 helpers ───────────────────────────────────────────────────────── */
-
-/* The CRT __ftol: chop the value on the x87 stack into an int64. */
+/* __ftol: truncates the value on the FPU to an int64. */
 static long long ftol80(long double v)
 {
     unsigned short cw, chop;
@@ -105,8 +79,7 @@ static long long ftol80(long double v)
     return r;
 }
 
-/* floor() as the CRT does it: __frnd under the round-down control word
- * 0x173f (FUN_00451062; the rounding bits are all that matter here). */
+/* floor(): FRNDINT with rounding set to down. */
 static double crt_floor(double v)
 {
     unsigned short cw, down;
@@ -124,12 +97,11 @@ static double crt_floor(double v)
     return (double)r;
 }
 
-/* float(sin(now * 0.0025f) * 0.2 + base): FLD double, FMUL float, FSIN,
- * FMUL double, FADD float, FSTP float -- one x87 chain. */
+/* float(sin(now * 0.0025f) * 0.2 + base), in one FPU chain. */
 static float camera_sway(double now, float base)
 {
-    static const float  k1 = 0.0024999999441206455f;   /* DAT_0045d3e8 */
-    static const double k2 = 0.20000000298023224;      /* DAT_0045d3e0 */
+    static const float  k1 = 0.0024999999441206455f;  // 0.0025 as a float
+    static const double k2 = 0.20000000298023224;     // 0.2 as a float, widened
     float out;
     __asm__ volatile(
         "fldl %1\n\t"
@@ -142,14 +114,13 @@ static float camera_sway(double now, float base)
     return out;
 }
 
-/* (double)u64(a) / ((double)u64(b) * 0.001f) * 25.0, then __ftol: the
- * completion percentage.  b == 0 gives an x87 infinity, whose FISTP is the
- * integer indefinite 0x8000000000000000 -- AL = 0 -- reproduced by keeping
- * the whole thing on the FPU. */
+/* The completion percentage: a / (b * 0.001f) * 25, truncated, with both
+ * operands loaded unsigned.  b == 0 gives an infinity, which truncates to
+ * 0x8000000000000000, so the byte is 0. */
 static unsigned char completion_percent(unsigned int a, unsigned int b)
 {
-    static const float  k001 = 0.0010000000474974513f;   /* DAT_0045d308 */
-    static const double k25  = 25.0;                      /* DAT_0045d3d8 */
+    static const float  k001 = 0.0010000000474974513f;
+    static const double k25  = 25.0;
     unsigned long long qa = a, qb = b;
     unsigned short cw, chop;
     long long r;
@@ -157,7 +128,7 @@ static unsigned char completion_percent(unsigned int a, unsigned int b)
         "fildll %3\n\t"
         "fildll %4\n\t"
         "fmuls %5\n\t"
-        "fdivrp\n\t"                 /* ST1/ST0, pop (MSVC's FDIVP)        */
+        "fdivrp\n\t"  // ST1 / ST0, then pop
         "fmull %6\n\t"
         "fnstcw %1\n\t"
         "movw %1, %%ax\n\t"
@@ -171,7 +142,7 @@ static unsigned char completion_percent(unsigned int a, unsigned int b)
     return (unsigned char)r;
 }
 
-/* ─── The switch-triggered block, shared by the player and each foe ─────── */
+/* The switch-triggered block, shared by the player and each foe. */
 
 static void trigger_switch_tile(Game *game, unsigned char sw, int u, int v)
 {
@@ -211,7 +182,7 @@ Sim_GameTick(Game *self, double dt, double now)
 
     self->setLastTickTime(now);
     if (self->stateRef() == 5) {
-        self->tickStep()->value = 0.0;    /* two zero dwords: +0.0 */
+        self->tickStep()->value = 0.0;  // +0.0
     } else {
         self->tickStep()->value = dt;
         (*self->clock()) = (double)((long double)dt + (long double)(*self->clock()));
@@ -284,7 +255,7 @@ Sim_GameTick(Game *self, double dt, double now)
         self->debounceRef() = 0x1b;
     }
 
-    /* enemies: count re-read each pass; no step-back after a removal */
+    // Bombs: the count is re-read each pass; no step back after a removal.
     for (int i = 0; i < (int)self->bombCount(); ++i) {
         self->bombSlot(self->bombId(i))->tick();
         unsigned char id = self->bombId(i);
@@ -305,8 +276,7 @@ Sim_GameTick(Game *self, double dt, double now)
         if (self->cheatEntry()->active() != 0)
             Sim_HandleTypedCheatCode(self);
 
-        /* the runtime foe spawners (levelcensus.h); the original walks a
-         * pointer at each record's +0x14, Game+0x20251 + i*0x15 */
+        // The timed foe spawners (levelcensus.h).
         for (int i = 0; i < (int)self->census()->timed; ++i) {
             TimedSpawner *E = self->timedSpawner((unsigned)i);
             long double since = (long double)(*self->clock()) - (long double)E->lastSpawn;
@@ -324,8 +294,7 @@ Sim_GameTick(Game *self, double dt, double now)
                     foe->setDropContents(1);
                 Sim_AcquireObjectSoundBuffersForIndex(self, id);
             }
-            /* The spawner's last-spawn time (read as a double above), set
-             * from the clock -- two dword MOVs in the original, one double. */
+            // The last-spawn time, from the clock.
             E->lastSpawn = *self->clock();
         }
 
@@ -348,9 +317,9 @@ Sim_GameTick(Game *self, double dt, double now)
             self->setParkedCameraOption(0);
         }
 
-        /* last-seconds countdown: compared at 80 bits, stored at 64 */
+        // The countdown's last seconds: compared at 80 bits, stored at 64.
         {
-            static const double k001 = 0.001;              /* DAT_0045d368, a DOUBLE */
+            static const double k001 = 0.001;  // a double
             long double lim = (long double)(unsigned long long)(unsigned int)self->timeLimit() * 1000.0L;
             long double rem80 = (lim - (long double)(unsigned long long)self->timeElapsed()) *
                                 (long double)k001;
@@ -373,7 +342,7 @@ Sim_GameTick(Game *self, double dt, double now)
             CStatic_HaltPlayback(self->fixedSounds()->lastSeconds);
     }
 
-    /* the player's bomb drop */
+    // The player's bomb drop.
     if ((unsigned int)pl->bombDropRequest() != 0) {
         unsigned int timed = (unsigned int)pl->moveDir();
         int spawn = 1, offset = 0;
@@ -382,7 +351,7 @@ Sim_GameTick(Game *self, double dt, double now)
             if (since < 50.0L)
                 offset = 1;
             else
-                spawn = 0;                 /* too late: flag stays set */
+                spawn = 0;  // too soon: the flag stays set
         }
         if (spawn) {
             if (offset)
@@ -397,7 +366,7 @@ Sim_GameTick(Game *self, double dt, double now)
         }
     }
 
-    /* a switch the player stepped on */
+    // A switch the player stepped on.
     {
         unsigned char sw = pl->switchSlot();
         if (sw < 0xff && self->bridgeSlot(sw)->armed() == 0) {
@@ -431,9 +400,8 @@ Sim_GameTick(Game *self, double dt, double now)
         }
     }
 
-    /* ─── the foe loop ───
-     * The foe-side pieces are Foe methods (foe.cpp); the slot is re-read
-     * through its address for each, as the original re-reads it. */
+    // The foes.  Their pieces are Foe methods (foe.cpp); the slot is re-read
+    // for each piece.
     for (int i = 0; i < (int)game->foeCount(); ++i) {
         unsigned char id = game->foeId(i);
         Foe **slot = game->foeSlotRef(id);
@@ -468,7 +436,7 @@ Sim_GameTick(Game *self, double dt, double now)
         }
     }
 
-    /* ─── playing: camera follow, time-out, exit ─── */
+    // Playing: camera follow, time-out, exit.
     if (self->stateRef() == 1) {
         if ((unsigned int)pl->falling() == 0 && pl->moveState() == 0) {
             self->setCameraEye(0, pl->posU());
@@ -531,7 +499,7 @@ Sim_GameTick(Game *self, double dt, double now)
         }
     }
 
-    /* ─── ENTER handling: after a death, or on the game-over tally ─── */
+    // ENTER after a death, or on the game-over tally.
     if (self->stateRef() != 2) {
         if (self->debounceRef() != 0x0d && KEY(0x0d) != 0 && pl->moveState() != 0 && self->stateRef() == 1) {
             self->setRestartCount((unsigned char)(self->restartCount() + 1));
@@ -539,7 +507,7 @@ Sim_GameTick(Game *self, double dt, double now)
             int bonus = (int)self->map()->bonus();
             int restart_tail = 1;
             if (lives > 0 && bonus == 0) {
-                pl->setLives(lives - 1);              /* the DEC at 0x4160d6 */
+                pl->setLives(lives - 1);  // lives drop at the restart
                 Sim_RestoreTileGridFromSnapshot(self);
                 Sim_SetupLevelObjects(self);
             } else if (lives <= 0 && bonus == 0) {
@@ -548,7 +516,7 @@ Sim_GameTick(Game *self, double dt, double now)
                     self->cdThemes()->play(GS_GAME_GAMEOVER);
                 Score_CalculateLevelScore(self, (char)self->stateRef());
                 self->debounceRef() = 0x0d;
-                restart_tail = 0;                        /* JMP 0x4162b3 */
+                restart_tail = 0;  // game over: skip the camera reset
             } else {
                 self->setCameraMode(2);
                 self->stateRef() = 3;
@@ -632,7 +600,7 @@ Sim_GameTick(Game *self, double dt, double now)
         }
     }
 
-    /* ─── ENTER after high-score name entry ─── */
+    // ENTER after high-score name entry.
     if (self->stateRef() == 6 && self->debounceRef() != 0x0d && KEY(0x0d) != 0) {
         self->highScores()->writeFile(GS_GAME_HSFILE, 0x4b);
         self->stateRef() = 0;
