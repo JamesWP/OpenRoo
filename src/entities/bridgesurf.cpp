@@ -1,87 +1,43 @@
-/* DrawBridgeSurfaces (0x408a00) reimplementation.
+/* DrawBridgeSurfaces: each bridge's deck as one scrolling textured quad, a
+ * four-vertex strip (FVF 0x242: XYZ, diffuse, two texture-coordinate sets).
+ * The deck's texture v scrolls by
+ *     f = fmod(t * (double)0.001f / n, 1.0)      n = the deck length
+ * so the surface moves along its length over time.  RenderGameFrame calls it
+ * once a frame with the Game, the theme block, the Direct3D object and the
+ * clock in ms.  BridgeObject::buildSurface builds each quad; this file sets
+ * the render states and draws.
  *
- * __cdecl(Game *game, void *lvl, Direct3D *d3d, double t) — 0xbe5 bytes, one
- * E8 call site (0x4284B9 in RenderGameFrame).  The plan's estimate of "768
- * bytes, 12 dispatches" was low: it is ~3045 bytes, and the arguments are
- * *five* dwords, the last two being one double — not the three the closure
- * table listed.  The call site pushes, in order, EBP, EBX, EAX, 0x46c890,
- * [0x46c498]; the `add esp,0x14` after it confirms five dwords, __cdecl.
+ * Three nested loops:
+ *   A. over the theme block's level objects, those of type 2 (as
+ *      DrawQuadBatch), setting two render states each;
+ *   B. over each one's sub-objects, binding its texture, blend and address
+ *      mode;
+ *   C. over every bridge.
+ * PRESERVED: C does not depend on A or B, so every bridge is drawn once per
+ * sub-object of every type-2 object, only the render state differing.
+ * Quadratic, and surely not intended.
  *
- *   arg1  [0x46c498]   the Game singleton   (huge offsets: +0x170643 etc.)
- *   arg2  0x46c890     the level-object blob quadbatch/meshbatch also get
- *   arg3  [0x4e04ac]   g_pDirect3D
- *   arg4  EBX:EBP      a double — the animation clock, in milliseconds
+ * On a level object, +0x5ad gates ZWRITEENABLE and +0x5b5 gates
+ * SPECULARENABLE, together with the Highlights video option
+ * (Game::videoHighlights()).
  *
- * What it draws: one scrolling textured quad per "conveyor" object, as a
- * 4-vertex TRIANGLESTRIP with FVF 0x242 (XYZ | DIFFUSE | two texture
- * coordinate sets, so a 32-byte vertex).  The v coordinate of set 0 is
- * offset by
+ * PRESERVED, too:
+ *   - the vertices are zeroed (diffuse 0xFFFFFFFF) and then every field is
+ *     overwritten;
+ *   - the X-axis cases shift x by -0.5 at both ends instead of centring it,
+ *     as the Z-axis cases do;
+ *   - the device is re-read before every call, and both inner loop bounds
+ *     every pass;
+ *   - SPECULARENABLE is turned off for every type-2 object, including those
+ *     that never turned it on and those with no sub-objects.
  *
- *     f = fmod(t * (double)0.001f / n, 1.0)          n = (int8)cv[0x45]
- *
- * so the surface scrolls along its length over time.  The quad runs from the
- * object's anchor point a to a distance `len` away, where len is the distance
- * to a second stored point b; it is one unit wide (+/- 0.5) across.
- *
- * Three loops, and the outer two are exactly what the Ghidra decompile gets
- * wrong (it models the whole frame off `local_40`, a phantom, and puts the
- * loop bases inside the world matrix).  These come from the disassembly:
- *
- *   A. over the 0x5dd-byte LevelObject array in `lvl` — count at +0x6c9b8,
- *      objects at +0x6c9bc.  Gated on obj->dwType == 2, exactly as
- *      DrawQuadBatch is.  Two per-object render states, then...
- *   B. over that object's SceneSubObject array — the same +0x3c1 count /
- *      +0x3c5 entries / 0x3c stride levelobject.h already declares, and the
- *      same four fields (pTexture, dwBlendSrc, dwBlendDst, dwTexAddress).
- *      The cursor in the binary is sub+0x0c, which is why the decompile
- *      shows pDVar13[-2] for pTexture.
- *   C. over game->field_0x170643[] (count byte at +0x170a43) — the pointer
- *      array HOOKS.md lists as the "switch trigger" objects.
- *
- * Loop C does not depend on A or B at all: every conveyor is redrawn once per
- * sub-object of every quad-batch object, with only the render state differing.
- * That is quadratic and almost certainly not what was intended, but it is
- * what the binary does, so it is reproduced.
- *
- * Loop C's objects are BridgeObjects (bridgeobject.h), and since COHESION
- * Band 4a the per-bridge vertex build is BridgeObject::buildSurface -- this
- * file keeps the render states and the draw.  The fields it reads, from the
- * disassembly:
- *   +0x25 float[3]  b — the far point (z is negated on read)
- *   +0x39 float[3]  a — the anchor    (z is negated on read)
- *   +0x45 int8      n — scroll divisor and texture-repeat multiplier
- *   +0x53 dword     draw gate (this or +0x58 non-zero)
- *   +0x57 int8      direction: > 0 extends forwards, <= 0 backwards
- *   +0x58 dword     draw gate
- *   +0x60 int8      axis: == 1 runs along X, otherwise along Z
- * And on a LevelObject: +0x5ad gates ZWRITEENABLE, +0x5b5 gates
- * SPECULARENABLE (together with the "Highlights" video option,
- * Game +0x2aa138 -- Game::videoHighlights(), config.h).
- *
- * Preserved oddities, deliberately not cleaned up:
- *   - The identity world matrix is built into scratch by the game's matrix
- *     helper and then *copied* to a second buffer before SetTransform.  We
- *     build one identity matrix; the bytes handed to D3D are the same.
- *   - The four vertices are zero-initialised (diffuse to 0xFFFFFFFF) and then
- *     every one of the 32 fields is overwritten in every branch.  The
- *     zero-init is dead, and is kept.
- *   - `az` is the *negated* stored z, and the quad is built around az, but
- *     the X-axis cases shift x by -0.5 at both ends instead of centring it
- *     the way the Z-axis cases do.  Asymmetric; preserved.
- *   - The device pointer is re-read from d3d before every dispatch.
- *   - Both inner loop bounds are re-read from memory each iteration.
- *   - SPECULARENABLE is turned *off* for every dwType==2 object, including
- *     ones that never turned it on, and ones with no sub-objects at all.
- *
- * The device is the com_proxy device proxy; calls go through it deliberately.
- *
- * KAROO_BRIDGE_FX visual-proof modes (read by value, never by presence):
- *   tint     — diffuse 0xFFFF00FF instead of 0xFFFFFFFF.  Only this function
- *              builds these vertices, so a magenta conveyor is ours.
- *   nodraw   — skip the DrawPrimitive, leaving every render state untouched.
- *   backward — negate the scroll phase f.  A *direction* change: it proves
- *              the fmod/clock arithmetic, which a colour cannot.
- */
+ * KAROO_BRIDGE_FX, visual controls:
+ *   tint      diffuse 0xFFFF00FF: only this code builds these vertices, so a
+ *             magenta deck is ours;
+ *   nodraw    skip the draw, leaving every render state as set;
+ *   backward  negate the scroll: a direction change, so it proves the
+ *             fmod and clock arithmetic. */
+
 #include "bridgesurf.h"
 #include "direct3d.h"
 #include "levelobject.h"
@@ -92,7 +48,7 @@
 #define BRIDGE_FVF        0x242
 #define BRIDGE_LOG_FIRST  8
 
-/* Bases inside the two argument blobs. */
+/* Offsets in the theme block and the level object. */
 #define LVL_OFF_BRIDGE_COUNT    0x6c9b8
 #define LVL_OFF_BRIDGE_OBJECTS  0x6c9bc
 #define LOBJ_OFF_ZWRITE_GATE    0x5ad
@@ -120,12 +76,9 @@ static BridgeFxMode bridge_fx(void)
     return (BridgeFxMode)cached;
 }
 
-/* KAROO_BRIDGE_DIAG=1 — which of the four orientation branches does a level
- * actually reach?  The first-8-draws log answers that for the first frame
- * only, which is not enough: the acceptance question "did every orientation
- * reverse under KAROO_BRIDGE_FX=backward" cannot be answered without knowing
- * how many orientations were on screen at all.  This logs each distinct
- * (conveyor, axis, dir, n) combination once, over the whole run. */
+/* KAROO_BRIDGE_DIAG=1 logs each distinct (bridge, axis, direction, n) once
+ * over the run, to show which orientations a level reaches, and so whether
+ * backward reversed every one on screen. */
 static void bridge_note_variant(DWORD k, int axis, int dir, int n,
                                 float vnear, float vfar)
 {
@@ -138,7 +91,7 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
     if (!enabled)
         return;
 
-    /* Small fixed table; a level has at most a couple of dozen conveyors. */
+    // Small and fixed; a level has at most a couple of dozen bridges.
     static DWORD seen[64];
     static int   nseen = 0;
     DWORD key = (k << 24) | ((DWORD)(axis & 0xff) << 16)
@@ -149,9 +102,8 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
     if (nseen >= (int)(sizeof(seen) / sizeof(seen[0])))
         return;
     seen[nseen++] = key;
-    /* The two v coordinates of texture set 0 are the whole animation: if
-     * KAROO_BRIDGE_FX=backward reverses the scroll, both must change sign
-     * here, for every variant. */
+    // The two v coordinates of texture set 0 are the whole animation; under
+    // backward both must change sign, for every variant.
     log_write("bridgesurf: diag variant #%d cv=%lu axis=%d dir=%d n=%d "
               "(branch %s/%s) v[0]=%d/1000 v[1]=%d/1000\n",
               nseen, k, axis, dir, n,
@@ -194,15 +146,15 @@ Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, Direct3D *d3d, double t)
                 SceneSubObject *sub =
                     (SceneSubObject *)(obj + LOBJ_OFF_SUBOBJECTS) + s;
 
-                /* Unlike DrawQuadBatch, SetTexture happens unconditionally
-                 * here: a null pTexture binds NULL rather than leaving the
-                 * previously bound texture in place. */
+                // Unlike DrawQuadBatch, SetTexture runs unconditionally: a
+                // NULL texture binds NULL rather than leaving the last one
+                // bound.
                 d3d->pDevice->SetTexture(
                     0, sub->pTexture
                        ? sub->pTexture->pTexture2
                        : NULL);
 
-                /* One tail call in the original, state/value by the branch. */
+                // One call, the state and value chosen by the branch.
                 D3DRENDERSTATETYPE last_state;
                 DWORD              last_value;
                 if (sub->dwBlendSrc && sub->dwBlendDst) {
@@ -231,8 +183,7 @@ Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, Direct3D *d3d, double t)
                      k++) {
                     const BridgeObject *cv = game->bridgeSlot(k);
 
-                    /* The vertex build is the bridge's own -- see
-                     * BridgeObject::buildSurface. */
+                    // BridgeObject::buildSurface builds the vertices.
                     BridgeVertex v[4];
                     BridgeSurfaceInfo info;
                     if (!cv->buildSurface(v, t,
