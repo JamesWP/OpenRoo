@@ -31,7 +31,7 @@ void StaticInit_Construct()
     g_progCtrl.setup((int)&g_logger);
     Scene_Construct(&g_scene);
     GameLog_Construct(&g_logger);
-    Movie_Construct(&g_movie);
+    g_movie.init();
     LevelPlacements_StaticInit();
     Theme_BlockConstruct(&g_themeBlock);
     Texture_ImageCtor(&g_fallbackImage);
@@ -75,7 +75,7 @@ void StaticInit_Destruct()
     Texture_ImageDtorBody(&g_loadingImage);
     Texture_ImageDtorBody(&g_fallbackImage);
     Theme_BlockDestruct(&g_themeBlock);
-    Movie_Destruct(&g_movie);
+    g_movie.destruct();
     GameLog_CloseAndRebindVtable(&g_logger);
     Scene_Destruct(&g_scene);
     g_progCtrl.teardown();
