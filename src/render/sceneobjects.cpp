@@ -203,9 +203,9 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
         return;
     }
     if (rec->bLit)
-        FaktMesh_DrawFramedModel(rec->pMesh, dev, frame);
+        rec->pMesh->drawFramedModel(dev, frame);
     else
-        FaktMesh_DrawMeshBuffer(rec->pMesh, dev, frame);
+        rec->pMesh->drawMeshBuffer(dev, frame);
 }
 
 static void draw_billboard(ThemeLevelObject *rec, const Tile *tile, const Vec3 *pos,

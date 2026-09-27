@@ -149,7 +149,7 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
 
                 int frame = animation_frame(rec, t, phase, animKey);
                 if (rec->bExplode == 0) {
-                    FaktMesh_DrawMeshBuffer(rec->pMesh, dev, (DWORD)frame);
+                    rec->pMesh->drawMeshBuffer(dev, (DWORD)frame);
                 } else {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"

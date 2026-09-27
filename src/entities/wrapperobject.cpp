@@ -41,18 +41,18 @@ KAROO_LAYOUT_CHECKS(WrapperObject)
 
 static inline float *vtx_uv(CFaktMesh *mesh, unsigned int index)
 {
-    return (float *)((char *)mesh->pVertexData + index * VTX_STRIDE + VTX_UV0);
+    return (float *)((char *)mesh->vertexData() + index * VTX_STRIDE + VTX_UV0);
 }
 
 static inline const float *vtx_normal(CFaktMesh *mesh, unsigned int index)
 {
-    return (const float *)((char *)mesh->pVertexData + index * VTX_STRIDE
+    return (const float *)((char *)mesh->vertexData() + index * VTX_STRIDE
                            + VTX_NORMAL);
 }
 
 static inline unsigned int snapshot_count(CFaktMesh *mesh)
 {
-    return (unsigned int)mesh->wFrameCount * mesh->dwVertexCount;
+    return (unsigned int)mesh->frameCount() * mesh->vertexCount();
 }
 
 enum WrapFx { WRAP_FX_OFF = 0, WRAP_FX_SCROLLBACK, WRAP_FX_SINEFLIP,
@@ -186,9 +186,9 @@ void WrapperObject::applySineWave(unsigned int ticks, float rate,
     if (wrap_fx() == WRAP_FX_SINEFLIP)
         s = -s;
 
-    if (pMesh_ != NULL && pMesh_->dwVertexCount != 0) {
+    if (pMesh_ != NULL && pMesh_->vertexCount() != 0) {
         float cosTerm = c * amplitude;
-        unsigned int count = pMesh_->dwVertexCount;
+        unsigned int count = pMesh_->vertexCount();
 
         for (unsigned int i = 0; i < count; ++i) {
             float *uv = vtx_uv(pMesh_, i);
@@ -198,7 +198,7 @@ void WrapperObject::applySineWave(unsigned int ticks, float rate,
             uv[0] = ((su + su - WRAP_ONE) * skew + amplitude) * s + su;
             uv[1] = (cosTerm + sv) - (sv + sv - WRAP_ONE) * skew * s;
 
-            count = pMesh_->dwVertexCount;
+            count = pMesh_->vertexCount();
         }
         wrap_census(WE_SINE, count);
     }
@@ -213,13 +213,13 @@ void WrapperObject::scrollUVs(unsigned int ticks, int axisU, float speed)
         if (wrap_fx() == WRAP_FX_SCROLLBACK)
             delta = -delta;
 
-        unsigned int count = pMesh_->dwVertexCount;
+        unsigned int count = pMesh_->vertexCount();
         unsigned int axis  = (axisU != 0) ? 0u : 1u;
 
         for (unsigned int i = 0; i < count; ++i) {
             float *uv = vtx_uv(pMesh_, i);
             uv[axis] += delta;
-            count = pMesh_->dwVertexCount;
+            count = pMesh_->vertexCount();
         }
         if (count != 0)
             wrap_census(WE_SCROLL, count);
@@ -232,7 +232,7 @@ void WrapperObject::updateObjectTransform(RenderDevice *dev,
 {
     //     // PRESERVED: an out-of-range frame returns without setting dirty_; every
     //     // other exit sets it.
-    if (frame >= pMesh_->wFrameCount)
+    if (frame >= pMesh_->frameCount())
         return;
 
     Mat4 view, world;
@@ -250,7 +250,7 @@ void WrapperObject::updateObjectTransform(RenderDevice *dev,
             m[row * 4 + col] = sum;
         }
 
-    unsigned int count = pMesh_->dwVertexCount;
+    unsigned int count = pMesh_->vertexCount();
     if (count != 0) {
         bool flip = (wrap_fx() == WRAP_FX_ENVFLIP);
 
@@ -270,7 +270,7 @@ void WrapperObject::updateObjectTransform(RenderDevice *dev,
                            * WRAP_HALF;
                 uv[1] = flip ? -vv : vv;
             }
-            count = pMesh_->dwVertexCount;
+            count = pMesh_->vertexCount();
         }
         wrap_census(WE_ENVMAP, count);
     }

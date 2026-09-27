@@ -136,7 +136,7 @@ MeshBatch_Draw(void *ctx, void *game, RenderDevice *d3d)
 
                 d3d->SetTransform(Transform::World,
                                            (const Mat4 *)m);
-                FaktMesh_DrawMeshBuffer(mesh, d3d, 0);
+                mesh->drawMeshBuffer(d3d, 0);
 
                 static LONG logged = 0;
                 if (InterlockedIncrement(&logged) <= MESH_LOG_FIRST)

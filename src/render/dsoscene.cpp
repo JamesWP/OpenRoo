@@ -230,9 +230,9 @@ Scene_DrawSceneObjects(RenderDevice *dev, float *cam, DWORD , DWORD , double t)
             dev->SetRenderState(RS::SpecularEnable, 0);
 
             if (o->lit != 0)
-                FaktMesh_DrawFramedModel(mesh, dev, frame);
+                mesh->drawFramedModel(dev, frame);
             else
-                FaktMesh_DrawMeshBuffer(mesh, dev, frame);
+                mesh->drawMeshBuffer(dev, frame);
 
         } else if (type == EXTRA_BILLBOARD) {
             Vec3 target = { cam[3], cam[4], cam[5] };

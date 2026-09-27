@@ -1,17 +1,5 @@
-/* The .mdl reader (ImportSceneModels) and ModelManager (model.h).
- *
- * FORMAT: the .mdl file.
- *   +0x00  WORD   frameCount     -> this->wFrameCount
- *   +0x02  DWORD  vertexCount    -> this->dwVertexCount
- *   then, for each frame f:
- *          6 x DWORD             -> pFrameRecords + f*0x18
- *          for each vertex v:
- *              10 x DWORD        -> pVertexData + (f*vertexCount + v)*0x28
- * Opened "rb".  Every read is a separate 4-byte fread; the header's two are 2
- * and 4 bytes.
- *
- * KAROO_MDL_FX=scale halves every vertex position as it is read, so every
- * model comes out at half size. */
+/* ModelManager (model.h): the name-keyed CFaktMesh cache.  The .mdl reader
+ * itself is CFaktMesh::importSceneModels (faktmesh.cpp). */
 
 #include <windows.h>
 #include <stdio.h>
@@ -22,133 +10,6 @@
 #include "gamelog.h"
 #include "gamestr.h"
 ModelManager g_modelManager;
-
-#define MDL_FRAME_REC_SIZE 0x18
-#define MDL_VERTEX_SIZE    0x28
-#define MDL_LOG_FIRST      8
-
-static bool fx_scale(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (GetEnvironmentVariableA("KAROO_MDL_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "scale") == 0);
-        log_write("model: FX mode = %s\n", cached ? "scale" : "off");
-    }
-    return cached != 0;
-}
-
-static unsigned long fnv1a(const void *p, unsigned len)
-{
-    const unsigned char *b = (const unsigned char *)p;
-    unsigned long h = 2166136261UL;
-    if (b == NULL) return 0;
-    for (unsigned i = 0; i < len; i++) { h ^= b[i]; h *= 16777619UL; }
-    return h;
-}
-
-static void model_release(CFaktMesh *m)
-{
-    FaktMesh_ReleaseModelBuffers(m);
-}
-
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Model_ImportSceneModels(CFaktMesh *self, const char *path)
-{
-    FILE *fp;
-    unsigned frames, verts, total;
-    static int logged = 0;
-
-    // PRESERVED: the release runs before the open, so a failed open leaves the
-    // mesh cleared, not unchanged.
-    model_release(self);
-
-    fp = fopen(path, "rb");
-    if (fp == NULL)
-        return 0;
-
-    // PRESERVED: no read is checked, and neither is the file's size: a
-    // truncated .mdl leaves the rest of the vertices zero and still returns 1.
-    // A NULL allocation is stored and then read into.
-    fread(&self->wFrameCount,   2, 1, fp);
-    fread(&self->dwVertexCount, 4, 1, fp);
-
-    frames = self->wFrameCount;
-    verts  = self->dwVertexCount;
-    total  = frames * verts;
-
-    // PRESERVED: the frame records are not zero-filled, unlike the two vertex
-    // buffers, so a record missing from the file reads as heap garbage.
-    self->pFrameRecords = malloc(frames * MDL_FRAME_REC_SIZE);
-
-    self->pVertexData = malloc(total * MDL_VERTEX_SIZE);
-    if (self->pVertexData != NULL && total != 0)
-        memset(self->pVertexData, 0, total * MDL_VERTEX_SIZE);
-
-    self->pScratchVerts = malloc(verts * MDL_VERTEX_SIZE);
-    if (self->pScratchVerts != NULL && verts != 0)
-        memset(self->pScratchVerts, 0, verts * MDL_VERTEX_SIZE);
-
-    for (unsigned f = 0; f < (frames & 0xffff); f++) {
-        unsigned char *rec = (unsigned char *)self->pFrameRecords
-                           + f * MDL_FRAME_REC_SIZE;
-        for (int i = 0; i < 6; i++)
-            fread(rec + i * 4, 4, 1, fp);
-
-        for (unsigned v = 0; v < self->dwVertexCount; v++) {
-            unsigned char *vert = (unsigned char *)self->pVertexData
-                                + (f * self->dwVertexCount + v) * MDL_VERTEX_SIZE;
-            for (int i = 0; i < 10; i++)
-                fread(vert + i * 4, 4, 1, fp);
-
-            if (fx_scale()) {
-                ((float *)vert)[0] *= 0.5f;
-                ((float *)vert)[1] *= 0.5f;
-                ((float *)vert)[2] *= 0.5f;
-            }
-        }
-    }
-
-    fclose(fp);
-
-    // pszName is the path, freed by FaktMesh_ReleaseModelBuffers.
-    {
-        unsigned n = (unsigned)strlen(path) + 1;
-        char *name = (char *)malloc(n);
-        self->pszName = name;
-        if (name != NULL)
-            memcpy(name, path, n);
-    }
-
-    // KAROO_MDL_DUMP=<path>: one line per load, the two heap buffers hashed
-    // (FNV-1a 32), to compare an independent parse of the same .mdl against
-    // what landed in memory.
-    {
-        char dump[MAX_PATH];
-        if (GetEnvironmentVariableA("KAROO_MDL_DUMP", dump, sizeof(dump))) {
-            HANDLE h = CreateFileA(dump, FILE_APPEND_DATA, FILE_SHARE_READ, NULL,
-                                   OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (h != INVALID_HANDLE_VALUE) {
-                char line[512];
-                int n = wsprintfA(line, "%s frames=%u verts=%u rec=%08lx vtx=%08lx\r\n",
-                                  path, frames, verts,
-                                  fnv1a(self->pFrameRecords, frames * MDL_FRAME_REC_SIZE),
-                                  fnv1a(self->pVertexData,   total  * MDL_VERTEX_SIZE));
-                DWORD w = 0;
-                WriteFile(h, line, (DWORD)n, &w, NULL);
-                CloseHandle(h);
-            }
-        }
-    }
-
-    if (logged < MDL_LOG_FIRST) {
-        logged++;
-        log_write("model: '%s' frames=%u verts=%u\n", path, frames, verts);
-    }
-    return 1;
-}
 
 /* ─── ModelManager ──────────────────────────────────────────────────────────
  *
@@ -166,7 +27,7 @@ typedef void *(__attribute__((thiscall)) *mm_scalar_dtor_fn)(void *self, unsigne
 
 static void mm_delete(CFaktMesh *m)
 {
-    mm_scalar_dtor_fn dtor = *(mm_scalar_dtor_fn *)m->unknown00;
+    mm_scalar_dtor_fn dtor = *(mm_scalar_dtor_fn *)m->vtable();
     dtor(m, 1);
 }
 
@@ -177,8 +38,8 @@ ModelManager_FindOrImport(ModelManager *self, char *name)
         CFaktMesh *cached = (CFaktMesh *)node->value();
         node = node->next();
         mm_lower_inplace(name);
-        mm_lower_inplace(cached->pszName);
-        if (strcmp(cached->pszName, name) == 0) {
+        mm_lower_inplace(cached->name());
+        if (strcmp(cached->name(), name) == 0) {
             if (self->pLogger != NULL)
                 self->pLogger->logMessage(1, GS_MM_FOUND, name);
             return cached;
@@ -186,8 +47,8 @@ ModelManager_FindOrImport(ModelManager *self, char *name)
     }
 
     void *mem = malloc(sizeof(CFaktMesh));
-    CFaktMesh *mesh = (mem != NULL) ? FaktMesh_Init((CFaktMesh *)mem) : NULL;
-    if ((Model_ImportSceneModels(mesh, name) & 0xff) == 0) {
+    CFaktMesh *mesh = (mem != NULL) ? ((CFaktMesh *)mem)->init() : NULL;
+    if ((mesh->importSceneModels(name) & 0xff) == 0) {
         if (mesh != NULL)
             mm_delete(mesh);
         if (self->pLogger != NULL)
@@ -207,7 +68,7 @@ ModelManager_ClearReleaseFree(ModelManager *self)
         CFaktMesh *mesh = (CFaktMesh *)node->value();
         node = node->next();
         if (mesh != NULL) {
-            FaktMesh_ReleaseModelBuffers(mesh);
+            mesh->releaseModelBuffers();
             mm_delete(mesh);
         }
     }

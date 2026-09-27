@@ -37,8 +37,8 @@ void StaticInit_Construct()
     Texture_ImageCtor(&g_fallbackImage);
     Texture_ImageCtor(&g_loadingImage);
     Texture_SceneCtor(&g_texShadow);
-    FaktMesh_Init(&g_meshPlayer);
-    FaktMesh_Init(&g_meshEnemy);
+    g_meshPlayer.init();
+    g_meshEnemy.init();
     g_fontMain.construct();
     g_fontNumbers.construct();
     TextureManager_Construct(&g_textureManager);
@@ -69,8 +69,8 @@ void StaticInit_Destruct()
     TextureManager_Destruct(&g_textureManager);
     g_fontNumbers.destruct();
     g_fontMain.destruct();
-    FaktMesh_DtorBody(&g_meshEnemy);
-    FaktMesh_DtorBody(&g_meshPlayer);
+    g_meshEnemy.dtorBody();
+    g_meshPlayer.dtorBody();
     Texture_SceneDtorBody(&g_texShadow);
     Texture_ImageDtorBody(&g_loadingImage);
     Texture_ImageDtorBody(&g_fallbackImage);
