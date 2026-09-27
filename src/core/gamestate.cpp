@@ -1,57 +1,18 @@
-/* Game-state reader (REPLAY_PLAN.md Stage B).
+/* The game-state reader.  Each frame it reads the fields the replay tests
+ * assert on (the ones the level score is built from, plus lives, position and
+ * the game mode), logs them when they change (KAROO_STATE_LOG), and at the end
+ * of a replay dumps them as JSON (KAROO_STATE_DUMP) for replaytest.py.
  *
- * Field widths and arithmetic below come from decompiling
- * Game::CalculateLevelScore (0x0041A760), which reads every field the score
- * screen shows.  That decompile corrected three things in the plan's table:
- *
- *   - +0x4224D (foes killed) is a *byte*, not a dword — CalculateLevelScore
- *     reads it as `(uint)*(byte *)(this + 0x4224d) * 0x32`.  Same for
- *     +0x170A64 (health), also a byte.
- *   - +0x140522 is the gem *surplus*, not "gems missed": it is written as
- *     collected - required only on the branch where collected exceeds
- *     required, alongside a (collected - required) * 10 bonus at +0x140506.
- *   - There is a scored pair the plan's table omits entirely — a ushort at
- *     +0x42250 scored at x5 into +0x140512, capped by a ushort at +0x1753E3
- *     and suppressed by a byte flag at +0x4220B.
- *
- * +0x170A64 is NOT health.  The plan called it "health / energy, clamped to
- * 100", but the game has no damage model at all — you die outright on a fall
- * or on contact with a foe.  It is added straight into the level score as a
- * bonus term, which fits James's reading of it as "vitality", a speed-like
- * bonus for moving quickly.  That is a hypothesis, not a result: it is logged
- * as vit=(?) and confirmed by watching it rise while moving fast.
- *
- * CONFIRMED IN GAME (2026-08-30, Forest\BombStart, James playing):
- *   +0x175406 gems collected  — stepped 0..10, one per pickup
- *   +0x04224D foes killed     — stepped 0..4, one per kill (byte)
- *   +0x170A64 vitality        — varies continuously with movement, not health
- *   +0x1752B8 level complete  — 0 -> 1 on reaching the exit
- *   +0x1751EE player position — 1606 distinct values, smooth per-frame motion
- *   +0x42250 / +0x1753E3      — items available / items collected; the second
- *                               counts BOTH bombs and gems (3 + 10 = 13)
- * The level score reproduces exactly from these six terms, which is the real
- * proof — see the formula in REPLAY_PLAN.md.
- *
- * +0x175402 IS lives, confirmed 2026-08-30: it read 2 through a new game and
- * stepped to 1 at the respawn, matching DEC EAX / store at 0x004160D6.  It had
- * read 0 in two earlier runs simply because those saves had no lives left —
- * a reminder that "the field never moved" is not evidence when the value was
- * already at its floor.  The INC at 0x0041B23D is consistent with an
- * extra-life pickup granting one.
- *
- * STILL UNRESOLVED:
- *   +0x1752E8 "death"  — pulsed to 0x00000100 six times during clean play with
- *                        no deaths, so the live byte is +0x1752E9 and the
- *                        plan's "death / time-out" label is at best misaligned.
- *                        Logged as 4 raw bytes.
- *
- * The gem reading itself (collected at +0x175406, required at +0x2AB723) is
- * consistent with the arithmetic — the score is min(collected, required) * 5 —
- * but that is still an inference from the shape of the code.  Everything here
- * is logged, nothing is asserted, until a play session shows the counter move
- * on an actual pickup.  Fields whose meaning is not yet confirmed in game are
- * marked (?) in the log so a reader cannot mistake a guess for a result.
- */
+ * What the fields mean was confirmed by watching them in play: gems and foes
+ * step by one per pickup and kill, lives drops by one at the restart after a
+ * death, the complete flag goes 0 to 1 at the exit, and the level score is
+ * reproduced exactly from the scored terms.  Three are not confirmed and are
+ * marked so in the log and the dump:
+ *   - vitality: a byte added straight into the level score.  It varies with
+ *     movement; it is not health, as the game has no damage, only deaths;
+ *   - death_raw: four raw bytes from the player's move state;
+ *   - pos: the player's position. */
+
 #include "gamestate.h"
 #include "log.h"
 #include "game.h"
@@ -60,70 +21,46 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
 struct GameState {
-    int   gems_collected;   // Player +0x23d (Game+0x175406)  dword
-    int   gems_required;    // +0x2ab723  dword
-    BYTE  foes_killed;      // +0x4224d   byte
-    int   time_limit_s;     // +0x2ab591  dword
-    DWORD elapsed_ms;       // +0x2ab595  dword
-    BYTE  lives;            // Player +0x239 (Game+0x175402)  CONFIRMED lives remaining
-    int   total_score;      // Player +0x22c (Game+0x1753f5)  dword
-    int   level_score;      // +0x140536  dword
-    BYTE  vitality;         // +0x170a64  byte (?) — see note above
-    BYTE  death_raw[4];     // Player +0x11f..+0x122 (Game+0x1752e8)  width unknown; live byte is +0x1752e9 (?)
-    int   complete_flag;    // Player +0xef (Game+0x1752b8)  dword — CONFIRMED: 0 -> 1 on level exit
-    WORD  extra_count;      // +0x42250   ushort
-    WORD  extra_cap;        // Player +0x21a (Game+0x1753e3)  ushort
-    BYTE  extra_block;      // +0x4220b   byte
-    float pos[3];           // Player +0x25 (Game+0x1751ee)  float[3] (?)
-    unsigned short mode;    // game_state passed to DispatchInputActions
+    int   gems_collected;  // dword
+    int   gems_required;   // dword
+    BYTE  foes_killed;     // byte
+    int   time_limit_s;
+    DWORD elapsed_ms;
+    BYTE  lives;  // drops at the restart after a death
+    int   total_score;
+    int   level_score;
+    BYTE  vitality;       // unconfirmed; see above
+    BYTE  death_raw[4];   // unconfirmed: the move state and the low three bytes of falling
+    int   complete_flag;  // 0 to 1 at the exit
+    WORD  extra_count;    // items available
+    WORD  extra_cap;      // items collected: bombs and gems both
+    BYTE  extra_block;    // restarts; any suppresses the items bonus
+    float pos[3];         // unconfirmed
+    unsigned short mode;  // the mode handed to the input dispatch
 };
 
-/* ── Death diff (field finder) ─────────────────────────────────────────────
+/* The death diff (KAROO_DEATH_DIFF=1), a field finder: rather than guess a
+ * field's meaning, snapshot the whole Game while alive and diff it across a
+ * death, so that a counter names itself by stepping by one.
  *
- * Guessing field meanings one at a time is slow and, as +0x175402 showed,
- * wrong: it is INC'd at 0x0041B23D and DEC'd in GameTick at 0x004160D6, yet it
- * read 0 for a whole level in which bombs were collected and spent.
+ * Two reports are made per death: one at the death, and one REPORT_AFTER
+ * frames after the death cause clears, against the same snapshot.  The second
+ * is needed because lives is decremented during the restart, not at the death.
+ * The snapshot refreshes every SNAP_EVERY frames while alive, which keeps the
+ * window, and the noise, small.
  *
- * (That INC was attributed here to a "boommaker" name match, which is wrong.
- * 0x0041B23D is in the typed-cheat handler FUN_0041aca0, and the code that
- * reaches it is "mausuruh" — +1 life.  "boommaker" is the adjacent compare and
- * adds 10 to a different field, Game+0x1752b1.  No *pickup* writes 0x175402 at
- * all: its only writers are level init, this cheat, the death decrement and
- * save-slot restore.)
- *
- * So instead of naming candidates up front, snapshot the
- * whole Game object during play and diff it the moment a death registers.  A
- * lives counter is then simply a dword that dropped by exactly 1 across the
- * death, and it names itself.
- *
- * Scan byte-wise, not dword-wise.  The first version compared aligned dwords
- * only, and that very nearly lost the answer: lives is a byte, so its 2 -> 1
- * step showed up as the dword at +0x175400 moving 147624 -> 82088, a delta of
- * -65536 buried among the large-delta noise instead of being flagged as a
- * step.  Byte granularity is what makes a counter announce itself.
- *
- * KAROO_DEATH_DIFF=1 enables it.  The snapshot refreshes every SNAP_EVERY
- * frames while alive, so the diff window is short and the noise stays low.
- *
- * The first version diffed only at the moment of death, and that was not
- * enough: across two real deaths it found no dword stepping by 1, because the
- * game does not decrement lives when you die — it does it during the restart
- * (GameTick 0x004160D6 does DEC EAX / store / call 0x004184A0).  So there is a
- * second report REPORT_AFTER frames after the death cause clears, diffed
- * against the same pre-death snapshot, which brackets the whole death ->
- * restart cycle.
- */
+ * The scan is by byte, not by dword: lives is a byte, and as a dword its step
+ * of one reads as a change of 65536, lost among the other large changes. */
 #define GAME_SIZE   0x51790d
 #define SNAP_EVERY   30
 #define DIFF_MAX     120
-#define REPORT_AFTER 45   /* frames after respawn for the second report */
+#define REPORT_AFTER 45  // frames after the respawn for the second report
 
 static BYTE *g_snap;
 static int   g_diff_on = -1;
 static BYTE  g_prev_death;
-static DWORD g_respawn_at;   /* frame the death cause cleared; 0 = idle */
+static DWORD g_respawn_at;  // the frame the death cause cleared; 0 is idle
 
 static bool deathdiff_enabled(void)
 {
@@ -139,17 +76,17 @@ static bool deathdiff_enabled(void)
     return g_diff_on > 0;
 }
 
-/* Report what differs between the snapshot and the live object.  Bytes that
- * moved by exactly -1 or +1 are listed first: that is what a life, a bomb
- * count or an attempt counter looks like across a single death.  Everything
- * else is reported as dwords, which reads better for pointers and floats. */
+/* Reports what differs between the snapshot and the live object.  Bytes that
+ * moved by exactly one come first: that is what a life, a bomb count or an
+ * attempt counter looks like across a death.  The rest are listed as dwords,
+ * which reads better for pointers and floats. */
 static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
 {
     int shown = 0, delta1 = 0;
     log_write("deathdiff: === %s (cause=%u) — dwords changed vs pre-death snapshot ===\n",
               when, cause);
 
-    /* Pass 0: byte-granular +/-1 steps — the counters. */
+    // Byte steps of one: the counters.
     for (DWORD o = 0; o < GAME_SIZE && shown < DIFF_MAX; o++) {
         int a = g_snap[o], b = game[o];
         int d = b - a;
@@ -158,7 +95,7 @@ static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
                   (unsigned long)o, a, b, d);
         shown++; delta1++;
     }
-    /* Pass 1: everything else, as dwords. */
+    // Everything else, as dwords.
     for (DWORD o = 0; o + 4 <= GAME_SIZE && shown < DIFF_MAX; o += 4) {
         int a = *(const int *)(g_snap + o);
         int b = *(const int *)(game   + o);
@@ -168,7 +105,7 @@ static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
             int d = (int)game[o + i] - (int)g_snap[o + i];
             if (d == 1 || d == -1) bytestep = true;
         }
-        if (bytestep) continue;          /* already reported above */
+        if (bytestep) continue;  // reported above
         log_write("deathdiff:   +0x%06lx  %d -> %d  (%+d)\n",
                   (unsigned long)o, a, b, b - a);
         shown++;
@@ -212,7 +149,7 @@ static bool read_state(GameState *s)
     s->total_score    = pl->score();
     s->level_score    = g->tally()->levelTotal;
     s->vitality       = g->vitalityPercent();
-    {   /* four bytes from +0x11f: the move state and the low three of +0x120 */
+    {
         int f120 = pl->falling();
         s->death_raw[0] = pl->moveState();
         memcpy(s->death_raw + 1, &f120, 3);
@@ -228,40 +165,23 @@ static bool read_state(GameState *s)
     return true;
 }
 
-/* Last state seen while a level was actually running.
- *
- * The end-of-run dump cannot simply read the live object: a recording usually
- * ends with the player quitting, and by the time the process is shutting down
- * the level is torn down and the score fields are gone.  Nor can it wait for
- * the recording to be exhausted — the first real recording ends by quitting
- * the game, ~110 frames before its own last record.  So cache every in-level
- * frame and dump the last one, which is the end state of the gameplay
- * segment, which is what a test wants to assert on.
- *
- * mode != 0 is the "in a level" test: Stage B confirmed mode goes 0 -> 1 on
- * level start and 1 -> 0 at the end. */
+/* The last state read while a level was running (mode not 0).  The dump cannot
+ * read the live object: a recording usually ends by quitting, and by then the
+ * level is torn down.  So each in-level frame is kept and the last is dumped:
+ * the end of the gameplay. */
 static GameState g_live;
 static bool      g_have_live;
 static DWORD     g_live_frame;
 
-/* State at the moment a level was completed.
- *
- * The last in-level frame is NOT the end of the level under test as soon as a
- * recording carries on into the next one -- the water01 recording completes
- * Water01 and then launches the following level, so its last in-level frame
- * reads gems 0/12 and complete=0, which is the *next* level starting.  A test
- * that blessed that would assert nothing about the level it named.
- *
- * So latch separately on the completion flag.  The latch refreshes while the
- * flag stays set rather than freezing on the first frame of it, because
- * CalculateLevelScore writes level_score and the new running total a frame or
- * two after the flag flips -- latching the leading edge would capture a score
- * that had not been computed yet.  It locks when the flag clears, so a later
- * level's completion cannot overwrite the first one. */
+/* The state when a level was completed.  A recording that carries on into the
+ * next level ends in that level, so its last in-level frame says nothing about
+ * the level it names.  This latch refreshes while the complete flag stays set,
+ * because the score is written a frame or two after the flag, and locks when
+ * the flag clears, so a later level cannot overwrite it. */
 static GameState g_done;
 static bool      g_have_done;
 static DWORD     g_done_frame;
-static int       g_done_phase;   /* 0 never seen, 1 in progress, 2 locked */
+static int       g_done_phase;  // 0 never seen, 1 in progress, 2 locked
 
 void gamestate_tick(void)
 {
@@ -276,14 +196,14 @@ void gamestate_tick(void)
     }
 
     if (s.complete_flag != 0) {
-        if (g_done_phase != 2) {          /* refresh until the flag clears */
+        if (g_done_phase != 2) {  // refresh until the flag clears
             g_done       = s;
             g_have_done  = true;
             g_done_frame = g_frame;
             g_done_phase = 1;
         }
     } else if (g_done_phase == 1) {
-        g_done_phase = 2;                 /* lock: first completion wins */
+        g_done_phase = 2;  // lock: the first completion wins
         log_write("gamestate: level completed at frame %lu - latched "
                   "(score=%d total=%d gems=%d/%d t=%lus)\n",
                   (unsigned long)g_done_frame, g_done.level_score,
@@ -293,8 +213,8 @@ void gamestate_tick(void)
 
     if (!gamestate_enabled()) return;
 
-    /* Elapsed time moves every frame; comparing it would log every frame and
-     * bury the events worth seeing.  It is still printed on each line. */
+    // Elapsed time moves every frame, so it is left out of the comparison; it
+    // is still printed on each line.
     GameState a = s, b = g_prevClock;
     a.elapsed_ms = b.elapsed_ms = 0;
     if (g_have_prev && memcmp(&a, &b, sizeof(a)) == 0) return;
@@ -329,34 +249,25 @@ void gamestate_deathdiff(void)
         deathdiff_report(game, cause, "at death");
         g_respawn_at = 0;
     } else if (cause == 0 && g_prev_death != 0) {
-        g_respawn_at = g_frame;                 /* restart began — hold the snapshot */
+        g_respawn_at = g_frame;  // the restart began; hold the snapshot
     } else if (g_respawn_at && g_frame - g_respawn_at >= REPORT_AFTER) {
-        /* The decrement happens in here, not at the death itself. */
+        // Lives is decremented in the restart, not at the death.
         deathdiff_report(game, g_prev_death, "after respawn");
         g_respawn_at = 0;
     } else if (cause == 0 && !g_respawn_at && (g_frame % SNAP_EVERY) == 0) {
-        memcpy(g_snap, game, GAME_SIZE);        /* alive — refresh window */
+        memcpy(g_snap, game, GAME_SIZE);  // alive: refresh the snapshot
     }
 
     g_prev_death = cause;
 }
 
-
-/* ── Stage E: end-of-run state dump ───────────────────────────────────────
- *
- * Written at the end of a replay, while the level is still live — after
- * teardown the score fields are gone.  Emitted as JSON so the harness can diff
- * it field by field and name the field that moved, rather than reporting only
- * that the run differed.
- *
- * Every field here is one from the table above.  The ones still marked (?) in
- * the log are dumped too, with an "_unconfirmed" list naming them, so a test
- * that asserts on one is doing so knowingly.
- */
+/* Writes the dump, as JSON so that the harness can name the field that
+ * differs.  The unconfirmed fields are dumped too, and listed under
+ * "_unconfirmed", so a test asserting on one does so knowingly. */
 void gamestate_dump(const char *reason)
 {
     static bool dumped = false;
-    if (dumped) return;              /* the first (earliest, most live) wins */
+    if (dumped) return;  // the first, most live, wins
 
     char path[MAX_PATH];
     if (!GetEnvironmentVariableA("KAROO_STATE_DUMP", path, sizeof(path)) || !path[0])

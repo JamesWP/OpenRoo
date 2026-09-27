@@ -1,66 +1,44 @@
-/* Per-frame state checksum (REPLAY_PLAN.md Stage A2).
+/* The determinism hash.  Each frame, the state the simulation advances is
+ * folded into an FNV-1a hash, and one line per frame goes to KAROO_HASH_LOG,
+ * so that two runs can be compared byte for byte.
  *
- * The fixed timestep from Stage A is only useful if it actually makes the
- * simulation reproducible.  This hashes the state that the simulation advances
- * each frame and writes one line per frame, so two runs can be diffed byte for
- * byte.  A difference means real time is still reaching the simulation from
- * somewhere other than 0x00404040.
+ * Two things are hashed:
+ *   - every live particle's position, velocity, life and colour.  They are
+ *     integrated against dt, so they are the state most sensitive to timing,
+ *     and they are live on the menus as well as in a level;
+ *   - a few Game fields, while a Game exists, as raw bytes.
  *
- * What gets hashed, and why those things:
- *
- *   - Particle rings.  Every live ParticleNode's position, velocity, life and
- *     diffuse.  These are integrated against dt by our own generator and
- *     environment ticks, so they are the most dt-sensitive state in the game
- *     and — unlike the player — they are live on the main menu, which is the
- *     only scene `launch.sh --skip-launcher` currently reaches.
- *   - Game fields, when GameGlobal (0x0046c498) is non-null.  These are the
- *     REPLAY_PLAN.md assertion surface.  Stage A2 only needs them to be
- *     *stable*, not correctly interpreted — the gem/score reading is still
- *     unconfirmed and is Stage B's job — so they are hashed as raw bytes and
- *     logged under neutral names.
- *
- * Floats are hashed as raw bytes on purpose: bit-exact is the property we are
- * testing, and a tolerance would hide exactly the drift we are looking for.
- *
- * Ordering is part of the hash.  Systems are folded in the order the game ticks
- * them and nodes in ring order, both of which are deterministic within a run;
- * if scene construction order ever varied, that would itself be a determinism
- * bug worth catching here.
- */
+ * Floats are hashed as their bytes: bit-exactness is the property under test,
+ * and a tolerance would hide the drift it looks for.  Order is part of the
+ * hash: systems in the order the game ticks them, nodes in ring order. */
+
 #include "determinism.h"
 #include "particles.h"
 #include "log.h"
 #include "game.h"
 #include <stdio.h>
 
-
-/* Assertion-surface offsets.  Widths are from the CalculateLevelScore
- * (0x0041A760) decompile — +0x04224D and +0x170A64 are bytes, not dwords, as
- * the plan's table implied.  Meanings are still unconfirmed in game (Stage B),
- * so these are hashed as opaque bytes and logged under neutral names: a wrong
- * label must not be able to mislead a determinism result.
- *
- * Five of them are Player fields (player.h: +0x25, +0x23d, +0x22c, +0x11f,
- * +0xef).  They stay as raw Game offsets deliberately: this table hashes
- * byte ranges, and routing it through named accessors would reintroduce
- * exactly the labels it is built to avoid. */
+/* The Game fields hashed, by offset and width.  They are logged under their
+ * offsets rather than their meanings, so a wrong label cannot mislead a
+ * determinism result; five are Player fields, reached through the Game. */
 static const struct { DWORD off; DWORD len; const char *tag; } GAME_FIELDS[] = {
-    { 0x1751ee, 12, "pos"     },  /* three floats — player position (unconfirmed) */
-    { 0x175406,  4, "f175406" },  /* gems collected (unconfirmed) */
-    { 0x04224d,  1, "f04224d" },  /* foes killed — byte */
-    { 0x2ab595,  4, "f2ab595" },  /* elapsed ms */
-    { 0x1753f5,  4, "f1753f5" },  /* running score */
-    { 0x170a64,  1, "f170a64" },  /* health — byte */
-    { 0x1752e8,  4, "f1752e8" },  /* death / time-out flag (unconfirmed) */
-    { 0x1752b8,  4, "f1752b8" },  /* level-complete flag (unconfirmed) */
+    { 0x1751ee, 12, "pos"     },  // three floats: the player's position
+    { 0x175406,  4, "f175406" },  // gems collected
+    { 0x04224d,  1, "f04224d" },  // foes killed, a byte
+    { 0x2ab595,  4, "f2ab595" },  // elapsed ms
+    { 0x1753f5,  4, "f1753f5" },  // running score
+    { 0x170a64,  1, "f170a64" },  // vitality, a byte
+    { 0x1752e8,  4, "f1752e8" },  // the move state and the low three bytes of falling
+    { 0x1752b8,  4, "f1752b8" },  // level-complete flag
 };
 
 static int      g_on = -1;
 static HANDLE   g_fh = INVALID_HANDLE_VALUE;
 static DWORD    g_frame;
-static DWORD    g_hash = 2166136261u;   /* FNV-1a offset basis */
-/* Sub-hashes, so a divergence names the field it came from rather than just
- * the frame.  pos / vel / life / diffuse, in that order. */
+static DWORD    g_hash = 2166136261u;  // the FNV-1a offset basis
+
+/* Per-quantity hashes, so a divergence names what diverged: position,
+ * velocity, life, colour. */
 #define SUB_N 4
 static const char *SUB_TAG[SUB_N] = { "pos", "vel", "life", "diff" };
 static DWORD    g_sub[SUB_N] = { 2166136261u, 2166136261u, 2166136261u, 2166136261u };
@@ -104,8 +82,7 @@ void dethash_particles(ParticleSystem *ps)
     if (!dethash_enabled() || !ps) return;
 
     g_systems++;
-    /* Ring walk exactly as particles.cpp does it: empty when head == current,
-     * otherwise head..current exclusive. */
+    // The ring as particles.cpp walks it: head up to, not including, current.
     ParticleNode *n = ps->ring.pRingHead;
     for (DWORD guard = 0; n && n != ps->ring.pRingCurrent && guard <= ps->ring.dwRingCount;
          n = n->pNext, guard++) {
@@ -155,8 +132,7 @@ void dethash_frame_end(double virtual_seconds)
     if (n > 0) WriteFile(g_fh, line, (DWORD)n, &written, NULL);
 
     g_frame++;
-    g_hash    = 2166136261u;   /* per-frame hash, not cumulative — a diff then
-                                * points at the first frame that diverged */
+    g_hash    = 2166136261u;  // per frame, so a diff points at the first frame that differs
     g_nodes   = 0;
     g_systems = 0;
     for (int i = 0; i < SUB_N; i++) g_sub[i] = 2166136261u;

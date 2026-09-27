@@ -1,6 +1,9 @@
-/* gametick.h -- GameTick 0x00414df0 (gametick.cpp). */
+/* The per-frame simulation step (gametick.cpp). */
+
 #pragma once
 class Game;
-/* __thiscall(self, double dt, double now); one caller, RenderGameFrame. */
+
+/* Advances the level by dt seconds at clock time now.  Called once a frame by
+ * RenderGameFrame. */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_GameTick(Game *self, double dt, double now);

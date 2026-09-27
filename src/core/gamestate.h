@@ -1,37 +1,29 @@
+/* The game-state reader (gamestate.cpp).  It reads the state the replay tests
+ * assert on, logs it when it changes, and dumps it as JSON for replaytest.py
+ * to compare. */
+
 #pragma once
 #include <windows.h>
 
-/* Stage B game-state reader — REPLAY_PLAN.md.
- *
- * Reads the assertion surface off GameGlobal and logs it whenever it changes,
- * so a play session confirms (or refutes) the field interpretations before any
- * test asserts on them. */
+/* Whether KAROO_STATE_LOG is set. */
 bool gamestate_enabled(void);
 
-/* game_state as handed to ProgableControl::DispatchInputActions. */
+/* Records the game mode as handed to the input dispatch. */
 void gamestate_note_mode(unsigned short mode);
 
-/* The last game_state seen.  0 means "not in a level" — confirmed in Stage B
- * (0 -> 1 on level start, 1 -> 0 at the end).  worldstate.cpp gates on it so a
- * menu frame cannot produce a map dump of a stale or torn-down grid. */
+/* The last game mode seen; 0 is "not in a level".  worldstate.cpp checks it so
+ * that a menu frame never dumps a stale or torn-down grid. */
 unsigned short gamestate_mode(void);
 
-/* Called once per frame; logs only on change. */
+/* Called once a frame; logs only on a change. */
 void gamestate_tick(void);
 
-/* Snapshot/diff the whole Game object across a death (KAROO_DEATH_DIFF=1). */
+/* Snapshots the whole Game and diffs it across a death (KAROO_DEATH_DIFF=1).
+ */
 void gamestate_deathdiff(void);
 
-/* Stage E — write the current game state to KAROO_STATE_DUMP as JSON.
- *
- * The plan called for a KAROO_ASSERT=file.json that the DLL compares against
- * and turns into an exit code.  That is not buildable as specified: Stage A
- * already established that `launch.sh --skip-launcher` exits non-zero regardless of
- * what the game returns, so a DLL-set exit code cannot survive to the caller.
- * The DLL therefore only *reports* — one JSON object, no parser in the DLL —
- * and tools/replaytest.py does the comparing.  That also keeps the expected
- * values in the test manifest next to the recording, where they can be read.
- *
- * `reason` is recorded in the dump so a partial run cannot be mistaken for a
- * completed one. */
+/* Writes the current state to KAROO_STATE_DUMP as one JSON object.  The game
+ * cannot return an exit code through launch.sh, so the comparing is done by
+ * tools/replaytest.py, against the values in the test manifest.  reason is
+ * written into the dump so a partial run cannot pass for a complete one. */
 void gamestate_dump(const char *reason);
