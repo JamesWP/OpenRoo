@@ -24,14 +24,15 @@
 #include <string.h>
 #include <new>
 #include <stdio.h>
+#include "renderdevice.h"
 
-#define PARTICLE_FVF       0x1e2  // XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1, 0x20 stride
+#define PARTICLE_FVF       VertexFormat::Lit  // XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1, 0x20 stride
 #define PARTICLE_LOG_FIRST 8
 #define FX_TINT_COLOUR     0xFFFF00FF
 
 #define THISCALL __attribute__((thiscall))
 typedef void  (THISCALL *ps_fill_fn)(ParticleSystem *);
-typedef DWORD (THISCALL *ps_draw_fn)(ParticleSystem *, IDirect3DDevice3 *);
+typedef DWORD (THISCALL *ps_draw_fn)(ParticleSystem *, RenderDevice *);
 
 static bool fx_tint(void)
 {
@@ -57,14 +58,14 @@ static DWORD node_colour(const ParticleNode *node)
 struct DrawLogState { LONG calls; LONG nonempty; };
 
 static void log_draw(DrawLogState *st, const char *name, const void *self,
-                     IDirect3DDevice3 *dev, DWORD count, HRESULT hr)
+                     RenderDevice *dev, DWORD count, bool ok)
 {
     bool report = InterlockedIncrement(&st->calls) <= PARTICLE_LOG_FIRST;
     if (count > 0 && InterlockedExchange(&st->nonempty, 1) == 0)
         report = true;
     if (report)
-        log_write("particle: %s this=%p dev=%p verts=%lu -> hr=%08lX\n",
-                  name, self, dev, count, hr);
+        log_write("particle: %s this=%p dev=%p verts=%lu -> ok=%d\n",
+                  name, self, dev, count, ok);
 }
 
 /* ─── Fill ─────────────────────────────────────────────────────────────────
@@ -134,40 +135,40 @@ static void xface_fill(XFaceParticleSystem *self)
 
 /* ─── Draw ─────────────────────────────────────────────────────────────────
  */
-static DWORD point_draw(PointParticleSystem *self, IDirect3DDevice3 *dev)
+static DWORD point_draw(PointParticleSystem *self, RenderDevice *dev)
 {
     static DrawLogState st;
-    HRESULT hr = dev->DrawPrimitive(D3DPT_POINTLIST, PARTICLE_FVF,
+    bool ok = dev->Draw(Prim::PointList, PARTICLE_FVF,
                                     self->pVerts, self->dwVertexCount, 0);
-    log_draw(&st, "PointDraw", self, dev, self->dwVertexCount, hr);
+    log_draw(&st, "PointDraw", self, dev, self->dwVertexCount, ok);
     return self->dwVertexCount;
 }
 
-static DWORD face_draw(FaceParticleSystem *self, IDirect3DDevice3 *dev)
+static DWORD face_draw(FaceParticleSystem *self, RenderDevice *dev)
 {
     static DrawLogState st;
-    HRESULT hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, PARTICLE_FVF,
+    bool ok = dev->Draw(Prim::TriangleList, PARTICLE_FVF,
                                     self->pVerts, self->nVertexCount, 0);
-    log_draw(&st, "FaceDraw", self, dev, self->nVertexCount, hr);
+    log_draw(&st, "FaceDraw", self, dev, self->nVertexCount, ok);
     return self->nVertexCount / 6;
 }
 
-/* Two passes, one per face winding: save CULLMODE, draw with D3DCULL_CCW, draw
- * again with D3DCULL_CW, restore.  That makes an XFace billboard two-sided: a
+/* Two passes, one per face winding: save CULLMODE, draw with Cull::CCW, draw
+ * again with Cull::CW, restore.  That makes an XFace billboard two-sided: a
  * particle whose corner table has rotated past edge-on is still drawn. */
-static DWORD xface_draw(XFaceParticleSystem *self, IDirect3DDevice3 *dev)
+static DWORD xface_draw(XFaceParticleSystem *self, RenderDevice *dev)
 {
     DWORD saved = 0;
-    dev->GetRenderState(D3DRENDERSTATE_CULLMODE, &saved);
-    dev->SetRenderState(D3DRENDERSTATE_CULLMODE, D3DCULL_CCW);
-    dev->DrawPrimitive(D3DPT_TRIANGLELIST, PARTICLE_FVF,
+    saved = dev->GetRenderState(RS::CullMode);
+    dev->SetRenderState(RS::CullMode, Cull::CCW);
+    dev->Draw(Prim::TriangleList, PARTICLE_FVF,
                        self->pVerts, self->nVertexCount, 0);
-    dev->SetRenderState(D3DRENDERSTATE_CULLMODE, D3DCULL_CW);
-    HRESULT hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, PARTICLE_FVF,
+    dev->SetRenderState(RS::CullMode, Cull::CW);
+    bool ok = dev->Draw(Prim::TriangleList, PARTICLE_FVF,
                                     self->pVerts, self->nVertexCount, 0);
-    dev->SetRenderState(D3DRENDERSTATE_CULLMODE, saved);
+    dev->SetRenderState(RS::CullMode, saved);
     static DrawLogState st;
-    log_draw(&st, "XFaceDraw", self, dev, self->nVertexCount, hr);
+    log_draw(&st, "XFaceDraw", self, dev, self->nVertexCount, ok);
     return self->nVertexCount / 6;
 }
 
@@ -185,20 +186,20 @@ __declspec(dllexport) void THISCALL
 Particle_XFaceFill(XFaceParticleSystem *self)  { xface_fill(self); }
 
 __declspec(dllexport) DWORD THISCALL
-Particle_PointDraw(PointParticleSystem *self, IDirect3DDevice3 *dev)
+Particle_PointDraw(PointParticleSystem *self, RenderDevice *dev)
 { return point_draw(self, dev); }
 
 __declspec(dllexport) DWORD THISCALL
-Particle_FaceDraw(FaceParticleSystem *self, IDirect3DDevice3 *dev)
+Particle_FaceDraw(FaceParticleSystem *self, RenderDevice *dev)
 { return face_draw(self, dev); }
 
 __declspec(dllexport) DWORD THISCALL
-Particle_XFaceDraw(XFaceParticleSystem *self, IDirect3DDevice3 *dev)
+Particle_XFaceDraw(XFaceParticleSystem *self, RenderDevice *dev)
 { return xface_draw(self, dev); }
 
 /* Base Render (Face/XFace slot 8): fill then draw, through slots 9 and 12. */
 __declspec(dllexport) DWORD THISCALL
-Particle_BaseRender(ParticleSystem *self, IDirect3DDevice3 *dev)
+Particle_BaseRender(ParticleSystem *self, RenderDevice *dev)
 {
     ps_fill(self);
     return ps_draw(self, dev);
@@ -207,7 +208,7 @@ Particle_BaseRender(ParticleSystem *self, IDirect3DDevice3 *dev)
 /* Point Render (slot 8 override): fills through the vtable but draws the
  * POINTLIST itself, never calling slot 12. */
 __declspec(dllexport) DWORD THISCALL
-Particle_PointRender(PointParticleSystem *self, IDirect3DDevice3 *dev)
+Particle_PointRender(PointParticleSystem *self, RenderDevice *dev)
 {
     ps_fill(&self->base);
     return point_draw(self, dev);
@@ -224,7 +225,7 @@ void ps_fill(ParticleSystem *self)
     ((ps_fill_fn)self->pVtable[PS_VT_FILL])(self);
 }
 
-DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev)
+DWORD ps_draw(ParticleSystem *self, RenderDevice *dev)
 {
     return ((ps_draw_fn)self->pVtable[PS_VT_DRAW])(self, dev);
 }
@@ -233,17 +234,17 @@ DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev)
  *
  * Row-major 4x4, row-vector convention (D3D style): out[r][c] = sum_k a[r][k]
  * * b[k][c]. */
-typedef float Mat4[16];
+typedef float PMat4[16];
 
-static void mat_identity(Mat4 m)
+static void mat_identity(PMat4 m)
 {
     for (int i = 0; i < 16; i++) m[i] = 0.0f;
     m[0] = m[5] = m[10] = m[15] = 1.0f;
 }
 
-static void mat_mul(Mat4 out, const Mat4 a, const Mat4 b)
+static void mat_mul(PMat4 out, const PMat4 a, const PMat4 b)
 {
-    Mat4 t;
+    PMat4 t;
     for (int r = 0; r < 4; r++)
         for (int c = 0; c < 4; c++)
             t[r * 4 + c] = a[r * 4 + 0] * b[0 * 4 + c] + a[r * 4 + 1] * b[1 * 4 + c]
@@ -252,7 +253,7 @@ static void mat_mul(Mat4 out, const Mat4 a, const Mat4 b)
 }
 
 /* (v,1) x m as a row vector, w-divided when w != 0. */
-static void transform_point(float v[3], const Mat4 m)
+static void transform_point(float v[3], const PMat4 m)
 {
     float o[4];
     for (int c = 0; c < 4; c++)
@@ -264,21 +265,21 @@ static void transform_point(float v[3], const Mat4 m)
 }
 
 /* Axis rotations, row-vector convention. */
-static void mat_rot_x(Mat4 m, float a)
+static void mat_rot_x(PMat4 m, float a)
 {
     mat_identity(m);
     float c = cosf(a), s = sinf(a);
     m[5] = c;  m[6] = -s;
     m[9] = s;  m[10] = c;
 }
-static void mat_rot_y(Mat4 m, float a)
+static void mat_rot_y(PMat4 m, float a)
 {
     mat_identity(m);
     float c = cosf(a), s = sinf(a);
     m[0] = c;  m[2] = s;
     m[8] = -s; m[10] = c;
 }
-static void mat_rot_z(Mat4 m, float a)
+static void mat_rot_z(PMat4 m, float a)
 {
     mat_identity(m);
     float c = cosf(a), s = sinf(a);
@@ -335,14 +336,14 @@ static void xface_tick(XFaceParticleSystem *self, float dt)
         float spin = fx_spin() ? 10.0f : 1.0f;
         for (DWORD i = 0; i < self->dwCornerTableCount; i++) {
             XFaceCornerEntry *e = &self->pCornerTable[i];
-            Mat4 m;
+            PMat4 m;
             mat_identity(m);
             bool fired = false;
             for (int axis = 0; axis < 3; axis++)
                 e->flRotAccum[axis] += e->flRotVel[axis] * spin;
             for (int axis = 0; axis < 3; axis++) {
                 if ((double)e->flRotAccum[axis] > ROT_STEP_THRESHOLD) {
-                    Mat4 rot;
+                    PMat4 rot;
                     switch (axis) {
                     case 0: mat_rot_x(rot, e->flRotAccum[axis]); break;
                     case 1: mat_rot_y(rot, e->flRotAccum[axis]); break;
@@ -939,7 +940,7 @@ static void xface_destruct(XFaceParticleSystem *self)
 
 /* The corner transform divides by w when w != 1.0 -- not the `w != 0` test
  * transform_point uses for the Face corners. */
-static void xface_transform_corner(float v[3], const Mat4 m)
+static void xface_transform_corner(float v[3], const PMat4 m)
 {
     float o[4];
     for (int c = 0; c < 4; c++)
@@ -1012,7 +1013,7 @@ static BOOL xface_build_corners(XFaceParticleSystem *self)
         vec_cross(v, axis, u);
 
         const float *rows[3] = { u, axis, v };
-        Mat4 m;
+        PMat4 m;
         mat_identity(m);
         for (int r = 0; r < 3; r++)
             for (int c = 0; c < 3; c++)
@@ -1341,7 +1342,7 @@ __declspec(dllexport) void THISCALL
 Particle_BaseFill(ParticleSystem *)                          { }
 
 __declspec(dllexport) DWORD THISCALL
-Particle_BaseDrawNull(ParticleSystem *, IDirect3DDevice3 *)  { return 0; }
+Particle_BaseDrawNull(ParticleSystem *, RenderDevice *)  { return 0; }
 
 /* Slots 10 and 11 where the class does not override them (base, Point, XFace):
  * shared no-ops with the same argument counts, so the same callee cleanup. */

@@ -21,7 +21,7 @@
 
 #include <math.h>
 
-#define MESH_QUAD_FVF   0x1e2
+#define MESH_QUAD_FVF   VertexFormat::Lit
 #define MESH_LOG_FIRST  8
 
 /* The loop cursor here is the object base (DrawQuadBatch's is the sub-object
@@ -83,33 +83,33 @@ Direct3D_DrawMeshBatch(void *ctx, void *game, RenderDevice *d3d)
                 (SceneSubObject *)(obj + MOBJ_OFF_SUBOBJECTS) + s;
 
             DWORD addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
-            d3d->pDevice->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSU, addr);
-            d3d->pDevice->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSV, addr);
+            d3d->SetRenderState(RS::TextureAddressU, addr);
+            d3d->SetRenderState(RS::TextureAddressV, addr);
 
             if (sub->pTexture)
-                d3d->pDevice->SetTexture(0, sub->pTexture->pTexture2);
+                d3d->SetTexture(0, sub->pTexture->pTexture2);
 
             // The two branches share the final SetRenderState call.
-            D3DRENDERSTATETYPE last_state;
+            RS last_state;
             DWORD              last_value;
             if (sub->dwBlendSrc && sub->dwBlendDst) {
-                d3d->pDevice->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-                d3d->pDevice->SetRenderState(D3DRENDERSTATE_SRCBLEND,
+                d3d->SetRenderState(RS::AlphaBlendEnable, 1);
+                d3d->SetRenderState(RS::SrcBlend,
                                              sub->dwBlendSrc);
-                last_state = D3DRENDERSTATE_DESTBLEND;
+                last_state = RS::DestBlend;
                 last_value = sub->dwBlendDst;
             } else {
-                last_state = D3DRENDERSTATE_ALPHABLENDENABLE;
+                last_state = RS::AlphaBlendEnable;
                 last_value = 0;
             }
-            d3d->pDevice->SetRenderState(last_state, last_value);
+            d3d->SetRenderState(last_state, last_value);
 
             CFaktMesh *mesh = *(CFaktMesh **)(obj + MOBJ_OFF_MESH);
             if (mesh == NULL) {
-                d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD,
+                d3d->SetTransform(Transform::World,
                                            &g_worldIdentity);
-                d3d->pDevice->DrawPrimitive(
-                    D3DPT_TRIANGLELIST, MESH_QUAD_FVF,
+                d3d->Draw(
+                    Prim::TriangleList, MESH_QUAD_FVF,
                     *(void **)(c + CTX_OFF_QUAD_VERTS),
                     *(DWORD *)(c + CTX_OFF_QUAD_COUNT) * 6, 0);
             } else {
@@ -134,9 +134,9 @@ Direct3D_DrawMeshBatch(void *ctx, void *game, RenderDevice *d3d)
                 m[14] = *(float *)(c + CTX_OFF_POS_Z);
                 m[15] = 1.0f;
 
-                d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD,
-                                           (D3DMATRIX *)m);
-                FaktMesh_DrawMeshBuffer(mesh, d3d->pDevice, 0);
+                d3d->SetTransform(Transform::World,
+                                           (const Mat4 *)m);
+                FaktMesh_DrawMeshBuffer(mesh, d3d, 0);
 
                 static LONG logged = 0;
                 if (InterlockedIncrement(&logged) <= MESH_LOG_FIRST)

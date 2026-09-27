@@ -12,8 +12,6 @@
 #include "theme.h"
 #include "texture.h"
 #include "faktmesh.h"
-#include "scenematerial.h"
-#include "scenelight.h"
 #include "textrenderer.h"
 #include "scenetexture.h"
 #include "model.h"
@@ -41,8 +39,6 @@ void StaticInit_Construct()
     Texture_SceneCtor(&g_texShadow);
     FaktMesh_Init(&g_meshPlayer);
     FaktMesh_Init(&g_meshEnemy);
-    SceneMaterial_Construct(&g_material);
-    SceneLight_Construct(&g_light);
     Text_Construct(&g_fontMain);
     Text_Construct(&g_fontNumbers);
     TextureManager_Construct(&g_textureManager);
@@ -73,8 +69,6 @@ void StaticInit_Destruct()
     TextureManager_Destruct(&g_textureManager);
     Text_DtorBody(&g_fontNumbers);
     Text_DtorBody(&g_fontMain);
-    SceneLight_DtorBody(&g_light);
-    SceneMaterial_DtorBody(&g_material);
     FaktMesh_DtorBody(&g_meshEnemy);
     FaktMesh_DtorBody(&g_meshPlayer);
     Texture_SceneDtorBody(&g_texShadow);

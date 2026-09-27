@@ -24,6 +24,7 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 #include "gamelog.h"
+#include "d3dnative.h"
 TextureManager g_textureManager;
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
@@ -209,16 +210,11 @@ static unsigned int st_mask_popcount(DWORD mask)
     return n;
 }
 
-#pragma pack(push, 1)
 struct PickFormatCtx {
     DWORD         dwRequestedBpp;
     BYTE          bWantAlpha;
-    DDPIXELFORMAT kept;  // +0x05, deliberately unaligned
+    DDPIXELFORMAT kept;
 };
-#pragma pack(pop)
-static_assert(sizeof(DDPIXELFORMAT) == 0x20, "DDPIXELFORMAT must be 0x20 bytes");
-static_assert(sizeof(PickFormatCtx) == 0x25, "the picker context is 0x25 bytes");
-static_assert(__builtin_offsetof(PickFormatCtx, kept) == 5, "kept format at +5");
 
 /* KAROO_TEXTURE_FX=deepfmt keeps the format furthest above the request instead
  * of the closest.  The gate is untouched, so the choice is still an RGB format
@@ -280,27 +276,25 @@ static HRESULT WINAPI st_enum_texture_formats_picker(LPDDPIXELFORMAT pf,
             (unsigned int)pf->dwBBitMask, (unsigned int)pf->dwRGBAlphaBitMask);
     st_log_str(msg);
 
-    memcpy(&ctx->kept, pf, 0x20);
+    ctx->kept = *pf;
     return D3DENUMRET_OK;
 }
 
-static void __stdcall st_pick_texture_format(IDirect3DDevice3 *dev, DWORD bpp,
+static void __stdcall st_pick_texture_format(RenderDevice *dev, DWORD bpp,
                                              DWORD alphaFlag,
                                              DDPIXELFORMAT *out)
 {
-    // PRESERVED: the zeroing stops one byte short and the alpha flag is also
-    // written into the 0x25th byte, the top of the kept format's alpha mask.
-    // It is visible only when nothing is kept: the caller's format comes back
-    // zero except for alphaFlag << 24 in the alpha mask.
+    // REVIEW: the original zeroed one byte short and also wrote the alpha
+    // flag into the top byte of the kept format's alpha mask, visible only
+    // when no format was kept.  Now the context is zeroed whole.
     PickFormatCtx ctx;
-    memset(&ctx, 0, 0x24);
-    ((BYTE *)&ctx)[0x24] = (BYTE)alphaFlag;
+    memset(&ctx, 0, sizeof(ctx));
     ctx.bWantAlpha     = (BYTE)alphaFlag;
     ctx.dwRequestedBpp = bpp;
 
-    dev->EnumTextureFormats(st_enum_texture_formats_picker, &ctx);
+    dev->native()->device->EnumTextureFormats(st_enum_texture_formats_picker, &ctx);
 
-    memcpy(out, &ctx.kept, 0x20);
+    *out = ctx.kept;
 }
 
 extern "C" {
@@ -353,8 +347,7 @@ Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags)
  * dimensions and the device's chosen pixel format, attach a palette if the
  * format is 8-bit or less, blit the DIB in and query the IDirect3DTexture2. */
 __declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
-                            IDirect3DDevice3 *dev, LPCSTR name, UINT bpp,
+Texture_BindTextureResource(SceneTexture *self, RenderDevice *dev, LPCSTR name, UINT bpp,
                             DWORD textureStage)
 {
     // Resources first, then the file system; the game ships no bitmap
@@ -370,8 +363,8 @@ Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
 
     static LONG seen_bind = 0;
     if (InterlockedIncrement(&seen_bind) <= 4)
-        log_write("scenetexture: Bind this=%p dd=%p dev=%p bpp=%u stage=%lu name=%s\n",
-                  self, dd, dev, bpp, (unsigned long)textureStage,
+        log_write("scenetexture: Bind this=%p dev=%p bpp=%u stage=%lu name=%s\n",
+                  self, dev, bpp, (unsigned long)textureStage,
                   name ? name : "(null)");
 
     Texture_ReleaseD3DTexture(self);
@@ -404,11 +397,11 @@ Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
     memset(&sw, 0, sizeof(sw));
     hw.dw[0] = 0xfc;
     sw.dw[0] = 0xfc;
-    dev->GetCaps((LPD3DDEVICEDESC)&hw, (LPD3DDEVICEDESC)&sw);
+    dev->native()->device->GetCaps((LPD3DDEVICEDESC)&hw, (LPD3DDEVICEDESC)&sw);
 
     ddsd.ddsCaps.dwCaps = st_texture_caps(&hw);
 
-    HRESULT hr = dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
+    HRESULT hr = dev->native()->dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
     if (hr < 0) {
         unsigned int d = (unsigned int)DeleteObject((HGDIOBJ)hbmp);
         return d & 0xffffff00u;  // upper bytes: DeleteObject
@@ -418,7 +411,7 @@ Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
     // pTexturePalette is typed IDirectDrawSurface4 * but holds an
     // IDirectDrawPalette *.
     if (ddsd.ddpfPixelFormat.dwRGBBitCount <= 8) {
-        IDirectDrawPalette *pal = Texture_CreatePaletteFromDIB(dd, (HBITMAP)hbmp);
+        IDirectDrawPalette *pal = Texture_CreatePaletteFromDIB(dev->native()->dd, (HBITMAP)hbmp);
         self->base.pTexturePalette = (IDirectDrawSurface4 *)pal;
         if (pal != NULL)
             self->base.pTextureSurface->SetPalette(pal);
@@ -448,8 +441,7 @@ Texture_BindTextureResource(SceneTexture *self, IDirectDraw4 *dd,
  * anything that is not a true-colour image, then builds the surface and hands
  * the file to TextureTGA_Parse to decode. */
 __declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
-                            IDirect3DDevice3 *dev, LPCSTR name,
+Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
                             DWORD alphaFlag, UINT bpp, DWORD textureStage)
 {
     st_log_str(name);
@@ -526,11 +518,11 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
     memset(&sw, 0, sizeof(sw));
     hw.dw[0] = 0xfc;
     sw.dw[0] = 0xfc;
-    dev->GetCaps((LPD3DDEVICEDESC)&hw, (LPD3DDEVICEDESC)&sw);
+    dev->native()->device->GetCaps((LPD3DDEVICEDESC)&hw, (LPD3DDEVICEDESC)&sw);
 
     ddsd.ddsCaps.dwCaps = st_texture_caps(&hw);
 
-    HRESULT hr = dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
+    HRESULT hr = dev->native()->dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
     if (hr < 0) {
         st_log_str(GS_TEX_NO_TEXTURE_SURFACE);
         if (fp != NULL) fclose(fp);
@@ -569,15 +561,14 @@ Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
  * anything else fails silently.  The extension test is four case-exact
  * compares against ".bmp", ".BMP", ".tga", ".TGA", so ".Bmp" is rejected. */
 __declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_SelectTextureLoader(SceneTexture *self, IDirectDraw4 *dd,
-                            IDirect3DDevice3 *dev, LPCSTR name, UINT bpp,
+Texture_SelectTextureLoader(SceneTexture *self, RenderDevice *dev, LPCSTR name, UINT bpp,
                             int mode)
 {
     if (mode != 0) {
         if (mode == 1)
-            return Texture_BindTextureResource(self, dd, dev, name, bpp, 0);
+            return Texture_BindTextureResource(self, dev, name, bpp, 0);
         if (mode == 2)
-            return Texture_ImportSceneTextures(self, dd, dev, name, 0, bpp, 0);
+            return Texture_ImportSceneTextures(self, dev, name, 0, bpp, 0);
         // The low byte cleared; the upper bytes are mode - 2's.
         return (unsigned int)(mode - 2) & 0xffffff00u;
     }
@@ -587,16 +578,16 @@ Texture_SelectTextureLoader(SceneTexture *self, IDirectDraw4 *dd,
 
     if (st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_BMP_LOWER) == 0 ||
         st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_BMP_UPPER) == 0)
-        return Texture_BindTextureResource(self, dd, dev, name, bpp, 0);
+        return Texture_BindTextureResource(self, dev, name, bpp, 0);
 
     if (st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_TGA_LOWER) == 0)
-        return Texture_ImportSceneTextures(self, dd, dev, name, 0, bpp, 0);
+        return Texture_ImportSceneTextures(self, dev, name, 0, bpp, 0);
 
     int cmp = st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_TGA_UPPER);
     if (cmp != 0)
         return (unsigned int)cmp & 0xffffff00u;  // upper bytes: the compare
 
-    return Texture_ImportSceneTextures(self, dd, dev, name, 0, bpp, 0);
+    return Texture_ImportSceneTextures(self, dev, name, 0, bpp, 0);
 }
 
 }  // extern "C"
@@ -625,8 +616,7 @@ static void tm_delete(SceneTexture *t)
 }
 
 extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
-TextureManager_GetOrLoad(TextureManager *self, IDirectDraw4 *dd,
-                         IDirect3DDevice3 *dev, char *filename,
+TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename,
                          DWORD alphaFlag, UINT bpp, DWORD textureStage)
 {
     for (LinkedListNode *node = self->cache.pHead; node != NULL; ) {
@@ -643,7 +633,7 @@ TextureManager_GetOrLoad(TextureManager *self, IDirectDraw4 *dd,
 
     void *mem = malloc(sizeof(SceneTexture));
     SceneTexture *tex = (mem != NULL) ? Texture_SceneCtor((SceneTexture *)mem) : NULL;
-    unsigned int ok = Texture_ImportSceneTextures(tex, dd, dev, filename,
+    unsigned int ok = Texture_ImportSceneTextures(tex, dev, filename,
                                                   alphaFlag, bpp, textureStage);
     if ((ok & 0xff) == 0) {
         if (tex != NULL)

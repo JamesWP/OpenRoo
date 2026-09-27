@@ -8,7 +8,7 @@
 #include "levelobject.h"
 #include "log.h"
 
-#define QUAD_FVF       0x1e2
+#define QUAD_FVF       VertexFormat::Lit
 #define QUAD_LOG_FIRST 8
 
 /* Only the fields this file reads are declared; the bytes before them are
@@ -110,49 +110,49 @@ Direct3D_DrawQuadBatch(QuadVerts *verts, void *game, RenderDevice *d3d)
                 (SceneSubObject *)(obj + LOBJ_OFF_SUBOBJECTS) + s;
 
             DWORD addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
-            d3d->pDevice->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSU, addr);
-            d3d->pDevice->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSV, addr);
+            d3d->SetRenderState(RS::TextureAddressU, addr);
+            d3d->SetRenderState(RS::TextureAddressV, addr);
 
             if (sub->pTexture)
-                d3d->pDevice->SetTexture(0, sub->pTexture->pTexture2);
+                d3d->SetTexture(0, sub->pTexture->pTexture2);
 
             // last_state and last_value let the alpha-off and dest-blend
             // branches share one SetRenderState call.
-            D3DRENDERSTATETYPE last_state;
+            RS last_state;
             DWORD              last_value;
             if (sub->dwBlendSrc && sub->dwBlendDst
                 && quad_fx() != QUAD_FX_NOALPHA) {
-                d3d->pDevice->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-                d3d->pDevice->SetRenderState(D3DRENDERSTATE_SRCBLEND,
+                d3d->SetRenderState(RS::AlphaBlendEnable, 1);
+                d3d->SetRenderState(RS::SrcBlend,
                                              sub->dwBlendSrc);
-                last_state = D3DRENDERSTATE_DESTBLEND;
+                last_state = RS::DestBlend;
                 last_value = sub->dwBlendDst;
             } else {
-                last_state = D3DRENDERSTATE_ALPHABLENDENABLE;
+                last_state = RS::AlphaBlendEnable;
                 last_value = 0;
             }
-            d3d->pDevice->SetRenderState(last_state, last_value);
+            d3d->SetRenderState(last_state, last_value);
 
             // The draw itself only runs for draw-kind 2, but the
             // render state above it is set for every sub-object regardless;
             // hoisting this gate above the state changes would change what
             // state is left behind for whatever draws next.
             if (*(DWORD *)(obj + LOBJ_OFF_DRAWKIND) == 2) {
-                d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD,
+                d3d->SetTransform(Transform::World,
                                            &g_worldIdentity);
                 quad_dump(verts->pData, verts->dwQuads);
-                HRESULT hr = S_OK;
+                bool ok = true;
                 if (quad_fx() != QUAD_FX_NODRAW)
-                    hr = d3d->pDevice->DrawPrimitive(
-                        D3DPT_TRIANGLELIST, QUAD_FVF, verts->pData,
+                    ok = d3d->Draw(
+                        Prim::TriangleList, QUAD_FVF, verts->pData,
                         verts->dwQuads * 6, 0);
 
                 static LONG logged = 0;
                 if (InterlockedIncrement(&logged) <= QUAD_LOG_FIRST)
                     log_write("quadbatch: obj=%lu sub=%lu tex=%p addr=%lu "
-                              "src=%lu dst=%lu quads=%lu -> hr=%08lX\n",
+                              "src=%lu dst=%lu quads=%lu -> ok=%d\n",
                               i, s, sub->pTexture, addr, sub->dwBlendSrc,
-                              sub->dwBlendDst, verts->dwQuads, hr);
+                              sub->dwBlendDst, verts->dwQuads, ok);
             }
         }
     }

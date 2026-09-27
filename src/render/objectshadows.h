@@ -7,7 +7,7 @@
 class Game;
 struct LevelPlacements;
 class ThemeObjectTypeSlot;
-struct RenderDevice;
+class RenderDevice;
 
 /* __cdecl, twelve dwords (the double is two).  `placements`
  * is never read.  `phase` feeds the animation frame when the record moves

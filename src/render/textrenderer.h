@@ -22,7 +22,7 @@
 #include "layout.h"
 #include "texture.h"    /* SceneTexture -- the atlas at +0x0c */
 
-struct RenderDevice;
+class RenderDevice;
 
 class __attribute__((packed)) TextRenderer {
 public:

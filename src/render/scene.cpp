@@ -88,8 +88,7 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
 
         // Blend modes 5/6 (SRCALPHA / INVSRCALPHA) ask for an alpha surface.
         DWORD alpha = (r->srcBlend == 5 || r->srcBlend == 6) ? 1 : 0;
-        o->texture = TextureManager_GetOrLoad(&s->textures, d3d->pDD4,
-                                              d3d->pDevice, r->textureFile,
+        o->texture = TextureManager_GetOrLoad(&s->textures, d3d, r->textureFile,
                                               alpha, 0, 0);
         o->srcBlend  = r->srcBlend;
         o->destBlend = r->destBlend;

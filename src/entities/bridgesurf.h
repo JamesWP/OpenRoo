@@ -2,7 +2,7 @@
 
 #pragma once
 class Game;
-struct RenderDevice;
+class RenderDevice;
 
 /* Draws every bridge's surface for the frame at time t; lvl is the theme
  * block.  Called once a frame by RenderGameFrame. */

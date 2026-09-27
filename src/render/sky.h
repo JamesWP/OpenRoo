@@ -10,6 +10,7 @@
 #include <d3d.h>
 #include <stddef.h>
 #include "texture.h"
+class RenderDevice;
 
 /* One sky-cube vertex, FVF 0x1e2 = XYZ | RESERVED1 | DIFFUSE | SPECULAR |
  * TEX1. */
@@ -45,8 +46,7 @@ static_assert(sizeof(SkyBackground) == 0x3f0, "SkyBackground size mismatch");
 struct IDirectDraw4;
 struct IDirect3DDevice3;
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
-                       IDirect3DDevice3 *dev, const char *up, const char *dn,
+Sky_BuildFromFaceNames(SkyBackground *self, RenderDevice *dev, const char *up, const char *dn,
                        const char *fr, const char *bk, const char *lf,
                        const char *rt, UINT bpp);
 
@@ -61,5 +61,5 @@ Sky_ScalarDtor(SkyBackground *self, unsigned int flags);
 /* Rebuilds the world matrix from flYawAngle and the given centre, submits the
  * six faces, and returns the matrix (self->WorldMatrix). */
 extern "C" __declspec(dllexport) float * __attribute__((thiscall))
-Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
+Sky_DrawSkyBackground(SkyBackground *self, RenderDevice *dev,
                       float flCentreX, float flCentreY, float flCentreZ);

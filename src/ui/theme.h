@@ -234,7 +234,7 @@ KAROO_LAYOUT_CHECKS(ThemeAssetBlock)
 
 /* The loader and its helpers. */
 class Game;
-struct RenderDevice;
+class RenderDevice;
 struct GameLogger;
 struct ThemeSoundTable;
 

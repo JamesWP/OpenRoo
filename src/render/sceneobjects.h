@@ -13,7 +13,7 @@
 
 class Game;
 class ThemeObjectTypeSlot;
-struct RenderDevice;
+class RenderDevice;
 
 /* The kind-2 quad vertex: FVF 0x242, XYZ | DIFFUSE | TEX2.  The game
  * animates and draws the SECOND coordinate pair as set 0. */

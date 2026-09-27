@@ -85,7 +85,7 @@ static void scripted_camera(Game *g, RenderDevice *d3d)
     Camera_BuildLookAt(&view, cam->eye[0], cam->eye[1], cam->eye[2],
                        cam->target[0], cam->target[1], cam->target[2],
                        0.0f, 1.0f, 0.0f, 0.0f);
-    d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_VIEW, (D3DMATRIX *)&view);
+    d3d->SetTransform(Transform::View, &view);
 }
 
 /* The listener follows the camera: position = eye, front = target - eye,
@@ -211,9 +211,9 @@ static bool foe_slot(unsigned char kind, bool dying, ThemeObjectType *out)
     return false;
 }
 
-static void set_rs(DWORD s, DWORD v)
+static void set_rs(RS s, uint32_t v)
 {
-    g_renderDevice->pDevice->SetRenderState((D3DRENDERSTATETYPE)s, v);
+    g_renderDevice->SetRenderState(s, v);
 }
 
 static void opaque_passes(Game *g, double now, double elapsed)
@@ -331,9 +331,9 @@ static void shadow(const void *pos, const void *rot, ThemeObjectType t, double n
 static void effects_and_shadows(Game *g, double now, double dt)
 {
     RenderDevice *d3d = g_renderDevice;
-    Scene_DrawSceneObjects(d3d->pDevice, g_camera.eye,
+    Scene_DrawSceneObjects(d3d, g_camera.eye,
                            ((DWORD *)&dt)[0], ((DWORD *)&dt)[1], now);
-    set_rs(D3DRENDERSTATE_STENCILENABLE, 0);
+    set_rs(RS::StencilEnable, 0);
     Direct3D_DrawBridgeSurfaces(g, &g_themeBlock, d3d, now);
 
     CameraFocus *focus = &g_cameraFocus;
@@ -345,16 +345,16 @@ static void effects_and_shadows(Game *g, double now, double dt)
         rso(&focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now);
 
     /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
-    if (d3d->zbufFmt.dwStencilBitDepth != 0 && d3d->pSelectedMode->dwBitDepth > 16 &&
+    if (d3d->hasStencil() && d3d->bitDepth() > 16 &&
         g->videoShadows() != 0) {
-        d3d->pDevice->SetTexture(0, g_texShadow.pTexture2);
-        set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-        set_rs(D3DRENDERSTATE_SRCBLEND,         D3DBLEND_SRCALPHA);
-        set_rs(D3DRENDERSTATE_DESTBLEND,        D3DBLEND_INVSRCALPHA);
-        set_rs(D3DRENDERSTATE_STENCILENABLE,    1);
-        set_rs(D3DRENDERSTATE_STENCILREF,       1);
-        set_rs(D3DRENDERSTATE_STENCILFUNC,      D3DCMP_EQUAL);
-        set_rs(D3DRENDERSTATE_STENCILPASS,      D3DSTENCILOP_DECRSAT);
+        d3d->SetTexture(0, g_texShadow.pTexture2);
+        set_rs(RS::AlphaBlendEnable, 1);
+        set_rs(RS::SrcBlend,         Blend::SrcAlpha);
+        set_rs(RS::DestBlend,        Blend::InvSrcAlpha);
+        set_rs(RS::StencilEnable,    1);
+        set_rs(RS::StencilRef,       1);
+        set_rs(RS::StencilFunc,      Cmp::Equal);
+        set_rs(RS::StencilPass,      StencilOp::DecrSat);
 
         if (pl->anim() != 10)
             shadow(&focus->f[2], playerRot, THEME_OBJ_JOHN, now, focus->f[0], pl->anim());
@@ -382,9 +382,9 @@ static void effects_and_shadows(Game *g, double now, double dt)
                     shadow(pos, rot, ty, now, 0.0f, 0);
                 }
         }
-        set_rs(D3DRENDERSTATE_STENCILENABLE, 0);
+        set_rs(RS::StencilEnable, 0);
     }
-    set_rs(D3DRENDERSTATE_ZWRITEENABLE, 0);
+    set_rs(RS::ZWriteEnable, 0);
 }
 
 /* ─── Section 5: the translucent passes ─────────────────────────────────── */
@@ -443,13 +443,13 @@ enum BurstTick { TICK_WHOLE_MS, TICK_ELAPSED };
 static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick tick,
                         bool spin, double now, double elapsed)
 {
-    IDirect3DDevice3 *dev = g_renderDevice->pDevice;
+    RenderDevice *dev = g_renderDevice;
     SceneTexture *tex = rec->pSubObjects[0].pTexture;
     if (tex != NULL)
         dev->SetTexture(0, tex->pTexture2);
-    set_rs(D3DRENDERSTATE_SRCBLEND, src);
-    set_rs(D3DRENDERSTATE_DESTBLEND, dst);
-    set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
+    set_rs(RS::SrcBlend, src);
+    set_rs(RS::DestBlend, dst);
+    set_rs(RS::AlphaBlendEnable, 1);
 
     CameraGlobals *cam = &g_camera;
     for (unsigned char j = 0; j < rec->dwInstanceCount; ++j) {
@@ -459,7 +459,7 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
             continue;
         }
         Mat4 world = translation(b->pos);
-        dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&world);
+        dev->SetTransform(Transform::World, &world);
 
         ParticleSystem *ps = rec->pParticleSystems[j];
         const int ms = (int)elapsed;
@@ -482,7 +482,7 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
         b->msLeft -= (tick == TICK_WHOLE_MS) ? ms : (int)elapsed;
         Particle_DisableRenderNode(ps);
     }
-    set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
+    set_rs(RS::AlphaBlendEnable, 0);
 }
 
 static void translucent_passes(Game *g, double now, double elapsed, double dt)
@@ -576,11 +576,11 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             }
         }
 
-        set_rs(D3DRENDERSTATE_ZWRITEENABLE, 0);
+        set_rs(RS::ZWriteEnable, 0);
         if (crystal != NULL)
-            draw_bursts(crystal, D3DBLEND_ONE, D3DBLEND_ONE, TICK_WHOLE_MS, false, now, elapsed);
+            draw_bursts(crystal, Blend::One, Blend::One, TICK_WHOLE_MS, false, now, elapsed);
         if (coll != NULL)
-            draw_bursts(coll, D3DBLEND_ONE, D3DBLEND_ONE, TICK_ELAPSED, true, now, elapsed);
+            draw_bursts(coll, Blend::One, Blend::One, TICK_ELAPSED, true, now, elapsed);
 
         if (speed != NULL) {
             ParticleSystem *ps = speed->pParticleSystems[0];
@@ -606,23 +606,23 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             gen = Particle_GetGenerator(ps, NULL);
             gen_vset_direction(gen, o[0], o[1], o[2]);
 
-            IDirect3DDevice3 *dev = g_renderDevice->pDevice;
-            dev->SetTransform(D3DTRANSFORMSTATE_WORLD, &g_worldIdentity);
+            RenderDevice *dev = g_renderDevice;
+            dev->SetTransform(Transform::World, &g_worldIdentity);
             dev->SetTexture(0, speed->pSubObjects[0].pTexture->pTexture2);
-            set_rs(D3DRENDERSTATE_SRCBLEND, D3DBLEND_ONE);
-            set_rs(D3DRENDERSTATE_DESTBLEND, D3DBLEND_ONE);
-            set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
+            set_rs(RS::SrcBlend, Blend::One);
+            set_rs(RS::DestBlend, Blend::One);
+            set_rs(RS::AlphaBlendEnable, 1);
             ps_vtick(ps, (float)(elapsed * 0.001));
             CameraGlobals *cam = &g_camera;
             ps_vset_vector(ps, cam->target[0] - cam->eye[0],
                            cam->target[1] - cam->eye[1],
                            cam->target[2] - cam->eye[2]);
             ps_vrender(ps, dev);
-            set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
+            set_rs(RS::AlphaBlendEnable, 0);
         }
     }
 
-    Scene_DrawParticleSystems(g_renderDevice->pDevice, g_camera.eye, dt, now);
+    Scene_DrawParticleSystems(g_renderDevice, g_camera.eye, dt, now);
 
     Player *player = g->player();
     if (player->effectDActive() != 0 && player->anim() != 10)
@@ -639,24 +639,24 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
  * frame's. */
 static char s_text[0x100];
 
-static D3DTLVERTEX tl(float x, float y, D3DCOLOR c, float u, float v)
+static ScreenVertex tl(float x, float y, uint32_t c, float u, float v)
 {
-    D3DTLVERTEX t;
+    ScreenVertex t;
     t.sx = x; t.sy = y; t.sz = 0.0f; t.rhw = 10.0f;
     t.color = c; t.specular = 0; t.tu = u; t.tv = v;
     return t;
 }
 
-static void draw_strip(D3DTLVERTEX *q)
+static void draw_strip(ScreenVertex *q)
 {
-    g_renderDevice->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, D3DFVF_TLVERTEX, q, 4, 0);
+    g_renderDevice->Draw(Prim::TriangleStrip, VertexFormat::Screen, q, 4, 0);
 }
 
 static void blend_on(void)
 {
-    set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-    set_rs(D3DRENDERSTATE_SRCBLEND,         D3DBLEND_SRCALPHA);
-    set_rs(D3DRENDERSTATE_DESTBLEND,        D3DBLEND_INVSRCALPHA);
+    set_rs(RS::AlphaBlendEnable, 1);
+    set_rs(RS::SrcBlend,         Blend::SrcAlpha);
+    set_rs(RS::DestBlend,        Blend::InvSrcAlpha);
 }
 
 static IDirect3DTexture2 *image(ThemeImageSlot s)
@@ -685,7 +685,7 @@ static void hud_text(TextRenderer *font, int align, float x, float y, float cw, 
  * its foe blips, then the timer and counters. */
 static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hudH)
 {
-    IDirect3DDevice3 *dev = g_renderDevice->pDevice;
+    RenderDevice *dev = g_renderDevice;
     Player *pl = g->player();
 
     /* The two corner panels, mirrored halves of the HUD image. */
@@ -694,22 +694,22 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
         blend_on();
         const float a  = hudH + hudH;
         const float y1 = hudH - W * 0.003125f;
-        D3DTLVERTEX q[4] = {
+        ScreenVertex q[4] = {
             tl(a,    0.0f, 0xffffffff, 1.0f, 0.0f),
             tl(a,    y1,   0xffffffff, 1.0f, 0.4921875f),
             tl(0.0f, 0.0f, 0xffffffff, 0.0f, 0.0f),
             tl(0.0f, y1,   0xffffffff, 0.0f, 0.4921875f),
         };
         draw_strip(q);
-        D3DTLVERTEX r[4] = {
+        ScreenVertex r[4] = {
             tl(W,     0.0f, 0xffffffff, 1.0f, 0.5078125f),
             tl(W,     y1,   0xffffffff, 1.0f, 1.0f),
             tl(W - a, 0.0f, 0xffffffff, 0.0f, 0.5078125f),
             tl(W - a, y1,   0xffffffff, 0.0f, 1.0f),
         };
         draw_strip(r);
-        set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
-        dev->SetTexture(0, NULL);
+        set_rs(RS::AlphaBlendEnable, 0);
+        dev->SetTexture(0, nullptr);
     }
 
     /* The vitality needle: a quad about the origin, turned by
@@ -739,7 +739,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
             if (o[3] != 1.0f) { o[0] /= o[3]; o[1] /= o[3]; o[2] /= o[3]; }
             p[k][0] = o[0]; p[k][1] = o[1]; p[k][2] = o[2];
         }
-        D3DTLVERTEX q[4] = {
+        ScreenVertex q[4] = {
             tl(p[0][0], p[0][1], 0xffffffff, 1.0f, 0.0f),
             tl(p[1][0], p[1][1], 0xffffffff, 1.0f, 1.0f),
             tl(p[2][0], p[2][1], 0xffffffff, 0.0f, 0.0f),
@@ -750,8 +750,8 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
         dev->SetTexture(0, image(THEME_IMG_POINTER));
         blend_on();
         draw_strip(q);
-        set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
-        dev->SetTexture(0, NULL);
+        set_rs(RS::AlphaBlendEnable, 0);
+        dev->SetTexture(0, nullptr);
     }
 
     /* The radar, centred at (0.9 W, 0.8667 H). */
@@ -761,7 +761,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     if (g_themeBlock.images[THEME_IMG_RADAR] != NULL) {
         const float r = hudH * 0.5f;
         me.y = 0.0f;
-        D3DTLVERTEX q[4] = {
+        ScreenVertex q[4] = {
             tl(cx + r, cy - r, 0xffffffff, 1.0f, 0.0f),
             tl(cx + r, cy + r, 0xffffffff, 1.0f, 1.0f),
             tl(cx - r, cy - r, 0xffffffff, 0.0f, 0.0f),
@@ -770,8 +770,8 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
         blend_on();
         dev->SetTexture(0, image(THEME_IMG_RADAR));
         draw_strip(q);
-        set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
-        dev->SetTexture(0, NULL);
+        set_rs(RS::AlphaBlendEnable, 0);
+        dev->SetTexture(0, nullptr);
     }
 
     /* A blip for every foe within 13 cells, turned into the camera's frame
@@ -789,7 +789,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
         Math_Vec3ScaleInPlace(&t, 4.0f);
         const float half = W * 0.0015625f;
         const float bx = t.x + cx, by = cy - t.z;
-        D3DTLVERTEX q[4] = {
+        ScreenVertex q[4] = {
             tl(bx + half, by - half, 0xffffffff, 1.0f, 0.0f),
             tl(bx + half, by + half, 0xffffffff, 1.0f, 1.0f),
             tl(bx - half, by - half, 0xffffffff, 0.0f, 0.0f),
@@ -900,10 +900,10 @@ static void draw_messages(Game *g, float W, float H, float pad)
         default: icon = false; img = THEME_IMG_HUD; break;
         }
         if (icon && g_themeBlock.images[img] != NULL) {
-            g_renderDevice->pDevice->SetTexture(0, image(img));
+            g_renderDevice->SetTexture(0, image(img));
             sprintf(buf, "%.1f", span - (*g->clock() - start) * 0.001);
         }
-        D3DTLVERTEX q[4] = {
+        ScreenVertex q[4] = {
             tl(xText, y - ch, 0x00ffffff, 1.0f, 0.0f),
             tl(xText, y + ch, 0x00ffffff, 1.0f, 1.0f),
             tl(pad,   y - ch, 0x00ffffff, 0.0f, 0.0f),
@@ -922,18 +922,18 @@ static void draw_messages(Game *g, float W, float H, float pad)
 static void draw_logo(Game *g, float H, float hudH, float pad)
 {
     const float xr = pad + hudH, yt = H - hudH - pad, yb = H - pad;
-    D3DTLVERTEX q[4] = {
+    ScreenVertex q[4] = {
         tl(xr,  yt, 0xffffffff, 1.0f, 0.0f),
         tl(xr,  yb, 0xffffffff, 1.0f, 1.0f),
         tl(pad, yt, 0xffffffff, 0.0f, 0.0f),
         tl(pad, yb, 0xffffffff, 0.0f, 1.0f),
     };
     blend_on();
-    g_renderDevice->pDevice->SetTexture(0, g_texKaroo128.pTexture2);
+    g_renderDevice->SetTexture(0, g_texKaroo128.pTexture2);
     if (g->state() == 0 || g->state() == 5)
         draw_strip(q);
-    set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
-    g_renderDevice->pDevice->SetTexture(0, NULL);
+    set_rs(RS::AlphaBlendEnable, 0);
+    g_renderDevice->SetTexture(0, nullptr);
 }
 
 /* ─── RenderGameFrame ───────────────────────────────────────────────────── */
@@ -969,42 +969,38 @@ Render_RenderGameFrame(void)
     }
 
     RenderDevice *d3d = g_renderDevice;
-    D3DRECT rect = { 0, 0, (LONG)d3d->pSelectedMode->dwWidth, (LONG)d3d->pSelectedMode->dwHeight };
     /* The sky covers the whole target, so only depth (and stencil) clear. */
-    DWORD clearFlags = D3DCLEAR_ZBUFFER;
-    if (d3d->zbufFmt.dwStencilBitDepth != 0) {
-        set_rs(D3DRENDERSTATE_STENCILENABLE, 1);
-        clearFlags = D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL;
-    }
-    d3d->pViewport->Clear2(1, &rect, clearFlags, 0, 1.0f, 0);
-    if (FAILED(d3d->pDevice->BeginScene()))
+    if (d3d->hasStencil())
+        set_rs(RS::StencilEnable, 1);
+    d3d->ClearDepth();
+    if (!d3d->BeginScene())
         return;
 
-    set_rs(D3DRENDERSTATE_STENCILENABLE,    0);
-    set_rs(D3DRENDERSTATE_FOGENABLE,        0);
-    set_rs(D3DRENDERSTATE_SPECULARENABLE,   0);
-    set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
+    set_rs(RS::StencilEnable,    0);
+    set_rs(RS::FogEnable,        0);
+    set_rs(RS::SpecularEnable,   0);
+    set_rs(RS::AlphaBlendEnable, 0);
     CameraGlobals *cam = &g_camera;
-    Sky_DrawSkyBackground(&g_themeBlock.sky, d3d->pDevice, cam->eye[0], cam->eye[1], cam->eye[2]);
+    Sky_DrawSkyBackground(&g_themeBlock.sky, d3d, cam->eye[0], cam->eye[1], cam->eye[2]);
     if (g_themeBlock.bFogEnabled)
-        set_rs(D3DRENDERSTATE_FOGENABLE, 1);
-    set_rs(D3DRENDERSTATE_STENCILENABLE, 1);
-    set_rs(D3DRENDERSTATE_STENCILFUNC,   D3DCMP_ALWAYS);
-    set_rs(D3DRENDERSTATE_STENCILREF,    1);
-    set_rs(D3DRENDERSTATE_STENCILZFAIL,  D3DSTENCILOP_KEEP);
-    set_rs(D3DRENDERSTATE_STENCILFAIL,   D3DSTENCILOP_KEEP);
-    set_rs(D3DRENDERSTATE_STENCILPASS,   D3DSTENCILOP_REPLACE);
+        set_rs(RS::FogEnable, 1);
+    set_rs(RS::StencilEnable, 1);
+    set_rs(RS::StencilFunc,   Cmp::Always);
+    set_rs(RS::StencilRef,    1);
+    set_rs(RS::StencilZFail,  StencilOp::Keep);
+    set_rs(RS::StencilFail,   StencilOp::Keep);
+    set_rs(RS::StencilPass,   StencilOp::Replace);
 
     opaque_passes(g, now, elapsed);
     effects_and_shadows(g, now, dt);
     translucent_passes(g, now, elapsed, dt);
 
-    set_rs(D3DRENDERSTATE_ZWRITEENABLE,    1);
-    set_rs(D3DRENDERSTATE_TEXTUREADDRESSU, D3DTADDRESS_CLAMP);
-    set_rs(D3DRENDERSTATE_TEXTUREADDRESSV, D3DTADDRESS_CLAMP);
-    set_rs(D3DRENDERSTATE_ZENABLE,         0);
+    set_rs(RS::ZWriteEnable,    1);
+    set_rs(RS::TextureAddressU, TexAddress::Clamp);
+    set_rs(RS::TextureAddressV, TexAddress::Clamp);
+    set_rs(RS::ZEnable,         0);
 
-    const unsigned w = d3d->pSelectedMode->dwWidth, h = d3d->pSelectedMode->dwHeight;
+    const unsigned w = d3d->width(), h = d3d->height();
     const float W = (float)w, H = (float)h;
     const float hudH = H * 0.26666668f;
     const unsigned char st = g->state();
@@ -1026,12 +1022,12 @@ Render_RenderGameFrame(void)
     if (g->menu()->node() == 3 || g->state() == 6)
         Score_DrawHighScoreTable(g, &g_themeBlock, d3d, &g_fontMain, ms);
 
-    set_rs(D3DRENDERSTATE_ZENABLE, 1);
-    d3d->pDevice->EndScene();
+    set_rs(RS::ZEnable, 1);
+    d3d->EndScene();
     if (g->state() == 7) {
         if (g->field_0c() != 0)
             g_renderDevice->PresentImage(&g_demoImage);
         return;
     }
-    d3d->pPrimary->Flip(NULL, DDFLIP_WAIT);
+    d3d->Flip();
 }

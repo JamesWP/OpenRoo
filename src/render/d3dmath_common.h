@@ -3,6 +3,7 @@
 #pragma once
 
 #include "d3dmath.h"
+#include "rendertypes.h"
 
 void  m4_identity(Mat4 *d);
 void  m4_translate(Mat4 *d, float x, float y, float z);
@@ -64,11 +65,11 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4Translate(Mat4 *out, float x, float
 __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotX(Mat4 *out, float angle);
 __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotY(Mat4 *out, float angle);
 __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle);
-/* A D3DTLVERTEX (FVF 0x1C4) from *pos and rhw, colour, specular, tu, tv,
+/* A ScreenVertex (FVF 0x1C4) from *pos and rhw, colour, specular, tu, tv,
  * stored as given; returns self. */
-__declspec(dllexport) D3DTLVERTEX *__attribute__((thiscall))
-Math_VertexSet(D3DTLVERTEX *self, const Vec3 *pos, float rhw, D3DCOLOR color,
-               D3DCOLOR specular, float tu, float tv);
+__declspec(dllexport) ScreenVertex *__attribute__((thiscall))
+Math_VertexSet(ScreenVertex *self, const Vec3 *pos, float rhw, uint32_t color,
+               uint32_t specular, float tu, float tv);
 /* self *= k in place, returns self. */
 __declspec(dllexport) Vec3 *__attribute__((thiscall))
 Math_Vec3ScaleInPlace(Vec3 *self, float k);

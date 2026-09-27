@@ -7,6 +7,7 @@
 
 #include "layout.h"
 #include "linkedlist.h"
+class RenderDevice;
 
 struct IDirect3DDevice3;
 
@@ -70,9 +71,9 @@ Spline_PurgeControlPoints(SplinePath *self);
 
 /* Draws the path as numsegments line segments, and its control polygon. */
 extern "C" __declspec(dllexport) long __attribute__((thiscall))
-Spline_DrawSplinePath(SplinePath *self, IDirect3DDevice3 *dev,
+Spline_DrawSplinePath(SplinePath *self, RenderDevice *dev,
                       unsigned int numsegments, unsigned long color);
 
 extern "C" __declspec(dllexport) long __attribute__((thiscall))
-Spline_DrawControlPolygon(SplinePath *self, IDirect3DDevice3 *dev,
+Spline_DrawControlPolygon(SplinePath *self, RenderDevice *dev,
                           unsigned long color);

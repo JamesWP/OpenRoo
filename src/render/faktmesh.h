@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <stddef.h>
+class RenderDevice;
 
 /* CFaktMesh — the mesh object, drawn by DrawMeshBuffer / DrawFramedModel
  * (faktmesh.cpp) and loaded from a .mdl by ImportSceneModels (model.cpp).
@@ -64,9 +65,9 @@ static_assert(offsetof(CFaktMesh, strided[MESH_STRIDED_TEX1].dwStride)     == 0x
 /* The two draw exports (faktmesh.cpp). */
 struct IDirect3DDevice3;
 extern "C" __declspec(dllexport) HRESULT __attribute__((thiscall))
-FaktMesh_DrawMeshBuffer(CFaktMesh *self, IDirect3DDevice3 *dev, DWORD frame);
+FaktMesh_DrawMeshBuffer(CFaktMesh *self, RenderDevice *dev, DWORD frame);
 extern "C" __declspec(dllexport) HRESULT __attribute__((thiscall))
-FaktMesh_DrawFramedModel(CFaktMesh *self, IDirect3DDevice3 *dev, DWORD frame);
+FaktMesh_DrawFramedModel(CFaktMesh *self, RenderDevice *dev, DWORD frame);
 
 /* ─── The lifecycle four ───────────────────────────────────────────────────
  *

@@ -31,6 +31,7 @@
 #include "extraobjects.h"
 #include "particles.h"
 #include "camera.h"
+#include "renderdevice.h"
 #include "framepose.h"
 #include "game.h"
 
@@ -66,7 +67,7 @@ static void eval_path(const SceneObject *o, float t, Vec3 *out)
     bezier_eval((const ListNodeM *)cp->pHead, cp->dwCount, t, out);
 }
 
-static void select_texture(IDirect3DDevice3 *dev, const SceneObject *o)
+static void select_texture(RenderDevice *dev, const SceneObject *o)
 {
     dev->SetTexture(0, ((const SceneTexture *)o->texture)->pTexture2);
 }
@@ -152,7 +153,7 @@ static void cam_diag(const float *cam)
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Scene_DrawSceneObjects(IDirect3DDevice3 *dev, float *cam, DWORD , DWORD , double t)
+Scene_DrawSceneObjects(RenderDevice *dev, float *cam, DWORD , DWORD , double t)
 {
     cam_diag(cam);
     for (LinkedListNode *node = g_scene.objects.pHead; node != NULL; node = node->pNextNode) {
@@ -162,16 +163,16 @@ Scene_DrawSceneObjects(IDirect3DDevice3 *dev, float *cam, DWORD , DWORD , double
 
         DWORD src = o->srcBlend, dst = o->destBlend;
         if (src != 0 && dst != 0) {
-            dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-            dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, src);
-            dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, dst);
+            dev->SetRenderState(RS::AlphaBlendEnable, 1);
+            dev->SetRenderState(RS::SrcBlend, src);
+            dev->SetRenderState(RS::DestBlend, dst);
         } else {
-            dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
+            dev->SetRenderState(RS::AlphaBlendEnable, 0);
         }
 
         DWORD ta = o->textureAddress;
-        dev->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSU, ta);
-        dev->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSV, ta);
+        dev->SetRenderState(RS::TextureAddressU, ta);
+        dev->SetRenderState(RS::TextureAddressV, ta);
 
         if (o->texture != NULL)
             select_texture(dev, o);
@@ -222,9 +223,9 @@ Scene_DrawSceneObjects(IDirect3DDevice3 *dev, float *cam, DWORD , DWORD , double
                     select_texture(dev, o);
             }
 
-            dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&world);
+            dev->SetTransform(Transform::World, &world);
             DWORD frame = animation_frame(o, t);
-            dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
+            dev->SetRenderState(RS::SpecularEnable, 0);
 
             if (o->lit != 0)
                 FaktMesh_DrawFramedModel(mesh, dev, frame);
@@ -255,9 +256,9 @@ Scene_DrawSceneObjects(IDirect3DDevice3 *dev, float *cam, DWORD , DWORD , double
             }
 
             m4_translate(&world, px, py, pz);
-            dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&world);
-            dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
-            dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0x1e2, quad, 4, 0);
+            dev->SetTransform(Transform::World, &world);
+            dev->SetRenderState(RS::SpecularEnable, 0);
+            dev->Draw(Prim::TriangleStrip, VertexFormat::Lit, quad, 4, 0);
         }
     }
 }
@@ -298,9 +299,9 @@ static void rotation_xyz(Mat4 *m, float rx, float ry, float rz)
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Scene_DrawParticleSystems(IDirect3DDevice3 *dev, float *cam, double dt_ms, double t)
+Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
 {
-    dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
+    dev->SetRenderState(RS::SpecularEnable, 0);
 
     for (LinkedListNode *node = g_scene.objects.pHead; node != NULL; node = node->pNextNode) {
         const SceneObject *o = (const SceneObject *)node->pValue;
@@ -309,11 +310,11 @@ Scene_DrawParticleSystems(IDirect3DDevice3 *dev, float *cam, double dt_ms, doubl
 
         DWORD src = o->srcBlend, dst = o->destBlend;
         if (src != 0 && dst != 0) {
-            dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-            dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, src);
-            dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, dst);
+            dev->SetRenderState(RS::AlphaBlendEnable, 1);
+            dev->SetRenderState(RS::SrcBlend, src);
+            dev->SetRenderState(RS::DestBlend, dst);
         } else {
-            dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
+            dev->SetRenderState(RS::AlphaBlendEnable, 0);
         }
 
         if (o->texture != NULL)
@@ -356,10 +357,10 @@ Scene_DrawParticleSystems(IDirect3DDevice3 *dev, float *cam, double dt_ms, doubl
             m4_translate(&tr, pos.x, pos.y, pos.z);
             compose(&world, &world, &tr);
 
-            dev->SetTexture(0, NULL);
+            dev->SetTexture(0, nullptr);
             Mat4 ident;
             m4_identity(&ident);
-            dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&ident);
+            dev->SetTransform(Transform::World, &ident);
 
             SplinePath *sp = (SplinePath *)&o->spline;
             if (hooks_GetAsyncKeyState(VK_F3) & 0x8000)
@@ -371,7 +372,7 @@ Scene_DrawParticleSystems(IDirect3DDevice3 *dev, float *cam, double dt_ms, doubl
                 select_texture(dev, o);
         }
 
-        dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&world);
+        dev->SetTransform(Transform::World, &world);
 
         ps_vtick(ps, (float)(dt_ms * K_ANIM_SCALE));
         Vec3 dir = { cam[3] - cam[0], cam[4] - cam[1], cam[5] - cam[2] };

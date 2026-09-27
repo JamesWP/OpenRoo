@@ -2,7 +2,8 @@
  * movement -- plus the exported wrappers over d3dmath_mode.cpp. */
 #include <math.h>
 #include "d3dmath_common.h"
-D3DMATRIX g_worldIdentity;
+#include "renderdevice.h"
+Mat4 g_worldIdentity;
 
 void m4_identity(Mat4 *d)
 {
@@ -225,9 +226,9 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle)
 /* ─── RenderGameFrame's three small helpers ─────────────────────────────── */
 extern "C" {
 
-__declspec(dllexport) D3DTLVERTEX *__attribute__((thiscall))
-Math_VertexSet(D3DTLVERTEX *self, const Vec3 *pos, float rhw, D3DCOLOR color,
-               D3DCOLOR specular, float tu, float tv)
+__declspec(dllexport) ScreenVertex *__attribute__((thiscall))
+Math_VertexSet(ScreenVertex *self, const Vec3 *pos, float rhw, uint32_t color,
+               uint32_t specular, float tu, float tv)
 {
     self->sx = pos->x;
     self->sy = pos->y;

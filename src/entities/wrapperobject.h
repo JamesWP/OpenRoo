@@ -15,6 +15,7 @@
 #include <windows.h>
 #include "layout.h"
 #include "faktmesh.h"
+class RenderDevice;
 
 struct IDirect3DDevice3;
 
@@ -58,7 +59,7 @@ public:
 
     // Spherical environment map: UVs from each vertex normal, transformed by
     // world * view.
-    void updateObjectTransform(IDirect3DDevice3 *dev, unsigned short frame);
+    void updateObjectTransform(RenderDevice *dev, unsigned short frame);
 
     CFaktMesh *mesh() const { return pMesh_; }
 
@@ -104,7 +105,7 @@ Wrapper_ScrollUVs(WrapperObject *self, unsigned int ticks, int axisU,
                   float speed);
 
 __declspec(dllexport) void __attribute__((thiscall))
-Wrapper_UpdateObjectTransform(WrapperObject *self, IDirect3DDevice3 *dev,
+Wrapper_UpdateObjectTransform(WrapperObject *self, RenderDevice *dev,
                               unsigned short frame);
 
 }

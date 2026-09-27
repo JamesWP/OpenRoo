@@ -36,7 +36,7 @@ KAROO_LAYOUT_CHECKS(CameraGlobals)
 extern CameraGlobals g_camera;
 
 struct Mat4;
-struct RenderDevice;
+class RenderDevice;
 class Game;
 
 /* The 9-float block FramePose_Player fills and RenderGameFrame passes BY

@@ -30,17 +30,14 @@ LevelEntry_PrepareAssets(void)
     const LevelMap *map = g->map();
 
     // 1. Blank the back buffer and flip.
-    DDBLTFX fx;
-    memset(&fx, 0, sizeof fx);
-    fx.dwSize = sizeof fx;
-    d3d->pBackBuffer->Blt(NULL, NULL, NULL, DDBLT_COLORFILL, &fx);
-    d3d->pPrimary->Flip(NULL, DDFLIP_WAIT);
+    d3d->ClearBackBuffer();
+    d3d->Flip();
 
     // 2. The loading screen.
     char thm[0x100], bmp[0x124];
     sprintf(thm, "themes\\%s.thm", map->mapName());
     sprintf(bmp, "bitmaps\\%s.bmp", map->mapName());
-    unsigned ok = TextureDIB_CreateSurface(&g_loadingImage, d3d->pDD4, bmp, 1);
+    unsigned ok = TextureDIB_CreateSurface(&g_loadingImage, d3d, bmp, 1);
     g_renderDevice->PresentImage((char)ok ? &g_loadingImage : &g_fallbackImage);
 
     // 3. The theme, only when it has changed: the block keeps the path it was

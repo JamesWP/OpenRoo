@@ -544,7 +544,7 @@ struct ThemeParser {
     SceneTexture *loadTexture(char *name, char *alphaTok)
     {
         DWORD alpha = is(alphaTok, "alpha") ? 1 : 0;
-        return TextureManager_GetOrLoad(&g_textureManager, d3d->pDD4, d3d->pDevice,
+        return TextureManager_GetOrLoad(&g_textureManager, d3d,
                                         name, alpha, 0, 0);
     }
 
@@ -674,25 +674,25 @@ void ThemeParser::fog(bool inEnvironment)
 {
     if (!inEnvironment || ntok <= 3)
         return;
-    IDirect3DDevice3 *dev = d3d->pDevice;
-    dev->SetRenderState(D3DRENDERSTATE_FOGENABLE, 1);
+    RenderDevice *dev = d3d;
+    dev->SetRenderState(RS::FogEnable, 1);
     block->bFogEnabled = 1;
 
     DWORD mode = FOG_NONE;
     lookup(tok[1], kFogModes, 4, &mode);
-    dev->SetRenderState(D3DRENDERSTATE_FOGTABLEMODE, mode);
+    dev->SetRenderState(RS::FogTableMode, mode);
 
     char *colourTok;
     if (mode == FOG_LINEAR) {
-        dev->SetRenderState(D3DRENDERSTATE_FOGTABLESTART, float_bits(atof_f(tok[2])));
-        dev->SetRenderState(D3DRENDERSTATE_FOGTABLEEND,   float_bits(atof_f(tok[3])));
+        dev->SetRenderState(RS::FogTableStart, float_bits(atof_f(tok[2])));
+        dev->SetRenderState(RS::FogTableEnd,   float_bits(atof_f(tok[3])));
         colourTok = tok[4];
     } else {
-        dev->SetRenderState(D3DRENDERSTATE_FOGTABLEDENSITY, float_bits(atof_f(tok[2])));
+        dev->SetRenderState(RS::FogTableDensity, float_bits(atof_f(tok[2])));
         colourTok = tok[3];
     }
     char *end;
-    dev->SetRenderState(D3DRENDERSTATE_FOGCOLOR, (DWORD)strtol(colourTok, &end, 16));
+    dev->SetRenderState(RS::FogColor, (DWORD)strtol(colourTok, &end, 16));
 }
 
 void ThemeParser::sky(bool inEnvironment)
@@ -707,9 +707,9 @@ void ThemeParser::sky(bool inEnvironment)
     sprintf(bk, GS_THEME_SKY_BK, tok[1]);
     sprintf(lf, GS_THEME_SKY_LF, tok[1]);
     sprintf(rt, GS_THEME_SKY_RT, tok[1]);
-    unsigned int ok = Sky_BuildFromFaceNames(&block->sky, d3d->pDD4, d3d->pDevice,
+    unsigned int ok = Sky_BuildFromFaceNames(&block->sky, d3d,
                                              up, dn, fr, bk, lf, rt,
-                                             d3d->pSelectedMode->dwBitDepth);
+                                             d3d->bitDepth());
     if (logger != NULL) {
         if ((ok & 0xff) == 0)
             GameLog_LogMessage(logger, 3, GS_THEME_SKY_FAILED, tok[1]);
@@ -841,8 +841,7 @@ void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec
         open(sub, rec);
         DWORD alpha = is(tok[2], "alpha") ? 1 : 0;
         if (slot)
-            sub.at->pTexture = TextureManager_GetOrLoad(&g_textureManager, d3d->pDD4,
-                                                     d3d->pDevice, tok[1], alpha, 0, 0);
+            sub.at->pTexture = TextureManager_GetOrLoad(&g_textureManager, d3d, tok[1], alpha, 0, 0);
     } else if (is(tok[0], "position")) {
         if (ntok > 3 && slot) {
             rec->flPosX = atof_f(tok[1]); rec->flPosY = atof_f(tok[2]); rec->flPosZ = atof_f(tok[3]);
@@ -949,7 +948,7 @@ static bool theme_load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block,
                        char *path, GameLogger *logger)
 {
     Theme_ReleaseBlock(block);
-    d3d->pDevice->SetRenderState(D3DRENDERSTATE_FOGENABLE, 0);
+    d3d->SetRenderState(RS::FogEnable, 0);
 
     FILE *fp = fopen(path, "r");  // text mode: the CRT folds CRLF
     if (fp == NULL)

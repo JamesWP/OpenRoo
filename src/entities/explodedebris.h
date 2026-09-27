@@ -11,6 +11,7 @@
 
 #include <windows.h>
 #include "layout.h"
+class RenderDevice;
 
 struct ExplodeDebris {
     static const int ORIGIN = 0;
@@ -82,6 +83,6 @@ ExplodeDebris_Advance(ExplodeDebris *self, float dt);
 /* Draws the live triangles twice (SRCALPHA, then DESTALPHA); 0x800401f0 if
  * inactive. */
 __declspec(dllexport) HRESULT __attribute__((thiscall))
-ExplodeDebris_Draw(ExplodeDebris *self, struct IDirect3DDevice3 *dev);
+ExplodeDebris_Draw(ExplodeDebris *self, RenderDevice *dev);
 
 }

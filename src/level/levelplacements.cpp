@@ -33,6 +33,7 @@
 #include "liftobject.h"
 #include "slideobject.h"
 #include <math.h>
+#include "renderdevice.h"
 LevelPlacements g_levelPlacements;
 
 /* Cells come from LevelMap::tile(), which takes signed axes, so the wall

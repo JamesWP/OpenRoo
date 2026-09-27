@@ -7,12 +7,13 @@
 
 #include "texture.h"
 
+class RenderDevice;
+
 /* The TGA path: build the surface from `name`, decode into it, and leave the
  * IDirect3DTexture2 in `self->pTexture2`.  Only the low byte of the result is
  * the success flag. */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_ImportSceneTextures(SceneTexture *self, IDirectDraw4 *dd,
-                            IDirect3DDevice3 *dev, LPCSTR name,
+Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
                             DWORD alphaFlag, UINT bpp, DWORD textureStage);
 
 /* The SceneTexture constructor, destructor body and scalar deleting
@@ -27,8 +28,7 @@ Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
 /* Load by extension (mode 0), DIB (1) or TGA (2).  The sky builder
  * (sky.cpp) is its one outside caller. */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_SelectTextureLoader(SceneTexture *self, IDirectDraw4 *dd,
-                            IDirect3DDevice3 *dev, LPCSTR name, UINT bpp,
+Texture_SelectTextureLoader(SceneTexture *self, RenderDevice *dev, LPCSTR name, UINT bpp,
                             int mode);
 
 /* ─── TextureManager -- the name-keyed SceneTexture cache ──────────────────
@@ -60,8 +60,7 @@ KAROO_LAYOUT_CHECKS(TextureManager)
 extern TextureManager g_textureManager;
 
 extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
-TextureManager_GetOrLoad(TextureManager *self, IDirectDraw4 *dd,
-                         IDirect3DDevice3 *dev, char *filename,
+TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename,
                          DWORD alphaFlag, UINT bpp, DWORD textureStage);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 TextureManager_ReleaseAll(TextureManager *self);

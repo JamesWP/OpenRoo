@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include "texture.h"
+#include "d3dnative.h"
 #include "log.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -98,9 +99,10 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
  * BlitToSurface and records the file name.  bSysMem adds DDSCAPS_SYSTEMMEMORY
  * to DDSCAPS_OFFSCREENPLAIN. */
 __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureDIB_CreateSurface(LoadedImage *self, IDirectDraw4 *dd, LPCSTR name,
+TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
                          char bSysMem)
 {
+    IDirectDraw4 *dd = dev->native()->dd;
     // The first load asks for a BITMAP resource of that name in the exe, which
     // fails for every real texture; the fallback loads the file.
     HANDLE hbmp = LoadImageA(GetModuleHandleA(NULL), name, IMAGE_BITMAP,
