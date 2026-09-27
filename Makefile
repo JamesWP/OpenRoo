@@ -53,7 +53,7 @@ BUILD   = build
 OBJDIR  = $(BUILD)/obj
 OBJS    = $(SRCS:src/%.cpp=$(OBJDIR)/%.o)
 EXE     = $(BUILD)/KarooOwn.exe
-RESOBJ  = $(OBJDIR)/karoo_rc.o
+RESOBJ  = $(OBJDIR)/openroo_rc.o
 LIBS    = -lgdi32 -lwinmm -ldsound -ldinput8 -ldxguid -static-libgcc -static-libstdc++
 
 all: $(EXE)
@@ -66,16 +66,12 @@ $(OBJDIR)/%.o: src/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -MMD -MP -c -o $@ $<
 
-# The game's own dialogs, icon and window region are not in the repository:
-# tools/import_assets.py extracts them from your copy of Ka'roo into
-# game/res/, which data/karoo.rc's "res/..." names resolve against.
-GAMERES = $(wildcard game/res/*.bin)
+# The launcher's window shape is ours: a mask PNG, turned into RGNDATA.
+$(OBJDIR)/rgn_111.bin: data/launcher_region.png tools/png_to_rgn.py | $(OBJDIR)
+	python3 tools/png_to_rgn.py $< $@
 
-game/res/rgn_111.bin:
-	@echo "ERROR: game/res/ missing -- run tools/import_assets.py --from <your Ka'roo>" >&2; exit 1
-
-$(RESOBJ): data/karoo.rc game/res/rgn_111.bin $(GAMERES) | $(OBJDIR)
-	i686-w64-mingw32-windres --include-dir=game $< -O coff -o $@
+$(RESOBJ): data/openroo.rc data/openroo.ico $(OBJDIR)/rgn_111.bin | $(OBJDIR)
+	i686-w64-mingw32-windres --include-dir=data --include-dir=$(OBJDIR) $< -O coff -o $@
 
 $(OBJDIR):
 	mkdir -p $@
