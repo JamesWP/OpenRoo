@@ -63,7 +63,7 @@ static float path_param(double t, DWORD period, double bias)
 
 static void eval_path(const SceneObject *o, float t, Vec3 *out)
 {
-    const LinkedList *cp = &o->spline.controlPointList;
+    const LinkedList *cp = o->spline.controlPoints();
     // ListNodeM is LinkedListNode's first two fields.
     const void *head = cp->head();
     bezier_eval((const ListNodeM *)head, cp->count(), t, out);
@@ -366,9 +366,9 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
 
             SplinePath *sp = (SplinePath *)&o->spline;
             if (hooks_GetAsyncKeyState(VK_F3) & 0x8000)
-                Spline_DrawSplinePath(sp, dev, 100, 0xffffffff);
+                sp->drawSplinePath(dev, 100, 0xffffffff);
             if (hooks_GetAsyncKeyState(VK_F4) & 0x8000)
-                Spline_DrawControlPolygon(sp, dev, 0xff808080);
+                sp->drawControlPolygon(dev, 0xff808080);
 
             if (o->texture != NULL)
                 select_texture(dev, o);

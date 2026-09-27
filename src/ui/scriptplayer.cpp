@@ -397,7 +397,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
     }
     if (strcmp(cmd, "splinexyz") == 0) {
         field_92d_ = 1;
-        Spline_PurgeControlPoints(spline);
+        spline->purgeControlPoints();
         memcpy(splinePoint_, g_camera.eye, sizeof(splinePoint_));  // the camera's eye (camera.h)
         start_ = now_;
         // DETERMINISM: an int product widened as unsigned.
@@ -406,7 +406,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
         float y = (float)-atof(strtok(NULL, JJS_DELIMS));
         char *tz = strtok(NULL, JJS_DELIMS);
         float z = (float)atof(tz);
-        Spline_AddControlPoint(spline, x, z, y);  // (x, z, -y)
+        spline->addControlPoint(x, z, y);  // (x, z, -y)
         // Further triples; a point is added only when all three parsed, and a
         // missing value keeps the previous one.  Ends when a z is missing.
         while (tz != NULL) {
@@ -418,7 +418,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
             tz = strtok(NULL, JJS_DELIMS);
             if (tz) { z = (float)atof(tz); ++got; }
             if (got == 3)
-                Spline_AddControlPoint(spline, x, z, y);
+                spline->addControlPoint(x, z, y);
         }
         splineActive_ = 1;
         return 0xb;
@@ -505,8 +505,7 @@ void ScriptPlayer::updateSpline()
     double elapsed = now_ - start_;
     if (elapsed < duration_) {
         float out[3];
-        const float *p = (const float *)Spline_EvalBezierPath(
-            &spline_, out, (float)(elapsed / duration_));
+        const float *p = (const float *)spline_.evalBezierPath(out, (float)(elapsed / duration_));
         memcpy(splinePoint_, p, sizeof(splinePoint_));
     } else {
         eye_[1] = -eye_[1];  // PRESERVED
@@ -576,7 +575,7 @@ static void *const g_ScriptPlayerVtable[1] = { (void *)&ScriptPlayer::scalarDele
 void ScriptPlayer::construct()
 {
     stream_.initialize();
-    Spline_Construct(&spline_);
+    spline_.construct();
     cursor_       = 0;
     splineActive_ = 0;
     soundManager_ = NULL;
@@ -594,7 +593,7 @@ void ScriptPlayer::destruct()
         stream_.releaseResources();
         streamReady_ = 0;
     }
-    Spline_Destruct(&spline_);
+    spline_.destruct();
     stream_.deinitInstance();
 }
 
