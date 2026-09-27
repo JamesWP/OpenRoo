@@ -319,7 +319,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     g_levelPlacements.release();
     delete_game(Game::instance());
     Input_TrySaveSettings();
-    Theme_ReleaseBlock(&g_themeBlock);
+    g_themeBlock.release();
     delete g_renderDevice;
     g_renderDevice = NULL;
     return (int)msg.wParam;

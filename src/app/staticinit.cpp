@@ -32,7 +32,7 @@ void StaticInit_Construct()
     g_logger.construct();
     g_movie.init();
     g_levelPlacements.initTileQuad();
-    Theme_BlockConstruct(&g_themeBlock);
+    g_themeBlock.construct();
     g_fallbackImage.construct();
     g_loadingImage.construct();
     g_texShadow.construct();
@@ -73,7 +73,7 @@ void StaticInit_Destruct()
     g_texShadow.dtorBody();
     g_loadingImage.dtorBody();
     g_fallbackImage.dtorBody();
-    Theme_BlockDestruct(&g_themeBlock);
+    g_themeBlock.destruct();
     g_movie.destruct();
     g_logger.closeAndRebindVtable();
     g_scene.destruct();
