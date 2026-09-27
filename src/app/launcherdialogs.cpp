@@ -185,7 +185,7 @@ static void draw_build_text(HDC hdc)
     version_string("ProductName", name, sizeof(name));
     version_string("ProductVersion", ver, sizeof(ver));
     snprintf(text, sizeof(text), "%s %s %s", name, ver, BUILD_GIT_SHA);
-    int x = 8, y = LAUNCHER_H - 8 - 5 * FONT_SCALE;
+    int x = 11, y = LAUNCHER_H - 11 - 5 * FONT_SCALE;
     HBRUSH shadow = CreateSolidBrush(RGB(0, 0, 0));
     HBRUSH fore   = CreateSolidBrush(RGB(255, 236, 200));
     draw_text_px(hdc, x + FONT_SCALE, y + FONT_SCALE, text, shadow);
