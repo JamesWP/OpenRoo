@@ -38,7 +38,7 @@ static void free_scene_objects()
         SceneObject *o = (SceneObject *)n->value();
         n = n->next();
         if (o != NULL) {
-            Spline_Destruct(&o->spline);
+            o->spline.destruct();
             ::operator delete(o);
         }
     }
@@ -71,7 +71,7 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
         // model's radius are whatever the heap left, and animLoaded is stale
         // unless the .ani loads.
         SceneObject *o = (SceneObject *)::operator new(sizeof(SceneObject));
-        Spline_Construct(&o->spline);
+        o->spline.construct();
 
         o->type = r->kind;
         if (r->kind == EXTRA_MODEL)
@@ -106,9 +106,9 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
         o->splineMode = r->splineMode;
         if (r->splineMode != 0) {
             o->splineTime = r->splineTime;
-            Spline_PurgeControlPoints(&o->spline);
+            o->spline.purgeControlPoints();
             for (unsigned k = 0; k < r->splinePointCount; ++k)
-                Spline_AddControlPoint(&o->spline, r->splinePoints[k][0],
+                o->spline.addControlPoint(r->splinePoints[k][0],
                                        r->splinePoints[k][2],
                                        -r->splinePoints[k][1]);
         }

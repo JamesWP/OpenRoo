@@ -57,39 +57,38 @@ static void fx_init(void)
         run_selfcheck();
 }
 
-static void *s_vtable[1] = { (void *)&Spline_ScalarDestructor };
+static void *s_vtable[1] = { (void *)&SplinePath::scalarDestructor };
 
-SplinePath *__attribute__((thiscall)) Spline_Construct(SplinePath *self)
+SplinePath *SplinePath::construct()
 {
     fx_init();
     if (s_diag)
         ++s_ctors;
-    self->controlPointList.init();
-    self->vtable = s_vtable;
-    return self;
+    controlPointList_.init();
+    vtable_ = s_vtable;
+    return this;
 }
 
-void __attribute__((thiscall)) Spline_Destruct(SplinePath *self)
+void SplinePath::destruct()
 {
     fx_init();
     if (s_diag)
         ++s_dtors;
-    self->vtable = s_vtable;
-    Spline_PurgeControlPoints(self);
-    self->controlPointList.destruct();
+    vtable_ = s_vtable;
+    purgeControlPoints();
+    controlPointList_.destruct();
 }
 
-SplinePath *__attribute__((thiscall))
-Spline_ScalarDestructor(SplinePath *self, unsigned char bFreeSelf)
+SplinePath * __attribute__((thiscall))
+SplinePath::scalarDestructor(SplinePath *self, unsigned char bFreeSelf)
 {
-    Spline_Destruct(self);
+    self->destruct();
     if (bFreeSelf & 1)
         free(self);
     return self;
 }
 
-void __attribute__((thiscall))
-Spline_AddControlPoint(SplinePath *self, float x, float y, float z)
+void SplinePath::addControlPoint(float x, float y, float z)
 {
     SplineControlPoint *p =
         (SplineControlPoint *)malloc(sizeof(SplineControlPoint));
@@ -101,12 +100,12 @@ Spline_AddControlPoint(SplinePath *self, float x, float y, float z)
     p->flX = x;  // PRESERVED: a failed malloc is not checked.
     p->flY = y;
     p->flZ = z;
-    self->controlPointList.append(p);
+    controlPointList_.append(p);
 }
 
-void __attribute__((thiscall)) Spline_PurgeControlPoints(SplinePath *self)
+void SplinePath::purgeControlPoints()
 {
-    LinkedListNode *node = self->controlPointList.head();
+    LinkedListNode *node = controlPointList_.head();
 
     fx_init();
     if (s_diag)
@@ -118,14 +117,13 @@ void __attribute__((thiscall)) Spline_PurgeControlPoints(SplinePath *self)
         if (value != 0)
             free(value);
     }
-    self->controlPointList.clear();
+    controlPointList_.clear();
 }
 
-float *__attribute__((thiscall))
-Spline_EvalBezierPath(SplinePath *self, float *out, float t)
+float *SplinePath::evalBezierPath(float *out, float t)
 {
-    unsigned int    n    = (unsigned int)self->controlPointList.count();
-    LinkedListNode *node = self->controlPointList.head();
+    unsigned int    n    = (unsigned int)controlPointList_.count();
+    LinkedListNode *node = controlPointList_.head();
     float           ax = 0.0f, ay = 0.0f, az = 0.0f;
     unsigned int    i;
 
@@ -213,45 +211,45 @@ static void run_selfcheck(void)
     log_write("splinepath: KAROO_SPLINE_SELFCHECK -- EvalBezierPath against "
               "the closed-form Bernstein polynomial\n");
 
-    Spline_Construct(&sp);
+    sp.construct();
     out[0] = out[1] = out[2] = 12345.0f;
-    Spline_EvalBezierPath(&sp, out, 0.5f);
+    sp.evalBezierPath(out, 0.5f);
     bad += check_point("n=0 empty path is (0,0,0)", out, 0, 0, 0);
 
-    Spline_AddControlPoint(&sp, 1.0f, 2.0f, 3.0f);
+    sp.addControlPoint(1.0f, 2.0f, 3.0f);
     for (t = 0.0f; t <= 1.0f; t += 0.5f) {
-        Spline_EvalBezierPath(&sp, out, t);
+        sp.evalBezierPath(out, t);
         bad += check_point("n=1 is constant", out, 1, 2, 3);
     }
 
-    Spline_AddControlPoint(&sp, 5.0f, 6.0f, 7.0f);
-    Spline_EvalBezierPath(&sp, out, 0.0f);
+    sp.addControlPoint(5.0f, 6.0f, 7.0f);
+    sp.evalBezierPath(out, 0.0f);
     bad += check_point("n=2 at t=0 is P0", out, 1, 2, 3);
-    Spline_EvalBezierPath(&sp, out, 1.0f);
+    sp.evalBezierPath(out, 1.0f);
     bad += check_point("n=2 at t=1 is P1", out, 5, 6, 7);
-    Spline_EvalBezierPath(&sp, out, 0.25f);
+    sp.evalBezierPath(out, 0.25f);
     bad += check_point("n=2 at t=0.25 is the quarter point", out, 2, 3, 4);
 
-    Spline_PurgeControlPoints(&sp);
-    Spline_AddControlPoint(&sp, 0.0f, 0.0f, 0.0f);
-    Spline_AddControlPoint(&sp, 4.0f, 0.0f, 0.0f);
-    Spline_AddControlPoint(&sp, 4.0f, 4.0f, 0.0f);
-    Spline_EvalBezierPath(&sp, out, 0.5f);
+    sp.purgeControlPoints();
+    sp.addControlPoint(0.0f, 0.0f, 0.0f);
+    sp.addControlPoint(4.0f, 0.0f, 0.0f);
+    sp.addControlPoint(4.0f, 4.0f, 0.0f);
+    sp.evalBezierPath(out, 0.5f);
     bad += check_point("n=3 at t=0.5 is (3,1,0)", out, 3, 1, 0);
-    Spline_EvalBezierPath(&sp, out, 1.0f);
+    sp.evalBezierPath(out, 1.0f);
     bad += check_point("n=3 at t=1 is P2", out, 4, 4, 0);
 
-    Spline_PurgeControlPoints(&sp);
-    Spline_AddControlPoint(&sp, 0.0f, 0.0f, 0.0f);
-    Spline_AddControlPoint(&sp, 0.0f, 3.0f, 0.0f);
-    Spline_AddControlPoint(&sp, 3.0f, 3.0f, 0.0f);
-    Spline_AddControlPoint(&sp, 3.0f, 0.0f, 0.0f);
-    Spline_EvalBezierPath(&sp, out, 0.5f);
+    sp.purgeControlPoints();
+    sp.addControlPoint(0.0f, 0.0f, 0.0f);
+    sp.addControlPoint(0.0f, 3.0f, 0.0f);
+    sp.addControlPoint(3.0f, 3.0f, 0.0f);
+    sp.addControlPoint(3.0f, 0.0f, 0.0f);
+    sp.evalBezierPath(out, 0.5f);
     bad += check_point("n=4 at t=0.5 is (1.5,2.25,0)", out, 1.5f, 2.25f, 0.0f);
-    Spline_EvalBezierPath(&sp, out, 0.0f);
+    sp.evalBezierPath(out, 0.0f);
     bad += check_point("n=4 at t=0 is P0", out, 0, 0, 0);
 
-    Spline_Destruct(&sp);
+    sp.destruct();
     log_write("splinepath: selfcheck %s (%d failure%s)\n",
               bad ? "FAIL" : "PASS", bad, bad == 1 ? "" : "s");
 }
@@ -276,8 +274,7 @@ static long draw_strip(void *dev, void *verts, DWORD count)
 /* On a failed allocation the original writes through the null pointer and
  * faults; that cannot be expressed in C, so the stores are guarded and only
  * the null buffer reaches DrawPrimitive.  No gate reaches the path. */
-long __attribute__((thiscall))
-Spline_DrawSplinePath(SplinePath *self, RenderDevice *dev,
+long SplinePath::drawSplinePath(RenderDevice *dev,
                       unsigned int numsegments, unsigned long color)
 {
     SplineVertex *verts =
@@ -291,7 +288,7 @@ Spline_DrawSplinePath(SplinePath *self, RenderDevice *dev,
         SplineVertex v;
         float        pt[3];
 
-        Spline_EvalBezierPath(self, pt, (float)((double)i * step));
+        evalBezierPath(pt, (float)((double)i * step));
         v.x = pt[0]; v.y = pt[1]; v.z = pt[2];
         v.zero = 0; v.diffuse = color; v.specular = 0;
         v.u = 0.0f; v.v = 0.0f;
@@ -307,13 +304,12 @@ Spline_DrawSplinePath(SplinePath *self, RenderDevice *dev,
     return hr;
 }
 
-long __attribute__((thiscall))
-Spline_DrawControlPolygon(SplinePath *self, RenderDevice *dev,
+long SplinePath::drawControlPolygon(RenderDevice *dev,
                           unsigned long color)
 {
-    unsigned int    n     = (unsigned int)self->controlPointList.count();
+    unsigned int    n     = (unsigned int)controlPointList_.count();
     SplineVertex   *verts = (SplineVertex *)malloc(n * 32);
-    LinkedListNode *node  = self->controlPointList.head();
+    LinkedListNode *node  = controlPointList_.head();
     unsigned int    i     = 0;
     long            hr;
 
