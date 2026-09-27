@@ -299,6 +299,7 @@ static unsigned long s_ticks = 0;
 static int s_logged_first   = 0;
 static int s_logged_stamp   = 0;
 static int s_logged_unstamp = 0;
+/* C-linkage entry points. */
 
 void BridgeObject::tick()
 {
@@ -567,13 +568,6 @@ bool BridgeObject::buildSurface(BridgeVertex v[4], double t, bool backward,
     info->len  = len;
     info->f    = f;
     return true;
-}
-
-/* C-linkage entry points. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_UpdateBridgeObject(BridgeObject *self)
-{
-    self->tick();
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))

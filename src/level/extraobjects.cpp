@@ -128,12 +128,6 @@ void ExtraObjects::recDump(const char *path)
     fclose(f);
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Leo_OpenExtraObjectsFile(ExtraObjects *self, const char *name)
-{
-    return self->openFile(name);
-}
-
 int ExtraObjects::openFile(const char *name)
 {
     char path[512];
@@ -230,12 +224,6 @@ static void diag_init(void)
 unsigned ExtraObjects::releasedCount()
 {
     return s_released;
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Leo_ReleaseExtraObjectSoundBuffers(ExtraObjects *self)
-{
-    self->releaseSounds();
 }
 
 void ExtraObjects::releaseSounds()
@@ -565,19 +553,6 @@ void ExtraObjects::construct()
 void ExtraObjects::destruct()
 {
     vtable_ = g_LeoVtable;
-}
-
-extern "C" __declspec(dllexport) ExtraObjects *__attribute__((thiscall))
-Leo_Construct(ExtraObjects *self)
-{
-    self->construct();
-    return self;
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Leo_Destruct(ExtraObjects *self)
-{
-    self->destruct();
 }
 
 extern "C" __declspec(dllexport) ExtraObjects *__attribute__((thiscall))

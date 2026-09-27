@@ -45,7 +45,7 @@ Game *Game::construct(const char *gameName)
     rootMenu_.construct();
     cdThemes_.construct();
     ThemeSound_Construct(&themeSounds_);
-    Leo_Construct(&extraObjects_);
+    extraObjects_.construct();
     soundManager()->construct();
     cheatEntry_.construct();
     highScores_.construct();
@@ -114,7 +114,7 @@ Game *Game::construct(const char *gameName)
     saveSlots_.setCount(6);
     if (!Save_LoadAllSlotFiles(&saveSlots_, gameFileName_, SAVE_KEY)) {
         GameLog_LogMessage(&g_logger, 3, GS_GAME_NO_SAVES, (unsigned)saveSlots_.count());
-        SaveSlots_InitialiseEmpty(&saveSlots_);
+        saveSlots_.initialiseEmpty();
         Save_WriteAllSlotFiles(&saveSlots_, gameFileName_, SAVE_KEY);
     }
     field_173584_ = 0;
@@ -128,10 +128,10 @@ Game *Game::construct(const char *gameName)
     g_progCtrl.setJoyDeadzone(4, config_.joyDeadzone() * 100);
 
     highScores_.setCount(10);
-    if (!HighScore_ReadFile(&highScores_, gameFileName_, HIGHSCORE_KEY)) {
+    if (!highScores_.readFile(gameFileName_, HIGHSCORE_KEY)) {
         GameLog_LogMessage(&g_logger, 3, GS_GAME_NO_HIGHSCORES);
         highScores_.fillDefaults();
-        HighScore_WriteFile(&highScores_, gameFileName_, HIGHSCORE_KEY);
+        highScores_.writeFile(gameFileName_, HIGHSCORE_KEY);
     } else {
         GameLog_LogMessage(&g_logger, 1, GS_GAME_HIGHSCORES_LOADED);
     }
@@ -198,14 +198,14 @@ void Game::destruct()
     bombCount_      = 0;
     switchMax_      = 0;
     config_.setCameraDistanceSetting(zoomDistance_);
-    if (HighScore_WriteFile(&highScores_, gameFileName_, HIGHSCORE_KEY))
+    if (highScores_.writeFile(gameFileName_, HIGHSCORE_KEY))
         GameLog_LogMessage(&g_logger, 1, GS_GAME_HIGHSCORES_SAVED);
     if (Config_Save(&config_, GS_CFG_FILE))
         GameLog_LogMessage(&g_logger, 1, GS_CFG_SAVE_OK);
     else
         GameLog_LogMessage(&g_logger, 3, GS_CFG_SAVE_ERR);
-    JJScript_ReleaseScriptStreamBuffers(&scriptPlayer_);
-    Leo_ReleaseExtraObjectSoundBuffers(&extraObjects_);
+    scriptPlayer_.releaseStreams();
+    extraObjects_.releaseSounds();
     releaseAllSounds();
     GameLog_LogMessage(&g_logger, 1, GS_GAME_SOUNDS_RELEASED);
     soundManager()->purgeAssets();
@@ -222,7 +222,7 @@ void Game::destruct()
     highScores_.destruct();
     cheatEntry_.destruct();
     soundManager()->destruct();
-    Leo_Destruct(&extraObjects_);
+    extraObjects_.destruct();
     ThemeSound_Destruct(&themeSounds_);
     cdThemes_.destruct();
     rootMenu_.destruct();

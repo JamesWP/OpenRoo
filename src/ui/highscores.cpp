@@ -33,12 +33,6 @@ static void ps_log(const char *what, const char *path, int ok)
     }
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-HighScore_ReadFile(HighScoreTable *self, const char *name, char key)
-{
-    return self->readFile(name, key);
-}
-
 int HighScoreTable::readFile(const char *name, char key)
 {
     unsigned char *data = (unsigned char *)records_;
@@ -61,12 +55,6 @@ int HighScoreTable::readFile(const char *name, char key)
     fclose(fp);
     ps_log("hsc load", path, 1);
     return 1;
-}
-
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-HighScore_WriteFile(HighScoreTable *self, const char *name, char key)
-{
-    return self->writeFile(name, key);
 }
 
 int HighScoreTable::writeFile(const char *name, char key)
@@ -99,13 +87,6 @@ int HighScoreTable::writeFile(const char *name, char key)
  * KAROO_SIM_FX=hsnoplace is a negative control: no score places, so the game
  * never asks for a name. */
 static int s_hs_fx = -1;
-
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_InsertScoreIntoHighScoreTable(HighScoreTable *self, unsigned int score,
-                                  unsigned char levelId)
-{
-    return self->insert(score, levelId);
-}
 
 unsigned int HighScoreTable::insert(unsigned int score, unsigned char levelId)
 {

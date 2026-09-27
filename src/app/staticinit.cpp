@@ -39,8 +39,8 @@ void StaticInit_Construct()
     Texture_SceneCtor(&g_texShadow);
     FaktMesh_Init(&g_meshPlayer);
     FaktMesh_Init(&g_meshEnemy);
-    Text_Construct(&g_fontMain);
-    Text_Construct(&g_fontNumbers);
+    g_fontMain.construct();
+    g_fontNumbers.construct();
     TextureManager_Construct(&g_textureManager);
     ModelManager_Construct(&g_modelManager);
     g_cdAudio.construct();
@@ -67,8 +67,8 @@ void StaticInit_Destruct()
     g_cdAudio.stopAndClose();
     ModelManager_Destruct(&g_modelManager);
     TextureManager_Destruct(&g_textureManager);
-    Text_DtorBody(&g_fontNumbers);
-    Text_DtorBody(&g_fontMain);
+    g_fontNumbers.destruct();
+    g_fontMain.destruct();
     FaktMesh_DtorBody(&g_meshEnemy);
     FaktMesh_DtorBody(&g_meshPlayer);
     Texture_SceneDtorBody(&g_texShadow);

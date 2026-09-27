@@ -672,19 +672,6 @@ Sim_RemoveFoeObject(Game *self, unsigned int idArg)
     Foe::remove(self, idArg);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_UpdateFoeObjectStep(Foe *self, unsigned char playerU, unsigned char playerV)
-{
-    self->step(playerU, playerV);
-}
-
-extern "C" __declspec(dllexport) unsigned char __attribute__((thiscall))
-Sim_SetFoeChaseTarget(Foe *self, unsigned char targetU, unsigned char targetV,
-                      unsigned short speed)
-{
-    return self->chase(targetU, targetV, speed);
-}
-
 /* GameTick's foe loop calls chooseTarget once per foe to pick this tick's
  * target, then dropBomb, checkPlayerContact and finishDespawn as needed; the
  * Game and Player values it passes are read once, here. */

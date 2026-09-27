@@ -132,11 +132,11 @@ Render_ConfigureRenderState(void)
     DirectionalLight light = { { 0.8f, 0.8f, 0.8f, 1.0f }, { 1.0f, -1.1f, 1.2f } };
     d3d->SetDirectionalLight(light);
 
-    if (!(char)Text_LoadFont(&g_fontMain, "fonts\\font1.fon", d3d)) {
+    if (!(char)g_fontMain.load("fonts\\font1.fon", d3d)) {
         GameLog_LogMessage(&g_logger, 4, "Couldn't create Font font1.fon");
         PostQuitMessage(1);
     }
-    if (!(char)Text_LoadFont(&g_fontNumbers, "fonts\\numbers.fon", d3d)) {
+    if (!(char)g_fontNumbers.load("fonts\\numbers.fon", d3d)) {
         GameLog_LogMessage(&g_logger, 4, "Couldn't create Font numbers.fon");
         PostQuitMessage(1);
     }

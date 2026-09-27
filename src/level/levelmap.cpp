@@ -125,12 +125,6 @@ int LevelMap::readFile(const char *path)
     return 1;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-LevelMap_ReadFile(LevelMap *self, const char *path)
-{
-    return self->readFile(path);
-}
-
 static void *const g_LevelMapVtable[1] = { (void *)&LevelMap_ScalarDestructor };
 
 /* The vtable and the two extent bytes; the rest is left as it was. */

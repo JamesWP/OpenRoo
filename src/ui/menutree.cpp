@@ -96,12 +96,6 @@ void MenuTree::push(unsigned char node)
     diag_census();
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PopMenuNodeFromStack(MenuTree *self)
-{
-    self->pop();
-}
-
 void MenuTree::pop()
 {
     unsigned char depth;
@@ -126,12 +120,6 @@ void MenuTree::pop()
                   "depth=%u\n", depth, node, cursor_, depth_);
     }
     diag_census();
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RewindMenuStackToRootNode(MenuTree *self)
-{
-    self->rewind();
 }
 
 void MenuTree::rewind()
@@ -162,12 +150,6 @@ void MenuTree::rewind()
 #define KEY(k)  hooks_GetAsyncKeyState(k)
 
 static int s_fx_menuwrap = -1;
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_NavigateMenuTree(MenuTree *self, int now)
-{
-    self->navigate(now);
-}
 
 void MenuTree::navigate(int now)
 {
