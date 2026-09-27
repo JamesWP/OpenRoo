@@ -9,6 +9,7 @@
 #include "splinepath.h"
 #include <stdlib.h>
 #include "log.h"
+#include "renderdevice.h"
 
 /* KAROO_SIM_FX=splinerev evaluates every path backwards (t -> 1 - t);
  * KAROO_SPLINE_DIAG=N logs a census every N evaluations;
@@ -269,14 +270,14 @@ struct SplineVertex {
 static long draw_strip(void *dev, void *verts, DWORD count)
 {
     return ((DrawP_fn)((DevShim *)dev)->lpVtbl->slot[0x70 / 4])(
-        dev, 3 , 0x1e2, verts, count, 0);  // D3DPT_LINESTRIP
+        dev, 3 , 0x1e2, verts, count, 0);  // Prim::LineStrip
 }
 
 /* On a failed allocation the original writes through the null pointer and
  * faults; that cannot be expressed in C, so the stores are guarded and only
  * the null buffer reaches DrawPrimitive.  No gate reaches the path. */
 long __attribute__((thiscall))
-Spline_DrawSplinePath(SplinePath *self, IDirect3DDevice3 *dev,
+Spline_DrawSplinePath(SplinePath *self, RenderDevice *dev,
                       unsigned int numsegments, unsigned long color)
 {
     SplineVertex *verts =
@@ -307,7 +308,7 @@ Spline_DrawSplinePath(SplinePath *self, IDirect3DDevice3 *dev,
 }
 
 long __attribute__((thiscall))
-Spline_DrawControlPolygon(SplinePath *self, IDirect3DDevice3 *dev,
+Spline_DrawControlPolygon(SplinePath *self, RenderDevice *dev,
                           unsigned long color)
 {
     unsigned int    n     = (unsigned int)self->controlPointList.dwCount;

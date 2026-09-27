@@ -15,7 +15,7 @@
 
 class Game;
 class ThemeObjectTypeSlot;
-struct RenderDevice;
+class RenderDevice;
 
 extern "C" __declspec(dllexport) void __cdecl
 Theme_DrawParticleObjects(Game *g, void *unused, const float (*pos)[3],

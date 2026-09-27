@@ -252,8 +252,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
         GameLog_LogSourceLocation(&g_logger, 4,
             "src/app/main.cpp", __LINE__,
             "Creation of Direct3D failed");
-        if (d3d->pDD4)
-            d3d->pDD4->RestoreDisplayMode();
+        d3d->RestoreDisplayMode();
         MessageBoxA(NULL, d3d->lastError(), "Error!", MB_ICONHAND);
         delete d3d;
         delete_game(game);
@@ -279,9 +278,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     // The movie draws through the DirectDraw 1 interface and the primary
     // surface's version-1 interface.
     IDirectDraw *dd1 = NULL;
-    d3d->pDD4->QueryInterface(IID_IDirectDraw, (void **)&dd1);
-    d3d->pPrimary->QueryInterface(IID_IDirectDrawSurface,
-                                  (void **)&g_movieSurface);
+    d3d->GetMovieTarget((void **)&dd1, (void **)&g_movieSurface);
 
     // The movie's overlay colour key: on, CK_RGB, black to black.  Nothing
     // plays a movie yet (movie.cpp), so it is set for a player that would use

@@ -131,7 +131,7 @@ static unsigned int anim_frame(ThemeLevelObject *rec, double now, float animTime
 
 static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
                        const Tile *tile, const Vec3 *pos, const Vec3 *rot,
-                       IDirect3DDevice3 *dev, double now, float animTime,
+                       RenderDevice *dev, double now, float animTime,
                        unsigned int animCode, unsigned int dtMs)
 {
     Vec3 P = { rec->flPosX, rec->flPosY, rec->flPosZ };
@@ -175,7 +175,7 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
 
     mat_translate(&R, P.x + pos->x, P.y + pos->y, P.z + pos->z);
     mat_mul(&M, &M, &R);
-    dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&M);
+    dev->SetTransform(Transform::World, &M);
 
     unsigned int frame = anim_frame(rec, now, animTime, animCode);
     const float *p = sub->flEffectParams;
@@ -210,7 +210,7 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
 }
 
 static void draw_billboard(ThemeLevelObject *rec, const Tile *tile, const Vec3 *pos,
-                           IDirect3DDevice3 *dev, double now)
+                           RenderDevice *dev, double now)
 {
     Vec3 corner[4];
     Math_BuildBillboardQuad(corner,
@@ -227,8 +227,8 @@ static void draw_billboard(ThemeLevelObject *rec, const Tile *tile, const Vec3 *
     float y = oscillate(rec, tile, now, rec->flPosY);
     Mat4 T;
     mat_translate(&T, rec->flPosX + pos->x, y + pos->y, rec->flPosZ + pos->z);
-    dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&T);
-    dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0x1e2, v, 4, 0);
+    dev->SetTransform(Transform::World, &T);
+    dev->Draw(Prim::TriangleStrip, VertexFormat::Lit, v, 4, 0);
 }
 
 /* Effect 3's corner: (x, y, 0, 1) through M, divided by w unless w is 1,
@@ -252,16 +252,16 @@ static void rotated_corner(const Mat4 *M, float x, float y, float *u, float *v)
 }
 
 static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
-                      IDirect3DDevice3 *dev, double now)
+                      RenderDevice *dev, double now)
 {
     Mat4 T;
     mat_translate(&T, pos->x, pos->y, pos->z);
-    dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&T);
+    dev->SetTransform(Transform::World, &T);
     for (int i = 0; i < 4; i++)
         q[i].diffuse = 0x0fffffff;
 
     if (sub->effect == 0) {
-        dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0x242, q, 4, 0);
+        dev->Draw(Prim::TriangleStrip, VertexFormat::Diffuse2, q, 4, 0);
         return;
     }
 
@@ -342,15 +342,12 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
         break;
     }
 
-    D3DDRAWPRIMITIVESTRIDEDDATA sd;
-    memset(&sd, 0, sizeof(sd));
-    sd.position.lpvData         = &q[0].x;
-    sd.position.dwStride        = sizeof(SceneQuadVertex);
-    sd.diffuse.lpvData          = &q[0].diffuse;
-    sd.diffuse.dwStride         = sizeof(SceneQuadVertex);
-    sd.textureCoords[0].lpvData = &q[0].u1;
-    sd.textureCoords[0].dwStride = sizeof(SceneQuadVertex);
-    hooks_SceneQuadDrawStrided(dev, D3DPT_TRIANGLESTRIP, 0x242, &sd, 4, 0);
+    StridedVertices sv;
+    memset(&sv, 0, sizeof(sv));
+    sv.position     = { &q[0].x,       sizeof(SceneQuadVertex) };
+    sv.diffuse      = { &q[0].diffuse, sizeof(SceneQuadVertex) };
+    sv.texCoords[0] = { &q[0].u1,      sizeof(SceneQuadVertex) };
+    SceneQuad_Draw(dev, &sv, 4);
 }
 
 extern "C" __declspec(dllexport) void __cdecl
@@ -364,18 +361,18 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
 
     for (unsigned int i = 0; i < slot->dwInstanceCount; i++) {
         ThemeLevelObject *rec = &slot->records[i];
-        IDirect3DDevice3 *dev = d3d->pDevice;
+        RenderDevice *dev = d3d;
         if (rec->bSpecular && cfg->videoHighlights())
-            dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 1);
-        dev->SetRenderState(D3DRENDERSTATE_ZWRITEENABLE, rec->bNoZWrite ? 0 : 1);
+            dev->SetRenderState(RS::SpecularEnable, 1);
+        dev->SetRenderState(RS::ZWriteEnable, rec->bNoZWrite ? 0 : 1);
 
         for (unsigned int s = 0; s < rec->dwSubObjectCount; s++) {
             SceneSubObject *sub = &rec->pSubObjects[s];
             if (sub->effect == 5 && !cfg->videoReflection())
                 continue;
-            DWORD addr = sub->dwTexAddress != 0 ? sub->dwTexAddress : (DWORD)D3DTADDRESS_CLAMP;
-            d3d->pDevice->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSU, addr);
-            d3d->pDevice->SetRenderState(D3DRENDERSTATE_TEXTUREADDRESSV, addr);
+            DWORD addr = sub->dwTexAddress != 0 ? sub->dwTexAddress : (DWORD)TexAddress::Clamp;
+            d3d->SetRenderState(RS::TextureAddressU, addr);
+            d3d->SetRenderState(RS::TextureAddressV, addr);
 
             for (unsigned int k = 0; k < count; k++) {
                 const Vec3 *pos = &positions[k];
@@ -383,14 +380,14 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
                 if (!gate_passes(sub->dwVisibilityGate, tile, pl))
                     continue;
 
-                dev = d3d->pDevice;
+                dev = d3d;
                 dev->SetTexture(0, sub->pTexture != NULL ? sub->pTexture->pTexture2 : NULL);
                 if (sub->dwBlendSrc != 0 && sub->dwBlendDst != 0) {
-                    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-                    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, sub->dwBlendSrc);
-                    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, sub->dwBlendDst);
+                    dev->SetRenderState(RS::AlphaBlendEnable, 1);
+                    dev->SetRenderState(RS::SrcBlend, sub->dwBlendSrc);
+                    dev->SetRenderState(RS::DestBlend, sub->dwBlendDst);
                 } else {
-                    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
+                    dev->SetRenderState(RS::AlphaBlendEnable, 0);
                 }
 
                 switch (rec->kind) {
@@ -409,6 +406,6 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
                 }
             }
         }
-        d3d->pDevice->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
+        d3d->SetRenderState(RS::SpecularEnable, 0);
     }
 }

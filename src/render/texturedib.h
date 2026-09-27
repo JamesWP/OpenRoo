@@ -2,10 +2,11 @@
 #pragma once
 
 #include <windows.h>
-#include "renderdevice.h"
+struct LoadedImage;
+class RenderDevice;
 
 /* Load a .bmp into a new surface;
  * the low byte of the result is the success flag. */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureDIB_CreateSurface(LoadedImage *self, IDirectDraw4 *dd, LPCSTR name,
+TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
                          char bSysMem);

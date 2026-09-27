@@ -2,7 +2,7 @@
  * lifecycle (textrenderer.h).
  *
  * drawLeft issues one DrawPrimitive per character: a four-vertex
- * D3DPT_TRIANGLEFAN in screen space.  Per glyph, with g = (unsigned
+ * Prim::TriangleFan in screen space.  Per glyph, with g = (unsigned
  * char)(str[i] - firstChar):
  *
  *   cell  = (g % cols, g / cols)                    unsigned div, both times
@@ -34,8 +34,7 @@ TextRenderer g_fontNumbers;
 /* FVF 0x1C4 is 32 bytes: the SPECULAR set is really written (0xff000000 into
  * every vertex).  A shorter vertex would hand the driver a stride four bytes
  * short of what the FVF declares. */
-#define TEXT_FVF  (D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | \
-                   D3DFVF_TEX1)
+#define TEXT_FVF  VertexFormat::Screen
 
 struct TextVertex {
     float x, y, z, rhw;
@@ -44,8 +43,7 @@ struct TextVertex {
     float u, v;
 };
 
-static_assert(sizeof(TextVertex) == 32, "FVF 0x1C4 vertex is 32 bytes");
-static_assert(TEXT_FVF == 0x1c4, "FVF constant must match the original's");
+static_assert(sizeof(TextVertex) == sizeof(ScreenVertex), "TextVertex is a ScreenVertex");
 
 /* KAROO_TEXT_FX -- controls that change direction, each of which only one
  * piece of this file can produce:
@@ -145,11 +143,11 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
     const float invCols = 1.0f / (float)(int)cols_;
     const float invRows = 1.0f / (float)(int)rows_;
 
-    IDirect3DDevice3 *dev = d3d->pDevice;
+    RenderDevice *dev = d3d;
     dev->SetTexture(0, atlas_.pTexture2);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND,         D3DBLEND_SRCALPHA);
-    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND,        D3DBLEND_INVSRCALPHA);
-    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
+    dev->SetRenderState(RS::SrcBlend,         Blend::SrcAlpha);
+    dev->SetRenderState(RS::DestBlend,        Blend::InvSrcAlpha);
+    dev->SetRenderState(RS::AlphaBlendEnable, 1);
 
     if (strlen(str) == 0) {
         ++g_nEmpty;
@@ -184,7 +182,7 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
         quad[2].x = x + cellW;  quad[2].u = u + invCols; quad[2].v = v + invRows;
         quad[3].x = x;          quad[3].u = u;           quad[3].v = v + invRows;
 
-        d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLEFAN, TEXT_FVF, quad, 4, 0);
+        d3d->Draw(Prim::TriangleFan, TEXT_FVF, quad, 4, 0);
         ++g_nGlyphs;
 
         x += advance;
@@ -245,7 +243,7 @@ unsigned int TextRenderer::load(const char *path, RenderDevice *d3d)
     line[strlen(line) - 1] = '\0';
 
     const unsigned int ok = Texture_ImportSceneTextures(
-        this->atlas(), d3d->pDD4, d3d->pDevice, line, 1, 0, 0);
+        this->atlas(), d3d, line, 1, 0, 0);
     if ((ok & 0xffu) == 0)
         return ok;  // its result, upper bytes and all
 
@@ -380,11 +378,11 @@ void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
     const float invCols = 1.0f / (float)(int)cols_;
     const float invRows = 1.0f / (float)(int)rows_;
 
-    IDirect3DDevice3 *dev = d3d->pDevice;
+    RenderDevice *dev = d3d;
     dev->SetTexture(0, atlas_.pTexture2);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND,         D3DBLEND_SRCALPHA);
-    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND,        D3DBLEND_INVSRCALPHA);
-    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
+    dev->SetRenderState(RS::SrcBlend,         Blend::SrcAlpha);
+    dev->SetRenderState(RS::DestBlend,        Blend::InvSrcAlpha);
+    dev->SetRenderState(RS::AlphaBlendEnable, 1);
 
     if (strlen(str) == 0)
         return;
@@ -425,7 +423,7 @@ void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
         quad[2].u = u + invCols;  quad[2].v = v + invRows;
         quad[3].u = u;            quad[3].v = v + invRows;
 
-        dev->DrawPrimitive(D3DPT_TRIANGLEFAN, TEXT_FVF, quad, 4, 0);
+        dev->Draw(Prim::TriangleFan, TEXT_FVF, quad, 4, 0);
         ++g_nWobbleGlyphs;
 
         i2 += step;
@@ -552,13 +550,13 @@ void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
     const float x0 = x;
     y = y - (float)lines * lineH;
 
-    IDirect3DDevice3 *dev = d3d->pDevice;
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND,         D3DBLEND_SRCALPHA);
-    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND,        D3DBLEND_INVSRCALPHA);
-    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
+    RenderDevice *dev = d3d;
+    dev->SetRenderState(RS::SrcBlend,         Blend::SrcAlpha);
+    dev->SetRenderState(RS::DestBlend,        Blend::InvSrcAlpha);
+    dev->SetRenderState(RS::AlphaBlendEnable, 1);
 
-    const float W = (float)d3d->pSelectedMode->dwWidth;
-    const float H = (float)d3d->pSelectedMode->dwHeight;
+    const float W = (float)d3d->width();
+    const float H = (float)d3d->height();
 
     TextVertex strip[4];
     for (int k = 0; k < 4; k++) {
@@ -574,7 +572,7 @@ void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
     strip[2].x = 0; strip[2].y = top1; strip[2].u = 0.4f; strip[2].v = 0.4f;
     strip[3].x = 0; strip[3].y = H;    strip[3].u = 0.4f; strip[3].v = 0.6f;
     dev->SetTexture(0, panelTex ? panelTex->pTexture2 : NULL);
-    dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, TEXT_FVF, strip, 4, 0);
+    dev->Draw(Prim::TriangleStrip, TEXT_FVF, strip, 4, 0);
 
     const float top2 = y - W * 0.015625f;
     const float bot2 = y - W * 0.00625f;
@@ -584,7 +582,7 @@ void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
     strip[3].x = 0; strip[3].y = bot2; strip[3].u = 0.0f; strip[3].v = 1.0f;
     if (frameTex) {
         dev->SetTexture(0, frameTex->pTexture2);
-        dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, TEXT_FVF, strip, 4, 0);
+        dev->Draw(Prim::TriangleStrip, TEXT_FVF, strip, 4, 0);
     }
 
     dev->SetTexture(0, atlas_.pTexture2);
@@ -610,12 +608,12 @@ void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
         quad[1].x = x1; quad[1].y = y;  quad[1].u = u + du; quad[1].v = v;      quad[1].diffuse = colourTop;
         quad[2].x = x1; quad[2].y = y1; quad[2].u = u + du; quad[2].v = v + dv; quad[2].diffuse = colourBottom;
         quad[3].x = x;  quad[3].y = y1; quad[3].u = u;      quad[3].v = v + dv; quad[3].diffuse = colourBottom;
-        dev->DrawPrimitive(D3DPT_TRIANGLEFAN, TEXT_FVF, quad, 4, 0);
+        dev->Draw(Prim::TriangleFan, TEXT_FVF, quad, 4, 0);
 
         x += cellW * spacing;
     }
 
-    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
+    dev->SetRenderState(RS::AlphaBlendEnable, 0);
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))

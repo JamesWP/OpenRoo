@@ -60,7 +60,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                           ThemeObjectTypeSlot *slot, RenderDevice *d3d,
                           double t, double dt, DWORD system)
 {
-    IDirect3DDevice3 *dev = d3d->pDevice;
+    RenderDevice *dev = d3d;
     const Player *player = g->player();
     LevelMap *map = g->map();
 
@@ -68,7 +68,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
         ThemeLevelObject *rec = &slot->records[r];
 
         if (rec->bSpecular != 0 && g->videoHighlights() != 0)
-            dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 1);
+            dev->SetRenderState(RS::SpecularEnable, 1);
 
         if (rec->kind == THEME_KIND_PARTICLESYSTEM)
             ps_vtick(rec->pParticleSystems[system], (float)(dt * K_MS));
@@ -88,11 +88,11 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
 
                 dev->SetTexture(0, sub.pTexture ? sub.pTexture->pTexture2 : NULL);
                 if (sub.dwBlendSrc != 0 && sub.dwBlendDst != 0) {
-                    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-                    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, sub.dwBlendSrc);
-                    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, sub.dwBlendDst);
+                    dev->SetRenderState(RS::AlphaBlendEnable, 1);
+                    dev->SetRenderState(RS::SrcBlend, sub.dwBlendSrc);
+                    dev->SetRenderState(RS::DestBlend, sub.dwBlendDst);
                 } else {
-                    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
+                    dev->SetRenderState(RS::AlphaBlendEnable, 0);
                 }
                 if (rec->kind != THEME_KIND_PARTICLESYSTEM)
                     continue;
@@ -164,10 +164,10 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                     ps_vtransform_corners(ps, corners.m);
                 }
 
-                dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&world);
+                dev->SetTransform(Transform::World, &world);
                 ps_vrender(ps, dev);
             }
         }
-        dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
+        dev->SetRenderState(RS::SpecularEnable, 0);
     }
 }

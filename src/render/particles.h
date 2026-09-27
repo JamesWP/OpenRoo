@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <stddef.h>
 #include "com_proxy.h"
+class RenderDevice;
 
 /* ParticleSystem hierarchy: the systems, their ring of particles, and the
  * vertex buffers they fill.  Implemented in particles.cpp. */
@@ -134,7 +135,7 @@ static_assert(sizeof(XFaceParticleSystem) == 0x96, "XFace size");
  * Fill and draw for Render: one call each through the object's vtable
  * (slots 9 and 12). */
 void  ps_fill(ParticleSystem *self);
-DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev);
+DWORD ps_draw(ParticleSystem *self, RenderDevice *dev);
 
 /* The factory: one of the four class names, allocated at its size,
  * constructed, and its vtable installed. */
@@ -157,8 +158,8 @@ __declspec(dllexport) ParticleSystem *__cdecl Particle_LoadFromFile(const char *
 extern "C" {
 void  PS_THISCALL Particle_BaseTick(ParticleSystem *self, DWORD dt);              /* slot 7 */
 void  PS_THISCALL Particle_XFaceTick(XFaceParticleSystem *self, DWORD dt);        /* slot 7 */
-DWORD PS_THISCALL Particle_BaseRender(ParticleSystem *self, IDirect3DDevice3 *d); /* slot 8 */
-DWORD PS_THISCALL Particle_PointRender(PointParticleSystem *self, IDirect3DDevice3 *d);
+DWORD PS_THISCALL Particle_BaseRender(ParticleSystem *self, RenderDevice *d); /* slot 8 */
+DWORD PS_THISCALL Particle_PointRender(PointParticleSystem *self, RenderDevice *d);
 void  PS_THISCALL Particle_PointFill(PointParticleSystem *self);                  /* slot 9 */
 void  PS_THISCALL Particle_FaceFill(FaceParticleSystem *self);
 void  PS_THISCALL Particle_XFaceFill(XFaceParticleSystem *self);
@@ -166,9 +167,9 @@ void  PS_THISCALL Particle_FaceSetVector(FaceParticleSystem *self,
                                          float x, float y, float z);              /* slot 10 */
 void  PS_THISCALL Particle_FaceTransformCorners(FaceParticleSystem *self,
                                                 float *matrix);                   /* slot 11 */
-DWORD PS_THISCALL Particle_PointDraw(PointParticleSystem *self, IDirect3DDevice3 *d); /* slot 12 */
-DWORD PS_THISCALL Particle_FaceDraw(FaceParticleSystem *self, IDirect3DDevice3 *d);
-DWORD PS_THISCALL Particle_XFaceDraw(XFaceParticleSystem *self, IDirect3DDevice3 *d);
+DWORD PS_THISCALL Particle_PointDraw(PointParticleSystem *self, RenderDevice *d); /* slot 12 */
+DWORD PS_THISCALL Particle_FaceDraw(FaceParticleSystem *self, RenderDevice *d);
+DWORD PS_THISCALL Particle_XFaceDraw(XFaceParticleSystem *self, RenderDevice *d);
 
 /* The lifecycle slots (0-6, 9, 12, 13, 14).  Slots 5 and 6 are one
  * function each across all four classes; slot 1 is shared by Point and Face. */
@@ -183,7 +184,7 @@ BOOL  PS_THISCALL Particle_SetEnvironment(ParticleSystem *, void *);
 BOOL  PS_THISCALL Particle_BaseSave(ParticleSystem *, void *, GameLogger *);
 BOOL  PS_THISCALL Particle_BaseLoad(ParticleSystem *, void *, GameLogger *);
 void  PS_THISCALL Particle_BaseFill(ParticleSystem *);
-DWORD PS_THISCALL Particle_BaseDrawNull(ParticleSystem *, IDirect3DDevice3 *);
+DWORD PS_THISCALL Particle_BaseDrawNull(ParticleSystem *, RenderDevice *);
 void  PS_THISCALL Particle_QuadRelease(ParticleSystem *, int);
 void  PS_THISCALL Particle_NopVec3(ParticleSystem *, float, float, float);
 void  PS_THISCALL Particle_NopPtr(ParticleSystem *, void *);
@@ -257,9 +258,9 @@ static inline void ps_vset_vector(ParticleSystem *ps, float x, float y, float z)
     typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float, float, float);
     ((fn)ps->pVtable[PS_VT_SETVEC])(ps, x, y, z);
 }
-static inline void ps_vrender(ParticleSystem *ps, IDirect3DDevice3 *dev)
+static inline void ps_vrender(ParticleSystem *ps, RenderDevice *dev)
 {
-    typedef DWORD (__attribute__((thiscall)) *fn)(ParticleSystem *, IDirect3DDevice3 *);
+    typedef DWORD (__attribute__((thiscall)) *fn)(ParticleSystem *, RenderDevice *);
     ((fn)ps->pVtable[PS_VT_RENDER])(ps, dev);
 }
 static inline void ps_vtransform_corners(ParticleSystem *ps, float *matrix)

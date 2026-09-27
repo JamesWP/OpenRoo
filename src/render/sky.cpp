@@ -15,7 +15,7 @@
 
 #include <math.h>
 
-#define SKY_FVF        0x1e2
+#define SKY_FVF        VertexFormat::Lit
 #define SKY_QUADS      6
 #define SKY_LOG_FIRST  8
 
@@ -33,10 +33,10 @@ static bool fx_one_quad(void)
 }
 
 extern "C" __declspec(dllexport) float * __attribute__((thiscall))
-Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
+Sky_DrawSkyBackground(SkyBackground *self, RenderDevice *dev,
                       float flCentreX, float flCentreY, float flCentreZ)
 {
-    dev->SetRenderState(D3DRENDERSTATE_ZENABLE, 0);
+    dev->SetRenderState(RS::ZEnable, 0);
 
     const float c = (float)cos(self->flYawAngle);
     const float s = (float)sin(self->flYawAngle);
@@ -57,23 +57,22 @@ Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
     m[13] = flCentreY;
     m[14] = flCentreZ;
 
-    dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)m);
+    dev->SetTransform(Transform::World, (const Mat4 *)m);
 
     const int nquads = fx_one_quad() ? 1 : SKY_QUADS;
     for (int i = 0; i < nquads; i++) {
         IDirect3DTexture2 *tex = self->Textures[i].pTexture2;
         dev->SetTexture(0, tex);
-        HRESULT hr = dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, SKY_FVF,
-                                        self->QuadVerts[i],
-                                        4, 8);  // D3DDP_DONOTUPDATEEXTENTS
+        bool ok = dev->Draw(Prim::TriangleStrip, SKY_FVF, self->QuadVerts[i], 4,
+                            DrawFlag::NoUpdateExtents);
 
         static LONG logged = 0;
         if (InterlockedIncrement(&logged) <= SKY_LOG_FIRST)
-            log_write("sky: quad %d tex=%p yaw=%d/1000 -> hr=%08lX\n",
-                      i, (void *)tex, (int)(self->flYawAngle * 1000.0f), hr);
+            log_write("sky: quad %d tex=%p yaw=%d/1000 -> ok=%d\n",
+                      i, (void *)tex, (int)(self->flYawAngle * 1000.0f), ok);
     }
 
-    dev->SetRenderState(D3DRENDERSTATE_ZENABLE, 1);
+    dev->SetRenderState(RS::ZEnable, 1);
     return self->WorldMatrix;
 }
 
@@ -116,8 +115,7 @@ static void sky_fill_geometry(SkyBackground *self)
 }
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
-                       IDirect3DDevice3 *dev, const char *up, const char *dn,
+Sky_BuildFromFaceNames(SkyBackground *self, RenderDevice *dev, const char *up, const char *dn,
                        const char *fr, const char *bk, const char *lf,
                        const char *rt, UINT bpp)
 {
@@ -129,7 +127,7 @@ Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
     const char *names[6] = { up, dn, fr, bk, lf, rt };
     unsigned int r = 0;
     for (int f = 0; f < 6; f++) {
-        r = Texture_SelectTextureLoader(&self->Textures[f], dd, dev, names[f], bpp, 0);
+        r = Texture_SelectTextureLoader(&self->Textures[f], dev, names[f], bpp, 0);
         if ((r & 0xff) == 0)
             return r;
     }

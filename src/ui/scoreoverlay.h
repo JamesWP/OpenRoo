@@ -4,7 +4,7 @@
 #include <windows.h>
 
 class Game;
-struct RenderDevice;
+class RenderDevice;
 class TextRenderer;
 
 /* The level-complete screen (menu node 0x28).  game is the theme argument the

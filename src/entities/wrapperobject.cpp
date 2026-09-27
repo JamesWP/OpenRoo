@@ -19,6 +19,7 @@
 #include "wrapperobject.h"
 #include <stdlib.h>
 #include "log.h"
+#include "renderdevice.h"
 
 KAROO_LAYOUT_CHECKS(WrapperObject)
 {
@@ -227,7 +228,7 @@ void WrapperObject::scrollUVs(unsigned int ticks, int axisU, float speed)
     dirty_ = 1;
 }
 
-void WrapperObject::updateObjectTransform(IDirect3DDevice3 *dev,
+void WrapperObject::updateObjectTransform(RenderDevice *dev,
                                           unsigned short frame)
 {
     //     // PRESERVED: an out-of-range frame returns without setting dirty_; every
@@ -235,12 +236,12 @@ void WrapperObject::updateObjectTransform(IDirect3DDevice3 *dev,
     if (frame >= pMesh_->wFrameCount)
         return;
 
-    D3DMATRIX view, world;
-    dev->GetTransform(D3DTRANSFORMSTATE_VIEW,  &view);
-    dev->GetTransform(D3DTRANSFORMSTATE_WORLD, &world);
+    Mat4 view, world;
+    dev->GetTransform(Transform::View,  &view);
+    dev->GetTransform(Transform::World, &world);
 
-    const float *w = &world._11;
-    const float *v = &view._11;
+    const float *w = world.m;
+    const float *v = view.m;
     float m[16];
     for (int row = 0; row < 4; ++row)
         for (int col = 0; col < 4; ++col) {
@@ -343,7 +344,7 @@ Wrapper_ScrollUVs(WrapperObject *self, unsigned int ticks, int axisU,
 }
 
 __declspec(dllexport) void __attribute__((thiscall))
-Wrapper_UpdateObjectTransform(WrapperObject *self, IDirect3DDevice3 *dev,
+Wrapper_UpdateObjectTransform(WrapperObject *self, RenderDevice *dev,
                               unsigned short frame)
 {
     self->updateObjectTransform(dev, frame);

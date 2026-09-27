@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <d3d.h>
+#include "rendertypes.h"
 
 /* The shared 3D maths helpers.
  *
@@ -11,12 +12,10 @@
  * rendering only, never the simulation.
  */
 
-struct Mat4 { float m[16]; };   /* row-major, D3D convention */
-struct Vec3 { float x, y, z; };
 
 /* The identity WORLD matrix, set at startup (renderstate.cpp) and re-applied
  * by the batch passes. */
-extern D3DMATRIX g_worldIdentity;
+extern Mat4 g_worldIdentity;
 
 /* A control-point list node (SplinePath's list). */
 struct ListNodeM { void *pValue; ListNodeM *pNext; };

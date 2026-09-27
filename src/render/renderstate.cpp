@@ -16,8 +16,6 @@
 #include "model.h"
 #include "faktmesh.h"
 #include "menuscreens.h"
-#include "scenematerial.h"
-#include "scenelight.h"
 #include "textrenderer.h"
 #include "gamelog.h"
 #include "gameglobals.h"
@@ -34,10 +32,10 @@ Render_ConfigureRenderState(void)
     RenderDevice *d3d = g_renderDevice;
 
     // Loading-screen and demo bitmaps.
-    if (!(char)TextureDIB_CreateSurface(&g_fallbackImage, d3d->pDD4, "bitmaps\\loading.bmp", 1))
+    if (!(char)TextureDIB_CreateSurface(&g_fallbackImage, d3d, "bitmaps\\loading.bmp", 1))
         GameLog_LogMessage(&g_logger, 3, "SUR: *ERROR* couldn't load loading.bmp");
     g_renderDevice->PresentImage(&g_fallbackImage);
-    TextureDIB_CreateSurface(&g_demoImage, d3d->pDD4, "bitmaps\\demo.bmp", 1);
+    TextureDIB_CreateSurface(&g_demoImage, d3d, "bitmaps\\demo.bmp", 1);
 
     // Texture and model caches' loggers, and the level placement scratch
     // block.
@@ -49,7 +47,7 @@ Render_ConfigureRenderState(void)
     // The initial camera, placed exactly as level entry places it.
     Mat4 world;
     m4_identity(&world);
-    g_worldIdentity = *(D3DMATRIX *)&world;
+    g_worldIdentity = *(Mat4 *)&world;
 
     const LevelMap *map = Game::instance()->map();
     const double s = sqrt(52.0);
@@ -96,20 +94,20 @@ Render_ConfigureRenderState(void)
     f->f[7] = cam->eye[1];
     f->f[8] = cam->eye[2];
 
-    IDirect3DDevice3 *dev = d3d->pDevice;
-    dev->SetTransform(D3DTRANSFORMSTATE_WORLD, &g_worldIdentity);
-    dev->SetTransform(D3DTRANSFORMSTATE_VIEW, (D3DMATRIX *)&view);
-    dev->SetTransform(D3DTRANSFORMSTATE_PROJECTION, (D3DMATRIX *)&proj);
+    RenderDevice *dev = d3d;
+    dev->SetTransform(Transform::World, &g_worldIdentity);
+    dev->SetTransform(Transform::View, &view);
+    dev->SetTransform(Transform::Projection, &proj);
 
     // Ambient light and the fixed render states.
-    dev->SetLightState(D3DLIGHTSTATE_AMBIENT, 0x404040);
+    dev->SetAmbientLight(0x404040);
     static const DWORD states[][2] = {
         { 0x09, 2 }, { 0x1a, 0 }, { 0x11, 2 }, { 0x12, 2 }, { 0x1d, 0 },
         { 0x07, 1 }, { 0x38, 8 }, { 0x39, 1 }, { 0x3a, 0xffffffff },
         { 0x3b, 0xffffffff }, { 0x36, 1 }, { 0x35, 1 }, { 0x37, 3 },
     };
     for (unsigned i = 0; i < sizeof states / sizeof states[0]; ++i)
-        dev->SetRenderState((D3DRENDERSTATETYPE)states[i][0], states[i][1]);
+        dev->SetRenderState((RS)states[i][0], states[i][1]);
 
     // Shared player/enemy models, textures, material, light and fonts.
     Model_ImportSceneModels(&g_meshPlayer, "models\\John.mdl");
@@ -117,39 +115,22 @@ Render_ConfigureRenderState(void)
 
     char path[0x100];
     sprintf(path, "%s\\textures\\shadow.tga", g_gameDir);
-    Texture_ImportSceneTextures(&g_texShadow, d3d->pDD4, d3d->pDevice, path, 1, 0, 0);
+    Texture_ImportSceneTextures(&g_texShadow, d3d, path, 1, 0, 0);
     sprintf(path, "%s\\textures\\karoo128.tga", g_gameDir);
-    Texture_ImportSceneTextures(&g_texKaroo128, d3d->pDD4, d3d->pDevice, path, 1, 0, 0);
+    Texture_ImportSceneTextures(&g_texKaroo128, d3d, path, 1, 0, 0);
 
-    SceneMaterial *mat = &g_material;
-    SceneMaterial_Create(mat, d3d->pD3D, d3d->pDevice);
-    mat->mat.dwSize = 0x50;
-    mat->mat.diffuse.r = 0.9f; mat->mat.diffuse.g = 1.0f;
-    mat->mat.diffuse.b = 0.9f; mat->mat.diffuse.a = 1.0f;
-    mat->mat.ambient.r = mat->mat.ambient.g = mat->mat.ambient.b = mat->mat.ambient.a = 1.0f;
-    mat->mat.specular.r = mat->mat.specular.g = mat->mat.specular.b = mat->mat.specular.a = 1.0f;
-    mat->mat.power = 20.0f;
-    mat->pMaterial->SetMaterial(&mat->mat);
-    dev->SetLightState(D3DLIGHTSTATE_MATERIAL, mat->hMaterial);
+    Material mat = {
+        { 0.9f, 1.0f, 0.9f, 1.0f },  // diffuse
+        { 1.0f, 1.0f, 1.0f, 1.0f },  // ambient
+        { 1.0f, 1.0f, 1.0f, 1.0f },  // specular
+        { 0.0f, 0.0f, 0.0f, 0.0f },  // emissive
+        20.0f,
+    };
+    d3d->SetMaterial(mat);
 
-    SceneSpotLight *light = &g_light;
-    SceneLight_Create(light, d3d);
-    D3DLIGHT2 &l = light->light;
-    l.dwSize = 0x50;
-    l.dltType = D3DLIGHT_DIRECTIONAL;
-    l.dcvColor.r = l.dcvColor.g = l.dcvColor.b = 0.8f;
-    l.dcvColor.a = 1.0f;
-    l.dvDirection.x = 1.0f;
-    l.dvDirection.y = -1.1f;
-    l.dvDirection.z = 1.2f;
-    l.dvRange = (float)sqrt(3.4028234663852886e+38);
-    l.dvAttenuation0 = 1.0f;
-    l.dvAttenuation1 = 0.0f;
-    l.dvAttenuation2 = 0.0f;
-    l.dwFlags = D3DLIGHT_ACTIVE;
-    light->pLight->SetLight((D3DLIGHT *)&l);
-    light->pLight->SetLight((D3DLIGHT *)&l);  // PRESERVED: set twice; the second is a no-op.
-    d3d->pViewport->AddLight(light->pLight);
+    // REVIEW: the light used to be set twice (the second a no-op).
+    DirectionalLight light = { { 0.8f, 0.8f, 0.8f, 1.0f }, { 1.0f, -1.1f, 1.2f } };
+    d3d->SetDirectionalLight(light);
 
     if (!(char)Text_LoadFont(&g_fontMain, "fonts\\font1.fon", d3d)) {
         GameLog_LogMessage(&g_logger, 4, "Couldn't create Font font1.fon");

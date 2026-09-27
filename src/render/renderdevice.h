@@ -1,65 +1,130 @@
-/* RenderDevice: the game's one rendering device.  Owns DirectDraw, Direct3D,
- * the device, the viewport, the primary/back/z-buffer surfaces and the
- * enumerated display modes.  One instance exists, at g_renderDevice.
+/* RenderDevice: the game's one rendering device, and the only way game code
+ * talks to the rendering backend.  One instance exists, at g_renderDevice.
  *
- * Device creation is in createdevice.cpp; presentation and teardown in
+ * It owns the backend's objects (see d3dnative.h, for backend files only):
+ * the display mode, the primary/back/z-buffer surfaces, the device and the
+ * viewport.  Device creation is in createdevice.cpp; everything else in
  * renderdevice.cpp. */
 
 #pragma once
 #include <windows.h>
-#include <ddraw.h>
-#include <d3d.h>
 #include <vector>
+#include "rendertypes.h"
+
+struct LoadedImage;
+struct SceneTexture;
+struct IDirect3DTexture2;
 
 /* One enumerated display mode. */
 struct DisplayMode {
     DWORD dwWidth, dwHeight, dwBitDepth;
 };
 
-/* A bitmap on a DirectDraw surface, as PresentImage takes it. */
-struct LoadedImage {
-    void                *unknown00;
-    IDirectDrawSurface4 *pTextureSurface;
-    IDirectDrawSurface4 *pTexturePalette;
-    char                *ImageName;
-    int                  loadStatus;
-    int                  loadedState;
+/* Bits for Draw's flags. */
+namespace DrawFlag {
+enum : uint32_t {
+    NoLight         = 1,  // the vertices are lit already
+    NoUpdateExtents = 2,  // leave the device's dirty-rectangle extents alone
 };
+}
 
 class RenderDevice {
 public:
     RenderDevice();
     ~RenderDevice();
 
-    /* Brings up DirectDraw, the display mode, the surfaces, Direct3D, the
-     * device and the viewport (createdevice.cpp).  On failure lastError()
-     * says why. */
+    // ── Lifetime ──
+
+    /* Brings up the display mode, the surfaces, the device and the viewport
+     * (createdevice.cpp).  hWnd is the window to go full-screen on; the
+     * driver GUID may be NULL for the default.  On failure lastError() says
+     * why. */
     bool Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex, bool bHardware);
 
-    /* Releases every interface and forgets the display modes. */
+    /* Releases everything and forgets the display modes. */
     void Release();
-
-    /* Blts img over the back buffer and flips it to the screen. */
-    void PresentImage(LoadedImage *img);
 
     const char *lastError() const { return lastError_; }
 
-    IDirect3D3           *pD3D;
-    IDirect3DViewport3   *pViewport;
-    IDirect3DDevice3     *pDevice;
-    DWORD                 dwModeFilterFlags;
-    DDPIXELFORMAT         zbufFmt;
-    IDirectDrawSurface4  *pPrimary;
-    IDirectDrawSurface4  *pBackBuffer;
-    IDirectDrawSurface4  *pZBuffer;
-    std::vector<DisplayMode> modes;
-    DisplayMode          *pSelectedMode;
-    IDirectDraw4         *pDD4;
-    HWND                  hWnd;
+    // ── Display ──
+
+    unsigned width() const    { return mode_->dwWidth; }
+    unsigned height() const   { return mode_->dwHeight; }
+    unsigned bitDepth() const { return mode_->dwBitDepth; }
+
+    /* The z-buffer has stencil bits. */
+    bool hasStencil() const;
+
+    /* Puts the desktop's display mode back. */
+    void RestoreDisplayMode();
+
+    /* The DirectDraw (version 1) interface and the primary surface's
+     * version-1 interface, AddRef'd, as the movie player takes them. */
+    void GetMovieTarget(void **directDraw, void **primarySurface);
+
+    // ── Frames ──
+
+    /* Clears depth, and stencil if there is one, over the whole target. */
+    void ClearDepth();
+    bool BeginScene();
+    void EndScene();
+
+    /* Shows the back buffer. */
+    void Flip();
+
+    /* Fills the back buffer with black. */
+    void ClearBackBuffer();
+
+    /* Copies img over the back buffer and flips it to the screen. */
+    void PresentImage(LoadedImage *img);
+
+    // ── State ──
+
+    void     SetRenderState(RS state, uint32_t value);
+    uint32_t GetRenderState(RS state);
+
+    void SetTransform(Transform which, const Mat4 *m);
+    void GetTransform(Transform which, Mat4 *m);
+
+    /* NULL unbinds the stage. */
+    void SetTexture(int stage, const SceneTexture *tex);
+    void SetTexture(int stage, IDirect3DTexture2 *tex);
+    void SetTexture(int stage, decltype(nullptr)) { SetTexture(stage, (const SceneTexture *)nullptr); }
+
+    /* The ambient light colour, 0x00RRGGBB. */
+    void SetAmbientLight(uint32_t rgb);
+
+    /* The one material and the one directional light the scene is lit by;
+     * each call replaces the last. */
+    void SetMaterial(const Material &m);
+    void SetDirectionalLight(const DirectionalLight &l);
+
+    // ── Drawing ──
+
+    /* count vertices of `format` from verts; flags are DrawFlag bits.
+     * Returns false if the backend refused the draw. */
+    bool Draw(Prim prim, VertexFormat format, const void *verts,
+              uint32_t count, uint32_t flags = 0);
+    bool DrawStrided(Prim prim, VertexFormat format, StridedVertices *verts,
+                     uint32_t count, uint32_t flags = 0);
+
+    /* Logs the device's current render, texture-stage and light state
+     * (diagnostics). */
+    void LogState(const char *tag);
+
+    /* The backend's own objects; defined in d3dnative.h, for backend files
+     * only. */
+    struct Native;
+    Native *native() { return native_; }
 
 private:
     friend struct DeviceCreation;
-    char lastError_[100];
+
+    Native                  *native_;
+    std::vector<DisplayMode> modes_;
+    DisplayMode             *mode_;
+    DWORD                    modeFilterFlags_;
+    char                     lastError_[100];
 };
 
 extern RenderDevice *g_renderDevice;

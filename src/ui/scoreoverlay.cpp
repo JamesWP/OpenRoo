@@ -22,7 +22,7 @@
 #include "gamestr.h"
 #include "menuscreens.h"
 
-#define OVERLAY_FVF   0x1c4  // XYZRHW | DIFFUSE | SPECULAR | TEX1
+#define OVERLAY_FVF   VertexFormat::Screen  // XYZRHW | DIFFUSE | SPECULAR | TEX1
 #define SCORE_LOG_FIRST 4
 
 /* 1/640, the virtual-space scale, bit for bit the game's float. */
@@ -107,12 +107,12 @@ static void build_backdrop(TLVertex v[4], float w, float h)
  * call, as the game does, so the call traffic is identical. */
 static void setup_overlay_state(RenderDevice *d3d, void *game)
 {
-    d3d->pDevice->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-    d3d->pDevice->SetRenderState(D3DRENDERSTATE_SRCBLEND,  D3DBLEND_SRCALPHA);
-    d3d->pDevice->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    d3d->SetRenderState(RS::AlphaBlendEnable, 1);
+    d3d->SetRenderState(RS::SrcBlend,  Blend::SrcAlpha);
+    d3d->SetRenderState(RS::DestBlend, Blend::InvSrcAlpha);
 
     SceneTexture *tex = (SceneTexture *)GM_P(GM_OVERLAY_TEX);
-    d3d->pDevice->SetTexture(0, tex ? tex->pTexture2 : NULL);
+    d3d->SetTexture(0, tex ? tex->pTexture2 : NULL);
 }
 
 extern "C" __declspec(dllexport) void __cdecl
@@ -121,20 +121,20 @@ Score_DrawHighScoreTable(Game *g, void *game, RenderDevice *d3d,
 {
     (void)n;  // pushed by the caller, never read
 
-    const float w = (float)d3d->pSelectedMode->dwWidth;
-    const float h = (float)d3d->pSelectedMode->dwHeight;
+    const float w = (float)d3d->width();
+    const float h = (float)d3d->height();
 
     TLVertex quad[4];
     build_backdrop(quad, w, h);
 
     setup_overlay_state(d3d, game);
     if (score_fx() != SCORE_FX_NODRAW)
-        d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, OVERLAY_FVF,
+        d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
                                     quad, 4, 0);
 
-    d3d->pDevice->SetTexture(0, g_pPanelTexture);
+    d3d->SetTexture(0, g_pPanelTexture);
     if (score_fx() != SCORE_FX_NODRAW)
-        d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, OVERLAY_FVF,
+        d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
                                     (LPVOID)g_pPanelVerts, 4, 0);
 
     static LONG calls = 0;
@@ -147,11 +147,11 @@ Score_DrawHighScoreTable(Game *g, void *game, RenderDevice *d3d,
     if (g->highScores()->count() == 0)
         return;
 
-    const float cellW = (float)(d3d->pSelectedMode->dwWidth * 12) * VSCALE;
-    const float cellH = (float)(d3d->pSelectedMode->dwWidth * 14) * VSCALE;
-    const float xName  = (float)(d3d->pSelectedMode->dwWidth * 187) * VSCALE;
-    const float xLevel = (float)(d3d->pSelectedMode->dwWidth * 363) * VSCALE;
-    const float xScore = (float)(d3d->pSelectedMode->dwWidth * 453) * VSCALE;
+    const float cellW = (float)(d3d->width() * 12) * VSCALE;
+    const float cellH = (float)(d3d->width() * 14) * VSCALE;
+    const float xName  = (float)(d3d->width() * 187) * VSCALE;
+    const float xLevel = (float)(d3d->width() * 363) * VSCALE;
+    const float xScore = (float)(d3d->width() * 453) * VSCALE;
 
     char buf[256];
     int row = 0, dy = 0;
@@ -203,16 +203,16 @@ static const ScoreRow k_rows[] = {
 static void draw_summary(Game *g, void *game, RenderDevice *d3d,
                          TextRenderer *text, int n, const char *title)
 {
-    const DWORD dwWidth = d3d->pSelectedMode->dwWidth;
+    const DWORD dwWidth = d3d->width();
     const float w = (float)dwWidth;
-    const float h = (float)d3d->pSelectedMode->dwHeight;
+    const float h = (float)d3d->height();
 
     TLVertex quad[4];
     build_backdrop(quad, w, h);
 
     setup_overlay_state(d3d, game);
     if (score_fx() != SCORE_FX_NODRAW)
-        d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, OVERLAY_FVF,
+        d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
                                     quad, 4, 0);
 
     const float S = w * VSCALE;  // one virtual unit, in pixels
@@ -259,12 +259,12 @@ Score_DrawGameOverScore(Game *g, void *game, RenderDevice *d3d,
     static LONG calls = 0;
     if (InterlockedIncrement(&calls) <= SCORE_LOG_FIRST)
         log_write("scoreoverlay: gameover %lux%lu n=%d\n",
-                  (unsigned long)d3d->pSelectedMode->dwWidth,
-                  (unsigned long)d3d->pSelectedMode->dwHeight, n);
+                  (unsigned long)d3d->width(),
+                  (unsigned long)d3d->height(), n);
 
     draw_summary(g, game, d3d, text, n, GS_HUD_GAME_OVER);
 
-    const DWORD dwWidth = d3d->pSelectedMode->dwWidth;
+    const DWORD dwWidth = d3d->width();
     const float w = (float)dwWidth;
     text->drawCentered(w * 0.5f, w * 0.59375f,
                        (float)(dwWidth * 12) * VSCALE,
@@ -288,7 +288,7 @@ Menu_RenderLevelComplete(Game *g, void *game, RenderDevice *d3d,
 {
     draw_summary(g, game, d3d, text, (int)ms, "LEVEL COMPLETED");
 
-    const DWORD dwWidth = d3d->pSelectedMode->dwWidth;
+    const DWORD dwWidth = d3d->width();
     const float w = (float)dwWidth;
     const float cellW = (float)(dwWidth * 12) * VSCALE;
     const float cellH = (float)(dwWidth * 14) * VSCALE;

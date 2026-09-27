@@ -824,7 +824,7 @@ static HRESULT WINAPI NOINLINE ns_ChangeUniquenessValue(NullSurface *s)
 /* ─── IDirect3D3 / IDirect3DDevice3 / viewport / material / light ────────
  *
  * These are singletons: the game creates exactly one of each (createdevice.cpp
- * and scenelight.cpp / scenematerial.cpp), so there is nothing to pool.  Every
+ * and RenderDevice::SetMaterial / SetDirectionalLight), so there is nothing to pool.  Every
  * render entry point returns D3D_OK without recording anything — the point of
  * headless mode is that no drawing happens.
  */

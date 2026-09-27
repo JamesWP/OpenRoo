@@ -10,10 +10,10 @@
  *
  * A temporary IDirect3D3 is used only for FindDevice(HAL), to read
  * ddHwDesc.dwDeviceRenderBitDepth into dwModeFilterFlags, the filter
- * enum_display_modes_cb applies.  It is released at once; pD3D is queried
+ * enum_display_modes_cb applies.  It is released at once; the device's is queried
  * again later. */
 
-#include "renderdevice.h"
+#include "d3dnative.h"
 #include "log.h"
 #include "gamestr.h"
 #include "gameglobals.h"
@@ -79,6 +79,8 @@ static void imagelog(const char *s)
 
 /* Create's helpers, befriended by RenderDevice. */
 struct DeviceCreation {
+    static DWORD filterFlags(RenderDevice *self) { return self->modeFilterFlags_; }
+    static void keepMode(RenderDevice *self, const DisplayMode &m) { self->modes_.push_back(m); }
     /* A newline and then the message go to the image log, and the message is
      * kept for lastError().  Returns false: how every error path fails. */
     static bool fail(RenderDevice *self, const char *msg)
@@ -98,7 +100,7 @@ static HRESULT WINAPI enum_display_modes_cb(LPDDSURFACEDESC2 pDesc, LPVOID ctx)
 {
     RenderDevice *self = (RenderDevice *)ctx;
     DWORD bpp   = pDesc->ddpfPixelFormat.dwRGBBitCount;
-    DWORD flags = self->dwModeFilterFlags;
+    DWORD flags = DeviceCreation::filterFlags(self);
 
     g_devdiag.modesSeen++;
 
@@ -123,7 +125,7 @@ static HRESULT WINAPI enum_display_modes_cb(LPDDSURFACEDESC2 pDesc, LPVOID ctx)
     sprintf(msg, GS_D3D_FOUND_MODE, mode.dwWidth, mode.dwHeight, bpp);
     imagelog(msg);
 
-    self->modes.push_back(mode);
+    DeviceCreation::keepMode(self, mode);
     g_devdiag.modesKept++;
     return DDENUMRET_OK;
 }
@@ -157,13 +159,13 @@ static HRESULT WINAPI enum_zbuffer_cb(LPDDPIXELFORMAT pFmt, LPVOID ctx)
     return D3DENUMRET_OK;
 }
 
-bool RenderDevice::Create(HWND hWnd_, GUID *pDriverGuid, int nModeIndex,
+bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
                           bool bHardware)
 {
     char msg[256];
 
     Release();
-    hWnd = hWnd_;
+    Native *n = native_;
 
     // ── DirectDraw, and the DirectDraw4 interface everything else uses ──
     LPDIRECTDRAW dd1 = NULL;
@@ -174,12 +176,12 @@ bool RenderDevice::Create(HWND hWnd_, GUID *pDriverGuid, int nModeIndex,
             return DeviceCreation::fail(this, GS_D3D_ERR_DDRAW_CREATE);
     }
 
-    hr = dd1->QueryInterface(IID_IDirectDraw4, (void **)&pDD4);
+    hr = dd1->QueryInterface(IID_IDirectDraw4, (void **)&n->dd);
     dd1->Release();
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_DD4_IFACE);
 
-    hr = pDD4->SetCooperativeLevel(hWnd, DDSCL_EXCLUSIVE | DDSCL_FULLSCREEN |
+    hr = n->dd->SetCooperativeLevel(hWnd, DDSCL_EXCLUSIVE | DDSCL_FULLSCREEN |
                                          DDSCL_FPUSETUP);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_COOP_LEVEL);
@@ -189,7 +191,7 @@ bool RenderDevice::Create(HWND hWnd_, GUID *pDriverGuid, int nModeIndex,
     // HAL result with no flags read the bit depth out of uninitialised stack;
     // both now fail with the Direct3D3 error / a zero filter.
     IDirect3D3 *d3dTmp = NULL;
-    hr = pDD4->QueryInterface(IID_IDirect3D3, (void **)&d3dTmp);
+    hr = n->dd->QueryInterface(IID_IDirect3D3, (void **)&d3dTmp);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_D3D3_IFACE);
 
@@ -207,14 +209,14 @@ bool RenderDevice::Create(HWND hWnd_, GUID *pDriverGuid, int nModeIndex,
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_D3D3_IFACE);
 
-    dwModeFilterFlags = found.ddHwDesc.dwFlags != 0
+    modeFilterFlags_ = found.ddHwDesc.dwFlags != 0
                       ? found.ddHwDesc.dwDeviceRenderBitDepth : 0;
-    sprintf(msg, GS_D3D_RENDER_BITDEPTH, dwModeFilterFlags);
+    sprintf(msg, GS_D3D_RENDER_BITDEPTH, modeFilterFlags_);
     imagelog(msg);
 
     // ── Enumerate display modes ──
     imagelog(GS_D3D_START_ENUMMODES);
-    hr = pDD4->EnumDisplayModes(0, NULL, this, enum_display_modes_cb);
+    hr = n->dd->EnumDisplayModes(0, NULL, this, enum_display_modes_cb);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_ENUMMODES);
     imagelog(GS_D3D_END_ENUMMODES);
@@ -223,41 +225,41 @@ bool RenderDevice::Create(HWND hWnd_, GUID *pDriverGuid, int nModeIndex,
     // REVIEW: an out-of-range index used to walk off the list and fault, and
     // an empty list faulted on the fallbacks; the index now falls back to
     // the first mode, and no modes at all fails with the set-mode error.
-    if (modes.empty())
+    if (modes_.empty())
         return DeviceCreation::fail(this, GS_D3D_ERR_SET_MODE);
     if (devfx() == DEVFX_MODE0)
         nModeIndex = 0;
 
-    if (nModeIndex >= 0 && (size_t)nModeIndex < modes.size()) {
-        DisplayMode *mode = &modes[nModeIndex];
+    if (nModeIndex >= 0 && (size_t)nModeIndex < modes_.size()) {
+        DisplayMode *mode = &modes_[nModeIndex];
         sprintf(msg, GS_D3D_TRYING_MODE,
                 mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
         imagelog(msg);
-        hr = pDD4->SetDisplayMode(mode->dwWidth, mode->dwHeight,
+        hr = n->dd->SetDisplayMode(mode->dwWidth, mode->dwHeight,
                                   mode->dwBitDepth, 0, 0);
         if (SUCCEEDED(hr)) {
-            pSelectedMode = mode;
+            mode_ = mode;
         } else {
             sprintf(msg, GS_D3D_FAILED_HR, hr);
             imagelog(msg);
-            mode = &modes[0];
+            mode = &modes_[0];
             sprintf(msg, GS_D3D_TRYING_FIRST_MODE,
                     mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
             imagelog(msg);
         }
     } else {
-        DisplayMode *mode = &modes[0];
+        DisplayMode *mode = &modes_[0];
         sprintf(msg, GS_D3D_NO_MODE_SPECIFIED,
                 mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
         imagelog(msg);
     }
-    if (pSelectedMode == NULL) {
-        DisplayMode *mode = &modes[0];
-        hr = pDD4->SetDisplayMode(mode->dwWidth, mode->dwHeight,
+    if (mode_ == NULL) {
+        DisplayMode *mode = &modes_[0];
+        hr = n->dd->SetDisplayMode(mode->dwWidth, mode->dwHeight,
                                   mode->dwBitDepth, 0, 0);
         if (FAILED(hr))
             return DeviceCreation::fail(this, GS_D3D_ERR_SET_MODE);
-        pSelectedMode = mode;
+        mode_ = mode;
     }
     imagelog(GS_D3D_DONE);
 
@@ -269,7 +271,7 @@ bool RenderDevice::Create(HWND hWnd_, GUID *pDriverGuid, int nModeIndex,
     dd.ddsCaps.dwCaps    = DDSCAPS_PRIMARYSURFACE | DDSCAPS_FLIP |
                            DDSCAPS_COMPLEX | DDSCAPS_3DDEVICE;
     dd.dwBackBufferCount = 1;
-    hr = pDD4->CreateSurface(&dd, &pPrimary, NULL);
+    hr = n->dd->CreateSurface(&dd, &n->primary, NULL);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_PRIMARY);
 
@@ -277,72 +279,72 @@ bool RenderDevice::Create(HWND hWnd_, GUID *pDriverGuid, int nModeIndex,
     DDSCAPS2 caps;
     memset(&caps, 0, sizeof(caps));
     caps.dwCaps = DDSCAPS_BACKBUFFER;
-    hr = pPrimary->GetAttachedSurface(&caps, &pBackBuffer);
+    hr = n->primary->GetAttachedSurface(&caps, &n->backBuffer);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_BACKBUFFER);
 
     // ── Direct3D3, and the z-buffer pixel format ──
-    hr = pDD4->QueryInterface(IID_IDirect3D3, (void **)&pD3D);
+    hr = n->dd->QueryInterface(IID_IDirect3D3, (void **)&n->d3d);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_D3D3_IFACE);
 
     if (bHardware) {
-        pD3D->EnumZBufferFormats(IID_IDirect3DHALDevice, enum_zbuffer_cb, &zbufFmt);
+        n->d3d->EnumZBufferFormats(IID_IDirect3DHALDevice, enum_zbuffer_cb, &n->zbufFmt);
     } else {
-        hr = pD3D->EnumZBufferFormats(IID_IDirect3DMMXDevice, enum_zbuffer_cb,
-                                      &zbufFmt);
+        hr = n->d3d->EnumZBufferFormats(IID_IDirect3DMMXDevice, enum_zbuffer_cb,
+                                      &n->zbufFmt);
         if (FAILED(hr))
-            pD3D->EnumZBufferFormats(IID_IDirect3DRGBDevice, enum_zbuffer_cb,
-                                     &zbufFmt);
+            n->d3d->EnumZBufferFormats(IID_IDirect3DRGBDevice, enum_zbuffer_cb,
+                                     &n->zbufFmt);
     }
-    if (zbufFmt.dwSize != sizeof(DDPIXELFORMAT))  // nothing was kept
+    if (n->zbufFmt.dwSize != sizeof(DDPIXELFORMAT))  // nothing was kept
         return DeviceCreation::fail(this, GS_D3D_ERR_ZBUF_FORMAT);
 
     // ── The z-buffer surface ──
     memset(&dd, 0, sizeof(dd));
     dd.dwSize          = sizeof(dd);
     dd.dwFlags         = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT | DDSD_PIXELFORMAT;
-    dd.dwWidth         = pSelectedMode->dwWidth;
-    dd.dwHeight        = pSelectedMode->dwHeight;
+    dd.dwWidth         = mode_->dwWidth;
+    dd.dwHeight        = mode_->dwHeight;
     dd.ddsCaps.dwCaps  = DDSCAPS_ZBUFFER |
                          (bHardware ? DDSCAPS_VIDEOMEMORY : DDSCAPS_SYSTEMMEMORY);
-    dd.ddpfPixelFormat = zbufFmt;
+    dd.ddpfPixelFormat = n->zbufFmt;
 
-    sprintf(msg, GS_D3D_ZBUF_BITDEPTH,    zbufFmt.dwZBufferBitDepth);
+    sprintf(msg, GS_D3D_ZBUF_BITDEPTH,    n->zbufFmt.dwZBufferBitDepth);
     imagelog(msg);
-    sprintf(msg, GS_D3D_STENCIL_BITDEPTH, zbufFmt.dwStencilBitDepth);
+    sprintf(msg, GS_D3D_STENCIL_BITDEPTH, n->zbufFmt.dwStencilBitDepth);
     imagelog(msg);
 
-    hr = pDD4->CreateSurface(&dd, &pZBuffer, NULL);
+    hr = n->dd->CreateSurface(&dd, &n->zBuffer, NULL);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_ZBUF_SURFACE);
 
-    hr = pBackBuffer->AddAttachedSurface(pZBuffer);
+    hr = n->backBuffer->AddAttachedSurface(n->zBuffer);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_ATTACH_ZBUF);
 
     // ── The device, on the back buffer as render target ──
     if (bHardware) {
-        hr = pD3D->CreateDevice(IID_IDirect3DHALDevice, pBackBuffer, &pDevice, NULL);
+        hr = n->d3d->CreateDevice(IID_IDirect3DHALDevice, n->backBuffer, &n->device, NULL);
     } else {
-        hr = pD3D->CreateDevice(IID_IDirect3DMMXDevice, pBackBuffer, &pDevice, NULL);
+        hr = n->d3d->CreateDevice(IID_IDirect3DMMXDevice, n->backBuffer, &n->device, NULL);
         if (FAILED(hr))
-            hr = pD3D->CreateDevice(IID_IDirect3DRGBDevice, pBackBuffer,
-                                    &pDevice, NULL);
+            hr = n->d3d->CreateDevice(IID_IDirect3DRGBDevice, n->backBuffer,
+                                    &n->device, NULL);
     }
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_CREATE_DEVICE);
 
     // ── The viewport ── The clip volume spans x in [-1, 1] and
     // y in [-aspect, aspect] (dvClipY is its top edge).
-    float aspect = (float)((double)pSelectedMode->dwHeight
-                         / (double)pSelectedMode->dwWidth);
+    float aspect = (float)((double)mode_->dwHeight
+                         / (double)mode_->dwWidth);
 
     D3DVIEWPORT2 vp;
     memset(&vp, 0, sizeof(vp));
     vp.dwSize       = sizeof(vp);
-    vp.dwWidth      = pSelectedMode->dwWidth;
-    vp.dwHeight     = pSelectedMode->dwHeight;
+    vp.dwWidth      = mode_->dwWidth;
+    vp.dwHeight     = mode_->dwHeight;
     vp.dvClipX      = -1.0f;
     vp.dvClipWidth  = 2.0f;
     vp.dvMinZ       = 0.0f;
@@ -355,23 +357,23 @@ bool RenderDevice::Create(HWND hWnd_, GUID *pDriverGuid, int nModeIndex,
         vp.dwHeight /= 2;
     }
 
-    hr = pD3D->CreateViewport(&pViewport, NULL);
+    hr = n->d3d->CreateViewport(&n->viewport, NULL);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_CREATE_VP);
 
-    pDevice->AddViewport(pViewport);
-    pViewport->SetViewport2(&vp);
-    pDevice->SetCurrentViewport(pViewport);
+    n->device->AddViewport(n->viewport);
+    n->viewport->SetViewport2(&vp);
+    n->device->SetCurrentViewport(n->viewport);
 
     log_write("renderdevice: Create hwnd=%p guid=%p mode=%d hw=%s -> "
               "%lux%lux%lu dd4=%p d3d=%p dev=%p vp=%p primary=%p "
               "back=%p zbuf=%p filter=%08lX zdepth=%lu stencil=%lu\n",
               hWnd, pDriverGuid, nModeIndex, bHardware ? "TRUE" : "FALSE",
-              pSelectedMode->dwWidth, pSelectedMode->dwHeight,
-              pSelectedMode->dwBitDepth,
-              pDD4, pD3D, pDevice, pViewport, pPrimary, pBackBuffer, pZBuffer,
-              dwModeFilterFlags, zbufFmt.dwZBufferBitDepth,
-              zbufFmt.dwStencilBitDepth);
+              mode_->dwWidth, mode_->dwHeight,
+              mode_->dwBitDepth,
+              n->dd, n->d3d, n->device, n->viewport, n->primary, n->backBuffer, n->zBuffer,
+              modeFilterFlags_, n->zbufFmt.dwZBufferBitDepth,
+              n->zbufFmt.dwStencilBitDepth);
 
     if (devdiag())
         log_write("renderdevice: DIAG modesSeen=%u modesKept=%u zfmtSeen=%u "

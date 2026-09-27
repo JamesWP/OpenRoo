@@ -17,6 +17,7 @@
 #include <string.h>
 #include <math.h>
 #include <d3d.h>
+#include "renderdevice.h"
 
 extern "C" {
 
@@ -184,20 +185,20 @@ ExplodeDebris_Advance(ExplodeDebris *self, float dt)
 }
 
 __declspec(dllexport) HRESULT __attribute__((thiscall))
-ExplodeDebris_Draw(ExplodeDebris *self, IDirect3DDevice3 *dev)
+ExplodeDebris_Draw(ExplodeDebris *self, RenderDevice *dev)
 {
     if (self->bActive == 0)
         return (HRESULT)0x800401f0;  // CO_E_NOTINITIALIZED
 
     DWORD saved;
-    dev->GetRenderState(D3DRENDERSTATE_SRCBLEND, &saved);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
-    dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0x212, self->pVertexCopy,
-                       self->nLiveVertices, D3DDP_DONOTLIGHT);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_DESTALPHA);
-    dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0x212, self->pVertexCopy,
-                       self->nLiveVertices, D3DDP_DONOTLIGHT);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, saved);
+    saved = dev->GetRenderState(RS::SrcBlend);
+    dev->SetRenderState(RS::SrcBlend, Blend::SrcAlpha);
+    dev->Draw(Prim::TriangleList, VertexFormat::Normal2, self->pVertexCopy,
+                       self->nLiveVertices, DrawFlag::NoLight);
+    dev->SetRenderState(RS::SrcBlend, Blend::DestAlpha);
+    dev->Draw(Prim::TriangleList, VertexFormat::Normal2, self->pVertexCopy,
+                       self->nLiveVertices, DrawFlag::NoLight);
+    dev->SetRenderState(RS::SrcBlend, saved);
     return 0;
 }
 

@@ -11,7 +11,7 @@
 #include "scenetexture.h"
 #include "ani.h"
 
-struct RenderDevice;
+class RenderDevice;
 struct ParticleSystem;
 struct GameLogger;
 class ExtraObjects;

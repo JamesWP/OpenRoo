@@ -45,7 +45,7 @@
 #include "bridgeobject.h"
 #include "log.h"
 
-#define BRIDGE_FVF        0x242
+#define BRIDGE_FVF        VertexFormat::Diffuse2
 #define BRIDGE_LOG_FIRST  8
 
 /* Offsets in the theme block and the level object. */
@@ -114,10 +114,9 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
 extern "C" __declspec(dllexport) void __cdecl
 Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, RenderDevice *d3d, double t)
 {
-    D3DMATRIX world;
-    ZeroMemory(&world, sizeof(world));
-    world._11 = world._22 = world._33 = world._44 = 1.0f;
-    d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD, &world);
+    Mat4 world = {};
+    world.m[0] = world.m[5] = world.m[10] = world.m[15] = 1.0f;
+    d3d->SetTransform(Transform::World, &world);
 
     const DWORD diffuse =
         bridge_fx() == BRIDGE_FX_TINT ? 0xFFFF00FF : 0xFFFFFFFF;
@@ -134,10 +133,10 @@ Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, RenderDevice *d3d, double t)
 
         if (*(DWORD *)(obj + LOBJ_OFF_SPECULAR_GATE) != 0
             && game->videoHighlights() != 0)
-            d3d->pDevice->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 1);
+            d3d->SetRenderState(RS::SpecularEnable, 1);
 
-        d3d->pDevice->SetRenderState(
-            D3DRENDERSTATE_ZWRITEENABLE,
+        d3d->SetRenderState(
+            RS::ZWriteEnable,
             *(DWORD *)(obj + LOBJ_OFF_ZWRITE_GATE) != 0 ? 0 : 1);
 
         if (*(DWORD *)(obj + LOBJ_OFF_SUBOBJCOUNT) != 0) {
@@ -149,33 +148,33 @@ Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, RenderDevice *d3d, double t)
                 // Unlike DrawQuadBatch, SetTexture runs unconditionally: a
                 // NULL texture binds NULL rather than leaving the last one
                 // bound.
-                d3d->pDevice->SetTexture(
+                d3d->SetTexture(
                     0, sub->pTexture
                        ? sub->pTexture->pTexture2
                        : NULL);
 
                 // One call, the state and value chosen by the branch.
-                D3DRENDERSTATETYPE last_state;
+                RS last_state;
                 DWORD              last_value;
                 if (sub->dwBlendSrc && sub->dwBlendDst) {
-                    d3d->pDevice->SetRenderState(
-                        D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-                    d3d->pDevice->SetRenderState(D3DRENDERSTATE_SRCBLEND,
+                    d3d->SetRenderState(
+                        RS::AlphaBlendEnable, 1);
+                    d3d->SetRenderState(RS::SrcBlend,
                                                  sub->dwBlendSrc);
-                    last_state = D3DRENDERSTATE_DESTBLEND;
+                    last_state = RS::DestBlend;
                     last_value = sub->dwBlendDst;
                 } else {
-                    last_state = D3DRENDERSTATE_ALPHABLENDENABLE;
+                    last_state = RS::AlphaBlendEnable;
                     last_value = 0;
                 }
-                d3d->pDevice->SetRenderState(last_state, last_value);
+                d3d->SetRenderState(last_state, last_value);
 
                 {
                     DWORD addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
-                    d3d->pDevice->SetRenderState(
-                        D3DRENDERSTATE_TEXTUREADDRESSU, addr);
-                    d3d->pDevice->SetRenderState(
-                        D3DRENDERSTATE_TEXTUREADDRESSV, addr);
+                    d3d->SetRenderState(
+                        RS::TextureAddressU, addr);
+                    d3d->SetRenderState(
+                        RS::TextureAddressV, addr);
                 }
 
                 for (DWORD k = 0;
@@ -193,18 +192,18 @@ Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, RenderDevice *d3d, double t)
                     for (int q = 0; q < 4; q++)
                         v[q].diffuse = diffuse;
 
-                    HRESULT hr = S_OK;
+                    bool ok = true;
                     if (bridge_fx() != BRIDGE_FX_NODRAW)
-                        hr = d3d->pDevice->DrawPrimitive(
-                            D3DPT_TRIANGLESTRIP, BRIDGE_FVF, v, 4, 0);
+                        ok = d3d->Draw(
+                            Prim::TriangleStrip, BRIDGE_FVF, v, 4, 0);
 
                     static LONG logged = 0;
                     if (InterlockedIncrement(&logged) <= BRIDGE_LOG_FIRST)
                         log_write("bridgesurf: obj=%lu sub=%lu cv=%lu axis=%d "
-                                  "dir=%d n=%d len=%d f=%d/1000 -> hr=%08lX\n",
+                                  "dir=%d n=%d len=%d f=%d/1000 -> ok=%d\n",
                                   i, s, k, info.axis, info.dir, info.n,
                                   (int)(info.len * 1000.0f),
-                                  (int)(info.f * 1000.0f), hr);
+                                  (int)(info.f * 1000.0f), ok);
 
                     bridge_note_variant(k, info.axis, info.dir, info.n,
                                         v[0].v0, v[1].v0);
@@ -212,6 +211,6 @@ Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, RenderDevice *d3d, double t)
             }
         }
 
-        d3d->pDevice->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
+        d3d->SetRenderState(RS::SpecularEnable, 0);
     }
 }

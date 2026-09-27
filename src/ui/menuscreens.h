@@ -9,13 +9,14 @@
 
 #include <d3d.h>
 #include "texture.h"
+#include "renderdevice.h"
 
 /* The menu's nine textures and the panel quad the score overlay shares. */
 extern SceneTexture g_menuTex4;
 extern SceneTexture g_menuTex1;
 extern SceneTexture g_menuTexKnob;
 extern SceneTexture g_menuTexSelector;
-extern D3DTLVERTEX g_panelQuad[4];
+extern ScreenVertex g_panelQuad[4];
 extern SceneTexture g_menuTexScale;
 extern SceneTexture g_menuTexOn;
 extern SceneTexture g_menuTex2;
@@ -23,7 +24,7 @@ extern SceneTexture g_menuTex3;
 extern SceneTexture g_menuTexOff;
 
 class Game;
-struct RenderDevice;
+class RenderDevice;
 class TextRenderer;
 
 /* The full-screen backdrop every menu screen opens with. */

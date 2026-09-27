@@ -1,23 +1,32 @@
 #pragma once
-#include "renderdevice.h"   /* LoadedImage (the 24-byte base variant) */
+#include <windows.h>
+#include <ddraw.h>
+#include <d3d.h>
 
-/* SceneTexture — the 28-byte extended LoadedImage variant: the base struct
- * plus an IDirect3DTexture2 at +0x18.  See HOOKS.md § LoadedImage struct —
- * two sizes.  The two variants really are distinct objects: CreateSurfaceDIB
- * and friends operate on 24-byte instances that have no +0x18 slot at all, so
- * anything touching pTexture2 must be handed the extended type. */
-struct SceneTexture {
-    LoadedImage        base;       // +0x00 (24 bytes)
-    IDirect3DTexture2 *pTexture2;  // +0x18
+/* LoadedImage: a bitmap on a DirectDraw surface, as RenderDevice::
+ * PresentImage takes it. */
+struct LoadedImage {
+    void                *unknown00;
+    IDirectDrawSurface4 *pTextureSurface;
+    IDirectDrawSurface4 *pTexturePalette;
+    char                *ImageName;
+    int                  loadStatus;
+    int                  loadedState;
 };
 
-static_assert(offsetof(SceneTexture, pTexture2) == 0x18, "SceneTexture layout");
+/* SceneTexture: a LoadedImage that is also a Direct3D texture.  The two
+ * really are distinct objects: CreateSurfaceDIB and friends operate on plain
+ * LoadedImages, so anything touching pTexture2 must be handed the extended
+ * type. */
+struct SceneTexture {
+    LoadedImage        base;
+    IDirect3DTexture2 *pTexture2;
+};
 
 /* textures\shadow.tga and textures\karoo128.tga, loaded once at startup
  * (renderstate.cpp). */
 extern SceneTexture g_texShadow;
 extern SceneTexture g_texKaroo128;
-static_assert(sizeof(SceneTexture) == 0x1c, "SceneTexture stride mismatch");
 
 /* ─── texture.cpp's exports other files call (COHESION_PLAN template 10) ───
  *

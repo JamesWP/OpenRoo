@@ -85,14 +85,14 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                           ThemeObjectTypeSlot *slot, RenderDevice *d3d, double t,
                           float phase, unsigned int animKey, unsigned int debrisMs)
 {
-    IDirect3DDevice3 *dev = d3d->pDevice;
-    dev->SetRenderState(D3DRENDERSTATE_SPECULARENABLE, 0);
+    RenderDevice *dev = d3d;
+    dev->SetRenderState(RS::SpecularEnable, 0);
 
     for (DWORD i = 0; i < slot->dwInstanceCount; i++) {
         ThemeLevelObject *rec = &slot->records[i];
         if (rec->bNoShadow != 0)
             continue;
-        dev->SetRenderState(D3DRENDERSTATE_ZWRITEENABLE, rec->bNoZWrite == 0);
+        dev->SetRenderState(RS::ZWriteEnable, rec->bNoZWrite == 0);
 
         for (DWORD s = 0; s < rec->dwSubObjectCount; s++) {
             for (unsigned int k = 0; k < count; k++) {
@@ -145,7 +145,7 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                 m4_translate(&m, 0.0f, K_LIFT, 0.0f);
                 compose(&world, &tmp, &m);
 
-                dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)&world);
+                dev->SetTransform(Transform::World, &world);
 
                 int frame = animation_frame(rec, t, phase, animKey);
                 if (rec->bExplode == 0) {

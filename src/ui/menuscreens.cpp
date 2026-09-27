@@ -35,12 +35,12 @@ SceneTexture g_menuTex1;
 SceneTexture g_menuTex4;
 
 #define K640          (1.0f / 640.0f)
-#define MENU_FVF      0x1c4  // XYZRHW | DIFFUSE | SPECULAR | TEX1
-static D3DTLVERTEX g_backdropQuad[4];
-D3DTLVERTEX g_panelQuad[4];
+#define MENU_FVF      VertexFormat::Screen  // XYZRHW | DIFFUSE | SPECULAR | TEX1
+static ScreenVertex g_backdropQuad[4];
+ScreenVertex g_panelQuad[4];
 #define g_panelTexture (g_menuTex1.pTexture2)          // menu_1.tga
 #define g_markerTexture (g_menuTexSelector.pTexture2)  // selector.tga
-static D3DTLVERTEX g_listQuad[4];
+static ScreenVertex g_listQuad[4];
 #define g_optionsTexture (g_menuTex2.pTexture2)  // menu_2.tga
 #define g_saveTexture  (g_menuTex4.pTexture2)    // menu_4.tga
 
@@ -53,19 +53,19 @@ static D3DTLVERTEX g_listQuad[4];
 
 static inline DWORD mode_width(RenderDevice *d3d)
 {
-    return d3d->pSelectedMode->dwWidth;
+    return d3d->width();
 }
 
 static void set_blend(RenderDevice *d3d)
 {
-    d3d->pDevice->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
-    d3d->pDevice->SetRenderState(D3DRENDERSTATE_SRCBLEND,  D3DBLEND_SRCALPHA);
-    d3d->pDevice->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    d3d->SetRenderState(RS::AlphaBlendEnable, 1);
+    d3d->SetRenderState(RS::SrcBlend,  Blend::SrcAlpha);
+    d3d->SetRenderState(RS::DestBlend, Blend::InvSrcAlpha);
 }
 
-static D3DTLVERTEX tlv(float x, float y, float u, float v)
+static ScreenVertex tlv(float x, float y, float u, float v)
 {
-    D3DTLVERTEX t;
+    ScreenVertex t;
     t.sx = x; t.sy = y; t.sz = 0.0f; t.rhw = 10.0f;
     t.color = 0xffffffff; t.specular = 0;
     t.tu = u; t.tv = v;
@@ -77,8 +77,8 @@ Menu_DrawBackdrop(RenderDevice *d3d, void *theme)
 {
     set_blend(d3d);
     SceneTexture *tex = *(SceneTexture **)((BYTE *)theme + THEME_BACKDROP_TEX);
-    d3d->pDevice->SetTexture(0, tex ? tex->pTexture2 : NULL);
-    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF,
+    d3d->SetTexture(0, tex ? tex->pTexture2 : NULL);
+    d3d->Draw(Prim::TriangleStrip, MENU_FVF,
                                 g_backdropQuad, 4, 0);
 }
 
@@ -96,19 +96,19 @@ static void draw_markers(RenderDevice *d3d, float y0, float left, float right)
     set_blend(d3d);
 
     const float l0 = (left + 16.0f) * fw * K640, l1 = (left - 16.0f) * fw * K640;
-    D3DTLVERTEX q[4] = {
+    ScreenVertex q[4] = {
         tlv(l0, y0, 1.0f, 0.0f), tlv(l0, y1, 1.0f, 1.0f),
         tlv(l1, y0, 0.0f, 0.0f), tlv(l1, y1, 0.0f, 1.0f),
     };
-    d3d->pDevice->SetTexture(0, g_markerTexture);
-    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, q, 4, 0);
+    d3d->SetTexture(0, g_markerTexture);
+    d3d->Draw(Prim::TriangleStrip, MENU_FVF, q, 4, 0);
 
     const float r0 = (right + 16.0f) * fw * K640, r1 = (right - 16.0f) * fw * K640;
-    D3DTLVERTEX p[4] = {
+    ScreenVertex p[4] = {
         tlv(r0, y0, 0.0f, 0.0f), tlv(r0, y1, 0.0f, 1.0f),
         tlv(r1, y0, 1.0f, 0.0f), tlv(r1, y1, 1.0f, 1.0f),
     };
-    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, p, 4, 0);
+    d3d->Draw(Prim::TriangleStrip, MENU_FVF, p, 4, 0);
 }
 
 extern "C" __declspec(dllexport) void __cdecl
@@ -151,8 +151,8 @@ static void draw_panel(RenderDevice *d3d, void *theme, IDirect3DTexture2 *tex,
 {
     Menu_DrawBackdrop(d3d, theme);
     set_blend(d3d);
-    d3d->pDevice->SetTexture(0, tex);
-    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, quad, 4, 0);
+    d3d->SetTexture(0, tex);
+    d3d->Draw(Prim::TriangleStrip, MENU_FVF, quad, 4, 0);
 }
 
 static void draw_fixed_rows(RenderDevice *d3d, void *theme, TextRenderer *text,
@@ -308,7 +308,7 @@ static void draw_widget(RenderDevice *d3d, const Affine &m, IDirect3DTexture2 *t
     // A row vector times [[c,-s,0,0],[s,c,0,0],[0,0,1,0],[tx,ty,0,1]]: w stays
     // exactly 1, so the perspective divide is skipped.
     static const float uv[4][2] = { {1, 0}, {1, 1}, {0, 0}, {0, 1} };
-    D3DTLVERTEX q[4];
+    ScreenVertex q[4];
     for (int i = 0; i < 4; i++) {
         const Vec3 &p = g_widgetModel[i];
         q[i] = tlv(p.x * m.c + p.y * m.s + m.tx,
@@ -316,8 +316,8 @@ static void draw_widget(RenderDevice *d3d, const Affine &m, IDirect3DTexture2 *t
         q[i].sz = p.z;
         q[i].color = colour;
     }
-    d3d->pDevice->SetTexture(0, tex);
-    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, q, 4, 0);
+    d3d->SetTexture(0, tex);
+    d3d->Draw(Prim::TriangleStrip, MENU_FVF, q, 4, 0);
 }
 
 /* A left-aligned option label in the 12x14 cell, at x = xv virtual. */
@@ -376,7 +376,7 @@ Menu_RenderSoundOptions(Game *g, void *theme, RenderDevice *d3d,
 
 static bool shadows_available(RenderDevice *d3d)
 {
-    return d3d->zbufFmt.dwStencilBitDepth != 0 && d3d->pSelectedMode->dwBitDepth > 16;
+    return d3d->hasStencil() && d3d->bitDepth() > 16;
 }
 
 extern "C" __declspec(dllexport) void __cdecl
@@ -443,25 +443,25 @@ Menu_RenderControlsRemap(Game *g, void *theme, RenderDevice *d3d,
 {
     const DWORD w  = mode_width(d3d);
     const float fw = (float)w;
-    const float fh = (float)d3d->pSelectedMode->dwHeight;
+    const float fh = (float)d3d->height();
 
-    D3DTLVERTEX back[4] = {
+    ScreenVertex back[4] = {
         tlv(fw, 0.0f, 0.6f, 0.4f), tlv(fw, fh, 0.6f, 0.6f),
         tlv(0.0f, 0.0f, 0.4f, 0.4f), tlv(0.0f, fh, 0.4f, 0.6f),
     };
     set_blend(d3d);
     SceneTexture *tex = *(SceneTexture **)((BYTE *)theme + THEME_BACKDROP_TEX);
-    d3d->pDevice->SetTexture(0, tex ? tex->pTexture2 : NULL);
-    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, back, 4, 0);
+    d3d->SetTexture(0, tex ? tex->pTexture2 : NULL);
+    d3d->Draw(Prim::TriangleStrip, MENU_FVF, back, 4, 0);
 
     const float hx0 = fw * 0.60000002f, hx1 = fw * 0.40000001f;
     const float hy0 = fw * 0.065624997f, hy1 = fw * 0.16562501f;
-    D3DTLVERTEX head[4] = {
+    ScreenVertex head[4] = {
         tlv(hx0, hy0, 1.0f, 0.0f), tlv(hx0, hy1, 1.0f, 0.5f),
         tlv(hx1, hy0, 0.0f, 0.0f), tlv(hx1, hy1, 0.0f, 0.5f),
     };
-    d3d->pDevice->SetTexture(0, g_videoTexture);
-    d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, head, 4, 0);
+    d3d->SetTexture(0, g_videoTexture);
+    d3d->Draw(Prim::TriangleStrip, MENU_FVF, head, 4, 0);
 
     const DWORD *col = (const DWORD *)((BYTE *)theme + 0x6f934);
     float rowY[13];
@@ -517,7 +517,7 @@ static const MenuTextureLoad k_menuTextures[9] = {
     { &g_menuTexScale, "scale.tga" },
 };
 
-static void fill_quad(D3DTLVERTEX *q, float x0, float x1, float y0, float y1,
+static void fill_quad(ScreenVertex *q, float x0, float x1, float y0, float y1,
                       float v0, float v1)
 {
     q[0] = tlv(x0, y0, 1.0f, v0);
@@ -529,13 +529,13 @@ static void fill_quad(D3DTLVERTEX *q, float x0, float x1, float y0, float y1,
 extern "C" __declspec(dllexport) void __cdecl
 Menu_BuildMenuGeometry(RenderDevice *d3d, const char *prefix)
 {
-    const float fw = (float)d3d->pSelectedMode->dwWidth;
+    const float fw = (float)d3d->width();
 
-    fill_quad((D3DTLVERTEX *)g_panelQuad, fw * 0.60000002f, fw * 0.40000001f,
+    fill_quad((ScreenVertex *)g_panelQuad, fw * 0.60000002f, fw * 0.40000001f,
               fw * 0.17499999f, fw * 0.27500001f, 0.0f, 0.5f);
-    fill_quad((D3DTLVERTEX *)g_listQuad, fw * 0.60000002f, fw * 0.40000001f,
+    fill_quad((ScreenVertex *)g_listQuad, fw * 0.60000002f, fw * 0.40000001f,
               fw * 0.17499999f, fw * 0.27500001f, 0.5f, 1.0f);
-    fill_quad((D3DTLVERTEX *)g_backdropQuad, fw * 0.69999999f, fw * 0.30000001f,
+    fill_quad((ScreenVertex *)g_backdropQuad, fw * 0.69999999f, fw * 0.30000001f,
               fw * 0.17499999f, fw * 0.57499999f, 0.0f, 1.0f);
 
     const float sp = fw * 0.015625f, sn = fw * -0.015625f;
@@ -548,7 +548,7 @@ Menu_BuildMenuGeometry(RenderDevice *d3d, const char *prefix)
     char path[260];
     for (const MenuTextureLoad &t : k_menuTextures) {
         sprintf(path, "%s\\textures\\%s", prefix, t.file);
-        Texture_ImportSceneTextures(t.obj, d3d->pDD4, d3d->pDevice, path, 1, 0, 0);
+        Texture_ImportSceneTextures(t.obj, d3d, path, 1, 0, 0);
     }
 }
 
@@ -651,7 +651,7 @@ extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
                          DWORD nowMs)
 {
-    const float scale = (float)d3d->pSelectedMode->dwWidth * (1.0f / 640.0f);
+    const float scale = (float)d3d->width() * (1.0f / 640.0f);
 
     if (game->field_13cc8c() != 0) {
         g_creditsStartMs = nowMs;
