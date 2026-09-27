@@ -11,7 +11,7 @@
 extern "C" __declspec(dllexport) void __cdecl
 Input_TrySaveSettings(void)
 {
-    GameLog_LogMessage(&g_logger, 1, GS_CONTROL_SAVE_SETTINGS);
+    g_logger.logMessage(1, GS_CONTROL_SAVE_SETTINGS);
     g_progCtrl.writeBindings();
     g_progCtrl.shutdown();
 }

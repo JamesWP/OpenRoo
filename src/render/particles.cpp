@@ -653,12 +653,12 @@ static char *ps_read_name(void *fp, GameLogger *log, int line_len,
 {
     DWORD len;
     if (!ps_read(&len, 4, fp)) {
-        GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, line_len, GS_PS_MSG_NOLEN);
+        log->logSourceLocation(4, GS_PS_SRC_FILE, line_len, GS_PS_MSG_NOLEN);
         return NULL;
     }
     char *name = (char *)::operator new(len, std::nothrow);
     if (hooks_fread(name, 1, len, fp) != len) {
-        GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, line_name, msg_name);
+        log->logSourceLocation(4, GS_PS_SRC_FILE, line_name, msg_name);
         ::operator delete(name);
         return NULL;
     }
@@ -675,11 +675,11 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
 
     DWORD count;
     if (!ps_read(&count, 4, fp)) {
-        GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOCOUNT);
+        log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOCOUNT);
         return FALSE;
     }
     if (!ring_alloc(&self->ring, count, 0)) {
-        GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NORING);
+        log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NORING);
         return FALSE;
     }
 
@@ -689,7 +689,7 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
     if (strcmp(name, GS_PS_NAME_NULL) != 0) {
         Generator *gen = gen_create(name);
         if (gen == NULL) {
-            GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOGEN, name);
+            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOGEN, name);
             ::operator delete(name);
             return FALSE;
         }
@@ -699,7 +699,7 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
 /* PRESERVED: `name` was freed above and is still handed to the logger. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuse-after-free"
-            GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_GENLOAD, name);
+            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_GENLOAD, name);
 #pragma GCC diagnostic pop
             sub_object_delete(gen);
             return FALSE;
@@ -714,7 +714,7 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
     if (strcmp(name, GS_PS_NAME_NULL) != 0) {
         Environment *env = env_create(name);
         if (env == NULL) {
-            GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_ENVNAME, name);
+            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_ENVNAME, name);
             ::operator delete(name);
             return FALSE;
         }
@@ -724,7 +724,7 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
 /* PRESERVED: the same use-after-free as the generator branch. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuse-after-free"
-            GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_ENVLOAD, name);
+            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_ENVLOAD, name);
 #pragma GCC diagnostic pop
             sub_object_delete(env);
             return FALSE;
@@ -842,7 +842,7 @@ static BOOL point_deserialize(PointParticleSystem *self, void *fp, GameLogger *l
     if (!ps_deserialize(&self->base, fp, log))
         return FALSE;
     if (!point_alloc_verts(self)) {
-        GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_PTVERTS);
+        log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_PTVERTS);
         return FALSE;
     }
     return TRUE;
@@ -886,7 +886,7 @@ static BOOL face_serialize(FaceParticleSystem *self, void *fp, GameLogger *log)
 {
     ps_serialize(&self->base, fp, log);
     if (!ps_write(&self->flScale, 4, fp)) {
-        GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_SAVESIZE);
+        log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_SAVESIZE);
         return FALSE;
     }
     return TRUE;
@@ -898,11 +898,11 @@ static BOOL face_deserialize(FaceParticleSystem *self, void *fp, GameLogger *log
     if (!ps_deserialize(&self->base, fp, log))
         return FALSE;
     if (!ps_read(&self->flScale, 4, fp)) {
-        GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_FACESIZE);
+        log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_FACESIZE);
         return FALSE;
     }
     if (!face_alloc_verts(self)) {
-        GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_VERTARR);
+        log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_VERTARR);
         return FALSE;
     }
     return TRUE;
@@ -1104,7 +1104,7 @@ static BOOL xface_serialize(XFaceParticleSystem *self, void *fp, GameLogger *log
             goto failed;
     return TRUE;
 failed:
-    GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_XSAVE);
+    log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_XSAVE);
     return FALSE;
 }
 
@@ -1121,7 +1121,7 @@ static BOOL xface_deserialize(XFaceParticleSystem *self, void *fp, GameLogger *l
                (self, self->base.ring.dwRingCount);
 failed:
     ((ps_release_fn)self->base.pVtable[PS_VT_RELEASE])(self, 1);
-    GameLog_LogSourceLocation(log, 4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_XLOAD);
+    log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_XLOAD);
     return FALSE;
 }
 
@@ -1231,19 +1231,19 @@ static ParticleSystem *ps_load_stream(void *fp, GameLogger *log)
 {
     DWORD len;
     if (hooks_fread(&len, 4, 1, fp) != 1) {
-        GameLog_LogSourceLocation(log, 4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NODATA);
+        log->logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NODATA);
         return NULL;
     }
     char *name = (char *)::operator new(len, std::nothrow);
     if (hooks_fread(name, 1, len, fp) != len) {
         ::operator delete(name);
-        GameLog_LogSourceLocation(log, 4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NAMEREAD);
+        log->logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NAMEREAD);
         return NULL;
     }
     ParticleSystem *ps = ps_create(name);
     if (ps == NULL) {
         // Logged before the free here, unlike Deserialize's two branches.
-        GameLog_LogSourceLocation(log, 4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOSYSTEM, name);
+        log->logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOSYSTEM, name);
         ::operator delete(name);
         return NULL;
     }
@@ -1258,15 +1258,15 @@ static ParticleSystem *ps_load_stream(void *fp, GameLogger *log)
 /* The .par entry point.  A failed fclose discards the system that was read. */
 ParticleSystem *ps_load_file(const char *path, GameLogger *log)
 {
-    GameLog_LogMessage(log, 2, GS_PS_MSG_STARTREAD, path);
+    log->logMessage(2, GS_PS_MSG_STARTREAD, path);
     void *fp = hooks_fopen(path, "r");  // text mode
     if (fp == NULL) {
-        GameLog_LogSourceLocation(log, 4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOOPEN, path);
+        log->logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOOPEN, path);
         return NULL;
     }
     ParticleSystem *ps = ps_load_stream(fp, log);
     if (hooks_fclose(fp) != 0) {
-        GameLog_LogSourceLocation(log, 3, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOCLOSE, path);
+        log->logSourceLocation(3, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOCLOSE, path);
         if (ps)
             sub_object_delete(ps);
         return NULL;

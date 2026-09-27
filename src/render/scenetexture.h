@@ -37,7 +37,7 @@ Texture_SelectTextureLoader(SceneTexture *self, RenderDevice *dev, LPCSTR name, 
  * Same shape as ModelManager (model.h).  The window procedure reloads both
  * on WM_ACTIVATE. */
 #include "linkedlist.h"
-struct GameLogger;
+class GameLogger;
 
 class __attribute__((packed)) TextureManager {
 public:

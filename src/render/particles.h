@@ -172,7 +172,7 @@ DWORD PS_THISCALL Particle_XFaceDraw(XFaceParticleSystem *self, RenderDevice *d)
 
 /* The lifecycle slots (0-6, 9, 12, 13, 14).  Slots 5 and 6 are one
  * function each across all four classes; slot 1 is shared by Point and Face. */
-struct GameLogger;
+class GameLogger;
 void *PS_THISCALL Particle_BaseDtor(ParticleSystem *, unsigned);
 void  PS_THISCALL Particle_BaseRelease(ParticleSystem *, int);
 BOOL  PS_THISCALL Particle_BaseCopyFrom(ParticleSystem *, const ParticleSystem *);

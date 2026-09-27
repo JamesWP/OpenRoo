@@ -30,7 +30,7 @@ void StaticInit_Construct()
 {
     g_progCtrl.setup((int)&g_logger);
     Scene_Construct(&g_scene);
-    GameLog_Construct(&g_logger);
+    g_logger.construct();
     g_movie.init();
     LevelPlacements_StaticInit();
     Theme_BlockConstruct(&g_themeBlock);
@@ -52,12 +52,12 @@ void StaticInit_Construct()
         Texture_SceneCtor(t);
     // The sound logger is initialised but never constructed: zero-initialised
     // static storage is its starting state.
-    GameLog_Initialize(&g_soundLogger, "StreamSoundBuffer.log", 0);
+    g_soundLogger.initialize("StreamSoundBuffer.log", 0);
 }
 
 void StaticInit_Destruct()
 {
-    GameLog_CloseAndRebindVtable(&g_soundLogger);
+    g_soundLogger.closeAndRebindVtable();
     for (int i = (int)(sizeof(MENU_TEX_B) / sizeof(*MENU_TEX_B)) - 1; i >= 0; --i)
         Texture_SceneDtorBody(MENU_TEX_B[i]);
     for (int i = (int)(sizeof(MENU_TEX_A) / sizeof(*MENU_TEX_A)) - 1; i >= 0; --i)
@@ -76,7 +76,7 @@ void StaticInit_Destruct()
     Texture_ImageDtorBody(&g_fallbackImage);
     Theme_BlockDestruct(&g_themeBlock);
     g_movie.destruct();
-    GameLog_CloseAndRebindVtable(&g_logger);
+    g_logger.closeAndRebindVtable();
     Scene_Destruct(&g_scene);
     g_progCtrl.teardown();
 }

@@ -15,7 +15,7 @@
 
 class CStaticSoundbuffer;
 class VoicePool;
-struct GameLogger;
+class GameLogger;
 
 class __attribute__((packed)) SoundManager {
 public:

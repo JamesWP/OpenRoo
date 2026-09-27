@@ -33,7 +33,7 @@ Render_ConfigureRenderState(void)
 
     // Loading-screen and demo bitmaps.
     if (!(char)TextureDIB_CreateSurface(&g_fallbackImage, d3d, "bitmaps\\loading.bmp", 1))
-        GameLog_LogMessage(&g_logger, 3, "SUR: *ERROR* couldn't load loading.bmp");
+        g_logger.logMessage(3, "SUR: *ERROR* couldn't load loading.bmp");
     g_renderDevice->PresentImage(&g_fallbackImage);
     TextureDIB_CreateSurface(&g_demoImage, d3d, "bitmaps\\demo.bmp", 1);
 
@@ -133,11 +133,11 @@ Render_ConfigureRenderState(void)
     d3d->SetDirectionalLight(light);
 
     if (!(char)g_fontMain.load("fonts\\font1.fon", d3d)) {
-        GameLog_LogMessage(&g_logger, 4, "Couldn't create Font font1.fon");
+        g_logger.logMessage(4, "Couldn't create Font font1.fon");
         PostQuitMessage(1);
     }
     if (!(char)g_fontNumbers.load("fonts\\numbers.fon", d3d)) {
-        GameLog_LogMessage(&g_logger, 4, "Couldn't create Font numbers.fon");
+        g_logger.logMessage(4, "Couldn't create Font numbers.fon");
         PostQuitMessage(1);
     }
 }

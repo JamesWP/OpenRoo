@@ -174,7 +174,7 @@ Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger)
     }
 
     if (logger != NULL)
-        GameLog_LogMessage(logger, 1, GS_ANI_LOADED, path);
+        logger->logMessage(1, GS_ANI_LOADED, path);
 
     if (logged < ANI_LOG_FIRST) {
         logged++;

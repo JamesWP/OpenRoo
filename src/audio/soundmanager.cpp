@@ -190,7 +190,7 @@ void SoundManager::releaseStaticForOwner(CStaticSoundbuffer *buf,
 
     ++g_relStaticLost;
     sndmgr_census();
-    GameLog_LogSourceLocation((GameLogger *)logger_, 3, SRCFILE, __LINE__,
+    ((GameLogger *)logger_)->logSourceLocation(3, SRCFILE, __LINE__,
         "Could not release StaticSoundbuffer '%s', because the buffer was "
         "not found !", buf->filename());
 }
@@ -230,7 +230,7 @@ void SoundManager::releasePooledForOwner(VoicePool *pool,
     // PRESERVED: voice 0 is used unchecked, so reporting on an empty pool
     // faults.
     CStaticSoundbuffer *voice0 = pool->voiceAt(0);
-    GameLog_LogSourceLocation((GameLogger *)logger_, 3, SRCFILE, __LINE__,
+    ((GameLogger *)logger_)->logSourceLocation(3, SRCFILE, __LINE__,
         "Could not release MultiStaticSoundbuffer '%s', because the buffer "
         "was not found !", voice0->filename());
 }
@@ -429,14 +429,14 @@ int SoundManager::setup(int mode3d)
 
             if (!entry->master()->createAndLoad(directSound(),
                                        mode3d))
-                GameLog_LogSourceLocation((GameLogger *)logger_, 3,
+                ((GameLogger *)logger_)->logSourceLocation(3,
                     SRCFILE, __LINE__,
                     "CSoundManager::Set3D_LoadNew(...) switch 3D of "
                     "OrgSoundBuffer failed");
 
             if (entry->spare()->soundbuffer() != NULL
                 && !entry->spare()->createAndLoad(directSound(), mode3d))
-                GameLog_LogSourceLocation((GameLogger *)logger_, 3,
+                ((GameLogger *)logger_)->logSourceLocation(3,
                     SRCFILE, __LINE__,
                     "CSoundManager::Set3D_LoadNew(...) switch 3D of "
                     "SecOrgSoundBuffer failed");
@@ -455,7 +455,7 @@ int SoundManager::setup(int mode3d)
                     continue;
 
                 if (src == entry->spare()) {
-                    GameLog_LogSourceLocation((GameLogger *)logger_, 3,
+                    ((GameLogger *)logger_)->logSourceLocation(3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
@@ -465,7 +465,7 @@ int SoundManager::setup(int mode3d)
                     && !loadEntryMaster(entry->spare(),
                             src->filename(), spare_flags(src->dsFlags()),
                             mode3d))
-                    GameLog_LogSourceLocation((GameLogger *)logger_, 3,
+                    ((GameLogger *)logger_)->logSourceLocation(3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
@@ -485,7 +485,7 @@ int SoundManager::setup(int mode3d)
                     continue;
 
                 if (src == entry->spare()) {
-                    GameLog_LogSourceLocation((GameLogger *)logger_, 3,
+                    ((GameLogger *)logger_)->logSourceLocation(3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
@@ -495,7 +495,7 @@ int SoundManager::setup(int mode3d)
                     && !loadEntryMaster(entry->spare(),
                             src->filename(), spare_flags(src->dsFlags()),
                             mode3d))
-                    GameLog_LogSourceLocation((GameLogger *)logger_, 3,
+                    ((GameLogger *)logger_)->logSourceLocation(3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
@@ -602,7 +602,7 @@ int SoundManager::init(int enable3d, HWND window,
     if (logger == NULL) {
         GameLogger *own = (GameLogger *)malloc(0x118);
         if (own != NULL)
-            own = (GameLogger *)GameLog_Initialize(own, GS_SOUNDMGR_LOG_NAME, NULL);
+            own = (GameLogger *)own->initialize(GS_SOUNDMGR_LOG_NAME, NULL);
         logger_     = own;
         ownsLogger_ = 1;
     }

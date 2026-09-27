@@ -8,13 +8,13 @@
 #include <windows.h>
 #include <stdio.h>
 
-struct GameLogger;
+class GameLogger;
 struct LoadedImage;
 class CDM;
 class ProgableControl;
 
-/* The game's logger, written through GameLog_LogMessage and
- * GameLog_LogSourceLocation (gamelog.h). */
+/* The game's logger, written through GameLogger::logMessage and
+ * GameLogger::logSourceLocation (gamelog.h). */
 extern GameLogger g_logger;
 extern GameLogger g_soundLogger;  // the stream sound logger
 

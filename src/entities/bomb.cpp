@@ -426,7 +426,7 @@ void Bomb::tick()
                 t->setField203(1);
                 t->setField20f(1);
 
-                GameLog_LogMessage(&g_logger, 1,
+                g_logger.logMessage(1,
                                    "GAME: obstacle is exploding at:%d,%d,%d",
                                    u, v, (int)t->height());
 

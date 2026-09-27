@@ -424,7 +424,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
         return 0xb;
     }
     if (strcmp(cmd, "initwave") == 0) {
-        GameLog_LogMessage(&g_logger, 1, "IS: initwave noticed");
+        g_logger.logMessage(1, "IS: initwave noticed");
         char *name = strtok(NULL, JJS_DELIMS);
         if (name) {
             if (soundManager_)
@@ -437,7 +437,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
                     return 0xc;
                 }
                 if (streams_[id]) {
-                    GameLog_LogMessage(&g_logger, 3,
+                    g_logger.logMessage(3,
                         "IS: warning - Stream sound buffer width id %d already initialized!", id);
                     return 0xc;
                 }
@@ -446,11 +446,11 @@ unsigned char ScriptPlayer::playScript(const char *line)
                 streams_[id] = s;
                 streamReady_ = s->prepare(&streamWave_);
                 if (streamReady_)
-                    GameLog_LogMessage(&g_logger, 1,
+                    g_logger.logMessage(1,
                         "IS: Stream buffer width name %s successfully initialized, ID=%d",
                         streamWave_.pFilename, id);
                 else
-                    GameLog_LogMessage(&g_logger, 1,
+                    g_logger.logMessage(1,
                         "IS: warning - Stream sound buffer width name %s could not initialized !",
                         streamWave_.pFilename);
             }
@@ -477,7 +477,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
                     waitingOnStream_ = 1;
                     waitStream_ = id;
                 }
-                GameLog_LogMessage(&g_logger, 1,
+                g_logger.logMessage(1,
                     "IS: Stream sound buffer width ID=%d started,wait=%d", id, waitingOnStream_);
             }
         }
@@ -550,7 +550,7 @@ void ScriptPlayer::runNextCommand()
     if (playScript(currentLine_))
         return;
     currentLine_[strlen(currentLine_) - 1] = '\0';  // drop the "\n"
-    GameLog_LogMessage(&g_logger, 3, "IS:** error at command %d:%s **",
+    g_logger.logMessage(3, "IS:** error at command %d:%s **",
                        (int)cursor_, currentLine_);
 }
 

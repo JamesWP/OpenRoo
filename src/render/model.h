@@ -7,7 +7,7 @@
 #include "linkedlist.h"
 #include "faktmesh.h"
 
-struct GameLogger;
+class GameLogger;
 
 /* Load `path` into `self`; the low byte of the result is the
  * success flag. */

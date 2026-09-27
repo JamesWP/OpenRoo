@@ -642,7 +642,7 @@ TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename
         tm_lower_inplace(cached->base.ImageName);
         if (strcmp(cached->base.ImageName, filename) == 0) {
             if (self->pLogger != NULL)
-                GameLog_LogMessage(self->pLogger, 1, GS_TM_FOUND, filename);
+                self->pLogger->logMessage(1, GS_TM_FOUND, filename);
             return cached;
         }
     }
@@ -655,11 +655,11 @@ TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename
         if (tex != NULL)
             tm_delete(tex);
         if (self->pLogger != NULL)
-            GameLog_LogMessage(self->pLogger, 3, GS_TM_FAILED, filename);
+            self->pLogger->logMessage(3, GS_TM_FAILED, filename);
         return NULL;
     }
     if (self->pLogger != NULL)
-        GameLog_LogMessage(self->pLogger, 1, GS_TM_LOADED, filename);
+        self->pLogger->logMessage(1, GS_TM_LOADED, filename);
     self->cache.append(tex);
     return tex;
 }

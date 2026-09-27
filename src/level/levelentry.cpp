@@ -43,9 +43,9 @@ LevelEntry_PrepareAssets(void)
     // 3. The theme, only when it has changed: the block keeps the path it was
     // loaded from.
     if (strcmp(g_themeBlock.themeName, thm) != 0) {
-        GameLog_LogMessage(&g_logger, 1, "THM: *** Theme: %s ***", map->mapName());
+        g_logger.logMessage(1, "THM: *** Theme: %s ***", map->mapName());
         if (!Theme_Load(g, d3d, &g_themeBlock, thm, &g_logger))
-            GameLog_LogMessage(&g_logger, 4, "Couldn't load theme %s.", map->mapName());
+            g_logger.logMessage(4, "Couldn't load theme %s.", map->mapName());
     }
 
     // 4. What the frame renderer draws.

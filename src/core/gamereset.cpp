@@ -26,10 +26,9 @@
 #include "player.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "gamelog.h"
 
-struct GameLogger;
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
+class GameLogger;
 
 typedef unsigned int __attribute__((aligned(1))) u32_ua;
 
@@ -105,7 +104,7 @@ Sim_ClearGameState(Game *self)
     self->totalPlayTimeHighDword() = 0;
 
     if (gamefile_ok == 0) {
-        GameLog_LogMessage(&g_logger, 4, GS_GAME_GAMEFILE_ERR,
+        g_logger.logMessage(4, GS_GAME_GAMEFILE_ERR,
                            self->gameFileName());
         PostQuitMessage(1);
     }
