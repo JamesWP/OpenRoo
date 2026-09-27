@@ -1,28 +1,12 @@
-/* SwitchCells -- the cells each switch controls, embedded in Game at
- * +0x140543 (COHESION_PLAN.md Band 3).
- *
- * EXTENT, settled arithmetically: 256 switches x 256 cells x 3 bytes, then
- * one count byte per switch at +0x30000 (Game+0x170543).  0x30000 + 0x100 =
- * 0x30100, which tiles Game's span 0x140543..0x170643 exactly -- it ends
- * where the bridge slots begin.
- *
- * WRITERS AND READERS, all ours:
- *   - SetupLevelObjects (levelsetup.cpp) clears the counts, then appends
- *     (u, v) for every kind-0x11 switch cell under switch param-1;
- *   - ClearGameState (gamereset.cpp) clears the counts (one REP STOSD of
- *     0x40 dwords -- the 256 count bytes, nothing else);
- *   - MarkListedTilesBlockedByObject and FindNearestListedObjectTile
- *     (tilequery.cpp) walk switch k's cells.
- * The switch number is the bridge slot the switch arms, so list k and
- * bridge k go together (tilequery's blocking pass reads bridge k's phase).
- *
- * The third byte of each cell is never written or read by any of them; it
- * is declared, unnamed, so the stride is right.
- */
+/* SwitchCells: the cells each switch controls, a sub-object of Game.  The
+ * level builder lists every switch cell under its switch number; the tile
+ * queries walk switch k's cells.  Switch k arms bridge k, so list k and bridge
+ * k go together. */
 #pragma once
 
 #include "layout.h"
 
+/* One cell: its grid position.  The third byte is never used. */
 struct __attribute__((packed)) SwitchCell {
     unsigned char u;
     unsigned char v;
@@ -43,8 +27,8 @@ public:
     void setCellU(unsigned sw, unsigned i, unsigned char u) { cells_[sw & 0xff][i & 0xff].u = u; }
     void setCellV(unsigned sw, unsigned i, unsigned char v) { cells_[sw & 0xff][i & 0xff].v = v; }
 
-    /* Both clearers zero exactly the 256 counts; the cells are left as the
-     * previous level wrote them, and only the counts bound a walk. */
+    // Only the counts are cleared; the cells keep the previous level's values,
+    // and only the counts bound a walk.
     void clearCounts()
     {
         for (int i = 0; i < SWITCHES; i++)
@@ -52,11 +36,11 @@ public:
     }
 
 private:
-    SwitchCells() = delete;   /* game-owned; embedded in Game */
+    SwitchCells() = delete;  // embedded in the Game
     KAROO_LAYOUT_REGISTER(SwitchCells);
 
-    SwitchCell    cells_[SWITCHES][CELLS];            /* 0x00000 */
-    unsigned char counts_[SWITCHES];                  /* 0x30000 */
+    SwitchCell    cells_[SWITCHES][CELLS];
+    unsigned char counts_[SWITCHES];
 };
 
 KAROO_LAYOUT_CHECKS(SwitchCells)
