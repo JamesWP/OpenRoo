@@ -1,22 +1,10 @@
-/* game.cpp -- Game's lifecycle (ENDGAME, the Game TU 0x4145c0..0x420b60):
- *
- *   0x004145c0  Game::Load              Game_Construct   the constructor
- *   0x00414b50  scalar deleting dtor    Game_ScalarDestructor (our vtable)
- *   0x00414b70  Game::Destruct          Game_Destruct
- *   0x0041cbf0  LoadGameFile            Game::loadGameFile
- *   0x0041b3b0  ReleaseAllSoundBuffers  Game::releaseAllSounds
- *   0x00418ab0  the default menu graph  MenuTree::buildDefaultGraph
- *
- * Written from the listings; the decompile loses FillDefaultHighScoreRecords'
- * arguments and the demo check's operands.  The originals' SEH frames guard
- * only the member ctors, which cannot throw, and are dropped.
- *
- * Every member is built and torn down by its owner (menutree.cpp,
- * cdthemes.cpp, theme.cpp, extraobjects.cpp, soundmanager.cpp,
- * textentry.cpp, highscores.cpp, saveslots.cpp, player.cpp,
- * scriptplayer.cpp, config.cpp, levelmap.cpp), in the original's order;
- * teardown is the exact reverse.
+/* Game's lifecycle: the constructor, the destructor, the game-file loader and
+ * the sound release.  Each member is built and torn down by its owner
+ * (menutree.cpp, cdthemes.cpp, theme.cpp, extraobjects.cpp, soundmanager.cpp,
+ * textentry.cpp, highscores.cpp, saveslots.cpp, player.cpp, scriptplayer.cpp,
+ * config.cpp, levelmap.cpp), in a fixed order; teardown is its exact reverse.
  */
+
 #include <windows.h>
 #include <mmsystem.h>
 #include <stdio.h>
@@ -48,8 +36,7 @@
 
 static void *const g_GameVtable[1] = { (void *)&Game_ScalarDestructor };
 
-/* The key byte the save-slot files are keyed with ('7'), and the high-score
- * file's ('K'). */
+/* The key bytes of the save-slot files ('7') and the high-score file ('K'). */
 static const char SAVE_KEY      = 0x37;
 static const char HIGHSCORE_KEY = 0x4b;
 
@@ -75,7 +62,7 @@ Game *Game::construct(const char *gameName)
     tickCount_  = 0;
     field_04_   = 1.0;
     switchCells_.clearCounts();
-    /* Only the first 256 of each 500-slot table, as the original does. */
+    // PRESERVED: only the first 256 of each 500-slot table.
     memset(bombSlots_, 0, 0x100 * sizeof(bombSlots_[0]));
     memset(foeSlots_,  0, 0x100 * sizeof(foeSlots_[0]));
     breakableCount_ = 0;
@@ -106,7 +93,7 @@ Game *Game::construct(const char *gameName)
     field_13cc8c_ = 0;
     field_13cc88_ = 0;
 
-    /* The game name is sprintf's FORMAT, as in the original. */
+    // PRESERVED: the game name is used as sprintf's format.
     sprintf(gameFileName_, gameName);
     cdThemes_.readTrackThemeTable(gameFileName_);
     cdThemes_.listTrackLengths();
@@ -149,8 +136,8 @@ Game *Game::construct(const char *gameName)
         GameLog_LogMessage(&g_logger, 1, GS_GAME_HIGHSCORES_LOADED);
     }
 
-    /* The copy protection: a nonzero field_0c_ with more than ten levels is
-     * a demo build.  field_0c_ was zeroed above, so this never fires. */
+    // PRESERVED: a demo check, for a nonzero field_0c_ with more than ten
+    // levels.  field_0c_ was zeroed above, so it never fires.
     if (field_0c_ != 0 && levelCount_ > 10) {
         GameLog_LogMessage(&g_logger, 4, GS_GAME_DEMO_ABORT);
         PostQuitMessage(1);
@@ -241,13 +228,12 @@ void Game::destruct()
     rootMenu_.destruct();
 }
 
-/* 0x41cbf0.  "<gamedir>\<name>.gam", opened in TEXT mode ("r") even for the
- * binary form.  Binary: a 6,6,6,<levels> header, then every byte minus 5
- * into the flat level-name table, indexed by a 16-bit count.  The EOF test
- * precedes the read, so the final, failing fread re-decodes the byte it
- * left behind (it is decremented again) -- kept.  Text: rewind, then one
- * name per line up to a line starting '*' (which is stored and counted,
- * then the count is taken back by one). */
+/* "<gamedir>\<name>.gam", opened in text mode ("r") even for the binary form.
+ * FORMAT: binary is a 6,6,6,<levels> header, then every byte minus 5 into the
+ * flat level-name table.  Text is one name per line, up to a line starting
+ * '*', which is stored and counted, then uncounted.  PRESERVED: the EOF test
+ * comes before the read, so the last, failing fread decodes the byte it left
+ * behind a second time. */
 int Game::loadGameFile(const char *name)
 {
     char path[0x80] = { 0 };
@@ -287,10 +273,10 @@ int Game::loadGameFile(const char *name)
     fseek(fp, 0, SEEK_SET);
     line[0] = '\0';
     while (!feof(fp) && line[0] != '*') {
-        line[0] = '\0';   /* a copy of the empty string at 0x46c290 */
+        line[0] = '\0';  // empty, in case fgets reads nothing
         fgets(line, 0x100, fp);
-        /* The unconditional chop; at EOF the line is empty and the
-         * original writes the byte before its buffer, which we skip. */
+        // Chop the last character, newline or not.  An empty line at EOF would
+        // chop the byte before the buffer; that write is skipped.
         size_t len = strlen(line);
         if (len > 0)
             line[len - 1] = '\0';
@@ -303,7 +289,7 @@ int Game::loadGameFile(const char *name)
     return 1;
 }
 
-/* 0x41b3b0.  Only while sound is up; soundsLoaded is cleared either way. */
+/* Releases only while sound is up; soundsLoaded is cleared either way. */
 void Game::releaseAllSounds()
 {
     SoundManager *sm = soundManager();
@@ -330,8 +316,8 @@ void Game::releaseAllSounds()
             if (s) SoundMgr_ReleaseStaticForOwner(sm, s, 1);
         if (p->pool9f())
             SoundMgr_ReleasePoolForOwner(sm, p->pool9f(), 1);
-        /* The crystal banks and the pickup banks, one entry of each per
-         * pass; bank 5 is never released (the original skips +0x3c). */
+        // The crystal banks and the pickup banks, one entry of each per pass.
+        // PRESERVED: bank 5 is never released.
         static const int banks[] = { 0, 1, 2, 3, 4, 6, 7, 8 };
         for (int i = 0; i < 3; i++) {
             if (fixedSounds_.crystalBank[i])
@@ -356,7 +342,7 @@ Game_Destruct(Game *self)
     self->destruct();
 }
 
-/* WinMain allocated the Game with the game's operator new. */
+/* free() matches the malloc in WinMain. */
 extern "C" __declspec(dllexport) Game *__attribute__((thiscall))
 Game_ScalarDestructor(Game *self, unsigned char flags)
 {
