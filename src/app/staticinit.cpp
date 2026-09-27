@@ -28,7 +28,7 @@ static SceneTexture *const MENU_TEX_B[] = {
 
 void StaticInit_Construct()
 {
-    ProgCtrl_Setup(&g_progCtrl, (int)&g_logger);
+    g_progCtrl.setup((int)&g_logger);
     Scene_Construct(&g_scene);
     GameLog_Construct(&g_logger);
     Movie_Construct(&g_movie);
@@ -78,5 +78,5 @@ void StaticInit_Destruct()
     Movie_Destruct(&g_movie);
     GameLog_CloseAndRebindVtable(&g_logger);
     Scene_Destruct(&g_scene);
-    ProgCtrl_Teardown(&g_progCtrl);
+    g_progCtrl.teardown();
 }

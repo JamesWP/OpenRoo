@@ -11,7 +11,7 @@
 struct GameLogger;
 struct LoadedImage;
 struct CDM;
-struct ProgableControl;
+class ProgableControl;
 
 /* The game's logger, written through GameLog_LogMessage and
  * GameLog_LogSourceLocation (gamelog.h). */

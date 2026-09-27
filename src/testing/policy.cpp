@@ -199,7 +199,7 @@ bool policy_in_control(DWORD frame)
 static void press(ProgableControl *s, unsigned short mode, const char *action, BYTE *keys)
 {
     if (mode >= 5) return;
-    for (ActionEntry *e = s->action_tables[mode].head; e; e = e->chain) {
+    for (ActionEntry *e = s->actionTable(mode).first(); e; e = e->chain) {
         if (strcmp(e->name, action) != 0) continue;
         // The dispatch stops at the first held key bound to an action, so
         // pressing all of them is the same as pressing the one it would look
@@ -224,7 +224,7 @@ static void dump_actions(ProgableControl *s, unsigned short mode)
     static bool done[5];
     if (mode >= 5 || done[mode]) return;
     done[mode] = true;
-    for (ActionEntry *e = s->action_tables[mode].head; e; e = e->chain) {
+    for (ActionEntry *e = s->actionTable(mode).first(); e; e = e->chain) {
         char keys[128]; keys[0] = 0;
         for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
             char one[16];

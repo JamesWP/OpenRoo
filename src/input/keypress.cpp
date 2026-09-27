@@ -70,14 +70,14 @@ static void option_edit(Game *game, unsigned char key)
     case 0x22: {  // the "sfx %" page edits the joystick dead zone
         if (game->debounceRef() != 0x27 && KEY(0x27) != 0 && game->joyDeadzone() < 0x5a) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() + 10));
-            ProgCtrl_SetJoyDeadzone(&g_progCtrl, 0, game->joyDeadzone() * 100);
-            ProgCtrl_SetJoyDeadzone(&g_progCtrl, 4, game->joyDeadzone() * 100);
+            g_progCtrl.setJoyDeadzone(0, game->joyDeadzone() * 100);
+            g_progCtrl.setJoyDeadzone(4, game->joyDeadzone() * 100);
             game->debounceRef() = 0x27;
         }
         if (game->debounceRef() != 0x25 && KEY(0x25) != 0 && game->joyDeadzone() > 10) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() - 10));
-            ProgCtrl_SetJoyDeadzone(&g_progCtrl, 0, game->joyDeadzone() * 100);
-            ProgCtrl_SetJoyDeadzone(&g_progCtrl, 4, game->joyDeadzone() * 100);
+            g_progCtrl.setJoyDeadzone(0, game->joyDeadzone() * 100);
+            g_progCtrl.setJoyDeadzone(4, game->joyDeadzone() * 100);
             game->debounceRef() = 0x25;
         }
         break;
@@ -389,8 +389,8 @@ Sim_HandleKeypress(Game *self)
 
     // Key-rebind capture, once Enter is released.
     if (self->rebindActive() != 0 && KEY(0x0d) == 0) {
-        ProgCtrl_ClearBindings(&g_progCtrl, 1, self->rebindAction());
-        if (ProgCtrl_CaptureBinding(&g_progCtrl, 1, self->rebindAction(),
+        g_progCtrl.clearBindings(1, self->rebindAction());
+        if (g_progCtrl.captureBinding(1, self->rebindAction(),
                                     100, 10, 0) != 0)
             self->setRebindActive(0);
     }

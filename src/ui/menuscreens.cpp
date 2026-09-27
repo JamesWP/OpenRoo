@@ -484,7 +484,7 @@ Menu_RenderControlsRemap(Game *g, void *theme, RenderDevice *d3d,
 
     char buf[0x100];
     for (int i = 0; i < 13; i++) {
-        ProgCtrl_GetBindingStr(&g_progCtrl, 1, k_controls[i].action, buf, sizeof(buf));
+        g_progCtrl.getBindingStr(1, k_controls[i].action, buf, sizeof(buf));
         const bool asking = g->rebindActive() != 0 && g->rebindCode() == k_controls[i].node;
         const DWORD wr = mode_width(d3d);
         text->drawRight(fw * 0.90625f, rowY[i],

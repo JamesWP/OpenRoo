@@ -124,8 +124,8 @@ Game *Game::construct(const char *gameName)
     } else {
         GameLog_LogMessage(&g_logger, 1, GS_GAME_CFG_LOADED);
     }
-    ProgCtrl_SetJoyDeadzone(&g_progCtrl, 0, config_.joyDeadzone() * 100);
-    ProgCtrl_SetJoyDeadzone(&g_progCtrl, 4, config_.joyDeadzone() * 100);
+    g_progCtrl.setJoyDeadzone(0, config_.joyDeadzone() * 100);
+    g_progCtrl.setJoyDeadzone(4, config_.joyDeadzone() * 100);
 
     highScores_.setCount(10);
     if (!HighScore_ReadFile(&highScores_, gameFileName_, HIGHSCORE_KEY)) {
