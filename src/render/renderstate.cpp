@@ -1,28 +1,9 @@
-/* renderstate.cpp -- ConfigureRenderState 0x00426000, the one-shot setup
- * WinMain runs after the device exists (ENDGAME E5).  Written from the
- * listing (the decompile fails).  In order:
- *
- *   1. bitmaps\loading.bmp as the loading screen (logged if missing), then
- *      bitmaps\demo.bmp into 0x4dc7a8 (result ignored);
- *   2. both caches' loggers; zero the placement block 0x4e0070 (300 bytes);
- *      BuildMenuGeometry;
- *   3. the camera, exactly as the level entry places it (levelentry.cpp),
- *      and the CameraFocus block: f[3] = 5000, f[5] = yaw, f[6..8] = eye,
- *      the rest 0;
- *   4. WORLD = identity (0x4e0440, which the batch passes read), VIEW =
- *      LookAt(eye, target, +Y), PROJECTION with fov/2 = pi/4: m00 = m11 =
- *      cos, m22 = sin*Q, m23 = sin, m32 = -0.1*sin*Q, Q = 1.001001 (the
- *      original's unnormalised form; everything else 0);
- *   5. ambient light 0x404040 and thirteen render states;
- *   6. models John/Enemy, textures shadow/karoo128, the material (diffuse
- *      0.9,1,0.9,1; ambient and specular white; power 20; emissive left),
- *      the directional light (0.8 grey, direction (1,-1.1,1.2), range
- *      sqrt(FLT_MAX)), then both fonts -- PostQuitMessage(1) if either fails.
- *
- * The view matrix is built inline in the original; it is the same algorithm
- * as 0x407b20, so Camera_BuildLookAt is called with roll 0.  The original
- * FSIN/FCOS/FSQRT run in extended precision; plain double here -- the
- * difference is below a float's last bit. */
+/* ConfigureRenderState: the one-time setup WinMain runs once the Direct3D
+ * device exists.  It loads the loading-screen and demo bitmaps, wires the
+ * texture and model caches' loggers, places the initial camera and builds the
+ * view/projection matrices, sets the fixed render states, and imports the
+ * shared player/enemy models, textures, material, light and fonts. */
+
 #include <windows.h>
 #include <math.h>
 #include <stdio.h>
@@ -47,25 +28,25 @@
 #include "camera.h"
 #include "d3dmath_common.h"
 
-
 extern "C" __declspec(dllexport) void __cdecl
 Render_ConfigureRenderState(void)
 {
     Direct3D *d3d = g_pDirect3D;
 
-    /* 1. */
+    // Loading-screen and demo bitmaps.
     if (!(char)TextureDIB_CreateSurface(&g_fallbackImage, d3d->pDD4, "bitmaps\\loading.bmp", 1))
         GameLog_LogMessage(&g_logger, 3, "SUR: *ERROR* couldn't load loading.bmp");
     Direct3D_FlipPrimaryFrame(&g_fallbackImage);
     TextureDIB_CreateSurface(&g_demoImage, d3d->pDD4, "bitmaps\\demo.bmp", 1);
 
-    /* 2. 0x4400c0 serves both caches. */
+    // Texture and model caches' loggers, and the level placement scratch
+    // block.
     TextureManager_SetLogger(&g_textureManager, &g_logger);
     TextureManager_SetLogger((TextureManager *)&g_modelManager, &g_logger);
     memset(&g_levelPlacements, 0, 0x12c);
     Menu_BuildMenuGeometry(d3d, g_gameDir);
 
-    /* 3. */
+    // The initial camera, placed exactly as level entry places it.
     Mat4 world;
     m4_identity(&world);
     g_worldIdentity = *(D3DMATRIX *)&world;
@@ -86,17 +67,19 @@ Render_ConfigureRenderState(void)
     cam->eye[1] = offY + 6.0f;
     cam->eye[2] = z - 4.0f;
     cam->yaw   = 0.0f;
-    cam->pitch = 1.0471976f;      /* pi/3, bits 0x3f860a92 */
+    cam->pitch = 1.0471976f;  // pi/3
 
-    /* 4. */
+    // World, view and projection transforms.
     Mat4 view;
     Camera_BuildLookAt(&view, cam->eye[0], cam->eye[1], cam->eye[2],
                        cam->target[0], cam->target[1], cam->target[2],
                        0.0f, 1.0f, 0.0f, 0.0f);
 
-    const double half = 0.7853981852531433;     /* (float)pi/4, widened */
+    const double half = 0.7853981852531433;  // (float)pi/4, widened to double
     const float c = (float)cos(half), sn = (float)sin(half);
     const float q = (float)(sn * 1.001001000404358);
+    // Projection with an unnormalised depth term (m22, m23 are not the usual
+    // 1/(f-n) form).
     Mat4 proj;
     memset(&proj, 0, sizeof proj);
     proj.m[0]  = c;
@@ -118,7 +101,7 @@ Render_ConfigureRenderState(void)
     dev->SetTransform(D3DTRANSFORMSTATE_VIEW, (D3DMATRIX *)&view);
     dev->SetTransform(D3DTRANSFORMSTATE_PROJECTION, (D3DMATRIX *)&proj);
 
-    /* 5. */
+    // Ambient light and the fixed render states.
     dev->SetLightState(D3DLIGHTSTATE_AMBIENT, 0x404040);
     static const DWORD states[][2] = {
         { 0x09, 2 }, { 0x1a, 0 }, { 0x11, 2 }, { 0x12, 2 }, { 0x1d, 0 },
@@ -128,7 +111,7 @@ Render_ConfigureRenderState(void)
     for (unsigned i = 0; i < sizeof states / sizeof states[0]; ++i)
         dev->SetRenderState((D3DRENDERSTATETYPE)states[i][0], states[i][1]);
 
-    /* 6. */
+    // Shared player/enemy models, textures, material, light and fonts.
     Model_ImportSceneModels(&g_meshPlayer, "models\\John.mdl");
     Model_ImportSceneModels(&g_meshEnemy, "models\\Enemy.mdl");
 
@@ -165,7 +148,7 @@ Render_ConfigureRenderState(void)
     l.dvAttenuation2 = 0.0f;
     l.dwFlags = D3DLIGHT_ACTIVE;
     light->pLight->SetLight((D3DLIGHT *)&l);
-    light->pLight->SetLight((D3DLIGHT *)&l);       /* twice, as the original */
+    light->pLight->SetLight((D3DLIGHT *)&l);  // PRESERVED: set twice; the second is a no-op.
     d3d->pViewport->AddLight(light->pLight);
 
     if (!(char)Text_LoadFont(&g_fontMain, "fonts\\font1.fon", d3d)) {

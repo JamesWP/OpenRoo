@@ -1,29 +1,6 @@
-/* scene.h -- the level's scene-object list (Ghidra: Scene, g_Scene at
- * 0x0046c458), ENDGAME_PLAN.md E4.
- *
- * One static instance, built by the CRT's static initialiser and torn down
- * by its atexit entry:
- *
- *   0x00420b50  thunk: call 0x420b60, jmp 0x420b70         (game's, live)
- *   0x00420b60  SceneStaticInit: mov ecx,g_Scene; jmp ctor  (game's, live)
- *   0x00420b70  atexit(0x420b80); 0x420b80 jmps to the dtor (game's, live)
- *   0x00420bf0  Scene::Constructor       ours: Scene_Construct
- *   0x00420b90  Scene::Destructor        ours: Scene_Destruct
- *   0x00420c50  BuildSceneObjectList     ours: Scene_BuildObjectList
- *   0x00420ee0  FreeSceneObjects         ours, internal
- *   0x00420f40  SceneObject dtor thunk   ours, internal (lea ecx,[ecx+0x1c6];
- *                                        jmp SplinePath::Destruct)
- *   0x00423240  any model hit by a segment    ours: Scene_SegmentHitsModel
- *   0x00422b90  segment vs one model's box    ours, internal
- *
- * The thunks stay the game's: they only load ECX and jump, and the two jumps
- * into the ctor and dtor are JMP_PATCHES.
- *
- * SceneObject lifetime is entirely ours: BuildSceneObjectList is the only
- * allocator of the 0x1da-byte block and FreeSceneObjects the only freer
- * (xref.py: operator new(0x1da) appears once; FreeSceneObjects has one
- * caller, BuildSceneObjectList).  So they come from our heap, not alloc.h.
- */
+/* scene.h -- the level's scene-object list: one static instance, built and
+ * torn down by staticinit.cpp, filled per level by BuildSceneObjectList
+ * (scene.cpp) from the level's .leo records. */
 #pragma once
 
 #include <windows.h>
@@ -66,7 +43,7 @@ struct __attribute__((packed)) SceneObject {
     KAROO_LAYOUT_REGISTER(SceneObject);
 };
 
-/* operator new(0x1da) in the original. */
+/* The object is allocated at exactly 0x1da bytes. */
 KAROO_LAYOUT_CHECKS(SceneObject)
 {
     KAROO_LAYOUT_AT(mesh,            0x001);
@@ -106,9 +83,8 @@ KAROO_LAYOUT_CHECKS(Scene)
     KAROO_LAYOUT_SIZE(0x40);
 }
 
-extern Scene g_scene;   /* was 0x0046c458 */
+extern Scene g_scene;
 
-/* The exports patch.py binds. */
 extern "C" __declspec(dllexport) Scene *__attribute__((thiscall))
 Scene_Construct(Scene *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))

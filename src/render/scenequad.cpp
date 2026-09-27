@@ -1,47 +1,18 @@
-/* Game::RenderSceneObjects — replacement for its type-2 quad draw step.
+/* Scene_RenderSceneObjects's strided draw for kind-2 (quad) theme
+ * objects, called from sceneobjects.cpp once per sub-object per visible tile.
  *
- * The original issues one strided draw for every "type 2" scene object
- * (animated UV/colour billboard quad):
+ * FVF 0x242 (XYZ | DIFFUSE | D3DFVF_TEX2) declares two texture coordinate
+ * sets, but the caller's D3DDRAWPRIMITIVESTRIDEDDATA only ever fills set 0;
+ * set 1 is left NULL.  A driver is entitled to read every set the FVF
+ * declares, so an unfilled set is a wild read (CRASH.md).  This hook repairs that before the real draw call: every
+ * declared set beyond the one the caller filled is pointed at set 0's array,
+ * so it is always readable.  Only texture stage 0 is enabled for this draw, so
+ * the repaired sets are never sampled -- this only stops the wild read.
  *
- *   0x0040af26  call dword ptr [edx+0x80]   ; IDirect3DDevice3::DrawPrimitiveStrided
- *               (D3DPT_TRIANGLESTRIP, FVF 0x242, &strided, 4, 0)
- *
- * patch.py rewrites that 6-byte indirect call into `E8 rel32` + `NOP` targeting
- * hooks_SceneQuadDrawStrided below, so this function *is* the draw step now.
- *
- * ── The bug this fixes ──────────────────────────────────────────────────────
- * FVF 0x242 is XYZ | DIFFUSE | D3DFVF_TEX2, i.e. it declares **two** texture
- * coordinate sets ((0x242 & D3DFVF_TEXCOUNT_MASK) >> 8 == 2).  The original
- * only ever fills three of the strided struct's arrays — position (+0x00),
- * diffuse (+0x10) and textureCoords[0] (+0x20).  textureCoords[1] at +0x28 is
- * left holding whatever was on the stack; observed values are leftover floats
- * (0xc05b82c9, 0x40750cf1, ...) that change every call.
- *
- * The driver is entitled to read every set the FVF declares, and Wine's
- * pack_strided_data does.  Dereferencing that garbage usually lands on an
- * unmapped page — STATUS_ACCESS_VIOLATION, which Wine's __EXCEPT_PAGE_FAULT
- * around the memcpy swallows, matching Windows' silent discard.  When it
- * happens to land on a *guard* page instead, the exception is 0x80000001,
- * that filter declines it, and the process dies.  Hence the intermittency:
- * same wild read every frame, fatal only when the page underneath is a guard
- * page (CRASH.md).
- *
- * The fix is to stop making the wild read possible: point every texture
- * coordinate set the FVF declares, beyond the one the game actually fills, at
- * set 0's array.  Rendering is unchanged — only texture stage 0 is enabled at
- * this draw, so coordinate set 1 is never sampled; it just has to be readable.
- * The FVF itself is left at 0x242 so the vertex layout D3D builds is exactly
- * the one the game asked for.
- *
- * Everything else is deliberately bit-identical to the original: same device
- * (the com_proxy proxy the game holds, so the draw stays visible to the proxy
- * layer), same primitive type, FVF, vertex count and flags.
- *
- * Visual proof modes (must also be listed in launch.sh's `env -i` block or they
- * never reach the game):
- *   KAROO_SCENEQUAD_FX=drop  skips the draw — the animated billboard quads vanish
- *   KAROO_SCENEQUAD_FX=tint  forces their vertex diffuse to magenta
- */
+ * KAROO_SCENEQUAD_FX visual-proof modes (read by value, never by presence):
+ *   drop  skip the draw entirely -- the animated billboard quads vanish;
+ *   tint  force their vertex diffuse to magenta. */
+
 #include "scenequad.h"
 #include "com_proxy.h"
 #include "log.h"
@@ -70,8 +41,8 @@ extern "C" __declspec(dllexport) HRESULT WINAPI
 hooks_SceneQuadDrawStrided(IDirect3DDevice3 *dev, D3DPRIMITIVETYPE prim, DWORD fvf,
                            D3DDRAWPRIMITIVESTRIDEDDATA *data, DWORD vert_count, DWORD flags)
 {
-    /* Repair the sets the caller declared but never filled.  Set 0 is always
-     * the one the game populates; sets 1..n-1 are stack residue. */
+    // Point every texture coordinate set the FVF declares, past the one the
+    // caller filled, at set 0's array so the driver never reads unfilled data.
     DWORD ntex = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
     if (ntex > D3DDP_MAXTEXCOORD)
         ntex = D3DDP_MAXTEXCOORD;
@@ -88,9 +59,8 @@ hooks_SceneQuadDrawStrided(IDirect3DDevice3 *dev, D3DPRIMITIVETYPE prim, DWORD f
     if (fx == FX_DROP)
         return D3D_OK;
     if (fx == FX_TINT && data->diffuse.lpvData) {
-        /* The diffuse array is the game's static per-draw scratch block
-         * (0x004E0070), rebuilt before every call, so overwriting it here is
-         * safe and lasts exactly one draw. */
+        // The caller rebuilds this quad fresh for every draw, so overwriting
+        // its diffuse colour here is safe and only affects this one draw.
         for (DWORD i = 0; i < vert_count; i++)
             *(DWORD *)((char *)data->diffuse.lpvData + i * data->diffuse.dwStride) = 0xFFFF00FF;
     }

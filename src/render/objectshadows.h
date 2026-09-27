@@ -1,4 +1,4 @@
-/* objectshadows.h -- DrawObjectShadows (0x0043b790), the planar projected
+/* objectshadows.h -- the planar projected
  * shadows of one theme object type.  See objectshadows.cpp. */
 #pragma once
 

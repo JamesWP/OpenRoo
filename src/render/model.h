@@ -9,15 +9,14 @@
 
 struct GameLogger;
 
-/* 0x00437bc0 -- load `path` into `self`; the low byte of the result is the
+/* Load `path` into `self`; the low byte of the result is the
  * success flag. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Model_ImportSceneModels(CFaktMesh *self, const char *path);
 
 /* ─── ModelManager -- the name-keyed CFaktMesh cache ───────────────────────
  *
- * One instance at 0x004e03f0, game-constructed (Ghidra: AutoClass4).  The
- * twin of TextureManager (scenetexture.h): same shape, same in-place
+ * The twin of TextureManager (scenetexture.h): same shape, same in-place
  * lowercasing lookup, "MM:" instead of "TM:" in its log lines. */
 class __attribute__((packed)) ModelManager {
 public:
@@ -37,19 +36,16 @@ KAROO_LAYOUT_CHECKS(ModelManager)
     KAROO_LAYOUT_SIZE(0x18);
 }
 
-extern ModelManager g_modelManager;   /* was 0x004e03f0 */
+extern ModelManager g_modelManager;
 
-/* 0x004385b0 / 0x004386e0. */
 extern "C" __declspec(dllexport) CFaktMesh *__attribute__((thiscall))
 ModelManager_FindOrImport(ModelManager *self, char *name);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 ModelManager_ClearReleaseFree(ModelManager *self);
 
-/* The lifecycle three (0x438560 ctor, 0x4385a0 dtor body, 0x438580 scalar
- * deleting dtor = vtable slot 0).  The vtable is OURS, one slot; the game's
- * 0x0045d6a0 is left holding the UD2 at 0x438580 as a tripwire.  Instances:
- * the theme's at 0x4e03f0 (static init thunks 0x425ed0 / 0x425ef0) and the
- * Scene's (scene.h). */
+/* Constructor, destructor body and scalar deleting destructor (the one
+ * vtable slot).  Instances: g_modelManager, constructed by staticinit.cpp,
+ * and the Scene's (scene.h). */
 extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
 ModelManager_Construct(ModelManager *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))

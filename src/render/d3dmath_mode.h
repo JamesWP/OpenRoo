@@ -23,11 +23,11 @@ float  m_acos(float v);
 /* SUM of squares -- the game's "DotProduct3" is really a self-dot. */
 float  v3_len_sq(const Vec3 *v);
 
-/* SplinePath::EvalBezierPath, 0x402330.  Bernstein basis of degree count-1:
+/* Bernstein basis of degree count-1:
  *   p = SUM_i C(n-1,i) * t^i * (1-t)^(n-1-i) * P_i
  * An empty control-point list writes (0,0,0) and touches nothing else. */
 void bezier_eval(const ListNodeM *head, unsigned int count, float t, Vec3 *out);
 
-/* BuildBillboardMatrix, 0x4268e0 -- builds four corner offsets (dst[0..3])
+/* Builds four corner offsets (dst[0..3])
  * for a camera-facing quad of the given size. */
 void billboard_corners(Vec3 dst[4], float dx, float dy, float dz, float size);

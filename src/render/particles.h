@@ -3,12 +3,10 @@
 #include <stddef.h>
 #include "com_proxy.h"
 
-/* ParticleSystem hierarchy — render-path structs.
- * Layouts from Ghidra (verified against the fill/draw disassembly; see
- * PARTICLE_PLAN.md § 1).  Only the fields the render path touches are
- * asserted; simulation state stays game-owned. */
+/* ParticleSystem hierarchy: the systems, their ring of particles, and the
+ * vertex buffers they fill.  Implemented in particles.cpp. */
 
-/* Ring node, 0x2C bytes — layout complete as of Stage C (PARTICLE_PLAN.md § 4.3).
+/* Ring node, 0x2C bytes.
  * The ring is ONE NULL-terminated doubly-linked list (not circular), split into
  * a live region [pRingHead, pRingCurrent) and a free region [pRingCurrent,
  * pRingTail].  Generators claim at pRingCurrent; environments age and retire. */
@@ -30,7 +28,7 @@ static_assert(offsetof(ParticleNode, dwShapeIndex) == 0x28, "ParticleNode layout
 static_assert(sizeof(ParticleNode) == 0x2C, "ParticleNode size");
 
 /* FVF 0x1e2 vertex, 0x20 bytes.  Fill only ever writes xyz + diffuse, leaving
- * psize and specular uninitialised — preserved.  u/v are not touched by Fill
+ * psize and specular uninitialised.  u/v are not touched by Fill
  * either: the Face and XFace vertex allocators bake the texture corners in
  * once, at allocation (see quad_alloc_verts in particles.cpp). */
 struct ParticleVertex {
@@ -44,8 +42,7 @@ static_assert(sizeof(ParticleVertex) == 0x20, "ParticleVertex size");
 
 /* The ring, as ONE struct.  It is embedded in ParticleSystem at +0x08, and it
  * is the *same object* that Generator+0x0C and Environment+0x08 point at:
- * AttachGeneratorRing (0x4483c0) / AttachEnvironmentRing (0x4484e0) are handed
- * `&ps->ring` by SetGenerator/SetEnvironment.  Declaring it once means the
+ * SetGenerator/SetEnvironment attach both to `&ps->ring`.  Declaring it once means the
  * emitter, the integrator and the render fill all name the same fields.
  *
  *   pRingBase ─ … ─ pRingHead ─ … ─ pRingCurrent ─ … ─ pRingTail ─╴NULL
@@ -65,9 +62,8 @@ static_assert(offsetof(RingBuffer, pRingCurrent) == 0x10, "RingBuffer layout");
 struct Generator;
 struct Environment;
 
-/* The game vtables these classes were built on -- ParticleSystem 0x0045efb8,
- * Point 0x0045f140, Face 0x0045f17c, XFace 0x0045f1b8.  Nothing uses them:
- * every constructor and destructor installs our own ps_vtbl_* (particles.cpp). */
+/* Every constructor and destructor installs one of particles.cpp's
+ * ps_vtbl_* tables. */
 
 /* Base class, 0x28 bytes. */
 struct ParticleSystem {
@@ -85,7 +81,7 @@ static_assert(offsetof(ParticleSystem, pEnvironment) == 0x20, "ParticleSystem la
 
 struct PointParticleSystem {      // 0x30 bytes
     ParticleSystem  base;
-    ParticleVertex *pVerts;        // +0x28 scratch buffer (game-allocated)
+    ParticleVertex *pVerts;        // +0x28 scratch buffer
     DWORD           dwVertexCount; // +0x2c 1 vertex per particle
 };
 static_assert(offsetof(PointParticleSystem, pVerts)        == 0x28, "Point layout");
@@ -104,7 +100,7 @@ static_assert(offsetof(FaceParticleSystem, nVertexCount) == 0x2c, "Face layout")
 static_assert(offsetof(FaceParticleSystem, flCorner)     == 0x2e, "Face layout");
 static_assert(sizeof(FaceParticleSystem) == 0x7a, "Face size");
 
-/* Corner-table entry, 100 bytes (0x64).  Tick (0x44ee90) accumulates
+/* Corner-table entry, 100 bytes (0x64).  Tick accumulates
  * flRotVel into flRotAccum each frame; when an accumulated angle exceeds
  * 0.01 it is baked into flCorner as an axis rotation and reset. */
 struct XFaceCornerEntry {
@@ -135,23 +131,16 @@ static_assert(sizeof(XFaceParticleSystem) == 0x96, "XFace size");
 
 /* ─── Internal (non-virtual) entry points ──────────────────────────────────
  *
- * Every one of the three concrete fill/draw methods is ours, so Render does
- * not need to leave the DLL to reach them.  These resolve the class from the
- * vtable slot the original Render *would* have called: if the slot holds one
- * of our exports we call the implementation directly; anything else is still
- * dispatched indirectly, so an unreplaced or future override keeps working.
- *
- * The two entry paths (game vtable → export, and Render → here) run the same
- * function, so logging and FX behave identically whichever way in. */
+ * Fill and draw for Render: one call each through the object's vtable
+ * (slots 9 and 12). */
 void  ps_fill(ParticleSystem *self);
 DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev);
 
-/* ParticleSystemFactoryCreate (0x448ab0), ours: the same four names and sizes,
- * our own new, our constructors, and one of our vtables installed. */
+/* The factory: one of the four class names, allocated at its size,
+ * constructed, and its vtable installed. */
 ParticleSystem *ps_create(const char *name);
 
-/* The two ways the game builds a system: CloneParticleSystem (0x448ca0) and
- * LoadParticleSystemFromFile (0x448ce0), both ours, both __cdecl. */
+/* The two ways the game builds a system: clone, and load from a file. */
 ParticleSystem *ps_clone(const ParticleSystem *src);
 ParticleSystem *ps_load_file(const char *path, struct GameLogger *log);
 
@@ -162,9 +151,8 @@ __declspec(dllexport) ParticleSystem *__cdecl Particle_LoadFromFile(const char *
 
 /* ─── Vtable exports ───────────────────────────────────────────────────────
  *
- * Declared here so factory.cpp can install them into the vtables it owns
- * (Stage E3).  Signatures must match the definitions in particles.cpp exactly;
- * they are the game's vtable slot signatures. */
+ * The vtable slot functions.  Their signatures are the slot signatures and
+ * must match the definitions in particles.cpp exactly. */
 #define PS_THISCALL __attribute__((thiscall))
 extern "C" {
 void  PS_THISCALL Particle_BaseTick(ParticleSystem *self, DWORD dt);              /* slot 7 */
@@ -182,7 +170,7 @@ DWORD PS_THISCALL Particle_PointDraw(PointParticleSystem *self, IDirect3DDevice3
 DWORD PS_THISCALL Particle_FaceDraw(FaceParticleSystem *self, IDirect3DDevice3 *d);
 DWORD PS_THISCALL Particle_XFaceDraw(XFaceParticleSystem *self, IDirect3DDevice3 *d);
 
-/* Stage E6 — the lifecycle slots (0-6, 9, 12, 13, 14).  Slots 5 and 6 are one
+/* The lifecycle slots (0-6, 9, 12, 13, 14).  Slots 5 and 6 are one
  * function each across all four classes; slot 1 is shared by Point and Face. */
 struct GameLogger;
 void *PS_THISCALL Particle_BaseDtor(ParticleSystem *, unsigned);
@@ -226,17 +214,17 @@ BOOL  PS_THISCALL Particle_XFaceSave(XFaceParticleSystem *, void *, GameLogger *
 BOOL  PS_THISCALL Particle_XFaceLoad(XFaceParticleSystem *, void *, GameLogger *);
 }
 
-/* ParticleSystem vtable slot numbers (15-slot table, § 6.2 / PARTICLE_PLAN § 1.3).
+/* ParticleSystem vtable slot numbers (15-slot table).
  *
- * Slots 0-6 and 13/14 are the lifecycle half, recovered from the four vtables
- * and their call sites:
+ * Slots 0-6 and 13/14 are the lifecycle half, the same shape in all four
+ * vtables:
  *   0  ~dtor(flags)            MSVC scalar deleting
  *   1  Release(flags)          drop generator + environment, free the ring
  *   2  CopyFrom(src)           type-name gate, then clone both sub-objects
  *   3  SetCapacity(n)          size the ring
  *   4  Resize(n)               free and re-make the ring and the vertex buffer
- *   5  SetGenerator(gen)       shared 0x447d30 across all four classes
- *   6  SetEnvironment(env)     shared 0x447d80
+ *   5  SetGenerator(gen)       one function for all four classes
+ *   6  SetEnvironment(env)     one function for all four classes
  *  13  Save(FILE *, log)       names of both sub-objects, then their Save
  *  14  Load(FILE *, log)       names, factory, their Load, then attach */
 #define PS_VT_DTOR    0

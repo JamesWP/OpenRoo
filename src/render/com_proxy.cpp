@@ -547,22 +547,14 @@ static HRESULT WINAPI NOINLINE wd3_SetLightState(IDirect3DDevice3 *s, D3DLIGHTST
     { return real_dev3(s)->SetLightState(lst, val); }
 /* ─── Caller-attributed render trace ──────────────────────────────────────
  *
- * KAROO_XFORM_DUMP=<n>  — log the first <n> WORLD transforms (1 means 40, the
- *                         historical cap, so existing invocations still work).
+ * KAROO_XFORM_DUMP=<n>  — log the first <n> WORLD transforms (1 means 40).
  * KAROO_D3D_TRACE=<n>   — log the first <n> SetTransform / SetRenderState /
  *                         SetTexture / DrawPrimitive calls with their arguments.
  *
  * Both stamp every line with the *caller's* return address.  That is what
  * makes the dump usable: WORLD is set by DrawSceneObjects, DrawMeshBatch,
  * DrawQuadBatch, DrawTerrainTiles and the sky pass alike, so an untagged dump
- * cannot attribute a matrix to the function that built it.  The return address
- * lands in the game's .text and names the call site directly.
- *
- * This is the ground-truth capture RENDER_PLAN.md asks for before replacing a
- * render function: run it against the original, replace, run it again, diff.
- * It checks a reimplementation against what the original actually emitted
- * rather than against a reading of the decompiler's stack model — which for
- * DrawSceneObjects is demonstrably wrong.
+ * cannot attribute a matrix to the function that built it.
  *
  * The cap is read from the environment so a run can be widened without a
  * rebuild.  The wrappers pass __builtin_return_address(0) explicitly rather

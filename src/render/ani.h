@@ -1,7 +1,4 @@
-/* The animation table -- the structure ani.cpp has been filling by hex offset
- * since ASSET_PLAN.md Phase 4, now reverse-engineered and named.
- *
- * ANIM_PLAN.md holds the evidence and the remaining work; the short version:
+/* The animation table ani.cpp loads from a .ani file.
  *
  * THE SLOT.  Four dwords, and the shipped content says what they are.  Every
  * .ani in the tree carries the author's own header comment:
@@ -20,19 +17,17 @@
  * on its own: it is embedded, unaligned, in the two objects that animate.
  *
  *   - the type-0x00 scene object, at +0x11, loaded by BuildSceneObjectList
- *     (0x420d38) with +0xd set to 1 on success.  +0x11 + 0x180 = +0x191,
+ *     with +0xd set to 1 on success.  +0x11 + 0x180 = +0x191,
  *     which is exactly where the object's position begins (dsoscene.cpp's
  *     O_POS) -- the table tiles the gap.
  *   - ThemeLevelObject (stride 0x5dd, theme.h), at +0xc1, loaded by
- *     ThemeFileLoader (0x40d0ae).  The loader's code shows +0xc9 because it
- *     addresses records from their ThemeObjectTypeSlot, 8 bytes earlier.
+ *     ThemeFileLoader.
  *
  * Both bases are odd addresses, so every field is potentially unaligned; the
  * struct is packed and must only ever be reached through a pointer.
  *
- * NOMOVESTATES.  ThemeLevelObject::bNoMoveStates (+0x5a9; +0x5b1 in the
- * loader's slot-relative code) is a flag ThemeFileLoader sets from the
- * .thm keyword "nomovestates" (0x464b78, compared at 0x40d0d9).  It selects
+ * NOMOVESTATES.  ThemeLevelObject::bNoMoveStates (+0x5a9) is a flag
+ * ThemeFileLoader sets from the .thm keyword "nomovestates".  It selects
  * which of the two evaluators below a model gets, and it is the whole reason
  * there are two.
  */
@@ -122,7 +117,7 @@ KAROO_LAYOUT_CHECKS(AnimTable)
     KAROO_LAYOUT_SIZE(0x180);
 }
 
-/* The animation codes, as LookupAnimDescriptor (0x401970) dispatches them.
+/* The animation codes, as LookupAnimDescriptor dispatches them.
  * These are the values MovableEntity carries in anim_ (+0x9a; see
  * movableentity.h), which is why 0xfa/0xfb are already spelled there. */
 enum AnimCode {
@@ -147,8 +142,8 @@ enum AnimCode {
     ANIM_IDLE2             = 0xfb
 };
 
-/* ani.cpp.  The exported shapes are the originals': __cdecl, and a null
- * descriptor for a code the table has no slot for. */
+/* ani.cpp: __cdecl, and a null descriptor for a code the table has no slot
+ * for. */
 extern "C" __declspec(dllexport) int __cdecl
 Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger);
 
@@ -158,14 +153,10 @@ Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code);
 /* ── The two evaluators ───────────────────────────────────────────────────
  *
  * Both take a slot and return a mesh frame index.  Which one a model gets is
- * decided by ThemeLevelObject::bNoMoveStates ("nomovestates"), and the call sites are
- * pairwise identical in RenderSceneObjects (0x40a0e7 / 0x40a165) and
- * DrawObjectShadows (0x43c39a / 0x43c418).
- *
- * These are declarations only -- the definitions live in ani.cpp, and the
- * render functions that will use them are not replaced yet (ANIM_PLAN.md).
- * dsoscene.cpp already open-codes the clock form; it is the third call site,
- * 0x421c8b, written as fmod(v, numFrames) rather than fmod(v/n, 1)*n. */
+ * decided by ThemeLevelObject::bNoMoveStates ("nomovestates"),, and the call sites are
+ * pairwise identical in RenderSceneObjects and DrawObjectShadows.
+ * dsoscene.cpp open-codes the clock form as fmod(v, numFrames) rather than
+ * fmod(v/n, 1)*n. */
 
 /* The clock form: the model has no movement states, so its single
  * walk_forward range runs continuously off the millisecond clock. */
@@ -174,5 +165,5 @@ int Anim_FrameOnClock(const AnimSlot *slot, double timeMs);
 /* The phase form: the entity's own animation state supplies a phase in
  * [0,1] across the slot's range, forwards or (with "r") backwards.  No
  * shipped .ani sets the flag, so the reverse arm is dead for the shipped
- * content -- it is reproduced anyway. */
+ * content. */
 int Anim_FrameAtPhase(const AnimSlot *slot, float phase);

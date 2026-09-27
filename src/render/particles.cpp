@@ -1,28 +1,13 @@
-/* ParticleSystem render-path reimplementation.
+/* ParticleSystem: the fill/draw/render methods, the tick, the Face corner
+ * geometry, the ring, and every class's lifecycle, serialisation and vtable
+ * (particles.h).
  *
- * Replaces the seven per-class fill/draw/render methods plus the shared base
- * Render dispatcher (all safety-stubbed by patch.py; reached only through the
- * patched vtable slots 8/9/12 — see PARTICLE_PLAN.md):
+ * Fill writes only xyz + diffuse into the scratch vertex buffer; psize,
+ * specular and u/v stay as the allocators left them.
  *
- *   0x447d10 ParticleSystem::Render            → Particle_BaseRender  (Face+XFace slot 8)
- *   0x44d190 PointParticleSystem::Render       → Particle_PointRender (inlines the draw!)
- *   0x44d1c0 PointParticleSystem::FillParticleVerts → Particle_PointFill
- *   0x44d220 PointParticleSystem::DrawParticles     → Particle_PointDraw
- *   0x44d910 FaceParticleSystem::FillParticleVerts  → Particle_FaceFill
- *   0x44da80 FaceParticleSystem::DrawParticles      → Particle_FaceDraw
- *   0x44ea10 XFaceParticleSystem::FillParticleVerts → Particle_XFaceFill
- *   0x44eb90 XFaceParticleSystem::DrawParticles     → Particle_XFaceDraw
- *
- * Semantics are bit-exact to the originals: the game's scratch vertex buffer
- * is reused (sized by the game's ResizeRing), only xyz + diffuse are written
- * (psize/specular/u/v stay uninitialised, as the originals leave them), and
- * the device passed in is the com_proxy device proxy — draws stay visible to
- * the proxy layer.  Particle simulation (ring nodes, generators) stays
- * game-owned.
- *
- * KAROO_PARTICLE_FX=tint forces every particle magenta, as visual proof the
- * pixels come from this reimplementation.
- */
+ * KAROO_PARTICLE_FX=tint forces every particle magenta; =spin exaggerates
+ * XFace rotation velocities x10. */
+
 #include "particles.h"
 #include "generators.h"
 #include "factory.h"
@@ -40,14 +25,13 @@
 #include <new>
 #include <stdio.h>
 
-#define PARTICLE_FVF       0x1e2  /* XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1 — 0x20 stride */
+#define PARTICLE_FVF       0x1e2  // XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1, 0x20 stride
 #define PARTICLE_LOG_FIRST 8
 #define FX_TINT_COLOUR     0xFFFF00FF
 
 #define THISCALL __attribute__((thiscall))
 typedef void  (THISCALL *ps_fill_fn)(ParticleSystem *);
 typedef DWORD (THISCALL *ps_draw_fn)(ParticleSystem *, IDirect3DDevice3 *);
-/* slot numbers live in particles.h (PS_VT_*) */
 
 static bool fx_tint(void)
 {
@@ -68,8 +52,8 @@ static DWORD node_colour(const ParticleNode *node)
 }
 
 /* Per-class state so one busy class can't hide the others: the first
- * PARTICLE_LOG_FIRST draws are logged, and so is the first draw that
- * actually carries vertices (an empty ring draws with verts=0). */
+ * PARTICLE_LOG_FIRST draws are logged, and so is the first draw that actually
+ * carries vertices (an empty ring draws with verts=0). */
 struct DrawLogState { LONG calls; LONG nonempty; };
 
 static void log_draw(DrawLogState *st, const char *name, const void *self,
@@ -85,11 +69,9 @@ static void log_draw(DrawLogState *st, const char *name, const void *self,
 
 /* ─── Fill ─────────────────────────────────────────────────────────────────
  *
- * All three fills walk the same live region of the same ring — the very ring
- * the generator emits into and the environment retires from — so the walk is
- * written once here.  `emit` writes the vertices for one node and returns how
- * many it wrote. */
-
+ * All three fills walk the live region of the ring the generator emits into
+ * and the environment retires from.  `emit` writes the vertices for one node
+ * and returns how many it wrote. */
 template <typename EmitFn>
 static DWORD fill_ring(ParticleSystem *ps, EmitFn emit)
 {
@@ -117,10 +99,10 @@ static void point_fill(PointParticleSystem *self)
         });
 }
 
-/* Shared by Face (baked corners) and XFace (per-particle corner-table entry):
- * emit 6 vertices = node position + the six xyz corner offsets. */
+/* Face (baked corners) and XFace (per-particle corner-table entry): six
+ * vertices = node position + the six xyz corner offsets. */
 static void emit_face(ParticleVertex *v, const ParticleNode *node,
-                      const float *corners /* 18 floats */)
+                      const float *corners )  // 18 floats
 {
     DWORD colour = node_colour(node);
     for (int c = 0; c < 6; c++, v++, corners += 3) {
@@ -150,8 +132,8 @@ static void xface_fill(XFaceParticleSystem *self)
         });
 }
 
-/* ─── Draw ─── */
-
+/* ─── Draw ─────────────────────────────────────────────────────────────────
+ */
 static DWORD point_draw(PointParticleSystem *self, IDirect3DDevice3 *dev)
 {
     static DrawLogState st;
@@ -170,19 +152,9 @@ static DWORD face_draw(FaceParticleSystem *self, IDirect3DDevice3 *dev)
     return self->nVertexCount / 6;
 }
 
-/* Two-pass draw, once per face winding: the original saves render state 0x16
- * (D3DRENDERSTATE_CULLMODE = 22), draws with D3DCULL_CCW (3), draws again with
- * D3DCULL_CW (2), then restores the saved value — 0044eb9f/0044eba9/0044ebcd/
- * 0044ebf4.  That is what makes an XFace billboard two-sided: each quad is
- * rasterised for both windings, so a particle whose corner table has rotated
- * past edge-on is still drawn.
- *
- * This was previously written against D3DRENDERSTATE_SRCBLEND (19) with
- * D3DBLEND_SRCCOLOR/D3DBLEND_SRCALPHA — a misreading of 0x16 as a blend state.
- * The values happened to be 3 and 2 in the original, which is why it looked
- * plausible; D3DBLEND_SRCALPHA is in fact 5.  The effect was that cull mode was
- * never toggled (rotating XFace particles, e.g. torch flames, vanished for good
- * once their winding flipped) while the global source blend factor was stomped. */
+/* Two passes, one per face winding: save CULLMODE, draw with D3DCULL_CCW, draw
+ * again with D3DCULL_CW, restore.  That makes an XFace billboard two-sided: a
+ * particle whose corner table has rotated past edge-on is still drawn. */
 static DWORD xface_draw(XFaceParticleSystem *self, IDirect3DDevice3 *dev)
 {
     DWORD saved = 0;
@@ -199,7 +171,8 @@ static DWORD xface_draw(XFaceParticleSystem *self, IDirect3DDevice3 *dev)
     return self->nVertexCount / 6;
 }
 
-/* ─── Exports — thiscall wrappers, installed into vtable slots by patch.py ─── */
+/* ─── Render exports ───────────────────────────────────────────────────────
+ */
 extern "C" {
 
 __declspec(dllexport) void THISCALL
@@ -223,9 +196,7 @@ __declspec(dllexport) DWORD THISCALL
 Particle_XFaceDraw(XFaceParticleSystem *self, IDirect3DDevice3 *dev)
 { return xface_draw(self, dev); }
 
-/* Base Render (Face/XFace slot 8): fill then draw, as the original 0x447d10
- * did through slots 9 and 12.  ps_fill / ps_draw resolve those slots without
- * leaving the DLL when they hold our own code — see below. */
+/* Base Render (Face/XFace slot 8): fill then draw, through slots 9 and 12. */
 __declspec(dllexport) DWORD THISCALL
 Particle_BaseRender(ParticleSystem *self, IDirect3DDevice3 *dev)
 {
@@ -233,8 +204,8 @@ Particle_BaseRender(ParticleSystem *self, IDirect3DDevice3 *dev)
     return ps_draw(self, dev);
 }
 
-/* Point Render (slot 8 override): the original dispatches fill virtually but
- * inlines the POINTLIST draw and never calls slot 12. */
+/* Point Render (slot 8 override): fills through the vtable but draws the
+ * POINTLIST itself, never calling slot 12. */
 __declspec(dllexport) DWORD THISCALL
 Particle_PointRender(PointParticleSystem *self, IDirect3DDevice3 *dev)
 {
@@ -242,16 +213,12 @@ Particle_PointRender(PointParticleSystem *self, IDirect3DDevice3 *dev)
     return point_draw(self, dev);
 }
 
-} // extern "C"
+}  // extern "C"
 
 /* ─── Dispatch ─────────────────────────────────────────────────────────────
  *
- * One virtual call each.  Every ParticleSystem carries one of our own vtables
- * (see the foot of this file), so slots 9 and 12 land directly on our fill and
- * draw — no class switch, no identity lookup.  These replace the Stage D
- * "recognise the class by its vtable address" dispatchers, which existed only
- * because the slots used to hold .khook trampolines rather than DLL addresses. */
-
+ * One virtual call each: every ParticleSystem carries one of this file's
+ * vtables, so slots 9 and 12 land directly on the class's fill and draw. */
 void ps_fill(ParticleSystem *self)
 {
     ((ps_fill_fn)self->pVtable[PS_VT_FILL])(self);
@@ -262,18 +229,10 @@ DWORD ps_draw(ParticleSystem *self, IDirect3DDevice3 *dev)
     return ((ps_draw_fn)self->pVtable[PS_VT_DRAW])(self, dev);
 }
 
-/* ═══════════════ Stage B — tick + Face corner setup/transform ═══════════════
+/* ─── Tick and Face corner transform ───────────────────────────────────────
  *
- * Replaces (see PARTICLE_PLAN.md § 3, RE completed 2026-08-29):
- *   0x447ce0 ParticleSystem::TickSubObjects       → Particle_BaseTick
- *            (slot 7 in base/Point/Face vtables; its only direct E8 caller
- *             was the tail call inside the XFace tick override, also replaced)
- *   0x44ee90 XFaceParticleSystem tick override    → Particle_XFaceTick
- *   0x44d590 FaceParticleSystem::SetVector (slot 10)        → Particle_FaceSetVector
- *   0x44dac0 FaceParticleSystem::TransformCorners (slot 11) → Particle_FaceTransformCorners
- */
-
-/* Row-major 4x4, row-vector convention (D3D style): out[r][c] = Σk a[r][k]·b[k][c]. */
+ * Row-major 4x4, row-vector convention (D3D style): out[r][c] = sum_k a[r][k]
+ * * b[k][c]. */
 typedef float Mat4[16];
 
 static void mat_identity(Mat4 m)
@@ -292,8 +251,7 @@ static void mat_mul(Mat4 out, const Mat4 a, const Mat4 b)
     for (int i = 0; i < 16; i++) out[i] = t[i];
 }
 
-/* (v,1) × m as a row vector, with w-divide when w != 0 — the shared idiom of
- * FUN_00413350 and the inline loop in 0x44dac0. */
+/* (v,1) x m as a row vector, w-divided when w != 0. */
 static void transform_point(float v[3], const Mat4 m)
 {
     float o[4];
@@ -305,7 +263,7 @@ static void transform_point(float v[3], const Mat4 m)
     v[0] = o[0]; v[1] = o[1]; v[2] = o[2];
 }
 
-/* Axis rotations exactly as 0x44ee90 lays them out (row-vector convention). */
+/* Axis rotations, row-vector convention. */
 static void mat_rot_x(Mat4 m, float a)
 {
     mat_identity(m);
@@ -328,11 +286,9 @@ static void mat_rot_z(Mat4 m, float a)
     m[4] = s;  m[5] = c;
 }
 
-/* Rotation-step threshold: fcompl against the double 0.01 @ 0x45f1f8. */
+/* A rotation angle is baked into the corners once it exceeds this. */
 #define ROT_STEP_THRESHOLD 0.01
 
-/* KAROO_PARTICLE_FX=spin exaggerates XFace rotation velocities ×10 as visual
- * proof the tick runs from this reimplementation. */
 static bool fx_spin(void)
 {
     static int cached = -1;
@@ -347,10 +303,8 @@ static bool fx_spin(void)
     return cached != 0;
 }
 
-/* dt reaches slot 7 as an untyped 4-byte relay — 0x447ce0 takes `undefined4`
- * and passes it straight on — while the emitters and integrators consume it as
- * a float.  Reinterpret once here, at the vtable boundary, so the bits are
- * unchanged and everything below this point is honestly typed. */
+/* dt reaches slot 7 as untyped 4-byte bits; the emitters and integrators use
+ * it as a float.  Reinterpret once here, at the vtable boundary. */
 static float relay_dt(DWORD dt)
 {
     float fdt;
@@ -407,8 +361,8 @@ static void xface_tick(XFaceParticleSystem *self, float dt)
     base_tick(&self->base, dt);
 }
 
-/* ─── Face corner geometry (slots 10/11) ─── */
-
+/* ─── Face corner geometry (slots 10/11) ───────────────────────────────────
+ */
 static void vec_cross(float o[3], const float a[3], const float b[3])
 {
     o[0] = a[1] * b[2] - a[2] * b[1];
@@ -422,8 +376,8 @@ static float vec_len(const float v[3])
 }
 
 /* Rebuild the six baked corner offsets from a direction vector: two scaled
- * basis vectors perpendicular to dir form a centred quad (two triangles
- * 0-1-2 / 3-4-5 with 3=2, 4=1, 5=1+2, all shifted by -(1+2)/2). */
+ * basis vectors perpendicular to dir form a centred quad (two triangles 0-1-2
+ * / 3-4-5 with 3=2, 4=1, 5=1+2, all shifted by -(1+2)/2). */
 static void face_set_vector(FaceParticleSystem *self, float x, float y, float z)
 {
     float basis[3] = { 1.0f, 0.0f, 0.0f };
@@ -435,8 +389,8 @@ static void face_set_vector(FaceParticleSystem *self, float x, float y, float z)
     float d[3] = { x / len, y / len, z / len };
 
     float e2[3], e1[3];
-    vec_cross(e2, d, basis);   /* corner 2 direction */
-    vec_cross(e1, d, e2);      /* corner 1 direction (from unnormalised e2) */
+    vec_cross(e2, d, basis);  // corner 2 direction
+    vec_cross(e1, d, e2);     // corner 1 direction (from unnormalised e2)
 
     float s2 = self->flScale / vec_len(e2);
     float s1 = self->flScale / vec_len(e1);
@@ -457,34 +411,15 @@ static void face_set_vector(FaceParticleSystem *self, float x, float y, float z)
             c[i][k] -= centre[k];
 }
 
-/* ═══════════════ Stage E6 — the ring and the ParticleSystem lifecycle ═══════
+/* ─── The ring and the ParticleSystem lifecycle ────────────────────────────
  *
- * The other half of every ParticleSystem vtable: the slots that make, copy,
- * resize, serialise and destroy one, plus the RingBuffer they all work on.
- * Replaces (PARTICLE_PLAN.md § 6.11):
- *
- *   0x4478d0 RingBuffer ctor        0x447900 RingBuffer::Allocate
- *   0x4479f0 RingBuffer shape index 0x447a70 RingBuffer::Free
- *   0x447ad0 / 0x447af0 base scalar dtor + body   0x447b50 Release (slot 1)
- *   0x447ba0 SetCapacity (slot 3)   0x447cc0 Resize (slot 4)
- *   0x447bc0 CopyFrom (slot 2)      0x447d30 / 0x447d80 SetGenerator/Environment
- *
- * Construction (the four ctors and the factory) is the step after this one, so
- * the objects themselves still come from the game's operator new and the scalar
- * dtors hand them back with game_free2.  Everything the ring and the vertex
- * buffers allocate is ours on both sides already.
- */
-
-/* Our own vtables, defined at the foot of this file — one per class, in the
- * game's slot order.  The constructors install them, so no ParticleSystem of
- * ours carries a game vtable address (same move as the generators in E5). */
+ * The slots that make, copy, resize, serialise and destroy a system, plus the
+ * RingBuffer they all work on.  The vtables are defined at the foot of this
+ * file, one per class, and the constructors install them. */
 extern void *const ps_vtbl_base[];
 extern void *const ps_vtbl_point[];
 extern void *const ps_vtbl_face[];
 extern void *const ps_vtbl_xface[];
-
-/* The game's CRT fwrite, as in generators.cpp: the FILE * is the game's
- * static-CRT stream, so no other fwrite can write to it. */
 
 static bool ps_write(const void *src, unsigned size, void *fp)
 {
@@ -496,13 +431,12 @@ static bool ps_read(void *dst, unsigned size, void *fp)
     return hooks_fread(dst, size, 1, fp) == 1;
 }
 
-/* Sampling constant shared with the generators: 1/32767 (0x45d3ec). */
+/* Sampling constant shared with the generators: 1/32767. */
 static const float PS_RAND_SCALE = 1.0f / 32767.0f;
 
-/* ─── RingBuffer ─── */
-
-/* 0x4478d0 — the ctor: five zeroes, no allocation.  Unused until the step that
- * takes ParticleSystem construction: the game's ctor still calls the original. */
+/* ─── RingBuffer ───────────────────────────────────────────────────────────
+ *
+ * The ctor: five zeroes, no allocation. */
 static __attribute__((unused)) void ring_init(RingBuffer *ring)
 {
     ring->dwRingCount  = 0;
@@ -512,8 +446,8 @@ static __attribute__((unused)) void ring_init(RingBuffer *ring)
     ring->pRingCurrent = NULL;
 }
 
-/* 0x447a70 — free the node block.  NOTE pRingTail is deliberately NOT cleared
- * (the original clears +0x00, +0x04, +0x08 and +0x10, skipping +0x0c); kept. */
+/* Free the node block.  PRESERVED: pRingTail is not cleared; the other four
+ * fields are. */
 static void ring_free(RingBuffer *ring)
 {
     if (ring->pRingBase)
@@ -524,9 +458,9 @@ static void ring_free(RingBuffer *ring)
     ring->pRingCurrent = NULL;
 }
 
-/* 0x4479f0 — give every node but the last a random shape index in
- * [0, shapes-1].  Reseeds from the game clock on every call, and the last node
- * is skipped (the loop bound is dwRingCount - 1), both as found. */
+/* Give every node but the last a random shape index in [0, shapes-1].
+ * DETERMINISM: rand() is reseeded from the game clock on every call, and the
+ * last node is skipped (the loop bound is dwRingCount - 1). */
 static void ring_assign_shapes(RingBuffer *ring, DWORD shapes)
 {
     CRT_RAND_SEED = (unsigned)hooks_GameTime(NULL);
@@ -540,9 +474,9 @@ static void ring_assign_shapes(RingBuffer *ring, DWORD shapes)
     }
 }
 
-/* 0x447900 — (re)allocate `count` nodes and thread them into one doubly-linked
- * list: head and current at the front, tail at the last node, both ends NULL.
- * Fewer than two nodes is refused. */
+/* (Re)allocate `count` nodes and thread them into one doubly-linked list: head
+ * and current at the front, tail at the last node, both ends NULL.  Fewer than
+ * two nodes is refused. */
 static BOOL ring_alloc(RingBuffer *ring, DWORD count, DWORD shapes)
 {
     ring_free(ring);
@@ -572,8 +506,8 @@ static BOOL ring_alloc(RingBuffer *ring, DWORD count, DWORD shapes)
     return TRUE;
 }
 
-/* ─── ParticleSystem, the base class ─── */
-
+/* ─── ParticleSystem, the base class ───────────────────────────────────────
+ */
 typedef void  (THISCALL *ps_dtor_fn)(void *, unsigned);
 typedef void  (THISCALL *ps_release_fn)(void *, int);
 typedef BOOL  (THISCALL *ps_attach_fn)(void *, void *);
@@ -587,9 +521,8 @@ static void sub_object_delete(void *obj)
     ((ps_dtor_fn)vtbl[0])(obj, 1);
 }
 
-/* 0x447b50 — slot 1.  Releases both sub-objects (each through its own scalar
- * deleting dtor) and frees the ring.  The doubled null tests are the
- * original's; kept. */
+/* Slot 1: release both sub-objects (each through its own scalar deleting dtor)
+ * and free the ring.  The null tests are doubled. */
 static void ps_release(ParticleSystem *self, int flags)
 {
     if (self->pGenerator && flags && self->pGenerator)
@@ -601,9 +534,8 @@ static void ps_release(ParticleSystem *self, int flags)
     ring_free(&self->ring);
 }
 
-/* 0x447af0 — the dtor body: restore the base vtable, release, free the ring.
- * The release call is direct, not virtual, so a subclass's override does not
- * run here — as in the original. */
+/* The dtor body: restore the base vtable, release, free the ring.  The release
+ * call is direct, not virtual, so a subclass's override does not run here. */
 static void ps_base_destruct(ParticleSystem *self)
 {
     self->pVtable = (void **)ps_vtbl_base;
@@ -611,32 +543,28 @@ static void ps_base_destruct(ParticleSystem *self)
     ring_free(&self->ring);
 }
 
-/* The scalar deleting dtors' tail is factory.h's scalar_delete<T>;
- * ps_create allocated the object with our own operator new. */
-
-/* 0x447ba0 — slot 3, SetCapacity: size the ring, no shape indices. */
+/* Slot 3, SetCapacity: size the ring, no shape indices. */
 static BOOL ps_set_capacity(ParticleSystem *self, DWORD count)
 {
     return ring_alloc(&self->ring, count, 0) != 0;
 }
 
-/* 0x447cc0 — slot 4, Resize: free first, then allocate again (ring_alloc frees
- * as well — the original does both; kept). */
+/* Slot 4, Resize: free, then allocate again (ring_alloc frees as well). */
 static BOOL ps_resize(ParticleSystem *self, DWORD count)
 {
     ring_free(&self->ring);
     return ring_alloc(&self->ring, count, 0);
 }
 
-/* 0x447d30 / 0x447d80 — slots 5 and 6.  Hand the ring to the new sub-object
- * first; only if it accepts does the old one get dropped and the pointer
- * replaced.  A NULL argument is refused. */
+/* Slots 5 and 6.  Hand the ring to the new sub-object first; only if it
+ * accepts is the old one dropped and the pointer replaced.  A NULL argument is
+ * refused. */
 static BOOL ps_set_sub_object(void **slot, RingBuffer *ring, void *obj)
 {
     if (obj == NULL)
         return FALSE;
     void **vtbl = *(void ***)obj;
-    if (!((ps_attach_fn)vtbl[2])(obj, ring))   /* AttachRing, slot 2 */
+    if (!((ps_attach_fn)vtbl[2])(obj, ring))  // AttachRing, slot 2
         return FALSE;
     if (*slot)
         sub_object_delete(*slot);
@@ -644,10 +572,10 @@ static BOOL ps_set_sub_object(void **slot, RingBuffer *ring, void *obj)
     return TRUE;
 }
 
-/* 0x447bc0 — slot 2, CopyFrom.  Releases self (virtually, so a subclass frees
- * its vertex buffer too), refuses a source of a different class, re-makes the
- * ring at the source's size, then clones the generator and the environment and
- * attaches each through slots 5 and 6.  Every failure releases again. */
+/* Slot 2, CopyFrom.  Releases self (virtually, so a subclass frees its vertex
+ * buffer too), refuses a source of a different class, re-makes the ring at the
+ * source's size, then clones the generator and the environment and attaches
+ * each through slots 5 and 6.  Every failure releases again. */
 static BOOL ps_copy_from(ParticleSystem *self, const ParticleSystem *src)
 {
     ((ps_release_fn)self->pVtable[PS_VT_RELEASE])(self, 1);
@@ -681,13 +609,13 @@ static BOOL ps_copy_from(ParticleSystem *self, const ParticleSystem *src)
     return TRUE;
 }
 
-/* ─── Serialize / Deserialize (slots 13 and 14) ─── */
-
-/* Both slots take (FILE *, GameLogger *) and return BOOL; the base ignores the
- * logger, the subclasses report through it.  Strings are the game's own. */
-
-/* Write one sub-object's class name: length INCLUDING the terminator, then
- * that many bytes — so the NUL goes to the file too.  A missing sub-object
+/* ─── Serialize / Deserialize (slots 13 and 14) ────────────────────────────
+ *
+ * Both take (FILE *, GameLogger *) and return BOOL; the base ignores the
+ * logger, the subclasses report through it.
+ *
+ * FORMAT: a sub-object's class name is its length including the terminator,
+ * then that many bytes, so the NUL goes to the file too.  A missing sub-object
  * writes the literal "NULL". */
 static BOOL ps_write_sub_object(const void *obj, void *fp)
 {
@@ -706,7 +634,7 @@ static BOOL ps_write_sub_object(const void *obj, void *fp)
     return TRUE;
 }
 
-/* 0x447e30 — slot 13.  Ring size, then the generator and the environment. */
+/* Slot 13: ring size, then the generator and the environment. */
 static BOOL ps_serialize(ParticleSystem *self, void *fp, GameLogger *)
 {
     if (fp == NULL)
@@ -737,13 +665,10 @@ static char *ps_read_name(void *fp, GameLogger *log, int line_len,
     return name;
 }
 
-/* 0x448000 — slot 14.  Release, re-make the ring at the stored size, then read
- * each sub-object's class name, build it through the factory, Load it and
- * attach it through slots 5 and 6.
- *
- * Kept as found: a sub-object named "NULL" leaks the name buffer (the original
- * jumps past the free), and the ring is sized directly rather than through
- * slot 3, so a subclass's capacity override does not run here. */
+/* Slot 14: release, re-make the ring at the stored size, then read each
+ * sub-object's class name, build it through the factory, Load it and attach it
+ * through slots 5 and 6.  The ring is sized directly rather than through slot
+ * 3, so a subclass's capacity override does not run here. */
 static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
 {
     ((ps_release_fn)self->pVtable[PS_VT_RELEASE])(self, 1);
@@ -771,10 +696,7 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
         ::operator delete(name);
         void **gvt = *(void ***)gen;
         if (!((ps_stream_fn)gvt[GEN_VT_LOAD_SLOT])(gen, fp)) {
-            /* `name` was freed two lines up and is still handed to the logger:
-             * the original frees at 0x448179 and passes the same dead pointer
-             * at 0x448191.  Preserved, including the use-after-free — hence
-             * the suppression rather than a fix. */
+/* PRESERVED: `name` was freed above and is still handed to the logger. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuse-after-free"
             GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_GENLOAD, name);
@@ -784,8 +706,8 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
         }
         ((ps_attach_fn)self->pVtable[PS_VT_SETGEN])(self, gen);
     }
-    /* the "NULL" branch drops `name` on the floor — the original's leak */
 
+    // PRESERVED: a sub-object named "NULL" leaks `name`.
     name = ps_read_name(fp, log, __LINE__, __LINE__, GS_PS_MSG_NOENV);
     if (name == NULL)
         return FALSE;
@@ -799,7 +721,7 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
         ::operator delete(name);
         void **evt = *(void ***)env;
         if (!((ps_stream_fn)evt[GEN_VT_LOAD_SLOT])(env, fp)) {
-            /* same preserved use-after-free as the generator branch above */
+/* PRESERVED: the same use-after-free as the generator branch. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuse-after-free"
             GameLog_LogSourceLocation(log, 4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_ENVLOAD, name);
@@ -812,13 +734,10 @@ static BOOL ps_deserialize(ParticleSystem *self, void *fp, GameLogger *log)
     return TRUE;
 }
 
-/* ─── PointParticleSystem and FaceParticleSystem lifecycles ─── */
-
-/* The Save/Load strings and source file of ParticleSystems.cpp (the subclass
- * half; the base half lives in ParticleSystem.cpp, GS_PS_SRC_FILE above). */
-
-/* 0x44d0e0 — Point's vertex buffer: one 0x20-byte vertex per ring node.  The
- * count field is not touched here; Fill maintains it. */
+/* ─── PointParticleSystem and FaceParticleSystem lifecycles ────────────────
+ *
+ * Point's vertex buffer: one 0x20-byte vertex per ring node.  The count field
+ * is not touched here; Fill maintains it. */
 static BOOL point_alloc_verts(PointParticleSystem *self)
 {
     if (self->pVerts)
@@ -833,14 +752,14 @@ static BOOL point_alloc_verts(PointParticleSystem *self)
     return FALSE;
 }
 
-/* 0x44d460 / 0x44e760 — six vertices per ring node, zeroed, then the texture
- * corners baked in.  Face and XFace use DIFFERENT corner orders; both as found:
+/* Six vertices per ring node, zeroed, then the texture corners baked in.  Face
+ * and XFace use different corner orders:
  *   Face : (0,0) (1,0) (0,1) (0,1) (1,0) (1,1)
- *   XFace: (0,0) (1,1) (0,1) (1,0) (1,1) (0,0)  */
+ *   XFace: (0,0) (1,1) (0,1) (1,0) (1,1) (0,0) */
 static BOOL quad_alloc_verts(ParticleVertex **slot, DWORD nodes, bool xface)
 {
     if (xface && *slot)
-        ::operator delete(*slot);                 /* XFace frees first; Face does not */
+        ::operator delete(*slot);  // XFace frees first; Face does not
     unsigned bytes = nodes * 6 * sizeof(ParticleVertex);
     ParticleVertex *v = (ParticleVertex *)::operator new(bytes, std::nothrow);
     *slot = v;
@@ -864,8 +783,8 @@ static BOOL face_alloc_verts(FaceParticleSystem *self)
     return quad_alloc_verts(&self->pVerts, self->base.ring.dwRingCount, false);
 }
 
-/* 0x44d3c0 — slot 1 for BOTH Point and Face (one function, two vtables): drop
- * the vertex buffer, then the base release. */
+/* Slot 1 for both Point and Face: drop the vertex buffer, then the base
+ * release. */
 static void quad_release(ParticleSystem *self, int flags)
 {
     ParticleVertex **verts = (ParticleVertex **)((BYTE *)self + 0x28);
@@ -875,8 +794,8 @@ static void quad_release(ParticleSystem *self, int flags)
     ps_release(self, flags);
 }
 
-/* 0x44d060 / 0x44d360 — the two dtor bodies: own vtable, the shared release
- * (called directly, not virtually), then the base body. */
+/* The two dtor bodies: own vtable, the shared release (called directly, not
+ * virtually), then the base body. */
 static void quad_destruct(ParticleSystem *self, void *const *vtbl)
 {
     self->pVtable = (void **)vtbl;
@@ -884,8 +803,8 @@ static void quad_destruct(ParticleSystem *self, void *const *vtbl)
     ps_base_destruct(self);
 }
 
-/* 0x44d0c0 / 0x44d140 — Point slots 3 and 4: size the ring, then rebuild the
- * vertex buffer.  Both return the second step's result. */
+/* Point slots 3 and 4: size the ring, then rebuild the vertex buffer.  Both
+ * return the second step's result. */
 static BOOL point_set_capacity(PointParticleSystem *self, DWORD count)
 {
     if (!ps_set_capacity(&self->base, count))
@@ -900,8 +819,8 @@ static BOOL point_resize(PointParticleSystem *self, DWORD count)
     return point_alloc_verts(self);
 }
 
-/* 0x44d160 — Point slot 2.  Releases virtually first and the base CopyFrom
- * releases again; kept. */
+/* Point slot 2.  Releases virtually first, and the base CopyFrom releases
+ * again. */
 static BOOL point_copy_from(PointParticleSystem *self, const ParticleSystem *src)
 {
     ((ps_release_fn)self->base.pVtable[PS_VT_RELEASE])(self, 1);
@@ -910,15 +829,14 @@ static BOOL point_copy_from(PointParticleSystem *self, const ParticleSystem *src
     return point_alloc_verts(self);
 }
 
-/* 0x44d250 — Point slot 13: the base write, whose result it DISCARDS, then
- * success unconditionally.  Kept. */
+/* Point slot 13: the base write, whose result is discarded, then success. */
 static BOOL point_serialize(PointParticleSystem *self, void *fp, GameLogger *log)
 {
     ps_serialize(&self->base, fp, log);
     return TRUE;
 }
 
-/* 0x44d270 — Point slot 14. */
+/* Point slot 14. */
 static BOOL point_deserialize(PointParticleSystem *self, void *fp, GameLogger *log)
 {
     if (!ps_deserialize(&self->base, fp, log))
@@ -930,8 +848,8 @@ static BOOL point_deserialize(PointParticleSystem *self, void *fp, GameLogger *l
     return TRUE;
 }
 
-/* 0x44d3f0 — Face slot 3: release virtually, size the ring, reset the scale to
- * 1 and rebuild the corners. */
+/* Face slot 3: release virtually, size the ring, reset the scale to 1 and
+ * rebuild the corners. */
 static BOOL face_set_capacity(FaceParticleSystem *self, DWORD count)
 {
     ((ps_release_fn)self->base.pVtable[PS_VT_RELEASE])(self, 1);
@@ -941,7 +859,7 @@ static BOOL face_set_capacity(FaceParticleSystem *self, DWORD count)
     return face_alloc_verts(self);
 }
 
-/* 0x44d420 — Face slot 2: the scale comes from the source. */
+/* Face slot 2: the scale comes from the source. */
 static BOOL face_copy_from(FaceParticleSystem *self, const FaceParticleSystem *src)
 {
     ((ps_release_fn)self->base.pVtable[PS_VT_RELEASE])(self, 1);
@@ -951,7 +869,7 @@ static BOOL face_copy_from(FaceParticleSystem *self, const FaceParticleSystem *s
     return face_alloc_verts(self);
 }
 
-/* 0x44d550 — Face slot 4. */
+/* Face slot 4. */
 static BOOL face_resize(FaceParticleSystem *self, DWORD count)
 {
     if (!ps_resize(&self->base, count))
@@ -962,8 +880,8 @@ static BOOL face_resize(FaceParticleSystem *self, DWORD count)
     return face_alloc_verts(self);
 }
 
-/* 0x44dbe0 — Face slot 13: base write (result discarded, as Point's does),
- * then the scale. */
+/* Face slot 13: the base write (result discarded, as Point's), then the scale.
+ */
 static BOOL face_serialize(FaceParticleSystem *self, void *fp, GameLogger *log)
 {
     ps_serialize(&self->base, fp, log);
@@ -974,7 +892,7 @@ static BOOL face_serialize(FaceParticleSystem *self, void *fp, GameLogger *log)
     return TRUE;
 }
 
-/* 0x44dc40 — Face slot 14. */
+/* Face slot 14. */
 static BOOL face_deserialize(FaceParticleSystem *self, void *fp, GameLogger *log)
 {
     if (!ps_deserialize(&self->base, fp, log))
@@ -990,16 +908,15 @@ static BOOL face_deserialize(FaceParticleSystem *self, void *fp, GameLogger *log
     return TRUE;
 }
 
-/* ─── XFaceParticleSystem lifecycle ─── */
-
-
+/* ─── XFaceParticleSystem lifecycle ────────────────────────────────────────
+ */
 static BOOL xface_alloc_verts(XFaceParticleSystem *self)
 {
     return quad_alloc_verts(&self->pVerts, self->base.ring.dwRingCount, true);
 }
 
-/* 0x44ddd0 — slot 1: drop the corner table and the vertex buffer, then the
- * base release. */
+/* Slot 1: drop the corner table and the vertex buffer, then the base release.
+ */
 static void xface_release(XFaceParticleSystem *self, int flags)
 {
     if (self->pCornerTable)
@@ -1011,10 +928,8 @@ static void xface_release(XFaceParticleSystem *self, int flags)
     ps_release(&self->base, flags);
 }
 
-/* 0x44dd80 — the dtor body.  It runs the BASE destructor twice and never calls
- * its own slot 1, so destroying an XFace leaks its corner table and vertex
- * buffer.  Both kept: the doubled call is the EH-state twin (as in
- * MagnetEnvironment), and the leak is the original's. */
+/* The dtor body runs the base destructor twice and never calls its own slot 1.
+ * PRESERVED: destroying an XFace leaks its corner table and vertex buffer. */
 static void xface_destruct(XFaceParticleSystem *self)
 {
     self->base.pVtable = (void **)ps_vtbl_xface;
@@ -1022,9 +937,8 @@ static void xface_destruct(XFaceParticleSystem *self)
     ps_base_destruct(&self->base);
 }
 
-/* The corner transform inside 0x44de20 divides by w when w != 1.0 — NOT the
- * `w != 0` test transform_point uses for the Face corners.  Separate on
- * purpose. */
+/* The corner transform divides by w when w != 1.0 -- not the `w != 0` test
+ * transform_point uses for the Face corners. */
 static void xface_transform_corner(float v[3], const Mat4 m)
 {
     float o[4];
@@ -1036,8 +950,8 @@ static void xface_transform_corner(float v[3], const Mat4 m)
     v[0] = o[0]; v[1] = o[1]; v[2] = o[2];
 }
 
-/* cos of the angle between a and b, the long way the originals take:
- * cos(acos(a.b / (|a||b|))) — the shared idiom with CylinderGenerator. */
+/* cos(acos(a.b / (|a||b|))): the cosine of the angle between a and b, the long
+ * way round. */
 static float corner_direction_cosine(const float a[3], const float b[3])
 {
     double dot = ((double)a[2] * b[2] + (double)a[1] * b[1]) + (double)a[0] * b[0];
@@ -1046,20 +960,19 @@ static float corner_direction_cosine(const float a[3], const float b[3])
     return (float)cos(acos(dot / (la * lb)));
 }
 
-/* One uniform sample on [-1, 1] from the game's rand(), as 0x44de20 draws it. */
+/* DETERMINISM: one rand() draw, mapped to [-1, 1]. */
 static float rand_signed_unit(void)
 {
     return (float)((double)(int)crt_rand() * (2.0f / 32767.0f) - 1.0f);
 }
 
-/* 0x44de20 — build dwCornerTableCount corner entries.  Each is a quad in the
- * XZ plane whose half-size steps from flSizeMin to flSizeMax, rotated into a
- * random orientation, plus three per-entry values drawn from the lifetime,
- * speed and rotation ranges.
+/* Build dwCornerTableCount corner entries.  Each is a quad in the XZ plane
+ * whose half-size steps from flSizeMin to flSizeMax, rotated into a random
+ * orientation, plus three per-entry values drawn from the lifetime, speed and
+ * rotation ranges.
  *
- * NOTE those three land in flRotVel[0..2], which the tick then treats as X/Y/Z
- * rotation velocities — the builder fills them from lifetime/speed/rotation
- * ranges.  That mismatch is the game's; kept. */
+ * PRESERVED: those three land in flRotVel[0..2], which the tick treats as
+ * X/Y/Z rotation velocities. */
 static BOOL xface_build_corners(XFaceParticleSystem *self)
 {
     if (self->pCornerTable)
@@ -1071,7 +984,7 @@ static BOOL xface_build_corners(XFaceParticleSystem *self)
     if (table == NULL)
         return FALSE;
 
-    const float *p = (const float *)((const BYTE *)self + 0x76);  /* the 8 ranges */
+    const float *p = (const float *)((const BYTE *)self + 0x76);  // the 8 ranges
     float size_min = p[0], size_max = p[1];
     float life_min = p[2], life_max = p[3];
     float speed_min = p[4], speed_max = p[5];
@@ -1118,8 +1031,8 @@ static BOOL xface_build_corners(XFaceParticleSystem *self)
     return TRUE;
 }
 
-/* 0x44e860 — slot 3.  The base capacity result is DISCARDED (no test in the
- * original); the shape indices are re-drawn from the corner count. */
+/* Slot 3.  The base capacity result is discarded; the shape indices are
+ * re-drawn from the corner count. */
 static BOOL xface_set_capacity(XFaceParticleSystem *self, DWORD count)
 {
     ps_set_capacity(&self->base, count);
@@ -1135,13 +1048,13 @@ static BOOL xface_set_capacity(XFaceParticleSystem *self, DWORD count)
     return TRUE;
 }
 
-/* 0x44e8c0 — slot 2.  No virtual release first, unlike Point and Face. */
+/* Slot 2.  No virtual release first, unlike Point and Face. */
 static BOOL xface_copy_from(XFaceParticleSystem *self, const XFaceParticleSystem *src)
 {
     if (!ps_copy_from(&self->base, &src->base))
         return FALSE;
     self->dwCornerTableCount = src->dwCornerTableCount;
-    memcpy((BYTE *)self + 0x76, (const BYTE *)src + 0x76, 0x20);   /* the 8 ranges */
+    memcpy((BYTE *)self + 0x76, (const BYTE *)src + 0x76, 0x20);  // the 8 ranges
     ring_assign_shapes(&self->base.ring, self->dwCornerTableCount);
     if (!xface_build_corners(self)) {
         ((ps_release_fn)self->base.pVtable[PS_VT_RELEASE])(self, 1);
@@ -1154,8 +1067,7 @@ static BOOL xface_copy_from(XFaceParticleSystem *self, const XFaceParticleSystem
     return TRUE;
 }
 
-/* 0x44e980 — slot 4.  Vertices before corners here; the other two do corners
- * first.  As found. */
+/* Slot 4.  Vertices before corners here; the other two do corners first. */
 static BOOL xface_resize(XFaceParticleSystem *self, DWORD count)
 {
     if (!ps_resize(&self->base, count))
@@ -1178,9 +1090,9 @@ static BOOL xface_resize(XFaceParticleSystem *self, DWORD count)
     return TRUE;
 }
 
-/* 0x44ec20 / 0x44ed50 — slots 13 and 14: the base stream, then the corner
- * count and the eight ranges.  Load finishes by re-running its OWN slot 3 with
- * the ring size, which is what rebuilds the corners and vertices. */
+/* Slots 13 and 14: the base stream, then the corner count and the eight
+ * ranges.  Load finishes by re-running its own slot 3 with the ring size,
+ * which rebuilds the corners and vertices. */
 static BOOL xface_serialize(XFaceParticleSystem *self, void *fp, GameLogger *log)
 {
     if (!ps_serialize(&self->base, fp, log))
@@ -1213,15 +1125,11 @@ failed:
     return FALSE;
 }
 
-/* ─── The non-virtual game interface (three functions, 17 call sites) ───
+/* ─── The non-virtual interface ────────────────────────────────────────────
  *
- * Everything else the game does with a particle system is a virtual call; these
- * three it calls directly, so patch.py rewrites their call sites (§ 6.8). */
-
-/* 0x447dd0 — hand out the raw Generator, optionally gated on its class name.
- * Returns NULL both when there is no generator and when the name differs —
- * and none of the four call sites checks before dereferencing.  The game
- * relies on the lookup always succeeding; reproduced as-is. */
+ * The raw Generator, optionally gated on its class name.  NULL both when there
+ * is no generator and when the name differs.  PRESERVED: no caller checks
+ * before dereferencing. */
 static Generator *ps_get_generator(ParticleSystem *self, const char *name)
 {
     Generator *gen = self->pGenerator;
@@ -1232,20 +1140,16 @@ static Generator *ps_get_generator(ParticleSystem *self, const char *name)
     return gen;
 }
 
-/* 0x448350 / 0x448360 via 0x448450 / 0x448460 — the generator's enable flag. */
+/* The generator's enable flag. */
 static void ps_set_render_node(ParticleSystem *self, DWORD enabled)
 {
     if (self->pGenerator)
         self->pGenerator->dwEnabled = enabled;
 }
 
-/* ─── Construction (the four ctors and the factory) ─── */
-
-/* The game's type-name strings; pName points at them as the ctors leave it. */
-
-/* 0x447aa0.  Each subclass ctor also builds and destroys a throwaway base
- * temporary on its own stack — no effect outside the frame, omitted (as with
- * the generators). */
+/* ─── Construction (the four ctors and the factory) ────────────────────────
+ *
+ * The type-name strings; pName points at them as the ctors leave it. */
 static void ps_base_construct(ParticleSystem *self)
 {
     ring_init(&self->ring);
@@ -1256,7 +1160,6 @@ static void ps_base_construct(ParticleSystem *self)
     self->pName        = GS_PSNAME_SYSTEM;
 }
 
-/* 0x44cfd0 */
 static void point_construct(PointParticleSystem *self)
 {
     ps_base_construct(&self->base);
@@ -1267,7 +1170,7 @@ static void point_construct(PointParticleSystem *self)
     self->base.pName    = GS_PSNAME_POINT_SYSTEM;
 }
 
-/* 0x44d2c0 — pField24 is 1 here, and the six corners start zeroed. */
+/* pField24 is 1 here, and the six corners start zeroed. */
 static void face_construct(FaceParticleSystem *self)
 {
     ps_base_construct(&self->base);
@@ -1280,7 +1183,7 @@ static void face_construct(FaceParticleSystem *self)
     memset(self->flCorner, 0, sizeof self->flCorner);
 }
 
-/* 0x44dcc0 — one corner entry by default, sizes 1.0, every other range 0. */
+/* One corner entry by default, sizes 1.0, every other range 0. */
 static void xface_construct(XFaceParticleSystem *self)
 {
     ps_base_construct(&self->base);
@@ -1291,10 +1194,10 @@ static void xface_construct(XFaceParticleSystem *self)
     self->nVertexCount        = 0;
     self->pVerts              = NULL;
     float *ranges = (float *)((BYTE *)self + 0x76);
-    ranges[0] = ranges[1] = 1.0f;                       /* size min/max   */
-    ranges[2] = ranges[3] = 0.0f;                       /* lifetime       */
-    ranges[4] = ranges[5] = 0.0f;                       /* speed          */
-    ranges[6] = ranges[7] = 0.0f;                       /* rotation       */
+    ranges[0] = ranges[1] = 1.0f;  // size min/max
+    ranges[2] = ranges[3] = 0.0f;  // lifetime
+    ranges[4] = ranges[5] = 0.0f;  // speed
+    ranges[6] = ranges[7] = 0.0f;  // rotation
     self->base.pName = GS_PSNAME_XFACE_SYSTEM;
 }
 
@@ -1307,8 +1210,8 @@ static ParticleSystem *ps_new(void (*construct)(T *))
     return (ParticleSystem *)obj;
 }
 
-/* 0x448ab0 — the same four names and sizes (0x28 / 0x30 / 0x7a / 0x96), our
- * own new, our constructors; NULL for an unknown name. */
+/* The four names and sizes (0x28 / 0x30 / 0x7a / 0x96); NULL for an unknown
+ * name. */
 ParticleSystem *ps_create(const char *name)
 {
     if (strcmp(name, "ParticleSystem") == 0)       return ps_new(ps_base_construct);
@@ -1318,17 +1221,12 @@ ParticleSystem *ps_create(const char *name)
     return NULL;
 }
 
-/* ─── The two entry points that build a system (§ 6.8) ───
+/* ─── The two ways the game builds a system ────────────────────────────────
  *
- * CloneParticleSystem (0x448ca0, 1 site) and LoadParticleSystemFromFile
- * (0x448ce0, 2 sites) are the only two ways the game ever makes a particle
- * system; both go through the factory, so with these ours nothing in the
- * particle subsystem is still the game's. */
-
-
+ * Clone and load from a .par file; both go through the factory. */
 typedef BOOL (THISCALL *ps_load_fn)(void *, void *, GameLogger *);
 
-/* 0x448d80 — length-prefixed class name, then the factory, then slot 14. */
+/* Length-prefixed class name, then the factory, then slot 14. */
 static ParticleSystem *ps_load_stream(void *fp, GameLogger *log)
 {
     DWORD len;
@@ -1344,7 +1242,7 @@ static ParticleSystem *ps_load_stream(void *fp, GameLogger *log)
     }
     ParticleSystem *ps = ps_create(name);
     if (ps == NULL) {
-        /* logged BEFORE the free here — unlike Deserialize's two branches */
+        // Logged before the free here, unlike Deserialize's two branches.
         GameLog_LogSourceLocation(log, 4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOSYSTEM, name);
         ::operator delete(name);
         return NULL;
@@ -1357,12 +1255,11 @@ static ParticleSystem *ps_load_stream(void *fp, GameLogger *log)
     return ps;
 }
 
-/* 0x448ce0 — the .par entry point.  A failed fclose discards the system that
- * was read, which is the original's behaviour. */
+/* The .par entry point.  A failed fclose discards the system that was read. */
 ParticleSystem *ps_load_file(const char *path, GameLogger *log)
 {
     GameLog_LogMessage(log, 2, GS_PS_MSG_STARTREAD, path);
-    void *fp = hooks_fopen(path, "r");       /* the game's mode string at 0x464200 */
+    void *fp = hooks_fopen(path, "r");  // text mode
     if (fp == NULL) {
         GameLog_LogSourceLocation(log, 4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOOPEN, path);
         return NULL;
@@ -1377,7 +1274,7 @@ ParticleSystem *ps_load_file(const char *path, GameLogger *log)
     return ps;
 }
 
-/* 0x448ca0 — build one of the same class and CopyFrom (slot 2). */
+/* Build one of the same class and CopyFrom (slot 2). */
 ParticleSystem *ps_clone(const ParticleSystem *src)
 {
     ParticleSystem *made = ps_create(src->pName);
@@ -1390,16 +1287,16 @@ ParticleSystem *ps_clone(const ParticleSystem *src)
     return made;
 }
 
-/* ─── Stage E6 exports — the lifecycle slots ─── */
+/* ─── Lifecycle exports ────────────────────────────────────────────────────
+ */
 extern "C" {
 
-/* The two __cdecl entry points, reached by CALL_PATCHES (3 sites). */
+/* The two __cdecl entry points. */
 __declspec(dllexport) ParticleSystem *__cdecl
 Particle_CloneSystem(const ParticleSystem *src)            { return ps_clone(src); }
 
 __declspec(dllexport) ParticleSystem *__cdecl
 Particle_LoadFromFile(const char *path, GameLogger *log)   { return ps_load_file(path, log); }
-
 
 /* Base ParticleSystem */
 __declspec(dllexport) void *THISCALL
@@ -1422,7 +1319,7 @@ Particle_BaseSetCapacity(ParticleSystem *self, DWORD n)      { return ps_set_cap
 __declspec(dllexport) BOOL THISCALL
 Particle_BaseResize(ParticleSystem *self, DWORD n)           { return ps_resize(self, n); }
 
-/* Slots 5 and 6 — one function each across all four classes. */
+/* Slots 5 and 6: one function each across all four classes. */
 __declspec(dllexport) BOOL THISCALL
 Particle_SetGenerator(ParticleSystem *self, void *gen)
 { return ps_set_sub_object((void **)&self->pGenerator, &self->ring, gen); }
@@ -1439,7 +1336,7 @@ __declspec(dllexport) BOOL THISCALL
 Particle_BaseLoad(ParticleSystem *self, void *fp, GameLogger *log)
 { return ps_deserialize(self, fp, log); }
 
-/* 0x448330 / 0x448340 — the base class's own fill and draw: nothing, and 0. */
+/* The base class's own fill and draw: nothing, and 0. */
 __declspec(dllexport) void THISCALL
 Particle_BaseFill(ParticleSystem *)                          { }
 
@@ -1447,15 +1344,14 @@ __declspec(dllexport) DWORD THISCALL
 Particle_BaseDrawNull(ParticleSystem *, IDirect3DDevice3 *)  { return 0; }
 
 /* Slots 10 and 11 where the class does not override them (base, Point, XFace):
- * the game puts its shared no-ops 0x448470 (RET 0xc) and 0x448440 (RET 4)
- * there.  Same argument counts, so the same callee cleanup. */
+ * shared no-ops with the same argument counts, so the same callee cleanup. */
 __declspec(dllexport) void THISCALL
 Particle_NopVec3(ParticleSystem *, float, float, float)      { }
 
 __declspec(dllexport) void THISCALL
 Particle_NopPtr(ParticleSystem *, void *)                    { }
 
-/* The three the game calls directly (patch.py CALL_PATCHES). */
+/* The three non-virtual entry points. */
 __declspec(dllexport) Generator *THISCALL
 Particle_GetGenerator(ParticleSystem *self, const char *name)
 { return ps_get_generator(self, name); }
@@ -1466,7 +1362,7 @@ Particle_EnableRenderNode(ParticleSystem *self)              { ps_set_render_nod
 __declspec(dllexport) void THISCALL
 Particle_DisableRenderNode(ParticleSystem *self)             { ps_set_render_node(self, 0); }
 
-/* 0x44d3c0 — slot 1 for Point AND Face. */
+/* Slot 1 for Point and Face. */
 __declspec(dllexport) void THISCALL
 Particle_QuadRelease(ParticleSystem *self, int flags)        { quad_release(self, flags); }
 
@@ -1551,9 +1447,10 @@ __declspec(dllexport) BOOL THISCALL
 Particle_XFaceLoad(XFaceParticleSystem *self, void *fp, GameLogger *log)
 { return xface_deserialize(self, fp, log); }
 
-} // extern "C"
+}  // extern "C"
 
-/* ─── Stage B exports ─── */
+/* ─── Tick and corner exports ──────────────────────────────────────────────
+ */
 extern "C" {
 
 __declspec(dllexport) void THISCALL
@@ -1582,20 +1479,15 @@ Particle_FaceTransformCorners(FaceParticleSystem *self, float *matrix)
         transform_point(self->flCorner[c], matrix);
 }
 
-} // extern "C"
+}  // extern "C"
 
-/* ─── Our vtables ──────────────────────────────────────────────────────────
+/* ─── The vtables ─────────────────────────────────────────────────────────
  *
- * One table per class, in the game's slot order, installed by the constructors
- * above.  With these the clone-and-override layer in factory.cpp is gone for
- * ParticleSystem too — the last family that needed it — so nothing in the DLL
- * clones a game vtable any more.
- *
- * Hand-built rather than C++ virtuals for the reason in PARTICLE_PLAN § 6.6:
- * the game calls these slots with MSVC __thiscall and its own slot order.  The
- * static_asserts below catch an initialiser that is one entry short, which
- * would otherwise leave a silent NULL slot. */
-
+ * One table per class, in the slot order particles.h names, installed by the
+ * constructors above.  Hand-built rather than C++ virtuals: the callers use
+ * __thiscall and this slot order.  The static_asserts below catch an
+ * initialiser that is one entry short, which would otherwise leave a silent
+ * NULL slot. */
 extern void *const ps_vtbl_base[] = {
     (void *)Particle_BaseDtor,        (void *)Particle_BaseRelease,
     (void *)Particle_BaseCopyFrom,    (void *)Particle_BaseSetCapacity,

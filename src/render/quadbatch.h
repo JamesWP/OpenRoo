@@ -1,4 +1,4 @@
-/* quadbatch.h -- DrawQuadBatch 0x00408710 (quadbatch.cpp). */
+/* quadbatch.h -- the level's quad-batch objects (quadbatch.cpp). */
 #pragma once
 struct QuadVerts;
 struct Direct3D;

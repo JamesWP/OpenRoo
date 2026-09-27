@@ -1,32 +1,10 @@
-/* DrawObjectShadows (0x0043b790) -- projected planar shadows.
- *
- * Called by RenderGameFrame for three theme object types (John's slot, and
- * the slots at 0x475664 / 0x4d3464), once per frame each, after it has set
- * the shadow render states.  Every model is drawn a second time, squashed
- * onto the horizontal plane through its own position by a projection from a
- * point light 1000 units off along (-1, +1, -1), then lifted 0.02 to clear
- * the floor.  No stencil: the one state set here, 0x1d, is SPECULARENABLE.
- *
- * Per record of the slot (skipped when bNoShadow; Z-write = !bNoZWrite),
- * per sub-object, per placement instance whose sub-object condition holds
- * and whose record is a MODEL:
- *
- *   world = Scale(scale, pumped) * RotX(t*rateX + rot.x + pi/2)
- *         * RotY(t*rateY [+ cell phase] + rot.y) * RotZ(t*rateZ + rot.z)
- *         * Translate(recPos + pos, y oscillating) * Shadow * Translate(0, .02, 0)
- *
- * then the mesh at its animation frame, or -- when the record explodes --
- * the debris (advanced by debrisMs * 0.001, i.e. not at all: every caller
- * passes 0) drawn in its two passes.
- *
- * Kept: the sub-objects only GATE the draw -- each one whose condition
- * holds draws the whole record mesh again, so a record with two passing
- * sub-objects casts its shadow twice.
- *
- * Written from the disassembly: Ghidra's decompile reads every stack
- * argument three slots off.  Float intermediates are plain float/double C,
- * not the original's x87 chains (a last-bit difference in a shadow vertex).
- */
+/* Shadow projection for one theme object type's placed instances: for each
+ * non-hidden record, each of its sub-objects that gates open, and each
+ * placement, the record's mesh (or its explode debris) is drawn a second time,
+ * flattened onto the ground plane through its own position and lifted clear of
+ * it.  A record with more than one open sub-object therefore casts its shadow
+ * once per open sub-object. */
+
 #include <math.h>
 #include "objectshadows.h"
 #include "game.h"
@@ -40,39 +18,38 @@
 #include "faktmesh.h"
 #include "explodedebris.h"
 
-static const float  K_HALF_PI    = 1.5707963705062866f;  /* 0x45d2cc */
-static const float  K_LIGHT_OFF  = 1000.0f;              /* 0x45d31c */
-static const float  K_LIFT       = 0.02f;                /* 0x3ca3d70a */
-static const float  K_PHASE_MUL  = 4.0f;                 /* 0x45d370 */
-static const float  K_DEBRIS_MS  = 0.001f;               /* 0x45d308 */
+static const float  K_HALF_PI    = 1.5707963705062866f;
+static const float  K_LIGHT_OFF  = 1000.0f;
+static const float  K_LIFT       = 0.02f;
+static const float  K_PHASE_MUL  = 4.0f;
+static const float  K_DEBRIS_MS  = 0.001f;
 
-/* d = left * right, row vectors -- m4_mul's own order is (dst, right, left),
- * as dsoscene.cpp's compose() records. */
+/* Row-vector composition: m4_mul's own argument order is (dst, right, left).
+ */
 static void compose(Mat4 *d, const Mat4 *left, const Mat4 *right)
 {
     m4_mul(d, right, left);
 }
 
-/* SceneSubObject::dwVisibilityGate (levelobject.h's names). */
 static bool condition_holds(DWORD gate, const Game *g, const Tile *cell)
 {
     const Player *p = g->player();
     switch (gate) {
     case 0:  return true;
-    case 1:  return cell->busy() != 0;          /* active */
-    case 2:  return cell->busy() == 0;          /* inactive */
-    case 3:  return p->anim() == 10;            /* dead */
-    case 4:  return p->anim() != 10;            /* alive */
-    case 6:  return p->effectDActive() != 0;    /* protection */
-    case 5:  return p->glides() != 0 || p->gliding() != 0;   /* paraglide */
+    case 1:  return cell->busy() != 0;
+    case 2:  return cell->busy() == 0;
+    case 3:  return p->anim() == 10;
+    case 4:  return p->anim() != 10;
+    case 6:  return p->effectDActive() != 0;
+    case 5:  return p->glides() != 0 || p->gliding() != 0;
     default: return false;
     }
 }
 
-/* The shadow projection: dot(P, L) * I - L (x) P, for the plane
- * P = (0, 1, 0, -pos.y) and the point light L = pos + (-1000, +1000, -1000).
- * Written entry by entry as the original stores them, the zero-coefficient
- * products folded to the -0.0 it stores. */
+/* Planar shadow matrix for a point light 1000 units off along (-1, +1, -1)
+ * from the record's position, and the ground plane through that same position.
+ * The zero coefficients are written as -0.0f to match every other entry's sign
+ * convention. */
 static void shadow_matrix(Mat4 *m, const float *pos)
 {
     float lx = pos[0] - K_LIGHT_OFF;
@@ -91,9 +68,8 @@ static int animation_frame(ThemeLevelObject *rec, double t, float phase,
                            unsigned int animKey)
 {
     if (rec->bNoMoveStates != 0) {
-        /* No numFrames guard in the original: 0 frames gives NaN, __ftol's
-         * 0x80000000, which DrawMeshBuffer clamps to frame 0 -- the same
-         * frame Anim_FrameOnClock returns for it. */
+        // No frame-count guard here: a zero-frame slot still draws frame 0,
+        // which DrawMeshBuffer clamps an out-of-range frame to anyway.
         AnimSlot *s = Ani_LookupAnimDescriptor(&rec->animTable, 0x14);
         return s != NULL ? Anim_FrameOnClock(s, t) : 0;
     }
@@ -104,7 +80,7 @@ static int animation_frame(ThemeLevelObject *rec, double t, float phase,
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Shadows_DrawObjectShadows(Game *game, LevelPlacements * /*placements*/,
+Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                           const float *pos, const float *rot, unsigned int count,
                           ThemeObjectTypeSlot *slot, Direct3D *d3d, double t,
                           float phase, unsigned int animKey, unsigned int debrisMs)

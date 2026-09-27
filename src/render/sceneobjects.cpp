@@ -1,33 +1,26 @@
-/* sceneobjects.cpp -- Game::RenderSceneObjects 0x4095f0; see sceneobjects.h.
+/* Draws every record of the theme slot passed in: for every sub-object and
+ * every position, gate against the tile and player, then dispatch on the
+ * record's kind.
  *
- * Written from the listing (the decompile misattributes most of the stack).
- * For every record of the slot, every sub-object and every position:
- *
- *   per record    SPECULARENABLE on if the record asks and Highlights is on;
- *                 ZWRITEENABLE = !bNoZWrite; SPECULARENABLE off afterwards.
+ *   per record    SPECULARENABLE on if the record asks and Highlights is
+ *                 on, off again once its sub-objects are drawn;
+ *                 ZWRITEENABLE from bNoZWrite.
  *   per sub       skipped whole if its effect is 5 and Reflection is off;
- *                 TEXTUREADDRESSU/V = dwTexAddress, 0 meaning CLAMP (3).
- *   per position  the visibility gate against the tile under it and the
- *                 player; SetTexture; alpha blend iff both factors are set;
- *                 then the record's kind:
- *     1 model      World = Scale * RotA * RotB * RotC * Translate, the frame
- *                  from the AnimTable, the sub-object's vertex effect, then
- *                  either the explode debris or the mesh.
- *     3 billboard  a camera-facing quad (Math_BuildBillboardQuad).
- *     2 quad       the caller's four vertices, UV/colour-animated by the
- *                  sub-object's effect, drawn strided from the SECOND
- *                  coordinate pair (hooks_SceneQuadDrawStrided repairs the
- *                  undeclared set -- CRASH.md).
+ *                 TEXTUREADDRESSU/V from dwTexAddress, 0 meaning CLAMP.
+ *   per position  gated on the tile under it and the player; textured,
+ *                 alpha blended if both blend factors are set, then drawn
+ *                 as the record's kind:
+ *     model      World = Scale * RotX * RotY * RotZ * Translate, the frame
+ *                taken from the AnimTable, the sub-object's vertex effect,
+ *                then either the explode debris or the mesh;
+ *     billboard  a camera-facing quad (Math_BuildBillboardQuad);
+ *     quad       the caller's four vertices, UV/colour-animated by the
+ *                sub-object's effect.
  *
- * The rotation matrices are stored exactly as the original builds them
- * (transposed relative to D3DX's), and the tile under a position is
- * Tile::at(map, (int)x, -(int)z).  Where the original keeps a partial
- * result in an x87 register this uses double; where it stores a float, so
- * does this.  None of that reaches a comparison.
- *
- * Kept: the quad path's alpha of 0x0f; the billboard's alpha of 0; the
- * "fmod(.., 1.0)" frame wrap; ftol truncation everywhere a frame is taken.
- */
+ * Rotation matrices are built row-major, in the transpose of D3DX's usual
+ * convention; multiplication and SetTransform follow that convention
+ * throughout.  The tile under a position is Tile::at(map, (int)x, -(int)z). */
+
 #include "direct3d.h"
 #include <windows.h>
 #include <d3d.h>
@@ -51,15 +44,15 @@
 #include "explodedebris.h"
 #include "d3dmath.h"
 
-/* ThemeLevelObject is packed; its embedded members (wrapper, explode,
- * animTable, the sub-objects) are 1-aligned by declaration only -- the
- * record stride 0x5dd makes that unavoidable, as theme.cpp notes. */
+/* ThemeLevelObject is packed, so its embedded members (wrapper, explode,
+ * animTable, the sub-objects) are only 1-aligned by declaration -- the record
+ * stride makes that unavoidable. */
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 
 enum { KIND_MODEL = 1, KIND_QUAD = 2, KIND_BILLBOARD = 3 };
-static const float HALF_PI   = 1.5707963705062866f;   /* 0x45d2cc */
-static const float PHASE_K   = 4.0f;                   /* 0x45d370 */
-static const float QUAD_HALF = 0.4f;                   /* 0x3ecccccd */
+static const float HALF_PI   = 1.5707963705062866f;
+static const float PHASE_K   = 4.0f;
+static const float QUAD_HALF = 0.4f;
 
 /* R = A * B, row-major; each element summed k = 0..3 from zero. */
 static void mat_mul(Mat4 *r, const Mat4 *a, const Mat4 *b)
@@ -83,7 +76,7 @@ static void mat_translate(Mat4 *m, float x, float y, float z)
     m->m[14] = z;
 }
 
-/* The sub-object's `condition` against the tile and the player. */
+/* The sub-object's visibility gate against the tile and the player. */
 static bool gate_passes(DWORD gate, const Tile *tile, const Player *pl)
 {
     switch (gate) {
@@ -110,9 +103,9 @@ static float oscillate(const ThemeLevelObject *rec, const Tile *tile, double now
     return (float)(sin(arg) * rec->flOscillationAmplitude + y);
 }
 
-/* The mesh frame.  With bNoMoveStates the record loops its code-0x14 range
+/* The mesh frame.  With bNoMoveStates the record loops its own code-0x14 range
  * on the clock; otherwise it plays the caller's code at the caller's time.
- * The counts are unsigned (FILD of a zero-extended qword). */
+ * The frame counts are read as unsigned. */
 static unsigned int anim_frame(ThemeLevelObject *rec, double now, float animTime,
                                unsigned int animCode)
 {
@@ -274,7 +267,7 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
 
     const float *p = sub->flEffectParams;
     switch (sub->effect) {
-    case 1: {   /* scroll, one of four directions */
+    case 1: {  // scroll, one of four directions
         float r = (float)fmod(p[1] * now, 1.0);
         float v = r * p[0];
         switch ((int)(long long)p[2]) {
@@ -307,7 +300,7 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
         }
         break;
     }
-    case 2: {   /* a grey flash, alpha 0xff */
+    case 2: {  // a grey flash, alpha 0xff
         unsigned int b = (unsigned int)(long long)
             ((sin(p[0] * now + p[1]) + 1.0) * 0.5 * 255.0);
         unsigned int col = ((((b | 0xffffff00u) << 8) | b) << 8) | b;
@@ -319,7 +312,7 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
         q[3].u1 = 1.0f; q[3].v1 = 0.0f;
         break;
     }
-    case 3: {   /* the UV corners rotated about the centre */
+    case 3: {  // the UV corners rotated about the centre
         double a = p[0] * now;
         float c = (float)cos(a), s = (float)sin(a);
         Mat4 M;
@@ -331,7 +324,7 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
         rotated_corner(&M,  QUAD_HALF, -QUAD_HALF, &q[3].u1, &q[3].v1);
         break;
     }
-    case 4: {   /* rotation about a pivot, from the listing's arithmetic */
+    case 4: {  // rotation about a pivot
         double a = p[0] * now;
         float s = (float)sin(a), c = (float)cos(a);
         double pv = p[2], qv = p[1];

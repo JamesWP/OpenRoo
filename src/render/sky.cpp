@@ -1,71 +1,12 @@
-/* SkyBackground::DrawSkyBackground (0x43cc00) reimplementation.
+/* SkyBackground: build the six-faced cube, draw it, and its lifecycle (sky.h).
  *
- * __thiscall(this, IDirect3DDevice3 *dev, DWORD, DWORD, DWORD) -> float*.
+ * DrawSkyBackground draws the cube with the z-buffer off, under WORLD =
+ * RotY(flYawAngle) with the caller's centre as the translation, so the sky
+ * follows the viewer.  The centre is a 12-byte struct passed by value after
+ * the device; dropping the translation pins the sky at the world origin.
  *
- * ── The signature, and how getting it wrong presents ───────────────────────
- * The decompile shows ONE stack parameter.  It is wrong: the original ends
- * `ret $0x10`, so it pops FOUR stack dwords.  The call site (0x427909) does
- * `SUB ESP,0xc` and fills three dwords from the globals 0x46c4a0/a4/a8 -- a
- * 12-byte struct passed by value -- and then pushes the device, so the stack
- * layout is (device, g0, g1, g2).  The function body never reads the three;
- * they still have to be popped.
- *
- * Declaring only (this, dev) built cleanly and ran, then killed the process
- * inside the first frame: each call left 12 bytes of stack behind until the
- * return path walked into `page fault on read access to 00000000`.  A no-op
- * body crashed identically, which is what proved it was the frame and not the
- * drawing.  Always read the original's `ret N` -- the decompiler's parameter
- * list is not evidence.
- * 522 bytes, five D3D dispatches, one E8 call site (0x42792A in
- * RenderGameFrame).
- *
- *   SetRenderState(D3DRENDERSTATE_ZENABLE, 0)      // sky ignores the z-buffer
- *   build a Y-rotation matrix from this->flYawAngle into this->WorldMatrix
- *   SetTransform(D3DTRANSFORMSTATE_WORLD, this->WorldMatrix)
- *   for i in 0..5:
- *       SetTexture(0, this->Textures[i].pTexture2)
- *       DrawPrimitive(D3DPT_TRIANGLESTRIP, 0x1e2, &this->QuadVerts[i*0x80],
- *                     4, D3DDP_DONOTUPDATEEXTENTS)
- *   SetRenderState(D3DRENDERSTATE_ZENABLE, 1)
- *
- * ── Establishing the layout ────────────────────────────────────────────────
- * Ghidra's decompile is unusable as written: it addresses the object through
- * `unaff_EBP` because the function reloads EBP from a saved copy of `this`
- * (`mov 0x14(%esp),%ebp` at 0x43cd91) and the decompiler does not connect the
- * two.  Typing `this` as SkyBackground (done in the Ghidra project) recovers
- * this->flYawAngle but not the EBP-based accesses.  EBP == this is confirmed
- * three independent ways:
- *   1. The struct tiles exactly: Textures end at 0xb0, the six 0x80-byte quad
- *      blocks run 0xb0..0x3b0, and the matrix sits at 0x3b0 — no gaps.
- *   2. `lea 0x20(%ebp),%esi` with a 0x1c stride matches HOOKS.md's
- *      independently-derived "six SceneTexture at this+0x08, stride 0x1C"
- *      (0x08 + 0x18 = 0x20 is each one's pTexture2).
- *   3. EBP is loaded from the stack slot holding `this`.
- *
- * ── A wrong call I made here, and the correction ──────────────────────────
- * The decompile renders the translation write as `uStack_9c = uStack_4`, which
- * looks like an uninitialised stack value landing in _41 of the second matrix.
- * I first dismissed it as a decompiler artifact and dropped it.  That produced
- * a visible skybox glitch (James spotted it) while the replay tests still
- * passed -- they assert game state, not pixels.
- *
- * It is real.  The original loads three consecutive dwords from the caller's
- * by-value struct (0x43ccd8/e6/f3: [esp+0xe4], [esp+0xe8], [esp+0xec]) and
- * stores them at offsets 0x30/0x34/0x38 of the matrix built at esp+0x1c --
- * i.e. _41/_42/_43, the translation row.  Ghidra mis-assigned the slots
- * because ESP moves between the lea and the stores.
- *
- * So the world matrix is Yrot * Translate(centre): the skybox is translated to
- * follow the viewer.  Dropping the translation leaves the sky pinned at the
- * world origin, which is exactly the glitch.
- *
- * Note the rotation is the transpose of the usual D3D Y-rotation: the original
- * sets _13 = +sin and _31 = -sin (from afStack_8c[2] and the -0x6c slot).
- * Reproduced as-is rather than "corrected".
- *
- * KAROO_SKY_FX=noskip draws only the first of the six sky quads, leaving the
- * rest of the sky absent — visual proof the sky pixels come from this code.
- */
+ * KAROO_SKY_FX=noskip draws only the first of the six quads. */
+
 #include "direct3d.h"
 #include "sky.h"
 #include "log.h"
@@ -103,19 +44,18 @@ Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
     float *m = self->WorldMatrix;
     for (int i = 0; i < 16; i++)
         m[i] = 0.0f;
-    m[0]  = c;   m[2]  = s;     /* _11, _13 */
-    m[5]  = 1.0f;               /* _22      */
-    m[8]  = -s;  m[10] = c;     /* _31, _33 */
-    m[15] = 1.0f;               /* _44      */
+    // The transpose of the usual D3D Y-rotation: _13 = +sin, _31 = -sin.
+    m[0]  = c;   m[2]  = s;
+    m[5]  = 1.0f;
+    m[8]  = -s;  m[10] = c;
+    m[15] = 1.0f;
 
-    /* Translation row: the three by-value floats the caller passes.  The
-     * original writes them into _41/_42/_43 of the second matrix and then
-     * computes Yrot * T; since Yrot's last row is (0,0,0,1) and T's upper 3x3
-     * is identity, that product is exactly this rotation with the translation
-     * row copied in, so it is written directly. */
-    m[12] = flCentreX;          /* _41 */
-    m[13] = flCentreY;          /* _42 */
-    m[14] = flCentreZ;          /* _43 */
+    // RotY * Translate(centre): RotY's last row is (0,0,0,1) and the
+    // translation's 3x3 is identity, so the product is the rotation with the
+    // row copied in.
+    m[12] = flCentreX;
+    m[13] = flCentreY;
+    m[14] = flCentreZ;
 
     dev->SetTransform(D3DTRANSFORMSTATE_WORLD, (D3DMATRIX *)m);
 
@@ -125,7 +65,7 @@ Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
         dev->SetTexture(0, tex);
         HRESULT hr = dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, SKY_FVF,
                                         self->QuadVerts[i],
-                                        4, 8);
+                                        4, 8);  // D3DDP_DONOTUPDATEEXTENTS
 
         static LONG logged = 0;
         if (InterlockedIncrement(&logged) <= SKY_LOG_FIRST)
@@ -137,27 +77,25 @@ Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
     return self->WorldMatrix;
 }
 
-/* ─── Sky_BuildFromFaceNames (0x0043c870) ─────────────────────────────────
+/* ─── Sky_BuildFromFaceNames ───────────────────────────────────────────────
  *
- * The cube is +-55 on each axis.  Each face is a 4-vertex strip with UVs
- * (1,0) (1,1) (0,0) (0,1); the corners below are the original's stores,
- * in vertex order.  Every vertex is white with a black, opaque-alpha
- * specular.  The matrix is identity until DrawSkyBackground rebuilds it. */
+ * The cube is +-55 on each axis.  Each face is a 4-vertex strip with UVs (1,0)
+ * (1,1) (0,0) (0,1); the corners below are in vertex order.  Every vertex is
+ * white with a black, opaque-alpha specular.  The matrix is identity until
+ * DrawSkyBackground rebuilds it. */
 static const signed char kSkyCorners[24][3] = {
-    {-1, 1,-1}, { 1, 1,-1}, {-1, 1, 1}, { 1, 1, 1},   /* UP */
-    { 1,-1,-1}, {-1,-1,-1}, { 1,-1, 1}, {-1,-1, 1},   /* DN */
-    {-1, 1,-1}, {-1,-1,-1}, { 1, 1,-1}, { 1,-1,-1},   /* FR */
-    { 1, 1, 1}, { 1,-1, 1}, {-1, 1, 1}, {-1,-1, 1},   /* BK */
-    {-1, 1, 1}, {-1,-1, 1}, {-1, 1,-1}, {-1,-1,-1},   /* LF */
-    { 1, 1,-1}, { 1,-1,-1}, { 1, 1, 1}, { 1,-1, 1},   /* RT */
+    {-1, 1,-1}, { 1, 1,-1}, {-1, 1, 1}, { 1, 1, 1},  // UP
+    { 1,-1,-1}, {-1,-1,-1}, { 1,-1, 1}, {-1,-1, 1},  // DN
+    {-1, 1,-1}, {-1,-1,-1}, { 1, 1,-1}, { 1,-1,-1},  // FR
+    { 1, 1, 1}, { 1,-1, 1}, {-1, 1, 1}, {-1,-1, 1},  // BK
+    {-1, 1, 1}, {-1,-1, 1}, {-1, 1,-1}, {-1,-1,-1},  // LF
+    { 1, 1,-1}, { 1,-1,-1}, { 1, 1, 1}, { 1,-1, 1},  // RT
 };
 static const float kSkyUV[4][2] = { {1, 0}, {1, 1}, {0, 0}, {0, 1} };
 
-/* Identity matrix and the cube's 24 vertices.  The ctor (0x43c560) and
- * BuildFromFaceNames store exactly the same values -- checked store by
- * store against both listings; only the order of the stores differs, which
- * nothing can observe.  flYawAngle and each vertex's `reserved` are left
- * alone by both. */
+/* Identity matrix and the cube's 24 vertices, shared by the ctor and
+ * BuildFromFaceNames.  flYawAngle and each vertex's `reserved` are left alone.
+ */
 static void sky_fill_geometry(SkyBackground *self)
 {
     for (int i = 0; i < 16; i++)
@@ -195,18 +133,15 @@ Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
         if ((r & 0xff) == 0)
             return r;
     }
-    /* The last face's result is normalised to 0/1 in AL; the upper bytes
-     * are the loader's.  Only AL is ever tested. */
+    // Only the low byte is the result; the upper bytes are the last loader's.
     return (r & 0xffffff00u) | 1u;
 }
 
-/* ─── The lifecycle: 0x43c560 ctor, 0x43c850 dtor body, 0x43c830 scalar ─────
+/* ─── The lifecycle ─────────────────────────────────────────────────────────
  *
- * The one instance is ThemeAssetBlock::sky, built and destroyed by the
- * block's aggregate ctor/dtor (theme.cpp).  The six face textures went
- * through MSVC's vector iterators (0x451db5 / 0x451e37); plain loops here,
- * the dtor last to first as the iterator walks.  Own one-slot vtable, the
- * game's 0x45d6fc a tripwire (byte scan: only these two write it). */
+ * The one instance is ThemeAssetBlock::sky, built and destroyed by the block's
+ * aggregate ctor/dtor (theme.cpp).  The dtor releases the six face textures
+ * last to first. */
 static void *const g_SkyVtable[1] = { (void *)&Sky_ScalarDtor };
 
 extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))

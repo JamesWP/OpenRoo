@@ -1,6 +1,5 @@
-/* camera.cpp -- the orbit camera: UpdateViewTransform 0x404470 and the
- * LookAt builder it calls, 0x407b20 (camera.h).  Written from the listings;
- * the decompiler would not complete on either.
+/* camera.cpp -- the orbit camera: UpdateViewTransform and the LookAt
+ * builder it calls (camera.h).
  *
  * Each frame, from RenderGameFrame:
  *   1. target.x/z snap to the focus point, target.y eases towards it
@@ -23,12 +22,12 @@
  *   6. eye = target + RotX(-pitch).RotY(yaw) applied to (0,0,-d); VIEW =
  *      LookAt(eye, target, +Y).
  *
- * Kept from the listings because they decide a branch: the probe tilts by
+ * Details that decide a branch: the probe tilts by
  * the CONFIGURED angle, not the eased pitch the eye uses; the grid cell is
  * floor(x + 0.5) by U and -floor(z + 0.5) by V, each
  * tested against [0, extent) as floats and then truncated and tested < 256
- * unsigned; the step counter is unsigned against a truncated (ey + 1); the
- * NaN outcomes of each FCOM.  The x87 chains themselves are double here.
+ * unsigned; the step counter is unsigned against a truncated (ey + 1); and
+ * which way each comparison goes on NaN.
  */
 #include <math.h>
 #include "camera.h"
@@ -39,28 +38,28 @@
 #include "levelmap.h"
 #include "player.h"
 #include "scene.h"
-CameraFocus g_cameraFocus;   /* was 0x004e01a0 */
-CameraGlobals g_camera;   /* was 0x0046c4a0 */
+CameraFocus g_cameraFocus;
+CameraGlobals g_camera;
 
-static const float K_TARGET_RATE = 0.004f;       /* 0x45d340 */
-static const double K_YAW_WRAP   = 6.2831854820251465;   /* 0x45d300 (double) */
-static const double K_PI         = 3.1415927410125732;   /* 0x45d338 (double) */
-static const float K_TWO_PI      = 6.2831855f;   /* 0x45d2f8 */
-static const float K_YAW_RATE    = 0.006f;       /* 0x45d330 */
-static const float K_EASE_RATE   = 0.005f;       /* 0x45d32c, distance and pitch */
-static const float K_DIST_MIN    = 1.0f;         /* 0x45d298 */
-static const float K_DIST_MAX    = 255.0f;       /* 0x45d328 */
-static const float K_NEG_DEG     = -0.017453292f; /* 0x45d324 */
-static const float K_DEG         = 0.017453292f; /* 0x45d320 */
-static const float K_EYE_CEIL    = 1000.0f;      /* 0x45d31c */
-static const float K_HALF        = 0.5f;         /* 0x45d318 */
-static const float K_PITCH_MAX   = 1.569051f;    /* 0x45d314, and the forced value 0x3fc8d6aa */
+static const float K_TARGET_RATE = 0.004f;
+static const double K_YAW_WRAP   = 6.2831854820251465;
+static const double K_PI         = 3.1415927410125732;
+static const float K_TWO_PI      = 6.2831855f;
+static const float K_YAW_RATE    = 0.006f;
+static const float K_EASE_RATE   = 0.005f;  // distance and pitch
+static const float K_DIST_MIN    = 1.0f;
+static const float K_DIST_MAX    = 255.0f;
+static const float K_NEG_DEG     = -0.017453292f;
+static const float K_DEG         = 0.017453292f;
+static const float K_EYE_CEIL    = 1000.0f;
+static const float K_HALF        = 0.5f;
+static const float K_PITCH_MAX   = 1.569051f;  // also the forced pitch
 
 /* d = a * b in the row-vector convention (m4_mul takes its operands the
- * original helper's way round -- see dsoscene.cpp's compose()). */
+ * other way round -- see dsoscene.cpp's compose()). */
 static void mul(Mat4 *d, const Mat4 *a, const Mat4 *b) { m4_mul(d, b, a); }
 
-/* (0, 0, z) through RotX(pitch).RotY(yaw), w-divided as 0x413350 does. */
+/* (0, 0, z) through RotX(pitch).RotY(yaw), w-divided. */
 static Vec3 orbit_offset(float pitch, float yaw, float z)
 {
     Mat4 rx, ry, m;
@@ -97,7 +96,7 @@ Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
     v.m[13] = (float)-(((double)ez * u.z + (double)ey * u.y) + (double)ex * u.x);
     v.m[14] = (float)-(((double)ez * n.z + (double)ey * n.y) + (double)ex * n.x);
 
-    if (!(roll == 0.0f || roll != roll)) {      /* FCOMP: equal or unordered skips */
+    if (!(roll == 0.0f || roll != roll)) {      // zero or NaN skips
         Mat4 r, t2;
         m4_rot_z(&r, -roll);
         mul(&t2, &v, &r);
@@ -153,10 +152,10 @@ Camera_UpdateViewTransform(CameraGlobals *cam, Direct3D *d3d, Game *g,
         if (ey > 0.0f && ey < K_EYE_CEIL) {
             LevelMap *map = g->map();
             unsigned i = (unsigned)((int)g->player()->heightCell() + 1);
-            /* ey + 1 is summed wide, as the x87 did, before the truncation:
+            /* ey + 1 is summed in double before the truncation:
              * a float sum could round across an integer and move the bound. */
             while (i < (unsigned)(int)((double)ey + 1.0)) {
-                if (!(probe.y == 0.0f || probe.y != probe.y)) {   /* FCOMP: equal or NaN skips */
+                if (!(probe.y == 0.0f || probe.y != probe.y)) {   // zero or NaN skips
                     float k = (float)(((double)i - cam->target[1]) / probe.y);
                     float fx = (float)floor((double)probe.x * k + cam->target[0] + K_HALF);
                     float fz = (float)-floor((double)probe.z * k + cam->target[2] + K_HALF);

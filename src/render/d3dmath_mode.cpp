@@ -1,15 +1,4 @@
-/* Public entry points for the math layer.
- *
- * The implementation is d3dmath_std.cpp: plain float, the C library, no
- * assembly.  It is not bit-exact against the game's originals and does not
- * need to be -- it was accepted on the bar that matters, which is that the
- * game looks and plays the same.  Measured drift over the DrawSceneObjects
- * fixture was 6.3e-07 absolute on values of order 1, and the replay suite
- * passes with every asserted end-state field intact, because these matrices
- * feed rendering and never the simulation.
- *
- * The bit-exact backend and the verification build that compared it against
- * the originals are gone; see RENDER_PLAN.md, 2026-09-13.
+/* Public entry points for the maths layer, over d3dmath_std.cpp.
  *
  * The scalar helpers (m_sqrt / m_fmod / m_acos) are separate from the vector
  * and matrix routines because DrawSceneObjects uses them directly for the path

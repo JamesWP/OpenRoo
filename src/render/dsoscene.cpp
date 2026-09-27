@@ -1,40 +1,26 @@
-/* DrawSceneObjects (0x420f50) reimplementation.
+/* The scene-object passes: DrawSceneObjects (models, types 0 and 2) and
+ * DrawSceneParticleSystems (particle systems, type 1), over the same list.
  *
- * SIGNATURE: __cdecl with SIX dword slots, not the two Ghidra shows.  The one
- * call site (0x0042848A) pushes six and cleans with `add esp,0x18`, and the
- * body reads a double at argument offset +0x10.  a3/a4 are never read; they
- * are declared so the stack shape matches exactly.
+ * DrawSceneObjects is __cdecl with six dword slots; the two unnamed dwords
+ * are never read and are declared so the stack shape matches.
  *
- * All math goes through src/render/d3dmath.h -- our own code, never the
- * game's helpers.  The shipped build uses the standard backend
- * (d3dmath_std.cpp): plain float and the C library.  It is not bit-exact
- * against the original and does not need to be; it was accepted on the bar
- * that it looks and plays the same, and the replay suite passes 5/5 with every
- * end-state field intact because these matrices feed rendering only.
+ * World matrix:
  *
- * It was accepted by reproducing the original byte for byte over 13 synthetic
- * fixture cases under the (since removed) bit-exact backend.
- *
- * WORLD MATRIX, verified byte-for-byte against captured output from the
- * original:
- *
- *   static path      M = RotX(f19d + pi/2) . RotY(f1a1)  . RotZ(f1a5) . T(f191,f195,f199)
- *   spline, plain    same rotations,                                   . T(bezier(t))
- *   spline, oriented M = RotX(pitch + pi/2) . RotY(heading) . RotZ(0)  . T(bezier(t))
+ *   static path      M = RotX(rx + pi/2) . RotY(ry)      . RotZ(rz) . T(pos)
+ *   spline, plain    same rotations,                                . T(bezier(t))
+ *   spline, oriented M = RotX(pitch + pi/2) . RotY(heading) . RotZ(0) . T(bezier(t))
  *
  * The two spline angles come from the path tangent -- see heading_angles().
  *
- * Preserved deliberately:
- *  - The blend test is `srcblend != 0 && destblend != 0`; either being zero
- *    disables blending entirely rather than defaulting one of them.
- *  - TEXTUREADDRESSU and TEXTUREADDRESSV are both set from the SAME field
- *    (+0x1b5).  There is no separate V mode.
- *  - The spline path issues a SECOND SetTexture just before the transform.
- *    The static path does not -- it jumps past that check.
- *  - Objects whose type is neither 0 nor 2 still run the whole render-state
- *    prologue before being skipped, as do type-0 objects with a NULL mesh.
- *    The state changes are real and observable, so they are not hoisted.
- */
+ * Behaviour that looks optional but is observable: - The blend test is
+ * `srcblend != 0 && destblend != 0`; either being zero
+ *    disables blending rather than defaulting one of them.
+ * - TEXTUREADDRESSU and TEXTUREADDRESSV are both set from the same field.  -
+ * The spline path issues a second SetTexture just before the transform;
+ *    the static path does not.
+ * - Objects whose type is neither 0 nor 2, and type-0 objects with a NULL
+ *    mesh, still run the whole render-state prologue before being skipped. */
+
 #include "dsoscene.h"
 #include "d3dmath.h"
 #include "log.h"
@@ -48,27 +34,26 @@
 #include "framepose.h"
 #include "game.h"
 
-/* The scene list is GG_SCENE->objects; each value is a SceneObject
- * (scene.h, layout-checked against the 0x1da-byte allocation). */
+/* The scene list is GG_SCENE->objects; each value is a SceneObject (scene.h).
+ */
 
-static const float K_HALF_PI = 1.5707964f;   /* 0x45d2cc */
-static const float K_TWO_PI  = 6.2831855f;   /* 0x45d2f8 */
-static const double K_PATH_MODULUS = 1.0;    /* 0x45d2e8 */
-static const double K_TANGENT_STEP = 10.0;   /* 0x45d448 */
-static const double K_ORIENT_ROLL  = 0.0;    /* 0x45d390 */
-static const double K_ANIM_SCALE   = 0.001;  /* 0x45d368 */
+static const float K_HALF_PI = 1.5707964f;
+static const float K_TWO_PI  = 6.2831855f;
+static const double K_PATH_MODULUS = 1.0;
+static const double K_TANGENT_STEP = 10.0;
+static const double K_ORIENT_ROLL  = 0.0;
+static const double K_ANIM_SCALE   = 0.001;
 
-/* d = left * right in the row-vector convention.  m4_mul mirrors the original
- * helper's argument order, which is (dst, right, left) -- keeping that in one
- * place stops the inversion leaking into every call below. */
+/* d = left * right in the row-vector convention.  m4_mul's argument order is
+ * (dst, right, left); keeping that in one place stops the inversion leaking
+ * into every call below. */
 static void compose(Mat4 *d, const Mat4 *left, const Mat4 *right)
 {
     m4_mul(d, right, left);
 }
 
-/* fmod(t / period, 1.0), the path parameter.  `period` is divided in as a
- * 32-bit integer (fidiv), so a zero period is a divide fault in the original
- * too -- not guarded here, because guarding it would change behaviour. */
+/* fmod(t / period, 1.0), the path parameter.  PRESERVED: `period` is divided
+ * in as a 32-bit integer, so a zero period is a divide fault. */
 static float path_param(double t, DWORD period, double bias)
 {
     double v = (t + bias) / (double)(int)period;
@@ -81,7 +66,6 @@ static void eval_path(const SceneObject *o, float t, Vec3 *out)
     bezier_eval((const ListNodeM *)cp->pHead, cp->dwCount, t, out);
 }
 
-/* The object's texture as the device wants it. */
 static void select_texture(IDirect3DDevice3 *dev, const SceneObject *o)
 {
     dev->SetTexture(0, ((const SceneTexture *)o->texture)->pTexture2);
@@ -92,10 +76,7 @@ static void select_texture(IDirect3DDevice3 *dev, const SceneObject *o)
  * Two angles, each acos of a normalised dot product, each with a `2*pi - a`
  * correction on one side of a sign test:
  *   heading  between (0,0,1) and (dx,0,dz)  -- corrected when dx  > 0
- *   pitch    between (dx,dy,dz) and (dx,0,dz) -- corrected when dy <= 0
- *
- * The dot products are summed x, then z, then y, which is the original's order
- * and matters for the last bit. */
+ *   pitch    between (dx,dy,dz) and (dx,0,dz) -- corrected when dy <= 0 */
 static void heading_angles(const Vec3 *d, float *heading, float *pitch)
 {
     Vec3 axis  = { 0.0f, 0.0f, 1.0f };
@@ -113,7 +94,6 @@ static void heading_angles(const Vec3 *d, float *heading, float *pitch)
     *pitch = p;
 }
 
-/* Rotations shared by the static path and the plain spline path. */
 static void object_rotation(Mat4 *m, float rx, float ry, float rz)
 {
     Mat4 a, b, c, t;
@@ -126,30 +106,24 @@ static void object_rotation(Mat4 *m, float rx, float ry, float rz)
 
 static DWORD animation_frame(const SceneObject *o, double t)
 {
-    /* +0xd is set to 1 by BuildSceneObjectList when the object's .ani loaded;
-     * +0x11 is the AnimTable it loaded into (ani.h), which runs to +0x191 --
-     * exactly where the position below begins. */
+    // animLoaded is set by BuildSceneObjectList when the object's .ani loaded;
+    // the AnimTable (ani.h) runs up to exactly where the position begins.
     if (o->animLoaded == 0)
         return 0;
-    /* LookupAnimDescriptor(o + 0x11, 0x14) is a switch whose walk_forward arm
-     * is the table's first slot, so the descriptor is o + 0x11 and no lookup
-     * is needed.  It can never be NULL, so that check cannot fire. */
+    // LookupAnimDescriptor(anim, 0x14) returns the table's first slot, so no
+    // lookup is needed, and it can never be NULL.
     const AnimSlot *slot = (const AnimSlot *)&o->anim;
     if (slot->numFrames == 0)
         return 0;
-    /* Anim_FrameOnClock is the same function written as the other three call
-     * sites write it, fmod(v/n, 1)*n; this one is fmod(v, n) and is kept in
-     * its own form because it is the arithmetic this function was verified
-     * against. */
+    // The same frame as Anim_FrameOnClock, written as fmod(v, n) rather than
+    // fmod(v/n, 1)*n.
     double v = t * K_ANIM_SCALE * (double)(unsigned)slot->fps;
     double r = m_fmod(v, (double)(unsigned)slot->numFrames);
-    return (DWORD)(unsigned short)(int)r;      /* __ftol, then truncated to 16 bits */
+    return (DWORD)(unsigned short)(int)r;  // truncated to 16 bits
 }
 
 /* KAROO_CAM_DIAG=1: log the camera globals (eye, target, yaw, pitch) as raw
- * bits every frame.  Called here because RenderGameFrame reaches this after
- * UpdateViewTransform whether that is the original or camera.cpp's, so two
- * runs -- one with camera.cpp's patch entries withdrawn -- diff directly. */
+ * bits every frame, after UpdateViewTransform has run. */
 static void cam_diag(const float *cam)
 {
     static int on = -1;
@@ -163,8 +137,8 @@ static void cam_diag(const float *cam)
     const DWORD *b = (const DWORD *)cam;
     log_write("CAM %08lx %08lx %08lx  %08lx %08lx %08lx  %08lx %08lx\n",
               b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
-    /* framepose.cpp's outputs: the focus block, and an FNV-1a hash over the
-     * live foes' pose records. */
+    // framepose.cpp's outputs: the focus block, and an FNV-1a hash over the
+    // live foes' pose records.
     const DWORD *f = (const DWORD *)g_cameraFocus.f;
     log_write("FOCUS %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n",
               f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8]);
@@ -178,7 +152,7 @@ static void cam_diag(const float *cam)
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Scene_DrawSceneObjects(IDirect3DDevice3 *dev, float *cam, DWORD /*a3*/, DWORD /*a4*/, double t)
+Scene_DrawSceneObjects(IDirect3DDevice3 *dev, float *cam, DWORD , DWORD , double t)
 {
     cam_diag(cam);
     for (LinkedListNode *node = g_scene.objects.pHead; node != NULL; node = node->pNextNode) {
@@ -242,8 +216,8 @@ Scene_DrawSceneObjects(IDirect3DDevice3 *dev, float *cam, DWORD /*a3*/, DWORD /*
                 m4_translate(&tr, pos.x, pos.y, pos.z);
                 compose(&world, &world, &tr);
 
-                /* The spline path re-selects the texture; the static path
-                 * jumps past this. */
+                // The spline path re-selects the texture; the static path
+                // skips this.
                 if (o->texture != NULL)
                     select_texture(dev, o);
             }
@@ -288,35 +262,30 @@ Scene_DrawSceneObjects(IDirect3DDevice3 *dev, float *cam, DWORD /*a3*/, DWORD /*
     }
 }
 
-/* ─── DrawSceneParticleSystems, 0x421f30 (Ghidra's "DrawTerrainTiles") ─────
+/* ─── DrawSceneParticleSystems ──────────────────────────────────────────────
  *
  * The type-1 twin of the function above: same list, same object fields, but
- * the thing at +0x05 is a particle system driven through its own vtable.
- * cdecl with six dword slots, (dev, cam = 0x46c4a0, double dt_ms, double t);
- * the one call site (0x42abc0, RenderGameFrame) cleans 0x18.  Written from
- * the listing -- the decompiler would not complete on it.
+ * the object holds a particle system driven through its own vtable.  cdecl
+ * with six dword slots, (dev, cam, double dt_ms, double t).
  *
- * Differences from the type-0 path, all deliberate:
- *  - SPECULARENABLE is cleared once before the loop, not per object, and
+ * Differences from the type-0 path: - SPECULARENABLE is cleared once before
+ * the loop, not per object, and
  *    there is no TEXTUREADDRESS state.
- *  - Objects other than type 1, and type 1 with a NULL system, are skipped
- *    BEFORE any state change (type 0/2 run the whole prologue first) -- but
- *    a NULL system is tested after the blend and texture state is set.
- *  - The static path's RotX is NOT biased by pi/2: RotX(rx).RotY(ry).RotZ(rz).T.
+ * - Objects other than type 1 are skipped before any state change; a NULL
+ *    system is tested after the blend and texture state is set.
+ * - The static path's RotX is not biased by pi/2:
+ * RotX(rx).RotY(ry).RotZ(rz).T.
  *    The plain spline path is unbiased too; only the oriented one adds pi/2
  *    (to the pitch), as type 0 does.
- *  - The spline path sets texture NULL and an identity world, polls F3/F4
+ * - The spline path sets texture NULL and an identity world, polls F3/F4
  *    (debug draws of the path and its control polygon), then re-selects the
- *    object's texture before setting the real world.  The static path jumps
- *    past all of that.
+ *    object's texture before setting the real world.  The static path skips
+ *    all of that.
  *
- * The system is driven through its own vtable (particles.h): tick with
- * (float)(dt_ms * 0.001), set-vector with the view direction
- * cam[3..5] - cam[0..2], then render. */
+ * The system is ticked with (float)(dt_ms * 0.001), pointed along the view
+ * direction cam[3..5] - cam[0..2], then rendered. */
 #include "splinepath.h"
 #include "record.h"
-
-
 
 static void rotation_xyz(Mat4 *m, float rx, float ry, float rz)
 {

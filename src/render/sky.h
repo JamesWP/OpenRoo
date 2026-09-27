@@ -1,31 +1,36 @@
+/* SkyBackground: the six-faced cube of sky textures drawn behind a level,
+ * yaw-rotated and re-centred on the viewer every frame.  ThemeAssetBlock owns
+ * the one instance per theme (sky.cpp has its lifecycle and the draw).  The
+ * vertex and matrix layouts below are load-bearing: the struct must tile
+ * exactly to the sizes the static_asserts check. */
+
 #pragma once
 #include <windows.h>
 #include <ddraw.h>
 #include <d3d.h>
 #include <stddef.h>
-#include "texture.h"   /* SceneTexture (28-byte extended LoadedImage) */
+#include "texture.h"
 
-/* SkyBackground — the object DrawSkyBackground (0x43cc00) is called on.
- * Derived from the EBP-relative offsets in the original (0x20 textures,
- * 0xb0 vertices, 0x3b0 matrix); the fields tile exactly with no gaps, which
- * is what confirms the layout.  See sky.cpp for the EBP == this argument. */
-/* One sky vertex, FVF 0x1e2 = XYZ | RESERVED1 | DIFFUSE | SPECULAR | TEX1.
- * RESERVED1 is the dword after the position; nothing writes it. */
+/* One sky-cube vertex, FVF 0x1e2 = XYZ | RESERVED1 | DIFFUSE | SPECULAR |
+ * TEX1. */
 struct SkyVertex {
     float x, y, z;
-    DWORD reserved;
+    DWORD reserved;  // never written
     DWORD diffuse;
     DWORD specular;
     float u, v;
 };
 static_assert(sizeof(SkyVertex) == 0x20, "SkyVertex stride");
 
+/* One cube of six faces, four vertices each, plus the world matrix
+ * DrawSkyBackground rebuilds from flYawAngle and the viewer position every
+ * call. */
 struct SkyBackground {
-    const void     *pVtable;        // +0x000 our one-slot table (game's 0x45d6fc)
-    float           flYawAngle;     // +0x004 radians; drives the Y rotation
-    SceneTexture    Textures[6];    // +0x008 .. +0x0b0 (stride 0x1c)
-    SkyVertex       QuadVerts[6][4];     // +0x0b0 .. +0x3b0  one strip per face
-    float           WorldMatrix[16];     // +0x3b0 .. +0x3f0
+    const void     *pVtable;          // +0x000 one-slot vtable
+    float           flYawAngle;       // +0x004 radians, the Y rotation
+    SceneTexture    Textures[6];      // +0x008 one SceneTexture per face
+    SkyVertex       QuadVerts[6][4];  // +0x0b0 one triangle-strip quad per face
+    float           WorldMatrix[16];  // +0x3b0 rebuilt every draw call
 };
 
 static_assert(offsetof(SkyBackground, flYawAngle)  == 0x004, "SkyBackground layout");
@@ -34,10 +39,9 @@ static_assert(offsetof(SkyBackground, QuadVerts)   == 0x0b0, "SkyBackground layo
 static_assert(offsetof(SkyBackground, WorldMatrix) == 0x3b0, "SkyBackground layout");
 static_assert(sizeof(SkyBackground) == 0x3f0, "SkyBackground size mismatch");
 
-/* 0x0043c870 -- fill the vertices and matrix, then load the six faces
- * (UP, DN, FR, BK, LF, RT) through SelectTextureLoader in mode 0.  Stops at
- * the first face that fails; the low byte of the result is the flag.  Its
- * one caller is the theme loader's `sky` keyword. */
+/* Fills the geometry and matrix, then loads the six faces (UP, DN, FR, BK, LF,
+ * RT) through the texture loader.  Stops at the first face that fails to load;
+ * the low byte of the result is 0 on failure, 1 on success. */
 struct IDirectDraw4;
 struct IDirect3DDevice3;
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
@@ -46,15 +50,16 @@ Sky_BuildFromFaceNames(SkyBackground *self, IDirectDraw4 *dd,
                        const char *fr, const char *bk, const char *lf,
                        const char *rt, UINT bpp);
 
-/* The lifecycle of the one instance, ThemeAssetBlock::sky (sky.cpp). */
+/* Construct, destroy and destroy-and-free, matching the vtable's one slot. */
 extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
-Sky_Construct(SkyBackground *self);                          /* 0x0043c560 */
+Sky_Construct(SkyBackground *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sky_DtorBody(SkyBackground *self);                           /* 0x0043c850 */
+Sky_DtorBody(SkyBackground *self);
 extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
-Sky_ScalarDtor(SkyBackground *self, unsigned int flags);     /* 0x0043c830 */
+Sky_ScalarDtor(SkyBackground *self, unsigned int flags);
 
-/* 0x0043cc00, thiscall(self, dev, eye by value); returns self (sky.cpp). */
+/* Rebuilds the world matrix from flYawAngle and the given centre, submits the
+ * six faces, and returns the matrix (self->WorldMatrix). */
 extern "C" __declspec(dllexport) float * __attribute__((thiscall))
 Sky_DrawSkyBackground(SkyBackground *self, IDirect3DDevice3 *dev,
                       float flCentreX, float flCentreY, float flCentreZ);

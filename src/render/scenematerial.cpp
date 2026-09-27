@@ -1,42 +1,10 @@
-/* SceneMaterial -- the whole class.
- *
- *   0x42d690 Construct          __thiscall(this) -> this, ret 0
- *   0x42d720 DestructBody       __thiscall(this) -> void: vtable, then Release
- *   0x42d700 ScalarDtor         __thiscall(this, flags) -> this, ret 4
- *   0x42d760 CreateSceneMaterial
- *       __thiscall(this, IDirect3D3 *, IDirect3DDevice3 *) -> uint, ret 8
- *   0x42d730 ReleaseSceneMaterial
- *       __thiscall(this) -> void, ret 0
- *
- * ── The signature ──────────────────────────────────────────────────────────
- * The decompile shows ONE stack parameter plus a phantom `unaff_ESI` for the
- * device.  The original ends `ret $0x8`: two stack args.  The call site
- * (0x4266c5) does `PUSH ECX` (g_pDirect3D->pDevice) then `PUSH EDX`
- * (g_pDirect3D->pD3D), so the order is (this, pD3D, pDevice).  RENDER_PLAN's
- * "__thiscall(this, IDirect3D3*)" was incomplete.  Read the ret, not the
- * decompiler's parameter list.
- *
- * ── The return value ───────────────────────────────────────────────────────
- * The original returns a bool in AL but leaves the upper three bytes of EAX
- * holding whatever the last HRESULT had there:
- *     failure -> hr & 0xffffff00        (low byte 0)
- *     success -> (hr_setmaterial & 0xffffff00) | 1
- * That is reproduced exactly rather than cleaned up to a plain bool: callers
- * only test AL, but the garbage upper bytes are what the original produces.
- *
- * Release is reached both by an E8 from Create and by an E9 tail-jump from the
- * destructor thunk at 0x42d720; patch.py covers the latter via JMP_PATCHES.
- * Unlike the light, Release here NULLs pMaterial unconditionally.
- */
+/* SceneMaterial -- the whole class (scenematerial.h). */
+
 #include <string.h>
 #include "scenematerial.h"
 #include "log.h"
 #include <stdlib.h>
-SceneMaterial g_material;   /* was 0x004e0390 */
-
-/* FactAlloc::Free2 — __cdecl(void *), confirmed from the call site
- * (0x42d74e: push eax / call 0x4504c0 / add esp,4).  The original is left
- * intact in the binary, as factory.cpp already does for the factories. */
+SceneMaterial g_material;
 
 extern "C" {
 
@@ -46,13 +14,16 @@ SceneMaterial_Release(SceneMaterial *self)
     IDirect3DMaterial3 *p = self->pMaterial;
     if (p != NULL)
         p->Release();
-    self->pMaterial = NULL;          /* unconditional, unlike the light */
+    self->pMaterial = NULL;  // unconditional, unlike the light
 
     if (self->pHeapData != NULL)
         free(self->pHeapData);
     self->pHeapData = NULL;
 }
 
+/* Only the low byte is the result; callers test nothing else.  The upper three
+ * bytes are the last HRESULT's: hr & 0xffffff00 on failure, (SetMaterial's hr
+ * & 0xffffff00) | 1 on success. */
 __declspec(dllexport) unsigned int __attribute__((thiscall))
 SceneMaterial_Create(SceneMaterial *self, IDirect3D3 *pD3D,
                      IDirect3DDevice3 *pDevice)
@@ -80,18 +51,13 @@ SceneMaterial_Create(SceneMaterial *self, IDirect3D3 *pD3D,
     return ((unsigned int)hrSet & 0xffffff00u) | 1u;
 }
 
-/* ─── Construction and teardown (ENDGAME E4/E5) ────────────────────────────
+/* ─── Construction and teardown ─────────────────────────────────────────────
  *
- * The one instance is the global at 0x4e0390, built by the static-init thunk
- * at 0x425db0 and torn down by the atexit thunk at 0x425dd0 (tail JMPs,
- * JMP_PATCHES).  Same shape as the light: our own one-slot vtable, the
- * game's 0x45d4e8 left as a tripwire, the scalar dtor unreached.
+ * The one instance is g_material, built and torn down by staticinit.cpp.  The
+ * scalar dtor is the one vtable slot and is never reached.
  *
  * The ctor zeroes the D3DMATERIAL and sets dwSize 80, diffuse and ambient
- * (0.5, 0.5, 0.5, 1), specular (1, 1, 1, 1), power 0, dwRampSize 1.
- * pHeapData stays game-heap: nothing in the image writes it by absolute
- * address, but a pointer-relative writer is not ruled out -- ENDGAME_PLAN's
- * alloc.h table keeps it until that audit is done. */
+ * (0.5, 0.5, 0.5, 1), specular (1, 1, 1, 1), power 0, dwRampSize 1. */
 SceneMaterial *__attribute__((thiscall)) SceneMaterial_ScalarDtor(SceneMaterial *self,
                                                                    unsigned char flags);
 
@@ -133,4 +99,4 @@ SceneMaterial_ScalarDtor(SceneMaterial *self, unsigned char flags)
     return self;
 }
 
-} // extern "C"
+}  // extern "C"

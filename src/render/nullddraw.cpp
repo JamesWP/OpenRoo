@@ -19,7 +19,7 @@
  *
  * NOT from the DirectDraw documentation, and not from guesses.  The game
  * *reads* what the driver reports — the mode list is indexed by Karoo.cfg,
- * `PickTextureFormatForDepth` (0x43f720) chooses from EnumTextureFormats,
+ * `PickTextureFormatForDepth` (scenetexture.cpp) chooses from EnumTextureFormats,
  * `st_texture_caps` branches on D3DDEVICEDESC.dcmColorModel, and the game's
  * own EnumDisplayModesCallback filters on the FindDevice render bit depth.
  * Answer any of those differently and the game legitimately behaves
@@ -27,8 +27,8 @@
  * headlessness.
  *
  * So every table below is a *recording* of what stock Wine ddraw answered on
- * this machine, captured with KAROO_DDRAW_DIAG=1 (com_proxy.cpp) on
- * 2026-09-05 and transcribed verbatim:
+ * this machine, captured with KAROO_DDRAW_DIAG=1 (com_proxy.cpp) and
+ * transcribed verbatim:
  *
  *   s_devdesc     D3DDEVICEDESC, 0xfc bytes  — Device3::GetCaps, both HAL and
  *                 HEL (Wine returned byte-identical structures for the two)
@@ -125,7 +125,7 @@ bool nulldd_enabled(void)
             log_write(__VA_ARGS__);                                      \
     } while (0)
 
-/* ─── Recorded tables (KAROO_DDRAW_DIAG=1, stock Wine ddraw, 2026-09-05) ── */
+/* ─── Recorded tables (KAROO_DDRAW_DIAG=1, stock Wine ddraw) ───────────── */
 
 /* D3DDEVICEDESC, 0xfc bytes.  Wine returned the same bytes for HAL and HEL.
  * dw[3] (dcmColorModel) is 0x9AFF1 — non-zero, which is what makes
@@ -181,11 +181,9 @@ static const DWORD s_finddev[131] = {
 struct PixFmtRec { DWORD flags, fourcc, bits, r, g, b, a; };
 
 /* IDirect3DDevice3::EnumTextureFormats, in order.  PickTextureFormatForDepth
- * (0x43f720) walks this, so ORDER IS LOAD-BEARING.
+ * walks this, so ORDER IS LOAD-BEARING.
  *
- * "The first acceptable match for the requested depth" -- what this comment
- * said until 2026-09-19, when the picker was replaced -- is not the rule.  The
- * callback takes the FIRST eligible format unconditionally (nothing is kept
+ * The callback takes the FIRST eligible format unconditionally (nothing is kept
  * yet), and thereafter keeps whichever is closest to the request FROM ABOVE;
  * when alpha is asked for, an equal-depth format with strictly more alpha bits
  * also wins, up to a quarter of its own depth.  With this list and a 32-bit
@@ -209,8 +207,8 @@ static const PixFmtRec s_texfmt[] = {
     { 0x000C0000, 0,          32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0x00000000 },
 };
 
-/* IDirect3D3::EnumZBufferFormats(HAL), in order.  The game's callback
- * (0x413100) picks from these; with this list it lands on the third — 32-bit
+/* IDirect3D3::EnumZBufferFormats(HAL), in order.  createdevice.cpp's
+ * EnumZBufferFormatsCallback picks from these; with this list it lands on the third — 32-bit
  * z with 8-bit stencil — which is what createdevice.cpp logs as
  * "zdepth=32 stencil=8" on a real run. */
 static const PixFmtRec s_zfmt[] = {
@@ -1514,9 +1512,8 @@ static void nulldd_build_vtables(void)
  *                                   but no driver could be loaded.
  *   err:winediag:nodrv_CreateWindow "The explorer process failed to start."
  *
- * — and the game dies in WinMain long before it reaches DirectDraw.  That was
- * measured, not assumed: a probe built for this (see the commit message)
- * created both kinds of window under Proton with DISPLAY unset, and got
+ * — and the game dies in WinMain long before it reaches DirectDraw.  Under
+ * Proton with DISPLAY unset, the two kinds of window give
  *
  *   message-only HWND=00050042 err=0        <- works
  *   top-level    HWND=00000000 err=0        <- fails
@@ -1529,12 +1526,8 @@ static void nulldd_build_vtables(void)
  * once DirectDraw is not real.  The null device ignores the HWND it is
  * handed, so nothing else notices.
  *
- * There is exactly ONE CreateWindowExA reference in the binary (a single
- * `FF 15` at VA 0x0042D1BD, inside WinMain; verified by scanning .text for
- * every reference to IAT slot 0x0045D1D4, not just the call form — see
- * CLAUDE.md on hoisted IAT loads).  ShowWindow (a hoisted `mov`, VA
- * 0x0042D316) and UpdateWindow (VA 0x0042D322) are left alone: both are
- * harmless no-ops on a message-only window.
+ * WinMain's is the only window.  Its ShowWindow and UpdateWindow calls are
+ * left alone: both are harmless no-ops on a message-only window.
  *
  * Outside headless mode this is a pure passthrough.
  */

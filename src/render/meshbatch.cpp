@@ -1,67 +1,17 @@
-/* DrawMeshBatch (0x408280) reimplementation.
+/* The mesh-batch pass: for every mesh-batch object and each of its
+ * sub-objects, the same render-state block as DrawQuadBatch, then a two-way
+ * draw.  A NULL mesh pointer draws the render context's flat quad batch under
+ * the identity WORLD; otherwise the mesh is drawn under RotX(pi/2) with the
+ * context's position as the translation.
  *
- * __cdecl(RenderCtx *ctx, Game *game, Direct3D *d3d), ret 0.  1153 bytes, ten
- * D3D dispatches, one E8 call site (0x4279CD in RenderGameFrame), no
- * raw-DWORD/vtable refs.  The caller pushes the same three globals
- * DrawQuadBatch gets: 0x4e0070, 0x46c890, g_pDirect3D.
+ * The translation comes from the render context, not the object, so it is the
+ * same for every object in a frame.
  *
- * Structurally this is DrawQuadBatch's sibling on the mesh-batch array
- * (Game+0xebb8 count, objects at +0xebc0, stride 0x5dd), with the same
- * per-sub-object state block, and a two-way draw:
- *
- *   *(CFaktMesh **)obj == NULL -> SetTransform(WORLD, identity)
- *                                 DrawPrimitive(TRIANGLELIST, 0x1e2,
- *                                     ctx->meshVerts, ctx->meshQuads*6, 0)
- *   otherwise                  -> SetTransform(WORLD, Rx(angle) + translation)
- *                                 CFaktMesh::DrawMeshBuffer(mesh, dev, 0)
- *
- * ── What is verified, and what is NOT ─────────────────────────────────────
- * Ghidra mis-models this function's stack (iStack_2c / iStack_20 / iVar11 are
- * phantoms; two matrices overlap its variable map), so the matrix cannot be
- * read off the decompile.  KAROO_XFORM_DUMP=1 (com_proxy wd3_SetTransform)
- * was added to log every WORLD matrix as raw float bits, and the run was
- * compared before and after this replacement.
- *
- * VERIFIED — the NULL-mesh path.  Every WORLD matrix in a full castle-something
- * replay is bit-for-bit identical before and after, across 1000+ invocations of
- * this function, and the suite passes.
- *
- * NOT VERIFIED — the mesh path (the Rx + translation branch below).  Every
- * object in every recorded level has a NULL mesh pointer, so that branch has
- * never executed: the entry diagnostic reports nobj=1 and the per-mesh log line
- * never fires.  The rotated matrices seen in the capture therefore come from a
- * different SetTransform caller (FUN_00422b90 also reads the angle constant),
- * NOT from here — an earlier attempt to attribute them to this function was
- * wrong.
- *
- * So the rotation branch rests on the decompile's shape plus the constant at
- * 0x45d348 — a *double* (`fldl`, not `flds`) holding 1.5707963705062866, which
- * is float(pi/2) widened, giving cos ~0 and sin 1.  It is a reasoned
- * reconstruction, not a measured one.  Before relying on it, find a level with
- * a non-NULL mesh-batch object, run with KAROO_XFORM_DUMP=1, and diff the
- * matrices against the unpatched build the same way.
- *
- * The original builds the rotation and a translation matrix and multiplies
- * them.  Rx's last row is (0,0,0,1) and the translation matrix's upper 3x3 is
- * identity, so the product is exactly the rotation with the translation row
- * copied in (the same shortcut as sky.cpp, bit-identical for finite values).
- *
- * The translation source is ctx+0x88/+0x8c/+0x90, not a per-object field:
- * `mov 0x3f8(%esp),%eax` with a 0x3e4 frame plus four pushes resolves to
- * param_1, and param_2 at [esp+0x3ec] is confirmed by its Game+0xebb8 read.
- * It is therefore constant within a frame; the differing translations in the
- * capture are successive frames as the view moves.
- *
- * Note obj+0x00 is a CFaktMesh pointer, not a type tag: zero means "no mesh,
- * draw the flat quad batch".  DrawQuadBatch's gate compares the corresponding
- * slot against 2, which is why the two arrays' offsets differ by 4 — see
- * RENDER_PLAN.md.
- *
- * KAROO_MESHBATCH_FX=norot drops the rotation (identity upper 3x3, translation
- * kept), which would tip every batched mesh onto its side — but it can only be
- * seen on a level that actually has a non-NULL mesh-batch object, which none of
- * the recordings do.
- */
+ * No recorded level has an object with a non-NULL mesh, so the rotation branch
+ * is never exercised by the replay suite.  KAROO_MESHBATCH_FX=norot drops its
+ * rotation (identity 3x3, translation kept); it too is only visible on such a
+ * level. */
+
 #include "meshbatch.h"
 #include "direct3d.h"
 #include "d3dmath.h"
@@ -74,24 +24,23 @@
 #define MESH_QUAD_FVF   0x1e2
 #define MESH_LOG_FIRST  8
 
-/* Mesh-batch array in the Game object.  The loop cursor here IS the object
- * base (unlike DrawQuadBatch, whose cursor is the sub-object count), so these
- * offsets are 4 lower than levelobject.h's quad-batch ones. */
+/* The loop cursor here is the object base (DrawQuadBatch's is the sub-object
+ * count), so these offsets are 4 lower than levelobject.h's quad-batch ones.
+ */
 #define GAME_OFF_MESH_COUNT     0xebb8
 #define GAME_OFF_MESH_OBJECTS   0xebc0
-#define MOBJ_OFF_MESH           0x000   /* CFaktMesh*, NULL = draw flat quads */
+#define MOBJ_OFF_MESH           0x000  // CFaktMesh*, NULL = draw the flat quads
 #define MOBJ_OFF_SUBOBJCOUNT    0x3bd
 #define MOBJ_OFF_SUBOBJECTS     0x3c1
 
-/* Render context fields this pass reads (the global at 0x4e0070). */
+/* Render context fields this pass reads. */
 #define CTX_OFF_QUAD_COUNT      0x80
 #define CTX_OFF_QUAD_VERTS      0x84
 #define CTX_OFF_POS_X           0x88
 #define CTX_OFF_POS_Y           0x8c
 #define CTX_OFF_POS_Z           0x90
 
-#define g_flMeshBatchAngle 0x1.921fb6p+0   /* the image's double at 0x0045d348: (double)(float)(pi/2) */
-
+#define g_flMeshBatchAngle 0x1.921fb6p+0  // (double)(float)(pi/2)
 
 static bool fx_norot(void)
 {
@@ -111,7 +60,7 @@ Direct3D_DrawMeshBatch(void *ctx, void *game, Direct3D *d3d)
 {
     BYTE *c = (BYTE *)ctx;
 
-    {   /* entry diagnostic: is this pass reached at all, and with what? */
+    {  // Log: is this pass reached, and with what?
         static LONG e = 0;
         LONG k = InterlockedIncrement(&e);
         if (k <= 3 || k % 500 == 0)
@@ -140,7 +89,7 @@ Direct3D_DrawMeshBatch(void *ctx, void *game, Direct3D *d3d)
             if (sub->pTexture)
                 d3d->pDevice->SetTexture(0, sub->pTexture->pTexture2);
 
-            /* One tail call in the original, state/value picked by the branch. */
+            // The two branches share the final SetRenderState call.
             D3DRENDERSTATETYPE last_state;
             DWORD              last_value;
             if (sub->dwBlendSrc && sub->dwBlendDst) {
@@ -167,19 +116,22 @@ Direct3D_DrawMeshBatch(void *ctx, void *game, Direct3D *d3d)
                 const float cs = (float)cos(g_flMeshBatchAngle);
                 const float sn = (float)sin(g_flMeshBatchAngle);
 
+                // RotX(angle) with the translation row copied in: the
+                // rotation's last row is (0,0,0,1) and the translation's 3x3
+                // is identity, so the product is exact.
                 float m[16];
                 for (int k = 0; k < 16; k++)
                     m[k] = 0.0f;
-                m[0] = 1.0f;                        /* _11            */
+                m[0] = 1.0f;
                 if (fx_norot()) {
-                    m[5] = 1.0f; m[10] = 1.0f;      /* identity 3x3   */
+                    m[5] = 1.0f; m[10] = 1.0f;
                 } else {
-                    m[5] = cs;  m[6]  = -sn;        /* _22, _23       */
-                    m[9] = sn;  m[10] = cs;         /* _32, _33       */
+                    m[5] = cs;  m[6]  = -sn;
+                    m[9] = sn;  m[10] = cs;
                 }
-                m[12] = *(float *)(c + CTX_OFF_POS_X);  /* _41 */
-                m[13] = *(float *)(c + CTX_OFF_POS_Y);  /* _42 */
-                m[14] = *(float *)(c + CTX_OFF_POS_Z);  /* _43 */
+                m[12] = *(float *)(c + CTX_OFF_POS_X);
+                m[13] = *(float *)(c + CTX_OFF_POS_Y);
+                m[14] = *(float *)(c + CTX_OFF_POS_Z);
                 m[15] = 1.0f;
 
                 d3d->pDevice->SetTransform(D3DTRANSFORMSTATE_WORLD,
