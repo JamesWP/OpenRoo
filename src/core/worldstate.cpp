@@ -105,11 +105,11 @@ static unsigned read_table(const Game *g, unsigned char count_in,
 
 bool Observation::observe()
 {
-    const BYTE *g = (const BYTE *)Game::instance();
-    memset(this, 0, sizeof(*this));
+    const Game *g = Game::instance();
+    memset(this, 0, sizeof(decltype(*this)));
     if (!g) return false;
 
-    const LevelMap *map = ((const Game *)g)->map();
+    const LevelMap *map = g->map();
     BYTE rows = map->extentV();
     BYTE cols = map->extentU();
     if (rows == 0 || cols == 0 || rows > WS_GRID_PITCH || cols > WS_GRID_PITCH)
@@ -140,7 +140,7 @@ bool Observation::observe()
         }
     }
 
-    const Player *pl = ((const Game *)g)->player();
+    const Player *pl = g->player();
     player_facing  = pl->facing();
     player_moving  = (BYTE)pl->moveDir();
     player_grid[0] = pl->posU();
@@ -157,7 +157,7 @@ bool Observation::observe()
     exit_cell[1]   = pl->markerCellV();
     exit_cell[2]   = pl->markerCellH();
 
-    const Game *game = (const Game *)g;
+    const Game *game = g;
     n_foes    = read_table(game, game->foeCount(), &Game::foeId,
                                 &Game::foeSlot, read_foe, foes);
     n_enemies = read_table(game, game->bombCount(), &Game::bombId,
@@ -255,7 +255,7 @@ const Observation *worldstate_latest(void) { return g_obs_valid ? &g_obs : NULL;
  * contents 0x0b, a crystal carrier, so those foes are added back.  Their
  * behaviour field holds the spawn contents; the drop-contents field cannot
  * tell 0x0b from 0x07. */
-static void map_check(const BYTE *g, const Observation *obs)
+static void map_check(const Game *g, const Observation *obs)
 {
     unsigned from_tiles = 0;
     for (unsigned u = 0; u < obs->cols; u++)
@@ -263,7 +263,7 @@ static void map_check(const BYTE *g, const Observation *obs)
             if (g_grid[v + u * WS_GRID_PITCH].contents == CONTENTS_CRYSTAL) from_tiles++;
 
     unsigned from_foes = 0;
-    const Game *game = (const Game *)g;
+    const Game *game = g;
     for (unsigned i = 0; i < obs->n_foes; i++) {
         const Foe *foe = game->foeSlot(obs->foes[i].slot);
         if (foe && foe->type() == 0x0b) from_foes++;
@@ -284,7 +284,7 @@ static void map_check(const BYTE *g, const Observation *obs)
                   obs->cols, obs->rows);
 }
 
-static void map_dump(const BYTE *g, const Observation *obs, const char *path)
+static void map_dump(const Game *g, const Observation *obs, const char *path)
 {
     FILE *fp = fopen(path, "w");
     if (!fp) {
@@ -294,10 +294,11 @@ static void map_dump(const BYTE *g, const Observation *obs, const char *path)
 
     fprintf(fp, "{\n");
     fprintf(fp, "  \"frame\": %lu,\n", (unsigned long)obs->frame);
-    fprintf(fp, "  \"level_index\": %u,\n", (unsigned)((const Game *)g)->levelIndex());
+    fprintf(fp, "  \"level_index\": %u,\n", (unsigned)g->levelIndex());
     // Level names contain backslashes, which JSON strings must escape.
     fputs("  \"level_name\": \"", fp);
-    for (const char *n = (const char *)(g + 0x173483); *n && n < (const char *)g + 0x173483 + 96; n++) {
+    const char *name = g->levelName();
+    for (const char *n = name; *n && n < name + 96; n++) {
         if (*n == '\\' || *n == '"') fputc('\\', fp);
         fputc(*n, fp);
     }
@@ -449,7 +450,7 @@ void worldstate_tick(void)
 
     if (g_map_wanted && !g_map_done) {
         g_map_done = true;
-        map_dump((const BYTE *)Game::instance(), obs, g_map_path);
+        map_dump(Game::instance(), obs, g_map_path);
     }
     if (g_trace) obs->traceFrame();
     if (g_obsdump) {

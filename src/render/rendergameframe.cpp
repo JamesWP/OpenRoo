@@ -227,7 +227,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
     rso(pl->jumpPads().pos(), pl->jumpPads().rot(), pl->jumpPads().count(), THEME_OBJ_JUMPPAD, now,
         (float)fmod(now * 0.002, 1.0), 0x14, 0);
     rso_list(pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
-    QuadBatch_Draw((QuadVerts *)pl, &g_themeBlock, d3d);
+    QuadBatch_Draw(pl, &g_themeBlock, d3d);
     rso_list(pl->ramps(),       THEME_OBJ_STAIR,         now);
     pl->drawLifts(g, &g_themeBlock, d3d, now);
     pl->drawSlides(g, &g_themeBlock, d3d, now);

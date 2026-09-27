@@ -44,8 +44,6 @@
 static volatile int g_moviePlaying;
 static void *g_movieSurface;  // the primary surface, for the movie player
 
-static const unsigned GAME_ALLOC_SIZE = 0x51790d;
-
 static bool winmain_fx_norender()
 {
     char buf[16];
@@ -208,7 +206,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
         return 0;
     }
 
-    Game *game = (Game *)malloc(GAME_ALLOC_SIZE);
+    Game *game = (Game *)malloc(sizeof(Game));
     Game::set_instance(game ? game->construct(lpCmdLine) : NULL);
     if (Game::instance() == NULL)
         return 0;

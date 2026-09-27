@@ -21,6 +21,8 @@
 #include "textrenderer.h"
 #include "gamestr.h"
 #include "menuscreens.h"
+#include "theme.h"
+#include "highscores.h"
 
 #define OVERLAY_FVF   VertexFormat::Screen  // XYZRHW | DIFFUSE | SPECULAR | TEX1
 #define SCORE_LOG_FIRST 4
@@ -32,27 +34,10 @@
 #define g_pPanelVerts   ((const void *)g_panelQuad)
 #define g_pPanelTexture (&g_menuTex2)
 
-/* Offsets within one HighScoreRecord. */
-#define HS_NAME_OFF    0x00
-#define HS_SCORE_OFF   0x32  // drawn in the last column
-#define HS_LEVEL_OFF   0x36  // drawn in the middle column
-
-/* The game-over breakdown's values: unaligned dwords in the Game. */
-#define GO_V(off)  (*(const DWORD *)((const BYTE *)g + (off)))
-
-/* game is the theme object: an unmapped global, read at fixed offsets.  Its
- * text colours come from the theme file, differ per theme, and are re-read
- * every draw.  Each pair is the glyph quad's top and bottom vertex colour,
- * stored 0x00RRGGBB (the file gives six hex digits). */
-#define GM_P(off)  (*(void **)((BYTE *)game + (off)))
-#define GM_D(off)  (*(DWORD *)((BYTE *)game + (off)))
-#define GM_OVERLAY_TEX  0x6f8a8  // SceneTexture* for the backdrop
-#define GM_HUD_COL_TOP  0x6f8cc  // HUDTextColors; also "...press Enter"
-#define GM_HUD_COL_BOT  0x6f8d0
-#define GM_HS_COL_TOP   0x6f914  // MenuHighscoresEntriesTextColors
-#define GM_HS_COL_BOT   0x6f918
-#define GM_GO_COL_TOP   0x6f984  // MenuSummaryEntriesTextColors
-#define GM_GO_COL_BOT   0x6f988
+/* The theme's text colours come from the theme file, differ per theme, and
+ * are re-read every draw.  Each pair is the glyph quad's top and bottom vertex
+ * colour, stored 0x00RRGGBB (the file gives six hex digits). */
+#define THEME_COL(slot) theme->textColor(slot).color1, theme->textColor(slot).color2
 
 enum ScoreFx { SCORE_FX_OFF = 0, SCORE_FX_TINT, SCORE_FX_NODRAW };
 
@@ -104,19 +89,18 @@ static void build_backdrop(TLVertex v[4], float w, float h)
 
 /* Alpha blending and the overlay texture.  The device is re-read before every
  * call, as the game does, so the call traffic is identical. */
-static void setup_overlay_state(RenderDevice *d3d, void *game)
+static void setup_overlay_state(RenderDevice *d3d, ThemeAssetBlock *theme)
 {
     d3d->SetRenderState(RS::AlphaBlendEnable, 1);
     d3d->SetRenderState(RS::SrcBlend,  Blend::SrcAlpha);
     d3d->SetRenderState(RS::DestBlend, Blend::InvSrcAlpha);
 
-    SceneTexture *tex = (SceneTexture *)GM_P(GM_OVERLAY_TEX);
+    SceneTexture *tex = theme->image(THEME_IMG_MENU);
     d3d->SetTexture(0, tex);
 }
 
-  void  
-Score_DrawHighScoreTable(Game *g, void *game, RenderDevice *d3d,
-                         TextRenderer *text, int n)
+void Score_DrawHighScoreTable(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                              TextRenderer *text, int n)
 {
     (void)n;  // pushed by the caller, never read
 
@@ -126,7 +110,7 @@ Score_DrawHighScoreTable(Game *g, void *game, RenderDevice *d3d,
     TLVertex quad[4];
     build_backdrop(quad, w, h);
 
-    setup_overlay_state(d3d, game);
+    setup_overlay_state(d3d, theme);
     if (score_fx() != SCORE_FX_NODRAW)
         d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
                                     quad, 4, 0);
@@ -155,20 +139,20 @@ Score_DrawHighScoreTable(Game *g, void *game, RenderDevice *d3d,
     char buf[256];
     int row = 0, dy = 0;
     do {
-        const BYTE *rec = (const BYTE *)g->highScores()->record(row);
+        const HighScoreRecord *rec = g->highScores()->record(row);
         const float y = ((float)dy + 180.0f) * w * VSCALE;
 
-        sprintf(buf, GS_FMT_S, rec + HS_NAME_OFF);
+        sprintf(buf, GS_FMT_S, rec->name);
         text->drawLeft(xName, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                       GM_D(GM_HS_COL_TOP), GM_D(GM_HS_COL_BOT));
+                       THEME_COL(THEME_COLOR_MENUHIGHSCORESENTRIES));
 
-        sprintf(buf, GS_FMT_D, (unsigned)rec[HS_LEVEL_OFF]);
+        sprintf(buf, GS_FMT_D, (unsigned)rec->level);
         text->drawRight(xLevel, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                        GM_D(GM_HS_COL_TOP), GM_D(GM_HS_COL_BOT));
+                        THEME_COL(THEME_COLOR_MENUHIGHSCORESENTRIES));
 
-        sprintf(buf, GS_FMT_D, *(const DWORD *)(rec + HS_SCORE_OFF));
+        sprintf(buf, GS_FMT_D, rec->score);
         text->drawRight(xScore, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                        GM_D(GM_HS_COL_TOP), GM_D(GM_HS_COL_BOT));
+                        THEME_COL(THEME_COLOR_MENUHIGHSCORESENTRIES));
 
         dy += 20;
         row++;
@@ -179,27 +163,36 @@ Score_DrawHighScoreTable(Game *g, void *game, RenderDevice *d3d,
  * multiplier caption at 380 and the product right-aligned at 510.  The last
  * two rows have no multiplier and put the value at 510. */
 struct ScoreRow {
-    float        vy;       // virtual y / 640
-    const char  *label;    // caption at x 130
-    unsigned     valOff;   // Game offset of the count
-    const char  *mul;      // caption at x 380, or NULL
-    unsigned     prodOff;  // Game offset of the product
+    float        vy;     // virtual y / 640
+    const char  *label;  // caption at x 130
+    int          row;    // the tally row, or one of the two totals below
+    const char  *mul;    // caption at x 380, or NULL
 };
 
+enum { ROW_LEVEL_TOTAL = TALLY_ROWS, ROW_GRAND_TOTAL };
+
 static const ScoreRow k_rows[] = {
-    { 0.28125f, GS_HUD_CRYSTALS, 0x1404dd, GS_HUD_TIMES_5, 0x1404c1 },
-    { 0.3125f, GS_HUD_EXTRA_CRYSTALS, 0x1404e1, GS_HUD_TIMES_10, 0x1404c5 },
-    { 0.34375f, GS_HUD_DESTROYED_ENEMIES, 0x1404e9, GS_HUD_TIMES_50, 0x1404cd },
-    { 0.375f, GS_HUD_TIME_LEFT, 0x1404e5, GS_HUD_TIMES_2, 0x1404c9 },
-    { 0.40625f, GS_HUD_SISYPHUS_BONUS, 0x1404ed, GS_HUD_TIMES_5, 0x1404d1 },
-    { 0.4375f, GS_HUD_VITALITY, 0x1404f1, GS_HUD_TIMES_1, 0x1404d5 },
-    { 0.46875f, GS_HUD_LEVEL_SCORE, 0x1404f5, NULL,                     0 },
-    { 0.515625f, GS_HUD_TOTAL_SCORE, 0x1404f9, NULL,                     0 },
+    { 0.28125f,  GS_HUD_CRYSTALS,          TALLY_GEMS,      GS_HUD_TIMES_5 },
+    { 0.3125f,   GS_HUD_EXTRA_CRYSTALS,    TALLY_SURPLUS,   GS_HUD_TIMES_10 },
+    { 0.34375f,  GS_HUD_DESTROYED_ENEMIES, TALLY_FOES,      GS_HUD_TIMES_50 },
+    { 0.375f,    GS_HUD_TIME_LEFT,         TALLY_TIME,      GS_HUD_TIMES_2 },
+    { 0.40625f,  GS_HUD_SISYPHUS_BONUS,    TALLY_ALLITEMS,  GS_HUD_TIMES_5 },
+    { 0.4375f,   GS_HUD_VITALITY,          TALLY_VITALITY,  GS_HUD_TIMES_1 },
+    { 0.46875f,  GS_HUD_LEVEL_SCORE,       ROW_LEVEL_TOTAL, NULL },
+    { 0.515625f, GS_HUD_TOTAL_SCORE,       ROW_GRAND_TOTAL, NULL },
 };
+
+/* The value a row shows: the counted-up count, or a total. */
+static int row_value(const ScoreTally *t, int row)
+{
+    if (row == ROW_LEVEL_TOTAL) return t->shownLevelTotal;
+    if (row == ROW_GRAND_TOTAL) return t->shownGrandTotal;
+    return t->shownCount[row];
+}
 
 /* The body game over and level complete share: backdrop, title and the eight
  * tally rows.  Only the title and what follows differ. */
-static void draw_summary(Game *g, void *game, RenderDevice *d3d,
+static void draw_summary(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
                          TextRenderer *text, int n, const char *title)
 {
     const DWORD dwWidth = d3d->width();
@@ -209,7 +202,7 @@ static void draw_summary(Game *g, void *game, RenderDevice *d3d,
     TLVertex quad[4];
     build_backdrop(quad, w, h);
 
-    setup_overlay_state(d3d, game);
+    setup_overlay_state(d3d, theme);
     if (score_fx() != SCORE_FX_NODRAW)
         d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
                                     quad, 4, 0);
@@ -234,26 +227,25 @@ static void draw_summary(Game *g, void *game, RenderDevice *d3d,
         const float y = w * r.vy;
 
         text->drawLeft(xLabel, y, cellW, cellH, 0.75f, r.label, d3d, 0,
-                       GM_D(GM_GO_COL_TOP), GM_D(GM_GO_COL_BOT));
+                       THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
 
-        sprintf(buf, GS_FMT_D, GO_V(r.valOff));
+        sprintf(buf, GS_FMT_D, row_value(g->tally(), r.row));
         text->drawRight(r.mul ? xValue : xProd, y, cellW, cellH, 0.75f,
                         buf, d3d, 0,
-                        GM_D(GM_GO_COL_TOP), GM_D(GM_GO_COL_BOT));
+                        THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
 
         if (r.mul) {
             text->drawLeft(xValue, y, cellW, cellH, 0.75f, r.mul, d3d, 0,
-                           GM_D(GM_GO_COL_TOP), GM_D(GM_GO_COL_BOT));
-            sprintf(buf, GS_FMT_D, GO_V(r.prodOff));
+                           THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
+            sprintf(buf, GS_FMT_D, g->tally()->shownScore[r.row]);
             text->drawRight(xProd, y, cellW, cellH, 0.75f, buf, d3d, 0,
-                            GM_D(GM_GO_COL_TOP), GM_D(GM_GO_COL_BOT));
+                            THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
         }
     }
 }
 
-  void  
-Score_DrawGameOverScore(Game *g, void *game, RenderDevice *d3d,
-                        TextRenderer *text, int n)
+void Score_DrawGameOverScore(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                             TextRenderer *text, int n)
 {
     static LONG calls = 0;
     if (InterlockedIncrement(&calls) <= SCORE_LOG_FIRST)
@@ -261,7 +253,7 @@ Score_DrawGameOverScore(Game *g, void *game, RenderDevice *d3d,
                   (unsigned long)d3d->width(),
                   (unsigned long)d3d->height(), n);
 
-    draw_summary(g, game, d3d, text, n, GS_HUD_GAME_OVER);
+    draw_summary(g, theme, d3d, text, n, GS_HUD_GAME_OVER);
 
     const DWORD dwWidth = d3d->width();
     const float w = (float)dwWidth;
@@ -269,34 +261,28 @@ Score_DrawGameOverScore(Game *g, void *game, RenderDevice *d3d,
                        (float)(dwWidth * 12) * VSCALE,
                        (float)(dwWidth * 14) * VSCALE, 0.75f,
                        GS_HUD_PRESS_ENTER, d3d, 0,
-                       GM_D(GM_HUD_COL_TOP), GM_D(GM_HUD_COL_BOT));
+                       THEME_COL(THEME_COLOR_HUD));
 }
 
 /* Menu node 0x28.  After the summary: "Next", "Save" only when there is no
  * next-level bonus, each in its own theme colours, and the cursor markers 200
  * virtual units down. */
 
-#define GM_NEXT_COL_TOP 0x6f98c
-#define GM_NEXT_COL_BOT 0x6f990
-#define GM_SAVE_COL_TOP 0x6f994
-#define GM_SAVE_COL_BOT 0x6f998
-
-  void  
-Menu_RenderLevelComplete(Game *g, void *game, RenderDevice *d3d,
-                         TextRenderer *text, DWORD ms)
+void Menu_RenderLevelComplete(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                              TextRenderer *text, DWORD ms)
 {
-    draw_summary(g, game, d3d, text, (int)ms, "LEVEL COMPLETED");
+    draw_summary(g, theme, d3d, text, (int)ms, "LEVEL COMPLETED");
 
     const DWORD dwWidth = d3d->width();
     const float w = (float)dwWidth;
     const float cellW = (float)(dwWidth * 12) * VSCALE;
     const float cellH = (float)(dwWidth * 14) * VSCALE;
     text->drawCentered(w * 0.5f, w * 0.59375f, cellW, cellH, 0.75f, "Next",
-                       d3d, 0, GM_D(GM_NEXT_COL_TOP), GM_D(GM_NEXT_COL_BOT));
+                       d3d, 0, THEME_COL(THEME_COLOR_MENUSUMMARYNEXT));
     if (g->nextLevelBonus() == 0)
         text->drawCentered(w * 0.5f, w * 0.64375001f, cellW, cellH, 0.75f,
                            "Save", d3d, 0,
-                           GM_D(GM_SAVE_COL_TOP), GM_D(GM_SAVE_COL_BOT));
+                           THEME_COL(THEME_COLOR_MENUSUMMARYSAVE));
 
     Menu_DrawCursorMarkers(g, d3d, ms, 200.0f);
 }

@@ -1,8 +1,8 @@
 /* FoePath: the foe pathfinder, a best-first (A*-shaped) search over the tile
- * grid, run backward from the target to the foe.  One per foe, at foe+0x13b;
- * 0x35 bytes.  The object, its worklist block, cells and nodes are all
- * allocated and freed here (new and delete, calloc and free).  foepath.cpp has
- * each method's PRESERVED notes. */
+ * grid, run backward from the target to the foe.  One per foe.  The object,
+ * its worklist block, cells and nodes are all allocated and freed here (new
+ * and delete, calloc and free).  foepath.cpp has each method's PRESERVED
+ * notes. */
 
 #pragma once
 
@@ -10,7 +10,7 @@
 
 /* A search node, calloc(1, 0x44).  FoePath builds and links them; the chase
  * (foe.cpp) reads the result's parent and cell. */
-class __attribute__((packed)) PathNode {
+class PathNode {
 public:
      
 
@@ -38,7 +38,6 @@ private:
     int       f_;            // +0x00  g + h, the open list's order
     int       h_;            // +0x04  the squared distance to the goal
     int       g_;            // +0x08  steps from the seed
-    int       field_0c_;     // +0x0c  never touched
     int       u_;            // +0x10
     int       v_;            // +0x14
     int       key_;          // +0x18  FoePath::cellKey(u, v)
@@ -53,7 +52,7 @@ private:
 
 /* One cell of the cost-propagation worklist: calloc(1, 9), nine bytes for two
  * pointers; the ninth is never touched. */
-class __attribute__((packed)) PendingCell {
+class PendingCell {
 public:
      
 
@@ -70,21 +69,16 @@ private:
  
 /* The worklist's owner block, calloc(1, 9).  Only the head is ever touched:
  * the worklist is a stack. */
-class __attribute__((packed)) PendingStack {
+class PendingStack {
 public:
      
 
 private:
     friend class FoePath;
-
-    int           field_0_;  // +0x00  never touched
     PendingCell  *head_;     // +0x04
-    unsigned char field_8_;  // +0x08  never touched
-
-     
 };
 
-class __attribute__((packed)) FoePath {
+class FoePath {
 public:
      
 
@@ -138,24 +132,20 @@ private:
     void populate(unsigned char *tileBase, unsigned short field04);
     static PathNode *findByKey(PathNode *hdr, int key);
 
-     
-
-    unsigned char *tileBase_;  // +0x00  the ctor's argument
-    unsigned short field_04;   // +0x04  the ctor's second argument (0)
-    PathNode      *open_;      // +0x06  a header node, fresh each search
-    PathNode      *closed_;    // +0x0a  likewise
-    PathNode      *result_;    // +0x0e
-    PendingStack  *pending_;   // +0x12
-    int            found_;     // +0x16  mirrors find()'s return
-    int            extentV_;   // +0x1a  the map's v extent
-    // +0x1e  the map's u extent.  Not the tile stride (100).
+    unsigned char *tileBase_;  // the ctor's argument
+    unsigned short field_04;   // the ctor's second argument (0)
+    PathNode      *open_;      // a header node, fresh each search
+    PathNode      *closed_;    // likewise
+    PathNode      *result_;
+    PendingStack  *pending_;
+    int            found_;     // mirrors find()'s return
+    int            extentV_;   // the map's v extent
+    // The map's u extent.  Not the tile stride (100).
     int            keyStride_;
-    unsigned char  gap_022[0x02a - 0x022];
-    unsigned char  mode_;  // +0x2a
-    unsigned char  gap_02b[0x02f - 0x02b];
-    unsigned short cap_;      // +0x2f
-    unsigned char  targetU_;  // +0x31
-    unsigned char  targetV_;  // +0x32
-    unsigned char  foeU_;     // +0x33
-    unsigned char  foeV_;     // +0x34
+    unsigned char  mode_;
+    unsigned short cap_;
+    unsigned char  targetU_;
+    unsigned char  targetV_;
+    unsigned char  foeU_;
+    unsigned char  foeV_;
 };

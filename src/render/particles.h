@@ -99,6 +99,7 @@ public:
     void              **vtable() const      { return pVtable_; }
     const char         *name() const        { return pName_; }
     const RingBuffer   &ring() const        { return ring_; }
+    RingBuffer         &ring()              { return ring_; }
     Generator          *generator() const   { return pGenerator_; }
     Environment        *environment() const { return pEnvironment_; }
 
@@ -120,7 +121,6 @@ public:
     static DWORD   baseDrawNull(ParticleSystem *, RenderDevice *);
     static void   nopVec3(ParticleSystem *, float, float, float);
     static void   nopPtr(ParticleSystem *, void *);
-    static void   quadReleaseSlot(ParticleSystem *self, int flags);
     static void   baseTick(ParticleSystem *self, DWORD dt);
     static DWORD   baseRender(ParticleSystem *self, RenderDevice *dev);
 
@@ -134,8 +134,6 @@ protected:
     BOOL serialize(void *fp, GameLogger *);
     BOOL deserialize(void *fp, GameLogger *log);
     void setRenderNode(DWORD enabled);
-    void quadRelease(int flags);
-    void quadDestruct(void *const *vtbl);
     void tick(float dt);
 
     void         **pVtable_;       // +0x00 → 15-slot vtable
@@ -154,6 +152,9 @@ class PointParticleSystem : public ParticleSystem {      // 0x30 bytes
 public:
     /* The constructor create() runs. */
     void pointConstruct();
+
+    void quadRelease(int flags);
+    void quadDestruct();
 
     /* The vtable slots. */
     static void   pointFillSlot(PointParticleSystem *self);
@@ -182,11 +183,13 @@ private:
  
 };
 
-#pragma pack(push, 1)
 class FaceParticleSystem : public ParticleSystem {       // 0x7a bytes, byte-packed (corners at +0x2e)
 public:
     /* The constructor create() runs. */
     void faceConstruct();
+
+    void quadRelease(int flags);
+    void quadDestruct();
 
     /* The vtable slots. */
     static void   faceFillSlot(FaceParticleSystem *self);
@@ -215,18 +218,16 @@ private:
     WORD            nVertexCount_;   // +0x2c 6 vertices per particle
     float           flCorner_[6][3]; // +0x2e six baked xyz corner offsets
     float           flScale_;        // +0x76
-
- 
 };
 
-/* Corner-table entry, 100 bytes (0x64).  Tick accumulates
- * flRotVel into flRotAccum each frame; when an accumulated angle exceeds
- * 0.01 it is baked into flCorner as an axis rotation and reset. */
+/* Corner-table entry.  Tick accumulates flRotVel into flRotAccum each frame;
+ * when an accumulated angle exceeds 0.01 it is baked into flCorner as an axis
+ * rotation and reset. */
 struct XFaceCornerEntry {
-    float flCorner[6][3];  // +0x00..0x44 six xyz corner offsets
-    float flUnk48;         // +0x48 never read by tick/fill
-    float flRotVel[3];     // +0x4c per-tick X/Y/Z rotation increments
-    float flRotAccum[3];   // +0x58 accumulated angles, reset when applied
+    float flCorner[6][3];  // six xyz corner offsets
+    float flUnk48;         // never read by tick/fill
+    float flRotVel[3];     // per-tick X/Y/Z rotation increments
+    float flRotAccum[3];   // accumulated angles, reset when applied
 };
 
 class XFaceParticleSystem : public ParticleSystem {      // 0x96 bytes; only replaced-path fields typed
@@ -263,14 +264,11 @@ private:
     XFaceCornerEntry *pCornerTable_; // +0x28 dwCornerTableCount × 100-byte entries
     ParticleVertex   *pVerts_;       // +0x2c
     WORD              nVertexCount_; // +0x30 6 vertices per particle
-    BYTE              gap32_[0x40];  // +0x32 uninitialised gap (never touched)
     DWORD             dwCornerTableCount_; // +0x72
-    BYTE              simParams_[0x20];    // +0x76 size/lifetime/speed/rot ranges
-
+    float             ranges[8];
  
 };
 
-#pragma pack(pop)
 
 /* ParticleSystem vtable slot numbers (15-slot table).
  *

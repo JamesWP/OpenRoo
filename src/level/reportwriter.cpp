@@ -33,25 +33,35 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 
-/* The table columns, in file order, each printed with "%d\t".  They are read
- * at fixed Game offsets because they are only ever printed; the widths differ,
- * hence the size. */
-static const struct { unsigned off; unsigned char size; } COLUMNS[] = {
-    { 0x42252, 2 }, { 0x421fb, 2 }, { 0x2ab723, 4 }, { 0x421fd, 2 },
-    { 0x421e3, 2 }, { 0x421e1, 2 }, { 0x173b19, 1 }, { 0x173718, 1 },
-    { 0x173e3e, 1 }, { 0x421ed, 2 }, { 0x42209, 2 }, { 0x421df, 2 },
-    { 0x421ef, 2 }, { 0x421f1, 2 }, { 0x421e9, 2 }, { 0x421f7, 2 },
-    { 0x421f3, 2 }, { 0x421f9, 2 }, { 0x421ff, 2 }, { 0x42201, 2 },
-    { 0x42203, 2 }, { 0x421f5, 2 },
-};
-#define COLUMN_COUNT (sizeof(COLUMNS) / sizeof(COLUMNS[0]))
-
-static unsigned read_field(const unsigned char *g, unsigned off, unsigned char size)
+/* The table columns, in file order, each printed with "%d\t". */
+static void column_values(Game *g, unsigned out[22])
 {
-    if (size == 1) return *(const unsigned char *)(g + off);
-    if (size == 2) return *(const unsigned short *)(g + off);
-    return *(const unsigned int *)(g + off);
+    const LevelCensus *c = g->census();
+    unsigned n = 0;
+    out[n++] = g->field_42252();
+    out[n++] = c->shadow1;
+    out[n++] = (unsigned)g->gemsRequired();
+    out[n++] = c->shadow7;
+    out[n++] = c->kind01;
+    out[n++] = c->destructibles;
+    out[n++] = g->liftCount();
+    out[n++] = g->slideCount();
+    out[n++] = g->breakableCount();
+    out[n++] = c->gluePads;
+    out[n++] = c->jumpPads;
+    out[n++] = c->teleports;
+    out[n++] = c->climbTiles;
+    out[n++] = c->conveyors;
+    out[n++] = c->bridges;
+    out[n++] = c->extraLives;
+    out[n++] = c->effect8Items;
+    out[n++] = c->transforms;
+    out[n++] = c->paragliders;
+    out[n++] = c->speedUps;
+    out[n++] = c->grant09Items;
+    out[n++] = c->timeBonuses;
 }
+#define COLUMN_COUNT 22
 
   void  
 Report_WriteLevelReport(Game *self, const char *pathname)
@@ -135,10 +145,10 @@ Report_WriteLevelReport(Game *self, const char *pathname)
         sprintf(buf, GS_RPT_D_TAB, (unsigned)(G->foeCount() - catches));
         fputs(buf, out);
 
+        unsigned columns[COLUMN_COUNT];
+        column_values(self, columns);
         for (unsigned c = 0; c < COLUMN_COUNT; c++) {
-            sprintf(buf, GS_RPT_D_TAB,
-                    read_field((const unsigned char *)self,
-                               COLUMNS[c].off, COLUMNS[c].size));
+            sprintf(buf, GS_RPT_D_TAB, columns[c]);
             fputs(buf, out);
         }
 

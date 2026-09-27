@@ -15,7 +15,8 @@
 #include "meshbatch.h"
 #include "renderdevice.h"
 #include "d3dmath.h"
-#include "levelobject.h"
+#include "theme.h"
+#include "levelplacements.h"
 #include "faktmesh.h"
 #include "log.h"
 
@@ -23,22 +24,6 @@
 
 #define MESH_QUAD_FVF   VertexFormat::Lit
 #define MESH_LOG_FIRST  8
-
-/* The loop cursor here is the object base (DrawQuadBatch's is the sub-object
- * count), so these offsets are 4 lower than levelobject.h's quad-batch ones.
- */
-#define GAME_OFF_MESH_COUNT     0xebb8
-#define GAME_OFF_MESH_OBJECTS   0xebc0
-#define MOBJ_OFF_MESH           0x000  // CFaktMesh*, NULL = draw the flat quads
-#define MOBJ_OFF_SUBOBJCOUNT    0x3bd
-#define MOBJ_OFF_SUBOBJECTS     0x3c1
-
-/* Render context fields this pass reads. */
-#define CTX_OFF_QUAD_COUNT      0x80
-#define CTX_OFF_QUAD_VERTS      0x84
-#define CTX_OFF_POS_X           0x88
-#define CTX_OFF_POS_Y           0x8c
-#define CTX_OFF_POS_Z           0x90
 
 #define g_flMeshBatchAngle 0x1.921fb6p+0  // (double)(float)(pi/2)
 
@@ -55,32 +40,28 @@ static bool fx_norot(void)
     return cached != 0;
 }
 
-  void  
-MeshBatch_Draw(void *ctx, void *game, RenderDevice *d3d)
+void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
+                    RenderDevice *d3d)
 {
-    BYTE *c = (BYTE *)ctx;
+    const ThemeObjectTypeSlot *slot = theme->slot(THEME_OBJ_PLATE);
 
     {  // Log: is this pass reached, and with what?
         static LONG e = 0;
         LONG k = InterlockedIncrement(&e);
         if (k <= 3 || k % 500 == 0)
             log_write("meshbatch: enter #%ld nobj=%lu quads=%lu\n", k,
-                      *(DWORD *)((BYTE *)game + GAME_OFF_MESH_COUNT),
-                      *(DWORD *)(c + CTX_OFF_QUAD_COUNT));
+                      slot->instanceCount(), (DWORD)pl->kind01Count());
     }
-    if (*(DWORD *)((BYTE *)game + GAME_OFF_MESH_COUNT) == 0)
+    if (slot->instanceCount() == 0)
         return;
 
-    for (DWORD i = 0;
-         i < *(DWORD *)((BYTE *)game + GAME_OFF_MESH_COUNT); i++) {
-        BYTE *obj = (BYTE *)game + GAME_OFF_MESH_OBJECTS + i * LOBJ_STRIDE;
-        if (*(DWORD *)(obj + MOBJ_OFF_SUBOBJCOUNT) == 0)
+    for (DWORD i = 0; i < slot->instanceCount(); i++) {
+        const ThemeLevelObject *obj = &slot->records()[i];
+        if (obj->subObjectCount() == 0)
             continue;
 
-        for (DWORD s = 0;
-             s < *(DWORD *)(obj + MOBJ_OFF_SUBOBJCOUNT); s++) {
-            SceneSubObject *sub =
-                (SceneSubObject *)(obj + MOBJ_OFF_SUBOBJECTS) + s;
+        for (DWORD s = 0; s < obj->subObjectCount(); s++) {
+            const SceneSubObject *sub = &obj->subObjects()[s];
 
             DWORD addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
             d3d->SetRenderState(RS::TextureAddressU, addr);
@@ -104,14 +85,13 @@ MeshBatch_Draw(void *ctx, void *game, RenderDevice *d3d)
             }
             d3d->SetRenderState(last_state, last_value);
 
-            CFaktMesh *mesh = *(CFaktMesh **)(obj + MOBJ_OFF_MESH);
+            CFaktMesh *mesh = obj->mesh();  // NULL: draw the flat quads
             if (mesh == NULL) {
                 d3d->SetTransform(Transform::World,
                                            &g_worldIdentity);
                 d3d->Draw(
                     Prim::TriangleList, MESH_QUAD_FVF,
-                    *(void **)(c + CTX_OFF_QUAD_VERTS),
-                    *(DWORD *)(c + CTX_OFF_QUAD_COUNT) * 6, 0);
+                    pl->kind01Verts(), pl->kind01Count() * 6, 0);
             } else {
                 const float cs = (float)cos(g_flMeshBatchAngle);
                 const float sn = (float)sin(g_flMeshBatchAngle);
@@ -129,9 +109,9 @@ MeshBatch_Draw(void *ctx, void *game, RenderDevice *d3d)
                     m[5] = cs;  m[6]  = -sn;
                     m[9] = sn;  m[10] = cs;
                 }
-                m[12] = *(float *)(c + CTX_OFF_POS_X);
-                m[13] = *(float *)(c + CTX_OFF_POS_Y);
-                m[14] = *(float *)(c + CTX_OFF_POS_Z);
+                m[12] = pl->exitPos()[0];
+                m[13] = pl->exitPos()[1];
+                m[14] = pl->exitPos()[2];
                 m[15] = 1.0f;
 
                 d3d->SetTransform(Transform::World,

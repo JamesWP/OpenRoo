@@ -711,8 +711,7 @@ BOOL GravityEnvironment::gravityEnvCopyFrom(const GravityEnvironment *src)
 {
     if (!envSameName(src))
         return FALSE;
-    memcpy((BYTE *)this + sizeof(Environment), (const BYTE *)src + sizeof(Environment),
-           sizeof(GravityEnvironment) - sizeof(Environment));
+    *this = *src;
     return TRUE;
 }
 
@@ -720,8 +719,7 @@ BOOL MagnetEnvironment::magnetEnvCopyFrom(const MagnetEnvironment *src)
 {
     if (!envSameName(src))
         return FALSE;
-    memcpy((BYTE *)this + sizeof(Environment), (const BYTE *)src + sizeof(Environment),
-           sizeof(MagnetEnvironment) - sizeof(Environment));
+    *this = *src;   
     return TRUE;
 }
 
@@ -1149,9 +1147,8 @@ BOOL StdGenerator::stdGenCopyFrom(const StdGenerator *src)
 {
     if (!genCopyBase(src))
         return FALSE;
-    memcpy((BYTE *)this + 0x10, (const BYTE *)src + 0x10, 0x70 - 0x10);
-    memcpy((BYTE *)this + 0x78, (const BYTE *)src + 0x78, 0x3420 - 0x78);
-    stdCloneTypeTable((const DWORD *)src->pTypeTable_, src->dwTypeTableCount_);
+    *this = *src;
+    this->stdCloneTypeTable((const DWORD*)src->pTypeTable_,src->dwTypeTableCount_);
     return TRUE;
 }
 
@@ -1321,7 +1318,7 @@ void PointGenerator::pointGenEmit(float dt)
     int n = dead_gen_claim(&flAccumulator_, flEmitRate_, dt);
     if (n <= 0)
         return;
-    const DWORD *life = (const DWORD *)((const BYTE *)this + 0x0fe4);
+    const DWORD *life = this->dwLifeTable_;
     for (int i = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
         *(DWORD *)&node->flLife = life[dwLifeIdx_];
@@ -1476,9 +1473,8 @@ BOOL CylinderGenerator::cylGenCopyFrom(const CylinderGenerator *src)
 {
     if (!genCopyBase(src))
         return FALSE;
-    memcpy((BYTE *)this + 0x10, (const BYTE *)src + 0x10, 0x98 - 0x10);
-    memcpy((BYTE *)this + 0xa0, (const BYTE *)src + 0xa0, 0x3444 - 0xa0);
-    type_table_clone(&pTypeTable_, &dwTypeTableCount_, pEmitProb_,
+    *this = *src;
+    type_table_clone(&this->pTypeTable_, &this->dwTypeTableCount_, this->pEmitProb_,
                      (const DWORD *)src->pTypeTable_, src->dwTypeTableCount_);
     return TRUE;
 }
@@ -1663,89 +1659,86 @@ Environment * Environment::clone() const
 
 /* ─── Exports — vtable thunks ─── */
 
-#define THISCALL  
-
 /* All six slots, so a plain Environment never falls through to unimplemented
  * behaviour either. */
-void *THISCALL
-Environment::baseDtorSlot(Environment *self, unsigned flags)
+void * Environment::baseDtorSlot(Environment *self, unsigned flags)
 {
     self->baseEnvDestruct();
     return scalar_delete(self, flags);
 }
 
-BOOL THISCALL
+BOOL 
 Environment::baseCopyFromSlot(Environment *self, const Environment *src) { return self->envSameName(src); }
 
-BOOL THISCALL
+BOOL 
 Environment::attachRingSlot(Environment *self, RingBuffer *ring)         { return self->envAttachRing(ring); }
 
-void THISCALL
+void 
 Environment::baseTickSlot(Environment *, float)                          { }
 
-BOOL THISCALL
+BOOL 
 Environment::baseSaveSlot(Environment *, void *)                         { return TRUE; }
 
-BOOL THISCALL
+BOOL 
 Environment::baseLoadSlot(Environment *, void *)                         { return TRUE; }
 
-void *THISCALL
+void *
 GravityEnvironment::gravityDtorSlot(GravityEnvironment *self, unsigned flags)
 {
     self->gravityEnvDestruct();
     return scalar_delete(self, flags);
 }
 
-void *THISCALL
+void *
 MagnetEnvironment::magnetDtorSlot(MagnetEnvironment *self, unsigned flags)
 {
     self->magnetEnvDestruct();
     return scalar_delete(self, flags);
 }
 
-BOOL THISCALL
+BOOL 
 GravityEnvironment::gravityCopyFromSlot(GravityEnvironment *self, const GravityEnvironment *src)
 { return self->gravityEnvCopyFrom(src); }
 
-BOOL THISCALL
+BOOL 
 MagnetEnvironment::magnetCopyFromSlot(MagnetEnvironment *self, const MagnetEnvironment *src)
 { return self->magnetEnvCopyFrom(src); }
 
-BOOL THISCALL
+BOOL 
 GravityEnvironment::gravitySaveSlot(GravityEnvironment *self, void *fp)  { return self->gravityEnvSave(fp); }
 
-BOOL THISCALL
+BOOL 
 MagnetEnvironment::magnetSaveSlot(MagnetEnvironment *self, void *fp)    { return self->magnetEnvSave(fp); }
 
 /* Shared no-op bodies for the base classes' do-nothing slots; the argument
- * counts match so callee cleanup stays correct under thiscall. */
-void THISCALL Generator::nop1(void *, float)                      { }
-void THISCALL Generator::nop3(void *, float, float, float)        { }
-void THISCALL Generator::nop4(void *, float, float, float, float) { }
-BOOL THISCALL Generator::returnTrue(void *, void *)               { return TRUE; }
+ * counts match so callee cleanup stays correct under . */
+void Generator::nop1(void *, float)                      { }
+void Generator::nop3(void *, float, float, float)        { }
+void Generator::nop4(void *, float, float, float, float) { }
+BOOL Generator::returnTrue(void *, void *)               { return TRUE; }
 
-BOOL THISCALL
+BOOL 
 Generator::attachRingSlot(Generator *self, RingBuffer *ring)        { return self->genAttachRing(ring); }
 
 /* Called directly by explodedebris.cpp and theme.cpp — see
  * fill_gaussian_field. */
-  void THISCALL
+  void 
 Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma)
 {
     fill_gaussian_field(self, mu, sigma);
 }
 
-BOOL THISCALL
+BOOL 
 Generator::baseCopyFromSlot(Generator *self, const Generator *src)  { return self->genCopyBase(src); }
 
-void *THISCALL
+void *
 Generator::baseDtorSlot(Generator *self, unsigned flags)
 {
     self->baseGenDestruct();
     return scalar_delete(self, flags);
 }
 
-void *THISCALL
+void *
 PointGenerator::pointDtorSlot(PointGenerator *self, unsigned flags)
 {
     self->pVtable_ = (void **)gen_vtbl_point;
@@ -1753,7 +1746,7 @@ PointGenerator::pointDtorSlot(PointGenerator *self, unsigned flags)
     return scalar_delete(self, flags);
 }
 
-void *THISCALL
+void *
 BoxGenerator::boxDtorSlot(BoxGenerator *self, unsigned flags)
 {
     self->pVtable_ = (void **)gen_vtbl_box;
@@ -1761,97 +1754,97 @@ BoxGenerator::boxDtorSlot(BoxGenerator *self, unsigned flags)
     return scalar_delete(self, flags);
 }
 
-void *THISCALL
+void *
 StdGenerator::stdDtorSlot(StdGenerator *self, unsigned flags)
 {
     self->stdGenDestruct();
     return scalar_delete(self, flags);
 }
 
-void *THISCALL
+void *
 XStdGenerator::xStdDtorSlot(XStdGenerator *self, unsigned flags)
 {
     self->xstdGenDestruct();
     return scalar_delete(self, flags);
 }
 
-void THISCALL
+void 
 PointGenerator::pointEmitSlot(PointGenerator *self, float dt)             { self->pointGenEmit(dt); }
 
-void THISCALL
+void 
 BoxGenerator::boxEmitSlot(BoxGenerator *self, float dt)                 { self->boxGenEmit(dt); }
 
-BOOL THISCALL
+BOOL 
 StdGenerator::stdCopyFromSlot(StdGenerator *self, const StdGenerator *src)   { return self->stdGenCopyFrom(src); }
 
-BOOL THISCALL
+BOOL 
 StdGenerator::stdSaveSlot(StdGenerator *self, void *fp)                 { return self->stdGenSave(fp); }
 
-BOOL THISCALL
+BOOL 
 StdGenerator::stdLoadSlot(StdGenerator *self, void *fp)                 { return self->stdGenLoad(fp); }
 
-BOOL THISCALL
+BOOL 
 XStdGenerator::xStdCopyFromSlot(XStdGenerator *self, const XStdGenerator *src) { return self->xstdGenCopyFrom(src); }
 
-BOOL THISCALL
+BOOL 
 XStdGenerator::xStdSaveSlot(XStdGenerator *self, void *fp)               { return self->xstdGenSave(fp); }
 
-BOOL THISCALL
+BOOL 
 XStdGenerator::xStdLoadSlot(XStdGenerator *self, void *fp)               { return self->xstdGenLoad(fp); }
 
-void THISCALL
+void 
 XStdGenerator::xStdSetPositionSlot(XStdGenerator *self, float x, float y, float z) { self->xstdSetPosition(x, y, z); }
 
-void THISCALL
+void 
 XStdGenerator::xStdSetVelocitySlot(XStdGenerator *self, float x, float y, float z, float m) { self->xstdSetVelocity(x, y, z, m); }
 
-void THISCALL
+void 
 XStdGenerator::xStdSetDirectionSlot(XStdGenerator *self, float x, float y, float z) { self->xstdSetDirection(x, y, z); }
 
-void THISCALL
+void 
 XStdGenerator::xStdSetSpeedSlot(XStdGenerator *self, float m)            { self->xstdSetSpeed(m); }
 
-void *THISCALL
+void *
 CylinderGenerator::cylDtorSlot(CylinderGenerator *self, unsigned flags)
 {
     self->cylGenDestruct();
     return scalar_delete(self, flags);
 }
 
-BOOL THISCALL
+BOOL 
 CylinderGenerator::cylCopyFromSlot(CylinderGenerator *self, const CylinderGenerator *src) { return self->cylGenCopyFrom(src); }
 
-BOOL THISCALL
+BOOL 
 CylinderGenerator::cylSaveSlot(CylinderGenerator *self, void *fp)            { return self->cylGenSave(fp); }
 
-BOOL THISCALL
+BOOL 
 CylinderGenerator::cylLoadSlot(CylinderGenerator *self, void *fp)            { return self->cylGenLoad(fp); }
 
-void THISCALL
+void 
 CylinderGenerator::cylSetPositionSlot(CylinderGenerator *self, float x, float y, float z) { self->cylSetPosition(x, y, z); }
 
-void THISCALL
+void 
 CylinderGenerator::cylSetDirectionSlot(CylinderGenerator *self, float x, float y, float z) { self->cylSetDirection(x, y, z); }
 
-BOOL THISCALL
+BOOL 
 GravityEnvironment::gravityLoadSlot(GravityEnvironment *self, void *fp)  { return self->gravityEnvLoad(fp); }
 
-BOOL THISCALL
+BOOL 
 MagnetEnvironment::magnetLoadSlot(MagnetEnvironment *self, void *fp)    { return self->magnetEnvLoad(fp); }
 
-void THISCALL
+void 
 GravityEnvironment::gravityTickSlot(GravityEnvironment *self, float dt)  { self->gravityEnvTick(dt); }
 
-void THISCALL
+void 
 MagnetEnvironment::magnetTickSlot(MagnetEnvironment *self, float dt)    { self->magnetEnvTick(dt); }
 
-void THISCALL
+void 
 StdGenerator::stdEmitSlot(StdGenerator *self, float dt)            { self->stdGenTick(dt); }
 
-void THISCALL
+void 
 CylinderGenerator::cylinderEmitSlot(CylinderGenerator *self, float dt)  { self->cylGenTick(dt); }
 
-void THISCALL
+void 
 XStdGenerator::xStdEmitSlot(XStdGenerator *self, float dt)          { self->xstdGenTick(dt); }
 
 /* ─── Our vtables ──────────────────────────────────────────────────────────
@@ -1930,7 +1923,7 @@ extern void *const env_vtbl_magnet[] = {
  * the tables above, so this is a direct call into this DLL — no class switch
  * or identity lookup needed. */
 
-typedef void (THISCALL *sim_tick_fn)(void *, float);
+typedef void (*sim_tick_fn)(void *, float);
 
 void sim_tick_slot3(void *obj, float dt)
 {

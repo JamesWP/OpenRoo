@@ -2,9 +2,7 @@
  * system's ring with new particles, and the fields that age and retire them
  * once they are in it.  A Generator subclass owns Tick/emit/Save/Load/CopyFrom
  * through its own vtable; an Environment subclass owns the same five for
- * ageing, fading and killing particles already in the ring.  Both bases stay
- * fixed size across builds, so every layout below is exact, not a guess: each
- * struct's  s pin the offsets the .cpp indexes into. */
+ * ageing, fading and killing particles already in the ring. */
 
 #pragma once
 #include <windows.h>
@@ -178,7 +176,6 @@ private:
  
 };
 
-
 /* StdGenerator: the default emitter, used by most shipping effects.  Emit
  * never samples a distribution at runtime; Load fills the four tables below
  * once, by sampling with rand(), and Tick/emit only ever indexes them by the
@@ -241,7 +238,6 @@ private:
  
 };
 
-
 /* XStdGenerator: StdGenerator plus a constant offset added to every sampled
  * position and velocity, used for thruster and flame effects.  Every field and
  * cursor through StdGenerator is inherited unchanged; only emit differs. */
@@ -278,7 +274,6 @@ private:
 
  
 };
-
 
 /* CylinderGenerator: samples position and velocity like StdGenerator, then
  * scales the position, carries it through flMatrix and offsets it by flOrigin.

@@ -29,20 +29,3 @@ struct SceneSubObject {
     float  flEffectParams[3];
     BYTE   pad28[0x14];  // never written
 };
-
-/* Raw access to theme records (ThemeLevelObject, theme.h) for the quad batch
- * path. */
-#define LOBJ_STRIDE            0x5dd
-#define LOBJ_OFF_DRAWKIND      0x000  // == 2 selects the quad-batch draw
-#define LOBJ_OFF_SUBOBJCOUNT   0x3c1
-#define LOBJ_OFF_SUBOBJECTS    0x3c5
-
-/* The quad batch draws the theme block's SIDE slot: its record count, then its
- * records. */
-#define GAME_OFF_QUAD_COUNT    0x11aa8
-#define GAME_OFF_QUAD_OBJECTS  0x11aac
-
-static inline BYTE *lobj_at(void *game, unsigned i)
-{
-    return (BYTE *)game + GAME_OFF_QUAD_OBJECTS + i * LOBJ_STRIDE;
-}

@@ -18,6 +18,7 @@
 #include "d3dmath.h"
 #include "progctrl.h"
 #include "scenetexture.h"
+#include "theme.h"
 #include <stdio.h>
 #include "gameglobals.h"
 #include <math.h>
@@ -44,11 +45,6 @@ static ScreenVertex g_listQuad[4];
 #define g_saveTexture (&g_menuTex4)    // menu_4.tga
 
 /* Fields of the theme object: its backdrop texture and text colour pairs. */
-#define THEME_BACKDROP_TEX 0x6f8a8  // SceneTexture*
-#define THEME_MAINMENU_COL 0x6f8d4  // six (top, bottom) colour pairs
-#define THEME_RESTORE_COL  0x6f904  // one pair, every slot row
-#define THEME_SAVE_COL     0x6f90c  // one pair, every slot row
-#define THEME_OPTIONS_COL  0x6f91c  // three pairs
 
 static inline DWORD mode_width(RenderDevice *d3d)
 {
@@ -71,11 +67,10 @@ static ScreenVertex tlv(float x, float y, float u, float v)
     return t;
 }
 
-  void  
-Menu_DrawBackdrop(RenderDevice *d3d, void *theme)
+void Menu_DrawBackdrop(RenderDevice *d3d, ThemeAssetBlock *theme)
 {
     set_blend(d3d);
-    SceneTexture *tex = *(SceneTexture **)((BYTE *)theme + THEME_BACKDROP_TEX);
+    SceneTexture *tex = theme->image(THEME_IMG_MENU);
     d3d->SetTexture(0, tex);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF,
                                 g_backdropQuad, 4, 0);
@@ -145,7 +140,7 @@ static const float k_rowY[6] = {
     0.28125f, 0.33125001f, 0.38124999f, 0.43125001f, 0.48124999f, 0.53125f,
 };
 
-static void draw_panel(RenderDevice *d3d, void *theme, const SceneTexture *tex,
+static void draw_panel(RenderDevice *d3d, ThemeAssetBlock *theme, const SceneTexture *tex,
                        void *quad)
 {
     Menu_DrawBackdrop(d3d, theme);
@@ -154,29 +149,30 @@ static void draw_panel(RenderDevice *d3d, void *theme, const SceneTexture *tex,
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, quad, 4, 0);
 }
 
-static void draw_fixed_rows(RenderDevice *d3d, void *theme, TextRenderer *text,
-                            const char *const *rows, int n, unsigned colOff)
+static void draw_fixed_rows(RenderDevice *d3d, ThemeAssetBlock *theme, TextRenderer *text,
+                            const char *const *rows, int n,
+                            ThemeTextColorSlot first)
 {
     const float fw = (float)mode_width(d3d);
-    const DWORD *col = (const DWORD *)((BYTE *)theme + colOff);
+    const ThemeTextColorPair *col = &theme->textColor(first);
     for (int i = 0; i < n; i++) {
         const DWORD wr = mode_width(d3d);
         const float cw = (float)(wr * 12) * K640, ch = (float)(wr * 14) * K640;
         text->drawCentered(fw * 0.5f, fw * k_rowY[i], cw, ch, 0.75f,
-                           rows[i], d3d, 0, col[2 * i], col[2 * i + 1]);
+                           rows[i], d3d, 0, col[i].color1, col[i].color2);
     }
 }
 
-static void draw_slot_rows(Game *g, RenderDevice *d3d, void *theme,
-                           TextRenderer *text, unsigned colOff)
+static void draw_slot_rows(Game *g, RenderDevice *d3d, ThemeAssetBlock *theme,
+                           TextRenderer *text, ThemeTextColorSlot slot)
 {
     SaveSlots *ss = g->saveSlots();
     if (ss->count() == 0)
         return;
     const float fw = (float)mode_width(d3d);
     const float x  = fw * 0.5f;
-    const DWORD top = *(const DWORD *)((BYTE *)theme + colOff);
-    const DWORD bot = *(const DWORD *)((BYTE *)theme + colOff + 4);
+    const DWORD top = theme->textColor(slot).color1;
+    const DWORD bot = theme->textColor(slot).color2;
     float y = 180.0f;
     for (unsigned i = 0; i < ss->count(); i++) {
         const DWORD wr = mode_width(d3d);
@@ -199,7 +195,7 @@ static void draw_slot_rows(Game *g, RenderDevice *d3d, void *theme,
 #define LS_MARKER_SPREAD 1.3f  // level names run wider than menu rows
 #define LS_ROW_Y    208.0f
 #define LS_ROW_STEP  20.0f
-void Menu_RenderLevelSelect(Game *g, void *theme, RenderDevice *d3d,
+void Menu_RenderLevelSelect(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
                             TextRenderer *text, DWORD ms)
 {
     LevelSelectView v;
@@ -208,7 +204,7 @@ void Menu_RenderLevelSelect(Game *g, void *theme, RenderDevice *d3d,
     const DWORD w  = mode_width(d3d);
     const float fw = (float)w, x = fw * 0.5f;
     const float cw = (float)(w * 12) * K640, ch = (float)(w * 14) * K640;
-    const DWORD *rowCol   = (const DWORD *)((BYTE *)theme + THEME_RESTORE_COL);
+    const ThemeTextColorPair &rowCol = theme->textColor(THEME_COLOR_MENULOADGAMEENTRIES);
     char title[80];
 
     snprintf(title, sizeof(title), "< %s >", v.theme);
@@ -216,7 +212,7 @@ void Menu_RenderLevelSelect(Game *g, void *theme, RenderDevice *d3d,
                        LS_TITLE_TOP, LS_TITLE_BOT);
     for (int i = 0; i < v.count; i++)
         text->drawCentered(x, fw * (LS_ROW_Y + LS_ROW_STEP * i) * K640, cw, ch, 0.75f,
-                           v.rows[i], d3d, 0, rowCol[0], rowCol[1]);
+                           v.rows[i], d3d, 0, rowCol.color1, rowCol.color2);
     // The main menu markers' centres (320 -+ 76, a 4-unit wobble), spread
     // wider.
     const double t = (double)ms * 0.01;
@@ -231,39 +227,37 @@ static const char *const k_mainMenuRows[6] = {
 };
 static const char *const k_optionsRows[3] = { "Controls", "Video", "Audio" };
 
-  void  
-Menu_RenderMainMenu(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
+void
+Menu_RenderMainMenu(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
                     DWORD ms)
 {
     draw_panel(d3d, theme, g_panelTexture, g_panelQuad);
-    draw_fixed_rows(d3d, theme, text, k_mainMenuRows, 6, THEME_MAINMENU_COL);
+    draw_fixed_rows(d3d, theme, text, k_mainMenuRows, 6, THEME_COLOR_MENUNEWGAME);
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
-  void  
-Menu_RenderOptionsMenu(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
+void
+Menu_RenderOptionsMenu(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
                        DWORD ms)
 {
     draw_panel(d3d, theme, g_optionsTexture, g_listQuad);
-    draw_fixed_rows(d3d, theme, text, k_optionsRows, 3, THEME_OPTIONS_COL);
+    draw_fixed_rows(d3d, theme, text, k_optionsRows, 3, THEME_COLOR_MENUOPTIONSCONTROL);
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
-  void  
-Menu_RenderRestoreSlotList(Game *g, void *theme, RenderDevice *d3d,
-                           TextRenderer *text, DWORD ms)
+void Menu_RenderRestoreSlotList(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                                TextRenderer *text, DWORD ms)
 {
     draw_panel(d3d, theme, g_panelTexture, g_listQuad);
-    draw_slot_rows(g, d3d, theme, text, THEME_RESTORE_COL);
+    draw_slot_rows(g, d3d, theme, text, THEME_COLOR_MENULOADGAMEENTRIES);
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
-  void  
-Menu_RenderSaveSlotList(Game *g, void *theme, RenderDevice *d3d,
-                        TextRenderer *text, DWORD ms)
+void Menu_RenderSaveSlotList(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                             TextRenderer *text, DWORD ms)
 {
     draw_panel(d3d, theme, g_saveTexture, g_listQuad);
-    draw_slot_rows(g, d3d, theme, text, THEME_SAVE_COL);
+    draw_slot_rows(g, d3d, theme, text, THEME_COLOR_MENUSAVEGAMEENTRIES);
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
@@ -329,18 +323,18 @@ static void draw_label_c(RenderDevice *d3d, TextRenderer *text, float xv,
                    str, d3d, 0, top, bot);
 }
 
-static void draw_label(RenderDevice *d3d, void *theme, TextRenderer *text,
-                       float xv, float yK, const char *str, unsigned colOff)
+static void draw_label(RenderDevice *d3d, ThemeAssetBlock *theme, TextRenderer *text,
+                       float xv, float yK, const char *str,
+                       ThemeTextColorSlot slot)
 {
-    const DWORD *col = (const DWORD *)((BYTE *)theme + colOff);
-    draw_label_c(d3d, text, xv, yK, str, col[0], col[1]);
+    const ThemeTextColorPair &col = theme->textColor(slot);
+    draw_label_c(d3d, text, xv, yK, str, col.color1, col.color2);
 }
 
 /* Menu node 0xc.  Four rows of a label at x 262 and its widget at x 368: 3D
  * sound (toggle), sound volume (knob), CD music (toggle), CD volume (knob). */
-  void  
-Menu_RenderSoundOptions(Game *g, void *theme, RenderDevice *d3d,
-                        TextRenderer *text, DWORD ms)
+void Menu_RenderSoundOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                             TextRenderer *text, DWORD ms)
 {
     draw_panel(d3d, theme, g_saveTexture, g_panelQuad);
 
@@ -348,19 +342,19 @@ Menu_RenderSoundOptions(Game *g, void *theme, RenderDevice *d3d,
     const float fw = (float)w;
     const float tx = (float)(w * 368) * K640;
 
-    draw_label(d3d, theme, text, 262.0f, 0.28125f, "3D Sound", 0x6f964);
+    draw_label(d3d, theme, text, 262.0f, 0.28125f, "3D Sound", THEME_COLOR_MENUAUDIO3DSOUND);
     draw_widget(d3d, place(tx, fw * 0.29374999f),
                 g->sound3D() != 0 ? g_texOn : g_texOff);
 
-    draw_label(d3d, theme, text, 262.0f, 0.33125001f, "Sound Vol.", 0x6f96c);
+    draw_label(d3d, theme, text, 262.0f, 0.33125001f, "Sound Vol.", THEME_COLOR_MENUAUDIOSOUNDVOL);
     draw_widget(d3d, place(tx, fw * 0.34375f), g_texKnobBase);
     draw_widget(d3d, knob(tx, fw * 0.34375f, g->waveVolume()), g_texKnob);
 
-    draw_label(d3d, theme, text, 262.0f, 0.38124999f, "CD Music", 0x6f974);
+    draw_label(d3d, theme, text, 262.0f, 0.38124999f, "CD Music", THEME_COLOR_MENUAUDIOCDMUSIC);
     draw_widget(d3d, place(tx, fw * 0.39375001f),
                 g->musicOn() != 0 ? g_texOn : g_texOff);
 
-    draw_label(d3d, theme, text, 262.0f, 0.43125001f, "CD Vol.", 0x6f97c);
+    draw_label(d3d, theme, text, 262.0f, 0.43125001f, "CD Vol.", THEME_COLOR_MENUAUDIOCDVOL);
     draw_widget(d3d, place(tx, fw * 0.44374999f), g_texKnobBase);
     draw_widget(d3d, knob(tx, fw * 0.44374999f, g->cdVolume()), g_texKnob);
 
@@ -378,9 +372,8 @@ static bool shadows_available(RenderDevice *d3d)
     return d3d->hasStencil() && d3d->bitDepth() > 16;
 }
 
-  void  
-Menu_RenderVideoOptions(Game *g, void *theme, RenderDevice *d3d,
-                        TextRenderer *text, DWORD ms)
+void Menu_RenderVideoOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                             TextRenderer *text, DWORD ms)
 {
     draw_panel(d3d, theme, g_videoTexture, g_listQuad);
 
@@ -388,12 +381,12 @@ Menu_RenderVideoOptions(Game *g, void *theme, RenderDevice *d3d,
     const float fw = (float)w;
     const float tx = (float)(w * 368) * K640;
 
-    draw_label(d3d, theme, text, 262.0f, 0.28125f, "Reflection", 0x6f944);
+    draw_label(d3d, theme, text, 262.0f, 0.28125f, "Reflection", THEME_COLOR_MENUVIDEOREFLECTION);
     draw_widget(d3d, place(tx, fw * 0.29374999f),
                 g->videoReflection() != 0 ? g_texOn : g_texOff);
 
     if (shadows_available(d3d))
-        draw_label(d3d, theme, text, 262.0f, 0.33125001f, "Shadows", 0x6f94c);
+        draw_label(d3d, theme, text, 262.0f, 0.33125001f, "Shadows", THEME_COLOR_MENUVIDEOSHADOW);
     else
         draw_label_c(d3d, text, 262.0f, 0.33125001f, "Shadows",
                      0x80555555, 0x80aaaaaa);
@@ -402,11 +395,11 @@ Menu_RenderVideoOptions(Game *g, void *theme, RenderDevice *d3d,
     if (shadows_available(d3d))
         draw_widget(d3d, knob3(tx, fw * 0.34375f, g->videoShadows()), g_texKnob);
 
-    draw_label(d3d, theme, text, 262.0f, 0.38124999f, "Highlights", 0x6f954);
+    draw_label(d3d, theme, text, 262.0f, 0.38124999f, "Highlights", THEME_COLOR_MENUVIDEOHIGHLIGHT);
     draw_widget(d3d, place(tx, fw * 0.39375001f), g_texKnobBase);
     draw_widget(d3d, knob3(tx, fw * 0.39375001f, g->videoHighlights()), g_texKnob);
 
-    draw_label(d3d, theme, text, 262.0f, 0.43125001f, "Particles", 0x6f95c);
+    draw_label(d3d, theme, text, 262.0f, 0.43125001f, "Particles", THEME_COLOR_MENUVIDEOPARTICLE);
     draw_widget(d3d, place(tx, fw * 0.44374999f), g_texKnobBase);
     draw_widget(d3d, knob3(tx, fw * 0.44374999f, g->videoParticles()), g_texKnob);
 
@@ -436,9 +429,8 @@ static const ControlRow k_controls[13] = {
     { "camera down",  "CamModeDown",       0x20 },
 };
 
-  void  
-Menu_RenderControlsRemap(Game *g, void *theme, RenderDevice *d3d,
-                         TextRenderer *text, DWORD ms)
+void Menu_RenderControlsRemap(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                              TextRenderer *text, DWORD ms)
 {
     const DWORD w  = mode_width(d3d);
     const float fw = (float)w;
@@ -449,7 +441,7 @@ Menu_RenderControlsRemap(Game *g, void *theme, RenderDevice *d3d,
         tlv(0.0f, 0.0f, 0.4f, 0.4f), tlv(0.0f, fh, 0.4f, 0.6f),
     };
     set_blend(d3d);
-    SceneTexture *tex = *(SceneTexture **)((BYTE *)theme + THEME_BACKDROP_TEX);
+    SceneTexture *tex = theme->image(THEME_IMG_MENU);
     d3d->SetTexture(0, tex);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, back, 4, 0);
 
@@ -462,22 +454,22 @@ Menu_RenderControlsRemap(Game *g, void *theme, RenderDevice *d3d,
     d3d->SetTexture(0, g_videoTexture);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, head, 4, 0);
 
-    const DWORD *col = (const DWORD *)((BYTE *)theme + 0x6f934);
+    const ThemeTextColorPair &col = theme->textColor(THEME_COLOR_MENUCONTROLENTRIES);
     float rowY[13];
     for (int i = 0; i < 13; i++) {
         rowY[i] = fw * (0.171875f + 0.03125f * (float)i);
         const DWORD wr = mode_width(d3d);
         text->drawLeft(fw * 0.09375f, rowY[i],
                        (float)(wr * 12) * K640, (float)(wr * 14) * K640, 0.75f,
-                       k_controls[i].label, d3d, 0, col[0], col[1]);
+                       k_controls[i].label, d3d, 0, col.color1, col.color2);
     }
 
     const float tx = (float)(w * 450) * K640;
-    draw_label(d3d, theme, text, 180.0f, 0.578125f, "following camera", 0x6f93c);
+    draw_label(d3d, theme, text, 180.0f, 0.578125f, "following camera", THEME_COLOR_MENUCONTROLCAMERA);
     draw_widget(d3d, place(tx, fw * 0.59062499f),
                 g->cameraTurnsWithPlayer() != 0 ? g_texOn : g_texOff);
 
-    draw_label(d3d, theme, text, 180.0f, 0.609375f, "joystick deathzone", 0x6f93c);
+    draw_label(d3d, theme, text, 180.0f, 0.609375f, "joystick deathzone", THEME_COLOR_MENUCONTROLCAMERA);
     draw_widget(d3d, place(tx, fw * 0.62187499f), g_texKnobBase);
     draw_widget(d3d, knob(tx, fw * 0.62187499f, g->joyDeadzone()), g_texKnob);
 
@@ -488,7 +480,7 @@ Menu_RenderControlsRemap(Game *g, void *theme, RenderDevice *d3d,
         const DWORD wr = mode_width(d3d);
         text->drawRight(fw * 0.90625f, rowY[i],
                         (float)(wr * 12) * K640, (float)(wr * 14) * K640, 0.75f,
-                        asking ? "???" : buf, d3d, 0, col[0], col[1]);
+                        asking ? "???" : buf, d3d, 0, col.color1, col.color2);
     }
 
     Menu_DrawControlsCursorMarkers(g, d3d, ms);
@@ -684,8 +676,8 @@ Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
 
 /* Picks the screen for the current menu node; any other node draws nothing.
  * The level select's theme nodes (0x60 + t) draw the level select page. */
-  void  
-Menu_DispatchGameState(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
+void
+Menu_DispatchGameState(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
                        DWORD ms)
 {
     const unsigned char node = g->menu()->node();
