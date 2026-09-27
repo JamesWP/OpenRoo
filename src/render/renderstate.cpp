@@ -40,7 +40,7 @@ void Render_ConfigureRenderState(void)
     // block.
     TextureManager_SetLogger(&g_textureManager, &g_logger);
     TextureManager_SetLogger((TextureManager *)&g_modelManager, &g_logger);
-    memset(&g_levelPlacements, 0, 0x12c);
+    memset(&g_levelPlacements, 0, sizeof(g_levelPlacements));
     Menu_BuildMenuGeometry(d3d, g_gameDir);
 
     // The initial camera, placed exactly as level entry places it.

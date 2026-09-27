@@ -7,5 +7,5 @@ class Game;
  * (low byte) and marks it in use.  Returns 1. */
 unsigned int Sim_StoreGameStateIntoSaveSlot(Game *self, unsigned int slotArg);
 
-/* Restores what Store saved.  Returns 1 in the low byte. */
+/* Restores what Store saved.  Returns 1. */
 unsigned int Sim_RestoreGameStateFromSaveSlot(Game *self, unsigned int slotArg);

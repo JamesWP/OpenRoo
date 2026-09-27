@@ -210,8 +210,7 @@ static void delete_via_vtable(void *obj)
 }
 
 /* Releases one type's records. */
-void __attribute__((fastcall))
-Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
+void Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
 {
     for (int i = 0; i < 8; i++) {
         ThemeLevelObject &r = slot->records[i];

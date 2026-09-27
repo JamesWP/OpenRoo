@@ -10,13 +10,14 @@
 #pragma once
 
 #include <windows.h>
+#include "faktmesh.h"
 class RenderDevice;
 
 struct ExplodeDebris {
 
     void         *vtable;                // +0x00  the one-slot vtable
-    void         *pVertexCopy;           // +0x04  nVertexCount * 0x28 (FVF 0x212)
-    void         *pFaceRecords;  // +0x08  a velocity per triangle, (nVertexCount / 3) * 0xc
+    MeshVertex   *pVertexCopy;           // +0x04  nVertexCount vertices
+    float       (*pFaceRecords)[3];      // +0x08  a velocity per triangle
     int           nVertexCount;          // +0x0c  as it was when the buffers were built
     DWORD         bActive;               // +0x10  set by begin; cleared by the ctor and release
     float         samples[30];  // +0x14  Gaussian speeds, mu 2.0, sigma 1.0; refilled whole

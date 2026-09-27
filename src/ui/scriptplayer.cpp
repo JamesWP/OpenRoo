@@ -457,7 +457,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
                         "IS: warning - Stream sound buffer width id %d already initialized!", id);
                     return 0xc;
                 }
-                void *mem = malloc(0xd4);
+                void *mem = malloc(sizeof(CStreamSoundbuffer));
                 CStreamSoundbuffer *s = mem ? CStream_Initialize((CStreamSoundbuffer *)mem) : NULL;
                 streams_[id] = s;
                 streamReady_ = CStream_Prepare(s, &streamWave_);

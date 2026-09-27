@@ -43,12 +43,10 @@ void Dsb_Destruct(doublesoundbuff *self);
 void Dsb_Clear(doublesoundbuff *self);
 
 /* Deletes every duplicate through its vtable, then empties the list. */
-void __attribute__((stdcall))
-Dsb_PurgeCloneList(LinkedList *list);
+void Dsb_PurgeCloneList(LinkedList *list);
 
 /* Wipes and frees every pool, then empties the list. */
-void __attribute__((stdcall))
-Dsb_PurgeVoicePoolList(LinkedList *list);
+void Dsb_PurgeVoicePoolList(LinkedList *list);
 
 /* Gives back one static buffer: 1 if it belonged to this entry, else 0. */
 int Dsb_ReleaseStatic(doublesoundbuff *self, CStaticSoundbuffer *buf);

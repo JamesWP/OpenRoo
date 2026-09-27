@@ -382,7 +382,7 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
     doublesoundbuff *entry = (doublesoundbuff *)e->pPayload;
 
     VoicePool *pool = NULL;
-    VoicePool *raw  = (VoicePool *)malloc(0x14);
+    VoicePool *raw  = (VoicePool *)malloc(sizeof(VoicePool));
     if (raw != NULL)
         pool = Sim_VoicePoolBlank(raw);
 
@@ -616,7 +616,7 @@ int SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
     SoundMgr_PurgeAssets(self);
     self->logger_ = logger;
     if (logger == NULL) {
-        GameLogger *own = (GameLogger *)malloc(0x118);
+        GameLogger *own = (GameLogger *)malloc(sizeof(GameLogger));
         if (own != NULL)
             own = (GameLogger *)GameLog_Initialize(own, GS_SOUNDMGR_LOG_NAME, NULL);
         self->logger_     = own;

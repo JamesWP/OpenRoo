@@ -126,8 +126,7 @@ void Dsb_Destruct(doublesoundbuff *self)
 /* Takes the list, not the entry.  The next node is read before the delete, so
  * a destructor that unlinked its own node would not strand the walk;
  * List_Clear frees the nodes afterwards. */
-void __attribute__((stdcall))
-Dsb_PurgeCloneList(LinkedList *list)
+void Dsb_PurgeCloneList(LinkedList *list)
 {
     ++g_nPurgeClone; { static unsigned long seen; dsb_first("PurgeCloneList", &seen); }
     LinkedListNode *node = list->pHead;
@@ -143,8 +142,7 @@ Dsb_PurgeCloneList(LinkedList *list)
 }
 
 /* The same walk; a pool has no vtable, so it is wiped and freed. */
-void __attribute__((stdcall))
-Dsb_PurgeVoicePoolList(LinkedList *list)
+void Dsb_PurgeVoicePoolList(LinkedList *list)
 {
     ++g_nPurgePool; { static unsigned long seen; dsb_first("PurgeVoicePoolList", &seen); }
     LinkedListNode *node = list->pHead;

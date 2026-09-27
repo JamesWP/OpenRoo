@@ -21,6 +21,15 @@ class RenderDevice;
  * texCoords[1] to 0x28 -- the four components of the mesh FVF 0x212
  * (XYZ | NORMAL | TEX2) -- and nothing else.  Nothing draws through it.
  */
+/* One FVF 0x212 vertex: position, normal, two texture-coordinate sets. */
+struct MeshVertex {
+    float pos[3];
+    float normal[3];
+    float uv0[2];
+    float uv1[2];
+};
+static_assert(sizeof(MeshVertex) == 0x28, "MeshVertex is the FVF 0x212 stride");
+
 #pragma pack(push, 1)
 struct CFaktMesh {
     void  *unknown00;      // +0x00 vtable, set by Init

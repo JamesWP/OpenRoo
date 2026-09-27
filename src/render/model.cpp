@@ -24,7 +24,7 @@
 ModelManager g_modelManager;
 
 #define MDL_FRAME_REC_SIZE 0x18
-#define MDL_VERTEX_SIZE    0x28
+#define MDL_VERTEX_SIZE    sizeof(MeshVertex)
 #define MDL_LOG_FIRST      8
 
 static bool fx_scale(void)

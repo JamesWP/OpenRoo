@@ -170,8 +170,7 @@ bool Theme_Load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block,
 void Theme_ReleaseBlock(ThemeAssetBlock *block);
 
 /* Releases one type's records. */
-void __attribute__((fastcall))
-Theme_ReleaseSlot(ThemeObjectTypeSlot *slot);
+void Theme_ReleaseSlot(ThemeObjectTypeSlot *slot);
 
 /* The lifecycles of a type slot and its records. */
 ThemeObjectTypeSlot *Theme_SlotConstruct(ThemeObjectTypeSlot *self);
