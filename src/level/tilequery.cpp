@@ -344,7 +344,7 @@ Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
 Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
                              unsigned char *pv)
 {
-    unsigned char *tiles = self->tileBase();
+    Tile *tiles = self->tileBase();
     LevelMap      *hdr   = LevelMap::fromTileBase(tiles);
     unsigned char  u0    = *pu;
     unsigned char  v0    = *pv;

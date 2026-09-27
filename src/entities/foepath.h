@@ -6,7 +6,7 @@
 
 #pragma once
 
- 
+class Tile;
 
 /* A search node, calloc(1, 0x44).  FoePath builds and links them; the chase
  * (foe.cpp) reads the result's parent and cell. */
@@ -84,7 +84,7 @@ public:
 
     // Allocates (nothrow) and populates one; NULL if the allocation fails, and
     // the caller stores that.
-    static FoePath *create(unsigned char *tileBase, unsigned short field04);
+    static FoePath *create(Tile *tileBase, unsigned short field04);
     // dispose(), then delete.
     static void destroy(FoePath *p);
 
@@ -104,6 +104,8 @@ public:
     // The chase advances it to its parent.
     PathNode *result() const                       { return result_; }
     void setResult(PathNode *n)                    { result_ = n; }
+
+    Tile* tileBase() const { return tileBase_; }
 
     // The search (foepath.cpp).
     int       find(int uFoe, int vFoe, int uTarget, int vTarget);
@@ -129,10 +131,10 @@ public:
 private:
     FoePath() = delete;  // built by create()
     // The constructor's stores.
-    void populate(unsigned char *tileBase, unsigned short field04);
+    void populate(Tile *tileBase, unsigned short field04);
     static PathNode *findByKey(PathNode *hdr, int key);
 
-    unsigned char *tileBase_;  // the ctor's argument
+    Tile *tileBase_;  // the ctor's argument
     unsigned short field_04;   // the ctor's second argument (0)
     PathNode      *open_;      // a header node, fresh each search
     PathNode      *closed_;    // likewise

@@ -66,7 +66,7 @@ private:
     signed char         cellU_;       // +0x31
     signed char         cellV_;       // +0x32
     signed char         heightCell_;  // +0x33  the live height, truncated
-    unsigned char      *tileBase_;    // +0x34  Game::tileBase()
+    Tile               *tileBase_;    // +0x34  Game::tileBase()
     signed char         baseHeight_;  // +0x38
     signed char         topHeight_;   // +0x39
     CStaticSoundbuffer *sound_;       // +0x3a  the moving loop; may be NULL

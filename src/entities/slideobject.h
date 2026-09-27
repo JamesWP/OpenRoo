@@ -82,7 +82,7 @@ private:
     unsigned char       limit_;       // +0x40  the track's last cell
     unsigned char       trackStart_;  // +0x41  the track's first cell
     unsigned char       tileHeight_;  // +0x42  stamped into the tile
-    unsigned char      *tileBase_;    // +0x43  Game::tileBase()
+    Tile               *tileBase_;    // +0x43  Game::tileBase()
     signed char         kind_;        // +0x47  0x0a: along U; else V
     int                 atLimit_;     // +0x48  1: parked at the limit
     signed char         state_;       // +0x4c  0 parked, 1 advancing, 2 retreating

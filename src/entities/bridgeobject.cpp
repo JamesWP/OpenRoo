@@ -122,7 +122,7 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 {
     unsigned int u, v, height, axis, slot;
     unsigned int var;
-    unsigned char *base;
+    Tile *base;
     BridgeObject *obj;
     Tile *tile;
 
