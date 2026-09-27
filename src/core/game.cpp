@@ -50,7 +50,7 @@ Game *Game::construct(const char *gameName)
     cheatEntry_.construct();
     highScores_.construct();
     nameEntry_.construct();
-    SaveSlots_InstallVtable(&saveSlots_);
+    saveSlots_.installVtable();
     player()->construct();
     menu_.construct();
     scriptPlayer_.construct();
@@ -112,10 +112,10 @@ Game *Game::construct(const char *gameName)
     debounce_ = 0x0d;
     menu_.setLastKey(0x0d);
     saveSlots_.setCount(6);
-    if (!Save_LoadAllSlotFiles(&saveSlots_, gameFileName_, SAVE_KEY)) {
+    if (!saveSlots_.loadAllSlotFiles(gameFileName_, SAVE_KEY)) {
         g_logger.logMessage(3, GS_GAME_NO_SAVES, (unsigned)saveSlots_.count());
         saveSlots_.initialiseEmpty();
-        Save_WriteAllSlotFiles(&saveSlots_, gameFileName_, SAVE_KEY);
+        saveSlots_.writeAllSlotFiles(gameFileName_, SAVE_KEY);
     }
     field_173584_ = 0;
     if (!config_.loadValues(GS_CFG_FILE)) {
@@ -217,7 +217,7 @@ void Game::destruct()
     scriptPlayer_.destruct();
     menu_.destruct();
     player()->destruct();
-    SaveSlots_RestoreVtable(&saveSlots_);
+    saveSlots_.restoreVtable();
     nameEntry_.destruct();
     highScores_.destruct();
     cheatEntry_.destruct();

@@ -195,7 +195,7 @@ Sim_HandleKeypress(Game *self)
         self->nameEntry()->poll((unsigned int)(long long)*self->clock());
         if (self->nameEntry()->active() == 0) {
             if (self->nameEntry()->lastKey() == 0x0d)
-                Save_WriteAllSlotFiles(self->saveSlots(), self->gameFileName(), 0x37);
+                self->saveSlots()->writeAllSlotFiles(self->gameFileName(), 0x37);
             else
                 memcpy(self->saveSlots()->slot((unsigned char)self->saveSlots()->editSlot()),
                        self->saveSlots()->edit(), sizeof(SaveSlot));

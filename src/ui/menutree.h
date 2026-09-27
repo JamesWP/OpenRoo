@@ -117,6 +117,4 @@ KAROO_LAYOUT_CHECKS(MenuTree)
     KAROO_LAYOUT_SIZE(0x2021d);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushMenuNodeOnStack(MenuTree *self, unsigned int nodeArg);
 

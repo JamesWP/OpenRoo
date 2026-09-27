@@ -31,10 +31,9 @@ static void ps_log(const char *what, const char *path, int ok)
     }
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
+int SaveSlots::loadAllSlotFiles(const char *name, char key)
 {
-    SaveSlots *table = self;
+    SaveSlots *table = this;
     unsigned char *rec = (unsigned char *)table->slot(0);  // PRESERVED: runs on across slots
     char path[128];
     unsigned char b;  // PRESERVED: never re-initialised
@@ -58,10 +57,9 @@ Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
     return 1;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
+int SaveSlots::writeAllSlotFiles(const char *name, char key)
 {
-    SaveSlots *table = self;
+    SaveSlots *table = this;
     char path[128];
     int slot;
 
@@ -87,36 +85,31 @@ Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
 
 /* The table is embedded in the Game, so the deleting destructor never frees in
  * practice. */
-extern "C" {
-
 static void *const g_SaveSlotsVtable[1] = { (void *)&SaveSlots::scalarDeletingDtor };
 
-__declspec(dllexport) void *SaveSlots_Vtable(void)
+void *
+SaveSlots::vtbl(void)
 {
     return (void *)g_SaveSlotsVtable;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-SaveSlots_InstallVtable(SaveSlots *self)
+void SaveSlots::installVtable()
 {
-    *(const void **)self = SaveSlots_Vtable();
+    *(const void **)this = SaveSlots::vtbl();
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-SaveSlots_RestoreVtable(SaveSlots *self)
+void SaveSlots::restoreVtable()
 {
-    *(const void **)self = SaveSlots_Vtable();
+    *(const void **)this = SaveSlots::vtbl();
 }
 
 void * __attribute__((thiscall))
 SaveSlots::scalarDeletingDtor(SaveSlots *self, unsigned int flags)
 {
-    SaveSlots_RestoreVtable(self);
+    self->restoreVtable();
     if (flags & 1)
         free(self);
     return self;
-}
-
 }
 
 /* Blanks the first count_ records, re-reading the count each pass.  PRESERVED:
