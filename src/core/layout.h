@@ -24,7 +24,11 @@
  * Each check is a static_assert, so a misplaced field fails the build.  It is
  * also recorded at run time in a LayoutReport, and KAROO_LAYOUT_REGISTER puts
  * the class's check function on a global list before main(), for a test runner
- * to walk; no runner is built at present. */
+ * to walk.
+ *
+ * KNOWN GAP: no runner walks that list at present, so only the static_asserts
+ * check anything; the run-time half is dead weight until one is restored or
+ * the registry is dropped (OPEN_PLAN.md, "Also worth doing"). */
 
 #pragma once
 
