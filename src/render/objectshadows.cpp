@@ -70,13 +70,13 @@ static int animation_frame(ThemeLevelObject *rec, double t, float phase,
     if (rec->bNoMoveStates != 0) {
         // No frame-count guard here: a zero-frame slot still draws frame 0,
         // which DrawMeshBuffer clamps an out-of-range frame to anyway.
-        AnimSlot *s = Ani_LookupAnimDescriptor(&rec->animTable, 0x14);
-        return s != NULL ? Anim_FrameOnClock(s, t) : 0;
+        AnimSlot *s = rec->animTable.lookup(0x14);
+        return s != NULL ? s->frameOnClock(t) : 0;
     }
-    AnimSlot *s = Ani_LookupAnimDescriptor(&rec->animTable, animKey);
-    if (s == NULL || s->numFrames == 0)
+    AnimSlot *s = rec->animTable.lookup(animKey);
+    if (s == NULL || s->numFrames() == 0)
         return 0;
-    return Anim_FrameAtPhase(s, phase);
+    return s->frameAtPhase(phase);
 }
 
 extern "C" __declspec(dllexport) void __cdecl
