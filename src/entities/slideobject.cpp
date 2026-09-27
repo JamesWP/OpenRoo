@@ -302,7 +302,6 @@ void SlideObject::vacate()
     Tile::at(tileBase_, cellU_, cellV_)->setObjectMarker(0);
     Tile::at(tileBase_, cellU_, cellV_)->setOccupant(0);
 }
-/* C-linkage entry points. */
 
 void SlideObject::tick()
 {
