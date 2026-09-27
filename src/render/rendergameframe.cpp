@@ -176,7 +176,7 @@ static void arm_fx_records(ThemeObjectTypeSlot *fx, MovableEntity *e)
                 Particle_DisableRenderNode(rec->pParticleSystems[0]);
         }
         if (rec->bExplode && e->debrisPending())
-            ExplodeDebris_Begin(&rec->explode, rec->pMesh, 0, rec->flExplodeDir);
+            rec->explode.begin(rec->pMesh, 0, rec->flExplodeDir);
     }
     if (e->debrisPending())
         e->clearDebrisPending();
@@ -253,7 +253,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
         for (DWORD k = 0; k < fx->dwInstanceCount; ++k) {
             ThemeLevelObject *rec = &fx->records[k];
             if (rec->bExplode && t->field20f())
-                ExplodeDebris_Begin(&rec->explode, rec->pMesh, 0, rec->flExplodeDir);
+                rec->explode.begin(rec->pMesh, 0, rec->flExplodeDir);
         }
         if (t->field20f())
             t->setField20f(0);

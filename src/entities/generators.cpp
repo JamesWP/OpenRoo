@@ -1626,8 +1626,8 @@ Generator *gen_create(const char *name)
  * table and its read cursor are touched here. */
 static void fill_gaussian_field(ExplodeDebris *self, float mu, float sigma)
 {
-    gauss_fill(self->samples, 30, mu, sigma, 0.01f);
-    self->cursor = 0;
+    gauss_fill(self->samples(), 30, mu, sigma, 0.01f);
+    self->setCursor(0);
 }
 
 /* ─── Cloning ─── */
