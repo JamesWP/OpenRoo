@@ -2710,13 +2710,6 @@
    "extracted_from": "Karoo.exe"
   },
   {
-   "path": "res/rgn_111.bin",
-   "sha256": "2d84d9261ec85b84fd0daf52f0498c0118f6adee800ee7fa27550f90c54c20ec",
-   "size": 2896,
-   "class": "required",
-   "extracted_from": "Karoo.exe"
-  },
-  {
    "path": "res/version_1.bin",
    "sha256": "d03aa09d4491b1b8a7e42249718dccf49fb9ea869985a3e6de782fe0e9ccac11",
    "size": 772,
