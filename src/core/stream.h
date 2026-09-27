@@ -27,59 +27,70 @@ static_assert(sizeof(WaveInfo) == 0x12, "WaveInfo size");
 /* A streamed buffer, 0xd4 bytes, the size the script player allocates.  The
  * vtable must stay at offset 0. */
 #pragma pack(push, 1)
-struct CStreamSoundbuffer {
-    void                *vtable;
-    char                *filename;
-    IDirectSoundBuffer  *pSoundbuffer;
-    IDirectSound        *pDirectsound;
-    BYTE                 _pad0[0x0a];
-    DWORD                dwBuffer_size;
-    BYTE                 _pad1[0x88];
-    volatile DWORD       dwThread_done;  // 0 playing, 1 finished or idle; the script player polls it
-    HANDLE               watcher_thread;
-    HANDLE               stop_event;
-    BYTE                 _pad2[0x08];
-    CRITICAL_SECTION     cs;  // 0x18 bytes
-    BYTE                 _pad3[0x02];
+class CStreamSoundbuffer {
+public:
+    /* The deinit, then free() when bit 0 of flags is set; returns self. */
+    static void * __attribute__((thiscall))
+    scalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
+
+    /* Releases everything, as CStream_ReleaseResources, and deletes the lock. */
+    void deinitInstance();
+
+    /* Zeroes the object, sets its vtable and lock, and marks it done; returns
+     * self. */
+    CStreamSoundbuffer *initialize();
+
+    /* Releases any earlier file, then loads wi's WAV file into a new buffer.
+     * Returns nonzero on success. */
+    int prepare(WaveInfo *wi);
+
+    /* Plays from the start and starts the watcher thread. */
+    void play();
+
+    /* Stops playback and the watcher. */
+    void stop();
+
+    /* Stops, then releases the buffer, the stop event and the file name. */
+    void releaseResources();
+
+    void                *vtable() const { return vtable_; }
+    char                *filename() const { return filename_; }
+    IDirectSoundBuffer  *soundbuffer() const { return pSoundbuffer_; }
+    IDirectSound        *directsound() const { return pDirectsound_; }
+    // 0 playing, 1 finished or idle; the script player polls it.
+    DWORD                thread_done() const { return dwThread_done_; }
+
+private:
+    static void checkLayout();
+    static DWORD WINAPI watcherProc(LPVOID param);
+
+    void                *vtable_;
+    char                *filename_;
+    IDirectSoundBuffer  *pSoundbuffer_;
+    IDirectSound        *pDirectsound_;
+    BYTE                 _pad0_[0x0a];
+    DWORD                dwBuffer_size_;
+    BYTE                 _pad1_[0x88];
+    volatile DWORD       dwThread_done_;  // 0 playing, 1 finished or idle; the script player polls it
+    HANDLE               watcher_thread_;
+    HANDLE               stop_event_;
+    BYTE                 _pad2_[0x08];
+    CRITICAL_SECTION     cs_;  // 0x18 bytes
+    BYTE                 _pad3_[0x02];
 };
 #pragma pack(pop)
 
-static_assert(offsetof(CStreamSoundbuffer, vtable)       == 0x00,  "vtable offset");
-static_assert(offsetof(CStreamSoundbuffer, pSoundbuffer) == 0x08,  "pSoundbuffer offset");
-static_assert(offsetof(CStreamSoundbuffer, dwBuffer_size)== 0x1a,  "dwBuffer_size offset");
-static_assert(offsetof(CStreamSoundbuffer, dwThread_done)== 0xa6,  "dwThread_done offset");
-static_assert(offsetof(CStreamSoundbuffer, cs)           == 0xba,  "cs offset");
+inline void CStreamSoundbuffer::checkLayout()
+{
+    static_assert(offsetof(CStreamSoundbuffer, vtable_)       == 0x00,  "vtable offset");
+    static_assert(offsetof(CStreamSoundbuffer, pSoundbuffer_) == 0x08,  "pSoundbuffer offset");
+    static_assert(offsetof(CStreamSoundbuffer, dwBuffer_size_)== 0x1a,  "dwBuffer_size offset");
+    static_assert(offsetof(CStreamSoundbuffer, dwThread_done_)== 0xa6,  "dwThread_done offset");
+    static_assert(offsetof(CStreamSoundbuffer, cs_)           == 0xba,  "cs offset");
+}
+
 static_assert(sizeof(CStreamSoundbuffer)                 == 0xD4,  "CStreamSoundbuffer size");
 
 /* The one-slot vtable: the scalar deleting destructor. */
 extern "C" __declspec(dllexport) void *CStream_Vtable(void);
 
-/* The deinit, then free() when bit 0 of flags is set; returns self. */
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
-
-/* Releases everything, as CStream_ReleaseResources, and deletes the lock. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStream_DeinitInstance(CStreamSoundbuffer *self);
-
-/* Zeroes the object, sets its vtable and lock, and marks it done; returns
- * self. */
-extern "C" __declspec(dllexport) CStreamSoundbuffer * __attribute__((thiscall))
-CStream_Initialize(CStreamSoundbuffer *self);
-
-/* Releases any earlier file, then loads wi's WAV file into a new buffer.
- * Returns nonzero on success. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStream_Prepare(CStreamSoundbuffer *self, WaveInfo *wi);
-
-/* Plays from the start and starts the watcher thread. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStream_Play(CStreamSoundbuffer *self);
-
-/* Stops playback and the watcher. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStream_Stop(CStreamSoundbuffer *self);
-
-/* Stops, then releases the buffer, the stop event and the file name. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStream_ReleaseResources(CStreamSoundbuffer *self);

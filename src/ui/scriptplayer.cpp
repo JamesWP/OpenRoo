@@ -40,9 +40,9 @@ void ScriptPlayer::releaseStreams()
     for (int i = 0; i < 255; ++i) {
         if (streams_[i] == NULL)
             continue;
-        if (streams_[i]->dwThread_done == 0)
-            CStream_Stop(streams_[i]);
-        CStream_ReleaseResources(streams_[i]);
+        if (streams_[i]->thread_done() == 0)
+            streams_[i]->stop();
+        streams_[i]->releaseResources();
         if (streams_[i] != NULL)
             (*(deleting_dtor_fn *)*(void **)streams_[i])(streams_[i], 1);
         streams_[i] = NULL;
@@ -460,9 +460,9 @@ unsigned char ScriptPlayer::playScript(const char *line)
                     return 0xc;
                 }
                 void *mem = malloc(0xd4);
-                CStreamSoundbuffer *s = mem ? CStream_Initialize((CStreamSoundbuffer *)mem) : NULL;
+                CStreamSoundbuffer *s = mem ? ((CStreamSoundbuffer *)mem)->initialize() : NULL;
                 streams_[id] = s;
-                streamReady_ = CStream_Prepare(s, &streamWave_);
+                streamReady_ = s->prepare(&streamWave_);
                 if (streamReady_)
                     GameLog_LogMessage(&g_logger, 1,
                         "IS: Stream buffer width name %s successfully initialized, ID=%d",
@@ -488,7 +488,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
                     waitSeconds_ = (double)durations_[id];
                 }
             } else if (streams_[id]) {
-                CStream_Play(streams_[id]);
+                streams_[id]->play();
                 waitingOnStream_ = 0;
                 char *w = strtok(NULL, JJS_DELIMS);
                 if (w && strcmp(w, "WAIT") == 0) {
@@ -509,7 +509,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
 /* A "playwave <id> WAIT" wait ends when that stream has finished. */
 void ScriptPlayer::updateStreamWait()
 {
-    if (waitingOnStream_ && streams_[waitStream_]->dwThread_done) {
+    if (waitingOnStream_ && streams_[waitStream_]->thread_done()) {
         waitingOnStream_ = 0;
         streamReady_ = 0;
     }
@@ -593,7 +593,7 @@ static void *const g_ScriptPlayerVtable[1] = { (void *)&ScriptPlayer_ScalarDestr
 /* The embedded stream and spline, then these stores. */
 void ScriptPlayer::construct()
 {
-    CStream_Initialize(&stream_);
+    stream_.initialize();
     Spline_Construct(&spline_);
     cursor_       = 0;
     splineActive_ = 0;
@@ -607,13 +607,13 @@ void ScriptPlayer::construct()
 void ScriptPlayer::destruct()
 {
     vtable_ = g_ScriptPlayerVtable;
-    if (streamReady_ != 0 && stream_.dwThread_done == 0) {
-        CStream_Stop(&stream_);
-        CStream_ReleaseResources(&stream_);
+    if (streamReady_ != 0 && stream_.thread_done() == 0) {
+        stream_.stop();
+        stream_.releaseResources();
         streamReady_ = 0;
     }
     Spline_Destruct(&spline_);
-    CStream_DeinitInstance(&stream_);
+    stream_.deinitInstance();
 }
 
 void ScriptPlayer::clearStreams()
