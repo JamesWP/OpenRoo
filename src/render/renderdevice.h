@@ -1,10 +1,13 @@
 /* RenderDevice: the game's one rendering device, and the only way game code
  * talks to the rendering backend.  One instance exists, at g_renderDevice.
  *
- * It owns the backend's objects (see d3dnative.h, for backend files only):
- * the display mode, the primary/back/z-buffer surfaces, the device and the
- * viewport.  Device creation is in createdevice.cpp; everything else in
- * renderdevice.cpp. */
+ * The backend -- Direct3D 6 and DirectDraw -- lives in src/d3d/, and nothing
+ * outside it includes their headers (the Makefile's check-backend enforces
+ * it).  RenderDevice owns the backend's objects (RenderDevice::Native, in
+ * src/d3d/d3dnative.h): the display mode, the primary/back/z-buffer
+ * surfaces, the device, the viewport, the material and the light.  Game code
+ * speaks rendertypes.h's vocabulary to it, and hands it textures as
+ * SceneTextures (texture.h), whose insides only src/d3d/ looks at. */
 
 #pragma once
 #include <windows.h>

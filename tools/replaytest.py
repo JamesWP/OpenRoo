@@ -217,7 +217,7 @@ def apply_turbo(env):
 #
 #   KAROO_D3D_FX=nodraw   the com_proxy device returns D3D_OK from all six
 #                         DrawPrimitive* entry points without forwarding
-#   KAROO_FLIP_FX=noblt   Direct3D_FlipPrimaryFrame skips the Blt to the back
+#   KAROO_FLIP_FX=noblt   RenderDevice::PresentImage skips the Blt to the back
 #                         buffer (it still Flips)
 #
 # Measured on this machine, whole suite, 12 recordings (2026-09-05):
@@ -295,7 +295,7 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
     env["KAROO_SEED"] = str(cfg.get("seed", ""))
     auto_exit = int(cfg.get("timeout", 120))
     # --headless replaces DirectDraw with the in-DLL null device
-    # (src/render/nullddraw.cpp) and makes the game's window message-only, so
+    # (src/d3d/nullddraw.cpp) and makes the game's window message-only, so
     # the run needs no display, opens nothing on screen and takes no focus.
     # It implies --skip-launcher.  Orthogonal to --fast: fast skips the draw
     # CALLS, headless removes the driver underneath them.

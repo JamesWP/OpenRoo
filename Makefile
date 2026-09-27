@@ -13,15 +13,15 @@ CXXFLAGS += $(addprefix -I,$(SRCDIRS))
 
 SRCS = src/app/process.cpp src/app/log.cpp src/app/veh.cpp src/audio/cdm.cpp \
        src/audio/movie.cpp src/core/stream.cpp src/audio/static.cpp src/audio/cfaktsound.cpp \
-       src/input/progctrl.cpp src/render/com_proxy.cpp src/render/nullddraw.cpp src/app/launcher.cpp \
+       src/input/progctrl.cpp src/d3d/com_proxy.cpp src/d3d/nullddraw.cpp src/app/launcher.cpp \
        src/render/faktmesh.cpp src/render/particles.cpp src/entities/generators.cpp src/entities/factory.cpp \
        src/core/clock.cpp src/core/determinism.cpp src/core/gamestate.cpp src/testing/record.cpp \
-       src/render/scenequad.cpp src/render/renderdevice.cpp src/render/quadbatch.cpp src/render/sky.cpp \
-       src/render/texture.cpp src/render/texturedib.cpp \
-       src/render/texturetga.cpp src/render/scenetexture.cpp src/render/dsoscene.cpp src/render/d3dmath_common.cpp \
+       src/render/scenequad.cpp src/d3d/renderdevice.cpp src/render/quadbatch.cpp src/render/sky.cpp \
+       src/d3d/texture.cpp src/d3d/texturedib.cpp \
+       src/d3d/texturetga.cpp src/d3d/scenetexture.cpp src/render/dsoscene.cpp src/render/d3dmath_common.cpp \
        src/render/d3dmath_std.cpp src/render/d3dmath_mode.cpp src/render/meshbatch.cpp src/core/worldstate.cpp \
        src/testing/policy.cpp src/ui/menu.cpp src/testing/plan.cpp src/level/levelreport.cpp \
-       src/ui/scoreoverlay.cpp src/entities/bridgesurf.cpp src/render/createdevice.cpp src/core/assetio.cpp \
+       src/ui/scoreoverlay.cpp src/entities/bridgesurf.cpp src/d3d/createdevice.cpp src/core/assetio.cpp \
        src/level/levelmap.cpp src/ui/highscores.cpp src/app/config.cpp src/ui/saveslots.cpp \
        src/render/model.cpp src/ui/scriptplayer.cpp src/level/extraobjects.cpp src/render/ani.cpp \
        src/level/reportwriter.cpp src/app/gamelog.cpp src/level/levelscore.cpp src/entities/breakabletile.cpp \
@@ -56,7 +56,14 @@ EXE     = $(BUILD)/KarooOwn.exe
 RESOBJ  = $(OBJDIR)/openroo_rc.o
 LIBS    = -lgdi32 -lversion -lshell32 -lwinmm -ldsound -ldinput8 -ldxguid -static-libgcc -static-libstdc++
 
-all: $(EXE)
+all: check-backend $(EXE)
+
+# Only the rendering backend (src/d3d/) may see Direct3D or DirectDraw; the
+# rest of the game talks to it through RenderDevice (renderdevice.h).
+.PHONY: check-backend
+check-backend:
+	@bad=$$(grep -rlE '#include (<(d3d|ddraw)\.h>|"(d3dnative|com_proxy)\.h")' src --include='*.cpp' --include='*.h' | grep -v '^src/d3d/'); \
+	if [ -n "$$bad" ]; then echo "Direct3D headers outside src/d3d/:" $$bad >&2; exit 1; fi
 
 # The game: our objects, the resources, and exemain.cpp's entry point.
 $(EXE): $(OBJS) $(OBJDIR)/app/exemain.o $(RESOBJ)

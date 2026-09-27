@@ -221,7 +221,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
     LevelPlacements *pl = &g_levelPlacements;
     RenderDevice *d3d = g_renderDevice;
 
-    Direct3D_DrawMeshBatch(pl, &g_themeBlock, d3d);
+    MeshBatch_Draw(pl, &g_themeBlock, d3d);
     rso_list(pl->switches,    THEME_OBJ_SWITCH,        now);
     rso_list(pl->conveyors,   THEME_OBJ_ICE,           now);
     rso_list(pl->glue,        THEME_OBJ_GLUE,          now);
@@ -230,7 +230,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
     rso(pl->jumpPads.pos, pl->jumpPads.rot, pl->jumpPads.count, THEME_OBJ_JUMPPAD, now,
         (float)fmod(now * 0.002, 1.0), 0x14, 0);
     rso_list(pl->teleporters, THEME_OBJ_TELEPORTER,    now);
-    Direct3D_DrawQuadBatch((QuadVerts *)pl, &g_themeBlock, d3d);
+    QuadBatch_Draw((QuadVerts *)pl, &g_themeBlock, d3d);
     rso_list(pl->ramps,       THEME_OBJ_STAIR,         now);
     LevelPlacements_DrawLifts(g, pl, &g_themeBlock, d3d, now);
     LevelPlacements_DrawSlides(g, pl, &g_themeBlock, d3d, now);
@@ -334,7 +334,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
     Scene_DrawSceneObjects(d3d, g_camera.eye,
                            ((DWORD *)&dt)[0], ((DWORD *)&dt)[1], now);
     set_rs(RS::StencilEnable, 0);
-    Direct3D_DrawBridgeSurfaces(g, &g_themeBlock, d3d, now);
+    BridgeSurf_Draw(g, &g_themeBlock, d3d, now);
 
     CameraFocus *focus = &g_cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
