@@ -1,5 +1,5 @@
-/* renderstate.h -- ConfigureRenderState 0x00426000 (renderstate.cpp). */
+/* renderstate.h -- the fixed render state (renderstate.cpp). */
 #pragma once
 
-/* cdecl(void), plain RET.  One caller, WinMain 0x42D4D9, once at startup. */
+/* Called once, by WinMain at startup. */
 extern "C" __declspec(dllexport) void __cdecl Render_ConfigureRenderState(void);
