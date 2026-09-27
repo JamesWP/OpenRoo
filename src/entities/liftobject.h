@@ -99,6 +99,3 @@ KAROO_LAYOUT_CHECKS(LiftObject)
 /* No size check: we allocate it, so nothing relies on its size. */
 }
 
-/* Destroys every lift and zeroes the count; Game's teardown calls it. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeLiftObjects(Game *self);

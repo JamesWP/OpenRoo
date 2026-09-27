@@ -342,13 +342,8 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     KAROO_LAYOUT_SIZE(0x15a);
 }
 
-/* The exported entry points the game's Foe and Player construction and
- * destruction reach the base through. */
-
 /* Vtable slot 0 of the base's one-slot table: destroys the base state, then
  * frees to the game heap when bit 0 of `flags` is set. */
 extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
 Sim_DeleteMovableEntityWithFlags(MovableEntity *self, unsigned int flags);
 
-/* The shared movement step for every entity (player, foe, bomb): a thin shim
- * over MovableEntity::updateMovement(). */

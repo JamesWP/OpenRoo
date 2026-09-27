@@ -307,17 +307,3 @@ void BreakableTile::tick()
     }
 }
 
-/* C-linkage entry points. */
-
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_SpawnBreakableObject(Game *self, unsigned int uArg, unsigned int vArg,
-                         unsigned int heightArg, unsigned int paramArg)
-{
-    return BreakableTile::spawn(self, uArg, vArg, heightArg, paramArg);
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeBreakableObjects(Game *self)
-{
-    BreakableTile::purgeAll(self);
-}

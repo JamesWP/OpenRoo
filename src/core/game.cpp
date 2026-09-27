@@ -183,14 +183,14 @@ void Game::destruct()
 {
     vtable_ = g_GameVtable;
     GameLog_LogMessage(&g_logger, 1, GS_GAME_DTOR_START);
-    Sim_PurgeLiftObjects(this);
-    Sim_PurgeSlideObjects(this);
-    Sim_PurgeBreakableObjects(this);
-    Sim_PurgeBridgeObjects(this);
+    LiftObject::purgeAll(this);
+    SlideObject::purgeAll(this);
+    BreakableTile::purgeAll(this);
+    BridgeObject::purgeAll(this);
     while (foeCount_ != 0)
-        Sim_RemoveFoeObject(this, foeIds_[0]);
+        Foe::remove(this, foeIds_[0]);
     while (bombCount_ != 0)
-        Sim_RemoveEnemyObject(this, bombIds_[0]);
+        Bomb::remove(this, bombIds_[0]);
     breakableCount_ = 0;
     foeCount_       = 0;
     liftCount_      = 0;

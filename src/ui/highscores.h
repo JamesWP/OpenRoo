@@ -56,7 +56,6 @@ KAROO_LAYOUT_CHECKS(HighScoreTable)
     KAROO_LAYOUT_SIZE(0x3706);
 }
 
-
 /* The one slot of HighScoreTable's vtable. */
 extern "C" __declspec(dllexport) HighScoreTable *__attribute__((thiscall))
 HighScoreTable_ScalarDestructor(HighScoreTable *self, unsigned char flags);

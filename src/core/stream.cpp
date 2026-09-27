@@ -117,7 +117,6 @@ DWORD WINAPI CStreamSoundbuffer::watcherProc(LPVOID param)
  * so bit 1 of the flags is not tested. */
 extern "C" {
 
-
 static void *const g_CStreamVtable[1] = { (void *)&CStreamSoundbuffer::scalarDeletingDtor };
 
 __declspec(dllexport) void *CStream_Vtable(void)

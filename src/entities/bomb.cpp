@@ -470,17 +470,3 @@ void Bomb::tick()
     updateMovement();
 }
 
-/* The exports. */
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnBombObject(Game *self, unsigned int uArg, unsigned int vArg,
-                    unsigned int hArg, unsigned int flagArg)
-{
-    Bomb::spawn(self, uArg, vArg, hArg, flagArg);
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveEnemyObject(Game *self, unsigned int idArg)
-{
-    Bomb::remove(self, idArg);
-}

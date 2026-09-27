@@ -173,7 +173,6 @@ KAROO_LAYOUT_CHECKS(ScriptPlayer)
     KAROO_LAYOUT_SIZE(0xf53f4);
 }
 
-
 /* The one slot of ScriptPlayer's vtable. */
 extern "C" __declspec(dllexport) ScriptPlayer *__attribute__((thiscall))
 ScriptPlayer_ScalarDestructor(ScriptPlayer *self, unsigned char flags);

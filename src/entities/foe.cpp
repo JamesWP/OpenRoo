@@ -658,20 +658,6 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
     return pendingMove_;
 }
 
-extern "C" __declspec(dllexport) unsigned char __attribute__((thiscall))
-Sim_SpawnFoeObject(Game *self, unsigned int uArg, unsigned int vArg,
-                   unsigned int hArg, unsigned int kindArg,
-                   unsigned int typeArg)
-{
-    return Foe::spawn(self, uArg, vArg, hArg, kindArg, typeArg);
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveFoeObject(Game *self, unsigned int idArg)
-{
-    Foe::remove(self, idArg);
-}
-
 /* GameTick's foe loop calls chooseTarget once per foe to pick this tick's
  * target, then dropBomb, checkPlayerContact and finishDespawn as needed; the
  * Game and Player values it passes are read once, here. */

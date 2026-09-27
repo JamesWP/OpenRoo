@@ -478,15 +478,3 @@ void SlideObject::tick()
     t->setSlidePos(posU_, posY_, posV_);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnSlideObject(Game *self, unsigned int uArg, unsigned int vArg,
-                     unsigned int heightArg, unsigned int kindArg)
-{
-    SlideObject::spawn(self, uArg, vArg, heightArg, kindArg);
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeSlideObjects(Game *self)
-{
-    SlideObject::purgeAll(self);
-}

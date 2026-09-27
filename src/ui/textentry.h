@@ -52,7 +52,6 @@ KAROO_LAYOUT_CHECKS(TextEntry)
     KAROO_LAYOUT_SIZE(0x0f);
 }
 
-
 /* The one slot of TextEntry's vtable. */
 extern "C" __declspec(dllexport) TextEntry *__attribute__((thiscall))
 TextEntry_ScalarDestructor(TextEntry *self, unsigned char flags);

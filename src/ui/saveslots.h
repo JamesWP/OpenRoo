@@ -91,4 +91,3 @@ SaveSlots_RestoreVtable(SaveSlots *self);
 extern "C" __declspec(dllexport) void *__attribute__((thiscall))
 SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags);
 
-/* Called by the Game's construction. */

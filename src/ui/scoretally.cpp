@@ -24,7 +24,6 @@
 #include "menutree.h"
 #include "record.h"
 
-
 static int s_fx = -1;
 
 /* The clock truncated to whole milliseconds, low word. */

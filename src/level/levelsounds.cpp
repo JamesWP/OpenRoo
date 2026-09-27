@@ -28,7 +28,6 @@
 class CStaticSoundbuffer;
 #include "voicepool.h"
 
-
 static int s_fx = -1;
 
 static CStaticSoundbuffer *acq(Game *game, const SoundAssetName *asset)

@@ -105,6 +105,3 @@ KAROO_LAYOUT_CHECKS(Foe)
     KAROO_LAYOUT_SIZE(0x15e);
 }
 
-/* Removes the foe with this ID, for callers outside the class. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveFoeObject(Game *self, unsigned int idArg);

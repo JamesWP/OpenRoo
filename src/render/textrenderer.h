@@ -92,25 +92,9 @@ private:
     SceneTexture  atlas_;
 };
 
-
-/* ─── Exports ──────────────────────────────────────────────────────────────
- *
- * The three plain draws are __thiscall with ten stack arguments.
- */
-
-
-
-/* The path, and the Direct3D the atlas is created against. */
-
-/* The big-text pair take thirteen stack arguments: the ten the other three
- * take plus (amplitude, rate, n). */
-
-
 /* The lifecycle, for the two global fonts. */
 extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
 Text_ScalarDtor(TextRenderer *self, unsigned int flags);
-
-/* Twelve stack arguments. */
 
 /* The two fonts: fonts\font1.fon and fonts\numbers.fon. */
 extern TextRenderer g_fontMain;
