@@ -1,20 +1,17 @@
-/* Layout checks for classes that overlay game-owned memory.
- *
- * What we rely on is where each field sits relative to the address the GAME
- * uses for the object -- the Game pointer, the `tileBase + (v + u*100)*0x7f`
- * tile pointer, the pointer operator new returned.  That is what is checked,
- * and nothing else: padding sizes never are, so a layout may be reshaped (a
- * gap split into a new field, a struct re-rooted) without any check changing.
- *
- * Usage, gtest-style -- nothing else needs to know the class exists:
+/* Layout checks for classes whose byte layout is fixed: sub-objects of the
+ * Game, tiles, objects of a set size.  What is checked is where each field
+ * sits relative to the address the code uses for the object (the Game pointer,
+ * the tile pointer, the allocation), and nothing else.  Padding is never
+ * checked, so a layout can be reshaped (a gap split into a field, a struct
+ * re-rooted) without a check changing.
  *
  *     class __attribute__((packed)) LiftObject {
  *     public:
  *         static const int ORIGIN = 0;   // our first byte, relative to the
- *         ...                            // game's address for the object
+ *         ...                            // object's address
  *     private:
  *         KAROO_LAYOUT_REGISTER(LiftObject);
- *         double now_;                   // +0x04
+ *         double now_;
  *         ...
  *     };
  *
@@ -24,14 +21,11 @@
  *         KAROO_LAYOUT_SIZE(0x4c);
  *     }
  *
- * Each check is BOTH
- *   - a static_assert, so the DLL build itself fails on a misplaced field;
- *   - a runtime result, recorded when layouttest.exe (`make check-layout`)
- *     runs the class's check function.
- * KAROO_LAYOUT_REGISTER adds a static registrar that puts the check function
- * on a global list before main(); layouttest.exe links every DLL object and
- * walks that list, so no test file or Makefile lists the classes.
- */
+ * Each check is a static_assert, so a misplaced field fails the build.  It is
+ * also recorded at run time in a LayoutReport, and KAROO_LAYOUT_REGISTER puts
+ * the class's check function on a global list before main(), for a test runner
+ * to walk; no runner is built at present. */
+
 #pragma once
 
 #include <stddef.h>
@@ -39,7 +33,7 @@
 namespace karoo {
 
 /* The one rule: our offset, shifted by where our struct starts, must land on
- * the game's offset.  Used by the macros and by layouttest's self-test. */
+ * the object's offset. */
 constexpr bool layoutAt(long origin, size_t ourOffset, long gameOffset)
 {
     return origin + (long)ourOffset == gameOffset;
@@ -62,8 +56,8 @@ struct LayoutReport {
     }
 };
 
-/* One registered class.  Constructed by KAROO_LAYOUT_REGISTER's static
- * member before main(); links itself onto the list. */
+/* One registered class.  KAROO_LAYOUT_REGISTER's static member constructs it
+ * before main(), and it links itself onto the list. */
 struct LayoutSuite {
     const char  *name;
     void       (*run)(LayoutReport &);
@@ -75,7 +69,7 @@ struct LayoutSuite {
         head() = this;
     }
 
-    /* Constant-initialised, so it is valid before any registrar runs. */
+    // Constant-initialised, so it is valid before any registrar runs.
     static LayoutSuite *&head()
     {
         static LayoutSuite *h = nullptr;
@@ -83,11 +77,11 @@ struct LayoutSuite {
     }
 };
 
-}  // namespace karoo
+}
 
 /* Inside the class body (private).  Declares the check function and the
- * registrar; `static inline` means one registrar however many files include
- * the header, and none if no linked file does. */
+ * registrar; static inline makes one registrar however many files include the
+ * header. */
 #define KAROO_LAYOUT_REGISTER(Class)                                        \
     typedef Class KarooLayoutSelf;                                          \
     static void karooCheckLayout(karoo::LayoutReport &karooReport_);        \
@@ -98,14 +92,13 @@ struct LayoutSuite {
 #define KAROO_LAYOUT_CHECKS(Class)                                          \
     inline void Class::karooCheckLayout(karoo::LayoutReport &karooReport_)
 
-/* `member` must be at `gameOffset` from the game's address for the object.
+/* member must be at gameOffset from the object's address.
  *
- * -Winvalid-offsetof is silenced around these two statements only: a class
- * deriving from a packed base (Bomb : MovableEntity) is not standard-layout,
- * so offsetof on it is "conditionally supported" -- and GCC supports it,
- * placing the derived members straight after the packed base, which is
- * exactly what these asserts then check.  The pragma cannot go inside the
- * expression, hence statement level. */
+ * -Winvalid-offsetof is silenced around these two statements only.  A class
+ * derived from a packed base (Bomb : MovableEntity) is not standard-layout, so
+ * offsetof on it is only conditionally supported; GCC supports it and places
+ * the derived members straight after the base, which is what the asserts
+ * check.  The pragma cannot go inside an expression. */
 #define KAROO_LAYOUT_AT(member, gameOffset)                                 \
     _Pragma("GCC diagnostic push")                                          \
     _Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")                \
@@ -119,7 +112,7 @@ struct LayoutSuite {
                         #member " at " #gameOffset);                        \
     _Pragma("GCC diagnostic pop")
 
-/* Only where the size is relied on -- an object the game allocates. */
+/* Only where the size is relied on: an object of a set size. */
 #define KAROO_LAYOUT_SIZE(size)                                             \
     static_assert(sizeof(KarooLayoutSelf) == (size),                        \
                   "sizeof must be " #size);                                 \
