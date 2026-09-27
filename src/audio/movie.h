@@ -38,10 +38,7 @@ private:
 
     void  *vtable;
     void  *log_obj;  // the logger given to Setup
-    DWORD  field_0x8;
-    BYTE   _pad[0x104];  // zeroed by the constructor
     DWORD  state;  // 3 playing (Notify acts), 1 finished (the window procedure clears its flag)
-    DWORD  _tail[4];
     // The overlay colour key, set by WinMain for a player that would use it.
     DWORD  useColorKey;  // WinMain sets 1
     DWORD  colorKey[4];  // COLORKEY {CK_RGB, palette index 0, low 0, high 0}

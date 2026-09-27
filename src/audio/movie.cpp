@@ -12,7 +12,9 @@ FaktMovie g_movie;
  * nothing. */
 void FaktMovie::construct()
 {
-    memset((char *)this + 4, 0, 0x134);
+    void *vt = vtable;
+    memset(this, 0, sizeof(*this));
+    vtable = vt;
     notify_msg = 0xfd;
 }
 

@@ -6,7 +6,7 @@
  *   - every live particle's position, velocity, life and colour.  They are
  *     integrated against dt, so they are the state most sensitive to timing,
  *     and they are live on the menus as well as in a level;
- *   - a few Game fields, while a Game exists, as raw bytes.
+ *   - a few Game fields, while a Game exists, as the bytes of their values.
  *
  * Floats are hashed as their bytes: bit-exactness is the property under test,
  * and a tolerance would hide the drift it looks for.  Order is part of the
@@ -16,21 +16,56 @@
 #include "particles.h"
 #include "log.h"
 #include "game.h"
+#include "player.h"
+#include <string.h>
 #include <stdio.h>
 
-/* The Game fields hashed, by offset and width.  They are logged under their
- * offsets rather than their meanings, so a wrong label cannot mislead a
- * determinism result; five are Player fields, reached through the Game. */
-static const struct { DWORD off; DWORD len; const char *tag; } GAME_FIELDS[] = {
-    { 0x1751ee, 12, "pos"     },  // three floats: the player's position
-    { 0x175406,  4, "f175406" },  // gems collected
-    { 0x04224d,  1, "f04224d" },  // foes killed, a byte
-    { 0x2ab595,  4, "f2ab595" },  // elapsed ms
-    { 0x1753f5,  4, "f1753f5" },  // running score
-    { 0x170a64,  1, "f170a64" },  // vitality, a byte
-    { 0x1752e8,  4, "f1752e8" },  // the move state and the low three bytes of falling
-    { 0x1752b8,  4, "f1752b8" },  // level-complete flag
+/* The Game fields hashed, each as the bytes of its value.  They are logged
+ * under their original offsets rather than their meanings, so a wrong label
+ * cannot mislead a determinism result, and old logs stay comparable; five are
+ * Player fields, reached through the Game. */
+struct HashedField {
+    const char   *tag;
+    unsigned char bytes[12];
+    DWORD         len;
 };
+
+static void put(HashedField *f, const char *tag, const void *p, DWORD len)
+{
+    f->tag = tag;
+    f->len = len;
+    memcpy(f->bytes, p, len);
+}
+
+/* Fills out[] and returns how many. */
+static int game_fields(const Game *g, HashedField *out)
+{
+    const Player *pl = g->player();
+    int n = 0;
+    float pos[3] = { pl->posU(), pl->posY(), pl->posV() };
+    int gems = pl->gemsCollected();
+    unsigned char killed = g->foesKilled();
+    unsigned elapsed = g->timeElapsed();
+    int score = pl->score();
+    unsigned char vitality = g->vitalityPercent();
+    // The move state and the low three bytes of falling.
+    unsigned char move[4];
+    int falling = pl->falling();
+    move[0] = pl->moveState();
+    memcpy(move + 1, &falling, 3);
+    int held = pl->held();  // level-complete flag
+
+    put(&out[n++], "pos",     pos,       12);
+    put(&out[n++], "f175406", &gems,     4);
+    put(&out[n++], "f04224d", &killed,   1);
+    put(&out[n++], "f2ab595", &elapsed,  4);
+    put(&out[n++], "f1753f5", &score,    4);
+    put(&out[n++], "f170a64", &vitality, 1);
+    put(&out[n++], "f1752e8", move,      4);
+    put(&out[n++], "f1752b8", &held,     4);
+    return n;
+}
+
 
 static int      g_on = -1;
 static HANDLE   g_fh = INVALID_HANDLE_VALUE;
@@ -100,19 +135,22 @@ void dethash_frame_end(double virtual_seconds)
 
     char fields[256];
     int  fl = 0;
-    const unsigned char *game = (const unsigned char *)Game::instance();
+    const Game *game = Game::instance();
     if (game) {
-        for (size_t i = 0; i < sizeof(GAME_FIELDS) / sizeof(GAME_FIELDS[0]); i++) {
-            fold(game + GAME_FIELDS[i].off, GAME_FIELDS[i].len);
+        HashedField f[8];
+        int count = game_fields(game, f);
+        for (int i = 0; i < count; i++) {
+            fold(f[i].bytes, f[i].len);
             if (fl >= (int)sizeof(fields) - 32) continue;
-            if (GAME_FIELDS[i].len == 4)
+            if (f[i].len == 4) {
+                DWORD v;
+                memcpy(&v, f[i].bytes, 4);
                 fl += snprintf(fields + fl, sizeof(fields) - fl, " %s=%08lx",
-                               GAME_FIELDS[i].tag,
-                               (unsigned long)*(const DWORD *)(game + GAME_FIELDS[i].off));
-            else if (GAME_FIELDS[i].len == 1)
+                               f[i].tag, (unsigned long)v);
+            } else if (f[i].len == 1) {
                 fl += snprintf(fields + fl, sizeof(fields) - fl, " %s=%02x",
-                               GAME_FIELDS[i].tag,
-                               (unsigned)*(const BYTE *)(game + GAME_FIELDS[i].off));
+                               f[i].tag, (unsigned)f[i].bytes[0]);
+            }
         }
     }
 

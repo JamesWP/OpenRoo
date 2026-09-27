@@ -12,7 +12,7 @@ class Game;
 struct CameraFocus;
 
 /* One foe's pose, 0x1d bytes. */
-class __attribute__((packed)) FoePose {
+class FoePose {
 public:
      
 

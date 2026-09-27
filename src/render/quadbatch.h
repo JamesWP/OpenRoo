@@ -1,7 +1,7 @@
 /* quadbatch.h -- the level's quad-batch objects (quadbatch.cpp). */
 #pragma once
-struct QuadVerts;
+struct LevelPlacements;
+class ThemeAssetBlock;
 class RenderDevice;
-/*  (placements, theme block, d3d); one caller, RenderGameFrame. */
-  void  
-QuadBatch_Draw(QuadVerts *verts, void *game, RenderDevice *d3d);
+void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
+                    RenderDevice *d3d);

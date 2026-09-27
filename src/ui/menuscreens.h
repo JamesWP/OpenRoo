@@ -25,10 +25,10 @@ extern SceneTexture g_menuTexOff;
 class Game;
 class RenderDevice;
 class TextRenderer;
+class ThemeAssetBlock;
 
 /* The full-screen backdrop every menu screen opens with. */
-  void  
-Menu_DrawBackdrop(RenderDevice *d3d, void *theme);
+void Menu_DrawBackdrop(RenderDevice *d3d, ThemeAssetBlock *theme);
 
 /* The two animated markers either side of the highlighted row.  rowOffset
  * shifts them, in 640-wide screen units (0 on the main menu). */
@@ -36,24 +36,22 @@ Menu_DrawBackdrop(RenderDevice *d3d, void *theme);
 Menu_DrawCursorMarkers(Game *g, RenderDevice *d3d, DWORD ms, float rowOffset);
 
 /* Node 0: the main menu. */
-  void  
-Menu_RenderMainMenu(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
+void
+Menu_RenderMainMenu(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
                     DWORD ms);
 
 /* Node 4: Controls, Video, Audio. */
-  void  
-Menu_RenderOptionsMenu(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
+void
+Menu_RenderOptionsMenu(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
                        DWORD ms);
 
 /* Node 2, Load Game: the save-slot names. */
-  void  
-Menu_RenderRestoreSlotList(Game *g, void *theme, RenderDevice *d3d,
-                           TextRenderer *text, DWORD ms);
+void Menu_RenderRestoreSlotList(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                                TextRenderer *text, DWORD ms);
 
 /* Node 0x2a, Save Game (from the level-complete screen). */
-  void  
-Menu_RenderSaveSlotList(Game *g, void *theme, RenderDevice *d3d,
-                        TextRenderer *text, DWORD ms);
+void Menu_RenderSaveSlotList(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                             TextRenderer *text, DWORD ms);
 
 /* Builds the static quads, the widget model and the nine textures the screens
  * draw with; once per device. */
@@ -61,23 +59,20 @@ Menu_RenderSaveSlotList(Game *g, void *theme, RenderDevice *d3d,
 Menu_BuildMenuGeometry(RenderDevice *d3d, const char *prefix);
 
 /* Node 0xa: the key-binding page. */
-  void  
-Menu_RenderControlsRemap(Game *g, void *theme, RenderDevice *d3d,
-                         TextRenderer *text, DWORD ms);
+void Menu_RenderControlsRemap(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                              TextRenderer *text, DWORD ms);
 
 /* That page's own cursor markers. */
   void  
 Menu_DrawControlsCursorMarkers(Game *g, RenderDevice *d3d, DWORD ms);
 
 /* Node 0xb: the video options. */
-  void  
-Menu_RenderVideoOptions(Game *g, void *theme, RenderDevice *d3d,
-                        TextRenderer *text, DWORD ms);
+void Menu_RenderVideoOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                             TextRenderer *text, DWORD ms);
 
 /* Node 0xc: the audio options. */
-  void  
-Menu_RenderSoundOptions(Game *g, void *theme, RenderDevice *d3d,
-                        TextRenderer *text, DWORD ms);
+void Menu_RenderSoundOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                             TextRenderer *text, DWORD ms);
 
 /* Node 5: the credits; nowMs is the millisecond clock. */
   void  
@@ -85,10 +80,10 @@ Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
                          DWORD nowMs);
 
 /* Picks and draws the screen for the current menu node. */
-  void  
-Menu_DispatchGameState(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
+void
+Menu_DispatchGameState(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
                        DWORD ms);
 
 /* A level-select theme page. */
-void Menu_RenderLevelSelect(Game *g, void *theme, RenderDevice *d3d,
+void Menu_RenderLevelSelect(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
                             TextRenderer *text, DWORD ms);

@@ -79,6 +79,12 @@ public:
     const PlacementList   &conveyors() const    { return conveyors_; }
     const PlacementList   &destructibles() const { return destructibles_; }
 
+    int kind01Count() const { return kind01Count_; }
+    PlacementVertex* kind01Verts() const { return kind01Verts_; }
+
+    int wallStripCount() const {return wallStripCount_;}
+    PlacementVertex * wallStripVerts() const { return wallVerts_;}
+
 private:
     void buildWalls(const Game *g, float depth);
 
