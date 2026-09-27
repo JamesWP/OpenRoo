@@ -222,27 +222,27 @@ static void opaque_passes(Game *g, double now, double elapsed)
     RenderDevice *d3d = g_renderDevice;
 
     MeshBatch_Draw(pl, &g_themeBlock, d3d);
-    rso_list(pl->switches,    THEME_OBJ_SWITCH,        now);
-    rso_list(pl->conveyors,   THEME_OBJ_ICE,           now);
-    rso_list(pl->glue,        THEME_OBJ_GLUE,          now);
-    rso_list(pl->breakables,  THEME_OBJ_DESTRUCTFIELD, now);
+    rso_list(pl->switches(),    THEME_OBJ_SWITCH,        now);
+    rso_list(pl->conveyors(),   THEME_OBJ_ICE,           now);
+    rso_list(pl->glue(),        THEME_OBJ_GLUE,          now);
+    rso_list(pl->breakables(),  THEME_OBJ_DESTRUCTFIELD, now);
     /* the jump pads animate: a 500 ms cycle, animation code 0x14 */
-    rso(pl->jumpPads.pos, pl->jumpPads.rot, pl->jumpPads.count, THEME_OBJ_JUMPPAD, now,
+    rso(pl->jumpPads().pos, pl->jumpPads().rot, pl->jumpPads().count, THEME_OBJ_JUMPPAD, now,
         (float)fmod(now * 0.002, 1.0), 0x14, 0);
-    rso_list(pl->teleporters, THEME_OBJ_TELEPORTER,    now);
+    rso_list(pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
     QuadBatch_Draw((QuadVerts *)pl, &g_themeBlock, d3d);
-    rso_list(pl->ramps,       THEME_OBJ_STAIR,         now);
-    LevelPlacements_DrawLifts(g, pl, &g_themeBlock, d3d, now);
-    LevelPlacements_DrawSlides(g, pl, &g_themeBlock, d3d, now);
+    rso_list(pl->ramps(),       THEME_OBJ_STAIR,         now);
+    pl->drawLifts(g, &g_themeBlock, d3d, now);
+    pl->drawSlides(g, &g_themeBlock, d3d, now);
 
     /* The destructible blocks: whole, or (while the cell's +0x203 is set)
      * the fx model, starting the debris on the cell's +0x20f latch.  Only
      * the first fx draw of the frame gets the elapsed-ms argument.  The
      * counter is a byte. */
     bool firstFx = true;
-    for (unsigned char i = 0; i < (unsigned)pl->destructibles.count; ++i) {
-        const float *pos = pl->destructibles.pos[i];
-        const float *rot = pl->destructibles.rot[i];
+    for (unsigned char i = 0; i < (unsigned)pl->destructibles().count; ++i) {
+        const float *pos = pl->destructibles().pos[i];
+        const float *rot = pl->destructibles().rot[i];
         const int v = (unsigned char)(int)(pos[2] * -1.0f);
         Tile *t = g->map()->tile((unsigned char)(int)pos[0], v);
         if (t->field203() == 0) {
@@ -272,8 +272,8 @@ static void opaque_passes(Game *g, double now, double elapsed)
     rso(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
         g->player()->anim(), 0);
 
-    rso_list(pl->climbs, THEME_OBJ_SLIDE, now);
-    rso(pl->exitPos, pl->exitRot, 1, THEME_OBJ_EXIT, now);
+    rso_list(pl->climbs(), THEME_OBJ_SLIDE, now);
+    rso(pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now);
 
     /* The items, cell by cell. */
     LevelMap *map = g->map();
@@ -493,16 +493,16 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
     if (g->videoParticles() != 0) {
         particles(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, elapsed);
-        particles_list(pl->switches,      THEME_OBJ_SWITCH,        now, elapsed);
-        particles_list(pl->destructibles, THEME_OBJ_OBSTACLE,      now, elapsed);
-        particles_list(pl->ramps,         THEME_OBJ_STAIR,         now, elapsed);
-        particles_list(pl->conveyors,     THEME_OBJ_ICE,           now, elapsed);
-        particles_list(pl->glue,          THEME_OBJ_GLUE,          now, elapsed);
-        particles_list(pl->breakables,    THEME_OBJ_DESTRUCTFIELD, now, elapsed);
-        particles_list(pl->jumpPads,      THEME_OBJ_JUMPPAD,       now, elapsed);
-        particles_list(pl->teleporters,   THEME_OBJ_TELEPORTER,    now, elapsed);
-        particles(pl->exitPos, pl->exitRot, 1, THEME_OBJ_EXIT, now, elapsed);
-        particles_list(pl->climbs,        THEME_OBJ_SLIDE,         now, elapsed);
+        particles_list(pl->switches(),      THEME_OBJ_SWITCH,        now, elapsed);
+        particles_list(pl->destructibles(), THEME_OBJ_OBSTACLE,      now, elapsed);
+        particles_list(pl->ramps(),         THEME_OBJ_STAIR,         now, elapsed);
+        particles_list(pl->conveyors(),     THEME_OBJ_ICE,           now, elapsed);
+        particles_list(pl->glue(),          THEME_OBJ_GLUE,          now, elapsed);
+        particles_list(pl->breakables(),    THEME_OBJ_DESTRUCTFIELD, now, elapsed);
+        particles_list(pl->jumpPads(),      THEME_OBJ_JUMPPAD,       now, elapsed);
+        particles_list(pl->teleporters(),   THEME_OBJ_TELEPORTER,    now, elapsed);
+        particles(pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now, elapsed);
+        particles_list(pl->climbs(),        THEME_OBJ_SLIDE,         now, elapsed);
 
         for (unsigned char i = 0; i < g->foeCount(); ++i) {
             Foe *f = g->foeSlot(g->foeId(i));

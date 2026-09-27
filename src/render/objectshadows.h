@@ -5,7 +5,7 @@
 #include <windows.h>
 
 class Game;
-struct LevelPlacements;
+class LevelPlacements;
 class ThemeObjectTypeSlot;
 class RenderDevice;
 

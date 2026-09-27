@@ -316,7 +316,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     }
 
     // Settings are saved after the Game is deleted; the device goes last.
-    LevelPlacements_Release(&g_levelPlacements);
+    g_levelPlacements.release();
     delete_game(Game::instance());
     Input_TrySaveSettings();
     Theme_ReleaseBlock(&g_themeBlock);
