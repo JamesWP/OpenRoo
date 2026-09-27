@@ -39,7 +39,7 @@ public:
     CFaktSound *cfaktSound() { return &cfaktSound_; }
 #pragma GCC diagnostic pop
 
-    IDirectSound *directSound() const { return cfaktSound_.directsound; }
+    IDirectSound *directSound() const { return cfaktSound_.directsound(); }
 
     // Returns 0 if sound is not up or the 3D listener fails.  On a mode
     // change, reloads every buffer, duplicate and voice pool in the 3D list
