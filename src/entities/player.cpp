@@ -30,11 +30,6 @@
 #include "log.h"
 
 #include "movableentity.h"
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Set3DPosition(CStaticSoundbuffer *self,
-                      float x, float y, float z, DWORD dwApply);
 
 /* Durations in ms; the rise rate is per ms. */
 static const float  K_LAND_Y      = 1.0f;
@@ -87,8 +82,7 @@ int Player::soundVariant() const
 
 void Player::playAtCell(CStaticSoundbuffer *buf) const
 {
-    CStatic_Set3DPosition(buf,
-                          (float)(int)cellU_,
+    buf->set3DPosition((float)(int)cellU_,
                           (float)(int)heightCell_,
                           -(float)(int)cellV_,
                           1);
@@ -101,7 +95,7 @@ void Player::pickupSound(const SoundRef *arr) const
 
     if (buf != NULL) {
         playAtCell(buf);
-        CStatic_TriggerPlayback(arr[soundVariant()], 0);
+        (arr[soundVariant()])->triggerPlayback(0);
     }
 }
 
@@ -253,7 +247,7 @@ unsigned int Player::updateTileEffects()
                 CStaticSoundbuffer *buf = pickupSounds_[SND_19A][worldSoundVariant_];
                 if (buf != NULL) {
                     playAtCell(buf);
-                    CStatic_TriggerPlayback(pickupSounds_[SND_19A][worldSoundVariant_], 0);
+                    pickupSounds_[SND_19A][worldSoundVariant_]->triggerPlayback(0);
                 }
             }
             pickedUp_ = 5;

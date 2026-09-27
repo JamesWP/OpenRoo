@@ -283,9 +283,9 @@ void BridgeObject::purgeAll(Game *game)
 void BridgeObject::playArmSound()
 {
     if (sound_ != 0) {
-        CStatic_Set3DPosition(sound_, (float)(int)cellU_, (float)(int)heightCell_,
+        sound_->set3DPosition((float)(int)cellU_, (float)(int)heightCell_,
                               -(float)(int)cellV_, 1);
-        CStatic_TriggerPlayback(sound_, 1);
+        sound_->triggerPlayback(1);
     }
 }
 
@@ -345,7 +345,7 @@ void BridgeObject::tick()
             //             // Snaps to (int)(step * span) + rest, never the live coordinate:
             //             // one cell index, then both floats.
             if (sound_ != 0)
-                CStatic_HaltPlayback(sound_);
+                sound_->haltPlayback();
             armed_ = 0;
             phase_ = 1;
 
@@ -363,7 +363,7 @@ void BridgeObject::tick()
 
         //         // The sound is placed from last frame's cell, before the move.
         if (sound_ != 0)
-            CStatic_Set3DPosition(sound_, (float)(int)cellU_,
+            sound_->set3DPosition((float)(int)cellU_,
                                   (float)(int)heightCell_,
                                   -(float)(int)cellV_, 1);
 
@@ -411,7 +411,7 @@ void BridgeObject::tick()
     if (!((long double)span100 > elapsed)) {
         //             // Snaps back to rest.
         if (sound_ != 0)
-            CStatic_HaltPlayback(sound_);
+            sound_->haltPlayback();
         armed_ = 0;
         phase_ = 0;
 
@@ -426,7 +426,7 @@ void BridgeObject::tick()
     }
 
     if (sound_ != 0)
-        CStatic_Set3DPosition(sound_, (float)(int)cellU_,
+        sound_->set3DPosition((float)(int)cellU_,
                               (float)(int)heightCell_,
                               -(float)(int)cellV_, 1);
 

@@ -21,10 +21,8 @@
 #include "gameglobals.h"
 #include "record.h"
 
-struct CStaticSoundbuffer;
+#include "static.h"
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Reset(CStaticSoundbuffer *self);
 
 static int s_fx = -1;
 
@@ -36,7 +34,7 @@ static CStaticSoundbuffer *bank(Game *game, CStaticSoundbuffer *cur,
 {
     char path[256];
     if (cur != NULL)
-        CStatic_Reset(cur);
+        cur->reset();
     sprintf(path, fmt, g_gameDir, suffix);
     return game->soundManager()->acquireStatic(path, 0);
 }

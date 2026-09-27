@@ -357,7 +357,7 @@ void Foe::remove(Game *game, unsigned int idArg)
         release(sm, *slot, (*slot)->sound_bb_, 0);
 
         if ((*slot)->sound_c3_ != 0) {
-            CStatic_HaltPlayback((*slot)->sound_c3_);
+            ((*slot)->sound_c3_)->haltPlayback();
             release(sm, *slot, (*slot)->sound_c3_, 0);
         }
 

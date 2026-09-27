@@ -368,7 +368,7 @@ void SlideObject::tick()
 
         if (done) {
             if (sound_ != 0)
-                CStatic_HaltPlayback(sound_);
+                sound_->haltPlayback();
 
             if (s_diag_block && !s_logged_advance) {
                 s_logged_advance = 1;
@@ -379,7 +379,7 @@ void SlideObject::tick()
         }
 
         if (sound_ != 0)
-            CStatic_Set3DPosition(sound_, (float)(int)cellU_, posY_,
+            sound_->set3DPosition((float)(int)cellU_, posY_,
                                   -(float)(int)cellV_, 1);
     }
 
@@ -427,7 +427,7 @@ void SlideObject::tick()
         if (done) {
             atLimit_ = 0;
             if (sound_ != 0)
-                CStatic_HaltPlayback(sound_);
+                sound_->haltPlayback();
 
             if (s_diag_block && !s_logged_retreat) {
                 s_logged_retreat = 1;
@@ -437,7 +437,7 @@ void SlideObject::tick()
         }
 
         if (sound_ != 0)
-            CStatic_Set3DPosition(sound_, (float)(int)cellU_, posY_,
+            sound_->set3DPosition((float)(int)cellU_, posY_,
                                   -(float)(int)cellV_, 1);
     }
 
@@ -462,7 +462,7 @@ void SlideObject::tick()
             }
 
             if (sound_ != 0)
-                CStatic_TriggerPlayback(sound_, 1);
+                sound_->triggerPlayback(1);
         }
     }
 

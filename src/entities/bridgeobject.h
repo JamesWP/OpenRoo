@@ -10,7 +10,7 @@
 #include "layout.h"
 #include "game.h"
 
-struct CStaticSoundbuffer;
+class CStaticSoundbuffer;
 
 /* An FVF 0x242 vertex: XYZ, diffuse, two texture-coordinate sets. */
 struct BridgeVertex {

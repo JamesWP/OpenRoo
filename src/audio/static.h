@@ -11,25 +11,67 @@
 
 /* One buffer.  It remembers its file, flags and logger so it can be reloaded
  * (on a lost buffer, or a 2D/3D switch) and duplicated. */
-struct __attribute__((packed)) CStaticSoundbuffer {
+class __attribute__((packed)) CStaticSoundbuffer {
+public:
     static const int ORIGIN = 0;
 
-    void                  *vtable;
-    void                  *logger;     // stored, never used here
-    char                  *filename;   // heap copy of the path
-    DWORD                  dwDsFlags;  // the flags it was loaded with
-    IDirectSoundBuffer    *soundbuffer;
-    IDirectSound3DBuffer  *threeDBuffer;  // NULL for a 2D buffer
+    /* The scalar/vector deleting destructor, the one vtable slot: bit 1 means
+     * an array, bit 0 frees the block.  Returns the block destroyed: this, or
+     * for an array the count header four bytes below the first element. */
+    static void *__attribute__((thiscall))
+    scalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
 
+    CStaticSoundbuffer *init();  // returns this
+    void reinitBuffer();         // sets the vtable, then reset
+    void reset();                // releases the buffers and frees the file name
+    int  createAndLoad3DSoundFile(IDirectSound *pDS, DWORD dwDsFlags,
+                                  const char *filename, void *logger);
+
+    /* Loads filename into a fresh buffer; returns 1 or 0.  The 3D form adds
+     * DSBCAPS_CTRL3D and queries the 3D interface. */
+    int  createAndLoadFile(IDirectSound *pDS, DWORD dwDsFlags,
+                           const char *filename, void *logger);
+
+    /* Reloads this buffer's own file under a new 3D mode, if it differs. */
+    int  createAndLoad(IDirectSound *pDS, DWORD set3D);
+
+    /* Turns the 3D processing on or off on a loaded 3D buffer. */
+    int  apply3DMode(int enable3D);
+
+    /* Duplicates other into this.  Returns other on success and NULL on
+     * failure, which is what makes the callers' `== src` test a success test.
+     * A non-zero flag suppresses the reload-from-file fallback when
+     * duplication fails. */
+    void *copy(IDirectSound *pDS, CStaticSoundbuffer *other, int flag);
+    /* Restores a lost buffer and refills it from the file. */
+    int  restoreBuffer();
+    int  triggerPlayback(DWORD dwLoopFlags);
+    void haltPlayback();
+    void set3DPosition(float x, float y, float z, DWORD dwApply);
+
+    void                 *vtable() const       { return vtable_; }
+    void                 *logger() const       { return logger_; }
+    char                 *filename() const     { return filename_; }
+    DWORD                 dsFlags() const      { return dwDsFlags_; }
+    IDirectSoundBuffer   *soundbuffer() const  { return soundbuffer_; }
+    IDirectSound3DBuffer *threeDBuffer() const { return threeDBuffer_; }
+
+private:
 /* COM out-parameters need the field's address; both are 4-aligned, so the
  * packed-member warning is moot. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-    IDirectSoundBuffer   **soundbufferSlot() { return &soundbuffer; }
-    IDirectSound3DBuffer **threeDBufferSlot() { return &threeDBuffer; }
+    IDirectSoundBuffer   **soundbufferSlot() { return &soundbuffer_; }
+    IDirectSound3DBuffer **threeDBufferSlot() { return &threeDBuffer_; }
 #pragma GCC diagnostic pop
 
-private:
+    void                  *vtable_;
+    void                  *logger_;     // stored, never used here
+    char                  *filename_;   // heap copy of the path
+    DWORD                  dwDsFlags_;  // the flags it was loaded with
+    IDirectSoundBuffer    *soundbuffer_;
+    IDirectSound3DBuffer  *threeDBuffer_;  // NULL for a 2D buffer
+
     KAROO_LAYOUT_REGISTER(CStaticSoundbuffer);
 };
 
@@ -37,67 +79,16 @@ private:
  * with a stride of 0x18. */
 KAROO_LAYOUT_CHECKS(CStaticSoundbuffer)
 {
-    KAROO_LAYOUT_AT(vtable,       0x00);
-    KAROO_LAYOUT_AT(logger,       0x04);
-    KAROO_LAYOUT_AT(filename,     0x08);
-    KAROO_LAYOUT_AT(dwDsFlags,    0x0C);
-    KAROO_LAYOUT_AT(soundbuffer,  0x10);
-    KAROO_LAYOUT_AT(threeDBuffer, 0x14);
+    KAROO_LAYOUT_AT(vtable_,       0x00);
+    KAROO_LAYOUT_AT(logger_,       0x04);
+    KAROO_LAYOUT_AT(filename_,     0x08);
+    KAROO_LAYOUT_AT(dwDsFlags_,    0x0C);
+    KAROO_LAYOUT_AT(soundbuffer_,  0x10);
+    KAROO_LAYOUT_AT(threeDBuffer_, 0x14);
     KAROO_LAYOUT_SIZE(0x18);
 }
 
-/* The one-slot vtable every buffer carries. */
-extern "C" __declspec(dllexport) void *CStatic_Vtable(void);
-
-extern "C" {
-/* The scalar/vector deleting destructor: bit 1 means an array, bit 0 frees the
- * block.  Returns the block destroyed: this, or for an array the count header
- * four bytes below the first element. */
-__declspec(dllexport) void * __attribute__((thiscall))
-CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
-
 /* KAROO_SOUND_DIAG=1: logs each caller's first call.  Shared with the
  * streaming buffer (stream.cpp). */
-__declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
-                                                  unsigned long *seen);
-
-__declspec(dllexport) CStaticSoundbuffer * __attribute__((thiscall))
-CStatic_Init(CStaticSoundbuffer *self);  // returns this
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_ReinitBuffer(CStaticSoundbuffer *self);  // sets the vtable, then Reset
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_Reset(CStaticSoundbuffer *self);  // releases the buffers and frees the file name
-__declspec(dllexport) int  __attribute__((thiscall))
-CStatic_CreateAndLoad3DSoundFile(CStaticSoundbuffer *self,
-                                 IDirectSound *pDS, DWORD dwDsFlags,
-                                 const char *filename, void *logger);
-
-/* Loads filename into a fresh buffer; returns 1 or 0.  The 3D form adds
- * DSBCAPS_CTRL3D and queries the 3D interface. */
-__declspec(dllexport) int  __attribute__((thiscall))
-CStatic_CreateAndLoadFile(CStaticSoundbuffer *self,
-                          IDirectSound *pDS, DWORD dwDsFlags,
-                          const char *filename, void *logger);
-
-/* Reloads this buffer's own file under a new 3D mode, if it differs. */
-__declspec(dllexport) int  __attribute__((thiscall))
-CStatic_CreateAndLoad(CStaticSoundbuffer *self, IDirectSound *pDS, DWORD set3D);
-
-/* Turns the 3D processing on or off on a loaded 3D buffer. */
-__declspec(dllexport) int  __attribute__((thiscall))
-CStatic_Apply3DMode(CStaticSoundbuffer *self, int enable3D);
-
-/* Duplicates other into self.  Returns other on success and NULL on failure,
- * which is what makes the callers' `== src` test a success test.  A non-zero
- * flag suppresses the reload-from-file fallback when duplication fails. */
-__declspec(dllexport) void * __attribute__((thiscall))
-CStatic_Copy(CStaticSoundbuffer *self,
-             IDirectSound *pDS, CStaticSoundbuffer *other, int flag);
-__declspec(dllexport) int  __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *self);
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_Set3DPosition(CStaticSoundbuffer *self,
-                      float x, float y, float z, DWORD dwApply);
-}
+extern "C" __declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
+                                                             unsigned long *seen);

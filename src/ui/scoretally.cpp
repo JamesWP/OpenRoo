@@ -24,8 +24,6 @@
 #include "menutree.h"
 #include "record.h"
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 
 static int s_fx = -1;
 
@@ -40,7 +38,7 @@ static void tick_sound(Game *game)
 {
     CStaticSoundbuffer *s = game->fixedSounds()->count;
     if (s != NULL)
-        CStatic_TriggerPlayback(s, 0);
+        s->triggerPlayback(0);
 }
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))

@@ -242,12 +242,11 @@ Tile *BreakableTile::tile() const
 
 void BreakableTile::playAtTile(CStaticSoundbuffer *snd, const Tile *t) const
 {
-    CStatic_Set3DPosition(snd,
-                          (float)(int)cellU_,
+    snd->set3DPosition((float)(int)cellU_,
                           (float)t->height(),
                           -(float)(int)cellV_,
                           1);
-    CStatic_TriggerPlayback(snd, 0);
+    snd->triggerPlayback(0);
 }
 
 void BreakableTile::tick()

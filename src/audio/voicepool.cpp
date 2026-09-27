@@ -6,10 +6,6 @@
 #include <stdlib.h>
 #include "log.h"
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Reset(CStaticSoundbuffer *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *self);
 
 /* KAROO_POOL_DIAG=1 counts calls to every pool function, logs each one's first
  * call, and totals the voices allocated, to tell "the gates never build a
@@ -81,12 +77,12 @@ Sim_VoicePoolCycle(VoicePool *self, DWORD dwLoopFlags)
     if (self->pBufs == 0)
         return (int)0x887800AA;  // DSERR_UNINITIALIZED
 
-    CStatic_HaltPlayback(&self->pBufs[self->dwCurrentIdx]);
+    self->pBufs[self->dwCurrentIdx].haltPlayback();
 
     const int old = self->dwCurrentIdx;
     self->dwCurrentIdx = old + 1;  // stored before the trigger, unwrapped
 
-    const int hr = CStatic_TriggerPlayback(&self->pBufs[old], dwLoopFlags);
+    const int hr = self->pBufs[old].triggerPlayback(dwLoopFlags);
 
     if (self->dwCurrentIdx >= self->dwVoiceCount)  // signed, and after
         self->dwCurrentIdx = 0;
@@ -102,12 +98,12 @@ Sim_BroadcastPoolVoiceCoordinates(VoicePool *self,
                                   float x, float y, float z, DWORD dwApply)
 {
     ++g_nBroadcast; { static unsigned long seen; pool_first("Broadcast", &seen); }
-    if (self->pBufs->threeDBuffer == 0 || self->dwVoiceCount <= 0)
+    if (self->pBufs->threeDBuffer() == 0 || self->dwVoiceCount <= 0)
         return;
 
     int i = 0;
     do {
-        self->pBufs[i].threeDBuffer->SetPosition(x, y, z, dwApply);
+        self->pBufs[i].threeDBuffer()->SetPosition(x, y, z, dwApply);
         i++;
     } while (i < self->dwVoiceCount);
 }
@@ -135,11 +131,11 @@ Sim_VoicePoolWipe(VoicePool *self)
     pool_census();
     if (self->pBufs != 0) {
         for (int i = 0; i < self->dwVoiceCount; i++)  // the count is re-read on every pass
-            CStatic_Reset(&self->pBufs[i]);
+            self->pBufs[i].reset();
 
         if (self->pBufs != 0) {  // re-tested; harmless
             typedef void *(__attribute__((thiscall)) *vec_dtor_fn)(void *self, int flags);
-            vec_dtor_fn dtor = *(vec_dtor_fn *)self->pBufs->vtable;
+            vec_dtor_fn dtor = *(vec_dtor_fn *)self->pBufs->vtable();
             dtor(self->pBufs, 3);
         }
         self->pBufs = 0;
@@ -187,7 +183,7 @@ Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
             *(int *)block = count;
             bufs = (CStaticSoundbuffer *)((char *)block + 4);
             for (int i = 0; i < count; i++)  // voice construction cannot fail
-                CStatic_Init(&bufs[i]);
+                bufs[i].init();
             g_nVoices += (unsigned long)count;
         }
         self->pBufs = bufs;
@@ -195,7 +191,7 @@ Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
 
     // Voice 0 comes off disk.  A failed allocation reaches here as a NULL
     // this, as in the game.
-    if (!CStatic_CreateAndLoad3DSoundFile(&self->pBufs[0], pDS, dwDsFlags,
+    if (!self->pBufs[0].createAndLoad3DSoundFile(pDS, dwDsFlags,
                                           filename, logger)) {
         Sim_VoicePoolWipe(self);
         goto fail;
@@ -204,10 +200,10 @@ Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
     {
         CStaticSoundbuffer *src = self->pBufs;          // voice 0, the template
         for (int i = 1; i < self->dwVoiceCount; i++) {  // the count is re-read on every pass
-            if (CStatic_Copy(&self->pBufs[i], pDS, src, 1) != 0)
+            if (self->pBufs[i].copy(pDS, src, 1) != 0)
                 continue;
             ++g_nCopyFail;
-            if (CStatic_CreateAndLoad3DSoundFile(&self->pBufs[i], pDS,
+            if (self->pBufs[i].createAndLoad3DSoundFile(pDS,
                                                  dwDsFlags, filename, logger))
                 continue;
 
@@ -251,7 +247,7 @@ Sim_VoicePoolClone(VoicePool *self, int count, IDirectSound *pDS,
     Sim_VoicePoolWipe(self);
 
     self->dwVoiceCount = count;
-    self->logger       = src->logger;
+    self->logger       = src->logger();
 
     {
         void *block = malloc((unsigned)(count * 0x18 + 4));
@@ -260,14 +256,14 @@ Sim_VoicePoolClone(VoicePool *self, int count, IDirectSound *pDS,
             *(int *)block = count;
             bufs = (CStaticSoundbuffer *)((char *)block + 4);
             for (int i = 0; i < count; i++)
-                CStatic_Init(&bufs[i]);
+                bufs[i].init();
             g_nVoices += (unsigned long)count;
         }
         self->pBufs = bufs;
     }
 
     for (int i = 0; i < self->dwVoiceCount; i++) {  // the count is re-read on every pass
-        if (CStatic_Copy(&self->pBufs[i], pDS, src, 0) == (void *)src)
+        if (self->pBufs[i].copy(pDS, src, 0) == (void *)src)
             continue;
         ++g_nCopyFail;
 
@@ -276,8 +272,8 @@ Sim_VoicePoolClone(VoicePool *self, int count, IDirectSound *pDS,
             return 0;
 
         if (Sim_VoicePoolFill3D(self, count, pDS,
-                                src->dwDsFlags | DSBCAPS_LOCSOFTWARE,
-                                src->filename, src->logger) == 0)
+                                src->dsFlags() | DSBCAPS_LOCSOFTWARE,
+                                src->filename(), src->logger()) == 0)
             return 0;
         return self->pBufs;
     }
@@ -302,5 +298,5 @@ Sim_VoicePoolFirstFilename(VoicePool *self)
     CStaticSoundbuffer *voice = Sim_VoicePoolGetVoiceAt(self, 0);
     if (voice == 0)
         return 0;
-    return voice->filename;
+    return voice->filename();
 }

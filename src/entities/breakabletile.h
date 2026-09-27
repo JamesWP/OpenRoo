@@ -9,7 +9,7 @@
 #include "layout.h"
 #include "game.h"
 
-struct CStaticSoundbuffer;
+class CStaticSoundbuffer;
 class Tile;
 
 class __attribute__((packed)) BreakableTile {

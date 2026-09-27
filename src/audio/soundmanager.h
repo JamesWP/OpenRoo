@@ -13,7 +13,7 @@
 #include "namedlist.h"
 #include "cfaktsound.h"
 
-struct CStaticSoundbuffer;
+class CStaticSoundbuffer;
 struct VoicePool;
 struct GameLogger;
 
