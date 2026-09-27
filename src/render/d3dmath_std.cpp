@@ -1,10 +1,7 @@
 /* The 3D helpers' maths: plain float, the C library, no assembly.
  *
- * It is NOT bit-exact against the game's originals, and is not meant to be.
- * Its correctness bar is that the game looks and plays the same; these
- * matrices feed rendering only, so the replay suite is unaffected.  A
- * bit-exact x87 backend existed until 2026-09-13 (RENDER_PLAN.md) and is in
- * git history as src/render/d3dmath.cpp if a last-bit question ever needs it.
+ * Float rounding is not matched bit for bit and need not be: these matrices
+ * feed rendering only, never the simulation.
  *
  * m4_identity, m4_translate, v3_set, v3_sub, v3_div, v3_sub_inplace and
  * billboard_vertex are pure data movement and live in d3dmath_common.cpp.
