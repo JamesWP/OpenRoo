@@ -1,18 +1,9 @@
-/* BreakableTile -- a floor tile that drops away a moment after someone
- * stands on it, and (unless its param says not to) comes back.  Tile kind
- * 0x0d.  Ghidra struct `BreakableTile`.
- *
- * Every function that touches a BreakableTile field is in breakabletile.cpp:
- * spawn (0x418240), tick (0x403d40) and purge (0x4183f0).  Construction and
- * destruction are ours too -- our own `new`, and our own one-slot vtable in
- * place of the game's 0x45d2d0; the originals 0x403ce0, 0x403d10 and
- * 0x403d30 are UD2-stubbed.
- *
- * One outside accessor remains, which is why the layout stays packed and
- * asserted: RenderGameFrame (original) reads the just-fell flag +0x3c and the
- * cell bytes +0x31/+0x32/+0x33 to place the falling-tile effect.
- * (levelsounds.cpp attaches the two sounds through their setters.)
- */
+/* BreakableTile: a floor tile (kind TILE_BREAKABLE) that drops away a moment
+ * after someone stands on it and, unless its param says otherwise, comes back.
+ * Every function that touches a BreakableTile field is in breakabletile.cpp;
+ * the fields are private.  The layout is fixed: RenderGameFrame reads the
+ * just-fell flag and the cell bytes to place the falling-tile effect. */
+
 #pragma once
 
 #include "layout.h"
@@ -25,25 +16,23 @@ class __attribute__((packed)) BreakableTile {
 public:
     static const int ORIGIN = 0;
 
-    /* Game::SpawnBreakableObject 0x00418240.  Arguments are dwords masked to
-     * bytes, exactly as the original reads them.  Returns what the original
-     * leaves in EAX, `idx & 0xffffff00`; no caller uses it. */
+    // Spawns a breakable; the arguments are masked to bytes.  PRESERVED:
+    // returns idx & 0xffffff00, which no caller uses.
     static unsigned int spawn(Game *game, unsigned int uArg, unsigned int vArg,
                               unsigned int heightArg, unsigned int paramArg);
 
-    /* Game::PurgeBreakableObjects 0x004183f0 -- destroy every breakable and
-     * zero the count. */
+    // Destroys every breakable and zeroes the count.
     static void purgeAll(Game *game);
 
-    /* UpdateBreakableTile 0x00403d40 -- one tick. */
+    // One tick.
     void tick();
 
-    /* +0x4d / +0x51, attached by InitLevelBasedSounds (levelsounds.cpp). */
+    // The two sounds, attached by InitLevelBasedSounds (levelsounds.cpp).
     void setFallSound(CStaticSoundbuffer *p)    { fallSound_ = p; }
     void setRespawnSound(CStaticSoundbuffer *p) { respawnSound_ = p; }
 
-    /* Read by RenderGameFrame to spawn a destruct-field burst the tick a
-     * breakable falls: the flag, and the cell (read signed). */
+    // Read by RenderGameFrame to start a destruct-field burst on the tick a
+    // breakable falls: the flag, and the cell (read signed).
     int  justFell() const                      { return justFell_; }
     signed char cellU() const                  { return cellU_; }
     signed char cellV() const                  { return cellV_; }
@@ -51,56 +40,54 @@ public:
 
 private:
 
-    /* The vtable.  MSVC layout: one slot, the scalar deleting destructor,
-     * __thiscall with a flags argument (bit 0 = free the memory). */
+    // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
+    // frees the memory).
     struct Vtbl {
         void *(__attribute__((thiscall)) *scalarDeletingDtor)(BreakableTile *self,
                                                               unsigned int flags);
     };
     static const Vtbl VTABLE;
 
-    /* 0x403ce0 -- allocate and construct, with our own new.  NULL if
-     * allocation fails, as the original's operator new returned NULL. */
+    // Allocates and constructs one; NULL if the allocation fails.
     static BreakableTile *create();
     BreakableTile();
-    /* 0x403d10 -- vtable slot 0. */
+    // Vtable slot 0.
     static void *__attribute__((thiscall)) scalarDeletingDtor(BreakableTile *self,
                                                               unsigned int flags);
-    /* Destroy through the object's own vtable, flags 1, as the purge did. */
+    // Destroys through the object's own vtable, flags 1.
     void destroy();
 
-    /* The tile this breakable sits on: (cellU_, cellV_), read signed. */
+    // The tile it sits on: (cellU_, cellV_), read signed.
     Tile *tile() const;
-    /* Position the sound at the tile and trigger it. */
+    // Positions the sound at the tile and triggers it.
     void playAtTile(CStaticSoundbuffer *snd, const Tile *t) const;
 
     KAROO_LAYOUT_REGISTER(BreakableTile);
 
-    const Vtbl         *vtable_;         /* +0x00  &VTABLE                   */
-    double              now_;            /* +0x04  latched from *clock_      */
-    double             *clock_;          /* +0x0c  Game::clock()             */
-    TickStep        *tickStep_;         /* +0x10  Game::tickStep()        */
-    unsigned char       field_14;        /* +0x14                            */
-    TickStep         tickStepCopy_;     /* +0x15  copied from *tickStep_      */
-    unsigned char       field_1d[8];     /* +0x1d                            */
-    float               posU_;           /* +0x25  } base-class fields,      */
-    float               posY_;           /* +0x29  } zeroed by 0x401000      */
-    float               posV_;           /* +0x2d  } (V is NEGATED)          */
-    signed char         cellU_;          /* +0x31  } read by RenderGameFrame */
-    signed char         cellV_;          /* +0x32  }                         */
-    signed char         heightCell_;     /* +0x33  }                         */
-    unsigned char      *tileBase_;       /* +0x34  Game::tileBase()          */
-    int                 justRespawned_;  /* +0x38  set for the respawn tick  */
-    int                 justFell_;       /* +0x3c  set for the fall tick; read
-                                                   by RenderGameFrame        */
-    double              eventTime_;      /* +0x40  clock at last fall/respawn */
-    int                 respawnPending_; /* +0x48                            */
-    unsigned char       field_4c;        /* +0x4c                            */
-    CStaticSoundbuffer *fallSound_;      /* +0x4d  may be NULL               */
-    CStaticSoundbuffer *respawnSound_;   /* +0x51  may be NULL               */
-    int                 armed_;          /* +0x55                            */
-    int                 noRespawn_;      /* +0x59  the tile's param byte     */
-    double              armedAt_;        /* +0x5d                            */
+    const Vtbl         *vtable_;          // +0x00  &VTABLE
+    double              now_;             // +0x04  latched from *clock_
+    double             *clock_;           // +0x0c  Game::clock()
+    TickStep        *tickStep_;           // +0x10  Game::tickStep()
+    unsigned char       field_14;         // +0x14
+    TickStep         tickStepCopy_;       // +0x15  copied from *tickStep_
+    unsigned char       field_1d[8];      // +0x1d
+    float               posU_;            // +0x25
+    float               posY_;            // +0x29
+    float               posV_;            // +0x2d  negated
+    signed char         cellU_;           // +0x31  read by RenderGameFrame
+    signed char         cellV_;           // +0x32
+    signed char         heightCell_;      // +0x33
+    unsigned char      *tileBase_;        // +0x34  Game::tileBase()
+    int                 justRespawned_;   // +0x38  set for the respawn tick
+    int                 justFell_;        // +0x3c  set for the fall tick
+    double              eventTime_;       // +0x40  the clock at the last fall or respawn
+    int                 respawnPending_;  // +0x48
+    unsigned char       field_4c;         // +0x4c
+    CStaticSoundbuffer *fallSound_;       // +0x4d  may be NULL
+    CStaticSoundbuffer *respawnSound_;    // +0x51  may be NULL
+    int                 armed_;           // +0x55
+    int                 noRespawn_;       // +0x59  the tile's param: nonzero never respawns
+    double              armedAt_;         // +0x5d
 };
 
 KAROO_LAYOUT_CHECKS(BreakableTile)
@@ -125,10 +112,10 @@ KAROO_LAYOUT_CHECKS(BreakableTile)
     KAROO_LAYOUT_AT(armed_,          0x55);
     KAROO_LAYOUT_AT(noRespawn_,      0x59);
     KAROO_LAYOUT_AT(armedAt_,        0x5d);
-    /* No size check: the object is ours to allocate, so nothing relies on
-     * it being the original's 0x65. */
+
+/* No size check: we allocate it, so nothing relies on its size. */
 }
 
-/* 0x4183f0 -- destroy every slot and zero the count; Game's destructor calls it. */
+/* Destroys every breakable and zeroes the count; Game's teardown calls it. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PurgeBreakableObjects(Game *self);
