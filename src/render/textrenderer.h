@@ -13,21 +13,18 @@
  *     1 overlaps successive cells.  That is why the centring wrappers
  *     subtract `(len - (len-1)*(1-spacing)) * cellW` and not `len * cellW`.
  *
- * The two instances are globals, g_fontMain and g_fontNumbers, 0x28 bytes
- * each, the atlas ending the object.
+ * The two instances are globals, g_fontMain and g_fontNumbers.
  */
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
-#include "texture.h"    /* SceneTexture -- the atlas at +0x0c */
+#include "texture.h"    /* SceneTexture -- the atlas */
 
 class RenderDevice;
 
-class __attribute__((packed)) TextRenderer {
+class TextRenderer {
 public:
     SceneTexture* atlas() { return &atlas_; }
-    static const int ORIGIN = 0;
 
     /* Left-aligned: (x, y) is the first cell's
      * top-left corner. */
@@ -89,29 +86,12 @@ public:
     void destruct();
 
 private:
-    KAROO_LAYOUT_REGISTER(TextRenderer);
-
-    const void   *vtable_;      /* +0x00  one-slot table: the scalar dtor */
-    unsigned int  cols_;        /* +0x04  atlas columns; also the cell divisor */
-    unsigned int  rows_;        /* +0x08  atlas rows                          */
-    SceneTexture  atlas_;       /* +0x0c  .pTexture2 lands on +0x24           */
-
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-#pragma GCC diagnostic pop
-
+    const void   *vtable_;  /* one-slot table: the scalar dtor */
+    unsigned int  cols_;    /* atlas columns; also the cell divisor */
+    unsigned int  rows_;    /* atlas rows */
+    SceneTexture  atlas_;
 };
 
-KAROO_LAYOUT_CHECKS(TextRenderer)
-{
-    KAROO_LAYOUT_AT(cols_, 0x04);
-    KAROO_LAYOUT_AT(rows_, 0x08);
-    KAROO_LAYOUT_AT(atlas_, 0x0c);
-    /* The field the glyph loop dereferences. */
-    static_assert(0x0c + offsetof(SceneTexture, pTexture2) == 0x24,
-                  "TextRenderer: atlas texture must land on the game's +0x24");
-}
 
 /* ─── Exports ──────────────────────────────────────────────────────────────
  *

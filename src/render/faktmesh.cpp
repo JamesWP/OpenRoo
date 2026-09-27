@@ -8,7 +8,6 @@
  */
 
 #include "faktmesh.h"
-#include "com_proxy.h"
 #include <stdlib.h>
 #include "log.h"
 #include "renderdevice.h"

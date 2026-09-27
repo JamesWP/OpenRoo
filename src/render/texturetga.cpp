@@ -14,6 +14,7 @@
  * and loadStatus is never touched, unlike the DIB loader. */
 
 #include "texture.h"
+#include "d3dnative.h"
 #include "tga.h"
 #include "log.h"
 #include "gamestr.h"

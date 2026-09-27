@@ -7,7 +7,6 @@
  * the theme file's colours and backdrop texture, read at fixed offsets.  The
  * level-select pages are ours (levelselect.h). */
 
-#include <d3d.h>
 #include "texture.h"
 #include "renderdevice.h"
 

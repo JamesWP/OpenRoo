@@ -148,10 +148,7 @@ Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, RenderDevice *d3d, double t)
                 // Unlike DrawQuadBatch, SetTexture runs unconditionally: a
                 // NULL texture binds NULL rather than leaving the last one
                 // bound.
-                d3d->SetTexture(
-                    0, sub->pTexture
-                       ? sub->pTexture->pTexture2
-                       : NULL);
+                d3d->SetTexture(0, sub->pTexture);
 
                 // One call, the state and value chosen by the branch.
                 RS last_state;

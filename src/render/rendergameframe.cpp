@@ -347,7 +347,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
     /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
     if (d3d->hasStencil() && d3d->bitDepth() > 16 &&
         g->videoShadows() != 0) {
-        d3d->SetTexture(0, g_texShadow.pTexture2);
+        d3d->SetTexture(0, &g_texShadow);
         set_rs(RS::AlphaBlendEnable, 1);
         set_rs(RS::SrcBlend,         Blend::SrcAlpha);
         set_rs(RS::DestBlend,        Blend::InvSrcAlpha);
@@ -446,7 +446,7 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
     RenderDevice *dev = g_renderDevice;
     SceneTexture *tex = rec->pSubObjects[0].pTexture;
     if (tex != NULL)
-        dev->SetTexture(0, tex->pTexture2);
+        dev->SetTexture(0, tex);
     set_rs(RS::SrcBlend, src);
     set_rs(RS::DestBlend, dst);
     set_rs(RS::AlphaBlendEnable, 1);
@@ -608,7 +608,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
             RenderDevice *dev = g_renderDevice;
             dev->SetTransform(Transform::World, &g_worldIdentity);
-            dev->SetTexture(0, speed->pSubObjects[0].pTexture->pTexture2);
+            dev->SetTexture(0, speed->pSubObjects[0].pTexture);
             set_rs(RS::SrcBlend, Blend::One);
             set_rs(RS::DestBlend, Blend::One);
             set_rs(RS::AlphaBlendEnable, 1);
@@ -659,10 +659,9 @@ static void blend_on(void)
     set_rs(RS::DestBlend,        Blend::InvSrcAlpha);
 }
 
-static IDirect3DTexture2 *image(ThemeImageSlot s)
+static const SceneTexture *image(ThemeImageSlot s)
 {
-    SceneTexture *t = g_themeBlock.images[s];
-    return t ? t->pTexture2 : NULL;
+    return g_themeBlock.images[s];
 }
 
 /* The HUD's text positions are integer multiples of the screen width, taken
@@ -929,7 +928,7 @@ static void draw_logo(Game *g, float H, float hudH, float pad)
         tl(pad, yb, 0xffffffff, 0.0f, 1.0f),
     };
     blend_on();
-    g_renderDevice->SetTexture(0, g_texKaroo128.pTexture2);
+    g_renderDevice->SetTexture(0, &g_texKaroo128);
     if (g->state() == 0 || g->state() == 5)
         draw_strip(q);
     set_rs(RS::AlphaBlendEnable, 0);

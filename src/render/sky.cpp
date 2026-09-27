@@ -61,7 +61,7 @@ Sky_DrawSkyBackground(SkyBackground *self, RenderDevice *dev,
 
     const int nquads = fx_one_quad() ? 1 : SKY_QUADS;
     for (int i = 0; i < nquads; i++) {
-        IDirect3DTexture2 *tex = self->Textures[i].pTexture2;
+        const SceneTexture *tex = &self->Textures[i];
         dev->SetTexture(0, tex);
         bool ok = dev->Draw(Prim::TriangleStrip, SKY_FVF, self->QuadVerts[i], 4,
                             DrawFlag::NoUpdateExtents);

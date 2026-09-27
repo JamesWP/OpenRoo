@@ -30,7 +30,7 @@
 
 /* The high-score panel's quad and texture. */
 #define g_pPanelVerts   ((const void *)g_panelQuad)
-#define g_pPanelTexture (g_menuTex2.pTexture2)
+#define g_pPanelTexture (&g_menuTex2)
 
 /* Offsets within one HighScoreRecord. */
 #define HS_NAME_OFF    0x00
@@ -112,7 +112,7 @@ static void setup_overlay_state(RenderDevice *d3d, void *game)
     d3d->SetRenderState(RS::DestBlend, Blend::InvSrcAlpha);
 
     SceneTexture *tex = (SceneTexture *)GM_P(GM_OVERLAY_TEX);
-    d3d->SetTexture(0, tex ? tex->pTexture2 : NULL);
+    d3d->SetTexture(0, tex);
 }
 
 extern "C" __declspec(dllexport) void __cdecl

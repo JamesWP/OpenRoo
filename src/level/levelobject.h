@@ -1,7 +1,5 @@
 #pragma once
 #include <windows.h>
-#include <ddraw.h>
-#include <d3d.h>
 #include <stddef.h>
 #include "texture.h"
 
@@ -22,7 +20,7 @@ enum SceneSubObjectEffect : DWORD {
  * alive 4, paraglide 5, protection 6. */
 struct SceneSubObject {
     DWORD  dwVisibilityGate;
-    SceneTexture *pTexture;  // drawn with pTexture->pTexture2
+    SceneTexture *pTexture;
     DWORD  unknown08;        // never written
     DWORD  dwBlendSrc;       // the SRCBLEND value
     DWORD  dwBlendDst;       // the DESTBLEND value

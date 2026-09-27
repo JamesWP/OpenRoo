@@ -38,11 +38,11 @@ SceneTexture g_menuTex4;
 #define MENU_FVF      VertexFormat::Screen  // XYZRHW | DIFFUSE | SPECULAR | TEX1
 static ScreenVertex g_backdropQuad[4];
 ScreenVertex g_panelQuad[4];
-#define g_panelTexture (g_menuTex1.pTexture2)          // menu_1.tga
-#define g_markerTexture (g_menuTexSelector.pTexture2)  // selector.tga
+#define g_panelTexture (&g_menuTex1)          // menu_1.tga
+#define g_markerTexture (&g_menuTexSelector)  // selector.tga
 static ScreenVertex g_listQuad[4];
-#define g_optionsTexture (g_menuTex2.pTexture2)  // menu_2.tga
-#define g_saveTexture  (g_menuTex4.pTexture2)    // menu_4.tga
+#define g_optionsTexture (&g_menuTex2)  // menu_2.tga
+#define g_saveTexture (&g_menuTex4)    // menu_4.tga
 
 /* Fields of the theme object: its backdrop texture and text colour pairs. */
 #define THEME_BACKDROP_TEX 0x6f8a8  // SceneTexture*
@@ -77,7 +77,7 @@ Menu_DrawBackdrop(RenderDevice *d3d, void *theme)
 {
     set_blend(d3d);
     SceneTexture *tex = *(SceneTexture **)((BYTE *)theme + THEME_BACKDROP_TEX);
-    d3d->SetTexture(0, tex ? tex->pTexture2 : NULL);
+    d3d->SetTexture(0, tex);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF,
                                 g_backdropQuad, 4, 0);
 }
@@ -146,7 +146,7 @@ static const float k_rowY[6] = {
     0.28125f, 0.33125001f, 0.38124999f, 0.43125001f, 0.48124999f, 0.53125f,
 };
 
-static void draw_panel(RenderDevice *d3d, void *theme, IDirect3DTexture2 *tex,
+static void draw_panel(RenderDevice *d3d, void *theme, const SceneTexture *tex,
                        void *quad)
 {
     Menu_DrawBackdrop(d3d, theme);
@@ -275,10 +275,10 @@ Menu_RenderSaveSlotList(Game *g, void *theme, RenderDevice *d3d,
  * for a 0..100 value, a 270-degree sweep.  Double cos and sin: the lost x87
  * bits move a knob by far less than a pixel. */
 static Vec3 g_widgetModel[4];
-#define g_texOn        (g_menuTexOn.pTexture2)     // knopf_ein.tga
-#define g_texOff       (g_menuTexOff.pTexture2)    // knopf_aus.tga
-#define g_texKnobBase  (g_menuTexScale.pTexture2)  // scale.tga
-#define g_texKnob      (g_menuTexKnob.pTexture2)   // drehknopf.tga
+#define g_texOn (&g_menuTexOn)     // knopf_ein.tga
+#define g_texOff (&g_menuTexOff)    // knopf_aus.tga
+#define g_texKnobBase (&g_menuTexScale)  // scale.tga
+#define g_texKnob (&g_menuTexKnob)   // drehknopf.tga
 
 struct Affine { float c, s, tx, ty; };  // RotZ(c, s) then T(tx, ty, 0)
 
@@ -302,7 +302,7 @@ static Affine knob3(float tx, float ty, unsigned char value)
     return place(tx, ty);
 }
 
-static void draw_widget(RenderDevice *d3d, const Affine &m, IDirect3DTexture2 *tex,
+static void draw_widget(RenderDevice *d3d, const Affine &m, const SceneTexture *tex,
                         DWORD colour = 0xffffffff)
 {
     // A row vector times [[c,-s,0,0],[s,c,0,0],[0,0,1,0],[tx,ty,0,1]]: w stays
@@ -372,7 +372,7 @@ Menu_RenderSoundOptions(Game *g, void *theme, RenderDevice *d3d,
  * (three-position knobs).  Shadows need a stencil buffer and a mode deeper
  * than 16 bits; without them the label is a translucent grey, its base
  * half-grey and its knob not drawn.  Both tests are re-made at each use. */
-#define g_videoTexture (g_menuTex3.pTexture2)  // menu_3.tga
+#define g_videoTexture (&g_menuTex3)  // menu_3.tga
 
 static bool shadows_available(RenderDevice *d3d)
 {
@@ -451,7 +451,7 @@ Menu_RenderControlsRemap(Game *g, void *theme, RenderDevice *d3d,
     };
     set_blend(d3d);
     SceneTexture *tex = *(SceneTexture **)((BYTE *)theme + THEME_BACKDROP_TEX);
-    d3d->SetTexture(0, tex ? tex->pTexture2 : NULL);
+    d3d->SetTexture(0, tex);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, back, 4, 0);
 
     const float hx0 = fw * 0.60000002f, hx1 = fw * 0.40000001f;

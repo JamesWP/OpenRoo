@@ -222,11 +222,6 @@ void RenderDevice::SetTexture(int stage, const SceneTexture *tex)
     native_->device->SetTexture(stage, tex ? tex->pTexture2 : NULL);
 }
 
-void RenderDevice::SetTexture(int stage, IDirect3DTexture2 *tex)
-{
-    native_->device->SetTexture(stage, tex);
-}
-
 void RenderDevice::SetAmbientLight(uint32_t rgb)
 {
     native_->device->SetLightState(D3DLIGHTSTATE_AMBIENT, rgb);

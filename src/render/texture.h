@@ -1,7 +1,11 @@
 #pragma once
 #include <windows.h>
-#include <ddraw.h>
-#include <d3d.h>
+
+/* The backend objects a texture holds; only the texture files look inside. */
+struct IDirectDraw4;
+struct IDirectDrawSurface4;
+struct IDirectDrawPalette;
+struct IDirect3DTexture2;
 
 /* LoadedImage: a bitmap on a DirectDraw surface, as RenderDevice::
  * PresentImage takes it. */

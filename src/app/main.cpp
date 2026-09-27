@@ -9,7 +9,6 @@
  * ends the run; every recording fails on frames_run. */
 
 #include <windows.h>
-#include <ddraw.h>
 #include <stdio.h>
 #include "main.h"
 #include <stdlib.h>
@@ -44,7 +43,7 @@
 
 /* Shared by WinMain and the window procedure; nothing else reads either. */
 static volatile int g_moviePlaying;
-static IDirectDrawSurface* g_movieSurface;
+static void *g_movieSurface;  // the primary surface, for the movie player
 
 static const unsigned GAME_ALLOC_SIZE = 0x51790d;
 
@@ -277,8 +276,8 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
 
     // The movie draws through the DirectDraw 1 interface and the primary
     // surface's version-1 interface.
-    IDirectDraw *dd1 = NULL;
-    d3d->GetMovieTarget((void **)&dd1, (void **)&g_movieSurface);
+    void *dd1 = NULL;
+    d3d->GetMovieTarget(&dd1, &g_movieSurface);
 
     // The movie's overlay colour key: on, CK_RGB, black to black.  Nothing
     // plays a movie yet (movie.cpp), so it is set for a player that would use
@@ -299,7 +298,8 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
             GameLog_LogMessage(&g_logger, 3, "MAIN: Couldn't load %s .", path);
     }
     g_moviePlaying = playing ? 1 : 0;
-    dd1->Release();
+    if (dd1)
+        ((IUnknown *)dd1)->Release();
     if (playing) {
         Movie_SetWindow(&g_movie, g_movieSurface);
         Movie_Play(&g_movie);

@@ -6,8 +6,6 @@
 
 #pragma once
 #include <windows.h>
-#include <ddraw.h>
-#include <d3d.h>
 #include <stddef.h>
 #include "texture.h"
 class RenderDevice;
@@ -43,8 +41,6 @@ static_assert(sizeof(SkyBackground) == 0x3f0, "SkyBackground size mismatch");
 /* Fills the geometry and matrix, then loads the six faces (UP, DN, FR, BK, LF,
  * RT) through the texture loader.  Stops at the first face that fails to load;
  * the low byte of the result is 0 on failure, 1 on success. */
-struct IDirectDraw4;
-struct IDirect3DDevice3;
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sky_BuildFromFaceNames(SkyBackground *self, RenderDevice *dev, const char *up, const char *dn,
                        const char *fr, const char *bk, const char *lf,

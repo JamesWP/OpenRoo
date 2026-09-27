@@ -12,7 +12,6 @@
  * and a running census, since no gate observes texture coordinates. */
 
 #include <windows.h>
-#include <d3d.h>
 #include <math.h>
 #include <new>
 

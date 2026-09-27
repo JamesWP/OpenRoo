@@ -1,7 +1,6 @@
 /* dsoscene.h -- the scene-object passes (dsoscene.cpp). */
 #pragma once
 #include <windows.h>
-#include <d3d.h>
 class RenderDevice;
 /* cdecl(dev, camera eye, two unread dwords, now). */
 extern "C" __declspec(dllexport) void __cdecl

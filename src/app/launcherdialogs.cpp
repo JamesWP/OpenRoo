@@ -10,15 +10,13 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include <shellapi.h>
-#include <ddraw.h>
-#include <d3d.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include "launcherdialogs.h"
 #include "launcher.h"
-#include "com_proxy.h"
+#include "renderdevice.h"
 #include "gameglobals.h"
 #include "game.h"
 #include "config.h"
@@ -52,7 +50,6 @@ static const BYTE *s_menuBmp;
 static const BYTE *s_playOff,  *s_playFoc;
 static const BYTE *s_setupOff, *s_setupFoc;
 static const BYTE *s_quitOff,  *s_quitFoc;
-static int   s_modeCounter;
 
 /* The hardware checkbox's state on OK.  Nothing reads it. */
 static unsigned char s_hwChecked;
@@ -353,99 +350,29 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-/* One combo entry per DirectDraw driver; its item data is a heap copy of the
- * GUID (NULL for the primary driver).  PRESERVED: the copies are never freed.
- */
-static BOOL WINAPI driver_enum_cb(GUID *guid, LPSTR desc, LPSTR, LPVOID ctx)
-{
-    HWND combo = (HWND)ctx;
-    LRESULT idx = SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)desc);
-    if (idx == CB_ERR)
-        return DDENUMRET_CANCEL;
-    GUID *copy = NULL;
-    if (guid) {
-        copy = (GUID *)malloc(sizeof(GUID));
-        if (!copy)
-            return DDENUMRET_CANCEL;
-        *copy = *guid;
-    }
-    SendMessageA(combo, CB_SETITEMDATA, idx, (LPARAM)copy);
-    return DDENUMRET_OK;
-}
-
-struct ModeEnumCtx {
-    HWND  combo;
-    DWORD renderDepths;  // the HAL device's dwDeviceRenderBitDepth
-};
-
-/* Lists the modes the HAL device can render to, 4:3 only.  The item data is a
- * running count, which must agree with the device creation's own mode index.
- */
-static HRESULT WINAPI mode_enum_cb(LPDDSURFACEDESC2 d, LPVOID ctxp)
-{
-    const ModeEnumCtx *ctx = (const ModeEnumCtx *)ctxp;
-    DWORD w = d->dwWidth, h = d->dwHeight;
-    DWORD bpp = d->ddpfPixelFormat.dwRGBBitCount;
-    // Unsigned width over signed height, stored as float.  Only whether it
-    // lies between 1.3 and 1.4 matters, so double precision is enough.
-    float aspect = (float)((double)w / (double)(int)h);
-
-    if (bpp == 32 && !(ctx->renderDepths & DDBD_32)) return DDENUMRET_OK;
-    if (bpp == 24 && !(ctx->renderDepths & DDBD_24)) return DDENUMRET_OK;
-    if (bpp == 16 && !(ctx->renderDepths & DDBD_16)) return DDENUMRET_OK;
-    if (bpp < 16) return DDENUMRET_OK;
-    if (!fx_allaspect() && !(aspect < 1.4f && aspect > 1.3f))
-        return DDENUMRET_OK;
-
-    char text[256];
-    snprintf(text, sizeof(text), "%dx%dx%d", (int)w, (int)h, (int)bpp);
-    LRESULT idx = SendMessageA(ctx->combo, CB_ADDSTRING, 0, (LPARAM)text);
-    if (idx == CB_ERR)
-        return DDENUMRET_CANCEL;
-    SendMessageA(ctx->combo, CB_SETITEMDATA, idx, s_modeCounter);
-    s_modeCounter++;
-    return DDENUMRET_OK;
-}
-
-/* The mode list for the selected driver: create it (falling back to the
- * primary driver), find its HAL device, and enumerate the modes it can render.
- * Returns false where the dialog should fail.  PRESERVED: on that path the
- * interfaces already obtained are leaked. */
+/* The mode list for the selected driver.  Each entry's item data is its
+ * index in RenderDevice::EnumerateDisplayModes' list, which is the index
+ * RenderDevice::Create takes.  Returns false where the dialog should fail. */
 static bool fill_modes(HWND hDlg)
 {
     LRESULT sel = SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETCURSEL, 0, 0);
-    GUID *guid = (GUID *)SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETITEMDATA, sel, 0);
+    const GUID *guid =
+        (const GUID *)SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETITEMDATA, sel, 0);
 
-    LPDIRECTDRAW dd = NULL;
-    if (FAILED(hooks_DirectDrawCreate(guid, &dd, NULL))
-        && FAILED(hooks_DirectDrawCreate(NULL, &dd, NULL)))
-        return false;
-    IDirectDraw4 *dd4 = NULL;
-    if (FAILED(dd->QueryInterface(IID_IDirectDraw4, (void **)&dd4)))
-        return false;
-    dd->Release();
-    IDirect3D3 *d3d = NULL;
-    if (FAILED(dd4->QueryInterface(IID_IDirect3D3, (void **)&d3d)))
+    std::vector<DisplayMode> modes;
+    if (!RenderDevice::EnumerateDisplayModes(guid, modes, fx_allaspect()))
         return false;
 
-    D3DFINDDEVICESEARCH search;
-    D3DFINDDEVICERESULT found;
-    memset(&found, 0, sizeof(found));
-    memset(&search, 0, sizeof(search));
-    found.dwSize   = sizeof(found);
-    search.dwSize  = sizeof(search);
-    search.dwFlags = D3DFDS_GUID;
-    search.guid    = IID_IDirect3DHALDevice;
-    if (FAILED(d3d->FindDevice(&search, &found)))
-        return false;
-    // Without a HAL description the depths are zero, which lists no mode.
-    DWORD depths = found.ddHwDesc.dwFlags ? found.ddHwDesc.dwDeviceRenderBitDepth : 0;
-    d3d->Release();
-
-    ModeEnumCtx ctx = { GetDlgItem(hDlg, IDC_MODES), depths };
-    if (FAILED(dd4->EnumDisplayModes(0, NULL, &ctx, mode_enum_cb)))
-        return false;
-    dd4->Release();
+    HWND combo = GetDlgItem(hDlg, IDC_MODES);
+    for (size_t i = 0; i < modes.size(); i++) {
+        char text[64];
+        snprintf(text, sizeof(text), "%lux%lux%lu", modes[i].dwWidth,
+                 modes[i].dwHeight, modes[i].dwBitDepth);
+        LRESULT idx = SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)text);
+        if (idx == CB_ERR)
+            return false;
+        SendMessageA(combo, CB_SETITEMDATA, idx, (LPARAM)i);
+    }
     return true;
 }
 
@@ -453,14 +380,25 @@ static bool device_init(HWND hDlg)
 {
     SetWindowPos(hDlg, HWND_TOPMOST, 400, 300, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
-    // LoadLibrary, not GetModuleHandle: the executable does not import
-    // ddraw.dll, so it may not be loaded yet.
-    typedef HRESULT (WINAPI *enum_fn)(LPDDENUMCALLBACKA, LPVOID);
-    enum_fn enumerate = (enum_fn)(void (*)(void))
-        GetProcAddress(LoadLibraryA("ddraw.dll"), "DirectDrawEnumerateA");
-    if (!enumerate
-        || FAILED(enumerate(driver_enum_cb, GetDlgItem(hDlg, IDC_DRIVERS))))
+    // One combo entry per adapter; its item data is a heap copy of the GUID
+    // (NULL for the primary adapter).  PRESERVED: the copies are never freed.
+    std::vector<Adapter> adapters;
+    if (!RenderDevice::EnumerateAdapters(adapters))
         return false;
+    HWND drivers = GetDlgItem(hDlg, IDC_DRIVERS);
+    for (size_t i = 0; i < adapters.size(); i++) {
+        LRESULT idx = SendMessageA(drivers, CB_ADDSTRING, 0, (LPARAM)adapters[i].name);
+        if (idx == CB_ERR)
+            break;
+        GUID *copy = NULL;
+        if (adapters[i].hasGuid) {
+            copy = (GUID *)malloc(sizeof(GUID));
+            if (!copy)
+                break;
+            *copy = adapters[i].guid;
+        }
+        SendMessageA(drivers, CB_SETITEMDATA, idx, (LPARAM)copy);
+    }
 
     // Select the configured driver: the last entry whose GUID matches.
     const GUID *want = Game::instance()->config()->adapterGuid();
@@ -474,8 +412,8 @@ static bool device_init(HWND hDlg)
     }
     SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_SETCURSEL, pick, 0);
 
-    // PRESERVED: the mode counter is reset only on a driver change, so opening
-    // the dialog twice numbers the second list from where the first stopped.
+    // REVIEW: the mode numbering used to carry over from an earlier opening
+    // of the dialog; each list now numbers from 0.
     if (!fill_modes(hDlg))
         return false;
     SendDlgItemMessageA(hDlg, IDC_MODES, CB_SETCURSEL,
@@ -520,7 +458,6 @@ LauncherDlg_DeviceSelectProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM)
         if (HIWORD(wParam) != CBN_SELCHANGE)
             break;
         SendDlgItemMessageA(hDlg, IDC_MODES, CB_RESETCONTENT, 0, 0);
-        s_modeCounter = 0;
         if (!fill_modes(hDlg))
             return 0;
         SendDlgItemMessageA(hDlg, IDC_MODES, CB_SETCURSEL, 0, 0);

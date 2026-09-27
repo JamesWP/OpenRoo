@@ -1,6 +1,5 @@
 #pragma once
 #include <windows.h>
-#include <d3d.h>
 #include "rendertypes.h"
 
 /* The shared 3D maths helpers.

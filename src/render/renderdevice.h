@@ -13,11 +13,17 @@
 
 struct LoadedImage;
 struct SceneTexture;
-struct IDirect3DTexture2;
 
 /* One enumerated display mode. */
 struct DisplayMode {
     DWORD dwWidth, dwHeight, dwBitDepth;
+};
+
+/* One display adapter, as EnumerateAdapters lists them. */
+struct Adapter {
+    char name[128];
+    bool hasGuid;  // false for the primary (default) adapter
+    GUID guid;
 };
 
 /* Bits for Draw's flags. */
@@ -45,6 +51,17 @@ public:
     void Release();
 
     const char *lastError() const { return lastError_; }
+
+    /* The adapters Create can take a GUID for. */
+    static bool EnumerateAdapters(std::vector<Adapter> &out);
+
+    /* The modes Create's nModeIndex indexes, on the given adapter (NULL for
+     * the default): the 4:3 modes of 16 bits or more that the hardware
+     * device can render to.  anyAspect lifts the 4:3 restriction, which
+     * makes the indices disagree with Create's. */
+    static bool EnumerateDisplayModes(const GUID *adapter,
+                                      std::vector<DisplayMode> &out,
+                                      bool anyAspect = false);
 
     // ── Display ──
 
@@ -88,7 +105,6 @@ public:
 
     /* NULL unbinds the stage. */
     void SetTexture(int stage, const SceneTexture *tex);
-    void SetTexture(int stage, IDirect3DTexture2 *tex);
     void SetTexture(int stage, decltype(nullptr)) { SetTexture(stage, (const SceneTexture *)nullptr); }
 
     /* The ambient light colour, 0x00RRGGBB. */
