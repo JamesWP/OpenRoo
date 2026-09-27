@@ -1,7 +1,7 @@
 /* karoo.rc -- the resources of Karoo.exe.orig, carried in our own binary.
  *
- * Each is the game's resource data byte for byte, extracted at build time
- * from the imported game/Karoo.exe into obj/res/ (tools/extract_rsrc.py),
+ * Each is the game's resource data byte for byte, extracted from your copy
+ * of Ka'roo into game/res/ by tools/import_assets.py (extract_rsrc.py),
  * compiled as raw data under its original numeric type, id and language, so
  * the templates, icons and region are exactly what the game shipped.
  * resources.h says which module holds them.

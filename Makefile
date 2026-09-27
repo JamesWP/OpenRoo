@@ -67,20 +67,15 @@ $(OBJDIR)/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) -MMD -MP -c -o $@ $<
 
 # The game's own dialogs, icon and window region are not in the repository:
-# they are extracted from the imported exe (tools/import_assets.py) into
-# build/obj/res/, which data/karoo.rc's "res/..." names resolve against.
-GAMEEXE = game/Karoo.exe
-RESSTAMP = $(OBJDIR)/res/.extracted
+# tools/import_assets.py extracts them from your copy of Ka'roo into
+# game/res/, which data/karoo.rc's "res/..." names resolve against.
+GAMERES = $(wildcard game/res/*.bin)
 
-$(RESSTAMP): $(GAMEEXE) tools/extract_rsrc.py | $(OBJDIR)
-	python3 tools/extract_rsrc.py $(GAMEEXE) $(OBJDIR)/res
-	touch $@
+game/res/rgn_111.bin:
+	@echo "ERROR: game/res/ missing -- run tools/import_assets.py --from <your Ka'roo>" >&2; exit 1
 
-$(GAMEEXE):
-	@echo "ERROR: $(GAMEEXE) missing -- run tools/import_assets.py --from <your Ka'roo>" >&2; exit 1
-
-$(RESOBJ): data/karoo.rc $(RESSTAMP) | $(OBJDIR)
-	i686-w64-mingw32-windres --include-dir=$(OBJDIR) $< -O coff -o $@
+$(RESOBJ): data/karoo.rc game/res/rgn_111.bin $(GAMERES) | $(OBJDIR)
+	i686-w64-mingw32-windres --include-dir=game $< -O coff -o $@
 
 $(OBJDIR):
 	mkdir -p $@

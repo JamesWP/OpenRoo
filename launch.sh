@@ -64,7 +64,7 @@ mkdir -p run/SavedGames run/highscores
 for _entry in game/*; do
   _name=$(basename "$_entry")
   case "$_name" in
-    SavedGames|highscores|ProgableControl.sav|Karoo.exe) continue ;;
+    SavedGames|highscores|ProgableControl.sav|Karoo.exe|res) continue ;;
   esac
   [[ -L "run/$_name" ]] || ln -s "../game/$_name" "run/$_name"
 done
