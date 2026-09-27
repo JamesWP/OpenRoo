@@ -27,7 +27,7 @@
  * headlessness.
  *
  * So every table below is a *recording* of what stock Wine ddraw answered on
- * this machine, captured with KAROO_DDRAW_DIAG=1 (com_proxy.cpp) and
+ * this machine, captured with KAROO_DDRAW_DIAG=1 (ddrawdiag.cpp) and
  * transcribed verbatim:
  *
  *   s_devdesc     D3DDEVICEDESC, 0xfc bytes  — Device3::GetCaps, both HAL and
@@ -81,7 +81,8 @@
  * Every one of those logs the first time it is reached, so a future caller
  * shows up in karoo_hooks.log rather than silently getting a wrong answer.
  */
-#include "com_proxy.h"
+#include <ddraw.h>
+#include <d3d.h>
 #include "nullddraw.h"
 #include "log.h"
 #include <string.h>
@@ -277,7 +278,7 @@ static DWORD s_cur_w = 1024, s_cur_h = 768, s_cur_bpp = 32;
 
 /* ─── Surfaces ─────────────────────────────────────────────────────────────
  *
- * A static pool, like com_proxy's proxy pools: no allocator dependency, and a
+ * A static pool: no allocator dependency, and a
  * hard ceiling that shows up as a log line rather than as heap corruption.
  * 512 covers the observed working set (a level tops out around 120 live
  * texture surfaces) with room to spare; exhaustion is logged and fails the
@@ -875,7 +876,7 @@ static HRESULT WINAPI NOINLINE no_QueryInterface(NullObj *s, REFIID r, void **p)
  *
  * So there is no catch-all here.  okN/failN are generated per argument count
  * (N counts `this`), and every slot below names the one matching its own
- * signature, taken from the corresponding wrapper in com_proxy.cpp.
+ * signature, taken from the COM interface declaration in d3d.h / ddraw.h.
  */
 #define OK_STUB(n, params) \
     static HRESULT WINAPI NOINLINE ok##n params { return S_OK; }

@@ -19,8 +19,7 @@ rendering the game does not need to do to be tested: the suite asserts *game
 state*, and draw calls are pure output that nothing reads back.
 
 Fast mode sets two switches the DLL already has -- `KAROO_D3D_FX=nodraw`, which
-returns `D3D_OK` from all six `DrawPrimitive*` entry points in the com_proxy
-device without forwarding, and `KAROO_FLIP_FX=noblt`, which skips the Blt in
+makes `RenderDevice::Draw`/`DrawStrided` return without reaching the device, and `KAROO_FLIP_FX=noblt`, which skips the Blt in
 `RenderDevice::PresentImage`. Measured over the whole suite:
 
 | Run | Wall | Result |
@@ -44,7 +43,7 @@ say so explicitly.
 ## `--headless` -- no window, no graphics, no display
 
 `--fast` stops the game *asking* the driver to draw. `--headless` removes the
-driver: `hooks_DirectDrawCreate` hands back an in-DLL null DirectDraw
+driver: `create_directdraw` (`src/d3d/createdevice.cpp`) hands back an in-DLL null DirectDraw
 (`src/d3d/nullddraw.cpp`) rather than loading `ddraw.dll`, and the game's
 one window is created message-only so Wine needs no display driver for it.
 Nothing appears on screen, nothing takes focus, no desktop mode is switched,

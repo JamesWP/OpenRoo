@@ -27,6 +27,22 @@ static bool fx_noblt(void)
     return cached != 0;
 }
 
+/* KAROO_D3D_FX=nodraw: every draw returns success without reaching the
+ * device.  The replay suite's fast mode sets it: draws are pure output that
+ * nothing in the simulation reads back. */
+static bool fx_nodraw(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        char buf[16];
+        cached = GetEnvironmentVariableA("KAROO_D3D_FX", buf, sizeof(buf))
+                 && lstrcmpiA(buf, "nodraw") == 0;
+        if (cached)
+            log_write("renderdevice: draw FX mode = nodraw\n");
+    }
+    return cached != 0;
+}
+
 // ── The backend's names for the game's vocabulary ──
 
 D3DPRIMITIVETYPE d3d_prim(Prim p)
@@ -293,6 +309,8 @@ void RenderDevice::SetDirectionalLight(const DirectionalLight &l)
 bool RenderDevice::Draw(Prim prim, VertexFormat format, const void *verts,
                         uint32_t count, uint32_t flags)
 {
+    if (fx_nodraw())
+        return true;
     return SUCCEEDED(native_->device->DrawPrimitive(
         d3d_prim(prim), d3d_fvf(format), (void *)verts, count,
         d3d_draw_flags(flags)));
@@ -305,6 +323,8 @@ bool RenderDevice::DrawStrided(Prim prim, VertexFormat format,
                                StridedVertices *v, uint32_t count,
                                uint32_t flags)
 {
+    if (fx_nodraw())
+        return true;
     DWORD fvf  = d3d_fvf(format);
     DWORD ntex = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
     if (ntex > D3DDP_MAXTEXCOORD)

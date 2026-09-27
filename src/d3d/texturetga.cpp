@@ -15,6 +15,7 @@
 
 #include "texture.h"
 #include "d3dnative.h"
+#include "ddrawdiag.h"
 #include "tga.h"
 #include "log.h"
 #include "gamestr.h"
@@ -107,7 +108,7 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 
     // A system-memory scratch surface with the destination's pixel format, as
     // BlitToSurface builds it: the descriptor is inherited, not zeroed.
-    self->pTextureSurface->GetSurfaceDesc(&ddsd);
+    ddiag_surface_desc(self->pTextureSurface->GetSurfaceDesc(&ddsd), &ddsd);
     ddsd.dwFlags        = 0x1007;  // CAPS | HEIGHT | WIDTH | PIXELFORMAT
     ddsd.ddsCaps.dwCaps = 0x1800;  // TEXTURE | SYSTEMMEMORY
 
@@ -115,7 +116,9 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
     self->pTextureSurface->GetDDInterface((void **)&dd);
 
     IDirectDrawSurface4 *tmp = NULL;
-    if (dd->CreateSurface(&ddsd, &tmp, NULL) < 0) {
+    HRESULT hr = dd->CreateSurface(&ddsd, &tmp, NULL);
+    ddiag_create_surface(hr, &ddsd);
+    if (hr < 0) {
         fwrite(GS_TEX_CREATESURFACE_FAILED,
                        (int)tga_strlen(GS_TEX_CREATESURFACE_FAILED),
                        1, stderr);
@@ -125,7 +128,9 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 
     // dwFlags is 0, not DDLOCK_WAIT.  Lock overwrites ddsd with the scratch
     // surface's real geometry, which the conversion loop reads.
-    if (tmp->Lock(NULL, &ddsd, 0, NULL) < 0) {
+    hr = tmp->Lock(NULL, &ddsd, 0, NULL);
+    ddiag_lock(hr, 0, &ddsd);
+    if (hr < 0) {
         fwrite(GS_TEX_LOCK_FAILED, (int)tga_strlen(GS_TEX_LOCK_FAILED),
                        1, stderr);
         if (tmp != NULL)
