@@ -49,11 +49,11 @@ void ExplodeDebris::allocateExplodeBuffers(CFaktMesh *mesh)
     release();
 
     DWORD n = mesh->vertexCount();
-    void *verts = malloc(n * 0x28);
+    MeshVertex *verts = (MeshVertex *)malloc(n * sizeof(MeshVertex));
     if (verts != NULL && (int)n > 0)
         memset(verts, 0, n * 0x28);
     pVertexCopy_  = verts;
-    pFaceRecords_ = malloc((n / 3) * 0xc);
+    pFaceRecords_ = (float (*)[3])malloc((n / 3) * sizeof(float[3]));
     nVertexCount_ = (int)mesh->vertexCount();
 
     memset(pVertexCopy_, 0, (((DWORD)nVertexCount_ * 5) & 0x1fffffffu) * 2 * 4);
@@ -99,18 +99,18 @@ ExplodeDebris::scalarDtor(ExplodeDebris *self, unsigned int flags)
     return self;
 }
 
-/* The effect.  Vertices are FVF 0x212 (0x28 bytes, position first); the
+/* The effect.  Vertices are MeshVertex (position first); the
  * velocity table holds one float[3] per triangle.  Plain float C: extended
  * precision would change only the last bits of a debris velocity, which
  * nothing compares. */
 float *ExplodeDebris::debrisVertex(int i)
 {
-    return (float *)((BYTE *)pVertexCopy_ + i * 0x28);
+    return pVertexCopy_[i].pos;
 }
 
 float *ExplodeDebris::debrisVelocity(int tri)
 {
-    return (float *)((BYTE *)pFaceRecords_ + tri * 0xc);
+    return pFaceRecords_[tri];
 }
 
 int ExplodeDebris::begin(CFaktMesh *mesh,
@@ -123,18 +123,19 @@ int ExplodeDebris::begin(CFaktMesh *mesh,
     if (pVertexCopy_ == NULL)
         return 0;
 
-    // PRESERVED: the source offset is frame * count * 0x640, forty times a
-    // frame's real size (count * 0x28).  Frame 0 is right; any other frame
+    // PRESERVED: the source offset is frame * count * 40 vertices, forty
+    // times a frame's real size.  Frame 0 is right; any other frame
     // reads far past the mesh's vertices.
     DWORD count = mesh->vertexCount();
     memcpy(pVertexCopy_,
-           (BYTE *)mesh->vertexData() + (DWORD)frame * count * 0x640,
-           count * 0x28);
+           (MeshVertex *)mesh->vertexData() + (DWORD)frame * count * 40,
+           count * sizeof(MeshVertex));
 
     for (DWORD t = 0; t < (DWORD)nVertexCount_ / 3; t++) {
         float *r = debrisVelocity(t);
         const float *v0 = debrisVertex(t * 3);
-        const float *v1 = v0 + 10, *v2 = v0 + 20;
+        const float *v1 = debrisVertex(t * 3+1);
+        const float *v2 = debrisVertex(t * 3+2);
         for (int k = 0; k < 3; k++) r[k] = v0[k] - origin[k];
         for (int k = 0; k < 3; k++) r[k] = (v1[k] - origin[k]) + r[k];
         for (int k = 0; k < 3; k++) r[k] = (v2[k] - origin[k]) + r[k];

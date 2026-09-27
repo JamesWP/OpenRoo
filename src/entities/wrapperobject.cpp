@@ -24,21 +24,14 @@
 #define WRAP_ZERO  0.0f
 #define WRAP_HALF  0.5f
 
-/* The vertex format 0x212 (40 bytes): position, normal, then UV set 0 at 0x18.
- */
-#define VTX_STRIDE 0x28
-#define VTX_NORMAL 0x0c
-#define VTX_UV0    0x18
-
 static inline float *vtx_uv(CFaktMesh *mesh, unsigned int index)
 {
-    return (float *)((char *)mesh->vertexData() + index * VTX_STRIDE + VTX_UV0);
+    return ((MeshVertex *)mesh->vertexData())[index].uv0;
 }
 
 static inline const float *vtx_normal(CFaktMesh *mesh, unsigned int index)
 {
-    return (const float *)((char *)mesh->vertexData() + index * VTX_STRIDE
-                           + VTX_NORMAL);
+    return ((MeshVertex *)mesh->vertexData())[index].normal;
 }
 
 static inline unsigned int snapshot_count(CFaktMesh *mesh)

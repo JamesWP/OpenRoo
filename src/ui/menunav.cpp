@@ -34,8 +34,5 @@ Sim_RestoreGameStateFromSaveSlot(Game *self, unsigned int slotArg)
     self->player()->setCompletionNumerator(S->completionNumerator);
     self->player()->setScore(S->totalScore);
     self->player()->setLives(S->livesRemaining);
-    // The low byte is 1; the rest is what the game left there, the slot's base
-    // address, kept as byte arithmetic.
-    return ((unsigned int)(unsigned long)((unsigned char *)self + (slotArg & 0xff) * 0x2a)
-            & 0xffffff00u) | 1u;
+    return 1;
 }
