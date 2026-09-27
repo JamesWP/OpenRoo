@@ -9,6 +9,7 @@
 
 #include <windows.h>
 #include <mmsystem.h>
+#include <shellapi.h>
 #include <ddraw.h>
 #include <d3d.h>
 #include <stdio.h>
@@ -178,6 +179,10 @@ static void version_string(const char *name, char *out, size_t size)
     free(info);
 }
 
+/* The corner text's extent, shadow included; clicking it opens the project. */
+static RECT s_linkRect;
+static const char LINK_URL[] = "https://github.com/jameswp/OpenRoo";
+
 /* "<name> <version> <git sha>" at the bottom left, with a one-pixel shadow. */
 static void draw_build_text(HDC hdc)
 {
@@ -188,6 +193,10 @@ static void draw_build_text(HDC hdc)
     int x = 11, y = LAUNCHER_H - 11 - 5 * FONT_SCALE;
     HBRUSH shadow = CreateSolidBrush(RGB(0, 0, 0));
     HBRUSH fore   = CreateSolidBrush(RGB(255, 236, 200));
+    s_linkRect.left   = x;
+    s_linkRect.top    = y;
+    s_linkRect.right  = x + (int)strlen(text) * 4 * FONT_SCALE;
+    s_linkRect.bottom = y + 6 * FONT_SCALE;
     draw_text_px(hdc, x + FONT_SCALE, y + FONT_SCALE, text, shadow);
     draw_text_px(hdc, x, y, text, fore);
     DeleteObject(shadow);
@@ -317,8 +326,23 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
         return 1;
     }
 
+    case WM_SETCURSOR: {
+        POINT pt;
+        GetCursorPos(&pt);
+        ScreenToClient(hDlg, &pt);
+        if (LOWORD(lParam) != HTCLIENT || !PtInRect(&s_linkRect, pt))
+            return 0;
+        SetCursor(LoadCursorA(NULL, IDC_HAND));
+        SetWindowLongPtrA(hDlg, DWLP_MSGRESULT, TRUE);
+        return 1;
+    }
+
     case WM_LBUTTONUP:
-        if (in_box(lParam, LAUNCHER_MIN_RECT)) {
+        if (in_box(lParam, s_linkRect.left, s_linkRect.top,
+                   s_linkRect.right - s_linkRect.left,
+                   s_linkRect.bottom - s_linkRect.top)) {
+            ShellExecuteA(hDlg, "open", LINK_URL, NULL, NULL, SW_SHOWNORMAL);
+        } else if (in_box(lParam, LAUNCHER_MIN_RECT)) {
             ShowWindow(hDlg, SW_MINIMIZE);
         } else if (in_box(lParam, LAUNCHER_CLOSE_RECT)) {
             sndPlaySoundA(SND_UGH, SND_NODEFAULT);

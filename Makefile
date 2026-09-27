@@ -54,7 +54,7 @@ OBJDIR  = $(BUILD)/obj
 OBJS    = $(SRCS:src/%.cpp=$(OBJDIR)/%.o)
 EXE     = $(BUILD)/KarooOwn.exe
 RESOBJ  = $(OBJDIR)/openroo_rc.o
-LIBS    = -lgdi32 -lversion -lwinmm -ldsound -ldinput8 -ldxguid -static-libgcc -static-libstdc++
+LIBS    = -lgdi32 -lversion -lshell32 -lwinmm -ldsound -ldinput8 -ldxguid -static-libgcc -static-libstdc++
 
 all: $(EXE)
 
