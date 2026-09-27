@@ -42,14 +42,12 @@
 
 /* OpenLevelFile's own messages, which carry the level number too. */
 
-struct CStaticSoundbuffer;
+class CStaticSoundbuffer;
 
 struct GameLogger;
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *self);
 
 static int s_fx_samelevel  = 0;
 static int s_fx_crtpath    = 0;

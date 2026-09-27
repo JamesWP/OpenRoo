@@ -276,11 +276,11 @@ void LiftObject::tick()
             state_  = 0;
 
             if (sound_ != 0)
-                CStatic_HaltPlayback(sound_);
+                sound_->haltPlayback();
         }
 
         if (sound_ != 0)
-            CStatic_Set3DPosition(sound_, (float)(int)cellU_, height_,
+            sound_->set3DPosition((float)(int)cellU_, height_,
                                   -(float)(int)cellV_, 1);
     }
 
@@ -312,12 +312,12 @@ void LiftObject::tick()
                 state_  = 0;
 
                 if (sound_ != 0)
-                    CStatic_HaltPlayback(sound_);
+                    sound_->haltPlayback();
             }
         }
 
         if (sound_ != 0)
-            CStatic_Set3DPosition(sound_, (float)(int)cellU_, height_,
+            sound_->set3DPosition((float)(int)cellU_, height_,
                                   -(float)(int)cellV_, 1);
     }
 
@@ -346,9 +346,9 @@ void LiftObject::tick()
             }
 
             if (sound_ != 0) {
-                CStatic_Set3DPosition(sound_, (float)(int)cellU_, height_,
+                sound_->set3DPosition((float)(int)cellU_, height_,
                                       -(float)(int)cellV_, 1);
-                CStatic_TriggerPlayback(sound_, 1);
+                sound_->triggerPlayback(1);
             }
         }
 

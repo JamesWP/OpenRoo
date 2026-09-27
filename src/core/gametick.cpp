@@ -302,9 +302,9 @@ Sim_GameTick(Game *self, double dt, double now)
         if (pl->moveState() != 0) {
             self->setOverviewActive(0);
             self->setCameraDistance(self->zoomDistance());
-            if (pl->soundAf() != NULL) CStatic_HaltPlayback(pl->soundAf());
-            if (pl->soundAb() != NULL) CStatic_HaltPlayback(pl->soundAb());
-            if (pl->soundC7() != NULL) CStatic_HaltPlayback(pl->soundC7());
+            if (pl->soundAf() != NULL) pl->soundAf()->haltPlayback();
+            if (pl->soundAb() != NULL) pl->soundAb()->haltPlayback();
+            if (pl->soundC7() != NULL) pl->soundC7()->haltPlayback();
         }
 
         if ((unsigned int)pl->gliding() != 0) {
@@ -328,7 +328,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 pl->setLastSecondsMark(10.0);
             } else if ((long double)pl->lastSecondsMark() > (long double)rem64) {
                 if (self->fixedSounds()->lastSeconds != NULL)
-                    CStatic_TriggerPlayback(self->fixedSounds()->lastSeconds, 0);
+                    (self->fixedSounds()->lastSeconds)->triggerPlayback(0);
                 pl->setLastSecondsMark(crt_floor(rem64));
             }
         }
@@ -339,7 +339,7 @@ Sim_GameTick(Game *self, double dt, double now)
         pl->setLastActive(*self->clock());
         g_progCtrl.dispatch(0);
         if (self->fixedSounds()->lastSeconds != NULL)
-            CStatic_HaltPlayback(self->fixedSounds()->lastSeconds);
+            (self->fixedSounds()->lastSeconds)->haltPlayback();
     }
 
     // The player's bomb drop.
@@ -451,7 +451,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->setTimeElapsed((unsigned int)t);
                 pl->setMoveState(3);
                 if (snd != NULL)
-                    CStatic_TriggerPlayback((CStaticSoundbuffer *)snd, 0);
+                    ((CStaticSoundbuffer *)snd)->triggerPlayback(0);
             }
         }
         if (pl->gemsCollected() >= self->gemsRequired()) {
@@ -459,7 +459,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 int r = (int)ftol80((*self->clock()));
                 void *snd = self->fixedSounds()->crystalBank[r % 3];
                 if (snd != NULL)
-                    CStatic_TriggerPlayback((CStaticSoundbuffer *)snd, 0);
+                    ((CStaticSoundbuffer *)snd)->triggerPlayback(0);
                 self->setField173b1a(1);
             }
             self->map()->tile((signed char)pl->markerCellU(), (signed char)pl->markerCellV())->setBusy(1);
@@ -469,7 +469,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 pl->setHeld(1);
                 if ((unsigned int)pl->moveDir() == 0) {
                     if (self->fixedSounds()->levelCompleted != NULL)
-                        CStatic_TriggerPlayback(self->fixedSounds()->levelCompleted, 0);
+                        (self->fixedSounds()->levelCompleted)->triggerPlayback(0);
                     if ((unsigned int)self->levelIndex() + 1 == (unsigned int)self->levelCount()) {
                         self->stateRef() = 2;
                         if (self->musicOn() != 0)

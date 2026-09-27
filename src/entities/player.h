@@ -12,7 +12,7 @@
 #include "layout.h"
 #include "movableentity.h"
 
-struct CStaticSoundbuffer;
+class CStaticSoundbuffer;
 struct LinkedList;
 struct VoicePool;
 class Tile;

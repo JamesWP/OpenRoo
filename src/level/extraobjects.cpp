@@ -246,7 +246,7 @@ void ExtraObjects::releaseSounds()
         ExtraObjectRecord *r = &records_[k];
         // The handle is re-read after halting.
         if (r->sound != 0) {
-            CStatic_HaltPlayback(r->sound);
+            r->sound->haltPlayback();
             soundManager_->releaseStaticForOwner(r->sound, 1);
             r->sound = 0;
 

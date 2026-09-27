@@ -25,16 +25,9 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 
-struct CStaticSoundbuffer;
+class CStaticSoundbuffer;
 #include "voicepool.h"
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Reset(CStaticSoundbuffer *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Set3DPosition(CStaticSoundbuffer *self, float x, float y, float z,
-                      DWORD dwApply);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 
 static int s_fx = -1;
 
@@ -58,7 +51,7 @@ static CStaticSoundbuffer *reslot(Game *game, CStaticSoundbuffer *cur,
                                   const SoundAssetName *asset)
 {
     if (cur != NULL)
-        CStatic_Reset(cur);
+        cur->reset();
     if (asset->enabled != 0)
         return acq(game, asset);
     return cur;
@@ -157,9 +150,9 @@ Sim_InitLevelBasedSounds(Game *self)
                 CStaticSoundbuffer *p = game->soundManager()->acquireStatic(nm, 1);
                 E->sound = p;
                 if (p != NULL) {
-                    CStatic_Set3DPosition(p, E->position[0], E->position[2],
+                    p->set3DPosition(E->position[0], E->position[2],
                                           -E->position[1], 1);
-                    CStatic_TriggerPlayback(E->sound, 1);
+                    E->sound->triggerPlayback(1);
                 }
             }
         }

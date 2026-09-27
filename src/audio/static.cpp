@@ -134,8 +134,6 @@ static IDirectSoundBuffer *create_ds_buffer(IDirectSound *pDS,
     return pBuf;
 }
 
-static void CStatic_ReinitBuffer_impl(CStaticSoundbuffer *self);
-
 /* KAROO_SOUND_DIAG=1 logs the first call to each destructor entry point, to
  * tell "ran" from "never ran". */
 static bool sound_diag(void)
@@ -160,21 +158,15 @@ __declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
         log_write("sound: DIAG first call -- %s\n", who);
 }
 
-__declspec(dllexport) void * __attribute__((thiscall))
-CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
-
-static void *const g_CStaticVtable[1] = { (void *)&CStatic_ScalarVectorDtor };
-
-__declspec(dllexport) void *CStatic_Vtable(void)
-{
-    return (void *)g_CStaticVtable;
 }
+
+static void *const g_CStaticVtable[1] = { (void *)&CStaticSoundbuffer::scalarVectorDtor };
 
 /* For an array, the count header sits four bytes below the first element and
  * the elements are destroyed in reverse, as MSVC's vector destructor does.
  * Voice pools destroy with flag 3, so the array path is the one taken. */
-__declspec(dllexport) void * __attribute__((thiscall))
-CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
+void * __attribute__((thiscall))
+CStaticSoundbuffer::scalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
 {
     static unsigned long seen;
     CStatic_SoundFirstCall("CStaticSoundbuffer::ScalarVectorDtor", &seen);
@@ -186,83 +178,72 @@ CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
 
         // Reverse order.
         for (int i = count - 1; i >= 0; --i)
-            CStatic_ReinitBuffer_impl(&self[i]);
+            self[i].reinitBuffer();
 
         if (flags & 1)
             free(base);
         return base;
     }
 
-    CStatic_ReinitBuffer_impl(self);
+    self->reinitBuffer();
     if (flags & 1)
         free(self);
     return self;
 }
 
-}
-
-static void CStatic_Reset_impl(CStaticSoundbuffer *self);
-static int  CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
-                                           IDirectSound *pDS, DWORD dwDsFlags,
-                                           const char *filename, void *logger);
-static int  CStatic_CreateAndLoad3DSoundFile_impl(CStaticSoundbuffer *self,
-                                                  IDirectSound *pDS, DWORD dwDsFlags,
-                                                  const char *filename, void *logger);
-
-static CStaticSoundbuffer* CStatic_Init_impl(CStaticSoundbuffer *self)
+CStaticSoundbuffer *CStaticSoundbuffer::init()
 {
-    memset(self, 0, sizeof(*self));
-    self->vtable = CStatic_Vtable();
-    return self;
+    memset(this, 0, sizeof(*this));
+    vtable_ = (void *)g_CStaticVtable;
+    return this;
 }
 
-static void CStatic_ReinitBuffer_impl(CStaticSoundbuffer *self)
+void CStaticSoundbuffer::reinitBuffer()
 {
-    self->vtable = CStatic_Vtable();
-    CStatic_Reset_impl(self);
+    vtable_ = (void *)g_CStaticVtable;
+    reset();
 }
 
-static void CStatic_Reset_impl(CStaticSoundbuffer *self)
+void CStaticSoundbuffer::reset()
 {
-    if (self->threeDBuffer) {
-        self->threeDBuffer->Release();
-        self->threeDBuffer = NULL;
+    if (threeDBuffer_) {
+        threeDBuffer_->Release();
+        threeDBuffer_ = NULL;
     }
-    if (self->soundbuffer) {
-        self->soundbuffer->Release();
-        self->soundbuffer = NULL;
+    if (soundbuffer_) {
+        soundbuffer_->Release();
+        soundbuffer_ = NULL;
     }
-    if (self->filename) {
-        HeapFree(GetProcessHeap(), 0, self->filename);
-        self->filename = NULL;
+    if (filename_) {
+        HeapFree(GetProcessHeap(), 0, filename_);
+        filename_ = NULL;
     }
-    self->logger   = NULL;
-    self->dwDsFlags = 0;
+    logger_   = NULL;
+    dwDsFlags_ = 0;
 }
 
-static int CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
-                                          IDirectSound *pDS, DWORD dwDsFlags,
+int CStaticSoundbuffer::createAndLoadFile(IDirectSound *pDS, DWORD dwDsFlags,
                                           const char *filename, void *logger)
 {
 
-    CStatic_Reset_impl(self);
+    reset();
 
     if (!pDS || !filename) {
         log_write("CStatic::CreateAndLoadFile: null pDS or filename\n");
         return 0;
     }
 
-    self->logger    = logger;
-    self->dwDsFlags = dwDsFlags;
-    self->filename  = heap_strdup(filename);
-    if (!self->filename) return 0;
+    logger_    = logger;
+    dwDsFlags_ = dwDsFlags;
+    filename_  = heap_strdup(filename);
+    if (!filename_) return 0;
 
     WAVEFORMATEX *fmt  = NULL;
     BYTE         *pcm  = NULL;
     DWORD         pcm_sz = 0;
     if (!parse_wav(filename, &fmt, &pcm, &pcm_sz)) {
         log_write("CStatic::CreateAndLoadFile: parse_wav failed for '%s'\n", filename);
-        CStatic_Reset_impl(self);
+        reset();
         return 0;
     }
 
@@ -271,32 +252,31 @@ static int CStatic_CreateAndLoadFile_impl(CStaticSoundbuffer *self,
     if (dwDsFlags & DSBCAPS_CTRL3D)
         bufFlags |= DSBCAPS_CTRL3D;
 
-    self->soundbuffer = create_ds_buffer(pDS, bufFlags, fmt, pcm, pcm_sz);
-    if (!self->soundbuffer) {
+    soundbuffer_ = create_ds_buffer(pDS, bufFlags, fmt, pcm, pcm_sz);
+    if (!soundbuffer_) {
         log_write("CStatic::CreateAndLoadFile: create_ds_buffer failed for '%s'\n", filename);
-        CStatic_Reset_impl(self);
+        reset();
         return 0;
     }
 
     return 1;
 }
 
-static int CStatic_CreateAndLoad3DSoundFile_impl(CStaticSoundbuffer *self,
-                                                 IDirectSound *pDS, DWORD dwDsFlags,
+int CStaticSoundbuffer::createAndLoad3DSoundFile(IDirectSound *pDS, DWORD dwDsFlags,
                                                  const char *filename, void *logger)
 {
 
     // Forces CTRL3D, then queries the 3D interface.
-    int ok = CStatic_CreateAndLoadFile_impl(self, pDS, dwDsFlags | DSBCAPS_CTRL3D,
+    int ok = createAndLoadFile(pDS, dwDsFlags | DSBCAPS_CTRL3D,
                                             filename, logger);
     if (!ok) return 0;
 
     GUID iid3D = IID_IDirectSound3DBuffer;
-    HRESULT hr = self->soundbuffer->QueryInterface(iid3D, (void**)self->threeDBufferSlot());
+    HRESULT hr = soundbuffer_->QueryInterface(iid3D, (void**)threeDBufferSlot());
     if (FAILED(hr)) {
         log_write("CStatic::CreateAndLoad3DSoundFile: QueryInterface IID_IDirectSound3DBuffer hr=0x%lx\n",
                   (unsigned long)hr);
-        CStatic_Reset_impl(self);
+        reset();
         return 0;
     }
 
@@ -305,31 +285,30 @@ static int CStatic_CreateAndLoad3DSoundFile_impl(CStaticSoundbuffer *self,
 
 /* Returns other on success.  flag != 0: no reload from the file if duplication
  * fails; flag == 0: reload, and return self. */
-static void* CStatic_Copy_impl(CStaticSoundbuffer *self,
+void *CStaticSoundbuffer::copy(IDirectSound *pDS,
                                 CStaticSoundbuffer *other,
-                                IDirectSound *pDS,
                                 int flag)
 {
 
-    CStatic_Reset_impl(self);
+    reset();
 
-    if (!other || !other->soundbuffer) return NULL;
+    if (!other || !other->soundbuffer_) return NULL;
 
-    HRESULT hr = pDS->DuplicateSoundBuffer(other->soundbuffer, self->soundbufferSlot());
+    HRESULT hr = pDS->DuplicateSoundBuffer(other->soundbuffer_, soundbufferSlot());
     if (SUCCEEDED(hr)) {
         // Duplicated: copy the file details and query the 3D interface if the
         // source had one.
-        self->filename  = heap_strdup(other->filename);
-        self->logger    = other->logger;
-        self->dwDsFlags = other->dwDsFlags;
+        filename_  = heap_strdup(other->filename_);
+        logger_    = other->logger_;
+        dwDsFlags_ = other->dwDsFlags_;
 
-        if (other->threeDBuffer) {
+        if (other->threeDBuffer_) {
             GUID iid3D = IID_IDirectSound3DBuffer;
-            hr = self->soundbuffer->QueryInterface(iid3D, (void**)self->threeDBufferSlot());
+            hr = soundbuffer_->QueryInterface(iid3D, (void**)threeDBufferSlot());
             if (FAILED(hr)) {
                 log_write("CStatic::Copy: QueryInterface 3D failed hr=0x%lx\n",
                           (unsigned long)hr);
-                CStatic_Reset_impl(self);
+                reset();
                 return NULL;
             }
         }
@@ -338,68 +317,67 @@ static void* CStatic_Copy_impl(CStaticSoundbuffer *self,
 
     log_write("CStatic::Copy: DuplicateSoundBuffer failed hr=0x%lx\n", (unsigned long)hr);
     if (flag != 0) {
-        CStatic_Reset_impl(self);
+        reset();
         return NULL;
     }
 
     // Reload from the file.
     int ok;
-    if (other->threeDBuffer) {
-        ok = CStatic_CreateAndLoad3DSoundFile_impl(self, pDS,
-                 other->dwDsFlags | DSBCAPS_CTRL3D, other->filename, other->logger);
+    if (other->threeDBuffer_) {
+        ok = createAndLoad3DSoundFile(pDS,
+                 other->dwDsFlags_ | DSBCAPS_CTRL3D, other->filename_, other->logger_);
     } else {
-        ok = CStatic_CreateAndLoadFile_impl(self, pDS,
-                 other->dwDsFlags & ~DSBCAPS_CTRL3D, other->filename, other->logger);
+        ok = createAndLoadFile(pDS,
+                 other->dwDsFlags_ & ~DSBCAPS_CTRL3D, other->filename_, other->logger_);
     }
     if (!ok) {
-        CStatic_Reset_impl(self);
+        reset();
         return NULL;
     }
-    return self;
+    return this;
 }
 
 /* set3D == 0: make the buffer 2D, reloading it without CTRL3D if it is 3D.
  * set3D != 0: make it 3D, reloading with CTRL3D if it is not. */
-static int CStatic_CreateAndLoad_impl(CStaticSoundbuffer *self,
-                                      IDirectSound *pDS, DWORD set3D)
+int CStaticSoundbuffer::createAndLoad(IDirectSound *pDS, DWORD set3D)
 {
-    if (!self->soundbuffer) return 0;
+    if (!soundbuffer_) return 0;
 
     if (set3D == 0) {
-        if (!self->threeDBuffer) return 1;
-        char *fn     = heap_strdup(self->filename);
-        void *logger = self->logger;
-        DWORD flags  = self->dwDsFlags & ~DSBCAPS_CTRL3D;
-        CStatic_Reset_impl(self);
-        int ok = CStatic_CreateAndLoadFile_impl(self, pDS, flags, fn, logger);
+        if (!threeDBuffer_) return 1;
+        char *fn     = heap_strdup(filename_);
+        void *logger = logger_;
+        DWORD flags  = dwDsFlags_ & ~DSBCAPS_CTRL3D;
+        reset();
+        int ok = createAndLoadFile(pDS, flags, fn, logger);
         HeapFree(GetProcessHeap(), 0, fn);
         return ok;
     } else {
-        if (self->threeDBuffer) return 1;
-        char *fn     = heap_strdup(self->filename);
-        void *logger = self->logger;
-        DWORD flags  = self->dwDsFlags;
-        CStatic_Reset_impl(self);
-        int ok = CStatic_CreateAndLoad3DSoundFile_impl(self, pDS, flags, fn, logger);
+        if (threeDBuffer_) return 1;
+        char *fn     = heap_strdup(filename_);
+        void *logger = logger_;
+        DWORD flags  = dwDsFlags_;
+        reset();
+        int ok = createAndLoad3DSoundFile(pDS, flags, fn, logger);
         HeapFree(GetProcessHeap(), 0, fn);
         return ok;
     }
 }
 
-static int CStatic_Apply3DMode_impl(CStaticSoundbuffer *self, int enable3D)
+int CStaticSoundbuffer::apply3DMode(int enable3D)
 {
-    if (!self->threeDBuffer) return 0;
+    if (!threeDBuffer_) return 0;
     DWORD mode = enable3D ? DS3DMODE_NORMAL : DS3DMODE_DISABLE;
-    self->threeDBuffer->SetMode(mode, 0 );  // DS3DAPPLY_NOW
+    threeDBuffer_->SetMode(mode, 0 );  // DS3DAPPLY_NOW
     return 1;
 }
 
 /* Restores a lost buffer and refills it from the file. */
-static int CStatic_RestoreBuffer_impl(CStaticSoundbuffer *self)
+int CStaticSoundbuffer::restoreBuffer()
 {
-    if (!self->soundbuffer) return 0;
+    if (!soundbuffer_) return 0;
 
-    HRESULT hr = self->soundbuffer->Restore();
+    HRESULT hr = soundbuffer_->Restore();
     if (FAILED(hr)) {
         log_write("CStatic::RestoreBuffer: Restore failed hr=0x%lx\n", (unsigned long)hr);
         return 0;
@@ -408,15 +386,15 @@ static int CStatic_RestoreBuffer_impl(CStaticSoundbuffer *self)
     WAVEFORMATEX *fmt  = NULL;
     BYTE         *pcm  = NULL;
     DWORD         pcm_sz = 0;
-    if (!parse_wav(self->filename, &fmt, &pcm, &pcm_sz)) {
+    if (!parse_wav(filename_, &fmt, &pcm, &pcm_sz)) {
         log_write("CStatic::RestoreBuffer: parse_wav failed for '%s'\n",
-                  self->filename ? self->filename : "<null>");
+                  filename_ ? filename_ : "<null>");
         return 0;
     }
 
     void  *ptr1 = NULL, *ptr2 = NULL;
     DWORD  bytes1 = 0,   bytes2 = 0;
-    hr = self->soundbuffer->Lock(0, pcm_sz, &ptr1, &bytes1, &ptr2, &bytes2, 0);
+    hr = soundbuffer_->Lock(0, pcm_sz, &ptr1, &bytes1, &ptr2, &bytes2, 0);
     if (FAILED(hr)) {
         log_write("CStatic::RestoreBuffer: Lock failed hr=0x%lx\n", (unsigned long)hr);
         HeapFree(GetProcessHeap(), 0, fmt);
@@ -425,24 +403,24 @@ static int CStatic_RestoreBuffer_impl(CStaticSoundbuffer *self)
     }
     memcpy(ptr1, pcm, bytes1);
     if (ptr2 && bytes2) memcpy(ptr2, (BYTE*)pcm + bytes1, bytes2);
-    self->soundbuffer->Unlock(ptr1, bytes1, ptr2, bytes2);
+    soundbuffer_->Unlock(ptr1, bytes1, ptr2, bytes2);
 
     HeapFree(GetProcessHeap(), 0, fmt);
     HeapFree(GetProcessHeap(), 0, pcm);
     return 1;
 }
 
-static int CStatic_TriggerPlayback_impl(CStaticSoundbuffer *self, DWORD dwLoopFlags)
+int CStaticSoundbuffer::triggerPlayback(DWORD dwLoopFlags)
 {
-    if (!self->soundbuffer) return 0;
+    if (!soundbuffer_) return 0;
 
-    HRESULT hr = self->soundbuffer->Play(0, 0, dwLoopFlags);
+    HRESULT hr = soundbuffer_->Play(0, 0, dwLoopFlags);
     // A lost buffer is restored, refilled and played again once.
     if (hr == DSERR_BUFFERLOST) {
         log_write("CStatic::TriggerPlayback: buffer lost, restoring '%s'\n",
-                  self->filename ? self->filename : "<null>");
-        if (!CStatic_RestoreBuffer_impl(self)) return -1;
-        hr = self->soundbuffer->Play(0, 0, dwLoopFlags);
+                  filename_ ? filename_ : "<null>");
+        if (!restoreBuffer()) return -1;
+        hr = soundbuffer_->Play(0, 0, dwLoopFlags);
     }
     if (FAILED(hr)) {
         log_write("CStatic::TriggerPlayback: Play failed hr=0x%lx\n", (unsigned long)hr);
@@ -450,74 +428,15 @@ static int CStatic_TriggerPlayback_impl(CStaticSoundbuffer *self, DWORD dwLoopFl
     return (int)hr;
 }
 
-static void CStatic_HaltPlayback_impl(CStaticSoundbuffer *self)
+void CStaticSoundbuffer::haltPlayback()
 {
-    if (self->soundbuffer)
-        self->soundbuffer->Stop();
+    if (soundbuffer_)
+        soundbuffer_->Stop();
 }
 
-static void CStatic_Set3DPosition_impl(CStaticSoundbuffer *self,
-                                       float x, float y, float z, DWORD dwApply)
+void CStaticSoundbuffer::set3DPosition(float x, float y, float z, DWORD dwApply)
 {
-    if (self->threeDBuffer)
-        self->threeDBuffer->SetPosition(x, y, z, dwApply);
+    if (threeDBuffer_)
+        threeDBuffer_->SetPosition(x, y, z, dwApply);
 }
 
-extern "C" {
-
-__declspec(dllexport) CStaticSoundbuffer* __attribute__((thiscall))
-CStatic_Init(CStaticSoundbuffer *self)
-    { return CStatic_Init_impl(self); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_ReinitBuffer(CStaticSoundbuffer *self)
-    { CStatic_ReinitBuffer_impl(self); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_Reset(CStaticSoundbuffer *self)
-    { CStatic_Reset_impl(self); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_CreateAndLoadFile(CStaticSoundbuffer *self,
-                          IDirectSound *pDS, DWORD dwDsFlags,
-                          const char *filename, void *logger)
-    { return CStatic_CreateAndLoadFile_impl(self, pDS, dwDsFlags, filename, logger); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_CreateAndLoad3DSoundFile(CStaticSoundbuffer *self,
-                                 IDirectSound *pDS, DWORD dwDsFlags,
-                                 const char *filename, void *logger)
-    { return CStatic_CreateAndLoad3DSoundFile_impl(self, pDS, dwDsFlags, filename, logger); }
-
-__declspec(dllexport) void* __attribute__((thiscall))
-CStatic_Copy(CStaticSoundbuffer *self,
-             IDirectSound *pDS, CStaticSoundbuffer *other, int flag)
-    { return CStatic_Copy_impl(self, other, pDS, flag); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_CreateAndLoad(CStaticSoundbuffer *self,
-                      IDirectSound *pDS, DWORD set3D)
-    { return CStatic_CreateAndLoad_impl(self, pDS, set3D); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_Apply3DMode(CStaticSoundbuffer *self, int enable3D)
-    { return CStatic_Apply3DMode_impl(self, enable3D); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_RestoreBuffer(CStaticSoundbuffer *self)
-    { return CStatic_RestoreBuffer_impl(self); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags)
-    { return CStatic_TriggerPlayback_impl(self, dwLoopFlags); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_HaltPlayback(CStaticSoundbuffer *self)
-    { CStatic_HaltPlayback_impl(self); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CStatic_Set3DPosition(CStaticSoundbuffer *self,
-                      float x, float y, float z, DWORD dwApply)
-    { CStatic_Set3DPosition_impl(self, x, y, z, dwApply); }
-
-}

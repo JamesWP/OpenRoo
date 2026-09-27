@@ -8,7 +8,7 @@
 #include "layout.h"
 #include "game.h"
 
-struct CStaticSoundbuffer;
+class CStaticSoundbuffer;
 
 class __attribute__((packed)) SlideObject {
 public:

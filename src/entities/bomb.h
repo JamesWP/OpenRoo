@@ -10,7 +10,7 @@
 #include "game.h"
 #include "movableentity.h"
 
-struct CStaticSoundbuffer;
+class CStaticSoundbuffer;
 class SoundManager;
 class Tile;
 

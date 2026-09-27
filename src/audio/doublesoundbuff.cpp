@@ -87,8 +87,8 @@ extern "C" __declspec(dllexport) doublesoundbuff * __attribute__((thiscall))
 Dsb_Init(doublesoundbuff *self)
 {
     ++g_nInit; { static unsigned long seen; dsb_first("Init", &seen); }
-    CStatic_Init(self->master());
-    CStatic_Init(self->spare());
+    self->master()->init();
+    self->spare()->init();
     self->clones()->init();
     self->pools()->init();
     self->dwMasterTaken = 0;
@@ -105,8 +105,8 @@ Dsb_Clear(doublesoundbuff *self)
     ++g_nClear; { static unsigned long seen; dsb_first("Clear", &seen); }
     Dsb_PurgeCloneList(self->clones());
     Dsb_PurgeVoicePoolList(self->pools());
-    CStatic_Reset(self->master());
-    CStatic_Reset(self->spare());
+    self->master()->reset();
+    self->spare()->reset();
     self->dwMasterTaken = 0;
     self->dwSpareTaken  = 0;
     dsb_census();
@@ -121,8 +121,8 @@ Dsb_Destruct(doublesoundbuff *self)
     Dsb_Clear(self);
     self->pools()->destruct();
     self->clones()->destruct();
-    CStatic_ReinitBuffer(self->spare());
-    CStatic_ReinitBuffer(self->master());
+    self->spare()->reinitBuffer();
+    self->master()->reinitBuffer();
     dsb_census();
 }
 

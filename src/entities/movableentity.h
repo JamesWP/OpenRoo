@@ -12,7 +12,7 @@
 #include "layout.h"
 #include "game.h"
 
-struct CStaticSoundbuffer;
+class CStaticSoundbuffer;
 struct VoicePool;
 class FoePath;
 

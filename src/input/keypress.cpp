@@ -163,7 +163,7 @@ Sim_HandleKeypress(Game *self)
     if (self->rebindActive() == 0 && self->textEntryActive() == 0) {
         if (KEY(0x1b) != 0 && self->debounceRef() != 0x1b && self->menu()->changed() != 0) {
             if (self->fixedSounds()->switchClick != NULL)
-                CStatic_TriggerPlayback(self->fixedSounds()->switchClick, 0);
+                (self->fixedSounds()->switchClick)->triggerPlayback(0);
             self->debounceRef() = 0x1b;
         }
         if (self->menu()->nodeRef() != 5 && self->menu()->nodeRef() != 3 && self->menu()->childCount(self->menu()->nodeRef()) > 1) {
@@ -181,7 +181,7 @@ Sim_HandleKeypress(Game *self)
         if (KEY(0x0d) != 0 && self->debounceRef() != 0x0d && self->menu()->changed() != 0 &&
             (unsigned short)self->menu()->nodeRef() == self->menu()->lastNodeSeen()) {
             if (self->fixedSounds()->switchClick != NULL)
-                CStatic_TriggerPlayback(self->fixedSounds()->switchClick, 0);
+                (self->fixedSounds()->switchClick)->triggerPlayback(0);
             self->debounceRef() = 0x0d;
         }
         self->menu()->navigate((int)(long long)self->lastTickTime());
@@ -318,7 +318,7 @@ Sim_HandleKeypress(Game *self)
         self->menu()->pop();
         GameLog_LogMessage(&g_logger, 1, GS_GAME_LEVEL_DONE_CONTINUE);
         if (self->fixedSounds()->levelCompleted != NULL)
-            CStatic_HaltPlayback(self->fixedSounds()->levelCompleted);
+            (self->fixedSounds()->levelCompleted)->haltPlayback();
         break;
     }
     case 0x22: case 0x32: case 0x3e: case 0x3f:

@@ -9,7 +9,7 @@
 #include "layout.h"
 
 class SoundManager;
-struct CStaticSoundbuffer;
+class CStaticSoundbuffer;
 
 enum ExtraObjectKind {
     EXTRA_MODEL = 0, EXTRA_PARTICLE = 1, EXTRA_BILLBOARD = 2, EXTRA_SOUND = 3

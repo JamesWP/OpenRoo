@@ -205,8 +205,8 @@ static inline void snd_at(CStaticSoundbuffer *s, float x, float y, float z, DWOR
 {
     if (s == 0)
         return;
-    CStatic_Set3DPosition(s, x, y, z, 1);
-    CStatic_TriggerPlayback(s, loop);
+    s->set3DPosition(x, y, z, 1);
+    s->triggerPlayback(loop);
 }
 
 /* Is direction `d` the entity's facing, or its reverse? The second check runs
@@ -390,7 +390,7 @@ unsigned int MovableEntity::updateMovement()
                 copy8(&animDuration_, &stepDuration_);
                 climbing_ = 0;
                 if (sound_af_ != 0)
-                    CStatic_HaltPlayback(sound_af_);
+                    sound_af_->haltPlayback();
             }
 
             // Teleporter tile.
@@ -473,7 +473,7 @@ unsigned int MovableEntity::updateMovement()
         if ((signed char)t2->objectMarker() != TILE_CONVEYOR ||
             (unsigned)t2->height() != (unsigned)(int)GH) {
             if (sound_ab_ != 0)
-                CStatic_HaltPlayback(sound_ab_);
+                sound_ab_->haltPlayback();
             conveyorDir_ = 0;
         }
     }
@@ -571,12 +571,12 @@ unsigned int MovableEntity::updateMovement()
                             snd_at(sound_a7_, (float)(int)GU, (float)(int)GH,
                                    -(float)(int)GV, 0);
                         if (sound_c3_ != 0)
-                            CStatic_HaltPlayback(sound_c3_);
+                            sound_c3_->haltPlayback();
                         pendingMove_ = 0;
                     }
                 }
                 if (sound_c7_ != 0)
-                    CStatic_HaltPlayback(sound_c7_);
+                    sound_c7_->haltPlayback();
                 gliding_  = 0;
                 anim_   = 0;
                 falling_ = 0;
@@ -596,7 +596,7 @@ unsigned int MovableEntity::updateMovement()
                 copy8(&animDuration_, &stepDuration_);
                 climbing_ = 0;
                 if (sound_af_ != 0)
-                    CStatic_HaltPlayback(sound_af_);
+                    sound_af_->haltPlayback();
                 if (onLift_ == 0) {
                     fallSpeed_   = -3.0f;                         // starts at -3.0
                     fallStartH_  = ((unsigned char)heightCell_);  // fall start height
@@ -615,7 +615,7 @@ unsigned int MovableEntity::updateMovement()
                 if (gliding_ == 0) {
                     // Free fall.
                     if (sound_c3_ != 0)
-                        CStatic_Set3DPosition(sound_c3_, posU_, posY_,
+                        sound_c3_->set3DPosition(posU_, posY_,
                                               -posV_, 1);
                     if (facing_or_reverse((unsigned)pendingMove_, facing_))
                         pendingMove_ = 0;
@@ -650,7 +650,7 @@ unsigned int MovableEntity::updateMovement()
                 } else {
                     // Gliding.
                     if (sound_c7_ != 0)
-                        CStatic_Set3DPosition(sound_c7_, posU_, posY_,
+                        sound_c7_->set3DPosition(posU_, posY_,
                                               -posV_, 1);
                     unsigned char th = CUR->height();
                     if ((float)th < posY_ || posY_ < (float)th - K_HALF_F) {
@@ -707,7 +707,7 @@ unsigned int MovableEntity::updateMovement()
                     posY_ = (float)((v0 - ts * (double)K_GRAVITY_HALF) * ts
                                       + (double)(int)GH);
                     if (sound_b3_ != 0)
-                        CStatic_Set3DPosition(sound_b3_, (float)(int)GU,
+                        sound_b3_->set3DPosition((float)(int)GU,
                                               (float)(int)GH, -(float)(int)GV, 1);
                     anim_ = 0x0b;
                 } else {

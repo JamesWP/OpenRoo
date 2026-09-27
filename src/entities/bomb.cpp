@@ -368,15 +368,14 @@ void Bomb::tick()
 
     // The roll sound, on the grid cell: (u, h, -v).
     if (rollSound_ != 0) {
-        CStatic_Set3DPosition(rollSound_,
-                              (float)(int)cellU_,
+        rollSound_->set3DPosition((float)(int)cellU_,
                               (float)(int)heightCell_,
                               -(float)(int)cellV_,
                               1);
         if (dying_ == 0)  // raised by the blast below
-            CStatic_TriggerPlayback(rollSound_, 0);
+            rollSound_->triggerPlayback(0);
         else
-            CStatic_HaltPlayback(rollSound_);
+            rollSound_->haltPlayback();
     }
 
     // Roll: still fusing.
@@ -399,8 +398,8 @@ void Bomb::tick()
     if (blastSoundPlayed_ == 0) {
         if (blastSound_ != 0) {
             // From the float position, not the grid bytes.
-            CStatic_Set3DPosition(blastSound_, posU_, posY_, -posV_, 1);
-            CStatic_TriggerPlayback(blastSound_, 0);
+            blastSound_->set3DPosition(posU_, posY_, -posV_, 1);
+            blastSound_->triggerPlayback(0);
         }
         blastSoundPlayed_ = 1;
     }
