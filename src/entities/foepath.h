@@ -1,53 +1,39 @@
-/* FoePath -- the foe pathfinder, a best-first (A*-shaped) search over the
- * tile grid.  One per foe, hung off foe+0x13b; 0x35 bytes.
- *
- * All of it is ours (foepath.cpp): construction (create(), replacing
- * AttachFoePathfinderToEntity 0x43a970's allocation and the ctor
- * PopulateFoePathSearchContext 0x401bb0, both UD2-stubbed), the search's
- * methods, and the destructor body 0x401c00 (dispose(); the still-original
- * Player dtor's call is routed to it).  The search's methods are one-line
- * export shims over the methods below.
- *
- * The object, its worklist block, cells and nodes are allocated and freed
- * with OUR allocators (new/delete, calloc/free): every allocation and free
- * is ours, and the Player -- whose still-original dtor would Free2 its
- * +0x13b -- never holds a FoePath (see the allocator note in foepath.cpp).
- * The layouts are packed and asserted against the ctor's stores and the
- * listings all the same; see foepath.cpp for each method's exactness notes.
- */
+/* FoePath: the foe pathfinder, a best-first (A*-shaped) search over the tile
+ * grid, run backward from the target to the foe.  One per foe, at foe+0x13b;
+ * 0x35 bytes.  The object, its worklist block, cells and nodes are all
+ * allocated and freed here (new and delete, calloc and free).  foepath.cpp has
+ * each method's PRESERVED notes. */
+
 #pragma once
 
 #include "layout.h"
 
-/* A search node: calloc(1, 0x44), freed with free() -- our CRT now (the
- * original used the game's calloc and FactAlloc::Free).  A plain record,
- * public: FoePath builds and links them,
- * and the chase (foe.cpp) reads the result's parent and cell. */
+/* A search node, calloc(1, 0x44).  A plain public record: FoePath builds and
+ * links them, and the chase (foe.cpp) reads the result's parent and cell. */
 struct __attribute__((packed)) PathNode {
     static const int ORIGIN = 0;
 
-    int       f;            /* +0x00  g + h, the open list's order         */
-    int       h;            /* +0x04  SQUARED distance to the goal         */
-    int       g;            /* +0x08  steps from the seed                  */
-    int       field_0c;     /* +0x0c  never touched                        */
-    int       u;            /* +0x10                                       */
-    int       v;            /* +0x14                                       */
-    int       key;          /* +0x18  FoePath::cellKey(u, v)               */
-    PathNode *parent;       /* +0x1c                                       */
-    PathNode *children[8];  /* +0x20  the nodes relaxed through this one   */
-    PathNode *next;         /* +0x40  the open / closed chain              */
+    int       f;            // +0x00  g + h, the open list's order
+    int       h;            // +0x04  the squared distance to the goal
+    int       g;            // +0x08  steps from the seed
+    int       field_0c;     // +0x0c  never touched
+    int       u;            // +0x10
+    int       v;            // +0x14
+    int       key;          // +0x18  FoePath::cellKey(u, v)
+    PathNode *parent;       // +0x1c
+    PathNode *children[8];  // +0x20  the nodes relaxed through this one
+    PathNode *next;         // +0x40  the open or closed chain
 
-    /* The open-coded child scan, with NO bounds check (RelaxPathNeighbour
-     * Cell): a ninth child is stored one past the array -- onto `next`, at
-     * +0x40.  Written as that store, so the defect is kept without an
-     * out-of-bounds access. */
+    // PRESERVED: the child scan has no bound, so a ninth child is stored one
+    // past the array, onto next.  Written as that store, so the defect is kept
+    // without an out-of-bounds access.
     void recordChild(PathNode *node)
     {
         int i = 0;
         while (children[i] != 0 && ++i < 8)
             ;
         if (i == 8)
-            next = node;            /* children[8] IS next */
+            next = node;  // children[8] is next
         else
             children[i] = node;
     }
@@ -67,18 +53,18 @@ KAROO_LAYOUT_CHECKS(PathNode)
     KAROO_LAYOUT_AT(parent,   0x1c);
     KAROO_LAYOUT_AT(children, 0x20);
     KAROO_LAYOUT_AT(next,     0x40);
-    /* calloc(1, 0x44). */
+    // calloc(1, 0x44).
     KAROO_LAYOUT_SIZE(0x44);
 }
 
-/* One cell of the cost-propagation worklist: calloc(1, 9) -- NINE bytes
- * for two pointers; the ninth is never touched. */
+/* One cell of the cost-propagation worklist: calloc(1, 9), nine bytes for two
+ * pointers; the ninth is never touched. */
 struct __attribute__((packed)) PendingCell {
     static const int ORIGIN = 0;
 
-    PathNode    *node;      /* +0x00 */
-    PendingCell *next;      /* +0x04 */
-    unsigned char field_8;  /* +0x08  never touched */
+    PathNode    *node;      // +0x00
+    PendingCell *next;      // +0x04
+    unsigned char field_8;  // +0x08  never touched
 
 private:
     KAROO_LAYOUT_REGISTER(PendingCell);
@@ -91,14 +77,14 @@ KAROO_LAYOUT_CHECKS(PendingCell)
     KAROO_LAYOUT_SIZE(9);
 }
 
-/* The worklist's owner block, calloc(1, 9) by the FoePath ctor.  Only the
- * head at +4 is ever touched: the worklist is a STACK. */
+/* The worklist's owner block, calloc(1, 9).  Only the head is ever touched:
+ * the worklist is a stack. */
 struct __attribute__((packed)) PendingStack {
     static const int ORIGIN = 0;
 
-    int           field_0;  /* +0x00  never touched */
-    PendingCell  *head;     /* +0x04 */
-    unsigned char field_8;  /* +0x08  never touched */
+    int           field_0;  // +0x00  never touched
+    PendingCell  *head;     // +0x04
+    unsigned char field_8;  // +0x08  never touched
 
 private:
     KAROO_LAYOUT_REGISTER(PendingStack);
@@ -114,77 +100,76 @@ class __attribute__((packed)) FoePath {
 public:
     static const int ORIGIN = 0;
 
-    /* AttachFoePathfinderToEntity 0x43a970's allocation plus the ctor
-     * 0x401bb0: our own operator new (nothrow), then populate.  NULL if the
-     * allocation fails, exactly as the original stores it. */
+    // Allocates (nothrow) and populates one; NULL if the allocation fails, and
+    // the caller stores that.
     static FoePath *create(unsigned char *tileBase, unsigned short field04);
-    /* The Foe dtor's `dispose(); Free2(p)` -- with our own delete. */
+    // dispose(), then delete.
     static void destroy(FoePath *p);
 
-    /* ── the chase's side (Foe::chase, foe.cpp) ─────────────────────── */
-    /* +0x2f: the search's iteration budget, from the chase's `speed`. */
+    // The chase's side (Foe::chase, foe.cpp).
+    // The search's iteration budget, from the chase's speed.
     void setCap(unsigned short n)                  { cap_ = n; }
-    /* +0x31/+0x32, written by the chase (and again by the search). */
+    // Written by the chase, and again by the search.
     void setTarget(unsigned char u, unsigned char v)
     {
         targetU_ = u;
         targetV_ = v;
     }
-    /* +0x2a: the mover mode passable() branches on (the spawn stores the
-     * foe type, the chase 0 or 2). */
+    // The mover mode passable() branches on: the spawn stores the foe type,
+    // the chase 0 or 2.
     void setMode(unsigned char m)                  { mode_ = m; }
-    /* +0x0e: the node the search stopped on -- the FOE's cell, since it
-     * runs backward -- and the chase advances it to its parent. */
+    // The node the search stopped on: the foe's cell, since it runs backward.
+    // The chase advances it to its parent.
     PathNode *result() const                       { return result_; }
     void setResult(PathNode *n)                    { result_ = n; }
 
-    /* ── the search (foepath.cpp) ───────────────────────────────────── */
-    int       find(int uFoe, int vFoe, int uTarget, int vTarget); /* 0x401c20 */
-    int       cellKey(int u, int v);                              /* 0x401cb0 */
-    int       passable(int u, int v);                             /* 0x401cd0 */
-    void      releaseLists();                                     /* 0x401d60 */
-    int       search(int uFoe, int vFoe, int uTarget, int vTarget); /* 0x401db0 */
-    PathNode *popBestOpen();                                      /* 0x401ec0 */
-    void      expand(PathNode *node, int goalU, int goalV);       /* 0x401ef0 */
+    // The search (foepath.cpp).
+    int       find(int uFoe, int vFoe, int uTarget, int vTarget);
+    int       cellKey(int u, int v);
+    int       passable(int u, int v);
+    void      releaseLists();
+    int       search(int uFoe, int vFoe, int uTarget, int vTarget);
+    PathNode *popBestOpen();
+    void      expand(PathNode *node, int goalU, int goalV);
     void      relax(PathNode *parent, int u, int v,
-                    int goalU, int goalV);                        /* 0x402000 */
-    PathNode *findOpen(int key);                                  /* 0x402130 */
-    PathNode *findClosed(int key);                                /* 0x402150 */
-    void      insertOpenByCost(PathNode *node);                   /* 0x402170 */
-    void      propagate(PathNode *node);                          /* 0x4021b0 */
-    void      pushPending(PathNode *node);                        /* 0x402250 */
-    PathNode *popPending();                                       /* 0x402280 */
+                    int goalU, int goalV);
+    PathNode *findOpen(int key);
+    PathNode *findClosed(int key);
+    void      insertOpenByCost(PathNode *node);
+    void      propagate(PathNode *node);
+    void      pushPending(PathNode *node);
+    PathNode *popPending();
 
-    /* 0x401c00 -- the destructor body: free the nodes and the worklist
-     * block.  The caller frees the FoePath itself afterwards (Free2). */
+    // The destructor body: frees the nodes and the worklist block.  The caller
+    // frees the FoePath itself.
     void      dispose();
 
 private:
-    FoePath() = delete;   /* built on raw game-heap memory by create() */
-    /* 0x401bb0 -- PopulateFoePathSearchContext, the ctor's stores. */
+    FoePath() = delete;  // built by create()
+    // The constructor's stores.
     void populate(unsigned char *tileBase, unsigned short field04);
     static PathNode *findByKey(PathNode *hdr, int key);
 
     KAROO_LAYOUT_REGISTER(FoePath);
 
-    unsigned char *tileBase_;   /* +0x00  the ctor's argument               */
-    unsigned short field_04;    /* +0x04  the ctor's second argument (0)    */
-    PathNode      *open_;       /* +0x06  header node, a fresh one per search */
-    PathNode      *closed_;     /* +0x0a  ditto                             */
-    PathNode      *result_;     /* +0x0e                                    */
-    PendingStack  *pending_;    /* +0x12                                    */
-    int            found_;      /* +0x16  mirrors find()'s return           */
-    int            extentV_;    /* +0x1a  tile+0x19a, the map's v extent    */
-    /* +0x1e  tile+0x19b, the map's u extent.  NOT the tile stride (100). */
+    unsigned char *tileBase_;  // +0x00  the ctor's argument
+    unsigned short field_04;   // +0x04  the ctor's second argument (0)
+    PathNode      *open_;      // +0x06  a header node, fresh each search
+    PathNode      *closed_;    // +0x0a  likewise
+    PathNode      *result_;    // +0x0e
+    PendingStack  *pending_;   // +0x12
+    int            found_;     // +0x16  mirrors find()'s return
+    int            extentV_;   // +0x1a  the map's v extent
+    // +0x1e  the map's u extent.  Not the tile stride (100).
     int            keyStride_;
     unsigned char  gap_022[0x02a - 0x022];
-    unsigned char  mode_;       /* +0x2a                                    */
+    unsigned char  mode_;  // +0x2a
     unsigned char  gap_02b[0x02f - 0x02b];
-    unsigned short cap_;        /* +0x2f                                    */
-    unsigned char  targetU_;    /* +0x31                                    */
-    unsigned char  targetV_;    /* +0x32                                    */
-    unsigned char  foeU_;       /* +0x33                                    */
-    unsigned char  foeV_;       /* +0x34                                    */
+    unsigned short cap_;      // +0x2f
+    unsigned char  targetU_;  // +0x31
+    unsigned char  targetV_;  // +0x32
+    unsigned char  foeU_;     // +0x33
+    unsigned char  foeV_;     // +0x34
 };
 
 KAROO_LAYOUT_CHECKS(FoePath)
@@ -204,6 +189,6 @@ KAROO_LAYOUT_CHECKS(FoePath)
     KAROO_LAYOUT_AT(targetV_,   0x32);
     KAROO_LAYOUT_AT(foeU_,      0x33);
     KAROO_LAYOUT_AT(foeV_,      0x34);
-    /* AttachFoePathfinderToEntity's operator_new(0x35). */
+    // The allocation size.
     KAROO_LAYOUT_SIZE(0x35);
 }
