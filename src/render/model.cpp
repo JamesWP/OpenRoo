@@ -31,17 +31,16 @@ static void mm_delete(CFaktMesh *m)
     dtor(m, 1);
 }
 
-extern "C" __declspec(dllexport) CFaktMesh *__attribute__((thiscall))
-ModelManager_FindOrImport(ModelManager *self, char *name)
+CFaktMesh *ModelManager::findOrImport(char *name)
 {
-    for (LinkedListNode *node = self->cache.head(); node != NULL; ) {
+    for (LinkedListNode *node = cache_.head(); node != NULL; ) {
         CFaktMesh *cached = (CFaktMesh *)node->value();
         node = node->next();
         mm_lower_inplace(name);
         mm_lower_inplace(cached->name());
         if (strcmp(cached->name(), name) == 0) {
-            if (self->pLogger != NULL)
-                self->pLogger->logMessage(1, GS_MM_FOUND, name);
+            if (pLogger_ != NULL)
+                pLogger_->logMessage(1, GS_MM_FOUND, name);
             return cached;
         }
     }
@@ -51,20 +50,19 @@ ModelManager_FindOrImport(ModelManager *self, char *name)
     if ((mesh->importSceneModels(name) & 0xff) == 0) {
         if (mesh != NULL)
             mm_delete(mesh);
-        if (self->pLogger != NULL)
-            self->pLogger->logMessage(3, GS_MM_FAILED, name);
+        if (pLogger_ != NULL)
+            pLogger_->logMessage(3, GS_MM_FAILED, name);
         return NULL;
     }
-    if (self->pLogger != NULL)
-        self->pLogger->logMessage(1, GS_MM_LOADED, name);
-    self->cache.append(mesh);
+    if (pLogger_ != NULL)
+        pLogger_->logMessage(1, GS_MM_LOADED, name);
+    cache_.append(mesh);
     return mesh;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ModelManager_ClearReleaseFree(ModelManager *self)
+void ModelManager::clearReleaseFree()
 {
-    for (LinkedListNode *node = self->cache.head(); node != NULL; ) {
+    for (LinkedListNode *node = cache_.head(); node != NULL; ) {
         CFaktMesh *mesh = (CFaktMesh *)node->value();
         node = node->next();
         if (mesh != NULL) {
@@ -72,35 +70,33 @@ ModelManager_ClearReleaseFree(ModelManager *self)
             mm_delete(mesh);
         }
     }
-    self->cache.clear();
+    cache_.clear();
 }
 
 /* ─── ModelManager lifecycle ───────────────────────────────────────────────
  *
  * Every instance is static (model.h), so nothing deletes one and the scalar
  * dtor's free is never reached. */
-static void *const g_ModelManagerVtable[1] = { (void *)&ModelManager_ScalarDestructor };
+static void *const g_ModelManagerVtable[1] = { (void *)&ModelManager::scalarDestructor };
 
-extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
-ModelManager_Construct(ModelManager *self)
+ModelManager *ModelManager::construct()
 {
-    self->cache.init();
-    self->vtable  = (void *)g_ModelManagerVtable;
-    self->pLogger = NULL;
-    return self;
+    cache_.init();
+    vtable_  = (void *)g_ModelManagerVtable;
+    pLogger_ = NULL;
+    return this;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ModelManager_Destruct(ModelManager *self)
+void ModelManager::destruct()
 {
-    self->vtable = (void *)g_ModelManagerVtable;
-    self->cache.destruct();
+    vtable_ = (void *)g_ModelManagerVtable;
+    cache_.destruct();
 }
 
-extern "C" __declspec(dllexport) ModelManager *__attribute__((thiscall))
-ModelManager_ScalarDestructor(ModelManager *self, unsigned char flags)
+ModelManager * __attribute__((thiscall))
+ModelManager::scalarDestructor(ModelManager *self, unsigned char flags)
 {
-    ModelManager_Destruct(self);
+    self->destruct();
     if (flags & 1)
         free(self);
     return self;
