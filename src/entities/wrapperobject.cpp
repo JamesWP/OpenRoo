@@ -112,7 +112,7 @@ static void wrap_census(int entry, unsigned int verts)
 
 void WrapperObject::construct()
 {
-    vtable_  = Wrapper_Vtable();
+    vtable_  = WrapperObject::vtbl();
     pBaseUV_ = NULL;
     pMesh_   = NULL;
     dirty_   = 0;
@@ -122,7 +122,7 @@ void WrapperObject::construct()
 /* PRESERVED: frees without clearing pBaseUV_. */
 void WrapperObject::dtorBody()
 {
-    vtable_ = Wrapper_Vtable();
+    vtable_ = WrapperObject::vtbl();
     delete[] pBaseUV_;
     wrap_census(WE_DTOR, 0);
 }
@@ -277,24 +277,20 @@ void WrapperObject::updateObjectTransform(RenderDevice *dev,
     dirty_ = 1;
 }
 
-extern "C" {
+static void *const g_WrapperVtable[1] = { (void *)&WrapperObject::scalarDtor };
 
-static void *const g_WrapperVtable[1] = { (void *)&Wrapper_ScalarDtor };
-
-__declspec(dllexport) void *Wrapper_Vtable(void)
+void *WrapperObject::vtbl()
 {
     return (void *)g_WrapperVtable;
 }
 
 /* PRESERVED: frees the object itself, although no WrapperObject is ever
  * allocated alone; unreachable. */
-__declspec(dllexport) void *__attribute__((thiscall))
-Wrapper_ScalarDtor(WrapperObject *self, unsigned int flags)
+void * __attribute__((thiscall))
+WrapperObject::scalarDtor(WrapperObject *self, unsigned int flags)
 {
     self->dtorBody();
     if (flags & 1)
         free(self);
     return self;
-}
-
 }
