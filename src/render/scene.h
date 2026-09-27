@@ -65,32 +65,38 @@ KAROO_LAYOUT_CHECKS(SceneObject)
     KAROO_LAYOUT_SIZE(0x1da);
 }
 
-struct __attribute__((packed)) Scene {
+class __attribute__((packed)) Scene {
+public:
     static const int ORIGIN = 0;
 
-    LinkedList      objects;    /* +0x00  SceneObject * */
-    ModelManager    models;     /* +0x10 */
-    TextureManager  textures;   /* +0x28 */
+    Scene *construct();
+    void destruct();
+    void buildObjectList(RenderDevice *d3d, ExtraObjects *leo,
+                         GameLogger *logger);
 
+    int  segmentHitsModel(float px, float py, float pz, float dx,
+                          float dy, float dz);
+
+    const LinkedList *objects() const { return &objects_; }
+    ModelManager     *models()        { return &models_; }
+    TextureManager   *textures()      { return &textures_; }
+
+private:
+    void freeSceneObjects();
+
+    LinkedList      objects_;    /* +0x00  SceneObject * */
+    ModelManager    models_;     /* +0x10 */
+    TextureManager  textures_;   /* +0x28 */
     KAROO_LAYOUT_REGISTER(Scene);
 };
 
 /* FreeSceneObjects zeroes exactly 0x10 dwords. */
 KAROO_LAYOUT_CHECKS(Scene)
 {
-    KAROO_LAYOUT_AT(models,   0x10);
-    KAROO_LAYOUT_AT(textures, 0x28);
+    KAROO_LAYOUT_AT(models_,   0x10);
+    KAROO_LAYOUT_AT(textures_, 0x28);
     KAROO_LAYOUT_SIZE(0x40);
 }
 
 extern Scene g_scene;
 
-extern "C" __declspec(dllexport) Scene *__attribute__((thiscall))
-Scene_Construct(Scene *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Scene_Destruct(Scene *self);
-extern "C" __declspec(dllexport) void __cdecl
-Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger);
-extern "C" __declspec(dllexport) int __cdecl
-Scene_SegmentHitsModel(float px, float py, float pz,
-                       float dx, float dy, float dz);

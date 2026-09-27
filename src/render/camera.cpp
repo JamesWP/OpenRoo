@@ -176,7 +176,7 @@ Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
                 i++;
             }
         }
-        if ((unsigned char)Scene_SegmentHitsModel(cam->target[0], cam->target[1], cam->target[2],
+        if ((unsigned char)g_scene.segmentHitsModel(cam->target[0], cam->target[1], cam->target[2],
                                                   probe.x, probe.y, probe.z))
             pitchTarget = K_PITCH_MAX;
     }

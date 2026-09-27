@@ -158,7 +158,7 @@ extern "C" __declspec(dllexport) void __cdecl
 Scene_DrawSceneObjects(RenderDevice *dev, float *cam, DWORD , DWORD , double t)
 {
     cam_diag(cam);
-    for (LinkedListNode *node = g_scene.objects.head(); node != NULL; node = node->next()) {
+    for (LinkedListNode *node = g_scene.objects()->head(); node != NULL; node = node->next()) {
         const SceneObject *o = (const SceneObject *)node->value();
         if (o == NULL)
             continue;
@@ -305,7 +305,7 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
 {
     dev->SetRenderState(RS::SpecularEnable, 0);
 
-    for (LinkedListNode *node = g_scene.objects.head(); node != NULL; node = node->next()) {
+    for (LinkedListNode *node = g_scene.objects()->head(); node != NULL; node = node->next()) {
         const SceneObject *o = (const SceneObject *)node->value();
         if (o == NULL || o->type != EXTRA_PARTICLE)
             continue;

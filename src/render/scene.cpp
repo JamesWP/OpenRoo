@@ -12,29 +12,26 @@ Scene g_scene;
 
 /* ─── Construction and teardown ─────────────────────────────────────────── */
 
-extern "C" __declspec(dllexport) Scene *__attribute__((thiscall))
-Scene_Construct(Scene *self)
+Scene *Scene::construct()
 {
-    self->objects.init();
-    self->models.construct();
-    self->textures.construct();
-    return self;
+    objects_.init();
+    models_.construct();
+    textures_.construct();
+    return this;
 }
 
 /* Members in reverse.  The objects themselves are not freed -- only the list's
  * nodes, by List_Destruct. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Scene_Destruct(Scene *self)
+void Scene::destruct()
 {
-    self->textures.destruct();
-    self->models.destruct();
-    self->objects.destruct();
+    textures_.destruct();
+    models_.destruct();
+    objects_.destruct();
 }
 
-static void free_scene_objects()
+void Scene::freeSceneObjects()
 {
-    Scene *s = &g_scene;
-    for (LinkedListNode *n = s->objects.head(); n != NULL; ) {
+    for (LinkedListNode *n = objects_.head(); n != NULL; ) {
         SceneObject *o = (SceneObject *)n->value();
         n = n->next();
         if (o != NULL) {
@@ -42,10 +39,10 @@ static void free_scene_objects()
             ::operator delete(o);
         }
     }
-    s->objects.clear();
-    s->models.clearReleaseFree();
-    s->textures.releaseAll();
-    memset(s, 0, sizeof *s);  // PRESERVED: vtable pointers too; nothing reads them again
+    objects_.clear();
+    models_.clearReleaseFree();
+    textures_.releaseAll();
+    memset(this, 0, sizeof *this);  // PRESERVED: vtable pointers too; nothing reads them again
 }
 
 /* ─── BuildSceneObjectList ───────────────────────────────────────────────
@@ -53,13 +50,11 @@ static void free_scene_objects()
  * One SceneObject per .leo record that is not a sound.  Position and the third
  * rotation are Z-negated on the way in, as are the spline points, whose file
  * order is (x, z, y) -- the record stores y at [2]. */
-extern "C" __declspec(dllexport) void __cdecl
-Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
+void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
 {
-    Scene *s = &g_scene;
-    free_scene_objects();
-    s->models.setLogger(logger);
-    s->textures.setLogger(logger);
+    freeSceneObjects();
+    models_.setLogger(logger);
+    textures_.setLogger(logger);
 
     for (unsigned i = 0; i < leo->objectCount(); ++i) {
         ExtraObjectRecord *r = leo->record(i);
@@ -75,7 +70,7 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
 
         o->type = r->kind;
         if (r->kind == EXTRA_MODEL)
-            o->mesh = s->models.findOrImport(r->file);
+            o->mesh = models_.findOrImport(r->file);
         else if (r->kind == EXTRA_PARTICLE)
             o->particle = ps_load_file(r->file, logger);
         else if (r->kind == EXTRA_BILLBOARD)
@@ -88,7 +83,7 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
 
         // Blend modes 5/6 (SRCALPHA / INVSRCALPHA) ask for an alpha surface.
         DWORD alpha = (r->srcBlend == 5 || r->srcBlend == 6) ? 1 : 0;
-        o->texture = s->textures.getOrLoad(d3d, r->textureFile,
+        o->texture = textures_.getOrLoad(d3d, r->textureFile,
                                               alpha, 0, 0);
         o->srcBlend  = r->srcBlend;
         o->destBlend = r->destBlend;
@@ -112,7 +107,7 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
                                        r->splinePoints[k][2],
                                        -r->splinePoints[k][1]);
         }
-        s->objects.append(o);
+        objects_.append(o);
     }
 }
 
@@ -187,12 +182,11 @@ static bool segment_hits_object(const SceneObject *o, const float p[3],
 
 /* Only kind 0 (model) objects are tested.  PRESERVED: no null check on the
  * list's values. */
-extern "C" __declspec(dllexport) int __cdecl
-Scene_SegmentHitsModel(float px, float py, float pz,
+int Scene::segmentHitsModel(float px, float py, float pz,
                        float dx, float dy, float dz)
 {
     const float p[3] = { px, py, pz }, d[3] = { dx, dy, dz };
-    for (LinkedListNode *n = g_scene.objects.head(); n != NULL; n = n->next()) {
+    for (LinkedListNode *n = objects_.head(); n != NULL; n = n->next()) {
         const SceneObject *o = (const SceneObject *)n->value();
         if (o->type == EXTRA_MODEL && segment_hits_object(o, p, d))
             return 1;

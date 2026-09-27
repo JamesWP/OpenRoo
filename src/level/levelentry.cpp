@@ -50,7 +50,7 @@ LevelEntry_PrepareAssets(void)
 
     // 4. What the frame renderer draws.
     LevelPlacements_Build(&g_levelPlacements, g, &g_themeBlock);
-    Scene_BuildObjectList(d3d, g->extraObjects(), &g_logger);
+    g_scene.buildObjectList(d3d, g->extraObjects(), &g_logger);
 
     strcpy(g_levelTitle, map->title());
     g_lastTickMs = clock_seconds() * 1000.0;
