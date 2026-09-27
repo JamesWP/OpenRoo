@@ -452,12 +452,11 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
             }
 
             if (pool_9f_ != 0) {
-                Sim_BroadcastPoolVoiceCoordinates(pool_9f_,
-                                                  (float)(int)cellU_,
+                pool_9f_->broadcastCoordinates((float)(int)cellU_,
                                                   (float)(int)heightCell_,
                                                   -(float)(int)cellV_,
                                                   1);
-                Sim_VoicePoolCycle(pool_9f_, 0);
+                pool_9f_->cycle(0);
             }
             pickedUp_ = 1;
         }

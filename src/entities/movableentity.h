@@ -13,7 +13,7 @@
 #include "game.h"
 
 class CStaticSoundbuffer;
-struct VoicePool;
+class VoicePool;
 class FoePath;
 
 /* One moving entity's shared state.  Derived classes set the vtable. */

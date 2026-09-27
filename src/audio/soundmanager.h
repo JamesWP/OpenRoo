@@ -14,7 +14,7 @@
 #include "cfaktsound.h"
 
 class CStaticSoundbuffer;
-struct VoicePool;
+class VoicePool;
 struct GameLogger;
 
 class __attribute__((packed)) SoundManager {

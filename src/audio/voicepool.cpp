@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include "log.h"
 
-
 /* KAROO_POOL_DIAG=1 counts calls to every pool function, logs each one's first
  * call, and totals the voices allocated, to tell "the gates never build a
  * pool" from "the gates build pools and assert nothing about them". */
@@ -70,22 +69,21 @@ static PoolFx pool_fx(void)
  * decides where the next call lands.  The cursor is stored unwrapped before
  * the trigger and wrapped after it, with a signed compare.  Only the voices
  * pointer is checked, so a zero-count pool still plays voice 0 once. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_VoicePoolCycle(VoicePool *self, DWORD dwLoopFlags)
+int VoicePool::cycle(DWORD dwLoopFlags)
 {
     ++g_nCycle; { static unsigned long seen; pool_first("Cycle", &seen); }
-    if (self->pBufs == 0)
+    if (pBufs_ == 0)
         return (int)0x887800AA;  // DSERR_UNINITIALIZED
 
-    self->pBufs[self->dwCurrentIdx].haltPlayback();
+    pBufs_[dwCurrentIdx_].haltPlayback();
 
-    const int old = self->dwCurrentIdx;
-    self->dwCurrentIdx = old + 1;  // stored before the trigger, unwrapped
+    const int old = dwCurrentIdx_;
+    dwCurrentIdx_ = old + 1;  // stored before the trigger, unwrapped
 
-    const int hr = self->pBufs[old].triggerPlayback(dwLoopFlags);
+    const int hr = pBufs_[old].triggerPlayback(dwLoopFlags);
 
-    if (self->dwCurrentIdx >= self->dwVoiceCount)  // signed, and after
-        self->dwCurrentIdx = 0;
+    if (dwCurrentIdx_ >= dwVoiceCount_)  // signed, and after
+        dwCurrentIdx_ = 0;
 
     return hr;
 }
@@ -93,56 +91,52 @@ Sim_VoicePoolCycle(VoicePool *self, DWORD dwLoopFlags)
 /* PRESERVED: only voice 0's 3D buffer is checked before every voice's is used,
  * and the voices pointer is not checked at all.  Pools are all-3D or all-2D,
  * so neither fires. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_BroadcastPoolVoiceCoordinates(VoicePool *self,
-                                  float x, float y, float z, DWORD dwApply)
+void VoicePool::broadcastCoordinates(float x, float y, float z, DWORD dwApply)
 {
     ++g_nBroadcast; { static unsigned long seen; pool_first("Broadcast", &seen); }
-    if (self->pBufs->threeDBuffer() == 0 || self->dwVoiceCount <= 0)
+    if (pBufs_->threeDBuffer() == 0 || dwVoiceCount_ <= 0)
         return;
 
     int i = 0;
     do {
-        self->pBufs[i].threeDBuffer()->SetPosition(x, y, z, dwApply);
+        pBufs_[i].threeDBuffer()->SetPosition(x, y, z, dwApply);
         i++;
-    } while (i < self->dwVoiceCount);
+    } while (i < dwVoiceCount_);
 }
 
-extern "C" __declspec(dllexport) VoicePool * __attribute__((thiscall))
-Sim_VoicePoolBlank(VoicePool *self)
+VoicePool *VoicePool::blank()
 {
     ++g_nBlank; { static unsigned long seen; pool_first("Blank", &seen); }
-    self->pBufs        = 0;
-    self->dwVoiceCount = 0;
-    self->dwCurrentIdx = 0;
-    self->logger       = 0;
-    self->dwNestDepth  = 0;
-    return self;
+    pBufs_        = 0;
+    dwVoiceCount_ = 0;
+    dwCurrentIdx_ = 0;
+    logger_       = 0;
+    dwNestDepth_  = 0;
+    return this;
 }
 
 /* Resets every voice, destroys the array through the voices' vector destructor
  * (flag 3: an array, free the block) and clears the pool.  PRESERVED: the
  * nesting depth is not cleared; Fill3D's guard depends on it (see there).  The
  * count is re-read on every pass. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_VoicePoolWipe(VoicePool *self)
+void VoicePool::wipe()
 {
     ++g_nWipe; { static unsigned long seen; pool_first("Wipe", &seen); }
     pool_census();
-    if (self->pBufs != 0) {
-        for (int i = 0; i < self->dwVoiceCount; i++)  // the count is re-read on every pass
-            self->pBufs[i].reset();
+    if (pBufs_ != 0) {
+        for (int i = 0; i < dwVoiceCount_; i++)  // the count is re-read on every pass
+            pBufs_[i].reset();
 
-        if (self->pBufs != 0) {  // re-tested; harmless
+        if (pBufs_ != 0) {  // re-tested; harmless
             typedef void *(__attribute__((thiscall)) *vec_dtor_fn)(void *self, int flags);
-            vec_dtor_fn dtor = *(vec_dtor_fn *)self->pBufs->vtable();
-            dtor(self->pBufs, 3);
+            vec_dtor_fn dtor = *(vec_dtor_fn *)pBufs_->vtable();
+            dtor(pBufs_, 3);
         }
-        self->pBufs = 0;
+        pBufs_ = 0;
     }
-    self->logger       = 0;
-    self->dwVoiceCount = 0;
-    self->dwCurrentIdx = 0;
+    logger_       = 0;
+    dwVoiceCount_ = 0;
+    dwCurrentIdx_ = 0;
 
 /* PRESERVED: the nesting depth is left alone. */
 }
@@ -152,8 +146,7 @@ Sim_VoicePoolWipe(VoicePool *self)
  * DSBCAPS_LOCSOFTWARE, but the depth is still raised, so the inner call trips
  * the guard and fails.  A pool that fails in hardware fails outright; running
  * the retry would allocate buffers the game never did. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
+int VoicePool::fill3D(int count, IDirectSound *pDS,
                     DWORD dwDsFlags, const char *filename, void *logger)
 {
     ++g_nFill3D; { static unsigned long seen; pool_first("Fill3D", &seen); }
@@ -161,9 +154,9 @@ Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
     if (pool_fx() == POOL_FX_ONEVOICE && count > 1)
         count = 1;  // KAROO_POOL_FX=onevoice
 
-    Sim_VoicePoolWipe(self);
+    wipe();
 
-    if (++self->dwNestDepth > 1) {  // re-entrancy guard
+    if (++dwNestDepth_ > 1) {  // re-entrancy guard
         ++g_nNestBail;
         goto fail;
     }
@@ -171,8 +164,8 @@ Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
     if (count < 1 || logger == 0)
         goto fail;
 
-    self->logger       = logger;
-    self->dwVoiceCount = count;
+    logger_       = logger;
+    dwVoiceCount_ = count;
 
     {
         // count * 0x18 + 4: the leading word is the count the vector
@@ -186,44 +179,44 @@ Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
                 bufs[i].init();
             g_nVoices += (unsigned long)count;
         }
-        self->pBufs = bufs;
+        pBufs_ = bufs;
     }
 
     // Voice 0 comes off disk.  A failed allocation reaches here as a NULL
     // this, as in the game.
-    if (!self->pBufs[0].createAndLoad3DSoundFile(pDS, dwDsFlags,
+    if (!pBufs_[0].createAndLoad3DSoundFile(pDS, dwDsFlags,
                                           filename, logger)) {
-        Sim_VoicePoolWipe(self);
+        wipe();
         goto fail;
     }
 
     {
-        CStaticSoundbuffer *src = self->pBufs;          // voice 0, the template
-        for (int i = 1; i < self->dwVoiceCount; i++) {  // the count is re-read on every pass
-            if (self->pBufs[i].copy(pDS, src, 1) != 0)
+        CStaticSoundbuffer *src = pBufs_;          // voice 0, the template
+        for (int i = 1; i < dwVoiceCount_; i++) {  // the count is re-read on every pass
+            if (pBufs_[i].copy(pDS, src, 1) != 0)
                 continue;
             ++g_nCopyFail;
-            if (self->pBufs[i].createAndLoad3DSoundFile(pDS,
+            if (pBufs_[i].createAndLoad3DSoundFile(pDS,
                                                  dwDsFlags, filename, logger))
                 continue;
 
             // The software retry: it cannot succeed (see above).
-            Sim_VoicePoolWipe(self);
+            wipe();
             {
-                int r = Sim_VoicePoolFill3D(self, count, pDS,
+                int r = fill3D(count, pDS,
                                             dwDsFlags | DSBCAPS_LOCSOFTWARE,
                                             filename, logger);
-                self->dwNestDepth--;
+                dwNestDepth_--;
                 return r;
             }
         }
     }
 
-    self->dwNestDepth--;
+    dwNestDepth_--;
     return 1;
 
 fail:
-    self->dwNestDepth--;
+    dwNestDepth_--;
     return 0;
 }
 
@@ -232,8 +225,7 @@ fail:
  * duplicate succeeds when Copy returns src.  noFallback gives up on the first
  * failed duplicate instead of reloading.  The reload asks for software
  * buffers, and as an outer call it can succeed. */
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-Sim_VoicePoolClone(VoicePool *self, int count, IDirectSound *pDS,
+void *VoicePool::clone(int count, IDirectSound *pDS,
                    CStaticSoundbuffer *src, int noFallback)
 {
     ++g_nClone; { static unsigned long seen; pool_first("Clone", &seen); }
@@ -244,10 +236,10 @@ Sim_VoicePoolClone(VoicePool *self, int count, IDirectSound *pDS,
     if (count < 1)
         return 0;
 
-    Sim_VoicePoolWipe(self);
+    wipe();
 
-    self->dwVoiceCount = count;
-    self->logger       = src->logger();
+    dwVoiceCount_ = count;
+    logger_       = src->logger();
 
     {
         void *block = malloc((unsigned)(count * 0x18 + 4));
@@ -259,43 +251,41 @@ Sim_VoicePoolClone(VoicePool *self, int count, IDirectSound *pDS,
                 bufs[i].init();
             g_nVoices += (unsigned long)count;
         }
-        self->pBufs = bufs;
+        pBufs_ = bufs;
     }
 
-    for (int i = 0; i < self->dwVoiceCount; i++) {  // the count is re-read on every pass
-        if (self->pBufs[i].copy(pDS, src, 0) == (void *)src)
+    for (int i = 0; i < dwVoiceCount_; i++) {  // the count is re-read on every pass
+        if (pBufs_[i].copy(pDS, src, 0) == (void *)src)
             continue;
         ++g_nCopyFail;
 
-        Sim_VoicePoolWipe(self);
+        wipe();
         if (noFallback != 0)
             return 0;
 
-        if (Sim_VoicePoolFill3D(self, count, pDS,
+        if (fill3D(count, pDS,
                                 src->dsFlags() | DSBCAPS_LOCSOFTWARE,
                                 src->filename(), src->logger()) == 0)
             return 0;
-        return self->pBufs;
+        return pBufs_;
     }
 
     return src;  // the caller's own pointer
 }
 
 /* Signed compares.  The voices pointer is not checked. */
-extern "C" __declspec(dllexport) CStaticSoundbuffer * __attribute__((thiscall))
-Sim_VoicePoolGetVoiceAt(VoicePool *self, int index)
+CStaticSoundbuffer *VoicePool::voiceAt(int index)
 {
     ++g_nGetVoiceAt; { static unsigned long seen; pool_first("GetVoiceAt", &seen); }
-    if (index < 0 || index >= self->dwVoiceCount)
+    if (index < 0 || index >= dwVoiceCount_)
         return 0;
-    return &self->pBufs[index];
+    return &pBufs_[index];
 }
 
-extern "C" __declspec(dllexport) char * __attribute__((thiscall))
-Sim_VoicePoolFirstFilename(VoicePool *self)
+char *VoicePool::firstFilename()
 {
     ++g_nFirstName; { static unsigned long seen; pool_first("FirstFilename", &seen); }
-    CStaticSoundbuffer *voice = Sim_VoicePoolGetVoiceAt(self, 0);
+    CStaticSoundbuffer *voice = voiceAt(0);
     if (voice == 0)
         return 0;
     return voice->filename();

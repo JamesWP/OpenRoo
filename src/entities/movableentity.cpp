@@ -309,9 +309,8 @@ unsigned int MovableEntity::updateMovement()
                 unsigned char a = anim_;
                 if (((a > 0x13 && a < 0x1c && moveDir_ != 0) || turned) &&
                     ((VoicePool *)sound_cf_) != 0 && a != 3 && a != 5) {
-                    Sim_BroadcastPoolVoiceCoordinates(((VoicePool *)sound_cf_),
-                        (float)(int)GU, (float)(int)GH, -(float)(int)GV, 1);
-                    Sim_VoicePoolCycle(((VoicePool *)sound_cf_), 0);
+                    (((VoicePool *)sound_cf_))->broadcastCoordinates((float)(int)GU, (float)(int)GH, -(float)(int)GV, 1);
+                    (((VoicePool *)sound_cf_))->cycle(0);
                 }
             }
 
@@ -557,10 +556,9 @@ unsigned int MovableEntity::updateMovement()
                         ((int)((unsigned)fallStartH_ - (int)h2) < 3 && h2 > 1)) {
                         moveState_ = 0;  // survived
                         if (((VoicePool *)sound_cf_) != 0 && ((signed char)kind_) == 4) {
-                            Sim_BroadcastPoolVoiceCoordinates(((VoicePool *)sound_cf_),
-                                (float)(int)GU, (float)(int)GH,
+                            (((VoicePool *)sound_cf_))->broadcastCoordinates((float)(int)GU, (float)(int)GH,
                                 -(float)(int)GV, 1);
-                            Sim_VoicePoolCycle(((VoicePool *)sound_cf_), 0);
+                            (((VoicePool *)sound_cf_))->cycle(0);
                         }
                     } else if (((signed char)kind_) == 9 && h2 > 1) {
                         moveState_ = 0;
