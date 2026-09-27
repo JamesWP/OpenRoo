@@ -34,7 +34,7 @@ SRCS = src/app/process.cpp src/app/log.cpp src/app/veh.cpp src/audio/cdm.cpp \
        src/entities/checkpoint.cpp src/level/levelsounds.cpp src/ui/menunav.cpp src/input/keypress.cpp \
        src/audio/fixedsounds.cpp src/core/gametick.cpp src/core/linkedlist.cpp src/audio/doublesoundbuff.cpp \
        src/render/scene.cpp src/level/levelplacements.cpp src/level/levelentry.cpp src/core/namedlist.cpp \
-       src/entities/splinepath.cpp src/level/levelobjbase.cpp src/core/vectoriter.cpp src/entities/wrapperobject.cpp \
+       src/entities/splinepath.cpp src/level/levelobjbase.cpp src/entities/wrapperobject.cpp \
        src/entities/explodedebris.cpp src/render/objectshadows.cpp src/ui/theme.cpp src/ui/menuscreens.cpp \
        src/ui/levelselect.cpp src/input/inputsetup.cpp src/input/camerainput.cpp src/render/camera.cpp \
        src/entities/framepose.cpp src/render/themedraw.cpp src/core/game.cpp src/render/sceneobjects.cpp \
