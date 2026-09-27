@@ -15,7 +15,7 @@ Scene g_scene;
 extern "C" __declspec(dllexport) Scene *__attribute__((thiscall))
 Scene_Construct(Scene *self)
 {
-    List_Init(&self->objects);
+    self->objects.init();
     ModelManager_Construct(&self->models);
     TextureManager_Construct(&self->textures);
     return self;
@@ -28,21 +28,21 @@ Scene_Destruct(Scene *self)
 {
     TextureManager_Destruct(&self->textures);
     ModelManager_Destruct(&self->models);
-    List_Destruct(&self->objects);
+    self->objects.destruct();
 }
 
 static void free_scene_objects()
 {
     Scene *s = &g_scene;
-    for (LinkedListNode *n = s->objects.pHead; n != NULL; ) {
-        SceneObject *o = (SceneObject *)n->pValue;
-        n = n->pNextNode;
+    for (LinkedListNode *n = s->objects.head(); n != NULL; ) {
+        SceneObject *o = (SceneObject *)n->value();
+        n = n->next();
         if (o != NULL) {
             Spline_Destruct(&o->spline);
             ::operator delete(o);
         }
     }
-    List_Clear(&s->objects);
+    s->objects.clear();
     ModelManager_ClearReleaseFree(&s->models);
     TextureManager_ReleaseAll(&s->textures);
     memset(s, 0, sizeof *s);  // PRESERVED: vtable pointers too; nothing reads them again
@@ -112,7 +112,7 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
                                        r->splinePoints[k][2],
                                        -r->splinePoints[k][1]);
         }
-        List_Append(&s->objects, o);
+        s->objects.append(o);
     }
 }
 
@@ -192,8 +192,8 @@ Scene_SegmentHitsModel(float px, float py, float pz,
                        float dx, float dy, float dz)
 {
     const float p[3] = { px, py, pz }, d[3] = { dx, dy, dz };
-    for (LinkedListNode *n = g_scene.objects.pHead; n != NULL; n = n->pNextNode) {
-        const SceneObject *o = (const SceneObject *)n->pValue;
+    for (LinkedListNode *n = g_scene.objects.head(); n != NULL; n = n->next()) {
+        const SceneObject *o = (const SceneObject *)n->value();
         if (o->type == EXTRA_MODEL && segment_hits_object(o, p, d))
             return 1;
     }
