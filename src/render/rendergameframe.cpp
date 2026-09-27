@@ -673,11 +673,11 @@ static void hud_text(TextRenderer *font, int align, float x, float y, float cw, 
 {
     RenderDevice *d3d = g_renderDevice;
     if (align < 0)
-        Text_RenderText(font, x, y, cw, ch, spacing, s, d3d, first, c1, c2);
+        font->drawLeft(x, y, cw, ch, spacing, s, d3d, first, c1, c2);
     else if (align == 0)
-        Text_DrawCentered(font, x, y, cw, ch, spacing, s, d3d, first, c1, c2);
+        font->drawCentered(x, y, cw, ch, spacing, s, d3d, first, c1, c2);
     else
-        Text_DrawRightAligned(font, x, y, cw, ch, spacing, s, d3d, first, c1, c2);
+        font->drawRight(x, y, cw, ch, spacing, s, d3d, first, c1, c2);
 }
 
 /* The in-level HUD: the side panels, the vitality needle, the radar and
@@ -863,7 +863,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
         hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 3.0f, cw, ch, 0.75f,
                  g->map()->title(), 0, hc.color1, hc.color2);
         if (sp->caption()[0] != '\0')
-            Text_DrawPanelText(&g_fontMain, pad, H - pad, cw, ch, 0.75f, H * 0.03750938f,
+            g_fontMain.drawPanel(pad, H - pad, cw, ch, 0.75f, H * 0.03750938f,
                                sp->caption(), g_renderDevice, hc.color1, hc.color2,
                                g_themeBlock.images[THEME_IMG_MENU],
                                g_themeBlock.images[THEME_IMG_EDGE]);

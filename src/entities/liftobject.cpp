@@ -367,12 +367,6 @@ void LiftObject::tick()
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_UpdateVerticalLiftObject(LiftObject *self)
-{
-    self->tick();
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_SpawnLiftObject(Game *self, unsigned int uArg, unsigned int vArg,
                     unsigned int baseArg, unsigned int topArg)
 {

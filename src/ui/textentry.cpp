@@ -42,12 +42,6 @@ static int blink_positive(unsigned int phase)
     return (sw & 0x0100) && !(sw & 0x0400);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PollTextEntryKeys(TextEntry *self, unsigned int phase)
-{
-    self->poll(phase);
-}
-
 void TextEntry::poll(unsigned int phase)
 {
 #define BUF    ((unsigned char *)buffer_)

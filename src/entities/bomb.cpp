@@ -473,12 +473,6 @@ void Bomb::tick()
 /* The exports. */
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_UpdateBombFuseAndBlast(Bomb *self)
-{
-    self->tick();
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_SpawnBombObject(Game *self, unsigned int uArg, unsigned int vArg,
                     unsigned int hArg, unsigned int flagArg)
 {

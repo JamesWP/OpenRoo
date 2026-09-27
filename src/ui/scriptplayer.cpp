@@ -49,12 +49,6 @@ void ScriptPlayer::releaseStreams()
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-JJScript_ReleaseScriptStreamBuffers(ScriptPlayer *self)
-{
-    self->releaseStreams();
-}
-
 /* The empty string copied into the object before a parse. */
 #define GLOBAL_SCRATCH_STR ""
 
@@ -75,12 +69,6 @@ static bool fx_blank(void)
         log_write("jjscript: FX mode = %s\n", cached ? "blank" : "off");
     }
     return cached != 0;
-}
-
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-JJScript_ReadForLevel(ScriptPlayer *self, const char *path)
-{
-    return self->readForLevel(path);
 }
 
 int ScriptPlayer::readForLevel(const char *path)
@@ -199,12 +187,6 @@ int ScriptPlayer::readForLevel(const char *path)
 
 #define JJSR_LINE_MAX   0x80
 #define JJSR_LOG_FIRST  4
-
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-JJScript_ReadTextsForReport(ScriptPlayer *self, const char *path, FILE *sink)
-{
-    return self->readTextsForReport(path, sink);
-}
 
 int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
 {

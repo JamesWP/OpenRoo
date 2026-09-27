@@ -56,13 +56,6 @@ KAROO_LAYOUT_CHECKS(HighScoreTable)
     KAROO_LAYOUT_SIZE(0x3706);
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-HighScore_ReadFile(HighScoreTable *self, const char *name, char key);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-HighScore_WriteFile(HighScoreTable *self, const char *name, char key);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_InsertScoreIntoHighScoreTable(HighScoreTable *self, unsigned int score,
-                                  unsigned char levelId);
 
 /* The one slot of HighScoreTable's vtable. */
 extern "C" __declspec(dllexport) HighScoreTable *__attribute__((thiscall))

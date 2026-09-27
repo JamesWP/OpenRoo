@@ -25,6 +25,7 @@ MovableEntity::MovableEntity()
     posY_ = 0.0f;
     posV_ = 0.0f;
 }
+/* === Exports -- thin ABI shims === */
 
 void MovableEntity::populateBaseForGame()
 {
@@ -74,26 +75,6 @@ void MovableEntity::zeroSoundSlots()
     sound_a3_ = 0;
     sound_cb_ = 0;
     sound_cf_ = 0;
-}
-
-/* === Exports -- thin ABI shims === */
-extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
-Sim_PopulateMovableEntityBase(MovableEntity *self)
-{
-    self->populateBaseForGame();
-    return self;
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ZeroEntitySoundSlotPointers(MovableEntity *self)
-{
-    self->zeroSoundSlots();
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_DestroyMovableEntityBase(MovableEntity *self)
-{
-    self->destroyBaseForGame();
 }
 
 /* No code path in this codebase reaches this except through the vtable
@@ -1007,8 +988,3 @@ unsigned int MovableEntity::updateMovement()
     return 0;
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_UpdateEntityMovement(MovableEntity *self)
-{
-    return self->updateMovement();
-}

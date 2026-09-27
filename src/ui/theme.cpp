@@ -216,7 +216,7 @@ Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
     for (int i = 0; i < 8; i++) {
         ThemeLevelObject &r = slot->records[i];
         ExplodeDebris_Release(&r.explode);
-        Wrapper_ReleaseSnapshot(&r.wrapper);
+        r.wrapper.releaseSnapshot();
         for (DWORD k = 0; k < r.dwInstanceCount; k++) {
             if (r.pParticleSystems[k] != NULL) {
                 delete_via_vtable(r.pParticleSystems[k]);
@@ -237,7 +237,7 @@ static void *const g_ThemeSlotVtable[1] = { (void *)&Theme_SlotScalarDtor };
 extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
 Theme_RecordConstruct(ThemeLevelObject *self)
 {
-    Wrapper_Construct(&self->wrapper);
+    self->wrapper.construct();
     ExplodeDebris_Construct(&self->explode);
     return self;
 }
@@ -246,7 +246,7 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Theme_RecordDestruct(ThemeLevelObject *self)
 {
     ExplodeDebris_DtorBody(&self->explode);
-    Wrapper_DtorBody(&self->wrapper);
+    self->wrapper.dtorBody();
 }
 
 extern "C" __declspec(dllexport) ThemeObjectTypeSlot *__attribute__((thiscall))
@@ -732,7 +732,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         }
         rec.at->kind  = THEME_KIND_MODEL;
         rec.at->pMesh = mesh;
-        Wrapper_SetMesh(&rec.at->wrapper, mesh);
+        rec.at->wrapper.setMesh(mesh);
         Ani_LoadAnimationFile(&rec.at->animTable, tok[2], logger);
         if (is(tok[3], "nomovestates"))
             rec.at->bNoMoveStates = 1;

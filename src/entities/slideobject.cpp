@@ -302,6 +302,7 @@ void SlideObject::vacate()
     Tile::at(tileBase_, cellU_, cellV_)->setObjectMarker(0);
     Tile::at(tileBase_, cellU_, cellV_)->setOccupant(0);
 }
+/* C-linkage entry points. */
 
 void SlideObject::tick()
 {
@@ -476,13 +477,6 @@ void SlideObject::tick()
     t = Tile::at(tileBase_, originU_, originV_);
     t->setSlideCell((unsigned char)cellU_, (unsigned char)cellV_);
     t->setSlidePos(posU_, posY_, posV_);
-}
-
-/* C-linkage entry points. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_UpdatePushedBlockObject(SlideObject *self)
-{
-    self->tick();
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))

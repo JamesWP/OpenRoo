@@ -304,43 +304,7 @@ void TextRenderer::drawRight(float x, float y, float cellW, float cellH,
 /* ─── Exports ──────────────────────────────────────────────────────────────
  */
 
-extern "C" {
-
-__declspec(dllexport) void __attribute__((thiscall))
-Text_RenderText(TextRenderer *self, float x, float y, float cellW, float cellH,
-                float spacing, const char *str, RenderDevice *d3d, char firstChar,
-                DWORD colourTop, DWORD colourBottom)
-{
-    self->drawLeft(x, y, cellW, cellH, spacing, str, d3d, firstChar,
-                   colourTop, colourBottom);
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Text_DrawCentered(TextRenderer *self, float x, float y, float cellW,
-                  float cellH, float spacing, const char *str, RenderDevice *d3d,
-                  char firstChar, DWORD colourTop, DWORD colourBottom)
-{
-    self->drawCentered(x, y, cellW, cellH, spacing, str, d3d, firstChar,
-                       colourTop, colourBottom);
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Text_DrawRightAligned(TextRenderer *self, float x, float y, float cellW,
-                      float cellH, float spacing, const char *str,
-                      RenderDevice *d3d, char firstChar,
-                      DWORD colourTop, DWORD colourBottom)
-{
-    self->drawRight(x, y, cellW, cellH, spacing, str, d3d, firstChar,
-                    colourTop, colourBottom);
-}
-
-__declspec(dllexport) unsigned int __attribute__((thiscall))
-Text_LoadFont(TextRenderer *self, const char *path, RenderDevice *d3d)
-{
-    return self->load(path, d3d);
-}
-
-}  // extern "C"
+  // extern "C"
 
 /* ─── The big-text pair ─────────────────────────────────────────────────────
  *
@@ -448,30 +412,7 @@ void TextRenderer::drawBig(float x, float y, float cellW, float cellH,
 
 /* ─── The big-text exports ──────────────────────────────────────────────────
  */
-extern "C" {
-
-__declspec(dllexport) void __attribute__((thiscall))
-Text_DrawBigText(TextRenderer *self, float x, float y, float cellW,
-                 float cellH, float spacing, const char *str, RenderDevice *d3d,
-                 char firstChar, DWORD colourTop, DWORD colourBottom,
-                 float amplitude, float rate, int n)
-{
-    self->drawBig(x, y, cellW, cellH, spacing, str, d3d, firstChar,
-                  colourTop, colourBottom, amplitude, rate, n);
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Text_DrawWobbleGlyphRow(TextRenderer *self, float x, float y, float cellW,
-                        float cellH, float spacing, const char *str,
-                        RenderDevice *d3d, char firstChar, DWORD colourTop,
-                        DWORD colourBottom, float amplitude, float rate,
-                        int n)
-{
-    self->drawWobble(x, y, cellW, cellH, spacing, str, d3d, firstChar,
-                     colourTop, colourBottom, amplitude, rate, n);
-}
-
-}  // extern "C"
+  // extern "C"
 
 /* ─── The lifecycle ─────────────────────────────────────────────────────────
  *
@@ -492,19 +433,6 @@ void TextRenderer::destruct()
 {
     vtable_ = g_TextVtable;
     Texture_SceneDtorBody(atlas());
-}
-
-extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
-Text_Construct(TextRenderer *self)
-{
-    self->construct();
-    return self;
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Text_DtorBody(TextRenderer *self)
-{
-    self->destruct();
 }
 
 extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
@@ -615,12 +543,3 @@ void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
     dev->SetRenderState(RS::AlphaBlendEnable, 0);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Text_DrawPanelText(TextRenderer *self, float x, float y, float cellW,
-                   float cellH, float spacing, float lineH, const char *str,
-                   RenderDevice *d3d, DWORD colourTop, DWORD colourBottom,
-                   SceneTexture *panelTex, SceneTexture *frameTex)
-{
-    self->drawPanel(x, y, cellW, cellH, spacing, lineH, str, d3d,
-                    colourTop, colourBottom, panelTex, frameTex);
-}

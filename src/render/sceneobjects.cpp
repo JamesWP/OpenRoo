@@ -180,18 +180,18 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
     const float *p = sub->flEffectParams;
     switch (sub->effect) {
     case 0:
-        Wrapper_Flush(&rec->wrapper);
+        rec->wrapper.flush();
         break;
     case 4:
-        Wrapper_ApplySineWave(&rec->wrapper, (unsigned int)(long long)now, p[0], p[1], p[2]);
+        rec->wrapper.applySineWave((unsigned int)(long long)now, p[0], p[1], p[2]);
         break;
     case 5:
         if (!game->config()->videoReflection())
             return;
-        Wrapper_UpdateObjectTransform(&rec->wrapper, dev, (unsigned short)frame);
+        rec->wrapper.updateObjectTransform(dev, (unsigned short)frame);
         break;
     case 6:
-        Wrapper_ScrollUVs(&rec->wrapper, (unsigned int)(long long)now, p[0] != 0.0f ? 1 : 0, p[1]);
+        rec->wrapper.scrollUVs((unsigned int)(long long)now, p[0] != 0.0f ? 1 : 0, p[1]);
         break;
     default:
         break;

@@ -286,67 +286,15 @@ __declspec(dllexport) void *Wrapper_Vtable(void)
     return (void *)g_WrapperVtable;
 }
 
-__declspec(dllexport) WrapperObject *__attribute__((thiscall))
-Wrapper_Construct(WrapperObject *self)
-{
-    self->construct();
-    return self;
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_DtorBody(WrapperObject *self)
-{
-    self->dtorBody();
-}
-
 /* PRESERVED: frees the object itself, although no WrapperObject is ever
  * allocated alone; unreachable. */
 __declspec(dllexport) void *__attribute__((thiscall))
 Wrapper_ScalarDtor(WrapperObject *self, unsigned int flags)
 {
-    Wrapper_DtorBody(self);
+    self->dtorBody();
     if (flags & 1)
         free(self);
     return self;
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_SetMesh(WrapperObject *self, CFaktMesh *mesh)
-{
-    self->setMesh(mesh);
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_ReleaseSnapshot(WrapperObject *self)
-{
-    self->releaseSnapshot();
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_Flush(WrapperObject *self)
-{
-    self->flush();
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_ApplySineWave(WrapperObject *self, unsigned int ticks, float rate,
-                      float amplitude, float skew)
-{
-    self->applySineWave(ticks, rate, amplitude, skew);
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_ScrollUVs(WrapperObject *self, unsigned int ticks, int axisU,
-                  float speed)
-{
-    self->scrollUVs(ticks, axisU, speed);
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Wrapper_UpdateObjectTransform(WrapperObject *self, RenderDevice *dev,
-                              unsigned short frame)
-{
-    self->updateObjectTransform(dev, frame);
 }
 
 }

@@ -376,12 +376,6 @@ expire:
     return 0;
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_UpdatePlayerTileEffects(Player *self)
-{
-    return self->updateTileEffects();
-}
-
 /* turnKind_ gives pendingMove_ relative to the facing: 1 forward, 3 back, 2
  * and 4 a right and left turn (whose pendingMove_ is the new facing + 10).
  * While effect 0xb is active, forward and back, left and right swap.  A turn

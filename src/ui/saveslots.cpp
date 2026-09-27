@@ -135,8 +135,3 @@ void SaveSlots::initialiseEmpty()
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-SaveSlots_InitialiseEmpty(SaveSlots *self)
-{
-    self->initialiseEmpty();
-}

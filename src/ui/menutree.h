@@ -115,12 +115,6 @@ KAROO_LAYOUT_CHECKS(MenuTree)
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PushMenuNodeOnStack(MenuTree *self, unsigned int nodeArg);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PopMenuNodeFromStack(MenuTree *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RewindMenuStackToRootNode(MenuTree *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_NavigateMenuTree(MenuTree *self, int now);
 
 /* The one slot of MenuTree's vtable. */
 extern "C" __declspec(dllexport) MenuTree *__attribute__((thiscall))

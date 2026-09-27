@@ -241,12 +241,6 @@ int FoePath::passable(int u, int v)
     return 1;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_CheckPathCellPassable(FoePath *self, int u, int v)
-{
-    return self->passable(u, v);
-}
-
 int FoePath::cellKey(int u, int v)
 {
     const int stride = keyStride_;
@@ -255,12 +249,6 @@ int FoePath::cellKey(int u, int v)
         return stride * v;
 
     return stride * v + u;
-}
-
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_ComputeCellLinearIndex(FoePath *self, int u, int v)
-{
-    return self->cellKey(u, v);
 }
 
 /* The open list stays in f order because insertOpenByCost inserts by cost, so
@@ -286,12 +274,6 @@ PathNode *FoePath::popBestOpen()
     closed_->next = head;
 
     return head;
-}
-
-extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
-Sim_PopBestOpenPathNode(FoePath *self)
-{
-    return self->popBestOpen();
 }
 
 static inline void *path_calloc(int count, int size)
@@ -339,12 +321,6 @@ void FoePath::releaseLists()
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ReleasePathSearchNodeLists(FoePath *self)
-{
-    self->releaseLists();
-}
-
 FoePath *FoePath::create(unsigned char *tileBase, unsigned short field04)
 {
     FoePath *p = (FoePath *)::operator new(sizeof(FoePath), std::nothrow);
@@ -381,12 +357,6 @@ void FoePath::dispose()
     free(pending_);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_DisposeFoePathSearchState(FoePath *self)
-{
-    self->dispose();
-}
-
 PathNode *FoePath::findByKey(PathNode *hdr, int key)
 {
     PathNode *n = hdr->next;
@@ -411,18 +381,6 @@ PathNode *FoePath::findClosed(int key)
     if (fx_nolookup())
         return 0;
     return findByKey(closed_, key);
-}
-
-extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
-Sim_FindOpenPathNodeByKey(FoePath *self, int key)
-{
-    return self->findOpen(key);
-}
-
-extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
-Sim_FindClosedPathNodeByKey(FoePath *self, int key)
-{
-    return self->findClosed(key);
 }
 
 /* Inserts by ascending f, which is what lets popBestOpen just take the front.
@@ -456,12 +414,6 @@ void FoePath::insertOpenByCost(PathNode *n)
     prev->next = n;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_InsertOpenPathNodeByCost(FoePath *self, PathNode *node)
-{
-    self->insertOpenByCost(node);
-}
-
 void FoePath::pushPending(PathNode *node)
 {
     if (fx_nopropagate())
@@ -489,18 +441,6 @@ PathNode *FoePath::popPending()
 
     free(cell);
     return node;
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PushPendingPathNode(FoePath *self, PathNode *node)
-{
-    self->pushPending(node);
-}
-
-extern "C" __declspec(dllexport) PathNode * __attribute__((thiscall))
-Sim_PopPendingPathNode(FoePath *self)
-{
-    return self->popPending();
 }
 
 void FoePath::propagate(PathNode *p)
@@ -557,12 +497,6 @@ void FoePath::propagate(PathNode *p)
     diag_report();
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PropagateImprovedPathCosts(FoePath *self, PathNode *node)
-{
-    self->propagate(node);
-}
-
 void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
 {
     const int gnew = p->g + 1;
@@ -615,13 +549,6 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
     insertOpenByCost(n);
 
     p->recordChild(n);  // recorded last here, unlike the two branches above
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RelaxPathNeighbourCell(FoePath *self, PathNode *parent, int u, int v,
-                           int goalU, int goalV)
-{
-    self->relax(parent, u, v, goalU, goalV);
 }
 
 /* GetCellStepDirectionCode's axis pairing does not match the movement facing
@@ -785,12 +712,6 @@ void FoePath::expand(PathNode *n, int goalU, int goalV)
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_ExpandPathNodeNeighbours(FoePath *self, PathNode *node, int goalU, int goalV)
-{
-    self->expand(node, goalU, goalV);
-}
-
 int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
 {
     targetV_ = (unsigned char)vTarget;
@@ -852,12 +773,6 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
     return 0;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_SearchPathNodeGraph(FoePath *self, int uFoe, int vFoe, int uTarget, int vTarget)
-{
-    return self->search(uFoe, vFoe, uTarget, vTarget);
-}
-
 int FoePath::find(int uFoe, int vFoe, int uTarget, int vTarget)
 {
     if (passable(uTarget, vTarget) != 0 &&
@@ -888,9 +803,3 @@ int FoePath::find(int uFoe, int vFoe, int uTarget, int vTarget)
     return 0;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_FindFoePathBetweenCells(FoePath *self, int uFoe, int vFoe,
-                            int uTarget, int vTarget)
-{
-    return self->find(uFoe, vFoe, uTarget, vTarget);
-}

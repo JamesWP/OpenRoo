@@ -97,55 +97,20 @@ private:
  *
  * The three plain draws are __thiscall with ten stack arguments.
  */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Text_RenderText(TextRenderer *self, float x, float y, float cellW, float cellH,
-                float spacing, const char *str, RenderDevice *d3d, char firstChar,
-                DWORD colourTop, DWORD colourBottom);
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Text_DrawCentered(TextRenderer *self, float x, float y, float cellW,
-                  float cellH, float spacing, const char *str, RenderDevice *d3d,
-                  char firstChar, DWORD colourTop, DWORD colourBottom);
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Text_DrawRightAligned(TextRenderer *self, float x, float y, float cellW,
-                      float cellH, float spacing, const char *str,
-                      RenderDevice *d3d, char firstChar,
-                      DWORD colourTop, DWORD colourBottom);
 
 /* The path, and the Direct3D the atlas is created against. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Text_LoadFont(TextRenderer *self, const char *path, RenderDevice *d3d);
 
 /* The big-text pair take thirteen stack arguments: the ten the other three
  * take plus (amplitude, rate, n). */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Text_DrawBigText(TextRenderer *self, float x, float y, float cellW,
-                 float cellH, float spacing, const char *str, RenderDevice *d3d,
-                 char firstChar, DWORD colourTop, DWORD colourBottom,
-                 float amplitude, float rate, int n);
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Text_DrawWobbleGlyphRow(TextRenderer *self, float x, float y, float cellW,
-                        float cellH, float spacing, const char *str,
-                        RenderDevice *d3d, char firstChar, DWORD colourTop,
-                        DWORD colourBottom, float amplitude, float rate,
-                        int n);
 
 /* The lifecycle, for the two global fonts. */
-extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
-Text_Construct(TextRenderer *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Text_DtorBody(TextRenderer *self);
 extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
 Text_ScalarDtor(TextRenderer *self, unsigned int flags);
 
 /* Twelve stack arguments. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Text_DrawPanelText(TextRenderer *self, float x, float y, float cellW,
-                   float cellH, float spacing, float lineH, const char *str,
-                   RenderDevice *d3d, DWORD colourTop, DWORD colourBottom,
-                   SceneTexture *panelTex, SceneTexture *frameTex);
 
 /* The two fonts: fonts\font1.fon and fonts\numbers.fon. */
 extern TextRenderer g_fontMain;
