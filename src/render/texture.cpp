@@ -6,6 +6,7 @@
  * and must not touch +0x18. */
 
 #include "texture.h"
+#include "d3dnative.h"
 #include "log.h"
 #include <stdlib.h>
 SceneTexture g_texKaroo128;

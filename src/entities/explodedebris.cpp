@@ -16,7 +16,6 @@
 #include "faktmesh.h"
 #include <string.h>
 #include <math.h>
-#include <d3d.h>
 #include "renderdevice.h"
 
 extern "C" {

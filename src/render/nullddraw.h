@@ -1,5 +1,7 @@
 #pragma once
-#include "com_proxy.h"
+#include <windows.h>
+
+struct IDirectDraw;
 
 /* KAROO_HEADLESS=1 replaces DirectDraw entirely with the in-DLL null device.
  * See nullddraw.cpp for what that means and what it is built from. */

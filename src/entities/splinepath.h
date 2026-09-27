@@ -9,7 +9,6 @@
 #include "linkedlist.h"
 class RenderDevice;
 
-struct IDirect3DDevice3;
 
 /* One control point, 12 bytes. */
 struct __attribute__((packed)) SplineControlPoint {

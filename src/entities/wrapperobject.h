@@ -17,7 +17,6 @@
 #include "faktmesh.h"
 class RenderDevice;
 
-struct IDirect3DDevice3;
 
 /* One snapshotted UV pair: the 8 bytes at +0x18 of an FVF 0x212 vertex, the
  * only part of the vertex kept. */

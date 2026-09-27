@@ -11,7 +11,6 @@
 #include "particles.h"
 #include "generators.h"
 #include "factory.h"
-#include "com_proxy.h"
 #include "log.h"
 #include "determinism.h"
 #include <stdlib.h>

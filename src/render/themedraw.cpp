@@ -86,7 +86,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                 if (!gate_open(sub.dwVisibilityGate, player, cell))
                     continue;
 
-                dev->SetTexture(0, sub.pTexture ? sub.pTexture->pTexture2 : NULL);
+                dev->SetTexture(0, sub.pTexture);
                 if (sub.dwBlendSrc != 0 && sub.dwBlendDst != 0) {
                     dev->SetRenderState(RS::AlphaBlendEnable, 1);
                     dev->SetRenderState(RS::SrcBlend, sub.dwBlendSrc);

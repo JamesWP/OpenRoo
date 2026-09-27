@@ -87,7 +87,7 @@ Direct3D_DrawMeshBatch(void *ctx, void *game, RenderDevice *d3d)
             d3d->SetRenderState(RS::TextureAddressV, addr);
 
             if (sub->pTexture)
-                d3d->SetTexture(0, sub->pTexture->pTexture2);
+                d3d->SetTexture(0, sub->pTexture);
 
             // The two branches share the final SetRenderState call.
             RS last_state;

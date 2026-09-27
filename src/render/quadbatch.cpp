@@ -114,7 +114,7 @@ Direct3D_DrawQuadBatch(QuadVerts *verts, void *game, RenderDevice *d3d)
             d3d->SetRenderState(RS::TextureAddressV, addr);
 
             if (sub->pTexture)
-                d3d->SetTexture(0, sub->pTexture->pTexture2);
+                d3d->SetTexture(0, sub->pTexture);
 
             // last_state and last_value let the alpha-off and dest-blend
             // branches share one SetRenderState call.

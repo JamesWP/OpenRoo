@@ -81,6 +81,7 @@
  * Every one of those logs the first time it is reached, so a future caller
  * shows up in karoo_hooks.log rather than silently getting a wrong answer.
  */
+#include "com_proxy.h"
 #include "nullddraw.h"
 #include "log.h"
 #include <string.h>

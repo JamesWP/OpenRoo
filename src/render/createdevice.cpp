@@ -93,30 +93,56 @@ struct DeviceCreation {
     }
 };
 
-/* Context is the RenderDevice.  A mode survives when its depth's bit is set
- * in dwModeFilterFlags, its depth is at least 16, and its aspect ratio falls
- * strictly inside (1.3, 1.4) -- 4:3 and nothing else. */
+/* A mode is usable when its depth's bit is set in depths (the HAL device's
+ * dwDeviceRenderBitDepth), its depth is at least 16, and -- unless anyAspect
+ * -- its aspect ratio falls strictly inside (1.3, 1.4): 4:3 and nothing
+ * else.  Create and EnumerateDisplayModes share it, so their indices agree. */
+static bool mode_usable(const DDSURFACEDESC2 *d, DWORD depths, bool anyAspect)
+{
+    DWORD bpp = d->ddpfPixelFormat.dwRGBBitCount;
+    if (bpp < 16)
+        return false;
+    if (bpp == 32 && !(depths & DDBD_32)) return false;
+    if (bpp == 24 && !(depths & DDBD_24)) return false;
+    if (bpp == 16 && !(depths & DDBD_16)) return false;
+    float aspect = (float)((double)d->dwWidth / (double)d->dwHeight);
+    return anyAspect || (aspect < 1.4f && aspect > 1.3f);
+}
+
+/* The HAL device's render depths, from a temporary IDirect3D3; 0 when there
+ * is no HAL description. */
+static bool hal_render_depths(IDirectDraw4 *dd, DWORD *depths)
+{
+    IDirect3D3 *d3d = NULL;
+    if (FAILED(dd->QueryInterface(IID_IDirect3D3, (void **)&d3d)))
+        return false;
+
+    D3DFINDDEVICERESULT found;
+    D3DFINDDEVICESEARCH search;
+    memset(&found,  0, sizeof(found));
+    memset(&search, 0, sizeof(search));
+    found.dwSize   = sizeof(found);
+    search.dwSize  = sizeof(search);
+    search.dwFlags = D3DFDS_GUID;
+    search.guid    = IID_IDirect3DHALDevice;
+
+    HRESULT hr = d3d->FindDevice(&search, &found);
+    d3d->Release();
+    if (FAILED(hr))
+        return false;
+    *depths = found.ddHwDesc.dwFlags != 0
+            ? found.ddHwDesc.dwDeviceRenderBitDepth : 0;
+    return true;
+}
+
+/* Context is the RenderDevice. */
 static HRESULT WINAPI enum_display_modes_cb(LPDDSURFACEDESC2 pDesc, LPVOID ctx)
 {
     RenderDevice *self = (RenderDevice *)ctx;
-    DWORD bpp   = pDesc->ddpfPixelFormat.dwRGBBitCount;
-    DWORD flags = DeviceCreation::filterFlags(self);
+    DWORD bpp = pDesc->ddpfPixelFormat.dwRGBBitCount;
 
     g_devdiag.modesSeen++;
-
-    float aspect = (float)((double)pDesc->dwWidth / (double)pDesc->dwHeight);
-
-    if (bpp == 32) {
-        if (!(flags & DDBD_32)) return DDENUMRET_OK;
-    } else if (bpp == 24) {
-        if (!(flags & DDBD_24)) return DDENUMRET_OK;
-    } else if (bpp == 16) {
-        if (!(flags & DDBD_16)) return DDENUMRET_OK;
-    } else if (bpp < 16) {
-        return DDENUMRET_OK;
-    }
-
-    if (!(aspect < 1.4f && aspect > 1.3f))
+    if (!mode_usable(pDesc, DeviceCreation::filterFlags(self), false))
         return DDENUMRET_OK;
 
     DisplayMode mode = { pDesc->dwWidth, pDesc->dwHeight, bpp };
@@ -187,30 +213,11 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
         return DeviceCreation::fail(this, GS_D3D_ERR_COOP_LEVEL);
 
     // ── FindDevice(HAL), for dwDeviceRenderBitDepth only ──
-    // REVIEW: these two failures used to return without a log line, and a
-    // HAL result with no flags read the bit depth out of uninitialised stack;
-    // both now fail with the Direct3D3 error / a zero filter.
-    IDirect3D3 *d3dTmp = NULL;
-    hr = n->dd->QueryInterface(IID_IDirect3D3, (void **)&d3dTmp);
-    if (FAILED(hr))
+    // REVIEW: a failure here used to return without a log line, and a HAL
+    // result with no flags read the bit depth out of uninitialised stack; it
+    // now fails with the Direct3D3 error / a zero filter.
+    if (!hal_render_depths(n->dd, &modeFilterFlags_))
         return DeviceCreation::fail(this, GS_D3D_ERR_D3D3_IFACE);
-
-    D3DFINDDEVICERESULT found;
-    D3DFINDDEVICESEARCH search;
-    memset(&found,  0, sizeof(found));
-    memset(&search, 0, sizeof(search));
-    found.dwSize   = sizeof(found);
-    search.dwSize  = sizeof(search);
-    search.dwFlags = D3DFDS_GUID;
-    search.guid    = IID_IDirect3DHALDevice;
-
-    hr = d3dTmp->FindDevice(&search, &found);
-    d3dTmp->Release();
-    if (FAILED(hr))
-        return DeviceCreation::fail(this, GS_D3D_ERR_D3D3_IFACE);
-
-    modeFilterFlags_ = found.ddHwDesc.dwFlags != 0
-                      ? found.ddHwDesc.dwDeviceRenderBitDepth : 0;
     sprintf(msg, GS_D3D_RENDER_BITDEPTH, modeFilterFlags_);
     imagelog(msg);
 
@@ -382,4 +389,69 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
                   g_devdiag.zfmtSeen, g_devdiag.zfmtKept, g_devdiag.logLines);
 
     return true;
+}
+
+// ── Enumeration for the launcher ──
+
+static BOOL WINAPI enum_adapters_cb(GUID *guid, LPSTR desc, LPSTR, LPVOID ctx)
+{
+    std::vector<Adapter> *out = (std::vector<Adapter> *)ctx;
+    Adapter a;
+    memset(&a, 0, sizeof(a));
+    lstrcpynA(a.name, desc, sizeof(a.name));
+    a.hasGuid = guid != NULL;
+    if (guid)
+        a.guid = *guid;
+    out->push_back(a);
+    return DDENUMRET_OK;
+}
+
+bool RenderDevice::EnumerateAdapters(std::vector<Adapter> &out)
+{
+    // LoadLibrary, not GetModuleHandle: the executable does not import
+    // ddraw.dll, so it may not be loaded yet.
+    typedef HRESULT (WINAPI *enum_fn)(LPDDENUMCALLBACKA, LPVOID);
+    enum_fn enumerate = (enum_fn)(void (*)(void))
+        GetProcAddress(LoadLibraryA("ddraw.dll"), "DirectDrawEnumerateA");
+    return enumerate && SUCCEEDED(enumerate(enum_adapters_cb, &out));
+}
+
+struct ModeListCtx {
+    std::vector<DisplayMode> *out;
+    DWORD depths;
+    bool  anyAspect;
+};
+
+static HRESULT WINAPI enum_mode_list_cb(LPDDSURFACEDESC2 d, LPVOID ctxp)
+{
+    ModeListCtx *ctx = (ModeListCtx *)ctxp;
+    if (mode_usable(d, ctx->depths, ctx->anyAspect)) {
+        DisplayMode m = { d->dwWidth, d->dwHeight, d->ddpfPixelFormat.dwRGBBitCount };
+        ctx->out->push_back(m);
+    }
+    return DDENUMRET_OK;
+}
+
+/* Creates the adapter's DirectDraw (falling back to the default), finds its
+ * HAL device's render depths and lists the usable modes.  REVIEW: the
+ * launcher's copy of this leaked every interface on its failure paths. */
+bool RenderDevice::EnumerateDisplayModes(const GUID *adapter,
+                                         std::vector<DisplayMode> &out,
+                                         bool anyAspect)
+{
+    LPDIRECTDRAW dd = NULL;
+    if (FAILED(hooks_DirectDrawCreate((GUID *)adapter, &dd, NULL))
+        && FAILED(hooks_DirectDrawCreate(NULL, &dd, NULL)))
+        return false;
+    IDirectDraw4 *dd4 = NULL;
+    HRESULT hr = dd->QueryInterface(IID_IDirectDraw4, (void **)&dd4);
+    dd->Release();
+    if (FAILED(hr))
+        return false;
+
+    ModeListCtx ctx = { &out, 0, anyAspect };
+    bool ok = hal_render_depths(dd4, &ctx.depths)
+           && SUCCEEDED(dd4->EnumDisplayModes(0, NULL, &ctx, enum_mode_list_cb));
+    dd4->Release();
+    return ok;
 }

@@ -23,7 +23,6 @@
 
 #include "renderdevice.h"
 #include <windows.h>
-#include <d3d.h>
 #include <math.h>
 #include <string.h>
 
@@ -381,7 +380,7 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
                     continue;
 
                 dev = d3d;
-                dev->SetTexture(0, sub->pTexture != NULL ? sub->pTexture->pTexture2 : NULL);
+                dev->SetTexture(0, sub->pTexture);
                 if (sub->dwBlendSrc != 0 && sub->dwBlendDst != 0) {
                     dev->SetRenderState(RS::AlphaBlendEnable, 1);
                     dev->SetRenderState(RS::SrcBlend, sub->dwBlendSrc);

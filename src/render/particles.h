@@ -1,7 +1,6 @@
 #pragma once
 #include <windows.h>
 #include <stddef.h>
-#include "com_proxy.h"
 class RenderDevice;
 
 /* ParticleSystem hierarchy: the systems, their ring of particles, and the

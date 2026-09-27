@@ -63,7 +63,6 @@ static_assert(offsetof(CFaktMesh, strided[MESH_STRIDED_TEX0].dwStride)     == 0x
 static_assert(offsetof(CFaktMesh, strided[MESH_STRIDED_TEX1].dwStride)     == 0x42, "strided");
 
 /* The two draw exports (faktmesh.cpp). */
-struct IDirect3DDevice3;
 extern "C" __declspec(dllexport) HRESULT __attribute__((thiscall))
 FaktMesh_DrawMeshBuffer(CFaktMesh *self, RenderDevice *dev, DWORD frame);
 extern "C" __declspec(dllexport) HRESULT __attribute__((thiscall))
