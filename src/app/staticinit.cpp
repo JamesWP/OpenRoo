@@ -42,7 +42,7 @@ void StaticInit_Construct()
     g_fontMain.construct();
     g_fontNumbers.construct();
     TextureManager_Construct(&g_textureManager);
-    ModelManager_Construct(&g_modelManager);
+    g_modelManager.construct();
     g_cdAudio.construct();
     Texture_ImageCtor(&g_demoImage);
     Texture_SceneCtor(&g_texKaroo128);
@@ -65,7 +65,7 @@ void StaticInit_Destruct()
     Texture_SceneDtorBody(&g_texKaroo128);
     Texture_ImageDtorBody(&g_demoImage);
     g_cdAudio.stopAndClose();
-    ModelManager_Destruct(&g_modelManager);
+    g_modelManager.destruct();
     TextureManager_Destruct(&g_textureManager);
     g_fontNumbers.destruct();
     g_fontMain.destruct();

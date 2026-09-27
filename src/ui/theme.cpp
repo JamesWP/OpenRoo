@@ -317,7 +317,7 @@ extern "C" __declspec(dllexport) void __cdecl
 Theme_ReleaseBlock(ThemeAssetBlock *block)
 {
     TextureManager_ReleaseAll(&g_textureManager);
-    ModelManager_ClearReleaseFree(&g_modelManager);
+    g_modelManager.clearReleaseFree();
     for (ThemeObjectType t : kReleaseOrder)
         Theme_ReleaseSlot(&block->slots[t]);
     for (int f = 0; f < 6; f++)
@@ -725,7 +725,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         if (slot == NULL || ntok <= 1)
             return;
         open(rec, slot);
-        CFaktMesh *mesh = ModelManager_FindOrImport(&g_modelManager, tok[1]);
+        CFaktMesh *mesh = g_modelManager.findOrImport(tok[1]);
         if (mesh == NULL) {
             rec.at->kind = THEME_KIND_NONE;
             return;

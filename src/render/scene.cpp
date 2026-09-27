@@ -16,7 +16,7 @@ extern "C" __declspec(dllexport) Scene *__attribute__((thiscall))
 Scene_Construct(Scene *self)
 {
     self->objects.init();
-    ModelManager_Construct(&self->models);
+    self->models.construct();
     TextureManager_Construct(&self->textures);
     return self;
 }
@@ -27,7 +27,7 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Scene_Destruct(Scene *self)
 {
     TextureManager_Destruct(&self->textures);
-    ModelManager_Destruct(&self->models);
+    self->models.destruct();
     self->objects.destruct();
 }
 
@@ -43,7 +43,7 @@ static void free_scene_objects()
         }
     }
     s->objects.clear();
-    ModelManager_ClearReleaseFree(&s->models);
+    s->models.clearReleaseFree();
     TextureManager_ReleaseAll(&s->textures);
     memset(s, 0, sizeof *s);  // PRESERVED: vtable pointers too; nothing reads them again
 }
@@ -58,7 +58,7 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
 {
     Scene *s = &g_scene;
     free_scene_objects();
-    s->models.pLogger = logger;
+    s->models.setLogger(logger);
     s->textures.pLogger = logger;
 
     for (unsigned i = 0; i < leo->objectCount(); ++i) {
@@ -75,7 +75,7 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
 
         o->type = r->kind;
         if (r->kind == EXTRA_MODEL)
-            o->mesh = ModelManager_FindOrImport(&s->models, r->file);
+            o->mesh = s->models.findOrImport(r->file);
         else if (r->kind == EXTRA_PARTICLE)
             o->particle = ps_load_file(r->file, logger);
         else if (r->kind == EXTRA_BILLBOARD)
