@@ -1,38 +1,17 @@
-/* Direct3D closure reimplementations — presentation path.
+/* Direct3D: presentation, teardown and lifecycle (direct3d.h).  Device
+ * creation is in createdevice.cpp.
  *
- * Replaces (safety-stubbed by patch.py):
- *   0x425fc0 FlipPrimaryFrame        __cdecl(LoadedImage *)
- *   0x413180 Direct3D::ReleaseResources  __thiscall(this), ret 0
- *
- * The original is 52 bytes and does exactly two COM calls:
- *
- *   g_pDirect3D->pZBuffer->Blt(NULL, img->pTextureSurface, NULL,
- *                              DDBLT_WAIT, NULL);
- *   g_pDirect3D->pPrimary->Flip(NULL, 1);
- *
- * Confirmed from both the Ghidra decompile and the raw disassembly at
- * 0x425fde (FF 51 14 = Blt, slot 5) / 0x425ff0 (FF 51 2c = Flip, slot 11).
- * Neither return value is checked by the original, and it returns void.
- *
- * Note the destination is pZBuffer (+0x3c), not the back buffer — that is
- * what the game does; the field name comes from how the surface is created,
- * not from how this path uses it.  UpdatePlayerCamera Blts to the same
- * surface.  Reproduced as-is.
- *
- * Both surfaces are com_proxy surface proxies (every surface is wrapped at
- * w4_CreateSurface / ws4_GetAttachedSurface), and img->pTextureSurface is a
- * proxy too.  Calling through them is deliberate: the proxy Blt forwarder
- * unwraps the peer argument itself, so presentation stays visible to the
- * proxy layer exactly as it was before the replacement.
+ * FlipPrimaryFrame Blts the image to pZBuffer -- which holds the back buffer
+ * despite its name (direct3d.h) -- and flips.  Neither return value is
+ * checked.
  *
  * KAROO_FLIP_FX=noblt skips the Blt and flips whatever is already on the
- * primary, as visual proof the presented pixels come from this code: the
- * loading/theme bitmap never appears.
- */
+ * primary: the loading/theme bitmap never appears. */
+
 #include "direct3d.h"
 #include "log.h"
 #include <stdlib.h>
-Direct3D* g_pDirect3D;   /* was 0x004e04ac */
+Direct3D* g_pDirect3D;
 
 #define FLIP_LOG_FIRST 8
 
@@ -76,28 +55,8 @@ Direct3D_FlipPrimaryFrame(LoadedImage *img)
     }
 }
 
-/* ─── Direct3D::ReleaseResources (0x413180) ────────────────────────────────
- *
- * __thiscall(this), plain `ret` — no stack args (checked against the original,
- * not taken from the decompiler).  Four E8 call sites, no E9/PUSH/DATA refs.
- *
- * Releases the six COM interfaces it owns, frees the enumerated display-mode
- * list, and zeroes the mode/z-buffer-format state.
- *
- * Two behaviours preserved deliberately:
- *   - pZBuffer is NULLed but never Released.  Every other interface here gets
- *     a Release first; the z-buffer surface does not.  That is a leak in the
- *     original, reproduced rather than "fixed" — releasing it would change the
- *     refcount the rest of the teardown sees.
- *   - The mode-list walk frees each node's pValue and then calls
- *     LinkedList::Clear, which frees the nodes themselves.  Two passes, as in
- *     the original.
- *
- * LinkedList::Clear and FactAlloc::Free2 are shared helpers that stay live for
- * other callers, so they are called at their original addresses rather than
- * stubbed or duplicated (same approach as factory.cpp).
- */
-
+/* Releases the six COM interfaces it owns, frees the enumerated display-mode
+ * list, and zeroes the mode/z-buffer-format state. */
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Direct3D_ReleaseResources(Direct3D *self)
@@ -109,7 +68,7 @@ Direct3D_ReleaseResources(Direct3D *self)
     if (self->pD3D)        { self->pD3D->Release();        self->pD3D        = NULL; }
     if (self->pDD4)        { self->pDD4->Release();        self->pDD4        = NULL; }
 
-    /* Free each node's payload, then the nodes. */
+    // Free each node's payload, then the nodes: two passes.
     for (LinkedListNode *n = self->modeList.pHead; n != NULL; ) {
         void *value = n->pValue;
         n = n->pNextNode;
@@ -120,23 +79,20 @@ Direct3D_ReleaseResources(Direct3D *self)
 
     self->pSelectedMode     = NULL;
     self->dwModeFilterFlags = 0;
-    for (int i = 0; i < 8; i++)          /* dwZBufFmtSize .. +0x30 */
+    for (int i = 0; i < 8; i++)
         self->zbufFmt[i] = 0;
 
-    self->pZBuffer = NULL;               /* NOT released — see header */
+    // PRESERVED: pZBuffer (the back buffer from GetAttachedSurface) is NULLed
+    // but never Released, leaking the reference GetAttachedSurface added.
+    self->pZBuffer = NULL;
 
     log_write("direct3d: ReleaseResources this=%p done\n", self);
 }
 
-/* ─── Construction and teardown: 0x412680, 0x412730, 0x412710 ──────────────
+/* ─── Construction and teardown ─────────────────────────────────────────────
  *
- * WinMain allocates the 0x238-byte object with the game's operator new
- * (0x42d32d), constructs it (one E8, 0x42D33B), and deletes it through
- * vtable slot 0 with flag 1 -- so the scalar dtor frees on the game heap
- * (alloc.h, mixed ownership until WinMain is ours).  The game's one-slot
- * table 0x45d398 is left pointing at the stubbed original, a tripwire.
- *
- * Quirk preserved: the ctor Clears the mode list it has just Init'd. */
+ * WinMain allocates the 0x238-byte object, constructs it, and deletes it
+ * through the scalar destructor with flag 1. */
 static void *const g_D3DVtable[1] = { (void *)&Direct3D_ScalarDestructor };
 
 extern "C" __declspec(dllexport) Direct3D *__attribute__((thiscall))
@@ -147,6 +103,7 @@ Direct3D_Construct(Direct3D *self)
     self->hWnd = NULL;
     self->pDD4 = NULL;
     self->pLastError[0] = '\0';
+    // Clearing the list just Init'd is redundant but harmless.
     List_Clear(&self->modeList);
     self->pSelectedMode = NULL;
     *(DWORD *)((BYTE *)self + 0xcc) = 0;
