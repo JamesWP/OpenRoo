@@ -1,5 +1,5 @@
-/* The launcher window (a shaped window with bitmap buttons: play, setup, quit,
- * and a link to the publisher's site) and the display device dialog it opens.
+/* The launcher window (a frameless rectangle painted from our own bitmaps,
+ * with bitmap buttons: play, setup, quit) and the display device dialog it opens.
  *
  * Neither test gate reaches this code: --skip-launcher and --headless both
  * skip the launcher (launcher.cpp).  It is checked by hand.
@@ -9,11 +9,13 @@
 
 #include <windows.h>
 #include <mmsystem.h>
+#include <shellapi.h>
 #include <ddraw.h>
 #include <d3d.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "launcherdialogs.h"
 #include "launcher.h"
 #include "com_proxy.h"
@@ -22,6 +24,8 @@
 #include "config.h"
 #include "log.h"
 #include "resources.h"
+#include "launcher_layout.h"
+#include "buildinfo.h"
 
 static const int IDC_PLAY       = 0x3f5;     // "spielen"
 static const int IDC_SETUP      = 0x3f2;     // "setup"; the same id as the mode combo
@@ -30,16 +34,24 @@ static const int IDC_DRIVERS    = 0x3f0;
 static const int IDC_HWCHECK    = 0x3f1;
 static const int IDC_MODES      = 0x3f2;
 static const int IDD_DEVICE     = 0x6e;
-static const int IDR_REGION     = 0x6f;
+
+// The launcher's bitmaps, RCDATA in openroo.rc.
+static const int IDR_LAUNCHER_BG        = 200;
+static const int IDR_LAUNCHER_PLAY_OFF  = 201;
+static const int IDR_LAUNCHER_PLAY_FOC  = 202;
+static const int IDR_LAUNCHER_SETUP_OFF = 203;
+static const int IDR_LAUNCHER_SETUP_FOC = 204;
+static const int IDR_LAUNCHER_QUIT_OFF  = 205;
+static const int IDR_LAUNCHER_QUIT_FOC  = 206;
 
 static const char SND_SWITCH[] = "waves\\switch.wav";
 static const char SND_IMPACT[] = "waves\\mineimpact.wav";
 static const char SND_UGH[]    = "waves\\ugh.wav";
 
-static BYTE *s_menuBmp;
-static BYTE *s_playOff,  *s_playFoc;
-static BYTE *s_setupOff, *s_setupFoc;
-static BYTE *s_quitOff,  *s_quitFoc;
+static const BYTE *s_menuBmp;
+static const BYTE *s_playOff,  *s_playFoc;
+static const BYTE *s_setupOff, *s_setupFoc;
+static const BYTE *s_quitOff,  *s_quitFoc;
 static int   s_modeCounter;
 
 /* The hardware checkbox's state on OK.  Nothing reads it. */
@@ -57,33 +69,17 @@ static bool fx_allaspect()
     return cached != 0;
 }
 
-/* Reads a whole .bmp file; NULL unless the type is "BM" and the header's size
- * is the file's size.  Files over 4 GB are refused before allocating. */
-static BYTE *load_bmp_file(const char *path)
+/* A .bmp file embedded as RCDATA, whole (file header included), or NULL.
+ * Resource memory: never freed. */
+static const BYTE *load_bmp_resource(int id)
 {
-    HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
-                           OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-    if (h == INVALID_HANDLE_VALUE)
+    HMODULE mod = Resources_Module();
+    HRSRC res = FindResourceA(mod, MAKEINTRESOURCEA(id), (LPCSTR)RT_RCDATA);
+    HGLOBAL hg = res ? LoadResource(mod, res) : NULL;
+    const BYTE *buf = hg ? (const BYTE *)LockResource(hg) : NULL;
+    if (!buf || SizeofResource(mod, res) < 54 || *(const WORD *)buf != 0x4d42)  // "BM"
         return NULL;
-    DWORD hi = 0;
-    DWORD size = GetFileSize(h, &hi);
-    if (hi != 0) {
-        CloseHandle(h);
-        return NULL;
-    }
-    BYTE *buf = (BYTE *)malloc(size);
-    if (!buf) {
-        CloseHandle(h);
-        return NULL;
-    }
-    DWORD got = 0;
-    BOOL ok = ReadFile(h, buf, size, &got, NULL);
-    CloseHandle(h);
-    if (ok && got == size && *(WORD *)buf == 0x4d42  // "BM"
-        && *(DWORD *)(buf + 2) == size)
-        return buf;
-    free(buf);
-    return NULL;
+    return buf;
 }
 
 /* A file's BITMAPINFO (after the 14-byte file header) and its size, OS/2 core
@@ -131,52 +127,113 @@ static void draw_button(const DRAWITEMSTRUCT *di, const BYTE *off, const BYTE *f
                 di->rcItem.bottom - di->rcItem.top, hdr, bits);
 }
 
-static void starter_init(HWND hDlg)
+/* The corner text: a 3x5 pixel font, each glyph 5 rows of 3 bits (high bit
+ * leftmost).  Lower case draws as upper; anything unknown as a blank. */
+static const char FONT_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-'";
+static const unsigned char FONT[][5] = {
+    {2,5,7,5,5},{6,5,6,5,6},{3,4,4,4,3},{6,5,5,5,6},{7,4,6,4,7},{7,4,6,4,4},
+    {3,4,5,5,3},{5,5,7,5,5},{7,2,2,2,7},{1,1,1,5,2},{5,5,6,5,5},{4,4,4,4,7},
+    {5,7,7,5,5},{6,5,5,5,5},{2,5,5,5,2},{6,5,6,4,4},{2,5,5,6,3},{6,5,6,5,5},
+    {3,4,2,1,6},{7,2,2,2,2},{5,5,5,5,7},{5,5,5,5,2},{5,5,7,7,5},{5,5,2,5,5},
+    {5,5,2,2,2},{7,1,2,4,7},
+    {7,5,5,5,7},{2,6,2,2,7},{6,1,2,4,7},{6,1,2,1,6},{5,5,7,1,1},{7,4,6,1,6},
+    {3,4,7,5,7},{7,1,2,2,2},{7,5,7,5,7},{7,5,7,1,6},
+    {0,0,0,0,2},{0,0,7,0,0},{2,2,0,0,0},
+};
+static const int FONT_SCALE = 2;  // screen pixels per font pixel
+
+static void draw_text_px(HDC hdc, int x, int y, const char *text, HBRUSH brush)
 {
-    SetWindowTextA(hDlg, "Jumpin' John Starter");
-    s_menuBmp  = load_bmp_file("bitmaps\\menu.bmp");
-    s_playOff  = load_bmp_file("bitmaps\\spielen_off.bmp");
-    s_playFoc  = load_bmp_file("bitmaps\\spielen_foc.bmp");
-    s_setupOff = load_bmp_file("bitmaps\\setup_off.bmp");
-    s_setupFoc = load_bmp_file("bitmaps\\setup_foc.bmp");
-    s_quitOff  = load_bmp_file("bitmaps\\ende_off.bmp");
-    s_quitFoc  = load_bmp_file("bitmaps\\ende_foc.bmp");
-
-    // Centred, 400x400; SWP_NOZORDER makes HWND_TOPMOST moot.
-    int y = GetSystemMetrics(SM_CYSCREEN) / 2 - 200;
-    int x = GetSystemMetrics(SM_CXSCREEN) / 2 - 200;
-    SetWindowPos(hDlg, HWND_TOPMOST, x, y, 400, 400, SWP_NOZORDER);
-
-    MoveWindow(GetDlgItem(hDlg, IDC_PLAY),  0x47, 0x96,  0x106, 0x36, TRUE);
-    MoveWindow(GetDlgItem(hDlg, IDC_SETUP), 0x47, 0xcb,  0x106, 0x35, TRUE);
-    MoveWindow(GetDlgItem(hDlg, IDC_QUIT),  0x47, 0x101, 0x106, 0x32, TRUE);
-
-    // The window shape: the RGN resource, scaled from its 150x163 design size
-    // by what 100 dialog units come to on this system.
-    RECT r = { 0, 0, 100, 100 };
-    MapDialogRect(hDlg, &r);
-    float sx = (float)r.right  * (1.0f / 150.0f);
-    float sy = (float)r.bottom * (1.0f / 163.0f);
-    GetClientRect(hDlg, &r);  // PRESERVED: result unused
-
-    HRSRC res = FindResourceA(Resources_Module(), MAKEINTRESOURCEA(IDR_REGION), "RGN");
-    HGLOBAL hg = LoadResource(Resources_Module(), res);
-    if (!hg)
-        return;
-    const RGNDATA *rgn = (const RGNDATA *)LockResource(hg);
-    if (rgn) {
-        XFORM xf = { sx, 0.0f, 0.0f, sy, 0.0f, 0.0f };
-        DWORD size = (rgn->rdh.nCount + 2) * 16;
-        SetWindowRgn(hDlg, ExtCreateRegion(&xf, size, rgn), TRUE);
+    for (; *text; ++text, x += 4 * FONT_SCALE) {
+        const char *at = strchr(FONT_CHARS, toupper((unsigned char)*text));
+        if (!at)
+            continue;
+        const unsigned char *g = FONT[at - FONT_CHARS];
+        for (int row = 0; row < 5; ++row)
+            for (int col = 0; col < 3; ++col)
+                if (g[row] & (4 >> col)) {
+                    RECT r = { x + col * FONT_SCALE, y + row * FONT_SCALE,
+                               x + (col + 1) * FONT_SCALE, y + (row + 1) * FONT_SCALE };
+                    FillRect(hdc, &r, brush);
+                }
     }
-    FreeResource(hg);
 }
 
-/* The link hot spot, in client pixels (unsigned 16-bit compares). */
-static bool over_link(LPARAM lParam)
+/* One string from our VERSIONINFO, or "" if absent. */
+static void version_string(const char *name, char *out, size_t size)
 {
-    WORD x = LOWORD(lParam), y = HIWORD(lParam);
-    return x > 0x52 && x < 0x13e && y > 0x16a && y < 0x184;
+    out[0] = 0;
+    char path[MAX_PATH];
+    if (!GetModuleFileNameA(Resources_Module(), path, sizeof(path)))
+        return;
+    DWORD dummy, len = GetFileVersionInfoSizeA(path, &dummy);
+    void *info = len ? malloc(len) : NULL;
+    if (info && GetFileVersionInfoA(path, 0, len, info)) {
+        char key[64];
+        snprintf(key, sizeof(key), "\\StringFileInfo\\000004b0\\%s", name);
+        char *val;
+        UINT vlen;
+        if (VerQueryValueA(info, key, (void **)&val, &vlen) && vlen)
+            snprintf(out, size, "%s", val);
+    }
+    free(info);
+}
+
+/* The corner text's extent, shadow included; clicking it opens the project. */
+static RECT s_linkRect;
+static const char LINK_URL[] = "https://github.com/jameswp/OpenRoo";
+
+/* "<name> <version> <git sha>" at the bottom left, with a one-pixel shadow. */
+static void draw_build_text(HDC hdc)
+{
+    char name[64], ver[32], text[160];
+    version_string("ProductName", name, sizeof(name));
+    version_string("ProductVersion", ver, sizeof(ver));
+    snprintf(text, sizeof(text), "%s %s %s", name, ver, BUILD_GIT_SHA);
+    int x = 11, y = LAUNCHER_H - 11 - 5 * FONT_SCALE;
+    HBRUSH shadow = CreateSolidBrush(RGB(0, 0, 0));
+    HBRUSH fore   = CreateSolidBrush(RGB(255, 236, 200));
+    s_linkRect.left   = x;
+    s_linkRect.top    = y;
+    s_linkRect.right  = x + (int)strlen(text) * 4 * FONT_SCALE;
+    s_linkRect.bottom = y + 6 * FONT_SCALE;
+    draw_text_px(hdc, x + FONT_SCALE, y + FONT_SCALE, text, shadow);
+    draw_text_px(hdc, x, y, text, fore);
+    DeleteObject(shadow);
+    DeleteObject(fore);
+}
+
+static void place(HWND hDlg, int id, int x, int y, int w, int h)
+{
+    MoveWindow(GetDlgItem(hDlg, id), x, y, w, h, TRUE);
+}
+
+static void starter_init(HWND hDlg)
+{
+    SetWindowTextA(hDlg, "Open'Roo");
+    s_menuBmp  = load_bmp_resource(IDR_LAUNCHER_BG);
+    s_playOff  = load_bmp_resource(IDR_LAUNCHER_PLAY_OFF);
+    s_playFoc  = load_bmp_resource(IDR_LAUNCHER_PLAY_FOC);
+    s_setupOff = load_bmp_resource(IDR_LAUNCHER_SETUP_OFF);
+    s_setupFoc = load_bmp_resource(IDR_LAUNCHER_SETUP_FOC);
+    s_quitOff  = load_bmp_resource(IDR_LAUNCHER_QUIT_OFF);
+    s_quitFoc  = load_bmp_resource(IDR_LAUNCHER_QUIT_FOC);
+
+    // Centred, the size of the background; SWP_NOZORDER makes HWND_TOPMOST moot.
+    int y = GetSystemMetrics(SM_CYSCREEN) / 2 - LAUNCHER_H / 2;
+    int x = GetSystemMetrics(SM_CXSCREEN) / 2 - LAUNCHER_W / 2;
+    SetWindowPos(hDlg, HWND_TOPMOST, x, y, LAUNCHER_W, LAUNCHER_H, SWP_NOZORDER);
+
+    place(hDlg, IDC_PLAY,  LAUNCHER_PLAY_RECT);
+    place(hDlg, IDC_SETUP, LAUNCHER_SETUP_RECT);
+    place(hDlg, IDC_QUIT,  LAUNCHER_QUIT_RECT);
+}
+
+/* Whether a client point (WM_LBUTTONUP's lParam) is in a painted box. */
+static bool in_box(LPARAM lParam, int x, int y, int w, int h)
+{
+    int px = (short)LOWORD(lParam), py = (short)HIWORD(lParam);
+    return px >= x && px < x + w && py >= y && py < y + h;
 }
 
 static void open_device_dialog(HWND hDlg)
@@ -194,11 +251,6 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_DESTROY:
-        // Freed, not cleared: WM_INITDIALOG reloads them all.
-        free(s_playOff);  free(s_playFoc);
-        free(s_setupOff); free(s_setupFoc);
-        free(s_quitOff);  free(s_quitFoc);
-        free(s_menuBmp);
         return 0;
 
     case WM_PAINT: {
@@ -210,6 +262,7 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
         GetClientRect(hDlg, &rc);
         stretch_bmp(hdc, rc.right - rc.left, rc.bottom - rc.top,
                     s_menuBmp + 14, s_menuBmp + *(DWORD *)(s_menuBmp + 10));
+        draw_build_text(hdc);
         EndPaint(hDlg, &ps);
         return 0;
     }
@@ -261,19 +314,39 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
     }
 
-    case WM_MOUSEMOVE:
-        SetCursor(LoadCursorA(NULL, over_link(lParam) ? IDC_HAND : IDC_ARROW));
-        return 0;
+    // The window has no frame; its title bar and boxes are painted in the
+    // background.  The title bar drags it, the boxes minimise and quit.
+    case WM_NCHITTEST: {
+        POINT pt = { (short)LOWORD(lParam), (short)HIWORD(lParam) };
+        ScreenToClient(hDlg, &pt);
+        LPARAM cl = MAKELPARAM(pt.x, pt.y);
+        LRESULT hit = pt.y < LAUNCHER_TITLE_H && !in_box(cl, LAUNCHER_MIN_RECT)
+                      && !in_box(cl, LAUNCHER_CLOSE_RECT) ? HTCAPTION : HTCLIENT;
+        SetWindowLongPtrA(hDlg, DWLP_MSGRESULT, hit);
+        return 1;
+    }
 
-    case WM_LBUTTONDOWN:
-        if (over_link(lParam)) {
-            // PRESERVED: the process handles are never closed.
-            char cmd[] = "explorer.exe http:\\\\www.fakt-software.de";
-            STARTUPINFOA si;
-            PROCESS_INFORMATION pi;
-            memset(&si, 0, sizeof(si));
-            si.cb = sizeof(si);
-            CreateProcessA(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+    case WM_SETCURSOR: {
+        POINT pt;
+        GetCursorPos(&pt);
+        ScreenToClient(hDlg, &pt);
+        if (LOWORD(lParam) != HTCLIENT || !PtInRect(&s_linkRect, pt))
+            return 0;
+        SetCursor(LoadCursorA(NULL, IDC_HAND));
+        SetWindowLongPtrA(hDlg, DWLP_MSGRESULT, TRUE);
+        return 1;
+    }
+
+    case WM_LBUTTONUP:
+        if (in_box(lParam, s_linkRect.left, s_linkRect.top,
+                   s_linkRect.right - s_linkRect.left,
+                   s_linkRect.bottom - s_linkRect.top)) {
+            ShellExecuteA(hDlg, "open", LINK_URL, NULL, NULL, SW_SHOWNORMAL);
+        } else if (in_box(lParam, LAUNCHER_MIN_RECT)) {
+            ShowWindow(hDlg, SW_MINIMIZE);
+        } else if (in_box(lParam, LAUNCHER_CLOSE_RECT)) {
+            sndPlaySoundA(SND_UGH, SND_NODEFAULT);
+            EndDialog(hDlg, 0);
         }
         return 0;
     }

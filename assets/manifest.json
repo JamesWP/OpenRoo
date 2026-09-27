@@ -20,18 +20,6 @@
    "class": "required"
   },
   {
-   "path": "bitmaps/ENDE_FOC.BMP",
-   "sha256": "9f50e97260136cc1570d4ab81fa6c02cb3b16fa05cab0e4f7f309e7c2e80b612",
-   "size": 14280,
-   "class": "required"
-  },
-  {
-   "path": "bitmaps/ENDE_OFF.BMP",
-   "sha256": "1efdf7ed208d1ad85a6d033c8a3733668d051282ccfdf215ccc5d9b36d2a63d9",
-   "size": 14280,
-   "class": "required"
-  },
-  {
    "path": "bitmaps/FOREST.BMP",
    "sha256": "439da1af807102b6c34404fd987ca86449dade3790924bb190fb5387bb8b8496",
    "size": 921656,
@@ -44,45 +32,15 @@
    "class": "required"
   },
   {
-   "path": "bitmaps/MENU.BMP",
-   "sha256": "675b23128b0fbced00de5de5f7ef5ec9d70259df5735ea14e64d3bc0ba80622f",
-   "size": 161080,
-   "class": "required"
-  },
-  {
    "path": "bitmaps/menu_mask.bmp",
    "sha256": "5778efa7c722e665be05082fa3ab91978284d732d93b06b169fa7b1df1d49a8e",
    "size": 20864,
    "class": "required"
   },
   {
-   "path": "bitmaps/setup_foc.bmp",
-   "sha256": "1860afd19b3cfc2d1cb07a63aef9dcf1d189167b44beb234cf5aa5d32024904b",
-   "size": 15072,
-   "class": "required"
-  },
-  {
-   "path": "bitmaps/setup_off.bmp",
-   "sha256": "7286937a70f1e750fa26285af31037c71c8da17d91ccb74709bd113967c6acdd",
-   "size": 15072,
-   "class": "required"
-  },
-  {
    "path": "bitmaps/SPACE.BMP",
    "sha256": "bd496443e82e93da283de9f8cf8a399dee4a25f58df1bf80a1980c07330a67c0",
    "size": 921656,
-   "class": "required"
-  },
-  {
-   "path": "bitmaps/spielen_foc.bmp",
-   "sha256": "347c442e6120e8b99952bd4e851a5d87baee8dcb688a386b52749e5e2d094041",
-   "size": 15336,
-   "class": "required"
-  },
-  {
-   "path": "bitmaps/spielen_off.bmp",
-   "sha256": "24b34fab6dc8e534152e68bcef9ab4f46faad9c0e96b6824b24d91642aab9400",
-   "size": 15336,
    "class": "required"
   },
   {
