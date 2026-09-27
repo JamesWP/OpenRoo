@@ -8,6 +8,7 @@
 #include <string.h>
 #include "texture.h"
 #include "d3dnative.h"
+#include "ddrawdiag.h"
 #include "log.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -53,7 +54,7 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
     // Inherit the destination's description, then override only what makes
     // this a system-memory scratch copy.  Unlike CreateSurface, ddsd is never
     // zeroed: the rest is whatever GetSurfaceDesc left.
-    self->pTextureSurface->GetSurfaceDesc(&ddsd);
+    ddiag_surface_desc(self->pTextureSurface->GetSurfaceDesc(&ddsd), &ddsd);
     ddsd.dwFlags        = 0x1007;  // CAPS | HEIGHT | WIDTH | PIXELFORMAT
     ddsd.ddsCaps.dwCaps = 0x1800;  // TEXTURE | SYSTEMMEMORY
 
@@ -63,6 +64,7 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
 
     IDirectDrawSurface4 *tmp = NULL;
     HRESULT hr = dd->CreateSurface(&ddsd, &tmp, NULL);
+    ddiag_create_surface(hr, &ddsd);
     if (hr < 0) {
         unsigned int r = fwrite(GS_TEX_CREATESURFACE_FAILED,
                                         (int)dib_strlen(GS_TEX_CREATESURFACE_FAILED),
@@ -136,6 +138,7 @@ TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
                                   : 0x40;  // OFFSCREENPLAIN
 
     HRESULT hr = dd->CreateSurface(&ddsd, &self->pTextureSurface, NULL);
+    ddiag_create_surface(hr, &ddsd);
     if (hr < 0) {
         unsigned int d = (unsigned int)DeleteObject((HGDIOBJ)hbmp);
         self->loadStatus = 2;

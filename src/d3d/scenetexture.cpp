@@ -25,6 +25,7 @@
 #include "gameglobals.h"
 #include "gamelog.h"
 #include "d3dnative.h"
+#include "ddrawdiag.h"
 TextureManager g_textureManager;
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
@@ -147,6 +148,7 @@ static void texture_fx_fill_solid(IDirectDrawSurface4 *surf)
     memset(&d, 0, sizeof(d));
     d.dwSize = sizeof(d);
     HRESULT hr = surf->Lock(NULL, &d, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL);
+    ddiag_lock(hr, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, &d);
 
     // Never fail silently: an unlockable surface would look like "the FX did
     // nothing".
@@ -225,9 +227,13 @@ static bool st_fmt_preferred(DWORD cand, DWORD kept)
 }
 
 /* Always returns D3DENUMRET_OK: every format is enumerated every time. */
+static bool s_log_texfmts;  // set by st_pick_texture_format
+
 static HRESULT WINAPI st_enum_texture_formats_picker(LPDDPIXELFORMAT pf,
                                                      LPVOID param)
 {
+    if (s_log_texfmts)
+        ddiag_pixfmt("texfmt", pf);
     DWORD flags = pf->dwFlags;
     if (flags & 0x02)  // DDPF_ALPHA
         return D3DENUMRET_OK;
@@ -292,7 +298,11 @@ static void __stdcall st_pick_texture_format(RenderDevice *dev, DWORD bpp,
     ctx.bWantAlpha     = (BYTE)alphaFlag;
     ctx.dwRequestedBpp = bpp;
 
+    // KAROO_DDRAW_DIAG logs the formats offered the first time only.
+    static LONG enumerations = 0;
+    s_log_texfmts = InterlockedIncrement(&enumerations) == 1;
     dev->native()->device->EnumTextureFormats(st_enum_texture_formats_picker, &ctx);
+    s_log_texfmts = false;
 
     *out = ctx.kept;
 }
@@ -393,15 +403,18 @@ Texture_BindTextureResource(SceneTexture *self, RenderDevice *dev, LPCSTR name, 
     texture_log_format("Bind", bpp, &ddsd.ddpfPixelFormat);
 
     DevDescRaw hw, sw;
+    HRESULT hr;
     memset(&hw, 0, sizeof(hw));
     memset(&sw, 0, sizeof(sw));
     hw.dw[0] = 0xfc;
     sw.dw[0] = 0xfc;
-    dev->native()->device->GetCaps((LPD3DDEVICEDESC)&hw, (LPD3DDEVICEDESC)&sw);
+    hr = dev->native()->device->GetCaps((LPD3DDEVICEDESC)&hw, (LPD3DDEVICEDESC)&sw);
+    ddiag_device_caps(hr, &hw, &sw);
 
     ddsd.ddsCaps.dwCaps = st_texture_caps(&hw);
 
-    HRESULT hr = dev->native()->dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
+    hr = dev->native()->dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
+    ddiag_create_surface(hr, &ddsd);
     if (hr < 0) {
         unsigned int d = (unsigned int)DeleteObject((HGDIOBJ)hbmp);
         return d & 0xffffff00u;  // upper bytes: DeleteObject
@@ -514,15 +527,18 @@ Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
     texture_log_format("Import", bpp, &ddsd.ddpfPixelFormat);
 
     DevDescRaw hw, sw;
+    HRESULT hr;
     memset(&hw, 0, sizeof(hw));
     memset(&sw, 0, sizeof(sw));
     hw.dw[0] = 0xfc;
     sw.dw[0] = 0xfc;
-    dev->native()->device->GetCaps((LPD3DDEVICEDESC)&hw, (LPD3DDEVICEDESC)&sw);
+    hr = dev->native()->device->GetCaps((LPD3DDEVICEDESC)&hw, (LPD3DDEVICEDESC)&sw);
+    ddiag_device_caps(hr, &hw, &sw);
 
     ddsd.ddsCaps.dwCaps = st_texture_caps(&hw);
 
-    HRESULT hr = dev->native()->dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
+    hr = dev->native()->dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
+    ddiag_create_surface(hr, &ddsd);
     if (hr < 0) {
         st_log_str(GS_TEX_NO_TEXTURE_SURFACE);
         if (fp != NULL) fclose(fp);

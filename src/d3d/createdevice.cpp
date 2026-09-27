@@ -20,7 +20,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "com_proxy.h"
+#include "ddrawdiag.h"
+#include "nullddraw.h"
 
 /* KAROO_D3DDEV_FX: controls that change geometry, which only this function
  * decides.
@@ -93,6 +94,30 @@ struct DeviceCreation {
     }
 };
 
+/* The DirectDraw everything goes through: the in-DLL null device when
+ * headless (KAROO_HEADLESS), else the real one from ddraw.dll.  This is the
+ * single point where headless mode is decided -- every surface, device and
+ * viewport descends from this object. */
+static HRESULT create_directdraw(GUID *guid, LPDIRECTDRAW *out)
+{
+    *out = NULL;
+    if (nulldd_enabled()) {
+        *out = nulldd_create();
+        return DD_OK;
+    }
+
+    // LoadLibrary, not GetModuleHandle: the executable does not import
+    // ddraw.dll, so it may not be loaded yet.
+    typedef HRESULT (WINAPI *create_fn)(GUID *, LPDIRECTDRAW *, IUnknown *);
+    HMODULE ddraw = LoadLibraryA("ddraw.dll");
+    create_fn create = ddraw
+        ? (create_fn)(void (*)(void))GetProcAddress(ddraw, "DirectDrawCreate")
+        : NULL;
+    if (!create)
+        return DDERR_GENERIC;
+    return create(guid, out, NULL);
+}
+
 /* A mode is usable when its depth's bit is set in depths (the HAL device's
  * dwDeviceRenderBitDepth), its depth is at least 16, and -- unless anyAspect
  * -- its aspect ratio falls strictly inside (1.3, 1.4): 4:3 and nothing
@@ -127,6 +152,7 @@ static bool hal_render_depths(IDirectDraw4 *dd, DWORD *depths)
     search.guid    = IID_IDirect3DHALDevice;
 
     HRESULT hr = d3d->FindDevice(&search, &found);
+    ddiag_find_device(hr, &found);
     d3d->Release();
     if (FAILED(hr))
         return false;
@@ -142,6 +168,7 @@ static HRESULT WINAPI enum_display_modes_cb(LPDDSURFACEDESC2 pDesc, LPVOID ctx)
     DWORD bpp = pDesc->ddpfPixelFormat.dwRGBBitCount;
 
     g_devdiag.modesSeen++;
+    ddiag_mode(pDesc);
     if (!mode_usable(pDesc, DeviceCreation::filterFlags(self), false))
         return DDENUMRET_OK;
 
@@ -165,6 +192,7 @@ static HRESULT WINAPI enum_zbuffer_cb(LPDDPIXELFORMAT pFmt, LPVOID ctx)
     DDPIXELFORMAT *kept = (DDPIXELFORMAT *)ctx;
 
     g_devdiag.zfmtSeen++;
+    ddiag_pixfmt("zbuffmt", pFmt);
 
     char msg[100];
     sprintf(msg, GS_D3D_ZBUF_FMT, pFmt->dwZBufferBitDepth, pFmt->dwStencilBitDepth);
@@ -195,9 +223,9 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
 
     // ── DirectDraw, and the DirectDraw4 interface everything else uses ──
     LPDIRECTDRAW dd1 = NULL;
-    HRESULT hr = hooks_DirectDrawCreate(pDriverGuid, &dd1, NULL);
+    HRESULT hr = create_directdraw(pDriverGuid, &dd1);
     if (FAILED(hr)) {
-        hr = hooks_DirectDrawCreate(NULL, &dd1, NULL);
+        hr = create_directdraw(NULL, &dd1);
         if (FAILED(hr))
             return DeviceCreation::fail(this, GS_D3D_ERR_DDRAW_CREATE);
     }
@@ -279,6 +307,7 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
                            DDSCAPS_COMPLEX | DDSCAPS_3DDEVICE;
     dd.dwBackBufferCount = 1;
     hr = n->dd->CreateSurface(&dd, &n->primary, NULL);
+    ddiag_create_surface(hr, &dd);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_PRIMARY);
 
@@ -323,6 +352,7 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
     imagelog(msg);
 
     hr = n->dd->CreateSurface(&dd, &n->zBuffer, NULL);
+    ddiag_create_surface(hr, &dd);
     if (FAILED(hr))
         return DeviceCreation::fail(this, GS_D3D_ERR_ZBUF_SURFACE);
 
@@ -425,6 +455,7 @@ struct ModeListCtx {
 static HRESULT WINAPI enum_mode_list_cb(LPDDSURFACEDESC2 d, LPVOID ctxp)
 {
     ModeListCtx *ctx = (ModeListCtx *)ctxp;
+    ddiag_mode(d);
     if (mode_usable(d, ctx->depths, ctx->anyAspect)) {
         DisplayMode m = { d->dwWidth, d->dwHeight, d->ddpfPixelFormat.dwRGBBitCount };
         ctx->out->push_back(m);
@@ -440,8 +471,8 @@ bool RenderDevice::EnumerateDisplayModes(const GUID *adapter,
                                          bool anyAspect)
 {
     LPDIRECTDRAW dd = NULL;
-    if (FAILED(hooks_DirectDrawCreate((GUID *)adapter, &dd, NULL))
-        && FAILED(hooks_DirectDrawCreate(NULL, &dd, NULL)))
+    if (FAILED(create_directdraw((GUID *)adapter, &dd))
+        && FAILED(create_directdraw(NULL, &dd)))
         return false;
     IDirectDraw4 *dd4 = NULL;
     HRESULT hr = dd->QueryInterface(IID_IDirectDraw4, (void **)&dd4);

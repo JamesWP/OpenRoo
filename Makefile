@@ -13,7 +13,7 @@ CXXFLAGS += $(addprefix -I,$(SRCDIRS))
 
 SRCS = src/app/process.cpp src/app/log.cpp src/app/veh.cpp src/audio/cdm.cpp \
        src/audio/movie.cpp src/core/stream.cpp src/audio/static.cpp src/audio/cfaktsound.cpp \
-       src/input/progctrl.cpp src/d3d/com_proxy.cpp src/d3d/nullddraw.cpp src/app/launcher.cpp \
+       src/input/progctrl.cpp src/d3d/ddrawdiag.cpp src/d3d/nullddraw.cpp src/app/launcher.cpp \
        src/render/faktmesh.cpp src/render/particles.cpp src/entities/generators.cpp src/entities/factory.cpp \
        src/core/clock.cpp src/core/determinism.cpp src/core/gamestate.cpp src/testing/record.cpp \
        src/render/scenequad.cpp src/d3d/renderdevice.cpp src/render/quadbatch.cpp src/render/sky.cpp \
@@ -62,7 +62,7 @@ all: check-backend $(EXE)
 # rest of the game talks to it through RenderDevice (renderdevice.h).
 .PHONY: check-backend
 check-backend:
-	@bad=$$(grep -rlE '#include (<(d3d|ddraw)\.h>|"(d3dnative|com_proxy)\.h")' src --include='*.cpp' --include='*.h' | grep -v '^src/d3d/'); \
+	@bad=$$(grep -rlE '#include (<(d3d|ddraw)\.h>|"(d3dnative|ddrawdiag)\.h")' src --include='*.cpp' --include='*.h' | grep -v '^src/d3d/'); \
 	if [ -n "$$bad" ]; then echo "Direct3D headers outside src/d3d/:" $$bad >&2; exit 1; fi
 
 # The game: our objects, the resources, and exemain.cpp's entry point.

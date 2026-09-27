@@ -7,7 +7,7 @@ struct IDirectDraw;
  * See nullddraw.cpp for what that means and what it is built from. */
 bool nulldd_enabled(void);
 
-/* Returns the null IDirectDraw (v1) — the object hooks_DirectDrawCreate hands
+/* Returns the null IDirectDraw (v1) — the object create_directdraw (createdevice.cpp) hands
  * back in headless mode.  Never fails; the object is static. */
 IDirectDraw *nulldd_create(void);
 

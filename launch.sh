@@ -156,7 +156,7 @@ done
 # three the script controls itself are excluded here and set explicitly below.
 for _name in $(compgen -v); do
   case "$_name" in
-    KAROO_SKIP_LAUNCHER|KAROO_AUTO_EXIT_SECS|KAROO_D3D_PROXY|KAROO_HEADLESS) continue ;;
+    KAROO_SKIP_LAUNCHER|KAROO_AUTO_EXIT_SECS|KAROO_HEADLESS) continue ;;
     KAROO_*) FORWARD_ENV+=("$_name=${!_name}") ;;
   esac
 done
@@ -176,7 +176,6 @@ PROTON_RUN=(
   # Script-controlled; these are always set, so the DLL can rely on them.
   KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
   KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"
-  KAROO_D3D_PROXY="${KAROO_D3D_PROXY:-1}"
   KAROO_HEADLESS="$HEADLESS"
   "${FORWARD_ENV[@]}"
   "$PROTON_DIR/proton" run
