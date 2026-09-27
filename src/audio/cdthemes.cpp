@@ -22,12 +22,6 @@ static void crt_strlwr(char *p)
             *p = (char)(*p + ' ');
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_FindThemeIndexByThemeName(CdThemes *self, const char *name)
-{
-    return self->findThemeIndex(name);
-}
-
 /* PRESERVED: both names are copied unbounded into 128-byte buffers.  The
  * result is read before the compare. */
 unsigned int CdThemes::findThemeIndex(const char *name)
@@ -57,12 +51,6 @@ unsigned int CdThemes::findThemeIndex(const char *name)
 
 class CDM;
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf(CdThemes *self, const char *caption)
-{
-    return self->play(caption);
-}
-
 unsigned int CdThemes::play(const char *caption)
 {
     unsigned int idx;
@@ -76,12 +64,6 @@ unsigned int CdThemes::play(const char *caption)
     if (currentTrack_ != 0)
         g_cdAudio.playTrack(currentTrack_, true);
     return 1;
-}
-
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf_2(CdThemes *self)
-{
-    return self->replay();
 }
 
 unsigned int CdThemes::replay()
@@ -120,12 +102,6 @@ int CdThemes::validateTrackLengths()
     return 1;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_ValidateCDTrackLengths(CdThemes *self)
-{
-    return self->validateTrackLengths();
-}
-
 /* Construction and destruction only set the vtable.  PRESERVED: the theme
  * table is left uninitialised until it is read. */
 void CdThemes::construct()
@@ -138,19 +114,6 @@ void CdThemes::destruct()
     vtable_ = const_cast<void*>(CDTHEMES_VTABLE);
 }
 
-extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
-Sim_CdThemesConstruct(CdThemes *self)
-{
-    self->construct();
-    return self;
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_CdThemesDestruct(CdThemes *self)
-{
-    self->destruct();
-}
-
 /* Frees on bit 0; the only CdThemes is the Game's, so it never does. */
 extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
 Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
@@ -160,7 +123,6 @@ Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
         free(self);
     return self;
 }
-
 /* Opened in text mode, and needlessly writable.  PRESERVED:
  *   - the line buffer starts empty and is parsed even when the first read
  *     gets nothing;
@@ -172,11 +134,6 @@ Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
  *     currentTrack_ and its name past the object.  No shipped file comes
  *     close.
  * A missing file zeroes all 255 names and returns 0. */
-extern "C" __declspec(dllexport) unsigned char __attribute__((thiscall))
-Sim_ReadCdTrackThemeTable(CdThemes *self, const char *name)
-{
-    return self->readTrackThemeTable(name);
-}
 
 unsigned char CdThemes::readTrackThemeTable(const char *name)
 {
@@ -220,12 +177,6 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
     count_ = n;
     fclose(fp);
     return count_;
-}
-
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_ListTrackLengths(CdThemes *self)
-{
-    return self->listTrackLengths();
 }
 
 int CdThemes::listTrackLengths()

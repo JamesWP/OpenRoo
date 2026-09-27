@@ -43,7 +43,7 @@ static const char HIGHSCORE_KEY = 0x4b;
 Game *Game::construct(const char *gameName)
 {
     rootMenu_.construct();
-    Sim_CdThemesConstruct(&cdThemes_);
+    cdThemes_.construct();
     ThemeSound_Construct(&themeSounds_);
     Leo_Construct(&extraObjects_);
     soundManager()->construct();
@@ -224,7 +224,7 @@ void Game::destruct()
     soundManager()->destruct();
     Leo_Destruct(&extraObjects_);
     ThemeSound_Destruct(&themeSounds_);
-    Sim_CdThemesDestruct(&cdThemes_);
+    cdThemes_.destruct();
     rootMenu_.destruct();
 }
 
