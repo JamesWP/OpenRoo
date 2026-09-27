@@ -980,7 +980,7 @@ Render_RenderGameFrame(void)
     set_rs(RS::SpecularEnable,   0);
     set_rs(RS::AlphaBlendEnable, 0);
     CameraGlobals *cam = &g_camera;
-    Sky_DrawSkyBackground(&g_themeBlock.sky, d3d, cam->eye[0], cam->eye[1], cam->eye[2]);
+    g_themeBlock.sky.draw(d3d, cam->eye[0], cam->eye[1], cam->eye[2]);
     if (g_themeBlock.bFogEnabled)
         set_rs(RS::FogEnable, 1);
     set_rs(RS::StencilEnable, 1);
