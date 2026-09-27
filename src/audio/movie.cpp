@@ -48,7 +48,7 @@ void FaktMovie::notify(DWORD a, DWORD b, DWORD c)
 
 void FaktMovie::play()
 {
-    HWND hwnd = g_cdAudio.windowhandle;
+    HWND hwnd = g_cdAudio.windowHandle();
     state = 3;
     log_write("FaktMovie::play(this=%p) — posting 0x464 to HWND %p\n", this, hwnd);
     PostMessageA(hwnd, 0x464, 0, 0);

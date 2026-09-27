@@ -5,6 +5,11 @@
 #include "cfaktsound.h"
 #include "log.h"
 
+/* The class is packed (it was #pragma pack(1) before it had private members),
+ * so taking a member's address for a Win32 or COM out-parameter draws the
+ * packed-member warning.  The addresses are the same ones the pragma gave. */
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+
 void CFaktSound::blankFields()
 {
     memset(this, 0, sizeof(*this));

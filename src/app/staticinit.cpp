@@ -43,7 +43,7 @@ void StaticInit_Construct()
     Text_Construct(&g_fontNumbers);
     TextureManager_Construct(&g_textureManager);
     ModelManager_Construct(&g_modelManager);
-    CDM_Constructor(&g_cdAudio);
+    g_cdAudio.construct();
     Texture_ImageCtor(&g_demoImage);
     Texture_SceneCtor(&g_texKaroo128);
     for (SceneTexture *t : MENU_TEX_A)
@@ -64,7 +64,7 @@ void StaticInit_Destruct()
         Texture_SceneDtorBody(MENU_TEX_A[i]);
     Texture_SceneDtorBody(&g_texKaroo128);
     Texture_ImageDtorBody(&g_demoImage);
-    CDM_Destructor(&g_cdAudio);
+    g_cdAudio.stopAndClose();
     ModelManager_Destruct(&g_modelManager);
     TextureManager_Destruct(&g_textureManager);
     Text_DtorBody(&g_fontNumbers);

@@ -14,7 +14,7 @@ struct vec3d {
 /* The device state.  Embedded, never allocated on its own, so its deleting
  * destructor never frees. */
 #pragma pack(push, 1)
-class CFaktSound {
+class __attribute__((packed)) CFaktSound {
 public:
     /* Turns the 3D listener on or off.  Returns 0 on failure, after releasing
      * everything; the sound manager gives up when it does. */

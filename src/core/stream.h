@@ -27,7 +27,7 @@ static_assert(sizeof(WaveInfo) == 0x12, "WaveInfo size");
 /* A streamed buffer, 0xd4 bytes, the size the script player allocates.  The
  * vtable must stay at offset 0. */
 #pragma pack(push, 1)
-class CStreamSoundbuffer {
+class __attribute__((packed)) CStreamSoundbuffer {
 public:
     /* The deinit, then free() when bit 0 of flags is set; returns self. */
     static void * __attribute__((thiscall))
