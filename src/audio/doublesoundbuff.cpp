@@ -83,54 +83,51 @@ static DsbFx dsb_fx(void)
 }
 
 /* Both buffers, then both lists, then the two lent-out flags. */
-extern "C" __declspec(dllexport) doublesoundbuff * __attribute__((thiscall))
-Dsb_Init(doublesoundbuff *self)
+doublesoundbuff *doublesoundbuff::init()
 {
     ++g_nInit; { static unsigned long seen; dsb_first("Init", &seen); }
-    self->master()->init();
-    self->spare()->init();
-    self->clones()->init();
-    self->pools()->init();
-    self->dwMasterTaken = 0;
-    self->dwSpareTaken  = 0;
-    return self;
+    master()->init();
+    spare()->init();
+    clones()->init();
+    pools()->init();
+    dwMasterTaken_ = 0;
+    dwSpareTaken_  = 0;
+    return this;
 }
 
 /* Drops every borrower, releases both buffers and forgets that either was lent
  * out.  Also used by the sound manager to recycle an entry when the 2D/3D mode
  * changes. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Dsb_Clear(doublesoundbuff *self)
+void doublesoundbuff::clear()
 {
     ++g_nClear; { static unsigned long seen; dsb_first("Clear", &seen); }
-    Dsb_PurgeCloneList(self->clones());
-    Dsb_PurgeVoicePoolList(self->pools());
-    self->master()->reset();
-    self->spare()->reset();
-    self->dwMasterTaken = 0;
-    self->dwSpareTaken  = 0;
+    doublesoundbuff::purgeCloneList(clones());
+    doublesoundbuff::purgeVoicePoolList(pools());
+    master()->reset();
+    spare()->reset();
+    dwMasterTaken_ = 0;
+    dwSpareTaken_  = 0;
     dsb_census();
 }
 
 /* Clear, then the lists and buffers in reverse order of construction.
  * ReinitBuffer, unlike Reset, reinstalls the vtable first. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Dsb_Destruct(doublesoundbuff *self)
+void doublesoundbuff::destruct()
 {
     ++g_nDestruct; { static unsigned long seen; dsb_first("Destruct", &seen); }
-    Dsb_Clear(self);
-    self->pools()->destruct();
-    self->clones()->destruct();
-    self->spare()->reinitBuffer();
-    self->master()->reinitBuffer();
+    clear();
+    pools()->destruct();
+    clones()->destruct();
+    spare()->reinitBuffer();
+    master()->reinitBuffer();
     dsb_census();
 }
 
 /* Takes the list, not the entry.  The next node is read before the delete, so
  * a destructor that unlinked its own node would not strand the walk;
  * List_Clear frees the nodes afterwards. */
-extern "C" __declspec(dllexport) void __attribute__((stdcall))
-Dsb_PurgeCloneList(LinkedList *list)
+void __attribute__((stdcall))
+doublesoundbuff::purgeCloneList(LinkedList *list)
 {
     ++g_nPurgeClone; { static unsigned long seen; dsb_first("PurgeCloneList", &seen); }
     LinkedListNode *node = list->head();
@@ -146,8 +143,8 @@ Dsb_PurgeCloneList(LinkedList *list)
 }
 
 /* The same walk; a pool has no vtable, so it is wiped and freed. */
-extern "C" __declspec(dllexport) void __attribute__((stdcall))
-Dsb_PurgeVoicePoolList(LinkedList *list)
+void __attribute__((stdcall))
+doublesoundbuff::purgeVoicePoolList(LinkedList *list)
 {
     ++g_nPurgePool; { static unsigned long seen; dsb_first("PurgeVoicePoolList", &seen); }
     LinkedListNode *node = list->head();
@@ -166,26 +163,25 @@ Dsb_PurgeVoicePoolList(LinkedList *list)
 /* Gives back one buffer.  It is recognised if it is on the duplicate list
  * (unlinked and deleted) or is the master or spare itself (its taken flag
  * cleared).  Otherwise 0, and the caller tries the manager's other list. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Dsb_ReleaseStatic(doublesoundbuff *self, CStaticSoundbuffer *buf)
+int doublesoundbuff::releaseStatic(CStaticSoundbuffer *buf)
 {
     ++g_nRelStatic; { static unsigned long seen; dsb_first("ReleaseStatic", &seen); }
 
-    LinkedListNode *node = self->clones()->find(buf, 0);
+    LinkedListNode *node = clones()->find(buf, 0);
     if (node != 0) {
-        self->clones()->unlink(node);
+        clones()->unlink(node);
         if (buf != 0)
             virtual_delete_static(buf);
         ++g_nRelStaticHit;
         return 1;
     }
-    if (buf == self->master()) {
-        self->dwMasterTaken = 0;
+    if (buf == master()) {
+        dwMasterTaken_ = 0;
         ++g_nMasterLent; ++g_nRelStaticHit;
         return 1;
     }
-    if (buf == self->spare()) {
-        self->dwSpareTaken = 0;
+    if (buf == spare()) {
+        dwSpareTaken_ = 0;
         ++g_nSpareLent; ++g_nRelStaticHit;
         return 1;
     }
@@ -194,15 +190,14 @@ Dsb_ReleaseStatic(doublesoundbuff *self, CStaticSoundbuffer *buf)
 
 /* A pool is always built for a borrower, so there is no identity case: if it
  * is not on the list it is not this entry's. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool)
+int doublesoundbuff::releasePool(VoicePool *pool)
 {
     ++g_nRelPool; { static unsigned long seen; dsb_first("ReleasePool", &seen); }
 
-    LinkedListNode *node = self->pools()->find(pool, 0);
+    LinkedListNode *node = pools()->find(pool, 0);
     if (node == 0)
         return 0;
-    self->pools()->unlink(node);
+    pools()->unlink(node);
     if (pool != 0) {
         pool->wipe();
         free(pool);
@@ -212,27 +207,25 @@ Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool)
 }
 
 /* DETERMINISM: summed as signed ints; the caller's compare is signed. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Dsb_BorrowerCount(doublesoundbuff *self)
+int doublesoundbuff::borrowerCount()
 {
     ++g_nBorrowerCount;
-    return (int)self->voicePoolList.count() + (int)self->cloneList.count();
+    return (int)voicePoolList_.count() + (int)cloneList_.count();
 }
 
 /* The single predicate that lets the sound manager destroy a loaded sound. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Dsb_IsFullyReleased(doublesoundbuff *self)
+int doublesoundbuff::isFullyReleased()
 {
     ++g_nFullyReleased; { static unsigned long seen; dsb_first("IsFullyReleased", &seen); }
 
     if (dsb_fx() == DSB_FX_STICKYENTRY)
         return 0;  // KAROO_DSB_FX=stickyentry: nothing is ever freed
 
-    if (Dsb_BorrowerCount(self) > 0)
+    if (borrowerCount() > 0)
         return 0;
-    if (self->dwMasterTaken != 0)
+    if (dwMasterTaken_ != 0)
         return 0;
-    int yes = (self->dwSpareTaken == 0);
+    int yes = (dwSpareTaken_ == 0);
     if (yes) ++g_nWasFullyReleased;
     return yes;
 }
