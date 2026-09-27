@@ -54,12 +54,10 @@ private:
 
     ActionEntry *head;
     DWORD        entry_count;
-    DWORD        _pad[2];  // unused
 };
 
 /* The whole control state.  The joystick is never set up: its setup, range and
  * dead-zone calls succeed without doing anything. */
-#pragma pack(push, 1)
 class ProgableControl {
 public:
     /* Construction and destruction of the one global instance, driven by
@@ -132,10 +130,8 @@ private:
     char                   suffix_positive[50];
     char                   suffix_negative[50];
     DWORD                  axis_midpoints[20];
-    BYTE                   _joystick_list[16];  // unused
     ActionTable            action_tables[5];    // one per mode
 };
-#pragma pack(pop)
 
 /* The one-slot vtable: the scalar deleting destructor. */
 extern const void *const PROGCTRL_VTABLE;

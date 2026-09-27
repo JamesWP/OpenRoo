@@ -13,7 +13,6 @@ struct vec3d {
 
 /* The device state.  Embedded, never allocated on its own, so its deleting
  * destructor never frees. */
-#pragma pack(push, 1)
 class __attribute__((packed)) CFaktSound {
 public:
     /* Turns the 3D listener on or off.  Returns 0 on failure, after releasing
@@ -61,7 +60,6 @@ private:
     DSCAPS                  caps_check_;             // filled by Initialize; unread
     IDirectSound3DListener *directsound3dlistener_;  // NULL when 3D sound is off
 };
-#pragma pack(pop)
 
 
 /* The one-slot vtable: the deleting destructor. */
