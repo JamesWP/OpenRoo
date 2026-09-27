@@ -174,6 +174,9 @@ public:
     int   gemsCollected() const                     { return gemsCollected_; }
     void  setGemsCollected(int n)                   { gemsCollected_ = n; }
 
+    static Player *__attribute__((thiscall))
+    scalarDeletingDtor(Player *self, unsigned char flags);
+
 private:
     Player() = delete;  // game-owned, embedded in Game
     KAROO_LAYOUT_REGISTER(Player);
@@ -256,5 +259,3 @@ __declspec(dllexport) void __cdecl Player_ActHarakiri(int key, int strength, voi
 __declspec(dllexport) void __cdecl Player_ActReleaseBomb(int key, int strength, void *player);
 }
 
-extern "C" __declspec(dllexport) Player *__attribute__((thiscall))
-Player_ScalarDestructor(Player *self, unsigned char flags);

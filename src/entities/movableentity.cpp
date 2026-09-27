@@ -14,7 +14,7 @@
 /* The base's own vtable: one slot, the scalar-deleting destructor declared
  * below. */
 static void *const g_MovableVtable[1] =
-    { (void *)&Sim_DeleteMovableEntityWithFlags };
+    { (void *)&MovableEntity::scalarDeletingDtor };
 
 #define GAME_MOVABLE_VTBL     ((const void *)g_MovableVtable)
 
@@ -78,8 +78,8 @@ void MovableEntity::zeroSoundSlots()
 
 /* No code path in this codebase reaches this except through the vtable
  * installed above. */
-extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
-Sim_DeleteMovableEntityWithFlags(MovableEntity *self, unsigned int flags)
+MovableEntity * __attribute__((thiscall))
+MovableEntity::scalarDeletingDtor(MovableEntity *self, unsigned int flags)
 {
     self->destroyBaseForGame();
     if (flags & 1)

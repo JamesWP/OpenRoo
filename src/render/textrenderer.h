@@ -85,16 +85,16 @@ public:
     void construct();
     void destruct();
 
+    /* The lifecycle, for the two global fonts. */
+    static TextRenderer *__attribute__((thiscall))
+    scalarDeletingDtor(TextRenderer *self, unsigned int flags);
+
 private:
     const void   *vtable_;  /* one-slot table: the scalar dtor */
     unsigned int  cols_;    /* atlas columns; also the cell divisor */
     unsigned int  rows_;    /* atlas rows */
     SceneTexture  atlas_;
 };
-
-/* The lifecycle, for the two global fonts. */
-extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
-Text_ScalarDtor(TextRenderer *self, unsigned int flags);
 
 /* The two fonts: fonts\font1.fon and fonts\numbers.fon. */
 extern TextRenderer g_fontMain;

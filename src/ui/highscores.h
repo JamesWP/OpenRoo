@@ -38,6 +38,10 @@ public:
     // level pairs.  Its four stack arguments are ignored.
     void fillDefaults();
 
+    /* The one slot of HighScoreTable's vtable. */
+    static HighScoreTable *__attribute__((thiscall))
+    scalarDeletingDtor(HighScoreTable *self, unsigned char flags);
+
 private:
     HighScoreTable() = delete;  // only ever reached through the Game
     KAROO_LAYOUT_REGISTER(HighScoreTable);
@@ -56,6 +60,3 @@ KAROO_LAYOUT_CHECKS(HighScoreTable)
     KAROO_LAYOUT_SIZE(0x3706);
 }
 
-/* The one slot of HighScoreTable's vtable. */
-extern "C" __declspec(dllexport) HighScoreTable *__attribute__((thiscall))
-HighScoreTable_ScalarDestructor(HighScoreTable *self, unsigned char flags);

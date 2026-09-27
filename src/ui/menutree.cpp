@@ -229,7 +229,7 @@ void MenuTree::navigate(int now)
 #undef COUNT
 }
 
-static void *const g_MenuTreeVtable[1] = { (void *)&MenuTree_ScalarDestructor };
+static void *const g_MenuTreeVtable[1] = { (void *)&MenuTree::scalarDeletingDtor };
 
 /* The vtable and these six fields; nothing else is touched. */
 void MenuTree::construct()
@@ -248,8 +248,8 @@ void MenuTree::destruct()
     vtable_ = g_MenuTreeVtable;
 }
 
-extern "C" __declspec(dllexport) MenuTree *__attribute__((thiscall))
-MenuTree_ScalarDestructor(MenuTree *self, unsigned char flags)
+MenuTree * __attribute__((thiscall))
+MenuTree::scalarDeletingDtor(MenuTree *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

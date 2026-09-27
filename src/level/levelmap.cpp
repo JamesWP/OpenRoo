@@ -125,7 +125,7 @@ int LevelMap::readFile(const char *path)
     return 1;
 }
 
-static void *const g_LevelMapVtable[1] = { (void *)&LevelMap_ScalarDestructor };
+static void *const g_LevelMapVtable[1] = { (void *)&LevelMap::scalarDeletingDtor };
 
 /* The vtable and the two extent bytes; the rest is left as it was. */
 void LevelMap::construct()
@@ -140,8 +140,8 @@ void LevelMap::destruct()
     vtable_ = g_LevelMapVtable;
 }
 
-extern "C" __declspec(dllexport) LevelMap *__attribute__((thiscall))
-LevelMap_ScalarDestructor(LevelMap *self, unsigned char flags)
+LevelMap * __attribute__((thiscall))
+LevelMap::scalarDeletingDtor(LevelMap *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

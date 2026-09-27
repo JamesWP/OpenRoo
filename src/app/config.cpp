@@ -62,7 +62,7 @@ Config_Save(Config *self, const char *path)
     return 1;
 }
 
-static void *const g_ConfigVtable[1] = { (void *)&Config_ScalarDestructor };
+static void *const g_ConfigVtable[1] = { (void *)&Config::scalarDeletingDtor };
 
 void Config::construct()
 {
@@ -75,8 +75,8 @@ void Config::destruct()
     vtable_ = g_ConfigVtable;
 }
 
-extern "C" __declspec(dllexport) Config *__attribute__((thiscall))
-Config_ScalarDestructor(Config *self, unsigned char flags)
+Config * __attribute__((thiscall))
+Config::scalarDeletingDtor(Config *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

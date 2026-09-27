@@ -108,7 +108,7 @@ void TextEntry::poll(unsigned int phase)
 #undef ACTIVE
 }
 
-static void *const g_TextEntryVtable[1] = { (void *)&TextEntry_ScalarDestructor };
+static void *const g_TextEntryVtable[1] = { (void *)&TextEntry::scalarDeletingDtor };
 
 /* buffer_ is left as it was. */
 void TextEntry::construct()
@@ -125,8 +125,8 @@ void TextEntry::destruct()
     vtable_ = g_TextEntryVtable;
 }
 
-extern "C" __declspec(dllexport) TextEntry *__attribute__((thiscall))
-TextEntry_ScalarDestructor(TextEntry *self, unsigned char flags)
+TextEntry * __attribute__((thiscall))
+TextEntry::scalarDeletingDtor(TextEntry *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

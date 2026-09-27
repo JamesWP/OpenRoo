@@ -123,13 +123,13 @@ unsigned int HighScoreTable::insert(unsigned int score, unsigned char levelId)
     return ((rank * 11 + 11) & 0xffffff00u) | (rank & 0xffu);
 }
 
-static void *const g_HighScoreVtable[1] = { (void *)&HighScoreTable_ScalarDestructor };
+static void *const g_HighScoreVtable[1] = { (void *)&HighScoreTable::scalarDeletingDtor };
 
 void HighScoreTable::construct() { vtable_ = g_HighScoreVtable; }
 void HighScoreTable::destruct()  { vtable_ = g_HighScoreVtable; }
 
-extern "C" __declspec(dllexport) HighScoreTable *__attribute__((thiscall))
-HighScoreTable_ScalarDestructor(HighScoreTable *self, unsigned char flags)
+HighScoreTable * __attribute__((thiscall))
+HighScoreTable::scalarDeletingDtor(HighScoreTable *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

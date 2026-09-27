@@ -76,6 +76,10 @@ public:
     void destruct();
     void clearStreams();  // zeroes streams_[]
 
+    /* The one slot of ScriptPlayer's vtable. */
+    static ScriptPlayer *__attribute__((thiscall))
+    scalarDeletingDtor(ScriptPlayer *self, unsigned char flags);
+
 private:
     ScriptPlayer() = delete;  // only ever reached through the Game
     unsigned char playScript(const char *line);
@@ -173,6 +177,3 @@ KAROO_LAYOUT_CHECKS(ScriptPlayer)
     KAROO_LAYOUT_SIZE(0xf53f4);
 }
 
-/* The one slot of ScriptPlayer's vtable. */
-extern "C" __declspec(dllexport) ScriptPlayer *__attribute__((thiscall))
-ScriptPlayer_ScalarDestructor(ScriptPlayer *self, unsigned char flags);

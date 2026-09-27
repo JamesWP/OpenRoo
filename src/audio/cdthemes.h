@@ -41,6 +41,9 @@ public:
     unsigned char currentTrack() const               { return currentTrack_; }
     void          setCurrentTrack(unsigned char t)   { currentTrack_ = t; }
 
+    static CdThemes *__attribute__((thiscall))
+    scalarDeletingDtor(CdThemes *self, unsigned int flags);
+
 private:
     CdThemes() = delete;  // only ever reached through the Game
     KAROO_LAYOUT_REGISTER(CdThemes);
@@ -64,9 +67,6 @@ KAROO_LAYOUT_CHECKS(CdThemes)
     KAROO_LAYOUT_AT(names_,        0x11d);
     KAROO_LAYOUT_SIZE(0xff1e);
 }
-
-extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
-Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags);
 
 /* The one-slot vtable: the deleting destructor. */
 extern const void *const CDTHEMES_VTABLE;

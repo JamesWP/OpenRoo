@@ -129,6 +129,11 @@ public:
     VoicePool *poolCf() const                  { return (VoicePool *)sound_cf_; }
     void  setPoolCf(VoicePool *p)              { sound_cf_ = (CStaticSoundbuffer *)p; }
 
+    /* Vtable slot 0 of the base's one-slot table: destroys the base state, then
+     * frees to the game heap when bit 0 of `flags` is set. */
+    static MovableEntity *__attribute__((thiscall))
+    scalarDeletingDtor(MovableEntity *self, unsigned int flags);
+
 protected:
     // Our own subclasses use only the base's field work, the three zeroed
     // position floats.  The vtable is left for the subclass to set.
@@ -341,9 +346,4 @@ KAROO_LAYOUT_CHECKS(MovableEntity)
     // Derived classes' own fields begin immediately after this size.
     KAROO_LAYOUT_SIZE(0x15a);
 }
-
-/* Vtable slot 0 of the base's one-slot table: destroys the base state, then
- * frees to the game heap when bit 0 of `flags` is set. */
-extern "C" __declspec(dllexport) MovableEntity *__attribute__((thiscall))
-Sim_DeleteMovableEntityWithFlags(MovableEntity *self, unsigned int flags);
 

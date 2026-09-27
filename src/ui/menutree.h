@@ -71,6 +71,10 @@ public:
     // The node as an lvalue.
     unsigned char &nodeRef()                        { return node_; }
 
+    /* The one slot of MenuTree's vtable. */
+    static MenuTree *__attribute__((thiscall))
+    scalarDeletingDtor(MenuTree *self, unsigned char flags);
+
 private:
     MenuTree() = delete;  // only ever reached through the Game
     KAROO_LAYOUT_REGISTER(MenuTree);
@@ -116,6 +120,3 @@ KAROO_LAYOUT_CHECKS(MenuTree)
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PushMenuNodeOnStack(MenuTree *self, unsigned int nodeArg);
 
-/* The one slot of MenuTree's vtable. */
-extern "C" __declspec(dllexport) MenuTree *__attribute__((thiscall))
-MenuTree_ScalarDestructor(MenuTree *self, unsigned char flags);

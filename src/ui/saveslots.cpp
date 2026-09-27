@@ -89,7 +89,7 @@ Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
  * practice. */
 extern "C" {
 
-static void *const g_SaveSlotsVtable[1] = { (void *)&SaveSlots_ScalarDtor };
+static void *const g_SaveSlotsVtable[1] = { (void *)&SaveSlots::scalarDeletingDtor };
 
 __declspec(dllexport) void *SaveSlots_Vtable(void)
 {
@@ -108,8 +108,8 @@ SaveSlots_RestoreVtable(SaveSlots *self)
     *(const void **)self = SaveSlots_Vtable();
 }
 
-__declspec(dllexport) void *__attribute__((thiscall))
-SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags)
+void * __attribute__((thiscall))
+SaveSlots::scalarDeletingDtor(SaveSlots *self, unsigned int flags)
 {
     SaveSlots_RestoreVtable(self);
     if (flags & 1)

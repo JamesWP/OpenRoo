@@ -86,6 +86,9 @@ public:
     unsigned short objectCount() const               { return objectCount_; }
     ExtraObjectRecord *record(unsigned int i)        { return &records_[i]; }
 
+    static ExtraObjects *__attribute__((thiscall))
+    scalarDeletingDtor(ExtraObjects *self, unsigned char flags);
+
 private:
     ExtraObjects() = delete;  // only ever reached through the Game
     void recDump(const char *path);
@@ -123,5 +126,3 @@ KAROO_LAYOUT_CHECKS(ExtraObjects)
     KAROO_LAYOUT_SIZE(0xf4010);
 }
 
-extern "C" __declspec(dllexport) ExtraObjects *__attribute__((thiscall))
-Leo_ScalarDestructor(ExtraObjects *self, unsigned char flags);
