@@ -48,7 +48,6 @@ struct GameLogger;
 extern "C" __declspec(dllexport) void __cdecl
 GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...);
 
-
 static int s_fx_samelevel  = 0;
 static int s_fx_crtpath    = 0;
 static int s_fx_levelshift = 0;

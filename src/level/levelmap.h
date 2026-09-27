@@ -109,8 +109,6 @@ KAROO_LAYOUT_CHECKS(LevelMap)
     KAROO_LAYOUT_SIZE(0x26c37c);
 }
 
-/* Reads <path>.jjm into the map. */
-
 /* The one slot of LevelMap's vtable. */
 extern "C" __declspec(dllexport) LevelMap *__attribute__((thiscall))
 LevelMap_ScalarDestructor(LevelMap *self, unsigned char flags);

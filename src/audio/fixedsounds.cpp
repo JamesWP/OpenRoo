@@ -23,7 +23,6 @@
 
 #include "static.h"
 
-
 static int s_fx = -1;
 
 /* Resets the old buffer if there is one, then loads a new one from "<game

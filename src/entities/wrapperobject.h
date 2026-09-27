@@ -17,7 +17,6 @@
 #include "faktmesh.h"
 class RenderDevice;
 
-
 /* One snapshotted UV pair: the 8 bytes at +0x18 of an FVF 0x212 vertex, the
  * only part of the vertex kept. */
 struct WrapperUV {
@@ -76,16 +75,8 @@ extern "C" {
 /* The vtable, installed by the ctor and the dtor body. */
 __declspec(dllexport) void *Wrapper_Vtable(void);
 
-
 /* Vtable slot 0.  Returns self; bit 0 of flags frees. */
 __declspec(dllexport) void *__attribute__((thiscall))
 Wrapper_ScalarDtor(WrapperObject *self, unsigned int flags);
-
-
-
-
-
-
-
 
 }

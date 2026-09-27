@@ -569,16 +569,3 @@ bool BridgeObject::buildSurface(BridgeVertex v[4], double t, bool backward,
     return true;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_SpawnBridgeObject(Game *self, unsigned int uArg, unsigned int vArg,
-                      unsigned int heightArg, unsigned int slotArg,
-                      unsigned int axisArg)
-{
-    BridgeObject::spawn(self, uArg, vArg, heightArg, slotArg, axisArg);
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_PurgeBridgeObjects(Game *self)
-{
-    BridgeObject::purgeAll(self);
-}

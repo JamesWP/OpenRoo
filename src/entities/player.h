@@ -245,7 +245,6 @@ KAROO_LAYOUT_CHECKS(Player)
     KAROO_LAYOUT_SIZE(0x241);
 }
 
-
 /* The ActionCallback shims for the six actions (progctrl.h's __cdecl(key,
  * strength, context), context = the Player). */
 extern "C" {

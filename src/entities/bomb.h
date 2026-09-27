@@ -78,6 +78,3 @@ KAROO_LAYOUT_CHECKS(Bomb)
     KAROO_LAYOUT_SIZE(0x172);
 }
 
-/* The bomb remove, for callers outside the class. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_RemoveEnemyObject(Game *self, unsigned int idArg);
