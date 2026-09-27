@@ -801,10 +801,3 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(field_13cc94_,     0x13cc94);
 }
 
-/* The lifecycle (game.cpp): construct (returns self), destruct, and the
- * scalar deleting destructor, slot 0 of the vtable, which WinMain's
- * teardown calls. */
-extern "C" __declspec(dllexport) Game *__attribute__((thiscall))
-Game_Construct(Game *self, const char *gameName);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Game_Destruct(Game *self);

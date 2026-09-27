@@ -330,18 +330,6 @@ void Game::releaseAllSounds()
     fixedSounds_.loaded = 0;
 }
 
-extern "C" __declspec(dllexport) Game *__attribute__((thiscall))
-Game_Construct(Game *self, const char *gameName)
-{
-    return self->construct(gameName);
-}
-
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Game_Destruct(Game *self)
-{
-    self->destruct();
-}
-
 /* free() matches the malloc in WinMain. */
 Game * __attribute__((thiscall))
 Game::scalarDeletingDtor(Game *self, unsigned char flags)
