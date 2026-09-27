@@ -1,93 +1,16 @@
-/* WrapperObject -- the per-mesh texture-coordinate animator (ENDGAME_PLAN E2).
+/* WrapperObject: the texture-coordinate arithmetic.  Nothing here feeds the
+ * simulation; every value computed ends in a texture coordinate, so sin and
+ * cos on a double differ from the original only in bits no gate records.
  *
- * Nine originals, 0x0043f0c0..0x0043f390, the whole class.  wrapperobject.h
- * holds the layout, the vtable argument and what drives each method; this
- * file holds the arithmetic and the reasons it is written the way it is.
+ * PRESERVED: setMesh snapshots the UVs of every animation frame and flush
+ * restores them all, but the sine wave and the scroll walk dwVertexCount
+ * vertices, which is frame 0 only.  A multi-frame mesh animates frame 0 alone.
  *
- * ─── The snapshot, and the asymmetry that is the class's real bug ────────
- *
- * setMesh snapshots the UVs of EVERY animation frame
- * (wFrameCount * dwVertexCount pairs) and flush restores every one of them.
- * The two animating modes that write UVs -- the sine wave and the scroll --
- * only ever walk `dwVertexCount` vertices, which is frame 0.  So an animated
- * mesh with more than one frame animates frame 0 alone, and the flush
- * rewrites the other frames with values nothing ever changed.  That is the
- * original's behaviour on both sides of the asymmetry, and it is preserved:
- * the loop bounds here are deliberately different from each other.
- *
- * (updateObjectTransform is the exception -- it is the one method that takes
- * a frame index, and it writes that frame.  It still walks dwVertexCount
- * vertices, because that is one frame's worth.)
- *
- * ─── Exactness points, all read off the listing ──────────────────────────
- *
- * 1. THE TICK COUNTER IS AN UNSIGNED WIDENING.  Both animating modes load it
- *    with `FILD qword` off a scratch pair whose high dword was just zeroed
- *    (`MOV [ESP+8],ESI` with ESI == 0), so the caller's dword is unsigned no
- *    matter what the caller thought.  Written as a cast from unsigned int.
- *
- * 2. THE SCROLL DELTA IS ROUNDED TO float BEFORE THE LOOP.  0x0043f318
- *    stores it (`FSTP float ptr [ESP+0x14]`) and every iteration reloads it,
- *    so it is a float add per vertex, not an 80-bit one.  A local `float`
- *    reproduces that; making it double would not.
- *
- * 3. THE ENVIRONMENT MAP'S FACING TEST IS NaN-ASYMMETRIC.  `FCOMP; FNSTSW;
- *    TEST AH,0x41; JZ skip` writes the vertex when the dot product is less
- *    than, equal to, OR UNORDERED WITH zero, so it is written `!(dot > 0)`
- *    rather than `dot <= 0`.  Same shape as the bridge tick's phase-end
- *    compare.
- *
- * 4. THE FRAME GUARD IS AN UNSIGNED 16-BIT COMPARE AND RETURNS EARLY.  An
- *    out-of-range frame leaves the dirty flag ALONE; every other exit from
- *    updateObjectTransform sets it, including the zero-vertex one.
- *
- * 5. releaseSnapshot AND THE DTOR BODY DIFFER.  The dtor body frees without
- *    NULLing (nothing runs afterwards); releaseSnapshot frees and NULLs.
- *    Neither clears pMesh_, so an object whose snapshot has been released
- *    still reports a mesh -- and flush would then read through a freed
- *    pointer.  It cannot happen, because the only caller of releaseSnapshot
- *    is the owning container's destructor, but the shape is the original's.
- *
- * 6. setMesh IGNORES A NULL MESH COMPLETELY.  It does not free the old
- *    snapshot, does not clear the mesh pointer, does not clear the dirty
- *    flag.  `if (mesh == NULL) return;` is the whole function for that case.
- *
- * ─── Floating point ──────────────────────────────────────────────────────
- *
- * The original's sine and cosine are x87 FSIN/FCOS on an 80-bit angle; this
- * is `sin()`/`cos()` on a double and a cast back (CLAUDE.md: write simple C,
- * the lost bits do not matter).  Nothing here feeds the simulation -- every
- * value computed in this file ends up in a texture coordinate, and no gate
- * and no save file has ever recorded one.  The summation ORDER of the two
- * dot products in updateObjectTransform is kept as the listing has it (the
- * row-2 term first, then row-1, then row-0) because that costs nothing.
- *
- * ─── The heap ────────────────────────────────────────────────────────────
- *
- * The snapshot array was the game's `operator new` / `FactAlloc::Free2`.
- * Both sides of its lifetime are now ours -- setMesh is the only allocator
- * and the dtor body and releaseSnapshot are the only frees -- so by
- * CLAUDE.md's rule it moves to plain `new[]`/`delete[]`.  alloc.h survives
- * here for ONE reference only -- the unreachable free inside the scalar
- * deleting destructor, where the object itself would be the game heap's --
- * and retires with the containers.  `nothrow` because the game's `operator new` returned
- * NULL on failure; the original then walked the NULL pointer in its copy
- * loop, and so does this, deliberately.
- *
- * ─── Controls and diags (CONTROLS.md) ────────────────────────────────────
- *
- * KAROO_WRAP_FX picks one DIRECTION change, never a value tweak:
- *   scrollback  negate the scroll delta -- scrolling textures run backwards
- *   sineflip    negate the sine term    -- the warp travels the other way
- *   envflip     negate the environment map's v -- reflections upside down
- * Every one of them moves texture coordinates only, so the blast radius is
- * strictly the render path: nothing here can reach the bridge/slide spawn
- * scans that crash levelreport.py.
- *
- * KAROO_WRAP_DIAG=1 logs a first-call line per entry point and a running
- * census, because that is the only thing either gate can see: the state
- * assertions are over game state and no recording asserts a pixel.
- */
+ * Controls: KAROO_WRAP_FX=scrollback, =sineflip and =envflip each reverse one
+ * effect's direction (the scroll, the warp, the environment map's v); all stay
+ * on the render path.  KAROO_WRAP_DIAG=1 logs each entry point's first call
+ * and a running census, since no gate observes texture coordinates. */
+
 #include <windows.h>
 #include <d3d.h>
 #include <math.h>
@@ -96,8 +19,6 @@
 #include "wrapperobject.h"
 #include <stdlib.h>
 #include "log.h"
-
-/* ─── Layout ──────────────────────────────────────────────────────────── */
 
 KAROO_LAYOUT_CHECKS(WrapperObject)
 {
@@ -108,14 +29,12 @@ KAROO_LAYOUT_CHECKS(WrapperObject)
     KAROO_LAYOUT_SIZE(0x0d);
 }
 
-/* ─── Constants, read out of .rdata rather than assumed ───────────────── */
+#define WRAP_ONE   1.0f
+#define WRAP_ZERO  0.0f
+#define WRAP_HALF  0.5f
 
-#define WRAP_ONE   1.0f   /* 0x0045d298 = 0x3f800000 */
-#define WRAP_ZERO  0.0f   /* 0x0045d2c8 = 0x00000000 */
-#define WRAP_HALF  0.5f   /* 0x0045d318 = 0x3f000000 */
-
-/* An FVF 0x212 vertex is 0x28 bytes: XYZ at +0, NORMAL at +0xc, texture
- * coordinate set 0 at +0x18, set 1 at +0x20.  Only set 0 is ever touched. */
+/* The vertex format 0x212 (40 bytes): position, normal, then UV set 0 at 0x18.
+ */
 #define VTX_STRIDE 0x28
 #define VTX_NORMAL 0x0c
 #define VTX_UV0    0x18
@@ -131,14 +50,10 @@ static inline const float *vtx_normal(CFaktMesh *mesh, unsigned int index)
                            + VTX_NORMAL);
 }
 
-/* The snapshot's length -- wFrameCount zero-extended, multiplied by the
- * per-frame vertex count, exactly as 0x0043f147 does it. */
 static inline unsigned int snapshot_count(CFaktMesh *mesh)
 {
     return (unsigned int)mesh->wFrameCount * mesh->dwVertexCount;
 }
-
-/* ─── KAROO_WRAP_FX -- read by value, never by presence ───────────────── */
 
 enum WrapFx { WRAP_FX_OFF = 0, WRAP_FX_SCROLLBACK, WRAP_FX_SINEFLIP,
               WRAP_FX_ENVFLIP };
@@ -158,8 +73,6 @@ static int wrap_fx(void)
     }
     return cached;
 }
-
-/* ─── KAROO_WRAP_DIAG -- the census ───────────────────────────────────── */
 
 static bool wrap_diag(void)
 {
@@ -197,10 +110,6 @@ static void wrap_census(int entry, unsigned int verts)
                   kWrapEntryName[entry], n, g_wrapVerts);
 }
 
-/* ─── The class ───────────────────────────────────────────────────────── */
-
-/* 0x0043f0c0.  The original zeroes pMesh_ before pBaseUV_; the order of two
- * independent stores is not observable, so they are written naturally. */
 void WrapperObject::construct()
 {
     vtable_  = Wrapper_Vtable();
@@ -210,8 +119,7 @@ void WrapperObject::construct()
     wrap_census(WE_CTOR, 0);
 }
 
-/* 0x0043f100.  Re-install the table, then free the snapshot without NULLing
- * it (point 5). */
+/* PRESERVED: frees without clearing pBaseUV_. */
 void WrapperObject::dtorBody()
 {
     vtable_ = Wrapper_Vtable();
@@ -219,11 +127,9 @@ void WrapperObject::dtorBody()
     wrap_census(WE_DTOR, 0);
 }
 
-/* 0x0043f120.  Free, attach, allocate, snapshot -- in the original's order,
- * which matters: pBaseUV_ is NULLed between the free and the allocation, so
- * a failed allocation leaves a NULL there rather than a dangling pointer,
- * and the copy loop below then walks it.  Point 6 above covers the NULL
- * mesh. */
+/* PRESERVED: a null mesh is ignored entirely: the old snapshot, the mesh and
+ * the dirty flag are left as they were.  A failed allocation is not checked.
+ */
 void WrapperObject::setMesh(CFaktMesh *mesh)
 {
     if (mesh == NULL)
@@ -245,7 +151,8 @@ void WrapperObject::setMesh(CFaktMesh *mesh)
     wrap_census(WE_SETMESH, count);
 }
 
-/* 0x0043f1b0 */
+/* PRESERVED: pMesh_ is left set, so a later flush would read the freed
+ * snapshot; only the owning container's destructor calls this. */
 void WrapperObject::releaseSnapshot()
 {
     delete[] pBaseUV_;
@@ -253,7 +160,6 @@ void WrapperObject::releaseSnapshot()
     wrap_census(WE_RELEASE, 0);
 }
 
-/* 0x0043f1d0 -- the whole snapshot, every frame (see the asymmetry note). */
 void WrapperObject::flush()
 {
     if (pMesh_ == NULL || dirty_ == 0)
@@ -269,16 +175,7 @@ void WrapperObject::flush()
     wrap_census(WE_FLUSH, count);
 }
 
-/* 0x0043f230 -- frame 0 only.
- *
- *   u = ((2*su - 1) * skew + amplitude) * sin(ticks * rate) + su
- *   v = (cos(ticks * rate) * amplitude + sv)
- *       - (2*sv - 1) * skew * sin(ticks * rate)
- *
- * Note that `amplitude` enters u INSIDE the sine's factor and v OUTSIDE it,
- * multiplied by the cosine; the two axes are not symmetric.  The cosine term
- * is pre-multiplied by `amplitude` once before the loop (0x0043f269), which
- * is where this reading came from -- the decompile hides it in the loop. */
+/* The tick count is widened unsigned. */
 void WrapperObject::applySineWave(unsigned int ticks, float rate,
                                   float amplitude, float skew)
 {
@@ -301,8 +198,6 @@ void WrapperObject::applySineWave(unsigned int ticks, float rate,
             uv[0] = ((su + su - WRAP_ONE) * skew + amplitude) * s + su;
             uv[1] = (cosTerm + sv) - (sv + sv - WRAP_ONE) * skew * s;
 
-            /* The loop bound is re-read from the mesh every iteration by the
-             * original (0x0043f2ce).  Nothing inside can change it. */
             count = pMesh_->dwVertexCount;
         }
         wrap_census(WE_SINE, count);
@@ -310,11 +205,10 @@ void WrapperObject::applySineWave(unsigned int ticks, float rate,
     dirty_ = 1;
 }
 
-/* 0x0043f2f0 -- frame 0 only.  axisU selects which coordinate moves; the
- * delta is one float, computed once (point 2). */
 void WrapperObject::scrollUVs(unsigned int ticks, int axisU, float speed)
 {
     if (pMesh_ != NULL) {
+        //     // The delta is rounded to float once; each vertex gets a float add.
         float delta = (float)((double)ticks * (double)speed);
         if (wrap_fx() == WRAP_FX_SCROLLBACK)
             delta = -delta;
@@ -333,26 +227,13 @@ void WrapperObject::scrollUVs(unsigned int ticks, int axisU, float speed)
     dirty_ = 1;
 }
 
-/* 0x0043f390 -- spherical environment mapping.
- *
- * GetTransform(VIEW) and GetTransform(WORLD), multiply world * view in that
- * order (row-major, the D3D convention), then for each vertex of the given
- * frame transform the NORMAL by the upper 3x3 and map it into [0,1]:
- *
- *      u = (nx' + 1) * 0.5        v = (1 - ny') * 0.5
- *
- * written only for vertices whose transformed nz' is not greater than zero
- * (point 3) -- the ones facing the camera.  The rest keep whatever the
- * previous mode left there, which is why mode 5 needs a flush behind it as
- * much as the others do.
- *
- * The device pointer is the com_proxy device proxy the game passes; we call
- * through it on purpose, as faktmesh.cpp does. */
 void WrapperObject::updateObjectTransform(IDirect3DDevice3 *dev,
                                           unsigned short frame)
 {
+    //     // PRESERVED: an out-of-range frame returns without setting dirty_; every
+    //     // other exit sets it.
     if (frame >= pMesh_->wFrameCount)
-        return;                      /* dirty_ deliberately untouched */
+        return;
 
     D3DMATRIX view, world;
     dev->GetTransform(D3DTRANSFORMSTATE_VIEW,  &view);
@@ -378,6 +259,7 @@ void WrapperObject::updateObjectTransform(IDirect3DDevice3 *dev,
             const float *n  = vtx_normal(pMesh_, index);
             float        nx = n[0], ny = n[1], nz = n[2];
 
+            //             // The facing test writes when dot <= 0 or NaN.
             float dot = m[2 + 8] * nz + m[2 + 4] * ny + m[2] * nx;
             if (!(dot > WRAP_ZERO)) {
                 float *uv = vtx_uv(pMesh_, index);
@@ -394,8 +276,6 @@ void WrapperObject::updateObjectTransform(IDirect3DDevice3 *dev,
     }
     dirty_ = 1;
 }
-
-/* ─── Exports ─────────────────────────────────────────────────────────── */
 
 extern "C" {
 
@@ -419,18 +299,8 @@ Wrapper_DtorBody(WrapperObject *self)
     self->dtorBody();
 }
 
-/* 0x0043f0e0 -- vtable slot 0.
- *
- * The free is the GAME heap's and stays there: bit 0 is set only when the
- * object itself was allocated by the game's `operator new`, and no
- * WrapperObject is -- every one is embedded in a larger object.  The branch
- * is reproduced rather than asserted away, which is why this file's one game
- * heap reference exists at all.  It retires with the containers.
- *
- * Unverified by test, and said plainly: xref.py finds no reference of any
- * kind to 0x0043f0e0, our table's slot 0 is the only way in, and nothing
- * constructs a bare heap WrapperObject.  Same position as
- * LevelObjBase_ScalarDtor. */
+/* PRESERVED: frees the object itself, although no WrapperObject is ever
+ * allocated alone; unreachable. */
 __declspec(dllexport) void *__attribute__((thiscall))
 Wrapper_ScalarDtor(WrapperObject *self, unsigned int flags)
 {
@@ -479,4 +349,4 @@ Wrapper_UpdateObjectTransform(WrapperObject *self, IDirect3DDevice3 *dev,
     self->updateObjectTransform(dev, frame);
 }
 
-} // extern "C"
+}
