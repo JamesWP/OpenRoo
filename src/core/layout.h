@@ -28,7 +28,7 @@
  *
  * KNOWN GAP: no runner walks that list at present, so only the static_asserts
  * check anything; the run-time half is dead weight until one is restored or
- * the registry is dropped (OPEN_PLAN.md, "Also worth doing"). */
+ * the registry is dropped. */
 
 #pragma once
 
