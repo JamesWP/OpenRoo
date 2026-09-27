@@ -15,8 +15,8 @@ static_assert(offsetof(SceneTexture, pTexture2) == 0x18, "SceneTexture layout");
 
 /* textures\shadow.tga and textures\karoo128.tga, loaded once at startup
  * (renderstate.cpp). */
-extern SceneTexture g_texShadow;   /* was 0x004e02c8 */
-extern SceneTexture g_texKaroo128;   /* was 0x004e0408 */
+extern SceneTexture g_texShadow;
+extern SceneTexture g_texKaroo128;
 static_assert(sizeof(SceneTexture) == 0x1c, "SceneTexture stride mismatch");
 
 /* ─── texture.cpp's exports other files call (COHESION_PLAN template 10) ───
