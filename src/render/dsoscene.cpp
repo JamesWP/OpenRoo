@@ -1,8 +1,8 @@
 /* The scene-object passes: DrawSceneObjects (models, types 0 and 2) and
  * DrawSceneParticleSystems (particle systems, type 1), over the same list.
  *
- * DrawSceneObjects is __cdecl with six dword slots; the two unnamed dwords are never
- * read and are declared so the stack shape matches.
+ * DrawSceneObjects is __cdecl with six dword slots; the two unnamed dwords
+ * are never read and are declared so the stack shape matches.
  *
  * World matrix:
  *
