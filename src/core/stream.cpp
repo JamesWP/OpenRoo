@@ -91,17 +91,17 @@ fail:
 
 /* Polls the buffer every 50 ms and sets dwThread_done once it stops playing or
  * stop_event is signalled. */
-static DWORD WINAPI WatcherProc(LPVOID param)
+DWORD WINAPI CStreamSoundbuffer::watcherProc(LPVOID param)
 {
     CStreamSoundbuffer *s = static_cast<CStreamSoundbuffer*>(param);
     for (;;) {
-        DWORD ret = WaitForSingleObject(s->stop_event, 50);
+        DWORD ret = WaitForSingleObject(s->stop_event_, 50);
         if (ret == WAIT_OBJECT_0) break;
-        if (!s->pSoundbuffer) { s->dwThread_done = 1; break; }
+        if (!s->pSoundbuffer_) { s->dwThread_done_ = 1; break; }
         DWORD status = 0;
-        HRESULT hr = s->pSoundbuffer->GetStatus(&status);
+        HRESULT hr = s->pSoundbuffer_->GetStatus(&status);
         if (FAILED(hr) || !(status & DSBSTATUS_PLAYING)) {
-            s->dwThread_done = 1;
+            s->dwThread_done_ = 1;
             break;
         }
     }
@@ -112,23 +112,21 @@ static DWORD WINAPI WatcherProc(LPVOID param)
  * so bit 1 of the flags is not tested. */
 extern "C" {
 
-__declspec(dllexport) void * __attribute__((thiscall))
-CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
 
-static void *const g_CStreamVtable[1] = { (void *)&CStream_ScalarDeletingDtor };
+static void *const g_CStreamVtable[1] = { (void *)&CStreamSoundbuffer::scalarDeletingDtor };
 
 __declspec(dllexport) void *CStream_Vtable(void)
 {
     return (void *)g_CStreamVtable;
 }
 
-__declspec(dllexport) void * __attribute__((thiscall))
-CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
+void * __attribute__((thiscall))
+CStreamSoundbuffer::scalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
 {
     static unsigned long seen;
     CStatic_SoundFirstCall("CStreamSoundbuffer::ScalarDeletingDtor", &seen);
 
-    CStream_DeinitInstance(self);
+    self->deinitInstance();
     if (flags & 1)
         free(self);
     return self;
@@ -136,48 +134,45 @@ CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
 
 }
 
-static void CStream_Stop_impl(CStreamSoundbuffer *self);
-static void CStream_ReleaseResources_impl(CStreamSoundbuffer *self);
-
-static CStreamSoundbuffer* CStream_Initialize_impl(CStreamSoundbuffer *self)
+CStreamSoundbuffer *CStreamSoundbuffer::initialize()
 {
-    log_write("CStream::Initialize(this=%p)\n", self);
-    memset(self, 0, sizeof(*self));
-    self->vtable       = CStream_Vtable();
-    self->dwThread_done = 1;
-    InitializeCriticalSection(&self->cs);
-    return self;
+    log_write("CStream::Initialize(this=%p)\n", this);
+    memset(this, 0, sizeof(*this));
+    vtable_       = CStream_Vtable();
+    dwThread_done_ = 1;
+    InitializeCriticalSection(&cs_);
+    return this;
 }
 
-static int CStream_Prepare_impl(CStreamSoundbuffer *self, WaveInfo *wi)
+int CStreamSoundbuffer::prepare(WaveInfo *wi)
 {
     log_write("CStream::Prepare(this=%p, file='%s')\n",
-              self, wi ? (wi->pFilename ? wi->pFilename : "<null>") : "<null wi>");
+              this, wi ? (wi->pFilename ? wi->pFilename : "<null>") : "<null wi>");
 
-    CStream_ReleaseResources_impl(self);
+    releaseResources();
 
     if (!wi || !wi->pFilename || !wi->pDirectsound) {
         log_write("CStream::Prepare: bad WaveInfo\n");
         return 0;
     }
 
-    self->pDirectsound = wi->pDirectsound;
+    pDirectsound_ = wi->pDirectsound;
 
     DWORD len = (DWORD)strlen(wi->pFilename) + 1;
-    self->filename = (char*)HeapAlloc(GetProcessHeap(), 0, len);
-    if (!self->filename) return 0;
-    memcpy(self->filename, wi->pFilename, len);
+    filename_ = (char*)HeapAlloc(GetProcessHeap(), 0, len);
+    if (!filename_) return 0;
+    memcpy(filename_, wi->pFilename, len);
 
     WAVEFORMATEX *fmt  = NULL;
     BYTE         *pcm  = NULL;
     DWORD         pcm_sz = 0;
 
-    if (!parse_wav(self->filename, &fmt, &pcm, &pcm_sz)) {
-        log_write("CStream::Prepare: parse_wav failed for '%s'\n", self->filename);
+    if (!parse_wav(filename_, &fmt, &pcm, &pcm_sz)) {
+        log_write("CStream::Prepare: parse_wav failed for '%s'\n", filename_);
         goto fail;
     }
 
-    self->dwBuffer_size = pcm_sz;
+    dwBuffer_size_ = pcm_sz;
 
     {
         DSBUFFERDESC desc = {};
@@ -186,8 +181,8 @@ static int CStream_Prepare_impl(CStreamSoundbuffer *self, WaveInfo *wi)
         desc.dwBufferBytes = pcm_sz;
         desc.lpwfxFormat   = fmt;
 
-        HRESULT hr = self->pDirectsound->CreateSoundBuffer(
-                         &desc, &self->pSoundbuffer, NULL);
+        HRESULT hr = pDirectsound_->CreateSoundBuffer(
+                         &desc, &pSoundbuffer_, NULL);
         if (FAILED(hr)) {
             log_write("CStream::Prepare: CreateSoundBuffer failed hr=0x%lx\n",
                       (unsigned long)hr);
@@ -198,7 +193,7 @@ static int CStream_Prepare_impl(CStreamSoundbuffer *self, WaveInfo *wi)
     {
         void  *ptr1 = NULL, *ptr2 = NULL;
         DWORD  bytes1 = 0,   bytes2 = 0;
-        HRESULT hr = self->pSoundbuffer->Lock(
+        HRESULT hr = pSoundbuffer_->Lock(
                          0, pcm_sz, &ptr1, &bytes1, &ptr2, &bytes2, 0);
         if (FAILED(hr)) {
             log_write("CStream::Prepare: Lock failed hr=0x%lx\n",
@@ -208,7 +203,7 @@ static int CStream_Prepare_impl(CStreamSoundbuffer *self, WaveInfo *wi)
         memcpy(ptr1, pcm, bytes1);
         if (ptr2 && bytes2)
             memcpy(ptr2, (BYTE*)pcm + bytes1, bytes2);
-        self->pSoundbuffer->Unlock(ptr1, bytes1, ptr2, bytes2);
+        pSoundbuffer_->Unlock(ptr1, bytes1, ptr2, bytes2);
     }
 
     HeapFree(GetProcessHeap(), 0, fmt);
@@ -219,98 +214,71 @@ static int CStream_Prepare_impl(CStreamSoundbuffer *self, WaveInfo *wi)
 fail:
     HeapFree(GetProcessHeap(), 0, fmt);
     HeapFree(GetProcessHeap(), 0, pcm);
-    CStream_ReleaseResources_impl(self);
+    releaseResources();
     return 0;
 }
 
-static void CStream_Play_impl(CStreamSoundbuffer *self)
+void CStreamSoundbuffer::play()
 {
-    log_write("CStream::Play(this=%p)\n", self);
-    if (!self->pSoundbuffer) return;
+    log_write("CStream::Play(this=%p)\n", this);
+    if (!pSoundbuffer_) return;
 
-    if (self->watcher_thread) CStream_Stop_impl(self);
+    if (watcher_thread_) stop();
 
-    if (!self->stop_event)
-        self->stop_event = CreateEventA(NULL, TRUE, FALSE, NULL);
+    if (!stop_event_)
+        stop_event_ = CreateEventA(NULL, TRUE, FALSE, NULL);
     else
-        ResetEvent(self->stop_event);
+        ResetEvent(stop_event_);
 
-    self->pSoundbuffer->SetCurrentPosition(0);
-    self->dwThread_done = 0;
-    self->pSoundbuffer->Play(0, 0, 0);
+    pSoundbuffer_->SetCurrentPosition(0);
+    dwThread_done_ = 0;
+    pSoundbuffer_->Play(0, 0, 0);
 
     DWORD tid;
-    self->watcher_thread = CreateThread(NULL, 0, WatcherProc, self, 0, &tid);
+    watcher_thread_ = CreateThread(NULL, 0, watcherProc, this, 0, &tid);
     log_write("CStream::Play: watcher tid=%lu\n", (unsigned long)tid);
 }
 
-static void CStream_Stop_impl(CStreamSoundbuffer *self)
+void CStreamSoundbuffer::stop()
 {
-    log_write("CStream::Stop(this=%p)\n", self);
-    if (self->watcher_thread) {
-        if (self->pSoundbuffer) self->pSoundbuffer->Stop();
-        if (self->stop_event)   SetEvent(self->stop_event);
-        WaitForSingleObject(self->watcher_thread, 5000);
-        CloseHandle(self->watcher_thread);
-        self->watcher_thread = NULL;
+    log_write("CStream::Stop(this=%p)\n", this);
+    if (watcher_thread_) {
+        if (pSoundbuffer_) pSoundbuffer_->Stop();
+        if (stop_event_)   SetEvent(stop_event_);
+        WaitForSingleObject(watcher_thread_, 5000);
+        CloseHandle(watcher_thread_);
+        watcher_thread_ = NULL;
     }
-    self->dwThread_done = 1;
+    dwThread_done_ = 1;
 }
 
-static void CStream_ReleaseResources_impl(CStreamSoundbuffer *self)
+void CStreamSoundbuffer::releaseResources()
 {
-    log_write("CStream::ReleaseResources(this=%p)\n", self);
-    CStream_Stop_impl(self);
+    log_write("CStream::ReleaseResources(this=%p)\n", this);
+    stop();
 
-    if (self->pSoundbuffer) {
-        self->pSoundbuffer->Release();
-        self->pSoundbuffer = NULL;
+    if (pSoundbuffer_) {
+        pSoundbuffer_->Release();
+        pSoundbuffer_ = NULL;
     }
-    if (self->stop_event) {
-        CloseHandle(self->stop_event);
-        self->stop_event = NULL;
+    if (stop_event_) {
+        CloseHandle(stop_event_);
+        stop_event_ = NULL;
     }
-    if (self->filename) {
-        HeapFree(GetProcessHeap(), 0, self->filename);
-        self->filename = NULL;
+    if (filename_) {
+        HeapFree(GetProcessHeap(), 0, filename_);
+        filename_ = NULL;
     }
-    self->pDirectsound  = NULL;
-    self->dwBuffer_size = 0;
-    self->dwThread_done = 1;
+    pDirectsound_  = NULL;
+    dwBuffer_size_ = 0;
+    dwThread_done_ = 1;
 }
 
-static void CStream_DeinitInstance_impl(CStreamSoundbuffer *self)
+void CStreamSoundbuffer::deinitInstance()
 {
-    log_write("CStream::DeinitInstance(this=%p)\n", self);
-    self->vtable = CStream_Vtable();
-    CStream_ReleaseResources_impl(self);
-    DeleteCriticalSection(&self->cs);
+    log_write("CStream::DeinitInstance(this=%p)\n", this);
+    vtable_ = CStream_Vtable();
+    releaseResources();
+    DeleteCriticalSection(&cs_);
 }
 
-extern "C" {
-
-__declspec(dllexport) CStreamSoundbuffer* __attribute__((thiscall))
-CStream_Initialize(CStreamSoundbuffer *self)
-    { return CStream_Initialize_impl(self); }
-
-__declspec(dllexport) int __attribute__((thiscall))
-CStream_Prepare(CStreamSoundbuffer *self, WaveInfo *wi)
-    { return CStream_Prepare_impl(self, wi); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CStream_Play(CStreamSoundbuffer *self)
-    { CStream_Play_impl(self); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CStream_Stop(CStreamSoundbuffer *self)
-    { CStream_Stop_impl(self); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CStream_ReleaseResources(CStreamSoundbuffer *self)
-    { CStream_ReleaseResources_impl(self); }
-
-__declspec(dllexport) void __attribute__((thiscall))
-CStream_DeinitInstance(CStreamSoundbuffer *self)
-    { CStream_DeinitInstance_impl(self); }
-
-}
