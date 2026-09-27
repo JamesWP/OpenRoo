@@ -299,7 +299,6 @@ static unsigned long s_ticks = 0;
 static int s_logged_first   = 0;
 static int s_logged_stamp   = 0;
 static int s_logged_unstamp = 0;
-/* C-linkage entry points. */
 
 void BridgeObject::tick()
 {

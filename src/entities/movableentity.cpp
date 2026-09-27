@@ -25,7 +25,6 @@ MovableEntity::MovableEntity()
     posY_ = 0.0f;
     posV_ = 0.0f;
 }
-/* === Exports -- thin ABI shims === */
 
 void MovableEntity::populateBaseForGame()
 {
