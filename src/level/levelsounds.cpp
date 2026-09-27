@@ -97,11 +97,11 @@ Sim_InitLevelBasedSounds(Game *self)
             pl->setWorldSoundVariant(s_fx ? 2 : 1);
 
         if (pl->pool9f() != NULL)
-            Sim_VoicePoolWipe(pl->pool9f());
+            pl->pool9f()->wipe();
         if (game->soundAsset441ca()->enabled != 0)
             pl->setPool9f(acq_pool(game, 3, game->soundAsset441ca()));
         if (pl->poolCf() != NULL)
-            Sim_VoicePoolWipe(pl->poolCf());
+            pl->poolCf()->wipe();
         if (game->soundAsset4236e()->enabled != 0)
             pl->setPoolCf(acq_pool(game, 10, game->soundAsset4236e()));
 

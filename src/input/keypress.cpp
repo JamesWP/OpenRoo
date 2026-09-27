@@ -169,12 +169,12 @@ Sim_HandleKeypress(Game *self)
         if (self->menu()->nodeRef() != 5 && self->menu()->nodeRef() != 3 && self->menu()->childCount(self->menu()->nodeRef()) > 1) {
             if (KEY(0x26) != 0 && self->debounceRef() != 0x26) {
                 if (self->fixedSounds()->menuUpDown != NULL)
-                    Sim_VoicePoolCycle(self->fixedSounds()->menuUpDown, 0);
+                    (self->fixedSounds()->menuUpDown)->cycle(0);
                 self->debounceRef() = 0x26;
             }
             if (KEY(0x28) != 0 && self->debounceRef() != 0x28) {
                 if (self->fixedSounds()->menuUpDown != NULL)
-                    Sim_VoicePoolCycle(self->fixedSounds()->menuUpDown, 0);
+                    (self->fixedSounds()->menuUpDown)->cycle(0);
                 self->debounceRef() = 0x28;
             }
         }

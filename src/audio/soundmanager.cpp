@@ -208,7 +208,7 @@ SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
     NamedEntryList *lists[2] = { &self->entriesPlain_, &self->entries3D_ };
     for (int i = 0; i < 2; i++) {
         // Fetched per list.
-        char *name = Sim_VoicePoolFirstFilename(pool);
+        char *name = pool->firstFilename();
         NamedEntry *e = lists[i]->find(name);
         if (e == NULL)
             continue;
@@ -232,7 +232,7 @@ SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
     sndmgr_census();
     // PRESERVED: voice 0 is used unchecked, so reporting on an empty pool
     // faults.
-    CStaticSoundbuffer *voice0 = Sim_VoicePoolGetVoiceAt(pool, 0);
+    CStaticSoundbuffer *voice0 = pool->voiceAt(0);
     GameLog_LogSourceLocation((GameLogger *)self->logger_, 3, SRCFILE, __LINE__,
         "Could not release MultiStaticSoundbuffer '%s', because the buffer "
         "was not found !", voice0->filename());
@@ -388,16 +388,16 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
     VoicePool *pool = NULL;
     VoicePool *raw  = (VoicePool *)malloc(0x14);
     if (raw != NULL)
-        pool = Sim_VoicePoolBlank(raw);
+        pool = raw->blank();
 
-    void *r = Sim_VoicePoolClone(pool, nVoices, self->directSound(),
+    void *r = pool->clone(nVoices, self->directSound(),
                                  entry->master(), 1);
     if (r == (void *)entry->master()
         || ((entry->spareBuf.soundbuffer() != NULL
              || SoundMgr_LoadEntryMaster(self, entry->spare(), name,
                                          spare_flags(self->dwDefaultDsFlags_),
                                          bDo3D))
-            && Sim_VoicePoolClone(pool, nVoices, self->directSound(),
+            && pool->clone(nVoices, self->directSound(),
                                   entry->spare(), 1) != NULL)) {
         ++g_pools;
         entry->pools()->append(pool);
@@ -408,7 +408,7 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
     ++g_poolFail;
     if (pool == NULL)
         return NULL;
-    Sim_VoicePoolWipe(pool);
+    pool->wipe();
     free(pool);
     return NULL;
 }
@@ -484,9 +484,9 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
                 VoicePool *pool = (VoicePool *)p->value();
                 p = p->next();
 
-                int nVoices = (int)pool->dwVoiceCount;
-                Sim_VoicePoolWipe(pool);
-                if (Sim_VoicePoolClone(pool, nVoices, self->directSound(),
+                int nVoices = (int)pool->voiceCount();
+                pool->wipe();
+                if (pool->clone(nVoices, self->directSound(),
                                        src, 1) == (void *)src)
                     continue;
 
@@ -507,7 +507,7 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
                         "SecOrgSoundBuffer failed");
                 src = entry->spare();
                 ++g_setupSpare;
-                Sim_VoicePoolClone(pool, nVoices, self->directSound(), src, 1);
+                pool->clone(nVoices, self->directSound(), src, 1);
             }
         }
 

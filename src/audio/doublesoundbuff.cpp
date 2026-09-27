@@ -156,7 +156,7 @@ Dsb_PurgeVoicePoolList(LinkedList *list)
         node = node->next();
         if (pool != 0) {
             ++g_nPoolsFreed;
-            Sim_VoicePoolWipe(pool);
+            pool->wipe();
             free(pool);
         }
     }
@@ -204,7 +204,7 @@ Dsb_ReleasePool(doublesoundbuff *self, VoicePool *pool)
         return 0;
     self->pools()->unlink(node);
     if (pool != 0) {
-        Sim_VoicePoolWipe(pool);
+        pool->wipe();
         free(pool);
     }
     ++g_nRelPoolHit;

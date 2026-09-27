@@ -116,7 +116,7 @@ KAROO_LAYOUT_CHECKS(ScoreTally)
  * the SoundManager is 0xb4 bytes and ends exactly here (none of its methods
  * touches past its second list at +0xa4), and only Game code writes them. */
 class CStaticSoundbuffer;
-struct VoicePool;
+class VoicePool;
 struct __attribute__((packed)) FixedSounds {
     static const int ORIGIN = 0;
 

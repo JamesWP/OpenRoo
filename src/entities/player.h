@@ -14,7 +14,7 @@
 
 class CStaticSoundbuffer;
 struct LinkedList;
-struct VoicePool;
+class VoicePool;
 class Tile;
 
 class __attribute__((packed)) Player : public MovableEntity {

@@ -8,7 +8,7 @@
 #include "static.h"
 #include "linkedlist.h"
 
-struct VoicePool;
+class VoicePool;
 
 /* Allocated by the sound manager with a fixed size of 0x58. */
 struct __attribute__((packed)) doublesoundbuff {
