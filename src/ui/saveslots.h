@@ -3,8 +3,9 @@
  * (saveslots.cpp); tools/karoosave.py decodes the same format. */
 #pragma once
 
-/* FORMAT: one slot, as stored in its .sav file. */
-struct __attribute__((packed)) SaveSlot {
+/* One slot.  FORMAT: its .sav file holds these fields in this order,
+ * little-endian and unpadded, SAVE_SLOT_BYTES in all (saveslots.cpp). */
+struct SaveSlot {
 
     char          name[20];    // the menu text; ".........." when empty
     unsigned char levelIndex;  // the level to resume at
@@ -17,7 +18,13 @@ struct __attribute__((packed)) SaveSlot {
 
 };
 
-class __attribute__((packed)) SaveSlots {
+enum { SAVE_SLOT_BYTES = 42 };
+
+/* The record to and from its file bytes. */
+void SaveSlot_Encode(const SaveSlot *s, unsigned char out[SAVE_SLOT_BYTES]);
+void SaveSlot_Decode(SaveSlot *s, const unsigned char in[SAVE_SLOT_BYTES]);
+
+class SaveSlots {
 public:
     static const int MAX_SLOTS = 255;
 

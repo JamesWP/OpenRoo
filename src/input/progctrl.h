@@ -36,13 +36,10 @@ struct ActionEntry {
 struct ActionTable {
     ActionEntry *head;
     DWORD        entry_count;
-    DWORD        _pad[2];  // unused
 };
-static_assert(sizeof(ActionTable) == 16, "ActionTable size");
 
 /* The whole control state.  The joystick is never set up: its setup, range and
  * dead-zone calls succeed without doing anything. */
-#pragma pack(push, 1)
 struct ProgableControl {
     void                  *vtable;
     void                  *pLogger;
@@ -56,17 +53,8 @@ struct ProgableControl {
     char                   suffix_positive[50];
     char                   suffix_negative[50];
     DWORD                  axis_midpoints[20];
-    BYTE                   _joystick_list[16];  // unused
     ActionTable            action_tables[5];    // one per mode
 };
-#pragma pack(pop)
-
-static_assert(offsetof(ProgableControl, directinput)    == 0x00C, "directinput");
-static_assert(offsetof(ProgableControl, pKeyboard)      == 0x010, "pKeyboard");
-static_assert(offsetof(ProgableControl, sep_or)         == 0x01C, "sep_or");
-static_assert(offsetof(ProgableControl, axis_midpoints) == 0x0E4, "axis_midpoints");
-static_assert(offsetof(ProgableControl, action_tables)  == 0x144, "action_tables");
-static_assert(sizeof(ProgableControl)                   == 0x194, "ProgableControl size");
 
 /* The one-slot vtable: the scalar deleting destructor. */
 extern const void *const PROGCTRL_VTABLE;

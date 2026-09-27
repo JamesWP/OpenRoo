@@ -3,14 +3,18 @@
  * Highscores\<name>.hsc (highscores.cpp). */
 #pragma once
 
-/* One row: the name the player typed, the score and the level reached. */
-struct __attribute__((packed)) HighScoreRecord {
+/* One row: the name the player typed, the score and the level reached.
+ * FORMAT: the file holds these fields in this order, little-endian and
+ * unpadded, HIGH_SCORE_RECORD_BYTES each (highscores.cpp). */
+struct HighScoreRecord {
     char          name[0x32];
     unsigned int  score;
     unsigned char level;
 };
 
-class __attribute__((packed)) HighScoreTable {
+enum { HIGH_SCORE_RECORD_BYTES = 0x37 };
+
+class HighScoreTable {
 public:
 
     enum { RECORD_MAX = 256 };

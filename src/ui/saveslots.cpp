@@ -5,8 +5,6 @@
  * PRESERVED:
  *   - The reader fails the whole call at the first missing file; the
  *     writer skips a slot it cannot open and returns 1 regardless.
- *   - The reader's record pointer runs on across slots rather than being
- *     recomputed per slot.
  *   - The reader ignores fread's result and reuses one byte variable, so a
  *     short file repeats its last byte.
  *   - Paths are formatted unbounded into 128-byte buffers. */
@@ -17,6 +15,7 @@
 #include "saveslots.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "bytes.h"
 #include <stdlib.h>
 
 #define PS_LOG_FIRST   6
@@ -31,10 +30,36 @@ static void ps_log(const char *what, const char *path, int ok)
     }
 }
 
+void SaveSlot_Encode(const SaveSlot *s, unsigned char out[SAVE_SLOT_BYTES])
+{
+    unsigned char *p = out;
+    put_bytes(p, s->name, sizeof(s->name));
+    put_u8(p, s->levelIndex);
+    put_u8(p, s->livesRemaining);
+    put_u32(p, s->totalScore);
+    put_u32(p, s->completionNumerator);
+    put_u32(p, s->elapsedGameTime);
+    put_u32(p, s->inUse);
+    put_u32(p, s->unusedTail);
+}
+
+void SaveSlot_Decode(SaveSlot *s, const unsigned char in[SAVE_SLOT_BYTES])
+{
+    const unsigned char *p = in;
+    get_bytes(p, s->name, sizeof(s->name));
+    s->levelIndex          = get_u8(p);
+    s->livesRemaining      = get_u8(p);
+    s->totalScore          = get_u32(p);
+    s->completionNumerator = get_u32(p);
+    s->elapsedGameTime     = get_u32(p);
+    s->inUse               = get_u32(p);
+    s->unusedTail          = get_u32(p);
+}
+
 int Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
 {
     SaveSlots *table = self;
-    unsigned char *rec = (unsigned char *)table->slot(0);  // PRESERVED: runs on across slots
+    unsigned char rec[SAVE_SLOT_BYTES];
     char path[128];
     unsigned char b;  // PRESERVED: never re-initialised
     int slot;
@@ -47,10 +72,11 @@ int Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
             ps_log("sav load", path, 0);
             return 0;  // PRESERVED: the whole call fails
         }
-        for (int i = 0; i < (int)sizeof(SaveSlot); i++) {
+        for (int i = 0; i < SAVE_SLOT_BYTES; i++) {
             fread(&b, 1, 1, fp);
-            *rec++ = (unsigned char)(b - (unsigned char)key);
+            rec[i] = (unsigned char)(b - (unsigned char)key);
         }
+        SaveSlot_Decode(table->slot((unsigned char)slot), rec);
         fclose(fp);
         ps_log("sav load", path, 1);
     }
@@ -64,8 +90,8 @@ int Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
     int slot;
 
     for (slot = 0; slot < (int)table->count(); slot++) {
-        // Recomputed per slot, unlike the reader.
-        unsigned char *rec = (unsigned char *)table->slot((unsigned char)slot);
+        unsigned char rec[SAVE_SLOT_BYTES];
+        SaveSlot_Encode(table->slot((unsigned char)slot), rec);
         FILE *fp;
         sprintf(path, "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
         fp = fopen(path, "w+");
@@ -73,7 +99,7 @@ int Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
             ps_log("sav save", path, 0);
             continue;  // PRESERVED: skip it and go on
         }
-        for (int i = 0; i < (int)sizeof(SaveSlot); i++) {
+        for (int i = 0; i < SAVE_SLOT_BYTES; i++) {
             unsigned char out = (unsigned char)(rec[i] + (unsigned char)key);
             fwrite(&out, 1, 1, fp);
         }

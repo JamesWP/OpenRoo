@@ -74,12 +74,9 @@ static void *Setup_impl(ProgableControl *s, int )
     strncpy(s->suffix_positive, " positive",  sizeof(s->suffix_positive) - 1);
     strncpy(s->suffix_negative, " negative",  sizeof(s->suffix_negative) - 1);
     memset(s->axis_midpoints, 0, sizeof(s->axis_midpoints));
-    memset(s->_joystick_list, 0, sizeof(s->_joystick_list));
     for (int i = 0; i < 5; i++) {
         s->action_tables[i].head        = nullptr;
         s->action_tables[i].entry_count = 0;
-        s->action_tables[i]._pad[0]     = 0;
-        s->action_tables[i]._pad[1]     = 0;
     }
     return s;
 }

@@ -6,21 +6,16 @@ class RenderDevice;
 /* CFaktMesh — the mesh object, drawn by DrawMeshBuffer / DrawFramedModel
  * (faktmesh.cpp) and loaded from a .mdl by ImportSceneModels (model.cpp).
  *
- * PACKED: pszName sits at +0x12, immediately after the 16-bit wFrameCount, so
- * the struct cannot be naturally aligned.  Init and the loader both write it
- * at that offset.
+ * Vertex data is a flat array of MeshVertex, all animation frames
+ * concatenated: frame f, vertex v is at index f * dwVertexCount + v
  *
- * Vertex data is a flat array of 0x28-byte FVF 0x212 vertices, all animation
- * frames concatenated: frame f, vertex v is at
- *     pVertexData + (f * dwVertexCount + v) * 0x28
- *
- * ─── The 0x60 bytes at +0x16 are a D3DDRAWPRIMITIVESTRIDEDDATA ───────────
- *
- * Twelve {lpvData, dwStride} pairs, ending exactly at pScratchVerts.  The
- * constructor sets the strides of position, normal, texCoords[0] and
- * texCoords[1] to 0x28 -- the four components of the mesh FVF 0x212
- * (XYZ | NORMAL | TEX2) -- and nothing else.  Nothing draws through it.
+ * strided is a D3DDRAWPRIMITIVESTRIDEDDATA: twelve {lpvData, dwStride}
+ * pairs.  The constructor sets the strides of position, normal, texCoords[0]
+ * and texCoords[1] to sizeof(MeshVertex) -- the four components of the mesh
+ * FVF 0x212 (XYZ | NORMAL | TEX2) -- and nothing else.  Nothing draws through
+ * it.
  */
+
 /* One FVF 0x212 vertex: position, normal, two texture-coordinate sets. */
 struct MeshVertex {
     float pos[3];
@@ -30,35 +25,24 @@ struct MeshVertex {
 };
 static_assert(sizeof(MeshVertex) == 0x28, "MeshVertex is the FVF 0x212 stride");
 
-#pragma pack(push, 1)
 struct CFaktMesh {
-    void  *unknown00;      // +0x00 vtable, set by Init
-    void  *pVertexData;    // +0x04 dwVertexCount * wFrameCount vertices, stride 0x28
-    DWORD  dwVertexCount;  // +0x08 vertices per animation frame
-    void  *pFrameRecords;  // +0x0c wFrameCount records of 0x18 bytes (6 dwords)
-    WORD   wFrameCount;    // +0x10 frame index clamps to 0 when >= this
-    char  *pszName;        // +0x12 strdup of the path, freed by ReleaseModelBuffers
-    /* +0x16 D3DDRAWPRIMITIVESTRIDEDDATA: position, normal, diffuse,
+    void  *unknown00;      // vtable, set by Init
+    void  *pVertexData;    // dwVertexCount * wFrameCount MeshVertex
+    DWORD  dwVertexCount;  // vertices per animation frame
+    void  *pFrameRecords;  // wFrameCount records of 0x18 bytes (6 dwords)
+    WORD   wFrameCount;    // frame index clamps to 0 when >= this
+    char  *pszName;        // strdup of the path, freed by ReleaseModelBuffers
+    /* D3DDRAWPRIMITIVESTRIDEDDATA: position, normal, diffuse,
      * specular, then textureCoords[8].  Only the four strides the ctor
      * writes are ever touched. */
     struct { void *lpvData; DWORD dwStride; } strided[12];
-    void  *pScratchVerts;  // +0x76 dwVertexCount vertices, stride 0x28, zeroed
+    void  *pScratchVerts;  // dwVertexCount MeshVertex, zeroed
 };
 
 /* The two character meshes, loaded once at startup (renderstate.cpp):
  * models\John.mdl and models\Enemy.mdl. */
 extern CFaktMesh g_meshPlayer;
 extern CFaktMesh g_meshEnemy;
-#pragma pack(pop)
-
-static_assert(sizeof(CFaktMesh) == 0x7a, "CFaktMesh size: ModelManager operator new(0x7a)");
-static_assert(offsetof(CFaktMesh, pVertexData)   == 0x04, "CFaktMesh layout mismatch");
-static_assert(offsetof(CFaktMesh, dwVertexCount) == 0x08, "CFaktMesh layout mismatch");
-static_assert(offsetof(CFaktMesh, pFrameRecords) == 0x0c, "CFaktMesh layout mismatch");
-static_assert(offsetof(CFaktMesh, wFrameCount)   == 0x10, "CFaktMesh layout mismatch");
-static_assert(offsetof(CFaktMesh, pszName)       == 0x12, "CFaktMesh layout mismatch");
-static_assert(offsetof(CFaktMesh, strided)       == 0x16, "CFaktMesh layout mismatch");
-static_assert(offsetof(CFaktMesh, pScratchVerts) == 0x76, "CFaktMesh layout mismatch");
 
 /* The four strided entries the constructor gives a stride: position, normal,
  * textureCoords[0] and textureCoords[1] -- indices 0, 1, 4 and 5. */
@@ -66,10 +50,6 @@ static_assert(offsetof(CFaktMesh, pScratchVerts) == 0x76, "CFaktMesh layout mism
 #define MESH_STRIDED_NORMAL   1
 #define MESH_STRIDED_TEX0     4
 #define MESH_STRIDED_TEX1     5
-static_assert(offsetof(CFaktMesh, strided[MESH_STRIDED_POSITION].dwStride) == 0x1a, "strided");
-static_assert(offsetof(CFaktMesh, strided[MESH_STRIDED_NORMAL].dwStride)   == 0x22, "strided");
-static_assert(offsetof(CFaktMesh, strided[MESH_STRIDED_TEX0].dwStride)     == 0x3a, "strided");
-static_assert(offsetof(CFaktMesh, strided[MESH_STRIDED_TEX1].dwStride)     == 0x42, "strided");
 
 /* The two draw exports (faktmesh.cpp). */
 HRESULT

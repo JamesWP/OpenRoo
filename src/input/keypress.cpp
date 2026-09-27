@@ -367,14 +367,14 @@ void Sim_HandleKeypress(Game *self)
         unsigned int node = self->menu()->nodeRef();
         if ((int)node >= (int)(n + 200) && (int)node < (int)(2 * n + 200)) {
             unsigned char slot = (unsigned char)(node - n + 0x38);
-            unsigned char *rec = (unsigned char *)self->saveSlots()->slot(slot);
+            SaveSlot *rec = self->saveSlots()->slot(slot);
             self->nameEntry()->setMaxLength(10);
             self->setTextEntryActive(1);
             self->nameEntry()->setActive(1);
-            memcpy(self->saveSlots()->edit(), rec, sizeof(SaveSlot));
-            self->nameEntry()->setBuffer((char *)rec);
+            *self->saveSlots()->edit() = *rec;
+            self->nameEntry()->setBuffer(rec->name);
             self->saveSlots()->setEditSlot(slot);
-            self->nameEntry()->setCursor((unsigned char)strlen((const char *)rec));
+            self->nameEntry()->setCursor((unsigned char)strlen(rec->name));
             Sim_StoreGameStateIntoSaveSlot(self, slot);
             self->nameEntry()->setLastKey(0x0d);
             // PRESERVED: three discarded Backspace polls clear its pressed bit
