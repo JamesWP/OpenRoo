@@ -1,57 +1,22 @@
-/* CFaktMesh draw-path reimplementation.
+/* CFaktMesh: the two draws and the lifecycle (faktmesh.h).
  *
- * Replaces the two ~55-byte originals (safety-stubbed by patch.py):
- *   0x437b40 CFaktMesh::DrawMeshBuffer  — DrawPrimitive(..., dwFlags=0x08)
- *   0x437b80 CFaktMesh::DrawFramedModel — DrawPrimitive(..., dwFlags=0x18)
+ * Both draws clamp the 16-bit frame index against wFrameCount, index into the
+ * flat per-frame vertex array, and issue one DrawPrimitive(TRIANGLELIST);
+ * DrawMeshBuffer passes flags 0x08, DrawFramedModel 0x18.
  *
- * Both clamp the 16-bit frame index against wFrameCount, index into the flat
- * per-frame vertex array (stride 0x28 = FVF 0x212), and issue one
- * IDirect3DDevice3::DrawPrimitive(D3DPT_TRIANGLELIST, ...).  The device
- * pointer passed by the game is the com_proxy device proxy; calling through
- * it (rather than the raw Wine object) is intentional — the DrawPrimitive
- * forwarder unwraps for us and keeps all traffic visible to the proxy layer.
- *
- * KAROO_FAKTMESH_FX=half draws only the first half of each mesh's triangles,
- * as visual proof the pixels come from this reimplementation.
- *
- * ─── The lifecycle four (ENDGAME_PLAN.md E2, 2026-09-20) ─────────────────
- *
- *   0x00437ad0  Init                 constructor
- *   0x00437b10  scalar deleting dtor vtable slot 0, no code reference
- *   0x00437b30  destructor body      re-install the table, then release
- *   0x00437fb0  ReleaseModelBuffers  free the four heap fields
- *
- * These close the two LoadedModel TU rows and end model.cpp's private copy
- * of the free path: `model_release` was an inline of 0x437fb0 kept in step
- * by hand, and a copy kept in step by hand is a bug waiting for the next
- * field.  model.cpp now calls FaktMesh_ReleaseModelBuffers through this
- * header, which is the owner rule doing its job.
- *
- * WHAT DOES NOT CHANGE IS THE HEAP.  The four buffers are the game's --
- * model.cpp allocates them with the game's operator new precisely because
- * 0x437fb0 frees them with FactAlloc::Free2, and now that the free is ours
- * the pairing is merely visible rather than implicit.  Moving both sides to
- * our heap is a separate decision: 0x004386f7, still game code, calls the
- * release on a mesh we did not necessarily fill.
- *
- * Quirks preserved, both from the listing:
- *   - Init sets wFrameCount to ONE, not zero, and so does the release.  A
- *     mesh that has never been loaded therefore claims one frame.
- *   - Init writes the four strided-data strides FIRST, before the vtable,
- *     and never touches the other eight entries or their lpvData pointers --
- *     they are left uninitialised, which for an embedded mesh means whatever
- *     the container had there.
+ * KAROO_FAKTMESH_FX=half draws only the first half of each mesh's triangles.
  */
+
 #include "faktmesh.h"
 #include "com_proxy.h"
 #include <stdlib.h>
 #include "log.h"
-CFaktMesh g_meshEnemy;   /* was 0x004e0310 */
-CFaktMesh g_meshPlayer;   /* was 0x0046c7b0 */
+CFaktMesh g_meshEnemy;
+CFaktMesh g_meshPlayer;
 
-#define MESH_FVF        0x212  /* XYZ | NORMAL | TEX2 — 0x28-byte stride */
+#define MESH_FVF        0x212  // XYZ | NORMAL | TEX2
 #define MESH_LOG_FIRST  8
-#define MDL_VERTEX_STRIDE 0x28   /* the FVF 0x212 stride the ctor writes */
+#define MDL_VERTEX_STRIDE 0x28
 
 static bool fx_half(void)
 {
@@ -66,12 +31,9 @@ static bool fx_half(void)
     return cached != 0;
 }
 
-/* KAROO_MESH_DIAG=1 — dump the pipeline state the first time a mesh is drawn.
- *
- * The mesh FVF (0x212 = XYZ|NORMAL|TEX2) carries no vertex colour, so a mesh
- * that comes out tinted is being coloured by the lighting/material/texture
- * state, none of which this file sets.  Rather than theorise about which, read
- * them all off one unattended run. */
+/* KAROO_MESH_DIAG=1: dump the pipeline state the first time a mesh is drawn.
+ * The mesh FVF carries no vertex colour, so a tinted mesh is being coloured by
+ * the lighting/material/texture state, none of which this file sets. */
 static void mesh_diag(IDirect3DDevice3 *dev, DWORD flags)
 {
     static LONG once = 0;
@@ -135,7 +97,7 @@ static HRESULT draw_mesh(CFaktMesh *mesh, IDirect3DDevice3 *dev, DWORD frame,
     void *verts = (char *)mesh->pVertexData + frame * mesh->dwVertexCount * 0x28;
     DWORD count = mesh->dwVertexCount;
     if (fx_half())
-        count = (count / 2 / 3) * 3;  /* keep it a whole number of triangles */
+        count = (count / 2 / 3) * 3;  // keep it a whole number of triangles
 
     HRESULT hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, MESH_FVF, verts, count, flags);
 
@@ -146,7 +108,8 @@ static HRESULT draw_mesh(CFaktMesh *mesh, IDirect3DDevice3 *dev, DWORD frame,
     return hr;
 }
 
-/* ─── Exports — thiscall wrappers, redirected to by patch.py CALL_PATCHES ─── */
+/* ─── Exports ───────────────────────────────────────────────────────────────
+ */
 extern "C" {
 
 __declspec(dllexport) HRESULT __attribute__((thiscall))
@@ -161,14 +124,10 @@ FaktMesh_DrawFramedModel(CFaktMesh *self, IDirect3DDevice3 *dev, DWORD frame)
     return draw_mesh(self, dev, frame, 0x18, "DrawFramedModel");
 }
 
-} // extern "C"
+}  // extern "C"
 
-/* ─── The lifecycle four ─────────────────────────────────────────────────
- *
- * The vtable is ours.  0x0045d694 has ONE slot and the literal occurs in
- * exactly two places in the image -- 0x437ae7 and 0x437b32, the two
- * functions below -- so nothing else installs it and the game's table is
- * left holding a UD2 as a tripwire (faktmesh.h). */
+/* ─── The lifecycle four ────────────────────────────────────────────────────
+ */
 
 extern "C" {
 
@@ -179,8 +138,9 @@ __declspec(dllexport) void *FaktMesh_Vtable(void)
     return (void *)g_FaktMeshVtable;
 }
 
-/* 0x00437fb0.  Four guarded frees, each followed by a NULL, then the two
- * scalars.  wFrameCount goes to 1 (see the header). */
+/* Four guarded frees, each followed by a NULL, then the two scalars.
+ * PRESERVED: wFrameCount goes to 1, not 0, so an empty mesh claims one frame.
+ */
 __declspec(dllexport) void __attribute__((thiscall))
 FaktMesh_ReleaseModelBuffers(CFaktMesh *self)
 {
@@ -196,9 +156,8 @@ FaktMesh_ReleaseModelBuffers(CFaktMesh *self)
     self->wFrameCount   = 1;
 }
 
-/* 0x00437ad0.  Written in the original's order because the order is the
- * evidence: the four strides come first, and they are what identified the
- * 0x60 bytes at +0x16 as a D3DDRAWPRIMITIVESTRIDEDDATA. */
+/* Only the four strides are set; the other eight strided entries and every
+ * lpvData are left uninitialised.  PRESERVED: wFrameCount starts at 1. */
 __declspec(dllexport) CFaktMesh *__attribute__((thiscall))
 FaktMesh_Init(CFaktMesh *self)
 {
@@ -221,7 +180,7 @@ FaktMesh_Init(CFaktMesh *self)
     return self;
 }
 
-/* 0x00437b30.  Re-install the table, then release. */
+/* Re-install the table, then release. */
 __declspec(dllexport) void __attribute__((thiscall))
 FaktMesh_DtorBody(CFaktMesh *self)
 {
@@ -229,13 +188,7 @@ FaktMesh_DtorBody(CFaktMesh *self)
     FaktMesh_ReleaseModelBuffers(self);
 }
 
-/* 0x00437b10 -- vtable slot 0.
- *
- * Unverified by test, and said plainly: xref.py finds no reference of any
- * kind to 0x00437b10, our table's slot 0 is the only way in, and the free is
- * the game heap's because a heap-allocated CFaktMesh would have come from
- * the game's operator new.  Same position as LevelObjBase_ScalarDtor and
- * Wrapper_ScalarDtor. */
+/* The one vtable slot. */
 __declspec(dllexport) void *__attribute__((thiscall))
 FaktMesh_ScalarDtor(CFaktMesh *self, unsigned int flags)
 {
@@ -245,4 +198,4 @@ FaktMesh_ScalarDtor(CFaktMesh *self, unsigned int flags)
     return self;
 }
 
-} // extern "C"
+}  // extern "C"
