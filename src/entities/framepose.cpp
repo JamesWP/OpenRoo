@@ -125,9 +125,9 @@ void FramePose_Foes(Game *g, double , double , FoePose *out)
         r->pos[0] = e->posU();
         r->pos[1] = e->posY();
         r->pos[2] = -e->posV();
-        r->rotX = 0.0f;
-        r->rotY = angle;
-        r->rotZ = 0.0f;
+        r->rot[0] = 0.0f;
+        r->rot[1] = angle;
+        r->rot[2] = 0.0f;
         r->kind = e->kind();
     }
 }

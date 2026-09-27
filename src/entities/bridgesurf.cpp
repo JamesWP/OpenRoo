@@ -17,7 +17,7 @@
  * sub-object of every type-2 object, only the render state differing.
  * Quadratic, and surely not intended.
  *
- * On a level object, +0x5ad gates ZWRITEENABLE and +0x5b5 gates
+ * On a level object, bNoZWrite gates ZWRITEENABLE and bSpecular gates
  * SPECULARENABLE, together with the Highlights video option
  * (Game::videoHighlights()).
  *
@@ -40,19 +40,13 @@
 
 #include "bridgesurf.h"
 #include "renderdevice.h"
-#include "levelobject.h"
+#include "theme.h"
 #include "game.h"
 #include "bridgeobject.h"
 #include "log.h"
 
 #define BRIDGE_FVF        VertexFormat::Diffuse2
 #define BRIDGE_LOG_FIRST  8
-
-/* Offsets in the theme block and the level object. */
-#define LVL_OFF_BRIDGE_COUNT    0x6c9b8
-#define LVL_OFF_BRIDGE_OBJECTS  0x6c9bc
-#define LOBJ_OFF_ZWRITE_GATE    0x5ad
-#define LOBJ_OFF_SPECULAR_GATE  0x5b5
 
 enum BridgeFxMode { BRIDGE_FX_OFF = 0, BRIDGE_FX_TINT, BRIDGE_FX_NODRAW,
                     BRIDGE_FX_BACKWARD };
@@ -111,7 +105,8 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
               (int)(vnear * 1000.0f), (int)(vfar * 1000.0f));
 }
 
-void BridgeSurf_Draw(Game *game, void *lvl, RenderDevice *d3d, double t)
+void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
+                     double t)
 {
     Mat4 world = {};
     world.m[0] = world.m[5] = world.m[10] = world.m[15] = 1.0f;
@@ -120,29 +115,24 @@ void BridgeSurf_Draw(Game *game, void *lvl, RenderDevice *d3d, double t)
     const DWORD diffuse =
         bridge_fx() == BRIDGE_FX_TINT ? 0xFFFF00FF : 0xFFFFFFFF;
 
-    if (*(DWORD *)((BYTE *)lvl + LVL_OFF_BRIDGE_COUNT) == 0)
+    ThemeObjectTypeSlot *slot = &theme->slots[THEME_OBJ_BRIDGE];
+    if (slot->dwInstanceCount == 0)
         return;
 
-    for (DWORD i = 0;
-         i < *(DWORD *)((BYTE *)lvl + LVL_OFF_BRIDGE_COUNT); i++) {
-        BYTE *obj = (BYTE *)lvl + LVL_OFF_BRIDGE_OBJECTS + i * LOBJ_STRIDE;
+    for (DWORD i = 0; i < slot->dwInstanceCount; i++) {
+        ThemeLevelObject *obj = &slot->records[i];
 
-        if (*(DWORD *)(obj + LOBJ_OFF_DRAWKIND) != 2)
+        if (obj->kind != THEME_KIND_FIELD)
             continue;
 
-        if (*(DWORD *)(obj + LOBJ_OFF_SPECULAR_GATE) != 0
-            && game->videoHighlights() != 0)
+        if (obj->bSpecular != 0 && game->videoHighlights() != 0)
             d3d->SetRenderState(RS::SpecularEnable, 1);
 
-        d3d->SetRenderState(
-            RS::ZWriteEnable,
-            *(DWORD *)(obj + LOBJ_OFF_ZWRITE_GATE) != 0 ? 0 : 1);
+        d3d->SetRenderState(RS::ZWriteEnable, obj->bNoZWrite != 0 ? 0 : 1);
 
-        if (*(DWORD *)(obj + LOBJ_OFF_SUBOBJCOUNT) != 0) {
-            for (DWORD s = 0;
-                 s < *(DWORD *)(obj + LOBJ_OFF_SUBOBJCOUNT); s++) {
-                SceneSubObject *sub =
-                    (SceneSubObject *)(obj + LOBJ_OFF_SUBOBJECTS) + s;
+        if (obj->dwSubObjectCount != 0) {
+            for (DWORD s = 0; s < obj->dwSubObjectCount; s++) {
+                SceneSubObject *sub = &obj->pSubObjects[s];
 
                 // Unlike DrawQuadBatch, SetTexture runs unconditionally: a
                 // NULL texture binds NULL rather than leaving the last one

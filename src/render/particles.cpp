@@ -606,18 +606,18 @@ static BOOL ps_copy_from(ParticleSystem *self, const ParticleSystem *src)
  * FORMAT: a sub-object's class name is its length including the terminator,
  * then that many bytes, so the NUL goes to the file too.  A missing sub-object
  * writes the literal "NULL". */
-static BOOL ps_write_sub_object(const void *obj, void *fp)
+static BOOL ps_write_sub_object(void *obj, void **vtbl, const char *name,
+                                void *fp)
 {
-    const char *name = obj ? *(const char *const *)((const BYTE *)obj + 4)
-                           : GS_PS_NAME_NULL;
+    if (!obj)
+        name = GS_PS_NAME_NULL;
     DWORD len = (DWORD)strlen(name) + 1;
     if (!ps_write(&len, 4, fp))
         return FALSE;
     if (fwrite(name, 1, len, (FILE *)fp) != len)
         return FALSE;
     if (obj) {
-        void **vtbl = *(void ***)obj;
-        if (!((ps_stream_fn)vtbl[GEN_VT_SAVE_SLOT])((void *)obj, fp))
+        if (!((ps_stream_fn)vtbl[GEN_VT_SAVE_SLOT])(obj, fp))
             return FALSE;
     }
     return TRUE;
@@ -630,9 +630,13 @@ static BOOL ps_serialize(ParticleSystem *self, void *fp, GameLogger *)
         return FALSE;
     if (!ps_write(&self->ring.dwRingCount, 4, fp))
         return FALSE;
-    if (!ps_write_sub_object(self->pGenerator, fp))
+    Generator *gen = self->pGenerator;
+    if (!ps_write_sub_object(gen, gen ? gen->pVtable : NULL,
+                             gen ? gen->pName : NULL, fp))
         return FALSE;
-    return ps_write_sub_object(self->pEnvironment, fp);
+    Environment *env = self->pEnvironment;
+    return ps_write_sub_object(env, env ? env->pVtable : NULL,
+                               env ? env->pName : NULL, fp);
 }
 
 /* Read one length-prefixed class name into a fresh buffer.  NULL on failure;
@@ -776,7 +780,11 @@ static BOOL face_alloc_verts(FaceParticleSystem *self)
  * release. */
 static void quad_release(ParticleSystem *self, int flags)
 {
-    ParticleVertex **verts = (ParticleVertex **)((BYTE *)self + 0x28);
+    // Point and Face share their first two members, so either's pVerts is
+    // reached through Point's.
+    static_assert(offsetof(PointParticleSystem, pVerts)
+                  == offsetof(FaceParticleSystem, pVerts), "shared pVerts");
+    ParticleVertex **verts = &((PointParticleSystem *)self)->pVerts;
     if (*verts)
         ::operator delete(*verts);
     *verts = NULL;
@@ -973,7 +981,7 @@ static BOOL xface_build_corners(XFaceParticleSystem *self)
     if (table == NULL)
         return FALSE;
 
-    const float *p = (const float *)((const BYTE *)self + 0x76);  // the 8 ranges
+    const float *p = self->ranges;
     float size_min = p[0], size_max = p[1];
     float life_min = p[2], life_max = p[3];
     float speed_min = p[4], speed_max = p[5];
@@ -1043,7 +1051,7 @@ static BOOL xface_copy_from(XFaceParticleSystem *self, const XFaceParticleSystem
     if (!ps_copy_from(&self->base, &src->base))
         return FALSE;
     self->dwCornerTableCount = src->dwCornerTableCount;
-    memcpy((BYTE *)self + 0x76, (const BYTE *)src + 0x76, 0x20);  // the 8 ranges
+    memcpy(self->ranges, src->ranges, sizeof(self->ranges));
     ring_assign_shapes(&self->base.ring, self->dwCornerTableCount);
     if (!xface_build_corners(self)) {
         ((ps_release_fn)self->base.pVtable[PS_VT_RELEASE])(self, 1);
@@ -1089,7 +1097,7 @@ static BOOL xface_serialize(XFaceParticleSystem *self, void *fp, GameLogger *log
     if (!ps_write(&self->dwCornerTableCount, 4, fp))
         goto failed;
     for (int i = 0; i < 8; i++)
-        if (!ps_write((const BYTE *)self + 0x76 + i * 4, 4, fp))
+        if (!ps_write(&self->ranges[i], 4, fp))
             goto failed;
     return TRUE;
 failed:
@@ -1104,7 +1112,7 @@ static BOOL xface_deserialize(XFaceParticleSystem *self, void *fp, GameLogger *l
     if (!ps_read(&self->dwCornerTableCount, 4, fp))
         goto failed;
     for (int i = 0; i < 8; i++)
-        if (!ps_read((BYTE *)self + 0x76 + i * 4, 4, fp))
+        if (!ps_read(&self->ranges[i], 4, fp))
             goto failed;
     return ((ps_count_fn)self->base.pVtable[PS_VT_SETCAP])
                (self, self->base.ring.dwRingCount);
@@ -1182,7 +1190,7 @@ static void xface_construct(XFaceParticleSystem *self)
     self->pCornerTable        = NULL;
     self->nVertexCount        = 0;
     self->pVerts              = NULL;
-    float *ranges = (float *)((BYTE *)self + 0x76);
+    float *ranges = self->ranges;
     ranges[0] = ranges[1] = 1.0f;  // size min/max
     ranges[2] = ranges[3] = 0.0f;  // lifetime
     ranges[4] = ranges[5] = 0.0f;  // speed

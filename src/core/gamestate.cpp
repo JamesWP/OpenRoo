@@ -52,7 +52,7 @@ struct GameState {
  *
  * The scan is by byte, not by dword: lives is a byte, and as a dword its step
  * of one reads as a change of 65536, lost among the other large changes. */
-#define GAME_SIZE   0x51790d
+#define GAME_SIZE   sizeof(Game)
 #define SNAP_EVERY   30
 #define DIFF_MAX     120
 #define REPORT_AFTER 45  // frames after the respawn for the second report

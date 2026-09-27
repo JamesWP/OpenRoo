@@ -1,5 +1,9 @@
 /* meshbatch.h -- the level's mesh-batch objects (meshbatch.cpp). */
 #pragma once
+struct LevelPlacements;
+class ThemeAssetBlock;
 class RenderDevice;
-/*(placements, theme block, d3d); one caller, RenderGameFrame. */
-void MeshBatch_Draw(void *ctx, void *game, RenderDevice *d3d);
+/* Draws the theme's PLATE records over the TILE_KIND_01 cells; one caller,
+ * RenderGameFrame. */
+void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
+                    RenderDevice *d3d);

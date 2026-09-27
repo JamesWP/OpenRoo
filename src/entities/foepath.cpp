@@ -364,7 +364,7 @@ void FoePath::populate(unsigned char *tileBase, unsigned short field04)
     field_04   = field04;
     keyStride_ = (int)map->extentU();
     extentV_   = (int)map->extentV();
-    pending_   = (PendingStack *)path_calloc(1, 9);
+    pending_   = (PendingStack *)path_calloc(1, sizeof(PendingStack));
     found_     = 0;
     open_      = 0;
     closed_    = 0;
@@ -461,7 +461,7 @@ void FoePath::pushPending(PathNode *node)
 
     ++g_diag.pushes;
 
-    PendingCell *cell = (PendingCell *)path_calloc(1, 9);
+    PendingCell *cell = (PendingCell *)path_calloc(1, sizeof(PendingCell));
 
     cell->node = node;
 
@@ -584,7 +584,7 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
         return;
     }
 
-    n = (PathNode *)path_calloc(1, 0x44);
+    n = (PathNode *)path_calloc(1, sizeof(PathNode));
 
     const int du = u - goalU;
     const int dv = v - goalV;
@@ -792,10 +792,10 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
     // fresh on every search and never reused; releaseLists frees only the
     // nodes chained off a header, not the header itself, so each search leaks
     // two small blocks.
-    open_   = (PathNode *)path_calloc(1, 0x44);
-    closed_ = (PathNode *)path_calloc(1, 0x44);
+    open_   = (PathNode *)path_calloc(1, sizeof(PathNode));
+    closed_ = (PathNode *)path_calloc(1, sizeof(PathNode));
 
-    PathNode *seed = (PathNode *)path_calloc(1, 0x44);
+    PathNode *seed = (PathNode *)path_calloc(1, sizeof(PathNode));
 
     const int du = uTarget - uFoe;
     const int dv = vTarget - vFoe;

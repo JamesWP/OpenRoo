@@ -1,25 +1,23 @@
 /* FoePath: the foe pathfinder, a best-first (A*-shaped) search over the tile
- * grid, run backward from the target to the foe.  One per foe, at foe+0x13b;
- * 0x35 bytes.  The object, its worklist block, cells and nodes are all
- * allocated and freed here (new and delete, calloc and free).  foepath.cpp has
- * each method's PRESERVED notes. */
+ * grid, run backward from the target to the foe.  One per foe.  The object,
+ * its worklist block, cells and nodes are all allocated and freed here (new
+ * and delete, calloc and free).  foepath.cpp has each method's PRESERVED
+ * notes. */
 
 #pragma once
 
-/* A search node, calloc(1, 0x44).  A plain public record: FoePath builds and
+/* A search node, zero-allocated.  A plain public record: FoePath builds and
  * links them, and the chase (foe.cpp) reads the result's parent and cell. */
-struct __attribute__((packed)) PathNode {
-
-    int       f;            // +0x00  g + h, the open list's order
-    int       h;            // +0x04  the squared distance to the goal
-    int       g;            // +0x08  steps from the seed
-    int       field_0c;     // +0x0c  never touched
-    int       u;            // +0x10
-    int       v;            // +0x14
-    int       key;          // +0x18  FoePath::cellKey(u, v)
-    PathNode *parent;       // +0x1c
-    PathNode *children[8];  // +0x20  the nodes relaxed through this one
-    PathNode *next;         // +0x40  the open or closed chain
+struct PathNode {
+    int       f;            // g + h, the open list's order
+    int       h;            // the squared distance to the goal
+    int       g;            // steps from the seed
+    int       u;
+    int       v;
+    int       key;          // FoePath::cellKey(u, v)
+    PathNode *parent;
+    PathNode *children[8];  // the nodes relaxed through this one
+    PathNode *next;         // the open or closed chain
 
     // PRESERVED: the child scan has no bound, so a ninth child is stored one
     // past the array, onto next.  Written as that store, so the defect is kept
@@ -34,35 +32,21 @@ struct __attribute__((packed)) PathNode {
         else
             children[i] = node;
     }
-
-private:
 };
 
-/* One cell of the cost-propagation worklist: calloc(1, 9), nine bytes for two
- * pointers; the ninth is never touched. */
-struct __attribute__((packed)) PendingCell {
-
-    PathNode    *node;      // +0x00
-    PendingCell *next;      // +0x04
-    unsigned char field_8;  // +0x08  never touched
-
-private:
+/* One cell of the cost-propagation worklist. */
+struct PendingCell {
+    PathNode    *node;
+    PendingCell *next;
 };
 
-/* The worklist's owner block, calloc(1, 9).  Only the head is ever touched:
- * the worklist is a stack. */
-struct __attribute__((packed)) PendingStack {
-
-    int           field_0;  // +0x00  never touched
-    PendingCell  *head;     // +0x04
-    unsigned char field_8;  // +0x08  never touched
-
-private:
+/* The worklist's owner block.  The worklist is a stack. */
+struct PendingStack {
+    PendingCell  *head;
 };
 
-class __attribute__((packed)) FoePath {
+class FoePath {
 public:
-
     // Allocates (nothrow) and populates one; NULL if the allocation fails, and
     // the caller stores that.
     static FoePath *create(unsigned char *tileBase, unsigned short field04);
@@ -113,22 +97,20 @@ private:
     void populate(unsigned char *tileBase, unsigned short field04);
     static PathNode *findByKey(PathNode *hdr, int key);
 
-    unsigned char *tileBase_;  // +0x00  the ctor's argument
-    unsigned short field_04;   // +0x04  the ctor's second argument (0)
-    PathNode      *open_;      // +0x06  a header node, fresh each search
-    PathNode      *closed_;    // +0x0a  likewise
-    PathNode      *result_;    // +0x0e
-    PendingStack  *pending_;   // +0x12
-    int            found_;     // +0x16  mirrors find()'s return
-    int            extentV_;   // +0x1a  the map's v extent
-    // +0x1e  the map's u extent.  Not the tile stride (100).
+    unsigned char *tileBase_;  // the ctor's argument
+    unsigned short field_04;   // the ctor's second argument (0)
+    PathNode      *open_;      // a header node, fresh each search
+    PathNode      *closed_;    // likewise
+    PathNode      *result_;
+    PendingStack  *pending_;
+    int            found_;     // mirrors find()'s return
+    int            extentV_;   // the map's v extent
+    // The map's u extent.  Not the tile stride (100).
     int            keyStride_;
-    unsigned char  gap_022[0x02a - 0x022];
-    unsigned char  mode_;  // +0x2a
-    unsigned char  gap_02b[0x02f - 0x02b];
-    unsigned short cap_;      // +0x2f
-    unsigned char  targetU_;  // +0x31
-    unsigned char  targetV_;  // +0x32
-    unsigned char  foeU_;     // +0x33
-    unsigned char  foeV_;     // +0x34
+    unsigned char  mode_;
+    unsigned short cap_;
+    unsigned char  targetU_;
+    unsigned char  targetV_;
+    unsigned char  foeU_;
+    unsigned char  foeV_;
 };

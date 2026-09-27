@@ -29,8 +29,6 @@
 #include "levelscore.h"
 #include "player.h"
 
-#define OFF_CLOCK_MS    0x170a54  // double
-
 /* The counts, scores, totals and animation state are the Game's tally
  * (ScoreTally, game.h). */
 
@@ -136,6 +134,6 @@ void Score_CalculateLevelScore(Game *self, char endReason)
 
     // Hand the tally animation stage 0 and its start time.
     t->stage      = 0;
-    t->stageStart = (int)(*(double *)((char *)self + OFF_CLOCK_MS));
+    t->stageStart = (int)*self->clock();
     self->setTallyDone(1);
 }

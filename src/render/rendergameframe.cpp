@@ -200,8 +200,8 @@ static bool item_slot(unsigned char contents, ThemeObjectType *out)
     }
 }
 
-static const float *pose_pos(FoePose *p) { return (const float *)((BYTE *)p + 0x01); }
-static const float *pose_rot(FoePose *p) { return (const float *)((BYTE *)p + 0x0d); }
+static const float *pose_pos(FoePose *p) { return p->pos; }
+static const float *pose_rot(FoePose *p) { return p->rot; }
 
 /* kind 2 is a catcher, 3 a thrower; any other kind draws nothing. */
 static bool foe_slot(unsigned char kind, bool dying, ThemeObjectType *out)
@@ -230,7 +230,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
     rso(pl->jumpPads.pos, pl->jumpPads.rot, pl->jumpPads.count, THEME_OBJ_JUMPPAD, now,
         (float)fmod(now * 0.002, 1.0), 0x14, 0);
     rso_list(pl->teleporters, THEME_OBJ_TELEPORTER,    now);
-    QuadBatch_Draw((QuadVerts *)pl, &g_themeBlock, d3d);
+    QuadBatch_Draw(pl, &g_themeBlock, d3d);
     rso_list(pl->ramps,       THEME_OBJ_STAIR,         now);
     LevelPlacements_DrawLifts(g, pl, &g_themeBlock, d3d, now);
     LevelPlacements_DrawSlides(g, pl, &g_themeBlock, d3d, now);

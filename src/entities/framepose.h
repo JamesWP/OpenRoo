@@ -10,16 +10,12 @@
 class Game;
 struct CameraFocus;
 
-/* One foe's pose, 0x1d bytes. */
-struct __attribute__((packed)) FoePose {
-
+/* One foe's pose. */
+struct FoePose {
     unsigned char kind;  // the foe's kind
     float  pos[3];       // (U, H, -V)
-    float  rotX;         // always 0
-    float  rotY;         // facing, plus any turn in progress
-    float  rotZ;         // always 0
+    float  rot[3];       // (0, facing plus any turn in progress, 0)
     float  stepFrac;     // written only while stepping; stale otherwise
-
 };
 
 /* One record per live foe, in foe-list order; RenderGameFrame draws from it.

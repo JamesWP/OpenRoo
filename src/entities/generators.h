@@ -2,9 +2,7 @@
  * system's ring with new particles, and the fields that age and retire them
  * once they are in it.  A Generator subclass owns Tick/emit/Save/Load/CopyFrom
  * through its own vtable; an Environment subclass owns the same five for
- * ageing, fading and killing particles already in the ring.  Both bases stay
- * fixed size across builds, so every layout below is exact, not a guess: each
- * struct's static_asserts pin the offsets the .cpp indexes into. */
+ * ageing, fading and killing particles already in the ring. */
 
 #pragma once
 #include <windows.h>
@@ -28,8 +26,6 @@ struct Generator {
     DWORD       dwEnabled;  // zero disables Tick/emit for this generator
     RingBuffer *pRing;
 };
-static_assert(sizeof(Generator) == 0x10, "Generator size");
-static_assert(offsetof(Generator, pRing) == 0x0c, "Generator layout");
 
 /* Base of every environment.  Same role as Generator for the fields it has;
  * there is no enable flag here, so an environment can only be turned off by
@@ -39,8 +35,6 @@ struct Environment {
     char       *pName;
     RingBuffer *pRing;
 };
-static_assert(sizeof(Environment) == 0x0c, "Environment size");
-static_assert(offsetof(Environment, pRing) == 0x08, "Environment layout");
 
 /* GravityEnvironment: a per-second gravity vector applied to live particles,
  * with a colour fade toward a target and up to three axis kill planes. */
@@ -59,16 +53,6 @@ struct GravityEnvironment {
     float       flClipMin[3];
     float       flFadeAccum;
 };
-static_assert(offsetof(GravityEnvironment, flMagnitude)  == 0x18, "Gravity layout");
-static_assert(offsetof(GravityEnvironment, flGravity)    == 0x1c, "Gravity layout");
-static_assert(offsetof(GravityEnvironment, dwTargetARGB) == 0x28, "Gravity layout");
-static_assert(offsetof(GravityEnvironment, dwTargetRGB)  == 0x30, "Gravity layout");
-static_assert(offsetof(GravityEnvironment, flFadeRate)   == 0x3c, "Gravity layout");
-static_assert(offsetof(GravityEnvironment, dwClipEnable) == 0x44, "Gravity layout");
-static_assert(offsetof(GravityEnvironment, flClipMax)    == 0x50, "Gravity layout");
-static_assert(offsetof(GravityEnvironment, flClipMin)    == 0x5c, "Gravity layout");
-static_assert(offsetof(GravityEnvironment, flFadeAccum)  == 0x68, "Gravity layout");
-static_assert(sizeof(GravityEnvironment) == 0x6c, "Gravity size");
 
 /* MagnetEnvironment: pulls live particles toward flCentre and retires any that
  * arrive within flHalfExtent of it, with the same colour-fade skeleton as
@@ -85,14 +69,6 @@ struct MagnetEnvironment {
     DWORD       dwFadeThreshold;
     float       flFadeAccum;
 };
-static_assert(offsetof(MagnetEnvironment, flCentre)       == 0x0c, "Magnet layout");
-static_assert(offsetof(MagnetEnvironment, flForce)        == 0x18, "Magnet layout");
-static_assert(offsetof(MagnetEnvironment, flHalfExtent)   == 0x24, "Magnet layout");
-static_assert(offsetof(MagnetEnvironment, dwTargetRGB)    == 0x38, "Magnet layout");
-static_assert(offsetof(MagnetEnvironment, flFadeRate)     == 0x44, "Magnet layout");
-static_assert(offsetof(MagnetEnvironment, dwFadeThreshold)== 0x48, "Magnet layout");
-static_assert(offsetof(MagnetEnvironment, flFadeAccum)    == 0x4c, "Magnet layout");
-static_assert(sizeof(MagnetEnvironment) == 0x50, "Magnet size");
 
 /* StdGenerator: the default emitter, used by most shipping effects.  Emit
  * never samples a distribution at runtime; Load fills the four tables below
@@ -125,15 +101,6 @@ struct StdGenerator {
     DWORD     dwLifeIdx;
     DWORD     dwProbIdx;
 };
-static_assert(offsetof(StdGenerator, flDtScale)     == 0x0010, "Std layout");
-static_assert(offsetof(StdGenerator, flPosTable)    == 0x0078, "Std layout");
-static_assert(offsetof(StdGenerator, flVelTable)    == 0x17e8, "Std layout");
-static_assert(offsetof(StdGenerator, pLifeTable)    == 0x2f58, "Std layout");
-static_assert(offsetof(StdGenerator, pEmitProb)     == 0x30e8, "Std layout");
-static_assert(offsetof(StdGenerator, flAccumulator) == 0x340c, "Std layout");
-static_assert(offsetof(StdGenerator, dwPosIdx)      == 0x3410, "Std layout");
-static_assert(offsetof(StdGenerator, dwProbIdx)     == 0x341c, "Std layout");
-static_assert(sizeof(StdGenerator) == 0x3420, "Std size");
 
 /* XStdGenerator: StdGenerator plus a constant offset added to every sampled
  * position and velocity, used for thruster and flame effects.  Every field and
@@ -143,9 +110,6 @@ struct XStdGenerator {
     float        flPosOffset[3];
     float        flVelOffset[3];
 };
-static_assert(offsetof(XStdGenerator, flPosOffset) == 0x3420, "XStd layout");
-static_assert(offsetof(XStdGenerator, flVelOffset) == 0x342c, "XStd layout");
-static_assert(sizeof(XStdGenerator) == 0x3438, "XStd size");
 
 /* CylinderGenerator: samples position and velocity like StdGenerator, then
  * scales the position, carries it through flMatrix and offsets it by flOrigin.
@@ -175,17 +139,6 @@ struct CylinderGenerator {
     DWORD     dwLifeIdx;
     DWORD     dwProbIdx;
 };
-static_assert(offsetof(CylinderGenerator, flScale)       == 0x0028, "Cyl layout");
-static_assert(offsetof(CylinderGenerator, flMatrix)      == 0x002c, "Cyl layout");
-static_assert(offsetof(CylinderGenerator, flDtScale)     == 0x0094, "Cyl layout");
-static_assert(offsetof(CylinderGenerator, flAccumulator) == 0x00a0, "Cyl layout");
-static_assert(offsetof(CylinderGenerator, flPosTable)    == 0x00a4, "Cyl layout");
-static_assert(offsetof(CylinderGenerator, flVelTable)    == 0x1814, "Cyl layout");
-static_assert(offsetof(CylinderGenerator, pLifeTable)    == 0x2f84, "Cyl layout");
-static_assert(offsetof(CylinderGenerator, pEmitProb)     == 0x3114, "Cyl layout");
-static_assert(offsetof(CylinderGenerator, dwPosIdx)      == 0x3434, "Cyl layout");
-static_assert(offsetof(CylinderGenerator, dwProbIdx)     == 0x3440, "Cyl layout");
-static_assert(sizeof(CylinderGenerator) == 0x3444, "Cyl size");
 
 /* PointGenerator: emits every particle at a fixed position and colour; not
  * used by any shipping effect, so its tables are only ever whatever the
@@ -204,12 +157,6 @@ struct PointGenerator {
     DWORD     dwVelIdx[3];
     DWORD     dwLifeIdx;  // runs past dwLifeTable's declared length before wrapping
 };
-static_assert(offsetof(PointGenerator, flEmitRate)    == 0x0028, "Point layout");
-static_assert(offsetof(PointGenerator, dwDiffuse)     == 0x0038, "Point layout");
-static_assert(offsetof(PointGenerator, flVelTable)    == 0x0044, "Point layout");
-static_assert(offsetof(PointGenerator, dwLifeTable)   == 0x0fe4, "Point layout");
-static_assert(offsetof(PointGenerator, dwVelIdx)      == 0x1174, "Point layout");
-static_assert(sizeof(PointGenerator) == 0x1184, "Point size");
 
 /* BoxGenerator: like PointGenerator, not used by any shipping effect and never
  * filled by a Load. */
@@ -230,13 +177,6 @@ struct BoxGenerator {
     DWORD     dwLifeIdx;
     DWORD     dwDiffuseIdx;
 };
-static_assert(offsetof(BoxGenerator, flVelBias)    == 0x0028, "Box layout");
-static_assert(offsetof(BoxGenerator, dwPosX)       == 0x003c, "Box layout");
-static_assert(offsetof(BoxGenerator, flVelTable)   == 0x17ac, "Box layout");
-static_assert(offsetof(BoxGenerator, dwDiffuse)    == 0x210c, "Box layout");
-static_assert(offsetof(BoxGenerator, dwPosIdx)     == 0x242c, "Box layout");
-static_assert(offsetof(BoxGenerator, dwDiffuseIdx) == 0x2448, "Box layout");
-static_assert(sizeof(BoxGenerator) == 0x244c, "Box size");
 
 /* Direct calls through the shared vtable slot layout above, used where the
  * caller only has a Generator pointer or an Environment pointer and needs one

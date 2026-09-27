@@ -88,46 +88,33 @@ static_assert(offsetof(PointParticleSystem, pVerts)        == 0x28, "Point layou
 static_assert(offsetof(PointParticleSystem, dwVertexCount) == 0x2c, "Point layout");
 static_assert(sizeof(PointParticleSystem) == 0x30, "Point size");
 
-#pragma pack(push, 1)
-struct FaceParticleSystem {       // 0x7a bytes, byte-packed (corners at +0x2e)
+struct FaceParticleSystem {
     ParticleSystem  base;
-    ParticleVertex *pVerts;        // +0x28
-    WORD            nVertexCount;  // +0x2c 6 vertices per particle
-    float           flCorner[6][3];// +0x2e six baked xyz corner offsets
-    float           flScale;       // +0x76
+    ParticleVertex *pVerts;
+    WORD            nVertexCount;   // 6 vertices per particle
+    float           flCorner[6][3]; // six baked xyz corner offsets
+    float           flScale;
 };
-static_assert(offsetof(FaceParticleSystem, nVertexCount) == 0x2c, "Face layout");
-static_assert(offsetof(FaceParticleSystem, flCorner)     == 0x2e, "Face layout");
-static_assert(sizeof(FaceParticleSystem) == 0x7a, "Face size");
 
-/* Corner-table entry, 100 bytes (0x64).  Tick accumulates
- * flRotVel into flRotAccum each frame; when an accumulated angle exceeds
- * 0.01 it is baked into flCorner as an axis rotation and reset. */
+/* Corner-table entry.  Tick accumulates flRotVel into flRotAccum each frame;
+ * when an accumulated angle exceeds 0.01 it is baked into flCorner as an axis
+ * rotation and reset. */
 struct XFaceCornerEntry {
-    float flCorner[6][3];  // +0x00..0x44 six xyz corner offsets
-    float flUnk48;         // +0x48 never read by tick/fill
-    float flRotVel[3];     // +0x4c per-tick X/Y/Z rotation increments
-    float flRotAccum[3];   // +0x58 accumulated angles, reset when applied
+    float flCorner[6][3];  // six xyz corner offsets
+    float flUnk48;         // never read by tick/fill
+    float flRotVel[3];     // per-tick X/Y/Z rotation increments
+    float flRotAccum[3];   // accumulated angles, reset when applied
 };
-static_assert(offsetof(XFaceCornerEntry, flRotVel)   == 0x4c, "entry layout");
-static_assert(offsetof(XFaceCornerEntry, flRotAccum) == 0x58, "entry layout");
-static_assert(sizeof(XFaceCornerEntry) == 100, "entry size");
 
-struct XFaceParticleSystem {      // 0x96 bytes; only replaced-path fields typed
-    ParticleSystem   base;
-    XFaceCornerEntry *pCornerTable; // +0x28 dwCornerTableCount × 100-byte entries
-    ParticleVertex   *pVerts;       // +0x2c
-    WORD              nVertexCount; // +0x30 6 vertices per particle
-    BYTE              gap32[0x40];  // +0x32 uninitialised gap (never touched)
-    DWORD             dwCornerTableCount; // +0x72
-    BYTE              simParams[0x20];    // +0x76 size/lifetime/speed/rot ranges
+struct XFaceParticleSystem {
+    ParticleSystem    base;
+    XFaceCornerEntry *pCornerTable;       // dwCornerTableCount entries
+    ParticleVertex   *pVerts;
+    WORD              nVertexCount;       // 6 vertices per particle
+    DWORD             dwCornerTableCount;
+    // (min, max) pairs: size, lifetime, speed, rotation.
+    float             ranges[8];
 };
-static_assert(offsetof(XFaceParticleSystem, pCornerTable)       == 0x28, "XFace layout");
-static_assert(offsetof(XFaceParticleSystem, pVerts)             == 0x2c, "XFace layout");
-static_assert(offsetof(XFaceParticleSystem, nVertexCount)       == 0x30, "XFace layout");
-static_assert(offsetof(XFaceParticleSystem, dwCornerTableCount) == 0x72, "XFace layout");
-static_assert(sizeof(XFaceParticleSystem) == 0x96, "XFace size");
-#pragma pack(pop)
 
 /* ─── Internal (non-virtual) entry points ──────────────────────────────────
  *

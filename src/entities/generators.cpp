@@ -705,13 +705,14 @@ static BOOL env_same_name(const Environment *self, const Environment *src)
 }
 
 /* Copies every field past the base (vtable, pName and pRing keep the
- * destination's) in one memcpy; safe because src can never alias dst. */
+ * destination's). */
 static BOOL gravity_env_copy_from(GravityEnvironment *self, const GravityEnvironment *src)
 {
     if (!env_same_name(&self->base, &src->base))
         return FALSE;
-    memcpy((BYTE *)self + sizeof(Environment), (const BYTE *)src + sizeof(Environment),
-           sizeof(GravityEnvironment) - sizeof(Environment));
+    Environment base = self->base;
+    *self = *src;
+    self->base = base;
     return TRUE;
 }
 
@@ -719,8 +720,9 @@ static BOOL magnet_env_copy_from(MagnetEnvironment *self, const MagnetEnvironmen
 {
     if (!env_same_name(&self->base, &src->base))
         return FALSE;
-    memcpy((BYTE *)self + sizeof(Environment), (const BYTE *)src + sizeof(Environment),
-           sizeof(MagnetEnvironment) - sizeof(Environment));
+    Environment base = self->base;
+    *self = *src;
+    self->base = base;
     return TRUE;
 }
 
@@ -1147,8 +1149,13 @@ static BOOL std_gen_copy_from(StdGenerator *self, const StdGenerator *src)
 {
     if (!gen_copy_base(&self->base, &src->base))
         return FALSE;
-    memcpy((BYTE *)self + 0x10, (const BYTE *)src + 0x10, 0x70 - 0x10);
-    memcpy((BYTE *)self + 0x78, (const BYTE *)src + 0x78, 0x3420 - 0x78);
+    Generator base  = self->base;
+    void     *table = self->pTypeTable;
+    DWORD     count = self->dwTypeTableCount;
+    *self = *src;
+    self->base             = base;
+    self->pTypeTable       = table;
+    self->dwTypeTableCount = count;
     std_clone_type_table(self, (const DWORD *)src->pTypeTable, src->dwTypeTableCount);
     return TRUE;
 }
@@ -1319,7 +1326,7 @@ static void point_gen_emit(PointGenerator *self, float dt)
     int n = dead_gen_claim(&self->flAccumulator, self->flEmitRate, dt);
     if (n <= 0)
         return;
-    const DWORD *life = (const DWORD *)((const BYTE *)self + 0x0fe4);
+    const DWORD *life = self->dwLifeTable;
     for (int i = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
         *(DWORD *)&node->flLife = life[self->dwLifeIdx];
@@ -1473,8 +1480,13 @@ static BOOL cyl_gen_copy_from(CylinderGenerator *self, const CylinderGenerator *
 {
     if (!gen_copy_base(&self->base, &src->base))
         return FALSE;
-    memcpy((BYTE *)self + 0x10, (const BYTE *)src + 0x10, 0x98 - 0x10);
-    memcpy((BYTE *)self + 0xa0, (const BYTE *)src + 0xa0, 0x3444 - 0xa0);
+    Generator base  = self->base;
+    void     *table = self->pTypeTable;
+    DWORD     count = self->dwTypeTableCount;
+    *self = *src;
+    self->base             = base;
+    self->pTypeTable       = table;
+    self->dwTypeTableCount = count;
     type_table_clone(&self->pTypeTable, &self->dwTypeTableCount, self->pEmitProb,
                      (const DWORD *)src->pTypeTable, src->dwTypeTableCount);
     return TRUE;
