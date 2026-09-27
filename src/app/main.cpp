@@ -266,7 +266,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
 
     // 3D sound, 22050 Hz, 16-bit stereo; rolloff 0.3 if it came up.
     SoundManager *snd = game->soundManager();
-    if (SoundMgr_Init(snd, 1, hWnd, 0, 2, 22050, 16, &g_logger))
+    if (snd->init(1, hWnd, 0, 2, 22050, 16, &g_logger))
         snd->cfaktSound()->apply3DRolloffParams(0.3f, DS3D_IMMEDIATE);
 
     CDM_SetWindowHandle(&g_cdAudio, hWnd);

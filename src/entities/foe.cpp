@@ -322,9 +322,9 @@ static void release(SoundManager *sm, void *obj, void *buf, int bPool)
     }
 
     if (bPool)
-        sm->releasePooledForOwner(buf, 1);
+        sm->releasePooledForOwner((VoicePool *)buf, 1);
     else
-        sm->releaseStaticForOwner(buf, 1);
+        sm->releaseStaticForOwner((CStaticSoundbuffer *)buf, 1);
 }
 
 void Foe::remove(Game *game, unsigned int idArg)
