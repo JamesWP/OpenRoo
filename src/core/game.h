@@ -1,15 +1,11 @@
-/* Game -- the one global game object (COHESION_PLAN.md Band 3).
+/* Game: the one game object, 0x51790d bytes, holding the whole game's state
+ * as sub-objects and fields at fixed offsets (game.cpp builds it).
  *
- * SKETCH.  Band 3 is last in the plan; until then this class grows one
- * field at a time, as each object class needs one.  Files not yet converted
- * still use their own G_* defines -- when one is converted, its defines are
- * deleted in favour of these accessors.
- *
- * Real fields at the game's offsets, packed; everything unknown is a gap
- * whose size is written as END - START of its neighbours.  Only the offsets
- * are asserted (layout.h), never the gaps, so splitting a gap for a new
- * field changes no existing assertion.  Unknown-meaning fields are named
- * field_<offset>; naming is RE work and happens in Ghidra first.
+ * Packed; everything not decoded is a gap whose size is written as the
+ * difference of its neighbours' offsets.  Only the offsets are asserted
+ * (layout.h), never the gaps, so splitting a gap for a new field changes no
+ * existing assertion.  A field whose meaning is not decoded is named
+ * field_<offset>.
  */
 #pragma once
 
@@ -33,7 +29,7 @@ class BridgeObject;
 class BreakableTile;
 
 /* The tick step at Game+0x170a5c: GameTick's `dt` argument, a double
- * (GameTick 0x41567c and the six Camera* handlers FLD it as one; GameTick
+ * (GameTick and the six Camera* handlers FLD it as one; GameTick
  * zeroes it while paused, state 5).  Every level object keeps a pointer to
  * it and copies it to its own +0x15 each tick.  Wrapped in a packed
  * struct so that it is 1-aligned: objects hold it at odd offsets and pass
@@ -56,7 +52,7 @@ static_assert(sizeof(SoundAssetName) == 0x10c, "SoundAssetName stride");
  * `Sound <event> <wave>` line fills entries[id] through ThemeSound_Add
  * (theme.cpp); the id is RegisterThemeSound's event number, so e.g. entry 0
  * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
- * 0x47, but the table holds 100 entries: ReleaseAll 0x440400 clears exactly
+ * 0x47, but the table holds 100 entries: ReleaseAll clears exactly
  * 100, ending at Game+0x48b12 where switchMax_ begins.  Lifecycle in
  * theme.cpp; the vtable is ours, one slot. */
 #define THEME_SOUND_COUNT 100
@@ -69,8 +65,8 @@ struct __attribute__((packed)) ThemeSoundTable {
 static_assert(sizeof(ThemeSoundTable) == 10 + 100 * 0x10c, "ThemeSoundTable size");
 
 /* The end-of-level score tally, Game+0x1404c1..+0x140543.  Six rows, each
- * with a real COUNT and SCORE (CalculateLevelScore 0x41a760) and a SHOWN
- * count and score that AnimateScoreTallyStages 0x41a970 counts up from zero
+ * with a real COUNT and SCORE (CalculateLevelScore) and a SHOWN
+ * count and score that AnimateScoreTallyStages counts up from zero
  * towards them.  The arrays are in offset order; the animation's stages
  * visit FOES before TIME.  The two gaps are never touched by either. */
 enum TallyRow {
@@ -115,12 +111,10 @@ KAROO_LAYOUT_CHECKS(ScoreTally)
     KAROO_LAYOUT_SIZE(0x140543 - 0x1404c1);
 }
 
-/* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport 0x41a280 loads
- * once, Game+0x13cc5c..+0x13cc84.  They are GAME's: the SoundManager is
- * 0xb4 bytes and ends exactly here (none of its ctor 0x4430e0, dtor
- * 0x443180, purge 0x443520, init 0x4431f0 or setup 0x4439d0 touches past
- * its second list at +0xa4), and only Game code writes them.  Ghidra's
- * 288-byte SoundManager struct over-reaches into them. */
+/* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport loads once,
+ * Game+0x13cc5c..+0x13cc84.  They are the Game's, not the SoundManager's:
+ * the SoundManager is 0xb4 bytes and ends exactly here (none of its methods
+ * touches past its second list at +0xa4), and only Game code writes them. */
 struct CStaticSoundbuffer;
 struct VoicePool;
 struct __attribute__((packed)) FixedSounds {
@@ -161,9 +155,8 @@ class __attribute__((packed)) Game {
 public:
     static const int ORIGIN = 0;
 
-    /* The game's one Game object (NULL until WinMain has built it).  Was
-     * the global pointer 0x0046c498; a static member does not touch the
-     * layout. */
+    /* The one Game object, NULL until WinMain has built it.  A static
+     * member, so it is outside the layout. */
     static inline Game *s_instance = nullptr;
     static Game *instance()           { return s_instance; }
     static void set_instance(Game* g) { s_instance = g; }
@@ -276,7 +269,7 @@ public:
     const MenuTree *menu() const                     { return &menu_; }
     /* Game's own debounce key (distinct from MenuTree's): GameTick,
      * HandleKeypress, the tally and the cheats ignore a key equal to it
-     * until it is released.  debounceRef() is for the DEB lvalue aliases. */
+     * until it is released.  debounceRef() is the field as an lvalue. */
     unsigned char  debounce() const                  { return debounce_; }
     void           setDebounce(unsigned char k)      { debounce_ = k; }
     unsigned char &debounceRef()                     { return debounce_; }
@@ -297,7 +290,7 @@ public:
      * over, 3 level completed, 4 loaded (the flythrough and its "press
      * enter" screen), 7 quitting.  6 is high-score name entry (GameTick
      * sets it after InsertScoreIntoHighScoreTable); 5 is not decoded.
-     * stateRef() is for the files that alias it as a STATE lvalue. */
+     * stateRef() is the field as an lvalue. */
     unsigned char  state() const                     { return state_; }
     void           setState(unsigned char s)         { state_ = s; }
     unsigned char &stateRef()                        { return state_; }
@@ -375,8 +368,8 @@ public:
 
     /* ── camera and controls ────────────────────────────────────────── */
     /* 0 = follow the player; nonzero = view from the separate eye at
-     * +0x2ab580 (FramePose_Player 0x404120 / UpdateViewTransform), and 2 also spins the
-     * yaw -- the menus and the tally.  Checkpoints restore it. */
+     * +0x2ab580 (FramePose_Player / UpdateViewTransform), and 2 also spins
+     * the yaw -- the menus and the tally.  Checkpoints restore it. */
     unsigned char  cameraMode() const                { return cameraMode_; }
     void           setCameraMode(unsigned char m)    { cameraMode_ = m; }
     /* The distance the camera eases towards (UpdateViewTransform subtracts
@@ -385,7 +378,7 @@ public:
     float          cameraDistance() const            { return cameraDistance_; }
     void           setCameraDistance(float d)        { cameraDistance_ = d; }
     /* The controls menu's camera option: 1 = the camera turns with the
-     * player (UpdateViewTransform, FramePose_Player 0x404120).  GameTick forces it to 1
+     * player (UpdateViewTransform, FramePose_Player).  GameTick forces it to 1
      * while Player+0xea is set, parking the choice +10 at +0x3215d. */
     unsigned char  cameraTurnsWithPlayer() const     { return config_.cameraTurnsWithPlayer(); }
     void           setCameraTurnsWithPlayer(unsigned char on) { config_.setCameraTurnsWithPlayer(on); }
@@ -402,15 +395,14 @@ public:
     /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
     unsigned short joyDeadzone() const               { return config_.joyDeadzone(); }
     /* The separate eye the camera views from when cameraMode() is nonzero
-     * (FramePose_Player 0x404120 makes it the camera's focus, z negated);
+     * (FramePose_Player makes it the camera's focus, z negated);
      * checkpoints restore it from the script player. */
     void           setCameraEye(int i, float v)      { cameraEye_[i] = v; }
     float          cameraEye(int i) const            { return cameraEye_[i]; }
-    /* A float vector RenderGameFrame's scripted-camera branch (0x427059,
-     * taken instead of UpdateViewTransform when Game+0x196086 is set) reads
-     * beside the eye -- not 0x404120, as this comment used to say;
-     * checkpoints restore it from the script player's spline point, and the
-     * level builder seeds it {0, 1000, 0}.  Not decoded. */
+    /* A float vector RenderGameFrame's scripted-camera branch (taken
+     * instead of UpdateViewTransform when Game+0x196086 is set) reads beside
+     * the eye; checkpoints restore it from the script player's spline point,
+     * and the level builder seeds it {0, 1000, 0}.  Not decoded. */
     void           setField13cc94(int i, float v)    { field_13cc94_[i] = v; }
     float          field13cc94(int i) const          { return field_13cc94_[i]; }
     /* +0x13cca4 is the zoom distance the Zoom In/Out actions step (clamped
@@ -418,7 +410,7 @@ public:
      * when the overview ends.  +0x13cca8 is the overview flag the OverView
      * action raises (with cameraDistance 40); GameTick and the level
      * builder clear it.  +0x13cc90 is set by both zoom actions and cleared
-     * by the same two; its reader is not decoded. */
+     * by the same two; PRESERVED: nothing reads it. */
     void           setField13cc90(int v)             { field_13cc90_ = v; }
     float          zoomDistance() const              { return zoomDistance_; }
     void           setZoomDistance(float d)          { zoomDistance_ = d; }
@@ -434,7 +426,7 @@ public:
     unsigned char *cheatBuffer()                     { return cheatBuffer_; }
     void           setJoyDeadzone(unsigned short p)  { config_.setJoyDeadzone(p); }
 
-    /* ── the tally's inputs (CalculateLevelScore 0x41a760) ─────────── */
+    /* ── the tally's inputs (CalculateLevelScore) ────────────────────── */
     /* Death restarts on this level: GameTick adds one each time ENTER
      * restarts it after a death, and zeroes it when the level ends (as do
      * ClearGameState and the level-skip cheat).  While it is nonzero the
@@ -579,16 +571,16 @@ public:
 
 
     /* ── the lifecycle (game.cpp) ───────────────────────────────────────
-     * Game::Load 0x4145c0 is the constructor: build every member, read the
-     * .gam, save slots, Karoo.cfg and high scores, then enter the first
-     * level.  Destruct 0x414b70 saves the scores and config and tears it
-     * all down.  The vtable is ours (one slot; 0x45d3b8 is a tripwire). */
+     * construct() builds every member, reads the .gam, save slots,
+     * Karoo.cfg and high scores, then enters the first level.  destruct()
+     * saves the scores and config and tears it all down.  The vtable has
+     * one slot, the scalar deleting destructor. */
     Game *construct(const char *gameName);
     void  destruct();
 
 private:
-    int   loadGameFile(const char *name);   /* LoadGameFile 0x41cbf0 */
-    void  releaseAllSounds();               /* ReleaseAllSoundBuffers 0x41b3b0 */
+    int   loadGameFile(const char *name);   /* the .gam: the level names */
+    void  releaseAllSounds();
 
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
@@ -710,7 +702,7 @@ private:
      * at tallyDone_.  Its header holds the time limit (GameTick times the
      * level out at timeLimit*1000 ms), the ms of play (CalculateLevelScore
      * pays the unused seconds) and the gem quota (CalculateLevelScore
-     * 0x41a760 pays 5 a gem up to it and 10 per gem beyond). */
+     * pays 5 a gem up to it and 10 per gem beyond). */
     LevelMap      map_;                                   /* 0x2ab58d */
     int           tallyDone_;                             /* 0x517909 */
 };
@@ -808,9 +800,9 @@ KAROO_LAYOUT_CHECKS(Game)
     KAROO_LAYOUT_AT(field_13cc94_,     0x13cc94);
 }
 
-/* The lifecycle exports (game.cpp): 0x4145c0 (thiscall, RET 4, returns
- * this), 0x414b70, and 0x414b50 -- slot 0 of our Game table, which WinMain's
- * `delete game` calls through. */
+/* The lifecycle (game.cpp): construct (returns self), destruct, and the
+ * scalar deleting destructor, slot 0 of the vtable, which WinMain's
+ * teardown calls. */
 extern "C" __declspec(dllexport) Game *__attribute__((thiscall))
 Game_Construct(Game *self, const char *gameName);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
