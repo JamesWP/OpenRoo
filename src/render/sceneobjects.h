@@ -15,8 +15,9 @@ class Game;
 class ThemeObjectTypeSlot;
 class RenderDevice;
 
-/* The kind-2 quad vertex: FVF 0x242, XYZ | DIFFUSE | TEX2.  The game
- * animates and draws the SECOND coordinate pair as set 0. */
+/* The kind-2 quad vertex: position, diffuse and two UV pairs.  The game
+ * animates the SECOND pair and draws it (strided, scenequad.cpp) as the only
+ * set; the first is never sampled. */
 struct SceneQuadVertex {                  /* naturally aligned; no packing needed */
     float x, y, z;
     DWORD diffuse;

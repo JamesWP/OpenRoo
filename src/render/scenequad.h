@@ -3,5 +3,5 @@
 #pragma once
 #include "renderdevice.h"
 
-/* A four-vertex Diffuse2 triangle strip from v. */
+/* A Diffuse1 triangle strip of count vertices from v. */
 bool SceneQuad_Draw(RenderDevice *dev, StridedVertices *v, uint32_t count);

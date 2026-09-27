@@ -1,9 +1,10 @@
 /* Scene_RenderSceneObjects's strided draw for kind-2 (quad) theme
  * objects, called from sceneobjects.cpp once per sub-object per visible tile.
  *
- * VertexFormat::Diffuse2 declares two texture-coordinate sets but the caller
- * only fills set 0; RenderDevice::DrawStrided points the unfilled set at set
- * 0's array so the driver never reads unfilled data (CRASH.md).
+ * The quads are stored as SceneQuadVertex (two UV pairs) but only the second
+ * pair is ever sampled, so they are drawn strided as VertexFormat::Diffuse1
+ * with that pair as set 0.  (Drawing them as Diffuse2 with set 1 unfilled
+ * was a wild read -- CRASH.md.)
  *
  * KAROO_SCENEQUAD_FX visual-proof modes (read by value, never by presence):
  *   drop  skip the draw entirely -- the animated billboard quads vanish;
@@ -50,5 +51,5 @@ bool SceneQuad_Draw(RenderDevice *dev, StridedVertices *v, uint32_t count)
             *(DWORD *)((char *)v->diffuse.data + i * v->diffuse.stride) = 0xFFFF00FF;
     }
 
-    return dev->DrawStrided(Prim::TriangleStrip, VertexFormat::Diffuse2, v, count);
+    return dev->DrawStrided(Prim::TriangleStrip, VertexFormat::Diffuse1, v, count);
 }
