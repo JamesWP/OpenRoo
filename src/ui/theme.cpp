@@ -316,7 +316,7 @@ static_assert(sizeof(kReleaseOrder) / sizeof(kReleaseOrder[0]) == THEME_OBJ_COUN
 extern "C" __declspec(dllexport) void __cdecl
 Theme_ReleaseBlock(ThemeAssetBlock *block)
 {
-    TextureManager_ReleaseAll(&g_textureManager);
+    g_textureManager.releaseAll();
     g_modelManager.clearReleaseFree();
     for (ThemeObjectType t : kReleaseOrder)
         Theme_ReleaseSlot(&block->slots[t]);
@@ -544,7 +544,7 @@ struct ThemeParser {
     SceneTexture *loadTexture(char *name, char *alphaTok)
     {
         DWORD alpha = is(alphaTok, "alpha") ? 1 : 0;
-        return TextureManager_GetOrLoad(&g_textureManager, d3d,
+        return g_textureManager.getOrLoad(d3d,
                                         name, alpha, 0, 0);
     }
 
@@ -841,7 +841,7 @@ void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec
         open(sub, rec);
         DWORD alpha = is(tok[2], "alpha") ? 1 : 0;
         if (slot)
-            sub.at->pTexture = TextureManager_GetOrLoad(&g_textureManager, d3d, tok[1], alpha, 0, 0);
+            sub.at->pTexture = g_textureManager.getOrLoad(d3d, tok[1], alpha, 0, 0);
     } else if (is(tok[0], "position")) {
         if (ntok > 3 && slot) {
             rec->flPosX = atof_f(tok[1]); rec->flPosY = atof_f(tok[2]); rec->flPosZ = atof_f(tok[3]);
