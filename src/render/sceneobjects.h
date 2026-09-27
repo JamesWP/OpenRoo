@@ -1,5 +1,4 @@
-/* sceneobjects -- Game::RenderSceneObjects 0x4095f0 (the levelplacements
- * Game TU), the per-object draw dispatcher every theme object type goes
+/* sceneobjects -- the per-object draw dispatcher every theme object type goes
  * through: models (kind 1), quads (kind 2) and billboards (kind 3).
  *
  * __cdecl, twelve dwords (the callers ADD ESP,0x30):
@@ -7,8 +6,7 @@
  *   and draws them), positions[count], rotations[count], count, the theme
  *   slot, the Direct3D, now (a double), the animation time (a float), the
  *   animation code, and the frame's elapsed ms (unsigned).
- * Callers: RenderGameFrame's object passes, the lift and slide wrappers
- * 0x408870 / 0x408920. */
+ * Callers: RenderGameFrame's object passes, the lift and slide wrappers. */
 #pragma once
 #include <windows.h>
 #include "d3dmath.h"
