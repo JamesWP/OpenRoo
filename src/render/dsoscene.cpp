@@ -64,7 +64,9 @@ static float path_param(double t, DWORD period, double bias)
 static void eval_path(const SceneObject *o, float t, Vec3 *out)
 {
     const LinkedList *cp = &o->spline.controlPointList;
-    bezier_eval((const ListNodeM *)(const void *)cp->head(), cp->count(), t, out);
+    // ListNodeM is LinkedListNode's first two fields.
+    const void *head = cp->head();
+    bezier_eval((const ListNodeM *)head, cp->count(), t, out);
 }
 
 static void select_texture(RenderDevice *dev, const SceneObject *o)
