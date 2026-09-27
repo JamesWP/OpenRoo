@@ -78,10 +78,9 @@ static char *ani_strlwr(char *s)
     return s;
 }
 
-extern "C" __declspec(dllexport) int __cdecl
-Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger)
+int AnimTable::load(const char *path, GameLogger *logger)
 {
-    unsigned char *table = (unsigned char *)dest;
+    unsigned char *table = (unsigned char *)this;
     char line[ANI_LINE_MAX];
     FILE *fp;
     static int logged = 0;
@@ -138,15 +137,15 @@ Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger)
         if (slot == NULL)
             continue;
 
-        slot->firstFrame = atoi(s_tokens[1]);
-        slot->numFrames  = atoi(s_tokens[2]);
-        slot->fps        = atoi(s_tokens[3]);
+        slot->firstFrame_ = atoi(s_tokens[1]);
+        slot->numFrames_  = atoi(s_tokens[2]);
+        slot->fps_        = atoi(s_tokens[3]);
 
         if (fx_freeze())
-            slot->numFrames = 1;  // hold the first frame
+            slot->numFrames_ = 1;  // hold the first frame
 
         if (count > 4 && strcmp(ani_strlwr(s_tokens[4]), "r") == 0)
-            slot->reverse = 1;
+            slot->reverse_ = 1;
     }
 
     fclose(fp);
@@ -193,29 +192,28 @@ Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger)
  *
  * The four speed_/slow_ slots and celebration have no code, so nothing can
  * reach them through this function. */
-extern "C" __declspec(dllexport) AnimSlot * __cdecl
-Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code)
+AnimSlot *AnimTable::lookup(unsigned int code)
 {
     switch (code & 0xff) {
-    case ANIM_WALK_FORWARD:     return &table->walkForward;
-    case ANIM_WALK_BACKWARD:    return &table->walkBackward;
-    case ANIM_JUMP:             return &table->jump;
-    case ANIM_GLUE:             return &table->glue;
-    case ANIM_GHOST:            return &table->ghost;
-    case ANIM_ICE:              return &table->ice;
-    case ANIM_FALL:             return &table->fall;
-    case ANIM_PARAGLIDE:        return &table->paraglide;
-    case ANIM_SLIDE:            return &table->slide;
-    case ANIM_IDLE1:            return &table->idle1;
-    case ANIM_IDLE2:            return &table->idle2;
-    case ANIM_FIELD_STAIR_UP:   return &table->fieldStairUp;
-    case ANIM_FIELD_STAIR_DOWN: return &table->fieldStairDown;
-    case ANIM_STAIR_STAIR_UP:   return &table->stairStairUp;
-    case ANIM_STAIR_STAIR_DOWN: return &table->stairStairDown;
-    case ANIM_STAIR_FIELD_UP:   return &table->stairFieldUp;
-    case ANIM_STAIR_FIELD_DOWN: return &table->stairFieldDown;
-    case ANIM_TURN_LEFT:        return &table->turnLeft;
-    case ANIM_TURN_RIGHT:       return &table->turnRight;
+    case ANIM_WALK_FORWARD:     return &walkForward_;
+    case ANIM_WALK_BACKWARD:    return &walkBackward_;
+    case ANIM_JUMP:             return &jump_;
+    case ANIM_GLUE:             return &glue_;
+    case ANIM_GHOST:            return &ghost_;
+    case ANIM_ICE:              return &ice_;
+    case ANIM_FALL:             return &fall_;
+    case ANIM_PARAGLIDE:        return &paraglide_;
+    case ANIM_SLIDE:            return &slide_;
+    case ANIM_IDLE1:            return &idle1_;
+    case ANIM_IDLE2:            return &idle2_;
+    case ANIM_FIELD_STAIR_UP:   return &fieldStairUp_;
+    case ANIM_FIELD_STAIR_DOWN: return &fieldStairDown_;
+    case ANIM_STAIR_STAIR_UP:   return &stairStairUp_;
+    case ANIM_STAIR_STAIR_DOWN: return &stairStairDown_;
+    case ANIM_STAIR_FIELD_UP:   return &stairFieldUp_;
+    case ANIM_STAIR_FIELD_DOWN: return &stairFieldDown_;
+    case ANIM_TURN_LEFT:        return &turnLeft_;
+    case ANIM_TURN_RIGHT:       return &turnRight_;
     default:                    return NULL;  // code 0 included
     }
 }
@@ -229,25 +227,25 @@ Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code)
  * in a .ani reads as a huge positive number.  That changes the result, so the
  * casts are deliberate.  The float-to-int step truncates toward zero. */
 
-int Anim_FrameOnClock(const AnimSlot *slot, double timeMs)
+int AnimSlot::frameOnClock(double timeMs) const
 {
-    if (slot == NULL || slot->numFrames == 0)
+    if (this == NULL || numFrames_ == 0)
         return 0;
 
-    double count = (double)(unsigned)slot->numFrames;
-    double v = (double)(unsigned)slot->fps * timeMs * 0.001 / count;
+    double count = (double)(unsigned)numFrames_;
+    double v = (double)(unsigned)fps_ * timeMs * 0.001 / count;
     return (int)(fmod(v, 1.0) * count);
 }
 
-int Anim_FrameAtPhase(const AnimSlot *slot, float phase)
+int AnimSlot::frameAtPhase(float phase) const
 {
-    if (slot == NULL || slot->numFrames == 0)
+    if (this == NULL || numFrames_ == 0)
         return 0;
 
-    double count = (double)(unsigned)slot->numFrames;
-    double first = (double)(unsigned)slot->firstFrame;
+    double count = (double)(unsigned)numFrames_;
+    double first = (double)(unsigned)firstFrame_;
 
-    if (slot->reverse)
+    if (reverse_)
         return (int)(first - count * (double)phase);
     return (int)(count * (double)phase + first);
 }

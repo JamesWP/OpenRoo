@@ -77,8 +77,7 @@ void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *lo
             o->billboardRadius = r->billboardSize;
 
         if (r->animationFile[0] != 0
-            && (char)Ani_LoadAnimationFile(&o->anim,
-                                           r->animationFile, logger))
+            && (char)o->anim.load(r->animationFile, logger))
             o->animLoaded = 1;
 
         // Blend modes 5/6 (SRCALPHA / INVSRCALPHA) ask for an alpha surface.

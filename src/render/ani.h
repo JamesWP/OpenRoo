@@ -39,23 +39,40 @@
 class GameLogger;
 
 /* One keyword's entry.  Named from the .ani header comment quoted above. */
-struct __attribute__((packed)) AnimSlot {
+class __attribute__((packed)) AnimSlot {
+public:
     static const int ORIGIN = 0;
 
-    int firstFrame;   /* +0x00  first mesh frame of the range            */
-    int numFrames;    /* +0x04  frames in it; 0 means "no animation"     */
-    int fps;          /* +0x08  playback rate, frames per second         */
-    int reverse;      /* +0x0c  the "r" flag: play the range backwards   */
+    /* The clock form: the model has no movement states, so its single
+     * walk_forward range runs continuously off the millisecond clock. */
+    int frameOnClock(double timeMs) const;
 
+    /* The phase form: the entity's own animation state supplies a phase in
+     * [0,1] across the slot's range, forwards or (with "r") backwards.  No
+     * shipped .ani sets the flag, so the reverse arm is dead for the shipped
+     * content. */
+    int frameAtPhase(float phase) const;
+
+    int firstFrame() const { return firstFrame_; }
+    int numFrames() const { return numFrames_; }
+    int fps() const { return fps_; }
+    int reverse() const { return reverse_; }
+
+private:
+    friend class AnimTable;  // the loader fills the slots
+    int firstFrame_;   /* +0x00  first mesh frame of the range            */
+    int numFrames_;    /* +0x04  frames in it; 0 means "no animation"     */
+    int fps_;          /* +0x08  playback rate, frames per second         */
+    int reverse_;      /* +0x0c  the "r" flag: play the range backwards   */
     KAROO_LAYOUT_REGISTER(AnimSlot);
 };
 
 KAROO_LAYOUT_CHECKS(AnimSlot)
 {
-    KAROO_LAYOUT_AT(firstFrame, 0x0);
-    KAROO_LAYOUT_AT(numFrames,  0x4);
-    KAROO_LAYOUT_AT(fps,        0x8);
-    KAROO_LAYOUT_AT(reverse,    0xc);
+    KAROO_LAYOUT_AT(firstFrame_, 0x0);
+    KAROO_LAYOUT_AT(numFrames_,  0x4);
+    KAROO_LAYOUT_AT(fps_,        0x8);
+    KAROO_LAYOUT_AT(reverse_,    0xc);
     KAROO_LAYOUT_SIZE(0x10);
 }
 
@@ -67,53 +84,61 @@ KAROO_LAYOUT_CHECKS(AnimSlot)
  * animation code, so LookupAnimDescriptor can never return them.  They are
  * kept because the table's shape is the file's: the .ani files all carry the
  * keywords (bare, with no numbers, in every shipped file). */
-struct __attribute__((packed)) AnimTable {
+class __attribute__((packed)) AnimTable {
+public:
     static const int ORIGIN = 0;
 
-    AnimSlot walkForward;      /* +0x000 */
-    AnimSlot walkBackward;     /* +0x010 */
-    AnimSlot speedForward;     /* +0x020  unreachable: no code */
-    AnimSlot speedBackward;    /* +0x030  unreachable: no code */
-    AnimSlot slowForward;      /* +0x040  unreachable: no code */
-    AnimSlot slowBackward;     /* +0x050  unreachable: no code */
-    AnimSlot celebration;      /* +0x060  unreachable: no code */
-    AnimSlot jump;             /* +0x070 */
-    AnimSlot glue;             /* +0x080 */
-    AnimSlot ghost;            /* +0x090 */
-    AnimSlot ice;              /* +0x0a0 */
-    AnimSlot fall;             /* +0x0b0 */
-    AnimSlot paraglide;        /* +0x0c0 */
-    AnimSlot slide;            /* +0x0d0 */
-    AnimSlot idle1;            /* +0x0e0 */
-    AnimSlot idle2;            /* +0x0f0 */
-    AnimSlot fieldStairUp;     /* +0x100 */
-    AnimSlot fieldStairDown;   /* +0x110 */
-    AnimSlot stairStairUp;     /* +0x120 */
-    AnimSlot stairStairDown;   /* +0x130 */
-    AnimSlot stairFieldUp;     /* +0x140 */
-    AnimSlot stairFieldDown;   /* +0x150 */
-    AnimSlot turnLeft;         /* +0x160 */
-    AnimSlot turnRight;        /* +0x170 */
+    /* Fills the table from a .ani file. */
+    int load(const char *path, GameLogger *logger);
 
+    /* The slot for an animation code, or NULL for a code the table has no
+     * slot for. */
+    AnimSlot *lookup(unsigned int code);
+
+private:
+    AnimSlot walkForward_;      /* +0x000 */
+    AnimSlot walkBackward_;     /* +0x010 */
+    AnimSlot speedForward_;     /* +0x020  unreachable: no code */
+    AnimSlot speedBackward_;    /* +0x030  unreachable: no code */
+    AnimSlot slowForward_;      /* +0x040  unreachable: no code */
+    AnimSlot slowBackward_;     /* +0x050  unreachable: no code */
+    AnimSlot celebration_;      /* +0x060  unreachable: no code */
+    AnimSlot jump_;             /* +0x070 */
+    AnimSlot glue_;             /* +0x080 */
+    AnimSlot ghost_;            /* +0x090 */
+    AnimSlot ice_;              /* +0x0a0 */
+    AnimSlot fall_;             /* +0x0b0 */
+    AnimSlot paraglide_;        /* +0x0c0 */
+    AnimSlot slide_;            /* +0x0d0 */
+    AnimSlot idle1_;            /* +0x0e0 */
+    AnimSlot idle2_;            /* +0x0f0 */
+    AnimSlot fieldStairUp_;     /* +0x100 */
+    AnimSlot fieldStairDown_;   /* +0x110 */
+    AnimSlot stairStairUp_;     /* +0x120 */
+    AnimSlot stairStairDown_;   /* +0x130 */
+    AnimSlot stairFieldUp_;     /* +0x140 */
+    AnimSlot stairFieldDown_;   /* +0x150 */
+    AnimSlot turnLeft_;         /* +0x160 */
+    AnimSlot turnRight_;        /* +0x170 */
     KAROO_LAYOUT_REGISTER(AnimTable);
 };
 
 KAROO_LAYOUT_CHECKS(AnimTable)
 {
-    KAROO_LAYOUT_AT(walkForward,    0x000);
-    KAROO_LAYOUT_AT(jump,           0x070);
-    KAROO_LAYOUT_AT(glue,           0x080);
-    KAROO_LAYOUT_AT(ghost,          0x090);
-    KAROO_LAYOUT_AT(ice,            0x0a0);
-    KAROO_LAYOUT_AT(fall,           0x0b0);
-    KAROO_LAYOUT_AT(paraglide,      0x0c0);
-    KAROO_LAYOUT_AT(slide,          0x0d0);
-    KAROO_LAYOUT_AT(idle1,          0x0e0);
-    KAROO_LAYOUT_AT(idle2,          0x0f0);
-    KAROO_LAYOUT_AT(fieldStairUp,   0x100);
-    KAROO_LAYOUT_AT(stairFieldDown, 0x150);
-    KAROO_LAYOUT_AT(turnLeft,       0x160);
-    KAROO_LAYOUT_AT(turnRight,      0x170);
+    KAROO_LAYOUT_AT(walkForward_,    0x000);
+    KAROO_LAYOUT_AT(jump_,           0x070);
+    KAROO_LAYOUT_AT(glue_,           0x080);
+    KAROO_LAYOUT_AT(ghost_,          0x090);
+    KAROO_LAYOUT_AT(ice_,            0x0a0);
+    KAROO_LAYOUT_AT(fall_,           0x0b0);
+    KAROO_LAYOUT_AT(paraglide_,      0x0c0);
+    KAROO_LAYOUT_AT(slide_,          0x0d0);
+    KAROO_LAYOUT_AT(idle1_,          0x0e0);
+    KAROO_LAYOUT_AT(idle2_,          0x0f0);
+    KAROO_LAYOUT_AT(fieldStairUp_,   0x100);
+    KAROO_LAYOUT_AT(stairFieldDown_, 0x150);
+    KAROO_LAYOUT_AT(turnLeft_,       0x160);
+    KAROO_LAYOUT_AT(turnRight_,      0x170);
     KAROO_LAYOUT_SIZE(0x180);
 }
 
@@ -142,14 +167,6 @@ enum AnimCode {
     ANIM_IDLE2             = 0xfb
 };
 
-/* ani.cpp: __cdecl, and a null descriptor for a code the table has no slot
- * for. */
-extern "C" __declspec(dllexport) int __cdecl
-Ani_LoadAnimationFile(AnimTable *dest, const char *path, GameLogger *logger);
-
-extern "C" __declspec(dllexport) AnimSlot * __cdecl
-Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code);
-
 /* ── The two evaluators ───────────────────────────────────────────────────
  *
  * Both take a slot and return a mesh frame index.  Which one a model gets is
@@ -158,12 +175,3 @@ Ani_LookupAnimDescriptor(AnimTable *table, unsigned int code);
  * dsoscene.cpp open-codes the clock form as fmod(v, numFrames) rather than
  * fmod(v/n, 1)*n. */
 
-/* The clock form: the model has no movement states, so its single
- * walk_forward range runs continuously off the millisecond clock. */
-int Anim_FrameOnClock(const AnimSlot *slot, double timeMs);
-
-/* The phase form: the entity's own animation state supplies a phase in
- * [0,1] across the slot's range, forwards or (with "r") backwards.  No
- * shipped .ani sets the flag, so the reverse arm is dead for the shipped
- * content. */
-int Anim_FrameAtPhase(const AnimSlot *slot, float phase);

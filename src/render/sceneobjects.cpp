@@ -109,22 +109,22 @@ static unsigned int anim_frame(ThemeLevelObject *rec, double now, float animTime
                                unsigned int animCode)
 {
     if (rec->bNoMoveStates) {
-        AnimSlot *a = Ani_LookupAnimDescriptor(&rec->animTable, 0x14);
+        AnimSlot *a = rec->animTable.lookup(0x14);
         if (a == NULL)
             return 0;
-        double n = (double)(unsigned int)a->numFrames;
-        double v = (double)(unsigned int)a->fps * now * 0.001 / n;
+        double n = (double)(unsigned int)a->numFrames();
+        double v = (double)(unsigned int)a->fps() * now * 0.001 / n;
         return (unsigned int)(long long)(fmod(v, 1.0) * n);
     }
-    AnimSlot *a = Ani_LookupAnimDescriptor(&rec->animTable, animCode);
-    if (a == NULL || a->numFrames == 0)
+    AnimSlot *a = rec->animTable.lookup(animCode);
+    if (a == NULL || a->numFrames() == 0)
         return 0;
     double v;
-    if (a->reverse != 0)
-        v = (double)(unsigned int)a->firstFrame
-          - (double)(unsigned int)a->numFrames * animTime;
+    if (a->reverse() != 0)
+        v = (double)(unsigned int)a->firstFrame()
+          - (double)(unsigned int)a->numFrames() * animTime;
     else
-        v = (double)(unsigned int)a->numFrames * animTime + (double)a->firstFrame;
+        v = (double)(unsigned int)a->numFrames() * animTime + (double)a->firstFrame();
     return (unsigned int)(long long)v;
 }
 

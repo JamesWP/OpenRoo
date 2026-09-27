@@ -733,7 +733,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         rec.at->kind  = THEME_KIND_MODEL;
         rec.at->pMesh = mesh;
         rec.at->wrapper.setMesh(mesh);
-        Ani_LoadAnimationFile(&rec.at->animTable, tok[2], logger);
+        rec.at->animTable.load(tok[2], logger);
         if (is(tok[3], "nomovestates"))
             rec.at->bNoMoveStates = 1;
         return;

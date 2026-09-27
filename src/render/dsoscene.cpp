@@ -116,12 +116,12 @@ static DWORD animation_frame(const SceneObject *o, double t)
     // LookupAnimDescriptor(anim, 0x14) returns the table's first slot, so no
     // lookup is needed, and it can never be NULL.
     const AnimSlot *slot = (const AnimSlot *)&o->anim;
-    if (slot->numFrames == 0)
+    if (slot->numFrames() == 0)
         return 0;
     // The same frame as Anim_FrameOnClock, written as fmod(v, n) rather than
     // fmod(v/n, 1)*n.
-    double v = t * K_ANIM_SCALE * (double)(unsigned)slot->fps;
-    double r = m_fmod(v, (double)(unsigned)slot->numFrames);
+    double v = t * K_ANIM_SCALE * (double)(unsigned)slot->fps();
+    double r = m_fmod(v, (double)(unsigned)slot->numFrames());
     return (DWORD)(unsigned short)(int)r;  // truncated to 16 bits
 }
 
