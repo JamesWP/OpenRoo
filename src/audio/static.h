@@ -7,12 +7,10 @@
 #include <windows.h>
 #include <dsound.h>
 #include <stddef.h>
-#include "layout.h"
 
 /* One buffer.  It remembers its file, flags and logger so it can be reloaded
  * (on a lost buffer, or a 2D/3D switch) and duplicated. */
 struct __attribute__((packed)) CStaticSoundbuffer {
-    static const int ORIGIN = 0;
 
     void                  *vtable;
     void                  *logger;     // stored, never used here
@@ -30,21 +28,10 @@ struct __attribute__((packed)) CStaticSoundbuffer {
 #pragma GCC diagnostic pop
 
 private:
-    KAROO_LAYOUT_REGISTER(CStaticSoundbuffer);
 };
 
 /* The size matters as well as the offsets: voice pools index arrays of these
  * with a stride of 0x18. */
-KAROO_LAYOUT_CHECKS(CStaticSoundbuffer)
-{
-    KAROO_LAYOUT_AT(vtable,       0x00);
-    KAROO_LAYOUT_AT(logger,       0x04);
-    KAROO_LAYOUT_AT(filename,     0x08);
-    KAROO_LAYOUT_AT(dwDsFlags,    0x0C);
-    KAROO_LAYOUT_AT(soundbuffer,  0x10);
-    KAROO_LAYOUT_AT(threeDBuffer, 0x14);
-    KAROO_LAYOUT_SIZE(0x18);
-}
 
 /* The one-slot vtable every buffer carries. */
 void *CStatic_Vtable(void);

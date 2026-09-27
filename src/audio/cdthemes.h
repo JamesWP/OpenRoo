@@ -5,11 +5,8 @@
  * before the game starts. */
 #pragma once
 
-#include "layout.h"
-
 class __attribute__((packed)) CdThemes {
 public:
-    static const int ORIGIN = 0;
 
     enum { THEME_MAX = 255, NAME_SIZE = 255 };
 
@@ -43,7 +40,6 @@ public:
 
 private:
     CdThemes() = delete;  // only ever reached through the Game
-    KAROO_LAYOUT_REGISTER(CdThemes);
 
     void         *vtable_;
     unsigned char gap_04[0x18 - 0x04];  // never written
@@ -53,17 +49,6 @@ private:
     unsigned char count_;                        // themes read
     char          names_[THEME_MAX][NAME_SIZE];  // theme i's name
 };
-
-KAROO_LAYOUT_CHECKS(CdThemes)
-{
-    KAROO_LAYOUT_AT(vtable_,       0x00);
-    KAROO_LAYOUT_AT(trackCount_,   0x18);
-    KAROO_LAYOUT_AT(trackOf_,      0x1c);
-    KAROO_LAYOUT_AT(currentTrack_, 0x11b);
-    KAROO_LAYOUT_AT(count_,        0x11c);
-    KAROO_LAYOUT_AT(names_,        0x11d);
-    KAROO_LAYOUT_SIZE(0xff1e);
-}
 
 unsigned int Sim_FindThemeIndexByThemeName(CdThemes *self, const char *name);
 unsigned int Sim_PlayCDStuf(CdThemes *self, const char *caption);

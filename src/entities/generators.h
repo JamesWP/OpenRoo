@@ -10,7 +10,6 @@
 #include <windows.h>
 #include <stddef.h>
 #include "particles.h"
-#include "layout.h"
 #include "explodedebris.h"
 
 /* Vtable slot counts for Generator and Environment; each class's vtable

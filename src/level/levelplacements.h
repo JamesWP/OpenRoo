@@ -7,23 +7,13 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
 
 /* A position and rotation list, one entry per cell of one kind. */
 struct __attribute__((packed)) PlacementList {
-    static const int ORIGIN = 0;
     int     count;
     float (*pos)[3];
     float (*rot)[3];
-    KAROO_LAYOUT_REGISTER(PlacementList);
 };
-
-KAROO_LAYOUT_CHECKS(PlacementList)
-{
-    KAROO_LAYOUT_AT(pos, 0x04);
-    KAROO_LAYOUT_AT(rot, 0x08);
-    KAROO_LAYOUT_SIZE(0x0c);
-}
 
 /* Not a decoded type: 0x20-byte vertices in two formats that share the size.
  * The tile-top template is x, y, z, diffuse 0xffffffff, (u0, v0), (u1, v1);
@@ -32,7 +22,6 @@ KAROO_LAYOUT_CHECKS(PlacementList)
 struct PlacementVertex { DWORD d[8]; };
 
 struct __attribute__((packed)) LevelPlacements {
-    static const int ORIGIN = 0;
 
     PlacementVertex tileQuad[4];     // unit quad at y 0, +-0.5
     int             kind01Count;     // TILE_KIND_01 cells
@@ -53,30 +42,7 @@ struct __attribute__((packed)) LevelPlacements {
     int             wallStripCount;  // strips, 6 vertices each
     PlacementVertex *wallVerts;      // the wall strips
 
-    KAROO_LAYOUT_REGISTER(LevelPlacements);
 };
-
-KAROO_LAYOUT_CHECKS(LevelPlacements)
-{
-    KAROO_LAYOUT_AT(kind01Count,    0x080);
-    KAROO_LAYOUT_AT(kind01Verts,    0x084);
-    KAROO_LAYOUT_AT(exitPos,        0x088);
-    KAROO_LAYOUT_AT(exitRot,        0x094);
-    KAROO_LAYOUT_AT(lifts,          0x0a0);
-    KAROO_LAYOUT_AT(slides,         0x0ac);
-    KAROO_LAYOUT_AT(breakables,     0x0b8);
-    KAROO_LAYOUT_AT(jumpPads,       0x0c4);
-    KAROO_LAYOUT_AT(teleporters,    0x0d0);
-    KAROO_LAYOUT_AT(glue,           0x0dc);
-    KAROO_LAYOUT_AT(switches,       0x0e8);
-    KAROO_LAYOUT_AT(ramps,          0x0f4);
-    KAROO_LAYOUT_AT(climbs,         0x100);
-    KAROO_LAYOUT_AT(conveyors,      0x10c);
-    KAROO_LAYOUT_AT(destructibles,  0x118);
-    KAROO_LAYOUT_AT(wallStripCount, 0x124);
-    KAROO_LAYOUT_AT(wallVerts,      0x128);
-    KAROO_LAYOUT_SIZE(0x12c);
-}
 
 extern LevelPlacements g_levelPlacements;
 

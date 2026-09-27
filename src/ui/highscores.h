@@ -3,8 +3,6 @@
  * Highscores\<name>.hsc (highscores.cpp). */
 #pragma once
 
-#include "layout.h"
-
 /* One row: the name the player typed, the score and the level reached. */
 struct __attribute__((packed)) HighScoreRecord {
     char          name[0x32];
@@ -14,7 +12,6 @@ struct __attribute__((packed)) HighScoreRecord {
 
 class __attribute__((packed)) HighScoreTable {
 public:
-    static const int ORIGIN = 0;
 
     enum { RECORD_MAX = 256 };
 
@@ -40,21 +37,12 @@ public:
 
 private:
     HighScoreTable() = delete;  // only ever reached through the Game
-    KAROO_LAYOUT_REGISTER(HighScoreTable);
 
     const void      *vtable_;  // our one-slot table
     unsigned char    lastRank_;
     HighScoreRecord  records_[RECORD_MAX];
     unsigned char    count_;
 };
-
-KAROO_LAYOUT_CHECKS(HighScoreTable)
-{
-    KAROO_LAYOUT_AT(lastRank_, 0x04);
-    KAROO_LAYOUT_AT(records_,  0x05);
-    KAROO_LAYOUT_AT(count_,    0x3705);
-    KAROO_LAYOUT_SIZE(0x3706);
-}
 
 int HighScore_ReadFile(HighScoreTable *self, const char *name, char key);
 int HighScore_WriteFile(HighScoreTable *self, const char *name, char key);

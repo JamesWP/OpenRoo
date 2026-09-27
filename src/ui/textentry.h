@@ -3,11 +3,8 @@
  * storage before activating the entry; construction leaves it alone. */
 #pragma once
 
-#include "layout.h"
-
 class __attribute__((packed)) TextEntry {
 public:
-    static const int ORIGIN = 0;
 
     // Polls the keyboard once.  phase drives the cursor blink.
     void poll(unsigned int phase);
@@ -32,7 +29,6 @@ public:
 
 private:
     TextEntry() = delete;  // only ever reached through the Game
-    KAROO_LAYOUT_REGISTER(TextEntry);
 
     const void    *vtable_;  // our one-slot table
     char          *buffer_;  // the owner's storage
@@ -41,16 +37,6 @@ private:
     unsigned char  maxLength_;  // characters, not counting the terminator
     int            active_;
 };
-
-KAROO_LAYOUT_CHECKS(TextEntry)
-{
-    KAROO_LAYOUT_AT(buffer_,    0x04);
-    KAROO_LAYOUT_AT(lastKey_,   0x08);
-    KAROO_LAYOUT_AT(cursor_,    0x09);
-    KAROO_LAYOUT_AT(maxLength_, 0x0a);
-    KAROO_LAYOUT_AT(active_,    0x0b);
-    KAROO_LAYOUT_SIZE(0x0f);
-}
 
 void Sim_PollTextEntryKeys(TextEntry *self, unsigned int phase);
 

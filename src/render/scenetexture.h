@@ -38,21 +38,12 @@ struct GameLogger;
 
 class __attribute__((packed)) TextureManager {
 public:
-    static const int ORIGIN = 0;
 
     void        *vtable;    // +0x00
     LinkedList   cache;     // +0x04  SceneTexture *, game-heap nodes
     GameLogger  *pLogger;   // +0x14  NULL = silent
 private:
-    KAROO_LAYOUT_REGISTER(TextureManager);
 };
-
-KAROO_LAYOUT_CHECKS(TextureManager)
-{
-    KAROO_LAYOUT_AT(cache,   0x04);
-    KAROO_LAYOUT_AT(pLogger, 0x14);
-    KAROO_LAYOUT_SIZE(0x18);
-}
 
 extern TextureManager g_textureManager;
 

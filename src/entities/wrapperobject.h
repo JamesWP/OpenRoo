@@ -13,10 +13,8 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
 #include "faktmesh.h"
 class RenderDevice;
-
 
 /* One snapshotted UV pair: the 8 bytes at +0x18 of an FVF 0x212 vertex, the
  * only part of the vertex kept. */
@@ -27,7 +25,6 @@ static_assert(sizeof(WrapperUV) == 8, "WrapperUV stride mismatch");
 
 class __attribute__((packed)) WrapperObject {
 public:
-    static const int ORIGIN = 0;
 
     // Installs the one-slot vtable and zeroes the three fields.
     void construct();
@@ -63,14 +60,12 @@ public:
     CFaktMesh *mesh() const { return pMesh_; }
 
 private:
-    KAROO_LAYOUT_REGISTER(WrapperObject);
 
     void      *vtable_;   // +0x00  the one-slot vtable
     WrapperUV *pBaseUV_;  // +0x04  wFrameCount * dwVertexCount pairs
     CFaktMesh *pMesh_;    // +0x08  not owned
     BYTE       dirty_;    // +0x0c  set by the three animating modes
 };
-
 
 /* The vtable, installed by the ctor and the dtor body. */
 void *Wrapper_Vtable(void);

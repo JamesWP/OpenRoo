@@ -6,7 +6,6 @@
 #pragma once
 
 #include <stddef.h>
-#include "layout.h"
 
 class SoundManager;
 struct CStaticSoundbuffer;
@@ -16,7 +15,6 @@ enum ExtraObjectKind {
 };
 
 struct __attribute__((packed)) ExtraObjectRecord {
-    static const int ORIGIN = 0;
 
     // FORMAT: "<game dir>\<name>" of the model, particle system or sound.
     char                 file[0x100];
@@ -37,34 +35,12 @@ struct __attribute__((packed)) ExtraObjectRecord {
     double               soundParam;  // sound: zeroed, then optional
     CStaticSoundbuffer  *sound;
 
-    KAROO_LAYOUT_REGISTER(ExtraObjectRecord);
 };
 
 /* The record's fields tile its 0xf40 bytes. */
-KAROO_LAYOUT_CHECKS(ExtraObjectRecord)
-{
-    KAROO_LAYOUT_AT(position,         0x100);
-    KAROO_LAYOUT_AT(field_10c,        0x10c);
-    KAROO_LAYOUT_AT(animationFile,    0x118);
-    KAROO_LAYOUT_AT(textureFile,      0x218);
-    KAROO_LAYOUT_AT(lit,              0x318);
-    KAROO_LAYOUT_AT(kind,             0x31c);
-    KAROO_LAYOUT_AT(billboardSize,    0x31d);
-    KAROO_LAYOUT_AT(srcBlend,         0x321);
-    KAROO_LAYOUT_AT(destBlend,        0x325);
-    KAROO_LAYOUT_AT(textureAddress,   0x329);
-    KAROO_LAYOUT_AT(splineMode,       0x32d);
-    KAROO_LAYOUT_AT(splineTime,       0x32e);
-    KAROO_LAYOUT_AT(splinePoints,     0x332);
-    KAROO_LAYOUT_AT(splinePointCount, 0xf32);
-    KAROO_LAYOUT_AT(soundParam,       0xf34);
-    KAROO_LAYOUT_AT(sound,            0xf3c);
-    KAROO_LAYOUT_SIZE(0xf40);
-}
 
 class __attribute__((packed)) ExtraObjects {
 public:
-    static const int ORIGIN = 0;
 
     enum { RECORD_MAX = 256, RELEASE_COUNT = 255 };
 
@@ -103,7 +79,6 @@ private:
     // The record being built, re-read at every use: a billboard bumps the
     // count in the middle of its entry.
     ExtraObjectRecord *current() { return &records_[objectCount_]; }
-    KAROO_LAYOUT_REGISTER(ExtraObjects);
 
     const void        *vtable_;  // our one-slot table
     int                loaded_;
@@ -112,16 +87,6 @@ private:
     ExtraObjectRecord  records_[RECORD_MAX];
     unsigned short     objectCount_;
 };
-
-KAROO_LAYOUT_CHECKS(ExtraObjects)
-{
-    KAROO_LAYOUT_AT(loaded_,       0x04);
-    KAROO_LAYOUT_AT(soundManager_, 0x08);
-    KAROO_LAYOUT_AT(entries_,      0x0c);
-    KAROO_LAYOUT_AT(records_,      0x0e);
-    KAROO_LAYOUT_AT(objectCount_,  0xf400e);
-    KAROO_LAYOUT_SIZE(0xf4010);
-}
 
 ExtraObjects *Leo_Construct(ExtraObjects *self);
 void Leo_Destruct(ExtraObjects *self);

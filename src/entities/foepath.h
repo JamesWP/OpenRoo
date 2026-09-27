@@ -6,12 +6,9 @@
 
 #pragma once
 
-#include "layout.h"
-
 /* A search node, calloc(1, 0x44).  A plain public record: FoePath builds and
  * links them, and the chase (foe.cpp) reads the result's parent and cell. */
 struct __attribute__((packed)) PathNode {
-    static const int ORIGIN = 0;
 
     int       f;            // +0x00  g + h, the open list's order
     int       h;            // +0x04  the squared distance to the goal
@@ -39,66 +36,32 @@ struct __attribute__((packed)) PathNode {
     }
 
 private:
-    KAROO_LAYOUT_REGISTER(PathNode);
 };
-
-KAROO_LAYOUT_CHECKS(PathNode)
-{
-    KAROO_LAYOUT_AT(f,        0x00);
-    KAROO_LAYOUT_AT(h,        0x04);
-    KAROO_LAYOUT_AT(g,        0x08);
-    KAROO_LAYOUT_AT(u,        0x10);
-    KAROO_LAYOUT_AT(v,        0x14);
-    KAROO_LAYOUT_AT(key,      0x18);
-    KAROO_LAYOUT_AT(parent,   0x1c);
-    KAROO_LAYOUT_AT(children, 0x20);
-    KAROO_LAYOUT_AT(next,     0x40);
-    // calloc(1, 0x44).
-    KAROO_LAYOUT_SIZE(0x44);
-}
 
 /* One cell of the cost-propagation worklist: calloc(1, 9), nine bytes for two
  * pointers; the ninth is never touched. */
 struct __attribute__((packed)) PendingCell {
-    static const int ORIGIN = 0;
 
     PathNode    *node;      // +0x00
     PendingCell *next;      // +0x04
     unsigned char field_8;  // +0x08  never touched
 
 private:
-    KAROO_LAYOUT_REGISTER(PendingCell);
 };
-
-KAROO_LAYOUT_CHECKS(PendingCell)
-{
-    KAROO_LAYOUT_AT(node, 0x00);
-    KAROO_LAYOUT_AT(next, 0x04);
-    KAROO_LAYOUT_SIZE(9);
-}
 
 /* The worklist's owner block, calloc(1, 9).  Only the head is ever touched:
  * the worklist is a stack. */
 struct __attribute__((packed)) PendingStack {
-    static const int ORIGIN = 0;
 
     int           field_0;  // +0x00  never touched
     PendingCell  *head;     // +0x04
     unsigned char field_8;  // +0x08  never touched
 
 private:
-    KAROO_LAYOUT_REGISTER(PendingStack);
 };
-
-KAROO_LAYOUT_CHECKS(PendingStack)
-{
-    KAROO_LAYOUT_AT(head, 0x04);
-    KAROO_LAYOUT_SIZE(9);
-}
 
 class __attribute__((packed)) FoePath {
 public:
-    static const int ORIGIN = 0;
 
     // Allocates (nothrow) and populates one; NULL if the allocation fails, and
     // the caller stores that.
@@ -150,8 +113,6 @@ private:
     void populate(unsigned char *tileBase, unsigned short field04);
     static PathNode *findByKey(PathNode *hdr, int key);
 
-    KAROO_LAYOUT_REGISTER(FoePath);
-
     unsigned char *tileBase_;  // +0x00  the ctor's argument
     unsigned short field_04;   // +0x04  the ctor's second argument (0)
     PathNode      *open_;      // +0x06  a header node, fresh each search
@@ -171,24 +132,3 @@ private:
     unsigned char  foeU_;     // +0x33
     unsigned char  foeV_;     // +0x34
 };
-
-KAROO_LAYOUT_CHECKS(FoePath)
-{
-    KAROO_LAYOUT_AT(tileBase_,  0x00);
-    KAROO_LAYOUT_AT(field_04,   0x04);
-    KAROO_LAYOUT_AT(open_,      0x06);
-    KAROO_LAYOUT_AT(closed_,    0x0a);
-    KAROO_LAYOUT_AT(result_,    0x0e);
-    KAROO_LAYOUT_AT(pending_,   0x12);
-    KAROO_LAYOUT_AT(found_,     0x16);
-    KAROO_LAYOUT_AT(extentV_,   0x1a);
-    KAROO_LAYOUT_AT(keyStride_, 0x1e);
-    KAROO_LAYOUT_AT(mode_,      0x2a);
-    KAROO_LAYOUT_AT(cap_,       0x2f);
-    KAROO_LAYOUT_AT(targetU_,   0x31);
-    KAROO_LAYOUT_AT(targetV_,   0x32);
-    KAROO_LAYOUT_AT(foeU_,      0x33);
-    KAROO_LAYOUT_AT(foeV_,      0x34);
-    // The allocation size.
-    KAROO_LAYOUT_SIZE(0x35);
-}

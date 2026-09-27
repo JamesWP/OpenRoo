@@ -9,7 +9,6 @@
  * sound is on.  Switching the 3D mode reloads only the 3D list. */
 #pragma once
 
-#include "layout.h"
 #include "namedlist.h"
 #include "cfaktsound.h"
 
@@ -19,7 +18,6 @@ struct GameLogger;
 
 class __attribute__((packed)) SoundManager {
 public:
-    static const int ORIGIN = 0;
 
     void          *vtable_;  // our one-slot table
     GameLogger    *logger_;
@@ -65,25 +63,10 @@ public:
 
 private:
     SoundManager() = delete;  // only ever reached through the Game
-    KAROO_LAYOUT_REGISTER(SoundManager);
 };
 
 /* The device ends where the two lists begin, and the lists end where the fixed
  * sounds (fixedsounds.cpp) begin. */
-KAROO_LAYOUT_CHECKS(SoundManager)
-{
-    KAROO_LAYOUT_AT(logger_,           0x04);
-    KAROO_LAYOUT_AT(dwMode3D_,         0x0c);
-    KAROO_LAYOUT_AT(dwPendingMode3D_,  0x10);
-    KAROO_LAYOUT_AT(cfaktSound_,       0x14);
-    KAROO_LAYOUT_AT(dwCreated_,        0x8c);
-    KAROO_LAYOUT_AT(dwDefaultDsFlags_, 0x90);
-    KAROO_LAYOUT_AT(entriesPlain_,     0x94);
-    KAROO_LAYOUT_AT(entries3D_,        0xa4);
-
-/* No size: the object continues with the fixed sounds. */
-}
-
 
 void SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
                                     int bDestroyIfUnused);

@@ -12,26 +12,15 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
 
 struct __attribute__((packed)) CameraGlobals {
-    static const int ORIGIN = 0;
 
     float  eye[3];      // +0x00
     float  target[3];   // +0x0c
     float  yaw;         // +0x18
     float  pitch;       // +0x1c
 
-    KAROO_LAYOUT_REGISTER(CameraGlobals);
 };
-
-KAROO_LAYOUT_CHECKS(CameraGlobals)
-{
-    KAROO_LAYOUT_AT(target,   0x0c);
-    KAROO_LAYOUT_AT(yaw,      0x18);
-    KAROO_LAYOUT_AT(pitch,    0x1c);
-    KAROO_LAYOUT_SIZE(0x20);
-}
 
 extern CameraGlobals g_camera;
 

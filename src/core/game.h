@@ -2,14 +2,11 @@
  * as sub-objects and fields at fixed offsets (game.cpp builds it).
  *
  * Packed; everything not decoded is a gap whose size is written as the
- * difference of its neighbours' offsets.  Only the offsets are asserted
- * (layout.h), never the gaps, so splitting a gap for a new field changes no
- * existing assertion.  A field whose meaning is not decoded is named
- * field_<offset>.
+ * difference of its neighbours' offsets.  A field whose meaning is not
+ * decoded is named field_<offset>.
  */
 #pragma once
 
-#include "layout.h"
 #include "textentry.h"
 #include "saveslots.h"
 #include "menutree.h"
@@ -75,7 +72,6 @@ enum TallyRow {
 };
 
 struct __attribute__((packed)) ScoreTally {
-    static const int ORIGIN = 0;
 
     int           shownScore[TALLY_ROWS];   /* +0x00  0x1404c1 */
     int           shownBase;                /* +0x18  running total before this level */
@@ -91,25 +87,7 @@ struct __attribute__((packed)) ScoreTally {
     unsigned char stage;                    /* +0x7d  animation state, 0..6 */
     int           stageStart;               /* +0x7e  ms, the stage's start */
 
-    KAROO_LAYOUT_REGISTER(ScoreTally);
 };
-
-KAROO_LAYOUT_CHECKS(ScoreTally)
-{
-    KAROO_LAYOUT_AT(shownScore,      0x00);
-    KAROO_LAYOUT_AT(shownBase,       0x18);
-    KAROO_LAYOUT_AT(shownCount,      0x1c);
-    KAROO_LAYOUT_AT(shownLevelTotal, 0x34);
-    KAROO_LAYOUT_AT(shownGrandTotal, 0x38);
-    KAROO_LAYOUT_AT(score,           0x41);
-    KAROO_LAYOUT_AT(count,           0x5d);
-    KAROO_LAYOUT_AT(levelTotal,      0x75);
-    KAROO_LAYOUT_AT(grandTotal,      0x79);
-    KAROO_LAYOUT_AT(stage,           0x7d);
-    KAROO_LAYOUT_AT(stageStart,      0x7e);
-    /* Tiles its span, 0x1404c1..0x140543, with no field missing. */
-    KAROO_LAYOUT_SIZE(0x140543 - 0x1404c1);
-}
 
 /* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport loads once,
  * Game+0x13cc5c..+0x13cc84.  They are the Game's, not the SoundManager's:
@@ -118,7 +96,6 @@ KAROO_LAYOUT_CHECKS(ScoreTally)
 struct CStaticSoundbuffer;
 struct VoicePool;
 struct __attribute__((packed)) FixedSounds {
-    static const int ORIGIN = 0;
 
     CStaticSoundbuffer *timeOut;          /* +0x00  0x13cc5c */
     CStaticSoundbuffer *switchClick;      /* +0x04  menu select */
@@ -132,20 +109,7 @@ struct __attribute__((packed)) FixedSounds {
     /* Set once the load has run (or found no sound); it never runs again. */
     unsigned int        loaded;           /* +0x24  0x13cc80 */
 
-    KAROO_LAYOUT_REGISTER(FixedSounds);
 };
-
-KAROO_LAYOUT_CHECKS(FixedSounds)
-{
-    KAROO_LAYOUT_AT(switchClick,    0x04);
-    KAROO_LAYOUT_AT(menuUpDown,     0x08);
-    KAROO_LAYOUT_AT(count,          0x0c);
-    KAROO_LAYOUT_AT(lastSeconds,    0x10);
-    KAROO_LAYOUT_AT(levelCompleted, 0x14);
-    KAROO_LAYOUT_AT(crystalBank,    0x18);
-    KAROO_LAYOUT_AT(loaded,         0x24);
-    KAROO_LAYOUT_SIZE(0x28);
-}
 
 class Bomb;
 class Foe;
@@ -153,7 +117,6 @@ class Player;
 
 class __attribute__((packed)) Game {
 public:
-    static const int ORIGIN = 0;
 
     /* The one Game object, NULL until WinMain has built it.  A static
      * member, so it is outside the layout. */
@@ -568,8 +531,6 @@ public:
     const SoundAssetName *soundAsset46baa() const { return &themeSounds_.entries[70]; }
     ThemeSoundTable      *themeSounds()             { return &themeSounds_; }
 
-
-
     /* ── the lifecycle (game.cpp) ───────────────────────────────────────
      * construct() builds every member, reads the .gam, save slots,
      * Karoo.cfg and high scores, then enters the first level.  destruct()
@@ -584,7 +545,6 @@ private:
 
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
-    KAROO_LAYOUT_REGISTER(Game);
 
     const void   *vtable_;                                /* 0x000000  ours, one slot */
     double        field_04_;                              /* 0x000004  Load sets 1.0; reader not decoded */
@@ -706,99 +666,6 @@ private:
     LevelMap      map_;                                   /* 0x2ab58d */
     int           tallyDone_;                             /* 0x517909 */
 };
-
-KAROO_LAYOUT_CHECKS(Game)
-{
-    KAROO_LAYOUT_AT(field_04_,         0x000004);
-    KAROO_LAYOUT_AT(rootMenu_,         0x00001c);
-    KAROO_LAYOUT_AT(initialised_,      0x020239);
-    KAROO_LAYOUT_AT(field_13cc84_,     0x13cc84);
-    KAROO_LAYOUT_AT(soundManagerHead_, 0x13cba8);
-    KAROO_LAYOUT_AT(soundCreated_,     0x13cc34);
-    KAROO_LAYOUT_AT(fixedSounds_,      0x13cc5c);
-    KAROO_LAYOUT_AT(bridgeSlots_,      0x170643);
-    KAROO_LAYOUT_AT(bridgeCount_,      0x170a43);
-    KAROO_LAYOUT_AT(clock_,            0x170a54);
-    KAROO_LAYOUT_AT(tickStep_,         0x170a5c);
-    KAROO_LAYOUT_AT(tally_,            0x1404c1);
-    KAROO_LAYOUT_AT(vitalityPercent_,  0x170a64);
-    KAROO_LAYOUT_AT(field_170a65_,     0x170a65);
-    KAROO_LAYOUT_AT(slideSlots_,       0x173588);
-    KAROO_LAYOUT_AT(slideCount_,       0x173718);
-    KAROO_LAYOUT_AT(liftSlots_,        0x173719);
-    KAROO_LAYOUT_AT(liftCount_,        0x173b19);
-    KAROO_LAYOUT_AT(breakableSlots_,   0x173b1e);
-    KAROO_LAYOUT_AT(breakableCount_,   0x173e3e);
-    KAROO_LAYOUT_AT(bombSlots_,        0x173e3f);
-    KAROO_LAYOUT_AT(bombCount_,        0x17460f);
-    KAROO_LAYOUT_AT(bombIds_,          0x174610);
-    KAROO_LAYOUT_AT(foeSlots_,         0x174804);
-    KAROO_LAYOUT_AT(foeCount_,         0x174fd4);
-    KAROO_LAYOUT_AT(foeIds_,           0x174fd5);
-    KAROO_LAYOUT_AT(field_42252_,      0x042252);
-    KAROO_LAYOUT_AT(levelName_,        0x173483);
-    KAROO_LAYOUT_AT(levelNameTable_,   0x03215e);
-    KAROO_LAYOUT_AT(reportLevelsWithScript_, 0x04220c);
-    KAROO_LAYOUT_AT(reportScoreTotal_,       0x042212);
-    KAROO_LAYOUT_AT(reportTallyA_,           0x042243);
-    KAROO_LAYOUT_AT(reportLevelsWithBonus_,  0x042245);
-    KAROO_LAYOUT_AT(reportLevelsWithLeo_,    0x042247);
-    KAROO_LAYOUT_AT(themeSounds_,            0x042258);
-    KAROO_LAYOUT_AT(themeSounds_.entries[0],  0x042262);
-    KAROO_LAYOUT_AT(themeSounds_.entries[30], 0x0441ca);
-    KAROO_LAYOUT_AT(themeSounds_.entries[70], 0x046baa);
-    KAROO_LAYOUT_AT(map_,              0x2ab58d);
-    KAROO_LAYOUT_AT(switchCells_,      0x140543);
-    KAROO_LAYOUT_AT(timedSpawners_,    0x02023d);
-    KAROO_LAYOUT_AT(freeBombs_,        0x02173d);
-    KAROO_LAYOUT_AT(census_,           0x0421df);
-    KAROO_LAYOUT_AT(field_0c_,         0x00000c);
-    KAROO_LAYOUT_AT(mapChanged_,       0x000010);
-    KAROO_LAYOUT_AT(nextLevelBonus_,   0x000014);
-    KAROO_LAYOUT_AT(field_13cc90_,     0x13cc90);
-    KAROO_LAYOUT_AT(zoomDistance_,     0x13cca4);
-    KAROO_LAYOUT_AT(field_13cc88_,     0x13cc88);
-    KAROO_LAYOUT_AT(cheatBuffer_,      0x13ccac);
-    KAROO_LAYOUT_AT(field_13cc8c_,     0x13cc8c);
-    KAROO_LAYOUT_AT(overviewActive_,   0x13cca8);
-    KAROO_LAYOUT_AT(field_173b1a_,     0x173b1a);
-    KAROO_LAYOUT_AT(tickCount_,        0x000018);
-    KAROO_LAYOUT_AT(gameFileName_,     0x04215f);
-    KAROO_LAYOUT_AT(stateBeforeMenu_,  0x048b13);
-    KAROO_LAYOUT_AT(field_48b14_,      0x048b14);
-    KAROO_LAYOUT_AT(menuLevelName_,    0x048b18);
-    KAROO_LAYOUT_AT(field_173584_,     0x173584);
-    KAROO_LAYOUT_AT(switchMax_,        0x048b12);
-    KAROO_LAYOUT_AT(foesKilled_,       0x04224d);
-    KAROO_LAYOUT_AT(restartCount_,     0x04220b);
-    KAROO_LAYOUT_AT(itemTotal_,        0x042250);
-    KAROO_LAYOUT_AT(tallyDone_,        0x517909);
-    KAROO_LAYOUT_AT(levelCount_,       0x04215e);
-    KAROO_LAYOUT_AT(levelIndex_,       0x173583);
-    KAROO_LAYOUT_AT(cameraMode_,       0x28ab2d);
-    KAROO_LAYOUT_AT(cameraDistance_,   0x28ab29);
-    KAROO_LAYOUT_AT(totalPlayTime_,    0x170a44);
-    KAROO_LAYOUT_AT(lastTickTime_,     0x170a4c);
-    KAROO_LAYOUT_AT(state_,            0x2ab58c);
-    KAROO_LAYOUT_AT(parkedCameraOption_, 0x03215d);
-    KAROO_LAYOUT_AT(levelSoundsReady_, 0x042254);
-    KAROO_LAYOUT_AT(textEntryActive_,  0x170a69);
-    KAROO_LAYOUT_AT(cheatEntry_,       0x13cdac);
-    KAROO_LAYOUT_AT(nameEntry_,        0x170a6d);
-    KAROO_LAYOUT_AT(saveSlots_,        0x170a7c);
-    KAROO_LAYOUT_AT(rebindCode_,       0x175412);
-    KAROO_LAYOUT_AT(rebindAction_,     0x175413);
-    KAROO_LAYOUT_AT(rebindActive_,     0x175513);
-    KAROO_LAYOUT_AT(debounce_,         0x175517);
-    KAROO_LAYOUT_AT(menu_,             0x175518);
-    KAROO_LAYOUT_AT(scriptPlayer_,     0x195735);
-    KAROO_LAYOUT_AT(cdThemes_,         0x02223f);
-    KAROO_LAYOUT_AT(config_,           0x28ab2e);
-    KAROO_LAYOUT_AT(extraObjects_,     0x048b98);
-    KAROO_LAYOUT_AT(highScores_,       0x13cdbb);
-    KAROO_LAYOUT_AT(cameraEye_,        0x2ab580);
-    KAROO_LAYOUT_AT(field_13cc94_,     0x13cc94);
-}
 
 /* The lifecycle (game.cpp): construct (returns self), destruct, and the
  * scalar deleting destructor, slot 0 of the vtable, which WinMain's

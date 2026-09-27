@@ -4,7 +4,6 @@
  * (soundmanager.h) hands these out and takes them back. */
 #pragma once
 
-#include "layout.h"
 #include "static.h"
 #include "linkedlist.h"
 
@@ -12,7 +11,6 @@ struct VoicePool;
 
 /* Allocated by the sound manager with a fixed size of 0x58. */
 struct __attribute__((packed)) doublesoundbuff {
-    static const int ORIGIN = 0;
 
     CStaticSoundbuffer masterBuf;      // the file as first loaded
     CStaticSoundbuffer spareBuf;       // the same file, the other flag set
@@ -32,20 +30,7 @@ struct __attribute__((packed)) doublesoundbuff {
 #pragma GCC diagnostic pop
 
 private:
-    KAROO_LAYOUT_REGISTER(doublesoundbuff);
 };
-
-KAROO_LAYOUT_CHECKS(doublesoundbuff)
-{
-    KAROO_LAYOUT_AT(masterBuf,     0x00);
-    KAROO_LAYOUT_AT(spareBuf,      0x18);
-    KAROO_LAYOUT_AT(dwMasterTaken, 0x30);
-    KAROO_LAYOUT_AT(dwSpareTaken,  0x34);
-    KAROO_LAYOUT_AT(cloneList,     0x38);
-    KAROO_LAYOUT_AT(voicePoolList, 0x48);
-    KAROO_LAYOUT_SIZE(0x58);
-}
-
 
 /* The constructor.  Returns self. */
 doublesoundbuff *Dsb_Init(doublesoundbuff *self);

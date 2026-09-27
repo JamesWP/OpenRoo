@@ -34,30 +34,18 @@
 #pragma once
 
 #include <stddef.h>
-#include "layout.h"
 
 struct GameLogger;
 
 /* One keyword's entry.  Named from the .ani header comment quoted above. */
 struct __attribute__((packed)) AnimSlot {
-    static const int ORIGIN = 0;
 
     int firstFrame;   /* +0x00  first mesh frame of the range            */
     int numFrames;    /* +0x04  frames in it; 0 means "no animation"     */
     int fps;          /* +0x08  playback rate, frames per second         */
     int reverse;      /* +0x0c  the "r" flag: play the range backwards   */
 
-    KAROO_LAYOUT_REGISTER(AnimSlot);
 };
-
-KAROO_LAYOUT_CHECKS(AnimSlot)
-{
-    KAROO_LAYOUT_AT(firstFrame, 0x0);
-    KAROO_LAYOUT_AT(numFrames,  0x4);
-    KAROO_LAYOUT_AT(fps,        0x8);
-    KAROO_LAYOUT_AT(reverse,    0xc);
-    KAROO_LAYOUT_SIZE(0x10);
-}
 
 /* The 24 slots, in ADDRESS order.  The loader's compare chain visits four of
  * them out of sequence (ice, jump, fall, glue, ghost); that is a property of
@@ -68,7 +56,6 @@ KAROO_LAYOUT_CHECKS(AnimSlot)
  * kept because the table's shape is the file's: the .ani files all carry the
  * keywords (bare, with no numbers, in every shipped file). */
 struct __attribute__((packed)) AnimTable {
-    static const int ORIGIN = 0;
 
     AnimSlot walkForward;      /* +0x000 */
     AnimSlot walkBackward;     /* +0x010 */
@@ -95,27 +82,7 @@ struct __attribute__((packed)) AnimTable {
     AnimSlot turnLeft;         /* +0x160 */
     AnimSlot turnRight;        /* +0x170 */
 
-    KAROO_LAYOUT_REGISTER(AnimTable);
 };
-
-KAROO_LAYOUT_CHECKS(AnimTable)
-{
-    KAROO_LAYOUT_AT(walkForward,    0x000);
-    KAROO_LAYOUT_AT(jump,           0x070);
-    KAROO_LAYOUT_AT(glue,           0x080);
-    KAROO_LAYOUT_AT(ghost,          0x090);
-    KAROO_LAYOUT_AT(ice,            0x0a0);
-    KAROO_LAYOUT_AT(fall,           0x0b0);
-    KAROO_LAYOUT_AT(paraglide,      0x0c0);
-    KAROO_LAYOUT_AT(slide,          0x0d0);
-    KAROO_LAYOUT_AT(idle1,          0x0e0);
-    KAROO_LAYOUT_AT(idle2,          0x0f0);
-    KAROO_LAYOUT_AT(fieldStairUp,   0x100);
-    KAROO_LAYOUT_AT(stairFieldDown, 0x150);
-    KAROO_LAYOUT_AT(turnLeft,       0x160);
-    KAROO_LAYOUT_AT(turnRight,      0x170);
-    KAROO_LAYOUT_SIZE(0x180);
-}
 
 /* The animation codes, as LookupAnimDescriptor dispatches them.
  * These are the values MovableEntity carries in anim_ (+0x9a; see

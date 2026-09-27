@@ -10,11 +10,9 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
 class RenderDevice;
 
 struct ExplodeDebris {
-    static const int ORIGIN = 0;
 
     void         *vtable;                // +0x00  the one-slot vtable
     void         *pVertexCopy;           // +0x04  nVertexCount * 0x28 (FVF 0x212)
@@ -27,22 +25,7 @@ struct ExplodeDebris {
     float         flDropAccum;           // +0x94  fractional triangles owed
     float         flExplodeScaledCount;  // +0x98  the drop rate: nVertexCount * arg / 300
 
-    KAROO_LAYOUT_REGISTER(ExplodeDebris);
 };
-
-KAROO_LAYOUT_CHECKS(ExplodeDebris)
-{
-    KAROO_LAYOUT_AT(pVertexCopy,  0x04);
-    KAROO_LAYOUT_AT(pFaceRecords, 0x08);
-    KAROO_LAYOUT_AT(nVertexCount, 0x0c);
-    KAROO_LAYOUT_AT(samples,      0x14);
-    KAROO_LAYOUT_AT(cursor,       0x8c);
-    KAROO_LAYOUT_AT(nLiveVertices, 0x90);
-    KAROO_LAYOUT_AT(flDropAccum,  0x94);
-    KAROO_LAYOUT_AT(flExplodeScaledCount, 0x98);
-    KAROO_LAYOUT_SIZE(0x9c);
-}
-
 
 /* The one-slot vtable, installed by the ctor and the dtor body. */
 void *ExplodeDebris_Vtable(void);

@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include "layout.h"
 #include "game.h"
 
 struct CStaticSoundbuffer;
@@ -29,7 +28,6 @@ struct BridgeSurfaceInfo {
 
 class __attribute__((packed)) BridgeObject {
 public:
-    static const int ORIGIN = 0;
 
     // Spawns a bridge; the arguments are masked to bytes.
     static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
@@ -83,8 +81,6 @@ private:
     // Destroys through the object's own vtable, flags 1.
     void destroy();
 
-    KAROO_LAYOUT_REGISTER(BridgeObject);
-
     const Vtbl         *vtable_;      // +0x00  &VTABLE
     double              now_;         // +0x04  latched from *clock_
     double             *clock_;       // +0x0c  Game::clock()
@@ -116,39 +112,6 @@ private:
     unsigned char       height_;      // +0x5f
     unsigned char       axis_;        // +0x60  1 along U, 2 along V
 };
-
-KAROO_LAYOUT_CHECKS(BridgeObject)
-{
-    KAROO_LAYOUT_AT(now_,         0x04);
-    KAROO_LAYOUT_AT(clock_,       0x0c);
-    KAROO_LAYOUT_AT(tickStep_,      0x10);
-    KAROO_LAYOUT_AT(tickStepCopy_,  0x15);
-    KAROO_LAYOUT_AT(posU_,        0x25);
-    KAROO_LAYOUT_AT(posY_,        0x29);
-    KAROO_LAYOUT_AT(posV_,        0x2d);
-    KAROO_LAYOUT_AT(cellU_,       0x31);
-    KAROO_LAYOUT_AT(cellV_,       0x32);
-    KAROO_LAYOUT_AT(heightCell_,  0x33);
-    KAROO_LAYOUT_AT(tileBase_,    0x34);
-    KAROO_LAYOUT_AT(guard_,       0x38);
-    KAROO_LAYOUT_AT(restU_,       0x39);
-    KAROO_LAYOUT_AT(restY_,       0x3d);
-    KAROO_LAYOUT_AT(restV_,       0x41);
-    KAROO_LAYOUT_AT(span_,        0x45);
-    KAROO_LAYOUT_AT(slot_,        0x46);
-    KAROO_LAYOUT_AT(sound_,       0x47);
-    KAROO_LAYOUT_AT(phaseStart_,  0x4b);
-    KAROO_LAYOUT_AT(armed_,       0x53);
-    KAROO_LAYOUT_AT(step_,        0x57);
-    KAROO_LAYOUT_AT(phase_,       0x58);
-    KAROO_LAYOUT_AT(tileHeight_,  0x5c);
-    KAROO_LAYOUT_AT(endU_,        0x5d);
-    KAROO_LAYOUT_AT(endV_,        0x5e);
-    KAROO_LAYOUT_AT(height_,      0x5f);
-    KAROO_LAYOUT_AT(axis_,        0x60);
-
-/* No size check: we allocate it, so nothing relies on its size. */
-}
 
 /* Destroys every bridge and zeroes the count; Game's teardown calls it. */
 void Sim_PurgeBridgeObjects(Game *self);

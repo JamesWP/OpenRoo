@@ -6,14 +6,12 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
 
 class Game;
 struct CameraFocus;
 
 /* One foe's pose, 0x1d bytes. */
 struct __attribute__((packed)) FoePose {
-    static const int ORIGIN = 0;
 
     unsigned char kind;  // the foe's kind
     float  pos[3];       // (U, H, -V)
@@ -22,16 +20,7 @@ struct __attribute__((packed)) FoePose {
     float  rotZ;         // always 0
     float  stepFrac;     // written only while stepping; stale otherwise
 
-    KAROO_LAYOUT_REGISTER(FoePose);
 };
-
-KAROO_LAYOUT_CHECKS(FoePose)
-{
-    KAROO_LAYOUT_AT(pos,      0x01);
-    KAROO_LAYOUT_AT(rotY,     0x11);
-    KAROO_LAYOUT_AT(stepFrac, 0x19);
-    KAROO_LAYOUT_SIZE(0x1d);
-}
 
 /* One record per live foe, in foe-list order; RenderGameFrame draws from it.
  */

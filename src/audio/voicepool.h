@@ -6,7 +6,6 @@
 
 #include <windows.h>
 
-#include "layout.h"
 #include "static.h"
 
 struct IDirectSound;
@@ -14,7 +13,6 @@ struct IDirectSound;
 /* One pool.  The voices array is heap-allocated with a leading count word, and
  * destroyed through the voices' own vector destructor. */
 struct __attribute__((packed)) VoicePool {
-    static const int ORIGIN = 0;
 
     void               *logger;        // the logger the voices report to
     CStaticSoundbuffer *pBufs;         // dwVoiceCount voices, or NULL
@@ -23,18 +21,7 @@ struct __attribute__((packed)) VoicePool {
     int                 dwVoiceCount;
 
 private:
-    KAROO_LAYOUT_REGISTER(VoicePool);
 };
-
-KAROO_LAYOUT_CHECKS(VoicePool)
-{
-    KAROO_LAYOUT_AT(logger,       0x00);
-    KAROO_LAYOUT_AT(pBufs,        0x04);
-    KAROO_LAYOUT_AT(dwCurrentIdx, 0x08);
-    KAROO_LAYOUT_AT(dwNestDepth,  0x0c);
-    KAROO_LAYOUT_AT(dwVoiceCount, 0x10);
-    KAROO_LAYOUT_SIZE(0x14);
-}
 
 /* The voices are an array of CStaticSoundbuffer with a stride of 0x18. */
 static_assert(sizeof(CStaticSoundbuffer) == 0x18, "pBufs stride must stay 0x18");

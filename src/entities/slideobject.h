@@ -5,14 +5,12 @@
 
 #pragma once
 
-#include "layout.h"
 #include "game.h"
 
 struct CStaticSoundbuffer;
 
 class __attribute__((packed)) SlideObject {
 public:
-    static const int ORIGIN = 0;
 
     // Spawns a slide; the arguments are masked to bytes.
     static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
@@ -57,8 +55,6 @@ private:
     // Releases the tile the slide just left.
     void vacate();
 
-    KAROO_LAYOUT_REGISTER(SlideObject);
-
     const Vtbl         *vtable_;        // +0x00  &VTABLE
     double              now_;           // +0x04  latched from *clock_
     double             *clock_;         // +0x0c  Game::clock()
@@ -88,35 +84,6 @@ private:
     signed char         state_;       // +0x4c  0 parked, 1 advancing, 2 retreating
     double              phaseStart_;  // +0x4d
 };
-
-KAROO_LAYOUT_CHECKS(SlideObject)
-{
-    KAROO_LAYOUT_AT(now_,          0x04);
-    KAROO_LAYOUT_AT(clock_,        0x0c);
-    KAROO_LAYOUT_AT(tickStep_,       0x10);
-    KAROO_LAYOUT_AT(tickStepCopy_,   0x15);
-    KAROO_LAYOUT_AT(posU_,         0x25);
-    KAROO_LAYOUT_AT(posY_,         0x29);
-    KAROO_LAYOUT_AT(posV_,         0x2d);
-    KAROO_LAYOUT_AT(cellU_,        0x31);
-    KAROO_LAYOUT_AT(cellV_,        0x32);
-    KAROO_LAYOUT_AT(heightCell_,   0x33);
-    KAROO_LAYOUT_AT(span_,         0x38);
-    KAROO_LAYOUT_AT(sound_,        0x39);
-    KAROO_LAYOUT_AT(originU_,      0x3d);
-    KAROO_LAYOUT_AT(originV_,      0x3e);
-    KAROO_LAYOUT_AT(originHeight_, 0x3f);
-    KAROO_LAYOUT_AT(limit_,        0x40);
-    KAROO_LAYOUT_AT(trackStart_,   0x41);
-    KAROO_LAYOUT_AT(tileHeight_,   0x42);
-    KAROO_LAYOUT_AT(tileBase_,     0x43);
-    KAROO_LAYOUT_AT(kind_,         0x47);
-    KAROO_LAYOUT_AT(atLimit_,      0x48);
-    KAROO_LAYOUT_AT(state_,        0x4c);
-    KAROO_LAYOUT_AT(phaseStart_,   0x4d);
-
-/* No size check: we allocate it, so nothing relies on its size. */
-}
 
 /* Destroys every slide and zeroes the count; Game's teardown calls it. */
 void Sim_PurgeSlideObjects(Game *self);

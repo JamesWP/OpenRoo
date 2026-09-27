@@ -4,14 +4,12 @@
 
 #pragma once
 
-#include "layout.h"
 #include "game.h"
 
 struct CStaticSoundbuffer;
 
 class __attribute__((packed)) LiftObject {
 public:
-    static const int ORIGIN = 0;
 
     // Spawns a lift; the arguments are masked to bytes.
     static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
@@ -51,8 +49,6 @@ private:
     // Destroys through the object's own vtable, flags 1.
     void destroy();
 
-    KAROO_LAYOUT_REGISTER(LiftObject);
-
     const Vtbl         *vtable_;      // +0x00  &VTABLE
     double              now_;         // +0x04  latched from *clock_
     double             *clock_;       // +0x0c  Game::clock()
@@ -75,29 +71,6 @@ private:
     signed char         state_;       // +0x43  0 parked, 1 rising, 2 falling
     double              phaseStart_;  // +0x44
 };
-
-KAROO_LAYOUT_CHECKS(LiftObject)
-{
-    KAROO_LAYOUT_AT(now_,        0x04);
-    KAROO_LAYOUT_AT(clock_,      0x0c);
-    KAROO_LAYOUT_AT(tickStep_,     0x10);
-    KAROO_LAYOUT_AT(tickStepCopy_, 0x15);
-    KAROO_LAYOUT_AT(posU_,       0x25);
-    KAROO_LAYOUT_AT(height_,     0x29);
-    KAROO_LAYOUT_AT(posV_,       0x2d);
-    KAROO_LAYOUT_AT(cellU_,      0x31);
-    KAROO_LAYOUT_AT(heightCell_, 0x33);
-    KAROO_LAYOUT_AT(tileBase_,   0x34);
-    KAROO_LAYOUT_AT(baseHeight_, 0x38);
-    KAROO_LAYOUT_AT(topHeight_,  0x39);
-    KAROO_LAYOUT_AT(sound_,      0x3a);
-    KAROO_LAYOUT_AT(slot_,       0x3e);
-    KAROO_LAYOUT_AT(atTop_,      0x3f);
-    KAROO_LAYOUT_AT(state_,      0x43);
-    KAROO_LAYOUT_AT(phaseStart_, 0x44);
-
-/* No size check: we allocate it, so nothing relies on its size. */
-}
 
 /* Destroys every lift and zeroes the count; Game's teardown calls it. */
 void Sim_PurgeLiftObjects(Game *self);

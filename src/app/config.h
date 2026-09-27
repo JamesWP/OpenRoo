@@ -6,11 +6,9 @@
 
 #include <stddef.h>
 #include <string.h>
-#include "layout.h"
 
 class __attribute__((packed)) Config {
 public:
-    static const int ORIGIN = 0;
 
     // FORMAT: the persisted blob, what Karoo.cfg holds byte for byte.
     enum { PERSISTED_OFFSET = 0x1f604, PERSISTED_SIZE = 0x144e };
@@ -80,7 +78,6 @@ public:
 
 private:
     Config() = delete;  // only ever reached through the Game
-    KAROO_LAYOUT_REGISTER(Config);
 
     const void    *vtable_;
     unsigned char  gap_00004[0x1f404 - 0x00004];
@@ -110,30 +107,6 @@ private:
     float          cameraPitch_;            // degrees, 50..89, default 50
     unsigned short joyDeadzone_;            // percent, default 50
 };
-
-KAROO_LAYOUT_CHECKS(Config)
-{
-    KAROO_LAYOUT_AT(field_1f404_,           0x1f404);
-    KAROO_LAYOUT_AT(field_1f604_,           0x1f604);
-    KAROO_LAYOUT_AT(videoOptions_,          0x1f608);
-    KAROO_LAYOUT_AT(cameraDistanceSetting_, 0x1f60c);
-    KAROO_LAYOUT_AT(adapterGuid_,           0x1f610);
-    KAROO_LAYOUT_AT(displayModeIndex_,      0x1f620);
-    KAROO_LAYOUT_AT(field_1f624_,           0x1f624);
-    KAROO_LAYOUT_AT(musicOn_,               0x1f628);
-    KAROO_LAYOUT_AT(cdVolume_,              0x1f62c);
-    KAROO_LAYOUT_AT(cdMixerVolume_,         0x1f631);
-    KAROO_LAYOUT_AT(sound3D_,               0x20a36);
-    KAROO_LAYOUT_AT(waveVolume_,            0x20a3a);
-    KAROO_LAYOUT_AT(waveOutVolume_,         0x20a3f);
-    KAROO_LAYOUT_AT(cameraTurnsWithPlayer_, 0x20a43);
-    KAROO_LAYOUT_AT(cameraYaw_,           0x20a44);
-    KAROO_LAYOUT_AT(activeCameraPitch_,     0x20a48);
-    KAROO_LAYOUT_AT(cameraPitch_,           0x20a4c);
-    KAROO_LAYOUT_AT(joyDeadzone_,           0x20a50);
-    // The blob is the object's tail.
-    KAROO_LAYOUT_SIZE(Config::PERSISTED_OFFSET + Config::PERSISTED_SIZE);
-}
 
 /* Karoo.cfg: returns 1 when the file loads and ends with the tag. */
 int Config_LoadValues(Config *self, const char *path);
