@@ -1,19 +1,22 @@
+/* The streamed sound buffer (stream.cpp): one WAV file played once through a
+ * DirectSound buffer, for the instruction-script player.  A watcher thread
+ * marks the buffer done when playback ends. */
+
 #pragma once
 #define DIRECTSOUND_VERSION 0x0800
 #include <windows.h>
 #include <dsound.h>
 #include <stddef.h>
 
-/* WaveInfo passed to PrepareStreamBuffer by the game's script player (Ghidra
- * struct WaveInfo, 0x12 bytes).  The one it passes is embedded in the
- * ScriptPlayer at +0x90f: "initwave" writes the file name, the fixed-sound
- * setup the rest.  Packed, since the next ScriptPlayer field is at +0x921. */
+/* What the script player hands to CStream_Prepare.  Its copy is embedded in
+ * the ScriptPlayer: "initwave" writes the file name, the fixed-sound setup the
+ * rest.  Packed, because the ScriptPlayer field after it follows directly. */
 struct __attribute__((packed)) WaveInfo {
-    IDirectSound  *pDirectsound;  // +0x00
-    DWORD          dwFlags;       // +0x04
-    char          *pFilename;     // +0x08
-    int            nBuffer_seconds; // +0x0c
-    short          wSegment_count;  // +0x10
+    IDirectSound  *pDirectsound;
+    DWORD          dwFlags;
+    char          *pFilename;
+    int            nBuffer_seconds;
+    short          wSegment_count;
 };
 static_assert(offsetof(WaveInfo, dwFlags) == 0x04, "WaveInfo dwFlags");
 static_assert(offsetof(WaveInfo, pFilename) == 0x08, "WaveInfo pFilename");
@@ -21,31 +24,23 @@ static_assert(offsetof(WaveInfo, nBuffer_seconds) == 0x0c, "WaveInfo nBuffer_sec
 static_assert(offsetof(WaveInfo, wSegment_count) == 0x10, "WaveInfo wSegment_count");
 static_assert(sizeof(WaveInfo) == 0x12, "WaveInfo size");
 
-/*
- * CStreamSoundbuffer — 212-byte (0xD4) packed struct.
- *
- * Hard constraints (read by code outside this class):
- *   dwThread_done @ 0xa6 — 0=playing, 1=finished/idle
- *     Read by FUN_0041d920 (per-frame script updater) and TeardownScriptPlayer.
- *
- * The game allocates this object (operator_new(0xD4)) so we must not exceed 0xD4
- * and must keep the vtable pointer at offset 0.
- */
+/* A streamed buffer, 0xd4 bytes, the size the script player allocates.  The
+ * vtable must stay at offset 0. */
 #pragma pack(push, 1)
 struct CStreamSoundbuffer {
-    void                *vtable;          // +0x00
-    char                *filename;        // +0x04
-    IDirectSoundBuffer  *pSoundbuffer;    // +0x08
-    IDirectSound        *pDirectsound;    // +0x0c
-    BYTE                 _pad0[0x0a];     // +0x10 .. +0x19
-    DWORD                dwBuffer_size;   // +0x1a
-    BYTE                 _pad1[0x88];     // +0x1e .. +0xa5
-    volatile DWORD       dwThread_done;   // +0xa6  — 0=playing, 1=idle
-    HANDLE               watcher_thread; // +0xaa
-    HANDLE               stop_event;     // +0xae
-    BYTE                 _pad2[0x08];    // +0xb2 .. +0xb9
-    CRITICAL_SECTION     cs;             // +0xba  (24 bytes = 0x18)
-    BYTE                 _pad3[0x02];    // +0xd2 .. +0xd3
+    void                *vtable;
+    char                *filename;
+    IDirectSoundBuffer  *pSoundbuffer;
+    IDirectSound        *pDirectsound;
+    BYTE                 _pad0[0x0a];
+    DWORD                dwBuffer_size;
+    BYTE                 _pad1[0x88];
+    volatile DWORD       dwThread_done;  // 0 playing, 1 finished or idle; the script player polls it
+    HANDLE               watcher_thread;
+    HANDLE               stop_event;
+    BYTE                 _pad2[0x08];
+    CRITICAL_SECTION     cs;  // 0x18 bytes
+    BYTE                 _pad3[0x02];
 };
 #pragma pack(pop)
 
@@ -56,30 +51,35 @@ static_assert(offsetof(CStreamSoundbuffer, dwThread_done)== 0xa6,  "dwThread_don
 static_assert(offsetof(CStreamSoundbuffer, cs)           == 0xba,  "cs offset");
 static_assert(sizeof(CStreamSoundbuffer)                 == 0xD4,  "CStreamSoundbuffer size");
 
-/* The vtable is ours (ENDGAME_PLAN.md, "The vtable address of our objects may
- * be our own").  The game's table at 0x45efa4 has one slot, ScalarDeletingDtor
- * 0x443da0, and that slot is now ours.  The game's table is left pointing at
- * the UD2 stub, so a reader we failed to find faults rather than quietly
- * working. */
+/* The one-slot vtable: the scalar deleting destructor. */
 extern "C" __declspec(dllexport) void *CStream_Vtable(void);
 
-/* 0x00443da0 vtable slot 0: MSVC's scalar deleting destructor -- the dtor
- * body, then free when bit 0 of `flags` is set.  Returns `this`. */
+/* The deinit, then free() when bit 0 of flags is set; returns self. */
 extern "C" __declspec(dllexport) void * __attribute__((thiscall))
 CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
 
-/* 0x00443dc0 -- the dtor body, called by the slot above. */
+/* Releases everything, as CStream_ReleaseResources, and deletes the lock. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStream_DeinitInstance(CStreamSoundbuffer *self);
 
-/* Exports of stream.cpp other files call (COHESION_PLAN.md template 10). */
+/* Zeroes the object, sets its vtable and lock, and marks it done; returns
+ * self. */
 extern "C" __declspec(dllexport) CStreamSoundbuffer * __attribute__((thiscall))
 CStream_Initialize(CStreamSoundbuffer *self);
+
+/* Releases any earlier file, then loads wi's WAV file into a new buffer.
+ * Returns nonzero on success. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CStream_Prepare(CStreamSoundbuffer *self, WaveInfo *wi);
+
+/* Plays from the start and starts the watcher thread. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStream_Play(CStreamSoundbuffer *self);
+
+/* Stops playback and the watcher. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStream_Stop(CStreamSoundbuffer *self);
+
+/* Stops, then releases the buffer, the stop event and the file name. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStream_ReleaseResources(CStreamSoundbuffer *self);

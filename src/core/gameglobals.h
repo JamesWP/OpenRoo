@@ -1,32 +1,7 @@
-/* gameglobals.h -- the game's well-known singletons, named once.
- *
- * gamestr.h found that a *string* address re-#defined per file drifts into
- * two names.  Every other well-known address has the same disease, and it
- * had never been counted.  Before this header:
- *
- *   0x0046c4c0  the game logger        11 definitions, 3 names
- *                                      (GAMELOGGER x6, GAME_LOGGER x3,
- *                                       GAME_LOGGER_VA x2)
- *   0x00469cf8  the CRT log stream      4 definitions, 2 names, 2 types
- *                                      (GAME_LOG_FILE `int *` x3,
- *                                       G_LOGSTREAM `void *` x1)
- *   0x004dc640  the CD device           4 definitions, 1 name (CDAUDIO)
- *   0x0046c298  the progammable control 2 definitions, 1 name (PROGCTRL)
- *
- * One name per address, the provenance beside it, and typed constants
- * rather than macros so a misuse is a type error.  The types are declared
- * incomplete here on purpose: a file that only *passes* a singleton needs
- * no layout, and one that dereferences it includes the owning header
- * (gamelog.h, cdm.h, progctrl.h) as it already did.
- *
- * Not in scope, and deliberately: the `ORIG_*` function pointers and the
- * `IID_*` constants.  Those are per-file by nature -- an original the file
- * still calls is part of that file's story -- and Band 7c already ruled on
- * the ones whose names lied.
- *
- * COHESION_PLAN.md Band 8a.  Addresses only -- no expression and no
- * behaviour change, so patch.py and Karoo.exe are untouched.
- */
+/* The shared singletons and globals, one name each; gameglobals.cpp defines
+ * them.  The types are incomplete here: a file that only passes a singleton
+ * needs no layout, and one that uses it includes the owning header. */
+
 #ifndef KAROO_GAMEGLOBALS_H
 #define KAROO_GAMEGLOBALS_H
 
@@ -38,63 +13,40 @@ struct LoadedImage;
 struct CDM;
 struct ProgableControl;
 
-/* The game's own logger instance ("CProto"), constructed at startup and
- * never replaced.  Written through GameLog_LogMessage /
- * GameLog_LogSourceLocation (gamelog.h), which are ours. */
-extern GameLogger g_logger;   /* was 0x0046c4c0 */
-extern GameLogger g_soundLogger;   /* was 0x004e07e0: the stream logger, static init 0x443c60 */
+/* The game's logger, written through GameLog_LogMessage and
+ * GameLog_LogSourceLocation (gamelog.h). */
+extern GameLogger g_logger;
+extern GameLogger g_soundLogger;  // the stream sound logger
 
-/* 0x00469cf8 was GG_LOG_STREAM, "the static CRT's log stream".  It is
- * `stderr`, and naming it settled CRT_PLAN.md Stage B outright.
- *
- * The CRT's `_ioinit` (0x00451524) fills `__piob[i] = &_iob[i]` by walking
- * EAX from 0x00469cb8 in steps of 0x20 while EAX < 0x00469f38 -- so _iob is
- * 20 entries of 32 bytes based at 0x00469cb8, and 0x00469cf8 is entry
- * **2**.  The static initialisers agree: entries 0/1/2 carry _file = 0/1/2
- * with _flag 0x101 (_IOREAD) on the first and 0x2 (_IOWRT) on the other
- * two.  Two independent reads, which is why this is stated and not guessed.
- *
- * (The walk's end sentinel, 0x00469f38, is the CRT rand seed from
- * crtrand.h: _iob ends exactly where the seed begins.)
- *
- * The consequence is that the old comment here was wrong in the way that
- * mattered.  "No other fwrite can write to this stream" is false: stderr is
- * not a shared object needing the game's CRT to touch it, it is fd 2.  Our
- * CRT's `stderr` reaches the same OS handle, so our log writers just call
- * our own fwrite and hand nothing across the boundary.  What the old
- * comment got right -- and what still holds -- is the *shape*: 0x004513c7
- * is fwrite, called as fwrite(msg, strlen(msg), 1, stream), settled by the
- * call sites that are not log messages at all (SaveConfig 0x41d490 writes a
- * 0x144e-byte blob; the save-slot and high-score writers go a byte at a
- * time).  Those save-file callers are Stage D and still use GC_FWRITE. */
+/* The CD audio device; cdm.cpp owns its methods. */
+extern CDM g_cdAudio;
 
-/* The CD audio device (`CdAudioGlobal`); cdm.cpp owns its methods. */
-extern CDM g_cdAudio;   /* was 0x004dc640 */
+/* The programmable-control singleton (progctrl.h). */
+extern ProgableControl g_progCtrl;
 
-/* The programmable-control singleton (`ProgableControlGlobal`); see
- * progctrl.h. */
-extern ProgableControl g_progCtrl;   /* was 0x0046c298 */
+/* The level entry's globals (levelentry.cpp).  The camera block beside them
+ * has a layout, so it lives in camera.h. */
 
-/* The level-entry globals (PrepareLevelAssetsOnEntry, levelentry.cpp).
- * The camera block beside them has a layout, so it lives in camera.h. */
+/* The loading screen: bitmaps\<map>.bmp is loaded into the first; the second
+ * is shown when that fails. */
+extern LoadedImage g_loadingImage;
+extern LoadedImage g_fallbackImage;
 
-/* The loading screen: bitmaps\<map>.bmp is loaded into the first; the
- * second is shown when that fails. */
-extern LoadedImage g_loadingImage;   /* was 0x004e0428 */
-extern LoadedImage g_fallbackImage;   /* was 0x0046c798 */
 /* bitmaps\demo.bmp, loaded once at startup (renderstate.cpp). */
-extern LoadedImage g_demoImage;   /* was 0x004dc7a8 */
-/* A copy of the LevelMap's title, made at level entry. */
-extern char g_levelTitle[128];   /* was 0x0046c714 */
-/* The clock (ms) of the last GameTick RenderGameFrame ran; the level entry
- * resets it so the first frame of a level ticks from there. */
-extern double g_lastTickMs;   /* was 0x004e04b0 */
+extern LoadedImage g_demoImage;
 
-/* The install directory, filled by WinMain; every path format above is
- * printed against it.  Was GAMEDIR in two files and GAME_DIR in five. */
-extern char g_gameDir[260];   /* was 0x004e01c4 */
+/* A copy of the LevelMap's title, made at level entry. */
+extern char g_levelTitle[128];
+
+/* The clock (ms) at the last GameTick.  Level entry resets it, so the level's
+ * first frame ticks from there. */
+extern double g_lastTickMs;
+
+/* The install directory, filled by WinMain; game paths are formatted against
+ * it. */
+extern char g_gameDir[260];
 static const size_t GG_GAME_DIR_LEN = 0x104;
 
-extern HINSTANCE g_moduleInstance;   /* was 0x0046c49c */
+extern HINSTANCE g_moduleInstance;
 
-#endif /* KAROO_GAMEGLOBALS_H */
+#endif
