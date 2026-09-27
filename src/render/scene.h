@@ -11,7 +11,7 @@
 #include "scenetexture.h"
 #include "ani.h"
 
-struct Direct3D;
+struct RenderDevice;
 struct ParticleSystem;
 struct GameLogger;
 class ExtraObjects;
@@ -90,7 +90,7 @@ Scene_Construct(Scene *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Scene_Destruct(Scene *self);
 extern "C" __declspec(dllexport) void __cdecl
-Scene_BuildObjectList(Direct3D *d3d, ExtraObjects *leo, GameLogger *logger);
+Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger);
 extern "C" __declspec(dllexport) int __cdecl
 Scene_SegmentHitsModel(float px, float py, float pz,
                        float dx, float dy, float dz);

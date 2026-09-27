@@ -7,7 +7,7 @@
  *
  * KAROO_SKY_FX=noskip draws only the first of the six quads. */
 
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "sky.h"
 #include "log.h"
 #include "scenetexture.h"

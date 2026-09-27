@@ -13,7 +13,7 @@
  * level. */
 
 #include "meshbatch.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "d3dmath.h"
 #include "levelobject.h"
 #include "faktmesh.h"
@@ -56,7 +56,7 @@ static bool fx_norot(void)
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Direct3D_DrawMeshBatch(void *ctx, void *game, Direct3D *d3d)
+Direct3D_DrawMeshBatch(void *ctx, void *game, RenderDevice *d3d)
 {
     BYTE *c = (BYTE *)ctx;
 

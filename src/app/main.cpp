@@ -18,8 +18,7 @@
 #include "game.h"
 #include "config.h"
 #include "cdthemes.h"
-#include "direct3d.h"
-#include "createdevice.h"
+#include "renderdevice.h"
 #include "inputsetup.h"
 #include "soundmanager.h"
 #include "cfaktsound.h"
@@ -48,7 +47,6 @@ static volatile int g_moviePlaying;
 static IDirectDrawSurface* g_movieSurface;
 
 static const unsigned GAME_ALLOC_SIZE = 0x51790d;
-static const unsigned D3D_ALLOC_SIZE  = 0x238;
 
 static bool winmain_fx_norender()
 {
@@ -62,7 +60,6 @@ static bool winmain_fx_norender()
 /* The scalar deleting destructors free() their object, which is why both
  * objects come from malloc. */
 static void delete_game(Game *g)       { if (g) Game_ScalarDestructor(g, 1); }
-static void delete_d3d(Direct3D *d3d)  { if (d3d) Direct3D_ScalarDestructor(d3d, 1); }
 
 /* The window procedure: input devices and surfaces on focus changes, the intro
  * movie's events, and CD track repeats.  Every path ends in DefWindowProcA,
@@ -243,32 +240,28 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     ShowWindow(hWnd, SW_HIDE);
     UpdateWindow(hWnd);
 
-    Direct3D *d3d = (Direct3D *)malloc(D3D_ALLOC_SIZE);
-    g_pDirect3D = d3d ? Direct3D_Construct(d3d) : NULL;
-    d3d = g_pDirect3D;
+    RenderDevice *d3d = g_renderDevice = new RenderDevice();
 
     // Three attempts: the launcher's adapter and mode, the default adapter in
-    // that mode, the default adapter in mode 0.  PRESERVED: the mode index is
-    // a DWORD, but only its low byte is passed.
+    // that mode, the default adapter in mode 0.
     Config *cfg = game->config();
-    const unsigned char mode = (unsigned char)cfg->displayModeIndex();
-    if (!Direct3D_CreateD3DDevice(d3d, hWnd, cfg->adapterGuid(), mode, true)
-        && !Direct3D_CreateD3DDevice(d3d, hWnd, NULL, mode, true)
-        && !Direct3D_CreateD3DDevice(d3d, hWnd, NULL, 0, true)) {
+    const int mode = (int)cfg->displayModeIndex();
+    if (!d3d->Create(hWnd, cfg->adapterGuid(), mode, true)
+        && !d3d->Create(hWnd, NULL, mode, true)
+        && !d3d->Create(hWnd, NULL, 0, true)) {
         GameLog_LogSourceLocation(&g_logger, 4,
             "src/app/main.cpp", __LINE__,
             "Creation of Direct3D failed");
-        d3d->pDD4->RestoreDisplayMode();
-        MessageBoxA(NULL, d3d->pLastError, "Error!", MB_ICONHAND);
-        Direct3D_ReleaseResources(d3d);
-        delete_d3d(d3d);
+        if (d3d->pDD4)
+            d3d->pDD4->RestoreDisplayMode();
+        MessageBoxA(NULL, d3d->lastError(), "Error!", MB_ICONHAND);
+        delete d3d;
         delete_game(game);
         return 1;
     }
 
     if (Input_DirectInputSetup(hInstance, hWnd, (DWORD)&g_logger, game) == 0) {
-        Direct3D_ReleaseResources(d3d);
-        delete_d3d(d3d);
+        delete d3d;
         delete_game(game);
         return 1;
     }
@@ -334,7 +327,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     delete_game(Game::instance());
     Input_TrySaveSettings();
     Theme_ReleaseBlock(&g_themeBlock);
-    Direct3D_ReleaseResources(g_pDirect3D);
-    delete_d3d(g_pDirect3D);
+    delete g_renderDevice;
+    g_renderDevice = NULL;
     return (int)msg.wParam;
 }

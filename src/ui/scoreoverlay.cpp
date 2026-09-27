@@ -14,7 +14,7 @@
 
 #include <stdio.h>
 #include "scoreoverlay.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "texture.h"
 #include "log.h"
 #include "game.h"
@@ -105,7 +105,7 @@ static void build_backdrop(TLVertex v[4], float w, float h)
 
 /* Alpha blending and the overlay texture.  The device is re-read before every
  * call, as the game does, so the call traffic is identical. */
-static void setup_overlay_state(Direct3D *d3d, void *game)
+static void setup_overlay_state(RenderDevice *d3d, void *game)
 {
     d3d->pDevice->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
     d3d->pDevice->SetRenderState(D3DRENDERSTATE_SRCBLEND,  D3DBLEND_SRCALPHA);
@@ -116,7 +116,7 @@ static void setup_overlay_state(Direct3D *d3d, void *game)
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Score_DrawHighScoreTable(Game *g, void *game, Direct3D *d3d,
+Score_DrawHighScoreTable(Game *g, void *game, RenderDevice *d3d,
                          TextRenderer *text, int n)
 {
     (void)n;  // pushed by the caller, never read
@@ -200,7 +200,7 @@ static const ScoreRow k_rows[] = {
 
 /* The body game over and level complete share: backdrop, title and the eight
  * tally rows.  Only the title and what follows differ. */
-static void draw_summary(Game *g, void *game, Direct3D *d3d,
+static void draw_summary(Game *g, void *game, RenderDevice *d3d,
                          TextRenderer *text, int n, const char *title)
 {
     const DWORD dwWidth = d3d->pSelectedMode->dwWidth;
@@ -253,7 +253,7 @@ static void draw_summary(Game *g, void *game, Direct3D *d3d,
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
+Score_DrawGameOverScore(Game *g, void *game, RenderDevice *d3d,
                         TextRenderer *text, int n)
 {
     static LONG calls = 0;
@@ -283,7 +283,7 @@ Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
 #define GM_SAVE_COL_BOT 0x6f998
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_RenderLevelComplete(Game *g, void *game, Direct3D *d3d,
+Menu_RenderLevelComplete(Game *g, void *game, RenderDevice *d3d,
                          TextRenderer *text, DWORD ms)
 {
     draw_summary(g, game, d3d, text, (int)ms, "LEVEL COMPLETED");

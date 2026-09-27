@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "rendergameframe.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "d3dmath.h"
 #include "game.h"
 #include "levelmap.h"
@@ -65,7 +65,7 @@
 /* The scripted camera (Game+0x196086, a running spline): eye from
  * Game+0x13cc94, target from Game+0x2ab580, both copied into the camera
  * globals; pitch and yaw recovered by acos; a plain LookAt with +Y up. */
-static void scripted_camera(Game *g, Direct3D *d3d)
+static void scripted_camera(Game *g, RenderDevice *d3d)
 {
     CameraGlobals *cam = &g_camera;
     for (int i = 0; i < 3; ++i) {
@@ -154,7 +154,7 @@ static void rso(const void *pos, const void *rot, unsigned count, ThemeObjectTyp
 {
     Scene_RenderSceneObjects(Game::instance(), (SceneQuadVertex *)&g_levelPlacements,
                              (const Vec3 *)pos, (const Vec3 *)rot, count, slot(t),
-                             g_pDirect3D, now, animTime, animCode, dtMs);
+                             g_renderDevice, now, animTime, animCode, dtMs);
 }
 
 static void rso_list(const PlacementList &l, ThemeObjectType t, double now)
@@ -213,13 +213,13 @@ static bool foe_slot(unsigned char kind, bool dying, ThemeObjectType *out)
 
 static void set_rs(DWORD s, DWORD v)
 {
-    g_pDirect3D->pDevice->SetRenderState((D3DRENDERSTATETYPE)s, v);
+    g_renderDevice->pDevice->SetRenderState((D3DRENDERSTATETYPE)s, v);
 }
 
 static void opaque_passes(Game *g, double now, double elapsed)
 {
     LevelPlacements *pl = &g_levelPlacements;
-    Direct3D *d3d = g_pDirect3D;
+    RenderDevice *d3d = g_renderDevice;
 
     Direct3D_DrawMeshBatch(pl, &g_themeBlock, d3d);
     rso_list(pl->switches,    THEME_OBJ_SWITCH,        now);
@@ -325,12 +325,12 @@ static void shadow(const void *pos, const void *rot, ThemeObjectType t, double n
 {
     Shadows_DrawObjectShadows(Game::instance(), &g_levelPlacements,
                               (const float *)pos, (const float *)rot, 1, slot(t),
-                              g_pDirect3D, now, phase, animKey, 0);
+                              g_renderDevice, now, phase, animKey, 0);
 }
 
 static void effects_and_shadows(Game *g, double now, double dt)
 {
-    Direct3D *d3d = g_pDirect3D;
+    RenderDevice *d3d = g_renderDevice;
     Scene_DrawSceneObjects(d3d->pDevice, g_camera.eye,
                            ((DWORD *)&dt)[0], ((DWORD *)&dt)[1], now);
     set_rs(D3DRENDERSTATE_STENCILENABLE, 0);
@@ -345,7 +345,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
         rso(&focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now);
 
     /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
-    if (d3d->zbufFmt[4] != 0 && d3d->pSelectedMode->dwBitDepth > 16 &&
+    if (d3d->zbufFmt.dwStencilBitDepth != 0 && d3d->pSelectedMode->dwBitDepth > 16 &&
         g->videoShadows() != 0) {
         d3d->pDevice->SetTexture(0, g_texShadow.pTexture2);
         set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
@@ -394,7 +394,7 @@ static void particles(const void *pos, const void *rot, unsigned count, ThemeObj
 {
     Theme_DrawParticleObjects(Game::instance(), &g_levelPlacements,
                               (const float (*)[3])pos, (const float (*)[3])rot, count,
-                              slot(t), g_pDirect3D, now, elapsed, 0);
+                              slot(t), g_renderDevice, now, elapsed, 0);
 }
 
 static void particles_list(const PlacementList &l, ThemeObjectType t, double now, double elapsed)
@@ -443,7 +443,7 @@ enum BurstTick { TICK_WHOLE_MS, TICK_ELAPSED };
 static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick tick,
                         bool spin, double now, double elapsed)
 {
-    IDirect3DDevice3 *dev = g_pDirect3D->pDevice;
+    IDirect3DDevice3 *dev = g_renderDevice->pDevice;
     SceneTexture *tex = rec->pSubObjects[0].pTexture;
     if (tex != NULL)
         dev->SetTexture(0, tex->pTexture2);
@@ -606,7 +606,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             gen = Particle_GetGenerator(ps, NULL);
             gen_vset_direction(gen, o[0], o[1], o[2]);
 
-            IDirect3DDevice3 *dev = g_pDirect3D->pDevice;
+            IDirect3DDevice3 *dev = g_renderDevice->pDevice;
             dev->SetTransform(D3DTRANSFORMSTATE_WORLD, &g_worldIdentity);
             dev->SetTexture(0, speed->pSubObjects[0].pTexture->pTexture2);
             set_rs(D3DRENDERSTATE_SRCBLEND, D3DBLEND_ONE);
@@ -622,7 +622,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
         }
     }
 
-    Scene_DrawParticleSystems(g_pDirect3D->pDevice, g_camera.eye, dt, now);
+    Scene_DrawParticleSystems(g_renderDevice->pDevice, g_camera.eye, dt, now);
 
     Player *player = g->player();
     if (player->effectDActive() != 0 && player->anim() != 10)
@@ -649,7 +649,7 @@ static D3DTLVERTEX tl(float x, float y, D3DCOLOR c, float u, float v)
 
 static void draw_strip(D3DTLVERTEX *q)
 {
-    g_pDirect3D->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, D3DFVF_TLVERTEX, q, 4, 0);
+    g_renderDevice->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, D3DFVF_TLVERTEX, q, 4, 0);
 }
 
 static void blend_on(void)
@@ -672,7 +672,7 @@ static float wx(unsigned w, unsigned k) { return (float)(w * k) * 0.0015625f; }
 static void hud_text(TextRenderer *font, int align, float x, float y, float cw, float ch,
                      float spacing, const char *s, char first, DWORD c1, DWORD c2)
 {
-    Direct3D *d3d = g_pDirect3D;
+    RenderDevice *d3d = g_renderDevice;
     if (align < 0)
         Text_RenderText(font, x, y, cw, ch, spacing, s, d3d, first, c1, c2);
     else if (align == 0)
@@ -685,7 +685,7 @@ static void hud_text(TextRenderer *font, int align, float x, float y, float cw, 
  * its foe blips, then the timer and counters. */
 static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hudH)
 {
-    IDirect3DDevice3 *dev = g_pDirect3D->pDevice;
+    IDirect3DDevice3 *dev = g_renderDevice->pDevice;
     Player *pl = g->player();
 
     /* The two corner panels, mirrored halves of the HUD image. */
@@ -865,7 +865,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
                  g->map()->title(), 0, hc.color1, hc.color2);
         if (sp->caption()[0] != '\0')
             Text_DrawPanelText(&g_fontMain, pad, H - pad, cw, ch, 0.75f, H * 0.03750938f,
-                               sp->caption(), g_pDirect3D, hc.color1, hc.color2,
+                               sp->caption(), g_renderDevice, hc.color1, hc.color2,
                                g_themeBlock.images[THEME_IMG_MENU],
                                g_themeBlock.images[THEME_IMG_EDGE]);
     }
@@ -900,7 +900,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
         default: icon = false; img = THEME_IMG_HUD; break;
         }
         if (icon && g_themeBlock.images[img] != NULL) {
-            g_pDirect3D->pDevice->SetTexture(0, image(img));
+            g_renderDevice->pDevice->SetTexture(0, image(img));
             sprintf(buf, "%.1f", span - (*g->clock() - start) * 0.001);
         }
         D3DTLVERTEX q[4] = {
@@ -929,11 +929,11 @@ static void draw_logo(Game *g, float H, float hudH, float pad)
         tl(pad, yb, 0xffffffff, 0.0f, 1.0f),
     };
     blend_on();
-    g_pDirect3D->pDevice->SetTexture(0, g_texKaroo128.pTexture2);
+    g_renderDevice->pDevice->SetTexture(0, g_texKaroo128.pTexture2);
     if (g->state() == 0 || g->state() == 5)
         draw_strip(q);
     set_rs(D3DRENDERSTATE_ALPHABLENDENABLE, 0);
-    g_pDirect3D->pDevice->SetTexture(0, NULL);
+    g_renderDevice->pDevice->SetTexture(0, NULL);
 }
 
 /* ─── RenderGameFrame ───────────────────────────────────────────────────── */
@@ -961,18 +961,18 @@ Render_RenderGameFrame(void)
         FramePose_Player(g, now, dt, &g_cameraFocus);
         FramePose_Foes(g, now, dt, g_foePoses);
         if (g->scriptPlayer()->splineActive() == 0)
-            Camera_UpdateViewTransform(&g_camera, g_pDirect3D, g, g_cameraFocus, dt);
+            Camera_UpdateViewTransform(&g_camera, g_renderDevice, g, g_cameraFocus, dt);
         else
-            scripted_camera(g, g_pDirect3D);
+            scripted_camera(g, g_renderDevice);
         if (g->soundCreated() != 0)
             update_listener(g);
     }
 
-    Direct3D *d3d = g_pDirect3D;
+    RenderDevice *d3d = g_renderDevice;
     D3DRECT rect = { 0, 0, (LONG)d3d->pSelectedMode->dwWidth, (LONG)d3d->pSelectedMode->dwHeight };
     /* The sky covers the whole target, so only depth (and stencil) clear. */
     DWORD clearFlags = D3DCLEAR_ZBUFFER;
-    if (d3d->zbufFmt[4] != 0) {
+    if (d3d->zbufFmt.dwStencilBitDepth != 0) {
         set_rs(D3DRENDERSTATE_STENCILENABLE, 1);
         clearFlags = D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL;
     }
@@ -1030,7 +1030,7 @@ Render_RenderGameFrame(void)
     d3d->pDevice->EndScene();
     if (g->state() == 7) {
         if (g->field_0c() != 0)
-            Direct3D_FlipPrimaryFrame(&g_demoImage);
+            g_renderDevice->PresentImage(&g_demoImage);
         return;
     }
     d3d->pPrimary->Flip(NULL, DDFLIP_WAIT);

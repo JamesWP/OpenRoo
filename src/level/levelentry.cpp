@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "levelentry.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "texturedib.h"
 #include "game.h"
 #include "levelmap.h"
@@ -25,7 +25,7 @@
 extern "C" __declspec(dllexport) void __cdecl
 LevelEntry_PrepareAssets(void)
 {
-    Direct3D *d3d = g_pDirect3D;
+    RenderDevice *d3d = g_renderDevice;
     Game *g = Game::instance();
     const LevelMap *map = g->map();
 
@@ -33,7 +33,7 @@ LevelEntry_PrepareAssets(void)
     DDBLTFX fx;
     memset(&fx, 0, sizeof fx);
     fx.dwSize = sizeof fx;
-    d3d->pZBuffer->Blt(NULL, NULL, NULL, DDBLT_COLORFILL, &fx);
+    d3d->pBackBuffer->Blt(NULL, NULL, NULL, DDBLT_COLORFILL, &fx);
     d3d->pPrimary->Flip(NULL, DDFLIP_WAIT);
 
     // 2. The loading screen.
@@ -41,7 +41,7 @@ LevelEntry_PrepareAssets(void)
     sprintf(thm, "themes\\%s.thm", map->mapName());
     sprintf(bmp, "bitmaps\\%s.bmp", map->mapName());
     unsigned ok = TextureDIB_CreateSurface(&g_loadingImage, d3d->pDD4, bmp, 1);
-    Direct3D_FlipPrimaryFrame((char)ok ? &g_loadingImage : &g_fallbackImage);
+    g_renderDevice->PresentImage((char)ok ? &g_loadingImage : &g_fallbackImage);
 
     // 3. The theme, only when it has changed: the block keeps the path it was
     // loaded from.

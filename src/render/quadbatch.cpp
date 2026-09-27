@@ -3,7 +3,7 @@
  * before it in the array, whether or not that one drew anything. */
 
 #include "quadbatch.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "d3dmath.h"
 #include "levelobject.h"
 #include "log.h"
@@ -85,7 +85,7 @@ static QuadFxMode quad_fx(void)
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Direct3D_DrawQuadBatch(QuadVerts *verts, void *game, Direct3D *d3d)
+Direct3D_DrawQuadBatch(QuadVerts *verts, void *game, RenderDevice *d3d)
 {
     DWORD nobj = *(DWORD *)((BYTE *)game + GAME_OFF_QUAD_COUNT);
     if (nobj == 0)

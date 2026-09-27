@@ -16,7 +16,7 @@ SRCS = src/app/process.cpp src/app/log.cpp src/app/veh.cpp src/audio/cdm.cpp \
        src/input/progctrl.cpp src/render/com_proxy.cpp src/render/nullddraw.cpp src/app/launcher.cpp \
        src/render/faktmesh.cpp src/render/particles.cpp src/entities/generators.cpp src/entities/factory.cpp \
        src/core/clock.cpp src/core/determinism.cpp src/core/gamestate.cpp src/testing/record.cpp \
-       src/render/scenequad.cpp src/render/direct3d.cpp src/render/quadbatch.cpp src/render/sky.cpp \
+       src/render/scenequad.cpp src/render/renderdevice.cpp src/render/quadbatch.cpp src/render/sky.cpp \
        src/render/scenelight.cpp src/render/scenematerial.cpp src/render/texture.cpp src/render/texturedib.cpp \
        src/render/texturetga.cpp src/render/scenetexture.cpp src/render/dsoscene.cpp src/render/d3dmath_common.cpp \
        src/render/d3dmath_std.cpp src/render/d3dmath_mode.cpp src/render/meshbatch.cpp src/core/worldstate.cpp \

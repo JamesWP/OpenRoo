@@ -4,7 +4,7 @@
 #include <math.h>
 #include <new>
 #include "scene.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "extraobjects.h"
 #include "particles.h"
 #include "ani.h"
@@ -54,7 +54,7 @@ static void free_scene_objects()
  * rotation are Z-negated on the way in, as are the spline points, whose file
  * order is (x, z, y) -- the record stores y at [2]. */
 extern "C" __declspec(dllexport) void __cdecl
-Scene_BuildObjectList(Direct3D *d3d, ExtraObjects *leo, GameLogger *logger)
+Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
 {
     Scene *s = &g_scene;
     free_scene_objects();

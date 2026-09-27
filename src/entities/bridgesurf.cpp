@@ -39,7 +39,7 @@
  *             fmod and clock arithmetic. */
 
 #include "bridgesurf.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "levelobject.h"
 #include "game.h"
 #include "bridgeobject.h"
@@ -112,7 +112,7 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, Direct3D *d3d, double t)
+Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, RenderDevice *d3d, double t)
 {
     D3DMATRIX world;
     ZeroMemory(&world, sizeof(world));

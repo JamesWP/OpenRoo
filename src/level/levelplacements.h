@@ -102,10 +102,10 @@ LevelPlacements_StaticInit(void);
  * slide along u gets a quarter-turn yaw; slides animate with fmod(now * 0.002,
  * 1). */
 class ThemeAssetBlock;
-struct Direct3D;
+struct RenderDevice;
 extern "C" __declspec(dllexport) void __cdecl
 LevelPlacements_DrawLifts(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
-                          Direct3D *d3d, double now);
+                          RenderDevice *d3d, double now);
 extern "C" __declspec(dllexport) void __cdecl
 LevelPlacements_DrawSlides(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
-                           Direct3D *d3d, double now);
+                           RenderDevice *d3d, double now);

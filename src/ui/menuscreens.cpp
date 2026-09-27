@@ -9,7 +9,7 @@
 
 #include "menuscreens.h"
 #include "game.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "textrenderer.h"
 #include "texture.h"
 #include "menutree.h"
@@ -51,12 +51,12 @@ static D3DTLVERTEX g_listQuad[4];
 #define THEME_SAVE_COL     0x6f90c  // one pair, every slot row
 #define THEME_OPTIONS_COL  0x6f91c  // three pairs
 
-static inline DWORD mode_width(Direct3D *d3d)
+static inline DWORD mode_width(RenderDevice *d3d)
 {
     return d3d->pSelectedMode->dwWidth;
 }
 
-static void set_blend(Direct3D *d3d)
+static void set_blend(RenderDevice *d3d)
 {
     d3d->pDevice->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, 1);
     d3d->pDevice->SetRenderState(D3DRENDERSTATE_SRCBLEND,  D3DBLEND_SRCALPHA);
@@ -73,7 +73,7 @@ static D3DTLVERTEX tlv(float x, float y, float u, float v)
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_DrawBackdrop(Direct3D *d3d, void *theme)
+Menu_DrawBackdrop(RenderDevice *d3d, void *theme)
 {
     set_blend(d3d);
     SceneTexture *tex = *(SceneTexture **)((BYTE *)theme + THEME_BACKDROP_TEX);
@@ -87,7 +87,7 @@ Menu_DrawBackdrop(Direct3D *d3d, void *theme)
  * mirror images (u = 1 on the left, 0 on the right), which the texture relies
  * on.  Double sin() stands in for the x87 FSIN: the lost bits move a marker by
  * far less than a pixel. */
-static void draw_markers(Direct3D *d3d, float y0, float left, float right)
+static void draw_markers(RenderDevice *d3d, float y0, float left, float right)
 {
     const DWORD w  = mode_width(d3d);
     const float fw = (float)w;
@@ -112,7 +112,7 @@ static void draw_markers(Direct3D *d3d, float y0, float left, float right)
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
+Menu_DrawCursorMarkers(Game *g, RenderDevice *d3d, DWORD ms, float rowOffset)
 {
     const DWORD w  = mode_width(d3d);
     const float y0 = (float)(w * 172) * K640
@@ -126,7 +126,7 @@ Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
  * from y 102, at the page's edges (centres 40 and 600) so they bracket the
  * whole row. */
 extern "C" __declspec(dllexport) void __cdecl
-Menu_DrawControlsCursorMarkers(Game *g, Direct3D *d3d, DWORD ms)
+Menu_DrawControlsCursorMarkers(Game *g, RenderDevice *d3d, DWORD ms)
 {
     const DWORD w  = mode_width(d3d);
     const float y0 = (float)(w * 102) * K640
@@ -146,7 +146,7 @@ static const float k_rowY[6] = {
     0.28125f, 0.33125001f, 0.38124999f, 0.43125001f, 0.48124999f, 0.53125f,
 };
 
-static void draw_panel(Direct3D *d3d, void *theme, IDirect3DTexture2 *tex,
+static void draw_panel(RenderDevice *d3d, void *theme, IDirect3DTexture2 *tex,
                        void *quad)
 {
     Menu_DrawBackdrop(d3d, theme);
@@ -155,7 +155,7 @@ static void draw_panel(Direct3D *d3d, void *theme, IDirect3DTexture2 *tex,
     d3d->pDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, MENU_FVF, quad, 4, 0);
 }
 
-static void draw_fixed_rows(Direct3D *d3d, void *theme, TextRenderer *text,
+static void draw_fixed_rows(RenderDevice *d3d, void *theme, TextRenderer *text,
                             const char *const *rows, int n, unsigned colOff)
 {
     const float fw = (float)mode_width(d3d);
@@ -168,7 +168,7 @@ static void draw_fixed_rows(Direct3D *d3d, void *theme, TextRenderer *text,
     }
 }
 
-static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
+static void draw_slot_rows(Game *g, RenderDevice *d3d, void *theme,
                            TextRenderer *text, unsigned colOff)
 {
     SaveSlots *ss = g->saveSlots();
@@ -200,7 +200,7 @@ static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
 #define LS_MARKER_SPREAD 1.3f  // level names run wider than menu rows
 #define LS_ROW_Y    208.0f
 #define LS_ROW_STEP  20.0f
-void Menu_RenderLevelSelect(Game *g, void *theme, Direct3D *d3d,
+void Menu_RenderLevelSelect(Game *g, void *theme, RenderDevice *d3d,
                             TextRenderer *text, DWORD ms)
 {
     LevelSelectView v;
@@ -233,7 +233,7 @@ static const char *const k_mainMenuRows[6] = {
 static const char *const k_optionsRows[3] = { "Controls", "Video", "Audio" };
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_RenderMainMenu(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
+Menu_RenderMainMenu(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
                     DWORD ms)
 {
     draw_panel(d3d, theme, g_panelTexture, g_panelQuad);
@@ -242,7 +242,7 @@ Menu_RenderMainMenu(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_RenderOptionsMenu(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
+Menu_RenderOptionsMenu(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
                        DWORD ms)
 {
     draw_panel(d3d, theme, g_optionsTexture, g_listQuad);
@@ -251,7 +251,7 @@ Menu_RenderOptionsMenu(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_RenderRestoreSlotList(Game *g, void *theme, Direct3D *d3d,
+Menu_RenderRestoreSlotList(Game *g, void *theme, RenderDevice *d3d,
                            TextRenderer *text, DWORD ms)
 {
     draw_panel(d3d, theme, g_panelTexture, g_listQuad);
@@ -260,7 +260,7 @@ Menu_RenderRestoreSlotList(Game *g, void *theme, Direct3D *d3d,
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_RenderSaveSlotList(Game *g, void *theme, Direct3D *d3d,
+Menu_RenderSaveSlotList(Game *g, void *theme, RenderDevice *d3d,
                         TextRenderer *text, DWORD ms)
 {
     draw_panel(d3d, theme, g_saveTexture, g_listQuad);
@@ -302,7 +302,7 @@ static Affine knob3(float tx, float ty, unsigned char value)
     return place(tx, ty);
 }
 
-static void draw_widget(Direct3D *d3d, const Affine &m, IDirect3DTexture2 *tex,
+static void draw_widget(RenderDevice *d3d, const Affine &m, IDirect3DTexture2 *tex,
                         DWORD colour = 0xffffffff)
 {
     // A row vector times [[c,-s,0,0],[s,c,0,0],[0,0,1,0],[tx,ty,0,1]]: w stays
@@ -321,7 +321,7 @@ static void draw_widget(Direct3D *d3d, const Affine &m, IDirect3DTexture2 *tex,
 }
 
 /* A left-aligned option label in the 12x14 cell, at x = xv virtual. */
-static void draw_label_c(Direct3D *d3d, TextRenderer *text, float xv,
+static void draw_label_c(RenderDevice *d3d, TextRenderer *text, float xv,
                          float yK, const char *str, DWORD top, DWORD bot)
 {
     const DWORD w = mode_width(d3d);
@@ -330,7 +330,7 @@ static void draw_label_c(Direct3D *d3d, TextRenderer *text, float xv,
                    str, d3d, 0, top, bot);
 }
 
-static void draw_label(Direct3D *d3d, void *theme, TextRenderer *text,
+static void draw_label(RenderDevice *d3d, void *theme, TextRenderer *text,
                        float xv, float yK, const char *str, unsigned colOff)
 {
     const DWORD *col = (const DWORD *)((BYTE *)theme + colOff);
@@ -340,7 +340,7 @@ static void draw_label(Direct3D *d3d, void *theme, TextRenderer *text,
 /* Menu node 0xc.  Four rows of a label at x 262 and its widget at x 368: 3D
  * sound (toggle), sound volume (knob), CD music (toggle), CD volume (knob). */
 extern "C" __declspec(dllexport) void __cdecl
-Menu_RenderSoundOptions(Game *g, void *theme, Direct3D *d3d,
+Menu_RenderSoundOptions(Game *g, void *theme, RenderDevice *d3d,
                         TextRenderer *text, DWORD ms)
 {
     draw_panel(d3d, theme, g_saveTexture, g_panelQuad);
@@ -374,13 +374,13 @@ Menu_RenderSoundOptions(Game *g, void *theme, Direct3D *d3d,
  * half-grey and its knob not drawn.  Both tests are re-made at each use. */
 #define g_videoTexture (g_menuTex3.pTexture2)  // menu_3.tga
 
-static bool shadows_available(Direct3D *d3d)
+static bool shadows_available(RenderDevice *d3d)
 {
-    return d3d->zbufFmt[4] != 0 && d3d->pSelectedMode->dwBitDepth > 16;
+    return d3d->zbufFmt.dwStencilBitDepth != 0 && d3d->pSelectedMode->dwBitDepth > 16;
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_RenderVideoOptions(Game *g, void *theme, Direct3D *d3d,
+Menu_RenderVideoOptions(Game *g, void *theme, RenderDevice *d3d,
                         TextRenderer *text, DWORD ms)
 {
     draw_panel(d3d, theme, g_videoTexture, g_listQuad);
@@ -438,7 +438,7 @@ static const ControlRow k_controls[13] = {
 };
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_RenderControlsRemap(Game *g, void *theme, Direct3D *d3d,
+Menu_RenderControlsRemap(Game *g, void *theme, RenderDevice *d3d,
                          TextRenderer *text, DWORD ms)
 {
     const DWORD w  = mode_width(d3d);
@@ -527,7 +527,7 @@ static void fill_quad(D3DTLVERTEX *q, float x0, float x1, float y0, float y1,
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_BuildMenuGeometry(Direct3D *d3d, const char *prefix)
+Menu_BuildMenuGeometry(RenderDevice *d3d, const char *prefix)
 {
     const float fw = (float)d3d->pSelectedMode->dwWidth;
 
@@ -648,7 +648,7 @@ static float g_creditsScroll;
 static DWORD g_creditsStartMs;
 
 extern "C" __declspec(dllexport) void __cdecl
-Menu_RenderCreditsScroll(Game *game, Direct3D *d3d, TextRenderer *text,
+Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
                          DWORD nowMs)
 {
     const float scale = (float)d3d->pSelectedMode->dwWidth * (1.0f / 640.0f);
@@ -686,7 +686,7 @@ Menu_RenderCreditsScroll(Game *game, Direct3D *d3d, TextRenderer *text,
 /* Picks the screen for the current menu node; any other node draws nothing.
  * The level select's theme nodes (0x60 + t) draw the level select page. */
 extern "C" __declspec(dllexport) void __cdecl
-Menu_DispatchGameState(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
+Menu_DispatchGameState(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
                        DWORD ms)
 {
     const unsigned char node = g->menu()->node();

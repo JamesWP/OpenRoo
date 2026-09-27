@@ -398,7 +398,7 @@ LevelPlacements_StaticInit(void)
  * passed as the scene renderer's quad: tileQuad heads it. */
 extern "C" __declspec(dllexport) void __cdecl
 LevelPlacements_DrawLifts(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
-                          Direct3D *d3d, double now)
+                          RenderDevice *d3d, double now)
 {
     for (unsigned int i = 0; i < (unsigned int)p->lifts.count; i++) {
         const LiftObject *lift = g->liftSlot(i);
@@ -414,7 +414,7 @@ LevelPlacements_DrawLifts(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
 
 extern "C" __declspec(dllexport) void __cdecl
 LevelPlacements_DrawSlides(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
-                           Direct3D *d3d, double now)
+                           RenderDevice *d3d, double now)
 {
     for (unsigned int i = 0; i < (unsigned int)p->slides.count; i++) {
         const SlideObject *slide = g->slideSlot(i);

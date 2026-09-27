@@ -12,7 +12,7 @@
 #include "generators.h"
 #include "particles.h"
 #include "camera.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "d3dmath.h"
 #include "game.h"
 #include "levelmap.h"
@@ -57,7 +57,7 @@ static void camera_view_dir(float d[3])
 extern "C" __declspec(dllexport) void __cdecl
 Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                           const float (*rot)[3], DWORD count,
-                          ThemeObjectTypeSlot *slot, Direct3D *d3d,
+                          ThemeObjectTypeSlot *slot, RenderDevice *d3d,
                           double t, double dt, DWORD system)
 {
     IDirect3DDevice3 *dev = d3d->pDevice;
