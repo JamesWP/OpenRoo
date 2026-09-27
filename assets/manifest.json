@@ -2689,27 +2689,6 @@
    "class": "required"
   },
   {
-   "path": "res/group_icon_106.bin",
-   "sha256": "1d47c7bd2cc20089bc0387c8e7ac0a1680e9b4dc81dbde998c3c5c8e6c7d69aa",
-   "size": 34,
-   "class": "required",
-   "extracted_from": "Karoo.exe"
-  },
-  {
-   "path": "res/icon_1.bin",
-   "sha256": "3edcbd60ca6426852bf7a34353bc8a4e308bfe32bc8f22849855703fc833258f",
-   "size": 2216,
-   "class": "required",
-   "extracted_from": "Karoo.exe"
-  },
-  {
-   "path": "res/icon_2.bin",
-   "sha256": "e4dc55ff7cacb866cbda762f5c6c2197bc65384228ffd1c0fd03d7052b5930fd",
-   "size": 1384,
-   "class": "required",
-   "extracted_from": "Karoo.exe"
-  },
-  {
    "path": "res/version_1.bin",
    "sha256": "d03aa09d4491b1b8a7e42249718dccf49fb9ea869985a3e6de782fe0e9ccac11",
    "size": 772,

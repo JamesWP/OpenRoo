@@ -66,7 +66,7 @@ $(OBJDIR)/%.o: src/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -MMD -MP -c -o $@ $<
 
-# The game's own icon and version block are not in the repository:
+# The game's own version block is not in the repository:
 # tools/import_assets.py extracts them from your copy of Ka'roo into
 # game/res/, which data/karoo.rc's "res/..." names resolve against.
 GAMERES = $(wildcard game/res/*.bin)
@@ -78,8 +78,8 @@ game/res/version_1.bin:
 $(OBJDIR)/rgn_111.bin: data/launcher_region.png tools/png_to_rgn.py | $(OBJDIR)
 	python3 tools/png_to_rgn.py $< $@
 
-$(RESOBJ): data/karoo.rc game/res/version_1.bin $(GAMERES) $(OBJDIR)/rgn_111.bin | $(OBJDIR)
-	i686-w64-mingw32-windres --include-dir=game --include-dir=$(OBJDIR) $< -O coff -o $@
+$(RESOBJ): data/karoo.rc data/karoo.ico game/res/version_1.bin $(GAMERES) $(OBJDIR)/rgn_111.bin | $(OBJDIR)
+	i686-w64-mingw32-windres --include-dir=game --include-dir=data --include-dir=$(OBJDIR) $< -O coff -o $@
 
 $(OBJDIR):
 	mkdir -p $@
