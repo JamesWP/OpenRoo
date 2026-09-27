@@ -65,22 +65,6 @@ KAROO_LAYOUT_CHECKS(CdThemes)
     KAROO_LAYOUT_SIZE(0xff1e);
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_FindThemeIndexByThemeName(CdThemes *self, const char *name);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf(CdThemes *self, const char *caption);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sim_PlayCDStuf_2(CdThemes *self);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_ValidateCDTrackLengths(CdThemes *self);
-extern "C" __declspec(dllexport) unsigned char __attribute__((thiscall))
-Sim_ReadCdTrackThemeTable(CdThemes *self, const char *name);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Sim_ListTrackLengths(CdThemes *self);
-extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
-Sim_CdThemesConstruct(CdThemes *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sim_CdThemesDestruct(CdThemes *self);
 extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
 Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags);
 
