@@ -127,6 +127,7 @@ enum class VertexFormat {
     Screen,     // ScreenVertex: pre-transformed, lit
     Lit,        // LitVertex: world space, lit, one UV set
     Normal2,    // x,y,z, normal, two UV sets (40 bytes; meshes)
+    Diffuse1,   // x,y,z, diffuse, one UV set (strided quads)
     Diffuse2,   // x,y,z, diffuse, two UV sets (36 bytes; quads)
 };
 

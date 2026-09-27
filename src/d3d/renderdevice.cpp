@@ -48,6 +48,7 @@ DWORD d3d_fvf(VertexFormat f)
     case VertexFormat::Screen:   return D3DFVF_TLVERTEX;
     case VertexFormat::Lit:      return D3DFVF_LVERTEX;
     case VertexFormat::Normal2:  return D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX2;
+    case VertexFormat::Diffuse1: return D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1;
     case VertexFormat::Diffuse2: return D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2;
     }
     return 0;
@@ -298,8 +299,8 @@ bool RenderDevice::Draw(Prim prim, VertexFormat format, const void *verts,
 }
 
 /* A driver is entitled to read every texture-coordinate set the vertex
- * format declares, so any set the caller left unfilled is pointed at set 0's
- * array first: never sampled, but always readable. */
+ * format declares, so a declared set left unfilled would be a wild read
+ * (CRASH.md): the draw is refused instead. */
 bool RenderDevice::DrawStrided(Prim prim, VertexFormat format,
                                StridedVertices *v, uint32_t count,
                                uint32_t flags)
@@ -308,9 +309,13 @@ bool RenderDevice::DrawStrided(Prim prim, VertexFormat format,
     DWORD ntex = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
     if (ntex > D3DDP_MAXTEXCOORD)
         ntex = D3DDP_MAXTEXCOORD;
-    for (DWORD i = 1; i < ntex; i++)
-        if (v->texCoords[i].data == NULL)
-            v->texCoords[i] = v->texCoords[0];
+    for (DWORD i = 0; i < ntex; i++) {
+        if (v->texCoords[i].data == NULL) {
+            log_write("renderdevice: DrawStrided refused: format %d declares "
+                      "texture set %lu but it is unfilled\n", (int)format, i);
+            return false;
+        }
+    }
 
     D3DDRAWPRIMITIVESTRIDEDDATA sd;
     memset(&sd, 0, sizeof(sd));
