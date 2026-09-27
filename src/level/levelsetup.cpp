@@ -209,7 +209,7 @@ static void levelsetup_seed_diag(unsigned int seed)
         buf[0] == '0')
         return;
 
-    log_write("levelsetup: crt_srand(%u) -> CRT seed global 0x00469f38 = %u\n",
+    log_write("levelsetup: crt_srand(%u) -> CRT seed = %u\n",
               seed, CRT_RAND_SEED);
 }
 

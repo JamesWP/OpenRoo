@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 r"""Ka'roo level-report regression harness.
 
-The game ships its own all-levels dump.  Game::LoadSounds (0x0041A280) polls
+The game ships its own all-levels dump.  Game::LoadSounds polls
 GetAsyncKeyState(VK_L) three times just before it acquires the fixed sound
-buffers; if L is down it calls WriteLevelReport (0x0041B991), which walks every
+buffers; if L is down it calls WriteLevelReport, which walks every
 level in the game file --- SetCurrentLevelName, OpenLevelFile,
 SetupLevelObjects, CalculateLevelScore --- and writes two text files into the
 game directory:

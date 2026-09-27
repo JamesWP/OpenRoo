@@ -370,9 +370,9 @@ Assert on `at_completion.*`, not the top-level block — see above.
 for *first* when a change could affect level parsing, object construction or
 scoring, because it covers all 80 levels rather than the one a recording visits.
 
-The game already has the test built in. `Game::LoadSounds` (`0x0041A280`) polls
+The game already has the test built in. `Game::LoadSounds` polls
 `GetAsyncKeyState(VK_L)` three times just before it acquires the fixed sound
-buffers, and if L is down it calls `WriteLevelReport` (`0x0041B991`). That walks
+buffers, and if L is down it calls `WriteLevelReport`. That walks
 every level in the game file — `SetCurrentLevelName`, `OpenLevelFile`,
 `SetupLevelObjects`, `CalculateLevelScore` — and writes two text files into the
 game directory:
