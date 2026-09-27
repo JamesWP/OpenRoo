@@ -3,7 +3,7 @@
  * All source; nothing is taken from the game's exe.
  *
  *   DIALOG     104 launcher, 110 device (display driver and mode)
- *   ICON       106 window/taskbar icon, karoo.ico (windres numbers its
+ *   ICON       106 window/taskbar icon, openroo.ico (windres numbers its
  *              images)
  *   "RGN"      111 launcher window shape, built from launcher_region.png
  *              into build/obj/rgn_111.bin by tools/png_to_rgn.py
@@ -28,7 +28,7 @@
 #define IDC_PLAY        1013
 
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-106 ICON "karoo.ico"
+106 ICON "openroo.ico"
 111 RGN "rgn_111.bin"
 
 1 VERSIONINFO

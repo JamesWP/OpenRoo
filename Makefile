@@ -70,7 +70,7 @@ $(OBJDIR)/%.o: src/%.cpp
 $(OBJDIR)/rgn_111.bin: data/launcher_region.png tools/png_to_rgn.py | $(OBJDIR)
 	python3 tools/png_to_rgn.py $< $@
 
-$(RESOBJ): data/karoo.rc data/karoo.ico $(OBJDIR)/rgn_111.bin | $(OBJDIR)
+$(RESOBJ): data/karoo.rc data/openroo.ico $(OBJDIR)/rgn_111.bin | $(OBJDIR)
 	i686-w64-mingw32-windres --include-dir=data --include-dir=$(OBJDIR) $< -O coff -o $@
 
 $(OBJDIR):
