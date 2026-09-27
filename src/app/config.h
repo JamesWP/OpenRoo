@@ -82,6 +82,11 @@ public:
     static Config *__attribute__((thiscall))
     scalarDeletingDtor(Config *self, unsigned char flags);
 
+    /* Karoo.cfg: returns 1 when the file loads and ends with the tag. */
+    int loadValues(const char *path);
+
+    int save(const char *path);
+
 private:
     Config() = delete;  // only ever reached through the Game
     KAROO_LAYOUT_REGISTER(Config);
@@ -138,10 +143,4 @@ KAROO_LAYOUT_CHECKS(Config)
     // The blob is the object's tail.
     KAROO_LAYOUT_SIZE(Config::PERSISTED_OFFSET + Config::PERSISTED_SIZE);
 }
-
-/* Karoo.cfg: returns 1 when the file loads and ends with the tag. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Config_LoadValues(Config *self, const char *path);
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Config_Save(Config *self, const char *path);
 

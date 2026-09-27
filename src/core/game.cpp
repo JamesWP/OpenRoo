@@ -118,7 +118,7 @@ Game *Game::construct(const char *gameName)
         Save_WriteAllSlotFiles(&saveSlots_, gameFileName_, SAVE_KEY);
     }
     field_173584_ = 0;
-    if (!Config_LoadValues(&config_, GS_CFG_FILE)) {
+    if (!config_.loadValues(GS_CFG_FILE)) {
         GameLog_LogMessage(&g_logger, 3, GS_GAME_CFG_DEFAULTS);
         config_.fillDefaults();
     } else {
@@ -200,7 +200,7 @@ void Game::destruct()
     config_.setCameraDistanceSetting(zoomDistance_);
     if (highScores_.writeFile(gameFileName_, HIGHSCORE_KEY))
         GameLog_LogMessage(&g_logger, 1, GS_GAME_HIGHSCORES_SAVED);
-    if (Config_Save(&config_, GS_CFG_FILE))
+    if (config_.save(GS_CFG_FILE))
         GameLog_LogMessage(&g_logger, 1, GS_CFG_SAVE_OK);
     else
         GameLog_LogMessage(&g_logger, 3, GS_CFG_SAVE_ERR);

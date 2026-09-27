@@ -55,7 +55,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     if (self->fixedSounds()->loaded != 0)
         return;
 
-    if ((Config_Save(self->config(), GS_CFG_FILE) & 0xff) != 0)
+    if ((self->config()->save(GS_CFG_FILE) & 0xff) != 0)
         GameLog_LogMessage(&g_logger, 1, GS_CFG_SAVE_OK);
     else
         GameLog_LogMessage(&g_logger, 3, GS_CFG_SAVE_ERR);
