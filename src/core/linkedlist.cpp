@@ -82,57 +82,48 @@ static ListFx list_fx(void)
     return fx;
 }
 
-extern "C" {
-
-/* The vtable below needs its address. */
-__declspec(dllexport) LinkedList *__attribute__((thiscall))
-List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf);
-
 /* The one-slot vtable. */
-static void *const g_ListVtable[1] = { (void *)&List_ScalarDestructor };
+static void *const g_ListVtable[1] = { (void *)&LinkedList::scalarDeletingDtor };
 
-__declspec(dllexport) void __attribute__((thiscall))
-List_Init(LinkedList *self)
+void LinkedList::init()
 {
     ++g_nInit;
     { static unsigned long seen; list_first("Init", &seen); }
-    self->vtable  = (void **)g_ListVtable;
-    self->pHead   = NULL;
-    self->pTail   = NULL;
-    self->dwCount = 0;
+    vtable  = (void **)g_ListVtable;
+    pHead   = NULL;
+    pTail   = NULL;
+    dwCount = 0;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-List_Clear(LinkedList *self)
+void LinkedList::clear()
 {
     ++g_nClear;
     { static unsigned long seen; list_first("Clear", &seen); }
-    LinkedListNode *p = self->pHead;
+    LinkedListNode *p = pHead;
     while (p != NULL) {
         LinkedListNode *next = p->pNextNode;
         free(p);
         p = next;
     }
-    self->pHead   = NULL;
-    self->pTail   = NULL;
-    self->dwCount = 0;
+    pHead   = NULL;
+    pTail   = NULL;
+    dwCount = 0;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-List_Destruct(LinkedList *self)
+void LinkedList::destruct()
 {
     ++g_nDestruct;
     { static unsigned long seen; list_first("Destruct", &seen); }
-    self->vtable = (void **)g_ListVtable;
-    List_Clear(self);
+    vtable = (void **)g_ListVtable;
+    clear();
 }
 
-__declspec(dllexport) LinkedList *__attribute__((thiscall))
-List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf)
+LinkedList *__attribute__((thiscall))
+LinkedList::scalarDeletingDtor(LinkedList *self, unsigned char bFreeSelf)
 {
     ++g_nScalarDtor;
     { static unsigned long seen; list_first("ScalarDestructor", &seen); }
-    List_Destruct(self);
+    self->destruct();
     if ((bFreeSelf & 1) != 0)
         // No list is allocated on its own today; free() matches the malloc the
         // rest of the code uses.
@@ -140,8 +131,7 @@ List_ScalarDestructor(LinkedList *self, unsigned char bFreeSelf)
     return self;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-List_Append(LinkedList *self, void *pValue)
+void LinkedList::append(void *pValue)
 {
     ++g_nAppend;
     { static unsigned long seen; list_first("Append", &seen); }
@@ -156,28 +146,27 @@ List_Append(LinkedList *self, void *pValue)
     node->pNextNode = NULL;
     node->pPrevNode = NULL;
 
-    if (list_fx() == LIST_FX_LIFO && self->pHead != NULL) {
+    if (list_fx() == LIST_FX_LIFO && pHead != NULL) {
         // The lifo control: link at the head.
-        node->pNextNode        = self->pHead;
-        self->pHead->pPrevNode = node;
-        self->pHead            = node;
-        self->dwCount          = self->dwCount + 1;
+        node->pNextNode        = pHead;
+        pHead->pPrevNode = node;
+        pHead            = node;
+        dwCount          = dwCount + 1;
         return;
     }
 
-    if (self->pTail != NULL) {
-        self->pTail->pNextNode = node;
-        node->pPrevNode        = self->pTail;
-        self->pTail            = node;
+    if (pTail != NULL) {
+        pTail->pNextNode = node;
+        node->pPrevNode        = pTail;
+        pTail            = node;
     } else {
-        self->pHead = node;
-        self->pTail = node;
+        pHead = node;
+        pTail = node;
     }
-    self->dwCount = self->dwCount + 1;
+    dwCount = dwCount + 1;
 }
 
-__declspec(dllexport) int __attribute__((thiscall))
-List_Unlink(LinkedList *self, LinkedListNode *pNode)
+int LinkedList::unlink(LinkedListNode *pNode)
 {
     ++g_nUnlink;
     { static unsigned long seen; list_first("Unlink", &seen); }
@@ -185,26 +174,25 @@ List_Unlink(LinkedList *self, LinkedListNode *pNode)
         ++g_nUnlinkNull;
     if (pNode != NULL) {
         if (pNode->pPrevNode == NULL)
-            self->pHead = pNode->pNextNode;
+            pHead = pNode->pNextNode;
         else
             pNode->pPrevNode->pNextNode = pNode->pNextNode;
 
         if (pNode->pNextNode == NULL)
-            self->pTail = pNode->pPrevNode;
+            pTail = pNode->pPrevNode;
         else
             pNode->pNextNode->pPrevNode = pNode->pPrevNode;
 
         free(pNode);
-        self->dwCount = self->dwCount - 1;
+        dwCount = dwCount - 1;
     }
     return 0;
 }
 
-__declspec(dllexport) LinkedListNode *__attribute__((thiscall))
-List_Find(LinkedList *self, void *pValue, LinkedListNode *pAfterNode)
+LinkedListNode *LinkedList::find(void *pValue, LinkedListNode *pAfterNode)
 {
     LinkedListNode *p = (pAfterNode != NULL) ? pAfterNode->pNextNode
-                                             : self->pHead;
+                                             : pHead;
     ++g_nFind;
     { static unsigned long seen; list_first("Find", &seen); }
     while (p != NULL) {
@@ -217,18 +205,3 @@ List_Find(LinkedList *self, void *pValue, LinkedListNode *pAfterNode)
     return NULL;
 }
 
-}
-
-extern "C" __declspec(dllexport) LinkedListNode *__attribute__((thiscall))
-List_GetHead(LinkedList *self)
-{
-    return self->pHead;
-}
-
-extern "C" __declspec(dllexport) void *__attribute__((thiscall))
-List_NextValue(LinkedList * , LinkedListNode **it)
-{
-    LinkedListNode *n = *it;
-    *it = n->pNextNode;
-    return n->pValue;
-}

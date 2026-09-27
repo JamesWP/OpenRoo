@@ -884,9 +884,9 @@ static void draw_messages(Game *g, float W, float H, float pad)
     const float xText = W * 0.05f + pad;
     const float textLift = H * 0.016666668f;
     float y = H - ch - pad;
-    LinkedListNode *it = List_GetHead(pl->effectList());
+    LinkedListNode *it = pl->effectList()->head();
     while (it != NULL) {
-        const unsigned code = (unsigned char)(DWORD)List_NextValue(pl->effectList(), &it);
+        const unsigned code = (unsigned char)(DWORD)LinkedList::nextValue(&it);
         ThemeImageSlot img;
         double start = 0.0, span = 10.0;
         bool icon = true;

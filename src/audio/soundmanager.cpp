@@ -171,10 +171,10 @@ SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
 
     NamedEntryList *lists[2] = { &self->entriesPlain_, &self->entries3D_ };
     for (int i = 0; i < 2; i++) {
-        NamedEntry *e = NamedList_Find(lists[i], buf->filename);
+        NamedEntry *e = lists[i]->find(buf->filename);
         if (e == NULL)
             continue;
-        doublesoundbuff *entry = (doublesoundbuff *)e->pPayload;
+        doublesoundbuff *entry = (doublesoundbuff *)e->payload();
         if (!Dsb_ReleaseStatic(entry, buf))
             continue;  // this entry did not own it: try the other list
         if (i == 0) ++g_relStaticPlain; else ++g_relStatic3D;
@@ -182,7 +182,7 @@ SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
             return;
         if (!Dsb_IsFullyReleased(entry))
             return;
-        NamedList_Remove(lists[i], e);
+        lists[i]->remove(e);
         if (entry == NULL)  // cannot be NULL
             return;
         destroy_entry(entry);
@@ -209,10 +209,10 @@ SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
     for (int i = 0; i < 2; i++) {
         // Fetched per list.
         char *name = Sim_VoicePoolFirstFilename(pool);
-        NamedEntry *e = NamedList_Find(lists[i], name);
+        NamedEntry *e = lists[i]->find(name);
         if (e == NULL)
             continue;
-        doublesoundbuff *entry = (doublesoundbuff *)e->pPayload;
+        doublesoundbuff *entry = (doublesoundbuff *)e->payload();
         if (!Dsb_ReleasePool(entry, pool))
             continue;
         if (i == 0) ++g_relPoolPlain; else ++g_relPool3D;
@@ -220,7 +220,7 @@ SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
             return;
         if (!Dsb_IsFullyReleased(entry))
             return;
-        NamedList_Remove(lists[i], e);
+        lists[i]->remove(e);
         if (entry == NULL)
             return;
         destroy_entry(entry);
@@ -263,7 +263,7 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
                 bDo3D = 1;
         }
 
-        e = NamedList_Find(list, name);
+        e = list->find(name);
         if (e != NULL)
             break;
 
@@ -281,14 +281,14 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
             destroy_entry(fresh);
             return NULL;
         }
-        NamedList_Insert(list, name, fresh);
+        list->insert(name, fresh);
         if (!self->dwCreated_)
             return NULL;
     // Round again; the lookup now hits.
     }
 
     ++g_acqStaticHit;
-    doublesoundbuff *entry = (doublesoundbuff *)e->pPayload;
+    doublesoundbuff *entry = (doublesoundbuff *)e->payload();
 
     if (entry->dwMasterTaken == 0 && sndmgr_fx() != SM_FX_NOSHAREMASTER) {
         entry->dwMasterTaken = 1;
@@ -313,7 +313,7 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
         ++g_clones;
         if (r != (void *)entry->master())
             ++g_acqSpare;  // the master copy failed; the spare carried it
-        LinkedList_Append(entry->clones(), clone);
+        entry->clones()->append(clone);
         sndmgr_census();
         return clone;
     }
@@ -353,7 +353,7 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
                 bDo3D = 1;
         }
 
-        e = NamedList_Find(list, name);
+        e = list->find(name);
         if (e != NULL)
             break;
 
@@ -377,13 +377,13 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
             operator delete(fresh);
             return NULL;
         }
-        NamedList_Insert(list, name, fresh);
+        list->insert(name, fresh);
         if (!self->dwCreated_)
             return NULL;
     }
 
     ++g_acqPoolHit;
-    doublesoundbuff *entry = (doublesoundbuff *)e->pPayload;
+    doublesoundbuff *entry = (doublesoundbuff *)e->payload();
 
     VoicePool *pool = NULL;
     VoicePool *raw  = (VoicePool *)malloc(0x14);
@@ -400,7 +400,7 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
             && Sim_VoicePoolClone(pool, nVoices, self->directSound(),
                                   entry->spare(), 1) != NULL)) {
         ++g_pools;
-        LinkedList_Append(entry->pools(), pool);
+        entry->pools()->append(pool);
         sndmgr_census();
         return pool;
     }
@@ -428,9 +428,9 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
         if (!CFaktSound_Create3DListener(self->cfaktSound(), mode3d))
             return 0;
 
-        for (NamedEntry *n = self->entries3D_.pHead; n != NULL; ) {
-            doublesoundbuff *entry = (doublesoundbuff *)n->pPayload;
-            n = n->pNext;  // advanced before the body
+        for (NamedEntry *n = self->entries3D_.head(); n != NULL; ) {
+            doublesoundbuff *entry = (doublesoundbuff *)n->payload();
+            n = n->next();  // advanced before the body
             ++g_setupReloaded;
 
             if (!CStatic_CreateAndLoad(entry->master(), self->directSound(),
@@ -452,9 +452,9 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
             // file).
             CStaticSoundbuffer *src = entry->master();
 
-            for (LinkedListNode *c = entry->cloneList.pHead; c != NULL; ) {
-                CStaticSoundbuffer *clone = (CStaticSoundbuffer *)c->pValue;
-                c = c->pNextNode;
+            for (LinkedListNode *c = entry->cloneList.head(); c != NULL; ) {
+                CStaticSoundbuffer *clone = (CStaticSoundbuffer *)c->value();
+                c = c->next();
 
                 CStatic_Reset(clone);
                 if (CStatic_Copy(clone, self->directSound(), src, 1)
@@ -481,9 +481,9 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
                 CStatic_Copy(clone, self->directSound(), src, 1);
             }
 
-            for (LinkedListNode *p = entry->voicePoolList.pHead; p != NULL; ) {
-                VoicePool *pool = (VoicePool *)p->pValue;
-                p = p->pNextNode;
+            for (LinkedListNode *p = entry->voicePoolList.head(); p != NULL; ) {
+                VoicePool *pool = (VoicePool *)p->value();
+                p = p->next();
 
                 int nVoices = (int)pool->dwVoiceCount;
                 Sim_VoicePoolWipe(pool);
@@ -547,16 +547,16 @@ static void *const g_SoundMgrVtable[1] = { (void *)&SoundMgr_ScalarDestructor };
  * before the entry is destroyed. */
 static void purge_list(NamedEntryList *list)
 {
-    for (NamedEntry *e = list->pHead; e != NULL; ) {
-        doublesoundbuff *payload = (doublesoundbuff *)e->pPayload;
-        e = e->pNext;
+    for (NamedEntry *e = list->head(); e != NULL; ) {
+        doublesoundbuff *payload = (doublesoundbuff *)e->payload();
+        e = e->next();
         if (payload != NULL) {
             Dsb_Clear(payload);
             Dsb_Destruct(payload);
             operator delete(payload);
         }
     }
-    NamedList_Clear(list);
+    list->clear();
 }
 
 extern "C" {
@@ -565,8 +565,8 @@ __declspec(dllexport) SoundManager *__attribute__((thiscall))
 SoundMgr_Construct(SoundManager *self)
 {
     CFaktSound_BlankFields(self->cfaktSound());
-    NamedList_Construct(&self->entriesPlain_);
-    NamedList_Construct(&self->entries3D_);
+    self->entriesPlain_.construct();
+    self->entries3D_.construct();
     self->logger_           = NULL;
     self->ownsLogger_       = 0;
     self->dwMode3D_         = 0;
@@ -602,8 +602,8 @@ SoundMgr_Destruct(SoundManager *self)
 {
     self->vtable_ = (void *)g_SoundMgrVtable;
     SoundMgr_PurgeAssets(self);
-    NamedList_DtorBody(&self->entries3D_);
-    NamedList_DtorBody(&self->entriesPlain_);
+    self->entries3D_.dtorBody();
+    self->entriesPlain_.dtorBody();
     CFaktSound_ClearState(self->cfaktSound());
 }
 

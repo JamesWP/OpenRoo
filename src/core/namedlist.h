@@ -8,15 +8,25 @@
 
 #include "layout.h"
 
-struct __attribute__((packed)) NamedEntry {
+class NamedEntryList;
+
+class __attribute__((packed)) NamedEntry {
+public:
     static const int ORIGIN = 0;
+
+    const char *name() const    { return szName; }
+    void       *payload() const { return pPayload; }
+    NamedEntry *next() const    { return pNext; }
+    NamedEntry *prev() const    { return pPrev; }
+
+private:
+    friend class NamedEntryList;
 
     char        szName[0x100];  // +0x000  the key, inline
     void       *pPayload;       // +0x100
     NamedEntry *pNext;          // +0x104
     NamedEntry *pPrev;          // +0x108
 
-private:
     KAROO_LAYOUT_REGISTER(NamedEntry);
 };
 
@@ -29,15 +39,41 @@ KAROO_LAYOUT_CHECKS(NamedEntry)
     KAROO_LAYOUT_SIZE(0x10c);
 }
 
-struct __attribute__((packed)) NamedEntryList {
+class __attribute__((packed)) NamedEntryList {
+public:
     static const int ORIGIN = 0;
 
+    /* Sets the vtable and zeroes the three fields. */
+    void construct();
+    /* Vtable slot 0: dtorBody, then frees self when bit 0 of bFreeSelf is
+     * set.  Returns self. */
+    static NamedEntryList *__attribute__((thiscall))
+    scalarDtor(NamedEntryList *self, unsigned char bFreeSelf);
+    /* Re-installs the vtable, then clear(). */
+    void dtorBody();
+    /* Makes an entry holding a copy of pszName and pPayload, and links it at
+     * the tail.  Returns the entry, or NULL when the name is too long; no
+     * caller reads it. */
+    NamedEntry *insert(const char *pszName, void *pPayload);
+    /* Frees every entry, not their payloads: an owner of the payloads
+     * destroys them first. */
+    void clear();
+    /* Unlinks and frees pEntry and decrements the count.  A NULL pEntry does
+     * nothing.  Always returns 0. */
+    int remove(NamedEntry *pEntry);
+    /* The first entry whose name equals pszName (case-sensitive), or NULL. */
+    NamedEntry *find(const char *pszName);
+
+    NamedEntry   *head() const  { return pHead; }
+    NamedEntry   *tail() const  { return pTail; }
+    unsigned long count() const { return dwCount; }
+
+private:
     void        **vtable;   // +0x00
     NamedEntry   *pHead;    // +0x04
     NamedEntry   *pTail;    // +0x08
     unsigned long dwCount;  // +0x0c
 
-private:
     KAROO_LAYOUT_REGISTER(NamedEntryList);
 };
 
@@ -52,35 +88,3 @@ KAROO_LAYOUT_CHECKS(NamedEntryList)
     KAROO_LAYOUT_AT(dwCount, 0x0c);
     KAROO_LAYOUT_SIZE(16);
 }
-
-/* Sets the vtable and zeroes the three fields. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-NamedList_Construct(NamedEntryList *self);
-
-/* DtorBody, then frees self when bit 0 of bFreeSelf is set.  Returns self. */
-extern "C" __declspec(dllexport) NamedEntryList *__attribute__((thiscall))
-NamedList_ScalarDtor(NamedEntryList *self, unsigned char bFreeSelf);
-
-/* Re-installs the vtable, then Clear. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-NamedList_DtorBody(NamedEntryList *self);
-
-/* Makes an entry holding a copy of pszName and pPayload, and links it at the
- * tail.  Returns the entry, or NULL when the name is too long; no caller reads
- * it. */
-extern "C" __declspec(dllexport) NamedEntry *__attribute__((thiscall))
-NamedList_Insert(NamedEntryList *self, const char *pszName, void *pPayload);
-
-/* Frees every entry, not their payloads: an owner of the payloads destroys
- * them first. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-NamedList_Clear(NamedEntryList *self);
-
-/* Unlinks and frees pEntry and decrements the count.  A NULL pEntry does
- * nothing.  Always returns 0. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-NamedList_Remove(NamedEntryList *self, NamedEntry *pEntry);
-
-/* The first entry whose name equals pszName (case-sensitive), or NULL. */
-extern "C" __declspec(dllexport) NamedEntry *__attribute__((thiscall))
-NamedList_Find(NamedEntryList *self, const char *pszName);

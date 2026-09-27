@@ -64,7 +64,7 @@ static float path_param(double t, DWORD period, double bias)
 static void eval_path(const SceneObject *o, float t, Vec3 *out)
 {
     const LinkedList *cp = &o->spline.controlPointList;
-    bezier_eval((const ListNodeM *)cp->pHead, cp->dwCount, t, out);
+    bezier_eval((const ListNodeM *)cp->head(), cp->count(), t, out);
 }
 
 static void select_texture(RenderDevice *dev, const SceneObject *o)
@@ -156,8 +156,8 @@ extern "C" __declspec(dllexport) void __cdecl
 Scene_DrawSceneObjects(RenderDevice *dev, float *cam, DWORD , DWORD , double t)
 {
     cam_diag(cam);
-    for (LinkedListNode *node = g_scene.objects.pHead; node != NULL; node = node->pNextNode) {
-        const SceneObject *o = (const SceneObject *)node->pValue;
+    for (LinkedListNode *node = g_scene.objects.head(); node != NULL; node = node->next()) {
+        const SceneObject *o = (const SceneObject *)node->value();
         if (o == NULL)
             continue;
 
@@ -303,8 +303,8 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
 {
     dev->SetRenderState(RS::SpecularEnable, 0);
 
-    for (LinkedListNode *node = g_scene.objects.pHead; node != NULL; node = node->pNextNode) {
-        const SceneObject *o = (const SceneObject *)node->pValue;
+    for (LinkedListNode *node = g_scene.objects.head(); node != NULL; node = node->next()) {
+        const SceneObject *o = (const SceneObject *)node->value();
         if (o == NULL || o->type != EXTRA_PARTICLE)
             continue;
 

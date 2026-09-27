@@ -635,9 +635,9 @@ extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
 TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename,
                          DWORD alphaFlag, UINT bpp, DWORD textureStage)
 {
-    for (LinkedListNode *node = self->cache.pHead; node != NULL; ) {
-        SceneTexture *cached = (SceneTexture *)node->pValue;
-        node = node->pNextNode;
+    for (LinkedListNode *node = self->cache.head(); node != NULL; ) {
+        SceneTexture *cached = (SceneTexture *)node->value();
+        node = node->next();
         tm_lower_inplace(filename);
         tm_lower_inplace(cached->base.ImageName);
         if (strcmp(cached->base.ImageName, filename) == 0) {
@@ -660,22 +660,22 @@ TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename
     }
     if (self->pLogger != NULL)
         GameLog_LogMessage(self->pLogger, 1, GS_TM_LOADED, filename);
-    LinkedList_Append(&self->cache, tex);
+    self->cache.append(tex);
     return tex;
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 TextureManager_ReleaseAll(TextureManager *self)
 {
-    for (LinkedListNode *node = self->cache.pHead; node != NULL; ) {
-        SceneTexture *tex = (SceneTexture *)node->pValue;
-        node = node->pNextNode;
+    for (LinkedListNode *node = self->cache.head(); node != NULL; ) {
+        SceneTexture *tex = (SceneTexture *)node->value();
+        node = node->next();
         if (tex != NULL) {
             Texture_ReleaseD3DTexture(tex);
             tm_delete(tex);
         }
     }
-    LinkedList_Clear(&self->cache);
+    self->cache.clear();
 }
 
 /* ─── TextureManager lifecycle ──────────────────────────────────────────────
@@ -687,7 +687,7 @@ static void *const g_TextureManagerVtable[1] = { (void *)&TextureManager_ScalarD
 extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
 TextureManager_Construct(TextureManager *self)
 {
-    List_Init(&self->cache);
+    self->cache.init();
     self->vtable  = (void *)g_TextureManagerVtable;
     self->pLogger = NULL;
     return self;
@@ -697,7 +697,7 @@ extern "C" __declspec(dllexport) void __attribute__((thiscall))
 TextureManager_Destruct(TextureManager *self)
 {
     self->vtable = (void *)g_TextureManagerVtable;
-    List_Destruct(&self->cache);
+    self->cache.destruct();
 }
 
 extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
@@ -721,9 +721,9 @@ TextureManager_SetLogger(TextureManager *self, GameLogger *logger)
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 TextureManager_LoadAll(TextureManager *self)
 {
-    for (LinkedListNode *n = self->cache.pHead; n != NULL; ) {
-        LoadedImage *img = (LoadedImage *)n->pValue;
-        n = n->pNextNode;
+    for (LinkedListNode *n = self->cache.head(); n != NULL; ) {
+        LoadedImage *img = (LoadedImage *)n->value();
+        n = n->next();
         if (img != NULL)
             Texture_Load(img);
     }

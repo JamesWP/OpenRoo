@@ -107,18 +107,18 @@ void Player::pickupSound(const SoundRef *arr) const
 
 void Player::appendEffect(int code)
 {
-    LinkedList_Append(effects(), (void *)(unsigned int)code);
+    effects()->append((void *)(unsigned int)code);
 }
 
 void Player::clearEffects()
 {
-    LinkedList_Clear(effects());
+    effects()->clear();
 }
 
 void Player::endEffect(int code)
 {
-    LinkedListNode *node = LinkedList_Find(effects(), (void *)(unsigned int)code, NULL);
-    LinkedList_Unlink(effects(), node);
+    LinkedListNode *node = effects()->find((void *)(unsigned int)code, NULL);
+    effects()->unlink(node);
 }
 
 unsigned int Player::updateTileEffects()
@@ -506,7 +506,7 @@ static void *const g_PlayerVtable[1] = { (void *)&Player_ScalarDestructor };
 void Player::construct()
 {
     populateBaseForGame();
-    List_Init((LinkedList *)effectList_);
+    ((LinkedList *)effectList_)->init();
     vtable_  = g_PlayerVtable;
     pool_9f_ = NULL;
     memset(pickupSounds_, 0, sizeof(pickupSounds_));
@@ -535,7 +535,7 @@ void Player::destruct()
         pathfinder_->dispose();
         free(pathfinder_);
     }
-    List_Destruct((LinkedList *)effectList_);
+    ((LinkedList *)effectList_)->destruct();
     destroyBaseForGame();
 }
 
