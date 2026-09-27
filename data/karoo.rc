@@ -1,27 +1,20 @@
-/* karoo.rc -- the resources of Karoo.exe.orig, carried in our own binary.
+/* karoo.rc -- the resources compiled into KarooOwn.exe.
  *
- * The dialogs are source, below: each compiles to the original's template
- * byte for byte (windres, compared against the game's RT_DIALOG data).  The
- * launcher's window shape is built from launcher_region.png into
- * rgn_111.bin in the build directory (tools/png_to_rgn.py), again byte for
- * byte.  The icon is ours (karoo.ico: 16, 32 and 48 px, 32-bit with
- * alpha).  The version block is still the game's own data, extracted
- * from your copy of Ka'roo into game/res/ by tools/import_assets.py
- * (extract_rsrc.py) and compiled raw under their original type, id and
- * language.  resources.h says which module holds them.
+ * All source; nothing is taken from the game's exe.
  *
- *   dialogs  104 launcher (de), 110 device (en) -- the two we use;
- *            102 (de), 117 (fr), 118 (it), 119 (es) -- unused localisations
- *            of the device dialog
- *   ICON                   106 window/taskbar icon (windres numbers its images)
- *   "RGN"                  111 launcher window shape (RGNDATA)
- *   type 16 RT_VERSION     1
+ *   DIALOG     104 launcher, 110 device -- the two we use; 102, 117, 118,
+ *              119 are unused localisations of the device dialog
+ *   ICON       106 window/taskbar icon, karoo.ico (windres numbers its
+ *              images)
+ *   "RGN"      111 launcher window shape, built from launcher_region.png
+ *              into build/obj/rgn_111.bin by tools/png_to_rgn.py
+ *   VERSIONINFO 1
  *
- * FORMAT: templates must stay DIALOG (not DIALOGEX), controls keep their
- * order, and the launcher's owner-drawn buttons name the Button class by its
- * atom 0x80 -- windres writes a class *name* for "Button", which the
- * original does not.  An explicit LTEXT style replaces the default WS_GROUP,
- * so it is restated.  Control ids are the ones launcherdialogs.cpp uses.
+ * FORMAT: dialog templates must stay DIALOG (not DIALOGEX) and controls
+ * keep their order.  The launcher's owner-drawn buttons name the Button
+ * class by its atom 0x80 -- windres writes a class *name* for "Button".  An
+ * explicit LTEXT style replaces the default WS_GROUP, so it is restated.
+ * Control ids are the ones launcherdialogs.cpp uses.
  */
 #include <windows.h>
 #pragma code_page(65001)
@@ -42,7 +35,42 @@
 LANGUAGE 0x07, 0x01
 106 ICON "karoo.ico"
 111 RGN "rgn_111.bin"
-1   16 "res/version_1.bin"
+
+/* The original's version block.  windres cannot write an empty value with
+ * no data, so the four empty strings here carry one NUL where the original
+ * had none; every other byte matches. */
+1 VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040704b0"
+        BEGIN
+            VALUE "Comments", ""
+            VALUE "CompanyName", "Fakt\0"
+            VALUE "FileDescription", "JJ\0"
+            VALUE "FileVersion", "1, 0, 0, 1\0"
+            VALUE "InternalName", "JJ\0"
+            VALUE "LegalCopyright", "Copyright © 1999\0"
+            VALUE "LegalTrademarks", ""
+            VALUE "OriginalFilename", "JJ.exe\0"
+            VALUE "PrivateBuild", ""
+            VALUE "ProductName", "Fakt JJ\0"
+            VALUE "ProductVersion", "1, 0, 0, 1\0"
+            VALUE "SpecialBuild", ""
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x407, 1200
+    END
+END
 
 LANGUAGE LANG_GERMAN, SUBLANG_GERMAN
 IDD_LAUNCHER DIALOG 0, 0, 262, 246

@@ -4,10 +4,9 @@
 The repository carries no game data.  assets/manifest.json lists every file
 the game reads, by the path the game opens it under, with its size and
 SHA-256.  This tool finds each one in the sources you give it, checks the
-hash, and writes it under game/.  The original executable is the one
-exception: it is read only for its resources (dialogs, icon, window shape),
-which are extracted to game/res/; the exe itself is never copied.  game/
-ends up holding only the read-only data the game and the build need.
+hash, and writes it under game/.  The original executable is not needed:
+the resources it carried are source in data/.  game/ ends up holding only
+the read-only data the game needs.
 
     python3 tools/import_assets.py --from KaRoo.zip            # a zip of an install
     python3 tools/import_assets.py --from /path/to/KaRoo       # an install directory
@@ -29,11 +28,6 @@ Manifest entries:
     class     "required" -- the game needs it
               "optional" -- the game runs without it (CD music, intro video)
     from      other names the file may have in a source, tried after `path`
-              (a cracked install keeps the original exe as Karoo.exe.bak)
-    source_only  true: found and hash-checked in a source, never written
-              to game/ (the original exe)
-    extracted_from  the source_only entry this file is cut from, not
-              found in a source itself (game/res/*.bin, the exe's resources)
 
 Sources are a list so that a later source of *our own* replacement files can
 override entries by path; only installs of the original game exist today.
@@ -48,9 +42,6 @@ import os
 import shutil
 import sys
 import zipfile
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import extract_rsrc  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MANIFEST = os.path.join(REPO, "assets", "manifest.json")
@@ -135,38 +126,12 @@ def find(entry, sources):
     return None, None, wrong
 
 
-def extracted(entry, parent, sources, derived):
-    """An entry cut from a source_only file: find the parent in the sources
-    (once), extract its resources, and hash-check this one."""
-    key = parent["path"]
-    if key not in derived:
-        data, where, wrong = find(parent, sources)
-        derived[key] = (extract_rsrc.extract(data) if data is not None else None,
-                        where, wrong)
-    blobs, where, wrong = derived[key]
-    if blobs is None:
-        return None, None, wrong
-    stem = os.path.splitext(os.path.basename(entry["path"]))[0]
-    data = blobs.get(stem)
-    if data is None or sha256_bytes(data) != entry["sha256"]:
-        return None, None, ["%s (extracted)" % where]
-    return data, "%s -> %s" % (where, stem), []
-
-
 def cmd_import(args):
     m = load_manifest()
     sources = [open_source(s) for s in args.sources]
     counts = {"written": 0, "present": 0, "missing": 0, "wrong": 0, "blocked": 0}
     failed_required = []
-    derived = {}       # source_only path -> {stem: bytes}, filled on demand
-    by_path = {e["path"]: e for e in m["files"]}
     for e in m["files"]:
-        if e.get("source_only"):
-            stale = os.path.join(GAME, *e["path"].split("/"))
-            if os.path.exists(stale) and sha256_file(stale) == e["sha256"]:
-                os.remove(stale)       # an earlier import copied it; not wanted
-                print("  removed  %s (only its resources are kept)" % e["path"])
-            continue
         dst = os.path.join(GAME, *e["path"].split("/"))
         if os.path.exists(dst):
             if sha256_file(dst) == e["sha256"]:
@@ -179,11 +144,7 @@ def cmd_import(args):
                 if e["class"] == "required":
                     failed_required.append(e["path"])
                 continue
-        if e.get("extracted_from"):
-            data, where, wrong = extracted(e, by_path[e["extracted_from"]],
-                                           sources, derived)
-        else:
-            data, where, wrong = find(e, sources)
+        data, where, wrong = find(e, sources)
         if data is None:
             kind = "wrong" if wrong else "missing"
             counts[kind] += 1
@@ -211,8 +172,6 @@ def cmd_check(args):
     m = load_manifest()
     bad = 0
     for e in m["files"]:
-        if e.get("source_only"):
-            continue
         dst = os.path.join(GAME, *e["path"].split("/"))
         if not os.path.exists(dst):
             state = "missing"
@@ -237,23 +196,18 @@ DATA_DIRS = ["bitmaps", "CDTracks", "fonts", "InstructionScripts",
              "video", "waves"]
 DATA_FILES = ["ENGLISH.FIS", "JJ.GAM", "ProgableControl.sav"]
 OPTIONAL_PREFIXES = ["CDTracks/Track ", "video/"]
-# The original executable: never run, only read for its resources.  An
-# install that has been cracked keeps it as Karoo.exe.bak.
-EXE = {"path": "Karoo.exe", "from": ["Karoo.exe.orig", "Karoo.exe.bak"],
-       "local": "Karoo.exe.orig"}
 
 
 def cmd_manifest(args):
     root = args.install
     entries = []
 
-    def add(rel, local=None, extra=None):
-        full = os.path.join(root, local or rel)
+    def add(rel):
+        full = os.path.join(root, rel)
         e = {"path": rel, "sha256": sha256_file(full),
              "size": os.path.getsize(full),
              "class": "optional" if any(rel.startswith(p) for p in OPTIONAL_PREFIXES)
                       else "required"}
-        e.update(extra or {})
         entries.append(e)
 
     for d in DATA_DIRS:
@@ -262,12 +216,6 @@ def cmd_manifest(args):
                 add(os.path.relpath(os.path.join(dirpath, f), root).replace(os.sep, "/"))
     for f in DATA_FILES:
         add(f)
-    add(EXE["path"], EXE["local"], {"from": EXE["from"], "source_only": True})
-    with open(os.path.join(root, EXE["local"]), "rb") as fh:
-        for stem, blob in extract_rsrc.extract(fh.read()).items():
-            entries.append({"path": "res/%s.bin" % stem, "sha256": sha256_bytes(blob),
-                            "size": len(blob), "class": "required",
-                            "extracted_from": EXE["path"]})
     entries.sort(key=lambda e: e["path"].lower())
     with open(MANIFEST, "w") as fh:
         json.dump({"version": 1, "files": entries}, fh, indent=1)

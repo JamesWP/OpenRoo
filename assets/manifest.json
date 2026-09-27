@@ -614,17 +614,6 @@
    "class": "required"
   },
   {
-   "path": "Karoo.exe",
-   "sha256": "b2ec66816f1655052771f77f9967ed67e4d4505de521882136733e3562d41098",
-   "size": 458752,
-   "class": "required",
-   "from": [
-    "Karoo.exe.orig",
-    "Karoo.exe.bak"
-   ],
-   "source_only": true
-  },
-  {
    "path": "Level3DExtraObjects/Candy/Candy01.leo",
    "sha256": "ccb1d6886418e5b3df57e1c5257bf4f97b06f5eeb9f2cb45d028df4b8291c077",
    "size": 237,
@@ -2687,13 +2676,6 @@
    "sha256": "819c46c7881cee8f8b8cc56ebd2ea7a0b9876d9fa80a459a4b0e1a2bc6977abc",
    "size": 3608,
    "class": "required"
-  },
-  {
-   "path": "res/version_1.bin",
-   "sha256": "d03aa09d4491b1b8a7e42249718dccf49fb9ea869985a3e6de782fe0e9ccac11",
-   "size": 772,
-   "class": "required",
-   "extracted_from": "Karoo.exe"
   },
   {
    "path": "textures/Blow.tga",
