@@ -1,74 +1,14 @@
-/* Particle simulation reimplementation — Stage C (PARTICLE_PLAN.md § 4).
- *
- * Stage A/B took the render path and the ParticleSystem-level tick; this file
- * takes the simulation underneath.  Because Stage B's Particle_BaseTick already
- * dispatches pGenerator->vtbl[3](dt) and pEnvironment->vtbl[3](dt) by pointer,
- * each replacement here is just a vtable slot swap plus a UD2 stub.
- *
- * Replaced so far:
- *   0x44c450 GravityEnvironment::TickUpdate  → Env_GravityTick   (vtbl 0x45f110 slot 3)
- *   0x44cca0 MagnetEnvironment::TickUpdate   → Env_MagnetTick    (vtbl 0x45f128 slot 3)
- *   0x449fe0 StdGenerator::EmitParticles     → Gen_StdEmit       (vtbl 0x45f094 slot 3)
- *   0x44ba70 CylinderGenerator::EmitParticles→ Gen_CylinderEmit  (vtbl 0x45f0e8 slot 3)
- *   0x44aac0 XStdGenerator::EmitParticles    → Gen_XStdEmit      (vtbl 0x45f0bc slot 3)
- *   0x448560 Environment::RetireParticleNode → inlined as retire_node() here;
- *            with both ticks replaced the original is unreachable (UD2)
+/* Every Generator and Environment virtual — Tick/emit, Save, Load, CopyFrom,
+ * the dtors and constructors — plus the vtables the constructors install, the
+ * ring helpers the two environment ticks share, and the exported thiscall
+ * thunks the vtables point at.
  *
  * The ring is one NULL-terminated doubly-linked list, partitioned as
- * [pRingHead, pRingCurrent) live and [pRingCurrent, pRingTail] free.  The
- * environment owns ageing and retirement; the generator owns emission.  Ring
- * *allocation* stays game-owned — we only honour the contract.
- *
- * KAROO_PARTICLE_FX modes added here:
- *   gravity  — multiply flGravity x5, so particles visibly plummet
- *   antigrav — invert and amplify gravity (x-3): every falling effect rises
- *   nolife  — skip the flLife decrement, so nothing expires (also the
- *             ring-contract stress test: emission must stall, not corrupt)
- *   burst    — emit particles at x3 initial velocity, so every effect visibly
- *              throws further; proves the emission path, not the integration
- *   loadflip — negate the gravity magnitude and magnet force as Load reads
- *              them; only our Load can produce it (the tick is unchanged)
- *   fastemit — x5 the emit rate every generator Load reads, so every effect
- *              emits five times as fast; the generator counterpart of
- *              loadflip, and it moves only a counter, never a coordinate
- *
- * Stage E4 (PARTICLE_PLAN.md § 6.10), installed by factory.cpp, not patch.py:
- *   0x44c7f0 GravityEnvironment::Load       → Env_GravityLoad  (slot 5)
- *   0x44cbf0 MagnetEnvironment::Load        → Env_MagnetLoad   (slot 5)
- *   0x44c320 / 0x44c410 Gravity's two setters, called only from its Load
- *   0x44c220 / 0x44ca40 scalar deleting dtors → Env_GravityDtor / Env_MagnetDtor (slot 0)
- *            (with their bodies 0x44c240 / 0x44ca60)
- *   0x44c250 / 0x44cab0 CopyFrom → Env_GravityCopyFrom / Env_MagnetCopyFrom (slot 1)
- *            (with the shared name check 0x448500, called only from these two)
- *   0x44c6c0 / 0x44cb50 Save     → Env_GravitySave / Env_MagnetSave (slot 4)
- *
- * Stage E4 construction — the environment family is now wholly ours:
- *   0x4488f0 EnvironmentFactoryCreate → env_create (via factory.cpp)
- *   0x448490 / 0x44c130 / 0x44c970 the three constructors
- *   0x4484b0 / 0x4484d0 base Environment scalar dtor + body
- *   0x4484e0 AttachEnvironmentRing (slot 2 of all three) → Env_AttachRing
- * Allocation is our own operator new/delete: every environment is released
- * through vtable slot 0 (ParticleSystem release 0x447b50, SetEnvironment
- * 0x447d80, Deserialize's failure path, the clone path 0x448a70), and slot 0
- * is ours for all three classes, so no game code ever frees one.
- *
- * Stage E4, generators (all but Cylinder, and all but construction):
- *   base / Point / Box / Std / XStd — every vtable slot, via factory.cpp
- *   0x449200 PointGenerator emit, 0x449420 BoxGenerator emit
- *   0x449860 / 0x44a160 / 0x44a2e0 Std CopyFrom / Save / Load, and Load's
- *     builders 0x449af0 (sphere) 0x4499d0 (box) 0x449c50 (velocity)
- *     0x449fa0 (rate) 0x44a530 / 0x44a4d0 (type table) 0x449ea0 (clone table)
- *   0x44a6f0 / 0x44aa00 / 0x44aa60 XStd CopyFrom / Save / Load
- *   0x44a6a0 / 0x44a850 / 0x44a730 / 0x44a930 XStd slots 6-9
- *   0x4483c0 AttachGeneratorRing (slot 2 of all six generator vtables)
- *   Cylinder: every slot, its builders, and SetDirection's frame (0x44b0c0)
- *   0x4485d0 GeneratorFactoryCreate → gen_create, and all six constructors
- * The Gaussian sampler 0x448fb0 is reimplemented here but stays live in the
- * game (0x438188 calls it).  Every generator is released only through vtable
- * slot 0 (the same four paths as environments, plus CloneGeneratorFromSource
- * 0x4488b0), and every slot 0 is ours, so objects, type tables and scratch
- * buffers all use our own new / delete.
- */
+ * [pRingHead, pRingCurrent) live and [pRingCurrent, pRingTail] free.  An
+ * environment's tick owns ageing and retirement; a generator's emit owns
+ * adding new particles at pRingCurrent.  Ring allocation itself lives
+ * elsewhere — this file only honours the contract. */
+
 #include "generators.h"
 #include "assetio.h"
 #include "clock.h"
@@ -85,7 +25,7 @@
 
 /* Our vtables, defined at the foot of this file — one per class, in the game's
  * slot order.  Every constructor installs one of these; no object of ours ever
- * carries a game vtable address. */
+ * carries any other vtable address. */
 extern void *const gen_vtbl_base[];
 extern void *const gen_vtbl_point[];
 extern void *const gen_vtbl_box[];
@@ -96,7 +36,14 @@ extern void *const env_vtbl_base[];
 extern void *const env_vtbl_gravity[];
 extern void *const env_vtbl_magnet[];
 
-/* ─── FX ─── */
+/* KAROO_PARTICLE_FX, read once and cached:
+ *   gravity   multiply gravity (and magnet force) by 5;
+ *   antigrav  invert and amplify by -3, so every falling effect rises;
+ *   nolife    skip the life decrement, so nothing expires — also a
+ *             ring-contract stress test: emission must stall, not corrupt;
+ *   burst     scale initial velocity by 3 on emission;
+ *   loadflip  negate gravity magnitude / magnet force as Load reads them;
+ *   fastemit  scale every generator's emit rate by 5 as Load reads it. */
 
 enum SimFx { FX_NONE = 0, FX_GRAVITY, FX_NOLIFE, FX_ANTIGRAV, FX_BURST, FX_LOADFLIP,
              FX_FASTEMIT };
@@ -122,9 +69,6 @@ static SimFx sim_fx(void)
     return (SimFx)cached;
 }
 
-/* Gravity multiplier for the current FX mode.  antigrav inverts and amplifies,
- * so every falling effect visibly rises instead — the clearest single proof
- * that the integration is running from this DLL and not from game code. */
 static float fx_gravity_scale(SimFx fx)
 {
     switch (fx) {
@@ -134,11 +78,11 @@ static float fx_gravity_scale(SimFx fx)
     }
 }
 
-/* ─── Shared ring/colour helpers (C2 reuses all three) ─── */
+/* ─── Shared ring/colour helpers ─── */
 
-/* Environment::RetireParticleNode @ 0x448560.  Unlinks an expired node from the
- * live region and appends it at the free end, re-seeding pRingCurrent if
- * emission had stalled.  Reproduces the original branch-for-branch. */
+/* Unlinks an expired node and appends it at the free end.  Re-seeds
+ * pRingCurrent when emission had stalled with the ring empty, so it can resume
+ * once free space returns. */
 static void retire_node(RingBuffer *ring, ParticleNode *node)
 {
     if (node->pNext == NULL) {
@@ -160,8 +104,9 @@ static void retire_node(RingBuffer *ring, ParticleNode *node)
         ring->pRingCurrent = node;
 }
 
-/* One colour channel moved at most `step` toward `target`, snapping when
- * already within a step.  Unsigned throughout, as the original is. */
+/* One colour channel moved by at most step toward target.  DWORD arithmetic
+ * throughout, so a step larger than the true distance is clamped before the
+ * subtraction, avoiding unsigned wraparound. */
 static DWORD fade_channel(DWORD cur, DWORD target, DWORD step)
 {
     if (cur == target)
@@ -171,12 +116,11 @@ static DWORD fade_channel(DWORD cur, DWORD target, DWORD step)
     return (step < target - cur) ? cur + step : target;
 }
 
-/* The shared ARGB fade block of both environment ticks.
- *
- * BUG PRESERVED DELIBERATELY: in the red channel's "increase" branch the game
- * compares against and increments the ALPHA byte instead of red, leaving red
- * unchanged.  Identical in 0x44c450 and 0x44cca0 (copied code).  Reproducing it
- * is required for bit-exactness — see PARTICLE_PLAN.md § 4.5 C1. */
+/* PRESERVED: the "increase" branch for the red channel gates and increments
+ * the ALPHA byte instead of red.  While step is smaller than target[0]-alpha
+ * it leaves red exactly where it was and only bumps alpha; once that threshold
+ * is cleared, red jumps straight to the target instead of stepping gradually.
+ * Both environment ticks share this exactly. */
 static DWORD fade_diffuse(DWORD diffuse, const DWORD target[3], DWORD step)
 {
     DWORD blue  = diffuse & 0xff;
@@ -190,7 +134,7 @@ static DWORD fade_diffuse(DWORD diffuse, const DWORD target[3], DWORD step)
         if (target[0] < red) {
             if (step < red - target[0])
                 out_red = red - step;
-        } else if (step < target[0] - alpha) {  /* alpha, not red — see above */
+        } else if (step < target[0] - alpha) {
             alpha  += step;
             out_red = red;
         }
@@ -213,7 +157,7 @@ static DWORD fade_step(float *accum, float rate, DWORD threshold, float dt)
     return step;
 }
 
-/* ─── C1: GravityEnvironment::TickUpdate (0x44c450) ─── */
+/* ─── GravityEnvironment tick ─── */
 
 static void gravity_tick(GravityEnvironment *self, float dt)
 {
@@ -253,7 +197,6 @@ static void gravity_tick(GravityEnvironment *self, float dt)
             if (step != 0)
                 node->dwDiffuse = fade_diffuse(node->dwDiffuse, self->dwTargetRGB, step);
 
-            /* Kill planes: any enabled axis outside [min, max] retires. */
             const float pos[3] = { node->flX, node->flY, node->flZ };
             retire = false;
             for (int a = 0; a < 3; a++)
@@ -274,10 +217,10 @@ static void gravity_tick(GravityEnvironment *self, float dt)
     } while (node != self->base.pRing->pRingCurrent);
 }
 
-/* ─── C2: MagnetEnvironment::TickUpdate (0x44cca0) ─── */
+/* ─── MagnetEnvironment tick ─── */
 
-/* Per-axis "has arrived" test, in the original's branch form rather than
- * fabsf(d) <= half — the two differ if a half-extent is ever negative. */
+/* Per-axis "has arrived" test, in branch form rather than fabsf(d) <= half —
+ * the two differ if a half-extent is ever negative. */
 static bool within_extent(float d, float half)
 {
     return (d <= 0.0f) ? (-half <= d) : (d <= half);
@@ -290,8 +233,8 @@ static void magnet_tick(MagnetEnvironment *self, float dt)
         return;
 
     SimFx fx = sim_fx();
-    /* antigrav repels instead of attracting — the magnet equivalent of the
-     * inverted gravity, and just as obvious on a shield effect. */
+    // antigrav repels instead of attracting — the magnet equivalent of the
+    // inverted gravity, and just as visible on a shield effect.
     float fscale = (fx == FX_ANTIGRAV) ? -3.0f : (fx == FX_GRAVITY ? 5.0f : 1.0f);
 
     DWORD step = fade_step(&self->flFadeAccum, self->flFadeRate,
@@ -317,10 +260,11 @@ static void magnet_tick(MagnetEnvironment *self, float dt)
             if (within_extent(d[0], self->flHalfExtent[0]) &&
                 within_extent(d[1], self->flHalfExtent[1]) &&
                 within_extent(d[2], self->flHalfExtent[2])) {
-                retire = true;   /* arrived at the magnet */
+                retire = true;  // arrived at the magnet
             } else {
-                /* Unguarded division, as the original is: a zero-length d is
-                 * already inside the box above and has been retired. */
+                // Unguarded division: a zero-length d has already matched the
+                // extent test above and been retired, so this can't divide by
+                // zero.
                 float len = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
                 node->flVel[0] += (d[0] / len) * self->flForce[0] * fscale * dt;
                 node->flVel[1] += (d[1] / len) * self->flForce[1] * fscale * dt;
@@ -347,12 +291,12 @@ static void magnet_tick(MagnetEnvironment *self, float dt)
     } while (node != self->base.pRing->pRingCurrent);
 }
 
-/* ─── C3: StdGenerator::EmitParticles (0x449fe0) ─── */
+/* ─── StdGenerator emit ─── */
 
-/* The originals wrap by SUBTRACTION off the pre-increment value, not by a
- * modulo, and the two differ if an index is ever driven out of range: e.g. the
- * step-3 index maps 497/498/499 -> 0/1/2 via (old - 497).  Mirror the
- * arithmetic rather than writing % 500. */
+/* PRESERVED: wraps by subtracting off the pre-increment value rather than by
+ * modulo — the two only differ once an index is driven out of range (e.g. the
+ * step-3 index maps 497/498/499 to 0/1/2 via old-(limit-step), not old%limit).
+ */
 static DWORD wrap_index(DWORD old, DWORD step, DWORD limit)
 {
     DWORD next = old + step;
@@ -366,9 +310,9 @@ static DWORD bump_index(DWORD cur, DWORD count)
     return (cur < count - 1) ? cur + 1 : 0;
 }
 
-/* Shared by C3 and C5: XStdGenerator's emit is StdGenerator's with a constant
- * bias added to the sampled position and velocity, so both go through here.
- * pos_off / vel_off are NULL for a plain StdGenerator. */
+/* Shared by StdGenerator and XStdGenerator: XStd's emit is Std's with a
+ * constant bias added to the sampled position and velocity, so both go through
+ * here.  pos_off / vel_off are NULL for a plain StdGenerator. */
 static void std_emit(StdGenerator *self, float dt,
                      const float *pos_off, const float *vel_off)
 {
@@ -383,7 +327,7 @@ static void std_emit(StdGenerator *self, float dt,
     if (!(acc >= 0.0f))
         return;
 
-    int count = (int)acc;                       /* truncates toward zero */
+    int count = (int)acc;  // truncates toward zero
     self->flAccumulator = acc - (float)count;
     if (count <= 0)
         return;
@@ -410,22 +354,20 @@ static void std_emit(StdGenerator *self, float dt,
         self->dwLifeIdx = bump_index(self->dwLifeIdx, 100);
         self->dwProbIdx = bump_index(self->dwProbIdx, 200);
 
-        /* Claim the node: advance the free-list cursor past it. */
+        // Claim the node: advance the free-list cursor past it.
         self->base.pRing->pRingCurrent = node->pNext;
         ring = self->base.pRing;
         if (ring->pRingCurrent == NULL)
-            return;                             /* ring full — stop early */
+            return;  // ring full — stop early
         if (count <= ++emitted)
             return;
     }
 }
 
-/* ─── C4: CylinderGenerator::EmitParticles (0x44ba70) ─── */
+/* ─── CylinderGenerator emit ─── */
 
-/* (v,1) x M as a row vector with w-divide, M row-major.  Same convention as
- * the Stage B corner transforms; the decompiled inner loop accumulates
- * out[c] = sum_r M[r][c] * v[r].  The w-divide is skipped when w is exactly
- * the value at 0x45d2e8 (0.0), as in the original. */
+/* (v,1) x M as a row vector, with the w-divide skipped when w is exactly 0.0f.
+ * M is row-major: out[c] = sum_r M[r][c] * v[r]. */
 static void transform_point_row(float out[3], const float v[3], const float m[16])
 {
     float o[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -433,6 +375,9 @@ static void transform_point_row(float out[3], const float v[3], const float m[16
     for (int c = 0; c < 4; c++)
         for (int r = 0; r < 4; r++)
             o[c] += m[r * 4 + c] * in[r];
+    // PRESERVED: the w-divide is skipped only when w is exactly 0.0f, not
+    // merely small — an epsilon guard here would change results whenever w
+    // rounds close to zero without being it.
     if (o[3] != 0.0f) {
         o[0] /= o[3]; o[1] /= o[3]; o[2] /= o[3];
     }
@@ -466,7 +411,7 @@ static void cylinder_emit(CylinderGenerator *self, float dt)
 
         node->flLife = self->pLifeTable[self->dwLifeIdx];
 
-        /* Sample -> scale -> transform -> offset. */
+        // Sample -> scale -> transform -> offset.
         float p[3] = { pos[0] * self->flScale,
                        pos[1] * self->flScale,
                        pos[2] * self->flScale };
@@ -476,7 +421,7 @@ static void cylinder_emit(CylinderGenerator *self, float dt)
         node->flY = t[1] + self->flOrigin[1];
         node->flZ = t[2] + self->flOrigin[2];
 
-        /* Velocity is NOT run through the matrix. */
+        // Velocity is NOT run through the matrix.
         node->flVel[0] = vel[0] * vscale;
         node->flVel[1] = vel[1] * vscale;
         node->flVel[2] = vel[2] * vscale;
@@ -499,9 +444,9 @@ static void cylinder_emit(CylinderGenerator *self, float dt)
 /* ─── One definition per class ─────────────────────────────────────────────
  *
  * Each of these is the single implementation of that class's tick, logging
- * included.  Every caller reaches it the same way — through slot 3 of the
- * class's vtable, which is one of ours — whether the game dispatches or
- * Particle_BaseTick does via sim_tick_slot3. */
+ * included.  Every caller reaches it the same way, through slot 3 of the
+ * class's vtable — whether the game dispatches directly or through
+ * sim_tick_slot3 at the foot of this file. */
 
 #define SIM_LOG_ONCE(counter) \
     static LONG counter = 0; \
@@ -523,13 +468,10 @@ static DWORD count_free(const RingBuffer *ring)
     return free_nodes;
 }
 
-/* --- Steady-state instrumentation (KAROO_SIM_STATS=N) ---------------------
- *
- * CLAUDE.md's rule for simulation code: log live/free and confirm they reach a
- * steady state rather than climbing to the buffer size or collapsing to zero.
- * Set KAROO_SIM_STATS to a tick interval (e.g. 60) and every environment logs
- * its ring occupancy every N ticks, keyed by object address so several systems
- * in one scene stay distinguishable.  Off (0) unless the variable is set. */
+/* KAROO_SIM_STATS=N logs each environment's ring occupancy — live and free
+ * counts, plus the life range and how many live nodes have already expired —
+ * every N ticks, keyed by object address so several systems in one scene stay
+ * distinguishable.  Off unless the variable is set. */
 static DWORD stats_interval(void)
 {
     static LONG cached = -1;
@@ -555,10 +497,10 @@ static void stats_tick(const char *what, void *self, const RingBuffer *ring, LON
     LONG n = InterlockedIncrement(counter);
     if ((DWORD)n % every)
         return;
-    /* Also report how many of the live nodes are already expired (flLife < 0).
-     * A healthy ring retires those the same tick they expire, so this should
-     * hover near zero; a live region full of expired nodes means retirement
-     * has stopped and the ring can never recycle. */
+    // Also report how many of the live nodes are already expired (flLife < 0).
+    // A healthy ring retires those the same tick they expire, so this should
+    // hover near zero; a live region full of expired nodes means retirement
+    // has stopped and the ring can never recycle.
     DWORD expired = 0, oldest_seen = 0;
     float minlife = 0.0f, maxlife = 0.0f;
     bool first = true;
@@ -568,7 +510,7 @@ static void stats_tick(const char *what, void *self, const RingBuffer *ring, LON
         if (first || nd->flLife < minlife) minlife = nd->flLife;
         if (first || nd->flLife > maxlife) maxlife = nd->flLife;
         first = false;
-        if (++oldest_seen > 4096) break;   /* cycle guard */
+        if (++oldest_seen > 4096) break;  // cycle guard
     }
     log_write("stats: %s this=%p tick=%ld dt=%.9f live=%lu free=%lu ring=%lu expired=%lu "
               "life=[%f..%f] head=%p cur=%p tail=%p\n",
@@ -632,19 +574,16 @@ static void cyl_gen_tick(CylinderGenerator *self, float dt)
     cylinder_emit(self, dt);
 }
 
-/* ─── Load (slot 5) ─── */
-
-/* One fread of `size` bytes; the originals test `!= 1` after every call and
- * bail out with 0, leaving whatever was already read in place. */
+/* One fread of `size` bytes; on a short read this leaves whatever was already
+ * read in place and returns false. */
 static bool read1(void *dst, unsigned size, void *fp)
 {
     return hooks_fread(dst, size, 1, fp) == 1;
 }
 
-/* 0x44c320.  Stores the direction and magnitude as read, then flGravity =
- * normalise(dir) * magnitude — or dir itself when it is exactly zero.  x87
- * order kept (z*z + y*y + x*x); intermediates in double, each quotient
- * rounded to float before the multiply, as the original does. */
+/* Stores flDirection/flMagnitude as given, and flGravity =
+ * normalise(direction) * magnitude, or direction itself when it is exactly
+ * zero. */
 static void gravity_set_vector(GravityEnvironment *self, const float dir[3], float mag)
 {
     self->flDirection[0] = dir[0];
@@ -666,7 +605,6 @@ static void gravity_set_vector(GravityEnvironment *self, const float dir[3], flo
     self->flGravity[2] = q[2] * mag;
 }
 
-/* 0x44c410. */
 static void gravity_set_colour(GravityEnvironment *self, DWORD argb, float fade)
 {
     self->dwTargetARGB   = argb;
@@ -677,8 +615,8 @@ static void gravity_set_colour(GravityEnvironment *self, DWORD argb, float fade)
     self->flFadeRate     = fade;
 }
 
-/* 0x44c7f0.  Does not call the base Environment::Load (0x4485c0, a bare
- * `return 1`), and leaves flFadeAccum untouched — unlike Magnet. */
+/* Leaves flFadeAccum as constructed — unlike MagnetEnvironment::Load, which
+ * resets it every time. */
 static BOOL gravity_env_load(GravityEnvironment *self, void *fp)
 {
     float dir[3], mag, fade;
@@ -703,11 +641,13 @@ static BOOL gravity_env_load(GravityEnvironment *self, void *fp)
     return TRUE;
 }
 
-/* 0x44cbf0.  Force before centre in the file.  dwTargetRGB (+0x38..+0x40) is
- * never loaded — it keeps the constructor's value; preserved as found. */
+/* FORMAT: on disk, force precedes centre.  PRESERVED: dwTargetRGB is never
+ * loaded — it keeps whatever the constructor or a CopyFrom set, not what a
+ * saved file may have recorded. */
 static BOOL magnet_env_load(MagnetEnvironment *self, void *fp)
 {
-    /* base Environment::Load (0x4485c0) is `return 1`, result ignored. */
+    // The base Environment::Load contributes nothing; its result is not
+    // checked.
     if (!read1(self->flForce, 12, fp))         return FALSE;
     if (!read1(self->flCentre, 12, fp))        return FALSE;
     if (!read1(&self->flRange, 4, fp))         return FALSE;
@@ -724,19 +664,15 @@ static BOOL magnet_env_load(MagnetEnvironment *self, void *fp)
     return TRUE;
 }
 
-/* ─── Save (slot 4) ─── */
-
-/* The game's CRT fwrite.  A callback, and a deliberate one: the FILE * is the
- * game's static-CRT stream, which no other fwrite can write to (texturetga.cpp
- * and friends reach the same function the same way). */
+/* The game's static-CRT fwrite; other files reach the same stream the same
+ * way, so this is not a private handle. */
 
 static bool write1(const void *src, unsigned size, void *fp)
 {
     return fwrite(src, size, 1, (FILE *)fp) == 1;
 }
 
-/* 0x44c6c0.  The exact mirror of Load: raw direction and magnitude, the packed
- * colour, then the fields Load reads straight into place. */
+/* Field-for-field mirror of Load, in the same order. */
 static BOOL gravity_env_save(GravityEnvironment *self, void *fp)
 {
     if (!write1(self->flDirection, 12, fp))      return FALSE;
@@ -751,8 +687,8 @@ static BOOL gravity_env_save(GravityEnvironment *self, void *fp)
     return write1(self->flClipMin, 12, fp);
 }
 
-/* 0x44cb50.  Calls the base Environment::Save first — `return 1` (0x4485c0),
- * result ignored — then the mirror of Load; dwTargetRGB is not written. */
+/* Calls the base Environment::Save (a no-op) first, then mirrors Load.
+ * PRESERVED: dwTargetRGB is not written either, matching Load. */
 static BOOL magnet_env_save(MagnetEnvironment *self, void *fp)
 {
     if (!write1(self->flForce, 12, fp))          return FALSE;
@@ -762,19 +698,15 @@ static BOOL magnet_env_save(MagnetEnvironment *self, void *fp)
     return write1(&self->dwFadeThreshold, 4, fp);
 }
 
-/* ─── CopyFrom (slot 1) ─── */
-
-/* 0x448500, Environment's base CopyFrom: no copy at all, only the gate — the
- * source must carry the same type name.  Inline strcmp, == 0 → TRUE. */
+/* The base Environment::CopyFrom only gates on type name; it copies nothing
+ * itself. */
 static BOOL env_same_name(const Environment *self, const Environment *src)
 {
     return strcmp(src->pName, self->pName) == 0;
 }
 
-/* 0x44c250 / 0x44cab0.  After the name gate, each copies every field past the
- * base (+0x0c to the end) one DWORD at a time — the vtable, pName and pRing
- * stay the destination's.  The originals' copy order differs from memory
- * order, which only matters if src aliases dst; it never does. */
+/* Copies every field past the base (vtable, pName and pRing keep the
+ * destination's) in one memcpy; safe because src can never alias dst. */
 static BOOL gravity_env_copy_from(GravityEnvironment *self, const GravityEnvironment *src)
 {
     if (!env_same_name(&self->base, &src->base))
@@ -793,24 +725,21 @@ static BOOL magnet_env_copy_from(MagnetEnvironment *self, const MagnetEnvironmen
     return TRUE;
 }
 
-/* ─── Destructor (slot 0) ─── */
-
-/* 0x4484d0, the base Environment dtor body: a single store of the base vtable. */
 static void base_env_destruct(Environment *self)
 {
     self->pVtable = (void **)env_vtbl_base;
 }
 
-/* 0x44c240 / 0x44ca60.  Each restores its own game vtable, then runs the base
- * body.  Nothing is freed: pName is not owned here (no Free in either).
- * Magnet's calls the base body TWICE (0x44ca8b and 0x44ca9a, the second the
- * EH-state -1 exit) — harmless, kept. */
+/* Restores the game-facing vtable, then runs the base body.  Nothing is freed
+ * here: pName is not owned by either class. */
 static void gravity_env_destruct(GravityEnvironment *self)
 {
     self->base.pVtable = (void **)env_vtbl_gravity;
     self->base.pVtable = (void **)env_vtbl_base;
 }
 
+/* PRESERVED: runs the base body twice (once on each of the original's exit
+ * paths) — harmless, kept rather than collapsed to one store. */
 static void magnet_env_destruct(MagnetEnvironment *self)
 {
     self->base.pVtable = (void **)env_vtbl_magnet;
@@ -818,13 +747,9 @@ static void magnet_env_destruct(MagnetEnvironment *self)
     self->base.pVtable = (void **)env_vtbl_base;
 }
 
-/* 0x4484b0 / 0x44c220 / 0x44ca40 are the Environment family's MSVC scalar
- * deleting dtors; their shared tail is factory.h's scalar_delete<T>. */
+/* The scalar deleting dtors' shared tail is factory.h's scalar_delete<T>. */
 
-/* ─── Base Environment slots 1-5 ─── */
-
-/* 0x4484e0, AttachEnvironmentRing — slot 2 of all three classes.  A NULL ring
- * is refused (returns the NULL itself, i.e. 0) and leaves pRing alone. */
+/* Refuses (and leaves pRing alone) when handed a NULL ring. */
 static BOOL env_attach_ring(Environment *self, RingBuffer *ring)
 {
     if (ring == NULL)
@@ -833,12 +758,13 @@ static BOOL env_attach_ring(Environment *self, RingBuffer *ring)
     return TRUE;
 }
 
-/* ─── Construction ─── */
+/* Each constructor also built and destroyed a throwaway base-class instance on
+ * its own stack; it has no effect outside that frame and isn't reproduced
+ * here. */
 
-/* The game's own type-name strings; pName keeps pointing at them, exactly as
- * the constructors leave it (read-only data, never freed). */
+/* Static type-name strings; pName points at them, never owned or freed here.
+ */
 
-/* 0x448490. */
 static void base_env_construct(Environment *self)
 {
     self->pVtable = (void **)env_vtbl_base;
@@ -846,10 +772,8 @@ static void base_env_construct(Environment *self)
     self->pRing   = NULL;
 }
 
-/* 0x44c130 / 0x44c970.  Base ctor, class vtable, then every member zeroed
- * except the fade threshold, which starts at 10.  (Each original also builds
- * and destroys a throwaway Environment temporary on the stack — no effect
- * outside its own frame, omitted.) */
+/* Base ctor, class vtable, then every member zeroed except the fade threshold,
+ * which starts at 10. */
 static void gravity_env_construct(GravityEnvironment *self)
 {
     base_env_construct(&self->base);
@@ -870,8 +794,8 @@ static void magnet_env_construct(MagnetEnvironment *self)
     self->dwFadeThreshold = 10;
 }
 
-/* 0x4488f0.  Same strcmp chain, same sizes (0x0c / 0x6c / 0x50), same NULL for
- * an unknown name or a failed allocation. */
+/* Matches names exactly, as the game's factory did: an unknown name, or a
+ * failed allocation, both return NULL. */
 Environment *env_create(const char *name)
 {
     if (strcmp(name, "Environment") == 0) {
@@ -894,32 +818,26 @@ Environment *env_create(const char *name)
     return NULL;
 }
 
-/* ═══ Generators ═══════════════════════════════════════════════════════════ */
-
 #define THISCALL_DECL __attribute__((thiscall))
 
-/* ─── x87 helpers ─── */
-
-/* The x87 compare the originals use (FCOMP + TEST AH,0x40) treats an unordered
- * operand as equal, so "== 0" in the game is "zero or NaN" here. */
+/* PRESERVED: the game's float compare treats an unordered operand (NaN) as
+ * equal, so this treats NaN the same as exactly zero, unlike a plain `== 0`.
+ */
 static inline bool zero_or_nan(float v) { return !(v < 0.0f || v > 0.0f); }
 
-/* 1/32767 (0x38000100), 0.001 (0x3a83126f), pi (0x40490fdb), FLT_EPSILON
- * (0x34000000): each the float nearest its expression, as in .rdata. */
+/* Float constants: each is the float nearest its written value. */
 static const float RAND_SCALE  = 1.0f / 32767.0f;
 static const float GAUSS_STEP  = 0.001f;
 static const float GAUSS_PI    = 3.14159265358979f;
 static const float TINY_LENGTH = 1.1920928955078125e-07f;
 
-/* 0x448f30 — a Gaussian density, with the variance slot holding sigma itself:
- * exp(-(x-mu)^2 / (2 sigma)) / (sqrt(2 pi) sigma).  The 2-sigma denominator is
- * the game's (not 2 sigma^2); kept.  sigma zero (or NaN, per the x87 compare)
- * degenerates to an indicator on x == mu.
+/* PRESERVED: divides by 2*sigma, not 2*sigma^2 as a normalised Gaussian would
+ * — every consumer only uses this as relative histogram weight, so the missing
+ * square is absorbed by gauss_fill's later scaling.
  *
- * Precision: the original runs in x87 extended precision (its own F2XM1/FSCALE
- * exp, CRT pow(d, 2.0)); every intermediate here is double, by decision
- * (James, 2026-09-15) — the float roundings the original performs are kept,
- * the extended-precision intermediates are not. */
+ * Every intermediate here is double, with float rounding only at the points
+ * noted below (gauss_bucket, and the drawn samples), not extended x87
+ * precision. */
 static double gauss_pdf(float x, float mu, float sigma)
 {
     if (zero_or_nan(sigma))
@@ -930,20 +848,21 @@ static double gauss_pdf(float x, float mu, float sigma)
     return exp(-q) * (1.0 / (root * sigma));
 }
 
-/* One histogram bucket of 0x448fb0: floor(pdf * scale + 0.5) through a double,
- * then __ftol (truncation). */
+/* pdf * scale, rounded to nearest via floor(x + 0.5); the outer cast is then a
+ * no-op. */
 static int gauss_bucket(float x, float mu, float sigma, float scale)
 {
     double v = (double)(gauss_pdf(x, mu, sigma) * scale + 0.5);
     return (int)floor(v);
 }
 
-/* 0x448fb0 — fill out[0..n) with samples of the density above.  Builds a
- * histogram table walking outward from mu in `step`s (10 copies of mu, then a
- * mirrored pair per unit of each bucket), reseeds with srand(rand()), and draws
- * n table entries by rand().  Loop 2 replays loop 1's buckets, so the table is
- * filled exactly to `total` provided the centre bucket is 10 — as the original
- * assumes; neither checks. */
+/* DETERMINISM: reseeds via srand(rand()) before drawing, then draws n samples
+ * by rand(), in order — replays depend on this exact call sequence.
+ *
+ * PRESERVED: assumes the bucket at the centre (mu) is exactly 10; the first
+ * loop hard-codes that count rather than computing it, and the second loop
+ * mirrors the first's shape to fill exactly `total` entries only if that
+ * assumption holds. */
 static void gauss_fill(float *out, int n, float mu, float sigma, float step)
 {
     if (!(step > 0.0f))
@@ -980,7 +899,7 @@ static void gauss_fill(float *out, int n, float mu, float sigma, float step)
         }
     }
 
-    CRT_RAND_SEED = crt_rand();                          /* srand(rand()) */
+    CRT_RAND_SEED = crt_rand();
     if (n > 0) {
         float span = (float)((double)total - 1.0f);
         for (; n; n--) {
@@ -992,13 +911,13 @@ static void gauss_fill(float *out, int n, float mu, float sigma, float step)
     delete[] table;
 }
 
-/* The one-shot "seed from the clock" flag 0x448e80 consumes (game .data,
- * initially 1).  Shared with nothing else we replace. */
-static volatile BYTE g_uniformSeedPending = 1;   /* was 0x00469020 */
+/* One-shot: only the very first call this process makes reseeds from the
+ * clock; every call after that (and after, every call at all) reseeds via
+ * srand(rand()). */
+static volatile BYTE g_uniformSeedPending = 1;
 
-/* 0x448e80 — n samples uniform on [a, b] (either order), centred on the
- * midpoint.  The first call ever reseeds from the game clock; every call then
- * does srand(rand()). */
+/* DETERMINISM: n samples uniform on [a, b], centred on the midpoint.  See
+ * g_uniformSeedPending above for the seeding order this depends on. */
 static void uniform_fill(float *out, int n, float a, float b)
 {
     float mid = (float)(((double)a + b) * 0.5f);
@@ -1016,17 +935,14 @@ static void uniform_fill(float *out, int n, float a, float b)
     }
 }
 
-/* ─── Shared generator slots ─── */
-
-/* 0x4483b0, the base Generator dtor body. */
 static void base_gen_destruct(Generator *self)
 {
     self->pVtable = (void **)gen_vtbl_base;
 }
 
-/* The scalar deleting dtors' tail is factory.h's scalar_delete<T>. */
+/* The scalar deleting dtors' shared tail is factory.h's scalar_delete<T>. */
 
-/* 0x4483e0, Generator's base CopyFrom: the type-name gate, then dwEnabled. */
+/* Gates on matching type name, then copies only dwEnabled. */
 static BOOL gen_copy_base(Generator *self, const Generator *src)
 {
     if (strcmp(src->pName, self->pName) != 0)
@@ -1035,7 +951,7 @@ static BOOL gen_copy_base(Generator *self, const Generator *src)
     return TRUE;
 }
 
-/* 0x4483c0, AttachGeneratorRing — slot 2 of all six generator vtables. */
+/* Slot 2 of all six generator vtables. */
 static BOOL gen_attach_ring(Generator *self, RingBuffer *ring)
 {
     if (ring == NULL)
@@ -1044,12 +960,10 @@ static BOOL gen_attach_ring(Generator *self, RingBuffer *ring)
     return TRUE;
 }
 
-/* ─── StdGenerator tables ─── */
-
-/* 0x449ea0 — replace pTypeTable with a copy of (colour, weight) pairs, then
- * refill pEmitProb: reseed from the clock and draw pairs by rand(), writing
- * each drawn colour `weight` times, until all 200 slots are full.  Zero-weight
- * pairs are redrawn.  An empty or missing table fills pEmitProb with -1. */
+/* DETERMINISM: reseeds from the clock, then draws (colour, weight) pairs by
+ * rand() until all 200 slots are filled, skipping zero-weight pairs — the draw
+ * order feeds the emitted particle colours.  An empty or missing source table
+ * instead fills pEmitProb with all -1. */
 static void type_table_clone(void **ptable, DWORD *pcount, DWORD *emit_prob,
                              const DWORD *src, DWORD count)
 {
@@ -1086,15 +1000,13 @@ static void type_table_clone(void **ptable, DWORD *pcount, DWORD *emit_prob,
     }
 }
 
-/* Std's copy (0x449ea0); Cylinder's (0x44b920) is the same code on its own
- * fields. */
 static void std_clone_type_table(StdGenerator *self, const DWORD *src, DWORD count)
 {
     type_table_clone(&self->pTypeTable, &self->dwTypeTableCount, self->pEmitProb,
                      src, count);
 }
 
-/* 0x44a4d0 (Std) / 0x44c040 (Cylinder) — count, then the raw pairs. */
+/* FORMAT: count (DWORD), then that many (colour, weight) DWORD pairs. */
 static BOOL type_table_save(void *table, const DWORD *pcount, void *fp)
 {
     if (fp == NULL)
@@ -1104,9 +1016,8 @@ static BOOL type_table_save(void *table, const DWORD *pcount, void *fp)
     return fwrite(table, 8, *pcount, (FILE *)fp) == *pcount;
 }
 
-/* 0x44a530 (Std) / 0x44c0a0 (Cylinder) — read count and pairs, then clone them
- * in.  A short read returns FALSE and leaks the scratch buffer, exactly as the
- * originals do. */
+/* PRESERVED: a short read returns FALSE without freeing the scratch buffer — a
+ * genuine leak, reproduced. */
 static BOOL type_table_load(void **ptable, DWORD *pcount, DWORD *emit_prob, void *fp)
 {
     if (fp == NULL)
@@ -1144,7 +1055,6 @@ static void std_interleave_pos(StdGenerator *self, const float *x, const float *
     }
 }
 
-/* 0x449af0 — sphere mode: a Gaussian per axis, centre mn[i], spread mx[i]. */
 static void std_build_sphere(StdGenerator *self, const float *mn, const float *mx)
 {
     float a[3] = { mn[0], mn[1], mn[2] }, b[3] = { mx[0], mx[1], mx[2] };
@@ -1160,7 +1070,6 @@ static void std_build_sphere(StdGenerator *self, const float *mn, const float *m
     self->dwPosIdx = 0;
 }
 
-/* 0x4499d0 — box mode: uniform per axis on [mn[i], mx[i]]. */
 static void std_build_box(StdGenerator *self, const float *mn, const float *mx)
 {
     float a[3] = { mn[0], mn[1], mn[2] }, b[3] = { mx[0], mx[1], mx[2] };
@@ -1176,10 +1085,6 @@ static void std_build_box(StdGenerator *self, const float *mn, const float *mx)
     self->dwPosIdx = 0;
 }
 
-/* 0x449c50 — velocity table: a Gaussian direction per axis, normalised (when
- * its length is positive), then scaled by a Gaussian magnitude drawn from
- * (lmin, lmax).  Length summed z^2 + x^2 + y^2, x87 order; each normalised
- * component rounded to float before the scale. */
 static void build_velocity_table(float *table, const float *a, const float *b,
                                  float lmin, float lmax)
 {
@@ -1209,7 +1114,6 @@ static void build_velocity_table(float *table, const float *a, const float *b,
         delete[] col[i];
 }
 
-/* Std's (0x449c50): the table, then the parameters it was built from. */
 static void std_build_velocity(StdGenerator *self, const float *vmin, const float *vmax,
                                float lmin, float lmax)
 {
@@ -1222,8 +1126,6 @@ static void std_build_velocity(StdGenerator *self, const float *vmin, const floa
     self->flLifeMax = lmax;
 }
 
-/* 0x449fa0 — the 100-entry table emit copies into flLife, from the emit-rate
- * parameters. */
 static void std_build_rate(StdGenerator *self, float lo, float hi)
 {
     float step = (float)((double)hi * GAUSS_STEP);
@@ -1232,9 +1134,6 @@ static void std_build_rate(StdGenerator *self, float lo, float hi)
     gauss_fill(self->pLifeTable, 100, lo, hi, step);
 }
 
-/* ─── StdGenerator slots 0/1/4/5 ─── */
-
-/* 0x449800 — dtor body. */
 static void std_gen_destruct(StdGenerator *self)
 {
     self->base.pVtable = (void **)gen_vtbl_std;
@@ -1243,9 +1142,9 @@ static void std_gen_destruct(StdGenerator *self)
     base_gen_destruct(&self->base);
 }
 
-/* 0x449860 — base gate, then every field except the type table, which is
- * cloned — and cloning re-draws pEmitProb from a fresh clock seed, so a copy's
- * colours are not the source's.  Kept. */
+/* Copies every field but the type table, which is cloned instead — cloning
+ * redraws pEmitProb from a fresh seed, so a copy's colours differ from its
+ * source's. */
 static BOOL std_gen_copy_from(StdGenerator *self, const StdGenerator *src)
 {
     if (!gen_copy_base(&self->base, &src->base))
@@ -1256,7 +1155,6 @@ static BOOL std_gen_copy_from(StdGenerator *self, const StdGenerator *src)
     return TRUE;
 }
 
-/* 0x44a160 — the mirror of Load. */
 static BOOL std_gen_save(StdGenerator *self, void *fp)
 {
     if (!write1(&self->dwEmitMode, 4, fp))     return FALSE;
@@ -1274,8 +1172,8 @@ static BOOL std_gen_save(StdGenerator *self, void *fp)
     return std_save_type_table(self, fp);
 }
 
-/* 0x44a2e0 — parameters, then the builders.  dwEmitMode is re-read between the
- * two shape tests, as the original does. */
+/* Builds the sphere or box position table (whichever dwEmitMode selects), then
+ * always rebuilds the velocity and rate tables. */
 static BOOL std_gen_load(StdGenerator *self, void *fp)
 {
     if (!read1(&self->dwEmitMode, 4, fp))      return FALSE;
@@ -1302,16 +1200,15 @@ static BOOL std_gen_load(StdGenerator *self, void *fp)
     return std_load_type_table(self, fp);
 }
 
-/* ─── XStdGenerator ─── */
-
-/* 0x44a6e0 — dtor body: own vtable, then Std's body. */
+/* Own vtable first, then Std's dtor body. */
 static void xstd_gen_destruct(XStdGenerator *self)
 {
     self->base.base.pVtable = (void **)gen_vtbl_xstd;
     std_gen_destruct(&self->base);
 }
 
-/* 0x44a6f0 — Std's copy, then flPosOffset ONLY: flVelOffset is not copied. */
+/* PRESERVED: copies flPosOffset but not flVelOffset — a copied generator keeps
+ * its own velocity offset regardless of the source's. */
 static BOOL xstd_gen_copy_from(XStdGenerator *self, const XStdGenerator *src)
 {
     if (!std_gen_copy_from(&self->base, &src->base))
@@ -1320,7 +1217,6 @@ static BOOL xstd_gen_copy_from(XStdGenerator *self, const XStdGenerator *src)
     return TRUE;
 }
 
-/* 0x44aa00 / 0x44aa60. */
 static BOOL xstd_gen_save(XStdGenerator *self, void *fp)
 {
     if (!std_gen_save(&self->base, fp))        return FALSE;
@@ -1335,7 +1231,6 @@ static BOOL xstd_gen_load(XStdGenerator *self, void *fp)
     return read1(self->flVelOffset, 12, fp);
 }
 
-/* 0x44a6a0 — slot 6, SetPosition. */
 static void xstd_set_position(XStdGenerator *self, float x, float y, float z)
 {
     self->flPosOffset[0] = x;
@@ -1343,9 +1238,6 @@ static void xstd_set_position(XStdGenerator *self, float x, float y, float z)
     self->flPosOffset[2] = z;
 }
 
-/* Shared tail of slots 7/8/9: v = normalise(dir) * mag, with the first two
- * quotients rounded to float and the third kept in extended precision, as all
- * three originals do. */
 static void xstd_store_scaled(XStdGenerator *self, double x, double y,
                              double z, double len, double mag)
 {
@@ -1357,9 +1249,8 @@ static void xstd_store_scaled(XStdGenerator *self, double x, double y,
     self->flVelOffset[2] = (float)(q2 * mag);
 }
 
-/* 0x44a730 — slot 8, SetDirection: keep the current speed, take the new
- * direction.  A zero speed becomes FLT_EPSILON; a zero direction zeroes the
- * velocity.  Lengths: speed (x^2+y^2)+z^2, direction (z^2+y^2)+x^2. */
+/* Keeps the current speed, takes the new direction.  Zero speed becomes
+ * FLT_EPSILON; a zero direction zeroes the velocity. */
 static void xstd_set_direction(XStdGenerator *self, float x, float y, float z)
 {
     double vx = self->flVelOffset[0], vy = self->flVelOffset[1],
@@ -1376,8 +1267,8 @@ static void xstd_set_direction(XStdGenerator *self, float x, float y, float z)
     xstd_store_scaled(self, lx, ly, lz, len, mag);
 }
 
-/* 0x44a850 — slot 7 (4 args): direction and speed together.  Refused (and the
- * velocity re-zeroed) while the current velocity is zero. */
+/* PRESERVED: if the current velocity offset is already zero, this leaves it
+ * zero and ignores every argument — direction, speed, all of it. */
 static void xstd_set_velocity(XStdGenerator *self, float x, float y, float z, float mag)
 {
     if (zero_or_nan(self->flVelOffset[0]) && zero_or_nan(self->flVelOffset[1]) &&
@@ -1390,8 +1281,8 @@ static void xstd_set_velocity(XStdGenerator *self, float x, float y, float z, fl
     xstd_store_scaled(self, lx, ly, lz, len, mag);
 }
 
-/* 0x44a930 — slot 9 (1 arg): new speed, same direction.  Zero speed becomes
- * FLT_EPSILON; a zero velocity is left alone.  Length (x^2+y^2)+z^2. */
+/* Zero speed becomes FLT_EPSILON.  If the current velocity is already zero
+ * there is no direction to preserve, so it is left as-is. */
 static void xstd_set_speed(XStdGenerator *self, float mag)
 {
     if (zero_or_nan(mag))
@@ -1405,11 +1296,11 @@ static void xstd_set_speed(XStdGenerator *self, float mag)
     xstd_store_scaled(self, x, y, z, len, mag);
 }
 
-/* ─── PointGenerator / BoxGenerator emit (dead content, kept faithful) ─── */
+/* ─── PointGenerator / BoxGenerator emit ─── */
 
-/* The claim-count step both share: accumulate in extended precision, store the
- * float, bail on a negative (or NaN) total, then carry the fraction of the
- * EXTENDED total.  Returns the number of particles to emit. */
+/* DETERMINISM: dt*rate accumulated in double, stored back as a float, then
+ * truncated toward zero for the emit count; only the truncated fraction
+ * carries forward. */
 static int dead_gen_claim(float *acc, float rate, float dt)
 {
     double total = (double)dt * rate + *acc;
@@ -1421,9 +1312,7 @@ static int dead_gen_claim(float *acc, float rate, float dt)
     return n;
 }
 
-/* 0x449200.  No dwEnabled check (unlike Std).  The three velocity indices wrap
- * by 1000 - i at 1000 / 999 / 998, and the life index runs to 101, two past
- * its table — both as found. */
+/* No dwEnabled check, unlike StdGenerator. */
 static void point_gen_emit(PointGenerator *self, float dt)
 {
     RingBuffer *ring = self->base.pRing;
@@ -1442,10 +1331,10 @@ static void point_gen_emit(PointGenerator *self, float dt)
             node->flVel[a] = self->flVelTable[self->dwVelIdx[a]] + self->flVelBias[a];
         DWORD i0 = self->dwVelIdx[0] + 1, i1 = self->dwVelIdx[1] + 2,
               i2 = self->dwVelIdx[2] + 3;
-        self->dwVelIdx[0] = (i0 >= 1000) ? 1000 - i0 : i0;
+        self->dwVelIdx[0] = (i0 >= 1000) ? 1000 - i0 : i0;  // wraps at 1000, not 999 or 998, like the next two indices
         self->dwVelIdx[1] = (i1 >= 999)  ? 1000 - i1 : i1;
         self->dwVelIdx[2] = (i2 >= 998)  ? 1000 - i2 : i2;
-        self->dwLifeIdx = (self->dwLifeIdx > 100) ? 0 : self->dwLifeIdx + 1;
+        self->dwLifeIdx = (self->dwLifeIdx > 100) ? 0 : self->dwLifeIdx + 1;  // runs 0..101 — two entries past the 100-entry table
         ring->pRingCurrent = node->pNext;
         if (ring->pRingCurrent == NULL)
             return;
@@ -1454,8 +1343,8 @@ static void point_gen_emit(PointGenerator *self, float dt)
     }
 }
 
-/* 0x449420.  Position and colour are raw table copies; velocity is table +
- * bias.  Both index triples wrap by 500 - i past 499. */
+/* Position and colour are raw table copies; velocity is table plus bias.  Both
+ * index triples wrap by 500 - i past 499. */
 static void box_gen_emit(BoxGenerator *self, float dt)
 {
     RingBuffer *ring = self->base.pRing;
@@ -1491,9 +1380,6 @@ static void box_gen_emit(BoxGenerator *self, float dt)
     }
 }
 
-/* ─── CylinderGenerator ─── */
-
-/* 0x44aef0 — dtor body. */
 static void cyl_gen_destruct(CylinderGenerator *self)
 {
     self->base.pVtable = (void **)gen_vtbl_cylinder;
@@ -1502,8 +1388,6 @@ static void cyl_gen_destruct(CylinderGenerator *self)
     base_gen_destruct(&self->base);
 }
 
-/* 0x4037e0 / 0x403810, the game's vec3 helpers: |v|^2 summed (x^2+y^2)+z^2,
- * and a.b summed (az bz + ay by) + ax bx. */
 static double vec3_sqlen(const float *v)
 {
     return ((double)v[0] * v[0] + (double)v[1] * v[1]) + (double)v[2] * v[2];
@@ -1514,9 +1398,8 @@ static double vec3_dot(const float *a, const float *b)
     return ((double)a[2] * b[2] + (double)a[1] * b[1]) + (double)a[0] * b[0];
 }
 
-/* The cosine of the angle between v and axis e, the long way the original
- * takes: both lengths stored as floats, acos (0x450eb0) of the normalised dot
- * stored as a float, then FCOS of that.  A zero v gives NaN, as it does there. */
+/* The cosine of the angle between v and axis e, computed the long way (acos
+ * then cos).  A zero v yields NaN. */
 static float direction_cosine(const float *v, const float *e)
 {
     float lv = (float)sqrt(vec3_sqlen(v));
@@ -1525,12 +1408,13 @@ static float direction_cosine(const float *v, const float *e)
     return (float)cos((double)angle);
 }
 
-/* 0x44b0c0 — slot 8, SetDirection.  Stores the direction as given, then
- * rebuilds flMatrix's upper 3x3 as three rows of direction cosines against the
- * world axes: a = d x r, then d itself, then b = d x a, where r is the Y axis
- * when d is exactly (1,0,0) (x87 compare: NaN counts as equal) and the X axis
- * otherwise.  d is not normalised and a, b are rounded to float, as found; the
- * fourth row and column are identity. */
+/* Rebuilds flMatrix's upper 3x3 from the new direction: a = d x r, then d
+ * itself, then b = d x a, where r is the Y axis when d is exactly (1,0,0) (an
+ * unordered-safe compare, so NaN counts as equal) and the X axis otherwise.
+ *
+ * PRESERVED: d, a and b are not normalised — only their pairwise angles are,
+ * via direction_cosine — and a, b are rounded to float before that.  The
+ * fourth row and column are left as identity. */
 static void cyl_set_direction(CylinderGenerator *self, float x, float y, float z)
 {
     static const float AXIS[3][3] = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
@@ -1554,7 +1438,6 @@ static void cyl_set_direction(CylinderGenerator *self, float x, float y, float z
     memcpy(self->flMatrix, m, sizeof m);
 }
 
-/* 0x44aeb0 — slot 6, SetPosition. */
 static void cyl_set_position(CylinderGenerator *self, float x, float y, float z)
 {
     self->flOrigin[0] = x;
@@ -1562,9 +1445,9 @@ static void cyl_set_position(CylinderGenerator *self, float x, float y, float z)
     self->flOrigin[2] = z;
 }
 
-/* 0x44b6c0 — Std's velocity table on Cylinder's fields.  It also drops the
- * type table — pointer and count zeroed WITHOUT a free, a leak — which Load's
- * type-table read then replaces.  Kept. */
+/* PRESERVED: drops the type table by zeroing the pointer and count without
+ * freeing it first — a leak on every reload, papered over because Load's own
+ * type-table read immediately replaces both. */
 static void cyl_build_velocity(CylinderGenerator *self, const float *vmin, const float *vmax,
                                float lmin, float lmax)
 {
@@ -1579,7 +1462,7 @@ static void cyl_build_velocity(CylinderGenerator *self, const float *vmin, const
     self->flLifeMax = lmax;
 }
 
-/* 0x44ba30 — Std's rate table (0x449fa0) on Cylinder's fields. */
+/* Std's rate-table builder (std_build_rate), run on Cylinder's own fields. */
 static void cyl_build_rate(CylinderGenerator *self, float lo, float hi)
 {
     float step = (float)((double)hi * GAUSS_STEP);
@@ -1588,8 +1471,6 @@ static void cyl_build_rate(CylinderGenerator *self, float lo, float hi)
     gauss_fill(self->pLifeTable, 100, lo, hi, step);
 }
 
-/* 0x44af50 — base gate, every field but the type table, then clone it (which
- * re-draws pEmitProb from the clock, as Std's copy does). */
 static BOOL cyl_gen_copy_from(CylinderGenerator *self, const CylinderGenerator *src)
 {
     if (!gen_copy_base(&self->base, &src->base))
@@ -1601,7 +1482,6 @@ static BOOL cyl_gen_copy_from(CylinderGenerator *self, const CylinderGenerator *
     return TRUE;
 }
 
-/* 0x44bd40 — the mirror of Load. */
 static BOOL cyl_gen_save(CylinderGenerator *self, void *fp)
 {
     if (!write1(self->flOrigin, 12, fp))       return FALSE;
@@ -1617,10 +1497,9 @@ static BOOL cyl_gen_save(CylinderGenerator *self, void *fp)
     return type_table_save(self->pTypeTable, &self->dwTypeTableCount, fp);
 }
 
-/* 0x44be90 — parameters, then SetDirection (through the object's own vtable
- * slot 8 in the original — ours, so called directly), the velocity and rate
- * tables, and the type table.  The position table is the constructor's and is
- * never rebuilt. */
+/* Reads its own direction back out to rebuild the matrix via
+ * cyl_set_direction.  The position table (the unit circle) is the
+ * constructor's and is never rebuilt here. */
 static BOOL cyl_gen_load(CylinderGenerator *self, void *fp)
 {
     if (!read1(self->flOrigin, 12, fp))        return FALSE;
@@ -1644,14 +1523,6 @@ static BOOL cyl_gen_load(CylinderGenerator *self, void *fp)
                            self->pEmitProb, fp);
 }
 
-/* ─── Generator construction ─── */
-
-/* The game's type-name strings; pName points at them as the ctors leave it. */
-
-/* Each original ctor also builds and destroys a throwaway base-class temporary
- * on its own stack — no effect outside the frame, omitted throughout. */
-
-/* 0x448370. */
 static void base_gen_construct(Generator *self)
 {
     self->pVtable = (void **)gen_vtbl_base;
@@ -1660,8 +1531,9 @@ static void base_gen_construct(Generator *self)
     self->dwEnabled = 1;
 }
 
-/* 0x449160 — only the accumulator and colour are set; the tables stay
- * uninitialised (and nothing ever fills them). */
+/* PRESERVED: only the accumulator and diffuse colour are initialised — the
+ * position, velocity and life tables are left uninitialised, and nothing in
+ * this file ever fills them. */
 static void point_gen_construct(PointGenerator *self)
 {
     base_gen_construct(&self->base);
@@ -1671,7 +1543,7 @@ static void point_gen_construct(PointGenerator *self)
     self->dwDiffuse = 0xFFFFFFFF;
 }
 
-/* 0x449390 — nothing past the base is initialised. */
+/* PRESERVED: nothing past the base class is initialised. */
 static void box_gen_construct(BoxGenerator *self)
 {
     base_gen_construct(&self->base);
@@ -1679,7 +1551,6 @@ static void box_gen_construct(BoxGenerator *self)
     self->base.pName = GS_PSNAME_BOX_GEN;
 }
 
-/* 0x449670 — every member zero, except pEmitProb, which is all -1. */
 static void std_gen_construct(StdGenerator *self)
 {
     base_gen_construct(&self->base);
@@ -1690,7 +1561,6 @@ static void std_gen_construct(StdGenerator *self)
         self->pEmitProb[i] = 0xFFFFFFFF;
 }
 
-/* 0x44a5c0 — Std's ctor, then both offsets zeroed. */
 static void xstd_gen_construct(XStdGenerator *self)
 {
     std_gen_construct(&self->base);
@@ -1700,11 +1570,14 @@ static void xstd_gen_construct(XStdGenerator *self)
     self->base.base.pName = GS_PSNAME_XSTD_GEN;
 }
 
-/* 0x44aca0 — everything zero, pEmitProb -1; SetDirection(0, 1, 0), whose
- * matrix is then overwritten with identity (the direction stays (0,1,0)); and
- * the position table is a unit circle in XZ from 500 uniform angles on
- * [0, 2 pi) — this consumes rand() at construction, and is the only place the
- * position table is ever written. */
+/* DETERMINISM: builds the position table from 500 angles drawn uniformly by
+ * uniform_fill, so constructing a CylinderGenerator consumes rand() calls; its
+ * order relative to other construction matters for replays.
+ *
+ * PRESERVED: calls SetDirection(0,1,0) to set flDirection, then immediately
+ * overwrites the matrix it built with plain identity — so flDirection reads
+ * (0,1,0) but flMatrix does not reflect it until SetDirection is called again.
+ */
 static void cyl_gen_construct(CylinderGenerator *self)
 {
     base_gen_construct(&self->base);
@@ -1726,8 +1599,6 @@ static void cyl_gen_construct(CylinderGenerator *self)
     delete[] angle;
 }
 
-/* Allocate `size` bytes with our own new (NULL on failure, as the game's
- * operator new returns) and run `construct` on them. */
 template <typename T>
 static Generator *gen_new(void (*construct)(T *))
 {
@@ -1737,8 +1608,6 @@ static Generator *gen_new(void (*construct)(T *))
     return (Generator *)obj;
 }
 
-/* 0x4485d0 — same strcmp chain, same order, same sizes; NULL for an unknown
- * name. */
 Generator *gen_create(const char *name)
 {
     if (strcmp(name, "Generator") == 0)         return gen_new(base_gen_construct);
@@ -1750,21 +1619,18 @@ Generator *gen_create(const char *name)
     return NULL;
 }
 
-/* ─── The Gaussian sampler's one caller outside the particle code ───
+/* ─── The Gaussian sampler's one caller outside this file's own generators ───
  *
- * 0x438170 is a 15-instruction method of ExplodeDebris (explodedebris.h, whose
- * constructor calls it with mu = 2.0, sigma = 1.0); it is here because it
- * exists only to fill a 30-entry table with gauss_fill, and it is the last
- * thing keeping the sampler (0x448fb0) and its density (0x448f30) alive in
- * the game.  Only two of that class's fields are needed here: the table at
- * +0x14 and the DWORD cursor at +0x8c. */
+ * ExplodeDebris fills a 30-entry table from it at construction (mu=2.0,
+ * sigma=1.0); theme.cpp fills one the same way from parsed config.  Only that
+ * table and its read cursor are touched here. */
 static void fill_gaussian_field(ExplodeDebris *self, float mu, float sigma)
 {
     gauss_fill(self->samples, 30, mu, sigma, 0.01f);
     self->cursor = 0;
 }
 
-/* ─── Cloning (0x4488b0 / 0x448a70) ─── */
+/* ─── Cloning ─── */
 
 typedef BOOL  (THISCALL_DECL *clone_copy_fn)(void *, const void *);
 typedef void *(THISCALL_DECL *clone_dtor_fn)(void *, unsigned);
@@ -1794,14 +1660,14 @@ Environment *env_clone(const Environment *src)
     return (Environment *)clone_by_name(env_create(src->pName), src);
 }
 
-/* ─── Exports — vtable thunks, installed by factory.cpp's clone table ─── */
+/* ─── Exports — vtable thunks ─── */
 
 #define THISCALL __attribute__((thiscall))
 
 extern "C" {
 
-/* Base Environment — all six slots, so a plain Environment never touches game
- * code either (no .par file names one, but the factory accepts the name). */
+/* All six slots, so a plain Environment never falls through to unimplemented
+ * behaviour either. */
 __declspec(dllexport) void *THISCALL
 Env_BaseDtor(Environment *self, unsigned flags)
 {
@@ -1815,8 +1681,6 @@ Env_BaseCopyFrom(Environment *self, const Environment *src) { return env_same_na
 __declspec(dllexport) BOOL THISCALL
 Env_AttachRing(Environment *self, RingBuffer *ring)         { return env_attach_ring(self, ring); }
 
-/* 0x448440 (`RET 4`) and 0x4485c0 (`return 1`) are shared with the generator
- * vtables and stay live in the game; these are our own copies. */
 __declspec(dllexport) void THISCALL
 Env_BaseTick(Environment *, float)                          { }
 
@@ -1854,10 +1718,8 @@ Env_GravitySave(GravityEnvironment *self, void *fp)  { return gravity_env_save(s
 __declspec(dllexport) BOOL THISCALL
 Env_MagnetSave(MagnetEnvironment *self, void *fp)    { return magnet_env_save(self, fp); }
 
-/* Generators.  The shared no-ops stand in for 0x448440 (RET 4), 0x448470
- * (RET 0xc), 0x448480 (RET 0x10) and 0x4485c0 (return 1), which stay live in
- * the game for the ParticleSystem vtables; the argument counts give the same
- * callee cleanup. */
+/* Shared no-op bodies for the base classes' do-nothing slots; the argument
+ * counts match so callee cleanup stays correct under thiscall. */
 __declspec(dllexport) void THISCALL Gen_Nop1(void *, float)                      { }
 __declspec(dllexport) void THISCALL Gen_Nop3(void *, float, float, float)        { }
 __declspec(dllexport) void THISCALL Gen_Nop4(void *, float, float, float, float) { }
@@ -1866,7 +1728,8 @@ __declspec(dllexport) BOOL THISCALL Gen_ReturnTrue(void *, void *)              
 __declspec(dllexport) BOOL THISCALL
 Gen_AttachRing(Generator *self, RingBuffer *ring)        { return gen_attach_ring(self, ring); }
 
-/* 0x438170, reached by CALL_PATCHES (2 sites) — see fill_gaussian_field. */
+/* Called directly by explodedebris.cpp and theme.cpp — see
+ * fill_gaussian_field. */
 __declspec(dllexport) void THISCALL
 Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma)
 {
@@ -1992,26 +1855,21 @@ Gen_CylinderEmit(CylinderGenerator *self, float dt)  { cyl_gen_tick(self, dt); }
 __declspec(dllexport) void THISCALL
 Gen_XStdEmit(XStdGenerator *self, float dt)          { xstd_gen_tick(self, dt); }
 
-} // extern "C"
+}  // extern "C"
 
 /* ─── Our vtables ──────────────────────────────────────────────────────────
  *
- * One table per class, in the game's slot order, installed by the constructors
- * above.  These replace both the vtable patches (gone since E2) and the clone
- * machinery in factory.cpp (gone for these classes since E5): an object of ours
- * carries a DLL address at +0x00 and every virtual call the game makes on it
- * lands directly on our code.
+ * One table per class, in the game's slot order, installed by each constructor
+ * above: every object of ours carries a DLL address at +0x00, so every virtual
+ * call the game makes on it lands directly in this code.
  *
- * Built by hand rather than with C++ virtuals on purpose (§ 6.6): the game
- * calls `(*(code **)(*obj + 0x0c))(...)` with MSVC __thiscall, and neither
- * mingw's slot order nor its calling convention is guaranteed to match.  Each
- * entry is one of the __attribute__((thiscall)) exports defined above.
+ * Built by hand rather than through C++ virtuals: the game calls `(*(code
+ * **)(*obj + 0x0c))(...)` under MSVC __thiscall, and neither mingw's slot
+ * layout nor its calling convention is guaranteed to match, so each entry
+ * below is one of the explicit thiscall exports above.
  *
- * The originals stay UD2-stubbed, so a slot we get wrong still dies loudly
- * rather than silently doing the wrong thing — but only if it reaches a
- * *stubbed* function.  The static_asserts below are the guard against the
- * other mistake, an initialiser that is one entry short: a missing slot would
- * otherwise be a silent NULL.  Slot meanings are in generators.h. */
+ * The static_asserts guard against an initialiser one entry short, which would
+ * otherwise leave a slot silently NULL.  Slot meanings are in generators.h. */
 
 extern void *const gen_vtbl_base[] = {
     (void *)Gen_BaseDtor,  (void *)Gen_BaseCopyFrom, (void *)Gen_AttachRing,
@@ -2082,13 +1940,9 @@ static_assert(SLOT_COUNT(env_vtbl_gravity)  == ENV_VTBL_SLOTS, "Gravity vtable")
 static_assert(SLOT_COUNT(env_vtbl_magnet)   == ENV_VTBL_SLOTS, "Magnet vtable");
 #undef SLOT_COUNT
 
-/* ─── Dispatch ─────────────────────────────────────────────────────────────
- *
- * One virtual call.  Generators and Environments share slot 3 (Tick / emit)
- * and both carry one of the tables above, so this is a direct call into this
- * DLL — no class switch, no identity lookup, no trampoline.  It replaces the
- * sim_tick_generator / sim_tick_environment pair and the Stage D "is this
- * vtable ours?" test they needed. */
+/* Generators and Environments share slot 3 (Tick / emit) and both carry one of
+ * the tables above, so this is a direct call into this DLL — no class switch
+ * or identity lookup needed. */
 
 typedef void (THISCALL *sim_tick_fn)(void *, float);
 
