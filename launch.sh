@@ -31,7 +31,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 EXE=KarooOwn.exe
-[[ -f "build/$EXE" ]] || { echo "ERROR: build/$EXE missing — run make first"; exit 1; }
+# Bring the build up to date first; a failed build does not launch a stale exe.
+make -s >&2 || { echo "ERROR: make failed"; exit 1; }
+[[ -f "build/$EXE" ]] || { echo "ERROR: build/$EXE missing after make"; exit 1; }
 
 # A ddraw.dll beside the game would be loaded in preference to stock Wine ddraw, even under
 # ddraw=b.
