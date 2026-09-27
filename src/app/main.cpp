@@ -124,20 +124,20 @@ Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             g_progCtrl.acquireAll();
             restore_surfaces();
             if (g_moviePlaying) {
-                Movie_SetWindow(&g_movie, g_movieSurface);
-                Movie_Play(&g_movie);
+                g_movie.setWindow(g_movieSurface);
+                g_movie.play();
             }
         } else {
             g_progCtrl.unacquireAll();
             if (g_moviePlaying)
-                Movie_Pause(&g_movie);
+                g_movie.pause();
         }
         break;
 
     case WM_KEYUP:  // any key skips the intro
         if (g_moviePlaying) {
-            Movie_Stop(&g_movie);
-            Movie_Teardown(&g_movie);
+            g_movie.stop();
+            g_movie.teardown();
             g_moviePlaying = 0;
         }
         break;
@@ -149,9 +149,9 @@ Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     case WM_MOVIE_EVENT:
         if (g_moviePlaying)
-            Movie_Notify(&g_movie, (DWORD)hWnd, wParam, lParam);
+            g_movie.notify((DWORD)hWnd, wParam, lParam);
         // Checked whether or not a movie was playing.
-        if (g_movie.state == MOVIE_STATE_FINISHED)
+        if (g_movie.movieState() == MOVIE_STATE_FINISHED)
             *&g_moviePlaying = 0;
         break;
     }
@@ -282,17 +282,14 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     // The movie's overlay colour key: on, CK_RGB, black to black.  Nothing
     // plays a movie yet (movie.cpp), so it is set for a player that would use
     // it.  The palette index is left zero; CK_RGB ignores it.
-    g_movie.useColorKey = 1;
-    g_movie.colorKey[0] = 2;  // CK_RGB
-    g_movie.colorKey[2] = 0;
-    g_movie.colorKey[3] = 0;
+    g_movie.setColorKey(2 /* CK_RGB */, 0, 0);
 
     bool playing = false;
-    if (Movie_Setup(&g_movie, &g_logger)) {
+    if (g_movie.setup(&g_logger)) {
         // MAX_PATH-sized, so a long install path cannot overflow it.
         char path[MAX_PATH + 32];
         snprintf(path, sizeof(path), "%s\\Video\\intro.avi", g_gameDir);
-        if (Movie_LoadVideo(&g_movie, hWnd, dd1, g_movieSurface, path) >= 0)
+        if (g_movie.loadVideo(hWnd, dd1, g_movieSurface, path) >= 0)
             playing = true;
         else
             GameLog_LogMessage(&g_logger, 3, "MAIN: Couldn't load %s .", path);
@@ -301,8 +298,8 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     if (dd1)
         ((IUnknown *)dd1)->Release();
     if (playing) {
-        Movie_SetWindow(&g_movie, g_movieSurface);
-        Movie_Play(&g_movie);
+        g_movie.setWindow(g_movieSurface);
+        g_movie.play();
     }
 
     const bool norender = winmain_fx_norender();
