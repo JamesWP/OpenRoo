@@ -419,7 +419,7 @@ void TextRenderer::drawBig(float x, float y, float cellW, float cellH,
  * The two fonts are globals, constructed and destroyed by staticinit.cpp.  The
  * scalar dtor is the one vtable slot; a global is never deleted, so its free
  * is never reached. */
-static void *const g_TextVtable[1] = { (void *)&Text_ScalarDtor };
+static void *const g_TextVtable[1] = { (void *)&TextRenderer::scalarDeletingDtor };
 
 void TextRenderer::construct()
 {
@@ -435,8 +435,8 @@ void TextRenderer::destruct()
     Texture_SceneDtorBody(atlas());
 }
 
-extern "C" __declspec(dllexport) TextRenderer *__attribute__((thiscall))
-Text_ScalarDtor(TextRenderer *self, unsigned int flags)
+TextRenderer * __attribute__((thiscall))
+TextRenderer::scalarDeletingDtor(TextRenderer *self, unsigned int flags)
 {
     self->destruct();
     if (flags & 1)

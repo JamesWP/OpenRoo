@@ -115,8 +115,8 @@ void CdThemes::destruct()
 }
 
 /* Frees on bit 0; the only CdThemes is the Game's, so it never does. */
-extern "C" __declspec(dllexport) CdThemes * __attribute__((thiscall))
-Sim_CdThemesScalarDeletingDtor(CdThemes *self, unsigned int flags)
+CdThemes * __attribute__((thiscall))
+CdThemes::scalarDeletingDtor(CdThemes *self, unsigned int flags)
 {
     self->destruct();
     if (flags & 1)
@@ -194,6 +194,6 @@ int CdThemes::listTrackLengths()
 }
 
 static void *const cdthemes_vtable_slots[1] = {
-    (void *)&Sim_CdThemesScalarDeletingDtor,
+    (void *)&CdThemes::scalarDeletingDtor,
 };
 extern const void *const CDTHEMES_VTABLE = cdthemes_vtable_slots;

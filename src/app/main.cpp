@@ -58,7 +58,7 @@ static bool winmain_fx_norender()
 
 /* The scalar deleting destructors free() their object, which is why both
  * objects come from malloc. */
-static void delete_game(Game *g)       { if (g) Game_ScalarDestructor(g, 1); }
+static void delete_game(Game *g)       { if (g) Game::scalarDeletingDtor(g, 1); }
 
 /* The window procedure: input devices and surfaces on focus changes, the intro
  * movie's events, and CD track repeats.  Every path ends in DefWindowProcA,

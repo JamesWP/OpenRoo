@@ -570,7 +570,7 @@ void ScriptPlayer::tick(double now, double dt)
     updateGlide();
 }
 
-static void *const g_ScriptPlayerVtable[1] = { (void *)&ScriptPlayer_ScalarDestructor };
+static void *const g_ScriptPlayerVtable[1] = { (void *)&ScriptPlayer::scalarDeletingDtor };
 
 /* The embedded stream and spline, then these stores. */
 void ScriptPlayer::construct()
@@ -603,8 +603,8 @@ void ScriptPlayer::clearStreams()
     memset(streams_, 0, sizeof(streams_));
 }
 
-extern "C" __declspec(dllexport) ScriptPlayer *__attribute__((thiscall))
-ScriptPlayer_ScalarDestructor(ScriptPlayer *self, unsigned char flags)
+ScriptPlayer * __attribute__((thiscall))
+ScriptPlayer::scalarDeletingDtor(ScriptPlayer *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

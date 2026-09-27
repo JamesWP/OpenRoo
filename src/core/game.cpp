@@ -34,7 +34,7 @@
 #include "foe.h"
 #include "bomb.h"
 
-static void *const g_GameVtable[1] = { (void *)&Game_ScalarDestructor };
+static void *const g_GameVtable[1] = { (void *)&Game::scalarDeletingDtor };
 
 /* The key bytes of the save-slot files ('7') and the high-score file ('K'). */
 static const char SAVE_KEY      = 0x37;
@@ -343,8 +343,8 @@ Game_Destruct(Game *self)
 }
 
 /* free() matches the malloc in WinMain. */
-extern "C" __declspec(dllexport) Game *__attribute__((thiscall))
-Game_ScalarDestructor(Game *self, unsigned char flags)
+Game * __attribute__((thiscall))
+Game::scalarDeletingDtor(Game *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

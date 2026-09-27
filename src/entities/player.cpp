@@ -487,7 +487,7 @@ __declspec(dllexport) void __cdecl Player_ActReleaseBomb(int, int, void *p) { ((
 
 /* PRESERVED: the ctor and dtor keep the original's transient vtable stores,
  * and zeroSoundSlots() runs twice. */
-static void *const g_PlayerVtable[1] = { (void *)&Player_ScalarDestructor };
+static void *const g_PlayerVtable[1] = { (void *)&Player::scalarDeletingDtor };
 
 void Player::construct()
 {
@@ -525,8 +525,8 @@ void Player::destruct()
     destroyBaseForGame();
 }
 
-extern "C" __declspec(dllexport) Player *__attribute__((thiscall))
-Player_ScalarDestructor(Player *self, unsigned char flags)
+Player * __attribute__((thiscall))
+Player::scalarDeletingDtor(Player *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

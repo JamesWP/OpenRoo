@@ -78,6 +78,10 @@ public:
     unsigned int   cdMixerVolume() const               { return cdMixerVolume_; }
     float          cameraDistanceSetting() const       { return cameraDistanceSetting_; }
 
+    /* The one slot of Config's vtable. */
+    static Config *__attribute__((thiscall))
+    scalarDeletingDtor(Config *self, unsigned char flags);
+
 private:
     Config() = delete;  // only ever reached through the Game
     KAROO_LAYOUT_REGISTER(Config);
@@ -141,6 +145,3 @@ Config_LoadValues(Config *self, const char *path);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Config_Save(Config *self, const char *path);
 
-/* The one slot of Config's vtable. */
-extern "C" __declspec(dllexport) Config *__attribute__((thiscall))
-Config_ScalarDestructor(Config *self, unsigned char flags);

@@ -51,6 +51,10 @@ public:
     // Blanks the first count() records.
     void           initialiseEmpty();
 
+    /* The one slot of the vtable: the deleting destructor. */
+    static void *__attribute__((thiscall))
+    scalarDeletingDtor(SaveSlots *self, unsigned int flags);
+
 private:
     SaveSlots() = delete;  // only ever reached through the Game
     KAROO_LAYOUT_REGISTER(SaveSlots);
@@ -86,8 +90,4 @@ SaveSlots_InstallVtable(SaveSlots *self);
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 SaveSlots_RestoreVtable(SaveSlots *self);
-
-/* The one slot of the vtable: the deleting destructor. */
-extern "C" __declspec(dllexport) void *__attribute__((thiscall))
-SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags);
 

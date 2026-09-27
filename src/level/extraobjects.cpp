@@ -539,7 +539,7 @@ int ExtraObjects::parseEntry(const char *entry)
 }
 
 /* Embedded in the Game, so the deleting destructor never frees in practice. */
-static void *const g_LeoVtable[1] = { (void *)&Leo_ScalarDestructor };
+static void *const g_LeoVtable[1] = { (void *)&ExtraObjects::scalarDeletingDtor };
 
 void ExtraObjects::construct()
 {
@@ -555,8 +555,8 @@ void ExtraObjects::destruct()
     vtable_ = g_LeoVtable;
 }
 
-extern "C" __declspec(dllexport) ExtraObjects *__attribute__((thiscall))
-Leo_ScalarDestructor(ExtraObjects *self, unsigned char flags)
+ExtraObjects * __attribute__((thiscall))
+ExtraObjects::scalarDeletingDtor(ExtraObjects *self, unsigned char flags)
 {
     self->destruct();
     if (flags & 1)

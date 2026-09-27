@@ -59,6 +59,10 @@ public:
     void construct();
     void destruct();
 
+    /* The one slot of LevelMap's vtable. */
+    static LevelMap *__attribute__((thiscall))
+    scalarDeletingDtor(LevelMap *self, unsigned char flags);
+
 private:
     LevelMap() = delete;  // embedded in the Game
     KAROO_LAYOUT_REGISTER(LevelMap);
@@ -109,6 +113,3 @@ KAROO_LAYOUT_CHECKS(LevelMap)
     KAROO_LAYOUT_SIZE(0x26c37c);
 }
 
-/* The one slot of LevelMap's vtable. */
-extern "C" __declspec(dllexport) LevelMap *__attribute__((thiscall))
-LevelMap_ScalarDestructor(LevelMap *self, unsigned char flags);
