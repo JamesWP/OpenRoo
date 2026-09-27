@@ -216,7 +216,7 @@ int FoePath::passable(int u, int v)
     if (fx_blindfoe())
         return 0;
 
-    const Tile *t = Tile::at(tileBase_, u, v);
+    const Tile *t = Tile::at(tileBase(), u, v);
     const unsigned char kind = t->objectMarker();
 
     if (kind == TILE_EMPTY && t->slideTrack() == 0)  // a void cell is passable only when something bridges it
@@ -321,7 +321,12 @@ void FoePath::releaseLists()
     }
 }
 
-FoePath *FoePath::create(unsigned char *tileBase, unsigned short field04)
+void Sim_ReleasePathSearchNodeLists(FoePath *self)
+{
+    self->releaseLists();
+}
+
+FoePath *FoePath::create(Tile *tileBase, unsigned short field04)
 {
     FoePath *p = (FoePath *)::operator new(sizeof(FoePath), std::nothrow);
     if (p == 0)
@@ -336,7 +341,7 @@ void FoePath::destroy(FoePath *p)
     ::operator delete(p);
 }
 
-void FoePath::populate(unsigned char *tileBase, unsigned short field04)
+void FoePath::populate(Tile *tileBase, unsigned short field04)
 {
     const LevelMap *map = LevelMap::fromTileBase(tileBase);
 
@@ -584,8 +589,8 @@ Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
  * tests ORed together: a later clause can overwrite an earlier "legal" back to
  * "illegal" (the bridge and jump-pad blocks both do, on their failure path),
  * so reordering them changes the answer. */
-  int  
-Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned char v_from,
+int
+Sim_CheckCellStepIsLegal(Tile *base, unsigned char u_from, unsigned char v_from,
                          unsigned char u_to, unsigned char v_to)
 {
 
@@ -704,7 +709,7 @@ void FoePath::expand(PathNode *n, int goalU, int goalV)
 
         if (!passable(nu, nv))
             continue;
-        if (!Sim_CheckCellStepIsLegal(tileBase_, (unsigned char)u, (unsigned char)v,
+        if (!Sim_CheckCellStepIsLegal(tileBase(), (unsigned char)u, (unsigned char)v,
                                       (unsigned char)nu, (unsigned char)nv))
             continue;
 

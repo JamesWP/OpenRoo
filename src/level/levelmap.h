@@ -4,10 +4,10 @@
  * the file gave it.  The reader writes each cell's four file bytes into both.
  * The builder spawns from the snapshot's contents, a restart copies it back
  * over the live grid, and a despawning foe clears its home cell in it.
- * Objects keep the map's address as their "tile base". */
+ * Objects keep the grid's first cell as their "tile base". */
 #pragma once
 
- 
+#include <stddef.h>
 #include "tile.h"
 
 class __attribute__((packed)) LevelMap {
@@ -15,23 +15,25 @@ public:
      
 
     // The grid is 100 x 100 whatever the level's real size.
-    static const int DIM        = 100;
-    static const int GRID_BYTES = DIM * DIM * 0x7f;
+    static const int DIM = 100;
 
-    // Objects keep the map's address as a raw tile base; this is where that
-    // pointer becomes a LevelMap again.
-    static LevelMap *fromTileBase(unsigned char *base) { return (LevelMap *)base; }
-    unsigned char   *tileBase()      { return (unsigned char *)this; }
+    // Objects keep the grid's first cell as their tile base; this is where
+    // that pointer becomes a LevelMap again.
+    static LevelMap *fromTileBase(Tile *base)
+    {
+        return (LevelMap *)((unsigned char *)base - offsetof(LevelMap, grid_));
+    }
+    Tile *tileBase()                     { return &grid_[0][0]; }
 
     Tile       *tile(int u, int v)       { return Tile::at(tileBase(), u, v); }
     const Tile *tile(int u, int v) const
     {
-        return Tile::at((unsigned char *)this, u, v);
+        return Tile::at(const_cast<LevelMap *>(this)->tileBase(), u, v);
     }
-    // The same cell in the snapshot grid.
+    // The same cell in the snapshot grid, which follows the live grid.
     static Tile *snapshotOf(Tile *t)
     {
-        return (Tile *)((unsigned char *)t + GRID_BYTES);
+        return t + DIM * DIM;
     }
     Tile       *snapshot(int u, int v)       { return snapshotOf(tile(u, v)); }
     const Tile *snapshot(int u, int v) const
