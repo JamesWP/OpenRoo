@@ -44,7 +44,7 @@ Game *Game::construct(const char *gameName)
 {
     rootMenu_.construct();
     cdThemes_.construct();
-    ThemeSound_Construct(&themeSounds_);
+    themeSounds_.construct();
     extraObjects_.construct();
     soundManager()->construct();
     cheatEntry_.construct();
@@ -223,7 +223,7 @@ void Game::destruct()
     cheatEntry_.destruct();
     soundManager()->destruct();
     extraObjects_.destruct();
-    ThemeSound_Destruct(&themeSounds_);
+    themeSounds_.destruct();
     cdThemes_.destruct();
     rootMenu_.destruct();
 }

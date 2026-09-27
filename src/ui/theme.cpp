@@ -319,14 +319,13 @@ void ThemeAssetBlock::release()
 
 /* "NONE" (case-exact, on the raw wave name) disables the entry without
  * logging.  PRESERVED: the path is formatted unbounded into 256 bytes. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
+int ThemeSoundTable::add(unsigned int id, const char *waveName,
                DWORD arg3, DWORD arg4)
 {
     char path[256];
     sprintf(path, GS_THEME_SOUND_PATH, g_gameDir, waveName);
 
-    SoundAssetName &e = self->entries[id & 0xffff];
+    SoundAssetName &e = entries_[id & 0xffff];
     if (strcmp(waveName, GS_THEME_SOUND_NONE) == 0) {
         e.enabled = 0;
         return 0;
@@ -359,7 +358,7 @@ Theme_RegisterSound(Game *game, char *eventName, const char *waveName)
     lower_inplace(eventName);
     for (const auto &ev : kSoundEvents) {
         if (strcmp(eventName, ev.name) == 0) {
-            ThemeSound_Add(game->themeSounds(), ev.id, waveName, 1, 1);
+            game->themeSounds()->add(ev.id, waveName, 1, 1);
             return true;
         }
     }
@@ -978,40 +977,37 @@ bool ThemeAssetBlock::load(Game *game, RenderDevice *d3d, char *path,
 /* The theme sound table's lifecycle.  ReleaseAll clears the name and the
  * enabled flag of all 100 entries between two log lines, leaving the other
  * fields, and returns 0. */
-static void *const g_ThemeSoundVtable[1] = { (void *)&ThemeSound_ScalarDestructor };
+static void *const g_ThemeSoundVtable[1] = { (void *)&ThemeSoundTable::scalarDestructor };
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-ThemeSound_ReleaseAll(ThemeSoundTable *self)
+int ThemeSoundTable::releaseAll()
 {
     g_logger.logMessage(1, GS_THEME_SOUND_RELEASING);
     for (int i = 0; i < THEME_SOUND_COUNT; i++) {
-        self->entries[i].enabled = 0;
-        self->entries[i].name[0] = 0;
+        entries_[i].enabled = 0;
+        entries_[i].name[0] = 0;
     }
     g_logger.logMessage(1, GS_THEME_SOUND_RELEASED);
     return 0;
 }
 
-extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
-ThemeSound_Construct(ThemeSoundTable *self)
+ThemeSoundTable *ThemeSoundTable::construct()
 {
-    self->vtable    = (void *)g_ThemeSoundVtable;
-    self->unknown8  = 0;
-    ThemeSound_ReleaseAll(self);
-    return self;
+    vtable_    = (void *)g_ThemeSoundVtable;
+    unknown8_  = 0;
+    releaseAll();
+    return this;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-ThemeSound_Destruct(ThemeSoundTable *self)
+void ThemeSoundTable::destruct()
 {
-    self->vtable = (void *)g_ThemeSoundVtable;
+    vtable_ = (void *)g_ThemeSoundVtable;
 }
 
 /* Reached only through the vtable; the table is embedded in the Game. */
-extern "C" __declspec(dllexport) ThemeSoundTable *__attribute__((thiscall))
-ThemeSound_ScalarDestructor(ThemeSoundTable *self, unsigned char flags)
+ThemeSoundTable * __attribute__((thiscall))
+ThemeSoundTable::scalarDestructor(ThemeSoundTable *self, unsigned char flags)
 {
-    ThemeSound_Destruct(self);
+    self->destruct();
     if (flags & 1)
         free(self);
     return self;
