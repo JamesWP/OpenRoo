@@ -1,18 +1,15 @@
-/* framepose.cpp -- see framepose.h.
+/* The per-frame pose builders (framepose.h).  Each actor gets a yaw from its
+ * facing byte (1: 0, 2: -pi/2, 3: pi, 4: pi/2; any other value leaves the
+ * previous yaw, for the player whatever the block held last frame), and, while
+ * it is stepping (moveDir nonzero or anim at least 0xfa), a step fraction
+ * (clock - animStart) / animDuration.
  *
- * Both builders share one idiom per actor: a facing angle from the facing
- * byte (1 -> 0, 2 -> -pi/2, 3 -> pi, 4 -> pi/2; anything else leaves the
- * previous value -- for the player, whatever the block held last frame),
- * and, while the actor is stepping (moveDir != 0 or anim >= 0xfa), a step
- * fraction (clock - animStart) / animDuration.  Past 10 on moveDir -- which
- * is only ever 0..4, so never -- the fraction turns the angle by pi/2 for
- * turnKind 2 (minus) or 4 (plus).  The test is kept as the listing has it.
- *
- * Kept: the fraction is computed in double and stored as a float, then
- * re-read as that float; the wrap of the player's yaw target is fmod by the
- * double 2pi, then + the float 2pi if negative (the FCOM decides on the
- * unrounded value).
- */
+ * PRESERVED: the turn term applies only when moveDir is past 10, which it
+ * never is (it is 0 to 4), so it never applies.  The fraction is computed in
+ * double, stored as a float and re-read as that float.  The player's yaw
+ * target is wrapped by fmod with the double 2pi, then has the float 2pi added
+ * if negative. */
+
 #include <math.h>
 #include "framepose.h"
 #include "camera.h"
@@ -20,21 +17,21 @@
 #include "config.h"
 #include "player.h"
 #include "foe.h"
-FoePose g_foePoses[500];   /* was 0x004dc7c8 */
+FoePose g_foePoses[500];
 
-static const float K_HALF_PI  = 1.5707964f;   /* 0x45d2cc */
-static const double K_WRAP    = 6.2831854820251465;   /* 0x45d300 (double) */
-static const float K_TWO_PI   = 6.2831855f;   /* 0x45d2f8 */
-static const float K_SPIN     = 0.001f;       /* 0x45d308, cameraMode 2's yaw per ms */
+static const float K_HALF_PI  = 1.5707964f;
+static const double K_WRAP    = 6.2831854820251465;
+static const float K_TWO_PI   = 6.2831855f;
+static const float K_SPIN     = 0.001f;  // cameraMode 2's yaw per ms
 
-/* Facing byte -> yaw.  Returns false for a byte outside 1..4. */
+/* Facing byte to yaw; false for a byte outside 1..4. */
 static bool facing_angle(unsigned char facing, float *a)
 {
     switch (facing) {
     case 1: *a = 0.0f;          return true;
-    case 2: *a = -1.5707964f;   return true;   /* 0xbfc90fdb / 0x45d310 */
-    case 3: *a = 3.1415927f;    return true;   /* 0x40490fdb / 0x45d30c */
-    case 4: *a = 1.5707964f;    return true;   /* 0x3fc90fdb / 0x45d2cc */
+    case 2: *a = -1.5707964f;   return true;
+    case 3: *a = 3.1415927f;    return true;
+    case 4: *a = 1.5707964f;    return true;
     }
     return false;
 }
@@ -71,7 +68,7 @@ static float wrap(double v)
 extern "C" {
 
 __declspec(dllexport) void __cdecl
-FramePose_Player(Game *g, double /*t*/, double dt, CameraFocus *out)
+FramePose_Player(Game *g, double , double dt, CameraFocus *out)
 {
     const Player *p = g->player();
     float *f = out->f;
@@ -113,7 +110,7 @@ FramePose_Player(Game *g, double /*t*/, double dt, CameraFocus *out)
 }
 
 __declspec(dllexport) void __cdecl
-FramePose_Foes(Game *g, double /*t*/, double /*dt*/, FoePose *out)
+FramePose_Foes(Game *g, double , double , FoePose *out)
 {
     const unsigned n = g->foeCount();
     for (unsigned i = 0; i < n; i++) {

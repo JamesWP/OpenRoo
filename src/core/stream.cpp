@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "stream.h"
-#include "static.h"   /* the shared KAROO_SOUND_FX / _DIAG helpers */
+#include "static.h"  // the shared KAROO_SOUND_FX / _DIAG helpers
 #include <stdlib.h>
 #include "log.h"
 
@@ -17,17 +17,13 @@ static const DWORD ID_WAVE = FOURCC('W','A','V','E');
 static const DWORD ID_FMT  = FOURCC('f','m','t',' ');
 static const DWORD ID_DATA = FOURCC('d','a','t','a');
 
-/* ── WAV file parser ────────────────────────────────────────────────────── */
-
 static bool wav_read_dword(HANDLE f, DWORD *out) {
     DWORD n;
     return ReadFile(f, out, 4, &n, NULL) && n == 4;
 }
 
-/*
- * Parses a WAV file into a heap-allocated WAVEFORMATEX and a heap-allocated
- * PCM data block.  Caller frees both with HeapFree(GetProcessHeap(), ...).
- * Returns true on success.
+/* Parses a WAV file into a heap-allocated WAVEFORMATEX and a heap-allocated
+ * PCM block, both freed by the caller with HeapFree.  Returns true on success.
  */
 static bool parse_wav(const char *path,
                       WAVEFORMATEX **fmt_out, BYTE **pcm_out, DWORD *pcm_size_out)
@@ -93,12 +89,8 @@ fail:
     return false;
 }
 
-/* ── Watcher thread ─────────────────────────────────────────────────────── */
-
-/*
- * Polls the DirectSound buffer status every 50 ms.  Sets dwThread_done=1
- * when the buffer stops playing or when stop_event is signalled.
- */
+/* Polls the buffer every 50 ms and sets dwThread_done once it stops playing or
+ * stop_event is signalled. */
 static DWORD WINAPI WatcherProc(LPVOID param)
 {
     CStreamSoundbuffer *s = static_cast<CStreamSoundbuffer*>(param);
@@ -116,19 +108,8 @@ static DWORD WINAPI WatcherProc(LPVOID param)
     return 0;
 }
 
-
-/* ─── The vtable, and CStreamSoundbuffer::ScalarDeletingDtor (0x00443da0) ──
- *
- * The last function of the CStreamSoundbuffer TU.  The original is eleven
- * instructions: DeinitInstance, then `FactAlloc::Free2(this)` when bit 0 of
- * the flag word is set, returning `this` either way.  There is no array form
- * here -- unlike CStaticSoundbuffer, nothing allocates these in blocks -- so
- * bit 1 is not tested, and that asymmetry is the original's, not ours.
- *
- * The free stays on the GAME heap through alloc.h: the object it frees came
- * from the game's `operator new(0xD4)`, so the other side of the lifetime is
- * still theirs (alloc.h's own rule).  It retires with that allocation.
- */
+/* There is no array form of the destructor: nothing allocates these in blocks,
+ * so bit 1 of the flags is not tested. */
 extern "C" {
 
 __declspec(dllexport) void * __attribute__((thiscall))
@@ -153,9 +134,7 @@ CStream_ScalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
     return self;
 }
 
-} // extern "C"
-
-/* ── Method implementations ─────────────────────────────────────────────── */
+}
 
 static void CStream_Stop_impl(CStreamSoundbuffer *self);
 static void CStream_ReleaseResources_impl(CStreamSoundbuffer *self);
@@ -308,7 +287,6 @@ static void CStream_DeinitInstance_impl(CStreamSoundbuffer *self)
     DeleteCriticalSection(&self->cs);
 }
 
-/* ── Exports — extern "C" thiscall wrappers ─────────────────────────────── */
 extern "C" {
 
 __declspec(dllexport) CStreamSoundbuffer* __attribute__((thiscall))
@@ -335,4 +313,4 @@ __declspec(dllexport) void __attribute__((thiscall))
 CStream_DeinitInstance(CStreamSoundbuffer *self)
     { CStream_DeinitInstance_impl(self); }
 
-} // extern "C"
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Decode and inspect a Ka'roo input recording (KAROO_RECORD).
 
-Format is documented at the top of karoo-hooks/record.cpp.
+Format is documented at the top of src/testing/record.cpp.
 
     python3 tools/replay.py run.rec              # summary
     python3 tools/replay.py run.rec --frames 20  # first 20 frames with input

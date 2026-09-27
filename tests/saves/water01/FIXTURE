@@ -4,23 +4,23 @@
 # continue if the bytes do not hash to the recorded sha. Editing a field
 # without re-snapshotting is a hard error, not a silent change.
 #
-#   python3 tools/karoosave.py restore tests/saves/water01
+#   python3 tools/karoosave.py restore tests/saves/water01/
 
-version 2
+version 3
 jj.gam 856e39ed6bb99c7b2b2f0c5c452e56862f7614d85d66ab45dab5d35d24df74b1
 
 # slot 0 — Space\Superenemy
-slot 0 jj0.sav sha=dc7d0ba596a06edae68c814475dadd5def378016f85b8d5e75b5b60062a6f71b name="Jamessese" level=59 lives=17 score=22759 completion=86 time=478995072 in_use=1 unused=1687933449
+slot 0 jj0.sav sha=465b64a1d8859da0bbab5a6bf7cf620b602499f51574c54415cc0ac048893655 name="Jamessese" level=59 lives=17
 # slot 1 — Castle\Something
-slot 1 jj1.sav sha=5c806eb7861eba32dd5baa50e77bbd40980551dd95b3d49d1ae78faa52932066 name="haxored" level=12 lives=5 score=6449 completion=145 time=549369 in_use=1 unused=0
+slot 1 jj1.sav sha=ccd2488cd6b0fa1693a0560b48c826ec6ac0ada6b8b8775d116706f335857cf8 name="haxored" level=12 lives=5
 # slot 2 — Forest\Glue&EnemyStart
-slot 2 jj2.sav sha=5a4eff77c93b8f6830278587d6d02e088a661d54e7df7206897df6bbc9eb32f5 name="Caroline" level=4 lives=0 score=1077 completion=76 time=242734 in_use=1 unused=0
+slot 2 jj2.sav sha=06ddbd00eb74de21ceb9132a5acf37ee128815aa930db33c39935fd42d55d51a name="Caroline" level=4 lives=0
 # slot 3 — <empty>
-slot 3 JJ3.sav sha=3c3887e737f033f34d7a2819b8035dc60a4cd7b202acf56b56c51aea32ce5062 name=".........." level=0 lives=0 score=0 completion=0 time=0 in_use=0 unused=0
+slot 3 JJ3.sav sha=3c3887e737f033f34d7a2819b8035dc60a4cd7b202acf56b56c51aea32ce5062 empty
 # slot 4 — Water\Water01
-slot 4 jj4.sav sha=8aa4b181088f6b74b497d546292a6760e2dfef6b0cb0240b98d3f27c858f48a6 name="Caroline" level=23 lives=0 score=1077 completion=76 time=242734 in_use=1 unused=0
+slot 4 jj4.sav sha=21f9b82179f91d760ab304424c097be2b0d2ad0bfc6a4f8e03ced024b576f327 name="Caroline" level=23 lives=0
 # slot 5 — Space\Superenemy
-slot 5 jj5.sav sha=a8503404eeb697b65dd0525845c95980e2177b6d06b123b17ffa13c4aa6b3139 name=".........." level=59 lives=17 score=22759 completion=86 time=478995072 in_use=1 unused=0
+slot 5 jj5.sav sha=91e02453f3dfcb73a6480c7875b8bc6f0f5b2a8fd3c782132860933a2977ba72 name=".........." level=59 lives=17
 
 # Non-slot files. Only empty ones can be generated.
 blob GAM.DAT sha=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 size=0

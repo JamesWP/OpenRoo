@@ -1,39 +1,15 @@
-/* GAMETICK_PLAN.md Band B reopened — the menu/keypress handler.
+/* Every key is read with hooks_GetAsyncKeyState, which the replay recorder
+ * sees.
  *
- *   Game::HandleKeypress  0x00418d20   2 E8 sites (0x00414EF6, 0x0041500A,
- *                                      both GameTick)
+ * DETERMINISM: the order and number of key polls is part of every recording.
+ * Each key is polled before its debounce and state guards are tested, so it is
+ * sampled even when the guard fails, and the polls whose results are discarded
+ * are kept: they also clear the key's pressed-since-last-call bit.
  *
- * __thiscall(Game*), bare RET.  Transcribed from the LISTING, including the
- * two jump tables, which were decoded from the file rather than taken from
- * the decompile's switch:
- *
- *   option-edit switch on children[node][cursor] - 0x22 (table 0x419b54 /
- *   0x419b38): 0x22 sfx %, 0x3e CD volume, 0x3f wave volume, 0x48/0x49/0x4a
- *   three 0..2 byte options; everything else falls to the common tail.
- *
- *   action switch on node - 1 (table 0x419bdc / 0x419b80): 1 new game,
- *   5 sound-flag latch, 6 quit, 0x14..0x20 key-rebind prompts, 0x21 and 0x47
- *   toggles, 0x29 continue, 0x3c 3D-sound toggle, 0x3d CD toggle (falls into
- *   the pop), and pop-only for 0x22 0x32 0x3e 0x3f 0x48 0x49 0x4a 0x50.
- *
- * Every key poll goes through hooks_GetAsyncKeyState (the original hoists
- * the IAT pointer into ESI; patch.py redirects both forms), and the POLL
- * ORDER is the listing's: each key is read BEFORE its debounce and state
- * guards are tested, so a key is sampled even when the guard fails.  The
- * trailing "discarded" polls (RIGHT, LEFT; BACKSPACE x3) are kept -- they
- * clear GetAsyncKeyState's pressed-since-last-call bit.
- *
- * The CD-volume arm's pow is _CIpow(2.0, 16.0) = 65536.0, exact in any CRT,
- * so the volume is (pct * 65536) / 100 (unsigned), clamped to 65536.  The
- * wave arm's scale is pct * 0x28f028f (655 in both 16-bit halves).
- *
- * Callbacks kept: SoundManager::SoundSetup 0x004439d0 (the sound manager is
- * not ours) and user32 PostQuitMessage (an import, not game code).
- *
- * Control: KAROO_SIM_FX=slotshift -- loading save slot k restores slot k+1.
- * Every recording loads a slot through this path, so it must fail them all
- * with real field diffs -- the same shape as levelshift.
- */
+ * KAROO_SIM_FX=slotshift is a negative control: loading save slot k restores
+ * slot k+1.  Every recording loads a slot through here, so it must fail them
+ * all. */
+
 #include <windows.h>
 #include <string.h>
 #include "log.h"
@@ -53,21 +29,18 @@
 #include "progctrl.h"
 #include "cdm.h"
 
-
 #include "soundmanager.h"
 #include "gamestr.h"
 #include "gameglobals.h"
 #include "levelselect.h"
 #include "record.h"
 
-
 #define KEY(k)  hooks_GetAsyncKeyState(k)
-
 
 static int s_fx = -1;
 
-/* The rebind prompts 0x14..0x20: copy the action name, arm capture, pop.
- * Four of them also set +0x175534 (the key to highlight). */
+/* The key-rebind prompts: copy the action name, arm key capture and pop back.
+ * hl is the arrow key the rebind screen highlights, or -1 for none. */
 static void rebind(Game *game, const char *name, unsigned char code, int hl)
 {
     strcpy(game->rebindAction(), name);
@@ -78,7 +51,8 @@ static void rebind(Game *game, const char *name, unsigned char code, int hl)
     game->menu()->pop();
 }
 
-/* The "level loaded, flythrough armed" tail shared by new-game and load. */
+/* The tail shared by new game, the level select and loading a save: start the
+ * level's intro flythrough. */
 static void loaded_tail(Game *game)
 {
     game->stateRef() = 4;
@@ -93,7 +67,7 @@ static void loaded_tail(Game *game)
 static void option_edit(Game *game, unsigned char key)
 {
     switch (key) {
-    case 0x22: {                               /* sfx % -> joystick deadzone */
+    case 0x22: {  // the "sfx %" page edits the joystick dead zone
         if (game->debounceRef() != 0x27 && KEY(0x27) != 0 && game->joyDeadzone() < 0x5a) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() + 10));
             ProgCtrl_SetJoyDeadzone(&g_progCtrl, 0, game->joyDeadzone() * 100);
@@ -108,9 +82,9 @@ static void option_edit(Game *game, unsigned char key)
         }
         break;
     }
-    case 0x3e: {                               /* CD volume */
+    case 0x3e: {
         int changed = 0;
-        CDM_GetMixerDetails(&g_cdAudio);          /* result discarded, as shipped */
+        CDM_GetMixerDetails(&g_cdAudio);  // PRESERVED: the result is discarded
         if (game->debounceRef() != 0x27 && KEY(0x27) != 0 && game->cdVolume() < 100) {
             game->debounceRef() = 0x27;
             game->setCdVolume((unsigned char)(game->cdVolume() + 10));
@@ -122,6 +96,8 @@ static void option_edit(Game *game, unsigned char key)
         } else if (!changed) {
             break;
         }
+        // PRESERVED: unsigned, and clamped after the store; 65536 is full
+        // volume.
         {
             unsigned int v = ((unsigned int)game->cdVolume() * 65536u) / 100u;
             game->setCdMixerVolume(v);
@@ -131,7 +107,7 @@ static void option_edit(Game *game, unsigned char key)
         }
         break;
     }
-    case 0x3f: {                               /* wave volume */
+    case 0x3f: {
         int changed = 0;
         if (game->debounceRef() != 0x27 && KEY(0x27) != 0 && game->waveVolume() < 100) {
             game->debounceRef() = 0x27;
@@ -144,16 +120,14 @@ static void option_edit(Game *game, unsigned char key)
         } else if (!changed) {
             break;
         }
+        // The same percentage in both 16-bit halves: left and right channel.
         game->setWaveOutVolume((unsigned int)game->waveVolume() * 0x28f028fu);
         if (game->soundCreated() != 0)
             waveOutSetVolume((HWAVEOUT)0, game->waveOutVolume());
         break;
     }
-    /* The three 0..2 video-quality sliders.  The original picks the byte
-     * with a computed offset (0x2aa136 / 0x2aa138 / 0x2aa139) and shares one
-     * body; the key already distinguishes them, so the choice is three named
-     * options instead -- same three bytes, same order.  The skipped
-     * +0x2aa137 is Reflection, a 0/1 toggle on its own key (below). */
+    // The three 0..2 video-quality sliders: shadows, highlights and particles.
+    // Reflection is a 0/1 toggle on its own node.
     case 0x48: case 0x49: case 0x4a: {
         unsigned char &opt = key == 0x48 ? game->videoShadows()
                            : key == 0x49 ? game->videoHighlights()
@@ -217,7 +191,7 @@ Sim_HandleKeypress(Game *self)
         entry = self->textEntryActive() != 0;
     }
 
-    if (entry) {                               /* save-name text entry */
+    if (entry) {  // save-name text entry
         self->nameEntry()->poll((unsigned int)(long long)*self->clock());
         if (self->nameEntry()->active() == 0) {
             if (self->nameEntry()->lastKey() == 0x0d)
@@ -246,10 +220,10 @@ Sim_HandleKeypress(Game *self)
             option_edit(self, key);
     }
 
-    /* The original discards these RIGHT and LEFT polls; the level select
-     * (levelselect.h) reads them, so no poll is added to the recorded
-     * stream.  Edges are its own: the game's debounce belongs to the
-     * option pages that share these keys. */
+    // DETERMINISM: the right and left polls here are discarded by the game's
+    // own code.  The level select reads them instead of polling again, so the
+    // recorded key stream is unchanged.  Its edges are tracked separately,
+    // because the game's debounce belongs to the option pages on these keys.
     {
         static bool s_right, s_left;
         const bool right = KEY(0x27) != 0, left = KEY(0x25) != 0;
@@ -355,7 +329,7 @@ Sim_HandleKeypress(Game *self)
         break;
     }
 
-    /* Our level select's action node: as New Game, at the chosen level. */
+    // The level select's start node: as New Game, at the chosen level.
     if (self->menu()->nodeRef() == LS_START) {
         int level = LevelSelect_Chosen(self);
         Sim_ClearGameState(self);
@@ -366,7 +340,8 @@ Sim_HandleKeypress(Game *self)
         self->debounceRef() = 0x0d;
     }
 
-    /* save-slot LOAD nodes 200 .. 200+n-1 */
+    // Load nodes, 200 .. 200+n-1.  The slot index is the node number wrapped
+    // to a byte.
     {
         unsigned int n = self->saveSlots()->count();
         unsigned int node = self->menu()->nodeRef();
@@ -386,7 +361,8 @@ Sim_HandleKeypress(Game *self)
         }
     }
 
-    /* save-slot SAVE nodes 200+n .. 200+2n-1 */
+    // Save nodes, 200+n .. 200+2n-1: snapshot the game into the slot and start
+    // name entry on it.
     {
         unsigned int n = self->saveSlots()->count();
         unsigned int node = self->menu()->nodeRef();
@@ -402,6 +378,8 @@ Sim_HandleKeypress(Game *self)
             self->nameEntry()->setCursor((unsigned char)strlen((const char *)rec));
             Sim_StoreGameStateIntoSaveSlot(self, slot);
             self->nameEntry()->setLastKey(0x0d);
+            // PRESERVED: three discarded Backspace polls clear its pressed bit
+            // before name entry starts.
             KEY(8);
             KEY(8);
             KEY(8);
@@ -409,7 +387,7 @@ Sim_HandleKeypress(Game *self)
         }
     }
 
-    /* key-rebind capture */
+    // Key-rebind capture, once Enter is released.
     if (self->rebindActive() != 0 && KEY(0x0d) == 0) {
         ProgCtrl_ClearBindings(&g_progCtrl, 1, self->rebindAction());
         if (ProgCtrl_CaptureBinding(&g_progCtrl, 1, self->rebindAction(),

@@ -1,9 +1,10 @@
-/* The per-level sound attachment (levelsounds.cpp).
- * The export(s) patch.py binds, typed on the Game they take in ECX
- * (COHESION_PLAN.md, the void *self metric). */
+/* Attaching a level's sounds to its objects once the level is built. */
 #pragma once
 
 class Game;
 
+/* Picks the world's sound code, reloads the level's pools and effect buffers,
+ * and attaches sounds to every foe, breakable, lift, slide, bridge and (in 3D)
+ * the extra objects that carry one.  Returns 0 in the low byte. */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_InitLevelBasedSounds(Game *self);

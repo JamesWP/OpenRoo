@@ -1,41 +1,13 @@
-/* ExplodeDebris -- ctor, both destructors and the buffer release
- * (ENDGAME_PLAN.md E2).  explodedebris.h holds the layout, the name's evidence
- * and the vtable argument; this file holds the bodies and their quirks.
+/* ExplodeDebris (explodedebris.h): the constructor, destructors, buffers, and
+ * the effect itself.
  *
- * ─── THE VTABLE IS OURS ──────────────────────────────────────────────────
- *
- * 0x0045d698 has ONE slot -- 0x00438050, and 0x0045d69c holds 0x3b5a740e,
- * which is not a code address -- and a byte scan of Karoo.exe.orig for the
- * literal finds exactly two occurrences, 0x00438021 and 0x00438072: the
- * constructor and the destructor body below.  Nothing else installs it, so
- * every ExplodeDebris carries our table and the game's is a UD2 tripwire.
- *
- * ─── Two quirks, both kept ───────────────────────────────────────────────
- *
- * 1. THE RELEASE DOES NOT NULL +0x08.  It frees pVertexCopy and
- *    pFaceRecords, then clears pVertexCopy, nVertexCount and bActive --
- *    and leaves pFaceRecords DANGLING.  A second release would therefore
- *    double-free it.  That cannot happen today (0x004380c0 overwrites both
- *    pointers before anything else looks at them, and the destructor runs
- *    once), which is exactly why the bug has never shown.  Reproduced, and
- *    named here rather than quietly fixed.
- *
- * 2. THE CONSTRUCTOR SEEDS THE GAUSSIAN TABLE WITH mu = 2.0, sigma = 1.0.
- *    Those are the two literals pushed at 0x00438015/0x0043801a
- *    (0x3f800000, 0x40000000) -- read off the listing, because the argument
- *    order of a two-float thiscall is precisely the thing CLAUDE.md says not
- *    to infer.  The push order puts sigma deeper, so the call is
- *    (this, mu = 2.0, sigma = 1.0).
- *
- * ─── The heap ────────────────────────────────────────────────────────────
- *
- * Both buffers are allocated by ExplodeDebris_AllocateExplodeBuffers (0x004380c0,
- * ours since ASSET Phase 5) and freed by ExplodeDebris_Release, so both sides are
- * now ours.  They still use the game's heap through alloc.h: the records that
- * carry a ExplodeDebris are copied wholesale into Game's quad-batch array, and
- * until every path that may free such a copy is ours, one heap for all of
- * them is the safe choice.  Moving to our own new[]/delete[] is a follow-up.
- */
+ * PRESERVED:
+ *   - the release frees both scratch buffers and clears pVertexCopy,
+ *     nVertexCount and bActive, but leaves pFaceRecords dangling, so a second
+ *     release would free it twice.  None happens: the allocation overwrites
+ *     both pointers first, and the destructor runs once;
+ *   - the constructor seeds the Gaussian table with mu 2.0, sigma 1.0. */
+
 #include <windows.h>
 
 #include "explodedebris.h"
@@ -55,7 +27,7 @@ __declspec(dllexport) void *ExplodeDebris_Vtable(void)
     return (void *)g_ExplodeDebrisVtable;
 }
 
-/* 0x00438080.  Guarded frees, then three of the four stores -- see quirk 1. */
+/* Guarded frees, then three of the four stores. */
 __declspec(dllexport) void __attribute__((thiscall))
 ExplodeDebris_Release(ExplodeDebris *self)
 {
@@ -66,15 +38,14 @@ ExplodeDebris_Release(ExplodeDebris *self)
     self->pVertexCopy  = NULL;
     self->nVertexCount = 0;
     self->bActive      = 0;
-    /* pFaceRecords is deliberately NOT cleared (quirk 1). */
+
+/* pFaceRecords is not cleared: PRESERVED. */
 }
 
-/* 0x004380c0.  The `explode` keyword's buffers, sized from the mesh.
- *
- * BUGS KEPT: neither allocation is checked before the zeroing that follows
- * the second one; the vertex buffer is zeroed twice, the second time as
- * (n*5 & 0x1fffffff)*2 dwords, which equals n*10 only while n*5 fits in 29
- * bits.  The first zeroing is guarded, the second is not. */
+/* The "explode" keyword's buffers, sized from the mesh.  PRESERVED: neither
+ * allocation is checked before the zeroing after the second; the vertex buffer
+ * is zeroed twice, the second time as (n*5 & 0x1fffffff)*2 dwords, which is
+ * n*10 only while n*5 fits in 29 bits. */
 __declspec(dllexport) void __attribute__((thiscall))
 ExplodeDebris_AllocateExplodeBuffers(ExplodeDebris *self, CFaktMesh *mesh)
 {
@@ -91,9 +62,7 @@ ExplodeDebris_AllocateExplodeBuffers(ExplodeDebris *self, CFaktMesh *mesh)
     memset(self->pVertexCopy, 0, (((DWORD)self->nVertexCount * 5) & 0x1fffffffu) * 2 * 4);
 }
 
-/* 0x004381a0.  DAT_0045d69c is 0x3b5a740e = 1/300 as a float.  The count
- * is converted UNSIGNED.  What +0x98 means is not known: no reader of it was
- * found. */
+/* The drop rate: the count, converted unsigned, times arg / 300. */
 __declspec(dllexport) void __attribute__((thiscall))
 ExplodeDebris_StoreExplodeScaledCount(ExplodeDebris *self, float scale)
 {
@@ -101,7 +70,7 @@ ExplodeDebris_StoreExplodeScaledCount(ExplodeDebris *self, float scale)
     self->flExplodeScaledCount = (float)(DWORD)self->nVertexCount * scale * kOneOver300;
 }
 
-/* 0x00438010.  Stores in the original's order, then the table seed. */
+/* The stores in a fixed order, then the table seed. */
 __declspec(dllexport) ExplodeDebris *__attribute__((thiscall))
 ExplodeDebris_Construct(ExplodeDebris *self)
 {
@@ -117,7 +86,7 @@ ExplodeDebris_Construct(ExplodeDebris *self)
     return self;
 }
 
-/* 0x00438070.  Re-install the table, then tail into the release. */
+/* Re-install the vtable, then release. */
 __declspec(dllexport) void __attribute__((thiscall))
 ExplodeDebris_DtorBody(ExplodeDebris *self)
 {
@@ -125,13 +94,8 @@ ExplodeDebris_DtorBody(ExplodeDebris *self)
     ExplodeDebris_Release(self);
 }
 
-/* 0x00438050 -- vtable slot 0.
- *
- * Unverified by test, and said plainly: xref.py finds no reference of any
- * kind to 0x00438050, our table's slot 0 is the only way in, and every
- * ExplodeDebris is embedded in a larger object, so bit 0 is never set.  Same
- * position as LevelObjBase_ScalarDtor, Wrapper_ScalarDtor and
- * FaktMesh_ScalarDtor. */
+/* Vtable slot 0.  Every ExplodeDebris is embedded in a larger object, so bit 0
+ * is never set and this path is not exercised. */
 __declspec(dllexport) void *__attribute__((thiscall))
 ExplodeDebris_ScalarDtor(ExplodeDebris *self, unsigned int flags)
 {
@@ -141,13 +105,10 @@ ExplodeDebris_ScalarDtor(ExplodeDebris *self, unsigned int flags)
     return self;
 }
 
-/* ─── The effect: 0x4381d0 begin, 0x4383e0 advance, 0x4384d0 draw ─────────
- *
- * Vertices are FVF 0x212 (0x28 bytes, position first); the velocity table
- * holds one float[3] per triangle.  Written as plain float C -- the
- * original's x87 keeps the length and the last quotient in extended
- * precision, a difference in the last bits of a debris velocity that
- * nothing downstream compares. */
+/* The effect.  Vertices are FVF 0x212 (0x28 bytes, position first); the
+ * velocity table holds one float[3] per triangle.  Plain float C: extended
+ * precision would change only the last bits of a debris velocity, which
+ * nothing compares. */
 static float *debris_vertex(ExplodeDebris *self, int i)
 {
     return (float *)((BYTE *)self->pVertexCopy + i * 0x28);
@@ -169,9 +130,9 @@ ExplodeDebris_Begin(ExplodeDebris *self, CFaktMesh *mesh,
     if (self->pVertexCopy == NULL)
         return 0;
 
-    /* BUG KEPT: the source offset is frame * count * 0x640, forty times a
-     * frame's real size (count * 0x28).  Frame 0 is right; any other frame
-     * reads far past the mesh's vertex data. */
+    // PRESERVED: the source offset is frame * count * 0x640, forty times a
+    // frame's real size (count * 0x28).  Frame 0 is right; any other frame
+    // reads far past the mesh's vertices.
     DWORD count = mesh->dwVertexCount;
     memcpy(self->pVertexCopy,
            (BYTE *)mesh->pVertexData + (DWORD)frame * count * 0x640,
@@ -189,7 +150,7 @@ ExplodeDebris_Begin(ExplodeDebris *self, CFaktMesh *mesh,
         float len = sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
         self->cursor++;
         for (int k = 0; k < 3; k++)
-            r[k] = speed * (r[k] / len);   /* len 0 gives NaN, as the original */
+            r[k] = speed * (r[k] / len);  // PRESERVED: len 0 gives NaN
         if (self->cursor >= 30)
             self->cursor = 0;
     }
@@ -213,7 +174,7 @@ ExplodeDebris_Advance(ExplodeDebris *self, float dt)
             v[k] = dt * r[k] + v[k];
     }
 
-    /* Whole triangles owed: floor, then the CRT's truncating __ftol. */
+    // Whole triangles owed: floor, then truncate.
     self->flDropAccum = dt * self->flExplodeScaledCount + self->flDropAccum;
     int n = (int)floor((double)self->flDropAccum);
     self->nLiveVertices -= n * 3;
@@ -226,7 +187,7 @@ __declspec(dllexport) HRESULT __attribute__((thiscall))
 ExplodeDebris_Draw(ExplodeDebris *self, IDirect3DDevice3 *dev)
 {
     if (self->bActive == 0)
-        return (HRESULT)0x800401f0;       /* CO_E_NOTINITIALIZED */
+        return (HRESULT)0x800401f0;  // CO_E_NOTINITIALIZED
 
     DWORD saved;
     dev->GetRenderState(D3DRENDERSTATE_SRCBLEND, &saved);
@@ -240,4 +201,4 @@ ExplodeDebris_Draw(ExplodeDebris *self, IDirect3DDevice3 *dev)
     return 0;
 }
 
-} // extern "C"
+}

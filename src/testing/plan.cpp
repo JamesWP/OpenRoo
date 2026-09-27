@@ -1,39 +1,15 @@
-/* Route planning for the policy — AI_PLAN.md Stage 6.
+/* Danger has two tiers.  A cell an awake foe occupies or could step into next
+ * tick is lethal and is never entered, even when no safe route exists.
+ * Falling tiles, and the cells around a frozen foe, are merely dangerous:
+ * avoided when there is an alternative, crossed when there is not.  Foes' real
+ * choices come from their own pathfinder; predicting every cell they could
+ * reach is cheaper and robust.
  *
- * ── Foe avoidance ───────────────────────────────────────────────────────
- *
- * Danger covers two things: cells a foe could reach next tick, and falling
- * tiles.  Both are places to prefer not to be rather than places you cannot
- * go.
- *
- * Foes are already *blocked* — SpawnFoeObject writes the foe's kind into the
- * destination tile's occupant byte, and ws_passable() refuses a cell whose
- * occupant is set.  That stops the policy walking into a foe standing still;
- * it does nothing about one that is about to move.
- *
- * Modelling their choice exactly is not worth it.  FUN_0043a9d0 does not use a
- * simple rule: it runs a real pathfinder (FUN_00401c20) from the foe's cell to
- * the player's, reads the first node off the result and converts it to a
- * direction.  Reproducing that faithfully means reproducing their pathfinder
- * and its tie-breaking.  What is cheap and robust instead is to treat every
- * cell a foe could occupy next tick — its own, plus its four neighbours — as
- * dangerous, and prefer routes that avoid them.
- *
- * "Prefer", not "forbid": a foe closing in can make every route dangerous, and
- * refusing to move then is strictly worse than moving.  So the search runs
- * twice, once avoiding danger and once ignoring it.
- *
- * ── Collection order ────────────────────────────────────────────────────
- *
- * Always walking to the *nearest* pickup is a greedy tour, and it shows: the
- * policy crosses back over ground it has already cleared.  This builds a real
- * tour instead — nearest-neighbour for a starting order, then 2-opt until it
- * stops improving — over exact BFS path lengths, not straight-line distance,
- * so walls and ledges count.
- *
- * The tour is recomputed only when the set of remaining pickups changes, which
- * is at most once per pickup, so the cost never lands on a per-frame path.
- */
+ * The collection order is a tour: nearest-neighbour for a start, improved by
+ * 2-opt, over breadth-first walking distances so walls and ledges count.  It
+ * is rebuilt only when the set of pickups changes, so the cost never lands on
+ * every frame. */
+
 #include "plan.h"
 #include "log.h"
 #include <string.h>
@@ -46,30 +22,11 @@
 static const int DU[4] = { 0, +1, 0, -1 };
 static const int DV[4] = { -1, 0, +1, 0 };
 
-/* ── danger ─────────────────────────────────────────────────────────────── */
+static bool  g_danger[CELLS];  // dangerous: prefer not to enter
+static bool  g_lethal[CELLS];  // lethal: never enter
 
-static bool  g_danger[CELLS];
-/* Danger has two tiers.
- *
- * LETHAL is a cell an awake foe occupies or could step into next tick.  Going
- * there is not a risk, it is a death, so it is refused outright — including by
- * the "ignore danger and move anyway" fallback.  That fallback previously
- * treated a foe like any other hazard, and the result was visible on screen:
- * the policy would route around a foe when it could and walk straight into it
- * when it could not, losing two lives in a single run.
- *
- * DANGER is ground to prefer not to stand on — falling tiles, and the cells
- * around a frozen foe that cannot act this tick.  Those are avoided when there
- * is an alternative and crossed when there is not.
- */
-static bool  g_lethal[CELLS];
-/* While pickups remain, the exit is a hazard rather than a destination: once
- * gems_collected >= gems_required, merely stepping on it ends the level, so a
- * route that crosses it would finish early and abandon whatever is left.
- *
- * This is a guard, not a fix for anything observed -- on Forest\DestrStart the
- * exit is a dead end and is not on the way to anything, so it was NOT the
- * reason the extra life there kept being missed. */
+/* While pickups remain, the exit is avoided: once enough crystals are held,
+ * stepping on it ends the level and abandons what is left. */
 static int   g_avoid_cell = -1;
 static DWORD g_danger_frame = 0xffffffff;
 
@@ -80,9 +37,8 @@ static void mark_danger(const Observation *o)
     memset(g_danger, 0, sizeof(g_danger));
     memset(g_lethal, 0, sizeof(g_lethal));
 
-    /* Falling tiles are dangerous ground rather than blocked ground: standing
-     * on one kills, crossing one does not, and on the levels that use them they
-     * are laid out as the only way across. */
+    // A falling tile kills only if stood on when it falls, and on the levels
+    // that use them they are often the only way across.
     for (int u = 0; u < o->cols; u++)
         for (int v = 0; v < o->rows; v++)
             if (o->grid[IDX(u, v)].kind == WS_TILE_FALLING)
@@ -96,10 +52,9 @@ static void mark_danger(const Observation *o)
             if (fu < 0 || fv < 0 || fu >= o->cols || fv >= o->rows) continue;
             g_danger[IDX(fu, fv)] = true;
             g_lethal[IDX(fu, fv)] = true;
-            /* A frozen foe cannot step anywhere this tick, so only the cell it
-             * occupies is off limits — its neighbours are ordinary ground.
-             * That is what makes a pickup guarded by a foe reachable while the
-             * freeze bonus is running. */
+            // A frozen foe cannot move this tick, so only its own cell is
+            // lethal; that is what makes a guarded pickup reachable while the
+            // freeze bonus runs.
             if (v[i].frozen) continue;
             for (int d = 0; d < 4; d++) {
                 int au = fu + DU[d], av = fv + DV[d];
@@ -118,14 +73,14 @@ bool plan_is_dangerous(const Observation *o, int u, int v)
     return g_danger[IDX(u, v)];
 }
 
-/* ── breadth-first distance field ───────────────────────────────────────── */
-
 static int   g_dist[CELLS];
 static int   g_prevClock[CELLS];
 static int   g_queue[CELLS];
 
-/* Fill g_dist/g_prev from (su,sv).  `avoid` skips dangerous cells except the
- * start itself — standing in danger must not make the whole grid unreachable. */
+/* Fills g_dist and g_prevClock (the parent cell) from (su, sv).  avoid skips
+ * dangerous cells except the start, so standing in danger does not make the
+ * whole grid unreachable.  ignore_foes treats foe-occupied cells as passable.
+ */
 static void bfs(const Observation *o, int su, int sv, bool avoid,
                 bool ignore_foes = false)
 {
@@ -149,7 +104,7 @@ static void bfs(const Observation *o, int su, int sv, bool avoid,
             if (ignore_foes) {
                 if (!ws_passable_ignoring_foes(o, cu, cv, au, av)) continue;
             } else if (!ws_passable(o, cu, cv, au, av)) continue;
-            if (g_lethal[adj]) continue;          /* never, even as a fallback */
+            if (g_lethal[adj]) continue;  // not even as a fallback
             if (avoid && g_danger[adj]) continue;
             if (adj == g_avoid_cell) continue;
             g_dist[adj] = g_dist[cur] + 1;
@@ -159,26 +114,14 @@ static void bfs(const Observation *o, int su, int sv, bool avoid,
     }
 }
 
-/* ── the tour ───────────────────────────────────────────────────────────── */
-
-static int  g_tour[MAX_STOPS];   /* cell indices, in visiting order */
+static int  g_tour[MAX_STOPS];  // cell indices, in visiting order
 static int  g_tour_n;
-static int  g_tour_at;           /* how far along we are */
-static int  g_tour_sig;          /* pickup-set signature the tour was built for */
+static int  g_tour_at;   // index of the next stop
+static int  g_tour_sig;  // the pickup set the tour was built for
 
-/* The stop we are currently walking to, and how long it has been unreachable.
- *
- * Without this the policy visibly dithered — it would set off towards a gem,
- * turn around, then head back.  Two things made the choice flip frame to
- * frame: the danger-avoiding search depends on where the foes are, which
- * changes every frame, so which stops look reachable changes with it; and a
- * forced tour rebuild re-runs nearest-neighbour from wherever the player now
- * stands, which can reorder the head of the tour.
- *
- * So pick a target and keep it.  A target is only abandoned once it has been
- * collected, or has been unreachable for TARGET_PATIENCE consecutive frames —
- * long enough for a falling tile to respawn, so a momentary gap in the floor
- * does not cause a change of mind. */
+/* The stop being walked to, kept until it is collected or has been unreachable
+ * for TARGET_PATIENCE frames.  Without it the choice flips frame to frame as
+ * foes move.  90 frames is long enough for a falling tile to come back. */
 #define TARGET_PATIENCE 90
 
 static int g_target = -1;
@@ -200,7 +143,7 @@ static int pickup_signature(const Observation *o)
     return sig;
 }
 
-/* Cost matrix over [player, stop0, stop1, ...]. */
+/* Cost matrix over [player, stop 0, stop 1, ...]. */
 static int  g_cost[MAX_STOPS + 1][MAX_STOPS + 1];
 static int  g_stop[MAX_STOPS];
 
@@ -216,17 +159,12 @@ static void build_tour(const Observation *o, int pu, int pv)
     g_tour_at = 0;
     if (n == 0) return;
 
-    /* Row 0 is the player; rows 1..n are the pickups.  Distances come from a
-     * BFS per node, so they are real walking distances over passable ground
-     * rather than straight lines. */
+    // Row 0 is the player, rows 1..n the pickups.  Foes are ignored when
+    // costing: a pickup beside a foe is guarded, not unreachable, and must
+    // stay on the tour so the wait-for-the-foe logic gets a chance.
     for (int a = 0; a <= n; a++) {
         int su = (a == 0) ? pu : g_stop[a - 1] / WS_GRID_PITCH;
         int sv = (a == 0) ? pv : g_stop[a - 1] % WS_GRID_PITCH;
-        /* Ignore foes when costing the tour.  A pickup with a foe standing on
-         * or beside it is guarded, not unreachable — some are placed that way
-         * deliberately — and excluding it here means it never becomes a target
-         * at all, so the wait-for-the-foe-to-move logic never gets a chance.
-         * That is how the extra life on Forest\DestrStart was walked past. */
         bfs(o, su, sv, false, true);
         for (int b = 0; b <= n; b++) {
             int t = (b == 0) ? IDX(pu, pv) : g_stop[b - 1];
@@ -234,35 +172,11 @@ static void build_tour(const Observation *o, int pu, int pv)
         }
     }
 
-    /* Which stops are guarded -- a foe on or beside them right now.
-     *
-     * These are taken FIRST, ahead of anything nearer.  Foes start a level
-     * dormant: on Forest\DestrStart the one guarding the extra life sits
-     * still for 650 frames before it moves at all, and the life is the cell
-     * next to it.  A plain nearest-first tour reaches that corner late, by
-     * which time the foe is awake and the pickup costs a life to reach --
-     * a hand-played run had to lure the foe onto a falling tile to kill it
-     * before it could be taken.  Going early is much cheaper than fighting.
-     *
-     * A guarded stop that has become unreachable still falls out of the tour
-     * below, and the danger-avoidance and wait-for-the-foe logic still apply
-     * on the way there, so this changes the order rather than the safety. */
-    /* Rank 2 = a special pickup, 1 = one a foe is standing on or beside,
-     * 0 = an ordinary crystal.  Higher ranks are taken first.
-     *
-     * Guardedness alone was not a durable key.  It is recomputed from where
-     * the foes are at the moment the tour is built, and the tour is rebuilt
-     * every time anything is collected — so the extra life on
-     * Forest\DestrStart started out ranked first (the foe was dormant beside
-     * it), and then LOST that rank the moment the foe woke and wandered off.
-     * Watching it, the player heads for the life, collects a gem on the way,
-     * the tour rebuilds without the life ranked, and it turns round and goes
-     * back to the crystals.  Which is exactly what happened on screen.
-     *
-     * A pickup's contents value does not decay, so rank on that first: a
-     * crystal is contents 1 and there are dozens; anything else is rare and
-     * worth a detour (7 is the extra life, and the freeze bonus and the timer
-     * top-up are likewise one-offs). */
+    // Rank 2 is a special pickup (anything but a crystal: an extra life, the
+    // freeze bonus, a timer top-up), 1 a crystal with a foe on or beside it, 0
+    // an ordinary crystal.  Higher ranks are taken first.  Foes start a level
+    // dormant, so a guarded pickup is cheapest early.  Contents do not change
+    // as foes move, so special pickups keep their rank across rebuilds.
     int rank[MAX_STOPS];
     for (int i = 0; i < n; i++) {
         int gu = g_stop[i] / WS_GRID_PITCH, gv = g_stop[i] % WS_GRID_PITCH;
@@ -272,7 +186,7 @@ static void build_tour(const Observation *o, int pu, int pv)
         rank[i] = (o->grid[g_stop[i]].contents != CONTENTS_CRYSTAL) ? 2 : (guarded ? 1 : 0);
     }
 
-    /* Nearest neighbour, guarded stops first. */
+    // Nearest neighbour, highest rank first.
     bool used[MAX_STOPS];
     memset(used, 0, sizeof(used));
     int order[MAX_STOPS], m = 0, cur = 0;
@@ -282,22 +196,21 @@ static void build_tour(const Observation *o, int pu, int pv)
             if (used[i]) continue;
             if (g_cost[cur][i + 1] == UNREACHED) continue;
             if (best < 0) { best = i; continue; }
-            if (rank[i] != rank[best]) {               /* higher rank wins outright */
+            if (rank[i] != rank[best]) {  // a higher rank wins outright
                 if (rank[i] > rank[best]) best = i;
                 continue;
             }
             if (g_cost[cur][i + 1] < g_cost[cur][best + 1]) best = i;
         }
-        if (best < 0) break;            /* the rest are unreachable */
+        if (best < 0) break;  // the rest are unreachable
         used[best] = true;
         order[m++] = best;
         cur = best + 1;
     }
 
-    /* 2-opt: reverse any segment that shortens the open tour.  Bounded so a
-     * pathological level cannot spend the frame here.  Segments containing a
-     * guarded stop are left alone, or the reordering above would be undone by
-     * the very distance argument it exists to override. */
+    // 2-opt: reverse any segment that shortens the open tour, in at most eight
+    // passes.  Segments holding a ranked stop are left alone, or distance
+    // would undo the ranking.
     for (int pass = 0; pass < 8; pass++) {
         bool improved = false;
         for (int i = 0; i < m - 1; i++) {
@@ -343,10 +256,8 @@ static void build_tour(const Observation *o, int pu, int pv)
                       rank[i] == 2 ? " SPECIAL" : rank[i] ? " GUARDED" : "");
 }
 
-/* ── the step ───────────────────────────────────────────────────────────── */
-
-/* Walk the BFS parent chain back from `goal` to the cell adjacent to the
- * start, which is the one cell we can actually step to this frame. */
+/* Walks the parent chain back from goal to the cell next to the start: the one
+ * cell that can be stepped to this frame. */
 static bool first_hop(int start, int goal, int *nu, int *nv)
 {
     if (goal < 0 || goal == start || g_dist[goal] == UNREACHED) return false;
@@ -364,9 +275,9 @@ static bool step_towards(const Observation *o, int pu, int pv, int goal,
                          int *nu, int *nv)
 {
     int start = IDX(pu, pv);
-    bfs(o, pu, pv, true);                          /* prefer a safe route */
+    bfs(o, pu, pv, true);  // prefer a safe route
     if (first_hop(start, goal, nu, nv)) return true;
-    bfs(o, pu, pv, false);                         /* ...but move regardless */
+    bfs(o, pu, pv, false);  // but move regardless
     return first_hop(start, goal, nu, nv);
 }
 
@@ -382,38 +293,35 @@ bool plan_next_step(const Observation *o, int pu, int pv, int *nu, int *nv,
         return step_towards(o, pu, pv, goal, nu, nv);
     }
 
-    /* Collecting: keep off the exit so the level is not ended early. */
+    // Collecting: keep off the exit so the level is not ended early.
     g_avoid_cell = (o->exit_cell[0] < o->cols && o->exit_cell[1] < o->rows)
                  ? IDX(o->exit_cell[0], o->exit_cell[1]) : -1;
 
-    /* Stick with the current target while it is still worth having. */
+    // Stay with the current target while it is still worth having.
     if (g_target >= 0 && ws_is_pickup(o->grid[g_target].contents) &&
         g_target != IDX(pu, pv)) {
         if (step_towards(o, pu, pv, g_target, nu, nv)) {
             g_target_fail = 0;
             return true;
         }
-        /* Blocked.  If the only thing in the way is a foe, this is a guarded
-         * pickup rather than an unreachable one — some are deliberately placed
-         * behind a foe — so hold the target and wait for it to move instead of
-         * giving up and wandering off to something else. */
+        // Blocked.  If only a foe is in the way, hold the target and wait for
+        // it to move rather than wander off.
         bfs(o, pu, pv, false, true);
         if (g_dist[g_target] != UNREACHED) return false;
 
-        if (++g_target_fail < TARGET_PATIENCE) return false;   /* wait it out */
+        if (++g_target_fail < TARGET_PATIENCE) return false;  // wait it out
     }
     g_target = -1;
     g_target_fail = 0;
 
     int sig = pickup_signature(o);
-    if (sig != g_tour_sig) {                       /* something was collected */
+    if (sig != g_tour_sig) {  // something was collected
         g_tour_sig = sig;
         build_tour(o, pu, pv);
     }
 
-    /* Skip stops already taken (the tour is rebuilt on collection, so this is
-     * only about the head of the list) and try each in order — a stop that has
-     * become unreachable must not stall the whole tour. */
+    // Skip stops already taken, and try each in order, so one that has become
+    // unreachable does not stall the tour.
     for (int i = g_tour_at; i < g_tour_n; i++) {
         int goal = g_tour[i];
         if (!ws_is_pickup(o->grid[goal].contents)) { g_tour_at = i + 1; continue; }
@@ -425,17 +333,9 @@ bool plan_next_step(const Observation *o, int pu, int pv, int *nu, int *nv,
         }
     }
 
-    /* Nothing on the tour is reachable.  Force a rebuild next frame.
-     *
-     * The tour is normally rebuilt only when a pickup is taken, and that is a
-     * trap on levels with falling tiles: those tiles go void for a moment and
-     * come back (UpdateBreakableTile respawns them unless the tile's param
-     * byte is nonzero), so a tour built during the gap sees a severed map,
-     * comes out short or empty, and is then never rebuilt because no pickup
-     * was collected.  The policy stalls for good on a level that is still
-     * perfectly winnable — which is exactly what Forest\DestrStart did at
-     * 16/30, and why "the corridors are permanently severed" was the wrong
-     * diagnosis. */
+    // Nothing on the tour is reachable: force a rebuild next frame.  Falling
+    // tiles vanish for a moment and come back, so a tour built during the gap
+    // sees a severed map and would otherwise never be rebuilt.
     g_tour_sig = -1;
     return false;
 }

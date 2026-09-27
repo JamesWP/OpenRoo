@@ -1,41 +1,11 @@
-/* GAMETICK_PLAN.md Band B reopened — the one-shot fixed-sound load.
+/* The level report (reportwriter.cpp) is triggered from here: holding L as the
+ * sounds load writes it.  KAROO_LEVEL_REPORT=1 answers those polls
+ * (levelreport.cpp).
  *
- *   Game::AcquireFixedSoundBuffersAndMaybeReport  0x0041a280
- *     1 E8 site (0x00414DFC, the first thing GameTick does)
- *
- * __thiscall(Game*), bare RET.  Transcribed from the LISTING.  Guarded by
- * Game+0x13cc80 (sound.dwSoundsLoaded): runs once, then sets it.
- *
- *   Config_Save(Game+0x28ab2e, "Karoo.cfg")  -> log 1 "saved" / 3 "error"
- *   +0x175524/28 <- dt accumulator; +0x17552c = 1
- *   if CD on: PlayCDStuf("Main");   +0x2235a = FindThemeIndex("Main")
- *   no SoundManager (+0x13cc34 == 0): log the warning, CD off, skip to end
- *   three passes, suffix 'A'+i, base ESI = Game+0x175327 + 4i, ten buffers
- *   each Reset-if-set then AcquireSoundBuffer(sm, path, 0):
- *     ESI-0x386b3 add02 (= Game+0x13cc74+4i, the three banks GameTick picks
- *                        by rand()%3 on crystal completion)
- *     ESI+0x00 add08  +0x0c add06  +0x18 add07  +0x24 add03  +0x30 add05
- *     ESI+0x48 add04  +0x54 add10  +0x60 add09  +0x3c add01   (listing order)
- *   +0x196050 = 5, WORD +0x196054 = 5, +0x196044 = +0x13cbc8 (the
- *   IDirectSound), +0x196048 = 0, +0x48ba0 = +0x195b3f = &SoundManager
- *   GetAsyncKeyState(VK_L) three times; if the THIRD reads down,
- *     WriteLevelReport(this, "LevelReport.txt")
- *   fixed buffers: TimeOut +0x13cc5c, LastSeconds +0x13cc6c, Count +0x13cc68,
- *   MenuUpDown VoicePool(5) +0x13cc64, Switch +0x13cc60, LevelCompleted
- *   +0x13cc70, splat (mode 1) +0x175270;  SoundSetup(sm, mode_3d)
- *   +0x13cc80 = 1
- *
- * The VK_L polls go through hooks_GetAsyncKeyState, which is where
- * levelreport.cpp answers them under KAROO_LEVEL_REPORT=1 -- so
- * tools/levelreport.py passing is itself the proof this path is ours.
- *
- * Callbacks kept (the sound manager is not ours): AcquireSoundBuffer
- * 0x443660, AcquireVoicePool 0x443810, SoundSetup 0x4439d0.
- *
- * Control: KAROO_SIM_FX=reportkey -- the VK_L polls are skipped, so the
- * report never runs.  levelreport.py must then FAIL (no report written);
- * the replay suite, which never presses L, must still pass.
- */
+ * KAROO_SIM_FX=reportkey is a negative control: L is not polled, so the report
+ * never runs.  levelreport.py must fail and the replay suite, which never
+ * presses L, must pass. */
+
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -56,11 +26,11 @@ struct CStaticSoundbuffer;
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CStatic_Reset(CStaticSoundbuffer *self);
 
-
 static int s_fx = -1;
 
-/* Reset-if-set, then acquire from a "%s\\waves\\...%s.wav" format.  The
- * caller stores the result back into the slot it passed. */
+/* Resets the old buffer if there is one, then loads a new one from "<game
+ * dir>\waves\<name><suffix>.wav".  The caller stores the result back into the
+ * slot. */
 static CStaticSoundbuffer *bank(Game *game, CStaticSoundbuffer *cur,
                                 const char *fmt, const char *suffix)
 {
@@ -107,23 +77,23 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         }
     }
 
+    // Three banks, suffixes A, B and C; the crystal bank is the Game's, the
+    // rest are the player's pickup sounds.
     for (unsigned int i = 0; i < 3; ++i) {
         char suffix[2] = { (char)('A' + i), 0 };
-        /* ESI = Game+0x175327 + 4i is the Player's pickup bank +0x15e[i];
-         * ESI-0x386b3 is Game+0x13cc74 + 4i, a Game field. */
         Player *pl = self->player();
         FixedSounds *fs = self->fixedSounds();
-        fs->crystalBank[i] = bank(self, fs->crystalBank[i], "%s\\waves\\add02%s.wav", suffix);       /* add02 */
+        fs->crystalBank[i] = bank(self, fs->crystalBank[i], "%s\\waves\\add02%s.wav", suffix);
 #define PBANK(k, fmt) pl->setPickupSound(Player::k, i, bank(self, pl->pickupSound(Player::k, i), fmt, suffix))
-        PBANK(SND_15E, "%s\\waves\\add08%s.wav");   /* add08 */
-        PBANK(SND_16A, "%s\\waves\\add06%s.wav");   /* add06 */
-        PBANK(SND_176, "%s\\waves\\add07%s.wav");   /* add07 */
-        PBANK(SND_182, "%s\\waves\\add03%s.wav");   /* add03 */
-        PBANK(SND_18E, "%s\\waves\\add05%s.wav");   /* add05 */
-        PBANK(SND_1A6, "%s\\waves\\add04%s.wav");   /* add04 */
-        PBANK(SND_1B2, "%s\\waves\\add10%s.wav");   /* add10 */
-        PBANK(SND_1BE, "%s\\waves\\add09%s.wav");   /* add09 */
-        PBANK(SND_19A, "%s\\waves\\add01%s.wav");   /* add01 */
+        PBANK(SND_15E, "%s\\waves\\add08%s.wav");
+        PBANK(SND_16A, "%s\\waves\\add06%s.wav");
+        PBANK(SND_176, "%s\\waves\\add07%s.wav");
+        PBANK(SND_182, "%s\\waves\\add03%s.wav");
+        PBANK(SND_18E, "%s\\waves\\add05%s.wav");
+        PBANK(SND_1A6, "%s\\waves\\add04%s.wav");
+        PBANK(SND_1B2, "%s\\waves\\add10%s.wav");
+        PBANK(SND_1BE, "%s\\waves\\add09%s.wav");
+        PBANK(SND_19A, "%s\\waves\\add01%s.wav");
 #undef PBANK
     }
 
@@ -135,6 +105,8 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     self->extraObjects()->setSoundManager(sm);
     sp->setSoundManager(sm);
 
+    // DETERMINISM: three polls of L; only the third answer counts.  All three
+    // are part of the recorded key stream.
     if (!s_fx) {
         hooks_GetAsyncKeyState(0x4c);
         hooks_GetAsyncKeyState(0x4c);
@@ -143,19 +115,19 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     }
 
     sprintf(path, GS_WAV_TIME_OUT, g_gameDir);
-    self->fixedSounds()->timeOut = sm->acquireStatic(path, 0);          /* TimeOut */
+    self->fixedSounds()->timeOut = sm->acquireStatic(path, 0);
     sprintf(path, GS_WAV_LAST_SECONDS, g_gameDir);
-    self->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);          /* LastSeconds */
+    self->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);
     sprintf(path, GS_WAV_COUNT, g_gameDir);
-    self->fixedSounds()->count = sm->acquireStatic(path, 0);          /* Count */
+    self->fixedSounds()->count = sm->acquireStatic(path, 0);
     sprintf(path, GS_WAV_MENU_UP_DOWN, g_gameDir);
-    self->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);        /* MenuUpDown */
+    self->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);
     sprintf(path, GS_WAV_SWITCH, g_gameDir);
-    self->fixedSounds()->switchClick = sm->acquireStatic(path, 0);          /* Switch */
+    self->fixedSounds()->switchClick = sm->acquireStatic(path, 0);
     sprintf(path, GS_WAV_LEVEL_COMPLETED, g_gameDir);
-    self->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);          /* LevelCompleted */
+    self->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);
     sprintf(path, GS_WAV_SPLAT, g_gameDir);
-    self->player()->setSoundA7(sm->acquireStatic(path, 1)); /* splat */
+    self->player()->setSoundA7(sm->acquireStatic(path, 1));
     sm->setup(self->sound3D());
 
     self->fixedSounds()->loaded = 1;

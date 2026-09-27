@@ -1,72 +1,12 @@
-/* MenuScreens draw functions -- see menuscreens.h.
+/* Layout is in a 640-wide virtual space: w is the mode width, loaded unsigned,
+ * times 1/640.  Text cells are integer products first, (float)(w * 12) / 640
+ * and (float)(w * 14) / 640.  Every quad is four pretransformed vertices in a
+ * triangle strip, z 0, rhw 10, white.  The device pointer is re-read for every
+ * call, as the game does, so the call traffic is identical.
  *
- * All written from the disassembly: the decompiles of these functions lose
- * arguments and reuse argument slots as scratch, so they misattribute reads.
- *
- * ── Shared conventions ───────────────────────────────────────────────────
- * Layout is authored in a 640-wide virtual space; w is the mode width loaded
- * UNSIGNED (FILD qword over a zeroed high dword) and K = 1/640.  Text cells
- * are integer products first -- (float)(w*12) * K, (float)(w*14) * K -- then
- * scaled, exactly as the original does them.  Every quad is 4 D3DTLVERTEX in
- * a TRIANGLESTRIP (FVF 0x1c4) with z 0, rhw 10.0, diffuse 0xFFFFFFFF,
- * specular 0.  Device calls go through d3d->pDevice (the proxy), re-read per
- * call as the original does.
- *
- * The vertex arrays, the widget model and the textures these read by address
- * are .bss that BuildMenuGeometry (below) fills once per device.  Each
- * texture is the IDirect3DTexture2 at +0x18 of one of nine game-global
- * SceneTexture objects; the objects themselves (their ctors, dtors and the
- * release at shutdown) stay the game's.
- *
- * ── DrawMenuBackdrop 0x0042df80 ──────────────────────────────────────────
- * Alpha blend on, SRCALPHA/INVSRCALPHA, the theme's backdrop texture (theme
- * +0x6f8a8, a SceneTexture*, NULL -> no texture), then the pre-built quad at
- * 0x4e06c8.  Same opening block as scoreoverlay.cpp's, but from a global
- * quad rather than one built on the stack.
- *
- * ── DrawMenuCursorMarkers 0x00437390 ─────────────────────────────────────
- * Two 32x32 quads at the highlighted row, texture *0x4e0578:
- *   top    Y = 172*w*K + (cursor*0.05 + rowOffset*K) * w      (cursor = the
- *          menu tree's byte at Game+0x175535; 0.05*w = 32 virtual per row)
- *   bottom Y + 32*w*K
- *   left   centre 244 + 4 sin(ms*0.01),  x = (centre -+ 16) * w * K
- *   right  centre 396 + 4 sin(ms*0.01 + pi)
- * so the pair breathes in and out in antiphase.  Each quad's first vertex
- * pair is at centre+16 with u = 1 on the left marker and u = 0 on the right:
- * the two are mirror images, which the texture relies on.
- *
- * FSIN on an extended-precision ms*0.01: here double sin() -- the lost bits
- * move a marker by far less than a pixel.
- *
- * ── RenderCreditsScroll 0x00436550 ────────────────────────────────────────
- *
- * 69 text draws in a two-column layout, scrolled upwards by time.  The table
- * below was generated from the original's call sequence (each call's FADD
- * offset constant, string PUSH and CALL target, scanned out of
- * Karoo.exe.orig), not transcribed from the decompile.
- *
- * Everything is in a 640-wide virtual space scaled by width/640:
- *   headings  DrawCentered  x 320, cell 20
- *   roles     DrawRight     x 310, cell 16      (right edge at the gutter)
- *   names     RenderText    x 330, cell 16
- *   y         (scroll + row offset) * scale
- *   scroll    500 - elapsed_ms * 0.05          (20 ms per virtual pixel)
- * All colours are 0xFFFFFFFF, spacing 0.75, first character 0.
- *
- * The clock is kept in two globals private to this function (byte scan:
- * 0x4e0680 and 0x4e0518 are referenced nowhere else), so they are statics
- * here.  The start time is re-armed when Game+0x13cc8c is set -- keypress.cpp
- * sets it on entering the credits -- and the flag is cleared.  Once scroll
- * falls below -1800 (46 s) the start is reset: the credits loop.
- *
- * Signedness preserved: both the width and the elapsed time are loaded with
- * FILD qword over a zeroed high dword, i.e. as UNSIGNED 32-bit values.  So a
- * clock that is behind the start (wrap, or a stale start) gives a huge
- * elapsed and an immediate loop, not a negative one.
- *
- * Float rounding: the original keeps the chain in x87 extended precision and
- * stores the scroll as a float; the per-row y is (float)scroll + offset.
- * Here it is float arithmetic -- sub-pixel differences, unobservable. */
+ * The quads, the widget model and the nine textures are built once per device
+ * by Menu_BuildMenuGeometry. */
+
 #include "menuscreens.h"
 #include "game.h"
 #include "direct3d.h"
@@ -82,30 +22,34 @@
 #include <stdio.h>
 #include "gameglobals.h"
 #include <math.h>
-SceneTexture g_menuTexOff;   /* was 0x004e0788 */
-SceneTexture g_menuTex3;   /* was 0x004e0768 */
-SceneTexture g_menuTex2;   /* was 0x004e0748 */
-SceneTexture g_menuTexOn;   /* was 0x004e06a8 */
-SceneTexture g_menuTexScale;   /* was 0x004e0688 */
-SceneTexture g_menuTexSelector;   /* was 0x004e0560 */
-SceneTexture g_menuTexKnob;   /* was 0x004e0540 */
-SceneTexture g_menuTex1;   /* was 0x004e0520 */
-SceneTexture g_menuTex4;   /* was 0x004e04c8 */
+
+/* The menu's textures and quads. */
+SceneTexture g_menuTexOff;
+SceneTexture g_menuTex3;
+SceneTexture g_menuTex2;
+SceneTexture g_menuTexOn;
+SceneTexture g_menuTexScale;
+SceneTexture g_menuTexSelector;
+SceneTexture g_menuTexKnob;
+SceneTexture g_menuTex1;
+SceneTexture g_menuTex4;
 
 #define K640          (1.0f / 640.0f)
-#define MENU_FVF      0x1c4        /* XYZRHW | DIFFUSE | SPECULAR | TEX1 */
-static D3DTLVERTEX g_backdropQuad[4];   /* was 0x004e06c8 */
-D3DTLVERTEX g_panelQuad[4];   /* was 0x004e0580 */
-#define g_panelTexture (g_menuTex1.pTexture2)   /* menu_1.tga */
-#define g_markerTexture (g_menuTexSelector.pTexture2)  /* selector.tga */
-static D3DTLVERTEX g_listQuad[4];   /* was 0x004e0600 */
-#define g_optionsTexture (g_menuTex2.pTexture2) /* menu_2.tga */
-#define g_saveTexture  (g_menuTex4.pTexture2)   /* menu_4.tga */
-#define THEME_BACKDROP_TEX 0x6f8a8   /* SceneTexture* */
-#define THEME_MAINMENU_COL 0x6f8d4   /* six (top, bottom) colour pairs */
-#define THEME_RESTORE_COL  0x6f904   /* one pair, every slot row */
-#define THEME_SAVE_COL     0x6f90c   /* one pair, every slot row */
-#define THEME_OPTIONS_COL  0x6f91c   /* three pairs */
+#define MENU_FVF      0x1c4  // XYZRHW | DIFFUSE | SPECULAR | TEX1
+static D3DTLVERTEX g_backdropQuad[4];
+D3DTLVERTEX g_panelQuad[4];
+#define g_panelTexture (g_menuTex1.pTexture2)          // menu_1.tga
+#define g_markerTexture (g_menuTexSelector.pTexture2)  // selector.tga
+static D3DTLVERTEX g_listQuad[4];
+#define g_optionsTexture (g_menuTex2.pTexture2)  // menu_2.tga
+#define g_saveTexture  (g_menuTex4.pTexture2)    // menu_4.tga
+
+/* Fields of the theme object: its backdrop texture and text colour pairs. */
+#define THEME_BACKDROP_TEX 0x6f8a8  // SceneTexture*
+#define THEME_MAINMENU_COL 0x6f8d4  // six (top, bottom) colour pairs
+#define THEME_RESTORE_COL  0x6f904  // one pair, every slot row
+#define THEME_SAVE_COL     0x6f90c  // one pair, every slot row
+#define THEME_OPTIONS_COL  0x6f91c  // three pairs
 
 static inline DWORD mode_width(Direct3D *d3d)
 {
@@ -138,7 +82,11 @@ Menu_DrawBackdrop(Direct3D *d3d, void *theme)
                                 g_backdropQuad, 4, 0);
 }
 
-/* The marker pair itself: top y0 in pixels, centres in 640-space. */
+/* The marker pair itself: top y0 in pixels, centres in 640-space.  Two 32x32
+ * quads that breathe in and out in antiphase, 4 units either way; they are
+ * mirror images (u = 1 on the left, 0 on the right), which the texture relies
+ * on.  Double sin() stands in for the x87 FSIN: the lost bits move a marker by
+ * far less than a pixel. */
 static void draw_markers(Direct3D *d3d, float y0, float left, float right)
 {
     const DWORD w  = mode_width(d3d);
@@ -174,11 +122,9 @@ Menu_DrawCursorMarkers(Game *g, Direct3D *d3d, DWORD ms, float rowOffset)
                  (float)(sin(t + 3.14159274101257) * 4.0 + 396.0));
 }
 
-/* ── DrawControlsCursorMarkers 0x00437740 ─────────────────────────────────
- * The controls page's own marker pair: the same two quads, but on its
- * 20-unit row pitch from y 102, and at the page's edges (centres 40 and 600)
- * so they bracket the whole label ... binding row:
- *   top y = 102*w*K + cursor * w * 0.03125 */
+/* The controls page's own marker pair: the same quads on its 20-unit row pitch
+ * from y 102, at the page's edges (centres 40 and 600) so they bracket the
+ * whole row. */
 extern "C" __declspec(dllexport) void __cdecl
 Menu_DrawControlsCursorMarkers(Game *g, Direct3D *d3d, DWORD ms)
 {
@@ -190,23 +136,12 @@ Menu_DrawControlsCursorMarkers(Game *g, Direct3D *d3d, DWORD ms)
                  (float)(sin(t + 3.14159274101257) * 4.0 + 600.0));
 }
 
-/* ── The list screens ─────────────────────────────────────────────────────
- * RenderMainMenu 0x0042e190, RenderOptionsMenu 0x0042e500,
- * RenderRestoreSlotList 0x0042e710 and RenderSaveSlotList 0x0042e880 are one
- * shape: backdrop; the blend block AGAIN (redundant -- the backdrop just set
- * it; kept); a panel quad with its own texture; centred rows at x = w/2 with
- * 12x14 cells; the cursor markers with rowOffset 0.
- *
- *   screen   node  panel quad  panel texture  rows
- *   main     0     0x4e0580    *0x4e0538      6 fixed, own colour pair each
- *   options  4     0x4e0600    *0x4e0760      3 fixed, own colour pair each
- *   restore  2     0x4e0600    *0x4e0538      save-slot names, one pair
- *   save     0x2a  0x4e0600    *0x4e04e0      save-slot names, one pair
- *
- * Fixed rows sit at y = w * {0.28125 + 0.05 i} (180 + 32 i virtual), the
- * cell sizes re-reading the width per row as the original does.  The slot
- * rows accumulate y = 180, +32 per row in 640-space and scale as w*y*K;
- * the count is the SaveSlots byte, re-read every iteration, unsigned. */
+/* The list screens (main, options, Load Game, Save Game) are one shape:
+ * backdrop; the blend block again (redundant, but the game does it); a panel
+ * quad with its own texture; centred rows at x = w/2 in 12x14 cells; the
+ * cursor markers.  Fixed rows sit at 180 + 32 i virtual, the cell sizes
+ * re-reading the width per row.  Slot rows accumulate y from 180 in steps of
+ * 32; the count is the save-slot count, re-read every pass, unsigned. */
 static const float k_rowY[6] = {
     0.28125f, 0.33125001f, 0.38124999f, 0.43125001f, 0.48124999f, 0.53125f,
 };
@@ -253,19 +188,16 @@ static void draw_slot_rows(Game *g, Direct3D *d3d, void *theme,
     }
 }
 
-/* Menu_RenderLevelSelect -- our level-select pages (levelselect.h): the slot list's panel and 12x14
- * text, packed tighter.  The panel texture carries its own "Load Game"
- * heading above the list, so the page starts where the slot rows do: the
- * theme as "< name >" at 180, then LEVELSELECT_ROWS levels at 208 + 20 i
- * in 640-space, the last at 328 -- inside the 180..340 the six slot rows
- * already occupy.  Longer themes scroll (LevelSelect_View picks the window).
- * The menus' cursor markers sit 8 above the row, as they do on the 32-unit
- * menus (172 against 180), spread LS_MARKER_SPREAD wider.  The title is a
- * fixed gold so it reads apart from the rows. */
+/* The level-select page: the slot list's panel and text, packed tighter.  The
+ * panel texture has its own "Load Game" heading, so the page starts where the
+ * slot rows do: the theme as "< name >" at 180, then LEVELSELECT_ROWS levels
+ * at 208 + 20 i, inside the space the six slot rows use.  Longer themes
+ * scroll.  The markers sit 8 above the row, as on the 32-unit menus, spread
+ * wider; the title is a fixed gold. */
 #define LS_TITLE_Y  180.0f
-#define LS_TITLE_TOP 0xffffd040u    /* gold, fixed: not a theme colour */
+#define LS_TITLE_TOP 0xffffd040u  // gold, fixed: not a theme colour
 #define LS_TITLE_BOT 0xffc08000u
-#define LS_MARKER_SPREAD 1.3f       /* level names run wider than menu rows */
+#define LS_MARKER_SPREAD 1.3f  // level names run wider than menu rows
 #define LS_ROW_Y    208.0f
 #define LS_ROW_STEP  20.0f
 void Menu_RenderLevelSelect(Game *g, void *theme, Direct3D *d3d,
@@ -286,7 +218,8 @@ void Menu_RenderLevelSelect(Game *g, void *theme, Direct3D *d3d,
     for (int i = 0; i < v.count; i++)
         text->drawCentered(x, fw * (LS_ROW_Y + LS_ROW_STEP * i) * K640, cw, ch, 0.75f,
                            v.rows[i], d3d, 0, rowCol[0], rowCol[1]);
-    /* DrawCursorMarkers' centres (320 -+ 76, 4-unit wobble), spread wider. */
+    // The main menu markers' centres (320 -+ 76, a 4-unit wobble), spread
+    // wider.
     const double t = (double)ms * 0.01;
     const float half = 76.0f * LS_MARKER_SPREAD;
     draw_markers(d3d, fw * (LS_ROW_Y - 8.0f + LS_ROW_STEP * v.selected) * K640,
@@ -335,33 +268,19 @@ Menu_RenderSaveSlotList(Game *g, void *theme, Direct3D *d3d,
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
-/* ── The options widgets ───────────────────────────────────────────────────
- * The sound, video and controls pages draw their values as textured quads,
- * each the same four-point model at 0x4e04e8 (.bss, filled by the geometry
- * builder) pushed through a matrix and drawn as a strip with UVs
- * (1,0) (1,1) (0,0) (0,1), rhw 10, white:
- *
- *   p' = (p, 1) * M,   then p'.xyz /= p'.w unless p'.w == 1.0
- *
- * (the original's test is against a double 1.0 at 0x45d2e8, not 0 -- a
- * divide by 1 that it skips; the result is the same either way).  M is a
- * translation, or for a knob RotZ(a) * T -- rotate about the model's own
- * centre, then place.  RotZ is [[c,-s],[s,c]]: that is what 0x4234c0 builds
- * (named BuildXRotationMatrix until 2026-09-23 -- the names of
- * the X and Z builders were swapped) and what RenderSoundOptions
- * builds inline for its first knob.  MatrixMultiply4x4 0x4132d0 returns its
- * SECOND argument times its first, and the knob call passes (T, R): R*T.
- *
- * Knob angle = 3pi/4 - v * 3pi/200 (0x45d548, 0x45d54c) for a 0..100 value:
- * a 270-degree sweep.  cos/sin in double; the lost x87 bits move a knob by
- * far less than a pixel. */
-static Vec3 g_widgetModel[4];   /* was 0x004e04e8 */
-#define g_texOn        (g_menuTexOn.pTexture2)   /* knopf_ein.tga */
-#define g_texOff       (g_menuTexOff.pTexture2)   /* knopf_aus.tga */
-#define g_texKnobBase  (g_menuTexScale.pTexture2)   /* scale.tga */
-#define g_texKnob      (g_menuTexKnob.pTexture2)   /* drehknopf.tga */
+/* The option widgets: a four-point square model pushed through a matrix and
+ * drawn as a strip with UVs (1,0) (1,1) (0,0) (0,1), rhw 10, white.  The
+ * matrix is a translation, or for a knob RotZ(a) then the translation: rotate
+ * about the model's centre, then place.  A knob's angle is 3pi/4 - v * 3pi/200
+ * for a 0..100 value, a 270-degree sweep.  Double cos and sin: the lost x87
+ * bits move a knob by far less than a pixel. */
+static Vec3 g_widgetModel[4];
+#define g_texOn        (g_menuTexOn.pTexture2)     // knopf_ein.tga
+#define g_texOff       (g_menuTexOff.pTexture2)    // knopf_aus.tga
+#define g_texKnobBase  (g_menuTexScale.pTexture2)  // scale.tga
+#define g_texKnob      (g_menuTexKnob.pTexture2)   // drehknopf.tga
 
-struct Affine { float c, s, tx, ty; };   /* RotZ(c,s) * T(tx,ty,0) */
+struct Affine { float c, s, tx, ty; };  // RotZ(c, s) then T(tx, ty, 0)
 
 static Affine place(float tx, float ty)  { Affine a = { 1.0f, 0.0f, tx, ty }; return a; }
 static Affine knob(float tx, float ty, unsigned value)
@@ -371,9 +290,9 @@ static Affine knob(float tx, float ty, unsigned value)
     return a;
 }
 
-/* The three-position knobs on the video page (0/1/2) use fixed angles
- * +3pi/4, none, -3pi/4 -- the ends and middle of the same 270-degree sweep.
- * Any other value leaves the widget's plain placement matrix in force. */
+/* The video page's three-position knobs (0, 1, 2) use fixed angles: +3pi/4,
+ * none, -3pi/4, the ends and middle of the same sweep.  Any other value leaves
+ * the plain placement. */
 static Affine knob3(float tx, float ty, unsigned char value)
 {
     if (value == 0) { Affine a = { (float)cos(2.35619449615478515625),
@@ -386,8 +305,8 @@ static Affine knob3(float tx, float ty, unsigned char value)
 static void draw_widget(Direct3D *d3d, const Affine &m, IDirect3DTexture2 *tex,
                         DWORD colour = 0xffffffff)
 {
-    /* Row vector times [[c,-s,0,0],[s,c,0,0],[0,0,1,0],[tx,ty,0,1]]: w stays
-     * exactly 1, so the original's divide never happens. */
+    // A row vector times [[c,-s,0,0],[s,c,0,0],[0,0,1,0],[tx,ty,0,1]]: w stays
+    // exactly 1, so the perspective divide is skipped.
     static const float uv[4][2] = { {1, 0}, {1, 1}, {0, 0}, {0, 1} };
     D3DTLVERTEX q[4];
     for (int i = 0; i < 4; i++) {
@@ -418,14 +337,8 @@ static void draw_label(Direct3D *d3d, void *theme, TextRenderer *text,
     draw_label_c(d3d, text, xv, yK, str, col[0], col[1]);
 }
 
-/* ── RenderSoundOptions 0x00430600 ───────────────────────────────────────────
- * Menu node 0xc.  Panel quad 0x4e0580 with texture *0x4e04e0, then four
- * label rows at x 262 (theme pairs +0x6f964, 96c, 974, 97c) each with its
- * widget column at x 368, 0.0125*w below the label:
- *   3D Sound   toggle  *0x4e06c0 on / *0x4e07a0 off     Config sound3D
- *   Sound Vol. base *0x4e06a0 + knob *0x4e0558          Config waveVolume
- *   CD Music   toggle                                   Config musicOn
- *   CD Vol.    base + knob                              Config cdVolume */
+/* Menu node 0xc.  Four rows of a label at x 262 and its widget at x 368: 3D
+ * sound (toggle), sound volume (knob), CD music (toggle), CD volume (knob). */
 extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderSoundOptions(Game *g, void *theme, Direct3D *d3d,
                         TextRenderer *text, DWORD ms)
@@ -455,22 +368,11 @@ Menu_RenderSoundOptions(Game *g, void *theme, Direct3D *d3d,
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
-/* ── RenderVideoOptions 0x0042e9f0 ───────────────────────────────────────────
- * Menu node 0xb.  Panel quad 0x4e0600 with texture *0x4e0780; labels at x
- * 262 (theme pairs +0x6f944, 94c, 954, 95c), widgets at x 368:
- *   Reflection  toggle on/off                          Config video byte 1
- *   Shadows     base + three-position knob             byte 0
- *   Highlights  base + knob                            byte 2
- *   Particles   base + knob                            byte 3
- *
- * Shadows depends on the hardware: it is available only when the device's
- * z-buffer format has stencil bits (d3d+0x24 -- dwStencilBitDepth of the
- * DDPIXELFORMAT stored at +0x14) AND the mode is deeper than 16 bpp.  When it
- * is not, the label is drawn in a fixed translucent grey (0x80555555 top,
- * 0x80aaaaaa bottom) instead of its theme colours, the base in 0x80808080,
- * and the knob not at all.  Both tests are re-made at each use, as in the
- * original; neither can change within a frame. */
-#define g_videoTexture (g_menuTex3.pTexture2)   /* menu_3.tga */
+/* Menu node 0xb: reflection (toggle), shadows, highlights and particles
+ * (three-position knobs).  Shadows need a stencil buffer and a mode deeper
+ * than 16 bits; without them the label is a translucent grey, its base
+ * half-grey and its knob not drawn.  Both tests are re-made at each use. */
+#define g_videoTexture (g_menuTex3.pTexture2)  // menu_3.tga
 
 static bool shadows_available(Direct3D *d3d)
 {
@@ -512,27 +414,12 @@ Menu_RenderVideoOptions(Game *g, void *theme, Direct3D *d3d,
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
-/* ── RenderControlsRemap 0x00431a60 ─────────────────────────────────────────
- * Menu node 0xa.  Unlike the other pages it opens with the stack-built
- * backdrop (DrawGameOverScore's: the full screen sampling the middle of the
- * theme's backdrop texture, UVs 0.4..0.6) and a header strip from the top
- * half of *0x4e0780 at x 0.6w..0.4w, y 0.065625w..0.165625w.  Then:
- *
- *   13 action labels  left at x = 0.09375w (60), y = w * (0.171875 + i/32)
- *                     -- 110 + 20i -- theme pair +0x6f934
- *   following camera  label at x 180, y 0.578125w, pair +0x6f93c; toggle at
- *                     x 450, 0.590625w, on/off by cameraTurnsWithPlayer
- *   joystick deathzone label at x 180, y 0.609375w; base + knob at x 450,
- *                     0.621875w, the knob from the ushort deadzone
- *   13 bindings       right-aligned at x = 0.90625w (580) on the label rows,
- *                     label colours: ProgableControl's mode-1 key names for
- *                     the action, or "???" while that row is being rebound
- *                     (Game rebindActive and rebindCode == the row's node)
- *
- * and its own marker pair, 0x437740.  The rebind nodes are NOT in row order
- * (turn left is 0x17, turn right 0x16; overview 0x1c, bomb 0x1a, suicide
- * 0x1b) -- they are the menu tree's children, taken as the original
- * compares them. */
+/* Menu node 0xa.  It opens with the full-screen backdrop the score screens
+ * use, and a header strip from the top half of the video panel's texture.
+ * Then thirteen action labels at x 60, y 110 + 20 i; the following-camera
+ * toggle and the joystick dead-zone knob; and, right-aligned at x 580, each
+ * action's bound key names, or "???" while that row is being rebound.  The
+ * rebind nodes are not in row order; they are the menu tree's children. */
 struct ControlRow { const char *label; const char *action; unsigned char node; };
 static const ControlRow k_controls[13] = {
     { "forwards",     "John_Move_Forward", 0x14 },
@@ -608,24 +495,15 @@ Menu_RenderControlsRemap(Game *g, void *theme, Direct3D *d3d,
     Menu_DrawControlsCursorMarkers(g, d3d, ms);
 }
 
-/* ── BuildMenuGeometry 0x0042d960 ──────────────────────────────────────────────
- * Called once when the device is set up (1 E8 site, 0x4260A0), cdecl
- * (Direct3D*, theme path prefix).  Fills every static quad the screens above
- * draw and loads the nine menu textures.  All in 640-space x w, with fw the
- * UNSIGNED width; every vertex z 0, rhw 10, white:
- *
- *   0x4e0580  panel quad   x 0.6..0.4  y 0.175..0.275  v 0..0.5 (top half)
- *   0x4e0600  list quad    the same rectangle          v 0.5..1 (bottom half)
- *   0x4e06c8  backdrop     x 0.7..0.3  y 0.175..0.575  v 0..1
- *   0x4e04e8  widget model the square (+-w/64, +-w/64, 0) -- 10 virtual
- *
+/* Builds the quads the screens draw and loads the nine menu textures, once per
+ * device.  In 640-space times w, with the width unsigned:
+ *   panel quad   x 0.6..0.4  y 0.175..0.275  v 0..0.5 (top half)
+ *   list quad    the same rectangle          v 0.5..1 (bottom half)
+ *   backdrop     x 0.7..0.3  y 0.175..0.575  v 0..1
+ *   widget model the square (+-w/64, +-w/64, 0), 10 virtual units
  * Strip order in each quad: (x0,y0) (x0,y1) (x1,y0) (x1,y1), u 1 1 0 0.
- * Ghidra's decompile puts 0.7w into the list quad's last vertex -- wrong: the
- * listing writes that vertex from the scratch slot before the 0.7 is stored.
- *
- * Textures: "<prefix>\textures\<file>" imported into each object with
- * alpha flag 1, bpp 0, stage 0.  The path buffer is 260 bytes and unbounded,
- * as in the original (sprintf, no length). */
+ * Textures are "<prefix>\textures\<file>".  PRESERVED: the path is formatted
+ * unbounded into 260 bytes. */
 struct MenuTextureLoad { SceneTexture *obj; const char *file; };
 static const MenuTextureLoad k_menuTextures[9] = {
     { &g_menuTex1, "menu_1.tga" },
@@ -674,11 +552,23 @@ Menu_BuildMenuGeometry(Direct3D *d3d, const char *prefix)
     }
 }
 
+/* The credits: 69 text draws in two columns, scrolling up with time.
+ *   headings  centred        x 320, cell 20
+ *   roles     right-aligned  x 310, cell 16 (right edge at the gutter)
+ *   names     left-aligned   x 330, cell 16
+ *   y         (scroll + row offset), scaled
+ *   scroll    500 - elapsed ms * 0.05 (20 ms per virtual pixel)
+ * The start time is re-armed when the Game's credits flag is set (the
+ * keypress handler sets it on entering) and the flag cleared; once scroll
+ * falls below -1800 (46 s) the credits start again.  DETERMINISM: the
+ * width and the elapsed time are unsigned, so a clock behind the start
+ * gives a huge elapsed time and an immediate restart.  The scroll is float
+ * arithmetic; sub-pixel differences are unobservable. */
 enum CreditAlign { CR_CENTRE, CR_RIGHT, CR_LEFT };
 
 struct CreditRow {
     CreditAlign align;
-    float       offset;   /* virtual pixels below the scroll origin */
+    float       offset;  // virtual pixels below the scroll origin
     const char *text;
 };
 
@@ -730,7 +620,7 @@ static const CreditRow k_credits[] = {
     { CR_RIGHT,   848.0f, "Barbara Holler" },
     { CR_LEFT,   848.0f, "Sandra Tieg" },
     { CR_RIGHT,   864.0f, "Sebastian Holler" },
-    { CR_LEFT,   864.0f, "" },   /* 0x46c290: .data, empty, never written */
+    { CR_LEFT,   864.0f, "" },  // an empty line
     { CR_CENTRE,   928.0f, "MANUAL" },
     { CR_RIGHT,   960.0f, "Andreas Lenk" },
     { CR_LEFT,   960.0f, "Falk M\xf6" "ckel" },
@@ -754,8 +644,8 @@ static const CreditRow k_credits[] = {
     { CR_RIGHT,  1184.0f, "George Lucas" },
 };
 
-static float g_creditsScroll;     /* 0x004e0680 */
-static DWORD g_creditsStartMs;    /* 0x004e0518 */
+static float g_creditsScroll;
+static DWORD g_creditsStartMs;
 
 extern "C" __declspec(dllexport) void __cdecl
 Menu_RenderCreditsScroll(Game *game, Direct3D *d3d, TextRenderer *text,
@@ -793,21 +683,8 @@ Menu_RenderCreditsScroll(Game *game, Direct3D *d3d, TextRenderer *text,
         g_creditsStartMs = nowMs;
 }
 
-/* ═══ DispatchGameState 0x0042e000, 1 E8 site (0x0042CA10, RenderGameFrame) ═══
- *
- * A byte table (0x42e158, nodes 0..0x2a) into a jump table (0x42e130) of
- * nine tail calls, each forwarding its own five arguments; any other node
- * draws nothing.  Credits alone drops `theme`.  The caller discards EAX.
- *
- *   node  0     RenderMainMenu        node  0xa   RenderControlsRemap
- *   node  2     RenderRestoreSlotList node  0xb   RenderVideoOptions
- *   node  4     RenderOptionsMenu     node  0xc   RenderSoundOptions
- *   node  5     RenderCreditsScroll   node  0x28  RenderLevelComplete
- *                                     node  0x2a  RenderSaveSlotList
- *
- * Our addition: the level select's theme nodes (0x60 + t) draw
- * Menu_RenderLevelSelect -- the game never reaches them.
- */
+/* Picks the screen for the current menu node; any other node draws nothing.
+ * The level select's theme nodes (0x60 + t) draw the level select page. */
 extern "C" __declspec(dllexport) void __cdecl
 Menu_DispatchGameState(Game *g, void *theme, Direct3D *d3d, TextRenderer *text,
                        DWORD ms)

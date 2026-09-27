@@ -1,29 +1,29 @@
+/* The game clock (clock.cpp): the seconds since start, as the game reads it.
+ * DETERMINISM: with KAROO_FIXED_DT set, each read advances the clock by
+ * exactly that many seconds, which makes the simulation fixed-step. */
+
 #pragma once
 #include <windows.h>
 
-/* Fixed-timestep clock — see REPLAY_PLAN.md Stage A.
- *
- * Replaces the game's QueryPerformanceCounter wrapper at 0x00404040, which
- * returns *absolute elapsed seconds* (not a delta) on the x87 stack.  With
- * KAROO_FIXED_DT set, the clock advances by exactly that many seconds per
- * call, making the whole simulation a fixed-timestep one.
- */
+/* The clock in seconds.  Each call also ends a frame and runs the per-frame
+ * test hooks: RenderGameFrame calls it once a frame, level entry once more. */
 double clock_seconds(void);
-/* The seconds clock_seconds() returned last time -- RenderGameFrame reads it
+
+/* The seconds clock_seconds() returned last time.  RenderGameFrame reads it
  * before calling again, to time the frame. */
 double clock_previous_seconds(void);
 
-/* The clock's initialiser 0x00403fa0 (one CALL site, 0x0042d4de): the eager
- * form of clock_seconds()'s lazy first-call init. */
+/* Starts the clock now rather than at the first read. */
 extern "C" void __cdecl hooks_ClockInit(void);
-/* Replaces 0x00404040: the seconds clock, as the game reads it. */
+
+/* clock_seconds(), for the game's callers. */
 extern "C" __declspec(dllexport) double __cdecl hooks_ClockSeconds(void);
 
-/* Frame index — one per clock_seconds() call, i.e. one per rendered frame.
- * The shared frame number for the hash log, the state log and recordings. */
+/* The frame number: the count of clock_seconds() calls.  The hash log, the
+ * state log and recordings all number frames by it. */
 unsigned clock_frame(void);
 
-/* The game's time() at 0x0045169a, ours (patch.py routes its call sites here).
- * Seconds; also stored through `out` when non-NULL.  The particle samplers
- * seed rand() from it, exactly where the originals called 0x0045169a. */
+/* The game's time(): seconds, also stored through out when it is not NULL.
+ * DETERMINISM: the particle samplers and the level builder seed rand() from
+ * it; KAROO_SEED fixes it. */
 extern "C" int __cdecl hooks_GameTime(int *out);

@@ -1,51 +1,22 @@
-/* GAMETICK_PLAN.md Band B reopened — the typed cheat-code handler.
+/* The cheat codes, checked in this order once the entry has just finished:
+ *   kaputo      every foe dies
+ *   supa        completes the level (game over on the last level)
+ *   jjmapnr<n>  loads level n by number
+ *   jjmap <x>   loads level x by name
+ *   mausuruh    one extra life
+ *   sportsman   one more glide
+ *   boommaker   ten more bombs
+ *   notme       invulnerable
+ * then the buffer is cleared and the entry re-armed.
  *
- *   HandleTypedCheatCode  0x0041aca0   1 E8 site (0x00415226, GameTick)
+ * PRESERVED: jjmapnr and jjmap are prefix compares (7 and 5 bytes), and
+ * "jjmapnr..." also matches jjmap; it misses only because the jjmapnr branch
+ * clears the buffer first, and only when it was taken (strlen > 8).
  *
- * __fastcall, Game base in ECX, bare RET.  Transcribed from the LISTING.
- *
- * Callees and where they go:
- *   __ftol                         inlined (truncate the dt accumulator)
- *   PollTextEntryKeys  0x4209a0    Sim_PollTextEntryKeys      (textentry.cpp)
- *   CalculateLevelScore 0x41a760   Score_CalculateLevelScore  (levelscore.cpp)
- *   PlayCDStuf 0x403360            Sim_PlayCDStuf             (cdthemes.cpp)
- *   CDM::Stop 0x402d50             CDM_StopTrack              (cdm.cpp)
- *   Push/Pop/RewindMenu...         Sim_*                      (menutree.cpp)
- *   SetCurrentLevelName/OpenLevelFile/ParseLevelFiles  Sim_*  (levelparse.cpp)
- *   SetupLevelObjects 0x416420     Sim_SetupLevelObjects      (levelsetup.cpp)
- *   Log_Message 0x441b10           GameLog_LogMessage         (gamelog.cpp)
- *   sprintf/fopen/fclose/atoi      this DLL's CRT -- the game's are the same
- *                                  MSVC routines; the FILE* is only tested
- *                                  and closed, and atoi runs in the C locale
- *                                  (0x00450521's ctype path)
- *   LinkedList::Append 0x4254a0    KEPT as a named callback, as player.cpp
- *                                  keeps it (GAMETICK_PLAN.md Band A)
- *
- * Structure, in listing order, all gated on the entry widget going INACTIVE
- * this tick (Game+0x13cdb7 == 0 after the poll):
- *
- *   "kaputo"    every foe in the ID list gets +0x11f = 4
- *   "supa"      last level -> state 2 (game over), score reason 0x28;
- *               else -> state 3 + the menu-node 0x28 dance, score reason =
- *               the state byte; both then add elapsed ms to +0x170a44
- *   "jjmapnr"   a 7-byte PREFIX compare (buffer copied into a zeroed 256-byte
- *               frame, 4+2+1 bytes, byte 7 forced 0), taken only for strlen>8;
- *               level = atoi(buffer+8) - 1, loads it by number
- *   "jjmap"     a 5-byte PREFIX compare, strlen>6; loads buffer+6 by name.
- *               NOTE "jjmapnr..." also matches this prefix -- it misses only
- *               because the jjmapnr branch clears buffer[0] first, and only
- *               when that branch was taken (strlen>8).  Order preserved.
- *   "mausuruh"  lives (+0x175402) += 1
- *   "sportsman" +0x1752b2 += 1
- *   "boommaker" +0x1752b1 += 10
- *   "notme"     invulnerable: Append(+0x1753e5, 0xd) the first time, then
- *               flags, tile-marker 3 under the player, and a timestamp
- *   then clear the 256-byte buffer and re-arm the widget.
- *
- * Control: KAROO_SIM_FX=cheatlife -- "mausuruh" grants two lives.  No
- * recording types a cheat, so this is expected NOT to fail the suite; it is
- * here so a future cheat recording has a control ready.
- */
+ * KAROO_SIM_FX=cheatlife is a negative control: mausuruh gives two lives.  No
+ * recording types a cheat, so the suite is expected to pass; it waits for a
+ * recording that does. */
+
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,19 +40,15 @@ struct CDM;
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CDM_StopTrack(CDM *self);
 
-
-
-
 static int s_fx = -1;
 
-/* The listing's inline strcmp: 0 on equal. */
 static int streq(const unsigned char *a, const char *b)
 {
     return strcmp((const char *)a, b) == 0;
 }
 
-/* GameTick/cheat tail shared by both loaders: the level is loaded, go to
- * state 4 with the flythrough armed. */
+/* The tail both level loaders share: go to the loaded state with the intro
+ * flythrough armed. */
 static void enter_loaded_state(Game *game, FILE *fp)
 {
     game->setCameraDistance(7.0f);
@@ -114,11 +81,10 @@ Sim_HandleTypedCheatCode(Game *self)
     if (self->cheatEntry()->active() != 0)
         return;
 
-    /* kaputo */
     if (streq(buf, "kaputo")) {
         Game *g = self;
         unsigned char i = 0;
-        /* The count is re-read every pass, as the original's CMP is. */
+        // The count is re-read every pass.
         if (g->foeCount() != 0) {
             do {
                 unsigned char id = g->foeId(i);
@@ -128,7 +94,6 @@ Sim_HandleTypedCheatCode(Game *self)
         }
     }
 
-    /* supa */
     if (streq(buf, "supa")) {
         if ((unsigned int)self->levelIndex() + 1 == (unsigned int)self->levelCount()) {
             self->setState(2);
@@ -160,7 +125,7 @@ Sim_HandleTypedCheatCode(Game *self)
         self->setTotalPlayTime((double)(unsigned long long)self->timeElapsed() + self->totalPlayTime());
     }
 
-    /* jjmapnr -- 7-byte prefix, then load by number */
+    // jjmapnr: a 7-byte prefix, then load by number.
     memset(frame, 0, sizeof(frame));
     memcpy(frame, buf, 7);
     frame[7] = 0;
@@ -189,7 +154,7 @@ Sim_HandleTypedCheatCode(Game *self)
         }
     }
 
-    /* jjmap -- 5-byte prefix, then load by name */
+    // jjmap: a 5-byte prefix, then load by name.
     memset(frame, 0, sizeof(frame));
     memcpy(frame, buf, 5);
     frame[5] = 0;

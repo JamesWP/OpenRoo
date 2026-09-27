@@ -1,44 +1,21 @@
-/* Monotonic-clock reimplementation (replaces 0x00404040).
+/* The game clock: the seconds since start, from QueryPerformanceCounter.
+ * Every clock read is also a frame boundary, so the per-frame test hooks (the
+ * determinism hash, the state and world logs, the autoplayer, the level
+ * report, the menu driver and the recorder) run from here.
  *
- * The original wraps QueryPerformanceCounter and returns the *accumulated*
- * elapsed time in seconds as a float10 on the x87 stack — both call sites
- * (0x00426E19 in UpdatePlayerCamera, 0x00426F9C in RenderGameFrame) multiply
- * the result by 1000.0 (0x0045d3d0) to get milliseconds, and RenderGameFrame
- * derives its per-frame dt by subtracting the previous frame's value.
+ * The real clock keeps the game's quirks:
+ *   - the first read returns 0.0 and only takes the tick baseline;
+ *   - a counter that steps backwards (by less than 0x10000000) moves the
+ *     baseline and adds no time;
+ *   - the frequency is halved until it fits in 32 bits and is at most
+ *     2000000, and the counter is shifted to match;
+ *   - PRESERVED: a result identical 100001 reads in a row has 1.0 second added,
+ *     a guard against a stalled counter.
  *
- * There is a third reference to the value 0x404040, a PUSH at 0x0042658b, and
- * it is NOT a reference to this function — it is an ambient light colour that
- * happens to have the same numeric value:
- *
- *   0042658b  PUSH 0x404040               ; RGB(0x40,0x40,0x40), dark grey
- *   00426590  PUSH 0x2                    ; D3DLIGHTSTATE_AMBIENT
- *   00426593  CALL dword ptr [ECX + 0x60] ; slot 24 = SetLightState
- *
- * patch.py used to redirect it as a callback, which set the scene's ambient
- * light to a trampoline VA and tinted every lit mesh.  See the note in
- * patch.py where the entry was removed.
- *
- * All of the original's state (0x46c434 shift, 0x46c438 period, 0x46c444 last
- * tick, 0x46c448 accumulator, 0x46c450 previous, 0x46c440 stall counter,
- * 0x4645a4 first-call flag) is read and written *only* by 0x404040 itself and
- * its initialiser 0x00403fa0 — confirmed with get_xrefs_to on each — so
- * keeping our own copy here is self-contained and the original can be
- * UD2-stubbed.
- *
- * Behaviour preserved from the decompile, quirks included:
- *   - the first call returns 0.0 and only latches the tick baseline;
- *   - a backwards tick (cur <= last, and the gap < 0x10000000) is swallowed:
- *     the baseline moves but no time is added;
- *   - the frequency is halved until it fits in 32 bits and is <= 2000000
- *     (0x0045d2f0), and the low 32 bits of the counter are shifted to match;
- *   - if the accumulated value comes out bit-identical 100001 calls in a row,
- *     1.0 second (0x0045d2e8) is added to unstick it.  That last one is an
- *     anti-stall hack for broken HALs; it is reproduced rather than removed.
- *
- * KAROO_FIXED_DT=<seconds> replaces the counter entirely with a virtual clock
- * that advances by exactly that much per call.  Recording and replay must both
- * use it (see REPLAY_PLAN.md); the game then runs as fast as the CPU allows.
- */
+ * DETERMINISM: KAROO_FIXED_DT=<seconds> replaces the counter with a clock that
+ * advances by exactly that much each read, so the game runs as fast as the
+ * machine allows.  Recording and replay both need it. */
+
 #include <time.h>
 #include "clock.h"
 #include "log.h"
@@ -52,40 +29,23 @@
 #include "record.h"
 #include <stdlib.h>
 
-static bool      g_started;      /* first-call flag           (was 0x4645a4) */
-static DWORD     g_last;         /* previous shifted tick     (was 0x46c444) */
-static double    g_accum;        /* elapsed seconds           (was 0x46c448) */
-/* NOT a DLL-local, unlike every other field above.
- *
- * RenderGameFrame derives its per-frame dt by reading this global *itself*,
- * before calling us:
- *
- *   00426f8c  FLD   double ptr [0x0046c450]   ; previous frame's seconds
- *   00426f92  FMUL  1000.0
- *   00426f98  FSTP  [ESP+0x20]
- *   00426f9c  CALL  0x00404040                ; now
- *   00426fa1  FMUL  1000.0
- *   00426fab  FSUB  [ESP+0x20]                ; dt = now - prev
- *
- * So it is shared state, not clock-private, and it has to stay at its game
- * address.  Holding it in a DLL static left 0x0046c450 at 0.0 for the whole
- * run, making every consumer's "delta" the absolute elapsed time instead —
- * growing without bound (measured: 0.6s at 1s in, 57s at 60s in).
- *
- * get_xrefs_to confirms this is the only one of the clock's globals with an
- * outside reader: 0x46c434/438/440/444/448 are touched solely by 0x404040 and
- * its initialiser 0x403fa0, and stay local here. */
-static double g_prevClock;   /* was 0x0046c450 */
-static int       g_same;         /* identical-result run      (was 0x46c440) */
-static BYTE      g_shift;        /* frequency shift           (was 0x46c434) */
-static double    g_period;       /* seconds per shifted tick  (was 0x46c438) */
+static bool      g_started;  // set by the first read
+static DWORD     g_last;     // the previous shifted tick
+static double    g_accum;    // elapsed seconds
 
-/* Fixed timestep: >0 enables it, 0 = real clock.  -1 = not yet read. */
+/* The previous read's result.  RenderGameFrame reads it before reading the
+ * clock, and takes the frame's dt as the difference. */
+static double g_prevClock;
+static int       g_same;    // reads in a row with the same result
+static BYTE      g_shift;   // the frequency's halvings
+static double    g_period;  // seconds per shifted tick
+
+/* > 0: the fixed step; 0: the real clock; -1: not yet read. */
 static double    g_fixed_dt = -1.0;
 
-/* Progress logging: every LOG_EVERY calls, report the virtual time against the
- * wall clock.  Under a fixed timestep the two diverge — that divergence is the
- * evidence that the game is no longer reading the real counter. */
+/* Every LOG_EVERY reads, the virtual time is logged beside the wall time.
+ * Under a fixed step the two drift apart, which shows the counter is not
+ * being read. */
 #define LOG_EVERY 600
 static unsigned  g_calls;
 static DWORD     g_wall0;
@@ -96,8 +56,6 @@ static void clock_init(void)
     if (!QueryPerformanceFrequency(&freq))
         freq.QuadPart = 1000;
 
-    /* Mirrors 0x00403fa0: halve until the frequency fits in 32 bits and is
-     * no larger than 2000000.0, counting the shifts. */
     g_shift = 0;
     while (freq.HighPart != 0 || (double)freq.LowPart > 2000000.0) {
         freq.QuadPart = (LONGLONG)((ULONGLONG)freq.QuadPart >> 1);
@@ -132,25 +90,22 @@ double clock_seconds(void)
 {
     if (g_fixed_dt < 0.0) clock_init();
     clock_log_progress();
-    /* One call per rendered frame from RenderGameFrame, so this is the frame
-     * boundary for the Stage A2 checksum.  UpdatePlayerCamera's setup-time call
-     * closes one extra (empty) frame; that is deterministic, so it is left. */
+    // The camera setup's read ends one extra, empty frame; that is the same
+    // every run, so it does no harm to the hash.
     dethash_frame_end(g_accum);
     gamestate_tick();
     gamestate_deathdiff();
     worldstate_tick();
     policy_menu_tick();
-    levelreport_tick();   /* may set a menu goal; must precede menu_tick */
+    levelreport_tick();  // may set a menu goal, so it runs before menu_tick
     menu_tick();
     record_frame_boundary();
 
-    /* Stage E.  A replay must end on the recording's own length, never on
-     * wall-clock time (Stage A notes: frame counts vary run to run because the
-     * loop is uncapped).  Dump the end state while the level is still live —
-     * after teardown the score fields are gone — then close the window so the
-     * game's own shutdown path runs and crashcheck.py can see it complete. */
-    /* A policy run outlives the recording that bootstrapped it: the prefix only
-     * exists to get into a level.  --auto-exit still bounds the run. */
+    // A replay ends on the recording's length, never on wall time.  The state
+    // is dumped while the level is still live (teardown clears the score),
+    // then the window is closed so the game shuts down normally.  An
+    // autoplayer run outlives its recording, which only gets it into a level;
+    // --auto-exit still bounds it.
     if (record_replaying() && record_replay_finished() && !g_replay_ended &&
         !policy_in_control(g_calls)) {
         g_replay_ended = true;
@@ -159,10 +114,10 @@ double clock_seconds(void)
     }
 
     if (g_fixed_dt > 0.0) {
-        /* Virtual clock.  First call returns 0.0, as the original does. */
+        // The first read returns 0.0, as on the real clock.
         if (!g_started) { g_started = true; return g_accum; }
         g_accum += g_fixed_dt;
-        g_prevClock = g_accum;   /* keep RenderGameFrame's dt source current */
+        g_prevClock = g_accum;  // RenderGameFrame's dt source
         return g_accum;
     }
 
@@ -173,10 +128,10 @@ double clock_seconds(void)
     if (!g_started) {
         g_last    = cur;
         g_started = true;
-        return g_accum;                       /* 0.0 */
+        return g_accum;
     }
 
-    /* Backwards / stalled counter: move the baseline, add no time. */
+    // A counter stepping backwards: move the baseline, add no time.
     if (cur <= g_last && (DWORD)(g_last - cur) < 0x10000000u) {
         g_last = cur;
         return g_accum;
@@ -187,8 +142,7 @@ double clock_seconds(void)
     g_accum = (double)delta * g_period + g_accum;
 
     if (g_accum == g_prevClock) {
-        /* Original: INC; CMP 0x186a0; JLE keep — so the bump fires on the
-         * 100001st identical result, and only then is the counter reset. */
+        // The bump comes on the 100001st identical result.
         if (++g_same > 0x186a0) {
             g_accum += 1.0;
             g_same = 0;
@@ -201,29 +155,10 @@ double clock_seconds(void)
     return g_accum;
 }
 
-/* ── Deterministic seed (REPLAY_PLAN.md Stage A2) ──────────────────────────
- *
- * Stage A2's checksum showed two runs diverging on the very first emitted
- * particle, with emission *counts* identical and only pos/vel/life differing.
- * That traced to 0x00448FB0, the generator table builder, which draws from
- * rand() — MSVC's LCG at 0x0045167C (state 0x00469F38), unnamed in the binary,
- * which is why the plan's search_functions("rand") missed it.
- *
- * The LCG itself is deterministic.  The leak is the seed: 0x0045169A is time()
- * (GetLocalTime/GetSystemTime folded to epoch seconds), and it feeds srand at
- * five sites — SetupLevelObjects (0x0041672B), FUN_004479F0 (0x004479FA),
- * FUN_00448E80 (0x00448EC5, one-shot), CloneTypeTable (0x00449F22) and
- * FUN_0044B920 (0x0044B9AB).  All five xrefs of time() are srand seeding and
- * nothing else, so intercepting the one function pins every one of them.
- *
- * KAROO_SEED=<int> returns that constant instead of the wall clock.  Replay
- * needs it *and* KAROO_FIXED_DT — they fix independent sources.
- *
- * Unset, it is our CRT's time().  The original called the game CRT's time()
- * at 0x0045169A; the only use is seeding srand, and both return the same
- * seconds since 1970.  The timezone/DST globals that one cached
- * (0x004E0910..0x004E0924) have no other reader in our code.
- */
+/* DETERMINISM: time() seeds rand() for the level builder and the particle
+ * samplers, and it is the only real-time input they have.  KAROO_SEED=<int>
+ * makes it return that constant.  A replay needs both this and KAROO_FIXED_DT;
+ * they fix independent sources. */
 
 static int  g_seed      = 0;
 static bool g_seed_set  = false;
@@ -251,38 +186,25 @@ static int game_time(int *out)
 
 extern "C" {
 
-/* Replaces 0x0045169A (time()) at all five srand call sites. */
+/* time(), as the game calls it. */
 __declspec(dllexport) int __cdecl hooks_GameTime(int *out)
 {
     return game_time(out);
 }
 
-/* Replaces 0x00403fa0, the clock's initialiser, whose one CALL site is at
- * 0x0042d4de.  Everything it does, clock_init() above already does -- the
- * shift/period search is mirrored from it line for line -- so the export is
- * the eager form of the lazy init the first clock_seconds() would have done,
- * and calling it twice changes nothing.
- *
- * One field of the original is deliberately NOT reproduced: DAT_0046c430,
- * `GetVersionExA().dwPlatformId == 2` (i.e. "this is NT").  A byte scan of
- * Karoo.exe.orig for the literal 0x0046c430 finds exactly one occurrence,
- * 0x40402f, inside this initialiser itself -- the flag is written and never
- * read by anything.  Writing it would be reproducing a store, not behaviour;
- * the omission is recorded here so it is a decision rather than an oversight.
- */
+/* Starts the clock now; a later call, or the first read, does nothing more. */
 __declspec(dllexport) void __cdecl hooks_ClockInit(void)
 {
     if (g_fixed_dt < 0.0) clock_init();
 }
 
-/* Replaces 0x00404040.  __cdecl, no arguments, double returned in st(0) —
- * exactly what both call sites expect (they FMUL the result straight away). */
+/* clock_seconds(), for the game's callers. */
 __declspec(dllexport) double __cdecl hooks_ClockSeconds(void)
 {
     return clock_seconds();
 }
 
-} // extern "C"
+}
 
 double clock_previous_seconds(void)
 {

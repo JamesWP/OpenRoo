@@ -1,57 +1,63 @@
+/* The programmable control: DirectInput keyboard and mouse devices, and the
+ * tables that map keys to named game actions.
+ *
+ * Actions are registered per mode (0..4, the game state the dispatch is called
+ * with); each has a callback, a context and a list of bound keys.  Once per
+ * tick, Dispatch reads the keyboard and calls the callback of every action
+ * with a key held.  Bindings are saved to and loaded from ProgableControl.sav.
+ * There is one instance, g_progCtrl (gameglobals.h). */
+
 #pragma once
 #define DIRECTINPUT_VERSION 0x0800
 #include <windows.h>
 #include <dinput.h>
 #include <stddef.h>
 
+/* Called with the scan code that fired, the binding's strength and the context
+ * given at registration. */
 typedef void (*ActionCallback)(int key_id, int strength, void *context);
 
-/* Keyboard scancode binding */
+/* One key bound to an action. */
 struct KeyBind {
-    int      scancode;
-    int      strength;
+    int      scancode;  // DirectInput scan code, 0..255
+    int      strength;  // passed to the callback; 100 for a plain key
     KeyBind *next;
 };
 
-/* One registered action entry */
+/* One registered action: a name unique within its mode, case-insensitive. */
 struct ActionEntry {
     char           name[256];
     ActionCallback callback;
     void          *context;
     KeyBind       *kbd;
-    ActionEntry   *chain;   /* next in table list */
+    ActionEntry   *chain;  // next action in the mode's list, in registration order
 };
 
-/* Action table slot — must be exactly 16 bytes to match game struct layout */
 struct ActionTable {
     ActionEntry *head;
     DWORD        entry_count;
-    DWORD        _pad[2];
+    DWORD        _pad[2];  // unused
 };
 static_assert(sizeof(ActionTable) == 16, "ActionTable size");
 
-/*
- * ProgableControl — 404 bytes (0x194).
- * Global singleton at ProgableControlGlobal @ 0x46c298.
- * All methods accessed only through our replacements; layout must match the
- * original struct exactly so game code that computes this+0x144 etc. works.
- */
+/* The whole control state.  The joystick is never set up: its setup, range and
+ * dead-zone calls succeed without doing anything. */
 #pragma pack(push, 1)
 struct ProgableControl {
-    void                  *vtable;              /* +0x000 */
-    void                  *pLogger;             /* +0x004 */
-    DWORD                  dwOwns_logger;       /* +0x008 */
-    LPDIRECTINPUT8A        directinput;         /* +0x00C */
-    LPDIRECTINPUTDEVICE8A  pKeyboard;           /* +0x010 */
-    LPDIRECTINPUTDEVICE8A  pMouse;              /* +0x014 */
-    LPDIRECTINPUTDEVICE8A  pJoystick;           /* +0x018 */
-    char                   sep_or[50];          /* +0x01C */
-    char                   prefix_joystick[50]; /* +0x04E */
-    char                   suffix_positive[50]; /* +0x080 */
-    char                   suffix_negative[50]; /* +0x0B2 */
-    DWORD                  axis_midpoints[20];  /* +0x0E4 (80 bytes) */
-    BYTE                   _joystick_list[16];  /* +0x134 (unused) */
-    ActionTable            action_tables[5];    /* +0x144 (80 bytes) */
+    void                  *vtable;
+    void                  *pLogger;
+    DWORD                  dwOwns_logger;
+    LPDIRECTINPUT8A        directinput;
+    LPDIRECTINPUTDEVICE8A  pKeyboard;
+    LPDIRECTINPUTDEVICE8A  pMouse;
+    LPDIRECTINPUTDEVICE8A  pJoystick;
+    char                   sep_or[50];  // joins key names in a binding description: " oder "
+    char                   prefix_joystick[50];
+    char                   suffix_positive[50];
+    char                   suffix_negative[50];
+    DWORD                  axis_midpoints[20];
+    BYTE                   _joystick_list[16];  // unused
+    ActionTable            action_tables[5];    // one per mode
 };
 #pragma pack(pop)
 
@@ -62,24 +68,30 @@ static_assert(offsetof(ProgableControl, axis_midpoints) == 0x0E4, "axis_midpoint
 static_assert(offsetof(ProgableControl, action_tables)  == 0x144, "action_tables");
 static_assert(sizeof(ProgableControl)                   == 0x194, "ProgableControl size");
 
-/* Original vtable at PTR_ScalarDtorProgControl @ 0x0045efb0 */
-extern const void *const PROGCTRL_VTABLE;   /* our own table; was the game's at 0x0045efb0 */
+/* The one-slot vtable: the scalar deleting destructor. */
+extern const void *const PROGCTRL_VTABLE;
 
-/* Exports of progctrl.cpp other files call (COHESION_PLAN.md template 10). */
 extern "C" {
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_SetJoyDeadzone(ProgableControl *self, DWORD axis, int zone);
+
+/* Reads the keyboard (or the replay, or the autoplay policy) and calls every
+ * action in this mode with a bound key held; the first held key of each action
+ * wins.  Modes of 5 and above do nothing. */
 __declspec(dllexport) void __attribute__((thiscall))
 ProgCtrl_Dispatch(ProgableControl *self, unsigned short game_state);
 __declspec(dllexport) void __attribute__((thiscall))
 ProgCtrl_ClearBindings(ProgableControl *self, unsigned short mode,
                        const char *name);
-/* 0x446830 GetActionAssignmentString: the action's bound key names, joined,
- * into buf (at most bufsz bytes). */
+
+/* The action's bound key names, joined with " or ", into buf (at most bufsz
+ * bytes).  Empty if the mode or action is unknown. */
 __declspec(dllexport) void __attribute__((thiscall))
 ProgCtrl_GetBindingStr(ProgableControl *self, int mode, const char *name,
                        char *buf, unsigned int bufsz);
-/* DirectInputSetup's calls (inputsetup.cpp), in its order. */
+
+/* The setup calls, in the order inputsetup.cpp makes them.  Each returns 1 on
+ * success, 0 on failure. */
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_InitDInput(ProgableControl *self, HINSTANCE hInstance);
 __declspec(dllexport) int  __attribute__((thiscall))
@@ -93,8 +105,13 @@ ProgCtrl_SetJoyRange(ProgableControl *self, int axis, int lo, int hi);
 __declspec(dllexport) void __attribute__((thiscall))
 ProgCtrl_RegisterAction(ProgableControl *self, unsigned short mode,
                         const char *name, ActionCallback cb, void *ctx);
+
+/* Loads ProgableControl.sav into the registered actions; returns 0 if the file
+ * is missing or short.  Bindings for unregistered names are discarded. */
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_ReadBindings(ProgableControl *self);
+
+/* Adds a key to an action, or updates the strength of one already bound. */
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_BindKey(ProgableControl *self, unsigned short mode,
                  const char *name, int sc, int strength);
@@ -102,18 +119,22 @@ __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_AcquireAll(ProgableControl *self);
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_UnacquireAll(ProgableControl *self);
-/* 0x4472f0 / 0x445910 -- save the bindings; release every device. */
+
+/* Saves the bindings; releases every input device. */
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_WriteBindings(ProgableControl *self);
 __declspec(dllexport) void __attribute__((thiscall))
 ProgCtrl_Shutdown(ProgableControl *self);
+
+/* Binds the first key currently held to the action.  Returns 1 if one was.
+ * The axis and flags arguments are ignored. */
 __declspec(dllexport) int  __attribute__((thiscall))
 ProgCtrl_CaptureBinding(ProgableControl *self, unsigned int mode,
                         const char *name, int strength, int allow_axis,
                         int flags);
 }
 
-/* Constructor and destructor body, driven by staticinit.cpp for the one
- * global instance (the original's static-init/atexit thunks). */
-extern "C" __declspec(dllexport) void *__attribute__((thiscall)) ProgCtrl_Setup(ProgableControl *s, int logger_or_0);   /* 0x004456f0 */
-extern "C" __declspec(dllexport) void __attribute__((thiscall)) ProgCtrl_Teardown(ProgableControl *s);   /* 0x00445880 */
+/* Construction and destruction of the one global instance, driven by
+ * staticinit.cpp. */
+extern "C" __declspec(dllexport) void *__attribute__((thiscall)) ProgCtrl_Setup(ProgableControl *s, int logger_or_0);
+extern "C" __declspec(dllexport) void __attribute__((thiscall)) ProgCtrl_Teardown(ProgableControl *s);

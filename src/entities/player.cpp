@@ -96,7 +96,7 @@
  *   LinkedList::FindListNodeByValue   0x425580  the game's, called through
  *
  * The four LinkedList methods are NAMED CALLBACKS into the game binary
- * (linkedlist.h, shared with every other caller in karoo-hooks), per
+ * (linkedlist.h, shared with every other caller in src/), per
  * the no-callback rule's "name every unavoidable callback".  They are not
  * replaced, and that is a deliberate scope decision rather than laziness:
  *

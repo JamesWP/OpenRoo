@@ -1,9 +1,10 @@
-/* The restart grid restore (gridrestore.cpp).
- * The export(s) patch.py binds, typed on the Game they take in ECX
- * (COHESION_PLAN.md, the void *self metric). */
+/* Restoring the level's tiles from the snapshot taken at setup, when the
+ * player restarts the level. */
 #pragma once
 
 class Game;
 
+/* Copies each tile back from the snapshot, with the state byte's special cases
+ * (see gridrestore.cpp). */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_RestoreTileGridFromSnapshot(Game *self);

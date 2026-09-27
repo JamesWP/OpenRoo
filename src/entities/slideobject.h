@@ -1,22 +1,8 @@
-/* SlideObject -- a block that slides along its track and back.  Ghidra
- * struct `SlideObject`.
- *
- * One class, formerly split across two names: the slot array Game+0x173588
- * (count +0x173718) is filled by SpawnSlideObject 0x417e20 and ticked by the
- * function GAMETICK_PLAN.md called "UpdatePushedBlockObject" 0x43ae00.  There
- * are no pushable blocks in the game; that tick is the slide's.  Ghidra now
- * names it UpdateSlideObject.
- *
- * Every function that touches a SlideObject field is in slideobject.cpp:
- * spawn (0x417e20), tick (0x43ae00) and purge (0x4181b0).  Construction and
- * destruction are ours too -- our own `new`, and our own one-slot vtable in
- * place of the game's 0x45d6f0; the originals 0x43adb0, 0x43add0 and
- * 0x43adf0 are UD2-stubbed.
- *
- * One outside reader remains, original code, which is why the layout stays
- * packed and asserted: the renderer FUN_00408920 reads +0x25/+0x29/+0x2d and
- * the kind +0x47.  (levelsounds.cpp attaches the sound through setSound().)
+/* SlideObject: a block that slides along its track and back.  Every function
+ * that touches a SlideObject field is in slideobject.cpp; the fields are
+ * private.  The layout is fixed: the renderer reads the position and the kind.
  */
+
 #pragma once
 
 #include "layout.h"
@@ -28,83 +14,79 @@ class __attribute__((packed)) SlideObject {
 public:
     static const int ORIGIN = 0;
 
-    /* Game::SpawnSlideObject 0x00417e20.  Arguments are dwords masked to
-     * bytes, exactly as the original reads them. */
+    // Spawns a slide; the arguments are masked to bytes.
     static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
                       unsigned int heightArg, unsigned int kindArg);
 
-    /* Game::PurgeSlideObjects 0x004181b0 -- destroy every slide and zero the
-     * count. */
+    // Destroys every slide and zeroes the count.
     static void purgeAll(Game *game);
 
-    /* UpdateSlideObject 0x0043ae00 -- one tick. */
+    // One tick.
     void tick();
 
-    /* Where it is drawn (LevelPlacements_DrawSlides), and its axis:
-     * kind 0x0a runs along U, anything else along V. */
+    // Where it is drawn (LevelPlacements_DrawSlides), and its axis: kind 0x0a
+    // runs along U, any other along V.
     float posU() const          { return posU_; }
     float posY() const          { return posY_; }
     float posV() const          { return posV_; }
     signed char kind() const    { return kind_; }
 
-    /* +0x39, attached by InitLevelBasedSounds (levelsounds.cpp). */
+    // The moving-loop sound, attached by InitLevelBasedSounds
+    // (levelsounds.cpp).
     void setSound(CStaticSoundbuffer *p) { sound_ = p; }
 
 private:
 
-    /* The vtable.  MSVC layout: one slot, the scalar deleting destructor,
-     * __thiscall with a flags argument (bit 0 = free the memory). */
+    // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
+    // frees the memory).
     struct Vtbl {
         void *(__attribute__((thiscall)) *scalarDeletingDtor)(SlideObject *self,
                                                               unsigned int flags);
     };
     static const Vtbl VTABLE;
 
-    /* 0x43adb0 -- allocate and construct, with our own new.  NULL if
-     * allocation fails, as the original's operator new returned NULL. */
+    // Allocates and constructs one; NULL if the allocation fails.
     static SlideObject *create();
     SlideObject();
-    /* 0x43add0 -- vtable slot 0. */
+    // Vtable slot 0.
     static void *__attribute__((thiscall)) scalarDeletingDtor(SlideObject *self,
                                                               unsigned int flags);
-    /* Destroy through the object's own vtable, flags 1, as the purge did. */
+    // Destroys through the object's own vtable, flags 1.
     void destroy();
 
-    /* Release the tile the slide just left (tick: the "vacate" stores). */
+    // Releases the tile the slide just left.
     void vacate();
 
     KAROO_LAYOUT_REGISTER(SlideObject);
 
-    const Vtbl         *vtable_;       /* +0x00  &VTABLE                     */
-    double              now_;          /* +0x04  latched from *clock_        */
-    double             *clock_;        /* +0x0c  Game::clock()               */
-    TickStep        *tickStep_;       /* +0x10  Game::tickStep()          */
-    unsigned char       field_14;      /* +0x14                              */
-    TickStep         tickStepCopy_;   /* +0x15  copied from *tickStep_        */
-    unsigned char       field_1d[8];   /* +0x1d                              */
-    float               posU_;         /* +0x25  } base-class fields, zeroed */
-    float               posY_;         /* +0x29  } by 0x401000; read by the  */
-    float               posV_;         /* +0x2d  } renderer FUN_00408920     */
-    signed char         cellU_;        /* +0x31                              */
-    signed char         cellV_;        /* +0x32                              */
-    signed char         heightCell_;   /* +0x33                              */
-    unsigned char       field_34[4];   /* +0x34  never written (the lift's
-                                                 tile base sits here)        */
-    unsigned char       span_;         /* +0x38  limit - trackStart          */
-    CStaticSoundbuffer *sound_;        /* +0x39  moving loop, may be NULL    */
-    signed char         originU_;      /* +0x3d                              */
-    signed char         originV_;      /* +0x3e                              */
-    signed char         originHeight_; /* +0x3f                              */
-    /* Read UNSIGNED to compare and SIGNED to snap -- see the tick. */
-    unsigned char       limit_;        /* +0x40  last cell of the track      */
-    unsigned char       trackStart_;   /* +0x41  first cell of the track     */
-    unsigned char       tileHeight_;   /* +0x42  stamped into the tile       */
-    unsigned char      *tileBase_;     /* +0x43  Game::tileBase()            */
-    signed char         kind_;         /* +0x47  0x0a = along U, else V      */
-    int                 atLimit_;      /* +0x48  1 = parked at the limit     */
-    signed char         state_;        /* +0x4c  0 parked, 1 advancing,
-                                                 2 retreating                */
-    double              phaseStart_;   /* +0x4d                              */
+    const Vtbl         *vtable_;        // +0x00  &VTABLE
+    double              now_;           // +0x04  latched from *clock_
+    double             *clock_;         // +0x0c  Game::clock()
+    TickStep        *tickStep_;         // +0x10  Game::tickStep()
+    unsigned char       field_14;       // +0x14
+    TickStep         tickStepCopy_;     // +0x15  copied from *tickStep_
+    unsigned char       field_1d[8];    // +0x1d
+    float               posU_;          // +0x25  read by the renderer
+    float               posY_;          // +0x29
+    float               posV_;          // +0x2d
+    signed char         cellU_;         // +0x31
+    signed char         cellV_;         // +0x32
+    signed char         heightCell_;    // +0x33
+    unsigned char       field_34[4];    // +0x34  never written
+    unsigned char       span_;          // +0x38  limit - trackStart
+    CStaticSoundbuffer *sound_;         // +0x39  the moving loop; may be NULL
+    signed char         originU_;       // +0x3d
+    signed char         originV_;       // +0x3e
+    signed char         originHeight_;  // +0x3f
+    // PRESERVED: read unsigned to compare and signed to snap (see the tick).
+    unsigned char       limit_;       // +0x40  the track's last cell
+    unsigned char       trackStart_;  // +0x41  the track's first cell
+    unsigned char       tileHeight_;  // +0x42  stamped into the tile
+    unsigned char      *tileBase_;    // +0x43  Game::tileBase()
+    signed char         kind_;        // +0x47  0x0a: along U; else V
+    int                 atLimit_;     // +0x48  1: parked at the limit
+    signed char         state_;       // +0x4c  0 parked, 1 advancing, 2 retreating
+    double              phaseStart_;  // +0x4d
 };
 
 KAROO_LAYOUT_CHECKS(SlideObject)
@@ -132,10 +114,10 @@ KAROO_LAYOUT_CHECKS(SlideObject)
     KAROO_LAYOUT_AT(atLimit_,      0x48);
     KAROO_LAYOUT_AT(state_,        0x4c);
     KAROO_LAYOUT_AT(phaseStart_,   0x4d);
-    /* No size check: the object is ours to allocate, so nothing relies on
-     * it being the original's 0x55. */
+
+/* No size check: we allocate it, so nothing relies on its size. */
 }
 
-/* 0x4181b0 -- destroy every slot and zero the count; Game's destructor calls it. */
+/* Destroys every slide and zeroes the count; Game's teardown calls it. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_PurgeSlideObjects(Game *self);

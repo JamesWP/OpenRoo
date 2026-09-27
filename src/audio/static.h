@@ -1,3 +1,7 @@
+/* Static sound buffers: one whole .wav file loaded into a DirectSound buffer,
+ * optionally with a 3D interface.  The building block of every effect the game
+ * plays; voice pools (voicepool.h) are arrays of them. */
+
 #pragma once
 #define DIRECTSOUND_VERSION 0x0800
 #include <windows.h>
@@ -5,24 +9,20 @@
 #include <stddef.h>
 #include "layout.h"
 
-/*
- * CStaticSoundbuffer — 24 bytes (0x18).
- * Layout verified against game allocation and field accesses.
- */
+/* One buffer.  It remembers its file, flags and logger so it can be reloaded
+ * (on a lost buffer, or a 2D/3D switch) and duplicated. */
 struct __attribute__((packed)) CStaticSoundbuffer {
     static const int ORIGIN = 0;
 
-    void                  *vtable;       // +0x00
-    void                  *logger;       // +0x04  opaque Logger*; stored but not dereferenced here
-    char                  *filename;     // +0x08
-    DWORD                  dwDsFlags;    // +0x0C
-    IDirectSoundBuffer    *soundbuffer;  // +0x10
-    IDirectSound3DBuffer  *threeDBuffer; // +0x14
+    void                  *vtable;
+    void                  *logger;     // stored, never used here
+    char                  *filename;   // heap copy of the path
+    DWORD                  dwDsFlags;  // the flags it was loaded with
+    IDirectSoundBuffer    *soundbuffer;
+    IDirectSound3DBuffer  *threeDBuffer;  // NULL for a 2D buffer
 
-    /* COM out-parameters need the field's address; the one
-     * -Waddress-of-packed-member suppression lives here rather than at every
-     * use (the textrenderer.h / game.h idiom).  0x10 and 0x14 are 4-aligned,
-     * so nothing is actually under-aligned. */
+/* COM out-parameters need the field's address; both are 4-aligned, so the
+ * packed-member warning is moot. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
     IDirectSoundBuffer   **soundbufferSlot() { return &soundbuffer; }
@@ -33,9 +33,8 @@ private:
     KAROO_LAYOUT_REGISTER(CStaticSoundbuffer);
 };
 
-/* The size is relied on as well as the offsets: the game allocates these
- * with operator new(0x18), and VoicePool indexes an array of them with a
- * hard-coded stride of 0x18. */
+/* The size matters as well as the offsets: voice pools index arrays of these
+ * with a stride of 0x18. */
 KAROO_LAYOUT_CHECKS(CStaticSoundbuffer)
 {
     KAROO_LAYOUT_AT(vtable,       0x00);
@@ -47,60 +46,50 @@ KAROO_LAYOUT_CHECKS(CStaticSoundbuffer)
     KAROO_LAYOUT_SIZE(0x18);
 }
 
-/* The vtable is ours (ENDGAME_PLAN.md, "The vtable address of our objects may
- * be our own").  The game's table at 0x45ef9c is one slot, ScalarVectorDtor
- * 0x442a80, and that slot is now ours, which is the licence's condition.  The
- * game's table is left pointing at the UD2 stub so a reader we failed to find
- * faults instead of quietly working.
- */
+/* The one-slot vtable every buffer carries. */
 extern "C" __declspec(dllexport) void *CStatic_Vtable(void);
 
-/* ─── Our reimplementations, defined in static.cpp ───────────────────────
- *
- * Declared here, by the file that owns them, so callers include this header
- * instead of redeclaring the exports.  Only the ones some caller outside
- * static.cpp uses are listed; add others as callers are converted.
- */
 extern "C" {
-/* 0x00442a80 vtable slot 0: MSVC's scalar/vector deleting destructor.  Bit 1
- * = "this is an array", bit 0 = "free the block".  Returns the block it
- * destroyed -- `this`, or the array base, which is four bytes below the first
- * element (the count header). */
+/* The scalar/vector deleting destructor: bit 1 means an array, bit 0 frees the
+ * block.  Returns the block destroyed: this, or for an array the count header
+ * four bytes below the first element. */
 __declspec(dllexport) void * __attribute__((thiscall))
 CStatic_ScalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
 
-/* KAROO_SOUND_DIAG, shared with stream.cpp so both sound classes answer the
- * census the same way. */
+/* KAROO_SOUND_DIAG=1: logs each caller's first call.  Shared with the
+ * streaming buffer (stream.cpp). */
 __declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
                                                   unsigned long *seen);
 
 __declspec(dllexport) CStaticSoundbuffer * __attribute__((thiscall))
-CStatic_Init(CStaticSoundbuffer *self);   /* a ctor: returns `this` */
+CStatic_Init(CStaticSoundbuffer *self);  // returns this
 __declspec(dllexport) void __attribute__((thiscall))
-CStatic_ReinitBuffer(CStaticSoundbuffer *self);  /* set vtable, then Reset */
+CStatic_ReinitBuffer(CStaticSoundbuffer *self);  // sets the vtable, then Reset
 __declspec(dllexport) void __attribute__((thiscall))
-CStatic_Reset(CStaticSoundbuffer *self);  /* release COM refs, free filename */
+CStatic_Reset(CStaticSoundbuffer *self);  // releases the buffers and frees the file name
 __declspec(dllexport) int  __attribute__((thiscall))
 CStatic_CreateAndLoad3DSoundFile(CStaticSoundbuffer *self,
                                  IDirectSound *pDS, DWORD dwDsFlags,
                                  const char *filename, void *logger);
-/* Load `filename` into a fresh buffer.  The 2D and 3D forms differ only in
- * whether DSBCAPS_CTRL3D is demanded and a 3D interface queried. */
+
+/* Loads filename into a fresh buffer; returns 1 or 0.  The 3D form adds
+ * DSBCAPS_CTRL3D and queries the 3D interface. */
 __declspec(dllexport) int  __attribute__((thiscall))
 CStatic_CreateAndLoadFile(CStaticSoundbuffer *self,
                           IDirectSound *pDS, DWORD dwDsFlags,
                           const char *filename, void *logger);
-/* Reload THIS buffer's own remembered filename/flags under a new 3D mode --
- * the mode-switch path, not the first load. */
+
+/* Reloads this buffer's own file under a new 3D mode, if it differs. */
 __declspec(dllexport) int  __attribute__((thiscall))
 CStatic_CreateAndLoad(CStaticSoundbuffer *self, IDirectSound *pDS, DWORD set3D);
-/* Turn the 3D interface on or off on an already-loaded buffer. */
+
+/* Turns the 3D processing on or off on a loaded 3D buffer. */
 __declspec(dllexport) int  __attribute__((thiscall))
 CStatic_Apply3DMode(CStaticSoundbuffer *self, int enable3D);
-/* Duplicate `other` into `self`.  Returns `other` on success and NULL on
- * failure -- NOT `self`, which is what makes the callers' `ret == src` test
- * a success test.  `flag` non-zero suppresses the reload-from-file fallback
- * when DuplicateSoundBuffer fails; both SoundManager call sites pass 1. */
+
+/* Duplicates other into self.  Returns other on success and NULL on failure,
+ * which is what makes the callers' `== src` test a success test.  A non-zero
+ * flag suppresses the reload-from-file fallback when duplication fails. */
 __declspec(dllexport) void * __attribute__((thiscall))
 CStatic_Copy(CStaticSoundbuffer *self,
              IDirectSound *pDS, CStaticSoundbuffer *other, int flag);

@@ -1,21 +1,17 @@
-/* inputsetup -- WinMain's input glue around the ProgableControl singleton,
- * from the CdThemes TU (0x403000..0x403ce0).
- *
- *   0x00403940  DirectInputSetup         inputsetup.cpp
- *   0x00403cb0  ControlTrySaveSettings   inputsetup.cpp
- */
+/* Input setup: brings DirectInput up for the game window, registers the
+ * thirteen player and camera actions, binds the default keys, and saves the
+ * bindings again at shutdown.  The devices and bindings live in the single
+ * ProgableControl (progctrl.h). */
+
 #pragma once
 #include <windows.h>
 struct Game;
 
-/* 0x403940, __cdecl: bring DirectInput up on the window, register the
- * thirteen player/camera actions (player.cpp, camerainput.cpp), bind the
- * default keys if no saved bindings load, acquire.  Returns 1, or 0 after a
- * German error box.  The third argument is unused.  One E8, WinMain
- * 0x42d43c. */
+/* Returns 1, or 0 after showing an error box when the keyboard, mouse or
+ * device acquisition fails.  A missing joystick is not an error.  The third
+ * argument is unused. */
 extern "C" __declspec(dllexport) int __cdecl
 Input_DirectInputSetup(HINSTANCE hInstance, HWND hwnd, DWORD unused, Game *game);
 
-/* 0x403cb0, __cdecl, no arguments: log, save the bindings, release every
- * input device.  One E8, WinMain's shutdown 0x42d647. */
+/* Logs, writes the bindings file and releases every input device. */
 extern "C" __declspec(dllexport) void __cdecl Input_TrySaveSettings(void);

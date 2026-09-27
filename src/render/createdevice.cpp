@@ -48,7 +48,7 @@
  *
  * Three more of the TU's functions are reimplemented here, because every
  * reference to each of them is inside CreateD3DDevice and nowhere else
- * (tools/xref.py over Karoo.exe.orig, plus a grep of karoo-hooks/):
+ * (tools/xref.py over Karoo.exe.orig, plus a grep of src/):
  *   0x412f80 Direct3D::Log              14 CALL sites, all in this function
  *   0x413000 EnumDisplayModesCallback   1 PUSH  (0x412977) — builds modeList
  *   0x413100 EnumZBufferFormatsCallback 3 PUSHes (HAL/MMX/RGB) — fills zbufFmt

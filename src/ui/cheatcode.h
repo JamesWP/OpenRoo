@@ -1,9 +1,9 @@
-/* The typed cheat-code handler (cheatcode.cpp).
- * The export(s) patch.py binds, typed on the Game they take in ECX
- * (COHESION_PLAN.md, the void *self metric). */
+/* The typed cheat codes (cheatcode.cpp). */
 #pragma once
 
 class Game;
 
+/* Reads the letters typed since the last call and applies any cheat code they
+ * complete. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Sim_HandleTypedCheatCode(Game *self);

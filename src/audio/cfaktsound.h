@@ -1,3 +1,6 @@
+/* The DirectSound device: the device itself, its primary buffer (kept
+ * playing), and the 3D listener that follows the camera.  One instance, a
+ * sub-object of the sound manager. */
 #pragma once
 #define DIRECTSOUND_VERSION 0x0800
 #include <windows.h>
@@ -8,22 +11,17 @@ struct vec3d {
     float x, y, z;
 };
 
-/*
- * CFaktSound — DirectSound device manager, 120 bytes (0x78).
- * Always embedded inside SoundManager at SoundManager+0x14.
- * Never heap-allocated standalone; ScalarDeletingDtor is always called with free_memory=0.
- *
- * layout verified from HOOKS.md and Ghidra decompile
- */
+/* The device state.  Embedded, never allocated on its own, so its deleting
+ * destructor never frees. */
 #pragma pack(push, 1)
 struct CFaktSound {
-    void                   *vtable;                   // +0x00
-    DWORD                   logger_initialized;        // +0x04  1 if we own the logger, 0 otherwise
-    void                   *logger;                   // +0x08  opaque Logger*; never dereferenced here
-    IDirectSound           *directsound;              // +0x0C
-    IDirectSoundBuffer     *soundbuffer;              // +0x10  primary buffer
-    DSCAPS                  caps_check;               // +0x14  96 bytes = 0x60
-    IDirectSound3DListener *directsound3dlistener;    // +0x74
+    void                   *vtable;
+    DWORD                   logger_initialized;  // always 0: the logger is never owned
+    void                   *logger;              // the caller's logger; not used here
+    IDirectSound           *directsound;
+    IDirectSoundBuffer     *soundbuffer;            // the primary buffer
+    DSCAPS                  caps_check;             // filled by Initialize; unread
+    IDirectSound3DListener *directsound3dlistener;  // NULL when 3D sound is off
 };
 #pragma pack(pop)
 
@@ -37,14 +35,14 @@ static_assert(offsetof(CFaktSound, directsound3dlistener) == 0x74, "directsound3
 static_assert(sizeof(CFaktSound)                          == 0x78, "CFaktSound size");
 static_assert(sizeof(DSCAPS)                              == 0x60, "DSCAPS size");
 
-/* Turn the 3D listener on or off.  Returns 0 on failure; SoundManager::setup
- * gives up when it does.  Declared here, by the owning header, rather than
- * redeclared at the call site (COHESION_PLAN template 10). */
+/* Turns the 3D listener on or off.  Returns 0 on failure, after releasing
+ * everything; the sound manager gives up when it does. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CFaktSound_Create3DListener(CFaktSound *self, int enable);
 
-/* The lifecycle and startup the SoundManager's own lifecycle
- * (soundmanager.cpp) is written on. */
+/* Lifecycle and start-up.  Initialize creates the device at priority level and
+ * the primary buffer in the given format, then starts it playing; returns 0 on
+ * failure.  The 3D form adds the listener. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CFaktSound_BlankFields(CFaktSound *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
@@ -61,17 +59,18 @@ CFaktSound_InitializeWith3DAudio(CFaktSound *self, HWND window,
                                  int samplespersec, USHORT bitspersample,
                                  void *logger);
 
-/* Original vtable at 0x45efa8 — slot 0: ScalarDeletingDtor @ 0x444fb0. */
-extern const void *const CFAKTSOUND_VTABLE;   /* our own table; was the game's at 0x0045efa8 */
+/* The one-slot vtable: the deleting destructor. */
+extern const void *const CFAKTSOUND_VTABLE;
 
-/* The 3D listener: position, orientation, then the deferred commit
- * (cfaktsound.cpp).  RenderGameFrame moves the listener with the camera. */
+/* The 3D listener: position, orientation and the deferred commit.  The
+ * renderer moves the listener with the camera each frame. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CFaktSound_CommitSettings(CFaktSound *self);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CFaktSound_SetPosition(CFaktSound *self, vec3d *pos, DWORD dwApply);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CFaktSound_SetOrientation(CFaktSound *self, vec3d *front, vec3d *top, DWORD dwApply);
-/* 0x445420 -- WinMain sets 0.3 on the SoundManager's CFaktSound. */
+
+/* WinMain sets a rolloff of 0.3. */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 CFaktSound_Apply3DRolloffParams(CFaktSound *self, float rolloff_factor, DWORD dwApply);

@@ -3,9 +3,9 @@
 #include "log.h"
 #include <stdlib.h>
 
-/* See levelreport.h.  LoadSounds' three queries are consecutive and are the
- * first VK_L queries of the run, so a countdown of three is exact. */
-static int  g_left    = -1;   /* -1 = not initialised */
+/* The three polls are consecutive and the first polls of L in the run, so a
+ * countdown of three is exact. */
+static int  g_left    = -1;  // -1 until read
 static bool g_enabled = false;
 
 static void init(void)
@@ -29,7 +29,7 @@ bool levelreport_async_override(int vkey, SHORT *out)
 {
     init();
     if (!g_enabled || g_left <= 0) return false;
-    if (vkey != 0x4C /* VK_L */)   return false;
+    if (vkey != 0x4C )   return false;  // VK_L
     g_left--;
     if (g_left == 0)
         log_write("levelreport: trigger delivered; WriteLevelReport should now "
@@ -41,14 +41,11 @@ bool levelreport_async_override(int vkey, SHORT *out)
 void levelreport_tick(void)
 {
     init();
-    if (!g_enabled || g_left != 0) return;   /* not enabled, or not yet fired */
+    if (!g_enabled || g_left != 0) return;  // not enabled, or not yet fired
 
-    /* The first frame boundary is already past WriteLevelReport: LoadSounds
-     * calls it synchronously, long before the render loop starts ticking the
-     * clock.  So by the time this runs the files are written and the only job
-     * left is to leave.  menu_request is idempotent and the driver needs
-     * several frames to walk to the node, so ask every frame until we are
-     * gone. */
+    // The report is written before the first frame boundary, so by the time
+    // this runs the only job left is to leave.  The menu driver needs several
+    // frames to reach Quit; ask every frame.
     static bool said;
     if (!said) {
         said = true;

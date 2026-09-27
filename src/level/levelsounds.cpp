@@ -1,47 +1,14 @@
-/* GAMETICK_PLAN.md Band B reopened — level-based sound initialisation.
+/* Everything is gated on the sound device being up.  The world's sound variant
+ * is 0, 2 for Space and 1 for Candy; PRESERVED: Egypt is set to 0 a second
+ * time, redundantly.  The player's two voice pools and eleven effect buffers
+ * are reloaded, then every foe, breakable, lift, slide and bridge gets its
+ * sounds, and on a first attempt at a level with 3D sound each extra sound
+ * object (.leo) starts looping at its position.  Every load passes a stack
+ * copy of the name.  Returns 0 in the low byte.
  *
- *   Game::InitLevelBasedSounds  0x0041c360   1 E8 site (0x00414E17, GameTick)
- *
- * __thiscall(Game*), bare RET (the decompile's `void *param_1` is an unused
- * register artefact).  Transcribed from the LISTING.
- *
- * Callees:
- *   Log_Message 0x441b10             GameLog_LogMessage   (gamelog.cpp)
- *   CStaticSoundbuffer::Reset        CStatic_Reset        (static.cpp)
- *   Set3DPosition / TriggerPlayback  CStatic_*            (static.cpp)
- *   AcquireObjectSoundBuffersForIndex Sim_*               (soundobj.cpp)
- *   SoundManager::AcquireSoundBuffer 0x443660  } named callbacks -- the
- *   SoundManager::AcquireVoicePool   0x443810  } sound manager is not ours
- *   (VoicePool::VoicePoolWipe is ours as of ENDGAME_PLAN E1 -- it comes
- *    from voicepool.h now, not from an absolute address.)
- *
- * Order, all gated on SoundManager created (+0x13cc34):
- *   +0x175323 world code: 0, then 0 again for "Egypt", 2 for "Space", 1 for
- *     "Candy" -- the Egypt test is redundant with the initial clear; kept.
- *   pool3  (+0x175268): wipe if set, reacquire from +0x441ca, count 3
- *   pool10 (+0x175298): wipe if set, reacquire from +0x4236e, count 10
- *   eleven buffers, each Reset-if-set then reacquire-if-named:
- *     +0x17528c<-456ba  +0x175288<-42ef2  +0x17527c<-429b6  +0x175290<-4279e
- *     +0x17526c<-428aa  +0x175280<-42ac2  +0x175284<-42ac2 (same name twice)
- *     +0x175274<-42586  +0x175278<-42692  +0x175294<-42de6  +0x175270<-44c42
- *   each foe in the ID list: AcquireObjectSoundBuffersForIndex(id)
- *     (16-bit loop counter, as the listing's SI/CX compare)
- *   breakables (+0x173b1e, n +0x173e3e): +0x4d<-4310a, +0x51<-43216
- *   lifts      (+0x173719, n +0x173b19): +0x3a<-42bce
- *   slides     (+0x173588, n +0x173718): +0x39<-42cda
- *   bridges    (+0x170643, n +0x170a43): +0x47<-42ffe
- *   if +0x4220b == 0 and mode_3d (+0x2ab564): every LEO extra object
- *     (count WORD +0x13cba6, stride 0xf40) whose type byte +0x48ec2 == 3
- *     gets a buffer from its name at +0x48ba6 into +0x49ae2 and, if non-null,
- *     Set3DPosition(+0x48ca6, +0x48cae, -(+0x48caa), 1) and TriggerPlayback(1)
- *   then the closing log line.  Returns AL = 0.
- *
- * Every acquire passes a stack COPY of the name, as the listing does.
- *
- * Control: KAROO_SIM_FX=worldcode -- "Space" and "Candy" swap codes (1<->2).
- * +0x175323 is read by the simulation elsewhere; whether that reaches an
- * asserted field is measured, not assumed.
- */
+ * KAROO_SIM_FX=worldcode is a negative control: Space and Candy swap sound
+ * variants. */
+
 #include <windows.h>
 #include <string.h>
 #include "log.h"
@@ -69,8 +36,6 @@ CStatic_Set3DPosition(CStaticSoundbuffer *self, float x, float y, float z,
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 CStatic_TriggerPlayback(CStaticSoundbuffer *self, DWORD dwLoopFlags);
 
-
-
 static int s_fx = -1;
 
 static CStaticSoundbuffer *acq(Game *game, const SoundAssetName *asset)
@@ -87,10 +52,8 @@ static VoicePool *acq_pool(Game *game, int count, const SoundAssetName *asset)
     return game->soundManager()->acquirePool(count, name, 1);
 }
 
-/* Reset-if-set, then reacquire-if-named, for one of the eleven slots.  The
- * caller stores the result back: the new buffer if the asset is named, else
- * the (reset) buffer it passed -- the original left the slot untouched, and
- * storing the same value back is the same state. */
+/* Resets the old buffer if there is one, then loads the named asset if it is
+ * set.  The caller stores the result: the new buffer, or the reset one. */
 static CStaticSoundbuffer *reslot(Game *game, CStaticSoundbuffer *cur,
                                   const SoundAssetName *asset)
 {
@@ -101,9 +64,8 @@ static CStaticSoundbuffer *reslot(Game *game, CStaticSoundbuffer *cur,
     return cur;
 }
 
-/* Give every object in one slot table its moving-loop sound: the lift,
- * slide and bridge each have one handle, set through setSound().  The count
- * and the slot are re-read every pass, as the listing does. */
+/* Gives every object in one slot table its moving-loop sound.  The count and
+ * the slot are re-read every pass. */
 template <typename T>
 static void attachLoopSound(Game *game,
                             unsigned char (Game::*count)() const,
@@ -184,7 +146,7 @@ Sim_InitLevelBasedSounds(Game *self)
 
         if (game->restartCount() == 0 && game->sound3D() != 0) {
             GameLog_LogMessage(&g_logger, 1, GS_SND_TRY_LEO);
-            /* The count is re-read every pass, as the original's is. */
+            // The count is re-read every pass.
             ExtraObjects *xo = game->extraObjects();
             for (unsigned short i = 0; i < xo->objectCount(); ++i) {
                 ExtraObjectRecord *E = xo->record(i);

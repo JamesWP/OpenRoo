@@ -1,18 +1,19 @@
+/* The determinism hash (determinism.cpp).  With KAROO_HASH_LOG set, each frame
+ * folds the live simulation state into an FNV-1a hash and writes one line to
+ * that file.  Two runs given the same input must write identical files; where
+ * they differ, real time is leaking into the simulation. */
+
 #pragma once
 #include <windows.h>
 
 struct ParticleSystem;
 
-/* Stage A2 determinism proof — REPLAY_PLAN.md.
- *
- * Accumulates a per-frame FNV-1a hash over live simulation state and writes one
- * line per frame to KAROO_HASH_LOG.  Two runs with identical input must produce
- * byte-identical files; if they do not, a clock source is still leaking real
- * time into the simulation. */
+/* Whether KAROO_HASH_LOG is set. */
 bool dethash_enabled(void);
 
-/* Fold one particle system's live ring into the current frame's hash. */
+/* Folds one particle system's live ring into this frame's hash. */
 void dethash_particles(ParticleSystem *ps);
 
-/* Close the frame: fold in the Game fields, emit a line, reset. */
+/* Folds in the Game fields, writes the frame's line and starts the next hash.
+ */
 void dethash_frame_end(double virtual_seconds);

@@ -1,11 +1,15 @@
-/* SavedGames\<name><N>.sav -- the save-slot table's files (saveslots.h).
- * Split from the old playerstate.cpp; ASSET_PLAN.md Phase 2's notes on the
- * format (the cipher, TEXT mode, the reader/writer asymmetries) are in
- * highscores.cpp's header.
+/* FORMAT: SavedGames\<name><N>.sav is one slot record, enciphered byte by byte
+ * as file = stored + key (8 bits), opened in text mode like the high-score
+ * file (highscores.cpp).
  *
- *   0x43b4a0  LoadSaveFile           (this, name, key)   ret 8   1 site
- *   0x43b3d0  WriteAllSaveSlotFiles  (this, name, key)   ret 8   2 sites
- */
+ * PRESERVED:
+ *   - The reader fails the whole call at the first missing file; the
+ *     writer skips a slot it cannot open and returns 1 regardless.
+ *   - The reader's record pointer runs on across slots rather than being
+ *     recomputed per slot.
+ *   - The reader ignores fread's result and reuses one byte variable, so a
+ *     short file repeats its last byte.
+ *   - Paths are formatted unbounded into 128-byte buffers. */
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,8 +18,6 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 #include <stdlib.h>
-
-/* Game data the path formats consume.  A DATA read, not a call. */
 
 #define PS_LOG_FIRST   6
 
@@ -29,15 +31,13 @@ static void ps_log(const char *what, const char *path, int ok)
     }
 }
 
-/* ─── SavedGames\<name><N>.sav ───────────────────────────────────────────── */
-
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
 {
     SaveSlots *table = self;
-    unsigned char *rec = (unsigned char *)table->slot(0);  /* runs continuously - defect 4 */
+    unsigned char *rec = (unsigned char *)table->slot(0);  // PRESERVED: runs on across slots
     char path[128];
-    unsigned char b;                              /* not re-initialised - defect 2 */
+    unsigned char b;  // PRESERVED: never re-initialised
     int slot;
 
     for (slot = 0; slot < (int)table->count(); slot++) {
@@ -46,7 +46,7 @@ Save_LoadAllSlotFiles(SaveSlots *self, const char *name, char key)
         fp = fopen(path, "r");
         if (fp == NULL) {
             ps_log("sav load", path, 0);
-            return 0;                             /* defect 3: whole call fails */
+            return 0;  // PRESERVED: the whole call fails
         }
         for (int i = 0; i < (int)sizeof(SaveSlot); i++) {
             fread(&b, 1, 1, fp);
@@ -66,14 +66,14 @@ Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
     int slot;
 
     for (slot = 0; slot < (int)table->count(); slot++) {
-        /* Recomputed per slot, unlike the reader -- defect 4. */
+        // Recomputed per slot, unlike the reader.
         unsigned char *rec = (unsigned char *)table->slot((unsigned char)slot);
         FILE *fp;
         sprintf(path, "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
         fp = fopen(path, "w+");
         if (fp == NULL) {
             ps_log("sav save", path, 0);
-            continue;                             /* defect 3: skip, keep going */
+            continue;  // PRESERVED: skip it and go on
         }
         for (int i = 0; i < (int)sizeof(SaveSlot); i++) {
             unsigned char out = (unsigned char)(rec[i] + (unsigned char)key);
@@ -85,22 +85,8 @@ Save_WriteAllSlotFiles(SaveSlots *self, const char *name, char key)
     return 1;
 }
 
-
-/* ─── The ctor / dtor / deleting-dtor trio (ENDGAME_PLAN.md E2) ──────────
- *
- * Three functions, five instructions between them.  See saveslots.h for the
- * vtable argument; the summary is that only these two functions install the
- * table, so it may be ours, and the game's 0x45d6f4 is left pointing at the
- * UD2 stub as the tripwire.
- *
- * The deleting dtor is unverified by test, like every other slot 0 in this
- * batch: it has no CALL or JMP anywhere in the binary, and the table is the
- * only way in.  Nothing in the game deletes the save-slot table -- it is
- * embedded in Game at +0x170a7c, not separately allocated -- so bit 0 of the
- * flag word should never be set here.  The Free2 is reproduced anyway,
- * because "should never" is not "cannot", and a wrong free is louder than a
- * missing one.
- */
+/* The table is embedded in the Game, so the deleting destructor never frees in
+ * practice. */
 extern "C" {
 
 static void *const g_SaveSlotsVtable[1] = { (void *)&SaveSlots_ScalarDtor };
@@ -131,15 +117,11 @@ SaveSlots_ScalarDtor(SaveSlots *self, unsigned int flags)
     return self;
 }
 
-} // extern "C"
+}
 
-/* ─── 0x0043b560 InitialiseEmptySaveSlotTable ───────────────────────────────
- *
- * Blanks the first count_ records -- count_ is whatever Game::Load set, the
- * loop bound is re-read each pass.  Per record, in the original's order:
- * inUse, levelIndex, livesRemaining, the name "..........", then
- * completionNumerator and elapsedGameTime.  totalScore and unusedTail are
- * NOT touched (kept: a blank slot keeps a stale score). */
+/* Blanks the first count_ records, re-reading the count each pass.  PRESERVED:
+ * the score and unused tail are not touched, so a blank slot keeps a stale
+ * score. */
 void SaveSlots::initialiseEmpty()
 {
     for (int i = 0; i < count_; ++i) {

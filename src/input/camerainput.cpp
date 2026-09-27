@@ -1,6 +1,3 @@
-/* camerainput.cpp -- see camerainput.h.  Written from the listing.  The
- * step constants are the originals' floats (0.01f, 0.001f, 0.05f), widened
- * to double against the double dt as the x87 did. */
 #include <windows.h>
 #include "camerainput.h"
 #include "game.h"
@@ -8,6 +5,8 @@
 #include "levelmap.h"
 #include "player.h"
 
+/* DETERMINISM: the rates are float constants widened to double, and each
+ * step is computed in double against the double tick step before narrowing. */
 static const double ZOOM_RATE  = (double)0.01f;
 static const double TURN_RATE  = (double)0.001f;
 static const double TILT_RATE  = (double)0.05f;
@@ -26,7 +25,7 @@ Camera_ZoomOut(int, int, void *ctx)
     Game *g = (Game *)ctx;
     if (g->zoomDistance() < ZOOM_MAX)
         g->setZoomDistance((float)(dt(g) * ZOOM_RATE + g->zoomDistance()));
-    g->setField13cc90(1);
+    g->setField13cc90(1);  // PRESERVED: set on every zoom; nothing reads it
 }
 
 __declspec(dllexport) void __cdecl
@@ -35,11 +34,10 @@ Camera_ZoomIn(int, int, void *ctx)
     Game *g = (Game *)ctx;
     if (g->zoomDistance() > ZOOM_MIN)
         g->setZoomDistance((float)(g->zoomDistance() - dt(g) * ZOOM_RATE));
-    g->setField13cc90(1);
+    g->setField13cc90(1);  // PRESERVED: set on every zoom; nothing reads it
 }
 
-/* Only on a level without the bonus flag, and only while the player is
- * alive (moveState 0). */
+/* Only on a normal (non-bonus) level, and only while the player is alive. */
 __declspec(dllexport) void __cdecl
 Camera_Overview(int, int, void *ctx)
 {
@@ -66,7 +64,8 @@ Camera_RotateLeft(int, int, void *ctx)
     c->setCameraYaw((float)(c->cameraYaw() - dt(g) * TURN_RATE));
 }
 
-/* Only in game state 1.  Step while at or below the limit, then clamp. */
+/* Only while playing.  Steps while at or below the limit, then clamps, so
+ * one step may overshoot before the clamp. */
 __declspec(dllexport) void __cdecl
 Camera_TiltUp(int, int, void *ctx)
 {

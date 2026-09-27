@@ -1,22 +1,7 @@
-/* Config -- the game's settings object, embedded in Game at +0x28ab2e
- * (COHESION_PLAN.md Band 3 follow-on; the seventh sub-object).
- *
- * 0x20a52 bytes: it starts right after Game's cameraMode and its persisted
- * blob ends exactly at Game's cameraEye (+0x2ab580).  KAROO_LAYOUT_SIZE
- * asserts it.
- *
- *   InstallConfigVtable     0x41d390  ctor: vtable 0x45d414, zeroes WORD +0x1f404
- *   FillDefaultConfigValues 0x41d520  the defaults, all inside the blob
- *   LoadConfigValues        0x41d3e0  ours: Config_LoadValues (config.cpp)
- *   SaveConfig              0x41d490  ours: Config_Save       (config.cpp)
- *
- * Karoo.cfg is the 0x144e-byte blob +0x1f604..+0x20a52 (persisted()) plus a
- * tag.  What the first 0x1f600 bytes hold is not decoded; nothing of ours
- * touches them.  The fields below are the ones Game code reads -- each was
- * a Game accessor before this class existed, and Game still offers them,
- * delegating here.  Their meanings are on Game's accessors (game.h); the
- * defaults are FillDefaultConfigValues's.
- */
+/* Config: the game's settings, a sub-object of Game.  Its tail is the
+ * persisted blob Karoo.cfg holds (config.cpp); the fields named here are the
+ * ones the code uses.  Most of the object, and parts of the blob, are not
+ * decoded and nothing reads them. */
 #pragma once
 
 #include <stddef.h>
@@ -27,14 +12,14 @@ class __attribute__((packed)) Config {
 public:
     static const int ORIGIN = 0;
 
-    /* The persisted blob: what Karoo.cfg holds, byte for byte. */
+    // FORMAT: the persisted blob, what Karoo.cfg holds byte for byte.
     enum { PERSISTED_OFFSET = 0x1f604, PERSISTED_SIZE = 0x144e };
     unsigned char *persisted()
     {
         return (unsigned char *)this + PERSISTED_OFFSET;
     }
 
-    /* Game::Load copies it into Game's cameraDistance.  Default 5.0. */
+    // Copied into the Game's camera distance on load; default 5.0.
 
     int            musicOn() const                     { return musicOn_; }
     void           setMusicOn(int on)                  { musicOn_ = on; }
@@ -50,7 +35,8 @@ public:
     unsigned char  cameraTurnsWithPlayer() const       { return cameraTurnsWithPlayer_; }
     void           setCameraTurnsWithPlayer(unsigned char on) { cameraTurnsWithPlayer_ = on; }
     unsigned short joyDeadzone() const                 { return joyDeadzone_; }
-    /* The launcher's device choice (WinMain -> CreateD3DDevice). */
+
+/* The launcher's display device and mode choice. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
     GUID          *adapterGuid()                       { return &adapterGuid_; }
@@ -59,54 +45,27 @@ public:
     void           setDisplayModeIndex(unsigned int i) { displayModeIndex_ = i; }
     void           setJoyDeadzone(unsigned short p)    { joyDeadzone_ = p; }
 
-    /* Undecoded blob fields Game code reaches: HandleKeypress toggles
-     * +0x1f609 (0 <-> 1).  (GameTick's dword copy of cameraPitch_ into
-     * activeCameraPitch_ is now a float assignment -- the same bits for
-     * every value a pitch can hold.) */
-    /* ── the four video-quality options ─────────────────────────────────
-     * One byte each, persisted, defaults 2,1,2,2; the options screen
-     * (RenderVideoOptions 0x0042e9f0) draws them in the order Reflection,
-     * Shadows, Highlights, Particles, and HandleKeypress edits them.
-     * Shadows/Highlights/Particles are 0..2 sliders on keys 0x48/0x49/0x4a;
-     * Reflection is a 0/1 toggle on its own key.
-     *
-     * The pairing, and how it was settled (COHESION_PLAN.md Band 8c):
-     * CONFIRMED -- 0x1f60a (Game +0x2aa138) gates D3DRENDERSTATE_SPECULARENABLE
-     * in DrawBridgeSurfaces (0x0040964d) and at 0x0040b039, and specular IS
-     * "Highlights"; that anchors the label at 0x00466b38 to the byte read at
-     * 0x0042fd15, i.e. each label is pushed BEFORE the byte it describes is
-     * read.  The other three then follow by position, each label's push
-     * followed by exactly one option read, 1:1 and in order:
-     *   "Reflection" 0x00466b4c @0x0042eacf -> 0x0042edd6 reads +0x1f609
-     *   "Shadows"    0x00466b44 @0x0042ee90 -> 0x0042f3a8 reads +0x1f608
-     *   "Highlights" 0x00466b38 @0x0042f9d9 -> 0x0042fd15 reads +0x1f60a
-     *   "Particles"  0x00466b2c @0x004301a8 -> 0x00430399 reads +0x1f60b
-     * Corroborated twice: the reverse pairing leaves "Reflection" with no
-     * read at all, and Reflection is the one option HandleKeypress toggles
-     * 0/1 rather than stepping 0..2 -- which is byte [1], +0x1f609. */
+    // The four video-quality options, one persisted byte each, defaults
+    // 2,1,2,2.  Shadows, Highlights and Particles are 0..2 sliders; Reflection
+    // is a 0/1 toggle.  Highlights gates specular lighting.
     unsigned char &videoShadows()                      { return videoOptions_[0]; }
     unsigned char &videoReflection()                   { return videoOptions_[1]; }
     unsigned char &videoHighlights()                   { return videoOptions_[2]; }
     unsigned char &videoParticles()                    { return videoOptions_[3]; }
-    /* The orbit camera's angles, in degrees (camerainput.cpp steps them). */
+    // The orbit camera's angles, in degrees.
     float          cameraYaw() const                   { return cameraYaw_; }
     void           setCameraYaw(float a)               { cameraYaw_ = a; }
     float          cameraPitch() const                 { return cameraPitch_; }
     void           setCameraPitch(float a)             { cameraPitch_ = a; }
-    /* The tilt in effect, degrees: the level builder seeds 60, GameTick
-     * copies cameraPitch() in every tick, and UpdateViewTransform eases the
-     * camera's pitch towards it (x pi/180; its occlusion probe tilts by
-     * x -pi/180). */
+    // The tilt in effect, in degrees: the level builder seeds 60, the tick
+    // copies cameraPitch() in every tick, and the view eases towards it.
     float          activeCameraPitch() const           { return activeCameraPitch_; }
     void           setActiveCameraPitch(float a)       { activeCameraPitch_ = a; }
 
-
-    /* Game-embedded lifecycle, called only by Game_Construct / Game_Destruct
-     * (gamelife.cpp).  The vtable installed is ours (one slot, the scalar
-     * dtor below); the game's is left as a tripwire. */
-    void construct();   /* 0x41d390 */
-    void destruct();    /* 0x41d3d0 */
-    /* 0x41d520 -- the defaults Karoo.cfg.default also holds. */
+    // Called only by the Game's construction and destruction.
+    void construct();
+    void destruct();
+    // The defaults, which data/Karoo.cfg.default also holds.
     void fillDefaults();
     unsigned int   savedCdMixerVolume() const          { return savedCdMixerVolume_; }
     void           setSavedCdMixerVolume(unsigned int v) { savedCdMixerVolume_ = v; }
@@ -120,40 +79,36 @@ public:
     float          cameraDistanceSetting() const       { return cameraDistanceSetting_; }
 
 private:
-    Config() = delete;   /* game-owned; only ever reached by pointer */
+    Config() = delete;  // only ever reached through the Game
     KAROO_LAYOUT_REGISTER(Config);
 
-    const void    *vtable_;                          /* +0x00000  0x45d414 */
+    const void    *vtable_;
     unsigned char  gap_00004[0x1f404 - 0x00004];
-    unsigned short field_1f404_;                     /* +0x1f404  ctor zeroes */
+    unsigned short field_1f404_;  // zeroed by the constructor; unread
     unsigned char  gap_1f406[0x1f604 - 0x1f406];
-    /* ── the persisted blob ── */
-    unsigned int   field_1f604_;                     /* +0x1f604  default 1 */
-    /* Shadows, Reflection, Highlights, Particles -- see the accessors. */
-    unsigned char  videoOptions_[4];                 /* +0x1f608  defaults 2,1,2,2 */
-    float          cameraDistanceSetting_;           /* +0x1f60c  5.0 */
-    /* The launcher's device choice (DeviceSelectDlgProc writes both on OK),
-     * handed to CreateD3DDevice by WinMain's first rung: GUID ->
-     * DirectDrawCreate, mode index -> the mode-list walk.  The index is a
-     * DWORD -- the dialog reads and writes all four bytes -- but WinMain
-     * pushes only its low byte. */
-    GUID           adapterGuid_;                     /* +0x1f610  Game 0x2aa13e */
-    unsigned int   displayModeIndex_;                /* +0x1f620  Game 0x2aa14e */
-    unsigned int   field_1f624_;                     /* +0x1f624  default 1 */
-    int            musicOn_;                         /* +0x1f628  Game 0x2aa156 */
-    unsigned char  cdVolume_;                        /* +0x1f62c  Game 0x2aa15a */
-    unsigned int   savedCdMixerVolume_;              /* +0x1f62d  Game 0x2aa15b; restored at exit */
-    unsigned int   cdMixerVolume_;                   /* +0x1f631  Game 0x2aa15f */
+    // The persisted blob starts here.
+    unsigned int   field_1f604_;            // default 1; unread
+    unsigned char  videoOptions_[4];        // Shadows, Reflection, Highlights, Particles
+    float          cameraDistanceSetting_;  // default 5.0
+    // The launcher's device choice, written by its dialog on OK.  PRESERVED:
+    // the mode index is a DWORD, but WinMain passes only its low byte.
+    GUID           adapterGuid_;
+    unsigned int   displayModeIndex_;
+    unsigned int   field_1f624_;         // default 1; unread
+    int            musicOn_;             // 0 or 1
+    unsigned char  cdVolume_;            // percent, in steps of 10
+    unsigned int   savedCdMixerVolume_;  // the mixer volume at startup, restored at exit
+    unsigned int   cdMixerVolume_;       // 0..65536
     unsigned char  gap_1f635[0x20a36 - 0x1f635];
-    int            sound3D_;                         /* +0x20a36  Game 0x2ab564 */
-    unsigned char  waveVolume_;                      /* +0x20a3a  Game 0x2ab568 */
-    unsigned int   savedWaveOutVolume_;              /* +0x20a3b  Game 0x2ab569; restored at exit */
-    unsigned int   waveOutVolume_;                   /* +0x20a3f  Game 0x2ab56d */
-    unsigned char  cameraTurnsWithPlayer_;           /* +0x20a43  Game 0x2ab571 */
-    float          cameraYaw_;                       /* +0x20a44  default 0; CamModeLeft/Right */
-    float          activeCameraPitch_;               /* +0x20a48  Game 0x2ab576; the tilt in effect, degrees */
-    float          cameraPitch_;                     /* +0x20a4c  default 50.0; CamModeUp/Down, 50..89 */
-    unsigned short joyDeadzone_;                     /* +0x20a50  Game 0x2ab57e */
+    int            sound3D_;                // 0 or 1
+    unsigned char  waveVolume_;             // percent, in steps of 10
+    unsigned int   savedWaveOutVolume_;     // the wave volume at startup, restored at exit
+    unsigned int   waveOutVolume_;          // left and right 16-bit halves
+    unsigned char  cameraTurnsWithPlayer_;  // 0 or 1
+    float          cameraYaw_;              // degrees, default 0
+    float          activeCameraPitch_;      // degrees
+    float          cameraPitch_;            // degrees, 50..89, default 50
+    unsigned short joyDeadzone_;            // percent, default 50
 };
 
 KAROO_LAYOUT_CHECKS(Config)
@@ -176,16 +131,16 @@ KAROO_LAYOUT_CHECKS(Config)
     KAROO_LAYOUT_AT(activeCameraPitch_,     0x20a48);
     KAROO_LAYOUT_AT(cameraPitch_,           0x20a4c);
     KAROO_LAYOUT_AT(joyDeadzone_,           0x20a50);
-    /* The blob is the object's tail. */
+    // The blob is the object's tail.
     KAROO_LAYOUT_SIZE(Config::PERSISTED_OFFSET + Config::PERSISTED_SIZE);
 }
 
-/* The exports patch.py binds (config.cpp). */
+/* Karoo.cfg: returns 1 when the file loads and ends with the tag. */
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Config_LoadValues(Config *self, const char *path);
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 Config_Save(Config *self, const char *path);
 
-/* 0x41d3b0, slot 0 of our Config table. */
+/* The one slot of Config's vtable. */
 extern "C" __declspec(dllexport) Config *__attribute__((thiscall))
 Config_ScalarDestructor(Config *self, unsigned char flags);

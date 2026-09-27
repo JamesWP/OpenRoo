@@ -1,31 +1,18 @@
-/* GAMETICK_PLAN.md Band B (reopened) — the restart tile-grid restore.
+/* Restores each tile from the snapshot taken when the level was built, when
+ * the player restarts it.  Height, object marker and parameter are copied
+ * back; the contents follow these rules, in this order:
+ *   - a crystal taken since the snapshot stays taken;
+ *   - a destructible tile that is busy becomes marker 1, in the snapshot
+ *     as well as the live tile (PRESERVED: the snapshot is written);
+ *   - the tile's own respawn contents, if any, are put back;
+ *   - an extra life taken since the snapshot stays taken;
+ *   - any other contents come back from the snapshot.
+ * Both extents are re-read every pass.
  *
- *   RestoreTileGridFromSnapshot  0x004184a0   1 E8 site (0x004160DF, GameTick)
- *
- * A LEAF: no callees at all.  __fastcall in the original, Game base in ECX,
- * no stack arguments, bare RET -- identical at the ABI level to a thiscall
- * with no arguments, which is how it is declared here.
- *
- * Transcribed from the LISTING, not the decompile.  Per tile (pitch 0x319c
- * along the inner loop, 0x7f along the outer), the snapshot lives 0x1360f0
- * bytes above the live tile:
- *
- *   +0..+2 copied verbatim from the snapshot
- *   snap+3 == 1 && live+3 != 1          -> live+3 = 0
- *   snap+1 == 0x17 && dword live+0x7b   -> snap+1 = live+1 = 1   (WRITES THE
- *                                          SNAPSHOT -- preserved)
- *   live+0x66 != 0                      -> live+3 = live+0x66
- *   snap+3 == 7 && live+3 != 7          -> live+3 = 0
- *   snap+3 not 7 and not 1              -> live+3 = snap+3
- *
- * The order is load-bearing and kept exactly.  Both extents are re-read
- * every iteration, as the listing does.
- *
- * Control: KAROO_SIM_FX=gridkeep -- the state byte (+3) is left untouched,
- * so consumed tiles stay consumed across a restart while +0..+2 and the 0x17
- * snapshot write still happen.  A change to what the world contains, not a
- * skipped call.
- */
+ * KAROO_SIM_FX=gridkeep is a negative control: the contents are left alone, so
+ * everything consumed stays consumed across a restart.
+ * KAROO_GRIDRESTORE_DIAG=1 logs each call. */
+
 #include <windows.h>
 #include <string.h>
 #include "log.h"
@@ -66,7 +53,7 @@ Sim_RestoreTileGridFromSnapshot(Game *self)
         log_write("gridrestore: call %u extents 727=%u 728=%u\n", s_calls,
                   map->extentV(), map->extentU());
 
-    /* The outer loop runs over v (pitch 0x7f), the inner over u (0x319c). */
+    // Outer loop over v, inner over u.
     for (unsigned r = 0; r < map->extentV(); ++r) {
         for (unsigned c = 0; c < map->extentU(); ++c) {
             Tile *t = map->tile((int)c, (int)r);
@@ -82,7 +69,7 @@ Sim_RestoreTileGridFromSnapshot(Game *self)
                 t->setObjectMarker(1);
             }
             if (s_fx)
-                continue;               /* gridkeep: no +3 store at all */
+                continue;  // gridkeep: no contents store at all
             if (t->field202() != CONTENTS_NONE)
                 t->setContents(t->field202());
             if (s->contents() == CONTENTS_EXTRA_LIFE && t->contents() != CONTENTS_EXTRA_LIFE)

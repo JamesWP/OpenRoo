@@ -1,55 +1,43 @@
-# Ka'roo on Linux
+# Open'Roo
 
-Ka'roo is a 1990s Windows DirectDraw game running under Linux via Proton/Wine.
+A reimplementation of **Ka'roo**, a 1990s Windows 3D puzzle-platform game,
+written from scratch in C++. It builds to a Windows executable,
+`KarooOwn.exe`, which runs on Linux under Proton/Wine.
 
-## Quick start
+Open'Roo contains **no game data and no code from the original**. You need
+your own copy of Ka'roo: the importer takes the levels, models, textures,
+sounds and the original executable's resources from it.
 
-**Build the game:**
+## Build and run
+
+Needs `i686-w64-mingw32-g++`, `make`, Python 3 and Proton (Steam's
+"Proton - Experimental").
 
 ```bash
-cd karoo-hooks && make
+python3 tools/import_assets.py --from KaRoo.zip   # once: fills game/ from your copy
+make                                              # build/KarooOwn.exe
+bash launch.sh                                    # run it (in run/)
+bash launch.sh --headless --auto-exit 30          # no display at all
 ```
 
-**Launch it:**
+`game/` is your imported data and is never written. `run/` is where the game
+runs: your config, saves, high scores and logs.
+
+## Tests
 
 ```bash
-bash launch.sh
+python3 tools/replaytest.py --headless   # recorded inputs, asserted end state
+python3 tools/levelreport.py             # all 80 levels loaded and counted
 ```
 
-## How it works
+See `docs/TESTING.md`. How the code is organised: `docs/DESIGN.md`.
 
-`KarooOwn.exe` is a reimplementation of the game, built from `karoo-hooks/`.
-It contains no code from the original executable and runs on stock Wine
-ddraw. The earlier route — patching `Karoo.exe` to call into a hooks DLL — is
-retired; the last commit that builds it is tagged `hybrid-final`.
+## Licence
 
-See `CLAUDE.md` for details and `OPEN_PLAN.md` for the current plan.
+Open'Roo is **source-available, non-commercial**: everything in this
+repository is licensed under
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (`LICENSE`).
+It is not "open source" in the OSI sense.
 
-## Notes on importing types into ghidra
-
-Have a checked out version of wine, build and install headers somewhere DESTDIR=/dir make install
-
-Then open Ghidra Parse C Source window.
-
-Use VistualStudio9.prf
-clear out default include paths
-Add include paths to /dir/usr/local/include/wine/windows
-Add include paths to /dir/usr/local/include/wine/msvcrt
-
-add two includes to top of SourceFiles to parse: /dir/usr/local/include/wine/windows/windows.h
-                                                 /dir/usr/local/include/wine/windows/dinput.h
-
-(or whatever you want to replace dinput.h with)
-
-click parse to program and then 'Use Open Archives' if prompted
-
-## Cheats
-     "mausuruh"  Game+0x175402 += 1     -- one extra life
-     "boommaker" Game+0x1752b1 += 10
-     "sportsman" Game+0x1752b2 += 1
-     "kaputo"    every live foe's +0x11f = 4
-     "supa"      completes the level (bGame_state 3, menu node 0x28), or
-                 game over when it is the last level
-     "notme"     sets Game+0x1753bb and marks the player's tile
-     "jjmap"     load a level by name      "jjmapnr"  load a level by number
-   
+Ka'roo, its name and its assets belong to their rights holders. Open'Roo is
+an unofficial fan project and is not affiliated with them.

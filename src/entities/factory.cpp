@@ -1,15 +1,6 @@
-/* Stage E — the three factories (PARTICLE_PLAN.md § 6.9, § 6.11).
- *
- * patch.py rewrites the six call sites:
- *
- *   0x4485d0 GeneratorFactoryCreate      → Gen_FactoryCreate  (2 E8 sites)
- *   0x4488f0 EnvironmentFactoryCreate    → Env_FactoryCreate  (2 E8 sites)
- *   0x448ab0 ParticleSystemFactoryCreate → PS_FactoryCreate   (2 E8 sites)
- *
- * All three originals are UD2: the object, its constructor and its vtable are
- * ours, so these just forward to the create functions in generators.cpp and
- * particles.cpp and log the first call of each for the record.
- */
+/* The three factories: each forwards to its family's create function
+ * (generators.cpp, particles.cpp) and logs its first call. */
+
 #include "factory.h"
 #include "generators.h"
 #include "particles.h"
@@ -51,4 +42,4 @@ PS_FactoryCreate(const char *name)
     return obj;
 }
 
-} // extern "C"
+}

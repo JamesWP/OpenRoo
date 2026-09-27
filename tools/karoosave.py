@@ -354,12 +354,22 @@ def cmd_set(args):
 # silently repoint every fixture at a different level.  Its hash is therefore
 # recorded and checked on restore.
 #
+# Version 3 keeps only what a recording needs from a slot: name, level and
+# lives.  Score, completion, time and the unused tail are written as a real
+# save writes them for a fresh game (0, in use 1), so no played history is
+# carried; an empty slot is the word `empty`.  The sha stays: it is the hash
+# of bytes this tool generates, and it is what catches a changed build_slot.
+# `convert` rewrites a v2 fixture as v3, zeroing the dropped fields.
+#
 # Filenames are recorded per slot rather than derived.  The shipped set has
 # slot 3 on disk as "JJ3.sav", uppercase, with no lowercase counterpart: Wine
 # finds it case-insensitively, but this tool must reproduce the name it saw.
 
 FIXTURE_FILE = "FIXTURE"
-FIXTURE_VERSION = 2
+FIXTURE_VERSION = 3
+# The fields a v3 fixture stores; the rest take TRIMMED values.
+KEPT_FIELDS = ("level", "lives")
+TRIMMED = dict(score=0, completion=0, time=0, in_use=1, unused=0)
 SAVE_GLOBS = ("jj*.sav", "JJ*.sav", "GAM.DAT")
 
 
@@ -391,6 +401,7 @@ class Fixture:
     """
 
     def __init__(self, gam_sha=None, slots=None, blobs=None, legacy=None):
+        self.version = None
         self.gam_sha = gam_sha
         self.slots = slots or []
         self.blobs = blobs or []
@@ -476,19 +487,32 @@ def read_fixture(fixture_dir):
         rest = rest.strip()
         try:
             if key == "version":
-                if int(rest) != FIXTURE_VERSION:
-                    sys.exit("%s: fixture version %s, this tool writes %d"
+                fx.version = int(rest)
+                if fx.version not in (2, FIXTURE_VERSION):
+                    sys.exit("%s: fixture version %s, this tool reads 2 and %d"
                              % (path, rest, FIXTURE_VERSION))
             elif key == "jj.gam":
                 fx.gam_sha = rest
             elif key == "slot":
                 idx, _, rest = rest.partition(" ")
                 fname, _, rest = rest.strip().partition(" ")
-                kv = _parse_kv(rest.strip())
-                slot = {"index": int(idx), "file": fname,
-                        "sha": kv["sha"], "name": kv["name"]}
-                for field, _, _ in SLOT_FIELDS:
-                    slot[field] = int(kv[field])
+                rest = rest.strip()
+                empty = rest.endswith(" empty")
+                kv = _parse_kv(rest[:-len(" empty")] if empty else rest)
+                slot = {"index": int(idx), "file": fname, "sha": kv["sha"]}
+                if empty:
+                    slot["name"] = EMPTY_NAME
+                    slot.update(level=0, lives=0, score=0, completion=0,
+                                time=0, in_use=0, unused=0)
+                else:
+                    slot["name"] = kv["name"]
+                    for field, _, _ in SLOT_FIELDS:
+                        if field in kv:
+                            slot[field] = int(kv[field])
+                        elif fx.version >= 3 and field in TRIMMED:
+                            slot[field] = TRIMMED[field]
+                        else:
+                            raise KeyError(field)
                 fx.slots.append(slot)
             elif key == "blob":
                 fname, _, rest = rest.partition(" ")
@@ -508,6 +532,65 @@ def read_fixture(fixture_dir):
     if fx.legacy and (fx.slots or fx.blobs):
         sys.exit("%s: mixes v1 `file` lines with v2 `slot`/`blob` lines" % path)
     return fx
+
+
+def trim_slot(s):
+    """Zero what a v3 fixture does not store, and re-hash the result."""
+    if s["in_use"]:
+        s.update(TRIMMED)
+    s["sha"] = sha256_bytes(encipher(bytes(
+        build_slot(s["name"], **{f: s[f] for f, _, _ in SLOT_FIELDS})), SAV_KEY))
+
+
+def write_fixture(fixture, gam_sha, slots, blobs, names):
+    out = [
+        "# Ka'roo save fixture — generated, then hash-checked.",
+        "#",
+        "# `restore` SYNTHESISES each file below from its fields and refuses to",
+        "# continue if the bytes do not hash to the recorded sha. Editing a field",
+        "# without re-snapshotting is a hard error, not a silent change.",
+        "#",
+        "#   python3 tools/karoosave.py restore %s" % fixture,
+        "",
+        "version %d" % FIXTURE_VERSION,
+        "jj.gam %s" % gam_sha,
+        "",
+    ]
+    for s in slots:
+        lvl = s["level"]
+        out.append("# slot %d — %s"
+                   % (s["index"],
+                      "<empty>" if not s["in_use"] else
+                      (names[lvl] if lvl < len(names) else "<level out of range>")))
+        if not s["in_use"]:
+            out.append("slot %d %s sha=%s empty" % (s["index"], s["file"], s["sha"]))
+            continue
+        out.append('slot %d %s sha=%s name="%s" %s'
+                   % (s["index"], s["file"], s["sha"],
+                      s["name"].replace("\\", "\\\\").replace('"', '\\"'),
+                      " ".join("%s=%d" % (f, s[f]) for f in KEPT_FIELDS)))
+    if blobs:
+        out.append("")
+        out.append("# Non-slot files. Only empty ones can be generated.")
+        for b in blobs:
+            out.append("blob %s sha=%s size=%d" % (b["file"], b["sha"], b["size"]))
+    with open(os.path.join(fixture, FIXTURE_FILE), "w") as fh:
+        fh.write("\n".join(out) + "\n")
+
+
+def cmd_convert(args):
+    """Rewrite a v2 fixture as v3: drop, and zero, the played-history fields."""
+    fx = read_fixture(args.fixture)
+    if fx.legacy:
+        sys.exit("%s: a v1 fixture; snapshot it first" % args.fixture)
+    for s in fx.slots:
+        if s["in_use"] == 0 and (s["name"], s["level"], s["lives"]) != (EMPTY_NAME, 0, 0):
+            sys.exit("%s: %s is not in use but is not the empty slot"
+                     % (args.fixture, s["file"]))
+        trim_slot(s)
+    write_fixture(args.fixture, fx.gam_sha, fx.slots, fx.blobs, load_levels(args.gam))
+    read_fixture(args.fixture).generate()
+    print("converted %s to version %d" % (args.fixture, FIXTURE_VERSION))
 
 
 def cmd_snapshot(args):
@@ -538,37 +621,15 @@ def cmd_snapshot(args):
                      "save slots." % (args.fixture, name, len(raw), SLOT_SIZE))
 
     slots.sort(key=lambda s: s["index"])
-    out = [
-        "# Ka'roo save fixture — generated, then hash-checked.",
-        "#",
-        "# `restore` SYNTHESISES each file below from its fields and refuses to",
-        "# continue if the bytes do not hash to the recorded sha. Editing a field",
-        "# without re-snapshotting is a hard error, not a silent change.",
-        "#",
-        "#   python3 tools/karoosave.py restore %s" % args.fixture,
-        "",
-        "version %d" % FIXTURE_VERSION,
-        "jj.gam %s" % sha256(args.gam),
-        "",
-    ]
+    played = [s["file"] for s in slots if s["in_use"] and any(
+        s[f] != v for f, v in TRIMMED.items())]
+    if played and not args.trim:
+        sys.exit("%s: %s carry score/completion/time/unused; a fixture stores "
+                 "only name, level and lives.  Pass --trim to zero them (and "
+                 "check the recording still passes)." % (args.fixture, ", ".join(played)))
     for s in slots:
-        lvl = s["level"]
-        out.append("# slot %d — %s"
-                   % (s["index"],
-                      "<empty>" if not s["in_use"] else
-                      (names[lvl] if lvl < len(names) else "<level out of range>")))
-        out.append('slot %d %s sha=%s name="%s" %s'
-                   % (s["index"], s["file"], s["sha"],
-                      s["name"].replace("\\", "\\\\").replace('"', '\\"'),
-                      " ".join("%s=%d" % (f, s[f]) for f, _, _ in SLOT_FIELDS)))
-    if blobs:
-        out.append("")
-        out.append("# Non-slot files. Only empty ones can be generated.")
-        for b in blobs:
-            out.append("blob %s sha=%s size=%d" % (b["file"], b["sha"], b["size"]))
-
-    with open(os.path.join(args.fixture, FIXTURE_FILE), "w") as fh:
-        fh.write("\n".join(out) + "\n")
+        trim_slot(s)
+    write_fixture(args.fixture, sha256(args.gam), slots, blobs, names)
 
     # A v1 fixture kept the bytes alongside; a v2 one must not, or `restore`
     # would look reproducible while stale copies sat there being ignored.
@@ -583,6 +644,8 @@ def cmd_snapshot(args):
     except ValueError as e:
         sys.exit("ERROR: fixture does not round-trip: %s" % e)
     for name in files:
+        if name in played:
+            continue
         if gen[name] != open(os.path.join(args.saves, name), "rb").read():
             sys.exit("ERROR: %s regenerates to different bytes" % name)
 
@@ -594,7 +657,8 @@ def cmd_snapshot(args):
         lname = names[lvl] if lvl < len(names) else "<out of range>"
         print("   %-10s name=%-12r in_use=%d level=%-3d %s"
               % (s["file"], s["name"], s["in_use"], lvl, lname))
-    print("   regenerates byte-for-byte from the fields above")
+    print("   regenerates byte-for-byte from the fields above%s"
+          % (" (trimmed: %s)" % ", ".join(played) if played else ""))
 
 
 def cmd_restore(args):
@@ -737,7 +801,14 @@ def main():
     p = sub.add_parser("snapshot",
                        help="copy SavedGames/ into a reusable save fixture")
     p.add_argument("fixture", help="directory to write, e.g. tests/saves/bombstart")
+    p.add_argument("--trim", action="store_true",
+                   help="zero score/completion/time/unused instead of refusing")
     p.set_defaults(func=cmd_snapshot)
+
+    p = sub.add_parser("convert",
+                       help="rewrite a version-2 fixture as version 3 (trimmed)")
+    p.add_argument("fixture")
+    p.set_defaults(func=cmd_convert)
 
     p = sub.add_parser("restore",
                        help="restore SavedGames/ from a fixture, byte for byte")

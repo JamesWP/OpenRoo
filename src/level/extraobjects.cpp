@@ -1,81 +1,36 @@
-/* ASSET_PLAN.md Phase 4 (second cycle) — the .leo reader.
+/* FORMAT: a .leo file is text; entries end with ';', each followed by a
+ * newline, read a character at a time (as the .jjs reader does).  Each entry
+ * is split on " ,\t\n;" and words are skipped until one names a kind (Sound,
+ * Particle, Model, Billboard); an entry with none builds nothing.  Each kind
+ * reads its fields in order and stops at the first missing word, keeping what
+ * it has.  Particles, models and billboards may end with a path the object
+ * follows: SPLINE_DYNAMIC or SPLINE_STATIC, the ms per lap, then x,y,z
+ * triples.  Blend names are D3DBLEND 1..13 ("ZERO" ..  "BOTHINVSRCALPHA");
+ * address names D3DTADDRESS 1..4 ("WRAP" .. "BORDER").
  *
- *   0x4235f0  OpenExtraObjectsFile(this, const char *name) -> BOOL
- *             __thiscall, ret 4.  UD2-stubbed.
+ * Two counters: entries_ counts entries seen (bumped here, before the handler
+ * runs), objectCount_ objects built.  They differ when an entry builds
+ * nothing.  Both are zeroed before the parse.
  *
- * Level3DExtraObjects: the per-level list of extra scene objects (models,
- * billboards, particle systems, sounds).  Phase 0's asset log attributed all
- * 81 .leo opens in a level-report run to the fopen site inside this function.
+ * PRESERVED:
+ *   1. The accumulation index is masked to 16 bits; the buffer here covers
+ *      the whole range (no shipped entry exceeds 270 characters).
+ *   2. The end-of-file read's -1 is stored as 0xff in the pending entry.
+ *   3. A trailing entry with no ';' is discarded.
+ *   4. A failed open returns 0 with both counters already zeroed.
+ *   5. The path is formatted unbounded into a stack buffer.
+ *   6. A textured billboard bumps the object count twice, so its spline
+ *      lands in the next record.
+ *   7. destBlend is not written when srcBlend is 0.
+ *   8. The spline point count is unbounded.
+ *   9. atof, atoi and strcpy are handed a missing (NULL) word where the
+ *      game does, and Sound and Particle build "<game dir>\(null)" from a
+ *      missing name.
  *
- * ─── It is the same parser as the .jjs reader ─────────────────────────────
- *
- * Character-at-a-time fgetc, ';' terminates an entry, the entry is
- * NUL-terminated and "\n" appended, and ONE MORE CHARACTER is consumed and
- * discarded after the ';'.  Identical in shape to
- * ReadInstructionScriptForLevel (0x41d720, karoo-hooks/scriptplayer.cpp), down to
- * the 16-bit-masked accumulation index.
- *
- * The one structural difference is what happens to a finished entry: the .jjs
- * reader COPIES it into a 1000-byte record, while this one HANDS IT to
- * ParseExtraObjectEntry (0x423700) and keeps no copy.
- *
- * ─── The entry handler is ours too (ENDGAME_PLAN E1) ────────────────────
- *
- *   0x423700  ParseExtraObjectEntry  -> parseEntry     builds one record
- *   0x424df0  (blend name lookup)    -> blendFromName  "ZERO".."BOTHINVSRCALPHA" = D3DBLEND 1..13
- *   0x425170  (store src/dest blend) -> setBlend
- *   0x425250  (address mode lookup)  -> addressFromName "WRAP".."BORDER" = D3DTADDRESS 1..4
- *
- * An entry is split on " ,\t\n;".  Words are skipped until one names a kind
- * (Sound, Particle, Model, Billboard); no kind, no record.  Each kind reads
- * its fields in order and stops at the first missing word, keeping what it
- * has.  Particles, Models and Billboards may end in a path the object
- * follows: SPLINE_DYNAMIC|SPLINE_STATIC <ms per lap> then x,y,z triples (the
- * Water01 ray, 10 points, 40 s).  Shipped content: 255 Model, 9 Particle,
- * 13 Sound, no Billboard; 5 spline entries, all Model, all DYNAMIC.
- *
- * Oracle: KAROO_LEO_RECDUMP (recDump below) over a level-report run, against
- * tests/leo/records.txt -- captured from the ORIGINAL handler before this
- * replacement, 32 loads, raw-byte hash per record.
- *
- * Game bugs kept (marked BUG): a textured Billboard bumps the object count
- * twice, so its spline lands in the next record; destBlend is left unwritten
- * when srcBlend is 0; the spline point count is unbounded; atof/atoi/strcpy
- * are handed a missing (NULL) word exactly where the original hands it one;
- * Sound and Particle build "<GameDir>\(null)" from a missing name.
- *
- * ─── The two counters are different things ────────────────────────────────
- *
- *   this + 0x0c      WORD, incremented HERE, once per ';' -- entries SEEN
- *   this + 0xf400e   WORD, incremented by the handler -- objects BUILT
- *
- * They diverge whenever an entry is malformed enough that the handler bails
- * before committing an object, so neither is a substitute for the other.
- * Both are zeroed before the parse.
- *
- * ─── Defects and oddities preserved deliberately ──────────────────────────
- *
- * 1. The accumulation index is masked to 16 bits against a ~984-byte stack
- *    buffer, so a longer entry smashes the original's frame.  As in
- *    scriptplayer.cpp the replacement uses a 64 KB buffer: identical for every
- *    input the original survives, merely safe beyond it.  Measured over the
- *    shipped content: 33 .leo files, 459 entries, longest 270 bytes.
- * 2. The EOF flag is tested before each read, so the -1 from the read that
- *    hits EOF is stored as 0xFF into the pending entry.
- * 3. A trailing entry with no ';' is discarded -- the handler never sees it.
- * 4. The entry count is bumped BEFORE the handler runs, so it counts entries
- *    submitted, including any the handler rejects.
- * 5. A failed open returns 0 with both counters already zeroed.
- * 6. The path is built with sprintf into a stack buffer with no bounds check.
- *
- * ─── Visual proof ─────────────────────────────────────────────────────────
- *
- * KAROO_LEO_FX=nomodels drops every entry whose kind word is "Model" (tested
- * in parseEntry), so the level's extra models vanish while its particles and
- * sounds stay.  Until 2026-09-23 it tested whether the entry TEXT began with
- * "Model", which missed every entry preceded by whitespace -- 19 of 26 in
- * Forest\Start.leo, the boxes and bush-trees James saw survive it.
- */
+ * KAROO_LEO_FX is a negative control: "nomodels" drops every Model entry, so
+ * the extra models vanish; "pathrev" stores every spline backwards, so the
+ * Water01 ray swims its loop the other way. */
+
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -89,10 +44,9 @@
 #include <stdlib.h>
 #include <stdlib.h>
 
-
 #define LEO_LOG_FIRST    6
 
-static char s_entry[0x10000];      /* the 16-bit index's full range */
+static char s_entry[0x10000];  // the 16-bit index's full range
 
 static bool fx_nomodels(void)
 {
@@ -107,20 +61,15 @@ static bool fx_nomodels(void)
     return cached != 0;
 }
 
-/* KAROO_LEO_RECDUMP=<path> -- appends every record the entry handler built,
- * field by field, plus an FNV-1a hash over each record.
- * Records 0..objectCount INCLUSIVE: the one past the end is where a textured
- * Billboard's spline lands (ParseExtraObjectEntry bumps the count twice).
- * Every byte outside the three path strings is hashed raw, stale data from
- * earlier levels included -- deliberately: the load order is deterministic,
- * so a replacement that writes one byte the original did not is caught.
- * The path strings are hashed (and printed) up to their terminator with the
- * game directory stripped, so the dump is the same in every checkout.
- * The oracle for the ParseExtraObjectEntry replacement: captured from the
- * original, now tests/levelreport/LeoRecords.txt. */
+/* KAROO_LEO_RECDUMP=<path> appends every record built, field by field, with an
+ * FNV-1a hash of each, records 0..objectCount inclusive (the one past the end
+ * is where a textured billboard's spline lands).  Every byte outside the path
+ * strings is hashed raw, stale bytes included: the load order is
+ * deterministic, so a byte written differently is caught.  Paths are hashed
+ * without the game directory, so the dump is the same in every checkout.
+ * tools/levelreport.py compares it (LeoRecords.txt). */
 
-/* `s` with a leading "<game dir>\" removed, compared case-insensitively.
- * The paths are built from g_gameDir, so that is the prefix to strip. */
+/* s without a leading "<game dir>\", compared case-insensitively. */
 static const char *strip_game_dir(const char *s)
 {
     size_t n = strlen(g_gameDir);
@@ -185,8 +134,6 @@ Leo_OpenExtraObjectsFile(ExtraObjects *self, const char *name)
     return self->openFile(name);
 }
 
-/* The counters are ExtraObjects fields: entries_ (+0xc, entries seen) and
- * objectCount_ (+0xf400e, objects the handler built). */
 int ExtraObjects::openFile(const char *name)
 {
     char path[512];
@@ -202,10 +149,10 @@ int ExtraObjects::openFile(const char *name)
 
     fp = fopen(path, "r");
     if (fp == NULL)
-        return 0;                          /* defect 5 */
+        return 0;  // PRESERVED: counters already zeroed
 
     while (!feof(fp)) {
-        int c = fgetc(fp);                 /* defect 2 */
+        int c = fgetc(fp);  // PRESERVED: end of file stored as 0xff
 
         if ((char)c == ';') {
             s_entry[idx & 0xffff] = '\0';
@@ -213,7 +160,7 @@ int ExtraObjects::openFile(const char *name)
             idx = 0;
 
             entries_ =
-                (WORD)(entries_ + 1);   /* defect 4 */
+                (WORD)(entries_ + 1);  // bumped before the handler runs
 
             for (const char *q = s_entry; *q; q++) {
                 s_hash ^= (unsigned char)*q;
@@ -222,9 +169,9 @@ int ExtraObjects::openFile(const char *name)
 
             parseEntry(s_entry);
 
-            fgetc(fp);                     /* the discarded character */
+            fgetc(fp);  // the character after the ';', discarded
         } else {
-            s_entry[idx & 0xffff] = (char)c;   /* defect 1 */
+            s_entry[idx & 0xffff] = (char)c;  // PRESERVED: masked to 16 bits
             idx++;
         }
     }
@@ -233,9 +180,8 @@ int ExtraObjects::openFile(const char *name)
 
     recDump(path);
 
-    /* KAROO_LEO_DUMP=<path> -- entry count and an FNV-1a 32 hash over every
-     * entry text handed to the handler, for comparison against an independent
-     * Python split of the same file.  ASSET_PLAN.md Phase 4. */
+    // KAROO_LEO_DUMP=<path>: the entry count and an FNV-1a hash of every entry
+    // handed to the handler, for comparison with an independent parse.
     {
         char dump[MAX_PATH];
         if (GetEnvironmentVariableA("KAROO_LEO_DUMP", dump, sizeof(dump))) {
@@ -264,11 +210,8 @@ int ExtraObjects::openFile(const char *name)
     return 1;
 }
 
-/* ═══ 0x00425210 -- Level3DExtraObjects::ReleaseExtraObjectSoundBuffers ════
- * (was levelparse.cpp).  Halts and releases the first 255 records' sounds
- * -- not the 256th, which the ctor never zeroes either.  Its diag is
- * KAROO_LEVELPARSE_DIAG's, read here as levelparse.cpp reads it; the
- * running release count is what that file's DIAG lines print. */
+/* Halts and releases the first 255 records' sounds.  Its diagnostics are
+ * KAROO_LEVELPARSE_DIAG's. */
 static int      s_rel_diag       = -1;
 static unsigned s_released       = 0;
 static int      s_logged_release = 0;
@@ -301,7 +244,7 @@ void ExtraObjects::releaseSounds()
 
     for (int k = 0; k < RELEASE_COUNT; k++) {
         ExtraObjectRecord *r = &records_[k];
-        /* the handle is re-read after HaltPlayback, exactly as the original */
+        // The handle is re-read after halting.
         if (r->sound != 0) {
             CStatic_HaltPlayback(r->sound);
             soundManager_->releaseStaticForOwner(r->sound, 1);
@@ -317,15 +260,13 @@ void ExtraObjects::releaseSounds()
     }
 }
 
-/* ─── ParseExtraObjectEntry 0x423700 and its helpers ────────────────────── */
+/* The entry parser and its helpers. */
 
 static const char LEO_DELIMS[] = " ,\t\n;";
 
 static char *leo_tok(void) { return strtok(NULL, LEO_DELIMS); }
 
-/* KAROO_LEO_FX=pathrev: store every spline's points in reverse order, so a
- * path-following object (the Water01 ray) swims its loop backwards.  Only
- * this parser can produce it; the record dump names the reordered points. */
+/* KAROO_LEO_FX=pathrev. */
 static bool fx_pathrev(void)
 {
     static int cached = -1;
@@ -337,7 +278,7 @@ static bool fx_pathrev(void)
     return cached != 0;
 }
 
-/* 0x424df0: D3DBLEND by name, 0 for anything else (NONE included). */
+/* D3DBLEND by name; 0 for anything else, NONE included. */
 int ExtraObjects::blendFromName(const char *name)
 {
     static const char *const names[] = {
@@ -351,7 +292,7 @@ int ExtraObjects::blendFromName(const char *name)
     return 0;
 }
 
-/* 0x425250: D3DTEXTUREADDRESS by name, 0 for NULL or anything else. */
+/* D3DTEXTUREADDRESS by name; 0 for NULL or anything else. */
 unsigned int ExtraObjects::addressFromName(const char *name)
 {
     static const char *const names[] = { "WRAP", "MIRROR", "CLAMP", "BORDER" };
@@ -363,7 +304,7 @@ unsigned int ExtraObjects::addressFromName(const char *name)
     return 0;
 }
 
-/* 0x425170.  BUG kept: destBlend is not written when srcBlend is 0. */
+/* PRESERVED: destBlend is not written when srcBlend is 0. */
 void ExtraObjects::setBlend(const char *src, const char *dest)
 {
     current()->srcBlend = blendFromName(src);
@@ -371,8 +312,8 @@ void ExtraObjects::setBlend(const char *src, const char *dest)
         current()->destBlend = blendFromName(dest);
 }
 
-/* Position then the second vector, six floats; false at the first missing
- * word (after atof has been handed it, as the original does). */
+/* The position and the second vector, six floats; false at the first missing
+ * word, after atof has been handed it. */
 bool ExtraObjects::readSixFloats()
 {
     for (int i = 0; i < 6; i++) {
@@ -386,8 +327,8 @@ bool ExtraObjects::readSixFloats()
     return true;
 }
 
-/* The spline block, the same in all three kinds.  `mode` is the word that
- * may name it; the caller has already fetched it (or passes NULL). */
+/* The spline block, the same for all three kinds.  mode is the word that may
+ * name it, already fetched by the caller (or NULL). */
 void ExtraObjects::parseSpline(const char *mode)
 {
     ExtraObjectRecord *r = current();
@@ -408,8 +349,8 @@ void ExtraObjects::parseSpline(const char *mode)
         r->splineTime = atoi(more);
         GameLog_LogMessage(&g_logger, 1, "LEO: Spline-time:%d", r->splineTime);
     }
-    /* Every attempt bumps the count, the failing last one included, and the
-     * count is decremented once after.  BUG: unbounded against 0x100. */
+    // Every attempt bumps the count, the failing last one included, and it is
+    // decremented once after.  PRESERVED: unbounded against 0x100.
     r->splinePointCount = 0;
     while (more != NULL) {
         unsigned n = r->splinePointCount;
@@ -490,14 +431,15 @@ void ExtraObjects::parseParticle()
     parseSpline(tex != NULL ? leo_tok() : NULL);
 }
 
-/* Model <file> pos v2 [ANI <file>] <src> <dest> <LIT|...> <texture> [address] [spline] */
+/* Model <file> pos v2 [ANI <file>] <src> <dest> <LIT|...> <texture> [address]
+ * [spline] */
 void ExtraObjects::parseModel()
 {
     GameLog_LogMessage(&g_logger, 1, "LEO: Model noticed, Index=%d", objectCount_);
     current()->kind = EXTRA_MODEL;
     char *tex = NULL;
     char *name = leo_tok();
-    strcpy(current()->file, name);                  /* no GameDir prefix */
+    strcpy(current()->file, name);  // no game-directory prefix
     GameLog_LogMessage(&g_logger, 1, "LEO: Model-Filename:%s", current()->file);
     if (name != NULL && readSixFloats()) {
         char *w = leo_tok();
@@ -534,7 +476,7 @@ void ExtraObjects::parseModel()
             }
         }
     }
-    /* The address word is optional: when it is not one, it is the spline's. */
+    // The address word is optional: when it is not one, it is the spline's.
     current()->textureAddress = 0;
     char *w = NULL;
     if (tex != NULL) {
@@ -579,26 +521,25 @@ void ExtraObjects::parseBillboard()
                 strcpy(current()->textureFile, tex);
                 GameLog_LogMessage(&g_logger, 1, "LEO: Model-Texture-Filename:%s",
                                    current()->textureFile);
-                objectCount_++;        /* BUG: bumped again below; the spline
-                                          lands in the next record */
+                objectCount_++;  // PRESERVED: bumped again below; the spline lands in the next record
             }
         }
     }
     parseSpline(tex != NULL ? leo_tok() : NULL);
 }
 
-/* 0x423700.  Always returns 1; the record is committed by bumping the count,
- * which an entry with no kind word never reaches. */
+/* Always returns 1.  The record is committed by bumping the count, which an
+ * entry with no kind word never reaches. */
 int ExtraObjects::parseEntry(const char *entry)
 {
-    char buf[1000];                 /* as the original; shipped max is 270 */
+    char buf[1000];  // no shipped entry exceeds 270
     strcpy(buf, entry);
     for (char *w = strtok(buf, LEO_DELIMS); w != NULL; w = leo_tok()) {
         if (strcmp(w, "Sound") == 0)          parseSound();
         else if (strcmp(w, "Particle") == 0)  parseParticle();
         else if (strcmp(w, "Model") == 0) {
             if (fx_nomodels())
-                return 1;               /* KAROO_LEO_FX=nomodels: no record */
+                return 1;  // KAROO_LEO_FX=nomodels: no record
             parseModel();
         }
         else if (strcmp(w, "Billboard") == 0) parseBillboard();
@@ -609,22 +550,15 @@ int ExtraObjects::parseEntry(const char *entry)
     return 1;
 }
 
-/* ─── Construction and teardown: 0x423560, 0x4235e0, 0x4235c0 ──────────────
- *
- * ExtraObjects is embedded in Game (+0x48b98): Game::Load constructs it and
- * Game::Destruct destroys it; two SEH funclets also jump to the dtor.  The
- * scalar dtor is vtable slot 0 only, and nothing deletes an embedded member,
- * so its free is reimplemented but unreached -- on the game heap, the
- * LinkedList precedent. */
+/* Embedded in the Game, so the deleting destructor never frees in practice. */
 static void *const g_LeoVtable[1] = { (void *)&Leo_ScalarDestructor };
 
 void ExtraObjects::construct()
 {
-    /* The EH-vector init of every record's splinePoints runs 0x424de0 on
-     * each point, which does nothing: omitted. */
+    // Each spline point's constructor does nothing; not run.
     vtable_ = g_LeoVtable;
     objectCount_ = 0;
-    for (int i = 0; i < RELEASE_COUNT; ++i)     /* 255: record 255 keeps its */
+    for (int i = 0; i < RELEASE_COUNT; ++i)  // 255: record 255 keeps its sound handle
         records_[i].sound = NULL;
 }
 

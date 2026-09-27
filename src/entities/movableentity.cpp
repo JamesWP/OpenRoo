@@ -228,7 +228,7 @@ Sim_DeleteMovableEntityWithFlags(MovableEntity *self, unsigned int flags)
  *   0x41FC58 0x41FC7D                          PlayerTurnRight
  *   0x41FCED                                   UpdatePlayerTileEffects
  *
- * A `grep -rn 438770 karoo-hooks/` found only comments, so unlike
+ * A `grep -rn 438770 src/` found only comments, so unlike
  * CalculateLevelScore there is no absolute-address call in our own DLL to
  * redirect (GAMETICK_PLAN.md's "xref.py over the exe is only half the search"
  * hazard -- checked, and clear).

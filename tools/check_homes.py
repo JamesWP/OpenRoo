@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Check that every function declared in a karoo-hooks header is defined in
+"""Check that every function declared in a src/ header is defined in
 the .cpp of the same name (COHESION_PLAN.md, "a header's functions live in
 its own .cpp").
 
 Reads the compiled objects, not the source: for every external function
-symbol defined in obj/Y.o, find the header that owns it --
+symbol defined in build/obj/<folder>/Y.o, find the header that owns it --
 
   * a method  Class::name   -> the header that DEFINES `class/struct Class {`
   * a free / extern "C" fn  -> the header(s) that DECLARE `name(`
@@ -13,7 +13,10 @@ symbol defined in obj/Y.o, find the header that owns it --
 one object are inline (header-defined) and skipped; so are functions no
 header declares (file-local exports patch.py binds by name).
 
-Usage:  python3 tools/check_homes.py [karoo-hooks dir]    exit 1 on a finding
+Usage:  python3 tools/check_homes.py [src dir] [obj dir]    exit 1 on a finding
+
+Header and object stems are matched by name alone; the folders under src/
+do not take part, so stems must stay unique across them.
 """
 import os
 import re
@@ -21,21 +24,30 @@ import subprocess
 import sys
 from collections import defaultdict
 
-HOOKS = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), '..', 'karoo-hooks')
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'src')
+OBJ = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'build', 'obj')
+
+
+def walk(top, ext):
+    """(stem, path) for every file under top ending in ext, sorted."""
+    out = []
+    for d, _, fs in os.walk(top):
+        out += [(f[:-len(ext)], os.path.join(d, f)) for f in fs if f.endswith(ext)]
+    return sorted(out)
 OBJDUMP = 'i686-w64-mingw32-objdump'
 
 
 def headers():
     out = {}
-    for f in sorted(os.listdir(HOOKS)):
-        if f.endswith('.h'):
-            with open(os.path.join(HOOKS, f), errors='replace') as fp:
+    for stem, path in walk(SRC, '.h'):
+        if True:
+            with open(path, errors='replace') as fp:
                 text = fp.read()
             # drop comments so a mention in prose is not a declaration
             text = re.sub(r'/\*.*?\*/', ' ', text, flags=re.S)
             text = re.sub(r'//[^\n]*', ' ', text)
-            out[f[:-2]] = text
+            out[stem] = text
     return out
 
 
@@ -44,12 +56,8 @@ def defined_symbols():
     is defined OUT OF LINE: in plain .text.  Inline functions (a body in a
     class or a header) are emitted into COMDAT sections named .text$<sym>
     and are skipped -- their definition is the header, which is correct."""
-    objdir = os.path.join(HOOKS, 'obj')
     per = defaultdict(set)
-    for f in sorted(os.listdir(objdir)):
-        if not f.endswith('.o') or f.startswith('layouttest'):
-            continue
-        path = os.path.join(objdir, f)
+    for stem, path in walk(OBJ, '.o'):
         hdr = subprocess.run([OBJDUMP, '-h', path], capture_output=True,
                              text=True, check=True).stdout
         names = {}
@@ -69,7 +77,7 @@ def defined_symbols():
                 continue
             if names.get(sec) != '.text':        # .text$... = inline COMDAT
                 continue
-            per[name].add(f[:-2])
+            per[name].add(stem)
     return per
 
 

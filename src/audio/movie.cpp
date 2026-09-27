@@ -5,22 +5,17 @@
 #include "cdm.h"
 #include "log.h"
 #include <stdlib.h>
-FaktMovie g_movie;   /* was 0x0046c5d8 */
+FaktMovie g_movie;
 
-/* FaktMovie::FaktMovie 0x0044f3e0 — field init, called by the ctor proper and
-   (dead now) from the teardown path.  It zeroes +0x4 through +0x134 and sets
-   +0x138 to 0xfd; the vtable at +0 is the caller's job.  The original leaves
-   EAX zero on return, so the "constructor" hands back a NULL `this` — nothing
-   reads it, and the two callers use their own register.  Bug preserved by
-   returning void. */
+/* Zeroes everything after the vtable and sets the notify message.  PRESERVED:
+ * the game's version returns NULL, which nobody reads; this one returns
+ * nothing. */
 void FaktMovie::construct()
 {
     memset((char *)this + 4, 0, 0x134);
     notify_msg = 0xfd;
 }
 
-/* FaktMovie::~FaktMovie 0x0044f3d0 — restore the vtable, tail-jump to the COM
-   teardown at 0x0044f430 (our teardown()). */
 void FaktMovie::destruct()
 {
     vtable = FAKTMOVIE_VTABLE;
@@ -37,7 +32,7 @@ void FaktMovie::setup(void *log_obj_arg)
     log_write("FaktMovie::setup(this=%p, log_obj=%p)\n", this, log_obj_arg);
 }
 
-int FaktMovie::loadVideo(void * /*arg1*/, void * /*arg2*/, void * /*arg3*/, const char *path)
+int FaktMovie::loadVideo(void * , void * , void * , const char *path)
 {
     log_write("FaktMovie::loadVideo(this=%p, path=\"%s\")\n",
               this, path ? path : "(null)");
@@ -74,12 +69,9 @@ void FaktMovie::setWindow(void *surface)
     log_write("FaktMovie::setWindow(this=%p, surface=%p)\n", this, surface);
 }
 
-/* ─── Exports — thin thiscall wrappers so patch.py import names resolve ─── */
 extern "C" {
 
-/* FaktMovie::FaktMovie 0x0044f390 — the constructor proper: install the
-   vtable, then the field init.  Reached only through the static-initialiser
-   thunk at 0x00425600, which builds the one global FaktMovie at 0x0046c5d8. */
+/* Installs the vtable, then the fields. */
 __declspec(dllexport) FaktMovie * __attribute__((thiscall))
 Movie_Construct(FaktMovie *self)
 {
@@ -91,9 +83,7 @@ Movie_Construct(FaktMovie *self)
 __declspec(dllexport) void __attribute__((thiscall))
 Movie_Destruct(FaktMovie *self) { self->destruct(); }
 
-/* FaktMovie::ScalarDeletingDtor 0x0044f3b0 — vtable slot 0.  The only
-   FaktMovie is the static global, so the free branch never runs; it is kept
-   faithful anyway, and the block would have come from the game heap. */
+/* Frees on bit 0; the one movie is a global, so it never does. */
 __declspec(dllexport) FaktMovie * __attribute__((thiscall))
 Movie_ScalarDeletingDtor(FaktMovie *self, unsigned int flags)
 {
@@ -138,7 +128,6 @@ Movie_Stop(FaktMovie *self) { self->stop(); return 0; }
 __declspec(dllexport) void __attribute__((thiscall))
 Movie_SetWindow(FaktMovie *self, void *surface) { self->setWindow(surface); }
 
-} // extern "C"
+}
 
-/* FaktMovie's one-slot table (the game's was at 0x0045f200, same slot). */
 void *const g_faktMovieVtable[1] = { (void *)&Movie_ScalarDeletingDtor };

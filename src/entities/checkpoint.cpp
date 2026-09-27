@@ -1,30 +1,12 @@
-/* GAMETICK_PLAN.md Band B reopened — the checkpoint restore.
+/* The scripted-camera step.  While the instruction-script player is running a
+ * loaded script, GameTick calls this: it ticks the script, then copies the
+ * script's camera mode, distance and eye, and its spline point, into the Game.
  *
- *   RestoreCheckpointStateBlocks  0x00418c70   2 E8 sites (0x00414EEF,
- *                                              0x00414F12, both GameTick)
+ * PRESERVED: eye[1] and eye[2] are copied crossed, script eye[2] into the
+ * Game's eye[1] and eye[1] into eye[2].
  *
- * __fastcall, Game base in ECX, bare RET.  Transcribed from the LISTING.
- *
- * Its one callee, the script-player tick 0x0041d920, is the entry into the
- * whole script interpreter (PlayScript and the camera spline).  Both are
- * ours: ScriptPlayer::tick (scriptplayer.cpp).
- *
- *   if script running && script loaded:          (ScriptPlayer +0xdae, +0x9b1)
- *     script->tick(clock, dt)
- *     cameraMode      <- script cameraMode        (+0xdad)
- *     cameraDistance  <- script cameraDistance    (+0x9b5)
- *     cameraEye[0]    <- script eye[0]            (+0xda1)
- *     cameraEye[1]    <- script eye[2]    } SWAPPED source order against the
- *     cameraEye[2]    <- script eye[1]    } destinations -- preserved
- *     +0x13cc94[0..2] <- script splinePoint[0..2] (+0x931)
- *
- * The float copies are plain `=` (COHESION_PLAN.md template point 3: the
- * original's integer MOVs differ from x87 only for a signalling NaN).
- *
- * Control: KAROO_SIM_FX=camswap -- the eye[1]/eye[2] pair is un-swapped
- * (straight copy).  A camera-position change; whether it reaches an
- * asserted field is measured, not assumed.
- */
+ * KAROO_SIM_FX=camswap, a negative control, copies them straight. */
+
 #include <windows.h>
 #include <string.h>
 #include "log.h"
