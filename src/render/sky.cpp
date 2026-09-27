@@ -37,16 +37,15 @@ static bool fx_one_quad(void)
     return cached != 0;
 }
 
-extern "C" __declspec(dllexport) float * __attribute__((thiscall))
-Sky_DrawSkyBackground(SkyBackground *self, RenderDevice *dev,
+float *SkyBackground::draw(RenderDevice *dev,
                       float flCentreX, float flCentreY, float flCentreZ)
 {
     dev->SetRenderState(RS::ZEnable, 0);
 
-    const float c = (float)cos(self->flYawAngle);
-    const float s = (float)sin(self->flYawAngle);
+    const float c = (float)cos(flYawAngle_);
+    const float s = (float)sin(flYawAngle_);
 
-    float *m = self->WorldMatrix;
+    float *m = WorldMatrix_;
     for (int i = 0; i < 16; i++)
         m[i] = 0.0f;
     // The transpose of the usual D3D Y-rotation: _13 = +sin, _31 = -sin.
@@ -66,19 +65,19 @@ Sky_DrawSkyBackground(SkyBackground *self, RenderDevice *dev,
 
     const int nquads = fx_one_quad() ? 1 : SKY_QUADS;
     for (int i = 0; i < nquads; i++) {
-        const SceneTexture *tex = &self->Textures[i];
+        const SceneTexture *tex = &Textures_[i];
         dev->SetTexture(0, tex);
-        bool ok = dev->Draw(Prim::TriangleStrip, SKY_FVF, self->QuadVerts[i], 4,
+        bool ok = dev->Draw(Prim::TriangleStrip, SKY_FVF, QuadVerts_[i], 4,
                             DrawFlag::NoUpdateExtents);
 
         static LONG logged = 0;
         if (InterlockedIncrement(&logged) <= SKY_LOG_FIRST)
             log_write("sky: quad %d tex=%p yaw=%d/1000 -> ok=%d\n",
-                      i, (void *)tex, (int)(self->flYawAngle * 1000.0f), ok);
+                      i, (void *)tex, (int)(flYawAngle_ * 1000.0f), ok);
     }
 
     dev->SetRenderState(RS::ZEnable, 1);
-    return self->WorldMatrix;
+    return WorldMatrix_;
 }
 
 /* ─── Sky_BuildFromFaceNames ───────────────────────────────────────────────
@@ -100,14 +99,14 @@ static const float kSkyUV[4][2] = { {1, 0}, {1, 1}, {0, 0}, {0, 1} };
 /* Identity matrix and the cube's 24 vertices, shared by the ctor and
  * BuildFromFaceNames.  flYawAngle and each vertex's `reserved` are left alone.
  */
-static void sky_fill_geometry(SkyBackground *self)
+void SkyBackground::skyFillGeometry()
 {
     for (int i = 0; i < 16; i++)
-        self->WorldMatrix[i] = (i % 5 == 0) ? 1.0f : 0.0f;
+        WorldMatrix_[i] = (i % 5 == 0) ? 1.0f : 0.0f;
 
     for (int f = 0; f < 6; f++) {
         for (int k = 0; k < 4; k++) {
-            SkyVertex *v = &self->QuadVerts[f][k];
+            SkyVertex *v = &QuadVerts_[f][k];
             v->diffuse  = 0xffffffff;
             v->specular = 0xff000000;
             v->u = kSkyUV[k][0];
@@ -119,20 +118,19 @@ static void sky_fill_geometry(SkyBackground *self)
     }
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Sky_BuildFromFaceNames(SkyBackground *self, RenderDevice *dev, const char *up, const char *dn,
+unsigned int SkyBackground::buildFromFaceNames(RenderDevice *dev, const char *up, const char *dn,
                        const char *fr, const char *bk, const char *lf,
                        const char *rt, UINT bpp)
 {
-    sky_fill_geometry(self);
+    skyFillGeometry();
 
     for (int f = 0; f < 6; f++)
-        self->Textures[f].releaseD3DTexture();
+        Textures_[f].releaseD3DTexture();
 
     const char *names[6] = { up, dn, fr, bk, lf, rt };
     unsigned int r = 0;
     for (int f = 0; f < 6; f++) {
-        r = self->Textures[f].selectTextureLoader(dev, names[f], bpp, 0);
+        r = Textures_[f].selectTextureLoader(dev, names[f], bpp, 0);
         if ((r & 0xff) == 0)
             return r;
     }
@@ -145,30 +143,28 @@ Sky_BuildFromFaceNames(SkyBackground *self, RenderDevice *dev, const char *up, c
  * The one instance is ThemeAssetBlock::sky, built and destroyed by the block's
  * aggregate ctor/dtor (theme.cpp).  The dtor releases the six face textures
  * last to first. */
-static void *const g_SkyVtable[1] = { (void *)&Sky_ScalarDtor };
+static void *const g_SkyVtable[1] = { (void *)&SkyBackground::scalarDtor };
 
-extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
-Sky_Construct(SkyBackground *self)
+SkyBackground *SkyBackground::construct()
 {
     for (int f = 0; f < 6; f++)
-        self->Textures[f].construct();
-    self->pVtable = g_SkyVtable;
-    sky_fill_geometry(self);
-    return self;
+        Textures_[f].construct();
+    pVtable_ = g_SkyVtable;
+    skyFillGeometry();
+    return this;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-Sky_DtorBody(SkyBackground *self)
+void SkyBackground::dtorBody()
 {
-    self->pVtable = g_SkyVtable;
+    pVtable_ = g_SkyVtable;
     for (int f = 6; f-- > 0; )
-        self->Textures[f].dtorBody();
+        Textures_[f].dtorBody();
 }
 
-extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
-Sky_ScalarDtor(SkyBackground *self, unsigned int flags)
+SkyBackground * __attribute__((thiscall))
+SkyBackground::scalarDtor(SkyBackground *self, unsigned int flags)
 {
-    Sky_DtorBody(self);
+    self->dtorBody();
     if (flags & 1)
         free(self);
     return self;

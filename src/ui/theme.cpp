@@ -163,7 +163,7 @@ static void theme_struct_dump(const char *path)
               block->flSideHeight, float_plausible(block->flSideHeight) ? "" : "  SUSPICIOUS");
 
     for (int f = 0; f < 6; f++) {
-        const LoadedImage &img = block->sky.Textures[f];
+        const LoadedImage &img = block->sky.textures()[f];
         const char *name = img.imageName();
         int nameOk = name != NULL && (ULONG_PTR)name >= 0x10000;
         log_write("THEME_STRUCT: sky.faces[%d] surface=%p%s name=%p \"%.63s\"%s\n",
@@ -283,14 +283,14 @@ Theme_BlockConstruct(ThemeAssetBlock *self)
 {
     for (int i = 0; i < THEME_OBJ_COUNT; i++)
         Theme_SlotConstruct(&self->slots[i]);
-    Sky_Construct(&self->sky);
+    self->sky.construct();
     return self;
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Theme_BlockDestruct(ThemeAssetBlock *self)
 {
-    Sky_DtorBody(&self->sky);
+    self->sky.dtorBody();
     for (int i = THEME_OBJ_COUNT; i-- > 0; )
         Theme_SlotDestruct(&self->slots[i]);
 }
@@ -321,7 +321,7 @@ Theme_ReleaseBlock(ThemeAssetBlock *block)
     for (ThemeObjectType t : kReleaseOrder)
         Theme_ReleaseSlot(&block->slots[t]);
     for (int f = 0; f < 6; f++)
-        block->sky.Textures[f].releaseD3DTexture();
+        block->sky.textures()[f].releaseD3DTexture();
     memset(block, 0, sizeof(*block));
 }
 
@@ -707,7 +707,7 @@ void ThemeParser::sky(bool inEnvironment)
     sprintf(bk, GS_THEME_SKY_BK, tok[1]);
     sprintf(lf, GS_THEME_SKY_LF, tok[1]);
     sprintf(rt, GS_THEME_SKY_RT, tok[1]);
-    unsigned int ok = Sky_BuildFromFaceNames(&block->sky, d3d,
+    unsigned int ok = block->sky.buildFromFaceNames(d3d,
                                              up, dn, fr, bk, lf, rt,
                                              d3d->bitDepth());
     if (logger != NULL) {
