@@ -46,7 +46,7 @@ Game *Game::construct(const char *gameName)
     Sim_CdThemesConstruct(&cdThemes_);
     ThemeSound_Construct(&themeSounds_);
     Leo_Construct(&extraObjects_);
-    SoundMgr_Construct(soundManager());
+    soundManager()->construct();
     cheatEntry_.construct();
     highScores_.construct();
     nameEntry_.construct();
@@ -208,7 +208,7 @@ void Game::destruct()
     Leo_ReleaseExtraObjectSoundBuffers(&extraObjects_);
     releaseAllSounds();
     GameLog_LogMessage(&g_logger, 1, GS_GAME_SOUNDS_RELEASED);
-    SoundMgr_PurgeAssets(soundManager());
+    soundManager()->purgeAssets();
     waveOutSetVolume(NULL, config_.savedWaveOutVolume());
     CDM_SetMixerVolume(&g_cdAudio, config_.savedCdMixerVolume());
 
@@ -221,7 +221,7 @@ void Game::destruct()
     nameEntry_.destruct();
     highScores_.destruct();
     cheatEntry_.destruct();
-    SoundMgr_Destruct(soundManager());
+    soundManager()->destruct();
     Leo_Destruct(&extraObjects_);
     ThemeSound_Destruct(&themeSounds_);
     Sim_CdThemesDestruct(&cdThemes_);
@@ -300,31 +300,31 @@ void Game::releaseAllSounds()
             fixedSounds_.count,   fixedSounds_.switchClick,
         };
         for (CStaticSoundbuffer *s : statics1)
-            if (s) SoundMgr_ReleaseStaticForOwner(sm, s, 1);
+            if (s) sm->releaseStaticForOwner(s, 1);
         if (fixedSounds_.menuUpDown)
-            SoundMgr_ReleasePoolForOwner(sm, fixedSounds_.menuUpDown, 1);
-        if (p->soundC3()) SoundMgr_ReleaseStaticForOwner(sm, p->soundC3(), 1);
-        if (p->soundBf()) SoundMgr_ReleaseStaticForOwner(sm, p->soundBf(), 1);
-        if (p->poolCf())  SoundMgr_ReleasePoolForOwner(sm, p->poolCf(), 1);
+            sm->releasePooledForOwner(fixedSounds_.menuUpDown, 1);
+        if (p->soundC3()) sm->releaseStaticForOwner(p->soundC3(), 1);
+        if (p->soundBf()) sm->releaseStaticForOwner(p->soundBf(), 1);
+        if (p->poolCf())  sm->releasePooledForOwner(p->poolCf(), 1);
         if (fixedSounds_.levelCompleted)
-            SoundMgr_ReleaseStaticForOwner(sm, fixedSounds_.levelCompleted, 1);
+            sm->releaseStaticForOwner(fixedSounds_.levelCompleted, 1);
         CStaticSoundbuffer *statics2[] = {
             p->soundC7(), p->soundA3(), p->soundB3(), p->soundB7(),
             p->soundBb(), p->soundAb(), p->soundAf(), p->soundCb(), p->soundA7(),
         };
         for (CStaticSoundbuffer *s : statics2)
-            if (s) SoundMgr_ReleaseStaticForOwner(sm, s, 1);
+            if (s) sm->releaseStaticForOwner(s, 1);
         if (p->pool9f())
-            SoundMgr_ReleasePoolForOwner(sm, p->pool9f(), 1);
+            sm->releasePooledForOwner(p->pool9f(), 1);
         // The crystal banks and the pickup banks, one entry of each per pass.
         // PRESERVED: bank 5 is never released.
         static const int banks[] = { 0, 1, 2, 3, 4, 6, 7, 8 };
         for (int i = 0; i < 3; i++) {
             if (fixedSounds_.crystalBank[i])
-                SoundMgr_ReleaseStaticForOwner(sm, fixedSounds_.crystalBank[i], 1);
+                sm->releaseStaticForOwner(fixedSounds_.crystalBank[i], 1);
             for (int b : banks)
                 if (p->pickupSound(b, i))
-                    SoundMgr_ReleaseStaticForOwner(sm, p->pickupSound(b, i), 1);
+                    sm->releaseStaticForOwner(p->pickupSound(b, i), 1);
         }
     }
     fixedSounds_.loaded = 0;

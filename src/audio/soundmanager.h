@@ -21,6 +21,54 @@ class __attribute__((packed)) SoundManager {
 public:
     static const int ORIGIN = 0;
 
+/* The embedded device's address; 4-aligned, so the packed-member warning is
+ * moot. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+    CFaktSound *cfaktSound() { return &cfaktSound_; }
+#pragma GCC diagnostic pop
+
+    IDirectSound *directSound() const { return cfaktSound_.directsound(); }
+
+    // Finds the buffer in either list (plain first) and gives it back; with
+    // bDestroyIfUnused and no borrower left, removes and destroys the entry.
+    // Logs if the buffer is in neither list.
+    void releaseStaticForOwner(CStaticSoundbuffer *buf, int bDestroyIfUnused);
+
+    // The voice-pool counterpart.
+    void releasePooledForOwner(VoicePool *pool, int bDestroyIfUnused);
+
+    /* Loads filename into an entry's master buffer (or, given the spare's address,
+     * the spare), in 3D or 2D, and applies the pending 3D mode on success. */
+    int loadEntryMaster(void *entry, const char *filename,
+                        unsigned long dwDsFlags, int bDo3D);
+
+    // Loads, or shares, the named sound.  The first acquirer gets the entry's
+    // master buffer, later ones a duplicate.  NULL if sound is not up or the
+    // load fails.
+    CStaticSoundbuffer *acquireStatic(const char *name, int bWant3D);
+
+    // nVoices voices of the named sound.  A pool is always built from
+    // duplicates.
+    VoicePool *acquirePool(int nVoices, const char *name, int bWant3D);
+
+    // Returns 0 if sound is not up or the 3D listener fails.  On a mode
+    // change, reloads every buffer, duplicate and voice pool in the 3D list
+    // for the new mode.  Otherwise 1.
+    int setup(int mode3d);
+
+    /* Construction and destruction, the asset purge (also the reset), and
+     * start-up.  Init creates the device, with the 3D listener if enable3d; with
+     * no logger it creates its own, SoundManager.log. */
+    SoundManager *construct();
+    void destruct();
+    static SoundManager *__attribute__((thiscall))
+    scalarDestructor(SoundManager *self, unsigned char flags);
+    void purgeAssets();
+    int init(int enable3d, HWND window, UINT bufferflags, short channels,
+             int samplespersec, USHORT bitspersample, GameLogger *logger);
+
+private:
     void          *vtable_;  // our one-slot table
     GameLogger    *logger_;
     unsigned long  ownsLogger_;        // 1 if Init created logger_
@@ -32,38 +80,6 @@ public:
     NamedEntryList entriesPlain_;      // bWant3D == 0
     NamedEntryList entries3D_;         // bWant3D != 0
 
-/* The embedded device's address; 4-aligned, so the packed-member warning is
- * moot. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-    CFaktSound *cfaktSound() { return &cfaktSound_; }
-#pragma GCC diagnostic pop
-
-    IDirectSound *directSound() const { return cfaktSound_.directsound(); }
-
-    // Returns 0 if sound is not up or the 3D listener fails.  On a mode
-    // change, reloads every buffer, duplicate and voice pool in the 3D list
-    // for the new mode.  Otherwise 1.
-    int setup(int mode3d);
-
-    // Finds the buffer in either list (plain first) and gives it back; with
-    // bDestroyIfUnused and no borrower left, removes and destroys the entry.
-    // Logs if the buffer is in neither list.
-    void releaseStaticForOwner(void *buffer, int bDestroyIfUnused);
-
-    // The voice-pool counterpart.
-    void releasePooledForOwner(void *buffer, int bDestroyIfUnused);
-
-    // Loads, or shares, the named sound.  The first acquirer gets the entry's
-    // master buffer, later ones a duplicate.  NULL if sound is not up or the
-    // load fails.
-    CStaticSoundbuffer *acquireStatic(const char *name, int bWant3D);
-
-    // count voices of the named sound.  A pool is always built from
-    // duplicates.
-    VoicePool *acquirePool(int count, const char *name, int bWant3D);
-
-private:
     SoundManager() = delete;  // only ever reached through the Game
     KAROO_LAYOUT_REGISTER(SoundManager);
 };
@@ -84,47 +100,3 @@ KAROO_LAYOUT_CHECKS(SoundManager)
 /* No size: the object continues with the fixed sounds. */
 }
 
-extern "C" {
-
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
-                               int bDestroyIfUnused);
-
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
-                             int bDestroyIfUnused);
-
-/* Loads filename into an entry's master buffer (or, given the spare's address,
- * the spare), in 3D or 2D, and applies the pending 3D mode on success. */
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_LoadEntryMaster(SoundManager *self, void *entry,
-                         const char *filename, unsigned long dwDsFlags,
-                         int bDo3D);
-
-__declspec(dllexport) CStaticSoundbuffer *__attribute__((thiscall))
-SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D);
-
-__declspec(dllexport) VoicePool *__attribute__((thiscall))
-SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
-                     int bWant3D);
-
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_Setup(SoundManager *self, int mode3d);
-
-/* Construction and destruction, the asset purge (also the reset), and
- * start-up.  Init creates the device, with the 3D listener if enable3d; with
- * no logger it creates its own, SoundManager.log. */
-__declspec(dllexport) SoundManager *__attribute__((thiscall))
-SoundMgr_Construct(SoundManager *self);
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_Destruct(SoundManager *self);
-__declspec(dllexport) SoundManager *__attribute__((thiscall))
-SoundMgr_ScalarDestructor(SoundManager *self, unsigned char flags);
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_PurgeAssets(SoundManager *self);
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
-              UINT bufferflags, short channels, int samplespersec,
-              USHORT bitspersample, GameLogger *logger);
-
-}

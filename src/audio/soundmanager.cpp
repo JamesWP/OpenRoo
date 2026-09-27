@@ -132,8 +132,7 @@ extern "C" {
 
 /* entry is either an entry or the address of an entry's spare buffer, which
  * works because the master is at offset 0. */
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_LoadEntryMaster(SoundManager *self, void *entry,
+int SoundManager::loadEntryMaster(void *entry,
                          const char *filename, unsigned long dwDsFlags,
                          int bDo3D)
 {
@@ -144,32 +143,31 @@ SoundMgr_LoadEntryMaster(SoundManager *self, void *entry,
 
     if (bDo3D) {
         ++g_loadMaster3D;
-        int ok = buf->createAndLoad3DSoundFile(self->directSound(),
+        int ok = buf->createAndLoad3DSoundFile(directSound(),
                                                   dwDsFlags, filename,
-                                                  self->logger_);
+                                                  logger_);
         if (ok)
-            buf->apply3DMode((int)self->dwPendingMode3D_);
+            buf->apply3DMode((int)dwPendingMode3D_);
         else
             ++g_loadFail;
         return ok;
     }
 
-    int ok = buf->createAndLoadFile(self->directSound(), dwDsFlags,
-                                       filename, self->logger_);
+    int ok = buf->createAndLoadFile(directSound(), dwDsFlags,
+                                       filename, logger_);
     if (!ok)
         ++g_loadFail;
     return ok;
 }
 
 /* The buffer's own file name is the lookup key. */
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
+void SoundManager::releaseStaticForOwner(CStaticSoundbuffer *buf,
                                int bDestroyIfUnused)
 {
     ++g_relStatic;
     { static unsigned long seen; sndmgr_first("ReleaseStaticForOwner", &seen); }
 
-    NamedEntryList *lists[2] = { &self->entriesPlain_, &self->entries3D_ };
+    NamedEntryList *lists[2] = { &entriesPlain_, &entries3D_ };
     for (int i = 0; i < 2; i++) {
         NamedEntry *e = lists[i]->find(buf->filename());
         if (e == NULL)
@@ -192,20 +190,19 @@ SoundMgr_ReleaseStaticForOwner(SoundManager *self, CStaticSoundbuffer *buf,
 
     ++g_relStaticLost;
     sndmgr_census();
-    GameLog_LogSourceLocation((GameLogger *)self->logger_, 3, SRCFILE, __LINE__,
+    GameLog_LogSourceLocation((GameLogger *)logger_, 3, SRCFILE, __LINE__,
         "Could not release StaticSoundbuffer '%s', because the buffer was "
         "not found !", buf->filename());
 }
 
 /* The key is the pool's voice 0's file name, fetched again for each list. */
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
+void SoundManager::releasePooledForOwner(VoicePool *pool,
                              int bDestroyIfUnused)
 {
     ++g_relPool;
     { static unsigned long seen; sndmgr_first("ReleasePoolForOwner", &seen); }
 
-    NamedEntryList *lists[2] = { &self->entriesPlain_, &self->entries3D_ };
+    NamedEntryList *lists[2] = { &entriesPlain_, &entries3D_ };
     for (int i = 0; i < 2; i++) {
         // Fetched per list.
         char *name = pool->firstFilename();
@@ -233,20 +230,19 @@ SoundMgr_ReleasePoolForOwner(SoundManager *self, VoicePool *pool,
     // PRESERVED: voice 0 is used unchecked, so reporting on an empty pool
     // faults.
     CStaticSoundbuffer *voice0 = pool->voiceAt(0);
-    GameLog_LogSourceLocation((GameLogger *)self->logger_, 3, SRCFILE, __LINE__,
+    GameLog_LogSourceLocation((GameLogger *)logger_, 3, SRCFILE, __LINE__,
         "Could not release MultiStaticSoundbuffer '%s', because the buffer "
         "was not found !", voice0->filename());
 }
 
 /* Finds or creates the entry, then hands out its master once, or a fresh
  * duplicate added to its borrower list. */
-__declspec(dllexport) CStaticSoundbuffer *__attribute__((thiscall))
-SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
+CStaticSoundbuffer *SoundManager::acquireStatic(const char *name, int bWant3D)
 {
     ++g_acqStatic;
     { static unsigned long seen; sndmgr_first("AcquireStatic", &seen); }
 
-    if (!self->dwCreated_)
+    if (!dwCreated_)
         return NULL;
 
     NamedEntry     *e;
@@ -256,10 +252,10 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
     for (;;) {
         bDo3D = 0;
         if (bWant3D == 0) {
-            list = &self->entriesPlain_;
+            list = &entriesPlain_;
         } else {
-            list = &self->entries3D_;
-            if (self->dwMode3D_)
+            list = &entries3D_;
+            if (dwMode3D_)
                 bDo3D = 1;
         }
 
@@ -274,15 +270,15 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
             fresh = fresh->init();
         // PRESERVED: a failed allocation is passed on, and faults in the
         // loader.
-        if (!SoundMgr_LoadEntryMaster(self, fresh, name,
-                                      self->dwDefaultDsFlags_, bDo3D)) {
+        if (!loadEntryMaster(fresh, name,
+                                      dwDefaultDsFlags_, bDo3D)) {
             if (fresh == NULL)
                 return NULL;
             destroy_entry(fresh);
             return NULL;
         }
         list->insert(name, fresh);
-        if (!self->dwCreated_)
+        if (!dwCreated_)
             return NULL;
     // Round again; the lookup now hits.
     }
@@ -302,13 +298,13 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
     if (raw != NULL)
         clone = raw->init();
 
-    void *r = clone->copy(self->directSound(), entry->master(), 1);
+    void *r = clone->copy(directSound(), entry->master(), 1);
     if (r == (void *)entry->master()
         || ((entry->spare()->soundbuffer() != NULL
-             || SoundMgr_LoadEntryMaster(self, entry->spare(), name,
-                                         spare_flags(self->dwDefaultDsFlags_),
+             || loadEntryMaster(entry->spare(), name,
+                                         spare_flags(dwDefaultDsFlags_),
                                          bDo3D))
-            && clone->copy(self->directSound(), entry->spare(), 1)
+            && clone->copy(directSound(), entry->spare(), 1)
                != NULL)) {
         ++g_clones;
         if (r != (void *)entry->master())
@@ -329,14 +325,13 @@ SoundMgr_AcquireStatic(SoundManager *self, const char *name, int bWant3D)
 
 /* The same find-or-create, then a pool of nVoices duplicates.  There is no
  * master shortcut: a pool is always built. */
-__declspec(dllexport) VoicePool *__attribute__((thiscall))
-SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
+VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
                      int bWant3D)
 {
     ++g_acqPool;
     { static unsigned long seen; sndmgr_first("AcquirePool", &seen); }
 
-    if (!self->dwCreated_)
+    if (!dwCreated_)
         return NULL;
 
     NamedEntry     *e;
@@ -346,10 +341,10 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
     for (;;) {
         bDo3D = 0;
         if (bWant3D == 0) {
-            list = &self->entriesPlain_;
+            list = &entriesPlain_;
         } else {
-            list = &self->entries3D_;
-            if (self->dwMode3D_)
+            list = &entries3D_;
+            if (dwMode3D_)
                 bDo3D = 1;
         }
 
@@ -365,11 +360,11 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
 
         // PRESERVED: the same flag computed a second time.
         int bDo3DAgain = 0;
-        if (bWant3D != 0 && self->dwMode3D_ != 0)
+        if (bWant3D != 0 && dwMode3D_ != 0)
             bDo3DAgain = 1;
 
-        if (!SoundMgr_LoadEntryMaster(self, fresh, name,
-                                      self->dwDefaultDsFlags_, bDo3DAgain)) {
+        if (!loadEntryMaster(fresh, name,
+                                      dwDefaultDsFlags_, bDo3DAgain)) {
             if (fresh == NULL)
                 return NULL;
             fresh->destruct();
@@ -378,7 +373,7 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
             return NULL;
         }
         list->insert(name, fresh);
-        if (!self->dwCreated_)
+        if (!dwCreated_)
             return NULL;
     }
 
@@ -390,14 +385,14 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
     if (raw != NULL)
         pool = raw->blank();
 
-    void *r = pool->clone(nVoices, self->directSound(),
+    void *r = pool->clone(nVoices, directSound(),
                                  entry->master(), 1);
     if (r == (void *)entry->master()
         || ((entry->spare()->soundbuffer() != NULL
-             || SoundMgr_LoadEntryMaster(self, entry->spare(), name,
-                                         spare_flags(self->dwDefaultDsFlags_),
+             || loadEntryMaster(entry->spare(), name,
+                                         spare_flags(dwDefaultDsFlags_),
                                          bDo3D))
-            && pool->clone(nVoices, self->directSound(),
+            && pool->clone(nVoices, directSound(),
                                   entry->spare(), 1) != NULL)) {
         ++g_pools;
         entry->pools()->append(pool);
@@ -414,35 +409,34 @@ SoundMgr_AcquirePool(SoundManager *self, int nVoices, const char *name,
 }
 
 /* Switches the 3D listener mode and reloads everything in the 3D list. */
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_Setup(SoundManager *self, int mode3d)
+int SoundManager::setup(int mode3d)
 {
     ++g_setup;
     { static unsigned long seen; sndmgr_first("Setup", &seen); }
 
-    if (!self->dwCreated_)
+    if (!dwCreated_)
         return 0;
 
-    if ((unsigned long)mode3d != self->dwMode3D_) {
+    if ((unsigned long)mode3d != dwMode3D_) {
         ++g_setupModeChange;
-        if (!self->cfaktSound()->create3DListener(mode3d))
+        if (!cfaktSound()->create3DListener(mode3d))
             return 0;
 
-        for (NamedEntry *n = self->entries3D_.head(); n != NULL; ) {
+        for (NamedEntry *n = entries3D_.head(); n != NULL; ) {
             doublesoundbuff *entry = (doublesoundbuff *)n->payload();
             n = n->next();  // advanced before the body
             ++g_setupReloaded;
 
-            if (!entry->master()->createAndLoad(self->directSound(),
+            if (!entry->master()->createAndLoad(directSound(),
                                        mode3d))
-                GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
+                GameLog_LogSourceLocation((GameLogger *)logger_, 3,
                     SRCFILE, __LINE__,
                     "CSoundManager::Set3D_LoadNew(...) switch 3D of "
                     "OrgSoundBuffer failed");
 
             if (entry->spare()->soundbuffer() != NULL
-                && !entry->spare()->createAndLoad(self->directSound(), mode3d))
-                GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
+                && !entry->spare()->createAndLoad(directSound(), mode3d))
+                GameLog_LogSourceLocation((GameLogger *)logger_, 3,
                     SRCFILE, __LINE__,
                     "CSoundManager::Set3D_LoadNew(...) switch 3D of "
                     "SecOrgSoundBuffer failed");
@@ -456,28 +450,28 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
                 c = c->next();
 
                 clone->reset();
-                if (clone->copy(self->directSound(), src, 1)
+                if (clone->copy(directSound(), src, 1)
                     == (void *)src)
                     continue;
 
                 if (src == entry->spare()) {
-                    GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
+                    GameLog_LogSourceLocation((GameLogger *)logger_, 3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
                     continue;  // already on the spare: nothing left to try
                 }
                 if (entry->spare()->soundbuffer() == NULL
-                    && !SoundMgr_LoadEntryMaster(self, entry->spare(),
+                    && !loadEntryMaster(entry->spare(),
                             src->filename(), spare_flags(src->dsFlags()),
                             mode3d))
-                    GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
+                    GameLog_LogSourceLocation((GameLogger *)logger_, 3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
                 src = entry->spare();
                 ++g_setupSpare;
-                clone->copy(self->directSound(), src, 1);
+                clone->copy(directSound(), src, 1);
             }
 
             for (LinkedListNode *p = entry->pools()->head(); p != NULL; ) {
@@ -486,34 +480,34 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
 
                 int nVoices = (int)pool->voiceCount();
                 pool->wipe();
-                if (pool->clone(nVoices, self->directSound(),
+                if (pool->clone(nVoices, directSound(),
                                        src, 1) == (void *)src)
                     continue;
 
                 if (src == entry->spare()) {
-                    GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
+                    GameLog_LogSourceLocation((GameLogger *)logger_, 3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
                     continue;
                 }
                 if (entry->spare()->soundbuffer() == NULL
-                    && !SoundMgr_LoadEntryMaster(self, entry->spare(),
+                    && !loadEntryMaster(entry->spare(),
                             src->filename(), spare_flags(src->dsFlags()),
                             mode3d))
-                    GameLog_LogSourceLocation((GameLogger *)self->logger_, 3,
+                    GameLog_LogSourceLocation((GameLogger *)logger_, 3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
                 src = entry->spare();
                 ++g_setupSpare;
-                pool->clone(nVoices, self->directSound(), src, 1);
+                pool->clone(nVoices, directSound(), src, 1);
             }
         }
 
         // PRESERVED: committed even if the list was empty or reloads failed.
-        self->dwMode3D_        = (unsigned long)mode3d;
-        self->dwPendingMode3D_ = (unsigned long)mode3d;
+        dwMode3D_        = (unsigned long)mode3d;
+        dwPendingMode3D_ = (unsigned long)mode3d;
     }
 
     sndmgr_census();
@@ -522,25 +516,8 @@ SoundMgr_Setup(SoundManager *self, int mode3d)
 
 }
 
-/* The methods callers use. */
-void SoundManager::releaseStaticForOwner(void *buffer, int bDestroyIfUnused)
-{ SoundMgr_ReleaseStaticForOwner(this, (CStaticSoundbuffer *)buffer,
-                                 bDestroyIfUnused); }
-
-void SoundManager::releasePooledForOwner(void *buffer, int bDestroyIfUnused)
-{ SoundMgr_ReleasePoolForOwner(this, (VoicePool *)buffer, bDestroyIfUnused); }
-
-CStaticSoundbuffer *SoundManager::acquireStatic(const char *name, int bWant3D)
-{ return SoundMgr_AcquireStatic(this, name, bWant3D); }
-
-VoicePool *SoundManager::acquirePool(int count, const char *name, int bWant3D)
-{ return SoundMgr_AcquirePool(this, count, name, bWant3D); }
-
-int SoundManager::setup(int mode3d)
-{ return SoundMgr_Setup(this, mode3d); }
-
 /* The one-slot vtable: the deleting destructor. */
-static void *const g_SoundMgrVtable[1] = { (void *)&SoundMgr_ScalarDestructor };
+static void *const g_SoundMgrVtable[1] = { (void *)&SoundManager::scalarDestructor };
 
 /* Destroys every entry in one list, then empties it.  The next pointer is read
  * before the entry is destroyed. */
@@ -560,58 +537,55 @@ static void purge_list(NamedEntryList *list)
 
 extern "C" {
 
-__declspec(dllexport) SoundManager *__attribute__((thiscall))
-SoundMgr_Construct(SoundManager *self)
+SoundManager *SoundManager::construct()
 {
-    self->cfaktSound()->blankFields();
-    self->entriesPlain_.construct();
-    self->entries3D_.construct();
-    self->logger_           = NULL;
-    self->ownsLogger_       = 0;
-    self->dwMode3D_         = 0;
-    self->dwPendingMode3D_  = 0;
-    self->dwCreated_        = 0;
-    self->vtable_           = (void *)g_SoundMgrVtable;
-    self->dwDefaultDsFlags_ = 2;  // DSBCAPS_STATIC
-    return self;
+    cfaktSound()->blankFields();
+    entriesPlain_.construct();
+    entries3D_.construct();
+    logger_           = NULL;
+    ownsLogger_       = 0;
+    dwMode3D_         = 0;
+    dwPendingMode3D_  = 0;
+    dwCreated_        = 0;
+    vtable_           = (void *)g_SoundMgrVtable;
+    dwDefaultDsFlags_ = 2;  // DSBCAPS_STATIC
+    return this;
 }
 
 /* Also the reset: Init runs it first, and the Game's teardown on its own.  An
  * owned logger is deleted through its vtable with the free flag. */
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_PurgeAssets(SoundManager *self)
+void SoundManager::purgeAssets()
 {
-    purge_list(&self->entriesPlain_);
-    purge_list(&self->entries3D_);
-    self->cfaktSound()->releaseComRefs();
-    if (self->ownsLogger_ != 0 && self->logger_ != NULL) {
+    purge_list(&entriesPlain_);
+    purge_list(&entries3D_);
+    cfaktSound()->releaseComRefs();
+    if (ownsLogger_ != 0 && logger_ != NULL) {
         typedef void *(__attribute__((thiscall)) *ScalarDtor)(void *, int);
-        (*(ScalarDtor *)*(void **)self->logger_)(self->logger_, 1);
+        (*(ScalarDtor *)*(void **)logger_)(logger_, 1);
     }
-    self->logger_           = NULL;
-    self->ownsLogger_       = 0;
-    self->dwMode3D_         = 0;
-    self->dwPendingMode3D_  = 0;
-    self->dwCreated_        = 0;
-    self->dwDefaultDsFlags_ = 2;
+    logger_           = NULL;
+    ownsLogger_       = 0;
+    dwMode3D_         = 0;
+    dwPendingMode3D_  = 0;
+    dwCreated_        = 0;
+    dwDefaultDsFlags_ = 2;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-SoundMgr_Destruct(SoundManager *self)
+void SoundManager::destruct()
 {
-    self->vtable_ = (void *)g_SoundMgrVtable;
-    SoundMgr_PurgeAssets(self);
-    self->entries3D_.dtorBody();
-    self->entriesPlain_.dtorBody();
-    self->cfaktSound()->clearState();
+    vtable_ = (void *)g_SoundMgrVtable;
+    purgeAssets();
+    entries3D_.dtorBody();
+    entriesPlain_.dtorBody();
+    cfaktSound()->clearState();
 }
 
 /* Reached only through the vtable; the manager is embedded in the Game, so
  * nothing deletes one. */
-__declspec(dllexport) SoundManager *__attribute__((thiscall))
-SoundMgr_ScalarDestructor(SoundManager *self, unsigned char flags)
+SoundManager * __attribute__((thiscall))
+SoundManager::scalarDestructor(SoundManager *self, unsigned char flags)
 {
-    SoundMgr_Destruct(self);
+    self->destruct();
     if (flags & 1)
         free(self);
     return self;
@@ -619,33 +593,32 @@ SoundMgr_ScalarDestructor(SoundManager *self, unsigned char flags)
 
 /* PRESERVED: a failed logger allocation leaves logger_ NULL and ownsLogger_ 1.
  */
-__declspec(dllexport) int __attribute__((thiscall))
-SoundMgr_Init(SoundManager *self, int enable3d, HWND window,
+int SoundManager::init(int enable3d, HWND window,
               UINT bufferflags, short channels, int samplespersec,
               USHORT bitspersample, GameLogger *logger)
 {
-    SoundMgr_PurgeAssets(self);
-    self->logger_ = logger;
+    purgeAssets();
+    logger_ = logger;
     if (logger == NULL) {
         GameLogger *own = (GameLogger *)malloc(0x118);
         if (own != NULL)
             own = (GameLogger *)GameLog_Initialize(own, GS_SOUNDMGR_LOG_NAME, NULL);
-        self->logger_     = own;
-        self->ownsLogger_ = 1;
+        logger_     = own;
+        ownsLogger_ = 1;
     }
     // enable3d is tested and stored as a whole word.
     int ok = enable3d == 0
-        ? self->cfaktSound()->initialize(window, bufferflags,
+        ? cfaktSound()->initialize(window, bufferflags,
                                 channels, samplespersec, bitspersample,
-                                self->logger_)
-        : self->cfaktSound()->initializeWith3DAudio(window,
+                                logger_)
+        : cfaktSound()->initializeWith3DAudio(window,
                                 bufferflags, channels, samplespersec,
-                                bitspersample, self->logger_);
+                                bitspersample, logger_);
     if (ok == 0)
         return 0;
-    self->dwPendingMode3D_ = enable3d;
-    self->dwMode3D_        = enable3d;
-    self->dwCreated_       = 1;
+    dwPendingMode3D_ = enable3d;
+    dwMode3D_        = enable3d;
+    dwCreated_       = 1;
     return 1;
 }
 
