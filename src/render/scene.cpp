@@ -150,7 +150,7 @@ static bool segment_hits_object(const SceneObject *o, const float p[3],
     // box comes out right only because the turn is exactly 90 degrees.
     float c = (float)cos(K_BOX_TURN), s = (float)sin(K_BOX_TURN);
 
-    const float *box = (const float *)o->mesh->pFrameRecords;
+    const float *box = (const float *)o->mesh->frameRecords();
     float a[3], b[3];
     rot_x(a, box, c, s);
     rot_x(b, box + 3, c, s);

@@ -48,13 +48,13 @@ void ExplodeDebris::allocateExplodeBuffers(CFaktMesh *mesh)
 {
     release();
 
-    DWORD n = mesh->dwVertexCount;
+    DWORD n = mesh->vertexCount();
     void *verts = malloc(n * 0x28);
     if (verts != NULL && (int)n > 0)
         memset(verts, 0, n * 0x28);
     pVertexCopy_  = verts;
     pFaceRecords_ = malloc((n / 3) * 0xc);
-    nVertexCount_ = (int)mesh->dwVertexCount;
+    nVertexCount_ = (int)mesh->vertexCount();
 
     memset(pVertexCopy_, 0, (((DWORD)nVertexCount_ * 5) & 0x1fffffffu) * 2 * 4);
 }
@@ -116,9 +116,9 @@ float *ExplodeDebris::debrisVelocity(int tri)
 int ExplodeDebris::begin(CFaktMesh *mesh,
                     unsigned short frame, const float *origin)
 {
-    if (frame >= mesh->wFrameCount)
+    if (frame >= mesh->frameCount())
         return 0;
-    if ((DWORD)nVertexCount_ != mesh->dwVertexCount)
+    if ((DWORD)nVertexCount_ != mesh->vertexCount())
         return 0;
     if (pVertexCopy_ == NULL)
         return 0;
@@ -126,9 +126,9 @@ int ExplodeDebris::begin(CFaktMesh *mesh,
     // PRESERVED: the source offset is frame * count * 0x640, forty times a
     // frame's real size (count * 0x28).  Frame 0 is right; any other frame
     // reads far past the mesh's vertices.
-    DWORD count = mesh->dwVertexCount;
+    DWORD count = mesh->vertexCount();
     memcpy(pVertexCopy_,
-           (BYTE *)mesh->pVertexData + (DWORD)frame * count * 0x640,
+           (BYTE *)mesh->vertexData() + (DWORD)frame * count * 0x640,
            count * 0x28);
 
     for (DWORD t = 0; t < (DWORD)nVertexCount_ / 3; t++) {

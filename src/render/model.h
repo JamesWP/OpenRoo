@@ -9,10 +9,6 @@
 
 class GameLogger;
 
-/* Load `path` into `self`; the low byte of the result is the
- * success flag. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Model_ImportSceneModels(CFaktMesh *self, const char *path);
 
 /* ─── ModelManager -- the name-keyed CFaktMesh cache ───────────────────────
  *

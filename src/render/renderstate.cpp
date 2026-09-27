@@ -110,8 +110,8 @@ Render_ConfigureRenderState(void)
         dev->SetRenderState((RS)states[i][0], states[i][1]);
 
     // Shared player/enemy models, textures, material, light and fonts.
-    Model_ImportSceneModels(&g_meshPlayer, "models\\John.mdl");
-    Model_ImportSceneModels(&g_meshEnemy, "models\\Enemy.mdl");
+    g_meshPlayer.importSceneModels("models\\John.mdl");
+    g_meshEnemy.importSceneModels("models\\Enemy.mdl");
 
     char path[0x100];
     sprintf(path, "%s\\textures\\shadow.tga", g_gameDir);
