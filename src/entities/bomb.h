@@ -1,8 +1,8 @@
 /* Bomb: a dropped bomb.  A 2 s fuse during which it rolls forward, then a 3x3
- * kill zone for 0.4 s.  A MovableEntity (0x15a bytes) plus its own 0x18.  The
- * Game's second entity table holds only bombs.  The layout is fixed:
- * RenderGameFrame reads its position, +0x82 and droppedAt, and reads and
- * writes +0x7a, and the movement code treats a bomb as a plain entity. */
+ * kill zone for 0.4 s.  A MovableEntity plus its own fields.  The Game's
+ * second entity table holds only bombs.  RenderGameFrame reads its position,
+ * dyingStarted and droppedAt, and reads and clears the debris latch, and the
+ * movement code treats a bomb as a plain entity. */
 
 #pragma once
 
@@ -13,7 +13,7 @@ struct CStaticSoundbuffer;
 class SoundManager;
 class Tile;
 
-class __attribute__((packed)) Bomb : public MovableEntity {
+class Bomb : public MovableEntity {
 public:
 
     // Spawns a bomb at (u, v, h); the arguments are masked to bytes.
@@ -54,11 +54,11 @@ private:
     static void releaseField(SoundManager *sm, Bomb **slot,
                              CStaticSoundbuffer *Bomb::*field);
 
-    CStaticSoundbuffer *rollSound_;         // +0x15a  may be NULL
-    CStaticSoundbuffer *blastSound_;        // +0x15e  may be NULL
-    int                 blastSoundPlayed_;  // +0x162
-    int                 zoneCleared_;       // +0x166
-    double              droppedAt_;         // +0x16a
+    CStaticSoundbuffer *rollSound_;         // may be NULL
+    CStaticSoundbuffer *blastSound_;        // may be NULL
+    int                 blastSoundPlayed_;
+    int                 zoneCleared_;
+    double              droppedAt_;
 };
 
 /* The bomb remove, for callers outside the class. */

@@ -1,8 +1,6 @@
 /* SkyBackground: the six-faced cube of sky textures drawn behind a level,
  * yaw-rotated and re-centred on the viewer every frame.  ThemeAssetBlock owns
- * the one instance per theme (sky.cpp has its lifecycle and the draw).  The
- * vertex and matrix layouts below are load-bearing: the struct must tile
- * exactly to the sizes the static_asserts check. */
+ * the one instance per theme (sky.cpp has its lifecycle and the draw). */
 
 #pragma once
 #include <windows.h>
@@ -25,18 +23,12 @@ static_assert(sizeof(SkyVertex) == 0x20, "SkyVertex stride");
  * DrawSkyBackground rebuilds from flYawAngle and the viewer position every
  * call. */
 struct SkyBackground {
-    const void     *pVtable;          // +0x000 one-slot vtable
-    float           flYawAngle;       // +0x004 radians, the Y rotation
-    SceneTexture    Textures[6];      // +0x008 one SceneTexture per face
-    SkyVertex       QuadVerts[6][4];  // +0x0b0 one triangle-strip quad per face
-    float           WorldMatrix[16];  // +0x3b0 rebuilt every draw call
+    const void     *pVtable;          // one-slot vtable
+    float           flYawAngle;       // radians, the Y rotation
+    SceneTexture    Textures[6];      // one SceneTexture per face
+    SkyVertex       QuadVerts[6][4];  // one triangle-strip quad per face
+    float           WorldMatrix[16];  // rebuilt every draw call
 };
-
-static_assert(offsetof(SkyBackground, flYawAngle)  == 0x004, "SkyBackground layout");
-static_assert(offsetof(SkyBackground, Textures)    == 0x008, "SkyBackground layout");
-static_assert(offsetof(SkyBackground, QuadVerts)   == 0x0b0, "SkyBackground layout");
-static_assert(offsetof(SkyBackground, WorldMatrix) == 0x3b0, "SkyBackground layout");
-static_assert(sizeof(SkyBackground) == 0x3f0, "SkyBackground size mismatch");
 
 /* Fills the geometry and matrix, then loads the six faces (UP, DN, FR, BK, LF,
  * RT) through the texture loader.  Stops at the first face that fails to load;

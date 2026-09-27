@@ -3,9 +3,7 @@
  * an object explodes; RenderSceneObjects advances and draws it, and
  * DrawObjectShadows draws its shadow, the debris flattened like any model.
  *
- * The object sits at ThemeLevelObject+0x15, 0x9c bytes up to the next field
- * the theme loader writes.  The 30-float speed table and its cursor tile
- * exactly: 0x14 + 30 * 4 is 0x8c. */
+ * The object is embedded in ThemeLevelObject. */
 
 #pragma once
 
@@ -15,16 +13,16 @@ class RenderDevice;
 
 struct ExplodeDebris {
 
-    void         *vtable;                // +0x00  the one-slot vtable
-    MeshVertex   *pVertexCopy;           // +0x04  nVertexCount vertices
-    float       (*pFaceRecords)[3];      // +0x08  a velocity per triangle
-    int           nVertexCount;          // +0x0c  as it was when the buffers were built
-    DWORD         bActive;               // +0x10  set by begin; cleared by the ctor and release
-    float         samples[30];  // +0x14  Gaussian speeds, mu 2.0, sigma 1.0; refilled whole
-    DWORD         cursor;                // +0x8c  reset by the same refill
-    int           nLiveVertices;         // +0x90  begin sets it; advance drops it by threes
-    float         flDropAccum;           // +0x94  fractional triangles owed
-    float         flExplodeScaledCount;  // +0x98  the drop rate: nVertexCount * arg / 300
+    void         *vtable;                // the one-slot vtable
+    MeshVertex   *pVertexCopy;           // nVertexCount vertices
+    float       (*pFaceRecords)[3];      // a velocity per triangle
+    int           nVertexCount;          // as it was when the buffers were built
+    DWORD         bActive;               // set by begin; cleared by the ctor and release
+    float         samples[30];  // Gaussian speeds, mu 2.0, sigma 1.0; refilled whole
+    DWORD         cursor;                // reset by the same refill
+    int           nLiveVertices;         // begin sets it; advance drops it by threes
+    float         flDropAccum;           // fractional triangles owed
+    float         flExplodeScaledCount;  // the drop rate: nVertexCount * arg / 300
 
 };
 

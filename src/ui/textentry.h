@@ -3,7 +3,7 @@
  * storage before activating the entry; construction leaves it alone. */
 #pragma once
 
-class __attribute__((packed)) TextEntry {
+class TextEntry {
 public:
 
     // Polls the keyboard once.  phase drives the cursor blink.

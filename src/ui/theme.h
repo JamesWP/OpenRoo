@@ -31,15 +31,14 @@ static_assert(sizeof(ThemeObjectKind) == 4, "ThemeObjectKind must stay DWORD-siz
 
 /* A short-lived particle burst: a position, the milliseconds left and whether
  * it is live. */
-struct __attribute__((packed)) FxBurst {
+struct FxBurst {
     float pos[3];
     int   msLeft;  // 1000 at spawn
     BYTE  active;
 };
-static_assert(sizeof(FxBurst) == 0x11, "FxBurst stride");
 
 /* One `model`, `field`, `billboard` or `particlesystem` entry. */
-class __attribute__((packed)) ThemeLevelObject {
+class ThemeLevelObject {
 public:
 
     ThemeObjectKind kind;
@@ -84,7 +83,7 @@ public:
 private:
 };
 
-class __attribute__((packed)) ThemeObjectTypeSlot {
+class ThemeObjectTypeSlot {
 public:
 
     void            *pVtable;          // our one-slot table
@@ -117,7 +116,7 @@ enum ThemeImageSlot {
     THEME_IMG_COUNT
 };
 
-struct __attribute__((packed)) ThemeTextColorPair {
+struct ThemeTextColorPair {
     DWORD color1;
     DWORD color2;
 };
@@ -137,7 +136,7 @@ enum ThemeTextColorSlot {
     THEME_COLOR_COUNT
 };
 
-class __attribute__((packed)) ThemeAssetBlock {
+class ThemeAssetBlock {
 public:
 
     char                 themeName[0x100];  // copied from the path after the file is read

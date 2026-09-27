@@ -16,12 +16,12 @@ int Model_ImportSceneModels(CFaktMesh *self, const char *path);
  *
  * The twin of TextureManager (scenetexture.h): same shape, same in-place
  * lowercasing lookup, "MM:" instead of "TM:" in its log lines. */
-class __attribute__((packed)) ModelManager {
+class ModelManager {
 public:
 
-    void        *vtable;    // +0x00
-    LinkedList   cache;     // +0x04  CFaktMesh *, game-heap nodes
-    GameLogger  *pLogger;   // +0x14  NULL = silent
+    void        *vtable;
+    LinkedList   cache;     // CFaktMesh *, game-heap nodes
+    GameLogger  *pLogger;   // NULL = silent
 private:
 };
 

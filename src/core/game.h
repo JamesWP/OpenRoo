@@ -1,9 +1,6 @@
-/* Game: the one game object, 0x51790d bytes, holding the whole game's state
- * as sub-objects and fields at fixed offsets (game.cpp builds it).
- *
- * Packed; everything not decoded is a gap whose size is written as the
- * difference of its neighbours' offsets.  A field whose meaning is not
- * decoded is named field_<offset>.
+/* Game: the one game object, holding the whole game's state as sub-objects
+ * and fields (game.cpp builds it).  A field whose meaning is not decoded is
+ * named field_<hex>, after where the original kept it.
  */
 #pragma once
 
@@ -18,6 +15,9 @@
 #include "levelmap.h"
 #include "switchcells.h"
 #include "levelcensus.h"
+#include "tickstep.h"
+#include "soundmanager.h"
+#include "player.h"
 
 class SoundManager;
 class LiftObject;
@@ -25,89 +25,71 @@ class SlideObject;
 class BridgeObject;
 class BreakableTile;
 
-/* The tick step at Game+0x170a5c: GameTick's `dt` argument, a double
- * (GameTick and the six Camera* handlers FLD it as one; GameTick
- * zeroes it while paused, state 5).  Every level object keeps a pointer to
- * it and copies it to its own +0x15 each tick.  Wrapped in a packed
- * struct so that it is 1-aligned: objects hold it at odd offsets and pass
- * its address to byte-copy helpers, which a bare double would warn on. */
-struct __attribute__((packed)) TickStep {
-    double value;
-};
-
 /* A sound asset's file name and, immediately after it, its enabled flag.
  * The spawn's unbounded strcpy of `name` relies on the flag to stop it. */
-struct __attribute__((packed)) SoundAssetName {
+struct SoundAssetName {
     char name[256];
     int  enabled;
     DWORD unknown104;   /* ThemeSound_Add's arg4; the .thm path passes 1 */
     DWORD unknown108;   /* ThemeSound_Add's arg3; the .thm path passes 1 */
 };
-static_assert(sizeof(SoundAssetName) == 0x10c, "SoundAssetName stride");
 
-/* The theme sound table ("TSM" in its log line), Game+0x42258.  A .thm
+/* The theme sound table ("TSM" in its log line).  A .thm
  * `Sound <event> <wave>` line fills entries[id] through ThemeSound_Add
  * (theme.cpp); the id is RegisterThemeSound's event number, so e.g. entry 0
  * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
- * 0x47, but the table holds 100 entries: ReleaseAll clears exactly
- * 100, ending at Game+0x48b12 where switchMax_ begins.  Lifecycle in
+ * 0x47, but the table holds 100 entries, and ReleaseAll clears all 100.
+ * Lifecycle in
  * theme.cpp; the vtable is ours, one slot. */
 #define THEME_SOUND_COUNT 100
-struct __attribute__((packed)) ThemeSoundTable {
-    void          *vtable;       /* +0 */
-    DWORD          unknown4;     /* +4  never written */
-    WORD           unknown8;     /* +8  zeroed by the ctor, never read */
+struct ThemeSoundTable {
+    void          *vtable;
+    WORD           unknown8;     /* zeroed by the ctor, never read */
     SoundAssetName entries[THEME_SOUND_COUNT];
 };
-static_assert(sizeof(ThemeSoundTable) == 10 + 100 * 0x10c, "ThemeSoundTable size");
 
-/* The end-of-level score tally, Game+0x1404c1..+0x140543.  Six rows, each
+/* The end-of-level score tally.  Six rows, each
  * with a real COUNT and SCORE (CalculateLevelScore) and a SHOWN
  * count and score that AnimateScoreTallyStages counts up from zero
- * towards them.  The arrays are in offset order; the animation's stages
- * visit FOES before TIME.  The two gaps are never touched by either. */
+ * towards them.  The animation's stages visit FOES before TIME. */
 enum TallyRow {
     TALLY_GEMS, TALLY_SURPLUS, TALLY_TIME, TALLY_FOES, TALLY_ALLITEMS,
     TALLY_VITALITY, TALLY_ROWS
 };
 
-struct __attribute__((packed)) ScoreTally {
+struct ScoreTally {
 
-    int           shownScore[TALLY_ROWS];   /* +0x00  0x1404c1 */
-    int           shownBase;                /* +0x18  running total before this level */
-    int           shownCount[TALLY_ROWS];   /* +0x1c  0x1404dd */
-    int           shownLevelTotal;          /* +0x34  sum of shownScore */
-    int           shownGrandTotal;          /* +0x38  shownBase + shownLevelTotal */
-    unsigned char gap_3c[0x41 - 0x3c];
-    int           score[TALLY_ROWS];        /* +0x41  0x140502 */
-    unsigned char gap_59[0x5d - 0x59];
-    int           count[TALLY_ROWS];        /* +0x5d  0x14051e */
-    int           levelTotal;               /* +0x75  0x140536 */
-    int           grandTotal;               /* +0x79  0x14053a */
-    unsigned char stage;                    /* +0x7d  animation state, 0..6 */
-    int           stageStart;               /* +0x7e  ms, the stage's start */
+    int           shownScore[TALLY_ROWS];
+    int           shownBase;                /* running total before this level */
+    int           shownCount[TALLY_ROWS];
+    int           shownLevelTotal;          /* sum of shownScore */
+    int           shownGrandTotal;          /* shownBase + shownLevelTotal */
+    int           score[TALLY_ROWS];
+    int           count[TALLY_ROWS];
+    int           levelTotal;
+    int           grandTotal;
+    unsigned char stage;                    /* animation state, 0..6 */
+    int           stageStart;               /* ms, the stage's start */
 
 };
 
-/* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport loads once,
- * Game+0x13cc5c..+0x13cc84.  They are the Game's, not the SoundManager's:
- * the SoundManager is 0xb4 bytes and ends exactly here (none of its methods
- * touches past its second list at +0xa4), and only Game code writes them. */
+/* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport loads once.  They
+ * are the Game's, not the SoundManager's: only Game code writes them. */
 struct CStaticSoundbuffer;
 struct VoicePool;
-struct __attribute__((packed)) FixedSounds {
+struct FixedSounds {
 
-    CStaticSoundbuffer *timeOut;          /* +0x00  0x13cc5c */
-    CStaticSoundbuffer *switchClick;      /* +0x04  menu select */
-    VoicePool          *menuUpDown;       /* +0x08  5 voices */
-    CStaticSoundbuffer *count;            /* +0x0c */
-    CStaticSoundbuffer *lastSeconds;      /* +0x10  the countdown */
-    CStaticSoundbuffer *levelCompleted;   /* +0x14 */
+    CStaticSoundbuffer *timeOut;
+    CStaticSoundbuffer *switchClick;      /* menu select */
+    VoicePool          *menuUpDown;       /* 5 voices */
+    CStaticSoundbuffer *count;
+    CStaticSoundbuffer *lastSeconds;      /* the countdown */
+    CStaticSoundbuffer *levelCompleted;
     /* Three banks, 'A'..'C'; GameTick picks one by rand()%3 when the
      * crystals are complete. */
-    CStaticSoundbuffer *crystalBank[3];   /* +0x18 */
+    CStaticSoundbuffer *crystalBank[3];
     /* Set once the load has run (or found no sound); it never runs again. */
-    unsigned int        loaded;           /* +0x24  0x13cc80 */
+    unsigned int        loaded;
 
 };
 
@@ -115,7 +97,7 @@ class Bomb;
 class Foe;
 class Player;
 
-class __attribute__((packed)) Game {
+class Game {
 public:
 
     /* The one Game object, NULL until WinMain has built it.  A static
@@ -125,9 +107,9 @@ public:
     static void set_instance(Game* g) { s_instance = g; }
 
     /* ── sound ──────────────────────────────────────────────────────── */
-    SoundManager *soundManager()     { return (SoundManager *)soundManagerHead_; }
+    SoundManager *soundManager()     { return &soundManager_; }
     /* Nonzero once sound is up. */
-    int  soundCreated() const        { return soundCreated_; }
+    int  soundCreated() const        { return (int)soundManager_.dwCreated_; }
     FixedSounds  *fixedSounds()      { return &fixedSounds_; }
 
     /* ── time ───────────────────────────────────────────────────────── */
@@ -137,54 +119,49 @@ public:
     double         lastTickTime() const              { return lastTickTime_; }
     void           setLastTickTime(double t)         { lastTickTime_ = t; }
     /* The 8-byte clock accumulator.  Objects keep a pointer to it and
-     * re-read it every tick.  Addressed via offsetof rather than &clock_,
-     * which GCC flags for a packed member (-Waddress-of-packed-member); the
-     * offset still comes from the field, and 0x170a54 is 4-aligned. */
-    double        *clock()
-    {
-        return (double *)((unsigned char *)this + offsetof(Game, clock_));
-    }
-    /* The tick step, dt; objects copy it to their +0x15 each tick. */
+     * re-read it every tick. */
+    double        *clock()           { return &clock_; }
+    /* The tick step, dt; objects copy it to their own each tick. */
     TickStep      *tickStep()        { return &tickStep_; }
 
     /* ── tiles ──────────────────────────────────────────────────────── */
     /* ── level-load flags ───────────────────────────────────────────── */
-    /* +0x0c: the level builder's missing-CD check fires only while it is
+    /* The level builder's missing-CD check fires only while it is
      * zero.  Not decoded. */
     int            field_0c() const                  { return field_0c_; }
-    /* +0x10: 1 when the last level load read a different map name from the
+    /* 1 when the last level load read a different map name from the
      * one before it (both loaders, levelparse.cpp). */
     unsigned int   mapChanged() const                { return mapChanged_; }
     void           setMapChanged(unsigned int c)     { mapChanged_ = c; }
-    /* +0x14: the NEXT level's bonus flag, which OpenLevelFile peeks by
+    /* The NEXT level's bonus flag, which OpenLevelFile peeks by
      * loading that level's map first.  SetupLevelObjects reads it to give
      * the completed-level menu node (0x28) two children when it is 0 and
      * one otherwise -- the builder called it a "mode flag". */
     unsigned int   nextLevelBonus() const            { return nextLevelBonus_; }
     void           setNextLevelBonus(unsigned int b) { nextLevelBonus_ = b; }
-    /* +0x173b1a: GameTick latches it to 1 the first time the exit
+    /* GameTick latches it to 1 the first time the exit
      * condition is met in a level (and plays a crystal sound); the level
      * builder clears it.  Named by offset. */
     int            field_173b1a() const              { return field_173b1a_; }
     void           setField173b1a(int v)             { field_173b1a_ = v; }
 
-    /* +0x173584: the level builder sets it to 1; GameTick loads the level
+    /* The level builder sets it to 1; GameTick loads the level
      * sounds only while it and levelSoundsReady() are both 0.  Named by
      * offset. */
     int            field_173584() const              { return field_173584_; }
     void           setField173584(int v)             { field_173584_ = v; }
-    /* +0x18: GameTick adds one per tick and returns it with the low byte
-     * masked off; +0x48b14 is bumped beside it.  Neither is read elsewhere
+    /* GameTick adds one per tick and returns it with the low byte
+     * masked off; field_48b14 is bumped beside it.  Neither is read elsewhere
      * in our code. */
     unsigned int   tickCount() const                 { return tickCount_; }
     void           setTickCount(unsigned int n)      { tickCount_ = n; }
     unsigned int   field_48b14() const               { return field_48b14_; }
     void           setField48b14(unsigned int n)     { field_48b14_ = n; }
     /* The game file's name (the .gam, the save-slot files' base and the
-     * final directory's %s), 0x80 bytes up to the census. */
+     * final directory's %s), 0x80 bytes. */
     const char    *gameFileName() const              { return gameFileName_; }
     /* The level the main menu shows behind it, which GameTick reloads on
-     * returning there; 0x80 bytes up to the extra objects. */
+     * returning there; 0x80 bytes. */
     const char    *menuLevelName() const             { return menuLevelName_; }
     /* The game state ESC interrupted (1 playing or 4 loaded); keypress.cpp
      * restores it when the menu is left. */
@@ -261,7 +238,7 @@ public:
      * Load, SetupLevelObjects and the 3D-sound toggle clear it. */
     int            levelSoundsReady() const          { return levelSoundsReady_; }
     void           setLevelSoundsReady(int r)        { levelSoundsReady_ = r; }
-    /* Save-name text entry in progress (the entry object is at +0x170a6d):
+    /* Save-name text entry in progress (nameEntry()):
      * HandleKeypress sets it on the save-slot nodes, routes keys to the
      * entry while it is set, and clears it when entry ends. */
     int            textEntryActive() const           { return textEntryActive_; }
@@ -295,9 +272,7 @@ public:
     char          *levelNameBuffer()                 { return levelName_; }
     char          *levelNameTableEntry(unsigned char i) { return levelNameTable_[i]; }
 
-    /* The level-report tallies (reportwriter.cpp owns all of them).  Get/set
-     * rather than a reference: Game is packed, so a `short &` into it will
-     * not bind. */
+    /* The level-report tallies (reportwriter.cpp owns all of them). */
     unsigned short reportLevelsWithScript() const    { return reportLevelsWithScript_; }
     void        setReportLevelsWithScript(unsigned short n) { reportLevelsWithScript_ = n; }
     unsigned short reportLevelsWithBonus() const     { return reportLevelsWithBonus_; }
@@ -330,8 +305,8 @@ public:
     void           setWaveOutVolume(unsigned int v)  { config_.setWaveOutVolume(v); }
 
     /* ── camera and controls ────────────────────────────────────────── */
-    /* 0 = follow the player; nonzero = view from the separate eye at
-     * +0x2ab580 (FramePose_Player / UpdateViewTransform), and 2 also spins
+    /* 0 = follow the player; nonzero = view from the separate eye,
+     * cameraEye() (FramePose_Player / UpdateViewTransform), and 2 also spins
      * the yaw -- the menus and the tally.  Checkpoints restore it. */
     unsigned char  cameraMode() const                { return cameraMode_; }
     void           setCameraMode(unsigned char m)    { cameraMode_ = m; }
@@ -342,10 +317,11 @@ public:
     void           setCameraDistance(float d)        { cameraDistance_ = d; }
     /* The controls menu's camera option: 1 = the camera turns with the
      * player (UpdateViewTransform, FramePose_Player).  GameTick forces it to 1
-     * while Player+0xea is set, parking the choice +10 at +0x3215d. */
+     * while the player is gliding, parking the choice +10 in
+     * parkedCameraOption. */
     unsigned char  cameraTurnsWithPlayer() const     { return config_.cameraTurnsWithPlayer(); }
     void           setCameraTurnsWithPlayer(unsigned char on) { config_.setCameraTurnsWithPlayer(on); }
-    /* Where GameTick parks cameraTurnsWithPlayer while Player+0xea forces
+    /* Where GameTick parks cameraTurnsWithPlayer while gliding forces
      * it on: the player's choice + 10, so 0 means "nothing parked".  Load
      * zeroes it. */
     unsigned char  parkedCameraOption() const        { return parkedCameraOption_; }
@@ -363,24 +339,24 @@ public:
     void           setCameraEye(int i, float v)      { cameraEye_[i] = v; }
     float          cameraEye(int i) const            { return cameraEye_[i]; }
     /* A float vector RenderGameFrame's scripted-camera branch (taken
-     * instead of UpdateViewTransform when Game+0x196086 is set) reads beside
+     * instead of UpdateViewTransform while the script player's spline is active) reads beside
      * the eye; checkpoints restore it from the script player's spline point,
      * and the level builder seeds it {0, 1000, 0}.  Not decoded. */
     void           setField13cc94(int i, float v)    { field_13cc94_[i] = v; }
     float          field13cc94(int i) const          { return field_13cc94_[i]; }
-    /* +0x13cca4 is the zoom distance the Zoom In/Out actions step (clamped
+    /* zoomDistance is the zoom distance the Zoom In/Out actions step (clamped
      * 2..20); GameTick eases cameraDistance towards it and copies it back
-     * when the overview ends.  +0x13cca8 is the overview flag the OverView
+     * when the overview ends.  overviewActive is the overview flag the OverView
      * action raises (with cameraDistance 40); GameTick and the level
-     * builder clear it.  +0x13cc90 is set by both zoom actions and cleared
+     * builder clear it.  field_13cc90 is set by both zoom actions and cleared
      * by the same two; PRESERVED: nothing reads it. */
     void           setField13cc90(int v)             { field_13cc90_ = v; }
     float          zoomDistance() const              { return zoomDistance_; }
     void           setZoomDistance(float d)          { zoomDistance_ = d; }
     int            overviewActive() const            { return overviewActive_; }
     void           setOverviewActive(int v)          { overviewActive_ = v; }
-    /* keypress.cpp: +0x13cc88 is a one-shot latch (cleared, then set on
-     * the first press, which also sets +0x13cc8c).  Named by offset. */
+    /* keypress.cpp: field_13cc88 is a one-shot latch (cleared, then set on
+     * the first press, which also sets field_13cc8c). */
     int            field_13cc88() const              { return field_13cc88_; }
     void           setField13cc88(int v)             { field_13cc88_ = v; }
     int            field_13cc8c() const              { return field_13cc8c_; }
@@ -406,7 +382,7 @@ public:
     unsigned char  foesKilled() const                { return foesKilled_; }
     void           setFoesKilled(unsigned char n)    { foesKilled_ = n; }
     /* The level's time limit in seconds (SetupLevelObjects copies it from
-     * +0x2ab71f) and the play time against it in milliseconds. */
+     * the map file's) and the play time against it in milliseconds. */
     int            timeLimit() const                 { return map_.timeLimit(); }
     void           setTimeLimit(int s)               { map_.setTimeLimit(s); }
     unsigned int   timeElapsed() const               { return map_.timeElapsed(); }
@@ -465,37 +441,29 @@ public:
      * slot through its address exactly as the original does. */
     unsigned char  bombCount() const               { return bombCount_; }
     void           setBombCount(unsigned char n)   { bombCount_ = n; }
-    unsigned char *bombCountRef()   { return (unsigned char *)this + offsetof(Game, bombCount_); }
+    unsigned char *bombCountRef()   { return &bombCount_; }
     unsigned char  bombId(unsigned int i) const    { return bombIds_[i]; }
-    unsigned char *bombIds()        { return (unsigned char *)this + offsetof(Game, bombIds_); }
+    unsigned char *bombIds()        { return bombIds_; }
     Bomb          *bombSlot(unsigned int id) const { return bombSlots_[id]; }
-    Bomb         **bombSlotRef(unsigned int id)
-    {
-        return (Bomb **)((unsigned char *)this + offsetof(Game, bombSlots_)) + id;
-    }
+    Bomb         **bombSlotRef(unsigned int id)  { return &bombSlots_[id]; }
 
     /* ── foes ───────────────────────────────────────────────────────── */
     /* The same slot/count/ID-list shape as the bombs, and the same *Ref
      * accessors for the shared remove tail. */
     unsigned char  foeCount() const               { return foeCount_; }
     void           setFoeCount(unsigned char n)   { foeCount_ = n; }
-    unsigned char *foeCountRef()    { return (unsigned char *)this + offsetof(Game, foeCount_); }
+    unsigned char *foeCountRef()    { return &foeCount_; }
     unsigned char  foeId(unsigned int i) const    { return foeIds_[i]; }
-    unsigned char *foeIds()         { return (unsigned char *)this + offsetof(Game, foeIds_); }
+    unsigned char *foeIds()         { return foeIds_; }
     Foe           *foeSlot(unsigned int id) const { return foeSlots_[id]; }
-    Foe          **foeSlotRef(unsigned int id)
-    {
-        return (Foe **)((unsigned char *)this + offsetof(Game, foeSlots_)) + id;
-    }
+    Foe          **foeSlotRef(unsigned int id)   { return &foeSlots_[id]; }
     /* A WORD the foe spawn bumps for type 0x0b; levelsetup.cpp calls it a
      * crystal count.  Not confirmed, so not named. */
     unsigned short field_42252() const             { return field_42252_; }
     void           setField42252(unsigned short n) { field_42252_ = n; }
     /* ── the player ─────────────────────────────────────────────────── */
-    /* Embedded at +0x1751c9 (player.h).  A cast rather than a member:
-     * player.h includes this header, through movableentity.h. */
-    Player       *player()       { return reinterpret_cast<Player *>(gap_1751c9); }
-    const Player *player() const { return reinterpret_cast<const Player *>(gap_1751c9); }
+    Player       *player()       { return &player_; }
+    const Player *player() const { return &player_; }
 
     /* The current level's path; diagnostics only. */
     const char    *levelName() const               { return levelName_; }
@@ -546,125 +514,107 @@ private:
 private:
     Game() = delete;   /* game-owned; only ever reached by pointer */
 
-    const void   *vtable_;                                /* 0x000000  ours, one slot */
-    double        field_04_;                              /* 0x000004  Load sets 1.0; reader not decoded */
-    int           field_0c_;                              /* 0x00000c */
-    unsigned int  mapChanged_;                            /* 0x000010 */
-    unsigned int  nextLevelBonus_;                        /* 0x000014 */
-    unsigned int  tickCount_;                             /* 0x000018 */
-    MenuTree      rootMenu_;                              /* 0x00001c  constructed, never navigated */
-    int           initialised_;                           /* 0x020239  0 until Load completes */
-    TimedSpawner  timedSpawners_[256];                    /* 0x02023d */
-    FreeBomb      freeBombs_[256];                        /* 0x02173d */
-    unsigned char gap_02223d[0x02223f - 0x02223d];
-    CdThemes      cdThemes_;                              /* 0x02223f */
-    unsigned char parkedCameraOption_;                    /* 0x03215d */
-    /* 256 level names, 0x100 each, tiling 0x03215e..0x04215e exactly.
-     * SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
-    char          levelNameTable_[256][0x100];            /* 0x03215e */
-    unsigned char levelCount_;                            /* 0x04215e */
-    char          gameFileName_[0x0421df - 0x04215f];     /* 0x04215f */
-    LevelCensus   census_;                                /* 0x0421df */
-    unsigned char restartCount_;                          /* 0x04220b */
+    const void   *vtable_;                                /* ours, one slot */
+    double        field_04_;                              /* Load sets 1.0; reader not decoded */
+    int           field_0c_;
+    unsigned int  mapChanged_;
+    unsigned int  nextLevelBonus_;
+    unsigned int  tickCount_;
+    MenuTree      rootMenu_;                              /* constructed, never navigated */
+    int           initialised_;                           /* 0 until Load completes */
+    TimedSpawner  timedSpawners_[256];
+    FreeBomb      freeBombs_[256];
+    CdThemes      cdThemes_;
+    unsigned char parkedCameraOption_;
+    /* 256 level names, 0x100 each.  SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
+    char          levelNameTable_[256][0x100];
+    unsigned char levelCount_;
+    char          gameFileName_[0x80];
+    LevelCensus   census_;
+    unsigned char restartCount_;
     /* The level-report tallies, zeroed and accumulated by
      * Report_WriteLevelReport (reportwriter.cpp) and by nothing else. */
-    unsigned short reportLevelsWithScript_;               /* 0x04220c */
-    unsigned char gap_04220e[0x042212 - 0x04220e];
-    int            reportScoreTotal_;                     /* 0x042212 */
-    unsigned char gap_042216[0x042243 - 0x042216];
-    unsigned short reportTallyA_;                         /* 0x042243 */
-    unsigned short reportLevelsWithBonus_;                /* 0x042245 */
-    unsigned short reportLevelsWithLeo_;                  /* 0x042247 */
-    unsigned char gap_042249[0x04224d - 0x042249];
+    unsigned short reportLevelsWithScript_;
+    int            reportScoreTotal_;
+    unsigned short reportTallyA_;
+    unsigned short reportLevelsWithBonus_;
+    unsigned short reportLevelsWithLeo_;
     /* Foes killed this level; CalculateLevelScore pays 50 each. */
-    unsigned char foesKilled_;                            /* 0x04224d */
-    unsigned char gap_04224e[0x042250 - 0x04224e];
-    unsigned short itemTotal_;                            /* 0x042250 */
-    unsigned short field_42252_;                          /* 0x042252 */
-    int           levelSoundsReady_;                      /* 0x042254 */
-    ThemeSoundTable themeSounds_;                         /* 0x042258 */
-    unsigned char switchMax_;                             /* 0x048b12 */
-    unsigned char stateBeforeMenu_;                       /* 0x048b13 */
-    unsigned int  field_48b14_;                           /* 0x048b14 */
-    char          menuLevelName_[0x048b98 - 0x048b18];    /* 0x048b18 */
-    ExtraObjects  extraObjects_;                          /* 0x048b98 */
-    /* The SoundManager is embedded here; its full size is unknown (its
-     * lists reach at least +0xa4), so only the bytes up to the next field
-     * we use are declared.  soundCreated_ sits inside it at +0x8c.
-     * Its real size is 0xb4 (its ctor, dtor, purge, init and setup touch
-     * nothing past the second list at +0xa4), so it ends exactly where
-     * fixedSounds_ begins. */
-    unsigned char soundManagerHead_[0x13cc34 - 0x13cba8];
-    int           soundCreated_;                          /* 0x13cc34 */
-    unsigned char gap_13cc38[0x13cc5c - 0x13cc38];        /* SoundManager tail */
-    FixedSounds   fixedSounds_;                           /* 0x13cc5c */
-    int           field_13cc84_;                          /* 0x13cc84  Load zeroes; reader not decoded */
-    int           field_13cc88_;                          /* 0x13cc88 */
-    int           field_13cc8c_;                          /* 0x13cc8c */
-    int           field_13cc90_;                          /* 0x13cc90 */
-    float         field_13cc94_[3];                       /* 0x13cc94 */
-    unsigned char gap_13cca0[0x13cca4 - 0x13cca0];
-    float         zoomDistance_;                          /* 0x13cca4 */
-    int           overviewActive_;                        /* 0x13cca8 */
+    unsigned char foesKilled_;
+    unsigned short itemTotal_;
+    unsigned short field_42252_;
+    int           levelSoundsReady_;
+    ThemeSoundTable themeSounds_;
+    unsigned char switchMax_;
+    unsigned char stateBeforeMenu_;
+    unsigned int  field_48b14_;
+    char          menuLevelName_[0x80];
+    ExtraObjects  extraObjects_;
+    SoundManager  soundManager_;
+    FixedSounds   fixedSounds_;
+    int           field_13cc84_;                          /* Load zeroes; reader not decoded */
+    int           field_13cc88_;
+    int           field_13cc8c_;
+    int           field_13cc90_;
+    float         field_13cc94_[3];
+    float         zoomDistance_;
+    int           overviewActive_;
     /* The typed-cheat buffer; declared up to the cheat entry that follows.
      * Its real length is not established. */
-    unsigned char cheatBuffer_[0x13cdac - 0x13ccac];      /* 0x13ccac */
-    TextEntry     cheatEntry_;                            /* 0x13cdac */
-    HighScoreTable highScores_;                           /* 0x13cdbb */
-    ScoreTally    tally_;                                 /* 0x1404c1 */
-    SwitchCells   switchCells_;                           /* 0x140543 */
-    BridgeObject *bridgeSlots_[256];                      /* 0x170643 */
-    unsigned char bridgeCount_;                           /* 0x170a43 */
-    double        totalPlayTime_;                         /* 0x170a44 */
-    double        lastTickTime_;                          /* 0x170a4c */
-    double        clock_;                                 /* 0x170a54 */
-    TickStep      tickStep_;                              /* 0x170a5c */
+    unsigned char cheatBuffer_[0x100];
+    TextEntry     cheatEntry_;
+    HighScoreTable highScores_;
+    ScoreTally    tally_;
+    SwitchCells   switchCells_;
+    BridgeObject *bridgeSlots_[256];
+    unsigned char bridgeCount_;
+    double        totalPlayTime_;
+    double        lastTickTime_;
+    double        clock_;
+    TickStep      tickStep_;
     /* Recomputed by GameTick every tick; see vitalityPercent(). */
-    unsigned char vitalityPercent_;                       /* 0x170a64 */
-    unsigned int  field_170a65_;                          /* 0x170a65 */
-    int           textEntryActive_;                       /* 0x170a69 */
-    TextEntry     nameEntry_;                             /* 0x170a6d */
-    SaveSlots     saveSlots_;                             /* 0x170a7c */
-    /* Its length is unknown; declared only as far as the next field. */
-    char          levelName_[0x173583 - 0x173483];        /* 0x173483 */
-    unsigned char levelIndex_;                            /* 0x173583 */
-    int           field_173584_;                          /* 0x173584 */
-    SlideObject  *slideSlots_[100];                       /* 0x173588 */
-    unsigned char slideCount_;                            /* 0x173718 */
-    LiftObject   *liftSlots_[256];                        /* 0x173719 */
-    unsigned char liftCount_;                             /* 0x173b19 */
-    int           field_173b1a_;                          /* 0x173b1a */
-    BreakableTile *breakableSlots_[200];                  /* 0x173b1e */
-    unsigned char breakableCount_;                        /* 0x173e3e */
-    Bomb         *bombSlots_[500];                        /* 0x173e3f */
-    unsigned char bombCount_;                             /* 0x17460f */
-    unsigned char bombIds_[500];                          /* 0x174610 */
-    Foe          *foeSlots_[500];                         /* 0x174804 */
-    unsigned char foeCount_;                              /* 0x174fd4 */
-    /* 500 long: the Player object follows at 0x1751c9. */
-    unsigned char foeIds_[500];                           /* 0x174fd5 */
-    /* The Player (0x241 bytes, player.h) and 7 unknown bytes after it. */
-    unsigned char gap_1751c9[0x175412 - 0x1751c9];
-    unsigned char rebindCode_;                            /* 0x175412 */
-    char          rebindAction_[0x175513 - 0x175413];     /* 0x175413 */
-    int           rebindActive_;                          /* 0x175513 */
-    unsigned char debounce_;                              /* 0x175517 */
-    MenuTree      menu_;                                  /* 0x175518 */
-    ScriptPlayer  scriptPlayer_;                          /* 0x195735 */
-    float         cameraDistance_;                        /* 0x28ab29 */
-    unsigned char cameraMode_;                            /* 0x28ab2d */
+    unsigned char vitalityPercent_;
+    unsigned int  field_170a65_;
+    int           textEntryActive_;
+    TextEntry     nameEntry_;
+    SaveSlots     saveSlots_;
+    /* As long as a level-name table entry. */
+    char          levelName_[0x100];
+    unsigned char levelIndex_;
+    int           field_173584_;
+    SlideObject  *slideSlots_[100];
+    unsigned char slideCount_;
+    LiftObject   *liftSlots_[256];
+    unsigned char liftCount_;
+    int           field_173b1a_;
+    BreakableTile *breakableSlots_[200];
+    unsigned char breakableCount_;
+    Bomb         *bombSlots_[500];
+    unsigned char bombCount_;
+    unsigned char bombIds_[500];
+    Foe          *foeSlots_[500];
+    unsigned char foeCount_;
+    unsigned char foeIds_[500];
+    Player        player_;
+    unsigned char rebindCode_;
+    char          rebindAction_[0x100];
+    int           rebindActive_;
+    unsigned char debounce_;
+    MenuTree      menu_;
+    ScriptPlayer  scriptPlayer_;
+    float         cameraDistance_;
+    unsigned char cameraMode_;
     /* The settings (config.h); music, volumes, 3D sound, the camera
      * option and the joystick deadzone live in its persisted blob. */
-    Config        config_;                                /* 0x28ab2e */
-    float         cameraEye_[3];                          /* 0x2ab580 */
-    unsigned char state_;                                 /* 0x2ab58c */
-    /* The map: header, grid and snapshot grid, 0x26c37c bytes ending exactly
-     * at tallyDone_.  Its header holds the time limit (GameTick times the
+    Config        config_;
+    float         cameraEye_[3];
+    unsigned char state_;
+    /* The map: header, grid and snapshot grid.  Its header holds the time limit (GameTick times the
      * level out at timeLimit*1000 ms), the ms of play (CalculateLevelScore
      * pays the unused seconds) and the gem quota (CalculateLevelScore
      * pays 5 a gem up to it and 10 per gem beyond). */
-    LevelMap      map_;                                   /* 0x2ab58d */
-    int           tallyDone_;                             /* 0x517909 */
+    LevelMap      map_;
+    int           tallyDone_;
 };
 
 /* The lifecycle (game.cpp): construct (returns self), destruct, and the

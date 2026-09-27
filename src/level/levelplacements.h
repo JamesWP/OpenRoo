@@ -9,7 +9,7 @@
 #include <windows.h>
 
 /* A position and rotation list, one entry per cell of one kind. */
-struct __attribute__((packed)) PlacementList {
+struct PlacementList {
     int     count;
     float (*pos)[3];
     float (*rot)[3];
@@ -21,7 +21,7 @@ struct __attribute__((packed)) PlacementList {
  * specular 0, u, v. */
 struct PlacementVertex { DWORD d[8]; };
 
-struct __attribute__((packed)) LevelPlacements {
+struct LevelPlacements {
 
     PlacementVertex tileQuad[4];     // unit quad at y 0, +-0.5
     int             kind01Count;     // TILE_KIND_01 cells

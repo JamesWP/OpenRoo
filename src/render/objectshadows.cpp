@@ -150,12 +150,9 @@ void Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                 if (rec->bExplode == 0) {
                     FaktMesh_DrawMeshBuffer(rec->pMesh, dev, (DWORD)frame);
                 } else {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
                     ExplodeDebris_Advance(&rec->explode,
                                           (float)(unsigned long long)debrisMs * K_DEBRIS_MS);
                     ExplodeDebris_Draw(&rec->explode, dev);
-#pragma GCC diagnostic pop
                 }
             }
         }

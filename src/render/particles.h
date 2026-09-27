@@ -11,37 +11,30 @@ class RenderDevice;
  * a live region [pRingHead, pRingCurrent) and a free region [pRingCurrent,
  * pRingTail].  Generators claim at pRingCurrent; environments age and retire. */
 struct ParticleNode {
-    ParticleNode *pPrev;          // +0x00
-    ParticleNode *pNext;          // +0x04
-    float         flX, flY, flZ;  // +0x08..+0x10 position
-    float         flVel[3];       // +0x14..+0x1c velocity
-    float         flLife;         // +0x20 seconds remaining; < 0 retires
-    DWORD         dwDiffuse;      // +0x24
-    DWORD         dwShapeIndex;   // +0x28 XFace corner-table index; alloc-time only
+    ParticleNode *pPrev;
+    ParticleNode *pNext;
+    float         flX, flY, flZ;  // position
+    float         flVel[3];       // velocity
+    float         flLife;         // seconds remaining; < 0 retires
+    DWORD         dwDiffuse;
+    DWORD         dwShapeIndex;   // XFace corner-table index; alloc-time only
 };
-static_assert(offsetof(ParticleNode, pNext)        == 0x04, "ParticleNode layout");
-static_assert(offsetof(ParticleNode, flX)          == 0x08, "ParticleNode layout");
-static_assert(offsetof(ParticleNode, flVel)        == 0x14, "ParticleNode layout");
-static_assert(offsetof(ParticleNode, flLife)       == 0x20, "ParticleNode layout");
-static_assert(offsetof(ParticleNode, dwDiffuse)    == 0x24, "ParticleNode layout");
-static_assert(offsetof(ParticleNode, dwShapeIndex) == 0x28, "ParticleNode layout");
-static_assert(sizeof(ParticleNode) == 0x2C, "ParticleNode size");
 
 /* FVF 0x1e2 vertex, 0x20 bytes.  Fill only ever writes xyz + diffuse, leaving
  * psize and specular uninitialised.  u/v are not touched by Fill
  * either: the Face and XFace vertex allocators bake the texture corners in
  * once, at allocation (see quad_alloc_verts in particles.cpp). */
 struct ParticleVertex {
-    float flX, flY, flZ;   // +0x00..+0x08
-    float flPsize;         // +0x0c  (never written)
-    DWORD dwDiffuse;       // +0x10
-    DWORD dwSpecular;      // +0x14  (never written)
-    float flU, flV;        // +0x18, +0x1c (never written)
+    float flX, flY, flZ;
+    float flPsize;         // (never written)
+    DWORD dwDiffuse;
+    DWORD dwSpecular;      // (never written)
+    float flU, flV;        // (never written)
 };
 static_assert(sizeof(ParticleVertex) == 0x20, "ParticleVertex size");
 
-/* The ring, as ONE struct.  It is embedded in ParticleSystem at +0x08, and it
- * is the *same object* that Generator+0x0C and Environment+0x08 point at:
+/* The ring, as ONE struct.  It is embedded in ParticleSystem, and it is the
+ * *same object* that the Generator's and the Environment's pRing point at:
  * SetGenerator/SetEnvironment attach both to `&ps->ring`.  Declaring it once means the
  * emitter, the integrator and the render fill all name the same fields.
  *
@@ -50,14 +43,12 @@ static_assert(sizeof(ParticleVertex) == 0x20, "ParticleVertex size");
  *
  * Empty when pRingHead == pRingCurrent; full when pRingCurrent == NULL. */
 struct RingBuffer {
-    DWORD         dwRingCount;    // +0x00
-    ParticleNode *pRingBase;      // +0x04
-    ParticleNode *pRingHead;      // +0x08 oldest live particle
-    ParticleNode *pRingTail;      // +0x0c last free node
-    ParticleNode *pRingCurrent;   // +0x10 next node to emit into
+    DWORD         dwRingCount;
+    ParticleNode *pRingBase;
+    ParticleNode *pRingHead;      // oldest live particle
+    ParticleNode *pRingTail;      // last free node
+    ParticleNode *pRingCurrent;   // next node to emit into
 };
-static_assert(sizeof(RingBuffer) == 0x14, "RingBuffer size");
-static_assert(offsetof(RingBuffer, pRingCurrent) == 0x10, "RingBuffer layout");
 
 struct Generator;
 struct Environment;
@@ -65,28 +56,21 @@ struct Environment;
 /* Every constructor and destructor installs one of particles.cpp's
  * ps_vtbl_* tables. */
 
-/* Base class, 0x28 bytes. */
+/* Base class. */
 struct ParticleSystem {
-    void         **pVtable;       // +0x00 → 15-slot vtable
-    char          *pName;         // +0x04
-    RingBuffer     ring;          // +0x08 handed to the generator and environment
-    Generator     *pGenerator;    // +0x1c
-    Environment   *pEnvironment;  // +0x20
-    void          *pField24;      // +0x24
+    void         **pVtable;       // → 15-slot vtable
+    char          *pName;
+    RingBuffer     ring;          // handed to the generator and environment
+    Generator     *pGenerator;
+    Environment   *pEnvironment;
+    void          *pField24;
 };
-static_assert(sizeof(ParticleSystem) == 0x28, "ParticleSystem size");
-static_assert(offsetof(ParticleSystem, ring)         == 0x08, "ParticleSystem layout");
-static_assert(offsetof(ParticleSystem, pGenerator)   == 0x1c, "ParticleSystem layout");
-static_assert(offsetof(ParticleSystem, pEnvironment) == 0x20, "ParticleSystem layout");
 
-struct PointParticleSystem {      // 0x30 bytes
+struct PointParticleSystem {
     ParticleSystem  base;
-    ParticleVertex *pVerts;        // +0x28 scratch buffer
-    DWORD           dwVertexCount; // +0x2c 1 vertex per particle
+    ParticleVertex *pVerts;        // scratch buffer
+    DWORD           dwVertexCount; // 1 vertex per particle
 };
-static_assert(offsetof(PointParticleSystem, pVerts)        == 0x28, "Point layout");
-static_assert(offsetof(PointParticleSystem, dwVertexCount) == 0x2c, "Point layout");
-static_assert(sizeof(PointParticleSystem) == 0x30, "Point size");
 
 struct FaceParticleSystem {
     ParticleSystem  base;

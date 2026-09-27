@@ -12,7 +12,7 @@ struct IDirectSound;
 
 /* One pool.  The voices array is heap-allocated with a leading count word, and
  * destroyed through the voices' own vector destructor. */
-struct __attribute__((packed)) VoicePool {
+struct VoicePool {
 
     void               *logger;        // the logger the voices report to
     CStaticSoundbuffer *pBufs;         // dwVoiceCount voices, or NULL
@@ -22,9 +22,6 @@ struct __attribute__((packed)) VoicePool {
 
 private:
 };
-
-/* The voices are an array of CStaticSoundbuffer with a stride of 0x18. */
-static_assert(sizeof(CStaticSoundbuffer) == 0x18, "pBufs stride must stay 0x18");
 
 /* Halts and re-triggers the current voice, then advances the cursor.  Returns
  * the trigger's HRESULT, or DSERR_UNINITIALIZED with no voices. */

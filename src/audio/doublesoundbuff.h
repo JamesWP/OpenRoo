@@ -10,7 +10,7 @@
 struct VoicePool;
 
 /* Allocated by the sound manager with a fixed size of 0x58. */
-struct __attribute__((packed)) doublesoundbuff {
+struct doublesoundbuff {
 
     CStaticSoundbuffer masterBuf;      // the file as first loaded
     CStaticSoundbuffer spareBuf;       // the same file, the other flag set
@@ -19,15 +19,11 @@ struct __attribute__((packed)) doublesoundbuff {
     LinkedList         cloneList;      // CStaticSoundbuffer* duplicates lent out
     LinkedList         voicePoolList;  // VoicePool* built from it
 
-/* The sub-objects' addresses, behind accessors so the packed-member warning is
- * suppressed once; all four offsets are 4-aligned. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+    // The sub-objects' addresses.
     CStaticSoundbuffer *master() { return &masterBuf; }
     CStaticSoundbuffer *spare()  { return &spareBuf; }
     LinkedList         *clones() { return &cloneList; }
     LinkedList         *pools()  { return &voicePoolList; }
-#pragma GCC diagnostic pop
 
 private:
 };

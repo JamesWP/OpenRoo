@@ -6,7 +6,7 @@
 #pragma once
 
 /* A timed foe spawner: a snapshot cell whose contents are 0x64. */
-struct __attribute__((packed)) TimedSpawner {
+struct TimedSpawner {
     unsigned char u;
     unsigned char v;
     unsigned char height;     // the snapshot cell's height
@@ -19,7 +19,7 @@ struct __attribute__((packed)) TimedSpawner {
 };
 
 /* A free bomb: a snapshot cell whose contents are 0x4d. */
-struct __attribute__((packed)) FreeBomb {
+struct FreeBomb {
     unsigned char u;
     unsigned char v;
     unsigned char param;     // the snapshot cell's param
@@ -29,7 +29,7 @@ struct __attribute__((packed)) FreeBomb {
 /* The per-level object counts.  Each counts one tile kind or contents value
  * (tile.h) over either the live grid or the map's snapshot grid (levelmap.h),
  * as marked.  The level report prints them. */
-struct __attribute__((packed)) LevelCensus {
+struct LevelCensus {
     // Kind counts, over the live grid.
     unsigned short teleports;      // TILE_TELEPORTER, paired only
     unsigned short destructibles;  // TILE_DESTRUCTIBLE
@@ -85,13 +85,3 @@ struct __attribute__((packed)) LevelCensus {
     }
 };
 
-static_assert(sizeof(TimedSpawner) == 0x15, "TimedSpawner is 0x15 bytes");
-static_assert(sizeof(FreeBomb)     == 0x0b, "FreeBomb is 0xb bytes");
-static_assert(sizeof(LevelCensus)  == 0x2c, "LevelCensus is 22 WORDs");
-static_assert(offsetof(TimedSpawner, lastSpawn) == 0x03, "");
-static_assert(offsetof(TimedSpawner, field_0b)  == 0x0b, "");
-static_assert(offsetof(TimedSpawner, interval)  == 0x0c, "");
-static_assert(offsetof(TimedSpawner, maxFoes)   == 0x14, "");
-static_assert(offsetof(FreeBomb, placedAt)      == 0x03, "");
-static_assert(offsetof(LevelCensus, freeBombs)  == 0x42205 - 0x421df, "");
-static_assert(offsetof(LevelCensus, jumpPads)     == 0x42209 - 0x421df, "");

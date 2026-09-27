@@ -195,12 +195,6 @@ static void theme_struct_dump_if_enabled(const char *path)
  *   - the model and texture caches lowercase the token buffers in place.
  * Tokens past the 16th are dropped, but still counted. */
 
-/* The block's sub-objects are handed to their owners by address, and really
- * are misaligned: the block is packed.  One warning suppression for the
- * loader. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-
 typedef void *(*theme_scalar_dtor_fn)(void *self, unsigned int flags);
 
 static void delete_via_vtable(void *obj)
@@ -520,15 +514,11 @@ struct ThemeParser {
 
     static ThemeLevelObject *recordAt(ThemeObjectTypeSlot *s, int i)
     {
-        return reinterpret_cast<ThemeLevelObject *>(
-            reinterpret_cast<BYTE *>(s) + offsetof(ThemeObjectTypeSlot, records)
-            + i * (int)sizeof(ThemeLevelObject));
+        return s->records + i;
     }
     static SceneSubObject *subObjectAt(ThemeLevelObject *r, int i)
     {
-        return reinterpret_cast<SceneSubObject *>(
-            reinterpret_cast<BYTE *>(r) + offsetof(ThemeLevelObject, pSubObjects)
-            + i * (int)sizeof(SceneSubObject));
+        return r->pSubObjects + i;
     }
 
     SceneTexture *loadTexture(char *name, char *alphaTok)
@@ -972,7 +962,6 @@ Theme_Load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block, char *path,
     return ok;
 }
 
-#pragma GCC diagnostic pop
 
 /* The theme sound table's lifecycle.  ReleaseAll clears the name and the
  * enabled flag of all 100 entries between two log lines, leaving the other

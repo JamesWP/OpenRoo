@@ -10,7 +10,7 @@
 
 /* One buffer.  It remembers its file, flags and logger so it can be reloaded
  * (on a lost buffer, or a 2D/3D switch) and duplicated. */
-struct __attribute__((packed)) CStaticSoundbuffer {
+struct CStaticSoundbuffer {
 
     void                  *vtable;
     void                  *logger;     // stored, never used here
@@ -19,13 +19,9 @@ struct __attribute__((packed)) CStaticSoundbuffer {
     IDirectSoundBuffer    *soundbuffer;
     IDirectSound3DBuffer  *threeDBuffer;  // NULL for a 2D buffer
 
-/* COM out-parameters need the field's address; both are 4-aligned, so the
- * packed-member warning is moot. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+    // COM out-parameters need the field's address.
     IDirectSoundBuffer   **soundbufferSlot() { return &soundbuffer; }
     IDirectSound3DBuffer **threeDBufferSlot() { return &threeDBuffer; }
-#pragma GCC diagnostic pop
 
 private:
 };

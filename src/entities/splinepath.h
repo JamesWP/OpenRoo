@@ -9,21 +9,18 @@
 class RenderDevice;
 
 /* One control point, 12 bytes. */
-struct __attribute__((packed)) SplineControlPoint {
+struct SplineControlPoint {
     float flX, flY, flZ;
 private:
 };
 
-struct __attribute__((packed)) SplinePath {
+struct SplinePath {
 
     void       **vtable;
-    LinkedList   controlPointList;  // +0x04  head +0x08, count +0x10
+    LinkedList   controlPointList;
 
 private:
 };
-
-/* 20 bytes, which both embedders tile around; dsoscene.cpp reads the head at
- * +0x1c6+8 and the count at +0x1c6+0x10. */
 
 /* Construct, the scalar deleting destructor, and the destructor (which purges
  * the points). */

@@ -172,9 +172,9 @@ int Sim_VoicePoolFill3D(VoicePool *self, int count, IDirectSound *pDS,
     self->dwVoiceCount = count;
 
     {
-        // count * 0x18 + 4: the leading word is the count the vector
+        // A leading word, then the voices: the word is the count the vector
         // destructor reads back.
-        void *block = malloc((unsigned)(count * 0x18 + 4));
+        void *block = malloc((unsigned)(count * sizeof(CStaticSoundbuffer) + 4));
         CStaticSoundbuffer *bufs = 0;
         if (block != 0) {
             *(int *)block = count;
@@ -246,7 +246,7 @@ void *Sim_VoicePoolClone(VoicePool *self, int count, IDirectSound *pDS,
     self->logger       = src->logger;
 
     {
-        void *block = malloc((unsigned)(count * 0x18 + 4));
+        void *block = malloc((unsigned)(count * sizeof(CStaticSoundbuffer) + 4));
         CStaticSoundbuffer *bufs = 0;
         if (block != 0) {
             *(int *)block = count;

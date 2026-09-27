@@ -2,21 +2,21 @@
  * grid, the step and animation in progress, and twelve sound handles.
  * updateMovement() is the step every entity tick ends in.
  *
- * The class is packed and its layout asserted below: RenderGameFrame and the
- * snapshot hash read entities by offset, and each derived class's own fields
- * begin right after this one.  A field whose meaning is unsettled is named
- * field_<offset>. */
+ * A field whose meaning is unsettled is named field_<hex>, after where the
+ * original kept it. */
 
 #pragma once
 
-#include "game.h"
+#include <stddef.h>
+#include "tickstep.h"
+#include "tile.h"
 
 struct CStaticSoundbuffer;
 struct VoicePool;
 class FoePath;
 
 /* One moving entity's shared state.  Derived classes set the vtable. */
-class __attribute__((packed)) MovableEntity {
+class MovableEntity {
 public:
 
     // The level's tile array, copied in at spawn from Game::tileBase().
@@ -138,7 +138,6 @@ protected:
     TickStep        *tickStep_;
     unsigned char       facing_;
     TickStep         tickStepCopy_;
-    unsigned char       gap_01d[0x025 - 0x01d];
     // World position (U, height, V), read every frame by RenderGameFrame.
     float               posU_;
     float               posY_;
@@ -177,7 +176,6 @@ protected:
     int                 dyingStarted_;  // Read by RenderGameFrame once the entity starts dying.
     int                 dying_;  // Set on being crushed or blasted; starts the death sequence.
     double              dyingSince_;  // Dying clock; removeRequested_ is set once it is half a second old.
-    unsigned char       gap_092[0x09a - 0x092];
     // The animation state: 0 = still, 0xfa = the idle animation; 0x16..0x1b
     // carry the height curves updateMovement() interpolates between.
     unsigned char       anim_;
@@ -205,12 +203,10 @@ protected:
     int                 gliding_;
     unsigned char       field_ee;
     int                 held_;
-    unsigned char       gap_0f3[0x0fb - 0x0f3];
     int                 climbing_;
     unsigned char       teleportPhase_;  // 0 idle, 1 armed, 2 sent.
     double              teleportSince_;  // The clock the current teleport phase began.
     unsigned char       lastMoveDir_;  // The last direction actually moved (as opposed to a turn on the spot).
-    unsigned char       gap_109[0x111 - 0x109];
     unsigned char       fallStartH_;  // The height the current fall began at.
     double              fallStart_;   // The clock the current fall began.
     int                 field_11a;
@@ -224,7 +220,6 @@ protected:
     double              field_126;  // The clock the glue pad caught this entity; zero while not stuck.
     int                 field_12e;
     double              animDuration_;  // ms the current animation phase lasts.
-    unsigned char       gap_13a[0x13b - 0x13a];
     FoePath            *pathfinder_;  // Foe: its FoePath.
     // stepU_ / stepV_: moveDir_ resolved to a cell step, each -1, 0 or +1.
     signed char         stepU_;

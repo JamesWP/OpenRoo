@@ -1,21 +1,19 @@
-/* Config: the game's settings, a sub-object of Game.  Its tail is the
- * persisted blob Karoo.cfg holds (config.cpp); the fields named here are the
- * ones the code uses.  Most of the object, and parts of the blob, are not
- * decoded and nothing reads them. */
+/* Config: the game's settings, a sub-object of Game.  Karoo.cfg holds them
+ * as a fixed-layout blob (config.cpp); the fields named here are the ones the
+ * code uses.  Part of the blob is not decoded: it is kept as bytes so that it
+ * goes back to the file unchanged. */
 #pragma once
 
 #include <stddef.h>
 #include <string.h>
 
-class __attribute__((packed)) Config {
+class Config {
 public:
 
-    // FORMAT: the persisted blob, what Karoo.cfg holds byte for byte.
-    enum { PERSISTED_OFFSET = 0x1f604, PERSISTED_SIZE = 0x144e };
-    unsigned char *persisted()
-    {
-        return (unsigned char *)this + PERSISTED_OFFSET;
-    }
+    // FORMAT: the persisted blob, what Karoo.cfg holds before its tag.
+    enum { PERSISTED_SIZE = 0x144e };
+    void encode(unsigned char out[PERSISTED_SIZE]) const;
+    void decode(const unsigned char in[PERSISTED_SIZE]);
 
     // Copied into the Game's camera distance on load; default 5.0.
 
@@ -35,10 +33,7 @@ public:
     unsigned short joyDeadzone() const                 { return joyDeadzone_; }
 
 /* The launcher's display device and mode choice. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
     GUID          *adapterGuid()                       { return &adapterGuid_; }
-#pragma GCC diagnostic pop
     unsigned int   displayModeIndex() const            { return displayModeIndex_; }
     void           setDisplayModeIndex(unsigned int i) { displayModeIndex_ = i; }
     void           setJoyDeadzone(unsigned short p)    { joyDeadzone_ = p; }
@@ -67,10 +62,7 @@ public:
     void fillDefaults();
     unsigned int   savedCdMixerVolume() const          { return savedCdMixerVolume_; }
     void           setSavedCdMixerVolume(unsigned int v) { savedCdMixerVolume_ = v; }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
     unsigned int  *savedWaveOutVolumeRef()             { return &savedWaveOutVolume_; }
-#pragma GCC diagnostic pop
     unsigned int   savedWaveOutVolume() const          { return savedWaveOutVolume_; }
     void           setCameraDistanceSetting(float d)   { cameraDistanceSetting_ = d; }
     unsigned int   cdMixerVolume() const               { return cdMixerVolume_; }
@@ -80,23 +72,21 @@ private:
     Config() = delete;  // only ever reached through the Game
 
     const void    *vtable_;
-    unsigned char  gap_00004[0x1f404 - 0x00004];
-    unsigned short field_1f404_;  // zeroed by the constructor; unread
-    unsigned char  gap_1f406[0x1f604 - 0x1f406];
-    // The persisted blob starts here.
-    unsigned int   field_1f604_;            // default 1; unread
+    // The persisted fields, in blob order.
+    unsigned int   field_00_;               // default 1; unread
     unsigned char  videoOptions_[4];        // Shadows, Reflection, Highlights, Particles
     float          cameraDistanceSetting_;  // default 5.0
     // The launcher's device choice, written by its dialog on OK.  PRESERVED:
     // the mode index is a DWORD, but WinMain passes only its low byte.
     GUID           adapterGuid_;
     unsigned int   displayModeIndex_;
-    unsigned int   field_1f624_;         // default 1; unread
+    unsigned int   field_20_;            // default 1; unread
     int            musicOn_;             // 0 or 1
     unsigned char  cdVolume_;            // percent, in steps of 10
     unsigned int   savedCdMixerVolume_;  // the mixer volume at startup, restored at exit
     unsigned int   cdMixerVolume_;       // 0..65536
-    unsigned char  gap_1f635[0x20a36 - 0x1f635];
+    // Blob bytes 0x31..0x1432, not decoded; loaded and saved unchanged.
+    unsigned char  undecoded_[0x1401];
     int            sound3D_;                // 0 or 1
     unsigned char  waveVolume_;             // percent, in steps of 10
     unsigned int   savedWaveOutVolume_;     // the wave volume at startup, restored at exit

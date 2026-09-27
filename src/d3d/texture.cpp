@@ -1,9 +1,9 @@
 /* LoadedImage and SceneTexture: the lifecycle, the release path, the
  * surface-lost reload, and the palette built from a DIB (texture.h).
  *
- * ReleaseSurfaces serves both the 24-byte LoadedImage instances and, through
- * ReleaseD3DTexture, the 28-byte SceneTexture ones, so it takes a LoadedImage*
- * and must not touch +0x18. */
+ * ReleaseSurfaces serves both plain LoadedImages and, through
+ * ReleaseD3DTexture, the base of SceneTextures, so it takes a LoadedImage*
+ * and must not touch pTexture2. */
 
 #include "texture.h"
 #include "d3dnative.h"

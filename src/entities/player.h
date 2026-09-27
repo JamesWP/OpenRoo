@@ -1,22 +1,19 @@
 /* Player: the player entity, a MovableEntity embedded in Game rather than
- * separately allocated, so there is no factory size to tile against -- the
- * layout is asserted field by field instead.
+ * separately allocated.
  *
  * The tick, the actions and the lifecycle are in player.cpp; every field this
- * codebase touches goes through the accessors below.  Five of the Game fields
- * determinism.cpp hashes by raw offset are Player fields reached through the
- * Game, so the layout must stay packed and in place. */
+ * codebase touches goes through the accessors below. */
 
 #pragma once
 
 #include "movableentity.h"
+#include "linkedlist.h"
 
 struct CStaticSoundbuffer;
-struct LinkedList;
 struct VoicePool;
 class Tile;
 
-class __attribute__((packed)) Player : public MovableEntity {
+class Player : public MovableEntity {
 public:
 
     // Latches the clock, moves the player, drops a respawning player back in,
@@ -175,16 +172,12 @@ public:
 private:
     Player() = delete;  // game-owned, embedded in Game
 
-    // An element type that may sit at any address: taking a packed array's
-    // address as a plain pointer-to-pointer would claim four-byte alignment.
-    typedef CStaticSoundbuffer *SoundRef __attribute__((aligned(1)));
+    typedef CStaticSoundbuffer *SoundRef;
 
     int   soundVariant() const;
     void  playAtCell(CStaticSoundbuffer *buf) const;
     void  pickupSound(const SoundRef *arr) const;
-    // The raw bytes cast, not the array directly: a LinkedList pointer to a
-    // packed member would trip -Waddress-of-packed-member.
-    LinkedList *effects() { return (LinkedList *)effectList_; }
+    LinkedList *effects() { return &effectList_; }
     void  endEffect(int code);
 
     int                 worldSoundVariant_;
@@ -206,7 +199,7 @@ private:
     unsigned short      itemsCollected_;  // items picked up this level; the all-items bonus tests it
     // The game's LinkedList of active effect codes; only ever handed to the
     // game's own LinkedList functions.
-    unsigned char       effectList_[16];
+    LinkedList          effectList_;
     int                 score_;
     signed char         lastRoll_;
     double              field_231;

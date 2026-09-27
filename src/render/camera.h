@@ -13,12 +13,12 @@
 
 #include <windows.h>
 
-struct __attribute__((packed)) CameraGlobals {
+struct CameraGlobals {
 
-    float  eye[3];      // +0x00
-    float  target[3];   // +0x0c
-    float  yaw;         // +0x18
-    float  pitch;       // +0x1c
+    float  eye[3];
+    float  target[3];
+    float  yaw;
+    float  pitch;
 
 };
 
@@ -32,7 +32,6 @@ class Game;
  * VALUE to UpdateViewTransform: [5] is the yaw the camera turns
  * towards, [6..8] the point `target` follows.  [0..4] are not read here. */
 struct CameraFocus { float f[9]; };
-static_assert(sizeof(CameraFocus) == 0x24, "CameraFocus size");
 /* The level entry zeroes it; FramePose_Player fills it every frame. */
 extern CameraFocus g_cameraFocus;
 

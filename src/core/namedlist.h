@@ -6,22 +6,22 @@
 
 #pragma once
 
-struct __attribute__((packed)) NamedEntry {
+struct NamedEntry {
 
-    char        szName[0x100];  // +0x000  the key, inline
-    void       *pPayload;       // +0x100
-    NamedEntry *pNext;          // +0x104
-    NamedEntry *pPrev;          // +0x108
+    char        szName[0x100];  // the key, inline
+    void       *pPayload;
+    NamedEntry *pNext;
+    NamedEntry *pPrev;
 
 private:
 };
 
-struct __attribute__((packed)) NamedEntryList {
+struct NamedEntryList {
 
-    void        **vtable;   // +0x00
-    NamedEntry   *pHead;    // +0x04
-    NamedEntry   *pTail;    // +0x08
-    unsigned long dwCount;  // +0x0c
+    void        **vtable;
+    NamedEntry   *pHead;
+    NamedEntry   *pTail;
+    unsigned long dwCount;
 
 private:
 };

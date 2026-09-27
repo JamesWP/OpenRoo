@@ -7,6 +7,7 @@
 #include "config.h"
 #include <stdlib.h>
 #include <math.h>
+#include "bytes.h"
 
 #define CFG_BLOB_SIZE  Config::PERSISTED_SIZE
 #define CFG_TAG_SIZE   0xa
@@ -24,6 +25,56 @@ static void ps_log(const char *what, const char *path, int ok)
     }
 }
 
+void Config::encode(unsigned char out[PERSISTED_SIZE]) const
+{
+    unsigned char *p = out;
+    put_u32(p, field_00_);
+    put_bytes(p, videoOptions_, sizeof(videoOptions_));
+    put_bytes(p, &cameraDistanceSetting_, 4);
+    put_bytes(p, &adapterGuid_, sizeof(adapterGuid_));
+    put_u32(p, displayModeIndex_);
+    put_u32(p, field_20_);
+    put_u32(p, (unsigned int)musicOn_);
+    put_u8(p, cdVolume_);
+    put_u32(p, savedCdMixerVolume_);
+    put_u32(p, cdMixerVolume_);
+    put_bytes(p, undecoded_, sizeof(undecoded_));
+    put_u32(p, (unsigned int)sound3D_);
+    put_u8(p, waveVolume_);
+    put_u32(p, savedWaveOutVolume_);
+    put_u32(p, waveOutVolume_);
+    put_u8(p, cameraTurnsWithPlayer_);
+    put_bytes(p, &cameraYaw_, 4);
+    put_bytes(p, &activeCameraPitch_, 4);
+    put_bytes(p, &cameraPitch_, 4);
+    put_u16(p, joyDeadzone_);
+}
+
+void Config::decode(const unsigned char in[PERSISTED_SIZE])
+{
+    const unsigned char *p = in;
+    field_00_ = get_u32(p);
+    get_bytes(p, videoOptions_, sizeof(videoOptions_));
+    get_bytes(p, &cameraDistanceSetting_, 4);
+    get_bytes(p, &adapterGuid_, sizeof(adapterGuid_));
+    displayModeIndex_   = get_u32(p);
+    field_20_           = get_u32(p);
+    musicOn_            = (int)get_u32(p);
+    cdVolume_           = get_u8(p);
+    savedCdMixerVolume_ = get_u32(p);
+    cdMixerVolume_      = get_u32(p);
+    get_bytes(p, undecoded_, sizeof(undecoded_));
+    sound3D_            = (int)get_u32(p);
+    waveVolume_         = get_u8(p);
+    savedWaveOutVolume_ = get_u32(p);
+    waveOutVolume_      = get_u32(p);
+    cameraTurnsWithPlayer_ = get_u8(p);
+    get_bytes(p, &cameraYaw_, 4);
+    get_bytes(p, &activeCameraPitch_, 4);
+    get_bytes(p, &cameraPitch_, 4);
+    joyDeadzone_        = get_u16(p);
+}
+
 int Config_LoadValues(Config *self, const char *path)
 {
     char tag[CFG_TAG_SIZE];
@@ -33,7 +84,11 @@ int Config_LoadValues(Config *self, const char *path)
         ps_log("cfg load", path, 0);
         return 0;
     }
-    fread(self->persisted(), CFG_BLOB_SIZE, 1, fp);
+    // A short file leaves the rest of the blob as it was.
+    unsigned char blob[CFG_BLOB_SIZE];
+    self->encode(blob);
+    fread(blob, CFG_BLOB_SIZE, 1, fp);
+    self->decode(blob);
     fread(tag, CFG_TAG_SIZE, 1, fp);
     fclose(fp);
 
@@ -51,7 +106,9 @@ int Config_Save(Config *self, const char *path)
         ps_log("cfg save", path, 0);
         return 0;
     }
-    fwrite(self->persisted(), CFG_BLOB_SIZE, 1, fp);
+    unsigned char blob[CFG_BLOB_SIZE];
+    self->encode(blob);
+    fwrite(blob, CFG_BLOB_SIZE, 1, fp);
     strcpy(tag, CFG_TAG);  // FORMAT: 4 bytes of 10; the rest are whatever the stack held
     fwrite(tag, CFG_TAG_SIZE, 1, fp);
     fclose(fp);
@@ -64,8 +121,7 @@ static void *const g_ConfigVtable[1] = { (void *)&Config_ScalarDestructor };
 
 void Config::construct()
 {
-    vtable_      = g_ConfigVtable;
-    field_1f404_ = 0;
+    vtable_ = g_ConfigVtable;
 }
 
 void Config::destruct()
@@ -84,14 +140,14 @@ Config *Config_ScalarDestructor(Config *self, unsigned char flags)
 /* The CD mixer default is pow(2, 16) * 50, truncated, / 100: 32768. */
 void Config::fillDefaults()
 {
-    field_1f604_           = 1;
+    field_00_              = 1;
     videoOptions_[1]       = 1;
     videoOptions_[2]       = 2;
     cameraDistanceSetting_ = 5.0f;
     videoOptions_[3]       = 2;
     videoOptions_[0]       = 2;
     sound3D_               = 1;
-    field_1f624_           = 1;
+    field_20_              = 1;
     waveVolume_            = 100;
     waveOutVolume_         = 0xffffffff;
     musicOn_               = 1;

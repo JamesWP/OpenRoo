@@ -6,27 +6,24 @@
 
 #pragma once
 
-struct __attribute__((packed)) LinkedListNode {
+struct LinkedListNode {
 
-    void           *pValue;     // +0x00
-    LinkedListNode *pNextNode;  // +0x04
-    LinkedListNode *pPrevNode;  // +0x08
-
-private:
-};
-
-struct __attribute__((packed)) LinkedList {
-
-    void           **vtable;   // +0x00
-    LinkedListNode  *pHead;    // +0x04
-    LinkedListNode  *pTail;    // +0x08
-    unsigned long    dwCount;  // +0x0c
+    void           *pValue;
+    LinkedListNode *pNextNode;
+    LinkedListNode *pPrevNode;
 
 private:
 };
 
-/* Every embedder tiles around 16 bytes; doublesoundbuff's two lists sit at
- * +0x38 and +0x48. */
+struct LinkedList {
+
+    void           **vtable;
+    LinkedListNode  *pHead;
+    LinkedListNode  *pTail;
+    unsigned long    dwCount;
+
+private:
+};
 
 /* Sets the vtable and zeroes the three fields. */
 void List_Init(LinkedList *self);

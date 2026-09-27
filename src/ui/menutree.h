@@ -6,7 +6,7 @@
  * cursor, last key, leave, lock and last-seen fields. */
 #pragma once
 
-class __attribute__((packed)) MenuTree {
+class MenuTree {
 public:
     static const int CHILD_STRIDE = 0xff;
 
@@ -74,7 +74,6 @@ private:
     const void    *vtable_;  // our one-slot table
     unsigned int   changed_;
     unsigned short lastNodeSeen_;
-    unsigned char  gap_0a[0x0c - 0x0a];
     double         lockStart_;
     unsigned int   lock_;
     unsigned int   leave_;
@@ -84,10 +83,10 @@ private:
     unsigned char  childCount_[0xff];   // by node id
     // children_[node * 0xff + i].  How many rows the game uses is not settled,
     // so it runs, undivided, to the depth byte.
-    unsigned char  children_[0x2001d - 0x21c];
+    unsigned char  children_[0x1fe01];
     unsigned char  depth_;
     // PRESERVED: no bounds check anywhere; a runaway push walks off the end.
-    unsigned char  stack_[0x2021c - 0x2001e];
+    unsigned char  stack_[0x1fe];
     unsigned char  node_;
 };
 

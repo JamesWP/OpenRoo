@@ -16,7 +16,7 @@ struct CStaticSoundbuffer;
 struct VoicePool;
 struct GameLogger;
 
-class __attribute__((packed)) SoundManager {
+class SoundManager {
 public:
 
     void          *vtable_;  // our one-slot table
@@ -30,12 +30,8 @@ public:
     NamedEntryList entriesPlain_;      // bWant3D == 0
     NamedEntryList entries3D_;         // bWant3D != 0
 
-/* The embedded device's address; 4-aligned, so the packed-member warning is
- * moot. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+    // The embedded device's address.
     CFaktSound *cfaktSound() { return &cfaktSound_; }
-#pragma GCC diagnostic pop
 
     IDirectSound *directSound() const { return cfaktSound_.directsound; }
 

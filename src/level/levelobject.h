@@ -21,20 +21,10 @@ enum SceneSubObjectEffect : DWORD {
 struct SceneSubObject {
     DWORD  dwVisibilityGate;
     SceneTexture *pTexture;
-    DWORD  unknown08;        // never written
     DWORD  dwBlendSrc;       // the SRCBLEND value
     DWORD  dwBlendDst;       // the DESTBLEND value
     DWORD  dwTexAddress;     // TEXTUREADDRESSU/V; 0 means 3
     SceneSubObjectEffect effect;
     float  flEffectParams[3];
-    BYTE   pad28[0x14];  // never written
 };
-
-static_assert(offsetof(SceneSubObject, pTexture)     == 0x04, "SceneSubObject layout");
-static_assert(offsetof(SceneSubObject, dwBlendSrc)   == 0x0c, "SceneSubObject layout");
-static_assert(offsetof(SceneSubObject, dwBlendDst)   == 0x10, "SceneSubObject layout");
-static_assert(offsetof(SceneSubObject, dwTexAddress) == 0x14, "SceneSubObject layout");
-static_assert(offsetof(SceneSubObject, effect)       == 0x18, "SceneSubObject layout");
-static_assert(offsetof(SceneSubObject, flEffectParams) == 0x1c, "SceneSubObject layout");
-static_assert(sizeof(SceneSubObject) == 0x3c, "SceneSubObject stride mismatch");
 

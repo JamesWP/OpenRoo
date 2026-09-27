@@ -33,12 +33,7 @@ struct CDM {
     void  playTrack(int tracknumber, bool repeat);
     void  stop();
     void  setMixerVolume(DWORD level);
-} __attribute__((packed));
-
-static_assert(offsetof(CDM, windowhandle) == 0x58,  "CDM layout mismatch");
-static_assert(offsetof(CDM, mcibuff)      == 0x5C,  "CDM layout mismatch");
-static_assert(offsetof(CDM, repeat)       == 0x15C, "CDM layout mismatch");
-static_assert(offsetof(CDM, tracknumber)  == 0x15D, "CDM layout mismatch");
+};
 
 /* The three-slot vtable: deleting destructor, track count, track length. */
 extern const void *const CDM_VTABLE;

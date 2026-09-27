@@ -8,7 +8,7 @@
 
 struct CStaticSoundbuffer;
 
-class __attribute__((packed)) LiftObject {
+class LiftObject {
 public:
 
     // Spawns a lift; the arguments are masked to bytes.
@@ -49,27 +49,27 @@ private:
     // Destroys through the object's own vtable, flags 1.
     void destroy();
 
-    const Vtbl         *vtable_;      // +0x00  &VTABLE
-    double              now_;         // +0x04  latched from *clock_
-    double             *clock_;       // +0x0c  Game::clock()
-    TickStep        *tickStep_;       // +0x10  Game::tickStep()
-    unsigned char       field_14;     // +0x14
-    TickStep         tickStepCopy_;   // +0x15  copied from *tickStep_
-    unsigned char       field_1d[8];  // +0x1d
-    float               posU_;        // +0x25
-    float               height_;      // +0x29  the live height
-    float               posV_;        // +0x2d
-    signed char         cellU_;       // +0x31
-    signed char         cellV_;       // +0x32
-    signed char         heightCell_;  // +0x33  the live height, truncated
-    Tile               *tileBase_;    // +0x34  Game::tileBase()
-    signed char         baseHeight_;  // +0x38
-    signed char         topHeight_;   // +0x39
-    CStaticSoundbuffer *sound_;       // +0x3a  the moving loop; may be NULL
-    unsigned char       slot_;        // +0x3e  its index in Game's lift slots
-    int                 atTop_;       // +0x3f  1: parked at the top
-    signed char         state_;       // +0x43  0 parked, 1 rising, 2 falling
-    double              phaseStart_;  // +0x44
+    const Vtbl         *vtable_;      // &VTABLE
+    double              now_;         // latched from *clock_
+    double             *clock_;       // Game::clock()
+    TickStep        *tickStep_;       // Game::tickStep()
+    unsigned char       field_14;
+    TickStep         tickStepCopy_;   // copied from *tickStep_
+    unsigned char       field_1d[8];
+    float               posU_;
+    float               height_;      // the live height
+    float               posV_;
+    signed char         cellU_;
+    signed char         cellV_;
+    signed char         heightCell_;  // the live height, truncated
+    Tile               *tileBase_;    // Game::tileBase()
+    signed char         baseHeight_;
+    signed char         topHeight_;
+    CStaticSoundbuffer *sound_;       // the moving loop; may be NULL
+    unsigned char       slot_;        // its index in Game's lift slots
+    int                 atTop_;       // 1: parked at the top
+    signed char         state_;       // 0 parked, 1 rising, 2 falling
+    double              phaseStart_;
 };
 
 /* Destroys every lift and zeroes the count; Game's teardown calls it. */

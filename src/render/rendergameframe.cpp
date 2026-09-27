@@ -55,15 +55,10 @@
 #include "scoreoverlay.h"
 #include "gameglobals.h"
 
-/* Every pointer this file takes into the game's packed layouts (camera,
- * focus, placement block, theme records) may be unaligned; x86 reads them
- * without complaint. */
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-
 /* ─── Section 2: timing, tick, camera, listener ─────────────────────────── */
 
-/* The scripted camera (Game+0x196086, a running spline): eye from
- * Game+0x13cc94, target from Game+0x2ab580, both copied into the camera
+/* The scripted camera (the script player's running spline): eye from
+ * field13cc94(), target from cameraEye(), both copied into the camera
  * globals; pitch and yaw recovered by acos; a plain LookAt with +Y up. */
 static void scripted_camera(Game *g, RenderDevice *d3d)
 {
@@ -235,8 +230,8 @@ static void opaque_passes(Game *g, double now, double elapsed)
     LevelPlacements_DrawLifts(g, pl, &g_themeBlock, d3d, now);
     LevelPlacements_DrawSlides(g, pl, &g_themeBlock, d3d, now);
 
-    /* The destructible blocks: whole, or (while the cell's +0x203 is set)
-     * the fx model, starting the debris on the cell's +0x20f latch.  Only
+    /* The destructible blocks: whole, or (while the cell's field203 is set)
+     * the fx model, starting the debris on the cell's field20f latch.  Only
      * the first fx draw of the frame gets the elapsed-ms argument.  The
      * counter is a byte. */
     bool firstFx = true;

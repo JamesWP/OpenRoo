@@ -5,7 +5,7 @@
  * before the game starts. */
 #pragma once
 
-class __attribute__((packed)) CdThemes {
+class CdThemes {
 public:
 
     enum { THEME_MAX = 255, NAME_SIZE = 255 };
@@ -42,7 +42,6 @@ private:
     CdThemes() = delete;  // only ever reached through the Game
 
     void         *vtable_;
-    unsigned char gap_04[0x18 - 0x04];  // never written
     int           trackCount_;          // set by validateTrackLengths
     unsigned char trackOf_[THEME_MAX];  // theme i's CD track
     unsigned char currentTrack_;

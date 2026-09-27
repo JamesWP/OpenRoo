@@ -105,8 +105,8 @@ int HighScoreTable::writeFile(const char *name, char key)
 }
 
 /* PRESERVED: scores compare unsigned.  Shifting down starts one record past
- * the last, so a full table writes past its end (into the score tally).  Only
- * the name is cleared before the new score and level are stored.  The return
+ * the last, so a full table writes past its end.  Only the name is cleared
+ * before the new score and level are stored.  The return
  * is 11 * rank + 11 with the low byte replaced by the rank.
  *
  * KAROO_SIM_FX=hsnoplace is a negative control: no score places, so the game

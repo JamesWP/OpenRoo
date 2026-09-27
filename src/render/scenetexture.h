@@ -36,12 +36,12 @@ Texture_SelectTextureLoader(SceneTexture *self, RenderDevice *dev, LPCSTR name, 
 #include "linkedlist.h"
 struct GameLogger;
 
-class __attribute__((packed)) TextureManager {
+class TextureManager {
 public:
 
-    void        *vtable;    // +0x00
-    LinkedList   cache;     // +0x04  SceneTexture *, game-heap nodes
-    GameLogger  *pLogger;   // +0x14  NULL = silent
+    void        *vtable;
+    LinkedList   cache;     // SceneTexture *, game-heap nodes
+    GameLogger  *pLogger;   // NULL = silent
 private:
 };
 
