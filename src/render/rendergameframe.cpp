@@ -1,10 +1,5 @@
-/* rendergameframe.cpp -- RenderGameFrame 0x00426f50, the per-frame body of
- * WinMain's message loop (ENDGAME E7).  __cdecl, no arguments.  One caller,
- * WinMain 0x42D623.
- *
- * Written from the listing, with decomp/RenderGameFrame.c for structure only:
- * Ghidra could not track the stack across this function, so the export drops
- * most call arguments.  Every callee is ours.  In order:
+/* rendergameframe.cpp -- the per-frame body of WinMain's message loop.
+ * In order:
  *
  *   1. a pending level entry: prepare it and return (nothing else runs);
  *   2. timing: now/elapsed in ms, dt against the last tick; when dt > 0,
@@ -17,9 +12,6 @@
  *      shadows;
  *   5. the translucent passes (particle effects) when particles are on;
  *   6. the HUD and the menus, EndScene, the flip.
- *
- * The listing's x87 chains are written as plain float/double arithmetic;
- * the last-bit differences are unobservable (CLAUDE.md "not float rounding").
  */
 #include <windows.h>
 #include <math.h>
@@ -64,8 +56,8 @@
 #include "gameglobals.h"
 
 /* Every pointer this file takes into the game's packed layouts (camera,
- * focus, placement block, theme records) is one the original passes too; x86
- * reads them unaligned without complaint. */
+ * focus, placement block, theme records) may be unaligned; x86 reads them
+ * without complaint. */
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 
 /* ─── Section 2: timing, tick, camera, listener ─────────────────────────── */
@@ -100,7 +92,7 @@ static void scripted_camera(Game *g, Direct3D *d3d)
  * top = (0, 1, 0, 1) through A*B, where A is identity with
  * m5 = m10 = cos(-pitch), m6 = -sin(-pitch), m9 = sin(-pitch) and B is
  * identity with m0 = m10 = cos(yaw), m2 = sin(yaw), m8 = -sin(yaw); w-divided
- * unless it is exactly 1.  (Those are the listing's element stores.) */
+ * unless it is exactly 1. */
 static void update_listener(Game *g)
 {
     CameraGlobals *cam = &g_camera;
@@ -155,7 +147,7 @@ static ThemeObjectTypeSlot *slot(ThemeObjectType t)
 }
 
 /* Every model pass goes through RenderSceneObjects with the placement block
- * as its quad template; the listing pushes the same shape each time. */
+ * as its quad template. */
 static void rso(const void *pos, const void *rot, unsigned count, ThemeObjectType t,
                 double now, float animTime = 0.0f, unsigned animCode = 0,
                 unsigned dtMs = 0)
@@ -246,7 +238,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
     /* The destructible blocks: whole, or (while the cell's +0x203 is set)
      * the fx model, starting the debris on the cell's +0x20f latch.  Only
      * the first fx draw of the frame gets the elapsed-ms argument.  The
-     * counter is a byte, as the original's. */
+     * counter is a byte. */
     bool firstFx = true;
     for (unsigned char i = 0; i < (unsigned)pl->destructibles.count; ++i) {
         const float *pos = pl->destructibles.pos[i];
@@ -418,7 +410,7 @@ static ThemeLevelObject *burst_record(ThemeObjectType t)
     return rec->kind == THEME_KIND_PARTICLESYSTEM ? rec : NULL;
 }
 
-/* Spawn into the first free burst (a byte index, as the original). */
+/* Spawn into the first free burst (a byte index). */
 static void spawn_burst(ThemeLevelObject *rec, float x, float y, float z)
 {
     for (unsigned char j = 0; j < rec->dwInstanceCount; ++j) {
@@ -444,8 +436,7 @@ static Mat4 translation(const float *p)
 
 enum BurstTick { TICK_WHOLE_MS, TICK_ELAPSED };
 
-/* Draw every live burst: WORLD = translate(pos) (the original composes
- * RotX(0) RotY(0) RotZ(0) first, which are exact identities), tick the
+/* Draw every live burst: WORLD = translate(pos), tick the
  * system, point it along the view, optionally spin its corners about Y by
  * -rotRateY * now, render, age, and switch the node off again.  A burst
  * whose time is up is retired instead. */
@@ -642,11 +633,10 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
 /* ─── Section 6: the HUD, the menus, present ───────────────────────────── */
 
-/* The one text buffer the original's HUD, frame counter and effect icons
- * share (a stack local there).  An icon row that formats nothing draws
- * whatever it last held; here that is the previous row, the counter, the
- * HUD's last line, or an earlier frame's -- the original's could also be
- * stack garbage on the first such row. */
+/* The one text buffer the HUD, frame counter and effect icons share.
+ * PRESERVED: an icon row that formats nothing draws whatever the buffer last
+ * held -- the previous row, the counter, the HUD's last line, or an earlier
+ * frame's. */
 static char s_text[0x100];
 
 static D3DTLVERTEX tl(float x, float y, D3DCOLOR c, float u, float v)
@@ -839,9 +829,9 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
 
 /* The frame counter: frames over each second of timeGetTime, shown while
  * F1 is held.  Its three globals stay at their game addresses. */
-static float g_fps;   /* was 0x004e04b8 */
-static float g_fpsMark;   /* was 0x004e04bc */
-static DWORD g_fpsFrames;   /* was 0x004e04c0 */
+static float g_fps;
+static float g_fpsMark;
+static DWORD g_fpsFrames;
 
 static void draw_fps(float W, float H)
 {
