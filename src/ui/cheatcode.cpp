@@ -35,10 +35,9 @@
 #include "tile.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "cdm.h"
 
-struct CDM;
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_StopTrack(CDM *self);
+class CDM;
 
 static int s_fx = -1;
 
@@ -54,7 +53,7 @@ static void enter_loaded_state(Game *game, FILE *fp)
     game->setCameraDistance(7.0f);
     game->setState(4);
     if (game->musicOn() != 0)
-        CDM_StopTrack(&g_cdAudio);
+        g_cdAudio.stop();
     game->scriptPlayer()->setRunning(1);
     game->setCameraMode(1);
     game->setDebounce(0x0d);

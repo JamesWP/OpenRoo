@@ -146,10 +146,10 @@ Game *Game::construct(const char *gameName)
     GameLog_LogMessage(&g_logger, 2, GS_GAME_COMMERCIAL);
     waveOutGetVolume(NULL, (DWORD *)config_.savedWaveOutVolumeRef());
     waveOutSetVolume(NULL, config_.waveOutVolume());
-    config_.setSavedCdMixerVolume(CDM_GetMixerDetails(&g_cdAudio));
-    CDM_SetMixerVolume(&g_cdAudio, config_.cdMixerVolume());
+    config_.setSavedCdMixerVolume(g_cdAudio.getMixerDetails());
+    g_cdAudio.setMixerVolume(config_.cdMixerVolume());
     state_ = 0;
-    CDM_StopTrack(&g_cdAudio);
+    g_cdAudio.stop();
     menu_.buildDefaultGraph(saveSlots_.count());
     levelIndex_     = 0;
     zoomDistance_   = config_.cameraDistanceSetting();
@@ -210,7 +210,7 @@ void Game::destruct()
     GameLog_LogMessage(&g_logger, 1, GS_GAME_SOUNDS_RELEASED);
     soundManager()->purgeAssets();
     waveOutSetVolume(NULL, config_.savedWaveOutVolume());
-    CDM_SetMixerVolume(&g_cdAudio, config_.savedCdMixerVolume());
+    g_cdAudio.setMixerVolume(config_.savedCdMixerVolume());
 
     map_.destruct();
     config_.destruct();

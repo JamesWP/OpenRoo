@@ -555,7 +555,7 @@ Sim_GameTick(Game *self, double dt, double now)
         if ((unsigned char)r < 0xff) {
             self->stateRef() = 6;
             if (self->musicOn() != 0)
-                CDM_StopTrack(&g_cdAudio);
+                g_cdAudio.stop();
             self->nameEntry()->setMaxLength(0x0f);
             self->nameEntry()->setActive(1);
             self->nameEntry()->setCursor(0);
@@ -580,7 +580,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 } else {
                     self->stateRef() = 7;
                     if (self->musicOn() != 0)
-                        CDM_StopTrack(&g_cdAudio);
+                        g_cdAudio.stop();
                     self->debounceRef() = 0x0d;
                 }
             } else {
@@ -617,7 +617,7 @@ Sim_GameTick(Game *self, double dt, double now)
             } else {
                 self->stateRef() = 7;
                 if (self->musicOn() != 0)
-                    CDM_StopTrack(&g_cdAudio);
+                    g_cdAudio.stop();
                 self->debounceRef() = 0x0d;
             }
         } else {

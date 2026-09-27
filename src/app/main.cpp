@@ -143,8 +143,8 @@ Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         break;
 
     case MM_MCINOTIFY:  // a track ended: restart it if it repeats
-        if (wParam == MCI_NOTIFY_SUCCESSFUL && g_cdAudio.repeat)
-            CDM_PlayTrack(&g_cdAudio, g_cdAudio.tracknumber, true);
+        if (wParam == MCI_NOTIFY_SUCCESSFUL && g_cdAudio.repeating())
+            g_cdAudio.playTrack(g_cdAudio.track(), true);
         break;
 
     case WM_MOVIE_EVENT:
@@ -269,7 +269,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     if (snd->init(1, hWnd, 0, 2, 22050, 16, &g_logger))
         snd->cfaktSound()->apply3DRolloffParams(0.3f, DS3D_IMMEDIATE);
 
-    CDM_SetWindowHandle(&g_cdAudio, hWnd);
+    g_cdAudio.setWindowHandle(hWnd);
     ShowWindow(hWnd, SW_SHOW);
     Render_ConfigureRenderState();
     hooks_ClockInit();

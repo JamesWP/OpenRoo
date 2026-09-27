@@ -10,7 +10,7 @@
 
 struct GameLogger;
 struct LoadedImage;
-struct CDM;
+class CDM;
 class ProgableControl;
 
 /* The game's logger, written through GameLog_LogMessage and

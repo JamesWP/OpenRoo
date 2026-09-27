@@ -55,11 +55,7 @@ unsigned int CdThemes::findThemeIndex(const char *name)
     return 0;
 }
 
-struct CDM;
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_StopTrack(CDM *self);
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-CDM_PlayTrack(CDM *self, int track, bool loop);
+class CDM;
 
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
 Sim_PlayCDStuf(CdThemes *self, const char *caption)
@@ -73,12 +69,12 @@ unsigned int CdThemes::play(const char *caption)
 
     if (count_ == 0)
         return 0;
-    CDM_StopTrack(&g_cdAudio);
+    g_cdAudio.stop();
     idx = findThemeIndex(caption);
     currentTrack_ = (unsigned char)idx;
     GameLog_LogMessage(&g_logger, 2, GS_CD_TRY_TRACK, idx & 0xff, caption);
     if (currentTrack_ != 0)
-        CDM_PlayTrack(&g_cdAudio, currentTrack_, true);
+        g_cdAudio.playTrack(currentTrack_, true);
     return 1;
 }
 
@@ -91,9 +87,9 @@ Sim_PlayCDStuf_2(CdThemes *self)
 unsigned int CdThemes::replay()
 {
     if (count_ != 0) {
-        CDM_StopTrack(&g_cdAudio);
+        g_cdAudio.stop();
         if (currentTrack_ != 0)
-            CDM_PlayTrack(&g_cdAudio, currentTrack_, true);
+            g_cdAudio.playTrack(currentTrack_, true);
     }
     return 0;
 }
@@ -112,12 +108,12 @@ int CdThemes::validateTrackLengths()
 {
     char *len;
 
-    trackCount_ = CDM_GetTrackCount(&g_cdAudio);
+    trackCount_ = g_cdAudio.getTrackCount();
     if (trackCount_ != 9)
         return 0;
-    CDM_GetTrackLength(&g_cdAudio, &len, 1);
+    g_cdAudio.getTrackLength(&len, 1);
     for (int t = 2; t <= 9; ++t) {
-        CDM_GetTrackLength(&g_cdAudio, &len, t);
+        g_cdAudio.getTrackLength(&len, t);
         if (strcmp(len, k_trackLength[t]) != 0)
             return 0;
     }
@@ -235,10 +231,10 @@ Sim_ListTrackLengths(CdThemes *self)
 int CdThemes::listTrackLengths()
 {
     char *len = NULL;  // always written before it is used
-    trackCount_ = CDM_GetTrackCount(&g_cdAudio);
+    trackCount_ = g_cdAudio.getTrackCount();
     GameLog_LogMessage(&g_logger, 3, GS_CD_TRACK_COUNT, trackCount_);
     for (unsigned t = 1; (unsigned)trackCount_ != 0; t++) {
-        CDM_GetTrackLength(&g_cdAudio, &len, t);
+        g_cdAudio.getTrackLength(&len, t);
         GameLog_LogMessage(&g_logger, 3, GS_CD_TRACK_LENGTH, t, len);
         if (!(t < (unsigned)trackCount_))
             break;
