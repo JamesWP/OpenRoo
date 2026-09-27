@@ -24,8 +24,7 @@ static void ps_log(const char *what, const char *path, int ok)
     }
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Config_LoadValues(Config *self, const char *path)
+int Config::loadValues(const char *path)
 {
     char tag[CFG_TAG_SIZE];
     FILE *fp = fopen(path, "r");
@@ -34,7 +33,7 @@ Config_LoadValues(Config *self, const char *path)
         ps_log("cfg load", path, 0);
         return 0;
     }
-    fread(self->persisted(), CFG_BLOB_SIZE, 1, fp);
+    fread(persisted(), CFG_BLOB_SIZE, 1, fp);
     fread(tag, CFG_TAG_SIZE, 1, fp);
     fclose(fp);
 
@@ -43,8 +42,7 @@ Config_LoadValues(Config *self, const char *path)
     return strcmp(tag, CFG_TAG) == 0 ? 1 : 0;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-Config_Save(Config *self, const char *path)
+int Config::save(const char *path)
 {
     char tag[CFG_TAG_SIZE];  // PRESERVED: uninitialised
     FILE *fp = fopen(path, "w");
@@ -53,7 +51,7 @@ Config_Save(Config *self, const char *path)
         ps_log("cfg save", path, 0);
         return 0;
     }
-    fwrite(self->persisted(), CFG_BLOB_SIZE, 1, fp);
+    fwrite(persisted(), CFG_BLOB_SIZE, 1, fp);
     strcpy(tag, CFG_TAG);  // FORMAT: 4 bytes of 10; the rest are whatever the stack held
     fwrite(tag, CFG_TAG_SIZE, 1, fp);
     fclose(fp);
