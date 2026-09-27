@@ -8,11 +8,10 @@
 #include <dsound.h>
 #include <stddef.h>
 
-/* What the script player hands to CStreamSoundbuffer::prepare.  Its copy is
- * embedded in the ScriptPlayer: "initwave" writes the file name, the
- * fixed-sound setup the rest.  Packed, because the ScriptPlayer field after it
- * follows directly. */
-struct __attribute__((packed)) WaveInfo {
+/* What the script player hands to CStream_Prepare.  Its copy is embedded in
+ * the ScriptPlayer: "initwave" writes the file name, the fixed-sound setup the
+ * rest. */
+struct WaveInfo {
     IDirectSound  *pDirectsound;
     DWORD          dwFlags;
     char          *pFilename;
@@ -22,7 +21,6 @@ struct __attribute__((packed)) WaveInfo {
 
 /* A streamed buffer, 0xd4 bytes, the size the script player allocates.  The
  * vtable must stay at offset 0. */
-#pragma pack(push, 1)
 class __attribute__((packed)) CStreamSoundbuffer {
 public:
     /* The deinit, then free() when bit 0 of flags is set; returns self. */
@@ -64,17 +62,12 @@ private:
     char                *filename_;
     IDirectSoundBuffer  *pSoundbuffer_;
     IDirectSound        *pDirectsound_;
-    BYTE                 _pad0_[0x0a];
     DWORD                dwBuffer_size_;
-    BYTE                 _pad1_[0x88];
     volatile DWORD       dwThread_done_;  // 0 playing, 1 finished or idle; the script player polls it
     HANDLE               watcher_thread_;
     HANDLE               stop_event_;
-    BYTE                 _pad2_[0x08];
-    CRITICAL_SECTION     cs_;  // 0x18 bytes
-    BYTE                 _pad3_[0x02];
+    CRITICAL_SECTION     cs_;
 };
-#pragma pack(pop)
  
 /* The one-slot vtable: the scalar deleting destructor. */
   void *CStream_Vtable(void);

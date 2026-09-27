@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stddef.h>
 
-#pragma pack(push, 1)
 class GameLogger {
 public:
     /* Formats and writes one line: "HH:MM:SS : message". */
@@ -50,6 +49,5 @@ private:
     UINT   notifyWParam_;     // WM_COPYDATA mirror wParam; 0 disables
     HWND   notifyHwnd_;       // WM_COPYDATA mirror target; nothing ever sets it
 };
-#pragma pack(pop)
 
  

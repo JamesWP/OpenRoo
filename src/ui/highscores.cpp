@@ -7,8 +7,6 @@
  * PRESERVED:
  *   - The reader ignores fread's result and reads each byte into the same
  *     variable, so a short file repeats its last byte to the end.
- *   - Both loops re-read the count every pass and mask the index to 16
- *     bits, which a byte count can never reach.
  *   - The path is formatted unbounded into a 128-byte buffer. */
 #include <windows.h>
 #include <stdio.h>
@@ -19,7 +17,23 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 
-#define HSC_ENTRY_SIZE ((unsigned)sizeof(HighScoreRecord))
+#include "bytes.h"
+
+#define HSC_ENTRY_SIZE ((unsigned)HIGH_SCORE_RECORD_BYTES)
+
+static void hsc_encode(const HighScoreRecord *r, unsigned char *p)
+{
+    put_bytes(p, r->name, sizeof(r->name));
+    put_u32(p, r->score);
+    put_u8(p, r->level);
+}
+
+static void hsc_decode(HighScoreRecord *r, const unsigned char *p)
+{
+    get_bytes(p, r->name, sizeof(r->name));
+    r->score = get_u32(p);
+    r->level = get_u8(p);
+}
 
 #define PS_LOG_FIRST   6
 
@@ -35,10 +49,9 @@ static void ps_log(const char *what, const char *path, int ok)
 
 int HighScoreTable::readFile(const char *name, char key)
 {
-    unsigned char *data = (unsigned char *)records_;
+    unsigned char rec[HSC_ENTRY_SIZE];
     char path[128];
-    unsigned char b;  // PRESERVED: never re-initialised
-    unsigned i = 0;
+    unsigned char b = 0;  // PRESERVED: never re-initialised between reads
 
     sprintf(path, "%s\\Highscores\\%s.hsc", g_gameDir, name);
     FILE *fp = fopen(path, "r");
@@ -46,11 +59,12 @@ int HighScoreTable::readFile(const char *name, char key)
         ps_log("hsc load", path, 0);
         return 0;
     }
-    // PRESERVED: the count re-read every pass, the index masked to 16 bits.
-    while ((i & 0xffff) < (unsigned)(count_ * HSC_ENTRY_SIZE)) {
-        fread(&b, 1, 1, fp);
-        data[i & 0xffff] = (unsigned char)(b - (unsigned char)key);
-        i++;
+    for (unsigned r = 0; r < count_; r++) {
+        for (unsigned i = 0; i < HSC_ENTRY_SIZE; i++) {
+            fread(&b, 1, 1, fp);
+            rec[i] = (unsigned char)(b - (unsigned char)key);
+        }
+        hsc_decode(&records_[r], rec);
     }
     fclose(fp);
     ps_log("hsc load", path, 1);
@@ -59,9 +73,8 @@ int HighScoreTable::readFile(const char *name, char key)
 
 int HighScoreTable::writeFile(const char *name, char key)
 {
-    const unsigned char *data = (const unsigned char *)records_;
+    unsigned char rec[HSC_ENTRY_SIZE];
     char path[128];
-    unsigned i = 0;
 
     sprintf(path, "%s\\Highscores\\%s.hsc", g_gameDir, name);
     FILE *fp = fopen(path, "w+");
@@ -69,10 +82,12 @@ int HighScoreTable::writeFile(const char *name, char key)
         ps_log("hsc save", path, 0);
         return 0;
     }
-    while ((i & 0xffff) < (unsigned)(count_ * HSC_ENTRY_SIZE)) {
-        unsigned char out = (unsigned char)(data[i & 0xffff] + (unsigned char)key);
-        fwrite(&out, 1, 1, fp);
-        i++;
+    for (unsigned r = 0; r < count_; r++) {
+        hsc_encode(&records_[r], rec);
+        for (unsigned i = 0; i < HSC_ENTRY_SIZE; i++) {
+            unsigned char out = (unsigned char)(rec[i] + (unsigned char)key);
+            fwrite(&out, 1, 1, fp);
+        }
     }
     fclose(fp);
     ps_log("hsc save", path, 1);

@@ -6,21 +6,16 @@ class RenderDevice;
 /* CFaktMesh — the mesh object, drawn by DrawMeshBuffer / DrawFramedModel
  * (faktmesh.cpp) and loaded from a .mdl by ImportSceneModels (model.cpp).
  *
- * PACKED: pszName sits at +0x12, immediately after the 16-bit wFrameCount, so
- * the struct cannot be naturally aligned.  Init and the loader both write it
- * at that offset.
+ * Vertex data is a flat array of MeshVertex, all animation frames
+ * concatenated: frame f, vertex v is at index f * dwVertexCount + v
  *
- * Vertex data is a flat array of 0x28-byte FVF 0x212 vertices, all animation
- * frames concatenated: frame f, vertex v is at
- *     pVertexData + (f * dwVertexCount + v) * 0x28
- *
- * ─── The 0x60 bytes at +0x16 are a D3DDRAWPRIMITIVESTRIDEDDATA ───────────
- *
- * Twelve {lpvData, dwStride} pairs, ending exactly at pScratchVerts.  The
- * constructor sets the strides of position, normal, texCoords[0] and
- * texCoords[1] to 0x28 -- the four components of the mesh FVF 0x212
- * (XYZ | NORMAL | TEX2) -- and nothing else.  Nothing draws through it.
+ * strided is a D3DDRAWPRIMITIVESTRIDEDDATA: twelve {lpvData, dwStride}
+ * pairs.  The constructor sets the strides of position, normal, texCoords[0]
+ * and texCoords[1] to sizeof(MeshVertex) -- the four components of the mesh
+ * FVF 0x212 (XYZ | NORMAL | TEX2) -- and nothing else.  Nothing draws through
+ * it.
  */
+
 /* One FVF 0x212 vertex: position, normal, two texture-coordinate sets. */
 struct MeshVertex {
     float pos[3];
@@ -35,7 +30,6 @@ static_assert(sizeof(MeshVertex) == 0x28, "MeshVertex is the FVF 0x212 stride");
 #define MESH_STRIDED_TEX0     4
 #define MESH_STRIDED_TEX1     5
 
-#pragma pack(push, 1)
 /* One D3DDRAWPRIMITIVESTRIDEDDATA entry. */
 struct MeshStridedEntry { void *lpvData; DWORD dwStride; };
 
@@ -100,5 +94,4 @@ private:
  * models\John.mdl and models\Enemy.mdl. */
 extern CFaktMesh g_meshPlayer;
 extern CFaktMesh g_meshEnemy;
-#pragma pack(pop)
 

@@ -74,12 +74,9 @@ void *ProgableControl::setup(int)
     strncpy(suffix_positive, " positive",  sizeof(suffix_positive) - 1);
     strncpy(suffix_negative, " negative",  sizeof(suffix_negative) - 1);
     memset(axis_midpoints, 0, sizeof(axis_midpoints));
-    memset(_joystick_list, 0, sizeof(_joystick_list));
     for (int i = 0; i < 5; i++) {
         action_tables[i].head        = nullptr;
         action_tables[i].entry_count = 0;
-        action_tables[i]._pad[0]     = 0;
-        action_tables[i]._pad[1]     = 0;
     }
     return this;
 }
