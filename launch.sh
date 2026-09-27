@@ -16,7 +16,7 @@ while [[ $# -gt 0 ]]; do
     --skip-launcher) SKIP_LAUNCHER=1 ;;
     # Truly headless: no window, no graphics, no display needed.  Implies
     # --skip-launcher (the dialog is a window too).  DirectDraw is replaced
-    # wholesale by the in-DLL null device -- see src/render/nullddraw.cpp --
+    # wholesale by the in-DLL null device -- see src/d3d/nullddraw.cpp --
     # so nothing here touches X, nothing takes focus, and no desktop mode is
     # switched.  This is what to use for a background test run.
     --headless) HEADLESS=1; SKIP_LAUNCHER=1 ;;
