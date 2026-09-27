@@ -198,8 +198,8 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
     }
 
     if (rec->bExplode) {
-        ExplodeDebris_Advance(&rec->explode, (float)((double)dtMs * (double)0.001f));
-        ExplodeDebris_Draw(&rec->explode, dev);
+        rec->explode.advance((float)((double)dtMs * (double)0.001f));
+        rec->explode.draw(dev);
         return;
     }
     if (rec->bLit)

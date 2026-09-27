@@ -99,8 +99,8 @@ static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
         log_write("THEME_STRUCT:   %s[%d] explode=%lu dir=(%g,%g,%g) verts=%d scaled=%g%s\n",
                   slotName, i, (unsigned long)r.bExplode,
                   r.flExplodeDir[0], r.flExplodeDir[1], r.flExplodeDir[2],
-                  r.explode.nVertexCount, r.explode.flExplodeScaledCount,
-                  (r.pMesh != NULL && r.explode.nVertexCount > 0) ? "" : "  SUSPICIOUS explode");
+                  r.explode.vertexCount(), r.explode.explodeScaledCount(),
+                  (r.pMesh != NULL && r.explode.vertexCount() > 0) ? "" : "  SUSPICIOUS explode");
     for (DWORD k = 0; k < r.dwSubObjectCount && k < 8; k++) {
         const SceneSubObject &so = r.pSubObjects[k];
         log_write("THEME_STRUCT:   %s[%d].sub[%lu] cond=%lu tex=%p blend=%lu/%lu addr=%lu effect=%lu (%g,%g,%g)%s\n",
@@ -215,7 +215,7 @@ Theme_ReleaseSlot(ThemeObjectTypeSlot *slot)
 {
     for (int i = 0; i < 8; i++) {
         ThemeLevelObject &r = slot->records[i];
-        ExplodeDebris_Release(&r.explode);
+        r.explode.release();
         r.wrapper.releaseSnapshot();
         for (DWORD k = 0; k < r.dwInstanceCount; k++) {
             if (r.pParticleSystems[k] != NULL) {
@@ -238,14 +238,14 @@ extern "C" __declspec(dllexport) ThemeLevelObject *__attribute__((thiscall))
 Theme_RecordConstruct(ThemeLevelObject *self)
 {
     self->wrapper.construct();
-    ExplodeDebris_Construct(&self->explode);
+    self->explode.construct();
     return self;
 }
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Theme_RecordDestruct(ThemeLevelObject *self)
 {
-    ExplodeDebris_DtorBody(&self->explode);
+    self->explode.dtorBody();
     self->wrapper.dtorBody();
 }
 
@@ -816,9 +816,9 @@ void ThemeParser::explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec)
     if (ntok <= 6 || slot == NULL || rec->pMesh == NULL)
         return;
     rec->bExplode = 1;
-    ExplodeDebris_AllocateExplodeBuffers(&rec->explode, rec->pMesh);
+    rec->explode.allocateExplodeBuffers(rec->pMesh);
     Gen_FillGaussianField(&rec->explode, atof_f(tok[1]), atof_f(tok[2]));
-    ExplodeDebris_StoreExplodeScaledCount(&rec->explode, atof_f(tok[3]));
+    rec->explode.storeExplodeScaledCount(atof_f(tok[3]));
 
     const double a = (double)-1.5707963705062866f;
     const double c = cos(a), s = sin(a);

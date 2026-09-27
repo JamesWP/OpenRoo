@@ -153,9 +153,8 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                 } else {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-                    ExplodeDebris_Advance(&rec->explode,
-                                          (float)(unsigned long long)debrisMs * K_DEBRIS_MS);
-                    ExplodeDebris_Draw(&rec->explode, dev);
+                    rec->explode.advance((float)(unsigned long long)debrisMs * K_DEBRIS_MS);
+                    rec->explode.draw(dev);
 #pragma GCC diagnostic pop
                 }
             }
