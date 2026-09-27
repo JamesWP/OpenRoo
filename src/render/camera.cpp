@@ -32,7 +32,7 @@
 #include <math.h>
 #include "camera.h"
 #include "d3dmath.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "game.h"
 #include "config.h"
 #include "levelmap.h"
@@ -107,7 +107,7 @@ Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
 }
 
 __declspec(dllexport) void __cdecl
-Camera_UpdateViewTransform(CameraGlobals *cam, Direct3D *d3d, Game *g,
+Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
                            CameraFocus focus, double dt)
 {
     const float dtf = (float)dt;

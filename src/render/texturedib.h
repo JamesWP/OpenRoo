@@ -2,7 +2,7 @@
 #pragma once
 
 #include <windows.h>
-#include "direct3d.h"
+#include "renderdevice.h"
 
 /* Load a .bmp into a new surface;
  * the low byte of the result is the success flag. */

@@ -12,7 +12,7 @@
 #include "levelmap.h"
 #include "tile.h"
 #include "theme.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "d3dmath.h"
 #include "ani.h"
 #include "faktmesh.h"
@@ -82,7 +82,7 @@ static int animation_frame(ThemeLevelObject *rec, double t, float phase,
 extern "C" __declspec(dllexport) void __cdecl
 Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                           const float *pos, const float *rot, unsigned int count,
-                          ThemeObjectTypeSlot *slot, Direct3D *d3d, double t,
+                          ThemeObjectTypeSlot *slot, RenderDevice *d3d, double t,
                           float phase, unsigned int animKey, unsigned int debrisMs)
 {
     IDirect3DDevice3 *dev = d3d->pDevice;

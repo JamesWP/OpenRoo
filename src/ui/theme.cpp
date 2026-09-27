@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include "log.h"
 #include "game.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "gamelog.h"
 #include "gamestr.h"
 #include "gameglobals.h"
@@ -499,7 +499,7 @@ template <typename T> struct Cursor {
 };
 struct ThemeParser {
     Game            *game;
-    Direct3D        *d3d;
+    RenderDevice    *d3d;
     ThemeAssetBlock *block;
     GameLogger      *logger;
     FILE            *fp;
@@ -945,7 +945,7 @@ void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *su
 /* One parser for every call; 4 KB of tokens, so not on the stack. */
 static ThemeParser s_parser;
 
-static bool theme_load(Game *game, Direct3D *d3d, ThemeAssetBlock *block,
+static bool theme_load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block,
                        char *path, GameLogger *logger)
 {
     Theme_ReleaseBlock(block);
@@ -968,7 +968,7 @@ static bool theme_load(Game *game, Direct3D *d3d, ThemeAssetBlock *block,
 
 /* The load, timed.  The time goes only to our log, never into game state. */
 extern "C" __declspec(dllexport) bool __cdecl
-Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block, char *path,
+Theme_Load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block, char *path,
            GameLogger *logger)
 {
     LARGE_INTEGER freq, t0, t1;

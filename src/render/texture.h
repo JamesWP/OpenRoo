@@ -1,5 +1,5 @@
 #pragma once
-#include "direct3d.h"   /* LoadedImage (the 24-byte base variant) */
+#include "renderdevice.h"   /* LoadedImage (the 24-byte base variant) */
 
 /* SceneTexture — the 28-byte extended LoadedImage variant: the base struct
  * plus an IDirect3DTexture2 at +0x18.  See HOOKS.md § LoadedImage struct —

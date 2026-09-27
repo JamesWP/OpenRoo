@@ -234,7 +234,7 @@ KAROO_LAYOUT_CHECKS(ThemeAssetBlock)
 
 /* The loader and its helpers. */
 class Game;
-struct Direct3D;
+struct RenderDevice;
 struct GameLogger;
 struct ThemeSoundTable;
 
@@ -243,7 +243,7 @@ extern ThemeAssetBlock g_themeBlock;
 /* Releases the block, parses the theme file at path into it, and builds its
  * meshes, textures and sounds. */
 extern "C" __declspec(dllexport) bool __cdecl
-Theme_Load(Game *game, Direct3D *d3d, ThemeAssetBlock *block,
+Theme_Load(Game *game, RenderDevice *d3d, ThemeAssetBlock *block,
            char *path, GameLogger *logger);
 
 /* Releases everything the block holds.  Also called at shutdown. */

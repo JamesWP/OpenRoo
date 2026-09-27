@@ -22,7 +22,7 @@
 #include "layout.h"
 #include "texture.h"    /* SceneTexture -- the atlas at +0x0c */
 
-struct Direct3D;
+struct RenderDevice;
 
 class __attribute__((packed)) TextRenderer {
 public:
@@ -32,17 +32,17 @@ public:
     /* Left-aligned: (x, y) is the first cell's
      * top-left corner. */
     void drawLeft(float x, float y, float cellW, float cellH, float spacing,
-                  const char *str, Direct3D *d3d, char firstChar,
+                  const char *str, RenderDevice *d3d, char firstChar,
                   DWORD colourTop, DWORD colourBottom);
 
     /* x is the string's right edge. */
     void drawRight(float x, float y, float cellW, float cellH, float spacing,
-                   const char *str, Direct3D *d3d, char firstChar,
+                   const char *str, RenderDevice *d3d, char firstChar,
                    DWORD colourTop, DWORD colourBottom);
 
     /* x is the string's centre. */
     void drawCentered(float x, float y, float cellW, float cellH, float spacing,
-                      const char *str, Direct3D *d3d, char firstChar,
+                      const char *str, RenderDevice *d3d, char firstChar,
                       DWORD colourTop, DWORD colourBottom);
 
     /* Load a .fon: line 1 is the atlas's
@@ -50,13 +50,13 @@ public:
      * non-zero in the low byte on success.  Both shipped fonts are three
      * lines long (fonts/FONT1.FON is textures\font2.tga, 16, 16;
      * fonts/NUMBERS.FON is textures\numbers.tga, 4, 3). */
-    unsigned int load(const char *path, Direct3D *d3d);
+    unsigned int load(const char *path, RenderDevice *d3d);
 
     /* The centring wrapper around drawWobble, with
      * exactly drawCentered's arithmetic: x -= width * 0.5f, then a tail call
      * with all twelve remaining arguments untouched.  Used for "GAME OVER". */
     void drawBig(float x, float y, float cellW, float cellH, float spacing,
-                 const char *str, Direct3D *d3d, char firstChar,
+                 const char *str, RenderDevice *d3d, char firstChar,
                  DWORD colourTop, DWORD colourBottom,
                  float amplitude, float rate, int n);
 
@@ -73,14 +73,14 @@ public:
      * calls ahead of the empty test, and the pen advance.  drawBig is its
      * only caller. */
     void drawWobble(float x, float y, float cellW, float cellH, float spacing,
-                    const char *str, Direct3D *d3d, char firstChar,
+                    const char *str, RenderDevice *d3d, char firstChar,
                     DWORD colourTop, DWORD colourBottom,
                     float amplitude, float rate, int n);
 
     /* A multi-line caption over two full-width
      * backdrop strips (textrenderer.cpp). */
     void drawPanel(float x, float y, float cellW, float cellH, float spacing,
-                   float lineH, const char *str, Direct3D *d3d,
+                   float lineH, const char *str, RenderDevice *d3d,
                    DWORD colourTop, DWORD colourBottom,
                    SceneTexture *panelTex, SceneTexture *frameTex);
 
@@ -119,36 +119,36 @@ KAROO_LAYOUT_CHECKS(TextRenderer)
  */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Text_RenderText(TextRenderer *self, float x, float y, float cellW, float cellH,
-                float spacing, const char *str, Direct3D *d3d, char firstChar,
+                float spacing, const char *str, RenderDevice *d3d, char firstChar,
                 DWORD colourTop, DWORD colourBottom);
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Text_DrawCentered(TextRenderer *self, float x, float y, float cellW,
-                  float cellH, float spacing, const char *str, Direct3D *d3d,
+                  float cellH, float spacing, const char *str, RenderDevice *d3d,
                   char firstChar, DWORD colourTop, DWORD colourBottom);
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Text_DrawRightAligned(TextRenderer *self, float x, float y, float cellW,
                       float cellH, float spacing, const char *str,
-                      Direct3D *d3d, char firstChar,
+                      RenderDevice *d3d, char firstChar,
                       DWORD colourTop, DWORD colourBottom);
 
 /* The path, and the Direct3D the atlas is created against. */
 extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Text_LoadFont(TextRenderer *self, const char *path, Direct3D *d3d);
+Text_LoadFont(TextRenderer *self, const char *path, RenderDevice *d3d);
 
 /* The big-text pair take thirteen stack arguments: the ten the other three
  * take plus (amplitude, rate, n). */
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Text_DrawBigText(TextRenderer *self, float x, float y, float cellW,
-                 float cellH, float spacing, const char *str, Direct3D *d3d,
+                 float cellH, float spacing, const char *str, RenderDevice *d3d,
                  char firstChar, DWORD colourTop, DWORD colourBottom,
                  float amplitude, float rate, int n);
 
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Text_DrawWobbleGlyphRow(TextRenderer *self, float x, float y, float cellW,
                         float cellH, float spacing, const char *str,
-                        Direct3D *d3d, char firstChar, DWORD colourTop,
+                        RenderDevice *d3d, char firstChar, DWORD colourTop,
                         DWORD colourBottom, float amplitude, float rate,
                         int n);
 
@@ -164,7 +164,7 @@ Text_ScalarDtor(TextRenderer *self, unsigned int flags);
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Text_DrawPanelText(TextRenderer *self, float x, float y, float cellW,
                    float cellH, float spacing, float lineH, const char *str,
-                   Direct3D *d3d, DWORD colourTop, DWORD colourBottom,
+                   RenderDevice *d3d, DWORD colourTop, DWORD colourBottom,
                    SceneTexture *panelTex, SceneTexture *frameTex);
 
 /* The two fonts: fonts\font1.fon and fonts\numbers.fon. */

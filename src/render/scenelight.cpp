@@ -3,7 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include "scenelight.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include <stdlib.h>
 #include "log.h"
 SceneSpotLight g_light;
@@ -25,7 +25,7 @@ SceneLight_Release(SceneSpotLight *self)
 }
 
 __declspec(dllexport) bool __attribute__((thiscall))
-SceneLight_Create(SceneSpotLight *self, Direct3D *d3d)
+SceneLight_Create(SceneSpotLight *self, RenderDevice *d3d)
 {
     SceneLight_Release(self);
 

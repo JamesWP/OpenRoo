@@ -21,7 +21,7 @@
  * convention; multiplication and SetTransform follow that convention
  * throughout.  The tile under a position is Tile::at(map, (int)x, -(int)z). */
 
-#include "direct3d.h"
+#include "renderdevice.h"
 #include <windows.h>
 #include <d3d.h>
 #include <math.h>
@@ -356,7 +356,7 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
 extern "C" __declspec(dllexport) void __cdecl
 Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *positions,
                          const Vec3 *rotations, unsigned int count,
-                         ThemeObjectTypeSlot *slot, Direct3D *d3d, double now,
+                         ThemeObjectTypeSlot *slot, RenderDevice *d3d, double now,
                          float animTime, unsigned int animCode, unsigned int dtMs)
 {
     Config *cfg = game->config();

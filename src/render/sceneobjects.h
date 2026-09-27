@@ -13,7 +13,7 @@
 
 class Game;
 class ThemeObjectTypeSlot;
-struct Direct3D;
+struct RenderDevice;
 
 /* The kind-2 quad vertex: FVF 0x242, XYZ | DIFFUSE | TEX2.  The game
  * animates and draws the SECOND coordinate pair as set 0. */
@@ -28,5 +28,5 @@ static_assert(sizeof(SceneQuadVertex) == 0x20, "SceneQuadVertex stride");
 extern "C" __declspec(dllexport) void __cdecl
 Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *positions,
                          const Vec3 *rotations, unsigned int count,
-                         ThemeObjectTypeSlot *slot, Direct3D *d3d, double now,
+                         ThemeObjectTypeSlot *slot, RenderDevice *d3d, double now,
                          float animTime, unsigned int animCode, unsigned int dtMs);

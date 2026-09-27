@@ -36,7 +36,7 @@ KAROO_LAYOUT_CHECKS(CameraGlobals)
 extern CameraGlobals g_camera;
 
 struct Mat4;
-struct Direct3D;
+struct RenderDevice;
 class Game;
 
 /* The 9-float block FramePose_Player fills and RenderGameFrame passes BY
@@ -58,6 +58,6 @@ Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
 /* cdecl(cam, d3d, game, focus BY VALUE, double dt): eases the orbit camera
  * and sets the VIEW transform.  One caller, RenderGameFrame. */
 __declspec(dllexport) void __cdecl
-Camera_UpdateViewTransform(CameraGlobals *cam, Direct3D *d3d, Game *g,
+Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
                            CameraFocus focus, double dt);
 }

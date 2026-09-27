@@ -2,7 +2,7 @@
  * particle-system effects, drawn at a list of instance positions.
  *
  *   cdecl(Game*, unused, pos[], rot[], count, ThemeObjectTypeSlot*,
- *         Direct3D*, double t, double dt, DWORD system)
+ *         RenderDevice*, double t, double dt, DWORD system)
  *
  * 15 call sites, all in RenderGameFrame; each passes one theme slot (the
  * player's, a foe's, an item type's, ...), its instances' positions and
@@ -15,10 +15,10 @@
 
 class Game;
 class ThemeObjectTypeSlot;
-struct Direct3D;
+struct RenderDevice;
 
 extern "C" __declspec(dllexport) void __cdecl
 Theme_DrawParticleObjects(Game *g, void *unused, const float (*pos)[3],
                           const float (*rot)[3], DWORD count,
-                          ThemeObjectTypeSlot *slot, Direct3D *d3d,
+                          ThemeObjectTypeSlot *slot, RenderDevice *d3d,
                           double t, double dt, DWORD system);

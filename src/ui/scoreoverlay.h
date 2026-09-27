@@ -4,19 +4,19 @@
 #include <windows.h>
 
 class Game;
-struct Direct3D;
+struct RenderDevice;
 class TextRenderer;
 
 /* The level-complete screen (menu node 0x28).  game is the theme argument the
  * screen dispatch passes to every screen. */
 extern "C" __declspec(dllexport) void __cdecl
-Menu_RenderLevelComplete(Game *g, void *game, Direct3D *d3d,
+Menu_RenderLevelComplete(Game *g, void *game, RenderDevice *d3d,
                          TextRenderer *text, DWORD ms);
 
 /* The in-game overlays the frame renderer draws. */
 extern "C" __declspec(dllexport) void __cdecl
-Score_DrawHighScoreTable(Game *g, void *game, Direct3D *d3d,
+Score_DrawHighScoreTable(Game *g, void *game, RenderDevice *d3d,
                          TextRenderer *text, int n);
 extern "C" __declspec(dllexport) void __cdecl
-Score_DrawGameOverScore(Game *g, void *game, Direct3D *d3d,
+Score_DrawGameOverScore(Game *g, void *game, RenderDevice *d3d,
                         TextRenderer *text, int n);

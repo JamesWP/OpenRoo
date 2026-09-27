@@ -19,7 +19,7 @@
 
 #include "textrenderer.h"
 #include "com_proxy.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "log.h"
 #include "scenetexture.h"
 #include "gamestr.h"
@@ -133,7 +133,7 @@ static float text_width(const char *str, float cellW, float spacing)
  * forward to them. */
 
 void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
-                            float spacing, const char *str, Direct3D *d3d,
+                            float spacing, const char *str, RenderDevice *d3d,
                             char firstChar, DWORD colourTop,
                             DWORD colourBottom)
 {
@@ -227,7 +227,7 @@ static int font_atoi(const char *p)
     return sign == '-' ? -acc : acc;
 }
 
-unsigned int TextRenderer::load(const char *path, Direct3D *d3d)
+unsigned int TextRenderer::load(const char *path, RenderDevice *d3d)
 {
     ++g_nLoad;
     { static unsigned long seen; text_first("ReadBitmapFontFile", &seen); }
@@ -281,7 +281,7 @@ unsigned int TextRenderer::load(const char *path, Direct3D *d3d)
 }
 
 void TextRenderer::drawCentered(float x, float y, float cellW, float cellH,
-                                float spacing, const char *str, Direct3D *d3d,
+                                float spacing, const char *str, RenderDevice *d3d,
                                 char firstChar, DWORD colourTop,
                                 DWORD colourBottom)
 {
@@ -293,7 +293,7 @@ void TextRenderer::drawCentered(float x, float y, float cellW, float cellH,
 }
 
 void TextRenderer::drawRight(float x, float y, float cellW, float cellH,
-                             float spacing, const char *str, Direct3D *d3d,
+                             float spacing, const char *str, RenderDevice *d3d,
                              char firstChar, DWORD colourTop,
                              DWORD colourBottom)
 {
@@ -311,7 +311,7 @@ extern "C" {
 
 __declspec(dllexport) void __attribute__((thiscall))
 Text_RenderText(TextRenderer *self, float x, float y, float cellW, float cellH,
-                float spacing, const char *str, Direct3D *d3d, char firstChar,
+                float spacing, const char *str, RenderDevice *d3d, char firstChar,
                 DWORD colourTop, DWORD colourBottom)
 {
     self->drawLeft(x, y, cellW, cellH, spacing, str, d3d, firstChar,
@@ -320,7 +320,7 @@ Text_RenderText(TextRenderer *self, float x, float y, float cellW, float cellH,
 
 __declspec(dllexport) void __attribute__((thiscall))
 Text_DrawCentered(TextRenderer *self, float x, float y, float cellW,
-                  float cellH, float spacing, const char *str, Direct3D *d3d,
+                  float cellH, float spacing, const char *str, RenderDevice *d3d,
                   char firstChar, DWORD colourTop, DWORD colourBottom)
 {
     self->drawCentered(x, y, cellW, cellH, spacing, str, d3d, firstChar,
@@ -330,7 +330,7 @@ Text_DrawCentered(TextRenderer *self, float x, float y, float cellW,
 __declspec(dllexport) void __attribute__((thiscall))
 Text_DrawRightAligned(TextRenderer *self, float x, float y, float cellW,
                       float cellH, float spacing, const char *str,
-                      Direct3D *d3d, char firstChar,
+                      RenderDevice *d3d, char firstChar,
                       DWORD colourTop, DWORD colourBottom)
 {
     self->drawRight(x, y, cellW, cellH, spacing, str, d3d, firstChar,
@@ -338,7 +338,7 @@ Text_DrawRightAligned(TextRenderer *self, float x, float y, float cellW,
 }
 
 __declspec(dllexport) unsigned int __attribute__((thiscall))
-Text_LoadFont(TextRenderer *self, const char *path, Direct3D *d3d)
+Text_LoadFont(TextRenderer *self, const char *path, RenderDevice *d3d)
 {
     return self->load(path, d3d);
 }
@@ -369,7 +369,7 @@ static float wobble_dy(int i2, float phase, float amplitude, float halfH)
 }
 
 void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
-                              float spacing, const char *str, Direct3D *d3d,
+                              float spacing, const char *str, RenderDevice *d3d,
                               char firstChar, DWORD colourTop,
                               DWORD colourBottom, float amplitude, float rate,
                               int n)
@@ -435,7 +435,7 @@ void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
 }
 
 void TextRenderer::drawBig(float x, float y, float cellW, float cellH,
-                           float spacing, const char *str, Direct3D *d3d,
+                           float spacing, const char *str, RenderDevice *d3d,
                            char firstChar, DWORD colourTop, DWORD colourBottom,
                            float amplitude, float rate, int n)
 {
@@ -455,7 +455,7 @@ extern "C" {
 
 __declspec(dllexport) void __attribute__((thiscall))
 Text_DrawBigText(TextRenderer *self, float x, float y, float cellW,
-                 float cellH, float spacing, const char *str, Direct3D *d3d,
+                 float cellH, float spacing, const char *str, RenderDevice *d3d,
                  char firstChar, DWORD colourTop, DWORD colourBottom,
                  float amplitude, float rate, int n)
 {
@@ -466,7 +466,7 @@ Text_DrawBigText(TextRenderer *self, float x, float y, float cellW,
 __declspec(dllexport) void __attribute__((thiscall))
 Text_DrawWobbleGlyphRow(TextRenderer *self, float x, float y, float cellW,
                         float cellH, float spacing, const char *str,
-                        Direct3D *d3d, char firstChar, DWORD colourTop,
+                        RenderDevice *d3d, char firstChar, DWORD colourTop,
                         DWORD colourBottom, float amplitude, float rate,
                         int n)
 {
@@ -539,7 +539,7 @@ Text_ScalarDtor(TextRenderer *self, unsigned int flags)
  * The strips' z is 0 and the glyphs' 0.1. */
 void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
                              float spacing, float lineH, const char *str,
-                             Direct3D *d3d, DWORD colourTop, DWORD colourBottom,
+                             RenderDevice *d3d, DWORD colourTop, DWORD colourBottom,
                              SceneTexture *panelTex, SceneTexture *frameTex)
 {
     const float du = 1.0f / (float)cols_;  // cols_ read as unsigned
@@ -621,7 +621,7 @@ void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Text_DrawPanelText(TextRenderer *self, float x, float y, float cellW,
                    float cellH, float spacing, float lineH, const char *str,
-                   Direct3D *d3d, DWORD colourTop, DWORD colourBottom,
+                   RenderDevice *d3d, DWORD colourTop, DWORD colourBottom,
                    SceneTexture *panelTex, SceneTexture *frameTex)
 {
     self->drawPanel(x, y, cellW, cellH, spacing, lineH, str, d3d,

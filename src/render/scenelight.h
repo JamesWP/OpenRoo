@@ -10,7 +10,7 @@
 #include <ddraw.h>
 #include <d3d.h>
 #include <stddef.h>
-struct Direct3D;
+struct RenderDevice;
 
 /* One spotlight: the D3DLIGHT2 description sent to Direct3D, the COM light
  * object it produced, and a flag set whenever the light is released. */
@@ -45,7 +45,7 @@ static_assert(4 + offsetof(D3DLIGHT2, dwFlags)        == 0x50, "SceneSpotLight c
 /* Releases any existing light, then creates a new one via
  * Direct3D::pD3D->CreateLight.  Returns true on success. */
 extern "C" __declspec(dllexport) bool __attribute__((thiscall))
-SceneLight_Create(SceneSpotLight *self, Direct3D *d3d);
+SceneLight_Create(SceneSpotLight *self, RenderDevice *d3d);
 
 /* Constructor and destructor body for the one global instance. */
 extern "C" __declspec(dllexport) SceneSpotLight *__attribute__((thiscall)) SceneLight_Construct(SceneSpotLight *self);

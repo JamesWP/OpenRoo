@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "renderstate.h"
-#include "direct3d.h"
+#include "renderdevice.h"
 #include "texturedib.h"
 #include "scenetexture.h"
 #include "texture.h"
@@ -31,12 +31,12 @@
 extern "C" __declspec(dllexport) void __cdecl
 Render_ConfigureRenderState(void)
 {
-    Direct3D *d3d = g_pDirect3D;
+    RenderDevice *d3d = g_renderDevice;
 
     // Loading-screen and demo bitmaps.
     if (!(char)TextureDIB_CreateSurface(&g_fallbackImage, d3d->pDD4, "bitmaps\\loading.bmp", 1))
         GameLog_LogMessage(&g_logger, 3, "SUR: *ERROR* couldn't load loading.bmp");
-    Direct3D_FlipPrimaryFrame(&g_fallbackImage);
+    g_renderDevice->PresentImage(&g_fallbackImage);
     TextureDIB_CreateSurface(&g_demoImage, d3d->pDD4, "bitmaps\\demo.bmp", 1);
 
     // Texture and model caches' loggers, and the level placement scratch
