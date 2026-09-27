@@ -1,28 +1,9 @@
-/* TextRenderer -- every entry point reimplemented.
+/* TextRenderer: the glyph loops, the .fon loader, the text panel and the
+ * lifecycle (textrenderer.h).
  *
- *   0x00413690 RenderText            __thiscall(this, 10 args)  RET 0x28
- *   0x00413d00 DrawCenteredText      __thiscall(this, 10 args)  RET 0x28
- *   0x00413e30 DrawRightAlignedText  __thiscall(this, 10 args)  RET 0x28
- *   0x00413d90 DrawBigText           __thiscall(this, 13 args)  RET 0x34
- *   0x00413990 DrawWobbleGlyphRow    __thiscall(this, 13 args)  RET 0x34
- *
- * Each signature was read off the original's `RET n` and off the caller-side
- * push order, not off the decompiler's parameter list.  ENDGAME_PLAN.md E1;
- * textrenderer.h records what the argument list means, including the two
- * arguments the old placeholder header named wrongly.
- *
- * ── What RenderText does ────────────────────────────────────────────────────
- * One DrawPrimitive per character: a D3DPT_TRIANGLEFAN of four vertices in
- * screen space, FVF 0x1C4.
- *
- * 0x1C4 is XYZRHW | DIFFUSE | SPECULAR | TEX1 -- **32** bytes, not the 28 the
- * old Ghidra plate comment claimed.  The SPECULAR set (0x080) is easy to miss
- * and it is really written: 0xff000000 into every vertex, at 0x4137b2 and its
- * three siblings.  Getting this wrong would have handed the driver a vertex
- * stride four bytes short of what the FVF declares, which is the scenequad.cpp
- * class of fault (CRASH.md).
- *
- * Per glyph, with g = (unsigned char)(str[i] - firstChar):
+ * drawLeft issues one DrawPrimitive per character: a four-vertex
+ * D3DPT_TRIANGLEFAN in screen space.  Per glyph, with g = (unsigned
+ * char)(str[i] - firstChar):
  *
  *   cell  = (g % cols, g / cols)                    unsigned div, both times
  *   u, v  = cell.x * (1/cols), cell.y * (1/rows)
@@ -30,51 +11,33 @@
  *   diffuse = colourTop on the two top vertices, colourBottom on the bottom two
  *   penX += cellW * spacing
  *
- * The two reciprocals are computed ONCE before the loop and multiplied, never
- * divided per glyph -- the original's rounding, kept: `1.0f / (float)cols`
- * stored to a float, then a float multiply.
+ * SetTexture and the three SetRenderState calls happen before the empty-string
+ * test, so drawing "" still leaves alpha blending on and the atlas bound.
  *
- * ── Order preserved deliberately ────────────────────────────────────────────
- *   - SetTexture and the three SetRenderState calls happen BEFORE the empty-
- *     string test, so drawing "" still leaves alpha blending enabled and the
- *     atlas bound.  Callers depend on that leak whether they know it or not.
- *   - The original re-runs strlen on every iteration (0x41395e) instead of
- *     hoisting it.  Reproduced -- it cannot change the result, since nothing
- *     writes to the string, but it is the original's shape and the cost is
- *     the original's cost.
- *   - The device is the one the game passed (d3d->pDevice), so every call
- *     stays visible to the com_proxy layer.
- *
- * ── The two wrappers ────────────────────────────────────────────────────────
- * Both compute the string's rendered width and shift x left by it, then tail
- * into RenderText with all nine remaining arguments untouched:
- *
- *   width = (len - (len - 1) * (1 - spacing)) * cellW
- *
- * DrawCenteredText subtracts width * 0.5f, DrawRightAlignedText subtracts
- * width.  That is the only difference between the two functions -- one
- * `FMUL [0x0045d318]`, and 0x0045d318 holds 0.5f (read, not assumed; 0x0045d298
- * alongside it holds the 1.0f both expressions use).
- */
+ * drawCentered and drawRight shift x left by half the rendered width, or all
+ * of it, and then call drawLeft. */
+
 #include "textrenderer.h"
 #include "com_proxy.h"
 #include "direct3d.h"
 #include "log.h"
-#include "scenetexture.h"   /* Texture_ImportSceneTextures, through its owner header */
-#include "gamestr.h"        /* GS_FON_MODE_READ */
+#include "scenetexture.h"
+#include "gamestr.h"
 #include <stdlib.h>
 
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
-TextRenderer g_fontMain;   /* was 0x004e0480 */
-TextRenderer g_fontNumbers;   /* was 0x004e02e8 */
+TextRenderer g_fontMain;
+TextRenderer g_fontNumbers;
 
-/* The FVF the original declares, and the vertex it really writes. */
+/* FVF 0x1C4 is 32 bytes: the SPECULAR set is really written (0xff000000 into
+ * every vertex).  A shorter vertex would hand the driver a stride four bytes
+ * short of what the FVF declares. */
 #define TEXT_FVF  (D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | \
                    D3DFVF_TEX1)
 
-struct TextVertex {              /* 32 bytes -- FVF 0x1C4 */
+struct TextVertex {
     float x, y, z, rhw;
     DWORD diffuse;
     DWORD specular;
@@ -84,40 +47,16 @@ struct TextVertex {              /* 32 bytes -- FVF 0x1C4 */
 static_assert(sizeof(TextVertex) == 32, "FVF 0x1C4 vertex is 32 bytes");
 static_assert(TEXT_FVF == 0x1c4, "FVF constant must match the original's");
 
-/* ─── KAROO_TEXT_FX -- the negative control (CONTROLS.md) ─────────────────
- *
- * Read by value, never by presence.
- *
- *   mirror  -- the pen advances by -(cellW * spacing), so every string is laid
- *              out right-to-left from its first glyph.  A DIRECTION change,
- *              not a value perturbation: it can only be produced by the pen
- *              arithmetic in the loop below, so seeing it proves the advance
- *              maths runs here rather than merely that the function is
- *              entered.  The wrappers are unaffected, which is itself the
- *              point -- centring still uses the true width.
- *
- *   loadswap -- the .fon loader stores the grid transposed, columns into
- *              rows and back.  Also a direction change rather than a value
- *              perturbation, and it can only come from the loader: the glyph
- *              loop divides by `cols`, so a transposed grid re-indexes every
- *              character of the numbers font (4x3 becomes 3x4).  font1 is
- *              16x16 and so is its own transpose, which is itself useful --
- *              it says the control acts on the file's contents rather than
- *              on the code path.
- *
- *   bigwave -- DrawWobbleGlyphRow's per-glyph phase steps by -2 instead of
- *              +2, so the vertical wave travels along the string the other
- *              way.  A direction change again, and one only this loop can
- *              produce: drawBig and the wrapper arithmetic are untouched, the
- *              pen advance is untouched, and the amplitude is untouched --
- *              the string keeps its position and its size, and only the
- *              travelling direction of the wave reverses.
- *
- * Blast radius, chosen against the gate that hosts it: this moves glyph quads
- * only.  It writes no coordinate, axis or tile index back into the world, so
- * it cannot reach the unbounded bridge/slide spawn scans that crash
- * levelreport.py.
- */
+/* KAROO_TEXT_FX -- controls that change direction, each of which only one
+ * piece of this file can produce:
+ *   mirror    the pen advances by -(cellW * spacing), so every string runs
+ *             right to left from its first glyph; centring still uses the
+ *             true width.
+ *   loadswap  the .fon loader swaps columns and rows, re-indexing every
+ *             glyph of the 4x3 numbers font (font1 is 16x16, its own
+ *             transpose).
+ *   bigwave   drawWobble's per-glyph phase steps by -2 instead of +2, so the
+ *             wave travels along the string the other way. */
 enum TextFx { TEXT_FX_OFF = 0, TEXT_FX_MIRROR = 1, TEXT_FX_LOADSWAP = 2,
               TEXT_FX_BIGWAVE = 3 };
 
@@ -142,14 +81,9 @@ static TextFx text_fx(void)
     return fx;
 }
 
-/* ─── KAROO_TEXT_DIAG -- the census ───────────────────────────────────────
- *
- * Which of the three the gates actually reach, and how many glyphs each
- * draws.  Every function announces its own first call as well as feeding the
- * periodic tally: a purely periodic sample reads zero forever for anything
- * first reached after the last threshold, which is the exact failure a census
- * exists to prevent (linkedlist.cpp learned this the hard way).
- */
+/* KAROO_TEXT_DIAG=1: which entry points run, and how many glyphs each draws.
+ * Every function announces its first call as well as feeding the periodic
+ * tally. */
 static bool text_diag(void)
 {
     static int cached = -1;
@@ -187,18 +121,16 @@ static void text_census(void)
               g_nBig, g_nWobble, g_nWobbleGlyphs);
 }
 
-/* The width the two wrappers shift by: `len` cells, less the overlap that a
- * spacing below 1 introduces between each adjacent pair. */
+/* `len` cells, less the overlap a spacing below 1 introduces between each
+ * adjacent pair. */
 static float text_width(const char *str, float cellW, float spacing)
 {
     const float len = (float)(int)strlen(str);
     return (len - (len - 1.0f) * (1.0f - spacing)) * cellW;
 }
 
-/* The bodies live on the class -- they read private fields, and the exports
- * below are thin forwarders.  That way there is exactly one implementation and
- * the rest of src/ reaches it through the owning header, which is the
- * arrangement CLAUDE.md asks for. */
+/* The bodies live on the class, which reads private fields; the exports below
+ * forward to them. */
 
 void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
                             float spacing, const char *str, Direct3D *d3d,
@@ -208,8 +140,8 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
     ++g_nRender;
     { static unsigned long seen; text_first("RenderText", &seen); }
 
-    /* One float divide each, before the loop and before the length test --
-     * the original's order, and the original's rounding. */
+    // The reciprocals are taken once, before the loop, and multiplied per
+    // glyph.
     const float invCols = 1.0f / (float)(int)cols_;
     const float invRows = 1.0f / (float)(int)rows_;
 
@@ -257,70 +189,24 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
 
         x += advance;
         ++i;
-        /* strlen every iteration, as the original does. */
     } while (i < strlen(str));
 
     text_census();
 }
 
-/* ─── ReadBitmapFontFile 0x00413520 ───────────────────────────────────────
+/* ─── The .fon loader ──────────────────────────────────────────────────────
  *
- * Three lines of text: the atlas's texture path, the column count, the row
- * count.  Both shipped fonts are exactly that (fonts/FONT1.FON =
- * textures\font2.tga / 16 / 16; fonts/NUMBERS.FON = textures\numbers.tga /
- * 4 / 3), and the file is opened in TEXT mode -- 0x00464200 is "r", read out
- * rather than assumed -- which is load-bearing: the .fon files are CRLF, and
- * only text mode's CRLF -> LF translation makes "strip the last character"
- * leave a usable path instead of one ending in CR.
+ * FORMAT: three lines of text: the atlas's texture path, the column count, the
+ * row count.  The file is opened in text mode, which is load-bearing: the .fon
+ * files are CRLF, and only text mode turns "strip the last character" into a
+ * usable path.
  *
- * Bugs and quirks preserved deliberately:
- *
- *   - EVERY failure path after the fopen LEAKS THE FILE HANDLE.  Only the
- *     success path reaches fclose (0x0041366e).  Six early returns, six
- *     leaks; reproduced exactly, including the order of the tests.
- *   - `line[strlen(line) - 1] = 0` is an unguarded strip.  On an empty line
- *     it writes one byte BEFORE the buffer.  fgets never returns "" -- it
- *     returns NULL instead -- so the index cannot go negative here, which is
- *     why the original gets away with it.  Kept as the original wrote it.
- *   - A zero column or row count is treated as failure, so a font whose
- *     grid is legitimately "0" cannot load.  That is the original's test.
- *   - The return value is a byte in AL with the upper three bytes left as
- *     whatever happened to be in EAX.  On success that is fclose's return
- *     (0x00413673 `MOV AL,1` over it), and on the ImportSceneTextures
- *     failure it is that call's own result.  Both are reproduced rather than
- *     normalised to 0/1: a caller that reads the full dword would see the
- *     original's bytes.
- *
- * The three CRT calls: fopen/fclose/fgets are our own CRT's.  The game's
- * CRT is no longer called for file I/O anywhere (its FILE is not shared
- * with any live game code).
- *
- * `parseintfromstring` 0x004505ac is NOT called: it is pure (char * in, int
- * out), which by the same rule makes it ours, and it is reimplemented below.
- */
+ * A zero column or row count is a failure.  Only the low byte of the result is
+ * the success flag; the upper bytes are fclose's, or the texture import's on
+ * that failure. */
 
-/* MSVC's `atoi` (0x00450521, behind the 0x004505ac thunk), reimplemented.
- *
- * Classification goes through the GAME's own ctype table rather than our
- * CRT's, so "which bytes are space" and "which are digits" are identical by
- * construction rather than by assumption: the table pointer is the game's
- * `_pctype` at 0x00469f64, whose entries are 16-bit and are indexed here a
- * byte at a time with stride 2 -- exactly as the original indexes them.
- * Masks 8 and 4 are _SPACE and _DIGIT.
- *
- * The original also has an MBCS branch, taken when the game CRT's
- * `__mbcurmax` at 0x0046a170 is >= 2.  That branch is UNREACHABLE and this
- * is a static fact, not an assumption: the value is 1 in `.data` and a scan
- * of the whole of `.text` finds fifteen references to 0x0046a170, every one
- * of them a read.  Nothing in the binary writes it, so the single-byte path
- * is the only one that can run.  It is therefore the only one implemented,
- * and this comment is the record of why.
- *
- * Overflow wraps, because the original's accumulator is a plain `int`.
- */
-/* The game's CRT classified through its C-locale ctype table (0x00469f64);
- * read out of the image, its _SPACE set is 9..13 and 32 and its _DIGIT set
- * '0'..'9', nothing above 0x7f -- so these two tests are that table. */
+/* MSVC's atoi, single-byte path: C-locale whitespace and digits only, sign,
+ * and an int accumulator that wraps on overflow. */
 static bool c_space(unsigned char c) { return c == ' ' || (c >= 9 && c <= 13); }
 static bool c_digit(unsigned char c) { return c >= '0' && c <= '9'; }
 
@@ -352,17 +238,18 @@ unsigned int TextRenderer::load(const char *path, Direct3D *d3d)
 
     char line[0x100];
 
-    /* Line 1 -- the atlas image. */
+    // PRESERVED: every failure after the fopen leaks the file handle; only the
+    // success path reaches fclose.
     if (fgets(line, 0xff, fp) == NULL)
-        return 0;                              /* leaks fp, as the original does */
+        return 0;
     line[strlen(line) - 1] = '\0';
 
     const unsigned int ok = Texture_ImportSceneTextures(
         this->atlas(), d3d->pDD4, d3d->pDevice, line, 1, 0, 0);
     if ((ok & 0xffu) == 0)
-        return ok;                             /* its result, upper bytes and all */
+        return ok;  // its result, upper bytes and all
 
-    /* Line 2 -- columns. */
+    // Columns.
     if (fgets(line, 0xff, fp) == NULL)
         return 0;
     line[strlen(line) - 1] = '\0';
@@ -370,7 +257,7 @@ unsigned int TextRenderer::load(const char *path, Direct3D *d3d)
     if (cols_ == 0)
         return 0;
 
-    /* Line 3 -- rows. */
+    // Rows.
     if (fgets(line, 0xff, fp) == NULL)
         return 0;
     line[strlen(line) - 1] = '\0';
@@ -388,8 +275,7 @@ unsigned int TextRenderer::load(const char *path, Direct3D *d3d)
         log_write("textrenderer: loaded %s -- %u x %u cells\n",
                   path, cols_, rows_);
 
-    /* `MOV AL,1` over fclose's return: the low byte is the success flag and
-     * the upper three are fclose's, which is what the original hands back. */
+    // The low byte is the success flag; the upper three are fclose's.
     const unsigned int closed = (unsigned int)fclose(fp);
     return (closed & 0xffffff00u) | 1u;
 }
@@ -418,7 +304,8 @@ void TextRenderer::drawRight(float x, float y, float cellW, float cellH,
              spacing, str, d3d, firstChar, colourTop, colourBottom);
 }
 
-/* ─── The exports patch.py's CALL_PATCHES redirects the game's sites to ───── */
+/* ─── Exports ──────────────────────────────────────────────────────────────
+ */
 
 extern "C" {
 
@@ -456,81 +343,21 @@ Text_LoadFont(TextRenderer *self, const char *path, Direct3D *d3d)
     return self->load(path, d3d);
 }
 
-} /* extern "C" */
+}  // extern "C"
 
-/* ─── The big-text pair: 0x00413d90 and 0x00413990 ────────────────────────
+/* ─── The big-text pair ─────────────────────────────────────────────────────
  *
- * ENDGAME_PLAN.md E1's last text cycle.  0x00413d90 was a `callback` -- our
- * textrenderer.cpp called it by absolute address -- and it had to go with
- * 0x00413990 rather than before it: the wrapper's whole body is a tail call
- * into the renderer, so replacing it alone would have swapped one callback
- * for another rather than retiring one.
- *
- * xref.py over Karoo.exe.orig: 0x00413d90 has two CALL sites (0x434046,
- * 0x4356a6) and nothing else; 0x00413990 has exactly ONE reference in the
- * entire binary and it is the wrapper's own CALL at 0x413e17.  No JMP, no
- * DATA push, no vtable slot for either.  A grep of src/ for both
- * addresses found only this file's own ORIG_DRAW_BIG_TEXT, now gone --
- * CLAUDE.md's "xref.py cannot see callers inside our DLL" step, which is the
- * one that has bitten twice.
- *
- * ── The renderer, from the disassembly ──────────────────────────────────────
- * The decompiler puts this function's thirteen stack arguments in the wrong
- * places -- `unaff_retaddr`, `in_stack_0000001c` and a `float *piVar2` used
- * as a float are the giveaways -- so, exactly as with RenderText, the frame
- * was recovered by counting from the prologue instead.  `SUB ESP,0x15c` plus
- * four pushes puts the argument block at [ESP+0x170] upwards:
- *
- *   +0x170 x   +0x174 y   +0x178 cellW  +0x17c cellH  +0x180 spacing
- *   +0x184 str +0x188 d3d +0x18c firstChar
- *   +0x190 colourTop  +0x194 colourBottom
- *   +0x198 amplitude  +0x19c rate  +0x1a0 n
- *
- * Which is what settles the two names this file's own header had wrong.
- * +0x198 is the multiplier applied to FSIN's RESULT (0x413b8e) -- an
- * amplitude.  +0x19c multiplies `n` ONCE, before the loop (0x413a5d), to form
- * the starting phase -- a rate.  Neither is an outline width; there is no
- * second pass and no outline anywhere in the function.
- *
- * ── What it draws ───────────────────────────────────────────────────────────
- * Per glyph, with g = (unsigned char)(str[i] - firstChar) and i2 = 2 * i:
+ * drawWobble is drawLeft with a vertical wave.  Per glyph, with i2 = 2 * i:
  *
  *   dy   = cellH * 0.5f + amplitude * sin(n * rate + i2)
  *   quad = (x, y-dy) (x+cellW, y-dy) (x+cellW, y+dy) (x, y+dy)
  *
- * so `y` is the row's CENTRE here, where RenderText's `y` is its top, and
- * each glyph's quad grows and shrinks vertically about that centre two
- * radians out of phase with its neighbour.  Everything else is RenderText's:
- * FVF 0x1C4 (32 bytes -- XYZRHW | DIFFUSE | SPECULAR | TEX1), z = 0.1f,
- * rhw = 10.0f, specular = 0xff000000 in all four, colourTop on the two top
- * vertices and colourBottom on the two bottom ones, D3DPT_TRIANGLEFAN of 4.
+ * so `y` is the row's centre, and each glyph's quad grows and shrinks about it
+ * two radians out of phase with its neighbour.  Everything else, including the
+ * state set before the empty-string test, is drawLeft's.
  *
- * Quirks preserved, and they are RenderText's quirks in the same order:
- *   - SetTexture and the three SetRenderState calls precede the empty-string
- *     test (0x4139e6..0x413a26), so drawing "" still leaves alpha blending on
- *     and the atlas bound.
- *   - strlen is re-run on every iteration (0x413cd9) rather than hoisted.
- *   - the pen position is advanced IN THE ARGUMENT SLOT (0x413cdb writes back
- *     to [ESP+0x170]); by-value `x` here reproduces that exactly, since the
- *     caller's copy is a push the callee owns.
- *
- * ── The two arithmetic chains ───────────────────────────────────────────────
- * Plain C.  The original computes both on the x87 stack in extended precision
- * with a single FSTP to float at the end, and `sin` here is not the same
- * function as the original's FSIN, so the last bit or two of `dy` may differ.
- * That does not matter: dy is a screen coordinate handed straight to
- * DrawPrimitive, so the visible consequence is bounded by a sub-pixel, and
- * nothing downstream reads it back.  Readable code is worth more than a
- * bit-identical float here -- an asm chain would buy precision nobody can
- * observe at the cost of a function nobody can read.
- *
- * What IS preserved is the part that changes results rather than rounding:
- * both counters are FILD'd as QWORDS with the high dword written as zero
- * (0x413a33, 0x413b3a), so they are UNSIGNED 64-bit loads rather than
- * sign-extended ints.  `n` comes in as a signed int and a negative one would
- * take a different branch entirely if it were sign-extended, so the cast is
- * load-bearing and stays.
- */
+ * n and i2 are converted to floating point as unsigned: a negative value would
+ * give a different phase, so the casts are load-bearing. */
 static float wobble_phase(unsigned int n, float rate)
 {
     return (float)((double)n * rate);
@@ -566,9 +393,7 @@ void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
     const float halfH = cellH * 0.5f;
     const float advance = cellW * spacing;
 
-    /* The per-glyph phase step.  +2 is the original's; bigwave makes it -2,
-     * which reverses the direction the wave travels along the string without
-     * moving the string, changing its size, or touching the pen. */
+    // The per-glyph phase step; KAROO_TEXT_FX=bigwave reverses it.
     const int step = (text_fx() == TEXT_FX_BIGWAVE) ? -2 : 2;
 
     TextVertex quad[4];
@@ -606,7 +431,6 @@ void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
         i2 += step;
         ++i;
         x += advance;
-        /* strlen every iteration, as the original does. */
     } while (i < strlen(str));
 }
 
@@ -618,19 +442,14 @@ void TextRenderer::drawBig(float x, float y, float cellW, float cellH,
     ++g_nBig;
     { static unsigned long seen; text_first("DrawBigText", &seen); }
 
-    /* Bit for bit drawCentered's arithmetic -- the same `len -
-     * (len - 1) * (1 - spacing)` width, the same FMUL by the 0.5f at
-     * 0x0045d318 -- with the three extra arguments passed straight through. */
+    // drawCentered's arithmetic, with the three extra arguments passed
+    // through.
     drawWobble(x - text_width(str, cellW, spacing) * 0.5f, y, cellW, cellH,
                spacing, str, d3d, firstChar, colourTop, colourBottom,
                amplitude, rate, n);
 }
 
-/* ─── The two exports patch.py redirects to ────────────────────────────────
- *
- * Only Text_DrawBigText has game call sites; Text_DrawWobbleGlyphRow exists so
- * that the inner original can be UD2-stubbed with a named replacement behind
- * it, which is what makes progress.py count it `replaced` rather than `dead`.
+/* ─── The big-text exports ──────────────────────────────────────────────────
  */
 extern "C" {
 
@@ -655,14 +474,13 @@ Text_DrawWobbleGlyphRow(TextRenderer *self, float x, float y, float cellW,
                      colourTop, colourBottom, amplitude, rate, n);
 }
 
-} /* extern "C" */
+}  // extern "C"
 
-/* ─── The lifecycle: 0x4134d0 ctor, 0x413510 dtor body, 0x4134f0 scalar ────
+/* ─── The lifecycle ─────────────────────────────────────────────────────────
  *
- * Reached only from the static-init / atexit thunks (0x425e30, 0x425e60).
- * Own one-slot vtable; the game's 0x45d3a8 is a tripwire (byte scan: only
- * the replaced ctor and dtor write it).  The scalar dtor is unreached -- a
- * global is never deleted -- and frees on the game heap by precedent. */
+ * The two fonts are globals, constructed and destroyed by staticinit.cpp.  The
+ * scalar dtor is the one vtable slot; a global is never deleted, so its free
+ * is never reached. */
 static void *const g_TextVtable[1] = { (void *)&Text_ScalarDtor };
 
 void TextRenderer::construct()
@@ -701,14 +519,11 @@ Text_ScalarDtor(TextRenderer *self, unsigned int flags)
     return self;
 }
 
-/* ─── 0x00413eb0 DrawTextPanel (ENDGAME E5) ────────────────────────────────
+/* ─── DrawTextPanel ───────────────────────────────────────────────────────
  *
- * __thiscall, twelve stack arguments, RET 0x30.  One caller, RenderGameFrame
- * 0x42C2CF.  Written from the listing.  A multi-line caption over two
- * full-width backdrop strips:
- *
- *   - lines = 1 + the '\n' count; the text block is raised so its last line
- *     sits at y: y -= lines * lineH.
+ * A multi-line caption over two full-width backdrop strips:
+ *   - lines = 1 + the '\n' count; the block is raised so its last line sits
+ *     at y: y -= lines * lineH.
  *   - SRCBLEND 5 / DESTBLEND 6 / ALPHABLEND 1.
  *   - strip 1 (panelTex, or no texture): screen width W, from
  *     y - W*0.009375 down to the screen height H, diffuse white, specular 0,
@@ -716,19 +531,18 @@ Text_ScalarDtor(TextRenderer *self, unsigned int flags)
  *     (W,top) (W,H) (0,top) (0,H), a TRIANGLESTRIP.
  *   - strip 2, only when frameTex is non-NULL: y - W*0.015625 to
  *     y - W*0.00625, uv 0..1, same strip order.
- *   - the glyphs: the atlas texture, one TRIANGLEFAN per character, the cell
- *     index the raw unsigned byte (no firstChar here, unlike drawLeft), the
- *     cell uv from unsigned divides; '\n' returns x to the start and moves
- *     y down one lineH.  The pen advances cellW * spacing.
+ *   - the glyphs: one TRIANGLEFAN per character, the cell index the raw
+ *     unsigned byte (no firstChar, unlike drawLeft), the cell uv from
+ *     unsigned divides; '\n' returns x to the start and moves y down one
+ *     lineH.  The pen advances cellW * spacing.
  *   - ALPHABLENDENABLE 0.
- *
- * The strip vertices' z is 0 while the glyphs' is 0.1: both as the original. */
+ * The strips' z is 0 and the glyphs' 0.1. */
 void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
                              float spacing, float lineH, const char *str,
                              Direct3D *d3d, DWORD colourTop, DWORD colourBottom,
                              SceneTexture *panelTex, SceneTexture *frameTex)
 {
-    const float du = 1.0f / (float)cols_;      /* FILD qword: unsigned */
+    const float du = 1.0f / (float)cols_;  // cols_ read as unsigned
     const float dv = 1.0f / (float)rows_;
 
     unsigned int lines = 1;
