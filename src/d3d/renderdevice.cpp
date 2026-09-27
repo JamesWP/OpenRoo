@@ -5,7 +5,7 @@
  * already on the back buffer: the loading/theme bitmap never appears. */
 
 #include "d3dnative.h"
-#include "texture.h"
+#include "scenetexture.h"
 #include "log.h"
 #include <math.h>
 #include <string.h>
@@ -191,7 +191,7 @@ void RenderDevice::PresentImage(LoadedImage *img)
     bool skipped = fx_noblt();
 
     if (!skipped)
-        hr_blt = n->backBuffer->Blt(NULL, img->pTextureSurface, NULL,
+        hr_blt = n->backBuffer->Blt(NULL, img->textureSurface(), NULL,
                                     DDBLT_WAIT, NULL);
 
     HRESULT hr_flip = n->primary->Flip(NULL, DDFLIP_WAIT);
@@ -205,7 +205,7 @@ void RenderDevice::PresentImage(LoadedImage *img)
             wsprintfA(blt, "%08lX", hr_blt);
         log_write("renderdevice: PresentImage img=%p src=%p back=%p primary=%p "
                   "blt=%s flip=%08lX\n",
-                  img, img->pTextureSurface, n->backBuffer, n->primary,
+                  img, img->textureSurface(), n->backBuffer, n->primary,
                   blt, hr_flip);
     }
 }
@@ -236,7 +236,7 @@ void RenderDevice::GetTransform(Transform which, Mat4 *m)
 
 void RenderDevice::SetTexture(int stage, const SceneTexture *tex)
 {
-    native_->device->SetTexture(stage, tex ? tex->pTexture2 : NULL);
+    native_->device->SetTexture(stage, tex ? tex->texture2() : NULL);
 }
 
 void RenderDevice::SetAmbientLight(uint32_t rgb)

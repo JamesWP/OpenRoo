@@ -14,7 +14,7 @@
 #include <vector>
 #include "rendertypes.h"
 
-struct LoadedImage;
+class LoadedImage;
 struct SceneTexture;
 
 /* One enumerated display mode. */

@@ -35,7 +35,7 @@
 #include "player.h"
 #include "theme.h"
 #include "levelobject.h"
-#include "texture.h"
+#include "scenetexture.h"
 #include "camera.h"
 #include "ani.h"
 #include "faktmesh.h"

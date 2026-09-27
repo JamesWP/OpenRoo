@@ -11,7 +11,6 @@
 #include "game.h"
 #include "renderdevice.h"
 #include "textrenderer.h"
-#include "texture.h"
 #include "menutree.h"
 #include "saveslots.h"
 #include "levelselect.h"
@@ -548,7 +547,7 @@ Menu_BuildMenuGeometry(RenderDevice *d3d, const char *prefix)
     char path[260];
     for (const MenuTextureLoad &t : k_menuTextures) {
         sprintf(path, "%s\\textures\\%s", prefix, t.file);
-        Texture_ImportSceneTextures(t.obj, d3d, path, 1, 0, 0);
+        t.obj->importSceneTextures(d3d, path, 1, 0, 0);
     }
 }
 

@@ -10,7 +10,6 @@
 #include "movie.h"
 #include "levelplacements.h"
 #include "theme.h"
-#include "texture.h"
 #include "faktmesh.h"
 #include "textrenderer.h"
 #include "scenetexture.h"
@@ -34,9 +33,9 @@ void StaticInit_Construct()
     g_movie.init();
     LevelPlacements_StaticInit();
     Theme_BlockConstruct(&g_themeBlock);
-    Texture_ImageCtor(&g_fallbackImage);
-    Texture_ImageCtor(&g_loadingImage);
-    Texture_SceneCtor(&g_texShadow);
+    g_fallbackImage.construct();
+    g_loadingImage.construct();
+    g_texShadow.construct();
     g_meshPlayer.init();
     g_meshEnemy.init();
     g_fontMain.construct();
@@ -44,12 +43,12 @@ void StaticInit_Construct()
     TextureManager_Construct(&g_textureManager);
     g_modelManager.construct();
     g_cdAudio.construct();
-    Texture_ImageCtor(&g_demoImage);
-    Texture_SceneCtor(&g_texKaroo128);
+    g_demoImage.construct();
+    g_texKaroo128.construct();
     for (SceneTexture *t : MENU_TEX_A)
-        Texture_SceneCtor(t);
+        t->construct();
     for (SceneTexture *t : MENU_TEX_B)
-        Texture_SceneCtor(t);
+        t->construct();
     // The sound logger is initialised but never constructed: zero-initialised
     // static storage is its starting state.
     g_soundLogger.initialize("StreamSoundBuffer.log", 0);
@@ -59,11 +58,11 @@ void StaticInit_Destruct()
 {
     g_soundLogger.closeAndRebindVtable();
     for (int i = (int)(sizeof(MENU_TEX_B) / sizeof(*MENU_TEX_B)) - 1; i >= 0; --i)
-        Texture_SceneDtorBody(MENU_TEX_B[i]);
+        MENU_TEX_B[i]->dtorBody();
     for (int i = (int)(sizeof(MENU_TEX_A) / sizeof(*MENU_TEX_A)) - 1; i >= 0; --i)
-        Texture_SceneDtorBody(MENU_TEX_A[i]);
-    Texture_SceneDtorBody(&g_texKaroo128);
-    Texture_ImageDtorBody(&g_demoImage);
+        MENU_TEX_A[i]->dtorBody();
+    g_texKaroo128.dtorBody();
+    g_demoImage.dtorBody();
     g_cdAudio.stopAndClose();
     g_modelManager.destruct();
     TextureManager_Destruct(&g_textureManager);
@@ -71,9 +70,9 @@ void StaticInit_Destruct()
     g_fontMain.destruct();
     g_meshEnemy.dtorBody();
     g_meshPlayer.dtorBody();
-    Texture_SceneDtorBody(&g_texShadow);
-    Texture_ImageDtorBody(&g_loadingImage);
-    Texture_ImageDtorBody(&g_fallbackImage);
+    g_texShadow.dtorBody();
+    g_loadingImage.dtorBody();
+    g_fallbackImage.dtorBody();
     Theme_BlockDestruct(&g_themeBlock);
     g_movie.destruct();
     g_logger.closeAndRebindVtable();

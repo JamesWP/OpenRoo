@@ -163,12 +163,12 @@ static void theme_struct_dump(const char *path)
               block->flSideHeight, float_plausible(block->flSideHeight) ? "" : "  SUSPICIOUS");
 
     for (int f = 0; f < 6; f++) {
-        const LoadedImage &img = block->sky.Textures[f].base;
-        const char *name = img.ImageName;
+        const LoadedImage &img = block->sky.Textures[f];
+        const char *name = img.imageName();
         int nameOk = name != NULL && (ULONG_PTR)name >= 0x10000;
         log_write("THEME_STRUCT: sky.faces[%d] surface=%p%s name=%p \"%.63s\"%s\n",
-                  f, (void *)img.pTextureSurface,
-                  ptr_plausible(img.pTextureSurface) ? "" : "  SUSPICIOUS",
+                  f, (void *)img.textureSurface(),
+                  ptr_plausible(img.textureSurface()) ? "" : "  SUSPICIOUS",
                   (void *)name, nameOk ? name : "",
                   (name == NULL || nameOk) ? "" : "  SUSPICIOUS name");
     }
@@ -321,7 +321,7 @@ Theme_ReleaseBlock(ThemeAssetBlock *block)
     for (ThemeObjectType t : kReleaseOrder)
         Theme_ReleaseSlot(&block->slots[t]);
     for (int f = 0; f < 6; f++)
-        Texture_ReleaseD3DTexture(&block->sky.Textures[f]);
+        block->sky.Textures[f].releaseD3DTexture();
     memset(block, 0, sizeof(*block));
 }
 

@@ -7,7 +7,7 @@
  * the theme file's colours and backdrop texture, read at fixed offsets.  The
  * level-select pages are ours (levelselect.h). */
 
-#include "texture.h"
+#include "scenetexture.h"
 #include "renderdevice.h"
 
 /* The menu's nine textures and the panel quad the score overlay shares. */
