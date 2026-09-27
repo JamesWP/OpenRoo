@@ -9,6 +9,10 @@
 #include <windows.h>
 #include "layout.h"
 
+class Game;
+class RenderDevice;
+struct ThemeAssetBlock;
+
 /* A position and rotation list, one entry per cell of one kind. */
 struct __attribute__((packed)) PlacementList {
     static const int ORIGIN = 0;
@@ -31,50 +35,87 @@ KAROO_LAYOUT_CHECKS(PlacementList)
  * specular 0, u, v. */
 struct PlacementVertex { DWORD d[8]; };
 
-struct __attribute__((packed)) LevelPlacements {
+class __attribute__((packed)) LevelPlacements {
+public:
     static const int ORIGIN = 0;
 
-    PlacementVertex tileQuad[4];     // unit quad at y 0, +-0.5
-    int             kind01Count;     // TILE_KIND_01 cells
-    PlacementVertex *kind01Verts;    // 6 per cell, two triangles
-    float           exitPos[3];      // the TILE_EXIT cell; the last one wins
-    float           exitRot[3];      // always 0
-    PlacementList   lifts;           // TILE_LIFT; pos and rot all 0
-    PlacementList   slides;  // count is the Game's slide count, not a cell count; rot zeroed
-    PlacementList   breakables;      // TILE_BREAKABLE
-    PlacementList   jumpPads;        // TILE_JUMP_PAD
-    PlacementList   teleporters;     // TILE_TELEPORTER
-    PlacementList   glue;            // TILE_GLUE
-    PlacementList   switches;        // TILE_SWITCH
-    PlacementList   ramps;           // TILE_RAMP_1..4, yaw by kind
-    PlacementList   climbs;          // TILE_CLIMB, yaw by climb direction
-    PlacementList   conveyors;       // TILE_CONVEYOR
-    PlacementList   destructibles;   // TILE_DESTRUCTIBLE
-    int             wallStripCount;  // strips, 6 vertices each
-    PlacementVertex *wallVerts;      // the wall strips
+    /* Frees every array and zeroes every count.  Also called at shutdown. */
+    void release();
 
+    /* Releases, counts, allocates and fills the lists, then the wall strips.
+     * Called on level entry. */
+    void build(const Game *g, const ThemeAssetBlock *theme);
+
+    void drawLifts(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                   double now);
+    void drawSlides(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+                    double now);
+
+    /* Before WinMain: every dword of the tile quad template zero but the
+     * diffuse, 0xffffffff.  The builder overwrites all four later. */
+    void initTileQuad();
+
+    /* The block is packed but 4-aligned in memory. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+    const float           *exitPos() const      { return exitPos_; }
+    const float           *exitRot() const      { return exitRot_; }
+#pragma GCC diagnostic pop
+    const PlacementList   &lifts() const        { return lifts_; }
+    const PlacementList   &slides() const       { return slides_; }
+    const PlacementList   &breakables() const   { return breakables_; }
+    const PlacementList   &jumpPads() const     { return jumpPads_; }
+    const PlacementList   &teleporters() const  { return teleporters_; }
+    const PlacementList   &glue() const         { return glue_; }
+    const PlacementList   &switches() const     { return switches_; }
+    const PlacementList   &ramps() const        { return ramps_; }
+    const PlacementList   &climbs() const       { return climbs_; }
+    const PlacementList   &conveyors() const    { return conveyors_; }
+    const PlacementList   &destructibles() const { return destructibles_; }
+
+private:
+    void buildWalls(const Game *g, float depth);
+
+    PlacementVertex tileQuad_[4];     // unit quad at y 0, +-0.5
+    int             kind01Count_;     // TILE_KIND_01 cells
+    PlacementVertex *kind01Verts_;    // 6 per cell, two triangles
+    float           exitPos_[3];      // the TILE_EXIT cell; the last one wins
+    float           exitRot_[3];      // always 0
+    PlacementList   lifts_;           // TILE_LIFT; pos and rot all 0
+    PlacementList   slides_;  // count is the Game's slide count, not a cell count; rot zeroed
+    PlacementList   breakables_;      // TILE_BREAKABLE
+    PlacementList   jumpPads_;        // TILE_JUMP_PAD
+    PlacementList   teleporters_;     // TILE_TELEPORTER
+    PlacementList   glue_;            // TILE_GLUE
+    PlacementList   switches_;        // TILE_SWITCH
+    PlacementList   ramps_;           // TILE_RAMP_1..4, yaw by kind
+    PlacementList   climbs_;          // TILE_CLIMB, yaw by climb direction
+    PlacementList   conveyors_;       // TILE_CONVEYOR
+    PlacementList   destructibles_;   // TILE_DESTRUCTIBLE
+    int             wallStripCount_;  // strips, 6 vertices each
+    PlacementVertex *wallVerts_;      // the wall strips
     KAROO_LAYOUT_REGISTER(LevelPlacements);
 };
 
 KAROO_LAYOUT_CHECKS(LevelPlacements)
 {
-    KAROO_LAYOUT_AT(kind01Count,    0x080);
-    KAROO_LAYOUT_AT(kind01Verts,    0x084);
-    KAROO_LAYOUT_AT(exitPos,        0x088);
-    KAROO_LAYOUT_AT(exitRot,        0x094);
-    KAROO_LAYOUT_AT(lifts,          0x0a0);
-    KAROO_LAYOUT_AT(slides,         0x0ac);
-    KAROO_LAYOUT_AT(breakables,     0x0b8);
-    KAROO_LAYOUT_AT(jumpPads,       0x0c4);
-    KAROO_LAYOUT_AT(teleporters,    0x0d0);
-    KAROO_LAYOUT_AT(glue,           0x0dc);
-    KAROO_LAYOUT_AT(switches,       0x0e8);
-    KAROO_LAYOUT_AT(ramps,          0x0f4);
-    KAROO_LAYOUT_AT(climbs,         0x100);
-    KAROO_LAYOUT_AT(conveyors,      0x10c);
-    KAROO_LAYOUT_AT(destructibles,  0x118);
-    KAROO_LAYOUT_AT(wallStripCount, 0x124);
-    KAROO_LAYOUT_AT(wallVerts,      0x128);
+    KAROO_LAYOUT_AT(kind01Count_,    0x080);
+    KAROO_LAYOUT_AT(kind01Verts_,    0x084);
+    KAROO_LAYOUT_AT(exitPos_,        0x088);
+    KAROO_LAYOUT_AT(exitRot_,        0x094);
+    KAROO_LAYOUT_AT(lifts_,          0x0a0);
+    KAROO_LAYOUT_AT(slides_,         0x0ac);
+    KAROO_LAYOUT_AT(breakables_,     0x0b8);
+    KAROO_LAYOUT_AT(jumpPads_,       0x0c4);
+    KAROO_LAYOUT_AT(teleporters_,    0x0d0);
+    KAROO_LAYOUT_AT(glue_,           0x0dc);
+    KAROO_LAYOUT_AT(switches_,       0x0e8);
+    KAROO_LAYOUT_AT(ramps_,          0x0f4);
+    KAROO_LAYOUT_AT(climbs_,         0x100);
+    KAROO_LAYOUT_AT(conveyors_,      0x10c);
+    KAROO_LAYOUT_AT(destructibles_,  0x118);
+    KAROO_LAYOUT_AT(wallStripCount_, 0x124);
+    KAROO_LAYOUT_AT(wallVerts_,      0x128);
     KAROO_LAYOUT_SIZE(0x12c);
 }
 
@@ -83,19 +124,6 @@ extern LevelPlacements g_levelPlacements;
 class Game;
 class ThemeAssetBlock;
 
-/* Frees every array and zeroes every count.  Also called at shutdown. */
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_Release(LevelPlacements *p);
-
-/* Releases, counts, allocates and fills the lists, then the wall strips.
- * Called on level entry. */
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_Build(LevelPlacements *p, const Game *g,
-                      const ThemeAssetBlock *theme);
-
-/* Default-constructs the tile-top template, before WinMain. */
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_StaticInit(void);
 
 /* Copies every live lift's (or slide's) position into its list, v negated to
  * z, then draws the list with the theme's ELEVATOR (PLATFORM) records.  A
@@ -103,9 +131,3 @@ LevelPlacements_StaticInit(void);
  * 1). */
 class ThemeAssetBlock;
 class RenderDevice;
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_DrawLifts(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
-                          RenderDevice *d3d, double now);
-extern "C" __declspec(dllexport) void __cdecl
-LevelPlacements_DrawSlides(Game *g, LevelPlacements *p, ThemeAssetBlock *theme,
-                           RenderDevice *d3d, double now);

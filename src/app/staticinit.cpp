@@ -31,7 +31,7 @@ void StaticInit_Construct()
     g_scene.construct();
     g_logger.construct();
     g_movie.init();
-    LevelPlacements_StaticInit();
+    g_levelPlacements.initTileQuad();
     Theme_BlockConstruct(&g_themeBlock);
     g_fallbackImage.construct();
     g_loadingImage.construct();
