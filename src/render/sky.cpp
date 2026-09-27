@@ -15,6 +15,11 @@
 
 #include <math.h>
 
+/* SkyBackground is packed for its place in the packed theme block (it holds
+ * SceneTextures, which are classes); its members are 4-aligned within it all
+ * the same, so taking their addresses is safe. */
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+
 #define SKY_FVF        VertexFormat::Lit
 #define SKY_QUADS      6
 #define SKY_LOG_FIRST  8
@@ -102,14 +107,14 @@ static void sky_fill_geometry(SkyBackground *self)
 
     for (int f = 0; f < 6; f++) {
         for (int k = 0; k < 4; k++) {
-            SkyVertex &v = self->QuadVerts[f][k];
-            v.diffuse  = 0xffffffff;
-            v.specular = 0xff000000;
-            v.u = kSkyUV[k][0];
-            v.v = kSkyUV[k][1];
-            v.x = 55.0f * kSkyCorners[f * 4 + k][0];
-            v.y = 55.0f * kSkyCorners[f * 4 + k][1];
-            v.z = 55.0f * kSkyCorners[f * 4 + k][2];
+            SkyVertex *v = &self->QuadVerts[f][k];
+            v->diffuse  = 0xffffffff;
+            v->specular = 0xff000000;
+            v->u = kSkyUV[k][0];
+            v->v = kSkyUV[k][1];
+            v->x = 55.0f * kSkyCorners[f * 4 + k][0];
+            v->y = 55.0f * kSkyCorners[f * 4 + k][1];
+            v->z = 55.0f * kSkyCorners[f * 4 + k][2];
         }
     }
 }
@@ -122,12 +127,12 @@ Sky_BuildFromFaceNames(SkyBackground *self, RenderDevice *dev, const char *up, c
     sky_fill_geometry(self);
 
     for (int f = 0; f < 6; f++)
-        Texture_ReleaseD3DTexture(&self->Textures[f]);
+        self->Textures[f].releaseD3DTexture();
 
     const char *names[6] = { up, dn, fr, bk, lf, rt };
     unsigned int r = 0;
     for (int f = 0; f < 6; f++) {
-        r = Texture_SelectTextureLoader(&self->Textures[f], dev, names[f], bpp, 0);
+        r = self->Textures[f].selectTextureLoader(dev, names[f], bpp, 0);
         if ((r & 0xff) == 0)
             return r;
     }
@@ -146,7 +151,7 @@ extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))
 Sky_Construct(SkyBackground *self)
 {
     for (int f = 0; f < 6; f++)
-        Texture_SceneCtor(&self->Textures[f]);
+        self->Textures[f].construct();
     self->pVtable = g_SkyVtable;
     sky_fill_geometry(self);
     return self;
@@ -157,7 +162,7 @@ Sky_DtorBody(SkyBackground *self)
 {
     self->pVtable = g_SkyVtable;
     for (int f = 6; f-- > 0; )
-        Texture_SceneDtorBody(&self->Textures[f]);
+        self->Textures[f].dtorBody();
 }
 
 extern "C" __declspec(dllexport) SkyBackground *__attribute__((thiscall))

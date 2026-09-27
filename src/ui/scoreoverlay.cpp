@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include "scoreoverlay.h"
 #include "renderdevice.h"
-#include "texture.h"
+#include "scenetexture.h"
 #include "log.h"
 #include "game.h"
 #include "textrenderer.h"

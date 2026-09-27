@@ -241,8 +241,7 @@ unsigned int TextRenderer::load(const char *path, RenderDevice *d3d)
         return 0;
     line[strlen(line) - 1] = '\0';
 
-    const unsigned int ok = Texture_ImportSceneTextures(
-        this->atlas(), d3d, line, 1, 0, 0);
+    const unsigned int ok = this->atlas()->importSceneTextures(d3d, line, 1, 0, 0);
     if ((ok & 0xffu) == 0)
         return ok;  // its result, upper bytes and all
 
@@ -423,7 +422,7 @@ static void *const g_TextVtable[1] = { (void *)&TextRenderer::scalarDeletingDtor
 
 void TextRenderer::construct()
 {
-    Texture_SceneCtor(atlas());
+    atlas()->construct();
     vtable_ = g_TextVtable;
     rows_ = 0;
     cols_ = 0;
@@ -432,7 +431,7 @@ void TextRenderer::construct()
 void TextRenderer::destruct()
 {
     vtable_ = g_TextVtable;
-    Texture_SceneDtorBody(atlas());
+    atlas()->dtorBody();
 }
 
 TextRenderer * __attribute__((thiscall))

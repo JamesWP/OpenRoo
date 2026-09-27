@@ -12,7 +12,7 @@
 #include <windows.h>
 #include <stddef.h>
 #include "layout.h"
-#include "texture.h"
+#include "scenetexture.h"
 #include "wrapperobject.h"
 #include "ani.h"
 #include "faktmesh.h"

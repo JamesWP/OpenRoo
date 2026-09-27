@@ -32,7 +32,6 @@
 #include "launcherdialogs.h"
 #include "nullddraw.h"
 #include "progctrl.h"
-#include "texture.h"
 #include "scenetexture.h"
 #include "scene.h"
 #include "textrenderer.h"
@@ -80,19 +79,19 @@ static const UINT  WM_MOVIE_EVENT       = 0x464;
 
 static void restore_surfaces()
 {
-    Texture_Load(&g_fontMain.atlas()->base);
-    Texture_Load(&g_fontNumbers.atlas()->base);
+    g_fontMain.atlas()->load();
+    g_fontNumbers.atlas()->load();
     for (int i = 0; i < 6; i++)
-        Texture_Load(&g_themeBlock.sky.Textures[i].base);
+        g_themeBlock.sky.Textures[i].load();
     for (int i = 0; i < 10; i++) {
         SceneTexture *img = g_themeBlock.images[IMAGE_PTR_ORDER[i]];
         if (img)
-            Texture_Load(&img->base);
+            img->load();
     }
     TextureManager_LoadAll(&g_textureManager);
     TextureManager_LoadAll(&g_scene.textures);
     for (int i = 0; i < 10; i++)
-        Texture_Load(&TAIL_TEXTURES[i]->base);
+        TAIL_TEXTURES[i]->load();
 }
 
 /* KAROO_WNDPROC_FX=noquit is a negative control: closing the window does not

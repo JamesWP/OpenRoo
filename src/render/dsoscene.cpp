@@ -27,7 +27,7 @@
 #include "faktmesh.h"
 #include "ani.h"
 #include "scene.h"
-#include "texture.h"
+#include "scenetexture.h"
 #include "extraobjects.h"
 #include "particles.h"
 #include "camera.h"

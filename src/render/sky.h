@@ -7,7 +7,7 @@
 #pragma once
 #include <windows.h>
 #include <stddef.h>
-#include "texture.h"
+#include "scenetexture.h"
 class RenderDevice;
 
 /* One sky-cube vertex, FVF 0x1e2 = XYZ | RESERVED1 | DIFFUSE | SPECULAR |
@@ -24,7 +24,7 @@ static_assert(sizeof(SkyVertex) == 0x20, "SkyVertex stride");
 /* One cube of six faces, four vertices each, plus the world matrix
  * DrawSkyBackground rebuilds from flYawAngle and the viewer position every
  * call. */
-struct SkyBackground {
+struct __attribute__((packed)) SkyBackground {
     const void     *pVtable;          // +0x000 one-slot vtable
     float           flYawAngle;       // +0x004 radians, the Y rotation
     SceneTexture    Textures[6];      // +0x008 one SceneTexture per face

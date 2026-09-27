@@ -2,7 +2,7 @@
 #pragma once
 
 #include <windows.h>
-struct LoadedImage;
+class LoadedImage;
 class RenderDevice;
 
 /* Load a .bmp into a new surface;

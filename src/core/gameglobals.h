@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 class GameLogger;
-struct LoadedImage;
+class LoadedImage;
 class CDM;
 class ProgableControl;
 

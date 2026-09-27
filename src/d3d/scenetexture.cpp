@@ -28,11 +28,6 @@
 #include "ddrawdiag.h"
 TextureManager g_textureManager;
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureTGA_Parse(LoadedImage *self, LPCSTR path);
-
 /* D3DDEVICEDESC as 0x3f raw dwords, zeroed, dwSize at [0], so the size used is
  * 0xfc whatever the SDK header defines.  Only dcmColorModel is read. */
 struct DevDescRaw { DWORD dw[0x3f]; };
@@ -66,12 +61,12 @@ static int st_strcmp(const unsigned char *a, const unsigned char *b)
 }
 
 /* Replace the image name: free the old, allocate strlen+1, sprintf("%s"). */
-static void st_set_image_name(LoadedImage *self, LPCSTR name)
+void SceneTexture::setImageName(LPCSTR name)
 {
-    if (self->ImageName != NULL)
-        free(self->ImageName);
+    if (ImageName_ != NULL)
+        free(ImageName_);
     char *copy = (char *)malloc(st_strlen(name) + 1u);
-    self->ImageName = copy;
+    ImageName_ = copy;
     sprintf(copy, GS_FMT_S, name);
 }
 
@@ -313,39 +308,45 @@ extern "C" {
  *
  * The scalar deleting destructor is reachable only through the vtable. */
 
-__declspec(dllexport) SceneTexture *__attribute__((thiscall))
-Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags);
 
-static void *const g_SceneTextureVtable[1] = { (void *)&Texture_SceneScalarDtor };
+static void *const g_SceneTextureVtable[1] = { (void *)&SceneTexture::scalarDtor };
 
 static void *scene_vtable(void)
 {
     return (void *)g_SceneTextureVtable;
 }
 
-__declspec(dllexport) SceneTexture *__attribute__((thiscall))
-Texture_SceneCtor(SceneTexture *self)
+void SceneTexture::releaseD3DTexture()
+{
+    IDirect3DTexture2 *tex = pTexture2_;
+    if (tex != NULL)
+        tex->Release();
+    pTexture2_ = NULL;  // unconditional
+
+    releaseSurfaces();
+}
+
+SceneTexture *SceneTexture::construct()
 {
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::Constructor", &seen);
-    Texture_ImageCtor(&self->base);
-    self->base.unknown00 = scene_vtable();
-    self->pTexture2      = NULL;
-    return self;
+    LoadedImage::construct();
+    unknown00_ = scene_vtable();
+    pTexture2_      = NULL;
+    return this;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-Texture_SceneDtorBody(SceneTexture *self)
+void SceneTexture::dtorBody()
 {
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::DtorBody", &seen);
-    self->base.unknown00 = scene_vtable();  // dead: DtorBody installs the base table
-    Texture_ImageDtorBody(&self->base);
+    unknown00_ = scene_vtable();  // dead: DtorBody installs the base table
+    LoadedImage::dtorBody();
 }
 
-__declspec(dllexport) SceneTexture *__attribute__((thiscall))
-Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags)
+SceneTexture * __attribute__((thiscall))
+SceneTexture::scalarDtor(SceneTexture *self, unsigned int flags)
 {
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::ScalarDeletingDtor", &seen);
-    Texture_SceneDtorBody(self);
+    self->dtorBody();
     if ((flags & 1) != 0)
         free(self);  // flag 1: heap-allocated by its factory
     return self;
@@ -356,8 +357,7 @@ Texture_SceneScalarDtor(SceneTexture *self, unsigned int flags)
  * The BMP/DIB path.  Load the file, create a texture surface matching its
  * dimensions and the device's chosen pixel format, attach a palette if the
  * format is 8-bit or less, blit the DIB in and query the IDirect3DTexture2. */
-__declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_BindTextureResource(SceneTexture *self, RenderDevice *dev, LPCSTR name, UINT bpp,
+unsigned int SceneTexture::bindTextureResource(RenderDevice *dev, LPCSTR name, UINT bpp,
                             DWORD textureStage)
 {
     // Resources first, then the file system; the game ships no bitmap
@@ -374,10 +374,10 @@ Texture_BindTextureResource(SceneTexture *self, RenderDevice *dev, LPCSTR name, 
     static LONG seen_bind = 0;
     if (InterlockedIncrement(&seen_bind) <= 4)
         log_write("scenetexture: Bind this=%p dev=%p bpp=%u stage=%lu name=%s\n",
-                  self, dev, bpp, (unsigned long)textureStage,
+                  this, dev, bpp, (unsigned long)textureStage,
                   name ? name : "(null)");
 
-    Texture_ReleaseD3DTexture(self);
+    releaseD3DTexture();
 
     BITMAP bm;
     GetObjectA(hbmp, sizeof(BITMAP), &bm);
@@ -413,7 +413,7 @@ Texture_BindTextureResource(SceneTexture *self, RenderDevice *dev, LPCSTR name, 
 
     ddsd.ddsCaps.dwCaps = st_texture_caps(&hw);
 
-    hr = dev->native()->dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
+    hr = dev->native()->dd->CreateSurface(&ddsd, &pTextureSurface_, NULL);
     ddiag_create_surface(hr, &ddsd);
     if (hr < 0) {
         unsigned int d = (unsigned int)DeleteObject((HGDIOBJ)hbmp);
@@ -425,26 +425,26 @@ Texture_BindTextureResource(SceneTexture *self, RenderDevice *dev, LPCSTR name, 
     // IDirectDrawPalette *.
     if (ddsd.ddpfPixelFormat.dwRGBBitCount <= 8) {
         IDirectDrawPalette *pal = Texture_CreatePaletteFromDIB(dev->native()->dd, (HBITMAP)hbmp);
-        self->base.pTexturePalette = (IDirectDrawSurface4 *)pal;
+        pTexturePalette_ = (IDirectDrawSurface4 *)pal;
         if (pal != NULL)
-            self->base.pTextureSurface->SetPalette(pal);
+            pTextureSurface_->SetPalette(pal);
     }
 
-    if ((TextureDIB_BlitToSurface(&self->base, hbmp) & 0xff) != 0) {
+    if ((TextureDIB_BlitToSurface(this, hbmp) & 0xff) != 0) {
         if (texture_fx_mode() == TEXFX_SOLID)
-            texture_fx_fill_solid(self->base.pTextureSurface);
-        hr = self->base.pTextureSurface->QueryInterface(IID_IDirect3DTexture2,
-                                                        (void **)&self->pTexture2);
+            texture_fx_fill_solid(pTextureSurface_);
+        hr = pTextureSurface_->QueryInterface(IID_IDirect3DTexture2,
+                                                        (void **)&pTexture2_);
         if (hr >= 0) {
-            st_set_image_name(&self->base, name);
-            self->base.loadedState = 1;
+            setImageName(name);
+            loadedState_ = 1;
             unsigned int last = (unsigned int)DeleteObject((HGDIOBJ)hbmp);
             return (last & 0xffffff00u) | 1u;  // upper bytes: DeleteObject
         }
     }
 
     DeleteObject((HGDIOBJ)hbmp);
-    Texture_ReleaseD3DTexture(self);
+    releaseD3DTexture();
     return 0;
 }
 
@@ -453,8 +453,7 @@ Texture_BindTextureResource(SceneTexture *self, RenderDevice *dev, LPCSTR name, 
  * The TGA path.  Reads the header itself to get the dimensions and to reject
  * anything that is not a true-colour image, then builds the surface and hands
  * the file to TextureTGA_Parse to decode. */
-__declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
+unsigned int SceneTexture::importSceneTextures(RenderDevice *dev, LPCSTR name,
                             DWORD alphaFlag, UINT bpp, DWORD textureStage)
 {
     st_log_str(name);
@@ -484,13 +483,13 @@ Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
     static LONG seen_import = 0;
     if (InterlockedIncrement(&seen_import) <= 4)
         log_write("scenetexture: Import this=%p type=%u %ux%u src=%ubpp req=%u name=%s\n",
-                  self, (unsigned)h.imageType, (unsigned)h.width,
+                  this, (unsigned)h.imageType, (unsigned)h.width,
                   (unsigned)h.height, (unsigned)h.bpp, bpp,
                   name ? name : "(null)");
 
     // PRESERVED: the old texture is destroyed before the type is checked, so a
     // bad TGA loses the texture that was there.
-    Texture_ReleaseD3DTexture(self);
+    releaseD3DTexture();
 
     // True-colour only (types 2 and 0x0a), compressed or not; TextureTGA_Parse
     // itself would read other types.
@@ -537,7 +536,7 @@ Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
 
     ddsd.ddsCaps.dwCaps = st_texture_caps(&hw);
 
-    hr = dev->native()->dd->CreateSurface(&ddsd, &self->base.pTextureSurface, NULL);
+    hr = dev->native()->dd->CreateSurface(&ddsd, &pTextureSurface_, NULL);
     ddiag_create_surface(hr, &ddsd);
     if (hr < 0) {
         st_log_str(GS_TEX_NO_TEXTURE_SURFACE);
@@ -545,28 +544,28 @@ Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
         return 0;
     }
 
-    if ((TextureTGA_Parse(&self->base, name) & 0xff) == 0) {
+    if ((TextureTGA_Parse(this, name) & 0xff) == 0) {
         st_log_str(GS_TEX_NO_TGA_COPY);
-        Texture_ReleaseD3DTexture(self);
+        releaseD3DTexture();
         if (fp != NULL) fclose(fp);
         return 0;
     }
 
     if (texture_fx_mode() == TEXFX_SOLID)
-        texture_fx_fill_solid(self->base.pTextureSurface);
+        texture_fx_fill_solid(pTextureSurface_);
 
-    hr = self->base.pTextureSurface->QueryInterface(IID_IDirect3DTexture2,
-                                                    (void **)&self->pTexture2);
+    hr = pTextureSurface_->QueryInterface(IID_IDirect3DTexture2,
+                                                    (void **)&pTexture2_);
     if (hr < 0) {
         // Release first, then log.
-        Texture_ReleaseD3DTexture(self);
+        releaseD3DTexture();
         st_log_str(GS_TEX_NO_TEXTURE_IFACE);
         if (fp != NULL) fclose(fp);
         return 0;
     }
 
-    st_set_image_name(&self->base, name);
-    self->base.loadedState = 2;
+    setImageName(name);
+    loadedState_ = 2;
     if (fp != NULL) fclose(fp);
     return 1;
 }
@@ -576,15 +575,14 @@ Texture_ImportSceneTextures(SceneTexture *self, RenderDevice *dev, LPCSTR name,
  * mode 0 picks by extension, 1 forces the DIB loader, 2 forces the TGA loader,
  * anything else fails silently.  The extension test is four case-exact
  * compares against ".bmp", ".BMP", ".tga", ".TGA", so ".Bmp" is rejected. */
-__declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_SelectTextureLoader(SceneTexture *self, RenderDevice *dev, LPCSTR name, UINT bpp,
+unsigned int SceneTexture::selectTextureLoader(RenderDevice *dev, LPCSTR name, UINT bpp,
                             int mode)
 {
     if (mode != 0) {
         if (mode == 1)
-            return Texture_BindTextureResource(self, dev, name, bpp, 0);
+            return bindTextureResource(dev, name, bpp, 0);
         if (mode == 2)
-            return Texture_ImportSceneTextures(self, dev, name, 0, bpp, 0);
+            return importSceneTextures(dev, name, 0, bpp, 0);
         // The low byte cleared; the upper bytes are mode - 2's.
         return (unsigned int)(mode - 2) & 0xffffff00u;
     }
@@ -594,16 +592,16 @@ Texture_SelectTextureLoader(SceneTexture *self, RenderDevice *dev, LPCSTR name, 
 
     if (st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_BMP_LOWER) == 0 ||
         st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_BMP_UPPER) == 0)
-        return Texture_BindTextureResource(self, dev, name, bpp, 0);
+        return bindTextureResource(dev, name, bpp, 0);
 
     if (st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_TGA_LOWER) == 0)
-        return Texture_ImportSceneTextures(self, dev, name, 0, bpp, 0);
+        return importSceneTextures(dev, name, 0, bpp, 0);
 
     int cmp = st_strcmp(ext, (const unsigned char *)GS_TEX_DOT_TGA_UPPER);
     if (cmp != 0)
         return (unsigned int)cmp & 0xffffff00u;  // upper bytes: the compare
 
-    return Texture_ImportSceneTextures(self, dev, name, 0, bpp, 0);
+    return importSceneTextures(dev, name, 0, bpp, 0);
 }
 
 }  // extern "C"
@@ -627,7 +625,7 @@ typedef void *(__attribute__((thiscall)) *tm_scalar_dtor_fn)(void *self, unsigne
 
 static void tm_delete(SceneTexture *t)
 {
-    tm_scalar_dtor_fn dtor = *(tm_scalar_dtor_fn *)t->base.unknown00;
+    tm_scalar_dtor_fn dtor = *(tm_scalar_dtor_fn *)t->vtable();
     dtor(t, 1);
 }
 
@@ -639,8 +637,8 @@ TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename
         SceneTexture *cached = (SceneTexture *)node->value();
         node = node->next();
         tm_lower_inplace(filename);
-        tm_lower_inplace(cached->base.ImageName);
-        if (strcmp(cached->base.ImageName, filename) == 0) {
+        tm_lower_inplace(cached->imageName());
+        if (strcmp(cached->imageName(), filename) == 0) {
             if (self->pLogger != NULL)
                 self->pLogger->logMessage(1, GS_TM_FOUND, filename);
             return cached;
@@ -648,8 +646,8 @@ TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename
     }
 
     void *mem = malloc(sizeof(SceneTexture));
-    SceneTexture *tex = (mem != NULL) ? Texture_SceneCtor((SceneTexture *)mem) : NULL;
-    unsigned int ok = Texture_ImportSceneTextures(tex, dev, filename,
+    SceneTexture *tex = (mem != NULL) ? ((SceneTexture *)mem)->construct() : NULL;
+    unsigned int ok = tex->importSceneTextures(dev, filename,
                                                   alphaFlag, bpp, textureStage);
     if ((ok & 0xff) == 0) {
         if (tex != NULL)
@@ -671,7 +669,7 @@ TextureManager_ReleaseAll(TextureManager *self)
         SceneTexture *tex = (SceneTexture *)node->value();
         node = node->next();
         if (tex != NULL) {
-            Texture_ReleaseD3DTexture(tex);
+            tex->releaseD3DTexture();
             tm_delete(tex);
         }
     }
@@ -725,6 +723,6 @@ TextureManager_LoadAll(TextureManager *self)
         LoadedImage *img = (LoadedImage *)n->value();
         n = n->next();
         if (img != NULL)
-            Texture_Load(img);
+            img->load();
     }
 }

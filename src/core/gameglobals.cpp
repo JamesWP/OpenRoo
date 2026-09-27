@@ -6,7 +6,7 @@
 #include "gamelog.h"
 #include "cdm.h"
 #include "progctrl.h"
-#include "texture.h"
+#include "scenetexture.h"
 
 ProgableControl g_progCtrl;
 HINSTANCE       g_moduleInstance;

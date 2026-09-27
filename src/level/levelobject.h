@@ -1,7 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <stddef.h>
-#include "texture.h"
+#include "scenetexture.h"
 
 /* A theme record's draw state for one sub-object: blend, texture address mode,
  * visibility condition and an animated effect, as the theme file's depth-2 and

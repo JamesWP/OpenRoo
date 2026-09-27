@@ -5,7 +5,7 @@
  * ReleaseD3DTexture, the 28-byte SceneTexture ones, so it takes a LoadedImage*
  * and must not touch +0x18. */
 
-#include "texture.h"
+#include "scenetexture.h"
 #include "d3dnative.h"
 #include "log.h"
 #include <stdlib.h>
@@ -86,83 +86,68 @@ Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp)
     return pal;
 }
 
-__declspec(dllexport) LoadedImage *__attribute__((thiscall))
-Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags);
 
 /* One slot: the scalar deleting destructor. */
-static void *const g_LoadedImageVtable[1] = { (void *)&Texture_ImageScalarDtor };
+static void *const g_LoadedImageVtable[1] = { (void *)&LoadedImage::scalarDtor };
 
-__declspec(dllexport) void *Texture_ImageVtable(void)
+void *
+LoadedImage::vtbl(void)
 {
     return (void *)g_LoadedImageVtable;
 }
 
 /* ─── LoadedImage lifecycle ──────────────────────────────────────────────────
  */
-__declspec(dllexport) LoadedImage *__attribute__((thiscall))
-Texture_ImageCtor(LoadedImage *self)
+LoadedImage *LoadedImage::construct()
 {
     static unsigned long seen; image_first("LoadedImage::Ctor", &seen);
-    self->unknown00       = Texture_ImageVtable();
-    self->pTextureSurface = NULL;
-    self->pTexturePalette = NULL;
-    self->ImageName       = NULL;
-    self->loadedState     = 0;
-    self->loadStatus      = 0;
-    return self;
+    unknown00_       = LoadedImage::vtbl();
+    pTextureSurface_ = NULL;
+    pTexturePalette_ = NULL;
+    ImageName_       = NULL;
+    loadedState_     = 0;
+    loadStatus_      = 0;
+    return this;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-Texture_ImageDtorBody(LoadedImage *self)
+void LoadedImage::dtorBody()
 {
     static unsigned long seen; image_first("LoadedImage::DtorBody", &seen);
-    self->unknown00 = Texture_ImageVtable();
-    if (self->ImageName != NULL)
-        free(self->ImageName);  // PRESERVED: not NULLed, so a second DtorBody double-frees
+    unknown00_ = LoadedImage::vtbl();
+    if (ImageName_ != NULL)
+        free(ImageName_);  // PRESERVED: not NULLed, so a second DtorBody double-frees
 }
 
 /* Reachable only through vtable slot 0. */
-__declspec(dllexport) LoadedImage *__attribute__((thiscall))
-Texture_ImageScalarDtor(LoadedImage *self, unsigned int flags)
+LoadedImage * __attribute__((thiscall))
+LoadedImage::scalarDtor(LoadedImage *self, unsigned int flags)
 {
     static unsigned long seen; image_first("LoadedImage::ScalarDeletingDtor", &seen);
-    Texture_ImageDtorBody(self);
+    self->dtorBody();
     if ((flags & 1) != 0)
         free(self);
     return self;
 }
 
-__declspec(dllexport) void __attribute__((thiscall))
-Texture_ReleaseSurfaces(LoadedImage *self)
+void LoadedImage::releaseSurfaces()
 {
-    IDirectDrawSurface4 *surf = self->pTextureSurface;
+    IDirectDrawSurface4 *surf = pTextureSurface_;
     if (surf != NULL)
         surf->Release();
-    self->pTextureSurface = NULL;  // unconditional
+    pTextureSurface_ = NULL;  // unconditional
 
-    IDirectDrawSurface4 *pal = self->pTexturePalette;
+    IDirectDrawSurface4 *pal = pTexturePalette_;
     if (pal != NULL)
         pal->Release();
-    self->pTexturePalette = NULL;  // unconditional
+    pTexturePalette_ = NULL;  // unconditional
 
-    if (self->ImageName != NULL) {
-        free(self->ImageName);
-        self->ImageName = NULL;  // only inside the check
+    if (ImageName_ != NULL) {
+        free(ImageName_);
+        ImageName_ = NULL;  // only inside the check
     }
 
-    self->loadedState = 0;
-    self->loadStatus  = 0;
-}
-
-__declspec(dllexport) void __attribute__((thiscall))
-Texture_ReleaseD3DTexture(SceneTexture *self)
-{
-    IDirect3DTexture2 *tex = self->pTexture2;
-    if (tex != NULL)
-        tex->Release();
-    self->pTexture2 = NULL;  // unconditional
-
-    Texture_ReleaseSurfaces(&self->base);
+    loadedState_ = 0;
+    loadStatus_  = 0;
 }
 
 }  // extern "C"
@@ -176,16 +161,11 @@ Texture_ReleaseD3DTexture(SceneTexture *self)
  * Only the low byte of the result is the success flag.  The upper bytes are
  * whatever the last call left: Restore's HRESULT, DeleteObject's result, or
  * the TGA loader's value.  Any loadedState other than 1 or 2 returns true. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureDIB_BlitToSurface(LoadedImage *, HANDLE);
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureTGA_Parse(LoadedImage *, LPCSTR);
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-Texture_Load(LoadedImage *self)
+unsigned int LoadedImage::load()
 {
-    IDirectDrawSurface4 *surf = self->pTextureSurface;
+    IDirectDrawSurface4 *surf = pTextureSurface_;
     if (surf == NULL)
         return 0;
 
@@ -193,31 +173,31 @@ Texture_Load(LoadedImage *self)
     static LONG seen = 0;
     if (InterlockedIncrement(&seen) <= 4)
         log_write("texture: Load this=%p state=%d restore=%08lX name=%s\n",
-                  self, self->loadedState, hr,
-                  self->ImageName ? self->ImageName : "(null)");
+                  this, loadedState_, hr,
+                  ImageName_ ? ImageName_ : "(null)");
     if (hr < 0)
         return (unsigned int)hr & 0xffffff00u;
 
     unsigned int last;
-    if (self->loadedState == 1) {
-        HANDLE h = LoadImageA(GetModuleHandleA(NULL), self->ImageName,
+    if (loadedState_ == 1) {
+        HANDLE h = LoadImageA(GetModuleHandleA(NULL), ImageName_,
                               IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
         if (h == NULL) {
-            h = LoadImageA(NULL, self->ImageName, IMAGE_BITMAP, 0, 0,
+            h = LoadImageA(NULL, ImageName_, IMAGE_BITMAP, 0, 0,
                            LR_LOADFROMFILE | LR_CREATEDIBSECTION);
             if (h == NULL)
                 return 0;
         }
-        unsigned int ok = TextureDIB_BlitToSurface(self, h);
+        unsigned int ok = TextureDIB_BlitToSurface(this, h);
         if ((ok & 0xff) == 0) {
             unsigned int d = (unsigned int)DeleteObject((HGDIOBJ)h);
             return d & 0xffffff00u;
         }
         last = (unsigned int)DeleteObject((HGDIOBJ)h);
     } else {
-        last = (unsigned int)(self->loadedState - 2);
+        last = (unsigned int)(loadedState_ - 2);
         if (last == 0) {
-            last = TextureTGA_Parse(self, self->ImageName);
+            last = TextureTGA_Parse(this, ImageName_);
             if ((last & 0xff) == 0)
                 return last;
         }

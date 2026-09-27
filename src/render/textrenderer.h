@@ -18,7 +18,7 @@
 #pragma once
 
 #include <windows.h>
-#include "texture.h"    /* SceneTexture -- the atlas */
+#include "scenetexture.h"    /* SceneTexture -- the atlas */
 
 class RenderDevice;
 
