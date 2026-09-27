@@ -26,6 +26,11 @@
 #include "gamelog.h"
 #include "d3dnative.h"
 #include "ddrawdiag.h"
+
+/* LoadedImage and SceneTexture are packed for the packed records that embed
+ * them; their members are 4-aligned all the same, so passing a member's
+ * address as a COM out-parameter is safe. */
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 TextureManager g_textureManager;
 
 /* D3DDEVICEDESC as 0x3f raw dwords, zeroed, dwSize at [0], so the size used is
@@ -307,7 +312,6 @@ extern "C" {
 /* ─── The SceneTexture lifecycle ────────────────────────────────────────────
  *
  * The scalar deleting destructor is reachable only through the vtable. */
-
 
 static void *const g_SceneTextureVtable[1] = { (void *)&SceneTexture::scalarDtor };
 
@@ -629,18 +633,17 @@ static void tm_delete(SceneTexture *t)
     dtor(t, 1);
 }
 
-extern "C" __declspec(dllexport) SceneTexture *__attribute__((thiscall))
-TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename,
+SceneTexture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
                          DWORD alphaFlag, UINT bpp, DWORD textureStage)
 {
-    for (LinkedListNode *node = self->cache.head(); node != NULL; ) {
+    for (LinkedListNode *node = cache_.head(); node != NULL; ) {
         SceneTexture *cached = (SceneTexture *)node->value();
         node = node->next();
         tm_lower_inplace(filename);
         tm_lower_inplace(cached->imageName());
         if (strcmp(cached->imageName(), filename) == 0) {
-            if (self->pLogger != NULL)
-                self->pLogger->logMessage(1, GS_TM_FOUND, filename);
+            if (pLogger_ != NULL)
+                pLogger_->logMessage(1, GS_TM_FOUND, filename);
             return cached;
         }
     }
@@ -652,20 +655,19 @@ TextureManager_GetOrLoad(TextureManager *self, RenderDevice *dev, char *filename
     if ((ok & 0xff) == 0) {
         if (tex != NULL)
             tm_delete(tex);
-        if (self->pLogger != NULL)
-            self->pLogger->logMessage(3, GS_TM_FAILED, filename);
+        if (pLogger_ != NULL)
+            pLogger_->logMessage(3, GS_TM_FAILED, filename);
         return NULL;
     }
-    if (self->pLogger != NULL)
-        self->pLogger->logMessage(1, GS_TM_LOADED, filename);
-    self->cache.append(tex);
+    if (pLogger_ != NULL)
+        pLogger_->logMessage(1, GS_TM_LOADED, filename);
+    cache_.append(tex);
     return tex;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_ReleaseAll(TextureManager *self)
+void TextureManager::releaseAll()
 {
-    for (LinkedListNode *node = self->cache.head(); node != NULL; ) {
+    for (LinkedListNode *node = cache_.head(); node != NULL; ) {
         SceneTexture *tex = (SceneTexture *)node->value();
         node = node->next();
         if (tex != NULL) {
@@ -673,53 +675,49 @@ TextureManager_ReleaseAll(TextureManager *self)
             tm_delete(tex);
         }
     }
-    self->cache.clear();
+    cache_.clear();
 }
 
 /* ─── TextureManager lifecycle ──────────────────────────────────────────────
  *
  * Every instance is static (scenetexture.h), so nothing deletes one and the
  * scalar dtor's free is never reached. */
-static void *const g_TextureManagerVtable[1] = { (void *)&TextureManager_ScalarDestructor };
+static void *const g_TextureManagerVtable[1] = { (void *)&TextureManager::scalarDestructor };
 
-extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
-TextureManager_Construct(TextureManager *self)
+TextureManager *TextureManager::construct()
 {
-    self->cache.init();
-    self->vtable  = (void *)g_TextureManagerVtable;
-    self->pLogger = NULL;
-    return self;
+    cache_.init();
+    vtable_  = (void *)g_TextureManagerVtable;
+    pLogger_ = NULL;
+    return this;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_Destruct(TextureManager *self)
+void TextureManager::destruct()
 {
-    self->vtable = (void *)g_TextureManagerVtable;
-    self->cache.destruct();
+    vtable_ = (void *)g_TextureManagerVtable;
+    cache_.destruct();
 }
 
-extern "C" __declspec(dllexport) TextureManager *__attribute__((thiscall))
-TextureManager_ScalarDestructor(TextureManager *self, unsigned char flags)
+TextureManager * __attribute__((thiscall))
+TextureManager::scalarDestructor(TextureManager *self, unsigned char flags)
 {
-    TextureManager_Destruct(self);
+    self->destruct();
     if (flags & 1)
         free(self);
     return self;
 }
 
 /* pLogger = logger. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_SetLogger(TextureManager *self, GameLogger *logger)
+void TextureManager::setLogger(GameLogger *logger)
 {
-    self->pLogger = logger;
+    pLogger_ = logger;
 }
 
 /* Texture_Load every non-NULL cached image, head to tail, reading the next
  * pointer before the load. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-TextureManager_LoadAll(TextureManager *self)
+void TextureManager::loadAll()
 {
-    for (LinkedListNode *n = self->cache.head(); n != NULL; ) {
+    for (LinkedListNode *n = cache_.head(); n != NULL; ) {
         LoadedImage *img = (LoadedImage *)n->value();
         n = n->next();
         if (img != NULL)

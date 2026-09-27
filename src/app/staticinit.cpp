@@ -40,7 +40,7 @@ void StaticInit_Construct()
     g_meshEnemy.init();
     g_fontMain.construct();
     g_fontNumbers.construct();
-    TextureManager_Construct(&g_textureManager);
+    g_textureManager.construct();
     g_modelManager.construct();
     g_cdAudio.construct();
     g_demoImage.construct();
@@ -65,7 +65,7 @@ void StaticInit_Destruct()
     g_demoImage.dtorBody();
     g_cdAudio.stopAndClose();
     g_modelManager.destruct();
-    TextureManager_Destruct(&g_textureManager);
+    g_textureManager.destruct();
     g_fontNumbers.destruct();
     g_fontMain.destruct();
     g_meshEnemy.dtorBody();

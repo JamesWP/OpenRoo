@@ -17,7 +17,7 @@ Scene_Construct(Scene *self)
 {
     self->objects.init();
     self->models.construct();
-    TextureManager_Construct(&self->textures);
+    self->textures.construct();
     return self;
 }
 
@@ -26,7 +26,7 @@ Scene_Construct(Scene *self)
 extern "C" __declspec(dllexport) void __attribute__((thiscall))
 Scene_Destruct(Scene *self)
 {
-    TextureManager_Destruct(&self->textures);
+    self->textures.destruct();
     self->models.destruct();
     self->objects.destruct();
 }
@@ -44,7 +44,7 @@ static void free_scene_objects()
     }
     s->objects.clear();
     s->models.clearReleaseFree();
-    TextureManager_ReleaseAll(&s->textures);
+    s->textures.releaseAll();
     memset(s, 0, sizeof *s);  // PRESERVED: vtable pointers too; nothing reads them again
 }
 
@@ -59,7 +59,7 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
     Scene *s = &g_scene;
     free_scene_objects();
     s->models.setLogger(logger);
-    s->textures.pLogger = logger;
+    s->textures.setLogger(logger);
 
     for (unsigned i = 0; i < leo->objectCount(); ++i) {
         ExtraObjectRecord *r = leo->record(i);
@@ -88,7 +88,7 @@ Scene_BuildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
 
         // Blend modes 5/6 (SRCALPHA / INVSRCALPHA) ask for an alpha surface.
         DWORD alpha = (r->srcBlend == 5 || r->srcBlend == 6) ? 1 : 0;
-        o->texture = TextureManager_GetOrLoad(&s->textures, d3d, r->textureFile,
+        o->texture = s->textures.getOrLoad(d3d, r->textureFile,
                                               alpha, 0, 0);
         o->srcBlend  = r->srcBlend;
         o->destBlend = r->destBlend;
