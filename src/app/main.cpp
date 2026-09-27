@@ -89,7 +89,7 @@ static void restore_surfaces()
             img->load();
     }
     g_textureManager.loadAll();
-    g_scene.textures.loadAll();
+    g_scene.textures()->loadAll();
     for (int i = 0; i < 10; i++)
         TAIL_TEXTURES[i]->load();
 }
