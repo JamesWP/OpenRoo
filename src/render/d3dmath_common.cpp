@@ -1,11 +1,9 @@
-/* Math helpers with no arithmetic that could round differently -- pure data
- * movement.  The address in each comment is the original it mirrors.
- */
+/* Maths helpers with no arithmetic that could round differently -- pure data
+ * movement -- plus the exported wrappers over d3dmath_mode.cpp. */
 #include <math.h>
 #include "d3dmath_common.h"
-D3DMATRIX g_worldIdentity;   /* was 0x004e0440 */
+D3DMATRIX g_worldIdentity;
 
-/* MatrixSetIdentity, 0x413230 */
 void m4_identity(Mat4 *d)
 {
     for (int i = 0; i < 16; ++i)
@@ -13,14 +11,12 @@ void m4_identity(Mat4 *d)
     d->m[0] = d->m[5] = d->m[10] = d->m[15] = 1.0f;
 }
 
-/* BuildTranslateMatrix, 0x4232b0 */
 void m4_translate(Mat4 *d, float x, float y, float z)
 {
     m4_identity(d);
     d->m[12] = x;  d->m[13] = y;  d->m[14] = z;
 }
 
-/* VectorSubtract3, 0x403790 */
 void v3_sub(Vec3 *d, const Vec3 *a, const Vec3 *b)
 {
     d->x = a->x - b->x;
@@ -28,13 +24,12 @@ void v3_sub(Vec3 *d, const Vec3 *a, const Vec3 *b)
     d->z = a->z - b->z;
 }
 
-/* 0x403770 -- Vec3 setter. */
 void v3_set(Vec3 *d, float x, float y, float z)
 {
     d->x = x;  d->y = y;  d->z = z;
 }
 
-/* 0x407f70 -- componentwise divide by a scalar. */
+/* Componentwise divide by a scalar. */
 void v3_div(Vec3 *d, const Vec3 *v, float s)
 {
     d->x = v->x / s;
@@ -42,7 +37,6 @@ void v3_div(Vec3 *d, const Vec3 *v, float s)
     d->z = v->z / s;
 }
 
-/* 0x426c20 -- in-place subtract. */
 void v3_sub_inplace(Vec3 *d, const Vec3 *v)
 {
     d->x = d->x - v->x;
@@ -50,8 +44,8 @@ void v3_sub_inplace(Vec3 *d, const Vec3 *v)
     d->z = d->z - v->z;
 }
 
-/* BuildBillboardVertex, 0x421ef0.  +0x0c is written as a literal zero, not
- * left alone -- FVF 0x1e2 has a slot there the game never fills. */
+/* +0x0c is written as a literal zero, not left alone: FVF 0x1e2 has a
+ * reserved slot there that nothing else fills. */
 void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
                       DWORD specular, float u, float v)
 {
@@ -62,11 +56,7 @@ void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
     d->u = u;  d->v = v;
 }
 
-/* ─── The exported vec3 helpers (d3dmath_common.h) ─────────────────────────
- *
- * The originals keep SqLen/Dot in the x87's 80-bit registers; ours are
- * double.  Only the last bits of a float the callers immediately round can
- * differ, which CLAUDE.md accepts. */
+/* ─── The exported vec3 helpers (d3dmath_common.h) ───────────────────────── */
 extern "C" {
 
 __declspec(dllexport) Vec3 *__attribute__((thiscall))
@@ -138,8 +128,6 @@ Math_Mat4Zero(Mat4 *d)
     return d;
 }
 
-/* Written from the listing; each step rounds to float where the original
- * stores to memory. */
 __declspec(dllexport) void __cdecl
 Math_BuildBillboardQuad(Vec3 *out, float dx, float dy, float dz, float scale)
 {
@@ -172,14 +160,10 @@ Math_BuildBillboardQuad(Vec3 *out, float dx, float dy, float dz, float scale)
         v3_sub_inplace(&out[i], &c);
 }
 
-/* ─── ENDGAME #5: the matrix builders ─────────────────────────────────────
+/* ─── The matrix builders ──────────────────────────────────────────────────
  *
- * The originals take cos/sin with FCOS/FSIN and accumulate products in the
- * x87's 80-bit registers, rounding once per stored element; ours go through
- * double and cosf/sinf.  Only last bits of values that feed rendering can
- * differ.  What is kept: the operand order of the multiply, the w == 1.0
- * test (a float compared with a double 1.0, NaN skipping the divide), and a
- * zero w dividing to inf/NaN as there. */
+ * The w == 1.0 test compares a float with a double 1.0, so NaN skips the
+ * divide; a zero w divides to inf/NaN. */
 
 __declspec(dllexport) Mat4 *__cdecl Math_Mat4Identity(Mat4 *out)
 {
@@ -238,7 +222,7 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle)
 
 }
 
-/* ─── RenderGameFrame's three small helpers (ENDGAME E7) ─────────────────── */
+/* ─── RenderGameFrame's three small helpers ─────────────────────────────── */
 extern "C" {
 
 __declspec(dllexport) D3DTLVERTEX *__attribute__((thiscall))
