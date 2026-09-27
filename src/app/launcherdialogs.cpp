@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "launcherdialogs.h"
 #include "launcher.h"
 #include "com_proxy.h"
@@ -23,6 +24,7 @@
 #include "log.h"
 #include "resources.h"
 #include "launcher_layout.h"
+#include "buildinfo.h"
 
 static const int IDC_PLAY       = 0x3f5;     // "spielen"
 static const int IDC_SETUP      = 0x3f2;     // "setup"; the same id as the mode combo
@@ -124,6 +126,74 @@ static void draw_button(const DRAWITEMSTRUCT *di, const BYTE *off, const BYTE *f
                 di->rcItem.bottom - di->rcItem.top, hdr, bits);
 }
 
+/* The corner text: a 3x5 pixel font, each glyph 5 rows of 3 bits (high bit
+ * leftmost).  Lower case draws as upper; anything unknown as a blank. */
+static const char FONT_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-'";
+static const unsigned char FONT[][5] = {
+    {2,5,7,5,5},{6,5,6,5,6},{3,4,4,4,3},{6,5,5,5,6},{7,4,6,4,7},{7,4,6,4,4},
+    {3,4,5,5,3},{5,5,7,5,5},{7,2,2,2,7},{1,1,1,5,2},{5,5,6,5,5},{4,4,4,4,7},
+    {5,7,7,5,5},{6,5,5,5,5},{2,5,5,5,2},{6,5,6,4,4},{2,5,5,6,3},{6,5,6,5,5},
+    {3,4,2,1,6},{7,2,2,2,2},{5,5,5,5,7},{5,5,5,5,2},{5,5,7,7,5},{5,5,2,5,5},
+    {5,5,2,2,2},{7,1,2,4,7},
+    {7,5,5,5,7},{2,6,2,2,7},{6,1,2,4,7},{6,1,2,1,6},{5,5,7,1,1},{7,4,6,1,6},
+    {3,4,7,5,7},{7,1,2,2,2},{7,5,7,5,7},{7,5,7,1,6},
+    {0,0,0,0,2},{0,0,7,0,0},{2,2,0,0,0},
+};
+static const int FONT_SCALE = 2;  // screen pixels per font pixel
+
+static void draw_text_px(HDC hdc, int x, int y, const char *text, HBRUSH brush)
+{
+    for (; *text; ++text, x += 4 * FONT_SCALE) {
+        const char *at = strchr(FONT_CHARS, toupper((unsigned char)*text));
+        if (!at)
+            continue;
+        const unsigned char *g = FONT[at - FONT_CHARS];
+        for (int row = 0; row < 5; ++row)
+            for (int col = 0; col < 3; ++col)
+                if (g[row] & (4 >> col)) {
+                    RECT r = { x + col * FONT_SCALE, y + row * FONT_SCALE,
+                               x + (col + 1) * FONT_SCALE, y + (row + 1) * FONT_SCALE };
+                    FillRect(hdc, &r, brush);
+                }
+    }
+}
+
+/* One string from our VERSIONINFO, or "" if absent. */
+static void version_string(const char *name, char *out, size_t size)
+{
+    out[0] = 0;
+    char path[MAX_PATH];
+    if (!GetModuleFileNameA(Resources_Module(), path, sizeof(path)))
+        return;
+    DWORD dummy, len = GetFileVersionInfoSizeA(path, &dummy);
+    void *info = len ? malloc(len) : NULL;
+    if (info && GetFileVersionInfoA(path, 0, len, info)) {
+        char key[64];
+        snprintf(key, sizeof(key), "\\StringFileInfo\\000004b0\\%s", name);
+        char *val;
+        UINT vlen;
+        if (VerQueryValueA(info, key, (void **)&val, &vlen) && vlen)
+            snprintf(out, size, "%s", val);
+    }
+    free(info);
+}
+
+/* "<name> <version> <git sha>" at the bottom left, with a one-pixel shadow. */
+static void draw_build_text(HDC hdc)
+{
+    char name[64], ver[32], text[160];
+    version_string("ProductName", name, sizeof(name));
+    version_string("ProductVersion", ver, sizeof(ver));
+    snprintf(text, sizeof(text), "%s %s %s", name, ver, BUILD_GIT_SHA);
+    int x = 8, y = LAUNCHER_H - 8 - 5 * FONT_SCALE;
+    HBRUSH shadow = CreateSolidBrush(RGB(0, 0, 0));
+    HBRUSH fore   = CreateSolidBrush(RGB(255, 236, 200));
+    draw_text_px(hdc, x + FONT_SCALE, y + FONT_SCALE, text, shadow);
+    draw_text_px(hdc, x, y, text, fore);
+    DeleteObject(shadow);
+    DeleteObject(fore);
+}
+
 static void place(HWND hDlg, int id, int x, int y, int w, int h)
 {
     MoveWindow(GetDlgItem(hDlg, id), x, y, w, h, TRUE);
@@ -183,6 +253,7 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
         GetClientRect(hDlg, &rc);
         stretch_bmp(hdc, rc.right - rc.left, rc.bottom - rc.top,
                     s_menuBmp + 14, s_menuBmp + *(DWORD *)(s_menuBmp + 10));
+        draw_build_text(hdc);
         EndPaint(hDlg, &ps);
         return 0;
     }

@@ -54,7 +54,7 @@ OBJDIR  = $(BUILD)/obj
 OBJS    = $(SRCS:src/%.cpp=$(OBJDIR)/%.o)
 EXE     = $(BUILD)/KarooOwn.exe
 RESOBJ  = $(OBJDIR)/openroo_rc.o
-LIBS    = -lgdi32 -lwinmm -ldsound -ldinput8 -ldxguid -static-libgcc -static-libstdc++
+LIBS    = -lgdi32 -lversion -lwinmm -ldsound -ldinput8 -ldxguid -static-libgcc -static-libstdc++
 
 all: $(EXE)
 
@@ -75,6 +75,17 @@ $(LAUNCHER_OUT): $(wildcard data/launcher/*.bmp) tools/slice_launcher.py | $(OBJ
 $(OBJDIR)/app/launcherdialogs.o: $(LAUNCHER_OUT)
 $(OBJDIR)/app/launcherdialogs.o: CXXFLAGS += -I$(OBJDIR)
 
+# The commit being built, for the launcher's corner text.  Rewritten only when
+# it changes, so an unchanged tree does not rebuild.
+BUILDINFO = $(OBJDIR)/buildinfo.h
+$(BUILDINFO): FORCE | $(OBJDIR)
+	@sha=$$(git rev-parse --short HEAD 2>/dev/null || echo unknown); \
+	git diff --quiet HEAD -- 2>/dev/null || sha=$$sha-dirty; \
+	line="#define BUILD_GIT_SHA \"$$sha\""; \
+	[ "$$(cat $@ 2>/dev/null)" = "$$line" ] || echo "$$line" > $@
+
+$(OBJDIR)/app/launcherdialogs.o: $(BUILDINFO)
+
 $(RESOBJ): data/openroo.rc data/openroo.ico $(LAUNCHER_OUT) | $(OBJDIR)
 	i686-w64-mingw32-windres --include-dir=data --include-dir=$(OBJDIR) $< -O coff -o $@
 
@@ -88,7 +99,8 @@ check-homes: $(OBJS)
 
 -include $(OBJS:.o=.d) $(OBJDIR)/app/exemain.d
 
-.PHONY: all check-homes clean
+.PHONY: all check-homes clean FORCE
+FORCE:
 
 clean:
 	rm -rf $(BUILD)
