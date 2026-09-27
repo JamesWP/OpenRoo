@@ -13,7 +13,7 @@
 
 class RenderDevice;
 struct ParticleSystem;
-struct GameLogger;
+class GameLogger;
 class ExtraObjects;
 
 /* One placed object; dsoscene.cpp draws them.  The type byte at +0

@@ -98,13 +98,13 @@ Game *Game::construct(const char *gameName)
     cdThemes_.readTrackThemeTable(gameFileName_);
     cdThemes_.listTrackLengths();
     if (cdThemes_.validateTrackLengths())
-        GameLog_LogMessage(&g_logger, 2, GS_GAME_CD_OK);
+        g_logger.logMessage(2, GS_GAME_CD_OK);
     else
-        GameLog_LogMessage(&g_logger, 3, GS_GAME_CD_MISSING);
-    GameLog_LogMessage(&g_logger, 1, GS_GAME_CREATED, gameFileName_);
+        g_logger.logMessage(3, GS_GAME_CD_MISSING);
+    g_logger.logMessage(1, GS_GAME_CREATED, gameFileName_);
 
     if (!loadGameFile(gameFileName_)) {
-        GameLog_LogMessage(&g_logger, 4, GS_GAME_FILE_FAILED, gameFileName_);
+        g_logger.logMessage(4, GS_GAME_FILE_FAILED, gameFileName_);
         PostQuitMessage(1);
         return this;
     }
@@ -113,37 +113,37 @@ Game *Game::construct(const char *gameName)
     menu_.setLastKey(0x0d);
     saveSlots_.setCount(6);
     if (!Save_LoadAllSlotFiles(&saveSlots_, gameFileName_, SAVE_KEY)) {
-        GameLog_LogMessage(&g_logger, 3, GS_GAME_NO_SAVES, (unsigned)saveSlots_.count());
+        g_logger.logMessage(3, GS_GAME_NO_SAVES, (unsigned)saveSlots_.count());
         saveSlots_.initialiseEmpty();
         Save_WriteAllSlotFiles(&saveSlots_, gameFileName_, SAVE_KEY);
     }
     field_173584_ = 0;
     if (!config_.loadValues(GS_CFG_FILE)) {
-        GameLog_LogMessage(&g_logger, 3, GS_GAME_CFG_DEFAULTS);
+        g_logger.logMessage(3, GS_GAME_CFG_DEFAULTS);
         config_.fillDefaults();
     } else {
-        GameLog_LogMessage(&g_logger, 1, GS_GAME_CFG_LOADED);
+        g_logger.logMessage(1, GS_GAME_CFG_LOADED);
     }
     g_progCtrl.setJoyDeadzone(0, config_.joyDeadzone() * 100);
     g_progCtrl.setJoyDeadzone(4, config_.joyDeadzone() * 100);
 
     highScores_.setCount(10);
     if (!highScores_.readFile(gameFileName_, HIGHSCORE_KEY)) {
-        GameLog_LogMessage(&g_logger, 3, GS_GAME_NO_HIGHSCORES);
+        g_logger.logMessage(3, GS_GAME_NO_HIGHSCORES);
         highScores_.fillDefaults();
         highScores_.writeFile(gameFileName_, HIGHSCORE_KEY);
     } else {
-        GameLog_LogMessage(&g_logger, 1, GS_GAME_HIGHSCORES_LOADED);
+        g_logger.logMessage(1, GS_GAME_HIGHSCORES_LOADED);
     }
 
     // PRESERVED: a demo check, for a nonzero field_0c_ with more than ten
     // levels.  field_0c_ was zeroed above, so it never fires.
     if (field_0c_ != 0 && levelCount_ > 10) {
-        GameLog_LogMessage(&g_logger, 4, GS_GAME_DEMO_ABORT);
+        g_logger.logMessage(4, GS_GAME_DEMO_ABORT);
         PostQuitMessage(1);
         return this;
     }
-    GameLog_LogMessage(&g_logger, 2, GS_GAME_COMMERCIAL);
+    g_logger.logMessage(2, GS_GAME_COMMERCIAL);
     waveOutGetVolume(NULL, (DWORD *)config_.savedWaveOutVolumeRef());
     waveOutSetVolume(NULL, config_.waveOutVolume());
     config_.setSavedCdMixerVolume(g_cdAudio.getMixerDetails());
@@ -182,7 +182,7 @@ Game *Game::construct(const char *gameName)
 void Game::destruct()
 {
     vtable_ = g_GameVtable;
-    GameLog_LogMessage(&g_logger, 1, GS_GAME_DTOR_START);
+    g_logger.logMessage(1, GS_GAME_DTOR_START);
     LiftObject::purgeAll(this);
     SlideObject::purgeAll(this);
     BreakableTile::purgeAll(this);
@@ -199,15 +199,15 @@ void Game::destruct()
     switchMax_      = 0;
     config_.setCameraDistanceSetting(zoomDistance_);
     if (highScores_.writeFile(gameFileName_, HIGHSCORE_KEY))
-        GameLog_LogMessage(&g_logger, 1, GS_GAME_HIGHSCORES_SAVED);
+        g_logger.logMessage(1, GS_GAME_HIGHSCORES_SAVED);
     if (config_.save(GS_CFG_FILE))
-        GameLog_LogMessage(&g_logger, 1, GS_CFG_SAVE_OK);
+        g_logger.logMessage(1, GS_CFG_SAVE_OK);
     else
-        GameLog_LogMessage(&g_logger, 3, GS_CFG_SAVE_ERR);
+        g_logger.logMessage(3, GS_CFG_SAVE_ERR);
     scriptPlayer_.releaseStreams();
     extraObjects_.releaseSounds();
     releaseAllSounds();
-    GameLog_LogMessage(&g_logger, 1, GS_GAME_SOUNDS_RELEASED);
+    g_logger.logMessage(1, GS_GAME_SOUNDS_RELEASED);
     soundManager()->purgeAssets();
     waveOutSetVolume(NULL, config_.savedWaveOutVolume());
     g_cdAudio.setMixerVolume(config_.savedCdMixerVolume());
@@ -242,7 +242,7 @@ int Game::loadGameFile(const char *name)
 
     levelCount_ = 0;
     sprintf(path, GS_GAME_FILE_PATH, g_gameDir, name);
-    GameLog_LogMessage(&g_logger, 2, GS_GAME_FILE_LOADING, path);
+    g_logger.logMessage(2, GS_GAME_FILE_LOADING, path);
     FILE *fp = fopen(path, GS_MODE_READ);
     if (fp == NULL)
         return 0;
@@ -250,7 +250,7 @@ int Game::loadGameFile(const char *name)
 
     char *table = &levelNameTable_[0][0];
     if (hdr[0] == 6 && hdr[1] == 6 && hdr[2] == 6) {
-        GameLog_LogMessage(&g_logger, 2, GS_GAME_FILE_BINARY);
+        g_logger.logMessage(2, GS_GAME_FILE_BINARY);
         levelCount_ = hdr[3];
         unsigned int n = 0;
         char c = 0;
@@ -260,15 +260,15 @@ int Game::loadGameFile(const char *name)
             table[n & 0xffff] = c;
             n++;
         }
-        GameLog_LogMessage(&g_logger, 2, GS_GAME_FILE_BINARY_DONE,
+        g_logger.logMessage(2, GS_GAME_FILE_BINARY_DONE,
                            (unsigned)levelCount_, n & 0xffff);
         for (unsigned short i = 0; i < levelCount_; i++)
-            GameLog_LogMessage(&g_logger, 2, GS_GAME_FILE_LEVEL, levelNameTable_[i]);
+            g_logger.logMessage(2, GS_GAME_FILE_LEVEL, levelNameTable_[i]);
         fclose(fp);
         return 1;
     }
 
-    GameLog_LogMessage(&g_logger, 2, GS_GAME_FILE_TEXT);
+    g_logger.logMessage(2, GS_GAME_FILE_TEXT);
     unsigned int n = 0;
     fseek(fp, 0, SEEK_SET);
     line[0] = '\0';
@@ -284,7 +284,7 @@ int Game::loadGameFile(const char *name)
         n++;
     }
     levelCount_ = (unsigned char)(n - 1);
-    GameLog_LogMessage(&g_logger, 2, GS_GAME_FILE_TEXT_DONE, (unsigned)levelCount_);
+    g_logger.logMessage(2, GS_GAME_FILE_TEXT_DONE, (unsigned)levelCount_);
     fclose(fp);
     return 1;
 }

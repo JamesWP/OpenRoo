@@ -65,7 +65,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     if (out == NULL)
         return;
 
-    GameLog_LogMessage(&g_logger, 3, GS_RPT_LOG_CREATE);
+    g_logger.logMessage(3, GS_RPT_LOG_CREATE);
 
     self->setReportTallyA(0);
     self->setReportLevelsWithBonus(0);
@@ -146,7 +146,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
             self->gemsRequired());
         self->setVitalityPercent(0x32);
         timeBonus = (unsigned)(self->map()->fileTimeLimit() * 0x32) / 100;
-        GameLog_LogMessage(&g_logger, 3, GS_RPT_LOG_TIME, timeBonus);
+        g_logger.logMessage(3, GS_RPT_LOG_TIME, timeBonus);
         Score_CalculateLevelScore(self, 2);
 
         sprintf(buf, GS_RPT_D_TAB, timeBonus);
@@ -206,7 +206,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     sprintf(buf, GS_RPT_SPLINES_IN, (unsigned)self->scriptPlayer()->splineLines());
     fputs(buf, out);
 
-    GameLog_LogMessage(&g_logger, 3, GS_RPT_LOG_CREATED);  // PRESERVED: logged before the files are closed
+    g_logger.logMessage(3, GS_RPT_LOG_CREATED);  // PRESERVED: logged before the files are closed
 
     fclose(out);
     if (sink != NULL)

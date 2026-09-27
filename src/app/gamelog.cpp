@@ -32,8 +32,7 @@
 #include "gamestr.h"
 
 /* The one-slot vtable: the scalar deleting destructor. */
-extern "C" __declspec(dllexport) void * __attribute__((thiscall)) GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags);
-static void *const game_logger_vtable_slots[1] = { (void *)&GameLog_ScalarDeletingDtor };
+static void *const game_logger_vtable_slots[1] = { (void *)&GameLogger::scalarDeletingDtor };
 #define GAME_LOGGER_VTABLE ((void *)game_logger_vtable_slots)
 
 /* FORMAT: the line formats, as the game's; checked against gamestr.h at first
@@ -127,125 +126,119 @@ static char *format_date(char *out)
 
 /* What every writer ends with: write and flush the line, then mirror it to the
  * notify window. */
-static void emit(GameLogger *self, int level, const char *line)
+void GameLogger::emit(int level, const char *line)
 {
-    if (self->fp && gamelog_fx() != FX_OFF) {
-        fwrite(line, 1, strlen(line), self->fp);
-        fflush(self->fp);
+    if (fp_ && gamelog_fx() != FX_OFF) {
+        fwrite(line, 1, strlen(line), fp_);
+        fflush(fp_);
     }
     // Dead in the game: nothing sets these two fields.
-    if (self->notifyHwnd && self->notifyWParam) {
+    if (notifyHwnd_ && notifyWParam_) {
         COPYDATASTRUCT cds;
         cds.dwData = (ULONG_PTR)level;
         cds.cbData = (DWORD)(strlen(line) + 1);  // PRESERVED: +1 here only
         cds.lpData = (PVOID)line;
-        SendMessageA(self->notifyHwnd, WM_COPYDATA_, (WPARAM)self->notifyWParam,
+        SendMessageA(notifyHwnd_, WM_COPYDATA_, (WPARAM)notifyWParam_,
                      (LPARAM)&cds);
     }
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-GameLog_CloseAndRebindVtable(GameLogger *self)
+void GameLogger::closeAndRebindVtable()
 {
-    self->pVtable = GAME_LOGGER_VTABLE;
-    if (self->fp)
-        fclose(self->fp);
+    pVtable_ = GAME_LOGGER_VTABLE;
+    if (fp_)
+        fclose(fp_);
 
 /* PRESERVED: fp is left dangling.  The only reuse, OpenLogFile, goes through
  * CloseLogFile, which clears it. */
 }
 
 /* Closes the file and clears the sink fields. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-GameLog_CloseLogFile(GameLogger *self)
+void GameLogger::closeLogFile()
 {
-    if (self->fp)
-        fclose(self->fp);
-    self->fp           = NULL;
-    self->notifyWParam = 0;
-    self->notifyHwnd   = NULL;
+    if (fp_)
+        fclose(fp_);
+    fp_           = NULL;
+    notifyWParam_ = 0;
+    notifyHwnd_   = NULL;
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
-GameLog_Construct(GameLogger *self)
+void GameLogger::construct()
 {
     verify_format_strings();
-    self->pVtable      = GAME_LOGGER_VTABLE;
-    self->minLevel     = 1;     // level-0 messages are off by default
-    self->fileName[0]  = '\0';  // PRESERVED: only byte 0; the rest stays uninitialised
-    self->fp           = NULL;
-    self->notifyWParam = 0;
-    self->notifyHwnd   = NULL;
+    pVtable_      = GAME_LOGGER_VTABLE;
+    minLevel_     = 1;     // level-0 messages are off by default
+    fileName_[0]  = '\0';  // PRESERVED: only byte 0; the rest stays uninitialised
+    fp_           = NULL;
+    notifyWParam_ = 0;
+    notifyHwnd_   = NULL;
 }
 
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-GameLog_ScalarDeletingDtor(GameLogger *self, unsigned char flags)
+void * __attribute__((thiscall))
+GameLogger::scalarDeletingDtor(GameLogger *self, unsigned char flags)
 {
-    GameLog_CloseAndRebindVtable(self);
+    self->closeAndRebindVtable();
     if (flags & 1)
         free(self);
     return self;
 }
 
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-GameLog_OpenLogFile(GameLogger *self, const char *filename, const char *mode)
+int GameLogger::openLogFile(const char *filename, const char *mode)
 {
     char date[16];
     char banner[256];
 
     verify_format_strings();
-    GameLog_CloseLogFile(self);
+    closeLogFile();
 
     if (mode == NULL)
         mode = MODE_WC;  // PRESERVED: MSVC's "wc"
 
-    self->minLevel = 1;
+    minLevel_ = 1;
 
     // PRESERVED: the banner is built before the open.
     format_date(date);
     sprintf(banner, FMT_BANNER, date);
 
-    strcpy(self->fileName, filename);
+    strcpy(fileName_, filename);
 
-    self->fp = fopen(self->fileName, mode);
-    if (self->fp == NULL) {
-        log_write("gamelog: could not open %s (mode %s)\n", self->fileName, mode);
+    fp_ = fopen(fileName_, mode);
+    if (fp_ == NULL) {
+        log_write("gamelog: could not open %s (mode %s)\n", fileName_, mode);
         MessageBoxA(NULL, GS_LOG_MB_TEXT, GS_LOG_MB_CAPT, 0);
         return 0;
     }
 
-    fwrite(banner, 1, strlen(banner), self->fp);
-    fflush(self->fp);
-    log_write("gamelog: opened %s (mode %s)\n", self->fileName, mode);
+    fwrite(banner, 1, strlen(banner), fp_);
+    fflush(fp_);
+    log_write("gamelog: opened %s (mode %s)\n", fileName_, mode);
     return 1;
 }
 
-extern "C" __declspec(dllexport) void * __attribute__((thiscall))
-GameLog_Initialize(GameLogger *self, const char *filename, const char *mode)
+void *GameLogger::initialize(const char *filename, const char *mode)
 {
     GameLogger scratch;
 
-    self->pVtable = GAME_LOGGER_VTABLE;
+    pVtable_ = GAME_LOGGER_VTABLE;
 
     // PRESERVED: the throwaway stack logger, built and torn down for nothing.
-    GameLog_Construct(&scratch);
-    GameLog_CloseAndRebindVtable(&scratch);
+    scratch.construct();
+    scratch.closeAndRebindVtable();
 
-    if (GameLog_OpenLogFile(self, filename, mode) == 0)
-        GameLog_CloseLogFile(self);
+    if (openLogFile(filename, mode) == 0)
+        closeLogFile();
 
-    return self;
+    return this;
 }
 
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...)
+void __cdecl GameLogger::logMessage(int level, const char *fmt, ...)
 {
     char timebuf[0x80];
     char msg[LOG_BUF];
     char out[LOG_BUF];
     va_list ap;
 
-    if (level < self->minLevel)
+    if (level < minLevel_)
         return;
 
     format_time(timebuf);
@@ -255,12 +248,11 @@ GameLog_LogMessage(GameLogger *self, int level, const char *fmt, ...)
     va_end(ap);
 
     sprintf(out, "%s" FMT_LINE, fx_prefix(), timebuf, msg);
-    emit(self, level, out);
+    emit(level, out);
 }
 
 /* The file comes before the line: (time, file, line, message). */
-extern "C" __declspec(dllexport) void __cdecl
-GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
+void __cdecl GameLogger::logSourceLocation(int level, const char *file,
                           int line, const char *fmt, ...)
 {
     char timebuf[0x80];
@@ -268,7 +260,7 @@ GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
     char out[LOG_BUF];
     va_list ap;
 
-    if (level < self->minLevel)
+    if (level < minLevel_)
         return;
 
     format_time(timebuf);
@@ -278,7 +270,7 @@ GameLog_LogSourceLocation(GameLogger *self, int level, const char *file,
     va_end(ap);
 
     sprintf(out, "%s" FMT_SRCLINE, fx_prefix(), timebuf, file, line, msg);
-    emit(self, level, out);
+    emit(level, out);
 }
 
 /* HRESULT to DirectSound error name, as the game's strings. */
@@ -308,15 +300,14 @@ GameLog_DSErrorToString(HRESULT hr)
 
 /* Logs "HH:MM:SS : Error <name>: message".  Returns level, which no caller
  * reads. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
-GameLog_LogWithErrorCode(GameLogger *self, int level, const char *message,
+int GameLogger::logWithErrorCode(int level, const char *message,
                          HRESULT hr)
 {
     char timebuf[0x80];
     const char *err;
     char *out;
 
-    if (level < self->minLevel)
+    if (level < minLevel_)
         return level;
 
     format_time(timebuf);
@@ -331,7 +322,7 @@ GameLog_LogWithErrorCode(GameLogger *self, int level, const char *message,
     err = GameLog_DSErrorToString(hr);
     sprintf(out, "%s" FMT_ERRLINE, fx_prefix(), timebuf, err, message);
 
-    emit(self, level, out);
+    emit(level, out);
 
     free(out);
     return level;

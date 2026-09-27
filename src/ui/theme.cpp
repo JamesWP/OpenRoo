@@ -339,7 +339,7 @@ ThemeSound_Add(ThemeSoundTable *self, unsigned int id, const char *waveName,
         e.enabled = 0;
         return 0;
     }
-    GameLog_LogMessage(&g_logger, 1, GS_THEME_SOUND_ADD, id & 0xffff, path);
+    g_logger.logMessage(1, GS_THEME_SOUND_ADD, id & 0xffff, path);
     strcpy(e.name, path);
     e.unknown104 = arg4;
     e.unknown108 = arg3;
@@ -712,9 +712,9 @@ void ThemeParser::sky(bool inEnvironment)
                                              d3d->bitDepth());
     if (logger != NULL) {
         if ((ok & 0xff) == 0)
-            GameLog_LogMessage(logger, 3, GS_THEME_SKY_FAILED, tok[1]);
+            logger->logMessage(3, GS_THEME_SKY_FAILED, tok[1]);
         else
-            GameLog_LogMessage(logger, 1, GS_THEME_SKY_LOADED, tok[1]);
+            logger->logMessage(1, GS_THEME_SKY_LOADED, tok[1]);
     }
 }
 
@@ -992,12 +992,12 @@ static void *const g_ThemeSoundVtable[1] = { (void *)&ThemeSound_ScalarDestructo
 extern "C" __declspec(dllexport) int __attribute__((thiscall))
 ThemeSound_ReleaseAll(ThemeSoundTable *self)
 {
-    GameLog_LogMessage(&g_logger, 1, GS_THEME_SOUND_RELEASING);
+    g_logger.logMessage(1, GS_THEME_SOUND_RELEASING);
     for (int i = 0; i < THEME_SOUND_COUNT; i++) {
         self->entries[i].enabled = 0;
         self->entries[i].name[0] = 0;
     }
-    GameLog_LogMessage(&g_logger, 1, GS_THEME_SOUND_RELEASED);
+    g_logger.logMessage(1, GS_THEME_SOUND_RELEASED);
     return 0;
 }
 

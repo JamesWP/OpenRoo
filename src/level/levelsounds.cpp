@@ -85,7 +85,7 @@ Sim_InitLevelBasedSounds(Game *self)
             log_write("levelsounds: KAROO_SIM_FX=worldcode -- Space/Candy swapped\n");
     }
 
-    GameLog_LogMessage(&g_logger, 2, GS_SND_TRY_INIT);
+    g_logger.logMessage(2, GS_SND_TRY_INIT);
     if (self->soundCreated() != 0) {
         pl->setWorldSoundVariant(0);
         if (strcmp(world, GS_SND_EGYPT) == 0)
@@ -137,7 +137,7 @@ Sim_InitLevelBasedSounds(Game *self)
                         game->soundAsset42ffe());
 
         if (game->restartCount() == 0 && game->sound3D() != 0) {
-            GameLog_LogMessage(&g_logger, 1, GS_SND_TRY_LEO);
+            g_logger.logMessage(1, GS_SND_TRY_LEO);
             // The count is re-read every pass.
             ExtraObjects *xo = game->extraObjects();
             for (unsigned short i = 0; i < xo->objectCount(); ++i) {
@@ -145,7 +145,7 @@ Sim_InitLevelBasedSounds(Game *self)
                 if (E->kind != EXTRA_SOUND)
                     continue;
                 const char *nm = E->file;
-                GameLog_LogMessage(&g_logger, 1, GS_SND_LEO_SOUND, nm);
+                g_logger.logMessage(1, GS_SND_LEO_SOUND, nm);
                 CStaticSoundbuffer *p = game->soundManager()->acquireStatic(nm, 1);
                 E->sound = p;
                 if (p != NULL) {
@@ -156,6 +156,6 @@ Sim_InitLevelBasedSounds(Game *self)
             }
         }
     }
-    GameLog_LogMessage(&g_logger, 2, GS_SND_INIT_DONE);
+    g_logger.logMessage(2, GS_SND_INIT_DONE);
     return 0;
 }

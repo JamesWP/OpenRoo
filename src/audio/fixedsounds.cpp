@@ -56,9 +56,9 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         return;
 
     if ((self->config()->save(GS_CFG_FILE) & 0xff) != 0)
-        GameLog_LogMessage(&g_logger, 1, GS_CFG_SAVE_OK);
+        g_logger.logMessage(1, GS_CFG_SAVE_OK);
     else
-        GameLog_LogMessage(&g_logger, 3, GS_CFG_SAVE_ERR);
+        g_logger.logMessage(3, GS_CFG_SAVE_ERR);
     self->menu()->setLockStart(*self->clock());
     self->menu()->setLock(1);
     if (self->musicOn() != 0)
@@ -66,7 +66,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(GS_GAME_MAIN));
 
     if (self->soundCreated() == 0) {
-        GameLog_LogMessage(&g_logger, 1, GS_CFG_NO_SOUND);
+        g_logger.logMessage(1, GS_CFG_NO_SOUND);
         self->setMusicOn(0);
         if (self->soundCreated() == 0) {
             self->fixedSounds()->loaded = 1;

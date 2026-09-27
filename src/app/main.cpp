@@ -199,7 +199,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     if (hWnd == NULL)
         return 0;
 
-    GameLog_OpenLogFile(&g_logger, "JJ.log", NULL);
+    g_logger.openLogFile("JJ.log", NULL);
 
     // The first character is tested, not the pointer.  None of the early
     // returns below destroys the window.
@@ -248,7 +248,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     if (!d3d->Create(hWnd, cfg->adapterGuid(), mode, true)
         && !d3d->Create(hWnd, NULL, mode, true)
         && !d3d->Create(hWnd, NULL, 0, true)) {
-        GameLog_LogSourceLocation(&g_logger, 4,
+        g_logger.logSourceLocation(4,
             "src/app/main.cpp", __LINE__,
             "Creation of Direct3D failed");
         d3d->RestoreDisplayMode();
@@ -292,7 +292,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
         if (g_movie.loadVideo(hWnd, dd1, g_movieSurface, path) >= 0)
             playing = true;
         else
-            GameLog_LogMessage(&g_logger, 3, "MAIN: Couldn't load %s .", path);
+            g_logger.logMessage(3, "MAIN: Couldn't load %s .", path);
     }
     g_moviePlaying = playing ? 1 : 0;
     if (dd1)

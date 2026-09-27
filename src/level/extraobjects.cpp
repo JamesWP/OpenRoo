@@ -326,7 +326,7 @@ void ExtraObjects::parseSpline(const char *mode)
             r->splineMode = 1;
         if (strcmp(mode, "SPLINE_STATIC") == 0)
             r->splineMode = 2;
-        GameLog_LogMessage(&g_logger, 1, "LEO: Spline-mode:%d", r->splineMode);
+        g_logger.logMessage(1, "LEO: Spline-mode:%d", r->splineMode);
     }
     if (r->splineMode == 0)
         return;
@@ -335,7 +335,7 @@ void ExtraObjects::parseSpline(const char *mode)
     if (mode != NULL) {
         more = leo_tok();
         r->splineTime = atoi(more);
-        GameLog_LogMessage(&g_logger, 1, "LEO: Spline-time:%d", r->splineTime);
+        g_logger.logMessage(1, "LEO: Spline-time:%d", r->splineTime);
     }
     // Every attempt bumps the count, the failing last one included, and it is
     // decremented once after.  PRESERVED: unbounded against 0x100.
@@ -364,13 +364,13 @@ void ExtraObjects::parseSpline(const char *mode)
                 r->splinePoints[i][k] = r->splinePoints[j][k];
                 r->splinePoints[j][k] = tmp;
             }
-    GameLog_LogMessage(&g_logger, 1, "LEO: Spline-points:%d", r->splinePointCount);
+    g_logger.logMessage(1, "LEO: Spline-points:%d", r->splinePointCount);
 }
 
 /* Sound <file> x y z [param] */
 void ExtraObjects::parseSound()
 {
-    GameLog_LogMessage(&g_logger, 1, "LEO: Sound noticed, Index=%d", objectCount_);
+    g_logger.logMessage(1, "LEO: Sound noticed, Index=%d", objectCount_);
     current()->kind = EXTRA_SOUND;
     char *z = NULL;
     char *name = leo_tok();
@@ -398,12 +398,12 @@ void ExtraObjects::parseSound()
 /* Particle <file> pos v2 <src> <dest> <texture> [spline] */
 void ExtraObjects::parseParticle()
 {
-    GameLog_LogMessage(&g_logger, 1, "LEO: Particle-System noticed, Index=%d", objectCount_);
+    g_logger.logMessage(1, "LEO: Particle-System noticed, Index=%d", objectCount_);
     current()->kind = EXTRA_PARTICLE;
     char *tex = NULL;
     char *name = leo_tok();
     sprintf(current()->file, "%s\\%s", g_gameDir, name);
-    GameLog_LogMessage(&g_logger, 1, "LEO: Particle-Filename:%s", current()->file);
+    g_logger.logMessage(1, "LEO: Particle-Filename:%s", current()->file);
     if (name != NULL && readSixFloats()) {
         char src[0x100];
         strcpy(src, leo_tok());
@@ -412,7 +412,7 @@ void ExtraObjects::parseParticle()
         if (dest != NULL) {
             tex = leo_tok();
             sprintf(current()->textureFile, "%s\\%s", g_gameDir, tex);
-            GameLog_LogMessage(&g_logger, 1, "LEO: Particle-Texture-Filename:%s",
+            g_logger.logMessage(1, "LEO: Particle-Texture-Filename:%s",
                                current()->textureFile);
         }
     }
@@ -423,26 +423,26 @@ void ExtraObjects::parseParticle()
  * [spline] */
 void ExtraObjects::parseModel()
 {
-    GameLog_LogMessage(&g_logger, 1, "LEO: Model noticed, Index=%d", objectCount_);
+    g_logger.logMessage(1, "LEO: Model noticed, Index=%d", objectCount_);
     current()->kind = EXTRA_MODEL;
     char *tex = NULL;
     char *name = leo_tok();
     strcpy(current()->file, name);  // no game-directory prefix
-    GameLog_LogMessage(&g_logger, 1, "LEO: Model-Filename:%s", current()->file);
+    g_logger.logMessage(1, "LEO: Model-Filename:%s", current()->file);
     if (name != NULL && readSixFloats()) {
         char *w = leo_tok();
         bool more = true;
         if (strcmp(w, "ANI") == 0) {
             char *ani = leo_tok();
             strcpy(current()->animationFile, ani);
-            GameLog_LogMessage(&g_logger, 1, "LEO: model-animation, filename:%s",
+            g_logger.logMessage(1, "LEO: model-animation, filename:%s",
                                current()->animationFile);
             more = (ani != NULL);
             if (more)
                 w = leo_tok();
         } else {
             memset(current()->animationFile, 0, sizeof(current()->animationFile));
-            GameLog_LogMessage(&g_logger, 1, "LEO: no model-animation");
+            g_logger.logMessage(1, "LEO: no model-animation");
         }
         if (more && w != NULL) {
             char src[0x100];
@@ -454,11 +454,11 @@ void ExtraObjects::parseModel()
                 w = leo_tok();
                 if (strcmp(w, "LIT") == 0)
                     current()->lit = 1;
-                GameLog_LogMessage(&g_logger, 1, "LEO: Model lit=%d", current()->lit);
+                g_logger.logMessage(1, "LEO: Model lit=%d", current()->lit);
                 if (w != NULL) {
                     tex = leo_tok();
                     strcpy(current()->textureFile, tex);
-                    GameLog_LogMessage(&g_logger, 1, "LEO: Model-Texture-Filename:%s",
+                    g_logger.logMessage(1, "LEO: Model-Texture-Filename:%s",
                                        current()->textureFile);
                 }
             }
@@ -472,10 +472,10 @@ void ExtraObjects::parseModel()
         unsigned int a = addressFromName(w);
         if (a == 0) {
             current()->textureAddress = 0;
-            GameLog_LogMessage(&g_logger, 1, "LEO: no tex-address");
+            g_logger.logMessage(1, "LEO: no tex-address");
         } else {
             current()->textureAddress = a;
-            GameLog_LogMessage(&g_logger, 1, "LEO: texture-address caption:%s value:%d", w, a);
+            g_logger.logMessage(1, "LEO: texture-address caption:%s value:%d", w, a);
             w = leo_tok();
         }
     }
@@ -485,7 +485,7 @@ void ExtraObjects::parseModel()
 /* Billboard pos size <src> <dest> <texture> [spline] */
 void ExtraObjects::parseBillboard()
 {
-    GameLog_LogMessage(&g_logger, 1, "LEO: Billboard noticed, Index=%d", objectCount_);
+    g_logger.logMessage(1, "LEO: Billboard noticed, Index=%d", objectCount_);
     current()->kind = EXTRA_BILLBOARD;
     char *tex = NULL;
     bool ok = true;
@@ -497,7 +497,7 @@ void ExtraObjects::parseBillboard()
     if (ok) {
         char *t = leo_tok();
         current()->billboardSize = (float)atof(t);
-        GameLog_LogMessage(&g_logger, 1, "LEO: Billboard-Size.z=:%f",
+        g_logger.logMessage(1, "LEO: Billboard-Size.z=:%f",
                            (double)current()->billboardSize);
         if (t != NULL) {
             char src[0x100];
@@ -507,7 +507,7 @@ void ExtraObjects::parseBillboard()
             if (dest != NULL) {
                 tex = leo_tok();
                 strcpy(current()->textureFile, tex);
-                GameLog_LogMessage(&g_logger, 1, "LEO: Model-Texture-Filename:%s",
+                g_logger.logMessage(1, "LEO: Model-Texture-Filename:%s",
                                    current()->textureFile);
                 objectCount_++;  // PRESERVED: bumped again below; the spline lands in the next record
             }

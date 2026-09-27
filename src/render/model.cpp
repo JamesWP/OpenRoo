@@ -180,7 +180,7 @@ ModelManager_FindOrImport(ModelManager *self, char *name)
         mm_lower_inplace(cached->pszName);
         if (strcmp(cached->pszName, name) == 0) {
             if (self->pLogger != NULL)
-                GameLog_LogMessage(self->pLogger, 1, GS_MM_FOUND, name);
+                self->pLogger->logMessage(1, GS_MM_FOUND, name);
             return cached;
         }
     }
@@ -191,11 +191,11 @@ ModelManager_FindOrImport(ModelManager *self, char *name)
         if (mesh != NULL)
             mm_delete(mesh);
         if (self->pLogger != NULL)
-            GameLog_LogMessage(self->pLogger, 3, GS_MM_FAILED, name);
+            self->pLogger->logMessage(3, GS_MM_FAILED, name);
         return NULL;
     }
     if (self->pLogger != NULL)
-        GameLog_LogMessage(self->pLogger, 1, GS_MM_LOADED, name);
+        self->pLogger->logMessage(1, GS_MM_LOADED, name);
     self->cache.append(mesh);
     return mesh;
 }

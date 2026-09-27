@@ -36,7 +36,7 @@
 #include <stddef.h>
 #include "layout.h"
 
-struct GameLogger;
+class GameLogger;
 
 /* One keyword's entry.  Named from the .ani header comment quoted above. */
 struct __attribute__((packed)) AnimSlot {

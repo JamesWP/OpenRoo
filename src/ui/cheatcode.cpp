@@ -100,7 +100,7 @@ Sim_HandleTypedCheatCode(Game *self)
                 self->cdThemes()->play(GS_GAME_GAMEOVER);
             Score_CalculateLevelScore(self, 0x28);
             self->setDebounce(0x0d);
-            GameLog_LogMessage(&g_logger, 1, GS_GAME_COMPLETED_AT_LEVEL,
+            g_logger.logMessage(1, GS_GAME_COMPLETED_AT_LEVEL,
                                (unsigned int)self->levelIndex() + 1,
                                (unsigned int)self->levelCount());
         } else {
@@ -119,7 +119,7 @@ Sim_HandleTypedCheatCode(Game *self)
             self->menu()->setLock(1);
             Score_CalculateLevelScore(self, (char)self->state());
             self->setRestartCount(0);
-            GameLog_LogMessage(&g_logger, 1, GS_CHEAT_C_SL);
+            g_logger.logMessage(1, GS_CHEAT_C_SL);
         }
         self->setTotalPlayTime((double)(unsigned long long)self->timeElapsed() + self->totalPlayTime());
     }
@@ -138,7 +138,7 @@ Sim_HandleTypedCheatCode(Game *self)
             Sim_SetCurrentLevelName(self, lvl);
             if (lvl < self->levelCount()) {
                 sprintf(path, GS_CHEAT_FMT_LVL_PATH, g_gameDir, self->levelName());
-                GameLog_LogMessage(&g_logger, 3, GS_CHEAT_LC_BY_NUMBER, (unsigned int)lvl,
+                g_logger.logMessage(3, GS_CHEAT_LC_BY_NUMBER, (unsigned int)lvl,
                                    self->levelName());
                 self->setLevelIndex(lvl);
                 FILE *fp = fopen(path, "r");
@@ -162,7 +162,7 @@ Sim_HandleTypedCheatCode(Game *self)
         if (len > 6) {
             memcpy(frame, buf + 6, len - 6);
             frame[len - 6] = 0;
-            GameLog_LogMessage(&g_logger, 3, GS_CHEAT_LC, (const char *)frame);
+            g_logger.logMessage(3, GS_CHEAT_LC, (const char *)frame);
             sprintf(path, GS_CHEAT_FMT_LVL_PATH, g_gameDir, (const char *)frame);
             FILE *fp = fopen(path, "r");
             if (fp != NULL) {
