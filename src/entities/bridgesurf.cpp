@@ -112,7 +112,7 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
 }
 
 extern "C" __declspec(dllexport) void __cdecl
-Direct3D_DrawBridgeSurfaces(Game *game, void *lvl, RenderDevice *d3d, double t)
+BridgeSurf_Draw(Game *game, void *lvl, RenderDevice *d3d, double t)
 {
     Mat4 world = {};
     world.m[0] = world.m[5] = world.m[10] = world.m[15] = 1.0f;

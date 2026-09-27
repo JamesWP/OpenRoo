@@ -4,4 +4,4 @@ struct QuadVerts;
 class RenderDevice;
 /* __cdecl(placements, theme block, d3d); one caller, RenderGameFrame. */
 extern "C" __declspec(dllexport) void __cdecl
-Direct3D_DrawQuadBatch(QuadVerts *verts, void *game, RenderDevice *d3d);
+QuadBatch_Draw(QuadVerts *verts, void *game, RenderDevice *d3d);

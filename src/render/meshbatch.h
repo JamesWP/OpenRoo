@@ -3,4 +3,4 @@
 class RenderDevice;
 /* __cdecl(placements, theme block, d3d); one caller, RenderGameFrame. */
 extern "C" __declspec(dllexport) void __cdecl
-Direct3D_DrawMeshBatch(void *ctx, void *game, RenderDevice *d3d);
+MeshBatch_Draw(void *ctx, void *game, RenderDevice *d3d);
