@@ -8,7 +8,7 @@
  *              images)
  *   "RGN"      111 launcher window shape, built from launcher_region.png
  *              into build/obj/rgn_111.bin by tools/png_to_rgn.py
- *   VERSIONINFO 1
+ *   VERSIONINFO 1 our own name and version
  *
  * FORMAT: dialog templates must stay DIALOG (not DIALOGEX) and controls
  * keep their order.  The launcher's owner-drawn buttons name the Button
@@ -36,12 +36,9 @@ LANGUAGE 0x07, 0x01
 106 ICON "karoo.ico"
 111 RGN "rgn_111.bin"
 
-/* The original's version block.  windres cannot write an empty value with
- * no data, so the four empty strings here carry one NUL where the original
- * had none; every other byte matches. */
 1 VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 0,1,0,0
+ PRODUCTVERSION 0,1,0,0
  FILEFLAGSMASK 0x3fL
  FILEFLAGS 0x0L
  FILEOS VOS_NT_WINDOWS32
@@ -50,25 +47,19 @@ LANGUAGE 0x07, 0x01
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040704b0"
+        BLOCK "000004b0"
         BEGIN
-            VALUE "Comments", ""
-            VALUE "CompanyName", "Fakt\0"
-            VALUE "FileDescription", "JJ\0"
-            VALUE "FileVersion", "1, 0, 0, 1\0"
-            VALUE "InternalName", "JJ\0"
-            VALUE "LegalCopyright", "Copyright © 1999\0"
-            VALUE "LegalTrademarks", ""
-            VALUE "OriginalFilename", "JJ.exe\0"
-            VALUE "PrivateBuild", ""
-            VALUE "ProductName", "Fakt JJ\0"
-            VALUE "ProductVersion", "1, 0, 0, 1\0"
-            VALUE "SpecialBuild", ""
+            VALUE "FileDescription", "Open'Roo"
+            VALUE "FileVersion", "0.1.0.0"
+            VALUE "InternalName", "KarooOwn"
+            VALUE "OriginalFilename", "KarooOwn.exe"
+            VALUE "ProductName", "Open'Roo"
+            VALUE "ProductVersion", "0.1.0.0"
         END
     END
     BLOCK "VarFileInfo"
     BEGIN
-        VALUE "Translation", 0x407, 1200
+        VALUE "Translation", 0x0, 1200
     END
 END
 
