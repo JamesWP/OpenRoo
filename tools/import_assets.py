@@ -196,6 +196,10 @@ DATA_DIRS = ["bitmaps", "CDTracks", "fonts", "InstructionScripts",
              "video", "waves"]
 DATA_FILES = ["ENGLISH.FIS", "JJ.GAM", "ProgableControl.sav"]
 OPTIONAL_PREFIXES = ["CDTracks/Track ", "video/"]
+# The original launcher's bitmaps: replaced by data/launcher/, never read.
+EXCLUDED = {"bitmaps/ENDE_FOC.BMP", "bitmaps/ENDE_OFF.BMP", "bitmaps/MENU.BMP",
+            "bitmaps/setup_foc.bmp", "bitmaps/setup_off.bmp",
+            "bitmaps/spielen_foc.bmp", "bitmaps/spielen_off.bmp"}
 
 
 def cmd_manifest(args):
@@ -203,6 +207,8 @@ def cmd_manifest(args):
     entries = []
 
     def add(rel):
+        if rel in EXCLUDED:
+            return
         full = os.path.join(root, rel)
         e = {"path": rel, "sha256": sha256_file(full),
              "size": os.path.getsize(full),

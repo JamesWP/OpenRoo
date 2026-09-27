@@ -5,8 +5,9 @@
  *   DIALOG     104 launcher, 110 device (display driver and mode)
  *   ICON       106 window/taskbar icon, openroo.ico (windres numbers its
  *              images)
- *   "RGN"      111 launcher window shape, built from launcher_region.png
- *              into build/obj/rgn_111.bin by tools/png_to_rgn.py
+ *   RCDATA     200-206 launcher bitmaps (background; play, setup, quit
+ *              off/focus), cut from data/launcher/ into build/obj/ by
+ *              tools/slice_launcher.py; ids are launcherdialogs.cpp's
  *   VERSIONINFO 1 our own name and version
  *
  * FORMAT: dialog templates must stay DIALOG (not DIALOGEX) and controls
@@ -29,7 +30,13 @@
 
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 106 ICON "openroo.ico"
-111 RGN "rgn_111.bin"
+200 RCDATA "launcher_bg.bmp"
+201 RCDATA "launcher_play_off.bmp"
+202 RCDATA "launcher_play_foc.bmp"
+203 RCDATA "launcher_setup_off.bmp"
+204 RCDATA "launcher_setup_foc.bmp"
+205 RCDATA "launcher_quit_off.bmp"
+206 RCDATA "launcher_quit_foc.bmp"
 
 1 VERSIONINFO
  FILEVERSION 0,1,0,0
@@ -61,7 +68,7 @@ END
 /* The launcher's buttons are owner-drawn from bitmaps; their text is
  * never shown. */
 IDD_LAUNCHER DIALOG 0, 0, 262, 246
-STYLE WS_POPUP | DS_CENTER
+STYLE WS_POPUP | WS_MINIMIZEBOX | DS_CENTER
 FONT 8, "MS Sans Serif"
 BEGIN
     CONTROL         "Play", IDC_PLAY, 0x80, BS_OWNERDRAW | BS_CENTER | BS_VCENTER | BS_NOTIFY | WS_TABSTOP, 7, 7, 248, 45
