@@ -1,4 +1,4 @@
-/* Tile: one cell of the level grid (levelmap.h), a 0x7f-byte record.  The
+/* Tile: one cell of the level grid (levelmap.h).  The
  * first four bytes (height, kind, param, contents) are the .jjm file's four
  * bytes per cell; the rest is state the level's objects keep on the cell.  Not
  * every field is declared yet: only those the code reads by name.
@@ -123,12 +123,11 @@ enum TileContents {
 
 class __attribute__((packed)) Tile {
 public:
-    static const int ORIGIN = 0x19c;
-
-    // Both axes are signed: the lift reads its cell as signed char.
-    static Tile *at(unsigned char *base, int u, int v)
+    // origin is the grid's first cell (LevelMap::tileBase()).  Both axes are
+    // signed: the lift reads its cell as signed char.
+    static Tile *at(Tile *origin, int u, int v)
     {
-        return (Tile *)(base + (v + u * 100) * 0x7f + ORIGIN);
+        return origin + (v + u * 100);
     }
 
     unsigned char height() const               { return height_; }

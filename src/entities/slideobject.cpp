@@ -118,7 +118,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 {
     unsigned int u, v, height, kind;
     unsigned char n, var, last;
-    unsigned char *base;
+    Tile *base;
     SlideObject *obj;
     Tile *tile;
 

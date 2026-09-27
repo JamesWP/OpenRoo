@@ -8,6 +8,8 @@
 
 /* A search node, zero-allocated.  A plain public record: FoePath builds and
  * links them, and the chase (foe.cpp) reads the result's parent and cell. */
+class Tile;
+
 struct PathNode {
     int       f;            // g + h, the open list's order
     int       h;            // the squared distance to the goal
@@ -49,7 +51,7 @@ class FoePath {
 public:
     // Allocates (nothrow) and populates one; NULL if the allocation fails, and
     // the caller stores that.
-    static FoePath *create(unsigned char *tileBase, unsigned short field04);
+    static FoePath *create(Tile *tileBase, unsigned short field04);
     // dispose(), then delete.
     static void destroy(FoePath *p);
 
@@ -94,10 +96,10 @@ public:
 private:
     FoePath() = delete;  // built by create()
     // The constructor's stores.
-    void populate(unsigned char *tileBase, unsigned short field04);
+    void populate(Tile *tileBase, unsigned short field04);
     static PathNode *findByKey(PathNode *hdr, int key);
 
-    unsigned char *tileBase_;  // the ctor's argument
+    Tile *tileBase_;  // the ctor's argument
     unsigned short field_04;   // the ctor's second argument (0)
     PathNode      *open_;      // a header node, fresh each search
     PathNode      *closed_;    // likewise

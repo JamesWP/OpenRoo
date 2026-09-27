@@ -188,7 +188,7 @@ static inline double load_double(const void *p)
     return v;
 }
 
-/* Tile addressing: base + (v + u*100) * 0x7f, both axes read signed. */
+/* Tile addressing: Tile::at(base, u, v), both axes read signed. */
 #define TILE(u, v)   Tile::at(tileBase_, (u), (v))
 #define GU           cellU_
 #define GV           cellV_
@@ -395,7 +395,7 @@ unsigned int MovableEntity::updateMovement()
                     copy8(&teleportSince_, &now_);
                     teleportPhase_ = 2;
                     CUR->setBusy(0);
-                    unsigned char *base = tileBase_;
+                    Tile *base = tileBase_;
                     Tile *here = CUR;
                     signed char du = (signed char)here->teleportU();
                     signed char dv = (signed char)here->teleportV();
@@ -428,7 +428,7 @@ unsigned int MovableEntity::updateMovement()
 
             // Attach to a moving platform.
             if (((signed char)slideSlot_) == -1) {
-                unsigned char *base = tileBase_;
+                Tile *base = tileBase_;
                 Tile *here = CUR;
                 if ((signed char)here->objectMarker() == TILE_SLIDE_TRACK) {
                     unsigned pu = here->slideOriginU();
@@ -486,7 +486,7 @@ unsigned int MovableEntity::updateMovement()
 
     // Riding a platform.
     if (((signed char)slideSlot_) != -1 && ((signed char)moveState_) == 0) {
-        unsigned char *base = tileBase_;
+        Tile *base = tileBase_;
         Tile *here = CUR;
         unsigned pu = here->slideOriginU();
         unsigned pv = here->slideOriginV();

@@ -22,7 +22,7 @@ public:
     // The level's tile array, copied in at spawn from Game::tileBase().
     // Public because tilequery.cpp's farthest-tile search takes a
     // MovableEntity and reaches the map through it.
-    unsigned char *tileBase() const { return tileBase_; }
+    Tile *tileBase() const { return tileBase_; }
 
     // Zero the twelve sound handles.
     void zeroSoundSlots();
@@ -146,7 +146,7 @@ protected:
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;
-    unsigned char      *tileBase_;
+    Tile               *tileBase_;
     double              idleDuration_;  // ms the idle animation runs.
     int                 onStairOrSlide_;
     int                 movingBackwards_;  // Set when turnKind_ is 3 (reversing this step).

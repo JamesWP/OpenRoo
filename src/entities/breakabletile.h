@@ -73,7 +73,7 @@ private:
     signed char         cellU_;           // +0x31  read by RenderGameFrame
     signed char         cellV_;           // +0x32
     signed char         heightCell_;      // +0x33
-    unsigned char      *tileBase_;        // +0x34  Game::tileBase()
+    Tile               *tileBase_;        // +0x34  Game::tileBase()
     int                 justRespawned_;   // +0x38  set for the respawn tick
     int                 justFell_;        // +0x3c  set for the fall tick
     double              eventTime_;       // +0x40  the clock at the last fall or respawn

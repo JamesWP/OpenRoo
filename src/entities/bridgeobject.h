@@ -94,7 +94,7 @@ private:
     signed char         cellU_;       // +0x31
     signed char         cellV_;       // +0x32
     signed char         heightCell_;  // +0x33
-    unsigned char      *tileBase_;    // +0x34  Game::tileBase()
+    Tile               *tileBase_;    // +0x34  Game::tileBase()
     unsigned char       guard_;       // +0x38  the far end; read signed by the tick
     float               restU_;       // +0x39  the anchor, where the deck
     float               restY_;       // +0x3d  starts

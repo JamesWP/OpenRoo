@@ -341,7 +341,7 @@ void Sim_ReleasePathSearchNodeLists(FoePath *self)
     self->releaseLists();
 }
 
-FoePath *FoePath::create(unsigned char *tileBase, unsigned short field04)
+FoePath *FoePath::create(Tile *tileBase, unsigned short field04)
 {
     FoePath *p = (FoePath *)::operator new(sizeof(FoePath), std::nothrow);
     if (p == 0)
@@ -356,7 +356,7 @@ void FoePath::destroy(FoePath *p)
     ::operator delete(p);
 }
 
-void FoePath::populate(unsigned char *tileBase, unsigned short field04)
+void FoePath::populate(Tile *tileBase, unsigned short field04)
 {
     const LevelMap *map = LevelMap::fromTileBase(tileBase);
 
@@ -646,7 +646,7 @@ Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
  * "illegal" (the bridge and jump-pad blocks both do, on their failure path),
  * so reordering them changes the answer. */
 int
-Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned char v_from,
+Sim_CheckCellStepIsLegal(Tile *base, unsigned char u_from, unsigned char v_from,
                          unsigned char u_to, unsigned char v_to)
 {
 
