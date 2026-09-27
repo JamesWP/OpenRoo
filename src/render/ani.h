@@ -7,26 +7,19 @@
  *     // -----------------------------------
  *     // Name    FirstFrame    NumFrames    FPS    Flag
  *
- * which matches the loader (token[1..3] -> +0x0, +0x4, +0x8) and matches
- * every consumer: +0x4 is tested for zero as "this animation is absent", it
- * is the modulus of the looping frame index, and +0x0 is the base the phase
- * is measured from.  `Flag` is the fifth token; the only value the loader
- * recognises is "r", which sets +0xc and plays the range backwards.
+ which matches the loader (tokens 1..3 are the first three fields) and
+ * matches every consumer: the frame count is tested for zero as "this
+ * animation is absent", it is the modulus of the looping frame index, and the
+ * first frame is the base the phase is measured from.  `Flag` is the fifth
+ * token; the only value the loader recognises is "r", which sets the reverse
+ * flag and plays the range backwards.
  *
- * THE TABLE.  24 slots, one per keyword, 0x180 bytes.  It is never allocated
- * on its own: it is embedded, unaligned, in the two objects that animate.
+ * THE TABLE.  24 slots, one per keyword.  It is never allocated on its own: it
+ * is embedded in the two objects that animate: the type-0x00 scene object,
+ * loaded by BuildSceneObjectList, and ThemeLevelObject (theme.h), loaded by
+ * ThemeFileLoader.
  *
- *   - the type-0x00 scene object, at +0x11, loaded by BuildSceneObjectList
- *     with +0xd set to 1 on success.  +0x11 + 0x180 = +0x191,
- *     which is exactly where the object's position begins (dsoscene.cpp's
- *     O_POS) -- the table tiles the gap.
- *   - ThemeLevelObject (stride 0x5dd, theme.h), at +0xc1, loaded by
- *     ThemeFileLoader.
- *
- * Both bases are odd addresses, so every field is potentially unaligned; the
- * struct is packed and must only ever be reached through a pointer.
- *
- * NOMOVESTATES.  ThemeLevelObject::bNoMoveStates (+0x5a9) is a flag
+ * NOMOVESTATES.  ThemeLevelObject::bNoMoveStates is a flag
  * ThemeFileLoader sets from the .thm keyword "nomovestates".  It selects
  * which of the two evaluators below a model gets, and it is the whole reason
  * there are two.
@@ -39,7 +32,7 @@
 class GameLogger;
 
 /* One keyword's entry.  Named from the .ani header comment quoted above. */
-class __attribute__((packed)) AnimSlot {
+class AnimSlot {
 public:
      
 
@@ -75,7 +68,7 @@ private:
  * animation code, so LookupAnimDescriptor can never return them.  They are
  * kept because the table's shape is the file's: the .ani files all carry the
  * keywords (bare, with no numbers, in every shipped file). */
-class __attribute__((packed)) AnimTable {
+class AnimTable {
 public:
      
 
@@ -87,35 +80,35 @@ public:
     AnimSlot *lookup(unsigned int code);
 
 private:
-    AnimSlot walkForward_;      /* +0x000 */
-    AnimSlot walkBackward_;     /* +0x010 */
-    AnimSlot speedForward_;     /* +0x020  unreachable: no code */
-    AnimSlot speedBackward_;    /* +0x030  unreachable: no code */
-    AnimSlot slowForward_;      /* +0x040  unreachable: no code */
-    AnimSlot slowBackward_;     /* +0x050  unreachable: no code */
-    AnimSlot celebration_;      /* +0x060  unreachable: no code */
-    AnimSlot jump_;             /* +0x070 */
-    AnimSlot glue_;             /* +0x080 */
-    AnimSlot ghost_;            /* +0x090 */
-    AnimSlot ice_;              /* +0x0a0 */
-    AnimSlot fall_;             /* +0x0b0 */
-    AnimSlot paraglide_;        /* +0x0c0 */
-    AnimSlot slide_;            /* +0x0d0 */
-    AnimSlot idle1_;            /* +0x0e0 */
-    AnimSlot idle2_;            /* +0x0f0 */
-    AnimSlot fieldStairUp_;     /* +0x100 */
-    AnimSlot fieldStairDown_;   /* +0x110 */
-    AnimSlot stairStairUp_;     /* +0x120 */
-    AnimSlot stairStairDown_;   /* +0x130 */
-    AnimSlot stairFieldUp_;     /* +0x140 */
-    AnimSlot stairFieldDown_;   /* +0x150 */
-    AnimSlot turnLeft_;         /* +0x160 */
-    AnimSlot turnRight_;        /* +0x170 */
+    AnimSlot walkForward_;      
+    AnimSlot walkBackward_;     
+    AnimSlot speedForward_;    
+    AnimSlot speedBackward_;  
+    AnimSlot slowForward_;   
+    AnimSlot slowBackward_; 
+    AnimSlot celebration_; 
+    AnimSlot jump_;       
+    AnimSlot glue_;      
+    AnimSlot ghost_;    
+    AnimSlot ice_;    
+    AnimSlot fall_;  
+    AnimSlot paraglide_;        
+    AnimSlot slide_;           
+    AnimSlot idle1_;          
+    AnimSlot idle2_;         
+    AnimSlot fieldStairUp_; 
+    AnimSlot fieldStairDown_;   
+    AnimSlot stairStairUp_;    
+    AnimSlot stairStairDown_; 
+    AnimSlot stairFieldUp_;     
+    AnimSlot stairFieldDown_;  
+    AnimSlot turnLeft_;       
+    AnimSlot turnRight_;     
      
 };
 
 /* The animation codes, as LookupAnimDescriptor dispatches them.
- * These are the values MovableEntity carries in anim_ (+0x9a; see
+ * These are the values MovableEntity carries in anim_ (see
  * movableentity.h), which is why 0xfa/0xfb are already spelled there. */
 enum AnimCode {
     ANIM_ICE               = 0x03,

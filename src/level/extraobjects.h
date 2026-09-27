@@ -15,7 +15,7 @@ enum ExtraObjectKind {
     EXTRA_MODEL = 0, EXTRA_PARTICLE = 1, EXTRA_BILLBOARD = 2, EXTRA_SOUND = 3
 };
 
-struct __attribute__((packed)) ExtraObjectRecord {
+struct ExtraObjectRecord {
      
 
     // FORMAT: "<game dir>\<name>" of the model, particle system or sound.
@@ -40,10 +40,7 @@ struct __attribute__((packed)) ExtraObjectRecord {
      
 };
 
-/* The record's fields tile its 0xf40 bytes. */
- 
-
-class __attribute__((packed)) ExtraObjects {
+class ExtraObjects {
 public:
      
 

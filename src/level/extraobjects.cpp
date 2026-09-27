@@ -102,15 +102,26 @@ void ExtraObjects::recDump(const char *path)
     fprintf(f, "== %s objects=%u entries=%u\n", path, objectCount_, entries_);
     for (unsigned i = 0; i <= objectCount_ && i < RECORD_MAX; i++) {
         const ExtraObjectRecord *r = &records_[i];
-        const unsigned char *b = (const unsigned char *)r;
         unsigned long h = 2166136261UL;
+        // Field by field, each at its own size: the reference hashed the
+        // record's fields back to back, with no padding between them.
         fnv_path(&h, r->file, sizeof(r->file));
-        fnv(&h, b + offsetof(ExtraObjectRecord, position),
-            offsetof(ExtraObjectRecord, animationFile) - offsetof(ExtraObjectRecord, position));
+        fnv(&h, r->position, sizeof(r->position));
+        fnv(&h, r->field_10c, sizeof(r->field_10c));
         fnv_path(&h, r->animationFile, sizeof(r->animationFile));
         fnv_path(&h, r->textureFile, sizeof(r->textureFile));
-        fnv(&h, b + offsetof(ExtraObjectRecord, lit),
-            sizeof(*r) - offsetof(ExtraObjectRecord, lit));
+        fnv(&h, &r->lit, sizeof(r->lit));
+        fnv(&h, &r->kind, sizeof(r->kind));
+        fnv(&h, &r->billboardSize, sizeof(r->billboardSize));
+        fnv(&h, &r->srcBlend, sizeof(r->srcBlend));
+        fnv(&h, &r->destBlend, sizeof(r->destBlend));
+        fnv(&h, &r->textureAddress, sizeof(r->textureAddress));
+        fnv(&h, &r->splineMode, sizeof(r->splineMode));
+        fnv(&h, &r->splineTime, sizeof(r->splineTime));
+        fnv(&h, r->splinePoints, sizeof(r->splinePoints));
+        fnv(&h, &r->splinePointCount, sizeof(r->splinePointCount));
+        fnv(&h, &r->soundParam, sizeof(r->soundParam));
+        fnv(&h, &r->sound, sizeof(r->sound));
 
         fprintf(f, "[%u] hash=%08lx kind=%u file=%.64s pos=%g,%g,%g v2=%g,%g,%g\n",
                 i, h, r->kind, strip_game_dir(r->file),

@@ -17,14 +17,9 @@ class CStaticSoundbuffer;
 class VoicePool;
 class GameLogger;
 
-class __attribute__((packed)) SoundManager {
+class SoundManager {
 public:
      
-
-/* The embedded device's address; 4-aligned, so the packed-member warning is
- * moot. */
- 
- 
     CFaktSound *cfaktSound() { return &cfaktSound_; }
  
 
@@ -69,6 +64,7 @@ public:
     int init(int enable3d, HWND window, UINT bufferflags, short channels,
              int samplespersec, USHORT bitspersample, GameLogger *logger);
 
+    int created()const {return dwCreated_;}
 private:
     void          *vtable_;  // our one-slot table
     GameLogger    *logger_;

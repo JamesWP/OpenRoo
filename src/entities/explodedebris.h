@@ -3,9 +3,7 @@
  * an object explodes; RenderSceneObjects advances and draws it, and
  * DrawObjectShadows draws its shadow, the debris flattened like any model.
  *
- * The object sits at ThemeLevelObject+0x15, 0x9c bytes up to the next field
- * the theme loader writes.  The 30-float speed table and its cursor tile
- * exactly: 0x14 + 30 * 4 is 0x8c. */
+ * The object is embedded in ThemeLevelObject. */
 
 #pragma once
 
@@ -14,7 +12,7 @@
  
 class RenderDevice;
 
-class __attribute__((packed)) ExplodeDebris {
+class ExplodeDebris {
 public:
     /* The one-slot vtable, installed by the ctor and the dtor body. */
     static void *vtbl();
@@ -65,15 +63,15 @@ private:
     float *debrisVertex(int i);
     float *debrisVelocity(int tri);
 
-    void         *vtable_;                // +0x00  the one-slot vtable
-    MeshVertex   *pVertexCopy_;           // +0x04  nVertexCount * 0x28 (FVF 0x212)
-    float       (*pFaceRecords_)[3];      // +0x08  a velocity per triangle, (nVertexCount / 3) * 0xc
-    int           nVertexCount_;          // +0x0c  as it was when the buffers were built
-    DWORD         bActive_;               // +0x10  set by begin; cleared by the ctor and release
-    float         samples_[30];  // +0x14  Gaussian speeds, mu 2.0, sigma 1.0; refilled whole
-    DWORD         cursor_;                // +0x8c  reset by the same refill
-    int           nLiveVertices_;         // +0x90  begin sets it; advance drops it by threes
-    float         flDropAccum_;           // +0x94  fractional triangles owed
-    float         flExplodeScaledCount_;  // +0x98  the drop rate: nVertexCount * arg / 300
+    void         *vtable_;                // the one-slot vtable
+    MeshVertex   *pVertexCopy_;           // nVertexCount * 0x28 (FVF 0x212)
+    float       (*pFaceRecords_)[3];      // a velocity per triangle, (nVertexCount / 3) * 0xc
+    int           nVertexCount_;          // as it was when the buffers were built
+    DWORD         bActive_;               // set by begin; cleared by the ctor and release
+    float         samples_[30];           // Gaussian speeds, mu 2.0, sigma 1.0; refilled whole
+    DWORD         cursor_;                // reset by the same refill
+    int           nLiveVertices_;         // begin sets it; advance drops it by threes
+    float         flDropAccum_;           // fractional triangles owed
+    float         flExplodeScaledCount_;  // the drop rate: nVertexCount * arg / 300
      
 };

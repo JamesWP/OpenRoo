@@ -10,7 +10,7 @@
 
 class LinkedList;
 
-class __attribute__((packed)) LinkedListNode {
+class LinkedListNode {
 public:
      
 
@@ -21,15 +21,15 @@ public:
 private:
     friend class LinkedList;
 
-    void           *pValue;     // +0x00
-    LinkedListNode *pNextNode;  // +0x04
-    LinkedListNode *pPrevNode;  // +0x08
+    void           *pValue;
+    LinkedListNode *pNextNode;
+    LinkedListNode *pPrevNode;
 
      
 };
 
  
-class __attribute__((packed)) LinkedList {
+class LinkedList {
 public:
      
 

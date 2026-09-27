@@ -10,7 +10,7 @@
 class RenderDevice;
 
 /* One control point, 12 bytes. */
-struct __attribute__((packed)) SplineControlPoint {
+struct SplineControlPoint {
      
     float flX, flY, flZ;
 private:
@@ -18,7 +18,7 @@ private:
 };
 
  
-class __attribute__((packed)) SplinePath {
+class SplinePath {
 public:
      
 
@@ -55,4 +55,3 @@ private:
     LinkedList   controlPointList_;  // +0x04  head +0x08, count +0x10
      
 };
-

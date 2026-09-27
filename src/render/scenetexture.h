@@ -65,7 +65,7 @@ extern SceneTexture g_texKaroo128;
 #include "linkedlist.h"
 class GameLogger;
 
-class __attribute__((packed)) TextureManager {
+class TextureManager {
 public:
      
 
@@ -89,9 +89,9 @@ public:
     GameLogger  *logger() const { return pLogger_; }
 
 private:
-    void        *vtable_;    // +0x00
-    LinkedList   cache_;     // +0x04  SceneTexture *, game-heap nodes
-    GameLogger  *pLogger_;   // +0x14  NULL = silent
+    void        *vtable_;    // 
+    LinkedList   cache_;     // SceneTexture *, game-heap nodes
+    GameLogger  *pLogger_;   // NULL = silent
      
 };
 

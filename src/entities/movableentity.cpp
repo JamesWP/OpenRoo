@@ -50,13 +50,7 @@ typedef void (  *scalar_dtor_fn)(MovableEntity *self,
 
 void MovableEntity::destroyViaVtable(int flags)
 {
-    // Through a void * first: the class is __attribute__((packed)), so casting
-    // `this` straight to a function-pointer pointer trips
-    // -Waddress-of-packed-member. The vtable pointer is the object's first
-    // dword either way.
-    void *raw = this;
-
-    scalar_dtor_fn *vtbl = *(scalar_dtor_fn **)raw;
+    scalar_dtor_fn *vtbl = (scalar_dtor_fn *)vtable_;
     vtbl[0](this, flags);
 }
 

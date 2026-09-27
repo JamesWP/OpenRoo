@@ -1,5 +1,5 @@
-/* WrapperObject: the per-mesh texture-coordinate animator, 13 bytes, embedded
- * in whatever owns a CFaktMesh at +8 (the next member is at +0x15).  It
+/* WrapperObject: the per-mesh texture-coordinate animator, embedded in
+ * whatever owns a CFaktMesh.  It
  * snapshots the mesh's first texture-coordinate set when the mesh is attached,
  * writes animated UVs straight into the mesh's vertices, and restores them
  * from the snapshot when the animation stops.  The name says where it sits
@@ -17,13 +17,13 @@
 #include "faktmesh.h"
 class RenderDevice;
 
-/* One snapshotted UV pair: the 8 bytes at +0x18 of an FVF 0x212 vertex, the
- * only part of the vertex kept. */
+/* One snapshotted UV pair: a MeshVertex's uv0, the only part of the vertex
+ * kept. */
 struct WrapperUV {
     float u, v;
 };
 
-class __attribute__((packed)) WrapperObject {
+class WrapperObject {
 public:
      
 
@@ -70,9 +70,9 @@ public:
 private:
      
 
-    void      *vtable_;   // +0x00  the one-slot vtable
-    WrapperUV *pBaseUV_;  // +0x04  wFrameCount * dwVertexCount pairs
-    CFaktMesh *pMesh_;    // +0x08  not owned
-    BYTE       dirty_;    // +0x0c  set by the three animating modes
+    void      *vtable_;   // the one-slot vtable
+    WrapperUV *pBaseUV_;  // wFrameCount * dwVertexCount pairs
+    CFaktMesh *pMesh_;    // not owned
+    BYTE       dirty_;    // set by the three animating modes
 };
 

@@ -23,7 +23,7 @@ class Game;
  * towards, [6..8] the point `target` follows.  [0..4] are not read here. */
 struct CameraFocus { float f[9]; };
 
-class __attribute__((packed)) CameraGlobals {
+class CameraGlobals {
 public:
      
 

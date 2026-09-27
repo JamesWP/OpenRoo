@@ -29,15 +29,15 @@ struct ParticleNode {
  * either: the Face and XFace vertex allocators bake the texture corners in
  * once, at allocation (see quad_alloc_verts in particles.cpp). */
 struct ParticleVertex {
-    float flX, flY, flZ;   // +0x00..+0x08
-    float flPsize;         // +0x0c  (never written)
-    DWORD dwDiffuse;       // +0x10
-    DWORD dwSpecular;      // +0x14  (never written)
-    float flU, flV;        // +0x18, +0x1c (never written)
+    float flX, flY, flZ;
+    float flPsize;         // (never written)
+    DWORD dwDiffuse;
+    DWORD dwSpecular;      // (never written)
+    float flU, flV;        // (never written)
 };
 
-/* The ring, as ONE struct.  It is embedded in ParticleSystem at +0x08, and it
- * is the *same object* that Generator+0x0C and Environment+0x08 point at:
+/* The ring, as ONE struct.  It is embedded in ParticleSystem, and it is the
+ * *same object* that the Generator's and the Environment's pRing point at:
  * SetGenerator/SetEnvironment attach both to `&ps->ring`.  Declaring it once means the
  * emitter, the integrator and the render fill all name the same fields.
  *

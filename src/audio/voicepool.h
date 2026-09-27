@@ -13,7 +13,7 @@ struct IDirectSound;
 
 /* One pool.  The voices array is heap-allocated with a leading count word, and
  * destroyed through the voices' own vector destructor. */
-class __attribute__((packed)) VoicePool {
+class VoicePool {
 public:
      
 

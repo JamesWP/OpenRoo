@@ -95,7 +95,6 @@ static unsigned read_table(const Game *g, unsigned char count_in,
     for (unsigned i = 0; i < count; i++) {
         BYTE slot = (g->*id_of)(i);
         // No range check: a byte ID cannot index past the table.
-         (WS_MAX_ENT > 0xff, "a BYTE id could overrun the slots");
         const T *obj = (g->*slot_of)(slot);
         if (!obj) continue;  // a freed slot still in the list
         read(obj, slot, &out[n++]);

@@ -13,7 +13,7 @@ class GameLogger;
  *
  * The twin of TextureManager (scenetexture.h): same shape, same in-place
  * lowercasing lookup, "MM:" instead of "TM:" in its log lines. */
-class __attribute__((packed)) ModelManager {
+class ModelManager {
 public:
      
 

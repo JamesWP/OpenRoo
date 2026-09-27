@@ -123,7 +123,7 @@ enum TileContents {
     CONTENTS_RANDOM      = -1,
 };
 
-class __attribute__((packed)) Tile {
+class Tile {
 public:
     // origin is the grid's first cell (LevelMap::tileBase()).  Both axes are
     // signed: the lift reads its cell as signed char.
@@ -287,10 +287,8 @@ private:
     int           slideTrack_;        // 1 on a slide's track
     unsigned char slideOriginU_;      // the track's spawn cell
     unsigned char slideOriginV_;
-    unsigned char gap_1c2[0x1c3 - 0x1c2];
     unsigned char slideCellU_;  // live cell, on the origin tile only
     unsigned char slideCellV_;
-    unsigned char gap_1c5[0x1c6 - 0x1c5];
     float         slidePosU_;  // live position, on the origin tile only
     float         slidePosY_;
     float         slidePosV_;
@@ -303,14 +301,12 @@ private:
     unsigned char teleportId_;       // a teleporter's pair id
     unsigned char teleportU_;        // teleporter destination
     unsigned char teleportV_;
-    unsigned char gap_1f0[0x1f1 - 0x1f0];
     unsigned char field_1f1;  // set from param on a jump pad
     unsigned char climbDir_;  // climb cell: which way up
     unsigned char field_1f3;
     unsigned char bridgeSlot_;  // the bridge's switch slot
     unsigned char bridgeAxis_;  // 1 along u, 2 along v
     int           field_1f6;
-    unsigned char gap_1fa[0x202 - 0x1fa];
     unsigned char field_202;
     int           field_203;
     double        blastTime_;  // when a blast spent this cell

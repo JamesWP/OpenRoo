@@ -12,7 +12,7 @@ struct IDirect3DTexture2;
 class LoadedImage;
 class RenderDevice;
 
-class __attribute__((packed)) LoadedImage {
+class LoadedImage {
 public:
     /* ─── texture.cpp's members other files call ───────────────────────────
      *

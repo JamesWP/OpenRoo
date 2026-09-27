@@ -26,7 +26,7 @@ struct BridgeSurfaceInfo {
     float len, f;
 };
 
-class __attribute__((packed)) BridgeObject {
+class BridgeObject {
 public:
      
 
@@ -82,36 +82,34 @@ private:
     // Destroys through the object's own vtable, flags 1.
     void destroy();
 
-     
-
-    const Vtbl         *vtable_;      // +0x00  &VTABLE
-    double              now_;         // +0x04  latched from *clock_
-    double             *clock_;       // +0x0c  Game::clock()
-    TickStep        *tickStep_;       // +0x10  Game::tickStep()
-    unsigned char       field_14;     // +0x14
-    TickStep         tickStepCopy_;   // +0x15  copied from *tickStep_
-    unsigned char       field_1d[8];  // +0x1d
-    float               posU_;        // +0x25  the live position:
-    float               posY_;        // +0x29  the deck's far point
-    float               posV_;        // +0x2d
-    signed char         cellU_;       // +0x31
-    signed char         cellV_;       // +0x32
-    signed char         heightCell_;  // +0x33
-    Tile               *tileBase_;    // +0x34  Game::tileBase()
-    unsigned char       guard_;       // +0x38  the far end; read signed by the tick
-    float               restU_;       // +0x39  the anchor, where the deck
-    float               restY_;       // +0x3d  starts
-    float               restV_;       // +0x41
-    signed char         span_;        // +0x45  the deck's length, in cells
-    unsigned char       slot_;        // +0x46  the switch slot, stamped into cells
-    CStaticSoundbuffer *sound_;       // +0x47  the moving loop; may be NULL
-    double              phaseStart_;  // +0x4b
-    int                 armed_;       // +0x53
-    signed char         step_;        // +0x57  +1 or -1 cell per 100 ms
-    int                 phase_;       // +0x58  0 extend next, 1 retract
-    unsigned char       tileHeight_;  // +0x5c  stamped into the tile
-    unsigned char       endU_;        // +0x5d  the scan's start cell
-    unsigned char       endV_;        // +0x5e
-    unsigned char       height_;      // +0x5f
-    unsigned char       axis_;        // +0x60  1 along U, 2 along V
+    const Vtbl         *vtable_;      // &VTABLE
+    double              now_;         // latched from *clock_
+    double             *clock_;       // Game::clock()
+    TickStep        *tickStep_;       // Game::tickStep()
+    unsigned char       field_14;
+    TickStep         tickStepCopy_;   // copied from *tickStep_
+    unsigned char       field_1d[8];
+    float               posU_;        // the live position:
+    float               posY_;        // the deck's far point
+    float               posV_;
+    signed char         cellU_;
+    signed char         cellV_;
+    signed char         heightCell_;
+    Tile               *tileBase_;    // Game::tileBase()
+    unsigned char       guard_;       // the far end; read signed by the tick
+    float               restU_;       // the anchor, where the deck
+    float               restY_;       // starts
+    float               restV_;
+    signed char         span_;        // the deck's length, in cells
+    unsigned char       slot_;        // the switch slot, stamped into cells
+    CStaticSoundbuffer *sound_;       // the moving loop; may be NULL
+    double              phaseStart_;
+    int                 armed_;
+    signed char         step_;        // +1 or -1 cell per 100 ms
+    int                 phase_;       // 0 extend next, 1 retract
+    unsigned char       tileHeight_;  // stamped into the tile
+    unsigned char       endU_;        // the scan's start cell
+    unsigned char       endV_;
+    unsigned char       height_;
+    unsigned char       axis_;        // 1 along U, 2 along V
 };

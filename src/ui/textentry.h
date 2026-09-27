@@ -5,7 +5,7 @@
 
  
 
-class __attribute__((packed)) TextEntry {
+class TextEntry {
 public:
      
 

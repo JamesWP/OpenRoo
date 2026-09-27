@@ -10,10 +10,8 @@
 
 class NamedEntryList;
 
-class __attribute__((packed)) NamedEntry {
+class NamedEntry {
 public:
-     
-
     const char *name() const    { return szName; }
     void       *payload() const { return pPayload; }
     NamedEntry *next() const    { return pNext; }
@@ -22,16 +20,14 @@ public:
 private:
     friend class NamedEntryList;
 
-    char        szName[0x100];  // +0x000  the key, inline
-    void       *pPayload;       // +0x100
-    NamedEntry *pNext;          // +0x104
-    NamedEntry *pPrev;          // +0x108
-
-     
+    char        szName[0x100];  // the key, inline
+    void       *pPayload;
+    NamedEntry *pNext;
+    NamedEntry *pPrev;
 };
 
  
-class __attribute__((packed)) NamedEntryList {
+class NamedEntryList {
 public:
      
 

@@ -1,10 +1,10 @@
-/* Foe: a chasing enemy, a MovableEntity (0x15a bytes) plus its own four.  The
- * Game's foe table holds only foes.  Most foe fields sit inside the
- * MovableEntity region, so they are declared there (protected).
+/* Foe: a chasing enemy, a MovableEntity plus its own four fields.  The Game's
+ * foe table holds only foes.  Most foe fields sit inside the MovableEntity, so
+ * they are declared there (protected).
  *
- * The layout is fixed: the sound attachment, the cheats, the tile queries and
- * the movement code treat a foe as a plain entity, and RenderGameFrame draws
- * it.  Its pathfinder at +0x13b is FoePath (foepath.cpp). */
+ * The sound attachment, the cheats, the tile queries and the movement code
+ * treat a foe as a plain entity, and RenderGameFrame draws it.  Its
+ * pathfinder is FoePath (foepath.cpp). */
 
 #pragma once
 
@@ -15,7 +15,7 @@
 class SoundManager;
 class Tile;
 
-class __attribute__((packed)) Foe : public MovableEntity {
+class Foe : public MovableEntity {
 public:
      
 
@@ -57,10 +57,10 @@ public:
     // The foe's own bomb drop, when step() raised the hit flag.
     void dropBomb(Game *game);
     // Touching the player kills it (*playerMoveState = 1); once the player is
-    // down, a foe not held gets +0x9a = 0x28.
+    // down, a foe not held gets anim 0x28.
     void checkPlayerContact(unsigned char *playerMoveState,
                             float playerU, float playerY, float playerV);
-    // A foe in a move state: mark +0x86, clear its home cell in homeMarks
+    // A foe in a move state: mark it dying, clear its home cell in homeMarks
     // unless that is 0x64, and if removal was requested stamp its drop
     // contents (when above ground) and return true; the caller removes it.
     bool finishDespawn(LevelMap *map);
@@ -85,12 +85,10 @@ private:
 
     Tile *tile(int u, int v) const;
 
-     
-
-    unsigned char dropContents_;  // +0x15a  stamped into its tile's contents when it dies
-    unsigned char targetU_;       // +0x15b  the last chase target,
-    unsigned char targetV_;       // +0x15c  which "return to post" chases again
-    unsigned char field_15d;      // +0x15d
+    unsigned char dropContents_;  // stamped into its tile's contents when it dies
+    unsigned char targetU_;       // the last chase target,
+    unsigned char targetV_;       // which "return to post" chases again
+    unsigned char field_15d;
 };
 
  

@@ -11,7 +11,7 @@
 
 /* One buffer.  It remembers its file, flags and logger so it can be reloaded
  * (on a lost buffer, or a 2D/3D switch) and duplicated. */
-class __attribute__((packed)) CStaticSoundbuffer {
+class CStaticSoundbuffer {
 public:
      
 

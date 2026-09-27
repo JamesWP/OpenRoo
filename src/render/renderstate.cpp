@@ -39,7 +39,7 @@ Render_ConfigureRenderState(void)
     // Texture and model caches' loggers, and the level placement scratch
     // block.
     g_textureManager.setLogger(&g_logger);
-    ((TextureManager *)&g_modelManager)->setLogger(&g_logger);
+    g_modelManager.setLogger(&g_logger);
     memset(&g_levelPlacements, 0, sizeof(g_levelPlacements));
     Menu_BuildMenuGeometry(d3d, g_gameDir);
 

@@ -16,7 +16,7 @@ struct CDVolumeControl {
 };
 
 /* The device.  Packed, so the track number is unaligned. */
-class __attribute__((packed)) CDM {
+class CDM {
 public:
     CDM*  construct();
     void  stopAndClose();
