@@ -14,18 +14,31 @@ class RenderDevice;
 struct ThemeAssetBlock;
 
 /* A position and rotation list, one entry per cell of one kind. */
-struct __attribute__((packed)) PlacementList {
+class __attribute__((packed)) PlacementList {
+public:
     static const int ORIGIN = 0;
-    int     count;
-    float (*pos)[3];
-    float (*rot)[3];
+
+    int      count() const { return count_; }
+    float (*pos() const)[3] { return pos_; }
+    float (*rot() const)[3] { return rot_; }
+
+private:
+    friend class LevelPlacements;  // counts, allocates and fills the lists
+
+    void alloc(unsigned entries);
+    void release();
+    void put(unsigned *next, float x, float y, float z, float yaw);
+
+    int     count_;
+    float (*pos_)[3];
+    float (*rot_)[3];
     KAROO_LAYOUT_REGISTER(PlacementList);
 };
 
 KAROO_LAYOUT_CHECKS(PlacementList)
 {
-    KAROO_LAYOUT_AT(pos, 0x04);
-    KAROO_LAYOUT_AT(rot, 0x08);
+    KAROO_LAYOUT_AT(pos_, 0x04);
+    KAROO_LAYOUT_AT(rot_, 0x08);
     KAROO_LAYOUT_SIZE(0x0c);
 }
 
