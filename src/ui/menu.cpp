@@ -48,21 +48,21 @@ static bool trace_on(void)
     return g_trace > 0;
 }
 
-bool menu_read(MenuState *m)
+bool MenuState::read()
 {
     const BYTE *g = (const BYTE *)Game::instance();
-    memset(m, 0, sizeof(*m));
+    memset(this, 0, sizeof(*this));
     if (!g) return false;
 
     const MenuTree *mt = ((const Game *)g)->menu();
-    m->node     = mt->node();
-    m->cursor   = mt->cursor();
-    m->count    = mt->childCount(m->node);
-    m->depth    = mt->depth();
-    m->last_key = mt->lastKey();
-    m->lock     = mt->lock();
-    memcpy(m->children, mt->childRow(m->node), 256);
-    m->valid    = true;
+    node_     = mt->node();
+    cursor_   = mt->cursor();
+    count_    = mt->childCount(node_);
+    depth_    = mt->depth();
+    last_key_ = mt->lastKey();
+    lock_     = mt->lock();
+    memcpy(children_, mt->childRow(node_), 256);
+    valid_    = true;
     return true;
 }
 
@@ -160,57 +160,57 @@ void menu_tick(void)
     if (!g) return;
 
     MenuState m;
-    if (!menu_read(&m)) return;
+    if (!m.read()) return;
 
-    if (trace_on() && (m.node != g_last_node || m.cursor != g_last_cursor)) {
+    if (trace_on() && (m.node() != g_last_node || m.cursor() != g_last_cursor)) {
         char kids[128]; kids[0] = 0;
-        for (BYTE i = 0; i < m.count && i < 16; i++) {
+        for (BYTE i = 0; i < m.count() && i < 16; i++) {
             char one[12];
-            wsprintfA(one, "%s%u", i ? "," : "", m.children[i]);
+            wsprintfA(one, "%s%u", i ? "," : "", m.children()[i]);
             if (strlen(kids) + strlen(one) + 1 < sizeof(kids)) strcat(kids, one);
         }
         log_write("menu: node=%u cursor=%u/%u depth=%u lock=%lu screen=%u "
                   "children=[%s] goal=%u\n",
-                  m.node, m.cursor, m.count, m.depth, (unsigned long)m.lock,
+                  m.node(), m.cursor(), m.count(), m.depth(), (unsigned long)m.lock(),
                   (unsigned)((const Game *)g)->state(), kids, g_goal);
-        g_last_node = m.node; g_last_cursor = m.cursor;
+        g_last_node = m.node(); g_last_cursor = m.cursor();
     }
 
-    if ((BYTE)g_goal == m.node) {  // arrived
-        log_write("menu: reached node %u\n", m.node);
+    if ((BYTE)g_goal == m.node()) {  // arrived
+        log_write("menu: reached node %u\n", m.node());
         menu_request(MENU_NO_GOAL);
         return;
     }
 
-    if (m.lock) return;        // the 200 ms lockout: keys are discarded
+    if (m.lock()) return;        // the 200 ms lockout: keys are discarded
     if (g_key) return;         // a pulse is still in flight
-    if (m.count == 0) return;  // a leaf: nothing to press
+    if (m.count() == 0) return;  // a leaf: nothing to press
 
-    int hop = route_first_hop(g, m.node, (BYTE)g_goal);
+    int hop = route_first_hop(g, m.node(), (BYTE)g_goal);
     if (hop < 0) {
         // Not reachable forwards: back out one level and try from the parent.
         // At depth < 2 Escape would leave the menu, so don't.
-        if (m.depth >= 2) want(VK_ESC_);
+        if (m.depth() >= 2) want(VK_ESC_);
         return;
     }
 
-    if (m.cursor == (BYTE)hop) {
+    if (m.cursor() == (BYTE)hop) {
         want(VK_ENTER_);
         // The goal is met when Enter is pressed on the item leading to it:
         // action nodes such as "load slot 4" are passed through within the
         // same frame, so arriving is never seen, and a goal left standing
         // would repeat the action every time the menu came back.
-        if (m.children[hop] == (BYTE)g_goal) {
+        if (m.children()[hop] == (BYTE)g_goal) {
             log_write("menu: selected node %u (from node %u cursor %u)\n",
-                      (unsigned)g_goal, m.node, m.cursor);
+                      (unsigned)g_goal, m.node(), m.cursor());
             g_goal = MENU_NO_GOAL;
         }
         return;
     }
 
     // The navigator wraps both ways, so go the short way round.
-    int down = ((int)hop - (int)m.cursor + m.count) % m.count;
-    int up   = ((int)m.cursor - (int)hop + m.count) % m.count;
+    int down = ((int)hop - (int)m.cursor() + m.count()) % m.count();
+    int up   = ((int)m.cursor() - (int)hop + m.count()) % m.count();
     want(down <= up ? VK_DOWN_ : VK_UP_);
 }
 

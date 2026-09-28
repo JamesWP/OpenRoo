@@ -161,12 +161,12 @@ CFaktMesh::scalarDtor(CFaktMesh *self, unsigned int flags)
 /* The .mdl reader, ImportSceneModels.
  *
  * FORMAT: the .mdl file.
- *   +0x00  WORD   frameCount     -> this->wFrameCount_
- *   +0x02  DWORD  vertexCount    -> this->dwVertexCount_
+ *   +0x00  WORD   frameCount     -> wFrameCount_
+ *   +0x02  DWORD  vertexCount    -> dwVertexCount_
  *   then, for each frame f:
- *          6 x DWORD             ->pFrameRecords_ + f*0x18
+ *          6 x DWORD             -> pFrameRecords_ + f*0x18
  *          for each vertex v:
- *              10 x DWORD        ->pVertexData_ + (f*vertexCount + v)*0x28
+ *              10 x DWORD        -> pVertexData_ + (f*vertexCount + v)*0x28
  * Opened "rb".  Every read is a separate 4-byte fread; the header's two are 2
  * and 4 bytes.
  *
