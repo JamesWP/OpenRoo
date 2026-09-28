@@ -213,9 +213,9 @@ static void draw_billboard(ThemeLevelObject *rec, const Tile *tile, const Vec3 *
 {
     Vec3 corner[4];
     Math_BuildBillboardQuad(corner,
-                            g_camera.target[0] - g_camera.eye[0],
-                            g_camera.target[1] - g_camera.eye[1],
-                            g_camera.target[2] - g_camera.eye[2],
+                            g_camera.target()[0] - g_camera.eye()[0],
+                            g_camera.target()[1] - g_camera.eye()[1],
+                            g_camera.target()[2] - g_camera.eye()[2],
                             rec->billboardScale());
     BbVertex v[4];
     billboard_vertex(&v[0], &corner[0], 0x00ffffff, 0, 0.0f, 1.0f);

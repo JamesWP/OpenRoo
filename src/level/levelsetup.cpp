@@ -245,14 +245,14 @@ Sim_SetupLevelObjects(Game *self)
     self->setField13cc94(2, 0.0f);
 
     CameraGlobals *cam = &g_camera;  // camera.h: note the eye/target conflict
-    cam->eye[0] = 0.0f;
-    cam->eye[1] = 1000.0f;
-    cam->eye[2] = 0.0f;
+    cam->eye()[0] = 0.0f;
+    cam->eye()[1] = 1000.0f;
+    cam->eye()[2] = 0.0f;
 
     for (int i = 0; i < 3; i++)
-        cam->target[i] = self->cameraEye(i);
-    cam->yaw = 0.0f;
-    cam->pitch = 0.0f;
+        cam->target()[i] = self->cameraEye(i);
+    cam->setYaw(0.0f);
+    cam->setPitch(0.0f);
 
     self->census()->reset();
 

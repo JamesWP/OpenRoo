@@ -66,13 +66,13 @@ LevelEntry_PrepareAssets(void)
     const float z = (float)((float)(-(int)map->extentV()) * 0.5f + offZ);
 
     CameraGlobals *cam = &g_camera;
-    cam->target[0] = x;
-    cam->target[1] = offY;
-    cam->target[2] = z;
-    cam->eye[0] = x;
-    cam->eye[1] = offY + 6.0f;
-    cam->eye[2] = z - 4.0f;
+    cam->target()[0] = x;
+    cam->target()[1] = offY;
+    cam->target()[2] = z;
+    cam->eye()[0] = x;
+    cam->eye()[1] = offY + 6.0f;
+    cam->eye()[2] = z - 4.0f;
     memset(&g_cameraFocus, 0, sizeof(g_cameraFocus));
-    cam->yaw   = 0.0f;
-    cam->pitch = 1.0471976f;  // pi/3
+    cam->setYaw(0.0f);
+    cam->setPitch(1.0471976f);  // pi/3
 }

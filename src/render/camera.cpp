@@ -106,34 +106,33 @@ Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
     return out;
 }
 
-__declspec(dllexport) void __cdecl
-Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
+void CameraGlobals::updateViewTransform(RenderDevice *d3d, Game *g,
                            CameraFocus focus, double dt)
 {
     const float dtf = (float)dt;
 
     /* 1. target */
-    cam->target[0] = focus.f[6];
-    cam->target[2] = focus.f[8];
-    cam->target[1] = (float)(((double)focus.f[7] - cam->target[1]) * dtf * K_TARGET_RATE
-                             + cam->target[1]);
+    target_[0] = focus.f[6];
+    target_[2] = focus.f[8];
+    target_[1] = (float)(((double)focus.f[7] - target_[1]) * dtf * K_TARGET_RATE
+                             + target_[1]);
 
     /* 2. yaw */
     if (g->cameraMode() == 0 && g->config()->cameraTurnsWithPlayer() == 1) {
-        double y = fmod((double)cam->yaw, K_YAW_WRAP);
-        cam->yaw = (y < 0.0) ? (float)(y + K_TWO_PI) : (float)y;
-        double diff = (double)focus.f[5] - cam->yaw;
+        double y = fmod((double)yaw_, K_YAW_WRAP);
+        yaw_ = (y < 0.0) ? (float)(y + K_TWO_PI) : (float)y;
+        double diff = (double)focus.f[5] - yaw_;
         if (fabs(diff) > K_PI)
             diff = (diff > 0.0) ? diff - K_TWO_PI : diff + K_TWO_PI;
-        cam->yaw = (float)(dtf * diff * K_YAW_RATE + cam->yaw);
+        yaw_ = (float)(dtf * diff * K_YAW_RATE + yaw_);
     } else {
-        cam->yaw = focus.f[5];
+        yaw_ = focus.f[5];
     }
 
     /* 3. distance */
-    double dx = (double)cam->target[0] - cam->eye[0];
-    double dy = (double)cam->target[1] - cam->eye[1];
-    double dz = (double)cam->target[2] - cam->eye[2];
+    double dx = (double)target_[0] - eye_[0];
+    double dy = (double)target_[1] - eye_[1];
+    double dz = (double)target_[2] - eye_[2];
     double len = sqrt((dx * dx + dz * dz) + dy * dy);
     double dist = (g->cameraDistance() - len) * dtf * K_EASE_RATE + len;
     if (dist < 0.0 || dist != dist)
@@ -144,11 +143,11 @@ Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
 
     /* 4. pitch target, and the occlusion probe */
     const float tilt = g->config()->activeCameraPitch();
-    Vec3 probe = orbit_offset((float)(tilt * K_NEG_DEG), cam->yaw, negdist);
+    Vec3 probe = orbit_offset((float)(tilt * K_NEG_DEG), yaw_, negdist);
     float pitchTarget = (float)(tilt * K_DEG);
 
     if (g->cameraMode() == 0) {
-        const float ey = cam->eye[1];
+        const float ey = eye_[1];
         if (ey > 0.0f && ey < K_EYE_CEIL) {
             LevelMap *map = g->map();
             unsigned i = (unsigned)((int)g->player()->heightCell() + 1);
@@ -156,9 +155,9 @@ Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
              * a float sum could round across an integer and move the bound. */
             while (i < (unsigned)(int)((double)ey + 1.0)) {
                 if (!(probe.y == 0.0f || probe.y != probe.y)) {   // zero or NaN skips
-                    float k = (float)(((double)i - cam->target[1]) / probe.y);
-                    float fx = (float)floor((double)probe.x * k + cam->target[0] + K_HALF);
-                    float fz = (float)-floor((double)probe.z * k + cam->target[2] + K_HALF);
+                    float k = (float)(((double)i - target_[1]) / probe.y);
+                    float fx = (float)floor((double)probe.x * k + target_[0] + K_HALF);
+                    float fz = (float)-floor((double)probe.z * k + target_[2] + K_HALF);
                     if (fx >= 0.0f && (float)map->extentU() > fx &&
                         fz >= 0.0f && (float)map->extentV() > fz) {
                         unsigned cu = (unsigned)(int)fx, cv = (unsigned)(int)fz;
@@ -176,25 +175,25 @@ Camera_UpdateViewTransform(CameraGlobals *cam, RenderDevice *d3d, Game *g,
                 i++;
             }
         }
-        if ((unsigned char)g_scene.segmentHitsModel(cam->target[0], cam->target[1], cam->target[2],
+        if ((unsigned char)g_scene.segmentHitsModel(target_[0], target_[1], target_[2],
                                                   probe.x, probe.y, probe.z))
             pitchTarget = K_PITCH_MAX;
     }
 
     /* 5. pitch */
-    cam->pitch = (float)((pitchTarget - (double)cam->pitch) * dtf * K_EASE_RATE + cam->pitch);
-    if (cam->pitch > K_PITCH_MAX)
-        cam->pitch = K_PITCH_MAX;
+    pitch_ = (float)((pitchTarget - (double)pitch_) * dtf * K_EASE_RATE + pitch_);
+    if (pitch_ > K_PITCH_MAX)
+        pitch_ = K_PITCH_MAX;
 
     /* 6. eye and view */
-    Vec3 eo = orbit_offset(-cam->pitch, cam->yaw, negdist);
-    cam->eye[0] = cam->target[0] + eo.x;
-    cam->eye[1] = cam->target[1] + eo.y;
-    cam->eye[2] = cam->target[2] + eo.z;
+    Vec3 eo = orbit_offset(-pitch_, yaw_, negdist);
+    eye_[0] = target_[0] + eo.x;
+    eye_[1] = target_[1] + eo.y;
+    eye_[2] = target_[2] + eo.z;
 
     Mat4 view;
-    Camera_BuildLookAt(&view, cam->eye[0], cam->eye[1], cam->eye[2],
-                       cam->target[0], cam->target[1], cam->target[2],
+    Camera_BuildLookAt(&view, eye_[0], eye_[1], eye_[2],
+                       target_[0], target_[1], target_[2],
                        0.0f, 1.0f, 0.0f, 0.0f);
     d3d->SetTransform(Transform::View, &view);
 }

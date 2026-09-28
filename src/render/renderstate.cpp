@@ -57,19 +57,19 @@ Render_ConfigureRenderState(void)
     const float z = (float)((float)(-(int)map->extentV()) * 0.5f + offZ);
 
     CameraGlobals *cam = &g_camera;
-    cam->target[0] = x;
-    cam->target[1] = offY;
-    cam->target[2] = z;
-    cam->eye[0] = x;
-    cam->eye[1] = offY + 6.0f;
-    cam->eye[2] = z - 4.0f;
-    cam->yaw   = 0.0f;
-    cam->pitch = 1.0471976f;  // pi/3
+    cam->target()[0] = x;
+    cam->target()[1] = offY;
+    cam->target()[2] = z;
+    cam->eye()[0] = x;
+    cam->eye()[1] = offY + 6.0f;
+    cam->eye()[2] = z - 4.0f;
+    cam->setYaw(0.0f);
+    cam->setPitch(1.0471976f);  // pi/3
 
     // World, view and projection transforms.
     Mat4 view;
-    Camera_BuildLookAt(&view, cam->eye[0], cam->eye[1], cam->eye[2],
-                       cam->target[0], cam->target[1], cam->target[2],
+    Camera_BuildLookAt(&view, cam->eye()[0], cam->eye()[1], cam->eye()[2],
+                       cam->target()[0], cam->target()[1], cam->target()[2],
                        0.0f, 1.0f, 0.0f, 0.0f);
 
     const double half = 0.7853981852531433;  // (float)pi/4, widened to double
@@ -88,10 +88,10 @@ Render_ConfigureRenderState(void)
     CameraFocus *f = &g_cameraFocus;
     memset(f, 0, sizeof *f);
     f->f[3] = 5000.0f;
-    f->f[5] = cam->yaw;
-    f->f[6] = cam->eye[0];
-    f->f[7] = cam->eye[1];
-    f->f[8] = cam->eye[2];
+    f->f[5] = cam->yaw();
+    f->f[6] = cam->eye()[0];
+    f->f[7] = cam->eye()[1];
+    f->f[8] = cam->eye()[2];
 
     RenderDevice *dev = d3d;
     dev->SetTransform(Transform::World, &g_worldIdentity);

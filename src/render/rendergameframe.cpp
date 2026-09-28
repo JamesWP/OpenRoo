@@ -69,21 +69,21 @@ static void scripted_camera(Game *g, RenderDevice *d3d)
 {
     CameraGlobals *cam = &g_camera;
     for (int i = 0; i < 3; ++i) {
-        cam->eye[i]    = g->field13cc94(i);
-        cam->target[i] = g->cameraEye(i);
+        cam->eye()[i]    = g->field13cc94(i);
+        cam->target()[i] = g->cameraEye(i);
     }
-    const float dx = cam->target[0] - cam->eye[0];
-    const float dy = cam->target[1] - cam->eye[1];
-    const float dz = cam->target[2] - cam->eye[2];
+    const float dx = cam->target()[0] - cam->eye()[0];
+    const float dy = cam->target()[1] - cam->eye()[1];
+    const float dz = cam->target()[2] - cam->eye()[2];
     const double horiz2 = (double)dz * dz + (double)dx * dx;
     const double len = sqrt(((double)dy * dy + (double)dz * dz) + (double)dx * dx);
     const double horiz = sqrt(horiz2);
-    cam->pitch = (float)acos(horiz2 / (len * horiz));
-    cam->yaw   = (float)acos(dz / (horiz * sqrt(1.0)));
+    cam->setPitch((float)acos(horiz2 / (len * horiz)));
+    cam->setYaw((float)acos(dz / (horiz * sqrt(1.0))));
 
     Mat4 view;
-    Camera_BuildLookAt(&view, cam->eye[0], cam->eye[1], cam->eye[2],
-                       cam->target[0], cam->target[1], cam->target[2],
+    Camera_BuildLookAt(&view, cam->eye()[0], cam->eye()[1], cam->eye()[2],
+                       cam->target()[0], cam->target()[1], cam->target()[2],
                        0.0f, 1.0f, 0.0f, 0.0f);
     d3d->SetTransform(Transform::View, &view);
 }
@@ -96,12 +96,12 @@ static void scripted_camera(Game *g, RenderDevice *d3d)
 static void update_listener(Game *g)
 {
     CameraGlobals *cam = &g_camera;
-    vec3d front = { cam->target[0] - cam->eye[0],
-                    cam->target[1] - cam->eye[1],
-                    cam->target[2] - cam->eye[2] };
+    vec3d front = { cam->target()[0] - cam->eye()[0],
+                    cam->target()[1] - cam->eye()[1],
+                    cam->target()[2] - cam->eye()[2] };
 
-    const float cp = (float)cos(-cam->pitch), sp = (float)sin(-cam->pitch);
-    const float cy = (float)cos(cam->yaw),    sy = (float)sin(cam->yaw);
+    const float cp = (float)cos(-cam->pitch()), sp = (float)sin(-cam->pitch());
+    const float cy = (float)cos(cam->yaw()),    sy = (float)sin(cam->yaw());
     float a[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
     float b[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
     a[5] = cp;  a[6] = -sp;  a[9] = sp;  a[10] = cp;
@@ -134,7 +134,7 @@ static void update_listener(Game *g)
     }
 
     CFaktSound *snd = g->soundManager()->cfaktSound();
-    snd->setPosition((vec3d *)cam->eye, 1);
+    snd->setPosition((vec3d *)cam->eye(), 1);
     snd->setOrientation(&front, &top, 1);
     snd->commitSettings();
 }
@@ -331,7 +331,7 @@ static void shadow(const void *pos, const void *rot, ThemeObjectType t, double n
 static void effects_and_shadows(Game *g, double now, double dt)
 {
     RenderDevice *d3d = g_renderDevice;
-    Scene_DrawSceneObjects(d3d, g_camera.eye,
+    Scene_DrawSceneObjects(d3d, g_camera.eye(),
                            ((DWORD *)&dt)[0], ((DWORD *)&dt)[1], now);
     set_rs(RS::StencilEnable, 0);
     BridgeSurf_Draw(g, &g_themeBlock, d3d, now);
@@ -467,9 +467,9 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
             ps->vtick((float)((double)(unsigned)ms * 0.001f));
         else
             ps->vtick((float)(elapsed * 0.001));
-        ps->vsetVector(cam->target[0] - cam->eye[0],
-                       cam->target[1] - cam->eye[1],
-                       cam->target[2] - cam->eye[2]);
+        ps->vsetVector(cam->target()[0] - cam->eye()[0],
+                       cam->target()[1] - cam->eye()[1],
+                       cam->target()[2] - cam->eye()[2]);
         if (spin) {
             const double a = -rec->rotRateY() * now;
             const float c = (float)cos(a), s = (float)sin(a);
@@ -614,15 +614,15 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             set_rs(RS::AlphaBlendEnable, 1);
             ps->vtick((float)(elapsed * 0.001));
             CameraGlobals *cam = &g_camera;
-            ps->vsetVector(cam->target[0] - cam->eye[0],
-                           cam->target[1] - cam->eye[1],
-                           cam->target[2] - cam->eye[2]);
+            ps->vsetVector(cam->target()[0] - cam->eye()[0],
+                           cam->target()[1] - cam->eye()[1],
+                           cam->target()[2] - cam->eye()[2]);
             ps->vrender(dev);
             set_rs(RS::AlphaBlendEnable, 0);
         }
     }
 
-    Scene_DrawParticleSystems(g_renderDevice, g_camera.eye, dt, now);
+    Scene_DrawParticleSystems(g_renderDevice, g_camera.eye(), dt, now);
 
     Player *player = g->player();
     if (player->effectDActive() != 0 && player->anim() != 10)
@@ -960,7 +960,7 @@ Render_RenderGameFrame(void)
         FramePose_Player(g, now, dt, &g_cameraFocus);
         FramePose_Foes(g, now, dt, g_foePoses);
         if (g->scriptPlayer()->splineActive() == 0)
-            Camera_UpdateViewTransform(&g_camera, g_renderDevice, g, g_cameraFocus, dt);
+            g_camera.updateViewTransform(g_renderDevice, g, g_cameraFocus, dt);
         else
             scripted_camera(g, g_renderDevice);
         if (g->soundCreated() != 0)
@@ -980,7 +980,7 @@ Render_RenderGameFrame(void)
     set_rs(RS::SpecularEnable,   0);
     set_rs(RS::AlphaBlendEnable, 0);
     CameraGlobals *cam = &g_camera;
-    g_themeBlock.sky().draw(d3d, cam->eye[0], cam->eye[1], cam->eye[2]);
+    g_themeBlock.sky().draw(d3d, cam->eye()[0], cam->eye()[1], cam->eye()[2]);
     if (g_themeBlock.fogEnabled())
         set_rs(RS::FogEnable, 1);
     set_rs(RS::StencilEnable, 1);

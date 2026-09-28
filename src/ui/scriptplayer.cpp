@@ -398,7 +398,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
     if (strcmp(cmd, "splinexyz") == 0) {
         field_92d_ = 1;
         spline->purgeControlPoints();
-        memcpy(splinePoint_, g_camera.eye, sizeof(splinePoint_));  // the camera's eye (camera.h)
+        memcpy(splinePoint_, g_camera.eye(), sizeof(splinePoint_));  // the camera's eye (camera.h)
         start_ = now_;
         // DETERMINISM: an int product widened as unsigned.
         duration_ = (double)(unsigned int)(atoi(strtok(NULL, JJS_DELIMS)) * 1000);
