@@ -128,7 +128,7 @@ struct Observation {
      * detour, but an accepted illegal one wedges the autoplayer against a wall. */
     bool passable(int fu, int fv, int tu, int tv) const;
 
-    /* As ws_passable, with foes treated as absent.  A foe blocks its cell as an
+    /* As passable, with foes treated as absent.  A foe blocks its cell as an
      * object does, but it moves; this separates "blocked for now" from "blocked
      * for good", so the autoplayer can wait for a guarded pickup. */
     bool passableIgnoringFoes(int fu, int fv, int tu, int tv) const;

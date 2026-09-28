@@ -128,7 +128,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                 Mat4 world;
                 const DWORD move = rec->movableType();
                 // PRESERVED: movable types 1 and 2 place the generator through
-                // Particle_GetGenerator(ps, NULL), which returns NULL for a
+                // ps->getGenerator(NULL), which returns NULL for a
                 // system with none; the position write then derefs a null
                 // pointer.
                 if (move == THEME_MOVE_TRANSLATE) {

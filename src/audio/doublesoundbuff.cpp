@@ -125,7 +125,7 @@ void doublesoundbuff::destruct()
 
 /* Takes the list, not the entry.  The next node is read before the delete, so
  * a destructor that unlinked its own node would not strand the walk;
- * List_Clear frees the nodes afterwards. */
+ * LinkedList::clear frees the nodes afterwards. */
 void __attribute__((stdcall))
 doublesoundbuff::purgeCloneList(LinkedList *list)
 {

@@ -257,7 +257,7 @@ int CFaktMesh::importSceneModels(const char *path)
 
     fclose(fp);
 
-    // pszName is the path, freed by FaktMesh_ReleaseModelBuffers.
+    // pszName is the path, freed by CFaktMesh::releaseModelBuffers.
     {
         unsigned n = (unsigned)strlen(path) + 1;
         char *name = (char *)malloc(n);

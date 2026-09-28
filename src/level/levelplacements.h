@@ -2,7 +2,7 @@
  * (lifts, slides, breakables, ramps...), where each one stands and how it is
  * turned, plus the tile-top template and the wall strips at height steps.
  * Built on level entry, read by the frame renderer every frame.  Every list is
- * a count and one or two heap arrays, freed only by LevelPlacements_Release.
+ * a count and one or two heap arrays, freed only by LevelPlacements::release.
  * Positions are (u, height, -v); rotations are (0, yaw, 0). */
 #pragma once
 

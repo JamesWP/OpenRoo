@@ -27,7 +27,7 @@ public:
     // (levelsounds.cpp).
     void setSound(CStaticSoundbuffer *p) { sound_ = p; }
 
-    // Where it is drawn (LevelPlacements_DrawLifts): u, live height, v.
+    // Where it is drawn (LevelPlacements::drawLifts): u, live height, v.
     float posU() const   { return posU_; }
     float height() const { return height_; }
     float posV() const   { return posV_; }

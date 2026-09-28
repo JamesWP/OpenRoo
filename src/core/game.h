@@ -286,7 +286,7 @@ public:
     unsigned char  levelIndex() const                { return levelIndex_; }
     void           setLevelIndex(unsigned char i)    { levelIndex_ = i; }
     unsigned char  levelCount() const                { return levelCount_; }
-    /* CD music on: every Sim_PlayCDStuf call is gated on it; HandleKeypress
+    /* CD music on: every CdThemes::play call is gated on it; HandleKeypress
      * toggles it, RenderSoundOptions shows it, sound setup clears it on
      * failure.  A dword. */
     int            musicOn() const                   { return config_.musicOn(); }
@@ -332,7 +332,7 @@ public:
      * device value HandleKeypress derives from it beside it. */
     unsigned char  cdVolume() const                  { return config_.cdVolume(); }
     void           setCdVolume(unsigned char p)      { config_.setCdVolume(p); }
-    /* CD mixer volume, 0..65536 (CDM_SetMixerVolume). */
+    /* CD mixer volume, 0..65536 (CDM::setMixerVolume). */
     unsigned int   cdMixerVolume() const             { return config_.cdMixerVolume(); }
     void           setCdMixerVolume(unsigned int v)  { config_.setCdMixerVolume(v); }
     unsigned char  waveVolume() const                { return config_.waveVolume(); }
