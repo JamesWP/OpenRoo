@@ -26,8 +26,8 @@ public:
     void __cdecl logSourceLocation(int level, const char *file, int line,
                                    const char *fmt, ...);
 
-    /* Construction and destruction of the global logger, driven by staticinit.cpp.
-     */
+    /* Construction and destruction of the global logger, driven by
+     * staticinit.cpp. */
     void construct();
 
     void closeAndRebindVtable();

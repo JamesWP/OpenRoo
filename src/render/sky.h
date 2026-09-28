@@ -26,23 +26,24 @@ static_assert(sizeof(SkyVertex) == 0x20, "SkyVertex stride");
  * call. */
 class __attribute__((packed)) SkyBackground {
 public:
-    /* Fills the geometry and matrix, then loads the six faces (UP, DN, FR, BK, LF,
-     * RT) through the texture loader.  Stops at the first face that fails to load;
-     * the low byte of the result is 0 on failure, 1 on success. */
+    /* Fills the geometry and matrix, then loads the six faces (UP, DN, FR, BK,
+     * LF, RT) through the texture loader.  Stops at the first face that fails
+     * to load; the low byte of the result is 0 on failure, 1 on success. */
     unsigned int buildFromFaceNames(RenderDevice *dev, const char *up,
                                     const char *dn, const char *fr,
                                     const char *bk, const char *lf,
                                     const char *rt, UINT bpp);
 
-    /* Construct, destroy and destroy-and-free, matching the vtable's one slot. */
+    /* Construct, destroy and destroy-and-free, matching the vtable's one slot.
+     */
     SkyBackground *construct();
 
     void dtorBody();
     static SkyBackground * __attribute__((thiscall))
     scalarDtor(SkyBackground *self, unsigned int flags);
 
-    /* Rebuilds the world matrix from flYawAngle and the given centre, submits the
-     * six faces, and returns the matrix (self->WorldMatrix). */
+    /* Rebuilds the world matrix from flYawAngle and the given centre, submits
+     * the six faces, and returns the matrix (self->WorldMatrix). */
     float *draw(RenderDevice *dev, float flCentreX, float flCentreY,
                 float flCentreZ);
 

@@ -32,14 +32,14 @@ public:
      * clear. */
     void release();
 
-    /* The theme loader's "explode": size the buffers, and store the drop rate (the
-     * keyword's third argument). */
+    /* The theme loader's "explode": size the buffers, and store the drop rate
+     * (the keyword's third argument). */
     void allocateExplodeBuffers(struct CFaktMesh *mesh);
 
     void storeExplodeScaledCount(float scale);
 
-    /* Copies one mesh frame and gives every triangle a velocity.  Returns 1, or 0
-     * if the frame, the vertex count or the buffer is wrong. */
+    /* Copies one mesh frame and gives every triangle a velocity.  Returns 1, or
+     * 0 if the frame, the vertex count or the buffer is wrong. */
     int begin(struct CFaktMesh *mesh, unsigned short frame,
               const float *origin);
 

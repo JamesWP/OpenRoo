@@ -1462,7 +1462,8 @@ void CylinderGenerator::cylBuildVelocity(const float *vmin, const float *vmax,
     flLifeMax_ = lmax;
 }
 
-/* Std's rate-table builder (StdGenerator::stdBuildRate), run on Cylinder's own fields. */
+/* Std's rate-table builder (StdGenerator::stdBuildRate), run on Cylinder's
+ * own fields. */
 void CylinderGenerator::cylBuildRate(float lo, float hi)
 {
     float step = (float)((double)hi * GAUSS_STEP);
@@ -1498,8 +1499,8 @@ BOOL CylinderGenerator::cylGenSave(void *fp)
 }
 
 /* Reads its own direction back out to rebuild the matrix via
- * CylinderGenerator::cylSetDirection.  The position table (the unit circle) is the
- * constructor's and is never rebuilt here. */
+ * cylSetDirection.  The position table (the unit circle) is the constructor's
+ * and is never rebuilt here. */
 BOOL CylinderGenerator::cylGenLoad(void *fp)
 {
     if (!read1(flOrigin_, 12, fp))        return FALSE;

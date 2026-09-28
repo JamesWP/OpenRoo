@@ -17,19 +17,20 @@ class __attribute__((packed)) VoicePool {
 public:
     static const int ORIGIN = 0;
 
-    /* Halts and re-triggers the current voice, then advances the cursor.  Returns
-     * the trigger's HRESULT, or DSERR_UNINITIALIZED with no voices. */
+    /* Halts and re-triggers the current voice, then advances the cursor.
+     * Returns the trigger's HRESULT, or DSERR_UNINITIALIZED with no voices. */
     int cycle(DWORD dwLoopFlags);
 
     /* Zeroes the pool; returns it. */
     VoicePool *blank();
 
-    /* Resets and frees every voice and clears the pool, except the nesting depth.
-     */
+    /* Resets and frees every voice and clears the pool, except the nesting
+     * depth. */
     void wipe();
 
-    /* Loads count voices of one file: voice 0 from disk, the rest duplicated from
-     * it (reloading any the duplicate refuses).  Returns 1, or 0 on failure. */
+    /* Loads count voices of one file: voice 0 from disk, the rest duplicated
+     * from it (reloading any the duplicate refuses).  Returns 1, or 0 on
+     * failure. */
     int fill3D(int count, IDirectSound *pDS, DWORD dwDsFlags, const char *filename, void *logger);
 
     /* Fills the pool with count duplicates of src.  Non-NULL on success. */

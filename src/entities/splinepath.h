@@ -29,8 +29,8 @@ class __attribute__((packed)) SplinePath {
 public:
     static const int ORIGIN = 0;
 
-    /* Construct, the scalar deleting destructor, and the destructor (which purges
-     * the points). */
+    /* Construct, the scalar deleting destructor, and the destructor (which
+     * purges the points). */
     SplinePath *construct();
 
     static SplinePath * __attribute__((thiscall))

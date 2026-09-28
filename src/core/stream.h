@@ -10,7 +10,8 @@
 
 /* What the script player hands to CStreamSoundbuffer::prepare.  Its copy is
  * embedded in the ScriptPlayer: "initwave" writes the file name, the
- * fixed-sound setup the rest.  Packed, because the ScriptPlayer field after it follows directly. */
+ * fixed-sound setup the rest.  Packed, because the ScriptPlayer field after it
+ * follows directly. */
 struct __attribute__((packed)) WaveInfo {
     IDirectSound  *pDirectsound;
     DWORD          dwFlags;

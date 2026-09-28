@@ -509,7 +509,8 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
                 particles(p->pos(), p->rot(), 1, ty, now, elapsed);
         }
 
-        /* Bombs: the fuse's effects, then the explosion's 2 s after the drop. */
+        /* Bombs: the fuse's effects, then the explosion's 2 s after the drop.
+         */
         for (unsigned char i = 0; i < g->bombCount(); ++i) {
             Bomb *b = g->bombSlot(g->bombId(i));
             float pos[3] = { b->posU(), b->posY(), -b->posV() };
@@ -708,8 +709,8 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
         dev->SetTexture(0, nullptr);
     }
 
-    /* The vitality needle: a quad about the origin, turned by
-     * 0.9519978 - vitality% * 0.019039957 and moved to (541/640 W, 92/480 H). */
+    /* The vitality needle: a quad about the origin, turned by 0.9519978 -
+     * vitality% * 0.019039957 and moved to (541/640 W, 92/480 H). */
     if (g_themeBlock.image(THEME_IMG_POINTER) != NULL) {
         float p[4][3] = {
             { W * 0.1f,  H * -0.13333334f, 0.0f },

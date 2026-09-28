@@ -118,8 +118,8 @@ static DWORD animation_frame(const SceneObject *o, double t)
     const AnimSlot *slot = (const AnimSlot *)&o->anim;
     if (slot->numFrames() == 0)
         return 0;
-    // The same frame as AnimSlot::frameOnClock, written as fmod(v, n) rather than
-    // fmod(v/n, 1)*n.
+    // The same frame as AnimSlot::frameOnClock, written as fmod(v, n) rather
+    // than fmod(v/n, 1)*n.
     double v = t * K_ANIM_SCALE * (double)(unsigned)slot->fps();
     double r = m_fmod(v, (double)(unsigned)slot->numFrames());
     return (DWORD)(unsigned short)(int)r;  // truncated to 16 bits

@@ -38,8 +38,9 @@ public:
     // The voice-pool counterpart.
     void releasePooledForOwner(VoicePool *pool, int bDestroyIfUnused);
 
-    /* Loads filename into an entry's master buffer (or, given the spare's address,
-     * the spare), in 3D or 2D, and applies the pending 3D mode on success. */
+    /* Loads filename into an entry's master buffer (or, given the spare's
+     * address, the spare), in 3D or 2D, and applies the pending 3D mode on
+     * success. */
     int loadEntryMaster(void *entry, const char *filename,
                         unsigned long dwDsFlags, int bDo3D);
 
@@ -58,8 +59,8 @@ public:
     int setup(int mode3d);
 
     /* Construction and destruction, the asset purge (also the reset), and
-     * start-up.  Init creates the device, with the 3D listener if enable3d; with
-     * no logger it creates its own, SoundManager.log. */
+     * start-up.  Init creates the device, with the 3D listener if enable3d;
+     * with no logger it creates its own, SoundManager.log. */
     SoundManager *construct();
     void destruct();
     static SoundManager *__attribute__((thiscall))
