@@ -108,12 +108,12 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 
     // A system-memory scratch surface with the destination's pixel format, as
     // BlitToSurface builds it: the descriptor is inherited, not zeroed.
-    ddiag_surface_desc(self->pTextureSurface_->GetSurfaceDesc(&ddsd), &ddsd);
+    ddiag_surface_desc(self->textureSurface()->GetSurfaceDesc(&ddsd), &ddsd);
     ddsd.dwFlags        = 0x1007;  // CAPS | HEIGHT | WIDTH | PIXELFORMAT
     ddsd.ddsCaps.dwCaps = 0x1800;  // TEXTURE | SYSTEMMEMORY
 
     IDirectDraw4 *dd = NULL;
-    self->pTextureSurface_->GetDDInterface((void **)&dd);
+    self->textureSurface()->GetDDInterface((void **)&dd);
 
     IDirectDrawSurface4 *tmp = NULL;
     HRESULT hr = dd->CreateSurface(&ddsd, &tmp, NULL);
@@ -304,7 +304,7 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
         return 0;
     }
 
-    self->pTextureSurface_->Blt(NULL, tmp, NULL, DDBLT_WAIT, NULL);
+    self->textureSurface()->Blt(NULL, tmp, NULL, DDBLT_WAIT, NULL);
 
     if (tmp != NULL)
         tmp->Release();

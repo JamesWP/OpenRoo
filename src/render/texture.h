@@ -12,16 +12,6 @@ struct IDirect3DTexture2;
 class LoadedImage;
 class RenderDevice;
 
-/* The two loaders that fill an image's surface, each in its own module
- * (texturedib.cpp, texturetga.cpp); friends of the class they fill. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
-                         char bSysMem);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
-TextureTGA_Parse(LoadedImage *self, LPCSTR path);
-
 class __attribute__((packed)) LoadedImage {
 public:
     /* ─── texture.cpp's members other files call ───────────────────────────
@@ -49,15 +39,19 @@ public:
 
     void releaseSurfaces();
 
+    /* For the DIB and TGA loaders (texturedib.cpp, texturetga.cpp), which fill
+     * the surface and record how it was filled. */
+    void setLoadStatus(int s)      { loadStatus_ = s; }
+    void setLoadedState(int s)     { loadedState_ = s; }
+    void setImageNamePtr(char *p)  { ImageName_ = p; }
+    /* The surface's address, for CreateSurface's out-parameter; 4-aligned. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+    IDirectDrawSurface4 **textureSurfaceSlot() { return &pTextureSurface_; }
+#pragma GCC diagnostic pop
+
 private:
     friend class SceneTexture;
-    friend unsigned int __attribute__((thiscall))
-    TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp);
-    friend unsigned int __attribute__((thiscall))
-    TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
-                             char bSysMem);
-    friend unsigned int __attribute__((thiscall))
-    TextureTGA_Parse(LoadedImage *self, LPCSTR path);
 
     void                *unknown00_;
     IDirectDrawSurface4 *pTextureSurface_;

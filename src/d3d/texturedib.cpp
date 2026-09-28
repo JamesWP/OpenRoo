@@ -57,13 +57,13 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
     // Inherit the destination's description, then override only what makes
     // this a system-memory scratch copy.  Unlike CreateSurface, ddsd is never
     // zeroed: the rest is whatever GetSurfaceDesc left.
-    ddiag_surface_desc(self->pTextureSurface_->GetSurfaceDesc(&ddsd), &ddsd);
+    ddiag_surface_desc(self->textureSurface()->GetSurfaceDesc(&ddsd), &ddsd);
     ddsd.dwFlags        = 0x1007;  // CAPS | HEIGHT | WIDTH | PIXELFORMAT
     ddsd.ddsCaps.dwCaps = 0x1800;  // TEXTURE | SYSTEMMEMORY
 
     // The interface the surface was created from, which is an IDirectDraw4.
     IDirectDraw4 *dd = NULL;
-    self->pTextureSurface_->GetDDInterface((void **)&dd);
+    self->textureSurface()->GetDDInterface((void **)&dd);
 
     IDirectDrawSurface4 *tmp = NULL;
     HRESULT hr = dd->CreateSurface(&ddsd, &tmp, NULL);
@@ -72,7 +72,7 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
         unsigned int r = fwrite(GS_TEX_CREATESURFACE_FAILED,
                                         (int)dib_strlen(GS_TEX_CREATESURFACE_FAILED),
                                         1, stderr);
-        self->loadStatus_ = 3;
+        self->setLoadStatus(3);
         return r & 0xffffff00u;  // upper bytes: fwrite
     }
 
@@ -82,14 +82,14 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
         unsigned int r = fwrite(GS_TEX_GETDC_FAILED,
                                         (int)dib_strlen(GS_TEX_GETDC_FAILED),
                                         1, stderr);
-        self->loadStatus_ = 4;
+        self->setLoadStatus(4);
         return r & 0xffffff00u;  // upper bytes: fwrite
     }
 
     BitBlt(hdcDst, 0, 0, bm.bmWidth, bm.bmHeight, hdcSrc, 0, 0, SRCCOPY);
     tmp->ReleaseDC(hdcDst);
 
-    self->pTextureSurface_->BltFast(0, 0, tmp, NULL, DDBLTFAST_WAIT);
+    self->textureSurface()->BltFast(0, 0, tmp, NULL, DDBLTFAST_WAIT);
 
     if (tmp != NULL)  // always true here
         tmp->Release();
@@ -116,7 +116,7 @@ TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
         hbmp = LoadImageA(NULL, name, IMAGE_BITMAP, 0, 0,
                           LR_LOADFROMFILE | LR_CREATEDIBSECTION);
         if (hbmp == NULL) {
-            self->loadStatus_ = 1;
+            self->setLoadStatus(1);
             return 0;
         }
     }
@@ -140,11 +140,11 @@ TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
     ddsd.ddsCaps.dwCaps = bSysMem ? 0x840  // OFFSCREENPLAIN | SYSTEMMEMORY
                                   : 0x40;  // OFFSCREENPLAIN
 
-    HRESULT hr = dd->CreateSurface(&ddsd, &self->pTextureSurface_, NULL);
+    HRESULT hr = dd->CreateSurface(&ddsd, self->textureSurfaceSlot(), NULL);
     ddiag_create_surface(hr, &ddsd);
     if (hr < 0) {
         unsigned int d = (unsigned int)DeleteObject((HGDIOBJ)hbmp);
-        self->loadStatus_ = 2;
+        self->setLoadStatus(2);
         return d & 0xffffff00u;  // upper bytes: DeleteObject
     }
 
@@ -154,14 +154,14 @@ TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
         return 0;
     }
 
-    if (self->ImageName_ != NULL)
-        free(self->ImageName_);
+    if (self->imageName() != NULL)
+        free(self->imageName());
 
     char *copy = (char *)malloc(dib_strlen(name) + 1u);
-    self->ImageName_ = copy;
+    self->setImageNamePtr(copy);
     sprintf(copy, GS_FMT_S, name);
 
-    self->loadedState_ = 1;
+    self->setLoadedState(1);
 
     unsigned int last = (unsigned int)DeleteObject((HGDIOBJ)hbmp);
     return (last & 0xffffff00u) | 1u;  // upper bytes: DeleteObject
