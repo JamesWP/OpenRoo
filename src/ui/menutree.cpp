@@ -242,7 +242,7 @@ void MenuTree::destruct()
     vtable_ = g_MenuTreeVtable;
 }
 
-MenuTree * __attribute__((thiscall))
+MenuTree *__attribute__((thiscall))
 MenuTree::scalarDeletingDtor(MenuTree *self, unsigned char flags)
 {
     self->destruct();

@@ -434,7 +434,7 @@ void TextRenderer::destruct()
     atlas()->dtorBody();
 }
 
-TextRenderer * __attribute__((thiscall))
+TextRenderer *__attribute__((thiscall))
 TextRenderer::scalarDeletingDtor(TextRenderer *self, unsigned int flags)
 {
     self->destruct();

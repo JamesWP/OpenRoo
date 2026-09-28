@@ -125,7 +125,7 @@ void TextEntry::destruct()
     vtable_ = g_TextEntryVtable;
 }
 
-TextEntry * __attribute__((thiscall))
+TextEntry *__attribute__((thiscall))
 TextEntry::scalarDeletingDtor(TextEntry *self, unsigned char flags)
 {
     self->destruct();

@@ -119,7 +119,7 @@ void LoadedImage::dtorBody()
 }
 
 /* Reachable only through vtable slot 0. */
-LoadedImage * __attribute__((thiscall))
+LoadedImage *__attribute__((thiscall))
 LoadedImage::scalarDtor(LoadedImage *self, unsigned int flags)
 {
     static unsigned long seen; image_first("LoadedImage::ScalarDeletingDtor", &seen);

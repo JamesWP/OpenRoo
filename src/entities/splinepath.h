@@ -33,7 +33,7 @@ public:
      * purges the points). */
     SplinePath *construct();
 
-    static SplinePath * __attribute__((thiscall))
+    static SplinePath *__attribute__((thiscall))
     scalarDestructor(SplinePath *self, unsigned char bFreeSelf);
 
     void destruct();

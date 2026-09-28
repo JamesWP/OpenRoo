@@ -31,7 +31,7 @@ static_assert(sizeof(WaveInfo) == 0x12, "WaveInfo size");
 class __attribute__((packed)) CStreamSoundbuffer {
 public:
     /* The deinit, then free() when bit 0 of flags is set; returns self. */
-    static void * __attribute__((thiscall))
+    static void *__attribute__((thiscall))
     scalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
 
     /* Releases everything, as releaseResources does, and deletes the lock. */

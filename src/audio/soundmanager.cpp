@@ -582,7 +582,7 @@ void SoundManager::destruct()
 
 /* Reached only through the vtable; the manager is embedded in the Game, so
  * nothing deletes one. */
-SoundManager * __attribute__((thiscall))
+SoundManager *__attribute__((thiscall))
 SoundManager::scalarDestructor(SoundManager *self, unsigned char flags)
 {
     self->destruct();

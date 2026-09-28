@@ -174,7 +174,7 @@ void GameLogger::construct()
     notifyHwnd_   = NULL;
 }
 
-void * __attribute__((thiscall))
+void *__attribute__((thiscall))
 GameLogger::scalarDeletingDtor(GameLogger *self, unsigned char flags)
 {
     self->closeAndRebindVtable();

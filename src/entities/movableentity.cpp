@@ -78,7 +78,7 @@ void MovableEntity::zeroSoundSlots()
 
 /* No code path in this codebase reaches this except through the vtable
  * installed above. */
-MovableEntity * __attribute__((thiscall))
+MovableEntity *__attribute__((thiscall))
 MovableEntity::scalarDeletingDtor(MovableEntity *self, unsigned int flags)
 {
     self->destroyBaseForGame();

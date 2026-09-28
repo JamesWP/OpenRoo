@@ -93,7 +93,7 @@ void ModelManager::destruct()
     cache_.destruct();
 }
 
-ModelManager * __attribute__((thiscall))
+ModelManager *__attribute__((thiscall))
 ModelManager::scalarDestructor(ModelManager *self, unsigned char flags)
 {
     self->destruct();

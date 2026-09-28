@@ -54,7 +54,7 @@ public:
      * with. */
     CFaktMesh *init();
 
-    static void * __attribute__((thiscall))
+    static void *__attribute__((thiscall))
     scalarDtor(CFaktMesh *self, unsigned int flags);
 
     void dtorBody();

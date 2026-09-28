@@ -380,7 +380,7 @@ public:
     ThemeSoundTable *construct();
 
     void destruct();
-    static ThemeSoundTable * __attribute__((thiscall))
+    static ThemeSoundTable *__attribute__((thiscall))
     scalarDestructor(ThemeSoundTable *self, unsigned char flags);
 
     int releaseAll();

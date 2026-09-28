@@ -115,7 +115,7 @@ void CdThemes::destruct()
 }
 
 /* Frees on bit 0; the only CdThemes is the Game's, so it never does. */
-CdThemes * __attribute__((thiscall))
+CdThemes *__attribute__((thiscall))
 CdThemes::scalarDeletingDtor(CdThemes *self, unsigned int flags)
 {
     self->destruct();

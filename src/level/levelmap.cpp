@@ -140,7 +140,7 @@ void LevelMap::destruct()
     vtable_ = g_LevelMapVtable;
 }
 
-LevelMap * __attribute__((thiscall))
+LevelMap *__attribute__((thiscall))
 LevelMap::scalarDeletingDtor(LevelMap *self, unsigned char flags)
 {
     self->destruct();
