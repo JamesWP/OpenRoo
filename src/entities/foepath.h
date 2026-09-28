@@ -8,21 +8,18 @@
 
 #include "layout.h"
 
-/* A search node, calloc(1, 0x44).  A plain public record: FoePath builds and
- * links them, and the chase (foe.cpp) reads the result's parent and cell. */
-struct __attribute__((packed)) PathNode {
+/* A search node, calloc(1, 0x44).  FoePath builds and links them; the chase
+ * (foe.cpp) reads the result's parent and cell. */
+class __attribute__((packed)) PathNode {
+public:
     static const int ORIGIN = 0;
 
-    int       f;            // +0x00  g + h, the open list's order
-    int       h;            // +0x04  the squared distance to the goal
-    int       g;            // +0x08  steps from the seed
-    int       field_0c;     // +0x0c  never touched
-    int       u;            // +0x10
-    int       v;            // +0x14
-    int       key;          // +0x18  FoePath::cellKey(u, v)
-    PathNode *parent;       // +0x1c
-    PathNode *children[8];  // +0x20  the nodes relaxed through this one
-    PathNode *next;         // +0x40  the open or closed chain
+    PathNode *parent() const { return parent_; }
+    int       u() const      { return u_; }
+    int       v() const      { return v_; }
+
+private:
+    friend class FoePath;  // builds, links and frees them
 
     // PRESERVED: the child scan has no bound, so a ninth child is stored one
     // past the array, onto next.  Written as that store, so the defect is kept
@@ -30,71 +27,88 @@ struct __attribute__((packed)) PathNode {
     void recordChild(PathNode *node)
     {
         int i = 0;
-        while (children[i] != 0 && ++i < 8)
+        while (children_[i] != 0 && ++i < 8)
             ;
         if (i == 8)
-            next = node;  // children[8] is next
+            next_ = node;  // children[8] is next
         else
-            children[i] = node;
+            children_[i] = node;
     }
 
-private:
+    int       f_;            // +0x00  g + h, the open list's order
+    int       h_;            // +0x04  the squared distance to the goal
+    int       g_;            // +0x08  steps from the seed
+    int       field_0c_;     // +0x0c  never touched
+    int       u_;            // +0x10
+    int       v_;            // +0x14
+    int       key_;          // +0x18  FoePath::cellKey(u, v)
+    PathNode *parent_;       // +0x1c
+    PathNode *children_[8];  // +0x20  the nodes relaxed through this one
+    PathNode *next_;         // +0x40  the open or closed chain
+
     KAROO_LAYOUT_REGISTER(PathNode);
 };
 
 KAROO_LAYOUT_CHECKS(PathNode)
 {
-    KAROO_LAYOUT_AT(f,        0x00);
-    KAROO_LAYOUT_AT(h,        0x04);
-    KAROO_LAYOUT_AT(g,        0x08);
-    KAROO_LAYOUT_AT(u,        0x10);
-    KAROO_LAYOUT_AT(v,        0x14);
-    KAROO_LAYOUT_AT(key,      0x18);
-    KAROO_LAYOUT_AT(parent,   0x1c);
-    KAROO_LAYOUT_AT(children, 0x20);
-    KAROO_LAYOUT_AT(next,     0x40);
+    KAROO_LAYOUT_AT(f_,        0x00);
+    KAROO_LAYOUT_AT(h_,        0x04);
+    KAROO_LAYOUT_AT(g_,        0x08);
+    KAROO_LAYOUT_AT(u_,        0x10);
+    KAROO_LAYOUT_AT(v_,        0x14);
+    KAROO_LAYOUT_AT(key_,      0x18);
+    KAROO_LAYOUT_AT(parent_,   0x1c);
+    KAROO_LAYOUT_AT(children_, 0x20);
+    KAROO_LAYOUT_AT(next_,     0x40);
     // calloc(1, 0x44).
     KAROO_LAYOUT_SIZE(0x44);
 }
 
 /* One cell of the cost-propagation worklist: calloc(1, 9), nine bytes for two
  * pointers; the ninth is never touched. */
-struct __attribute__((packed)) PendingCell {
+class __attribute__((packed)) PendingCell {
+public:
     static const int ORIGIN = 0;
 
-    PathNode    *node;      // +0x00
-    PendingCell *next;      // +0x04
-    unsigned char field_8;  // +0x08  never touched
-
 private:
+    friend class FoePath;  // the worklist is FoePath's
+
+    PathNode    *node_;      // +0x00
+    PendingCell *next_;      // +0x04
+    unsigned char field_8_;  // +0x08  never touched
+
     KAROO_LAYOUT_REGISTER(PendingCell);
 };
 
 KAROO_LAYOUT_CHECKS(PendingCell)
 {
-    KAROO_LAYOUT_AT(node, 0x00);
-    KAROO_LAYOUT_AT(next, 0x04);
+    KAROO_LAYOUT_AT(node_, 0x00);
+    KAROO_LAYOUT_AT(next_, 0x04);
     KAROO_LAYOUT_SIZE(9);
 }
 
 /* The worklist's owner block, calloc(1, 9).  Only the head is ever touched:
  * the worklist is a stack. */
-struct __attribute__((packed)) PendingStack {
+class __attribute__((packed)) PendingStack {
+public:
     static const int ORIGIN = 0;
 
-    int           field_0;  // +0x00  never touched
-    PendingCell  *head;     // +0x04
-    unsigned char field_8;  // +0x08  never touched
-
 private:
+    friend class FoePath;
+
+    int           field_0_;  // +0x00  never touched
+    PendingCell  *head_;     // +0x04
+    unsigned char field_8_;  // +0x08  never touched
+
     KAROO_LAYOUT_REGISTER(PendingStack);
 };
 
 KAROO_LAYOUT_CHECKS(PendingStack)
 {
-    KAROO_LAYOUT_AT(head, 0x04);
+    KAROO_LAYOUT_AT(head_, 0x04);
     KAROO_LAYOUT_SIZE(9);
 }
+
 
 class __attribute__((packed)) FoePath {
 public:

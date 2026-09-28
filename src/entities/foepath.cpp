@@ -256,22 +256,22 @@ int FoePath::cellKey(int u, int v)
 PathNode *FoePath::popBestOpen()
 {
     PathNode *open = open_;
-    PathNode *head = open->next;
+    PathNode *head = open->next_;
     if (head == 0)
         return 0;
 
     if (fx_popsecond()) {
-        PathNode *second = head->next;
+        PathNode *second = head->next_;
         if (second != 0) {
             open = head;
             head = second;
         }
     }
 
-    open->next = head->next;
+    open->next_ = head->next_;
 
-    head->next    = closed_->next;
-    closed_->next = head;
+    head->next_    = closed_->next_;
+    closed_->next_ = head;
 
     return head;
 }
@@ -291,13 +291,13 @@ void FoePath::releaseLists()
         if (hdr == 0)
             continue;
 
-        PathNode *n = hdr->next;
+        PathNode *n = hdr->next_;
         if (n == 0)
             continue;
 
         do {
             PathNode *p = n;
-            n = n->next;  // next must be read before p is freed
+            n = n->next_;  // next must be read before p is freed
             free(p);
             ++freed;
         // PRESERVED: hdr->next is left pointing at the freed chain here.
@@ -359,12 +359,12 @@ void FoePath::dispose()
 
 PathNode *FoePath::findByKey(PathNode *hdr, int key)
 {
-    PathNode *n = hdr->next;
+    PathNode *n = hdr->next_;
 
     while (n != 0) {
-        if (n->key == key)
+        if (n->key_ == key)
             return n;
-        n = n->next;
+        n = n->next_;
     }
     return 0;
 }
@@ -390,28 +390,28 @@ void FoePath::insertOpenByCost(PathNode *n)
 {
     PathNode *hdr = open_;
 
-    PathNode *cur = hdr->next;
+    PathNode *cur = hdr->next_;
     if (cur == 0) {
-        hdr->next = n;
+        hdr->next_ = n;
         return;
     }
 
-    const int f = n->f;
+    const int f = n->f_;
     PathNode *prev = hdr;
 
-    while (cur != 0 && cur->f < f) {
+    while (cur != 0 && cur->f_ < f) {
         prev = cur;
-        cur = cur->next;
+        cur = cur->next_;
     }
 
     if (fx_nosort()) {
-        n->next   = hdr->next;
-        hdr->next = n;
+        n->next_   = hdr->next_;
+        hdr->next_ = n;
         return;
     }
 
-    n->next    = cur;
-    prev->next = n;
+    n->next_    = cur;
+    prev->next_ = n;
 }
 
 void FoePath::pushPending(PathNode *node)
@@ -423,21 +423,21 @@ void FoePath::pushPending(PathNode *node)
 
     PendingCell *cell = (PendingCell *)path_calloc(1, 9);
 
-    cell->node = node;
+    cell->node_ = node;
 
-    cell->next         = pending_->head;
-    pending_->head     = cell;
+    cell->next_         = pending_->head_;
+    pending_->head_     = cell;
 }
 
 PathNode *FoePath::popPending()
 {
     PendingStack *owner = pending_;
-    PendingCell  *cell  = owner->head;
+    PendingCell  *cell  = owner->head_;
 
     ++g_diag.pops;
 
-    PathNode *node = cell->node;
-    owner->head = cell->next;
+    PathNode *node = cell->node_;
+    owner->head_ = cell->next_;
 
     free(cell);
     return node;
@@ -451,23 +451,23 @@ void FoePath::propagate(PathNode *p)
     ++g_diag.cascades;
     g_diag.cur_drain = 0;
 
-    const int gp = p->g;
+    const int gp = p->g_;
     for (int i = 0; i < 8; ++i) {
-        PathNode *c = p->children[i];
+        PathNode *c = p->children_[i];
         if (c == 0)
             break;
         const int gnew = gp + 1;
-        if (gnew < c->g) {
-            c->g      = gnew;
-            c->f      = c->h + gnew;
-            c->parent = p;
+        if (gnew < c->g_) {
+            c->g_      = gnew;
+            c->f_      = c->h_ + gnew;
+            c->parent_ = p;
             ++g_diag.reparent;
             pushPending(c);
         }
     }
 
     PendingStack *owner = pending_;
-    if (owner->head == 0) {
+    if (owner->head_ == 0) {
         diag_report();
         return;
     }
@@ -478,28 +478,28 @@ void FoePath::propagate(PathNode *p)
             g_diag.deepest = g_diag.cur_drain;
 
         for (int i = 0; i < 8; ++i) {
-            PathNode *c = q->children[i];
+            PathNode *c = q->children_[i];
             if (c == 0)
                 break;
-            const int gnew = q->g + 1;
-            if (gnew < c->g) {
-                c->g      = gnew;
-                c->f      = c->h + gnew;
-                c->parent = q;
+            const int gnew = q->g_ + 1;
+            if (gnew < c->g_) {
+                c->g_      = gnew;
+                c->f_      = c->h_ + gnew;
+                c->parent_ = q;
                 ++g_diag.reparent;
                 pushPending(c);
             }
         }
 
         owner = pending_;
-    } while (owner->head != 0);
+    } while (owner->head_ != 0);
 
     diag_report();
 }
 
 void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
 {
-    const int gnew = p->g + 1;
+    const int gnew = p->g_ + 1;
     const int key = cellKey(u, v);
 
     // PRESERVED: recordChild's open-coded scan has no bound, so a parent that
@@ -509,10 +509,10 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
     PathNode *n = findOpen(key);
     if (n != 0) {
         p->recordChild(n);
-        if (gnew < n->g) {
-            n->g      = gnew;
-            n->f      = n->h + gnew;
-            n->parent = p;
+        if (gnew < n->g_) {
+            n->g_      = gnew;
+            n->f_      = n->h_ + gnew;
+            n->parent_ = p;
         }
         return;
     }
@@ -520,10 +520,10 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
     n = findClosed(key);
     if (n != 0) {
         p->recordChild(n);
-        if (gnew < n->g) {
-            n->parent = p;
-            n->f      = n->h + gnew;
-            n->g      = gnew;
+        if (gnew < n->g_) {
+            n->parent_ = p;
+            n->f_      = n->h_ + gnew;
+            n->g_      = gnew;
             propagate(n);
         }
         return;
@@ -538,13 +538,13 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
     if (fx_truedist())
         h = (du < 0 ? -du : du) + (dv < 0 ? -dv : dv);
 
-    n->parent = p;
-    n->g      = gnew;
-    n->h      = h;
-    n->key    = key;
-    n->f      = h + gnew;
-    n->u      = u;
-    n->v      = v;
+    n->parent_ = p;
+    n->g_      = gnew;
+    n->h_      = h;
+    n->key_    = key;
+    n->f_      = h + gnew;
+    n->u_      = u;
+    n->v_      = v;
 
     insertOpenByCost(n);
 
@@ -697,8 +697,8 @@ void FoePath::expand(PathNode *n, int goalU, int goalV)
     }
 
     for (int i = 0; i < 4; ++i) {
-        const int u = n->u;
-        const int v = n->v;
+        const int u = n->u_;
+        const int v = n->v_;
         const int nu = u + step[i].du;
         const int nv = v + step[i].dv;
 
@@ -734,14 +734,14 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
     const int dv = vTarget - vFoe;
     const int h = du * du + dv * dv;
 
-    seed->g   = 0;
-    seed->h   = h;
-    seed->f   = h;
-    seed->key = cellKey(uTarget, vTarget);
-    seed->u   = uTarget;
-    seed->v   = vTarget;
+    seed->g_   = 0;
+    seed->h_   = h;
+    seed->f_   = h;
+    seed->key_ = cellKey(uTarget, vTarget);
+    seed->u_   = uTarget;
+    seed->v_   = vTarget;
 
-    open_->next = seed;
+    open_->next_ = seed;
 
     unsigned short cap = cap_;
 
@@ -756,7 +756,7 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
             node = popBestOpen();
             if (node == 0)
                 return 0;
-            if (node->key == goalKey)
+            if (node->key_ == goalKey)
                 break;
 
             expand(node, uFoe, vFoe);
