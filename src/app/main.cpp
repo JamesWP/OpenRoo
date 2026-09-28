@@ -82,9 +82,9 @@ static void restore_surfaces()
     g_fontMain.atlas()->load();
     g_fontNumbers.atlas()->load();
     for (int i = 0; i < 6; i++)
-        g_themeBlock.sky.textures()[i].load();
+        g_themeBlock.sky().textures()[i].load();
     for (int i = 0; i < 10; i++) {
-        SceneTexture *img = g_themeBlock.images[IMAGE_PTR_ORDER[i]];
+        SceneTexture *img = g_themeBlock.image(IMAGE_PTR_ORDER[i]);
         if (img)
             img->load();
     }

@@ -373,7 +373,7 @@ void LevelPlacements::build(const Game *g,
                 }
             }
 
-    buildWalls(g, theme->flSideHeight);
+    buildWalls(g, theme->sideHeight());
 }
 
 /* Before WinMain: every dword of the template zero but the diffuse,
@@ -405,7 +405,7 @@ void LevelPlacements::drawLifts(Game *g, ThemeAssetBlock *theme,
     }
     Scene_RenderSceneObjects(g, (SceneQuadVertex *)(void *)this,  // tileQuad, at +0
                              (const Vec3 *)lifts_.pos, (const Vec3 *)lifts_.rot,
-                             lifts_.count, &theme->slots[THEME_OBJ_ELEVATOR],
+                             lifts_.count, theme->slot(THEME_OBJ_ELEVATOR),
                              d3d, now, 0.0f, 0, 0);
 }
 
@@ -423,7 +423,7 @@ void LevelPlacements::drawSlides(Game *g, ThemeAssetBlock *theme,
     float animTime = (float)fmod(now * (double)0.002f, 1.0);
     Scene_RenderSceneObjects(g, (SceneQuadVertex *)(void *)this,  // tileQuad, at +0
                              (const Vec3 *)slides_.pos, (const Vec3 *)slides_.rot,
-                             slides_.count, &theme->slots[THEME_OBJ_PLATFORM],
+                             slides_.count, theme->slot(THEME_OBJ_PLATFORM),
                              d3d, now, animTime, 0x14, 0);
 }
 #pragma GCC diagnostic pop
