@@ -200,9 +200,6 @@ static bool item_slot(unsigned char contents, ThemeObjectType *out)
     }
 }
 
-static const float *pose_pos(FoePose *p) { return (const float *)((BYTE *)p + 0x01); }
-static const float *pose_rot(FoePose *p) { return (const float *)((BYTE *)p + 0x0d); }
-
 /* kind 2 is a catcher, 3 a thrower; any other kind draws nothing. */
 static bool foe_slot(unsigned char kind, bool dying, ThemeObjectType *out)
 {
@@ -307,14 +304,14 @@ static void opaque_passes(Game *g, double now, double elapsed)
         FoePose *p = &g_foePoses[i];
         const bool dying = f->dyingStarted() != 0;
         ThemeObjectType ty;
-        if (!foe_slot(p->kind, dying, &ty))
+        if (!foe_slot(p->kind(), dying, &ty))
             continue;
         if (!dying) {
-            rso(pose_pos(p), pose_rot(p), 1, ty, now, p->stepFrac, f->anim(), 0);
+            rso(p->pos(), p->rot(), 1, ty, now, p->stepFrac(), f->anim(), 0);
             continue;
         }
         arm_fx_records(slot(ty), f);
-        rso(pose_pos(p), pose_rot(p), 1, ty, now, 0.0f, 0, (unsigned)(int)elapsed);
+        rso(p->pos(), p->rot(), 1, ty, now, 0.0f, 0, (unsigned)(int)elapsed);
     }
 }
 
@@ -363,9 +360,9 @@ static void effects_and_shadows(Game *g, double now, double dt)
             Foe *f = g->foeSlot(g->foeId(i));
             FoePose *p = &g_foePoses[i];
             ThemeObjectType ty;
-            if (f->dyingStarted() != 0 || !foe_slot(p->kind, false, &ty))
+            if (f->dyingStarted() != 0 || !foe_slot(p->kind(), false, &ty))
                 continue;
-            shadow(pose_pos(p), pose_rot(p), ty, now, p->stepFrac, f->anim());
+            shadow(p->pos(), p->rot(), ty, now, p->stepFrac(), f->anim());
         }
 
         /* Setting 2 and up also shadows the items. */
@@ -508,8 +505,8 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             Foe *f = g->foeSlot(g->foeId(i));
             FoePose *p = &g_foePoses[i];
             ThemeObjectType ty;
-            if (foe_slot(p->kind, f->dyingStarted() != 0, &ty))
-                particles(pose_pos(p), pose_rot(p), 1, ty, now, elapsed);
+            if (foe_slot(p->kind(), f->dyingStarted() != 0, &ty))
+                particles(p->pos(), p->rot(), 1, ty, now, elapsed);
         }
 
         /* Bombs: the fuse's effects, then the explosion's 2 s after the drop. */
@@ -544,7 +541,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
         for (unsigned char i = 0; i < g->foeCount(); ++i) {
             Foe *f = g->foeSlot(g->foeId(i));
             if (f->pickedUp() == 1 && crystal != NULL) {
-                const float *p = pose_pos(&g_foePoses[i]);
+                const float *p = g_foePoses[i].pos();
                 spawn_burst(crystal, p[0], p[1], p[2]);
             }
         }
@@ -776,7 +773,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     /* A blip for every foe within 13 cells, turned into the camera's frame
      * (RotY(-yaw)) and scaled by 4; drawn untextured. */
     for (unsigned char i = 0; i < g->foeCount(); ++i) {
-        const float *fp = pose_pos(&g_foePoses[i]);
+        const float *fp = g_foePoses[i].pos();
         Vec3 a = { fp[0], 0.0f, fp[2] }, d;
         Math_Vec3Sub(&d, &a, &me);
         if (!(Math_Vec3Length(&d) < 13.0))
