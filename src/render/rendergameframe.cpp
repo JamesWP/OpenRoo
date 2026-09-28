@@ -167,16 +167,16 @@ static void rso_list(const PlacementList &l, ThemeObjectType t, double now)
  * explosion debris on the latched frame; the latch is then consumed. */
 static void arm_fx_records(ThemeObjectTypeSlot *fx, MovableEntity *e)
 {
-    for (DWORD k = 0; k < fx->dwInstanceCount; ++k) {
-        ThemeLevelObject *rec = &fx->records[k];
-        if (rec->pParticleSystems[0] != NULL) {
+    for (DWORD k = 0; k < fx->instanceCount(); ++k) {
+        ThemeLevelObject *rec = &fx->records()[k];
+        if (rec->particleSystems()[0] != NULL) {
             if (e->debrisPending())
-                Particle_EnableRenderNode(rec->pParticleSystems[0]);
+                Particle_EnableRenderNode(rec->particleSystems()[0]);
             else
-                Particle_DisableRenderNode(rec->pParticleSystems[0]);
+                Particle_DisableRenderNode(rec->particleSystems()[0]);
         }
-        if (rec->bExplode && e->debrisPending())
-            rec->explode.begin(rec->pMesh, 0, rec->flExplodeDir);
+        if (rec->explodes() && e->debrisPending())
+            rec->explodeDebris().begin(rec->mesh(), 0, rec->explodeDir());
     }
     if (e->debrisPending())
         e->clearDebrisPending();
@@ -250,10 +250,10 @@ static void opaque_passes(Game *g, double now, double elapsed)
             continue;
         }
         ThemeObjectTypeSlot *fx = slot(THEME_OBJ_OBSTACLEFX);
-        for (DWORD k = 0; k < fx->dwInstanceCount; ++k) {
-            ThemeLevelObject *rec = &fx->records[k];
-            if (rec->bExplode && t->field20f())
-                rec->explode.begin(rec->pMesh, 0, rec->flExplodeDir);
+        for (DWORD k = 0; k < fx->instanceCount(); ++k) {
+            ThemeLevelObject *rec = &fx->records()[k];
+            if (rec->explodes() && t->field20f())
+                rec->explodeDebris().begin(rec->mesh(), 0, rec->explodeDir());
         }
         if (t->field20f())
             t->setField20f(0);
@@ -406,19 +406,19 @@ static void particles_list(const PlacementList &l, ThemeObjectType t, double now
  * its bursts[] are spawned at a point and live 1000 ms. */
 static ThemeLevelObject *burst_record(ThemeObjectType t)
 {
-    ThemeLevelObject *rec = &slot(t)->records[0];
-    return rec->kind == THEME_KIND_PARTICLESYSTEM ? rec : NULL;
+    ThemeLevelObject *rec = &slot(t)->records()[0];
+    return rec->kind() == THEME_KIND_PARTICLESYSTEM ? rec : NULL;
 }
 
 /* Spawn into the first free burst (a byte index). */
 static void spawn_burst(ThemeLevelObject *rec, float x, float y, float z)
 {
-    for (unsigned char j = 0; j < rec->dwInstanceCount; ++j) {
-        FxBurst *b = &rec->bursts[j];
+    for (unsigned char j = 0; j < rec->instanceCount(); ++j) {
+        FxBurst *b = &rec->bursts()[j];
         if (b->active)
             continue;
-        if (rec->pParticleSystems[j] != NULL)
-            Particle_EnableRenderNode(rec->pParticleSystems[j]);
+        if (rec->particleSystems()[j] != NULL)
+            Particle_EnableRenderNode(rec->particleSystems()[j]);
         b->msLeft = 1000;
         b->pos[0] = x; b->pos[1] = y; b->pos[2] = z;
         b->active = 1;
@@ -444,7 +444,7 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
                         bool spin, double now, double elapsed)
 {
     RenderDevice *dev = g_renderDevice;
-    SceneTexture *tex = rec->pSubObjects[0].pTexture;
+    SceneTexture *tex = rec->subObjects()[0].pTexture;
     if (tex != NULL)
         dev->SetTexture(0, tex);
     set_rs(RS::SrcBlend, src);
@@ -452,8 +452,8 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
     set_rs(RS::AlphaBlendEnable, 1);
 
     CameraGlobals *cam = &g_camera;
-    for (unsigned char j = 0; j < rec->dwInstanceCount; ++j) {
-        FxBurst *b = &rec->bursts[j];
+    for (unsigned char j = 0; j < rec->instanceCount(); ++j) {
+        FxBurst *b = &rec->bursts()[j];
         if (b->msLeft <= 0) {
             b->active = 0;
             continue;
@@ -461,7 +461,7 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
         Mat4 world = translation(b->pos);
         dev->SetTransform(Transform::World, &world);
 
-        ParticleSystem *ps = rec->pParticleSystems[j];
+        ParticleSystem *ps = rec->particleSystems()[j];
         const int ms = (int)elapsed;
         if (tick == TICK_WHOLE_MS)
             ps_vtick(ps, (float)((double)(unsigned)ms * 0.001f));
@@ -471,7 +471,7 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
                        cam->target[1] - cam->eye[1],
                        cam->target[2] - cam->eye[2]);
         if (spin) {
-            const double a = -rec->flRotRateY * now;
+            const double a = -rec->rotRateY() * now;
             const float c = (float)cos(a), s = (float)sin(a);
             Mat4 r;
             m4_identity(&r);
@@ -531,8 +531,8 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
                             (float)-bt->cellV());
         }
         if (field != NULL)
-            draw_bursts(field, field->pSubObjects[0].dwBlendSrc,
-                        field->pSubObjects[0].dwBlendDst, TICK_WHOLE_MS, false, now, elapsed);
+            draw_bursts(field, field->subObjects()[0].dwBlendSrc,
+                        field->subObjects()[0].dwBlendDst, TICK_WHOLE_MS, false, now, elapsed);
     }
 
     /* Setting 2 and up: pickups and the speed trail. */
@@ -563,16 +563,16 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
                      (unsigned)pl->moveDir() == Sim_GetTurnedDirection(facing, 2);
             }
             if (on) {
-                if (!speed->bursts[0].active) {
-                    Particle_EnableRenderNode(speed->pParticleSystems[0]);
-                    speed->bursts[0].active = 1;
+                if (!speed->bursts()[0].active) {
+                    Particle_EnableRenderNode(speed->particleSystems()[0]);
+                    speed->bursts()[0].active = 1;
                 }
-                speed->bursts[0].pos[0] = focus->f[2];
-                speed->bursts[0].pos[1] = focus->f[3];
-                speed->bursts[0].pos[2] = focus->f[4];
+                speed->bursts()[0].pos[0] = focus->f[2];
+                speed->bursts()[0].pos[1] = focus->f[3];
+                speed->bursts()[0].pos[2] = focus->f[4];
             } else {
-                Particle_DisableRenderNode(speed->pParticleSystems[0]);
-                speed->bursts[0].active = 0;
+                Particle_DisableRenderNode(speed->particleSystems()[0]);
+                speed->bursts()[0].active = 0;
             }
         }
 
@@ -583,10 +583,10 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             draw_bursts(coll, Blend::One, Blend::One, TICK_ELAPSED, true, now, elapsed);
 
         if (speed != NULL) {
-            ParticleSystem *ps = speed->pParticleSystems[0];
+            ParticleSystem *ps = speed->particleSystems()[0];
             Generator *gen = Particle_GetGenerator(ps, NULL);
-            gen_vset_position(gen, speed->bursts[0].pos[0], speed->bursts[0].pos[1],
-                              speed->bursts[0].pos[2]);
+            gen_vset_position(gen, speed->bursts()[0].pos[0], speed->bursts()[0].pos[1],
+                              speed->bursts()[0].pos[2]);
             /* (0, 0.1, -1, 1) through the player's yaw: the trail streams
              * out behind. */
             const float c = (float)cos(focus->f[1]), s = (float)sin(focus->f[1]);
@@ -608,7 +608,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
             RenderDevice *dev = g_renderDevice;
             dev->SetTransform(Transform::World, &g_worldIdentity);
-            dev->SetTexture(0, speed->pSubObjects[0].pTexture);
+            dev->SetTexture(0, speed->subObjects()[0].pTexture);
             set_rs(RS::SrcBlend, Blend::One);
             set_rs(RS::DestBlend, Blend::One);
             set_rs(RS::AlphaBlendEnable, 1);

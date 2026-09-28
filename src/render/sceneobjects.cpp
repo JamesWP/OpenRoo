@@ -93,13 +93,13 @@ static bool gate_passes(DWORD gate, const Tile *tile, const Player *pl)
 /* The record's vertical oscillation, added to `y`. */
 static float oscillate(const ThemeLevelObject *rec, const Tile *tile, double now, float y)
 {
-    if (rec->flOscillationAmplitude == 0.0f)
+    if (rec->oscillationAmplitude() == 0.0f)
         return y;
-    double arg = rec->flOscillationFrequency * now;
-    if (rec->bOscillateRandom)
+    double arg = rec->oscillationFrequency() * now;
+    if (rec->oscillateRandom())
         arg += (double)tile->itemPhase() * PHASE_K;
-    arg += rec->flOscillationPhase;
-    return (float)(sin(arg) * rec->flOscillationAmplitude + y);
+    arg += rec->oscillationPhase();
+    return (float)(sin(arg) * rec->oscillationAmplitude() + y);
 }
 
 /* The mesh frame.  With bNoMoveStates the record loops its own code-0x14 range
@@ -108,15 +108,15 @@ static float oscillate(const ThemeLevelObject *rec, const Tile *tile, double now
 static unsigned int anim_frame(ThemeLevelObject *rec, double now, float animTime,
                                unsigned int animCode)
 {
-    if (rec->bNoMoveStates) {
-        AnimSlot *a = rec->animTable.lookup(0x14);
+    if (rec->noMoveStates()) {
+        AnimSlot *a = rec->animTable().lookup(0x14);
         if (a == NULL)
             return 0;
         double n = (double)(unsigned int)a->numFrames();
         double v = (double)(unsigned int)a->fps() * now * 0.001 / n;
         return (unsigned int)(long long)(fmod(v, 1.0) * n);
     }
-    AnimSlot *a = rec->animTable.lookup(animCode);
+    AnimSlot *a = rec->animTable().lookup(animCode);
     if (a == NULL || a->numFrames() == 0)
         return 0;
     double v;
@@ -133,21 +133,21 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
                        RenderDevice *dev, double now, float animTime,
                        unsigned int animCode, unsigned int dtMs)
 {
-    Vec3 P = { rec->flPosX, rec->flPosY, rec->flPosZ };
-    float h  = rec->bRandomYAngle ? tile->itemPhase() : 0.0f;
-    float rx = (float)(now * rec->flRotRateX);
-    float ry = (float)(now * rec->flRotRateY + h);
-    float rz = (float)(now * rec->flRotRateZ);
+    Vec3 P = { rec->posX(), rec->posY(), rec->posZ() };
+    float h  = rec->randomYAngle() ? tile->itemPhase() : 0.0f;
+    float rx = (float)(now * rec->rotRateX());
+    float ry = (float)(now * rec->rotRateY() + h);
+    float rz = (float)(now * rec->rotRateZ());
     P.y = oscillate(rec, tile, now, P.y);
 
     Vec3 S;
-    if (rec->flPump[3] != 0.0f) {
-        double w = (sin(rec->flPump[3] * now) + 1.0) * 0.5;
-        S.x = (float)(w * rec->flPump[0]) + rec->flScaleX;
-        S.y = (float)(w * rec->flPump[1]) + rec->flScaleY;
-        S.z = (float)(w * rec->flPump[2] + rec->flScaleZ);
+    if (rec->pump()[3] != 0.0f) {
+        double w = (sin(rec->pump()[3] * now) + 1.0) * 0.5;
+        S.x = (float)(w * rec->pump()[0]) + rec->scaleX();
+        S.y = (float)(w * rec->pump()[1]) + rec->scaleY();
+        S.z = (float)(w * rec->pump()[2] + rec->scaleZ());
     } else {
-        S = (Vec3){ rec->flScaleX, rec->flScaleY, rec->flScaleZ };
+        S = (Vec3){ rec->scaleX(), rec->scaleY(), rec->scaleZ() };
     }
 
     Mat4 M, R;
@@ -180,32 +180,32 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
     const float *p = sub->flEffectParams;
     switch (sub->effect) {
     case 0:
-        rec->wrapper.flush();
+        rec->wrapper().flush();
         break;
     case 4:
-        rec->wrapper.applySineWave((unsigned int)(long long)now, p[0], p[1], p[2]);
+        rec->wrapper().applySineWave((unsigned int)(long long)now, p[0], p[1], p[2]);
         break;
     case 5:
         if (!game->config()->videoReflection())
             return;
-        rec->wrapper.updateObjectTransform(dev, (unsigned short)frame);
+        rec->wrapper().updateObjectTransform(dev, (unsigned short)frame);
         break;
     case 6:
-        rec->wrapper.scrollUVs((unsigned int)(long long)now, p[0] != 0.0f ? 1 : 0, p[1]);
+        rec->wrapper().scrollUVs((unsigned int)(long long)now, p[0] != 0.0f ? 1 : 0, p[1]);
         break;
     default:
         break;
     }
 
-    if (rec->bExplode) {
-        rec->explode.advance((float)((double)dtMs * (double)0.001f));
-        rec->explode.draw(dev);
+    if (rec->explodes()) {
+        rec->explodeDebris().advance((float)((double)dtMs * (double)0.001f));
+        rec->explodeDebris().draw(dev);
         return;
     }
-    if (rec->bLit)
-        rec->pMesh->drawFramedModel(dev, frame);
+    if (rec->lit())
+        rec->mesh()->drawFramedModel(dev, frame);
     else
-        rec->pMesh->drawMeshBuffer(dev, frame);
+        rec->mesh()->drawMeshBuffer(dev, frame);
 }
 
 static void draw_billboard(ThemeLevelObject *rec, const Tile *tile, const Vec3 *pos,
@@ -216,16 +216,16 @@ static void draw_billboard(ThemeLevelObject *rec, const Tile *tile, const Vec3 *
                             g_camera.target[0] - g_camera.eye[0],
                             g_camera.target[1] - g_camera.eye[1],
                             g_camera.target[2] - g_camera.eye[2],
-                            rec->flBillboardScale);
+                            rec->billboardScale());
     BbVertex v[4];
     billboard_vertex(&v[0], &corner[0], 0x00ffffff, 0, 0.0f, 1.0f);
     billboard_vertex(&v[1], &corner[1], 0x00ffffff, 0, 0.0f, 0.0f);
     billboard_vertex(&v[2], &corner[2], 0x00ffffff, 0, 1.0f, 1.0f);
     billboard_vertex(&v[3], &corner[3], 0x00ffffff, 0, 1.0f, 0.0f);
 
-    float y = oscillate(rec, tile, now, rec->flPosY);
+    float y = oscillate(rec, tile, now, rec->posY());
     Mat4 T;
-    mat_translate(&T, rec->flPosX + pos->x, y + pos->y, rec->flPosZ + pos->z);
+    mat_translate(&T, rec->posX() + pos->x, y + pos->y, rec->posZ() + pos->z);
     dev->SetTransform(Transform::World, &T);
     dev->Draw(Prim::TriangleStrip, VertexFormat::Lit, v, 4, 0);
 }
@@ -358,15 +358,15 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
     Config *cfg = game->config();
     const Player *pl = game->player();
 
-    for (unsigned int i = 0; i < slot->dwInstanceCount; i++) {
-        ThemeLevelObject *rec = &slot->records[i];
+    for (unsigned int i = 0; i < slot->instanceCount(); i++) {
+        ThemeLevelObject *rec = &slot->records()[i];
         RenderDevice *dev = d3d;
-        if (rec->bSpecular && cfg->videoHighlights())
+        if (rec->specular() && cfg->videoHighlights())
             dev->SetRenderState(RS::SpecularEnable, 1);
-        dev->SetRenderState(RS::ZWriteEnable, rec->bNoZWrite ? 0 : 1);
+        dev->SetRenderState(RS::ZWriteEnable, rec->noZWrite() ? 0 : 1);
 
-        for (unsigned int s = 0; s < rec->dwSubObjectCount; s++) {
-            SceneSubObject *sub = &rec->pSubObjects[s];
+        for (unsigned int s = 0; s < rec->subObjectCount(); s++) {
+            SceneSubObject *sub = &rec->subObjects()[s];
             if (sub->effect == 5 && !cfg->videoReflection())
                 continue;
             DWORD addr = sub->dwTexAddress != 0 ? sub->dwTexAddress : (DWORD)TexAddress::Clamp;
@@ -389,7 +389,7 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
                     dev->SetRenderState(RS::AlphaBlendEnable, 0);
                 }
 
-                switch (rec->kind) {
+                switch (rec->kind()) {
                 case KIND_MODEL:
                     draw_model(game, rec, sub, tile, pos, &rotations[k], dev,
                                now, animTime, animCode, dtMs);

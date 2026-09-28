@@ -74,35 +74,35 @@ static int float_plausible(float f)
 
 static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
 {
-    const char *kindNote = (r.kind <= THEME_KIND_PARTICLESYSTEM) ? "" : "  SUSPICIOUS kind";
+    const char *kindNote = (r.kind() <= THEME_KIND_PARTICLESYSTEM) ? "" : "  SUSPICIOUS kind";
     log_write("THEME_STRUCT:   %s[%d] kind=%lu%s pMesh=%p%s subobj=%lu%s\n",
-              slotName, i, (unsigned long)r.kind, kindNote, (void *)r.pMesh,
-              ptr_plausible(r.pMesh) ? "" : "  SUSPICIOUS pMesh",
-              (unsigned long)r.dwSubObjectCount,
-              r.dwSubObjectCount <= 8 ? "" : "  SUSPICIOUS dwSubObjectCount");
+              slotName, i, (unsigned long)r.kind(), kindNote, (void *)r.mesh(),
+              ptr_plausible(r.mesh()) ? "" : "  SUSPICIOUS pMesh",
+              (unsigned long)r.subObjectCount(),
+              r.subObjectCount() <= 8 ? "" : "  SUSPICIOUS dwSubObjectCount");
     log_write("THEME_STRUCT:   %s[%d] pos=(%g,%g,%g)%s scale=(%g,%g,%g)%s rot=(%g,%g,%g)%s\n",
-              slotName, i, r.flPosX, r.flPosY, r.flPosZ,
-              (float_plausible(r.flPosX) && float_plausible(r.flPosY) && float_plausible(r.flPosZ)) ? "" : "  SUSPICIOUS pos",
-              r.flScaleX, r.flScaleY, r.flScaleZ,
-              (float_plausible(r.flScaleX) && float_plausible(r.flScaleY) && float_plausible(r.flScaleZ)) ? "" : "  SUSPICIOUS scale",
-              r.flRotRateX, r.flRotRateY, r.flRotRateZ,
-              (float_plausible(r.flRotRateX) && float_plausible(r.flRotRateY) && float_plausible(r.flRotRateZ)) ? "" : "  SUSPICIOUS rot");
+              slotName, i, r.posX(), r.posY(), r.posZ(),
+              (float_plausible(r.posX()) && float_plausible(r.posY()) && float_plausible(r.posZ())) ? "" : "  SUSPICIOUS pos",
+              r.scaleX(), r.scaleY(), r.scaleZ(),
+              (float_plausible(r.scaleX()) && float_plausible(r.scaleY()) && float_plausible(r.scaleZ())) ? "" : "  SUSPICIOUS scale",
+              r.rotRateX(), r.rotRateY(), r.rotRateZ(),
+              (float_plausible(r.rotRateX()) && float_plausible(r.rotRateY()) && float_plausible(r.rotRateZ())) ? "" : "  SUSPICIOUS rot");
     log_write("THEME_STRUCT:   %s[%d] count=%lu movable=%lu lit=%lu nomove=%lu nozw=%lu noshadow=%lu spec=%lu randYaw=%lu\n",
-              slotName, i, (unsigned long)r.dwInstanceCount, (unsigned long)r.dwMovableType,
-              (unsigned long)r.bLit, (unsigned long)r.bNoMoveStates, (unsigned long)r.bNoZWrite,
-              (unsigned long)r.bNoShadow, (unsigned long)r.bSpecular, (unsigned long)r.bRandomYAngle);
+              slotName, i, (unsigned long)r.instanceCount(), (unsigned long)r.movableType(),
+              (unsigned long)r.lit(), (unsigned long)r.noMoveStates(), (unsigned long)r.noZWrite(),
+              (unsigned long)r.noShadow(), (unsigned long)r.specular(), (unsigned long)r.randomYAngle());
     log_write("THEME_STRUCT:   %s[%d] osc amp=%g freq=%g phase=%g random=%lu pump=(%g,%g,%g,%g)\n",
-              slotName, i, r.flOscillationAmplitude, r.flOscillationFrequency,
-              r.flOscillationPhase, (unsigned long)r.bOscillateRandom,
-              r.flPump[0], r.flPump[1], r.flPump[2], r.flPump[3]);
-    if (r.bExplode)
+              slotName, i, r.oscillationAmplitude(), r.oscillationFrequency(),
+              r.oscillationPhase(), (unsigned long)r.oscillateRandom(),
+              r.pump()[0], r.pump()[1], r.pump()[2], r.pump()[3]);
+    if (r.explodes())
         log_write("THEME_STRUCT:   %s[%d] explode=%lu dir=(%g,%g,%g) verts=%d scaled=%g%s\n",
-                  slotName, i, (unsigned long)r.bExplode,
-                  r.flExplodeDir[0], r.flExplodeDir[1], r.flExplodeDir[2],
-                  r.explode.vertexCount(), r.explode.explodeScaledCount(),
-                  (r.pMesh != NULL && r.explode.vertexCount() > 0) ? "" : "  SUSPICIOUS explode");
-    for (DWORD k = 0; k < r.dwSubObjectCount && k < 8; k++) {
-        const SceneSubObject &so = r.pSubObjects[k];
+                  slotName, i, (unsigned long)r.explodes(),
+                  r.explodeDir()[0], r.explodeDir()[1], r.explodeDir()[2],
+                  r.explodeDebris().vertexCount(), r.explodeDebris().explodeScaledCount(),
+                  (r.mesh() != NULL && r.explodeDebris().vertexCount() > 0) ? "" : "  SUSPICIOUS explode");
+    for (DWORD k = 0; k < r.subObjectCount() && k < 8; k++) {
+        const SceneSubObject &so = r.subObjects()[k];
         log_write("THEME_STRUCT:   %s[%d].sub[%lu] cond=%lu tex=%p blend=%lu/%lu addr=%lu effect=%lu (%g,%g,%g)%s\n",
                   slotName, i, (unsigned long)k, (unsigned long)so.dwVisibilityGate,
                   (void *)so.pTexture, (unsigned long)so.dwBlendSrc,
@@ -118,11 +118,11 @@ static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
 static void dump_slot(const char *name, const ThemeObjectTypeSlot &slot)
 {
     log_write("THEME_STRUCT: slot %-12s dwInstanceCount=%lu%s\n", name,
-              (unsigned long)slot.dwInstanceCount,
-              slot.dwInstanceCount <= 8 ? "" : "  SUSPICIOUS dwInstanceCount");
-    unsigned shown = slot.dwInstanceCount <= 8 ? slot.dwInstanceCount : 8;
+              (unsigned long)slot.instanceCount(),
+              slot.instanceCount() <= 8 ? "" : "  SUSPICIOUS dwInstanceCount");
+    unsigned shown = slot.instanceCount() <= 8 ? slot.instanceCount() : 8;
     for (unsigned i = 0; i < shown; i++)
-        dump_record(name, i, slot.records[i]);
+        dump_record(name, i, slot.records()[i]);
 }
 
 /* A plausibility report on the loaded block, not a proof: it catches a field
@@ -213,13 +213,13 @@ static void delete_via_vtable(void *obj)
 void ThemeObjectTypeSlot::release()
 {
     for (int i = 0; i < 8; i++) {
-        ThemeLevelObject &r = records[i];
-        r.explode.release();
-        r.wrapper.releaseSnapshot();
-        for (DWORD k = 0; k < r.dwInstanceCount; k++) {
-            if (r.pParticleSystems[k] != NULL) {
-                delete_via_vtable(r.pParticleSystems[k]);
-                r.pParticleSystems[k] = NULL;
+        ThemeLevelObject &r = records_[i];
+        r.explode_.release();
+        r.wrapper_.releaseSnapshot();
+        for (DWORD k = 0; k < r.dwInstanceCount_; k++) {
+            if (r.pParticleSystems_[k] != NULL) {
+                delete_via_vtable(r.pParticleSystems_[k]);
+                r.pParticleSystems_[k] = NULL;
             }
         }
     }
@@ -235,31 +235,31 @@ static void *const g_ThemeSlotVtable[1] = { (void *)&ThemeObjectTypeSlot::scalar
 
 ThemeLevelObject *ThemeLevelObject::construct()
 {
-    wrapper.construct();
-    explode.construct();
+    wrapper_.construct();
+    explode_.construct();
     return this;
 }
 
 void ThemeLevelObject::destruct()
 {
-    explode.dtorBody();
-    wrapper.dtorBody();
+    explode_.dtorBody();
+    wrapper_.dtorBody();
 }
 
 ThemeObjectTypeSlot *ThemeObjectTypeSlot::construct()
 {
     for (int i = 0; i < 8; i++)
-        records[i].construct();
-    pVtable = (void *)g_ThemeSlotVtable;
+        records_[i].construct();
+    pVtable_ = (void *)g_ThemeSlotVtable;
     return this;
 }
 
 void ThemeObjectTypeSlot::destruct()
 {
-    pVtable = (void *)g_ThemeSlotVtable;
+    pVtable_ = (void *)g_ThemeSlotVtable;
     release();
     for (int i = 8; i-- > 0; )
-        records[i].destruct();
+        records_[i].destruct();
 }
 
 ThemeObjectTypeSlot * __attribute__((thiscall))
@@ -522,13 +522,13 @@ struct ThemeParser {
     static ThemeLevelObject *recordAt(ThemeObjectTypeSlot *s, int i)
     {
         return reinterpret_cast<ThemeLevelObject *>(
-            reinterpret_cast<BYTE *>(s) + offsetof(ThemeObjectTypeSlot, records)
+            reinterpret_cast<BYTE *>(s) + offsetof(ThemeObjectTypeSlot, records_)
             + i * (int)sizeof(ThemeLevelObject));
     }
     static SceneSubObject *subObjectAt(ThemeLevelObject *r, int i)
     {
         return reinterpret_cast<SceneSubObject *>(
-            reinterpret_cast<BYTE *>(r) + offsetof(ThemeLevelObject, pSubObjects)
+            reinterpret_cast<BYTE *>(r) + offsetof(ThemeLevelObject, pSubObjects_)
             + i * (int)sizeof(SceneSubObject));
     }
 
@@ -616,15 +616,15 @@ bool ThemeParser::parseObjectBlock(ThemeObjectTypeSlot *slot, bool inEnvironment
         if (is(tok[0], "{")) {
             // Applies to the current record: records[-1] if none is open.
             if (slot) {
-                rec.at->flScaleX = 1.0f;
-                rec.at->flScaleY = 1.0f;
-                rec.at->flScaleZ = 1.0f;
+                rec.at->flScaleX_ = 1.0f;
+                rec.at->flScaleY_ = 1.0f;
+                rec.at->flScaleZ_ = 1.0f;
             }
             if (!parseRecordBlock(slot, rec.at))
                 return false;
         } else if (is(tok[0], "}")) {
             if (slot)
-                slot->dwInstanceCount = rec.count;
+                slot->dwInstanceCount_ = rec.count;
             return true;
         } else {
             objectKeyword(slot, inEnvironment, rec);
@@ -641,23 +641,23 @@ void ThemeParser::particleSystem(ThemeObjectTypeSlot *slot, Cursor<ThemeLevelObj
     ThemeLevelObject *rec = c.at;
     ParticleSystem *ps = Particle_LoadFromFile(tok[1], logger);
     if (ps == NULL) {
-        if (slot) rec->kind = THEME_KIND_NONE;
+        if (slot) rec->kind_ = THEME_KIND_NONE;
         return;
     }
     if (slot) {
-        rec->kind = THEME_KIND_PARTICLESYSTEM;
-        rec->pParticleSystems[0] = ps;
+        rec->kind_ = THEME_KIND_PARTICLESYSTEM;
+        rec->pParticleSystems_[0] = ps;
     }
-    if (is(tok[2], "movable1") && slot) rec->dwMovableType = 1;
-    if (is(tok[2], "movable2") && slot) rec->dwMovableType = 2;
+    if (is(tok[2], "movable1") && slot) rec->dwMovableType_ = 1;
+    if (is(tok[2], "movable2") && slot) rec->dwMovableType_ = 2;
 
     unsigned count = (unsigned)atoi(tok[3]);
     if (count < 2 || count > 16) {
-        if (slot) rec->dwInstanceCount = 1;
+        if (slot) rec->dwInstanceCount_ = 1;
     } else {
         for (unsigned i = 1; i < count; i++)
-            if (slot) rec->pParticleSystems[i] = Particle_CloneSystem(ps);
-        if (slot) rec->dwInstanceCount = count;
+            if (slot) rec->pParticleSystems_[i] = Particle_CloneSystem(ps);
+        if (slot) rec->dwInstanceCount_ = count;
     }
 }
 
@@ -718,20 +718,20 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         open(rec, slot);
         CFaktMesh *mesh = g_modelManager.findOrImport(tok[1]);
         if (mesh == NULL) {
-            rec.at->kind = THEME_KIND_NONE;
+            rec.at->kind_ = THEME_KIND_NONE;
             return;
         }
-        rec.at->kind  = THEME_KIND_MODEL;
-        rec.at->pMesh = mesh;
-        rec.at->wrapper.setMesh(mesh);
-        rec.at->animTable.load(tok[2], logger);
+        rec.at->kind_  = THEME_KIND_MODEL;
+        rec.at->pMesh_ = mesh;
+        rec.at->wrapper_.setMesh(mesh);
+        rec.at->animTable_.load(tok[2], logger);
         if (is(tok[3], "nomovestates"))
-            rec.at->bNoMoveStates = 1;
+            rec.at->bNoMoveStates_ = 1;
         return;
     }
     if (is(tok[0], "field")) {
         open(rec, slot);
-        if (slot) rec.at->kind = THEME_KIND_FIELD;
+        if (slot) rec.at->kind_ = THEME_KIND_FIELD;
         return;
     }
     if (is(tok[0], "billboard")) {
@@ -739,8 +739,8 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
             return;
         open(rec, slot);
         if (slot) {
-            rec.at->kind = THEME_KIND_BILLBOARD;
-            rec.at->flBillboardScale = atof_f(tok[1]);
+            rec.at->kind_ = THEME_KIND_BILLBOARD;
+            rec.at->flBillboardScale_ = atof_f(tok[1]);
         }
         return;
     }
@@ -789,7 +789,7 @@ bool ThemeParser::parseRecordBlock(ThemeObjectTypeSlot *slot, ThemeLevelObject *
                 return false;
         } else if (is(tok[0], "}")) {
             if (slot)
-                rec->dwSubObjectCount = sub.count;
+                rec->dwSubObjectCount_ = sub.count;
             return true;
         } else {
             recordKeyword(slot, rec, sub);
@@ -804,12 +804,12 @@ bool ThemeParser::parseRecordBlock(ThemeObjectTypeSlot *slot, ThemeLevelObject *
  * nothing observes. */
 void ThemeParser::explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec)
 {
-    if (ntok <= 6 || slot == NULL || rec->pMesh == NULL)
+    if (ntok <= 6 || slot == NULL || rec->pMesh_ == NULL)
         return;
-    rec->bExplode = 1;
-    rec->explode.allocateExplodeBuffers(rec->pMesh);
-    Gen_FillGaussianField(&rec->explode, atof_f(tok[1]), atof_f(tok[2]));
-    rec->explode.storeExplodeScaledCount(atof_f(tok[3]));
+    rec->bExplode_ = 1;
+    rec->explode_.allocateExplodeBuffers(rec->pMesh_);
+    Gen_FillGaussianField(&rec->explode_, atof_f(tok[1]), atof_f(tok[2]));
+    rec->explode_.storeExplodeScaledCount(atof_f(tok[3]));
 
     const double a = (double)-1.5707963705062866f;
     const double c = cos(a), s = sin(a);
@@ -818,9 +818,9 @@ void ThemeParser::explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec)
     const float w = 1.0f;
     if (w != 1.0f)
         for (float &v : out) v /= w;
-    rec->flExplodeDir[0] = out[0];
-    rec->flExplodeDir[1] = out[1];
-    rec->flExplodeDir[2] = out[2];
+    rec->flExplodeDir_[0] = out[0];
+    rec->flExplodeDir_[1] = out[1];
+    rec->flExplodeDir_[2] = out[2];
 }
 
 void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec,
@@ -835,41 +835,41 @@ void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec
             sub.at->pTexture = g_textureManager.getOrLoad(d3d, tok[1], alpha, 0, 0);
     } else if (is(tok[0], "position")) {
         if (ntok > 3 && slot) {
-            rec->flPosX = atof_f(tok[1]); rec->flPosY = atof_f(tok[2]); rec->flPosZ = atof_f(tok[3]);
+            rec->flPosX_ = atof_f(tok[1]); rec->flPosY_ = atof_f(tok[2]); rec->flPosZ_ = atof_f(tok[3]);
         }
     } else if (is(tok[0], "scale")) {
         if (ntok > 3 && slot) {
-            rec->flScaleX = atof_f(tok[1]); rec->flScaleY = atof_f(tok[2]); rec->flScaleZ = atof_f(tok[3]);
+            rec->flScaleX_ = atof_f(tok[1]); rec->flScaleY_ = atof_f(tok[2]); rec->flScaleZ_ = atof_f(tok[3]);
         }
     } else if (is(tok[0], "rotate")) {
         if (ntok > 3 && slot) {
-            rec->flRotRateX = atof_f(tok[1]); rec->flRotRateY = atof_f(tok[2]); rec->flRotRateZ = atof_f(tok[3]);
+            rec->flRotRateX_ = atof_f(tok[1]); rec->flRotRateY_ = atof_f(tok[2]); rec->flRotRateZ_ = atof_f(tok[3]);
         }
     } else if (is(tok[0], "randomyangle")) {
-        if (slot) rec->bRandomYAngle = 1;
+        if (slot) rec->bRandomYAngle_ = 1;
     } else if (is(tok[0], "nozwrite")) {
-        if (slot) rec->bNoZWrite = 1;
+        if (slot) rec->bNoZWrite_ = 1;
     } else if (is(tok[0], "noshadow")) {
-        if (slot) rec->bNoShadow = 1;
+        if (slot) rec->bNoShadow_ = 1;
     } else if (is(tok[0], "oscillate")) {
         if (ntok <= 2)
             return;
         if (slot) {
-            rec->flOscillationAmplitude = atof_f(tok[1]);
-            rec->flOscillationFrequency = atof_f(tok[2]);
+            rec->flOscillationAmplitude_ = atof_f(tok[1]);
+            rec->flOscillationFrequency_ = atof_f(tok[2]);
         }
         // PRESERVED: no slot check from here on.
         if (is(tok[3], "random"))
-            rec->bOscillateRandom = 1;
-        rec->flOscillationPhase = (ntok < 5) ? 0.0f : atof_f(tok[4]);
+            rec->bOscillateRandom_ = 1;
+        rec->flOscillationPhase_ = (ntok < 5) ? 0.0f : atof_f(tok[4]);
     } else if (is(tok[0], "pump")) {
         if (ntok > 4 && slot)
             for (int i = 0; i < 4; i++)
-                rec->flPump[i] = atof_f(tok[1 + i]);
+                rec->flPump_[i] = atof_f(tok[1 + i]);
     } else if (is(tok[0], "lit")) {
-        if (slot) rec->bLit = 1;
+        if (slot) rec->bLit_ = 1;
     } else if (is(tok[0], "specular")) {
-        if (slot) rec->bSpecular = 1;
+        if (slot) rec->bSpecular_ = 1;
     } else if (is(tok[0], "explode")) {
         explode(slot, rec);
     }
