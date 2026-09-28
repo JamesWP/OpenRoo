@@ -121,17 +121,11 @@ FramePose_Foes(Game *g, double , double , FoePose *out)
         facing_angle(e->facing(), &angle);
         if (stepping(e)) {
             float frac = step_fraction(g, e);
-            r->stepFrac = frac;
+            r->setStepFrac(frac);
             angle = turned(e, angle, frac);
         }
 
-        r->pos[0] = e->posU();
-        r->pos[1] = e->posY();
-        r->pos[2] = -e->posV();
-        r->rotX = 0.0f;
-        r->rotY = angle;
-        r->rotZ = 0.0f;
-        r->kind = e->kind();
+        r->set(e->kind(), e->posU(), e->posY(), -e->posV(), angle);
     }
 }
 
