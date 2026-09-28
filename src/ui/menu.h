@@ -9,18 +9,31 @@
  * only primitive needed. */
 
 /* The live menu state, read from the Game. */
-struct MenuState {
-    bool  valid;
-    BYTE  node;      // current node id
-    BYTE  cursor;    // highlighted child
-    BYTE  count;     // children of the current node
-    BYTE  depth;     // node-stack depth
-    BYTE  last_key;  // debounce: key already handled
-    DWORD lock;      // non-zero: input ignored (the 200 ms lockout)
-    BYTE  children[256];
-};
+class MenuState {
+public:
+    bool read();
 
-bool menu_read(MenuState *m);
+    BYTE node() const { return node_; }
+    BYTE cursor() const { return cursor_; }
+    BYTE count() const { return count_; }
+    BYTE depth() const { return depth_; }
+    DWORD lock() const { return lock_; }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+    BYTE *children() { return children_; }
+    const BYTE *children() const { return children_; }
+#pragma GCC diagnostic pop
+
+private:
+    bool  valid_;
+    BYTE  node_;      // current node id
+    BYTE  cursor_;    // highlighted child
+    BYTE  count_;     // children of the current node
+    BYTE  depth_;     // node-stack depth
+    BYTE  last_key_;  // debounce: key already handled
+    DWORD lock_;      // non-zero: input ignored (the 200 ms lockout)
+    BYTE  children_[256];
+};
 
 /* Asks the driver to navigate to goal.  Idempotent: call it every frame while
  * the goal stands.  MENU_NO_GOAL stands down. */
