@@ -357,8 +357,8 @@ KAROO_LAYOUT_CHECKS(ThemeAssetBlock)
 struct __attribute__((packed)) SoundAssetName {
     char name[256];
     int  enabled;
-    DWORD unknown104;   /* ThemeSoundTable::add's arg4; the .thm path passes 1 */
-    DWORD unknown108;   /* ThemeSoundTable::add's arg3; the .thm path passes 1 */
+    DWORD unknown104;   /* add()'s arg4; the .thm path passes 1 */
+    DWORD unknown108;   /* add()'s arg3; the .thm path passes 1 */
 };
 static_assert(sizeof(SoundAssetName) == 0x10c, "SoundAssetName stride");
 

@@ -24,11 +24,11 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path);
 
 class __attribute__((packed)) LoadedImage {
 public:
-    /* ─── texture.cpp's exports other files call (COHESION_PLAN template 10) ───
+    /* ─── texture.cpp's members other files call ───────────────────────────
      *
-     * The LoadedImage ctor/dtor family.  scenetexture.cpp's SceneTexture family
-     * is the only outside caller: its Constructor chains to the base ctor and its
-     * DtorBody tail-calls the base dtor body, exactly as the originals do. */
+     * The LoadedImage ctor/dtor family.  SceneTexture's (scenetexture.cpp) is
+     * the only outside caller: its construct chains to the base's and its
+     * dtorBody tail-calls the base's, exactly as the originals do. */
     LoadedImage *construct();
 
     void dtorBody();

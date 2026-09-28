@@ -43,12 +43,12 @@ public:
 
     HRESULT drawFramedModel(RenderDevice *dev, DWORD frame);
 
-    /* ─── The lifecycle four ───────────────────────────────────────────────────
+    /* ─── The lifecycle four ───────────────────────────────────────────────
      *
-     *   Init                 the constructor
-     *   ScalarDtor           scalar deleting destructor, the vtable's only slot
-     *   DtorBody             destructor body
-     *   ReleaseModelBuffers  free the four heap fields
+     *   init                 the constructor
+     *   scalarDtor           scalar deleting destructor, the vtable's only slot
+     *   dtorBody             destructor body
+     *   releaseModelBuffers  free the four heap fields
      *
      * model.cpp allocates the four buffers with the allocator this frees them
      * with. */

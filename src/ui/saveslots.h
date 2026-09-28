@@ -55,8 +55,8 @@ public:
     static void *__attribute__((thiscall))
     scalarDeletingDtor(SaveSlots *self, unsigned int flags);
 
-    /* Loads and saves every slot's file, enciphered with key.  See saveslots.cpp.
-     */
+    /* Loads and saves every slot's file, enciphered with key.  See
+     * saveslots.cpp. */
     int loadAllSlotFiles(const char *name, char key);
 
     int writeAllSlotFiles(const char *name, char key);

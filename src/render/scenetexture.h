@@ -20,9 +20,9 @@ public:
     /* Release the IDirect3DTexture2 and both surfaces. */
     void releaseD3DTexture();
 
-    /* The TGA path: build the surface from `name`, decode into it, and leave the
-     * IDirect3DTexture2 in `self->pTexture2`.  Only the low byte of the result is
-     * the success flag. */
+    /* The TGA path: build the surface from `name`, decode into it, and leave
+     * the IDirect3DTexture2 in `self->pTexture2`.  Only the low byte of the
+     * result is the success flag. */
     unsigned int importSceneTextures(RenderDevice *dev, LPCSTR name, DWORD alphaFlag, UINT bpp, DWORD textureStage);
 
     /* The SceneTexture constructor, destructor body and scalar deleting
@@ -41,7 +41,8 @@ public:
     unsigned int bindTextureResource(RenderDevice *dev, LPCSTR name, UINT bpp, DWORD textureStage);
 
 private:
-    /* Replace the image name: free the old, allocate strlen+1, sprintf("%s"). */
+    /* Replace the image name: free the old, allocate strlen+1, sprintf("%s").
+     */
     void setImageName(LPCSTR name);
 
     IDirect3DTexture2 *pTexture2_;

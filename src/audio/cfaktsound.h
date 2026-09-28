@@ -20,9 +20,9 @@ public:
      * everything; the sound manager gives up when it does. */
     int create3DListener(int enable);
 
-    /* Lifecycle and start-up.  Initialize creates the device at priority level and
-     * the primary buffer in the given format, then starts it playing; returns 0 on
-     * failure.  The 3D form adds the listener. */
+    /* Lifecycle and start-up.  Initialize creates the device at priority level
+     * and the primary buffer in the given format, then starts it playing;
+     * returns 0 on failure.  The 3D form adds the listener. */
     void blankFields();
     void clearState();
     void releaseComRefs();

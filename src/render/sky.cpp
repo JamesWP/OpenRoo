@@ -80,7 +80,7 @@ float *SkyBackground::draw(RenderDevice *dev,
     return WorldMatrix_;
 }
 
-/* ─── SkyBackground::buildFromFaceNames ────────────────────────────────────
+/* ─── SkyBackground::buildFromFaceNames ─────────────────────────────────
  *
  * The cube is +-55 on each axis.  Each face is a 4-vertex strip with UVs (1,0)
  * (1,1) (0,0) (0,1); the corners below are in vertex order.  Every vertex is

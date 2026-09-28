@@ -6,10 +6,10 @@ class RenderDevice;
 /* ParticleSystem hierarchy: the systems, their ring of particles, and the
  * vertex buffers they fill.  Implemented in particles.cpp. */
 
-/* Ring node, 0x2C bytes.
- * The ring is ONE NULL-terminated doubly-linked list (not circular), split into
- * a live region [pRingHead, pRingCurrent) and a free region [pRingCurrent,
- * pRingTail].  Generators claim at pRingCurrent; environments age and retire. */
+/* Ring node, 0x2C bytes. The ring is ONE NULL-terminated doubly-linked list
+ * (not circular), split into a live region [pRingHead, pRingCurrent) and a free
+ * region [pRingCurrent, pRingTail].  Generators claim at pRingCurrent;
+ * environments age and retire. */
 struct ParticleNode {
     /* The diffuse the fills write: dwDiffuse, or the KAROO_PARTICLE_FX=tint
      * colour. */
