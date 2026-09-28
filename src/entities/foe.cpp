@@ -565,11 +565,11 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
         return pendingMove_;
     }
 
-    pathfinder_->setResult(pathfinder_->result()->parent);
+    pathfinder_->setResult(pathfinder_->result()->parent());
 
     const PathNode *node = pathfinder_->result();
-    const unsigned char nu = (unsigned char)node->u;
-    const unsigned char nv = (unsigned char)node->v;
+    const unsigned char nu = (unsigned char)node->u();
+    const unsigned char nv = (unsigned char)node->v();
 
     const signed char du = (signed char)(unsigned char)(nu - (unsigned char)cellU_);
     const signed char dv = (signed char)(unsigned char)(nv - (unsigned char)cellV_);
