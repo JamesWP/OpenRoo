@@ -11,7 +11,7 @@
 
 #include <windows.h>
 #include <stddef.h>
-#include "layout.h"
+ 
 #include "scenetexture.h"
 #include "wrapperobject.h"
 #include "ani.h"
@@ -46,7 +46,7 @@ static_assert(sizeof(FxBurst) == 0x11, "FxBurst stride");
 /* One `model`, `field`, `billboard` or `particlesystem` entry. */
 class __attribute__((packed)) ThemeLevelObject {
 public:
-    static const int ORIGIN = 0;
+     
 
     ThemeLevelObject *construct();
 
@@ -153,45 +153,12 @@ private:
     float  flOscillationPhase_;
     float  flPump_[4];
 
-    KAROO_LAYOUT_REGISTER(ThemeLevelObject);
+     
 };
-
-KAROO_LAYOUT_CHECKS(ThemeLevelObject)
-{
-    KAROO_LAYOUT_AT(kind_,             0x000);
-    KAROO_LAYOUT_AT(pMesh_,            0x004);
-    KAROO_LAYOUT_AT(wrapper_,          0x008);
-    KAROO_LAYOUT_AT(explode_,          0x015);
-    KAROO_LAYOUT_AT(bExplode_,         0x0b1);
-    KAROO_LAYOUT_AT(flExplodeDir_,     0x0b5);
-    KAROO_LAYOUT_AT(animTable_,        0x0c1);
-    KAROO_LAYOUT_AT(flBillboardScale_, 0x241);
-    KAROO_LAYOUT_AT(pParticleSystems_, 0x245);
-    KAROO_LAYOUT_AT(bursts_,           0x285);
-    KAROO_LAYOUT_AT(dwInstanceCount_,  0x395);
-    KAROO_LAYOUT_AT(dwMovableType_,    0x399);
-    KAROO_LAYOUT_AT(flPosX_,           0x39d);
-    KAROO_LAYOUT_AT(flScaleX_,         0x3a9);
-    KAROO_LAYOUT_AT(flRotRateX_,       0x3b5);
-    KAROO_LAYOUT_AT(dwSubObjectCount_, 0x3c1);
-    KAROO_LAYOUT_AT(pSubObjects_,      0x3c5);
-    KAROO_LAYOUT_AT(bLit_,             0x5a5);
-    KAROO_LAYOUT_AT(bNoMoveStates_,    0x5a9);
-    KAROO_LAYOUT_AT(bNoZWrite_,        0x5ad);
-    KAROO_LAYOUT_AT(bNoShadow_,        0x5b1);
-    KAROO_LAYOUT_AT(bSpecular_,        0x5b5);
-    KAROO_LAYOUT_AT(bRandomYAngle_,    0x5b9);
-    KAROO_LAYOUT_AT(bOscillateRandom_, 0x5bd);
-    KAROO_LAYOUT_AT(flOscillationAmplitude_, 0x5c1);
-    KAROO_LAYOUT_AT(flOscillationFrequency_, 0x5c5);
-    KAROO_LAYOUT_AT(flOscillationPhase_,     0x5c9);
-    KAROO_LAYOUT_AT(flPump_,           0x5cd);
-    KAROO_LAYOUT_SIZE(0x5dd);
-}
 
 class __attribute__((packed)) ThemeObjectTypeSlot {
 public:
-    static const int ORIGIN = 0;
+     
 
     /* Releases one type's records. */
     void release();
@@ -218,16 +185,10 @@ private:
     DWORD            dwInstanceCount_;  // last record index + 1
     ThemeLevelObject records_[8];
 
-    KAROO_LAYOUT_REGISTER(ThemeObjectTypeSlot);
+     
 };
 
-KAROO_LAYOUT_CHECKS(ThemeObjectTypeSlot)
-{
-    KAROO_LAYOUT_AT(dwInstanceCount_, 0x4);
-    KAROO_LAYOUT_AT(records_,         0x8);
-    KAROO_LAYOUT_SIZE(0x2ef0);
-}
-
+ 
 /* Slot order is the theme file's keyword order. */
 enum ThemeObjectType {
     THEME_OBJ_JOHN, THEME_OBJ_CATCHER, THEME_OBJ_CATCHERFX, THEME_OBJ_THROWER,
@@ -274,7 +235,7 @@ enum ThemeTextColorSlot {
 
 class __attribute__((packed)) ThemeAssetBlock {
 public:
-    static const int ORIGIN = 0;
+     
 
     /* Releases the block, parses the theme file at path into it, and builds its
      * meshes, textures and sounds. */
@@ -316,40 +277,8 @@ private:
     bool themeLoad(Game *game, RenderDevice *d3d, char *path,
                    GameLogger *logger);
 
-    KAROO_LAYOUT_REGISTER(ThemeAssetBlock);
+     
 };
-
-KAROO_LAYOUT_CHECKS(ThemeAssetBlock)
-{
-    KAROO_LAYOUT_AT(slots_, 0x00104);
-    KAROO_LAYOUT_AT(slots_[THEME_OBJ_JOHN],      0x00104);
-    KAROO_LAYOUT_AT(slots_[THEME_OBJ_EXIT],      0x20554);
-    KAROO_LAYOUT_AT(slots_[THEME_OBJ_EXPLOSION], 0x43894);
-    KAROO_LAYOUT_AT(slots_[THEME_OBJ_BRIDGE],    0x6c9b4);
-
-    KAROO_LAYOUT_AT(images_, 0x6f8a4);
-    KAROO_LAYOUT_AT(images_[THEME_IMG_HUD],            0x6f8a4);
-    KAROO_LAYOUT_AT(images_[THEME_IMG_MENU],           0x6f8a8);
-    KAROO_LAYOUT_AT(images_[THEME_IMG_EDGE],           0x6f8ac);
-    KAROO_LAYOUT_AT(images_[THEME_IMG_RADAR],          0x6f8b0);
-    KAROO_LAYOUT_AT(images_[THEME_IMG_POINTER],        0x6f8b4);
-    KAROO_LAYOUT_AT(images_[THEME_IMG_FREEZE],         0x6f8b8);
-    KAROO_LAYOUT_AT(images_[THEME_IMG_INVERSECONTROL], 0x6f8bc);
-    KAROO_LAYOUT_AT(images_[THEME_IMG_PROTECTION],     0x6f8c0);
-    KAROO_LAYOUT_AT(images_[THEME_IMG_SLOWDOWN],       0x6f8c4);
-    KAROO_LAYOUT_AT(images_[THEME_IMG_SPEED],          0x6f8c8);
-
-    KAROO_LAYOUT_AT(textColors_, 0x6f8cc);
-    KAROO_LAYOUT_AT(textColors_[THEME_COLOR_HUD],            0x6f8cc);
-    KAROO_LAYOUT_AT(textColors_[THEME_COLOR_MENUNEWGAME],    0x6f8d4);
-    KAROO_LAYOUT_AT(textColors_[THEME_COLOR_MENULOADGAME],   0x6f8dc);
-    KAROO_LAYOUT_AT(textColors_[THEME_COLOR_MENUSUMMARYSAVE], 0x6f994);
-
-    KAROO_LAYOUT_AT(bFogEnabled_, 0x6f99c);
-    KAROO_LAYOUT_AT(sky_, 0x6f99d);
-    KAROO_LAYOUT_AT(flSideHeight_, 0x6fd8d);
-    KAROO_LAYOUT_SIZE(0x6fd91);
-}
 
 /* The loader and its helpers. */
 

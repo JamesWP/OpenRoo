@@ -5,7 +5,7 @@
  * written and never read. */
 #pragma once
 
-#include "layout.h"
+ 
 
 /* A timed foe spawner: a snapshot cell whose contents are 0x64. */
 struct __attribute__((packed)) TimedSpawner {

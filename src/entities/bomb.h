@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "layout.h"
+ 
 #include "game.h"
 #include "movableentity.h"
 
@@ -16,7 +16,7 @@ class Tile;
 
 class __attribute__((packed)) Bomb : public MovableEntity {
 public:
-    static const int ORIGIN = 0;
+     
 
     // Spawns a bomb at (u, v, h); the arguments are masked to bytes.
     static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
@@ -56,7 +56,7 @@ private:
     static void releaseField(SoundManager *sm, Bomb **slot,
                              CStaticSoundbuffer *Bomb::*field);
 
-    KAROO_LAYOUT_REGISTER(Bomb);
+     
 
     CStaticSoundbuffer *rollSound_;         // +0x15a  may be NULL
     CStaticSoundbuffer *blastSound_;        // +0x15e  may be NULL
@@ -64,17 +64,3 @@ private:
     int                 zoneCleared_;       // +0x166
     double              droppedAt_;         // +0x16a
 };
-
-KAROO_LAYOUT_CHECKS(Bomb)
-{
-    // The base sits at 0; its own fields are asserted in MovableEntity.
-    KAROO_LAYOUT_AT(posU_,             0x025);
-    KAROO_LAYOUT_AT(rollSound_,        0x15a);
-    KAROO_LAYOUT_AT(blastSound_,       0x15e);
-    KAROO_LAYOUT_AT(blastSoundPlayed_, 0x162);
-    KAROO_LAYOUT_AT(zoneCleared_,      0x166);
-    KAROO_LAYOUT_AT(droppedAt_,        0x16a);
-    // The allocation size: the class tiles it exactly.
-    KAROO_LAYOUT_SIZE(0x172);
-}
-

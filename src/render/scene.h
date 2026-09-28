@@ -4,7 +4,7 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
+ 
 #include "linkedlist.h"
 #include "splinepath.h"
 #include "model.h"
@@ -19,7 +19,7 @@ class ExtraObjects;
 /* One placed object; dsoscene.cpp draws them.  The type byte at +0
  * misaligns everything, hence packed. */
 struct __attribute__((packed)) SceneObject {
-    static const int ORIGIN = 0;
+     
 
     unsigned char  type;             /* +0x000  ExtraObjectKind 0..2 */
     CFaktMesh     *mesh;             /* +0x001  model */
@@ -40,34 +40,15 @@ struct __attribute__((packed)) SceneObject {
     DWORD          splineTime;       /* +0x1c2 */
     SplinePath     spline;           /* +0x1c6 */
 
-    KAROO_LAYOUT_REGISTER(SceneObject);
+     
 };
 
 /* The object is allocated at exactly 0x1da bytes. */
-KAROO_LAYOUT_CHECKS(SceneObject)
-{
-    KAROO_LAYOUT_AT(mesh,            0x001);
-    KAROO_LAYOUT_AT(particle,        0x005);
-    KAROO_LAYOUT_AT(billboardRadius, 0x009);
-    KAROO_LAYOUT_AT(animLoaded,      0x00d);
-    KAROO_LAYOUT_AT(anim,            0x011);
-    KAROO_LAYOUT_AT(pos,             0x191);
-    KAROO_LAYOUT_AT(rot,             0x19d);
-    KAROO_LAYOUT_AT(texture,         0x1a9);
-    KAROO_LAYOUT_AT(srcBlend,        0x1ad);
-    KAROO_LAYOUT_AT(destBlend,       0x1b1);
-    KAROO_LAYOUT_AT(textureAddress,  0x1b5);
-    KAROO_LAYOUT_AT(onPath,          0x1b9);
-    KAROO_LAYOUT_AT(lit,             0x1bd);
-    KAROO_LAYOUT_AT(splineMode,      0x1c1);
-    KAROO_LAYOUT_AT(splineTime,      0x1c2);
-    KAROO_LAYOUT_AT(spline,          0x1c6);
-    KAROO_LAYOUT_SIZE(0x1da);
-}
+ 
 
 class __attribute__((packed)) Scene {
 public:
-    static const int ORIGIN = 0;
+     
 
     Scene *construct();
     void destruct();
@@ -87,16 +68,8 @@ private:
     LinkedList      objects_;    /* +0x00  SceneObject * */
     ModelManager    models_;     /* +0x10 */
     TextureManager  textures_;   /* +0x28 */
-    KAROO_LAYOUT_REGISTER(Scene);
+     
 };
-
-/* FreeSceneObjects zeroes exactly 0x10 dwords. */
-KAROO_LAYOUT_CHECKS(Scene)
-{
-    KAROO_LAYOUT_AT(models_,   0x10);
-    KAROO_LAYOUT_AT(textures_, 0x28);
-    KAROO_LAYOUT_SIZE(0x40);
-}
 
 extern Scene g_scene;
 

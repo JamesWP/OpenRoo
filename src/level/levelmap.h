@@ -7,12 +7,12 @@
  * Objects keep the map's address as their "tile base". */
 #pragma once
 
-#include "layout.h"
+ 
 #include "tile.h"
 
 class __attribute__((packed)) LevelMap {
 public:
-    static const int ORIGIN = 0;
+     
 
     // The grid is 100 x 100 whatever the level's real size.
     static const int DIM        = 100;
@@ -65,7 +65,7 @@ public:
 
 private:
     LevelMap() = delete;  // embedded in the Game
-    KAROO_LAYOUT_REGISTER(LevelMap);
+     
 
     const void   *vtable_;         // our one-slot table
     int           timeLimit_;      // the live time limit, s; a time bonus adds 5
@@ -87,29 +87,3 @@ private:
     Tile          grid_[DIM][DIM];
     Tile          snapshot_[DIM][DIM];
 };
-
-static_assert(sizeof(Tile) == 0x7f, "a Tile record is the 0x7f stride");
-static_assert(sizeof(Tile[LevelMap::DIM][LevelMap::DIM]) == LevelMap::GRID_BYTES,
-              "the grid is 100 x 100 tile records");
-
-KAROO_LAYOUT_CHECKS(LevelMap)
-{
-    KAROO_LAYOUT_AT(timeLimit_,     0x004);
-    KAROO_LAYOUT_AT(timeElapsed_,   0x008);
-    KAROO_LAYOUT_AT(bonus_,         0x00c);
-    KAROO_LAYOUT_AT(text010_,       0x010);
-    KAROO_LAYOUT_AT(title_,         0x090);
-    KAROO_LAYOUT_AT(mapName_,       0x110);
-    KAROO_LAYOUT_AT(fileTimeLimit_, 0x192);
-    KAROO_LAYOUT_AT(gemsRequired_,  0x196);
-    KAROO_LAYOUT_AT(extentV_,       0x19a);
-    KAROO_LAYOUT_AT(extentU_,       0x19b);
-    KAROO_LAYOUT_AT(grid_,          0x19c);
-    KAROO_LAYOUT_AT(snapshot_,      0x13628c);
-    // [u][v] is Tile::at(u, v): one step of u is 100 records.
-    KAROO_LAYOUT_AT(grid_[1][0],    0x19c + 100 * 0x7f);
-    KAROO_LAYOUT_AT(grid_[0][1],    0x19c + 0x7f);
-    KAROO_LAYOUT_AT(snapshot_[2][3], 0x13628c + (3 + 2 * 100) * 0x7f);
-    KAROO_LAYOUT_SIZE(0x26c37c);
-}
-

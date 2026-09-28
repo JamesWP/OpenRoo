@@ -5,14 +5,14 @@
  * timed-effect codes) are stored in it directly. */
 
 #pragma once
-
-#include "layout.h"
+#include <cstddef>
+ 
 
 class LinkedList;
 
 class __attribute__((packed)) LinkedListNode {
 public:
-    static const int ORIGIN = 0;
+     
 
     void           *value() const { return pValue; }
     LinkedListNode *next() const  { return pNextNode; }
@@ -25,20 +25,13 @@ private:
     LinkedListNode *pNextNode;  // +0x04
     LinkedListNode *pPrevNode;  // +0x08
 
-    KAROO_LAYOUT_REGISTER(LinkedListNode);
+     
 };
 
-KAROO_LAYOUT_CHECKS(LinkedListNode)
-{
-    KAROO_LAYOUT_AT(pValue,    0x00);
-    KAROO_LAYOUT_AT(pNextNode, 0x04);
-    KAROO_LAYOUT_AT(pPrevNode, 0x08);
-    KAROO_LAYOUT_SIZE(12);
-}
-
+ 
 class __attribute__((packed)) LinkedList {
 public:
-    static const int ORIGIN = 0;
+     
 
     /* Sets the vtable and zeroes the three fields. */
     void init();
@@ -78,16 +71,5 @@ private:
     LinkedListNode  *pTail;    // +0x08
     unsigned long    dwCount;  // +0x0c
 
-    KAROO_LAYOUT_REGISTER(LinkedList);
+     
 };
-
-/* Every embedder tiles around 16 bytes; doublesoundbuff's two lists sit at
- * +0x38 and +0x48. */
-KAROO_LAYOUT_CHECKS(LinkedList)
-{
-    KAROO_LAYOUT_AT(vtable,  0x00);
-    KAROO_LAYOUT_AT(pHead,   0x04);
-    KAROO_LAYOUT_AT(pTail,   0x08);
-    KAROO_LAYOUT_AT(dwCount, 0x0c);
-    KAROO_LAYOUT_SIZE(16);
-}

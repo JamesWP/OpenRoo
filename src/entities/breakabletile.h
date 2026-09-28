@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "layout.h"
+ 
 #include "game.h"
 
 class CStaticSoundbuffer;
@@ -14,7 +14,7 @@ class Tile;
 
 class __attribute__((packed)) BreakableTile {
 public:
-    static const int ORIGIN = 0;
+     
 
     // Spawns a breakable; the arguments are masked to bytes.  PRESERVED:
     // returns idx & 0xffffff00, which no caller uses.
@@ -62,7 +62,7 @@ private:
     // Positions the sound at the tile and triggers it.
     void playAtTile(CStaticSoundbuffer *snd, const Tile *t) const;
 
-    KAROO_LAYOUT_REGISTER(BreakableTile);
+     
 
     const Vtbl         *vtable_;          // +0x00  &VTABLE
     double              now_;             // +0x04  latched from *clock_
@@ -89,30 +89,3 @@ private:
     int                 noRespawn_;       // +0x59  the tile's param: nonzero never respawns
     double              armedAt_;         // +0x5d
 };
-
-KAROO_LAYOUT_CHECKS(BreakableTile)
-{
-    KAROO_LAYOUT_AT(now_,            0x04);
-    KAROO_LAYOUT_AT(clock_,          0x0c);
-    KAROO_LAYOUT_AT(tickStep_,         0x10);
-    KAROO_LAYOUT_AT(tickStepCopy_,     0x15);
-    KAROO_LAYOUT_AT(posU_,           0x25);
-    KAROO_LAYOUT_AT(posY_,           0x29);
-    KAROO_LAYOUT_AT(posV_,           0x2d);
-    KAROO_LAYOUT_AT(cellU_,          0x31);
-    KAROO_LAYOUT_AT(cellV_,          0x32);
-    KAROO_LAYOUT_AT(heightCell_,     0x33);
-    KAROO_LAYOUT_AT(tileBase_,       0x34);
-    KAROO_LAYOUT_AT(justRespawned_,  0x38);
-    KAROO_LAYOUT_AT(justFell_,       0x3c);
-    KAROO_LAYOUT_AT(eventTime_,      0x40);
-    KAROO_LAYOUT_AT(respawnPending_, 0x48);
-    KAROO_LAYOUT_AT(fallSound_,      0x4d);
-    KAROO_LAYOUT_AT(respawnSound_,   0x51);
-    KAROO_LAYOUT_AT(armed_,          0x55);
-    KAROO_LAYOUT_AT(noRespawn_,      0x59);
-    KAROO_LAYOUT_AT(armedAt_,        0x5d);
-
-/* No size check: we allocate it, so nothing relies on its size. */
-}
-

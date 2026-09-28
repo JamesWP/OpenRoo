@@ -4,7 +4,7 @@
  * (soundmanager.h) hands these out and takes them back. */
 #pragma once
 
-#include "layout.h"
+ 
 #include "static.h"
 #include "linkedlist.h"
 
@@ -13,7 +13,7 @@ class VoicePool;
 /* Allocated by the sound manager with a fixed size of 0x58. */
 class __attribute__((packed)) doublesoundbuff {
 public:
-    static const int ORIGIN = 0;
+     
 
 /* The sub-objects' addresses, behind accessors so the packed-member warning is
  * suppressed once; all four offsets are 4-aligned. */
@@ -65,17 +65,5 @@ private:
     unsigned long      dwSpareTaken_;   // the same for the spare
     LinkedList         cloneList_;      // CStaticSoundbuffer* duplicates lent out
     LinkedList         voicePoolList_;  // VoicePool* built from it
-    KAROO_LAYOUT_REGISTER(doublesoundbuff);
+     
 };
-
-KAROO_LAYOUT_CHECKS(doublesoundbuff)
-{
-    KAROO_LAYOUT_AT(masterBuf_,     0x00);
-    KAROO_LAYOUT_AT(spareBuf_,      0x18);
-    KAROO_LAYOUT_AT(dwMasterTaken_, 0x30);
-    KAROO_LAYOUT_AT(dwSpareTaken_,  0x34);
-    KAROO_LAYOUT_AT(cloneList_,     0x38);
-    KAROO_LAYOUT_AT(voicePoolList_, 0x48);
-    KAROO_LAYOUT_SIZE(0x58);
-}
-

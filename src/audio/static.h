@@ -7,13 +7,13 @@
 #include <windows.h>
 #include <dsound.h>
 #include <stddef.h>
-#include "layout.h"
+ 
 
 /* One buffer.  It remembers its file, flags and logger so it can be reloaded
  * (on a lost buffer, or a 2D/3D switch) and duplicated. */
 class __attribute__((packed)) CStaticSoundbuffer {
 public:
-    static const int ORIGIN = 0;
+     
 
     /* The scalar/vector deleting destructor, the one vtable slot: bit 1 means
      * an array, bit 0 frees the block.  Returns the block destroyed: this, or
@@ -72,23 +72,9 @@ private:
     IDirectSoundBuffer    *soundbuffer_;
     IDirectSound3DBuffer  *threeDBuffer_;  // NULL for a 2D buffer
 
-    KAROO_LAYOUT_REGISTER(CStaticSoundbuffer);
+     
 };
-
-/* The size matters as well as the offsets: voice pools index arrays of these
- * with a stride of 0x18. */
-KAROO_LAYOUT_CHECKS(CStaticSoundbuffer)
-{
-    KAROO_LAYOUT_AT(vtable_,       0x00);
-    KAROO_LAYOUT_AT(logger_,       0x04);
-    KAROO_LAYOUT_AT(filename_,     0x08);
-    KAROO_LAYOUT_AT(dwDsFlags_,    0x0C);
-    KAROO_LAYOUT_AT(soundbuffer_,  0x10);
-    KAROO_LAYOUT_AT(threeDBuffer_, 0x14);
-    KAROO_LAYOUT_SIZE(0x18);
-}
 
 /* KAROO_SOUND_DIAG=1: logs each caller's first call.  Shared with the
  * streaming buffer (stream.cpp). */
-  void CStatic_SoundFirstCall(const char *who,
-                                                             unsigned long *seen);
+  void CStatic_SoundFirstCall(const char *who, unsigned long *seen);

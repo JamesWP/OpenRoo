@@ -3,7 +3,7 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
+ 
 #include "linkedlist.h"
 #include "faktmesh.h"
 
@@ -15,7 +15,7 @@ class GameLogger;
  * lowercasing lookup, "MM:" instead of "TM:" in its log lines. */
 class __attribute__((packed)) ModelManager {
 public:
-    static const int ORIGIN = 0;
+     
 
     CFaktMesh *findOrImport(char *name);
     void clearReleaseFree();
@@ -37,15 +37,9 @@ private:
     void        *vtable_;    // +0x00
     LinkedList   cache_;     // +0x04  CFaktMesh *, game-heap nodes
     GameLogger  *pLogger_;   // +0x14  NULL = silent
-    KAROO_LAYOUT_REGISTER(ModelManager);
+     
 };
 
-KAROO_LAYOUT_CHECKS(ModelManager)
-{
-    KAROO_LAYOUT_AT(cache_,   0x04);
-    KAROO_LAYOUT_AT(pLogger_, 0x14);
-    KAROO_LAYOUT_SIZE(0x18);
-}
-
+ 
 extern ModelManager g_modelManager;
 

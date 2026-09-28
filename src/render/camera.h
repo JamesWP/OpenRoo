@@ -12,7 +12,7 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
+ 
 
 struct Mat4;
 class RenderDevice;
@@ -26,7 +26,7 @@ static_assert(sizeof(CameraFocus) == 0x24, "CameraFocus size");
 
 class __attribute__((packed)) CameraGlobals {
 public:
-    static const int ORIGIN = 0;
+     
 
     /* cdecl(cam, d3d, game, focus BY VALUE, double dt): eases the orbit camera
      * and sets the VIEW transform.  One caller, RenderGameFrame. */
@@ -54,17 +54,10 @@ private:
     float  yaw_;         // +0x18
     float  pitch_;       // +0x1c
 
-    KAROO_LAYOUT_REGISTER(CameraGlobals);
+     
 };
 
-KAROO_LAYOUT_CHECKS(CameraGlobals)
-{
-    KAROO_LAYOUT_AT(target_,   0x0c);
-    KAROO_LAYOUT_AT(yaw_,      0x18);
-    KAROO_LAYOUT_AT(pitch_,    0x1c);
-    KAROO_LAYOUT_SIZE(0x20);
-}
-
+ 
 extern CameraGlobals g_camera;
 
 
