@@ -133,7 +133,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                 // pointer.
                 if (move == THEME_MOVE_TRANSLATE) {
                     m4_translate(&world, ip[0], ip[1], ip[2]);
-                    gen_vset_position(ps->getGenerator(NULL), p[0], p[1], p[2]);
+                    (ps->getGenerator(NULL))->vsetPosition(p[0], p[1], p[2]);
                     camera_view_dir(view);
                     ps->vsetVector(view[0], view[1], view[2]);
                     Mat4 corners;
@@ -141,8 +141,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                     ps->vtransformCorners(corners.m);
                 } else if (move == THEME_MOVE_GENERATOR) {
                     m4_identity(&world);
-                    gen_vset_position(ps->getGenerator(NULL),
-                                      p[0] + ip[0], p[1] + ip[1], p[2] + ip[2]);
+                    (ps->getGenerator(NULL))->vsetPosition(p[0] + ip[0], p[1] + ip[1], p[2] + ip[2]);
                     camera_view_dir(view);
                     ps->vsetVector(view[0], view[1], view[2]);
                 } else {

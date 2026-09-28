@@ -159,22 +159,22 @@ static DWORD fade_step(float *accum, float rate, DWORD threshold, float dt)
 
 /* ─── GravityEnvironment tick ─── */
 
-static void gravity_tick(GravityEnvironment *self, float dt)
+void GravityEnvironment::gravityTick(float dt)
 {
-    RingBuffer *ring = self->base.pRing;
+    RingBuffer *ring = pRing_;
     if (ring->pRingCurrent == ring->pRingHead)
         return;
 
     SimFx fx = sim_fx();
     float scale = fx_gravity_scale(fx);
-    float gx = self->flGravity[0] * scale;
-    float gy = self->flGravity[1] * scale;
-    float gz = self->flGravity[2] * scale;
+    float gx = flGravity_[0] * scale;
+    float gy = flGravity_[1] * scale;
+    float gz = flGravity_[2] * scale;
 
-    DWORD step = fade_step(&self->flFadeAccum, self->flFadeRate,
-                           self->dwFadeThreshold, dt);
+    DWORD step = fade_step(&flFadeAccum_, flFadeRate_,
+                           dwFadeThreshold_, dt);
 
-    ring = self->base.pRing;
+    ring = pRing_;
     ParticleNode *node = ring->pRingHead;
     if (node == ring->pRingCurrent)
         return;
@@ -195,13 +195,13 @@ static void gravity_tick(GravityEnvironment *self, float dt)
             node->flZ += node->flVel[2] * dt;
 
             if (step != 0)
-                node->dwDiffuse = fade_diffuse(node->dwDiffuse, self->dwTargetRGB, step);
+                node->dwDiffuse = fade_diffuse(node->dwDiffuse, dwTargetRGB_, step);
 
             const float pos[3] = { node->flX, node->flY, node->flZ };
             retire = false;
             for (int a = 0; a < 3; a++)
-                if (self->dwClipEnable[a] != 0 &&
-                    (pos[a] > self->flClipMax[a] || pos[a] < self->flClipMin[a]))
+                if (dwClipEnable_[a] != 0 &&
+                    (pos[a] > flClipMax_[a] || pos[a] < flClipMin_[a]))
                     retire = true;
         } else {
             retire = true;
@@ -209,12 +209,12 @@ static void gravity_tick(GravityEnvironment *self, float dt)
 
         next = node->pNext;
         if (retire) {
-            retire_node(self->base.pRing, node);
+            retire_node(pRing_, node);
             if (next == NULL)
                 return;
         }
         node = next;
-    } while (node != self->base.pRing->pRingCurrent);
+    } while (node != pRing_->pRingCurrent);
 }
 
 /* ─── MagnetEnvironment tick ─── */
@@ -226,9 +226,9 @@ static bool within_extent(float d, float half)
     return (d <= 0.0f) ? (-half <= d) : (d <= half);
 }
 
-static void magnet_tick(MagnetEnvironment *self, float dt)
+void MagnetEnvironment::magnetTick(float dt)
 {
-    RingBuffer *ring = self->base.pRing;
+    RingBuffer *ring = pRing_;
     if (ring->pRingCurrent == ring->pRingHead)
         return;
 
@@ -237,10 +237,10 @@ static void magnet_tick(MagnetEnvironment *self, float dt)
     // inverted gravity, and just as visible on a shield effect.
     float fscale = (fx == FX_ANTIGRAV) ? -3.0f : (fx == FX_GRAVITY ? 5.0f : 1.0f);
 
-    DWORD step = fade_step(&self->flFadeAccum, self->flFadeRate,
-                           self->dwFadeThreshold, dt);
+    DWORD step = fade_step(&flFadeAccum_, flFadeRate_,
+                           dwFadeThreshold_, dt);
 
-    ring = self->base.pRing;
+    ring = pRing_;
     ParticleNode *node = ring->pRingHead;
     if (node == ring->pRingCurrent)
         return;
@@ -253,29 +253,29 @@ static void magnet_tick(MagnetEnvironment *self, float dt)
             node->flLife -= dt;
 
         if (node->flLife >= 0.0f) {
-            float d[3] = { self->flCentre[0] - node->flX,
-                           self->flCentre[1] - node->flY,
-                           self->flCentre[2] - node->flZ };
+            float d[3] = { flCentre_[0] - node->flX,
+                           flCentre_[1] - node->flY,
+                           flCentre_[2] - node->flZ };
 
-            if (within_extent(d[0], self->flHalfExtent[0]) &&
-                within_extent(d[1], self->flHalfExtent[1]) &&
-                within_extent(d[2], self->flHalfExtent[2])) {
+            if (within_extent(d[0], flHalfExtent_[0]) &&
+                within_extent(d[1], flHalfExtent_[1]) &&
+                within_extent(d[2], flHalfExtent_[2])) {
                 retire = true;  // arrived at the magnet
             } else {
                 // Unguarded division: a zero-length d has already matched the
                 // extent test above and been retired, so this can't divide by
                 // zero.
                 float len = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
-                node->flVel[0] += (d[0] / len) * self->flForce[0] * fscale * dt;
-                node->flVel[1] += (d[1] / len) * self->flForce[1] * fscale * dt;
-                node->flVel[2] += (d[2] / len) * self->flForce[2] * fscale * dt;
+                node->flVel[0] += (d[0] / len) * flForce_[0] * fscale * dt;
+                node->flVel[1] += (d[1] / len) * flForce_[1] * fscale * dt;
+                node->flVel[2] += (d[2] / len) * flForce_[2] * fscale * dt;
                 node->flX += node->flVel[0] * dt;
                 node->flY += node->flVel[1] * dt;
                 node->flZ += node->flVel[2] * dt;
 
                 if (step != 0)
                     node->dwDiffuse = fade_diffuse(node->dwDiffuse,
-                                                   self->dwTargetRGB, step);
+                                                   dwTargetRGB_, step);
             }
         } else {
             retire = true;
@@ -283,12 +283,12 @@ static void magnet_tick(MagnetEnvironment *self, float dt)
 
         next = node->pNext;
         if (retire) {
-            retire_node(self->base.pRing, node);
+            retire_node(pRing_, node);
             if (next == NULL)
                 return;
         }
         node = next;
-    } while (node != self->base.pRing->pRingCurrent);
+    } while (node != pRing_->pRingCurrent);
 }
 
 /* ─── StdGenerator emit ─── */
@@ -313,22 +313,22 @@ static DWORD bump_index(DWORD cur, DWORD count)
 /* Shared by StdGenerator and XStdGenerator: XStd's emit is Std's with a
  * constant bias added to the sampled position and velocity, so both go through
  * here.  pos_off / vel_off are NULL for a plain StdGenerator. */
-static void std_emit(StdGenerator *self, float dt,
+void StdGenerator::stdEmit(float dt,
                      const float *pos_off, const float *vel_off)
 {
-    if (self->base.dwEnabled == 0)
+    if (dwEnabled_ == 0)
         return;
-    RingBuffer *ring = self->base.pRing;
+    RingBuffer *ring = pRing_;
     if (ring->pRingCurrent == NULL)
         return;
 
-    float acc = dt * self->flDtScale + self->flAccumulator;
-    self->flAccumulator = acc;
+    float acc = dt * flDtScale_ + flAccumulator_;
+    flAccumulator_ = acc;
     if (!(acc >= 0.0f))
         return;
 
     int count = (int)acc;  // truncates toward zero
-    self->flAccumulator = acc - (float)count;
+    flAccumulator_ = acc - (float)count;
     if (count <= 0)
         return;
 
@@ -337,26 +337,26 @@ static void std_emit(StdGenerator *self, float dt,
 
     for (int emitted = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
-        const float *pos = &self->flPosTable[self->dwPosIdx * 3];
-        const float *vel = &self->flVelTable[self->dwVelIdx * 3];
+        const float *pos = &flPosTable_[dwPosIdx_ * 3];
+        const float *vel = &flVelTable_[dwVelIdx_ * 3];
 
-        node->flLife = self->pLifeTable[self->dwLifeIdx];
+        node->flLife = pLifeTable_[dwLifeIdx_];
         node->flX = pos[0] + (pos_off ? pos_off[0] : 0.0f);
         node->flY = pos[1] + (pos_off ? pos_off[1] : 0.0f);
         node->flZ = pos[2] + (pos_off ? pos_off[2] : 0.0f);
         node->flVel[0] = (vel[0] + (vel_off ? vel_off[0] : 0.0f)) * vscale;
         node->flVel[1] = (vel[1] + (vel_off ? vel_off[1] : 0.0f)) * vscale;
         node->flVel[2] = (vel[2] + (vel_off ? vel_off[2] : 0.0f)) * vscale;
-        node->dwDiffuse = self->pEmitProb[self->dwProbIdx];
+        node->dwDiffuse = pEmitProb_[dwProbIdx_];
 
-        self->dwPosIdx  = wrap_index(self->dwPosIdx, 1, 500);
-        self->dwVelIdx  = wrap_index(self->dwVelIdx, 3, 500);
-        self->dwLifeIdx = bump_index(self->dwLifeIdx, 100);
-        self->dwProbIdx = bump_index(self->dwProbIdx, 200);
+        dwPosIdx_  = wrap_index(dwPosIdx_, 1, 500);
+        dwVelIdx_  = wrap_index(dwVelIdx_, 3, 500);
+        dwLifeIdx_ = bump_index(dwLifeIdx_, 100);
+        dwProbIdx_ = bump_index(dwProbIdx_, 200);
 
         // Claim the node: advance the free-list cursor past it.
-        self->base.pRing->pRingCurrent = node->pNext;
-        ring = self->base.pRing;
+        pRing_->pRingCurrent = node->pNext;
+        ring = pRing_;
         if (ring->pRingCurrent == NULL)
             return;  // ring full — stop early
         if (count <= ++emitted)
@@ -384,21 +384,21 @@ static void transform_point_row(float out[3], const float v[3], const float m[16
     out[0] = o[0]; out[1] = o[1]; out[2] = o[2];
 }
 
-static void cylinder_emit(CylinderGenerator *self, float dt)
+void CylinderGenerator::cylinderEmit(float dt)
 {
-    if (self->base.dwEnabled == 0)
+    if (dwEnabled_ == 0)
         return;
-    RingBuffer *ring = self->base.pRing;
+    RingBuffer *ring = pRing_;
     if (ring->pRingCurrent == NULL)
         return;
 
-    float acc = dt * self->flDtScale + self->flAccumulator;
-    self->flAccumulator = acc;
+    float acc = dt * flDtScale_ + flAccumulator_;
+    flAccumulator_ = acc;
     if (!(acc >= 0.0f))
         return;
 
     int count = (int)acc;
-    self->flAccumulator = acc - (float)count;
+    flAccumulator_ = acc - (float)count;
     if (count <= 0)
         return;
 
@@ -406,34 +406,34 @@ static void cylinder_emit(CylinderGenerator *self, float dt)
 
     for (int emitted = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
-        const float *pos = &self->flPosTable[self->dwPosIdx * 3];
-        const float *vel = &self->flVelTable[self->dwVelIdx * 3];
+        const float *pos = &flPosTable_[dwPosIdx_ * 3];
+        const float *vel = &flVelTable_[dwVelIdx_ * 3];
 
-        node->flLife = self->pLifeTable[self->dwLifeIdx];
+        node->flLife = pLifeTable_[dwLifeIdx_];
 
         // Sample -> scale -> transform -> offset.
-        float p[3] = { pos[0] * self->flScale,
-                       pos[1] * self->flScale,
-                       pos[2] * self->flScale };
+        float p[3] = { pos[0] * flScale_,
+                       pos[1] * flScale_,
+                       pos[2] * flScale_ };
         float t[3];
-        transform_point_row(t, p, self->flMatrix);
-        node->flX = t[0] + self->flOrigin[0];
-        node->flY = t[1] + self->flOrigin[1];
-        node->flZ = t[2] + self->flOrigin[2];
+        transform_point_row(t, p, flMatrix_);
+        node->flX = t[0] + flOrigin_[0];
+        node->flY = t[1] + flOrigin_[1];
+        node->flZ = t[2] + flOrigin_[2];
 
         // Velocity is NOT run through the matrix.
         node->flVel[0] = vel[0] * vscale;
         node->flVel[1] = vel[1] * vscale;
         node->flVel[2] = vel[2] * vscale;
-        node->dwDiffuse = self->pEmitProb[self->dwProbIdx];
+        node->dwDiffuse = pEmitProb_[dwProbIdx_];
 
-        self->dwPosIdx  = wrap_index(self->dwPosIdx, 1, 500);
-        self->dwVelIdx  = wrap_index(self->dwVelIdx, 3, 500);
-        self->dwLifeIdx = bump_index(self->dwLifeIdx, 100);
-        self->dwProbIdx = bump_index(self->dwProbIdx, 200);
+        dwPosIdx_  = wrap_index(dwPosIdx_, 1, 500);
+        dwVelIdx_  = wrap_index(dwVelIdx_, 3, 500);
+        dwLifeIdx_ = bump_index(dwLifeIdx_, 100);
+        dwProbIdx_ = bump_index(dwProbIdx_, 200);
 
-        self->base.pRing->pRingCurrent = node->pNext;
-        ring = self->base.pRing;
+        pRing_->pRingCurrent = node->pNext;
+        ring = pRing_;
         if (ring->pRingCurrent == NULL)
             return;
         if (count <= ++emitted)
@@ -519,59 +519,59 @@ static void stats_tick(const char *what, void *self, const RingBuffer *ring, LON
               ring->pRingHead, ring->pRingCurrent, ring->pRingTail);
 }
 
-static void gravity_env_tick(GravityEnvironment *self, float dt)
+void GravityEnvironment::gravityEnvTick(float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: GravityTick this=%p dt=%f live=%lu ring=%lu\n",
-                  self, dt, count_live(self->base.pRing),
-                  self->base.pRing->dwRingCount);
+                  this, dt, count_live(pRing_),
+                  pRing_->dwRingCount);
     static LONG ticks = 0;
-    stats_tick("gravity", self, self->base.pRing, &ticks, dt);
-    gravity_tick(self, dt);
+    stats_tick("gravity", this, pRing_, &ticks, dt);
+    gravityTick(dt);
 }
 
-static void magnet_env_tick(MagnetEnvironment *self, float dt)
+void MagnetEnvironment::magnetEnvTick(float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: MagnetTick this=%p dt=%f live=%lu ring=%lu centre=%f,%f,%f\n",
-                  self, dt, count_live(self->base.pRing),
-                  self->base.pRing->dwRingCount,
-                  self->flCentre[0], self->flCentre[1], self->flCentre[2]);
+                  this, dt, count_live(pRing_),
+                  pRing_->dwRingCount,
+                  flCentre_[0], flCentre_[1], flCentre_[2]);
     static LONG ticks = 0;
-    stats_tick("magnet", self, self->base.pRing, &ticks, dt);
-    magnet_tick(self, dt);
+    stats_tick("magnet", this, pRing_, &ticks, dt);
+    magnetTick(dt);
 }
 
-static void std_gen_tick(StdGenerator *self, float dt)
+void StdGenerator::stdGenTick(float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: StdEmit this=%p dt=%f enabled=%lu accum=%f free=%lu ring=%lu\n",
-                  self, dt, self->base.dwEnabled, self->flAccumulator,
-                  count_free(self->base.pRing), self->base.pRing->dwRingCount);
-    std_emit(self, dt, NULL, NULL);
+                  this, dt, dwEnabled_, flAccumulator_,
+                  count_free(pRing_), pRing_->dwRingCount);
+    stdEmit(dt, NULL, NULL);
 }
 
-static void xstd_gen_tick(XStdGenerator *self, float dt)
+void XStdGenerator::xstdGenTick(float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: XStdEmit this=%p dt=%f enabled=%lu posoff=%f,%f,%f "
                   "veloff=%f,%f,%f ring=%lu\n",
-                  self, dt, self->base.base.dwEnabled,
-                  self->flPosOffset[0], self->flPosOffset[1], self->flPosOffset[2],
-                  self->flVelOffset[0], self->flVelOffset[1], self->flVelOffset[2],
-                  self->base.base.pRing->dwRingCount);
-    std_emit(&self->base, dt, self->flPosOffset, self->flVelOffset);
+                  this, dt, dwEnabled_,
+                  flPosOffset_[0], flPosOffset_[1], flPosOffset_[2],
+                  flVelOffset_[0], flVelOffset_[1], flVelOffset_[2],
+                  pRing_->dwRingCount);
+    stdEmit(dt, flPosOffset_, flVelOffset_);
 }
 
-static void cyl_gen_tick(CylinderGenerator *self, float dt)
+void CylinderGenerator::cylGenTick(float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: CylinderEmit this=%p dt=%f enabled=%lu accum=%f "
                   "origin=%f,%f,%f scale=%f ring=%lu\n",
-                  self, dt, self->base.dwEnabled, self->flAccumulator,
-                  self->flOrigin[0], self->flOrigin[1], self->flOrigin[2],
-                  self->flScale, self->base.pRing->dwRingCount);
-    cylinder_emit(self, dt);
+                  this, dt, dwEnabled_, flAccumulator_,
+                  flOrigin_[0], flOrigin_[1], flOrigin_[2],
+                  flScale_, pRing_->dwRingCount);
+    cylinderEmit(dt);
 }
 
 /* One fread of `size` bytes; on a short read this leaves whatever was already
@@ -584,40 +584,40 @@ static bool read1(void *dst, unsigned size, void *fp)
 /* Stores flDirection/flMagnitude as given, and flGravity =
  * normalise(direction) * magnitude, or direction itself when it is exactly
  * zero. */
-static void gravity_set_vector(GravityEnvironment *self, const float dir[3], float mag)
+void GravityEnvironment::gravitySetVector(const float dir[3], float mag)
 {
-    self->flDirection[0] = dir[0];
-    self->flDirection[1] = dir[1];
-    self->flDirection[2] = dir[2];
-    self->flMagnitude = mag;
+    flDirection_[0] = dir[0];
+    flDirection_[1] = dir[1];
+    flDirection_[2] = dir[2];
+    flMagnitude_ = mag;
     if (dir[0] == 0.0f && dir[1] == 0.0f && dir[2] == 0.0f) {
-        self->flGravity[0] = dir[0];
-        self->flGravity[1] = dir[1];
-        self->flGravity[2] = dir[2];
+        flGravity_[0] = dir[0];
+        flGravity_[1] = dir[1];
+        flGravity_[2] = dir[2];
         return;
     }
     double len = sqrt((double)dir[2] * dir[2] +
                             (double)dir[1] * dir[1] +
                             (double)dir[0] * dir[0]);
     float q[3] = { (float)(dir[0] / len), (float)(dir[1] / len), (float)(dir[2] / len) };
-    self->flGravity[0] = q[0] * mag;
-    self->flGravity[1] = q[1] * mag;
-    self->flGravity[2] = q[2] * mag;
+    flGravity_[0] = q[0] * mag;
+    flGravity_[1] = q[1] * mag;
+    flGravity_[2] = q[2] * mag;
 }
 
-static void gravity_set_colour(GravityEnvironment *self, DWORD argb, float fade)
+void GravityEnvironment::gravitySetColour(DWORD argb, float fade)
 {
-    self->dwTargetARGB   = argb;
-    self->dwTargetA      = argb >> 24;
-    self->dwTargetRGB[0] = (argb >> 16) & 0xff;
-    self->dwTargetRGB[2] = argb & 0xff;
-    self->dwTargetRGB[1] = (argb >> 8) & 0xff;
-    self->flFadeRate     = fade;
+    dwTargetARGB_   = argb;
+    dwTargetA_      = argb >> 24;
+    dwTargetRGB_[0] = (argb >> 16) & 0xff;
+    dwTargetRGB_[2] = argb & 0xff;
+    dwTargetRGB_[1] = (argb >> 8) & 0xff;
+    flFadeRate_     = fade;
 }
 
 /* Leaves flFadeAccum as constructed — unlike MagnetEnvironment::Load, which
  * resets it every time. */
-static BOOL gravity_env_load(GravityEnvironment *self, void *fp)
+BOOL GravityEnvironment::gravityEnvLoad(void *fp)
 {
     float dir[3], mag, fade;
     DWORD argb;
@@ -625,42 +625,42 @@ static BOOL gravity_env_load(GravityEnvironment *self, void *fp)
     if (!read1(&mag, 4, fp))                   return FALSE;
     if (!read1(&argb, 4, fp))                  return FALSE;
     if (!read1(&fade, 4, fp))                  return FALSE;
-    if (!read1(&self->dwFadeThreshold, 4, fp)) return FALSE;
-    if (!read1(&self->dwClipEnable[0], 4, fp)) return FALSE;
-    if (!read1(&self->dwClipEnable[1], 4, fp)) return FALSE;
-    if (!read1(&self->dwClipEnable[2], 4, fp)) return FALSE;
-    if (!read1(self->flClipMax, 12, fp))       return FALSE;
-    if (!read1(self->flClipMin, 12, fp))       return FALSE;
+    if (!read1(&dwFadeThreshold_, 4, fp)) return FALSE;
+    if (!read1(&dwClipEnable_[0], 4, fp)) return FALSE;
+    if (!read1(&dwClipEnable_[1], 4, fp)) return FALSE;
+    if (!read1(&dwClipEnable_[2], 4, fp)) return FALSE;
+    if (!read1(flClipMax_, 12, fp))       return FALSE;
+    if (!read1(flClipMin_, 12, fp))       return FALSE;
     if (sim_fx() == FX_LOADFLIP)
         mag = -mag;
-    gravity_set_vector(self, dir, mag);
-    gravity_set_colour(self, argb, fade);
+    gravitySetVector(dir, mag);
+    gravitySetColour(argb, fade);
     SIM_LOG_ONCE(calls)
-        log_write("sim: GravityLoad this=%p gravity=%f,%f,%f argb=%08lX\n", self,
-                  self->flGravity[0], self->flGravity[1], self->flGravity[2], argb);
+        log_write("sim: GravityLoad this=%p gravity=%f,%f,%f argb=%08lX\n", this,
+                  flGravity_[0], flGravity_[1], flGravity_[2], argb);
     return TRUE;
 }
 
 /* FORMAT: on disk, force precedes centre.  PRESERVED: dwTargetRGB is never
  * loaded — it keeps whatever the constructor or a CopyFrom set, not what a
  * saved file may have recorded. */
-static BOOL magnet_env_load(MagnetEnvironment *self, void *fp)
+BOOL MagnetEnvironment::magnetEnvLoad(void *fp)
 {
     // The base Environment::Load contributes nothing; its result is not
     // checked.
-    if (!read1(self->flForce, 12, fp))         return FALSE;
-    if (!read1(self->flCentre, 12, fp))        return FALSE;
-    if (!read1(&self->flRange, 4, fp))         return FALSE;
-    if (!read1(&self->flFadeRate, 4, fp))      return FALSE;
-    if (!read1(&self->dwFadeThreshold, 4, fp)) return FALSE;
-    self->flFadeAccum = 0.0f;
+    if (!read1(flForce_, 12, fp))         return FALSE;
+    if (!read1(flCentre_, 12, fp))        return FALSE;
+    if (!read1(&flRange_, 4, fp))         return FALSE;
+    if (!read1(&flFadeRate_, 4, fp))      return FALSE;
+    if (!read1(&dwFadeThreshold_, 4, fp)) return FALSE;
+    flFadeAccum_ = 0.0f;
     if (sim_fx() == FX_LOADFLIP)
         for (int i = 0; i < 3; i++)
-            self->flForce[i] = -self->flForce[i];
+            flForce_[i] = -flForce_[i];
     SIM_LOG_ONCE(calls)
-        log_write("sim: MagnetLoad this=%p force=%f,%f,%f centre=%f,%f,%f\n", self,
-                  self->flForce[0], self->flForce[1], self->flForce[2],
-                  self->flCentre[0], self->flCentre[1], self->flCentre[2]);
+        log_write("sim: MagnetLoad this=%p force=%f,%f,%f centre=%f,%f,%f\n", this,
+                  flForce_[0], flForce_[1], flForce_[2],
+                  flCentre_[0], flCentre_[1], flCentre_[2]);
     return TRUE;
 }
 
@@ -673,88 +673,88 @@ static bool write1(const void *src, unsigned size, void *fp)
 }
 
 /* Field-for-field mirror of Load, in the same order. */
-static BOOL gravity_env_save(GravityEnvironment *self, void *fp)
+BOOL GravityEnvironment::gravityEnvSave(void *fp)
 {
-    if (!write1(self->flDirection, 12, fp))      return FALSE;
-    if (!write1(&self->flMagnitude, 4, fp))      return FALSE;
-    if (!write1(&self->dwTargetARGB, 4, fp))     return FALSE;
-    if (!write1(&self->flFadeRate, 4, fp))       return FALSE;
-    if (!write1(&self->dwFadeThreshold, 4, fp))  return FALSE;
-    if (!write1(&self->dwClipEnable[0], 4, fp))  return FALSE;
-    if (!write1(&self->dwClipEnable[1], 4, fp))  return FALSE;
-    if (!write1(&self->dwClipEnable[2], 4, fp))  return FALSE;
-    if (!write1(self->flClipMax, 12, fp))        return FALSE;
-    return write1(self->flClipMin, 12, fp);
+    if (!write1(flDirection_, 12, fp))      return FALSE;
+    if (!write1(&flMagnitude_, 4, fp))      return FALSE;
+    if (!write1(&dwTargetARGB_, 4, fp))     return FALSE;
+    if (!write1(&flFadeRate_, 4, fp))       return FALSE;
+    if (!write1(&dwFadeThreshold_, 4, fp))  return FALSE;
+    if (!write1(&dwClipEnable_[0], 4, fp))  return FALSE;
+    if (!write1(&dwClipEnable_[1], 4, fp))  return FALSE;
+    if (!write1(&dwClipEnable_[2], 4, fp))  return FALSE;
+    if (!write1(flClipMax_, 12, fp))        return FALSE;
+    return write1(flClipMin_, 12, fp);
 }
 
 /* Calls the base Environment::Save (a no-op) first, then mirrors Load.
  * PRESERVED: dwTargetRGB is not written either, matching Load. */
-static BOOL magnet_env_save(MagnetEnvironment *self, void *fp)
+BOOL MagnetEnvironment::magnetEnvSave(void *fp)
 {
-    if (!write1(self->flForce, 12, fp))          return FALSE;
-    if (!write1(self->flCentre, 12, fp))         return FALSE;
-    if (!write1(&self->flRange, 4, fp))          return FALSE;
-    if (!write1(&self->flFadeRate, 4, fp))       return FALSE;
-    return write1(&self->dwFadeThreshold, 4, fp);
+    if (!write1(flForce_, 12, fp))          return FALSE;
+    if (!write1(flCentre_, 12, fp))         return FALSE;
+    if (!write1(&flRange_, 4, fp))          return FALSE;
+    if (!write1(&flFadeRate_, 4, fp))       return FALSE;
+    return write1(&dwFadeThreshold_, 4, fp);
 }
 
 /* The base Environment::CopyFrom only gates on type name; it copies nothing
  * itself. */
-static BOOL env_same_name(const Environment *self, const Environment *src)
+BOOL Environment::envSameName(const Environment *src) const
 {
-    return strcmp(src->pName, self->pName) == 0;
+    return strcmp(src->pName_, pName_) == 0;
 }
 
 /* Copies every field past the base (vtable, pName and pRing keep the
  * destination's) in one memcpy; safe because src can never alias dst. */
-static BOOL gravity_env_copy_from(GravityEnvironment *self, const GravityEnvironment *src)
+BOOL GravityEnvironment::gravityEnvCopyFrom(const GravityEnvironment *src)
 {
-    if (!env_same_name(&self->base, &src->base))
+    if (!envSameName(src))
         return FALSE;
-    memcpy((BYTE *)self + sizeof(Environment), (const BYTE *)src + sizeof(Environment),
+    memcpy((BYTE *)this + sizeof(Environment), (const BYTE *)src + sizeof(Environment),
            sizeof(GravityEnvironment) - sizeof(Environment));
     return TRUE;
 }
 
-static BOOL magnet_env_copy_from(MagnetEnvironment *self, const MagnetEnvironment *src)
+BOOL MagnetEnvironment::magnetEnvCopyFrom(const MagnetEnvironment *src)
 {
-    if (!env_same_name(&self->base, &src->base))
+    if (!envSameName(src))
         return FALSE;
-    memcpy((BYTE *)self + sizeof(Environment), (const BYTE *)src + sizeof(Environment),
+    memcpy((BYTE *)this + sizeof(Environment), (const BYTE *)src + sizeof(Environment),
            sizeof(MagnetEnvironment) - sizeof(Environment));
     return TRUE;
 }
 
-static void base_env_destruct(Environment *self)
+void Environment::baseEnvDestruct()
 {
-    self->pVtable = (void **)env_vtbl_base;
+    pVtable_ = (void **)env_vtbl_base;
 }
 
 /* Restores the game-facing vtable, then runs the base body.  Nothing is freed
  * here: pName is not owned by either class. */
-static void gravity_env_destruct(GravityEnvironment *self)
+void GravityEnvironment::gravityEnvDestruct()
 {
-    self->base.pVtable = (void **)env_vtbl_gravity;
-    self->base.pVtable = (void **)env_vtbl_base;
+    pVtable_ = (void **)env_vtbl_gravity;
+    pVtable_ = (void **)env_vtbl_base;
 }
 
 /* PRESERVED: runs the base body twice (once on each of the original's exit
  * paths) — harmless, kept rather than collapsed to one store. */
-static void magnet_env_destruct(MagnetEnvironment *self)
+void MagnetEnvironment::magnetEnvDestruct()
 {
-    self->base.pVtable = (void **)env_vtbl_magnet;
-    self->base.pVtable = (void **)env_vtbl_base;
-    self->base.pVtable = (void **)env_vtbl_base;
+    pVtable_ = (void **)env_vtbl_magnet;
+    pVtable_ = (void **)env_vtbl_base;
+    pVtable_ = (void **)env_vtbl_base;
 }
 
 /* The scalar deleting dtors' shared tail is factory.h's scalar_delete<T>. */
 
 /* Refuses (and leaves pRing alone) when handed a NULL ring. */
-static BOOL env_attach_ring(Environment *self, RingBuffer *ring)
+BOOL Environment::envAttachRing(RingBuffer *ring)
 {
     if (ring == NULL)
         return FALSE;
-    self->pRing = ring;
+    pRing_ = ring;
     return TRUE;
 }
 
@@ -765,54 +765,54 @@ static BOOL env_attach_ring(Environment *self, RingBuffer *ring)
 /* Static type-name strings; pName points at them, never owned or freed here.
  */
 
-static void base_env_construct(Environment *self)
+void Environment::baseEnvConstruct()
 {
-    self->pVtable = (void **)env_vtbl_base;
-    self->pName   = GS_PSNAME_ENVIRONMENT;
-    self->pRing   = NULL;
+    pVtable_ = (void **)env_vtbl_base;
+    pName_   = GS_PSNAME_ENVIRONMENT;
+    pRing_   = NULL;
 }
 
 /* Base ctor, class vtable, then every member zeroed except the fade threshold,
  * which starts at 10. */
-static void gravity_env_construct(GravityEnvironment *self)
+void GravityEnvironment::gravityEnvConstruct()
 {
-    base_env_construct(&self->base);
-    self->base.pVtable = (void **)env_vtbl_gravity;
-    memset((BYTE *)self + sizeof(Environment), 0,
+    baseEnvConstruct();
+    pVtable_ = (void **)env_vtbl_gravity;
+    memset((BYTE *)this + sizeof(Environment), 0,
            sizeof(GravityEnvironment) - sizeof(Environment));
-    self->base.pName = GS_PSNAME_GRAVITY_ENV;
-    self->dwFadeThreshold = 10;
+    pName_ = GS_PSNAME_GRAVITY_ENV;
+    dwFadeThreshold_ = 10;
 }
 
-static void magnet_env_construct(MagnetEnvironment *self)
+void MagnetEnvironment::magnetEnvConstruct()
 {
-    base_env_construct(&self->base);
-    self->base.pVtable = (void **)env_vtbl_magnet;
-    memset((BYTE *)self + sizeof(Environment), 0,
+    baseEnvConstruct();
+    pVtable_ = (void **)env_vtbl_magnet;
+    memset((BYTE *)this + sizeof(Environment), 0,
            sizeof(MagnetEnvironment) - sizeof(Environment));
-    self->base.pName = GS_PSNAME_MAGNET_ENV;
-    self->dwFadeThreshold = 10;
+    pName_ = GS_PSNAME_MAGNET_ENV;
+    dwFadeThreshold_ = 10;
 }
 
 /* Matches names exactly, as the game's factory did: an unknown name, or a
  * failed allocation, both return NULL. */
-Environment *env_create(const char *name)
+Environment *Environment::create(const char *name)
 {
     if (strcmp(name, "Environment") == 0) {
         Environment *e = (Environment *)::operator new(sizeof(Environment), std::nothrow);
-        if (e) base_env_construct(e);
+        if (e) e->baseEnvConstruct();
         return e;
     }
     if (strcmp(name, "GravityEnvironment") == 0) {
         GravityEnvironment *g =
             (GravityEnvironment *)::operator new(sizeof(GravityEnvironment), std::nothrow);
-        if (g) gravity_env_construct(g);
+        if (g) g->gravityEnvConstruct();
         return (Environment *)g;
     }
     if (strcmp(name, "MagnetEnvironment") == 0) {
         MagnetEnvironment *m =
             (MagnetEnvironment *)::operator new(sizeof(MagnetEnvironment), std::nothrow);
-        if (m) magnet_env_construct(m);
+        if (m) m->magnetEnvConstruct();
         return (Environment *)m;
     }
     return NULL;
@@ -935,28 +935,28 @@ static void uniform_fill(float *out, int n, float a, float b)
     }
 }
 
-static void base_gen_destruct(Generator *self)
+void Generator::baseGenDestruct()
 {
-    self->pVtable = (void **)gen_vtbl_base;
+    pVtable_ = (void **)gen_vtbl_base;
 }
 
 /* The scalar deleting dtors' shared tail is factory.h's scalar_delete<T>. */
 
 /* Gates on matching type name, then copies only dwEnabled. */
-static BOOL gen_copy_base(Generator *self, const Generator *src)
+BOOL Generator::genCopyBase(const Generator *src)
 {
-    if (strcmp(src->pName, self->pName) != 0)
+    if (strcmp(src->pName_, pName_) != 0)
         return FALSE;
-    self->dwEnabled = src->dwEnabled;
+    dwEnabled_ = src->dwEnabled_;
     return TRUE;
 }
 
 /* Slot 2 of all six generator vtables. */
-static BOOL gen_attach_ring(Generator *self, RingBuffer *ring)
+BOOL Generator::genAttachRing(RingBuffer *ring)
 {
     if (ring == NULL)
         return FALSE;
-    self->pRing = ring;
+    pRing_ = ring;
     return TRUE;
 }
 
@@ -1000,9 +1000,9 @@ static void type_table_clone(void **ptable, DWORD *pcount, DWORD *emit_prob,
     }
 }
 
-static void std_clone_type_table(StdGenerator *self, const DWORD *src, DWORD count)
+void StdGenerator::stdCloneTypeTable(const DWORD *src, DWORD count)
 {
-    type_table_clone(&self->pTypeTable, &self->dwTypeTableCount, self->pEmitProb,
+    type_table_clone(&pTypeTable_, &dwTypeTableCount_, pEmitProb_,
                      src, count);
 }
 
@@ -1033,56 +1033,56 @@ static BOOL type_table_load(void **ptable, DWORD *pcount, DWORD *emit_prob, void
     return TRUE;
 }
 
-static BOOL std_save_type_table(StdGenerator *self, void *fp)
+BOOL StdGenerator::stdSaveTypeTable(void *fp)
 {
-    return type_table_save(self->pTypeTable, &self->dwTypeTableCount, fp);
+    return type_table_save(pTypeTable_, &dwTypeTableCount_, fp);
 }
 
-static BOOL std_load_type_table(StdGenerator *self, void *fp)
+BOOL StdGenerator::stdLoadTypeTable(void *fp)
 {
-    return type_table_load(&self->pTypeTable, &self->dwTypeTableCount,
-                           self->pEmitProb, fp);
+    return type_table_load(&pTypeTable_, &dwTypeTableCount_,
+                           pEmitProb_, fp);
 }
 
 /* Interleave three 500-sample columns into flPosTable (x, y, z per entry). */
-static void std_interleave_pos(StdGenerator *self, const float *x, const float *y,
+void StdGenerator::stdInterleavePos(const float *x, const float *y,
                                const float *z)
 {
     for (int k = 0; k < 500; k++) {
-        self->flPosTable[k * 3 + 0] = x[k];
-        self->flPosTable[k * 3 + 1] = y[k];
-        self->flPosTable[k * 3 + 2] = z[k];
+        flPosTable_[k * 3 + 0] = x[k];
+        flPosTable_[k * 3 + 1] = y[k];
+        flPosTable_[k * 3 + 2] = z[k];
     }
 }
 
-static void std_build_sphere(StdGenerator *self, const float *mn, const float *mx)
+void StdGenerator::stdBuildSphere(const float *mn, const float *mx)
 {
     float a[3] = { mn[0], mn[1], mn[2] }, b[3] = { mx[0], mx[1], mx[2] };
-    memcpy(self->flSphMin, a, sizeof a);
-    memcpy(self->flSphMax, b, sizeof b);
-    self->dwEmitMode = 0;
+    memcpy(flSphMin_, a, sizeof a);
+    memcpy(flSphMax_, b, sizeof b);
+    dwEmitMode_ = 0;
     float *col[3] = { new float[500], new float[500], new float[500] };
     for (int i = 0; i < 3; i++)
         gauss_fill(col[i], 500, a[i], b[i], (float)((double)b[i] * GAUSS_STEP));
-    std_interleave_pos(self, col[0], col[1], col[2]);
+    stdInterleavePos(col[0], col[1], col[2]);
     for (int i = 0; i < 3; i++)
         delete[] col[i];
-    self->dwPosIdx = 0;
+    dwPosIdx_ = 0;
 }
 
-static void std_build_box(StdGenerator *self, const float *mn, const float *mx)
+void StdGenerator::stdBuildBox(const float *mn, const float *mx)
 {
     float a[3] = { mn[0], mn[1], mn[2] }, b[3] = { mx[0], mx[1], mx[2] };
-    memcpy(self->flBoxMax, b, sizeof b);
-    memcpy(self->flBoxMin, a, sizeof a);
-    self->dwEmitMode = 1;
+    memcpy(flBoxMax_, b, sizeof b);
+    memcpy(flBoxMin_, a, sizeof a);
+    dwEmitMode_ = 1;
     float *col[3] = { new float[500], new float[500], new float[500] };
     for (int i = 0; i < 3; i++)
         uniform_fill(col[i], 500, a[i], b[i]);
-    std_interleave_pos(self, col[0], col[1], col[2]);
+    stdInterleavePos(col[0], col[1], col[2]);
     for (int i = 0; i < 3; i++)
         delete[] col[i];
-    self->dwPosIdx = 0;
+    dwPosIdx_ = 0;
 }
 
 static void build_velocity_table(float *table, const float *a, const float *b,
@@ -1114,186 +1114,186 @@ static void build_velocity_table(float *table, const float *a, const float *b,
         delete[] col[i];
 }
 
-static void std_build_velocity(StdGenerator *self, const float *vmin, const float *vmax,
+void StdGenerator::stdBuildVelocity(const float *vmin, const float *vmax,
                                float lmin, float lmax)
 {
     float a[3] = { vmin[0], vmin[1], vmin[2] }, b[3] = { vmax[0], vmax[1], vmax[2] };
-    build_velocity_table(self->flVelTable, a, b, lmin, lmax);
-    self->dwVelIdx = 0;
-    memcpy(self->flVelMin, a, sizeof a);
-    memcpy(self->flVelMax, b, sizeof b);
-    self->flLifeMin = lmin;
-    self->flLifeMax = lmax;
+    build_velocity_table(flVelTable_, a, b, lmin, lmax);
+    dwVelIdx_ = 0;
+    memcpy(flVelMin_, a, sizeof a);
+    memcpy(flVelMax_, b, sizeof b);
+    flLifeMin_ = lmin;
+    flLifeMax_ = lmax;
 }
 
-static void std_build_rate(StdGenerator *self, float lo, float hi)
+void StdGenerator::stdBuildRate(float lo, float hi)
 {
     float step = (float)((double)hi * GAUSS_STEP);
-    self->flEmitRateMin = lo;
-    self->flEmitRateMax = hi;
-    gauss_fill(self->pLifeTable, 100, lo, hi, step);
+    flEmitRateMin_ = lo;
+    flEmitRateMax_ = hi;
+    gauss_fill(pLifeTable_, 100, lo, hi, step);
 }
 
-static void std_gen_destruct(StdGenerator *self)
+void StdGenerator::stdGenDestruct()
 {
-    self->base.pVtable = (void **)gen_vtbl_std;
-    if (self->pTypeTable)
-        ::operator delete(self->pTypeTable);
-    base_gen_destruct(&self->base);
+    pVtable_ = (void **)gen_vtbl_std;
+    if (pTypeTable_)
+        ::operator delete(pTypeTable_);
+    baseGenDestruct();
 }
 
 /* Copies every field but the type table, which is cloned instead — cloning
  * redraws pEmitProb from a fresh seed, so a copy's colours differ from its
  * source's. */
-static BOOL std_gen_copy_from(StdGenerator *self, const StdGenerator *src)
+BOOL StdGenerator::stdGenCopyFrom(const StdGenerator *src)
 {
-    if (!gen_copy_base(&self->base, &src->base))
+    if (!genCopyBase(src))
         return FALSE;
-    memcpy((BYTE *)self + 0x10, (const BYTE *)src + 0x10, 0x70 - 0x10);
-    memcpy((BYTE *)self + 0x78, (const BYTE *)src + 0x78, 0x3420 - 0x78);
-    std_clone_type_table(self, (const DWORD *)src->pTypeTable, src->dwTypeTableCount);
+    memcpy((BYTE *)this + 0x10, (const BYTE *)src + 0x10, 0x70 - 0x10);
+    memcpy((BYTE *)this + 0x78, (const BYTE *)src + 0x78, 0x3420 - 0x78);
+    stdCloneTypeTable((const DWORD *)src->pTypeTable_, src->dwTypeTableCount_);
     return TRUE;
 }
 
-static BOOL std_gen_save(StdGenerator *self, void *fp)
+BOOL StdGenerator::stdGenSave(void *fp)
 {
-    if (!write1(&self->dwEmitMode, 4, fp))     return FALSE;
-    if (!write1(self->flBoxMax, 12, fp))       return FALSE;
-    if (!write1(self->flBoxMin, 12, fp))       return FALSE;
-    if (!write1(self->flSphMin, 12, fp))       return FALSE;
-    if (!write1(self->flSphMax, 12, fp))       return FALSE;
-    if (!write1(self->flVelMin, 12, fp))       return FALSE;
-    if (!write1(self->flVelMax, 12, fp))       return FALSE;
-    if (!write1(&self->flLifeMin, 4, fp))      return FALSE;
-    if (!write1(&self->flLifeMax, 4, fp))      return FALSE;
-    if (!write1(&self->flEmitRateMin, 4, fp))  return FALSE;
-    if (!write1(&self->flEmitRateMax, 4, fp))  return FALSE;
-    if (!write1(&self->flDtScale, 4, fp))      return FALSE;
-    return std_save_type_table(self, fp);
+    if (!write1(&dwEmitMode_, 4, fp))     return FALSE;
+    if (!write1(flBoxMax_, 12, fp))       return FALSE;
+    if (!write1(flBoxMin_, 12, fp))       return FALSE;
+    if (!write1(flSphMin_, 12, fp))       return FALSE;
+    if (!write1(flSphMax_, 12, fp))       return FALSE;
+    if (!write1(flVelMin_, 12, fp))       return FALSE;
+    if (!write1(flVelMax_, 12, fp))       return FALSE;
+    if (!write1(&flLifeMin_, 4, fp))      return FALSE;
+    if (!write1(&flLifeMax_, 4, fp))      return FALSE;
+    if (!write1(&flEmitRateMin_, 4, fp))  return FALSE;
+    if (!write1(&flEmitRateMax_, 4, fp))  return FALSE;
+    if (!write1(&flDtScale_, 4, fp))      return FALSE;
+    return stdSaveTypeTable(fp);
 }
 
 /* Builds the sphere or box position table (whichever dwEmitMode selects), then
  * always rebuilds the velocity and rate tables. */
-static BOOL std_gen_load(StdGenerator *self, void *fp)
+BOOL StdGenerator::stdGenLoad(void *fp)
 {
-    if (!read1(&self->dwEmitMode, 4, fp))      return FALSE;
-    if (!read1(self->flBoxMax, 12, fp))        return FALSE;
-    if (!read1(self->flBoxMin, 12, fp))        return FALSE;
-    if (!read1(self->flSphMin, 12, fp))        return FALSE;
-    if (!read1(self->flSphMax, 12, fp))        return FALSE;
-    if (!read1(self->flVelMin, 12, fp))        return FALSE;
-    if (!read1(self->flVelMax, 12, fp))        return FALSE;
-    if (!read1(&self->flLifeMin, 4, fp))       return FALSE;
-    if (!read1(&self->flLifeMax, 4, fp))       return FALSE;
-    if (!read1(&self->flEmitRateMin, 4, fp))   return FALSE;
-    if (!read1(&self->flEmitRateMax, 4, fp))   return FALSE;
-    if (!read1(&self->flDtScale, 4, fp))       return FALSE;
+    if (!read1(&dwEmitMode_, 4, fp))      return FALSE;
+    if (!read1(flBoxMax_, 12, fp))        return FALSE;
+    if (!read1(flBoxMin_, 12, fp))        return FALSE;
+    if (!read1(flSphMin_, 12, fp))        return FALSE;
+    if (!read1(flSphMax_, 12, fp))        return FALSE;
+    if (!read1(flVelMin_, 12, fp))        return FALSE;
+    if (!read1(flVelMax_, 12, fp))        return FALSE;
+    if (!read1(&flLifeMin_, 4, fp))       return FALSE;
+    if (!read1(&flLifeMax_, 4, fp))       return FALSE;
+    if (!read1(&flEmitRateMin_, 4, fp))   return FALSE;
+    if (!read1(&flEmitRateMax_, 4, fp))   return FALSE;
+    if (!read1(&flDtScale_, 4, fp))       return FALSE;
     if (sim_fx() == FX_FASTEMIT)
-        self->flDtScale = (float)((double)self->flDtScale * 5.0);
-    if (self->dwEmitMode == 0)
-        std_build_sphere(self, self->flSphMin, self->flSphMax);
-    if (self->dwEmitMode == 1)
-        std_build_box(self, self->flBoxMin, self->flBoxMax);
-    std_build_velocity(self, self->flVelMin, self->flVelMax,
-                       self->flLifeMin, self->flLifeMax);
-    std_build_rate(self, self->flEmitRateMin, self->flEmitRateMax);
-    return std_load_type_table(self, fp);
+        flDtScale_ = (float)((double)flDtScale_ * 5.0);
+    if (dwEmitMode_ == 0)
+        stdBuildSphere(flSphMin_, flSphMax_);
+    if (dwEmitMode_ == 1)
+        stdBuildBox(flBoxMin_, flBoxMax_);
+    stdBuildVelocity(flVelMin_, flVelMax_,
+                       flLifeMin_, flLifeMax_);
+    stdBuildRate(flEmitRateMin_, flEmitRateMax_);
+    return stdLoadTypeTable(fp);
 }
 
 /* Own vtable first, then Std's dtor body. */
-static void xstd_gen_destruct(XStdGenerator *self)
+void XStdGenerator::xstdGenDestruct()
 {
-    self->base.base.pVtable = (void **)gen_vtbl_xstd;
-    std_gen_destruct(&self->base);
+    pVtable_ = (void **)gen_vtbl_xstd;
+    stdGenDestruct();
 }
 
 /* PRESERVED: copies flPosOffset but not flVelOffset — a copied generator keeps
  * its own velocity offset regardless of the source's. */
-static BOOL xstd_gen_copy_from(XStdGenerator *self, const XStdGenerator *src)
+BOOL XStdGenerator::xstdGenCopyFrom(const XStdGenerator *src)
 {
-    if (!std_gen_copy_from(&self->base, &src->base))
+    if (!stdGenCopyFrom(src))
         return FALSE;
-    memcpy(self->flPosOffset, src->flPosOffset, sizeof self->flPosOffset);
+    memcpy(flPosOffset_, src->flPosOffset_, sizeof flPosOffset_);
     return TRUE;
 }
 
-static BOOL xstd_gen_save(XStdGenerator *self, void *fp)
+BOOL XStdGenerator::xstdGenSave(void *fp)
 {
-    if (!std_gen_save(&self->base, fp))        return FALSE;
-    if (!write1(self->flPosOffset, 12, fp))    return FALSE;
-    return write1(self->flVelOffset, 12, fp);
+    if (!stdGenSave(fp))        return FALSE;
+    if (!write1(flPosOffset_, 12, fp))    return FALSE;
+    return write1(flVelOffset_, 12, fp);
 }
 
-static BOOL xstd_gen_load(XStdGenerator *self, void *fp)
+BOOL XStdGenerator::xstdGenLoad(void *fp)
 {
-    if (!std_gen_load(&self->base, fp))        return FALSE;
-    if (!read1(self->flPosOffset, 12, fp))     return FALSE;
-    return read1(self->flVelOffset, 12, fp);
+    if (!stdGenLoad(fp))        return FALSE;
+    if (!read1(flPosOffset_, 12, fp))     return FALSE;
+    return read1(flVelOffset_, 12, fp);
 }
 
-static void xstd_set_position(XStdGenerator *self, float x, float y, float z)
+void XStdGenerator::xstdSetPosition(float x, float y, float z)
 {
-    self->flPosOffset[0] = x;
-    self->flPosOffset[1] = y;
-    self->flPosOffset[2] = z;
+    flPosOffset_[0] = x;
+    flPosOffset_[1] = y;
+    flPosOffset_[2] = z;
 }
 
-static void xstd_store_scaled(XStdGenerator *self, double x, double y,
+void XStdGenerator::xstdStoreScaled(double x, double y,
                              double z, double len, double mag)
 {
     float q0 = (float)(x / len);
     float q1 = (float)(y / len);
     double q2 = z / len;
-    self->flVelOffset[0] = (float)(q0 * mag);
-    self->flVelOffset[1] = (float)(q1 * mag);
-    self->flVelOffset[2] = (float)(q2 * mag);
+    flVelOffset_[0] = (float)(q0 * mag);
+    flVelOffset_[1] = (float)(q1 * mag);
+    flVelOffset_[2] = (float)(q2 * mag);
 }
 
 /* Keeps the current speed, takes the new direction.  Zero speed becomes
  * FLT_EPSILON; a zero direction zeroes the velocity. */
-static void xstd_set_direction(XStdGenerator *self, float x, float y, float z)
+void XStdGenerator::xstdSetDirection(float x, float y, float z)
 {
-    double vx = self->flVelOffset[0], vy = self->flVelOffset[1],
-                vz = self->flVelOffset[2];
+    double vx = flVelOffset_[0], vy = flVelOffset_[1],
+                vz = flVelOffset_[2];
     double mag = sqrt(vx * vx + vy * vy + vz * vz);
     if (!(mag < 0.0 || mag > 0.0))
         mag = TINY_LENGTH;
     if (zero_or_nan(x) && zero_or_nan(y) && zero_or_nan(z)) {
-        self->flVelOffset[0] = self->flVelOffset[1] = self->flVelOffset[2] = 0.0f;
+        flVelOffset_[0] = flVelOffset_[1] = flVelOffset_[2] = 0.0f;
         return;
     }
     double lx = x, ly = y, lz = z;
     double len = sqrt(lz * lz + ly * ly + lx * lx);
-    xstd_store_scaled(self, lx, ly, lz, len, mag);
+    xstdStoreScaled(lx, ly, lz, len, mag);
 }
 
 /* PRESERVED: if the current velocity offset is already zero, this leaves it
  * zero and ignores every argument — direction, speed, all of it. */
-static void xstd_set_velocity(XStdGenerator *self, float x, float y, float z, float mag)
+void XStdGenerator::xstdSetVelocity(float x, float y, float z, float mag)
 {
-    if (zero_or_nan(self->flVelOffset[0]) && zero_or_nan(self->flVelOffset[1]) &&
-        zero_or_nan(self->flVelOffset[2])) {
-        self->flVelOffset[0] = self->flVelOffset[1] = self->flVelOffset[2] = 0.0f;
+    if (zero_or_nan(flVelOffset_[0]) && zero_or_nan(flVelOffset_[1]) &&
+        zero_or_nan(flVelOffset_[2])) {
+        flVelOffset_[0] = flVelOffset_[1] = flVelOffset_[2] = 0.0f;
         return;
     }
     double lx = x, ly = y, lz = z;
     double len = sqrt(lz * lz + ly * ly + lx * lx);
-    xstd_store_scaled(self, lx, ly, lz, len, mag);
+    xstdStoreScaled(lx, ly, lz, len, mag);
 }
 
 /* Zero speed becomes FLT_EPSILON.  If the current velocity is already zero
  * there is no direction to preserve, so it is left as-is. */
-static void xstd_set_speed(XStdGenerator *self, float mag)
+void XStdGenerator::xstdSetSpeed(float mag)
 {
     if (zero_or_nan(mag))
         mag = TINY_LENGTH;
-    if (zero_or_nan(self->flVelOffset[0]) && zero_or_nan(self->flVelOffset[1]) &&
-        zero_or_nan(self->flVelOffset[2]))
+    if (zero_or_nan(flVelOffset_[0]) && zero_or_nan(flVelOffset_[1]) &&
+        zero_or_nan(flVelOffset_[2]))
         return;
-    double x = self->flVelOffset[0], y = self->flVelOffset[1],
-                z = self->flVelOffset[2];
+    double x = flVelOffset_[0], y = flVelOffset_[1],
+                z = flVelOffset_[2];
     double len = sqrt(x * x + y * y + z * z);
-    xstd_store_scaled(self, x, y, z, len, mag);
+    xstdStoreScaled(x, y, z, len, mag);
 }
 
 /* ─── PointGenerator / BoxGenerator emit ─── */
@@ -1313,28 +1313,28 @@ static int dead_gen_claim(float *acc, float rate, float dt)
 }
 
 /* No dwEnabled check, unlike StdGenerator. */
-static void point_gen_emit(PointGenerator *self, float dt)
+void PointGenerator::pointGenEmit(float dt)
 {
-    RingBuffer *ring = self->base.pRing;
+    RingBuffer *ring = pRing_;
     if (ring->pRingCurrent == NULL)
         return;
-    int n = dead_gen_claim(&self->flAccumulator, self->flEmitRate, dt);
+    int n = dead_gen_claim(&flAccumulator_, flEmitRate_, dt);
     if (n <= 0)
         return;
-    const DWORD *life = (const DWORD *)((const BYTE *)self + 0x0fe4);
+    const DWORD *life = (const DWORD *)((const BYTE *)this + 0x0fe4);
     for (int i = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
-        *(DWORD *)&node->flLife = life[self->dwLifeIdx];
-        memcpy(&node->flX, self->flEmitPos, 12);
-        node->dwDiffuse = self->dwDiffuse;
+        *(DWORD *)&node->flLife = life[dwLifeIdx_];
+        memcpy(&node->flX, flEmitPos_, 12);
+        node->dwDiffuse = dwDiffuse_;
         for (int a = 0; a < 3; a++)
-            node->flVel[a] = self->flVelTable[self->dwVelIdx[a]] + self->flVelBias[a];
-        DWORD i0 = self->dwVelIdx[0] + 1, i1 = self->dwVelIdx[1] + 2,
-              i2 = self->dwVelIdx[2] + 3;
-        self->dwVelIdx[0] = (i0 >= 1000) ? 1000 - i0 : i0;  // wraps at 1000, not 999 or 998, like the next two indices
-        self->dwVelIdx[1] = (i1 >= 999)  ? 1000 - i1 : i1;
-        self->dwVelIdx[2] = (i2 >= 998)  ? 1000 - i2 : i2;
-        self->dwLifeIdx = (self->dwLifeIdx > 100) ? 0 : self->dwLifeIdx + 1;  // runs 0..101 — two entries past the 100-entry table
+            node->flVel[a] = flVelTable_[dwVelIdx_[a]] + flVelBias_[a];
+        DWORD i0 = dwVelIdx_[0] + 1, i1 = dwVelIdx_[1] + 2,
+              i2 = dwVelIdx_[2] + 3;
+        dwVelIdx_[0] = (i0 >= 1000) ? 1000 - i0 : i0;  // wraps at 1000, not 999 or 998, like the next two indices
+        dwVelIdx_[1] = (i1 >= 999)  ? 1000 - i1 : i1;
+        dwVelIdx_[2] = (i2 >= 998)  ? 1000 - i2 : i2;
+        dwLifeIdx_ = (dwLifeIdx_ > 100) ? 0 : dwLifeIdx_ + 1;  // runs 0..101 — two entries past the 100-entry table
         ring->pRingCurrent = node->pNext;
         if (ring->pRingCurrent == NULL)
             return;
@@ -1345,33 +1345,33 @@ static void point_gen_emit(PointGenerator *self, float dt)
 
 /* Position and colour are raw table copies; velocity is table plus bias.  Both
  * index triples wrap by 500 - i past 499. */
-static void box_gen_emit(BoxGenerator *self, float dt)
+void BoxGenerator::boxGenEmit(float dt)
 {
-    RingBuffer *ring = self->base.pRing;
+    RingBuffer *ring = pRing_;
     if (ring->pRingCurrent == NULL)
         return;
-    int n = dead_gen_claim(&self->flAccumulator, self->flEmitRate, dt);
+    int n = dead_gen_claim(&flAccumulator_, flEmitRate_, dt);
     if (n <= 0)
         return;
     for (int i = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
-        *(DWORD *)&node->flLife = self->dwLifeTable[self->dwLifeIdx];
-        *(DWORD *)&node->flX = self->dwPosX[self->dwPosIdx[0]];
-        *(DWORD *)&node->flY = self->dwPosY[self->dwPosIdx[1]];
-        *(DWORD *)&node->flZ = self->dwPosZ[self->dwPosIdx[2]];
-        node->dwDiffuse = self->dwDiffuse[self->dwDiffuseIdx];
+        *(DWORD *)&node->flLife = dwLifeTable_[dwLifeIdx_];
+        *(DWORD *)&node->flX = dwPosX_[dwPosIdx_[0]];
+        *(DWORD *)&node->flY = dwPosY_[dwPosIdx_[1]];
+        *(DWORD *)&node->flZ = dwPosZ_[dwPosIdx_[2]];
+        node->dwDiffuse = dwDiffuse_[dwDiffuseIdx_];
         for (int a = 0; a < 3; a++)
-            node->flVel[a] = self->flVelTable[self->dwVelIdx[a]] + self->flVelBias[a];
+            node->flVel[a] = flVelTable_[dwVelIdx_[a]] + flVelBias_[a];
         for (int a = 0; a < 3; a++) {
-            DWORD p = self->dwPosIdx[a] + (DWORD)(a + 1);
-            self->dwPosIdx[a] = (p > 499) ? 500 - p : p;
+            DWORD p = dwPosIdx_[a] + (DWORD)(a + 1);
+            dwPosIdx_[a] = (p > 499) ? 500 - p : p;
         }
         for (int a = 0; a < 3; a++) {
-            DWORD v = self->dwVelIdx[a] + (DWORD)(a + 1);
-            self->dwVelIdx[a] = (v > 499) ? 500 - v : v;
+            DWORD v = dwVelIdx_[a] + (DWORD)(a + 1);
+            dwVelIdx_[a] = (v > 499) ? 500 - v : v;
         }
-        self->dwLifeIdx = (self->dwLifeIdx < 99) ? self->dwLifeIdx + 1 : 0;
-        self->dwDiffuseIdx = (self->dwDiffuseIdx < 199) ? self->dwDiffuseIdx + 1 : 0;
+        dwLifeIdx_ = (dwLifeIdx_ < 99) ? dwLifeIdx_ + 1 : 0;
+        dwDiffuseIdx_ = (dwDiffuseIdx_ < 199) ? dwDiffuseIdx_ + 1 : 0;
         ring->pRingCurrent = node->pNext;
         if (ring->pRingCurrent == NULL)
             return;
@@ -1380,12 +1380,12 @@ static void box_gen_emit(BoxGenerator *self, float dt)
     }
 }
 
-static void cyl_gen_destruct(CylinderGenerator *self)
+void CylinderGenerator::cylGenDestruct()
 {
-    self->base.pVtable = (void **)gen_vtbl_cylinder;
-    if (self->pTypeTable)
-        ::operator delete(self->pTypeTable);
-    base_gen_destruct(&self->base);
+    pVtable_ = (void **)gen_vtbl_cylinder;
+    if (pTypeTable_)
+        ::operator delete(pTypeTable_);
+    baseGenDestruct();
 }
 
 static double vec3_sqlen(const float *v)
@@ -1415,12 +1415,12 @@ static float direction_cosine(const float *v, const float *e)
  * PRESERVED: d, a and b are not normalised — only their pairwise angles are,
  * via direction_cosine — and a, b are rounded to float before that.  The
  * fourth row and column are left as identity. */
-static void cyl_set_direction(CylinderGenerator *self, float x, float y, float z)
+void CylinderGenerator::cylSetDirection(float x, float y, float z)
 {
     static const float AXIS[3][3] = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
-    self->flDirection[0] = x;
-    self->flDirection[1] = y;
-    self->flDirection[2] = z;
+    flDirection_[0] = x;
+    flDirection_[1] = y;
+    flDirection_[2] = z;
     bool along_x = !(x < 1.0f || x > 1.0f) && zero_or_nan(y) && zero_or_nan(z);
     const float *r = along_x ? AXIS[1] : AXIS[0];
     float d[3] = { x, y, z };
@@ -1435,139 +1435,139 @@ static void cyl_set_direction(CylinderGenerator *self, float x, float y, float z
     for (int i = 0; i < 3; i++)
         for (int j = 0; j < 3; j++)
             m[i * 4 + j] = direction_cosine(rows[i], AXIS[j]);
-    memcpy(self->flMatrix, m, sizeof m);
+    memcpy(flMatrix_, m, sizeof m);
 }
 
-static void cyl_set_position(CylinderGenerator *self, float x, float y, float z)
+void CylinderGenerator::cylSetPosition(float x, float y, float z)
 {
-    self->flOrigin[0] = x;
-    self->flOrigin[1] = y;
-    self->flOrigin[2] = z;
+    flOrigin_[0] = x;
+    flOrigin_[1] = y;
+    flOrigin_[2] = z;
 }
 
 /* PRESERVED: drops the type table by zeroing the pointer and count without
  * freeing it first — a leak on every reload, papered over because Load's own
  * type-table read immediately replaces both. */
-static void cyl_build_velocity(CylinderGenerator *self, const float *vmin, const float *vmax,
+void CylinderGenerator::cylBuildVelocity(const float *vmin, const float *vmax,
                                float lmin, float lmax)
 {
     float a[3] = { vmin[0], vmin[1], vmin[2] }, b[3] = { vmax[0], vmax[1], vmax[2] };
-    build_velocity_table(self->flVelTable, a, b, lmin, lmax);
-    self->dwVelIdx = 0;
-    memcpy(self->flVelMin, a, sizeof a);
-    memcpy(self->flVelMax, b, sizeof b);
-    self->pTypeTable = NULL;
-    self->dwTypeTableCount = 0;
-    self->flLifeMin = lmin;
-    self->flLifeMax = lmax;
+    build_velocity_table(flVelTable_, a, b, lmin, lmax);
+    dwVelIdx_ = 0;
+    memcpy(flVelMin_, a, sizeof a);
+    memcpy(flVelMax_, b, sizeof b);
+    pTypeTable_ = NULL;
+    dwTypeTableCount_ = 0;
+    flLifeMin_ = lmin;
+    flLifeMax_ = lmax;
 }
 
 /* Std's rate-table builder (std_build_rate), run on Cylinder's own fields. */
-static void cyl_build_rate(CylinderGenerator *self, float lo, float hi)
+void CylinderGenerator::cylBuildRate(float lo, float hi)
 {
     float step = (float)((double)hi * GAUSS_STEP);
-    self->flEmitRateMin = lo;
-    self->flEmitRateMax = hi;
-    gauss_fill(self->pLifeTable, 100, lo, hi, step);
+    flEmitRateMin_ = lo;
+    flEmitRateMax_ = hi;
+    gauss_fill(pLifeTable_, 100, lo, hi, step);
 }
 
-static BOOL cyl_gen_copy_from(CylinderGenerator *self, const CylinderGenerator *src)
+BOOL CylinderGenerator::cylGenCopyFrom(const CylinderGenerator *src)
 {
-    if (!gen_copy_base(&self->base, &src->base))
+    if (!genCopyBase(src))
         return FALSE;
-    memcpy((BYTE *)self + 0x10, (const BYTE *)src + 0x10, 0x98 - 0x10);
-    memcpy((BYTE *)self + 0xa0, (const BYTE *)src + 0xa0, 0x3444 - 0xa0);
-    type_table_clone(&self->pTypeTable, &self->dwTypeTableCount, self->pEmitProb,
-                     (const DWORD *)src->pTypeTable, src->dwTypeTableCount);
+    memcpy((BYTE *)this + 0x10, (const BYTE *)src + 0x10, 0x98 - 0x10);
+    memcpy((BYTE *)this + 0xa0, (const BYTE *)src + 0xa0, 0x3444 - 0xa0);
+    type_table_clone(&pTypeTable_, &dwTypeTableCount_, pEmitProb_,
+                     (const DWORD *)src->pTypeTable_, src->dwTypeTableCount_);
     return TRUE;
 }
 
-static BOOL cyl_gen_save(CylinderGenerator *self, void *fp)
+BOOL CylinderGenerator::cylGenSave(void *fp)
 {
-    if (!write1(self->flOrigin, 12, fp))       return FALSE;
-    if (!write1(&self->flScale, 4, fp))        return FALSE;
-    if (!write1(self->flDirection, 12, fp))    return FALSE;
-    if (!write1(self->flVelMin, 12, fp))       return FALSE;
-    if (!write1(self->flVelMax, 12, fp))       return FALSE;
-    if (!write1(&self->flLifeMin, 4, fp))      return FALSE;
-    if (!write1(&self->flLifeMax, 4, fp))      return FALSE;
-    if (!write1(&self->flEmitRateMin, 4, fp))  return FALSE;
-    if (!write1(&self->flEmitRateMax, 4, fp))  return FALSE;
-    if (!write1(&self->flDtScale, 4, fp))      return FALSE;
-    return type_table_save(self->pTypeTable, &self->dwTypeTableCount, fp);
+    if (!write1(flOrigin_, 12, fp))       return FALSE;
+    if (!write1(&flScale_, 4, fp))        return FALSE;
+    if (!write1(flDirection_, 12, fp))    return FALSE;
+    if (!write1(flVelMin_, 12, fp))       return FALSE;
+    if (!write1(flVelMax_, 12, fp))       return FALSE;
+    if (!write1(&flLifeMin_, 4, fp))      return FALSE;
+    if (!write1(&flLifeMax_, 4, fp))      return FALSE;
+    if (!write1(&flEmitRateMin_, 4, fp))  return FALSE;
+    if (!write1(&flEmitRateMax_, 4, fp))  return FALSE;
+    if (!write1(&flDtScale_, 4, fp))      return FALSE;
+    return type_table_save(pTypeTable_, &dwTypeTableCount_, fp);
 }
 
 /* Reads its own direction back out to rebuild the matrix via
  * cyl_set_direction.  The position table (the unit circle) is the
  * constructor's and is never rebuilt here. */
-static BOOL cyl_gen_load(CylinderGenerator *self, void *fp)
+BOOL CylinderGenerator::cylGenLoad(void *fp)
 {
-    if (!read1(self->flOrigin, 12, fp))        return FALSE;
-    if (!read1(&self->flScale, 4, fp))         return FALSE;
-    if (!read1(self->flDirection, 12, fp))     return FALSE;
-    if (!read1(self->flVelMin, 12, fp))        return FALSE;
-    if (!read1(self->flVelMax, 12, fp))        return FALSE;
-    if (!read1(&self->flLifeMin, 4, fp))       return FALSE;
-    if (!read1(&self->flLifeMax, 4, fp))       return FALSE;
-    if (!read1(&self->flEmitRateMin, 4, fp))   return FALSE;
-    if (!read1(&self->flEmitRateMax, 4, fp))   return FALSE;
-    if (!read1(&self->flDtScale, 4, fp))       return FALSE;
+    if (!read1(flOrigin_, 12, fp))        return FALSE;
+    if (!read1(&flScale_, 4, fp))         return FALSE;
+    if (!read1(flDirection_, 12, fp))     return FALSE;
+    if (!read1(flVelMin_, 12, fp))        return FALSE;
+    if (!read1(flVelMax_, 12, fp))        return FALSE;
+    if (!read1(&flLifeMin_, 4, fp))       return FALSE;
+    if (!read1(&flLifeMax_, 4, fp))       return FALSE;
+    if (!read1(&flEmitRateMin_, 4, fp))   return FALSE;
+    if (!read1(&flEmitRateMax_, 4, fp))   return FALSE;
+    if (!read1(&flDtScale_, 4, fp))       return FALSE;
     if (sim_fx() == FX_FASTEMIT)
-        self->flDtScale = (float)((double)self->flDtScale * 5.0);
-    cyl_set_direction(self, self->flDirection[0], self->flDirection[1],
-                      self->flDirection[2]);
-    cyl_build_velocity(self, self->flVelMin, self->flVelMax,
-                       self->flLifeMin, self->flLifeMax);
-    cyl_build_rate(self, self->flEmitRateMin, self->flEmitRateMax);
-    return type_table_load(&self->pTypeTable, &self->dwTypeTableCount,
-                           self->pEmitProb, fp);
+        flDtScale_ = (float)((double)flDtScale_ * 5.0);
+    cylSetDirection(flDirection_[0], flDirection_[1],
+                      flDirection_[2]);
+    cylBuildVelocity(flVelMin_, flVelMax_,
+                       flLifeMin_, flLifeMax_);
+    cylBuildRate(flEmitRateMin_, flEmitRateMax_);
+    return type_table_load(&pTypeTable_, &dwTypeTableCount_,
+                           pEmitProb_, fp);
 }
 
-static void base_gen_construct(Generator *self)
+void Generator::baseGenConstruct()
 {
-    self->pVtable = (void **)gen_vtbl_base;
-    self->pName = GS_PSNAME_GENERATOR;
-    self->pRing = NULL;
-    self->dwEnabled = 1;
+    pVtable_ = (void **)gen_vtbl_base;
+    pName_ = GS_PSNAME_GENERATOR;
+    pRing_ = NULL;
+    dwEnabled_ = 1;
 }
 
 /* PRESERVED: only the accumulator and diffuse colour are initialised — the
  * position, velocity and life tables are left uninitialised, and nothing in
  * this file ever fills them. */
-static void point_gen_construct(PointGenerator *self)
+void PointGenerator::pointGenConstruct()
 {
-    base_gen_construct(&self->base);
-    self->base.pVtable = (void **)gen_vtbl_point;
-    self->base.pName = GS_PSNAME_POINT_GEN;
-    self->flAccumulator = 0.0f;
-    self->dwDiffuse = 0xFFFFFFFF;
+    baseGenConstruct();
+    pVtable_ = (void **)gen_vtbl_point;
+    pName_ = GS_PSNAME_POINT_GEN;
+    flAccumulator_ = 0.0f;
+    dwDiffuse_ = 0xFFFFFFFF;
 }
 
 /* PRESERVED: nothing past the base class is initialised. */
-static void box_gen_construct(BoxGenerator *self)
+void BoxGenerator::boxGenConstruct()
 {
-    base_gen_construct(&self->base);
-    self->base.pVtable = (void **)gen_vtbl_box;
-    self->base.pName = GS_PSNAME_BOX_GEN;
+    baseGenConstruct();
+    pVtable_ = (void **)gen_vtbl_box;
+    pName_ = GS_PSNAME_BOX_GEN;
 }
 
-static void std_gen_construct(StdGenerator *self)
+void StdGenerator::stdGenConstruct()
 {
-    base_gen_construct(&self->base);
-    self->base.pVtable = (void **)gen_vtbl_std;
-    memset((BYTE *)self + sizeof(Generator), 0, sizeof(StdGenerator) - sizeof(Generator));
-    self->base.pName = GS_PSNAME_STD_GEN;
+    baseGenConstruct();
+    pVtable_ = (void **)gen_vtbl_std;
+    memset((BYTE *)this + sizeof(Generator), 0, sizeof(StdGenerator) - sizeof(Generator));
+    pName_ = GS_PSNAME_STD_GEN;
     for (int i = 0; i < 200; i++)
-        self->pEmitProb[i] = 0xFFFFFFFF;
+        pEmitProb_[i] = 0xFFFFFFFF;
 }
 
-static void xstd_gen_construct(XStdGenerator *self)
+void XStdGenerator::xstdGenConstruct()
 {
-    std_gen_construct(&self->base);
-    self->base.base.pVtable = (void **)gen_vtbl_xstd;
-    memset(self->flPosOffset, 0, sizeof self->flPosOffset);
-    memset(self->flVelOffset, 0, sizeof self->flVelOffset);
-    self->base.base.pName = GS_PSNAME_XSTD_GEN;
+    stdGenConstruct();
+    pVtable_ = (void **)gen_vtbl_xstd;
+    memset(flPosOffset_, 0, sizeof flPosOffset_);
+    memset(flVelOffset_, 0, sizeof flVelOffset_);
+    pName_ = GS_PSNAME_XSTD_GEN;
 }
 
 /* DETERMINISM: builds the position table from 500 angles drawn uniformly by
@@ -1578,44 +1578,44 @@ static void xstd_gen_construct(XStdGenerator *self)
  * overwrites the matrix it built with plain identity — so flDirection reads
  * (0,1,0) but flMatrix does not reflect it until SetDirection is called again.
  */
-static void cyl_gen_construct(CylinderGenerator *self)
+void CylinderGenerator::cylGenConstruct()
 {
-    base_gen_construct(&self->base);
-    self->base.pVtable = (void **)gen_vtbl_cylinder;
-    memset((BYTE *)self + sizeof(Generator), 0,
+    baseGenConstruct();
+    pVtable_ = (void **)gen_vtbl_cylinder;
+    memset((BYTE *)this + sizeof(Generator), 0,
            sizeof(CylinderGenerator) - sizeof(Generator));
-    self->base.pName = GS_PSNAME_CYL_GEN;
-    cyl_set_direction(self, 0.0f, 1.0f, 0.0f);
+    pName_ = GS_PSNAME_CYL_GEN;
+    cylSetDirection(0.0f, 1.0f, 0.0f);
     static const float IDENTITY[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 };
-    memcpy(self->flMatrix, IDENTITY, sizeof IDENTITY);
+    memcpy(flMatrix_, IDENTITY, sizeof IDENTITY);
     for (int i = 0; i < 200; i++)
-        self->pEmitProb[i] = 0xFFFFFFFF;
+        pEmitProb_[i] = 0xFFFFFFFF;
     float *angle = new float[500];
     uniform_fill(angle, 500, 0.0f, 6.2831855f);
     for (int k = 0; k < 500; k++) {
-        self->flPosTable[k * 3 + 0] = (float)sin((double)angle[k]);
-        self->flPosTable[k * 3 + 2] = (float)cos((double)angle[k]);
+        flPosTable_[k * 3 + 0] = (float)sin((double)angle[k]);
+        flPosTable_[k * 3 + 2] = (float)cos((double)angle[k]);
     }
     delete[] angle;
 }
 
 template <typename T>
-static Generator *gen_new(void (*construct)(T *))
+static Generator *gen_new(void (T::*construct)())
 {
     T *obj = (T *)::operator new(sizeof(T), std::nothrow);
     if (obj)
-        construct(obj);
+        (obj->*construct)();
     return (Generator *)obj;
 }
 
-Generator *gen_create(const char *name)
+Generator *Generator::create(const char *name)
 {
-    if (strcmp(name, "Generator") == 0)         return gen_new(base_gen_construct);
-    if (strcmp(name, "PointGenerator") == 0)    return gen_new(point_gen_construct);
-    if (strcmp(name, "BoxGenerator") == 0)      return gen_new(box_gen_construct);
-    if (strcmp(name, "StdGenerator") == 0)      return gen_new(std_gen_construct);
-    if (strcmp(name, "XStdGenerator") == 0)     return gen_new(xstd_gen_construct);
-    if (strcmp(name, "CylinderGenerator") == 0) return gen_new(cyl_gen_construct);
+    if (strcmp(name, "Generator") == 0)         return gen_new(&Generator::baseGenConstruct);
+    if (strcmp(name, "PointGenerator") == 0)    return gen_new(&PointGenerator::pointGenConstruct);
+    if (strcmp(name, "BoxGenerator") == 0)      return gen_new(&BoxGenerator::boxGenConstruct);
+    if (strcmp(name, "StdGenerator") == 0)      return gen_new(&StdGenerator::stdGenConstruct);
+    if (strcmp(name, "XStdGenerator") == 0)     return gen_new(&XStdGenerator::xstdGenConstruct);
+    if (strcmp(name, "CylinderGenerator") == 0) return gen_new(&CylinderGenerator::cylGenConstruct);
     return NULL;
 }
 
@@ -1650,83 +1650,81 @@ static void *clone_by_name(void *made, const void *src)
     return made;
 }
 
-Generator *gen_clone(const Generator *src)
+Generator * Generator::clone() const
 {
-    return (Generator *)clone_by_name(gen_create(src->pName), src);
+    return (Generator *)clone_by_name(Generator::create(pName_), this);
 }
 
-Environment *env_clone(const Environment *src)
+Environment * Environment::clone() const
 {
-    return (Environment *)clone_by_name(env_create(src->pName), src);
+    return (Environment *)clone_by_name(Environment::create(pName_), this);
 }
 
 /* ─── Exports — vtable thunks ─── */
 
 #define THISCALL __attribute__((thiscall))
 
-extern "C" {
-
 /* All six slots, so a plain Environment never falls through to unimplemented
  * behaviour either. */
-__declspec(dllexport) void *THISCALL
-Env_BaseDtor(Environment *self, unsigned flags)
+void *THISCALL
+Environment::baseDtorSlot(Environment *self, unsigned flags)
 {
-    base_env_destruct(self);
+    self->baseEnvDestruct();
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) BOOL THISCALL
-Env_BaseCopyFrom(Environment *self, const Environment *src) { return env_same_name(self, src); }
+BOOL THISCALL
+Environment::baseCopyFromSlot(Environment *self, const Environment *src) { return self->envSameName(src); }
 
-__declspec(dllexport) BOOL THISCALL
-Env_AttachRing(Environment *self, RingBuffer *ring)         { return env_attach_ring(self, ring); }
+BOOL THISCALL
+Environment::attachRingSlot(Environment *self, RingBuffer *ring)         { return self->envAttachRing(ring); }
 
-__declspec(dllexport) void THISCALL
-Env_BaseTick(Environment *, float)                          { }
+void THISCALL
+Environment::baseTickSlot(Environment *, float)                          { }
 
-__declspec(dllexport) BOOL THISCALL
-Env_BaseSave(Environment *, void *)                         { return TRUE; }
+BOOL THISCALL
+Environment::baseSaveSlot(Environment *, void *)                         { return TRUE; }
 
-__declspec(dllexport) BOOL THISCALL
-Env_BaseLoad(Environment *, void *)                         { return TRUE; }
+BOOL THISCALL
+Environment::baseLoadSlot(Environment *, void *)                         { return TRUE; }
 
-__declspec(dllexport) void *THISCALL
-Env_GravityDtor(GravityEnvironment *self, unsigned flags)
+void *THISCALL
+GravityEnvironment::gravityDtorSlot(GravityEnvironment *self, unsigned flags)
 {
-    gravity_env_destruct(self);
+    self->gravityEnvDestruct();
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void *THISCALL
-Env_MagnetDtor(MagnetEnvironment *self, unsigned flags)
+void *THISCALL
+MagnetEnvironment::magnetDtorSlot(MagnetEnvironment *self, unsigned flags)
 {
-    magnet_env_destruct(self);
+    self->magnetEnvDestruct();
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) BOOL THISCALL
-Env_GravityCopyFrom(GravityEnvironment *self, const GravityEnvironment *src)
-{ return gravity_env_copy_from(self, src); }
+BOOL THISCALL
+GravityEnvironment::gravityCopyFromSlot(GravityEnvironment *self, const GravityEnvironment *src)
+{ return self->gravityEnvCopyFrom(src); }
 
-__declspec(dllexport) BOOL THISCALL
-Env_MagnetCopyFrom(MagnetEnvironment *self, const MagnetEnvironment *src)
-{ return magnet_env_copy_from(self, src); }
+BOOL THISCALL
+MagnetEnvironment::magnetCopyFromSlot(MagnetEnvironment *self, const MagnetEnvironment *src)
+{ return self->magnetEnvCopyFrom(src); }
 
-__declspec(dllexport) BOOL THISCALL
-Env_GravitySave(GravityEnvironment *self, void *fp)  { return gravity_env_save(self, fp); }
+BOOL THISCALL
+GravityEnvironment::gravitySaveSlot(GravityEnvironment *self, void *fp)  { return self->gravityEnvSave(fp); }
 
-__declspec(dllexport) BOOL THISCALL
-Env_MagnetSave(MagnetEnvironment *self, void *fp)    { return magnet_env_save(self, fp); }
+BOOL THISCALL
+MagnetEnvironment::magnetSaveSlot(MagnetEnvironment *self, void *fp)    { return self->magnetEnvSave(fp); }
 
 /* Shared no-op bodies for the base classes' do-nothing slots; the argument
  * counts match so callee cleanup stays correct under thiscall. */
-__declspec(dllexport) void THISCALL Gen_Nop1(void *, float)                      { }
-__declspec(dllexport) void THISCALL Gen_Nop3(void *, float, float, float)        { }
-__declspec(dllexport) void THISCALL Gen_Nop4(void *, float, float, float, float) { }
-__declspec(dllexport) BOOL THISCALL Gen_ReturnTrue(void *, void *)               { return TRUE; }
+void THISCALL Generator::nop1(void *, float)                      { }
+void THISCALL Generator::nop3(void *, float, float, float)        { }
+void THISCALL Generator::nop4(void *, float, float, float, float) { }
+BOOL THISCALL Generator::returnTrue(void *, void *)               { return TRUE; }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_AttachRing(Generator *self, RingBuffer *ring)        { return gen_attach_ring(self, ring); }
+BOOL THISCALL
+Generator::attachRingSlot(Generator *self, RingBuffer *ring)        { return self->genAttachRing(ring); }
 
 /* Called directly by explodedebris.cpp and theme.cpp — see
  * fill_gaussian_field. */
@@ -1736,126 +1734,124 @@ Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma)
     fill_gaussian_field(self, mu, sigma);
 }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_BaseCopyFrom(Generator *self, const Generator *src)  { return gen_copy_base(self, src); }
+BOOL THISCALL
+Generator::baseCopyFromSlot(Generator *self, const Generator *src)  { return self->genCopyBase(src); }
 
-__declspec(dllexport) void *THISCALL
-Gen_BaseDtor(Generator *self, unsigned flags)
+void *THISCALL
+Generator::baseDtorSlot(Generator *self, unsigned flags)
 {
-    base_gen_destruct(self);
+    self->baseGenDestruct();
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void *THISCALL
-Gen_PointDtor(PointGenerator *self, unsigned flags)
+void *THISCALL
+PointGenerator::pointDtorSlot(PointGenerator *self, unsigned flags)
 {
-    self->base.pVtable = (void **)gen_vtbl_point;
-    base_gen_destruct(&self->base);
+    self->pVtable_ = (void **)gen_vtbl_point;
+    self->baseGenDestruct();
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void *THISCALL
-Gen_BoxDtor(BoxGenerator *self, unsigned flags)
+void *THISCALL
+BoxGenerator::boxDtorSlot(BoxGenerator *self, unsigned flags)
 {
-    self->base.pVtable = (void **)gen_vtbl_box;
-    base_gen_destruct(&self->base);
+    self->pVtable_ = (void **)gen_vtbl_box;
+    self->baseGenDestruct();
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void *THISCALL
-Gen_StdDtor(StdGenerator *self, unsigned flags)
+void *THISCALL
+StdGenerator::stdDtorSlot(StdGenerator *self, unsigned flags)
 {
-    std_gen_destruct(self);
+    self->stdGenDestruct();
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void *THISCALL
-Gen_XStdDtor(XStdGenerator *self, unsigned flags)
+void *THISCALL
+XStdGenerator::xStdDtorSlot(XStdGenerator *self, unsigned flags)
 {
-    xstd_gen_destruct(self);
+    self->xstdGenDestruct();
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) void THISCALL
-Gen_PointEmit(PointGenerator *self, float dt)             { point_gen_emit(self, dt); }
+void THISCALL
+PointGenerator::pointEmitSlot(PointGenerator *self, float dt)             { self->pointGenEmit(dt); }
 
-__declspec(dllexport) void THISCALL
-Gen_BoxEmit(BoxGenerator *self, float dt)                 { box_gen_emit(self, dt); }
+void THISCALL
+BoxGenerator::boxEmitSlot(BoxGenerator *self, float dt)                 { self->boxGenEmit(dt); }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_StdCopyFrom(StdGenerator *self, const StdGenerator *src)   { return std_gen_copy_from(self, src); }
+BOOL THISCALL
+StdGenerator::stdCopyFromSlot(StdGenerator *self, const StdGenerator *src)   { return self->stdGenCopyFrom(src); }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_StdSave(StdGenerator *self, void *fp)                 { return std_gen_save(self, fp); }
+BOOL THISCALL
+StdGenerator::stdSaveSlot(StdGenerator *self, void *fp)                 { return self->stdGenSave(fp); }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_StdLoad(StdGenerator *self, void *fp)                 { return std_gen_load(self, fp); }
+BOOL THISCALL
+StdGenerator::stdLoadSlot(StdGenerator *self, void *fp)                 { return self->stdGenLoad(fp); }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_XStdCopyFrom(XStdGenerator *self, const XStdGenerator *src) { return xstd_gen_copy_from(self, src); }
+BOOL THISCALL
+XStdGenerator::xStdCopyFromSlot(XStdGenerator *self, const XStdGenerator *src) { return self->xstdGenCopyFrom(src); }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_XStdSave(XStdGenerator *self, void *fp)               { return xstd_gen_save(self, fp); }
+BOOL THISCALL
+XStdGenerator::xStdSaveSlot(XStdGenerator *self, void *fp)               { return self->xstdGenSave(fp); }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_XStdLoad(XStdGenerator *self, void *fp)               { return xstd_gen_load(self, fp); }
+BOOL THISCALL
+XStdGenerator::xStdLoadSlot(XStdGenerator *self, void *fp)               { return self->xstdGenLoad(fp); }
 
-__declspec(dllexport) void THISCALL
-Gen_XStdSetPosition(XStdGenerator *self, float x, float y, float z) { xstd_set_position(self, x, y, z); }
+void THISCALL
+XStdGenerator::xStdSetPositionSlot(XStdGenerator *self, float x, float y, float z) { self->xstdSetPosition(x, y, z); }
 
-__declspec(dllexport) void THISCALL
-Gen_XStdSetVelocity(XStdGenerator *self, float x, float y, float z, float m) { xstd_set_velocity(self, x, y, z, m); }
+void THISCALL
+XStdGenerator::xStdSetVelocitySlot(XStdGenerator *self, float x, float y, float z, float m) { self->xstdSetVelocity(x, y, z, m); }
 
-__declspec(dllexport) void THISCALL
-Gen_XStdSetDirection(XStdGenerator *self, float x, float y, float z) { xstd_set_direction(self, x, y, z); }
+void THISCALL
+XStdGenerator::xStdSetDirectionSlot(XStdGenerator *self, float x, float y, float z) { self->xstdSetDirection(x, y, z); }
 
-__declspec(dllexport) void THISCALL
-Gen_XStdSetSpeed(XStdGenerator *self, float m)            { xstd_set_speed(self, m); }
+void THISCALL
+XStdGenerator::xStdSetSpeedSlot(XStdGenerator *self, float m)            { self->xstdSetSpeed(m); }
 
-__declspec(dllexport) void *THISCALL
-Gen_CylDtor(CylinderGenerator *self, unsigned flags)
+void *THISCALL
+CylinderGenerator::cylDtorSlot(CylinderGenerator *self, unsigned flags)
 {
-    cyl_gen_destruct(self);
+    self->cylGenDestruct();
     return scalar_delete(self, flags);
 }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_CylCopyFrom(CylinderGenerator *self, const CylinderGenerator *src) { return cyl_gen_copy_from(self, src); }
+BOOL THISCALL
+CylinderGenerator::cylCopyFromSlot(CylinderGenerator *self, const CylinderGenerator *src) { return self->cylGenCopyFrom(src); }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_CylSave(CylinderGenerator *self, void *fp)            { return cyl_gen_save(self, fp); }
+BOOL THISCALL
+CylinderGenerator::cylSaveSlot(CylinderGenerator *self, void *fp)            { return self->cylGenSave(fp); }
 
-__declspec(dllexport) BOOL THISCALL
-Gen_CylLoad(CylinderGenerator *self, void *fp)            { return cyl_gen_load(self, fp); }
+BOOL THISCALL
+CylinderGenerator::cylLoadSlot(CylinderGenerator *self, void *fp)            { return self->cylGenLoad(fp); }
 
-__declspec(dllexport) void THISCALL
-Gen_CylSetPosition(CylinderGenerator *self, float x, float y, float z) { cyl_set_position(self, x, y, z); }
+void THISCALL
+CylinderGenerator::cylSetPositionSlot(CylinderGenerator *self, float x, float y, float z) { self->cylSetPosition(x, y, z); }
 
-__declspec(dllexport) void THISCALL
-Gen_CylSetDirection(CylinderGenerator *self, float x, float y, float z) { cyl_set_direction(self, x, y, z); }
+void THISCALL
+CylinderGenerator::cylSetDirectionSlot(CylinderGenerator *self, float x, float y, float z) { self->cylSetDirection(x, y, z); }
 
-__declspec(dllexport) BOOL THISCALL
-Env_GravityLoad(GravityEnvironment *self, void *fp)  { return gravity_env_load(self, fp); }
+BOOL THISCALL
+GravityEnvironment::gravityLoadSlot(GravityEnvironment *self, void *fp)  { return self->gravityEnvLoad(fp); }
 
-__declspec(dllexport) BOOL THISCALL
-Env_MagnetLoad(MagnetEnvironment *self, void *fp)    { return magnet_env_load(self, fp); }
+BOOL THISCALL
+MagnetEnvironment::magnetLoadSlot(MagnetEnvironment *self, void *fp)    { return self->magnetEnvLoad(fp); }
 
-__declspec(dllexport) void THISCALL
-Env_GravityTick(GravityEnvironment *self, float dt)  { gravity_env_tick(self, dt); }
+void THISCALL
+GravityEnvironment::gravityTickSlot(GravityEnvironment *self, float dt)  { self->gravityEnvTick(dt); }
 
-__declspec(dllexport) void THISCALL
-Env_MagnetTick(MagnetEnvironment *self, float dt)    { magnet_env_tick(self, dt); }
+void THISCALL
+MagnetEnvironment::magnetTickSlot(MagnetEnvironment *self, float dt)    { self->magnetEnvTick(dt); }
 
-__declspec(dllexport) void THISCALL
-Gen_StdEmit(StdGenerator *self, float dt)            { std_gen_tick(self, dt); }
+void THISCALL
+StdGenerator::stdEmitSlot(StdGenerator *self, float dt)            { self->stdGenTick(dt); }
 
-__declspec(dllexport) void THISCALL
-Gen_CylinderEmit(CylinderGenerator *self, float dt)  { cyl_gen_tick(self, dt); }
+void THISCALL
+CylinderGenerator::cylinderEmitSlot(CylinderGenerator *self, float dt)  { self->cylGenTick(dt); }
 
-__declspec(dllexport) void THISCALL
-Gen_XStdEmit(XStdGenerator *self, float dt)          { xstd_gen_tick(self, dt); }
-
-}  // extern "C"
+void THISCALL
+XStdGenerator::xStdEmitSlot(XStdGenerator *self, float dt)          { self->xstdGenTick(dt); }
 
 /* ─── Our vtables ──────────────────────────────────────────────────────────
  *
@@ -1872,60 +1868,60 @@ Gen_XStdEmit(XStdGenerator *self, float dt)          { xstd_gen_tick(self, dt); 
  * otherwise leave a slot silently NULL.  Slot meanings are in generators.h. */
 
 extern void *const gen_vtbl_base[] = {
-    (void *)Gen_BaseDtor,  (void *)Gen_BaseCopyFrom, (void *)Gen_AttachRing,
-    (void *)Gen_Nop1,      (void *)Gen_ReturnTrue,   (void *)Gen_ReturnTrue,
-    (void *)Gen_Nop3,      (void *)Gen_Nop4,         (void *)Gen_Nop3,
-    (void *)Gen_Nop1,
+    (void *)&Generator::baseDtorSlot,  (void *)&Generator::baseCopyFromSlot, (void *)&Generator::attachRingSlot,
+    (void *)&Generator::nop1,      (void *)&Generator::returnTrue,   (void *)&Generator::returnTrue,
+    (void *)&Generator::nop3,      (void *)&Generator::nop4,         (void *)&Generator::nop3,
+    (void *)&Generator::nop1,
 };
 
 extern void *const gen_vtbl_point[] = {
-    (void *)Gen_PointDtor, (void *)Gen_BaseCopyFrom, (void *)Gen_AttachRing,
-    (void *)Gen_PointEmit, (void *)Gen_ReturnTrue,   (void *)Gen_ReturnTrue,
-    (void *)Gen_Nop3,      (void *)Gen_Nop4,         (void *)Gen_Nop3,
-    (void *)Gen_Nop1,
+    (void *)&PointGenerator::pointDtorSlot, (void *)&Generator::baseCopyFromSlot, (void *)&Generator::attachRingSlot,
+    (void *)&PointGenerator::pointEmitSlot, (void *)&Generator::returnTrue,   (void *)&Generator::returnTrue,
+    (void *)&Generator::nop3,      (void *)&Generator::nop4,         (void *)&Generator::nop3,
+    (void *)&Generator::nop1,
 };
 
 extern void *const gen_vtbl_box[] = {
-    (void *)Gen_BoxDtor,   (void *)Gen_BaseCopyFrom, (void *)Gen_AttachRing,
-    (void *)Gen_BoxEmit,   (void *)Gen_ReturnTrue,   (void *)Gen_ReturnTrue,
-    (void *)Gen_Nop3,      (void *)Gen_Nop4,         (void *)Gen_Nop3,
-    (void *)Gen_Nop1,
+    (void *)&BoxGenerator::boxDtorSlot,   (void *)&Generator::baseCopyFromSlot, (void *)&Generator::attachRingSlot,
+    (void *)&BoxGenerator::boxEmitSlot,   (void *)&Generator::returnTrue,   (void *)&Generator::returnTrue,
+    (void *)&Generator::nop3,      (void *)&Generator::nop4,         (void *)&Generator::nop3,
+    (void *)&Generator::nop1,
 };
 
 extern void *const gen_vtbl_std[] = {
-    (void *)Gen_StdDtor,   (void *)Gen_StdCopyFrom,  (void *)Gen_AttachRing,
-    (void *)Gen_StdEmit,   (void *)Gen_StdSave,      (void *)Gen_StdLoad,
-    (void *)Gen_Nop3,      (void *)Gen_Nop4,         (void *)Gen_Nop3,
-    (void *)Gen_Nop1,
+    (void *)&StdGenerator::stdDtorSlot,   (void *)&StdGenerator::stdCopyFromSlot,  (void *)&Generator::attachRingSlot,
+    (void *)&StdGenerator::stdEmitSlot,   (void *)&StdGenerator::stdSaveSlot,      (void *)&StdGenerator::stdLoadSlot,
+    (void *)&Generator::nop3,      (void *)&Generator::nop4,         (void *)&Generator::nop3,
+    (void *)&Generator::nop1,
 };
 
 extern void *const gen_vtbl_xstd[] = {
-    (void *)Gen_XStdDtor,  (void *)Gen_XStdCopyFrom, (void *)Gen_AttachRing,
-    (void *)Gen_XStdEmit,  (void *)Gen_XStdSave,     (void *)Gen_XStdLoad,
-    (void *)Gen_XStdSetPosition, (void *)Gen_XStdSetVelocity,
-    (void *)Gen_XStdSetDirection, (void *)Gen_XStdSetSpeed,
+    (void *)&XStdGenerator::xStdDtorSlot,  (void *)&XStdGenerator::xStdCopyFromSlot, (void *)&Generator::attachRingSlot,
+    (void *)&XStdGenerator::xStdEmitSlot,  (void *)&XStdGenerator::xStdSaveSlot,     (void *)&XStdGenerator::xStdLoadSlot,
+    (void *)&XStdGenerator::xStdSetPositionSlot, (void *)&XStdGenerator::xStdSetVelocitySlot,
+    (void *)&XStdGenerator::xStdSetDirectionSlot, (void *)&XStdGenerator::xStdSetSpeedSlot,
 };
 
 extern void *const gen_vtbl_cylinder[] = {
-    (void *)Gen_CylDtor,   (void *)Gen_CylCopyFrom,  (void *)Gen_AttachRing,
-    (void *)Gen_CylinderEmit, (void *)Gen_CylSave,   (void *)Gen_CylLoad,
-    (void *)Gen_CylSetPosition, (void *)Gen_Nop4,
-    (void *)Gen_CylSetDirection, (void *)Gen_Nop1,
+    (void *)&CylinderGenerator::cylDtorSlot,   (void *)&CylinderGenerator::cylCopyFromSlot,  (void *)&Generator::attachRingSlot,
+    (void *)&CylinderGenerator::cylinderEmitSlot, (void *)&CylinderGenerator::cylSaveSlot,   (void *)&CylinderGenerator::cylLoadSlot,
+    (void *)&CylinderGenerator::cylSetPositionSlot, (void *)&Generator::nop4,
+    (void *)&CylinderGenerator::cylSetDirectionSlot, (void *)&Generator::nop1,
 };
 
 extern void *const env_vtbl_base[] = {
-    (void *)Env_BaseDtor,    (void *)Env_BaseCopyFrom,    (void *)Env_AttachRing,
-    (void *)Env_BaseTick,    (void *)Env_BaseSave,        (void *)Env_BaseLoad,
+    (void *)&Environment::baseDtorSlot,    (void *)&Environment::baseCopyFromSlot,    (void *)&Environment::attachRingSlot,
+    (void *)&Environment::baseTickSlot,    (void *)&Environment::baseSaveSlot,        (void *)&Environment::baseLoadSlot,
 };
 
 extern void *const env_vtbl_gravity[] = {
-    (void *)Env_GravityDtor, (void *)Env_GravityCopyFrom, (void *)Env_AttachRing,
-    (void *)Env_GravityTick, (void *)Env_GravitySave,     (void *)Env_GravityLoad,
+    (void *)&GravityEnvironment::gravityDtorSlot, (void *)&GravityEnvironment::gravityCopyFromSlot, (void *)&Environment::attachRingSlot,
+    (void *)&GravityEnvironment::gravityTickSlot, (void *)&GravityEnvironment::gravitySaveSlot,     (void *)&GravityEnvironment::gravityLoadSlot,
 };
 
 extern void *const env_vtbl_magnet[] = {
-    (void *)Env_MagnetDtor,  (void *)Env_MagnetCopyFrom,  (void *)Env_AttachRing,
-    (void *)Env_MagnetTick,  (void *)Env_MagnetSave,      (void *)Env_MagnetLoad,
+    (void *)&MagnetEnvironment::magnetDtorSlot,  (void *)&MagnetEnvironment::magnetCopyFromSlot,  (void *)&Environment::attachRingSlot,
+    (void *)&MagnetEnvironment::magnetTickSlot,  (void *)&MagnetEnvironment::magnetSaveSlot,      (void *)&MagnetEnvironment::magnetLoadSlot,
 };
 
 #define SLOT_COUNT(t) (sizeof (t) / sizeof *(t))
