@@ -476,14 +476,13 @@ void Player::actReleaseBomb()
     field_e8--;
 }
 
-extern "C" {
-__declspec(dllexport) void __cdecl Player_ActMoveForward(int, int, void *p) { ((Player *)p)->actMoveForward(); }
-__declspec(dllexport) void __cdecl Player_ActMoveBack(int, int, void *p)    { ((Player *)p)->actMoveBack(); }
-__declspec(dllexport) void __cdecl Player_ActTurnLeft(int, int, void *p)    { ((Player *)p)->actTurnLeft(); }
-__declspec(dllexport) void __cdecl Player_ActTurnRight(int, int, void *p)   { ((Player *)p)->actTurnRight(); }
-__declspec(dllexport) void __cdecl Player_ActHarakiri(int, int, void *p)    { ((Player *)p)->actHarakiri(); }
-__declspec(dllexport) void __cdecl Player_ActReleaseBomb(int, int, void *p) { ((Player *)p)->actReleaseBomb(); }
-}
+ 
+  void   Player_ActMoveForward(int, int, void *p) { ((Player *)p)->actMoveForward(); }
+  void   Player_ActMoveBack(int, int, void *p)    { ((Player *)p)->actMoveBack(); }
+  void   Player_ActTurnLeft(int, int, void *p)    { ((Player *)p)->actTurnLeft(); }
+  void   Player_ActTurnRight(int, int, void *p)   { ((Player *)p)->actTurnRight(); }
+  void   Player_ActHarakiri(int, int, void *p)    { ((Player *)p)->actHarakiri(); }
+  void   Player_ActReleaseBomb(int, int, void *p) { ((Player *)p)->actReleaseBomb(); }
 
 /* PRESERVED: the ctor and dtor keep the original's transient vtable stores,
  * and zeroSoundSlots() runs twice. */

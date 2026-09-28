@@ -3,6 +3,6 @@
 
 #pragma once
 
-extern "C" unsigned __cdecl hooks_fread(void *buf, unsigned size, unsigned count, void *fp);
-extern "C" void *__cdecl hooks_fopen(const char *path, const char *mode);
-extern "C" int __cdecl hooks_fclose(void *fp);
+  unsigned   hooks_fread(void *buf, unsigned size, unsigned count, void *fp);
+  void *  hooks_fopen(const char *path, const char *mode);
+  int   hooks_fclose(void *fp);

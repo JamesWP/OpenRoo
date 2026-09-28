@@ -239,7 +239,7 @@ static void open_device_dialog(HWND hDlg)
                           hDlg, LauncherDlg_DeviceSelectProc, 0);
 }
 
-extern "C" __declspec(dllexport) INT_PTR CALLBACK
+  INT_PTR CALLBACK
 LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
@@ -439,7 +439,7 @@ static void device_ok(HWND hDlg)
     EndDialog(hDlg, 1);
 }
 
-extern "C" __declspec(dllexport) INT_PTR CALLBACK
+  INT_PTR CALLBACK
 LauncherDlg_DeviceSelectProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM)
 {
     if (msg == WM_INITDIALOG)

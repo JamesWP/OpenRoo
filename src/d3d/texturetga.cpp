@@ -73,9 +73,9 @@ static unsigned int ftol8(long double v)
     return (unsigned int)(long long)v & 0xffu;
 }
 
-extern "C" {
+ 
 
-__declspec(dllexport) unsigned int  
+  unsigned int  
 TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 {
     DDSURFACEDESC2 ddsd;
@@ -312,5 +312,3 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
     if (fp != NULL) fclose(fp);
     return 1;
 }
-
-}  // extern "C"

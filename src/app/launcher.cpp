@@ -71,7 +71,7 @@ void launcher_init(void)
                                  (LPVOID)(ULONG_PTR)(g_auto_exit_s * 1000), 0, NULL));
 }
 
-extern "C" __declspec(dllexport) INT_PTR WINAPI hooks_DialogBoxParamA(
+  INT_PTR WINAPI hooks_DialogBoxParamA(
         HINSTANCE hInstance, LPCSTR lpTemplate, HWND hWndParent,
         DLGPROC lpDialogFunc, LPARAM dwInitParam)
 {

@@ -303,7 +303,7 @@ void TextRenderer::drawRight(float x, float y, float cellW, float cellH,
 /* ─── Exports ──────────────────────────────────────────────────────────────
  */
 
-  // extern "C"
+  //  
 
 /* ─── The big-text pair ─────────────────────────────────────────────────────
  *
@@ -411,7 +411,7 @@ void TextRenderer::drawBig(float x, float y, float cellW, float cellH,
 
 /* ─── The big-text exports ──────────────────────────────────────────────────
  */
-  // extern "C"
+  //  
 
 /* ─── The lifecycle ─────────────────────────────────────────────────────────
  *

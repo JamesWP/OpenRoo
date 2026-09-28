@@ -22,7 +22,7 @@
 #include "clock.h"
 #include "camera.h"
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 LevelEntry_PrepareAssets(void)
 {
     RenderDevice *d3d = g_renderDevice;

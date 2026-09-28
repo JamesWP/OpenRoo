@@ -115,7 +115,7 @@ static int inline_strcmp(const unsigned char *a, const unsigned char *b)
     return (*a < *b) ? -1 : 1;
 }
 
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 Sim_ParseLevelFiles(Game *self, const char *name)
 {
     char path[256];  // PRESERVED: 256 bytes, unbounded
@@ -177,7 +177,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
     return 0;
 }
 
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
 {
 
@@ -191,7 +191,7 @@ Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
     return 0;
 }
 
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 {
     char path[256];  // PRESERVED: 256 bytes, unbounded

@@ -58,9 +58,8 @@ KAROO_LAYOUT_CHECKS(FoePose)
  */
 extern FoePose g_foePoses[500];
 
-extern "C" {
-__declspec(dllexport) void __cdecl
+ 
+  void  
 FramePose_Player(Game *g, double t, double dt, CameraFocus *out);
-__declspec(dllexport) void __cdecl
+  void  
 FramePose_Foes(Game *g, double t, double dt, FoePose *out);
-}

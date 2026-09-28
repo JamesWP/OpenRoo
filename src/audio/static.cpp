@@ -147,17 +147,15 @@ static bool sound_diag(void)
     return cached != 0;
 }
 
-extern "C" {
+ 
 
 /* First call only, then a running tally: a periodic sample reads zero forever
  * for anything first reached late. */
-__declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
+  void CStatic_SoundFirstCall(const char *who,
                                                   unsigned long *seen)
 {
     if (sound_diag() && (*seen)++ == 0)
         log_write("sound: DIAG first call -- %s\n", who);
-}
-
 }
 
 static void *const g_CStaticVtable[1] = { (void *)&CStaticSoundbuffer::scalarVectorDtor };

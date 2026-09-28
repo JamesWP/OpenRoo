@@ -71,7 +71,7 @@ static ScreenVertex tlv(float x, float y, float u, float v)
     return t;
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_DrawBackdrop(RenderDevice *d3d, void *theme)
 {
     set_blend(d3d);
@@ -110,7 +110,7 @@ static void draw_markers(RenderDevice *d3d, float y0, float left, float right)
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, p, 4, 0);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_DrawCursorMarkers(Game *g, RenderDevice *d3d, DWORD ms, float rowOffset)
 {
     const DWORD w  = mode_width(d3d);
@@ -124,7 +124,7 @@ Menu_DrawCursorMarkers(Game *g, RenderDevice *d3d, DWORD ms, float rowOffset)
 /* The controls page's own marker pair: the same quads on its 20-unit row pitch
  * from y 102, at the page's edges (centres 40 and 600) so they bracket the
  * whole row. */
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_DrawControlsCursorMarkers(Game *g, RenderDevice *d3d, DWORD ms)
 {
     const DWORD w  = mode_width(d3d);
@@ -231,7 +231,7 @@ static const char *const k_mainMenuRows[6] = {
 };
 static const char *const k_optionsRows[3] = { "Controls", "Video", "Audio" };
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_RenderMainMenu(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
                     DWORD ms)
 {
@@ -240,7 +240,7 @@ Menu_RenderMainMenu(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_RenderOptionsMenu(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
                        DWORD ms)
 {
@@ -249,7 +249,7 @@ Menu_RenderOptionsMenu(Game *g, void *theme, RenderDevice *d3d, TextRenderer *te
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_RenderRestoreSlotList(Game *g, void *theme, RenderDevice *d3d,
                            TextRenderer *text, DWORD ms)
 {
@@ -258,7 +258,7 @@ Menu_RenderRestoreSlotList(Game *g, void *theme, RenderDevice *d3d,
     Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_RenderSaveSlotList(Game *g, void *theme, RenderDevice *d3d,
                         TextRenderer *text, DWORD ms)
 {
@@ -338,7 +338,7 @@ static void draw_label(RenderDevice *d3d, void *theme, TextRenderer *text,
 
 /* Menu node 0xc.  Four rows of a label at x 262 and its widget at x 368: 3D
  * sound (toggle), sound volume (knob), CD music (toggle), CD volume (knob). */
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_RenderSoundOptions(Game *g, void *theme, RenderDevice *d3d,
                         TextRenderer *text, DWORD ms)
 {
@@ -378,7 +378,7 @@ static bool shadows_available(RenderDevice *d3d)
     return d3d->hasStencil() && d3d->bitDepth() > 16;
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_RenderVideoOptions(Game *g, void *theme, RenderDevice *d3d,
                         TextRenderer *text, DWORD ms)
 {
@@ -436,7 +436,7 @@ static const ControlRow k_controls[13] = {
     { "camera down",  "CamModeDown",       0x20 },
 };
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_RenderControlsRemap(Game *g, void *theme, RenderDevice *d3d,
                          TextRenderer *text, DWORD ms)
 {
@@ -525,7 +525,7 @@ static void fill_quad(ScreenVertex *q, float x0, float x1, float y0, float y1,
     q[3] = tlv(x1, y1, 0.0f, v1);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_BuildMenuGeometry(RenderDevice *d3d, const char *prefix)
 {
     const float fw = (float)d3d->width();
@@ -646,7 +646,7 @@ static const CreditRow k_credits[] = {
 static float g_creditsScroll;
 static DWORD g_creditsStartMs;
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
                          DWORD nowMs)
 {
@@ -684,7 +684,7 @@ Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
 
 /* Picks the screen for the current menu node; any other node draws nothing.
  * The level select's theme nodes (0x60 + t) draw the level select page. */
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_DispatchGameState(Game *g, void *theme, RenderDevice *d3d, TextRenderer *text,
                        DWORD ms)
 {

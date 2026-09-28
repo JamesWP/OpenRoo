@@ -54,7 +54,7 @@ static void camera_view_dir(float d[3])
         d[i] = c->target()[i] - c->eye()[i];
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                           const float (*rot)[3], DWORD count,
                           ThemeObjectTypeSlot *slot, RenderDevice *d3d,

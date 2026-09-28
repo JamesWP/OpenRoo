@@ -248,14 +248,13 @@ KAROO_LAYOUT_CHECKS(Player)
     KAROO_LAYOUT_SIZE(0x241);
 }
 
-/* The ActionCallback shims for the six actions (progctrl.h's __cdecl(key,
+/* The ActionCallback shims for the six actions (progctrl.h's  (key,
  * strength, context), context = the Player). */
-extern "C" {
-__declspec(dllexport) void __cdecl Player_ActMoveForward(int key, int strength, void *player);
-__declspec(dllexport) void __cdecl Player_ActMoveBack(int key, int strength, void *player);
-__declspec(dllexport) void __cdecl Player_ActTurnLeft(int key, int strength, void *player);
-__declspec(dllexport) void __cdecl Player_ActTurnRight(int key, int strength, void *player);
-__declspec(dllexport) void __cdecl Player_ActHarakiri(int key, int strength, void *player);
-__declspec(dllexport) void __cdecl Player_ActReleaseBomb(int key, int strength, void *player);
-}
+ 
+  void   Player_ActMoveForward(int key, int strength, void *player);
+  void   Player_ActMoveBack(int key, int strength, void *player);
+  void   Player_ActTurnLeft(int key, int strength, void *player);
+  void   Player_ActTurnRight(int key, int strength, void *player);
+  void   Player_ActHarakiri(int key, int strength, void *player);
+  void   Player_ActReleaseBomb(int key, int strength, void *player);
 

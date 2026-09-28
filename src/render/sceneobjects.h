@@ -1,7 +1,7 @@
 /* sceneobjects -- the per-object draw dispatcher every theme object type goes
  * through: models (kind 1), quads (kind 2) and billboards (kind 3).
  *
- * __cdecl, twelve dwords (the callers ADD ESP,0x30):
+ *  , twelve dwords (the callers ADD ESP,0x30):
  *   game, quad (four FVF 0x242 vertices the caller owns; kind 2 animates
  *   and draws them), positions[count], rotations[count], count, the theme
  *   slot, the Direct3D, now (a double), the animation time (a float), the
@@ -26,7 +26,7 @@ struct SceneQuadVertex {                  /* naturally aligned; no packing neede
 };
 static_assert(sizeof(SceneQuadVertex) == 0x20, "SceneQuadVertex stride");
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *positions,
                          const Vec3 *rotations, unsigned int count,
                          ThemeObjectTypeSlot *slot, RenderDevice *d3d, double now,

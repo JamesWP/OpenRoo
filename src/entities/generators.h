@@ -548,7 +548,7 @@ inline void Generator::vsetDirection(float x, float y, float z)
 
 /* Gen_FillGaussianField writes into an ExplodeDebris (explodedebris.h); its
  * layout and the offsets this relies on are asserted there. */
-extern "C" __declspec(dllexport) void  
+  void  
 Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma);
 
 /* Both classes' Tick is slot GEN_VT_TICK_SLOT. */

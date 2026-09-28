@@ -1729,7 +1729,7 @@ Generator::attachRingSlot(Generator *self, RingBuffer *ring)        { return sel
 
 /* Called directly by explodedebris.cpp and theme.cpp — see
  * fill_gaussian_field. */
-__declspec(dllexport) void THISCALL
+  void THISCALL
 Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma)
 {
     fill_gaussian_field(self, mu, sigma);

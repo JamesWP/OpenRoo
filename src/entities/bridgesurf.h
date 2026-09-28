@@ -6,5 +6,5 @@ class RenderDevice;
 
 /* Draws every bridge's surface for the frame at time t; lvl is the theme
  * block.  Called once a frame by RenderGameFrame. */
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 BridgeSurf_Draw(Game *game, void *lvl, RenderDevice *d3d, double t);

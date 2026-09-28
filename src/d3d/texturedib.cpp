@@ -30,14 +30,14 @@ static unsigned int dib_strlen(const char *s)
     return (unsigned int)(p - s);
 }
 
-extern "C" {
+ 
 
 /* ─── BlitToSurface ─────────────────────────────────────────────────────────
  *
  * Blits a GDI bitmap into pTextureSurface by way of a temporary system-memory
  * DirectDraw surface: create it with the destination's pixel format, GetDC it,
  * BitBlt the DIB in, then BltFast the result across. */
-__declspec(dllexport) unsigned int  
+  unsigned int  
 TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
 {
     DDSURFACEDESC2 ddsd;
@@ -103,7 +103,7 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
  * Loads a BMP, creates a matching DirectDraw surface for it, fills it via
  * BlitToSurface and records the file name.  bSysMem adds DDSCAPS_SYSTEMMEMORY
  * to DDSCAPS_OFFSCREENPLAIN. */
-__declspec(dllexport) unsigned int  
+  unsigned int  
 TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
                          char bSysMem)
 {
@@ -166,5 +166,3 @@ TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
     unsigned int last = (unsigned int)DeleteObject((HGDIOBJ)hbmp);
     return (last & 0xffffff00u) | 1u;  // upper bytes: DeleteObject
 }
-
-}  // extern "C"

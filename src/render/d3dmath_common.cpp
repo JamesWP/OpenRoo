@@ -58,16 +58,16 @@ void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
 }
 
 /* ─── The exported vec3 helpers (d3dmath_common.h) ───────────────────────── */
-extern "C" {
+ 
 
-__declspec(dllexport) Vec3 * 
+  Vec3 * 
 Math_Vec3Set(Vec3 *self, float x, float y, float z)
 {
     v3_set(self, x, y, z);
     return self;
 }
 
-__declspec(dllexport) Vec3 *__cdecl
+  Vec3 * 
 Math_Vec3Sub(Vec3 *d, const Vec3 *a, const Vec3 *b)
 {
     Vec3 t;
@@ -76,19 +76,19 @@ Math_Vec3Sub(Vec3 *d, const Vec3 *a, const Vec3 *b)
     return d;
 }
 
-__declspec(dllexport) double __cdecl
+  double  
 Math_Vec3SqLen(const Vec3 *v)
 {
     return ((double)v->x * v->x + (double)v->y * v->y) + (double)v->z * v->z;
 }
 
-__declspec(dllexport) double __cdecl
+  double  
 Math_Vec3Dot(const Vec3 *a, const Vec3 *b)
 {
     return ((double)a->z * b->z + (double)a->y * b->y) + (double)a->x * b->x;
 }
 
-__declspec(dllexport) Vec3 *__cdecl
+  Vec3 * 
 Math_Vec3Cross(Vec3 *d, const Vec3 *a, const Vec3 *b)
 {
     Vec3 t;
@@ -99,7 +99,7 @@ Math_Vec3Cross(Vec3 *d, const Vec3 *a, const Vec3 *b)
     return d;
 }
 
-__declspec(dllexport) Vec3 *__cdecl
+  Vec3 * 
 Math_Vec3Div(Vec3 *d, const Vec3 *v, float s)
 {
     Vec3 t;
@@ -108,7 +108,7 @@ Math_Vec3Div(Vec3 *d, const Vec3 *v, float s)
     return d;
 }
 
-__declspec(dllexport) Mat4 * 
+  Mat4 * 
 Math_Mat4Set(Mat4 *self, float m00, float m01, float m02, float m03,
              float m10, float m11, float m12, float m13,
              float m20, float m21, float m22, float m23,
@@ -121,7 +121,7 @@ Math_Mat4Set(Mat4 *self, float m00, float m01, float m02, float m03,
     return self;
 }
 
-__declspec(dllexport) Mat4 *__cdecl
+  Mat4 * 
 Math_Mat4Zero(Mat4 *d)
 {
     for (int i = 0; i < 16; i++)
@@ -129,7 +129,7 @@ Math_Mat4Zero(Mat4 *d)
     return d;
 }
 
-__declspec(dllexport) void __cdecl
+  void  
 Math_BuildBillboardQuad(Vec3 *out, float dx, float dy, float dz, float scale)
 {
     Vec3 up = { 1.0f, 0.0f, 0.0f };
@@ -166,19 +166,19 @@ Math_BuildBillboardQuad(Vec3 *out, float dx, float dy, float dz, float scale)
  * The w == 1.0 test compares a float with a double 1.0, so NaN skips the
  * divide; a zero w divides to inf/NaN. */
 
-__declspec(dllexport) Mat4 *__cdecl Math_Mat4Identity(Mat4 *out)
+  Mat4 *  Math_Mat4Identity(Mat4 *out)
 {
     m4_identity(out);
     return out;
 }
 
-__declspec(dllexport) Mat4 *__cdecl Math_Mat4Mul(Mat4 *out, Mat4 a, Mat4 b)
+  Mat4 *  Math_Mat4Mul(Mat4 *out, Mat4 a, Mat4 b)
 {
     m4_mul(out, &a, &b);        /* b * a, as m4_mul_std sums it */
     return out;
 }
 
-__declspec(dllexport) Vec3 *__cdecl Math_Vec3TransformPoint(Vec3 *out, Mat4 m, Vec3 v)
+  Vec3 *  Math_Vec3TransformPoint(Vec3 *out, Mat4 m, Vec3 v)
 {
     const float in[4] = { v.x, v.y, v.z, 1.0f };
     float o[4];
@@ -198,7 +198,7 @@ __declspec(dllexport) Vec3 *__cdecl Math_Vec3TransformPoint(Vec3 *out, Mat4 m, V
     return out;
 }
 
-__declspec(dllexport) Mat4 *__cdecl Math_Mat4Translate(Mat4 *out, float x, float y, float z)
+  Mat4 *  Math_Mat4Translate(Mat4 *out, float x, float y, float z)
 {
     Mat4 t;
     m4_translate(&t, x, y, z);
@@ -206,27 +206,26 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4Translate(Mat4 *out, float x, float
     return out;
 }
 
-__declspec(dllexport) Mat4 *__cdecl Math_Mat4RotX(Mat4 *out, float angle)
+  Mat4 *  Math_Mat4RotX(Mat4 *out, float angle)
 {
     Mat4 t;  m4_rot_x(&t, angle);  *out = t;  return out;
 }
 
-__declspec(dllexport) Mat4 *__cdecl Math_Mat4RotY(Mat4 *out, float angle)
+  Mat4 *  Math_Mat4RotY(Mat4 *out, float angle)
 {
     Mat4 t;  m4_rot_y(&t, angle);  *out = t;  return out;
 }
 
-__declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle)
+  Mat4 *  Math_Mat4RotZ(Mat4 *out, float angle)
 {
     Mat4 t;  m4_rot_z(&t, angle);  *out = t;  return out;
 }
 
-}
 
 /* ─── RenderGameFrame's three small helpers ─────────────────────────────── */
-extern "C" {
+ 
 
-__declspec(dllexport) ScreenVertex * 
+  ScreenVertex * 
 Math_VertexSet(ScreenVertex *self, const Vec3 *pos, float rhw, uint32_t color,
                uint32_t specular, float tu, float tv)
 {
@@ -241,7 +240,7 @@ Math_VertexSet(ScreenVertex *self, const Vec3 *pos, float rhw, uint32_t color,
     return self;
 }
 
-__declspec(dllexport) Vec3 * 
+  Vec3 * 
 Math_Vec3ScaleInPlace(Vec3 *self, float k)
 {
     self->x = self->x * k;
@@ -250,10 +249,9 @@ Math_Vec3ScaleInPlace(Vec3 *self, float k)
     return self;
 }
 
-__declspec(dllexport) double __cdecl
+  double  
 Math_Vec3Length(const Vec3 *v)
 {
     return sqrt(Math_Vec3SqLen(v));
 }
 
-}

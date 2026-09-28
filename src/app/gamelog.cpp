@@ -273,7 +273,7 @@ void GameLogger::logSourceLocation(int level, const char *file,
 }
 
 /* HRESULT to DirectSound error name, as the game's strings. */
-extern "C" __declspec(dllexport) const char * __cdecl
+  const char *  
 GameLog_DSErrorToString(HRESULT hr)
 {
     switch ((unsigned)hr) {

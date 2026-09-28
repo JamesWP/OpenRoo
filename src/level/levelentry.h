@@ -3,4 +3,4 @@
  * flag and draws nothing that frame. */
 #pragma once
 
-extern "C" __declspec(dllexport) void __cdecl LevelEntry_PrepareAssets(void);
+  void   LevelEntry_PrepareAssets(void);

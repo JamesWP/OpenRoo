@@ -38,7 +38,7 @@ static CStaticSoundbuffer *bank(Game *game, CStaticSoundbuffer *cur,
     return game->soundManager()->acquireStatic(path, 0);
 }
 
-extern "C" __declspec(dllexport) void  
+  void  
 Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
 {
     SoundManager *sm = self->soundManager();

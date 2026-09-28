@@ -108,7 +108,7 @@ static bool wndproc_fx_noquit()
     return cached != 0;
 }
 
-extern "C" __declspec(dllexport) LRESULT CALLBACK
+  LRESULT CALLBACK
 Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
@@ -161,7 +161,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine);
 
 /* Every return path goes through here, so the globals are torn down however
  * WinMain ends. */
-extern "C" __declspec(dllexport) int WINAPI
+  int WINAPI
 Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 {
     StaticInit_Construct();

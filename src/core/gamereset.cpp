@@ -61,7 +61,7 @@ static void diag_tick(void)
         log_write("gamereset: %u clear calls\n", s_calls);
 }
 
-extern "C" __declspec(dllexport) void  
+  void  
 Sim_ClearGameState(Game *self)
 {
     unsigned char gamefile_ok;

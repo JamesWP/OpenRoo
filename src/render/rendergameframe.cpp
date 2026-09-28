@@ -935,7 +935,7 @@ static void draw_logo(Game *g, float H, float hudH, float pad)
 
 /* ─── RenderGameFrame ───────────────────────────────────────────────────── */
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Render_RenderGameFrame(void)
 {
     Game *g = Game::instance();

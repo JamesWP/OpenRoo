@@ -96,5 +96,5 @@ inline void CStreamSoundbuffer::checkLayout()
 static_assert(sizeof(CStreamSoundbuffer)                 == 0xD4,  "CStreamSoundbuffer size");
 
 /* The one-slot vtable: the scalar deleting destructor. */
-extern "C" __declspec(dllexport) void *CStream_Vtable(void);
+  void *CStream_Vtable(void);
 

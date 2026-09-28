@@ -33,9 +33,9 @@
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 TextureManager g_textureManager;
 
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp);
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 TextureTGA_Parse(LoadedImage *self, LPCSTR path);
 
 /* D3DDEVICEDESC as 0x3f raw dwords, zeroed, dwSize at [0], so the size used is
@@ -312,7 +312,7 @@ static void __stdcall st_pick_texture_format(RenderDevice *dev, DWORD bpp,
     *out = ctx.kept;
 }
 
-extern "C" {
+ 
 
 /* ─── The SceneTexture lifecycle ────────────────────────────────────────────
  *
@@ -612,8 +612,6 @@ unsigned int SceneTexture::selectTextureLoader(RenderDevice *dev, LPCSTR name, U
 
     return importSceneTextures(dev, name, 0, bpp, 0);
 }
-
-}  // extern "C"
 
 /* ─── TextureManager ───────────────────────────────────────────────────────
  *

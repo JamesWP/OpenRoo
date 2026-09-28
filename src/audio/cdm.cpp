@@ -119,7 +119,7 @@ void CDM::setMixerVolume(DWORD level)
     log_write("CDM::setMixerVolume(level=0x%lX) — not implemented\n", level);
 }
 
-extern "C" __declspec(dllexport) void KarooHooksLoad() {}  // unused
+  void KarooHooksLoad() {}  // unused
 
 /* Frees on bit 0; the one CDM is a global, so it never does. */
 CDM * CDM::scalarDeletingDtor(CDM *self, unsigned int flags)

@@ -14,10 +14,10 @@ double clock_seconds(void);
 double clock_previous_seconds(void);
 
 /* Starts the clock now rather than at the first read. */
-extern "C" void __cdecl hooks_ClockInit(void);
+  void   hooks_ClockInit(void);
 
 /* clock_seconds(), for the game's callers. */
-extern "C" __declspec(dllexport) double __cdecl hooks_ClockSeconds(void);
+  double   hooks_ClockSeconds(void);
 
 /* The frame number: the count of clock_seconds() calls.  The hash log, the
  * state log and recordings all number frames by it. */
@@ -26,4 +26,4 @@ unsigned clock_frame(void);
 /* The game's time(): seconds, also stored through out when it is not NULL.
  * DETERMINISM: the particle samplers and the level builder seed rand() from
  * it; KAROO_SEED fixes it. */
-extern "C" int __cdecl hooks_GameTime(int *out);
+  int   hooks_GameTime(int *out);

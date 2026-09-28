@@ -8,12 +8,11 @@
 
 #pragma once
 
-extern "C" {
-__declspec(dllexport) void __cdecl Camera_ZoomOut(int key, int strength, void *game);
-__declspec(dllexport) void __cdecl Camera_ZoomIn(int key, int strength, void *game);
-__declspec(dllexport) void __cdecl Camera_Overview(int key, int strength, void *game);
-__declspec(dllexport) void __cdecl Camera_RotateRight(int key, int strength, void *game);
-__declspec(dllexport) void __cdecl Camera_RotateLeft(int key, int strength, void *game);
-__declspec(dllexport) void __cdecl Camera_TiltUp(int key, int strength, void *game);
-__declspec(dllexport) void __cdecl Camera_TiltDown(int key, int strength, void *game);
-}
+ 
+  void   Camera_ZoomOut(int key, int strength, void *game);
+  void   Camera_ZoomIn(int key, int strength, void *game);
+  void   Camera_Overview(int key, int strength, void *game);
+  void   Camera_RotateRight(int key, int strength, void *game);
+  void   Camera_RotateLeft(int key, int strength, void *game);
+  void   Camera_TiltUp(int key, int strength, void *game);
+  void   Camera_TiltDown(int key, int strength, void *game);
