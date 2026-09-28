@@ -80,7 +80,8 @@ public:
 
     /* The action's bound key names, joined with " or ", into buf (at most
      * bufsz bytes).  Empty if the mode or action is unknown. */
-    void getBindingStr(int mode, const char *name, char *buf, unsigned int bufsz);
+    void getBindingStr(int mode, const char *name, char *buf,
+                       unsigned int bufsz);
 
     /* The setup calls, in the order inputsetup.cpp makes them.  Each returns
      * 1 on success, 0 on failure. */

@@ -23,7 +23,9 @@ public:
     /* The TGA path: build the surface from `name`, decode into it, and leave
      * the IDirect3DTexture2 in `self->pTexture2`.  Only the low byte of the
      * result is the success flag. */
-    unsigned int importSceneTextures(RenderDevice *dev, LPCSTR name, DWORD alphaFlag, UINT bpp, DWORD textureStage);
+    unsigned int importSceneTextures(RenderDevice *dev, LPCSTR name,
+                                     DWORD alphaFlag, UINT bpp,
+                                     DWORD textureStage);
 
     /* The SceneTexture constructor, destructor body and scalar deleting
      * destructor (the one vtable slot). */
@@ -36,9 +38,11 @@ public:
 
     /* Load by extension (mode 0), DIB (1) or TGA (2).  The sky builder
      * (sky.cpp) is its one outside caller. */
-    unsigned int selectTextureLoader(RenderDevice *dev, LPCSTR name, UINT bpp, int mode);
+    unsigned int selectTextureLoader(RenderDevice *dev, LPCSTR name, UINT bpp,
+                                     int mode);
 
-    unsigned int bindTextureResource(RenderDevice *dev, LPCSTR name, UINT bpp, DWORD textureStage);
+    unsigned int bindTextureResource(RenderDevice *dev, LPCSTR name, UINT bpp,
+                                     DWORD textureStage);
 
 private:
     /* Replace the image name: free the old, allocate strlen+1, sprintf("%s").

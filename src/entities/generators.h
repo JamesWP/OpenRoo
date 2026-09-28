@@ -256,7 +256,8 @@ protected:
     void stdInterleavePos(const float *x, const float *y, const float *z);
     void stdBuildSphere(const float *mn, const float *mx);
     void stdBuildBox(const float *mn, const float *mx);
-    void stdBuildVelocity(const float *vmin, const float *vmax, float lmin, float lmax);
+    void stdBuildVelocity(const float *vmin, const float *vmax, float lmin,
+                          float lmax);
     void stdBuildRate(float lo, float hi);
     void stdGenDestruct();
     BOOL stdGenCopyFrom(const StdGenerator *src);
@@ -380,7 +381,8 @@ private:
     void cylGenDestruct();
     void cylSetDirection(float x, float y, float z);
     void cylSetPosition(float x, float y, float z);
-    void cylBuildVelocity(const float *vmin, const float *vmax, float lmin, float lmax);
+    void cylBuildVelocity(const float *vmin, const float *vmax, float lmin,
+                          float lmax);
     void cylBuildRate(float lo, float hi);
     BOOL cylGenCopyFrom(const CylinderGenerator *src);
     BOOL cylGenSave(void *fp);

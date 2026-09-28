@@ -31,10 +31,12 @@ public:
     /* Loads count voices of one file: voice 0 from disk, the rest duplicated
      * from it (reloading any the duplicate refuses).  Returns 1, or 0 on
      * failure. */
-    int fill3D(int count, IDirectSound *pDS, DWORD dwDsFlags, const char *filename, void *logger);
+    int fill3D(int count, IDirectSound *pDS, DWORD dwDsFlags,
+               const char *filename, void *logger);
 
     /* Fills the pool with count duplicates of src.  Non-NULL on success. */
-    void *clone(int count, IDirectSound *pDS, CStaticSoundbuffer *src, int noFallback);
+    void *clone(int count, IDirectSound *pDS, CStaticSoundbuffer *src,
+                int noFallback);
 
     /* The voice at index, or NULL if out of range. */
     CStaticSoundbuffer *voiceAt(int index);
