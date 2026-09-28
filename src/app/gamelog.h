@@ -13,7 +13,7 @@
 class GameLogger {
 public:
     /* Formats and writes one line: "HH:MM:SS : message". */
-    void __cdecl logMessage(int level, const char *fmt, ...);
+    void logMessage(int level, const char *fmt, ...);
 
     /* Opens (or reopens) the log file and writes the date banner.  Returns 0,
      * after a message box, if the file cannot be opened. */
@@ -23,7 +23,7 @@ public:
     void *initialize(const char *filename, const char *mode);
 
     /* Writes "HH:MM:SS : File: <file>, Line: <line>: message". */
-    void __cdecl logSourceLocation(int level, const char *file, int line,
+    void logSourceLocation(int level, const char *file, int line,
                                    const char *fmt, ...);
 
     /* Construction and destruction of the global logger, driven by

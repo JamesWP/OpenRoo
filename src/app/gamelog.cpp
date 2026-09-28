@@ -231,7 +231,7 @@ void *GameLogger::initialize(const char *filename, const char *mode)
     return this;
 }
 
-void __cdecl GameLogger::logMessage(int level, const char *fmt, ...)
+void GameLogger::logMessage(int level, const char *fmt, ...)
 {
     char timebuf[0x80];
     char msg[LOG_BUF];
@@ -252,7 +252,7 @@ void __cdecl GameLogger::logMessage(int level, const char *fmt, ...)
 }
 
 /* The file comes before the line: (time, file, line, message). */
-void __cdecl GameLogger::logSourceLocation(int level, const char *file,
+void GameLogger::logSourceLocation(int level, const char *file,
                           int line, const char *fmt, ...)
 {
     char timebuf[0x80];
