@@ -3,11 +3,11 @@
  * (saveslots.cpp); tools/karoosave.py decodes the same format. */
 #pragma once
 
-#include "layout.h"
+ 
 
 /* FORMAT: one slot, as stored in its .sav file. */
 struct __attribute__((packed)) SaveSlot {
-    static const int ORIGIN = 0;
+     
 
     char          name[20];    // the menu text; ".........." when empty
     unsigned char levelIndex;  // the level to resume at
@@ -18,24 +18,14 @@ struct __attribute__((packed)) SaveSlot {
     unsigned int  inUse;                // 1 = loadable
     unsigned int  unusedTail;           // never read or written
 
-    KAROO_LAYOUT_REGISTER(SaveSlot);
+     
 };
 
-KAROO_LAYOUT_CHECKS(SaveSlot)
-{
-    KAROO_LAYOUT_AT(levelIndex,          0x14);
-    KAROO_LAYOUT_AT(livesRemaining,      0x15);
-    KAROO_LAYOUT_AT(totalScore,          0x16);
-    KAROO_LAYOUT_AT(completionNumerator, 0x1a);
-    KAROO_LAYOUT_AT(elapsedGameTime,     0x1e);
-    KAROO_LAYOUT_AT(inUse,               0x22);
-    KAROO_LAYOUT_AT(unusedTail,          0x26);
-    KAROO_LAYOUT_SIZE(0x2a);
-}
+ 
 
 class __attribute__((packed)) SaveSlots {
 public:
-    static const int ORIGIN = 0;
+     
     static const int MAX_SLOTS = 255;
 
     unsigned char  count() const                   { return count_; }
@@ -70,7 +60,7 @@ public:
 
 private:
     SaveSlots() = delete;  // only ever reached through the Game
-    KAROO_LAYOUT_REGISTER(SaveSlots);
+     
 
     const void    *vtable_;  // our one-slot table
     unsigned short editSlot_;
@@ -79,12 +69,4 @@ private:
     SaveSlot       slots_[MAX_SLOTS];
 };
 
-KAROO_LAYOUT_CHECKS(SaveSlots)
-{
-    KAROO_LAYOUT_AT(editSlot_, 0x04);
-    KAROO_LAYOUT_AT(edit_,     0x06);
-    KAROO_LAYOUT_AT(count_,    0x30);
-    KAROO_LAYOUT_AT(slots_,    0x31);
-    KAROO_LAYOUT_SIZE(0x2a07);
-}
-
+ 

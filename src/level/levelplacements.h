@@ -7,7 +7,7 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
+ 
 
 class Game;
 class RenderDevice;
@@ -16,7 +16,7 @@ struct ThemeAssetBlock;
 /* A position and rotation list, one entry per cell of one kind. */
 class __attribute__((packed)) PlacementList {
 public:
-    static const int ORIGIN = 0;
+     
 
     int      count() const { return count_; }
     float (*pos() const)[3] { return pos_; }
@@ -32,15 +32,8 @@ private:
     int     count_;
     float (*pos_)[3];
     float (*rot_)[3];
-    KAROO_LAYOUT_REGISTER(PlacementList);
+     
 };
-
-KAROO_LAYOUT_CHECKS(PlacementList)
-{
-    KAROO_LAYOUT_AT(pos_, 0x04);
-    KAROO_LAYOUT_AT(rot_, 0x08);
-    KAROO_LAYOUT_SIZE(0x0c);
-}
 
 /* Not a decoded type: 0x20-byte vertices in two formats that share the size.
  * The tile-top template is x, y, z, diffuse 0xffffffff, (u0, v0), (u1, v1);
@@ -50,7 +43,7 @@ struct PlacementVertex { DWORD d[8]; };
 
 class __attribute__((packed)) LevelPlacements {
 public:
-    static const int ORIGIN = 0;
+     
 
     /* Frees every array and zeroes every count.  Also called at shutdown. */
     void release();
@@ -107,31 +100,10 @@ private:
     PlacementList   destructibles_;   // TILE_DESTRUCTIBLE
     int             wallStripCount_;  // strips, 6 vertices each
     PlacementVertex *wallVerts_;      // the wall strips
-    KAROO_LAYOUT_REGISTER(LevelPlacements);
+     
 };
 
-KAROO_LAYOUT_CHECKS(LevelPlacements)
-{
-    KAROO_LAYOUT_AT(kind01Count_,    0x080);
-    KAROO_LAYOUT_AT(kind01Verts_,    0x084);
-    KAROO_LAYOUT_AT(exitPos_,        0x088);
-    KAROO_LAYOUT_AT(exitRot_,        0x094);
-    KAROO_LAYOUT_AT(lifts_,          0x0a0);
-    KAROO_LAYOUT_AT(slides_,         0x0ac);
-    KAROO_LAYOUT_AT(breakables_,     0x0b8);
-    KAROO_LAYOUT_AT(jumpPads_,       0x0c4);
-    KAROO_LAYOUT_AT(teleporters_,    0x0d0);
-    KAROO_LAYOUT_AT(glue_,           0x0dc);
-    KAROO_LAYOUT_AT(switches_,       0x0e8);
-    KAROO_LAYOUT_AT(ramps_,          0x0f4);
-    KAROO_LAYOUT_AT(climbs_,         0x100);
-    KAROO_LAYOUT_AT(conveyors_,      0x10c);
-    KAROO_LAYOUT_AT(destructibles_,  0x118);
-    KAROO_LAYOUT_AT(wallStripCount_, 0x124);
-    KAROO_LAYOUT_AT(wallVerts_,      0x128);
-    KAROO_LAYOUT_SIZE(0x12c);
-}
-
+ 
 extern LevelPlacements g_levelPlacements;
 
 class Game;

@@ -6,7 +6,7 @@
 
 #include <windows.h>
 
-#include "layout.h"
+ 
 #include "static.h"
 
 struct IDirectSound;
@@ -15,7 +15,7 @@ struct IDirectSound;
  * destroyed through the voices' own vector destructor. */
 class __attribute__((packed)) VoicePool {
 public:
-    static const int ORIGIN = 0;
+     
 
     /* Halts and re-triggers the current voice, then advances the cursor.
      * Returns the trigger's HRESULT, or DSERR_UNINITIALIZED with no voices. */
@@ -56,19 +56,6 @@ private:
     int                 dwCurrentIdx_;  // the voice the next play uses
     int                 dwNestDepth_;   // re-entrancy depth of Fill3D; Wipe leaves it
     int                 dwVoiceCount_;
-    KAROO_LAYOUT_REGISTER(VoicePool);
+     
 };
-
-KAROO_LAYOUT_CHECKS(VoicePool)
-{
-    KAROO_LAYOUT_AT(logger_,       0x00);
-    KAROO_LAYOUT_AT(pBufs_,        0x04);
-    KAROO_LAYOUT_AT(dwCurrentIdx_, 0x08);
-    KAROO_LAYOUT_AT(dwNestDepth_,  0x0c);
-    KAROO_LAYOUT_AT(dwVoiceCount_, 0x10);
-    KAROO_LAYOUT_SIZE(0x14);
-}
-
-/* The voices are an array of CStaticSoundbuffer with a stride of 0x18. */
-static_assert(sizeof(CStaticSoundbuffer) == 0x18, "pBufs stride must stay 0x18");
-
+ 

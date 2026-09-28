@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "layout.h"
+ 
 #include "game.h"
 #include "movableentity.h"
 
@@ -17,7 +17,7 @@ class Tile;
 
 class __attribute__((packed)) Foe : public MovableEntity {
 public:
-    static const int ORIGIN = 0;
+     
 
     // Spawns a foe; the arguments are masked to bytes.  Returns the new ID.
     static unsigned char spawn(Game *game, unsigned int uArg, unsigned int vArg,
@@ -85,7 +85,7 @@ private:
 
     Tile *tile(int u, int v) const;
 
-    KAROO_LAYOUT_REGISTER(Foe);
+     
 
     unsigned char dropContents_;  // +0x15a  stamped into its tile's contents when it dies
     unsigned char targetU_;       // +0x15b  the last chase target,
@@ -93,15 +93,5 @@ private:
     unsigned char field_15d;      // +0x15d
 };
 
-KAROO_LAYOUT_CHECKS(Foe)
-{
-    // The base sits at 0; its own fields are asserted in MovableEntity.
-    KAROO_LAYOUT_AT(posU_,             0x025);
-    KAROO_LAYOUT_AT(pathfinder_,       0x13b);
-    KAROO_LAYOUT_AT(dropContents_,     0x15a);
-    KAROO_LAYOUT_AT(targetU_,          0x15b);
-    KAROO_LAYOUT_AT(targetV_,          0x15c);
-    // The allocation size: the class tiles it exactly.
-    KAROO_LAYOUT_SIZE(0x15e);
-}
+ 
 

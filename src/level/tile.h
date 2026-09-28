@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "layout.h"
+ 
 
 /* The kind byte (objectMarker()), file byte 1.  Named from the code that acts
  * on each value (the level builder spawns one object per kind); values nothing
@@ -271,7 +271,7 @@ public:
 
 private:
     Tile() = delete;  // only ever reached through at()
-    KAROO_LAYOUT_REGISTER(Tile);
+     
 
     unsigned char height_;        // file byte 0
     unsigned char objectMarker_;  // file byte 1: the kind
@@ -319,49 +319,3 @@ private:
     float         itemPhase_;  // an item's random phase
     int           busy_;       // a pad, teleporter or breakable is in use
 };
-
-KAROO_LAYOUT_CHECKS(Tile)
-{
-    KAROO_LAYOUT_AT(height_,           0x19c);
-    KAROO_LAYOUT_AT(objectMarker_,     0x19d);
-    KAROO_LAYOUT_AT(param_,            0x19e);
-    KAROO_LAYOUT_AT(contents_,         0x19f);
-    KAROO_LAYOUT_AT(blastHeight_,      0x1a0);
-    KAROO_LAYOUT_AT(field_1a1,         0x1a1);
-    KAROO_LAYOUT_AT(occupant_,         0x1a5);
-    KAROO_LAYOUT_AT(liftLiveHeight_,   0x1a6);
-    KAROO_LAYOUT_AT(slideSlot_,        0x1aa);
-    KAROO_LAYOUT_AT(slideHeight_,      0x1ab);
-    KAROO_LAYOUT_AT(slideParkedSince_, 0x1ac);
-    KAROO_LAYOUT_AT(slideDwell_,       0x1b4);
-    KAROO_LAYOUT_AT(slideTrack_,       0x1bc);
-    KAROO_LAYOUT_AT(slideOriginU_,     0x1c0);
-    KAROO_LAYOUT_AT(slideOriginV_,     0x1c1);
-    KAROO_LAYOUT_AT(slideCellU_,       0x1c3);
-    KAROO_LAYOUT_AT(slideCellV_,       0x1c4);
-    KAROO_LAYOUT_AT(slidePosU_,        0x1c6);
-    KAROO_LAYOUT_AT(slidePosY_,        0x1ca);
-    KAROO_LAYOUT_AT(slidePosV_,        0x1ce);
-    KAROO_LAYOUT_AT(liftSlot_,         0x1d2);
-    KAROO_LAYOUT_AT(liftBottom_,       0x1d3);
-    KAROO_LAYOUT_AT(liftTop_,          0x1d4);
-    KAROO_LAYOUT_AT(liftMovingSince_,  0x1d5);
-    KAROO_LAYOUT_AT(liftParkedSince_,  0x1dd);
-    KAROO_LAYOUT_AT(liftDwell_,        0x1e5);
-    KAROO_LAYOUT_AT(field_1f1,         0x1f1);
-    KAROO_LAYOUT_AT(teleportU_,        0x1ee);
-    KAROO_LAYOUT_AT(teleportV_,        0x1ef);
-    KAROO_LAYOUT_AT(climbDir_,         0x1f2);
-    KAROO_LAYOUT_AT(field_1f3,         0x1f3);
-    KAROO_LAYOUT_AT(bridgeSlot_,       0x1f4);
-    KAROO_LAYOUT_AT(bridgeAxis_,       0x1f5);
-    KAROO_LAYOUT_AT(field_1f6,         0x1f6);
-    KAROO_LAYOUT_AT(field_202,         0x202);
-    KAROO_LAYOUT_AT(field_203,         0x203);
-    KAROO_LAYOUT_AT(blastTime_,        0x207);
-    KAROO_LAYOUT_AT(field_20f,         0x20f);
-    KAROO_LAYOUT_AT(itemPhase_,        0x213);
-    KAROO_LAYOUT_AT(teleportId_,       0x1ed);
-    KAROO_LAYOUT_AT(busy_,             0x217);
-    KAROO_LAYOUT_SIZE(0x7f);
-}

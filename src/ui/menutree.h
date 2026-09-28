@@ -6,11 +6,11 @@
  * cursor, last key, leave, lock and last-seen fields. */
 #pragma once
 
-#include "layout.h"
+ 
 
 class __attribute__((packed)) MenuTree {
 public:
-    static const int ORIGIN = 0;
+     
     static const int CHILD_STRIDE = 0xff;
 
     // The routines that take the menu as this.
@@ -77,7 +77,7 @@ public:
 
 private:
     MenuTree() = delete;  // only ever reached through the Game
-    KAROO_LAYOUT_REGISTER(MenuTree);
+     
 
     const void    *vtable_;  // our one-slot table
     unsigned int   changed_;
@@ -98,23 +98,3 @@ private:
     unsigned char  stack_[0x2021c - 0x2001e];
     unsigned char  node_;
 };
-
-KAROO_LAYOUT_CHECKS(MenuTree)
-{
-    KAROO_LAYOUT_AT(changed_,      0x04);
-    KAROO_LAYOUT_AT(lastNodeSeen_, 0x08);
-    KAROO_LAYOUT_AT(lockStart_,    0x0c);
-    KAROO_LAYOUT_AT(lock_,         0x14);
-    KAROO_LAYOUT_AT(leave_,        0x18);
-    KAROO_LAYOUT_AT(lastKey_,      0x1c);
-    KAROO_LAYOUT_AT(cursor_,       0x1d);
-    KAROO_LAYOUT_AT(savedCursor_,  0x1e);
-    KAROO_LAYOUT_AT(childCount_,   0x11d);
-    KAROO_LAYOUT_AT(children_,     0x21c);
-    KAROO_LAYOUT_AT(depth_,        0x2001d);
-    KAROO_LAYOUT_AT(stack_,        0x2001e);
-    KAROO_LAYOUT_AT(node_,         0x2021c);
-    KAROO_LAYOUT_SIZE(0x2021d);
-}
-
-

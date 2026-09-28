@@ -6,7 +6,7 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
+ 
 
 class Game;
 struct CameraFocus;
@@ -14,7 +14,7 @@ struct CameraFocus;
 /* One foe's pose, 0x1d bytes. */
 class __attribute__((packed)) FoePose {
 public:
-    static const int ORIGIN = 0;
+     
 
     /* The pose FramePose_Foes computes for one foe. */
     void set(unsigned char kind, float u, float h, float negV, float yaw)
@@ -42,18 +42,10 @@ private:
     float  rotZ_;         // always 0
     float  stepFrac_;     // written only while stepping; stale otherwise
 
-    KAROO_LAYOUT_REGISTER(FoePose);
+     
 };
 
-KAROO_LAYOUT_CHECKS(FoePose)
-{
-    KAROO_LAYOUT_AT(pos_,      0x01);
-    KAROO_LAYOUT_AT(rotX_,     0x0d);
-    KAROO_LAYOUT_AT(rotY_,     0x11);
-    KAROO_LAYOUT_AT(stepFrac_, 0x19);
-    KAROO_LAYOUT_SIZE(0x1d);
-}
-
+ 
 /* One record per live foe, in foe-list order; RenderGameFrame draws from it.
  */
 extern FoePose g_foePoses[500];

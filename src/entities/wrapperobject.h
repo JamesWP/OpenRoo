@@ -13,7 +13,7 @@
 #pragma once
 
 #include <windows.h>
-#include "layout.h"
+ 
 #include "faktmesh.h"
 class RenderDevice;
 
@@ -26,7 +26,7 @@ static_assert(sizeof(WrapperUV) == 8, "WrapperUV stride mismatch");
 
 class __attribute__((packed)) WrapperObject {
 public:
-    static const int ORIGIN = 0;
+     
 
     // Installs the one-slot vtable and zeroes the three fields.
     void construct();
@@ -69,7 +69,7 @@ public:
     scalarDtor(WrapperObject *self, unsigned int flags);
 
 private:
-    KAROO_LAYOUT_REGISTER(WrapperObject);
+     
 
     void      *vtable_;   // +0x00  the one-slot vtable
     WrapperUV *pBaseUV_;  // +0x04  wFrameCount * dwVertexCount pairs

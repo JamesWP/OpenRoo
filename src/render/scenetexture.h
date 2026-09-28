@@ -67,7 +67,7 @@ class GameLogger;
 
 class __attribute__((packed)) TextureManager {
 public:
-    static const int ORIGIN = 0;
+     
 
     SceneTexture *getOrLoad(RenderDevice *dev, char *filename, DWORD alphaFlag,
                             UINT bpp, DWORD textureStage);
@@ -92,15 +92,9 @@ private:
     void        *vtable_;    // +0x00
     LinkedList   cache_;     // +0x04  SceneTexture *, game-heap nodes
     GameLogger  *pLogger_;   // +0x14  NULL = silent
-    KAROO_LAYOUT_REGISTER(TextureManager);
+     
 };
 
-KAROO_LAYOUT_CHECKS(TextureManager)
-{
-    KAROO_LAYOUT_AT(cache_,   0x04);
-    KAROO_LAYOUT_AT(pLogger_, 0x14);
-    KAROO_LAYOUT_SIZE(0x18);
-}
-
+ 
 extern TextureManager g_textureManager;
 

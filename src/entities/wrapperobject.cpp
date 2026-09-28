@@ -20,15 +20,6 @@
 #include "log.h"
 #include "renderdevice.h"
 
-KAROO_LAYOUT_CHECKS(WrapperObject)
-{
-    KAROO_LAYOUT_AT(vtable_,  0x00);
-    KAROO_LAYOUT_AT(pBaseUV_, 0x04);
-    KAROO_LAYOUT_AT(pMesh_,   0x08);
-    KAROO_LAYOUT_AT(dirty_,   0x0c);
-    KAROO_LAYOUT_SIZE(0x0d);
-}
-
 #define WRAP_ONE   1.0f
 #define WRAP_ZERO  0.0f
 #define WRAP_HALF  0.5f

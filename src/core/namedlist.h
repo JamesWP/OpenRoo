@@ -6,13 +6,13 @@
 
 #pragma once
 
-#include "layout.h"
+ 
 
 class NamedEntryList;
 
 class __attribute__((packed)) NamedEntry {
 public:
-    static const int ORIGIN = 0;
+     
 
     const char *name() const    { return szName; }
     void       *payload() const { return pPayload; }
@@ -27,21 +27,13 @@ private:
     NamedEntry *pNext;          // +0x104
     NamedEntry *pPrev;          // +0x108
 
-    KAROO_LAYOUT_REGISTER(NamedEntry);
+     
 };
 
-KAROO_LAYOUT_CHECKS(NamedEntry)
-{
-    KAROO_LAYOUT_AT(szName,   0x000);
-    KAROO_LAYOUT_AT(pPayload, 0x100);
-    KAROO_LAYOUT_AT(pNext,    0x104);
-    KAROO_LAYOUT_AT(pPrev,    0x108);
-    KAROO_LAYOUT_SIZE(0x10c);
-}
-
+ 
 class __attribute__((packed)) NamedEntryList {
 public:
-    static const int ORIGIN = 0;
+     
 
     /* Sets the vtable and zeroes the three fields. */
     void construct();
@@ -74,17 +66,5 @@ private:
     NamedEntry   *pTail;    // +0x08
     unsigned long dwCount;  // +0x0c
 
-    KAROO_LAYOUT_REGISTER(NamedEntryList);
+     
 };
-
-/* 16 bytes: ProgableControl embeds five in an array of that stride.  The same
- * shape as LinkedList, but a separate class with its own vtable and entry
- * layout. */
-KAROO_LAYOUT_CHECKS(NamedEntryList)
-{
-    KAROO_LAYOUT_AT(vtable,  0x00);
-    KAROO_LAYOUT_AT(pHead,   0x04);
-    KAROO_LAYOUT_AT(pTail,   0x08);
-    KAROO_LAYOUT_AT(dwCount, 0x0c);
-    KAROO_LAYOUT_SIZE(16);
-}

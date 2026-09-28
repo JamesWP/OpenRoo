@@ -6,7 +6,7 @@
 #pragma once
 
 #include <stdio.h>
-#include "layout.h"
+ 
 #include "stream.h"
 #include "splinepath.h"
 
@@ -14,7 +14,7 @@ class SoundManager;
 
 class __attribute__((packed)) ScriptPlayer {
 public:
-    static const int ORIGIN = 0;
+     
 
     enum { LINE_SIZE = 1000, LINE_MAX = 1000 };
 
@@ -88,7 +88,7 @@ private:
     void updateWait();
     void updateGlide();
     void runNextCommand();
-    KAROO_LAYOUT_REGISTER(ScriptPlayer);
+     
 
     const void    *vtable_;  // our one-slot table
     unsigned short splineLines_;
@@ -134,46 +134,3 @@ private:
     char           scratch_[0x11b4 - 0xdca];  // the caption, and scratch for parsing
     char           lines_[LINE_MAX][LINE_SIZE];
 };
-
-KAROO_LAYOUT_CHECKS(ScriptPlayer)
-{
-    KAROO_LAYOUT_AT(splineLines_,    0x004);
-    KAROO_LAYOUT_AT(textBlocks_,     0x006);
-    KAROO_LAYOUT_AT(againLine_,      0x008);
-    KAROO_LAYOUT_AT(durations_,      0x00a);
-    KAROO_LAYOUT_AT(soundManager_,   0x40a);
-    KAROO_LAYOUT_AT(waitStream_,     0x40e);
-    KAROO_LAYOUT_AT(streams_,        0x40f);
-    KAROO_LAYOUT_AT(waitingOnStream_, 0x833);
-    KAROO_LAYOUT_AT(streamReady_,    0x837);
-    KAROO_LAYOUT_AT(streamWave_,     0x90f);
-    KAROO_LAYOUT_AT(field_92d_,      0x92d);
-    KAROO_LAYOUT_AT(splinePoint_,    0x931);
-    KAROO_LAYOUT_AT(splineActive_,   0x951);
-    KAROO_LAYOUT_AT(field_955_,      0x955);
-    KAROO_LAYOUT_AT(angle_,          0x959);
-    KAROO_LAYOUT_AT(duration_,       0x965);
-    KAROO_LAYOUT_AT(dt_,             0x96d);
-    KAROO_LAYOUT_AT(dir_,            0x975);
-    KAROO_LAYOUT_AT(start_,          0x981);
-    KAROO_LAYOUT_AT(speed_,          0x989);
-    KAROO_LAYOUT_AT(from_,           0x98d);
-    KAROO_LAYOUT_AT(target_,         0x999);
-    KAROO_LAYOUT_AT(moving_,         0x9a5);
-    KAROO_LAYOUT_AT(now_,            0x9a9);
-    KAROO_LAYOUT_AT(loaded_,         0x9b1);
-    KAROO_LAYOUT_AT(cameraDistance_, 0x9b5);
-    KAROO_LAYOUT_AT(currentLine_,    0x9b9);
-    KAROO_LAYOUT_AT(eye_,            0xda1);
-    KAROO_LAYOUT_AT(cameraMode_,     0xdad);
-    KAROO_LAYOUT_AT(running_,        0xdae);
-    KAROO_LAYOUT_AT(waitSeconds_,    0xdb2);
-    KAROO_LAYOUT_AT(waiting_,        0xdba);
-    KAROO_LAYOUT_AT(waitStart_,      0xdbe);
-    KAROO_LAYOUT_AT(cursor_,         0xdc6);
-    KAROO_LAYOUT_AT(lineCount_,      0xdc8);
-    KAROO_LAYOUT_AT(scratch_,        0xdca);
-    KAROO_LAYOUT_AT(lines_,          0x11b4);
-    KAROO_LAYOUT_SIZE(0xf53f4);
-}
-

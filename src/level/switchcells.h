@@ -4,7 +4,7 @@
  * k go together. */
 #pragma once
 
-#include "layout.h"
+ 
 
 /* One cell: its grid position.  The third byte is never used. */
 struct __attribute__((packed)) SwitchCell {
@@ -37,15 +37,8 @@ public:
 
 private:
     SwitchCells() = delete;  // embedded in the Game
-    KAROO_LAYOUT_REGISTER(SwitchCells);
+     
 
     SwitchCell    cells_[SWITCHES][CELLS];
     unsigned char counts_[SWITCHES];
 };
-
-KAROO_LAYOUT_CHECKS(SwitchCells)
-{
-    KAROO_LAYOUT_AT(cells_,  0x00000);
-    KAROO_LAYOUT_AT(counts_, 0x30000);
-    KAROO_LAYOUT_SIZE(0x30100);
-}

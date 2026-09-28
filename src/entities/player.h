@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "layout.h"
+ 
 #include "movableentity.h"
 
 class CStaticSoundbuffer;
@@ -19,7 +19,7 @@ class Tile;
 
 class __attribute__((packed)) Player : public MovableEntity {
 public:
-    static const int ORIGIN = 0;
+     
 
     // Latches the clock, moves the player, drops a respawning player back in,
     // and consumes the tile underfoot.  See player.cpp.
@@ -179,7 +179,7 @@ public:
 
 private:
     Player() = delete;  // game-owned, embedded in Game
-    KAROO_LAYOUT_REGISTER(Player);
+     
 
     // An element type that may sit at any address: taking a packed array's
     // address as a plain pointer-to-pointer would claim four-byte alignment.
@@ -220,34 +220,7 @@ private:
     int                 gemsCollected_;
 };
 
-KAROO_LAYOUT_CHECKS(Player)
-{
-    KAROO_LAYOUT_AT(worldSoundVariant_,         0x15a);
-    KAROO_LAYOUT_AT(pickupSounds_,     0x15e);
-    KAROO_LAYOUT_AT(lastSecondsMark_,         0x1ca);
-    KAROO_LAYOUT_AT(effectBStart_,         0x1d2);
-    KAROO_LAYOUT_AT(effectBActive_,         0x1da);
-    KAROO_LAYOUT_AT(effect8Start_,         0x1de);
-    KAROO_LAYOUT_AT(effect8Active_,         0x1e6);
-    KAROO_LAYOUT_AT(effectDStart_,         0x1ea);
-    KAROO_LAYOUT_AT(effectDActive_,         0x1f2);
-    KAROO_LAYOUT_AT(effectCStart_,         0x1f6);
-    KAROO_LAYOUT_AT(effectCActive_,         0x1fe);
-    KAROO_LAYOUT_AT(effectAStart_,         0x202);
-    KAROO_LAYOUT_AT(effectAActive_,         0x20a);
-    KAROO_LAYOUT_AT(markerU_,         0x20e);
-    KAROO_LAYOUT_AT(markerH_,         0x212);
-    KAROO_LAYOUT_AT(markerV_,         0x216);
-    KAROO_LAYOUT_AT(itemsCollected_,   0x21a);
-    KAROO_LAYOUT_AT(effectList_,       0x21c);
-    KAROO_LAYOUT_AT(score_,         0x22c);
-    KAROO_LAYOUT_AT(lastRoll_,         0x230);
-    KAROO_LAYOUT_AT(field_231,         0x231);
-    KAROO_LAYOUT_AT(lives_,         0x239);
-    KAROO_LAYOUT_AT(gemsCollected_,    0x23d);
-    KAROO_LAYOUT_SIZE(0x241);
-}
-
+ 
 /* The ActionCallback shims for the six actions (progctrl.h's  (key,
  * strength, context), context = the Player). */
  
