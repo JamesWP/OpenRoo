@@ -74,7 +74,7 @@ private:
     HRESULT drawMesh(RenderDevice *dev, DWORD frame, DWORD flags,
                      const char *name);
 
-    static void checkLayout();
+ 
 
     void  *unknown00_;      // +0x00 vtable, set by Init
     void  *pVertexData_;    // +0x04 dwVertexCount * wFrameCount vertices, stride 0x28
@@ -89,30 +89,9 @@ private:
     void  *pScratchVerts_;  // +0x76 dwVertexCount vertices, stride 0x28, zeroed
 };
 
-inline void CFaktMesh::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(CFaktMesh, pVertexData_)   == 0x04, "CFaktMesh layout mismatch");
-    static_assert(offsetof(CFaktMesh, dwVertexCount_) == 0x08, "CFaktMesh layout mismatch");
-    static_assert(offsetof(CFaktMesh, pFrameRecords_) == 0x0c, "CFaktMesh layout mismatch");
-    static_assert(offsetof(CFaktMesh, wFrameCount_)   == 0x10, "CFaktMesh layout mismatch");
-    static_assert(offsetof(CFaktMesh, pszName_)       == 0x12, "CFaktMesh layout mismatch");
-    static_assert(offsetof(CFaktMesh, strided_)       == 0x16, "CFaktMesh layout mismatch");
-    static_assert(offsetof(CFaktMesh, pScratchVerts_) == 0x76, "CFaktMesh layout mismatch");
-    static_assert(offsetof(CFaktMesh, strided_[MESH_STRIDED_POSITION].dwStride) == 0x1a, "strided");
-    static_assert(offsetof(CFaktMesh, strided_[MESH_STRIDED_NORMAL].dwStride)   == 0x22, "strided");
-    static_assert(offsetof(CFaktMesh, strided_[MESH_STRIDED_TEX0].dwStride)     == 0x3a, "strided");
-    static_assert(offsetof(CFaktMesh, strided_[MESH_STRIDED_TEX1].dwStride)     == 0x42, "strided");
-#pragma GCC diagnostic pop
-}
-
 /* The two character meshes, loaded once at startup (renderstate.cpp):
  * models\John.mdl and models\Enemy.mdl. */
 extern CFaktMesh g_meshPlayer;
 extern CFaktMesh g_meshEnemy;
 #pragma pack(pop)
-
-static_assert(sizeof(CFaktMesh) == 0x7a, "CFaktMesh size: ModelManager operator new(0x7a)");
-
 

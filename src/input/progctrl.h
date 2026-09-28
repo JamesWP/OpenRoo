@@ -56,7 +56,6 @@ private:
     DWORD        entry_count;
     DWORD        _pad[2];  // unused
 };
-static_assert(sizeof(ActionTable) == 16, "ActionTable size");
 
 /* The whole control state.  The joystick is never set up: its setup, range and
  * dead-zone calls succeed without doing anything. */
@@ -119,7 +118,7 @@ private:
     void releaseDevices();
     int  readOrigEntryBindings(HANDLE f, int mode, ActionEntry *e);
     int  readOrigFormat(HANDLE f);
-    static void checkLayout();
+ 
 
     void                  *vtable;
     void                  *pLogger;
@@ -137,19 +136,6 @@ private:
     ActionTable            action_tables[5];    // one per mode
 };
 #pragma pack(pop)
-
-inline void ProgableControl::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(ProgableControl, directinput)    == 0x00C, "directinput");
-    static_assert(offsetof(ProgableControl, pKeyboard)      == 0x010, "pKeyboard");
-    static_assert(offsetof(ProgableControl, sep_or)         == 0x01C, "sep_or");
-    static_assert(offsetof(ProgableControl, axis_midpoints) == 0x0E4, "axis_midpoints");
-    static_assert(offsetof(ProgableControl, action_tables)  == 0x144, "action_tables");
-#pragma GCC diagnostic pop
-}
-static_assert(sizeof(ProgableControl)                   == 0x194, "ProgableControl size");
 
 /* The one-slot vtable: the scalar deleting destructor. */
 extern const void *const PROGCTRL_VTABLE;

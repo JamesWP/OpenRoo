@@ -388,8 +388,8 @@ void LevelPlacements::initTileQuad()
 
 /* The block is packed but 4-aligned in memory; its head is the quad the scene
  * renderer animates. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
 
 /* The lift and slide passes.  Counts compare unsigned.  The block itself is
  * passed as the scene renderer's quad: tileQuad heads it. */
@@ -425,4 +425,4 @@ void LevelPlacements::drawSlides(Game *g, ThemeAssetBlock *theme,
                              slides_.count_, theme->slot(THEME_OBJ_PLATFORM),
                              d3d, now, animTime, 0x14, 0);
 }
-#pragma GCC diagnostic pop
+ 

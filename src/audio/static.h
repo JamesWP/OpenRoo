@@ -59,11 +59,11 @@ public:
 private:
 /* COM out-parameters need the field's address; both are 4-aligned, so the
  * packed-member warning is moot. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     IDirectSoundBuffer   **soundbufferSlot() { return &soundbuffer_; }
     IDirectSound3DBuffer **threeDBufferSlot() { return &threeDBuffer_; }
-#pragma GCC diagnostic pop
+ 
 
     void                  *vtable_;
     void                  *logger_;     // stored, never used here

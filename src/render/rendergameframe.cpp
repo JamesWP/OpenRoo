@@ -58,7 +58,7 @@
 /* Every pointer this file takes into the game's packed layouts (camera,
  * focus, placement block, theme records) may be unaligned; x86 reads them
  * without complaint. */
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
 
 /* ─── Section 2: timing, tick, camera, listener ─────────────────────────── */
 

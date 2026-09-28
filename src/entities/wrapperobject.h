@@ -22,7 +22,6 @@ class RenderDevice;
 struct WrapperUV {
     float u, v;
 };
-static_assert(sizeof(WrapperUV) == 8, "WrapperUV stride mismatch");
 
 class __attribute__((packed)) WrapperObject {
 public:

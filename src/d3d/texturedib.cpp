@@ -18,7 +18,7 @@
 /* LoadedImage and SceneTexture are packed for the packed records that embed
  * them; their members are 4-aligned all the same, so passing a member's
  * address as a COM out-parameter is safe. */
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
 
 
 /* The name-copy length, computed here rather than by the CRT. */

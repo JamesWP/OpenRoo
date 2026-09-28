@@ -62,11 +62,11 @@ public:
     void initTileQuad();
 
     /* The block is packed but 4-aligned in memory. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     const float           *exitPos() const      { return exitPos_; }
     const float           *exitRot() const      { return exitRot_; }
-#pragma GCC diagnostic pop
+ 
     const PlacementList   &lifts() const        { return lifts_; }
     const PlacementList   &slides() const       { return slides_; }
     const PlacementList   &breakables() const   { return breakables_; }

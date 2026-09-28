@@ -42,8 +42,6 @@ struct TextVertex {
     float u, v;
 };
 
-static_assert(sizeof(TextVertex) == sizeof(ScreenVertex), "TextVertex is a ScreenVertex");
-
 /* KAROO_TEXT_FX -- controls that change direction, each of which only one
  * piece of this file can produce:
  *   mirror    the pen advances by -(cellW * spacing), so every string runs

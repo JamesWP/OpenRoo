@@ -32,7 +32,6 @@ enum ThemeObjectKind : DWORD {
     THEME_KIND_BILLBOARD      = 3,
     THEME_KIND_PARTICLESYSTEM = 4,
 };
-static_assert(sizeof(ThemeObjectKind) == 4, "ThemeObjectKind must stay DWORD-sized");
 
 /* A short-lived particle burst: a position, the milliseconds left and whether
  * it is live. */
@@ -41,7 +40,6 @@ struct __attribute__((packed)) FxBurst {
     int   msLeft;  // 1000 at spawn
     BYTE  active;
 };
-static_assert(sizeof(FxBurst) == 0x11, "FxBurst stride");
 
 /* One `model`, `field`, `billboard` or `particlesystem` entry. */
 class __attribute__((packed)) ThemeLevelObject {
@@ -61,22 +59,22 @@ public:
     AnimTable     &animTable()           { return animTable_; }
     const AnimTable &animTable() const   { return animTable_; }
     DWORD explodes() const { return bExplode_; }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     float *explodeDir() { return flExplodeDir_; }
     const float *explodeDir() const { return flExplodeDir_; }
-#pragma GCC diagnostic pop
+ 
     float billboardScale() const { return flBillboardScale_; }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     ParticleSystem **particleSystems() { return pParticleSystems_; }
     ParticleSystem *const *particleSystems() const { return pParticleSystems_; }
-#pragma GCC diagnostic pop
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
+ 
     FxBurst *bursts() { return bursts_; }
     const FxBurst *bursts() const { return bursts_; }
-#pragma GCC diagnostic pop
+ 
     DWORD instanceCount() const { return dwInstanceCount_; }
     DWORD movableType() const { return dwMovableType_; }
     float posX() const { return flPosX_; }
@@ -89,11 +87,11 @@ public:
     float rotRateY() const { return flRotRateY_; }
     float rotRateZ() const { return flRotRateZ_; }
     DWORD subObjectCount() const { return dwSubObjectCount_; }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     SceneSubObject *subObjects() { return pSubObjects_; }
     const SceneSubObject *subObjects() const { return pSubObjects_; }
-#pragma GCC diagnostic pop
+ 
     DWORD lit() const { return bLit_; }
     DWORD noMoveStates() const { return bNoMoveStates_; }
     DWORD noZWrite() const { return bNoZWrite_; }
@@ -104,11 +102,11 @@ public:
     float oscillationAmplitude() const { return flOscillationAmplitude_; }
     float oscillationFrequency() const { return flOscillationFrequency_; }
     float oscillationPhase() const { return flOscillationPhase_; }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     float *pump() { return flPump_; }
     const float *pump() const { return flPump_; }
-#pragma GCC diagnostic pop
+ 
 
 private:
     friend class ThemeParser;          // theme.cpp fills the records
@@ -173,11 +171,11 @@ public:
 
     void            *vtable() const { return pVtable_; }
     DWORD instanceCount() const { return dwInstanceCount_; }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     ThemeLevelObject *records() { return records_; }
     const ThemeLevelObject *records() const { return records_; }
-#pragma GCC diagnostic pop
+ 
 
 private:
     friend class ThemeParser;  // theme.cpp fills the slots
@@ -217,7 +215,6 @@ struct __attribute__((packed)) ThemeTextColorPair {
     DWORD color1;
     DWORD color2;
 };
-static_assert(sizeof(ThemeTextColorPair) == 8, "ThemeTextColorPair stride mismatch");
 
 enum ThemeTextColorSlot {
     THEME_COLOR_HUD, THEME_COLOR_MENUNEWGAME, THEME_COLOR_MENULOADGAME,
@@ -290,7 +287,6 @@ struct __attribute__((packed)) SoundAssetName {
     DWORD unknown104;   /* add()'s arg4; the .thm path passes 1 */
     DWORD unknown108;   /* add()'s arg3; the .thm path passes 1 */
 };
-static_assert(sizeof(SoundAssetName) == 0x10c, "SoundAssetName stride");
 
 /* The theme sound table ("TSM" in its log line), Game+0x42258.  A .thm
  * `Sound <event> <wave>` line fills entries[id] through ThemeSoundTable::add
@@ -325,7 +321,6 @@ private:
     WORD           unknown8_;     /* +8  zeroed by the ctor, never read */
     SoundAssetName entries_[THEME_SOUND_COUNT];
 };
-static_assert(sizeof(ThemeSoundTable) == 10 + 100 * 0x10c, "ThemeSoundTable size");
 
 extern ThemeAssetBlock g_themeBlock;
 

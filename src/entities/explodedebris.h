@@ -54,10 +54,10 @@ public:
     int vertexCount() const { return nVertexCount_; }
     DWORD active() const { return bActive_; }
     /* 4-aligned in practice; the class is packed only for its embedders. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     float *samples() { return samples_; }
-#pragma GCC diagnostic pop
+ 
     DWORD cursor() const { return cursor_; }
     void  setCursor(DWORD c) { cursor_ = c; }
     float explodeScaledCount() const { return flExplodeScaledCount_; }

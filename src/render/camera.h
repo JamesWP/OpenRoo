@@ -22,7 +22,6 @@ class Game;
  * VALUE to UpdateViewTransform: [5] is the yaw the camera turns
  * towards, [6..8] the point `target` follows.  [0..4] are not read here. */
 struct CameraFocus { float f[9]; };
-static_assert(sizeof(CameraFocus) == 0x24, "CameraFocus size");
 
 class __attribute__((packed)) CameraGlobals {
 public:
@@ -33,16 +32,16 @@ public:
     void updateViewTransform(RenderDevice *d3d, Game *g, CameraFocus focus,
                              double dt);
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     float *eye() { return eye_; }
     const float *eye() const { return eye_; }
-#pragma GCC diagnostic pop
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
+ 
     float *target() { return target_; }
     const float *target() const { return target_; }
-#pragma GCC diagnostic pop
+ 
     float yaw() const { return yaw_; }
     void  setYaw(float y) { yaw_ = y; }
     float pitch() const { return pitch_; }

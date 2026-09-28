@@ -46,7 +46,7 @@
 /* ThemeLevelObject is packed, so its embedded members (wrapper, explode,
  * animTable, the sub-objects) are only 1-aligned by declaration -- the record
  * stride makes that unavoidable. */
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
 
 enum { KIND_MODEL = 1, KIND_QUAD = 2, KIND_BILLBOARD = 3 };
 static const float HALF_PI   = 1.5707963705062866f;

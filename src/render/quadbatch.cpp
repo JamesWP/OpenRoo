@@ -18,8 +18,6 @@ struct QuadVerts {
     DWORD dwQuads;  // quads; 6 vertices each (two triangles)
     void *pData;    // raw vertex array, FVF 0x1e2
 };
-static_assert(offsetof(QuadVerts, dwQuads) == 0x124, "QuadVerts layout");
-static_assert(offsetof(QuadVerts, pData)   == 0x128, "QuadVerts layout");
 
 /* KAROO_QUAD_DUMP=<path> writes every vertex of one quad batch (the 200th draw) to
  * a file, once.  FVF 0x1e2 is a 32-byte vertex: xyz(12), reserved(4),

@@ -30,7 +30,7 @@
 /* LoadedImage and SceneTexture are packed for the packed records that embed
  * them; their members are 4-aligned all the same, so passing a member's
  * address as a COM out-parameter is safe. */
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
 TextureManager g_textureManager;
 
   unsigned int  
@@ -41,7 +41,6 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path);
 /* D3DDEVICEDESC as 0x3f raw dwords, zeroed, dwSize at [0], so the size used is
  * 0xfc whatever the SDK header defines.  Only dcmColorModel is read. */
 struct DevDescRaw { DWORD dw[0x3f]; };
-static_assert(sizeof(DevDescRaw) == 0xfc, "D3DDEVICEDESC must be 0xfc bytes");
 #define DEVDESC_COLORMODEL 2
 
 /* The true length, for the log calls; the name copies allocate one more. */

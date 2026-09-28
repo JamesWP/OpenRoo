@@ -151,11 +151,11 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                 if (rec->explodes() == 0) {
                     rec->mesh()->drawMeshBuffer(dev, (DWORD)frame);
                 } else {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
                     rec->explodeDebris().advance((float)(unsigned long long)debrisMs * K_DEBRIS_MS);
                     rec->explodeDebris().draw(dev);
-#pragma GCC diagnostic pop
+ 
                 }
             }
         }

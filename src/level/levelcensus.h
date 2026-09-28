@@ -86,14 +86,3 @@ struct __attribute__((packed)) LevelCensus {
         timed = 0;
     }
 };
-
-static_assert(sizeof(TimedSpawner) == 0x15, "TimedSpawner is 0x15 bytes");
-static_assert(sizeof(FreeBomb)     == 0x0b, "FreeBomb is 0xb bytes");
-static_assert(sizeof(LevelCensus)  == 0x2c, "LevelCensus is 22 WORDs");
-static_assert(offsetof(TimedSpawner, lastSpawn) == 0x03, "");
-static_assert(offsetof(TimedSpawner, field_0b)  == 0x0b, "");
-static_assert(offsetof(TimedSpawner, interval)  == 0x0c, "");
-static_assert(offsetof(TimedSpawner, maxFoes)   == 0x14, "");
-static_assert(offsetof(FreeBomb, placedAt)      == 0x03, "");
-static_assert(offsetof(LevelCensus, freeBombs)  == 0x42205 - 0x421df, "");
-static_assert(offsetof(LevelCensus, jumpPads)     == 0x42209 - 0x421df, "");

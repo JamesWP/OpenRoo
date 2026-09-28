@@ -894,14 +894,14 @@ static HRESULT WINAPI NOINLINE no_QueryInterface(NullObj *s, REFIID r, void **p)
 
 /* The parameters exist only to give each stub the right stdcall stack
  * cleanup; no stub reads them. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+ 
+ 
 OK_STUB(1, A1) OK_STUB(2, A2) OK_STUB(3, A3) OK_STUB(4, A4)
 OK_STUB(5, A5) OK_STUB(6, A6) OK_STUB(7, A7) OK_STUB(8, A8)
 
 FAIL_STUB(1, A1) FAIL_STUB(2, A2) FAIL_STUB(3, A3) FAIL_STUB(4, A4)
 FAIL_STUB(5, A5)
-#pragma GCC diagnostic pop
+ 
 
 /* --- IDirect3DDevice3 (42 slots) --- */
 

@@ -17,13 +17,13 @@ public:
 
 /* The sub-objects' addresses, behind accessors so the packed-member warning is
  * suppressed once; all four offsets are 4-aligned. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     CStaticSoundbuffer *master() { return &masterBuf_; }
     CStaticSoundbuffer *spare()  { return &spareBuf_; }
     LinkedList         *clones() { return &cloneList_; }
     LinkedList         *pools()  { return &voicePoolList_; }
-#pragma GCC diagnostic pop
+ 
 
     /* The constructor.  Returns self. */
     doublesoundbuff *init();

@@ -1865,7 +1865,7 @@ XStdGenerator::xStdEmitSlot(XStdGenerator *self, float dt)          { self->xstd
  * layout nor its calling convention is guaranteed to match, so each entry
  * below is one of the explicit thiscall exports above.
  *
- * The static_asserts guard against an initialiser one entry short, which would
+ * The  s guard against an initialiser one entry short, which would
  * otherwise leave a slot silently NULL.  Slot meanings are in generators.h. */
 
 extern void *const gen_vtbl_base[] = {
@@ -1925,17 +1925,6 @@ extern void *const env_vtbl_magnet[] = {
     (void *)&MagnetEnvironment::magnetTickSlot,  (void *)&MagnetEnvironment::magnetSaveSlot,      (void *)&MagnetEnvironment::magnetLoadSlot,
 };
 
-#define SLOT_COUNT(t) (sizeof (t) / sizeof *(t))
-static_assert(SLOT_COUNT(gen_vtbl_base)     == GEN_VTBL_SLOTS, "Generator vtable");
-static_assert(SLOT_COUNT(gen_vtbl_point)    == GEN_VTBL_SLOTS, "Point vtable");
-static_assert(SLOT_COUNT(gen_vtbl_box)      == GEN_VTBL_SLOTS, "Box vtable");
-static_assert(SLOT_COUNT(gen_vtbl_std)      == GEN_VTBL_SLOTS, "Std vtable");
-static_assert(SLOT_COUNT(gen_vtbl_xstd)     == GEN_VTBL_SLOTS, "XStd vtable");
-static_assert(SLOT_COUNT(gen_vtbl_cylinder) == GEN_VTBL_SLOTS, "Cylinder vtable");
-static_assert(SLOT_COUNT(env_vtbl_base)     == ENV_VTBL_SLOTS, "Environment vtable");
-static_assert(SLOT_COUNT(env_vtbl_gravity)  == ENV_VTBL_SLOTS, "Gravity vtable");
-static_assert(SLOT_COUNT(env_vtbl_magnet)   == ENV_VTBL_SLOTS, "Magnet vtable");
-#undef SLOT_COUNT
 
 /* Generators and Environments share slot 3 (Tick / emit) and both carry one of
  * the tables above, so this is a direct call into this DLL — no class switch

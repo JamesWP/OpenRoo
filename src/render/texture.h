@@ -45,10 +45,10 @@ public:
     void setLoadedState(int s)     { loadedState_ = s; }
     void setImageNamePtr(char *p)  { ImageName_ = p; }
     /* The surface's address, for CreateSurface's out-parameter; 4-aligned. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     IDirectDrawSurface4 **textureSurfaceSlot() { return &pTextureSurface_; }
-#pragma GCC diagnostic pop
+ 
 
 private:
     friend class SceneTexture;

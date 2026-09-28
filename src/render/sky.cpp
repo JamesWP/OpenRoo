@@ -18,7 +18,7 @@
 /* SkyBackground is packed for its place in the packed theme block (it holds
  * SceneTextures, which are classes); its members are 4-aligned within it all
  * the same, so taking their addresses is safe. */
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
 
 #define SKY_FVF        VertexFormat::Lit
 #define SKY_QUADS      6
