@@ -11,6 +11,10 @@ class RenderDevice;
  * a live region [pRingHead, pRingCurrent) and a free region [pRingCurrent,
  * pRingTail].  Generators claim at pRingCurrent; environments age and retire. */
 struct ParticleNode {
+    /* The diffuse the fills write: dwDiffuse, or the KAROO_PARTICLE_FX=tint
+     * colour. */
+    DWORD colour() const;
+
     ParticleNode *pPrev;          // +0x00
     ParticleNode *pNext;          // +0x04
     float         flX, flY, flZ;  // +0x08..+0x10 position

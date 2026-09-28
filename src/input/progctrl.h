@@ -19,6 +19,9 @@ typedef void (*ActionCallback)(int key_id, int strength, void *context);
 
 /* One key bound to an action. */
 struct KeyBind {
+    /* Frees kb and every binding chained after it; NULL frees nothing. */
+    static void freeChain(KeyBind *kb);
+
     int      scancode;  // DirectInput scan code, 0..255
     int      strength;  // passed to the callback; 100 for a plain key
     KeyBind *next;

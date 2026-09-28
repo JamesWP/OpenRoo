@@ -34,7 +34,7 @@ ActionEntry *ActionTable::getOrCreate(const char *name)
     return e;
 }
 
-static void free_keybinds(KeyBind *kb)
+void KeyBind::freeChain(KeyBind *kb)
 {
     while (kb) { KeyBind *n = kb->next; HeapFree(GetProcessHeap(), 0, kb); kb = n; }
 }
@@ -44,7 +44,7 @@ void ActionTable::freeAll()
     ActionEntry *e = head;
     while (e) {
         ActionEntry *n = e->chain;
-        free_keybinds(e->kbd);
+        KeyBind::freeChain(e->kbd);
         HeapFree(GetProcessHeap(), 0, e);
         e = n;
     }
@@ -235,7 +235,7 @@ void ProgableControl::clearBindings(unsigned short mode, const char *name)
     if (mode >= 5) return;
     ActionEntry *e = action_tables[mode].find(name);
     if (!e) return;
-    free_keybinds(e->kbd);
+    KeyBind::freeChain(e->kbd);
     e->kbd = nullptr;
 }
 
