@@ -83,8 +83,8 @@ void dethash_particles(ParticleSystem *ps)
 
     g_systems++;
     // The ring as particles.cpp walks it: head up to, not including, current.
-    ParticleNode *n = ps->ring.pRingHead;
-    for (DWORD guard = 0; n && n != ps->ring.pRingCurrent && guard <= ps->ring.dwRingCount;
+    ParticleNode *n = ps->ring().pRingHead;
+    for (DWORD guard = 0; n && n != ps->ring().pRingCurrent && guard <= ps->ring().dwRingCount;
          n = n->pNext, guard++) {
         fold_sub(0, &n->flX,       3 * sizeof(float));
         fold_sub(1, n->flVel,      3 * sizeof(float));

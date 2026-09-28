@@ -71,7 +71,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
             dev->SetRenderState(RS::SpecularEnable, 1);
 
         if (rec->kind() == THEME_KIND_PARTICLESYSTEM)
-            ps_vtick(rec->particleSystems()[system], (float)(dt * K_MS));
+            (rec->particleSystems()[system])->vtick((float)(dt * K_MS));
 
         for (DWORD s = 0; s < rec->subObjectCount(); s++) {
             // pSubObjects lives in a packed struct; sub is a copy so its
@@ -133,18 +133,18 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                 // pointer.
                 if (move == THEME_MOVE_TRANSLATE) {
                     m4_translate(&world, ip[0], ip[1], ip[2]);
-                    gen_vset_position(Particle_GetGenerator(ps, NULL), p[0], p[1], p[2]);
+                    gen_vset_position(ps->getGenerator(NULL), p[0], p[1], p[2]);
                     camera_view_dir(view);
-                    ps_vset_vector(ps, view[0], view[1], view[2]);
+                    ps->vsetVector(view[0], view[1], view[2]);
                     Mat4 corners;
                     m4_rot_y(&corners, (float)-((double)o[1] + ir[1]));
-                    ps_vtransform_corners(ps, corners.m);
+                    ps->vtransformCorners(corners.m);
                 } else if (move == THEME_MOVE_GENERATOR) {
                     m4_identity(&world);
-                    gen_vset_position(Particle_GetGenerator(ps, NULL),
+                    gen_vset_position(ps->getGenerator(NULL),
                                       p[0] + ip[0], p[1] + ip[1], p[2] + ip[2]);
                     camera_view_dir(view);
-                    ps_vset_vector(ps, view[0], view[1], view[2]);
+                    ps->vsetVector(view[0], view[1], view[2]);
                 } else {
                     Mat4 sc, rx, ry, rz, tr, a, b;
                     m4_identity(&sc);
@@ -158,14 +158,14 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                     mul(&a, &b, &rz);
                     mul(&world, &a, &tr);
                     camera_view_dir(view);
-                    ps_vset_vector(ps, view[0], view[1], view[2]);
+                    ps->vsetVector(view[0], view[1], view[2]);
                     Mat4 corners;
                     m4_rot_y(&corners, (float)-((double)o[1] + ir[1]));
-                    ps_vtransform_corners(ps, corners.m);
+                    ps->vtransformCorners(corners.m);
                 }
 
                 dev->SetTransform(Transform::World, &world);
-                ps_vrender(ps, dev);
+                ps->vrender(dev);
             }
         }
         dev->SetRenderState(RS::SpecularEnable, 0);
