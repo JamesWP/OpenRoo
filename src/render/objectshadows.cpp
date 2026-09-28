@@ -67,13 +67,13 @@ static void shadow_matrix(Mat4 *m, const float *pos)
 static int animation_frame(ThemeLevelObject *rec, double t, float phase,
                            unsigned int animKey)
 {
-    if (rec->bNoMoveStates != 0) {
+    if (rec->noMoveStates() != 0) {
         // No frame-count guard here: a zero-frame slot still draws frame 0,
         // which DrawMeshBuffer clamps an out-of-range frame to anyway.
-        AnimSlot *s = rec->animTable.lookup(0x14);
+        AnimSlot *s = rec->animTable().lookup(0x14);
         return s != NULL ? AnimSlot::frameOnClock(s, t) : 0;
     }
-    AnimSlot *s = rec->animTable.lookup(animKey);
+    AnimSlot *s = rec->animTable().lookup(animKey);
     if (s == NULL || s->numFrames() == 0)
         return 0;
     return AnimSlot::frameAtPhase(s, phase);
@@ -88,44 +88,44 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
     RenderDevice *dev = d3d;
     dev->SetRenderState(RS::SpecularEnable, 0);
 
-    for (DWORD i = 0; i < slot->dwInstanceCount; i++) {
-        ThemeLevelObject *rec = &slot->records[i];
-        if (rec->bNoShadow != 0)
+    for (DWORD i = 0; i < slot->instanceCount(); i++) {
+        ThemeLevelObject *rec = &slot->records()[i];
+        if (rec->noShadow() != 0)
             continue;
-        dev->SetRenderState(RS::ZWriteEnable, rec->bNoZWrite == 0);
+        dev->SetRenderState(RS::ZWriteEnable, rec->noZWrite() == 0);
 
-        for (DWORD s = 0; s < rec->dwSubObjectCount; s++) {
+        for (DWORD s = 0; s < rec->subObjectCount(); s++) {
             for (unsigned int k = 0; k < count; k++) {
                 const float *p = pos + k * 3;
                 const float *r = rot + k * 3;
                 int u = (int)p[0], v = -(int)p[2];
                 const Tile *cell = game->map()->tile(u, v);
 
-                if (!condition_holds(rec->pSubObjects[s].dwVisibilityGate, game, cell))
+                if (!condition_holds(rec->subObjects()[s].dwVisibilityGate, game, cell))
                     continue;
-                if (rec->kind != THEME_KIND_MODEL)
+                if (rec->kind() != THEME_KIND_MODEL)
                     continue;
 
-                float cellPhase = rec->bRandomYAngle != 0 ? cell->itemPhase() : 0.0f;
-                float angX = (float)(t * rec->flRotRateX);
-                float angY = (float)(t * rec->flRotRateY + cellPhase);
-                float angZ = (float)(t * rec->flRotRateZ);
+                float cellPhase = rec->randomYAngle() != 0 ? cell->itemPhase() : 0.0f;
+                float angX = (float)(t * rec->rotRateX());
+                float angY = (float)(t * rec->rotRateY() + cellPhase);
+                float angZ = (float)(t * rec->rotRateZ());
 
-                float y = rec->flPosY;
-                if (rec->flOscillationAmplitude != 0.0f) {
-                    double a = rec->flOscillationFrequency * t;
-                    if (rec->bOscillateRandom != 0)
+                float y = rec->posY();
+                if (rec->oscillationAmplitude() != 0.0f) {
+                    double a = rec->oscillationFrequency() * t;
+                    if (rec->oscillateRandom() != 0)
                         a += cell->itemPhase() * K_PHASE_MUL;
-                    y = (float)(sin(a + rec->flOscillationPhase)
-                                * rec->flOscillationAmplitude + y);
+                    y = (float)(sin(a + rec->oscillationPhase())
+                                * rec->oscillationAmplitude() + y);
                 }
 
-                float sx = rec->flScaleX, sy = rec->flScaleY, sz = rec->flScaleZ;
-                if (rec->flPump[3] != 0.0f) {
-                    double pump = (sin(rec->flPump[3] * t) + 1.0) * 0.5;
-                    sx = (float)(pump * rec->flPump[0]) + sx;
-                    sy = (float)(pump * rec->flPump[1]) + sy;
-                    sz = (float)(pump * rec->flPump[2] + sz);
+                float sx = rec->scaleX(), sy = rec->scaleY(), sz = rec->scaleZ();
+                if (rec->pump()[3] != 0.0f) {
+                    double pump = (sin(rec->pump()[3] * t) + 1.0) * 0.5;
+                    sx = (float)(pump * rec->pump()[0]) + sx;
+                    sy = (float)(pump * rec->pump()[1]) + sy;
+                    sz = (float)(pump * rec->pump()[2] + sz);
                 }
 
                 Mat4 world, m, tmp;
@@ -138,7 +138,7 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                 compose(&world, &tmp, &m);
                 m4_rot_z(&m, angZ + r[2]);
                 compose(&tmp, &world, &m);
-                m4_translate(&m, rec->flPosX + p[0], y + p[1], rec->flPosZ + p[2]);
+                m4_translate(&m, rec->posX() + p[0], y + p[1], rec->posZ() + p[2]);
                 compose(&world, &tmp, &m);
                 shadow_matrix(&m, p);
                 compose(&tmp, &world, &m);
@@ -148,13 +148,13 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                 dev->SetTransform(Transform::World, &world);
 
                 int frame = animation_frame(rec, t, phase, animKey);
-                if (rec->bExplode == 0) {
-                    rec->pMesh->drawMeshBuffer(dev, (DWORD)frame);
+                if (rec->explodes() == 0) {
+                    rec->mesh()->drawMeshBuffer(dev, (DWORD)frame);
                 } else {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-                    rec->explode.advance((float)(unsigned long long)debrisMs * K_DEBRIS_MS);
-                    rec->explode.draw(dev);
+                    rec->explodeDebris().advance((float)(unsigned long long)debrisMs * K_DEBRIS_MS);
+                    rec->explodeDebris().draw(dev);
 #pragma GCC diagnostic pop
                 }
             }

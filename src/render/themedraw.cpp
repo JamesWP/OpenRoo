@@ -64,19 +64,19 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
     const Player *player = g->player();
     LevelMap *map = g->map();
 
-    for (DWORD r = 0; r < slot->dwInstanceCount; r++) {
-        ThemeLevelObject *rec = &slot->records[r];
+    for (DWORD r = 0; r < slot->instanceCount(); r++) {
+        ThemeLevelObject *rec = &slot->records()[r];
 
-        if (rec->bSpecular != 0 && g->videoHighlights() != 0)
+        if (rec->specular() != 0 && g->videoHighlights() != 0)
             dev->SetRenderState(RS::SpecularEnable, 1);
 
-        if (rec->kind == THEME_KIND_PARTICLESYSTEM)
-            ps_vtick(rec->pParticleSystems[system], (float)(dt * K_MS));
+        if (rec->kind() == THEME_KIND_PARTICLESYSTEM)
+            ps_vtick(rec->particleSystems()[system], (float)(dt * K_MS));
 
-        for (DWORD s = 0; s < rec->dwSubObjectCount; s++) {
+        for (DWORD s = 0; s < rec->subObjectCount(); s++) {
             // pSubObjects lives in a packed struct; sub is a copy so its
             // fields stay aligned.
-            const SceneSubObject sub = rec->pSubObjects[s];
+            const SceneSubObject sub = rec->subObjects()[s];
             for (DWORD n = 0; n < count; n++) {
                 const float *ip = pos[n], *ir = rot[n];
                 // PRESERVED: the instance's cell is read with no bounds check,
@@ -94,39 +94,39 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                 } else {
                     dev->SetRenderState(RS::AlphaBlendEnable, 0);
                 }
-                if (rec->kind != THEME_KIND_PARTICLESYSTEM)
+                if (rec->kind() != THEME_KIND_PARTICLESYSTEM)
                     continue;
 
-                ParticleSystem *ps = rec->pParticleSystems[system];
+                ParticleSystem *ps = rec->particleSystems()[system];
 
                 // The record's offset and spin.
-                float p[3] = { rec->flPosX, rec->flPosY, rec->flPosZ };
+                float p[3] = { rec->posX(), rec->posY(), rec->posZ() };
                 float o[3] = { 0.0f, 0.0f, 0.0f };
-                if (rec->bRandomYAngle != 0)
+                if (rec->randomYAngle() != 0)
                     o[1] = cell->itemPhase();
-                o[0] = (float)(rec->flRotRateX * t);
-                o[1] = (float)(rec->flRotRateY * t + o[1]);
-                o[2] = (float)(rec->flRotRateZ * t);
+                o[0] = (float)(rec->rotRateX() * t);
+                o[1] = (float)(rec->rotRateY() * t + o[1]);
+                o[2] = (float)(rec->rotRateZ() * t);
 
-                const float amp = rec->flOscillationAmplitude;
+                const float amp = rec->oscillationAmplitude();
                 if (!(amp == 0.0f || amp != amp)) {  // zero, or NaN, skips the oscillation
-                    double arg = rec->flOscillationFrequency * t;
-                    if (rec->bOscillateRandom != 0)
+                    double arg = rec->oscillationFrequency() * t;
+                    if (rec->oscillateRandom() != 0)
                         arg += (double)cell->itemPhase() * K_PHASE_SCALE;
                     p[1] = (float)(sin(arg) * amp + p[1]);
                 }
 
                 float scale[3] = { 1.0f, 1.0f, 1.0f };
-                const float rate = rec->flPump[3];
+                const float rate = rec->pump()[3];
                 if (!(rate == 0.0f || rate != rate)) {
                     double w = (sin(t * rate) + K_ONE) * K_HALF;
                     for (int i = 0; i < 3; i++)
-                        scale[i] = (float)(w * rec->flPump[i] + K_ONE);
+                        scale[i] = (float)(w * rec->pump()[i] + K_ONE);
                 }
 
                 float view[3];
                 Mat4 world;
-                const DWORD move = rec->dwMovableType;
+                const DWORD move = rec->movableType();
                 // PRESERVED: movable types 1 and 2 place the generator through
                 // Particle_GetGenerator(ps, NULL), which returns NULL for a
                 // system with none; the position write then derefs a null
