@@ -488,7 +488,18 @@ template <typename T> struct Cursor {
     T   *at;
     int  count;
 };
-struct ThemeParser {
+class ThemeParser {
+public:
+    /* Parses fp into block; the parse state starts cleared. */
+    void run(Game *g, RenderDevice *dev, ThemeAssetBlock *b, GameLogger *log,
+             FILE *f)
+    {
+        *this = ThemeParser();
+        game = g; d3d = dev; block = b; logger = log; fp = f;
+        parseFile();
+    }
+
+private:
     Game            *game;
     RenderDevice    *d3d;
     ThemeAssetBlock *block;
@@ -945,10 +956,7 @@ bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
     if (fp == NULL)
         return false;
 
-    ThemeParser &p = s_parser;
-    p = ThemeParser();
-    p.game = game; p.d3d = d3d; p.block = this; p.logger = logger; p.fp = fp;
-    p.parseFile();
+    s_parser.run(game, d3d, this, logger, fp);
 
     theme_struct_dump_if_enabled(path);
     fclose(fp);
