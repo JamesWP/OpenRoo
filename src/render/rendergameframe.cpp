@@ -159,7 +159,7 @@ static void rso(const void *pos, const void *rot, unsigned count, ThemeObjectTyp
 
 static void rso_list(const PlacementList &l, ThemeObjectType t, double now)
 {
-    rso(l.pos, l.rot, l.count, t, now);
+    rso(l.pos(), l.rot(), l.count(), t, now);
 }
 
 /* The dying variant of a model: its fx slot's records each light their
@@ -224,7 +224,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
     rso_list(pl->glue(),        THEME_OBJ_GLUE,          now);
     rso_list(pl->breakables(),  THEME_OBJ_DESTRUCTFIELD, now);
     /* the jump pads animate: a 500 ms cycle, animation code 0x14 */
-    rso(pl->jumpPads().pos, pl->jumpPads().rot, pl->jumpPads().count, THEME_OBJ_JUMPPAD, now,
+    rso(pl->jumpPads().pos(), pl->jumpPads().rot(), pl->jumpPads().count(), THEME_OBJ_JUMPPAD, now,
         (float)fmod(now * 0.002, 1.0), 0x14, 0);
     rso_list(pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
     QuadBatch_Draw((QuadVerts *)pl, &g_themeBlock, d3d);
@@ -237,9 +237,9 @@ static void opaque_passes(Game *g, double now, double elapsed)
      * the first fx draw of the frame gets the elapsed-ms argument.  The
      * counter is a byte. */
     bool firstFx = true;
-    for (unsigned char i = 0; i < (unsigned)pl->destructibles().count; ++i) {
-        const float *pos = pl->destructibles().pos[i];
-        const float *rot = pl->destructibles().rot[i];
+    for (unsigned char i = 0; i < (unsigned)pl->destructibles().count(); ++i) {
+        const float *pos = pl->destructibles().pos()[i];
+        const float *rot = pl->destructibles().rot()[i];
         const int v = (unsigned char)(int)(pos[2] * -1.0f);
         Tile *t = g->map()->tile((unsigned char)(int)pos[0], v);
         if (t->field203() == 0) {
@@ -396,7 +396,7 @@ static void particles(const void *pos, const void *rot, unsigned count, ThemeObj
 
 static void particles_list(const PlacementList &l, ThemeObjectType t, double now, double elapsed)
 {
-    particles(l.pos, l.rot, l.count, t, now, elapsed);
+    particles(l.pos(), l.rot(), l.count(), t, now, elapsed);
 }
 
 /* A burst system is a slot whose first record is a particle-system object:
