@@ -8,9 +8,9 @@
 #include <dsound.h>
 #include <stddef.h>
 
-/* What the script player hands to CStream_Prepare.  Its copy is embedded in
- * the ScriptPlayer: "initwave" writes the file name, the fixed-sound setup the
- * rest.  Packed, because the ScriptPlayer field after it follows directly. */
+/* What the script player hands to CStreamSoundbuffer::prepare.  Its copy is
+ * embedded in the ScriptPlayer: "initwave" writes the file name, the
+ * fixed-sound setup the rest.  Packed, because the ScriptPlayer field after it follows directly. */
 struct __attribute__((packed)) WaveInfo {
     IDirectSound  *pDirectsound;
     DWORD          dwFlags;
@@ -33,7 +33,7 @@ public:
     static void * __attribute__((thiscall))
     scalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
 
-    /* Releases everything, as CStream_ReleaseResources, and deletes the lock. */
+    /* Releases everything, as releaseResources does, and deletes the lock. */
     void deinitInstance();
 
     /* Zeroes the object, sets its vtable and lock, and marks it done; returns

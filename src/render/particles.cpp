@@ -543,7 +543,7 @@ BOOL ParticleSystem::setCapacity(DWORD count)
     return ring_.alloc(count, 0) != 0;
 }
 
-/* Slot 4, Resize: free, then allocate again (ring_alloc frees as well). */
+/* Slot 4, Resize: free, then allocate again (RingBuffer::alloc frees as well). */
 BOOL ParticleSystem::resize(DWORD count)
 {
     ring_.release();

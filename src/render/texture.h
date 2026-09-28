@@ -36,7 +36,7 @@ public:
     scalarDtor(LoadedImage *self, unsigned int flags);
 
     /* Restore a lost surface and reload its image.
-     * TextureManager_LoadAll (scenetexture.cpp) is the outside caller. */
+     * TextureManager::loadAll (scenetexture.cpp) is the outside caller. */
     unsigned int load();
 
     /* The vtable pointer LoadedImage's ctor and dtor body install, and the same

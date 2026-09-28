@@ -713,7 +713,7 @@ void TextureManager::setLogger(GameLogger *logger)
     pLogger_ = logger;
 }
 
-/* Texture_Load every non-NULL cached image, head to tail, reading the next
+/* LoadedImage::load every non-NULL cached image, head to tail, reading the next
  * pointer before the load. */
 void TextureManager::loadAll()
 {

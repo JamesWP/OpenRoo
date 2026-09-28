@@ -14,7 +14,7 @@ ModelManager g_modelManager;
 /* ─── ModelManager ──────────────────────────────────────────────────────────
  *
  * The lookup lowercases the caller's name and every cached name in place
- * before comparing, as TextureManager_GetOrLoad does; the logged name is
+ * before comparing, as TextureManager::getOrLoad does; the logged name is
  * therefore the lowercased one. */
 static void mm_lower_inplace(char *s)
 {

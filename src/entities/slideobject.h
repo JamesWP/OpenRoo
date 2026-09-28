@@ -24,7 +24,7 @@ public:
     // One tick.
     void tick();
 
-    // Where it is drawn (LevelPlacements_DrawSlides), and its axis: kind 0x0a
+    // Where it is drawn (LevelPlacements::drawSlides), and its axis: kind 0x0a
     // runs along U, any other along V.
     float posU() const          { return posU_; }
     float posY() const          { return posY_; }

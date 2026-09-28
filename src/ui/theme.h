@@ -357,13 +357,13 @@ KAROO_LAYOUT_CHECKS(ThemeAssetBlock)
 struct __attribute__((packed)) SoundAssetName {
     char name[256];
     int  enabled;
-    DWORD unknown104;   /* ThemeSound_Add's arg4; the .thm path passes 1 */
-    DWORD unknown108;   /* ThemeSound_Add's arg3; the .thm path passes 1 */
+    DWORD unknown104;   /* ThemeSoundTable::add's arg4; the .thm path passes 1 */
+    DWORD unknown108;   /* ThemeSoundTable::add's arg3; the .thm path passes 1 */
 };
 static_assert(sizeof(SoundAssetName) == 0x10c, "SoundAssetName stride");
 
 /* The theme sound table ("TSM" in its log line), Game+0x42258.  A .thm
- * `Sound <event> <wave>` line fills entries[id] through ThemeSound_Add
+ * `Sound <event> <wave>` line fills entries[id] through ThemeSoundTable::add
  * (theme.cpp); the id is RegisterThemeSound's event number, so e.g. entry 0
  * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
  * 0x47, but the table holds 100 entries: ReleaseAll clears exactly
@@ -399,7 +399,7 @@ static_assert(sizeof(ThemeSoundTable) == 10 + 100 * 0x10c, "ThemeSoundTable size
 
 extern ThemeAssetBlock g_themeBlock;
 
-/* The `sound` keyword: event name to id, then ThemeSound_Add. */
+/* The `sound` keyword: event name to id, then ThemeSoundTable::add. */
 extern "C" __declspec(dllexport) bool __cdecl
 Theme_RegisterSound(Game *game, char *eventName, const char *waveName);
 

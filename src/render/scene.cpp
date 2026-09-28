@@ -21,7 +21,7 @@ Scene *Scene::construct()
 }
 
 /* Members in reverse.  The objects themselves are not freed -- only the list's
- * nodes, by List_Destruct. */
+ * nodes, by LinkedList::destruct. */
 void Scene::destruct()
 {
     textures_.destruct();
