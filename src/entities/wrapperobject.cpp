@@ -286,7 +286,7 @@ void *WrapperObject::vtbl()
 
 /* PRESERVED: frees the object itself, although no WrapperObject is ever
  * allocated alone; unreachable. */
-void *__attribute__((thiscall))
+void * 
 WrapperObject::scalarDtor(WrapperObject *self, unsigned int flags)
 {
     self->dtorBody();

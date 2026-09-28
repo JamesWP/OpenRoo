@@ -116,23 +116,23 @@ public:
     void constructBase();
 
     /* The vtable slots. */
-    static ParticleSystem *__attribute__((thiscall)) loadStream(void *fp, GameLogger *log);
-    static void *__attribute__((thiscall)) baseDtor(ParticleSystem *self, unsigned flags);
-    static void __attribute__((thiscall)) baseRelease(ParticleSystem *self, int flags);
-    static BOOL __attribute__((thiscall)) baseCopyFrom(ParticleSystem *self, const ParticleSystem *src);
-    static BOOL __attribute__((thiscall)) baseSetCapacity(ParticleSystem *self, DWORD n);
-    static BOOL __attribute__((thiscall)) baseResize(ParticleSystem *self, DWORD n);
-    static BOOL __attribute__((thiscall)) setGeneratorSlot(ParticleSystem *self, void *gen);
-    static BOOL __attribute__((thiscall)) setEnvironmentSlot(ParticleSystem *self, void *env);
-    static BOOL __attribute__((thiscall)) baseSave(ParticleSystem *self, void *fp, GameLogger *log);
-    static BOOL __attribute__((thiscall)) baseLoad(ParticleSystem *self, void *fp, GameLogger *log);
-    static void __attribute__((thiscall)) baseFill(ParticleSystem *);
-    static DWORD __attribute__((thiscall)) baseDrawNull(ParticleSystem *, RenderDevice *);
-    static void __attribute__((thiscall)) nopVec3(ParticleSystem *, float, float, float);
-    static void __attribute__((thiscall)) nopPtr(ParticleSystem *, void *);
-    static void __attribute__((thiscall)) quadReleaseSlot(ParticleSystem *self, int flags);
-    static void __attribute__((thiscall)) baseTick(ParticleSystem *self, DWORD dt);
-    static DWORD __attribute__((thiscall)) baseRender(ParticleSystem *self, RenderDevice *dev);
+    static ParticleSystem *  loadStream(void *fp, GameLogger *log);
+    static void *  baseDtor(ParticleSystem *self, unsigned flags);
+    static void   baseRelease(ParticleSystem *self, int flags);
+    static BOOL   baseCopyFrom(ParticleSystem *self, const ParticleSystem *src);
+    static BOOL   baseSetCapacity(ParticleSystem *self, DWORD n);
+    static BOOL   baseResize(ParticleSystem *self, DWORD n);
+    static BOOL   setGeneratorSlot(ParticleSystem *self, void *gen);
+    static BOOL   setEnvironmentSlot(ParticleSystem *self, void *env);
+    static BOOL   baseSave(ParticleSystem *self, void *fp, GameLogger *log);
+    static BOOL   baseLoad(ParticleSystem *self, void *fp, GameLogger *log);
+    static void   baseFill(ParticleSystem *);
+    static DWORD   baseDrawNull(ParticleSystem *, RenderDevice *);
+    static void   nopVec3(ParticleSystem *, float, float, float);
+    static void   nopPtr(ParticleSystem *, void *);
+    static void   quadReleaseSlot(ParticleSystem *self, int flags);
+    static void   baseTick(ParticleSystem *self, DWORD dt);
+    static DWORD   baseRender(ParticleSystem *self, RenderDevice *dev);
 
 protected:
     template <typename EmitFn> DWORD fillRing(EmitFn emit);
@@ -176,15 +176,15 @@ public:
     void pointConstruct();
 
     /* The vtable slots. */
-    static void __attribute__((thiscall)) pointFillSlot(PointParticleSystem *self);
-    static DWORD __attribute__((thiscall)) pointDrawSlot(PointParticleSystem *self, RenderDevice *dev);
-    static DWORD __attribute__((thiscall)) pointRender(PointParticleSystem *self, RenderDevice *dev);
-    static void *__attribute__((thiscall)) pointDtor(PointParticleSystem *self, unsigned flags);
-    static BOOL __attribute__((thiscall)) pointCopyFromSlot(PointParticleSystem *self, const ParticleSystem *src);
-    static BOOL __attribute__((thiscall)) pointSetCapacitySlot(PointParticleSystem *self, DWORD n);
-    static BOOL __attribute__((thiscall)) pointResizeSlot(PointParticleSystem *self, DWORD n);
-    static BOOL __attribute__((thiscall)) pointSave(PointParticleSystem *self, void *fp, GameLogger *log);
-    static BOOL __attribute__((thiscall)) pointLoad(PointParticleSystem *self, void *fp, GameLogger *log);
+    static void   pointFillSlot(PointParticleSystem *self);
+    static DWORD   pointDrawSlot(PointParticleSystem *self, RenderDevice *dev);
+    static DWORD   pointRender(PointParticleSystem *self, RenderDevice *dev);
+    static void *  pointDtor(PointParticleSystem *self, unsigned flags);
+    static BOOL   pointCopyFromSlot(PointParticleSystem *self, const ParticleSystem *src);
+    static BOOL   pointSetCapacitySlot(PointParticleSystem *self, DWORD n);
+    static BOOL   pointResizeSlot(PointParticleSystem *self, DWORD n);
+    static BOOL   pointSave(PointParticleSystem *self, void *fp, GameLogger *log);
+    static BOOL   pointLoad(PointParticleSystem *self, void *fp, GameLogger *log);
 
 private:
     void pointFill();
@@ -219,16 +219,16 @@ public:
     void faceConstruct();
 
     /* The vtable slots. */
-    static void __attribute__((thiscall)) faceFillSlot(FaceParticleSystem *self);
-    static DWORD __attribute__((thiscall)) faceDrawSlot(FaceParticleSystem *self, RenderDevice *dev);
-    static void *__attribute__((thiscall)) faceDtor(FaceParticleSystem *self, unsigned flags);
-    static BOOL __attribute__((thiscall)) faceCopyFromSlot(FaceParticleSystem *self, const FaceParticleSystem *src);
-    static BOOL __attribute__((thiscall)) faceSetCapacitySlot(FaceParticleSystem *self, DWORD n);
-    static BOOL __attribute__((thiscall)) faceResizeSlot(FaceParticleSystem *self, DWORD n);
-    static BOOL __attribute__((thiscall)) faceSave(FaceParticleSystem *self, void *fp, GameLogger *log);
-    static BOOL __attribute__((thiscall)) faceLoad(FaceParticleSystem *self, void *fp, GameLogger *log);
-    static void __attribute__((thiscall)) faceSetVectorSlot(FaceParticleSystem *self, float x, float y, float z);
-    static void __attribute__((thiscall)) faceTransformCorners(FaceParticleSystem *self, float *matrix);
+    static void   faceFillSlot(FaceParticleSystem *self);
+    static DWORD   faceDrawSlot(FaceParticleSystem *self, RenderDevice *dev);
+    static void *  faceDtor(FaceParticleSystem *self, unsigned flags);
+    static BOOL   faceCopyFromSlot(FaceParticleSystem *self, const FaceParticleSystem *src);
+    static BOOL   faceSetCapacitySlot(FaceParticleSystem *self, DWORD n);
+    static BOOL   faceResizeSlot(FaceParticleSystem *self, DWORD n);
+    static BOOL   faceSave(FaceParticleSystem *self, void *fp, GameLogger *log);
+    static BOOL   faceLoad(FaceParticleSystem *self, void *fp, GameLogger *log);
+    static void   faceSetVectorSlot(FaceParticleSystem *self, float x, float y, float z);
+    static void   faceTransformCorners(FaceParticleSystem *self, float *matrix);
 
 private:
     void faceFill();
@@ -278,16 +278,16 @@ public:
     void xfaceConstruct();
 
     /* The vtable slots. */
-    static void __attribute__((thiscall)) xfaceFillSlot(XFaceParticleSystem *self);
-    static DWORD __attribute__((thiscall)) xfaceDrawSlot(XFaceParticleSystem *self, RenderDevice *dev);
-    static void *__attribute__((thiscall)) xfaceDtor(XFaceParticleSystem *self, unsigned flags);
-    static void __attribute__((thiscall)) xfaceReleaseSlot(XFaceParticleSystem *self, int flags);
-    static BOOL __attribute__((thiscall)) xfaceCopyFromSlot(XFaceParticleSystem *self, const XFaceParticleSystem *src);
-    static BOOL __attribute__((thiscall)) xfaceSetCapacitySlot(XFaceParticleSystem *self, DWORD n);
-    static BOOL __attribute__((thiscall)) xfaceResizeSlot(XFaceParticleSystem *self, DWORD n);
-    static BOOL __attribute__((thiscall)) xfaceSave(XFaceParticleSystem *self, void *fp, GameLogger *log);
-    static BOOL __attribute__((thiscall)) xfaceLoad(XFaceParticleSystem *self, void *fp, GameLogger *log);
-    static void __attribute__((thiscall)) xfaceTickSlot(XFaceParticleSystem *self, DWORD dt);
+    static void   xfaceFillSlot(XFaceParticleSystem *self);
+    static DWORD   xfaceDrawSlot(XFaceParticleSystem *self, RenderDevice *dev);
+    static void *  xfaceDtor(XFaceParticleSystem *self, unsigned flags);
+    static void   xfaceReleaseSlot(XFaceParticleSystem *self, int flags);
+    static BOOL   xfaceCopyFromSlot(XFaceParticleSystem *self, const XFaceParticleSystem *src);
+    static BOOL   xfaceSetCapacitySlot(XFaceParticleSystem *self, DWORD n);
+    static BOOL   xfaceResizeSlot(XFaceParticleSystem *self, DWORD n);
+    static BOOL   xfaceSave(XFaceParticleSystem *self, void *fp, GameLogger *log);
+    static BOOL   xfaceLoad(XFaceParticleSystem *self, void *fp, GameLogger *log);
+    static void   xfaceTickSlot(XFaceParticleSystem *self, DWORD dt);
 
 private:
     void xfaceFill();
@@ -359,21 +359,21 @@ static_assert(sizeof(XFaceParticleSystem) == 0x96, "XFace size");
 /* ParticleSystem's virtual dispatch, through the object's own table. */
 inline void ParticleSystem::vtick(float dt)
 {
-    typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float);
+    typedef void (  *fn)(ParticleSystem *, float);
     ((fn)pVtable_[PS_VT_TICK])(this, dt);
 }
 inline void ParticleSystem::vsetVector(float x, float y, float z)
 {
-    typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float, float, float);
+    typedef void (  *fn)(ParticleSystem *, float, float, float);
     ((fn)pVtable_[PS_VT_SETVEC])(this, x, y, z);
 }
 inline void ParticleSystem::vrender(RenderDevice *dev)
 {
-    typedef DWORD (__attribute__((thiscall)) *fn)(ParticleSystem *, RenderDevice *);
+    typedef DWORD (  *fn)(ParticleSystem *, RenderDevice *);
     ((fn)pVtable_[PS_VT_RENDER])(this, dev);
 }
 inline void ParticleSystem::vtransformCorners(float *matrix)
 {
-    typedef void (__attribute__((thiscall)) *fn)(ParticleSystem *, float *);
+    typedef void (  *fn)(ParticleSystem *, float *);
     ((fn)pVtable_[PS_VT_XFORM])(this, matrix);
 }

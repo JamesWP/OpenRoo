@@ -40,7 +40,7 @@ static void tick_sound(Game *game)
         s->triggerPlayback(0);
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 Sim_AnimateScoreTallyStages(Game *self)
 {
     unsigned int now, el, lim, n;

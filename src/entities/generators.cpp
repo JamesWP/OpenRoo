@@ -818,7 +818,7 @@ Environment *Environment::create(const char *name)
     return NULL;
 }
 
-#define THISCALL_DECL __attribute__((thiscall))
+#define THISCALL_DECL  
 
 /* PRESERVED: the game's float compare treats an unordered operand (NaN) as
  * equal, so this treats NaN the same as exactly zero, unlike a plain `== 0`.
@@ -1663,7 +1663,7 @@ Environment * Environment::clone() const
 
 /* ─── Exports — vtable thunks ─── */
 
-#define THISCALL __attribute__((thiscall))
+#define THISCALL  
 
 /* All six slots, so a plain Environment never falls through to unimplemented
  * behaviour either. */

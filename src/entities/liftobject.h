@@ -37,7 +37,7 @@ private:
     // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
     // frees the memory).
     struct Vtbl {
-        void *(__attribute__((thiscall)) *scalarDeletingDtor)(LiftObject *self,
+        void *(  *scalarDeletingDtor)(LiftObject *self,
                                                               unsigned int flags);
     };
     static const Vtbl VTABLE;
@@ -46,7 +46,7 @@ private:
     static LiftObject *create();
     LiftObject();
     // Vtable slot 0.
-    static void *__attribute__((thiscall)) scalarDeletingDtor(LiftObject *self,
+    static void *  scalarDeletingDtor(LiftObject *self,
                                                               unsigned int flags);
     // Destroys through the object's own vtable, flags 1.
     void destroy();

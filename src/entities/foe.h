@@ -69,7 +69,7 @@ private:
     // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
     // frees the memory).  The remove destroys through it.
     struct Vtbl {
-        void *(__attribute__((thiscall)) *scalarDeletingDtor)(Foe *self,
+        void *(  *scalarDeletingDtor)(Foe *self,
                                                               unsigned int flags);
     };
     static const Vtbl VTABLE;
@@ -80,7 +80,7 @@ private:
     // The destructor body.
     void destroy();
     // Vtable slot 0.
-    static void *__attribute__((thiscall)) scalarDeletingDtor(Foe *self,
+    static void *  scalarDeletingDtor(Foe *self,
                                                               unsigned int flags);
 
     Tile *tile(int u, int v) const;

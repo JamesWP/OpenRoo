@@ -23,7 +23,7 @@ static void mm_lower_inplace(char *s)
             *s += ' ';
 }
 
-typedef void *(__attribute__((thiscall)) *mm_scalar_dtor_fn)(void *self, unsigned int flags);
+typedef void *(  *mm_scalar_dtor_fn)(void *self, unsigned int flags);
 
 static void mm_delete(CFaktMesh *m)
 {
@@ -93,7 +93,7 @@ void ModelManager::destruct()
     cache_.destruct();
 }
 
-ModelManager *__attribute__((thiscall))
+ModelManager * 
 ModelManager::scalarDestructor(ModelManager *self, unsigned char flags)
 {
     self->destruct();

@@ -73,7 +73,7 @@ void Config::destruct()
     vtable_ = g_ConfigVtable;
 }
 
-Config *__attribute__((thiscall))
+Config *
 Config::scalarDeletingDtor(Config *self, unsigned char flags)
 {
     self->destruct();

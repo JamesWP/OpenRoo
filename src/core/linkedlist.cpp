@@ -118,7 +118,7 @@ void LinkedList::destruct()
     clear();
 }
 
-LinkedList *__attribute__((thiscall))
+LinkedList * 
 LinkedList::scalarDeletingDtor(LinkedList *self, unsigned char bFreeSelf)
 {
     ++g_nScalarDtor;

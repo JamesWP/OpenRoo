@@ -70,7 +70,7 @@ static void attachLoopSound(Game *game,
     }
 }
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 Sim_InitLevelBasedSounds(Game *self)
 {
     Game *game = self;

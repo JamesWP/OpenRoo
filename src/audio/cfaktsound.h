@@ -47,7 +47,7 @@ public:
     IDirectSoundBuffer     *soundbuffer() const { return soundbuffer_; }
 
     /* Vtable slot 0.  Always embedded: the free flag is ignored. */
-    static CFaktSound *__attribute__((thiscall))
+    static CFaktSound * 
     scalarDeletingDtor(CFaktSound *self, DWORD free_memory);
 
 private:

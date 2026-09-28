@@ -174,7 +174,7 @@ public:
     int   gemsCollected() const                     { return gemsCollected_; }
     void  setGemsCollected(int n)                   { gemsCollected_ = n; }
 
-    static Player *__attribute__((thiscall))
+    static Player * 
     scalarDeletingDtor(Player *self, unsigned char flags);
 
 private:

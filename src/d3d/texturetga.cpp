@@ -75,7 +75,7 @@ static unsigned int ftol8(long double v)
 
 extern "C" {
 
-__declspec(dllexport) unsigned int __attribute__((thiscall))
+__declspec(dllexport) unsigned int  
 TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 {
     DDSURFACEDESC2 ddsd;

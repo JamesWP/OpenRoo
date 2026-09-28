@@ -128,7 +128,7 @@ void VoicePool::wipe()
             pBufs_[i].reset();
 
         if (pBufs_ != 0) {  // re-tested; harmless
-            typedef void *(__attribute__((thiscall)) *vec_dtor_fn)(void *self, int flags);
+            typedef void *(  *vec_dtor_fn)(void *self, int flags);
             vec_dtor_fn dtor = *(vec_dtor_fn *)pBufs_->vtable();
             dtor(pBufs_, 3);
         }

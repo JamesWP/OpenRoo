@@ -9,9 +9,9 @@
 extern "C" __declspec(dllexport) void *LevelObjBase_Vtable(void);
 
 /* Reinstalls the base table. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
+extern "C" __declspec(dllexport) void  
 LevelObjBase_DtorBody(void *self);
 
 /* The deleting destructor: returns this; bit 0 of flags frees. */
-extern "C" __declspec(dllexport) void *__attribute__((thiscall))
+extern "C" __declspec(dllexport) void * 
 LevelObjBase_ScalarDtor(void *self, unsigned int flags);

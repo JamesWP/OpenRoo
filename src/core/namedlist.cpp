@@ -131,7 +131,7 @@ void NamedEntryList::dtorBody()
     clear();
 }
 
-NamedEntryList *__attribute__((thiscall))
+NamedEntryList * 
 NamedEntryList::scalarDtor(NamedEntryList *self, unsigned char bFreeSelf)
 {
     ++g_nScalarDtor;

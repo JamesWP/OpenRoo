@@ -43,13 +43,13 @@ public:
     void baseGenConstruct();
 
     /* The vtable slots. */
-    static BOOL __attribute__((thiscall)) attachRingSlot(Generator *self, RingBuffer *ring);
-    static BOOL __attribute__((thiscall)) baseCopyFromSlot(Generator *self, const Generator *src);
-    static void *__attribute__((thiscall)) baseDtorSlot(Generator *self, unsigned flags);
-    static void __attribute__((thiscall)) nop1(void *, float);
-    static void __attribute__((thiscall)) nop3(void *, float, float, float);
-    static void __attribute__((thiscall)) nop4(void *, float, float, float, float);
-    static BOOL __attribute__((thiscall)) returnTrue(void *, void *);
+    static BOOL   attachRingSlot(Generator *self, RingBuffer *ring);
+    static BOOL   baseCopyFromSlot(Generator *self, const Generator *src);
+    static void *  baseDtorSlot(Generator *self, unsigned flags);
+    static void   nop1(void *, float);
+    static void   nop3(void *, float, float, float);
+    static void   nop4(void *, float, float, float, float);
+    static BOOL   returnTrue(void *, void *);
 
 protected:
     void baseGenDestruct();
@@ -91,12 +91,12 @@ public:
     void baseEnvConstruct();
 
     /* The vtable slots. */
-    static void *__attribute__((thiscall)) baseDtorSlot(Environment *self, unsigned flags);
-    static BOOL __attribute__((thiscall)) baseCopyFromSlot(Environment *self, const Environment *src);
-    static BOOL __attribute__((thiscall)) attachRingSlot(Environment *self, RingBuffer *ring);
-    static void __attribute__((thiscall)) baseTickSlot(Environment *, float);
-    static BOOL __attribute__((thiscall)) baseSaveSlot(Environment *, void *);
-    static BOOL __attribute__((thiscall)) baseLoadSlot(Environment *, void *);
+    static void *  baseDtorSlot(Environment *self, unsigned flags);
+    static BOOL   baseCopyFromSlot(Environment *self, const Environment *src);
+    static BOOL   attachRingSlot(Environment *self, RingBuffer *ring);
+    static void   baseTickSlot(Environment *, float);
+    static BOOL   baseSaveSlot(Environment *, void *);
+    static BOOL   baseLoadSlot(Environment *, void *);
 
 protected:
     BOOL envSameName(const Environment *src) const;
@@ -129,11 +129,11 @@ public:
     void gravityEnvConstruct();
 
     /* The vtable slots. */
-    static void *__attribute__((thiscall)) gravityDtorSlot(GravityEnvironment *self, unsigned flags);
-    static BOOL __attribute__((thiscall)) gravityCopyFromSlot(GravityEnvironment *self, const GravityEnvironment *src);
-    static BOOL __attribute__((thiscall)) gravitySaveSlot(GravityEnvironment *self, void *fp);
-    static BOOL __attribute__((thiscall)) gravityLoadSlot(GravityEnvironment *self, void *fp);
-    static void __attribute__((thiscall)) gravityTickSlot(GravityEnvironment *self, float dt);
+    static void *  gravityDtorSlot(GravityEnvironment *self, unsigned flags);
+    static BOOL   gravityCopyFromSlot(GravityEnvironment *self, const GravityEnvironment *src);
+    static BOOL   gravitySaveSlot(GravityEnvironment *self, void *fp);
+    static BOOL   gravityLoadSlot(GravityEnvironment *self, void *fp);
+    static void   gravityTickSlot(GravityEnvironment *self, float dt);
 
 private:
     void gravityTick(float dt);
@@ -188,11 +188,11 @@ public:
     void magnetEnvConstruct();
 
     /* The vtable slots. */
-    static void *__attribute__((thiscall)) magnetDtorSlot(MagnetEnvironment *self, unsigned flags);
-    static BOOL __attribute__((thiscall)) magnetCopyFromSlot(MagnetEnvironment *self, const MagnetEnvironment *src);
-    static BOOL __attribute__((thiscall)) magnetSaveSlot(MagnetEnvironment *self, void *fp);
-    static BOOL __attribute__((thiscall)) magnetLoadSlot(MagnetEnvironment *self, void *fp);
-    static void __attribute__((thiscall)) magnetTickSlot(MagnetEnvironment *self, float dt);
+    static void *  magnetDtorSlot(MagnetEnvironment *self, unsigned flags);
+    static BOOL   magnetCopyFromSlot(MagnetEnvironment *self, const MagnetEnvironment *src);
+    static BOOL   magnetSaveSlot(MagnetEnvironment *self, void *fp);
+    static BOOL   magnetLoadSlot(MagnetEnvironment *self, void *fp);
+    static void   magnetTickSlot(MagnetEnvironment *self, float dt);
 
 private:
     void magnetTick(float dt);
@@ -241,11 +241,11 @@ public:
     void stdGenConstruct();
 
     /* The vtable slots. */
-    static void *__attribute__((thiscall)) stdDtorSlot(StdGenerator *self, unsigned flags);
-    static BOOL __attribute__((thiscall)) stdCopyFromSlot(StdGenerator *self, const StdGenerator *src);
-    static BOOL __attribute__((thiscall)) stdSaveSlot(StdGenerator *self, void *fp);
-    static BOOL __attribute__((thiscall)) stdLoadSlot(StdGenerator *self, void *fp);
-    static void __attribute__((thiscall)) stdEmitSlot(StdGenerator *self, float dt);
+    static void *  stdDtorSlot(StdGenerator *self, unsigned flags);
+    static BOOL   stdCopyFromSlot(StdGenerator *self, const StdGenerator *src);
+    static BOOL   stdSaveSlot(StdGenerator *self, void *fp);
+    static BOOL   stdLoadSlot(StdGenerator *self, void *fp);
+    static void   stdEmitSlot(StdGenerator *self, float dt);
 
 protected:
     void stdEmit(float dt, const float *pos_off, const float *vel_off);
@@ -319,15 +319,15 @@ public:
     void xstdGenConstruct();
 
     /* The vtable slots. */
-    static void *__attribute__((thiscall)) xStdDtorSlot(XStdGenerator *self, unsigned flags);
-    static BOOL __attribute__((thiscall)) xStdCopyFromSlot(XStdGenerator *self, const XStdGenerator *src);
-    static BOOL __attribute__((thiscall)) xStdSaveSlot(XStdGenerator *self, void *fp);
-    static BOOL __attribute__((thiscall)) xStdLoadSlot(XStdGenerator *self, void *fp);
-    static void __attribute__((thiscall)) xStdSetPositionSlot(XStdGenerator *self, float x, float y, float z);
-    static void __attribute__((thiscall)) xStdSetVelocitySlot(XStdGenerator *self, float x, float y, float z, float m);
-    static void __attribute__((thiscall)) xStdSetDirectionSlot(XStdGenerator *self, float x, float y, float z);
-    static void __attribute__((thiscall)) xStdSetSpeedSlot(XStdGenerator *self, float m);
-    static void __attribute__((thiscall)) xStdEmitSlot(XStdGenerator *self, float dt);
+    static void *  xStdDtorSlot(XStdGenerator *self, unsigned flags);
+    static BOOL   xStdCopyFromSlot(XStdGenerator *self, const XStdGenerator *src);
+    static BOOL   xStdSaveSlot(XStdGenerator *self, void *fp);
+    static BOOL   xStdLoadSlot(XStdGenerator *self, void *fp);
+    static void   xStdSetPositionSlot(XStdGenerator *self, float x, float y, float z);
+    static void   xStdSetVelocitySlot(XStdGenerator *self, float x, float y, float z, float m);
+    static void   xStdSetDirectionSlot(XStdGenerator *self, float x, float y, float z);
+    static void   xStdSetSpeedSlot(XStdGenerator *self, float m);
+    static void   xStdEmitSlot(XStdGenerator *self, float dt);
 
 private:
     void xstdGenTick(float dt);
@@ -367,13 +367,13 @@ public:
     void cylGenConstruct();
 
     /* The vtable slots. */
-    static void *__attribute__((thiscall)) cylDtorSlot(CylinderGenerator *self, unsigned flags);
-    static BOOL __attribute__((thiscall)) cylCopyFromSlot(CylinderGenerator *self, const CylinderGenerator *src);
-    static BOOL __attribute__((thiscall)) cylSaveSlot(CylinderGenerator *self, void *fp);
-    static BOOL __attribute__((thiscall)) cylLoadSlot(CylinderGenerator *self, void *fp);
-    static void __attribute__((thiscall)) cylSetPositionSlot(CylinderGenerator *self, float x, float y, float z);
-    static void __attribute__((thiscall)) cylSetDirectionSlot(CylinderGenerator *self, float x, float y, float z);
-    static void __attribute__((thiscall)) cylinderEmitSlot(CylinderGenerator *self, float dt);
+    static void *  cylDtorSlot(CylinderGenerator *self, unsigned flags);
+    static BOOL   cylCopyFromSlot(CylinderGenerator *self, const CylinderGenerator *src);
+    static BOOL   cylSaveSlot(CylinderGenerator *self, void *fp);
+    static BOOL   cylLoadSlot(CylinderGenerator *self, void *fp);
+    static void   cylSetPositionSlot(CylinderGenerator *self, float x, float y, float z);
+    static void   cylSetDirectionSlot(CylinderGenerator *self, float x, float y, float z);
+    static void   cylinderEmitSlot(CylinderGenerator *self, float dt);
 
 private:
     void cylinderEmit(float dt);
@@ -442,8 +442,8 @@ public:
     void pointGenConstruct();
 
     /* The vtable slots. */
-    static void *__attribute__((thiscall)) pointDtorSlot(PointGenerator *self, unsigned flags);
-    static void __attribute__((thiscall)) pointEmitSlot(PointGenerator *self, float dt);
+    static void *  pointDtorSlot(PointGenerator *self, unsigned flags);
+    static void   pointEmitSlot(PointGenerator *self, float dt);
 
 private:
     void pointGenEmit(float dt);
@@ -485,8 +485,8 @@ public:
     void boxGenConstruct();
 
     /* The vtable slots. */
-    static void *__attribute__((thiscall)) boxDtorSlot(BoxGenerator *self, unsigned flags);
-    static void __attribute__((thiscall)) boxEmitSlot(BoxGenerator *self, float dt);
+    static void *  boxDtorSlot(BoxGenerator *self, unsigned flags);
+    static void   boxEmitSlot(BoxGenerator *self, float dt);
 
 private:
     void boxGenEmit(float dt);
@@ -536,19 +536,19 @@ static_assert(sizeof(BoxGenerator) == 0x244c, "Box size");
 
 inline void Generator::vsetPosition(float x, float y, float z)
 {
-    typedef void (__attribute__((thiscall)) *fn)(Generator *, float, float, float);
+    typedef void (  *fn)(Generator *, float, float, float);
     ((fn)pVtable_[GEN_VT_SETPOS_SLOT])(this, x, y, z);
 }
 #define GEN_VT_SETDIR_SLOT 8
 inline void Generator::vsetDirection(float x, float y, float z)
 {
-    typedef void (__attribute__((thiscall)) *fn)(Generator *, float, float, float);
+    typedef void (  *fn)(Generator *, float, float, float);
     ((fn)pVtable_[GEN_VT_SETDIR_SLOT])(this, x, y, z);
 }
 
 /* Gen_FillGaussianField writes into an ExplodeDebris (explodedebris.h); its
  * layout and the offsets this relies on are asserted there. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
+extern "C" __declspec(dllexport) void  
 Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma);
 
 /* Both classes' Tick is slot GEN_VT_TICK_SLOT. */

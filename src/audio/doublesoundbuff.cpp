@@ -13,7 +13,7 @@
  * the object too. */
 static void virtual_delete_static(void *obj)
 {
-    typedef void (__attribute__((thiscall)) *dtor_fn)(void *self, int flags);
+    typedef void (  *dtor_fn)(void *self, int flags);
     void **vtbl = *(void ***)obj;
     ((dtor_fn)vtbl[0])(obj, 1);
 }

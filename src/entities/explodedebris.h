@@ -23,7 +23,7 @@ public:
     ExplodeDebris *construct();
 
     /* Vtable slot 0.  Returns self; bit 0 of flags frees. */
-    static void *__attribute__((thiscall))
+    static void * 
     scalarDtor(ExplodeDebris *self, unsigned int flags);
 
     void dtorBody();

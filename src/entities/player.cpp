@@ -525,7 +525,7 @@ void Player::destruct()
     destroyBaseForGame();
 }
 
-Player *__attribute__((thiscall))
+Player * 
 Player::scalarDeletingDtor(Player *self, unsigned char flags)
 {
     self->destruct();

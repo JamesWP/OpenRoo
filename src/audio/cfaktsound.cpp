@@ -16,7 +16,7 @@ void CFaktSound::blankFields()
     vtable_ = const_cast<void*>(CFAKTSOUND_VTABLE);
 }
 
-CFaktSound *__attribute__((thiscall))
+CFaktSound * 
 CFaktSound::scalarDeletingDtor(CFaktSound *self, DWORD )
 {
     // Always embedded: the free flag is ignored.

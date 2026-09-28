@@ -39,7 +39,7 @@ public:
     void fillDefaults();
 
     /* The one slot of HighScoreTable's vtable. */
-    static HighScoreTable *__attribute__((thiscall))
+    static HighScoreTable * 
     scalarDeletingDtor(HighScoreTable *self, unsigned char flags);
 
 private:

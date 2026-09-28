@@ -91,7 +91,7 @@ void ProgableControl::teardown()
     for (int i = 0; i < 5; i++) action_tables[i].freeAll();
 }
 
-void __attribute__((thiscall))
+void  
 ProgableControl::scalarDtor(ProgableControl *s, int free_or_not)
 {
     s->teardown();

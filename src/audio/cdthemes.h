@@ -41,7 +41,7 @@ public:
     unsigned char currentTrack() const               { return currentTrack_; }
     void          setCurrentTrack(unsigned char t)   { currentTrack_ = t; }
 
-    static CdThemes *__attribute__((thiscall))
+    static CdThemes * 
     scalarDeletingDtor(CdThemes *self, unsigned int flags);
 
 private:

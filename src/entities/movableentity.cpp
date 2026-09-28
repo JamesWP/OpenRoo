@@ -45,7 +45,7 @@ void MovableEntity::destroyBaseForGame()
  * MovableEntity * because every object that reaches here is one --
  * Object_DestroyAndCompactId's only callers hold Foe ** and Bomb **, and both
  * derive from this class. */
-typedef void (__attribute__((thiscall)) *scalar_dtor_fn)(MovableEntity *self,
+typedef void (  *scalar_dtor_fn)(MovableEntity *self,
                                                          int flags);
 
 void MovableEntity::destroyViaVtable(int flags)
@@ -78,7 +78,7 @@ void MovableEntity::zeroSoundSlots()
 
 /* No code path in this codebase reaches this except through the vtable
  * installed above. */
-MovableEntity *__attribute__((thiscall))
+MovableEntity * 
 MovableEntity::scalarDeletingDtor(MovableEntity *self, unsigned int flags)
 {
     self->destroyBaseForGame();

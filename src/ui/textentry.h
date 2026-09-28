@@ -31,7 +31,7 @@ public:
     void destruct();
 
     /* The one slot of TextEntry's vtable. */
-    static TextEntry *__attribute__((thiscall))
+    static TextEntry * 
     scalarDeletingDtor(TextEntry *self, unsigned char flags);
 
 private:

@@ -79,8 +79,7 @@ public:
     float          cameraDistanceSetting() const       { return cameraDistanceSetting_; }
 
     /* The one slot of Config's vtable. */
-    static Config *__attribute__((thiscall))
-    scalarDeletingDtor(Config *self, unsigned char flags);
+    static Config * scalarDeletingDtor(Config *self, unsigned char flags);
 
     /* Karoo.cfg: returns 1 when the file loads and ends with the tag. */
     int loadValues(const char *path);

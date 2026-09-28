@@ -33,7 +33,7 @@ public:
 
     void dtorBody();
 
-    static SceneTexture *__attribute__((thiscall))
+    static SceneTexture * 
     scalarDtor(SceneTexture *self, unsigned int flags);
 
     /* Load by extension (mode 0), DIB (1) or TGA (2).  The sky builder
@@ -79,7 +79,7 @@ public:
     TextureManager *construct();
 
     void destruct();
-    static TextureManager *__attribute__((thiscall))
+    static TextureManager * 
     scalarDestructor(TextureManager *self, unsigned char flags);
 
     void setLogger(GameLogger *logger);

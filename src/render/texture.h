@@ -22,7 +22,7 @@ public:
     LoadedImage *construct();
 
     void dtorBody();
-    static LoadedImage *__attribute__((thiscall))
+    static LoadedImage * 
     scalarDtor(LoadedImage *self, unsigned int flags);
 
     /* Restore a lost surface and reload its image.

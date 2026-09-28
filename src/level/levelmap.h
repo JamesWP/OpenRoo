@@ -60,7 +60,7 @@ public:
     void destruct();
 
     /* The one slot of LevelMap's vtable. */
-    static LevelMap *__attribute__((thiscall))
+    static LevelMap * 
     scalarDeletingDtor(LevelMap *self, unsigned char flags);
 
 private:

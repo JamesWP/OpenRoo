@@ -68,7 +68,7 @@ public:
     void *setup(int logger_or_0);
     void  teardown();
     /* Vtable slot 0: teardown, then frees self when bit 0 is set. */
-    static void __attribute__((thiscall)) scalarDtor(ProgableControl *s, int free_or_not);
+    static void   scalarDtor(ProgableControl *s, int free_or_not);
 
     int  setJoyDeadzone(DWORD axis, int zone);
 

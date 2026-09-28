@@ -35,7 +35,7 @@
  * vtable. */
 void ScriptPlayer::releaseStreams()
 {
-    typedef void (__attribute__((thiscall)) *deleting_dtor_fn)(void *, int);
+    typedef void (  *deleting_dtor_fn)(void *, int);
 
     for (int i = 0; i < 255; ++i) {
         if (streams_[i] == NULL)
@@ -602,7 +602,7 @@ void ScriptPlayer::clearStreams()
     memset(streams_, 0, sizeof(streams_));
 }
 
-ScriptPlayer *__attribute__((thiscall))
+ScriptPlayer * 
 ScriptPlayer::scalarDeletingDtor(ScriptPlayer *self, unsigned char flags)
 {
     self->destruct();

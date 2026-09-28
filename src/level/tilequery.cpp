@@ -138,7 +138,7 @@ static void diag_hit(int which, unsigned u, unsigned v)
 }
 
 /* Recomputes the blocked word of one list's tiles from its bridge. */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
+extern "C" __declspec(dllexport) void  
 Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 {
     SwitchCells   *sw = self->switchCells();
@@ -176,7 +176,7 @@ Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 
 /* The listed tile nearest the one passed in, among tiles whose blocked word is
  * non-zero, within maxDist. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
                                 unsigned char *pv, unsigned char maxDist)
 {
@@ -262,7 +262,7 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
 
 /* The nearest tile with flag 1 in a square window around the one passed in.
  * Outer loop v, inner u. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
                                    unsigned char *pv, unsigned char radius)
 {
@@ -340,7 +340,7 @@ Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
 
 /* The occupied, unmarked tile farthest from the one passed in, over the whole
  * grid.  The only query that keeps a real distance. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
                              unsigned char *pv)
 {

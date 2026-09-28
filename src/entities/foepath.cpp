@@ -584,7 +584,7 @@ Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
  * tests ORed together: a later clause can overwrite an earlier "legal" back to
  * "illegal" (the bridge and jump-pad blocks both do, on their failure path),
  * so reordering them changes the answer. */
-extern "C" __declspec(dllexport) int __attribute__((thiscall))
+extern "C" __declspec(dllexport) int  
 Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned char v_from,
                          unsigned char u_to, unsigned char v_to)
 {

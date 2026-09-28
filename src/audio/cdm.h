@@ -35,9 +35,9 @@ public:
 
     /* The vtable slots: the scalar deleting destructor and the two track
      * queries. */
-    static CDM *__attribute__((thiscall)) scalarDeletingDtor(CDM *self, unsigned int flags);
-    static int __attribute__((thiscall)) vtGetTrackCount(CDM *self);
-    static int __attribute__((thiscall)) vtGetTrackLength(CDM *self, char **out_ptr, int track);
+    static CDM *scalarDeletingDtor(CDM *self, unsigned int flags);
+    static int vtGetTrackCount(CDM *self);
+    static int vtGetTrackLength(CDM *self, char **out_ptr, int track);
 
 private:
     static void checkLayout();

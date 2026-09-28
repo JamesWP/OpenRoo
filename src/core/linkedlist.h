@@ -46,7 +46,7 @@ public:
     void destruct();
     /* Vtable slot 0: destruct, then frees self when bit 0 of flags is set.
      * Returns self. */
-    static LinkedList *__attribute__((thiscall))
+    static LinkedList * 
     scalarDeletingDtor(LinkedList *self, unsigned char bFreeSelf);
 
     /* Appends a new node holding pValue at the tail. */

@@ -72,7 +72,7 @@ public:
     unsigned char &nodeRef()                        { return node_; }
 
     /* The one slot of MenuTree's vtable. */
-    static MenuTree *__attribute__((thiscall))
+    static MenuTree * 
     scalarDeletingDtor(MenuTree *self, unsigned char flags);
 
 private:

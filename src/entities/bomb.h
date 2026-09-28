@@ -37,7 +37,7 @@ private:
     // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
     // frees the memory).  The remove destroys through it.
     struct Vtbl {
-        void *(__attribute__((thiscall)) *scalarDeletingDtor)(Bomb *self,
+        void *(  *scalarDeletingDtor)(Bomb *self,
                                                               unsigned int flags);
     };
     static const Vtbl VTABLE;
@@ -46,7 +46,7 @@ private:
     static Bomb *create();
     Bomb();
     // Vtable slot 0.
-    static void *__attribute__((thiscall)) scalarDeletingDtor(Bomb *self,
+    static void *  scalarDeletingDtor(Bomb *self,
                                                               unsigned int flags);
 
     // The cell (u, v) from this bomb's tile base, both read signed.

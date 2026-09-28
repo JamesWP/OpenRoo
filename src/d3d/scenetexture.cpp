@@ -33,9 +33,9 @@
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 TextureManager g_textureManager;
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp);
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 TextureTGA_Parse(LoadedImage *self, LPCSTR path);
 
 /* D3DDEVICEDESC as 0x3f raw dwords, zeroed, dwSize at [0], so the size used is
@@ -351,7 +351,7 @@ void SceneTexture::dtorBody()
     LoadedImage::dtorBody();
 }
 
-SceneTexture *__attribute__((thiscall))
+SceneTexture * 
 SceneTexture::scalarDtor(SceneTexture *self, unsigned int flags)
 {
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::ScalarDeletingDtor", &seen);
@@ -630,7 +630,7 @@ static void tm_lower_inplace(char *s)
             *s += ' ';
 }
 
-typedef void *(__attribute__((thiscall)) *tm_scalar_dtor_fn)(void *self, unsigned int flags);
+typedef void *(  *tm_scalar_dtor_fn)(void *self, unsigned int flags);
 
 static void tm_delete(SceneTexture *t)
 {
@@ -703,7 +703,7 @@ void TextureManager::destruct()
     cache_.destruct();
 }
 
-TextureManager *__attribute__((thiscall))
+TextureManager * 
 TextureManager::scalarDestructor(TextureManager *self, unsigned char flags)
 {
     self->destruct();
