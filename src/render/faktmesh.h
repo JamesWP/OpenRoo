@@ -71,7 +71,8 @@ public:
     char  *name() const { return pszName_; }
 
 private:
-    HRESULT drawMesh(RenderDevice *dev, DWORD frame, DWORD flags, const char *name);
+    HRESULT drawMesh(RenderDevice *dev, DWORD frame, DWORD flags,
+                     const char *name);
 
     static void checkLayout();
 

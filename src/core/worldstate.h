@@ -147,7 +147,8 @@ struct Observation {
 
 private:
     bool wsPassableImpl(int fu, int fv, int tu, int tv, bool ignore_foes) const;
-    void traceEntities(const char *tag, const WsEntity *ents, unsigned n, bool foe) const;
+    void traceEntities(const char *tag, const WsEntity *ents, unsigned n,
+                       bool foe) const;
 };
 
 /* Called once a frame from clock_seconds(), after gamestate_tick().  Drives

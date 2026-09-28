@@ -313,7 +313,8 @@ private:
     SkyBackground        sky_;  // built from the face names; drawn by sky.cpp
     float                flSideHeight_;
 
-    bool themeLoad(Game *game, RenderDevice *d3d, char *path, GameLogger *logger);
+    bool themeLoad(Game *game, RenderDevice *d3d, char *path,
+                   GameLogger *logger);
 
     KAROO_LAYOUT_REGISTER(ThemeAssetBlock);
 };
