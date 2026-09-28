@@ -134,7 +134,7 @@ static void theme_struct_dump(const char *path)
 
     log_write("THEME_STRUCT: after close of %s\n", path);
     log_write("THEME_STRUCT: themeName=\"%.255s\" dwUnknown100=0x%08lx\n",
-              block->themeName, (unsigned long)block->dwUnknown100);
+              block->themeName(), (unsigned long)block->unknown100());
 
     static const char *const kSlotNames[THEME_OBJ_COUNT] = {
         "john", "catcher", "catcherfx", "thrower", "throwerfx", "plate",
@@ -146,24 +146,24 @@ static void theme_struct_dump(const char *path)
         "protection", "protectionfx", "bridge",
     };
     for (int s = 0; s < THEME_OBJ_COUNT; s++)
-        dump_slot(kSlotNames[s], block->slots[s]);
+        dump_slot(kSlotNames[s], *block->slot(s));
 
     log_write("THEME_STRUCT: images[HUD]=%p%s images[MENU]=%p%s\n",
-              (void *)block->images[THEME_IMG_HUD],
-              ptr_plausible(block->images[THEME_IMG_HUD]) ? "" : "  SUSPICIOUS",
-              (void *)block->images[THEME_IMG_MENU],
-              ptr_plausible(block->images[THEME_IMG_MENU]) ? "" : "  SUSPICIOUS");
+              (void *)block->image(THEME_IMG_HUD),
+              ptr_plausible(block->image(THEME_IMG_HUD)) ? "" : "  SUSPICIOUS",
+              (void *)block->image(THEME_IMG_MENU),
+              ptr_plausible(block->image(THEME_IMG_MENU)) ? "" : "  SUSPICIOUS");
     log_write("THEME_STRUCT: textColors[HUD]=%08lx/%08lx textColors[MENUSUMMARYSAVE]=%08lx/%08lx\n",
-              (unsigned long)block->textColors[THEME_COLOR_HUD].color1,
-              (unsigned long)block->textColors[THEME_COLOR_HUD].color2,
-              (unsigned long)block->textColors[THEME_COLOR_MENUSUMMARYSAVE].color1,
-              (unsigned long)block->textColors[THEME_COLOR_MENUSUMMARYSAVE].color2);
+              (unsigned long)block->textColor(THEME_COLOR_HUD).color1,
+              (unsigned long)block->textColor(THEME_COLOR_HUD).color2,
+              (unsigned long)block->textColor(THEME_COLOR_MENUSUMMARYSAVE).color1,
+              (unsigned long)block->textColor(THEME_COLOR_MENUSUMMARYSAVE).color2);
     log_write("THEME_STRUCT: bFogEnabled=%u%s flSideHeight=%g%s\n",
-              (unsigned)block->bFogEnabled, block->bFogEnabled <= 1 ? "" : "  SUSPICIOUS",
-              block->flSideHeight, float_plausible(block->flSideHeight) ? "" : "  SUSPICIOUS");
+              (unsigned)block->fogEnabled(), block->fogEnabled() <= 1 ? "" : "  SUSPICIOUS",
+              block->sideHeight(), float_plausible(block->sideHeight()) ? "" : "  SUSPICIOUS");
 
     for (int f = 0; f < 6; f++) {
-        const LoadedImage &img = block->sky.textures()[f];
+        const LoadedImage &img = block->sky().textures()[f];
         const char *name = img.imageName();
         int nameOk = name != NULL && (ULONG_PTR)name >= 0x10000;
         log_write("THEME_STRUCT: sky.faces[%d] surface=%p%s name=%p \"%.63s\"%s\n",
@@ -276,16 +276,16 @@ ThemeObjectTypeSlot::scalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
 ThemeAssetBlock *ThemeAssetBlock::construct()
 {
     for (int i = 0; i < THEME_OBJ_COUNT; i++)
-        slots[i].construct();
-    sky.construct();
+        slots_[i].construct();
+    sky_.construct();
     return this;
 }
 
 void ThemeAssetBlock::destruct()
 {
-    sky.dtorBody();
+    sky_.dtorBody();
     for (int i = THEME_OBJ_COUNT; i-- > 0; )
-        slots[i].destruct();
+        slots_[i].destruct();
 }
 
 /* PRESERVED: EXPLOSION's slot is not in the list, so its particle systems and
@@ -311,9 +311,9 @@ void ThemeAssetBlock::release()
     g_textureManager.releaseAll();
     g_modelManager.clearReleaseFree();
     for (ThemeObjectType t : kReleaseOrder)
-        slots[t].release();
+        slots_[t].release();
     for (int f = 0; f < 6; f++)
-        sky.textures()[f].releaseD3DTexture();
+        sky_.textures()[f].releaseD3DTexture();
     memset(this, 0, sizeof(*this));
 }
 
@@ -595,7 +595,7 @@ void ThemeParser::selectTarget(ThemeObjectTypeSlot *&slot, bool &inEnvironment)
 {
     for (const auto &k : kObjectKeywords) {
         if (is(tok[0], k.name)) {
-            slot = &block->slots[k.type];
+            slot = &block->slots_[k.type];
             return;
         }
     }
@@ -667,7 +667,7 @@ void ThemeParser::fog(bool inEnvironment)
         return;
     RenderDevice *dev = d3d;
     dev->SetRenderState(RS::FogEnable, 1);
-    block->bFogEnabled = 1;
+    block->bFogEnabled_ = 1;
 
     DWORD mode = FOG_NONE;
     lookup(tok[1], kFogModes, 4, &mode);
@@ -698,7 +698,7 @@ void ThemeParser::sky(bool inEnvironment)
     sprintf(bk, GS_THEME_SKY_BK, tok[1]);
     sprintf(lf, GS_THEME_SKY_LF, tok[1]);
     sprintf(rt, GS_THEME_SKY_RT, tok[1]);
-    unsigned int ok = block->sky.buildFromFaceNames(d3d,
+    unsigned int ok = block->sky_.buildFromFaceNames(d3d,
                                              up, dn, fr, bk, lf, rt,
                                              d3d->bitDepth());
     if (logger != NULL) {
@@ -751,7 +751,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
     for (const auto &k : kImageKeywords) {
         if (is(tok[0], k.name)) {
             if (inEnvironment && ntok > 1)
-                block->images[k.slot] = loadTexture(tok[1], tok[2]);
+                block->images_[k.slot] = loadTexture(tok[1], tok[2]);
             return;
         }
     }
@@ -759,8 +759,8 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         if (is(tok[0], kTextColorKeywords[c])) {
             if (inEnvironment && ntok > 2) {
                 char *end;
-                block->textColors[c].color1 = (DWORD)strtol(tok[1], &end, 16);
-                block->textColors[c].color2 = (DWORD)strtol(tok[2], &end, 16);
+                block->textColors_[c].color1 = (DWORD)strtol(tok[1], &end, 16);
+                block->textColors_[c].color2 = (DWORD)strtol(tok[2], &end, 16);
             }
             return;
         }
@@ -771,7 +771,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         sky(inEnvironment);
     } else if (is(tok[0], "sideheight")) {
         if (inEnvironment && ntok > 1)
-            block->flSideHeight = atof_f(tok[1]);
+            block->flSideHeight_ = atof_f(tok[1]);
     } else if (is(tok[0], "sound")) {
         if (inEnvironment && ntok > 2)
             Theme_RegisterSound(game, tok[1], tok[2]);
@@ -952,7 +952,7 @@ bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
 
     theme_struct_dump_if_enabled(path);
     fclose(fp);
-    strcpy(themeName, path);  // PRESERVED: unbounded
+    strcpy(themeName_, path);  // PRESERVED: unbounded
     return true;
 }
 

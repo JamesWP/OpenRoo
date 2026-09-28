@@ -276,17 +276,6 @@ class __attribute__((packed)) ThemeAssetBlock {
 public:
     static const int ORIGIN = 0;
 
-    char                 themeName[0x100];  // copied from the path after the file is read
-    DWORD                dwUnknown100;      // never written
-    ThemeObjectTypeSlot  slots[THEME_OBJ_COUNT];
-
-    // Written only inside `environment { }`.
-    SceneTexture        *images[THEME_IMG_COUNT];
-    ThemeTextColorPair   textColors[THEME_COLOR_COUNT];
-    BYTE                 bFogEnabled;
-    SkyBackground        sky;  // built from the face names; drawn by sky.cpp
-    float                flSideHeight;
-
     /* Releases the block, parses the theme file at path into it, and builds its
      * meshes, textures and sounds. */
     bool load(Game *game, RenderDevice *d3d, char *path, GameLogger *logger);
@@ -299,7 +288,31 @@ public:
 
     void destruct();
 
+    const char *themeName() const { return themeName_; }
+    ThemeObjectTypeSlot *slot(int type)       { return &slots_[type]; }
+    const ThemeObjectTypeSlot *slot(int type) const { return &slots_[type]; }
+    DWORD unknown100() const { return dwUnknown100_; }
+    SceneTexture        *image(int slot) const { return images_[slot]; }
+    const ThemeTextColorPair &textColor(int which) const { return textColors_[which]; }
+    BYTE           fogEnabled() const { return bFogEnabled_; }
+    SkyBackground &sky()              { return sky_; }
+    const SkyBackground &sky() const  { return sky_; }
+    float          sideHeight() const { return flSideHeight_; }
+
 private:
+    friend class ThemeParser;  // theme.cpp fills the block
+
+    char                 themeName_[0x100];  // copied from the path after the file is read
+    DWORD                dwUnknown100_;      // never written
+    ThemeObjectTypeSlot  slots_[THEME_OBJ_COUNT];
+
+    // Written only inside `environment { }`.
+    SceneTexture        *images_[THEME_IMG_COUNT];
+    ThemeTextColorPair   textColors_[THEME_COLOR_COUNT];
+    BYTE                 bFogEnabled_;
+    SkyBackground        sky_;  // built from the face names; drawn by sky.cpp
+    float                flSideHeight_;
+
     bool themeLoad(Game *game, RenderDevice *d3d, char *path, GameLogger *logger);
 
     KAROO_LAYOUT_REGISTER(ThemeAssetBlock);
@@ -307,33 +320,33 @@ private:
 
 KAROO_LAYOUT_CHECKS(ThemeAssetBlock)
 {
-    KAROO_LAYOUT_AT(slots, 0x00104);
-    KAROO_LAYOUT_AT(slots[THEME_OBJ_JOHN],      0x00104);
-    KAROO_LAYOUT_AT(slots[THEME_OBJ_EXIT],      0x20554);
-    KAROO_LAYOUT_AT(slots[THEME_OBJ_EXPLOSION], 0x43894);
-    KAROO_LAYOUT_AT(slots[THEME_OBJ_BRIDGE],    0x6c9b4);
+    KAROO_LAYOUT_AT(slots_, 0x00104);
+    KAROO_LAYOUT_AT(slots_[THEME_OBJ_JOHN],      0x00104);
+    KAROO_LAYOUT_AT(slots_[THEME_OBJ_EXIT],      0x20554);
+    KAROO_LAYOUT_AT(slots_[THEME_OBJ_EXPLOSION], 0x43894);
+    KAROO_LAYOUT_AT(slots_[THEME_OBJ_BRIDGE],    0x6c9b4);
 
-    KAROO_LAYOUT_AT(images, 0x6f8a4);
-    KAROO_LAYOUT_AT(images[THEME_IMG_HUD],            0x6f8a4);
-    KAROO_LAYOUT_AT(images[THEME_IMG_MENU],           0x6f8a8);
-    KAROO_LAYOUT_AT(images[THEME_IMG_EDGE],           0x6f8ac);
-    KAROO_LAYOUT_AT(images[THEME_IMG_RADAR],          0x6f8b0);
-    KAROO_LAYOUT_AT(images[THEME_IMG_POINTER],        0x6f8b4);
-    KAROO_LAYOUT_AT(images[THEME_IMG_FREEZE],         0x6f8b8);
-    KAROO_LAYOUT_AT(images[THEME_IMG_INVERSECONTROL], 0x6f8bc);
-    KAROO_LAYOUT_AT(images[THEME_IMG_PROTECTION],     0x6f8c0);
-    KAROO_LAYOUT_AT(images[THEME_IMG_SLOWDOWN],       0x6f8c4);
-    KAROO_LAYOUT_AT(images[THEME_IMG_SPEED],          0x6f8c8);
+    KAROO_LAYOUT_AT(images_, 0x6f8a4);
+    KAROO_LAYOUT_AT(images_[THEME_IMG_HUD],            0x6f8a4);
+    KAROO_LAYOUT_AT(images_[THEME_IMG_MENU],           0x6f8a8);
+    KAROO_LAYOUT_AT(images_[THEME_IMG_EDGE],           0x6f8ac);
+    KAROO_LAYOUT_AT(images_[THEME_IMG_RADAR],          0x6f8b0);
+    KAROO_LAYOUT_AT(images_[THEME_IMG_POINTER],        0x6f8b4);
+    KAROO_LAYOUT_AT(images_[THEME_IMG_FREEZE],         0x6f8b8);
+    KAROO_LAYOUT_AT(images_[THEME_IMG_INVERSECONTROL], 0x6f8bc);
+    KAROO_LAYOUT_AT(images_[THEME_IMG_PROTECTION],     0x6f8c0);
+    KAROO_LAYOUT_AT(images_[THEME_IMG_SLOWDOWN],       0x6f8c4);
+    KAROO_LAYOUT_AT(images_[THEME_IMG_SPEED],          0x6f8c8);
 
-    KAROO_LAYOUT_AT(textColors, 0x6f8cc);
-    KAROO_LAYOUT_AT(textColors[THEME_COLOR_HUD],            0x6f8cc);
-    KAROO_LAYOUT_AT(textColors[THEME_COLOR_MENUNEWGAME],    0x6f8d4);
-    KAROO_LAYOUT_AT(textColors[THEME_COLOR_MENULOADGAME],   0x6f8dc);
-    KAROO_LAYOUT_AT(textColors[THEME_COLOR_MENUSUMMARYSAVE], 0x6f994);
+    KAROO_LAYOUT_AT(textColors_, 0x6f8cc);
+    KAROO_LAYOUT_AT(textColors_[THEME_COLOR_HUD],            0x6f8cc);
+    KAROO_LAYOUT_AT(textColors_[THEME_COLOR_MENUNEWGAME],    0x6f8d4);
+    KAROO_LAYOUT_AT(textColors_[THEME_COLOR_MENULOADGAME],   0x6f8dc);
+    KAROO_LAYOUT_AT(textColors_[THEME_COLOR_MENUSUMMARYSAVE], 0x6f994);
 
-    KAROO_LAYOUT_AT(bFogEnabled, 0x6f99c);
-    KAROO_LAYOUT_AT(sky, 0x6f99d);
-    KAROO_LAYOUT_AT(flSideHeight, 0x6fd8d);
+    KAROO_LAYOUT_AT(bFogEnabled_, 0x6f99c);
+    KAROO_LAYOUT_AT(sky_, 0x6f99d);
+    KAROO_LAYOUT_AT(flSideHeight_, 0x6fd8d);
     KAROO_LAYOUT_SIZE(0x6fd91);
 }
 

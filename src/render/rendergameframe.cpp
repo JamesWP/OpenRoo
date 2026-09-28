@@ -143,7 +143,7 @@ static void update_listener(Game *g)
 
 static ThemeObjectTypeSlot *slot(ThemeObjectType t)
 {
-    return &g_themeBlock.slots[t];
+    return g_themeBlock.slot(t);
 }
 
 /* Every model pass goes through RenderSceneObjects with the placement block
@@ -661,7 +661,7 @@ static void blend_on(void)
 
 static const SceneTexture *image(ThemeImageSlot s)
 {
-    return g_themeBlock.images[s];
+    return g_themeBlock.image(s);
 }
 
 /* The HUD's text positions are integer multiples of the screen width, taken
@@ -688,7 +688,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     Player *pl = g->player();
 
     /* The two corner panels, mirrored halves of the HUD image. */
-    if (g_themeBlock.images[THEME_IMG_HUD] != NULL) {
+    if (g_themeBlock.image(THEME_IMG_HUD) != NULL) {
         dev->SetTexture(0, image(THEME_IMG_HUD));
         blend_on();
         const float a  = hudH + hudH;
@@ -713,7 +713,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
 
     /* The vitality needle: a quad about the origin, turned by
      * 0.9519978 - vitality% * 0.019039957 and moved to (541/640 W, 92/480 H). */
-    if (g_themeBlock.images[THEME_IMG_POINTER] != NULL) {
+    if (g_themeBlock.image(THEME_IMG_POINTER) != NULL) {
         float p[4][3] = {
             { W * 0.1f,  H * -0.13333334f, 0.0f },
             { W * 0.1f,  H * 0.13333334f,  0.0f },
@@ -757,7 +757,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     const float cx = W * 0.9f, cy = H * 0.8666667f;
     CameraFocus *focus = &g_cameraFocus;
     Vec3 me = { focus->f[2], focus->f[3], focus->f[4] };
-    if (g_themeBlock.images[THEME_IMG_RADAR] != NULL) {
+    if (g_themeBlock.image(THEME_IMG_RADAR) != NULL) {
         const float r = hudH * 0.5f;
         me.y = 0.0f;
         ScreenVertex q[4] = {
@@ -812,7 +812,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     hud_text(&g_fontNumbers, 0, W * 0.5f, 0.0f, W * 0.05f, W * 0.06666667f, 1.0f,
              buf, '0', tc, tc);
 
-    const ThemeTextColorPair &hc = g_themeBlock.textColors[THEME_COLOR_HUD];
+    const ThemeTextColorPair &hc = g_themeBlock.textColor(THEME_COLOR_HUD);
     const float cw = W * 0.025f, ch = H * 0.033333335f;
     sprintf(buf, "x%d", pl->lives());
     hud_text(&g_fontMain, -1, wx(w, 490), W * 0.009375f, cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
@@ -854,7 +854,7 @@ static void draw_fps(float W, float H)
 /* The captions and the timed-effect icons down the left edge. */
 static void draw_messages(Game *g, float W, float H, float pad)
 {
-    const ThemeTextColorPair &hc = g_themeBlock.textColors[THEME_COLOR_HUD];
+    const ThemeTextColorPair &hc = g_themeBlock.textColor(THEME_COLOR_HUD);
     const float cw = W * 0.025f, ch = H * 0.033333335f;
     ScriptPlayer *sp = g->scriptPlayer();
     Player *pl = g->player();
@@ -865,8 +865,8 @@ static void draw_messages(Game *g, float W, float H, float pad)
         if (sp->caption()[0] != '\0')
             g_fontMain.drawPanel(pad, H - pad, cw, ch, 0.75f, H * 0.03750938f,
                                sp->caption(), g_renderDevice, hc.color1, hc.color2,
-                               g_themeBlock.images[THEME_IMG_MENU],
-                               g_themeBlock.images[THEME_IMG_EDGE]);
+                               g_themeBlock.image(THEME_IMG_MENU),
+                               g_themeBlock.image(THEME_IMG_EDGE));
     }
     if ((g->state() == 4 && sp->running() == 0) || (g->state() == 1 && pl->moveState() != 0))
         hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 232.0f, cw, ch, 0.75f,
@@ -898,7 +898,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
         case 13: img = THEME_IMG_PROTECTION;     start = pl->effectDStart(); break;
         default: icon = false; img = THEME_IMG_HUD; break;
         }
-        if (icon && g_themeBlock.images[img] != NULL) {
+        if (icon && g_themeBlock.image(img) != NULL) {
             g_renderDevice->SetTexture(0, image(img));
             sprintf(buf, "%.1f", span - (*g->clock() - start) * 0.001);
         }
@@ -980,8 +980,8 @@ Render_RenderGameFrame(void)
     set_rs(RS::SpecularEnable,   0);
     set_rs(RS::AlphaBlendEnable, 0);
     CameraGlobals *cam = &g_camera;
-    g_themeBlock.sky.draw(d3d, cam->eye[0], cam->eye[1], cam->eye[2]);
-    if (g_themeBlock.bFogEnabled)
+    g_themeBlock.sky().draw(d3d, cam->eye[0], cam->eye[1], cam->eye[2]);
+    if (g_themeBlock.fogEnabled())
         set_rs(RS::FogEnable, 1);
     set_rs(RS::StencilEnable, 1);
     set_rs(RS::StencilFunc,   Cmp::Always);
