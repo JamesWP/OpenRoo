@@ -22,6 +22,9 @@
 #include <stdio.h>
 
 struct GameState {
+    /* Reads the live Game; false when there is none. */
+    bool read();
+
     int   gems_collected;  // dword
     int   gems_required;   // dword
     BYTE  foes_killed;     // byte
@@ -134,34 +137,34 @@ bool gamestate_enabled(void)
 void gamestate_note_mode(unsigned short mode) { g_mode = mode; }
 unsigned short gamestate_mode(void) { return g_mode; }
 
-static bool read_state(GameState *s)
+bool GameState::read()
 {
     const Game *g = Game::instance();
     if (!g) return false;
 
     const Player *pl = g->player();
-    s->gems_collected = pl->gemsCollected();
-    s->gems_required  = g->gemsRequired();
-    s->foes_killed    = g->foesKilled();
-    s->time_limit_s   = g->timeLimit();
-    s->elapsed_ms     = g->timeElapsed();
-    s->lives          = (BYTE)pl->lives();
-    s->total_score    = pl->score();
-    s->level_score    = g->tally()->levelTotal;
-    s->vitality       = g->vitalityPercent();
+    gems_collected = pl->gemsCollected();
+    gems_required  = g->gemsRequired();
+    foes_killed    = g->foesKilled();
+    time_limit_s   = g->timeLimit();
+    elapsed_ms     = g->timeElapsed();
+    lives          = (BYTE)pl->lives();
+    total_score    = pl->score();
+    level_score    = g->tally()->levelTotal;
+    vitality       = g->vitalityPercent();
     {
         int f120 = pl->falling();
-        s->death_raw[0] = pl->moveState();
-        memcpy(s->death_raw + 1, &f120, 3);
+        death_raw[0] = pl->moveState();
+        memcpy(death_raw + 1, &f120, 3);
     }
-    s->complete_flag  = pl->held();
-    s->extra_count    = g->itemTotal();
-    s->extra_cap      = pl->itemsCollected();
-    s->extra_block    = g->restartCount();
-    s->pos[0]         = pl->posU();
-    s->pos[1]         = pl->posY();
-    s->pos[2]         = pl->posV();
-    s->mode           = g_mode;
+    complete_flag  = pl->held();
+    extra_count    = g->itemTotal();
+    extra_cap      = pl->itemsCollected();
+    extra_block    = g->restartCount();
+    pos[0]         = pl->posU();
+    pos[1]         = pl->posY();
+    pos[2]         = pl->posV();
+    mode           = g_mode;
     return true;
 }
 
@@ -188,7 +191,7 @@ void gamestate_tick(void)
     g_frame++;
 
     GameState s;
-    if (!read_state(&s)) return;
+    if (!s.read()) return;
     if (s.mode != 0) {
         g_live       = s;
         g_have_live  = true;
