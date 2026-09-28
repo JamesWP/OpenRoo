@@ -36,7 +36,7 @@ Env_FactoryCreate(const char *name)
 __declspec(dllexport) void *__cdecl
 PS_FactoryCreate(const char *name)
 {
-    void *obj = ps_create(name);
+    void *obj = ParticleSystem::create(name);
     static LONG once = 0;
     log_first(&once, "PS_FactoryCreate", name, obj);
     return obj;

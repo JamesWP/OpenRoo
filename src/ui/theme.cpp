@@ -639,7 +639,7 @@ void ThemeParser::particleSystem(ThemeObjectTypeSlot *slot, Cursor<ThemeLevelObj
         return;
     open(c, slot);
     ThemeLevelObject *rec = c.at;
-    ParticleSystem *ps = Particle_LoadFromFile(tok[1], logger);
+    ParticleSystem *ps = ParticleSystem::loadFile(tok[1], logger);
     if (ps == NULL) {
         if (slot) rec->kind_ = THEME_KIND_NONE;
         return;
@@ -656,7 +656,7 @@ void ThemeParser::particleSystem(ThemeObjectTypeSlot *slot, Cursor<ThemeLevelObj
         if (slot) rec->dwInstanceCount_ = 1;
     } else {
         for (unsigned i = 1; i < count; i++)
-            if (slot) rec->pParticleSystems_[i] = Particle_CloneSystem(ps);
+            if (slot) rec->pParticleSystems_[i] = ps->clone();
         if (slot) rec->dwInstanceCount_ = count;
     }
 }

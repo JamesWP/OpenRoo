@@ -72,7 +72,7 @@ void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *lo
         if (r->kind == EXTRA_MODEL)
             o->mesh = models_.findOrImport(r->file);
         else if (r->kind == EXTRA_PARTICLE)
-            o->particle = ps_load_file(r->file, logger);
+            o->particle = ParticleSystem::loadFile(r->file, logger);
         else if (r->kind == EXTRA_BILLBOARD)
             o->billboardRadius = r->billboardSize;
 
