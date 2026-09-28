@@ -12,7 +12,7 @@
 SceneTexture g_texKaroo128;
 SceneTexture g_texShadow;
 
-extern "C" {
+ 
 
 /* KAROO_IMAGE_DIAG=1: every one of the six lifecycle functions announces its
  * first call -- the census that tells "ran and agreed" from "never ran".  The
@@ -30,7 +30,7 @@ static bool image_diag(void)
 }
 
 /* First-call announcement plus a running tally. */
-__declspec(dllexport) void Texture_ImageFirstCall(const char *who,
+  void Texture_ImageFirstCall(const char *who,
                                                   unsigned long *seen)
 {
     if (!image_diag())
@@ -45,7 +45,7 @@ __declspec(dllexport) void Texture_ImageFirstCall(const char *who,
  * __stdcall.  Reads the DIB's colour table off a scratch DC, rewrites each
  * RGBQUAD in place as a PALETTEENTRY, and hands the result to
  * IDirectDraw4::CreatePalette. */
-__declspec(dllexport) IDirectDrawPalette *__stdcall
+  IDirectDrawPalette *__stdcall
 Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp)
 {
     IDirectDrawPalette *pal = NULL;
@@ -150,8 +150,6 @@ void LoadedImage::releaseSurfaces()
     loadStatus_  = 0;
 }
 
-}  // extern "C"
-
 /* ─── Load ─────────────────────────────────────────────────────────────────
  *
  * Surface-lost recovery: Restore() the surface, then re-apply whichever loader
@@ -161,10 +159,10 @@ void LoadedImage::releaseSurfaces()
  * Only the low byte of the result is the success flag.  The upper bytes are
  * whatever the last call left: Restore's HRESULT, DeleteObject's result, or
  * the TGA loader's value.  Any loadedState other than 1 or 2 returns true. */
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 TextureDIB_BlitToSurface(LoadedImage *, HANDLE);
 
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 TextureTGA_Parse(LoadedImage *, LPCSTR);
 
 unsigned int LoadedImage::load()

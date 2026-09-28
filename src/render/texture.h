@@ -63,10 +63,10 @@ private:
 
 /* A palette from the DIB's colour table.  scenetexture.cpp's
  * BindTextureResource is the only caller. */
-extern "C" __declspec(dllexport) IDirectDrawPalette *__stdcall
+  IDirectDrawPalette *__stdcall
 Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp);
 
 /* KAROO_IMAGE_DIAG's first-call announcement, shared so the census covers all
  * six ctor/dtor entry points through one implementation. */
-extern "C" __declspec(dllexport) void Texture_ImageFirstCall(const char *who,
+  void Texture_ImageFirstCall(const char *who,
                                                              unsigned long *seen);

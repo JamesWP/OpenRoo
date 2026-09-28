@@ -5,5 +5,5 @@
 class Game;
 
 /* Clears the Game's level state, ready for the next level. */
-extern "C" __declspec(dllexport) void  
+  void  
 Sim_ClearGameState(Game *self);

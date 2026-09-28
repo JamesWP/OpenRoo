@@ -1,7 +1,7 @@
 /* The scene-object passes: DrawSceneObjects (models, types 0 and 2) and
  * DrawSceneParticleSystems (particle systems, type 1), over the same list.
  *
- * DrawSceneObjects is __cdecl with six dword slots; the two unnamed dwords
+ * DrawSceneObjects is   with six dword slots; the two unnamed dwords
  * are never read and are declared so the stack shape matches.
  *
  * World matrix:
@@ -154,7 +154,7 @@ static void cam_diag(const float *cam)
     log_write("FOES %u %08lx\n", n, h);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Scene_DrawSceneObjects(RenderDevice *dev, float *cam, DWORD , DWORD , double t)
 {
     cam_diag(cam);
@@ -300,7 +300,7 @@ static void rotation_xyz(Mat4 *m, float rx, float ry, float rz)
     compose(m, &t, &c);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
 {
     dev->SetRenderState(RS::SpecularEnable, 0);

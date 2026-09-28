@@ -7,7 +7,7 @@ Reads the compiled objects, not the source: for every external function
 symbol defined in build/obj/<folder>/Y.o, find the header that owns it --
 
   * a method  Class::name   -> the header that DEFINES `class/struct Class {`
-  * a free / extern "C" fn  -> the header(s) that DECLARE `name(`
+  * a free /   fn  -> the header(s) that DECLARE `name(`
 
 -- and report it when that header is not Y.h.  Symbols defined in more than
 one object are inline (header-defined) and skipped; so are functions no

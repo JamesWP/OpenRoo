@@ -401,6 +401,6 @@ static_assert(sizeof(ThemeSoundTable) == 10 + 100 * 0x10c, "ThemeSoundTable size
 extern ThemeAssetBlock g_themeBlock;
 
 /* The `sound` keyword: event name to id, then ThemeSoundTable::add. */
-extern "C" __declspec(dllexport) bool __cdecl
+  bool  
 Theme_RegisterSound(Game *game, char *eventName, const char *waveName);
 

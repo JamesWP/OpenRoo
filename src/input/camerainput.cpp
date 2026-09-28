@@ -17,9 +17,9 @@ static const float  PITCH_MIN  = 50.0f;
 
 static inline double dt(Game *g) { return g->tickStep()->value; }
 
-extern "C" {
+ 
 
-__declspec(dllexport) void __cdecl
+  void  
 Camera_ZoomOut(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
@@ -28,7 +28,7 @@ Camera_ZoomOut(int, int, void *ctx)
     g->setField13cc90(1);  // PRESERVED: set on every zoom; nothing reads it
 }
 
-__declspec(dllexport) void __cdecl
+  void  
 Camera_ZoomIn(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
@@ -38,7 +38,7 @@ Camera_ZoomIn(int, int, void *ctx)
 }
 
 /* Only on a normal (non-bonus) level, and only while the player is alive. */
-__declspec(dllexport) void __cdecl
+  void  
 Camera_Overview(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
@@ -48,7 +48,7 @@ Camera_Overview(int, int, void *ctx)
     g->setCameraDistance(40.0f);
 }
 
-__declspec(dllexport) void __cdecl
+  void  
 Camera_RotateRight(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
@@ -56,7 +56,7 @@ Camera_RotateRight(int, int, void *ctx)
     c->setCameraYaw((float)(dt(g) * TURN_RATE + c->cameraYaw()));
 }
 
-__declspec(dllexport) void __cdecl
+  void  
 Camera_RotateLeft(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
@@ -66,7 +66,7 @@ Camera_RotateLeft(int, int, void *ctx)
 
 /* Only while playing.  Steps while at or below the limit, then clamps, so
  * one step may overshoot before the clamp. */
-__declspec(dllexport) void __cdecl
+  void  
 Camera_TiltUp(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
@@ -79,7 +79,7 @@ Camera_TiltUp(int, int, void *ctx)
         c->setCameraPitch(PITCH_MAX);
 }
 
-__declspec(dllexport) void __cdecl
+  void  
 Camera_TiltDown(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
@@ -92,4 +92,3 @@ Camera_TiltDown(int, int, void *ctx)
         c->setCameraPitch(PITCH_MIN);
 }
 
-}

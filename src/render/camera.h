@@ -71,12 +71,12 @@ extern CameraGlobals g_camera;
 /* The level entry zeroes it; FramePose_Player fills it every frame. */
 extern CameraFocus g_cameraFocus;
 
-extern "C" {
+ 
 /* cdecl(out, eye, at, up by value, roll) -> out: a left-handed
  * LookAt (x = up x fwd, y = fwd x x, z = fwd, each normalised), then
  * * RotZ(-roll) when roll != 0. */
-__declspec(dllexport) Mat4 *__cdecl
+  Mat4 * 
 Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
                    float ax, float ay, float az,
                    float ux, float uy, float uz, float roll);
-}
+

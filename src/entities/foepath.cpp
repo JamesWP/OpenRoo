@@ -556,7 +556,7 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
  * bug in either: this result is compared against a ramp-orientation code, a
  * different enumeration from entity facing, and reconciling the two would
  * misclassify every ramp. */
-extern "C" __declspec(dllexport) int __attribute__((stdcall))
+  int __attribute__((stdcall))
 Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
                              unsigned char u_to,   unsigned char v_to)
 {
@@ -584,7 +584,7 @@ Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
  * tests ORed together: a later clause can overwrite an earlier "legal" back to
  * "illegal" (the bridge and jump-pad blocks both do, on their failure path),
  * so reordering them changes the answer. */
-extern "C" __declspec(dllexport) int  
+  int  
 Sim_CheckCellStepIsLegal(unsigned char *base, unsigned char u_from, unsigned char v_from,
                          unsigned char u_to, unsigned char v_to)
 {

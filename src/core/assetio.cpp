@@ -103,7 +103,7 @@ static AssetSlot *slot_find(void *fp)
     return NULL;
 }
 
-extern "C" __declspec(dllexport) void * __cdecl
+  void *  
 hooks_fopen(const char *path, const char *mode)
 {
     void *caller = __builtin_return_address(0);
@@ -121,7 +121,7 @@ hooks_fopen(const char *path, const char *mode)
     return fp;
 }
 
-extern "C" __declspec(dllexport) unsigned __cdecl
+  unsigned  
 hooks_fread(void *buf, unsigned size, unsigned count, void *fp)
 {
     unsigned got = fread(buf, size, count, (FILE *)fp);
@@ -136,7 +136,7 @@ hooks_fread(void *buf, unsigned size, unsigned count, void *fp)
     return got;
 }
 
-extern "C" __declspec(dllexport) int __cdecl
+  int  
 hooks_fclose(void *fp)
 {
     if (asset_log_enabled()) {

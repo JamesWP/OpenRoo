@@ -5,5 +5,5 @@ class Game;
 
 /* Advances the level by dt seconds at clock time now.  Called once a frame by
  * RenderGameFrame. */
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 Sim_GameTick(Game *self, double dt, double now);

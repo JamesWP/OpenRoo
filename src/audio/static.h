@@ -90,5 +90,5 @@ KAROO_LAYOUT_CHECKS(CStaticSoundbuffer)
 
 /* KAROO_SOUND_DIAG=1: logs each caller's first call.  Shared with the
  * streaming buffer (stream.cpp). */
-extern "C" __declspec(dllexport) void CStatic_SoundFirstCall(const char *who,
+  void CStatic_SoundFirstCall(const char *who,
                                                              unsigned long *seen);

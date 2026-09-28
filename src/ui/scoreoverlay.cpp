@@ -115,7 +115,7 @@ static void setup_overlay_state(RenderDevice *d3d, void *game)
     d3d->SetTexture(0, tex);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Score_DrawHighScoreTable(Game *g, void *game, RenderDevice *d3d,
                          TextRenderer *text, int n)
 {
@@ -252,7 +252,7 @@ static void draw_summary(Game *g, void *game, RenderDevice *d3d,
     }
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Score_DrawGameOverScore(Game *g, void *game, RenderDevice *d3d,
                         TextRenderer *text, int n)
 {
@@ -282,7 +282,7 @@ Score_DrawGameOverScore(Game *g, void *game, RenderDevice *d3d,
 #define GM_SAVE_COL_TOP 0x6f994
 #define GM_SAVE_COL_BOT 0x6f998
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Menu_RenderLevelComplete(Game *g, void *game, RenderDevice *d3d,
                          TextRenderer *text, DWORD ms)
 {

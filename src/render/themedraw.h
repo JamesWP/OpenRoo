@@ -17,7 +17,7 @@ class Game;
 class ThemeObjectTypeSlot;
 class RenderDevice;
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Theme_DrawParticleObjects(Game *g, void *unused, const float (*pos)[3],
                           const float (*rot)[3], DWORD count,
                           ThemeObjectTypeSlot *slot, RenderDevice *d3d,

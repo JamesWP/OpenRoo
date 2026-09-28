@@ -29,7 +29,7 @@ static VoicePool *acq_pool(Game *g, int count, const SoundAssetName *asset)
     return g->soundManager()->acquirePool(count, name, 1);
 }
 
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
 {
     unsigned int idx = objArg & 0xff;

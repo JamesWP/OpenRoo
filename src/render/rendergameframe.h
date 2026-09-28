@@ -2,4 +2,4 @@
 #pragma once
 
 /* cdecl(void); one caller, WinMain's message loop. */
-extern "C" __declspec(dllexport) void __cdecl Render_RenderGameFrame(void);
+  void   Render_RenderGameFrame(void);

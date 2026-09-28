@@ -115,11 +115,11 @@ DWORD WINAPI CStreamSoundbuffer::watcherProc(LPVOID param)
 
 /* There is no array form of the destructor: nothing allocates these in blocks,
  * so bit 1 of the flags is not tested. */
-extern "C" {
+ 
 
 static void *const g_CStreamVtable[1] = { (void *)&CStreamSoundbuffer::scalarDeletingDtor };
 
-__declspec(dllexport) void *CStream_Vtable(void)
+  void *CStream_Vtable(void)
 {
     return (void *)g_CStreamVtable;
 }
@@ -136,7 +136,6 @@ CStreamSoundbuffer::scalarDeletingDtor(CStreamSoundbuffer *self, unsigned int fl
     return self;
 }
 
-}
 
 CStreamSoundbuffer *CStreamSoundbuffer::initialize()
 {

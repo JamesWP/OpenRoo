@@ -35,4 +35,4 @@ bool record_replay_finished(void);
 
 /* The game's GetAsyncKeyState: every key poll in the game goes through here.
  */
-extern "C" __declspec(dllexport) SHORT WINAPI hooks_GetAsyncKeyState(int vKey);
+  SHORT WINAPI hooks_GetAsyncKeyState(int vKey);

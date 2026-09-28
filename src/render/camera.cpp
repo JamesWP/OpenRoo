@@ -71,9 +71,9 @@ static Vec3 orbit_offset(float pitch, float yaw, float z)
     return out;
 }
 
-extern "C" {
+ 
 
-__declspec(dllexport) Mat4 *__cdecl
+  Mat4 * 
 Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
                    float ax, float ay, float az,
                    float ux, float uy, float uz, float roll)
@@ -198,4 +198,3 @@ void CameraGlobals::updateViewTransform(RenderDevice *d3d, Game *g,
     d3d->SetTransform(Transform::View, &view);
 }
 
-}

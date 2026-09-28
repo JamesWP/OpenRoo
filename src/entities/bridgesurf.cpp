@@ -111,7 +111,7 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
               (int)(vnear * 1000.0f), (int)(vfar * 1000.0f));
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 BridgeSurf_Draw(Game *game, void *lvl, RenderDevice *d3d, double t)
 {
     Mat4 world = {};

@@ -87,7 +87,7 @@ HRESULT CFaktMesh::drawFramedModel(RenderDevice *dev, DWORD frame)
     return drawMesh(dev, frame, DrawFlag::NoUpdateExtents | DrawFlag::NoLight,
                      "DrawFramedModel");
 }
-  // extern "C"
+  //  
 
 /* ─── The lifecycle four ────────────────────────────────────────────────────
  */
@@ -156,7 +156,7 @@ CFaktMesh::scalarDtor(CFaktMesh *self, unsigned int flags)
         free(self);
     return self;
 }
-  // extern "C"
+  //  
 
 /* The .mdl reader, ImportSceneModels.
  *

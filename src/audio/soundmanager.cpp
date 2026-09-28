@@ -128,7 +128,7 @@ static void destroy_entry(doublesoundbuff *entry)
     operator delete(entry);
 }
 
-extern "C" {
+ 
 
 /* entry is either an entry or the address of an entry's spare buffer, which
  * works because the master is at offset 0. */
@@ -514,8 +514,6 @@ int SoundManager::setup(int mode3d)
     return 1;
 }
 
-}
-
 /* The one-slot vtable: the deleting destructor. */
 static void *const g_SoundMgrVtable[1] = { (void *)&SoundManager::scalarDestructor };
 
@@ -535,7 +533,7 @@ static void purge_list(NamedEntryList *list)
     list->clear();
 }
 
-extern "C" {
+ 
 
 SoundManager *SoundManager::construct()
 {
@@ -620,6 +618,4 @@ int SoundManager::init(int enable3d, HWND window,
     dwMode3D_        = enable3d;
     dwCreated_       = 1;
     return 1;
-}
-
 }

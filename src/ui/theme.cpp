@@ -352,7 +352,7 @@ static const struct { const char *name; unsigned id; } kSoundEvents[] = {
     { "bombtick", 0x3c },       { "explosionbomb", 0x46 }, { "explosioncatcher", 0x47 },
 };
 
-extern "C" __declspec(dllexport) bool __cdecl
+  bool  
 Theme_RegisterSound(Game *game, char *eventName, const char *waveName)
 {
     lower_inplace(eventName);

@@ -68,7 +68,7 @@
 class GameLogger;
 
 /* time(), through the seed hook. */
-extern "C" __declspec(dllexport) int __cdecl hooks_GameTime(int *out);
+  int   hooks_GameTime(int *out);
 
 
 typedef unsigned int   __attribute__((aligned(1))) u32_ua;
@@ -142,7 +142,7 @@ static inline Tile *SCELL(LevelMap *m, int u, int v)
 
 /* Zeroes the census in the game's store order, which is not ascending, leaving
  * field_e5 as it was. */
-extern "C" __declspec(dllexport) void  
+  void  
 Sim_ResetLevelObjectCounters(Game *self)
 {
     self->census()->reset();
@@ -151,7 +151,7 @@ Sim_ResetLevelObjectCounters(Game *self)
 /* Finds the first cell of kind marker, v outer and u inner, and writes u, v
  * and its height to out[0..2]; returns 1.  Returns 0 and leaves out untouched
  * if there is none, which a caller relies on. */
-extern "C" __declspec(dllexport) int  
+  int  
 Sim_FindTileByTypeMarker(LevelMap *map, unsigned int markerArg,
                          unsigned char *out)
 {
@@ -212,7 +212,7 @@ static void levelsetup_seed_diag(unsigned int seed)
               seed, CRT_RAND_SEED);
 }
 
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 Sim_SetupLevelObjects(Game *self)
 {
     LevelMap *M = self->map();

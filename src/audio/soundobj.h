@@ -5,5 +5,5 @@ class Game;
 
 /* Loads each sound whose name is set into the foe in slot objArg (low byte);
  * kind 2 foes get their own three.  Returns 1 in the low byte. */
-extern "C" __declspec(dllexport) unsigned int  
+  unsigned int  
 Sim_AcquireObjectSoundBuffersForIndex(Game *self, unsigned int objArg);

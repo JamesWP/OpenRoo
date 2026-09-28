@@ -13,9 +13,9 @@ static void log_first(LONG *once, const char *what, const char *name, void *obj)
                   what, name ? name : "(null)", obj);
 }
 
-extern "C" {
+ 
 
-__declspec(dllexport) void *__cdecl
+  void * 
 Gen_FactoryCreate(const char *name)
 {
     void *obj = Generator::create(name);
@@ -24,7 +24,7 @@ Gen_FactoryCreate(const char *name)
     return obj;
 }
 
-__declspec(dllexport) void *__cdecl
+  void * 
 Env_FactoryCreate(const char *name)
 {
     void *obj = Environment::create(name);
@@ -33,13 +33,11 @@ Env_FactoryCreate(const char *name)
     return obj;
 }
 
-__declspec(dllexport) void *__cdecl
+  void * 
 PS_FactoryCreate(const char *name)
 {
     void *obj = ParticleSystem::create(name);
     static LONG once = 0;
     log_first(&once, "PS_FactoryCreate", name, obj);
     return obj;
-}
-
 }

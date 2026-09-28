@@ -79,7 +79,7 @@ static int animation_frame(ThemeLevelObject *rec, double t, float phase,
     return AnimSlot::frameAtPhase(s, phase);
 }
 
-extern "C" __declspec(dllexport) void __cdecl
+  void  
 Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                           const float *pos, const float *rot, unsigned int count,
                           ThemeObjectTypeSlot *slot, RenderDevice *d3d, double t,
