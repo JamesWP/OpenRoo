@@ -47,7 +47,7 @@ public:
     void construct();
     /* Vtable slot 0: dtorBody, then frees self when bit 0 of bFreeSelf is
      * set.  Returns self. */
-    static NamedEntryList *__attribute__((thiscall))
+    static NamedEntryList * 
     scalarDtor(NamedEntryList *self, unsigned char bFreeSelf);
     /* Re-installs the vtable, then clear(). */
     void dtorBody();

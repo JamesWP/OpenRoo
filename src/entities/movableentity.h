@@ -131,7 +131,7 @@ public:
 
     /* Vtable slot 0 of the base's one-slot table: destroys the base state, then
      * frees to the game heap when bit 0 of `flags` is set. */
-    static MovableEntity *__attribute__((thiscall))
+    static MovableEntity * 
     scalarDeletingDtor(MovableEntity *self, unsigned int flags);
 
 protected:

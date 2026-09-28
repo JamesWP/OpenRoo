@@ -63,7 +63,7 @@ public:
      * with no logger it creates its own, SoundManager.log. */
     SoundManager *construct();
     void destruct();
-    static SoundManager *__attribute__((thiscall))
+    static SoundManager * 
     scalarDestructor(SoundManager *self, unsigned char flags);
     void purgeAssets();
     int init(int enable3d, HWND window, UINT bufferflags, short channels,

@@ -555,7 +555,7 @@ void ExtraObjects::destruct()
     vtable_ = g_LeoVtable;
 }
 
-ExtraObjects *__attribute__((thiscall))
+ExtraObjects * 
 ExtraObjects::scalarDeletingDtor(ExtraObjects *self, unsigned char flags)
 {
     self->destruct();

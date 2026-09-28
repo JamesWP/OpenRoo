@@ -201,7 +201,7 @@ public:
 
     void destruct();
 
-    static ThemeObjectTypeSlot *__attribute__((thiscall))
+    static ThemeObjectTypeSlot * 
     scalarDtor(ThemeObjectTypeSlot *self, unsigned int flags);
 
     void            *vtable() const { return pVtable_; }
@@ -380,7 +380,7 @@ public:
     ThemeSoundTable *construct();
 
     void destruct();
-    static ThemeSoundTable *__attribute__((thiscall))
+    static ThemeSoundTable * 
     scalarDestructor(ThemeSoundTable *self, unsigned char flags);
 
     int releaseAll();

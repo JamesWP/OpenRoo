@@ -552,7 +552,7 @@ public:
     Game *construct(const char *gameName);
     void  destruct();
 
-    static Game *__attribute__((thiscall))
+    static Game * 
     scalarDeletingDtor(Game *self, unsigned char flags);
 
 private:

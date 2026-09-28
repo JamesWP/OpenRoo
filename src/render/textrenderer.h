@@ -86,7 +86,7 @@ public:
     void destruct();
 
     /* The lifecycle, for the two global fonts. */
-    static TextRenderer *__attribute__((thiscall))
+    static TextRenderer * 
     scalarDeletingDtor(TextRenderer *self, unsigned int flags);
 
 private:

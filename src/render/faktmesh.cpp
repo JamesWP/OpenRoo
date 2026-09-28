@@ -148,7 +148,7 @@ void CFaktMesh::dtorBody()
 }
 
 /* The one vtable slot. */
-void *__attribute__((thiscall))
+void * 
 CFaktMesh::scalarDtor(CFaktMesh *self, unsigned int flags)
 {
     self->dtorBody();

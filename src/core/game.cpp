@@ -331,7 +331,7 @@ void Game::releaseAllSounds()
 }
 
 /* free() matches the malloc in WinMain. */
-Game *__attribute__((thiscall))
+Game * 
 Game::scalarDeletingDtor(Game *self, unsigned char flags)
 {
     self->destruct();

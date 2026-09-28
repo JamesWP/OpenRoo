@@ -11,7 +11,7 @@ public:
     void construct();   // fields only, not the vtable
     void destruct();    // restores the vtable, then teardown()
     /* The vtable slot: destruct, and free on bit 0 of flags. */
-    static FaktMovie *__attribute__((thiscall))
+    static FaktMovie * 
     scalarDeletingDtor(FaktMovie *self, unsigned int flags);
 
     int  setup(void *log_obj_arg);  // always 1

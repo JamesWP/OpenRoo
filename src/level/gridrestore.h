@@ -6,5 +6,5 @@ class Game;
 
 /* Copies each tile back from the snapshot, with the state byte's special cases
  * (see gridrestore.cpp). */
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
+extern "C" __declspec(dllexport) void  
 Sim_RestoreTileGridFromSnapshot(Game *self);

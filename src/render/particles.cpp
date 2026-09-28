@@ -29,7 +29,7 @@
 #define PARTICLE_LOG_FIRST 8
 #define FX_TINT_COLOUR     0xFFFF00FF
 
-#define THISCALL __attribute__((thiscall))
+#define THISCALL  
 typedef void  (THISCALL *ps_fill_fn)(ParticleSystem *);
 typedef DWORD (THISCALL *ps_draw_fn)(ParticleSystem *, RenderDevice *);
 

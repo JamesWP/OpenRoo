@@ -103,7 +103,7 @@ void SaveSlots::restoreVtable()
     *(const void **)this = SaveSlots::vtbl();
 }
 
-void *__attribute__((thiscall))
+void * 
 SaveSlots::scalarDeletingDtor(SaveSlots *self, unsigned int flags)
 {
     self->restoreVtable();

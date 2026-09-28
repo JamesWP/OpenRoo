@@ -77,7 +77,7 @@ public:
     void clearStreams();  // zeroes streams_[]
 
     /* The one slot of ScriptPlayer's vtable. */
-    static ScriptPlayer *__attribute__((thiscall))
+    static ScriptPlayer * 
     scalarDeletingDtor(ScriptPlayer *self, unsigned char flags);
 
 private:

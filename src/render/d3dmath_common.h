@@ -20,7 +20,7 @@ void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
  * stored, so an output that aliases an input is safe. */
 extern "C" {
 /* Set and return `self`. */
-__declspec(dllexport) Vec3 *__attribute__((thiscall))
+__declspec(dllexport) Vec3 * 
 Math_Vec3Set(Vec3 *self, float x, float y, float z);
 /* d = a - b, returns d. */
 __declspec(dllexport) Vec3 *__cdecl Math_Vec3Sub(Vec3 *d, const Vec3 *a, const Vec3 *b);
@@ -33,7 +33,7 @@ __declspec(dllexport) Vec3 *__cdecl Math_Vec3Cross(Vec3 *d, const Vec3 *a, const
 /* d = v / s, returns d. */
 __declspec(dllexport) Vec3 *__cdecl Math_Vec3Div(Vec3 *d, const Vec3 *v, float s);
 /* All sixteen elements, row-major; returns self. */
-__declspec(dllexport) Mat4 *__attribute__((thiscall))
+__declspec(dllexport) Mat4 * 
 Math_Mat4Set(Mat4 *self, float m00, float m01, float m02, float m03,
              float m10, float m11, float m12, float m13,
              float m20, float m21, float m22, float m23,
@@ -67,11 +67,11 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotY(Mat4 *out, float angle);
 __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle);
 /* A ScreenVertex (FVF 0x1C4) from *pos and rhw, colour, specular, tu, tv,
  * stored as given; returns self. */
-__declspec(dllexport) ScreenVertex *__attribute__((thiscall))
+__declspec(dllexport) ScreenVertex * 
 Math_VertexSet(ScreenVertex *self, const Vec3 *pos, float rhw, uint32_t color,
                uint32_t specular, float tu, float tv);
 /* self *= k in place, returns self. */
-__declspec(dllexport) Vec3 *__attribute__((thiscall))
+__declspec(dllexport) Vec3 * 
 Math_Vec3ScaleInPlace(Vec3 *self, float k);
 /* sqrt((x*x + y*y) + z*z). */
 __declspec(dllexport) double __cdecl Math_Vec3Length(const Vec3 *v);

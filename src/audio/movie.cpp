@@ -79,7 +79,7 @@ FaktMovie *FaktMovie::init()
 }
 
 /* Frees on bit 0; the one movie is a global, so it never does. */
-FaktMovie *__attribute__((thiscall))
+FaktMovie * 
 FaktMovie::scalarDeletingDtor(FaktMovie *self, unsigned int flags)
 {
     self->destruct();

@@ -317,7 +317,7 @@ CStaticSoundbuffer *SoundManager::acquireStatic(const char *name, int bWant3D)
     ++g_cloneFail;
     if (clone != NULL) {
         // Deleted through its own vtable, with the free flag.
-        typedef void (__attribute__((thiscall)) *dtor_fn)(void *, int);
+        typedef void (  *dtor_fn)(void *, int);
         (*(dtor_fn *)clone->vtable())(clone, 1);
     }
     return NULL;
@@ -560,7 +560,7 @@ void SoundManager::purgeAssets()
     purge_list(&entries3D_);
     cfaktSound()->releaseComRefs();
     if (ownsLogger_ != 0 && logger_ != NULL) {
-        typedef void *(__attribute__((thiscall)) *ScalarDtor)(void *, int);
+        typedef void *(  *ScalarDtor)(void *, int);
         (*(ScalarDtor *)*(void **)logger_)(logger_, 1);
     }
     logger_           = NULL;
@@ -582,7 +582,7 @@ void SoundManager::destruct()
 
 /* Reached only through the vtable; the manager is embedded in the Game, so
  * nothing deletes one. */
-SoundManager *__attribute__((thiscall))
+SoundManager * 
 SoundManager::scalarDestructor(SoundManager *self, unsigned char flags)
 {
     self->destruct();

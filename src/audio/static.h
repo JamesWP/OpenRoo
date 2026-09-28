@@ -18,7 +18,7 @@ public:
     /* The scalar/vector deleting destructor, the one vtable slot: bit 1 means
      * an array, bit 0 frees the block.  Returns the block destroyed: this, or
      * for an array the count header four bytes below the first element. */
-    static void *__attribute__((thiscall))
+    static void * 
     scalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
 
     CStaticSoundbuffer *init();  // returns this

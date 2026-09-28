@@ -60,7 +60,7 @@ static void enter_loaded_state(Game *game, FILE *fp)
     fclose(fp);
 }
 
-extern "C" __declspec(dllexport) void __attribute__((thiscall))
+extern "C" __declspec(dllexport) void  
 Sim_HandleTypedCheatCode(Game *self)
 {
     Player *pl = self->player();

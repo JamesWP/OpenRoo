@@ -35,8 +35,7 @@ public:
     void  *vtable() const { return pVtable_; }
 
     void closeLogFile();
-    static void *__attribute__((thiscall))
-    scalarDeletingDtor(GameLogger *self, unsigned char flags);
+    static GameLogger * scalarDeletingDtor(GameLogger *self, unsigned char flags);
     int logWithErrorCode(int level, const char *message, HRESULT hr);
 
 private:

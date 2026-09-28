@@ -60,7 +60,7 @@ void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
 /* ─── The exported vec3 helpers (d3dmath_common.h) ───────────────────────── */
 extern "C" {
 
-__declspec(dllexport) Vec3 *__attribute__((thiscall))
+__declspec(dllexport) Vec3 * 
 Math_Vec3Set(Vec3 *self, float x, float y, float z)
 {
     v3_set(self, x, y, z);
@@ -108,7 +108,7 @@ Math_Vec3Div(Vec3 *d, const Vec3 *v, float s)
     return d;
 }
 
-__declspec(dllexport) Mat4 *__attribute__((thiscall))
+__declspec(dllexport) Mat4 * 
 Math_Mat4Set(Mat4 *self, float m00, float m01, float m02, float m03,
              float m10, float m11, float m12, float m13,
              float m20, float m21, float m22, float m23,
@@ -226,7 +226,7 @@ __declspec(dllexport) Mat4 *__cdecl Math_Mat4RotZ(Mat4 *out, float angle)
 /* ─── RenderGameFrame's three small helpers ─────────────────────────────── */
 extern "C" {
 
-__declspec(dllexport) ScreenVertex *__attribute__((thiscall))
+__declspec(dllexport) ScreenVertex * 
 Math_VertexSet(ScreenVertex *self, const Vec3 *pos, float rhw, uint32_t color,
                uint32_t specular, float tu, float tv)
 {
@@ -241,7 +241,7 @@ Math_VertexSet(ScreenVertex *self, const Vec3 *pos, float rhw, uint32_t color,
     return self;
 }
 
-__declspec(dllexport) Vec3 *__attribute__((thiscall))
+__declspec(dllexport) Vec3 * 
 Math_Vec3ScaleInPlace(Vec3 *self, float k)
 {
     self->x = self->x * k;

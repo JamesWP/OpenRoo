@@ -124,7 +124,7 @@ __declspec(dllexport) void *CStream_Vtable(void)
     return (void *)g_CStreamVtable;
 }
 
-void *__attribute__((thiscall))
+void * 
 CStreamSoundbuffer::scalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
 {
     static unsigned long seen;

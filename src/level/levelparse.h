@@ -4,13 +4,13 @@
 class Game;
 
 /* Loads the level by name (the menu backdrop's demo level). */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 Sim_ParseLevelFiles(Game *self, const char *name);
 
 /* Copies level levelNo's name from the game file's table into the Game. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 Sim_SetCurrentLevelName(Game *self, unsigned int levelNo);
 
 /* Loads level levelNo by number: every gameplay level goes through here. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 Sim_OpenLevelFile(Game *self, unsigned int levelNo);

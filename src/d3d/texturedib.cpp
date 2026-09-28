@@ -37,7 +37,7 @@ extern "C" {
  * Blits a GDI bitmap into pTextureSurface by way of a temporary system-memory
  * DirectDraw surface: create it with the destination's pixel format, GetDC it,
  * BitBlt the DIB in, then BltFast the result across. */
-__declspec(dllexport) unsigned int __attribute__((thiscall))
+__declspec(dllexport) unsigned int  
 TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
 {
     DDSURFACEDESC2 ddsd;
@@ -103,7 +103,7 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
  * Loads a BMP, creates a matching DirectDraw surface for it, fills it via
  * BlitToSurface and records the file name.  bSysMem adds DDSCAPS_SYSTEMMEMORY
  * to DDSCAPS_OFFSCREENPLAIN. */
-__declspec(dllexport) unsigned int __attribute__((thiscall))
+__declspec(dllexport) unsigned int  
 TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
                          char bSysMem)
 {

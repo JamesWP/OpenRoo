@@ -39,7 +39,7 @@ public:
     SkyBackground *construct();
 
     void dtorBody();
-    static SkyBackground *__attribute__((thiscall))
+    static SkyBackground * 
     scalarDtor(SkyBackground *self, unsigned int flags);
 
     /* Rebuilds the world matrix from flYawAngle and the given centre, submits

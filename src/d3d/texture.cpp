@@ -119,7 +119,7 @@ void LoadedImage::dtorBody()
 }
 
 /* Reachable only through vtable slot 0. */
-LoadedImage *__attribute__((thiscall))
+LoadedImage * 
 LoadedImage::scalarDtor(LoadedImage *self, unsigned int flags)
 {
     static unsigned long seen; image_first("LoadedImage::ScalarDeletingDtor", &seen);
@@ -161,10 +161,10 @@ void LoadedImage::releaseSurfaces()
  * Only the low byte of the result is the success flag.  The upper bytes are
  * whatever the last call left: Restore's HRESULT, DeleteObject's result, or
  * the TGA loader's value.  Any loadedState other than 1 or 2 returns true. */
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 TextureDIB_BlitToSurface(LoadedImage *, HANDLE);
 
-extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+extern "C" __declspec(dllexport) unsigned int  
 TextureTGA_Parse(LoadedImage *, LPCSTR);
 
 unsigned int LoadedImage::load()

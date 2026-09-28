@@ -65,7 +65,7 @@ public:
     static void *vtbl();
 
     /* Vtable slot 0.  Returns self; bit 0 of flags frees. */
-    static void *__attribute__((thiscall))
+    static void * 
     scalarDtor(WrapperObject *self, unsigned int flags);
 
 private:

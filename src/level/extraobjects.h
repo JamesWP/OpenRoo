@@ -86,7 +86,7 @@ public:
     unsigned short objectCount() const               { return objectCount_; }
     ExtraObjectRecord *record(unsigned int i)        { return &records_[i]; }
 
-    static ExtraObjects *__attribute__((thiscall))
+    static ExtraObjects * 
     scalarDeletingDtor(ExtraObjects *self, unsigned char flags);
 
 private:

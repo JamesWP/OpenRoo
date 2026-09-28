@@ -201,7 +201,7 @@ static void theme_struct_dump_if_enabled(const char *path)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 
-typedef void *(__attribute__((thiscall)) *theme_scalar_dtor_fn)(void *self, unsigned int flags);
+typedef void *(  *theme_scalar_dtor_fn)(void *self, unsigned int flags);
 
 static void delete_via_vtable(void *obj)
 {
@@ -262,7 +262,7 @@ void ThemeObjectTypeSlot::destruct()
         records_[i].destruct();
 }
 
-ThemeObjectTypeSlot *__attribute__((thiscall))
+ThemeObjectTypeSlot * 
 ThemeObjectTypeSlot::scalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
 {
     self->destruct();
@@ -1012,7 +1012,7 @@ void ThemeSoundTable::destruct()
 }
 
 /* Reached only through the vtable; the table is embedded in the Game. */
-ThemeSoundTable *__attribute__((thiscall))
+ThemeSoundTable * 
 ThemeSoundTable::scalarDestructor(ThemeSoundTable *self, unsigned char flags)
 {
     self->destruct();

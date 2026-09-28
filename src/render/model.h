@@ -26,7 +26,7 @@ public:
     ModelManager *construct();
 
     void destruct();
-    static ModelManager *__attribute__((thiscall))
+    static ModelManager * 
     scalarDestructor(ModelManager *self, unsigned char flags);
 
     void        *vtable() const { return vtable_; }

@@ -122,7 +122,7 @@ void CDM::setMixerVolume(DWORD level)
 extern "C" __declspec(dllexport) void KarooHooksLoad() {}  // unused
 
 /* Frees on bit 0; the one CDM is a global, so it never does. */
-CDM *__attribute__((thiscall)) CDM::scalarDeletingDtor(CDM *self, unsigned int flags)
+CDM * CDM::scalarDeletingDtor(CDM *self, unsigned int flags)
 {
     self->stopAndClose();
     if (flags & 1)
@@ -130,12 +130,12 @@ CDM *__attribute__((thiscall)) CDM::scalarDeletingDtor(CDM *self, unsigned int f
     return self;
 }
 
-int __attribute__((thiscall)) CDM::vtGetTrackCount(CDM *self)
+int CDM::vtGetTrackCount(CDM *self)
 {
     return self->getTrackCount();
 }
 
-int __attribute__((thiscall)) CDM::vtGetTrackLength(CDM *self, char **out_ptr, int track)
+int CDM::vtGetTrackLength(CDM *self, char **out_ptr, int track)
 {
     return self->getTrackLength(out_ptr, track);
 }

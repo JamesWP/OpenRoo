@@ -52,7 +52,7 @@ public:
     void           initialiseEmpty();
 
     /* The one slot of the vtable: the deleting destructor. */
-    static void *__attribute__((thiscall))
+    static void * 
     scalarDeletingDtor(SaveSlots *self, unsigned int flags);
 
     /* Loads and saves every slot's file, enciphered with key.  See

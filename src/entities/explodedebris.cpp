@@ -90,7 +90,7 @@ void ExplodeDebris::dtorBody()
 
 /* Vtable slot 0.  Every ExplodeDebris is embedded in a larger object, so bit 0
  * is never set and this path is not exercised. */
-void *__attribute__((thiscall))
+void * 
 ExplodeDebris::scalarDtor(ExplodeDebris *self, unsigned int flags)
 {
     self->dtorBody();
