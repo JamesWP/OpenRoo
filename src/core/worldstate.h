@@ -111,37 +111,43 @@ struct Observation {
     BYTE foes_killed, lives;
     int level_complete;
     unsigned short crystals_in_level;  // the crystals in the level
+
+    /* Fills obs from the live Game.  False when there is no Game or the grid's
+     * extents are out of range (menus, teardown). */
+    bool observe();
+
+    /* Whether an entity on (fu, fv) can step to the adjacent (tu, tv).  The game's
+     * movement cancels a step when:
+     *   - the destination's occupant byte is set (an object or a foe);
+     *   - it is higher, unless the tile being left is a ramp facing that way;
+     *   - it is WS_MAX_SAFE_DROP or more steps lower, unless it is a jump pad;
+     *   - it is kind 0x16, or 0x17 with its busy flag clear.
+     * Ramps (kinds 5 to 8) allow the climb only in their own direction; that test
+     * is not reproduced here, so this can propose a climb the game refuses.
+     * Everywhere else it errs towards blocked: a refused legal step costs a
+     * detour, but an accepted illegal one wedges the autoplayer against a wall. */
+    bool passable(int fu, int fv, int tu, int tv) const;
+
+    /* As ws_passable, with foes treated as absent.  A foe blocks its cell as an
+     * object does, but it moves; this separates "blocked for now" from "blocked
+     * for good", so the autoplayer can wait for a guarded pickup. */
+    bool passableIgnoringFoes(int fu, int fv, int tu, int tv) const;
+
+    /* Whether a live foe or bomb stands on this cell.
+     *
+     * Foes act only while the freeze timer is 0 and the mode is 1; otherwise, and
+     * once the level is complete or the player dead, they are held.  The freeze
+     * bonus is the window in which a guarded pickup is safe.  Behaviour 1 walks to
+     * the exit, 2 and 3 chase the player, 5 hunts other foes. */
+    bool foeOnCell(int u, int v) const;
+
+    /* KAROO_WS_TRACE: logs the frame's player and entity lines. */
+    void traceFrame() const;
+
+private:
+    bool wsPassableImpl(int fu, int fv, int tu, int tv, bool ignore_foes) const;
+    void traceEntities(const char *tag, const WsEntity *ents, unsigned n, bool foe) const;
 };
-
-/* Fills obs from the live Game.  False when there is no Game or the grid's
- * extents are out of range (menus, teardown). */
-bool worldstate_observe(Observation *obs);
-
-/* Whether an entity on (fu, fv) can step to the adjacent (tu, tv).  The game's
- * movement cancels a step when:
- *   - the destination's occupant byte is set (an object or a foe);
- *   - it is higher, unless the tile being left is a ramp facing that way;
- *   - it is WS_MAX_SAFE_DROP or more steps lower, unless it is a jump pad;
- *   - it is kind 0x16, or 0x17 with its busy flag clear.
- * Ramps (kinds 5 to 8) allow the climb only in their own direction; that test
- * is not reproduced here, so this can propose a climb the game refuses.
- * Everywhere else it errs towards blocked: a refused legal step costs a
- * detour, but an accepted illegal one wedges the autoplayer against a wall. */
-bool ws_passable(const Observation *o, int fu, int fv, int tu, int tv);
-
-/* As ws_passable, with foes treated as absent.  A foe blocks its cell as an
- * object does, but it moves; this separates "blocked for now" from "blocked
- * for good", so the autoplayer can wait for a guarded pickup. */
-bool ws_passable_ignoring_foes(const Observation *o, int fu, int fv,
-                               int tu, int tv);
-
-/* Whether a live foe or bomb stands on this cell.
- *
- * Foes act only while the freeze timer is 0 and the mode is 1; otherwise, and
- * once the level is complete or the player dead, they are held.  The freeze
- * bonus is the window in which a guarded pickup is safe.  Behaviour 1 walks to
- * the exit, 2 and 3 chase the player, 5 hunts other foes. */
-bool ws_foe_on_cell(const Observation *o, int u, int v);
 
 /* Called once a frame from clock_seconds(), after gamestate_tick().  Drives
  * KAROO_MAP_DUMP, KAROO_ENTITY_TRACE and KAROO_OBS_DUMP; does nothing when

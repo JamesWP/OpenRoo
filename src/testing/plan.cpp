@@ -102,8 +102,8 @@ static void bfs(const Observation *o, int su, int sv, bool avoid,
             int adj = IDX(au, av);
             if (g_dist[adj] != UNREACHED) continue;
             if (ignore_foes) {
-                if (!ws_passable_ignoring_foes(o, cu, cv, au, av)) continue;
-            } else if (!ws_passable(o, cu, cv, au, av)) continue;
+                if (!o->passableIgnoringFoes(cu, cv, au, av)) continue;
+            } else if (!o->passable(cu, cv, au, av)) continue;
             if (g_lethal[adj]) continue;  // not even as a fallback
             if (avoid && g_danger[adj]) continue;
             if (adj == g_avoid_cell) continue;
@@ -180,9 +180,9 @@ static void build_tour(const Observation *o, int pu, int pv)
     int rank[MAX_STOPS];
     for (int i = 0; i < n; i++) {
         int gu = g_stop[i] / WS_GRID_PITCH, gv = g_stop[i] % WS_GRID_PITCH;
-        bool guarded = ws_foe_on_cell(o, gu, gv);
+        bool guarded = o->foeOnCell(gu, gv);
         for (int d = 0; d < 4 && !guarded; d++)
-            if (ws_foe_on_cell(o, gu + DU[d], gv + DV[d])) guarded = true;
+            if (o->foeOnCell(gu + DU[d], gv + DV[d])) guarded = true;
         rank[i] = (o->grid[g_stop[i]].contents != CONTENTS_CRYSTAL) ? 2 : (guarded ? 1 : 0);
     }
 

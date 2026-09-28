@@ -103,10 +103,10 @@ static unsigned read_table(const Game *g, unsigned char count_in,
     return n;
 }
 
-bool worldstate_observe(Observation *obs)
+bool Observation::observe()
 {
     const BYTE *g = (const BYTE *)Game::instance();
-    memset(obs, 0, sizeof(*obs));
+    memset(this, 0, sizeof(*this));
     if (!g) return false;
 
     const LevelMap *map = ((const Game *)g)->map();
@@ -115,11 +115,11 @@ bool worldstate_observe(Observation *obs)
     if (rows == 0 || cols == 0 || rows > WS_GRID_PITCH || cols > WS_GRID_PITCH)
         return false;  // a menu, or the level torn down
 
-    obs->valid = true;
-    obs->frame = clock_frame();
-    obs->rows  = rows;
-    obs->cols  = cols;
-    obs->grid  = g_grid;
+    valid = true;
+    frame = clock_frame();
+    this->rows  = rows;
+    this->cols  = cols;
+    grid  = g_grid;
 
     for (unsigned u = 0; u < cols; u++) {
         for (unsigned v = 0; v < rows; v++) {
@@ -141,35 +141,35 @@ bool worldstate_observe(Observation *obs)
     }
 
     const Player *pl = ((const Game *)g)->player();
-    obs->player_facing  = pl->facing();
-    obs->player_moving  = (BYTE)pl->moveDir();
-    obs->player_grid[0] = pl->posU();
-    obs->player_grid[1] = pl->posY();
-    obs->player_grid[2] = pl->posV();
+    player_facing  = pl->facing();
+    player_moving  = (BYTE)pl->moveDir();
+    player_grid[0] = pl->posU();
+    player_grid[1] = pl->posY();
+    player_grid[2] = pl->posV();
     for (int k = 0; k < 3; k++)  // the camera eye, (U, H, V)
-        obs->player_world[k] = ((const Game *)g)->cameraEye(k);
-    obs->player_cell[0] = (BYTE)pl->cellU();
-    obs->player_cell[1] = (BYTE)pl->cellV();
-    obs->player_cell[2] = (BYTE)pl->heightCell();
+        player_world[k] = ((const Game *)g)->cameraEye(k);
+    player_cell[0] = (BYTE)pl->cellU();
+    player_cell[1] = (BYTE)pl->cellV();
+    player_cell[2] = (BYTE)pl->heightCell();
     // The exit: the level's one tile of kind 4.  The level completes when the
     // player stands on it with the gems collected at least the gems required.
-    obs->exit_cell[0]   = pl->markerCellU();
-    obs->exit_cell[1]   = pl->markerCellV();
-    obs->exit_cell[2]   = pl->markerCellH();
+    exit_cell[0]   = pl->markerCellU();
+    exit_cell[1]   = pl->markerCellV();
+    exit_cell[2]   = pl->markerCellH();
 
     const Game *game = (const Game *)g;
-    obs->n_foes    = read_table(game, game->foeCount(), &Game::foeId,
-                                &Game::foeSlot, read_foe, obs->foes);
-    obs->n_enemies = read_table(game, game->bombCount(), &Game::bombId,
-                                &Game::bombSlot, read_bomb, obs->enemies);
+    n_foes    = read_table(game, game->foeCount(), &Game::foeId,
+                                &Game::foeSlot, read_foe, foes);
+    n_enemies = read_table(game, game->bombCount(), &Game::bombId,
+                                &Game::bombSlot, read_bomb, enemies);
 
-    obs->gems_collected    = pl->gemsCollected();
-    obs->gems_required     = game->gemsRequired();
-    obs->foes_killed       = ((const Game *)g)->foesKilled();
-    obs->lives             = (BYTE)pl->lives();
-    obs->level_complete    = pl->held();
-    obs->crystals_in_level = ((const Game *)g)->field_42252();
-    obs->freeze_timer      = (DWORD)pl->effect8Active();
+    gems_collected    = pl->gemsCollected();
+    gems_required     = game->gemsRequired();
+    foes_killed       = ((const Game *)g)->foesKilled();
+    lives             = (BYTE)pl->lives();
+    level_complete    = pl->held();
+    crystals_in_level = ((const Game *)g)->field_42252();
+    freeze_timer      = (DWORD)pl->effect8Active();
     return true;
 }
 
@@ -177,25 +177,25 @@ bool worldstate_observe(Observation *obs)
  * from a wall. */
 static inline bool ws_is_ramp(BYTE kind) { return kind > 4 && kind < 9; }
 
-bool ws_foe_on_cell(const Observation *o, int u, int v)
+bool Observation::foeOnCell(int u, int v) const
 {
     for (unsigned pass = 0; pass < 2; pass++) {
-        const WsEntity *e = pass ? o->enemies : o->foes;
-        unsigned n        = pass ? o->n_enemies : o->n_foes;
+        const WsEntity *e = pass ? enemies : foes;
+        unsigned n        = pass ? n_enemies : n_foes;
         for (unsigned i = 0; i < n; i++)
             if (e[i].gu == u && e[i].gv == v) return true;
     }
     return false;
 }
 
-static bool ws_passable_impl(const Observation *o, int fu, int fv,
-                             int tu, int tv, bool ignore_foes)
+bool Observation::wsPassableImpl(int fu, int fv,
+                             int tu, int tv, bool ignore_foes) const
 {
-    if (tu < 0 || tv < 0 || tu >= o->cols || tv >= o->rows) return false;
-    if (fu < 0 || fv < 0 || fu >= o->cols || fv >= o->rows) return false;
+    if (tu < 0 || tv < 0 || tu >= cols || tv >= rows) return false;
+    if (fu < 0 || fv < 0 || fu >= cols || fv >= rows) return false;
 
-    const WsTile *from = &o->grid[fv + fu * WS_GRID_PITCH];
-    const WsTile *to   = &o->grid[tv + tu * WS_GRID_PITCH];
+    const WsTile *from = &grid[fv + fu * WS_GRID_PITCH];
+    const WsTile *to   = &grid[tv + tu * WS_GRID_PITCH];
 
     if (to->kind == TILE_EMPTY)      return false;  // no floor
     // The occupant byte is set by an entity arriving (its kind) and cleared
@@ -204,7 +204,7 @@ static bool ws_passable_impl(const Observation *o, int fu, int fv,
     // the rest of the level (and a breakable tile re-arms on it).  A cell is
     // therefore treated as occupied only if a foe or bomb is actually reported
     // there.
-    if (to->occupant != 0 && !ignore_foes && ws_foe_on_cell(o, tu, tv))
+    if (to->occupant != 0 && !ignore_foes && foeOnCell(tu, tv))
         return false;
     if (to->kind == TILE_IMPASSABLE)   return false;
     if (to->kind == TILE_DESTRUCTIBLE && to->spent == 0) return false;
@@ -234,15 +234,15 @@ static bool ws_passable_impl(const Observation *o, int fu, int fv,
     return true;
 }
 
-bool ws_passable(const Observation *o, int fu, int fv, int tu, int tv)
+bool Observation::passable(int fu, int fv, int tu, int tv) const
 {
-    return ws_passable_impl(o, fu, fv, tu, tv, false);
+    return wsPassableImpl(fu, fv, tu, tv, false);
 }
 
-bool ws_passable_ignoring_foes(const Observation *o, int fu, int fv,
-                               int tu, int tv)
+bool Observation::passableIgnoringFoes(int fu, int fv,
+                                       int tu, int tv) const
 {
-    return ws_passable_impl(o, fu, fv, tu, tv, true);
+    return wsPassableImpl(fu, fv, tu, tv, true);
 }
 
 const Observation *worldstate_latest(void) { return g_obs_valid ? &g_obs : NULL; }
@@ -345,16 +345,16 @@ static bool axis_ok(float f, BYTE cell)
     return d <= WS_AXIS_TOL;
 }
 
-static void trace_entities(const Observation *obs, const char *tag,
-                           const WsEntity *ents, unsigned n, bool foe)
+void Observation::traceEntities(const char *tag,
+                           const WsEntity *ents, unsigned n, bool foe) const
 {
     for (unsigned i = 0; i < n; i++) {
         const WsEntity *e = &ents[i];
-        bool inb = (e->gu < obs->cols && e->gv < obs->rows);
+        bool inb = (e->gu < cols && e->gv < rows);
         bool ax  = axis_ok(e->pos[0], e->gu) && axis_ok(e->pos[2], e->gv);
         log_write("entity: f=%lu %s[%u] slot=%u kind=%u face=%u cat=%u "
                   "cell=(%u,%u,%u) pos=(%.3f,%.3f,%.3f) hid=%lu%s%s\n",
-                  (unsigned long)obs->frame, tag, i, e->slot,
+                  (unsigned long)frame, tag, i, e->slot,
                   e->kind, e->facing, e->category,
                   e->gu, e->gv, e->gh,
                   e->pos[0], e->pos[1], e->pos[2],
@@ -365,21 +365,21 @@ static void trace_entities(const Observation *obs, const char *tag,
     }
 }
 
-static void trace_frame(const Observation *obs)
+void Observation::traceFrame() const
 {
     log_write("entity: f=%lu mode=%u grid=%ux%u player cell=(%u,%u,%u) face=%u "
               "gridf=(%.3f,%.3f,%.3f) world=(%.3f,%.3f,%.3f) "
               "foes=%u enemies=%u killed=%u gems=%d/%d\n",
-              (unsigned long)obs->frame, (unsigned)obs->mode,
-              obs->cols, obs->rows,
-              obs->player_cell[0], obs->player_cell[1], obs->player_cell[2],
-              obs->player_facing,
-              obs->player_grid[0],  obs->player_grid[1],  obs->player_grid[2],
-              obs->player_world[0], obs->player_world[1], obs->player_world[2],
-              obs->n_foes, obs->n_enemies, (unsigned)obs->foes_killed,
-              obs->gems_collected, obs->gems_required);
-    trace_entities(obs, "foe",   obs->foes,    obs->n_foes,    true);
-    trace_entities(obs, "enemy", obs->enemies, obs->n_enemies, false);
+              (unsigned long)frame, (unsigned)mode,
+              cols, rows,
+              player_cell[0], player_cell[1], player_cell[2],
+              player_facing,
+              player_grid[0],  player_grid[1],  player_grid[2],
+              player_world[0], player_world[1], player_world[2],
+              n_foes, n_enemies, (unsigned)foes_killed,
+              gems_collected, gems_required);
+    traceEntities("foe",   foes,    n_foes,    true);
+    traceEntities("enemy", enemies, n_enemies, false);
 }
 
 static void obs_dump_line(FILE *fp, const Observation *obs)
@@ -443,7 +443,7 @@ void worldstate_tick(void)
     Observation *obs = &g_obs;
     unsigned short mode = gamestate_mode();
     if (mode == 0) return;
-    if (!worldstate_observe(obs)) return;
+    if (!obs->observe()) return;
     obs->mode   = mode;
     g_obs_valid = true;
 
@@ -451,7 +451,7 @@ void worldstate_tick(void)
         g_map_done = true;
         map_dump((const BYTE *)Game::instance(), obs, g_map_path);
     }
-    if (g_trace) trace_frame(obs);
+    if (g_trace) obs->traceFrame();
     if (g_obsdump) {
         if (!g_obs_fp) g_obs_fp = fopen(g_obs_path, "w");
         if (g_obs_fp) { obs_dump_line(g_obs_fp, obs); fflush(g_obs_fp); }
