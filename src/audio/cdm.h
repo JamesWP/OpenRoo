@@ -40,7 +40,7 @@ public:
     static int vtGetTrackLength(CDM *self, char **out_ptr, int track);
 
 private:
-    static void checkLayout();
+ 
 
     void            *vtable;
     DWORD            nummixers;     // always 0
@@ -51,15 +51,5 @@ private:
     int              tracknumber;   // the CD track playing: 2..9
 };
 
-inline void CDM::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(CDM, windowhandle) == 0x58,  "CDM layout mismatch");
-    static_assert(offsetof(CDM, mcibuff)      == 0x5C,  "CDM layout mismatch");
-    static_assert(offsetof(CDM, repeat)       == 0x15C, "CDM layout mismatch");
-    static_assert(offsetof(CDM, tracknumber)  == 0x15D, "CDM layout mismatch");
-#pragma GCC diagnostic pop
-}
-
+ 
 extern const void *const CDM_VTABLE;

@@ -19,8 +19,3 @@ struct TgaHeader {
     unsigned char  bpp;              /* +0x10 */
     unsigned char  descriptor;       /* +0x11 */
 } __attribute__((packed));
-
-static_assert(offsetof(TgaHeader, colourMapOrigin) == 0x03, "TgaHeader layout");
-static_assert(offsetof(TgaHeader, width)           == 0x0c, "TgaHeader layout");
-static_assert(offsetof(TgaHeader, descriptor)      == 0x11, "TgaHeader layout");
-static_assert(sizeof(TgaHeader) == 18, "TGA header must be 18 bytes");

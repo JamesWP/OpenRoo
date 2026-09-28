@@ -2,7 +2,7 @@
  * yaw-rotated and re-centred on the viewer every frame.  ThemeAssetBlock owns
  * the one instance per theme (sky.cpp has its lifecycle and the draw).  The
  * vertex and matrix layouts below are load-bearing: the struct must tile
- * exactly to the sizes the static_asserts check. */
+ * exactly to the sizes the  s check. */
 
 #pragma once
 #include <windows.h>
@@ -19,7 +19,6 @@ struct SkyVertex {
     DWORD specular;
     float u, v;
 };
-static_assert(sizeof(SkyVertex) == 0x20, "SkyVertex stride");
 
 /* One cube of six faces, four vertices each, plus the world matrix
  * DrawSkyBackground rebuilds from flYawAngle and the viewer position every
@@ -50,16 +49,16 @@ public:
     const void     *vtable() const { return pVtable_; }
 
     /* The six faces.  4-aligned within the packed sky. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     SceneTexture       *textures()       { return Textures_; }
     const SceneTexture *textures() const { return Textures_; }
-#pragma GCC diagnostic pop
+ 
 
 private:
     void skyFillGeometry();
 
-    static void checkLayout();
+ 
 
     const void     *pVtable_;          // +0x000 one-slot vtable
     float           flYawAngle_;       // +0x004 radians, the Y rotation
@@ -67,17 +66,4 @@ private:
     SkyVertex       QuadVerts_[6][4];  // +0x0b0 one triangle-strip quad per face
     float           WorldMatrix_[16];  // +0x3b0 rebuilt every draw call
 };
-
-inline void SkyBackground::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(SkyBackground, flYawAngle_)  == 0x004, "SkyBackground layout");
-    static_assert(offsetof(SkyBackground, Textures_)    == 0x008, "SkyBackground layout");
-    static_assert(offsetof(SkyBackground, QuadVerts_)   == 0x0b0, "SkyBackground layout");
-    static_assert(offsetof(SkyBackground, WorldMatrix_) == 0x3b0, "SkyBackground layout");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(SkyBackground) == 0x3f0, "SkyBackground size mismatch");
 

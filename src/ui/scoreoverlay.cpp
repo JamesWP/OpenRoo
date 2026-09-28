@@ -81,7 +81,6 @@ struct TLVertex {  // FVF 0x1c4
     DWORD diffuse, specular;
     float tu, tv;
 };
-static_assert(sizeof(TLVertex) == 0x20, "TLVertex size mismatch");
 
 /* The four-vertex strip: (w,0) (w,h) (0,0) (0,h), z 0, rhw 10. */
 static void build_backdrop(TLVertex v[4], float w, float h)

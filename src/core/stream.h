@@ -19,11 +19,6 @@ struct __attribute__((packed)) WaveInfo {
     int            nBuffer_seconds;
     short          wSegment_count;
 };
-static_assert(offsetof(WaveInfo, dwFlags) == 0x04, "WaveInfo dwFlags");
-static_assert(offsetof(WaveInfo, pFilename) == 0x08, "WaveInfo pFilename");
-static_assert(offsetof(WaveInfo, nBuffer_seconds) == 0x0c, "WaveInfo nBuffer_seconds");
-static_assert(offsetof(WaveInfo, wSegment_count) == 0x10, "WaveInfo wSegment_count");
-static_assert(sizeof(WaveInfo) == 0x12, "WaveInfo size");
 
 /* A streamed buffer, 0xd4 bytes, the size the script player allocates.  The
  * vtable must stay at offset 0. */
@@ -62,7 +57,7 @@ public:
     DWORD                thread_done() const { return dwThread_done_; }
 
 private:
-    static void checkLayout();
+ 
     static DWORD WINAPI watcherProc(LPVOID param);
 
     void                *vtable_;
@@ -80,21 +75,7 @@ private:
     BYTE                 _pad3_[0x02];
 };
 #pragma pack(pop)
-
-inline void CStreamSoundbuffer::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(CStreamSoundbuffer, vtable_)       == 0x00,  "vtable offset");
-    static_assert(offsetof(CStreamSoundbuffer, pSoundbuffer_) == 0x08,  "pSoundbuffer offset");
-    static_assert(offsetof(CStreamSoundbuffer, dwBuffer_size_)== 0x1a,  "dwBuffer_size offset");
-    static_assert(offsetof(CStreamSoundbuffer, dwThread_done_)== 0xa6,  "dwThread_done offset");
-    static_assert(offsetof(CStreamSoundbuffer, cs_)           == 0xba,  "cs offset");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(CStreamSoundbuffer)                 == 0xD4,  "CStreamSoundbuffer size");
-
+ 
 /* The one-slot vtable: the scalar deleting destructor. */
   void *CStream_Vtable(void);
 

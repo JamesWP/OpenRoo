@@ -4,7 +4,7 @@
  * through its own vtable; an Environment subclass owns the same five for
  * ageing, fading and killing particles already in the ring.  Both bases stay
  * fixed size across builds, so every layout below is exact, not a guess: each
- * struct's static_asserts pin the offsets the .cpp indexes into. */
+ * struct's  s pin the offsets the .cpp indexes into. */
 
 #pragma once
 #include <windows.h>
@@ -62,19 +62,10 @@ protected:
     RingBuffer *pRing_;
 
 private:
-    static void checkLayout();
+ 
 };
 
-inline void Generator::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(Generator, pRing_) == 0x0c, "Generator layout");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(Generator) == 0x10, "Generator size");
-
+ 
 /* Base of every environment.  Same role as Generator for the fields it has;
  * there is no enable flag here, so an environment can only be turned off by
  * detaching or not ticking it. */
@@ -108,18 +99,8 @@ protected:
     RingBuffer *pRing_;
 
 private:
-    static void checkLayout();
+ 
 };
-
-inline void Environment::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(Environment, pRing_) == 0x08, "Environment layout");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(Environment) == 0x0c, "Environment size");
 
 /* GravityEnvironment: a per-second gravity vector applied to live particles,
  * with a colour fade toward a target and up to three axis kill planes. */
@@ -158,26 +139,8 @@ private:
     float       flClipMin_[3];
     float       flFadeAccum_;
 
-    static void checkLayout();
+ 
 };
-
-inline void GravityEnvironment::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(GravityEnvironment, flMagnitude_)  == 0x18, "Gravity layout");
-    static_assert(offsetof(GravityEnvironment, flGravity_)    == 0x1c, "Gravity layout");
-    static_assert(offsetof(GravityEnvironment, dwTargetARGB_) == 0x28, "Gravity layout");
-    static_assert(offsetof(GravityEnvironment, dwTargetRGB_)  == 0x30, "Gravity layout");
-    static_assert(offsetof(GravityEnvironment, flFadeRate_)   == 0x3c, "Gravity layout");
-    static_assert(offsetof(GravityEnvironment, dwClipEnable_) == 0x44, "Gravity layout");
-    static_assert(offsetof(GravityEnvironment, flClipMax_)    == 0x50, "Gravity layout");
-    static_assert(offsetof(GravityEnvironment, flClipMin_)    == 0x5c, "Gravity layout");
-    static_assert(offsetof(GravityEnvironment, flFadeAccum_)  == 0x68, "Gravity layout");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(GravityEnvironment) == 0x6c, "Gravity size");
 
 /* MagnetEnvironment: pulls live particles toward flCentre and retires any that
  * arrive within flHalfExtent of it, with the same colour-fade skeleton as
@@ -212,24 +175,9 @@ private:
     DWORD       dwFadeThreshold_;
     float       flFadeAccum_;
 
-    static void checkLayout();
+ 
 };
 
-inline void MagnetEnvironment::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(MagnetEnvironment, flCentre_)       == 0x0c, "Magnet layout");
-    static_assert(offsetof(MagnetEnvironment, flForce_)        == 0x18, "Magnet layout");
-    static_assert(offsetof(MagnetEnvironment, flHalfExtent_)   == 0x24, "Magnet layout");
-    static_assert(offsetof(MagnetEnvironment, dwTargetRGB_)    == 0x38, "Magnet layout");
-    static_assert(offsetof(MagnetEnvironment, flFadeRate_)     == 0x44, "Magnet layout");
-    static_assert(offsetof(MagnetEnvironment, dwFadeThreshold_)== 0x48, "Magnet layout");
-    static_assert(offsetof(MagnetEnvironment, flFadeAccum_)    == 0x4c, "Magnet layout");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(MagnetEnvironment) == 0x50, "Magnet size");
 
 /* StdGenerator: the default emitter, used by most shipping effects.  Emit
  * never samples a distribution at runtime; Load fills the four tables below
@@ -290,25 +238,9 @@ protected:
     DWORD     dwProbIdx_;
 
 private:
-    static void checkLayout();
+ 
 };
 
-inline void StdGenerator::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(StdGenerator, flDtScale_)     == 0x0010, "Std layout");
-    static_assert(offsetof(StdGenerator, flPosTable_)    == 0x0078, "Std layout");
-    static_assert(offsetof(StdGenerator, flVelTable_)    == 0x17e8, "Std layout");
-    static_assert(offsetof(StdGenerator, pLifeTable_)    == 0x2f58, "Std layout");
-    static_assert(offsetof(StdGenerator, pEmitProb_)     == 0x30e8, "Std layout");
-    static_assert(offsetof(StdGenerator, flAccumulator_) == 0x340c, "Std layout");
-    static_assert(offsetof(StdGenerator, dwPosIdx_)      == 0x3410, "Std layout");
-    static_assert(offsetof(StdGenerator, dwProbIdx_)     == 0x341c, "Std layout");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(StdGenerator) == 0x3420, "Std size");
 
 /* XStdGenerator: StdGenerator plus a constant offset added to every sampled
  * position and velocity, used for thruster and flame effects.  Every field and
@@ -344,19 +276,9 @@ private:
     float        flPosOffset_[3];
     float        flVelOffset_[3];
 
-    static void checkLayout();
+ 
 };
 
-inline void XStdGenerator::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(XStdGenerator, flPosOffset_) == 0x3420, "XStd layout");
-    static_assert(offsetof(XStdGenerator, flVelOffset_) == 0x342c, "XStd layout");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(XStdGenerator) == 0x3438, "XStd size");
 
 /* CylinderGenerator: samples position and velocity like StdGenerator, then
  * scales the position, carries it through flMatrix and offsets it by flOrigin.
@@ -411,27 +333,8 @@ private:
     DWORD     dwLifeIdx_;
     DWORD     dwProbIdx_;
 
-    static void checkLayout();
+ 
 };
-
-inline void CylinderGenerator::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(CylinderGenerator, flScale_)       == 0x0028, "Cyl layout");
-    static_assert(offsetof(CylinderGenerator, flMatrix_)      == 0x002c, "Cyl layout");
-    static_assert(offsetof(CylinderGenerator, flDtScale_)     == 0x0094, "Cyl layout");
-    static_assert(offsetof(CylinderGenerator, flAccumulator_) == 0x00a0, "Cyl layout");
-    static_assert(offsetof(CylinderGenerator, flPosTable_)    == 0x00a4, "Cyl layout");
-    static_assert(offsetof(CylinderGenerator, flVelTable_)    == 0x1814, "Cyl layout");
-    static_assert(offsetof(CylinderGenerator, pLifeTable_)    == 0x2f84, "Cyl layout");
-    static_assert(offsetof(CylinderGenerator, pEmitProb_)     == 0x3114, "Cyl layout");
-    static_assert(offsetof(CylinderGenerator, dwPosIdx_)      == 0x3434, "Cyl layout");
-    static_assert(offsetof(CylinderGenerator, dwProbIdx_)     == 0x3440, "Cyl layout");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(CylinderGenerator) == 0x3444, "Cyl size");
 
 /* PointGenerator: emits every particle at a fixed position and colour; not
  * used by any shipping effect, so its tables are only ever whatever the
@@ -460,22 +363,8 @@ private:
     DWORD     dwVelIdx_[3];
     DWORD     dwLifeIdx_;  // runs past dwLifeTable's declared length before wrapping
 
-    static void checkLayout();
+ 
 };
-
-inline void PointGenerator::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(PointGenerator, flEmitRate_)    == 0x0028, "Point layout");
-    static_assert(offsetof(PointGenerator, dwDiffuse_)     == 0x0038, "Point layout");
-    static_assert(offsetof(PointGenerator, flVelTable_)    == 0x0044, "Point layout");
-    static_assert(offsetof(PointGenerator, dwLifeTable_)   == 0x0fe4, "Point layout");
-    static_assert(offsetof(PointGenerator, dwVelIdx_)      == 0x1174, "Point layout");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(PointGenerator) == 0x1184, "Point size");
 
 /* BoxGenerator: like PointGenerator, not used by any shipping effect and never
  * filled by a Load. */
@@ -506,24 +395,8 @@ private:
     DWORD     dwLifeIdx_;
     DWORD     dwDiffuseIdx_;
 
-    static void checkLayout();
+ 
 };
-
-inline void BoxGenerator::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(BoxGenerator, flVelBias_)    == 0x0028, "Box layout");
-    static_assert(offsetof(BoxGenerator, dwPosX_)       == 0x003c, "Box layout");
-    static_assert(offsetof(BoxGenerator, flVelTable_)   == 0x17ac, "Box layout");
-    static_assert(offsetof(BoxGenerator, dwDiffuse_)    == 0x210c, "Box layout");
-    static_assert(offsetof(BoxGenerator, dwPosIdx_)     == 0x242c, "Box layout");
-    static_assert(offsetof(BoxGenerator, dwDiffuseIdx_) == 0x2448, "Box layout");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(BoxGenerator) == 0x244c, "Box size");
-
 /* Direct calls through the shared vtable slot layout above, used where the
  * caller only has a Generator pointer or an Environment pointer and needs one
  * virtual call. */

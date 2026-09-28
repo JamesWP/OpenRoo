@@ -23,10 +23,10 @@ public:
 
 /* The embedded device's address; 4-aligned, so the packed-member warning is
  * moot. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     CFaktSound *cfaktSound() { return &cfaktSound_; }
-#pragma GCC diagnostic pop
+ 
 
     IDirectSound *directSound() const { return cfaktSound_.directsound(); }
 

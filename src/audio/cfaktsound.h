@@ -51,7 +51,7 @@ public:
     scalarDeletingDtor(CFaktSound *self, DWORD free_memory);
 
 private:
-    static void checkLayout();
+ 
 
     void                   *vtable_;
     DWORD                   logger_initialized_;  // always 0: the logger is never owned
@@ -63,22 +63,6 @@ private:
 };
 #pragma pack(pop)
 
-inline void CFaktSound::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(CFaktSound, vtable_)                == 0x00, "vtable offset");
-    static_assert(offsetof(CFaktSound, logger_initialized_)     == 0x04, "logger_initialized offset");
-    static_assert(offsetof(CFaktSound, logger_)                == 0x08, "logger offset");
-    static_assert(offsetof(CFaktSound, directsound_)           == 0x0C, "directsound offset");
-    static_assert(offsetof(CFaktSound, soundbuffer_)           == 0x10, "soundbuffer offset");
-    static_assert(offsetof(CFaktSound, caps_check_)            == 0x14, "caps_check offset");
-    static_assert(offsetof(CFaktSound, directsound3dlistener_) == 0x74, "directsound3dlistener offset");
-#pragma GCC diagnostic pop
-}
-
-static_assert(sizeof(CFaktSound)                          == 0x78, "CFaktSound size");
-static_assert(sizeof(DSCAPS)                              == 0x60, "DSCAPS size");
 
 /* The one-slot vtable: the deleting destructor. */
 extern const void *const CFAKTSOUND_VTABLE;

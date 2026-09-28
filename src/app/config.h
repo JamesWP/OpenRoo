@@ -37,10 +37,10 @@ public:
     unsigned short joyDeadzone() const                 { return joyDeadzone_; }
 
 /* The launcher's display device and mode choice. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     GUID          *adapterGuid()                       { return &adapterGuid_; }
-#pragma GCC diagnostic pop
+ 
     unsigned int   displayModeIndex() const            { return displayModeIndex_; }
     void           setDisplayModeIndex(unsigned int i) { displayModeIndex_ = i; }
     void           setJoyDeadzone(unsigned short p)    { joyDeadzone_ = p; }
@@ -69,10 +69,10 @@ public:
     void fillDefaults();
     unsigned int   savedCdMixerVolume() const          { return savedCdMixerVolume_; }
     void           setSavedCdMixerVolume(unsigned int v) { savedCdMixerVolume_ = v; }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     unsigned int  *savedWaveOutVolumeRef()             { return &savedWaveOutVolume_; }
-#pragma GCC diagnostic pop
+ 
     unsigned int   savedWaveOutVolume() const          { return savedWaveOutVolume_; }
     void           setCameraDistanceSetting(float d)   { cameraDistanceSetting_ = d; }
     unsigned int   cdMixerVolume() const               { return cdMixerVolume_; }

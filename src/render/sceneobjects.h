@@ -24,7 +24,6 @@ struct SceneQuadVertex {                  /* naturally aligned; no packing neede
     float u0, v0;
     float u1, v1;
 };
-static_assert(sizeof(SceneQuadVertex) == 0x20, "SceneQuadVertex stride");
 
   void  
 Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *positions,

@@ -28,11 +28,11 @@ public:
     unsigned char kind() const     { return kind_; }
     float         stepFrac() const { return stepFrac_; }
     /* (U, H, -V), and the rotation triple (X, Y, Z) that follows it. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     const float  *pos() const      { return pos_; }
     const float  *rot() const      { return &rotX_; }
-#pragma GCC diagnostic pop
+ 
 
 private:
     unsigned char kind_;  // the foe's kind

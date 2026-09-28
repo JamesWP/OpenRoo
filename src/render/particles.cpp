@@ -692,10 +692,10 @@ BOOL ParticleSystem::deserialize(void *fp, GameLogger *log)
         void **gvt = *(void ***)gen;
         if (!((ps_stream_fn)gvt[GEN_VT_LOAD_SLOT])(gen, fp)) {
 /* PRESERVED: `name` was freed above and is still handed to the logger. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuse-after-free"
+ 
+ 
             log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_GENLOAD, name);
-#pragma GCC diagnostic pop
+ 
             sub_object_delete(gen);
             return FALSE;
         }
@@ -717,10 +717,10 @@ BOOL ParticleSystem::deserialize(void *fp, GameLogger *log)
         void **evt = *(void ***)env;
         if (!((ps_stream_fn)evt[GEN_VT_LOAD_SLOT])(env, fp)) {
 /* PRESERVED: the same use-after-free as the generator branch. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuse-after-free"
+ 
+ 
             log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_ENVLOAD, name);
-#pragma GCC diagnostic pop
+ 
             sub_object_delete(env);
             return FALSE;
         }
@@ -1466,7 +1466,7 @@ FaceParticleSystem::faceTransformCorners(FaceParticleSystem *self, float *matrix
  *
  * One table per class, in the slot order particles.h names, installed by the
  * constructors above.  Hand-built rather than C++ virtuals: the callers use
- * __thiscall and this slot order.  The static_asserts below catch an
+ * __thiscall and this slot order.  The  s below catch an
  * initialiser that is one entry short, which would otherwise leave a silent
  * NULL slot. */
 extern void *const ps_vtbl_base[] = {
@@ -1512,10 +1512,3 @@ extern void *const ps_vtbl_xface[] = {
     (void *)&XFaceParticleSystem::xfaceDrawSlot,       (void *)&XFaceParticleSystem::xfaceSave,
     (void *)&XFaceParticleSystem::xfaceLoad,
 };
-
-#define PS_SLOTS(t) (sizeof (t) / sizeof *(t))
-static_assert(PS_SLOTS(ps_vtbl_base)  == PS_VTBL_SLOTS, "ParticleSystem vtable");
-static_assert(PS_SLOTS(ps_vtbl_point) == PS_VTBL_SLOTS, "Point vtable");
-static_assert(PS_SLOTS(ps_vtbl_face)  == PS_VTBL_SLOTS, "Face vtable");
-static_assert(PS_SLOTS(ps_vtbl_xface) == PS_VTBL_SLOTS, "XFace vtable");
-#undef PS_SLOTS

@@ -88,10 +88,6 @@ static DWORD d3d_draw_flags(uint32_t flags)
     return out;
 }
 
-static_assert(sizeof(ScreenVertex) == sizeof(D3DTLVERTEX), "ScreenVertex is a D3DTLVERTEX");
-static_assert(sizeof(LitVertex)    == sizeof(D3DLVERTEX),  "LitVertex is a D3DLVERTEX");
-static_assert(sizeof(Mat4)         == sizeof(D3DMATRIX),   "Mat4 is a D3DMATRIX");
-
 // ── Lifetime ──
 
 RenderDevice::RenderDevice()

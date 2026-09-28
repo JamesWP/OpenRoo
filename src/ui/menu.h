@@ -18,11 +18,11 @@ public:
     BYTE count() const { return count_; }
     BYTE depth() const { return depth_; }
     DWORD lock() const { return lock_; }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
     BYTE *children() { return children_; }
     const BYTE *children() const { return children_; }
-#pragma GCC diagnostic pop
+ 
 
 private:
     bool  valid_;

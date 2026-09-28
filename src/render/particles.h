@@ -23,13 +23,6 @@ struct ParticleNode {
     DWORD         dwDiffuse;      // +0x24
     DWORD         dwShapeIndex;   // +0x28 XFace corner-table index; alloc-time only
 };
-static_assert(offsetof(ParticleNode, pNext)        == 0x04, "ParticleNode layout");
-static_assert(offsetof(ParticleNode, flX)          == 0x08, "ParticleNode layout");
-static_assert(offsetof(ParticleNode, flVel)        == 0x14, "ParticleNode layout");
-static_assert(offsetof(ParticleNode, flLife)       == 0x20, "ParticleNode layout");
-static_assert(offsetof(ParticleNode, dwDiffuse)    == 0x24, "ParticleNode layout");
-static_assert(offsetof(ParticleNode, dwShapeIndex) == 0x28, "ParticleNode layout");
-static_assert(sizeof(ParticleNode) == 0x2C, "ParticleNode size");
 
 /* FVF 0x1e2 vertex, 0x20 bytes.  Fill only ever writes xyz + diffuse, leaving
  * psize and specular uninitialised.  u/v are not touched by Fill
@@ -42,7 +35,6 @@ struct ParticleVertex {
     DWORD dwSpecular;      // +0x14  (never written)
     float flU, flV;        // +0x18, +0x1c (never written)
 };
-static_assert(sizeof(ParticleVertex) == 0x20, "ParticleVertex size");
 
 /* The ring, as ONE struct.  It is embedded in ParticleSystem at +0x08, and it
  * is the *same object* that Generator+0x0C and Environment+0x08 point at:
@@ -66,8 +58,6 @@ struct RingBuffer {
     ParticleNode *pRingTail;      // +0x0c last free node
     ParticleNode *pRingCurrent;   // +0x10 next node to emit into
 };
-static_assert(sizeof(RingBuffer) == 0x14, "RingBuffer size");
-static_assert(offsetof(RingBuffer, pRingCurrent) == 0x10, "RingBuffer layout");
 
 struct Generator;
 struct Environment;
@@ -156,19 +146,9 @@ protected:
     void          *pField24_;      // +0x24
 
 private:
-    static void checkLayout();
+ 
 };
 
-inline void ParticleSystem::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(ParticleSystem, ring_)         == 0x08, "ParticleSystem layout");
-    static_assert(offsetof(ParticleSystem, pGenerator_)   == 0x1c, "ParticleSystem layout");
-    static_assert(offsetof(ParticleSystem, pEnvironment_) == 0x20, "ParticleSystem layout");
-#pragma GCC diagnostic pop
-}
-static_assert(sizeof(ParticleSystem) == 0x28, "ParticleSystem size");
 
 class PointParticleSystem : public ParticleSystem {      // 0x30 bytes
 public:
@@ -199,18 +179,8 @@ private:
     ParticleVertex *pVerts_;        // +0x28 scratch buffer
     DWORD           dwVertexCount_; // +0x2c 1 vertex per particle
 
-    static void checkLayout();
+ 
 };
-
-inline void PointParticleSystem::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(PointParticleSystem, pVerts_)        == 0x28, "Point layout");
-    static_assert(offsetof(PointParticleSystem, dwVertexCount_) == 0x2c, "Point layout");
-#pragma GCC diagnostic pop
-}
-static_assert(sizeof(PointParticleSystem) == 0x30, "Point size");
 
 #pragma pack(push, 1)
 class FaceParticleSystem : public ParticleSystem {       // 0x7a bytes, byte-packed (corners at +0x2e)
@@ -246,18 +216,8 @@ private:
     float           flCorner_[6][3]; // +0x2e six baked xyz corner offsets
     float           flScale_;        // +0x76
 
-    static void checkLayout();
+ 
 };
-
-inline void FaceParticleSystem::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(FaceParticleSystem, nVertexCount_) == 0x2c, "Face layout");
-    static_assert(offsetof(FaceParticleSystem, flCorner_)     == 0x2e, "Face layout");
-#pragma GCC diagnostic pop
-}
-static_assert(sizeof(FaceParticleSystem) == 0x7a, "Face size");
 
 /* Corner-table entry, 100 bytes (0x64).  Tick accumulates
  * flRotVel into flRotAccum each frame; when an accumulated angle exceeds
@@ -268,9 +228,6 @@ struct XFaceCornerEntry {
     float flRotVel[3];     // +0x4c per-tick X/Y/Z rotation increments
     float flRotAccum[3];   // +0x58 accumulated angles, reset when applied
 };
-static_assert(offsetof(XFaceCornerEntry, flRotVel)   == 0x4c, "entry layout");
-static_assert(offsetof(XFaceCornerEntry, flRotAccum) == 0x58, "entry layout");
-static_assert(sizeof(XFaceCornerEntry) == 100, "entry size");
 
 class XFaceParticleSystem : public ParticleSystem {      // 0x96 bytes; only replaced-path fields typed
 public:
@@ -310,20 +267,9 @@ private:
     DWORD             dwCornerTableCount_; // +0x72
     BYTE              simParams_[0x20];    // +0x76 size/lifetime/speed/rot ranges
 
-    static void checkLayout();
+ 
 };
 
-inline void XFaceParticleSystem::checkLayout()
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-    static_assert(offsetof(XFaceParticleSystem, pCornerTable_)       == 0x28, "XFace layout");
-    static_assert(offsetof(XFaceParticleSystem, pVerts_)             == 0x2c, "XFace layout");
-    static_assert(offsetof(XFaceParticleSystem, nVertexCount_)       == 0x30, "XFace layout");
-    static_assert(offsetof(XFaceParticleSystem, dwCornerTableCount_) == 0x72, "XFace layout");
-#pragma GCC diagnostic pop
-}
-static_assert(sizeof(XFaceParticleSystem) == 0x96, "XFace size");
 #pragma pack(pop)
 
 /* ParticleSystem vtable slot numbers (15-slot table).

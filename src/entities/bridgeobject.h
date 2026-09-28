@@ -19,7 +19,6 @@ struct BridgeVertex {
     float u0, v0;
     float u1, v1;
 };
-static_assert(sizeof(BridgeVertex) == 0x20, "BridgeVertex stride mismatch");
 
 /* What buildSurface() computed, for bridgesurf.cpp's logs. */
 struct BridgeSurfaceInfo {

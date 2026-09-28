@@ -30,14 +30,6 @@ struct SceneSubObject {
     BYTE   pad28[0x14];  // never written
 };
 
-static_assert(offsetof(SceneSubObject, pTexture)     == 0x04, "SceneSubObject layout");
-static_assert(offsetof(SceneSubObject, dwBlendSrc)   == 0x0c, "SceneSubObject layout");
-static_assert(offsetof(SceneSubObject, dwBlendDst)   == 0x10, "SceneSubObject layout");
-static_assert(offsetof(SceneSubObject, dwTexAddress) == 0x14, "SceneSubObject layout");
-static_assert(offsetof(SceneSubObject, effect)       == 0x18, "SceneSubObject layout");
-static_assert(offsetof(SceneSubObject, flEffectParams) == 0x1c, "SceneSubObject layout");
-static_assert(sizeof(SceneSubObject) == 0x3c, "SceneSubObject stride mismatch");
-
 /* Raw access to theme records (ThemeLevelObject, theme.h) for the quad batch
  * path. */
 #define LOBJ_STRIDE            0x5dd

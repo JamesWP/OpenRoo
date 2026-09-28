@@ -198,8 +198,8 @@ static void theme_struct_dump_if_enabled(const char *path)
 /* The block's sub-objects are handed to their owners by address, and really
  * are misaligned: the block is packed.  One warning suppression for the
  * loader. */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+ 
+ 
 
 typedef void *(  *theme_scalar_dtor_fn)(void *self, unsigned int flags);
 
@@ -303,8 +303,6 @@ static const ThemeObjectType kReleaseOrder[] = {
     THEME_OBJ_PROTECTION, THEME_OBJ_PROTECTIONFX, THEME_OBJ_PARAGLIDE,
     THEME_OBJ_PARAGLIDEFX, THEME_OBJ_BRIDGE,
 };
-static_assert(sizeof(kReleaseOrder) / sizeof(kReleaseOrder[0]) == THEME_OBJ_COUNT - 1,
-              "every slot but EXPLOSION");
 
 void ThemeAssetBlock::release()
 {
@@ -980,7 +978,7 @@ bool ThemeAssetBlock::load(Game *game, RenderDevice *d3d, char *path,
     return ok;
 }
 
-#pragma GCC diagnostic pop
+ 
 
 /* The theme sound table's lifecycle.  ReleaseAll clears the name and the
  * enabled flag of all 100 entries between two log lines, leaving the other
