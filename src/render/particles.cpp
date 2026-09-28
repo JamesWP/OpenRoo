@@ -46,9 +46,9 @@ static bool fx_tint(void)
     return cached != 0;
 }
 
-static DWORD node_colour(const ParticleNode *node)
+DWORD ParticleNode::colour() const
 {
-    return fx_tint() ? FX_TINT_COLOUR : node->dwDiffuse;
+    return fx_tint() ? FX_TINT_COLOUR : dwDiffuse;
 }
 
 /* Per-class state so one busy class can't hide the others: the first
@@ -92,7 +92,7 @@ void PointParticleSystem::pointFill()
             v->flX = node->flX;
             v->flY = node->flY;
             v->flZ = node->flZ;
-            v->dwDiffuse = node_colour(node);
+            v->dwDiffuse = node->colour();
             return 1;
         });
 }
@@ -102,7 +102,7 @@ void PointParticleSystem::pointFill()
 static void emit_face(ParticleVertex *v, const ParticleNode *node,
                       const float *corners )  // 18 floats
 {
-    DWORD colour = node_colour(node);
+    DWORD colour = node->colour();
     for (int c = 0; c < 6; c++, v++, corners += 3) {
         v->flX = node->flX + corners[0];
         v->flY = node->flY + corners[1];
