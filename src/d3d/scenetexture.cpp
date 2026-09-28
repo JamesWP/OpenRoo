@@ -33,6 +33,11 @@
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 TextureManager g_textureManager;
 
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp);
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+TextureTGA_Parse(LoadedImage *self, LPCSTR path);
+
 /* D3DDEVICEDESC as 0x3f raw dwords, zeroed, dwSize at [0], so the size used is
  * 0xfc whatever the SDK header defines.  Only dcmColorModel is read. */
 struct DevDescRaw { DWORD dw[0x3f]; };

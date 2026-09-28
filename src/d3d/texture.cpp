@@ -161,7 +161,11 @@ void LoadedImage::releaseSurfaces()
  * Only the low byte of the result is the success flag.  The upper bytes are
  * whatever the last call left: Restore's HRESULT, DeleteObject's result, or
  * the TGA loader's value.  Any loadedState other than 1 or 2 returns true. */
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+TextureDIB_BlitToSurface(LoadedImage *, HANDLE);
 
+extern "C" __declspec(dllexport) unsigned int __attribute__((thiscall))
+TextureTGA_Parse(LoadedImage *, LPCSTR);
 
 unsigned int LoadedImage::load()
 {
