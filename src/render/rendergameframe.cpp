@@ -585,7 +585,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
         if (speed != NULL) {
             ParticleSystem *ps = speed->particleSystems()[0];
             Generator *gen = ps->getGenerator(NULL);
-            gen_vset_position(gen, speed->bursts()[0].pos[0], speed->bursts()[0].pos[1],
+            gen->vsetPosition(speed->bursts()[0].pos[0], speed->bursts()[0].pos[1],
                               speed->bursts()[0].pos[2]);
             /* (0, 0.1, -1, 1) through the player's yaw: the trail streams
              * out behind. */
@@ -604,7 +604,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
                 o[0] /= o[3]; o[1] /= o[3]; o[2] /= o[3];
             }
             gen = ps->getGenerator(NULL);
-            gen_vset_direction(gen, o[0], o[1], o[2]);
+            gen->vsetDirection(o[0], o[1], o[2]);
 
             RenderDevice *dev = g_renderDevice;
             dev->SetTransform(Transform::World, &g_worldIdentity);

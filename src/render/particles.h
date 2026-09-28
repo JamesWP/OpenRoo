@@ -108,7 +108,7 @@ public:
     Generator          *generator() const   { return pGenerator_; }
     Environment        *environment() const { return pEnvironment_; }
 
-    /* The constructor ps_create runs. */
+    /* The constructor create() runs. */
     void constructBase();
 
     /* The vtable slots. */
@@ -168,7 +168,7 @@ static_assert(sizeof(ParticleSystem) == 0x28, "ParticleSystem size");
 
 class PointParticleSystem : public ParticleSystem {      // 0x30 bytes
 public:
-    /* The constructor ps_create runs. */
+    /* The constructor create() runs. */
     void pointConstruct();
 
     /* The vtable slots. */
@@ -211,7 +211,7 @@ static_assert(sizeof(PointParticleSystem) == 0x30, "Point size");
 #pragma pack(push, 1)
 class FaceParticleSystem : public ParticleSystem {       // 0x7a bytes, byte-packed (corners at +0x2e)
 public:
-    /* The constructor ps_create runs. */
+    /* The constructor create() runs. */
     void faceConstruct();
 
     /* The vtable slots. */
@@ -270,7 +270,7 @@ static_assert(sizeof(XFaceCornerEntry) == 100, "entry size");
 
 class XFaceParticleSystem : public ParticleSystem {      // 0x96 bytes; only replaced-path fields typed
 public:
-    /* The constructor ps_create runs. */
+    /* The constructor create() runs. */
     void xfaceConstruct();
 
     /* The vtable slots. */

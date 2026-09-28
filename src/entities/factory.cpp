@@ -18,7 +18,7 @@ extern "C" {
 __declspec(dllexport) void *__cdecl
 Gen_FactoryCreate(const char *name)
 {
-    void *obj = gen_create(name);
+    void *obj = Generator::create(name);
     static LONG once = 0;
     log_first(&once, "Gen_FactoryCreate", name, obj);
     return obj;
@@ -27,7 +27,7 @@ Gen_FactoryCreate(const char *name)
 __declspec(dllexport) void *__cdecl
 Env_FactoryCreate(const char *name)
 {
-    void *obj = env_create(name);
+    void *obj = Environment::create(name);
     static LONG once = 0;
     log_first(&once, "Env_FactoryCreate", name, obj);
     return obj;

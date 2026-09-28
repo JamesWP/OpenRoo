@@ -579,7 +579,7 @@ BOOL ParticleSystem::copyFrom(const ParticleSystem *src)
         return FALSE;
 
     if (src->pGenerator_) {
-        Generator *gen = gen_clone(src->pGenerator_);
+        Generator *gen = src->pGenerator_->clone();
         if (gen == NULL) {
             ((ps_release_fn)pVtable_[PS_VT_RELEASE])(this, 1);
             return FALSE;
@@ -590,7 +590,7 @@ BOOL ParticleSystem::copyFrom(const ParticleSystem *src)
         }
     }
     if (src->pEnvironment_) {
-        Environment *env = env_clone(src->pEnvironment_);
+        Environment *env = src->pEnvironment_->clone();
         if (env == NULL) {
             ((ps_release_fn)pVtable_[PS_VT_RELEASE])(this, 1);
             return FALSE;
@@ -681,7 +681,7 @@ BOOL ParticleSystem::deserialize(void *fp, GameLogger *log)
     if (name == NULL)
         return FALSE;
     if (strcmp(name, GS_PS_NAME_NULL) != 0) {
-        Generator *gen = gen_create(name);
+        Generator *gen = Generator::create(name);
         if (gen == NULL) {
             log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOGEN, name);
             ::operator delete(name);
@@ -706,7 +706,7 @@ BOOL ParticleSystem::deserialize(void *fp, GameLogger *log)
     if (name == NULL)
         return FALSE;
     if (strcmp(name, GS_PS_NAME_NULL) != 0) {
-        Environment *env = env_create(name);
+        Environment *env = Environment::create(name);
         if (env == NULL) {
             log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_ENVNAME, name);
             ::operator delete(name);
@@ -1129,7 +1129,7 @@ Generator * ParticleSystem::getGenerator(const char *name)
     Generator *gen = pGenerator_;
     if (gen == NULL)
         return NULL;
-    if (name != NULL && strcmp(gen->pName, name) != 0)
+    if (name != NULL && strcmp(gen->name(), name) != 0)
         return NULL;
     return gen;
 }
@@ -1138,7 +1138,7 @@ Generator * ParticleSystem::getGenerator(const char *name)
 void ParticleSystem::setRenderNode(DWORD enabled)
 {
     if (pGenerator_)
-        pGenerator_->dwEnabled = enabled;
+        pGenerator_->setEnabled(enabled);
 }
 
 /* ─── Construction (the four ctors and the factory) ────────────────────────
