@@ -79,7 +79,7 @@ void SplinePath::destruct()
     controlPointList_.destruct();
 }
 
-SplinePath * __attribute__((thiscall))
+SplinePath *__attribute__((thiscall))
 SplinePath::scalarDestructor(SplinePath *self, unsigned char bFreeSelf)
 {
     self->destruct();

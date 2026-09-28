@@ -602,7 +602,7 @@ void ScriptPlayer::clearStreams()
     memset(streams_, 0, sizeof(streams_));
 }
 
-ScriptPlayer * __attribute__((thiscall))
+ScriptPlayer *__attribute__((thiscall))
 ScriptPlayer::scalarDeletingDtor(ScriptPlayer *self, unsigned char flags)
 {
     self->destruct();

@@ -24,7 +24,7 @@ public:
 
     /* Writes "HH:MM:SS : File: <file>, Line: <line>: message". */
     void logSourceLocation(int level, const char *file, int line,
-                                   const char *fmt, ...);
+                           const char *fmt, ...);
 
     /* Construction and destruction of the global logger, driven by
      * staticinit.cpp. */

@@ -351,7 +351,7 @@ void SceneTexture::dtorBody()
     LoadedImage::dtorBody();
 }
 
-SceneTexture * __attribute__((thiscall))
+SceneTexture *__attribute__((thiscall))
 SceneTexture::scalarDtor(SceneTexture *self, unsigned int flags)
 {
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::ScalarDeletingDtor", &seen);
@@ -703,7 +703,7 @@ void TextureManager::destruct()
     cache_.destruct();
 }
 
-TextureManager * __attribute__((thiscall))
+TextureManager *__attribute__((thiscall))
 TextureManager::scalarDestructor(TextureManager *self, unsigned char flags)
 {
     self->destruct();

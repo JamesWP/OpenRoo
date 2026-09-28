@@ -161,7 +161,7 @@ void SkyBackground::dtorBody()
         Textures_[f].dtorBody();
 }
 
-SkyBackground * __attribute__((thiscall))
+SkyBackground *__attribute__((thiscall))
 SkyBackground::scalarDtor(SkyBackground *self, unsigned int flags)
 {
     self->dtorBody();

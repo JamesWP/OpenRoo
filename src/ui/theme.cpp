@@ -262,7 +262,7 @@ void ThemeObjectTypeSlot::destruct()
         records_[i].destruct();
 }
 
-ThemeObjectTypeSlot * __attribute__((thiscall))
+ThemeObjectTypeSlot *__attribute__((thiscall))
 ThemeObjectTypeSlot::scalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
 {
     self->destruct();
@@ -1012,7 +1012,7 @@ void ThemeSoundTable::destruct()
 }
 
 /* Reached only through the vtable; the table is embedded in the Game. */
-ThemeSoundTable * __attribute__((thiscall))
+ThemeSoundTable *__attribute__((thiscall))
 ThemeSoundTable::scalarDestructor(ThemeSoundTable *self, unsigned char flags)
 {
     self->destruct();

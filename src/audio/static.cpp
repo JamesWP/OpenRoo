@@ -165,7 +165,7 @@ static void *const g_CStaticVtable[1] = { (void *)&CStaticSoundbuffer::scalarVec
 /* For an array, the count header sits four bytes below the first element and
  * the elements are destroyed in reverse, as MSVC's vector destructor does.
  * Voice pools destroy with flag 3, so the array path is the one taken. */
-void * __attribute__((thiscall))
+void *__attribute__((thiscall))
 CStaticSoundbuffer::scalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
 {
     static unsigned long seen;

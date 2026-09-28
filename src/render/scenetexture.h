@@ -79,7 +79,7 @@ public:
     TextureManager *construct();
 
     void destruct();
-    static TextureManager * __attribute__((thiscall))
+    static TextureManager *__attribute__((thiscall))
     scalarDestructor(TextureManager *self, unsigned char flags);
 
     void setLogger(GameLogger *logger);

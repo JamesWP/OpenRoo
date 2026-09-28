@@ -128,7 +128,7 @@ static void *const g_HighScoreVtable[1] = { (void *)&HighScoreTable::scalarDelet
 void HighScoreTable::construct() { vtable_ = g_HighScoreVtable; }
 void HighScoreTable::destruct()  { vtable_ = g_HighScoreVtable; }
 
-HighScoreTable * __attribute__((thiscall))
+HighScoreTable *__attribute__((thiscall))
 HighScoreTable::scalarDeletingDtor(HighScoreTable *self, unsigned char flags)
 {
     self->destruct();
