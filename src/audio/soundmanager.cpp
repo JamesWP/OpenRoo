@@ -130,16 +130,13 @@ static void destroy_entry(doublesoundbuff *entry)
 
  
 
-/* entry is either an entry or the address of an entry's spare buffer, which
- * works because the master is at offset 0. */
-int SoundManager::loadEntryMaster(void *entry,
+/* Loads filename into buf: an entry's master or its spare. */
+int SoundManager::loadEntryMaster(CStaticSoundbuffer *buf,
                          const char *filename, unsigned long dwDsFlags,
                          int bDo3D)
 {
     ++g_loadMaster;
     { static unsigned long seen; sndmgr_first("LoadEntryMaster", &seen); }
-
-    CStaticSoundbuffer *buf = (CStaticSoundbuffer *)entry;
 
     if (bDo3D) {
         ++g_loadMaster3D;
@@ -267,7 +264,7 @@ CStaticSoundbuffer *SoundManager::acquireStatic(const char *name, int bWant3D)
         doublesoundbuff *fresh = new doublesoundbuff();
         // PRESERVED: a failed allocation is passed on, and faults in the
         // loader.
-        if (!loadEntryMaster(fresh, name,
+        if (!loadEntryMaster(fresh->master(), name,
                                       dwDefaultDsFlags_, bDo3D)) {
             if (fresh == NULL)
                 return NULL;
@@ -349,7 +346,7 @@ VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
         if (bWant3D != 0 && dwMode3D_ != 0)
             bDo3DAgain = 1;
 
-        if (!loadEntryMaster(fresh, name,
+        if (!loadEntryMaster(fresh->master(), name,
                                       dwDefaultDsFlags_, bDo3DAgain)) {
             if (fresh == NULL)
                 return NULL;
