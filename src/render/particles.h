@@ -47,24 +47,22 @@ struct ParticleVertex {
  * Empty when pRingHead == pRingCurrent; full when pRingCurrent == NULL. */
 struct RingBuffer {
     /* Allocation and release of the nodes (particles.cpp). */
-    void init();
     void release();
     void assignShapes(DWORD shapes);
     BOOL alloc(DWORD count, DWORD shapes);
 
-    DWORD         dwRingCount;    // +0x00
-    ParticleNode *pRingBase;      // +0x04
-    ParticleNode *pRingHead;      // +0x08 oldest live particle
-    ParticleNode *pRingTail;      // +0x0c last free node
-    ParticleNode *pRingCurrent;   // +0x10 next node to emit into
+    DWORD         dwRingCount  = 0;
+    ParticleNode *pRingBase    = NULL;
+    ParticleNode *pRingHead    = NULL;  // oldest live particle
+    ParticleNode *pRingTail    = NULL;  // last free node
+    ParticleNode *pRingCurrent = NULL;  // next node to emit into
 };
 
 class Generator;
 class Environment;
 struct GameLogger;
 
-/* Base class, 0x28 bytes.  Its fields are protected: the three subclasses
- * work on them. */
+/* Base class.  Its fields are protected: the three subclasses work on them. */
 class ParticleSystem {
 public:
     /* The factory: one of the four class names, allocated and constructed. */
@@ -118,40 +116,37 @@ protected:
     template <typename EmitFn> DWORD fillRing(EmitFn emit);
     void setRenderNode(DWORD enabled);
 
-    char          *pName_;         // +0x04
-    RingBuffer     ring_;          // +0x08 handed to the generator and environment
-    Generator     *pGenerator_;    // +0x1c
-    Environment   *pEnvironment_;  // +0x20
-    void          *pField24_;      // +0x24
+    /* The scratch vertex buffer the subclasses fill: perNode vertices per
+     * ring node, zeroed, with the texture corners baked in from uv (NULL for
+     * none).  Frees the old buffer first. */
+    BOOL allocVerts(unsigned perNode, const float (*uv)[2] = NULL);
+
+    char           *pName_;
+    RingBuffer      ring_;          // handed to the generator and environment
+    Generator      *pGenerator_;
+    Environment    *pEnvironment_;
+    ParticleVertex *pVerts_;
+    DWORD           dwVertexCount_;  // vertices the last fill wrote
 };
 
-class PointParticleSystem : public ParticleSystem {      // 0x30 bytes
+class PointParticleSystem : public ParticleSystem {
 public:
     PointParticleSystem();
-    ~PointParticleSystem() override;
 
     void  fill() override;
     DWORD draw(RenderDevice *dev) override;
 
 protected:
-    void  release(int flags) override;
     BOOL  copyFrom(const ParticleSystem *src) override;
     BOOL  setCapacity(DWORD count) override;
     BOOL  resize(DWORD count) override;
     BOOL  save(void *fp, GameLogger *log) override;
     BOOL  load(void *fp, GameLogger *log) override;
-
-private:
-    BOOL allocVerts();
-
-    ParticleVertex *pVerts_;        // +0x28 scratch buffer
-    DWORD           dwVertexCount_; // +0x2c 1 vertex per particle
 };
 
-class FaceParticleSystem : public ParticleSystem {       // 0x7a bytes
+class FaceParticleSystem : public ParticleSystem {
 public:
     FaceParticleSystem();
-    ~FaceParticleSystem() override;
 
     void  fill() override;
     DWORD draw(RenderDevice *dev) override;
@@ -159,7 +154,6 @@ public:
     void  transformCorners(float *matrix) override;
 
 protected:
-    void  release(int flags) override;
     BOOL  copyFrom(const ParticleSystem *src) override;
     BOOL  setCapacity(DWORD count) override;
     BOOL  resize(DWORD count) override;
@@ -167,10 +161,9 @@ protected:
     BOOL  load(void *fp, GameLogger *log) override;
 
 private:
-    BOOL allocVerts();
+    BOOL allocVerts() { return ParticleSystem::allocVerts(6, FACE_UV); }
 
-    ParticleVertex *pVerts_;         // +0x28
-    WORD            nVertexCount_;   // +0x2c 6 vertices per particle
+    static const float FACE_UV[6][2];
     float           flCorner_[6][3]; // six baked xyz corner offsets
     float           flScale_;
 };
@@ -185,12 +178,10 @@ struct XFaceCornerEntry {
     float flRotAccum[3];   // accumulated angles, reset when applied
 };
 
-class XFaceParticleSystem : public ParticleSystem {      // 0x96 bytes
+class XFaceParticleSystem : public ParticleSystem {
 public:
     XFaceParticleSystem();
-    /* PRESERVED: destroying an XFace leaks its corner table and vertex
-     * buffer; only release() frees them. */
-    ~XFaceParticleSystem() override = default;
+    ~XFaceParticleSystem() override;
 
     void  tick(float dt) override;
     void  fill() override;
@@ -205,12 +196,11 @@ protected:
     BOOL  load(void *fp, GameLogger *log) override;
 
 private:
-    BOOL allocVerts();
+    BOOL allocVerts() { return ParticleSystem::allocVerts(6, XFACE_UV); }
     BOOL buildCorners();
 
-    XFaceCornerEntry *pCornerTable_; // dwCornerTableCount × 100-byte entries
-    ParticleVertex   *pVerts_;
-    WORD              nVertexCount_; // 6 vertices per particle
+    static const float XFACE_UV[6][2];
+    XFaceCornerEntry *pCornerTable_; // dwCornerTableCount entries
     DWORD             dwCornerTableCount_;
     float             ranges[8];
 };
