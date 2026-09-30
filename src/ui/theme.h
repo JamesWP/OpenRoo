@@ -278,22 +278,22 @@ private:
 
 /* A sound asset's file name and, immediately after it, its enabled flag.
  * The spawn's unbounded strcpy of `name` relies on the flag to stop it. */
-struct __attribute__((packed)) SoundAssetName {
+struct SoundAssetName {
     char name[256];
     int  enabled;
     DWORD unknown104;   /* add()'s arg4; the .thm path passes 1 */
     DWORD unknown108;   /* add()'s arg3; the .thm path passes 1 */
 };
 
-/* The theme sound table ("TSM" in its log line), Game+0x42258.  A .thm
+/* The theme sound table ("TSM" in its log line),.  A .thm
  * `Sound <event> <wave>` line fills entries[id] through ThemeSoundTable::add
  * (theme.cpp); the id is RegisterThemeSound's event number, so e.g. entry 0
  * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
  * 0x47, but the table holds 100 entries: ReleaseAll clears exactly
- * 100, ending at Game+0x48b12 where switchMax_ begins.  Lifecycle in
+ * 100, where switchMax_ begins.  Lifecycle in
  * theme.cpp; the vptr is at +0. */
 #define THEME_SOUND_COUNT 100
-class __attribute__((packed)) ThemeSoundTable {
+class ThemeSoundTable {
 public:
     /* Adds (or replaces) the wave for a theme sound id. */
     int add(unsigned int id, const char *waveName, DWORD arg3, DWORD arg4);
