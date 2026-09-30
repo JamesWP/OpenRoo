@@ -38,5 +38,4 @@ void Process_Attach(const char *log_name)
 void Process_Detach(void)
 {
     gamestate_dump("process-exit");
-    log_close();
 }

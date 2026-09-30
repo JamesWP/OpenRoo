@@ -14,6 +14,7 @@ Input_TrySaveSettings(void)
     g_logger.logMessage(1, GS_CONTROL_SAVE_SETTINGS);
     g_progCtrl.writeBindings();
     g_progCtrl.shutdown();
+    g_logger.logMessage(1, "CONTROL: saved settings\n");
 }
 
 /* The player actions get the Player as their context, the camera actions
