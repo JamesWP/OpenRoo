@@ -31,10 +31,6 @@
 #include <stdlib.h>
 #include "gamestr.h"
 
-/* The one-slot vtable: the scalar deleting destructor. */
-static void *const game_logger_vtable_slots[1] = { (void *)&GameLogger::scalarDeletingDtor };
-#define GAME_LOGGER_VTABLE ((void *)game_logger_vtable_slots)
-
 /* FORMAT: the line formats, as the game's; checked against gamestr.h at first
  * use.  Kept as literals so the control's prefix can splice in. */
 #define FMT_BANNER  "\n***************** Log started on %s ***********************\n"
@@ -143,16 +139,6 @@ void GameLogger::emit(int level, const char *line)
     }
 }
 
-void GameLogger::closeAndRebindVtable()
-{
-    pVtable_ = GAME_LOGGER_VTABLE;
-    if (fp_)
-        fclose(fp_);
-
-/* PRESERVED: fp is left dangling.  The only reuse, OpenLogFile, goes through
- * CloseLogFile, which clears it. */
-}
-
 /* Closes the file and clears the sink fields. */
 void GameLogger::closeLogFile()
 {
@@ -163,10 +149,9 @@ void GameLogger::closeLogFile()
     notifyHwnd_   = NULL;
 }
 
-void GameLogger::construct()
+GameLogger::GameLogger()
 {
     verify_format_strings();
-    pVtable_      = GAME_LOGGER_VTABLE;
     minLevel_     = 1;     // level-0 messages are off by default
     fileName_[0]  = '\0';  // PRESERVED: only byte 0; the rest stays uninitialised
     fp_           = NULL;
@@ -174,12 +159,12 @@ void GameLogger::construct()
     notifyHwnd_   = NULL;
 }
 
-GameLogger * GameLogger::scalarDeletingDtor(GameLogger *self, unsigned char flags)
+/* PRESERVED: fp is left dangling. The only reuse, openLogFile, goes through
+ * closeLogFile, which clears it. */
+GameLogger::~GameLogger()
 {
-    self->closeAndRebindVtable();
-    if (flags & 1)
-        free(self);
-    return self;
+    if (fp_)
+        fclose(fp_);
 }
 
 int GameLogger::openLogFile(const char *filename, const char *mode)
@@ -214,20 +199,11 @@ int GameLogger::openLogFile(const char *filename, const char *mode)
     return 1;
 }
 
-void *GameLogger::initialize(const char *filename, const char *mode)
+GameLogger::GameLogger(const char *filename, const char *mode)
+    : GameLogger()
 {
-    GameLogger scratch;
-
-    pVtable_ = GAME_LOGGER_VTABLE;
-
-    // PRESERVED: the throwaway stack logger, built and torn down for nothing.
-    scratch.construct();
-    scratch.closeAndRebindVtable();
-
     if (openLogFile(filename, mode) == 0)
         closeLogFile();
-
-    return this;
 }
 
 void GameLogger::logMessage(int level, const char *fmt, ...)

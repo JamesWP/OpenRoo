@@ -6,23 +6,20 @@
 #include "log.h"
 #include <stdlib.h>
 
-CDM* CDM::construct()
+CDM::CDM()
 {
     log_write("CDM::construct(this=%p)\n", this);
-    vtable       = const_cast<void*>(CDM_VTABLE);
     nummixers    = 0;
     memset(mixers, 0, sizeof(mixers));
     windowhandle = NULL;
     repeat       = false;
     tracknumber  = 0;
     log_write("CDM::construct done\n");
-    return this;
 }
 
-void CDM::stopAndClose()
+CDM::~CDM()
 {
     log_write("CDM::stopAndClose(this=%p)\n", this);
-    vtable = const_cast<void*>(CDM_VTABLE);
     repeat = false;
     mciSendStringA("stop km", NULL, 0, NULL);
     mciSendStringA("close km", NULL, 0, NULL);
@@ -121,24 +118,6 @@ void CDM::setMixerVolume(DWORD level)
 
   void KarooHooksLoad() {}  // unused
 
-/* Frees on bit 0; the one CDM is a global, so it never does. */
-CDM * CDM::scalarDeletingDtor(CDM *self, unsigned int flags)
-{
-    self->stopAndClose();
-    if (flags & 1)
-        free(self);
-    return self;
-}
-
-int CDM::vtGetTrackCount(CDM *self)
-{
-    return self->getTrackCount();
-}
-
-int CDM::vtGetTrackLength(CDM *self, char **out_ptr, int track)
-{
-    return self->getTrackLength(out_ptr, track);
-}
 
 /* No stack argument.  The first mixer's volume value, or 0 with no mixer or on
  * any error. */
@@ -159,10 +138,3 @@ unsigned int CDM::getMixerDetails()
                                          0x80000000);
     return r != 0 ? 0 : (unsigned int)value;
 }
-
-static void *const cdm_vtable_slots[3] = {
-    (void *)&CDM::scalarDeletingDtor,
-    (void *)&CDM::vtGetTrackCount,
-    (void *)&CDM::vtGetTrackLength,
-};
-extern const void *const CDM_VTABLE = cdm_vtable_slots;

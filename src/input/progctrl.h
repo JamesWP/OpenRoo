@@ -60,12 +60,11 @@ private:
  * dead-zone calls succeed without doing anything. */
 class ProgableControl {
 public:
-    /* Construction and destruction of the one global instance, driven by
-     * staticinit.cpp.  setup returns this. */
-    void *setup(int logger_or_0);
-    void  teardown();
-    /* Vtable slot 0: teardown, then frees self when bit 0 is set. */
-    static void   scalarDtor(ProgableControl *s, int free_or_not);
+    /* The destructor releases the devices and frees the action tables. */
+    ProgableControl();
+    virtual ~ProgableControl();
+    ProgableControl(const ProgableControl &) = delete;
+    ProgableControl &operator=(const ProgableControl &) = delete;
 
     int  setJoyDeadzone(DWORD axis, int zone);
 
@@ -118,7 +117,6 @@ private:
     int  readOrigFormat(HANDLE f);
  
 
-    void                  *vtable;
     void                  *pLogger;
     DWORD                  dwOwns_logger;
     LPDIRECTINPUT8A        directinput;
@@ -133,6 +131,4 @@ private:
     ActionTable            action_tables[5];    // one per mode
 };
 
-/* The one-slot vtable: the scalar deleting destructor. */
-extern const void *const PROGCTRL_VTABLE;
 

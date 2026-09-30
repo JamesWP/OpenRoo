@@ -10,17 +10,14 @@ FaktMovie g_movie;
 /* Zeroes everything after the vtable and sets the notify message.  PRESERVED:
  * the game's version returns NULL, which nobody reads; this one returns
  * nothing. */
-void FaktMovie::construct()
+FaktMovie::FaktMovie()
+    : log_obj(NULL), state(0), useColorKey(0), notify_msg(0xfd)
 {
-    void *vt = vtable;
-    memset(this, 0, sizeof(*this));
-    vtable = vt;
-    notify_msg = 0xfd;
+    memset(colorKey, 0, sizeof(colorKey));
 }
 
-void FaktMovie::destruct()
+FaktMovie::~FaktMovie()
 {
-    vtable = FAKTMOVIE_VTABLE;
     teardown();
 }
 
@@ -72,22 +69,3 @@ void FaktMovie::setWindow(void *surface)
     log_write("FaktMovie::setWindow(this=%p, surface=%p)\n", this, surface);
 }
 
-/* Installs the vtable, then the fields. */
-FaktMovie *FaktMovie::init()
-{
-    vtable = FAKTMOVIE_VTABLE;
-    construct();
-    return this;
-}
-
-/* Frees on bit 0; the one movie is a global, so it never does. */
-FaktMovie * 
-FaktMovie::scalarDeletingDtor(FaktMovie *self, unsigned int flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}
-
-void *const g_faktMovieVtable[1] = { (void *)&FaktMovie::scalarDeletingDtor };
