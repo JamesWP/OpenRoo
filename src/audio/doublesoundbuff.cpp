@@ -89,7 +89,7 @@ doublesoundbuff *doublesoundbuff::init()
     ++g_nInit; { static unsigned long seen; dsb_first("Init", &seen); }
     master()->init();
     spare()->init();
-    // Stopgap: the entry is raw operator-new memory, so its lists are placed.
+    //todo: placement-new stopgap until doublesoundbuff has a real constructor
     new (clones()) LinkedList();
     new (pools()) LinkedList();
     dwMasterTaken_ = 0;
