@@ -2,8 +2,7 @@
  * fails, from its spare, a second load of the same file in software.
  *
  * Copy and Clone return the source on success, so every success test here is
- * `result == src`.  The master sits at offset 0 of the entry, so the master's
- * address is the entry's.  Every copy passes 1: no reload from the file,
+ * `result == src`.  Every copy passes 1: no reload from the file,
  * because the manager wants the failure so it can try the spare.
  *
  * PRESERVED:
