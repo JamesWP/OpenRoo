@@ -27,14 +27,8 @@ public:
                                      DWORD alphaFlag, UINT bpp,
                                      DWORD textureStage);
 
-    /* The SceneTexture constructor, destructor body and scalar deleting
-     * destructor (the one vtable slot). */
-    SceneTexture *construct();
-
-    void dtorBody();
-
-    static SceneTexture * 
-    scalarDtor(SceneTexture *self, unsigned int flags);
+    SceneTexture();
+    ~SceneTexture() override;
 
     /* Load by extension (mode 0), DIB (1) or TGA (2).  The sky builder
      * (sky.cpp) is its one outside caller. */

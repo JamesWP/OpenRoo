@@ -160,15 +160,12 @@ public:
     /* Releases one type's records. */
     void release();
 
-    /* The lifecycles of a type slot and its records. */
-    ThemeObjectTypeSlot *construct();
+    /* The records build themselves; the destructor releases them. */
+    ThemeObjectTypeSlot();
+    virtual ~ThemeObjectTypeSlot();
+    ThemeObjectTypeSlot(const ThemeObjectTypeSlot &) = delete;
+    ThemeObjectTypeSlot &operator=(const ThemeObjectTypeSlot &) = delete;
 
-    void destruct();
-
-    static ThemeObjectTypeSlot * 
-    scalarDtor(ThemeObjectTypeSlot *self, unsigned int flags);
-
-    void            *vtable() const { return pVtable_; }
     DWORD instanceCount() const { return dwInstanceCount_; }
  
  
@@ -178,7 +175,6 @@ public:
 
 private:
     friend class ThemeParser;  // theme.cpp fills the slots
-    void            *pVtable_;          // our one-slot table
     DWORD            dwInstanceCount_;  // last record index + 1
     ThemeLevelObject records_[8];
 
@@ -240,10 +236,12 @@ public:
     /* Releases everything the block holds.  Also called at shutdown. */
     void release();
 
-    /* The block's aggregate construction and destruction, for g_themeBlock. */
-    ThemeAssetBlock *construct();
-
-    void destruct();
+    /* The 38 slots and the sky build themselves, and are destroyed in
+     * reverse; the plain data between them is left alone. */
+    ThemeAssetBlock();
+    ~ThemeAssetBlock();
+    ThemeAssetBlock(const ThemeAssetBlock &) = delete;
+    ThemeAssetBlock &operator=(const ThemeAssetBlock &) = delete;
 
     const char *themeName() const { return themeName_; }
     ThemeObjectTypeSlot *slot(int type)       { return &slots_[type]; }

@@ -31,20 +31,17 @@ public:
                                     const char *bk, const char *lf,
                                     const char *rt, UINT bpp);
 
-    /* Construct, destroy and destroy-and-free, matching the vtable's one slot.
-     */
-    SkyBackground *construct();
-
-    void dtorBody();
-    static SkyBackground * 
-    scalarDtor(SkyBackground *self, unsigned int flags);
+    /* Builds the six face textures, then fills the geometry; the destructor
+     * releases the faces last to first. */
+    SkyBackground();
+    virtual ~SkyBackground();
+    SkyBackground(const SkyBackground &) = delete;
+    SkyBackground &operator=(const SkyBackground &) = delete;
 
     /* Rebuilds the world matrix from flYawAngle and the given centre, submits
      * the six faces, and returns the matrix (self->WorldMatrix). */
     float *draw(RenderDevice *dev, float flCentreX, float flCentreY,
                 float flCentreZ);
-
-    const void     *vtable() const { return pVtable_; }
 
     /* The six faces.  4-aligned within the packed sky. */
  
@@ -58,7 +55,6 @@ private:
 
  
 
-    const void     *pVtable_;          // +0x000 one-slot vtable
     float           flYawAngle_;       // +0x004 radians, the Y rotation
     SceneTexture    Textures_[6];      // +0x008 one SceneTexture per face
     SkyVertex       QuadVerts_[6][4];  // +0x0b0 one triangle-strip quad per face

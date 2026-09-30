@@ -89,16 +89,8 @@ HRESULT CFaktMesh::drawFramedModel(RenderDevice *dev, DWORD frame)
 }
   //  
 
-/* ─── The lifecycle four ────────────────────────────────────────────────────
+/* ─── Lifecycle ────────────────────────────────────────────────────
  */
-
-static void *const g_FaktMeshVtable[1] = { (void *)&CFaktMesh::scalarDtor };
-
-void *
-CFaktMesh::vtbl(void)
-{
-    return (void *)g_FaktMeshVtable;
-}
 
 /* Four guarded frees, each followed by a NULL, then the two scalars.
  * PRESERVED: wFrameCount goes to 1, not 0, so an empty mesh claims one frame.
@@ -119,14 +111,13 @@ void CFaktMesh::releaseModelBuffers()
 
 /* Only the four strides are set; the other eight strided entries and every
  * lpvData are left uninitialised.  PRESERVED: wFrameCount starts at 1. */
-CFaktMesh *CFaktMesh::init()
+CFaktMesh::CFaktMesh()
 {
     strided_[MESH_STRIDED_POSITION].dwStride = MDL_VERTEX_STRIDE;
     strided_[MESH_STRIDED_NORMAL].dwStride   = MDL_VERTEX_STRIDE;
     strided_[MESH_STRIDED_TEX0].dwStride     = MDL_VERTEX_STRIDE;
     strided_[MESH_STRIDED_TEX1].dwStride     = MDL_VERTEX_STRIDE;
 
-    unknown00_      = CFaktMesh::vtbl();
     pVertexData_    = NULL;
     dwVertexCount_  = 0;
     pFrameRecords_  = NULL;
@@ -137,24 +128,11 @@ CFaktMesh *CFaktMesh::init()
     static LONG logged = 0;
     if (InterlockedIncrement(&logged) <= MESH_LOG_FIRST)
         log_write("faktmesh: Init this=%p\n", this);
-    return this;
 }
 
-/* Re-install the table, then release. */
-void CFaktMesh::dtorBody()
+CFaktMesh::~CFaktMesh()
 {
-    unknown00_ = CFaktMesh::vtbl();
     releaseModelBuffers();
-}
-
-/* The one vtable slot. */
-void * 
-CFaktMesh::scalarDtor(CFaktMesh *self, unsigned int flags)
-{
-    self->dtorBody();
-    if (flags & 1)
-        free(self);
-    return self;
 }
   //  
 

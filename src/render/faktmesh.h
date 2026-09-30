@@ -44,27 +44,18 @@ public:
 
     HRESULT drawFramedModel(RenderDevice *dev, DWORD frame);
 
-    /* ─── The lifecycle four ───────────────────────────────────────────────
+    /* ─── Lifecycle ────────────────────────────────────────────────────────
      *
-     *   init                 the constructor
-     *   scalarDtor           scalar deleting destructor, the vtable's only slot
-     *   dtorBody             destructor body
-     *   releaseModelBuffers  free the four heap fields
-     *
-     * model.cpp allocates the four buffers with the allocator this frees them
-     * with. */
-    CFaktMesh *init();
+     * The constructor sets the four strides and empties the buffers; the
+     * destructor frees them with releaseModelBuffers.  model.cpp allocates
+     * the four buffers with the allocator this frees them with. */
+    CFaktMesh();
+    virtual ~CFaktMesh();
+    CFaktMesh(const CFaktMesh &) = delete;
+    CFaktMesh &operator=(const CFaktMesh &) = delete;
 
-    static void * 
-    scalarDtor(CFaktMesh *self, unsigned int flags);
-
-    void dtorBody();
     void releaseModelBuffers();
 
-    /* Our one-slot table, installed by Init and the destructor body. */
-    static void *vtbl();
-
-    void  *vtable() const { return unknown00_; }
     void  *vertexData() const { return pVertexData_; }
     DWORD vertexCount() const { return dwVertexCount_; }
     void  *frameRecords() const { return pFrameRecords_; }
@@ -77,7 +68,6 @@ private:
 
  
 
-    void  *unknown00_;      // +0x00 vtable, set by Init
     void  *pVertexData_;    // +0x04 dwVertexCount * wFrameCount vertices, stride 0x28
     DWORD  dwVertexCount_;  // +0x08 vertices per animation frame
     void  *pFrameRecords_;  // +0x0c wFrameCount records of 0x18 bytes (6 dwords)

@@ -87,46 +87,23 @@ Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp)
 }
 
 
-/* One slot: the scalar deleting destructor. */
-static void *const g_LoadedImageVtable[1] = { (void *)&LoadedImage::scalarDtor };
-
-void *
-LoadedImage::vtbl(void)
-{
-    return (void *)g_LoadedImageVtable;
-}
-
 /* ─── LoadedImage lifecycle ──────────────────────────────────────────────────
  */
-LoadedImage *LoadedImage::construct()
+LoadedImage::LoadedImage()
 {
     static unsigned long seen; image_first("LoadedImage::Ctor", &seen);
-    unknown00_       = LoadedImage::vtbl();
     pTextureSurface_ = NULL;
     pTexturePalette_ = NULL;
     ImageName_       = NULL;
     loadedState_     = 0;
     loadStatus_      = 0;
-    return this;
 }
 
-void LoadedImage::dtorBody()
+LoadedImage::~LoadedImage()
 {
     static unsigned long seen; image_first("LoadedImage::DtorBody", &seen);
-    unknown00_ = LoadedImage::vtbl();
     if (ImageName_ != NULL)
         free(ImageName_);  // PRESERVED: not NULLed, so a second DtorBody double-frees
-}
-
-/* Reachable only through vtable slot 0. */
-LoadedImage * 
-LoadedImage::scalarDtor(LoadedImage *self, unsigned int flags)
-{
-    static unsigned long seen; image_first("LoadedImage::ScalarDeletingDtor", &seen);
-    self->dtorBody();
-    if ((flags & 1) != 0)
-        free(self);
-    return self;
 }
 
 void LoadedImage::releaseSurfaces()

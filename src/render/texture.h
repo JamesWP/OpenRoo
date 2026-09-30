@@ -14,26 +14,16 @@ class RenderDevice;
 
 class LoadedImage {
 public:
-    /* ─── texture.cpp's members other files call ───────────────────────────
-     *
-     * The LoadedImage ctor/dtor family.  SceneTexture's (scenetexture.cpp) is
-     * the only outside caller: its construct chains to the base's and its
-     * dtorBody tail-calls the base's, exactly as the originals do. */
-    LoadedImage *construct();
-
-    void dtorBody();
-    static LoadedImage * 
-    scalarDtor(LoadedImage *self, unsigned int flags);
+    LoadedImage();
+    /* Frees the image name.  PRESERVED: it is not NULLed. */
+    virtual ~LoadedImage();
+    LoadedImage(const LoadedImage &) = delete;
+    LoadedImage &operator=(const LoadedImage &) = delete;
 
     /* Restore a lost surface and reload its image.
      * TextureManager::loadAll (scenetexture.cpp) is the outside caller. */
     unsigned int load();
 
-    /* The vtable pointer LoadedImage's ctor and dtor body install, and the same
-     * question for SceneTexture: our own one-slot table in this DLL. */
-    static void *vtbl();
-
-    void                *vtable() const { return unknown00_; }
     IDirectDrawSurface4 *textureSurface() const { return pTextureSurface_; }
     char                *imageName() const { return ImageName_; }
 
@@ -53,7 +43,6 @@ public:
 private:
     friend class SceneTexture;
 
-    void                *unknown00_;
     IDirectDrawSurface4 *pTextureSurface_;
     IDirectDrawSurface4 *pTexturePalette_;
     char                *ImageName_;
