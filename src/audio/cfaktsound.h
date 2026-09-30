@@ -12,7 +12,7 @@ struct vec3d {
 };
 
 /* The device state.  Embedded, never allocated on its own. */
-class __attribute__((packed)) CFaktSound {
+class CFaktSound {
 public:
     /* Turns the 3D listener on or off.  Returns 0 on failure, after releasing
      * everything; the sound manager gives up when it does. */
