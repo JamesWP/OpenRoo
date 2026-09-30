@@ -21,7 +21,7 @@ struct WaveInfo {
 
 /* A streamed buffer, 0xd4 bytes, the size the script player allocates.  The
  * vptr is at offset 0. */
-class __attribute__((packed)) CStreamSoundbuffer {
+class CStreamSoundbuffer {
 public:
     /* An idle stream: every field cleared, the lock created, marked done. */
     CStreamSoundbuffer();
