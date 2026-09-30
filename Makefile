@@ -39,7 +39,7 @@ SRCS = src/app/process.cpp src/app/log.cpp src/app/veh.cpp src/audio/cdm.cpp \
        src/ui/levelselect.cpp src/input/inputsetup.cpp src/input/camerainput.cpp src/render/camera.cpp \
        src/entities/framepose.cpp src/render/themedraw.cpp src/core/game.cpp src/render/sceneobjects.cpp \
        src/render/renderstate.cpp src/render/rendergameframe.cpp src/app/main.cpp src/app/launcherdialogs.cpp \
-       src/app/resources.cpp src/core/gameglobals.cpp src/app/staticinit.cpp
+       src/app/resources.cpp src/core/gameglobals.cpp
 
 # ─── Build ────────────────────────────────────────────────────────────────
 #

@@ -39,7 +39,6 @@
 #include "menuscreens.h"
 #include "log.h"
 #include "resources.h"
-#include "staticinit.h"
 
 /* Shared by WinMain and the window procedure; nothing else reads either. */
 static volatile int g_moviePlaying;
@@ -156,15 +155,10 @@ Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine);
 
-/* Every return path goes through here, so the globals are torn down however
- * WinMain ends. */
   int WINAPI
 Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 {
-    StaticInit_Construct();
-    int r = winmain_body(hInstance, lpCmdLine);
-    StaticInit_Destruct();
-    return r;
+    return winmain_body(hInstance, lpCmdLine);
 }
 
 static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
