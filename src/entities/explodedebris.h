@@ -16,7 +16,7 @@ class ExplodeDebris {
 public:
     ExplodeDebris();
     /* Releases the scratch buffers. */
-    virtual ~ExplodeDebris();
+    ~ExplodeDebris();
     ExplodeDebris(const ExplodeDebris &) = delete;
     ExplodeDebris &operator=(const ExplodeDebris &) = delete;
 

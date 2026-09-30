@@ -34,7 +34,7 @@ public:
     /* Builds the six face textures, then fills the geometry; the destructor
      * releases the faces last to first. */
     SkyBackground();
-    virtual ~SkyBackground();
+    ~SkyBackground();
     SkyBackground(const SkyBackground &) = delete;
     SkyBackground &operator=(const SkyBackground &) = delete;
 

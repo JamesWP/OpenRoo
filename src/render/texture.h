@@ -16,7 +16,7 @@ class LoadedImage {
 public:
     LoadedImage();
     /* Frees the image name.  PRESERVED: it is not NULLed. */
-    virtual ~LoadedImage();
+    ~LoadedImage();
     LoadedImage(const LoadedImage &) = delete;
     LoadedImage &operator=(const LoadedImage &) = delete;
 

@@ -28,7 +28,7 @@ public:
                                      DWORD textureStage);
 
     SceneTexture();
-    ~SceneTexture() override;
+    ~SceneTexture();
 
     /* Load by extension (mode 0), DIB (1) or TGA (2).  The sky builder
      * (sky.cpp) is its one outside caller. */
