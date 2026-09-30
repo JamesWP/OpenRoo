@@ -883,14 +883,14 @@ static HRESULT WINAPI NOINLINE no_QueryInterface(NullObj *s, REFIID r, void **p)
 #define FAIL_STUB(n, params) \
     static HRESULT WINAPI NOINLINE fail##n params { return DDERR_UNSUPPORTED; }
 
-#define A1 (void *a)
-#define A2 (void *a, DWORD b)
-#define A3 (void *a, DWORD b, DWORD c)
-#define A4 (void *a, DWORD b, DWORD c, DWORD d)
-#define A5 (void *a, DWORD b, DWORD c, DWORD d, DWORD e)
-#define A6 (void *a, DWORD b, DWORD c, DWORD d, DWORD e, DWORD f)
-#define A7 (void *a, DWORD b, DWORD c, DWORD d, DWORD e, DWORD f, DWORD g)
-#define A8 (void *a, DWORD b, DWORD c, DWORD d, DWORD e, DWORD f, DWORD g, DWORD h)
+#define A1 (void *)
+#define A2 (void *, DWORD)
+#define A3 (void *, DWORD, DWORD)
+#define A4 (void *, DWORD, DWORD, DWORD)
+#define A5 (void *, DWORD, DWORD, DWORD, DWORD)
+#define A6 (void *, DWORD, DWORD, DWORD, DWORD, DWORD)
+#define A7 (void *, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD)
+#define A8 (void *, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD)
 
 /* The parameters exist only to give each stub the right stdcall stack
  * cleanup; no stub reads them. */
