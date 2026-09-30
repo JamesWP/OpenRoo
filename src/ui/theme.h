@@ -46,9 +46,8 @@ class ThemeLevelObject {
 public:
      
 
-    ThemeLevelObject *construct();
-
-    void destruct();
+    // The wrapper and explode-debris members build and tear themselves down.
+    ThemeLevelObject() = default;
 
     ThemeObjectKind kind() const { return kind_; }
     CFaktMesh   *mesh() const { return pMesh_; }

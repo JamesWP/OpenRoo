@@ -18,14 +18,6 @@
 #include <math.h>
 #include "renderdevice.h"
 
-static void *const g_ExplodeDebrisVtable[1] = { (void *)&ExplodeDebris::scalarDtor };
-
-void *
-ExplodeDebris::vtbl()
-{
-    return (void *)g_ExplodeDebrisVtable;
-}
-
 /* Guarded frees, then three of the four stores. */
 void ExplodeDebris::release()
 {
@@ -67,9 +59,8 @@ void ExplodeDebris::storeExplodeScaledCount(float scale)
 }
 
 /* The stores in a fixed order, then the table seed. */
-ExplodeDebris *ExplodeDebris::construct()
+ExplodeDebris::ExplodeDebris()
 {
-    vtable_       = ExplodeDebris::vtbl();
     pVertexCopy_  = NULL;
     pFaceRecords_ = NULL;
     nVertexCount_ = 0;
@@ -78,25 +69,11 @@ ExplodeDebris *ExplodeDebris::construct()
     flDropAccum_  = 0;
 
     Gen_FillGaussianField(this, 2.0f, 1.0f);
-    return this;
 }
 
-/* Re-install the vtable, then release. */
-void ExplodeDebris::dtorBody()
+ExplodeDebris::~ExplodeDebris()
 {
-    vtable_ = ExplodeDebris::vtbl();
     release();
-}
-
-/* Vtable slot 0.  Every ExplodeDebris is embedded in a larger object, so bit 0
- * is never set and this path is not exercised. */
-void * 
-ExplodeDebris::scalarDtor(ExplodeDebris *self, unsigned int flags)
-{
-    self->dtorBody();
-    if (flags & 1)
-        free(self);
-    return self;
 }
 
 /* The effect.  Vertices are MeshVertex (position first); the

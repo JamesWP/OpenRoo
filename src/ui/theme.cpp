@@ -217,7 +217,7 @@ void ThemeObjectTypeSlot::release()
             }
         }
     }
-    memset(this, 0, sizeof(*this));
+    memset((void *)this, 0, sizeof(*this));
 }
 
 /* Every slot is a member of the global block.  Records are constructed in
@@ -227,23 +227,8 @@ void ThemeObjectTypeSlot::release()
  * that follow run on zeroed members. */
 static void *const g_ThemeSlotVtable[1] = { (void *)&ThemeObjectTypeSlot::scalarDtor };
 
-ThemeLevelObject *ThemeLevelObject::construct()
-{
-    wrapper_.construct();
-    explode_.construct();
-    return this;
-}
-
-void ThemeLevelObject::destruct()
-{
-    explode_.dtorBody();
-    wrapper_.dtorBody();
-}
-
 ThemeObjectTypeSlot *ThemeObjectTypeSlot::construct()
 {
-    for (int i = 0; i < 8; i++)
-        records_[i].construct();
     pVtable_ = (void *)g_ThemeSlotVtable;
     return this;
 }
@@ -252,8 +237,6 @@ void ThemeObjectTypeSlot::destruct()
 {
     pVtable_ = (void *)g_ThemeSlotVtable;
     release();
-    for (int i = 8; i-- > 0; )
-        records_[i].destruct();
 }
 
 ThemeObjectTypeSlot * 
@@ -306,7 +289,7 @@ void ThemeAssetBlock::release()
         slots_[t].release();
     for (int f = 0; f < 6; f++)
         sky_.textures()[f].releaseD3DTexture();
-    memset(this, 0, sizeof(*this));
+    memset((void *)this, 0, sizeof(*this));
 }
 
 /* "NONE" (case-exact, on the raw wave name) disables the entry without

@@ -27,11 +27,12 @@ class WrapperObject {
 public:
      
 
-    // Installs the one-slot vtable and zeroes the three fields.
-    void construct();
-
-    // Re-installs the vtable and frees the snapshot.
-    void dtorBody();
+    // Zeroes the three fields.
+    WrapperObject();
+    // Frees the snapshot.
+    virtual ~WrapperObject();
+    WrapperObject(const WrapperObject &) = delete;
+    WrapperObject &operator=(const WrapperObject &) = delete;
 
     // Attaches mesh and snapshots every frame's UVs.  A NULL mesh is ignored
     // entirely, including the free of the old snapshot.
@@ -60,17 +61,9 @@ public:
 
     CFaktMesh *mesh() const { return pMesh_; }
 
-    /* The vtable, installed by the ctor and the dtor body. */
-    static void *vtbl();
-
-    /* Vtable slot 0.  Returns self; bit 0 of flags frees. */
-    static void * 
-    scalarDtor(WrapperObject *self, unsigned int flags);
-
 private:
      
 
-    void      *vtable_;   // the one-slot vtable
     WrapperUV *pBaseUV_;  // wFrameCount * dwVertexCount pairs
     CFaktMesh *pMesh_;    // not owned
     BYTE       dirty_;    // set by the three animating modes
