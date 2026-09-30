@@ -82,8 +82,6 @@ static void fx_init(void)
         s_diag_reset = 1;
 }
 
-const SlideObject::Vtbl SlideObject::VTABLE = { &SlideObject::scalarDeletingDtor };
-
 SlideObject *SlideObject::create()
 {
     return new (std::nothrow) SlideObject;
@@ -94,20 +92,11 @@ SlideObject::SlideObject()
     posU_ = 0.0f;
     posY_ = 0.0f;
     posV_ = 0.0f;
-    vtable_ = &VTABLE;
     sound_  = 0;
 }
 
-void *SlideObject::scalarDeletingDtor(SlideObject *self, unsigned int flags)
+SlideObject::~SlideObject()
 {
-    if (flags & 1)
-        delete self;
-    return self;
-}
-
-void SlideObject::destroy()
-{
-    vtable_->scalarDeletingDtor(this, 1);
 }
 
 static int s_logged_spawn = 0;
@@ -267,7 +256,7 @@ void SlideObject::purgeAll(Game *game)
             }
             SlideObject *obj = game->slideSlot(i);
             if (obj != 0)
-                obj->destroy();
+                delete obj;
             i++;
         } while (i < game->slideCount());
     }

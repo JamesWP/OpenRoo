@@ -40,29 +40,18 @@ public:
 
 private:
 
-    // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
-    // frees the memory).
-    struct Vtbl {
-        void *(  *scalarDeletingDtor)(BreakableTile *self,
-                                                              unsigned int flags);
-    };
-    static const Vtbl VTABLE;
-
     // Allocates and constructs one; NULL if the allocation fails.
     static BreakableTile *create();
     BreakableTile();
-    // Vtable slot 0.
-    static void *  scalarDeletingDtor(BreakableTile *self,
-                                                              unsigned int flags);
-    // Destroys through the object's own vtable, flags 1.
-    void destroy();
+    virtual ~BreakableTile();
+    BreakableTile(const BreakableTile &) = delete;
+    BreakableTile &operator=(const BreakableTile &) = delete;
 
     // The tile it sits on: (cellU_, cellV_), read signed.
     Tile *tile() const;
     // Positions the sound at the tile and triggers it.
     void playAtTile(CStaticSoundbuffer *snd, const Tile *t) const;
 
-    const Vtbl         *vtable_;          // &VTABLE
     double              now_;             // latched from *clock_
     double             *clock_;           // Game::clock()
     TickStep        *tickStep_;           // Game::tickStep()

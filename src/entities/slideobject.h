@@ -36,27 +36,16 @@ public:
 
 private:
 
-    // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
-    // frees the memory).
-    struct Vtbl {
-        void *(  *scalarDeletingDtor)(SlideObject *self,
-                                                              unsigned int flags);
-    };
-    static const Vtbl VTABLE;
-
     // Allocates and constructs one; NULL if the allocation fails.
     static SlideObject *create();
     SlideObject();
-    // Vtable slot 0.
-    static void *  scalarDeletingDtor(SlideObject *self,
-                                                              unsigned int flags);
-    // Destroys through the object's own vtable, flags 1.
-    void destroy();
+    virtual ~SlideObject();
+    SlideObject(const SlideObject &) = delete;
+    SlideObject &operator=(const SlideObject &) = delete;
 
     // Releases the tile the slide just left.
     void vacate();
 
-    const Vtbl         *vtable_;        // &VTABLE
     double              now_;           // latched from *clock_
     double             *clock_;         // Game::clock()
     TickStep        *tickStep_;         // Game::tickStep()
