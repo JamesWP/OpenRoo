@@ -689,17 +689,14 @@ BOOL ParticleSystem::deserialize(void *fp, GameLogger *log)
             ::operator delete(name);
             return FALSE;
         }
-        ::operator delete(name);
         void **gvt = *(void ***)gen;
         if (!((ps_stream_fn)gvt[GEN_VT_LOAD_SLOT])(gen, fp)) {
-/* PRESERVED: `name` was freed above and is still handed to the logger. */
- 
- 
             log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_GENLOAD, name);
- 
+            ::operator delete(name);
             sub_object_delete(gen);
             return FALSE;
         }
+        ::operator delete(name);
         ((ps_attach_fn)pVtable_[PS_VT_SETGEN])(this, gen);
     }
 
@@ -714,17 +711,14 @@ BOOL ParticleSystem::deserialize(void *fp, GameLogger *log)
             ::operator delete(name);
             return FALSE;
         }
-        ::operator delete(name);
         void **evt = *(void ***)env;
         if (!((ps_stream_fn)evt[GEN_VT_LOAD_SLOT])(env, fp)) {
-/* PRESERVED: the same use-after-free as the generator branch. */
- 
- 
             log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_ENVLOAD, name);
- 
+            ::operator delete(name);
             sub_object_delete(env);
             return FALSE;
         }
+        ::operator delete(name);
         ((ps_attach_fn)pVtable_[PS_VT_SETENV])(this, env);
     }
     return TRUE;
