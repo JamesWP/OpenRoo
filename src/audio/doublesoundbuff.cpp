@@ -122,7 +122,7 @@ void doublesoundbuff::purgeCloneList(LinkedList *list)
     list->clear();
 }
 
-/* The same walk; a pool has no vtable, so it is wiped and freed. */
+/* The same walk; each pool is deleted (which wipes it). */
 void doublesoundbuff::purgeVoicePoolList(LinkedList *list)
 {
     ++g_nPurgePool; { static unsigned long seen; dsb_first("PurgeVoicePoolList", &seen); }
@@ -132,8 +132,7 @@ void doublesoundbuff::purgeVoicePoolList(LinkedList *list)
         node = node->next();
         if (pool != 0) {
             ++g_nPoolsFreed;
-            pool->wipe();
-            free(pool);
+            delete pool;
         }
     }
     list->clear();
@@ -178,8 +177,7 @@ int doublesoundbuff::releasePool(VoicePool *pool)
         return 0;
     pools()->unlink(node);
     if (pool != 0) {
-        pool->wipe();
-        free(pool);
+        delete pool;
     }
     ++g_nRelPoolHit;
     return 1;
