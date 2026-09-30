@@ -12,20 +12,14 @@ Scene g_scene;
 
 /* ─── Construction and teardown ─────────────────────────────────────────── */
 
-Scene *Scene::construct()
+Scene::Scene()
 {
-    models_.construct();
-    textures_.construct();
-    return this;
 }
 
-/* Members in reverse.  The objects themselves are not freed -- only the list's
- * nodes. */
-void Scene::destruct()
+/* The members, in reverse.  The objects themselves are not freed -- only the
+ * list's nodes. */
+Scene::~Scene()
 {
-    textures_.destruct();
-    models_.destruct();
-    objects_.clear();
 }
 
 void Scene::freeSceneObjects()
@@ -34,7 +28,7 @@ void Scene::freeSceneObjects()
         SceneObject *o = (SceneObject *)n->value();
         n = n->next();
         if (o != NULL) {
-            o->spline.~SplinePath();
+            o->spline.~SplinePath();  //todo: explicit destructor until SceneObject has a real destructor
             ::operator delete(o);
         }
     }
@@ -65,7 +59,7 @@ void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *lo
         // model's radius are whatever the heap left, and animLoaded is stale
         // unless the .ani loads.
         SceneObject *o = (SceneObject *)::operator new(sizeof(SceneObject));
-        new (&o->spline) SplinePath();
+        new (&o->spline) SplinePath();  //todo: placement new until SceneObject has a real constructor
 
         o->type = r->kind;
         if (r->kind == EXTRA_MODEL)

@@ -42,8 +42,10 @@ class Scene {
 public:
      
 
-    Scene *construct();
-    void destruct();
+    Scene();
+    ~Scene();
+    Scene(const Scene &) = delete;
+    Scene &operator=(const Scene &) = delete;
     void buildObjectList(RenderDevice *d3d, ExtraObjects *leo,
                          GameLogger *logger);
 

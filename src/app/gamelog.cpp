@@ -159,12 +159,9 @@ GameLogger::GameLogger()
     notifyHwnd_   = NULL;
 }
 
-/* PRESERVED: fp is left dangling. The only reuse, openLogFile, goes through
- * closeLogFile, which clears it. */
 GameLogger::~GameLogger()
 {
-    if (fp_)
-        fclose(fp_);
+    closeLogFile();
 }
 
 int GameLogger::openLogFile(const char *filename, const char *mode)

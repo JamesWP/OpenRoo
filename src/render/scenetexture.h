@@ -68,22 +68,18 @@ public:
 
     void releaseAll();
 
-    /* Constructor, destructor body and scalar deleting destructor (the one
-     * vtable slot). */
-    TextureManager *construct();
-
-    void destruct();
-    static TextureManager * 
-    scalarDestructor(TextureManager *self, unsigned char flags);
+    TextureManager();
+    /* Empties the cache's nodes, not the textures. */
+    virtual ~TextureManager();
+    TextureManager(const TextureManager &) = delete;
+    TextureManager &operator=(const TextureManager &) = delete;
 
     void setLogger(GameLogger *logger);
     void loadAll();
 
-    void        *vtable() const { return vtable_; }
     GameLogger  *logger() const { return pLogger_; }
 
 private:
-    void        *vtable_;    // 
     LinkedList   cache_;     // SceneTexture *, game-heap nodes
     GameLogger  *pLogger_;   // NULL = silent
      

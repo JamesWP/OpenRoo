@@ -650,28 +650,13 @@ void TextureManager::releaseAll()
  *
  * Every instance is static (scenetexture.h), so nothing deletes one and the
  * scalar dtor's free is never reached. */
-static void *const g_TextureManagerVtable[1] = { (void *)&TextureManager::scalarDestructor };
-
-TextureManager *TextureManager::construct()
+TextureManager::TextureManager()
+    : pLogger_(NULL)
 {
-    vtable_  = (void *)g_TextureManagerVtable;
-    pLogger_ = NULL;
-    return this;
 }
 
-void TextureManager::destruct()
+TextureManager::~TextureManager()
 {
-    vtable_ = (void *)g_TextureManagerVtable;
-    cache_.clear();
-}
-
-TextureManager * 
-TextureManager::scalarDestructor(TextureManager *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
 }
 
 /* pLogger = logger. */
