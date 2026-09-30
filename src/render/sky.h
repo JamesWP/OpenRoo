@@ -43,7 +43,6 @@ public:
     float *draw(RenderDevice *dev, float flCentreX, float flCentreY,
                 float flCentreZ);
 
-    /* The six faces.  4-aligned within the packed sky. */
  
  
     SceneTexture       *textures()       { return Textures_; }

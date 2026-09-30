@@ -61,7 +61,6 @@ public:
      * The builder overwrites all four later. */
     LevelPlacements();
 
-    /* The block is packed but 4-aligned in memory. */
  
  
     const float           *exitPos() const      { return exitPos_; }

@@ -28,9 +28,6 @@
 #include "d3dnative.h"
 #include "ddrawdiag.h"
 
-/* LoadedImage and SceneTexture are packed for the packed records that embed
- * them; their members are 4-aligned all the same, so passing a member's
- * address as a COM out-parameter is safe. */
  
 TextureManager g_textureManager;
 
