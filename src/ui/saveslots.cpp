@@ -108,33 +108,13 @@ int SaveSlots::writeAllSlotFiles(const char *name, char key)
     return 1;
 }
 
-/* The table is embedded in the Game, so the deleting destructor never frees in
- * practice. */
-static void *const g_SaveSlotsVtable[1] = { (void *)&SaveSlots::scalarDeletingDtor };
-
-void *
-SaveSlots::vtbl(void)
+/* Construction and destruction leave the slots alone. */
+SaveSlots::SaveSlots()
 {
-    return (void *)g_SaveSlotsVtable;
 }
 
-void SaveSlots::installVtable()
+SaveSlots::~SaveSlots()
 {
-    *(const void **)this = SaveSlots::vtbl();
-}
-
-void SaveSlots::restoreVtable()
-{
-    *(const void **)this = SaveSlots::vtbl();
-}
-
-void * 
-SaveSlots::scalarDeletingDtor(SaveSlots *self, unsigned int flags)
-{
-    self->restoreVtable();
-    if (flags & 1)
-        free(self);
-    return self;
 }
 
 /* Blanks the first count_ records, re-reading the count each pass.  PRESERVED:

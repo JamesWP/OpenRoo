@@ -19,9 +19,10 @@ public:
     void rewind();
     void navigate(int now);
 
-    // Called only by the Game's construction and destruction.
-    void construct();
-    void destruct();
+    MenuTree();
+    virtual ~MenuTree();
+    MenuTree(const MenuTree &) = delete;
+    MenuTree &operator=(const MenuTree &) = delete;
     // Builds the fixed menu graph, then push(0).  Nodes 2 (Load Game) and 42
     // (Save Game) get one child per save slot.
     void buildDefaultGraph(unsigned char saveSlots);
@@ -71,15 +72,10 @@ public:
     // The node as an lvalue.
     unsigned char &nodeRef()                        { return node_; }
 
-    /* The one slot of MenuTree's vtable. */
-    static MenuTree * 
-    scalarDeletingDtor(MenuTree *self, unsigned char flags);
 
 private:
-    MenuTree() = delete;  // only ever reached through the Game
      
 
-    const void    *vtable_;  // our one-slot table
     unsigned int   changed_;
     unsigned short lastNodeSeen_;
     double         lockStart_;

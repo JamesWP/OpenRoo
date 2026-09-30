@@ -294,29 +294,25 @@ struct __attribute__((packed)) SoundAssetName {
  * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
  * 0x47, but the table holds 100 entries: ReleaseAll clears exactly
  * 100, ending at Game+0x48b12 where switchMax_ begins.  Lifecycle in
- * theme.cpp; the vtable is ours, one slot. */
+ * theme.cpp; the vptr is at +0. */
 #define THEME_SOUND_COUNT 100
 class __attribute__((packed)) ThemeSoundTable {
 public:
     /* Adds (or replaces) the wave for a theme sound id. */
     int add(unsigned int id, const char *waveName, DWORD arg3, DWORD arg4);
 
-    /* The theme sound table's lifecycle; it is a Game member. */
-    ThemeSoundTable *construct();
-
-    void destruct();
-    static ThemeSoundTable * 
-    scalarDestructor(ThemeSoundTable *self, unsigned char flags);
+    /* An empty table: every entry cleared (see releaseAll). */
+    ThemeSoundTable();
+    virtual ~ThemeSoundTable();
+    ThemeSoundTable(const ThemeSoundTable &) = delete;
+    ThemeSoundTable &operator=(const ThemeSoundTable &) = delete;
 
     int releaseAll();
-
-    void          *vtable() const { return vtable_; }
 
     /* The entry for theme event id. */
     const SoundAssetName *entry(int id) const { return &entries_[id]; }
 
 private:
-    void          *vtable_;       /* +0 */
     DWORD          unknown4_;     /* +4  never written */
     WORD           unknown8_;     /* +8  zeroed by the ctor, never read */
     SoundAssetName entries_[THEME_SOUND_COUNT];

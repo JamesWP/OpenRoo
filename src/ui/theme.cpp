@@ -971,8 +971,6 @@ bool ThemeAssetBlock::load(Game *game, RenderDevice *d3d, char *path,
 /* The theme sound table's lifecycle.  ReleaseAll clears the name and the
  * enabled flag of all 100 entries between two log lines, leaving the other
  * fields, and returns 0. */
-static void *const g_ThemeSoundVtable[1] = { (void *)&ThemeSoundTable::scalarDestructor };
-
 int ThemeSoundTable::releaseAll()
 {
     g_logger.logMessage(1, GS_THEME_SOUND_RELEASING);
@@ -984,25 +982,12 @@ int ThemeSoundTable::releaseAll()
     return 0;
 }
 
-ThemeSoundTable *ThemeSoundTable::construct()
+ThemeSoundTable::ThemeSoundTable()
 {
-    vtable_    = (void *)g_ThemeSoundVtable;
     unknown8_  = 0;
     releaseAll();
-    return this;
 }
 
-void ThemeSoundTable::destruct()
+ThemeSoundTable::~ThemeSoundTable()
 {
-    vtable_ = (void *)g_ThemeSoundVtable;
-}
-
-/* Reached only through the vtable; the table is embedded in the Game. */
-ThemeSoundTable * 
-ThemeSoundTable::scalarDestructor(ThemeSoundTable *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
 }

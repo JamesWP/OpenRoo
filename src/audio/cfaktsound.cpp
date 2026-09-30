@@ -10,24 +10,15 @@
  * packed-member warning.  The addresses are the same ones the pragma gave. */
  
 
-void CFaktSound::blankFields()
+CFaktSound::CFaktSound()
+    : logger_initialized_(0), logger_(NULL), directsound_(NULL),
+      soundbuffer_(NULL), directsound3dlistener_(NULL)
 {
-    memset(this, 0, sizeof(*this));
-    vtable_ = const_cast<void*>(CFAKTSOUND_VTABLE);
+    memset(&caps_check_, 0, sizeof(caps_check_));
 }
 
-CFaktSound * 
-CFaktSound::scalarDeletingDtor(CFaktSound *self, DWORD )
+CFaktSound::~CFaktSound()
 {
-    // Always embedded: the free flag is ignored.
-    self->releaseComRefs();
-    self->vtable_ = const_cast<void*>(CFAKTSOUND_VTABLE);
-    return self;
-}
-
-void CFaktSound::clearState()
-{
-    vtable_ = const_cast<void*>(CFAKTSOUND_VTABLE);
     releaseComRefs();
 }
 
@@ -204,8 +195,3 @@ void CFaktSound::apply3DRolloffParams(float rolloff_factor, DWORD dwApply)
     if (directsound3dlistener_)
         directsound3dlistener_->SetRolloffFactor(rolloff_factor, dwApply);
 }
-
-static void *const cfaktsound_vtable_slots[1] = {
-    (void *)&CFaktSound::scalarDeletingDtor,
-};
-extern const void *const CFAKTSOUND_VTABLE = cfaktsound_vtable_slots;

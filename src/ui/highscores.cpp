@@ -138,19 +138,9 @@ unsigned int HighScoreTable::insert(unsigned int score, unsigned char levelId)
     return ((rank * 11 + 11) & 0xffffff00u) | (rank & 0xffu);
 }
 
-static void *const g_HighScoreVtable[1] = { (void *)&HighScoreTable::scalarDeletingDtor };
+HighScoreTable::HighScoreTable() {}
+HighScoreTable::~HighScoreTable() {}
 
-void HighScoreTable::construct() { vtable_ = g_HighScoreVtable; }
-void HighScoreTable::destruct()  { vtable_ = g_HighScoreVtable; }
-
-HighScoreTable * 
-HighScoreTable::scalarDeletingDtor(HighScoreTable *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}
 
 /* The ten defaults are written whatever count() is; the name only into the
  * first count() rows. */

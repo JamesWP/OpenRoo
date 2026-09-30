@@ -136,7 +136,7 @@ void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
             log_write("objectremove: first virtual dtor -- obj=%p vtbl=%p "
                       "slot0=%p\n", obj, (void *)vtbl, vtbl[0]);
         }
-        ((MovableEntity *)obj)->destroyViaVtable(1);
+        delete (MovableEntity *)obj;
     }
 
     //     // PRESERVED: Bomb::remove passes 0, leaving its slot holding a dangling

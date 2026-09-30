@@ -20,19 +20,15 @@ struct WaveInfo {
 };
 
 /* A streamed buffer, 0xd4 bytes, the size the script player allocates.  The
- * vtable must stay at offset 0. */
+ * vptr is at offset 0. */
 class __attribute__((packed)) CStreamSoundbuffer {
 public:
-    /* The deinit, then free() when bit 0 of flags is set; returns self. */
-    static void * 
-    scalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags);
-
+    /* An idle stream: every field cleared, the lock created, marked done. */
+    CStreamSoundbuffer();
     /* Releases everything, as releaseResources does, and deletes the lock. */
-    void deinitInstance();
-
-    /* Zeroes the object, sets its vtable and lock, and marks it done; returns
-     * self. */
-    CStreamSoundbuffer *initialize();
+    virtual ~CStreamSoundbuffer();
+    CStreamSoundbuffer(const CStreamSoundbuffer &) = delete;
+    CStreamSoundbuffer &operator=(const CStreamSoundbuffer &) = delete;
 
     /* Releases any earlier file, then loads wi's WAV file into a new buffer.
      * Returns nonzero on success. */
@@ -47,7 +43,6 @@ public:
     /* Stops, then releases the buffer, the stop event and the file name. */
     void releaseResources();
 
-    void                *vtable() const { return vtable_; }
     char                *filename() const { return filename_; }
     IDirectSoundBuffer  *soundbuffer() const { return pSoundbuffer_; }
     IDirectSound        *directsound() const { return pDirectsound_; }
@@ -58,7 +53,6 @@ private:
  
     static DWORD WINAPI watcherProc(LPVOID param);
 
-    void                *vtable_;
     char                *filename_;
     IDirectSoundBuffer  *pSoundbuffer_;
     IDirectSound        *pDirectsound_;
@@ -69,6 +63,4 @@ private:
     CRITICAL_SECTION     cs_;
 };
  
-/* The one-slot vtable: the scalar deleting destructor. */
-  void *CStream_Vtable(void);
 

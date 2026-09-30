@@ -81,7 +81,6 @@ static void *const g_ModelManagerVtable[1] = { (void *)&ModelManager::scalarDest
 
 ModelManager *ModelManager::construct()
 {
-    cache_.init();
     vtable_  = (void *)g_ModelManagerVtable;
     pLogger_ = NULL;
     return this;
@@ -90,7 +89,7 @@ ModelManager *ModelManager::construct()
 void ModelManager::destruct()
 {
     vtable_ = (void *)g_ModelManagerVtable;
-    cache_.destruct();
+    cache_.clear();
 }
 
 ModelManager * 

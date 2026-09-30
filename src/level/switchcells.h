@@ -35,9 +35,9 @@ public:
             counts_[i] = 0;
     }
 
+    SwitchCells() = default;  // left uninitialised until clearCounts()
+
 private:
-    SwitchCells() = delete;  // embedded in the Game
-     
 
     SwitchCell    cells_[SWITCHES][CELLS];
     unsigned char counts_[SWITCHES];

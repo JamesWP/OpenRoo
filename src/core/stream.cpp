@@ -113,38 +113,13 @@ DWORD WINAPI CStreamSoundbuffer::watcherProc(LPVOID param)
     return 0;
 }
 
-/* There is no array form of the destructor: nothing allocates these in blocks,
- * so bit 1 of the flags is not tested. */
- 
-
-static void *const g_CStreamVtable[1] = { (void *)&CStreamSoundbuffer::scalarDeletingDtor };
-
-  void *CStream_Vtable(void)
-{
-    return (void *)g_CStreamVtable;
-}
-
-void * 
-CStreamSoundbuffer::scalarDeletingDtor(CStreamSoundbuffer *self, unsigned int flags)
-{
-    static unsigned long seen;
-    CStatic_SoundFirstCall("CStreamSoundbuffer::ScalarDeletingDtor", &seen);
-
-    self->deinitInstance();
-    if (flags & 1)
-        free(self);
-    return self;
-}
-
-
-CStreamSoundbuffer *CStreamSoundbuffer::initialize()
+CStreamSoundbuffer::CStreamSoundbuffer()
+    : filename_(NULL), pSoundbuffer_(NULL), pDirectsound_(NULL),
+      dwBuffer_size_(0), dwThread_done_(1), watcher_thread_(NULL),
+      stop_event_(NULL)
 {
     log_write("CStream::Initialize(this=%p)\n", this);
-    memset(this, 0, sizeof(*this));
-    vtable_       = CStream_Vtable();
-    dwThread_done_ = 1;
     InitializeCriticalSection(&cs_);
-    return this;
 }
 
 int CStreamSoundbuffer::prepare(WaveInfo *wi)
@@ -277,10 +252,9 @@ void CStreamSoundbuffer::releaseResources()
     dwThread_done_ = 1;
 }
 
-void CStreamSoundbuffer::deinitInstance()
+CStreamSoundbuffer::~CStreamSoundbuffer()
 {
     log_write("CStream::DeinitInstance(this=%p)\n", this);
-    vtable_ = CStream_Vtable();
     releaseResources();
     DeleteCriticalSection(&cs_);
 }

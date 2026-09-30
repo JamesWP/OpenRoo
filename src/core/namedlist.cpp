@@ -9,8 +9,7 @@
  *     overwrites;
  *   - Remove repairs head and tail from the entry's own links and never checks
  *     that the entry is in this list: a foreign entry corrupts both lists;
- *   - Remove always returns 0;
- *   - DtorBody re-installs the vtable before it clears. */
+ *   - Remove always returns 0. */
 
 #include "namedlist.h"
 #include <stdlib.h>
@@ -91,14 +90,10 @@ static void namedlist_census(void)
               g_nRemoveNull, g_nFind, g_nFindHit, g_nMaxLen);
 }
 
-/* The one-slot vtable. */
-static void *const g_NamedListVtable[1] = { (void *)&NamedEntryList::scalarDtor };
-
-void NamedEntryList::construct()
+NamedEntryList::NamedEntryList()
 {
     ++g_nConstruct;
     { static unsigned long seen; namedlist_first("Construct", &seen); }
-    vtable  = (void **)g_NamedListVtable;
     pHead   = NULL;
     pTail   = NULL;
     dwCount = 0;
@@ -123,25 +118,11 @@ void NamedEntryList::clear()
     namedlist_census();
 }
 
-void NamedEntryList::dtorBody()
+NamedEntryList::~NamedEntryList()
 {
     ++g_nDtorBody;
     { static unsigned long seen; namedlist_first("DtorBody", &seen); }
-    vtable = (void **)g_NamedListVtable;
     clear();
-}
-
-NamedEntryList * 
-NamedEntryList::scalarDtor(NamedEntryList *self, unsigned char bFreeSelf)
-{
-    ++g_nScalarDtor;
-    { static unsigned long seen; namedlist_first("ScalarDtor", &seen); }
-    self->dtorBody();
-    if ((bFreeSelf & 1) != 0)
-        // No list is allocated on its own today; free() matches the malloc the
-        // rest of the code uses.
-        free(self);
-    return self;
 }
 
 NamedEntry *NamedEntryList::insert(const char *pszName, void *pPayload)

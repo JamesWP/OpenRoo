@@ -9,6 +9,7 @@
  * ends the run; every recording fails on frames_run. */
 
 #include <windows.h>
+#include <new>
 #include <stdio.h>
 #include "main.h"
 #include <stdlib.h>
@@ -53,9 +54,7 @@ static bool winmain_fx_norender()
     return on;
 }
 
-/* The scalar deleting destructors free() their object, which is why both
- * objects come from malloc. */
-static void delete_game(Game *g)       { if (g) Game::scalarDeletingDtor(g, 1); }
+static void delete_game(Game *g)       { delete g; }
 
 /* The window procedure: input devices and surfaces on focus changes, the intro
  * movie's events, and CD track repeats.  Every path ends in DefWindowProcA,
@@ -206,11 +205,10 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
         return 0;
     }
 
-    Game *game = (Game *)malloc(sizeof(Game));
-    Game::set_instance(game ? game->construct(lpCmdLine) : NULL);
-    if (Game::instance() == NULL)
+    Game *game = new (std::nothrow) Game(lpCmdLine);
+    Game::set_instance(game);
+    if (game == NULL)
         return 0;
-    game = Game::instance();
 
     while (!game->cdThemes()->validateTrackLengths()) {
         if (MessageBoxA(hWnd, "Please insert the Ka'Roo - CD-ROM!", "Ka'Roo",

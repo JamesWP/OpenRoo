@@ -34,20 +34,9 @@ public:
     double droppedAt() const { return droppedAt_; }
 
 private:
-    // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
-    // frees the memory).  The remove destroys through it.
-    struct Vtbl {
-        void *(  *scalarDeletingDtor)(Bomb *self,
-                                                              unsigned int flags);
-    };
-    static const Vtbl VTABLE;
-
     // Allocates and constructs one; NULL if the allocation fails.
     static Bomb *create();
     Bomb();
-    // Vtable slot 0.
-    static void *  scalarDeletingDtor(Bomb *self,
-                                                              unsigned int flags);
 
     // The cell (u, v) from this bomb's tile base, both read signed.
     Tile *tile(int u, int v) const;

@@ -110,11 +110,7 @@ static inline double remove_ms(void) { return s_fx_shortfuse ? K_REMOVE_MS / 2.0
 
 /* Construction: the MovableEntity base, then the bomb's own stores in a fixed
  * order; every other byte is left as allocated.  PRESERVED: the sound slots
- * +0xab..+0xcb are cleared a second time after zeroSoundSlots().  The
- * destructor runs the base destructor, then frees when bit 0 of flags is set.
- */
-const Bomb::Vtbl Bomb::VTABLE = { &Bomb::scalarDeletingDtor };
-
+ * +0xab..+0xcb are cleared a second time after zeroSoundSlots().  */
 Bomb *Bomb::create()
 {
     return new (std::nothrow) Bomb;
@@ -123,7 +119,6 @@ Bomb *Bomb::create()
 Bomb::Bomb()
 {
     // The MovableEntity constructor has run.
-    vtable_           = &VTABLE;
     rollSound_        = 0;
     blastSound_       = 0;
     zeroSoundSlots();
@@ -164,13 +159,6 @@ Bomb::Bomb()
     sound_cb_         = 0;
     field_d8          = 0;
     stepGrace_          = 50.0;
-}
-
-void *Bomb::scalarDeletingDtor(Bomb *self, unsigned int flags)
-{
-    if (flags & 1)
-        delete self;
-    return self;
 }
 
 static unsigned long s_spawns       = 0;

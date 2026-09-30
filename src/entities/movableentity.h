@@ -16,7 +16,7 @@ class CStaticSoundbuffer;
 class VoicePool;
 class FoePath;
 
-/* One moving entity's shared state.  Derived classes set the vtable. */
+/* One moving entity's shared state.  Foe, Bomb and Player derive from it. */
 class MovableEntity {
 public:
      
@@ -28,21 +28,6 @@ public:
 
     // Zero the twelve sound handles.
     void zeroSoundSlots();
-
-    // The base half of Player::construct and Player::destruct.  PRESERVED:
-    // includes the original's transient vtable stores, which the derived class
-    // overwrites at once.
-    void populateBaseForGame();
-    void destroyBaseForGame();
-
-    // Destroy through the object's own vtable slot 0: the game built these
-    // objects and still owns their vtables, so destruction must go through the
-    // pointer the object carries rather than a fixed function.  `flags` is the
-    // MSVC scalar-deleting-destructor flag word; every caller passes 1.  This
-    // is the one place a MovableEntity is destroyed by code that does not know
-    // which subclass it holds (Object_DestroyAndCompactId, reached from both
-    // foe.cpp and bomb.cpp).
-    void destroyViaVtable(int flags);
 
     // Nonzero once this tick should remove the entity.  Read by GameTick after
     // a bomb's tick.
@@ -129,17 +114,16 @@ public:
     VoicePool *poolCf() const                  { return (VoicePool *)sound_cf_; }
     void  setPoolCf(VoicePool *p)              { sound_cf_ = (CStaticSoundbuffer *)p; }
 
-    /* Vtable slot 0 of the base's one-slot table: destroys the base state, then
-     * frees to the game heap when bit 0 of `flags` is set. */
-    static MovableEntity * 
-    scalarDeletingDtor(MovableEntity *self, unsigned int flags);
-
 protected:
     // Our own subclasses use only the base's field work, the three zeroed
-    // position floats.  The vtable is left for the subclass to set.
+    // position floats.
     MovableEntity();
 
-    const void         *vtable_;
+public:
+    // Virtual, so a Foe or Bomb is destroyed through a MovableEntity pointer.
+    virtual ~MovableEntity();
+
+protected:
     double              now_;
     double             *clock_;
     TickStep        *tickStep_;

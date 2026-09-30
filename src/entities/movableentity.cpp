@@ -1,57 +1,19 @@
-/* MovableEntity's construction, destruction and vtable-slot destructor; the
+/* MovableEntity's construction and destruction; the
  * shared movement step, updateMovement(), follows in the rest of the file. */
 
 #include "movableentity.h"
 #include "ani.h"
 #include <stdlib.h>
-#include "levelobjbase.h"
-
-/* The two vtables populateBaseForGame() and destroyBaseForGame() store into
- * vtable_ before the derived class sets its own; see the header for why both
- * intermediate stores are kept. */
-#define GAME_LEVELOBJECT_VTBL ((const void *)LevelObjBase_Vtable())
-
-/* The base's own vtable: one slot, the scalar-deleting destructor declared
- * below. */
-static void *const g_MovableVtable[1] =
-    { (void *)&MovableEntity::scalarDeletingDtor };
-
-#define GAME_MOVABLE_VTBL     ((const void *)g_MovableVtable)
 
 MovableEntity::MovableEntity()
 {
-    // The vtable is left for the derived class to set.
     posU_ = 0.0f;
     posY_ = 0.0f;
     posV_ = 0.0f;
 }
 
-void MovableEntity::populateBaseForGame()
+MovableEntity::~MovableEntity()
 {
-    vtable_ = GAME_LEVELOBJECT_VTBL;
-    posU_   = 0.0f;
-    posY_   = 0.0f;
-    posV_   = 0.0f;
-    vtable_ = GAME_MOVABLE_VTBL;
-}
-
-void MovableEntity::destroyBaseForGame()
-{
-    vtable_ = GAME_MOVABLE_VTBL;
-    vtable_ = GAME_LEVELOBJECT_VTBL;
-}
-
-/* The typedef is __thiscall to match the vtable slot; `self` is typed
- * MovableEntity * because every object that reaches here is one --
- * Object_DestroyAndCompactId's only callers hold Foe ** and Bomb **, and both
- * derive from this class. */
-typedef void (  *scalar_dtor_fn)(MovableEntity *self,
-                                                         int flags);
-
-void MovableEntity::destroyViaVtable(int flags)
-{
-    scalar_dtor_fn *vtbl = (scalar_dtor_fn *)vtable_;
-    vtbl[0](this, flags);
 }
 
 void MovableEntity::zeroSoundSlots()
@@ -68,17 +30,6 @@ void MovableEntity::zeroSoundSlots()
     sound_a3_ = 0;
     sound_cb_ = 0;
     sound_cf_ = 0;
-}
-
-/* No code path in this codebase reaches this except through the vtable
- * installed above. */
-MovableEntity * 
-MovableEntity::scalarDeletingDtor(MovableEntity *self, unsigned int flags)
-{
-    self->destroyBaseForGame();
-    if (flags & 1)
-        free(self);
-    return self;
 }
 
 /* MovableEntity::updateMovement(): the movement integrator every entity

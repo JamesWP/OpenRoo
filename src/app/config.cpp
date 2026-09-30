@@ -117,26 +117,14 @@ int Config::save(const char *path)
     return 1;
 }
 
-static void *const g_ConfigVtable[1] = { (void *)&Config::scalarDeletingDtor };
-
-void Config::construct()
+Config::Config()
 {
-    vtable_ = g_ConfigVtable;
 }
 
-void Config::destruct()
+Config::~Config()
 {
-    vtable_ = g_ConfigVtable;
 }
 
-Config *
-Config::scalarDeletingDtor(Config *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}
 
 /* The CD mixer default is pow(2, 16) * 50, truncated, / 100: 32768. */
 void Config::fillDefaults()

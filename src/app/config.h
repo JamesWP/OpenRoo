@@ -57,9 +57,10 @@ public:
     float          activeCameraPitch() const           { return activeCameraPitch_; }
     void           setActiveCameraPitch(float a)       { activeCameraPitch_ = a; }
 
-    // Called only by the Game's construction and destruction.
-    void construct();
-    void destruct();
+    Config();
+    virtual ~Config();
+    Config(const Config &) = delete;
+    Config &operator=(const Config &) = delete;
     // The defaults, which data/Karoo.cfg.default also holds.
     void fillDefaults();
     unsigned int   savedCdMixerVolume() const          { return savedCdMixerVolume_; }
@@ -70,8 +71,6 @@ public:
     unsigned int   cdMixerVolume() const               { return cdMixerVolume_; }
     float          cameraDistanceSetting() const       { return cameraDistanceSetting_; }
 
-    /* The one slot of Config's vtable. */
-    static Config * scalarDeletingDtor(Config *self, unsigned char flags);
 
     /* Karoo.cfg: returns 1 when the file loads and ends with the tag. */
     int loadValues(const char *path);
@@ -79,10 +78,8 @@ public:
     int save(const char *path);
 
 private:
-    Config() = delete;  // only ever reached through the Game
      
 
-    const void    *vtable_;
     // The persisted fields, in blob order.
     unsigned int   field_00_;               // default 1; unread
     unsigned char  videoOptions_[4];        // Shadows, Reflection, Highlights, Particles

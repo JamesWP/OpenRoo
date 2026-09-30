@@ -88,8 +88,6 @@ Tile *Foe::tile(int u, int v) const
     return Tile::at(tileBase_, u, v);
 }
 
-const Foe::Vtbl Foe::VTABLE = { &Foe::scalarDeletingDtor };
-
 Foe *Foe::create()
 {
     return new (std::nothrow) Foe;
@@ -97,7 +95,6 @@ Foe *Foe::create()
 
 Foe::Foe()
 {
-    vtable_          = &VTABLE;
     zeroSoundSlots();
     field_7a         = 0;
     dyingStarted_         = 0;
@@ -144,7 +141,7 @@ Foe::Foe()
     pathfinder_      = 0;
 }
 
-void Foe::destroy()
+Foe::~Foe()
 {
     FoePath *pf;
 
@@ -155,14 +152,6 @@ void Foe::destroy()
     pf = pathfinder_;
     if (pf != 0)
         FoePath::destroy(pf);
-}
-
-void *Foe::scalarDeletingDtor(Foe *self, unsigned int flags)
-{
-    self->destroy();
-    if (flags & 1)
-        delete self;
-    return self;
 }
 
 static unsigned char s_type_seen[256];

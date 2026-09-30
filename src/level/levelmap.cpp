@@ -124,26 +124,14 @@ int LevelMap::readFile(const char *path)
     return 1;
 }
 
-static void *const g_LevelMapVtable[1] = { (void *)&LevelMap::scalarDeletingDtor };
-
-/* The vtable and the two extent bytes; the rest is left as it was. */
-void LevelMap::construct()
+/* The two extent bytes; the rest is left as it was. */
+LevelMap::LevelMap()
 {
-    vtable_  = g_LevelMapVtable;
     extentV_ = 0;
     extentU_ = 0;
 }
 
-void LevelMap::destruct()
+LevelMap::~LevelMap()
 {
-    vtable_ = g_LevelMapVtable;
 }
 
-LevelMap * 
-LevelMap::scalarDeletingDtor(LevelMap *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}

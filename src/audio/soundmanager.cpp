@@ -514,9 +514,6 @@ int SoundManager::setup(int mode3d)
     return 1;
 }
 
-/* The one-slot vtable: the deleting destructor. */
-static void *const g_SoundMgrVtable[1] = { (void *)&SoundManager::scalarDestructor };
-
 /* Destroys every entry in one list, then empties it.  The next pointer is read
  * before the entry is destroyed. */
 static void purge_list(NamedEntryList *list)
@@ -535,19 +532,14 @@ static void purge_list(NamedEntryList *list)
 
  
 
-SoundManager *SoundManager::construct()
+SoundManager::SoundManager()
 {
-    cfaktSound()->blankFields();
-    entriesPlain_.construct();
-    entries3D_.construct();
     logger_           = NULL;
     ownsLogger_       = 0;
     dwMode3D_         = 0;
     dwPendingMode3D_  = 0;
     dwCreated_        = 0;
-    vtable_           = (void *)g_SoundMgrVtable;
     dwDefaultDsFlags_ = 2;  // DSBCAPS_STATIC
-    return this;
 }
 
 /* Also the reset: Init runs it first, and the Game's teardown on its own.  An
@@ -569,25 +561,11 @@ void SoundManager::purgeAssets()
     dwDefaultDsFlags_ = 2;
 }
 
-void SoundManager::destruct()
+SoundManager::~SoundManager()
 {
-    vtable_ = (void *)g_SoundMgrVtable;
     purgeAssets();
-    entries3D_.dtorBody();
-    entriesPlain_.dtorBody();
-    cfaktSound()->clearState();
 }
 
-/* Reached only through the vtable; the manager is embedded in the Game, so
- * nothing deletes one. */
-SoundManager * 
-SoundManager::scalarDestructor(SoundManager *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}
 
 /* PRESERVED: a failed logger allocation leaves logger_ NULL and ownsLogger_ 1.
  */

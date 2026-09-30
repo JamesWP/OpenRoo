@@ -31,11 +31,6 @@ public:
     void actHarakiri();
     void actReleaseBomb();
 
-    // Game-embedded lifecycle: called only from Game's own construction and
-    // destruction.
-    void construct();
-    void clearPathfinder()  { pathfinder_ = NULL; }
-    void destruct();
 
     // The tile the player stands on, from its signed cell coordinates.
     Tile *curTile() const;
@@ -172,12 +167,12 @@ public:
     int   gemsCollected() const                     { return gemsCollected_; }
     void  setGemsCollected(int n)                   { gemsCollected_ = n; }
 
-    static Player * 
-    scalarDeletingDtor(Player *self, unsigned char flags);
+    Player();
+    ~Player() override;
+    Player(const Player &) = delete;
+    Player &operator=(const Player &) = delete;
 
 private:
-    Player() = delete;  // game-owned, embedded in Game
-     
 
     typedef CStaticSoundbuffer *SoundRef;
 

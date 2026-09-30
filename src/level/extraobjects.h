@@ -46,9 +46,10 @@ public:
 
     enum { RECORD_MAX = 256, RELEASE_COUNT = 255 };
 
-    // Construction and the destructor body.
-    void construct();
-    void destruct();
+    ExtraObjects();
+    virtual ~ExtraObjects();
+    ExtraObjects(const ExtraObjects &) = delete;
+    ExtraObjects &operator=(const ExtraObjects &) = delete;
     // Parses <name>.leo.
     int  openFile(const char *name);
     // Halts and releases each record's sound.  PRESERVED: the first 255 only.
@@ -64,11 +65,8 @@ public:
     unsigned short objectCount() const               { return objectCount_; }
     ExtraObjectRecord *record(unsigned int i)        { return &records_[i]; }
 
-    static ExtraObjects * 
-    scalarDeletingDtor(ExtraObjects *self, unsigned char flags);
 
 private:
-    ExtraObjects() = delete;  // only ever reached through the Game
     void recDump(const char *path);
     // The entry parser and its helpers.
     int  parseEntry(const char *entry);
@@ -86,7 +84,6 @@ private:
     ExtraObjectRecord *current() { return &records_[objectCount_]; }
      
 
-    const void        *vtable_;  // our one-slot table
     int                loaded_;
     SoundManager      *soundManager_;
     unsigned short     entries_;  // entries seen

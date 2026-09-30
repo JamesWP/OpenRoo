@@ -26,19 +26,15 @@ public:
     int            active() const                  { return active_; }
     void           setActive(int a)                { active_ = a; }
 
-    // Called only by the Game's construction and destruction.
-    void construct();
-    void destruct();
+    TextEntry();
+    virtual ~TextEntry();
+    TextEntry(const TextEntry &) = delete;
+    TextEntry &operator=(const TextEntry &) = delete;
 
-    /* The one slot of TextEntry's vtable. */
-    static TextEntry * 
-    scalarDeletingDtor(TextEntry *self, unsigned char flags);
 
 private:
-    TextEntry() = delete;  // only ever reached through the Game
      
 
-    const void    *vtable_;  // our one-slot table
     char          *buffer_;  // the owner's storage
     unsigned char  lastKey_;
     unsigned char  cursor_;

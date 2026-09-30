@@ -32,20 +32,16 @@
 #include <math.h>
 
 /* Stops (if still playing), releases and deletes each stream, re-reading the
- * slot before each step; the deleting destructor comes from the stream's own
- * vtable. */
+ * slot before each step. */
 void ScriptPlayer::releaseStreams()
 {
-    typedef void (  *deleting_dtor_fn)(void *, int);
-
     for (int i = 0; i < 255; ++i) {
         if (streams_[i] == NULL)
             continue;
         if (streams_[i]->thread_done() == 0)
             streams_[i]->stop();
         streams_[i]->releaseResources();
-        if (streams_[i] != NULL)
-            (*(deleting_dtor_fn *)*(void **)streams_[i])(streams_[i], 1);
+        delete streams_[i];
         streams_[i] = NULL;
     }
 }
@@ -442,8 +438,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
                         "IS: warning - Stream sound buffer width id %d already initialized!", id);
                     return 0xc;
                 }
-                void *mem = malloc(sizeof(CStreamSoundbuffer));
-                CStreamSoundbuffer *s = mem ? ((CStreamSoundbuffer *)mem)->initialize() : NULL;
+                CStreamSoundbuffer *s = new (std::nothrow) CStreamSoundbuffer();
                 streams_[id] = s;
                 streamReady_ = s->prepare(&streamWave_);
                 if (streamReady_)
@@ -570,32 +565,24 @@ void ScriptPlayer::tick(double now, double dt)
     updateGlide();
 }
 
-static void *const g_ScriptPlayerVtable[1] = { (void *)&ScriptPlayer::scalarDeletingDtor };
-
 /* The embedded stream and spline, then these stores. */
-void ScriptPlayer::construct()
+ScriptPlayer::ScriptPlayer()
 {
-    stream_.initialize();
-    new (&spline_) SplinePath();  // Game is malloc'd, so no implicit ctor
     cursor_       = 0;
     splineActive_ = 0;
     soundManager_ = NULL;
-    vtable_       = g_ScriptPlayerVtable;
     clearStreams();
 }
 
 /* A prepared stream still playing is stopped and released first; one that
  * finished is left to its deinit. */
-void ScriptPlayer::destruct()
+ScriptPlayer::~ScriptPlayer()
 {
-    vtable_ = g_ScriptPlayerVtable;
     if (streamReady_ != 0 && stream_.thread_done() == 0) {
         stream_.stop();
         stream_.releaseResources();
         streamReady_ = 0;
     }
-    spline_.~SplinePath();
-    stream_.deinitInstance();
 }
 
 void ScriptPlayer::clearStreams()
@@ -603,11 +590,3 @@ void ScriptPlayer::clearStreams()
     memset(streams_, 0, sizeof(streams_));
 }
 
-ScriptPlayer * 
-ScriptPlayer::scalarDeletingDtor(ScriptPlayer *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}

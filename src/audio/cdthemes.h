@@ -11,10 +11,12 @@ public:
 
     enum { THEME_MAX = 255, NAME_SIZE = 255 };
 
-    // Construction only sets the vtable; the table stays uninitialised until
-    // readTrackThemeTable fills it.
-    void          construct();
-    void          destruct();
+    // Construction leaves the table uninitialised until readTrackThemeTable
+    // fills it.
+    CdThemes();
+    virtual ~CdThemes();
+    CdThemes(const CdThemes &) = delete;
+    CdThemes &operator=(const CdThemes &) = delete;
 
     // The theme's track, or 0 (indistinguishable from theme 0) when not found.
     // Case-insensitive.
@@ -39,14 +41,10 @@ public:
     unsigned char currentTrack() const               { return currentTrack_; }
     void          setCurrentTrack(unsigned char t)   { currentTrack_ = t; }
 
-    static CdThemes * 
-    scalarDeletingDtor(CdThemes *self, unsigned int flags);
 
 private:
-    CdThemes() = delete;  // only ever reached through the Game
      
 
-    void         *vtable_;
     int           trackCount_;          // set by validateTrackLengths
     unsigned char trackOf_[THEME_MAX];  // theme i's CD track
     unsigned char currentTrack_;
@@ -54,6 +52,3 @@ private:
     char          names_[THEME_MAX][NAME_SIZE];  // theme i's name
 };
 
- 
-/* The one-slot vtable: the deleting destructor. */
-extern const void *const CDTHEMES_VTABLE;

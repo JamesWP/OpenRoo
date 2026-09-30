@@ -56,17 +56,16 @@ public:
     /* Construction and destruction, the asset purge (also the reset), and
      * start-up.  Init creates the device, with the 3D listener if enable3d;
      * with no logger it creates its own, SoundManager.log. */
-    SoundManager *construct();
-    void destruct();
-    static SoundManager * 
-    scalarDestructor(SoundManager *self, unsigned char flags);
+    SoundManager();
+    virtual ~SoundManager();
+    SoundManager(const SoundManager &) = delete;
+    SoundManager &operator=(const SoundManager &) = delete;
     void purgeAssets();
     int init(int enable3d, HWND window, UINT bufferflags, short channels,
              int samplespersec, USHORT bitspersample, GameLogger *logger);
 
     int created()const {return dwCreated_;}
 private:
-    void          *vtable_;  // our one-slot table
     GameLogger    *logger_;
     unsigned long  ownsLogger_;        // 1 if Init created logger_
     unsigned long  dwMode3D_;          // the live 3D listener mode
@@ -76,8 +75,6 @@ private:
     unsigned long  dwDefaultDsFlags_;  // DSBCAPS_* for new loads; DSBCAPS_STATIC
     NamedEntryList entriesPlain_;      // bWant3D == 0
     NamedEntryList entries3D_;         // bWant3D != 0
-
-    SoundManager() = delete;  // only ever reached through the Game
      
 };
 

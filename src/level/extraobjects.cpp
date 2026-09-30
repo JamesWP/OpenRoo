@@ -550,27 +550,15 @@ int ExtraObjects::parseEntry(const char *entry)
 }
 
 /* Embedded in the Game, so the deleting destructor never frees in practice. */
-static void *const g_LeoVtable[1] = { (void *)&ExtraObjects::scalarDeletingDtor };
-
-void ExtraObjects::construct()
+ExtraObjects::ExtraObjects()
 {
     // Each spline point's constructor does nothing; not run.
-    vtable_ = g_LeoVtable;
     objectCount_ = 0;
     for (int i = 0; i < RELEASE_COUNT; ++i)  // 255: record 255 keeps its sound handle
         records_[i].sound = NULL;
 }
 
-void ExtraObjects::destruct()
+ExtraObjects::~ExtraObjects()
 {
-    vtable_ = g_LeoVtable;
 }
 
-ExtraObjects * 
-ExtraObjects::scalarDeletingDtor(ExtraObjects *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}
