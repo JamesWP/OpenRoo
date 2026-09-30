@@ -10,15 +10,6 @@
 #include <stdlib.h>
 #include "log.h"
 
-/* A static buffer's vtable has one slot, the deleting destructor; flag 1 frees
- * the object too. */
-static void virtual_delete_static(void *obj)
-{
-    typedef void (  *dtor_fn)(void *self, int flags);
-    void **vtbl = *(void ***)obj;
-    ((dtor_fn)vtbl[0])(obj, 1);
-}
-
 /* KAROO_DSB_DIAG=1 counts every call, logs each function's first call, and
  * counts the two paths that give back the master or spare directly, which
  * would show if the spare half were dead. */
@@ -84,17 +75,10 @@ static DsbFx dsb_fx(void)
 }
 
 /* Both buffers, then both lists, then the two lent-out flags. */
-doublesoundbuff *doublesoundbuff::init()
+doublesoundbuff::doublesoundbuff()
+    : dwMasterTaken_(0), dwSpareTaken_(0)
 {
     ++g_nInit; { static unsigned long seen; dsb_first("Init", &seen); }
-    master()->init();
-    spare()->init();
-    //todo: placement-new stopgap until doublesoundbuff has a real constructor
-    new (clones()) LinkedList();
-    new (pools()) LinkedList();
-    dwMasterTaken_ = 0;
-    dwSpareTaken_  = 0;
-    return this;
 }
 
 /* Drops every borrower, releases both buffers and forgets that either was lent
@@ -112,16 +96,11 @@ void doublesoundbuff::clear()
     dsb_census();
 }
 
-/* Clear, then the lists and buffers in reverse order of construction.
- * ReinitBuffer, unlike Reset, reinstalls the vtable first. */
-void doublesoundbuff::destruct()
+/* Clear, then the lists and buffers in reverse order of construction. */
+doublesoundbuff::~doublesoundbuff()
 {
     ++g_nDestruct; { static unsigned long seen; dsb_first("Destruct", &seen); }
     clear();
-    pools()->~LinkedList();
-    clones()->~LinkedList();
-    spare()->reinitBuffer();
-    master()->reinitBuffer();
     dsb_census();
 }
 
@@ -137,7 +116,7 @@ void doublesoundbuff::purgeCloneList(LinkedList *list)
         node = node->next();
         if (clone != 0) {
             ++g_nClonesFreed;
-            virtual_delete_static(clone);
+            delete (CStaticSoundbuffer *)clone;
         }
     }
     list->clear();
@@ -171,7 +150,7 @@ int doublesoundbuff::releaseStatic(CStaticSoundbuffer *buf)
     if (node != 0) {
         clones()->unlink(node);
         if (buf != 0)
-            virtual_delete_static(buf);
+            delete buf;
         ++g_nRelStaticHit;
         return 1;
     }

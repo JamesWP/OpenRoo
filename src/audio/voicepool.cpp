@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <dsound.h>
 #include "static.h"
+#include <new>
 #include "voicepool.h"
 #include <stdlib.h>
 #include "log.h"
@@ -127,11 +128,7 @@ void VoicePool::wipe()
         for (int i = 0; i < dwVoiceCount_; i++)  // the count is re-read on every pass
             pBufs_[i].reset();
 
-        if (pBufs_ != 0) {  // re-tested; harmless
-            typedef void *(  *vec_dtor_fn)(void *self, int flags);
-            vec_dtor_fn dtor = *(vec_dtor_fn *)pBufs_->vtable();
-            dtor(pBufs_, 3);
-        }
+        delete[] pBufs_;
         pBufs_ = 0;
     }
     logger_       = 0;
@@ -168,17 +165,9 @@ int VoicePool::fill3D(int count, IDirectSound *pDS,
     dwVoiceCount_ = count;
 
     {
-        // A leading word, then the voices: the word is the count the vector
-        // destructor reads back.
-        void *block = malloc((unsigned)(count * sizeof(CStaticSoundbuffer) + 4));
-        CStaticSoundbuffer *bufs = 0;
-        if (block != 0) {
-            *(int *)block = count;
-            bufs = (CStaticSoundbuffer *)((char *)block + 4);
-            for (int i = 0; i < count; i++)  // voice construction cannot fail
-                bufs[i].init();
+        CStaticSoundbuffer *bufs = new (std::nothrow) CStaticSoundbuffer[count];
+        if (bufs != 0)
             g_nVoices += (unsigned long)count;
-        }
         pBufs_ = bufs;
     }
 
@@ -242,15 +231,9 @@ void *VoicePool::clone(int count, IDirectSound *pDS,
     logger_       = src->logger();
 
     {
-        void *block = malloc((unsigned)(count * sizeof(CStaticSoundbuffer) + 4));
-        CStaticSoundbuffer *bufs = 0;
-        if (block != 0) {
-            *(int *)block = count;
-            bufs = (CStaticSoundbuffer *)((char *)block + 4);
-            for (int i = 0; i < count; i++)
-                bufs[i].init();
+        CStaticSoundbuffer *bufs = new (std::nothrow) CStaticSoundbuffer[count];
+        if (bufs != 0)
             g_nVoices += (unsigned long)count;
-        }
         pBufs_ = bufs;
     }
 

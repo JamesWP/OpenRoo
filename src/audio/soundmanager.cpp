@@ -125,8 +125,7 @@ static inline unsigned long spare_flags(unsigned long dwFlags)
 static void destroy_entry(doublesoundbuff *entry)
 {
     ++g_entriesDestroyed;
-    entry->destruct();
-    operator delete(entry);
+    delete entry;
 }
 
  
@@ -265,10 +264,7 @@ CStaticSoundbuffer *SoundManager::acquireStatic(const char *name, int bWant3D)
             break;
 
         ++g_acqStaticNew;
-        doublesoundbuff *fresh =
-            (doublesoundbuff *)operator new(sizeof(doublesoundbuff));
-        if (fresh != NULL)
-            fresh = fresh->init();
+        doublesoundbuff *fresh = new doublesoundbuff();
         // PRESERVED: a failed allocation is passed on, and faults in the
         // loader.
         if (!loadEntryMaster(fresh, name,
@@ -293,11 +289,7 @@ CStaticSoundbuffer *SoundManager::acquireStatic(const char *name, int bWant3D)
         return entry->master();
     }
 
-    CStaticSoundbuffer *clone = NULL;
-    CStaticSoundbuffer *raw =
-        (CStaticSoundbuffer *)malloc(sizeof(CStaticSoundbuffer));
-    if (raw != NULL)
-        clone = raw->init();
+    CStaticSoundbuffer *clone = new (std::nothrow) CStaticSoundbuffer();
 
     void *r = clone->copy(directSound(), entry->master(), 1);
     if (r == (void *)entry->master()
@@ -316,11 +308,7 @@ CStaticSoundbuffer *SoundManager::acquireStatic(const char *name, int bWant3D)
     }
 
     ++g_cloneFail;
-    if (clone != NULL) {
-        // Deleted through its own vtable, with the free flag.
-        typedef void (  *dtor_fn)(void *, int);
-        (*(dtor_fn *)clone->vtable())(clone, 1);
-    }
+    delete clone;
     return NULL;
 }
 
@@ -354,10 +342,7 @@ VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
             break;
 
         ++g_acqPoolNew;
-        doublesoundbuff *fresh =
-            (doublesoundbuff *)operator new(sizeof(doublesoundbuff));
-        if (fresh != NULL)
-            fresh = fresh->init();
+        doublesoundbuff *fresh = new doublesoundbuff();
 
         // PRESERVED: the same flag computed a second time.
         int bDo3DAgain = 0;
@@ -368,9 +353,8 @@ VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
                                       dwDefaultDsFlags_, bDo3DAgain)) {
             if (fresh == NULL)
                 return NULL;
-            fresh->destruct();
             ++g_entriesDestroyed;
-            operator delete(fresh);
+            delete fresh;
             return NULL;
         }
         list->insert(name, fresh);
@@ -524,8 +508,7 @@ static void purge_list(NamedEntryList *list)
         e = e->next();
         if (payload != NULL) {
             payload->clear();
-            payload->destruct();
-            operator delete(payload);
+            delete payload;
         }
     }
     list->clear();
