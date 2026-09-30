@@ -36,7 +36,7 @@ public:
     /* Loads filename into an entry's master buffer (or, given the spare's
      * address, the spare), in 3D or 2D, and applies the pending 3D mode on
      * success. */
-    int loadEntryMaster(void *entry, const char *filename,
+    int loadEntryMaster(CStaticSoundbuffer *buf, const char *filename,
                         unsigned long dwDsFlags, int bDo3D);
 
     // Loads, or shares, the named sound.  The first acquirer gets the entry's
