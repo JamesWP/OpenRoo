@@ -376,9 +376,9 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
 
         dev->SetTransform(Transform::World, &world);
 
-        ps->vtick((float)(dt_ms * K_ANIM_SCALE));
+        ps->tick((float)(dt_ms * K_ANIM_SCALE));
         Vec3 dir = { cam[3] - cam[0], cam[4] - cam[1], cam[5] - cam[2] };
-        ps->vsetVector(dir.x, dir.y, dir.z);
-        ps->vrender(dev);
+        ps->setVector(dir.x, dir.y, dir.z);
+        ps->render(dev);
     }
 }
