@@ -29,17 +29,21 @@
 #define PARTICLE_LOG_FIRST 8
 #define FX_TINT_COLOUR     0xFFFF00FF
 
+/* KAROO_PARTICLE_FX, read once per mode by each caller. */
+static bool fx_is(const char *mode)
+{
+    char buf[16];
+    return GetEnvironmentVariableA("KAROO_PARTICLE_FX", buf, sizeof(buf))
+        && lstrcmpiA(buf, mode) == 0;
+}
+
 static bool fx_tint(void)
 {
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (GetEnvironmentVariableA("KAROO_PARTICLE_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "tint") == 0);
-        log_write("particle: FX mode = %s\n", cached ? "tint" : "off");
-    }
-    return cached != 0;
+    static const bool on = fx_is("tint");
+    static LONG logged = 0;
+    if (InterlockedExchange(&logged, 1) == 0)
+        log_write("particle: FX mode = %s\n", on ? "tint" : "off");
+    return on;
 }
 
 DWORD ParticleNode::colour() const
@@ -109,7 +113,7 @@ static void emit_face(ParticleVertex *v, const ParticleNode *node,
 
 void FaceParticleSystem::fill()
 {
-    nVertexCount_ = (WORD)fillRing([this](const ParticleNode *node, DWORD n) -> DWORD {
+    dwVertexCount_ = fillRing([this](const ParticleNode *node, DWORD n) -> DWORD {
             emit_face(&pVerts_[n], node, &flCorner_[0][0]);
             return 6;
         });
@@ -117,7 +121,7 @@ void FaceParticleSystem::fill()
 
 void XFaceParticleSystem::fill()
 {
-    nVertexCount_ = (WORD)fillRing([this](const ParticleNode *node, DWORD n) -> DWORD {
+    dwVertexCount_ = fillRing([this](const ParticleNode *node, DWORD n) -> DWORD {
             emit_face(&pVerts_[n], node,
                       &pCornerTable_[node->dwShapeIndex].flCorner[0][0]);
             return 6;
@@ -139,9 +143,9 @@ DWORD FaceParticleSystem::draw(RenderDevice *dev)
 {
     static DrawLogState st;
     bool ok = dev->Draw(Prim::TriangleList, PARTICLE_FVF,
-                                    pVerts_, nVertexCount_, 0);
-    log_draw(&st, "FaceDraw", this, dev, nVertexCount_, ok);
-    return nVertexCount_ / 6;
+                                    pVerts_, dwVertexCount_, 0);
+    log_draw(&st, "FaceDraw", this, dev, dwVertexCount_, ok);
+    return dwVertexCount_ / 6;
 }
 
 /* Two passes, one per face winding: save CULLMODE, draw with Cull::CCW, draw
@@ -153,14 +157,14 @@ DWORD XFaceParticleSystem::draw(RenderDevice *dev)
     saved = dev->GetRenderState(RS::CullMode);
     dev->SetRenderState(RS::CullMode, Cull::CCW);
     dev->Draw(Prim::TriangleList, PARTICLE_FVF,
-                       pVerts_, nVertexCount_, 0);
+                       pVerts_, dwVertexCount_, 0);
     dev->SetRenderState(RS::CullMode, Cull::CW);
     bool ok = dev->Draw(Prim::TriangleList, PARTICLE_FVF,
-                                    pVerts_, nVertexCount_, 0);
+                                    pVerts_, dwVertexCount_, 0);
     dev->SetRenderState(RS::CullMode, saved);
     static DrawLogState st;
-    log_draw(&st, "XFaceDraw", this, dev, nVertexCount_, ok);
-    return nVertexCount_ / 6;
+    log_draw(&st, "XFaceDraw", this, dev, dwVertexCount_, ok);
+    return dwVertexCount_ / 6;
 }
 
 /* Fill the vertex buffer, then draw it. */
@@ -232,16 +236,11 @@ static void mat_rot_z(PMat4 m, float a)
 
 static bool fx_spin(void)
 {
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (GetEnvironmentVariableA("KAROO_PARTICLE_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "spin") == 0);
-        if (cached)
-            log_write("particle: FX mode = spin\n");
-    }
-    return cached != 0;
+    static const bool on = fx_is("spin");
+    static LONG logged = 0;
+    if (on && InterlockedExchange(&logged, 1) == 0)
+        log_write("particle: FX mode = spin\n");
+    return on;
 }
 
 void ParticleSystem::tick(float dt)
@@ -375,17 +374,7 @@ static bool ps_read(void *dst, unsigned size, void *fp)
 static const float PS_RAND_SCALE = 1.0f / 32767.0f;
 
 /* ─── RingBuffer ───────────────────────────────────────────────────────────
- *
- * The ctor: five zeroes, no allocation. */
-__attribute__((unused)) void RingBuffer::init()
-{
-    dwRingCount  = 0;
-    pRingBase    = NULL;
-    pRingHead    = NULL;
-    pRingTail    = NULL;
-    pRingCurrent = NULL;
-}
-
+ */
 /* Free the node block.  PRESERVED: pRingTail is not cleared; the other four
  * fields are. */
 void RingBuffer::release()
@@ -450,9 +439,8 @@ BOOL RingBuffer::alloc(DWORD count, DWORD shapes)
  */
 ParticleSystem::ParticleSystem()
     : pName_(GS_PSNAME_SYSTEM), pGenerator_(NULL), pEnvironment_(NULL),
-      pField24_(NULL)
+      pVerts_(NULL), dwVertexCount_(0)
 {
-    ring_.init();
 }
 
 /* The release is the base's own, not a subclass's override. */
@@ -462,7 +450,7 @@ ParticleSystem::~ParticleSystem()
     ring_.release();
 }
 
-/* Release both sub-objects and free the ring. */
+/* Release both sub-objects, the vertex buffer and the ring. */
 void ParticleSystem::release(int flags)
 {
     if (flags) {
@@ -471,6 +459,8 @@ void ParticleSystem::release(int flags)
     }
     pGenerator_ = NULL;
     pEnvironment_ = NULL;
+    ::operator delete(pVerts_);
+    pVerts_ = NULL;
     ring_.release();
 }
 
@@ -566,27 +556,55 @@ BOOL ParticleSystem::save(void *fp, GameLogger *)
 
 /* Read one length-prefixed class name into a fresh buffer.  NULL on failure;
  * the caller frees. */
-static char *ps_read_name(void *fp, GameLogger *log, int line_len,
-                          int line_name, const char *msg_name)
+static char *ps_read_name(void *fp, GameLogger *log, const char *msg_name)
 {
     DWORD len;
     if (!ps_read(&len, 4, fp)) {
-        log->logSourceLocation(4, GS_PS_SRC_FILE, line_len, GS_PS_MSG_NOLEN);
+        log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOLEN);
         return NULL;
     }
     char *name = (char *)::operator new(len, std::nothrow);
     if (hooks_fread(name, 1, len, fp) != len) {
-        log->logSourceLocation(4, GS_PS_SRC_FILE, line_name, msg_name);
+        log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, msg_name);
         ::operator delete(name);
         return NULL;
     }
     return name;
 }
 
-/* Release, re-make the ring at the stored size, then read each sub-object's
- * class name, build it through the factory, load it and attach it.  The ring
- * is sized directly rather than through setCapacity, so a subclass's override
- * does not run here. */
+/* One sub-object: its class name, the factory, then its load.  *out is NULL
+ * for the literal "NULL" name.  Each failure logs its own message. */
+template <class T>
+static BOOL ps_load_sub_object(void *fp, GameLogger *log, T **out,
+                               const char *msg_noname, const char *msg_nocreate,
+                               const char *msg_noload)
+{
+    *out = NULL;
+    char *name = ps_read_name(fp, log, msg_noname);
+    if (name == NULL)
+        return FALSE;
+    if (strcmp(name, GS_PS_NAME_NULL) != 0) {
+        T *obj = T::create(name);
+        if (obj == NULL) {
+            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, msg_nocreate, name);
+        } else if (!obj->load(fp)) {
+            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, msg_noload, name);
+            delete obj;
+        } else {
+            *out = obj;
+        }
+        if (*out == NULL) {
+            ::operator delete(name);
+            return FALSE;
+        }
+    }
+    ::operator delete(name);
+    return TRUE;
+}
+
+/* Release, re-make the ring at the stored size, then load and attach each
+ * sub-object.  The ring is sized directly rather than through setCapacity, so
+ * a subclass's override does not run here. */
 BOOL ParticleSystem::load(void *fp, GameLogger *log)
 {
     release(1);
@@ -601,151 +619,78 @@ BOOL ParticleSystem::load(void *fp, GameLogger *log)
         return FALSE;
     }
 
-    char *name = ps_read_name(fp, log, __LINE__, __LINE__, GS_PS_MSG_NONAME);
-    if (name == NULL)
+    Generator *gen;
+    if (!ps_load_sub_object(fp, log, &gen, GS_PS_MSG_NONAME, GS_PS_MSG_NOGEN,
+                            GS_PS_MSG_GENLOAD))
         return FALSE;
-    if (strcmp(name, GS_PS_NAME_NULL) != 0) {
-        Generator *gen = Generator::create(name);
-        if (gen == NULL) {
-            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOGEN, name);
-            ::operator delete(name);
-            return FALSE;
-        }
-        if (!gen->load(fp)) {
-            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_GENLOAD, name);
-            ::operator delete(name);
-            delete gen;
-            return FALSE;
-        }
-        ::operator delete(name);
+    if (gen)
         setGenerator(gen);
-    }
 
-    // PRESERVED: a sub-object named "NULL" leaks `name`.
-    name = ps_read_name(fp, log, __LINE__, __LINE__, GS_PS_MSG_NOENV);
-    if (name == NULL)
+    Environment *env;
+    if (!ps_load_sub_object(fp, log, &env, GS_PS_MSG_NOENV, GS_PS_MSG_ENVNAME,
+                            GS_PS_MSG_ENVLOAD))
         return FALSE;
-    if (strcmp(name, GS_PS_NAME_NULL) != 0) {
-        Environment *env = Environment::create(name);
-        if (env == NULL) {
-            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_ENVNAME, name);
-            ::operator delete(name);
-            return FALSE;
-        }
-        if (!env->load(fp)) {
-            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_ENVLOAD, name);
-            ::operator delete(name);
-            delete env;
-            return FALSE;
-        }
-        ::operator delete(name);
+    if (env)
         setEnvironment(env);
-    }
     return TRUE;
 }
 
 /* ─── Point, Face and XFace lifecycles ─────────────────────────────────────
  *
- * Point's vertex buffer: one 0x20-byte vertex per ring node.  The count field
- * is not touched here; fill maintains it. */
-BOOL PointParticleSystem::allocVerts()
-{
-    if (pVerts_)
-        ::operator delete(pVerts_);
-    void *p = ::operator new(ring_.dwRingCount * sizeof(ParticleVertex),
-                             std::nothrow);
-    pVerts_ = (ParticleVertex *)p;
-    return p != NULL;
-}
-
-/* Six vertices per ring node, zeroed, then the texture corners baked in.  Face
- * and XFace use different corner orders:
+ * Face and XFace use different texture corner orders:
  *   Face : (0,0) (1,0) (0,1) (0,1) (1,0) (1,1)
  *   XFace: (0,0) (1,1) (0,1) (1,0) (1,1) (0,0) */
-static BOOL quad_alloc_verts(ParticleVertex **slot, DWORD nodes, bool xface)
-{
-    if (xface && *slot)
-        ::operator delete(*slot);  // XFace frees first; Face does not
-    unsigned bytes = nodes * 6 * sizeof(ParticleVertex);
-    ParticleVertex *v = (ParticleVertex *)::operator new(bytes, std::nothrow);
-    *slot = v;
-    if (v == NULL)
-        return FALSE;
-    memset(v, 0, bytes);
+const float FaceParticleSystem::FACE_UV[6][2]   = { {0,0}, {1,0}, {0,1}, {0,1}, {1,0}, {1,1} };
+const float XFaceParticleSystem::XFACE_UV[6][2] = { {0,0}, {1,1}, {0,1}, {1,0}, {1,1}, {0,0} };
 
-    static const float FACE_UV[6][2]  = { {0,0}, {1,0}, {0,1}, {0,1}, {1,0}, {1,1} };
-    static const float XFACE_UV[6][2] = { {0,0}, {1,1}, {0,1}, {1,0}, {1,1}, {0,0} };
-    const float (*uv)[2] = xface ? XFACE_UV : FACE_UV;
-    for (DWORD i = 0; i < nodes; i++)
-        for (int c = 0; c < 6; c++) {
-            v[i * 6 + c].flU = uv[c][0];
-            v[i * 6 + c].flV = uv[c][1];
-        }
+BOOL ParticleSystem::allocVerts(unsigned perNode, const float (*uv)[2])
+{
+    ::operator delete(pVerts_);
+    unsigned bytes = ring_.dwRingCount * perNode * sizeof(ParticleVertex);
+    pVerts_ = (ParticleVertex *)::operator new(bytes, std::nothrow);
+    if (pVerts_ == NULL)
+        return FALSE;
+    memset(pVerts_, 0, bytes);
+    if (uv)
+        for (DWORD i = 0; i < ring_.dwRingCount; i++)
+            for (unsigned c = 0; c < perNode; c++) {
+                pVerts_[i * perNode + c].flU = uv[c][0];
+                pVerts_[i * perNode + c].flV = uv[c][1];
+            }
     return TRUE;
 }
 
-BOOL FaceParticleSystem::allocVerts()
-{
-    return quad_alloc_verts(&pVerts_, ring_.dwRingCount, false);
-}
-
-BOOL XFaceParticleSystem::allocVerts()
-{
-    return quad_alloc_verts(&pVerts_, ring_.dwRingCount, true);
-}
-
-/* Drop the vertex buffer, then the base release. */
-void PointParticleSystem::release(int flags)
-{
-    ::operator delete(pVerts_);
-    pVerts_ = NULL;
-    ParticleSystem::release(flags);
-}
-
-void FaceParticleSystem::release(int flags)
-{
-    ::operator delete(pVerts_);
-    pVerts_ = NULL;
-    ParticleSystem::release(flags);
-}
-
-/* Drop the corner table and the vertex buffer, then the base release. */
+/* The corner-table entries and the vertex buffer go with the system; the base
+ * release drops the rest. */
 void XFaceParticleSystem::release(int flags)
 {
     ::operator delete(pCornerTable_);
     pCornerTable_ = NULL;
-    ::operator delete(pVerts_);
-    pVerts_ = NULL;
     ParticleSystem::release(flags);
 }
 
-PointParticleSystem::~PointParticleSystem()
+XFaceParticleSystem::~XFaceParticleSystem()
 {
-    ::operator delete(pVerts_);
-}
-
-FaceParticleSystem::~FaceParticleSystem()
-{
-    ::operator delete(pVerts_);
+    ::operator delete(pCornerTable_);
 }
 
 /* Size the ring, then rebuild the vertex buffer.  Both return the second
  * step's result. */
 BOOL PointParticleSystem::setCapacity(DWORD count)
 {
-    return ParticleSystem::setCapacity(count) && allocVerts();
+    return ParticleSystem::setCapacity(count) && allocVerts(1);
 }
 
 BOOL PointParticleSystem::resize(DWORD count)
 {
-    return ParticleSystem::resize(count) && allocVerts();
+    return ParticleSystem::resize(count) && allocVerts(1);
 }
 
 /* Releases virtually first, and the base copyFrom releases again. */
 BOOL PointParticleSystem::copyFrom(const ParticleSystem *src)
 {
     release(1);
-    return ParticleSystem::copyFrom(src) && allocVerts();
+    return ParticleSystem::copyFrom(src) && allocVerts(1);
 }
 
 /* The base write, whose result is discarded, then success. */
@@ -759,7 +704,7 @@ BOOL PointParticleSystem::load(void *fp, GameLogger *log)
 {
     if (!ParticleSystem::load(fp, log))
         return FALSE;
-    if (!allocVerts()) {
+    if (!allocVerts(1)) {
         log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_PTVERTS);
         return FALSE;
     }
@@ -789,11 +734,7 @@ BOOL FaceParticleSystem::copyFrom(const ParticleSystem *src)
 
 BOOL FaceParticleSystem::resize(DWORD count)
 {
-    if (!ParticleSystem::resize(count))
-        return FALSE;
-    ::operator delete(pVerts_);
-    pVerts_ = NULL;
-    return allocVerts();
+    return ParticleSystem::resize(count) && allocVerts();
 }
 
 /* The base write (result discarded, as Point's), then the scale. */
@@ -953,8 +894,6 @@ BOOL XFaceParticleSystem::resize(DWORD count)
 {
     if (!ParticleSystem::resize(count))
         return FALSE;
-    ::operator delete(pVerts_);
-    pVerts_ = NULL;
     ::operator delete(pCornerTable_);
     pCornerTable_ = NULL;
     ring_.assignShapes(dwCornerTableCount_);
@@ -1020,27 +959,23 @@ void ParticleSystem::disableRenderNode()             { setRenderNode(0); }
  *
  * The type-name strings; pName points at them as the constructors leave it. */
 PointParticleSystem::PointParticleSystem()
-    : pVerts_(NULL), dwVertexCount_(0)
 {
     pName_ = GS_PSNAME_POINT_SYSTEM;
 }
 
-/* pField24 is 1 here, and the six corners start zeroed. */
-FaceParticleSystem::FaceParticleSystem()
-    : pVerts_(NULL), nVertexCount_(0), flScale_(1.0f)
+/* The six corners start zeroed. */
+FaceParticleSystem::FaceParticleSystem() : flScale_(1.0f)
 {
     pName_ = GS_PSNAME_FACE_SYSTEM;
-    pField24_ = (void *)1;
     memset(flCorner_, 0, sizeof flCorner_);
 }
 
 /* One corner entry by default, sizes 1.0, every other range 0. */
 XFaceParticleSystem::XFaceParticleSystem()
-    : pCornerTable_(NULL), pVerts_(NULL), nVertexCount_(0),
-      dwCornerTableCount_(1), ranges{ 1.0f, 1.0f }  // size min/max; the rest
-{                                                     // (lifetime, speed, rotation) 0
+    : pCornerTable_(NULL), dwCornerTableCount_(1),
+      ranges{ 1.0f, 1.0f }  // size min/max; lifetime, speed and rotation are 0
+{
     pName_ = GS_PSNAME_XFACE_SYSTEM;
-    pField24_ = (void *)1;
 }
 
 /* The four names and sizes (0x28 / 0x30 / 0x7a / 0x96); NULL for an unknown
