@@ -142,6 +142,7 @@ void GameLogger::emit(int level, const char *line)
 /* Closes the file and clears the sink fields. */
 void GameLogger::closeLogFile()
 {
+    log_write("Closing log file\n");
     if (fp_)
         fclose(fp_);
     fp_           = NULL;
