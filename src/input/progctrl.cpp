@@ -60,9 +60,8 @@ void ProgableControl::releaseDevices()
     if (directinput) { directinput->Release(); directinput = nullptr; }
 }
 
-void *ProgableControl::setup(int)
+ProgableControl::ProgableControl()
 {
-    vtable        = const_cast<void*>(PROGCTRL_VTABLE);
     pLogger       = nullptr;
     dwOwns_logger = 0;
     directinput   = nullptr;
@@ -78,22 +77,12 @@ void *ProgableControl::setup(int)
         action_tables[i].head        = nullptr;
         action_tables[i].entry_count = 0;
     }
-    return this;
 }
 
-void ProgableControl::teardown()
+ProgableControl::~ProgableControl()
 {
-    vtable = const_cast<void*>(PROGCTRL_VTABLE);
     releaseDevices();
     for (int i = 0; i < 5; i++) action_tables[i].freeAll();
-}
-
-void  
-ProgableControl::scalarDtor(ProgableControl *s, int free_or_not)
-{
-    s->teardown();
-    if (free_or_not & 1)
-        HeapFree(GetProcessHeap(), 0, s);
 }
 
 void ProgableControl::shutdown()
@@ -483,8 +472,3 @@ int ProgableControl::readBindings()
     if (ok) log_write("ProgCtrl::ReadBindings: done\n");
     return ok;
 }
-
-static void *const progctrl_vtable_slots[1] = {
-    (void *)&ProgableControl::scalarDtor,
-};
-extern const void *const PROGCTRL_VTABLE = progctrl_vtable_slots;

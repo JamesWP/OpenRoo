@@ -7,12 +7,10 @@
  * procedure's movie handling works unchanged.  One global instance. */
 class FaktMovie {
 public:
-    FaktMovie *init();  // installs the vtable, then construct(); returns this
-    void construct();   // fields only, not the vtable
-    void destruct();    // restores the vtable, then teardown()
-    /* The vtable slot: destruct, and free on bit 0 of flags. */
-    static FaktMovie * 
-    scalarDeletingDtor(FaktMovie *self, unsigned int flags);
+    FaktMovie();           // every field zero but notify_msg
+    virtual ~FaktMovie();  // teardown()
+    FaktMovie(const FaktMovie &) = delete;
+    FaktMovie &operator=(const FaktMovie &) = delete;
 
     int  setup(void *log_obj_arg);  // always 1
     int  loadVideo(void *arg1, void *arg2, void *arg3, const char *path);
@@ -36,7 +34,6 @@ public:
 private:
  
 
-    void  *vtable;
     void  *log_obj;  // the logger given to Setup
     DWORD  state;  // 3 playing (Notify acts), 1 finished (the window procedure clears its flag)
     // The overlay colour key, set by WinMain for a player that would use it.
@@ -46,7 +43,4 @@ private:
 };
 
  
-extern void *const g_faktMovieVtable[1];
-#define FAKTMOVIE_VTABLE ((void *)g_faktMovieVtable)
-
 extern FaktMovie g_movie;

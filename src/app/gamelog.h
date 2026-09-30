@@ -18,23 +18,21 @@ public:
      * after a message box, if the file cannot be opened. */
     int openLogFile(const char *filename, const char *mode);
 
-    /* Constructs and opens in one. */
-    void *initialize(const char *filename, const char *mode);
+    /* A closed logger. */
+    GameLogger();
+    /* Constructs and opens in one; the file stays closed if it cannot be
+     * opened. */
+    GameLogger(const char *filename, const char *mode);
+    /* Closes the file. */
+    virtual ~GameLogger();
+    GameLogger(const GameLogger &) = delete;
+    GameLogger &operator=(const GameLogger &) = delete;
 
     /* Writes "HH:MM:SS : File: <file>, Line: <line>: message". */
     void logSourceLocation(int level, const char *file, int line,
                            const char *fmt, ...);
 
-    /* Construction and destruction of the global logger, driven by
-     * staticinit.cpp. */
-    void construct();
-
-    void closeAndRebindVtable();
-
-    void  *vtable() const { return pVtable_; }
-
     void closeLogFile();
-    static GameLogger * scalarDeletingDtor(GameLogger *self, unsigned char flags);
     int logWithErrorCode(int level, const char *message, HRESULT hr);
 
 private:
@@ -42,7 +40,6 @@ private:
 
  
 
-    void  *pVtable_;          // our one-slot table
     int    minLevel_;         // a message logs if level >= this
     char   fileName_[0x104];  // the path given to OpenLogFile
     FILE  *fp_;               // NULL until OpenLogFile succeeds

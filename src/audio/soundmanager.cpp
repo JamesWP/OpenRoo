@@ -21,6 +21,7 @@
  *     first failure, and stays there for the rest of the duplicates and all
  *     of the entry's voice pools. */
 
+#include <new>
 #include "soundmanager.h"
 #include "doublesoundbuff.h"
 #include "namedlist.h"
@@ -543,15 +544,14 @@ SoundManager::SoundManager()
 }
 
 /* Also the reset: Init runs it first, and the Game's teardown on its own.  An
- * owned logger is deleted through its vtable with the free flag. */
+ * owned logger is deleted. */
 void SoundManager::purgeAssets()
 {
     purge_list(&entriesPlain_);
     purge_list(&entries3D_);
     cfaktSound()->releaseComRefs();
     if (ownsLogger_ != 0 && logger_ != NULL) {
-        typedef void *(  *ScalarDtor)(void *, int);
-        (*(ScalarDtor *)*(void **)logger_)(logger_, 1);
+        delete (GameLogger *)logger_;
     }
     logger_           = NULL;
     ownsLogger_       = 0;
@@ -576,10 +576,7 @@ int SoundManager::init(int enable3d, HWND window,
     purgeAssets();
     logger_ = logger;
     if (logger == NULL) {
-        GameLogger *own = (GameLogger *)malloc(sizeof(GameLogger));
-        if (own != NULL)
-            own = (GameLogger *)own->initialize(GS_SOUNDMGR_LOG_NAME, NULL);
-        logger_     = own;
+        logger_     = new (std::nothrow) GameLogger(GS_SOUNDMGR_LOG_NAME, NULL);
         ownsLogger_ = 1;
     }
     // enable3d is tested and stored as a whole word.

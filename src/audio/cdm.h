@@ -18,8 +18,11 @@ struct CDVolumeControl {
 /* The device.  Packed, so the track number is unaligned. */
 class CDM {
 public:
-    CDM*  construct();
-    void  stopAndClose();
+    CDM();
+    /* Stops and closes the device (and clears the repeat flag). */
+    virtual ~CDM();
+    CDM(const CDM &) = delete;
+    CDM &operator=(const CDM &) = delete;
     void  setWindowHandle(HWND hwnd);
     int   getTrackCount();
     int   getTrackLength(char **out_ptr, int track);
@@ -33,16 +36,9 @@ public:
     bool repeating() const    { return repeat; }
     int  track() const        { return tracknumber; }
 
-    /* The vtable slots: the scalar deleting destructor and the two track
-     * queries. */
-    static CDM *scalarDeletingDtor(CDM *self, unsigned int flags);
-    static int vtGetTrackCount(CDM *self);
-    static int vtGetTrackLength(CDM *self, char **out_ptr, int track);
-
 private:
  
 
-    void            *vtable;
     DWORD            nummixers;     // always 0
     CDVolumeControl  mixers[10];    // unused
     HWND             windowhandle;  // receives MM_MCINOTIFY
@@ -52,4 +48,3 @@ private:
 };
 
  
-extern const void *const CDM_VTABLE;
