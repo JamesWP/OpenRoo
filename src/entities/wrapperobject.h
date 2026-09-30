@@ -30,7 +30,7 @@ public:
     // Zeroes the three fields.
     WrapperObject();
     // Frees the snapshot.
-    virtual ~WrapperObject();
+    ~WrapperObject();
     WrapperObject(const WrapperObject &) = delete;
     WrapperObject &operator=(const WrapperObject &) = delete;
 

@@ -34,7 +34,7 @@ void Scene::freeSceneObjects()
     objects_.clear();
     models_.clearReleaseFree();
     textures_.releaseAll();
-    memset((void *)this, 0, sizeof *this);  // PRESERVED: vtable pointers too; nothing reads them again
+    memset((void *)this, 0, sizeof *this);  // PRESERVED: the whole object
 }
 
 /* ─── BuildSceneObjectList ───────────────────────────────────────────────
