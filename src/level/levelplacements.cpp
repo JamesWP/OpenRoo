@@ -375,9 +375,9 @@ void LevelPlacements::build(const Game *g,
     buildWalls(g, theme->sideHeight());
 }
 
-/* Before WinMain: every dword of the template zero but the diffuse,
- * 0xffffffff.  The builder overwrites all four later. */
-void LevelPlacements::initTileQuad()
+/* Every dword of the tile quad template zero but the diffuse, 0xffffffff.
+ * The builder overwrites all four later. */
+LevelPlacements::LevelPlacements()
 {
     for (int i = 0; i < 4; i++) {
         for (int k = 0; k < 8; k++)

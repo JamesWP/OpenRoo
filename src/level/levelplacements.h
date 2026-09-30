@@ -57,9 +57,9 @@ public:
     void drawSlides(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
                     double now);
 
-    /* Before WinMain: every dword of the tile quad template zero but the
-     * diffuse, 0xffffffff.  The builder overwrites all four later. */
-    void initTileQuad();
+    /* Every dword of the tile quad template zero but the diffuse, 0xffffffff.
+     * The builder overwrites all four later. */
+    LevelPlacements();
 
     /* The block is packed but 4-aligned in memory. */
  
