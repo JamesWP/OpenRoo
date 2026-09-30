@@ -69,26 +69,11 @@ void ModelManager::clearReleaseFree()
  *
  * Every instance is static (model.h), so nothing deletes one and the scalar
  * dtor's free is never reached. */
-static void *const g_ModelManagerVtable[1] = { (void *)&ModelManager::scalarDestructor };
-
-ModelManager *ModelManager::construct()
+ModelManager::ModelManager()
+    : pLogger_(NULL)
 {
-    vtable_  = (void *)g_ModelManagerVtable;
-    pLogger_ = NULL;
-    return this;
 }
 
-void ModelManager::destruct()
+ModelManager::~ModelManager()
 {
-    vtable_ = (void *)g_ModelManagerVtable;
-    cache_.clear();
-}
-
-ModelManager * 
-ModelManager::scalarDestructor(ModelManager *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
 }

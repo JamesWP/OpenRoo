@@ -20,21 +20,17 @@ public:
     CFaktMesh *findOrImport(char *name);
     void clearReleaseFree();
 
-    /* Constructor, destructor body and scalar deleting destructor (the one
-     * vtable slot).  Instances: g_modelManager, constructed by staticinit.cpp,
-     * and the Scene's (scene.h). */
-    ModelManager *construct();
+    /* Instances: g_modelManager and the Scene's (scene.h).  The destructor
+     * empties the cache's nodes, not the meshes. */
+    ModelManager();
+    virtual ~ModelManager();
+    ModelManager(const ModelManager &) = delete;
+    ModelManager &operator=(const ModelManager &) = delete;
 
-    void destruct();
-    static ModelManager * 
-    scalarDestructor(ModelManager *self, unsigned char flags);
-
-    void        *vtable() const { return vtable_; }
     GameLogger  *logger() const          { return pLogger_; }
     void         setLogger(GameLogger *l) { pLogger_ = l; }
 
 private:
-    void        *vtable_;    // +0x00
     LinkedList   cache_;     // +0x04  CFaktMesh *, game-heap nodes
     GameLogger  *pLogger_;   // +0x14  NULL = silent
      

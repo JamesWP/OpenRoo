@@ -18,15 +18,9 @@
 
 void StaticInit_Construct()
 {
-    g_scene.construct();
     g_levelPlacements.initTileQuad();
-    g_textureManager.construct();
-    g_modelManager.construct();
 }
 
 void StaticInit_Destruct()
 {
-    g_modelManager.destruct();
-    g_textureManager.destruct();
-    g_scene.destruct();
 }
