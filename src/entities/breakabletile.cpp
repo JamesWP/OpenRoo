@@ -77,8 +77,6 @@ static void fx_init(void)
         s_diag_reset = 1;
 }
 
-const BreakableTile::Vtbl BreakableTile::VTABLE = { &BreakableTile::scalarDeletingDtor };
-
 BreakableTile *BreakableTile::create()
 {
     return new (std::nothrow) BreakableTile;
@@ -89,7 +87,6 @@ BreakableTile::BreakableTile()
     posU_ = 0.0f;
     posY_ = 0.0f;
     posV_ = 0.0f;
-    vtable_         = &VTABLE;
     fallSound_      = 0;
     respawnSound_   = 0;
     armed_          = 0;
@@ -98,16 +95,8 @@ BreakableTile::BreakableTile()
     justRespawned_  = 0;
 }
 
-void *BreakableTile::scalarDeletingDtor(BreakableTile *self, unsigned int flags)
+BreakableTile::~BreakableTile()
 {
-    if (flags & 1)
-        delete self;
-    return self;
-}
-
-void BreakableTile::destroy()
-{
-    vtable_->scalarDeletingDtor(this, 1);
 }
 
 static unsigned s_spawns       = 0;
@@ -228,7 +217,7 @@ void BreakableTile::purgeAll(Game *game)
             }
             BreakableTile *obj = game->breakableSlot(i);
             if (obj != 0)
-                obj->destroy();
+                delete obj;
             i++;
         } while (i < game->breakableCount());
     }

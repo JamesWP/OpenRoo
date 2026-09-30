@@ -75,8 +75,6 @@ static void fx_init(void)
         s_diag_reset = 1;
 }
 
-const LiftObject::Vtbl LiftObject::VTABLE = { &LiftObject::scalarDeletingDtor };
-
 LiftObject *LiftObject::create()
 {
     return new (std::nothrow) LiftObject;
@@ -89,22 +87,13 @@ LiftObject::LiftObject()
     posU_   = 0.0f;
     height_ = 0.0f;
     posV_   = 0.0f;
-    vtable_ = &VTABLE;
     state_  = 1;
     atTop_  = 1;
     sound_  = 0;
 }
 
-void *LiftObject::scalarDeletingDtor(LiftObject *self, unsigned int flags)
+LiftObject::~LiftObject()
 {
-    if (flags & 1)
-        delete self;
-    return self;
-}
-
-void LiftObject::destroy()
-{
-    vtable_->scalarDeletingDtor(this, 1);
 }
 
 static int s_logged_spawn = 0;
@@ -211,7 +200,7 @@ void LiftObject::purgeAll(Game *game)
             }
             LiftObject *obj = game->liftSlot(i);
             if (obj != 0)
-                obj->destroy();
+                delete obj;
             i++;
         } while (i < game->liftCount());
     }

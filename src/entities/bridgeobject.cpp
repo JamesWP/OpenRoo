@@ -80,8 +80,6 @@ static void fx_init(void)
         s_diag_reset = 1;
 }
 
-const BridgeObject::Vtbl BridgeObject::VTABLE = { &BridgeObject::scalarDeletingDtor };
-
 BridgeObject *BridgeObject::create()
 {
     return new (std::nothrow) BridgeObject;
@@ -92,21 +90,12 @@ BridgeObject::BridgeObject()
     posU_ = 0.0f;
     posY_ = 0.0f;
     posV_ = 0.0f;
-    vtable_ = &VTABLE;
     phase_  = 0;
     armed_  = 0;
 }
 
-void *BridgeObject::scalarDeletingDtor(BridgeObject *self, unsigned int flags)
+BridgeObject::~BridgeObject()
 {
-    if (flags & 1)
-        delete self;
-    return self;
-}
-
-void BridgeObject::destroy()
-{
-    vtable_->scalarDeletingDtor(this, 1);
 }
 
 /* The spawn's scans: axis 1 walks u, axis 2 walks v, anything else does not
@@ -273,7 +262,7 @@ void BridgeObject::purgeAll(Game *game)
             }
             BridgeObject *obj = game->bridgeSlot(i);
             if (obj != 0)
-                obj->destroy();
+                delete obj;
             i++;
         } while (i < (int)(unsigned int)game->bridgeCount());
     }
