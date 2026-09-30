@@ -14,16 +14,11 @@ class RenderDevice;
 
 class ExplodeDebris {
 public:
-    /* The one-slot vtable, installed by the ctor and the dtor body. */
-    static void *vtbl();
-
-    ExplodeDebris *construct();
-
-    /* Vtable slot 0.  Returns self; bit 0 of flags frees. */
-    static void * 
-    scalarDtor(ExplodeDebris *self, unsigned int flags);
-
-    void dtorBody();
+    ExplodeDebris();
+    /* Releases the scratch buffers. */
+    virtual ~ExplodeDebris();
+    ExplodeDebris(const ExplodeDebris &) = delete;
+    ExplodeDebris &operator=(const ExplodeDebris &) = delete;
 
     /* Frees the two scratch buffers.  See the .cpp for the field it does not
      * clear. */
@@ -47,7 +42,6 @@ public:
      * inactive. */
     HRESULT draw(RenderDevice *dev);
 
-    void         *vtable() const { return vtable_; }
     int vertexCount() const { return nVertexCount_; }
     DWORD active() const { return bActive_; }
     /* 4-aligned in practice; the class is packed only for its embedders. */
@@ -63,7 +57,6 @@ private:
     float *debrisVertex(int i);
     float *debrisVelocity(int tri);
 
-    void         *vtable_;                // the one-slot vtable
     MeshVertex   *pVertexCopy_;           // nVertexCount * 0x28 (FVF 0x212)
     float       (*pFaceRecords_)[3];      // a velocity per triangle, (nVertexCount / 3) * 0xc
     int           nVertexCount_;          // as it was when the buffers were built

@@ -94,9 +94,8 @@ static void wrap_census(int entry, unsigned int verts)
                   kWrapEntryName[entry], n, g_wrapVerts);
 }
 
-void WrapperObject::construct()
+WrapperObject::WrapperObject()
 {
-    vtable_  = WrapperObject::vtbl();
     pBaseUV_ = NULL;
     pMesh_   = NULL;
     dirty_   = 0;
@@ -104,9 +103,8 @@ void WrapperObject::construct()
 }
 
 /* PRESERVED: frees without clearing pBaseUV_. */
-void WrapperObject::dtorBody()
+WrapperObject::~WrapperObject()
 {
-    vtable_ = WrapperObject::vtbl();
     delete[] pBaseUV_;
     wrap_census(WE_DTOR, 0);
 }
@@ -259,22 +257,4 @@ void WrapperObject::updateObjectTransform(RenderDevice *dev,
         wrap_census(WE_ENVMAP, count);
     }
     dirty_ = 1;
-}
-
-static void *const g_WrapperVtable[1] = { (void *)&WrapperObject::scalarDtor };
-
-void *WrapperObject::vtbl()
-{
-    return (void *)g_WrapperVtable;
-}
-
-/* PRESERVED: frees the object itself, although no WrapperObject is ever
- * allocated alone; unreachable. */
-void * 
-WrapperObject::scalarDtor(WrapperObject *self, unsigned int flags)
-{
-    self->dtorBody();
-    if (flags & 1)
-        free(self);
-    return self;
 }
