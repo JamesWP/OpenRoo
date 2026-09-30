@@ -25,11 +25,12 @@ public:
     LinkedList         *pools()  { return &voicePoolList_; }
  
 
-    /* The constructor.  Returns self. */
-    doublesoundbuff *init();
-
-    /* The destructor body; does not free self. */
-    void destruct();
+    /* Empty: both buffers blank, both lists empty, neither lent out. */
+    doublesoundbuff();
+    /* Clears (purging every borrower), then the lists and buffers go. */
+    virtual ~doublesoundbuff();
+    doublesoundbuff(const doublesoundbuff &) = delete;
+    doublesoundbuff &operator=(const doublesoundbuff &) = delete;
 
     /* Purges both borrower lists, releases both buffers and clears both taken
      * flags. */

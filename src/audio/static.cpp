@@ -158,47 +158,18 @@ static bool sound_diag(void)
         log_write("sound: DIAG first call -- %s\n", who);
 }
 
-static void *const g_CStaticVtable[1] = { (void *)&CStaticSoundbuffer::scalarVectorDtor };
+CStaticSoundbuffer::CStaticSoundbuffer()
+    : logger_(NULL), filename_(NULL), dwDsFlags_(0), soundbuffer_(NULL),
+      threeDBuffer_(NULL)
+{
+    static unsigned long seen;
+    CStatic_SoundFirstCall("CStaticSoundbuffer::Ctor", &seen);
+}
 
-/* For an array, the count header sits four bytes below the first element and
- * the elements are destroyed in reverse, as MSVC's vector destructor does.
- * Voice pools destroy with flag 3, so the array path is the one taken. */
-void * 
-CStaticSoundbuffer::scalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags)
+CStaticSoundbuffer::~CStaticSoundbuffer()
 {
     static unsigned long seen;
     CStatic_SoundFirstCall("CStaticSoundbuffer::ScalarVectorDtor", &seen);
-
-    if (flags & 2) {
-        // The count header, four bytes below the first element.
-        void *base  = (char *)self - 4;
-        int   count = *(int *)base;
-
-        // Reverse order.
-        for (int i = count - 1; i >= 0; --i)
-            self[i].reinitBuffer();
-
-        if (flags & 1)
-            free(base);
-        return base;
-    }
-
-    self->reinitBuffer();
-    if (flags & 1)
-        free(self);
-    return self;
-}
-
-CStaticSoundbuffer *CStaticSoundbuffer::init()
-{
-    memset(this, 0, sizeof(*this));
-    vtable_ = (void *)g_CStaticVtable;
-    return this;
-}
-
-void CStaticSoundbuffer::reinitBuffer()
-{
-    vtable_ = (void *)g_CStaticVtable;
     reset();
 }
 

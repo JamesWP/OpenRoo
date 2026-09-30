@@ -15,14 +15,13 @@ class CStaticSoundbuffer {
 public:
      
 
-    /* The scalar/vector deleting destructor, the one vtable slot: bit 1 means
-     * an array, bit 0 frees the block.  Returns the block destroyed: this, or
-     * for an array the count header four bytes below the first element. */
-    static void * 
-    scalarVectorDtor(CStaticSoundbuffer *self, unsigned int flags);
+    /* An empty buffer: every field clear. */
+    CStaticSoundbuffer();
+    /* Releases the buffers and frees the file name. */
+    virtual ~CStaticSoundbuffer();
+    CStaticSoundbuffer(const CStaticSoundbuffer &) = delete;
+    CStaticSoundbuffer &operator=(const CStaticSoundbuffer &) = delete;
 
-    CStaticSoundbuffer *init();  // returns this
-    void reinitBuffer();         // sets the vtable, then reset
     void reset();                // releases the buffers and frees the file name
     int  createAndLoad3DSoundFile(IDirectSound *pDS, DWORD dwDsFlags,
                                   const char *filename, void *logger);
@@ -49,7 +48,6 @@ public:
     void haltPlayback();
     void set3DPosition(float x, float y, float z, DWORD dwApply);
 
-    void                 *vtable() const       { return vtable_; }
     void                 *logger() const       { return logger_; }
     char                 *filename() const     { return filename_; }
     DWORD                 dsFlags() const      { return dwDsFlags_; }
@@ -65,7 +63,6 @@ private:
     IDirectSound3DBuffer **threeDBufferSlot() { return &threeDBuffer_; }
  
 
-    void                  *vtable_;
     void                  *logger_;     // stored, never used here
     char                  *filename_;   // heap copy of the path
     DWORD                  dwDsFlags_;  // the flags it was loaded with
