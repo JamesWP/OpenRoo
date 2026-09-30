@@ -162,7 +162,7 @@ public:
 
     /* The records build themselves; the destructor releases them. */
     ThemeObjectTypeSlot();
-    virtual ~ThemeObjectTypeSlot();
+    ~ThemeObjectTypeSlot();
     ThemeObjectTypeSlot(const ThemeObjectTypeSlot &) = delete;
     ThemeObjectTypeSlot &operator=(const ThemeObjectTypeSlot &) = delete;
 
