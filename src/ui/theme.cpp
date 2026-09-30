@@ -195,14 +195,6 @@ static void theme_struct_dump_if_enabled(const char *path)
  *   - the model and texture caches lowercase the token buffers in place.
  * Tokens past the 16th are dropped, but still counted. */
 
-typedef void *(*theme_scalar_dtor_fn)(void *self, unsigned int flags);
-
-static void delete_via_vtable(void *obj)
-{
-    theme_scalar_dtor_fn dtor = **(theme_scalar_dtor_fn **)obj;
-    dtor(obj, 1);
-}
-
 /* Releases one type's records. */
 void ThemeObjectTypeSlot::release()
 {
@@ -212,7 +204,7 @@ void ThemeObjectTypeSlot::release()
         r.wrapper_.releaseSnapshot();
         for (DWORD k = 0; k < r.dwInstanceCount_; k++) {
             if (r.pParticleSystems_[k] != NULL) {
-                delete_via_vtable(r.pParticleSystems_[k]);
+                delete r.pParticleSystems_[k];
                 r.pParticleSystems_[k] = NULL;
             }
         }

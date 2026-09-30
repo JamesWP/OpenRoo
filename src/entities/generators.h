@@ -1,8 +1,8 @@
 /* Particle generators and environments: the emitters that fill a particle
  * system's ring with new particles, and the fields that age and retire them
- * once they are in it.  A Generator subclass owns Tick/emit/Save/Load/CopyFrom
- * through its own vtable; an Environment subclass owns the same five for
- * ageing, fading and killing particles already in the ring. */
+ * once they are in it.  A Generator subclass overrides tick/save/load/copyFrom;
+ * an Environment subclass overrides the same four for ageing, fading and
+ * killing particles already in the ring. */
 
 #pragma once
 #include <windows.h>
@@ -11,56 +11,44 @@
  
 #include "explodedebris.h"
 
-/* Vtable slot counts for Generator and Environment; each class's vtable
- * (defined in generators.cpp) must have exactly this many entries. */
-#define GEN_VTBL_SLOTS 10
-#define ENV_VTBL_SLOTS  6
-
-/* Base of every emitter.  A subclass installs its own vtable in its
- * constructor and restores this base one in its destructor; pName identifies
- * the concrete class for Save/Load and for CopyFrom's type check, and
- * dwEnabled gates whether Tick/emit runs at all.  pRing is the particle
- * system's ring buffer, shared with the paired Environment. */
+/* Base of every emitter.  pName identifies the concrete class for Save/Load
+ * and for copyFrom's type check, and dwEnabled gates whether tick runs at all.
+ * pRing is the particle system's ring buffer, shared with the paired
+ * Environment. */
 class Generator {
 public:
     /* The factory: the named class allocated and constructed, or NULL for a
      * name none of the six generator classes has. */
     static Generator *create(const char *name);
-    /* A new instance of this class, copied with CopyFrom; NULL on failure. */
+    /* A new instance of this class, copied with copyFrom; NULL on failure. */
     Generator *clone() const;
 
-    void vsetPosition(float x, float y, float z);
-    void vsetDirection(float x, float y, float z);
+    Generator();
+    virtual ~Generator() = default;
 
-    void      **vtable() const          { return pVtable_; }
+    /* Gates on a matching type name; a subclass copies its own fields too. */
+    virtual BOOL copyFrom(const Generator *src);
+    /* Emits into the ring. */
+    virtual void tick(float dt) { (void)dt; }
+    virtual BOOL save(void *fp) { (void)fp; return TRUE; }
+    virtual BOOL load(void *fp) { (void)fp; return TRUE; }
+    virtual void setPosition(float x, float y, float z)  { (void)x; (void)y; (void)z; }
+    virtual void setVelocity(float x, float y, float z, float mag)
+        { (void)x; (void)y; (void)z; (void)mag; }
+    virtual void setDirection(float x, float y, float z) { (void)x; (void)y; (void)z; }
+    virtual void setSpeed(float mag) { (void)mag; }
+
+    /* Refuses (and leaves pRing alone) a NULL ring. */
+    BOOL attachRing(RingBuffer *ring);
+
     const char *name() const            { return pName_; }
     DWORD       enabled() const         { return dwEnabled_; }
     void        setEnabled(DWORD e)     { dwEnabled_ = e; }
 
-    /* The constructor create() runs. */
-    void baseGenConstruct();
-
-    /* The vtable slots. */
-    static BOOL   attachRingSlot(Generator *self, RingBuffer *ring);
-    static BOOL   baseCopyFromSlot(Generator *self, const Generator *src);
-    static void *  baseDtorSlot(Generator *self, unsigned flags);
-    static void   nop1(void *, float);
-    static void   nop3(void *, float, float, float);
-    static void   nop4(void *, float, float, float, float);
-    static BOOL   returnTrue(void *, void *);
-
 protected:
-    void baseGenDestruct();
-    BOOL genCopyBase(const Generator *src);
-    BOOL genAttachRing(RingBuffer *ring);
-
-    void      **pVtable_;  // ten-slot vtable: dtor, CopyFrom, AttachRing, Tick, Save, Load, SetPosition, ..., SetDirection, ...
     char       *pName_;
-    DWORD       dwEnabled_;  // zero disables Tick/emit for this generator
+    DWORD       dwEnabled_;  // zero disables tick for this generator
     RingBuffer *pRing_;
-
-private:
- 
 };
 
  
@@ -73,56 +61,42 @@ public:
     static Environment *create(const char *name);
     Environment *clone() const;
 
-    void      **vtable() const { return pVtable_; }
+    Environment();
+    virtual ~Environment() = default;
+
+    /* The base copyFrom only gates on type name. */
+    virtual BOOL copyFrom(const Environment *src) { return envSameName(src); }
+    virtual void tick(float dt) { (void)dt; }
+    virtual BOOL save(void *fp) { (void)fp; return TRUE; }
+    virtual BOOL load(void *fp) { (void)fp; return TRUE; }
+
+    /* Refuses (and leaves pRing alone) a NULL ring. */
+    BOOL attachRing(RingBuffer *ring);
+
     const char *name() const   { return pName_; }
-
-    /* The constructor create() runs. */
-    void baseEnvConstruct();
-
-    /* The vtable slots. */
-    static void *  baseDtorSlot(Environment *self, unsigned flags);
-    static BOOL   baseCopyFromSlot(Environment *self, const Environment *src);
-    static BOOL   attachRingSlot(Environment *self, RingBuffer *ring);
-    static void   baseTickSlot(Environment *, float);
-    static BOOL   baseSaveSlot(Environment *, void *);
-    static BOOL   baseLoadSlot(Environment *, void *);
 
 protected:
     BOOL envSameName(const Environment *src) const;
-    void baseEnvDestruct();
-    BOOL envAttachRing(RingBuffer *ring);
 
-    void      **pVtable_;  // vtable, six slots: dtor, CopyFrom, AttachRing, Tick, Save, Load
     char       *pName_;
     RingBuffer *pRing_;
-
-private:
- 
 };
 
 /* GravityEnvironment: a per-second gravity vector applied to live particles,
  * with a colour fade toward a target and up to three axis kill planes. */
 class GravityEnvironment : public Environment {
 public:
-    /* The constructor create() runs. */
-    void gravityEnvConstruct();
+    GravityEnvironment();
 
-    /* The vtable slots. */
-    static void *  gravityDtorSlot(GravityEnvironment *self, unsigned flags);
-    static BOOL   gravityCopyFromSlot(GravityEnvironment *self, const GravityEnvironment *src);
-    static BOOL   gravitySaveSlot(GravityEnvironment *self, void *fp);
-    static BOOL   gravityLoadSlot(GravityEnvironment *self, void *fp);
-    static void   gravityTickSlot(GravityEnvironment *self, float dt);
+    BOOL copyFrom(const Environment *src) override;
+    void tick(float dt) override;
+    BOOL save(void *fp) override;
+    BOOL load(void *fp) override;
 
 private:
     void gravityTick(float dt);
-    void gravityEnvTick(float dt);
     void gravitySetVector(const float dir[3], float mag);
     void gravitySetColour(DWORD argb, float fade);
-    BOOL gravityEnvLoad(void *fp);
-    BOOL gravityEnvSave(void *fp);
-    BOOL gravityEnvCopyFrom(const GravityEnvironment *src);
-    void gravityEnvDestruct();
 
     float       flDirection_[3];
     float       flMagnitude_;
@@ -145,23 +119,15 @@ private:
  * GravityEnvironment. */
 class MagnetEnvironment : public Environment {
 public:
-    /* The constructor create() runs. */
-    void magnetEnvConstruct();
+    MagnetEnvironment();
 
-    /* The vtable slots. */
-    static void *  magnetDtorSlot(MagnetEnvironment *self, unsigned flags);
-    static BOOL   magnetCopyFromSlot(MagnetEnvironment *self, const MagnetEnvironment *src);
-    static BOOL   magnetSaveSlot(MagnetEnvironment *self, void *fp);
-    static BOOL   magnetLoadSlot(MagnetEnvironment *self, void *fp);
-    static void   magnetTickSlot(MagnetEnvironment *self, float dt);
+    BOOL copyFrom(const Environment *src) override;
+    void tick(float dt) override;
+    BOOL save(void *fp) override;
+    BOOL load(void *fp) override;
 
 private:
     void magnetTick(float dt);
-    void magnetEnvTick(float dt);
-    BOOL magnetEnvLoad(void *fp);
-    BOOL magnetEnvSave(void *fp);
-    BOOL magnetEnvCopyFrom(const MagnetEnvironment *src);
-    void magnetEnvDestruct();
 
     float       flCentre_[3];
     float       flForce_[3];
@@ -182,19 +148,16 @@ private:
  * four cursors at the end of the struct. */
 class StdGenerator : public Generator {
 public:
-    /* The constructor create() runs. */
-    void stdGenConstruct();
+    StdGenerator();
+    ~StdGenerator() override;
 
-    /* The vtable slots. */
-    static void *  stdDtorSlot(StdGenerator *self, unsigned flags);
-    static BOOL   stdCopyFromSlot(StdGenerator *self, const StdGenerator *src);
-    static BOOL   stdSaveSlot(StdGenerator *self, void *fp);
-    static BOOL   stdLoadSlot(StdGenerator *self, void *fp);
-    static void   stdEmitSlot(StdGenerator *self, float dt);
+    BOOL copyFrom(const Generator *src) override;
+    void tick(float dt) override;
+    BOOL save(void *fp) override;
+    BOOL load(void *fp) override;
 
 protected:
     void stdEmit(float dt, const float *pos_off, const float *vel_off);
-    void stdGenTick(float dt);
     void stdCloneTypeTable(const DWORD *src, DWORD count);
     BOOL stdSaveTypeTable(void *fp);
     BOOL stdLoadTypeTable(void *fp);
@@ -204,10 +167,6 @@ protected:
     void stdBuildVelocity(const float *vmin, const float *vmax, float lmin,
                           float lmax);
     void stdBuildRate(float lo, float hi);
-    void stdGenDestruct();
-    BOOL stdGenCopyFrom(const StdGenerator *src);
-    BOOL stdGenSave(void *fp);
-    BOOL stdGenLoad(void *fp);
 
     float     flDtScale_;
     DWORD     dwEmitMode_;   // selects which of the Sph/Box parameter pairs below Load samples from
@@ -243,31 +202,19 @@ private:
  * cursor through StdGenerator is inherited unchanged; only emit differs. */
 class XStdGenerator : public StdGenerator {
 public:
-    /* The constructor create() runs. */
-    void xstdGenConstruct();
+    XStdGenerator();
 
-    /* The vtable slots. */
-    static void *  xStdDtorSlot(XStdGenerator *self, unsigned flags);
-    static BOOL   xStdCopyFromSlot(XStdGenerator *self, const XStdGenerator *src);
-    static BOOL   xStdSaveSlot(XStdGenerator *self, void *fp);
-    static BOOL   xStdLoadSlot(XStdGenerator *self, void *fp);
-    static void   xStdSetPositionSlot(XStdGenerator *self, float x, float y, float z);
-    static void   xStdSetVelocitySlot(XStdGenerator *self, float x, float y, float z, float m);
-    static void   xStdSetDirectionSlot(XStdGenerator *self, float x, float y, float z);
-    static void   xStdSetSpeedSlot(XStdGenerator *self, float m);
-    static void   xStdEmitSlot(XStdGenerator *self, float dt);
+    BOOL copyFrom(const Generator *src) override;
+    void tick(float dt) override;
+    BOOL save(void *fp) override;
+    BOOL load(void *fp) override;
+    void setPosition(float x, float y, float z) override;
+    void setVelocity(float x, float y, float z, float mag) override;
+    void setDirection(float x, float y, float z) override;
+    void setSpeed(float mag) override;
 
 private:
-    void xstdGenTick(float dt);
-    void xstdGenDestruct();
-    BOOL xstdGenCopyFrom(const XStdGenerator *src);
-    BOOL xstdGenSave(void *fp);
-    BOOL xstdGenLoad(void *fp);
-    void xstdSetPosition(float x, float y, float z);
     void xstdStoreScaled(double x, double y, double z, double len, double mag);
-    void xstdSetDirection(float x, float y, float z);
-    void xstdSetVelocity(float x, float y, float z, float mag);
-    void xstdSetSpeed(float mag);
 
     float        flPosOffset_[3];
     float        flVelOffset_[3];
@@ -280,30 +227,21 @@ private:
  * Velocity is taken from its table unscaled and untransformed. */
 class CylinderGenerator : public Generator {
 public:
-    /* The constructor create() runs. */
-    void cylGenConstruct();
+    CylinderGenerator();
+    ~CylinderGenerator() override;
 
-    /* The vtable slots. */
-    static void *  cylDtorSlot(CylinderGenerator *self, unsigned flags);
-    static BOOL   cylCopyFromSlot(CylinderGenerator *self, const CylinderGenerator *src);
-    static BOOL   cylSaveSlot(CylinderGenerator *self, void *fp);
-    static BOOL   cylLoadSlot(CylinderGenerator *self, void *fp);
-    static void   cylSetPositionSlot(CylinderGenerator *self, float x, float y, float z);
-    static void   cylSetDirectionSlot(CylinderGenerator *self, float x, float y, float z);
-    static void   cylinderEmitSlot(CylinderGenerator *self, float dt);
+    BOOL copyFrom(const Generator *src) override;
+    void tick(float dt) override;
+    BOOL save(void *fp) override;
+    BOOL load(void *fp) override;
+    void setPosition(float x, float y, float z) override;
+    void setDirection(float x, float y, float z) override;
 
 private:
     void cylinderEmit(float dt);
-    void cylGenTick(float dt);
-    void cylGenDestruct();
-    void cylSetDirection(float x, float y, float z);
-    void cylSetPosition(float x, float y, float z);
     void cylBuildVelocity(const float *vmin, const float *vmax, float lmin,
                           float lmax);
     void cylBuildRate(float lo, float hi);
-    BOOL cylGenCopyFrom(const CylinderGenerator *src);
-    BOOL cylGenSave(void *fp);
-    BOOL cylGenLoad(void *fp);
 
     float     flOrigin_[3];
     float     flDirection_[3];
@@ -336,15 +274,11 @@ private:
  * constructor leaves them as. */
 class PointGenerator : public Generator {
 public:
-    /* The constructor create() runs. */
-    void pointGenConstruct();
+    PointGenerator();
 
-    /* The vtable slots. */
-    static void *  pointDtorSlot(PointGenerator *self, unsigned flags);
-    static void   pointEmitSlot(PointGenerator *self, float dt);
+    void tick(float dt) override;
 
 private:
-    void pointGenEmit(float dt);
 
     float     flEmitPos_[3];
     float     flVelBias_[3];
@@ -365,15 +299,11 @@ private:
  * filled by a Load. */
 class BoxGenerator : public Generator {
 public:
-    /* The constructor create() runs. */
-    void boxGenConstruct();
+    BoxGenerator();
 
-    /* The vtable slots. */
-    static void *  boxDtorSlot(BoxGenerator *self, unsigned flags);
-    static void   boxEmitSlot(BoxGenerator *self, float dt);
+    void tick(float dt) override;
 
 private:
-    void boxGenEmit(float dt);
 
     BYTE      opaque10_[0x18];
     float     flVelBias_[3];
@@ -392,32 +322,8 @@ private:
 
  
 };
-/* Direct calls through the shared vtable slot layout above, used where the
- * caller only has a Generator pointer or an Environment pointer and needs one
- * virtual call. */
-#define GEN_VT_TICK_SLOT 3
-#define GEN_VT_DTOR_SLOT 0
-#define GEN_VT_COPY_SLOT 1
-#define GEN_VT_SAVE_SLOT 4
-#define GEN_VT_LOAD_SLOT 5
-#define GEN_VT_SETPOS_SLOT 6
-
-inline void Generator::vsetPosition(float x, float y, float z)
-{
-    typedef void (  *fn)(Generator *, float, float, float);
-    ((fn)pVtable_[GEN_VT_SETPOS_SLOT])(this, x, y, z);
-}
-#define GEN_VT_SETDIR_SLOT 8
-inline void Generator::vsetDirection(float x, float y, float z)
-{
-    typedef void (  *fn)(Generator *, float, float, float);
-    ((fn)pVtable_[GEN_VT_SETDIR_SLOT])(this, x, y, z);
-}
-
 /* Gen_FillGaussianField writes into an ExplodeDebris (explodedebris.h); its
  * layout and the offsets this relies on are asserted there. */
   void  
 Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma);
 
-/* Both classes' Tick is slot GEN_VT_TICK_SLOT. */
-void sim_tick_slot3(void *obj, float dt);

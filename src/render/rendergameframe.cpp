@@ -456,10 +456,10 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
         ParticleSystem *ps = rec->particleSystems()[j];
         const int ms = (int)elapsed;
         if (tick == TICK_WHOLE_MS)
-            ps->vtick((float)((double)(unsigned)ms * 0.001f));
+            ps->tick((float)((double)(unsigned)ms * 0.001f));
         else
-            ps->vtick((float)(elapsed * 0.001));
-        ps->vsetVector(cam->target()[0] - cam->eye()[0],
+            ps->tick((float)(elapsed * 0.001));
+        ps->setVector(cam->target()[0] - cam->eye()[0],
                        cam->target()[1] - cam->eye()[1],
                        cam->target()[2] - cam->eye()[2]);
         if (spin) {
@@ -468,9 +468,9 @@ static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick t
             Mat4 r;
             m4_identity(&r);
             r.m[0] = c;  r.m[2] = s;  r.m[8] = -s;  r.m[10] = c;
-            ps->vtransformCorners(r.m);
+            ps->transformCorners(r.m);
         }
-        ps->vrender(dev);
+        ps->render(dev);
         b->msLeft -= (tick == TICK_WHOLE_MS) ? ms : (int)elapsed;
         ps->disableRenderNode();
     }
@@ -578,7 +578,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
         if (speed != NULL) {
             ParticleSystem *ps = speed->particleSystems()[0];
             Generator *gen = ps->getGenerator(NULL);
-            gen->vsetPosition(speed->bursts()[0].pos[0], speed->bursts()[0].pos[1],
+            gen->setPosition(speed->bursts()[0].pos[0], speed->bursts()[0].pos[1],
                               speed->bursts()[0].pos[2]);
             /* (0, 0.1, -1, 1) through the player's yaw: the trail streams
              * out behind. */
@@ -597,7 +597,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
                 o[0] /= o[3]; o[1] /= o[3]; o[2] /= o[3];
             }
             gen = ps->getGenerator(NULL);
-            gen->vsetDirection(o[0], o[1], o[2]);
+            gen->setDirection(o[0], o[1], o[2]);
 
             RenderDevice *dev = g_renderDevice;
             dev->SetTransform(Transform::World, &g_worldIdentity);
@@ -605,12 +605,12 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             set_rs(RS::SrcBlend, Blend::One);
             set_rs(RS::DestBlend, Blend::One);
             set_rs(RS::AlphaBlendEnable, 1);
-            ps->vtick((float)(elapsed * 0.001));
+            ps->tick((float)(elapsed * 0.001));
             CameraGlobals *cam = &g_camera;
-            ps->vsetVector(cam->target()[0] - cam->eye()[0],
+            ps->setVector(cam->target()[0] - cam->eye()[0],
                            cam->target()[1] - cam->eye()[1],
                            cam->target()[2] - cam->eye()[2]);
-            ps->vrender(dev);
+            ps->render(dev);
             set_rs(RS::AlphaBlendEnable, 0);
         }
     }

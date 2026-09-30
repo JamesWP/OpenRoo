@@ -1,7 +1,6 @@
 /* Every Generator and Environment virtual — Tick/emit, Save, Load, CopyFrom,
- * the dtors and constructors — plus the vtables the constructors install, the
- * ring helpers the two environment ticks share, and the exported thiscall
- * thunks the vtables point at.
+ * the dtors and constructors, and the ring helpers the two environment ticks
+ * share.
  *
  * The ring is one NULL-terminated doubly-linked list, partitioned as
  * [pRingHead, pRingCurrent) live and [pRingCurrent, pRingTail] free.  An
@@ -22,19 +21,6 @@
 #include <stdio.h>
 
 #define SIM_LOG_FIRST 8
-
-/* Our vtables, defined at the foot of this file — one per class, in the game's
- * slot order.  Every constructor installs one of these; no object of ours ever
- * carries any other vtable address. */
-extern void *const gen_vtbl_base[];
-extern void *const gen_vtbl_point[];
-extern void *const gen_vtbl_box[];
-extern void *const gen_vtbl_std[];
-extern void *const gen_vtbl_xstd[];
-extern void *const gen_vtbl_cylinder[];
-extern void *const env_vtbl_base[];
-extern void *const env_vtbl_gravity[];
-extern void *const env_vtbl_magnet[];
 
 /* KAROO_PARTICLE_FX, read once and cached:
  *   gravity   multiply gravity (and magnet force) by 5;
@@ -444,9 +430,7 @@ void CylinderGenerator::cylinderEmit(float dt)
 /* ─── One definition per class ─────────────────────────────────────────────
  *
  * Each of these is the single implementation of that class's tick, logging
- * included.  Every caller reaches it the same way, through slot 3 of the
- * class's vtable — whether the game dispatches directly or through
- * sim_tick_slot3 at the foot of this file. */
+ * included; every caller reaches it through the virtual tick(). */
 
 #define SIM_LOG_ONCE(counter) \
     static LONG counter = 0; \
@@ -519,7 +503,7 @@ static void stats_tick(const char *what, void *self, const RingBuffer *ring, LON
               ring->pRingHead, ring->pRingCurrent, ring->pRingTail);
 }
 
-void GravityEnvironment::gravityEnvTick(float dt)
+void GravityEnvironment::tick(float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: GravityTick this=%p dt=%f live=%lu ring=%lu\n",
@@ -530,7 +514,7 @@ void GravityEnvironment::gravityEnvTick(float dt)
     gravityTick(dt);
 }
 
-void MagnetEnvironment::magnetEnvTick(float dt)
+void MagnetEnvironment::tick(float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: MagnetTick this=%p dt=%f live=%lu ring=%lu centre=%f,%f,%f\n",
@@ -542,7 +526,7 @@ void MagnetEnvironment::magnetEnvTick(float dt)
     magnetTick(dt);
 }
 
-void StdGenerator::stdGenTick(float dt)
+void StdGenerator::tick(float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: StdEmit this=%p dt=%f enabled=%lu accum=%f free=%lu ring=%lu\n",
@@ -551,7 +535,7 @@ void StdGenerator::stdGenTick(float dt)
     stdEmit(dt, NULL, NULL);
 }
 
-void XStdGenerator::xstdGenTick(float dt)
+void XStdGenerator::tick(float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: XStdEmit this=%p dt=%f enabled=%lu posoff=%f,%f,%f "
@@ -563,7 +547,7 @@ void XStdGenerator::xstdGenTick(float dt)
     stdEmit(dt, flPosOffset_, flVelOffset_);
 }
 
-void CylinderGenerator::cylGenTick(float dt)
+void CylinderGenerator::tick(float dt)
 {
     SIM_LOG_ONCE(calls)
         log_write("sim: CylinderEmit this=%p dt=%f enabled=%lu accum=%f "
@@ -617,7 +601,7 @@ void GravityEnvironment::gravitySetColour(DWORD argb, float fade)
 
 /* Leaves flFadeAccum as constructed — unlike MagnetEnvironment::Load, which
  * resets it every time. */
-BOOL GravityEnvironment::gravityEnvLoad(void *fp)
+BOOL GravityEnvironment::load(void *fp)
 {
     float dir[3], mag, fade;
     DWORD argb;
@@ -644,7 +628,7 @@ BOOL GravityEnvironment::gravityEnvLoad(void *fp)
 /* FORMAT: on disk, force precedes centre.  PRESERVED: dwTargetRGB is never
  * loaded — it keeps whatever the constructor or a CopyFrom set, not what a
  * saved file may have recorded. */
-BOOL MagnetEnvironment::magnetEnvLoad(void *fp)
+BOOL MagnetEnvironment::load(void *fp)
 {
     // The base Environment::Load contributes nothing; its result is not
     // checked.
@@ -673,7 +657,7 @@ static bool write1(const void *src, unsigned size, void *fp)
 }
 
 /* Field-for-field mirror of Load, in the same order. */
-BOOL GravityEnvironment::gravityEnvSave(void *fp)
+BOOL GravityEnvironment::save(void *fp)
 {
     if (!write1(flDirection_, 12, fp))      return FALSE;
     if (!write1(&flMagnitude_, 4, fp))      return FALSE;
@@ -689,7 +673,7 @@ BOOL GravityEnvironment::gravityEnvSave(void *fp)
 
 /* Calls the base Environment::Save (a no-op) first, then mirrors Load.
  * PRESERVED: dwTargetRGB is not written either, matching Load. */
-BOOL MagnetEnvironment::magnetEnvSave(void *fp)
+BOOL MagnetEnvironment::save(void *fp)
 {
     if (!write1(flForce_, 12, fp))          return FALSE;
     if (!write1(flCentre_, 12, fp))         return FALSE;
@@ -705,50 +689,26 @@ BOOL Environment::envSameName(const Environment *src) const
     return strcmp(src->pName_, pName_) == 0;
 }
 
-/* Copies every field past the base (vtable, pName and pRing keep the
+/* Copies every field past the base (pName and pRing keep the
  * destination's) in one memcpy; safe because src can never alias dst. */
-BOOL GravityEnvironment::gravityEnvCopyFrom(const GravityEnvironment *src)
+BOOL GravityEnvironment::copyFrom(const Environment *src)
 {
     if (!envSameName(src))
         return FALSE;
-    *this = *src;
+    *this = *static_cast<const GravityEnvironment *>(src);
     return TRUE;
 }
 
-BOOL MagnetEnvironment::magnetEnvCopyFrom(const MagnetEnvironment *src)
+BOOL MagnetEnvironment::copyFrom(const Environment *src)
 {
     if (!envSameName(src))
         return FALSE;
-    *this = *src;   
+    *this = *static_cast<const MagnetEnvironment *>(src);
     return TRUE;
 }
-
-void Environment::baseEnvDestruct()
-{
-    pVtable_ = (void **)env_vtbl_base;
-}
-
-/* Restores the game-facing vtable, then runs the base body.  Nothing is freed
- * here: pName is not owned by either class. */
-void GravityEnvironment::gravityEnvDestruct()
-{
-    pVtable_ = (void **)env_vtbl_gravity;
-    pVtable_ = (void **)env_vtbl_base;
-}
-
-/* PRESERVED: runs the base body twice (once on each of the original's exit
- * paths) — harmless, kept rather than collapsed to one store. */
-void MagnetEnvironment::magnetEnvDestruct()
-{
-    pVtable_ = (void **)env_vtbl_magnet;
-    pVtable_ = (void **)env_vtbl_base;
-    pVtable_ = (void **)env_vtbl_base;
-}
-
-/* The scalar deleting dtors' shared tail is factory.h's scalar_delete<T>. */
 
 /* Refuses (and leaves pRing alone) when handed a NULL ring. */
-BOOL Environment::envAttachRing(RingBuffer *ring)
+BOOL Environment::attachRing(RingBuffer *ring)
 {
     if (ring == NULL)
         return FALSE;
@@ -756,36 +716,25 @@ BOOL Environment::envAttachRing(RingBuffer *ring)
     return TRUE;
 }
 
-/* Each constructor also built and destroyed a throwaway base-class instance on
- * its own stack; it has no effect outside that frame and isn't reproduced
- * here. */
-
 /* Static type-name strings; pName points at them, never owned or freed here.
  */
 
-void Environment::baseEnvConstruct()
+Environment::Environment() : pName_(GS_PSNAME_ENVIRONMENT), pRing_(NULL)
 {
-    pVtable_ = (void **)env_vtbl_base;
-    pName_   = GS_PSNAME_ENVIRONMENT;
-    pRing_   = NULL;
 }
 
-/* Base ctor, class vtable, then every member zeroed except the fade threshold,
+/* Base ctor, then every member zeroed except the fade threshold,
  * which starts at 10. */
-void GravityEnvironment::gravityEnvConstruct()
+GravityEnvironment::GravityEnvironment()
 {
-    baseEnvConstruct();
-    pVtable_ = (void **)env_vtbl_gravity;
     memset((BYTE *)this + sizeof(Environment), 0,
            sizeof(GravityEnvironment) - sizeof(Environment));
     pName_ = GS_PSNAME_GRAVITY_ENV;
     dwFadeThreshold_ = 10;
 }
 
-void MagnetEnvironment::magnetEnvConstruct()
+MagnetEnvironment::MagnetEnvironment()
 {
-    baseEnvConstruct();
-    pVtable_ = (void **)env_vtbl_magnet;
     memset((BYTE *)this + sizeof(Environment), 0,
            sizeof(MagnetEnvironment) - sizeof(Environment));
     pName_ = GS_PSNAME_MAGNET_ENV;
@@ -796,27 +745,11 @@ void MagnetEnvironment::magnetEnvConstruct()
  * failed allocation, both return NULL. */
 Environment *Environment::create(const char *name)
 {
-    if (strcmp(name, "Environment") == 0) {
-        Environment *e = (Environment *)::operator new(sizeof(Environment), std::nothrow);
-        if (e) e->baseEnvConstruct();
-        return e;
-    }
-    if (strcmp(name, "GravityEnvironment") == 0) {
-        GravityEnvironment *g =
-            (GravityEnvironment *)::operator new(sizeof(GravityEnvironment), std::nothrow);
-        if (g) g->gravityEnvConstruct();
-        return (Environment *)g;
-    }
-    if (strcmp(name, "MagnetEnvironment") == 0) {
-        MagnetEnvironment *m =
-            (MagnetEnvironment *)::operator new(sizeof(MagnetEnvironment), std::nothrow);
-        if (m) m->magnetEnvConstruct();
-        return (Environment *)m;
-    }
+    if (strcmp(name, "Environment") == 0)        return new (std::nothrow) Environment;
+    if (strcmp(name, "GravityEnvironment") == 0) return new (std::nothrow) GravityEnvironment;
+    if (strcmp(name, "MagnetEnvironment") == 0)  return new (std::nothrow) MagnetEnvironment;
     return NULL;
 }
-
-#define THISCALL_DECL  
 
 /* PRESERVED: the game's float compare treats an unordered operand (NaN) as
  * equal, so this treats NaN the same as exactly zero, unlike a plain `== 0`.
@@ -933,15 +866,8 @@ static void uniform_fill(float *out, int n, float a, float b)
     }
 }
 
-void Generator::baseGenDestruct()
-{
-    pVtable_ = (void **)gen_vtbl_base;
-}
-
-/* The scalar deleting dtors' shared tail is factory.h's scalar_delete<T>. */
-
 /* Gates on matching type name, then copies only dwEnabled. */
-BOOL Generator::genCopyBase(const Generator *src)
+BOOL Generator::copyFrom(const Generator *src)
 {
     if (strcmp(src->pName_, pName_) != 0)
         return FALSE;
@@ -949,8 +875,7 @@ BOOL Generator::genCopyBase(const Generator *src)
     return TRUE;
 }
 
-/* Slot 2 of all six generator vtables. */
-BOOL Generator::genAttachRing(RingBuffer *ring)
+BOOL Generator::attachRing(RingBuffer *ring)
 {
     if (ring == NULL)
         return FALSE;
@@ -1132,27 +1057,22 @@ void StdGenerator::stdBuildRate(float lo, float hi)
     gauss_fill(pLifeTable_, 100, lo, hi, step);
 }
 
-void StdGenerator::stdGenDestruct()
-{
-    pVtable_ = (void **)gen_vtbl_std;
-    if (pTypeTable_)
-        ::operator delete(pTypeTable_);
-    baseGenDestruct();
-}
-
 /* Copies every field but the type table, which is cloned instead — cloning
  * redraws pEmitProb from a fresh seed, so a copy's colours differ from its
  * source's. */
-BOOL StdGenerator::stdGenCopyFrom(const StdGenerator *src)
+BOOL StdGenerator::copyFrom(const Generator *gsrc)
 {
-    if (!genCopyBase(src))
+    if (!Generator::copyFrom(gsrc))
         return FALSE;
+    const StdGenerator *src = static_cast<const StdGenerator *>(gsrc);
+    void *own = pTypeTable_;   // the assignment must not hand us the source's table
     *this = *src;
+    pTypeTable_ = own;
     this->stdCloneTypeTable((const DWORD*)src->pTypeTable_,src->dwTypeTableCount_);
     return TRUE;
 }
 
-BOOL StdGenerator::stdGenSave(void *fp)
+BOOL StdGenerator::save(void *fp)
 {
     if (!write1(&dwEmitMode_, 4, fp))     return FALSE;
     if (!write1(flBoxMax_, 12, fp))       return FALSE;
@@ -1171,7 +1091,7 @@ BOOL StdGenerator::stdGenSave(void *fp)
 
 /* Builds the sphere or box position table (whichever dwEmitMode selects), then
  * always rebuilds the velocity and rate tables. */
-BOOL StdGenerator::stdGenLoad(void *fp)
+BOOL StdGenerator::load(void *fp)
 {
     if (!read1(&dwEmitMode_, 4, fp))      return FALSE;
     if (!read1(flBoxMax_, 12, fp))        return FALSE;
@@ -1197,38 +1117,32 @@ BOOL StdGenerator::stdGenLoad(void *fp)
     return stdLoadTypeTable(fp);
 }
 
-/* Own vtable first, then Std's dtor body. */
-void XStdGenerator::xstdGenDestruct()
-{
-    pVtable_ = (void **)gen_vtbl_xstd;
-    stdGenDestruct();
-}
-
 /* PRESERVED: copies flPosOffset but not flVelOffset — a copied generator keeps
  * its own velocity offset regardless of the source's. */
-BOOL XStdGenerator::xstdGenCopyFrom(const XStdGenerator *src)
+BOOL XStdGenerator::copyFrom(const Generator *gsrc)
 {
-    if (!stdGenCopyFrom(src))
+    if (!StdGenerator::copyFrom(gsrc))
         return FALSE;
+    const XStdGenerator *src = static_cast<const XStdGenerator *>(gsrc);
     memcpy(flPosOffset_, src->flPosOffset_, sizeof flPosOffset_);
     return TRUE;
 }
 
-BOOL XStdGenerator::xstdGenSave(void *fp)
+BOOL XStdGenerator::save(void *fp)
 {
-    if (!stdGenSave(fp))        return FALSE;
+    if (!StdGenerator::save(fp))        return FALSE;
     if (!write1(flPosOffset_, 12, fp))    return FALSE;
     return write1(flVelOffset_, 12, fp);
 }
 
-BOOL XStdGenerator::xstdGenLoad(void *fp)
+BOOL XStdGenerator::load(void *fp)
 {
-    if (!stdGenLoad(fp))        return FALSE;
+    if (!StdGenerator::load(fp))        return FALSE;
     if (!read1(flPosOffset_, 12, fp))     return FALSE;
     return read1(flVelOffset_, 12, fp);
 }
 
-void XStdGenerator::xstdSetPosition(float x, float y, float z)
+void XStdGenerator::setPosition(float x, float y, float z)
 {
     flPosOffset_[0] = x;
     flPosOffset_[1] = y;
@@ -1248,7 +1162,7 @@ void XStdGenerator::xstdStoreScaled(double x, double y,
 
 /* Keeps the current speed, takes the new direction.  Zero speed becomes
  * FLT_EPSILON; a zero direction zeroes the velocity. */
-void XStdGenerator::xstdSetDirection(float x, float y, float z)
+void XStdGenerator::setDirection(float x, float y, float z)
 {
     double vx = flVelOffset_[0], vy = flVelOffset_[1],
                 vz = flVelOffset_[2];
@@ -1266,7 +1180,7 @@ void XStdGenerator::xstdSetDirection(float x, float y, float z)
 
 /* PRESERVED: if the current velocity offset is already zero, this leaves it
  * zero and ignores every argument — direction, speed, all of it. */
-void XStdGenerator::xstdSetVelocity(float x, float y, float z, float mag)
+void XStdGenerator::setVelocity(float x, float y, float z, float mag)
 {
     if (zero_or_nan(flVelOffset_[0]) && zero_or_nan(flVelOffset_[1]) &&
         zero_or_nan(flVelOffset_[2])) {
@@ -1280,7 +1194,7 @@ void XStdGenerator::xstdSetVelocity(float x, float y, float z, float mag)
 
 /* Zero speed becomes FLT_EPSILON.  If the current velocity is already zero
  * there is no direction to preserve, so it is left as-is. */
-void XStdGenerator::xstdSetSpeed(float mag)
+void XStdGenerator::setSpeed(float mag)
 {
     if (zero_or_nan(mag))
         mag = TINY_LENGTH;
@@ -1310,7 +1224,7 @@ static int dead_gen_claim(float *acc, float rate, float dt)
 }
 
 /* No dwEnabled check, unlike StdGenerator. */
-void PointGenerator::pointGenEmit(float dt)
+void PointGenerator::tick(float dt)
 {
     RingBuffer *ring = pRing_;
     if (ring->pRingCurrent == NULL)
@@ -1342,7 +1256,7 @@ void PointGenerator::pointGenEmit(float dt)
 
 /* Position and colour are raw table copies; velocity is table plus bias.  Both
  * index triples wrap by 500 - i past 499. */
-void BoxGenerator::boxGenEmit(float dt)
+void BoxGenerator::tick(float dt)
 {
     RingBuffer *ring = pRing_;
     if (ring->pRingCurrent == NULL)
@@ -1377,14 +1291,6 @@ void BoxGenerator::boxGenEmit(float dt)
     }
 }
 
-void CylinderGenerator::cylGenDestruct()
-{
-    pVtable_ = (void **)gen_vtbl_cylinder;
-    if (pTypeTable_)
-        ::operator delete(pTypeTable_);
-    baseGenDestruct();
-}
-
 static double vec3_sqlen(const float *v)
 {
     return ((double)v[0] * v[0] + (double)v[1] * v[1]) + (double)v[2] * v[2];
@@ -1412,7 +1318,7 @@ static float direction_cosine(const float *v, const float *e)
  * PRESERVED: d, a and b are not normalised — only their pairwise angles are,
  * via direction_cosine — and a, b are rounded to float before that.  The
  * fourth row and column are left as identity. */
-void CylinderGenerator::cylSetDirection(float x, float y, float z)
+void CylinderGenerator::setDirection(float x, float y, float z)
 {
     static const float AXIS[3][3] = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
     flDirection_[0] = x;
@@ -1435,7 +1341,7 @@ void CylinderGenerator::cylSetDirection(float x, float y, float z)
     memcpy(flMatrix_, m, sizeof m);
 }
 
-void CylinderGenerator::cylSetPosition(float x, float y, float z)
+void CylinderGenerator::setPosition(float x, float y, float z)
 {
     flOrigin_[0] = x;
     flOrigin_[1] = y;
@@ -1469,17 +1375,20 @@ void CylinderGenerator::cylBuildRate(float lo, float hi)
     gauss_fill(pLifeTable_, 100, lo, hi, step);
 }
 
-BOOL CylinderGenerator::cylGenCopyFrom(const CylinderGenerator *src)
+BOOL CylinderGenerator::copyFrom(const Generator *gsrc)
 {
-    if (!genCopyBase(src))
+    if (!Generator::copyFrom(gsrc))
         return FALSE;
+    const CylinderGenerator *src = static_cast<const CylinderGenerator *>(gsrc);
+    void *own = pTypeTable_;   // the assignment must not hand us the source's table
     *this = *src;
+    pTypeTable_ = own;
     type_table_clone(&this->pTypeTable_, &this->dwTypeTableCount_, this->pEmitProb_,
                      (const DWORD *)src->pTypeTable_, src->dwTypeTableCount_);
     return TRUE;
 }
 
-BOOL CylinderGenerator::cylGenSave(void *fp)
+BOOL CylinderGenerator::save(void *fp)
 {
     if (!write1(flOrigin_, 12, fp))       return FALSE;
     if (!write1(&flScale_, 4, fp))        return FALSE;
@@ -1497,7 +1406,7 @@ BOOL CylinderGenerator::cylGenSave(void *fp)
 /* Reads its own direction back out to rebuild the matrix via
  * cylSetDirection.  The position table (the unit circle) is the constructor's
  * and is never rebuilt here. */
-BOOL CylinderGenerator::cylGenLoad(void *fp)
+BOOL CylinderGenerator::load(void *fp)
 {
     if (!read1(flOrigin_, 12, fp))        return FALSE;
     if (!read1(&flScale_, 4, fp))         return FALSE;
@@ -1511,7 +1420,7 @@ BOOL CylinderGenerator::cylGenLoad(void *fp)
     if (!read1(&flDtScale_, 4, fp))       return FALSE;
     if (sim_fx() == FX_FASTEMIT)
         flDtScale_ = (float)((double)flDtScale_ * 5.0);
-    cylSetDirection(flDirection_[0], flDirection_[1],
+    setDirection(flDirection_[0], flDirection_[1],
                       flDirection_[2]);
     cylBuildVelocity(flVelMin_, flVelMax_,
                        flLifeMin_, flLifeMax_);
@@ -1520,48 +1429,49 @@ BOOL CylinderGenerator::cylGenLoad(void *fp)
                            pEmitProb_, fp);
 }
 
-void Generator::baseGenConstruct()
+Generator::Generator()
+    : pName_(GS_PSNAME_GENERATOR), dwEnabled_(1), pRing_(NULL)
 {
-    pVtable_ = (void **)gen_vtbl_base;
-    pName_ = GS_PSNAME_GENERATOR;
-    pRing_ = NULL;
-    dwEnabled_ = 1;
 }
 
 /* PRESERVED: only the accumulator and diffuse colour are initialised — the
  * position, velocity and life tables are left uninitialised, and nothing in
  * this file ever fills them. */
-void PointGenerator::pointGenConstruct()
+PointGenerator::PointGenerator()
 {
-    baseGenConstruct();
-    pVtable_ = (void **)gen_vtbl_point;
     pName_ = GS_PSNAME_POINT_GEN;
     flAccumulator_ = 0.0f;
     dwDiffuse_ = 0xFFFFFFFF;
 }
 
 /* PRESERVED: nothing past the base class is initialised. */
-void BoxGenerator::boxGenConstruct()
+BoxGenerator::BoxGenerator()
 {
-    baseGenConstruct();
-    pVtable_ = (void **)gen_vtbl_box;
     pName_ = GS_PSNAME_BOX_GEN;
 }
 
-void StdGenerator::stdGenConstruct()
+StdGenerator::StdGenerator()
 {
-    baseGenConstruct();
-    pVtable_ = (void **)gen_vtbl_std;
     memset((BYTE *)this + sizeof(Generator), 0, sizeof(StdGenerator) - sizeof(Generator));
     pName_ = GS_PSNAME_STD_GEN;
     for (int i = 0; i < 200; i++)
         pEmitProb_[i] = 0xFFFFFFFF;
 }
 
-void XStdGenerator::xstdGenConstruct()
+StdGenerator::~StdGenerator()
 {
-    stdGenConstruct();
-    pVtable_ = (void **)gen_vtbl_xstd;
+    if (pTypeTable_)
+        ::operator delete(pTypeTable_);
+}
+
+CylinderGenerator::~CylinderGenerator()
+{
+    if (pTypeTable_)
+        ::operator delete(pTypeTable_);
+}
+
+XStdGenerator::XStdGenerator()
+{
     memset(flPosOffset_, 0, sizeof flPosOffset_);
     memset(flVelOffset_, 0, sizeof flVelOffset_);
     pName_ = GS_PSNAME_XSTD_GEN;
@@ -1575,14 +1485,12 @@ void XStdGenerator::xstdGenConstruct()
  * overwrites the matrix it built with plain identity — so flDirection reads
  * (0,1,0) but flMatrix does not reflect it until SetDirection is called again.
  */
-void CylinderGenerator::cylGenConstruct()
+CylinderGenerator::CylinderGenerator()
 {
-    baseGenConstruct();
-    pVtable_ = (void **)gen_vtbl_cylinder;
     memset((BYTE *)this + sizeof(Generator), 0,
            sizeof(CylinderGenerator) - sizeof(Generator));
     pName_ = GS_PSNAME_CYL_GEN;
-    cylSetDirection(0.0f, 1.0f, 0.0f);
+    setDirection(0.0f, 1.0f, 0.0f);
     static const float IDENTITY[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 };
     memcpy(flMatrix_, IDENTITY, sizeof IDENTITY);
     for (int i = 0; i < 200; i++)
@@ -1597,22 +1505,19 @@ void CylinderGenerator::cylGenConstruct()
 }
 
 template <typename T>
-static Generator *gen_new(void (T::*construct)())
+static Generator *gen_new()
 {
-    T *obj = (T *)::operator new(sizeof(T), std::nothrow);
-    if (obj)
-        (obj->*construct)();
-    return (Generator *)obj;
+    return new (std::nothrow) T;
 }
 
 Generator *Generator::create(const char *name)
 {
-    if (strcmp(name, "Generator") == 0)         return gen_new(&Generator::baseGenConstruct);
-    if (strcmp(name, "PointGenerator") == 0)    return gen_new(&PointGenerator::pointGenConstruct);
-    if (strcmp(name, "BoxGenerator") == 0)      return gen_new(&BoxGenerator::boxGenConstruct);
-    if (strcmp(name, "StdGenerator") == 0)      return gen_new(&StdGenerator::stdGenConstruct);
-    if (strcmp(name, "XStdGenerator") == 0)     return gen_new(&XStdGenerator::xstdGenConstruct);
-    if (strcmp(name, "CylinderGenerator") == 0) return gen_new(&CylinderGenerator::cylGenConstruct);
+    if (strcmp(name, "Generator") == 0)         return gen_new<Generator>();
+    if (strcmp(name, "PointGenerator") == 0)    return gen_new<PointGenerator>();
+    if (strcmp(name, "BoxGenerator") == 0)      return gen_new<BoxGenerator>();
+    if (strcmp(name, "StdGenerator") == 0)      return gen_new<StdGenerator>();
+    if (strcmp(name, "XStdGenerator") == 0)     return gen_new<XStdGenerator>();
+    if (strcmp(name, "CylinderGenerator") == 0) return gen_new<CylinderGenerator>();
     return NULL;
 }
 
@@ -1629,19 +1534,13 @@ static void fill_gaussian_field(ExplodeDebris *self, float mu, float sigma)
 
 /* ─── Cloning ─── */
 
-typedef BOOL  (THISCALL_DECL *clone_copy_fn)(void *, const void *);
-typedef void *(THISCALL_DECL *clone_dtor_fn)(void *, unsigned);
-
-/* Shared body of both: the factory by class name, then slot 1 (CopyFrom); on
- * refusal the new object is destroyed through its own slot 0 and NULL comes
- * back.  A NULL from the factory is returned as-is. */
-static void *clone_by_name(void *made, const void *src)
+/* The factory by class name, then CopyFrom; on refusal the new object is
+ * deleted and NULL comes back.  A NULL from the factory is returned as-is. */
+template <class T>
+static T *clone_by_name(T *made, const T *src)
 {
-    if (made == NULL)
-        return NULL;
-    void **vtbl = *(void ***)made;
-    if (!((clone_copy_fn)vtbl[GEN_VT_COPY_SLOT])(made, src)) {
-        ((clone_dtor_fn)vtbl[GEN_VT_DTOR_SLOT])(made, 1);
+    if (made && !made->copyFrom(src)) {
+        delete made;
         return NULL;
     }
     return made;
@@ -1649,76 +1548,13 @@ static void *clone_by_name(void *made, const void *src)
 
 Generator * Generator::clone() const
 {
-    return (Generator *)clone_by_name(Generator::create(pName_), this);
+    return clone_by_name(Generator::create(pName_), this);
 }
 
 Environment * Environment::clone() const
 {
-    return (Environment *)clone_by_name(Environment::create(pName_), this);
+    return clone_by_name(Environment::create(pName_), this);
 }
-
-/* ─── Exports — vtable thunks ─── */
-
-/* All six slots, so a plain Environment never falls through to unimplemented
- * behaviour either. */
-void * Environment::baseDtorSlot(Environment *self, unsigned flags)
-{
-    self->baseEnvDestruct();
-    return scalar_delete(self, flags);
-}
-
-BOOL 
-Environment::baseCopyFromSlot(Environment *self, const Environment *src) { return self->envSameName(src); }
-
-BOOL 
-Environment::attachRingSlot(Environment *self, RingBuffer *ring)         { return self->envAttachRing(ring); }
-
-void 
-Environment::baseTickSlot(Environment *, float)                          { }
-
-BOOL 
-Environment::baseSaveSlot(Environment *, void *)                         { return TRUE; }
-
-BOOL 
-Environment::baseLoadSlot(Environment *, void *)                         { return TRUE; }
-
-void *
-GravityEnvironment::gravityDtorSlot(GravityEnvironment *self, unsigned flags)
-{
-    self->gravityEnvDestruct();
-    return scalar_delete(self, flags);
-}
-
-void *
-MagnetEnvironment::magnetDtorSlot(MagnetEnvironment *self, unsigned flags)
-{
-    self->magnetEnvDestruct();
-    return scalar_delete(self, flags);
-}
-
-BOOL 
-GravityEnvironment::gravityCopyFromSlot(GravityEnvironment *self, const GravityEnvironment *src)
-{ return self->gravityEnvCopyFrom(src); }
-
-BOOL 
-MagnetEnvironment::magnetCopyFromSlot(MagnetEnvironment *self, const MagnetEnvironment *src)
-{ return self->magnetEnvCopyFrom(src); }
-
-BOOL 
-GravityEnvironment::gravitySaveSlot(GravityEnvironment *self, void *fp)  { return self->gravityEnvSave(fp); }
-
-BOOL 
-MagnetEnvironment::magnetSaveSlot(MagnetEnvironment *self, void *fp)    { return self->magnetEnvSave(fp); }
-
-/* Shared no-op bodies for the base classes' do-nothing slots; the argument
- * counts match so callee cleanup stays correct under . */
-void Generator::nop1(void *, float)                      { }
-void Generator::nop3(void *, float, float, float)        { }
-void Generator::nop4(void *, float, float, float, float) { }
-BOOL Generator::returnTrue(void *, void *)               { return TRUE; }
-
-BOOL 
-Generator::attachRingSlot(Generator *self, RingBuffer *ring)        { return self->genAttachRing(ring); }
 
 /* Called directly by explodedebris.cpp and theme.cpp — see
  * fill_gaussian_field. */
@@ -1726,207 +1562,4 @@ Generator::attachRingSlot(Generator *self, RingBuffer *ring)        { return sel
 Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma)
 {
     fill_gaussian_field(self, mu, sigma);
-}
-
-BOOL 
-Generator::baseCopyFromSlot(Generator *self, const Generator *src)  { return self->genCopyBase(src); }
-
-void *
-Generator::baseDtorSlot(Generator *self, unsigned flags)
-{
-    self->baseGenDestruct();
-    return scalar_delete(self, flags);
-}
-
-void *
-PointGenerator::pointDtorSlot(PointGenerator *self, unsigned flags)
-{
-    self->pVtable_ = (void **)gen_vtbl_point;
-    self->baseGenDestruct();
-    return scalar_delete(self, flags);
-}
-
-void *
-BoxGenerator::boxDtorSlot(BoxGenerator *self, unsigned flags)
-{
-    self->pVtable_ = (void **)gen_vtbl_box;
-    self->baseGenDestruct();
-    return scalar_delete(self, flags);
-}
-
-void *
-StdGenerator::stdDtorSlot(StdGenerator *self, unsigned flags)
-{
-    self->stdGenDestruct();
-    return scalar_delete(self, flags);
-}
-
-void *
-XStdGenerator::xStdDtorSlot(XStdGenerator *self, unsigned flags)
-{
-    self->xstdGenDestruct();
-    return scalar_delete(self, flags);
-}
-
-void 
-PointGenerator::pointEmitSlot(PointGenerator *self, float dt)             { self->pointGenEmit(dt); }
-
-void 
-BoxGenerator::boxEmitSlot(BoxGenerator *self, float dt)                 { self->boxGenEmit(dt); }
-
-BOOL 
-StdGenerator::stdCopyFromSlot(StdGenerator *self, const StdGenerator *src)   { return self->stdGenCopyFrom(src); }
-
-BOOL 
-StdGenerator::stdSaveSlot(StdGenerator *self, void *fp)                 { return self->stdGenSave(fp); }
-
-BOOL 
-StdGenerator::stdLoadSlot(StdGenerator *self, void *fp)                 { return self->stdGenLoad(fp); }
-
-BOOL 
-XStdGenerator::xStdCopyFromSlot(XStdGenerator *self, const XStdGenerator *src) { return self->xstdGenCopyFrom(src); }
-
-BOOL 
-XStdGenerator::xStdSaveSlot(XStdGenerator *self, void *fp)               { return self->xstdGenSave(fp); }
-
-BOOL 
-XStdGenerator::xStdLoadSlot(XStdGenerator *self, void *fp)               { return self->xstdGenLoad(fp); }
-
-void 
-XStdGenerator::xStdSetPositionSlot(XStdGenerator *self, float x, float y, float z) { self->xstdSetPosition(x, y, z); }
-
-void 
-XStdGenerator::xStdSetVelocitySlot(XStdGenerator *self, float x, float y, float z, float m) { self->xstdSetVelocity(x, y, z, m); }
-
-void 
-XStdGenerator::xStdSetDirectionSlot(XStdGenerator *self, float x, float y, float z) { self->xstdSetDirection(x, y, z); }
-
-void 
-XStdGenerator::xStdSetSpeedSlot(XStdGenerator *self, float m)            { self->xstdSetSpeed(m); }
-
-void *
-CylinderGenerator::cylDtorSlot(CylinderGenerator *self, unsigned flags)
-{
-    self->cylGenDestruct();
-    return scalar_delete(self, flags);
-}
-
-BOOL 
-CylinderGenerator::cylCopyFromSlot(CylinderGenerator *self, const CylinderGenerator *src) { return self->cylGenCopyFrom(src); }
-
-BOOL 
-CylinderGenerator::cylSaveSlot(CylinderGenerator *self, void *fp)            { return self->cylGenSave(fp); }
-
-BOOL 
-CylinderGenerator::cylLoadSlot(CylinderGenerator *self, void *fp)            { return self->cylGenLoad(fp); }
-
-void 
-CylinderGenerator::cylSetPositionSlot(CylinderGenerator *self, float x, float y, float z) { self->cylSetPosition(x, y, z); }
-
-void 
-CylinderGenerator::cylSetDirectionSlot(CylinderGenerator *self, float x, float y, float z) { self->cylSetDirection(x, y, z); }
-
-BOOL 
-GravityEnvironment::gravityLoadSlot(GravityEnvironment *self, void *fp)  { return self->gravityEnvLoad(fp); }
-
-BOOL 
-MagnetEnvironment::magnetLoadSlot(MagnetEnvironment *self, void *fp)    { return self->magnetEnvLoad(fp); }
-
-void 
-GravityEnvironment::gravityTickSlot(GravityEnvironment *self, float dt)  { self->gravityEnvTick(dt); }
-
-void 
-MagnetEnvironment::magnetTickSlot(MagnetEnvironment *self, float dt)    { self->magnetEnvTick(dt); }
-
-void 
-StdGenerator::stdEmitSlot(StdGenerator *self, float dt)            { self->stdGenTick(dt); }
-
-void 
-CylinderGenerator::cylinderEmitSlot(CylinderGenerator *self, float dt)  { self->cylGenTick(dt); }
-
-void 
-XStdGenerator::xStdEmitSlot(XStdGenerator *self, float dt)          { self->xstdGenTick(dt); }
-
-/* ─── Our vtables ──────────────────────────────────────────────────────────
- *
- * One table per class, in the game's slot order, installed by each constructor
- * above: every object of ours carries a DLL address at +0x00, so every virtual
- * call the game makes on it lands directly in this code.
- *
- * Built by hand rather than through C++ virtuals: the game calls `(*(code
- * **)(*obj + 0x0c))(...)` under MSVC __thiscall, and neither mingw's slot
- * layout nor its calling convention is guaranteed to match, so each entry
- * below is one of the explicit thiscall exports above.
- *
- * The  s guard against an initialiser one entry short, which would
- * otherwise leave a slot silently NULL.  Slot meanings are in generators.h. */
-
-extern void *const gen_vtbl_base[] = {
-    (void *)&Generator::baseDtorSlot,  (void *)&Generator::baseCopyFromSlot, (void *)&Generator::attachRingSlot,
-    (void *)&Generator::nop1,      (void *)&Generator::returnTrue,   (void *)&Generator::returnTrue,
-    (void *)&Generator::nop3,      (void *)&Generator::nop4,         (void *)&Generator::nop3,
-    (void *)&Generator::nop1,
-};
-
-extern void *const gen_vtbl_point[] = {
-    (void *)&PointGenerator::pointDtorSlot, (void *)&Generator::baseCopyFromSlot, (void *)&Generator::attachRingSlot,
-    (void *)&PointGenerator::pointEmitSlot, (void *)&Generator::returnTrue,   (void *)&Generator::returnTrue,
-    (void *)&Generator::nop3,      (void *)&Generator::nop4,         (void *)&Generator::nop3,
-    (void *)&Generator::nop1,
-};
-
-extern void *const gen_vtbl_box[] = {
-    (void *)&BoxGenerator::boxDtorSlot,   (void *)&Generator::baseCopyFromSlot, (void *)&Generator::attachRingSlot,
-    (void *)&BoxGenerator::boxEmitSlot,   (void *)&Generator::returnTrue,   (void *)&Generator::returnTrue,
-    (void *)&Generator::nop3,      (void *)&Generator::nop4,         (void *)&Generator::nop3,
-    (void *)&Generator::nop1,
-};
-
-extern void *const gen_vtbl_std[] = {
-    (void *)&StdGenerator::stdDtorSlot,   (void *)&StdGenerator::stdCopyFromSlot,  (void *)&Generator::attachRingSlot,
-    (void *)&StdGenerator::stdEmitSlot,   (void *)&StdGenerator::stdSaveSlot,      (void *)&StdGenerator::stdLoadSlot,
-    (void *)&Generator::nop3,      (void *)&Generator::nop4,         (void *)&Generator::nop3,
-    (void *)&Generator::nop1,
-};
-
-extern void *const gen_vtbl_xstd[] = {
-    (void *)&XStdGenerator::xStdDtorSlot,  (void *)&XStdGenerator::xStdCopyFromSlot, (void *)&Generator::attachRingSlot,
-    (void *)&XStdGenerator::xStdEmitSlot,  (void *)&XStdGenerator::xStdSaveSlot,     (void *)&XStdGenerator::xStdLoadSlot,
-    (void *)&XStdGenerator::xStdSetPositionSlot, (void *)&XStdGenerator::xStdSetVelocitySlot,
-    (void *)&XStdGenerator::xStdSetDirectionSlot, (void *)&XStdGenerator::xStdSetSpeedSlot,
-};
-
-extern void *const gen_vtbl_cylinder[] = {
-    (void *)&CylinderGenerator::cylDtorSlot,   (void *)&CylinderGenerator::cylCopyFromSlot,  (void *)&Generator::attachRingSlot,
-    (void *)&CylinderGenerator::cylinderEmitSlot, (void *)&CylinderGenerator::cylSaveSlot,   (void *)&CylinderGenerator::cylLoadSlot,
-    (void *)&CylinderGenerator::cylSetPositionSlot, (void *)&Generator::nop4,
-    (void *)&CylinderGenerator::cylSetDirectionSlot, (void *)&Generator::nop1,
-};
-
-extern void *const env_vtbl_base[] = {
-    (void *)&Environment::baseDtorSlot,    (void *)&Environment::baseCopyFromSlot,    (void *)&Environment::attachRingSlot,
-    (void *)&Environment::baseTickSlot,    (void *)&Environment::baseSaveSlot,        (void *)&Environment::baseLoadSlot,
-};
-
-extern void *const env_vtbl_gravity[] = {
-    (void *)&GravityEnvironment::gravityDtorSlot, (void *)&GravityEnvironment::gravityCopyFromSlot, (void *)&Environment::attachRingSlot,
-    (void *)&GravityEnvironment::gravityTickSlot, (void *)&GravityEnvironment::gravitySaveSlot,     (void *)&GravityEnvironment::gravityLoadSlot,
-};
-
-extern void *const env_vtbl_magnet[] = {
-    (void *)&MagnetEnvironment::magnetDtorSlot,  (void *)&MagnetEnvironment::magnetCopyFromSlot,  (void *)&Environment::attachRingSlot,
-    (void *)&MagnetEnvironment::magnetTickSlot,  (void *)&MagnetEnvironment::magnetSaveSlot,      (void *)&MagnetEnvironment::magnetLoadSlot,
-};
-
-
-/* Generators and Environments share slot 3 (Tick / emit) and both carry one of
- * the tables above, so this is a direct call into this DLL — no class switch
- * or identity lookup needed. */
-
-typedef void (*sim_tick_fn)(void *, float);
-
-void sim_tick_slot3(void *obj, float dt)
-{
-    void **vtbl = *(void ***)obj;
-    ((sim_tick_fn)vtbl[GEN_VT_TICK_SLOT])(obj, dt);
 }
