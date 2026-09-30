@@ -35,6 +35,9 @@ struct SceneObject {
     unsigned char  splineMode;
     DWORD          splineTime;
     SplinePath     spline;
+
+    // Only the spline builds itself; the other fields are left as allocated.
+    SceneObject() = default;
 };
 
 

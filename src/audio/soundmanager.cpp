@@ -365,10 +365,7 @@ VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
     ++g_acqPoolHit;
     doublesoundbuff *entry = (doublesoundbuff *)e->payload();
 
-    VoicePool *pool = NULL;
-    VoicePool *raw  = (VoicePool *)malloc(sizeof(VoicePool));
-    if (raw != NULL)
-        pool = raw->blank();
+    VoicePool *pool = new (std::nothrow) VoicePool();
 
     void *r = pool->clone(nVoices, directSound(),
                                  entry->master(), 1);
@@ -388,8 +385,7 @@ VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
     ++g_poolFail;
     if (pool == NULL)
         return NULL;
-    pool->wipe();
-    free(pool);
+    delete pool;
     return NULL;
 }
 

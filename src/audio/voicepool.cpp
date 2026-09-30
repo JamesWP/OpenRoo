@@ -105,7 +105,7 @@ void VoicePool::broadcastCoordinates(float x, float y, float z, DWORD dwApply)
     } while (i < dwVoiceCount_);
 }
 
-VoicePool *VoicePool::blank()
+VoicePool::VoicePool()
 {
     ++g_nBlank; { static unsigned long seen; pool_first("Blank", &seen); }
     pBufs_        = 0;
@@ -113,7 +113,11 @@ VoicePool *VoicePool::blank()
     dwCurrentIdx_ = 0;
     logger_       = 0;
     dwNestDepth_  = 0;
-    return this;
+}
+
+VoicePool::~VoicePool()
+{
+    wipe();
 }
 
 /* Resets every voice, destroys the array through the voices' vector destructor

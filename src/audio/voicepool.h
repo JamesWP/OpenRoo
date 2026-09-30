@@ -21,8 +21,11 @@ public:
      * Returns the trigger's HRESULT, or DSERR_UNINITIALIZED with no voices. */
     int cycle(DWORD dwLoopFlags);
 
-    /* Zeroes the pool; returns it. */
-    VoicePool *blank();
+    /* An empty pool.  The destructor wipes it. */
+    VoicePool();
+    ~VoicePool();
+    VoicePool(const VoicePool &) = delete;
+    VoicePool &operator=(const VoicePool &) = delete;
 
     /* Resets and frees every voice and clears the pool, except the nesting
      * depth. */

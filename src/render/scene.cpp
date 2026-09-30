@@ -28,8 +28,7 @@ void Scene::freeSceneObjects()
         SceneObject *o = (SceneObject *)n->value();
         n = n->next();
         if (o != NULL) {
-            o->spline.~SplinePath();  //todo: explicit destructor until SceneObject has a real destructor
-            ::operator delete(o);
+            delete o;
         }
     }
     objects_.clear();
@@ -58,8 +57,7 @@ void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *lo
         // uses are written, so a billboard's mesh/particle pointers and a
         // model's radius are whatever the heap left, and animLoaded is stale
         // unless the .ani loads.
-        SceneObject *o = (SceneObject *)::operator new(sizeof(SceneObject));
-        new (&o->spline) SplinePath();  //todo: placement new until SceneObject has a real constructor
+        SceneObject *o = new SceneObject;
 
         o->type = r->kind;
         if (r->kind == EXTRA_MODEL)
