@@ -57,35 +57,21 @@ static void fx_init(void)
         run_selfcheck();
 }
 
-static void *s_vtable[1] = { (void *)&SplinePath::scalarDestructor };
-
-SplinePath *SplinePath::construct()
+SplinePath::SplinePath()
 {
     fx_init();
     if (s_diag)
         ++s_ctors;
     controlPointList_.init();
-    vtable_ = s_vtable;
-    return this;
 }
 
-void SplinePath::destruct()
+SplinePath::~SplinePath()
 {
     fx_init();
     if (s_diag)
         ++s_dtors;
-    vtable_ = s_vtable;
     purgeControlPoints();
     controlPointList_.destruct();
-}
-
-SplinePath * 
-SplinePath::scalarDestructor(SplinePath *self, unsigned char bFreeSelf)
-{
-    self->destruct();
-    if (bFreeSelf & 1)
-        free(self);
-    return self;
 }
 
 void SplinePath::addControlPoint(float x, float y, float z)
@@ -211,7 +197,6 @@ static void run_selfcheck(void)
     log_write("splinepath: KAROO_SPLINE_SELFCHECK -- EvalBezierPath against "
               "the closed-form Bernstein polynomial\n");
 
-    sp.construct();
     out[0] = out[1] = out[2] = 12345.0f;
     sp.evalBezierPath(out, 0.5f);
     bad += check_point("n=0 empty path is (0,0,0)", out, 0, 0, 0);
@@ -249,7 +234,6 @@ static void run_selfcheck(void)
     sp.evalBezierPath(out, 0.0f);
     bad += check_point("n=4 at t=0 is P0", out, 0, 0, 0);
 
-    sp.destruct();
     log_write("splinepath: selfcheck %s (%d failure%s)\n",
               bad ? "FAIL" : "PASS", bad, bad == 1 ? "" : "s");
 }
