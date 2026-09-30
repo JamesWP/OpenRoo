@@ -183,7 +183,7 @@ private:
  
 };
 
-class FaceParticleSystem : public ParticleSystem {       // 0x7a bytes, byte-packed (corners at +0x2e)
+class FaceParticleSystem : public ParticleSystem {       //
 public:
     /* The constructor create() runs. */
     void faceConstruct();

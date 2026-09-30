@@ -13,7 +13,7 @@ struct IDirect3DTexture2;
  * really are distinct objects: CreateSurfaceDIB and friends operate on plain
  * LoadedImages, so anything touching pTexture2 must be handed the extended
  * type. */
-class __attribute__((packed)) SceneTexture : public LoadedImage {
+class SceneTexture : public LoadedImage {
 public:
     IDirect3DTexture2 *texture2() const { return pTexture2_; }
 

@@ -44,7 +44,6 @@ public:
 
     int vertexCount() const { return nVertexCount_; }
     DWORD active() const { return bActive_; }
-    /* 4-aligned in practice; the class is packed only for its embedders. */
  
  
     float *samples() { return samples_; }
