@@ -81,16 +81,13 @@ public:
                    DWORD colourTop, DWORD colourBottom,
                    SceneTexture *panelTex, SceneTexture *frameTex);
 
-    /* Constructor and destructor body. */
-    void construct();
-    void destruct();
-
-    /* The lifecycle, for the two global fonts. */
-    static TextRenderer * 
-    scalarDeletingDtor(TextRenderer *self, unsigned int flags);
+    /* An empty atlas; the destructor releases it. */
+    TextRenderer();
+    virtual ~TextRenderer();
+    TextRenderer(const TextRenderer &) = delete;
+    TextRenderer &operator=(const TextRenderer &) = delete;
 
 private:
-    const void   *vtable_;  /* one-slot table: the scalar dtor */
     unsigned int  cols_;    /* atlas columns; also the cell divisor */
     unsigned int  rows_;    /* atlas rows */
     SceneTexture  atlas_;

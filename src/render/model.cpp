@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
+#include <new>
 #include "model.h"
 #include "log.h"
 #include <stdlib.h>
@@ -23,14 +24,6 @@ static void mm_lower_inplace(char *s)
             *s += ' ';
 }
 
-typedef void *(  *mm_scalar_dtor_fn)(void *self, unsigned int flags);
-
-static void mm_delete(CFaktMesh *m)
-{
-    mm_scalar_dtor_fn dtor = *(mm_scalar_dtor_fn *)m->vtable();
-    dtor(m, 1);
-}
-
 CFaktMesh *ModelManager::findOrImport(char *name)
 {
     for (LinkedListNode *node = cache_.head(); node != NULL; ) {
@@ -45,11 +38,10 @@ CFaktMesh *ModelManager::findOrImport(char *name)
         }
     }
 
-    void *mem = malloc(sizeof(CFaktMesh));
-    CFaktMesh *mesh = (mem != NULL) ? ((CFaktMesh *)mem)->init() : NULL;
+    CFaktMesh *mesh = new (std::nothrow) CFaktMesh();
     if ((mesh->importSceneModels(name) & 0xff) == 0) {
         if (mesh != NULL)
-            mm_delete(mesh);
+            delete mesh;
         if (pLogger_ != NULL)
             pLogger_->logMessage(3, GS_MM_FAILED, name);
         return NULL;
@@ -67,7 +59,7 @@ void ModelManager::clearReleaseFree()
         node = node->next();
         if (mesh != NULL) {
             mesh->releaseModelBuffers();
-            mm_delete(mesh);
+            delete mesh;
         }
     }
     cache_.clear();

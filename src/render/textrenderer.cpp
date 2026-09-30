@@ -413,32 +413,15 @@ void TextRenderer::drawBig(float x, float y, float cellW, float cellH,
 
 /* ─── The lifecycle ─────────────────────────────────────────────────────────
  *
- * The two fonts are globals, constructed and destroyed by staticinit.cpp.  The
- * scalar dtor is the one vtable slot; a global is never deleted, so its free
- * is never reached. */
-static void *const g_TextVtable[1] = { (void *)&TextRenderer::scalarDeletingDtor };
-
-void TextRenderer::construct()
+ * The two fonts are globals. */
+TextRenderer::TextRenderer()
 {
-    atlas()->construct();
-    vtable_ = g_TextVtable;
     rows_ = 0;
     cols_ = 0;
 }
 
-void TextRenderer::destruct()
+TextRenderer::~TextRenderer()
 {
-    vtable_ = g_TextVtable;
-    atlas()->dtorBody();
-}
-
-TextRenderer * 
-TextRenderer::scalarDeletingDtor(TextRenderer *self, unsigned int flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
 }
 
 /* ─── DrawTextPanel ───────────────────────────────────────────────────────

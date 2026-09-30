@@ -17,6 +17,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <new>
 #include "scenetexture.h"
 #include "tga.h"
 #include "log.h"
@@ -313,17 +314,6 @@ static void __stdcall st_pick_texture_format(RenderDevice *dev, DWORD bpp,
 
  
 
-/* ─── The SceneTexture lifecycle ────────────────────────────────────────────
- *
- * The scalar deleting destructor is reachable only through the vtable. */
-
-static void *const g_SceneTextureVtable[1] = { (void *)&SceneTexture::scalarDtor };
-
-static void *scene_vtable(void)
-{
-    return (void *)g_SceneTextureVtable;
-}
-
 void SceneTexture::releaseD3DTexture()
 {
     IDirect3DTexture2 *tex = pTexture2_;
@@ -334,30 +324,15 @@ void SceneTexture::releaseD3DTexture()
     releaseSurfaces();
 }
 
-SceneTexture *SceneTexture::construct()
+SceneTexture::SceneTexture()
 {
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::Constructor", &seen);
-    LoadedImage::construct();
-    unknown00_ = scene_vtable();
     pTexture2_      = NULL;
-    return this;
 }
 
-void SceneTexture::dtorBody()
+SceneTexture::~SceneTexture()
 {
     static unsigned long seen; Texture_ImageFirstCall("SceneTexture::DtorBody", &seen);
-    unknown00_ = scene_vtable();  // dead: DtorBody installs the base table
-    LoadedImage::dtorBody();
-}
-
-SceneTexture * 
-SceneTexture::scalarDtor(SceneTexture *self, unsigned int flags)
-{
-    static unsigned long seen; Texture_ImageFirstCall("SceneTexture::ScalarDeletingDtor", &seen);
-    self->dtorBody();
-    if ((flags & 1) != 0)
-        free(self);  // flag 1: heap-allocated by its factory
-    return self;
 }
 
 /* ─── BindTextureResource ───────────────────────────────────────────────────
@@ -627,14 +602,6 @@ static void tm_lower_inplace(char *s)
             *s += ' ';
 }
 
-typedef void *(  *tm_scalar_dtor_fn)(void *self, unsigned int flags);
-
-static void tm_delete(SceneTexture *t)
-{
-    tm_scalar_dtor_fn dtor = *(tm_scalar_dtor_fn *)t->vtable();
-    dtor(t, 1);
-}
-
 SceneTexture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
                          DWORD alphaFlag, UINT bpp, DWORD textureStage)
 {
@@ -650,13 +617,12 @@ SceneTexture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
         }
     }
 
-    void *mem = malloc(sizeof(SceneTexture));
-    SceneTexture *tex = (mem != NULL) ? ((SceneTexture *)mem)->construct() : NULL;
+    SceneTexture *tex = new (std::nothrow) SceneTexture();
     unsigned int ok = tex->importSceneTextures(dev, filename,
                                                   alphaFlag, bpp, textureStage);
     if ((ok & 0xff) == 0) {
         if (tex != NULL)
-            tm_delete(tex);
+            delete tex;
         if (pLogger_ != NULL)
             pLogger_->logMessage(3, GS_TM_FAILED, filename);
         return NULL;
@@ -674,7 +640,7 @@ void TextureManager::releaseAll()
         node = node->next();
         if (tex != NULL) {
             tex->releaseD3DTexture();
-            tm_delete(tex);
+            delete tex;
         }
     }
     cache_.clear();

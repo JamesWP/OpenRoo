@@ -143,29 +143,11 @@ unsigned int SkyBackground::buildFromFaceNames(RenderDevice *dev, const char *up
  * The one instance is ThemeAssetBlock::sky, built and destroyed by the block's
  * aggregate ctor/dtor (theme.cpp).  The dtor releases the six face textures
  * last to first. */
-static void *const g_SkyVtable[1] = { (void *)&SkyBackground::scalarDtor };
-
-SkyBackground *SkyBackground::construct()
+SkyBackground::SkyBackground()
 {
-    for (int f = 0; f < 6; f++)
-        Textures_[f].construct();
-    pVtable_ = g_SkyVtable;
     skyFillGeometry();
-    return this;
 }
 
-void SkyBackground::dtorBody()
+SkyBackground::~SkyBackground()
 {
-    pVtable_ = g_SkyVtable;
-    for (int f = 6; f-- > 0; )
-        Textures_[f].dtorBody();
-}
-
-SkyBackground * 
-SkyBackground::scalarDtor(SkyBackground *self, unsigned int flags)
-{
-    self->dtorBody();
-    if (flags & 1)
-        free(self);
-    return self;
 }

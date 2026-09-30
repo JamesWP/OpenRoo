@@ -220,49 +220,24 @@ void ThemeObjectTypeSlot::release()
     memset((void *)this, 0, sizeof(*this));
 }
 
-/* Every slot is a member of the global block.  Records are constructed in
- * order and destroyed last to first, as MSVC's vector iterators do; none of
- * the constructors can throw.  PRESERVED: the slot destructor installs the
- * vtable, then the release zeroes the whole slot, so the record destructors
- * that follow run on zeroed members. */
-static void *const g_ThemeSlotVtable[1] = { (void *)&ThemeObjectTypeSlot::scalarDtor };
-
-ThemeObjectTypeSlot *ThemeObjectTypeSlot::construct()
+/* Every slot is a member of the global block.  PRESERVED: the destructor's
+ * release zeroes the whole slot, so the record destructors that follow run on
+ * zeroed members. */
+ThemeObjectTypeSlot::ThemeObjectTypeSlot()
 {
-    pVtable_ = (void *)g_ThemeSlotVtable;
-    return this;
 }
 
-void ThemeObjectTypeSlot::destruct()
+ThemeObjectTypeSlot::~ThemeObjectTypeSlot()
 {
-    pVtable_ = (void *)g_ThemeSlotVtable;
     release();
 }
 
-ThemeObjectTypeSlot * 
-ThemeObjectTypeSlot::scalarDtor(ThemeObjectTypeSlot *self, unsigned int flags)
+ThemeAssetBlock::ThemeAssetBlock()
 {
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
 }
 
-/* Members only: the 38 slots in order, then the sky; destruction in reverse.
- * The plain data between them is left alone. */
-ThemeAssetBlock *ThemeAssetBlock::construct()
+ThemeAssetBlock::~ThemeAssetBlock()
 {
-    for (int i = 0; i < THEME_OBJ_COUNT; i++)
-        slots_[i].construct();
-    sky_.construct();
-    return this;
-}
-
-void ThemeAssetBlock::destruct()
-{
-    sky_.dtorBody();
-    for (int i = THEME_OBJ_COUNT; i-- > 0; )
-        slots_[i].destruct();
 }
 
 /* PRESERVED: EXPLOSION's slot is not in the list, so its particle systems and
