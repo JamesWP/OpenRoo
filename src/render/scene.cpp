@@ -14,19 +14,18 @@ Scene g_scene;
 
 Scene *Scene::construct()
 {
-    objects_.init();
     models_.construct();
     textures_.construct();
     return this;
 }
 
 /* Members in reverse.  The objects themselves are not freed -- only the list's
- * nodes, by LinkedList::destruct. */
+ * nodes. */
 void Scene::destruct()
 {
     textures_.destruct();
     models_.destruct();
-    objects_.destruct();
+    objects_.clear();
 }
 
 void Scene::freeSceneObjects()
@@ -42,7 +41,7 @@ void Scene::freeSceneObjects()
     objects_.clear();
     models_.clearReleaseFree();
     textures_.releaseAll();
-    memset(this, 0, sizeof *this);  // PRESERVED: vtable pointers too; nothing reads them again
+    memset((void *)this, 0, sizeof *this);  // PRESERVED: vtable pointers too; nothing reads them again
 }
 
 /* ─── BuildSceneObjectList ───────────────────────────────────────────────

@@ -33,22 +33,18 @@ public:
     HighScoreRecord       *record(unsigned int i)       { return &records_[i]; }
     const HighScoreRecord *record(unsigned int i) const { return &records_[i]; }
 
-    // Called only by the Game's construction and destruction.
-    void construct();
-    void destruct();
+    HighScoreTable();
+    virtual ~HighScoreTable();
+    HighScoreTable(const HighScoreTable &) = delete;
+    HighScoreTable &operator=(const HighScoreTable &) = delete;
     // The default name in the first count() rows, then ten fixed score and
     // level pairs.  Its four stack arguments are ignored.
     void fillDefaults();
 
-    /* The one slot of HighScoreTable's vtable. */
-    static HighScoreTable * 
-    scalarDeletingDtor(HighScoreTable *self, unsigned char flags);
 
 private:
-    HighScoreTable() = delete;  // only ever reached through the Game
      
 
-    const void      *vtable_;  // our one-slot table
     unsigned char    lastRank_;
     HighScoreRecord  records_[RECORD_MAX];
     unsigned char    count_;

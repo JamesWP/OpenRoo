@@ -108,28 +108,16 @@ void TextEntry::poll(unsigned int phase)
 #undef ACTIVE
 }
 
-static void *const g_TextEntryVtable[1] = { (void *)&TextEntry::scalarDeletingDtor };
-
 /* buffer_ is left as it was. */
-void TextEntry::construct()
+TextEntry::TextEntry()
 {
-    vtable_    = g_TextEntryVtable;
     active_    = 0;
     lastKey_   = 0;
     cursor_    = 0;
     maxLength_ = 0;
 }
 
-void TextEntry::destruct()
+TextEntry::~TextEntry()
 {
-    vtable_ = g_TextEntryVtable;
 }
 
-TextEntry * 
-TextEntry::scalarDeletingDtor(TextEntry *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}

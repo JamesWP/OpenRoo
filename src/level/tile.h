@@ -268,9 +268,9 @@ public:
     // On a switch cell: the switch number, copied into the entity.
     unsigned char field1f3() const             { return field_1f3; }
 
+    Tile() = default;  // left uninitialised, as the level loader fills it
+
 private:
-    Tile() = delete;  // only ever reached through at()
-     
 
     unsigned char height_;        // file byte 0
     unsigned char objectMarker_;  // file byte 1: the kind

@@ -688,7 +688,6 @@ static void *const g_TextureManagerVtable[1] = { (void *)&TextureManager::scalar
 
 TextureManager *TextureManager::construct()
 {
-    cache_.init();
     vtable_  = (void *)g_TextureManagerVtable;
     pLogger_ = NULL;
     return this;
@@ -697,7 +696,7 @@ TextureManager *TextureManager::construct()
 void TextureManager::destruct()
 {
     vtable_ = (void *)g_TextureManagerVtable;
-    cache_.destruct();
+    cache_.clear();
 }
 
 TextureManager * 

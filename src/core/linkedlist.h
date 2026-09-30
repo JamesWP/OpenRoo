@@ -1,5 +1,5 @@
 /* LinkedList: an intrusive doubly-linked list of opaque values, with a
- * one-slot vtable (the scalar deleting destructor).  It is embedded in many
+ * virtual destructor (one vtable slot).  It is embedded in many
  * objects, so its 16 bytes and its node's 12 are fixed.  pValue is compared as
  * a raw word and never dereferenced, so small integer codes (the Player's
  * timed-effect codes) are stored in it directly. */
@@ -33,14 +33,11 @@ class LinkedList {
 public:
      
 
-    /* Sets the vtable and zeroes the three fields. */
-    void init();
-    /* Re-installs the vtable, then clear(). */
-    void destruct();
-    /* Vtable slot 0: destruct, then frees self when bit 0 of flags is set.
-     * Returns self. */
-    static LinkedList * 
-    scalarDeletingDtor(LinkedList *self, unsigned char bFreeSelf);
+    /* An empty list.  The destructor frees the nodes, not their values. */
+    LinkedList();
+    virtual ~LinkedList();
+    LinkedList(const LinkedList &) = delete;
+    LinkedList &operator=(const LinkedList &) = delete;
 
     /* Appends a new node holding pValue at the tail. */
     void append(void *pValue);
@@ -66,7 +63,6 @@ public:
     }
 
 private:
-    void           **vtable;   // +0x00
     LinkedListNode  *pHead;    // +0x04
     LinkedListNode  *pTail;    // +0x08
     unsigned long    dwCount;  // +0x0c

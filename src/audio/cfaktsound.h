@@ -11,19 +11,20 @@ struct vec3d {
     float x, y, z;
 };
 
-/* The device state.  Embedded, never allocated on its own, so its deleting
- * destructor never frees. */
+/* The device state.  Embedded, never allocated on its own. */
 class __attribute__((packed)) CFaktSound {
 public:
     /* Turns the 3D listener on or off.  Returns 0 on failure, after releasing
      * everything; the sound manager gives up when it does. */
     int create3DListener(int enable);
 
-    /* Lifecycle and start-up.  Initialize creates the device at priority level
+    /* Start-up.  Initialize creates the device at priority level
      * and the primary buffer in the given format, then starts it playing;
      * returns 0 on failure.  The 3D form adds the listener. */
-    void blankFields();
-    void clearState();
+    CFaktSound();
+    virtual ~CFaktSound();
+    CFaktSound(const CFaktSound &) = delete;
+    CFaktSound &operator=(const CFaktSound &) = delete;
     void releaseComRefs();
     int  initialize(HWND window, UINT bufferflags, short channels,
                     int samplespersec, USHORT bitspersample, void *logger);
@@ -40,19 +41,13 @@ public:
     /* WinMain sets a rolloff of 0.3. */
     void apply3DRolloffParams(float rolloff_factor, DWORD dwApply);
 
-    void                   *vtable() const { return vtable_; }
     void                   *logger() const { return logger_; }
     IDirectSound           *directsound() const { return directsound_; }
     IDirectSoundBuffer     *soundbuffer() const { return soundbuffer_; }
 
-    /* Vtable slot 0.  Always embedded: the free flag is ignored. */
-    static CFaktSound * 
-    scalarDeletingDtor(CFaktSound *self, DWORD free_memory);
-
 private:
  
 
-    void                   *vtable_;
     DWORD                   logger_initialized_;  // always 0: the logger is never owned
     void                   *logger_;              // the caller's logger; not used here
     IDirectSound           *directsound_;
@@ -61,7 +56,4 @@ private:
     IDirectSound3DListener *directsound3dlistener_;  // NULL when 3D sound is off
 };
 
-
-/* The one-slot vtable: the deleting destructor. */
-extern const void *const CFAKTSOUND_VTABLE;
 

@@ -4,6 +4,7 @@
 #define DIRECTSOUND_VERSION 0x0800
 #include <windows.h>
 #include <dsound.h>
+#include <new>
 #include "doublesoundbuff.h"
 #include "voicepool.h"
 #include <stdlib.h>
@@ -88,8 +89,9 @@ doublesoundbuff *doublesoundbuff::init()
     ++g_nInit; { static unsigned long seen; dsb_first("Init", &seen); }
     master()->init();
     spare()->init();
-    clones()->init();
-    pools()->init();
+    // Stopgap: the entry is raw operator-new memory, so its lists are placed.
+    new (clones()) LinkedList();
+    new (pools()) LinkedList();
     dwMasterTaken_ = 0;
     dwSpareTaken_  = 0;
     return this;
@@ -116,8 +118,8 @@ void doublesoundbuff::destruct()
 {
     ++g_nDestruct; { static unsigned long seen; dsb_first("Destruct", &seen); }
     clear();
-    pools()->destruct();
-    clones()->destruct();
+    pools()->~LinkedList();
+    clones()->~LinkedList();
     spare()->reinitBuffer();
     master()->reinitBuffer();
     dsb_census();

@@ -223,12 +223,9 @@ void MenuTree::navigate(int now)
 #undef COUNT
 }
 
-static void *const g_MenuTreeVtable[1] = { (void *)&MenuTree::scalarDeletingDtor };
-
-/* The vtable and these six fields; nothing else is touched. */
-void MenuTree::construct()
+/* These six fields; nothing else is touched. */
+MenuTree::MenuTree()
 {
-    vtable_       = g_MenuTreeVtable;
     depth_        = 0;
     cursor_       = 0;
     lastKey_      = 0;
@@ -237,19 +234,10 @@ void MenuTree::construct()
     lastNodeSeen_ = 0;
 }
 
-void MenuTree::destruct()
+MenuTree::~MenuTree()
 {
-    vtable_ = g_MenuTreeVtable;
 }
 
-MenuTree * 
-MenuTree::scalarDeletingDtor(MenuTree *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}
 
 /* Children are node ids; 0xc8 + i is save slot i's entry.  Node 2 is
  * Load Game, 42 Save Game, 40 the level-complete choice. */

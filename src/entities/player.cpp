@@ -484,15 +484,9 @@ void Player::actReleaseBomb()
   void   Player_ActHarakiri(int, int, void *p)    { ((Player *)p)->actHarakiri(); }
   void   Player_ActReleaseBomb(int, int, void *p) { ((Player *)p)->actReleaseBomb(); }
 
-/* PRESERVED: the ctor and dtor keep the original's transient vtable stores,
- * and zeroSoundSlots() runs twice. */
-static void *const g_PlayerVtable[1] = { (void *)&Player::scalarDeletingDtor };
-
-void Player::construct()
+/* PRESERVED: zeroSoundSlots() runs twice. */
+Player::Player()
 {
-    populateBaseForGame();
-    ((LinkedList *)&effectList_)->init();
-    vtable_  = g_PlayerVtable;
     pool_9f_ = NULL;
     memset(pickupSounds_, 0, sizeof(pickupSounds_));
     zeroSoundSlots();
@@ -513,22 +507,11 @@ void Player::construct()
 }
 
 /* The path-finder is allocated on the game heap, so it is freed there. */
-void Player::destruct()
+Player::~Player()
 {
-    vtable_ = g_PlayerVtable;
     if (pathfinder_ != NULL) {
         pathfinder_->dispose();
         free(pathfinder_);
     }
-    ((LinkedList *)&effectList_)->destruct();
-    destroyBaseForGame();
 }
 
-Player * 
-Player::scalarDeletingDtor(Player *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}

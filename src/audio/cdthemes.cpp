@@ -102,27 +102,16 @@ int CdThemes::validateTrackLengths()
     return 1;
 }
 
-/* Construction and destruction only set the vtable.  PRESERVED: the theme
+/* Construction and destruction do nothing.  PRESERVED: the theme
  * table is left uninitialised until it is read. */
-void CdThemes::construct()
+CdThemes::CdThemes()
 {
-    vtable_ = const_cast<void*>(CDTHEMES_VTABLE);
 }
 
-void CdThemes::destruct()
+CdThemes::~CdThemes()
 {
-    vtable_ = const_cast<void*>(CDTHEMES_VTABLE);
 }
 
-/* Frees on bit 0; the only CdThemes is the Game's, so it never does. */
-CdThemes * 
-CdThemes::scalarDeletingDtor(CdThemes *self, unsigned int flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}
 /* Opened in text mode, and needlessly writable.  PRESERVED:
  *   - the line buffer starts empty and is parsed even when the first read
  *     gets nothing;
@@ -193,7 +182,3 @@ int CdThemes::listTrackLengths()
     return 1;
 }
 
-static void *const cdthemes_vtable_slots[1] = {
-    (void *)&CdThemes::scalarDeletingDtor,
-};
-extern const void *const CDTHEMES_VTABLE = cdthemes_vtable_slots;

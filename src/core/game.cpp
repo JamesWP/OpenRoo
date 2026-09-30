@@ -34,30 +34,12 @@
 #include "foe.h"
 #include "bomb.h"
 
-static void *const g_GameVtable[1] = { (void *)&Game::scalarDeletingDtor };
-
 /* The key bytes of the save-slot files ('7') and the high-score file ('K'). */
 static const char SAVE_KEY      = 0x37;
 static const char HIGHSCORE_KEY = 0x4b;
 
-Game *Game::construct(const char *gameName)
+Game::Game(const char *gameName)
 {
-    rootMenu_.construct();
-    cdThemes_.construct();
-    themeSounds_.construct();
-    extraObjects_.construct();
-    soundManager()->construct();
-    cheatEntry_.construct();
-    highScores_.construct();
-    nameEntry_.construct();
-    saveSlots_.installVtable();
-    player()->construct();
-    menu_.construct();
-    scriptPlayer_.construct();
-    config_.construct();
-    map_.construct();
-
-    vtable_     = g_GameVtable;
     field_0c_   = 0;
     tickCount_  = 0;
     field_04_   = 1.0;
@@ -79,7 +61,6 @@ Game *Game::construct(const char *gameName)
     scriptPlayer_.clearStreams();
     memset(foeIds_,  0, sizeof(foeIds_));
     memset(bombIds_, 0, sizeof(bombIds_));
-    player()->clearPathfinder();
     field_48b14_ = 0;
     fixedSounds_.switchClick    = NULL;
     fixedSounds_.menuUpDown     = NULL;
@@ -106,7 +87,7 @@ Game *Game::construct(const char *gameName)
     if (!loadGameFile(gameFileName_)) {
         g_logger.logMessage(4, GS_GAME_FILE_FAILED, gameFileName_);
         PostQuitMessage(1);
-        return this;
+        return;
     }
 
     debounce_ = 0x0d;
@@ -141,7 +122,7 @@ Game *Game::construct(const char *gameName)
     if (field_0c_ != 0 && levelCount_ > 10) {
         g_logger.logMessage(4, GS_GAME_DEMO_ABORT);
         PostQuitMessage(1);
-        return this;
+        return;
     }
     g_logger.logMessage(2, GS_GAME_COMMERCIAL);
     waveOutGetVolume(NULL, (DWORD *)config_.savedWaveOutVolumeRef());
@@ -176,12 +157,10 @@ Game *Game::construct(const char *gameName)
     cheatEntry_.setLastKey(0x0d);
     parkedCameraOption_ = 0;
     initialised_        = 1;
-    return this;
 }
 
-void Game::destruct()
+Game::~Game()
 {
-    vtable_ = g_GameVtable;
     g_logger.logMessage(1, GS_GAME_DTOR_START);
     LiftObject::purgeAll(this);
     SlideObject::purgeAll(this);
@@ -212,20 +191,6 @@ void Game::destruct()
     waveOutSetVolume(NULL, config_.savedWaveOutVolume());
     g_cdAudio.setMixerVolume(config_.savedCdMixerVolume());
 
-    map_.destruct();
-    config_.destruct();
-    scriptPlayer_.destruct();
-    menu_.destruct();
-    player()->destruct();
-    saveSlots_.restoreVtable();
-    nameEntry_.destruct();
-    highScores_.destruct();
-    cheatEntry_.destruct();
-    soundManager()->destruct();
-    extraObjects_.destruct();
-    themeSounds_.destruct();
-    cdThemes_.destruct();
-    rootMenu_.destruct();
 }
 
 /* "<gamedir>\<name>.gam", opened in text mode ("r") even for the binary form.
@@ -330,12 +295,3 @@ void Game::releaseAllSounds()
     fixedSounds_.loaded = 0;
 }
 
-/* free() matches the malloc in WinMain. */
-Game * 
-Game::scalarDeletingDtor(Game *self, unsigned char flags)
-{
-    self->destruct();
-    if (flags & 1)
-        free(self);
-    return self;
-}

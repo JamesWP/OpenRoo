@@ -21,7 +21,11 @@ public:
     // that pointer becomes a LevelMap again.
     static LevelMap *fromTileBase(Tile *base)
     {
+        // The vptr makes LevelMap non-standard-layout; grid_'s offset is fixed.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
         return (LevelMap *)((unsigned char *)base - offsetof(LevelMap, grid_));
+#pragma GCC diagnostic pop
     }
     Tile *tileBase()                     { return &grid_[0][0]; }
 
@@ -57,19 +61,15 @@ public:
     int          fileTimeLimit() const       { return fileTimeLimit_; }
     int          gemsRequired() const        { return gemsRequired_; }
 
-    // Called only by the Game's construction and destruction.
-    void construct();
-    void destruct();
+    LevelMap();
+    virtual ~LevelMap();
+    LevelMap(const LevelMap &) = delete;
+    LevelMap &operator=(const LevelMap &) = delete;
 
-    /* The one slot of LevelMap's vtable. */
-    static LevelMap * 
-    scalarDeletingDtor(LevelMap *self, unsigned char flags);
 
 private:
-    LevelMap() = delete;  // embedded in the Game
      
 
-    const void   *vtable_;         // our one-slot table
     int           timeLimit_;      // the live time limit, s; a time bonus adds 5
     unsigned int  timeElapsed_;    // ms of play
     unsigned int  bonus_;          // the level's bonus flag

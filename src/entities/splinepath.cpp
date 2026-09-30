@@ -62,7 +62,6 @@ SplinePath::SplinePath()
     fx_init();
     if (s_diag)
         ++s_ctors;
-    controlPointList_.init();
 }
 
 SplinePath::~SplinePath()
@@ -71,7 +70,6 @@ SplinePath::~SplinePath()
     if (s_diag)
         ++s_dtors;
     purgeControlPoints();
-    controlPointList_.destruct();
 }
 
 void SplinePath::addControlPoint(float x, float y, float z)

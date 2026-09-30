@@ -480,25 +480,22 @@ public:
     ThemeSoundTable      *themeSounds()             { return &themeSounds_; }
 
     /* ── the lifecycle (game.cpp) ───────────────────────────────────────
-     * construct() builds every member, reads the .gam, save slots,
-     * Karoo.cfg and high scores, then enters the first level.  destruct()
-     * saves the scores and config and tears it all down.  The vtable has
-     * one slot, the scalar deleting destructor. */
-    Game *construct(const char *gameName);
-    void  destruct();
-
-    static Game * 
-    scalarDeletingDtor(Game *self, unsigned char flags);
+     * The members build themselves.  The constructor then reads the .gam,
+     * save slots, Karoo.cfg and high scores; check initialised() afterwards.
+     * The destructor saves the scores and config, and the members tear
+     * themselves down. */
+    explicit Game(const char *gameName);
+    virtual ~Game();
+    Game(const Game &) = delete;
+    Game &operator=(const Game &) = delete;
 
 private:
     int   loadGameFile(const char *name);   /* the .gam: the level names */
     void  releaseAllSounds();
 
 private:
-    Game() = delete;   /* game-owned; only ever reached by pointer */
      
 
-    const void   *vtable_;                                /* ours, one slot */
     double        field_04_;                              /* Load sets 1.0; reader not decoded */
     int           field_0c_;
     unsigned int  mapChanged_;

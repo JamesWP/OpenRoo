@@ -71,17 +71,14 @@ public:
     // The embedded spline, for callers that hand it on.
     SplinePath         *spline()                   { return &spline_; }
 
-    // Called only by the Game's construction and destruction.
-    void construct();
-    void destruct();
+    ScriptPlayer();
+    virtual ~ScriptPlayer();
+    ScriptPlayer(const ScriptPlayer &) = delete;
+    ScriptPlayer &operator=(const ScriptPlayer &) = delete;
     void clearStreams();  // zeroes streams_[]
 
-    /* The one slot of ScriptPlayer's vtable. */
-    static ScriptPlayer * 
-    scalarDeletingDtor(ScriptPlayer *self, unsigned char flags);
 
 private:
-    ScriptPlayer() = delete;  // only ever reached through the Game
     unsigned char playScript(const char *line);
     void updateStreamWait();
     void updateSpline();
@@ -90,7 +87,6 @@ private:
     void runNextCommand();
      
 
-    const void    *vtable_;  // our one-slot table
     unsigned short splineLines_;
     unsigned short textBlocks_;
     unsigned short againLine_;       // "fromhere" sets it to cursor + 1; "again" jumps back to it

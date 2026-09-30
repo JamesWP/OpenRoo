@@ -5,8 +5,7 @@
  *     exhausted heap faults inside Append;
  *   - Unlink repairs head and tail from the node's own links and never checks
  *     that the node is in this list: a foreign node corrupts both lists;
- *   - Unlink always returns 0, and no caller reads it;
- *   - Destruct re-installs the vtable before it clears. */
+ *   - Unlink always returns 0, and no caller reads it. */
 
 #include "linkedlist.h"
 #include <stdlib.h>  // free() of the list object
@@ -82,14 +81,10 @@ static ListFx list_fx(void)
     return fx;
 }
 
-/* The one-slot vtable. */
-static void *const g_ListVtable[1] = { (void *)&LinkedList::scalarDeletingDtor };
-
-void LinkedList::init()
+LinkedList::LinkedList()
 {
     ++g_nInit;
     { static unsigned long seen; list_first("Init", &seen); }
-    vtable  = (void **)g_ListVtable;
     pHead   = NULL;
     pTail   = NULL;
     dwCount = 0;
@@ -110,25 +105,11 @@ void LinkedList::clear()
     dwCount = 0;
 }
 
-void LinkedList::destruct()
+LinkedList::~LinkedList()
 {
     ++g_nDestruct;
     { static unsigned long seen; list_first("Destruct", &seen); }
-    vtable = (void **)g_ListVtable;
     clear();
-}
-
-LinkedList * 
-LinkedList::scalarDeletingDtor(LinkedList *self, unsigned char bFreeSelf)
-{
-    ++g_nScalarDtor;
-    { static unsigned long seen; list_first("ScalarDestructor", &seen); }
-    self->destruct();
-    if ((bFreeSelf & 1) != 0)
-        // No list is allocated on its own today; free() matches the malloc the
-        // rest of the code uses.
-        free(self);
-    return self;
 }
 
 void LinkedList::append(void *pValue)

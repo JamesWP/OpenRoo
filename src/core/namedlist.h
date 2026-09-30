@@ -1,8 +1,8 @@
 /* NamedEntryList: a doubly-linked list keyed by name, a 0x100-byte string,
  * each entry holding one opaque payload.  SoundManager keeps its two sound
  * lists in it (the payload is a doublesoundbuff asset entry), and
- * ProgableControl its five action tables.  A one-slot vtable, the scalar
- * deleting destructor. */
+ * ProgableControl its five action tables.  It has a virtual
+ * destructor. */
 
 #pragma once
 
@@ -31,14 +31,11 @@ class NamedEntryList {
 public:
      
 
-    /* Sets the vtable and zeroes the three fields. */
-    void construct();
-    /* Vtable slot 0: dtorBody, then frees self when bit 0 of bFreeSelf is
-     * set.  Returns self. */
-    static NamedEntryList * 
-    scalarDtor(NamedEntryList *self, unsigned char bFreeSelf);
-    /* Re-installs the vtable, then clear(). */
-    void dtorBody();
+    /* An empty list.  The destructor frees the entries, not their payloads. */
+    NamedEntryList();
+    virtual ~NamedEntryList();
+    NamedEntryList(const NamedEntryList &) = delete;
+    NamedEntryList &operator=(const NamedEntryList &) = delete;
     /* Makes an entry holding a copy of pszName and pPayload, and links it at
      * the tail.  Returns the entry, or NULL when the name is too long; no
      * caller reads it. */
@@ -57,7 +54,6 @@ public:
     unsigned long count() const { return dwCount; }
 
 private:
-    void        **vtable;   // +0x00
     NamedEntry   *pHead;    // +0x04
     NamedEntry   *pTail;    // +0x08
     unsigned long dwCount;  // +0x0c

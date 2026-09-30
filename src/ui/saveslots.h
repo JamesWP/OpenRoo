@@ -42,9 +42,10 @@ public:
     // Blanks the first count() records.
     void           initialiseEmpty();
 
-    /* The one slot of the vtable: the deleting destructor. */
-    static void * 
-    scalarDeletingDtor(SaveSlots *self, unsigned int flags);
+    SaveSlots();
+    virtual ~SaveSlots();
+    SaveSlots(const SaveSlots &) = delete;
+    SaveSlots &operator=(const SaveSlots &) = delete;
 
     /* Loads and saves every slot's file, enciphered with key.  See
      * saveslots.cpp. */
@@ -52,18 +53,9 @@ public:
 
     int writeAllSlotFiles(const char *name, char key);
 
-    /* The constructor and destructor body both only install the vtable. */
-    static void *vtbl(void);
-
-    void installVtable();
-
-    void restoreVtable();
-
 private:
-    SaveSlots() = delete;  // only ever reached through the Game
      
 
-    const void    *vtable_;  // our one-slot table
     unsigned short editSlot_;
     SaveSlot       edit_;
     unsigned char  count_;

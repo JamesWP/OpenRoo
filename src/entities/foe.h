@@ -66,22 +66,11 @@ public:
     bool finishDespawn(LevelMap *map);
 
 private:
-    // The one-slot vtable: the scalar deleting destructor (bit 0 of flags
-    // frees the memory).  The remove destroys through it.
-    struct Vtbl {
-        void *(  *scalarDeletingDtor)(Foe *self,
-                                                              unsigned int flags);
-    };
-    static const Vtbl VTABLE;
-
     // Allocates and constructs one; NULL if the allocation fails.
     static Foe *create();
     Foe();
-    // The destructor body.
-    void destroy();
-    // Vtable slot 0.
-    static void *  scalarDeletingDtor(Foe *self,
-                                                              unsigned int flags);
+    // Frees its tile claims and its path-finder.
+    ~Foe() override;
 
     Tile *tile(int u, int v) const;
 

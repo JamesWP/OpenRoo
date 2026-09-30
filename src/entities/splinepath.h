@@ -1,5 +1,5 @@
 /* SplinePath: a Bezier path through a list of control points.  It has a
- * virtual destructor (so a one-slot vtable, as in the original layout), which
+ * virtual destructor (a one-slot vtable, as in the original layout), which
  * purges the points.  One is embedded in the
  * ScriptPlayer (the flythrough camera) and one in every scene object (the
  * "usepath" animation). */
