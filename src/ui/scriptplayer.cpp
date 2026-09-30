@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include "gamelog.h"
 #include "gameglobals.h"
+#include <new>
 #include "splinepath.h"
 #include <stdlib.h>
 #include <math.h>
@@ -575,7 +576,7 @@ static void *const g_ScriptPlayerVtable[1] = { (void *)&ScriptPlayer::scalarDele
 void ScriptPlayer::construct()
 {
     stream_.initialize();
-    spline_.construct();
+    new (&spline_) SplinePath();  // Game is malloc'd, so no implicit ctor
     cursor_       = 0;
     splineActive_ = 0;
     soundManager_ = NULL;
@@ -593,7 +594,7 @@ void ScriptPlayer::destruct()
         stream_.releaseResources();
         streamReady_ = 0;
     }
-    spline_.destruct();
+    spline_.~SplinePath();
     stream_.deinitInstance();
 }
 

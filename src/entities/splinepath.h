@@ -1,5 +1,6 @@
-/* SplinePath: a Bezier path through a list of control points, with a one-slot
- * vtable (the scalar deleting destructor).  One is embedded in the
+/* SplinePath: a Bezier path through a list of control points.  It has a
+ * virtual destructor (so a one-slot vtable, as in the original layout), which
+ * purges the points.  One is embedded in the
  * ScriptPlayer (the flythrough camera) and one in every scene object (the
  * "usepath" animation). */
 
@@ -22,14 +23,10 @@ class SplinePath {
 public:
      
 
-    /* Construct, the scalar deleting destructor, and the destructor (which
-     * purges the points). */
-    SplinePath *construct();
-
-    static SplinePath * 
-    scalarDestructor(SplinePath *self, unsigned char bFreeSelf);
-
-    void destruct();
+    SplinePath();
+    virtual ~SplinePath();
+    SplinePath(const SplinePath &) = delete;
+    SplinePath &operator=(const SplinePath &) = delete;
 
     /* The point at t along the path, written to out; returns out. */
     float *evalBezierPath(float *out, float t);
@@ -46,12 +43,9 @@ public:
 
     long drawControlPolygon(RenderDevice *dev, unsigned long color);
 
-    void       **vtable() const { return vtable_; }
-
     const LinkedList *controlPoints() const { return &controlPointList_; }
 
 private:
-    void       **vtable_;
     LinkedList   controlPointList_;  // +0x04  head +0x08, count +0x10
      
 };

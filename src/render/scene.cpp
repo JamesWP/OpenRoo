@@ -35,7 +35,7 @@ void Scene::freeSceneObjects()
         SceneObject *o = (SceneObject *)n->value();
         n = n->next();
         if (o != NULL) {
-            o->spline.destruct();
+            o->spline.~SplinePath();
             ::operator delete(o);
         }
     }
@@ -66,7 +66,7 @@ void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *lo
         // model's radius are whatever the heap left, and animLoaded is stale
         // unless the .ani loads.
         SceneObject *o = (SceneObject *)::operator new(sizeof(SceneObject));
-        o->spline.construct();
+        new (&o->spline) SplinePath();
 
         o->type = r->kind;
         if (r->kind == EXTRA_MODEL)
