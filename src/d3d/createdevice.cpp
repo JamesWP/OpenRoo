@@ -175,7 +175,7 @@ static HRESULT WINAPI enum_display_modes_cb(LPDDSURFACEDESC2 pDesc, LPVOID ctx)
     DisplayMode mode = { pDesc->dwWidth, pDesc->dwHeight, bpp };
 
     char msg[256];
-    sprintf(msg, GS_D3D_FOUND_MODE, mode.dwWidth, mode.dwHeight, bpp);
+    sprintf(msg, GS_D3D_FOUND_MODE, (int)mode.dwWidth, (int)mode.dwHeight, (int)bpp);
     imagelog(msg);
 
     DeviceCreation::keepMode(self, mode);
@@ -195,7 +195,7 @@ static HRESULT WINAPI enum_zbuffer_cb(LPDDPIXELFORMAT pFmt, LPVOID ctx)
     ddiag_pixfmt("zbuffmt", pFmt);
 
     char msg[100];
-    sprintf(msg, GS_D3D_ZBUF_FMT, pFmt->dwZBufferBitDepth, pFmt->dwStencilBitDepth);
+    sprintf(msg, GS_D3D_ZBUF_FMT, (int)pFmt->dwZBufferBitDepth, (int)pFmt->dwStencilBitDepth);
     imagelog(msg);
 
     if (pFmt->dwFlags & DDPF_ZBUFFER) {
@@ -246,7 +246,7 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
     // now fails with the Direct3D3 error / a zero filter.
     if (!hal_render_depths(n->dd, &modeFilterFlags_))
         return DeviceCreation::fail(this, GS_D3D_ERR_D3D3_IFACE);
-    sprintf(msg, GS_D3D_RENDER_BITDEPTH, modeFilterFlags_);
+    sprintf(msg, GS_D3D_RENDER_BITDEPTH, (int)modeFilterFlags_);
     imagelog(msg);
 
     // ── Enumerate display modes ──
@@ -268,24 +268,24 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
     if (nModeIndex >= 0 && (size_t)nModeIndex < modes_.size()) {
         DisplayMode *mode = &modes_[nModeIndex];
         sprintf(msg, GS_D3D_TRYING_MODE,
-                mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
+                (int)mode->dwWidth, (int)mode->dwHeight, (int)mode->dwBitDepth);
         imagelog(msg);
         hr = n->dd->SetDisplayMode(mode->dwWidth, mode->dwHeight,
                                   mode->dwBitDepth, 0, 0);
         if (SUCCEEDED(hr)) {
             mode_ = mode;
         } else {
-            sprintf(msg, GS_D3D_FAILED_HR, hr);
+            sprintf(msg, GS_D3D_FAILED_HR, (unsigned)hr);
             imagelog(msg);
             mode = &modes_[0];
             sprintf(msg, GS_D3D_TRYING_FIRST_MODE,
-                    mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
+                    (int)mode->dwWidth, (int)mode->dwHeight, (int)mode->dwBitDepth);
             imagelog(msg);
         }
     } else {
         DisplayMode *mode = &modes_[0];
         sprintf(msg, GS_D3D_NO_MODE_SPECIFIED,
-                mode->dwWidth, mode->dwHeight, mode->dwBitDepth);
+                (int)mode->dwWidth, (int)mode->dwHeight, (int)mode->dwBitDepth);
         imagelog(msg);
     }
     if (mode_ == NULL) {
@@ -346,9 +346,9 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
                          (bHardware ? DDSCAPS_VIDEOMEMORY : DDSCAPS_SYSTEMMEMORY);
     dd.ddpfPixelFormat = n->zbufFmt;
 
-    sprintf(msg, GS_D3D_ZBUF_BITDEPTH,    n->zbufFmt.dwZBufferBitDepth);
+    sprintf(msg, GS_D3D_ZBUF_BITDEPTH,    (int)n->zbufFmt.dwZBufferBitDepth);
     imagelog(msg);
-    sprintf(msg, GS_D3D_STENCIL_BITDEPTH, n->zbufFmt.dwStencilBitDepth);
+    sprintf(msg, GS_D3D_STENCIL_BITDEPTH, (int)n->zbufFmt.dwStencilBitDepth);
     imagelog(msg);
 
     hr = n->dd->CreateSurface(&dd, &n->zBuffer, NULL);
