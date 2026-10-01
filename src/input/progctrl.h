@@ -1,4 +1,4 @@
-/* The programmable control: DirectInput keyboard and mouse devices, and the
+/* The programmable control: the keyboard and mouse devices (inputdev.h), and the
  * tables that map keys to named game actions.
  *
  * Actions are registered per mode (0..4, the game state the dispatch is called
@@ -8,10 +8,9 @@
  * There is one instance, g_progCtrl (gameglobals.h). */
 
 #pragma once
-#define DIRECTINPUT_VERSION 0x0800
 #include <windows.h>
-#include <dinput.h>
 #include <stddef.h>
+#include "inputdev.h"
 
 /* Called with the scan code that fired, the binding's strength and the context
  * given at registration. */
@@ -22,7 +21,7 @@ struct KeyBind {
     /* Frees kb and every binding chained after it; NULL frees nothing. */
     static void freeChain(KeyBind *kb);
 
-    int      scancode;  // DirectInput scan code, 0..255
+    int      scancode;  // inputdev scan code, 0..255
     int      strength;  // passed to the callback; 100 for a plain key
     KeyBind *next;
 };
@@ -56,7 +55,7 @@ private:
     DWORD        entry_count;
 };
 
-/* The whole control state.  The joystick is never set up: its setup, range and
+/* The whole control state.  The controller is never set up: its range and
  * dead-zone calls succeed without doing anything. */
 class ProgableControl {
 public:
@@ -81,10 +80,7 @@ public:
 
     /* The setup calls, in the order inputsetup.cpp makes them.  Each returns
      * 1 on success, 0 on failure. */
-    int  initDInput(HINSTANCE hInstance);
-    int  setupKbd(HWND hwnd);
-    int  setupMouse(HWND hwnd);
-    int  setupJoy(HWND hwnd);
+    int  setupDevices(void *instance, void *window);
     int  setJoyRange(int axis, int lo, int hi);
     void registerAction(unsigned short mode, const char *name,
                         ActionCallback cb, void *ctx);
@@ -112,22 +108,12 @@ public:
     const ActionTable &actionTable(int mode) const { return action_tables[mode]; }
 
 private:
-    void releaseDevices();
     int  readOrigEntryBindings(HANDLE f, int mode, ActionEntry *e);
     int  readOrigFormat(HANDLE f);
  
 
-    void                  *pLogger;
-    DWORD                  dwOwns_logger;
-    LPDIRECTINPUT8A        directinput;
-    LPDIRECTINPUTDEVICE8A  pKeyboard;
-    LPDIRECTINPUTDEVICE8A  pMouse;
-    LPDIRECTINPUTDEVICE8A  pJoystick;
-    char                   sep_or[50];  // joins key names in a binding description: " oder "
-    char                   prefix_joystick[50];
-    char                   suffix_positive[50];
-    char                   suffix_negative[50];
-    DWORD                  axis_midpoints[20];
+    inputdev::Devices      devices_;
+    char                   sep_or[50];  // joins key names in a binding description: " or "
     ActionTable            action_tables[5];    // one per mode
 };
 

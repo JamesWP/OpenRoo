@@ -1,4 +1,4 @@
-/* Input setup: brings DirectInput up for the game window, registers the
+/* Input setup: brings the input devices up for the game window, registers the
  * thirteen player and camera actions, binds the default keys, and saves the
  * bindings again at shutdown.  The devices and bindings live in the single
  * ProgableControl (progctrl.h). */
@@ -11,7 +11,7 @@ struct Game;
  * device acquisition fails.  A missing joystick is not an error.  The third
  * argument is unused. */
   int  
-Input_DirectInputSetup(HINSTANCE hInstance, HWND hwnd, DWORD unused, Game *game);
+Input_Setup(HINSTANCE hInstance, HWND hwnd, DWORD unused, Game *game);
 
 /* Logs, writes the bindings file and releases every input device. */
   void   Input_TrySaveSettings(void);

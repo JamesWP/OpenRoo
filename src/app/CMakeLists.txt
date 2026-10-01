@@ -12,6 +12,7 @@ add_library(app OBJECT
 target_include_directories(app PRIVATE
     .
     ../audiodev
+    ../inputdev
     ../videodev
     ../audio
     ../core

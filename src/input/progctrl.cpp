@@ -1,6 +1,4 @@
-#define DIRECTINPUT_VERSION 0x0800
 #include <windows.h>
-#include <dinput.h>
 #include <string.h>
 #include <stdio.h>
 #include "progctrl.h"
@@ -52,27 +50,9 @@ void ActionTable::freeAll()
     entry_count = 0;
 }
 
-void ProgableControl::releaseDevices()
-{
-    if (pKeyboard) { pKeyboard->Unacquire(); pKeyboard->Release(); pKeyboard = nullptr; }
-    if (pMouse)    { pMouse->Unacquire();    pMouse->Release();    pMouse    = nullptr; }
-    if (pJoystick) { pJoystick->Unacquire(); pJoystick->Release(); pJoystick = nullptr; }
-    if (directinput) { directinput->Release(); directinput = nullptr; }
-}
-
 ProgableControl::ProgableControl()
 {
-    pLogger       = nullptr;
-    dwOwns_logger = 0;
-    directinput   = nullptr;
-    pKeyboard     = nullptr;
-    pMouse        = nullptr;
-    pJoystick     = nullptr;
-    strncpy(sep_or,          " or ",    sizeof(sep_or)          - 1);
-    strncpy(prefix_joystick, "JOYSTICK ", sizeof(prefix_joystick) - 1);
-    strncpy(suffix_positive, " positive",  sizeof(suffix_positive) - 1);
-    strncpy(suffix_negative, " negative",  sizeof(suffix_negative) - 1);
-    memset(axis_midpoints, 0, sizeof(axis_midpoints));
+    strncpy(sep_or, " or ", sizeof(sep_or) - 1);
     for (int i = 0; i < 5; i++) {
         action_tables[i].head        = nullptr;
         action_tables[i].entry_count = 0;
@@ -81,107 +61,37 @@ ProgableControl::ProgableControl()
 
 ProgableControl::~ProgableControl()
 {
-    releaseDevices();
     for (int i = 0; i < 5; i++) action_tables[i].freeAll();
 }
 
 void ProgableControl::shutdown()
 {
-    releaseDevices();
+    devices_.destroy();
 }
 
-int ProgableControl::initDInput(HINSTANCE hInstance)
+int ProgableControl::setupDevices(void *instance, void *window)
 {
-    HRESULT hr = DirectInput8Create(hInstance, DIRECTINPUT_VERSION,
-                                    IID_IDirectInput8A,
-                                    reinterpret_cast<void**>(&directinput), nullptr);
-    if (FAILED(hr)) {
-        log_write("ProgCtrl::InitDInput: DirectInput8Create FAILED hr=0x%08lx\n", hr);
-        directinput = nullptr;
-        return 0;
-    }
-    return 1;
+    return devices_.create(instance, window) ? 1 : 0;
 }
 
-int ProgableControl::setupKbd(HWND hwnd)
+int ProgableControl::setJoyRange(int axis, int lo, int hi)
 {
-    if (!directinput) {
-        log_write("ProgCtrl::SetupKbd: no directinput interface\n");
-        return 0;
-    }
-    HRESULT hr = directinput->CreateDevice(GUID_SysKeyboard, &pKeyboard, nullptr);
-    if (FAILED(hr)) {
-        log_write("ProgCtrl::SetupKbd: CreateDevice FAILED hr=0x%08lx\n", hr);
-        return 0;
-    }
-    hr = pKeyboard->SetDataFormat(&c_dfDIKeyboard);
-    if (FAILED(hr)) {
-        log_write("ProgCtrl::SetupKbd: SetDataFormat FAILED hr=0x%08lx\n", hr);
-        pKeyboard->Release(); pKeyboard = nullptr; return 0;
-    }
-    hr = pKeyboard->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
-    if (FAILED(hr)) {
-        log_write("ProgCtrl::SetupKbd: SetCooperativeLevel FAILED hr=0x%08lx\n", hr);
-        pKeyboard->Release(); pKeyboard = nullptr; return 0;
-    }
-    return 1;
+    return devices_.setControllerRange(axis, lo, hi);
 }
 
-int ProgableControl::setupMouse(HWND hwnd)
+int ProgableControl::setJoyDeadzone(DWORD axis, int zone)
 {
-    if (!directinput) {
-        log_write("ProgCtrl::SetupMouse: no directinput interface\n");
-        return 0;
-    }
-    HRESULT hr = directinput->CreateDevice(GUID_SysMouse, &pMouse, nullptr);
-    if (FAILED(hr)) {
-        log_write("ProgCtrl::SetupMouse: CreateDevice FAILED hr=0x%08lx\n", hr);
-        return 0;
-    }
-    hr = pMouse->SetDataFormat(&c_dfDIMouse);
-    if (FAILED(hr)) {
-        log_write("ProgCtrl::SetupMouse: SetDataFormat FAILED hr=0x%08lx\n", hr);
-        pMouse->Release(); pMouse = nullptr; return 0;
-    }
-    hr = pMouse->SetCooperativeLevel(hwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
-    if (FAILED(hr)) {
-        log_write("ProgCtrl::SetupMouse: SetCooperativeLevel FAILED hr=0x%08lx\n", hr);
-        pMouse->Release(); pMouse = nullptr; return 0;
-    }
-    return 1;
-}
-
-int ProgableControl::setupJoy(HWND)
-{
-    return 1;
-}
-int ProgableControl::setJoyRange(int, int, int)
-{
-    return 1;
-}
-int ProgableControl::setJoyDeadzone(DWORD, int)
-{
-    return 1;
+    return devices_.setControllerDeadzone((int)axis, zone);
 }
 
 int ProgableControl::acquireAll()
 {
-    if (pKeyboard) {
-        HRESULT hr = pKeyboard->Acquire();
-        if (FAILED(hr)) {
-            log_write("ProgCtrl::AcquireAll: keyboard Acquire FAILED hr=0x%08lx\n", hr);
-            return 0;
-        }
-    }
-    if (pMouse) pMouse->Acquire();
-    return 1;
+    return devices_.acquire() ? 1 : 0;
 }
 
 int ProgableControl::unacquireAll()
 {
-    if (pKeyboard) pKeyboard->Unacquire();
-    if (pMouse)    pMouse->Unacquire();
-    if (pJoystick) pJoystick->Unacquire();
+    devices_.unacquire();
     return 1;
 }
 
@@ -237,16 +147,7 @@ void ProgableControl::getBindingStr(int mode, const char *name,
     bool first = true;
     for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
         char keyname[MAX_PATH] = "?";
-        if (pKeyboard) {
-            DIDEVICEOBJECTINSTANCEA doi;
-            doi.dwSize = sizeof(doi);
-            HRESULT hr = pKeyboard->GetObjectInfo(&doi, (DWORD)kb->scancode, DIPH_BYOFFSET);
-            if (SUCCEEDED(hr))
-                strncpy(keyname, doi.tszName, sizeof(keyname) - 1);
-            else
-                log_write("ProgCtrl::GetBindingStr: GetObjectInfo sc=0x%02X FAILED hr=0x%08lx\n",
-                          kb->scancode, hr);
-        }
+        devices_.keyName(kb->scancode, keyname, sizeof(keyname));
         if (!first) {
             size_t cur = strlen(buf), sep = strlen(sep_or);
             if (cur + sep + 1 <= bufsz)
@@ -279,14 +180,7 @@ void ProgableControl::dispatch(unsigned short game_state)
 
         BYTE human[256];
         memset(human, 0, sizeof(human));
-        if (pKeyboard) {
-            HRESULT hr = pKeyboard->GetDeviceState(256, human);
-            if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
-                pKeyboard->Acquire();
-                hr = pKeyboard->GetDeviceState(256, human);
-            }
-            if (FAILED(hr)) memset(human, 0, sizeof(human));
-        }
+        if (!devices_.readKeyboard(human)) memset(human, 0, sizeof(human));
 
         memset(ks, 0, sizeof(ks));
         if (!policy_keys(this, game_state, ks)) {
@@ -296,14 +190,7 @@ void ProgableControl::dispatch(unsigned short game_state)
         }
         record_keys(game_state, ks);
     } else {
-        if (game_state >= 5 || !pKeyboard) return;
-
-        HRESULT hr = pKeyboard->GetDeviceState(256, ks);
-        if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
-            pKeyboard->Acquire();
-            hr = pKeyboard->GetDeviceState(256, ks);
-        }
-        if (FAILED(hr)) return;
+        if (game_state >= 5 || !devices_.readKeyboard(ks)) return;
         // The policy may overwrite the keys (it declines outside a level), and
         // runs before recording so a policy-driven run records like a
         // hand-played one.
@@ -324,15 +211,10 @@ void ProgableControl::dispatch(unsigned short game_state)
 int ProgableControl::captureBinding(unsigned int mode, const char *name,
                                 int strength, int , int)
 {
-    if (mode >= 5 || !pKeyboard) return 0;
+    if (mode >= 5) return 0;
 
     BYTE ks[256];
-    HRESULT hr = pKeyboard->GetDeviceState(256, ks);
-    if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
-        pKeyboard->Acquire();
-        hr = pKeyboard->GetDeviceState(256, ks);
-    }
-    if (FAILED(hr)) return 0;
+    if (!devices_.readKeyboard(ks)) return 0;
 
     for (int sc = 0; sc < 256; sc++) {
         if (ks[sc] & 0x80)

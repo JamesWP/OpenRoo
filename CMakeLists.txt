@@ -15,7 +15,7 @@ add_compile_options(-Wall -Wextra)
 # folder plus its dependencies' (private), so the lists in src/*/CMakeLists.txt
 # are the layering and the compiler enforces them.  Today's lists are the
 # cyclic baseline, to be narrowed.
-foreach(group app audio audiodev core d3d entities input level render testing ui videodev)
+foreach(group app audio audiodev core d3d entities input inputdev level render testing ui videodev)
     add_subdirectory(src/${group})
 endforeach()
 
@@ -24,13 +24,18 @@ add_executable(KarooOwn WIN32
 set_target_properties(KarooOwn PROPERTIES OUTPUT_NAME KarooOwn)
 target_include_directories(KarooOwn PRIVATE src/app)
 target_link_libraries(KarooOwn PRIVATE
-    app audio audiodev core d3d entities input level render testing ui videodev
+    app audio audiodev core d3d entities input inputdev level render testing ui videodev
     -static-libgcc -static-libstdc++ -static)
 
 # Only the audiodev group may include the system audio headers.
 add_custom_target(check-native-audio ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeAudio.cmake)
 add_dependencies(KarooOwn check-native-audio)
+
+# Only the inputdev group may include the system input headers.
+add_custom_target(check-native-input ALL
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeInput.cmake)
+add_dependencies(KarooOwn check-native-input)
 
 # Only the d3d group may include the system Direct3D headers.
 add_custom_target(check-native-d3d ALL

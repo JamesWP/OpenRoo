@@ -15,6 +15,7 @@ add_library(ui OBJECT
 target_include_directories(ui PRIVATE
     .
     ../audiodev
+    ../inputdev
     ../app
     ../audio
     ../core

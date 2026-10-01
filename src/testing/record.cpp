@@ -18,6 +18,7 @@
  * state, and reproducing it would need the same call order within a frame. */
 
 #include "record.h"
+#include "inputdev.h"
 #include "policy.h"
 #include "menu.h"
 #include "levelreport.h"
@@ -327,7 +328,7 @@ void record_frame_boundary(void)
     // Under autoplay the recording's answers must not reach the game (the
     // prefix recording ends by quitting), but the real keyboard is still read,
     // so whoever is watching can still press Escape.
-    v = GetAsyncKeyState(vKey);
+    v = inputdev::asyncKeyState(vKey);
     record_async(vKey, v);
     return v;
 }
