@@ -13,6 +13,7 @@
 #include <windows.h>
 #include <string.h>
 #include "log.h"
+#include "windev.h"
 #include "game.h"
 #include "gamelog.h"
 #include "menunav.h"
@@ -260,7 +261,7 @@ Sim_HandleKeypress(Game *self)
             g_cdAudio.stop();
         self->debounceRef() = 0x0d;
         if (self->field_0c() == 0)
-            PostQuitMessage(1);
+            windev::quit(1);
         break;
     case 0x14: rebind(self, GS_KEY_MOVE_FORWARD, 0x14, 0x26); break;
     case 0x15: rebind(self, GS_KEY_MOVE_BACK, 0x15, 0x28); break;

@@ -7,6 +7,7 @@
 #include "game.h"
 #include "player.h"
 #include "camerainput.h"
+#include "windev.h"
 
   void  
 Input_TrySaveSettings(void)
@@ -25,7 +26,8 @@ Input_Setup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
 {
     ProgableControl *pc = &g_progCtrl;
     if (!pc->setupDevices(hInstance, hwnd)) {
-        MessageBoxA(NULL, GS_CONTROL_NO_INPUT, GS_CONTROL_ERROR_CAPTION, MB_ICONHAND);
+        windev::messageBox(NULL, GS_CONTROL_NO_INPUT, GS_CONTROL_ERROR_CAPTION,
+                           windev::Buttons::Ok, windev::Icon::Error);
         return 0;
     }
     pc->setJoyRange(0, -100, 100);
@@ -66,7 +68,8 @@ Input_Setup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
         pc->bindKey(1, GS_ACT_CAM_DOWN,     0xd1, 100);  // Page Down
     }
     if (!pc->acquireAll()) {
-        MessageBoxA(NULL, GS_CONTROL_NO_DEVICES, GS_CONTROL_ERROR_CAPTION, MB_ICONHAND);
+        windev::messageBox(NULL, GS_CONTROL_NO_DEVICES, GS_CONTROL_ERROR_CAPTION,
+                           windev::Buttons::Ok, windev::Icon::Error);
         return 0;
     }
     return 1;

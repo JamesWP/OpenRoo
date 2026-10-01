@@ -1,4 +1,4 @@
-/* The game's WinMain and its main window procedure. */
+/* The game's WinMain. */
 #pragma once
 #include <windows.h>
 
@@ -8,7 +8,3 @@
   int WINAPI
 Main_WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine,
              int nCmdShow);
-
-/* The main window's class procedure. */
-  LRESULT CALLBACK
-Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

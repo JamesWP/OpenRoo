@@ -22,6 +22,7 @@
  * the other order.  Both change the tile map, so the order is observable. */
 
 #include "gametick.h"
+#include "windev.h"
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -177,7 +178,7 @@ Sim_GameTick(Game *self, double dt, double now)
 
     if (self->stateRef() == 7 && self->debounceRef() != 0x0d && KEY(0x0d) != 0) {
         g_logger.logMessage(1, GS_GAME_JJ_GAME_END);
-        PostQuitMessage(1);
+        windev::quit(1);
     }
 
     self->setLastTickTime(now);

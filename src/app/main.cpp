@@ -32,6 +32,7 @@
 #include "rendergameframe.h"
 #include "launcher.h"
 #include "launcherdialogs.h"
+#include "windev.h"
 #include "nullddraw.h"
 #include "progctrl.h"
 #include "scenetexture.h"
@@ -39,7 +40,6 @@
 #include "textrenderer.h"
 #include "menuscreens.h"
 #include "log.h"
-#include "resources.h"
 
 /* Shared by WinMain and the window procedure; nothing else reads either. */
 static videodev::Player g_movie;
@@ -55,9 +55,18 @@ static bool winmain_fx_norender()
 
 static void delete_game(Game *g)       { delete g; }
 
-/* The window procedure: input devices and surfaces on focus changes, the intro
- * movie's events, and CD track repeats.  Every path ends in DefWindowProcA,
- * the handled ones included.
+static bool g_norender;
+
+/* Between messages: a frame, unless the intro is still playing. */
+static void idle()
+{
+    // Cleared by the window handler when the movie finishes.
+    if (!g_movie.playing() && !g_norender)
+        Render_RenderGameFrame();
+}
+
+/* The window's events: input devices and surfaces on focus changes, the intro
+ * movie's events, and CD track repeats.
  *
  * Surfaces are restored on activation in this order: the two font atlases, the
  * six sky textures, the theme's ten images in a fixed shuffled order (skipping
@@ -101,18 +110,17 @@ static bool wndproc_fx_noquit()
     return cached != 0;
 }
 
-  LRESULT CALLBACK
-Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    switch (msg) {
-    case WM_DESTROY:
+class MainWindow : public windev::WindowHandler {
+public:
+    void onDestroyed() override
+    {
         if (!wndproc_fx_noquit())
-            PostQuitMessage(1);
-        break;
+            windev::quit(1);
+    }
 
-    case WM_ACTIVATE:
-        // Exactly WA_ACTIVE: a click activation (2) counts as losing focus.
-        if ((WORD)wParam == WA_ACTIVE) {
+    void onActivate(bool active) override
+    {
+        if (active) {
             g_progCtrl.acquireAll();
             restore_surfaces();
             if (g_movie.playing())
@@ -122,21 +130,22 @@ Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if (g_movie.playing())
                 g_movie.pause();
         }
-        break;
+    }
 
-    case WM_KEYUP:  // any key skips the intro
+    void onKeyUp() override  // any key skips the intro
+    {
         if (g_movie.playing())
             g_movie.skip();
-        break;
-
     }
-    if (g_movie.handleWindowMessage(msg, wParam, lParam))
-        return 0;
-    // A track ended: the music restarts it if it repeats.
-    if (g_cdAudio.handleWindowMessage(msg, wParam, lParam))
-        return 0;
-    return DefWindowProcA(hWnd, msg, wParam, lParam);
-}
+
+    bool onNativeMessage(unsigned msg, unsigned long wParam, long lParam) override
+    {
+        if (g_movie.handleWindowMessage(msg, wParam, lParam))
+            return true;
+        // A track ended: the music restarts it if it repeats.
+        return g_cdAudio.handleWindowMessage(msg, wParam, lParam);
+    }
+};
 
 static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine);
 
@@ -152,38 +161,30 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     audiodev::setLog(log_write);
     inputdev::setLog(log_write);
     videodev::setLog(log_write);
+    windev::setLog(log_write);
     // Data paths are relative to the current directory, which nothing changes.
     // An absolute prefix could overflow the fixed path buffers on a deep
     // install.
     strcpy(g_gameDir, ".");
 
-    WNDCLASSA wc;
-    wc.style         = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc   = Main_WindowProc;
-    wc.cbClsExtra    = 0;
-    wc.cbWndExtra    = 0;
-    wc.hInstance     = hInstance;
-    wc.hIcon         = LoadIconA(Resources_Module(), MAKEINTRESOURCEA(0x6a));
-    wc.hCursor       = LoadCursorA(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-    wc.lpszMenuName  = NULL;
-    wc.lpszClassName = "Karoo";
-    if (RegisterClassA(&wc) == 0)
+    static MainWindow handler;
+    windev::Window window;
+    windev::WindowConfig wc;
+    wc.title       = "Ka'roo";
+    wc.width       = 400;
+    wc.height      = 300;
+    wc.messageOnly = nulldd_enabled();
+    if (!window.create(hInstance, &handler, wc))
         return 0;
-
-    HWND hWnd = hooks_CreateWindowExA(WS_EX_APPWINDOW, "Karoo", "Ka'roo",
-                                      WS_POPUP, 0, 0, 400, 300,
-                                      NULL, NULL, hInstance, NULL);
-    if (hWnd == NULL)
-        return 0;
+    HWND hWnd = (HWND)window.handle();
 
     g_logger.openLogFile("JJ.log", NULL);
 
     // The first character is tested, not the pointer.  None of the early
     // returns below destroys the window.
     if (lpCmdLine[0] == '\0') {
-        MessageBoxA(hWnd, "Please append the name of the game file at the "
-                    "prompt! (e.g.: Karoo.exe <gamefile>)", "Ka'Roo", MB_OK);
+        windev::messageBox(hWnd, "Please append the name of the game file at the "
+                           "prompt! (e.g.: Karoo.exe <gamefile>)", "Ka'Roo");
         return 0;
     }
 
@@ -193,8 +194,8 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
         return 0;
 
     while (!game->cdThemes()->validateTrackLengths()) {
-        if (MessageBoxA(hWnd, "Please insert the Ka'Roo - CD-ROM!", "Ka'Roo",
-                        MB_OKCANCEL) == IDCANCEL) {
+        if (!windev::messageBox(hWnd, "Please insert the Ka'Roo - CD-ROM!",
+                                "Ka'Roo", windev::Buttons::OkCancel)) {
             delete_game(game);
             return 0;
         }
@@ -206,15 +207,18 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     }
 
     // Cancel: the one early exit that destroys the window, and returns 1.
-    if (hooks_DialogBoxParamA(Resources_Module(), MAKEINTRESOURCEA(0x68), NULL,
-                              LauncherDlg_Proc, 0) == 0) {
-        DestroyWindow(hWnd);
+    bool play = true;
+    if (launcher_skipped())
+        log_write("launcher: dialog skipped\n");
+    else
+        play = LauncherDlg_Show(NULL);
+    if (!play) {
+        window.destroy();
         delete_game(game);
         return 1;
     }
 
-    ShowWindow(hWnd, SW_HIDE);
-    UpdateWindow(hWnd);
+    window.show(false);
 
     RenderDevice *d3d = g_renderDevice = new RenderDevice();
 
@@ -229,7 +233,8 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
             "src/app/main.cpp", __LINE__,
             "Creation of Direct3D failed");
         d3d->RestoreDisplayMode();
-        MessageBoxA(NULL, d3d->lastError(), "Error!", MB_ICONHAND);
+        windev::messageBox(NULL, d3d->lastError(), "Error!",
+                           windev::Buttons::Ok, windev::Icon::Error);
         delete d3d;
         delete_game(game);
         return 1;
@@ -247,7 +252,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
         snd->device()->setListenerRolloff(0.3f, true);
 
     g_cdAudio.setWindowHandle(hWnd);
-    ShowWindow(hWnd, SW_SHOW);
+    window.show(true);
     Render_ConfigureRenderState();
     hooks_ClockInit();
 
@@ -259,19 +264,8 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     else
         g_logger.logMessage(3, "MAIN: Couldn't load %s .", path);
 
-    const bool norender = winmain_fx_norender();
-    MSG msg;
-    for (;;) {
-        if (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
-            if (msg.message == WM_QUIT)
-                break;
-            TranslateMessage(&msg);
-            DispatchMessageA(&msg);
-        }
-        // Cleared by the window procedure when the movie finishes.
-        if (!g_movie.playing() && !norender)
-            Render_RenderGameFrame();
-    }
+    g_norender = winmain_fx_norender();
+    const int exitCode = windev::runMessageLoop(idle);
 
     // Settings are saved after the Game is deleted; the device goes last.
     g_levelPlacements.release();
@@ -280,5 +274,5 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     g_themeBlock.release();
     delete g_renderDevice;
     g_renderDevice = NULL;
-    return (int)msg.wParam;
+    return exitCode;
 }

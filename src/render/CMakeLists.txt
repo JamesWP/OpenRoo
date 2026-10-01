@@ -23,6 +23,7 @@ add_library(render OBJECT
 target_include_directories(render PRIVATE
     .
     ../audiodev
+    ../windev
     ../app
     ../audio
     ../core

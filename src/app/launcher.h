@@ -13,7 +13,6 @@ void launcher_init(void);
  * Only the first call acts. */
 void launcher_end_run(const char *why);
 
-/* The game's DialogBoxParamA: returns IDOK without showing the dialog under
- * KAROO_SKIP_LAUNCHER, else shows it. */
-  INT_PTR WINAPI hooks_DialogBoxParamA(
-        HINSTANCE inst, LPCSTR tmpl, HWND parent, DLGPROC proc, LPARAM param);
+/* True under KAROO_SKIP_LAUNCHER: the launcher dialog is answered "play"
+ * without being shown. */
+bool launcher_skipped(void);

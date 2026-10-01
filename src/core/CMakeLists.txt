@@ -13,6 +13,7 @@ add_library(core OBJECT
 target_include_directories(core PRIVATE
     .
     ../audiodev
+    ../windev
     ../inputdev
     ../app
     ../audio

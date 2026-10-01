@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "renderstate.h"
+#include "windev.h"
 #include "renderdevice.h"
 #include "texturedib.h"
 #include "scenetexture.h"
@@ -133,10 +134,10 @@ Render_ConfigureRenderState(void)
 
     if (!(char)g_fontMain.load("fonts\\font1.fon", d3d)) {
         g_logger.logMessage(4, "Couldn't create Font font1.fon");
-        PostQuitMessage(1);
+        windev::quit(1);
     }
     if (!(char)g_fontNumbers.load("fonts\\numbers.fon", d3d)) {
         g_logger.logMessage(4, "Couldn't create Font numbers.fon");
-        PostQuitMessage(1);
+        windev::quit(1);
     }
 }
