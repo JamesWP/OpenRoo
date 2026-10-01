@@ -1,6 +1,5 @@
-# Fails if a source outside src/d3d/ includes a system Direct3D/DirectDraw
-# header.  (The project's own backend headers are kept out by the groups'
-# include paths; the system ones cannot be, so they are checked by looking.)
+# Fails if a file outside src/d3d/ includes a system Direct3D header
+# (include paths cannot hide those).
 file(GLOB_RECURSE files "${SOURCE_DIR}/src/*.cpp" "${SOURCE_DIR}/src/*.h")
 foreach(file IN LISTS files)
     if(file MATCHES "/src/d3d/")

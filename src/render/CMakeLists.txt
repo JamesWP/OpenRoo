@@ -1,5 +1,4 @@
-# The renderer talks to the device through renderdevice.h; the backend that
-# implements it is d3d, which render deliberately does not depend on.
+# Talks to the device through renderdevice.h; d3d implements it.
 add_library(render OBJECT
     ani.cpp
     camera.cpp
