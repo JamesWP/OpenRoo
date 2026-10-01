@@ -393,8 +393,8 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
     cfg = entry_defaults(m, entry)
     name = entry["name"]
     rec_path = os.path.join(RECORDINGS, entry["file"])
-    dump_path = os.path.join(REPO, "replaytest-%s.json" % name)
-    hash_path = os.path.join(REPO, "replaytest-%s.hash" % name)
+    dump_path = os.path.join(REPO, "run", "replaytest-%s.json" % name)
+    hash_path = os.path.join(REPO, "run", "replaytest-%s.hash" % name)
 
     print("=" * 72)
     print("%s — %s" % (name, entry.get("level", "?")))
