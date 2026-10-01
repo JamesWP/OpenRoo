@@ -5,6 +5,7 @@ add_library(testing OBJECT
 target_include_directories(testing PRIVATE
     .
     ../audiodev
+    ../inputdev
     ../app
     ../audio
     ../core

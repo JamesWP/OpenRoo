@@ -22,6 +22,7 @@
 #include "inputsetup.h"
 #include "soundmanager.h"
 #include "audiodev.h"
+#include "inputdev.h"
 #include "cdm.h"
 #include "renderstate.h"
 #include "clock.h"
@@ -149,6 +150,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
 {
     g_moduleInstance = hInstance;
     audiodev::setLog(log_write);
+    inputdev::setLog(log_write);
     videodev::setLog(log_write);
     // Data paths are relative to the current directory, which nothing changes.
     // An absolute prefix could overflow the fixed path buffers on a deep
@@ -233,7 +235,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
         return 1;
     }
 
-    if (Input_DirectInputSetup(hInstance, hWnd, (DWORD)&g_logger, game) == 0) {
+    if (Input_Setup(hInstance, hWnd, (DWORD)&g_logger, game) == 0) {
         delete d3d;
         delete_game(game);
         return 1;

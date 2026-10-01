@@ -1,0 +1,16 @@
+# Fails if a file outside src/inputdev/ includes a system input header, or
+# calls the system input APIs (include paths cannot hide those).
+file(GLOB_RECURSE files "${SOURCE_DIR}/src/*.cpp" "${SOURCE_DIR}/src/*.h")
+foreach(file IN LISTS files)
+    if(file MATCHES "/src/inputdev/")
+        continue()
+    endif()
+    file(STRINGS "${file}" bad REGEX "^[ \t]*#[ \t]*include[ \t]*<(dinput|xinput|hidsdi|hidusage|joystickapi)")
+    if(NOT bad)
+        file(STRINGS "${file}" bad REGEX "(^|[^A-Za-z_])(GetAsyncKeyState|GetKeyState|GetKeyboardState|DirectInput8Create|joyGetPos[A-Za-z]*|XInputGet[A-Za-z]*)[ \t]*[(]")
+    endif()
+    if(bad)
+        file(RELATIVE_PATH rel "${SOURCE_DIR}" "${file}")
+        message(SEND_ERROR "${rel}: system input outside src/inputdev/ (${bad}); use inputdev.h")
+    endif()
+endforeach()

@@ -6,6 +6,7 @@ add_library(input OBJECT
 target_include_directories(input PRIVATE
     .
     ../audiodev
+    ../inputdev
     ../app
     ../audio
     ../core
@@ -14,4 +15,4 @@ target_include_directories(input PRIVATE
     ../render
     ../testing
     ../ui)
-target_link_libraries(input PRIVATE winmm dinput8 dxguid)
+target_link_libraries(input PRIVATE winmm)

@@ -18,25 +18,22 @@ Input_TrySaveSettings(void)
 }
 
 /* The player actions get the Player as their context, the camera actions
- * the Game.  Default keys (DirectInput scan codes) are bound only when no
+ * the Game.  Default keys (inputdev scan codes) are bound only when no
  * saved bindings load. */
   int  
-Input_DirectInputSetup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
+Input_Setup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
 {
     ProgableControl *pc = &g_progCtrl;
-    if (!pc->initDInput(hInstance) || !pc->setupKbd(hwnd) ||
-        !pc->setupMouse(hwnd)) {
+    if (!pc->setupDevices(hInstance, hwnd)) {
         MessageBoxA(NULL, GS_CONTROL_NO_INPUT, GS_CONTROL_ERROR_CAPTION, MB_ICONHAND);
         return 0;
     }
-    if (pc->setupJoy(hwnd)) {
-        pc->setJoyRange(0, -100, 100);
-        pc->setJoyRange(4, -100, 100);
-        pc->setJoyRange(8, -100, 100);
-        pc->setJoyDeadzone(0, 5000);
-        pc->setJoyDeadzone(4, 5000);
-        pc->setJoyDeadzone(8, 10000);
-    }
+    pc->setJoyRange(0, -100, 100);
+    pc->setJoyRange(4, -100, 100);
+    pc->setJoyRange(8, -100, 100);
+    pc->setJoyDeadzone(0, 5000);
+    pc->setJoyDeadzone(4, 5000);
+    pc->setJoyDeadzone(8, 10000);
 
     void *player = game->player();
     pc->registerAction(1, GS_ACT_TURN_LEFT,    Player_ActTurnLeft,    player);
@@ -54,13 +51,13 @@ Input_DirectInputSetup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
     pc->registerAction(1, GS_ACT_CAM_DOWN,     Camera_TiltDown,       game);
 
     if (!pc->readBindings()) {
-        pc->bindKey(1, GS_ACT_MOVE_FORWARD, 0xc8, 100);  // Up
+        pc->bindKey(1, GS_ACT_MOVE_FORWARD, inputdev::SCAN_UP, 100);  // Up
         pc->bindKey(1, GS_ACT_MOVE_BACK,    0xd0, 100);  // Down
         pc->bindKey(1, GS_ACT_TURN_LEFT,    0xcb, 100);  // Left
         pc->bindKey(1, GS_ACT_TURN_RIGHT,   0xcd, 100);  // Right
         pc->bindKey(1, GS_ACT_ZOOM_IN,      0x1e, 100);  // A
         pc->bindKey(1, GS_ACT_ZOOM_OUT,     0x2c, 100);  // Z (Y on a German keyboard)
-        pc->bindKey(1, GS_ACT_RELEASE_BOMB, 0x30, 100);  // B
+        pc->bindKey(1, GS_ACT_RELEASE_BOMB, inputdev::SCAN_B, 100);  // B
         pc->bindKey(1, GS_ACT_HARAKIRI,     0xd3, 100);  // Delete
         pc->bindKey(1, GS_ACT_OVERVIEW,     0x0f, 100);  // Tab
         pc->bindKey(1, GS_ACT_CAM_RIGHT,    0x2e, 100);  // C
