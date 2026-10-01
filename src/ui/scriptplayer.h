@@ -7,7 +7,7 @@
 
 #include <stdio.h>
  
-#include "stream.h"
+#include "audiodev.h"
 #include "splinepath.h"
 
 class SoundManager;
@@ -64,9 +64,6 @@ public:
 
     // The sound manager the script's sounds play through.
     void           setSoundManager(SoundManager *sm) { soundManager_ = sm; }
-    // The wave description every "initwave" stream is prepared from; the fixed
-    // sound setup fills all but the file name.
-    WaveInfo      *streamWave()                    { return &streamWave_; }
 
     // The embedded spline, for callers that hand it on.
     SplinePath         *spline()                   { return &spline_; }
@@ -93,11 +90,10 @@ private:
     unsigned int   durations_[255];  // seconds a soundless "playwave WAIT" waits, by id
     SoundManager  *soundManager_;       // set by the fixed sound setup
     unsigned char  waitStream_;         // the stream waitingOnStream_ waits on
-    CStreamSoundbuffer *streams_[255];  // by id
+    audiodev::Stream *streams_[255];  // by id
     unsigned int   waitingOnStream_;  // "playwave <id> <wait>": the tick stalls until its stream finishes
     unsigned int   streamReady_;      // "initwave"'s prepare result
-    CStreamSoundbuffer stream_;       // the embedded stream
-    WaveInfo       streamWave_;
+    audiodev::Stream stream_;         // the embedded stream
     unsigned int   field_92d_;  // never read
     float          splinePoint_[3];
     SplinePath     spline_;

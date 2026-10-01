@@ -3,7 +3,6 @@
 
 #define DIRECTSOUND_VERSION 0x0800
 #include <windows.h>
-#include <dsound.h>
 #include <new>
 #include "doublesoundbuff.h"
 #include "voicepool.h"
@@ -116,7 +115,7 @@ void doublesoundbuff::purgeCloneList(LinkedList *list)
         node = node->next();
         if (clone != 0) {
             ++g_nClonesFreed;
-            delete (CStaticSoundbuffer *)clone;
+            delete (audiodev::Buffer *)clone;
         }
     }
     list->clear();
@@ -141,7 +140,7 @@ void doublesoundbuff::purgeVoicePoolList(LinkedList *list)
 /* Gives back one buffer.  It is recognised if it is on the duplicate list
  * (unlinked and deleted) or is the master or spare itself (its taken flag
  * cleared).  Otherwise 0, and the caller tries the manager's other list. */
-int doublesoundbuff::releaseStatic(CStaticSoundbuffer *buf)
+int doublesoundbuff::releaseStatic(audiodev::Buffer *buf)
 {
     ++g_nRelStatic; { static unsigned long seen; dsb_first("ReleaseStatic", &seen); }
 

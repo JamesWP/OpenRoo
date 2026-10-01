@@ -36,7 +36,7 @@
 #include <string.h>
 #include "log.h"
 #include "extraobjects.h"
-#include "static.h"
+#include "audiodev.h"
 #include "soundmanager.h"
 #include "gamestr.h"
 #include "gamelog.h"
@@ -245,7 +245,7 @@ void ExtraObjects::releaseSounds()
         ExtraObjectRecord *r = &records_[k];
         // The handle is re-read after halting.
         if (r->sound != 0) {
-            r->sound->haltPlayback();
+            r->sound->stop();
             soundManager_->releaseStaticForOwner(r->sound, 1);
             r->sound = 0;
 

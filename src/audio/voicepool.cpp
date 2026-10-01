@@ -1,7 +1,4 @@
-#define DIRECTSOUND_VERSION 0x0800
 #include <windows.h>
-#include <dsound.h>
-#include "static.h"
 #include <new>
 #include "voicepool.h"
 #include <stdlib.h>
@@ -21,9 +18,9 @@ static int pool_diag(void)
     return cached != 0;
 }
 
-static unsigned long g_nBlank, g_nWipe, g_nFill3D, g_nClone,
+static unsigned long g_nBlank, g_nWipe, g_nClone,
                      g_nGetVoiceAt, g_nFirstName, g_nCycle, g_nBroadcast,
-                     g_nVoices, g_nCopyFail, g_nNestBail;
+                     g_nVoices, g_nCopyFail;
 
 static void pool_first(const char *what, unsigned long *seen)
 {
@@ -37,15 +34,15 @@ static void pool_first(const char *what, unsigned long *seen)
 static void pool_census(void)
 {
     if (!pool_diag()) return;
-    log_write("voicepool: DIAG blank=%lu wipe=%lu fill3d=%lu clone=%lu "
+    log_write("voicepool: DIAG blank=%lu wipe=%lu clone=%lu "
               "getvoice=%lu firstname=%lu cycle=%lu broadcast=%lu "
-              "voicesAllocated=%lu copyFallbacks=%lu nestBails=%lu\n",
-              g_nBlank, g_nWipe, g_nFill3D, g_nClone, g_nGetVoiceAt,
+              "voicesAllocated=%lu copyFailures=%lu\n",
+              g_nBlank, g_nWipe, g_nClone, g_nGetVoiceAt,
               g_nFirstName, g_nCycle, g_nBroadcast, g_nVoices,
-              g_nCopyFail, g_nNestBail);
+              g_nCopyFail);
 }
 
-/* KAROO_POOL_FX=onevoice is a negative control: Fill3D and Clone build one
+/* KAROO_POOL_FX=onevoice is a negative control: Clone builds one
  * voice, whatever count is asked for.  A one-voice pool cannot overlap a sound
  * with itself.  KAROO_POOL_DIAG's voice total reads it directly. */
 enum PoolFx { POOL_FX_OFF = 0, POOL_FX_ONEVOICE = 1 };
@@ -70,49 +67,42 @@ static PoolFx pool_fx(void)
  * decides where the next call lands.  The cursor is stored unwrapped before
  * the trigger and wrapped after it, with a signed compare.  Only the voices
  * pointer is checked, so a zero-count pool still plays voice 0 once. */
-int VoicePool::cycle(DWORD dwLoopFlags)
+void VoicePool::cycle(bool loop)
 {
     ++g_nCycle; { static unsigned long seen; pool_first("Cycle", &seen); }
-    if (pBufs_ == 0)
-        return (int)0x887800AA;  // DSERR_UNINITIALIZED
-
-    pBufs_[dwCurrentIdx_].haltPlayback();
-
-    const int old = dwCurrentIdx_;
-    dwCurrentIdx_ = old + 1;  // stored before the trigger, unwrapped
-
-    const int hr = pBufs_[old].triggerPlayback(dwLoopFlags);
-
-    if (dwCurrentIdx_ >= dwVoiceCount_)  // signed, and after
-        dwCurrentIdx_ = 0;
-
-    return hr;
-}
-
-/* PRESERVED: only voice 0's 3D buffer is checked before every voice's is used,
- * and the voices pointer is not checked at all.  Pools are all-3D or all-2D,
- * so neither fires. */
-void VoicePool::broadcastCoordinates(float x, float y, float z, DWORD dwApply)
-{
-    ++g_nBroadcast; { static unsigned long seen; pool_first("Broadcast", &seen); }
-    if (pBufs_->threeDBuffer() == 0 || dwVoiceCount_ <= 0)
+    if (bufs_ == 0)
         return;
 
-    int i = 0;
-    do {
-        pBufs_[i].threeDBuffer()->SetPosition(x, y, z, dwApply);
-        i++;
-    } while (i < dwVoiceCount_);
+    bufs_[currentIdx_].stop();
+
+    const int old = currentIdx_;
+    currentIdx_ = old + 1;  // stored before the trigger, unwrapped
+
+    bufs_[old].play(loop);
+
+    if (currentIdx_ >= voiceCount_)  // signed, and after
+        currentIdx_ = 0;
+}
+
+/* PRESERVED: only voice 0 is checked for 3D before every voice is positioned,
+ * and the voices pointer is not checked at all.  Pools are all-3D or all-2D,
+ * so neither fires. */
+void VoicePool::broadcastCoordinates(float x, float y, float z, bool immediate)
+{
+    ++g_nBroadcast; { static unsigned long seen; pool_first("Broadcast", &seen); }
+    if (!bufs_->is3D() || voiceCount_ <= 0)
+        return;
+
+    for (int i = 0; i < voiceCount_; i++)
+        bufs_[i].setPosition(x, y, z, immediate);
 }
 
 VoicePool::VoicePool()
 {
     ++g_nBlank; { static unsigned long seen; pool_first("Blank", &seen); }
-    pBufs_        = 0;
-    dwVoiceCount_ = 0;
-    dwCurrentIdx_ = 0;
-    logger_       = 0;
-    dwNestDepth_  = 0;
+    bufs_       = 0;
+    voiceCount_ = 0;
+    currentIdx_ = 0;
 }
 
 VoicePool::~VoicePool()
@@ -120,106 +110,25 @@ VoicePool::~VoicePool()
     wipe();
 }
 
-/* Resets every voice, destroys the array through the voices' vector destructor
- * (flag 3: an array, free the block) and clears the pool.  PRESERVED: the
- * nesting depth is not cleared; Fill3D's guard depends on it (see there).  The
- * count is re-read on every pass. */
+/* Resets every voice, destroys the array and clears the pool. */
 void VoicePool::wipe()
 {
     ++g_nWipe; { static unsigned long seen; pool_first("Wipe", &seen); }
     pool_census();
-    if (pBufs_ != 0) {
-        for (int i = 0; i < dwVoiceCount_; i++)  // the count is re-read on every pass
-            pBufs_[i].reset();
+    if (bufs_ != 0) {
+        for (int i = 0; i < voiceCount_; i++)
+            bufs_[i].reset();
 
-        delete[] pBufs_;
-        pBufs_ = 0;
+        delete[] bufs_;
+        bufs_ = 0;
     }
-    logger_       = 0;
-    dwVoiceCount_ = 0;
-    dwCurrentIdx_ = 0;
-
-/* PRESERVED: the nesting depth is left alone. */
+    voiceCount_ = 0;
+    currentIdx_ = 0;
 }
 
-/* PRESERVED: the software-buffer retry never runs.  The function guards
- * re-entry with the nesting depth; its last resort wipes and calls itself with
- * DSBCAPS_LOCSOFTWARE, but the depth is still raised, so the inner call trips
- * the guard and fails.  A pool that fails in hardware fails outright; running
- * the retry would allocate buffers the game never did. */
-int VoicePool::fill3D(int count, IDirectSound *pDS,
-                    DWORD dwDsFlags, const char *filename, void *logger)
-{
-    ++g_nFill3D; { static unsigned long seen; pool_first("Fill3D", &seen); }
-    pool_census();
-    if (pool_fx() == POOL_FX_ONEVOICE && count > 1)
-        count = 1;  // KAROO_POOL_FX=onevoice
-
-    wipe();
-
-    if (++dwNestDepth_ > 1) {  // re-entrancy guard
-        ++g_nNestBail;
-        goto fail;
-    }
-
-    if (count < 1 || logger == 0)
-        goto fail;
-
-    logger_       = logger;
-    dwVoiceCount_ = count;
-
-    {
-        CStaticSoundbuffer *bufs = new (std::nothrow) CStaticSoundbuffer[count];
-        if (bufs != 0)
-            g_nVoices += (unsigned long)count;
-        pBufs_ = bufs;
-    }
-
-    // Voice 0 comes off disk.  A failed allocation reaches here as a NULL
-    // this, as in the game.
-    if (!pBufs_[0].createAndLoad3DSoundFile(pDS, dwDsFlags,
-                                          filename, logger)) {
-        wipe();
-        goto fail;
-    }
-
-    {
-        CStaticSoundbuffer *src = pBufs_;          // voice 0, the template
-        for (int i = 1; i < dwVoiceCount_; i++) {  // the count is re-read on every pass
-            if (pBufs_[i].copy(pDS, src, 1) != 0)
-                continue;
-            ++g_nCopyFail;
-            if (pBufs_[i].createAndLoad3DSoundFile(pDS,
-                                                 dwDsFlags, filename, logger))
-                continue;
-
-            // The software retry: it cannot succeed (see above).
-            wipe();
-            {
-                int r = fill3D(count, pDS,
-                                            dwDsFlags | DSBCAPS_LOCSOFTWARE,
-                                            filename, logger);
-                dwNestDepth_--;
-                return r;
-            }
-        }
-    }
-
-    dwNestDepth_--;
-    return 1;
-
-fail:
-    dwNestDepth_--;
-    return 0;
-}
-
-/* PRESERVED: success returns src, the caller's pointer, on the duplicate path
- * and the voices array after a reload; callers only test for NULL.  A
- * duplicate succeeds when Copy returns src.  noFallback gives up on the first
- * failed duplicate instead of reloading.  The reload asks for software
- * buffers, and as an outer call it can succeed. */
-void *VoicePool::clone(int count, IDirectSound *pDS,
-                   CStaticSoundbuffer *src, int noFallback)
+/* Gives up on the first voice the platform will not duplicate. */
+bool VoicePool::clone(int count, audiodev::Device &dev,
+                      const audiodev::Buffer &src)
 {
     ++g_nClone; { static unsigned long seen; pool_first("Clone", &seen); }
     pool_census();
@@ -227,52 +136,43 @@ void *VoicePool::clone(int count, IDirectSound *pDS,
         count = 1;  // KAROO_POOL_FX=onevoice
 
     if (count < 1)
-        return 0;
+        return false;
 
     wipe();
 
-    dwVoiceCount_ = count;
-    logger_       = src->logger();
+    voiceCount_ = count;
 
     {
-        CStaticSoundbuffer *bufs = new (std::nothrow) CStaticSoundbuffer[count];
+        audiodev::Buffer *bufs = new (std::nothrow) audiodev::Buffer[count];
         if (bufs != 0)
             g_nVoices += (unsigned long)count;
-        pBufs_ = bufs;
+        bufs_ = bufs;
     }
 
-    for (int i = 0; i < dwVoiceCount_; i++) {  // the count is re-read on every pass
-        if (pBufs_[i].copy(pDS, src, 0) == (void *)src)
+    for (int i = 0; i < voiceCount_; i++) {  // the count is re-read on every pass
+        if (bufs_[i].duplicate(dev, src))
             continue;
         ++g_nCopyFail;
-
         wipe();
-        if (noFallback != 0)
-            return 0;
-
-        if (fill3D(count, pDS,
-                                src->dsFlags() | DSBCAPS_LOCSOFTWARE,
-                                src->filename(), src->logger()) == 0)
-            return 0;
-        return pBufs_;
+        return false;
     }
 
-    return src;  // the caller's own pointer
+    return true;
 }
 
 /* Signed compares.  The voices pointer is not checked. */
-CStaticSoundbuffer *VoicePool::voiceAt(int index)
+audiodev::Buffer *VoicePool::voiceAt(int index)
 {
     ++g_nGetVoiceAt; { static unsigned long seen; pool_first("GetVoiceAt", &seen); }
-    if (index < 0 || index >= dwVoiceCount_)
+    if (index < 0 || index >= voiceCount_)
         return 0;
-    return &pBufs_[index];
+    return &bufs_[index];
 }
 
-char *VoicePool::firstFilename()
+const char *VoicePool::firstFilename()
 {
     ++g_nFirstName; { static unsigned long seen; pool_first("FirstFilename", &seen); }
-    CStaticSoundbuffer *voice = voiceAt(0);
+    audiodev::Buffer *voice = voiceAt(0);
     if (voice == 0)
         return 0;
     return voice->filename();

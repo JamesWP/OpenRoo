@@ -21,14 +21,14 @@
 #include "gameglobals.h"
 #include "record.h"
 
-#include "static.h"
+#include "audiodev.h"
 
 static int s_fx = -1;
 
 /* Resets the old buffer if there is one, then loads a new one from "<game
  * dir>\waves\<name><suffix>.wav".  The caller stores the result back into the
  * slot. */
-static CStaticSoundbuffer *bank(Game *game, CStaticSoundbuffer *cur,
+static audiodev::Buffer *bank(Game *game, audiodev::Buffer *cur,
                                 const char *fmt, const char *suffix)
 {
     char path[256];
@@ -95,10 +95,6 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     }
 
     ScriptPlayer *sp = self->scriptPlayer();
-    sp->streamWave()->nBuffer_seconds = 5;
-    sp->streamWave()->wSegment_count = 5;
-    sp->streamWave()->pDirectsound = sm->directSound();
-    sp->streamWave()->dwFlags = 0;
     self->extraObjects()->setSoundManager(sm);
     sp->setSoundManager(sm);
 

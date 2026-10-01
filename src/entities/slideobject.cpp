@@ -28,7 +28,7 @@
 #include "game.h"
 #include "tile.h"
 #include "soundmanager.h"
-#include "static.h"
+#include "audiodev.h"
 #include "log.h"
 
 static const float  K_MS_TO_TILE = 0.005f;
@@ -250,7 +250,7 @@ void SlideObject::purgeAll(Game *game)
                       ++s_live_purges, (unsigned)game->slideCount());
         do {
             if (game->soundCreated() != 0) {
-                CStaticSoundbuffer *h = game->slideSlot(i)->sound_;
+                audiodev::Buffer *h = game->slideSlot(i)->sound_;
                 if (h != 0)
                     game->soundManager()->releaseStaticForOwner(h, 1);
             }
@@ -357,7 +357,7 @@ void SlideObject::tick()
 
         if (done) {
             if (sound_ != 0)
-                sound_->haltPlayback();
+                sound_->stop();
 
             if (s_diag_block && !s_logged_advance) {
                 s_logged_advance = 1;
@@ -368,7 +368,7 @@ void SlideObject::tick()
         }
 
         if (sound_ != 0)
-            sound_->set3DPosition((float)(int)cellU_, posY_,
+            sound_->setPosition((float)(int)cellU_, posY_,
                                   -(float)(int)cellV_, 1);
     }
 
@@ -416,7 +416,7 @@ void SlideObject::tick()
         if (done) {
             atLimit_ = 0;
             if (sound_ != 0)
-                sound_->haltPlayback();
+                sound_->stop();
 
             if (s_diag_block && !s_logged_retreat) {
                 s_logged_retreat = 1;
@@ -426,7 +426,7 @@ void SlideObject::tick()
         }
 
         if (sound_ != 0)
-            sound_->set3DPosition((float)(int)cellU_, posY_,
+            sound_->setPosition((float)(int)cellU_, posY_,
                                   -(float)(int)cellV_, 1);
     }
 
@@ -451,7 +451,7 @@ void SlideObject::tick()
             }
 
             if (sound_ != 0)
-                sound_->triggerPlayback(1);
+                sound_->play(true);
         }
     }
 

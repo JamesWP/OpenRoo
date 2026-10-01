@@ -1,50 +1,38 @@
 /* The CD audio device.  The game played its music as audio tracks from the CD;
  * here each track is a .wav in CDTracks/ (imported from the CD image), played
- * through MCI waveaudio under the alias "km".  The window gets MM_MCINOTIFY
- * when a track ends, and a repeating track is restarted from there (main.cpp).
- * One global instance, g_cdAudio. */
+ * through the platform layer's music player.  One global instance, g_cdAudio. */
 #pragma once
-#include <windows.h>
-#include <mmsystem.h>
 #include <stddef.h>
+#include "audiodev.h"
 
-/* One mixer line's volume control.  Nothing fills these, so the mixer paths do
- * nothing. */
-struct CDVolumeControl {
-    HMIXEROBJ hmixer;
-    DWORD     dwVolumeControlID;
-};
-
-/* The device.  Packed, so the track number is unaligned. */
 class CDM {
 public:
     CDM();
-    /* Stops and closes the device (and clears the repeat flag). */
+    /* Stops the music (and clears the repeat flag). */
     virtual ~CDM();
     CDM(const CDM &) = delete;
     CDM &operator=(const CDM &) = delete;
-    void  setWindowHandle(HWND hwnd);
+
+    /* The window that receives the music's end-of-track message. */
+    void  setWindowHandle(void *hwnd);
+    void *windowHandle() const { return window_; }
+
+    /* Offered every window message by the window procedure; true if it was a
+     * music message and has been handled. */
+    bool  handleWindowMessage(unsigned msg, unsigned long wParam, long lParam);
+
     int   getTrackCount();
     int   getTrackLength(char **out_ptr, int track);
     void  playTrack(int tracknumber, bool repeat);
     void  stop();
-    void  setMixerVolume(DWORD level);
-    /* The first mixer's volume value, or 0 with no mixer or on any error. */
+
+    /* The CD's mixer volume.  The game has no mixer line: set does nothing and
+     * get returns 0. */
+    void  setMixerVolume(unsigned level);
     unsigned int getMixerDetails();
 
-    HWND windowHandle() const { return windowhandle; }
-    bool repeating() const    { return repeat; }
-    int  track() const        { return tracknumber; }
-
 private:
- 
-
-    DWORD            nummixers;     // always 0
-    CDVolumeControl  mixers[10];    // unused
-    HWND             windowhandle;  // receives MM_MCINOTIFY
-    char             mcibuff[256];  // holds the last track length returned
-    bool             repeat;        // restart the track when it ends
-    int              tracknumber;   // the CD track playing: 2..9
+    audiodev::Music music_;
+    void           *window_;       // the game window
+    char            mcibuff[256];  // holds the last track length returned
 };
-
- 

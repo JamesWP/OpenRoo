@@ -17,7 +17,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "static.h"
+#include "audiodev.h"
 #include "tile.h"
 #include "levelmap.h"
 #include "linkedlist.h"
@@ -80,9 +80,9 @@ int Player::soundVariant() const
     return (int)(long long)now_ % 3;
 }
 
-void Player::playAtCell(CStaticSoundbuffer *buf) const
+void Player::playAtCell(audiodev::Buffer *buf) const
 {
-    buf->set3DPosition((float)(int)cellU_,
+    buf->setPosition((float)(int)cellU_,
                           (float)(int)heightCell_,
                           -(float)(int)cellV_,
                           1);
@@ -91,11 +91,11 @@ void Player::playAtCell(CStaticSoundbuffer *buf) const
 /* PRESERVED: the variant is computed twice, for the array and the trigger. */
 void Player::pickupSound(const SoundRef *arr) const
 {
-    CStaticSoundbuffer *buf = arr[soundVariant()];
+    audiodev::Buffer *buf = arr[soundVariant()];
 
     if (buf != NULL) {
         playAtCell(buf);
-        (arr[soundVariant()])->triggerPlayback(0);
+        (arr[soundVariant()])->play(false);
     }
 }
 
@@ -242,10 +242,10 @@ unsigned int Player::updateTileEffects()
             itemsCollected_ += 1;
 
             {
-                CStaticSoundbuffer *buf = pickupSounds_[SND_19A][worldSoundVariant_];
+                audiodev::Buffer *buf = pickupSounds_[SND_19A][worldSoundVariant_];
                 if (buf != NULL) {
                     playAtCell(buf);
-                    pickupSounds_[SND_19A][worldSoundVariant_]->triggerPlayback(0);
+                    pickupSounds_[SND_19A][worldSoundVariant_]->play(false);
                 }
             }
             pickedUp_ = 5;

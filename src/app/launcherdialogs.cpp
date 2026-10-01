@@ -8,7 +8,7 @@
  * lists every aspect ratio instead of 4:3 only. */
 
 #include <windows.h>
-#include <mmsystem.h>
+#include "audiodev.h"
 #include <shellapi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -279,15 +279,15 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
             // exclusive: each runs even after an earlier one ended the dialog.
             HWND focus = GetFocus();
             if (GetDlgItem(hDlg, IDC_PLAY) == focus) {
-                sndPlaySoundA(SND_IMPACT, SND_ASYNC | SND_NODEFAULT);
+                audiodev::playSystemSound(SND_IMPACT, true);
                 EndDialog(hDlg, 1);
             }
             if (GetDlgItem(hDlg, IDC_QUIT) == focus) {
-                sndPlaySoundA(SND_UGH, SND_NODEFAULT);
+                audiodev::playSystemSound(SND_UGH, false);
                 EndDialog(hDlg, 0);
             }
             if (GetDlgItem(hDlg, IDC_SETUP) == focus) {
-                sndPlaySoundA(SND_IMPACT, SND_ASYNC | SND_NODEFAULT);
+                audiodev::playSystemSound(SND_IMPACT, true);
                 open_device_dialog(hDlg);
             }
             return 0;
@@ -296,17 +296,17 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
             return 0;
         if (code == BN_CLICKED) {
             if (id == IDC_PLAY) {
-                sndPlaySoundA(SND_IMPACT, SND_ASYNC | SND_NODEFAULT);
+                audiodev::playSystemSound(SND_IMPACT, true);
                 EndDialog(hDlg, 1);
             } else if (id == IDC_SETUP) {
-                sndPlaySoundA(SND_IMPACT, SND_ASYNC | SND_NODEFAULT);
+                audiodev::playSystemSound(SND_IMPACT, true);
                 open_device_dialog(hDlg);
             } else {
-                sndPlaySoundA(SND_UGH, SND_NODEFAULT);
+                audiodev::playSystemSound(SND_UGH, false);
                 EndDialog(hDlg, 0);
             }
         } else if (code == BN_SETFOCUS) {
-            sndPlaySoundA(SND_SWITCH, SND_ASYNC | SND_NODEFAULT);
+            audiodev::playSystemSound(SND_SWITCH, true);
         }
         return 0;
     }
@@ -342,7 +342,7 @@ LauncherDlg_Proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
         } else if (in_box(lParam, LAUNCHER_MIN_RECT)) {
             ShowWindow(hDlg, SW_MINIMIZE);
         } else if (in_box(lParam, LAUNCHER_CLOSE_RECT)) {
-            sndPlaySoundA(SND_UGH, SND_NODEFAULT);
+            audiodev::playSystemSound(SND_UGH, false);
             EndDialog(hDlg, 0);
         }
         return 0;

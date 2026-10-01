@@ -24,7 +24,7 @@
 #include "textentry.h"
 #include "player.h"
 
-#include "static.h"
+#include "audiodev.h"
 #include "voicepool.h"
 #include "progctrl.h"
 #include "cdm.h"
@@ -123,7 +123,7 @@ static void option_edit(Game *game, unsigned char key)
         // The same percentage in both 16-bit halves: left and right channel.
         game->setWaveOutVolume((unsigned int)game->waveVolume() * 0x28f028fu);
         if (game->soundCreated() != 0)
-            waveOutSetVolume((HWAVEOUT)0, game->waveOutVolume());
+            audiodev::setMasterVolume(game->waveOutVolume());
         break;
     }
     // The three 0..2 video-quality sliders: shadows, highlights and particles.
@@ -163,7 +163,7 @@ Sim_HandleKeypress(Game *self)
     if (self->rebindActive() == 0 && self->textEntryActive() == 0) {
         if (KEY(0x1b) != 0 && self->debounceRef() != 0x1b && self->menu()->changed() != 0) {
             if (self->fixedSounds()->switchClick != NULL)
-                (self->fixedSounds()->switchClick)->triggerPlayback(0);
+                (self->fixedSounds()->switchClick)->play(false);
             self->debounceRef() = 0x1b;
         }
         if (self->menu()->nodeRef() != 5 && self->menu()->nodeRef() != 3 && self->menu()->childCount(self->menu()->nodeRef()) > 1) {
@@ -181,7 +181,7 @@ Sim_HandleKeypress(Game *self)
         if (KEY(0x0d) != 0 && self->debounceRef() != 0x0d && self->menu()->changed() != 0 &&
             (unsigned short)self->menu()->nodeRef() == self->menu()->lastNodeSeen()) {
             if (self->fixedSounds()->switchClick != NULL)
-                (self->fixedSounds()->switchClick)->triggerPlayback(0);
+                (self->fixedSounds()->switchClick)->play(false);
             self->debounceRef() = 0x0d;
         }
         self->menu()->navigate((int)(long long)self->lastTickTime());
@@ -318,7 +318,7 @@ Sim_HandleKeypress(Game *self)
         self->menu()->pop();
         g_logger.logMessage(1, GS_GAME_LEVEL_DONE_CONTINUE);
         if (self->fixedSounds()->levelCompleted != NULL)
-            (self->fixedSounds()->levelCompleted)->haltPlayback();
+            (self->fixedSounds()->levelCompleted)->stop();
         break;
     }
     case 0x22: case 0x32: case 0x3e: case 0x3f:

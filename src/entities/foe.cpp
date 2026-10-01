@@ -14,7 +14,7 @@
 #include "voicepool.h"
 #include "objectremove.h"
 #include "soundmanager.h"
-#include "static.h"
+#include "audiodev.h"
 #include "bomb.h"
 #include "tilequery.h"
 #include "log.h"
@@ -313,7 +313,7 @@ static void release(SoundManager *sm, void *obj, void *buf, int bPool)
     if (bPool)
         sm->releasePooledForOwner((VoicePool *)buf, 1);
     else
-        sm->releaseStaticForOwner((CStaticSoundbuffer *)buf, 1);
+        sm->releaseStaticForOwner((audiodev::Buffer *)buf, 1);
 }
 
 void Foe::remove(Game *game, unsigned int idArg)
@@ -346,7 +346,7 @@ void Foe::remove(Game *game, unsigned int idArg)
         release(sm, *slot, (*slot)->sound_bb_, 0);
 
         if ((*slot)->sound_c3_ != 0) {
-            ((*slot)->sound_c3_)->haltPlayback();
+            ((*slot)->sound_c3_)->stop();
             release(sm, *slot, (*slot)->sound_c3_, 0);
         }
 

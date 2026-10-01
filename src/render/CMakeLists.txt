@@ -22,6 +22,7 @@ add_library(render OBJECT
     themedraw.cpp)
 target_include_directories(render PRIVATE
     .
+    ../audiodev
     ../app
     ../audio
     ../core

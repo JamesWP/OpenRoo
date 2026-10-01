@@ -27,7 +27,7 @@
 #include "game.h"
 #include "tile.h"
 #include "soundmanager.h"
-#include "static.h"
+#include "audiodev.h"
 #include "log.h"
 
 static const double FALL_DELAY_MS    = 1500.0;
@@ -177,7 +177,7 @@ static int      s_logged_purge   = 0;
 static int      s_logged_release = 0;
 static unsigned s_live_purges    = 0;
 
-static void release_sound(Game *game, CStaticSoundbuffer *h)
+static void release_sound(Game *game, audiodev::Buffer *h)
 {
     if (h == 0)
         return;
@@ -229,13 +229,13 @@ Tile *BreakableTile::tile() const
     return Tile::at(tileBase_, (int)cellU_, (int)cellV_);
 }
 
-void BreakableTile::playAtTile(CStaticSoundbuffer *snd, const Tile *t) const
+void BreakableTile::playAtTile(audiodev::Buffer *snd, const Tile *t) const
 {
-    snd->set3DPosition((float)(int)cellU_,
+    snd->setPosition((float)(int)cellU_,
                           (float)t->height(),
                           -(float)(int)cellV_,
                           1);
-    snd->triggerPlayback(0);
+    snd->play(false);
 }
 
 void BreakableTile::tick()

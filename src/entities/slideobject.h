@@ -7,7 +7,7 @@
  
 #include "game.h"
 
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 
 class SlideObject {
 public:
@@ -32,7 +32,7 @@ public:
 
     // The moving-loop sound, attached by InitLevelBasedSounds
     // (levelsounds.cpp).
-    void setSound(CStaticSoundbuffer *p) { sound_ = p; }
+    void setSound(audiodev::Buffer *p) { sound_ = p; }
 
 private:
 
@@ -60,7 +60,7 @@ private:
     signed char         heightCell_;
     unsigned char       field_34[4];    // never written
     unsigned char       span_;          // limit - trackStart
-    CStaticSoundbuffer *sound_;         // the moving loop; may be NULL
+    audiodev::Buffer *sound_;         // the moving loop; may be NULL
     signed char         originU_;
     signed char         originV_;
     signed char         originHeight_;

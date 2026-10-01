@@ -9,7 +9,7 @@
  
 
 class SoundManager;
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 
 enum ExtraObjectKind {
     EXTRA_MODEL = 0, EXTRA_PARTICLE = 1, EXTRA_BILLBOARD = 2, EXTRA_SOUND = 3
@@ -35,7 +35,7 @@ struct ExtraObjectRecord {
     float                splinePoints[0x100][3];  // from the file's spline line
     unsigned short       splinePointCount;
     double               soundParam;  // sound: zeroed, then optional
-    CStaticSoundbuffer  *sound;
+    audiodev::Buffer  *sound;
 
      
 };

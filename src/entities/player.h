@@ -10,7 +10,7 @@
 #include "movableentity.h"
 #include "linkedlist.h"
 
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 class LinkedList;
 class VoicePool;
 class Tile;
@@ -118,8 +118,8 @@ public:
         SND_15E, SND_16A, SND_176, SND_182, SND_18E,
         SND_19A, SND_1A6, SND_1B2, SND_1BE,
     };
-    CStaticSoundbuffer *pickupSound(int bank, int i) const { return pickupSounds_[bank][i]; }
-    void  setPickupSound(int bank, int i, CStaticSoundbuffer *p) { pickupSounds_[bank][i] = p; }
+    audiodev::Buffer *pickupSound(int bank, int i) const { return pickupSounds_[bank][i]; }
+    void  setPickupSound(int bank, int i, audiodev::Buffer *p) { pickupSounds_[bank][i] = p; }
 
     double lastSecondsMark() const                    { return lastSecondsMark_; }
     void  setLastSecondsMark(double d)                { lastSecondsMark_ = d; }
@@ -174,10 +174,10 @@ public:
 
 private:
 
-    typedef CStaticSoundbuffer *SoundRef;
+    typedef audiodev::Buffer *SoundRef;
 
     int   soundVariant() const;
-    void  playAtCell(CStaticSoundbuffer *buf) const;
+    void  playAtCell(audiodev::Buffer *buf) const;
     void  pickupSound(const SoundRef *arr) const;
     LinkedList *effects() { return &effectList_; }
     void  endEffect(int code);

@@ -5,7 +5,7 @@
 #pragma once
 
  
-#include "static.h"
+#include "audiodev.h"
 #include "linkedlist.h"
 
 class VoicePool;
@@ -19,8 +19,8 @@ public:
  * suppressed once; all four offsets are 4-aligned. */
  
  
-    CStaticSoundbuffer *master() { return &masterBuf_; }
-    CStaticSoundbuffer *spare()  { return &spareBuf_; }
+    audiodev::Buffer *master() { return &masterBuf_; }
+    audiodev::Buffer *spare()  { return &spareBuf_; }
     LinkedList         *clones() { return &cloneList_; }
     LinkedList         *pools()  { return &voicePoolList_; }
  
@@ -45,7 +45,7 @@ public:
     purgeVoicePoolList(LinkedList *list);
 
     /* Gives back one static buffer: 1 if it belonged to this entry, else 0. */
-    int releaseStatic(CStaticSoundbuffer *buf);
+    int releaseStatic(audiodev::Buffer *buf);
 
     /* Gives back one voice pool: 1 if it belonged to this entry, else 0. */
     int releasePool(VoicePool *pool);
@@ -60,11 +60,11 @@ public:
     void          setMasterTaken(unsigned long t)  { dwMasterTaken_ = t; }
 
 private:
-    CStaticSoundbuffer masterBuf_;      // the file as first loaded
-    CStaticSoundbuffer spareBuf_;       // the same file, the other flag set
+    audiodev::Buffer masterBuf_;      // the file as first loaded
+    audiodev::Buffer spareBuf_;       // the same file, the other flag set
     unsigned long      dwMasterTaken_;  // non-zero while the master itself is lent out
     unsigned long      dwSpareTaken_;   // the same for the spare
-    LinkedList         cloneList_;      // CStaticSoundbuffer* duplicates lent out
+    LinkedList         cloneList_;      // audiodev::Buffer* duplicates lent out
     LinkedList         voicePoolList_;  // VoicePool* built from it
      
 };

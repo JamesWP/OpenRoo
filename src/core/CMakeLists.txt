@@ -9,10 +9,10 @@ add_library(core OBJECT
     gametick.cpp
     linkedlist.cpp
     namedlist.cpp
-    stream.cpp
     worldstate.cpp)
 target_include_directories(core PRIVATE
     .
+    ../audiodev
     ../app
     ../audio
     ../entities

@@ -65,7 +65,7 @@ public:
     void fillDefaults();
     unsigned int   savedCdMixerVolume() const          { return savedCdMixerVolume_; }
     void           setSavedCdMixerVolume(unsigned int v) { savedCdMixerVolume_ = v; }
-    unsigned int  *savedWaveOutVolumeRef()             { return &savedWaveOutVolume_; }
+    void           setSavedWaveOutVolume(unsigned int v) { savedWaveOutVolume_ = v; }
     unsigned int   savedWaveOutVolume() const          { return savedWaveOutVolume_; }
     void           setCameraDistanceSetting(float d)   { cameraDistanceSetting_ = d; }
     unsigned int   cdMixerVolume() const               { return cdMixerVolume_; }

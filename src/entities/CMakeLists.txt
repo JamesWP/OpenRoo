@@ -20,6 +20,7 @@ add_library(entities OBJECT
     wrapperobject.cpp)
 target_include_directories(entities PRIVATE
     .
+    ../audiodev
     ../app
     ../audio
     ../core

@@ -1,0 +1,16 @@
+# Fails if a file outside src/audiodev/ includes a system audio header, or
+# calls the system audio APIs (include paths cannot hide those).
+file(GLOB_RECURSE files "${SOURCE_DIR}/src/*.cpp" "${SOURCE_DIR}/src/*.h")
+foreach(file IN LISTS files)
+    if(file MATCHES "/src/audiodev/")
+        continue()
+    endif()
+    file(STRINGS "${file}" bad REGEX "^[ \t]*#[ \t]*include[ \t]*<(dsound|mmsystem|mmreg|mmeapi|mciapi|xaudio|audioclient|mmdeviceapi)")
+    if(NOT bad)
+        file(STRINGS "${file}" bad REGEX "(^|[^A-Za-z_])(waveOutGetVolume|waveOutSetVolume|mciSendString[AW]?|sndPlaySound[AW]?|mixerGetControlDetails[AW]?|DirectSoundCreate[0-9]*)[ \t]*[(]")
+    endif()
+    if(bad)
+        file(RELATIVE_PATH rel "${SOURCE_DIR}" "${file}")
+        message(SEND_ERROR "${rel}: system audio outside src/audiodev/ (${bad}); use audiodev.h")
+    endif()
+endforeach()

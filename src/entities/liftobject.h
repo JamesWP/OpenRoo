@@ -7,7 +7,7 @@
  
 #include "game.h"
 
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 
 class LiftObject {
 public:
@@ -25,7 +25,7 @@ public:
 
     // The moving-loop sound, attached by InitLevelBasedSounds
     // (levelsounds.cpp).
-    void setSound(CStaticSoundbuffer *p) { sound_ = p; }
+    void setSound(audiodev::Buffer *p) { sound_ = p; }
 
     // Where it is drawn (LevelPlacements::drawLifts): u, live height, v.
     float posU() const   { return posU_; }
@@ -56,7 +56,7 @@ private:
     Tile               *tileBase_;    // Game::tileBase()
     signed char         baseHeight_;
     signed char         topHeight_;
-    CStaticSoundbuffer *sound_;       // the moving loop; may be NULL
+    audiodev::Buffer *sound_;       // the moving loop; may be NULL
     unsigned char       slot_;        // its index in Game's lift slots
     int                 atTop_;       // 1: parked at the top
     signed char         state_;       // 0 parked, 1 rising, 2 falling
