@@ -1,0 +1,32 @@
+# The renderer talks to the device through renderdevice.h; the backend that
+# implements it is d3d, which render deliberately does not depend on.
+add_library(render OBJECT
+    ani.cpp
+    camera.cpp
+    d3dmath_common.cpp
+    d3dmath_mode.cpp
+    d3dmath_std.cpp
+    dsoscene.cpp
+    faktmesh.cpp
+    meshbatch.cpp
+    model.cpp
+    objectshadows.cpp
+    particles.cpp
+    quadbatch.cpp
+    rendergameframe.cpp
+    renderstate.cpp
+    scene.cpp
+    sceneobjects.cpp
+    scenequad.cpp
+    sky.cpp
+    textrenderer.cpp
+    themedraw.cpp)
+target_include_directories(render PRIVATE
+    .
+    ../app
+    ../audio
+    ../core
+    ../entities
+    ../level
+    ../testing
+    ../ui)

@@ -1,0 +1,20 @@
+# Writes buildinfo.h (BUILD_GIT_SHA) only when its content changes.
+execute_process(COMMAND git rev-parse --short HEAD WORKING_DIRECTORY ${SOURCE_DIR}
+                OUTPUT_VARIABLE sha OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET RESULT_VARIABLE rc)
+if(NOT rc EQUAL 0 OR sha STREQUAL "")
+    set(sha unknown)
+else()
+    execute_process(COMMAND git diff --quiet HEAD -- WORKING_DIRECTORY ${SOURCE_DIR}
+                    RESULT_VARIABLE dirty ERROR_QUIET)
+    if(NOT dirty EQUAL 0)
+        set(sha "${sha}-dirty")
+    endif()
+endif()
+set(line "#define BUILD_GIT_SHA \"${sha}\"\n")
+set(old "")
+if(EXISTS "${OUT}")
+    file(READ "${OUT}" old)
+endif()
+if(NOT old STREQUAL line)
+    file(WRITE "${OUT}" "${line}")
+endif()

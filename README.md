@@ -10,12 +10,13 @@ sounds and the original executable's resources from it.
 
 ## Build and run
 
-Needs `i686-w64-mingw32-g++`, `make`, Python 3 and Proton (Steam's
+Needs `i686-w64-mingw32-g++`, `cmake` (3.20+), Python 3 and Proton (Steam's
 "Proton - Experimental").
 
 ```bash
 python3 tools/import_assets.py --from KaRoo.zip   # once: fills game/ from your copy
-make                                              # build/KarooOwn.exe
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake  # once
+cmake --build build -j                            # build/KarooOwn.exe
 bash launch.sh                                    # run it (in run/)
 bash launch.sh --headless --auto-exit 30          # no display at all
 ```
@@ -41,3 +42,11 @@ It is not "open source" in the OSI sense.
 
 Ka'roo, its name and its assets belong to their rights holders. Open'Roo is
 an unofficial fan project and is not affiliated with them.
+
+## Component groups
+
+Each directory under `src/` is a CMake group (an object library in its
+`CMakeLists.txt`). A group can include only its own
+headers and those of the groups in its `DEPENDS` list, so those lists are the
+layering and the compiler enforces them. Direct3D/DirectDraw headers
+are for `d3d` alone (`cmake/CheckNativeD3D.cmake`); everything else goes through `renderdevice.h`.

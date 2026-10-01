@@ -32,8 +32,9 @@ done
 
 EXE=KarooOwn.exe
 # Bring the build up to date first; a failed build does not launch a stale exe.
-make -s >&2 || { echo "ERROR: make failed"; exit 1; }
-[[ -f "build/$EXE" ]] || { echo "ERROR: build/$EXE missing after make"; exit 1; }
+[[ -f build/CMakeCache.txt ]] || cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
+cmake --build build -j"$(nproc)" >&2 || { echo "ERROR: build failed"; exit 1; }
+[[ -f "build/$EXE" ]] || { echo "ERROR: build/$EXE missing after build"; exit 1; }
 
 # A ddraw.dll beside the game would be loaded in preference to stock Wine ddraw, even under
 # ddraw=b.
