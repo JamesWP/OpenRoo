@@ -25,12 +25,12 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 #include "voicepool.h"
 
 static int s_fx = -1;
 
-static CStaticSoundbuffer *acq(Game *game, const SoundAssetName *asset)
+static audiodev::Buffer *acq(Game *game, const SoundAssetName *asset)
 {
     char name[256];
     strcpy(name, asset->name);
@@ -46,7 +46,7 @@ static VoicePool *acq_pool(Game *game, int count, const SoundAssetName *asset)
 
 /* Resets the old buffer if there is one, then loads the named asset if it is
  * set.  The caller stores the result: the new buffer, or the reset one. */
-static CStaticSoundbuffer *reslot(Game *game, CStaticSoundbuffer *cur,
+static audiodev::Buffer *reslot(Game *game, audiodev::Buffer *cur,
                                   const SoundAssetName *asset)
 {
     if (cur != NULL)
@@ -121,11 +121,11 @@ Sim_InitLevelBasedSounds(Game *self)
 
         for (unsigned short i = 0; i < game->breakableCount(); ++i) {
             if (game->soundAsset4310a()->enabled != 0) {
-                CStaticSoundbuffer *p = acq(game, game->soundAsset4310a());
+                audiodev::Buffer *p = acq(game, game->soundAsset4310a());
                 game->breakableSlot(i)->setFallSound(p);
             }
             if (game->soundAsset43216()->enabled != 0) {
-                CStaticSoundbuffer *p = acq(game, game->soundAsset43216());
+                audiodev::Buffer *p = acq(game, game->soundAsset43216());
                 game->breakableSlot(i)->setRespawnSound(p);
             }
         }
@@ -146,12 +146,12 @@ Sim_InitLevelBasedSounds(Game *self)
                     continue;
                 const char *nm = E->file;
                 g_logger.logMessage(1, GS_SND_LEO_SOUND, nm);
-                CStaticSoundbuffer *p = game->soundManager()->acquireStatic(nm, 1);
+                audiodev::Buffer *p = game->soundManager()->acquireStatic(nm, 1);
                 E->sound = p;
                 if (p != NULL) {
-                    p->set3DPosition(E->position[0], E->position[2],
+                    p->setPosition(E->position[0], E->position[2],
                                           -E->position[1], 1);
-                    E->sound->triggerPlayback(1);
+                    E->sound->play(true);
                 }
             }
         }

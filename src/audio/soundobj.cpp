@@ -15,7 +15,7 @@
 
 static int s_fx = -1;
 
-static CStaticSoundbuffer *acq(Game *g, const SoundAssetName *asset)
+static audiodev::Buffer *acq(Game *g, const SoundAssetName *asset)
 {
     char name[256];
     strcpy(name, asset->name);
@@ -85,7 +85,7 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
     // result if the final sound was set, else 0.
     last = (unsigned int)g->soundAsset42de6()->enabled;
     if (last != 0) {
-        CStaticSoundbuffer *p = acq(g, g->soundAsset42de6());
+        audiodev::Buffer *p = acq(g, g->soundAsset42de6());
         g->foeSlot(idx)->setSoundCb(p);
         last = (unsigned int)(unsigned long)p;
     }

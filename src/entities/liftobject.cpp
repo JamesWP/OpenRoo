@@ -23,7 +23,7 @@
 #include "game.h"
 #include "tile.h"
 #include "soundmanager.h"
-#include "static.h"
+#include "audiodev.h"
 #include "log.h"
 
 static const float  K_MS_TO_HEIGHT = 0.005f;
@@ -194,7 +194,7 @@ void LiftObject::purgeAll(Game *game)
                       ++s_live_purges, (unsigned)game->liftCount());
         do {
             if (game->soundCreated() != 0) {
-                CStaticSoundbuffer *h = game->liftSlot(i)->sound_;
+                audiodev::Buffer *h = game->liftSlot(i)->sound_;
                 if (h != 0)
                     game->soundManager()->releaseStaticForOwner(h, 1);
             }
@@ -265,11 +265,11 @@ void LiftObject::tick()
             state_  = 0;
 
             if (sound_ != 0)
-                sound_->haltPlayback();
+                sound_->stop();
         }
 
         if (sound_ != 0)
-            sound_->set3DPosition((float)(int)cellU_, height_,
+            sound_->setPosition((float)(int)cellU_, height_,
                                   -(float)(int)cellV_, 1);
     }
 
@@ -301,12 +301,12 @@ void LiftObject::tick()
                 state_  = 0;
 
                 if (sound_ != 0)
-                    sound_->haltPlayback();
+                    sound_->stop();
             }
         }
 
         if (sound_ != 0)
-            sound_->set3DPosition((float)(int)cellU_, height_,
+            sound_->setPosition((float)(int)cellU_, height_,
                                   -(float)(int)cellV_, 1);
     }
 
@@ -335,9 +335,9 @@ void LiftObject::tick()
             }
 
             if (sound_ != 0) {
-                sound_->set3DPosition((float)(int)cellU_, height_,
+                sound_->setPosition((float)(int)cellU_, height_,
                                       -(float)(int)cellV_, 1);
-                sound_->triggerPlayback(1);
+                sound_->play(true);
             }
         }
 

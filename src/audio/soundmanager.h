@@ -11,24 +11,21 @@
 
  
 #include "namedlist.h"
-#include "cfaktsound.h"
+#include "audiodev.h"
 
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 class VoicePool;
 class GameLogger;
 
 class SoundManager {
 public:
      
-    CFaktSound *cfaktSound() { return &cfaktSound_; }
- 
-
-    IDirectSound *directSound() const { return cfaktSound_.directsound(); }
+    audiodev::Device *device() { return &device_; }
 
     // Finds the buffer in either list (plain first) and gives it back; with
     // bDestroyIfUnused and no borrower left, removes and destroys the entry.
     // Logs if the buffer is in neither list.
-    void releaseStaticForOwner(CStaticSoundbuffer *buf, int bDestroyIfUnused);
+    void releaseStaticForOwner(audiodev::Buffer *buf, int bDestroyIfUnused);
 
     // The voice-pool counterpart.
     void releasePooledForOwner(VoicePool *pool, int bDestroyIfUnused);
@@ -36,13 +33,12 @@ public:
     /* Loads filename into an entry's master buffer (or, given the spare's
      * address, the spare), in 3D or 2D, and applies the pending 3D mode on
      * success. */
-    int loadEntryMaster(CStaticSoundbuffer *buf, const char *filename,
-                        unsigned long dwDsFlags, int bDo3D);
+    int loadEntryMaster(audiodev::Buffer *buf, const char *filename, int bDo3D);
 
     // Loads, or shares, the named sound.  The first acquirer gets the entry's
     // master buffer, later ones a duplicate.  NULL if sound is not up or the
     // load fails.
-    CStaticSoundbuffer *acquireStatic(const char *name, int bWant3D);
+    audiodev::Buffer *acquireStatic(const char *name, int bWant3D);
 
     // nVoices voices of the named sound.  A pool is always built from
     // duplicates.
@@ -61,8 +57,8 @@ public:
     SoundManager(const SoundManager &) = delete;
     SoundManager &operator=(const SoundManager &) = delete;
     void purgeAssets();
-    int init(int enable3d, HWND window, UINT bufferflags, short channels,
-             int samplespersec, USHORT bitspersample, GameLogger *logger);
+    int init(int enable3d, void *window, int channels, int samplespersec,
+             int bitspersample, GameLogger *logger);
 
     int created()const {return dwCreated_;}
 private:
@@ -70,9 +66,8 @@ private:
     unsigned long  ownsLogger_;        // 1 if Init created logger_
     unsigned long  dwMode3D_;          // the live 3D listener mode
     unsigned long  dwPendingMode3D_;   // set with it; the mode new loads apply
-    CFaktSound     cfaktSound_;        // the device
+    audiodev::Device device_;          // the device
     unsigned long  dwCreated_;         // 0 until the device is up
-    unsigned long  dwDefaultDsFlags_;  // DSBCAPS_* for new loads; DSBCAPS_STATIC
     NamedEntryList entriesPlain_;      // bWant3D == 0
     NamedEntryList entries3D_;         // bWant3D != 0
      

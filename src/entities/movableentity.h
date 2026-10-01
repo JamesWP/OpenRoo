@@ -12,7 +12,7 @@
 #include "tickstep.h"
 #include "tile.h"
 
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 class VoicePool;
 class FoePath;
 
@@ -88,31 +88,31 @@ public:
     // and fixedsounds.cpp for the Player.
     VoicePool *pool9f() const                  { return pool_9f_; }
     void  setPool9f(VoicePool *p)              { pool_9f_ = p; }
-    CStaticSoundbuffer *soundA3() const        { return sound_a3_; }
-    void  setSoundA3(CStaticSoundbuffer *p)    { sound_a3_ = p; }
-    CStaticSoundbuffer *soundA7() const        { return sound_a7_; }
-    void  setSoundA7(CStaticSoundbuffer *p)    { sound_a7_ = p; }
-    CStaticSoundbuffer *soundAb() const        { return sound_ab_; }
-    void  setSoundAb(CStaticSoundbuffer *p)    { sound_ab_ = p; }
-    CStaticSoundbuffer *soundAf() const        { return sound_af_; }
-    void  setSoundAf(CStaticSoundbuffer *p)    { sound_af_ = p; }
-    CStaticSoundbuffer *soundB3() const        { return sound_b3_; }
-    void  setSoundB3(CStaticSoundbuffer *p)    { sound_b3_ = p; }
-    CStaticSoundbuffer *soundB7() const        { return sound_b7_; }
-    void  setSoundB7(CStaticSoundbuffer *p)    { sound_b7_ = p; }
-    CStaticSoundbuffer *soundBb() const        { return sound_bb_; }
-    void  setSoundBb(CStaticSoundbuffer *p)    { sound_bb_ = p; }
-    CStaticSoundbuffer *soundBf() const        { return sound_bf_; }
-    void  setSoundBf(CStaticSoundbuffer *p)    { sound_bf_ = p; }
-    CStaticSoundbuffer *soundC3() const        { return sound_c3_; }
-    void  setSoundC3(CStaticSoundbuffer *p)    { sound_c3_ = p; }
-    CStaticSoundbuffer *soundC7() const        { return sound_c7_; }
-    void  setSoundC7(CStaticSoundbuffer *p)    { sound_c7_ = p; }
-    CStaticSoundbuffer *soundCb() const        { return sound_cb_; }
-    void  setSoundCb(CStaticSoundbuffer *p)    { sound_cb_ = p; }
+    audiodev::Buffer *soundA3() const        { return sound_a3_; }
+    void  setSoundA3(audiodev::Buffer *p)    { sound_a3_ = p; }
+    audiodev::Buffer *soundA7() const        { return sound_a7_; }
+    void  setSoundA7(audiodev::Buffer *p)    { sound_a7_ = p; }
+    audiodev::Buffer *soundAb() const        { return sound_ab_; }
+    void  setSoundAb(audiodev::Buffer *p)    { sound_ab_ = p; }
+    audiodev::Buffer *soundAf() const        { return sound_af_; }
+    void  setSoundAf(audiodev::Buffer *p)    { sound_af_ = p; }
+    audiodev::Buffer *soundB3() const        { return sound_b3_; }
+    void  setSoundB3(audiodev::Buffer *p)    { sound_b3_ = p; }
+    audiodev::Buffer *soundB7() const        { return sound_b7_; }
+    void  setSoundB7(audiodev::Buffer *p)    { sound_b7_ = p; }
+    audiodev::Buffer *soundBb() const        { return sound_bb_; }
+    void  setSoundBb(audiodev::Buffer *p)    { sound_bb_ = p; }
+    audiodev::Buffer *soundBf() const        { return sound_bf_; }
+    void  setSoundBf(audiodev::Buffer *p)    { sound_bf_ = p; }
+    audiodev::Buffer *soundC3() const        { return sound_c3_; }
+    void  setSoundC3(audiodev::Buffer *p)    { sound_c3_ = p; }
+    audiodev::Buffer *soundC7() const        { return sound_c7_; }
+    void  setSoundC7(audiodev::Buffer *p)    { sound_c7_ = p; }
+    audiodev::Buffer *soundCb() const        { return sound_cb_; }
+    void  setSoundCb(audiodev::Buffer *p)    { sound_cb_ = p; }
     // Also holds a voice pool, on both the Player and a foe.
     VoicePool *poolCf() const                  { return (VoicePool *)sound_cf_; }
-    void  setPoolCf(VoicePool *p)              { sound_cf_ = (CStaticSoundbuffer *)p; }
+    void  setPoolCf(VoicePool *p)              { sound_cf_ = (audiodev::Buffer *)p; }
 
 protected:
     // Our own subclasses use only the base's field work, the three zeroed
@@ -172,18 +172,18 @@ protected:
     unsigned char       anim_;
     int                 onLift_;  // Riding a lift (kind 9).
     VoicePool          *pool_9f_;
-    CStaticSoundbuffer *sound_a3_;
-    CStaticSoundbuffer *sound_a7_;
-    CStaticSoundbuffer *sound_ab_;
-    CStaticSoundbuffer *sound_af_;
-    CStaticSoundbuffer *sound_b3_;
-    CStaticSoundbuffer *sound_b7_;
-    CStaticSoundbuffer *sound_bb_;
-    CStaticSoundbuffer *sound_bf_;
-    CStaticSoundbuffer *sound_c3_;
-    CStaticSoundbuffer *sound_c7_;
-    CStaticSoundbuffer *sound_cb_;
-    CStaticSoundbuffer *sound_cf_;
+    audiodev::Buffer *sound_a3_;
+    audiodev::Buffer *sound_a7_;
+    audiodev::Buffer *sound_ab_;
+    audiodev::Buffer *sound_af_;
+    audiodev::Buffer *sound_b3_;
+    audiodev::Buffer *sound_b7_;
+    audiodev::Buffer *sound_bb_;
+    audiodev::Buffer *sound_bf_;
+    audiodev::Buffer *sound_c3_;
+    audiodev::Buffer *sound_c7_;
+    audiodev::Buffer *sound_cb_;
+    audiodev::Buffer *sound_cf_;
     int                 field_d3;
     unsigned char       field_d7;  // The switch this foe is standing on, when it is standing on one.
     int                 field_d8;

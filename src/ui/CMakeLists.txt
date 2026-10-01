@@ -14,6 +14,7 @@ add_library(ui OBJECT
     theme.cpp)
 target_include_directories(ui PRIVATE
     .
+    ../audiodev
     ../app
     ../audio
     ../core

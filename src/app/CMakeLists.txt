@@ -11,6 +11,7 @@ add_library(app OBJECT
     ../../data/openroo.rc)
 target_include_directories(app PRIVATE
     .
+    ../audiodev
     ../audio
     ../core
     ../d3d

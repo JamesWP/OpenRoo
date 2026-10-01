@@ -9,7 +9,7 @@
  
 #include "game.h"
 
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 class Tile;
 
 class BreakableTile {
@@ -28,8 +28,8 @@ public:
     void tick();
 
     // The two sounds, attached by InitLevelBasedSounds (levelsounds.cpp).
-    void setFallSound(CStaticSoundbuffer *p)    { fallSound_ = p; }
-    void setRespawnSound(CStaticSoundbuffer *p) { respawnSound_ = p; }
+    void setFallSound(audiodev::Buffer *p)    { fallSound_ = p; }
+    void setRespawnSound(audiodev::Buffer *p) { respawnSound_ = p; }
 
     // Read by RenderGameFrame to start a destruct-field burst on the tick a
     // breakable falls: the flag, and the cell (read signed).
@@ -50,7 +50,7 @@ private:
     // The tile it sits on: (cellU_, cellV_), read signed.
     Tile *tile() const;
     // Positions the sound at the tile and triggers it.
-    void playAtTile(CStaticSoundbuffer *snd, const Tile *t) const;
+    void playAtTile(audiodev::Buffer *snd, const Tile *t) const;
 
     double              now_;             // latched from *clock_
     double             *clock_;           // Game::clock()
@@ -70,8 +70,8 @@ private:
     double              eventTime_;       // the clock at the last fall or respawn
     int                 respawnPending_;
     unsigned char       field_4c;
-    CStaticSoundbuffer *fallSound_;       // may be NULL
-    CStaticSoundbuffer *respawnSound_;    // may be NULL
+    audiodev::Buffer *fallSound_;       // may be NULL
+    audiodev::Buffer *respawnSound_;    // may be NULL
     int                 armed_;
     int                 noRespawn_;       // the tile's param: nonzero never respawns
     double              armedAt_;

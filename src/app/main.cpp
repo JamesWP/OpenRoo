@@ -21,7 +21,7 @@
 #include "renderdevice.h"
 #include "inputsetup.h"
 #include "soundmanager.h"
-#include "cfaktsound.h"
+#include "audiodev.h"
 #include "cdm.h"
 #include "renderstate.h"
 #include "clock.h"
@@ -137,11 +137,6 @@ Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
         break;
 
-    case MM_MCINOTIFY:  // a track ended: restart it if it repeats
-        if (wParam == MCI_NOTIFY_SUCCESSFUL && g_cdAudio.repeating())
-            g_cdAudio.playTrack(g_cdAudio.track(), true);
-        break;
-
     case WM_MOVIE_EVENT:
         if (g_moviePlaying)
             g_movie.notify((DWORD)hWnd, wParam, lParam);
@@ -150,6 +145,9 @@ Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             *&g_moviePlaying = 0;
         break;
     }
+    // A track ended: the music restarts it if it repeats.
+    if (g_cdAudio.handleWindowMessage(msg, wParam, lParam))
+        return 0;
     return DefWindowProcA(hWnd, msg, wParam, lParam);
 }
 
@@ -164,6 +162,7 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
 {
     g_moduleInstance = hInstance;
+    audiodev::setLog(log_write);
     // Data paths are relative to the current directory, which nothing changes.
     // An absolute prefix could overflow the fixed path buffers on a deep
     // install.
@@ -255,8 +254,8 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
 
     // 3D sound, 22050 Hz, 16-bit stereo; rolloff 0.3 if it came up.
     SoundManager *snd = game->soundManager();
-    if (snd->init(1, hWnd, 0, 2, 22050, 16, &g_logger))
-        snd->cfaktSound()->apply3DRolloffParams(0.3f, DS3D_IMMEDIATE);
+    if (snd->init(1, hWnd, 2, 22050, 16, &g_logger))
+        snd->device()->setListenerRolloff(0.3f, true);
 
     g_cdAudio.setWindowHandle(hWnd);
     ShowWindow(hWnd, SW_SHOW);

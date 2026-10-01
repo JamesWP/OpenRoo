@@ -6,7 +6,6 @@
  */
 
 #include <windows.h>
-#include <mmsystem.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -20,7 +19,7 @@
 #include "theme.h"
 #include "extraobjects.h"
 #include "soundmanager.h"
-#include "static.h"
+#include "audiodev.h"
 #include "voicepool.h"
 #include "player.h"
 #include "progctrl.h"
@@ -125,8 +124,8 @@ Game::Game(const char *gameName)
         return;
     }
     g_logger.logMessage(2, GS_GAME_COMMERCIAL);
-    waveOutGetVolume(NULL, (DWORD *)config_.savedWaveOutVolumeRef());
-    waveOutSetVolume(NULL, config_.waveOutVolume());
+    config_.setSavedWaveOutVolume(audiodev::masterVolume());
+    audiodev::setMasterVolume(config_.waveOutVolume());
     config_.setSavedCdMixerVolume(g_cdAudio.getMixerDetails());
     g_cdAudio.setMixerVolume(config_.cdMixerVolume());
     state_ = 0;
@@ -188,7 +187,7 @@ Game::~Game()
     releaseAllSounds();
     g_logger.logMessage(1, GS_GAME_SOUNDS_RELEASED);
     soundManager()->purgeAssets();
-    waveOutSetVolume(NULL, config_.savedWaveOutVolume());
+    audiodev::setMasterVolume(config_.savedWaveOutVolume());
     g_cdAudio.setMixerVolume(config_.savedCdMixerVolume());
 
 }
@@ -260,11 +259,11 @@ void Game::releaseAllSounds()
     SoundManager *sm = soundManager();
     if (soundCreated() != 0) {
         Player *p = player();
-        CStaticSoundbuffer *statics1[] = {
+        audiodev::Buffer *statics1[] = {
             fixedSounds_.timeOut, fixedSounds_.lastSeconds,
             fixedSounds_.count,   fixedSounds_.switchClick,
         };
-        for (CStaticSoundbuffer *s : statics1)
+        for (audiodev::Buffer *s : statics1)
             if (s) sm->releaseStaticForOwner(s, 1);
         if (fixedSounds_.menuUpDown)
             sm->releasePooledForOwner(fixedSounds_.menuUpDown, 1);
@@ -273,11 +272,11 @@ void Game::releaseAllSounds()
         if (p->poolCf())  sm->releasePooledForOwner(p->poolCf(), 1);
         if (fixedSounds_.levelCompleted)
             sm->releaseStaticForOwner(fixedSounds_.levelCompleted, 1);
-        CStaticSoundbuffer *statics2[] = {
+        audiodev::Buffer *statics2[] = {
             p->soundC7(), p->soundA3(), p->soundB3(), p->soundB7(),
             p->soundBb(), p->soundAb(), p->soundAf(), p->soundCb(), p->soundA7(),
         };
-        for (CStaticSoundbuffer *s : statics2)
+        for (audiodev::Buffer *s : statics2)
             if (s) sm->releaseStaticForOwner(s, 1);
         if (p->pool9f())
             sm->releasePooledForOwner(p->pool9f(), 1);

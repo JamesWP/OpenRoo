@@ -51,7 +51,7 @@
 #include "movableentity.h"
 #include "objectremove.h"
 #include "soundmanager.h"
-#include "static.h"
+#include "audiodev.h"
 #include "gamelog.h"
 #include "gameglobals.h"
 #include "log.h"
@@ -175,7 +175,7 @@ static void spawn_strcpy(char *dst, const char *src)
 /* One "if enabled: copy the name, acquire, store" block; the slot is re-read
  * for the store. */
 void Bomb::acquireInto(Game *game, Bomb **slot, const SoundAssetName *asset,
-                       CStaticSoundbuffer *Bomb::*field)
+                       audiodev::Buffer *Bomb::*field)
 {
     char name[256];
 
@@ -270,9 +270,9 @@ static int           s_logged_release  = 0;
 /* Releases one sound field, re-reading the slot.  Owner flag 0: a bomb never
  * destroys a shared buffer. */
 void Bomb::releaseField(SoundManager *sm, Bomb **slot,
-                        CStaticSoundbuffer *Bomb::*field)
+                        audiodev::Buffer *Bomb::*field)
 {
-    CStaticSoundbuffer *buf = (*slot)->*field;
+    audiodev::Buffer *buf = (*slot)->*field;
 
     if (buf == 0)
         return;
@@ -356,14 +356,14 @@ void Bomb::tick()
 
     // The roll sound, on the grid cell: (u, h, -v).
     if (rollSound_ != 0) {
-        rollSound_->set3DPosition((float)(int)cellU_,
+        rollSound_->setPosition((float)(int)cellU_,
                               (float)(int)heightCell_,
                               -(float)(int)cellV_,
                               1);
         if (dying_ == 0)  // raised by the blast below
-            rollSound_->triggerPlayback(0);
+            rollSound_->play(false);
         else
-            rollSound_->haltPlayback();
+            rollSound_->stop();
     }
 
     // Roll: still fusing.
@@ -386,8 +386,8 @@ void Bomb::tick()
     if (blastSoundPlayed_ == 0) {
         if (blastSound_ != 0) {
             // From the float position, not the grid bytes.
-            blastSound_->set3DPosition(posU_, posY_, -posV_, 1);
-            blastSound_->triggerPlayback(0);
+            blastSound_->setPosition(posU_, posY_, -posV_, 1);
+            blastSound_->play(false);
         }
         blastSoundPlayed_ = 1;
     }

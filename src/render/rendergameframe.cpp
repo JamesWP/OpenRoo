@@ -34,7 +34,7 @@
 #include "clock.h"
 #include "scriptplayer.h"
 #include "soundmanager.h"
-#include "cfaktsound.h"
+#include "audiodev.h"
 #include "sky.h"
 #include "sceneobjects.h"
 #include "explodedebris.h"
@@ -91,7 +91,7 @@ static void scripted_camera(Game *g, RenderDevice *d3d)
 static void update_listener(Game *g)
 {
     CameraGlobals *cam = &g_camera;
-    vec3d front = { cam->target()[0] - cam->eye()[0],
+    float front[3] = { cam->target()[0] - cam->eye()[0],
                     cam->target()[1] - cam->eye()[1],
                     cam->target()[2] - cam->eye()[2] };
 
@@ -119,19 +119,19 @@ static void update_listener(Game *g)
             acc = v[k] * r[k * 4 + col] + acc;
         o[col] = acc;
     }
-    vec3d top;
+    float top[3];
     if (o[3] != 1.0f) {
-        top.x = o[0] / o[3];
-        top.y = o[1] / o[3];
-        top.z = o[2] / o[3];
+        top[0] = o[0] / o[3];
+        top[1] = o[1] / o[3];
+        top[2] = o[2] / o[3];
     } else {
-        top.x = o[0]; top.y = o[1]; top.z = o[2];
+        top[0] = o[0]; top[1] = o[1]; top[2] = o[2];
     }
 
-    CFaktSound *snd = g->soundManager()->cfaktSound();
-    snd->setPosition((vec3d *)cam->eye(), 1);
-    snd->setOrientation(&front, &top, 1);
-    snd->commitSettings();
+    audiodev::Device *snd = g->soundManager()->device();
+    snd->setListenerPosition(cam->eye(), true);
+    snd->setListenerOrientation(front, top, true);
+    snd->commit();
 }
 
 /* ─── Section 3: the opaque passes ──────────────────────────────────────── */

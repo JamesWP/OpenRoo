@@ -48,7 +48,7 @@ void MovableEntity::zeroSoundSlots()
 #include <windows.h>
 #include <string.h>
 #include <math.h>
-#include "static.h"
+#include "audiodev.h"
 #include "log.h"
 #include "entitymath.h"
 #include "voicepool.h"
@@ -126,12 +126,12 @@ static inline double load_double(const void *p)
 #define CUR          TILE(GU, GV)
 
 /* Positions a sound at (x, y, z) and triggers it; a null sound is skipped. */
-static inline void snd_at(CStaticSoundbuffer *s, float x, float y, float z, DWORD loop)
+static inline void snd_at(audiodev::Buffer *s, float x, float y, float z, DWORD loop)
 {
     if (s == 0)
         return;
-    s->set3DPosition(x, y, z, 1);
-    s->triggerPlayback(loop);
+    s->setPosition(x, y, z, 1);
+    s->play(loop);
 }
 
 /* Is direction `d` the entity's facing, or its reverse? The second check runs
@@ -314,7 +314,7 @@ unsigned int MovableEntity::updateMovement()
                 copy8(&animDuration_, &stepDuration_);
                 climbing_ = 0;
                 if (sound_af_ != 0)
-                    sound_af_->haltPlayback();
+                    sound_af_->stop();
             }
 
             // Teleporter tile.
@@ -397,7 +397,7 @@ unsigned int MovableEntity::updateMovement()
         if ((signed char)t2->objectMarker() != TILE_CONVEYOR ||
             (unsigned)t2->height() != (unsigned)(int)GH) {
             if (sound_ab_ != 0)
-                sound_ab_->haltPlayback();
+                sound_ab_->stop();
             conveyorDir_ = 0;
         }
     }
@@ -494,12 +494,12 @@ unsigned int MovableEntity::updateMovement()
                             snd_at(sound_a7_, (float)(int)GU, (float)(int)GH,
                                    -(float)(int)GV, 0);
                         if (sound_c3_ != 0)
-                            sound_c3_->haltPlayback();
+                            sound_c3_->stop();
                         pendingMove_ = 0;
                     }
                 }
                 if (sound_c7_ != 0)
-                    sound_c7_->haltPlayback();
+                    sound_c7_->stop();
                 gliding_  = 0;
                 anim_   = 0;
                 falling_ = 0;
@@ -519,7 +519,7 @@ unsigned int MovableEntity::updateMovement()
                 copy8(&animDuration_, &stepDuration_);
                 climbing_ = 0;
                 if (sound_af_ != 0)
-                    sound_af_->haltPlayback();
+                    sound_af_->stop();
                 if (onLift_ == 0) {
                     fallSpeed_   = -3.0f;                         // starts at -3.0
                     fallStartH_  = ((unsigned char)heightCell_);  // fall start height
@@ -538,7 +538,7 @@ unsigned int MovableEntity::updateMovement()
                 if (gliding_ == 0) {
                     // Free fall.
                     if (sound_c3_ != 0)
-                        sound_c3_->set3DPosition(posU_, posY_,
+                        sound_c3_->setPosition(posU_, posY_,
                                               -posV_, 1);
                     if (facing_or_reverse((unsigned)pendingMove_, facing_))
                         pendingMove_ = 0;
@@ -573,7 +573,7 @@ unsigned int MovableEntity::updateMovement()
                 } else {
                     // Gliding.
                     if (sound_c7_ != 0)
-                        sound_c7_->set3DPosition(posU_, posY_,
+                        sound_c7_->setPosition(posU_, posY_,
                                               -posV_, 1);
                     unsigned char th = CUR->height();
                     if ((float)th < posY_ || posY_ < (float)th - K_HALF_F) {
@@ -630,7 +630,7 @@ unsigned int MovableEntity::updateMovement()
                     posY_ = (float)((v0 - ts * (double)K_GRAVITY_HALF) * ts
                                       + (double)(int)GH);
                     if (sound_b3_ != 0)
-                        sound_b3_->set3DPosition((float)(int)GU,
+                        sound_b3_->setPosition((float)(int)GU,
                                               (float)(int)GH, -(float)(int)GV, 1);
                     anim_ = 0x0b;
                 } else {

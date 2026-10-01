@@ -54,18 +54,18 @@ struct ScoreTally {
  
 /* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport loads once.  They
  * are the Game's, not the SoundManager's: only Game code writes them. */
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 class VoicePool;
 struct FixedSounds {
-    CStaticSoundbuffer *timeOut;
-    CStaticSoundbuffer *switchClick;      /* menu select */
+    audiodev::Buffer *timeOut;
+    audiodev::Buffer *switchClick;      /* menu select */
     VoicePool          *menuUpDown;       /* 5 voices */
-    CStaticSoundbuffer *count;
-    CStaticSoundbuffer *lastSeconds;      /* the countdown */
-    CStaticSoundbuffer *levelCompleted;
+    audiodev::Buffer *count;
+    audiodev::Buffer *lastSeconds;      /* the countdown */
+    audiodev::Buffer *levelCompleted;
     /* Three banks, 'A'..'C'; GameTick picks one by rand()%3 when the
      * crystals are complete. */
-    CStaticSoundbuffer *crystalBank[3];
+    audiodev::Buffer *crystalBank[3];
     /* Set once the load has run (or found no sound); it never runs again. */
     unsigned int        loaded;
 };

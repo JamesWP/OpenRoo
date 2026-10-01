@@ -22,7 +22,7 @@
 #include <string.h>
 #include "log.h"
 #include "scriptplayer.h"
-#include "stream.h"
+#include "soundmanager.h"
 #include <stdlib.h>
 #include "gamelog.h"
 #include "gameglobals.h"
@@ -38,9 +38,9 @@ void ScriptPlayer::releaseStreams()
     for (int i = 0; i < 255; ++i) {
         if (streams_[i] == NULL)
             continue;
-        if (streams_[i]->thread_done() == 0)
+        if (!streams_[i]->done())
             streams_[i]->stop();
-        streams_[i]->releaseResources();
+        streams_[i]->release();
         delete streams_[i];
         streams_[i] = NULL;
     }
@@ -424,8 +424,6 @@ unsigned char ScriptPlayer::playScript(const char *line)
         g_logger.logMessage(1, "IS: initwave noticed");
         char *name = strtok(NULL, JJS_DELIMS);
         if (name) {
-            if (soundManager_)
-                streamWave_.pFilename = name;  // PRESERVED: points into buf, a stack buffer
             char *tid = strtok(NULL, JJS_DELIMS);
             if (tid) {
                 unsigned char id = (unsigned char)atoi(tid);
@@ -438,17 +436,17 @@ unsigned char ScriptPlayer::playScript(const char *line)
                         "IS: warning - Stream sound buffer width id %d already initialized!", id);
                     return 0xc;
                 }
-                CStreamSoundbuffer *s = new (std::nothrow) CStreamSoundbuffer();
+                audiodev::Stream *s = new (std::nothrow) audiodev::Stream();
                 streams_[id] = s;
-                streamReady_ = s->prepare(&streamWave_);
+                streamReady_ = s->prepare(*soundManager_->device(), name);
                 if (streamReady_)
                     g_logger.logMessage(1,
                         "IS: Stream buffer width name %s successfully initialized, ID=%d",
-                        streamWave_.pFilename, id);
+                        name, id);
                 else
                     g_logger.logMessage(1,
                         "IS: warning - Stream sound buffer width name %s could not initialized !",
-                        streamWave_.pFilename);
+                        name);
             }
         }
         return 0xc;
@@ -487,7 +485,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
 /* A "playwave <id> WAIT" wait ends when that stream has finished. */
 void ScriptPlayer::updateStreamWait()
 {
-    if (waitingOnStream_ && streams_[waitStream_]->thread_done()) {
+    if (waitingOnStream_ && streams_[waitStream_]->done()) {
         waitingOnStream_ = 0;
         streamReady_ = 0;
     }
@@ -578,9 +576,9 @@ ScriptPlayer::ScriptPlayer()
  * finished is left to its deinit. */
 ScriptPlayer::~ScriptPlayer()
 {
-    if (streamReady_ != 0 && stream_.thread_done() == 0) {
+    if (streamReady_ != 0 && !stream_.done()) {
         stream_.stop();
-        stream_.releaseResources();
+        stream_.release();
         streamReady_ = 0;
     }
 }

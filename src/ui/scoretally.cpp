@@ -17,7 +17,7 @@
 
 #include <windows.h>
 #include <string.h>
-#include "static.h"
+#include "audiodev.h"
 #include "log.h"
 #include "game.h"
 #include "scoretally.h"
@@ -35,9 +35,9 @@ static unsigned int ftol_low(Game *game)
 
 static void tick_sound(Game *game)
 {
-    CStaticSoundbuffer *s = game->fixedSounds()->count;
+    audiodev::Buffer *s = game->fixedSounds()->count;
     if (s != NULL)
-        s->triggerPlayback(0);
+        s->play(false);
 }
 
   unsigned int  

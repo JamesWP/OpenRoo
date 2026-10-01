@@ -43,7 +43,7 @@
 
 /* OpenLevelFile's own messages, which carry the level number too. */
 
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 
 class GameLogger;
 

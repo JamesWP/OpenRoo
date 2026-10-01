@@ -10,7 +10,7 @@
 #include "game.h"
 #include "movableentity.h"
 
-class CStaticSoundbuffer;
+namespace audiodev { class Buffer; }
 class SoundManager;
 class Tile;
 
@@ -41,12 +41,12 @@ private:
     // The cell (u, v) from this bomb's tile base, both read signed.
     Tile *tile(int u, int v) const;
     static void acquireInto(Game *game, Bomb **slot, const SoundAssetName *asset,
-                            CStaticSoundbuffer *Bomb::*field);
+                            audiodev::Buffer *Bomb::*field);
     static void releaseField(SoundManager *sm, Bomb **slot,
-                             CStaticSoundbuffer *Bomb::*field);
+                             audiodev::Buffer *Bomb::*field);
 
-    CStaticSoundbuffer *rollSound_;         // may be NULL
-    CStaticSoundbuffer *blastSound_;        // may be NULL
+    audiodev::Buffer *rollSound_;         // may be NULL
+    audiodev::Buffer *blastSound_;        // may be NULL
     int                 blastSoundPlayed_;
     int                 zoneCleared_;
     double              droppedAt_;

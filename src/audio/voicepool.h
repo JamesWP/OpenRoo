@@ -4,22 +4,13 @@
  * advances the cursor for next time. */
 #pragma once
 
-#include <windows.h>
+#include "audiodev.h"
 
- 
-#include "static.h"
-
-struct IDirectSound;
-
-/* One pool.  The voices array is heap-allocated with a leading count word, and
- * destroyed through the voices' own vector destructor. */
 class VoicePool {
 public:
-     
-
-    /* Halts and re-triggers the current voice, then advances the cursor.
-     * Returns the trigger's HRESULT, or DSERR_UNINITIALIZED with no voices. */
-    int cycle(DWORD dwLoopFlags);
+    /* Halts and re-triggers the current voice, then advances the cursor.  Does
+     * nothing with no voices. */
+    void cycle(bool loop = false);
 
     /* An empty pool.  The destructor wipes it. */
     VoicePool();
@@ -27,38 +18,26 @@ public:
     VoicePool(const VoicePool &) = delete;
     VoicePool &operator=(const VoicePool &) = delete;
 
-    /* Resets and frees every voice and clears the pool, except the nesting
-     * depth. */
+    /* Resets and frees every voice and clears the pool. */
     void wipe();
 
-    /* Loads count voices of one file: voice 0 from disk, the rest duplicated
-     * from it (reloading any the duplicate refuses).  Returns 1, or 0 on
-     * failure. */
-    int fill3D(int count, IDirectSound *pDS, DWORD dwDsFlags,
-               const char *filename, void *logger);
-
-    /* Fills the pool with count duplicates of src.  Non-NULL on success. */
-    void *clone(int count, IDirectSound *pDS, CStaticSoundbuffer *src,
-                int noFallback);
+    /* Fills the pool with count duplicates of src.  False on failure, with the
+     * pool left empty. */
+    bool clone(int count, audiodev::Device &dev, const audiodev::Buffer &src);
 
     /* The voice at index, or NULL if out of range. */
-    CStaticSoundbuffer *voiceAt(int index);
+    audiodev::Buffer *voiceAt(int index);
 
     /* Voice 0's file name, or NULL for an empty pool. */
-    char *firstFilename();
+    const char *firstFilename();
 
     /* Positions every voice in 3D space. */
-    void broadcastCoordinates(float x, float y, float z, DWORD dwApply);
+    void broadcastCoordinates(float x, float y, float z, bool immediate = true);
 
-    void               *logger() const { return logger_; }
-    int voiceCount() const { return dwVoiceCount_; }
+    int voiceCount() const { return voiceCount_; }
 
 private:
-    void               *logger_;        // the logger the voices report to
-    CStaticSoundbuffer *pBufs_;         // dwVoiceCount voices, or NULL
-    int                 dwCurrentIdx_;  // the voice the next play uses
-    int                 dwNestDepth_;   // re-entrancy depth of Fill3D; Wipe leaves it
-    int                 dwVoiceCount_;
-     
+    audiodev::Buffer *bufs_;        // voiceCount_ voices, or NULL
+    int               currentIdx_;  // the voice the next play uses
+    int               voiceCount_;
 };
- 
