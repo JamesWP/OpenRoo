@@ -7,7 +7,8 @@ add_library(app OBJECT
     main.cpp
     process.cpp
     resources.cpp
-    veh.cpp)
+    veh.cpp
+    ../../data/openroo.rc)
 target_include_directories(app PRIVATE
     .
     ../audio
@@ -41,3 +42,7 @@ add_custom_target(buildinfo ALL
 
 add_dependencies(app launcher_layout buildinfo)
 target_include_directories(app PRIVATE "${LAUNCHER_DIR}" "${BUILDINFO_DIR}")
+target_link_libraries(app PRIVATE gdi32 version shell32 winmm)
+set_source_files_properties(${PROJECT_SOURCE_DIR}/data/openroo.rc PROPERTIES
+    OBJECT_DEPENDS "${PROJECT_SOURCE_DIR}/data/openroo.ico;${LAUNCHER_DIR}/launcher_layout.h"
+    COMPILE_FLAGS "--include-dir=${PROJECT_SOURCE_DIR}/data --include-dir=${LAUNCHER_DIR}")

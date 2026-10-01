@@ -21,3 +21,4 @@ target_include_directories(core PRIVATE
     ../render
     ../testing
     ../ui)
+target_link_libraries(core PRIVATE winmm)
