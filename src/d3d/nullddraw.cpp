@@ -1504,7 +1504,7 @@ static void nulldd_build_vtables(void)
     s_mat3.vtable  = s_mat3_vtable;
 }
 
-/* ─── The window ───────────────────────────────────────────────────────────
+/* ─── The window (made by windev, see window.cpp) ──────────────────────────
  *
  * Replacing DirectDraw is necessary but NOT sufficient.  Wine cannot create a
  * top-level window without a display driver at all: with no X server,
@@ -1521,7 +1521,8 @@ static void nulldd_build_vtables(void)
  *   top-level    HWND=00000000 err=0        <- fails
  *   CreateCompatibleDC=25410040             <- GDI works, so DIB surfaces do
  *
- * So the fix is to make the game's one window message-only.  A window
+ * So the fix is to make the game's one window message-only (main.cpp asks
+ * for it with WindowConfig::messageOnly when nulldd_enabled).  A window
  * parented to HWND_MESSAGE never goes near the display driver: it has no
  * frame, no position and no visibility, but it has a valid HWND, a window
  * procedure, and a message queue — everything the game actually uses it for
@@ -1529,31 +1530,7 @@ static void nulldd_build_vtables(void)
  * handed, so nothing else notices.
  *
  * WinMain's is the only window.  Its ShowWindow and UpdateWindow calls are
- * left alone: both are harmless no-ops on a message-only window.
- *
- * Outside headless mode this is a pure passthrough.
- */
-  HWND WINAPI hooks_CreateWindowExA(
-        DWORD exStyle, LPCSTR className, LPCSTR windowName, DWORD style,
-        int x, int y, int w, int h, HWND parent, HMENU menu,
-        HINSTANCE inst, LPVOID param)
-{
-    if (nulldd_enabled() && parent == NULL) {
-        HWND hwnd = CreateWindowExA(0, className, windowName,
-                                    style & ~(DWORD)WS_VISIBLE,
-                                    x, y, w, h, HWND_MESSAGE, menu, inst, param);
-        log_write("nullddraw: CreateWindowExA class=%s -> message-only hwnd=%p "
-                  "(style %08lX -> %08lX, exstyle %08lX dropped)\n",
-                  className ? className : "(atom)", hwnd,
-                  (unsigned long)style,
-                  (unsigned long)(style & ~(DWORD)WS_VISIBLE),
-                  (unsigned long)exStyle);
-        return hwnd;
-    }
-    return CreateWindowExA(exStyle, className, windowName, style,
-                           x, y, w, h, parent, menu, inst, param);
-}
-
+ * left alone: both are harmless no-ops on a message-only window. */
 IDirectDraw *nulldd_create(void)
 {
     nulldd_build_vtables();

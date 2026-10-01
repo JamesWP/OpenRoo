@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "log.h"
+#include "windev.h"
 #include "game.h"
 #include "levelparse.h"
 #include "soundmanager.h"
@@ -147,7 +148,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
                            self->map()->bonus(), path);
     } else {
         g_logger.logMessage(4, GS_OPEN_FAILED_NAME, path);
-        PostQuitMessage(1);
+        windev::quit(1);
     // PRESERVED: carries on; does not return.
     }
 
@@ -242,7 +243,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     } else {
         g_logger.logMessage(4, GS_OPEN_FAILED_NUM,
                            levelNo & 0xff, path);
-        PostQuitMessage(1);
+        windev::quit(1);
     // PRESERVED: carries on, as in ParseLevelFiles.
     }
 

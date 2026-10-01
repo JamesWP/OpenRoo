@@ -7,14 +7,14 @@
  *              images)
  *   RCDATA     200-206 launcher bitmaps (background; play, setup, quit
  *              off/focus), cut from data/launcher/ into build/obj/ by
- *              tools/slice_launcher.py; ids are launcherdialogs.cpp's
+ *              tools/slice_launcher.py; ids are windev/launcher.cpp's
  *   VERSIONINFO 1 our own name and version
  *
  * FORMAT: dialog templates must stay DIALOG (not DIALOGEX) and controls
  * keep their order.  The launcher's owner-drawn buttons name the Button
  * class by its atom 0x80 -- windres writes a class *name* for "Button".  An
  * explicit LTEXT style replaces the default WS_GROUP, so it is restated.
- * Control ids are the ones launcherdialogs.cpp uses.
+ * Control ids are the ones windev/launcher.cpp uses.
  */
 #include <windows.h>
 #pragma code_page(65001)

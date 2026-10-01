@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "game.h"
+#include "windev.h"
 #include "gamestr.h"
 #include "gamelog.h"
 #include "gameglobals.h"
@@ -85,7 +86,7 @@ Game::Game(const char *gameName)
 
     if (!loadGameFile(gameFileName_)) {
         g_logger.logMessage(4, GS_GAME_FILE_FAILED, gameFileName_);
-        PostQuitMessage(1);
+        windev::quit(1);
         return;
     }
 
@@ -120,7 +121,7 @@ Game::Game(const char *gameName)
     // levels.  field_0c_ was zeroed above, so it never fires.
     if (field_0c_ != 0 && levelCount_ > 10) {
         g_logger.logMessage(4, GS_GAME_DEMO_ABORT);
-        PostQuitMessage(1);
+        windev::quit(1);
         return;
     }
     g_logger.logMessage(2, GS_GAME_COMMERCIAL);

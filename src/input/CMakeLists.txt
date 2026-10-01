@@ -6,6 +6,7 @@ add_library(input OBJECT
 target_include_directories(input PRIVATE
     .
     ../audiodev
+    ../windev
     ../inputdev
     ../app
     ../audio

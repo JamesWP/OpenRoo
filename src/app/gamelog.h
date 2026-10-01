@@ -43,8 +43,6 @@ private:
     int    minLevel_;         // a message logs if level >= this
     char   fileName_[0x104];  // the path given to OpenLogFile
     FILE  *fp_;               // NULL until OpenLogFile succeeds
-    UINT   notifyWParam_;     // WM_COPYDATA mirror wParam; 0 disables
-    HWND   notifyHwnd_;       // WM_COPYDATA mirror target; nothing ever sets it
 };
 
  

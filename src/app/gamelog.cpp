@@ -4,15 +4,12 @@
  * PRESERVED:
  *   1. Both variadic writers vsprintf the caller's format into a fixed
  *      3000-byte stack buffer with no bound.
- *   2. The file gets strlen(line) bytes, the WM_COPYDATA mirror
- *      strlen(line) + 1.
- *   3. OpenLogFile formats the banner, and so reads the date, before it
+ *   2. OpenLogFile formats the banner, and so reads the date, before it
  *      opens the file.
- *   4. The default fopen mode is "wc", MSVC's commit-on-flush extension.
- *   5. Initialize builds and tears down a throwaway logger on the stack.
+ *   3. The default fopen mode is "wc", MSVC's commit-on-flush extension.
+ *   4. Initialize builds and tears down a throwaway logger on the stack.
  *
- * The WM_COPYDATA mirror is dead in the game (its target is never set) and the
- * "Could not open Protofile" box and most of the DirectSound error table have
+ * The "Could not open Protofile" box and most of the DirectSound error table have
  * never been seen to fire.
  *
  * KAROO_GAMELOG_FX is a negative control: "mark" prefixes every line with
@@ -28,6 +25,7 @@
 #include <stddef.h>
 #include "gamelog.h"
 #include "log.h"
+#include "windev.h"
 #include <stdlib.h>
 #include "gamestr.h"
 
@@ -40,7 +38,6 @@
 #define MODE_WC     "wc"
 
 #define LOG_BUF      3000  // the game's buffer size
-#define WM_COPYDATA_ 0x4a
 
 static void verify_one(const char *ours, const char *theirs, const char *what)
 {
@@ -120,22 +117,12 @@ static char *format_date(char *out)
     return out;
 }
 
-/* What every writer ends with: write and flush the line, then mirror it to the
- * notify window. */
-void GameLogger::emit(int level, const char *line)
+/* What every writer ends with: write and flush the line. */
+void GameLogger::emit(int, const char *line)
 {
     if (fp_ && gamelog_fx() != FX_OFF) {
         fwrite(line, 1, strlen(line), fp_);
         fflush(fp_);
-    }
-    // Dead in the game: nothing sets these two fields.
-    if (notifyHwnd_ && notifyWParam_) {
-        COPYDATASTRUCT cds;
-        cds.dwData = (ULONG_PTR)level;
-        cds.cbData = (DWORD)(strlen(line) + 1);  // PRESERVED: +1 here only
-        cds.lpData = (PVOID)line;
-        SendMessageA(notifyHwnd_, WM_COPYDATA_, (WPARAM)notifyWParam_,
-                     (LPARAM)&cds);
     }
 }
 
@@ -145,9 +132,7 @@ void GameLogger::closeLogFile()
     log_write("Closing log file\n");
     if (fp_)
         fclose(fp_);
-    fp_           = NULL;
-    notifyWParam_ = 0;
-    notifyHwnd_   = NULL;
+    fp_ = NULL;
 }
 
 GameLogger::GameLogger()
@@ -156,8 +141,6 @@ GameLogger::GameLogger()
     minLevel_     = 1;     // level-0 messages are off by default
     fileName_[0]  = '\0';  // PRESERVED: only byte 0; the rest stays uninitialised
     fp_           = NULL;
-    notifyWParam_ = 0;
-    notifyHwnd_   = NULL;
 }
 
 GameLogger::~GameLogger()
@@ -187,7 +170,7 @@ int GameLogger::openLogFile(const char *filename, const char *mode)
     fp_ = fopen(fileName_, mode);
     if (fp_ == NULL) {
         log_write("gamelog: could not open %s (mode %s)\n", fileName_, mode);
-        MessageBoxA(NULL, GS_LOG_MB_TEXT, GS_LOG_MB_CAPT, 0);
+        windev::messageBox(NULL, GS_LOG_MB_TEXT, GS_LOG_MB_CAPT);
         return 0;
     }
 

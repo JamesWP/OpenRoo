@@ -14,6 +14,7 @@ add_library(level OBJECT
 target_include_directories(level PRIVATE
     .
     ../audiodev
+    ../windev
     ../app
     ../audio
     ../core

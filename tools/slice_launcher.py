@@ -9,7 +9,7 @@ identical except over the buttons:
     unselected.bmp   every button in its normal state
     selected.bmp     every button in its focused state
 
-Writes to OUTDIR the files openroo.rc embeds and launcherdialogs.cpp draws:
+Writes to OUTDIR the files openroo.rc embeds and windev/launcher.cpp draws:
     launcher_bg.bmp                    the background, whole
     launcher_{play,setup,quit}_{off,foc}.bmp
                                        each button's rectangle from the
@@ -21,7 +21,7 @@ its arrows with a margin.  The script refuses to run if the mock-ups differ
 anywhere outside them, so a redrawn mock-up whose buttons moved is caught.
 
 The painted title bar and its minimise / close boxes (TITLE_H, MIN_BOX,
-CLOSE_BOX) are hit-tested by launcherdialogs.cpp: the window has no real
+CLOSE_BOX) are hit-tested by windev/launcher.cpp: the window has no real
 frame.
 
 Standard library only.
