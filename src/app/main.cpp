@@ -25,7 +25,7 @@
 #include "cdm.h"
 #include "renderstate.h"
 #include "clock.h"
-#include "movie.h"
+#include "videodev.h"
 #include "levelplacements.h"
 #include "theme.h"
 #include "rendergameframe.h"
@@ -41,8 +41,7 @@
 #include "resources.h"
 
 /* Shared by WinMain and the window procedure; nothing else reads either. */
-static volatile int g_moviePlaying;
-static void *g_movieSurface;  // the primary surface, for the movie player
+static videodev::Player g_movie;
 
 static bool winmain_fx_norender()
 {
@@ -69,9 +68,6 @@ static SceneTexture *const TAIL_TEXTURES[10] = {
     &g_menuTexSelector, &g_menuTexOn, &g_menuTexOff, &g_menuTexKnob, &g_menuTexScale,
 };
 
-/* The movie's "finished" state (movie.h). */
-static const DWORD MOVIE_STATE_FINISHED = 1;
-static const UINT  WM_MOVIE_EVENT       = 0x464;
 
 static void restore_surfaces()
 {
@@ -118,33 +114,23 @@ Main_WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         if ((WORD)wParam == WA_ACTIVE) {
             g_progCtrl.acquireAll();
             restore_surfaces();
-            if (g_moviePlaying) {
-                g_movie.setWindow(g_movieSurface);
+            if (g_movie.playing())
                 g_movie.play();
-            }
         } else {
             g_progCtrl.unacquireAll();
-            if (g_moviePlaying)
+            if (g_movie.playing())
                 g_movie.pause();
         }
         break;
 
     case WM_KEYUP:  // any key skips the intro
-        if (g_moviePlaying) {
-            g_movie.stop();
-            g_movie.teardown();
-            g_moviePlaying = 0;
-        }
+        if (g_movie.playing())
+            g_movie.skip();
         break;
 
-    case WM_MOVIE_EVENT:
-        if (g_moviePlaying)
-            g_movie.notify((DWORD)hWnd, wParam, lParam);
-        // Checked whether or not a movie was playing.
-        if (g_movie.movieState() == MOVIE_STATE_FINISHED)
-            *&g_moviePlaying = 0;
-        break;
     }
+    if (g_movie.handleWindowMessage(msg, wParam, lParam))
+        return 0;
     // A track ended: the music restarts it if it repeats.
     if (g_cdAudio.handleWindowMessage(msg, wParam, lParam))
         return 0;
@@ -163,6 +149,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
 {
     g_moduleInstance = hInstance;
     audiodev::setLog(log_write);
+    videodev::setLog(log_write);
     // Data paths are relative to the current directory, which nothing changes.
     // An absolute prefix could overflow the fixed path buffers on a deep
     // install.
@@ -262,33 +249,13 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     Render_ConfigureRenderState();
     hooks_ClockInit();
 
-    // The movie draws through the DirectDraw 1 interface and the primary
-    // surface's version-1 interface.
-    void *dd1 = NULL;
-    d3d->GetMovieTarget(&dd1, &g_movieSurface);
-
-    // The movie's overlay colour key: on, CK_RGB, black to black.  Nothing
-    // plays a movie yet (movie.cpp), so it is set for a player that would use
-    // it.  The palette index is left zero; CK_RGB ignores it.
-    g_movie.setColorKey(2 /* CK_RGB */, 0, 0);
-
-    bool playing = false;
-    if (g_movie.setup(&g_logger)) {
-        // MAX_PATH-sized, so a long install path cannot overflow it.
-        char path[MAX_PATH + 32];
-        snprintf(path, sizeof(path), "%s\\Video\\intro.avi", g_gameDir);
-        if (g_movie.loadVideo(hWnd, dd1, g_movieSurface, path) >= 0)
-            playing = true;
-        else
-            g_logger.logMessage(3, "MAIN: Couldn't load %s .", path);
-    }
-    g_moviePlaying = playing ? 1 : 0;
-    if (dd1)
-        ((IUnknown *)dd1)->Release();
-    if (playing) {
-        g_movie.setWindow(g_movieSurface);
+    // MAX_PATH-sized, so a long install path cannot overflow it.
+    char path[MAX_PATH + 32];
+    snprintf(path, sizeof(path), "%s\\Video\\intro.avi", g_gameDir);
+    if (g_movie.load(hWnd, path))
         g_movie.play();
-    }
+    else
+        g_logger.logMessage(3, "MAIN: Couldn't load %s .", path);
 
     const bool norender = winmain_fx_norender();
     MSG msg;
@@ -300,7 +267,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
             DispatchMessageA(&msg);
         }
         // Cleared by the window procedure when the movie finishes.
-        if (g_moviePlaying == 0 && !norender)
+        if (!g_movie.playing() && !norender)
             Render_RenderGameFrame();
     }
 

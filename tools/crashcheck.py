@@ -31,7 +31,7 @@ RUN = os.path.join(REPO, "run")     # launch.sh runs the game here
 SHUTDOWN_MARKERS = [
     "ProgCtrl::WriteBindings: ok",
     "CDM::stopAndClose done",
-    "FaktMovie::teardown",
+    "videodev: teardown",
 ]
 
 # Fingerprint of the known crash (CRASH.md section 2).
