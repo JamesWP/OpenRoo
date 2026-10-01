@@ -23,6 +23,7 @@ add_library(render OBJECT
 target_include_directories(render PRIVATE
     .
     ../audiodev
+    ../sysdev
     ../windev
     ../app
     ../audio
@@ -31,4 +32,3 @@ target_include_directories(render PRIVATE
     ../level
     ../testing
     ../ui)
-target_link_libraries(render PRIVATE winmm)

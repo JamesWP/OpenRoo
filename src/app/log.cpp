@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "log.h"
+#include "sysdev.h"
 
 static FILE *g_log = NULL;
 
@@ -18,7 +19,7 @@ void log_close(void)
 void log_write(const char *fmt, ...)
 {
     if (!g_log) return;
-    fprintf(g_log, "[%lu] ", GetTickCount());
+    fprintf(g_log, "[%u] ", sysdev::tickMs());
     va_list ap;
     va_start(ap, fmt);
     vfprintf(g_log, fmt, ap);

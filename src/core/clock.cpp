@@ -1,4 +1,4 @@
-/* The game clock: the seconds since start, from QueryPerformanceCounter.
+/* The game clock: the seconds since start, from the platform layer's high-resolution counter.
  * Every clock read is also a frame boundary, so the per-frame test hooks (the
  * determinism hash, the state and world logs, the autoplayer, the level
  * report, the menu driver and the recorder) run from here.
@@ -26,6 +26,7 @@
 #include "menu.h"
 #include "levelreport.h"
 #include "launcher.h"
+#include "sysdev.h"
 #include "record.h"
 #include <stdlib.h>
 
@@ -52,16 +53,14 @@ static DWORD     g_wall0;
 
 static void clock_init(void)
 {
-    LARGE_INTEGER freq;
-    if (!QueryPerformanceFrequency(&freq))
-        freq.QuadPart = 1000;
+    unsigned long long freq = sysdev::perfFrequency();
 
     g_shift = 0;
-    while (freq.HighPart != 0 || (double)freq.LowPart > 2000000.0) {
-        freq.QuadPart = (LONGLONG)((ULONGLONG)freq.QuadPart >> 1);
+    while ((freq >> 32) != 0 || (double)(DWORD)freq > 2000000.0) {
+        freq >>= 1;
         g_shift++;
     }
-    g_period = freq.LowPart ? 1.0 / (double)freq.LowPart : 0.0;
+    g_period = (DWORD)freq ? 1.0 / (double)(DWORD)freq : 0.0;
 
     char buf[32];
     g_fixed_dt = 0.0;
@@ -69,7 +68,7 @@ static void clock_init(void)
         double dt = atof(buf);
         if (dt > 0.0) g_fixed_dt = dt;
     }
-    g_wall0 = GetTickCount();
+    g_wall0 = sysdev::tickMs();
     log_write("clock: shift=%u period=%.12f fixed_dt=%.9f (%s)\n",
               (unsigned)g_shift, g_period, g_fixed_dt,
               g_fixed_dt > 0.0 ? "FIXED TIMESTEP" : "real clock");
@@ -79,7 +78,7 @@ static void clock_log_progress(void)
 {
     if (++g_calls % LOG_EVERY) return;
     log_write("clock: call %u  virtual=%.3fs  wall=%.3fs\n",
-              g_calls, g_accum, (double)(GetTickCount() - g_wall0) / 1000.0);
+              g_calls, g_accum, (double)(sysdev::tickMs() - g_wall0) / 1000.0);
 }
 
 static bool g_replay_ended;
@@ -121,9 +120,7 @@ double clock_seconds(void)
         return g_accum;
     }
 
-    LARGE_INTEGER now;
-    QueryPerformanceCounter(&now);
-    DWORD cur = (DWORD)((ULONGLONG)now.QuadPart >> g_shift);
+    DWORD cur = (DWORD)(sysdev::perfCounter() >> g_shift);
 
     if (!g_started) {
         g_last    = cur;

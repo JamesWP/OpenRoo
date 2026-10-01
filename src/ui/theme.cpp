@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "theme.h"
+#include "sysdev.h"
 #include <stdlib.h>
 #include "log.h"
 #include "game.h"
@@ -906,14 +907,13 @@ bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
 bool ThemeAssetBlock::load(Game *game, RenderDevice *d3d, char *path,
            GameLogger *logger)
 {
-    LARGE_INTEGER freq, t0, t1;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&t0);
+    const unsigned long long freq = sysdev::perfFrequency();
+    const unsigned long long t0 = sysdev::perfCounter();
 
     bool ok = themeLoad(game, d3d, path, logger);
 
-    QueryPerformanceCounter(&t1);
-    double ms = (double)(t1.QuadPart - t0.QuadPart) * 1000.0 / (double)freq.QuadPart;
+    const unsigned long long t1 = sysdev::perfCounter();
+    double ms = (double)(t1 - t0) * 1000.0 / (double)freq;
     log_write("theme: %s %s in %.2f ms\n", path, ok ? "loaded" : "NOT opened", ms);
     return ok;
 }

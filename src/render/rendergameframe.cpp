@@ -35,6 +35,7 @@
 #include "scriptplayer.h"
 #include "soundmanager.h"
 #include "audiodev.h"
+#include "sysdev.h"
 #include "sky.h"
 #include "sceneobjects.h"
 #include "explodedebris.h"
@@ -819,7 +820,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     hud_text(&g_fontMain, 0, wx(w, 32), wx(w, 62), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
 }
 
-/* The frame counter: frames over each second of timeGetTime, shown while
+/* The frame counter: frames over each second of the timer, shown while
  * F1 is held.  Its three globals stay at their game addresses. */
 static float g_fps;
 static float g_fpsMark;
@@ -827,7 +828,7 @@ static DWORD g_fpsFrames;
 
 static void draw_fps(float W, float H)
 {
-    const float t = (float)((double)timeGetTime() * 0.001f);
+    const float t = (float)((double)sysdev::timerMs() * 0.001f);
     g_fpsFrames++;
     const double span = (double)t - g_fpsMark;
     if (span > 1.0) {
