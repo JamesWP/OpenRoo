@@ -13,3 +13,4 @@ target_include_directories(input PRIVATE
     ../render
     ../testing
     ../ui)
+target_link_libraries(input PRIVATE winmm dinput8 dxguid)

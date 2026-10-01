@@ -20,19 +20,12 @@ foreach(group app audio core d3d entities input level render testing ui)
 endforeach()
 
 add_executable(KarooOwn WIN32
-    src/app/exemain.cpp
-    data/openroo.rc)
+    src/app/exemain.cpp)
 set_target_properties(KarooOwn PROPERTIES OUTPUT_NAME KarooOwn)
 target_include_directories(KarooOwn PRIVATE src/app)
 target_link_libraries(KarooOwn PRIVATE
     app audio core d3d entities input level render testing ui
-    gdi32 version shell32 winmm dsound dinput8 dxguid
     -static-libgcc -static-libstdc++ -static)
-set_source_files_properties(data/openroo.rc PROPERTIES
-    OBJECT_DEPENDS "${PROJECT_SOURCE_DIR}/data/openroo.ico;${CMAKE_BINARY_DIR}/generated/launcher/launcher_layout.h")
-set_source_files_properties(data/openroo.rc PROPERTIES
-    COMPILE_FLAGS "--include-dir=${PROJECT_SOURCE_DIR}/data --include-dir=${CMAKE_BINARY_DIR}/generated/launcher")
-add_dependencies(KarooOwn launcher_layout buildinfo)
 
 # Only the d3d group may include the system Direct3D headers.
 add_custom_target(check-native-d3d ALL

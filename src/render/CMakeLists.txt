@@ -29,3 +29,4 @@ target_include_directories(render PRIVATE
     ../level
     ../testing
     ../ui)
+target_link_libraries(render PRIVATE winmm)

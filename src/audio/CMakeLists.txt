@@ -18,3 +18,4 @@ target_include_directories(audio PRIVATE
     ../render
     ../testing
     ../ui)
+target_link_libraries(audio PRIVATE winmm dsound dxguid)
