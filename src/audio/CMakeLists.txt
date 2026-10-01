@@ -3,7 +3,6 @@ add_library(audio OBJECT
     cdthemes.cpp
     doublesoundbuff.cpp
     fixedsounds.cpp
-    movie.cpp
     soundmanager.cpp
     soundobj.cpp
     voicepool.cpp)
