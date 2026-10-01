@@ -5,11 +5,11 @@ add_library(app OBJECT
     launcherdialogs.cpp
     log.cpp
     main.cpp
-    process.cpp
-    veh.cpp)
+    process.cpp)
 target_include_directories(app PRIVATE
     .
     ../audiodev
+    ../sysdev
     ../inputdev
     ../videodev
     ../windev
@@ -22,4 +22,3 @@ target_include_directories(app PRIVATE
     ../render
     ../ui)
 
-target_link_libraries(app PRIVATE winmm)

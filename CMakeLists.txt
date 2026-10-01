@@ -15,7 +15,7 @@ add_compile_options(-Wall -Wextra)
 # folder plus its dependencies' (private), so the lists in src/*/CMakeLists.txt
 # are the layering and the compiler enforces them.  Today's lists are the
 # cyclic baseline, to be narrowed.
-foreach(group app audio audiodev core d3d entities input inputdev level render testing ui videodev windev)
+foreach(group app audio audiodev core d3d entities input inputdev level render testing ui videodev windev sysdev)
     add_subdirectory(src/${group})
 endforeach()
 
@@ -24,13 +24,18 @@ add_executable(KarooOwn WIN32
 set_target_properties(KarooOwn PROPERTIES OUTPUT_NAME KarooOwn)
 target_include_directories(KarooOwn PRIVATE src/app)
 target_link_libraries(KarooOwn PRIVATE
-    app audio audiodev core d3d entities input inputdev level render testing ui videodev windev
+    app audio audiodev core d3d entities input inputdev level render testing ui videodev windev sysdev
     -static-libgcc -static-libstdc++ -static)
 
 # Only the audiodev group may include the system audio headers.
 add_custom_target(check-native-audio ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeAudio.cmake)
 add_dependencies(KarooOwn check-native-audio)
+
+# Only the platform groups may use the system clock, time and exception APIs.
+add_custom_target(check-native-system ALL
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeSystem.cmake)
+add_dependencies(KarooOwn check-native-system)
 
 # Only the windev group may use the system window and dialog APIs.
 add_custom_target(check-native-window ALL

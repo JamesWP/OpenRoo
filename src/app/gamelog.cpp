@@ -26,6 +26,7 @@
 #include "gamelog.h"
 #include "log.h"
 #include "windev.h"
+#include "sysdev.h"
 #include <stdlib.h>
 #include "gamestr.h"
 
@@ -86,34 +87,32 @@ static const char *fx_prefix(void)
 /* "HH:MM:SS", digit by digit. */
 static char *format_time(char *out)
 {
-    SYSTEMTIME st;
-    GetLocalTime(&st);
+    sysdev::LocalTime st = sysdev::localTime();
     out[8] = '\0';
     out[5] = ':';
     out[2] = ':';
-    out[0] = (char)(st.wHour   / 10) + '0';
-    out[1] = (char)(st.wHour   % 10) + '0';
-    out[3] = (char)(st.wMinute / 10) + '0';
-    out[4] = (char)(st.wMinute % 10) + '0';
-    out[6] = (char)(st.wSecond / 10) + '0';
-    out[7] = (char)(st.wSecond % 10) + '0';
+    out[0] = (char)(st.hour   / 10) + '0';
+    out[1] = (char)(st.hour   % 10) + '0';
+    out[3] = (char)(st.minute / 10) + '0';
+    out[4] = (char)(st.minute % 10) + '0';
+    out[6] = (char)(st.second / 10) + '0';
+    out[7] = (char)(st.second % 10) + '0';
     return out;
 }
 
 /* "MM/DD/YY": US order, two-digit year. */
 static char *format_date(char *out)
 {
-    SYSTEMTIME st;
-    GetLocalTime(&st);
+    sysdev::LocalTime st = sysdev::localTime();
     out[8] = '\0';
     out[5] = '/';
     out[2] = '/';
-    out[0] = (char)(st.wMonth / 10) + '0';
-    out[1] = (char)(st.wMonth % 10) + '0';
-    out[3] = (char)(st.wDay   / 10) + '0';
-    out[4] = (char)(st.wDay   % 10) + '0';
-    out[6] = (char)((st.wYear % 100) / 10) + '0';
-    out[7] = (char)((st.wYear % 100) % 10) + '0';
+    out[0] = (char)(st.month / 10) + '0';
+    out[1] = (char)(st.month % 10) + '0';
+    out[3] = (char)(st.day   / 10) + '0';
+    out[4] = (char)(st.day   % 10) + '0';
+    out[6] = (char)((st.year % 100) / 10) + '0';
+    out[7] = (char)((st.year % 100) % 10) + '0';
     return out;
 }
 
