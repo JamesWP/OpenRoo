@@ -8,7 +8,6 @@ CDM::CDM()
 {
     log_write("CDM::construct(this=%p)\n", this);
     window_ = NULL;
-    mcibuff[0] = '\0';
 }
 
 CDM::~CDM()
@@ -55,14 +54,11 @@ static const char *track_len(int track)
     return lens[track];
 }
 
-int CDM::getTrackLength(char **out_ptr, int track)
+const char *CDM::getTrackLength(int track)
 {
     const char *s = track_len(track);
-    strncpy(mcibuff, s, sizeof(mcibuff) - 1);
-    mcibuff[sizeof(mcibuff) - 1] = '\0';
-    if (out_ptr) *out_ptr = mcibuff;
     log_write("CDM::getTrackLength(track=%d) → \"%s\"\n", track, s);
-    return 1;
+    return s;
 }
 
 void CDM::playTrack(int track, bool loop)

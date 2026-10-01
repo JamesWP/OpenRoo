@@ -22,7 +22,7 @@ public:
     bool  handleWindowMessage(unsigned msg, unsigned long wParam, long lParam);
 
     int   getTrackCount();
-    int   getTrackLength(char **out_ptr, int track);
+    const char *getTrackLength(int track);
     void  playTrack(int tracknumber, bool repeat);
     void  stop();
 
@@ -34,5 +34,4 @@ public:
 private:
     audiodev::Music music_;
     void           *window_;       // the game window
-    char            mcibuff[256];  // holds the last track length returned
 };
