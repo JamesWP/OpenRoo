@@ -19,18 +19,13 @@ foreach(group app audio core d3d entities input level render testing ui)
     add_subdirectory(src/${group})
 endforeach()
 
-set(objects)
-foreach(group app audio core d3d entities input level render testing ui)
-    list(APPEND objects $<TARGET_OBJECTS:${group}>)
-endforeach()
-
 add_executable(KarooOwn WIN32
-    ${objects}
     src/app/exemain.cpp
     data/openroo.rc)
 set_target_properties(KarooOwn PROPERTIES OUTPUT_NAME KarooOwn)
 target_include_directories(KarooOwn PRIVATE src/app)
 target_link_libraries(KarooOwn PRIVATE
+    app audio core d3d entities input level render testing ui
     gdi32 version shell32 winmm dsound dinput8 dxguid
     -static-libgcc -static-libstdc++ -static)
 set_source_files_properties(data/openroo.rc PROPERTIES
