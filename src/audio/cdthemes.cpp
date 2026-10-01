@@ -88,15 +88,12 @@ static const char *const k_trackLength[10] = {
 
 int CdThemes::validateTrackLengths()
 {
-    char *len;
-
     trackCount_ = g_cdAudio.getTrackCount();
     if (trackCount_ != 9)
         return 0;
-    g_cdAudio.getTrackLength(&len, 1);
+    g_cdAudio.getTrackLength(1);
     for (int t = 2; t <= 9; ++t) {
-        g_cdAudio.getTrackLength(&len, t);
-        if (strcmp(len, k_trackLength[t]) != 0)
+        if (strcmp(g_cdAudio.getTrackLength(t), k_trackLength[t]) != 0)
             return 0;
     }
     return 1;
@@ -170,12 +167,10 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
 
 int CdThemes::listTrackLengths()
 {
-    char *len = NULL;  // always written before it is used
     trackCount_ = g_cdAudio.getTrackCount();
     g_logger.logMessage(3, GS_CD_TRACK_COUNT, trackCount_);
     for (unsigned t = 1; (unsigned)trackCount_ != 0; t++) {
-        g_cdAudio.getTrackLength(&len, t);
-        g_logger.logMessage(3, GS_CD_TRACK_LENGTH, t, len);
+        g_logger.logMessage(3, GS_CD_TRACK_LENGTH, t, g_cdAudio.getTrackLength(t));
         if (!(t < (unsigned)trackCount_))
             break;
     }
