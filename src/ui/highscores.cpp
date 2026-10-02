@@ -9,6 +9,7 @@
  *     variable, so a short file repeats its last byte to the end.
  *   - The path is formatted unbounded into a 128-byte buffer. */
 #include <windows.h>
+#include "sysdev.h"
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -110,7 +111,7 @@ unsigned int HighScoreTable::insert(unsigned int score, unsigned char levelId)
 
     if (s_hs_fx < 0) {
         char buf[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+        DWORD n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
         s_hs_fx = (n > 0 && n < sizeof(buf) && strcmp(buf, "hsnoplace") == 0);
         if (s_hs_fx)
             g_logger.write("highscores: KAROO_SIM_FX=hsnoplace -- no score places\n");

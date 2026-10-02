@@ -64,7 +64,7 @@ static void clock_init(void)
 
     char buf[32];
     g_fixed_dt = 0.0;
-    if (GetEnvironmentVariableA("KAROO_FIXED_DT", buf, sizeof(buf))) {
+    if (sysdev::getEnv("KAROO_FIXED_DT", buf, sizeof(buf))) {
         double dt = atof(buf);
         if (dt > 0.0) g_fixed_dt = dt;
     }
@@ -166,7 +166,7 @@ static int game_time(int *out)
     if (!g_seed_read) {
         char buf[32];
         g_seed_read = true;
-        if (GetEnvironmentVariableA("KAROO_SEED", buf, sizeof(buf)) && buf[0]) {
+        if (sysdev::getEnv("KAROO_SEED", buf, sizeof(buf)) && buf[0]) {
             g_seed     = atoi(buf);
             g_seed_set = true;
         }

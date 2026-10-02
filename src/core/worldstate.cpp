@@ -15,6 +15,7 @@
  * pointer. */
 
 #include "worldstate.h"
+#include "sysdev.h"
 #include "gamestate.h"
 #include "clock.h"
 #include "policy.h"
@@ -33,12 +34,12 @@ static bool        g_obs_valid;
 static bool env_flag(const char *name)
 {
     char buf[16];
-    return GetEnvironmentVariableA(name, buf, sizeof(buf)) && buf[0] && buf[0] != '0';
+    return sysdev::getEnv(name, buf, sizeof(buf)) && buf[0] && buf[0] != '0';
 }
 
 static bool env_path(const char *name, char *out, DWORD n)
 {
-    return GetEnvironmentVariableA(name, out, n) != 0 && out[0] != 0;
+    return sysdev::getEnv(name, out, n) != 0 && out[0] != 0;
 }
 
 /* Reads one entity: the MovableEntity fields, and for a foe its own.  The cell

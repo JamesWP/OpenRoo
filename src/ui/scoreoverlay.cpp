@@ -13,6 +13,7 @@
  * the text. */
 
 #include <stdio.h>
+#include "sysdev.h"
 #include "scoreoverlay.h"
 #include "renderdevice.h"
 #include "scenetexture.h"
@@ -48,7 +49,7 @@ static ScoreFx score_fx(void)
         return (ScoreFx)cached;
     char buf[32];
     // By value, not by presence.
-    DWORD n = GetEnvironmentVariableA("KAROO_SCORE_FX", buf, sizeof(buf));
+    DWORD n = sysdev::getEnv("KAROO_SCORE_FX", buf, sizeof(buf));
     ScoreFx fx = SCORE_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "tint") == 0)        fx = SCORE_FX_TINT;

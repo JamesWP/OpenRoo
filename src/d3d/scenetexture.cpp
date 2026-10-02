@@ -16,6 +16,7 @@
  *    return names the call its upper bytes come from. */
 
 #include <string.h>
+#include "sysdev.h"
 #include <stdio.h>
 #include <new>
 #include "scenetexture.h"
@@ -107,7 +108,7 @@ static int texture_fx_mode(void)
     if (cached < 0) {
         char buf[16];
         cached = TEXFX_OFF;
-        if (GetEnvironmentVariableA("KAROO_TEXTURE_FX", buf, sizeof(buf))) {
+        if (sysdev::getEnv("KAROO_TEXTURE_FX", buf, sizeof(buf))) {
             if (lstrcmpiA(buf, "bpp16") == 0)
                 cached = TEXFX_BPP16;
             else if (lstrcmpiA(buf, "solid") == 0)

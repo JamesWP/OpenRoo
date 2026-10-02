@@ -46,4 +46,9 @@ bool executablePath(char *buf, unsigned size)
     return n > 0 && n < size;
 }
 
+unsigned getEnv(const char *name, char *buf, unsigned size)
+{
+    return GetEnvironmentVariableA(name, buf, size);
+}
+
 }  // namespace sysdev

@@ -12,7 +12,7 @@
 static void crt_stderr_probe(void)
 {
     char buf[16];
-    if (GetEnvironmentVariableA("KAROO_CRT_DIAG", buf, sizeof(buf)) == 0 ||
+    if (sysdev::getEnv("KAROO_CRT_DIAG", buf, sizeof(buf)) == 0 ||
         buf[0] == '0')
         return;
 

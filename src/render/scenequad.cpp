@@ -11,6 +11,7 @@
  *   tint  force their vertex diffuse to magenta. */
 
 #include "scenequad.h"
+#include "sysdev.h"
 #include "logger.h"
 
 #define QUAD_LOG_FIRST  8
@@ -23,7 +24,7 @@ static QuadFx quad_fx(void)
     if (cached < 0) {
         char buf[16];
         buf[0] = 0;
-        GetEnvironmentVariableA("KAROO_SCENEQUAD_FX", buf, sizeof(buf));
+        sysdev::getEnv("KAROO_SCENEQUAD_FX", buf, sizeof(buf));
         cached = FX_OFF;
         if (lstrcmpiA(buf, "drop") == 0)      cached = FX_DROP;
         else if (lstrcmpiA(buf, "tint") == 0) cached = FX_TINT;

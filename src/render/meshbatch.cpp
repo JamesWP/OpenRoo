@@ -13,6 +13,7 @@
  * level. */
 
 #include "meshbatch.h"
+#include "sysdev.h"
 #include "renderdevice.h"
 #include "d3dmath.h"
 #include "theme.h"
@@ -33,7 +34,7 @@ static bool fx_norot(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_MESHBATCH_FX", buf, sizeof buf))
+        if (sysdev::getEnv("KAROO_MESHBATCH_FX", buf, sizeof buf))
             cached = (lstrcmpiA(buf, "norot") == 0);
         g_logger.write("meshbatch: FX mode = %s\n", cached ? "norot" : "off");
     }

@@ -14,6 +14,7 @@
  * KAROO_GRIDRESTORE_DIAG=1 logs each call. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <string.h>
 #include "logger.h"
 #include "game.h"
@@ -31,13 +32,13 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "gridkeep") == 0) {
         s_fx = 1;
         g_logger.write("gridrestore: KAROO_SIM_FX=gridkeep -- tile state bytes "
                   "not restored\n");
     }
-    n = GetEnvironmentVariableA("KAROO_GRIDRESTORE_DIAG", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_GRIDRESTORE_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
         s_diag = 1;
 }

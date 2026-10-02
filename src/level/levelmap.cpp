@@ -22,6 +22,7 @@
  * as it is read. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
@@ -37,7 +38,7 @@ static bool fx_flipx(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_JJM_FX", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_JJM_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "flipx") == 0);
         g_logger.write("levelmap: FX mode = %s\n", cached ? "flipx" : "off");
     }

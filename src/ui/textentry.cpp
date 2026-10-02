@@ -13,6 +13,7 @@
  * so what is typed, and any cheat or name compared downstream, changes. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <string.h>
 #include "logger.h"
 #include "textentry.h"
@@ -52,7 +53,7 @@ void TextEntry::poll(unsigned int phase)
 
     if (s_fx < 0) {
         char b[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", b, sizeof(b));
+        DWORD n = sysdev::getEnv("KAROO_SIM_FX", b, sizeof(b));
         s_fx = (n > 0 && n < sizeof(b) && strcmp(b, "entrycase") == 0);
         if (s_fx)
             g_logger.write("textentry: KAROO_SIM_FX=entrycase -- shift inverted\n");

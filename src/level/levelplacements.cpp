@@ -20,6 +20,7 @@
  * KAROO_PLACEMENT_DIAG=1 logs the two numbers per level. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <string.h>
 #include <vector>
 #include <new>
@@ -65,7 +66,7 @@ static int diag_on()
     static int v = -1;
     if (v < 0) {
         char buf[8];
-        DWORD n = GetEnvironmentVariableA("KAROO_PLACEMENT_DIAG", buf, sizeof buf);
+        DWORD n = sysdev::getEnv("KAROO_PLACEMENT_DIAG", buf, sizeof buf);
         v = (n > 0 && n < sizeof buf && buf[0] == '1');
     }
     return v;

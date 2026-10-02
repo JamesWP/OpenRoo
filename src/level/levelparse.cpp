@@ -2,8 +2,7 @@
  * gameplay level loads; ParseLevelFiles loads one by name (the menu's demo
  * backdrop).  Both, in order: set the current level name; build "<game
  * dir>\Levels\<name>" and save the currently loaded map name; read the map (on
- * success release the old .leo sounds and log, on failure log and post
- * WM_QUIT); set mapChanged if the map name differs from the saved one; read
+ * success release the old .leo sounds and log, on failure log and quit); set mapChanged if the map name differs from the saved one; read
  * the level's script from "<game dir>\InstructionScripts\<name>".
  *
  * Before its load, OpenLevelFile peeks at the next level (on a first attempt,
@@ -15,7 +14,7 @@
  *     is the whole mapChanged mechanism.  The peek runs first, so the saved
  *     name is the next level's.
  *   - The peek's read is not checked.
- *   - A failed map read posts WM_QUIT and carries on to read the script.
+ *   - A failed map read quits the game (windev::quit) and carries on to read the script.
  *   - Both loaders return 0 on every path.
  *   - Paths are formatted unbounded into 256-byte buffers.
  *
@@ -26,6 +25,7 @@
  * KAROO_LEVELPARSE_DIAG=1 logs every load, the peek and the sound release. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -64,7 +64,7 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "samelevel") == 0) {
             s_fx_samelevel = 1;
@@ -81,7 +81,7 @@ static void fx_init(void)
 
     // KAROO_CRT_FX=path: swapping the two %s arguments breaks the path's
     // structure, so every recording fails at load.
-    n = GetEnvironmentVariableA("KAROO_CRT_FX", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_CRT_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "path") == 0) {
         s_fx_crtpath = 1;
         g_logger.write("levelparse: KAROO_CRT_FX=path -- the two %%s arguments to "
@@ -89,7 +89,7 @@ static void fx_init(void)
                   "nonsense\n");
     }
 
-    n = GetEnvironmentVariableA("KAROO_LEVELPARSE_DIAG", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_LEVELPARSE_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
         s_diag = 1;
 }

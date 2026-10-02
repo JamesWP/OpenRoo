@@ -3,6 +3,9 @@
  * before it in the array, whether or not that one drew anything. */
 
 #include "quadbatch.h"
+#include "sysdev.h"
+#include <stdio.h>
+#include <errno.h>
 #include "renderdevice.h"
 #include "d3dmath.h"
 #include "theme.h"
@@ -19,7 +22,7 @@ static void quad_dump(const void *data, DWORD quads)
 {
     static LONG calls = 0;
     char path[MAX_PATH];
-    if (!GetEnvironmentVariableA("KAROO_QUAD_DUMP", path, sizeof(path)))
+    if (!sysdev::getEnv("KAROO_QUAD_DUMP", path, sizeof(path)))
         return;
     // Dumps the 200th gated draw, not the first: if the buffer is filled
     // lazily, the first frame would show an empty one.
@@ -27,29 +30,22 @@ static void quad_dump(const void *data, DWORD quads)
         return;
     g_logger.write("quadbatch: dumping at call 200, pData=%p quads=%lu\n", data, quads);
 
-    HANDLE f = CreateFileA(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
-                           FILE_ATTRIBUTE_NORMAL, NULL);
-    if (f == INVALID_HANDLE_VALUE) {
-        g_logger.write("quadbatch: dump could not open %s (err=%lu)\n",
-                  path, GetLastError());
+    FILE *f = fopen(path, "wb");
+    if (!f) {
+        g_logger.write("quadbatch: dump could not open %s (errno=%d)\n", path, errno);
         return;
     }
     const BYTE *v = (const BYTE *)data;
-    char line[300];
-    DWORD wr;
-    int n = wsprintfA(line, "raw dump pData=%p quads=%lu\r\n", data, quads);
-    WriteFile(f, line, n, &wr, NULL);
+    fprintf(f, "raw dump pData=%p quads=%lu\r\n", data, quads);
     // Written as raw hex, one vertex per line, rather than decoded fields.
     DWORD total = quads * 6 * 32;
     for (DWORD off = 0; off < total; off += 32) {
-        n = 0;
-        n += wsprintfA(line + n, "%06lX ", off);
+        fprintf(f, "%06lX ", off);
         for (int b = 0; b < 32; b++)
-            n += wsprintfA(line + n, "%02X", v[off + b]);
-        n += wsprintfA(line + n, "\r\n");
-        WriteFile(f, line, n, &wr, NULL);
+            fprintf(f, "%02X", v[off + b]);
+        fprintf(f, "\r\n");
     }
-    CloseHandle(f);
+    fclose(f);
     g_logger.write("quadbatch: dumped %lu quads to %s\n", quads, path);
 }
 
@@ -64,7 +60,7 @@ static QuadFxMode quad_fx(void)
     if (cached < 0) {
         char buf[16];
         cached = QUAD_FX_OFF;
-        if (GetEnvironmentVariableA("KAROO_QUAD_FX", buf, sizeof(buf))) {
+        if (sysdev::getEnv("KAROO_QUAD_FX", buf, sizeof(buf))) {
             if (lstrcmpiA(buf, "noalpha") == 0) cached = QUAD_FX_NOALPHA;
             else if (lstrcmpiA(buf, "nodraw") == 0) cached = QUAD_FX_NODRAW;
         }
@@ -88,7 +84,7 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
         {  // KAROO_QUAD_DIAG=1: log each object's draw-kind and sub-object count.
             static LONG diag = 0;
             char dbuf[8];
-            if (GetEnvironmentVariableA("KAROO_QUAD_DIAG", dbuf, sizeof(dbuf))
+            if (sysdev::getEnv("KAROO_QUAD_DIAG", dbuf, sizeof(dbuf))
                 && dbuf[0] != '0' && InterlockedIncrement(&diag) <= 24)
                 g_logger.write("quadbatch: diag obj=%lu kind=%lu nsub=%lu\n",
                           i, (DWORD)obj->kind(), nsub);

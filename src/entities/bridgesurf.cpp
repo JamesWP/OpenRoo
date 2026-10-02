@@ -39,6 +39,7 @@
  *             fmod and clock arithmetic. */
 
 #include "bridgesurf.h"
+#include "sysdev.h"
 #include "renderdevice.h"
 #include "theme.h"
 #include "game.h"
@@ -57,7 +58,7 @@ static BridgeFxMode bridge_fx(void)
     if (cached < 0) {
         char buf[16];
         cached = BRIDGE_FX_OFF;
-        if (GetEnvironmentVariableA("KAROO_BRIDGE_FX", buf, sizeof(buf))) {
+        if (sysdev::getEnv("KAROO_BRIDGE_FX", buf, sizeof(buf))) {
             if (lstrcmpiA(buf, "tint") == 0)          cached = BRIDGE_FX_TINT;
             else if (lstrcmpiA(buf, "nodraw") == 0)   cached = BRIDGE_FX_NODRAW;
             else if (lstrcmpiA(buf, "backward") == 0) cached = BRIDGE_FX_BACKWARD;
@@ -79,7 +80,7 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
     static int enabled = -1;
     if (enabled < 0) {
         char b[8];
-        enabled = (GetEnvironmentVariableA("KAROO_BRIDGE_DIAG", b, sizeof(b))
+        enabled = (sysdev::getEnv("KAROO_BRIDGE_DIAG", b, sizeof(b))
                    && b[0] != '0') ? 1 : 0;
     }
     if (!enabled)

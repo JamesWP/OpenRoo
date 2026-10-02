@@ -1,6 +1,7 @@
 /* KAROO_SIM_FX=themeoff is a negative control: a match returns the next
  * theme's track, so every level gets its neighbour's music. */
 #include <windows.h>
+#include "sysdev.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +31,7 @@ unsigned int CdThemes::findThemeIndex(const char *name)
 
     if (s_fx < 0) {
         char b[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", b, sizeof(b));
+        DWORD n = sysdev::getEnv("KAROO_SIM_FX", b, sizeof(b));
         s_fx = (n > 0 && n < sizeof(b) && strcmp(b, "themeoff") == 0);
         if (s_fx)
             g_logger.write("themeindex: KAROO_SIM_FX=themeoff -- neighbour index\n");

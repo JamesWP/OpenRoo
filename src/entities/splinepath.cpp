@@ -2,6 +2,7 @@
  * two debug line-strip draws. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -34,7 +35,7 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "splinerev") == 0) {
         s_fx_splinerev = 1;
         g_logger.write("splinepath: KAROO_SIM_FX=splinerev -- the path parameter "
@@ -42,11 +43,11 @@ static void fx_init(void)
                   "spline runs backwards\n");
     }
 
-    n = GetEnvironmentVariableA("KAROO_SPLINE_SELFCHECK", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SPLINE_SELFCHECK", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
         s_selfcheck = 1;
 
-    n = GetEnvironmentVariableA("KAROO_SPLINE_DIAG", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SPLINE_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0) {
         s_diag = atoi(buf);
         if (s_diag < 1)

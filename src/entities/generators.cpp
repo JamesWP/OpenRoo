@@ -9,6 +9,7 @@
  * elsewhere — this file only honours the contract. */
 
 #include "generators.h"
+#include "sysdev.h"
 #include "assetio.h"
 #include "clock.h"
 #include "crtrand.h"
@@ -41,7 +42,7 @@ static SimFx sim_fx(void)
         char buf[16];
         const char *name = "off";
         cached = FX_NONE;
-        if (GetEnvironmentVariableA("KAROO_PARTICLE_FX", buf, sizeof(buf))) {
+        if (sysdev::getEnv("KAROO_PARTICLE_FX", buf, sizeof(buf))) {
             if (lstrcmpiA(buf, "gravity") == 0)       { cached = FX_GRAVITY;  name = "gravity";  }
             else if (lstrcmpiA(buf, "nolife") == 0)   { cached = FX_NOLIFE;   name = "nolife";   }
             else if (lstrcmpiA(buf, "antigrav") == 0) { cached = FX_ANTIGRAV; name = "antigrav"; }
@@ -462,7 +463,7 @@ static DWORD stats_interval(void)
     if (cached < 0) {
         char buf[16];
         LONG v = 0;
-        if (GetEnvironmentVariableA("KAROO_SIM_STATS", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_SIM_STATS", buf, sizeof(buf)))
             v = (LONG)strtol(buf, NULL, 10);
         if (v < 0)
             v = 0;

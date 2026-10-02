@@ -82,6 +82,8 @@
  * shows up in karoo_hooks.log rather than silently getting a wrong answer.
  */
 #include <ddraw.h>
+#include <new>
+#include "sysdev.h"
 #include <d3d.h>
 #include "nullddraw.h"
 #include "logger.h"
@@ -112,7 +114,7 @@ bool nulldd_enabled(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[8];
-        cached = GetEnvironmentVariableA("KAROO_HEADLESS", buf, sizeof(buf))
+        cached = sysdev::getEnv("KAROO_HEADLESS", buf, sizeof(buf))
                  && buf[0] != '0';
         g_logger.write("nullddraw: headless mode %s\n", cached ? "ON" : "off");
     }
@@ -392,7 +394,7 @@ static bool surf_alloc_bits(NullSurface *s)
         s->dib = NULL;
     }
 
-    s->bits = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, pitch * h);
+    s->bits = new (std::nothrow) unsigned char[pitch * h]();
     return s->bits != NULL;
 }
 
@@ -409,7 +411,7 @@ static void surf_free_bits(NullSurface *s)
         s->dib  = NULL;
         s->bits = NULL;
     } else if (s->bits) {
-        HeapFree(GetProcessHeap(), 0, s->bits);
+        delete[] (unsigned char *)s->bits;
         s->bits = NULL;
     }
 }

@@ -14,6 +14,7 @@
  *   - pos: the player's position. */
 
 #include "gamestate.h"
+#include "sysdev.h"
 #include "logger.h"
 #include "game.h"
 #include "player.h"
@@ -70,7 +71,7 @@ static bool deathdiff_enabled(void)
     if (g_diff_on < 0) {
         char buf[16];
         g_diff_on = 0;
-        if (GetEnvironmentVariableA("KAROO_DEATH_DIFF", buf, sizeof(buf)) && buf[0] && buf[0] != '0') {
+        if (sysdev::getEnv("KAROO_DEATH_DIFF", buf, sizeof(buf)) && buf[0] && buf[0] != '0') {
             g_snap = (BYTE *)VirtualAlloc(NULL, GAME_SIZE, MEM_COMMIT, PAGE_READWRITE);
             g_diff_on = (g_snap != NULL);
         }
@@ -127,7 +128,7 @@ bool gamestate_enabled(void)
     if (g_on < 0) {
         char buf[16];
         g_on = 0;
-        if (GetEnvironmentVariableA("KAROO_STATE_LOG", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
+        if (sysdev::getEnv("KAROO_STATE_LOG", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
             g_on = 1;
         g_logger.write("gamestate: state log %s\n", g_on ? "enabled" : "disabled");
     }
@@ -273,7 +274,7 @@ void gamestate_dump(const char *reason)
     if (dumped) return;  // the first, most live, wins
 
     char path[MAX_PATH];
-    if (!GetEnvironmentVariableA("KAROO_STATE_DUMP", path, sizeof(path)) || !path[0])
+    if (!sysdev::getEnv("KAROO_STATE_DUMP", path, sizeof(path)) || !path[0])
         return;
     dumped = true;
 

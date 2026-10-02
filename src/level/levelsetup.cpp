@@ -32,6 +32,7 @@
  * KAROO_SETUP_DIAG=1 logs the extents, the spawn census and the totals. */
 
 #include "camera.h"
+#include "sysdev.h"
 #include <windows.h>
 #include <string.h>
 
@@ -100,7 +101,7 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "setupflip") == 0) {
             s_fx_setupflip = 1;
@@ -115,7 +116,7 @@ static void fx_init(void)
         }
     }
 
-    n = GetEnvironmentVariableA("KAROO_SETUP_DIAG", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SETUP_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
         s_diag = 1;
 }
@@ -189,7 +190,7 @@ static unsigned int levelsetup_seed_fx(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_CRT_FX", buf, sizeof(buf)) &&
+        if (sysdev::getEnv("KAROO_CRT_FX", buf, sizeof(buf)) &&
             lstrcmpiA(buf, "seed") == 0)
             cached = 1;
         g_logger.write("levelsetup: CRT FX seed xor = %d\n", cached);
@@ -202,7 +203,7 @@ static unsigned int levelsetup_seed_fx(void)
 static void levelsetup_seed_diag(unsigned int seed)
 {
     char buf[16];
-    if (GetEnvironmentVariableA("KAROO_CRT_DIAG", buf, sizeof(buf)) == 0 ||
+    if (sysdev::getEnv("KAROO_CRT_DIAG", buf, sizeof(buf)) == 0 ||
         buf[0] == '0')
         return;
 

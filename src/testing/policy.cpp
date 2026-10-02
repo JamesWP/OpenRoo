@@ -6,6 +6,8 @@
  * rand(), no wall clock.  A policy run is as reproducible as a replay. */
 
 #include "policy.h"
+#include <stdio.h>
+#include "sysdev.h"
 #include "progctrl.h"
 #include "worldstate.h"
 #include "menu.h"
@@ -53,7 +55,7 @@ static bool policy_trace(void)
 {
     if (g_trace < 0) {
         char buf[8];
-        g_trace = (GetEnvironmentVariableA("KAROO_POLICY_TRACE", buf, sizeof(buf))
+        g_trace = (sysdev::getEnv("KAROO_POLICY_TRACE", buf, sizeof(buf))
                    && buf[0] && buf[0] != '0');
     }
     return g_trace > 0;
@@ -64,7 +66,7 @@ static DWORD policy_after(void)
     if (!g_after_read) {
         char buf[16];
         g_after_read = true;
-        if (GetEnvironmentVariableA("KAROO_POLICY_AFTER", buf, sizeof(buf)) && buf[0])
+        if (sysdev::getEnv("KAROO_POLICY_AFTER", buf, sizeof(buf)) && buf[0])
             g_after = (DWORD)strtoul(buf, NULL, 10);
     }
     return g_after;
@@ -75,7 +77,7 @@ bool policy_active(void)
     if (g_mode < 0) {
         char buf[32];
         g_mode = 0;
-        if (GetEnvironmentVariableA("KAROO_POLICY", buf, sizeof(buf)) && buf[0]) {
+        if (sysdev::getEnv("KAROO_POLICY", buf, sizeof(buf)) && buf[0]) {
             if (strcmp(buf, "nearest-crystal") == 0) g_mode = 1;
             else if (strcmp(buf, "probe") == 0) g_mode = 2;
             else if (strcmp(buf, "none") != 0)
@@ -97,7 +99,7 @@ static bool loop_runs(void)
     static int v = -1;
     if (v < 0) {
         char buf[8];
-        v = (GetEnvironmentVariableA("KAROO_POLICY_LOOP", buf, sizeof(buf))
+        v = (sysdev::getEnv("KAROO_POLICY_LOOP", buf, sizeof(buf))
              && buf[0] && buf[0] != '0');
     }
     return v > 0;
@@ -108,7 +110,7 @@ static int menu_slot(void)
     if (g_slot == -2) {
         char buf[16];
         g_slot = -1;
-        if (GetEnvironmentVariableA("KAROO_MENU_SLOT", buf, sizeof(buf)) && buf[0])
+        if (sysdev::getEnv("KAROO_MENU_SLOT", buf, sizeof(buf)) && buf[0])
             g_slot = (int)strtol(buf, NULL, 10);
     }
     return g_slot;
@@ -228,7 +230,7 @@ static void dump_actions(ProgableControl *s, unsigned short mode)
         char keys[128]; keys[0] = 0;
         for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
             char one[16];
-            wsprintfA(one, "%s0x%02X", keys[0] ? "," : "", kb->scancode);
+            snprintf(one, sizeof(one), "%s0x%02X", keys[0] ? "," : "", kb->scancode);
             if (strlen(keys) + strlen(one) + 1 < sizeof(keys)) strcat(keys, one);
         }
         g_logger.write("policy: mode %u action \"%s\" keys=[%s]\n",

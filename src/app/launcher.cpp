@@ -1,4 +1,5 @@
 #include <windows.h>
+#include "sysdev.h"
 #include <stdlib.h>
 #include "logger.h"
 #include "windev.h"
@@ -20,9 +21,9 @@ void launcher_end_run(const char *why)
 void launcher_init(void)
 {
     char buf[32];
-    if (GetEnvironmentVariableA("KAROO_SKIP_LAUNCHER", buf, sizeof(buf)))
+    if (sysdev::getEnv("KAROO_SKIP_LAUNCHER", buf, sizeof(buf)))
         g_skip_launcher = atoi(buf);
-    if (GetEnvironmentVariableA("KAROO_AUTO_EXIT_SECS", buf, sizeof(buf)))
+    if (sysdev::getEnv("KAROO_AUTO_EXIT_SECS", buf, sizeof(buf)))
         g_auto_exit_s = (DWORD)atoi(buf);
 
     if (!g_skip_launcher)

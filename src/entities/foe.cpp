@@ -3,6 +3,7 @@
  * foe loop calls directly. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <string.h>
 
 #include "foe.h"
@@ -42,7 +43,7 @@ static int s_init         = 0;
 static int env_on(const char *name)
 {
     char buf[64];
-    DWORD n = GetEnvironmentVariableA(name, buf, sizeof(buf));
+    DWORD n = sysdev::getEnv(name, buf, sizeof(buf));
     return n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0;
 }
 
@@ -55,7 +56,7 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "spawnswap") == 0) {
             s_fx_spawnswap = 1;

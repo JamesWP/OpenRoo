@@ -17,6 +17,7 @@
  * of its lines. */
 
 #include "camera.h"
+#include "sysdev.h"
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -60,7 +61,7 @@ static bool fx_blank(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_JJS_FX", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_JJS_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "blank") == 0);
         g_logger.write("jjscript: FX mode = %s\n", cached ? "blank" : "off");
     }
@@ -132,10 +133,9 @@ int ScriptPlayer::readForLevel(const char *path)
     // line, for comparison with an independent parse.
     {
         char dump[MAX_PATH];
-        if (GetEnvironmentVariableA("KAROO_JJS_DUMP", dump, sizeof(dump))) {
-            HANDLE h = CreateFileA(dump, FILE_APPEND_DATA, FILE_SHARE_READ, NULL,
-                                   OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (h != INVALID_HANDLE_VALUE) {
+        if (sysdev::getEnv("KAROO_JJS_DUMP", dump, sizeof(dump))) {
+            FILE *h = fopen(dump, "ab");
+            if (h) {
                 unsigned long hash = 2166136261UL;
                 unsigned n = lineCount_;
                 for (unsigned i = 0; i < n; i++) {
@@ -146,11 +146,10 @@ int ScriptPlayer::readForLevel(const char *path)
                     }
                 }
                 char line[512];
-                int len = wsprintfA(line, "%s entries=%u hash=%08lx\r\n",
+                int len = snprintf(line, sizeof(line), "%s entries=%u hash=%08lx\r\n",
                                     name, n, hash);
-                DWORD w = 0;
-                WriteFile(h, line, (DWORD)len, &w, NULL);
-                CloseHandle(h);
+                fwrite(line, 1, len, h);
+                fclose(h);
             }
         }
     }
@@ -273,7 +272,7 @@ static bool jjs_fx_glide(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
-        cached = GetEnvironmentVariableA("KAROO_JJS_FX", buf, sizeof(buf))
+        cached = sysdev::getEnv("KAROO_JJS_FX", buf, sizeof(buf))
                  && lstrcmpiA(buf, "glide") == 0;
     }
     return cached != 0;
@@ -284,7 +283,7 @@ static bool jjs_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
-        cached = GetEnvironmentVariableA("KAROO_JJS_DIAG", buf, sizeof(buf))
+        cached = sysdev::getEnv("KAROO_JJS_DIAG", buf, sizeof(buf))
                  && buf[0] == '1';
     }
     return cached != 0;

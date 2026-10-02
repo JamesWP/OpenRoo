@@ -9,6 +9,7 @@
  * XFace rotation velocities x10. */
 
 #include "particles.h"
+#include "sysdev.h"
 #include "generators.h"
 #include "factory.h"
 #include "logger.h"
@@ -32,7 +33,7 @@
 static bool fx_is(const char *mode)
 {
     char buf[16];
-    return GetEnvironmentVariableA("KAROO_PARTICLE_FX", buf, sizeof(buf))
+    return sysdev::getEnv("KAROO_PARTICLE_FX", buf, sizeof(buf))
         && lstrcmpiA(buf, mode) == 0;
 }
 

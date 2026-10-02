@@ -2,6 +2,7 @@
  * shared movement step, updateMovement(), follows in the rest of the file. */
 
 #include "movableentity.h"
+#include "sysdev.h"
 #include "ani.h"
 #include <stdlib.h>
 
@@ -88,7 +89,7 @@ static void fx_init(void)
     if (s_fx >= 0)
         return;
     char buf[32];
-    DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    DWORD n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     s_fx = 0;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "floaty") == 0) {

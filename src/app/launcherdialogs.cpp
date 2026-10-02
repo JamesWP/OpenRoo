@@ -2,6 +2,7 @@
  * lists every aspect ratio instead of 4:3 only. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <stdio.h>
 #include <string.h>
 #include <string>
@@ -23,7 +24,7 @@ static bool fx_allaspect()
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
-        cached = GetEnvironmentVariableA("KAROO_LAUNCHERDLG_FX", buf, sizeof(buf))
+        cached = sysdev::getEnv("KAROO_LAUNCHERDLG_FX", buf, sizeof(buf))
                  && lstrcmpiA(buf, "allaspect") == 0;
         g_logger.write("launcherdlg: FX mode = %s\n", cached ? "allaspect" : "off");
     }

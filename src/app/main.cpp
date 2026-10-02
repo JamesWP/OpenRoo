@@ -9,6 +9,7 @@
  * ends the run; every recording fails on frames_run. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <new>
 #include <stdio.h>
 #include "main.h"
@@ -46,7 +47,7 @@ static videodev::Player g_movie;
 static bool winmain_fx_norender()
 {
     char buf[16];
-    bool on = GetEnvironmentVariableA("KAROO_WINMAIN_FX", buf, sizeof(buf))
+    bool on = sysdev::getEnv("KAROO_WINMAIN_FX", buf, sizeof(buf))
               && lstrcmpiA(buf, "norender") == 0;
     g_logger.write("winmain: FX mode = %s\n", on ? "norender" : "off");
     return on;
@@ -102,7 +103,7 @@ static bool wndproc_fx_noquit()
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
-        cached = GetEnvironmentVariableA("KAROO_WNDPROC_FX", buf, sizeof(buf))
+        cached = sysdev::getEnv("KAROO_WNDPROC_FX", buf, sizeof(buf))
                  && lstrcmpiA(buf, "noquit") == 0;
         g_logger.write("wndproc: FX mode = %s\n", cached ? "noquit" : "off");
     }

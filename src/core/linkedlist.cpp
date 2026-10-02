@@ -8,6 +8,7 @@
  *   - Unlink always returns 0, and no caller reads it. */
 
 #include "linkedlist.h"
+#include "sysdev.h"
 #include <stdlib.h>  // free() of the list object
 #include <stddef.h>
 #include <stdlib.h>
@@ -30,7 +31,7 @@ static bool list_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_LIST_DIAG", buf, sizeof(buf));
+        DWORD n = sysdev::getEnv("KAROO_LIST_DIAG", buf, sizeof(buf));
         cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;
@@ -71,7 +72,7 @@ static ListFx list_fx(void)
     if (cached >= 0)
         return (ListFx)cached;
     char buf[32];
-    DWORD n = GetEnvironmentVariableA("KAROO_LIST_FX", buf, sizeof(buf));
+    DWORD n = sysdev::getEnv("KAROO_LIST_FX", buf, sizeof(buf));
     ListFx fx = LIST_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "lifo") == 0) fx = LIST_FX_LIFO;

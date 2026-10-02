@@ -13,6 +13,8 @@
  *   Up, Down: move the cursor, wrapping at both ends */
 
 #include "menu.h"
+#include "sysdev.h"
+#include <stdio.h>
 #include "logger.h"
 #include "game.h"
 #include "menutree.h"
@@ -42,7 +44,7 @@ static bool trace_on(void)
 {
     if (g_trace < 0) {
         char buf[8];
-        g_trace = (GetEnvironmentVariableA("KAROO_MENU_TRACE", buf, sizeof(buf))
+        g_trace = (sysdev::getEnv("KAROO_MENU_TRACE", buf, sizeof(buf))
                    && buf[0] && buf[0] != '0');
     }
     return g_trace > 0;
@@ -148,7 +150,7 @@ void menu_tick(void)
     if (node_req < 0) {
         char buf[16];
         node_req = 0;
-        if (GetEnvironmentVariableA("KAROO_MENU_NODE", buf, sizeof(buf)) && buf[0]) {
+        if (sysdev::getEnv("KAROO_MENU_NODE", buf, sizeof(buf)) && buf[0]) {
             node_req = 1;
             menu_request((unsigned)strtol(buf, NULL, 10));
         }
@@ -166,7 +168,7 @@ void menu_tick(void)
         char kids[128]; kids[0] = 0;
         for (BYTE i = 0; i < m.count() && i < 16; i++) {
             char one[12];
-            wsprintfA(one, "%s%u", i ? "," : "", m.children()[i]);
+            snprintf(one, sizeof(one), "%s%u", i ? "," : "", m.children()[i]);
             if (strlen(kids) + strlen(one) + 1 < sizeof(kids)) strcat(kids, one);
         }
         g_logger.write("menu: node=%u cursor=%u/%u depth=%u lock=%lu screen=%u "
