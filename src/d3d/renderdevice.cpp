@@ -7,7 +7,6 @@
 #include "d3dnative.h"
 #include "sysdev.h"
 #include <stdio.h>
-#include "loadedimage.h"
 #include "image.h"
 #include "logger.h"
 #include <math.h>
@@ -175,32 +174,6 @@ void RenderDevice::ClearBackBuffer()
     native_->backBuffer->Blt(NULL, NULL, NULL, DDBLT_COLORFILL, &fx);
 }
 
-void RenderDevice::PresentImage(LoadedImage *img)
-{
-    Native *n = native_;
-    HRESULT hr_blt = S_OK;
-    bool skipped = fx_noblt();
-
-    if (!skipped)
-        hr_blt = n->backBuffer->Blt(NULL, img->textureSurface(), NULL,
-                                    DDBLT_WAIT, NULL);
-
-    HRESULT hr_flip = n->primary->Flip(NULL, DDFLIP_WAIT);
-
-    static LONG logged = 0;
-    if (InterlockedIncrement(&logged) <= FLIP_LOG_FIRST) {
-        char blt[16];
-        if (skipped)
-            strcpy(blt, "skipped");
-        else
-            snprintf(blt, sizeof(blt), "%08lX", hr_blt);
-        g_logger.write("renderdevice: PresentImage img=%p src=%p back=%p primary=%p "
-                  "blt=%s flip=%08lX\n",
-                  img, img->textureSurface(), n->backBuffer, n->primary,
-                  blt, hr_flip);
-    }
-}
-
 void RenderDevice::PresentImage(const Image &img)
 {
     Native *n = native_;
@@ -208,8 +181,9 @@ void RenderDevice::PresentImage(const Image &img)
     bool skipped = fx_noblt();
     bool blt = false;
 
-    if (!skipped && !img.empty())
-        blt = BltImageToBackBuffer(img);
+    // KAROO_FLIP_FX=noblt skips only the Blt; the image is converted as ever.
+    if (!img.empty())
+        blt = BltImageToBackBuffer(img, !skipped);
 
     hr_flip = n->primary->Flip(NULL, DDFLIP_WAIT);
 

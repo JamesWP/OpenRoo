@@ -3,7 +3,7 @@
 
     python3 tools/texdump.py OUT.txt                       # all recordings, 1024x768x32
     python3 tools/texdump.py OUT.txt --mode 10             # 800x600x16 display
-    python3 tools/texdump.py OUT.txt --fx bpp16 bridge01   # KAROO_TEXTURE_FX
+    python3 tools/texdump.py OUT.txt --no-fast             # include the loading screens
     python3 tools/texdump.py --diff A.txt B.txt            # exit 1 if they differ
 
 Every texture and image surface the loaders produce is hashed (name, size,
@@ -25,7 +25,7 @@ def recordings():
         return [r["name"] for r in json.load(fh)["recordings"]]
 
 
-def collect(out, names, mode, fx):
+def collect(out, names, mode, fast):
     tmp = out + ".raw"
     if os.path.exists(tmp):
         os.remove(tmp)
@@ -36,13 +36,13 @@ def collect(out, names, mode, fx):
             cfg[MODE_OFFSET] = mode
             open(CFG, "wb").write(cfg)
         env = dict(os.environ, KAROO_TEXTURE_DUMP=os.path.abspath(tmp))
-        if fx:
-            env["KAROO_TEXTURE_FX"] = fx
         for n in names:
             # The pass/fail verdict is not the point here; a different display
             # mode may legitimately move the simulation.
-            subprocess.run([sys.executable, os.path.join(REPO, "tools", "replaytest.py"), n],
-                           env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            cmd = [sys.executable, os.path.join(REPO, "tools", "replaytest.py")]
+            if not fast:
+                cmd.append("--no-fast")
+            subprocess.run(cmd + [n], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     finally:
         open(CFG, "wb").write(orig)
     lines = sorted(set(open(tmp).read().splitlines()))
@@ -56,7 +56,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--diff", nargs=2, metavar=("A", "B"))
     ap.add_argument("--mode", type=int)
-    ap.add_argument("--fx")
+    ap.add_argument("--no-fast", dest="fast", action="store_false",
+                    help="render for real; --fast skips PresentImage's Blt, so the "
+                         "loading screens are never converted")
     ap.add_argument("out", nargs="?")
     ap.add_argument("names", nargs="*")
     a = ap.parse_intermixed_args()
@@ -72,7 +74,7 @@ def main():
         sys.exit(0 if sx == sy else 1)
     if not a.out:
         ap.error("OUT required")
-    collect(a.out, a.names or recordings(), a.mode, a.fx)
+    collect(a.out, a.names or recordings(), a.mode, a.fast)
 
 
 main()

@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-class LoadedImage;
+struct Image;
 class CDM;
 class ProgableControl;
 
@@ -22,11 +22,11 @@ extern ProgableControl g_progCtrl;
 
 /* The loading screen: bitmaps\<map>.bmp is loaded into the first; the second
  * is shown when that fails. */
-extern LoadedImage g_loadingImage;
-extern LoadedImage g_fallbackImage;
+extern Image g_loadingImage;
+extern Image g_fallbackImage;
 
 /* bitmaps\demo.bmp, loaded once at startup (renderstate.cpp). */
-extern LoadedImage g_demoImage;
+extern Image g_demoImage;
 
 /* A copy of the LevelMap's title, made at level entry. */
 extern char g_levelTitle[128];
