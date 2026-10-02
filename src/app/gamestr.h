@@ -166,16 +166,6 @@ inline const char GS_HUD_CRYSTALS[] = "crystals:";
 inline const char GS_HUD_GAME_OVER[] = "GAME OVER";
 
 /* TEX: texture loading. */
-inline const char GS_TEX_GETDC_FAILED[] = "GetDC Failed\012";
-inline const char GS_TEX_CREATESURFACE_FAILED[] = "CreateSurface Failed\012";
-inline const char GS_TEX_LOCK_FAILED[] = "Lock Failed\012";
-inline const char GS_TEX_FMT_PIXELFORMAT[] = ": Flags: %d, RGBBitCount: %d, RMask: %x, GMask: %x, BMask: %x, AMask: %x\012";
-inline const char GS_TEX_NO_TEXTURE_IFACE[] = "no Texture-Interface\012";
-inline const char GS_TEX_NO_TGA_COPY[] = "couldn't copy TGA\012";
-inline const char GS_TEX_NO_TEXTURE_SURFACE[] = "couldn't create Texture-Surface\012";
-inline const char GS_TEX_FMT_Y_SIZE[] = "y-Size:%d(%g) ...ok\012";
-inline const char GS_TEX_FMT_X_SIZE[] = "x-Size:%d(%g) ...ok\012";
-inline const char GS_TEX_TYPE_OK[] = "Type ok\012";
 inline const char GS_TEX_DOT_TGA_UPPER[] = ".TGA";
 inline const char GS_TEX_DOT_TGA_LOWER[] = ".tga";
 inline const char GS_TEX_DOT_BMP_UPPER[] = ".BMP";
