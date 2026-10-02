@@ -20,6 +20,7 @@
 #include <string.h>
 #include "rendergameframe.h"
 #include "renderdevice.h"
+#include "image.h"
 #include "d3dmath.h"
 #include "game.h"
 #include "levelmap.h"
@@ -1020,7 +1021,7 @@ Render_RenderGameFrame(void)
     d3d->EndScene();
     if (g->state() == 7) {
         if (g->field_0c() != 0)
-            g_renderDevice->PresentImage(&g_demoImage);
+            g_renderDevice->PresentImage(g_demoImage);
         return;
     }
     d3d->Flip();

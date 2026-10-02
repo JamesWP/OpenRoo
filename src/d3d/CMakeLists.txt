@@ -5,9 +5,7 @@ add_library(d3d OBJECT
     devicetexture.cpp
     pixelconvert.cpp
     nullddraw.cpp
-    renderdevice.cpp
-    loadedimage.cpp
-    texturedib.cpp)
+    renderdevice.cpp)
 target_include_directories(d3d PRIVATE
     .
     ../log

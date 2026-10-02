@@ -289,8 +289,9 @@ void RenderDevice::SetTexture(int stage, const DeviceTexture *tex)
  *
  * PresentImage's source: an offscreen system-memory surface in the display's
  * own pixel format, filled from the image. */
-/* The back buffer's contents become the image, scaled to fit. */
-bool RenderDevice::BltImageToBackBuffer(const Image &img)
+/* Converts img for the display and, if `blt`, copies it over the back buffer,
+ * scaled to fit. */
+bool RenderDevice::BltImageToBackBuffer(const Image &img, bool blt)
 {
     Native *n = native_;
     DDSURFACEDESC2 ddsd;
@@ -328,7 +329,7 @@ bool RenderDevice::BltImageToBackBuffer(const Image &img)
     surf->Unlock(NULL);
 
     ddiag_dump_surface("img", img.name, surf);
-    hr = n->backBuffer->Blt(NULL, surf, NULL, DDBLT_WAIT, NULL);
+    hr = blt ? n->backBuffer->Blt(NULL, surf, NULL, DDBLT_WAIT, NULL) : S_OK;
     surf->Release();
     return hr >= 0;
 }

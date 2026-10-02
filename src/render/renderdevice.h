@@ -14,7 +14,6 @@
 #include <vector>
 #include "rendertypes.h"
 
-class LoadedImage;
 class Texture;
 struct Image;
 
@@ -110,11 +109,8 @@ public:
     /* Fills the back buffer with black. */
     void ClearBackBuffer();
 
-    /* Copies img over the back buffer and flips it to the screen. */
-    void PresentImage(LoadedImage *img);
-
-    /* The same for a CPU-side image, scaled to the back buffer.  An empty
-     * image just flips. */
+    /* Copies img over the back buffer, scaled to fit, and flips it to the
+     * screen.  An empty image just flips. */
     void PresentImage(const Image &img);
 
     // ── Textures ──
@@ -174,7 +170,7 @@ public:
 private:
     friend struct DeviceCreation;
 
-    bool BltImageToBackBuffer(const Image &img);
+    bool BltImageToBackBuffer(const Image &img, bool blt);
 
     Native                  *native_;
     std::vector<DisplayMode> modes_;

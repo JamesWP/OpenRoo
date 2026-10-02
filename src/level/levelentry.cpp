@@ -10,7 +10,7 @@
 #include <string.h>
 #include "levelentry.h"
 #include "renderdevice.h"
-#include "texturedib.h"
+#include "image.h"
 #include "game.h"
 #include "levelmap.h"
 #include "theme.h"
@@ -36,8 +36,8 @@ LevelEntry_PrepareAssets(void)
     char thm[0x100], bmp[0x124];
     sprintf(thm, "themes\\%s.thm", map->mapName());
     sprintf(bmp, "bitmaps\\%s.bmp", map->mapName());
-    unsigned ok = TextureDIB_CreateSurface(&g_loadingImage, d3d, bmp, 1);
-    g_renderDevice->PresentImage((char)ok ? &g_loadingImage : &g_fallbackImage);
+    bool ok = Image_LoadBMP(bmp, g_loadingImage);
+    g_renderDevice->PresentImage(ok ? g_loadingImage : g_fallbackImage);
 
     // 3. The theme, only when it has changed: the block keeps the path it was
     // loaded from.

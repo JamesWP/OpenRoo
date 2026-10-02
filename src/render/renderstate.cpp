@@ -11,7 +11,7 @@
 #include "renderstate.h"
 #include "windev.h"
 #include "renderdevice.h"
-#include "texturedib.h"
+#include "image.h"
 #include "texture.h"
 #include "model.h"
 #include "faktmesh.h"
@@ -32,10 +32,10 @@ Render_ConfigureRenderState(void)
     RenderDevice *d3d = g_renderDevice;
 
     // Loading-screen and demo bitmaps.
-    if (!(char)TextureDIB_CreateSurface(&g_fallbackImage, d3d, "bitmaps\\loading.bmp", 1))
+    if (!Image_LoadBMP("bitmaps\\loading.bmp", g_fallbackImage))
         g_logger.logMessage(3, "SUR: *ERROR* couldn't load loading.bmp");
-    g_renderDevice->PresentImage(&g_fallbackImage);
-    TextureDIB_CreateSurface(&g_demoImage, d3d, "bitmaps\\demo.bmp", 1);
+    g_renderDevice->PresentImage(g_fallbackImage);
+    Image_LoadBMP("bitmaps\\demo.bmp", g_demoImage);
 
     // Texture and model caches' loggers, and the level placement scratch
     // block.
