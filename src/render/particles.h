@@ -1,5 +1,5 @@
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 #include <stddef.h>
 class RenderDevice;
 
@@ -13,15 +13,15 @@ class RenderDevice;
 struct ParticleNode {
     /* The diffuse the fills write: dwDiffuse, or the KAROO_PARTICLE_FX=tint
      * colour. */
-    DWORD colour() const;
+    uint32_t colour() const;
 
     ParticleNode *pPrev;          // +0x00
     ParticleNode *pNext;          // +0x04
     float         flX, flY, flZ;  // +0x08..+0x10 position
     float         flVel[3];       // +0x14..+0x1c velocity
     float         flLife;         // +0x20 seconds remaining; < 0 retires
-    DWORD         dwDiffuse;      // +0x24
-    DWORD         dwShapeIndex;   // +0x28 XFace corner-table index; alloc-time only
+    uint32_t         dwDiffuse;      // +0x24
+    uint32_t         dwShapeIndex;   // +0x28 XFace corner-table index; alloc-time only
 };
 
 /* FVF 0x1e2 vertex, 0x20 bytes.  Fill only ever writes xyz + diffuse, leaving
@@ -31,8 +31,8 @@ struct ParticleNode {
 struct ParticleVertex {
     float flX, flY, flZ;
     float flPsize;         // (never written)
-    DWORD dwDiffuse;
-    DWORD dwSpecular;      // (never written)
+    uint32_t dwDiffuse;
+    uint32_t dwSpecular;      // (never written)
     float flU, flV;        // (never written)
 };
 
@@ -48,10 +48,10 @@ struct ParticleVertex {
 struct RingBuffer {
     /* Allocation and release of the nodes (particles.cpp). */
     void release();
-    void assignShapes(DWORD shapes);
-    BOOL alloc(DWORD count, DWORD shapes);
+    void assignShapes(uint32_t shapes);
+    int alloc(uint32_t count, uint32_t shapes);
 
-    DWORD         dwRingCount  = 0;
+    uint32_t         dwRingCount  = 0;
     ParticleNode *pRingBase    = NULL;
     ParticleNode *pRingHead    = NULL;  // oldest live particle
     ParticleNode *pRingTail    = NULL;  // last free node
@@ -78,9 +78,9 @@ public:
     /* Simulate and draw one frame.  render fills the vertex buffer, then draws
      * it; the point, face and xface classes supply fill and draw. */
     virtual void  tick(float dt);
-    virtual DWORD render(RenderDevice *dev);
+    virtual uint32_t render(RenderDevice *dev);
     virtual void  fill() {}
-    virtual DWORD draw(RenderDevice *) { return 0; }
+    virtual uint32_t draw(RenderDevice *) { return 0; }
     /* Face only: the quad's direction, and a transform of its corners. */
     virtual void  setVector(float, float, float) {}
     virtual void  transformCorners(float *) {}
@@ -101,31 +101,31 @@ protected:
     /* Drop the generator and environment (when flags is set) and the ring. */
     virtual void release(int flags);
     /* Type-name gate, then a new ring, generator and environment like src's. */
-    virtual BOOL copyFrom(const ParticleSystem *src);
-    virtual BOOL setCapacity(DWORD count);
-    virtual BOOL resize(DWORD count);
-    virtual BOOL save(void *fp);
-    virtual BOOL load(void *fp);
+    virtual int copyFrom(const ParticleSystem *src);
+    virtual int setCapacity(uint32_t count);
+    virtual int resize(uint32_t count);
+    virtual int save(void *fp);
+    virtual int load(void *fp);
 
     /* Hand the ring to the new sub-object first; only if it accepts is the old
      * one dropped.  A NULL argument is refused. */
-    BOOL setGenerator(Generator *gen);
-    BOOL setEnvironment(Environment *env);
+    int setGenerator(Generator *gen);
+    int setEnvironment(Environment *env);
 
-    template <typename EmitFn> DWORD fillRing(EmitFn emit);
-    void setRenderNode(DWORD enabled);
+    template <typename EmitFn> uint32_t fillRing(EmitFn emit);
+    void setRenderNode(uint32_t enabled);
 
     /* The scratch vertex buffer the subclasses fill: perNode vertices per
      * ring node, zeroed, with the texture corners baked in from uv (NULL for
      * none).  Frees the old buffer first. */
-    BOOL allocVerts(unsigned perNode, const float (*uv)[2] = NULL);
+    int allocVerts(unsigned perNode, const float (*uv)[2] = NULL);
 
     char           *pName_;
     RingBuffer      ring_;          // handed to the generator and environment
     Generator      *pGenerator_;
     Environment    *pEnvironment_;
     ParticleVertex *pVerts_;
-    DWORD           dwVertexCount_;  // vertices the last fill wrote
+    uint32_t           dwVertexCount_;  // vertices the last fill wrote
 };
 
 class PointParticleSystem : public ParticleSystem {
@@ -133,14 +133,14 @@ public:
     PointParticleSystem();
 
     void  fill() override;
-    DWORD draw(RenderDevice *dev) override;
+    uint32_t draw(RenderDevice *dev) override;
 
 protected:
-    BOOL  copyFrom(const ParticleSystem *src) override;
-    BOOL  setCapacity(DWORD count) override;
-    BOOL  resize(DWORD count) override;
-    BOOL  save(void *fp) override;
-    BOOL  load(void *fp) override;
+    int  copyFrom(const ParticleSystem *src) override;
+    int  setCapacity(uint32_t count) override;
+    int  resize(uint32_t count) override;
+    int  save(void *fp) override;
+    int  load(void *fp) override;
 };
 
 class FaceParticleSystem : public ParticleSystem {
@@ -148,19 +148,19 @@ public:
     FaceParticleSystem();
 
     void  fill() override;
-    DWORD draw(RenderDevice *dev) override;
+    uint32_t draw(RenderDevice *dev) override;
     void  setVector(float x, float y, float z) override;
     void  transformCorners(float *matrix) override;
 
 protected:
-    BOOL  copyFrom(const ParticleSystem *src) override;
-    BOOL  setCapacity(DWORD count) override;
-    BOOL  resize(DWORD count) override;
-    BOOL  save(void *fp) override;
-    BOOL  load(void *fp) override;
+    int  copyFrom(const ParticleSystem *src) override;
+    int  setCapacity(uint32_t count) override;
+    int  resize(uint32_t count) override;
+    int  save(void *fp) override;
+    int  load(void *fp) override;
 
 private:
-    BOOL allocVerts() { return ParticleSystem::allocVerts(6, FACE_UV); }
+    int allocVerts() { return ParticleSystem::allocVerts(6, FACE_UV); }
 
     static const float FACE_UV[6][2];
     float           flCorner_[6][3]; // six baked xyz corner offsets
@@ -184,22 +184,22 @@ public:
 
     void  tick(float dt) override;
     void  fill() override;
-    DWORD draw(RenderDevice *dev) override;
+    uint32_t draw(RenderDevice *dev) override;
 
 protected:
     void  release(int flags) override;
-    BOOL  copyFrom(const ParticleSystem *src) override;
-    BOOL  setCapacity(DWORD count) override;
-    BOOL  resize(DWORD count) override;
-    BOOL  save(void *fp) override;
-    BOOL  load(void *fp) override;
+    int  copyFrom(const ParticleSystem *src) override;
+    int  setCapacity(uint32_t count) override;
+    int  resize(uint32_t count) override;
+    int  save(void *fp) override;
+    int  load(void *fp) override;
 
 private:
-    BOOL allocVerts() { return ParticleSystem::allocVerts(6, XFACE_UV); }
-    BOOL buildCorners();
+    int allocVerts() { return ParticleSystem::allocVerts(6, XFACE_UV); }
+    int buildCorners();
 
     static const float XFACE_UV[6][2];
     XFaceCornerEntry *pCornerTable_; // dwCornerTableCount entries
-    DWORD             dwCornerTableCount_;
+    uint32_t             dwCornerTableCount_;
     float             ranges[8];
 };

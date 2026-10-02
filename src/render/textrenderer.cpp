@@ -17,6 +17,8 @@
  * drawCentered and drawRight shift x left by half the rendered width, or all
  * of it, and then call drawLeft. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "textrenderer.h"
 #include "sysdev.h"
 #include "renderdevice.h"
@@ -38,8 +40,8 @@ TextRenderer g_fontNumbers;
 
 struct TextVertex {
     float x, y, z, rhw;
-    DWORD diffuse;
-    DWORD specular;
+    uint32_t diffuse;
+    uint32_t specular;
     float u, v;
 };
 
@@ -62,7 +64,7 @@ static TextFx text_fx(void)
     if (cached >= 0)
         return (TextFx)cached;
     char buf[32];
-    DWORD n = sysdev::getEnv("KAROO_TEXT_FX", buf, sizeof(buf));
+    uint32_t n = sysdev::getEnv("KAROO_TEXT_FX", buf, sizeof(buf));
     TextFx fx = TEXT_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "mirror") == 0)   fx = TEXT_FX_MIRROR;
@@ -85,7 +87,7 @@ static bool text_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[32];
-        DWORD n = sysdev::getEnv("KAROO_TEXT_DIAG", buf, sizeof(buf));
+        uint32_t n = sysdev::getEnv("KAROO_TEXT_DIAG", buf, sizeof(buf));
         cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;
@@ -130,8 +132,8 @@ static float text_width(const char *str, float cellW, float spacing)
 
 void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
                             float spacing, const char *str, RenderDevice *d3d,
-                            char firstChar, DWORD colourTop,
-                            DWORD colourBottom)
+                            char firstChar, uint32_t colourTop,
+                            uint32_t colourBottom)
 {
     ++g_nRender;
     { static unsigned long seen; text_first("RenderText", &seen); }
@@ -277,8 +279,8 @@ unsigned int TextRenderer::load(const char *path, RenderDevice *d3d)
 
 void TextRenderer::drawCentered(float x, float y, float cellW, float cellH,
                                 float spacing, const char *str, RenderDevice *d3d,
-                                char firstChar, DWORD colourTop,
-                                DWORD colourBottom)
+                                char firstChar, uint32_t colourTop,
+                                uint32_t colourBottom)
 {
     ++g_nCentred;
     { static unsigned long seen; text_first("DrawCenteredText", &seen); }
@@ -289,8 +291,8 @@ void TextRenderer::drawCentered(float x, float y, float cellW, float cellH,
 
 void TextRenderer::drawRight(float x, float y, float cellW, float cellH,
                              float spacing, const char *str, RenderDevice *d3d,
-                             char firstChar, DWORD colourTop,
-                             DWORD colourBottom)
+                             char firstChar, uint32_t colourTop,
+                             uint32_t colourBottom)
 {
     ++g_nRight;
     { static unsigned long seen; text_first("DrawRightAlignedText", &seen); }
@@ -329,8 +331,8 @@ static float wobble_dy(int i2, float phase, float amplitude, float halfH)
 
 void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
                               float spacing, const char *str, RenderDevice *d3d,
-                              char firstChar, DWORD colourTop,
-                              DWORD colourBottom, float amplitude, float rate,
+                              char firstChar, uint32_t colourTop,
+                              uint32_t colourBottom, float amplitude, float rate,
                               int n)
 {
     ++g_nWobble;
@@ -395,7 +397,7 @@ void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
 
 void TextRenderer::drawBig(float x, float y, float cellW, float cellH,
                            float spacing, const char *str, RenderDevice *d3d,
-                           char firstChar, DWORD colourTop, DWORD colourBottom,
+                           char firstChar, uint32_t colourTop, uint32_t colourBottom,
                            float amplitude, float rate, int n)
 {
     ++g_nBig;
@@ -445,7 +447,7 @@ TextRenderer::~TextRenderer()
  * The strips' z is 0 and the glyphs' 0.1. */
 void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
                              float spacing, float lineH, const char *str,
-                             RenderDevice *d3d, DWORD colourTop, DWORD colourBottom,
+                             RenderDevice *d3d, uint32_t colourTop, uint32_t colourBottom,
                              SceneTexture *panelTex, SceneTexture *frameTex)
 {
     const float du = 1.0f / (float)cols_;  // cols_ read as unsigned

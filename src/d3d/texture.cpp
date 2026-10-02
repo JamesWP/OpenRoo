@@ -43,12 +43,13 @@ static bool image_diag(void)
 
 /* ─── CreatePaletteFromDIB ─────────────────────────────────────────────────
  *
- * __stdcall.  Reads the DIB's colour table off a scratch DC, rewrites each
+ * Reads the DIB's colour table off a scratch DC, rewrites each
  * RGBQUAD in place as a PALETTEENTRY, and hands the result to
  * IDirectDraw4::CreatePalette. */
-  IDirectDrawPalette *__stdcall
-Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp)
+  IDirectDrawPalette *
+Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, void *hbmpNative)
 {
+    HBITMAP hbmp = (HBITMAP)hbmpNative;
     IDirectDrawPalette *pal = NULL;
     RGBQUAD table[256];  // PRESERVED: uninitialised
 

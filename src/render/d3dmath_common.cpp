@@ -1,5 +1,6 @@
 /* Maths helpers with no arithmetic that could round differently -- pure data
  * movement -- plus the exported wrappers over d3dmath_mode.cpp. */
+#include <stdint.h>
 #include <math.h>
 #include "d3dmath_common.h"
 #include "renderdevice.h"
@@ -47,8 +48,8 @@ void v3_sub_inplace(Vec3 *d, const Vec3 *v)
 
 /* +0x0c is written as a literal zero, not left alone: FVF 0x1e2 has a
  * reserved slot there that nothing else fills. */
-void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
-                      DWORD specular, float u, float v)
+void billboard_vertex(BbVertex *d, const Vec3 *pos, uint32_t diffuse,
+                      uint32_t specular, float u, float v)
 {
     d->x = pos->x;  d->y = pos->y;  d->z = pos->z;
     d->zero = 0;

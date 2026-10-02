@@ -2,6 +2,8 @@
  * sub-object's blend and texture state depends on every sub-object that came
  * before it in the array, whether or not that one drew anything. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "quadbatch.h"
 #include "sysdev.h"
 #include <stdio.h>
@@ -18,7 +20,7 @@
 /* KAROO_QUAD_DUMP=<path> writes every vertex of one quad batch (the 200th draw) to
  * a file, once.  FVF 0x1e2 is a 32-byte vertex: xyz(12), reserved(4),
  * diffuse(4), specular(4), two texture-coordinate pairs(8). */
-static void quad_dump(const void *data, DWORD quads)
+static void quad_dump(const void *data, uint32_t quads)
 {
     static LONG calls = 0;
     char path[MAX_PATH];
@@ -35,12 +37,12 @@ static void quad_dump(const void *data, DWORD quads)
         g_logger.write("quadbatch: dump could not open %s (errno=%d)\n", path, errno);
         return;
     }
-    const BYTE *v = (const BYTE *)data;
-    fprintf(f, "raw dump pData=%p quads=%lu\r\n", data, quads);
+    const uint8_t *v = (const uint8_t *)data;
+    fprintf(f, "raw dump pData=%p quads=%lu\r\n", data, (unsigned long)quads);
     // Written as raw hex, one vertex per line, rather than decoded fields.
-    DWORD total = quads * 6 * 32;
-    for (DWORD off = 0; off < total; off += 32) {
-        fprintf(f, "%06lX ", off);
+    uint32_t total = quads * 6 * 32;
+    for (uint32_t off = 0; off < total; off += 32) {
+        fprintf(f, "%06lX ", (unsigned long)off);
         for (int b = 0; b < 32; b++)
             fprintf(f, "%02X", v[off + b]);
         fprintf(f, "\r\n");
@@ -78,24 +80,24 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
     if (slot->instanceCount() == 0)
         return;
 
-    for (DWORD i = 0; i < slot->instanceCount(); i++) {
+    for (uint32_t i = 0; i < slot->instanceCount(); i++) {
         const ThemeLevelObject *obj = &slot->records()[i];
-        DWORD nsub = obj->subObjectCount();
+        uint32_t nsub = obj->subObjectCount();
         {  // KAROO_QUAD_DIAG=1: log each object's draw-kind and sub-object count.
             static LONG diag = 0;
             char dbuf[8];
             if (sysdev::getEnv("KAROO_QUAD_DIAG", dbuf, sizeof(dbuf))
                 && dbuf[0] != '0' && InterlockedIncrement(&diag) <= 24)
                 g_logger.write("quadbatch: diag obj=%lu kind=%lu nsub=%lu\n",
-                          i, (DWORD)obj->kind(), nsub);
+                          i, (uint32_t)obj->kind(), nsub);
         }
         if (nsub == 0)
             continue;
 
-        for (DWORD s = 0; s < obj->subObjectCount(); s++) {
+        for (uint32_t s = 0; s < obj->subObjectCount(); s++) {
             const SceneSubObject *sub = &obj->subObjects()[s];
 
-            DWORD addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
+            uint32_t addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
             d3d->SetRenderState(RS::TextureAddressU, addr);
             d3d->SetRenderState(RS::TextureAddressV, addr);
 
@@ -105,7 +107,7 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
             // last_state and last_value let the alpha-off and dest-blend
             // branches share one SetRenderState call.
             RS last_state;
-            DWORD              last_value;
+            uint32_t              last_value;
             if (sub->dwBlendSrc && sub->dwBlendDst
                 && quad_fx() != QUAD_FX_NOALPHA) {
                 d3d->SetRenderState(RS::AlphaBlendEnable, 1);
@@ -126,19 +128,19 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
             if (obj->kind() == THEME_KIND_FIELD) {
                 d3d->SetTransform(Transform::World,
                                            &g_worldIdentity);
-                quad_dump(pl->wallStripVerts(), (DWORD)pl->wallStripCount());
+                quad_dump(pl->wallStripVerts(), (uint32_t)pl->wallStripCount());
                 bool ok = true;
                 if (quad_fx() != QUAD_FX_NODRAW)
                     ok = d3d->Draw(
                         Prim::TriangleList, QUAD_FVF, pl->wallStripVerts(),
-                        (DWORD)pl->wallStripCount() * 6, 0);
+                        (uint32_t)pl->wallStripCount() * 6, 0);
 
                 static LONG logged = 0;
                 if (InterlockedIncrement(&logged) <= QUAD_LOG_FIRST)
                     g_logger.write("quadbatch: obj=%lu sub=%lu tex=%p addr=%lu "
                               "src=%lu dst=%lu quads=%lu -> ok=%d\n",
                               i, s, sub->pTexture, addr, sub->dwBlendSrc,
-                              sub->dwBlendDst, (DWORD)pl->wallStripCount(), ok);
+                              sub->dwBlendDst, (uint32_t)pl->wallStripCount(), ok);
             }
         }
     }

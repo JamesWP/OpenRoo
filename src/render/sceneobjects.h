@@ -8,7 +8,7 @@
  *   animation code, and the frame's elapsed ms (unsigned).
  * Callers: RenderGameFrame's object passes, the lift and slide wrappers. */
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 #include "d3dmath.h"
 
 class Game;
@@ -20,7 +20,7 @@ class RenderDevice;
  * set; the first is never sampled. */
 struct SceneQuadVertex {                  /* naturally aligned; no packing needed */
     float x, y, z;
-    DWORD diffuse;
+    uint32_t diffuse;
     float u0, v0;
     float u1, v1;
 };

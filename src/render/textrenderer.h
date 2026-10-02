@@ -17,7 +17,7 @@
  */
 #pragma once
 
-#include <windows.h>
+#include <stdint.h>
 #include "scenetexture.h"    /* SceneTexture -- the atlas */
 
 class RenderDevice;
@@ -30,17 +30,17 @@ public:
      * top-left corner. */
     void drawLeft(float x, float y, float cellW, float cellH, float spacing,
                   const char *str, RenderDevice *d3d, char firstChar,
-                  DWORD colourTop, DWORD colourBottom);
+                  uint32_t colourTop, uint32_t colourBottom);
 
     /* x is the string's right edge. */
     void drawRight(float x, float y, float cellW, float cellH, float spacing,
                    const char *str, RenderDevice *d3d, char firstChar,
-                   DWORD colourTop, DWORD colourBottom);
+                   uint32_t colourTop, uint32_t colourBottom);
 
     /* x is the string's centre. */
     void drawCentered(float x, float y, float cellW, float cellH, float spacing,
                       const char *str, RenderDevice *d3d, char firstChar,
-                      DWORD colourTop, DWORD colourBottom);
+                      uint32_t colourTop, uint32_t colourBottom);
 
     /* Load a .fon: line 1 is the atlas's
      * texture path, line 2 the column count, line 3 the row count.  Returns
@@ -54,7 +54,7 @@ public:
      * with all twelve remaining arguments untouched.  Used for "GAME OVER". */
     void drawBig(float x, float y, float cellW, float cellH, float spacing,
                  const char *str, RenderDevice *d3d, char firstChar,
-                 DWORD colourTop, DWORD colourBottom,
+                 uint32_t colourTop, uint32_t colourBottom,
                  float amplitude, float rate, int n);
 
     /* drawLeft's sibling, and the only other glyph loop.  The differences are
@@ -71,14 +71,14 @@ public:
      * only caller. */
     void drawWobble(float x, float y, float cellW, float cellH, float spacing,
                     const char *str, RenderDevice *d3d, char firstChar,
-                    DWORD colourTop, DWORD colourBottom,
+                    uint32_t colourTop, uint32_t colourBottom,
                     float amplitude, float rate, int n);
 
     /* A multi-line caption over two full-width
      * backdrop strips (textrenderer.cpp). */
     void drawPanel(float x, float y, float cellW, float cellH, float spacing,
                    float lineH, const char *str, RenderDevice *d3d,
-                   DWORD colourTop, DWORD colourBottom,
+                   uint32_t colourTop, uint32_t colourBottom,
                    SceneTexture *panelTex, SceneTexture *frameTex);
 
     /* An empty atlas; the destructor releases it. */

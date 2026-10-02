@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <new>
 #include "voicepool.h"
@@ -13,7 +14,7 @@ static int pool_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[32];
-        DWORD n = sysdev::getEnv("KAROO_POOL_DIAG", buf, sizeof(buf));
+        uint32_t n = sysdev::getEnv("KAROO_POOL_DIAG", buf, sizeof(buf));
         cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;
@@ -53,7 +54,7 @@ static PoolFx pool_fx(void)
     static int cached = -1;
     if (cached >= 0) return (PoolFx)cached;
     char buf[32];
-    DWORD n = sysdev::getEnv("KAROO_POOL_FX", buf, sizeof(buf));
+    uint32_t n = sysdev::getEnv("KAROO_POOL_FX", buf, sizeof(buf));
     PoolFx fx = POOL_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "onevoice") == 0) fx = POOL_FX_ONEVOICE;

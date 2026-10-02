@@ -5,6 +5,7 @@
  * every instance, gate_open() then decides whether to bind its texture and
  * blend state; only a particle record goes on to place and render it. */
 
+#include <stdint.h>
 #include <math.h>
 #include "themedraw.h"
 #include "theme.h"
@@ -32,7 +33,7 @@ static void mul(Mat4 *d, const Mat4 *a, const Mat4 *b) { m4_mul(d, b, a); }
 
 /* SceneSubObject::dwVisibilityGate, checked against the player and the
  * instance's tile. */
-static bool gate_open(DWORD gate, const Player *p, const Tile *cell)
+static bool gate_open(uint32_t gate, const Player *p, const Tile *cell)
 {
     const bool dead = p->anim() == ANIM_GHOST;
     switch (gate) {
@@ -56,15 +57,15 @@ static void camera_view_dir(float d[3])
 
   void  
 Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
-                          const float (*rot)[3], DWORD count,
+                          const float (*rot)[3], uint32_t count,
                           ThemeObjectTypeSlot *slot, RenderDevice *d3d,
-                          double t, double dt, DWORD system)
+                          double t, double dt, uint32_t system)
 {
     RenderDevice *dev = d3d;
     const Player *player = g->player();
     LevelMap *map = g->map();
 
-    for (DWORD r = 0; r < slot->instanceCount(); r++) {
+    for (uint32_t r = 0; r < slot->instanceCount(); r++) {
         ThemeLevelObject *rec = &slot->records()[r];
 
         if (rec->specular() != 0 && g->videoHighlights() != 0)
@@ -73,11 +74,11 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
         if (rec->kind() == THEME_KIND_PARTICLESYSTEM)
             (rec->particleSystems()[system])->tick((float)(dt * K_MS));
 
-        for (DWORD s = 0; s < rec->subObjectCount(); s++) {
+        for (uint32_t s = 0; s < rec->subObjectCount(); s++) {
             // pSubObjects lives in a packed struct; sub is a copy so its
             // fields stay aligned.
             const SceneSubObject sub = rec->subObjects()[s];
-            for (DWORD n = 0; n < count; n++) {
+            for (uint32_t n = 0; n < count; n++) {
                 const float *ip = pos[n], *ir = rot[n];
                 // PRESERVED: the instance's cell is read with no bounds check,
                 // so an instance placed outside the 100x100 grid reads past
@@ -126,7 +127,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
 
                 float view[3];
                 Mat4 world;
-                const DWORD move = rec->movableType();
+                const uint32_t move = rec->movableType();
                 // PRESERVED: movable types 1 and 2 place the generator through
                 // ps->getGenerator(NULL), which returns NULL for a
                 // system with none; the position write then derefs a null

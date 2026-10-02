@@ -1,6 +1,5 @@
 /* The theme nodes are rebuilt from the loaded JJ.GAM table every time the page
  * opens.  Nothing else reads or writes them. */
-#include <windows.h>
 #include <string.h>
 #include "levelselect.h"
 #include "game.h"

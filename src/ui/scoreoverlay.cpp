@@ -12,6 +12,8 @@
  * magenta (only these functions build it), "nodraw" skips the quads and leaves
  * the text. */
 
+#include <windows.h>
+#include <stdint.h>
 #include <stdio.h>
 #include "sysdev.h"
 #include "scoreoverlay.h"
@@ -49,7 +51,7 @@ static ScoreFx score_fx(void)
         return (ScoreFx)cached;
     char buf[32];
     // By value, not by presence.
-    DWORD n = sysdev::getEnv("KAROO_SCORE_FX", buf, sizeof(buf));
+    uint32_t n = sysdev::getEnv("KAROO_SCORE_FX", buf, sizeof(buf));
     ScoreFx fx = SCORE_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "tint") == 0)        fx = SCORE_FX_TINT;
@@ -64,14 +66,14 @@ static ScoreFx score_fx(void)
 
 struct TLVertex {  // FVF 0x1c4
     float x, y, z, rhw;
-    DWORD diffuse, specular;
+    uint32_t diffuse, specular;
     float tu, tv;
 };
 
 /* The four-vertex strip: (w,0) (w,h) (0,0) (0,h), z 0, rhw 10. */
 static void build_backdrop(TLVertex v[4], float w, float h)
 {
-    const DWORD diffuse = (score_fx() == SCORE_FX_TINT) ? 0xffff00ff : 0xffffffff;
+    const uint32_t diffuse = (score_fx() == SCORE_FX_TINT) ? 0xffff00ff : 0xffffffff;
     static const float u[4] = { 0.6f, 0.6f, 0.4f, 0.4f };
     static const float t[4] = { 0.4f, 0.6f, 0.4f, 0.6f };
     const float xs[4] = { w, w, 0.0f, 0.0f };
@@ -196,7 +198,7 @@ static int row_value(const ScoreTally *t, int row)
 static void draw_summary(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
                          TextRenderer *text, int n, const char *title)
 {
-    const DWORD dwWidth = d3d->width();
+    const uint32_t dwWidth = d3d->width();
     const float w = (float)dwWidth;
     const float h = (float)d3d->height();
 
@@ -256,7 +258,7 @@ void Score_DrawGameOverScore(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
 
     draw_summary(g, theme, d3d, text, n, GS_HUD_GAME_OVER);
 
-    const DWORD dwWidth = d3d->width();
+    const uint32_t dwWidth = d3d->width();
     const float w = (float)dwWidth;
     text->drawCentered(w * 0.5f, w * 0.59375f,
                        (float)(dwWidth * 12) * VSCALE,
@@ -270,11 +272,11 @@ void Score_DrawGameOverScore(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
  * virtual units down. */
 
 void Menu_RenderLevelComplete(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                              TextRenderer *text, DWORD ms)
+                              TextRenderer *text, uint32_t ms)
 {
     draw_summary(g, theme, d3d, text, (int)ms, "LEVEL COMPLETED");
 
-    const DWORD dwWidth = d3d->width();
+    const uint32_t dwWidth = d3d->width();
     const float w = (float)dwWidth;
     const float cellW = (float)(dwWidth * 12) * VSCALE;
     const float cellH = (float)(dwWidth * 14) * VSCALE;

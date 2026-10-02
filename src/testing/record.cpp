@@ -17,6 +17,8 @@
  * tests.  The pressed-since-last-call bit is not replayed: it is consumed
  * state, and reproducing it would need the same call order within a frame. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "record.h"
 #include "sysdev.h"
 #include <stdio.h>
@@ -34,11 +36,11 @@
 #define HEADER_SIZE     80
 
 struct FrameRec {
-    DWORD frame;
-    BYTE  game_state;
-    BYTE  keys[256];
-    BYTE  async_count;
-    BYTE  async[ASYNC_MAX][2];  // vkey, down
+    uint32_t frame;
+    uint8_t  game_state;
+    uint8_t  keys[256];
+    uint8_t  async_count;
+    uint8_t  async[ASYNC_MAX][2];  // vkey, down
 };
 
 static int      g_mode = -1;  // 0 none, 1 record, 2 replay
@@ -49,7 +51,7 @@ static bool     g_have_play;
 static FrameRec g_pending;  // read ahead, not yet due
 static bool     g_have_pending;
 static bool     g_finished;
-static BYTE     g_async_used[ASYNC_MAX];
+static uint8_t     g_async_used[ASYNC_MAX];
 static bool     g_keys_seen;
 
 /* KAROO_INPUT_DEBUG=1 logs the first few replayed frames and key polls. */
@@ -64,7 +66,7 @@ static bool input_debug(void)
 }
 
 static double   g_dt;
-static DWORD    g_seed;
+static uint32_t    g_seed;
 static bool     g_seed_set;
 
 static void read_env(void)
@@ -75,7 +77,7 @@ static void read_env(void)
         g_dt = atof(buf);
     g_seed = 0; g_seed_set = false;
     if (sysdev::getEnv("KAROO_SEED", buf, sizeof(buf)) && buf[0]) {
-        g_seed = (DWORD)atoi(buf);
+        g_seed = (uint32_t)atoi(buf);
         g_seed_set = true;
     }
 }
@@ -98,13 +100,13 @@ static void open_record(const char *path)
         g_mode = 0;
         return;
     }
-    BYTE hdr[HEADER_SIZE];
+    uint8_t hdr[HEADER_SIZE];
     memset(hdr, 0, sizeof(hdr));
     memcpy(hdr, "KROO", 4);
-    *(DWORD  *)(hdr + 4)  = RECORD_VERSION;
+    *(uint32_t  *)(hdr + 4)  = RECORD_VERSION;
     *(double *)(hdr + 8)  = g_dt;
-    *(DWORD  *)(hdr + 16) = g_seed;
-    *(DWORD  *)(hdr + 20) = g_seed_set ? 1u : 0u;
+    *(uint32_t  *)(hdr + 16) = g_seed;
+    *(uint32_t  *)(hdr + 20) = g_seed_set ? 1u : 0u;
     sysdev::getEnv("KAROO_RECORD_LABEL", (char *)hdr + 24, 56);
     fwrite(hdr, 1, sizeof(hdr), g_fh);
     fflush(g_fh);
@@ -121,16 +123,16 @@ static void open_replay(const char *path)
         g_mode = 0;
         return;
     }
-    BYTE hdr[HEADER_SIZE];
+    uint8_t hdr[HEADER_SIZE];
     if (fread(hdr, 1, sizeof(hdr), g_fh) != sizeof(hdr) ||
         memcmp(hdr, "KROO", 4) != 0) {
         g_logger.write("record: %s is not a recording\n", path);
         g_mode = 0;
         return;
     }
-    DWORD  ver  = *(DWORD  *)(hdr + 4);
+    uint32_t  ver  = *(uint32_t  *)(hdr + 4);
     double rdt  = *(double *)(hdr + 8);
-    DWORD  seed = *(DWORD  *)(hdr + 16);
+    uint32_t  seed = *(uint32_t  *)(hdr + 16);
     if (ver != RECORD_VERSION) {
         g_logger.write("record: %s is version %lu, this build reads %d\n",
                   path, (unsigned long)ver, RECORD_VERSION);
@@ -172,9 +174,9 @@ bool record_replay_finished(void){ return g_finished; }
 static void flush_frame(void)
 {
     if (!g_keys_seen) return;  // nothing polled input this frame
-    BYTE buf[4 + 1 + 256 + 1 + ASYNC_MAX * 2];
+    uint8_t buf[4 + 1 + 256 + 1 + ASYNC_MAX * 2];
     int  n = 0;
-    *(DWORD *)(buf + n) = g_cur.frame;      n += 4;
+    *(uint32_t *)(buf + n) = g_cur.frame;      n += 4;
     buf[n++] = g_cur.game_state;
     memcpy(buf + n, g_cur.keys, 256);       n += 256;
     buf[n++] = g_cur.async_count;
@@ -190,27 +192,27 @@ static void flush_frame(void)
     g_keys_seen = false;
 }
 
-void record_keys(unsigned short game_state, const BYTE *keys)
+void record_keys(unsigned short game_state, const uint8_t *keys)
 {
     if (!record_recording()) return;
     g_cur.frame      = clock_frame();
-    g_cur.game_state = (BYTE)game_state;
+    g_cur.game_state = (uint8_t)game_state;
     memcpy(g_cur.keys, keys, 256);
     g_keys_seen = true;
 }
 
-void record_async(int vkey, SHORT value)
+void record_async(int vkey, short value)
 {
     if (!record_recording()) return;
     if (g_cur.async_count >= ASYNC_MAX) return;
     g_cur.frame = clock_frame();
-    g_cur.async[g_cur.async_count][0] = (BYTE)(vkey & 0xff);
+    g_cur.async[g_cur.async_count][0] = (uint8_t)(vkey & 0xff);
     g_cur.async[g_cur.async_count][1] = (value & 0x8000) ? 1 : 0;
     g_cur.async_count++;
     g_keys_seen = true;  // a frame with only key polls is still a frame
 }
 
-static bool read_exact(void *dst, DWORD n)
+static bool read_exact(void *dst, uint32_t n)
 {
     return fread(dst, 1, n, g_fh) == n;
 }
@@ -254,7 +256,7 @@ static void load_frame(void)
     }
 }
 
-bool replay_keys(unsigned short *game_state, BYTE *keys)
+bool replay_keys(unsigned short *game_state, uint8_t *keys)
 {
     if (!record_replaying()) return false;
     static int served = 0, empty = 0;
@@ -275,15 +277,15 @@ bool replay_keys(unsigned short *game_state, BYTE *keys)
     return true;
 }
 
-bool replay_async(int vkey, SHORT *value)
+bool replay_async(int vkey, short *value)
 {
     if (!record_replaying()) return false;
     if (!g_have_play) { *value = 0; return true; }
     for (int i = 0; i < g_play.async_count; i++) {
         if (g_async_used[i]) continue;
-        if (g_play.async[i][0] != (BYTE)(vkey & 0xff)) continue;
+        if (g_play.async[i][0] != (uint8_t)(vkey & 0xff)) continue;
         g_async_used[i] = 1;
-        *value = g_play.async[i][1] ? (SHORT)0x8000 : (SHORT)0;
+        *value = g_play.async[i][1] ? (short)0x8000 : (short)0;
         return true;
     }
     *value = 0;  // not polled in the recording on this frame
@@ -299,7 +301,7 @@ void record_frame_boundary(void)
 
  
 
-  SHORT WINAPI hooks_GetAsyncKeyState(int vKey)
+  short hooks_GetAsyncKeyState(int vKey)
 {
     if (input_debug()) {  // which call sites actually execute
         static int n = 0;
@@ -312,14 +314,14 @@ void record_frame_boundary(void)
     // The menu driver answers first: it is synthesising an edge the menu's
     // debounce depends on, which neither a recording nor the keyboard may
     // contradict.
-    SHORT mv;
+    short mv;
     if (menu_async_override(vKey, &mv)) return mv;
 
     // The level-report trigger comes next: it fires before the first frame
     // boundary, so no recorded frame could answer it.
     if (levelreport_async_override(vKey, &mv)) return mv;
 
-    SHORT v;
+    short v;
     if (record_replaying() && !policy_in_control(clock_frame())) {
         replay_async(vKey, &v);
         return v;

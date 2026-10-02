@@ -5,7 +5,6 @@
  * config.cpp, levelmap.cpp), in a fixed order; teardown is its exact reverse.
  */
 
-#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 

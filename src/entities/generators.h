@@ -5,7 +5,7 @@
  * killing particles already in the ring. */
 
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 #include <stddef.h>
 #include "particles.h"
  
@@ -27,11 +27,11 @@ public:
     virtual ~Generator() = default;
 
     /* Gates on a matching type name; a subclass copies its own fields too. */
-    virtual BOOL copyFrom(const Generator *src);
+    virtual int copyFrom(const Generator *src);
     /* Emits into the ring. */
     virtual void tick(float dt) { (void)dt; }
-    virtual BOOL save(void *fp) { (void)fp; return TRUE; }
-    virtual BOOL load(void *fp) { (void)fp; return TRUE; }
+    virtual int save(void *fp) { (void)fp; return 1; }
+    virtual int load(void *fp) { (void)fp; return 1; }
     virtual void setPosition(float x, float y, float z)  { (void)x; (void)y; (void)z; }
     virtual void setVelocity(float x, float y, float z, float mag)
         { (void)x; (void)y; (void)z; (void)mag; }
@@ -39,15 +39,15 @@ public:
     virtual void setSpeed(float mag) { (void)mag; }
 
     /* Refuses (and leaves pRing alone) a NULL ring. */
-    BOOL attachRing(RingBuffer *ring);
+    int attachRing(RingBuffer *ring);
 
     const char *name() const            { return pName_; }
-    DWORD       enabled() const         { return dwEnabled_; }
-    void        setEnabled(DWORD e)     { dwEnabled_ = e; }
+    uint32_t       enabled() const         { return dwEnabled_; }
+    void        setEnabled(uint32_t e)     { dwEnabled_ = e; }
 
 protected:
     char       *pName_;
-    DWORD       dwEnabled_;  // zero disables tick for this generator
+    uint32_t       dwEnabled_;  // zero disables tick for this generator
     RingBuffer *pRing_;
 };
 
@@ -65,18 +65,18 @@ public:
     virtual ~Environment() = default;
 
     /* The base copyFrom only gates on type name. */
-    virtual BOOL copyFrom(const Environment *src) { return envSameName(src); }
+    virtual int copyFrom(const Environment *src) { return envSameName(src); }
     virtual void tick(float dt) { (void)dt; }
-    virtual BOOL save(void *fp) { (void)fp; return TRUE; }
-    virtual BOOL load(void *fp) { (void)fp; return TRUE; }
+    virtual int save(void *fp) { (void)fp; return 1; }
+    virtual int load(void *fp) { (void)fp; return 1; }
 
     /* Refuses (and leaves pRing alone) a NULL ring. */
-    BOOL attachRing(RingBuffer *ring);
+    int attachRing(RingBuffer *ring);
 
     const char *name() const   { return pName_; }
 
 protected:
-    BOOL envSameName(const Environment *src) const;
+    int envSameName(const Environment *src) const;
 
     char       *pName_;
     RingBuffer *pRing_;
@@ -88,25 +88,25 @@ class GravityEnvironment : public Environment {
 public:
     GravityEnvironment();
 
-    BOOL copyFrom(const Environment *src) override;
+    int copyFrom(const Environment *src) override;
     void tick(float dt) override;
-    BOOL save(void *fp) override;
-    BOOL load(void *fp) override;
+    int save(void *fp) override;
+    int load(void *fp) override;
 
 private:
     void gravityTick(float dt);
     void gravitySetVector(const float dir[3], float mag);
-    void gravitySetColour(DWORD argb, float fade);
+    void gravitySetColour(uint32_t argb, float fade);
 
     float       flDirection_[3];
     float       flMagnitude_;
     float       flGravity_[3];
-    DWORD       dwTargetARGB_;
-    DWORD       dwTargetA_;  // never read
-    DWORD       dwTargetRGB_[3];
+    uint32_t       dwTargetARGB_;
+    uint32_t       dwTargetA_;  // never read
+    uint32_t       dwTargetRGB_[3];
     float       flFadeRate_;
-    DWORD       dwFadeThreshold_;  // a fade step below this is not applied
-    DWORD       dwClipEnable_[3];
+    uint32_t       dwFadeThreshold_;  // a fade step below this is not applied
+    uint32_t       dwClipEnable_[3];
     float       flClipMax_[3];
     float       flClipMin_[3];
     float       flFadeAccum_;
@@ -121,10 +121,10 @@ class MagnetEnvironment : public Environment {
 public:
     MagnetEnvironment();
 
-    BOOL copyFrom(const Environment *src) override;
+    int copyFrom(const Environment *src) override;
     void tick(float dt) override;
-    BOOL save(void *fp) override;
-    BOOL load(void *fp) override;
+    int save(void *fp) override;
+    int load(void *fp) override;
 
 private:
     void magnetTick(float dt);
@@ -133,10 +133,10 @@ private:
     float       flForce_[3];
     float       flHalfExtent_[3];
     float       flRange_;    // serialised, unread by Tick
-    DWORD       dwField34_;  // serialised, unread by Tick
-    DWORD       dwTargetRGB_[3];
+    uint32_t       dwField34_;  // serialised, unread by Tick
+    uint32_t       dwTargetRGB_[3];
     float       flFadeRate_;
-    DWORD       dwFadeThreshold_;
+    uint32_t       dwFadeThreshold_;
     float       flFadeAccum_;
 
  
@@ -151,16 +151,16 @@ public:
     StdGenerator();
     ~StdGenerator() override;
 
-    BOOL copyFrom(const Generator *src) override;
+    int copyFrom(const Generator *src) override;
     void tick(float dt) override;
-    BOOL save(void *fp) override;
-    BOOL load(void *fp) override;
+    int save(void *fp) override;
+    int load(void *fp) override;
 
 protected:
     void stdEmit(float dt, const float *pos_off, const float *vel_off);
-    void stdCloneTypeTable(const DWORD *src, DWORD count);
-    BOOL stdSaveTypeTable(void *fp);
-    BOOL stdLoadTypeTable(void *fp);
+    void stdCloneTypeTable(const uint32_t *src, uint32_t count);
+    int stdSaveTypeTable(void *fp);
+    int stdLoadTypeTable(void *fp);
     void stdInterleavePos(const float *x, const float *y, const float *z);
     void stdBuildSphere(const float *mn, const float *mx);
     void stdBuildBox(const float *mn, const float *mx);
@@ -169,7 +169,7 @@ protected:
     void stdBuildRate(float lo, float hi);
 
     float     flDtScale_;
-    DWORD     dwEmitMode_;   // selects which of the Sph/Box parameter pairs below Load samples from
+    uint32_t     dwEmitMode_;   // selects which of the Sph/Box parameter pairs below Load samples from
     float     flSphMin_[3];  // consumed only by Load, to build the tables; emit never reads these
     float     flSphMax_[3];
     float     flBoxMin_[3];
@@ -181,17 +181,17 @@ protected:
     float     flEmitRateMin_;
     float     flEmitRateMax_;
     void     *pTypeTable_;  // heap block owned and freed by this object
-    DWORD     dwTypeTableCount_;
+    uint32_t     dwTypeTableCount_;
     float     flPosTable_[1500];  // 500 samples of (x, y, z), read as node position
     float     flVelTable_[1500];  // 500 samples of (x, y, z), read as node velocity
     float     pLifeTable_[100];
-    DWORD     pEmitProb_[200];
-    DWORD     dwCtr0_;
+    uint32_t     pEmitProb_[200];
+    uint32_t     dwCtr0_;
     float     flAccumulator_;
-    DWORD     dwPosIdx_;  // steps by 1, wraps at 500
-    DWORD     dwVelIdx_;
-    DWORD     dwLifeIdx_;
-    DWORD     dwProbIdx_;
+    uint32_t     dwPosIdx_;  // steps by 1, wraps at 500
+    uint32_t     dwVelIdx_;
+    uint32_t     dwLifeIdx_;
+    uint32_t     dwProbIdx_;
 
 private:
  
@@ -204,10 +204,10 @@ class XStdGenerator : public StdGenerator {
 public:
     XStdGenerator();
 
-    BOOL copyFrom(const Generator *src) override;
+    int copyFrom(const Generator *src) override;
     void tick(float dt) override;
-    BOOL save(void *fp) override;
-    BOOL load(void *fp) override;
+    int save(void *fp) override;
+    int load(void *fp) override;
     void setPosition(float x, float y, float z) override;
     void setVelocity(float x, float y, float z, float mag) override;
     void setDirection(float x, float y, float z) override;
@@ -230,10 +230,10 @@ public:
     CylinderGenerator();
     ~CylinderGenerator() override;
 
-    BOOL copyFrom(const Generator *src) override;
+    int copyFrom(const Generator *src) override;
     void tick(float dt) override;
-    BOOL save(void *fp) override;
-    BOOL load(void *fp) override;
+    int save(void *fp) override;
+    int load(void *fp) override;
     void setPosition(float x, float y, float z) override;
     void setDirection(float x, float y, float z) override;
 
@@ -255,16 +255,16 @@ private:
     float     flEmitRateMax_;
     float     flDtScale_;
     void     *pTypeTable_;
-    DWORD     dwTypeTableCount_;
+    uint32_t     dwTypeTableCount_;
     float     flAccumulator_;
     float     flPosTable_[1500];
     float     flVelTable_[1500];
     float     pLifeTable_[100];
-    DWORD     pEmitProb_[200];
-    DWORD     dwPosIdx_;
-    DWORD     dwVelIdx_;
-    DWORD     dwLifeIdx_;
-    DWORD     dwProbIdx_;
+    uint32_t     pEmitProb_[200];
+    uint32_t     dwPosIdx_;
+    uint32_t     dwVelIdx_;
+    uint32_t     dwLifeIdx_;
+    uint32_t     dwProbIdx_;
 
  
 };
@@ -283,14 +283,14 @@ private:
     float     flEmitPos_[3];
     float     flVelBias_[3];
     float     flEmitRate_;
-    BYTE      opaque2c_[0x0c];
-    DWORD     dwDiffuse_;  // constructor sets this to 0xFFFFFFFF
+    uint8_t      opaque2c_[0x0c];
+    uint32_t     dwDiffuse_;  // constructor sets this to 0xFFFFFFFF
     float     flAccumulator_;
-    BYTE      opaque40_[0x04];
+    uint8_t      opaque40_[0x04];
     float     flVelTable_[1000];
-    DWORD     dwLifeTable_[100];
-    DWORD     dwVelIdx_[3];
-    DWORD     dwLifeIdx_;  // runs past dwLifeTable's declared length before wrapping
+    uint32_t     dwLifeTable_[100];
+    uint32_t     dwVelIdx_[3];
+    uint32_t     dwLifeIdx_;  // runs past dwLifeTable's declared length before wrapping
 
  
 };
@@ -305,20 +305,20 @@ public:
 
 private:
 
-    BYTE      opaque10_[0x18];
+    uint8_t      opaque10_[0x18];
     float     flVelBias_[3];
     float     flEmitRate_;
     float     flAccumulator_;
-    DWORD     dwPosX_[500];
-    DWORD     dwPosY_[500];
-    DWORD     dwPosZ_[500];
+    uint32_t     dwPosX_[500];
+    uint32_t     dwPosY_[500];
+    uint32_t     dwPosZ_[500];
     float     flVelTable_[500];
-    DWORD     dwLifeTable_[100];
-    DWORD     dwDiffuse_[200];
-    DWORD     dwPosIdx_[3];
-    DWORD     dwVelIdx_[3];
-    DWORD     dwLifeIdx_;
-    DWORD     dwDiffuseIdx_;
+    uint32_t     dwLifeTable_[100];
+    uint32_t     dwDiffuse_[200];
+    uint32_t     dwPosIdx_[3];
+    uint32_t     dwVelIdx_[3];
+    uint32_t     dwLifeIdx_;
+    uint32_t     dwDiffuseIdx_;
 
  
 };

@@ -214,9 +214,18 @@ static HRESULT WINAPI enum_zbuffer_cb(LPDDPIXELFORMAT pFmt, LPVOID ctx)
     return D3DENUMRET_OK;
 }
 
-bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
-                          bool bHardware)
+/* The backend's GUID for an AdapterId; NULL stays NULL (the default). */
+static const GUID *adapter_guid(const AdapterId *id)
 {
+    static_assert(sizeof(GUID) == sizeof(AdapterId), "AdapterId holds a GUID");
+    return (const GUID *)id;
+}
+
+bool RenderDevice::Create(void *hWndNative, const AdapterId *adapter,
+                          int nModeIndex, bool bHardware)
+{
+    HWND hWnd = (HWND)hWndNative;
+    GUID *pDriverGuid = (GUID *)adapter_guid(adapter);
     char msg[256];
 
     Release();
@@ -245,8 +254,10 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
     // REVIEW: a failure here used to return without a log line, and a HAL
     // result with no flags read the bit depth out of uninitialised stack; it
     // now fails with the Direct3D3 error / a zero filter.
-    if (!hal_render_depths(n->dd, &modeFilterFlags_))
+    DWORD renderDepths = 0;
+    if (!hal_render_depths(n->dd, &renderDepths))
         return DeviceCreation::fail(this, GS_D3D_ERR_D3D3_IFACE);
+    modeFilterFlags_ = renderDepths;
     sprintf(msg, GS_D3D_RENDER_BITDEPTH, (int)modeFilterFlags_);
     imagelog(msg);
 
@@ -432,7 +443,7 @@ static BOOL WINAPI enum_adapters_cb(GUID *guid, LPSTR desc, LPSTR, LPVOID ctx)
     lstrcpynA(a.name, desc, sizeof(a.name));
     a.hasGuid = guid != NULL;
     if (guid)
-        a.guid = *guid;
+        memcpy(&a.id, guid, sizeof(a.id));
     out->push_back(a);
     return DDENUMRET_OK;
 }
@@ -467,12 +478,12 @@ static HRESULT WINAPI enum_mode_list_cb(LPDDSURFACEDESC2 d, LPVOID ctxp)
 /* Creates the adapter's DirectDraw (falling back to the default), finds its
  * HAL device's render depths and lists the usable modes.  REVIEW: the
  * launcher's copy of this leaked every interface on its failure paths. */
-bool RenderDevice::EnumerateDisplayModes(const GUID *adapter,
+bool RenderDevice::EnumerateDisplayModes(const AdapterId *adapter,
                                          std::vector<DisplayMode> &out,
                                          bool anyAspect)
 {
     LPDIRECTDRAW dd = NULL;
-    if (FAILED(create_directdraw((GUID *)adapter, &dd))
+    if (FAILED(create_directdraw((GUID *)adapter_guid(adapter), &dd))
         && FAILED(create_directdraw(NULL, &dd)))
         return false;
     IDirectDraw4 *dd4 = NULL;

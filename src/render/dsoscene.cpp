@@ -21,6 +21,8 @@
  * - Objects whose type is neither 0 nor 2, and type-0 objects with a NULL
  *    mesh, still run the whole render-state prologue before being skipped. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "dsoscene.h"
 #include "sysdev.h"
 #include "d3dmath.h"
@@ -56,7 +58,7 @@ static void compose(Mat4 *d, const Mat4 *left, const Mat4 *right)
 
 /* fmod(t / period, 1.0), the path parameter.  PRESERVED: `period` is divided
  * in as a 32-bit integer, so a zero period is a divide fault. */
-static float path_param(double t, DWORD period, double bias)
+static float path_param(double t, uint32_t period, double bias)
 {
     double v = (t + bias) / (double)(int)period;
     return (float)m_fmod((double)v, K_PATH_MODULUS);
@@ -108,7 +110,7 @@ static void object_rotation(Mat4 *m, float rx, float ry, float rz)
     compose(m, &t, &c);
 }
 
-static DWORD animation_frame(const SceneObject *o, double t)
+static uint32_t animation_frame(const SceneObject *o, double t)
 {
     // animLoaded is set by BuildSceneObjectList when the object's .ani loaded;
     // the AnimTable (ani.h) runs up to exactly where the position begins.
@@ -123,7 +125,7 @@ static DWORD animation_frame(const SceneObject *o, double t)
     // than fmod(v/n, 1)*n.
     double v = t * K_ANIM_SCALE * (double)(unsigned)slot->fps();
     double r = m_fmod(v, (double)(unsigned)slot->numFrames());
-    return (DWORD)(unsigned short)(int)r;  // truncated to 16 bits
+    return (uint32_t)(unsigned short)(int)r;  // truncated to 16 bits
 }
 
 /* KAROO_CAM_DIAG=1: log the camera globals (eye, target, yaw, pitch) as raw
@@ -133,30 +135,30 @@ static void cam_diag(const float *cam)
     static int on = -1;
     if (on < 0) {
         char buf[8];
-        DWORD n = sysdev::getEnv("KAROO_CAM_DIAG", buf, sizeof(buf));
+        uint32_t n = sysdev::getEnv("KAROO_CAM_DIAG", buf, sizeof(buf));
         on = (n > 0 && n < sizeof(buf) && buf[0] == '1') ? 1 : 0;
     }
     if (!on)
         return;
-    const DWORD *b = (const DWORD *)cam;
+    const uint32_t *b = (const uint32_t *)cam;
     g_logger.write("CAM %08lx %08lx %08lx  %08lx %08lx %08lx  %08lx %08lx\n",
               b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
     // framepose.cpp's outputs: the focus block, and an FNV-1a hash over the
     // live foes' pose records.
-    const DWORD *f = (const DWORD *)g_cameraFocus.f;
+    const uint32_t *f = (const uint32_t *)g_cameraFocus.f;
     g_logger.write("FOCUS %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n",
               f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8]);
     const Game *game = Game::instance();
     unsigned n = game ? game->foeCount() : 0;
     const unsigned char *r = (const unsigned char *)g_foePoses;
-    DWORD h = 2166136261u;
+    uint32_t h = 2166136261u;
     for (unsigned i = 0; i < n * 0x1d; i++)
         h = (h ^ r[i]) * 16777619u;
     g_logger.write("FOES %u %08lx\n", n, h);
 }
 
   void  
-Scene_DrawSceneObjects(RenderDevice *dev, float *cam, DWORD , DWORD , double t)
+Scene_DrawSceneObjects(RenderDevice *dev, float *cam, uint32_t , uint32_t , double t)
 {
     cam_diag(cam);
     for (LinkedListNode *node = g_scene.objects()->head(); node != NULL; node = node->next()) {
@@ -164,7 +166,7 @@ Scene_DrawSceneObjects(RenderDevice *dev, float *cam, DWORD , DWORD , double t)
         if (o == NULL)
             continue;
 
-        DWORD src = o->srcBlend, dst = o->destBlend;
+        uint32_t src = o->srcBlend, dst = o->destBlend;
         if (src != 0 && dst != 0) {
             dev->SetRenderState(RS::AlphaBlendEnable, 1);
             dev->SetRenderState(RS::SrcBlend, src);
@@ -173,7 +175,7 @@ Scene_DrawSceneObjects(RenderDevice *dev, float *cam, DWORD , DWORD , double t)
             dev->SetRenderState(RS::AlphaBlendEnable, 0);
         }
 
-        DWORD ta = o->textureAddress;
+        uint32_t ta = o->textureAddress;
         dev->SetRenderState(RS::TextureAddressU, ta);
         dev->SetRenderState(RS::TextureAddressV, ta);
 
@@ -194,7 +196,7 @@ Scene_DrawSceneObjects(RenderDevice *dev, float *cam, DWORD , DWORD , double t)
                 m4_translate(&tr, o->pos[0], o->pos[1], o->pos[2]);
                 compose(&world, &world, &tr);
             } else {
-                DWORD period = o->splineTime;
+                uint32_t period = o->splineTime;
                 Vec3 pos;
                 eval_path(o, path_param(t, period, 0.0), &pos);
 
@@ -227,7 +229,7 @@ Scene_DrawSceneObjects(RenderDevice *dev, float *cam, DWORD , DWORD , double t)
             }
 
             dev->SetTransform(Transform::World, &world);
-            DWORD frame = animation_frame(o, t);
+            uint32_t frame = animation_frame(o, t);
             dev->SetRenderState(RS::SpecularEnable, 0);
 
             if (o->lit != 0)
@@ -311,7 +313,7 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
         if (o == NULL || o->type != EXTRA_PARTICLE)
             continue;
 
-        DWORD src = o->srcBlend, dst = o->destBlend;
+        uint32_t src = o->srcBlend, dst = o->destBlend;
         if (src != 0 && dst != 0) {
             dev->SetRenderState(RS::AlphaBlendEnable, 1);
             dev->SetRenderState(RS::SrcBlend, src);
@@ -334,7 +336,7 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
             m4_translate(&tr, o->pos[0], o->pos[1], o->pos[2]);
             compose(&world, &world, &tr);
         } else {
-            DWORD period = o->splineTime;
+            uint32_t period = o->splineTime;
             Vec3 pos;
             eval_path(o, path_param(t, period, 0.0), &pos);
 

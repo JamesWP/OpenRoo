@@ -9,7 +9,7 @@
  * handler makes, and would write near address 0.  No shipped theme does it. */
 #pragma once
 
-#include <windows.h>
+#include <stdint.h>
 #include <stddef.h>
  
 #include "scenetexture.h"
@@ -24,7 +24,7 @@
 class Game;
 class RenderDevice;
 
-enum ThemeObjectKind : DWORD {
+enum ThemeObjectKind : uint32_t {
     THEME_KIND_NONE           = 0,
     THEME_KIND_MODEL          = 1,
     THEME_KIND_FIELD          = 2,
@@ -37,7 +37,7 @@ enum ThemeObjectKind : DWORD {
 struct FxBurst {
     float pos[3];
     int   msLeft;  // 1000 at spawn
-    BYTE  active;
+    uint8_t  active;
 };
 
 /* One `model`, `field`, `billboard` or `particlesystem` entry. */
@@ -56,7 +56,7 @@ public:
     const ExplodeDebris &explodeDebris() const { return explode_; }
     AnimTable     &animTable()           { return animTable_; }
     const AnimTable &animTable() const   { return animTable_; }
-    DWORD explodes() const { return bExplode_; }
+    uint32_t explodes() const { return bExplode_; }
  
  
     float *explodeDir() { return flExplodeDir_; }
@@ -73,8 +73,8 @@ public:
     FxBurst *bursts() { return bursts_; }
     const FxBurst *bursts() const { return bursts_; }
  
-    DWORD instanceCount() const { return dwInstanceCount_; }
-    DWORD movableType() const { return dwMovableType_; }
+    uint32_t instanceCount() const { return dwInstanceCount_; }
+    uint32_t movableType() const { return dwMovableType_; }
     float posX() const { return flPosX_; }
     float posY() const { return flPosY_; }
     float posZ() const { return flPosZ_; }
@@ -84,19 +84,19 @@ public:
     float rotRateX() const { return flRotRateX_; }
     float rotRateY() const { return flRotRateY_; }
     float rotRateZ() const { return flRotRateZ_; }
-    DWORD subObjectCount() const { return dwSubObjectCount_; }
+    uint32_t subObjectCount() const { return dwSubObjectCount_; }
  
  
     SceneSubObject *subObjects() { return pSubObjects_; }
     const SceneSubObject *subObjects() const { return pSubObjects_; }
  
-    DWORD lit() const { return bLit_; }
-    DWORD noMoveStates() const { return bNoMoveStates_; }
-    DWORD noZWrite() const { return bNoZWrite_; }
-    DWORD noShadow() const { return bNoShadow_; }
-    DWORD specular() const { return bSpecular_; }
-    DWORD randomYAngle() const { return bRandomYAngle_; }
-    DWORD oscillateRandom() const { return bOscillateRandom_; }
+    uint32_t lit() const { return bLit_; }
+    uint32_t noMoveStates() const { return bNoMoveStates_; }
+    uint32_t noZWrite() const { return bNoZWrite_; }
+    uint32_t noShadow() const { return bNoShadow_; }
+    uint32_t specular() const { return bSpecular_; }
+    uint32_t randomYAngle() const { return bRandomYAngle_; }
+    uint32_t oscillateRandom() const { return bOscillateRandom_; }
     float oscillationAmplitude() const { return flOscillationAmplitude_; }
     float oscillationFrequency() const { return flOscillationFrequency_; }
     float oscillationPhase() const { return flOscillationPhase_; }
@@ -113,7 +113,7 @@ private:
     CFaktMesh   *pMesh_;
     WrapperObject wrapper_;
     ExplodeDebris   explode_;  // set up only by `explode`, which needs the mesh first
-    DWORD        bExplode_;
+    uint32_t        bExplode_;
     float        flExplodeDir_[3];  // (t4, t5, t6) rotated -90 degrees about X
 
     AnimTable    animTable_;
@@ -123,8 +123,8 @@ private:
     // spawned and aged by the frame renderer.
     FxBurst      bursts_[16];
 
-    DWORD  dwInstanceCount_;
-    DWORD  dwMovableType_;
+    uint32_t  dwInstanceCount_;
+    uint32_t  dwMovableType_;
     float  flPosX_;
     float  flPosY_;
     float  flPosZ_;
@@ -134,16 +134,16 @@ private:
     float  flRotRateX_;
     float  flRotRateY_;
     float  flRotRateZ_;
-    DWORD  dwSubObjectCount_;
+    uint32_t  dwSubObjectCount_;
     SceneSubObject pSubObjects_[8];
 
-    DWORD  bLit_;
-    DWORD  bNoMoveStates_;
-    DWORD  bNoZWrite_;
-    DWORD  bNoShadow_;
-    DWORD  bSpecular_;
-    DWORD  bRandomYAngle_;
-    DWORD  bOscillateRandom_;
+    uint32_t  bLit_;
+    uint32_t  bNoMoveStates_;
+    uint32_t  bNoZWrite_;
+    uint32_t  bNoShadow_;
+    uint32_t  bSpecular_;
+    uint32_t  bRandomYAngle_;
+    uint32_t  bOscillateRandom_;
     float  flOscillationAmplitude_;
     float  flOscillationFrequency_;
     float  flOscillationPhase_;
@@ -165,7 +165,7 @@ public:
     ThemeObjectTypeSlot(const ThemeObjectTypeSlot &) = delete;
     ThemeObjectTypeSlot &operator=(const ThemeObjectTypeSlot &) = delete;
 
-    DWORD instanceCount() const { return dwInstanceCount_; }
+    uint32_t instanceCount() const { return dwInstanceCount_; }
  
  
     ThemeLevelObject *records() { return records_; }
@@ -174,7 +174,7 @@ public:
 
 private:
     friend class ThemeParser;  // theme.cpp fills the slots
-    DWORD            dwInstanceCount_;  // last record index + 1
+    uint32_t            dwInstanceCount_;  // last record index + 1
     ThemeLevelObject records_[8];
 
      
@@ -206,8 +206,8 @@ enum ThemeImageSlot {
 };
 
 struct ThemeTextColorPair {
-    DWORD color1;
-    DWORD color2;
+    uint32_t color1;
+    uint32_t color2;
 };
 
 enum ThemeTextColorSlot {
@@ -245,10 +245,10 @@ public:
     const char *themeName() const { return themeName_; }
     ThemeObjectTypeSlot *slot(int type)       { return &slots_[type]; }
     const ThemeObjectTypeSlot *slot(int type) const { return &slots_[type]; }
-    DWORD unknown100() const { return dwUnknown100_; }
+    uint32_t unknown100() const { return dwUnknown100_; }
     SceneTexture        *image(int slot) const { return images_[slot]; }
     const ThemeTextColorPair &textColor(int which) const { return textColors_[which]; }
-    BYTE           fogEnabled() const { return bFogEnabled_; }
+    uint8_t           fogEnabled() const { return bFogEnabled_; }
     SkyBackground &sky()              { return sky_; }
     const SkyBackground &sky() const  { return sky_; }
     float          sideHeight() const { return flSideHeight_; }
@@ -257,13 +257,13 @@ private:
     friend class ThemeParser;  // theme.cpp fills the block
 
     char                 themeName_[0x100];  // copied from the path after the file is read
-    DWORD                dwUnknown100_;      // never written
+    uint32_t                dwUnknown100_;      // never written
     ThemeObjectTypeSlot  slots_[THEME_OBJ_COUNT];
 
     // Written only inside `environment { }`.
     SceneTexture        *images_[THEME_IMG_COUNT];
     ThemeTextColorPair   textColors_[THEME_COLOR_COUNT];
-    BYTE                 bFogEnabled_;
+    uint8_t                 bFogEnabled_;
     SkyBackground        sky_;  // built from the face names; drawn by sky.cpp
     float                flSideHeight_;
 
@@ -279,8 +279,8 @@ private:
 struct SoundAssetName {
     char name[256];
     int  enabled;
-    DWORD unknown104;   /* add()'s arg4; the .thm path passes 1 */
-    DWORD unknown108;   /* add()'s arg3; the .thm path passes 1 */
+    uint32_t unknown104;   /* add()'s arg4; the .thm path passes 1 */
+    uint32_t unknown108;   /* add()'s arg3; the .thm path passes 1 */
 };
 
 /* The theme sound table ("TSM" in its log line),.  A .thm
@@ -294,7 +294,7 @@ struct SoundAssetName {
 class ThemeSoundTable {
 public:
     /* Adds (or replaces) the wave for a theme sound id. */
-    int add(unsigned int id, const char *waveName, DWORD arg3, DWORD arg4);
+    int add(unsigned int id, const char *waveName, uint32_t arg3, uint32_t arg4);
 
     /* An empty table: every entry cleared (see releaseAll). */
     ThemeSoundTable();
@@ -308,8 +308,8 @@ public:
     const SoundAssetName *entry(int id) const { return &entries_[id]; }
 
 private:
-    DWORD          unknown4_;     /* +4  never written */
-    WORD           unknown8_;     /* +8  zeroed by the ctor, never read */
+    uint32_t          unknown4_;     /* +4  never written */
+    uint16_t           unknown8_;     /* +8  zeroed by the ctor, never read */
     SoundAssetName entries_[THEME_SOUND_COUNT];
 };
 

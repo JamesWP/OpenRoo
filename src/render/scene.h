@@ -3,7 +3,7 @@
  * (scene.cpp) from the level's .leo records. */
 #pragma once
 
-#include <windows.h>
+#include <stdint.h>
  
 #include "linkedlist.h"
 #include "splinepath.h"
@@ -20,19 +20,19 @@ struct SceneObject {
     CFaktMesh     *mesh;             /* model */
     ParticleSystem *particle;        /* particle system */
     float          billboardRadius;  /* billboard */
-    DWORD          animLoaded;       /* 1 when the .ani loaded */
+    uint32_t          animLoaded;       /* 1 when the .ani loaded */
     AnimTable      anim;             /* loaded from the .ani (ani.h) */
     float          pos[3];
     float          rot[3];
     SceneTexture  *texture;
-    DWORD          srcBlend;
-    DWORD          destBlend;
-    DWORD          textureAddress;
-    DWORD          onPath;           /* splineMode != 0 */
-    DWORD          lit;              /* the .leo "lit" flag: draw as a
+    uint32_t          srcBlend;
+    uint32_t          destBlend;
+    uint32_t          textureAddress;
+    uint32_t          onPath;           /* splineMode != 0 */
+    uint32_t          lit;              /* the .leo "lit" flag: draw as a
                                         framed (lit) model, not a plain mesh */
     unsigned char  splineMode;
-    DWORD          splineTime;
+    uint32_t          splineTime;
     SplinePath     spline;
 
     // Only the spline builds itself; the other fields are left as allocated.

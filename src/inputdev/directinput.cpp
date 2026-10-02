@@ -66,12 +66,12 @@ fail:
     return false;
 }
 
-bool Devices::create(void *instance, void *window)
+bool Devices::create(void *window)
 {
     destroy();
     DevicesState *s = state_;
 
-    HRESULT hr = DirectInput8Create((HINSTANCE)instance, DIRECTINPUT_VERSION,
+    HRESULT hr = DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION,
                                     IID_IDirectInput8A,
                                     reinterpret_cast<void**>(&s->directinput), NULL);
     if (FAILED(hr)) {

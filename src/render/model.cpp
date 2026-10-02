@@ -1,7 +1,6 @@
 /* ModelManager (model.h): the name-keyed CFaktMesh cache.  The .mdl reader
  * itself is CFaktMesh::importSceneModels (faktmesh.cpp). */
 
-#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 #include <new>

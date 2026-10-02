@@ -68,7 +68,7 @@ static int st_strcmp(const unsigned char *a, const unsigned char *b)
 }
 
 /* Replace the image name: free the old, allocate strlen+1, sprintf("%s"). */
-void SceneTexture::setImageName(LPCSTR name)
+void SceneTexture::setImageName(const char *name)
 {
     if (ImageName_ != NULL)
         free(ImageName_);
@@ -289,7 +289,7 @@ static HRESULT WINAPI st_enum_texture_formats_picker(LPDDPIXELFORMAT pf,
 }
 
 static void __stdcall st_pick_texture_format(RenderDevice *dev, DWORD bpp,
-                                             DWORD alphaFlag,
+                                             uint32_t alphaFlag,
                                              DDPIXELFORMAT *out)
 {
     // REVIEW: the original zeroed one byte short and also wrote the alpha
@@ -337,8 +337,8 @@ SceneTexture::~SceneTexture()
  * The BMP/DIB path.  Load the file, create a texture surface matching its
  * dimensions and the device's chosen pixel format, attach a palette if the
  * format is 8-bit or less, blit the DIB in and query the IDirect3DTexture2. */
-unsigned int SceneTexture::bindTextureResource(RenderDevice *dev, LPCSTR name, UINT bpp,
-                            DWORD textureStage)
+unsigned int SceneTexture::bindTextureResource(RenderDevice *dev, const char *name, unsigned bpp,
+                            uint32_t textureStage)
 {
     // Resources first, then the file system; the game ships no bitmap
     // resources, so the first always fails.
@@ -404,7 +404,7 @@ unsigned int SceneTexture::bindTextureResource(RenderDevice *dev, LPCSTR name, U
     // pTexturePalette is typed IDirectDrawSurface4 * but holds an
     // IDirectDrawPalette *.
     if (ddsd.ddpfPixelFormat.dwRGBBitCount <= 8) {
-        IDirectDrawPalette *pal = Texture_CreatePaletteFromDIB(dev->native()->dd, (HBITMAP)hbmp);
+        IDirectDrawPalette *pal = Texture_CreatePaletteFromDIB(dev->native()->dd, hbmp);
         pTexturePalette_ = (IDirectDrawSurface4 *)pal;
         if (pal != NULL)
             pTextureSurface_->SetPalette(pal);
@@ -433,8 +433,8 @@ unsigned int SceneTexture::bindTextureResource(RenderDevice *dev, LPCSTR name, U
  * The TGA path.  Reads the header itself to get the dimensions and to reject
  * anything that is not a true-colour image, then builds the surface and hands
  * the file to TextureTGA_Parse to decode. */
-unsigned int SceneTexture::importSceneTextures(RenderDevice *dev, LPCSTR name,
-                            DWORD alphaFlag, UINT bpp, DWORD textureStage)
+unsigned int SceneTexture::importSceneTextures(RenderDevice *dev, const char *name,
+                            uint32_t alphaFlag, unsigned bpp, uint32_t textureStage)
 {
     st_log_str(name);
     st_log_str(GS_FMT_NEWLINE);
@@ -555,7 +555,7 @@ unsigned int SceneTexture::importSceneTextures(RenderDevice *dev, LPCSTR name,
  * mode 0 picks by extension, 1 forces the DIB loader, 2 forces the TGA loader,
  * anything else fails silently.  The extension test is four case-exact
  * compares against ".bmp", ".BMP", ".tga", ".TGA", so ".Bmp" is rejected. */
-unsigned int SceneTexture::selectTextureLoader(RenderDevice *dev, LPCSTR name, UINT bpp,
+unsigned int SceneTexture::selectTextureLoader(RenderDevice *dev, const char *name, unsigned bpp,
                             int mode)
 {
     if (mode != 0) {
@@ -600,7 +600,7 @@ static void tm_lower_inplace(char *s)
 }
 
 SceneTexture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
-                         DWORD alphaFlag, UINT bpp, DWORD textureStage)
+                         uint32_t alphaFlag, unsigned bpp, uint32_t textureStage)
 {
     for (LinkedListNode *node = cache_.head(); node != NULL; ) {
         SceneTexture *cached = (SceneTexture *)node->value();

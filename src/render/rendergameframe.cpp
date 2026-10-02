@@ -14,6 +14,7 @@
  *   6. the HUD and the menus, EndScene, the flip.
  */
 #include <windows.h>
+#include <stdint.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -163,7 +164,7 @@ static void rso_list(const PlacementList &l, ThemeObjectType t, double now)
  * explosion debris on the latched frame; the latch is then consumed. */
 static void arm_fx_records(ThemeObjectTypeSlot *fx, MovableEntity *e)
 {
-    for (DWORD k = 0; k < fx->instanceCount(); ++k) {
+    for (uint32_t k = 0; k < fx->instanceCount(); ++k) {
         ThemeLevelObject *rec = &fx->records()[k];
         if (rec->particleSystems()[0] != NULL) {
             if (e->debrisPending())
@@ -243,7 +244,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
             continue;
         }
         ThemeObjectTypeSlot *fx = slot(THEME_OBJ_OBSTACLEFX);
-        for (DWORD k = 0; k < fx->instanceCount(); ++k) {
+        for (uint32_t k = 0; k < fx->instanceCount(); ++k) {
             ThemeLevelObject *rec = &fx->records()[k];
             if (rec->explodes() && t->field20f())
                 rec->explodeDebris().begin(rec->mesh(), 0, rec->explodeDir());
@@ -325,7 +326,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
 {
     RenderDevice *d3d = g_renderDevice;
     Scene_DrawSceneObjects(d3d, g_camera.eye(),
-                           ((DWORD *)&dt)[0], ((DWORD *)&dt)[1], now);
+                           ((uint32_t *)&dt)[0], ((uint32_t *)&dt)[1], now);
     set_rs(RS::StencilEnable, 0);
     BridgeSurf_Draw(g, &g_themeBlock, d3d, now);
 
@@ -433,7 +434,7 @@ enum BurstTick { TICK_WHOLE_MS, TICK_ELAPSED };
  * system, point it along the view, optionally spin its corners about Y by
  * -rotRateY * now, render, age, and switch the node off again.  A burst
  * whose time is up is retired instead. */
-static void draw_bursts(ThemeLevelObject *rec, DWORD src, DWORD dst, BurstTick tick,
+static void draw_bursts(ThemeLevelObject *rec, uint32_t src, uint32_t dst, BurstTick tick,
                         bool spin, double now, double elapsed)
 {
     RenderDevice *dev = g_renderDevice;
@@ -663,7 +664,7 @@ static const SceneTexture *image(ThemeImageSlot s)
 static float wx(unsigned w, unsigned k) { return (float)(w * k) * 0.0015625f; }
 
 static void hud_text(TextRenderer *font, int align, float x, float y, float cw, float ch,
-                     float spacing, const char *s, char first, DWORD c1, DWORD c2)
+                     float spacing, const char *s, char first, uint32_t c1, uint32_t c2)
 {
     RenderDevice *d3d = g_renderDevice;
     if (align < 0)
@@ -802,7 +803,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     const unsigned tenths = ms / 100u - mins * 600u - secs * 10u;
     char *buf = s_text;
     sprintf(buf, "%02.0f:%02.0f;%d", (double)mins, (double)secs, tenths);
-    const DWORD tc = ms > 10000u ? 0xffffffff : 0xffff0000;
+    const uint32_t tc = ms > 10000u ? 0xffffffff : 0xffff0000;
     hud_text(&g_fontNumbers, 0, W * 0.5f, 0.0f, W * 0.05f, W * 0.06666667f, 1.0f,
              buf, '0', tc, tc);
 
@@ -824,7 +825,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
  * F1 is held.  Its three globals stay at their game addresses. */
 static float g_fps;
 static float g_fpsMark;
-static DWORD g_fpsFrames;
+static uint32_t g_fpsFrames;
 
 static void draw_fps(float W, float H)
 {
@@ -832,7 +833,7 @@ static void draw_fps(float W, float H)
     g_fpsFrames++;
     const double span = (double)t - g_fpsMark;
     if (span > 1.0) {
-        const DWORD n = g_fpsFrames;
+        const uint32_t n = g_fpsFrames;
         g_fpsFrames = 0;
         g_fps = (float)((double)n / span);
         g_fpsMark = t;
@@ -880,7 +881,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
     float y = H - ch - pad;
     LinkedListNode *it = pl->effectList()->head();
     while (it != NULL) {
-        const unsigned code = (unsigned char)(DWORD)LinkedList::nextValue(&it);
+        const unsigned code = (unsigned char)(uint32_t)LinkedList::nextValue(&it);
         ThemeImageSlot img;
         double start = 0.0, span = 10.0;
         bool icon = true;
@@ -1007,7 +1008,7 @@ Render_RenderGameFrame(void)
         draw_messages(g, W, H, pad);
     draw_logo(g, H, hudH, pad);
 
-    const DWORD ms = (DWORD)(long long)now;
+    const uint32_t ms = (uint32_t)(long long)now;
     if (st == 0 || st == 5 || st == 3)
         Menu_DispatchGameState(g, &g_themeBlock, d3d, &g_fontMain, ms);
     if (g->state() == 2)

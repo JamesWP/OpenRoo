@@ -8,6 +8,8 @@
  * KAROO_PARTICLE_FX=tint forces every particle magenta; =spin exaggerates
  * XFace rotation velocities x10. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "particles.h"
 #include "sysdev.h"
 #include "generators.h"
@@ -46,7 +48,7 @@ static bool fx_tint(void)
     return on;
 }
 
-DWORD ParticleNode::colour() const
+uint32_t ParticleNode::colour() const
 {
     return fx_tint() ? FX_TINT_COLOUR : dwDiffuse;
 }
@@ -57,7 +59,7 @@ DWORD ParticleNode::colour() const
 struct DrawLogState { LONG calls; LONG nonempty; };
 
 static void log_draw(DrawLogState *st, const char *name, const void *self,
-                     RenderDevice *dev, DWORD count, bool ok)
+                     RenderDevice *dev, uint32_t count, bool ok)
 {
     bool report = InterlockedIncrement(&st->calls) <= PARTICLE_LOG_FIRST;
     if (count > 0 && InterlockedExchange(&st->nonempty, 1) == 0)
@@ -72,9 +74,9 @@ static void log_draw(DrawLogState *st, const char *name, const void *self,
  * All three fills walk the live region of the ring the generator emits into
  * and the environment retires from.  `emit` writes the vertices for one node
  * and returns how many it wrote. */
-template <typename EmitFn> DWORD ParticleSystem::fillRing(EmitFn emit)
+template <typename EmitFn> uint32_t ParticleSystem::fillRing(EmitFn emit)
 {
-    DWORD n = 0;
+    uint32_t n = 0;
     if (ring_.pRingHead != ring_.pRingCurrent) {
         ParticleNode *node = ring_.pRingHead;
         do {
@@ -87,7 +89,7 @@ template <typename EmitFn> DWORD ParticleSystem::fillRing(EmitFn emit)
 
 void PointParticleSystem::fill()
 {
-    dwVertexCount_ = fillRing([this](const ParticleNode *node, DWORD n) -> DWORD {
+    dwVertexCount_ = fillRing([this](const ParticleNode *node, uint32_t n) -> uint32_t {
             ParticleVertex *v = &pVerts_[n];
             v->flX = node->flX;
             v->flY = node->flY;
@@ -102,7 +104,7 @@ void PointParticleSystem::fill()
 static void emit_face(ParticleVertex *v, const ParticleNode *node,
                       const float *corners )  // 18 floats
 {
-    DWORD colour = node->colour();
+    uint32_t colour = node->colour();
     for (int c = 0; c < 6; c++, v++, corners += 3) {
         v->flX = node->flX + corners[0];
         v->flY = node->flY + corners[1];
@@ -113,7 +115,7 @@ static void emit_face(ParticleVertex *v, const ParticleNode *node,
 
 void FaceParticleSystem::fill()
 {
-    dwVertexCount_ = fillRing([this](const ParticleNode *node, DWORD n) -> DWORD {
+    dwVertexCount_ = fillRing([this](const ParticleNode *node, uint32_t n) -> uint32_t {
             emit_face(&pVerts_[n], node, &flCorner_[0][0]);
             return 6;
         });
@@ -121,7 +123,7 @@ void FaceParticleSystem::fill()
 
 void XFaceParticleSystem::fill()
 {
-    dwVertexCount_ = fillRing([this](const ParticleNode *node, DWORD n) -> DWORD {
+    dwVertexCount_ = fillRing([this](const ParticleNode *node, uint32_t n) -> uint32_t {
             emit_face(&pVerts_[n], node,
                       &pCornerTable_[node->dwShapeIndex].flCorner[0][0]);
             return 6;
@@ -130,7 +132,7 @@ void XFaceParticleSystem::fill()
 
 /* ─── Draw ─────────────────────────────────────────────────────────────────
  */
-DWORD PointParticleSystem::draw(RenderDevice *dev)
+uint32_t PointParticleSystem::draw(RenderDevice *dev)
 {
     static DrawLogState st;
     bool ok = dev->Draw(Prim::PointList, PARTICLE_FVF,
@@ -139,7 +141,7 @@ DWORD PointParticleSystem::draw(RenderDevice *dev)
     return dwVertexCount_;
 }
 
-DWORD FaceParticleSystem::draw(RenderDevice *dev)
+uint32_t FaceParticleSystem::draw(RenderDevice *dev)
 {
     static DrawLogState st;
     bool ok = dev->Draw(Prim::TriangleList, PARTICLE_FVF,
@@ -151,9 +153,9 @@ DWORD FaceParticleSystem::draw(RenderDevice *dev)
 /* Two passes, one per face winding: save CULLMODE, draw with Cull::CCW, draw
  * again with Cull::CW, restore.  That makes an XFace billboard two-sided: a
  * particle whose corner table has rotated past edge-on is still drawn. */
-DWORD XFaceParticleSystem::draw(RenderDevice *dev)
+uint32_t XFaceParticleSystem::draw(RenderDevice *dev)
 {
-    DWORD saved = 0;
+    uint32_t saved = 0;
     saved = dev->GetRenderState(RS::CullMode);
     dev->SetRenderState(RS::CullMode, Cull::CCW);
     dev->Draw(Prim::TriangleList, PARTICLE_FVF,
@@ -168,7 +170,7 @@ DWORD XFaceParticleSystem::draw(RenderDevice *dev)
 }
 
 /* Fill the vertex buffer, then draw it. */
-DWORD ParticleSystem::render(RenderDevice *dev)
+uint32_t ParticleSystem::render(RenderDevice *dev)
 {
     fill();
     return draw(dev);
@@ -264,7 +266,7 @@ void XFaceParticleSystem::tick(float dt)
                   this, dwCornerTableCount_);
     if (pCornerTable_) {
         float spin = fx_spin() ? 10.0f : 1.0f;
-        for (DWORD i = 0; i < dwCornerTableCount_; i++) {
+        for (uint32_t i = 0; i < dwCornerTableCount_; i++) {
             XFaceCornerEntry *e = &pCornerTable_[i];
             PMat4 m;
             mat_identity(m);
@@ -390,23 +392,23 @@ void RingBuffer::release()
 /* Give every node but the last a random shape index in [0, shapes-1].
  * DETERMINISM: rand() is reseeded from the game clock on every call, and the
  * last node is skipped (the loop bound is dwRingCount - 1). */
-void RingBuffer::assignShapes(DWORD shapes)
+void RingBuffer::assignShapes(uint32_t shapes)
 {
     CRT_RAND_SEED = (unsigned)hooks_GameTime(NULL);
     if (dwRingCount - 1 == 0)
         return;
     float span = (float)(int)(shapes - 1);
-    for (DWORD i = 0; i < dwRingCount - 1; i++) {
+    for (uint32_t i = 0; i < dwRingCount - 1; i++) {
         int r = (int)crt_rand();
         pRingBase[i].dwShapeIndex =
-            (DWORD)(int)((double)r * span * PS_RAND_SCALE + 0.5);
+            (uint32_t)(int)((double)r * span * PS_RAND_SCALE + 0.5);
     }
 }
 
 /* (Re)allocate `count` nodes and thread them into one doubly-linked list: head
  * and current at the front, tail at the last node, both ends NULL.  Fewer than
  * two nodes is refused. */
-BOOL RingBuffer::alloc(DWORD count, DWORD shapes)
+int RingBuffer::alloc(uint32_t count, uint32_t shapes)
 {
     release();
     if (count < 2)
@@ -424,7 +426,7 @@ BOOL RingBuffer::alloc(DWORD count, DWORD shapes)
 
     base[0].pPrev = NULL;
     base[0].pNext = &base[1];
-    for (DWORD i = 1; i + 1 < count; i++) {
+    for (uint32_t i = 1; i + 1 < count; i++) {
         base[i].pPrev = &base[i - 1];
         base[i].pNext = &base[i + 1];
     }
@@ -464,19 +466,19 @@ void ParticleSystem::release(int flags)
     ring_.release();
 }
 
-BOOL ParticleSystem::setCapacity(DWORD count)
+int ParticleSystem::setCapacity(uint32_t count)
 {
     return ring_.alloc(count, 0) != 0;
 }
 
 /* Free, then allocate again (RingBuffer::alloc frees as well). */
-BOOL ParticleSystem::resize(DWORD count)
+int ParticleSystem::resize(uint32_t count)
 {
     ring_.release();
     return ring_.alloc(count, 0);
 }
 
-BOOL ParticleSystem::setGenerator(Generator *gen)
+int ParticleSystem::setGenerator(Generator *gen)
 {
     if (gen == NULL || !gen->attachRing(&ring_))
         return FALSE;
@@ -485,7 +487,7 @@ BOOL ParticleSystem::setGenerator(Generator *gen)
     return TRUE;
 }
 
-BOOL ParticleSystem::setEnvironment(Environment *env)
+int ParticleSystem::setEnvironment(Environment *env)
 {
     if (env == NULL || !env->attachRing(&ring_))
         return FALSE;
@@ -498,7 +500,7 @@ BOOL ParticleSystem::setEnvironment(Environment *env)
  * refuses a source of a different class, re-makes the ring at the source's
  * size, then clones the generator and the environment and attaches each.
  * Every failure releases again. */
-BOOL ParticleSystem::copyFrom(const ParticleSystem *src)
+int ParticleSystem::copyFrom(const ParticleSystem *src)
 {
     release(1);
     if (strcmp(src->pName_, pName_) != 0)
@@ -525,17 +527,17 @@ BOOL ParticleSystem::copyFrom(const ParticleSystem *src)
 
 /* ─── Save / Load ──────────────────────────────────────────────────────────
  *
- * Both take (FILE *) and return BOOL; the base ignores the
+ * Both take (FILE *) and return int; the base ignores the
  * logger, the subclasses report through it.
  *
  * FORMAT: a sub-object's class name is its length including the terminator,
  * then that many bytes, so the NUL goes to the file too.  A missing sub-object
  * writes the literal "NULL". */
 template <class T>
-static BOOL ps_write_sub_object(T *obj, void *fp)
+static int ps_write_sub_object(T *obj, void *fp)
 {
     const char *name = obj ? obj->name() : GS_PS_NAME_NULL;
-    DWORD len = (DWORD)strlen(name) + 1;
+    uint32_t len = (uint32_t)strlen(name) + 1;
     if (!ps_write(&len, 4, fp))
         return FALSE;
     if (fwrite(name, 1, len, (FILE *)fp) != len)
@@ -544,7 +546,7 @@ static BOOL ps_write_sub_object(T *obj, void *fp)
 }
 
 /* Ring size, then the generator and the environment. */
-BOOL ParticleSystem::save(void *fp)
+int ParticleSystem::save(void *fp)
 {
     if (fp == NULL)
         return FALSE;
@@ -558,7 +560,7 @@ BOOL ParticleSystem::save(void *fp)
  * the caller frees. */
 static char *ps_read_name(void *fp, const char *msg_name)
 {
-    DWORD len;
+    uint32_t len;
     if (!ps_read(&len, 4, fp)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the data could not be read");
         return NULL;
@@ -575,7 +577,7 @@ static char *ps_read_name(void *fp, const char *msg_name)
 /* One sub-object: its class name, the factory, then its load.  *out is NULL
  * for the literal "NULL" name.  Each failure logs its own message. */
 template <class T>
-static BOOL ps_load_sub_object(void *fp, T **out,
+static int ps_load_sub_object(void *fp, T **out,
                                const char *msg_noname, const char *msg_nocreate,
                                const char *msg_noload)
 {
@@ -605,11 +607,11 @@ static BOOL ps_load_sub_object(void *fp, T **out,
 /* Release, re-make the ring at the stored size, then load and attach each
  * sub-object.  The ring is sized directly rather than through setCapacity, so
  * a subclass's override does not run here. */
-BOOL ParticleSystem::load(void *fp)
+int ParticleSystem::load(void *fp)
 {
     release(1);
 
-    DWORD count;
+    uint32_t count;
     if (!ps_read(&count, 4, fp)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle count could not be read");
         return FALSE;
@@ -643,7 +645,7 @@ BOOL ParticleSystem::load(void *fp)
 const float FaceParticleSystem::FACE_UV[6][2]   = { {0,0}, {1,0}, {0,1}, {0,1}, {1,0}, {1,1} };
 const float XFaceParticleSystem::XFACE_UV[6][2] = { {0,0}, {1,1}, {0,1}, {1,0}, {1,1}, {0,0} };
 
-BOOL ParticleSystem::allocVerts(unsigned perNode, const float (*uv)[2])
+int ParticleSystem::allocVerts(unsigned perNode, const float (*uv)[2])
 {
     ::operator delete(pVerts_);
     unsigned bytes = ring_.dwRingCount * perNode * sizeof(ParticleVertex);
@@ -652,7 +654,7 @@ BOOL ParticleSystem::allocVerts(unsigned perNode, const float (*uv)[2])
         return FALSE;
     memset(pVerts_, 0, bytes);
     if (uv)
-        for (DWORD i = 0; i < ring_.dwRingCount; i++)
+        for (uint32_t i = 0; i < ring_.dwRingCount; i++)
             for (unsigned c = 0; c < perNode; c++) {
                 pVerts_[i * perNode + c].flU = uv[c][0];
                 pVerts_[i * perNode + c].flV = uv[c][1];
@@ -676,31 +678,31 @@ XFaceParticleSystem::~XFaceParticleSystem()
 
 /* Size the ring, then rebuild the vertex buffer.  Both return the second
  * step's result. */
-BOOL PointParticleSystem::setCapacity(DWORD count)
+int PointParticleSystem::setCapacity(uint32_t count)
 {
     return ParticleSystem::setCapacity(count) && allocVerts(1);
 }
 
-BOOL PointParticleSystem::resize(DWORD count)
+int PointParticleSystem::resize(uint32_t count)
 {
     return ParticleSystem::resize(count) && allocVerts(1);
 }
 
 /* Releases virtually first, and the base copyFrom releases again. */
-BOOL PointParticleSystem::copyFrom(const ParticleSystem *src)
+int PointParticleSystem::copyFrom(const ParticleSystem *src)
 {
     release(1);
     return ParticleSystem::copyFrom(src) && allocVerts(1);
 }
 
 /* The base write, whose result is discarded, then success. */
-BOOL PointParticleSystem::save(void *fp)
+int PointParticleSystem::save(void *fp)
 {
     ParticleSystem::save(fp);
     return TRUE;
 }
 
-BOOL PointParticleSystem::load(void *fp)
+int PointParticleSystem::load(void *fp)
 {
     if (!ParticleSystem::load(fp))
         return FALSE;
@@ -713,7 +715,7 @@ BOOL PointParticleSystem::load(void *fp)
 
 /* Release virtually, size the ring, reset the scale to 1 and rebuild the
  * corners. */
-BOOL FaceParticleSystem::setCapacity(DWORD count)
+int FaceParticleSystem::setCapacity(uint32_t count)
 {
     release(1);
     if (!ParticleSystem::setCapacity(count))
@@ -723,7 +725,7 @@ BOOL FaceParticleSystem::setCapacity(DWORD count)
 }
 
 /* The scale comes from the source. */
-BOOL FaceParticleSystem::copyFrom(const ParticleSystem *src)
+int FaceParticleSystem::copyFrom(const ParticleSystem *src)
 {
     release(1);
     if (!ParticleSystem::copyFrom(src))
@@ -732,13 +734,13 @@ BOOL FaceParticleSystem::copyFrom(const ParticleSystem *src)
     return allocVerts();
 }
 
-BOOL FaceParticleSystem::resize(DWORD count)
+int FaceParticleSystem::resize(uint32_t count)
 {
     return ParticleSystem::resize(count) && allocVerts();
 }
 
 /* The base write (result discarded, as Point's), then the scale. */
-BOOL FaceParticleSystem::save(void *fp)
+int FaceParticleSystem::save(void *fp)
 {
     ParticleSystem::save(fp);
     if (!ps_write(&flScale_, 4, fp)) {
@@ -748,7 +750,7 @@ BOOL FaceParticleSystem::save(void *fp)
     return TRUE;
 }
 
-BOOL FaceParticleSystem::load(void *fp)
+int FaceParticleSystem::load(void *fp)
 {
     if (!ParticleSystem::load(fp))
         return FALSE;
@@ -799,11 +801,11 @@ static float rand_signed_unit(void)
  *
  * PRESERVED: those three land in flRotVel[0..2], which the tick treats as
  * X/Y/Z rotation velocities. */
-BOOL XFaceParticleSystem::buildCorners()
+int XFaceParticleSystem::buildCorners()
 {
     if (pCornerTable_)
         ::operator delete(pCornerTable_);
-    DWORD count = dwCornerTableCount_;
+    uint32_t count = dwCornerTableCount_;
     XFaceCornerEntry *table =
         (XFaceCornerEntry *)::operator new(count * sizeof(XFaceCornerEntry), std::nothrow);
     pCornerTable_ = table;
@@ -819,7 +821,7 @@ BOOL XFaceParticleSystem::buildCorners()
     float step = (float)(((double)size_max - size_min) / (double)(int)count);
     static const float AXIS[3][3] = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
 
-    for (DWORD i = 0; i < count; i++) {
+    for (uint32_t i = 0; i < count; i++) {
         XFaceCornerEntry *e = &table[i];
         float s = (float)((double)(int)(i + 1) * step + size_min);
         float n = -s;
@@ -859,7 +861,7 @@ BOOL XFaceParticleSystem::buildCorners()
 
 /* The base capacity result is discarded; the shape indices are re-drawn from
  * the corner count. */
-BOOL XFaceParticleSystem::setCapacity(DWORD count)
+int XFaceParticleSystem::setCapacity(uint32_t count)
 {
     ParticleSystem::setCapacity(count);
     ring_.assignShapes(dwCornerTableCount_);
@@ -871,7 +873,7 @@ BOOL XFaceParticleSystem::setCapacity(DWORD count)
 }
 
 /* No virtual release first, unlike Point and Face. */
-BOOL XFaceParticleSystem::copyFrom(const ParticleSystem *src)
+int XFaceParticleSystem::copyFrom(const ParticleSystem *src)
 {
     if (!ParticleSystem::copyFrom(src))
         return FALSE;
@@ -890,7 +892,7 @@ BOOL XFaceParticleSystem::copyFrom(const ParticleSystem *src)
 }
 
 /* Vertices before corners here; the other two do corners first. */
-BOOL XFaceParticleSystem::resize(DWORD count)
+int XFaceParticleSystem::resize(uint32_t count)
 {
     if (!ParticleSystem::resize(count))
         return FALSE;
@@ -907,7 +909,7 @@ BOOL XFaceParticleSystem::resize(DWORD count)
 /* The base stream, then the corner count and the eight ranges.  Load finishes
  * by re-running setCapacity with the ring size, which rebuilds the corners and
  * vertices. */
-BOOL XFaceParticleSystem::save(void *fp)
+int XFaceParticleSystem::save(void *fp)
 {
     if (!ParticleSystem::save(fp))
         return FALSE;
@@ -918,7 +920,7 @@ BOOL XFaceParticleSystem::save(void *fp)
     return FALSE;
 }
 
-BOOL XFaceParticleSystem::load(void *fp)
+int XFaceParticleSystem::load(void *fp)
 {
     if (!ParticleSystem::load(fp))
         return FALSE;
@@ -945,7 +947,7 @@ Generator * ParticleSystem::getGenerator(const char *name)
 }
 
 /* The generator's enable flag. */
-void ParticleSystem::setRenderNode(DWORD enabled)
+void ParticleSystem::setRenderNode(uint32_t enabled)
 {
     if (pGenerator_)
         pGenerator_->setEnabled(enabled);
@@ -998,7 +1000,7 @@ ParticleSystem::create(const char *name)
 ParticleSystem *
 ParticleSystem::loadStream(void *fp)
 {
-    DWORD len;
+    uint32_t len;
     if (hooks_fread(&len, 4, 1, fp) != 1) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the data could not be read");
         return NULL;

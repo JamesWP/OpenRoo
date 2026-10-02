@@ -1,6 +1,7 @@
 /* d3dmath_common.cpp -- the maths helpers that are pure data movement, and
  * the exported wrappers. */
 #pragma once
+#include <stdint.h>
 
 #include "d3dmath.h"
 #include "rendertypes.h"
@@ -13,8 +14,8 @@ void v3_div(Vec3 *d, const Vec3 *v, float s);
 void v3_sub_inplace(Vec3 *d, const Vec3 *v);
 
 /* One 0x20-byte FVF 0x1e2 vertex. */
-void billboard_vertex(BbVertex *d, const Vec3 *pos, DWORD diffuse,
-                      DWORD specular, float u, float v);
+void billboard_vertex(BbVertex *d, const Vec3 *pos, uint32_t diffuse,
+                      uint32_t specular, float u, float v);
 
 /* The exported vec3 helpers.  Each result is built in temporaries and then
  * stored, so an output that aliases an input is safe. */

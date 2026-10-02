@@ -19,7 +19,7 @@
  * the overrun stays in our allocation, and count is unchanged.
  * KAROO_PLACEMENT_DIAG=1 logs the two numbers per level. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
 #include <vector>
@@ -48,11 +48,11 @@ static const float YAW_NEG_QUARTER = -1.5707964f;  // -pi/2 as a float
 static const float YAW_QUARTER     =  1.5707964f;  // pi/2 as a float
 static const float YAW_HALF        =  3.1415927f;  // pi as a float
 
-static DWORD fbits(float f) { DWORD d; memcpy(&d, &f, 4); return d; }
+static uint32_t fbits(float f) { uint32_t d; memcpy(&d, &f, 4); return d; }
 
 /* The BbVertex-shaped writes: x, y, z, 0, diffuse, 0, u, v. */
 static void put(PlacementVertex *out, float x, float y, float z,
-                DWORD diffuse, float u, float v)
+                uint32_t diffuse, float u, float v)
 {
     out->d[0] = fbits(x); out->d[1] = fbits(y); out->d[2] = fbits(z);
     out->d[3] = 0;        out->d[4] = diffuse;  out->d[5] = 0;
@@ -66,7 +66,7 @@ static int diag_on()
     static int v = -1;
     if (v < 0) {
         char buf[8];
-        DWORD n = sysdev::getEnv("KAROO_PLACEMENT_DIAG", buf, sizeof buf);
+        uint32_t n = sysdev::getEnv("KAROO_PLACEMENT_DIAG", buf, sizeof buf);
         v = (n > 0 && n < sizeof buf && buf[0] == '1');
     }
     return v;
@@ -202,7 +202,7 @@ void LevelPlacements::buildWalls(const Game *g, float depth)
     const float T = K_ONE - depth;
     PlacementVertex *o = wallVerts_;
     for (int li = 0; li < 4; ++li) {
-        const DWORD shade = (li == 0 || li == 3) ? 0xff404040 : 0xffb0b0b0;
+        const uint32_t shade = (li == 0 || li == 3) ? 0xff404040 : 0xffb0b0b0;
         const int ax = (li < 2) ? 0 : 2;  // which axis is u
         for (size_t i = 0; i < lists[li].size(); ++i) {
             const float *s = lists[li][i].s;
@@ -305,7 +305,7 @@ void LevelPlacements::build(const Game *g,
     if (destructibles_.count_ != 0) destructibles_.alloc(destructibles_.count_);
 
     // The tile-top template.
-    static const DWORD quad[4][8] = {
+    static const uint32_t quad[4][8] = {
         { 0x3f000000, 0, 0xbf000000, 0xffffffff, 0,          0x3f800000, 0,          0x3f800000 },
         { 0xbf000000, 0, 0xbf000000, 0xffffffff, 0,          0,          0,          0          },
         { 0x3f000000, 0, 0x3f000000, 0xffffffff, 0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000 },

@@ -2,7 +2,6 @@
  * the model cache the theme loader and BuildSceneObjectList share. */
 #pragma once
 
-#include <windows.h>
  
 #include "linkedlist.h"
 #include "faktmesh.h"

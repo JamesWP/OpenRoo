@@ -8,7 +8,6 @@
  * if the intro never ended.  Messages are still pumped, so --auto-exit still
  * ends the run; every recording fails on frames_run. */
 
-#include <windows.h>
 #include "sysdev.h"
 #include <new>
 #include <stdio.h>
@@ -147,17 +146,8 @@ public:
     }
 };
 
-static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine);
-
-  int WINAPI
-Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
+int Main_WinMain(const char *lpCmdLine)
 {
-    return winmain_body(hInstance, lpCmdLine);
-}
-
-static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
-{
-    g_moduleInstance = hInstance;
     audiodev::setLog(log_sink);
     inputdev::setLog(log_sink);
     videodev::setLog(log_sink);
@@ -174,9 +164,9 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     wc.width       = 400;
     wc.height      = 300;
     wc.messageOnly = nulldd_enabled();
-    if (!window.create(hInstance, &handler, wc))
+    if (!window.create(&handler, wc))
         return 0;
-    HWND hWnd = (HWND)window.handle();
+    void *hWnd = window.handle();
 
     // The first character is tested, not the pointer.  None of the early
     // returns below destroys the window.
@@ -224,7 +214,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     // that mode, the default adapter in mode 0.
     Config *cfg = game->config();
     const int mode = (int)cfg->displayModeIndex();
-    if (!d3d->Create(hWnd, cfg->adapterGuid(), mode, true)
+    if (!d3d->Create(hWnd, cfg->adapterId(), mode, true)
         && !d3d->Create(hWnd, NULL, mode, true)
         && !d3d->Create(hWnd, NULL, 0, true)) {
         g_logger.logSourceLocation(4,
@@ -238,7 +228,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
         return 1;
     }
 
-    if (Input_Setup(hInstance, hWnd, game) == 0) {
+    if (Input_Setup(hWnd, game) == 0) {
         delete d3d;
         delete_game(game);
         return 1;

@@ -1,4 +1,3 @@
-#include <windows.h>
 #include "camerainput.h"
 #include "game.h"
 #include "config.h"

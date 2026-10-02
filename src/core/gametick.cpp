@@ -21,10 +21,10 @@
  * KAROO_SIM_FX=tickorder, a negative control: the lift and slide loops run in
  * the other order.  Both change the tile map, so the order is observable. */
 
+#include <stdint.h>
 #include "gametick.h"
 #include "sysdev.h"
 #include "windev.h"
-#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -162,7 +162,7 @@ Sim_GameTick(Game *self, double dt, double now)
 
     if (s_fx < 0) {
         char e[32];
-        DWORD n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
+        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "tickorder") == 0);
         if (s_fx)
             g_logger.write("gametick: KAROO_SIM_FX=tickorder -- slides tick before lifts\n");

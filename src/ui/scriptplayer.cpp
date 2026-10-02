@@ -16,9 +16,10 @@
  * KAROO_JJS_DUMP=<file> appends each script's entry count and an FNV-1a hash
  * of its lines. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "camera.h"
 #include "sysdev.h"
-#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -105,7 +106,7 @@ int ScriptPlayer::readForLevel(const char *path)
         int c = fgetc(fp);  // PRESERVED: the end-of-file read's -1 is stored as 0xff
 
         if ((char)c == ';') {
-            WORD  n   = lineCount_;
+            uint16_t  n   = lineCount_;
             char *rec = lines_[0] + n * LINE_SIZE;  // PRESERVED: no bound on the entry count
 
             s_entry[idx & 0xffff] = '\0';
@@ -117,7 +118,7 @@ int ScriptPlayer::readForLevel(const char *path)
             else
                 strcpy(rec, s_entry);
 
-            lineCount_ = (WORD)(n + 1);
+            lineCount_ = (uint16_t)(n + 1);
 
             fgetc(fp);  // the newline after the ';', discarded
         } else {
@@ -219,7 +220,7 @@ int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
                 wroteHeader   = 0;
             }
         } else if (line[0] == ';') {
-            textBlocks_ = (WORD)(textBlocks_ + 1);
+            textBlocks_ = (uint16_t)(textBlocks_ + 1);
             inBlock       = 0;
             inBlockMirror = 0;
         } else {
@@ -246,7 +247,7 @@ int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
         memcpy(prefix9, line, 9);
         prefix9[9] = '\0';
         if (strcmp(prefix9, "splinexyz") == 0)
-            splineLines_ = (WORD)(splineLines_ + 1);
+            splineLines_ = (uint16_t)(splineLines_ + 1);
     }
 
     fclose(fp);

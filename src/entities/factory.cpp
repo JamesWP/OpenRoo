@@ -1,6 +1,7 @@
 /* The three factories: each forwards to its family's create function
  * (generators.cpp, particles.cpp) and logs its first call. */
 
+#include <windows.h>
 #include "factory.h"
 #include "generators.h"
 #include "particles.h"

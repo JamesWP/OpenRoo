@@ -3,6 +3,7 @@
  * named field_<hex>, after where the original kept it.
  */
 #pragma once
+#include <stdint.h>
 
  
 #include "textentry.h"
@@ -437,7 +438,7 @@ public:
     unsigned char *foeIds()         { return foeIds_; }
     Foe           *foeSlot(unsigned int id) const { return foeSlots_[id]; }
     Foe          **foeSlotRef(unsigned int id)   { return &foeSlots_[id]; }
-    /* A WORD the foe spawn bumps for type 0x0b; levelsetup.cpp calls it a
+    /* A uint16_t the foe spawn bumps for type 0x0b; levelsetup.cpp calls it a
      * crystal count.  Not confirmed, so not named. */
     unsigned short field_42252() const             { return field_42252_; }
     void           setField42252(unsigned short n) { field_42252_ = n; }

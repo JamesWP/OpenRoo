@@ -13,7 +13,7 @@
  * everything consumed stays consumed across a restart.
  * KAROO_GRIDRESTORE_DIAG=1 logs each call. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
 #include "logger.h"
@@ -26,7 +26,7 @@ static unsigned s_calls = 0;
 static void fx_init(void)
 {
     char buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_init)
         return;

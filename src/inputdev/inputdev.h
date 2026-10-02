@@ -42,7 +42,7 @@ public:
 
     /* Brings up the input system and the keyboard and mouse for the native
      * window.  False if any fails, with nothing left open. */
-    bool create(void *instance, void *window);
+    bool create(void *window);
     void destroy();
 
     /* Takes the devices when the window is active, and gives them back.

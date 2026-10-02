@@ -4,7 +4,6 @@
  * they differ, real time is leaking into the simulation. */
 
 #pragma once
-#include <windows.h>
 
 struct ParticleSystem;
 

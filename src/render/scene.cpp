@@ -1,6 +1,8 @@
 /* scene.cpp -- the level's scene-object list (scene.h), and the camera's
  * segment test against its models. */
 
+#include <string.h>
+#include <stdint.h>
 #include <math.h>
 #include <new>
 #include "scene.h"
@@ -70,7 +72,7 @@ void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo)
             o->animLoaded = 1;
 
         // Blend modes 5/6 (SRCALPHA / INVSRCALPHA) ask for an alpha surface.
-        DWORD alpha = (r->srcBlend == 5 || r->srcBlend == 6) ? 1 : 0;
+        uint32_t alpha = (r->srcBlend == 5 || r->srcBlend == 6) ? 1 : 0;
         o->texture = textures_.getOrLoad(d3d, r->textureFile,
                                               alpha, 0, 0);
         o->srcBlend  = r->srcBlend;

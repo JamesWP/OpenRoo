@@ -20,6 +20,7 @@
  * releases. */
 
 #include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <new>
 #include <string.h>
@@ -41,9 +42,9 @@ static int s_diag_place     = 0;
 static int s_diag_reset     = 0;
 static int s_init           = 0;
 
-static int env_set(const char *name, char *buf, DWORD cb)
+static int env_set(const char *name, char *buf, uint32_t cb)
 {
-    DWORD n = sysdev::getEnv(name, buf, cb);
+    uint32_t n = sysdev::getEnv(name, buf, cb);
     return n > 0 && n < cb;
 }
 

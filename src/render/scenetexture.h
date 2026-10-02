@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <stdint.h>
 #include "texture.h"
 
 class RenderDevice;
@@ -23,25 +24,25 @@ public:
     /* The TGA path: build the surface from `name`, decode into it, and leave
      * the IDirect3DTexture2 in `self->pTexture2`.  Only the low byte of the
      * result is the success flag. */
-    unsigned int importSceneTextures(RenderDevice *dev, LPCSTR name,
-                                     DWORD alphaFlag, UINT bpp,
-                                     DWORD textureStage);
+    unsigned int importSceneTextures(RenderDevice *dev, const char *name,
+                                     uint32_t alphaFlag, unsigned bpp,
+                                     uint32_t textureStage);
 
     SceneTexture();
     ~SceneTexture();
 
     /* Load by extension (mode 0), DIB (1) or TGA (2).  The sky builder
      * (sky.cpp) is its one outside caller. */
-    unsigned int selectTextureLoader(RenderDevice *dev, LPCSTR name, UINT bpp,
+    unsigned int selectTextureLoader(RenderDevice *dev, const char *name, unsigned bpp,
                                      int mode);
 
-    unsigned int bindTextureResource(RenderDevice *dev, LPCSTR name, UINT bpp,
-                                     DWORD textureStage);
+    unsigned int bindTextureResource(RenderDevice *dev, const char *name, unsigned bpp,
+                                     uint32_t textureStage);
 
 private:
     /* Replace the image name: free the old, allocate strlen+1, sprintf("%s").
      */
-    void setImageName(LPCSTR name);
+    void setImageName(const char *name);
 
     IDirect3DTexture2 *pTexture2_;
 };
@@ -62,8 +63,8 @@ class TextureManager {
 public:
      
 
-    SceneTexture *getOrLoad(RenderDevice *dev, char *filename, DWORD alphaFlag,
-                            UINT bpp, DWORD textureStage);
+    SceneTexture *getOrLoad(RenderDevice *dev, char *filename, uint32_t alphaFlag,
+                            unsigned bpp, uint32_t textureStage);
 
     void releaseAll();
 

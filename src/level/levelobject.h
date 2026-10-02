@@ -1,12 +1,12 @@
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 #include <stddef.h>
 #include "scenetexture.h"
 
 /* A theme record's draw state for one sub-object: blend, texture address mode,
  * visibility condition and an animated effect, as the theme file's depth-2 and
  * depth-3 keywords set them. */
-enum SceneSubObjectEffect : DWORD {
+enum SceneSubObjectEffect : uint32_t {
     SUBOBJ_EFFECT_NONE        = 0,
     SUBOBJ_EFFECT_FLASH       = 1,  // 3 params
     SUBOBJ_EFFECT_PULSE       = 2,  // 2 params
@@ -19,11 +19,11 @@ enum SceneSubObjectEffect : DWORD {
 /* dwVisibilityGate is the theme's `condition`: active 1, inactive 2, dead 3,
  * alive 4, paraglide 5, protection 6. */
 struct SceneSubObject {
-    DWORD  dwVisibilityGate;
+    uint32_t  dwVisibilityGate;
     SceneTexture *pTexture;
-    DWORD  dwBlendSrc;       // the SRCBLEND value
-    DWORD  dwBlendDst;       // the DESTBLEND value
-    DWORD  dwTexAddress;     // TEXTUREADDRESSU/V; 0 means 3
+    uint32_t  dwBlendSrc;       // the SRCBLEND value
+    uint32_t  dwBlendDst;       // the DESTBLEND value
+    uint32_t  dwTexAddress;     // TEXTUREADDRESSU/V; 0 means 3
     SceneSubObjectEffect effect;
     float  flEffectParams[3];
 };

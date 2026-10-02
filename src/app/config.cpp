@@ -1,6 +1,5 @@
 /* FORMAT: Karoo.cfg is the persisted blob followed by a 10-byte tag holding
  * "End".  Both directions use text mode, as the game does. */
-#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -31,7 +30,7 @@ void Config::encode(unsigned char out[PERSISTED_SIZE]) const
     put_u32(p, field_00_);
     put_bytes(p, videoOptions_, sizeof(videoOptions_));
     put_bytes(p, &cameraDistanceSetting_, 4);
-    put_bytes(p, &adapterGuid_, sizeof(adapterGuid_));
+    put_bytes(p, &adapterId_, sizeof(adapterId_));
     put_u32(p, displayModeIndex_);
     put_u32(p, field_20_);
     put_u32(p, (unsigned int)musicOn_);
@@ -56,7 +55,7 @@ void Config::decode(const unsigned char in[PERSISTED_SIZE])
     field_00_ = get_u32(p);
     get_bytes(p, videoOptions_, sizeof(videoOptions_));
     get_bytes(p, &cameraDistanceSetting_, 4);
-    get_bytes(p, &adapterGuid_, sizeof(adapterGuid_));
+    get_bytes(p, &adapterId_, sizeof(adapterId_));
     displayModeIndex_   = get_u32(p);
     field_20_           = get_u32(p);
     musicOn_            = (int)get_u32(p);

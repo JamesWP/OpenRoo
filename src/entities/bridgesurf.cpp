@@ -38,6 +38,8 @@
  *   backward  negate the scroll: a direction change, so it proves the
  *             fmod and clock arithmetic. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "bridgesurf.h"
 #include "sysdev.h"
 #include "renderdevice.h"
@@ -74,7 +76,7 @@ static BridgeFxMode bridge_fx(void)
 /* KAROO_BRIDGE_DIAG=1 logs each distinct (bridge, axis, direction, n) once
  * over the run, to show which orientations a level reaches, and so whether
  * backward reversed every one on screen. */
-static void bridge_note_variant(DWORD k, int axis, int dir, int n,
+static void bridge_note_variant(uint32_t k, int axis, int dir, int n,
                                 float vnear, float vfar)
 {
     static int enabled = -1;
@@ -87,10 +89,10 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
         return;
 
     // Small and fixed; a level has at most a couple of dozen bridges.
-    static DWORD seen[64];
+    static uint32_t seen[64];
     static int   nseen = 0;
-    DWORD key = (k << 24) | ((DWORD)(axis & 0xff) << 16)
-                | ((DWORD)(dir & 0xff) << 8) | (DWORD)(n & 0xff);
+    uint32_t key = (k << 24) | ((uint32_t)(axis & 0xff) << 16)
+                | ((uint32_t)(dir & 0xff) << 8) | (uint32_t)(n & 0xff);
     for (int q = 0; q < nseen; q++)
         if (seen[q] == key)
             return;
@@ -113,14 +115,14 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
     world.m[0] = world.m[5] = world.m[10] = world.m[15] = 1.0f;
     d3d->SetTransform(Transform::World, &world);
 
-    const DWORD diffuse =
+    const uint32_t diffuse =
         bridge_fx() == BRIDGE_FX_TINT ? 0xFFFF00FF : 0xFFFFFFFF;
 
     ThemeObjectTypeSlot *slot = theme->slot(THEME_OBJ_BRIDGE);
     if (slot->instanceCount() == 0)
         return;
 
-    for (DWORD i = 0; i < slot->instanceCount(); i++) {
+    for (uint32_t i = 0; i < slot->instanceCount(); i++) {
         ThemeLevelObject *obj = &slot->records()[i];
 
         if (obj->kind() != THEME_KIND_FIELD)
@@ -132,7 +134,7 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
         d3d->SetRenderState(RS::ZWriteEnable, obj->noZWrite() != 0 ? 0 : 1);
 
         if (obj->subObjectCount() != 0) {
-            for (DWORD s = 0; s < obj->subObjectCount(); s++) {
+            for (uint32_t s = 0; s < obj->subObjectCount(); s++) {
                 SceneSubObject *sub = &obj->subObjects()[s];
 
                 // Unlike DrawQuadBatch, SetTexture runs unconditionally: a
@@ -142,7 +144,7 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
 
                 // One call, the state and value chosen by the branch.
                 RS last_state;
-                DWORD              last_value;
+                uint32_t              last_value;
                 if (sub->dwBlendSrc && sub->dwBlendDst) {
                     d3d->SetRenderState(
                         RS::AlphaBlendEnable, 1);
@@ -157,14 +159,14 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
                 d3d->SetRenderState(last_state, last_value);
 
                 {
-                    DWORD addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
+                    uint32_t addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
                     d3d->SetRenderState(
                         RS::TextureAddressU, addr);
                     d3d->SetRenderState(
                         RS::TextureAddressV, addr);
                 }
 
-                for (DWORD k = 0;
+                for (uint32_t k = 0;
                      k < game->bridgeCount();
                      k++) {
                     const BridgeObject *cv = game->bridgeSlot(k);

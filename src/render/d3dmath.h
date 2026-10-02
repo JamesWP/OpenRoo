@@ -1,5 +1,5 @@
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 #include "rendertypes.h"
 
 /* The shared 3D maths helpers.
@@ -20,7 +20,7 @@ extern Mat4 g_worldIdentity;
 struct ListNodeM { void *pValue; ListNodeM *pNext; };
 
 /* One 0x20-byte FVF 0x1e2 billboard vertex. */
-struct BbVertex { float x, y, z; DWORD zero; DWORD diffuse, specular; float u, v; };
+struct BbVertex { float x, y, z; uint32_t zero; uint32_t diffuse, specular; float u, v; };
 
 #include "d3dmath_common.h"
 #include "d3dmath_mode.h"

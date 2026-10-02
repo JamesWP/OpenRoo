@@ -1,4 +1,3 @@
-#include <windows.h>
 #include "inputsetup.h"
 #include "progctrl.h"
 #include "logger.h"
@@ -22,10 +21,10 @@ Input_TrySaveSettings(void)
  * the Game.  Default keys (inputdev scan codes) are bound only when no
  * saved bindings load. */
   int  
-Input_Setup(HINSTANCE hInstance, HWND hwnd, Game *game)
+Input_Setup(void *hwnd, Game *game)
 {
     ProgableControl *pc = &g_progCtrl;
-    if (!pc->setupDevices(hInstance, hwnd)) {
+    if (!pc->setupDevices(hwnd)) {
         windev::messageBox(NULL, GS_CONTROL_NO_INPUT, GS_CONTROL_ERROR_CAPTION,
                            windev::Buttons::Ok, windev::Icon::Error);
         return 0;

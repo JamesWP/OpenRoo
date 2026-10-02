@@ -32,6 +32,7 @@
  * Water01 ray swims its loop the other way. */
 
 #include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <stdio.h>
 #include <string.h>
@@ -165,7 +166,7 @@ int ExtraObjects::openFile(const char *name)
             idx = 0;
 
             entries_ =
-                (WORD)(entries_ + 1);  // bumped before the handler runs
+                (uint16_t)(entries_ + 1);  // bumped before the handler runs
 
             for (const char *q = s_entry; *q; q++) {
                 s_hash ^= (unsigned char)*q;
@@ -222,7 +223,7 @@ static int      s_logged_release = 0;
 static void diag_init(void)
 {
     char buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_rel_diag >= 0)
         return;

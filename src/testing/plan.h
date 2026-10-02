@@ -3,7 +3,6 @@
  * it can. */
 
 #pragma once
-#include <windows.h>
 #include "worldstate.h"
 
 /* True if a foe could be on the cell next tick (its own cell and the four it

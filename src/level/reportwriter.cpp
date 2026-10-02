@@ -18,7 +18,6 @@
  *   5. The running score subtracts the level index, so the total depends on
  *      the level order, not only the levels. */
 
-#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"

@@ -13,7 +13,7 @@
  * KAROO_SIM_FX=nopickup forces the tile gate to fail, so nothing is ever
  * consumed; it moves items_collected and elapsed_ms. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
 #include <math.h>
@@ -47,7 +47,7 @@ static int s_init = 0;
 static void fx_init(void)
 {
     char buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_init)
         return;

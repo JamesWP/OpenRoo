@@ -3,7 +3,6 @@
  * to compare. */
 
 #pragma once
-#include <windows.h>
 
 /* Whether KAROO_STATE_LOG is set. */
 bool gamestate_enabled(void);

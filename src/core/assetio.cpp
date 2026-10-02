@@ -6,6 +6,7 @@
  * and which code opened them. */
 
 #include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <errno.h>
 #include "logger.h"
@@ -22,7 +23,7 @@ static bool asset_log_enabled(void)
 {
     if (!s_checked) {
         char path[MAX_PATH];
-        DWORD n = sysdev::getEnv("KAROO_ASSET_LOG", path, sizeof(path));
+        uint32_t n = sysdev::getEnv("KAROO_ASSET_LOG", path, sizeof(path));
         s_checked = true;
         if (n > 0 && n < sizeof(path)) {
             InitializeCriticalSection(&s_lock);
@@ -67,14 +68,14 @@ static void asset_log(const char *fmt, ...)
 struct AssetSlot {
     void         *fp;
     char          path[MAX_PATH];
-    DWORD         size;   // from the filesystem, at open
+    uint32_t         size;   // from the filesystem, at open
     unsigned      read;   // bytes seen through fread
     unsigned      calls;  // fread calls
 };
 
 static AssetSlot s_slots[ASSET_SLOTS];
 
-static DWORD file_size_of(const char *path)
+static uint32_t file_size_of(const char *path)
 {
     WIN32_FILE_ATTRIBUTE_DATA fad;
     if (!GetFileAttributesExA(path, GetFileExInfoStandard, &fad))
@@ -82,7 +83,7 @@ static DWORD file_size_of(const char *path)
     return fad.nFileSizeLow;  // no game file is near 4 GB
 }
 
-static void slot_add(void *fp, const char *path, DWORD size)
+static void slot_add(void *fp, const char *path, uint32_t size)
 {
     for (int i = 0; i < ASSET_SLOTS; i++) {
         if (s_slots[i].fp == NULL) {
@@ -112,7 +113,7 @@ hooks_fopen(const char *path, const char *mode)
     void *fp = fopen(path, mode);
 
     if (asset_log_enabled()) {
-        DWORD size = (path != NULL) ? file_size_of(path) : 0;
+        uint32_t size = (path != NULL) ? file_size_of(path) : 0;
         asset_log("OPEN  %-52s mode=%-4s size=%-8lu caller=0x%08lx %s\r\n",
                   path ? path : "<null>", mode ? mode : "?",
                   (unsigned long)size, (unsigned long)(ULONG_PTR)caller,

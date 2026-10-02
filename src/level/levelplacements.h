@@ -6,7 +6,7 @@
  * Positions are (u, height, -v); rotations are (0, yaw, 0). */
 #pragma once
 
-#include <windows.h>
+#include <stdint.h>
  
 
 class Game;
@@ -39,7 +39,7 @@ private:
  * The tile-top template is x, y, z, diffuse 0xffffffff, (u0, v0), (u1, v1);
  * everything else is a BbVertex (d3dmath.h): x, y, z, 0, diffuse 0x00ffffff,
  * specular 0, u, v. */
-struct PlacementVertex { DWORD d[8]; };
+struct PlacementVertex { uint32_t d[8]; };
 
 class LevelPlacements {
 public:

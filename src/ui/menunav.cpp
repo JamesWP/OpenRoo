@@ -1,4 +1,3 @@
-#include <windows.h>
 #include <string.h>
 #include "logger.h"
 #include "game.h"
