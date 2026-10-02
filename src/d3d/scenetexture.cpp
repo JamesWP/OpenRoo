@@ -416,6 +416,7 @@ unsigned int SceneTexture::bindTextureResource(RenderDevice *dev, const char *na
         hr = pTextureSurface_->QueryInterface(IID_IDirect3DTexture2,
                                                         (void **)&pTexture2_);
         if (hr >= 0) {
+            ddiag_dump_surface("tex", name, pTextureSurface_);
             setImageName(name);
             loadedState_ = 1;
             unsigned int last = (unsigned int)DeleteObject((HGDIOBJ)hbmp);
@@ -544,6 +545,7 @@ unsigned int SceneTexture::importSceneTextures(RenderDevice *dev, const char *na
         return 0;
     }
 
+    ddiag_dump_surface("tex", name, pTextureSurface_);
     setImageName(name);
     loadedState_ = 2;
     if (fp != NULL) fclose(fp);

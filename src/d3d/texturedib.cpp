@@ -158,6 +158,7 @@ TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
     self->setImageNamePtr(copy);
     sprintf(copy, GS_FMT_S, name);
 
+    ddiag_dump_surface("img", name, self->textureSurface());
     self->setLoadedState(1);
 
     unsigned int last = (unsigned int)DeleteObject((HGDIOBJ)hbmp);
