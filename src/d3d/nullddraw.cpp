@@ -51,9 +51,10 @@
  * Blts it to the texture or the back buffer.  A surface that hands back no
  * memory turns that into null-pointer writes.
  *
- * So every surface is backed by a plain heap allocation of its pitch times its
- * height, which gives working Lock/Unlock.  Top-down, as DirectDraw surfaces
- * are.  There is no GetDC: nothing draws with GDI any more.
+ * So every surface is backed by a VirtualAlloc'd block of its pitch times its
+ * height (see surf_alloc_bits for why not the heap), which gives working
+ * Lock/Unlock.  Top-down, as DirectDraw surfaces are.  There is no GetDC:
+ * nothing draws with GDI any more.
  *
  * Blt and BltFast really copy, for the same reason: a texture's upload ends
  * with a Blt from the staging surface to the texture, and leaving that out
@@ -323,8 +324,13 @@ static DWORD pitch_for(DWORD w, DWORD bpp)
     return ((w * bpp + 31) / 32) * 4;
 }
 
-/* Back the surface with real memory: a zeroed heap block of its pitch times
- * its height. */
+/* Back the surface with real memory: a zeroed block of its pitch times its
+ * height, from VirtualAlloc and not the CRT heap.  This is load-bearing: the
+ * surfaces used to be GDI DIB sections, outside the heap, and with them on the
+ * CRT heap instead the enemyfactory recording ends with one foe fewer killed
+ * (foes_killed 5, not 6).  Something in the game reads memory it did not
+ * initialise, or after freeing it, and its result moves with the heap's
+ * layout.  Not found yet; until it is, keep these off the heap. */
 static bool surf_alloc_bits(NullSurface *s)
 {
     DWORD w   = s->desc.dwWidth;
@@ -338,13 +344,13 @@ static bool surf_alloc_bits(NullSurface *s)
     if (w == 0 || h == 0)
         return true;                            /* nothing to allocate */
 
-    s->bits = new (std::nothrow) unsigned char[pitch * h]();
+    s->bits = VirtualAlloc(NULL, pitch * h, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     return s->bits != NULL;
 }
 
 static void surf_free_bits(NullSurface *s)
 {
-    delete[] (unsigned char *)s->bits;
+    if (s->bits) VirtualFree(s->bits, 0, MEM_RELEASE);
     s->bits = NULL;
 }
 
