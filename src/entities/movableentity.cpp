@@ -13,6 +13,10 @@ MovableEntity::MovableEntity()
     posU_ = 0.0f;
     posY_ = 0.0f;
     posV_ = 0.0f;
+    // updateMovement re-queues these for a kind 4 entity before anything has
+    // set them, so they must start empty.
+    queuedMove_ = 0;
+    queuedTurn_ = 0;
 }
 
 MovableEntity::~MovableEntity()
