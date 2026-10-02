@@ -120,3 +120,44 @@ void ddiag_lock(HRESULT hr, DWORD flags, const DDSURFACEDESC2 *d)
               (long)d->lPitch, d->lpSurface);
     ddiag_pixfmt("  lock.pf", &d->ddpfPixelFormat);
 }
+
+void ddiag_dump_surface(const char *kind, const char *name,
+                        IDirectDrawSurface4 *surf)
+{
+    static int enabled = -1;
+    static char path[MAX_PATH];
+    if (enabled < 0)
+        enabled = sysdev::getEnv("KAROO_TEXTURE_DUMP", path, sizeof(path)) ? 1 : 0;
+    if (!enabled || surf == NULL)
+        return;
+
+    DDSURFACEDESC2 d;
+    memset(&d, 0, sizeof(d));
+    d.dwSize = sizeof(d);
+    if (FAILED(surf->Lock(NULL, &d, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL)))
+        return;
+
+    unsigned long long h = 1469598103934665603ull;
+    const unsigned rowBytes = d.dwWidth * (d.ddpfPixelFormat.dwRGBBitCount / 8);
+    const unsigned char *row = (const unsigned char *)d.lpSurface;
+    for (DWORD y = 0; y < d.dwHeight; ++y, row += d.lPitch)
+        for (unsigned x = 0; x < rowBytes; ++x)
+            h = (h ^ row[x]) * 1099511628211ull;
+
+    char line[512];
+    snprintf(line, sizeof(line),
+             "%s|%s|%lux%lu|%lubpp r=%08lX g=%08lX b=%08lX a=%08lX|%016llX\n",
+             kind, name, (unsigned long)d.dwWidth, (unsigned long)d.dwHeight,
+             (unsigned long)d.ddpfPixelFormat.dwRGBBitCount,
+             (unsigned long)d.ddpfPixelFormat.dwRBitMask,
+             (unsigned long)d.ddpfPixelFormat.dwGBitMask,
+             (unsigned long)d.ddpfPixelFormat.dwBBitMask,
+             (unsigned long)d.ddpfPixelFormat.dwRGBAlphaBitMask, h);
+    surf->Unlock(NULL);
+
+    FILE *f = fopen(path, "ab");
+    if (f) {
+        fputs(line, f);
+        fclose(f);
+    }
+}

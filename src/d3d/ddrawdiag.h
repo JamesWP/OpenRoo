@@ -36,3 +36,10 @@ void ddiag_create_surface(HRESULT hr, const DDSURFACEDESC2 *d);
 /* A GetSurfaceDesc / Lock answer (first eight of each). */
 void ddiag_surface_desc(HRESULT hr, const DDSURFACEDESC2 *d);
 void ddiag_lock(HRESULT hr, DWORD flags, const DDSURFACEDESC2 *d);
+
+/* KAROO_TEXTURE_DUMP=<file>: one line per texture or image surface the loaders
+ * produce -- kind, name, size, pixel format and an FNV-1a hash of the pixel
+ * bytes (rows without pitch padding).  Diffing two runs' sorted files shows
+ * whether a change to the loaders moved a single pixel. */
+void ddiag_dump_surface(const char *kind, const char *name,
+                        IDirectDrawSurface4 *surf);
