@@ -5,7 +5,7 @@
 #include "levelselect.h"
 #include "game.h"
 #include "menutree.h"
-#include "log.h"
+#include "logger.h"
 
 static int  s_themeCount;
 static int  s_themeFirst[LS_MAX_THEMES + 1];  // JJ.GAM index each theme starts at
@@ -79,7 +79,7 @@ void LevelSelect_Turn(Game *g, int dir)
         m->push(2);
         m->setNode((unsigned char)(LS_THEME_NODE + t));
         s_top = 0;
-        log_write("levelselect: open, %d themes, %d levels\n",
+        g_logger.write("levelselect: open, %d themes, %d levels\n",
                   s_themeCount, (int)g->levelCount());
         return;
     }
@@ -98,7 +98,7 @@ int LevelSelect_Chosen(Game *g)
     MenuTree *m = g->menu();
     m->pop();  // node is the theme page, cursor the row
     int level = s_themeFirst[m->node() - LS_THEME_NODE] + m->cursor();
-    log_write("levelselect: start level %d (%s)\n",
+    g_logger.write("levelselect: start level %d (%s)\n",
               level, g->levelNameTableEntry((unsigned char)level));
     return level;
 }

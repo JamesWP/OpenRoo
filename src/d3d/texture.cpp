@@ -7,7 +7,7 @@
 
 #include "scenetexture.h"
 #include "d3dnative.h"
-#include "log.h"
+#include "logger.h"
 #include <stdlib.h>
 SceneTexture g_texKaroo128;
 SceneTexture g_texShadow;
@@ -36,7 +36,7 @@ static bool image_diag(void)
     if (!image_diag())
         return;
     if ((*seen)++ == 0)
-        log_write("texture: DIAG first call -- %s\n", who);
+        g_logger.write("texture: DIAG first call -- %s\n", who);
 }
 #define image_first Texture_ImageFirstCall
 
@@ -81,7 +81,7 @@ Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp)
     DWORD flags = (count > 16) ? DDPCAPS_8BIT : DDPCAPS_4BIT;
     dd->CreatePalette(flags, (LPPALETTEENTRY)table, &pal, NULL);
     if (image_diag())
-        log_write("texture: DIAG CreatePaletteFromDIB count=%d flags=%lu pal=%p\n",
+        g_logger.write("texture: DIAG CreatePaletteFromDIB count=%d flags=%lu pal=%p\n",
                   count, (unsigned long)flags, (void *)pal);
     return pal;
 }
@@ -151,7 +151,7 @@ unsigned int LoadedImage::load()
     HRESULT hr = surf->Restore();
     static LONG seen = 0;
     if (InterlockedIncrement(&seen) <= 4)
-        log_write("texture: Load this=%p state=%d restore=%08lX name=%s\n",
+        g_logger.write("texture: Load this=%p state=%d restore=%08lX name=%s\n",
                   this, loadedState_, hr,
                   ImageName_ ? ImageName_ : "(null)");
     if (hr < 0)

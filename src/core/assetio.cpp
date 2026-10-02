@@ -6,10 +6,10 @@
  * and which code opened them. */
 
 #include <windows.h>
-#include "log.h"
+#include "logger.h"
 #include <stdio.h>
 
-/* Not log_write(): this log is meant to be parsed, and karoo_hooks.log carries
+/* Not g_logger.write(): this log is meant to be parsed, and karoo_hooks.log carries
  * everything else.  Win32 file calls only, so the log never touches stdio. */
 static HANDLE  s_log     = INVALID_HANDLE_VALUE;
 static bool    s_checked = false;
@@ -28,10 +28,10 @@ static bool asset_log_enabled(void)
             s_log = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
                                 CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
             if (s_log == INVALID_HANDLE_VALUE)
-                log_write("asset: could not open KAROO_ASSET_LOG '%s' (err %lu)\n",
+                g_logger.write("asset: could not open KAROO_ASSET_LOG '%s' (err %lu)\n",
                           path, GetLastError());
             else
-                log_write("asset: logging file I/O to '%s'\n", path);
+                g_logger.write("asset: logging file I/O to '%s'\n", path);
         }
     }
     return s_log != INVALID_HANDLE_VALUE;

@@ -17,7 +17,7 @@
 
 #include "wrapperobject.h"
 #include <stdlib.h>
-#include "log.h"
+#include "logger.h"
 #include "renderdevice.h"
 
 #define WRAP_ONE   1.0f
@@ -53,7 +53,7 @@ static int wrap_fx(void)
             else if (lstrcmpiA(buf, "sineflip") == 0)  cached = WRAP_FX_SINEFLIP;
             else if (lstrcmpiA(buf, "envflip") == 0)   cached = WRAP_FX_ENVFLIP;
         }
-        log_write("wrapper: FX mode = %d\n", cached);
+        g_logger.write("wrapper: FX mode = %d\n", cached);
     }
     return cached;
 }
@@ -88,9 +88,9 @@ static void wrap_census(int entry, unsigned int verts)
     LONG n = InterlockedIncrement(&g_wrapCalls[entry]);
     InterlockedExchangeAdd(&g_wrapVerts, (LONG)verts);
     if (n == 1)
-        log_write("wrapper: first %s\n", kWrapEntryName[entry]);
+        g_logger.write("wrapper: first %s\n", kWrapEntryName[entry]);
     else if ((n % 20000) == 0)
-        log_write("wrapper: %s x%ld (uv writes so far %ld)\n",
+        g_logger.write("wrapper: %s x%ld (uv writes so far %ld)\n",
                   kWrapEntryName[entry], n, g_wrapVerts);
 }
 

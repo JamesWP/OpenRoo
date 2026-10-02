@@ -11,7 +11,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "saveslots.h"
 #include "gamestr.h"
 #include "gameglobals.h"
@@ -26,7 +26,7 @@ static void ps_log(const char *what, const char *path, int ok)
 {
     if (s_logged < PS_LOG_FIRST) {
         s_logged++;
-        log_write("saveslots: %s '%s' -> %s\n", what, path, ok ? "ok" : "FAILED");
+        g_logger.write("saveslots: %s '%s' -> %s\n", what, path, ok ? "ok" : "FAILED");
     }
 }
 

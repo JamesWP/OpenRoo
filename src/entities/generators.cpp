@@ -14,7 +14,7 @@
 #include "crtrand.h"
 #include <new>
 #include "factory.h"
-#include "log.h"
+#include "logger.h"
 #include "gamestr.h"
 #include <math.h>
 #include <stdlib.h>
@@ -50,7 +50,7 @@ static SimFx sim_fx(void)
             else if (lstrcmpiA(buf, "fastemit") == 0) { cached = FX_FASTEMIT; name = "fastemit"; }
         }
         if (cached != FX_NONE)
-            log_write("sim: FX mode = %s\n", name);
+            g_logger.write("sim: FX mode = %s\n", name);
     }
     return (SimFx)cached;
 }
@@ -468,7 +468,7 @@ static DWORD stats_interval(void)
             v = 0;
         InterlockedExchange(&cached, v);
         if (v > 0)
-            log_write("sim: stats every %ld ticks\n", v);
+            g_logger.write("sim: stats every %ld ticks\n", v);
     }
     return (DWORD)cached;
 }
@@ -496,7 +496,7 @@ static void stats_tick(const char *what, void *self, const RingBuffer *ring, LON
         first = false;
         if (++oldest_seen > 4096) break;  // cycle guard
     }
-    log_write("stats: %s this=%p tick=%ld dt=%.9f live=%lu free=%lu ring=%lu expired=%lu "
+    g_logger.write("stats: %s this=%p tick=%ld dt=%.9f live=%lu free=%lu ring=%lu expired=%lu "
               "life=[%f..%f] head=%p cur=%p tail=%p\n",
               what, self, n, dt, count_live(ring), count_free(ring), ring->dwRingCount,
               expired, minlife, maxlife,
@@ -506,7 +506,7 @@ static void stats_tick(const char *what, void *self, const RingBuffer *ring, LON
 void GravityEnvironment::tick(float dt)
 {
     SIM_LOG_ONCE(calls)
-        log_write("sim: GravityTick this=%p dt=%f live=%lu ring=%lu\n",
+        g_logger.write("sim: GravityTick this=%p dt=%f live=%lu ring=%lu\n",
                   this, dt, count_live(pRing_),
                   pRing_->dwRingCount);
     static LONG ticks = 0;
@@ -517,7 +517,7 @@ void GravityEnvironment::tick(float dt)
 void MagnetEnvironment::tick(float dt)
 {
     SIM_LOG_ONCE(calls)
-        log_write("sim: MagnetTick this=%p dt=%f live=%lu ring=%lu centre=%f,%f,%f\n",
+        g_logger.write("sim: MagnetTick this=%p dt=%f live=%lu ring=%lu centre=%f,%f,%f\n",
                   this, dt, count_live(pRing_),
                   pRing_->dwRingCount,
                   flCentre_[0], flCentre_[1], flCentre_[2]);
@@ -529,7 +529,7 @@ void MagnetEnvironment::tick(float dt)
 void StdGenerator::tick(float dt)
 {
     SIM_LOG_ONCE(calls)
-        log_write("sim: StdEmit this=%p dt=%f enabled=%lu accum=%f free=%lu ring=%lu\n",
+        g_logger.write("sim: StdEmit this=%p dt=%f enabled=%lu accum=%f free=%lu ring=%lu\n",
                   this, dt, dwEnabled_, flAccumulator_,
                   count_free(pRing_), pRing_->dwRingCount);
     stdEmit(dt, NULL, NULL);
@@ -538,7 +538,7 @@ void StdGenerator::tick(float dt)
 void XStdGenerator::tick(float dt)
 {
     SIM_LOG_ONCE(calls)
-        log_write("sim: XStdEmit this=%p dt=%f enabled=%lu posoff=%f,%f,%f "
+        g_logger.write("sim: XStdEmit this=%p dt=%f enabled=%lu posoff=%f,%f,%f "
                   "veloff=%f,%f,%f ring=%lu\n",
                   this, dt, dwEnabled_,
                   flPosOffset_[0], flPosOffset_[1], flPosOffset_[2],
@@ -550,7 +550,7 @@ void XStdGenerator::tick(float dt)
 void CylinderGenerator::tick(float dt)
 {
     SIM_LOG_ONCE(calls)
-        log_write("sim: CylinderEmit this=%p dt=%f enabled=%lu accum=%f "
+        g_logger.write("sim: CylinderEmit this=%p dt=%f enabled=%lu accum=%f "
                   "origin=%f,%f,%f scale=%f ring=%lu\n",
                   this, dt, dwEnabled_, flAccumulator_,
                   flOrigin_[0], flOrigin_[1], flOrigin_[2],
@@ -620,7 +620,7 @@ BOOL GravityEnvironment::load(void *fp)
     gravitySetVector(dir, mag);
     gravitySetColour(argb, fade);
     SIM_LOG_ONCE(calls)
-        log_write("sim: GravityLoad this=%p gravity=%f,%f,%f argb=%08lX\n", this,
+        g_logger.write("sim: GravityLoad this=%p gravity=%f,%f,%f argb=%08lX\n", this,
                   flGravity_[0], flGravity_[1], flGravity_[2], argb);
     return TRUE;
 }
@@ -642,7 +642,7 @@ BOOL MagnetEnvironment::load(void *fp)
         for (int i = 0; i < 3; i++)
             flForce_[i] = -flForce_[i];
     SIM_LOG_ONCE(calls)
-        log_write("sim: MagnetLoad this=%p force=%f,%f,%f centre=%f,%f,%f\n", this,
+        g_logger.write("sim: MagnetLoad this=%p force=%f,%f,%f centre=%f,%f,%f\n", this,
                   flForce_[0], flForce_[1], flForce_[2],
                   flCentre_[0], flCentre_[1], flCentre_[2]);
     return TRUE;

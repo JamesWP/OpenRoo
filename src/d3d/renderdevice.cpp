@@ -6,7 +6,7 @@
 
 #include "d3dnative.h"
 #include "scenetexture.h"
-#include "log.h"
+#include "logger.h"
 #include <math.h>
 #include <string.h>
 
@@ -22,7 +22,7 @@ static bool fx_noblt(void)
         cached = 0;
         if (GetEnvironmentVariableA("KAROO_FLIP_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "noblt") == 0);
-        log_write("renderdevice: flip FX mode = %s\n", cached ? "noblt" : "off");
+        g_logger.write("renderdevice: flip FX mode = %s\n", cached ? "noblt" : "off");
     }
     return cached != 0;
 }
@@ -38,7 +38,7 @@ static bool fx_nodraw(void)
         cached = GetEnvironmentVariableA("KAROO_D3D_FX", buf, sizeof(buf))
                  && lstrcmpiA(buf, "nodraw") == 0;
         if (cached)
-            log_write("renderdevice: draw FX mode = nodraw\n");
+            g_logger.write("renderdevice: draw FX mode = nodraw\n");
     }
     return cached != 0;
 }
@@ -199,7 +199,7 @@ void RenderDevice::PresentImage(LoadedImage *img)
             lstrcpyA(blt, "skipped");
         else
             wsprintfA(blt, "%08lX", hr_blt);
-        log_write("renderdevice: PresentImage img=%p src=%p back=%p primary=%p "
+        g_logger.write("renderdevice: PresentImage img=%p src=%p back=%p primary=%p "
                   "blt=%s flip=%08lX\n",
                   img, img->textureSurface(), n->backBuffer, n->primary,
                   blt, hr_flip);
@@ -254,7 +254,7 @@ void RenderDevice::SetMaterial(const Material &m)
         HRESULT hr = n->d3d->CreateMaterial(&n->material, NULL);
         if (SUCCEEDED(hr))
             hr = n->material->GetHandle(n->device, &n->hMaterial);
-        log_write("renderdevice: CreateMaterial mat=%p handle=%08lX -> hr=%08lX\n",
+        g_logger.write("renderdevice: CreateMaterial mat=%p handle=%08lX -> hr=%08lX\n",
                   (void *)n->material, (unsigned long)n->hMaterial, hr);
         if (FAILED(hr))
             return;
@@ -278,7 +278,7 @@ void RenderDevice::SetDirectionalLight(const DirectionalLight &l)
     Native *n = native_;
     if (n->light == NULL) {
         HRESULT hr = n->d3d->CreateLight(&n->light, NULL);
-        log_write("renderdevice: CreateLight light=%p -> hr=%08lX\n",
+        g_logger.write("renderdevice: CreateLight light=%p -> hr=%08lX\n",
                   (void *)n->light, hr);
         if (FAILED(hr))
             return;
@@ -327,7 +327,7 @@ bool RenderDevice::DrawStrided(Prim prim, VertexFormat format,
         ntex = D3DDP_MAXTEXCOORD;
     for (DWORD i = 0; i < ntex; i++) {
         if (v->texCoords[i].data == NULL) {
-            log_write("renderdevice: DrawStrided refused: format %d declares "
+            g_logger.write("renderdevice: DrawStrided refused: format %d declares "
                       "texture set %lu but it is unfilled\n", (int)format, i);
             return false;
         }
@@ -372,7 +372,7 @@ void RenderDevice::LogState(const char *tag)
     for (unsigned i = 0; i < sizeof rstates / sizeof rstates[0]; i++) {
         DWORD v = 0xdeadbeef;
         HRESULT hr = dev->GetRenderState(rstates[i].rs, &v);
-        log_write("%s: rs %-17s = %08lX (hr=%08lX)\n", tag, rstates[i].name, v, hr);
+        g_logger.write("%s: rs %-17s = %08lX (hr=%08lX)\n", tag, rstates[i].name, v, hr);
     }
 
     static const struct { D3DTEXTURESTAGESTATETYPE ts; const char *name; } tstates[] = {
@@ -385,7 +385,7 @@ void RenderDevice::LogState(const char *tag)
     for (unsigned i = 0; i < sizeof tstates / sizeof tstates[0]; i++) {
         DWORD v = 0xdeadbeef;
         HRESULT hr = dev->GetTextureStageState(0, tstates[i].ts, &v);
-        log_write("%s: ts0 %-14s = %08lX (hr=%08lX)\n", tag, tstates[i].name, v, hr);
+        g_logger.write("%s: ts0 %-14s = %08lX (hr=%08lX)\n", tag, tstates[i].name, v, hr);
     }
 
     DWORD lmat = 0xdeadbeef, lamb = 0xdeadbeef;
@@ -393,7 +393,7 @@ void RenderDevice::LogState(const char *tag)
     HRESULT hr2 = dev->GetLightState(D3DLIGHTSTATE_AMBIENT,  &lamb);
     IDirect3DTexture2 *tex = NULL;
     HRESULT hr3 = dev->GetTexture(0, &tex);
-    log_write("%s: lightstate MATERIAL=%08lX (hr=%08lX) AMBIENT=%08lX (hr=%08lX) "
+    g_logger.write("%s: lightstate MATERIAL=%08lX (hr=%08lX) AMBIENT=%08lX (hr=%08lX) "
               "tex0=%p (hr=%08lX)\n",
               tag, lmat, hr1, lamb, hr2, (void *)tex, hr3);
     if (tex)

@@ -2,7 +2,7 @@
  */
 
 #include <windows.h>
-#include "log.h"
+#include "logger.h"
 #include "entitymath.h"
 
 /* Tile kinds 5 to 8 are the four ramps.  The compares are unsigned, so kind

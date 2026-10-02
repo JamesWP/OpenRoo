@@ -8,7 +8,7 @@
 
 #include "splinepath.h"
 #include <stdlib.h>
-#include "log.h"
+#include "logger.h"
 #include "renderdevice.h"
 
 /* KAROO_SIM_FX=splinerev evaluates every path backwards (t -> 1 - t);
@@ -37,7 +37,7 @@ static void fx_init(void)
     n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "splinerev") == 0) {
         s_fx_splinerev = 1;
-        log_write("splinepath: KAROO_SIM_FX=splinerev -- the path parameter "
+        g_logger.write("splinepath: KAROO_SIM_FX=splinerev -- the path parameter "
                   "is reversed (t -> 1-t) where it is consumed, so every "
                   "spline runs backwards\n");
     }
@@ -121,7 +121,7 @@ float *SplinePath::evalBezierPath(float *out, float t)
         if (n > s_eval_maxpts)
             s_eval_maxpts = n;
         if ((s_evals % (unsigned)s_diag) == 0)
-            log_write("splinepath: evals=%u (empty=%u, max points=%u) "
+            g_logger.write("splinepath: evals=%u (empty=%u, max points=%u) "
                       "adds=%u purges=%u ctors=%u dtors=%u draws=%u\n",
                       s_evals, s_eval_empty, s_eval_maxpts,
                       s_adds, s_purges, s_ctors, s_dtors, s_draws);
@@ -177,10 +177,10 @@ static int check_point(const char *what, const float *got, float x, float y,
     if (dz < 0) dz = -dz;
 
     if (dx <= tol && dy <= tol && dz <= tol) {
-        log_write("splinepath: selfcheck ok   %s\n", what);
+        g_logger.write("splinepath: selfcheck ok   %s\n", what);
         return 0;
     }
-    log_write("splinepath: selfcheck FAIL %s -- want (%f %f %f) got "
+    g_logger.write("splinepath: selfcheck FAIL %s -- want (%f %f %f) got "
               "(%f %f %f)\n", what, x, y, z, got[0], got[1], got[2]);
     return 1;
 }
@@ -192,7 +192,7 @@ static void run_selfcheck(void)
     int        bad = 0;
     float      t;
 
-    log_write("splinepath: KAROO_SPLINE_SELFCHECK -- EvalBezierPath against "
+    g_logger.write("splinepath: KAROO_SPLINE_SELFCHECK -- EvalBezierPath against "
               "the closed-form Bernstein polynomial\n");
 
     out[0] = out[1] = out[2] = 12345.0f;
@@ -232,7 +232,7 @@ static void run_selfcheck(void)
     sp.evalBezierPath(out, 0.0f);
     bad += check_point("n=4 at t=0 is P0", out, 0, 0, 0);
 
-    log_write("splinepath: selfcheck %s (%d failure%s)\n",
+    g_logger.write("splinepath: selfcheck %s (%d failure%s)\n",
               bad ? "FAIL" : "PASS", bad, bad == 1 ? "" : "s");
 }
 

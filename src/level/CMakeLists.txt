@@ -13,6 +13,7 @@ add_library(level OBJECT
     tilequery.cpp)
 target_include_directories(level PRIVATE
     .
+    ../log
     ../audiodev
     ../windev
     ../app

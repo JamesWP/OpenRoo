@@ -28,7 +28,7 @@
 #include "tile.h"
 #include "soundmanager.h"
 #include "audiodev.h"
-#include "log.h"
+#include "logger.h"
 
 static const double FALL_DELAY_MS    = 1500.0;
 static const double RESPAWN_DELAY_MS = 5000.0;
@@ -57,16 +57,16 @@ static void fx_init(void)
     if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
         if (lstrcmpiA(buf, "slowfall") == 0) {
             s_fx_slowfall = 1;
-            log_write("breakabletile: KAROO_SIM_FX=slowfall -- fall delay "
+            g_logger.write("breakabletile: KAROO_SIM_FX=slowfall -- fall delay "
                       "%.0f ms, not %.0f\n",
                       FALL_DELAY_MS * 3.0, FALL_DELAY_MS);
         } else if (strcmp(buf, "placeaxis") == 0) {
             s_fx_placeaxis = 1;
-            log_write("breakabletile: KAROO_SIM_FX=placeaxis -- u and v are "
+            g_logger.write("breakabletile: KAROO_SIM_FX=placeaxis -- u and v are "
                       "exchanged at the single point the spawn reads them\n");
         } else if (strcmp(buf, "keepobjects") == 0) {
             s_fx_keepobjects = 1;
-            log_write("breakabletile: KAROO_SIM_FX=keepobjects -- breakable "
+            g_logger.write("breakabletile: KAROO_SIM_FX=keepobjects -- breakable "
                       "purge does nothing\n");
         }
     }
@@ -114,7 +114,7 @@ unsigned int BreakableTile::spawn(Game *game, unsigned int uArg,
     fx_init();
     s_spawns++;
     if (s_diag_place && (s_spawns % 500) == 0)
-        log_write("breakabletile: %u spawns\n", s_spawns);
+        g_logger.write("breakabletile: %u spawns\n", s_spawns);
 
     u = uArg & 0xff;
     v = vArg & 0xff;
@@ -130,7 +130,7 @@ unsigned int BreakableTile::spawn(Game *game, unsigned int uArg,
     obj = create();
     if (obj == 0 && s_diag_place && !s_logged_oom) {
         s_logged_oom = 1;
-        log_write("breakabletile: ALLOCATION FAILED in spawn -- the original "
+        g_logger.write("breakabletile: ALLOCATION FAILED in spawn -- the original "
                   "would store through the slot, which now holds NULL\n");
     }
 
@@ -139,7 +139,7 @@ unsigned int BreakableTile::spawn(Game *game, unsigned int uArg,
 
     if (s_diag_place && !s_logged_spawn) {
         s_logged_spawn = 1;
-        log_write("breakabletile: first breakable spawn -- slot=%u u=%u v=%u "
+        g_logger.write("breakabletile: first breakable spawn -- slot=%u u=%u v=%u "
                   "height=%u p4=%u obj=%p\n",
                   (unsigned)n, u, v, height, paramArg & 0xff, (void *)obj);
     }
@@ -183,7 +183,7 @@ static void release_sound(Game *game, audiodev::Buffer *h)
         return;
     if (s_diag_reset && !s_logged_release) {
         s_logged_release = 1;
-        log_write("breakabletile: first sound release -- h=%p\n", (void *)h);
+        g_logger.write("breakabletile: first sound release -- h=%p\n", (void *)h);
     }
     game->soundManager()->releaseStaticForOwner(h, 1);
 }
@@ -199,14 +199,14 @@ void BreakableTile::purgeAll(Game *game)
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
-        log_write("breakabletile: first purge -- count=%u\n",
+        g_logger.write("breakabletile: first purge -- count=%u\n",
                   (unsigned)game->breakableCount());
     }
 
     i = 0;
     if (game->breakableCount() != 0) {
         if (s_diag_reset)
-            log_write("breakabletile: LIVE purge #%u -- count=%u\n",
+            g_logger.write("breakabletile: LIVE purge #%u -- count=%u\n",
                       ++s_live_purges, (unsigned)game->breakableCount());
         do {
             //             // The two releases are siblings: a null fall sound does not skip

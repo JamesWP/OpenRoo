@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "menunav.h"
 #include "player.h"

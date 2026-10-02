@@ -23,7 +23,7 @@
 #include "menu.h"
 #include "levelreport.h"
 #include "clock.h"
-#include "log.h"
+#include "logger.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -81,10 +81,10 @@ static void read_env(void)
 static void warn_determinism(const char *what)
 {
     if (g_dt <= 0.0)
-        log_write("record: WARNING — %s without KAROO_FIXED_DT; frames will not "
+        g_logger.write("record: WARNING — %s without KAROO_FIXED_DT; frames will not "
                   "line up (REPLAY_PLAN.md Stage A)\n", what);
     if (!g_seed_set)
-        log_write("record: WARNING — %s without KAROO_SEED; the RNG tables will "
+        g_logger.write("record: WARNING — %s without KAROO_SEED; the RNG tables will "
                   "differ (REPLAY_PLAN.md Stage A2)\n", what);
 }
 
@@ -93,7 +93,7 @@ static void open_record(const char *path)
     g_fh = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
                        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (g_fh == INVALID_HANDLE_VALUE) {
-        log_write("record: cannot open %s for writing\n", path);
+        g_logger.write("record: cannot open %s for writing\n", path);
         g_mode = 0;
         return;
     }
@@ -107,7 +107,7 @@ static void open_record(const char *path)
     GetEnvironmentVariableA("KAROO_RECORD_LABEL", (char *)hdr + 24, 56);
     DWORD w = 0;
     WriteFile(g_fh, hdr, sizeof(hdr), &w, NULL);
-    log_write("record: recording to %s (dt=%.9f seed=%u%s)\n",
+    g_logger.write("record: recording to %s (dt=%.9f seed=%u%s)\n",
               path, g_dt, (unsigned)g_seed, g_seed_set ? "" : " UNSET");
     warn_determinism("recording");
 }
@@ -117,7 +117,7 @@ static void open_replay(const char *path)
     g_fh = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (g_fh == INVALID_HANDLE_VALUE) {
-        log_write("record: cannot open %s for reading\n", path);
+        g_logger.write("record: cannot open %s for reading\n", path);
         g_mode = 0;
         return;
     }
@@ -125,7 +125,7 @@ static void open_replay(const char *path)
     DWORD got = 0;
     if (!ReadFile(g_fh, hdr, sizeof(hdr), &got, NULL) || got != sizeof(hdr) ||
         memcmp(hdr, "KROO", 4) != 0) {
-        log_write("record: %s is not a recording\n", path);
+        g_logger.write("record: %s is not a recording\n", path);
         g_mode = 0;
         return;
     }
@@ -133,20 +133,20 @@ static void open_replay(const char *path)
     double rdt  = *(double *)(hdr + 8);
     DWORD  seed = *(DWORD  *)(hdr + 16);
     if (ver != RECORD_VERSION) {
-        log_write("record: %s is version %lu, this build reads %d\n",
+        g_logger.write("record: %s is version %lu, this build reads %d\n",
                   path, (unsigned long)ver, RECORD_VERSION);
         g_mode = 0;
         return;
     }
-    log_write("record: replaying %s (recorded dt=%.9f seed=%u label='%s')\n",
+    g_logger.write("record: replaying %s (recorded dt=%.9f seed=%u label='%s')\n",
               path, rdt, (unsigned)seed, (const char *)hdr + 24);
     // A replay under different determinism settings will diverge; say so, so
     // it does not look like a real mismatch.
     if (rdt != g_dt)
-        log_write("record: WARNING — replaying at dt=%.9f but recorded at %.9f\n",
+        g_logger.write("record: WARNING — replaying at dt=%.9f but recorded at %.9f\n",
                   g_dt, rdt);
     if (!g_seed_set || seed != g_seed)
-        log_write("record: WARNING — replaying with seed=%u%s but recorded with %u\n",
+        g_logger.write("record: WARNING — replaying with seed=%u%s but recorded with %u\n",
                   (unsigned)g_seed, g_seed_set ? "" : " (unset)", (unsigned)seed);
 }
 
@@ -243,7 +243,7 @@ static void load_frame(void)
             g_have_pending = true;
         } else {
             g_finished = true;
-            log_write("record: replay finished at frame %u\n", now);
+            g_logger.write("record: replay finished at frame %u\n", now);
         }
     }
 
@@ -261,14 +261,14 @@ bool replay_keys(unsigned short *game_state, BYTE *keys)
     static int served = 0, empty = 0;
     if (!g_have_play) {
         if (input_debug() && ++empty <= 5)
-            log_write("replaydbg: frame %u — no record for this frame\n", clock_frame());
+            g_logger.write("replaydbg: frame %u — no record for this frame\n", clock_frame());
         return false;
     }
     if (input_debug()) {
         int held = -1;
         for (int i = 0; i < 256; i++) if (g_play.keys[i] & 0x80) { held = i; break; }
         if (held >= 0 && ++served <= 12)
-            log_write("replaydbg: frame %u serving rec-frame %u state=%u scancode %d\n",
+            g_logger.write("replaydbg: frame %u serving rec-frame %u state=%u scancode %d\n",
                       clock_frame(), g_play.frame, g_play.game_state, held);
     }
     *game_state = g_play.game_state;
@@ -306,7 +306,7 @@ void record_frame_boundary(void)
         static int n = 0;
         if (n < 40) {
             n++;
-            log_write("askdbg: frame %u vkey=0x%02X from ret=%p\n",
+            g_logger.write("askdbg: frame %u vkey=0x%02X from ret=%p\n",
                       clock_frame(), vKey, __builtin_return_address(0));
         }
     }

@@ -9,7 +9,7 @@
 #include <windows.h>
 #include <stdlib.h>
 #include <new>
-#include "log.h"
+#include "logger.h"
 #include "foepath.h"
 #include "tile.h"
 #include "levelmap.h"
@@ -44,7 +44,7 @@ static int fx_blindfoe(void)
     if (cached < 0) {
         cached = fx_is("blindfoe");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=blindfoe -- every cell reports impassable\n");
+            g_logger.write("foepath: KAROO_SIM_FX=blindfoe -- every cell reports impassable\n");
     }
     return cached;
 }
@@ -55,7 +55,7 @@ static int fx_keyclash(void)
     if (cached < 0) {
         cached = fx_is("keyclash");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=keyclash -- node keys drop the column\n");
+            g_logger.write("foepath: KAROO_SIM_FX=keyclash -- node keys drop the column\n");
     }
     return cached;
 }
@@ -66,7 +66,7 @@ static int fx_popsecond(void)
     if (cached < 0) {
         cached = fx_is("popsecond");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=popsecond -- expanding the second-best node\n");
+            g_logger.write("foepath: KAROO_SIM_FX=popsecond -- expanding the second-best node\n");
     }
     return cached;
 }
@@ -77,7 +77,7 @@ static int fx_nolookup(void)
     if (cached < 0) {
         cached = fx_is("nolookup");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=nolookup -- both list lookups report absent\n");
+            g_logger.write("foepath: KAROO_SIM_FX=nolookup -- both list lookups report absent\n");
     }
     return cached;
 }
@@ -107,7 +107,7 @@ static void diag_report(void)
     if (c != 1 && c != 10 && c != 100 && c != 1000 && c != 10000)
         return;
 
-    log_write("foepath diag: cascades=%u reparent=%u pushes=%u pops=%u deepest=%u\n",
+    g_logger.write("foepath diag: cascades=%u reparent=%u pushes=%u pops=%u deepest=%u\n",
               g_diag.cascades, g_diag.reparent, g_diag.pushes,
               g_diag.pops, g_diag.deepest);
 }
@@ -118,7 +118,7 @@ static int fx_shortsearch(void)
     if (cached < 0) {
         cached = fx_is("shortsearch");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=shortsearch -- one expansion per search\n");
+            g_logger.write("foepath: KAROO_SIM_FX=shortsearch -- one expansion per search\n");
     }
     return cached;
 }
@@ -129,7 +129,7 @@ static int fx_fwdsearch(void)
     if (cached < 0) {
         cached = fx_is("fwdsearch");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=fwdsearch -- endpoints swapped, search runs forward\n");
+            g_logger.write("foepath: KAROO_SIM_FX=fwdsearch -- endpoints swapped, search runs forward\n");
     }
     return cached;
 }
@@ -140,7 +140,7 @@ static int fx_revexpand(void)
     if (cached < 0) {
         cached = fx_is("revexpand");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=revexpand -- neighbours expanded in reverse\n");
+            g_logger.write("foepath: KAROO_SIM_FX=revexpand -- neighbours expanded in reverse\n");
     }
     return cached;
 }
@@ -151,7 +151,7 @@ static int fx_freestep(void)
     if (cached < 0) {
         cached = fx_is("freestep");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=freestep -- every cell step reports legal\n");
+            g_logger.write("foepath: KAROO_SIM_FX=freestep -- every cell step reports legal\n");
     }
     return cached;
 }
@@ -162,7 +162,7 @@ static int fx_truedist(void)
     if (cached < 0) {
         cached = fx_is("truedist");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=truedist -- admissible heuristic, not squared\n");
+            g_logger.write("foepath: KAROO_SIM_FX=truedist -- admissible heuristic, not squared\n");
     }
     return cached;
 }
@@ -173,7 +173,7 @@ static int fx_facingramp(void)
     if (cached < 0) {
         cached = fx_is("facingramp");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=facingramp -- ramp codes use the facing pairing\n");
+            g_logger.write("foepath: KAROO_SIM_FX=facingramp -- ramp codes use the facing pairing\n");
     }
     return cached;
 }
@@ -184,7 +184,7 @@ static int fx_nocostfix(void)
     if (cached < 0) {
         cached = fx_is("nocostfix");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=nocostfix -- no cost re-propagation at all\n");
+            g_logger.write("foepath: KAROO_SIM_FX=nocostfix -- no cost re-propagation at all\n");
     }
     return cached;
 }
@@ -195,7 +195,7 @@ static int fx_nopropagate(void)
     if (cached < 0) {
         cached = fx_is("nopropagate");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=nopropagate -- cost improvements do not cascade\n");
+            g_logger.write("foepath: KAROO_SIM_FX=nopropagate -- cost improvements do not cascade\n");
     }
     return cached;
 }
@@ -206,7 +206,7 @@ static int fx_nosort(void)
     if (cached < 0) {
         cached = fx_is("nosort");
         if (cached)
-            log_write("foepath: KAROO_SIM_FX=nosort -- open list pushed at the front\n");
+            g_logger.write("foepath: KAROO_SIM_FX=nosort -- open list pushed at the front\n");
     }
     return cached;
 }
@@ -313,11 +313,11 @@ void FoePath::releaseLists()
     // prove the function is reached, not that it ever frees anything.
     if (reported == 0) {
         reported = 1;
-        log_write("foepath: first ReleasePathSearchNodeLists -- %d node(s) freed\n", freed);
+        g_logger.write("foepath: first ReleasePathSearchNodeLists -- %d node(s) freed\n", freed);
     }
     if (reported == 1 && freed > 0) {
         reported = 2;
-        log_write("foepath: first non-empty release -- %d node(s) freed\n", freed);
+        g_logger.write("foepath: first non-empty release -- %d node(s) freed\n", freed);
     }
 }
 

@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
-#include "log.h"
+#include "logger.h"
 #include "levelmap.h"
 #include <stdlib.h>
 
@@ -39,7 +39,7 @@ static bool fx_flipx(void)
         cached = 0;
         if (GetEnvironmentVariableA("KAROO_JJM_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "flipx") == 0);
-        log_write("levelmap: FX mode = %s\n", cached ? "flipx" : "off");
+        g_logger.write("levelmap: FX mode = %s\n", cached ? "flipx" : "off");
     }
     return cached != 0;
 }
@@ -119,7 +119,7 @@ int LevelMap::readFile(const char *path)
 
     if (logged < LM_LOG_FIRST) {
         logged++;
-        log_write("levelmap: '%s' %ux%u\n", name, width, height);
+        g_logger.write("levelmap: '%s' %ux%u\n", name, width, height);
     }
     return 1;
 }

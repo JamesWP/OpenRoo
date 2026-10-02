@@ -11,7 +11,7 @@
  * every frame. */
 
 #include "plan.h"
-#include "log.h"
+#include "logger.h"
 #include <string.h>
 
 #define CELLS      (WS_GRID_PITCH * WS_GRID_PITCH)
@@ -239,17 +239,17 @@ static void build_tour(const Observation *o, int pu, int pv)
     for (int i = 0; i < m; i++) g_tour[i] = g_stop[order[i]];
     g_tour_n = m;
 
-    log_write("plan: tour rebuilt from (%d,%d): %d of %d stops reachable\n",
+    g_logger.write("plan: tour rebuilt from (%d,%d): %d of %d stops reachable\n",
               pu, pv, m, n);
     for (int i = 0; i < m && i < 6; i++)
-        log_write("plan:   [%d] (%d,%d) contents=%u%s cost=%d\n", i,
+        g_logger.write("plan:   [%d] (%d,%d) contents=%u%s cost=%d\n", i,
                   g_tour[i] / WS_GRID_PITCH, g_tour[i] % WS_GRID_PITCH,
                   o->grid[g_tour[i]].contents,
                   rank[order[i]] == 2 ? " SPECIAL" : rank[order[i]] ? " GUARDED" : "",
                   g_cost[i == 0 ? 0 : order[i-1] + 1][order[i] + 1]);
     for (int i = 0; i < n; i++)
         if (o->grid[g_stop[i]].contents != CONTENTS_CRYSTAL)
-            log_write("plan:   special contents=%u at (%d,%d) reachable=%s%s\n",
+            g_logger.write("plan:   special contents=%u at (%d,%d) reachable=%s%s\n",
                       o->grid[g_stop[i]].contents,
                       g_stop[i] / WS_GRID_PITCH, g_stop[i] % WS_GRID_PITCH,
                       g_cost[0][i + 1] == UNREACHED ? "NO" : "yes",

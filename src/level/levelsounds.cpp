@@ -11,10 +11,9 @@
 
 #include <windows.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "soundmanager.h"
 #include "game.h"
-#include "gamelog.h"
 #include "levelsounds.h"
 #include "player.h"
 #include "soundobj.h"
@@ -82,7 +81,7 @@ Sim_InitLevelBasedSounds(Game *self)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "worldcode") == 0);
         if (s_fx)
-            log_write("levelsounds: KAROO_SIM_FX=worldcode -- Space/Candy swapped\n");
+            g_logger.write("levelsounds: KAROO_SIM_FX=worldcode -- Space/Candy swapped\n");
     }
 
     g_logger.logMessage(2, GS_SND_TRY_INIT);

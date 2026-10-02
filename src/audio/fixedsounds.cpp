@@ -9,11 +9,10 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "soundmanager.h"
 #include "game.h"
 #include "reportwriter.h"
-#include "gamelog.h"
 #include "fixedsounds.h"
 #include "menutree.h"
 #include "player.h"
@@ -49,7 +48,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "reportkey") == 0);
         if (s_fx)
-            log_write("fixedsounds: KAROO_SIM_FX=reportkey -- VK_L not polled\n");
+            g_logger.write("fixedsounds: KAROO_SIM_FX=reportkey -- VK_L not polled\n");
     }
 
     if (self->fixedSounds()->loaded != 0)

@@ -24,7 +24,7 @@
 #include "tile.h"
 #include "soundmanager.h"
 #include "audiodev.h"
-#include "log.h"
+#include "logger.h"
 
 static const float  K_MS_TO_HEIGHT = 0.005f;
 static const double K_PARK_DWELL   = 1500.0;
@@ -54,15 +54,15 @@ static void fx_init(void)
     if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
         if (strcmp(buf, "liftflip") == 0) {
             s_fx_liftflip = 1;
-            log_write("liftobject: KAROO_SIM_FX=liftflip -- departure "
+            g_logger.write("liftobject: KAROO_SIM_FX=liftflip -- departure "
                       "direction inverted\n");
         } else if (strcmp(buf, "placeaxis") == 0) {
             s_fx_placeaxis = 1;
-            log_write("liftobject: KAROO_SIM_FX=placeaxis -- lift spawn "
+            g_logger.write("liftobject: KAROO_SIM_FX=placeaxis -- lift spawn "
                       "exchanges u and v\n");
         } else if (strcmp(buf, "keepobjects") == 0) {
             s_fx_keepobjects = 1;
-            log_write("liftobject: KAROO_SIM_FX=keepobjects -- lift purge "
+            g_logger.write("liftobject: KAROO_SIM_FX=keepobjects -- lift purge "
                       "does nothing\n");
         }
     }
@@ -125,7 +125,7 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     if (raw == 0) {
         if (s_diag_place && !s_logged_oom) {
             s_logged_oom = 1;
-            log_write("liftobject: ALLOCATION FAILED in spawn -- the original "
+            g_logger.write("liftobject: ALLOCATION FAILED in spawn -- the original "
                       "would store through the slot, which now holds NULL\n");
         }
     }
@@ -137,7 +137,7 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     if (s_diag_place && !s_logged_spawn) {
         s_logged_spawn = 1;
-        log_write("liftobject: first lift spawn -- slot=%u u=%u v=%u "
+        g_logger.write("liftobject: first lift spawn -- slot=%u u=%u v=%u "
                   "base=%u top=%u obj=%p\n",
                   (unsigned)n, u, v, base, top, (void *)obj);
     }
@@ -183,14 +183,14 @@ void LiftObject::purgeAll(Game *game)
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
-        log_write("liftobject: first purge -- count=%u\n",
+        g_logger.write("liftobject: first purge -- count=%u\n",
                   (unsigned)game->liftCount());
     }
 
     i = 0;
     if (game->liftCount() != 0) {
         if (s_diag_reset)
-            log_write("liftobject: LIVE purge #%u -- count=%u\n",
+            g_logger.write("liftobject: LIVE purge #%u -- count=%u\n",
                       ++s_live_purges, (unsigned)game->liftCount());
         do {
             if (game->soundCreated() != 0) {
@@ -230,12 +230,12 @@ void LiftObject::tick()
     //     // Logged even with the diag off, so a log shows whether any lift ran.
     if (!s_logged_first) {
         s_logged_first = 1;
-        log_write("liftobject: first lift tick -- this=%p\n", (void *)this);
+        g_logger.write("liftobject: first lift tick -- this=%p\n", (void *)this);
     }
     if (s_diag_lift) {
         ++s_ticks;
         if ((s_ticks % 5000) == 0)
-            log_write("liftobject: %lu ticks\n", s_ticks);
+            g_logger.write("liftobject: %lu ticks\n", s_ticks);
     }
 
     tickStepCopy_ = *tickStep_;
@@ -254,7 +254,7 @@ void LiftObject::tick()
 
             if (s_diag_lift && !s_logged_rise) {
                 s_logged_rise = 1;
-                log_write("liftobject: first completed rise -- cell=(%d,%d) "
+                g_logger.write("liftobject: first completed rise -- cell=(%d,%d) "
                           "top=%d\n", (int)cellU_, (int)cellV_, (int)top);
             }
 
@@ -289,7 +289,7 @@ void LiftObject::tick()
 
                 if (s_diag_lift && !s_logged_fall) {
                     s_logged_fall = 1;
-                    log_write("liftobject: first completed fall -- "
+                    g_logger.write("liftobject: first completed fall -- "
                               "cell=(%d,%d) bottom=%d\n",
                               (int)cellU_, (int)cellV_, (int)bot);
                 }
@@ -329,7 +329,7 @@ void LiftObject::tick()
 
             if (s_diag_lift && !s_logged_depart) {
                 s_logged_depart = 1;
-                log_write("liftobject: first depart -- cell=(%d,%d) "
+                g_logger.write("liftobject: first depart -- cell=(%d,%d) "
                           "latch=%d state=%d\n",
                           (int)cellU_, (int)cellV_, latch, (int)state_);
             }

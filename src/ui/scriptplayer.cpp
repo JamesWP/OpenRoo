@@ -20,11 +20,10 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "scriptplayer.h"
 #include "soundmanager.h"
 #include <stdlib.h>
-#include "gamelog.h"
 #include "gameglobals.h"
 #include <new>
 #include "splinepath.h"
@@ -63,7 +62,7 @@ static bool fx_blank(void)
         cached = 0;
         if (GetEnvironmentVariableA("KAROO_JJS_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "blank") == 0);
-        log_write("jjscript: FX mode = %s\n", cached ? "blank" : "off");
+        g_logger.write("jjscript: FX mode = %s\n", cached ? "blank" : "off");
     }
     return cached != 0;
 }
@@ -158,7 +157,7 @@ int ScriptPlayer::readForLevel(const char *path)
 
     if (logged < JJS_LOG_FIRST) {
         logged++;
-        log_write("jjscript: '%s' entries=%u\n",
+        g_logger.write("jjscript: '%s' entries=%u\n",
                   name, (unsigned)lineCount_);
     }
     return 1;
@@ -255,7 +254,7 @@ int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
 
     if (logged < JJSR_LOG_FIRST) {
         logged++;
-        log_write("jjsreport: '%s' texts=%u splines=%u\n", name, textIndex,
+        g_logger.write("jjsreport: '%s' texts=%u splines=%u\n", name, textIndex,
                   (unsigned)splineLines_);
     }
     return 0;  // PRESERVED: always 0
@@ -304,7 +303,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
     SplinePath *spline = &spline_;
 
     if (jjs_diag())
-        log_write("jjscript: line %u cmd %s\n", cursor_, cmd ? cmd : "(null)");
+        g_logger.write("jjscript: line %u cmd %s\n", cursor_, cmd ? cmd : "(null)");
 
     if (strcmp(cmd, "fromhere") == 0) {
         againLine_ = cursor_ + 1;

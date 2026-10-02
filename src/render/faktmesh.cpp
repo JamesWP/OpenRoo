@@ -11,10 +11,9 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "gamelog.h"
+#include "logger.h"
 #include "gamestr.h"
 #include <stdlib.h>
-#include "log.h"
 #include "renderdevice.h"
 CFaktMesh g_meshEnemy;
 CFaktMesh g_meshPlayer;
@@ -31,7 +30,7 @@ static bool fx_half(void)
         cached = 0;
         if (GetEnvironmentVariableA("KAROO_FAKTMESH_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "half") == 0);
-        log_write("faktmesh: FX mode = %s\n", cached ? "half" : "off");
+        g_logger.write("faktmesh: FX mode = %s\n", cached ? "half" : "off");
     }
     return cached != 0;
 }
@@ -48,7 +47,7 @@ static void mesh_diag(RenderDevice *dev, DWORD flags)
     if (InterlockedExchange(&once, 1) != 0)
         return;
 
-    log_write("diag: drawflags=%02lX\n", flags);
+    g_logger.write("diag: drawflags=%02lX\n", flags);
     dev->LogState("diag");
 }
 
@@ -70,7 +69,7 @@ HRESULT CFaktMesh::drawMesh(RenderDevice *dev, DWORD frame,
 
     static LONG logged = 0;
     if (InterlockedIncrement(&logged) <= MESH_LOG_FIRST)
-        log_write("faktmesh: %s this=%p dev=%p frame=%lu count=%lu flags=%02lX -> hr=%08lX\n",
+        g_logger.write("faktmesh: %s this=%p dev=%p frame=%lu count=%lu flags=%02lX -> hr=%08lX\n",
                   name, this, dev, frame, count, flags, hr);
     return hr;
 }
@@ -127,7 +126,7 @@ CFaktMesh::CFaktMesh()
 
     static LONG logged = 0;
     if (InterlockedIncrement(&logged) <= MESH_LOG_FIRST)
-        log_write("faktmesh: Init this=%p\n", this);
+        g_logger.write("faktmesh: Init this=%p\n", this);
 }
 
 CFaktMesh::~CFaktMesh()
@@ -163,7 +162,7 @@ static bool fx_scale(void)
         cached = 0;
         if (GetEnvironmentVariableA("KAROO_MDL_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "scale") == 0);
-        log_write("model: FX mode = %s\n", cached ? "scale" : "off");
+        g_logger.write("model: FX mode = %s\n", cached ? "scale" : "off");
     }
     return cached != 0;
 }
@@ -267,7 +266,7 @@ int CFaktMesh::importSceneModels(const char *path)
 
     if (logged < MDL_LOG_FIRST) {
         logged++;
-        log_write("model: '%s' frames=%u verts=%u\n", path, frames, verts);
+        g_logger.write("model: '%s' frames=%u verts=%u\n", path, frames, verts);
     }
     return 1;
 }

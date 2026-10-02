@@ -43,7 +43,7 @@
 #include "theme.h"
 #include "game.h"
 #include "bridgeobject.h"
-#include "log.h"
+#include "logger.h"
 
 #define BRIDGE_FVF        VertexFormat::Diffuse2
 #define BRIDGE_LOG_FIRST  8
@@ -62,7 +62,7 @@ static BridgeFxMode bridge_fx(void)
             else if (lstrcmpiA(buf, "nodraw") == 0)   cached = BRIDGE_FX_NODRAW;
             else if (lstrcmpiA(buf, "backward") == 0) cached = BRIDGE_FX_BACKWARD;
         }
-        log_write("bridgesurf: FX mode = %s\n",
+        g_logger.write("bridgesurf: FX mode = %s\n",
                   cached == BRIDGE_FX_TINT     ? "tint" :
                   cached == BRIDGE_FX_NODRAW   ? "nodraw" :
                   cached == BRIDGE_FX_BACKWARD ? "backward" : "off");
@@ -98,7 +98,7 @@ static void bridge_note_variant(DWORD k, int axis, int dir, int n,
     seen[nseen++] = key;
     // The two v coordinates of texture set 0 are the whole animation; under
     // backward both must change sign, for every variant.
-    log_write("bridgesurf: diag variant #%d cv=%lu axis=%d dir=%d n=%d "
+    g_logger.write("bridgesurf: diag variant #%d cv=%lu axis=%d dir=%d n=%d "
               "(branch %s/%s) v[0]=%d/1000 v[1]=%d/1000\n",
               nseen, k, axis, dir, n,
               axis == 1 ? "X" : "Z", dir > 0 ? "fwd" : "back",
@@ -185,7 +185,7 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
 
                     static LONG logged = 0;
                     if (InterlockedIncrement(&logged) <= BRIDGE_LOG_FIRST)
-                        log_write("bridgesurf: obj=%lu sub=%lu cv=%lu axis=%d "
+                        g_logger.write("bridgesurf: obj=%lu sub=%lu cv=%lu axis=%d "
                                   "dir=%d n=%d len=%d f=%d/1000 -> ok=%d\n",
                                   i, s, k, info.axis, info.dir, info.n,
                                   (int)(info.len * 1000.0f),

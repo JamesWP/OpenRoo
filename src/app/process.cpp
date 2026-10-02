@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
-#include "log.h"
+#include "logger.h"
 #include "sysdev.h"
 #include "launcher.h"
 
@@ -19,17 +19,17 @@ static void crt_stderr_probe(void)
     static const char msg[] = "karoo: CRT_PLAN Stage B stderr probe\n";
     const unsigned n = (unsigned)fwrite(msg, sizeof(msg) - 1, 1, stderr);
 
-    log_write("crt: our fwrite(stderr)=%u\n", n);
+    g_logger.write("crt: our fwrite(stderr)=%u\n", n);
 }
 
 void Process_Attach(const char *log_name)
 {
-    log_open(log_name);
+    g_logger.open(log_name);
     char path[MAX_PATH];
     if (!sysdev::executablePath(path, MAX_PATH))
         path[0] = '\0';
-    log_write("karoo_hooks loaded by: %s\n", path);
-    sysdev::setLog(log_write);
+    g_logger.write("karoo_hooks loaded by: %s\n", path);
+    sysdev::setLog(log_sink);
     sysdev::installCrashLogger();
     crt_stderr_probe();
     launcher_init();

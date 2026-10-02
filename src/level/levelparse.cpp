@@ -29,14 +29,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "log.h"
+#include "logger.h"
 #include "windev.h"
 #include "game.h"
 #include "levelparse.h"
 #include "soundmanager.h"
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "gamelog.h"
 
 /* The map-changed flag and the peeked next level's bonus are Game fields. */
 
@@ -46,7 +45,6 @@
 
 namespace audiodev { class Buffer; }
 
-class GameLogger;
 
 static int s_fx_samelevel  = 0;
 static int s_fx_crtpath    = 0;
@@ -70,12 +68,12 @@ static void fx_init(void)
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "samelevel") == 0) {
             s_fx_samelevel = 1;
-            log_write("levelparse: KAROO_SIM_FX=samelevel -- the previous map "
+            g_logger.write("levelparse: KAROO_SIM_FX=samelevel -- the previous map "
                       "name is copied AFTER the read, so the +0x10 "
                       "map-changed flag is stuck at 0\n");
         } else if (strcmp(buf, "levelshift") == 0) {
             s_fx_levelshift = 1;
-            log_write("levelparse: KAROO_SIM_FX=levelshift -- the level-name "
+            g_logger.write("levelparse: KAROO_SIM_FX=levelshift -- the level-name "
                       "lookup reads entry N+1, so every load opens the NEXT "
                       "level's map and script\n");
         }
@@ -86,7 +84,7 @@ static void fx_init(void)
     n = GetEnvironmentVariableA("KAROO_CRT_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "path") == 0) {
         s_fx_crtpath = 1;
-        log_write("levelparse: KAROO_CRT_FX=path -- the two %%s arguments to "
+        g_logger.write("levelparse: KAROO_CRT_FX=path -- the two %%s arguments to "
                   "our sprintf are swapped, so every level path is "
                   "nonsense\n");
     }
@@ -168,7 +166,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     s_parses++;
     if (s_diag)
-        log_write("levelparse: DIAG parse #%u name=\"%s\" map=%s changed=%u "
+        g_logger.write("levelparse: DIAG parse #%u name=\"%s\" map=%s changed=%u "
                   "script=%u released=%u\n",
                   s_parses, name, (char)ok ? "ok" : "FAILED",
                   self->mapChanged(),
@@ -217,7 +215,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
         self->setNextLevelBonus(self->map()->bonus());
 
         if (s_diag)
-            log_write("levelparse: bonus peek for level %u -> bonus=%u\n",
+            g_logger.write("levelparse: bonus peek for level %u -> bonus=%u\n",
                       (unsigned)(unsigned char)(self->levelIndex() + 1),
                       self->nextLevelBonus());
     }
@@ -264,7 +262,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     s_opens++;
     if (s_diag)
-        log_write("levelparse: DIAG open #%u level=%u name=\"%s\" map=%s "
+        g_logger.write("levelparse: DIAG open #%u level=%u name=\"%s\" map=%s "
                   "changed=%u script=%u released=%u\n",
                   s_opens, levelNo & 0xff, self->levelName(),
                   (char)ok ? "ok" : "FAILED",

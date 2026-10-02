@@ -11,13 +11,12 @@
 #include "particles.h"
 #include "generators.h"
 #include "factory.h"
-#include "log.h"
+#include "logger.h"
 #include "determinism.h"
 #include <stdlib.h>
 #include "assetio.h"
 #include "clock.h"
 #include "crtrand.h"
-#include "gamelog.h"
 #include "gamestr.h"
 #include <math.h>
 #include <string.h>
@@ -42,7 +41,7 @@ static bool fx_tint(void)
     static const bool on = fx_is("tint");
     static LONG logged = 0;
     if (InterlockedExchange(&logged, 1) == 0)
-        log_write("particle: FX mode = %s\n", on ? "tint" : "off");
+        g_logger.write("particle: FX mode = %s\n", on ? "tint" : "off");
     return on;
 }
 
@@ -63,7 +62,7 @@ static void log_draw(DrawLogState *st, const char *name, const void *self,
     if (count > 0 && InterlockedExchange(&st->nonempty, 1) == 0)
         report = true;
     if (report)
-        log_write("particle: %s this=%p dev=%p verts=%lu -> ok=%d\n",
+        g_logger.write("particle: %s this=%p dev=%p verts=%lu -> ok=%d\n",
                   name, self, dev, count, ok);
 }
 
@@ -239,7 +238,7 @@ static bool fx_spin(void)
     static const bool on = fx_is("spin");
     static LONG logged = 0;
     if (on && InterlockedExchange(&logged, 1) == 0)
-        log_write("particle: FX mode = spin\n");
+        g_logger.write("particle: FX mode = spin\n");
     return on;
 }
 
@@ -247,7 +246,7 @@ void ParticleSystem::tick(float dt)
 {
     static LONG once = 0;
     if (InterlockedExchange(&once, 1) == 0)
-        log_write("particle: BaseTick active (this=%p dt=%f gen=%p env=%p)\n",
+        g_logger.write("particle: BaseTick active (this=%p dt=%f gen=%p env=%p)\n",
                   this, dt, pGenerator_, pEnvironment_);
     if (pGenerator_)
         pGenerator_->tick(dt);
@@ -260,7 +259,7 @@ void XFaceParticleSystem::tick(float dt)
 {
     static LONG once = 0;
     if (InterlockedExchange(&once, 1) == 0)
-        log_write("particle: XFaceTick active (this=%p entries=%lu)\n",
+        g_logger.write("particle: XFaceTick active (this=%p entries=%lu)\n",
                   this, dwCornerTableCount_);
     if (pCornerTable_) {
         float spin = fx_spin() ? 10.0f : 1.0f;
@@ -313,7 +312,7 @@ void FaceParticleSystem::setVector(float x, float y, float z)
 {
     static LONG once = 0;
     if (InterlockedExchange(&once, 1) == 0)
-        log_write("particle: FaceSetVector active (this=%p dir=%f,%f,%f)\n",
+        g_logger.write("particle: FaceSetVector active (this=%p dir=%f,%f,%f)\n",
                   this, x, y, z);
     float basis[3] = { 1.0f, 0.0f, 0.0f };
     if (x == 1.0f && y == 0.0f && z == 0.0f) {
@@ -351,7 +350,7 @@ void FaceParticleSystem::transformCorners(float *matrix)
 {
     static LONG once = 0;
     if (InterlockedExchange(&once, 1) == 0)
-        log_write("particle: FaceTransformCorners active (this=%p)\n", this);
+        g_logger.write("particle: FaceTransformCorners active (this=%p)\n", this);
     for (int c = 0; c < 6; c++)
         transform_point(flCorner_[c], matrix);
 }
@@ -525,7 +524,7 @@ BOOL ParticleSystem::copyFrom(const ParticleSystem *src)
 
 /* ─── Save / Load ──────────────────────────────────────────────────────────
  *
- * Both take (FILE *, GameLogger *) and return BOOL; the base ignores the
+ * Both take (FILE *) and return BOOL; the base ignores the
  * logger, the subclasses report through it.
  *
  * FORMAT: a sub-object's class name is its length including the terminator,
@@ -544,7 +543,7 @@ static BOOL ps_write_sub_object(T *obj, void *fp)
 }
 
 /* Ring size, then the generator and the environment. */
-BOOL ParticleSystem::save(void *fp, GameLogger *)
+BOOL ParticleSystem::save(void *fp)
 {
     if (fp == NULL)
         return FALSE;
@@ -556,16 +555,16 @@ BOOL ParticleSystem::save(void *fp, GameLogger *)
 
 /* Read one length-prefixed class name into a fresh buffer.  NULL on failure;
  * the caller frees. */
-static char *ps_read_name(void *fp, GameLogger *log, const char *msg_name)
+static char *ps_read_name(void *fp, const char *msg_name)
 {
     DWORD len;
     if (!ps_read(&len, 4, fp)) {
-        log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOLEN);
+        g_logger.logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOLEN);
         return NULL;
     }
     char *name = (char *)::operator new(len, std::nothrow);
     if (hooks_fread(name, 1, len, fp) != len) {
-        log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, msg_name);
+        g_logger.logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, msg_name);
         ::operator delete(name);
         return NULL;
     }
@@ -575,20 +574,20 @@ static char *ps_read_name(void *fp, GameLogger *log, const char *msg_name)
 /* One sub-object: its class name, the factory, then its load.  *out is NULL
  * for the literal "NULL" name.  Each failure logs its own message. */
 template <class T>
-static BOOL ps_load_sub_object(void *fp, GameLogger *log, T **out,
+static BOOL ps_load_sub_object(void *fp, T **out,
                                const char *msg_noname, const char *msg_nocreate,
                                const char *msg_noload)
 {
     *out = NULL;
-    char *name = ps_read_name(fp, log, msg_noname);
+    char *name = ps_read_name(fp, msg_noname);
     if (name == NULL)
         return FALSE;
     if (strcmp(name, GS_PS_NAME_NULL) != 0) {
         T *obj = T::create(name);
         if (obj == NULL) {
-            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, msg_nocreate, name);
+            g_logger.logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, msg_nocreate, name);
         } else if (!obj->load(fp)) {
-            log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, msg_noload, name);
+            g_logger.logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, msg_noload, name);
             delete obj;
         } else {
             *out = obj;
@@ -605,29 +604,29 @@ static BOOL ps_load_sub_object(void *fp, GameLogger *log, T **out,
 /* Release, re-make the ring at the stored size, then load and attach each
  * sub-object.  The ring is sized directly rather than through setCapacity, so
  * a subclass's override does not run here. */
-BOOL ParticleSystem::load(void *fp, GameLogger *log)
+BOOL ParticleSystem::load(void *fp)
 {
     release(1);
 
     DWORD count;
     if (!ps_read(&count, 4, fp)) {
-        log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOCOUNT);
+        g_logger.logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NOCOUNT);
         return FALSE;
     }
     if (!ring_.alloc(count, 0)) {
-        log->logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NORING);
+        g_logger.logSourceLocation(4, GS_PS_SRC_FILE, __LINE__, GS_PS_MSG_NORING);
         return FALSE;
     }
 
     Generator *gen;
-    if (!ps_load_sub_object(fp, log, &gen, GS_PS_MSG_NONAME, GS_PS_MSG_NOGEN,
+    if (!ps_load_sub_object(fp, &gen, GS_PS_MSG_NONAME, GS_PS_MSG_NOGEN,
                             GS_PS_MSG_GENLOAD))
         return FALSE;
     if (gen)
         setGenerator(gen);
 
     Environment *env;
-    if (!ps_load_sub_object(fp, log, &env, GS_PS_MSG_NOENV, GS_PS_MSG_ENVNAME,
+    if (!ps_load_sub_object(fp, &env, GS_PS_MSG_NOENV, GS_PS_MSG_ENVNAME,
                             GS_PS_MSG_ENVLOAD))
         return FALSE;
     if (env)
@@ -694,18 +693,18 @@ BOOL PointParticleSystem::copyFrom(const ParticleSystem *src)
 }
 
 /* The base write, whose result is discarded, then success. */
-BOOL PointParticleSystem::save(void *fp, GameLogger *log)
+BOOL PointParticleSystem::save(void *fp)
 {
-    ParticleSystem::save(fp, log);
+    ParticleSystem::save(fp);
     return TRUE;
 }
 
-BOOL PointParticleSystem::load(void *fp, GameLogger *log)
+BOOL PointParticleSystem::load(void *fp)
 {
-    if (!ParticleSystem::load(fp, log))
+    if (!ParticleSystem::load(fp))
         return FALSE;
     if (!allocVerts(1)) {
-        log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_PTVERTS);
+        g_logger.logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_PTVERTS);
         return FALSE;
     }
     return TRUE;
@@ -738,26 +737,26 @@ BOOL FaceParticleSystem::resize(DWORD count)
 }
 
 /* The base write (result discarded, as Point's), then the scale. */
-BOOL FaceParticleSystem::save(void *fp, GameLogger *log)
+BOOL FaceParticleSystem::save(void *fp)
 {
-    ParticleSystem::save(fp, log);
+    ParticleSystem::save(fp);
     if (!ps_write(&flScale_, 4, fp)) {
-        log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_SAVESIZE);
+        g_logger.logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_SAVESIZE);
         return FALSE;
     }
     return TRUE;
 }
 
-BOOL FaceParticleSystem::load(void *fp, GameLogger *log)
+BOOL FaceParticleSystem::load(void *fp)
 {
-    if (!ParticleSystem::load(fp, log))
+    if (!ParticleSystem::load(fp))
         return FALSE;
     if (!ps_read(&flScale_, 4, fp)) {
-        log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_FACESIZE);
+        g_logger.logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_FACESIZE);
         return FALSE;
     }
     if (!allocVerts()) {
-        log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_VERTARR);
+        g_logger.logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_VERTARR);
         return FALSE;
     }
     return TRUE;
@@ -907,25 +906,25 @@ BOOL XFaceParticleSystem::resize(DWORD count)
 /* The base stream, then the corner count and the eight ranges.  Load finishes
  * by re-running setCapacity with the ring size, which rebuilds the corners and
  * vertices. */
-BOOL XFaceParticleSystem::save(void *fp, GameLogger *log)
+BOOL XFaceParticleSystem::save(void *fp)
 {
-    if (!ParticleSystem::save(fp, log))
+    if (!ParticleSystem::save(fp))
         return FALSE;
     if (ps_write(&dwCornerTableCount_, 4, fp)
         && ps_write(ranges, sizeof(ranges), fp))
         return TRUE;
-    log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_XSAVE);
+    g_logger.logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_XSAVE);
     return FALSE;
 }
 
-BOOL XFaceParticleSystem::load(void *fp, GameLogger *log)
+BOOL XFaceParticleSystem::load(void *fp)
 {
-    if (!ParticleSystem::load(fp, log))
+    if (!ParticleSystem::load(fp))
         return FALSE;
     if (ps_read(&dwCornerTableCount_, 4, fp) && ps_read(ranges, sizeof(ranges), fp))
         return setCapacity(ring_.dwRingCount);
     release(1);
-    log->logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_XLOAD);
+    g_logger.logSourceLocation(4, GS_PS_SUB_FILE, __LINE__, GS_PS_MSG_XLOAD);
     return FALSE;
 }
 
@@ -996,28 +995,28 @@ ParticleSystem::create(const char *name)
  *
  * Length-prefixed class name, then the factory, then load. */
 ParticleSystem *
-ParticleSystem::loadStream(void *fp, GameLogger *log)
+ParticleSystem::loadStream(void *fp)
 {
     DWORD len;
     if (hooks_fread(&len, 4, 1, fp) != 1) {
-        log->logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NODATA);
+        g_logger.logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NODATA);
         return NULL;
     }
     char *name = (char *)::operator new(len, std::nothrow);
     if (hooks_fread(name, 1, len, fp) != len) {
         ::operator delete(name);
-        log->logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NAMEREAD);
+        g_logger.logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NAMEREAD);
         return NULL;
     }
     ParticleSystem *ps = ParticleSystem::create(name);
     if (ps == NULL) {
         // Logged before the free here, unlike load's two branches.
-        log->logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOSYSTEM, name);
+        g_logger.logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOSYSTEM, name);
         ::operator delete(name);
         return NULL;
     }
     ::operator delete(name);
-    if (!ps->load(fp, log)) {
+    if (!ps->load(fp)) {
         delete ps;
         return NULL;
     }
@@ -1026,17 +1025,17 @@ ParticleSystem::loadStream(void *fp, GameLogger *log)
 
 /* The .par entry point.  A failed fclose discards the system that was read. */
 ParticleSystem *
-ParticleSystem::loadFile(const char *path, GameLogger *log)
+ParticleSystem::loadFile(const char *path)
 {
-    log->logMessage(2, GS_PS_MSG_STARTREAD, path);
+    g_logger.logMessage(2, GS_PS_MSG_STARTREAD, path);
     void *fp = hooks_fopen(path, "r");  // text mode
     if (fp == NULL) {
-        log->logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOOPEN, path);
+        g_logger.logSourceLocation(4, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOOPEN, path);
         return NULL;
     }
-    ParticleSystem *ps = ParticleSystem::loadStream(fp, log);
+    ParticleSystem *ps = ParticleSystem::loadStream(fp);
     if (hooks_fclose(fp) != 0) {
-        log->logSourceLocation(3, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOCLOSE, path);
+        g_logger.logSourceLocation(3, GS_PS_OPENSAVE_FILE, __LINE__, GS_PS_MSG_NOCLOSE, path);
         delete ps;
         return NULL;
     }

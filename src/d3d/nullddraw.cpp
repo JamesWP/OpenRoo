@@ -84,7 +84,7 @@
 #include <ddraw.h>
 #include <d3d.h>
 #include "nullddraw.h"
-#include "log.h"
+#include "logger.h"
 #include <string.h>
 
 #define NOINLINE __attribute__((noinline))
@@ -114,7 +114,7 @@ bool nulldd_enabled(void)
         char buf[8];
         cached = GetEnvironmentVariableA("KAROO_HEADLESS", buf, sizeof(buf))
                  && buf[0] != '0';
-        log_write("nullddraw: headless mode %s\n", cached ? "ON" : "off");
+        g_logger.write("nullddraw: headless mode %s\n", cached ? "ON" : "off");
     }
     return cached != 0;
 }
@@ -124,7 +124,7 @@ bool nulldd_enabled(void)
     do {                                                                 \
         static LONG once_##name = 0;                                     \
         if (InterlockedIncrement(&once_##name) == 1)                     \
-            log_write(__VA_ARGS__);                                      \
+            g_logger.write(__VA_ARGS__);                                      \
     } while (0)
 
 /* ─── Recorded tables (KAROO_DDRAW_DIAG=1, stock Wine ddraw) ───────────── */
@@ -319,7 +319,7 @@ static NullSurface *surf_alloc(void)
             return s;
         }
     }
-    log_write("nullddraw: surface pool EXHAUSTED (%d in use)\n", SURF_POOL_SIZE);
+    g_logger.write("nullddraw: surface pool EXHAUSTED (%d in use)\n", SURF_POOL_SIZE);
     return NULL;
 }
 
@@ -480,7 +480,7 @@ static NullTexture2 *tex_for_surface(NullSurface *surf)
             return t;
         }
     }
-    log_write("nullddraw: texture pool EXHAUSTED (%d in use)\n", TEX_POOL_SIZE);
+    g_logger.write("nullddraw: texture pool EXHAUSTED (%d in use)\n", TEX_POOL_SIZE);
     return NULL;
 }
 
@@ -567,7 +567,7 @@ static HRESULT WINAPI NOINLINE ns_AddAttachedSurface(NullSurface *s, NullSurface
 {
     if (!att) return DDERR_INVALIDPARAMS;
     if (s->n_attached >= MAX_ATTACHED) {
-        log_write("nullddraw: too many attached surfaces on %p\n", s);
+        g_logger.write("nullddraw: too many attached surfaces on %p\n", s);
         return DDERR_CANNOTATTACHSURFACE;
     }
     s->attached[s->n_attached++] = att;
@@ -1191,7 +1191,7 @@ static HRESULT WINAPI NOINLINE n4_CreatePalette(NullObj *s, DWORD flags,
             return S_OK;
         }
     }
-    log_write("nullddraw: palette pool EXHAUSTED\n");
+    g_logger.write("nullddraw: palette pool EXHAUSTED\n");
     return DDERR_OUTOFMEMORY;
 }
 
@@ -1240,7 +1240,7 @@ static HRESULT WINAPI NOINLINE n4_SetDisplayMode(NullObj *s, DWORD w, DWORD h,
     /* Records the mode; changes nothing.  This is the call that would resize
      * the desktop and steal focus on a real driver. */
     s_cur_w = w; s_cur_h = h; s_cur_bpp = bpp;
-    log_write("nullddraw: SetDisplayMode %lux%lux%lu (recorded, not applied)\n",
+    g_logger.write("nullddraw: SetDisplayMode %lux%lux%lu (recorded, not applied)\n",
               (unsigned long)w, (unsigned long)h, (unsigned long)bpp);
     return S_OK;
 }
@@ -1248,7 +1248,7 @@ static HRESULT WINAPI NOINLINE n4_SetDisplayMode(NullObj *s, DWORD w, DWORD h,
 static HRESULT WINAPI NOINLINE n4_SetCooperativeLevel(NullObj *s, HWND hwnd, DWORD flags)
 {
     (void)s;
-    log_write("nullddraw: SetCooperativeLevel hwnd=%p flags=%08lX (ignored)\n",
+    g_logger.write("nullddraw: SetCooperativeLevel hwnd=%p flags=%08lX (ignored)\n",
               hwnd, (unsigned long)flags);
     return S_OK;
 }
@@ -1534,7 +1534,7 @@ static void nulldd_build_vtables(void)
 IDirectDraw *nulldd_create(void)
 {
     nulldd_build_vtables();
-    log_write("nullddraw: null DirectDraw installed — no display is touched "
+    g_logger.write("nullddraw: null DirectDraw installed — no display is touched "
               "(%u modes, %u texture formats, %u z formats)\n",
               (unsigned)(sizeof(s_modes) / sizeof(s_modes[0]) * 3),
               (unsigned)(sizeof(s_texfmt) / sizeof(s_texfmt[0])),

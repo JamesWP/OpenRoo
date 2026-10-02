@@ -12,10 +12,9 @@
 
 #include <windows.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "windev.h"
 #include "game.h"
-#include "gamelog.h"
 #include "menunav.h"
 #include "levelsetup.h"
 #include "levelparse.h"
@@ -157,7 +156,7 @@ Sim_HandleKeypress(Game *self)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "slotshift") == 0);
         if (s_fx)
-            log_write("keypress: KAROO_SIM_FX=slotshift -- load restores slot k+1\n");
+            g_logger.write("keypress: KAROO_SIM_FX=slotshift -- load restores slot k+1\n");
     }
 
     int entry = 0;

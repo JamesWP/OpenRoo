@@ -17,7 +17,7 @@
 #include "theme.h"
 #include "levelplacements.h"
 #include "scene.h"
-#include "gamelog.h"
+#include "logger.h"
 #include "gameglobals.h"
 #include "clock.h"
 #include "camera.h"
@@ -44,13 +44,13 @@ LevelEntry_PrepareAssets(void)
     // loaded from.
     if (strcmp(g_themeBlock.themeName(), thm) != 0) {
         g_logger.logMessage(1, "THM: *** Theme: %s ***", map->mapName());
-        if (!g_themeBlock.load(g, d3d, thm, &g_logger))
+        if (!g_themeBlock.load(g, d3d, thm))
             g_logger.logMessage(4, "Couldn't load theme %s.", map->mapName());
     }
 
     // 4. What the frame renderer draws.
     g_levelPlacements.build(g, &g_themeBlock);
-    g_scene.buildObjectList(d3d, g->extraObjects(), &g_logger);
+    g_scene.buildObjectList(d3d, g->extraObjects());
 
     strcpy(g_levelTitle, map->title());
     g_lastTickMs = clock_seconds() * 1000.0;

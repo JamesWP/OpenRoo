@@ -6,9 +6,8 @@
 #include <string.h>
 #include <new>
 #include "model.h"
-#include "log.h"
+#include "logger.h"
 #include <stdlib.h>
-#include "gamelog.h"
 #include "gamestr.h"
 ModelManager g_modelManager;
 
@@ -32,8 +31,7 @@ CFaktMesh *ModelManager::findOrImport(char *name)
         mm_lower_inplace(name);
         mm_lower_inplace(cached->name());
         if (strcmp(cached->name(), name) == 0) {
-            if (pLogger_ != NULL)
-                pLogger_->logMessage(1, GS_MM_FOUND, name);
+            g_logger.logMessage(1, GS_MM_FOUND, name);
             return cached;
         }
     }
@@ -42,12 +40,10 @@ CFaktMesh *ModelManager::findOrImport(char *name)
     if ((mesh->importSceneModels(name) & 0xff) == 0) {
         if (mesh != NULL)
             delete mesh;
-        if (pLogger_ != NULL)
-            pLogger_->logMessage(3, GS_MM_FAILED, name);
+        g_logger.logMessage(3, GS_MM_FAILED, name);
         return NULL;
     }
-    if (pLogger_ != NULL)
-        pLogger_->logMessage(1, GS_MM_LOADED, name);
+    g_logger.logMessage(1, GS_MM_LOADED, name);
     cache_.append(mesh);
     return mesh;
 }
@@ -70,7 +66,6 @@ void ModelManager::clearReleaseFree()
  * Every instance is static (model.h), so nothing deletes one and the scalar
  * dtor's free is never reached. */
 ModelManager::ModelManager()
-    : pLogger_(NULL)
 {
 }
 

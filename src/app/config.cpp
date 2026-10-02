@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "config.h"
 #include <stdlib.h>
 #include <math.h>
@@ -21,7 +21,7 @@ static void ps_log(const char *what, const char *path, int ok)
 {
     if (s_logged < PS_LOG_FIRST) {
         s_logged++;
-        log_write("config: %s '%s' -> %s\n", what, path, ok ? "ok" : "FAILED");
+        g_logger.write("config: %s '%s' -> %s\n", what, path, ok ? "ok" : "FAILED");
     }
 }
 

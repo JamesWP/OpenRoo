@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string.h>
 
-#include "log.h"
+#include "logger.h"
 #include "objectremove.h"
 #include "movableentity.h"
 
@@ -28,14 +28,14 @@ static void fx_init(void)
     n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "keepid") == 0) {
         s_fx_keepid = 1;
-        log_write("objectremove: KAROO_SIM_FX=keepid -- the ID free-list "
+        g_logger.write("objectremove: KAROO_SIM_FX=keepid -- the ID free-list "
                   "compaction shift is suppressed, so the list keeps the "
                   "removed ID and every later tick addresses the wrong "
                   "object\n");
     }
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "lowid") == 0) {
         s_fx_lowid = 1;
-        log_write("objectremove: KAROO_SIM_FX=lowid -- the ID allocator's gap "
+        g_logger.write("objectremove: KAROO_SIM_FX=lowid -- the ID allocator's gap "
                   "scan BREAKS on the first hit, so it issues the lowest "
                   "unused ID instead of the highest\n");
     }
@@ -104,7 +104,7 @@ unsigned char Object_ClaimSpareId(unsigned char *ids, unsigned char *count)
             ++s_claims_with_gap;
         if (lowest != id)
             ++s_claims_lowid_differs;
-        log_write("objectremove: claim #%u -- count=%u issued=%u gaps=%u "
+        g_logger.write("objectremove: claim #%u -- count=%u issued=%u gaps=%u "
                   "lowest=%u (differs=%u of %u claims, %u with a gap)\n",
                   s_claims, (unsigned)n, (unsigned)id, (unsigned)gaps,
                   (unsigned)lowest, s_claims_lowid_differs, s_claims,
@@ -133,7 +133,7 @@ void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
         if (s_diag && !s_logged_dtor) {
             void **vtbl = *(void ***)obj;
             s_logged_dtor = 1;
-            log_write("objectremove: first virtual dtor -- obj=%p vtbl=%p "
+            g_logger.write("objectremove: first virtual dtor -- obj=%p vtbl=%p "
                       "slot0=%p\n", obj, (void *)vtbl, vtbl[0]);
         }
         delete (MovableEntity *)obj;
@@ -157,7 +157,7 @@ void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
                     pIds[i - 1] = c;
                 if (s_diag && !s_logged_shift) {
                     s_logged_shift = 1;
-                    log_write("objectremove: first compaction shift -- "
+                    g_logger.write("objectremove: first compaction shift -- "
                               "i=%u id=%u count=%u\n",
                               (unsigned)i, (unsigned)id, (unsigned)*pCount);
                 }

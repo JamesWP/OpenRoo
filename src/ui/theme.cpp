@@ -22,10 +22,9 @@
 #include "theme.h"
 #include "sysdev.h"
 #include <stdlib.h>
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "renderdevice.h"
-#include "gamelog.h"
 #include "gamestr.h"
 #include "gameglobals.h"
 #include "model.h"
@@ -76,35 +75,35 @@ static int float_plausible(float f)
 static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
 {
     const char *kindNote = (r.kind() <= THEME_KIND_PARTICLESYSTEM) ? "" : "  SUSPICIOUS kind";
-    log_write("THEME_STRUCT:   %s[%d] kind=%lu%s pMesh=%p%s subobj=%lu%s\n",
+    g_logger.write("THEME_STRUCT:   %s[%d] kind=%lu%s pMesh=%p%s subobj=%lu%s\n",
               slotName, i, (unsigned long)r.kind(), kindNote, (void *)r.mesh(),
               ptr_plausible(r.mesh()) ? "" : "  SUSPICIOUS pMesh",
               (unsigned long)r.subObjectCount(),
               r.subObjectCount() <= 8 ? "" : "  SUSPICIOUS dwSubObjectCount");
-    log_write("THEME_STRUCT:   %s[%d] pos=(%g,%g,%g)%s scale=(%g,%g,%g)%s rot=(%g,%g,%g)%s\n",
+    g_logger.write("THEME_STRUCT:   %s[%d] pos=(%g,%g,%g)%s scale=(%g,%g,%g)%s rot=(%g,%g,%g)%s\n",
               slotName, i, r.posX(), r.posY(), r.posZ(),
               (float_plausible(r.posX()) && float_plausible(r.posY()) && float_plausible(r.posZ())) ? "" : "  SUSPICIOUS pos",
               r.scaleX(), r.scaleY(), r.scaleZ(),
               (float_plausible(r.scaleX()) && float_plausible(r.scaleY()) && float_plausible(r.scaleZ())) ? "" : "  SUSPICIOUS scale",
               r.rotRateX(), r.rotRateY(), r.rotRateZ(),
               (float_plausible(r.rotRateX()) && float_plausible(r.rotRateY()) && float_plausible(r.rotRateZ())) ? "" : "  SUSPICIOUS rot");
-    log_write("THEME_STRUCT:   %s[%d] count=%lu movable=%lu lit=%lu nomove=%lu nozw=%lu noshadow=%lu spec=%lu randYaw=%lu\n",
+    g_logger.write("THEME_STRUCT:   %s[%d] count=%lu movable=%lu lit=%lu nomove=%lu nozw=%lu noshadow=%lu spec=%lu randYaw=%lu\n",
               slotName, i, (unsigned long)r.instanceCount(), (unsigned long)r.movableType(),
               (unsigned long)r.lit(), (unsigned long)r.noMoveStates(), (unsigned long)r.noZWrite(),
               (unsigned long)r.noShadow(), (unsigned long)r.specular(), (unsigned long)r.randomYAngle());
-    log_write("THEME_STRUCT:   %s[%d] osc amp=%g freq=%g phase=%g random=%lu pump=(%g,%g,%g,%g)\n",
+    g_logger.write("THEME_STRUCT:   %s[%d] osc amp=%g freq=%g phase=%g random=%lu pump=(%g,%g,%g,%g)\n",
               slotName, i, r.oscillationAmplitude(), r.oscillationFrequency(),
               r.oscillationPhase(), (unsigned long)r.oscillateRandom(),
               r.pump()[0], r.pump()[1], r.pump()[2], r.pump()[3]);
     if (r.explodes())
-        log_write("THEME_STRUCT:   %s[%d] explode=%lu dir=(%g,%g,%g) verts=%d scaled=%g%s\n",
+        g_logger.write("THEME_STRUCT:   %s[%d] explode=%lu dir=(%g,%g,%g) verts=%d scaled=%g%s\n",
                   slotName, i, (unsigned long)r.explodes(),
                   r.explodeDir()[0], r.explodeDir()[1], r.explodeDir()[2],
                   r.explodeDebris().vertexCount(), r.explodeDebris().explodeScaledCount(),
                   (r.mesh() != NULL && r.explodeDebris().vertexCount() > 0) ? "" : "  SUSPICIOUS explode");
     for (DWORD k = 0; k < r.subObjectCount() && k < 8; k++) {
         const SceneSubObject &so = r.subObjects()[k];
-        log_write("THEME_STRUCT:   %s[%d].sub[%lu] cond=%lu tex=%p blend=%lu/%lu addr=%lu effect=%lu (%g,%g,%g)%s\n",
+        g_logger.write("THEME_STRUCT:   %s[%d].sub[%lu] cond=%lu tex=%p blend=%lu/%lu addr=%lu effect=%lu (%g,%g,%g)%s\n",
                   slotName, i, (unsigned long)k, (unsigned long)so.dwVisibilityGate,
                   (void *)so.pTexture, (unsigned long)so.dwBlendSrc,
                   (unsigned long)so.dwBlendDst, (unsigned long)so.dwTexAddress,
@@ -118,7 +117,7 @@ static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
 
 static void dump_slot(const char *name, const ThemeObjectTypeSlot &slot)
 {
-    log_write("THEME_STRUCT: slot %-12s dwInstanceCount=%lu%s\n", name,
+    g_logger.write("THEME_STRUCT: slot %-12s dwInstanceCount=%lu%s\n", name,
               (unsigned long)slot.instanceCount(),
               slot.instanceCount() <= 8 ? "" : "  SUSPICIOUS dwInstanceCount");
     unsigned shown = slot.instanceCount() <= 8 ? slot.instanceCount() : 8;
@@ -133,8 +132,8 @@ static void theme_struct_dump(const char *path)
 {
     const ThemeAssetBlock *block = &g_themeBlock;
 
-    log_write("THEME_STRUCT: after close of %s\n", path);
-    log_write("THEME_STRUCT: themeName=\"%.255s\" dwUnknown100=0x%08lx\n",
+    g_logger.write("THEME_STRUCT: after close of %s\n", path);
+    g_logger.write("THEME_STRUCT: themeName=\"%.255s\" dwUnknown100=0x%08lx\n",
               block->themeName(), (unsigned long)block->unknown100());
 
     static const char *const kSlotNames[THEME_OBJ_COUNT] = {
@@ -149,17 +148,17 @@ static void theme_struct_dump(const char *path)
     for (int s = 0; s < THEME_OBJ_COUNT; s++)
         dump_slot(kSlotNames[s], *block->slot(s));
 
-    log_write("THEME_STRUCT: images[HUD]=%p%s images[MENU]=%p%s\n",
+    g_logger.write("THEME_STRUCT: images[HUD]=%p%s images[MENU]=%p%s\n",
               (void *)block->image(THEME_IMG_HUD),
               ptr_plausible(block->image(THEME_IMG_HUD)) ? "" : "  SUSPICIOUS",
               (void *)block->image(THEME_IMG_MENU),
               ptr_plausible(block->image(THEME_IMG_MENU)) ? "" : "  SUSPICIOUS");
-    log_write("THEME_STRUCT: textColors[HUD]=%08lx/%08lx textColors[MENUSUMMARYSAVE]=%08lx/%08lx\n",
+    g_logger.write("THEME_STRUCT: textColors[HUD]=%08lx/%08lx textColors[MENUSUMMARYSAVE]=%08lx/%08lx\n",
               (unsigned long)block->textColor(THEME_COLOR_HUD).color1,
               (unsigned long)block->textColor(THEME_COLOR_HUD).color2,
               (unsigned long)block->textColor(THEME_COLOR_MENUSUMMARYSAVE).color1,
               (unsigned long)block->textColor(THEME_COLOR_MENUSUMMARYSAVE).color2);
-    log_write("THEME_STRUCT: bFogEnabled=%u%s flSideHeight=%g%s\n",
+    g_logger.write("THEME_STRUCT: bFogEnabled=%u%s flSideHeight=%g%s\n",
               (unsigned)block->fogEnabled(), block->fogEnabled() <= 1 ? "" : "  SUSPICIOUS",
               block->sideHeight(), float_plausible(block->sideHeight()) ? "" : "  SUSPICIOUS");
 
@@ -167,7 +166,7 @@ static void theme_struct_dump(const char *path)
         const LoadedImage &img = block->sky().textures()[f];
         const char *name = img.imageName();
         int nameOk = name != NULL && (ULONG_PTR)name >= 0x10000;
-        log_write("THEME_STRUCT: sky.faces[%d] surface=%p%s name=%p \"%.63s\"%s\n",
+        g_logger.write("THEME_STRUCT: sky.faces[%d] surface=%p%s name=%p \"%.63s\"%s\n",
                   f, (void *)img.textureSurface(),
                   ptr_plausible(img.textureSurface()) ? "" : "  SUSPICIOUS",
                   (void *)name, nameOk ? name : "",
@@ -434,11 +433,11 @@ template <typename T> struct Cursor {
 class ThemeParser {
 public:
     /* Parses fp into block; the parse state starts cleared. */
-    void run(Game *g, RenderDevice *dev, ThemeAssetBlock *b, GameLogger *log,
+    void run(Game *g, RenderDevice *dev, ThemeAssetBlock *b,
              FILE *f)
     {
         *this = ThemeParser();
-        game = g; d3d = dev; block = b; logger = log; fp = f;
+        game = g; d3d = dev; block = b; fp = f;
         parseFile();
     }
 
@@ -446,7 +445,6 @@ private:
     Game            *game;
     RenderDevice    *d3d;
     ThemeAssetBlock *block;
-    GameLogger      *logger;
     FILE            *fp;
 
     char     tok[TOKEN_SLOTS][TOKEN_MAX];
@@ -589,7 +587,7 @@ void ThemeParser::particleSystem(ThemeObjectTypeSlot *slot, Cursor<ThemeLevelObj
         return;
     open(c, slot);
     ThemeLevelObject *rec = c.at;
-    ParticleSystem *ps = ParticleSystem::loadFile(tok[1], logger);
+    ParticleSystem *ps = ParticleSystem::loadFile(tok[1]);
     if (ps == NULL) {
         if (slot) rec->kind_ = THEME_KIND_NONE;
         return;
@@ -651,12 +649,10 @@ void ThemeParser::sky(bool inEnvironment)
     unsigned int ok = block->sky_.buildFromFaceNames(d3d,
                                              up, dn, fr, bk, lf, rt,
                                              d3d->bitDepth());
-    if (logger != NULL) {
-        if ((ok & 0xff) == 0)
-            logger->logMessage(3, GS_THEME_SKY_FAILED, tok[1]);
-        else
-            logger->logMessage(1, GS_THEME_SKY_LOADED, tok[1]);
-    }
+    if ((ok & 0xff) == 0)
+        g_logger.logMessage(3, GS_THEME_SKY_FAILED, tok[1]);
+    else
+        g_logger.logMessage(1, GS_THEME_SKY_LOADED, tok[1]);
 }
 
 void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
@@ -674,7 +670,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         rec.at->kind_  = THEME_KIND_MODEL;
         rec.at->pMesh_ = mesh;
         rec.at->wrapper_.setMesh(mesh);
-        rec.at->animTable_.load(tok[2], logger);
+        rec.at->animTable_.load(tok[2]);
         if (is(tok[3], "nomovestates"))
             rec.at->bNoMoveStates_ = 1;
         return;
@@ -886,7 +882,7 @@ void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *su
 static ThemeParser s_parser;
 
 bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
-                       char *path, GameLogger *logger)
+                       char *path)
 {
     release();
     d3d->SetRenderState(RS::FogEnable, 0);
@@ -895,7 +891,7 @@ bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
     if (fp == NULL)
         return false;
 
-    s_parser.run(game, d3d, this, logger, fp);
+    s_parser.run(game, d3d, this, fp);
 
     theme_struct_dump_if_enabled(path);
     fclose(fp);
@@ -904,17 +900,16 @@ bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
 }
 
 /* The load, timed.  The time goes only to our log, never into game state. */
-bool ThemeAssetBlock::load(Game *game, RenderDevice *d3d, char *path,
-           GameLogger *logger)
+bool ThemeAssetBlock::load(Game *game, RenderDevice *d3d, char *path)
 {
     const unsigned long long freq = sysdev::perfFrequency();
     const unsigned long long t0 = sysdev::perfCounter();
 
-    bool ok = themeLoad(game, d3d, path, logger);
+    bool ok = themeLoad(game, d3d, path);
 
     const unsigned long long t1 = sysdev::perfCounter();
     double ms = (double)(t1 - t0) * 1000.0 / (double)freq;
-    log_write("theme: %s %s in %.2f ms\n", path, ok ? "loaded" : "NOT opened", ms);
+    g_logger.write("theme: %s %s in %.2f ms\n", path, ok ? "loaded" : "NOT opened", ms);
     return ok;
 }
 

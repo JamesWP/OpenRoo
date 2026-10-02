@@ -16,7 +16,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <windows.h>
-#include "log.h"
+#include "logger.h"
 
 /* KAROO_NAMEDLIST_FX, a negative control (CONTROLS.md):
  *   nofind  Find always returns NULL.
@@ -40,7 +40,7 @@ static NamedListFx namedlist_fx(void)
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "nofind") == 0) fx = NL_FX_NOFIND;
     }
-    log_write("namedlist: FX mode = %s\n", fx == NL_FX_NOFIND ? "nofind" : "off");
+    g_logger.write("namedlist: FX mode = %s\n", fx == NL_FX_NOFIND ? "nofind" : "off");
     cached = (int)fx;
     return fx;
 }
@@ -72,7 +72,7 @@ static void namedlist_first(const char *fn, unsigned long *pSeen)
     if (!namedlist_diag() || *pSeen != 0)
         return;
     *pSeen = 1;
-    log_write("namedlist: first call to %s\n", fn);
+    g_logger.write("namedlist: first call to %s\n", fn);
 }
 
 /* The tally is logged from Clear, the cold path, rather than at Insert
@@ -82,7 +82,7 @@ static void namedlist_census(void)
 {
     if (!namedlist_diag())
         return;
-    log_write("namedlist: census construct=%lu sdtor=%lu dtorbody=%lu "
+    g_logger.write("namedlist: census construct=%lu sdtor=%lu dtorbody=%lu "
               "insert=%lu (rejected %lu) clear=%lu (freed %lu) remove=%lu "
               "(null %lu) find=%lu (hit %lu) maxLen=%lu\n",
               g_nConstruct, g_nScalarDtor, g_nDtorBody, g_nInsert,

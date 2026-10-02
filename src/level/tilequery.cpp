@@ -35,7 +35,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "log.h"
+#include "logger.h"
 #include "tilequery.h"
 
 /* By value, not by presence. */
@@ -58,19 +58,19 @@ static void fx_init(void)
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "blockinvert") == 0) {
             s_fx = FX_BLOCKINVERT;
-            log_write("tilequery: KAROO_SIM_FX=blockinvert -- blocked flag "
+            g_logger.write("tilequery: KAROO_SIM_FX=blockinvert -- blocked flag "
                       "inverted\n");
         } else if (strcmp(buf, "listfar") == 0) {
             s_fx = FX_LISTFAR;
-            log_write("tilequery: KAROO_SIM_FX=listfar -- listed-object "
+            g_logger.write("tilequery: KAROO_SIM_FX=listfar -- listed-object "
                       "search picks the farthest\n");
         } else if (strcmp(buf, "radiusfar") == 0) {
             s_fx = FX_RADIUSFAR;
-            log_write("tilequery: KAROO_SIM_FX=radiusfar -- radius search "
+            g_logger.write("tilequery: KAROO_SIM_FX=radiusfar -- radius search "
                       "picks the farthest\n");
         } else if (strcmp(buf, "farnear") == 0) {
             s_fx = FX_FARNEAR;
-            log_write("tilequery: KAROO_SIM_FX=farnear -- farthest-tile "
+            g_logger.write("tilequery: KAROO_SIM_FX=farnear -- farthest-tile "
                       "search picks the nearest\n");
         }
     }
@@ -119,12 +119,12 @@ static void diag_enter(int which, const void *self)
 {
     if (!s_first[which]) {
         s_first[which] = 1;
-        log_write("tilequery: first %s -- this=%p\n", k_names[which], self);
+        g_logger.write("tilequery: first %s -- this=%p\n", k_names[which], self);
     }
     if (s_diag) {
         ++s_calls;
         if ((s_calls % 5000) == 0)
-            log_write("tilequery: %lu calls\n", s_calls);
+            g_logger.write("tilequery: %lu calls\n", s_calls);
     }
 }
 
@@ -132,7 +132,7 @@ static void diag_hit(int which, unsigned u, unsigned v)
 {
     if (!s_success[which]) {
         s_success[which] = 1;
-        log_write("tilequery: first %s HIT -- u=%u v=%u\n",
+        g_logger.write("tilequery: first %s HIT -- u=%u v=%u\n",
                   k_names[which], u, v);
     }
 }
@@ -434,7 +434,7 @@ void tilequery_census_object_types(Game *self)
 
     if (!announced) {
         announced = 1;
-        log_write("tilequery: census of FOE +0x62 types begins "
+        g_logger.write("tilequery: census of FOE +0x62 types begins "
                   "(2 = listed-object search, 3 = radius search, "
                   "5 = farthest search)\n");
     }
@@ -455,7 +455,7 @@ void tilequery_census_object_types(Game *self)
 
         if (!seen[t]) {
             seen[t] = 1;
-            log_write("tilequery: CENSUS new foe type +0x62 = %u\n",
+            g_logger.write("tilequery: CENSUS new foe type +0x62 = %u\n",
                       (unsigned)t);
         }
         if (t == 2) has2 = 1;
@@ -464,7 +464,7 @@ void tilequery_census_object_types(Game *self)
     }
 
     if (has2 || has3 || has5) {
-        log_write("tilequery: CENSUS level #%u carries GATED foe type%s%s%s "
+        g_logger.write("tilequery: CENSUS level #%u carries GATED foe type%s%s%s "
                   "-- capture a recording here\n", level,
                   has2 ? " 2" : "", has3 ? " 3" : "", has5 ? " 5" : "");
     }

@@ -23,11 +23,10 @@
 #include "audiodev.h"
 #include "voicepool.h"
 #include "linkedlist.h"
-#include "gamelog.h"
+#include "logger.h"
 #include <stdlib.h>
 #include <stddef.h>
 #include <windows.h>
-#include "log.h"
 #include "gamestr.h"
 
 /* The source file named in error lines, with __LINE__. */
@@ -52,7 +51,7 @@ static SndMgrFx sndmgr_fx(void)
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "nosharemaster") == 0) fx = SM_FX_NOSHAREMASTER;
     }
-    log_write("soundmgr: FX mode = %s\n",
+    g_logger.write("soundmgr: FX mode = %s\n",
               fx == SM_FX_NOSHAREMASTER ? "nosharemaster" : "off");
     cached = (int)fx;
     return fx;
@@ -85,7 +84,7 @@ static void sndmgr_first(const char *fn, unsigned long *pSeen)
     if (!sndmgr_diag() || *pSeen != 0)
         return;
     *pSeen = 1;
-    log_write("soundmgr: first call to %s\n", fn);
+    g_logger.write("soundmgr: first call to %s\n", fn);
 }
 
 /* Dumped from the releases, setup and the acquire hits, so a run that never
@@ -94,7 +93,7 @@ static void sndmgr_census(void)
 {
     if (!sndmgr_diag())
         return;
-    log_write("soundmgr: census acqStatic=%lu (hit %lu new %lu) masterGrants=%lu "
+    g_logger.write("soundmgr: census acqStatic=%lu (hit %lu new %lu) masterGrants=%lu "
               "clones=%lu (fail %lu) acqPool=%lu (hit %lu new %lu) pools=%lu "
               "(fail %lu) relStatic=%lu (plain %lu 3d %lu lost %lu) "
               "relPool=%lu (plain %lu 3d %lu lost %lu) destroyed=%lu "
@@ -171,7 +170,7 @@ void SoundManager::releaseStaticForOwner(audiodev::Buffer *buf,
 
     ++g_relStaticLost;
     sndmgr_census();
-    ((GameLogger *)logger_)->logSourceLocation(3, SRCFILE, __LINE__,
+    g_logger.logSourceLocation(3, SRCFILE, __LINE__,
         "Could not release StaticSoundbuffer '%s', because the buffer was "
         "not found !", buf->filename());
 }
@@ -211,7 +210,7 @@ void SoundManager::releasePooledForOwner(VoicePool *pool,
     // PRESERVED: voice 0 is used unchecked, so reporting on an empty pool
     // faults.
     audiodev::Buffer *voice0 = pool->voiceAt(0);
-    ((GameLogger *)logger_)->logSourceLocation(3, SRCFILE, __LINE__,
+    g_logger.logSourceLocation(3, SRCFILE, __LINE__,
         "Could not release MultiStaticSoundbuffer '%s', because the buffer "
         "was not found !", voice0->filename());
 }
@@ -380,14 +379,14 @@ int SoundManager::setup(int mode3d)
             ++g_setupReloaded;
 
             if (!entry->master()->reload3D(device_, mode3d != 0))
-                ((GameLogger *)logger_)->logSourceLocation(3,
+                g_logger.logSourceLocation(3,
                     SRCFILE, __LINE__,
                     "CSoundManager::Set3D_LoadNew(...) switch 3D of "
                     "OrgSoundBuffer failed");
 
             if (entry->spare()->isLoaded()
                 && !entry->spare()->reload3D(device_, mode3d != 0))
-                ((GameLogger *)logger_)->logSourceLocation(3,
+                g_logger.logSourceLocation(3,
                     SRCFILE, __LINE__,
                     "CSoundManager::Set3D_LoadNew(...) switch 3D of "
                     "SecOrgSoundBuffer failed");
@@ -405,7 +404,7 @@ int SoundManager::setup(int mode3d)
                     continue;
 
                 if (src == entry->spare()) {
-                    ((GameLogger *)logger_)->logSourceLocation(3,
+                    g_logger.logSourceLocation(3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
@@ -414,7 +413,7 @@ int SoundManager::setup(int mode3d)
                 if (!entry->spare()->isLoaded()
                     && !loadEntryMaster(entry->spare(),
                             src->filename(), mode3d))
-                    ((GameLogger *)logger_)->logSourceLocation(3,
+                    g_logger.logSourceLocation(3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
@@ -433,7 +432,7 @@ int SoundManager::setup(int mode3d)
                     continue;
 
                 if (src == entry->spare()) {
-                    ((GameLogger *)logger_)->logSourceLocation(3,
+                    g_logger.logSourceLocation(3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
@@ -442,7 +441,7 @@ int SoundManager::setup(int mode3d)
                 if (!entry->spare()->isLoaded()
                     && !loadEntryMaster(entry->spare(),
                             src->filename(), mode3d))
-                    ((GameLogger *)logger_)->logSourceLocation(3,
+                    g_logger.logSourceLocation(3,
                         SRCFILE, __LINE__,
                         "CSoundManager::Set3D_LoadNew(...) Create of "
                         "SecOrgSoundBuffer failed");
@@ -480,25 +479,17 @@ static void purge_list(NamedEntryList *list)
 
 SoundManager::SoundManager()
 {
-    logger_           = NULL;
-    ownsLogger_       = 0;
     dwMode3D_         = 0;
     dwPendingMode3D_  = 0;
     dwCreated_        = 0;
 }
 
-/* Also the reset: Init runs it first, and the Game's teardown on its own.  An
- * owned logger is deleted. */
+/* Also the reset: Init runs it first, and the Game's teardown on its own. */
 void SoundManager::purgeAssets()
 {
     purge_list(&entriesPlain_);
     purge_list(&entries3D_);
     device_.destroy();
-    if (ownsLogger_ != 0 && logger_ != NULL) {
-        delete (GameLogger *)logger_;
-    }
-    logger_           = NULL;
-    ownsLogger_       = 0;
     dwMode3D_         = 0;
     dwPendingMode3D_  = 0;
     dwCreated_        = 0;
@@ -510,17 +501,10 @@ SoundManager::~SoundManager()
 }
 
 
-/* PRESERVED: a failed logger allocation leaves logger_ NULL and ownsLogger_ 1.
- */
 int SoundManager::init(int enable3d, void *window, int channels,
-              int samplespersec, int bitspersample, GameLogger *logger)
+              int samplespersec, int bitspersample)
 {
     purgeAssets();
-    logger_ = logger;
-    if (logger == NULL) {
-        logger_     = new (std::nothrow) GameLogger(GS_SOUNDMGR_LOG_NAME, NULL);
-        ownsLogger_ = 1;
-    }
     audiodev::DeviceConfig config;
     config.window        = window;
     config.enable3D      = enable3d != 0;

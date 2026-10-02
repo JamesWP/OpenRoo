@@ -223,7 +223,7 @@ def triggered():
     except OSError:
         pass
     try:
-        with open(os.path.join(RUN, "JJ.log"), errors="replace") as fh:
+        with open(os.path.join(RUN, "karoo_hooks.log"), errors="replace") as fh:
             ok_game = "level report created" in fh.read()
     except OSError:
         pass
@@ -507,7 +507,7 @@ def main():
         return 1
     if not ok_game:
         print("FAIL: the trigger was delivered but the game never logged "
-              "'level report created' in JJ.log.")
+              "'level report created' in karoo_hooks.log.")
         return 1
     print("  trigger delivered, report written%s" %
           ("" if clean_exit else " (but the run had to be killed)"))

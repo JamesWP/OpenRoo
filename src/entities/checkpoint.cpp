@@ -9,7 +9,7 @@
 
 #include <windows.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "checkpoint.h"
 
@@ -26,7 +26,7 @@ Sim_RestoreCheckpointStateBlocks(Game *self)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "camswap") == 0);
         if (s_fx)
-            log_write("checkpoint: KAROO_SIM_FX=camswap -- straight copy\n");
+            g_logger.write("checkpoint: KAROO_SIM_FX=camswap -- straight copy\n");
     }
 
     if (sp->running() == 0 || sp->loaded() == 0)

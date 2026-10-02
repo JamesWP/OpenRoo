@@ -250,31 +250,6 @@ inline const char GS_TEX_DOT_TGA_LOWER[] = ".tga";
 inline const char GS_TEX_DOT_BMP_UPPER[] = ".BMP";
 inline const char GS_TEX_DOT_BMP_LOWER[] = ".bmp";
 
-/* LOG: the game's log file and the DirectSound error names. */
-inline const char GS_LOG_MB_TEXT[] = "Could not open Protofile";
-inline const char GS_LOG_MB_CAPT[] = "CProto::CProto(...)";
-inline const char GS_LOG_BANNER[] = "\012***************** Log started on %s ***********************\012";
-inline const char GS_LOG_MODE_WC[] = "wc";
-inline const char GS_LOG_LINE[] = "%s : %s\015\012";
-inline const char GS_LOG_SRCLINE[] = "%s : File: %s, Line: %d: %s \015\012";
-inline const char GS_LOG_HR_UNKNOWN[] = "Unknown HRESULT";
-inline const char GS_LOG_DSERR_UNINITIALIZED[] = "DSERR_UNINITIALIZED";
-inline const char GS_LOG_DSERR_OTHERAPPHASPRIO[] = "DSERR_OTHERAPPHASPRIO";
-inline const char GS_LOG_DSERR_BUFFERLOST[] = "DSERR_BUFFERLOST";
-inline const char GS_LOG_DSERR_ALREADYINITIALIZED[] = "DSERR_ALREADYINITIALIZED";
-inline const char GS_LOG_DSERR_NODRIVER[] = "DSERR_NODRIVER";
-inline const char GS_LOG_DSERR_BADFORMAT[] = "DSERR_BADFORMAT";
-inline const char GS_LOG_DSERR_PRIOLEVELNEEDED[] = "DSERR_PRIOLEVELNEEDED";
-inline const char GS_LOG_DSERR_INVALIDCALL[] = "DSERR_INVALIDCALL";
-inline const char GS_LOG_DSERR_INVALIDPARAM[] = "DSERR_INVALIDPARAM";
-inline const char GS_LOG_DSERR_ALLOCATED[] = "DSERR_ALLOCATED";
-inline const char GS_LOG_DSERR_CONTROLUNAVAIL[] = "DSERR_CONTROLUNAVAIL";
-inline const char GS_LOG_DSERR_OUTOFMEMORY[] = "DSERR_OUTOFMEMORY";
-inline const char GS_LOG_DSERR_NOAGGREGATION[] = "DSERR_NOAGGREGATION";
-inline const char GS_LOG_DSERR_GENERIC[] = "DSERR_GENERIC";
-inline const char GS_LOG_DSERR_UNSUPPORTED[] = "DSERR_UNSUPPORTED";
-inline const char GS_LOG_DSERR_NOINTERFACE[] = "DSERR_NOINTERFACE";
-inline const char GS_LOG_ERRLINE[] = "%s : Error %s: %s \015\012";
 
 /* PS: the particle-system loader. */
 inline const char GS_PS_NAME_NULL[] = "NULL";
@@ -335,7 +310,6 @@ inline const char GS_THEME_SOUND_NONE[] = "NONE";
 inline const char GS_THEME_SOUND_ADD[] = "TSM: add called (Index=%d/fn=%s)";
 inline const char GS_THEME_SOUND_RELEASING[] = "TSM: trying to release all sounds";
 inline const char GS_THEME_SOUND_RELEASED[] = "TSM: all sounds released";
-inline const char GS_SOUNDMGR_LOG_NAME[] = "SoundManager.log";
 inline const char GS_TM_LOADED[] = "TM: %s loaded";
 inline const char GS_TM_FOUND[] = "TM: %s found";
 inline const char GS_TM_FAILED[] = "TM: *ERROR* failed loading %s";

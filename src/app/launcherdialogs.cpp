@@ -12,7 +12,7 @@
 #include "renderdevice.h"
 #include "game.h"
 #include "config.h"
-#include "log.h"
+#include "logger.h"
 
 static const char SND_SWITCH[] = "waves\\switch.wav";
 static const char SND_IMPACT[] = "waves\\mineimpact.wav";
@@ -25,7 +25,7 @@ static bool fx_allaspect()
         char buf[16];
         cached = GetEnvironmentVariableA("KAROO_LAUNCHERDLG_FX", buf, sizeof(buf))
                  && lstrcmpiA(buf, "allaspect") == 0;
-        log_write("launcherdlg: FX mode = %s\n", cached ? "allaspect" : "off");
+        g_logger.write("launcherdlg: FX mode = %s\n", cached ? "allaspect" : "off");
     }
     return cached != 0;
 }

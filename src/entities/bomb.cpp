@@ -52,9 +52,8 @@
 #include "objectremove.h"
 #include "soundmanager.h"
 #include "audiodev.h"
-#include "gamelog.h"
+#include "logger.h"
 #include "gameglobals.h"
-#include "log.h"
 
 #include <new>  // std::nothrow
 
@@ -90,11 +89,11 @@ static void fx_init(void)
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "shortfuse") == 0) {
             s_fx_shortfuse = 1;
-            log_write("bomb: KAROO_SIM_FX=shortfuse -- fuse %.0f ms, not %.0f\n",
+            g_logger.write("bomb: KAROO_SIM_FX=shortfuse -- fuse %.0f ms, not %.0f\n",
                       K_FUSE_MS / 2.0, K_FUSE_MS);
         } else if (strcmp(buf, "spawnswap") == 0) {
             s_fx_spawnswap = 1;
-            log_write("bomb: KAROO_SIM_FX=spawnswap -- the bomb spawn tile is "
+            g_logger.write("bomb: KAROO_SIM_FX=spawnswap -- the bomb spawn tile is "
                       "transposed\n");
         }
     }
@@ -186,7 +185,7 @@ void Bomb::acquireInto(Game *game, Bomb **slot, const SoundAssetName *asset,
 
     if (s_diag_spawn && !s_logged_sound) {
         s_logged_sound = 1;
-        log_write("bomb: first sound acquire -- '%s'\n", name);
+        g_logger.write("bomb: first sound acquire -- '%s'\n", name);
     }
 
     (*slot)->*field = game->soundManager()->acquireStatic(name, 1);
@@ -218,7 +217,7 @@ void Bomb::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     if (!s_logged_spawn) {
         s_logged_spawn = 1;
-        log_write("bomb: first bomb spawn -- game=%p id=%u obj=%p "
+        g_logger.write("bomb: first bomb spawn -- game=%p id=%u obj=%p "
                   "u=%u v=%u h=%u flag=%u\n",
                   (void *)game, (unsigned)id, (void *)p, (unsigned)u,
                   (unsigned)v, (unsigned)h, (unsigned)f);
@@ -226,7 +225,7 @@ void Bomb::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     if (s_diag_spawn) {
         ++s_spawns;
         if ((s_spawns % 500) == 0)
-            log_write("bomb: %lu spawns\n", s_spawns);
+            g_logger.write("bomb: %lu spawns\n", s_spawns);
     }
 
     // Through the raw pointer, not the slot: PRESERVED.
@@ -279,7 +278,7 @@ void Bomb::releaseField(SoundManager *sm, Bomb **slot,
 
     if (s_diag_remove && !s_logged_release) {
         s_logged_release = 1;
-        log_write("bomb: first sound release -- obj=%p buf=%p\n",
+        g_logger.write("bomb: first sound release -- obj=%p buf=%p\n",
                   (void *)*slot, (void *)buf);
     }
 
@@ -299,13 +298,13 @@ void Bomb::remove(Game *game, unsigned int idArg)
 
     if (!s_logged_remove) {
         s_logged_remove = 1;
-        log_write("bomb: first bomb removal -- game=%p id=%u obj=%p\n",
+        g_logger.write("bomb: first bomb removal -- game=%p id=%u obj=%p\n",
                   (void *)game, (unsigned)id, (void *)*slot);
     }
     if (s_diag_remove) {
         ++s_removals;
         if ((s_removals % 500) == 0)
-            log_write("bomb: %lu removals\n", s_removals);
+            g_logger.write("bomb: %lu removals\n", s_removals);
     }
 
     if (game->soundCreated() != 0) {
@@ -342,12 +341,12 @@ void Bomb::tick()
 
     if (!s_logged_first) {
         s_logged_first = 1;
-        log_write("bomb: first bomb tick -- this=%p\n", (void *)this);
+        g_logger.write("bomb: first bomb tick -- this=%p\n", (void *)this);
     }
     if (s_diag_bomb) {
         ++s_ticks;
         if ((s_ticks % 5000) == 0)
-            log_write("bomb: %lu ticks\n", s_ticks);
+            g_logger.write("bomb: %lu ticks\n", s_ticks);
     }
 
     // Refresh the two cached copies.
@@ -394,7 +393,7 @@ void Bomb::tick()
 
     if (s_diag_bomb && !s_logged_blast) {
         s_logged_blast = 1;
-        log_write("bomb: first blast at u=%d v=%d h=%d after %.0f ms\n",
+        g_logger.write("bomb: first blast at u=%d v=%d h=%d after %.0f ms\n",
                   (int)cellU_, (int)cellV_, (int)heightCell_, diff);
     }
 

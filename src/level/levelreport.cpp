@@ -1,6 +1,6 @@
 #include "levelreport.h"
 #include "menu.h"
-#include "log.h"
+#include "logger.h"
 #include <stdlib.h>
 
 /* The three polls are consecutive and the first polls of L in the run, so a
@@ -15,7 +15,7 @@ static void init(void)
     g_enabled = (e && *e && *e != '0');
     g_left    = g_enabled ? 3 : 0;
     if (g_enabled)
-        log_write("levelreport: KAROO_LEVEL_REPORT set — will answer the next "
+        g_logger.write("levelreport: KAROO_LEVEL_REPORT set — will answer the next "
                   "three VK_L queries as down (Game::LoadSounds trigger)\n");
 }
 
@@ -32,7 +32,7 @@ bool levelreport_async_override(int vkey, SHORT *out)
     if (vkey != 0x4C )   return false;  // VK_L
     g_left--;
     if (g_left == 0)
-        log_write("levelreport: trigger delivered; WriteLevelReport should now "
+        g_logger.write("levelreport: trigger delivered; WriteLevelReport should now "
                   "run over every level\n");
     *out = (SHORT)0x8000;
     return true;
@@ -49,7 +49,7 @@ void levelreport_tick(void)
     static bool said;
     if (!said) {
         said = true;
-        log_write("levelreport: report written — quitting via the menu\n");
+        g_logger.write("levelreport: report written — quitting via the menu\n");
     }
     menu_request(MENU_NODE_QUIT);
 }

@@ -13,7 +13,7 @@
  *   Up, Down: move the cursor, wrapping at both ends */
 
 #include "menu.h"
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "menutree.h"
 #include <string.h>
@@ -69,7 +69,7 @@ bool MenuState::read()
 void menu_request(unsigned goal)
 {
     if (goal != g_goal) {
-        log_write("menu: goal %s%u\n",
+        g_logger.write("menu: goal %s%u\n",
                   goal == MENU_NO_GOAL ? "cleared, was " : "-> node ",
                   goal == MENU_NO_GOAL ? g_goal : goal);
         g_goal = goal;
@@ -169,7 +169,7 @@ void menu_tick(void)
             wsprintfA(one, "%s%u", i ? "," : "", m.children()[i]);
             if (strlen(kids) + strlen(one) + 1 < sizeof(kids)) strcat(kids, one);
         }
-        log_write("menu: node=%u cursor=%u/%u depth=%u lock=%lu screen=%u "
+        g_logger.write("menu: node=%u cursor=%u/%u depth=%u lock=%lu screen=%u "
                   "children=[%s] goal=%u\n",
                   m.node(), m.cursor(), m.count(), m.depth(), (unsigned long)m.lock(),
                   (unsigned)((const Game *)g)->state(), kids, g_goal);
@@ -177,7 +177,7 @@ void menu_tick(void)
     }
 
     if ((BYTE)g_goal == m.node()) {  // arrived
-        log_write("menu: reached node %u\n", m.node());
+        g_logger.write("menu: reached node %u\n", m.node());
         menu_request(MENU_NO_GOAL);
         return;
     }
@@ -201,7 +201,7 @@ void menu_tick(void)
         // same frame, so arriving is never seen, and a goal left standing
         // would repeat the action every time the menu came back.
         if (m.children()[hop] == (BYTE)g_goal) {
-            log_write("menu: selected node %u (from node %u cursor %u)\n",
+            g_logger.write("menu: selected node %u (from node %u cursor %u)\n",
                       (unsigned)g_goal, m.node(), m.cursor());
             g_goal = MENU_NO_GOAL;
         }

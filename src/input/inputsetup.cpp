@@ -1,7 +1,7 @@
 #include <windows.h>
 #include "inputsetup.h"
 #include "progctrl.h"
-#include "gamelog.h"
+#include "logger.h"
 #include "gamestr.h"
 #include "gameglobals.h"
 #include "game.h"
@@ -22,7 +22,7 @@ Input_TrySaveSettings(void)
  * the Game.  Default keys (inputdev scan codes) are bound only when no
  * saved bindings load. */
   int  
-Input_Setup(HINSTANCE hInstance, HWND hwnd, DWORD, Game *game)
+Input_Setup(HINSTANCE hInstance, HWND hwnd, Game *game)
 {
     ProgableControl *pc = &g_progCtrl;
     if (!pc->setupDevices(hInstance, hwnd)) {

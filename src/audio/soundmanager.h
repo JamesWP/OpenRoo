@@ -15,7 +15,6 @@
 
 namespace audiodev { class Buffer; }
 class VoicePool;
-class GameLogger;
 
 class SoundManager {
 public:
@@ -50,20 +49,17 @@ public:
     int setup(int mode3d);
 
     /* Construction and destruction, the asset purge (also the reset), and
-     * start-up.  Init creates the device, with the 3D listener if enable3d;
-     * with no logger it creates its own, SoundManager.log. */
+     * start-up.  Init creates the device, with the 3D listener if enable3d. */
     SoundManager();
     virtual ~SoundManager();
     SoundManager(const SoundManager &) = delete;
     SoundManager &operator=(const SoundManager &) = delete;
     void purgeAssets();
     int init(int enable3d, void *window, int channels, int samplespersec,
-             int bitspersample, GameLogger *logger);
+             int bitspersample);
 
     int created()const {return dwCreated_;}
 private:
-    GameLogger    *logger_;
-    unsigned long  ownsLogger_;        // 1 if Init created logger_
     unsigned long  dwMode3D_;          // the live 3D listener mode
     unsigned long  dwPendingMode3D_;   // set with it; the mode new loads apply
     audiodev::Device device_;          // the device

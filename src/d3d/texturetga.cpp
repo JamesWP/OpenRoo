@@ -17,7 +17,7 @@
 #include "d3dnative.h"
 #include "ddrawdiag.h"
 #include "tga.h"
-#include "log.h"
+#include "logger.h"
 #include "gamestr.h"
 #include "gameglobals.h"
 #include <stdio.h>
@@ -102,7 +102,7 @@ TextureTGA_Parse(LoadedImage *self, LPCSTR path)
 
     static LONG seen = 0;
     if (InterlockedIncrement(&seen) <= 4)
-        log_write("texturetga: Parse this=%p %ux%u bpp=%u type=%u name=%s\n",
+        g_logger.write("texturetga: Parse this=%p %ux%u bpp=%u type=%u name=%s\n",
                   self, h.width, h.height, h.bpp, h.imageType,
                   path ? path : "(null)");
 

@@ -7,7 +7,6 @@
 #include "linkedlist.h"
 #include "faktmesh.h"
 
-class GameLogger;
 
 /* ─── ModelManager -- the name-keyed CFaktMesh cache ───────────────────────
  *
@@ -27,12 +26,8 @@ public:
     ModelManager(const ModelManager &) = delete;
     ModelManager &operator=(const ModelManager &) = delete;
 
-    GameLogger  *logger() const          { return pLogger_; }
-    void         setLogger(GameLogger *l) { pLogger_ = l; }
-
 private:
     LinkedList   cache_;     // +0x04  CFaktMesh *, game-heap nodes
-    GameLogger  *pLogger_;   // +0x14  NULL = silent
      
 };
 

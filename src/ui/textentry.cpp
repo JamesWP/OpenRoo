@@ -14,7 +14,7 @@
 
 #include <windows.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "textentry.h"
 #include <stdlib.h>
 #include "record.h"
@@ -55,7 +55,7 @@ void TextEntry::poll(unsigned int phase)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", b, sizeof(b));
         s_fx = (n > 0 && n < sizeof(b) && strcmp(b, "entrycase") == 0);
         if (s_fx)
-            log_write("textentry: KAROO_SIM_FX=entrycase -- shift inverted\n");
+            g_logger.write("textentry: KAROO_SIM_FX=entrycase -- shift inverted\n");
     }
 
     if (ACTIVE != 0) {

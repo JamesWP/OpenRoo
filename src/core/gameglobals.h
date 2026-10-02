@@ -8,15 +8,9 @@
 #include <windows.h>
 #include <stdio.h>
 
-class GameLogger;
 class LoadedImage;
 class CDM;
 class ProgableControl;
-
-/* The game's logger, written through GameLogger::logMessage and
- * GameLogger::logSourceLocation (gamelog.h). */
-extern GameLogger g_logger;
-extern GameLogger g_soundLogger;  // the stream sound logger
 
 /* The CD audio device; cdm.cpp owns its methods. */
 extern CDM g_cdAudio;
