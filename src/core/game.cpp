@@ -82,10 +82,10 @@ Game::Game(const char *gameName)
         g_logger.logMessage(2, "GAME: original CD is in the drive - OK");
     else
         g_logger.logMessage(3, "GAME: * warning * - the original CD is not in drive");
-    g_logger.logMessage(1, "GAME: game-object created, game is named as:%s", gameFileName_);
+    g_logger.logMessage(1, "GAME: game-object created, game name:%s", gameFileName_);
 
     if (!loadGameFile(gameFileName_)) {
-        g_logger.logMessage(4, "GAME: ** error ** game-file named as %s.gam could not loaded - aborting!!!", gameFileName_);
+        g_logger.logMessage(4, "GAME: ** error ** game-file named as %s.gam could not be loaded - aborting!!!", gameFileName_);
         windev::quit(1);
         return;
     }
@@ -186,7 +186,7 @@ Game::~Game()
     scriptPlayer_.releaseStreams();
     extraObjects_.releaseSounds();
     releaseAllSounds();
-    g_logger.logMessage(1, "GAME: all sounds successful released");
+    g_logger.logMessage(1, "GAME: all sounds released successfully");
     soundManager()->purgeAssets();
     audiodev::setMasterVolume(config_.savedWaveOutVolume());
     g_cdAudio.setMixerVolume(config_.savedCdMixerVolume());

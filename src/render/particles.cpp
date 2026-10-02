@@ -559,7 +559,7 @@ static char *ps_read_name(void *fp, const char *msg_name)
 {
     DWORD len;
     if (!ps_read(&len, 4, fp)) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: Error while loading Particlesystem, because could not read Data");
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the data could not be read");
         return NULL;
     }
     char *name = (char *)::operator new(len, std::nothrow);
@@ -610,11 +610,11 @@ BOOL ParticleSystem::load(void *fp)
 
     DWORD count;
     if (!ps_read(&count, 4, fp)) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: Error while loading Particlesystem, because ParticleCount could not read");
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle count could not be read");
         return FALSE;
     }
     if (!ring_.alloc(count, 0)) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: Error while loading Particlesystem, because ParticleList could not created");
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle list could not be created");
         return FALSE;
     }
 
@@ -704,7 +704,7 @@ BOOL PointParticleSystem::load(void *fp)
     if (!ParticleSystem::load(fp))
         return FALSE;
     if (!allocVerts(1)) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: Loading PointParticleSystem failed, because could not create VertexArray");
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading PointParticleSystem failed, because the vertex array could not be created");
         return FALSE;
     }
     return TRUE;
@@ -741,7 +741,7 @@ BOOL FaceParticleSystem::save(void *fp)
 {
     ParticleSystem::save(fp);
     if (!ps_write(&flScale_, 4, fp)) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: Save FaceParticleSystem failed, because could save FaceSize");
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: saving FaceParticleSystem failed, because the face size could not be saved");
         return FALSE;
     }
     return TRUE;
@@ -752,11 +752,11 @@ BOOL FaceParticleSystem::load(void *fp)
     if (!ParticleSystem::load(fp))
         return FALSE;
     if (!ps_read(&flScale_, 4, fp)) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: Loading FaceParticleSystem failed, because could not read FaceSize");
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading FaceParticleSystem failed, because the face size could not be read");
         return FALSE;
     }
     if (!allocVerts()) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: Loading ParticleSystem failed, because could not create VertexArray");
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading ParticleSystem failed, because the vertex array could not be created");
         return FALSE;
     }
     return TRUE;
@@ -913,7 +913,7 @@ BOOL XFaceParticleSystem::save(void *fp)
     if (ps_write(&dwCornerTableCount_, 4, fp)
         && ps_write(ranges, sizeof(ranges), fp))
         return TRUE;
-    g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: Save XFaceParticleSystem failed, because could save Attributes");
+    g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: saving XFaceParticleSystem failed, because the attributes could not be saved");
     return FALSE;
 }
 
@@ -924,7 +924,7 @@ BOOL XFaceParticleSystem::load(void *fp)
     if (ps_read(&dwCornerTableCount_, 4, fp) && ps_read(ranges, sizeof(ranges), fp))
         return setCapacity(ring_.dwRingCount);
     release(1);
-    g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: Load XFaceParticleSystem failed, because could read Attributes");
+    g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading XFaceParticleSystem failed, because the attributes could not be read");
     return FALSE;
 }
 
@@ -999,19 +999,19 @@ ParticleSystem::loadStream(void *fp)
 {
     DWORD len;
     if (hooks_fread(&len, 4, 1, fp) != 1) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: ParticleSystem could not read, because could not read Data");
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the data could not be read");
         return NULL;
     }
     char *name = (char *)::operator new(len, std::nothrow);
     if (hooks_fread(name, 1, len, fp) != len) {
         ::operator delete(name);
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: ParticleSystem could not read, because Data could not read");
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the data could not be read");
         return NULL;
     }
     ParticleSystem *ps = ParticleSystem::create(name);
     if (ps == NULL) {
         // Logged before the free here, unlike load's two branches.
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: ParticleSystem could not read, because could create System : '%s'", name);
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the system '%s' could not be created", name);
         ::operator delete(name);
         return NULL;
     }
@@ -1027,15 +1027,15 @@ ParticleSystem::loadStream(void *fp)
 ParticleSystem *
 ParticleSystem::loadFile(const char *path)
 {
-    g_logger.logMessage(2, "Starting, to Read Particlesystem from File %s ...", path);
+    g_logger.logMessage(2, "PS: reading particle system from file %s ...", path);
     void *fp = hooks_fopen(path, "r");  // text mode
     if (fp == NULL) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: Particlesystem could not read, because could not Open File %s", path);
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because file %s could not be opened", path);
         return NULL;
     }
     ParticleSystem *ps = ParticleSystem::loadStream(fp);
     if (hooks_fclose(fp) != 0) {
-        g_logger.logSourceLocation(3, "src/render/particles.cpp", __LINE__, "PS: ParticleSystem could not read, because File %s could not closed", path);
+        g_logger.logSourceLocation(3, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because file %s could not be closed", path);
         delete ps;
         return NULL;
     }

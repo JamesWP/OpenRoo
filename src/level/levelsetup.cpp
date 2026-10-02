@@ -384,7 +384,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_SWITCH) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        g_logger.logMessage(1, "GAME: waring - switch with an index lower than 1 !!!");
+                        g_logger.logMessage(1, "GAME: warning - switch with an index lower than 1 !!!");
                     } else {
                         unsigned char idx = (unsigned char)(param - 1);
                         if (idx > self->switchMax())
@@ -402,7 +402,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_BRIDGE_U) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        g_logger.logMessage(1, "GAME: waring - X-bridge with an index lower than 1 !!!");
+                        g_logger.logMessage(1, "GAME: warning - X-bridge with an index lower than 1 !!!");
                     } else {
                         BridgeObject::spawn(self, u, v, t->height(),
                                             (unsigned char)(param - 1), 1);
@@ -413,7 +413,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_BRIDGE_V) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        g_logger.logMessage(1, "GAME: waring - Y-bridge with an index lower than 1 !!!");
+                        g_logger.logMessage(1, "GAME: warning - Y-bridge with an index lower than 1 !!!");
                     } else {
                         BridgeObject::spawn(self, u, v, t->height(),
                                             (unsigned char)(param - 1), 2);
@@ -676,7 +676,7 @@ next_row:
 
     if ((int)((unsigned int)self->player()->gemsCollected() + (unsigned int)self->field_42252()) <
         self->gemsRequired())
-        g_logger.logMessage(3, "GAME: waring - not enough crystals to complete this level!!!!");
+        g_logger.logMessage(3, "GAME: warning - not enough crystals to complete this level!!!!");
 
     // One argument: the level name.
     if (self->extraObjects()->openFile(
