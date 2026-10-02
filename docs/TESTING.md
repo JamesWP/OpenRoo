@@ -187,17 +187,19 @@ REPLAY_PLAN.md Stages A and A2). Both are written into the recording's header
 at record time, and `replaytest.py` refuses to run if the manifest disagrees
 with the header rather than reporting a diff that was never a real comparison.
 
-There is a third, quieter precondition: **music must be off.** `Karoo.cfg` is
-not part of a fixture (it is gitignored, and holds the video mode), but the
-music setting inside it changes the frame count: with music on, every recording
-runs exactly one more frame. Nothing else moves — every other asserted field is
-identical, because the gameplay is the same. `Karoo.cfg.default`, which
-`launch.sh` installs when `Karoo.cfg` is missing, has music off, and the
-manifest is baselined that way.
+Music used to be a third precondition: with it on, every recording ran exactly
+one frame longer, and nothing else moved (the per-frame hashes were identical).
+The cause was the message loop, not the music.  A recording ends when the game
+quits itself, with `PostQuitMessage` and, with music on, `CDM::stop()` in the
+same tick.  Stopping the MCI device posts an `MM_MCINOTIFY` to the window;
+`WM_QUIT` is only delivered once the queue is otherwise empty, and the loop
+handled one message per rendered frame, so the notification cost one extra
+frame.  `windev::runMessageLoop` now drains every pending message before each
+frame, so the frame count no longer depends on what else is queued.  The suite
+passes 16/16 with music on or off.
 
-So: **all three recordings failing on `frames_run` by exactly one, and on
-nothing else, means the config has music on** — not a regression in whatever
-you just changed. Delete `Karoo.cfg` and relaunch to get the default back.
+If a run ever ends on `frames_run` one or more frames over, with the hashes up
+to the expected length unchanged, suspect a message posted by the quit path.
 
 ## Capturing a new recording
 
