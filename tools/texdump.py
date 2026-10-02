@@ -18,6 +18,7 @@ import argparse, json, os, subprocess, sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CFG = os.path.join(REPO, "run", "Karoo.cfg")
 MODE_OFFSET = 0x1c
+HEADLESS = True
 
 
 def recordings():
@@ -39,7 +40,7 @@ def collect(out, names, mode, fast):
         for n in names:
             # The pass/fail verdict is not the point here; a different display
             # mode may legitimately move the simulation.
-            cmd = [sys.executable, os.path.join(REPO, "tools", "replaytest.py")]
+            cmd = [sys.executable, os.path.join(REPO, "tools", "replaytest.py")] + (["--no-headless"] if not HEADLESS else [])
             if not fast:
                 cmd.append("--no-fast")
             subprocess.run(cmd + [n], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -56,12 +57,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--diff", nargs=2, metavar=("A", "B"))
     ap.add_argument("--mode", type=int)
+    ap.add_argument("--no-headless", dest="headless", action="store_false",
+                    help="use the real DirectDraw (stock Wine ddraw, needs a display)")
     ap.add_argument("--no-fast", dest="fast", action="store_false",
                     help="render for real; --fast skips PresentImage's Blt, so the "
                          "loading screens are never converted")
     ap.add_argument("out", nargs="?")
     ap.add_argument("names", nargs="*")
     a = ap.parse_intermixed_args()
+    global HEADLESS
+    HEADLESS = a.headless
     if a.diff:
         x = open(a.diff[0]).read().splitlines()
         y = open(a.diff[1]).read().splitlines()
