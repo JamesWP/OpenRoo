@@ -74,10 +74,10 @@ so `Karoo.cfg`'s mode index means the same thing on every machine. If a Wine
 update changes what ddraw reports, re-capture with `KAROO_DDRAW_DIAG=1` rather
 than hand-editing the tables.
 
-**Surfaces are real memory.** They have to be -- the texture loaders write
-pixels into them (`texturetga.cpp` Locks and parses, `texturedib.cpp` gets a DC
-and BitBlts). Every surface with an RGB format is backed by a `CreateDIBSection`
-allocation, so `Lock` and `GetDC` address the same storage. What is *not*
+**Surfaces are real memory.** They have to be -- the backend writes pixels into
+them (`devicetexture.cpp` Locks a staging surface, converts an `Image` into it
+and Blts). Every surface is a heap block of its pitch times its height, so
+`Lock` addresses it; there is no `GetDC`. What is *not*
 implemented is stretching and format-converting Blts; the one place the game
 asks for one is the loading-screen bitmap, and it logs a single line saying so.
 

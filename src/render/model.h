@@ -9,7 +9,7 @@
 
 /* ─── ModelManager -- the name-keyed CFaktMesh cache ───────────────────────
  *
- * The twin of TextureManager (scenetexture.h): same shape, same in-place
+ * The twin of TextureManager (texture.h): same shape, same in-place
  * lowercasing lookup, "MM:" instead of "TM:" in its log lines. */
 class ModelManager {
 public:
