@@ -12,6 +12,8 @@
  * rotation (identity 3x3, translation kept); it too is only visible on such a
  * level. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "meshbatch.h"
 #include "sysdev.h"
 #include "renderdevice.h"
@@ -51,20 +53,20 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
         LONG k = InterlockedIncrement(&e);
         if (k <= 3 || k % 500 == 0)
             g_logger.write("meshbatch: enter #%ld nobj=%lu quads=%lu\n", k,
-                      slot->instanceCount(), (DWORD)pl->kind01Count());
+                      slot->instanceCount(), (uint32_t)pl->kind01Count());
     }
     if (slot->instanceCount() == 0)
         return;
 
-    for (DWORD i = 0; i < slot->instanceCount(); i++) {
+    for (uint32_t i = 0; i < slot->instanceCount(); i++) {
         const ThemeLevelObject *obj = &slot->records()[i];
         if (obj->subObjectCount() == 0)
             continue;
 
-        for (DWORD s = 0; s < obj->subObjectCount(); s++) {
+        for (uint32_t s = 0; s < obj->subObjectCount(); s++) {
             const SceneSubObject *sub = &obj->subObjects()[s];
 
-            DWORD addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
+            uint32_t addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
             d3d->SetRenderState(RS::TextureAddressU, addr);
             d3d->SetRenderState(RS::TextureAddressV, addr);
 
@@ -73,7 +75,7 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
 
             // The two branches share the final SetRenderState call.
             RS last_state;
-            DWORD              last_value;
+            uint32_t              last_value;
             if (sub->dwBlendSrc && sub->dwBlendDst) {
                 d3d->SetRenderState(RS::AlphaBlendEnable, 1);
                 d3d->SetRenderState(RS::SrcBlend,

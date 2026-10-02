@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <windows.h>
+#include <stdint.h>
  
 #include "faktmesh.h"
 class RenderDevice;
@@ -66,6 +66,6 @@ private:
 
     WrapperUV *pBaseUV_;  // wFrameCount * dwVertexCount pairs
     CFaktMesh *pMesh_;    // not owned
-    BYTE       dirty_;    // set by the three animating modes
+    uint8_t       dirty_;    // set by the three animating modes
 };
 

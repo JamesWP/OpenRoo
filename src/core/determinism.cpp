@@ -12,6 +12,8 @@
  * and a tolerance would hide the drift it looks for.  Order is part of the
  * hash: systems in the order the game ticks them, nodes in ring order. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "determinism.h"
 #include "sysdev.h"
 #include "particles.h"
@@ -28,10 +30,10 @@
 struct HashedField {
     const char   *tag;
     unsigned char bytes[12];
-    DWORD         len;
+    uint32_t         len;
 };
 
-static void put(HashedField *f, const char *tag, const void *p, DWORD len)
+static void put(HashedField *f, const char *tag, const void *p, uint32_t len)
 {
     f->tag = tag;
     f->len = len;
@@ -70,18 +72,18 @@ static int game_fields(const Game *g, HashedField *out)
 
 static int      g_on = -1;
 static FILE    *g_fh = NULL;
-static DWORD    g_frame;
-static DWORD    g_hash = 2166136261u;  // the FNV-1a offset basis
+static uint32_t    g_frame;
+static uint32_t    g_hash = 2166136261u;  // the FNV-1a offset basis
 
 /* Per-quantity hashes, so a divergence names what diverged: position,
  * velocity, life, colour. */
 #define SUB_N 4
 static const char *SUB_TAG[SUB_N] = { "pos", "vel", "life", "diff" };
-static DWORD    g_sub[SUB_N] = { 2166136261u, 2166136261u, 2166136261u, 2166136261u };
-static DWORD    g_nodes;
-static DWORD    g_systems;
+static uint32_t    g_sub[SUB_N] = { 2166136261u, 2166136261u, 2166136261u, 2166136261u };
+static uint32_t    g_nodes;
+static uint32_t    g_systems;
 
-static void fold_into(DWORD *h, const void *p, size_t n)
+static void fold_into(uint32_t *h, const void *p, size_t n)
 {
     const unsigned char *b = (const unsigned char *)p;
     for (size_t i = 0; i < n; i++) {
@@ -119,12 +121,12 @@ void dethash_particles(ParticleSystem *ps)
     g_systems++;
     // The ring as particles.cpp walks it: head up to, not including, current.
     ParticleNode *n = ps->ring().pRingHead;
-    for (DWORD guard = 0; n && n != ps->ring().pRingCurrent && guard <= ps->ring().dwRingCount;
+    for (uint32_t guard = 0; n && n != ps->ring().pRingCurrent && guard <= ps->ring().dwRingCount;
          n = n->pNext, guard++) {
         fold_sub(0, &n->flX,       3 * sizeof(float));
         fold_sub(1, n->flVel,      3 * sizeof(float));
         fold_sub(2, &n->flLife,    sizeof(float));
-        fold_sub(3, &n->dwDiffuse, sizeof(DWORD));
+        fold_sub(3, &n->dwDiffuse, sizeof(uint32_t));
         g_nodes++;
     }
 }
@@ -143,7 +145,7 @@ void dethash_frame_end(double virtual_seconds)
             fold(f[i].bytes, f[i].len);
             if (fl >= (int)sizeof(fields) - 32) continue;
             if (f[i].len == 4) {
-                DWORD v;
+                uint32_t v;
                 memcpy(&v, f[i].bytes, 4);
                 fl += snprintf(fields + fl, sizeof(fields) - fl, " %s=%08lx",
                                f[i].tag, (unsigned long)v);

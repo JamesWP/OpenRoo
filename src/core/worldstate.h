@@ -9,7 +9,7 @@
 #pragma once
 
 #include "tile.h"  // the tile kinds and contents
-#include <windows.h>
+#include <stdint.h>
 
 #define WS_GRID_PITCH 100  // fixed; not the level's column count
 
@@ -43,7 +43,7 @@
 
 /* Contents, not a kind: TILE_BREAKABLE is the kind with the same value. */
 #define WS_TILE_TRANSFORM CONTENTS_TRANSFORM
-static inline bool ws_is_pickup(BYTE contents)
+static inline bool ws_is_pickup(uint8_t contents)
 {
     return contents != 0 && contents != WS_TILE_TRANSFORM;
 }
@@ -57,50 +57,50 @@ static const int WS_DIR_DV[5] = { 0, -1,  0, +1,  0 };
 
 /* One tile, decoded. */
 struct WsTile {
-    BYTE  kind;  // the object marker
-    BYTE  param;
-    BYTE  contents;  // 1 crystal, 7 extra life
-    BYTE  occupant;  // nonzero blocks the cell: an object or a foe
-    BYTE  height;
-    BYTE  spawn;     // the snapshot's contents: the cell as the map gave it
-    BYTE  spawn_a;   // the snapshot's height
-    BYTE  spawn_b;   // the snapshot's param
+    uint8_t  kind;  // the object marker
+    uint8_t  param;
+    uint8_t  contents;  // 1 crystal, 7 extra life
+    uint8_t  occupant;  // nonzero blocks the cell: an object or a foe
+    uint8_t  height;
+    uint8_t  spawn;     // the snapshot's contents: the cell as the map gave it
+    uint8_t  spawn_a;   // the snapshot's height
+    uint8_t  spawn_b;   // the snapshot's param
     float height_f;  // a lift's live height
-    DWORD spent;     // the busy flag: a spent glue pad, an armed breakable
+    uint32_t spent;     // the busy flag: a spent glue pad, an armed breakable
 };
 
 /* One live foe or bomb. */
 struct WsEntity {
-    BYTE  slot;        // its index in the ID table
-    BYTE  kind;        // the foe kind; 0 for bombs
-    BYTE  facing;      // 1..4, see WS_DIR_*
-    BYTE  moving;      // the move in progress; 0 idle
-    BYTE  subtype;     // behaviour: 1 heads for the exit, 2 and 3 chase
-    DWORD frozen;      // held: nonzero does not act this tick
-    BYTE  category;    // foes only: the contents it drops
-    BYTE  gu, gv, gh;  // its cell
-    BYTE  su, sv, sh;  // foes only: its home cell
+    uint8_t  slot;        // its index in the ID table
+    uint8_t  kind;        // the foe kind; 0 for bombs
+    uint8_t  facing;      // 1..4, see WS_DIR_*
+    uint8_t  moving;      // the move in progress; 0 idle
+    uint8_t  subtype;     // behaviour: 1 heads for the exit, 2 and 3 chase
+    uint32_t frozen;      // held: nonzero does not act this tick
+    uint8_t  category;    // foes only: the contents it drops
+    uint8_t  gu, gv, gh;  // its cell
+    uint8_t  su, sv, sh;  // foes only: its home cell
     float pos[3];      // (U, H, V)
-    DWORD hidden;      // nonzero once it has started dying
+    uint32_t hidden;      // nonzero once it has started dying
 };
 
 /* One frame's observation: what the autoplayer reads. */
 struct Observation {
     bool  valid;
-    DWORD frame;
+    uint32_t frame;
     unsigned short mode;  // 0: not in a level
 
-    BYTE  cols, rows;    // U extent, V extent
+    uint8_t  cols, rows;    // U extent, V extent
     const WsTile *grid;  // v + u * WS_GRID_PITCH
 
-    BYTE  player_facing;    // 1..4
-    BYTE  player_moving;    // 0 idle
+    uint8_t  player_facing;    // 1..4
+    uint8_t  player_moving;    // 0 idle
     float player_grid[3];   // (U, H, V)
     float player_world[3];  // the camera eye, (U, H, V)
-    BYTE  player_cell[3];   // (U, V, H)
-    BYTE  exit_cell[3];     // (U, V, H), the level exit
+    uint8_t  player_cell[3];   // (U, V, H)
+    uint8_t  exit_cell[3];     // (U, V, H), the level exit
 
-    DWORD freeze_timer;  // nonzero holds every foe
+    uint32_t freeze_timer;  // nonzero holds every foe
     unsigned n_foes;
     unsigned n_enemies;
     WsEntity foes[WS_MAX_ENT];
@@ -108,7 +108,7 @@ struct Observation {
 
     // The same fields gamestate.cpp reads.
     int gems_collected, gems_required;
-    BYTE foes_killed, lives;
+    uint8_t foes_killed, lives;
     int level_complete;
     unsigned short crystals_in_level;  // the crystals in the level
 

@@ -58,7 +58,7 @@ public:
 
     /* Registers and creates the window; its events go to handler.  False on
      * failure. */
-    bool create(void *instance, WindowHandler *handler, const WindowConfig &config);
+    bool create(WindowHandler *handler, const WindowConfig &config);
     void destroy();
     void show(bool visible);
 

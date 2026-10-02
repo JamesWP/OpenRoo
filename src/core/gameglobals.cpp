@@ -9,7 +9,6 @@
 #include "scenetexture.h"
 
 ProgableControl g_progCtrl;
-HINSTANCE       g_moduleInstance;
 char            g_levelTitle[128];
 LoadedImage     g_fallbackImage;
 CDM             g_cdAudio;

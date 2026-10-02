@@ -2,6 +2,7 @@
  * two debug line-strip draws. */
 
 #include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <math.h>
 #include <string.h>
@@ -29,7 +30,7 @@ static void run_selfcheck(void);
 static void fx_init(void)
 {
     char  buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_init)
         return;
@@ -237,18 +238,18 @@ static void run_selfcheck(void)
               bad ? "FAIL" : "PASS", bad, bad == 1 ? "" : "s");
 }
 
-typedef long (WINAPI *DrawP_fn)(void *, DWORD, DWORD, void *, DWORD, DWORD);
+typedef long (WINAPI *DrawP_fn)(void *, uint32_t, uint32_t, void *, uint32_t, uint32_t);
 struct DevVtbl { void *slot[42]; };
 struct DevShim { DevVtbl *lpVtbl; };
 
 struct SplineVertex {
     float x, y, z;
-    DWORD zero;
-    DWORD diffuse, specular;
+    uint32_t zero;
+    uint32_t diffuse, specular;
     float u, v;
 };
 
-static long draw_strip(void *dev, void *verts, DWORD count)
+static long draw_strip(void *dev, void *verts, uint32_t count)
 {
     return ((DrawP_fn)((DevShim *)dev)->lpVtbl->slot[0x70 / 4])(
         dev, 3 , 0x1e2, verts, count, 0);  // Prim::LineStrip

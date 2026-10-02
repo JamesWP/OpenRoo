@@ -8,7 +8,6 @@
  *   - The reader ignores fread's result and reuses one byte variable, so a
  *     short file repeats its last byte.
  *   - Paths are formatted unbounded into 128-byte buffers. */
-#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"

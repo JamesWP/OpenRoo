@@ -14,6 +14,8 @@
  * lists, never by scanning the slots, since a dead slot keeps its stale
  * pointer. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "worldstate.h"
 #include "sysdev.h"
 #include "gamestate.h"
@@ -37,31 +39,31 @@ static bool env_flag(const char *name)
     return sysdev::getEnv(name, buf, sizeof(buf)) && buf[0] && buf[0] != '0';
 }
 
-static bool env_path(const char *name, char *out, DWORD n)
+static bool env_path(const char *name, char *out, uint32_t n)
 {
     return sysdev::getEnv(name, out, n) != 0 && out[0] != 0;
 }
 
 /* Reads one entity: the MovableEntity fields, and for a foe its own.  The cell
  * bytes are signed in the class and copied as raw bytes. */
-static void read_entity(const MovableEntity *obj, BYTE slot, WsEntity *e)
+static void read_entity(const MovableEntity *obj, uint8_t slot, WsEntity *e)
 {
     memset(e, 0, sizeof(*e));
     e->slot    = slot;
     e->facing  = obj->facing();
-    e->moving  = (BYTE)obj->moveDir();
-    e->gu      = (BYTE)obj->cellU();
-    e->gv      = (BYTE)obj->cellV();
-    e->gh      = (BYTE)obj->heightCell();
+    e->moving  = (uint8_t)obj->moveDir();
+    e->gu      = (uint8_t)obj->cellU();
+    e->gv      = (uint8_t)obj->cellV();
+    e->gh      = (uint8_t)obj->heightCell();
     e->pos[0]  = obj->posU();
     e->pos[1]  = obj->posY();
     e->pos[2]  = obj->posV();
-    e->hidden  = (DWORD)obj->dyingStarted();
+    e->hidden  = (uint32_t)obj->dyingStarted();
     e->subtype = obj->type();
-    e->frozen  = (DWORD)obj->held();
+    e->frozen  = (uint32_t)obj->held();
 }
 
-static void read_foe(const Foe *foe, BYTE slot, WsEntity *e)
+static void read_foe(const Foe *foe, uint8_t slot, WsEntity *e)
 {
     read_entity(foe, slot, e);
     e->kind     = foe->kind();
@@ -71,7 +73,7 @@ static void read_foe(const Foe *foe, BYTE slot, WsEntity *e)
     e->sh       = foe->homeH();
 }
 
-static void read_bomb(const Bomb *bomb, BYTE slot, WsEntity *e)
+static void read_bomb(const Bomb *bomb, uint8_t slot, WsEntity *e)
 {
     read_entity(bomb, slot, e);
 }
@@ -82,7 +84,7 @@ template <typename T>
 static unsigned read_table(const Game *g, unsigned char count_in,
                            unsigned char (Game::*id_of)(unsigned int) const,
                            T *(Game::*slot_of)(unsigned int) const,
-                           void (*read)(const T *, BYTE, WsEntity *),
+                           void (*read)(const T *, uint8_t, WsEntity *),
                            WsEntity *out)
 {
     unsigned count = count_in;
@@ -94,7 +96,7 @@ static unsigned read_table(const Game *g, unsigned char count_in,
 
     unsigned n = 0;
     for (unsigned i = 0; i < count; i++) {
-        BYTE slot = (g->*id_of)(i);
+        uint8_t slot = (g->*id_of)(i);
         // No range check: a byte ID cannot index past the table.
         const T *obj = (g->*slot_of)(slot);
         if (!obj) continue;  // a freed slot still in the list
@@ -110,8 +112,8 @@ bool Observation::observe()
     if (!g) return false;
 
     const LevelMap *map = g->map();
-    BYTE rows = map->extentV();
-    BYTE cols = map->extentU();
+    uint8_t rows = map->extentV();
+    uint8_t cols = map->extentU();
     if (rows == 0 || cols == 0 || rows > WS_GRID_PITCH || cols > WS_GRID_PITCH)
         return false;  // a menu, or the level torn down
 
@@ -132,7 +134,7 @@ bool Observation::observe()
             o->occupant = t->occupant();
             o->height   = t->height();
             o->height_f = t->liftLiveHeight();
-            o->spent    = (DWORD)t->busy();
+            o->spent    = (uint32_t)t->busy();
             // The snapshot: the cell as the map gave it.
             o->spawn_a  = p2->height();
             o->spawn_b  = p2->param();
@@ -142,15 +144,15 @@ bool Observation::observe()
 
     const Player *pl = g->player();
     player_facing  = pl->facing();
-    player_moving  = (BYTE)pl->moveDir();
+    player_moving  = (uint8_t)pl->moveDir();
     player_grid[0] = pl->posU();
     player_grid[1] = pl->posY();
     player_grid[2] = pl->posV();
     for (int k = 0; k < 3; k++)  // the camera eye, (U, H, V)
         player_world[k] = ((const Game *)g)->cameraEye(k);
-    player_cell[0] = (BYTE)pl->cellU();
-    player_cell[1] = (BYTE)pl->cellV();
-    player_cell[2] = (BYTE)pl->heightCell();
+    player_cell[0] = (uint8_t)pl->cellU();
+    player_cell[1] = (uint8_t)pl->cellV();
+    player_cell[2] = (uint8_t)pl->heightCell();
     // The exit: the level's one tile of kind 4.  The level completes when the
     // player stands on it with the gems collected at least the gems required.
     exit_cell[0]   = pl->markerCellU();
@@ -166,16 +168,16 @@ bool Observation::observe()
     gems_collected    = pl->gemsCollected();
     gems_required     = game->gemsRequired();
     foes_killed       = ((const Game *)g)->foesKilled();
-    lives             = (BYTE)pl->lives();
+    lives             = (uint8_t)pl->lives();
     level_complete    = pl->held();
     crystals_in_level = ((const Game *)g)->field_42252();
-    freeze_timer      = (DWORD)pl->effect8Active();
+    freeze_timer      = (uint32_t)pl->effect8Active();
     return true;
 }
 
 /* Kinds 5 to 8 are ramps; the movement code uses this test to tell a climb
  * from a wall. */
-static inline bool ws_is_ramp(BYTE kind) { return kind > 4 && kind < 9; }
+static inline bool ws_is_ramp(uint8_t kind) { return kind > 4 && kind < 9; }
 
 bool Observation::foeOnCell(int u, int v) const
 {
@@ -339,7 +341,7 @@ static void map_dump(const Game *g, const Observation *obs, const char *path)
  * transposed, not the physics. */
 #define WS_AXIS_TOL 2.0f
 
-static bool axis_ok(float f, BYTE cell)
+static bool axis_ok(float f, uint8_t cell)
 {
     float d = f - (float)cell;
     if (d < 0) d = -d;

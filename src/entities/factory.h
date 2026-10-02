@@ -2,7 +2,6 @@
  * (factory.cpp): each builds an object of the class a data file names. */
 
 #pragma once
-#include <windows.h>
 
  
   void *  Gen_FactoryCreate(const char *name);

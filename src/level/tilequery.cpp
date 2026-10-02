@@ -31,7 +31,7 @@
  * KAROO_TILEQ_DIAG=1 logs the first call and first hit of each query and a
  * count every 5000 calls. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
 #include <math.h>
@@ -49,7 +49,7 @@ static int s_init = 0;
 static void fx_init(void)
 {
     char buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_init)
         return;

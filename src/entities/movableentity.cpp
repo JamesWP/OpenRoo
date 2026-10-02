@@ -1,6 +1,8 @@
 /* MovableEntity's construction and destruction; the
  * shared movement step, updateMovement(), follows in the rest of the file. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "movableentity.h"
 #include "sysdev.h"
 #include "ani.h"
@@ -46,7 +48,6 @@ void MovableEntity::zeroSoundSlots()
  *
  * Returns 1 on the two early-out paths taken while the entity is dying, 0
  * otherwise. */
-#include <windows.h>
 #include <string.h>
 #include <math.h>
 #include "audiodev.h"
@@ -89,7 +90,7 @@ static void fx_init(void)
     if (s_fx >= 0)
         return;
     char buf[32];
-    DWORD n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
+    uint32_t n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     s_fx = 0;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "floaty") == 0) {
@@ -127,7 +128,7 @@ static inline double load_double(const void *p)
 #define CUR          TILE(GU, GV)
 
 /* Positions a sound at (x, y, z) and triggers it; a null sound is skipped. */
-static inline void snd_at(audiodev::Buffer *s, float x, float y, float z, DWORD loop)
+static inline void snd_at(audiodev::Buffer *s, float x, float y, float z, uint32_t loop)
 {
     if (s == 0)
         return;

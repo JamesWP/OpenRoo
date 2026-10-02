@@ -8,6 +8,8 @@
  * adding new particles at pRingCurrent.  Ring allocation itself lives
  * elsewhere — this file only honours the contract. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "generators.h"
 #include "sysdev.h"
 #include "assetio.h"
@@ -91,10 +93,10 @@ static void retire_node(RingBuffer *ring, ParticleNode *node)
         ring->pRingCurrent = node;
 }
 
-/* One colour channel moved by at most step toward target.  DWORD arithmetic
+/* One colour channel moved by at most step toward target.  uint32_t arithmetic
  * throughout, so a step larger than the true distance is clamped before the
  * subtraction, avoiding unsigned wraparound. */
-static DWORD fade_channel(DWORD cur, DWORD target, DWORD step)
+static uint32_t fade_channel(uint32_t cur, uint32_t target, uint32_t step)
 {
     if (cur == target)
         return cur;
@@ -108,14 +110,14 @@ static DWORD fade_channel(DWORD cur, DWORD target, DWORD step)
  * it leaves red exactly where it was and only bumps alpha; once that threshold
  * is cleared, red jumps straight to the target instead of stepping gradually.
  * Both environment ticks share this exactly. */
-static DWORD fade_diffuse(DWORD diffuse, const DWORD target[3], DWORD step)
+static uint32_t fade_diffuse(uint32_t diffuse, const uint32_t target[3], uint32_t step)
 {
-    DWORD blue  = diffuse & 0xff;
-    DWORD green = (diffuse >> 8) & 0xff;
-    DWORD red   = (diffuse >> 16) & 0xff;
-    DWORD alpha = diffuse >> 24;
+    uint32_t blue  = diffuse & 0xff;
+    uint32_t green = (diffuse >> 8) & 0xff;
+    uint32_t red   = (diffuse >> 16) & 0xff;
+    uint32_t alpha = diffuse >> 24;
 
-    DWORD out_red = red;
+    uint32_t out_red = red;
     if (red != target[0]) {
         out_red = target[0];
         if (target[0] < red) {
@@ -134,10 +136,10 @@ static DWORD fade_diffuse(DWORD diffuse, const DWORD target[3], DWORD step)
 
 /* Fade step for this tick: accumulate, truncate toward zero, suppress when it
  * does not clear the threshold, then subtract what was consumed. */
-static DWORD fade_step(float *accum, float rate, DWORD threshold, float dt)
+static uint32_t fade_step(float *accum, float rate, uint32_t threshold, float dt)
 {
     *accum += dt * rate;
-    DWORD step = (DWORD)(long long)*accum;
+    uint32_t step = (uint32_t)(long long)*accum;
     if (step <= threshold)
         step = 0;
     *accum -= (float)step;
@@ -158,7 +160,7 @@ void GravityEnvironment::gravityTick(float dt)
     float gy = flGravity_[1] * scale;
     float gz = flGravity_[2] * scale;
 
-    DWORD step = fade_step(&flFadeAccum_, flFadeRate_,
+    uint32_t step = fade_step(&flFadeAccum_, flFadeRate_,
                            dwFadeThreshold_, dt);
 
     ring = pRing_;
@@ -224,7 +226,7 @@ void MagnetEnvironment::magnetTick(float dt)
     // inverted gravity, and just as visible on a shield effect.
     float fscale = (fx == FX_ANTIGRAV) ? -3.0f : (fx == FX_GRAVITY ? 5.0f : 1.0f);
 
-    DWORD step = fade_step(&flFadeAccum_, flFadeRate_,
+    uint32_t step = fade_step(&flFadeAccum_, flFadeRate_,
                            dwFadeThreshold_, dt);
 
     ring = pRing_;
@@ -284,15 +286,15 @@ void MagnetEnvironment::magnetTick(float dt)
  * modulo — the two only differ once an index is driven out of range (e.g. the
  * step-3 index maps 497/498/499 to 0/1/2 via old-(limit-step), not old%limit).
  */
-static DWORD wrap_index(DWORD old, DWORD step, DWORD limit)
+static uint32_t wrap_index(uint32_t old, uint32_t step, uint32_t limit)
 {
-    DWORD next = old + step;
+    uint32_t next = old + step;
     return (next > limit - 1) ? old - (limit - step) : next;
 }
 
 /* Life/prob indices use a different idiom: bump while below the last entry,
  * otherwise snap to 0. */
-static DWORD bump_index(DWORD cur, DWORD count)
+static uint32_t bump_index(uint32_t cur, uint32_t count)
 {
     return (cur < count - 1) ? cur + 1 : 0;
 }
@@ -437,17 +439,17 @@ void CylinderGenerator::cylinderEmit(float dt)
     static LONG counter = 0; \
     if (InterlockedIncrement(&counter) <= SIM_LOG_FIRST)
 
-static DWORD count_live(const RingBuffer *ring)
+static uint32_t count_live(const RingBuffer *ring)
 {
-    DWORD live = 0;
+    uint32_t live = 0;
     for (ParticleNode *n = ring->pRingHead; n && n != ring->pRingCurrent; n = n->pNext)
         live++;
     return live;
 }
 
-static DWORD count_free(const RingBuffer *ring)
+static uint32_t count_free(const RingBuffer *ring)
 {
-    DWORD free_nodes = 0;
+    uint32_t free_nodes = 0;
     for (ParticleNode *n = ring->pRingCurrent; n; n = n->pNext)
         free_nodes++;
     return free_nodes;
@@ -457,7 +459,7 @@ static DWORD count_free(const RingBuffer *ring)
  * counts, plus the life range and how many live nodes have already expired —
  * every N ticks, keyed by object address so several systems in one scene stay
  * distinguishable.  Off unless the variable is set. */
-static DWORD stats_interval(void)
+static uint32_t stats_interval(void)
 {
     static LONG cached = -1;
     if (cached < 0) {
@@ -471,22 +473,22 @@ static DWORD stats_interval(void)
         if (v > 0)
             g_logger.write("sim: stats every %ld ticks\n", v);
     }
-    return (DWORD)cached;
+    return (uint32_t)cached;
 }
 
 static void stats_tick(const char *what, void *self, const RingBuffer *ring, LONG *counter, float dt)
 {
-    DWORD every = stats_interval();
+    uint32_t every = stats_interval();
     if (every == 0)
         return;
     LONG n = InterlockedIncrement(counter);
-    if ((DWORD)n % every)
+    if ((uint32_t)n % every)
         return;
     // Also report how many of the live nodes are already expired (flLife < 0).
     // A healthy ring retires those the same tick they expire, so this should
     // hover near zero; a live region full of expired nodes means retirement
     // has stopped and the ring can never recycle.
-    DWORD expired = 0, oldest_seen = 0;
+    uint32_t expired = 0, oldest_seen = 0;
     float minlife = 0.0f, maxlife = 0.0f;
     bool first = true;
     for (ParticleNode *nd = ring->pRingHead; nd && nd != ring->pRingCurrent; nd = nd->pNext) {
@@ -590,7 +592,7 @@ void GravityEnvironment::gravitySetVector(const float dir[3], float mag)
     flGravity_[2] = q[2] * mag;
 }
 
-void GravityEnvironment::gravitySetColour(DWORD argb, float fade)
+void GravityEnvironment::gravitySetColour(uint32_t argb, float fade)
 {
     dwTargetARGB_   = argb;
     dwTargetA_      = argb >> 24;
@@ -602,10 +604,10 @@ void GravityEnvironment::gravitySetColour(DWORD argb, float fade)
 
 /* Leaves flFadeAccum as constructed — unlike MagnetEnvironment::Load, which
  * resets it every time. */
-BOOL GravityEnvironment::load(void *fp)
+int GravityEnvironment::load(void *fp)
 {
     float dir[3], mag, fade;
-    DWORD argb;
+    uint32_t argb;
     if (!read1(dir, 12, fp))                   return FALSE;
     if (!read1(&mag, 4, fp))                   return FALSE;
     if (!read1(&argb, 4, fp))                  return FALSE;
@@ -629,7 +631,7 @@ BOOL GravityEnvironment::load(void *fp)
 /* FORMAT: on disk, force precedes centre.  PRESERVED: dwTargetRGB is never
  * loaded — it keeps whatever the constructor or a CopyFrom set, not what a
  * saved file may have recorded. */
-BOOL MagnetEnvironment::load(void *fp)
+int MagnetEnvironment::load(void *fp)
 {
     // The base Environment::Load contributes nothing; its result is not
     // checked.
@@ -658,7 +660,7 @@ static bool write1(const void *src, unsigned size, void *fp)
 }
 
 /* Field-for-field mirror of Load, in the same order. */
-BOOL GravityEnvironment::save(void *fp)
+int GravityEnvironment::save(void *fp)
 {
     if (!write1(flDirection_, 12, fp))      return FALSE;
     if (!write1(&flMagnitude_, 4, fp))      return FALSE;
@@ -674,7 +676,7 @@ BOOL GravityEnvironment::save(void *fp)
 
 /* Calls the base Environment::Save (a no-op) first, then mirrors Load.
  * PRESERVED: dwTargetRGB is not written either, matching Load. */
-BOOL MagnetEnvironment::save(void *fp)
+int MagnetEnvironment::save(void *fp)
 {
     if (!write1(flForce_, 12, fp))          return FALSE;
     if (!write1(flCentre_, 12, fp))         return FALSE;
@@ -685,14 +687,14 @@ BOOL MagnetEnvironment::save(void *fp)
 
 /* The base Environment::CopyFrom only gates on type name; it copies nothing
  * itself. */
-BOOL Environment::envSameName(const Environment *src) const
+int Environment::envSameName(const Environment *src) const
 {
     return strcmp(src->pName_, pName_) == 0;
 }
 
 /* Copies every field past the base (pName and pRing keep the
  * destination's) in one memcpy; safe because src can never alias dst. */
-BOOL GravityEnvironment::copyFrom(const Environment *src)
+int GravityEnvironment::copyFrom(const Environment *src)
 {
     if (!envSameName(src))
         return FALSE;
@@ -700,7 +702,7 @@ BOOL GravityEnvironment::copyFrom(const Environment *src)
     return TRUE;
 }
 
-BOOL MagnetEnvironment::copyFrom(const Environment *src)
+int MagnetEnvironment::copyFrom(const Environment *src)
 {
     if (!envSameName(src))
         return FALSE;
@@ -709,7 +711,7 @@ BOOL MagnetEnvironment::copyFrom(const Environment *src)
 }
 
 /* Refuses (and leaves pRing alone) when handed a NULL ring. */
-BOOL Environment::attachRing(RingBuffer *ring)
+int Environment::attachRing(RingBuffer *ring)
 {
     if (ring == NULL)
         return FALSE;
@@ -728,7 +730,7 @@ Environment::Environment() : pName_(GS_PSNAME_ENVIRONMENT), pRing_(NULL)
  * which starts at 10. */
 GravityEnvironment::GravityEnvironment()
 {
-    memset((BYTE *)this + sizeof(Environment), 0,
+    memset((uint8_t *)this + sizeof(Environment), 0,
            sizeof(GravityEnvironment) - sizeof(Environment));
     pName_ = GS_PSNAME_GRAVITY_ENV;
     dwFadeThreshold_ = 10;
@@ -736,7 +738,7 @@ GravityEnvironment::GravityEnvironment()
 
 MagnetEnvironment::MagnetEnvironment()
 {
-    memset((BYTE *)this + sizeof(Environment), 0,
+    memset((uint8_t *)this + sizeof(Environment), 0,
            sizeof(MagnetEnvironment) - sizeof(Environment));
     pName_ = GS_PSNAME_MAGNET_ENV;
     dwFadeThreshold_ = 10;
@@ -846,7 +848,7 @@ static void gauss_fill(float *out, int n, float mu, float sigma, float step)
 /* One-shot: only the very first call this process makes reseeds from the
  * clock; every call after that (and after, every call at all) reseeds via
  * srand(rand()). */
-static volatile BYTE g_uniformSeedPending = 1;
+static volatile uint8_t g_uniformSeedPending = 1;
 
 /* DETERMINISM: n samples uniform on [a, b], centred on the midpoint.  See
  * g_uniformSeedPending above for the seeding order this depends on. */
@@ -868,7 +870,7 @@ static void uniform_fill(float *out, int n, float a, float b)
 }
 
 /* Gates on matching type name, then copies only dwEnabled. */
-BOOL Generator::copyFrom(const Generator *src)
+int Generator::copyFrom(const Generator *src)
 {
     if (strcmp(src->pName_, pName_) != 0)
         return FALSE;
@@ -876,7 +878,7 @@ BOOL Generator::copyFrom(const Generator *src)
     return TRUE;
 }
 
-BOOL Generator::attachRing(RingBuffer *ring)
+int Generator::attachRing(RingBuffer *ring)
 {
     if (ring == NULL)
         return FALSE;
@@ -888,13 +890,13 @@ BOOL Generator::attachRing(RingBuffer *ring)
  * rand() until all 200 slots are filled, skipping zero-weight pairs — the draw
  * order feeds the emitted particle colours.  An empty or missing source table
  * instead fills pEmitProb with all -1. */
-static void type_table_clone(void **ptable, DWORD *pcount, DWORD *emit_prob,
-                             const DWORD *src, DWORD count)
+static void type_table_clone(void **ptable, uint32_t *pcount, uint32_t *emit_prob,
+                             const uint32_t *src, uint32_t count)
 {
     if (*ptable)
         ::operator delete(*ptable);
     *pcount = count;
-    DWORD *table = (DWORD *)::operator new(count * 8);
+    uint32_t *table = (uint32_t *)::operator new(count * 8);
     *ptable = table;
     if (count)
         memcpy(table, src, count * 8);
@@ -914,7 +916,7 @@ static void type_table_clone(void **ptable, DWORD *pcount, DWORD *emit_prob,
             int r = (int)crt_rand();
             idx = (int)((double)r * span * RAND_SCALE + 0.5f);
         } while (src[idx * 2 + 1] == 0);
-        DWORD j = 0;
+        uint32_t j = 0;
         do {
             emit_prob[out++] = src[idx * 2];
             if (out >= 200)
@@ -924,14 +926,14 @@ static void type_table_clone(void **ptable, DWORD *pcount, DWORD *emit_prob,
     }
 }
 
-void StdGenerator::stdCloneTypeTable(const DWORD *src, DWORD count)
+void StdGenerator::stdCloneTypeTable(const uint32_t *src, uint32_t count)
 {
     type_table_clone(&pTypeTable_, &dwTypeTableCount_, pEmitProb_,
                      src, count);
 }
 
-/* FORMAT: count (DWORD), then that many (colour, weight) DWORD pairs. */
-static BOOL type_table_save(void *table, const DWORD *pcount, void *fp)
+/* FORMAT: count (uint32_t), then that many (colour, weight) uint32_t pairs. */
+static int type_table_save(void *table, const uint32_t *pcount, void *fp)
 {
     if (fp == NULL)
         return FALSE;
@@ -942,14 +944,14 @@ static BOOL type_table_save(void *table, const DWORD *pcount, void *fp)
 
 /* PRESERVED: a short read returns FALSE without freeing the scratch buffer — a
  * genuine leak, reproduced. */
-static BOOL type_table_load(void **ptable, DWORD *pcount, DWORD *emit_prob, void *fp)
+static int type_table_load(void **ptable, uint32_t *pcount, uint32_t *emit_prob, void *fp)
 {
     if (fp == NULL)
         return FALSE;
-    DWORD count;
+    uint32_t count;
     if (hooks_fread(&count, 4, 1, fp) != 1)
         return FALSE;
-    DWORD *pairs = (DWORD *)::operator new(count * 8);
+    uint32_t *pairs = (uint32_t *)::operator new(count * 8);
     if (hooks_fread(pairs, 8, count, fp) != count)
         return FALSE;
     type_table_clone(ptable, pcount, emit_prob, pairs, count);
@@ -957,12 +959,12 @@ static BOOL type_table_load(void **ptable, DWORD *pcount, DWORD *emit_prob, void
     return TRUE;
 }
 
-BOOL StdGenerator::stdSaveTypeTable(void *fp)
+int StdGenerator::stdSaveTypeTable(void *fp)
 {
     return type_table_save(pTypeTable_, &dwTypeTableCount_, fp);
 }
 
-BOOL StdGenerator::stdLoadTypeTable(void *fp)
+int StdGenerator::stdLoadTypeTable(void *fp)
 {
     return type_table_load(&pTypeTable_, &dwTypeTableCount_,
                            pEmitProb_, fp);
@@ -1061,7 +1063,7 @@ void StdGenerator::stdBuildRate(float lo, float hi)
 /* Copies every field but the type table, which is cloned instead — cloning
  * redraws pEmitProb from a fresh seed, so a copy's colours differ from its
  * source's. */
-BOOL StdGenerator::copyFrom(const Generator *gsrc)
+int StdGenerator::copyFrom(const Generator *gsrc)
 {
     if (!Generator::copyFrom(gsrc))
         return FALSE;
@@ -1069,11 +1071,11 @@ BOOL StdGenerator::copyFrom(const Generator *gsrc)
     void *own = pTypeTable_;   // the assignment must not hand us the source's table
     *this = *src;
     pTypeTable_ = own;
-    this->stdCloneTypeTable((const DWORD*)src->pTypeTable_,src->dwTypeTableCount_);
+    this->stdCloneTypeTable((const uint32_t*)src->pTypeTable_,src->dwTypeTableCount_);
     return TRUE;
 }
 
-BOOL StdGenerator::save(void *fp)
+int StdGenerator::save(void *fp)
 {
     if (!write1(&dwEmitMode_, 4, fp))     return FALSE;
     if (!write1(flBoxMax_, 12, fp))       return FALSE;
@@ -1092,7 +1094,7 @@ BOOL StdGenerator::save(void *fp)
 
 /* Builds the sphere or box position table (whichever dwEmitMode selects), then
  * always rebuilds the velocity and rate tables. */
-BOOL StdGenerator::load(void *fp)
+int StdGenerator::load(void *fp)
 {
     if (!read1(&dwEmitMode_, 4, fp))      return FALSE;
     if (!read1(flBoxMax_, 12, fp))        return FALSE;
@@ -1120,7 +1122,7 @@ BOOL StdGenerator::load(void *fp)
 
 /* PRESERVED: copies flPosOffset but not flVelOffset — a copied generator keeps
  * its own velocity offset regardless of the source's. */
-BOOL XStdGenerator::copyFrom(const Generator *gsrc)
+int XStdGenerator::copyFrom(const Generator *gsrc)
 {
     if (!StdGenerator::copyFrom(gsrc))
         return FALSE;
@@ -1129,14 +1131,14 @@ BOOL XStdGenerator::copyFrom(const Generator *gsrc)
     return TRUE;
 }
 
-BOOL XStdGenerator::save(void *fp)
+int XStdGenerator::save(void *fp)
 {
     if (!StdGenerator::save(fp))        return FALSE;
     if (!write1(flPosOffset_, 12, fp))    return FALSE;
     return write1(flVelOffset_, 12, fp);
 }
 
-BOOL XStdGenerator::load(void *fp)
+int XStdGenerator::load(void *fp)
 {
     if (!StdGenerator::load(fp))        return FALSE;
     if (!read1(flPosOffset_, 12, fp))     return FALSE;
@@ -1233,15 +1235,15 @@ void PointGenerator::tick(float dt)
     int n = dead_gen_claim(&flAccumulator_, flEmitRate_, dt);
     if (n <= 0)
         return;
-    const DWORD *life = this->dwLifeTable_;
+    const uint32_t *life = this->dwLifeTable_;
     for (int i = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
-        *(DWORD *)&node->flLife = life[dwLifeIdx_];
+        *(uint32_t *)&node->flLife = life[dwLifeIdx_];
         memcpy(&node->flX, flEmitPos_, 12);
         node->dwDiffuse = dwDiffuse_;
         for (int a = 0; a < 3; a++)
             node->flVel[a] = flVelTable_[dwVelIdx_[a]] + flVelBias_[a];
-        DWORD i0 = dwVelIdx_[0] + 1, i1 = dwVelIdx_[1] + 2,
+        uint32_t i0 = dwVelIdx_[0] + 1, i1 = dwVelIdx_[1] + 2,
               i2 = dwVelIdx_[2] + 3;
         dwVelIdx_[0] = (i0 >= 1000) ? 1000 - i0 : i0;  // wraps at 1000, not 999 or 998, like the next two indices
         dwVelIdx_[1] = (i1 >= 999)  ? 1000 - i1 : i1;
@@ -1267,19 +1269,19 @@ void BoxGenerator::tick(float dt)
         return;
     for (int i = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
-        *(DWORD *)&node->flLife = dwLifeTable_[dwLifeIdx_];
-        *(DWORD *)&node->flX = dwPosX_[dwPosIdx_[0]];
-        *(DWORD *)&node->flY = dwPosY_[dwPosIdx_[1]];
-        *(DWORD *)&node->flZ = dwPosZ_[dwPosIdx_[2]];
+        *(uint32_t *)&node->flLife = dwLifeTable_[dwLifeIdx_];
+        *(uint32_t *)&node->flX = dwPosX_[dwPosIdx_[0]];
+        *(uint32_t *)&node->flY = dwPosY_[dwPosIdx_[1]];
+        *(uint32_t *)&node->flZ = dwPosZ_[dwPosIdx_[2]];
         node->dwDiffuse = dwDiffuse_[dwDiffuseIdx_];
         for (int a = 0; a < 3; a++)
             node->flVel[a] = flVelTable_[dwVelIdx_[a]] + flVelBias_[a];
         for (int a = 0; a < 3; a++) {
-            DWORD p = dwPosIdx_[a] + (DWORD)(a + 1);
+            uint32_t p = dwPosIdx_[a] + (uint32_t)(a + 1);
             dwPosIdx_[a] = (p > 499) ? 500 - p : p;
         }
         for (int a = 0; a < 3; a++) {
-            DWORD v = dwVelIdx_[a] + (DWORD)(a + 1);
+            uint32_t v = dwVelIdx_[a] + (uint32_t)(a + 1);
             dwVelIdx_[a] = (v > 499) ? 500 - v : v;
         }
         dwLifeIdx_ = (dwLifeIdx_ < 99) ? dwLifeIdx_ + 1 : 0;
@@ -1376,7 +1378,7 @@ void CylinderGenerator::cylBuildRate(float lo, float hi)
     gauss_fill(pLifeTable_, 100, lo, hi, step);
 }
 
-BOOL CylinderGenerator::copyFrom(const Generator *gsrc)
+int CylinderGenerator::copyFrom(const Generator *gsrc)
 {
     if (!Generator::copyFrom(gsrc))
         return FALSE;
@@ -1385,11 +1387,11 @@ BOOL CylinderGenerator::copyFrom(const Generator *gsrc)
     *this = *src;
     pTypeTable_ = own;
     type_table_clone(&this->pTypeTable_, &this->dwTypeTableCount_, this->pEmitProb_,
-                     (const DWORD *)src->pTypeTable_, src->dwTypeTableCount_);
+                     (const uint32_t *)src->pTypeTable_, src->dwTypeTableCount_);
     return TRUE;
 }
 
-BOOL CylinderGenerator::save(void *fp)
+int CylinderGenerator::save(void *fp)
 {
     if (!write1(flOrigin_, 12, fp))       return FALSE;
     if (!write1(&flScale_, 4, fp))        return FALSE;
@@ -1407,7 +1409,7 @@ BOOL CylinderGenerator::save(void *fp)
 /* Reads its own direction back out to rebuild the matrix via
  * cylSetDirection.  The position table (the unit circle) is the constructor's
  * and is never rebuilt here. */
-BOOL CylinderGenerator::load(void *fp)
+int CylinderGenerator::load(void *fp)
 {
     if (!read1(flOrigin_, 12, fp))        return FALSE;
     if (!read1(&flScale_, 4, fp))         return FALSE;
@@ -1453,7 +1455,7 @@ BoxGenerator::BoxGenerator()
 
 StdGenerator::StdGenerator()
 {
-    memset((BYTE *)this + sizeof(Generator), 0, sizeof(StdGenerator) - sizeof(Generator));
+    memset((uint8_t *)this + sizeof(Generator), 0, sizeof(StdGenerator) - sizeof(Generator));
     pName_ = GS_PSNAME_STD_GEN;
     for (int i = 0; i < 200; i++)
         pEmitProb_[i] = 0xFFFFFFFF;
@@ -1488,7 +1490,7 @@ XStdGenerator::XStdGenerator()
  */
 CylinderGenerator::CylinderGenerator()
 {
-    memset((BYTE *)this + sizeof(Generator), 0,
+    memset((uint8_t *)this + sizeof(Generator), 0,
            sizeof(CylinderGenerator) - sizeof(Generator));
     pName_ = GS_PSNAME_CYL_GEN;
     setDirection(0.0f, 1.0f, 0.0f);

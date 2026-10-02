@@ -17,7 +17,7 @@
  * recording types a cheat, so the suite is expected to pass; it waits for a
  * recording that does. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,7 +70,7 @@ Sim_HandleTypedCheatCode(Game *self)
 
     if (s_fx < 0) {
         char e[32];
-        DWORD n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
+        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "cheatlife") == 0);
         if (s_fx)
             g_logger.write("cheatcode: KAROO_SIM_FX=cheatlife -- mausuruh gives 2\n");

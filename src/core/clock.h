@@ -3,7 +3,6 @@
  * exactly that many seconds, which makes the simulation fixed-step. */
 
 #pragma once
-#include <windows.h>
 
 /* The clock in seconds.  Each call also ends a frame and runs the per-frame
  * test hooks: RenderGameFrame calls it once a frame, level entry once more. */

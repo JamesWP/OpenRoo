@@ -22,7 +22,7 @@
  * throughout.  The tile under a position is Tile::at(map, (int)x, -(int)z). */
 
 #include "renderdevice.h"
-#include <windows.h>
+#include <stdint.h>
 #include <math.h>
 #include <string.h>
 
@@ -71,7 +71,7 @@ static void mat_translate(Mat4 *m, float x, float y, float z)
 }
 
 /* The sub-object's visibility gate against the tile and the player. */
-static bool gate_passes(DWORD gate, const Tile *tile, const Player *pl)
+static bool gate_passes(uint32_t gate, const Tile *tile, const Player *pl)
 {
     switch (gate) {
     case 0: return true;
@@ -364,7 +364,7 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
             SceneSubObject *sub = &rec->subObjects()[s];
             if (sub->effect == 5 && !cfg->videoReflection())
                 continue;
-            DWORD addr = sub->dwTexAddress != 0 ? sub->dwTexAddress : (DWORD)TexAddress::Clamp;
+            uint32_t addr = sub->dwTexAddress != 0 ? sub->dwTexAddress : (uint32_t)TexAddress::Clamp;
             d3d->SetRenderState(RS::TextureAddressU, addr);
             d3d->SetRenderState(RS::TextureAddressV, addr);
 

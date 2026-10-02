@@ -5,7 +5,6 @@
  * camera, with other values; this runs a frame later, so these are the ones
  * that count. */
 
-#include <windows.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>

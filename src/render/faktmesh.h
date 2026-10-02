@@ -1,5 +1,5 @@
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 #include <stddef.h>
 class RenderDevice;
 
@@ -31,7 +31,7 @@ static_assert(sizeof(MeshVertex) == 0x28, "MeshVertex is the FVF 0x212 stride");
 #define MESH_STRIDED_TEX1     5
 
 /* One D3DDRAWPRIMITIVESTRIDEDDATA entry. */
-struct MeshStridedEntry { void *lpvData; DWORD dwStride; };
+struct MeshStridedEntry { void *lpvData; uint32_t dwStride; };
 
 class CFaktMesh {
 public:
@@ -40,9 +40,9 @@ public:
     int importSceneModels(const char *path);
 
     /* The two draw exports (faktmesh.cpp). */
-    HRESULT drawMeshBuffer(RenderDevice *dev, DWORD frame);
+    long drawMeshBuffer(RenderDevice *dev, uint32_t frame);
 
-    HRESULT drawFramedModel(RenderDevice *dev, DWORD frame);
+    long drawFramedModel(RenderDevice *dev, uint32_t frame);
 
     /* ─── Lifecycle ────────────────────────────────────────────────────────
      *
@@ -57,21 +57,21 @@ public:
     void releaseModelBuffers();
 
     void  *vertexData() const { return pVertexData_; }
-    DWORD vertexCount() const { return dwVertexCount_; }
+    uint32_t vertexCount() const { return dwVertexCount_; }
     void  *frameRecords() const { return pFrameRecords_; }
-    WORD frameCount() const { return wFrameCount_; }
+    uint16_t frameCount() const { return wFrameCount_; }
     char  *name() const { return pszName_; }
 
 private:
-    HRESULT drawMesh(RenderDevice *dev, DWORD frame, DWORD flags,
+    long drawMesh(RenderDevice *dev, uint32_t frame, uint32_t flags,
                      const char *name);
 
  
 
     void  *pVertexData_;    // +0x04 dwVertexCount * wFrameCount vertices, stride 0x28
-    DWORD  dwVertexCount_;  // +0x08 vertices per animation frame
+    uint32_t  dwVertexCount_;  // +0x08 vertices per animation frame
     void  *pFrameRecords_;  // +0x0c wFrameCount records of 0x18 bytes (6 dwords)
-    WORD   wFrameCount_;    // +0x10 frame index clamps to 0 when >= this
+    uint16_t   wFrameCount_;    // +0x10 frame index clamps to 0 when >= this
     char  *pszName_;        // +0x12 strdup of the path, freed by ReleaseModelBuffers
     /* +0x16 D3DDRAWPRIMITIVESTRIDEDDATA: position, normal, diffuse,
      * specular, then textureCoords[8].  Only the four strides the ctor

@@ -12,6 +12,7 @@
  *   Escape: depth < 2 ? leave the menu : pop (cursor = saved[node])
  *   Up, Down: move the cursor, wrapping at both ends */
 
+#include <stdint.h>
 #include "menu.h"
 #include "sysdev.h"
 #include <stdio.h>
@@ -37,8 +38,8 @@ static int      g_phase;  // > 0 holding, < 0 releasing
 
 /* KAROO_MENU_TRACE=1 logs each node or cursor change while a goal stands. */
 static int      g_trace = -1;
-static BYTE     g_last_node = 0xff;
-static BYTE     g_last_cursor = 0xff;
+static uint8_t     g_last_node = 0xff;
+static uint8_t     g_last_cursor = 0xff;
 
 static bool trace_on(void)
 {
@@ -52,7 +53,7 @@ static bool trace_on(void)
 
 bool MenuState::read()
 {
-    const BYTE *g = (const BYTE *)Game::instance();
+    const uint8_t *g = (const uint8_t *)Game::instance();
     memset(this, 0, sizeof(*this));
     if (!g) return false;
 
@@ -91,7 +92,7 @@ void menu_pulse(int vkey)
  * or -1 if the goal cannot be reached going forwards, in which case the caller
  * backs out with Escape.  Node ids are bytes, so a visited array of 256 is the
  * whole cycle protection. */
-static int route_first_hop(const BYTE *g, BYTE from, BYTE goal)
+static int route_first_hop(const uint8_t *g, uint8_t from, uint8_t goal)
 {
     if (from == goal) return -1;
 
@@ -103,9 +104,9 @@ static int route_first_hop(const BYTE *g, BYTE from, BYTE goal)
     int head = 0, tail = 0;
     seen[from] = true;
 
-    BYTE n = ((const Game *)g)->menu()->childCount(from);
-    for (BYTE i = 0; i < n; i++) {
-        BYTE c = ((const Game *)g)->menu()->child(from, (unsigned char)i);
+    uint8_t n = ((const Game *)g)->menu()->childCount(from);
+    for (uint8_t i = 0; i < n; i++) {
+        uint8_t c = ((const Game *)g)->menu()->child(from, (unsigned char)i);
         if (c == goal) return i;
         if (seen[c]) continue;
         seen[c]  = true;
@@ -114,10 +115,10 @@ static int route_first_hop(const BYTE *g, BYTE from, BYTE goal)
     }
 
     while (head < tail) {
-        BYTE cur = (BYTE)queue[head++];
-        BYTE cn  = ((const Game *)g)->menu()->childCount(cur);
-        for (BYTE i = 0; i < cn; i++) {
-            BYTE c = ((const Game *)g)->menu()->child(cur, (unsigned char)i);
+        uint8_t cur = (uint8_t)queue[head++];
+        uint8_t cn  = ((const Game *)g)->menu()->childCount(cur);
+        for (uint8_t i = 0; i < cn; i++) {
+            uint8_t c = ((const Game *)g)->menu()->child(cur, (unsigned char)i);
             if (c == goal) return first[cur];
             if (seen[c]) continue;
             seen[c]  = true;
@@ -158,7 +159,7 @@ void menu_tick(void)
 
     if (g_goal == MENU_NO_GOAL) return;
 
-    const BYTE *g = (const BYTE *)Game::instance();
+    const uint8_t *g = (const uint8_t *)Game::instance();
     if (!g) return;
 
     MenuState m;
@@ -166,7 +167,7 @@ void menu_tick(void)
 
     if (trace_on() && (m.node() != g_last_node || m.cursor() != g_last_cursor)) {
         char kids[128]; kids[0] = 0;
-        for (BYTE i = 0; i < m.count() && i < 16; i++) {
+        for (uint8_t i = 0; i < m.count() && i < 16; i++) {
             char one[12];
             snprintf(one, sizeof(one), "%s%u", i ? "," : "", m.children()[i]);
             if (strlen(kids) + strlen(one) + 1 < sizeof(kids)) strcat(kids, one);
@@ -178,7 +179,7 @@ void menu_tick(void)
         g_last_node = m.node(); g_last_cursor = m.cursor();
     }
 
-    if ((BYTE)g_goal == m.node()) {  // arrived
+    if ((uint8_t)g_goal == m.node()) {  // arrived
         g_logger.write("menu: reached node %u\n", m.node());
         menu_request(MENU_NO_GOAL);
         return;
@@ -188,7 +189,7 @@ void menu_tick(void)
     if (g_key) return;         // a pulse is still in flight
     if (m.count() == 0) return;  // a leaf: nothing to press
 
-    int hop = route_first_hop(g, m.node(), (BYTE)g_goal);
+    int hop = route_first_hop(g, m.node(), (uint8_t)g_goal);
     if (hop < 0) {
         // Not reachable forwards: back out one level and try from the parent.
         // At depth < 2 Escape would leave the menu, so don't.
@@ -196,13 +197,13 @@ void menu_tick(void)
         return;
     }
 
-    if (m.cursor() == (BYTE)hop) {
+    if (m.cursor() == (uint8_t)hop) {
         want(VK_ENTER_);
         // The goal is met when Enter is pressed on the item leading to it:
         // action nodes such as "load slot 4" are passed through within the
         // same frame, so arriving is never seen, and a goal left standing
         // would repeat the action every time the menu came back.
-        if (m.children()[hop] == (BYTE)g_goal) {
+        if (m.children()[hop] == (uint8_t)g_goal) {
             g_logger.write("menu: selected node %u (from node %u cursor %u)\n",
                       (unsigned)g_goal, m.node(), m.cursor());
             g_goal = MENU_NO_GOAL;
@@ -216,8 +217,8 @@ void menu_tick(void)
     want(down <= up ? VK_DOWN_ : VK_UP_);
 }
 
-bool menu_async_override(int vkey, SHORT *out)
+bool menu_async_override(int vkey, short *out)
 {
-    if (g_key && vkey == g_key && g_phase > 0) { *out = (SHORT)0x8000; return true; }
+    if (g_key && vkey == g_key && g_phase > 0) { *out = (short)0x8000; return true; }
     return false;
 }

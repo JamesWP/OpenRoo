@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <windows.h>
+#include <stdint.h>
 #include "faktmesh.h"
  
 class RenderDevice;
@@ -40,16 +40,16 @@ public:
 
     /* Draws the live triangles twice (SRCALPHA, then DESTALPHA); 0x800401f0 if
      * inactive. */
-    HRESULT draw(RenderDevice *dev);
+    long draw(RenderDevice *dev);
 
     int vertexCount() const { return nVertexCount_; }
-    DWORD active() const { return bActive_; }
+    uint32_t active() const { return bActive_; }
  
  
     float *samples() { return samples_; }
  
-    DWORD cursor() const { return cursor_; }
-    void  setCursor(DWORD c) { cursor_ = c; }
+    uint32_t cursor() const { return cursor_; }
+    void  setCursor(uint32_t c) { cursor_ = c; }
     float explodeScaledCount() const { return flExplodeScaledCount_; }
 
 private:
@@ -59,9 +59,9 @@ private:
     MeshVertex   *pVertexCopy_;           // nVertexCount * 0x28 (FVF 0x212)
     float       (*pFaceRecords_)[3];      // a velocity per triangle, (nVertexCount / 3) * 0xc
     int           nVertexCount_;          // as it was when the buffers were built
-    DWORD         bActive_;               // set by begin; cleared by the ctor and release
+    uint32_t         bActive_;               // set by begin; cleared by the ctor and release
     float         samples_[30];           // Gaussian speeds, mu 2.0, sigma 1.0; refilled whole
-    DWORD         cursor_;                // reset by the same refill
+    uint32_t         cursor_;                // reset by the same refill
     int           nLiveVertices_;         // begin sets it; advance drops it by threes
     float         flDropAccum_;           // fractional triangles owed
     float         flExplodeScaledCount_;  // the drop rate: nVertexCount * arg / 300

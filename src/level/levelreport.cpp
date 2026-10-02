@@ -25,7 +25,7 @@ bool levelreport_enabled(void)
     return g_enabled;
 }
 
-bool levelreport_async_override(int vkey, SHORT *out)
+bool levelreport_async_override(int vkey, short *out)
 {
     init();
     if (!g_enabled || g_left <= 0) return false;
@@ -34,7 +34,7 @@ bool levelreport_async_override(int vkey, SHORT *out)
     if (g_left == 0)
         g_logger.write("levelreport: trigger delivered; WriteLevelReport should now "
                   "run over every level\n");
-    *out = (SHORT)0x8000;
+    *out = (short)0x8000;
     return true;
 }
 

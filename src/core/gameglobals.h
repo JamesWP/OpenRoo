@@ -5,7 +5,6 @@
 #ifndef KAROO_GAMEGLOBALS_H
 #define KAROO_GAMEGLOBALS_H
 
-#include <windows.h>
 #include <stdio.h>
 
 class LoadedImage;
@@ -41,6 +40,5 @@ extern double g_lastTickMs;
 extern char g_gameDir[260];
 static const size_t GG_GAME_DIR_LEN = 0x104;
 
-extern HINSTANCE g_moduleInstance;
 
 #endif

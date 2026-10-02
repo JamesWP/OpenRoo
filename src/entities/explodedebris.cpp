@@ -8,7 +8,7 @@
  *     both pointers first, and the destructor runs once;
  *   - the constructor seeds the Gaussian table with mu 2.0, sigma 1.0. */
 
-#include <windows.h>
+#include <stdint.h>
 
 #include "explodedebris.h"
 #include "generators.h"
@@ -40,7 +40,7 @@ void ExplodeDebris::allocateExplodeBuffers(CFaktMesh *mesh)
 {
     release();
 
-    DWORD n = mesh->vertexCount();
+    uint32_t n = mesh->vertexCount();
     MeshVertex *verts = (MeshVertex *)malloc(n * sizeof(MeshVertex));
     if (verts != NULL && (int)n > 0)
         memset(verts, 0, n * 0x28);
@@ -48,14 +48,14 @@ void ExplodeDebris::allocateExplodeBuffers(CFaktMesh *mesh)
     pFaceRecords_ = (float (*)[3])malloc((n / 3) * sizeof(float[3]));
     nVertexCount_ = (int)mesh->vertexCount();
 
-    memset(pVertexCopy_, 0, (((DWORD)nVertexCount_ * 5) & 0x1fffffffu) * 2 * 4);
+    memset(pVertexCopy_, 0, (((uint32_t)nVertexCount_ * 5) & 0x1fffffffu) * 2 * 4);
 }
 
 /* The drop rate: the count, converted unsigned, times arg / 300. */
 void ExplodeDebris::storeExplodeScaledCount(float scale)
 {
     const float kOneOver300 = 1.0f / 300.0f;
-    flExplodeScaledCount_ = (float)(DWORD)nVertexCount_ * scale * kOneOver300;
+    flExplodeScaledCount_ = (float)(uint32_t)nVertexCount_ * scale * kOneOver300;
 }
 
 /* The stores in a fixed order, then the table seed. */
@@ -95,7 +95,7 @@ int ExplodeDebris::begin(CFaktMesh *mesh,
 {
     if (frame >= mesh->frameCount())
         return 0;
-    if ((DWORD)nVertexCount_ != mesh->vertexCount())
+    if ((uint32_t)nVertexCount_ != mesh->vertexCount())
         return 0;
     if (pVertexCopy_ == NULL)
         return 0;
@@ -103,12 +103,12 @@ int ExplodeDebris::begin(CFaktMesh *mesh,
     // PRESERVED: the source offset is frame * count * 40 vertices, forty
     // times a frame's real size.  Frame 0 is right; any other frame
     // reads far past the mesh's vertices.
-    DWORD count = mesh->vertexCount();
+    uint32_t count = mesh->vertexCount();
     memcpy(pVertexCopy_,
-           (MeshVertex *)mesh->vertexData() + (DWORD)frame * count * 40,
+           (MeshVertex *)mesh->vertexData() + (uint32_t)frame * count * 40,
            count * sizeof(MeshVertex));
 
-    for (DWORD t = 0; t < (DWORD)nVertexCount_ / 3; t++) {
+    for (uint32_t t = 0; t < (uint32_t)nVertexCount_ / 3; t++) {
         float *r = debrisVelocity(t);
         const float *v0 = debrisVertex(t * 3);
         const float *v1 = debrisVertex(t * 3+1);
@@ -153,12 +153,12 @@ void ExplodeDebris::advance(float dt)
         nLiveVertices_ = 0;
 }
 
-HRESULT ExplodeDebris::draw(RenderDevice *dev)
+long ExplodeDebris::draw(RenderDevice *dev)
 {
     if (bActive_ == 0)
-        return (HRESULT)0x800401f0;  // CO_E_NOTINITIALIZED
+        return (long)0x800401f0;  // CO_E_NOTINITIALIZED
 
-    DWORD saved;
+    uint32_t saved;
     saved = dev->GetRenderState(RS::SrcBlend);
     dev->SetRenderState(RS::SrcBlend, Blend::SrcAlpha);
     dev->Draw(Prim::TriangleList, VertexFormat::Normal2, pVertexCopy_,

@@ -5,6 +5,7 @@
  * it.  A record with more than one open sub-object therefore casts its shadow
  * once per open sub-object. */
 
+#include <stdint.h>
 #include <math.h>
 #include "objectshadows.h"
 #include "game.h"
@@ -31,7 +32,7 @@ static void compose(Mat4 *d, const Mat4 *left, const Mat4 *right)
     m4_mul(d, right, left);
 }
 
-static bool condition_holds(DWORD gate, const Game *g, const Tile *cell)
+static bool condition_holds(uint32_t gate, const Game *g, const Tile *cell)
 {
     const Player *p = g->player();
     switch (gate) {
@@ -88,13 +89,13 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
     RenderDevice *dev = d3d;
     dev->SetRenderState(RS::SpecularEnable, 0);
 
-    for (DWORD i = 0; i < slot->instanceCount(); i++) {
+    for (uint32_t i = 0; i < slot->instanceCount(); i++) {
         ThemeLevelObject *rec = &slot->records()[i];
         if (rec->noShadow() != 0)
             continue;
         dev->SetRenderState(RS::ZWriteEnable, rec->noZWrite() == 0);
 
-        for (DWORD s = 0; s < rec->subObjectCount(); s++) {
+        for (uint32_t s = 0; s < rec->subObjectCount(); s++) {
             for (unsigned int k = 0; k < count; k++) {
                 const float *p = pos + k * 3;
                 const float *r = rot + k * 3;
@@ -149,7 +150,7 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
 
                 int frame = animation_frame(rec, t, phase, animKey);
                 if (rec->explodes() == 0) {
-                    rec->mesh()->drawMeshBuffer(dev, (DWORD)frame);
+                    rec->mesh()->drawMeshBuffer(dev, (uint32_t)frame);
                 } else {
                     rec->explodeDebris().advance((float)(unsigned long long)debrisMs * K_DEBRIS_MS);
                     rec->explodeDebris().draw(dev);

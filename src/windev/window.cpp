@@ -47,17 +47,18 @@ Window::~Window()
 {
 }
 
-bool Window::create(void *instance, WindowHandler *handler,
+bool Window::create(WindowHandler *handler,
                     const WindowConfig &config)
 {
     g_handler = handler;
+    HINSTANCE instance = GetModuleHandle(NULL);
 
     WNDCLASSA wc;
     wc.style         = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc   = window_proc;
     wc.cbClsExtra    = 0;
     wc.cbWndExtra    = 0;
-    wc.hInstance     = (HINSTANCE)instance;
+    wc.hInstance     = instance;
     wc.hIcon         = LoadIconA(Resources_Module(), MAKEINTRESOURCEA(0x6a));
     wc.hCursor       = LoadCursorA(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
@@ -75,12 +76,12 @@ bool Window::create(void *instance, WindowHandler *handler,
         // server is running.
         hwnd = CreateWindowExA(0, "Karoo", config.title, WS_POPUP,
                                0, 0, config.width, config.height,
-                               HWND_MESSAGE, NULL, (HINSTANCE)instance, NULL);
+                               HWND_MESSAGE, NULL, instance, NULL);
         WD_LOG("windev: message-only window hwnd=%p\n", (void *)hwnd);
     } else {
         hwnd = CreateWindowExA(WS_EX_APPWINDOW, "Karoo", config.title, WS_POPUP,
                                0, 0, config.width, config.height,
-                               NULL, NULL, (HINSTANCE)instance, NULL);
+                               NULL, NULL, instance, NULL);
     }
     handle_ = hwnd;
     return hwnd != NULL;

@@ -8,7 +8,7 @@
  * There is one instance, g_progCtrl (gameglobals.h). */
 
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
 #include "inputdev.h"
@@ -39,7 +39,7 @@ struct ActionEntry {
 class ActionTable {
 public:
     ActionEntry *first() const  { return head; }
-    DWORD        count() const  { return entry_count; }
+    uint32_t        count() const  { return entry_count; }
 
     /* The action with this name (case-insensitive), or NULL. */
     ActionEntry *find(const char *name);
@@ -53,7 +53,7 @@ private:
     friend class ProgableControl;
 
     ActionEntry *head;
-    DWORD        entry_count;
+    uint32_t        entry_count;
 };
 
 /* The whole control state.  The controller is never set up: its range and
@@ -66,7 +66,7 @@ public:
     ProgableControl(const ProgableControl &) = delete;
     ProgableControl &operator=(const ProgableControl &) = delete;
 
-    int  setJoyDeadzone(DWORD axis, int zone);
+    int  setJoyDeadzone(uint32_t axis, int zone);
 
     /* Reads the keyboard (or the replay, or the autoplay policy) and calls
      * every action in this mode with a bound key held; the first held key of
@@ -81,7 +81,7 @@ public:
 
     /* The setup calls, in the order inputsetup.cpp makes them.  Each returns
      * 1 on success, 0 on failure. */
-    int  setupDevices(void *instance, void *window);
+    int  setupDevices(void *window);
     int  setJoyRange(int axis, int lo, int hi);
     void registerAction(unsigned short mode, const char *name,
                         ActionCallback cb, void *ctx);

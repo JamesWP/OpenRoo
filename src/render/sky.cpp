@@ -7,6 +7,7 @@
  *
  * KAROO_SKY_FX=noskip draws only the first of the six quads. */
 
+#include <windows.h>
 #include "renderdevice.h"
 #include "sysdev.h"
 #include "sky.h"
@@ -118,7 +119,7 @@ void SkyBackground::skyFillGeometry()
 
 unsigned int SkyBackground::buildFromFaceNames(RenderDevice *dev, const char *up, const char *dn,
                        const char *fr, const char *bk, const char *lf,
-                       const char *rt, UINT bpp)
+                       const char *rt, unsigned bpp)
 {
     skyFillGeometry();
 

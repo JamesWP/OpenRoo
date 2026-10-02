@@ -10,7 +10,7 @@
  * KAROO_MENUSTACK_DIAG=1 logs every push, pop and rewind with running counts
  * and the deepest depth reached. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
 
@@ -35,7 +35,7 @@ static int s_logged_rewind = 0;
 static void fx_init(void)
 {
     char buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_init)
         return;
@@ -159,7 +159,7 @@ void MenuTree::navigate(int now)
 
     if (s_fx_menuwrap < 0) {
         char e[32];
-        DWORD n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
+        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
         s_fx_menuwrap = (n > 0 && n < sizeof(e) && strcmp(e, "menuwrap") == 0);
         if (s_fx_menuwrap)
             g_logger.write("menunav: KAROO_SIM_FX=menuwrap -- DOWN does not wrap\n");

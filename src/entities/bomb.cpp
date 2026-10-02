@@ -41,7 +41,7 @@
  * count every 500.  The first tick, spawn and removal are logged always, so
  * "no bombs" cannot be confused with "flag not set". */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
 
@@ -73,14 +73,14 @@ static int s_init         = 0;
 static int env_on(const char *name)
 {
     char buf[64];
-    DWORD n = sysdev::getEnv(name, buf, sizeof(buf));
+    uint32_t n = sysdev::getEnv(name, buf, sizeof(buf));
     return n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0;
 }
 
 static void fx_init(void)
 {
     char buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_init)
         return;

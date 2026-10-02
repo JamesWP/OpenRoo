@@ -7,6 +7,7 @@
  * The quads, the widget model and the nine textures are built once per device
  * by Menu_BuildMenuGeometry. */
 
+#include <stdint.h>
 #include "menuscreens.h"
 #include "game.h"
 #include "renderdevice.h"
@@ -46,7 +47,7 @@ static ScreenVertex g_listQuad[4];
 
 /* Fields of the theme object: its backdrop texture and text colour pairs. */
 
-static inline DWORD mode_width(RenderDevice *d3d)
+static inline uint32_t mode_width(RenderDevice *d3d)
 {
     return d3d->width();
 }
@@ -83,7 +84,7 @@ void Menu_DrawBackdrop(RenderDevice *d3d, ThemeAssetBlock *theme)
  * far less than a pixel. */
 static void draw_markers(RenderDevice *d3d, float y0, float left, float right)
 {
-    const DWORD w  = mode_width(d3d);
+    const uint32_t w  = mode_width(d3d);
     const float fw = (float)w;
     const float y1 = (float)(w << 5) * K640 + y0;
 
@@ -106,9 +107,9 @@ static void draw_markers(RenderDevice *d3d, float y0, float left, float right)
 }
 
   void  
-Menu_DrawCursorMarkers(Game *g, RenderDevice *d3d, DWORD ms, float rowOffset)
+Menu_DrawCursorMarkers(Game *g, RenderDevice *d3d, uint32_t ms, float rowOffset)
 {
-    const DWORD w  = mode_width(d3d);
+    const uint32_t w  = mode_width(d3d);
     const float y0 = (float)(w * 172) * K640
                    + ((float)g->menu()->cursor() * 0.05f + rowOffset * K640) * (float)w;
     const double t = (double)ms * 0.01;
@@ -120,9 +121,9 @@ Menu_DrawCursorMarkers(Game *g, RenderDevice *d3d, DWORD ms, float rowOffset)
  * from y 102, at the page's edges (centres 40 and 600) so they bracket the
  * whole row. */
   void  
-Menu_DrawControlsCursorMarkers(Game *g, RenderDevice *d3d, DWORD ms)
+Menu_DrawControlsCursorMarkers(Game *g, RenderDevice *d3d, uint32_t ms)
 {
-    const DWORD w  = mode_width(d3d);
+    const uint32_t w  = mode_width(d3d);
     const float y0 = (float)(w * 102) * K640
                    + (float)g->menu()->cursor() * (float)w * 0.03125f;
     const double t = (double)ms * 0.01;
@@ -156,7 +157,7 @@ static void draw_fixed_rows(RenderDevice *d3d, ThemeAssetBlock *theme, TextRende
     const float fw = (float)mode_width(d3d);
     const ThemeTextColorPair *col = &theme->textColor(first);
     for (int i = 0; i < n; i++) {
-        const DWORD wr = mode_width(d3d);
+        const uint32_t wr = mode_width(d3d);
         const float cw = (float)(wr * 12) * K640, ch = (float)(wr * 14) * K640;
         text->drawCentered(fw * 0.5f, fw * k_rowY[i], cw, ch, 0.75f,
                            rows[i], d3d, 0, col[i].color1, col[i].color2);
@@ -171,11 +172,11 @@ static void draw_slot_rows(Game *g, RenderDevice *d3d, ThemeAssetBlock *theme,
         return;
     const float fw = (float)mode_width(d3d);
     const float x  = fw * 0.5f;
-    const DWORD top = theme->textColor(slot).color1;
-    const DWORD bot = theme->textColor(slot).color2;
+    const uint32_t top = theme->textColor(slot).color1;
+    const uint32_t bot = theme->textColor(slot).color2;
     float y = 180.0f;
     for (unsigned i = 0; i < ss->count(); i++) {
-        const DWORD wr = mode_width(d3d);
+        const uint32_t wr = mode_width(d3d);
         const float cw = (float)(wr * 12) * K640, ch = (float)(wr * 14) * K640;
         text->drawCentered(x, fw * y * K640, cw, ch, 0.75f,
                            ss->slot((unsigned char)i)->name, d3d, 0, top, bot);
@@ -196,12 +197,12 @@ static void draw_slot_rows(Game *g, RenderDevice *d3d, ThemeAssetBlock *theme,
 #define LS_ROW_Y    208.0f
 #define LS_ROW_STEP  20.0f
 void Menu_RenderLevelSelect(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                            TextRenderer *text, DWORD ms)
+                            TextRenderer *text, uint32_t ms)
 {
     LevelSelectView v;
     LevelSelect_View(g, &v);
     draw_panel(d3d, theme, g_panelTexture, g_listQuad);
-    const DWORD w  = mode_width(d3d);
+    const uint32_t w  = mode_width(d3d);
     const float fw = (float)w, x = fw * 0.5f;
     const float cw = (float)(w * 12) * K640, ch = (float)(w * 14) * K640;
     const ThemeTextColorPair &rowCol = theme->textColor(THEME_COLOR_MENULOADGAMEENTRIES);
@@ -229,7 +230,7 @@ static const char *const k_optionsRows[3] = { "Controls", "Video", "Audio" };
 
 void
 Menu_RenderMainMenu(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
-                    DWORD ms)
+                    uint32_t ms)
 {
     draw_panel(d3d, theme, g_panelTexture, g_panelQuad);
     draw_fixed_rows(d3d, theme, text, k_mainMenuRows, 6, THEME_COLOR_MENUNEWGAME);
@@ -238,7 +239,7 @@ Menu_RenderMainMenu(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRend
 
 void
 Menu_RenderOptionsMenu(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
-                       DWORD ms)
+                       uint32_t ms)
 {
     draw_panel(d3d, theme, g_optionsTexture, g_listQuad);
     draw_fixed_rows(d3d, theme, text, k_optionsRows, 3, THEME_COLOR_MENUOPTIONSCONTROL);
@@ -246,7 +247,7 @@ Menu_RenderOptionsMenu(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextR
 }
 
 void Menu_RenderRestoreSlotList(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                                TextRenderer *text, DWORD ms)
+                                TextRenderer *text, uint32_t ms)
 {
     draw_panel(d3d, theme, g_panelTexture, g_listQuad);
     draw_slot_rows(g, d3d, theme, text, THEME_COLOR_MENULOADGAMEENTRIES);
@@ -254,7 +255,7 @@ void Menu_RenderRestoreSlotList(Game *g, ThemeAssetBlock *theme, RenderDevice *d
 }
 
 void Menu_RenderSaveSlotList(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                             TextRenderer *text, DWORD ms)
+                             TextRenderer *text, uint32_t ms)
 {
     draw_panel(d3d, theme, g_saveTexture, g_listQuad);
     draw_slot_rows(g, d3d, theme, text, THEME_COLOR_MENUSAVEGAMEENTRIES);
@@ -296,7 +297,7 @@ static Affine knob3(float tx, float ty, unsigned char value)
 }
 
 static void draw_widget(RenderDevice *d3d, const Affine &m, const SceneTexture *tex,
-                        DWORD colour = 0xffffffff)
+                        uint32_t colour = 0xffffffff)
 {
     // A row vector times [[c,-s,0,0],[s,c,0,0],[0,0,1,0],[tx,ty,0,1]]: w stays
     // exactly 1, so the perspective divide is skipped.
@@ -315,10 +316,10 @@ static void draw_widget(RenderDevice *d3d, const Affine &m, const SceneTexture *
 
 /* A left-aligned option label in the 12x14 cell, at x = xv virtual. */
 static void draw_label_c(RenderDevice *d3d, TextRenderer *text, float xv,
-                         float yK, const char *str, DWORD top, DWORD bot)
+                         float yK, const char *str, uint32_t top, uint32_t bot)
 {
-    const DWORD w = mode_width(d3d);
-    text->drawLeft((float)(DWORD)(w * (DWORD)xv) * K640, (float)w * yK,
+    const uint32_t w = mode_width(d3d);
+    text->drawLeft((float)(uint32_t)(w * (uint32_t)xv) * K640, (float)w * yK,
                    (float)(w * 12) * K640, (float)(w * 14) * K640, 0.75f,
                    str, d3d, 0, top, bot);
 }
@@ -334,11 +335,11 @@ static void draw_label(RenderDevice *d3d, ThemeAssetBlock *theme, TextRenderer *
 /* Menu node 0xc.  Four rows of a label at x 262 and its widget at x 368: 3D
  * sound (toggle), sound volume (knob), CD music (toggle), CD volume (knob). */
 void Menu_RenderSoundOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                             TextRenderer *text, DWORD ms)
+                             TextRenderer *text, uint32_t ms)
 {
     draw_panel(d3d, theme, g_saveTexture, g_panelQuad);
 
-    const DWORD w  = mode_width(d3d);
+    const uint32_t w  = mode_width(d3d);
     const float fw = (float)w;
     const float tx = (float)(w * 368) * K640;
 
@@ -373,11 +374,11 @@ static bool shadows_available(RenderDevice *d3d)
 }
 
 void Menu_RenderVideoOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                             TextRenderer *text, DWORD ms)
+                             TextRenderer *text, uint32_t ms)
 {
     draw_panel(d3d, theme, g_videoTexture, g_listQuad);
 
-    const DWORD w  = mode_width(d3d);
+    const uint32_t w  = mode_width(d3d);
     const float fw = (float)w;
     const float tx = (float)(w * 368) * K640;
 
@@ -430,9 +431,9 @@ static const ControlRow k_controls[13] = {
 };
 
 void Menu_RenderControlsRemap(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                              TextRenderer *text, DWORD ms)
+                              TextRenderer *text, uint32_t ms)
 {
-    const DWORD w  = mode_width(d3d);
+    const uint32_t w  = mode_width(d3d);
     const float fw = (float)w;
     const float fh = (float)d3d->height();
 
@@ -458,7 +459,7 @@ void Menu_RenderControlsRemap(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
     float rowY[13];
     for (int i = 0; i < 13; i++) {
         rowY[i] = fw * (0.171875f + 0.03125f * (float)i);
-        const DWORD wr = mode_width(d3d);
+        const uint32_t wr = mode_width(d3d);
         text->drawLeft(fw * 0.09375f, rowY[i],
                        (float)(wr * 12) * K640, (float)(wr * 14) * K640, 0.75f,
                        k_controls[i].label, d3d, 0, col.color1, col.color2);
@@ -477,7 +478,7 @@ void Menu_RenderControlsRemap(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
     for (int i = 0; i < 13; i++) {
         g_progCtrl.getBindingStr(1, k_controls[i].action, buf, sizeof(buf));
         const bool asking = g->rebindActive() != 0 && g->rebindCode() == k_controls[i].node;
-        const DWORD wr = mode_width(d3d);
+        const uint32_t wr = mode_width(d3d);
         text->drawRight(fw * 0.90625f, rowY[i],
                         (float)(wr * 12) * K640, (float)(wr * 14) * K640, 0.75f,
                         asking ? "???" : buf, d3d, 0, col.color1, col.color2);
@@ -636,11 +637,11 @@ static const CreditRow k_credits[] = {
 };
 
 static float g_creditsScroll;
-static DWORD g_creditsStartMs;
+static uint32_t g_creditsStartMs;
 
   void  
 Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
-                         DWORD nowMs)
+                         uint32_t nowMs)
 {
     const float scale = (float)d3d->width() * (1.0f / 640.0f);
 
@@ -648,7 +649,7 @@ Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
         g_creditsStartMs = nowMs;
         game->setField13cc8c(0);
     }
-    g_creditsScroll = 500.0f - (float)(DWORD)(nowMs - g_creditsStartMs) * 0.05f;
+    g_creditsScroll = 500.0f - (float)(uint32_t)(nowMs - g_creditsStartMs) * 0.05f;
 
     const float headCell = scale * 20.0f;
     const float cell     = scale * 16.0f;
@@ -678,7 +679,7 @@ Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
  * The level select's theme nodes (0x60 + t) draw the level select page. */
 void
 Menu_DispatchGameState(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
-                       DWORD ms)
+                       uint32_t ms)
 {
     const unsigned char node = g->menu()->node();
     switch (node) {

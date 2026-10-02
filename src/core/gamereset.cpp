@@ -11,7 +11,7 @@
  * objects and their counts alive.  KAROO_RESET_DIAG=1 logs the first call, the
  * first foe and bomb removal, and a count every 500 calls. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
 
@@ -43,7 +43,7 @@ static int s_logged_enemydrain = 0;
 static void fx_init(void)
 {
     char buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_init)
         return;

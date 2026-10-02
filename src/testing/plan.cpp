@@ -10,6 +10,7 @@
  * is rebuilt only when the set of pickups changes, so the cost never lands on
  * every frame. */
 
+#include <stdint.h>
 #include "plan.h"
 #include "logger.h"
 #include <string.h>
@@ -28,7 +29,7 @@ static bool  g_lethal[CELLS];  // lethal: never enter
 /* While pickups remain, the exit is avoided: once enough crystals are held,
  * stepping on it ends the level and abandons what is left. */
 static int   g_avoid_cell = -1;
-static DWORD g_danger_frame = 0xffffffff;
+static uint32_t g_danger_frame = 0xffffffff;
 
 static void mark_danger(const Observation *o)
 {

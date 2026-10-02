@@ -7,9 +7,10 @@
  * KAROO_FAKTMESH_FX=half draws only the first half of each mesh's triangles.
  */
 
+#include <windows.h>
+#include <stdint.h>
 #include "faktmesh.h"
 #include "sysdev.h"
-#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -39,7 +40,7 @@ static bool fx_half(void)
 /* KAROO_MESH_DIAG=1: dump the pipeline state the first time a mesh is drawn.
  * The mesh FVF carries no vertex colour, so a tinted mesh is being coloured by
  * the lighting/material/texture state, none of which this file sets. */
-static void mesh_diag(RenderDevice *dev, DWORD flags)
+static void mesh_diag(RenderDevice *dev, uint32_t flags)
 {
     static LONG once = 0;
     char buf[8];
@@ -52,8 +53,8 @@ static void mesh_diag(RenderDevice *dev, DWORD flags)
     dev->LogState("diag");
 }
 
-HRESULT CFaktMesh::drawMesh(RenderDevice *dev, DWORD frame,
-                         DWORD flags, const char *name)
+HRESULT CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
+                         uint32_t flags, const char *name)
 {
     mesh_diag(dev, flags);
 
@@ -61,7 +62,7 @@ HRESULT CFaktMesh::drawMesh(RenderDevice *dev, DWORD frame,
     if (frame >= wFrameCount_)
         frame = 0;
     MeshVertex *verts = (MeshVertex *)this->vertexData() + frame * this->vertexCount();
-    DWORD count = this->vertexCount();
+    uint32_t count = this->vertexCount();
     if (fx_half())
         count = (count / 2 / 3) * 3;  // keep it a whole number of triangles
 
@@ -77,12 +78,12 @@ HRESULT CFaktMesh::drawMesh(RenderDevice *dev, DWORD frame,
 
 /* ─── Exports ───────────────────────────────────────────────────────────────
  */
-HRESULT CFaktMesh::drawMeshBuffer(RenderDevice *dev, DWORD frame)
+HRESULT CFaktMesh::drawMeshBuffer(RenderDevice *dev, uint32_t frame)
 {
     return drawMesh(dev, frame, DrawFlag::NoUpdateExtents, "DrawMeshBuffer");
 }
 
-HRESULT CFaktMesh::drawFramedModel(RenderDevice *dev, DWORD frame)
+HRESULT CFaktMesh::drawFramedModel(RenderDevice *dev, uint32_t frame)
 {
     return drawMesh(dev, frame, DrawFlag::NoUpdateExtents | DrawFlag::NoLight,
                      "DrawFramedModel");
@@ -139,12 +140,12 @@ CFaktMesh::~CFaktMesh()
 /* The .mdl reader, ImportSceneModels.
  *
  * FORMAT: the .mdl file.
- *   +0x00  WORD   frameCount     -> wFrameCount_
- *   +0x02  DWORD  vertexCount    -> dwVertexCount_
+ *   +0x00  uint16_t   frameCount     -> wFrameCount_
+ *   +0x02  uint32_t  vertexCount    -> dwVertexCount_
  *   then, for each frame f:
- *          6 x DWORD             -> pFrameRecords_ + f*0x18
+ *          6 x uint32_t             -> pFrameRecords_ + f*0x18
  *          for each vertex v:
- *              10 x DWORD        -> pVertexData_ + (f*vertexCount + v)*0x28
+ *              10 x uint32_t        -> pVertexData_ + (f*vertexCount + v)*0x28
  * Opened "rb".  Every read is a separate 4-byte fread; the header's two are 2
  * and 4 bytes.
  *

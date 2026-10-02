@@ -4,7 +4,7 @@
  * view/projection matrices, sets the fixed render states, and imports the
  * shared player/enemy models, textures, material, light and fonts. */
 
-#include <windows.h>
+#include <stdint.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -99,7 +99,7 @@ Render_ConfigureRenderState(void)
 
     // Ambient light and the fixed render states.
     dev->SetAmbientLight(0x404040);
-    static const DWORD states[][2] = {
+    static const uint32_t states[][2] = {
         { 0x09, 2 }, { 0x1a, 0 }, { 0x11, 2 }, { 0x12, 2 }, { 0x1d, 0 },
         { 0x07, 1 }, { 0x38, 8 }, { 0x39, 1 }, { 0x3a, 0xffffffff },
         { 0x3b, 0xffffffff }, { 0x36, 1 }, { 0x35, 1 }, { 0x37, 3 },

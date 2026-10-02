@@ -1,5 +1,5 @@
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 
 /* The menu reader and driver, for the autoplay policy.  The menu is a tree of
  * byte node ids, readable from the Game, so the policy navigates it as a
@@ -13,26 +13,26 @@ class MenuState {
 public:
     bool read();
 
-    BYTE node() const { return node_; }
-    BYTE cursor() const { return cursor_; }
-    BYTE count() const { return count_; }
-    BYTE depth() const { return depth_; }
-    DWORD lock() const { return lock_; }
+    uint8_t node() const { return node_; }
+    uint8_t cursor() const { return cursor_; }
+    uint8_t count() const { return count_; }
+    uint8_t depth() const { return depth_; }
+    uint32_t lock() const { return lock_; }
  
  
-    BYTE *children() { return children_; }
-    const BYTE *children() const { return children_; }
+    uint8_t *children() { return children_; }
+    const uint8_t *children() const { return children_; }
  
 
 private:
     bool  valid_;
-    BYTE  node_;      // current node id
-    BYTE  cursor_;    // highlighted child
-    BYTE  count_;     // children of the current node
-    BYTE  depth_;     // node-stack depth
-    BYTE  last_key_;  // debounce: key already handled
-    DWORD lock_;      // non-zero: input ignored (the 200 ms lockout)
-    BYTE  children_[256];
+    uint8_t  node_;      // current node id
+    uint8_t  cursor_;    // highlighted child
+    uint8_t  count_;     // children of the current node
+    uint8_t  depth_;     // node-stack depth
+    uint8_t  last_key_;  // debounce: key already handled
+    uint32_t lock_;      // non-zero: input ignored (the 200 ms lockout)
+    uint8_t  children_[256];
 };
 
 /* Asks the driver to navigate to goal.  Idempotent: call it every frame while
@@ -53,7 +53,7 @@ void menu_tick(void);
 
 /* The key-poll override: true, with the answer in out, when the driver is
  * pressing this key this frame; otherwise the keyboard answers. */
-bool menu_async_override(int vkey, SHORT *out);
+bool menu_async_override(int vkey, short *out);
 
 /* Nodes the keypress handler acts on. */
 #define MENU_NODE_NEW_GAME   0x01

@@ -47,6 +47,11 @@ add_custom_target(check-native-input ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeInput.cmake)
 add_dependencies(KarooOwn check-native-input)
 
+# Only the platform groups may include <windows.h> from a header.
+add_custom_target(check-native-windows ALL
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeWindows.cmake)
+add_dependencies(KarooOwn check-native-windows)
+
 # Only the d3d group may include the system Direct3D headers.
 add_custom_target(check-native-d3d ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeD3D.cmake)

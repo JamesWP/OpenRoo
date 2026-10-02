@@ -5,6 +5,7 @@
  * DETERMINISM: the policy reads only the Observation and its own state: no
  * rand(), no wall clock.  A policy run is as reproducible as a replay. */
 
+#include <stdint.h>
 #include "policy.h"
 #include <stdio.h>
 #include "sysdev.h"
@@ -44,7 +45,7 @@ static char g_name[32];
 /* KAROO_POLICY_AFTER=<frame>: the frame at which the policy takes over,
  * default 0.  Lets a recording replay the menu prefix and hand over mid-level.
  */
-static DWORD g_after;
+static uint32_t g_after;
 static bool  g_after_read;
 
 /* KAROO_POLICY_TRACE=1 logs one line per frame of the controller's decision.
@@ -61,13 +62,13 @@ static bool policy_trace(void)
     return g_trace > 0;
 }
 
-static DWORD policy_after(void)
+static uint32_t policy_after(void)
 {
     if (!g_after_read) {
         char buf[16];
         g_after_read = true;
         if (sysdev::getEnv("KAROO_POLICY_AFTER", buf, sizeof(buf)) && buf[0])
-            g_after = (DWORD)strtoul(buf, NULL, 10);
+            g_after = (uint32_t)strtoul(buf, NULL, 10);
     }
     return g_after;
 }
@@ -119,9 +120,9 @@ static int menu_slot(void)
 void policy_menu_tick(void)
 {
     if (!policy_active()) return;
-    const BYTE *g = (const BYTE *)Game::instance();
+    const uint8_t *g = (const uint8_t *)Game::instance();
     if (!g) return;
-    BYTE screen = ((const Game *)g)->state();
+    uint8_t screen = ((const Game *)g)->state();
 
     // Log every screen transition: the screen value is easy to misread, and a
     // gate built on the wrong one fails silently.
@@ -193,12 +194,12 @@ void policy_menu_tick(void)
     }
 }
 
-bool policy_in_control(DWORD frame)
+bool policy_in_control(uint32_t frame)
 {
     return policy_active() && frame >= policy_after();
 }
 
-static void press(ProgableControl *s, unsigned short mode, const char *action, BYTE *keys)
+static void press(ProgableControl *s, unsigned short mode, const char *action, uint8_t *keys)
 {
     if (mode >= 5) return;
     for (ActionEntry *e = s->actionTable(mode).first(); e; e = e->chain) {
@@ -238,7 +239,7 @@ static void dump_actions(ProgableControl *s, unsigned short mode)
     }
 }
 
-bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
+bool policy_keys(ProgableControl *s, unsigned short game_state, uint8_t *keys)
 {
     if (!policy_active() || !s) return false;
 
@@ -260,7 +261,7 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
     // measured.
     {
         static int last_u = -999, last_v = -999;
-        static BYTE last_face;
+        static uint8_t last_face;
         if (last_u != -999 && (pu != last_u || pv != last_v) && policy_trace())
             g_logger.write("policy: STEP face=%u(before %u) delta=(%+d,%+d)\n",
                       o->player_facing, last_face, pu - last_u, pv - last_v);
@@ -274,7 +275,7 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
     if (g_mode == 2) {
         static int  phase;  // 0 walking, 1 turning
         static int  mark_u, mark_v;
-        static BYTE mark_face;
+        static uint8_t mark_face;
         static bool primed;
         if (!primed) { primed = true; mark_u = pu; mark_v = pv; mark_face = o->player_facing; }
 
@@ -321,7 +322,7 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
     for (int d = WS_DIR_MIN; d <= WS_DIR_MAX; d++)
         if (pu + WS_DIR_DU[d] == nu && pv + WS_DIR_DV[d] == nv) { want = d; break; }
 
-    BYTE face = o->player_facing;
+    uint8_t face = o->player_facing;
     const char *act;
     if (want == 0 || face < WS_DIR_MIN || face > WS_DIR_MAX) {
         // The route only ever returns a neighbouring cell, so this should not

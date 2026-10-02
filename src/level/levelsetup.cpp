@@ -31,9 +31,10 @@
  * moves only the census split, not the total, and is safe on both gates.
  * KAROO_SETUP_DIAG=1 logs the extents, the spawn census and the totals. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "camera.h"
 #include "sysdev.h"
-#include <windows.h>
 #include <string.h>
 
 #include "logger.h"
@@ -95,7 +96,7 @@ static unsigned s_calls = 0;
 static void fx_init(void)
 {
     char buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_init)
         return;

@@ -1,5 +1,4 @@
 #pragma once
-#include <windows.h>
 
 /* Unattended runs.  KAROO_SKIP_LAUNCHER=1 answers the launcher dialog with OK
  * without showing it, and KAROO_AUTO_EXIT_SECS ends the run after that many

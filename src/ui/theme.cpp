@@ -15,6 +15,7 @@
  * after each load (see docs/CONTROLS.md). */
 
 #include <windows.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -56,7 +57,7 @@ static void lower_inplace(char *s)
 static int struct_diag_enabled(void)
 {
     char v[32];
-    DWORD n = sysdev::getEnv("KAROO_THEME_STRUCT_DIAG", v, sizeof(v));
+    uint32_t n = sysdev::getEnv("KAROO_THEME_STRUCT_DIAG", v, sizeof(v));
     if (n == 0 || n >= sizeof(v))
         return 0;
     return v[0] != '0';
@@ -101,7 +102,7 @@ static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
                   r.explodeDir()[0], r.explodeDir()[1], r.explodeDir()[2],
                   r.explodeDebris().vertexCount(), r.explodeDebris().explodeScaledCount(),
                   (r.mesh() != NULL && r.explodeDebris().vertexCount() > 0) ? "" : "  SUSPICIOUS explode");
-    for (DWORD k = 0; k < r.subObjectCount() && k < 8; k++) {
+    for (uint32_t k = 0; k < r.subObjectCount() && k < 8; k++) {
         const SceneSubObject &so = r.subObjects()[k];
         g_logger.write("THEME_STRUCT:   %s[%d].sub[%lu] cond=%lu tex=%p blend=%lu/%lu addr=%lu effect=%lu (%g,%g,%g)%s\n",
                   slotName, i, (unsigned long)k, (unsigned long)so.dwVisibilityGate,
@@ -202,7 +203,7 @@ void ThemeObjectTypeSlot::release()
         ThemeLevelObject &r = records_[i];
         r.explode_.release();
         r.wrapper_.releaseSnapshot();
-        for (DWORD k = 0; k < r.dwInstanceCount_; k++) {
+        for (uint32_t k = 0; k < r.dwInstanceCount_; k++) {
             if (r.pParticleSystems_[k] != NULL) {
                 delete r.pParticleSystems_[k];
                 r.pParticleSystems_[k] = NULL;
@@ -262,7 +263,7 @@ void ThemeAssetBlock::release()
 /* "NONE" (case-exact, on the raw wave name) disables the entry without
  * logging.  PRESERVED: the path is formatted unbounded into 256 bytes. */
 int ThemeSoundTable::add(unsigned int id, const char *waveName,
-               DWORD arg3, DWORD arg4)
+               uint32_t arg3, uint32_t arg4)
 {
     char path[256];
     sprintf(path, GS_THEME_SOUND_PATH, g_gameDir, waveName);
@@ -311,7 +312,7 @@ Theme_RegisterSound(Game *game, char *eventName, const char *waveName)
 
 enum { FOG_NONE = 0, FOG_EXP = 1, FOG_EXP2 = 2, FOG_LINEAR = 3 };
 
-struct KeywordValue { const char *name; DWORD value; };
+struct KeywordValue { const char *name; uint32_t value; };
 
 /* srcblend's list; destblend's is the same without the last entry. */
 static const KeywordValue kBlends[] = {
@@ -382,7 +383,7 @@ static const char *const kTextColorKeywords[THEME_COLOR_COUNT] = {
 };
 
 /* Looks tok up, lowercasing it in place first; *out is untouched on a miss. */
-static bool lookup(char *tok, const KeywordValue *tab, int n, DWORD *out)
+static bool lookup(char *tok, const KeywordValue *tab, int n, uint32_t *out)
 {
     lower_inplace(tok);
     for (int i = 0; i < n; i++) {
@@ -402,9 +403,9 @@ static bool is(char *tok, const char *kw)
 
 static float atof_f(const char *s) { return (float)atof(s); }
 
-static DWORD float_bits(float f)
+static uint32_t float_bits(float f)
 {
-    DWORD d;
+    uint32_t d;
     memcpy(&d, &f, sizeof(d));
     return d;
 }
@@ -482,7 +483,7 @@ private:
 
     SceneTexture *loadTexture(char *name, char *alphaTok)
     {
-        DWORD alpha = is(alphaTok, "alpha") ? 1 : 0;
+        uint32_t alpha = is(alphaTok, "alpha") ? 1 : 0;
         return g_textureManager.getOrLoad(d3d,
                                         name, alpha, 0, 0);
     }
@@ -617,7 +618,7 @@ void ThemeParser::fog(bool inEnvironment)
     dev->SetRenderState(RS::FogEnable, 1);
     block->bFogEnabled_ = 1;
 
-    DWORD mode = FOG_NONE;
+    uint32_t mode = FOG_NONE;
     lookup(tok[1], kFogModes, 4, &mode);
     dev->SetRenderState(RS::FogTableMode, mode);
 
@@ -631,7 +632,7 @@ void ThemeParser::fog(bool inEnvironment)
         colourTok = tok[3];
     }
     char *end;
-    dev->SetRenderState(RS::FogColor, (DWORD)strtol(colourTok, &end, 16));
+    dev->SetRenderState(RS::FogColor, (uint32_t)strtol(colourTok, &end, 16));
 }
 
 void ThemeParser::sky(bool inEnvironment)
@@ -705,8 +706,8 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         if (is(tok[0], kTextColorKeywords[c])) {
             if (inEnvironment && ntok > 2) {
                 char *end;
-                block->textColors_[c].color1 = (DWORD)strtol(tok[1], &end, 16);
-                block->textColors_[c].color2 = (DWORD)strtol(tok[2], &end, 16);
+                block->textColors_[c].color1 = (uint32_t)strtol(tok[1], &end, 16);
+                block->textColors_[c].color2 = (uint32_t)strtol(tok[2], &end, 16);
             }
             return;
         }
@@ -776,7 +777,7 @@ void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec
         if (ntok <= 1)
             return;
         open(sub, rec);
-        DWORD alpha = is(tok[2], "alpha") ? 1 : 0;
+        uint32_t alpha = is(tok[2], "alpha") ? 1 : 0;
         if (slot)
             sub.at->pTexture = g_textureManager.getOrLoad(d3d, tok[1], alpha, 0, 0);
     } else if (is(tok[0], "position")) {
@@ -835,7 +836,7 @@ bool ThemeParser::parseSubObjectBlock(ThemeObjectTypeSlot *slot, SceneSubObject 
 
 void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *sub)
 {
-    DWORD v;
+    uint32_t v;
     if (is(tok[0], "srcblend")) {
         if (ntok > 1 && lookup(tok[1], kBlends, 12, &v) && slot)
             sub->dwBlendSrc = v;

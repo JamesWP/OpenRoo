@@ -24,7 +24,7 @@
  * KAROO_CRT_FX=path swaps the path's two parts, so no level loads.
  * KAROO_LEVELPARSE_DIAG=1 logs every load, the peek and the sound release. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <stdio.h>
 #include <string.h>
@@ -58,7 +58,7 @@ static unsigned s_opens     = 0;
 static void fx_init(void)
 {
     char buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_init)
         return;

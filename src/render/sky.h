@@ -3,7 +3,7 @@
  * the one instance per theme (sky.cpp has its lifecycle and the draw). */
 
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 #include <stddef.h>
 #include "scenetexture.h"
 class RenderDevice;
@@ -12,9 +12,9 @@ class RenderDevice;
  * TEX1. */
 struct SkyVertex {
     float x, y, z;
-    DWORD reserved;  // never written
-    DWORD diffuse;
-    DWORD specular;
+    uint32_t reserved;  // never written
+    uint32_t diffuse;
+    uint32_t specular;
     float u, v;
 };
 
@@ -29,7 +29,7 @@ public:
     unsigned int buildFromFaceNames(RenderDevice *dev, const char *up,
                                     const char *dn, const char *fr,
                                     const char *bk, const char *lf,
-                                    const char *rt, UINT bpp);
+                                    const char *rt, unsigned bpp);
 
     /* Builds the six face textures, then fills the geometry; the destructor
      * releases the faces last to first. */

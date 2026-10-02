@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <stdint.h>
 #include <errno.h>
 #include <new>
 #include <string.h>
@@ -71,9 +72,9 @@ void ProgableControl::shutdown()
     devices_.destroy();
 }
 
-int ProgableControl::setupDevices(void *instance, void *window)
+int ProgableControl::setupDevices(void *window)
 {
-    return devices_.create(instance, window) ? 1 : 0;
+    return devices_.create(window) ? 1 : 0;
 }
 
 int ProgableControl::setJoyRange(int axis, int lo, int hi)
@@ -81,7 +82,7 @@ int ProgableControl::setJoyRange(int axis, int lo, int hi)
     return devices_.setControllerRange(axis, lo, hi);
 }
 
-int ProgableControl::setJoyDeadzone(DWORD axis, int zone)
+int ProgableControl::setJoyDeadzone(uint32_t axis, int zone)
 {
     return devices_.setControllerDeadzone((int)axis, zone);
 }
@@ -166,7 +167,7 @@ void ProgableControl::dispatch(unsigned short game_state)
 {
     gamestate_note_mode(game_state);  // before the early return, so paused and cutscene modes are seen
 
-    BYTE ks[256];
+    uint8_t ks[256];
     if (record_replaying() && !policy_in_control(clock_frame())) {
         // Replay supplies both the key array and the mode; the real keyboard
         // is not read.
@@ -180,7 +181,7 @@ void ProgableControl::dispatch(unsigned short game_state)
         // so a recorded policy run replays exactly.
         if (game_state >= 5) return;
 
-        BYTE human[256];
+        uint8_t human[256];
         memset(human, 0, sizeof(human));
         if (!devices_.readKeyboard(human)) memset(human, 0, sizeof(human));
 
@@ -215,7 +216,7 @@ int ProgableControl::captureBinding(unsigned int mode, const char *name,
 {
     if (mode >= 5) return 0;
 
-    BYTE ks[256];
+    uint8_t ks[256];
     if (!devices_.readKeyboard(ks)) return 0;
 
     for (int sc = 0; sc < 256; sc++) {
@@ -226,16 +227,16 @@ int ProgableControl::captureBinding(unsigned int mode, const char *name,
 }
 
 /* FORMAT: one action's bindings in ProgableControl.sav:
- *   DWORD kbd_count;  kbd_count x (DWORD scan code, DWORD strength)
- *   DWORD axis_count; axis_count x 12 bytes, skipped
- *   DWORD btn_count;  btn_count x 12 bytes, skipped */
+ *   uint32_t kbd_count;  kbd_count x (uint32_t scan code, uint32_t strength)
+ *   uint32_t axis_count; axis_count x 12 bytes, skipped
+ *   uint32_t btn_count;  btn_count x 12 bytes, skipped */
 int ProgableControl::readOrigEntryBindings(FILE *f, int mode, ActionEntry *e)
 {
-    DWORD kbd_count;
+    uint32_t kbd_count;
     if (fread(&kbd_count, 1, 4, f) != 4) return 0;
     g_logger.write("ProgCtrl::ReadBindings(orig):     kbd_count=%lu\n", kbd_count);
-    for (DWORD ki = 0; ki < kbd_count; ki++) {
-        DWORD key_id, strength;
+    for (uint32_t ki = 0; ki < kbd_count; ki++) {
+        uint32_t key_id, strength;
         if (fread(&key_id, 1, 4, f) != 4) return 0;
         if (fread(&strength, 1, 4, f) != 4) return 0;
         g_logger.write("ProgCtrl::ReadBindings(orig):       key=0x%02lX strength=%lu -> %s\n",
@@ -243,19 +244,19 @@ int ProgableControl::readOrigEntryBindings(FILE *f, int mode, ActionEntry *e)
         if (e) bindKey((unsigned short)mode, e->name, (int)key_id, (int)strength);
     }
 
-    DWORD axis_count;
+    uint32_t axis_count;
     if (fread(&axis_count, 1, 4, f) != 4) return 0;
     g_logger.write("ProgCtrl::ReadBindings(orig):     axis_count=%lu (skipped)\n", axis_count);
-    for (DWORD ai = 0; ai < axis_count; ai++) {
-        BYTE discard[12];
+    for (uint32_t ai = 0; ai < axis_count; ai++) {
+        uint8_t discard[12];
         if (fread(discard, 1, 12, f) != 12) return 0;
     }
 
-    DWORD btn_count;
+    uint32_t btn_count;
     if (fread(&btn_count, 1, 4, f) != 4) return 0;
     g_logger.write("ProgCtrl::ReadBindings(orig):     btn_count=%lu (skipped)\n", btn_count);
-    for (DWORD bi = 0; bi < btn_count; bi++) {
-        BYTE discard[12];
+    for (uint32_t bi = 0; bi < btn_count; bi++) {
+        uint8_t discard[12];
         if (fread(discard, 1, 12, f) != 12) return 0;
     }
 
@@ -266,13 +267,13 @@ int ProgableControl::readOrigFormat(FILE *f)
 {
     g_logger.write("ProgCtrl::ReadBindings: reading\n");
     for (int m = 0; m < 5; m++) {
-        DWORD cnt;
+        uint32_t cnt;
         if (fread(&cnt, 1, 4, f) != 4) {
             g_logger.write("ProgCtrl::ReadBindings(orig): read error on entry count for mode %d\n", m);
             return 0;
         }
         g_logger.write("ProgCtrl::ReadBindings(orig): mode %d: %lu entries\n", m, cnt);
-        for (DWORD ei = 0; ei < cnt; ei++) {
+        for (uint32_t ei = 0; ei < cnt; ei++) {
             char namebuf[256] = {};
             if (fread(namebuf, 1, 256, f) != 256) {
                 g_logger.write("ProgCtrl::ReadBindings(orig): read error on name\n");
@@ -300,26 +301,26 @@ int ProgableControl::writeBindings()
         return 0;
     }
     // FORMAT: no header.  For each of the five modes:
-    //   DWORD entry_count
+    //   uint32_t entry_count
     //   per entry: char name[256], then the bindings as read above,
     //   with axis_count and btn_count always 0.
-    const DWORD zero = 0;
+    const uint32_t zero = 0;
     for (int m = 0; m < 5; m++) {
         ActionTable *t = &action_tables[m];
-        DWORD cnt = t->entry_count;
+        uint32_t cnt = t->entry_count;
         g_logger.write("ProgCtrl::WriteBindings: mode %d: %lu entries\n", m, cnt);
         if (fwrite(&cnt, 1, 4, f) != 4) goto fail;
         for (ActionEntry *e = t->head; e; e = e->chain) {
             char namebuf[256] = {};
             strncpy(namebuf, e->name, 255);
             if (fwrite(namebuf, 1, 256, f) != 256) goto fail;
-            DWORD kc = 0;
+            uint32_t kc = 0;
             for (KeyBind *kb = e->kbd; kb; kb = kb->next) kc++;
             if (fwrite(&kc, 1, 4, f) != 4) goto fail;
             g_logger.write("ProgCtrl::WriteBindings:   '%s': %lu binding(s)\n", namebuf, kc);
             for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
-                DWORD key_id   = (DWORD)kb->scancode;
-                DWORD strength = (DWORD)kb->strength;
+                uint32_t key_id   = (uint32_t)kb->scancode;
+                uint32_t strength = (uint32_t)kb->strength;
                 g_logger.write("ProgCtrl::WriteBindings:     sc=0x%02lX strength=%lu\n", key_id, strength);
                 if (fwrite(&key_id, 1, 4, f) != 4) goto fail;
                 if (fwrite(&strength, 1, 4, f) != 4) goto fail;

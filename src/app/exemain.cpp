@@ -5,10 +5,10 @@
 #include "process.h"
 #include "main.h"
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int nShow)
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR lpCmdLine, int)
 {
     Process_Attach("karoo_hooks.log");
-    int r = Main_WinMain(hInstance, hPrev, lpCmdLine, nShow);
+    int r = Main_WinMain(lpCmdLine);
     Process_Detach();
     return r;
 }

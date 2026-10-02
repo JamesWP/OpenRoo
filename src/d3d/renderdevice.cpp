@@ -140,14 +140,6 @@ void RenderDevice::RestoreDisplayMode()
         native_->dd->RestoreDisplayMode();
 }
 
-void RenderDevice::GetMovieTarget(void **directDraw, void **primarySurface)
-{
-    *directDraw = NULL;
-    *primarySurface = NULL;
-    native_->dd->QueryInterface(IID_IDirectDraw, directDraw);
-    native_->primary->QueryInterface(IID_IDirectDrawSurface, primarySurface);
-}
-
 // ── Frames ──
 
 void RenderDevice::ClearDepth()

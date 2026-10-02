@@ -2,7 +2,7 @@
  * talks to the rendering backend.  One instance exists, at g_renderDevice.
  *
  * The backend -- Direct3D 6 and DirectDraw -- lives in src/d3d/, and nothing
- * outside it includes their headers (the Makefile's check-backend enforces
+ * outside it includes their headers (cmake/CheckNativeD3D.cmake enforces
  * it).  RenderDevice owns the backend's objects (RenderDevice::Native, in
  * src/d3d/d3dnative.h): the display mode, the primary/back/z-buffer
  * surfaces, the device, the viewport, the material and the light.  Game code
@@ -10,7 +10,7 @@
  * SceneTextures (texture.h), whose insides only src/d3d/ looks at. */
 
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 #include <vector>
 #include "rendertypes.h"
 
@@ -19,14 +19,21 @@ struct SceneTexture;
 
 /* One enumerated display mode. */
 struct DisplayMode {
-    DWORD dwWidth, dwHeight, dwBitDepth;
+    uint32_t dwWidth, dwHeight, dwBitDepth;
+};
+
+/* An adapter's identity, opaque to game code: 16 bytes the backend converts
+ * to and from its driver GUID.  The launcher stores it in the config file as
+ * it is. */
+struct AdapterId {
+    uint8_t bytes[16];
 };
 
 /* One display adapter, as EnumerateAdapters lists them. */
 struct Adapter {
     char name[128];
     bool hasGuid;  // false for the primary (default) adapter
-    GUID guid;
+    AdapterId id;
 };
 
 /* Bits for Draw's flags. */
@@ -45,24 +52,24 @@ public:
     // ── Lifetime ──
 
     /* Brings up the display mode, the surfaces, the device and the viewport
-     * (createdevice.cpp).  hWnd is the window to go full-screen on; the
-     * driver GUID may be NULL for the default.  On failure lastError() says
+     * (createdevice.cpp).  hWnd is the native window handle to go full-screen on; the
+     * adapter may be NULL for the default.  On failure lastError() says
      * why. */
-    bool Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex, bool bHardware);
+    bool Create(void *hWnd, const AdapterId *adapter, int nModeIndex, bool bHardware);
 
     /* Releases everything and forgets the display modes. */
     void Release();
 
     const char *lastError() const { return lastError_; }
 
-    /* The adapters Create can take a GUID for. */
+    /* The adapters Create can take an id for. */
     static bool EnumerateAdapters(std::vector<Adapter> &out);
 
     /* The modes Create's nModeIndex indexes, on the given adapter (NULL for
      * the default): the 4:3 modes of 16 bits or more that the hardware
      * device can render to.  anyAspect lifts the 4:3 restriction, which
      * makes the indices disagree with Create's. */
-    static bool EnumerateDisplayModes(const GUID *adapter,
+    static bool EnumerateDisplayModes(const AdapterId *adapter,
                                       std::vector<DisplayMode> &out,
                                       bool anyAspect = false);
 
@@ -77,10 +84,6 @@ public:
 
     /* Puts the desktop's display mode back. */
     void RestoreDisplayMode();
-
-    /* The DirectDraw (version 1) interface and the primary surface's
-     * version-1 interface, AddRef'd, as the movie player takes them. */
-    void GetMovieTarget(void **directDraw, void **primarySurface);
 
     // ── Frames ──
 
@@ -142,7 +145,7 @@ private:
     Native                  *native_;
     std::vector<DisplayMode> modes_;
     DisplayMode             *mode_;
-    DWORD                    modeFilterFlags_;
+    uint32_t                 modeFilterFlags_;
     char                     lastError_[100];
 };
 

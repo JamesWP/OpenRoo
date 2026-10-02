@@ -1,7 +1,7 @@
 /* The object-ID free list: the allocator and the destroy-and-compact tail that
  * Foe::remove and Bomb::remove share. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
 
@@ -20,7 +20,7 @@ static int s_init      = 0;
 static void fx_init(void)
 {
     char buf[64];
-    DWORD n;
+    uint32_t n;
 
     if (s_init)
         return;

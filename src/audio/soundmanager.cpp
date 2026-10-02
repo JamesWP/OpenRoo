@@ -16,6 +16,8 @@
  *     first failure, and stays there for the rest of the duplicates and all
  *     of the entry's voice pools. */
 
+#include <windows.h>
+#include <stdint.h>
 #include <new>
 #include "sysdev.h"
 #include "soundmanager.h"
@@ -27,7 +29,6 @@
 #include "logger.h"
 #include <stdlib.h>
 #include <stddef.h>
-#include <windows.h>
 #include "gamestr.h"
 
 /* The source file named in error lines, with __LINE__. */
@@ -47,7 +48,7 @@ static SndMgrFx sndmgr_fx(void)
     if (cached >= 0)
         return (SndMgrFx)cached;
     char buf[32];
-    DWORD n = sysdev::getEnv("KAROO_SNDMGR_FX", buf, sizeof(buf));
+    uint32_t n = sysdev::getEnv("KAROO_SNDMGR_FX", buf, sizeof(buf));
     SndMgrFx fx = SM_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "nosharemaster") == 0) fx = SM_FX_NOSHAREMASTER;
@@ -65,7 +66,7 @@ static bool sndmgr_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[32];
-        DWORD n = sysdev::getEnv("KAROO_SNDMGR_DIAG", buf, sizeof(buf));
+        uint32_t n = sysdev::getEnv("KAROO_SNDMGR_DIAG", buf, sizeof(buf));
         cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;

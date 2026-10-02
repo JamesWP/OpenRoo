@@ -15,7 +15,7 @@
  * KAROO_PLACE_DIAG=1 logs every spawn with its scan axis; KAROO_RESET_DIAG=1
  * logs purges. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <stddef.h>
 #include <math.h>
@@ -40,9 +40,9 @@ static int s_diag_place     = 0;
 static int s_diag_reset     = 0;
 static int s_init           = 0;
 
-static int env_set(const char *name, char *buf, DWORD cb)
+static int env_set(const char *name, char *buf, uint32_t cb)
 {
-    DWORD n = sysdev::getEnv(name, buf, cb);
+    uint32_t n = sysdev::getEnv(name, buf, cb);
     return n > 0 && n < cb;
 }
 

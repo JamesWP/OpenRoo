@@ -3,9 +3,11 @@
  * code uses.  Part of the blob is not decoded: it is kept as bytes so that it
  * goes back to the file unchanged. */
 #pragma once
+#include <stdint.h>
 
 #include <stddef.h>
 #include <string.h>
+#include "renderdevice.h"
  
 
 class Config {
@@ -35,7 +37,7 @@ public:
     unsigned short joyDeadzone() const                 { return joyDeadzone_; }
 
 /* The launcher's display device and mode choice. */
-    GUID          *adapterGuid()                       { return &adapterGuid_; }
+    AdapterId     *adapterId()                         { return &adapterId_; }
     unsigned int   displayModeIndex() const            { return displayModeIndex_; }
     void           setDisplayModeIndex(unsigned int i) { displayModeIndex_ = i; }
     void           setJoyDeadzone(unsigned short p)    { joyDeadzone_ = p; }
@@ -85,8 +87,8 @@ private:
     unsigned char  videoOptions_[4];        // Shadows, Reflection, Highlights, Particles
     float          cameraDistanceSetting_;  // default 5.0
     // The launcher's device choice, written by its dialog on OK.  PRESERVED:
-    // the mode index is a DWORD, but WinMain passes only its low byte.
-    GUID           adapterGuid_;
+    // the mode index is a uint32_t, but WinMain passes only its low byte.
+    AdapterId      adapterId_;
     unsigned int   displayModeIndex_;
     unsigned int   field_20_;            // default 1; unread
     int            musicOn_;             // 0 or 1

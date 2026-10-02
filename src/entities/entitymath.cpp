@@ -1,7 +1,6 @@
 /* Two pure helpers for entity movement: they touch no state and call nothing.
  */
 
-#include <windows.h>
 #include "logger.h"
 #include "entitymath.h"
 

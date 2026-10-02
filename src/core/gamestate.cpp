@@ -13,6 +13,8 @@
  *   - death_raw: four raw bytes from the player's move state;
  *   - pos: the player's position. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "gamestate.h"
 #include "sysdev.h"
 #include "logger.h"
@@ -28,18 +30,18 @@ struct GameState {
 
     int   gems_collected;  // dword
     int   gems_required;   // dword
-    BYTE  foes_killed;     // byte
+    uint8_t  foes_killed;     // byte
     int   time_limit_s;
-    DWORD elapsed_ms;
-    BYTE  lives;  // drops at the restart after a death
+    uint32_t elapsed_ms;
+    uint8_t  lives;  // drops at the restart after a death
     int   total_score;
     int   level_score;
-    BYTE  vitality;       // unconfirmed; see above
-    BYTE  death_raw[4];   // unconfirmed: the move state and the low three bytes of falling
+    uint8_t  vitality;       // unconfirmed; see above
+    uint8_t  death_raw[4];   // unconfirmed: the move state and the low three bytes of falling
     int   complete_flag;  // 0 to 1 at the exit
-    WORD  extra_count;    // items available
-    WORD  extra_cap;      // items collected: bombs and gems both
-    BYTE  extra_block;    // restarts; any suppresses the items bonus
+    uint16_t  extra_count;    // items available
+    uint16_t  extra_cap;      // items collected: bombs and gems both
+    uint8_t  extra_block;    // restarts; any suppresses the items bonus
     float pos[3];         // unconfirmed
     unsigned short mode;  // the mode handed to the input dispatch
 };
@@ -61,10 +63,10 @@ struct GameState {
 #define DIFF_MAX     120
 #define REPORT_AFTER 45  // frames after the respawn for the second report
 
-static BYTE *g_snap;
+static uint8_t *g_snap;
 static int   g_diff_on = -1;
-static BYTE  g_prev_death;
-static DWORD g_respawn_at;  // the frame the death cause cleared; 0 is idle
+static uint8_t  g_prev_death;
+static uint32_t g_respawn_at;  // the frame the death cause cleared; 0 is idle
 
 static bool deathdiff_enabled(void)
 {
@@ -72,7 +74,7 @@ static bool deathdiff_enabled(void)
         char buf[16];
         g_diff_on = 0;
         if (sysdev::getEnv("KAROO_DEATH_DIFF", buf, sizeof(buf)) && buf[0] && buf[0] != '0') {
-            g_snap = (BYTE *)VirtualAlloc(NULL, GAME_SIZE, MEM_COMMIT, PAGE_READWRITE);
+            g_snap = (uint8_t *)VirtualAlloc(NULL, GAME_SIZE, MEM_COMMIT, PAGE_READWRITE);
             g_diff_on = (g_snap != NULL);
         }
         g_logger.write("gamestate: death diff %s\n", g_diff_on ? "enabled" : "disabled");
@@ -84,14 +86,14 @@ static bool deathdiff_enabled(void)
  * moved by exactly one come first: that is what a life, a bomb count or an
  * attempt counter looks like across a death.  The rest are listed as dwords,
  * which reads better for pointers and floats. */
-static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
+static void deathdiff_report(const uint8_t *game, unsigned cause, const char *when)
 {
     int shown = 0, delta1 = 0;
     g_logger.write("deathdiff: === %s (cause=%u) — dwords changed vs pre-death snapshot ===\n",
               when, cause);
 
     // Byte steps of one: the counters.
-    for (DWORD o = 0; o < GAME_SIZE && shown < DIFF_MAX; o++) {
+    for (uint32_t o = 0; o < GAME_SIZE && shown < DIFF_MAX; o++) {
         int a = g_snap[o], b = game[o];
         int d = b - a;
         if (d != 1 && d != -1) continue;
@@ -100,7 +102,7 @@ static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
         shown++; delta1++;
     }
     // Everything else, as dwords.
-    for (DWORD o = 0; o + 4 <= GAME_SIZE && shown < DIFF_MAX; o += 4) {
+    for (uint32_t o = 0; o + 4 <= GAME_SIZE && shown < DIFF_MAX; o += 4) {
         int a = *(const int *)(g_snap + o);
         int b = *(const int *)(game   + o);
         if (a == b) continue;
@@ -121,7 +123,7 @@ static int       g_on = -1;
 static GameState g_prevClock;
 static bool      g_have_prev;
 static unsigned short g_mode;
-static DWORD     g_frame;
+static uint32_t     g_frame;
 
 bool gamestate_enabled(void)
 {
@@ -149,7 +151,7 @@ bool GameState::read()
     foes_killed    = g->foesKilled();
     time_limit_s   = g->timeLimit();
     elapsed_ms     = g->timeElapsed();
-    lives          = (BYTE)pl->lives();
+    lives          = (uint8_t)pl->lives();
     total_score    = pl->score();
     level_score    = g->tally()->levelTotal;
     vitality       = g->vitalityPercent();
@@ -175,7 +177,7 @@ bool GameState::read()
  * the end of the gameplay. */
 static GameState g_live;
 static bool      g_have_live;
-static DWORD     g_live_frame;
+static uint32_t     g_live_frame;
 
 /* The state when a level was completed.  A recording that carries on into the
  * next level ends in that level, so its last in-level frame says nothing about
@@ -184,7 +186,7 @@ static DWORD     g_live_frame;
  * the flag clears, so a later level cannot overwrite it. */
 static GameState g_done;
 static bool      g_have_done;
-static DWORD     g_done_frame;
+static uint32_t     g_done_frame;
 static int       g_done_phase;  // 0 never seen, 1 in progress, 2 locked
 
 void gamestate_tick(void)
@@ -244,10 +246,10 @@ void gamestate_tick(void)
 void gamestate_deathdiff(void)
 {
     if (!deathdiff_enabled()) return;
-    const BYTE *game = (const BYTE *)Game::instance();
+    const uint8_t *game = (const uint8_t *)Game::instance();
     if (!game) return;
 
-    BYTE cause = ((const Game *)game)->player()->moveState();
+    uint8_t cause = ((const Game *)game)->player()->moveState();
 
     if (cause != 0 && g_prev_death == 0) {
         deathdiff_report(game, cause, "at death");

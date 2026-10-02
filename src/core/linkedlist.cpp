@@ -7,12 +7,13 @@
  *     that the node is in this list: a foreign node corrupts both lists;
  *   - Unlink always returns 0, and no caller reads it. */
 
+#include <windows.h>
+#include <stdint.h>
 #include "linkedlist.h"
 #include "sysdev.h"
 #include <stdlib.h>  // free() of the list object
 #include <stddef.h>
 #include <stdlib.h>
-#include <windows.h>
 #include "logger.h"
 
 /* KAROO_LIST_FX, a negative control (CONTROLS.md):
@@ -31,7 +32,7 @@ static bool list_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[32];
-        DWORD n = sysdev::getEnv("KAROO_LIST_DIAG", buf, sizeof(buf));
+        uint32_t n = sysdev::getEnv("KAROO_LIST_DIAG", buf, sizeof(buf));
         cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;
@@ -72,7 +73,7 @@ static ListFx list_fx(void)
     if (cached >= 0)
         return (ListFx)cached;
     char buf[32];
-    DWORD n = sysdev::getEnv("KAROO_LIST_FX", buf, sizeof(buf));
+    uint32_t n = sysdev::getEnv("KAROO_LIST_FX", buf, sizeof(buf));
     ListFx fx = LIST_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "lifo") == 0) fx = LIST_FX_LIFO;

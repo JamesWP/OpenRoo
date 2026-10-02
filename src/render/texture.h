@@ -1,5 +1,5 @@
 #pragma once
-#include <windows.h>
+#include <stdint.h>
 
 /* The backend objects a texture holds; only the texture files look inside. */
 struct IDirectDraw4;
@@ -52,8 +52,8 @@ private:
 
 /* A palette from the DIB's colour table.  scenetexture.cpp's
  * BindTextureResource is the only caller. */
-  IDirectDrawPalette *__stdcall
-Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, HBITMAP hbmp);
+  IDirectDrawPalette *
+Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, void *hbmp);
 
 /* KAROO_IMAGE_DIAG's first-call announcement, shared so the census covers all
  * six ctor/dtor entry points through one implementation. */

@@ -16,6 +16,7 @@
  * advances by exactly that much each read, so the game runs as fast as the
  * machine allows.  Recording and replay both need it. */
 
+#include <stdint.h>
 #include <time.h>
 #include "clock.h"
 #include "logger.h"
@@ -31,14 +32,14 @@
 #include <stdlib.h>
 
 static bool      g_started;  // set by the first read
-static DWORD     g_last;     // the previous shifted tick
+static uint32_t     g_last;     // the previous shifted tick
 static double    g_accum;    // elapsed seconds
 
 /* The previous read's result.  RenderGameFrame reads it before reading the
  * clock, and takes the frame's dt as the difference. */
 static double g_prevClock;
 static int       g_same;    // reads in a row with the same result
-static BYTE      g_shift;   // the frequency's halvings
+static uint8_t      g_shift;   // the frequency's halvings
 static double    g_period;  // seconds per shifted tick
 
 /* > 0: the fixed step; 0: the real clock; -1: not yet read. */
@@ -49,18 +50,18 @@ static double    g_fixed_dt = -1.0;
  * being read. */
 #define LOG_EVERY 600
 static unsigned  g_calls;
-static DWORD     g_wall0;
+static uint32_t     g_wall0;
 
 static void clock_init(void)
 {
     unsigned long long freq = sysdev::perfFrequency();
 
     g_shift = 0;
-    while ((freq >> 32) != 0 || (double)(DWORD)freq > 2000000.0) {
+    while ((freq >> 32) != 0 || (double)(uint32_t)freq > 2000000.0) {
         freq >>= 1;
         g_shift++;
     }
-    g_period = (DWORD)freq ? 1.0 / (double)(DWORD)freq : 0.0;
+    g_period = (uint32_t)freq ? 1.0 / (double)(uint32_t)freq : 0.0;
 
     char buf[32];
     g_fixed_dt = 0.0;
@@ -120,7 +121,7 @@ double clock_seconds(void)
         return g_accum;
     }
 
-    DWORD cur = (DWORD)(sysdev::perfCounter() >> g_shift);
+    uint32_t cur = (uint32_t)(sysdev::perfCounter() >> g_shift);
 
     if (!g_started) {
         g_last    = cur;
@@ -129,12 +130,12 @@ double clock_seconds(void)
     }
 
     // A counter stepping backwards: move the baseline, add no time.
-    if (cur <= g_last && (DWORD)(g_last - cur) < 0x10000000u) {
+    if (cur <= g_last && (uint32_t)(g_last - cur) < 0x10000000u) {
         g_last = cur;
         return g_accum;
     }
 
-    DWORD delta = cur - g_last;
+    uint32_t delta = cur - g_last;
     g_last  = cur;
     g_accum = (double)delta * g_period + g_accum;
 

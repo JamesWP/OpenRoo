@@ -11,7 +11,6 @@
  */
 #pragma once
 
-#include <windows.h>
  
 
 struct Mat4;

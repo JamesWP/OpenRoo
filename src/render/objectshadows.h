@@ -2,7 +2,6 @@
  * shadows of one theme object type.  See objectshadows.cpp. */
 #pragma once
 
-#include <windows.h>
 
 class Game;
 class LevelPlacements;

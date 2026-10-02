@@ -48,26 +48,26 @@ public:
     int configuredAdapter() override
     {
         // The last adapter whose GUID matches; the primary one has none.
-        const GUID *want = Game::instance()->config()->adapterGuid();
+        const AdapterId *want = Game::instance()->config()->adapterId();
         int pick = -1;
         for (size_t i = 0; i < adapters_.size(); i++)
             if (adapters_[i].hasGuid
-                && memcmp(&adapters_[i].guid, want, sizeof(GUID)) == 0)
+                && memcmp(&adapters_[i].id, want, sizeof(AdapterId)) == 0)
                 pick = (int)i;
         return pick;
     }
 
     bool listModes(int adapter, std::vector<std::string> &names) override
     {
-        const GUID *guid = adapter >= 0 && adapters_[adapter].hasGuid
-                         ? &adapters_[adapter].guid : NULL;
+        const AdapterId *id = adapter >= 0 && adapters_[adapter].hasGuid
+                            ? &adapters_[adapter].id : NULL;
         std::vector<DisplayMode> modes;
-        if (!RenderDevice::EnumerateDisplayModes(guid, modes, fx_allaspect()))
+        if (!RenderDevice::EnumerateDisplayModes(id, modes, fx_allaspect()))
             return false;
         for (size_t i = 0; i < modes.size(); i++) {
             char text[64];
-            snprintf(text, sizeof(text), "%lux%lux%lu", modes[i].dwWidth,
-                     modes[i].dwHeight, modes[i].dwBitDepth);
+            snprintf(text, sizeof(text), "%ux%ux%u", (unsigned)modes[i].dwWidth,
+                     (unsigned)modes[i].dwHeight, (unsigned)modes[i].dwBitDepth);
             names.push_back(text);
         }
         return true;
@@ -82,9 +82,9 @@ public:
     {
         Config *cfg = Game::instance()->config();
         if (adapter >= 0 && adapters_[adapter].hasGuid)
-            *cfg->adapterGuid() = adapters_[adapter].guid;
+            *cfg->adapterId() = adapters_[adapter].id;
         else
-            memset(cfg->adapterGuid(), 0, sizeof(GUID));
+            memset(cfg->adapterId(), 0, sizeof(AdapterId));
         cfg->setDisplayModeIndex((unsigned int)mode);
     }
 

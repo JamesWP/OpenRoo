@@ -15,7 +15,7 @@
  * KAROO_SIM_FX=tallyfast is a negative control: every stage takes a tenth of
  * the time, so the frame at which the tally finishes moves. */
 
-#include <windows.h>
+#include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
 #include "audiodev.h"
@@ -49,7 +49,7 @@ Sim_AnimateScoreTallyStages(Game *self)
 
     if (s_fx < 0) {
         char b[32];
-        DWORD k = sysdev::getEnv("KAROO_SIM_FX", b, sizeof(b));
+        uint32_t k = sysdev::getEnv("KAROO_SIM_FX", b, sizeof(b));
         s_fx = (k > 0 && k < sizeof(b) && strcmp(b, "tallyfast") == 0);
         if (s_fx)
             g_logger.write("scoretally: KAROO_SIM_FX=tallyfast -- stages x0.1\n");
