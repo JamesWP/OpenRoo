@@ -7,6 +7,9 @@ add_library(render OBJECT
     d3dmath_std.cpp
     dsoscene.cpp
     faktmesh.cpp
+    image.cpp
+    imagebmp.cpp
+    imagetga.cpp
     meshbatch.cpp
     model.cpp
     objectshadows.cpp

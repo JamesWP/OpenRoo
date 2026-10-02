@@ -16,6 +16,18 @@
 
 class LoadedImage;
 struct SceneTexture;
+struct Image;
+
+/* A texture on the device: opaque to everything outside src/d3d/.  Made by
+ * CreateTexture from an Image, freed by DestroyTexture. */
+struct DeviceTexture;
+
+/* Bits for CreateTexture's flags. */
+namespace TextureFlag {
+enum : uint32_t {
+    Alpha = 1,  // prefer a pixel format with an alpha channel
+};
+}
 
 /* One enumerated display mode. */
 struct DisplayMode {
@@ -101,6 +113,25 @@ public:
     /* Copies img over the back buffer and flips it to the screen. */
     void PresentImage(LoadedImage *img);
 
+    /* The same for a CPU-side image, scaled to the back buffer.  An empty
+     * image just flips. */
+    void PresentImage(const Image &img);
+
+    // ── Textures ──
+
+    /* Uploads img in the pixel format the device prefers and returns the
+     * texture, or NULL if the device could not make it.  `depth` asks for 16
+     * or 32 bits per pixel; anything else means the image's own depth.  The
+     * choice of format, and the conversion into it, stay behind this call. */
+    DeviceTexture *CreateTexture(const Image &img, uint32_t flags, unsigned depth);
+
+    /* Writes img into t again, restoring the texture first if the device lost
+     * it.  img must be the size t was made at. */
+    bool UpdateTexture(DeviceTexture *t, const Image &img);
+
+    /* NULL is ignored.  Needs no device: the texture knows its owner. */
+    static void DestroyTexture(DeviceTexture *t);
+
     // ── State ──
 
     void     SetRenderState(RS state, uint32_t value);
@@ -111,6 +142,7 @@ public:
 
     /* NULL unbinds the stage. */
     void SetTexture(int stage, const SceneTexture *tex);
+    void SetTexture(int stage, const DeviceTexture *tex);
     void SetTexture(int stage, decltype(nullptr)) { SetTexture(stage, (const SceneTexture *)nullptr); }
 
     /* The ambient light colour, 0x00RRGGBB. */
@@ -141,6 +173,8 @@ public:
 
 private:
     friend struct DeviceCreation;
+
+    bool BltImageToBackBuffer(const Image &img);
 
     Native                  *native_;
     std::vector<DisplayMode> modes_;

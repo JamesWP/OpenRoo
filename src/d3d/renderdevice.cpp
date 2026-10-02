@@ -8,6 +8,7 @@
 #include "sysdev.h"
 #include <stdio.h>
 #include "scenetexture.h"
+#include "image.h"
 #include "logger.h"
 #include <math.h>
 #include <string.h>
@@ -198,6 +199,25 @@ void RenderDevice::PresentImage(LoadedImage *img)
                   img, img->textureSurface(), n->backBuffer, n->primary,
                   blt, hr_flip);
     }
+}
+
+void RenderDevice::PresentImage(const Image &img)
+{
+    Native *n = native_;
+    HRESULT hr_flip;
+    bool skipped = fx_noblt();
+    bool blt = false;
+
+    if (!skipped && !img.empty())
+        blt = BltImageToBackBuffer(img);
+
+    hr_flip = n->primary->Flip(NULL, DDFLIP_WAIT);
+
+    static LONG logged = 0;
+    if (InterlockedIncrement(&logged) <= FLIP_LOG_FIRST)
+        g_logger.write("renderdevice: PresentImage %s %dx%d blt=%s flip=%08lX\n",
+                       img.name, img.width, img.height,
+                       skipped ? "skipped" : (blt ? "ok" : "failed"), hr_flip);
 }
 
 // ── State ──

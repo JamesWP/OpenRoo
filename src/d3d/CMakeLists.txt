@@ -2,6 +2,8 @@
 add_library(d3d OBJECT
     createdevice.cpp
     ddrawdiag.cpp
+    devicetexture.cpp
+    pixelconvert.cpp
     nullddraw.cpp
     renderdevice.cpp
     scenetexture.cpp
