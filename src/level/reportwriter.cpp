@@ -74,7 +74,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     if (out == NULL)
         return;
 
-    g_logger.logMessage(3, GS_RPT_LOG_CREATE);
+    g_logger.logMessage(3, "GAME: create a level report");
 
     self->setReportTallyA(0);
     self->setReportLevelsWithBonus(0);
@@ -155,7 +155,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
             self->gemsRequired());
         self->setVitalityPercent(0x32);
         timeBonus = (unsigned)(self->map()->fileTimeLimit() * 0x32) / 100;
-        g_logger.logMessage(3, GS_RPT_LOG_TIME, timeBonus);
+        g_logger.logMessage(3, "GAME: time:%d", timeBonus);
         Score_CalculateLevelScore(self, 2);
 
         sprintf(buf, GS_RPT_D_TAB, timeBonus);
@@ -215,7 +215,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     sprintf(buf, GS_RPT_SPLINES_IN, (unsigned)self->scriptPlayer()->splineLines());
     fputs(buf, out);
 
-    g_logger.logMessage(3, GS_RPT_LOG_CREATED);  // PRESERVED: logged before the files are closed
+    g_logger.logMessage(3, "GAME: level report created");  // PRESERVED: logged before the files are closed
 
     fclose(out);
     if (sink != NULL)

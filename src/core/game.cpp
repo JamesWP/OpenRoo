@@ -79,13 +79,13 @@ Game::Game(const char *gameName)
     cdThemes_.readTrackThemeTable(gameFileName_);
     cdThemes_.listTrackLengths();
     if (cdThemes_.validateTrackLengths())
-        g_logger.logMessage(2, GS_GAME_CD_OK);
+        g_logger.logMessage(2, "GAME: original CD is in the drive - OK");
     else
-        g_logger.logMessage(3, GS_GAME_CD_MISSING);
-    g_logger.logMessage(1, GS_GAME_CREATED, gameFileName_);
+        g_logger.logMessage(3, "GAME: * warning * - the original CD is not in drive");
+    g_logger.logMessage(1, "GAME: game-object created, game is named as:%s", gameFileName_);
 
     if (!loadGameFile(gameFileName_)) {
-        g_logger.logMessage(4, GS_GAME_FILE_FAILED, gameFileName_);
+        g_logger.logMessage(4, "GAME: ** error ** game-file named as %s.gam could not loaded - aborting!!!", gameFileName_);
         windev::quit(1);
         return;
     }
@@ -94,37 +94,37 @@ Game::Game(const char *gameName)
     menu_.setLastKey(0x0d);
     saveSlots_.setCount(6);
     if (!saveSlots_.loadAllSlotFiles(gameFileName_, SAVE_KEY)) {
-        g_logger.logMessage(3, GS_GAME_NO_SAVES, (unsigned)saveSlots_.count());
+        g_logger.logMessage(3, "GAME: warning - no save-files for this game (maybe started a new game the first time\077), creating %d empty slots", (unsigned)saveSlots_.count());
         saveSlots_.initialiseEmpty();
         saveSlots_.writeAllSlotFiles(gameFileName_, SAVE_KEY);
     }
     field_173584_ = 0;
     if (!config_.loadValues(GS_CFG_FILE)) {
-        g_logger.logMessage(3, GS_GAME_CFG_DEFAULTS);
+        g_logger.logMessage(3, "GAME: warning - no correct config-values (or no *.cfg-file), creating default-config");
         config_.fillDefaults();
     } else {
-        g_logger.logMessage(1, GS_GAME_CFG_LOADED);
+        g_logger.logMessage(1, "GAME: config-values loaded");
     }
     g_progCtrl.setJoyDeadzone(0, config_.joyDeadzone() * 100);
     g_progCtrl.setJoyDeadzone(4, config_.joyDeadzone() * 100);
 
     highScores_.setCount(10);
     if (!highScores_.readFile(gameFileName_, HIGHSCORE_KEY)) {
-        g_logger.logMessage(3, GS_GAME_NO_HIGHSCORES);
+        g_logger.logMessage(3, "GAME: warning - no highscore-file for the game found! Creating a new one...");
         highScores_.fillDefaults();
         highScores_.writeFile(gameFileName_, HIGHSCORE_KEY);
     } else {
-        g_logger.logMessage(1, GS_GAME_HIGHSCORES_LOADED);
+        g_logger.logMessage(1, "GAME: highscore-file loaded");
     }
 
     // PRESERVED: a demo check, for a nonzero field_0c_ with more than ten
     // levels.  field_0c_ was zeroed above, so it never fires.
     if (field_0c_ != 0 && levelCount_ > 10) {
-        g_logger.logMessage(4, GS_GAME_DEMO_ABORT);
+        g_logger.logMessage(4, "GAME: ** error ** this is a DEMO, piracy alert, aborting!!!");
         windev::quit(1);
         return;
     }
-    g_logger.logMessage(2, GS_GAME_COMMERCIAL);
+    g_logger.logMessage(2, "GAME: this is a commercial version");
     config_.setSavedWaveOutVolume(audiodev::masterVolume());
     audiodev::setMasterVolume(config_.waveOutVolume());
     config_.setSavedCdMixerVolume(g_cdAudio.getMixerDetails());
@@ -161,7 +161,7 @@ Game::Game(const char *gameName)
 
 Game::~Game()
 {
-    g_logger.logMessage(1, GS_GAME_DTOR_START);
+    g_logger.logMessage(1, "GAME: starting destructor");
     LiftObject::purgeAll(this);
     SlideObject::purgeAll(this);
     BreakableTile::purgeAll(this);
@@ -178,15 +178,15 @@ Game::~Game()
     switchMax_      = 0;
     config_.setCameraDistanceSetting(zoomDistance_);
     if (highScores_.writeFile(gameFileName_, HIGHSCORE_KEY))
-        g_logger.logMessage(1, GS_GAME_HIGHSCORES_SAVED);
+        g_logger.logMessage(1, "GAME: highscore-files saved");
     if (config_.save(GS_CFG_FILE))
-        g_logger.logMessage(1, GS_CFG_SAVE_OK);
+        g_logger.logMessage(1, "GAME: config-values saved correctly");
     else
-        g_logger.logMessage(3, GS_CFG_SAVE_ERR);
+        g_logger.logMessage(3, "GAME: ** error ** while saving config-values (maybe write-protected or hd full\077) !!!");
     scriptPlayer_.releaseStreams();
     extraObjects_.releaseSounds();
     releaseAllSounds();
-    g_logger.logMessage(1, GS_GAME_SOUNDS_RELEASED);
+    g_logger.logMessage(1, "GAME: all sounds successful released");
     soundManager()->purgeAssets();
     audiodev::setMasterVolume(config_.savedWaveOutVolume());
     g_cdAudio.setMixerVolume(config_.savedCdMixerVolume());
@@ -207,7 +207,7 @@ int Game::loadGameFile(const char *name)
 
     levelCount_ = 0;
     sprintf(path, GS_GAME_FILE_PATH, g_gameDir, name);
-    g_logger.logMessage(2, GS_GAME_FILE_LOADING, path);
+    g_logger.logMessage(2, "GAME: load game-file: %s", path);
     FILE *fp = fopen(path, GS_MODE_READ);
     if (fp == NULL)
         return 0;
@@ -215,7 +215,7 @@ int Game::loadGameFile(const char *name)
 
     char *table = &levelNameTable_[0][0];
     if (hdr[0] == 6 && hdr[1] == 6 && hdr[2] == 6) {
-        g_logger.logMessage(2, GS_GAME_FILE_BINARY);
+        g_logger.logMessage(2, "GAME: load game-file as binary,coded file");
         levelCount_ = hdr[3];
         unsigned int n = 0;
         char c = 0;
@@ -225,15 +225,15 @@ int Game::loadGameFile(const char *name)
             table[n & 0xffff] = c;
             n++;
         }
-        g_logger.logMessage(2, GS_GAME_FILE_BINARY_DONE,
+        g_logger.logMessage(2, "GAME: game-file loaded %d levels included %d bytes loaded",
                            (unsigned)levelCount_, n & 0xffff);
         for (unsigned short i = 0; i < levelCount_; i++)
-            g_logger.logMessage(2, GS_GAME_FILE_LEVEL, levelNameTable_[i]);
+            g_logger.logMessage(2, "GAME: game-file: %s", levelNameTable_[i]);
         fclose(fp);
         return 1;
     }
 
-    g_logger.logMessage(2, GS_GAME_FILE_TEXT);
+    g_logger.logMessage(2, "GAME: load game-file as text-file");
     unsigned int n = 0;
     fseek(fp, 0, SEEK_SET);
     line[0] = '\0';
@@ -249,7 +249,7 @@ int Game::loadGameFile(const char *name)
         n++;
     }
     levelCount_ = (unsigned char)(n - 1);
-    g_logger.logMessage(2, GS_GAME_FILE_TEXT_DONE, (unsigned)levelCount_);
+    g_logger.logMessage(2, "GAME: game-file loaded %d levels included", (unsigned)levelCount_);
     fclose(fp);
     return 1;
 }

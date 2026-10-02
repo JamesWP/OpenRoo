@@ -272,7 +272,7 @@ int ThemeSoundTable::add(unsigned int id, const char *waveName,
         e.enabled = 0;
         return 0;
     }
-    g_logger.logMessage(1, GS_THEME_SOUND_ADD, id & 0xffff, path);
+    g_logger.logMessage(1, "TSM: add called (Index=%d/fn=%s)", id & 0xffff, path);
     strcpy(e.name, path);
     e.unknown104 = arg4;
     e.unknown108 = arg3;
@@ -650,9 +650,9 @@ void ThemeParser::sky(bool inEnvironment)
                                              up, dn, fr, bk, lf, rt,
                                              d3d->bitDepth());
     if ((ok & 0xff) == 0)
-        g_logger.logMessage(3, GS_THEME_SKY_FAILED, tok[1]);
+        g_logger.logMessage(3, "SKY: *ERROR* failed loading %s", tok[1]);
     else
-        g_logger.logMessage(1, GS_THEME_SKY_LOADED, tok[1]);
+        g_logger.logMessage(1, "SKY: %s loaded", tok[1]);
 }
 
 void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
@@ -918,12 +918,12 @@ bool ThemeAssetBlock::load(Game *game, RenderDevice *d3d, char *path)
  * fields, and returns 0. */
 int ThemeSoundTable::releaseAll()
 {
-    g_logger.logMessage(1, GS_THEME_SOUND_RELEASING);
+    g_logger.logMessage(1, "TSM: trying to release all sounds");
     for (int i = 0; i < THEME_SOUND_COUNT; i++) {
         entries_[i].enabled = 0;
         entries_[i].name[0] = 0;
     }
-    g_logger.logMessage(1, GS_THEME_SOUND_RELEASED);
+    g_logger.logMessage(1, "TSM: all sounds released");
     return 0;
 }
 

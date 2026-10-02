@@ -171,7 +171,7 @@ int AnimTable::load(const char *path)
         }
     }
 
-    g_logger.logMessage(1, GS_ANI_LOADED, path);
+    g_logger.logMessage(1, "ANI: %s loaded", path);
 
     if (logged < ANI_LOG_FIRST) {
         logged++;

@@ -103,7 +103,7 @@ Sim_ClearGameState(Game *self)
     self->totalPlayTimeHighDword() = 0;
 
     if (gamefile_ok == 0) {
-        g_logger.logMessage(4, GS_GAME_GAMEFILE_ERR,
+        g_logger.logMessage(4, "GAME: ** error ** game-file %s is not readable (maybe it not exists\077) aborting game!!!",
                            self->gameFileName());
         windev::quit(1);
     }

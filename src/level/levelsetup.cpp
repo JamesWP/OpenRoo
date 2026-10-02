@@ -226,7 +226,7 @@ Sim_SetupLevelObjects(Game *self)
     self->menu()->setChildCount(0x28, (self->nextLevelBonus() == 0) ? 2 : 1);
     self->player()->setLastSecondsMark(10.0);  // 10.0
 
-    g_logger.logMessage(2, GS_LVL_INIT_STARTED);
+    g_logger.logMessage(2, "GAME: init level started");
 
     self->setLevelSoundsReady(0);
     self->scriptPlayer()->releaseStreams();
@@ -384,7 +384,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_SWITCH) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        g_logger.logMessage(1, GS_LVL_WARN_SWITCH);
+                        g_logger.logMessage(1, "GAME: waring - switch with an index lower than 1 !!!");
                     } else {
                         unsigned char idx = (unsigned char)(param - 1);
                         if (idx > self->switchMax())
@@ -402,7 +402,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_BRIDGE_U) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        g_logger.logMessage(1, GS_LVL_WARN_XBRIDGE);
+                        g_logger.logMessage(1, "GAME: waring - X-bridge with an index lower than 1 !!!");
                     } else {
                         BridgeObject::spawn(self, u, v, t->height(),
                                             (unsigned char)(param - 1), 1);
@@ -413,7 +413,7 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_BRIDGE_V) {
                     unsigned char param = t->param();
                     if (param == 0) {
-                        g_logger.logMessage(1, GS_LVL_WARN_YBRIDGE);
+                        g_logger.logMessage(1, "GAME: waring - Y-bridge with an index lower than 1 !!!");
                     } else {
                         BridgeObject::spawn(self, u, v, t->height(),
                                             (unsigned char)(param - 1), 2);
@@ -512,7 +512,7 @@ Sim_SetupLevelObjects(Game *self)
                     // The clock, copied as a double.
                     self->freeBomb(self->census()->freeBombs)->placedAt =
                         *self->clock();
-                    g_logger.logMessage(3, GS_LVL_FREEBOMB,
+                    g_logger.logMessage(3, "GAME: init level - freebomb %d created",
                                        (unsigned int)self->census()->freeBombs);
                     self->census()->freeBombs++;
                 }
@@ -643,7 +643,7 @@ next_row:
             unsigned char cv = self->player()->homeV();
             if (Sim_FindNearestFlaggedTileInRadius(self, &cu, &cv, 0x14)) {
                 CELL(M, cu, cv)->setContents(0);
-                g_logger.logMessage(3, GS_LVL_CD_MISSING,
+                g_logger.logMessage(3, "GAME: CD is not in drive! Crystal at %d,%d token!",
                                    (unsigned int)cu, (unsigned int)cv);
             }
         }
@@ -670,23 +670,23 @@ next_row:
     self->setField13cc90(0);
     self->setOverviewActive(0);
 
-    g_logger.logMessage(1, GS_LVL_CRYSTALS,
+    g_logger.logMessage(1, "GAME: %d crystals in this level, %d needed",
                        (unsigned int)self->field_42252(),
                        self->gemsRequired());
 
     if ((int)((unsigned int)self->player()->gemsCollected() + (unsigned int)self->field_42252()) <
         self->gemsRequired())
-        g_logger.logMessage(3, GS_LVL_WARN_CRYSTALS);
+        g_logger.logMessage(3, "GAME: waring - not enough crystals to complete this level!!!!");
 
     // One argument: the level name.
     if (self->extraObjects()->openFile(
                                  self->levelName()) == 0) {
         self->extraObjects()->setLoaded(0);
-        g_logger.logMessage(1, GS_LVL_LEO_FAILED,
+        g_logger.logMessage(1, "GAME: could not load LEO:%s.leo no extra-objects in this level",
                            self->levelName());
     } else {
         self->extraObjects()->setLoaded(1);
-        g_logger.logMessage(1, GS_LVL_LEO_LOADED,
+        g_logger.logMessage(1, "GAME: LEO-file %s loaded",
                            self->levelName());
     }
 

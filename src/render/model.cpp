@@ -31,7 +31,7 @@ CFaktMesh *ModelManager::findOrImport(char *name)
         mm_lower_inplace(name);
         mm_lower_inplace(cached->name());
         if (strcmp(cached->name(), name) == 0) {
-            g_logger.logMessage(1, GS_MM_FOUND, name);
+            g_logger.logMessage(1, "MM: %s found", name);
             return cached;
         }
     }
@@ -40,10 +40,10 @@ CFaktMesh *ModelManager::findOrImport(char *name)
     if ((mesh->importSceneModels(name) & 0xff) == 0) {
         if (mesh != NULL)
             delete mesh;
-        g_logger.logMessage(3, GS_MM_FAILED, name);
+        g_logger.logMessage(3, "MM: *ERROR* failed loading %s", name);
         return NULL;
     }
-    g_logger.logMessage(1, GS_MM_LOADED, name);
+    g_logger.logMessage(1, "MM: %s loaded", name);
     cache_.append(mesh);
     return mesh;
 }
