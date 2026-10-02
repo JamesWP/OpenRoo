@@ -14,7 +14,7 @@
  * again later. */
 
 #include "d3dnative.h"
-#include "log.h"
+#include "logger.h"
 #include "gamestr.h"
 #include "gameglobals.h"
 #include <stdio.h>
@@ -44,7 +44,7 @@ static int devfx(void)
             else if (lstrcmpiA(buf, "mode0") == 0) cached = DEVFX_MODE0;
             else if (lstrcmpiA(buf, "firstzbuf") == 0) cached = DEVFX_FIRSTZBUF;
         }
-        log_write("renderdevice: device FX mode = %s\n",
+        g_logger.write("renderdevice: device FX mode = %s\n",
                   cached == DEVFX_HALFVP    ? "halfvp" :
                   cached == DEVFX_MODE0     ? "mode0"  :
                   cached == DEVFX_FIRSTZBUF ? "firstzbuf" : "off");
@@ -402,7 +402,7 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
     n->viewport->SetViewport2(&vp);
     n->device->SetCurrentViewport(n->viewport);
 
-    log_write("renderdevice: Create hwnd=%p guid=%p mode=%d hw=%s -> "
+    g_logger.write("renderdevice: Create hwnd=%p guid=%p mode=%d hw=%s -> "
               "%lux%lux%lu dd4=%p d3d=%p dev=%p vp=%p primary=%p "
               "back=%p zbuf=%p filter=%08lX zdepth=%lu stencil=%lu\n",
               hWnd, pDriverGuid, nModeIndex, bHardware ? "TRUE" : "FALSE",
@@ -413,7 +413,7 @@ bool RenderDevice::Create(HWND hWnd, GUID *pDriverGuid, int nModeIndex,
               n->zbufFmt.dwStencilBitDepth);
 
     if (devdiag())
-        log_write("renderdevice: DIAG modesSeen=%u modesKept=%u zfmtSeen=%u "
+        g_logger.write("renderdevice: DIAG modesSeen=%u modesKept=%u zfmtSeen=%u "
                   "zfmtKept=%u logLines=%u\n",
                   g_devdiag.modesSeen, g_devdiag.modesKept,
                   g_devdiag.zfmtSeen, g_devdiag.zfmtKept, g_devdiag.logLines);

@@ -57,7 +57,6 @@ extern SceneTexture g_texKaroo128;
  * Same shape as ModelManager (model.h).  The window procedure reloads both
  * on WM_ACTIVATE. */
 #include "linkedlist.h"
-class GameLogger;
 
 class TextureManager {
 public:
@@ -74,14 +73,10 @@ public:
     TextureManager(const TextureManager &) = delete;
     TextureManager &operator=(const TextureManager &) = delete;
 
-    void setLogger(GameLogger *logger);
     void loadAll();
-
-    GameLogger  *logger() const { return pLogger_; }
 
 private:
     LinkedList   cache_;     // SceneTexture *, game-heap nodes
-    GameLogger  *pLogger_;   // NULL = silent
      
 };
 

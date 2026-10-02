@@ -34,12 +34,11 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "extraobjects.h"
 #include "audiodev.h"
 #include "soundmanager.h"
 #include "gamestr.h"
-#include "gamelog.h"
 #include "gameglobals.h"
 #include <stdlib.h>
 #include <stdlib.h>
@@ -56,7 +55,7 @@ static bool fx_nomodels(void)
         cached = 0;
         if (GetEnvironmentVariableA("KAROO_LEO_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "nomodels") == 0);
-        log_write("leo: FX mode = %s\n", cached ? "nomodels" : "off");
+        g_logger.write("leo: FX mode = %s\n", cached ? "nomodels" : "off");
     }
     return cached != 0;
 }
@@ -208,7 +207,7 @@ int ExtraObjects::openFile(const char *name)
 
     if (logged < LEO_LOG_FIRST) {
         logged++;
-        log_write("leo: '%s' entries=%u objects=%u\n", path,
+        g_logger.write("leo: '%s' entries=%u objects=%u\n", path,
                   (unsigned)entries_,
                   (unsigned)objectCount_);
     }
@@ -252,7 +251,7 @@ void ExtraObjects::releaseSounds()
             s_released++;
             if (s_rel_diag && !s_logged_release) {
                 s_logged_release = 1;
-                log_write("extraobjects: first extra-object sound release "
+                g_logger.write("extraobjects: first extra-object sound release "
                           "(record %d of %d)\n", k, (int)RELEASE_COUNT);
             }
         }

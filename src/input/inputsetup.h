@@ -11,7 +11,7 @@ struct Game;
  * device acquisition fails.  A missing joystick is not an error.  The third
  * argument is unused. */
   int  
-Input_Setup(HINSTANCE hInstance, HWND hwnd, DWORD unused, Game *game);
+Input_Setup(HINSTANCE hInstance, HWND hwnd, Game *game);
 
 /* Logs, writes the bindings file and releases every input device. */
   void   Input_TrySaveSettings(void);

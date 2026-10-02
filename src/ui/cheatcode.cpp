@@ -21,9 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "game.h"
-#include "gamelog.h"
 #include "levelsetup.h"
 #include "levelscore.h"
 #include "levelparse.h"
@@ -73,7 +72,7 @@ Sim_HandleTypedCheatCode(Game *self)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "cheatlife") == 0);
         if (s_fx)
-            log_write("cheatcode: KAROO_SIM_FX=cheatlife -- mausuruh gives 2\n");
+            g_logger.write("cheatcode: KAROO_SIM_FX=cheatlife -- mausuruh gives 2\n");
     }
 
     self->cheatEntry()->poll((unsigned int)(long long)*self->clock());

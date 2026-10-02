@@ -29,7 +29,6 @@
 #include <stddef.h>
  
 
-class GameLogger;
 
 /* One keyword's entry.  Named from the .ani header comment quoted above. */
 class AnimSlot {
@@ -73,7 +72,7 @@ public:
      
 
     /* Fills the table from a .ani file. */
-    int load(const char *path, GameLogger *logger);
+    int load(const char *path);
 
     /* The slot for an animation code, or NULL for a code the table has no
      * slot for. */

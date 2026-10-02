@@ -14,7 +14,7 @@
 #include "main.h"
 #include <stdlib.h>
 #include "gameglobals.h"
-#include "gamelog.h"
+#include "logger.h"
 #include "game.h"
 #include "config.h"
 #include "cdthemes.h"
@@ -39,7 +39,6 @@
 #include "scene.h"
 #include "textrenderer.h"
 #include "menuscreens.h"
-#include "log.h"
 
 /* Shared by WinMain and the window procedure; nothing else reads either. */
 static videodev::Player g_movie;
@@ -49,7 +48,7 @@ static bool winmain_fx_norender()
     char buf[16];
     bool on = GetEnvironmentVariableA("KAROO_WINMAIN_FX", buf, sizeof(buf))
               && lstrcmpiA(buf, "norender") == 0;
-    log_write("winmain: FX mode = %s\n", on ? "norender" : "off");
+    g_logger.write("winmain: FX mode = %s\n", on ? "norender" : "off");
     return on;
 }
 
@@ -105,7 +104,7 @@ static bool wndproc_fx_noquit()
         char buf[16];
         cached = GetEnvironmentVariableA("KAROO_WNDPROC_FX", buf, sizeof(buf))
                  && lstrcmpiA(buf, "noquit") == 0;
-        log_write("wndproc: FX mode = %s\n", cached ? "noquit" : "off");
+        g_logger.write("wndproc: FX mode = %s\n", cached ? "noquit" : "off");
     }
     return cached != 0;
 }
@@ -158,10 +157,10 @@ Main_WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int)
 static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
 {
     g_moduleInstance = hInstance;
-    audiodev::setLog(log_write);
-    inputdev::setLog(log_write);
-    videodev::setLog(log_write);
-    windev::setLog(log_write);
+    audiodev::setLog(log_sink);
+    inputdev::setLog(log_sink);
+    videodev::setLog(log_sink);
+    windev::setLog(log_sink);
     // Data paths are relative to the current directory, which nothing changes.
     // An absolute prefix could overflow the fixed path buffers on a deep
     // install.
@@ -177,8 +176,6 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     if (!window.create(hInstance, &handler, wc))
         return 0;
     HWND hWnd = (HWND)window.handle();
-
-    g_logger.openLogFile("JJ.log", NULL);
 
     // The first character is tested, not the pointer.  None of the early
     // returns below destroys the window.
@@ -209,7 +206,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
     // Cancel: the one early exit that destroys the window, and returns 1.
     bool play = true;
     if (launcher_skipped())
-        log_write("launcher: dialog skipped\n");
+        g_logger.write("launcher: dialog skipped\n");
     else
         play = LauncherDlg_Show(NULL);
     if (!play) {
@@ -240,7 +237,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
         return 1;
     }
 
-    if (Input_Setup(hInstance, hWnd, (DWORD)&g_logger, game) == 0) {
+    if (Input_Setup(hInstance, hWnd, game) == 0) {
         delete d3d;
         delete_game(game);
         return 1;
@@ -248,7 +245,7 @@ static int winmain_body(HINSTANCE hInstance, LPSTR lpCmdLine)
 
     // 3D sound, 22050 Hz, 16-bit stereo; rolloff 0.3 if it came up.
     SoundManager *snd = game->soundManager();
-    if (snd->init(1, hWnd, 2, 22050, 16, &g_logger))
+    if (snd->init(1, hWnd, 2, 22050, 16))
         snd->device()->setListenerRolloff(0.3f, true);
 
     g_cdAudio.setWindowHandle(hWnd);

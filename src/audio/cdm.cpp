@@ -1,25 +1,25 @@
 #include <string.h>
 #include <stdio.h>
 #include "cdm.h"
-#include "log.h"
+#include "logger.h"
 #include <stdlib.h>
 
 CDM::CDM()
 {
-    log_write("CDM::construct(this=%p)\n", this);
+    g_logger.write("CDM::construct(this=%p)\n", this);
     window_ = NULL;
 }
 
 CDM::~CDM()
 {
-    log_write("CDM::stopAndClose(this=%p)\n", this);
+    g_logger.write("CDM::stopAndClose(this=%p)\n", this);
     music_.stop();
-    log_write("CDM::stopAndClose done\n");
+    g_logger.write("CDM::stopAndClose done\n");
 }
 
 void CDM::setWindowHandle(void *hwnd)
 {
-    log_write("CDM::setWindowHandle(hwnd=0x%p)\n", hwnd);
+    g_logger.write("CDM::setWindowHandle(hwnd=0x%p)\n", hwnd);
     window_ = hwnd;
     music_.setWindow(hwnd);
 }
@@ -31,7 +31,7 @@ bool CDM::handleWindowMessage(unsigned msg, unsigned long wParam, long lParam)
 
 int CDM::getTrackCount()
 {
-    log_write("CDM::getTrackCount → 9\n");
+    g_logger.write("CDM::getTrackCount → 9\n");
     return 9;  // the CD has 9 tracks, 1 data and 8 audio; the check wants exactly 9
 }
 
@@ -57,18 +57,18 @@ static const char *track_len(int track)
 const char *CDM::getTrackLength(int track)
 {
     const char *s = track_len(track);
-    log_write("CDM::getTrackLength(track=%d) → \"%s\"\n", track, s);
+    g_logger.write("CDM::getTrackLength(track=%d) → \"%s\"\n", track, s);
     return s;
 }
 
 void CDM::playTrack(int track, bool loop)
 {
-    log_write("CDM::playTrack(track=%d, loop=%d)\n", track, (int)loop);
+    g_logger.write("CDM::playTrack(track=%d, loop=%d)\n", track, (int)loop);
 
     // CD track 2 is CDTracks\Track 1.wav, and so on.
     int wav = track - 1;
     if (wav < 1 || wav > 8) {
-        log_write("CDM::playTrack: track %d out of WAV range\n", track);
+        g_logger.write("CDM::playTrack: track %d out of WAV range\n", track);
         music_.stop();
         return;
     }
@@ -80,15 +80,15 @@ void CDM::playTrack(int track, bool loop)
 
 void CDM::stop()
 {
-    log_write("CDM::stop\n");
+    g_logger.write("CDM::stop\n");
     music_.stop();
-    log_write("CDM::stop done\n");
+    g_logger.write("CDM::stop done\n");
 }
 
 /* There is no mixer line to drive. */
 void CDM::setMixerVolume(unsigned level)
 {
-    log_write("CDM::setMixerVolume(level=0x%X) — not implemented\n", level);
+    g_logger.write("CDM::setMixerVolume(level=0x%X) — not implemented\n", level);
 }
 
   void KarooHooksLoad() {}  // unused

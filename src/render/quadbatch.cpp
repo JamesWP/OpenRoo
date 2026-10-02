@@ -7,7 +7,7 @@
 #include "d3dmath.h"
 #include "theme.h"
 #include "levelplacements.h"
-#include "log.h"
+#include "logger.h"
 
 #define QUAD_FVF       VertexFormat::Lit
 #define QUAD_LOG_FIRST 8
@@ -25,12 +25,12 @@ static void quad_dump(const void *data, DWORD quads)
     // lazily, the first frame would show an empty one.
     if (InterlockedIncrement(&calls) != 200)
         return;
-    log_write("quadbatch: dumping at call 200, pData=%p quads=%lu\n", data, quads);
+    g_logger.write("quadbatch: dumping at call 200, pData=%p quads=%lu\n", data, quads);
 
     HANDLE f = CreateFileA(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
                            FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE) {
-        log_write("quadbatch: dump could not open %s (err=%lu)\n",
+        g_logger.write("quadbatch: dump could not open %s (err=%lu)\n",
                   path, GetLastError());
         return;
     }
@@ -50,7 +50,7 @@ static void quad_dump(const void *data, DWORD quads)
         WriteFile(f, line, n, &wr, NULL);
     }
     CloseHandle(f);
-    log_write("quadbatch: dumped %lu quads to %s\n", quads, path);
+    g_logger.write("quadbatch: dumped %lu quads to %s\n", quads, path);
 }
 
 /* KAROO_QUAD_FX: noalpha forces ALPHABLENDENABLE off for every sub-object (no
@@ -68,7 +68,7 @@ static QuadFxMode quad_fx(void)
             if (lstrcmpiA(buf, "noalpha") == 0) cached = QUAD_FX_NOALPHA;
             else if (lstrcmpiA(buf, "nodraw") == 0) cached = QUAD_FX_NODRAW;
         }
-        log_write("quadbatch: FX mode = %s\n",
+        g_logger.write("quadbatch: FX mode = %s\n",
                   cached == QUAD_FX_NOALPHA ? "noalpha" :
                   cached == QUAD_FX_NODRAW  ? "nodraw"  : "off");
     }
@@ -90,7 +90,7 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
             char dbuf[8];
             if (GetEnvironmentVariableA("KAROO_QUAD_DIAG", dbuf, sizeof(dbuf))
                 && dbuf[0] != '0' && InterlockedIncrement(&diag) <= 24)
-                log_write("quadbatch: diag obj=%lu kind=%lu nsub=%lu\n",
+                g_logger.write("quadbatch: diag obj=%lu kind=%lu nsub=%lu\n",
                           i, (DWORD)obj->kind(), nsub);
         }
         if (nsub == 0)
@@ -139,7 +139,7 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
 
                 static LONG logged = 0;
                 if (InterlockedIncrement(&logged) <= QUAD_LOG_FIRST)
-                    log_write("quadbatch: obj=%lu sub=%lu tex=%p addr=%lu "
+                    g_logger.write("quadbatch: obj=%lu sub=%lu tex=%p addr=%lu "
                               "src=%lu dst=%lu quads=%lu -> ok=%d\n",
                               i, s, sub->pTexture, addr, sub->dwBlendSrc,
                               sub->dwBlendDst, (DWORD)pl->wallStripCount(), ok);

@@ -2,7 +2,7 @@
 #include <new>
 #include "voicepool.h"
 #include <stdlib.h>
-#include "log.h"
+#include "logger.h"
 
 /* KAROO_POOL_DIAG=1 counts calls to every pool function, logs each one's first
  * call, and totals the voices allocated, to tell "the gates never build a
@@ -26,7 +26,7 @@ static void pool_first(const char *what, unsigned long *seen)
 {
     if (!pool_diag() || *seen) return;
     *seen = 1;
-    log_write("voicepool: first call to %s\n", what);
+    g_logger.write("voicepool: first call to %s\n", what);
 }
 
 /* Reported from the pool-building calls, a handful per level load; Cycle and
@@ -34,7 +34,7 @@ static void pool_first(const char *what, unsigned long *seen)
 static void pool_census(void)
 {
     if (!pool_diag()) return;
-    log_write("voicepool: DIAG blank=%lu wipe=%lu clone=%lu "
+    g_logger.write("voicepool: DIAG blank=%lu wipe=%lu clone=%lu "
               "getvoice=%lu firstname=%lu cycle=%lu broadcast=%lu "
               "voicesAllocated=%lu copyFailures=%lu\n",
               g_nBlank, g_nWipe, g_nClone, g_nGetVoiceAt,
@@ -57,7 +57,7 @@ static PoolFx pool_fx(void)
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "onevoice") == 0) fx = POOL_FX_ONEVOICE;
     }
-    log_write("voicepool: FX mode = %s\n",
+    g_logger.write("voicepool: FX mode = %s\n",
               fx == POOL_FX_ONEVOICE ? "onevoice" : "off");
     cached = (int)fx;
     return fx;

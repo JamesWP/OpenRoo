@@ -21,8 +21,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "log.h"
-#include "gamelog.h"
+#include "logger.h"
 #include "game.h"
 #include "reportwriter.h"
 #include "levelparse.h"

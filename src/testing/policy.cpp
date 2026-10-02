@@ -11,7 +11,7 @@
 #include "menu.h"
 #include "plan.h"
 #include "gamestate.h"
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "player.h"
 #include <string.h>
@@ -79,11 +79,11 @@ bool policy_active(void)
             if (strcmp(buf, "nearest-crystal") == 0) g_mode = 1;
             else if (strcmp(buf, "probe") == 0) g_mode = 2;
             else if (strcmp(buf, "none") != 0)
-                log_write("policy: unknown KAROO_POLICY=%s — disabled "
+                g_logger.write("policy: unknown KAROO_POLICY=%s — disabled "
                           "(known: nearest-crystal, probe)\n", buf);
             strncpy(g_name, buf, sizeof(g_name) - 1);
         }
-        log_write("policy: %s\n", g_mode ? g_name : "disabled");
+        g_logger.write("policy: %s\n", g_mode ? g_name : "disabled");
     }
     return g_mode > 0;
 }
@@ -125,7 +125,7 @@ void policy_menu_tick(void)
     // gate built on the wrong one fails silently.
     static int last_screen = -1;
     if ((int)screen != last_screen) {
-        log_write("policy: bGame_state %d -> %u (mode=%u death=%u)\n",
+        g_logger.write("policy: bGame_state %d -> %u (mode=%u death=%u)\n",
                   last_screen, (unsigned)screen, (unsigned)gamestate_mode(),
                   (unsigned)((const Game *)g)->player()->moveState());
         last_screen = screen;
@@ -140,7 +140,7 @@ void policy_menu_tick(void)
     // over.
     if (((const Game *)g)->player()->moveState() != 0 && screen != GAME_ST_GAMEOVER && screen != GAME_ST_MENU) {
         static bool said;
-        if (!said) { said = true; log_write("policy: death — pressing enter to respawn\n"); }
+        if (!said) { said = true; g_logger.write("policy: death — pressing enter to respawn\n"); }
         menu_pulse(0x0d);
         return;
     }
@@ -150,7 +150,7 @@ void policy_menu_tick(void)
     // throughout; the dispatch mode stays 0 until play begins.
     if (screen == GAME_ST_LOADED && gamestate_mode() == 0) {
         static bool said;
-        if (!said) { said = true; log_write("policy: level intro — pressing enter to start\n"); }
+        if (!said) { said = true; g_logger.write("policy: level intro — pressing enter to start\n"); }
         menu_pulse(0x0d);
         return;
     }
@@ -160,7 +160,7 @@ void policy_menu_tick(void)
     if (screen == GAME_ST_GAMEOVER || screen == GAME_ST_COMPLETED) {
         static int said;
         if (said != screen) { said = screen;
-            log_write("policy: %s screen — pressing enter to clear\n",
+            g_logger.write("policy: %s screen — pressing enter to clear\n",
                       screen == GAME_ST_GAMEOVER ? "game over" : "level completed"); }
         menu_pulse(0x0d);
         return;
@@ -170,7 +170,7 @@ void policy_menu_tick(void)
 
     if (!g_slot_done && menu_slot() >= 0) {
         g_slot_done = true;  // once: get into the level
-        log_write("policy: loading save slot %d via the menu (node %d)\n",
+        g_logger.write("policy: loading save slot %d via the menu (node %d)\n",
                   menu_slot(), MENU_NODE_LOAD_SLOT + menu_slot());
         menu_request(MENU_NODE_LOAD_SLOT + menu_slot());
         return;
@@ -182,10 +182,10 @@ void policy_menu_tick(void)
         static bool said;
         if (loop_runs()) {
             g_played = false;
-            log_write("policy: run over — reloading slot %d (KAROO_POLICY_LOOP)\n", menu_slot());
+            g_logger.write("policy: run over — reloading slot %d (KAROO_POLICY_LOOP)\n", menu_slot());
             menu_request(MENU_NODE_LOAD_SLOT + menu_slot());
         } else {
-            if (!said) { said = true; log_write("policy: run over — quitting via the menu\n"); }
+            if (!said) { said = true; g_logger.write("policy: run over — quitting via the menu\n"); }
             menu_request(MENU_NODE_QUIT);
         }
     }
@@ -214,7 +214,7 @@ static void press(ProgableControl *s, unsigned short mode, const char *action, B
     static unsigned    n_warned;
     for (unsigned i = 0; i < n_warned; i++) if (warned[i] == action) return;
     if (n_warned < 8) warned[n_warned++] = action;
-    log_write("policy: action \"%s\" not bound in mode %u — cannot press it\n",
+    g_logger.write("policy: action \"%s\" not bound in mode %u — cannot press it\n",
               action, (unsigned)mode);
 }
 
@@ -231,7 +231,7 @@ static void dump_actions(ProgableControl *s, unsigned short mode)
             wsprintfA(one, "%s0x%02X", keys[0] ? "," : "", kb->scancode);
             if (strlen(keys) + strlen(one) + 1 < sizeof(keys)) strcat(keys, one);
         }
-        log_write("policy: mode %u action \"%s\" keys=[%s]\n",
+        g_logger.write("policy: mode %u action \"%s\" keys=[%s]\n",
                   (unsigned)mode, e->name, keys);
     }
 }
@@ -260,7 +260,7 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
         static int last_u = -999, last_v = -999;
         static BYTE last_face;
         if (last_u != -999 && (pu != last_u || pv != last_v) && policy_trace())
-            log_write("policy: STEP face=%u(before %u) delta=(%+d,%+d)\n",
+            g_logger.write("policy: STEP face=%u(before %u) delta=(%+d,%+d)\n",
                       o->player_facing, last_face, pu - last_u, pv - last_v);
         if (pu != last_u || pv != last_v) { last_u = pu; last_v = pv; }
         last_face = o->player_facing;
@@ -285,7 +285,7 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
             }
         }
         if (o->player_facing != mark_face) {
-            log_write("policy: PROBE turn_right %u -> %u\n",
+            g_logger.write("policy: PROBE turn_right %u -> %u\n",
                       mark_face, o->player_facing);
             phase = 0; mark_u = pu; mark_v = pv;
             press(s, game_state, ACT_FORWARD, keys);
@@ -306,7 +306,7 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
             seek_exit = true;  // nothing left to collect: leave
         else {
             if (policy_trace())
-                log_write("policy: f=%lu cell=(%d,%d) NOTHING REACHABLE (%s)\n",
+                g_logger.write("policy: f=%lu cell=(%d,%d) NOTHING REACHABLE (%s)\n",
                           (unsigned long)o->frame, pu, pv,
                           o->gems_collected >= o->gems_required
                               ? "exit" : "pickup");
@@ -342,7 +342,7 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, BYTE *keys)
     if (act) press(s, game_state, act, keys);
 
     if (policy_trace())
-        log_write("policy: f=%lu cell=(%d,%d) face=%u want=%d step=(%d,%d) "
+        g_logger.write("policy: f=%lu cell=(%d,%d) face=%u want=%d step=(%d,%d) "
                   "moving=%u %s -> %s\n",
                   (unsigned long)o->frame, pu, pv, o->player_facing, want,
                   nu, nv, o->player_moving, seek_exit ? "exit" : "gem",

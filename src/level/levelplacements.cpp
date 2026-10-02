@@ -28,7 +28,7 @@
 #include "levelmap.h"
 #include "tile.h"
 #include "theme.h"
-#include "log.h"
+#include "logger.h"
 #include "sceneobjects.h"
 #include "liftobject.h"
 #include "slideobject.h"
@@ -279,7 +279,7 @@ void LevelPlacements::build(const Game *g,
     slides_.count_ = g->slideCount();
 
     if (diag_on())
-        log_write("levelplacements: slideCount=%d, slide-track cells=%u%s\n",
+        g_logger.write("levelplacements: slideCount=%d, slide-track cells=%u%s\n",
                    slides_.count_, trackCells,
                    trackCells > (unsigned)slides_.count_
                        ? " -- the original overruns its slide block" : "");

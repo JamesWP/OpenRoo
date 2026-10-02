@@ -11,7 +11,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "highscores.h"
 #include <stdlib.h>
 #include "gamestr.h"
@@ -43,7 +43,7 @@ static void ps_log(const char *what, const char *path, int ok)
 {
     if (s_logged < PS_LOG_FIRST) {
         s_logged++;
-        log_write("highscores: %s '%s' -> %s\n", what, path, ok ? "ok" : "FAILED");
+        g_logger.write("highscores: %s '%s' -> %s\n", what, path, ok ? "ok" : "FAILED");
     }
 }
 
@@ -113,7 +113,7 @@ unsigned int HighScoreTable::insert(unsigned int score, unsigned char levelId)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
         s_hs_fx = (n > 0 && n < sizeof(buf) && strcmp(buf, "hsnoplace") == 0);
         if (s_hs_fx)
-            log_write("highscores: KAROO_SIM_FX=hsnoplace -- no score places\n");
+            g_logger.write("highscores: KAROO_SIM_FX=hsnoplace -- no score places\n");
     }
 
     for (rank = 0; (int)rank < (int)count; ++rank)

@@ -27,7 +27,7 @@
 #include "foepath.h"
 #include <stdlib.h>
 #include "voicepool.h"
-#include "log.h"
+#include "logger.h"
 
 #include "movableentity.h"
 
@@ -55,7 +55,7 @@ static void fx_init(void)
     n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "nopickup") == 0) {
         s_fx_nopickup = 1;
-        log_write("tileeffects: KAROO_SIM_FX=nopickup -- tile gate always fails\n");
+        g_logger.write("tileeffects: KAROO_SIM_FX=nopickup -- tile gate always fails\n");
     }
 }
 

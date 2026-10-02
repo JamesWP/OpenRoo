@@ -7,7 +7,7 @@
 
 #include <windows.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "foe.h"
 #include "soundmanager.h"
@@ -42,7 +42,7 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "soundswap") == 0);
         if (s_fx)
-            log_write("soundobj: KAROO_SIM_FX=soundswap -- +0xab/+0xaf swapped\n");
+            g_logger.write("soundobj: KAROO_SIM_FX=soundswap -- +0xab/+0xaf swapped\n");
     }
     if (s_fx) {
         assetAB = g->soundAsset42692();

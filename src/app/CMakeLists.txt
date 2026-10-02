@@ -1,13 +1,12 @@
 add_library(app OBJECT
     config.cpp
-    gamelog.cpp
     launcher.cpp
     launcherdialogs.cpp
-    log.cpp
     main.cpp
     process.cpp)
 target_include_directories(app PRIVATE
     .
+    ../log
     ../audiodev
     ../sysdev
     ../inputdev

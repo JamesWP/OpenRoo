@@ -49,7 +49,7 @@ void MovableEntity::zeroSoundSlots()
 #include <string.h>
 #include <math.h>
 #include "audiodev.h"
-#include "log.h"
+#include "logger.h"
 #include "entitymath.h"
 #include "voicepool.h"
 #include "movableentity.h"
@@ -93,11 +93,11 @@ static void fx_init(void)
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "floaty") == 0) {
             s_fx = 1;
-            log_write("entitymove: KAROO_SIM_FX=floaty -- fall accel %.3f, not %.3f\n",
+            g_logger.write("entitymove: KAROO_SIM_FX=floaty -- fall accel %.3f, not %.3f\n",
                       (double)(K_FALL_ACCEL / 5.0f), (double)K_FALL_ACCEL);
         } else if (lstrcmpiA(buf, "hop") == 0) {
             s_fx = 2;
-            log_write("entitymove: KAROO_SIM_FX=hop -- arc bias %.1f, not %.1f\n",
+            g_logger.write("entitymove: KAROO_SIM_FX=hop -- arc bias %.1f, not %.1f\n",
                       (double)(K_ARC_BIAS * 4.0f), (double)K_ARC_BIAS);
         }
     }

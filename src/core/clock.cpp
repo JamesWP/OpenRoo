@@ -18,7 +18,7 @@
 
 #include <time.h>
 #include "clock.h"
-#include "log.h"
+#include "logger.h"
 #include "determinism.h"
 #include "gamestate.h"
 #include "worldstate.h"
@@ -69,7 +69,7 @@ static void clock_init(void)
         if (dt > 0.0) g_fixed_dt = dt;
     }
     g_wall0 = sysdev::tickMs();
-    log_write("clock: shift=%u period=%.12f fixed_dt=%.9f (%s)\n",
+    g_logger.write("clock: shift=%u period=%.12f fixed_dt=%.9f (%s)\n",
               (unsigned)g_shift, g_period, g_fixed_dt,
               g_fixed_dt > 0.0 ? "FIXED TIMESTEP" : "real clock");
 }
@@ -77,7 +77,7 @@ static void clock_init(void)
 static void clock_log_progress(void)
 {
     if (++g_calls % LOG_EVERY) return;
-    log_write("clock: call %u  virtual=%.3fs  wall=%.3fs\n",
+    g_logger.write("clock: call %u  virtual=%.3fs  wall=%.3fs\n",
               g_calls, g_accum, (double)(sysdev::tickMs() - g_wall0) / 1000.0);
 }
 
@@ -170,7 +170,7 @@ static int game_time(int *out)
             g_seed     = atoi(buf);
             g_seed_set = true;
         }
-        log_write("clock: seed = %s (%d)\n",
+        g_logger.write("clock: seed = %s (%d)\n",
                   g_seed_set ? "FIXED" : "wall clock", g_seed);
     }
 

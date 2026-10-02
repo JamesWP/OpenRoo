@@ -4,12 +4,12 @@
 #include "factory.h"
 #include "generators.h"
 #include "particles.h"
-#include "log.h"
+#include "logger.h"
 
 static void log_first(LONG *once, const char *what, const char *name, void *obj)
 {
     if (InterlockedExchange(once, 1) == 0)
-        log_write("factory: %s active (first = \"%s\" -> %p)\n",
+        g_logger.write("factory: %s active (first = \"%s\" -> %p)\n",
                   what, name ? name : "(null)", obj);
 }
 

@@ -86,8 +86,6 @@ if [[ ! -f run/Karoo.cfg ]]; then
 fi
 
 cd run
-roll_log JJ.log
-roll_log StreamSoundBuffer.log
 roll_log steam-123456.log
 roll_log karoo_hooks.log
 

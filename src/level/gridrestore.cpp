@@ -15,7 +15,7 @@
 
 #include <windows.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "gridrestore.h"
 
@@ -34,7 +34,7 @@ static void fx_init(void)
     n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "gridkeep") == 0) {
         s_fx = 1;
-        log_write("gridrestore: KAROO_SIM_FX=gridkeep -- tile state bytes "
+        g_logger.write("gridrestore: KAROO_SIM_FX=gridkeep -- tile state bytes "
                   "not restored\n");
     }
     n = GetEnvironmentVariableA("KAROO_GRIDRESTORE_DIAG", buf, sizeof(buf));
@@ -50,7 +50,7 @@ Sim_RestoreTileGridFromSnapshot(Game *self)
     fx_init();
     ++s_calls;
     if (s_diag)
-        log_write("gridrestore: call %u extents 727=%u 728=%u\n", s_calls,
+        g_logger.write("gridrestore: call %u extents 727=%u 728=%u\n", s_calls,
                   map->extentV(), map->extentU());
 
     // Outer loop over v, inner over u.

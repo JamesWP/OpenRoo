@@ -14,7 +14,7 @@
  *   - pos: the player's position. */
 
 #include "gamestate.h"
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "player.h"
 #include <string.h>
@@ -74,7 +74,7 @@ static bool deathdiff_enabled(void)
             g_snap = (BYTE *)VirtualAlloc(NULL, GAME_SIZE, MEM_COMMIT, PAGE_READWRITE);
             g_diff_on = (g_snap != NULL);
         }
-        log_write("gamestate: death diff %s\n", g_diff_on ? "enabled" : "disabled");
+        g_logger.write("gamestate: death diff %s\n", g_diff_on ? "enabled" : "disabled");
     }
     return g_diff_on > 0;
 }
@@ -86,7 +86,7 @@ static bool deathdiff_enabled(void)
 static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
 {
     int shown = 0, delta1 = 0;
-    log_write("deathdiff: === %s (cause=%u) — dwords changed vs pre-death snapshot ===\n",
+    g_logger.write("deathdiff: === %s (cause=%u) — dwords changed vs pre-death snapshot ===\n",
               when, cause);
 
     // Byte steps of one: the counters.
@@ -94,7 +94,7 @@ static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
         int a = g_snap[o], b = game[o];
         int d = b - a;
         if (d != 1 && d != -1) continue;
-        log_write("deathdiff:   +0x%06lx  byte %d -> %d  (%+d)  <-- step\n",
+        g_logger.write("deathdiff:   +0x%06lx  byte %d -> %d  (%+d)  <-- step\n",
                   (unsigned long)o, a, b, d);
         shown++; delta1++;
     }
@@ -109,11 +109,11 @@ static void deathdiff_report(const BYTE *game, unsigned cause, const char *when)
             if (d == 1 || d == -1) bytestep = true;
         }
         if (bytestep) continue;  // reported above
-        log_write("deathdiff:   +0x%06lx  %d -> %d  (%+d)\n",
+        g_logger.write("deathdiff:   +0x%06lx  %d -> %d  (%+d)\n",
                   (unsigned long)o, a, b, b - a);
         shown++;
     }
-    log_write("deathdiff: === %d shown, %d of them byte +/-1 steps ===\n", shown, delta1);
+    g_logger.write("deathdiff: === %d shown, %d of them byte +/-1 steps ===\n", shown, delta1);
 }
 
 static int       g_on = -1;
@@ -129,7 +129,7 @@ bool gamestate_enabled(void)
         g_on = 0;
         if (GetEnvironmentVariableA("KAROO_STATE_LOG", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
             g_on = 1;
-        log_write("gamestate: state log %s\n", g_on ? "enabled" : "disabled");
+        g_logger.write("gamestate: state log %s\n", g_on ? "enabled" : "disabled");
     }
     return g_on > 0;
 }
@@ -207,7 +207,7 @@ void gamestate_tick(void)
         }
     } else if (g_done_phase == 1) {
         g_done_phase = 2;  // lock: the first completion wins
-        log_write("gamestate: level completed at frame %lu - latched "
+        g_logger.write("gamestate: level completed at frame %lu - latched "
                   "(score=%d total=%d gems=%d/%d t=%lus)\n",
                   (unsigned long)g_done_frame, g_done.level_score,
                   g_done.total_score, g_done.gems_collected, g_done.gems_required,
@@ -222,7 +222,7 @@ void gamestate_tick(void)
     a.elapsed_ms = b.elapsed_ms = 0;
     if (g_have_prev && memcmp(&a, &b, sizeof(a)) == 0) return;
 
-    log_write("gamestate: f=%lu mode=%u gems=%d/%d(?) foes=%u vit=%u "
+    g_logger.write("gamestate: f=%lu mode=%u gems=%d/%d(?) foes=%u vit=%u "
               "score=%d/%d t=%lu/%ds items=%u/%u blk=%u done=%d "
               "lives=%u death[%02x %02x %02x %02x](?) "
               "pos=%.3f,%.3f,%.3f\n",
@@ -282,7 +282,7 @@ void gamestate_dump(const char *reason)
 
     FILE *fp = fopen(path, "w");
     if (!fp) {
-        log_write("gamestate: dump: cannot open %s\n", path);
+        g_logger.write("gamestate: dump: cannot open %s\n", path);
         return;
     }
 
@@ -337,6 +337,6 @@ void gamestate_dump(const char *reason)
     fprintf(fp, "}\n");
     fclose(fp);
 
-    log_write("gamestate: dumped end state (%s, from frame %lu of %lu) to %s\n",
+    g_logger.write("gamestate: dumped end state (%s, from frame %lu of %lu) to %s\n",
               reason, (unsigned long)g_live_frame, (unsigned long)g_frame, path);
 }

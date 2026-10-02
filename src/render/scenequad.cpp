@@ -11,7 +11,7 @@
  *   tint  force their vertex diffuse to magenta. */
 
 #include "scenequad.h"
-#include "log.h"
+#include "logger.h"
 
 #define QUAD_LOG_FIRST  8
 
@@ -27,7 +27,7 @@ static QuadFx quad_fx(void)
         cached = FX_OFF;
         if (lstrcmpiA(buf, "drop") == 0)      cached = FX_DROP;
         else if (lstrcmpiA(buf, "tint") == 0) cached = FX_TINT;
-        log_write("scenequad: FX mode = %s (KAROO_SCENEQUAD_FX='%s')\n",
+        g_logger.write("scenequad: FX mode = %s (KAROO_SCENEQUAD_FX='%s')\n",
                   cached == FX_DROP ? "drop" : cached == FX_TINT ? "tint" : "off", buf);
     }
     return (QuadFx)cached;
@@ -37,7 +37,7 @@ bool SceneQuad_Draw(RenderDevice *dev, StridedVertices *v, uint32_t count)
 {
     static LONG logged = 0;
     if (InterlockedIncrement(&logged) <= QUAD_LOG_FIRST)
-        log_write("scenequad: dev=%p pos=%p tex0=%p count=%lu\n",
+        g_logger.write("scenequad: dev=%p pos=%p tex0=%p count=%lu\n",
                   (void *)dev, v->position.data, v->texCoords[0].data,
                   (unsigned long)count);
 

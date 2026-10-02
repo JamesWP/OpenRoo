@@ -9,7 +9,7 @@
 #include "scenetexture.h"
 #include "d3dnative.h"
 #include "ddrawdiag.h"
-#include "log.h"
+#include "logger.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "gamestr.h"
@@ -45,7 +45,7 @@ TextureDIB_BlitToSurface(LoadedImage *self, HANDLE hbmp)
 
     static LONG seen_blit = 0;
     if (InterlockedIncrement(&seen_blit) <= 4)
-        log_write("texturedib: Blit this=%p hbmp=%p %ldx%ld bpp=%d\n",
+        g_logger.write("texturedib: Blit this=%p hbmp=%p %ldx%ld bpp=%d\n",
                   self, hbmp, bm.bmWidth, bm.bmHeight, bm.bmBitsPixel);
 
     HDC hdcSrc = CreateCompatibleDC(NULL);
@@ -120,7 +120,7 @@ TextureDIB_CreateSurface(LoadedImage *self, RenderDevice *dev, LPCSTR name,
 
     static LONG seen_create = 0;
     if (InterlockedIncrement(&seen_create) <= 4)
-        log_write("texturedib: CreateSurface this=%p dd=%p sysmem=%d name=%s\n",
+        g_logger.write("texturedib: CreateSurface this=%p dd=%p sysmem=%d name=%s\n",
                   self, dd, (int)bSysMem, name ? name : "(null)");
 
     self->releaseSurfaces();

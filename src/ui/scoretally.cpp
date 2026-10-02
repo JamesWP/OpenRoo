@@ -18,7 +18,7 @@
 #include <windows.h>
 #include <string.h>
 #include "audiodev.h"
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "scoretally.h"
 #include "menutree.h"
@@ -51,7 +51,7 @@ Sim_AnimateScoreTallyStages(Game *self)
         DWORD k = GetEnvironmentVariableA("KAROO_SIM_FX", b, sizeof(b));
         s_fx = (k > 0 && k < sizeof(b) && strcmp(b, "tallyfast") == 0);
         if (s_fx)
-            log_write("scoretally: KAROO_SIM_FX=tallyfast -- stages x0.1\n");
+            g_logger.write("scoretally: KAROO_SIM_FX=tallyfast -- stages x0.1\n");
     }
 #define LIM(x)  (s_fx ? (x) / 10 : (x))
 

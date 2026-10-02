@@ -12,6 +12,7 @@ add_library(core OBJECT
     worldstate.cpp)
 target_include_directories(core PRIVATE
     .
+    ../log
     ../audiodev
     ../sysdev
     ../windev

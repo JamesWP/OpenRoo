@@ -14,7 +14,7 @@
 #include <windows.h>
 #include <string.h>
 
-#include "log.h"
+#include "logger.h"
 #include "windev.h"
 #include "game.h"
 #include "gamereset.h"
@@ -27,9 +27,7 @@
 #include "player.h"
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "gamelog.h"
 
-class GameLogger;
 
 typedef unsigned int __attribute__((aligned(1))) u32_ua;
 
@@ -59,7 +57,7 @@ static void diag_tick(void)
 {
     s_calls++;
     if (s_diag && (s_calls % 500) == 0)
-        log_write("gamereset: %u clear calls\n", s_calls);
+        g_logger.write("gamereset: %u clear calls\n", s_calls);
 }
 
   void  
@@ -72,7 +70,7 @@ Sim_ClearGameState(Game *self)
 
     if (s_diag && !s_logged_clear) {
         s_logged_clear = 1;
-        log_write("gamereset: first ClearGameState -- foes=%u enemies=%u "
+        g_logger.write("gamereset: first ClearGameState -- foes=%u enemies=%u "
                   "lift=%u slide=%u break=%u bridge=%u\n",
                   (unsigned)self->foeCount(), (unsigned)self->bombCount(),
                   (unsigned)self->liftCount(),
@@ -121,7 +119,7 @@ Sim_ClearGameState(Game *self)
     while (self->foeCount() != 0) {
         if (s_diag && !s_logged_foedrain) {
             s_logged_foedrain = 1;
-            log_write("gamereset: first foe drain -- count=%u id=%u\n",
+            g_logger.write("gamereset: first foe drain -- count=%u id=%u\n",
                       (unsigned)self->foeCount(),
                       (unsigned)self->foeId(0));
         }
@@ -131,7 +129,7 @@ Sim_ClearGameState(Game *self)
     while (self->bombCount() != 0) {
         if (s_diag && !s_logged_enemydrain) {
             s_logged_enemydrain = 1;
-            log_write("gamereset: first enemy drain -- count=%u id=%u\n",
+            g_logger.write("gamereset: first enemy drain -- count=%u id=%u\n",
                       (unsigned)self->bombCount(), (unsigned)self->bombId(0));
         }
         Bomb::remove(self, self->bombId(0));

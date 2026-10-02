@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "progctrl.h"
-#include "log.h"
+#include "logger.h"
 #include "gamestate.h"
 #include "record.h"
 #include "policy.h"
@@ -101,7 +101,7 @@ void ProgableControl::registerAction(unsigned short mode,
     if (mode >= 5) return;
     ActionEntry *e = action_tables[mode].getOrCreate(name);
     if (!e) {
-        log_write("ProgCtrl::RegisterAction: HeapAlloc failed for '%s'\n", name);
+        g_logger.write("ProgCtrl::RegisterAction: HeapAlloc failed for '%s'\n", name);
         return;
     }
     e->callback = cb;
@@ -118,7 +118,7 @@ int ProgableControl::bindKey(unsigned short mode,
         if (kb->scancode == sc) { kb->strength = strength; return 1; }
     }
     KeyBind *kb = (KeyBind *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*kb));
-    if (!kb) { log_write("ProgCtrl::BindKey: HeapAlloc failed\n"); return 0; }
+    if (!kb) { g_logger.write("ProgCtrl::BindKey: HeapAlloc failed\n"); return 0; }
     kb->scancode = sc;
     kb->strength = strength;
     kb->next     = e->kbd;
@@ -233,19 +233,19 @@ int ProgableControl::readOrigEntryBindings(HANDLE f, int mode, ActionEntry *e)
 
     DWORD kbd_count;
     if (!ReadFile(f, &kbd_count, 4, &n, nullptr) || n != 4) return 0;
-    log_write("ProgCtrl::ReadBindings(orig):     kbd_count=%lu\n", kbd_count);
+    g_logger.write("ProgCtrl::ReadBindings(orig):     kbd_count=%lu\n", kbd_count);
     for (DWORD ki = 0; ki < kbd_count; ki++) {
         DWORD key_id, strength;
         if (!ReadFile(f, &key_id,   4, &n, nullptr) || n != 4) return 0;
         if (!ReadFile(f, &strength, 4, &n, nullptr) || n != 4) return 0;
-        log_write("ProgCtrl::ReadBindings(orig):       key=0x%02lX strength=%lu -> %s\n",
+        g_logger.write("ProgCtrl::ReadBindings(orig):       key=0x%02lX strength=%lu -> %s\n",
                   key_id, strength, e ? "applied" : "skipped");
         if (e) bindKey((unsigned short)mode, e->name, (int)key_id, (int)strength);
     }
 
     DWORD axis_count;
     if (!ReadFile(f, &axis_count, 4, &n, nullptr) || n != 4) return 0;
-    log_write("ProgCtrl::ReadBindings(orig):     axis_count=%lu (skipped)\n", axis_count);
+    g_logger.write("ProgCtrl::ReadBindings(orig):     axis_count=%lu (skipped)\n", axis_count);
     for (DWORD ai = 0; ai < axis_count; ai++) {
         BYTE discard[12];
         if (!ReadFile(f, discard, 12, &n, nullptr) || n != 12) return 0;
@@ -253,7 +253,7 @@ int ProgableControl::readOrigEntryBindings(HANDLE f, int mode, ActionEntry *e)
 
     DWORD btn_count;
     if (!ReadFile(f, &btn_count, 4, &n, nullptr) || n != 4) return 0;
-    log_write("ProgCtrl::ReadBindings(orig):     btn_count=%lu (skipped)\n", btn_count);
+    g_logger.write("ProgCtrl::ReadBindings(orig):     btn_count=%lu (skipped)\n", btn_count);
     for (DWORD bi = 0; bi < btn_count; bi++) {
         BYTE discard[12];
         if (!ReadFile(f, discard, 12, &n, nullptr) || n != 12) return 0;
@@ -265,40 +265,40 @@ int ProgableControl::readOrigEntryBindings(HANDLE f, int mode, ActionEntry *e)
 int ProgableControl::readOrigFormat(HANDLE f)
 {
     DWORD n;
-    log_write("ProgCtrl::ReadBindings: reading\n");
+    g_logger.write("ProgCtrl::ReadBindings: reading\n");
     for (int m = 0; m < 5; m++) {
         DWORD cnt;
         if (!ReadFile(f, &cnt, 4, &n, nullptr) || n != 4) {
-            log_write("ProgCtrl::ReadBindings(orig): read error on entry count for mode %d\n", m);
+            g_logger.write("ProgCtrl::ReadBindings(orig): read error on entry count for mode %d\n", m);
             return 0;
         }
-        log_write("ProgCtrl::ReadBindings(orig): mode %d: %lu entries\n", m, cnt);
+        g_logger.write("ProgCtrl::ReadBindings(orig): mode %d: %lu entries\n", m, cnt);
         for (DWORD ei = 0; ei < cnt; ei++) {
             char namebuf[256] = {};
             if (!ReadFile(f, namebuf, 256, &n, nullptr) || n != 256) {
-                log_write("ProgCtrl::ReadBindings(orig): read error on name\n");
+                g_logger.write("ProgCtrl::ReadBindings(orig): read error on name\n");
                 return 0;
             }
             ActionEntry *e = action_tables[m].find(namebuf);
-            log_write("ProgCtrl::ReadBindings(orig):   '%s'%s\n",
+            g_logger.write("ProgCtrl::ReadBindings(orig):   '%s'%s\n",
                       namebuf, e ? "" : " (not registered, bindings discarded)");
             if (!readOrigEntryBindings(f, m, e)) {
-                log_write("ProgCtrl::ReadBindings(orig): read error in bindings for '%s'\n", namebuf);
+                g_logger.write("ProgCtrl::ReadBindings(orig): read error in bindings for '%s'\n", namebuf);
                 return 0;
             }
         }
     }
-    log_write("ProgCtrl::ReadBindings(orig): ok\n");
+    g_logger.write("ProgCtrl::ReadBindings(orig): ok\n");
     return 1;
 }
 
 int ProgableControl::writeBindings()
 {
-    log_write("ProgCtrl::WriteBindings(this=%p) -> '%s'\n", this, SAVE_FILE);
+    g_logger.write("ProgCtrl::WriteBindings(this=%p) -> '%s'\n", this, SAVE_FILE);
     HANDLE f = CreateFileA(SAVE_FILE, GENERIC_WRITE, 0,
                            nullptr, CREATE_ALWAYS, 0, nullptr);
     if (f == INVALID_HANDLE_VALUE) {
-        log_write("ProgCtrl::WriteBindings: CreateFile FAILED err=%lu\n", GetLastError());
+        g_logger.write("ProgCtrl::WriteBindings: CreateFile FAILED err=%lu\n", GetLastError());
         return 0;
     }
     DWORD n;
@@ -310,7 +310,7 @@ int ProgableControl::writeBindings()
     for (int m = 0; m < 5; m++) {
         ActionTable *t = &action_tables[m];
         DWORD cnt = t->entry_count;
-        log_write("ProgCtrl::WriteBindings: mode %d: %lu entries\n", m, cnt);
+        g_logger.write("ProgCtrl::WriteBindings: mode %d: %lu entries\n", m, cnt);
         if (!WriteFile(f, &cnt, 4, &n, nullptr)) goto fail;
         for (ActionEntry *e = t->head; e; e = e->chain) {
             char namebuf[256] = {};
@@ -319,11 +319,11 @@ int ProgableControl::writeBindings()
             DWORD kc = 0;
             for (KeyBind *kb = e->kbd; kb; kb = kb->next) kc++;
             if (!WriteFile(f, &kc, 4, &n, nullptr)) goto fail;
-            log_write("ProgCtrl::WriteBindings:   '%s': %lu binding(s)\n", namebuf, kc);
+            g_logger.write("ProgCtrl::WriteBindings:   '%s': %lu binding(s)\n", namebuf, kc);
             for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
                 DWORD key_id   = (DWORD)kb->scancode;
                 DWORD strength = (DWORD)kb->strength;
-                log_write("ProgCtrl::WriteBindings:     sc=0x%02lX strength=%lu\n", key_id, strength);
+                g_logger.write("ProgCtrl::WriteBindings:     sc=0x%02lX strength=%lu\n", key_id, strength);
                 if (!WriteFile(f, &key_id,   4, &n, nullptr)) goto fail;
                 if (!WriteFile(f, &strength, 4, &n, nullptr)) goto fail;
             }
@@ -332,25 +332,25 @@ int ProgableControl::writeBindings()
         }
     }
     CloseHandle(f);
-    log_write("ProgCtrl::WriteBindings: ok\n");
+    g_logger.write("ProgCtrl::WriteBindings: ok\n");
     return 1;
 fail:
-    log_write("ProgCtrl::WriteBindings: write error\n");
+    g_logger.write("ProgCtrl::WriteBindings: write error\n");
     CloseHandle(f);
     return 0;
 }
 
 int ProgableControl::readBindings()
 {
-    log_write("ProgCtrl::ReadBindings(this=%p) <- '%s'\n", this, SAVE_FILE);
+    g_logger.write("ProgCtrl::ReadBindings(this=%p) <- '%s'\n", this, SAVE_FILE);
     HANDLE f = CreateFileA(SAVE_FILE, GENERIC_READ, FILE_SHARE_READ,
                            nullptr, OPEN_EXISTING, 0, nullptr);
     if (f == INVALID_HANDLE_VALUE) {
-        log_write("ProgCtrl::ReadBindings: no save file (err=%lu)\n", GetLastError());
+        g_logger.write("ProgCtrl::ReadBindings: no save file (err=%lu)\n", GetLastError());
         return 0;
     }
     int ok = readOrigFormat(f);
     CloseHandle(f);
-    if (ok) log_write("ProgCtrl::ReadBindings: done\n");
+    if (ok) g_logger.write("ProgCtrl::ReadBindings: done\n");
     return ok;
 }

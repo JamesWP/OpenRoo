@@ -3,7 +3,7 @@
  */
 
 #include "gameglobals.h"
-#include "gamelog.h"
+#include "logger.h"
 #include "cdm.h"
 #include "progctrl.h"
 #include "scenetexture.h"
@@ -19,5 +19,3 @@ LoadedImage     g_loadingImage;
 double          g_lastTickMs;
 
 // Loggers last so we get the final log lines
-GameLogger      g_logger;
-GameLogger      g_soundLogger("StreamSoundBuffer.log", 0);  // the level title as the map file gives it

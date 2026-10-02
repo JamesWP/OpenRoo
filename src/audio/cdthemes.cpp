@@ -4,8 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "log.h"
-#include "gamelog.h"
+#include "logger.h"
 #include "cdthemes.h"
 #include "cdm.h"
 #include "gamestr.h"
@@ -34,7 +33,7 @@ unsigned int CdThemes::findThemeIndex(const char *name)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", b, sizeof(b));
         s_fx = (n > 0 && n < sizeof(b) && strcmp(b, "themeoff") == 0);
         if (s_fx)
-            log_write("themeindex: KAROO_SIM_FX=themeoff -- neighbour index\n");
+            g_logger.write("themeindex: KAROO_SIM_FX=themeoff -- neighbour index\n");
     }
 
     strcpy(want, name);

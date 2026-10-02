@@ -26,9 +26,8 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "log.h"
+#include "logger.h"
 #include "game.h"
-#include "gamelog.h"
 #include "scoretally.h"
 #include "levelsounds.h"
 #include "levelsetup.h"
@@ -165,7 +164,7 @@ Sim_GameTick(Game *self, double dt, double now)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "tickorder") == 0);
         if (s_fx)
-            log_write("gametick: KAROO_SIM_FX=tickorder -- slides tick before lifts\n");
+            g_logger.write("gametick: KAROO_SIM_FX=tickorder -- slides tick before lifts\n");
     }
 
     Sim_AcquireFixedSoundBuffersAndMaybeReport(self);

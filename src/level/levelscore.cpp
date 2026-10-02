@@ -23,7 +23,7 @@
  * by exactly two times. */
 
 #include <windows.h>
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "tilequery.h"
 #include "levelscore.h"
@@ -41,7 +41,7 @@ static int fx_double(void)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
         s_fxDouble = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "score") == 0);
         if (s_fxDouble)
-            log_write("levelscore: KAROO_SIM_FX=score -- scores doubled, counts left alone\n");
+            g_logger.write("levelscore: KAROO_SIM_FX=score -- scores doubled, counts left alone\n");
     }
     return s_fxDouble;
 }

@@ -42,11 +42,9 @@ void Scene::freeSceneObjects()
  * One SceneObject per .leo record that is not a sound.  Position and the third
  * rotation are Z-negated on the way in, as are the spline points, whose file
  * order is (x, z, y) -- the record stores y at [2]. */
-void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *logger)
+void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo)
 {
     freeSceneObjects();
-    models_.setLogger(logger);
-    textures_.setLogger(logger);
 
     for (unsigned i = 0; i < leo->objectCount(); ++i) {
         ExtraObjectRecord *r = leo->record(i);
@@ -63,12 +61,12 @@ void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo, GameLogger *lo
         if (r->kind == EXTRA_MODEL)
             o->mesh = models_.findOrImport(r->file);
         else if (r->kind == EXTRA_PARTICLE)
-            o->particle = ParticleSystem::loadFile(r->file, logger);
+            o->particle = ParticleSystem::loadFile(r->file);
         else if (r->kind == EXTRA_BILLBOARD)
             o->billboardRadius = r->billboardSize;
 
         if (r->animationFile[0] != 0
-            && (char)o->anim.load(r->animationFile, logger))
+            && (char)o->anim.load(r->animationFile))
             o->animLoaded = 1;
 
         // Blend modes 5/6 (SRCALPHA / INVSRCALPHA) ask for an alpha surface.

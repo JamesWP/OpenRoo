@@ -24,9 +24,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <math.h>
-#include "log.h"
+#include "logger.h"
 
-#include "gamelog.h"
 #include "gamestr.h"
 #include "ani.h"
 
@@ -64,7 +63,7 @@ static bool fx_freeze(void)
         cached = 0;
         if (GetEnvironmentVariableA("KAROO_ANI_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "freeze") == 0);
-        log_write("ani: FX mode = %s\n", cached ? "freeze" : "off");
+        g_logger.write("ani: FX mode = %s\n", cached ? "freeze" : "off");
     }
     return cached != 0;
 }
@@ -78,7 +77,7 @@ static char *ani_strlwr(char *s)
     return s;
 }
 
-int AnimTable::load(const char *path, GameLogger *logger)
+int AnimTable::load(const char *path)
 {
     unsigned char *table = (unsigned char *)this;
     char line[ANI_LINE_MAX];
@@ -172,12 +171,11 @@ int AnimTable::load(const char *path, GameLogger *logger)
         }
     }
 
-    if (logger != NULL)
-        logger->logMessage(1, GS_ANI_LOADED, path);
+    g_logger.logMessage(1, GS_ANI_LOADED, path);
 
     if (logged < ANI_LOG_FIRST) {
         logged++;
-        log_write("ani: '%s' loaded\n", path);
+        g_logger.write("ani: '%s' loaded\n", path);
     }
     return 1;
 }

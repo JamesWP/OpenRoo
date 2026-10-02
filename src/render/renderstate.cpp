@@ -17,7 +17,7 @@
 #include "faktmesh.h"
 #include "menuscreens.h"
 #include "textrenderer.h"
-#include "gamelog.h"
+#include "logger.h"
 #include "gameglobals.h"
 #include "gamestr.h"
 #include "game.h"
@@ -39,8 +39,6 @@ Render_ConfigureRenderState(void)
 
     // Texture and model caches' loggers, and the level placement scratch
     // block.
-    g_textureManager.setLogger(&g_logger);
-    g_modelManager.setLogger(&g_logger);
     memset((void *)&g_levelPlacements, 0, sizeof(g_levelPlacements));
     Menu_BuildMenuGeometry(d3d, g_gameDir);
 

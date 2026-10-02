@@ -13,7 +13,6 @@
 
 class RenderDevice;
 struct ParticleSystem;
-class GameLogger;
 class ExtraObjects;
 
 struct SceneObject {
@@ -49,8 +48,7 @@ public:
     ~Scene();
     Scene(const Scene &) = delete;
     Scene &operator=(const Scene &) = delete;
-    void buildObjectList(RenderDevice *d3d, ExtraObjects *leo,
-                         GameLogger *logger);
+    void buildObjectList(RenderDevice *d3d, ExtraObjects *leo);
 
     int  segmentHitsModel(float px, float py, float pz, float dx,
                           float dy, float dz);

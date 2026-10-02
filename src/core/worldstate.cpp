@@ -18,7 +18,7 @@
 #include "gamestate.h"
 #include "clock.h"
 #include "policy.h"
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "player.h"
 #include "foe.h"
@@ -86,7 +86,7 @@ static unsigned read_table(const Game *g, unsigned char count_in,
 {
     unsigned count = count_in;
     if (count > WS_MAX_ENT) {
-        log_write("worldstate: entity count %u exceeds table capacity %u — clamped\n",
+        g_logger.write("worldstate: entity count %u exceeds table capacity %u — clamped\n",
                   count, (unsigned)WS_MAX_ENT);
         count = WS_MAX_ENT;
     }
@@ -270,14 +270,14 @@ static void map_check(const Game *g, const Observation *obs)
 
     unsigned total = from_tiles + from_foes;
     bool ok = (total == obs->crystals_in_level);
-    log_write("worldstate: map check: %u tile crystals + %u carrier foes = %u, "
+    g_logger.write("worldstate: map check: %u tile crystals + %u carrier foes = %u, "
               "game says %u — %s\n",
               from_tiles, from_foes, total, (unsigned)obs->crystals_in_level,
               ok ? "MATCH" : "*** MISMATCH: grid indexing is wrong ***");
 
     // The player must be on the board.
     if (obs->player_cell[0] >= obs->cols || obs->player_cell[1] >= obs->rows)
-        log_write("worldstate: map check: *** player cell (%u,%u) outside "
+        g_logger.write("worldstate: map check: *** player cell (%u,%u) outside "
                   "grid %ux%u ***\n",
                   obs->player_cell[0], obs->player_cell[1],
                   obs->cols, obs->rows);
@@ -287,7 +287,7 @@ static void map_dump(const Game *g, const Observation *obs, const char *path)
 {
     FILE *fp = fopen(path, "w");
     if (!fp) {
-        log_write("worldstate: map dump: cannot open %s\n", path);
+        g_logger.write("worldstate: map dump: cannot open %s\n", path);
         return;
     }
 
@@ -326,7 +326,7 @@ static void map_dump(const Game *g, const Observation *obs, const char *path)
     fprintf(fp, "  ]\n}\n");
     fclose(fp);
 
-    log_write("worldstate: map dump: %ux%u grid written to %s\n",
+    g_logger.write("worldstate: map dump: %ux%u grid written to %s\n",
               obs->cols, obs->rows, path);
     map_check(g, obs);
 }
@@ -352,7 +352,7 @@ void Observation::traceEntities(const char *tag,
         const WsEntity *e = &ents[i];
         bool inb = (e->gu < cols && e->gv < rows);
         bool ax  = axis_ok(e->pos[0], e->gu) && axis_ok(e->pos[2], e->gv);
-        log_write("entity: f=%lu %s[%u] slot=%u kind=%u face=%u cat=%u "
+        g_logger.write("entity: f=%lu %s[%u] slot=%u kind=%u face=%u cat=%u "
                   "cell=(%u,%u,%u) pos=(%.3f,%.3f,%.3f) hid=%lu%s%s\n",
                   (unsigned long)frame, tag, i, e->slot,
                   e->kind, e->facing, e->category,
@@ -367,7 +367,7 @@ void Observation::traceEntities(const char *tag,
 
 void Observation::traceFrame() const
 {
-    log_write("entity: f=%lu mode=%u grid=%ux%u player cell=(%u,%u,%u) face=%u "
+    g_logger.write("entity: f=%lu mode=%u grid=%ux%u player cell=(%u,%u,%u) face=%u "
               "gridf=(%.3f,%.3f,%.3f) world=(%.3f,%.3f,%.3f) "
               "foes=%u enemies=%u killed=%u gems=%d/%d\n",
               (unsigned long)frame, (unsigned)mode,
@@ -427,7 +427,7 @@ static void worldstate_init(void)
     g_trace   = env_flag("KAROO_ENTITY_TRACE");
     g_map_wanted = env_path("KAROO_MAP_DUMP", g_map_path, sizeof(g_map_path));
     g_obsdump = env_path("KAROO_OBS_DUMP", g_obs_path, sizeof(g_obs_path));
-    log_write("worldstate: trace=%s map_dump=%s obs_dump=%s\n",
+    g_logger.write("worldstate: trace=%s map_dump=%s obs_dump=%s\n",
               g_trace ? "on" : "off",
               g_map_wanted ? g_map_path : "off",
               g_obsdump ? g_obs_path : "off");

@@ -16,7 +16,7 @@
 #include "scoreoverlay.h"
 #include "renderdevice.h"
 #include "scenetexture.h"
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "textrenderer.h"
 #include "gamestr.h"
@@ -54,7 +54,7 @@ static ScoreFx score_fx(void)
         if (lstrcmpiA(buf, "tint") == 0)        fx = SCORE_FX_TINT;
         else if (lstrcmpiA(buf, "nodraw") == 0) fx = SCORE_FX_NODRAW;
     }
-    log_write("scoreoverlay: FX mode = %s\n",
+    g_logger.write("scoreoverlay: FX mode = %s\n",
                fx == SCORE_FX_TINT   ? "tint"   :
                fx == SCORE_FX_NODRAW ? "nodraw" : "off");
     cached = (int)fx;
@@ -122,7 +122,7 @@ void Score_DrawHighScoreTable(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
 
     static LONG calls = 0;
     if (InterlockedIncrement(&calls) <= SCORE_LOG_FIRST)
-        log_write("scoreoverlay: highscore %.0fx%.0f entries=%u\n",
+        g_logger.write("scoreoverlay: highscore %.0fx%.0f entries=%u\n",
                    w, h, (unsigned)g->highScores()->count());
 
     // PRESERVED: an unsigned early-out, then a signed loop against a count
@@ -249,7 +249,7 @@ void Score_DrawGameOverScore(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
 {
     static LONG calls = 0;
     if (InterlockedIncrement(&calls) <= SCORE_LOG_FIRST)
-        log_write("scoreoverlay: gameover %lux%lu n=%d\n",
+        g_logger.write("scoreoverlay: gameover %lux%lu n=%d\n",
                   (unsigned long)d3d->width(),
                   (unsigned long)d3d->height(), n);
 

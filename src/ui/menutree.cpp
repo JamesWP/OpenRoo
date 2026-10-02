@@ -13,7 +13,7 @@
 #include <windows.h>
 #include <string.h>
 
-#include "log.h"
+#include "logger.h"
 #include "menutree.h"
 #include <stdlib.h>
 #include "record.h"
@@ -44,12 +44,12 @@ static void fx_init(void)
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "menuroot") == 0) {
             s_fx_menuroot = 1;
-            log_write("menustack: KAROO_SIM_FX=menuroot -- the rewind seeds "
+            g_logger.write("menustack: KAROO_SIM_FX=menuroot -- the rewind seeds "
                       "the cursor at 1, so every menu opens on the second "
                       "item\n");
         } else if (strcmp(buf, "stacktop") == 0) {
             s_fx_stacktop = 1;
-            log_write("menustack: KAROO_SIM_FX=stacktop -- the pop reads one "
+            g_logger.write("menustack: KAROO_SIM_FX=stacktop -- the pop reads one "
                       "entry PAST the top of the stack\n");
         }
     }
@@ -64,7 +64,7 @@ static void diag_census(void)
     if (!s_diag)
         return;
     // Every call, not a sample: the stack is used a few dozen times a run.
-    log_write("menustack: DIAG push=%u pop=%u rewind=%u maxdepth=%u\n",
+    g_logger.write("menustack: DIAG push=%u pop=%u rewind=%u maxdepth=%u\n",
               s_pushes, s_pops, s_rewinds, s_maxdepth);
 }
 
@@ -84,7 +84,7 @@ void MenuTree::push(unsigned char node)
         s_maxdepth = depth_;
     if (s_diag && !s_logged_push) {
         s_logged_push = 1;
-        log_write("menustack: first push node=%u at depth=%u -> depth=%u\n",
+        g_logger.write("menustack: first push node=%u at depth=%u -> depth=%u\n",
                   node, depth, depth_);
     }
     diag_census();
@@ -110,7 +110,7 @@ void MenuTree::pop()
     s_pops++;
     if (s_diag && !s_logged_pop) {
         s_logged_pop = 1;
-        log_write("menustack: first pop at depth=%u -> node=%u cursor=%u "
+        g_logger.write("menustack: first pop at depth=%u -> node=%u cursor=%u "
                   "depth=%u\n", depth, node, cursor_, depth_);
     }
     diag_census();
@@ -128,7 +128,7 @@ void MenuTree::rewind()
     s_rewinds++;
     if (s_diag && !s_logged_rewind) {
         s_logged_rewind = 1;
-        log_write("menustack: first rewind -- depth/cursor/node cleared, "
+        g_logger.write("menustack: first rewind -- depth/cursor/node cleared, "
                   "pushing root\n");
     }
 
@@ -161,7 +161,7 @@ void MenuTree::navigate(int now)
         DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
         s_fx_menuwrap = (n > 0 && n < sizeof(e) && strcmp(e, "menuwrap") == 0);
         if (s_fx_menuwrap)
-            log_write("menunav: KAROO_SIM_FX=menuwrap -- DOWN does not wrap\n");
+            g_logger.write("menunav: KAROO_SIM_FX=menuwrap -- DOWN does not wrap\n");
     }
 
     CHANGED = 0;

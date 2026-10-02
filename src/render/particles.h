@@ -60,7 +60,6 @@ struct RingBuffer {
 
 class Generator;
 class Environment;
-struct GameLogger;
 
 /* Base class.  Its fields are protected: the three subclasses work on them. */
 class ParticleSystem {
@@ -69,7 +68,7 @@ public:
     static ParticleSystem *create(const char *name);
     /* The two ways the game builds a system: clone, and load from a file. */
     ParticleSystem *clone() const;
-    static ParticleSystem *loadFile(const char *path, GameLogger *log);
+    static ParticleSystem *loadFile(const char *path);
 
     ParticleSystem();
     virtual ~ParticleSystem();
@@ -97,7 +96,7 @@ public:
     Environment        *environment() const { return pEnvironment_; }
 
 protected:
-    static ParticleSystem *loadStream(void *fp, GameLogger *log);
+    static ParticleSystem *loadStream(void *fp);
 
     /* Drop the generator and environment (when flags is set) and the ring. */
     virtual void release(int flags);
@@ -105,8 +104,8 @@ protected:
     virtual BOOL copyFrom(const ParticleSystem *src);
     virtual BOOL setCapacity(DWORD count);
     virtual BOOL resize(DWORD count);
-    virtual BOOL save(void *fp, GameLogger *log);
-    virtual BOOL load(void *fp, GameLogger *log);
+    virtual BOOL save(void *fp);
+    virtual BOOL load(void *fp);
 
     /* Hand the ring to the new sub-object first; only if it accepts is the old
      * one dropped.  A NULL argument is refused. */
@@ -140,8 +139,8 @@ protected:
     BOOL  copyFrom(const ParticleSystem *src) override;
     BOOL  setCapacity(DWORD count) override;
     BOOL  resize(DWORD count) override;
-    BOOL  save(void *fp, GameLogger *log) override;
-    BOOL  load(void *fp, GameLogger *log) override;
+    BOOL  save(void *fp) override;
+    BOOL  load(void *fp) override;
 };
 
 class FaceParticleSystem : public ParticleSystem {
@@ -157,8 +156,8 @@ protected:
     BOOL  copyFrom(const ParticleSystem *src) override;
     BOOL  setCapacity(DWORD count) override;
     BOOL  resize(DWORD count) override;
-    BOOL  save(void *fp, GameLogger *log) override;
-    BOOL  load(void *fp, GameLogger *log) override;
+    BOOL  save(void *fp) override;
+    BOOL  load(void *fp) override;
 
 private:
     BOOL allocVerts() { return ParticleSystem::allocVerts(6, FACE_UV); }
@@ -192,8 +191,8 @@ protected:
     BOOL  copyFrom(const ParticleSystem *src) override;
     BOOL  setCapacity(DWORD count) override;
     BOOL  resize(DWORD count) override;
-    BOOL  save(void *fp, GameLogger *log) override;
-    BOOL  load(void *fp, GameLogger *log) override;
+    BOOL  save(void *fp) override;
+    BOOL  load(void *fp) override;
 
 private:
     BOOL allocVerts() { return ParticleSystem::allocVerts(6, XFACE_UV); }

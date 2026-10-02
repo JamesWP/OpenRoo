@@ -20,11 +20,10 @@
 #include <new>
 #include "scenetexture.h"
 #include "tga.h"
-#include "log.h"
+#include "logger.h"
 #include <stdlib.h>
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "gamelog.h"
 #include "d3dnative.h"
 #include "ddrawdiag.h"
 
@@ -116,7 +115,7 @@ static int texture_fx_mode(void)
             else if (lstrcmpiA(buf, "deepfmt") == 0)
                 cached = TEXFX_DEEPFMT;
         }
-        log_write("scenetexture: FX mode = %s\n",
+        g_logger.write("scenetexture: FX mode = %s\n",
                   cached == TEXFX_BPP16 ? "bpp16" :
                   cached == TEXFX_SOLID ? "solid" :
                   cached == TEXFX_DEEPFMT ? "deepfmt" : "off");
@@ -133,7 +132,7 @@ static void texture_log_format(const char *who, UINT requested,
 {
     static LONG seen = 0;
     if (InterlockedIncrement(&seen) <= 8)
-        log_write("scenetexture: %s req=%u -> chosen %lubpp flags=%08lX "
+        g_logger.write("scenetexture: %s req=%u -> chosen %lubpp flags=%08lX "
                   "r=%08lX g=%08lX b=%08lX a=%08lX\n",
                   who, requested, (unsigned long)pf->dwRGBBitCount,
                   (unsigned long)pf->dwFlags,
@@ -156,7 +155,7 @@ static void texture_fx_fill_solid(IDirectDrawSurface4 *surf)
     // nothing".
     static LONG seen = 0;
     if (InterlockedIncrement(&seen) <= 4)
-        log_write("scenetexture: solid fill lock=%08lX %lux%lu %lubpp pitch=%ld\n",
+        g_logger.write("scenetexture: solid fill lock=%08lX %lux%lu %lubpp pitch=%ld\n",
                   (unsigned long)hr, (unsigned long)d.dwWidth,
                   (unsigned long)d.dwHeight,
                   (unsigned long)d.ddpfPixelFormat.dwRGBBitCount,
@@ -353,7 +352,7 @@ unsigned int SceneTexture::bindTextureResource(RenderDevice *dev, LPCSTR name, U
 
     static LONG seen_bind = 0;
     if (InterlockedIncrement(&seen_bind) <= 4)
-        log_write("scenetexture: Bind this=%p dev=%p bpp=%u stage=%lu name=%s\n",
+        g_logger.write("scenetexture: Bind this=%p dev=%p bpp=%u stage=%lu name=%s\n",
                   this, dev, bpp, (unsigned long)textureStage,
                   name ? name : "(null)");
 
@@ -462,7 +461,7 @@ unsigned int SceneTexture::importSceneTextures(RenderDevice *dev, LPCSTR name,
 
     static LONG seen_import = 0;
     if (InterlockedIncrement(&seen_import) <= 4)
-        log_write("scenetexture: Import this=%p type=%u %ux%u src=%ubpp req=%u name=%s\n",
+        g_logger.write("scenetexture: Import this=%p type=%u %ux%u src=%ubpp req=%u name=%s\n",
                   this, (unsigned)h.imageType, (unsigned)h.width,
                   (unsigned)h.height, (unsigned)h.bpp, bpp,
                   name ? name : "(null)");
@@ -608,8 +607,7 @@ SceneTexture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
         tm_lower_inplace(filename);
         tm_lower_inplace(cached->imageName());
         if (strcmp(cached->imageName(), filename) == 0) {
-            if (pLogger_ != NULL)
-                pLogger_->logMessage(1, GS_TM_FOUND, filename);
+            g_logger.logMessage(1, GS_TM_FOUND, filename);
             return cached;
         }
     }
@@ -620,12 +618,10 @@ SceneTexture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
     if ((ok & 0xff) == 0) {
         if (tex != NULL)
             delete tex;
-        if (pLogger_ != NULL)
-            pLogger_->logMessage(3, GS_TM_FAILED, filename);
+        g_logger.logMessage(3, GS_TM_FAILED, filename);
         return NULL;
     }
-    if (pLogger_ != NULL)
-        pLogger_->logMessage(1, GS_TM_LOADED, filename);
+    g_logger.logMessage(1, GS_TM_LOADED, filename);
     cache_.append(tex);
     return tex;
 }
@@ -648,18 +644,11 @@ void TextureManager::releaseAll()
  * Every instance is static (scenetexture.h), so nothing deletes one and the
  * scalar dtor's free is never reached. */
 TextureManager::TextureManager()
-    : pLogger_(NULL)
 {
 }
 
 TextureManager::~TextureManager()
 {
-}
-
-/* pLogger = logger. */
-void TextureManager::setLogger(GameLogger *logger)
-{
-    pLogger_ = logger;
 }
 
 /* LoadedImage::load every non-NULL cached image, head to tail, reading the next

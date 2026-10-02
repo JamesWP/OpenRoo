@@ -9,7 +9,7 @@
 
 #include "renderdevice.h"
 #include "sky.h"
-#include "log.h"
+#include "logger.h"
 #include "scenetexture.h"
 #include <stdlib.h>
 
@@ -29,7 +29,7 @@ static bool fx_one_quad(void)
         cached = 0;
         if (GetEnvironmentVariableA("KAROO_SKY_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "noskip") == 0);
-        log_write("sky: FX mode = %s\n", cached ? "noskip (1 quad only)" : "off");
+        g_logger.write("sky: FX mode = %s\n", cached ? "noskip (1 quad only)" : "off");
     }
     return cached != 0;
 }
@@ -69,7 +69,7 @@ float *SkyBackground::draw(RenderDevice *dev,
 
         static LONG logged = 0;
         if (InterlockedIncrement(&logged) <= SKY_LOG_FIRST)
-            log_write("sky: quad %d tex=%p yaw=%d/1000 -> ok=%d\n",
+            g_logger.write("sky: quad %d tex=%p yaw=%d/1000 -> ok=%d\n",
                       i, (void *)tex, (int)(flYawAngle_ * 1000.0f), ok);
     }
 

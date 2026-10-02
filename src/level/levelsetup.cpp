@@ -35,7 +35,7 @@
 #include <windows.h>
 #include <string.h>
 
-#include "log.h"
+#include "logger.h"
 #include "player.h"
 #include "crtrand.h"
 #include "game.h"
@@ -49,7 +49,6 @@
 #include "foe.h"
 #include "gamestr.h"
 #include "gameglobals.h"
-#include "gamelog.h"
 
 /* The map and its tiles (levelmap.h, tile.h).  The snapshot grid holds the
  * cell as the file gave it: height, param and contents. */
@@ -65,7 +64,6 @@
 #define K_TWO_PI   0x1.921fb6p+2f  // 2pi as a float
 #define K_INV_32K  0x1.0002p-15f   // 1/32767 as a float
 
-class GameLogger;
 
 /* time(), through the seed hook. */
   int   hooks_GameTime(int *out);
@@ -106,12 +104,12 @@ static void fx_init(void)
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "setupflip") == 0) {
             s_fx_setupflip = 1;
-            log_write("levelsetup: KAROO_SIM_FX=setupflip -- the tilemap walk "
+            g_logger.write("levelsetup: KAROO_SIM_FX=setupflip -- the tilemap walk "
                       "transposes u and v at the one point it forms the "
                       "index\n");
         } else if (strcmp(buf, "noshadow") == 0) {
             s_fx_noshadow = 1;
-            log_write("levelsetup: KAROO_SIM_FX=noshadow -- a type-0x17 cell "
+            g_logger.write("levelsetup: KAROO_SIM_FX=noshadow -- a type-0x17 cell "
                       "no longer moves its item byte to the shadow slot, so "
                       "the item counts land in the other pair of counters\n");
         }
@@ -194,7 +192,7 @@ static unsigned int levelsetup_seed_fx(void)
         if (GetEnvironmentVariableA("KAROO_CRT_FX", buf, sizeof(buf)) &&
             lstrcmpiA(buf, "seed") == 0)
             cached = 1;
-        log_write("levelsetup: CRT FX seed xor = %d\n", cached);
+        g_logger.write("levelsetup: CRT FX seed xor = %d\n", cached);
     }
     return (unsigned int)cached;
 }
@@ -208,7 +206,7 @@ static void levelsetup_seed_diag(unsigned int seed)
         buf[0] == '0')
         return;
 
-    log_write("levelsetup: crt_srand(%u) -> CRT seed = %u\n",
+    g_logger.write("levelsetup: crt_srand(%u) -> CRT seed = %u\n",
               seed, CRT_RAND_SEED);
 }
 
@@ -697,7 +695,7 @@ next_row:
 
     s_calls++;
     if (s_diag)
-        log_write("levelsetup: DIAG call #%u map=%ux%u crystals=%u total=%u "
+        g_logger.write("levelsetup: DIAG call #%u map=%ux%u crystals=%u total=%u "
                   "bridges=%u teleports=%u lifts=%u slides=%u breakables=%u "
                   "foes=%u freebombs=%u timed=%u switchmax=%u\n",
                   s_calls, (unsigned)M->extentU(), (unsigned)M->extentV(),

@@ -14,7 +14,7 @@
 
 #include "determinism.h"
 #include "particles.h"
-#include "log.h"
+#include "logger.h"
 #include "game.h"
 #include "player.h"
 #include <string.h>
@@ -106,7 +106,7 @@ bool dethash_enabled(void)
             g_fh = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
                                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
             g_on = (g_fh != INVALID_HANDLE_VALUE);
-            log_write("dethash: %s -> %s\n", path, g_on ? "recording" : "OPEN FAILED");
+            g_logger.write("dethash: %s -> %s\n", path, g_on ? "recording" : "OPEN FAILED");
         }
     }
     return g_on > 0;

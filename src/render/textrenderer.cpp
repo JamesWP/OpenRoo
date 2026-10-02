@@ -19,7 +19,7 @@
 
 #include "textrenderer.h"
 #include "renderdevice.h"
-#include "log.h"
+#include "logger.h"
 #include "scenetexture.h"
 #include "gamestr.h"
 #include <stdlib.h>
@@ -68,7 +68,7 @@ static TextFx text_fx(void)
         if (lstrcmpiA(buf, "loadswap") == 0) fx = TEXT_FX_LOADSWAP;
         if (lstrcmpiA(buf, "bigwave") == 0)  fx = TEXT_FX_BIGWAVE;
     }
-    log_write("textrenderer: FX mode = %s\n",
+    g_logger.write("textrenderer: FX mode = %s\n",
               fx == TEXT_FX_MIRROR   ? "mirror" :
               fx == TEXT_FX_LOADSWAP ? "loadswap" :
               fx == TEXT_FX_BIGWAVE  ? "bigwave" : "off");
@@ -99,7 +99,7 @@ static void text_first(const char *fn, unsigned long *pSeen)
     if (!text_diag() || *pSeen != 0)
         return;
     *pSeen = 1;
-    log_write("textrenderer: first call to %s\n", fn);
+    g_logger.write("textrenderer: first call to %s\n", fn);
 }
 
 static void text_census(void)
@@ -109,7 +109,7 @@ static void text_census(void)
     unsigned long n = g_nRender;
     if (!(n == 1 || n == 100 || n == 1000 || n == 10000 || n % 20000 == 0))
         return;
-    log_write("textrenderer: census render=%lu (empty %lu) glyphs=%lu "
+    g_logger.write("textrenderer: census render=%lu (empty %lu) glyphs=%lu "
               "centred=%lu right=%lu load=%lu big=%lu wobble=%lu "
               "wobbleGlyphs=%lu\n",
               g_nRender, g_nEmpty, g_nGlyphs, g_nCentred, g_nRight, g_nLoad,
@@ -266,7 +266,7 @@ unsigned int TextRenderer::load(const char *path, RenderDevice *d3d)
     }
 
     if (text_diag())
-        log_write("textrenderer: loaded %s -- %u x %u cells\n",
+        g_logger.write("textrenderer: loaded %s -- %u x %u cells\n",
                   path, cols_, rows_);
 
     // The low byte is the success flag; the upper three are fclose's.

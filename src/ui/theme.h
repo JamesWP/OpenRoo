@@ -23,7 +23,6 @@
 
 class Game;
 class RenderDevice;
-class GameLogger;
 
 enum ThemeObjectKind : DWORD {
     THEME_KIND_NONE           = 0,
@@ -231,7 +230,7 @@ public:
 
     /* Releases the block, parses the theme file at path into it, and builds its
      * meshes, textures and sounds. */
-    bool load(Game *game, RenderDevice *d3d, char *path, GameLogger *logger);
+    bool load(Game *game, RenderDevice *d3d, char *path);
 
     /* Releases everything the block holds.  Also called at shutdown. */
     void release();
@@ -268,8 +267,7 @@ private:
     SkyBackground        sky_;  // built from the face names; drawn by sky.cpp
     float                flSideHeight_;
 
-    bool themeLoad(Game *game, RenderDevice *d3d, char *path,
-                   GameLogger *logger);
+    bool themeLoad(Game *game, RenderDevice *d3d, char *path);
 
      
 };

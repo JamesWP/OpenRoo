@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <windows.h>
-#include "log.h"
+#include "logger.h"
 
 /* KAROO_LIST_FX, a negative control (CONTROLS.md):
  *   lifo  Append links the new node at the head instead of the tail, so every
@@ -47,7 +47,7 @@ static void list_first(const char *fn, unsigned long *pSeen)
     if (!list_diag() || *pSeen != 0)
         return;
     *pSeen = 1;
-    log_write("linkedlist: first call to %s\n", fn);
+    g_logger.write("linkedlist: first call to %s\n", fn);
 }
 
 static void list_census(void)
@@ -59,7 +59,7 @@ static void list_census(void)
     unsigned long n = g_nAppend;
     if (!(n == 1 || n == 100 || n == 1000 || n == 10000 || n % 20000 == 0))
         return;
-    log_write("linkedlist: census init=%lu sdtor=%lu destruct=%lu append=%lu "
+    g_logger.write("linkedlist: census init=%lu sdtor=%lu destruct=%lu append=%lu "
               "clear=%lu unlink=%lu (null %lu) find=%lu (hit %lu)\n",
               g_nInit, g_nScalarDtor, g_nDestruct, g_nAppend,
               g_nClear, g_nUnlink, g_nUnlinkNull, g_nFind, g_nFindHit);
@@ -76,7 +76,7 @@ static ListFx list_fx(void)
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "lifo") == 0) fx = LIST_FX_LIFO;
     }
-    log_write("linkedlist: FX mode = %s\n", fx == LIST_FX_LIFO ? "lifo" : "off");
+    g_logger.write("linkedlist: FX mode = %s\n", fx == LIST_FX_LIFO ? "lifo" : "off");
     cached = (int)fx;
     return fx;
 }

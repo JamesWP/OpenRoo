@@ -29,7 +29,7 @@
 #include "tile.h"
 #include "soundmanager.h"
 #include "audiodev.h"
-#include "log.h"
+#include "logger.h"
 
 static const float  K_MS_TO_TILE = 0.005f;
 static const double K_PARK_DWELL = 1500.0;
@@ -59,17 +59,17 @@ static void fx_init(void)
     if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
         if (strcmp(buf, "blockstay") == 0) {
             s_fx_blockstay = 1;
-            log_write("slideobject: KAROO_SIM_FX=blockstay -- vacated tiles "
+            g_logger.write("slideobject: KAROO_SIM_FX=blockstay -- vacated tiles "
                       "are never released\n");
         } else if (strcmp(buf, "slideaxis") == 0) {
             s_fx_slideaxis = 1;
-            log_write("slideobject: KAROO_SIM_FX=slideaxis -- the two "
+            g_logger.write("slideobject: KAROO_SIM_FX=slideaxis -- the two "
                       "slide-track kind codes are exchanged, so a track meant "
                       "to run along U is scanned along V and vice versa; scan, "
                       "stamping and recorded span all move together\n");
         } else if (strcmp(buf, "keepobjects") == 0) {
             s_fx_keepobjects = 1;
-            log_write("slideobject: KAROO_SIM_FX=keepobjects -- slide purge "
+            g_logger.write("slideobject: KAROO_SIM_FX=keepobjects -- slide purge "
                       "does nothing\n");
         }
     }
@@ -138,7 +138,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     obj = create();
     if (obj == 0 && s_diag_place && !s_logged_oom) {
         s_logged_oom = 1;
-        log_write("slideobject: ALLOCATION FAILED in spawn -- the original "
+        g_logger.write("slideobject: ALLOCATION FAILED in spawn -- the original "
                   "would store through the slot, which now holds NULL\n");
     }
 
@@ -147,7 +147,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     if (s_diag_place) {
         s_logged_spawn++;
-        log_write("slideobject: slide spawn #%d -- slot=%u u=%u v=%u "
+        g_logger.write("slideobject: slide spawn #%d -- slot=%u u=%u v=%u "
                   "height=%u kind=0x%x %s\n",
                   s_logged_spawn, (unsigned)n, u, v, height, kind,
                   (kind == TILE_SLIDE_U) ? "SCAN-U" :
@@ -239,14 +239,14 @@ void SlideObject::purgeAll(Game *game)
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
-        log_write("slideobject: first purge -- count=%u\n",
+        g_logger.write("slideobject: first purge -- count=%u\n",
                   (unsigned)game->slideCount());
     }
 
     i = 0;
     if (game->slideCount() != 0) {
         if (s_diag_reset)
-            log_write("slideobject: LIVE purge #%u -- count=%u\n",
+            g_logger.write("slideobject: LIVE purge #%u -- count=%u\n",
                       ++s_live_purges, (unsigned)game->slideCount());
         do {
             if (game->soundCreated() != 0) {
@@ -285,7 +285,7 @@ void SlideObject::vacate()
         return;
     if (s_diag_block && !s_logged_vacate) {
         s_logged_vacate = 1;
-        log_write("slideobject: first vacate -- cell=(%d,%d)\n",
+        g_logger.write("slideobject: first vacate -- cell=(%d,%d)\n",
                   (int)cellU_, (int)cellV_);
     }
     Tile::at(tileBase_, cellU_, cellV_)->setObjectMarker(0);
@@ -300,12 +300,12 @@ void SlideObject::tick()
 
     if (!s_logged_first) {
         s_logged_first = 1;
-        log_write("slideobject: first slide tick -- this=%p\n", (void *)this);
+        g_logger.write("slideobject: first slide tick -- this=%p\n", (void *)this);
     }
     if (s_diag_block) {
         ++s_ticks;
         if ((s_ticks % 5000) == 0)
-            log_write("slideobject: %lu ticks\n", s_ticks);
+            g_logger.write("slideobject: %lu ticks\n", s_ticks);
     }
 
     tickStepCopy_ = *tickStep_;
@@ -361,7 +361,7 @@ void SlideObject::tick()
 
             if (s_diag_block && !s_logged_advance) {
                 s_logged_advance = 1;
-                log_write("slideobject: first completed advance -- "
+                g_logger.write("slideobject: first completed advance -- "
                           "cell=(%d,%d) limit=%u\n",
                           (int)cellU_, (int)cellV_, (unsigned)limit_);
             }
@@ -420,7 +420,7 @@ void SlideObject::tick()
 
             if (s_diag_block && !s_logged_retreat) {
                 s_logged_retreat = 1;
-                log_write("slideobject: first completed retreat -- "
+                g_logger.write("slideobject: first completed retreat -- "
                           "cell=(%d,%d)\n", (int)cellU_, (int)cellV_);
             }
         }
@@ -445,7 +445,7 @@ void SlideObject::tick()
 
             if (s_diag_block && !s_logged_depart) {
                 s_logged_depart = 1;
-                log_write("slideobject: first depart -- cell=(%d,%d) "
+                g_logger.write("slideobject: first depart -- cell=(%d,%d) "
                           "latch=%d state=%d\n",
                           (int)cellU_, (int)cellV_, atLimit_, (int)state_);
             }

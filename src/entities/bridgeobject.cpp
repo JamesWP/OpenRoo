@@ -26,7 +26,7 @@
 #include "tile.h"
 #include "soundmanager.h"
 #include "audiodev.h"
-#include "log.h"
+#include "logger.h"
 
 /* The float nearest 0.01; widened where it is multiplied. */
 static const float K_MS_TO_TILE = 0.01f;
@@ -56,18 +56,18 @@ static void fx_init(void)
     if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
         if (strcmp(buf, "deckaxis") == 0) {
             s_fx_deckaxis = 1;
-            log_write("bridgeobject: KAROO_SIM_FX=deckaxis -- travel axis "
+            g_logger.write("bridgeobject: KAROO_SIM_FX=deckaxis -- travel axis "
                       "1<->2 flipped\n");
         } else if (strcmp(buf, "bridgespan") == 0) {
             s_fx_bridgespan = 1;
-            log_write("bridgeobject: KAROO_SIM_FX=bridgespan -- the two arms "
+            g_logger.write("bridgeobject: KAROO_SIM_FX=bridgespan -- the two arms "
                       "that compute the bridge's far end (+0x38) are "
                       "exchanged, so a forward run records the backward extent "
                       "and vice versa.  The SCAN is untouched, so this stays "
                       "in bounds\n");
         } else if (strcmp(buf, "keepobjects") == 0) {
             s_fx_keepobjects = 1;
-            log_write("bridgeobject: KAROO_SIM_FX=keepobjects -- bridge purge "
+            g_logger.write("bridgeobject: KAROO_SIM_FX=keepobjects -- bridge purge "
                       "does nothing\n");
         }
     }
@@ -126,7 +126,7 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     obj = create();
     if (obj == 0 && s_diag_place && !s_logged_oom) {
         s_logged_oom = 1;
-        log_write("bridgeobject: ALLOCATION FAILED in spawn -- the original "
+        g_logger.write("bridgeobject: ALLOCATION FAILED in spawn -- the original "
                   "faults at 0xc, and so does this\n");
     }
 
@@ -150,7 +150,7 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     if (s_diag_place) {
         s_logged_spawn++;
-        log_write("bridgeobject: bridge spawn #%d -- slot=%u u=%u v=%u "
+        g_logger.write("bridgeobject: bridge spawn #%d -- slot=%u u=%u v=%u "
                   "height=%u axis=%u %s\n",
                   s_logged_spawn, slot, u, v, height, axis,
                   (axis == 1) ? "SCAN-U" :
@@ -224,7 +224,7 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     game->setBridgeCount((unsigned char)(game->bridgeCount() + 1));
 
     if (s_diag_place)
-        log_write("bridgeobject:   bridge done -- +0x38=%u +0x45=%u +0x57=%d "
+        g_logger.write("bridgeobject:   bridge done -- +0x38=%u +0x45=%u +0x57=%d "
                   "+0x5d=%u +0x5e=%u\n",
                   (unsigned)obj->guard_, (unsigned)(unsigned char)obj->span_,
                   (int)obj->step_, (unsigned)obj->endU_, (unsigned)obj->endV_);
@@ -245,14 +245,14 @@ void BridgeObject::purgeAll(Game *game)
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
-        log_write("bridgeobject: first purge -- count=%u\n",
+        g_logger.write("bridgeobject: first purge -- count=%u\n",
                   (unsigned)game->bridgeCount());
     }
 
     i = 0;
     if (game->bridgeCount() != 0) {
         if (s_diag_reset)
-            log_write("bridgeobject: LIVE purge #%u -- count=%u\n",
+            g_logger.write("bridgeobject: LIVE purge #%u -- count=%u\n",
                       ++s_live_purges, (unsigned)game->bridgeCount());
         do {
             if (game->soundCreated() != 0) {
@@ -300,12 +300,12 @@ void BridgeObject::tick()
 
     if (!s_logged_first) {
         s_logged_first = 1;
-        log_write("bridgeobject: first bridge tick -- this=%p\n", (void *)this);
+        g_logger.write("bridgeobject: first bridge tick -- this=%p\n", (void *)this);
     }
     if (s_diag_deck) {
         ++s_ticks;
         if ((s_ticks % 5000) == 0)
-            log_write("bridgeobject: %lu ticks\n", s_ticks);
+            g_logger.write("bridgeobject: %lu ticks\n", s_ticks);
     }
 
     tickStepCopy_ = *tickStep_;
@@ -381,7 +381,7 @@ void BridgeObject::tick()
 
             if (s_diag_deck && !s_logged_stamp) {
                 s_logged_stamp = 1;
-                log_write("bridgeobject: first extend stamp -- axis=%u "
+                g_logger.write("bridgeobject: first extend stamp -- axis=%u "
                           "cell=(%d,%d) height=%u\n",
                           (unsigned)axis, (int)cu, (int)cv,
                           (unsigned)tileHeight_);
@@ -444,7 +444,7 @@ void BridgeObject::tick()
 
         if (s_diag_deck && !s_logged_unstamp) {
             s_logged_unstamp = 1;
-            log_write("bridgeobject: first retract unstamp -- axis=%u "
+            g_logger.write("bridgeobject: first retract unstamp -- axis=%u "
                       "cell=(%d,%d)\n", (unsigned)axis, (int)cu, (int)cv);
         }
 

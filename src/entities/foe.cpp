@@ -17,7 +17,7 @@
 #include "audiodev.h"
 #include "bomb.h"
 #include "tilequery.h"
-#include "log.h"
+#include "logger.h"
 
 #include <new>
 
@@ -59,21 +59,21 @@ static void fx_init(void)
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "spawnswap") == 0) {
             s_fx_spawnswap = 1;
-            log_write("foe: KAROO_SIM_FX=spawnswap -- the spawn tile is "
+            g_logger.write("foe: KAROO_SIM_FX=spawnswap -- the spawn tile is "
                       "transposed (u and v exchanged at the single point they "
                       "are read), so every foe comes into existence at the "
                       "mirrored cell\n");
         } else if (strcmp(buf, "nocontact") == 0) {
             s_fx_nocontact = 1;
-            log_write("foe: KAROO_SIM_FX=nocontact -- the foe hit flag is "
+            g_logger.write("foe: KAROO_SIM_FX=nocontact -- the foe hit flag is "
                       "never raised\n");
         } else if (strcmp(buf, "foeunfreeze") == 0) {
             s_fx_unfreeze = 1;
-            log_write("foe: KAROO_SIM_FX=foeunfreeze -- the freeze gate is "
+            g_logger.write("foe: KAROO_SIM_FX=foeunfreeze -- the freeze gate is "
                       "ignored, so frozen foes keep chasing\n");
         } else if (lstrcmpiA(buf, "chaseback") == 0) {
             s_fx_chaseback = 1;
-            log_write("foe: KAROO_SIM_FX=chaseback -- foes step away, not "
+            g_logger.write("foe: KAROO_SIM_FX=chaseback -- foes step away, not "
                       "toward\n");
         }
     }
@@ -200,7 +200,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     if (!s_logged_spawn) {
         s_logged_spawn = 1;
-        log_write("foe: first foe spawn -- game=%p id=%u obj=%p "
+        g_logger.write("foe: first foe spawn -- game=%p id=%u obj=%p "
                   "u=%u v=%u h=%u kind=%d type=%u\n",
                   (void *)game, (unsigned)id, (void *)p, (unsigned)u,
                   (unsigned)v, (unsigned)h, (int)kind, (unsigned)type);
@@ -211,16 +211,16 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
         ++s_spawns;
         if ((s_spawns % 500) == 0)
-            log_write("foe: %lu spawns\n", s_spawns);
+            g_logger.write("foe: %lu spawns\n", s_spawns);
         if (!s_type_seen[type]) {
             s_type_seen[type] = 1;
-            log_write("foe: type %u (0x%02x)%s first seen in '%s'\n",
+            g_logger.write("foe: type %u (0x%02x)%s first seen in '%s'\n",
                       (unsigned)type, (unsigned)type,
                       type > 0x64 ? " >0x64" : "", lvl);
         }
         if (type > 0x64 && s_hi_level[type] != lh) {
             s_hi_level[type] = lh;
-            log_write("foe: HIGHTYPE %u (0x%02x) in '%s'\n",
+            g_logger.write("foe: HIGHTYPE %u (0x%02x) in '%s'\n",
                       (unsigned)type, (unsigned)type, lvl);
         }
     }
@@ -241,13 +241,13 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         (*slot)->stepDuration_ = 500.0;
         if (s_diag_spawn && !s_logged_kind2) {
             s_logged_kind2 = 1;
-            log_write("foe: first kind-2 foe\n");
+            g_logger.write("foe: first kind-2 foe\n");
         }
     } else if (kind == 3) {
         (*slot)->stepDuration_ = 700.0;
         if (s_diag_spawn && !s_logged_kind3) {
             s_logged_kind3 = 1;
-            log_write("foe: first kind-3 foe\n");
+            g_logger.write("foe: first kind-3 foe\n");
         }
     }
 
@@ -259,7 +259,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         type = 0;  // type is zeroed so the pathfinder mode below never sees it.
         if (s_diag_spawn && !s_logged_hightype) {
             s_logged_hightype = 1;
-            log_write("foe: first type > 0x64\n");
+            g_logger.write("foe: first type > 0x64\n");
         }
     } else {
         (*slot)->facing_ = 1;
@@ -306,7 +306,7 @@ static void release(SoundManager *sm, void *obj, void *buf, int bPool)
 
     if (s_diag_remove && !s_logged_release) {
         s_logged_release = 1;
-        log_write("foe: first sound release -- obj=%p buf=%p pool=%d\n",
+        g_logger.write("foe: first sound release -- obj=%p buf=%p pool=%d\n",
                   obj, buf, bPool);
     }
 
@@ -329,13 +329,13 @@ void Foe::remove(Game *game, unsigned int idArg)
 
     if (!s_logged_remove) {
         s_logged_remove = 1;
-        log_write("foe: first foe removal -- game=%p id=%u obj=%p\n",
+        g_logger.write("foe: first foe removal -- game=%p id=%u obj=%p\n",
                   (void *)game, (unsigned)id, (void *)*slot);
     }
     if (s_diag_remove) {
         ++s_removals;
         if ((s_removals % 500) == 0)
-            log_write("foe: %lu removals\n", s_removals);
+            g_logger.write("foe: %lu removals\n", s_removals);
     }
 
     if (game->soundCreated() != 0) {
@@ -388,12 +388,12 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
 
     if (!s_logged_first) {
         s_logged_first = 1;
-        log_write("foe: first foe step -- this=%p\n", (void *)this);
+        g_logger.write("foe: first foe step -- this=%p\n", (void *)this);
     }
     if (s_diag_step) {
         ++s_ticks;
         if ((s_ticks % 5000) == 0)
-            log_write("foe: %lu ticks\n", s_ticks);
+            g_logger.write("foe: %lu ticks\n", s_ticks);
     }
 
     tickStepCopy_ = *tickStep_;
@@ -412,7 +412,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
             if ((unsigned int)(now - last) >= 0x7d0u) {
                 if (s_diag_step && !s_logged_contact) {
                     s_logged_contact = 1;
-                    log_write("foe: first contact -- foe=(%d,%d) "
+                    g_logger.write("foe: first contact -- foe=(%d,%d) "
                               "player=(%u,%u)\n",
                               (int)cellU_, (int)cellV_,
                               (unsigned)playerU, (unsigned)playerV);
@@ -436,7 +436,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
 
             if (s_diag_step && !s_logged_consume) {
                 s_logged_consume = 1;
-                log_write("foe: first tile consume -- cell=(%d,%d)\n",
+                g_logger.write("foe: first tile consume -- cell=(%d,%d)\n",
                           (int)cellU_, (int)cellV_);
             }
 
@@ -455,7 +455,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     if (moveDir_ != 0) {
         if (s_diag_step && !s_logged_frozen) {
             s_logged_frozen = 1;
-            log_write("foe: first FROZEN foe -- +0x14e=%d cell=(%d,%d)\n",
+            g_logger.write("foe: first FROZEN foe -- +0x14e=%d cell=(%d,%d)\n",
                       moveDir_, (int)cellU_, (int)cellV_);
         }
     }
@@ -469,7 +469,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     if ((signed char)pendingMove_ != 0) {
         if (s_diag_step && !s_logged_chase) {
             s_logged_chase = 1;
-            log_write("foe: first chase direction -- dir=%u foe=(%d,%d)\n",
+            g_logger.write("foe: first chase direction -- dir=%u foe=(%d,%d)\n",
                       (unsigned)pendingMove_, (int)cellU_, (int)cellV_);
         }
         // the early return: steps 6 and 7 (the turn table, return-to-post) run
@@ -488,7 +488,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
 
             if (s_diag_step && !s_logged_turn) {
                 s_logged_turn = 1;
-                log_write("foe: first turn table -- cell=(%d,%d)\n",
+                g_logger.write("foe: first turn table -- cell=(%d,%d)\n",
                           (int)cellU_, (int)cellV_);
             }
 
@@ -520,7 +520,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     if ((signed char)type_ == 4) {
         if (s_diag_step && !s_logged_repost) {
             s_logged_repost = 1;
-            log_write("foe: first return-to-post -- target=(%u,%u)\n",
+            g_logger.write("foe: first return-to-post -- target=(%u,%u)\n",
                       (unsigned)targetU_, (unsigned)targetV_);
         }
         chase(targetU_, targetV_, chaseSpeed_);

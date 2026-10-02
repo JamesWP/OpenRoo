@@ -10,6 +10,7 @@ add_library(d3d OBJECT
     texturetga.cpp)
 target_include_directories(d3d PRIVATE
     .
+    ../log
     ../app
     ../core
     ../render)

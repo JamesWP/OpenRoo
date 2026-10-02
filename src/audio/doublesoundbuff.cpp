@@ -7,7 +7,7 @@
 #include "doublesoundbuff.h"
 #include "voicepool.h"
 #include <stdlib.h>
-#include "log.h"
+#include "logger.h"
 
 /* KAROO_DSB_DIAG=1 counts every call, logs each function's first call, and
  * counts the two paths that give back the master or spare directly, which
@@ -34,13 +34,13 @@ static void dsb_first(const char *what, unsigned long *seen)
 {
     if (!dsb_diag() || *seen) return;
     *seen = 1;
-    log_write("doublesoundbuff: first call to %s\n", what);
+    g_logger.write("doublesoundbuff: first call to %s\n", what);
 }
 
 static void dsb_census(void)
 {
     if (!dsb_diag()) return;
-    log_write("doublesoundbuff: DIAG init=%lu destruct=%lu clear=%lu "
+    g_logger.write("doublesoundbuff: DIAG init=%lu destruct=%lu clear=%lu "
               "purgeClone=%lu purgePool=%lu clonesFreed=%lu poolsFreed=%lu "
               "relStatic=%lu/%lu masterLent=%lu spareLent=%lu "
               "relPool=%lu/%lu borrowerCount=%lu fullyReleased=%lu/%lu\n",
@@ -67,7 +67,7 @@ static DsbFx dsb_fx(void)
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "stickyentry") == 0) fx = DSB_FX_STICKYENTRY;
     }
-    log_write("doublesoundbuff: FX mode = %s\n",
+    g_logger.write("doublesoundbuff: FX mode = %s\n",
               fx == DSB_FX_STICKYENTRY ? "stickyentry" : "off");
     cached = (int)fx;
     return fx;

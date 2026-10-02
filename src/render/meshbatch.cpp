@@ -18,7 +18,7 @@
 #include "theme.h"
 #include "levelplacements.h"
 #include "faktmesh.h"
-#include "log.h"
+#include "logger.h"
 
 #include <math.h>
 
@@ -35,7 +35,7 @@ static bool fx_norot(void)
         cached = 0;
         if (GetEnvironmentVariableA("KAROO_MESHBATCH_FX", buf, sizeof buf))
             cached = (lstrcmpiA(buf, "norot") == 0);
-        log_write("meshbatch: FX mode = %s\n", cached ? "norot" : "off");
+        g_logger.write("meshbatch: FX mode = %s\n", cached ? "norot" : "off");
     }
     return cached != 0;
 }
@@ -49,7 +49,7 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
         static LONG e = 0;
         LONG k = InterlockedIncrement(&e);
         if (k <= 3 || k % 500 == 0)
-            log_write("meshbatch: enter #%ld nobj=%lu quads=%lu\n", k,
+            g_logger.write("meshbatch: enter #%ld nobj=%lu quads=%lu\n", k,
                       slot->instanceCount(), (DWORD)pl->kind01Count());
     }
     if (slot->instanceCount() == 0)
@@ -120,7 +120,7 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
 
                 static LONG logged = 0;
                 if (InterlockedIncrement(&logged) <= MESH_LOG_FIRST)
-                    log_write("meshbatch: obj=%lu sub=%lu mesh=%p "
+                    g_logger.write("meshbatch: obj=%lu sub=%lu mesh=%p "
                               "pos=%d,%d,%d (x1000)\n", i, s, mesh,
                               (int)(m[12] * 1000.0f), (int)(m[13] * 1000.0f),
                               (int)(m[14] * 1000.0f));

@@ -12,7 +12,7 @@
 #include "game.h"
 #include "windev.h"
 #include "gamestr.h"
-#include "gamelog.h"
+#include "logger.h"
 #include "gameglobals.h"
 #include <stdlib.h>
 #include "cdm.h"
