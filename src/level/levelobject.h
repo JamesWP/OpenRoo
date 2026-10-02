@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-#include "scenetexture.h"
+#include "texture.h"
 
 /* A theme record's draw state for one sub-object: blend, texture address mode,
  * visibility condition and an animated effect, as the theme file's depth-2 and
@@ -20,7 +20,7 @@ enum SceneSubObjectEffect : uint32_t {
  * alive 4, paraglide 5, protection 6. */
 struct SceneSubObject {
     uint32_t  dwVisibilityGate;
-    SceneTexture *pTexture;
+    Texture *pTexture;
     uint32_t  dwBlendSrc;       // the SRCBLEND value
     uint32_t  dwBlendDst;       // the DESTBLEND value
     uint32_t  dwTexAddress;     // TEXTUREADDRESSU/V; 0 means 3

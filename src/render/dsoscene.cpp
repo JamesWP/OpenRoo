@@ -30,7 +30,7 @@
 #include "faktmesh.h"
 #include "ani.h"
 #include "scene.h"
-#include "scenetexture.h"
+#include "texture.h"
 #include "extraobjects.h"
 #include "particles.h"
 #include "camera.h"
@@ -74,7 +74,7 @@ static void eval_path(const SceneObject *o, float t, Vec3 *out)
 
 static void select_texture(RenderDevice *dev, const SceneObject *o)
 {
-    dev->SetTexture(0, (const SceneTexture *)o->texture);
+    dev->SetTexture(0, (const Texture *)o->texture);
 }
 
 /* Heading and pitch from the path tangent.

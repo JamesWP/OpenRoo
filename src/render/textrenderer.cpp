@@ -23,7 +23,7 @@
 #include "sysdev.h"
 #include "renderdevice.h"
 #include "logger.h"
-#include "scenetexture.h"
+#include "texture.h"
 #include "gamestr.h"
 #include <stdlib.h>
 
@@ -242,9 +242,8 @@ unsigned int TextRenderer::load(const char *path, RenderDevice *d3d)
         return 0;
     line[strlen(line) - 1] = '\0';
 
-    const unsigned int ok = this->atlas()->importSceneTextures(d3d, line, 1, 0, 0);
-    if ((ok & 0xffu) == 0)
-        return ok;  // its result, upper bytes and all
+    if (!this->atlas()->load(d3d, line, 1, 0))
+        return 0;
 
     // Columns.
     if (fgets(line, 0xff, fp) == NULL)
@@ -448,7 +447,7 @@ TextRenderer::~TextRenderer()
 void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
                              float spacing, float lineH, const char *str,
                              RenderDevice *d3d, uint32_t colourTop, uint32_t colourBottom,
-                             SceneTexture *panelTex, SceneTexture *frameTex)
+                             Texture *panelTex, Texture *frameTex)
 {
     const float du = 1.0f / (float)cols_;  // cols_ read as unsigned
     const float dv = 1.0f / (float)rows_;

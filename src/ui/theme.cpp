@@ -29,7 +29,7 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 #include "model.h"
-#include "scenetexture.h"
+#include "texture.h"
 #include "generators.h"
 #include <math.h>
 ThemeAssetBlock g_themeBlock;
@@ -164,12 +164,12 @@ static void theme_struct_dump(const char *path)
               block->sideHeight(), float_plausible(block->sideHeight()) ? "" : "  SUSPICIOUS");
 
     for (int f = 0; f < 6; f++) {
-        const LoadedImage &img = block->sky().textures()[f];
-        const char *name = img.imageName();
+        const Texture &img = block->sky().textures()[f];
+        const char *name = img.name();
         int nameOk = name != NULL && (ULONG_PTR)name >= 0x10000;
         g_logger.write("THEME_STRUCT: sky.faces[%d] surface=%p%s name=%p \"%.63s\"%s\n",
-                  f, (void *)img.textureSurface(),
-                  ptr_plausible(img.textureSurface()) ? "" : "  SUSPICIOUS",
+                  f, (void *)img.handle(),
+                  ptr_plausible(img.handle()) ? "" : "  SUSPICIOUS",
                   (void *)name, nameOk ? name : "",
                   (name == NULL || nameOk) ? "" : "  SUSPICIOUS name");
     }
@@ -256,7 +256,7 @@ void ThemeAssetBlock::release()
     for (ThemeObjectType t : kReleaseOrder)
         slots_[t].release();
     for (int f = 0; f < 6; f++)
-        sky_.textures()[f].releaseD3DTexture();
+        sky_.textures()[f].release();
     memset((void *)this, 0, sizeof(*this));
 }
 
@@ -481,11 +481,11 @@ private:
         return r->subObjects() + i;
     }
 
-    SceneTexture *loadTexture(char *name, char *alphaTok)
+    Texture *loadTexture(char *name, char *alphaTok)
     {
         uint32_t alpha = is(alphaTok, "alpha") ? 1 : 0;
         return g_textureManager.getOrLoad(d3d,
-                                        name, alpha, 0, 0);
+                                        name, alpha, 0);
     }
 
     void fog(bool inEnvironment);
@@ -779,7 +779,7 @@ void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec
         open(sub, rec);
         uint32_t alpha = is(tok[2], "alpha") ? 1 : 0;
         if (slot)
-            sub.at->pTexture = g_textureManager.getOrLoad(d3d, tok[1], alpha, 0, 0);
+            sub.at->pTexture = g_textureManager.getOrLoad(d3d, tok[1], alpha, 0);
     } else if (is(tok[0], "position")) {
         if (ntok > 3 && slot) {
             rec->flPosX_ = atof_f(tok[1]); rec->flPosY_ = atof_f(tok[2]); rec->flPosZ_ = atof_f(tok[3]);

@@ -5,7 +5,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-#include "scenetexture.h"
+#include "texture.h"
 class RenderDevice;
 
 /* One sky-cube vertex, FVF 0x1e2 = XYZ | RESERVED1 | DIFFUSE | SPECULAR |
@@ -45,8 +45,8 @@ public:
 
  
  
-    SceneTexture       *textures()       { return Textures_; }
-    const SceneTexture *textures() const { return Textures_; }
+    Texture       *textures()       { return Textures_; }
+    const Texture *textures() const { return Textures_; }
  
 
 private:
@@ -55,7 +55,7 @@ private:
  
 
     float           flYawAngle_;       // +0x004 radians, the Y rotation
-    SceneTexture    Textures_[6];      // +0x008 one SceneTexture per face
+    Texture    Textures_[6];      // +0x008 one Texture per face
     SkyVertex       QuadVerts_[6][4];  // +0x0b0 one triangle-strip quad per face
     float           WorldMatrix_[16];  // +0x3b0 rebuilt every draw call
 };

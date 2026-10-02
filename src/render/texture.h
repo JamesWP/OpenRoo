@@ -1,61 +1,93 @@
+/* texture.h -- Texture, a game-side texture, and TextureManager, the
+ * name-keyed texture cache.
+ *
+ * A Texture is a name, the DeviceTexture the render device made from the
+ * file's pixels, and the decoded Image itself.  The Image stays resident so
+ * that reupload() can refill the device texture -- after the device lost it, or
+ * on a window activation -- without reading the file again.  It costs
+ * width * height * 4 bytes a texture (see TextureManager).
+ *
+ * Nothing here knows what the device's texture is; that is renderdevice.h's
+ * business, and the backend's. */
+
 #pragma once
+
 #include <stdint.h>
+#include "image.h"
+#include "linkedlist.h"
 
-/* The backend objects a texture holds; only the texture files look inside. */
-struct IDirectDraw4;
-struct IDirectDrawSurface4;
-struct IDirectDrawPalette;
-struct IDirect3DTexture2;
-
-/* LoadedImage: a bitmap on a DirectDraw surface, as RenderDevice::
- * PresentImage takes it. */
-class LoadedImage;
 class RenderDevice;
+struct DeviceTexture;
 
-class LoadedImage {
+/* Every member is a plain pointer, so a zeroed Texture is an empty one (the
+ * theme block is memset to zero once its textures are released). */
+class Texture {
 public:
-    LoadedImage();
-    /* Frees the image name.  PRESERVED: it is not NULLed. */
-    ~LoadedImage();
-    LoadedImage(const LoadedImage &) = delete;
-    LoadedImage &operator=(const LoadedImage &) = delete;
+    Texture();
+    /* Frees the name and the image, not the device texture: release() does
+     * that, and the statics outlive the device. */
+    ~Texture();
+    Texture(const Texture &) = delete;
+    Texture &operator=(const Texture &) = delete;
 
-    /* Restore a lost surface and reload its image.
-     * TextureManager::loadAll (scenetexture.cpp) is the outside caller. */
-    unsigned int load();
+    /* Decode the TGA at `path` and upload it.  alphaFlag's low byte asks for a
+     * pixel format with alpha; `depth` is RenderDevice::CreateTexture's.  On
+     * failure the texture is as it was. */
+    bool load(RenderDevice *dev, const char *path, uint32_t alphaFlag, unsigned depth);
 
-    IDirectDrawSurface4 *textureSurface() const { return pTextureSurface_; }
-    char                *imageName() const { return ImageName_; }
+    /* The same, choosing the decoder by extension (.bmp or .tga); no alpha.
+     * The sky builder (sky.cpp) is its one caller. */
+    bool loadByExtension(RenderDevice *dev, const char *path, unsigned depth);
 
-    void releaseSurfaces();
+    /* Write the retained image into the device texture again.  False if there
+     * is nothing loaded.  Called on window activation. */
+    bool reupload(RenderDevice *dev);
 
-    /* For the DIB and TGA loaders (texturedib.cpp, texturetga.cpp), which fill
-     * the surface and record how it was filled. */
-    void setLoadStatus(int s)      { loadStatus_ = s; }
-    void setLoadedState(int s)     { loadedState_ = s; }
-    void setImageNamePtr(char *p)  { ImageName_ = p; }
-    /* The surface's address, for CreateSurface's out-parameter; 4-aligned. */
- 
- 
-    IDirectDrawSurface4 **textureSurfaceSlot() { return &pTextureSurface_; }
- 
+    /* Free the device texture, the image and the name. */
+    void release();
+
+    DeviceTexture *handle() const { return handle_; }
+    char          *name() const { return name_; }
+    const Image   *image() const { return image_; }
 
 private:
-    friend class SceneTexture;
+    bool adopt(RenderDevice *dev, Image *img, uint32_t flags, unsigned depth);
 
-    IDirectDrawSurface4 *pTextureSurface_;
-    IDirectDrawSurface4 *pTexturePalette_;
-    char                *ImageName_;
-    int                  loadStatus_;
-    int                  loadedState_;
+    DeviceTexture *handle_;
+    char          *name_;
+    Image         *image_;
 };
 
-/* A palette from the DIB's colour table.  scenetexture.cpp's
- * BindTextureResource is the only caller. */
-  IDirectDrawPalette *
-Texture_CreatePaletteFromDIB(IDirectDraw4 *dd, void *hbmp);
+/* textures\shadow.tga and textures\karoo128.tga, loaded once at startup
+ * (renderstate.cpp). */
+extern Texture g_texShadow;
+extern Texture g_texKaroo128;
 
-/* KAROO_IMAGE_DIAG's first-call announcement, shared so the census covers all
- * six ctor/dtor entry points through one implementation. */
-  void Texture_ImageFirstCall(const char *who,
-                                                             unsigned long *seen);
+/* ─── TextureManager -- the name-keyed Texture cache ───────────────────────
+ *
+ * The theme's instance is g_textureManager; the Scene has its own (scene.h).
+ * Same shape as ModelManager (model.h).  The window procedure re-uploads both
+ * on WM_ACTIVATE.
+ *
+ * Memory: the cache keeps every texture's image, 4 bytes a pixel whatever the
+ * file's depth.  A level's worth is a few tens of megabytes at most. */
+class TextureManager {
+public:
+    Texture *getOrLoad(RenderDevice *dev, char *filename, uint32_t alphaFlag,
+                       unsigned depth);
+
+    void releaseAll();
+
+    TextureManager();
+    /* Empties the cache's nodes, not the textures. */
+    virtual ~TextureManager();
+    TextureManager(const TextureManager &) = delete;
+    TextureManager &operator=(const TextureManager &) = delete;
+
+    void reuploadAll(RenderDevice *dev);
+
+private:
+    LinkedList   cache_;     // Texture *, game-heap nodes
+};
+
+extern TextureManager g_textureManager;

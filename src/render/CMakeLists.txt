@@ -21,6 +21,7 @@ add_library(render OBJECT
     sceneobjects.cpp
     scenequad.cpp
     sky.cpp
+    texture.cpp
     textrenderer.cpp
     themedraw.cpp)
 target_include_directories(render PRIVATE

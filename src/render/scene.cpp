@@ -74,7 +74,7 @@ void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo)
         // Blend modes 5/6 (SRCALPHA / INVSRCALPHA) ask for an alpha surface.
         uint32_t alpha = (r->srcBlend == 5 || r->srcBlend == 6) ? 1 : 0;
         o->texture = textures_.getOrLoad(d3d, r->textureFile,
-                                              alpha, 0, 0);
+                                              alpha, 0);
         o->srcBlend  = r->srcBlend;
         o->destBlend = r->destBlend;
         o->textureAddress = r->textureAddress != 0 ? r->textureAddress : 1;

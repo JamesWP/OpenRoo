@@ -6,7 +6,7 @@
 #include "logger.h"
 #include "cdm.h"
 #include "progctrl.h"
-#include "scenetexture.h"
+#include "loadedimage.h"
 
 ProgableControl g_progCtrl;
 char            g_levelTitle[128];

@@ -12,7 +12,7 @@
 #include "sysdev.h"
 #include "sky.h"
 #include "logger.h"
-#include "scenetexture.h"
+#include "texture.h"
 #include <stdlib.h>
 
 #include <math.h>
@@ -64,7 +64,7 @@ float *SkyBackground::draw(RenderDevice *dev,
 
     const int nquads = fx_one_quad() ? 1 : SKY_QUADS;
     for (int i = 0; i < nquads; i++) {
-        const SceneTexture *tex = &Textures_[i];
+        const Texture *tex = &Textures_[i];
         dev->SetTexture(0, tex);
         bool ok = dev->Draw(Prim::TriangleStrip, SKY_FVF, QuadVerts_[i], 4,
                             DrawFlag::NoUpdateExtents);
@@ -124,17 +124,14 @@ unsigned int SkyBackground::buildFromFaceNames(RenderDevice *dev, const char *up
     skyFillGeometry();
 
     for (int f = 0; f < 6; f++)
-        Textures_[f].releaseD3DTexture();
+        Textures_[f].release();
 
     const char *names[6] = { up, dn, fr, bk, lf, rt };
-    unsigned int r = 0;
     for (int f = 0; f < 6; f++) {
-        r = Textures_[f].selectTextureLoader(dev, names[f], bpp, 0);
-        if ((r & 0xff) == 0)
-            return r;
+        if (!Textures_[f].loadByExtension(dev, names[f], bpp))
+            return 0;
     }
-    // Only the low byte is the result; the upper bytes are the last loader's.
-    return (r & 0xffffff00u) | 1u;
+    return 1;
 }
 
 /* ─── The lifecycle ─────────────────────────────────────────────────────────
