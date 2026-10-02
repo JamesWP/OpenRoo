@@ -27,7 +27,7 @@ add_executable(KarooOwn WIN32
     src/app/exemain.cpp)
 if(KAROO_HEAP_POISON)
     target_sources(KarooOwn PRIVATE src/app/heappoison.cpp)
-    target_link_options(KarooOwn PRIVATE -Wl,--wrap=malloc,--wrap=realloc)
+    target_link_options(KarooOwn PRIVATE -Wl,--wrap=malloc,--wrap=realloc,--wrap=free)
 endif()
 set_target_properties(KarooOwn PROPERTIES OUTPUT_NAME KarooOwn)
 target_include_directories(KarooOwn PRIVATE src/app)
