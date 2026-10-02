@@ -145,7 +145,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
         g_logger.logMessage(1, "GAME: level (Bonus=%d) loaded by name: %s.jjm",
                            self->map()->bonus(), path);
     } else {
-        g_logger.logMessage(4, "GAME: ** error ** could not load level by name: %s.jjm (maybe it not exists\077)", path);
+        g_logger.logMessage(4, "GAME: ** error ** could not load level by name: %s.jjm (maybe it does not exist\077)", path);
         windev::quit(1);
     // PRESERVED: carries on; does not return.
     }
@@ -239,7 +239,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
                            self->map()->bonus(),
                            levelNo & 0xff, path);
     } else {
-        g_logger.logMessage(4, "GAME: ** error ** could not load level by Number (%d) (maybe it not exists\077): %s.jjm",
+        g_logger.logMessage(4, "GAME: ** error ** could not load level by Number (%d) (maybe it does not exist\077): %s.jjm",
                            levelNo & 0xff, path);
         windev::quit(1);
     // PRESERVED: carries on, as in ParseLevelFiles.

@@ -134,11 +134,11 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
     line[0] = '\0';
 
     if (fp == NULL) {
-        g_logger.logMessage(3, "CDM: warning - track-file named as %s was not found", path);
+        g_logger.logMessage(3, "CDM: warning - track-file %s was not found", path);
         memset(names_, 0, sizeof(names_));
         return 0;
     }
-    g_logger.logMessage(2, "CDM: track-file named as %s was found", path);
+    g_logger.logMessage(2, "CDM: track-file %s was found", path);
     while (!feof(fp)) {
         fgets(line, 0x100, fp);
         if (!feof(fp))
@@ -169,7 +169,7 @@ int CdThemes::listTrackLengths()
     trackCount_ = g_cdAudio.getTrackCount();
     g_logger.logMessage(3, "CDM: number of tracks %d", trackCount_);
     for (unsigned t = 1; (unsigned)trackCount_ != 0; t++) {
-        g_logger.logMessage(3, "CDM: track %d lenght:%s", t, g_cdAudio.getTrackLength(t));
+        g_logger.logMessage(3, "CDM: track %d length:%s", t, g_cdAudio.getTrackLength(t));
         if (!(t < (unsigned)trackCount_))
             break;
     }
