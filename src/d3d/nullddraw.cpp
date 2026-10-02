@@ -19,8 +19,8 @@
  *
  * NOT from the DirectDraw documentation, and not from guesses.  The game
  * *reads* what the driver reports — the mode list is indexed by Karoo.cfg,
- * `PickTextureFormatForDepth` (scenetexture.cpp) chooses from EnumTextureFormats,
- * `st_texture_caps` branches on D3DDEVICEDESC.dcmColorModel, and the game's
+ * `pick_texture_format` (devicetexture.cpp) chooses from EnumTextureFormats,
+ * `RenderDevice::CreateTexture` branches on D3DDEVICEDESC.dcmColorModel, and the game's
  * own EnumDisplayModesCallback filters on the FindDevice render bit depth.
  * Answer any of those differently and the game legitimately behaves
  * differently, and a replay diverges for a reason that has nothing to do with
@@ -46,31 +46,27 @@
  *
  * ─── Surfaces are real memory ─────────────────────────────────────────────
  *
- * The one thing that cannot be stubbed to S_OK.  The texture loaders write
- * pixels: texturetga.cpp Locks a staging surface and parses the TGA into it,
- * texturedib.cpp gets a DC and BitBlts a DIB onto it, scenetexture.cpp's
- * solid-fill FX Locks and fills.  A surface that hands back no memory turns
- * those into null-pointer writes.
+ * The one thing that cannot be stubbed to S_OK.  The backend writes pixels:
+ * devicetexture.cpp Locks a staging surface, converts an Image into it and
+ * Blts it to the texture or the back buffer.  A surface that hands back no
+ * memory turns that into null-pointer writes.
  *
- * So every surface with an RGB pixel format is backed by a CreateDIBSection
- * allocation — which gives working Lock/Unlock (the bits) and working
- * GetDC/ReleaseDC (a memory DC with the section selected) from the same
- * storage, so a Lock after a BitBlt sees the blitted pixels.  Top-down, via a
- * negative biHeight, because DirectDraw surfaces are top-down and the game's
- * row arithmetic assumes it.  Z-buffers have no RGB format and nothing reads
- * them, so they get a plain heap allocation of the right size.
+ * So every surface is backed by a plain heap allocation of its pitch times its
+ * height, which gives working Lock/Unlock.  Top-down, as DirectDraw surfaces
+ * are.  There is no GetDC: nothing draws with GDI any more.
  *
- * Blt and BltFast really copy, for the same reason: TGA loading ends with a
- * Blt from the staging surface to the texture, and leaving that out would
- * make every texture's contents garbage.  Nothing samples them headless, but
- * "the pixels are right" is cheap here and keeps KAROO_TEXTURE_FX meaningful.
- * Stretching is NOT implemented — a Blt whose source and destination rects
- * differ in size logs once and copies nothing; the game does not do it.
+ * Blt and BltFast really copy, for the same reason: a texture's upload ends
+ * with a Blt from the staging surface to the texture, and leaving that out
+ * would make every texture's contents garbage.  Nothing samples them headless,
+ * but "the pixels are right" is cheap here and lets KAROO_TEXTURE_DUMP compare
+ * them.  Stretching is NOT implemented -- a Blt whose source and destination
+ * rects differ in size logs once and copies nothing; the game does not do it.
  *
+
  * ─── What is deliberately not implemented ─────────────────────────────────
  *
- *   - Clippers.  CreateClipper returns DDERR_UNSUPPORTED; the capture shows
- *     the game never calls it.
+ *   - Clippers and palettes.  CreateClipper and CreatePalette return
+ *     DDERR_UNSUPPORTED; the capture shows the game never calls either.
  *   - Overlays, page locking, private data, uniqueness values: DD_OK or
  *     DDERR_UNSUPPORTED, none are called.
  *   - IDirectDraw4::GetCaps.  The capture shows no call, so there is no
@@ -133,7 +129,7 @@ bool nulldd_enabled(void)
 
 /* D3DDEVICEDESC, 0xfc bytes.  Wine returned the same bytes for HAL and HEL.
  * dw[3] (dcmColorModel) is 0x9AFF1 — non-zero, which is what makes
- * st_texture_caps() ask for a video-memory texture rather than a
+ * CreateTexture ask for a video-memory texture rather than a
  * system-memory one, and dw[39] is the 0x700 render bit depth the game's
  * mode filter uses. */
 static const DWORD s_devdesc[63] = {
@@ -193,7 +189,7 @@ struct PixFmtRec { DWORD flags, fourcc, bits, r, g, b, a; };
  * also wins, up to a quarter of its own depth.  With this list and a 32-bit
  * request-with-alpha it climbs 16-555 -> 16-1555 -> 16-4444 -> 32-888 ->
  * 32-8888 and ends on the last, which is what karoo_hooks.log records.
- * See scenetexture.cpp for the full rule. */
+ * See devicetexture.cpp for the full rule. */
 static const PixFmtRec s_texfmt[] = {
     { 0x00000040, 0,          16, 0x00007C00, 0x000003E0, 0x0000001F, 0x00000000 },
     { 0x00000041, 0,          16, 0x00007C00, 0x000003E0, 0x0000001F, 0x00008000 },
@@ -294,12 +290,8 @@ struct NullSurface {
     LONG            ref;
     DDSURFACEDESC2  desc;        /* what GetSurfaceDesc/Lock report */
     void           *bits;
-    HBITMAP         dib;         /* non-NULL when the bits are a DIB section */
-    HDC             dc;          /* live only between GetDC and ReleaseDC */
-    HGDIOBJ         old_bm;
     NullSurface    *attached[MAX_ATTACHED];
     int             n_attached;
-    IDirectDrawPalette *palette;
     DDCOLORKEY      ckey;
     DWORD           ckey_flags;
     void           *tex2;        /* lazily created IDirect3DTexture2, if asked */
@@ -331,9 +323,8 @@ static DWORD pitch_for(DWORD w, DWORD bpp)
     return ((w * bpp + 31) / 32) * 4;
 }
 
-/* Back the surface with real memory.  A DIB section when the format is RGB or
- * palettised, so GetDC works off the same storage as Lock; a plain heap block
- * otherwise (z-buffers). */
+/* Back the surface with real memory: a zeroed heap block of its pitch times
+ * its height. */
 static bool surf_alloc_bits(NullSurface *s)
 {
     DWORD w   = s->desc.dwWidth;
@@ -347,73 +338,14 @@ static bool surf_alloc_bits(NullSurface *s)
     if (w == 0 || h == 0)
         return true;                            /* nothing to allocate */
 
-    bool rgb = (s->desc.ddpfPixelFormat.dwFlags & (0x40 | 0x20)) != 0
-               && (bpp == 8 || bpp == 16 || bpp == 32);
-
-    if (rgb) {
-        /* BITMAPINFO with room for the three BI_BITFIELDS masks (16bpp) or a
-         * 256-entry palette (8bpp), whichever is larger. */
-        struct { BITMAPINFOHEADER h; DWORD extra[256]; } bi;
-        memset(&bi, 0, sizeof(bi));
-        bi.h.biSize        = sizeof(BITMAPINFOHEADER);
-        bi.h.biWidth       = (LONG)w;
-        bi.h.biHeight      = -(LONG)h;          /* top-down, like DirectDraw */
-        bi.h.biPlanes      = 1;
-        bi.h.biBitCount    = (WORD)bpp;
-        bi.h.biCompression = BI_RGB;
-        UINT usage = DIB_RGB_COLORS;
-
-        if (bpp == 16) {
-            bi.h.biCompression = BI_BITFIELDS;
-            bi.extra[0] = s->desc.ddpfPixelFormat.dwRBitMask;
-            bi.extra[1] = s->desc.ddpfPixelFormat.dwGBitMask;
-            bi.extra[2] = s->desc.ddpfPixelFormat.dwBBitMask;
-        } else if (bpp == 8) {
-            /* A greyscale ramp is a placeholder: the game sets a real palette
-             * through SetPalette when it has one, and nothing here samples
-             * the DIB's own colour table. */
-            bi.h.biClrUsed = 256;
-            for (int i = 0; i < 256; i++)
-                bi.extra[i] = (DWORD)((i << 16) | (i << 8) | i);
-        }
-
-        HDC screen = CreateCompatibleDC(NULL);
-        void *pv = NULL;
-        s->dib = CreateDIBSection(screen, (BITMAPINFO *)&bi, usage, &pv, NULL, 0);
-        if (screen) DeleteDC(screen);
-        if (s->dib && pv) {
-            s->bits = pv;
-            memset(pv, 0, pitch * h);
-            return true;
-        }
-        /* CreateDIBSection is not expected to fail; fall through to the heap
-         * so the surface is still usable for Lock, and say so. */
-        ONCE(dibfail, "nullddraw: CreateDIBSection failed (%lux%lu %lubpp) — "
-                      "falling back to heap bits, GetDC will not work\n",
-             (unsigned long)w, (unsigned long)h, (unsigned long)bpp);
-        s->dib = NULL;
-    }
-
     s->bits = new (std::nothrow) unsigned char[pitch * h]();
     return s->bits != NULL;
 }
 
 static void surf_free_bits(NullSurface *s)
 {
-    if (s->dc) {
-        if (s->old_bm) SelectObject(s->dc, s->old_bm);
-        DeleteDC(s->dc);
-        s->dc = NULL;
-        s->old_bm = NULL;
-    }
-    if (s->dib) {
-        DeleteObject(s->dib);
-        s->dib  = NULL;
-        s->bits = NULL;
-    } else if (s->bits) {
-        delete[] (unsigned char *)s->bits;
-        s->bits = NULL;
-    }
+    delete[] (unsigned char *)s->bits;
+    s->bits = NULL;
 }
 
 /* ─── IDirect3DTexture2 ────────────────────────────────────────────────────
@@ -486,48 +418,6 @@ static NullTexture2 *tex_for_surface(NullSurface *surf)
     return NULL;
 }
 
-/* ─── IDirectDrawPalette ───────────────────────────────────────────────────
- * Created for <= 8bpp textures by the game's CreatePaletteFromDIB.  The
- * entries are stored so GetEntries round-trips; nothing samples them. */
-struct NullPalette {
-    void        **vtable;
-    LONG          ref;
-    PALETTEENTRY  entries[256];
-    int           in_use;
-};
-
-#define PAL_POOL_SIZE 64
-static NullPalette s_pal_pool[PAL_POOL_SIZE];
-static void       *s_pal_vtable[7];
-
-static HRESULT WINAPI NOINLINE np_QueryInterface(NullPalette *s, REFIID r, void **p)
-    { (void)r; if (!p) return E_POINTER; *p = s; InterlockedIncrement(&s->ref); return S_OK; }
-static ULONG WINAPI NOINLINE np_AddRef(NullPalette *s)
-    { return (ULONG)InterlockedIncrement(&s->ref); }
-static ULONG WINAPI NOINLINE np_Release(NullPalette *s)
-{
-    LONG rc = InterlockedDecrement(&s->ref);
-    if (rc <= 0) { s->in_use = 0; return 0; }
-    return (ULONG)rc;
-}
-static HRESULT WINAPI NOINLINE np_GetCaps(NullPalette *s, DWORD *caps)
-    { (void)s; if (caps) *caps = DDPCAPS_8BIT | DDPCAPS_ALLOW256; return S_OK; }
-static HRESULT WINAPI NOINLINE np_GetEntries(NullPalette *s, DWORD flags, DWORD start, DWORD count, PALETTEENTRY *pe)
-{
-    (void)flags;
-    if (!pe || start + count > 256) return DDERR_INVALIDPARAMS;
-    memcpy(pe, s->entries + start, count * sizeof(PALETTEENTRY));
-    return S_OK;
-}
-static HRESULT WINAPI NOINLINE np_Initialize(NullPalette *s, void *dd, DWORD flags, PALETTEENTRY *pe)
-    { (void)s; (void)dd; (void)flags; (void)pe; return DDERR_ALREADYINITIALIZED; }
-static HRESULT WINAPI NOINLINE np_SetEntries(NullPalette *s, DWORD flags, DWORD start, DWORD count, PALETTEENTRY *pe)
-{
-    (void)flags;
-    if (!pe || start + count > 256) return DDERR_INVALIDPARAMS;
-    memcpy(s->entries + start, pe, count * sizeof(PALETTEENTRY));
-    return S_OK;
-}
 
 /* ─── IDirectDrawSurface4 (45 slots) ───────────────────────────────────── */
 
@@ -711,22 +601,10 @@ static HRESULT WINAPI NOINLINE ns_GetColorKey(NullSurface *s, DWORD flags, DDCOL
 }
 static HRESULT WINAPI NOINLINE ns_GetDC(NullSurface *s, HDC *phdc)
 {
+    (void)s;
     if (!phdc) return E_POINTER;
     *phdc = NULL;
-    if (!s->dib) {
-        ONCE(nodc, "nullddraw: GetDC on a surface with no DIB backing "
-                   "(%lux%lu %lubpp caps=%08lX)\n",
-             (unsigned long)s->desc.dwWidth, (unsigned long)s->desc.dwHeight,
-             (unsigned long)s->desc.ddpfPixelFormat.dwRGBBitCount,
-             (unsigned long)s->desc.ddsCaps.dwCaps);
-        return DDERR_CANTCREATEDC;
-    }
-    if (s->dc) return DDERR_DCALREADYCREATED;
-    s->dc = CreateCompatibleDC(NULL);
-    if (!s->dc) return DDERR_CANTCREATEDC;
-    s->old_bm = SelectObject(s->dc, s->dib);
-    *phdc = s->dc;
-    return S_OK;
+    return DDERR_CANTCREATEDC;
 }
 static HRESULT WINAPI NOINLINE ns_GetFlipStatus(NullSurface *s, DWORD f)
     { (void)s; (void)f; return S_OK; }
@@ -734,11 +612,10 @@ static HRESULT WINAPI NOINLINE ns_GetOverlayPosition(NullSurface *s, LONG *x, LO
     { (void)s; (void)x; (void)y; return DDERR_UNSUPPORTED; }
 static HRESULT WINAPI NOINLINE ns_GetPalette(NullSurface *s, void **pp)
 {
+    (void)s;
     if (!pp) return E_POINTER;
-    *pp = s->palette;
-    if (!s->palette) return DDERR_NOPALETTEATTACHED;
-    ((NullPalette *)s->palette)->ref++;
-    return S_OK;
+    *pp = NULL;
+    return DDERR_NOPALETTEATTACHED;
 }
 static HRESULT WINAPI NOINLINE ns_GetPixelFormat(NullSurface *s, DDPIXELFORMAT *pf)
     { if (!pf) return DDERR_INVALIDPARAMS; *pf = s->desc.ddpfPixelFormat; return S_OK; }
@@ -777,14 +654,7 @@ static HRESULT WINAPI NOINLINE ns_Lock(NullSurface *s, RECT *r, DDSURFACEDESC2 *
     return p ? S_OK : DDERR_GENERIC;
 }
 static HRESULT WINAPI NOINLINE ns_ReleaseDC(NullSurface *s, HDC hdc)
-{
-    if (!s->dc || hdc != s->dc) return DDERR_INVALIDPARAMS;
-    if (s->old_bm) SelectObject(s->dc, s->old_bm);
-    DeleteDC(s->dc);
-    s->dc = NULL;
-    s->old_bm = NULL;
-    return S_OK;
-}
+    { (void)s; (void)hdc; return DDERR_INVALIDPARAMS; }
 static HRESULT WINAPI NOINLINE ns_Restore(NullSurface *s)
     { (void)s; return S_OK; }
 static HRESULT WINAPI NOINLINE ns_SetClipper(NullSurface *s, void *cl)
@@ -798,7 +668,7 @@ static HRESULT WINAPI NOINLINE ns_SetColorKey(NullSurface *s, DWORD flags, DDCOL
 static HRESULT WINAPI NOINLINE ns_SetOverlayPosition(NullSurface *s, LONG x, LONG y)
     { (void)s; (void)x; (void)y; return DDERR_UNSUPPORTED; }
 static HRESULT WINAPI NOINLINE ns_SetPalette(NullSurface *s, void *pal)
-    { s->palette = (IDirectDrawPalette *)pal; return S_OK; }
+    { (void)s; (void)pal; return DDERR_UNSUPPORTED; }
 static HRESULT WINAPI NOINLINE ns_Unlock(NullSurface *s, RECT *r)
     { (void)s; (void)r; return S_OK; }
 static HRESULT WINAPI NOINLINE ns_UpdateOverlay(NullSurface *s, RECT *sr, NullSurface *d, RECT *dr, DWORD f, void *fx)
@@ -1144,7 +1014,7 @@ static HRESULT WINAPI NOINLINE n4_CreateSurface(NullObj *s, DDSURFACEDESC2 *d,
     /* Report the caps DirectDraw reports, not merely the ones asked for: a
      * texture requested as DDSCAPS_TEXTURE comes back TEXTURE|VIDEOMEMORY|
      * LOCALVIDMEM (0x10005000 in the capture) unless system memory was asked
-     * for explicitly.  st_texture_caps and the game's own checks read these. */
+     * for explicitly.  CreateTexture and the game's own checks read these. */
     if (!(surf->desc.ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY))
         surf->desc.ddsCaps.dwCaps |= DDSCAPS_VIDEOMEMORY | DDSCAPS_LOCALVIDMEM;
 
@@ -1164,7 +1034,7 @@ static HRESULT WINAPI NOINLINE n4_CreateSurface(NullObj *s, DDSURFACEDESC2 *d,
         back->desc.ddsCaps.dwCaps =
             (surf->desc.ddsCaps.dwCaps & ~(DWORD)DDSCAPS_PRIMARYSURFACE)
             | DDSCAPS_BACKBUFFER;
-        back->dib = NULL; back->bits = NULL;
+        back->bits = NULL;
         if (!surf_alloc_bits(back)) { ns_Release(back); ns_Release(surf); return DDERR_OUTOFVIDEOMEMORY; }
         surf->attached[surf->n_attached++] = back;   /* the primary's own ref */
         surf->desc.dwBackBufferCount = d->dwBackBufferCount;
@@ -1178,23 +1048,9 @@ static HRESULT WINAPI NOINLINE n4_CreateSurface(NullObj *s, DDSURFACEDESC2 *d,
 static HRESULT WINAPI NOINLINE n4_CreatePalette(NullObj *s, DWORD flags,
         PALETTEENTRY *pe, void **pp, IUnknown *outer)
 {
-    (void)s; (void)flags; (void)outer;
-    if (!pp) return E_POINTER;
-    *pp = NULL;
-    for (int i = 0; i < PAL_POOL_SIZE; i++) {
-        if (!s_pal_pool[i].in_use) {
-            NullPalette *p = &s_pal_pool[i];
-            memset(p, 0, sizeof(*p));
-            p->vtable = s_pal_vtable;
-            p->ref    = 1;
-            p->in_use = 1;
-            if (pe) memcpy(p->entries, pe, sizeof(p->entries));
-            *pp = p;
-            return S_OK;
-        }
-    }
-    g_logger.write("nullddraw: palette pool EXHAUSTED\n");
-    return DDERR_OUTOFMEMORY;
+    (void)s; (void)flags; (void)pe; (void)outer;
+    if (pp) *pp = NULL;
+    return DDERR_UNSUPPORTED;
 }
 
 static HRESULT WINAPI NOINLINE n4_EnumDisplayModes(NullObj *s, DWORD flags,
@@ -1355,12 +1211,6 @@ static void nulldd_build_vtables(void)
     v[0] = (void*)nt_QueryInterface; v[1] = (void*)nt_AddRef;
     v[2] = (void*)nt_Release;        v[3] = (void*)nt_GetHandle;
     v[4] = (void*)nt_PaletteChanged; v[5] = (void*)nt_Load;
-
-    v = s_pal_vtable;
-    v[0] = (void*)np_QueryInterface; v[1] = (void*)np_AddRef;
-    v[2] = (void*)np_Release;        v[3] = (void*)np_GetCaps;
-    v[4] = (void*)np_GetEntries;     v[5] = (void*)np_Initialize;
-    v[6] = (void*)np_SetEntries;
 
     /* IDirect3DDevice3, 42 slots.  Everything not named here is a draw or a
      * state setter and returns D3D_OK. */
