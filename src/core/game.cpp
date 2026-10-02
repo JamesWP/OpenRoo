@@ -42,6 +42,8 @@ Game::Game(const char *gameName)
     field_0c_   = 0;
     tickCount_  = 0;
     field_04_   = 1.0;
+    // The tally is read by the state dump before any level has been scored.
+    memset(&tally_, 0, sizeof(tally_));
     switchCells_.clearCounts();
     // PRESERVED: only the first 256 of each 500-slot table.
     memset(bombSlots_, 0, 0x100 * sizeof(bombSlots_[0]));
