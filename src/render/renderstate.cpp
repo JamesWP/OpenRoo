@@ -12,7 +12,7 @@
 #include "windev.h"
 #include "renderdevice.h"
 #include "texturedib.h"
-#include "scenetexture.h"
+#include "texture.h"
 #include "model.h"
 #include "faktmesh.h"
 #include "menuscreens.h"
@@ -113,9 +113,9 @@ Render_ConfigureRenderState(void)
 
     char path[0x100];
     sprintf(path, "%s\\textures\\shadow.tga", g_gameDir);
-    g_texShadow.importSceneTextures(d3d, path, 1, 0, 0);
+    g_texShadow.load(d3d, path, 1, 0);
     sprintf(path, "%s\\textures\\karoo128.tga", g_gameDir);
-    g_texKaroo128.importSceneTextures(d3d, path, 1, 0, 0);
+    g_texKaroo128.load(d3d, path, 1, 0);
 
     Material mat = {
         { 0.9f, 1.0f, 0.9f, 1.0f },  // diffuse

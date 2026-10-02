@@ -1,6 +1,6 @@
 /* TextRenderer -- the bitmap-font glyph service: the object RenderGameFrame
  * hands to every overlay as its text `this`.  It is a font atlas, not a
- * general text engine: a SceneTexture whose image is a `cols` x `rows` grid
+ * general text engine: a Texture whose image is a `cols` x `rows` grid
  * of fixed-size glyph cells, loaded from a .fon.
  *
  * The draw calls share ten arguments:
@@ -18,13 +18,13 @@
 #pragma once
 
 #include <stdint.h>
-#include "scenetexture.h"    /* SceneTexture -- the atlas */
+#include "texture.h"    /* Texture -- the atlas */
 
 class RenderDevice;
 
 class TextRenderer {
 public:
-    SceneTexture* atlas() { return &atlas_; }
+    Texture* atlas() { return &atlas_; }
 
     /* Left-aligned: (x, y) is the first cell's
      * top-left corner. */
@@ -79,7 +79,7 @@ public:
     void drawPanel(float x, float y, float cellW, float cellH, float spacing,
                    float lineH, const char *str, RenderDevice *d3d,
                    uint32_t colourTop, uint32_t colourBottom,
-                   SceneTexture *panelTex, SceneTexture *frameTex);
+                   Texture *panelTex, Texture *frameTex);
 
     /* An empty atlas; the destructor releases it. */
     TextRenderer();
@@ -90,7 +90,7 @@ public:
 private:
     unsigned int  cols_;    /* atlas columns; also the cell divisor */
     unsigned int  rows_;    /* atlas rows */
-    SceneTexture  atlas_;
+    Texture  atlas_;
 };
 
 /* The two fonts: fonts\font1.fon and fonts\numbers.fon. */

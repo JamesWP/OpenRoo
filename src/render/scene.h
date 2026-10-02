@@ -8,7 +8,7 @@
 #include "linkedlist.h"
 #include "splinepath.h"
 #include "model.h"
-#include "scenetexture.h"
+#include "texture.h"
 #include "ani.h"
 
 class RenderDevice;
@@ -24,7 +24,7 @@ struct SceneObject {
     AnimTable      anim;             /* loaded from the .ani (ani.h) */
     float          pos[3];
     float          rot[3];
-    SceneTexture  *texture;
+    Texture  *texture;
     uint32_t          srcBlend;
     uint32_t          destBlend;
     uint32_t          textureAddress;

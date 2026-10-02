@@ -6,7 +6,7 @@
  * return below names the call its upper bytes come from. */
 
 #include <string.h>
-#include "scenetexture.h"
+#include "loadedimage.h"
 #include "d3dnative.h"
 #include "ddrawdiag.h"
 #include "logger.h"

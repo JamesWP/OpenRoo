@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <stddef.h>
  
-#include "scenetexture.h"
+#include "texture.h"
 #include "wrapperobject.h"
 #include "ani.h"
 #include "faktmesh.h"
@@ -246,7 +246,7 @@ public:
     ThemeObjectTypeSlot *slot(int type)       { return &slots_[type]; }
     const ThemeObjectTypeSlot *slot(int type) const { return &slots_[type]; }
     uint32_t unknown100() const { return dwUnknown100_; }
-    SceneTexture        *image(int slot) const { return images_[slot]; }
+    Texture        *image(int slot) const { return images_[slot]; }
     const ThemeTextColorPair &textColor(int which) const { return textColors_[which]; }
     uint8_t           fogEnabled() const { return bFogEnabled_; }
     SkyBackground &sky()              { return sky_; }
@@ -261,7 +261,7 @@ private:
     ThemeObjectTypeSlot  slots_[THEME_OBJ_COUNT];
 
     // Written only inside `environment { }`.
-    SceneTexture        *images_[THEME_IMG_COUNT];
+    Texture        *images_[THEME_IMG_COUNT];
     ThemeTextColorPair   textColors_[THEME_COLOR_COUNT];
     uint8_t                 bFogEnabled_;
     SkyBackground        sky_;  // built from the face names; drawn by sky.cpp

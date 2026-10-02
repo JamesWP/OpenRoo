@@ -18,22 +18,22 @@
 #include "scoreoverlay.h"
 #include "d3dmath.h"
 #include "progctrl.h"
-#include "scenetexture.h"
+#include "texture.h"
 #include "theme.h"
 #include <stdio.h>
 #include "gameglobals.h"
 #include <math.h>
 
 /* The menu's textures and quads. */
-SceneTexture g_menuTexOff;
-SceneTexture g_menuTex3;
-SceneTexture g_menuTex2;
-SceneTexture g_menuTexOn;
-SceneTexture g_menuTexScale;
-SceneTexture g_menuTexSelector;
-SceneTexture g_menuTexKnob;
-SceneTexture g_menuTex1;
-SceneTexture g_menuTex4;
+Texture g_menuTexOff;
+Texture g_menuTex3;
+Texture g_menuTex2;
+Texture g_menuTexOn;
+Texture g_menuTexScale;
+Texture g_menuTexSelector;
+Texture g_menuTexKnob;
+Texture g_menuTex1;
+Texture g_menuTex4;
 
 #define K640          (1.0f / 640.0f)
 #define MENU_FVF      VertexFormat::Screen  // XYZRHW | DIFFUSE | SPECULAR | TEX1
@@ -71,7 +71,7 @@ static ScreenVertex tlv(float x, float y, float u, float v)
 void Menu_DrawBackdrop(RenderDevice *d3d, ThemeAssetBlock *theme)
 {
     set_blend(d3d);
-    SceneTexture *tex = theme->image(THEME_IMG_MENU);
+    Texture *tex = theme->image(THEME_IMG_MENU);
     d3d->SetTexture(0, tex);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF,
                                 g_backdropQuad, 4, 0);
@@ -141,7 +141,7 @@ static const float k_rowY[6] = {
     0.28125f, 0.33125001f, 0.38124999f, 0.43125001f, 0.48124999f, 0.53125f,
 };
 
-static void draw_panel(RenderDevice *d3d, ThemeAssetBlock *theme, const SceneTexture *tex,
+static void draw_panel(RenderDevice *d3d, ThemeAssetBlock *theme, const Texture *tex,
                        void *quad)
 {
     Menu_DrawBackdrop(d3d, theme);
@@ -296,7 +296,7 @@ static Affine knob3(float tx, float ty, unsigned char value)
     return place(tx, ty);
 }
 
-static void draw_widget(RenderDevice *d3d, const Affine &m, const SceneTexture *tex,
+static void draw_widget(RenderDevice *d3d, const Affine &m, const Texture *tex,
                         uint32_t colour = 0xffffffff)
 {
     // A row vector times [[c,-s,0,0],[s,c,0,0],[0,0,1,0],[tx,ty,0,1]]: w stays
@@ -442,7 +442,7 @@ void Menu_RenderControlsRemap(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
         tlv(0.0f, 0.0f, 0.4f, 0.4f), tlv(0.0f, fh, 0.4f, 0.6f),
     };
     set_blend(d3d);
-    SceneTexture *tex = theme->image(THEME_IMG_MENU);
+    Texture *tex = theme->image(THEME_IMG_MENU);
     d3d->SetTexture(0, tex);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, back, 4, 0);
 
@@ -496,7 +496,7 @@ void Menu_RenderControlsRemap(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
  * Strip order in each quad: (x0,y0) (x0,y1) (x1,y0) (x1,y1), u 1 1 0 0.
  * Textures are "<prefix>\textures\<file>".  PRESERVED: the path is formatted
  * unbounded into 260 bytes. */
-struct MenuTextureLoad { SceneTexture *obj; const char *file; };
+struct MenuTextureLoad { Texture *obj; const char *file; };
 static const MenuTextureLoad k_menuTextures[9] = {
     { &g_menuTex1, "menu_1.tga" },
     { &g_menuTex2, "menu_2.tga" },
@@ -540,7 +540,7 @@ Menu_BuildMenuGeometry(RenderDevice *d3d, const char *prefix)
     char path[260];
     for (const MenuTextureLoad &t : k_menuTextures) {
         sprintf(path, "%s\\textures\\%s", prefix, t.file);
-        t.obj->importSceneTextures(d3d, path, 1, 0, 0);
+        t.obj->load(d3d, path, 1, 0);
     }
 }
 

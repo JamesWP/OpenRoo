@@ -7,7 +7,7 @@
  * src/d3d/d3dnative.h): the display mode, the primary/back/z-buffer
  * surfaces, the device, the viewport, the material and the light.  Game code
  * speaks rendertypes.h's vocabulary to it, and hands it textures as
- * SceneTextures (texture.h), whose insides only src/d3d/ looks at. */
+ * DeviceTextures, made from Images (image.h) and opaque outside src/d3d/. */
 
 #pragma once
 #include <stdint.h>
@@ -15,7 +15,7 @@
 #include "rendertypes.h"
 
 class LoadedImage;
-struct SceneTexture;
+class Texture;
 struct Image;
 
 /* A texture on the device: opaque to everything outside src/d3d/.  Made by
@@ -141,9 +141,9 @@ public:
     void GetTransform(Transform which, Mat4 *m);
 
     /* NULL unbinds the stage. */
-    void SetTexture(int stage, const SceneTexture *tex);
     void SetTexture(int stage, const DeviceTexture *tex);
-    void SetTexture(int stage, decltype(nullptr)) { SetTexture(stage, (const SceneTexture *)nullptr); }
+    void SetTexture(int stage, const Texture *tex);
+    void SetTexture(int stage, decltype(nullptr)) { SetTexture(stage, (const DeviceTexture *)nullptr); }
 
     /* The ambient light colour, 0x00RRGGBB. */
     void SetAmbientLight(uint32_t rgb);

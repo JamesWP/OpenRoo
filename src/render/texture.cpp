@@ -1,0 +1,161 @@
+/* Texture and TextureManager (texture.h). */
+
+#include "texture.h"
+#include <new>
+#include <stdlib.h>
+#include <string.h>
+#include "renderdevice.h"
+#include "logger.h"
+
+Texture g_texKaroo128;
+Texture g_texShadow;
+TextureManager g_textureManager;
+
+Texture::Texture()
+    : handle_(NULL), name_(NULL), image_(NULL)
+{
+}
+
+Texture::~Texture()
+{
+    free(name_);
+    delete image_;
+}
+
+void Texture::release()
+{
+    RenderDevice::DestroyTexture(handle_);
+    handle_ = NULL;
+    free(name_);
+    name_ = NULL;
+    delete image_;
+    image_ = NULL;
+}
+
+bool Texture::adopt(RenderDevice *dev, Image *img, uint32_t flags, unsigned depth)
+{
+    DeviceTexture *t = dev->CreateTexture(*img, flags, depth);
+    char *copy = t ? strdup(img->name) : NULL;
+    if (t == NULL || copy == NULL) {
+        RenderDevice::DestroyTexture(t);
+        delete img;
+        return false;
+    }
+    release();
+    handle_ = t;
+    name_   = copy;
+    image_  = img;
+    return true;
+}
+
+bool Texture::load(RenderDevice *dev, const char *path, uint32_t alphaFlag,
+                   unsigned depth)
+{
+    Image *img = new (std::nothrow) Image();
+    if (img == NULL)
+        return false;
+    if (!Image_LoadTGA(path, *img)) {
+        delete img;
+        return false;
+    }
+    return adopt(dev, img, (alphaFlag & 0xff) ? (uint32_t)TextureFlag::Alpha : 0u, depth);
+}
+
+bool Texture::loadByExtension(RenderDevice *dev, const char *path, unsigned depth)
+{
+    Image *img = new (std::nothrow) Image();
+    if (img == NULL)
+        return false;
+    if (!Image_Load(path, *img)) {
+        delete img;
+        return false;
+    }
+    return adopt(dev, img, 0, depth);
+}
+
+bool Texture::reupload(RenderDevice *dev)
+{
+    if (handle_ == NULL || image_ == NULL)
+        return false;
+    return dev->UpdateTexture(handle_, *image_);
+}
+
+void RenderDevice::SetTexture(int stage, const Texture *tex)
+{
+    SetTexture(stage, tex ? tex->handle() : (const DeviceTexture *)NULL);
+}
+
+/* ─── TextureManager ───────────────────────────────────────────────────────
+ *
+ * GetOrLoad compares names by lowercasing both strings in place and then
+ * strcmp'ing, so the caller's buffer and every cached name stay lowercased --
+ * which is why "TM: %s loaded" logs the lowercased name.
+ *
+ * Only alphaFlag's low byte is meaningful. */
+static void tm_lower_inplace(char *s)
+{
+    // 'A'..'Z' only.
+    for (; *s; s++)
+        if (*s > '@' && *s < '[')
+            *s += ' ';
+}
+
+Texture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
+                                   uint32_t alphaFlag, unsigned depth)
+{
+    for (LinkedListNode *node = cache_.head(); node != NULL; ) {
+        Texture *cached = (Texture *)node->value();
+        node = node->next();
+        tm_lower_inplace(filename);
+        tm_lower_inplace(cached->name());
+        if (strcmp(cached->name(), filename) == 0) {
+            g_logger.logMessage(1, "TM: %s found", filename);
+            return cached;
+        }
+    }
+
+    Texture *tex = new (std::nothrow) Texture();
+    if (tex == NULL || !tex->load(dev, filename, alphaFlag, depth)) {
+        delete tex;
+        g_logger.logMessage(3, "TM: *ERROR* failed loading %s", filename);
+        return NULL;
+    }
+    g_logger.logMessage(1, "TM: %s loaded", filename);
+    cache_.append(tex);
+    return tex;
+}
+
+void TextureManager::releaseAll()
+{
+    for (LinkedListNode *node = cache_.head(); node != NULL; ) {
+        Texture *tex = (Texture *)node->value();
+        node = node->next();
+        if (tex != NULL) {
+            tex->release();
+            delete tex;
+        }
+    }
+    cache_.clear();
+}
+
+/* Every instance is static (texture.h), so nothing deletes one and the scalar
+ * dtor's free is never reached. */
+TextureManager::TextureManager()
+{
+}
+
+TextureManager::~TextureManager()
+{
+}
+
+/* Reupload every non-NULL cached texture, head to tail, reading the next
+ * pointer before the upload. */
+void TextureManager::reuploadAll(RenderDevice *dev)
+{
+    for (LinkedListNode *n = cache_.head(); n != NULL; ) {
+        Texture *tex = (Texture *)n->value();
+        n = n->next();
+        if (tex != NULL)
+            tex->reupload(dev);
+    }
+}

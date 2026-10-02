@@ -18,7 +18,7 @@
 #include "sysdev.h"
 #include "scoreoverlay.h"
 #include "renderdevice.h"
-#include "scenetexture.h"
+#include "texture.h"
 #include "logger.h"
 #include "game.h"
 #include "textrenderer.h"
@@ -98,7 +98,7 @@ static void setup_overlay_state(RenderDevice *d3d, ThemeAssetBlock *theme)
     d3d->SetRenderState(RS::SrcBlend,  Blend::SrcAlpha);
     d3d->SetRenderState(RS::DestBlend, Blend::InvSrcAlpha);
 
-    SceneTexture *tex = theme->image(THEME_IMG_MENU);
+    Texture *tex = theme->image(THEME_IMG_MENU);
     d3d->SetTexture(0, tex);
 }
 

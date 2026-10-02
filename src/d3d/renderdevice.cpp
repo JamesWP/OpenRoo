@@ -7,7 +7,7 @@
 #include "d3dnative.h"
 #include "sysdev.h"
 #include <stdio.h>
-#include "scenetexture.h"
+#include "loadedimage.h"
 #include "image.h"
 #include "logger.h"
 #include <math.h>
@@ -242,11 +242,6 @@ void RenderDevice::SetTransform(Transform which, const Mat4 *m)
 void RenderDevice::GetTransform(Transform which, Mat4 *m)
 {
     native_->device->GetTransform(d3d_transform(which), (D3DMATRIX *)m);
-}
-
-void RenderDevice::SetTexture(int stage, const SceneTexture *tex)
-{
-    native_->device->SetTexture(stage, tex ? tex->texture2() : NULL);
 }
 
 void RenderDevice::SetAmbientLight(uint32_t rgb)

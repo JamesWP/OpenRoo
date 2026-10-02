@@ -438,7 +438,7 @@ static void draw_bursts(ThemeLevelObject *rec, uint32_t src, uint32_t dst, Burst
                         bool spin, double now, double elapsed)
 {
     RenderDevice *dev = g_renderDevice;
-    SceneTexture *tex = rec->subObjects()[0].pTexture;
+    Texture *tex = rec->subObjects()[0].pTexture;
     if (tex != NULL)
         dev->SetTexture(0, tex);
     set_rs(RS::SrcBlend, src);
@@ -654,7 +654,7 @@ static void blend_on(void)
     set_rs(RS::DestBlend,        Blend::InvSrcAlpha);
 }
 
-static const SceneTexture *image(ThemeImageSlot s)
+static const Texture *image(ThemeImageSlot s)
 {
     return g_themeBlock.image(s);
 }

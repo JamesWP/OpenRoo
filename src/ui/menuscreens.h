@@ -7,20 +7,20 @@
  * the theme file's colours and backdrop texture, read at fixed offsets.  The
  * level-select pages are ours (levelselect.h). */
 
-#include "scenetexture.h"
+#include "texture.h"
 #include "renderdevice.h"
 
 /* The menu's nine textures and the panel quad the score overlay shares. */
-extern SceneTexture g_menuTex4;
-extern SceneTexture g_menuTex1;
-extern SceneTexture g_menuTexKnob;
-extern SceneTexture g_menuTexSelector;
+extern Texture g_menuTex4;
+extern Texture g_menuTex1;
+extern Texture g_menuTexKnob;
+extern Texture g_menuTexSelector;
 extern ScreenVertex g_panelQuad[4];
-extern SceneTexture g_menuTexScale;
-extern SceneTexture g_menuTexOn;
-extern SceneTexture g_menuTex2;
-extern SceneTexture g_menuTex3;
-extern SceneTexture g_menuTexOff;
+extern Texture g_menuTexScale;
+extern Texture g_menuTexOn;
+extern Texture g_menuTex2;
+extern Texture g_menuTex3;
+extern Texture g_menuTexOff;
 
 class Game;
 class RenderDevice;

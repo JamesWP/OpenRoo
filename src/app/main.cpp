@@ -35,7 +35,7 @@
 #include "windev.h"
 #include "nullddraw.h"
 #include "progctrl.h"
-#include "scenetexture.h"
+#include "texture.h"
 #include "scene.h"
 #include "textrenderer.h"
 #include "menuscreens.h"
@@ -72,7 +72,7 @@ static void idle()
  * empty ones), both texture managers, then the logo and the menu's nine
  * textures. */
 static const int IMAGE_PTR_ORDER[10] = { 2, 5, 0, 6, 1, 4, 7, 3, 8, 9 };
-static SceneTexture *const TAIL_TEXTURES[10] = {
+static Texture *const TAIL_TEXTURES[10] = {
     &g_texKaroo128, &g_menuTex1, &g_menuTex2, &g_menuTex3, &g_menuTex4,
     &g_menuTexSelector, &g_menuTexOn, &g_menuTexOff, &g_menuTexKnob, &g_menuTexScale,
 };
@@ -80,19 +80,20 @@ static SceneTexture *const TAIL_TEXTURES[10] = {
 
 static void restore_surfaces()
 {
-    g_fontMain.atlas()->load();
-    g_fontNumbers.atlas()->load();
+    RenderDevice *dev = g_renderDevice;
+    g_fontMain.atlas()->reupload(dev);
+    g_fontNumbers.atlas()->reupload(dev);
     for (int i = 0; i < 6; i++)
-        g_themeBlock.sky().textures()[i].load();
+        g_themeBlock.sky().textures()[i].reupload(dev);
     for (int i = 0; i < 10; i++) {
-        SceneTexture *img = g_themeBlock.image(IMAGE_PTR_ORDER[i]);
+        Texture *img = g_themeBlock.image(IMAGE_PTR_ORDER[i]);
         if (img)
-            img->load();
+            img->reupload(dev);
     }
-    g_textureManager.loadAll();
-    g_scene.textures()->loadAll();
+    g_textureManager.reuploadAll(dev);
+    g_scene.textures()->reuploadAll(dev);
     for (int i = 0; i < 10; i++)
-        TAIL_TEXTURES[i]->load();
+        TAIL_TEXTURES[i]->reupload(dev);
 }
 
 /* KAROO_WNDPROC_FX=noquit is a negative control: closing the window does not
