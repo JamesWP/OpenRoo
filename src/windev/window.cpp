@@ -100,19 +100,23 @@ void Window::show(bool visible)
         UpdateWindow((HWND)handle_);
 }
 
+/* Every pending message is handled before each idle() call.  WM_QUIT is only
+ * delivered once the queue is otherwise empty, so handling one message per
+ * frame meant a quit could run any number of extra frames behind whatever else
+ * was queued.  Stopping the music posts such a message (MM_MCINOTIFY), which
+ * made the frame count of a run depend on whether music was on. */
 int runMessageLoop(void (*idle)())
 {
     MSG msg;
     for (;;) {
-        if (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
+        while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT)
-                break;
+                return (int)msg.wParam;
             TranslateMessage(&msg);
             DispatchMessageA(&msg);
         }
         idle();
     }
-    return (int)msg.wParam;
 }
 
 void quit(int exitCode)
