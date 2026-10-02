@@ -19,8 +19,16 @@ foreach(group app audio audiodev core d3d entities input inputdev level render t
     add_subdirectory(src/${group})
 endforeach()
 
+# Fill fresh heap blocks with a chosen byte at run time, to expose reads of
+# uninitialised memory; see src/app/heappoison.cpp and tools/find_uninit.py.
+option(KAROO_HEAP_POISON "Wrap malloc/realloc so fresh blocks can be poisoned" OFF)
+
 add_executable(KarooOwn WIN32
     src/app/exemain.cpp)
+if(KAROO_HEAP_POISON)
+    target_sources(KarooOwn PRIVATE src/app/heappoison.cpp)
+    target_link_options(KarooOwn PRIVATE -Wl,--wrap=malloc,--wrap=realloc)
+endif()
 set_target_properties(KarooOwn PROPERTIES OUTPUT_NAME KarooOwn)
 target_include_directories(KarooOwn PRIVATE src/app)
 target_link_libraries(KarooOwn PRIVATE
