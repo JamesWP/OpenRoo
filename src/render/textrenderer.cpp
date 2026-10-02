@@ -18,6 +18,7 @@
  * of it, and then call drawLeft. */
 
 #include "textrenderer.h"
+#include "sysdev.h"
 #include "renderdevice.h"
 #include "logger.h"
 #include "scenetexture.h"
@@ -61,7 +62,7 @@ static TextFx text_fx(void)
     if (cached >= 0)
         return (TextFx)cached;
     char buf[32];
-    DWORD n = GetEnvironmentVariableA("KAROO_TEXT_FX", buf, sizeof(buf));
+    DWORD n = sysdev::getEnv("KAROO_TEXT_FX", buf, sizeof(buf));
     TextFx fx = TEXT_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "mirror") == 0)   fx = TEXT_FX_MIRROR;
@@ -84,7 +85,7 @@ static bool text_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_TEXT_DIAG", buf, sizeof(buf));
+        DWORD n = sysdev::getEnv("KAROO_TEXT_DIAG", buf, sizeof(buf));
         cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;

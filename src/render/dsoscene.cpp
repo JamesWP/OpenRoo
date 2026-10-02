@@ -22,6 +22,7 @@
  *    mesh, still run the whole render-state prologue before being skipped. */
 
 #include "dsoscene.h"
+#include "sysdev.h"
 #include "d3dmath.h"
 #include "logger.h"
 #include "faktmesh.h"
@@ -132,7 +133,7 @@ static void cam_diag(const float *cam)
     static int on = -1;
     if (on < 0) {
         char buf[8];
-        DWORD n = GetEnvironmentVariableA("KAROO_CAM_DIAG", buf, sizeof(buf));
+        DWORD n = sysdev::getEnv("KAROO_CAM_DIAG", buf, sizeof(buf));
         on = (n > 0 && n < sizeof(buf) && buf[0] == '1') ? 1 : 0;
     }
     if (!on)

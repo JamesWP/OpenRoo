@@ -32,6 +32,7 @@
  * count every 5000 calls. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <string.h>
 #include <math.h>
 
@@ -54,7 +55,7 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "blockinvert") == 0) {
             s_fx = FX_BLOCKINVERT;
@@ -75,7 +76,7 @@ static void fx_init(void)
         }
     }
 
-    n = GetEnvironmentVariableA("KAROO_TILEQ_DIAG", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_TILEQ_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
         s_diag = 1;
 }

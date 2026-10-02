@@ -32,6 +32,7 @@
  * Water01 ray swims its loop the other way. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -53,7 +54,7 @@ static bool fx_nomodels(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_LEO_FX", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_LEO_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "nomodels") == 0);
         g_logger.write("leo: FX mode = %s\n", cached ? "nomodels" : "off");
     }
@@ -93,7 +94,7 @@ static void fnv_path(unsigned long *h, const char *field, size_t size)
 void ExtraObjects::recDump(const char *path)
 {
     char out[MAX_PATH];
-    if (!GetEnvironmentVariableA("KAROO_LEO_RECDUMP", out, sizeof(out)))
+    if (!sysdev::getEnv("KAROO_LEO_RECDUMP", out, sizeof(out)))
         return;
     FILE *f = fopen(out, "ab");
     if (!f)
@@ -188,19 +189,17 @@ int ExtraObjects::openFile(const char *name)
     // handed to the handler, for comparison with an independent parse.
     {
         char dump[MAX_PATH];
-        if (GetEnvironmentVariableA("KAROO_LEO_DUMP", dump, sizeof(dump))) {
-            HANDLE h = CreateFileA(dump, FILE_APPEND_DATA, FILE_SHARE_READ, NULL,
-                                   OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (h != INVALID_HANDLE_VALUE) {
+        if (sysdev::getEnv("KAROO_LEO_DUMP", dump, sizeof(dump))) {
+            FILE *h = fopen(dump, "ab");
+            if (h) {
                 char line[768];
-                int len = wsprintfA(line, "%s entries=%u objects=%u hash=%08lx\r\n",
+                int len = snprintf(line, sizeof(line), "%s entries=%u objects=%u hash=%08lx\r\n",
                                     path,
                                     (unsigned)entries_,
                                     (unsigned)objectCount_,
                                     s_hash);
-                DWORD w = 0;
-                WriteFile(h, line, (DWORD)len, &w, NULL);
-                CloseHandle(h);
+                fwrite(line, 1, len, h);
+                fclose(h);
             }
         }
     }
@@ -227,7 +226,7 @@ static void diag_init(void)
 
     if (s_rel_diag >= 0)
         return;
-    n = GetEnvironmentVariableA("KAROO_LEVELPARSE_DIAG", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_LEVELPARSE_DIAG", buf, sizeof(buf));
     s_rel_diag = (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0);
 }
 
@@ -270,7 +269,7 @@ static bool fx_pathrev(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
-        cached = GetEnvironmentVariableA("KAROO_LEO_FX", buf, sizeof(buf))
+        cached = sysdev::getEnv("KAROO_LEO_FX", buf, sizeof(buf))
                  && lstrcmpiA(buf, "pathrev") == 0;
     }
     return cached != 0;

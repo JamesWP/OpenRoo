@@ -30,6 +30,11 @@ LocalTime localTime();
  * unknown. */
 bool executablePath(char *buf, unsigned size);
 
+/* Copies the environment variable name into buf.  Returns its length without
+ * the terminator, or 0 if it is unset; if buf is too small, returns the size
+ * needed including the terminator and leaves buf unspecified. */
+unsigned getEnv(const char *name, char *buf, unsigned size);
+
 /* Logs access violations in the process's own code (registers and the top of
  * the stack) and guard-page faults through the log function, then lets the
  * exception continue to the normal handlers. */

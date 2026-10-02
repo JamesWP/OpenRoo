@@ -1,6 +1,8 @@
 /* KAROO_DDRAW_DIAG's logging (ddrawdiag.h). */
 
 #include "ddrawdiag.h"
+#include "sysdev.h"
+#include <stdio.h>
 #include "logger.h"
 
 bool ddiag_on(void)
@@ -8,7 +10,7 @@ bool ddiag_on(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[8];
-        cached = GetEnvironmentVariableA("KAROO_DDRAW_DIAG", buf, sizeof(buf))
+        cached = sysdev::getEnv("KAROO_DDRAW_DIAG", buf, sizeof(buf))
                  && buf[0] != '0';
         if (cached)
             g_logger.write("ddraw_diag: active\n");
@@ -24,9 +26,9 @@ static void ddiag_dwords(const char *tag, const void *p, unsigned nbytes)
     unsigned n = nbytes / 4;
     for (unsigned i = 0; i < n; i += 8) {
         char line[256];
-        int o = wsprintfA(line, "ddraw_diag: %s[%02u]", tag, i);
+        int o = snprintf(line, sizeof(line), "ddraw_diag: %s[%02u]", tag, i);
         for (unsigned j = i; j < i + 8 && j < n; j++)
-            o += wsprintfA(line + o, " %08lX", (unsigned long)d[j]);
+            o += snprintf(line + o, sizeof(line) - o, " %08lX", (unsigned long)d[j]);
         g_logger.write("%s\n", line);
     }
 }

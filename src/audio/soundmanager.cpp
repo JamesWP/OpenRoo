@@ -17,6 +17,7 @@
  *     of the entry's voice pools. */
 
 #include <new>
+#include "sysdev.h"
 #include "soundmanager.h"
 #include "doublesoundbuff.h"
 #include "namedlist.h"
@@ -46,7 +47,7 @@ static SndMgrFx sndmgr_fx(void)
     if (cached >= 0)
         return (SndMgrFx)cached;
     char buf[32];
-    DWORD n = GetEnvironmentVariableA("KAROO_SNDMGR_FX", buf, sizeof(buf));
+    DWORD n = sysdev::getEnv("KAROO_SNDMGR_FX", buf, sizeof(buf));
     SndMgrFx fx = SM_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "nosharemaster") == 0) fx = SM_FX_NOSHAREMASTER;
@@ -64,7 +65,7 @@ static bool sndmgr_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_SNDMGR_DIAG", buf, sizeof(buf));
+        DWORD n = sysdev::getEnv("KAROO_SNDMGR_DIAG", buf, sizeof(buf));
         cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;

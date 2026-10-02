@@ -5,6 +5,8 @@
  * already on the back buffer: the loading/theme bitmap never appears. */
 
 #include "d3dnative.h"
+#include "sysdev.h"
+#include <stdio.h>
 #include "scenetexture.h"
 #include "logger.h"
 #include <math.h>
@@ -20,7 +22,7 @@ static bool fx_noblt(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_FLIP_FX", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_FLIP_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "noblt") == 0);
         g_logger.write("renderdevice: flip FX mode = %s\n", cached ? "noblt" : "off");
     }
@@ -35,7 +37,7 @@ static bool fx_nodraw(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
-        cached = GetEnvironmentVariableA("KAROO_D3D_FX", buf, sizeof(buf))
+        cached = sysdev::getEnv("KAROO_D3D_FX", buf, sizeof(buf))
                  && lstrcmpiA(buf, "nodraw") == 0;
         if (cached)
             g_logger.write("renderdevice: draw FX mode = nodraw\n");
@@ -196,9 +198,9 @@ void RenderDevice::PresentImage(LoadedImage *img)
     if (InterlockedIncrement(&logged) <= FLIP_LOG_FIRST) {
         char blt[16];
         if (skipped)
-            lstrcpyA(blt, "skipped");
+            strcpy(blt, "skipped");
         else
-            wsprintfA(blt, "%08lX", hr_blt);
+            snprintf(blt, sizeof(blt), "%08lX", hr_blt);
         g_logger.write("renderdevice: PresentImage img=%p src=%p back=%p primary=%p "
                   "blt=%s flip=%08lX\n",
                   img, img->textureSurface(), n->backBuffer, n->primary,

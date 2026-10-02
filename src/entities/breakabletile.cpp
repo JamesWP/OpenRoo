@@ -20,6 +20,7 @@
  * releases. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <new>
 #include <string.h>
 
@@ -42,7 +43,7 @@ static int s_init           = 0;
 
 static int env_set(const char *name, char *buf, DWORD cb)
 {
-    DWORD n = GetEnvironmentVariableA(name, buf, cb);
+    DWORD n = sysdev::getEnv(name, buf, cb);
     return n > 0 && n < cb;
 }
 

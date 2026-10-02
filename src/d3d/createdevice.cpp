@@ -14,6 +14,7 @@
  * again later. */
 
 #include "d3dnative.h"
+#include "sysdev.h"
 #include "logger.h"
 #include "gamestr.h"
 #include "gameglobals.h"
@@ -39,7 +40,7 @@ static int devfx(void)
     if (cached < 0) {
         char buf[16];
         cached = DEVFX_OFF;
-        if (GetEnvironmentVariableA("KAROO_D3DDEV_FX", buf, sizeof(buf))) {
+        if (sysdev::getEnv("KAROO_D3DDEV_FX", buf, sizeof(buf))) {
             if (lstrcmpiA(buf, "halfvp") == 0)     cached = DEVFX_HALFVP;
             else if (lstrcmpiA(buf, "mode0") == 0) cached = DEVFX_MODE0;
             else if (lstrcmpiA(buf, "firstzbuf") == 0) cached = DEVFX_FIRSTZBUF;
@@ -65,7 +66,7 @@ static int devdiag(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_D3DDEV_DIAG", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_D3DDEV_DIAG", buf, sizeof(buf)))
             cached = (buf[0] != '\0' && buf[0] != '0');
     }
     return cached;

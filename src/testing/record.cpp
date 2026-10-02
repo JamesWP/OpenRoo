@@ -18,6 +18,8 @@
  * state, and reproducing it would need the same call order within a frame. */
 
 #include "record.h"
+#include "sysdev.h"
+#include <stdio.h>
 #include "inputdev.h"
 #include "policy.h"
 #include "menu.h"
@@ -40,7 +42,7 @@ struct FrameRec {
 };
 
 static int      g_mode = -1;  // 0 none, 1 record, 2 replay
-static HANDLE   g_fh   = INVALID_HANDLE_VALUE;
+static FILE    *g_fh   = NULL;
 static FrameRec g_cur;   // the frame being accumulated (record)
 static FrameRec g_play;  // the frame being served (replay)
 static bool     g_have_play;
@@ -56,7 +58,7 @@ static bool input_debug(void)
 {
     if (g_dbg < 0) {
         char b[8];
-        g_dbg = (GetEnvironmentVariableA("KAROO_INPUT_DEBUG", b, sizeof(b)) && b[0] && b[0] != '0');
+        g_dbg = (sysdev::getEnv("KAROO_INPUT_DEBUG", b, sizeof(b)) && b[0] && b[0] != '0');
     }
     return g_dbg > 0;
 }
@@ -69,10 +71,10 @@ static void read_env(void)
 {
     char buf[64];
     g_dt = 0.0;
-    if (GetEnvironmentVariableA("KAROO_FIXED_DT", buf, sizeof(buf)) && buf[0])
+    if (sysdev::getEnv("KAROO_FIXED_DT", buf, sizeof(buf)) && buf[0])
         g_dt = atof(buf);
     g_seed = 0; g_seed_set = false;
-    if (GetEnvironmentVariableA("KAROO_SEED", buf, sizeof(buf)) && buf[0]) {
+    if (sysdev::getEnv("KAROO_SEED", buf, sizeof(buf)) && buf[0]) {
         g_seed = (DWORD)atoi(buf);
         g_seed_set = true;
     }
@@ -90,9 +92,8 @@ static void warn_determinism(const char *what)
 
 static void open_record(const char *path)
 {
-    g_fh = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
-                       CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (g_fh == INVALID_HANDLE_VALUE) {
+    g_fh = fopen(path, "wb");
+    if (!g_fh) {
         g_logger.write("record: cannot open %s for writing\n", path);
         g_mode = 0;
         return;
@@ -104,9 +105,9 @@ static void open_record(const char *path)
     *(double *)(hdr + 8)  = g_dt;
     *(DWORD  *)(hdr + 16) = g_seed;
     *(DWORD  *)(hdr + 20) = g_seed_set ? 1u : 0u;
-    GetEnvironmentVariableA("KAROO_RECORD_LABEL", (char *)hdr + 24, 56);
-    DWORD w = 0;
-    WriteFile(g_fh, hdr, sizeof(hdr), &w, NULL);
+    sysdev::getEnv("KAROO_RECORD_LABEL", (char *)hdr + 24, 56);
+    fwrite(hdr, 1, sizeof(hdr), g_fh);
+    fflush(g_fh);
     g_logger.write("record: recording to %s (dt=%.9f seed=%u%s)\n",
               path, g_dt, (unsigned)g_seed, g_seed_set ? "" : " UNSET");
     warn_determinism("recording");
@@ -114,16 +115,14 @@ static void open_record(const char *path)
 
 static void open_replay(const char *path)
 {
-    g_fh = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
-                       OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (g_fh == INVALID_HANDLE_VALUE) {
+    g_fh = fopen(path, "rb");
+    if (!g_fh) {
         g_logger.write("record: cannot open %s for reading\n", path);
         g_mode = 0;
         return;
     }
     BYTE hdr[HEADER_SIZE];
-    DWORD got = 0;
-    if (!ReadFile(g_fh, hdr, sizeof(hdr), &got, NULL) || got != sizeof(hdr) ||
+    if (fread(hdr, 1, sizeof(hdr), g_fh) != sizeof(hdr) ||
         memcmp(hdr, "KROO", 4) != 0) {
         g_logger.write("record: %s is not a recording\n", path);
         g_mode = 0;
@@ -157,10 +156,10 @@ static void init(void)
     g_mode = 0;
     read_env();
 
-    if (GetEnvironmentVariableA("KAROO_RECORD", path, sizeof(path)) && path[0]) {
+    if (sysdev::getEnv("KAROO_RECORD", path, sizeof(path)) && path[0]) {
         g_mode = 1;
         open_record(path);
-    } else if (GetEnvironmentVariableA("KAROO_REPLAY", path, sizeof(path)) && path[0]) {
+    } else if (sysdev::getEnv("KAROO_REPLAY", path, sizeof(path)) && path[0]) {
         g_mode = 2;
         open_replay(path);
     }
@@ -183,8 +182,9 @@ static void flush_frame(void)
         buf[n++] = g_cur.async[i][0];
         buf[n++] = g_cur.async[i][1];
     }
-    DWORD w = 0;
-    WriteFile(g_fh, buf, n, &w, NULL);
+    // Flushed every frame: the process can end without the CRT closing the file.
+    fwrite(buf, 1, n, g_fh);
+    fflush(g_fh);
 
     memset(&g_cur, 0, sizeof(g_cur));
     g_keys_seen = false;
@@ -212,8 +212,7 @@ void record_async(int vkey, SHORT value)
 
 static bool read_exact(void *dst, DWORD n)
 {
-    DWORD got = 0;
-    return ReadFile(g_fh, dst, n, &got, NULL) && got == n;
+    return fread(dst, 1, n, g_fh) == n;
 }
 
 static bool read_one(FrameRec *r)

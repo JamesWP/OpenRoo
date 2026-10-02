@@ -7,6 +7,7 @@
  * method (or a free helper it calls) followed by its export shim. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <stdlib.h>
 #include <new>
 #include "logger.h"
@@ -34,7 +35,7 @@
 static int fx_is(const char *mode)
 {
     char buf[64];
-    DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    DWORD n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     return (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, mode) == 0) ? 1 : 0;
 }
 
@@ -92,7 +93,7 @@ static int diag_on(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[64];
-        DWORD n = GetEnvironmentVariableA("KAROO_FOEPATH_DIAG", buf, sizeof(buf));
+        DWORD n = sysdev::getEnv("KAROO_FOEPATH_DIAG", buf, sizeof(buf));
         cached = (n > 0 && n < sizeof(buf) && buf[0] != '0') ? 1 : 0;
     }
     return cached;

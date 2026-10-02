@@ -11,6 +11,7 @@
  * and the deepest depth reached. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <string.h>
 
 #include "logger.h"
@@ -40,7 +41,7 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf)) {
         if (strcmp(buf, "menuroot") == 0) {
             s_fx_menuroot = 1;
@@ -54,7 +55,7 @@ static void fx_init(void)
         }
     }
 
-    n = GetEnvironmentVariableA("KAROO_MENUSTACK_DIAG", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_MENUSTACK_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
         s_diag = 1;
 }
@@ -158,7 +159,7 @@ void MenuTree::navigate(int now)
 
     if (s_fx_menuwrap < 0) {
         char e[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
+        DWORD n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
         s_fx_menuwrap = (n > 0 && n < sizeof(e) && strcmp(e, "menuwrap") == 0);
         if (s_fx_menuwrap)
             g_logger.write("menunav: KAROO_SIM_FX=menuwrap -- DOWN does not wrap\n");

@@ -13,7 +13,8 @@ target_include_directories(d3d PRIVATE
     ../log
     ../app
     ../core
-    ../render)
+    ../render
+    ../sysdev)
 
 # One header version everywhere, or <ddraw.h>'s own default wins.
 target_compile_definitions(d3d PRIVATE DIRECTDRAW_VERSION=0x0100)

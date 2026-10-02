@@ -12,6 +12,7 @@
  * and a running census, since no gate observes texture coordinates. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <math.h>
 #include <new>
 
@@ -48,7 +49,7 @@ static int wrap_fx(void)
     if (cached < 0) {
         char buf[32];
         cached = WRAP_FX_OFF;
-        if (GetEnvironmentVariableA("KAROO_WRAP_FX", buf, sizeof(buf))) {
+        if (sysdev::getEnv("KAROO_WRAP_FX", buf, sizeof(buf))) {
             if (lstrcmpiA(buf, "scrollback") == 0)     cached = WRAP_FX_SCROLLBACK;
             else if (lstrcmpiA(buf, "sineflip") == 0)  cached = WRAP_FX_SINEFLIP;
             else if (lstrcmpiA(buf, "envflip") == 0)   cached = WRAP_FX_ENVFLIP;
@@ -64,7 +65,7 @@ static bool wrap_diag(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_WRAP_DIAG", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_WRAP_DIAG", buf, sizeof(buf)))
             cached = (buf[0] != '0');
     }
     return cached != 0;

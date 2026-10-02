@@ -14,7 +14,7 @@ struct DeviceState {
 };
 
 struct BufferState {
-    char                 *filename;    // heap copy of the path
+    char                 *filename;    // owned copy of the path
     IDirectSoundBuffer   *soundbuffer;
     IDirectSound3DBuffer *threeD;      // NULL for a 2D buffer
 };
@@ -39,6 +39,6 @@ IDirectSoundBuffer *createWavBuffer(IDirectSound *ds, DWORD flags,
 bool fillWavBuffer(IDirectSoundBuffer *buf, const Wav &wav);
 
 char *heapStrdup(const char *s);
-void  heapFree(void *p);
+void  heapFree(char *p);
 
 }  // namespace audiodev

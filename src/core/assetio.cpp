@@ -6,12 +6,14 @@
  * and which code opened them. */
 
 #include <windows.h>
+#include "sysdev.h"
+#include <errno.h>
 #include "logger.h"
 #include <stdio.h>
 
 /* Not g_logger.write(): this log is meant to be parsed, and karoo_hooks.log carries
  * everything else.  Win32 file calls only, so the log never touches stdio. */
-static HANDLE  s_log     = INVALID_HANDLE_VALUE;
+static FILE   *s_log     = NULL;
 static bool    s_checked = false;
 static CRITICAL_SECTION s_lock;
 static bool    s_lock_ready = false;
@@ -20,21 +22,20 @@ static bool asset_log_enabled(void)
 {
     if (!s_checked) {
         char path[MAX_PATH];
-        DWORD n = GetEnvironmentVariableA("KAROO_ASSET_LOG", path, sizeof(path));
+        DWORD n = sysdev::getEnv("KAROO_ASSET_LOG", path, sizeof(path));
         s_checked = true;
         if (n > 0 && n < sizeof(path)) {
             InitializeCriticalSection(&s_lock);
             s_lock_ready = true;
-            s_log = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
-                                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (s_log == INVALID_HANDLE_VALUE)
-                g_logger.write("asset: could not open KAROO_ASSET_LOG '%s' (err %lu)\n",
-                          path, GetLastError());
+            s_log = fopen(path, "wb");
+            if (!s_log)
+                g_logger.write("asset: could not open KAROO_ASSET_LOG '%s' (errno %d)\n",
+                          path, errno);
             else
                 g_logger.write("asset: logging file I/O to '%s'\n", path);
         }
     }
-    return s_log != INVALID_HANDLE_VALUE;
+    return s_log != NULL;
 }
 
 static void asset_log(const char *fmt, ...)
@@ -47,14 +48,15 @@ static void asset_log(const char *fmt, ...)
         return;
 
     va_start(ap, fmt);
-    n = wvsprintfA(buf, fmt, ap);  // no %zu or %f; the callers use %s, %lu and %d
+    n = vsnprintf(buf, sizeof(buf), fmt, ap);  // no %zu or %f; the callers use %s, %lu and %d
     va_end(ap);
     if (n <= 0)
         return;
 
     EnterCriticalSection(&s_lock);
-    DWORD written = 0;
-    WriteFile(s_log, buf, (DWORD)n, &written, NULL);
+    if ((size_t)n >= sizeof(buf)) n = sizeof(buf) - 1;
+    fwrite(buf, 1, (size_t)n, s_log);
+    fflush(s_log);
     LeaveCriticalSection(&s_lock);
 }
 

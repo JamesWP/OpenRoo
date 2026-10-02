@@ -14,6 +14,7 @@
  * consumed; it moves items_collected and elapsed_ms. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <string.h>
 #include <math.h>
 
@@ -52,7 +53,7 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = GetEnvironmentVariableA("KAROO_SIM_FX", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "nopickup") == 0) {
         s_fx_nopickup = 1;
         g_logger.write("tileeffects: KAROO_SIM_FX=nopickup -- tile gate always fails\n");

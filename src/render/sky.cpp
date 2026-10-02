@@ -8,6 +8,7 @@
  * KAROO_SKY_FX=noskip draws only the first of the six quads. */
 
 #include "renderdevice.h"
+#include "sysdev.h"
 #include "sky.h"
 #include "logger.h"
 #include "scenetexture.h"
@@ -27,7 +28,7 @@ static bool fx_one_quad(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_SKY_FX", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_SKY_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "noskip") == 0);
         g_logger.write("sky: FX mode = %s\n", cached ? "noskip (1 quad only)" : "off");
     }

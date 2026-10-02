@@ -12,6 +12,7 @@
  * first foe and bomb removal, and a count every 500 calls. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <string.h>
 
 #include "logger.h"
@@ -48,7 +49,7 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = GetEnvironmentVariableA("KAROO_RESET_DIAG", buf, sizeof(buf));
+    n = sysdev::getEnv("KAROO_RESET_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
         s_diag = 1;
 }

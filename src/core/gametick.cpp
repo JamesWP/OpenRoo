@@ -22,6 +22,7 @@
  * the other order.  Both change the tile map, so the order is observable. */
 
 #include "gametick.h"
+#include "sysdev.h"
 #include "windev.h"
 #include <windows.h>
 #include <stdio.h>
@@ -161,7 +162,7 @@ Sim_GameTick(Game *self, double dt, double now)
 
     if (s_fx < 0) {
         char e[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
+        DWORD n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "tickorder") == 0);
         if (s_fx)
             g_logger.write("gametick: KAROO_SIM_FX=tickorder -- slides tick before lifts\n");

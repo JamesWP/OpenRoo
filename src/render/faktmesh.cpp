@@ -8,6 +8,7 @@
  */
 
 #include "faktmesh.h"
+#include "sysdev.h"
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,7 +29,7 @@ static bool fx_half(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_FAKTMESH_FX", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_FAKTMESH_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "half") == 0);
         g_logger.write("faktmesh: FX mode = %s\n", cached ? "half" : "off");
     }
@@ -42,7 +43,7 @@ static void mesh_diag(RenderDevice *dev, DWORD flags)
 {
     static LONG once = 0;
     char buf[8];
-    if (!GetEnvironmentVariableA("KAROO_MESH_DIAG", buf, sizeof(buf)) || buf[0] == '0')
+    if (!sysdev::getEnv("KAROO_MESH_DIAG", buf, sizeof(buf)) || buf[0] == '0')
         return;
     if (InterlockedExchange(&once, 1) != 0)
         return;
@@ -160,7 +161,7 @@ static bool fx_scale(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_MDL_FX", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_MDL_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "scale") == 0);
         g_logger.write("model: FX mode = %s\n", cached ? "scale" : "off");
     }
@@ -248,18 +249,16 @@ int CFaktMesh::importSceneModels(const char *path)
     // what landed in memory.
     {
         char dump[MAX_PATH];
-        if (GetEnvironmentVariableA("KAROO_MDL_DUMP", dump, sizeof(dump))) {
-            HANDLE h = CreateFileA(dump, FILE_APPEND_DATA, FILE_SHARE_READ, NULL,
-                                   OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (h != INVALID_HANDLE_VALUE) {
+        if (sysdev::getEnv("KAROO_MDL_DUMP", dump, sizeof(dump))) {
+            FILE *h = fopen(dump, "ab");
+            if (h) {
                 char line[512];
-                int n = wsprintfA(line, "%s frames=%u verts=%u rec=%08lx vtx=%08lx\r\n",
+                int n = snprintf(line, sizeof(line), "%s frames=%u verts=%u rec=%08lx vtx=%08lx\r\n",
                                   path, frames, verts,
                                   fnv1a(pFrameRecords_, frames * MDL_FRAME_REC_SIZE),
                                   fnv1a(pVertexData_,   total  * MDL_VERTEX_SIZE));
-                DWORD w = 0;
-                WriteFile(h, line, (DWORD)n, &w, NULL);
-                CloseHandle(h);
+                fwrite(line, 1, n, h);
+                fclose(h);
             }
         }
     }

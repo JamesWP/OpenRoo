@@ -12,6 +12,7 @@
  *   - Remove always returns 0. */
 
 #include "namedlist.h"
+#include "sysdev.h"
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
@@ -35,7 +36,7 @@ static NamedListFx namedlist_fx(void)
     if (cached >= 0)
         return (NamedListFx)cached;
     char buf[32];
-    DWORD n = GetEnvironmentVariableA("KAROO_NAMEDLIST_FX", buf, sizeof(buf));
+    DWORD n = sysdev::getEnv("KAROO_NAMEDLIST_FX", buf, sizeof(buf));
     NamedListFx fx = NL_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "nofind") == 0) fx = NL_FX_NOFIND;
@@ -55,7 +56,7 @@ static bool namedlist_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_NAMEDLIST_DIAG", buf, sizeof(buf));
+        DWORD n = sysdev::getEnv("KAROO_NAMEDLIST_DIAG", buf, sizeof(buf));
         cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;

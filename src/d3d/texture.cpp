@@ -6,6 +6,7 @@
  * and must not touch pTexture2. */
 
 #include "scenetexture.h"
+#include "sysdev.h"
 #include "d3dnative.h"
 #include "logger.h"
 #include <stdlib.h>
@@ -23,7 +24,7 @@ static bool image_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[16];
-        cached = (GetEnvironmentVariableA("KAROO_IMAGE_DIAG", buf, sizeof(buf))
+        cached = (sysdev::getEnv("KAROO_IMAGE_DIAG", buf, sizeof(buf))
                   && buf[0] == '1') ? 1 : 0;
     }
     return cached != 0;

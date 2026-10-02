@@ -13,6 +13,7 @@
  * hash: systems in the order the game ticks them, nodes in ring order. */
 
 #include "determinism.h"
+#include "sysdev.h"
 #include "particles.h"
 #include "logger.h"
 #include "game.h"
@@ -68,7 +69,7 @@ static int game_fields(const Game *g, HashedField *out)
 
 
 static int      g_on = -1;
-static HANDLE   g_fh = INVALID_HANDLE_VALUE;
+static FILE    *g_fh = NULL;
 static DWORD    g_frame;
 static DWORD    g_hash = 2166136261u;  // the FNV-1a offset basis
 
@@ -102,10 +103,9 @@ bool dethash_enabled(void)
     if (g_on < 0) {
         char path[MAX_PATH];
         g_on = 0;
-        if (GetEnvironmentVariableA("KAROO_HASH_LOG", path, sizeof(path)) && path[0]) {
-            g_fh = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
-                               CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            g_on = (g_fh != INVALID_HANDLE_VALUE);
+        if (sysdev::getEnv("KAROO_HASH_LOG", path, sizeof(path)) && path[0]) {
+            g_fh = fopen(path, "wb");
+            g_on = (g_fh != NULL);
             g_logger.write("dethash: %s -> %s\n", path, g_on ? "recording" : "OPEN FAILED");
         }
     }
@@ -166,8 +166,10 @@ void dethash_frame_end(double virtual_seconds)
                       (unsigned long)g_frame, virtual_seconds,
                       (unsigned long)g_hash, (unsigned long)g_systems,
                       (unsigned long)g_nodes, game ? 1 : 0, subs, fields);
-    DWORD written = 0;
-    if (n > 0) WriteFile(g_fh, line, (DWORD)n, &written, NULL);
+    if (n > 0) {
+        fwrite(line, 1, (size_t)n, g_fh);
+        fflush(g_fh);  // the process can end without the CRT closing the file
+    }
 
     g_frame++;
     g_hash    = 2166136261u;  // per frame, so a diff points at the first frame that differs

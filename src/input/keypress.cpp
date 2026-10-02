@@ -11,6 +11,7 @@
  * all. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <string.h>
 #include "logger.h"
 #include "windev.h"
@@ -153,7 +154,7 @@ Sim_HandleKeypress(Game *self)
 
     if (s_fx < 0) {
         char e[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_SIM_FX", e, sizeof(e));
+        DWORD n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "slotshift") == 0);
         if (s_fx)
             g_logger.write("keypress: KAROO_SIM_FX=slotshift -- load restores slot k+1\n");

@@ -19,6 +19,7 @@
  * stays. */
 
 #include <windows.h>
+#include "sysdev.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -61,7 +62,7 @@ static bool fx_freeze(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (GetEnvironmentVariableA("KAROO_ANI_FX", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_ANI_FX", buf, sizeof(buf)))
             cached = (lstrcmpiA(buf, "freeze") == 0);
         g_logger.write("ani: FX mode = %s\n", cached ? "freeze" : "off");
     }
@@ -153,20 +154,18 @@ int AnimTable::load(const char *path)
     // an independent parse.
     {
         char dump[MAX_PATH];
-        if (GetEnvironmentVariableA("KAROO_ANI_DUMP", dump, sizeof(dump))) {
-            HANDLE h = CreateFileA(dump, FILE_APPEND_DATA, FILE_SHARE_READ, NULL,
-                                   OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (h != INVALID_HANDLE_VALUE) {
+        if (sysdev::getEnv("KAROO_ANI_DUMP", dump, sizeof(dump))) {
+            FILE *h = fopen(dump, "ab");
+            if (h) {
                 unsigned long hash = 2166136261UL;
                 for (unsigned i = 0; i < sizeof(AnimTable); i++) {
                     hash ^= table[i];
                     hash *= 16777619UL;
                 }
                 char l[768];
-                int n = wsprintfA(l, "%s table=%08lx\r\n", path, hash);
-                DWORD w = 0;
-                WriteFile(h, l, (DWORD)n, &w, NULL);
-                CloseHandle(h);
+                int n = snprintf(l, sizeof(l), "%s table=%08lx\r\n", path, hash);
+                fwrite(l, 1, n, h);
+                fclose(h);
             }
         }
     }

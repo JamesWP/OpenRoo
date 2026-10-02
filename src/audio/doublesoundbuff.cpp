@@ -3,6 +3,7 @@
 
 #define DIRECTSOUND_VERSION 0x0800
 #include <windows.h>
+#include "sysdev.h"
 #include <new>
 #include "doublesoundbuff.h"
 #include "voicepool.h"
@@ -17,7 +18,7 @@ static int dsb_diag(void)
     static int cached = -1;
     if (cached < 0) {
         char buf[32];
-        DWORD n = GetEnvironmentVariableA("KAROO_DSB_DIAG", buf, sizeof(buf));
+        DWORD n = sysdev::getEnv("KAROO_DSB_DIAG", buf, sizeof(buf));
         cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;
@@ -62,7 +63,7 @@ static DsbFx dsb_fx(void)
     static int cached = -1;
     if (cached >= 0) return (DsbFx)cached;
     char buf[32];
-    DWORD n = GetEnvironmentVariableA("KAROO_DSB_FX", buf, sizeof(buf));
+    DWORD n = sysdev::getEnv("KAROO_DSB_FX", buf, sizeof(buf));
     DsbFx fx = DSB_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
         if (lstrcmpiA(buf, "stickyentry") == 0) fx = DSB_FX_STICKYENTRY;
