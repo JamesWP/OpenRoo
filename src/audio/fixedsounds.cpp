@@ -55,9 +55,9 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         return;
 
     if ((self->config()->save(GS_CFG_FILE) & 0xff) != 0)
-        g_logger.logMessage(1, GS_CFG_SAVE_OK);
+        g_logger.logMessage(1, "GAME: config-values saved correctly");
     else
-        g_logger.logMessage(3, GS_CFG_SAVE_ERR);
+        g_logger.logMessage(3, "GAME: ** error ** while saving config-values (maybe write-protected or hd full\077) !!!");
     self->menu()->setLockStart(*self->clock());
     self->menu()->setLock(1);
     if (self->musicOn() != 0)
@@ -65,7 +65,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(GS_GAME_MAIN));
 
     if (self->soundCreated() == 0) {
-        g_logger.logMessage(1, GS_CFG_NO_SOUND);
+        g_logger.logMessage(1, "GAME: warning - SoundManager not created, no wave and CD-sound !!!");
         self->setMusicOn(0);
         if (self->soundCreated() == 0) {
             self->fixedSounds()->loaded = 1;

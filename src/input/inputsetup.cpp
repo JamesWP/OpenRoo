@@ -12,7 +12,7 @@
   void  
 Input_TrySaveSettings(void)
 {
-    g_logger.logMessage(1, GS_CONTROL_SAVE_SETTINGS);
+    g_logger.logMessage(1, "CONTROL: trying to save settings");
     g_progCtrl.writeBindings();
     g_progCtrl.shutdown();
     g_logger.logMessage(1, "CONTROL: saved settings\n");

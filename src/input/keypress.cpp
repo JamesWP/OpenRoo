@@ -316,7 +316,7 @@ Sim_HandleKeypress(Game *self)
         self->setCameraMode(1);
         self->menu()->setLock(1);
         self->menu()->pop();
-        g_logger.logMessage(1, GS_GAME_LEVEL_DONE_CONTINUE);
+        g_logger.logMessage(1, "level completed - continue");
         if (self->fixedSounds()->levelCompleted != NULL)
             (self->fixedSounds()->levelCompleted)->stop();
         break;

@@ -607,7 +607,7 @@ SceneTexture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
         tm_lower_inplace(filename);
         tm_lower_inplace(cached->imageName());
         if (strcmp(cached->imageName(), filename) == 0) {
-            g_logger.logMessage(1, GS_TM_FOUND, filename);
+            g_logger.logMessage(1, "TM: %s found", filename);
             return cached;
         }
     }
@@ -618,10 +618,10 @@ SceneTexture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
     if ((ok & 0xff) == 0) {
         if (tex != NULL)
             delete tex;
-        g_logger.logMessage(3, GS_TM_FAILED, filename);
+        g_logger.logMessage(3, "TM: *ERROR* failed loading %s", filename);
         return NULL;
     }
-    g_logger.logMessage(1, GS_TM_LOADED, filename);
+    g_logger.logMessage(1, "TM: %s loaded", filename);
     cache_.append(tex);
     return tex;
 }

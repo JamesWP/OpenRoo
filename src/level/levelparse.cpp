@@ -142,10 +142,10 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     if ((char)ok != 0) {
         self->extraObjects()->releaseSounds();
-        g_logger.logMessage(1, GS_OPEN_LOADED_NAME,
+        g_logger.logMessage(1, "GAME: level (Bonus=%d) loaded by name: %s.jjm",
                            self->map()->bonus(), path);
     } else {
-        g_logger.logMessage(4, GS_OPEN_FAILED_NAME, path);
+        g_logger.logMessage(4, "GAME: ** error ** could not load level by name: %s.jjm (maybe it not exists\077)", path);
         windev::quit(1);
     // PRESERVED: carries on; does not return.
     }
@@ -160,8 +160,8 @@ Sim_ParseLevelFiles(Game *self, const char *name)
     self->scriptPlayer()->readForLevel(path);
 
     g_logger.logMessage(1,
-                       self->scriptPlayer()->loaded() ? GS_OPEN_SCRIPT_OK_NAME
-                                                             : GS_OPEN_SCRIPT_BAD_NAME,
+                       self->scriptPlayer()->loaded() ? "GAME: instruction-script loaded: %s.jjs"
+                                                             : "GAME: could not load instruction-script: %s.jjs ,running in observation-mode only...",
                        path);
 
     s_parses++;
@@ -235,11 +235,11 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     if ((char)ok != 0) {
         self->extraObjects()->releaseSounds();
-        g_logger.logMessage(1, GS_OPEN_LOADED_NUM,
+        g_logger.logMessage(1, "GAME: level (Bonus=%d) loaded by Number (%d): %s.jjm",
                            self->map()->bonus(),
                            levelNo & 0xff, path);
     } else {
-        g_logger.logMessage(4, GS_OPEN_FAILED_NUM,
+        g_logger.logMessage(4, "GAME: ** error ** could not load level by Number (%d) (maybe it not exists\077): %s.jjm",
                            levelNo & 0xff, path);
         windev::quit(1);
     // PRESERVED: carries on, as in ParseLevelFiles.
@@ -257,7 +257,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     g_logger.logMessage(1,
                        self->scriptPlayer()->loaded()
-                           ? GS_OPEN_SCRIPT_OK_NUM : GS_OPEN_SCRIPT_BAD_NUM,
+                           ? "GAME: instruction-script loaded:%s.jjs" : "GAME: could not load instruction-script:%s.jjs ,running in observation-mode only...",
                        path);
 
     s_opens++;
