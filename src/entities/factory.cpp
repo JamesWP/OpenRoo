@@ -1,15 +1,15 @@
 /* The three factories: each forwards to its family's create function
  * (generators.cpp, particles.cpp) and logs its first call. */
 
-#include "portable.h"
+#include <atomic>
 #include "factory.h"
 #include "generators.h"
 #include "particles.h"
 #include "logger.h"
 
-static void log_first(AtomicInt *once, const char *what, const char *name, void *obj)
+static void log_first(std::atomic<long> *once, const char *what, const char *name, void *obj)
 {
-    if (atomicExchange(once, 1) == 0)
+    if (once->exchange(1) == 0)
         g_logger.write("factory: %s active (first = \"%s\" -> %p)\n",
                   what, name ? name : "(null)", obj);
 }
@@ -20,7 +20,7 @@ static void log_first(AtomicInt *once, const char *what, const char *name, void 
 Gen_FactoryCreate(const char *name)
 {
     void *obj = Generator::create(name);
-    static AtomicInt once = 0;
+    static std::atomic<long> once = 0;
     log_first(&once, "Gen_FactoryCreate", name, obj);
     return obj;
 }
@@ -29,7 +29,7 @@ Gen_FactoryCreate(const char *name)
 Env_FactoryCreate(const char *name)
 {
     void *obj = Environment::create(name);
-    static AtomicInt once = 0;
+    static std::atomic<long> once = 0;
     log_first(&once, "Env_FactoryCreate", name, obj);
     return obj;
 }
@@ -38,7 +38,7 @@ Env_FactoryCreate(const char *name)
 PS_FactoryCreate(const char *name)
 {
     void *obj = ParticleSystem::create(name);
-    static AtomicInt once = 0;
+    static std::atomic<long> once = 0;
     log_first(&once, "PS_FactoryCreate", name, obj);
     return obj;
 }

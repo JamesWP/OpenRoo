@@ -2,7 +2,6 @@
  * lists every aspect ratio instead of 4:3 only. */
 
 #include <strings.h>
-#include "portable.h"
 #include "sysdev.h"
 #include <stdio.h>
 #include <string.h>

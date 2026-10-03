@@ -17,12 +17,11 @@
  * of its lines. */
 
 #include <strings.h>
-#include "portable.h"
+#include <stdio.h>
 #include <stdint.h>
 #include "camera.h"
 #include "sysdev.h"
 #include <fstream>
-#include <stdio.h>
 #include <string.h>
 #include "logger.h"
 #include "scriptplayer.h"
@@ -31,7 +30,6 @@
 #include "gameglobals.h"
 #include <new>
 #include "splinepath.h"
-#include <stdlib.h>
 #include <math.h>
 #include <algorithm>
 #include <iterator>
@@ -141,7 +139,7 @@ int ScriptPlayer::readForLevel(const char *path)
     // KAROO_JJS_DUMP: the path, the entry count and an FNV-1a hash of every
     // line, for comparison with an independent parse.
     {
-        char dump[kMaxPath];
+        char dump[FILENAME_MAX];
         if (sysdev::getEnv("KAROO_JJS_DUMP", dump, sizeof(dump))) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {

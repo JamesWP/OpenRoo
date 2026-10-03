@@ -8,12 +8,12 @@
  */
 
 #include <strings.h>
-#include "portable.h"
+#include <atomic>
+#include <stdio.h>
 #include <stdint.h>
 #include "faktmesh.h"
 #include "sysdev.h"
 #include <fstream>
-#include <stdio.h>
 #include "binio.h"
 #include <string.h>
 #include "logger.h"
@@ -44,11 +44,11 @@ static bool fx_half(void)
  * the lighting/material/texture state, none of which this file sets. */
 static void mesh_diag(RenderDevice *dev, uint32_t flags)
 {
-    static AtomicInt once = 0;
+    static std::atomic<long> once = 0;
     char buf[8];
     if (!sysdev::getEnv("KAROO_MESH_DIAG", buf, sizeof(buf)) || buf[0] == '0')
         return;
-    if (atomicExchange(&once, 1) != 0)
+    if (once.exchange(1) != 0)
         return;
 
     g_logger.write("diag: drawflags=%02lX\n", flags);
@@ -71,8 +71,8 @@ long CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
     long hr = dev->Draw(Prim::TriangleList, MESH_FVF, verts, count, flags)
                ? 0 : (long)0x80004005u;  // S_OK : E_FAIL
 
-    static AtomicInt logged = 0;
-    if (atomicIncrement(&logged) <= MESH_LOG_FIRST)
+    static std::atomic<long> logged = 0;
+    if (++logged <= MESH_LOG_FIRST)
         g_logger.write("faktmesh: %s this=%p dev=%p frame=%lu count=%lu flags=%02lX -> hr=%08lX\n",
                   name, this, dev, frame, count, flags, hr);
     return hr;
@@ -118,8 +118,8 @@ CFaktMesh::CFaktMesh()
     dwVertexCount_  = 0;
     wFrameCount_    = 1;
 
-    static AtomicInt logged = 0;
-    if (atomicIncrement(&logged) <= MESH_LOG_FIRST)
+    static std::atomic<long> logged = 0;
+    if (++logged <= MESH_LOG_FIRST)
         g_logger.write("faktmesh: Init this=%p\n", this);
 }
 
@@ -220,7 +220,7 @@ int CFaktMesh::importSceneModels(const char *path)
     // (FNV-1a 32), to compare an independent parse of the same .mdl against
     // what landed in memory.
     {
-        char dump[kMaxPath];
+        char dump[FILENAME_MAX];
         if (sysdev::getEnv("KAROO_MDL_DUMP", dump, sizeof(dump))) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {

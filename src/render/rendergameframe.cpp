@@ -13,7 +13,6 @@
  *   5. the translucent passes (particle effects) when particles are on;
  *   6. the HUD and the menus, EndScene, the flip.
  */
-#include "portable.h"
 #include <stdint.h>
 #include <math.h>
 #include <stdio.h>
@@ -839,7 +838,7 @@ static void draw_fps(float W, float H)
         g_fps = (float)((double)n / span);
         g_fpsMark = t;
     }
-    if (hooks_GetAsyncKeyState(kKeyF1) & 0x8000) {
+    if (hooks_GetAsyncKeyState(0x70 /* VK_F1 */) & 0x8000) {
         char *buf = s_text;
         sprintf(buf, "%.1f fps", (double)g_fps);
         hud_text(&g_fontMain, 0, W * 0.5f, H * 0.96041667f, W * 0.025f, H * 0.033333335f,

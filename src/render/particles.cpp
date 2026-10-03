@@ -9,7 +9,7 @@
  * XFace rotation velocities x10. */
 
 #include <strings.h>
-#include "portable.h"
+#include <atomic>
 #include <stdint.h>
 #include "particles.h"
 #include "sysdev.h"
@@ -46,8 +46,8 @@ static bool fx_is(const char *mode)
 static bool fx_tint(void)
 {
     static const bool on = fx_is("tint");
-    static AtomicInt logged = 0;
-    if (atomicExchange(&logged, 1) == 0)
+    static std::atomic<long> logged = 0;
+    if (logged.exchange(1) == 0)
         g_logger.write("particle: FX mode = %s\n", on ? "tint" : "off");
     return on;
 }
@@ -60,13 +60,13 @@ uint32_t ParticleNode::colour() const
 /* Per-class state so one busy class can't hide the others: the first
  * PARTICLE_LOG_FIRST draws are logged, and so is the first draw that actually
  * carries vertices (an empty ring draws with verts=0). */
-struct DrawLogState { AtomicInt calls; AtomicInt nonempty; };
+struct DrawLogState { std::atomic<long> calls; std::atomic<long> nonempty; };
 
 static void log_draw(DrawLogState *st, const char *name, const void *self,
                      RenderDevice *dev, uint32_t count, bool ok)
 {
-    bool report = atomicIncrement(&st->calls) <= PARTICLE_LOG_FIRST;
-    if (count > 0 && atomicExchange(&st->nonempty, 1) == 0)
+    bool report = ++st->calls <= PARTICLE_LOG_FIRST;
+    if (count > 0 && st->nonempty.exchange(1) == 0)
         report = true;
     if (report)
         g_logger.write("particle: %s this=%p dev=%p verts=%lu -> ok=%d\n",
@@ -243,16 +243,16 @@ static void mat_rot_z(PMat4 m, float a)
 static bool fx_spin(void)
 {
     static const bool on = fx_is("spin");
-    static AtomicInt logged = 0;
-    if (on && atomicExchange(&logged, 1) == 0)
+    static std::atomic<long> logged = 0;
+    if (on && logged.exchange(1) == 0)
         g_logger.write("particle: FX mode = spin\n");
     return on;
 }
 
 void ParticleSystem::tick(float dt)
 {
-    static AtomicInt once = 0;
-    if (atomicExchange(&once, 1) == 0)
+    static std::atomic<long> once = 0;
+    if (once.exchange(1) == 0)
         g_logger.write("particle: BaseTick active (this=%p dt=%f gen=%p env=%p)\n",
                   this, dt, pGenerator_, pEnvironment_);
     if (pGenerator_)
@@ -264,8 +264,8 @@ void ParticleSystem::tick(float dt)
 
 void XFaceParticleSystem::tick(float dt)
 {
-    static AtomicInt once = 0;
-    if (atomicExchange(&once, 1) == 0)
+    static std::atomic<long> once = 0;
+    if (once.exchange(1) == 0)
         g_logger.write("particle: XFaceTick active (this=%p entries=%lu)\n",
                   this, dwCornerTableCount_);
     if (pCornerTable_) {
@@ -317,8 +317,8 @@ static float vec_len(const float v[3])
  * / 3-4-5 with 3=2, 4=1, 5=1+2, all shifted by -(1+2)/2). */
 void FaceParticleSystem::setVector(float x, float y, float z)
 {
-    static AtomicInt once = 0;
-    if (atomicExchange(&once, 1) == 0)
+    static std::atomic<long> once = 0;
+    if (once.exchange(1) == 0)
         g_logger.write("particle: FaceSetVector active (this=%p dir=%f,%f,%f)\n",
                   this, x, y, z);
     float basis[3] = { 1.0f, 0.0f, 0.0f };
@@ -355,8 +355,8 @@ void FaceParticleSystem::setVector(float x, float y, float z)
 /* Carry the six baked corners through a matrix. */
 void FaceParticleSystem::transformCorners(float *matrix)
 {
-    static AtomicInt once = 0;
-    if (atomicExchange(&once, 1) == 0)
+    static std::atomic<long> once = 0;
+    if (once.exchange(1) == 0)
         g_logger.write("particle: FaceTransformCorners active (this=%p)\n", this);
     for (int c = 0; c < 6; c++)
         transform_point(flCorner_[c], matrix);

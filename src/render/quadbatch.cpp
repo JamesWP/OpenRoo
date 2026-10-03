@@ -3,13 +3,13 @@
  * before it in the array, whether or not that one drew anything. */
 
 #include <strings.h>
-#include "portable.h"
+#include <atomic>
+#include <stdio.h>
 #include <stdint.h>
 #include "quadbatch.h"
 #include "sysdev.h"
 #include <fstream>
 #include "binio.h"
-#include <stdio.h>
 #include <errno.h>
 #include "renderdevice.h"
 #include "d3dmath.h"
@@ -25,13 +25,13 @@
  * diffuse(4), specular(4), two texture-coordinate pairs(8). */
 static void quad_dump(const void *data, uint32_t quads)
 {
-    static AtomicInt calls = 0;
-    char path[kMaxPath];
+    static std::atomic<long> calls = 0;
+    char path[FILENAME_MAX];
     if (!sysdev::getEnv("KAROO_QUAD_DUMP", path, sizeof(path)))
         return;
     // Dumps the 200th gated draw, not the first: if the buffer is filled
     // lazily, the first frame would show an empty one.
-    if (atomicIncrement(&calls) != 200)
+    if (++calls != 200)
         return;
     g_logger.write("quadbatch: dumping at call 200, pData=%p quads=%lu\n", data, quads);
 
@@ -87,10 +87,10 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
         const ThemeLevelObject *obj = &slot->records()[i];
         uint32_t nsub = obj->subObjectCount();
         {  // KAROO_QUAD_DIAG=1: log each object's draw-kind and sub-object count.
-            static AtomicInt diag = 0;
+            static std::atomic<long> diag = 0;
             char dbuf[8];
             if (sysdev::getEnv("KAROO_QUAD_DIAG", dbuf, sizeof(dbuf))
-                && dbuf[0] != '0' && atomicIncrement(&diag) <= 24)
+                && dbuf[0] != '0' && ++diag <= 24)
                 g_logger.write("quadbatch: diag obj=%lu kind=%lu nsub=%lu\n",
                           i, (uint32_t)obj->kind(), nsub);
         }
@@ -138,8 +138,8 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
                         Prim::TriangleList, QUAD_FVF, pl->wallStripVerts(),
                         (uint32_t)pl->wallStripCount() * 6, 0);
 
-                static AtomicInt logged = 0;
-                if (atomicIncrement(&logged) <= QUAD_LOG_FIRST)
+                static std::atomic<long> logged = 0;
+                if (++logged <= QUAD_LOG_FIRST)
                     g_logger.write("quadbatch: obj=%lu sub=%lu tex=%p addr=%lu "
                               "src=%lu dst=%lu quads=%lu -> ok=%d\n",
                               i, s, sub->pTexture, addr, sub->dwBlendSrc,

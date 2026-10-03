@@ -17,12 +17,11 @@
  * tests.  The pressed-since-last-call bit is not replayed: it is consumed
  * state, and reproducing it would need the same call order within a frame. */
 
-#include "portable.h"
+#include <stdio.h>
 #include <stdint.h>
 #include <fstream>
 #include "record.h"
 #include "sysdev.h"
-#include <stdio.h>
 #include "inputdev.h"
 #include "policy.h"
 #include "menu.h"
@@ -186,7 +185,7 @@ static void open_replay(const char *path)
 static void init(void)
 {
     if (g_mode >= 0) return;
-    char path[kMaxPath];
+    char path[FILENAME_MAX];
     g_mode = 0;
     read_env();
 

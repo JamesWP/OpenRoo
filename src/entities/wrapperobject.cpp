@@ -12,7 +12,7 @@
  * and a running census, since no gate observes texture coordinates. */
 
 #include <strings.h>
-#include "portable.h"
+#include <atomic>
 #include "sysdev.h"
 #include <math.h>
 #include <new>
@@ -80,15 +80,15 @@ static const char *const kWrapEntryName[WE_COUNT] = {
     "scrollUVs", "updateObjectTransform", "ctor", "dtor"
 };
 
-static AtomicInt g_wrapCalls[WE_COUNT];
-static AtomicInt g_wrapVerts;
+static std::atomic<long> g_wrapCalls[WE_COUNT];
+static std::atomic<long> g_wrapVerts;
 
 static void wrap_census(int entry, unsigned int verts)
 {
     if (!wrap_diag())
         return;
-    long n = atomicIncrement(&g_wrapCalls[entry]);
-    atomicAdd(&g_wrapVerts, (long)verts);
+    long n = ++g_wrapCalls[entry];
+    g_wrapVerts += (long)verts;
     if (n == 1)
         g_logger.write("wrapper: first %s\n", kWrapEntryName[entry]);
     else if ((n % 20000) == 0)

@@ -13,7 +13,7 @@
  * the text. */
 
 #include <strings.h>
-#include "portable.h"
+#include <atomic>
 #include <stdint.h>
 #include <stdio.h>
 #include "sysdev.h"
@@ -124,8 +124,8 @@ void Score_DrawHighScoreTable(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
         d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
                                     (void *)g_pPanelVerts, 4, 0);
 
-    static AtomicInt calls = 0;
-    if (atomicIncrement(&calls) <= SCORE_LOG_FIRST)
+    static std::atomic<long> calls = 0;
+    if (++calls <= SCORE_LOG_FIRST)
         g_logger.write("scoreoverlay: highscore %.0fx%.0f entries=%u\n",
                    w, h, (unsigned)g->highScores()->count());
 
@@ -251,8 +251,8 @@ static void draw_summary(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
 void Score_DrawGameOverScore(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
                              TextRenderer *text, int n)
 {
-    static AtomicInt calls = 0;
-    if (atomicIncrement(&calls) <= SCORE_LOG_FIRST)
+    static std::atomic<long> calls = 0;
+    if (++calls <= SCORE_LOG_FIRST)
         g_logger.write("scoreoverlay: gameover %lux%lu n=%d\n",
                   (unsigned long)d3d->width(),
                   (unsigned long)d3d->height(), n);

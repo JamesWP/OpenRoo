@@ -13,7 +13,7 @@
  * level. */
 
 #include <strings.h>
-#include "portable.h"
+#include <atomic>
 #include <stdint.h>
 #include "meshbatch.h"
 #include "sysdev.h"
@@ -50,8 +50,8 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
     const ThemeObjectTypeSlot *slot = theme->slot(THEME_OBJ_PLATE);
 
     {  // Log: is this pass reached, and with what?
-        static AtomicInt e = 0;
-        long k = atomicIncrement(&e);
+        static std::atomic<long> e = 0;
+        long k = ++e;
         if (k <= 3 || k % 500 == 0)
             g_logger.write("meshbatch: enter #%ld nobj=%lu quads=%lu\n", k,
                       slot->instanceCount(), (uint32_t)pl->kind01Count());
@@ -122,8 +122,8 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
                                            (const Mat4 *)m);
                 mesh->drawMeshBuffer(d3d, 0);
 
-                static AtomicInt logged = 0;
-                if (atomicIncrement(&logged) <= MESH_LOG_FIRST)
+                static std::atomic<long> logged = 0;
+                if (++logged <= MESH_LOG_FIRST)
                     g_logger.write("meshbatch: obj=%lu sub=%lu mesh=%p "
                               "pos=%d,%d,%d (x1000)\n", i, s, mesh,
                               (int)(m[12] * 1000.0f), (int)(m[13] * 1000.0f),

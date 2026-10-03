@@ -14,7 +14,7 @@
  * lists, never by scanning the slots, since a dead slot keeps its stale
  * pointer. */
 
-#include "portable.h"
+#include <stdio.h>
 #include <stdint.h>
 #include "worldstate.h"
 #include "sysdev.h"
@@ -28,7 +28,6 @@
 #include "bomb.h"
 #include <fstream>
 #include "binio.h"
-#include <stdio.h>
 #include <string.h>
 
 static WsTile     g_grid[WS_GRID_PITCH * WS_GRID_PITCH];
@@ -420,7 +419,7 @@ static void obs_dump_line(std::ostream &fp, const Observation *obs)
 }
 
 static int   g_trace = -1, g_obsdump = -1;
-static char  g_map_path[kMaxPath], g_obs_path[kMaxPath];
+static char  g_map_path[FILENAME_MAX], g_obs_path[FILENAME_MAX];
 
 /* One map dump per run, carrying the level index and name.  Re-dumping on a
  * later level would overwrite it with a different map. */

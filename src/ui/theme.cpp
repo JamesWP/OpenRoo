@@ -12,7 +12,6 @@
  * KAROO_THEME_STRUCT_DIAG=1 dumps a plausibility report of the loaded block
  * after each load (see docs/CONTROLS.md). */
 
-#include "portable.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,7 +19,6 @@
 
 #include "theme.h"
 #include "sysdev.h"
-#include <stdlib.h>
 #include "logger.h"
 #include "game.h"
 #include "renderdevice.h"

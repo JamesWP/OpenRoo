@@ -10,7 +10,7 @@
 
 #include <strings.h>
 #include <string.h>
-#include "portable.h"
+#include <atomic>
 #include <stdint.h>
 #include "generators.h"
 #include "sysdev.h"
@@ -447,8 +447,8 @@ void CylinderGenerator::cylinderEmit(float dt)
  * included; every caller reaches it through the virtual tick(). */
 
 #define SIM_LOG_ONCE(counter) \
-    static AtomicInt counter = 0; \
-    if (atomicIncrement(&counter) <= SIM_LOG_FIRST)
+    static std::atomic<long> counter = 0; \
+    if (++counter <= SIM_LOG_FIRST)
 
 static uint32_t count_live(const RingBuffer *ring)
 {
@@ -472,7 +472,7 @@ static uint32_t count_free(const RingBuffer *ring)
  * distinguishable.  Off unless the variable is set. */
 static uint32_t stats_interval(void)
 {
-    static AtomicInt cached = -1;
+    static std::atomic<long> cached = -1;
     if (cached < 0) {
         char buf[16];
         long v = 0;
@@ -480,19 +480,19 @@ static uint32_t stats_interval(void)
             v = (long)strtol(buf, NULL, 10);
         if (v < 0)
             v = 0;
-        atomicExchange(&cached, v);
+        cached.exchange(v);
         if (v > 0)
             g_logger.write("sim: stats every %ld ticks\n", v);
     }
     return (uint32_t)cached;
 }
 
-static void stats_tick(const char *what, void *self, const RingBuffer *ring, AtomicInt *counter, float dt)
+static void stats_tick(const char *what, void *self, const RingBuffer *ring, std::atomic<long> *counter, float dt)
 {
     uint32_t every = stats_interval();
     if (every == 0)
         return;
-    long n = atomicIncrement(counter);
+    long n = ++*counter;
     if ((uint32_t)n % every)
         return;
     // Also report how many of the live nodes are already expired (flLife < 0).
@@ -523,7 +523,7 @@ void GravityEnvironment::tick(float dt)
         g_logger.write("sim: GravityTick this=%p dt=%f live=%lu ring=%lu\n",
                   this, dt, count_live(pRing_),
                   pRing_->dwRingCount);
-    static AtomicInt ticks = 0;
+    static std::atomic<long> ticks = 0;
     stats_tick("gravity", this, pRing_, &ticks, dt);
     gravityTick(dt);
 }
@@ -535,7 +535,7 @@ void MagnetEnvironment::tick(float dt)
                   this, dt, count_live(pRing_),
                   pRing_->dwRingCount,
                   flCentre_[0], flCentre_[1], flCentre_[2]);
-    static AtomicInt ticks = 0;
+    static std::atomic<long> ticks = 0;
     stats_tick("magnet", this, pRing_, &ticks, dt);
     magnetTick(dt);
 }

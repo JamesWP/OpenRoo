@@ -1,7 +1,6 @@
 /* SplinePath: a Bezier curve through a linked list of control points, and the
  * two debug line-strip draws. */
 
-#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <math.h>
@@ -10,7 +9,6 @@
 #include <vector>
 
 #include "splinepath.h"
-#include <stdlib.h>
 #include "logger.h"
 #include "renderdevice.h"
 

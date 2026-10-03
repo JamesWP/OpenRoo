@@ -23,7 +23,6 @@
  * by exactly two times. */
 
 #include <strings.h>
-#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include "logger.h"

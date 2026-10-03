@@ -19,12 +19,11 @@
  * stays. */
 
 #include <strings.h>
-#include "portable.h"
+#include <stdio.h>
 #include "sysdev.h"
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -133,7 +132,7 @@ int AnimTable::load(const char *path)
     // KAROO_ANI_DUMP=<path>: the whole table, hashed, for comparison against
     // an independent parse.
     {
-        char dump[kMaxPath];
+        char dump[FILENAME_MAX];
         if (sysdev::getEnv("KAROO_ANI_DUMP", dump, sizeof(dump))) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {
