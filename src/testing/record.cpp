@@ -19,6 +19,7 @@
 
 #include <windows.h>
 #include <stdint.h>
+#include <fstream>
 #include "record.h"
 #include "sysdev.h"
 #include <stdio.h>
@@ -46,7 +47,8 @@ struct FrameRec {
 };
 
 static int      g_mode = -1;  // 0 none, 1 record, 2 replay
-static FILE    *g_fh   = NULL;
+static std::ofstream g_out;  // record
+static std::ifstream g_in;   // replay
 static FrameRec g_cur;   // the frame being accumulated (record)
 static FrameRec g_play;  // the frame being served (replay)
 static bool     g_have_play;
@@ -96,8 +98,8 @@ static void warn_determinism(const char *what)
 
 static void open_record(const char *path)
 {
-    g_fh = fopen(path, "wb");
-    if (!g_fh) {
+    g_out.open(path, std::ios::binary);
+    if (!g_out) {
         g_logger.write("record: cannot open %s for writing\n", path);
         g_mode = 0;
         return;
@@ -109,8 +111,8 @@ static void open_record(const char *path)
     *(uint32_t  *)(hdr + 16) = g_seed;
     *(uint32_t  *)(hdr + 20) = g_seed_set ? 1u : 0u;
     sysdev::getEnv("KAROO_RECORD_LABEL", (char *)hdr + 24, 56);
-    fwrite(hdr, 1, sizeof(hdr), g_fh);
-    fflush(g_fh);
+    g_out.write((const char *)hdr, sizeof(hdr));
+    g_out.flush();
     g_logger.write("record: recording to %s (dt=%.9f seed=%u%s)\n",
               path, g_dt, (unsigned)g_seed, g_seed_set ? "" : " UNSET");
     warn_determinism("recording");
@@ -118,14 +120,14 @@ static void open_record(const char *path)
 
 static void open_replay(const char *path)
 {
-    g_fh = fopen(path, "rb");
-    if (!g_fh) {
+    g_in.open(path, std::ios::binary);
+    if (!g_in) {
         g_logger.write("record: cannot open %s for reading\n", path);
         g_mode = 0;
         return;
     }
     uint8_t hdr[HEADER_SIZE];
-    if (fread(hdr, 1, sizeof(hdr), g_fh) != sizeof(hdr) ||
+    if (!g_in.read((char *)hdr, sizeof(hdr)) ||
         memcmp(hdr, "KROO", 4) != 0) {
         g_logger.write("record: %s is not a recording\n", path);
         g_mode = 0;
@@ -185,9 +187,9 @@ static void flush_frame(void)
         buf[n++] = g_cur.async[i][0];
         buf[n++] = g_cur.async[i][1];
     }
-    // Flushed every frame: the process can end without the CRT closing the file.
-    fwrite(buf, 1, n, g_fh);
-    fflush(g_fh);
+    // Flushed every frame: the process can end without the stream closing the file.
+    g_out.write((const char *)buf, n);
+    g_out.flush();
 
     g_cur = FrameRec();
     g_keys_seen = false;
@@ -215,7 +217,7 @@ void record_async(int vkey, short value)
 
 static bool read_exact(void *dst, uint32_t n)
 {
-    return fread(dst, 1, n, g_fh) == n;
+    return (bool)g_in.read((char *)dst, n);
 }
 
 static bool read_one(FrameRec *r)

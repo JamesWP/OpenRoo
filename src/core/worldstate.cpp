@@ -26,6 +26,8 @@
 #include "player.h"
 #include "foe.h"
 #include "bomb.h"
+#include <fstream>
+#include "binio.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -288,46 +290,46 @@ static void map_check(const Game *g, const Observation *obs)
 
 static void map_dump(const Game *g, const Observation *obs, const char *path)
 {
-    FILE *fp = fopen(path, "w");
+    std::ofstream fp(path);  // text mode
     if (!fp) {
         g_logger.write("worldstate: map dump: cannot open %s\n", path);
         return;
     }
 
-    fprintf(fp, "{\n");
-    fprintf(fp, "  \"frame\": %lu,\n", (unsigned long)obs->frame);
-    fprintf(fp, "  \"level_index\": %u,\n", (unsigned)g->levelIndex());
+    printTo(fp, "{\n");
+    printTo(fp, "  \"frame\": %lu,\n", (unsigned long)obs->frame);
+    printTo(fp, "  \"level_index\": %u,\n", (unsigned)g->levelIndex());
     // Level names contain backslashes, which JSON strings must escape.
-    fputs("  \"level_name\": \"", fp);
+    fp << "  \"level_name\": \"";
     const char *name = g->levelName();
     for (const char *n = name; *n && n < name + 96; n++) {
-        if (*n == '\\' || *n == '"') fputc('\\', fp);
-        fputc(*n, fp);
+        if (*n == '\\' || *n == '"') fp.put('\\');
+        fp.put(*n);
     }
-    fputs("\",\n", fp);
-    fprintf(fp, "  \"cols_u\": %u,\n", obs->cols);
-    fprintf(fp, "  \"rows_v\": %u,\n", obs->rows);
-    fprintf(fp, "  \"pitch\": %u,\n", (unsigned)WS_GRID_PITCH);
-    fprintf(fp, "  \"crystals_in_level\": %u,\n", (unsigned)obs->crystals_in_level);
-    fprintf(fp, "  \"gems_required\": %d,\n", obs->gems_required);
-    fprintf(fp, "  \"player_cell\": [%u, %u, %u],\n",
+    fp << "\",\n";
+    printTo(fp, "  \"cols_u\": %u,\n", obs->cols);
+    printTo(fp, "  \"rows_v\": %u,\n", obs->rows);
+    printTo(fp, "  \"pitch\": %u,\n", (unsigned)WS_GRID_PITCH);
+    printTo(fp, "  \"crystals_in_level\": %u,\n", (unsigned)obs->crystals_in_level);
+    printTo(fp, "  \"gems_required\": %d,\n", obs->gems_required);
+    printTo(fp, "  \"player_cell\": [%u, %u, %u],\n",
             obs->player_cell[0], obs->player_cell[1], obs->player_cell[2]);
-    fprintf(fp, "  \"_axes\": \"index = v + u*pitch; float triples are (u, h, v)\",\n");
-    fprintf(fp, "  \"_fields\": [\"kind\", \"param\", \"contents\", \"height\", "
+    printTo(fp, "  \"_axes\": \"index = v + u*pitch; float triples are (u, h, v)\",\n");
+    printTo(fp, "  \"_fields\": [\"kind\", \"param\", \"contents\", \"height\", "
                 "\"spawn\", \"spawn_a\", \"spawn_b\"],\n");
-    fprintf(fp, "  \"tiles\": [\n");
+    printTo(fp, "  \"tiles\": [\n");
     for (unsigned u = 0; u < obs->cols; u++) {
-        fprintf(fp, "    [");
+        printTo(fp, "    [");
         for (unsigned v = 0; v < obs->rows; v++) {
             const WsTile *t = &g_grid[v + u * WS_GRID_PITCH];
-            fprintf(fp, "%s[%u,%u,%u,%u,%u,%u,%u]", v ? "," : "",
+            printTo(fp, "%s[%u,%u,%u,%u,%u,%u,%u]", v ? "," : "",
                     t->kind, t->param, t->contents, t->height,
                     t->spawn, t->spawn_a, t->spawn_b);
         }
-        fprintf(fp, "]%s\n", u + 1 < obs->cols ? "," : "");
+        printTo(fp, "]%s\n", u + 1 < obs->cols ? "," : "");
     }
-    fprintf(fp, "  ]\n}\n");
-    fclose(fp);
+    printTo(fp, "  ]\n}\n");
+    fp.close();
 
     g_logger.write("worldstate: map dump: %ux%u grid written to %s\n",
               obs->cols, obs->rows, path);
@@ -385,9 +387,9 @@ void Observation::traceFrame() const
     traceEntities("enemy", enemies, n_enemies, false);
 }
 
-static void obs_dump_line(FILE *fp, const Observation *obs)
+static void obs_dump_line(std::ostream &fp, const Observation *obs)
 {
-    fprintf(fp, "{\"frame\":%lu,\"cols\":%u,\"rows\":%u,"
+    printTo(fp, "{\"frame\":%lu,\"cols\":%u,\"rows\":%u,"
                 "\"player_cell\":[%u,%u,%u],"
                 "\"player_grid\":[%.6f,%.6f,%.6f],"
                 "\"player_world\":[%.6f,%.6f,%.6f],"
@@ -406,7 +408,7 @@ static void obs_dump_line(FILE *fp, const Observation *obs)
         const WsEntity *v = pass ? obs->enemies : obs->foes;
         unsigned n        = pass ? obs->n_enemies : obs->n_foes;
         for (unsigned i = 0; i < n; i++) {
-            fprintf(fp, "%s{\"t\":\"%s\",\"slot\":%u,\"kind\":%u,"
+            printTo(fp, "%s{\"t\":\"%s\",\"slot\":%u,\"kind\":%u,"
                         "\"cell\":[%u,%u,%u],\"pos\":[%.6f,%.6f,%.6f]}",
                     first ? "" : ",", pass ? "enemy" : "foe",
                     v[i].slot, v[i].kind, v[i].gu, v[i].gv, v[i].gh,
@@ -414,7 +416,7 @@ static void obs_dump_line(FILE *fp, const Observation *obs)
             first = false;
         }
     }
-    fprintf(fp, "]}\n");
+    printTo(fp, "]}\n");
 }
 
 static int   g_trace = -1, g_obsdump = -1;
@@ -423,7 +425,7 @@ static char  g_map_path[MAX_PATH], g_obs_path[MAX_PATH];
 /* One map dump per run, carrying the level index and name.  Re-dumping on a
  * later level would overwrite it with a different map. */
 static bool  g_map_wanted, g_map_done;
-static FILE *g_obs_fp;
+static std::ofstream g_obs_fp;
 
 static void worldstate_init(void)
 {
@@ -456,7 +458,7 @@ void worldstate_tick(void)
     }
     if (g_trace) obs->traceFrame();
     if (g_obsdump) {
-        if (!g_obs_fp) g_obs_fp = fopen(g_obs_path, "w");
-        if (g_obs_fp) { obs_dump_line(g_obs_fp, obs); fflush(g_obs_fp); }
+        if (!g_obs_fp.is_open()) g_obs_fp.open(g_obs_path);
+        if (g_obs_fp) { obs_dump_line(g_obs_fp, obs); g_obs_fp.flush(); }
     }
 }

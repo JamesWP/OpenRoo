@@ -1,3 +1,4 @@
+#include <windows.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -12,18 +13,23 @@ static const size_t LINE_MAX_BYTES = 3000;
 void Logger::open(const char *path)
 {
     close();
-    fp_ = fopen(path, "w");
+    fp_.open(path);
 }
 
 void Logger::close()
 {
-    if (fp_) { fclose(fp_); fp_ = NULL; }
+    fp_.close();
 }
 
-/* One fwrite per line, so lines from different threads do not interleave. */
+/* Held for each line, so lines from different threads do not interleave. */
+static struct LogLock {
+    CRITICAL_SECTION cs;
+    LogLock() { InitializeCriticalSection(&cs); }
+} s_lock;
+
 void Logger::emit(const char *prefix, const char *fmt, va_list ap)
 {
-    if (!fp_) return;
+    if (!fp_.is_open()) return;
     char line[LINE_MAX_BYTES + 2];
     int n = snprintf(line, sizeof(line), "[%u] %s", sysdev::tickMs(), prefix);
     if (n < 0 || (size_t)n >= LINE_MAX_BYTES) n = 0;
@@ -32,8 +38,10 @@ void Logger::emit(const char *prefix, const char *fmt, va_list ap)
     size_t len = n + m;
     if (len >= LINE_MAX_BYTES) len = LINE_MAX_BYTES - 1;
     if (len == 0 || line[len - 1] != '\n') line[len++] = '\n';
-    fwrite(line, 1, len, fp_);
-    fflush(fp_);
+    EnterCriticalSection(&s_lock.cs);
+    fp_.write(line, len);
+    fp_.flush();
+    LeaveCriticalSection(&s_lock.cs);
 }
 
 void Logger::write(const char *fmt, ...)

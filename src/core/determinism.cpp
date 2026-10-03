@@ -14,6 +14,7 @@
 
 #include <windows.h>
 #include <stdint.h>
+#include <fstream>
 #include "determinism.h"
 #include "sysdev.h"
 #include "particles.h"
@@ -71,7 +72,7 @@ static int game_fields(const Game *g, HashedField *out)
 
 
 static int      g_on = -1;
-static FILE    *g_fh = NULL;
+static std::ofstream g_fh;
 static uint32_t    g_frame;
 static uint32_t    g_hash = 2166136261u;  // the FNV-1a offset basis
 
@@ -106,8 +107,8 @@ bool dethash_enabled(void)
         char path[MAX_PATH];
         g_on = 0;
         if (sysdev::getEnv("KAROO_HASH_LOG", path, sizeof(path)) && path[0]) {
-            g_fh = fopen(path, "wb");
-            g_on = (g_fh != NULL);
+            g_fh.open(path, std::ios::binary);
+            g_on = g_fh.is_open();
             g_logger.write("dethash: %s -> %s\n", path, g_on ? "recording" : "OPEN FAILED");
         }
     }
@@ -169,8 +170,8 @@ void dethash_frame_end(double virtual_seconds)
                       (unsigned long)g_hash, (unsigned long)g_systems,
                       (unsigned long)g_nodes, game ? 1 : 0, subs, fields);
     if (n > 0) {
-        fwrite(line, 1, (size_t)n, g_fh);
-        fflush(g_fh);  // the process can end without the CRT closing the file
+        g_fh.write(line, n);
+        g_fh.flush();  // the process can end without the stream closing the file
     }
 
     g_frame++;

@@ -23,6 +23,8 @@
 #include <string.h>
 #include <algorithm>
 #include <memory>
+#include <fstream>
+#include "binio.h"
 #include <stdio.h>
 
 struct GameState {
@@ -284,62 +286,62 @@ void gamestate_dump(const char *reason)
     GameState s   = g_live;
     bool     have = g_have_live;
 
-    FILE *fp = fopen(path, "w");
+    std::ofstream fp(path);  // text mode
     if (!fp) {
         g_logger.write("gamestate: dump: cannot open %s\n", path);
         return;
     }
 
-    fprintf(fp, "{\n");
-    fprintf(fp, "  \"reason\": \"%s\",\n", reason);
-    fprintf(fp, "  \"frame\": %lu,\n", (unsigned long)g_live_frame);
-    fprintf(fp, "  \"frames_run\": %lu,\n", (unsigned long)g_frame);
-    fprintf(fp, "  \"game_live\": %s", have ? "true" : "false");
+    printTo(fp, "{\n");
+    printTo(fp, "  \"reason\": \"%s\",\n", reason);
+    printTo(fp, "  \"frame\": %lu,\n", (unsigned long)g_live_frame);
+    printTo(fp, "  \"frames_run\": %lu,\n", (unsigned long)g_frame);
+    printTo(fp, "  \"game_live\": %s", have ? "true" : "false");
     if (have) {
-        fprintf(fp, ",\n");
-        fprintf(fp, "  \"mode\": %u,\n",            (unsigned)s.mode);
-        fprintf(fp, "  \"gems_collected\": %d,\n",  s.gems_collected);
-        fprintf(fp, "  \"gems_required\": %d,\n",   s.gems_required);
-        fprintf(fp, "  \"foes_killed\": %u,\n",     (unsigned)s.foes_killed);
-        fprintf(fp, "  \"items_collected\": %u,\n", (unsigned)s.extra_cap);
-        fprintf(fp, "  \"items_available\": %u,\n", (unsigned)s.extra_count);
-        fprintf(fp, "  \"items_bonus_blocked\": %u,\n", (unsigned)s.extra_block);
-        fprintf(fp, "  \"vitality\": %u,\n",        (unsigned)s.vitality);
-        fprintf(fp, "  \"lives\": %u,\n",           (unsigned)s.lives);
-        fprintf(fp, "  \"level_score\": %d,\n",     s.level_score);
-        fprintf(fp, "  \"total_score\": %d,\n",     s.total_score);
-        fprintf(fp, "  \"time_limit_s\": %d,\n",    s.time_limit_s);
-        fprintf(fp, "  \"elapsed_ms\": %lu,\n",     (unsigned long)s.elapsed_ms);
-        fprintf(fp, "  \"level_complete\": %d,\n",  s.complete_flag);
-        fprintf(fp, "  \"death_cause\": %u,\n",     (unsigned)s.death_raw[0]);
-        fprintf(fp, "  \"pos\": [%.6f, %.6f, %.6f],\n", s.pos[0], s.pos[1], s.pos[2]);
-        fprintf(fp, "  \"_unconfirmed\": [\"vitality\", \"death_cause\", \"pos\"],\n");
-        fprintf(fp, "  \"completed_a_level\": %s,\n", g_have_done ? "true" : "false");
+        printTo(fp, ",\n");
+        printTo(fp, "  \"mode\": %u,\n",            (unsigned)s.mode);
+        printTo(fp, "  \"gems_collected\": %d,\n",  s.gems_collected);
+        printTo(fp, "  \"gems_required\": %d,\n",   s.gems_required);
+        printTo(fp, "  \"foes_killed\": %u,\n",     (unsigned)s.foes_killed);
+        printTo(fp, "  \"items_collected\": %u,\n", (unsigned)s.extra_cap);
+        printTo(fp, "  \"items_available\": %u,\n", (unsigned)s.extra_count);
+        printTo(fp, "  \"items_bonus_blocked\": %u,\n", (unsigned)s.extra_block);
+        printTo(fp, "  \"vitality\": %u,\n",        (unsigned)s.vitality);
+        printTo(fp, "  \"lives\": %u,\n",           (unsigned)s.lives);
+        printTo(fp, "  \"level_score\": %d,\n",     s.level_score);
+        printTo(fp, "  \"total_score\": %d,\n",     s.total_score);
+        printTo(fp, "  \"time_limit_s\": %d,\n",    s.time_limit_s);
+        printTo(fp, "  \"elapsed_ms\": %lu,\n",     (unsigned long)s.elapsed_ms);
+        printTo(fp, "  \"level_complete\": %d,\n",  s.complete_flag);
+        printTo(fp, "  \"death_cause\": %u,\n",     (unsigned)s.death_raw[0]);
+        printTo(fp, "  \"pos\": [%.6f, %.6f, %.6f],\n", s.pos[0], s.pos[1], s.pos[2]);
+        printTo(fp, "  \"_unconfirmed\": [\"vitality\", \"death_cause\", \"pos\"],\n");
+        printTo(fp, "  \"completed_a_level\": %s,\n", g_have_done ? "true" : "false");
         if (g_have_done) {
-            fprintf(fp, "  \"at_completion\": {\n");
-            fprintf(fp, "    \"frame\": %lu,\n",           (unsigned long)g_done_frame);
-            fprintf(fp, "    \"gems_collected\": %d,\n",   g_done.gems_collected);
-            fprintf(fp, "    \"gems_required\": %d,\n",    g_done.gems_required);
-            fprintf(fp, "    \"foes_killed\": %u,\n",      (unsigned)g_done.foes_killed);
-            fprintf(fp, "    \"items_collected\": %u,\n",  (unsigned)g_done.extra_cap);
-            fprintf(fp, "    \"items_available\": %u,\n",  (unsigned)g_done.extra_count);
-            fprintf(fp, "    \"items_bonus_blocked\": %u,\n", (unsigned)g_done.extra_block);
-            fprintf(fp, "    \"vitality\": %u,\n",         (unsigned)g_done.vitality);
-            fprintf(fp, "    \"lives\": %u,\n",            (unsigned)g_done.lives);
-            fprintf(fp, "    \"level_score\": %d,\n",      g_done.level_score);
-            fprintf(fp, "    \"total_score\": %d,\n",      g_done.total_score);
-            fprintf(fp, "    \"time_limit_s\": %d,\n",     g_done.time_limit_s);
-            fprintf(fp, "    \"elapsed_ms\": %lu,\n",      (unsigned long)g_done.elapsed_ms);
-            fprintf(fp, "    \"level_complete\": %d\n",    g_done.complete_flag);
-            fprintf(fp, "  }\n");
+            printTo(fp, "  \"at_completion\": {\n");
+            printTo(fp, "    \"frame\": %lu,\n",           (unsigned long)g_done_frame);
+            printTo(fp, "    \"gems_collected\": %d,\n",   g_done.gems_collected);
+            printTo(fp, "    \"gems_required\": %d,\n",    g_done.gems_required);
+            printTo(fp, "    \"foes_killed\": %u,\n",      (unsigned)g_done.foes_killed);
+            printTo(fp, "    \"items_collected\": %u,\n",  (unsigned)g_done.extra_cap);
+            printTo(fp, "    \"items_available\": %u,\n",  (unsigned)g_done.extra_count);
+            printTo(fp, "    \"items_bonus_blocked\": %u,\n", (unsigned)g_done.extra_block);
+            printTo(fp, "    \"vitality\": %u,\n",         (unsigned)g_done.vitality);
+            printTo(fp, "    \"lives\": %u,\n",            (unsigned)g_done.lives);
+            printTo(fp, "    \"level_score\": %d,\n",      g_done.level_score);
+            printTo(fp, "    \"total_score\": %d,\n",      g_done.total_score);
+            printTo(fp, "    \"time_limit_s\": %d,\n",     g_done.time_limit_s);
+            printTo(fp, "    \"elapsed_ms\": %lu,\n",      (unsigned long)g_done.elapsed_ms);
+            printTo(fp, "    \"level_complete\": %d\n",    g_done.complete_flag);
+            printTo(fp, "  }\n");
         } else {
-            fprintf(fp, "  \"at_completion\": null\n");
+            printTo(fp, "  \"at_completion\": null\n");
         }
     } else {
-        fprintf(fp, "\n");
+        printTo(fp, "\n");
     }
-    fprintf(fp, "}\n");
-    fclose(fp);
+    printTo(fp, "}\n");
+    fp.close();
 
     g_logger.write("gamestate: dumped end state (%s, from frame %lu of %lu) to %s\n",
               reason, (unsigned long)g_live_frame, (unsigned long)g_frame, path);
