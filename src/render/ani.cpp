@@ -18,6 +18,7 @@
  * so animated models hold their first frame while everything else about them
  * stays. */
 
+#include <strings.h>
 #include "portable.h"
 #include "sysdev.h"
 #include <fstream>
@@ -63,7 +64,7 @@ static bool fx_freeze(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_ANI_FX", buf, sizeof(buf)))
-            cached = (strcaseCompare(buf, "freeze") == 0);
+            cached = (strcasecmp(buf, "freeze") == 0);
         g_logger.write("ani: FX mode = %s\n", cached ? "freeze" : "off");
     }
     return cached != 0;

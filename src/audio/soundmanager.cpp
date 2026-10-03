@@ -16,6 +16,7 @@
  *     first failure, and stays there for the rest of the duplicates and all
  *     of the entry's voice pools. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include <new>
@@ -49,7 +50,7 @@ static SndMgrFx sndmgr_fx(void)
     uint32_t n = sysdev::getEnv("KAROO_SNDMGR_FX", buf, sizeof(buf));
     SndMgrFx fx = SM_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
-        if (strcaseCompare(buf, "nosharemaster") == 0) fx = SM_FX_NOSHAREMASTER;
+        if (strcasecmp(buf, "nosharemaster") == 0) fx = SM_FX_NOSHAREMASTER;
     }
     g_logger.write("soundmgr: FX mode = %s\n",
               fx == SM_FX_NOSHAREMASTER ? "nosharemaster" : "off");
@@ -65,7 +66,7 @@ static bool sndmgr_diag(void)
     if (cached < 0) {
         char buf[32];
         uint32_t n = sysdev::getEnv("KAROO_SNDMGR_DIAG", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && strcaseCompare(buf, "0") != 0) ? 1 : 0;
+        cached = (n > 0 && n < sizeof(buf) && strcasecmp(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;
 }

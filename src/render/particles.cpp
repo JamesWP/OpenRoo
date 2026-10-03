@@ -8,6 +8,7 @@
  * KAROO_PARTICLE_FX=tint forces every particle magenta; =spin exaggerates
  * XFace rotation velocities x10. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "particles.h"
@@ -39,7 +40,7 @@ static bool fx_is(const char *mode)
 {
     char buf[16];
     return sysdev::getEnv("KAROO_PARTICLE_FX", buf, sizeof(buf))
-        && strcaseCompare(buf, mode) == 0;
+        && strcasecmp(buf, mode) == 0;
 }
 
 static bool fx_tint(void)

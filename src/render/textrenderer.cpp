@@ -17,6 +17,7 @@
  * drawCentered and drawRight shift x left by half the rendered width, or all
  * of it, and then call drawLeft. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "textrenderer.h"
@@ -68,9 +69,9 @@ static TextFx text_fx(void)
     uint32_t n = sysdev::getEnv("KAROO_TEXT_FX", buf, sizeof(buf));
     TextFx fx = TEXT_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
-        if (strcaseCompare(buf, "mirror") == 0)   fx = TEXT_FX_MIRROR;
-        if (strcaseCompare(buf, "loadswap") == 0) fx = TEXT_FX_LOADSWAP;
-        if (strcaseCompare(buf, "bigwave") == 0)  fx = TEXT_FX_BIGWAVE;
+        if (strcasecmp(buf, "mirror") == 0)   fx = TEXT_FX_MIRROR;
+        if (strcasecmp(buf, "loadswap") == 0) fx = TEXT_FX_LOADSWAP;
+        if (strcasecmp(buf, "bigwave") == 0)  fx = TEXT_FX_BIGWAVE;
     }
     g_logger.write("textrenderer: FX mode = %s\n",
               fx == TEXT_FX_MIRROR   ? "mirror" :
@@ -89,7 +90,7 @@ static bool text_diag(void)
     if (cached < 0) {
         char buf[32];
         uint32_t n = sysdev::getEnv("KAROO_TEXT_DIAG", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && strcaseCompare(buf, "0") != 0) ? 1 : 0;
+        cached = (n > 0 && n < sizeof(buf) && strcasecmp(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;
 }
