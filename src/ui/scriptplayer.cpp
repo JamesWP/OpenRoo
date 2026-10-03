@@ -126,7 +126,9 @@ int ScriptPlayer::readForLevel(const char *path)
 
             lineCount_ = (uint16_t)(n + 1);
 
-            in.get();  // the newline after the ';', discarded
+            // The character after the ';', discarded: the CRLF's '\n', the '\r'
+            // being dropped here as everywhere else.
+            while (in.get(c) && c == '\r') {}
         } else {
             s_entry[idx & 0xffff] = c;  // PRESERVED: the index is masked to 16 bits
             idx++;
