@@ -413,7 +413,7 @@ int RingBuffer::alloc(uint32_t count, uint32_t shapes)
 {
     release();
     if (count < 2)
-        return FALSE;
+        return false;
     dwRingCount = count;
     ringNodes.reset(new ParticleNode[count]());
     ParticleNode *base = ringNodes.get();
@@ -430,7 +430,7 @@ int RingBuffer::alloc(uint32_t count, uint32_t shapes)
     base[count - 1].pNext = NULL;
 
     assignShapes(shapes);
-    return TRUE;
+    return true;
 }
 
 /* ─── ParticleSystem, the base class ───────────────────────────────────────
@@ -476,19 +476,19 @@ int ParticleSystem::resize(uint32_t count)
 int ParticleSystem::setGenerator(Generator *gen)
 {
     if (gen == NULL || !gen->attachRing(&ring_))
-        return FALSE;
+        return false;
     delete pGenerator_;
     pGenerator_ = gen;
-    return TRUE;
+    return true;
 }
 
 int ParticleSystem::setEnvironment(Environment *env)
 {
     if (env == NULL || !env->attachRing(&ring_))
-        return FALSE;
+        return false;
     delete pEnvironment_;
     pEnvironment_ = env;
-    return TRUE;
+    return true;
 }
 
 /* Releases self (virtually, so a subclass frees its vertex buffer too),
@@ -499,25 +499,25 @@ int ParticleSystem::copyFrom(const ParticleSystem *src)
 {
     release(1);
     if (strcmp(src->pName_, pName_) != 0)
-        return FALSE;
+        return false;
     if (!ring_.alloc(src->ring_.dwRingCount, 0))
-        return FALSE;
+        return false;
 
     if (src->pGenerator_) {
         Generator *gen = src->pGenerator_->clone();
         if (gen == NULL || !setGenerator(gen)) {
             release(1);
-            return FALSE;
+            return false;
         }
     }
     if (src->pEnvironment_) {
         Environment *env = src->pEnvironment_->clone();
         if (env == NULL || !setEnvironment(env)) {
             release(1);
-            return FALSE;
+            return false;
         }
     }
-    return TRUE;
+    return true;
 }
 
 /* ─── Save / Load ──────────────────────────────────────────────────────────
@@ -534,17 +534,17 @@ static int ps_write_sub_object(T *obj, std::ostream &out)
     const char *name = obj ? obj->name() : GS_PS_NAME_NULL;
     uint32_t len = (uint32_t)strlen(name) + 1;
     if (!ps_write(&len, 4, out))
-        return FALSE;
+        return false;
     if (!writeBytes(out, name, len))
-        return FALSE;
-    return obj ? obj->save(out) : TRUE;
+        return false;
+    return obj ? obj->save(out) : true;
 }
 
 /* Ring size, then the generator and the environment. */
 int ParticleSystem::save(std::ostream &out)
 {
     if (!ps_write(&ring_.dwRingCount, 4, out))
-        return FALSE;
+        return false;
     return ps_write_sub_object(pGenerator_, out)
         && ps_write_sub_object(pEnvironment_, out);
 }
@@ -576,7 +576,7 @@ static int ps_load_sub_object(std::istream &in, T **out,
     *out = NULL;
     std::unique_ptr<char[]> name = ps_read_name(in, msg_noname);
     if (!name)
-        return FALSE;
+        return false;
     if (strcmp(name.get(), GS_PS_NAME_NULL) != 0) {
         T *obj = T::create(name.get());
         if (obj == NULL) {
@@ -588,9 +588,9 @@ static int ps_load_sub_object(std::istream &in, T **out,
             *out = obj;
         }
         if (*out == NULL)
-            return FALSE;
+            return false;
     }
-    return TRUE;
+    return true;
 }
 
 /* Release, re-make the ring at the stored size, then load and attach each
@@ -603,27 +603,27 @@ int ParticleSystem::load(std::istream &in)
     uint32_t count;
     if (!ps_read(&count, 4, in)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle count could not be read");
-        return FALSE;
+        return false;
     }
     if (!ring_.alloc(count, 0)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle list could not be created");
-        return FALSE;
+        return false;
     }
 
     Generator *gen;
     if (!ps_load_sub_object(in, &gen, GS_PS_MSG_NONAME, GS_PS_MSG_NOGEN,
                             GS_PS_MSG_GENLOAD))
-        return FALSE;
+        return false;
     if (gen)
         setGenerator(gen);
 
     Environment *env;
     if (!ps_load_sub_object(in, &env, GS_PS_MSG_NOENV, GS_PS_MSG_ENVNAME,
                             GS_PS_MSG_ENVLOAD))
-        return FALSE;
+        return false;
     if (env)
         setEnvironment(env);
-    return TRUE;
+    return true;
 }
 
 /* ─── Point, Face and XFace lifecycles ─────────────────────────────────────
@@ -643,7 +643,7 @@ int ParticleSystem::allocVerts(unsigned perNode, const float (*uv)[2])
                 pVerts_[i * perNode + c].flU = uv[c][0];
                 pVerts_[i * perNode + c].flV = uv[c][1];
             }
-    return TRUE;
+    return true;
 }
 
 /* The corner-table entries and the vertex buffer go with the system; the base
@@ -681,18 +681,18 @@ int PointParticleSystem::copyFrom(const ParticleSystem *src)
 int PointParticleSystem::save(std::ostream &out)
 {
     ParticleSystem::save(out);
-    return TRUE;
+    return true;
 }
 
 int PointParticleSystem::load(std::istream &in)
 {
     if (!ParticleSystem::load(in))
-        return FALSE;
+        return false;
     if (!allocVerts(1)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading PointParticleSystem failed, because the vertex array could not be created");
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
 
 /* Release virtually, size the ring, reset the scale to 1 and rebuild the
@@ -701,7 +701,7 @@ int FaceParticleSystem::setCapacity(uint32_t count)
 {
     release(1);
     if (!ParticleSystem::setCapacity(count))
-        return FALSE;
+        return false;
     flScale_ = 1.0f;
     return allocVerts();
 }
@@ -711,7 +711,7 @@ int FaceParticleSystem::copyFrom(const ParticleSystem *src)
 {
     release(1);
     if (!ParticleSystem::copyFrom(src))
-        return FALSE;
+        return false;
     flScale_ = static_cast<const FaceParticleSystem *>(src)->flScale_;
     return allocVerts();
 }
@@ -727,24 +727,24 @@ int FaceParticleSystem::save(std::ostream &out)
     ParticleSystem::save(out);
     if (!ps_write(&flScale_, 4, out)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: saving FaceParticleSystem failed, because the face size could not be saved");
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
 
 int FaceParticleSystem::load(std::istream &in)
 {
     if (!ParticleSystem::load(in))
-        return FALSE;
+        return false;
     if (!ps_read(&flScale_, 4, in)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading FaceParticleSystem failed, because the face size could not be read");
-        return FALSE;
+        return false;
     }
     if (!allocVerts()) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading ParticleSystem failed, because the vertex array could not be created");
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
 
 /* The corner transform divides by w when w != 1.0 -- not the `w != 0` test
@@ -833,7 +833,7 @@ int XFaceParticleSystem::buildCorners()
                                  * (int)crt_rand() * PS_RAND_SCALE + rot_min);
         e->flRotAccum[0] = e->flRotAccum[1] = e->flRotAccum[2] = 0.0f;
     }
-    return TRUE;
+    return true;
 }
 
 /* The base capacity result is discarded; the shape indices are re-drawn from
@@ -844,42 +844,42 @@ int XFaceParticleSystem::setCapacity(uint32_t count)
     ring_.assignShapes(dwCornerTableCount_);
     if (!buildCorners() || !allocVerts()) {
         release(1);
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
 
 /* No virtual release first, unlike Point and Face. */
 int XFaceParticleSystem::copyFrom(const ParticleSystem *src)
 {
     if (!ParticleSystem::copyFrom(src))
-        return FALSE;
+        return false;
     std::copy(std::begin(static_cast<const XFaceParticleSystem *>(src)->ranges),
               std::end(static_cast<const XFaceParticleSystem *>(src)->ranges), ranges);
     ring_.assignShapes(dwCornerTableCount_);
     if (!buildCorners()) {
         ParticleSystem::release(1);
-        return FALSE;
+        return false;
     }
     if (!allocVerts()) {
         release(1);
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
 
 /* Vertices before corners here; the other two do corners first. */
 int XFaceParticleSystem::resize(uint32_t count)
 {
     if (!ParticleSystem::resize(count))
-        return FALSE;
+        return false;
     pCornerTable_.reset();
     ring_.assignShapes(dwCornerTableCount_);
     if (!allocVerts() || !buildCorners()) {
         release(1);
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
 
 /* The base stream, then the corner count and the eight ranges.  Load finishes
@@ -888,23 +888,23 @@ int XFaceParticleSystem::resize(uint32_t count)
 int XFaceParticleSystem::save(std::ostream &out)
 {
     if (!ParticleSystem::save(out))
-        return FALSE;
+        return false;
     if (ps_write(&dwCornerTableCount_, 4, out)
         && ps_write(ranges, sizeof(ranges), out))
-        return TRUE;
+        return true;
     g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: saving XFaceParticleSystem failed, because the attributes could not be saved");
-    return FALSE;
+    return false;
 }
 
 int XFaceParticleSystem::load(std::istream &in)
 {
     if (!ParticleSystem::load(in))
-        return FALSE;
+        return false;
     if (ps_read(&dwCornerTableCount_, 4, in) && ps_read(ranges, sizeof(ranges), in))
         return setCapacity(ring_.dwRingCount);
     release(1);
     g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading XFaceParticleSystem failed, because the attributes could not be read");
-    return FALSE;
+    return false;
 }
 
 /* ─── The non-virtual interface ────────────────────────────────────────────
