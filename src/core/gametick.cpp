@@ -21,6 +21,7 @@
  * KAROO_SIM_FX=tickorder, a negative control: the lift and slide loops run in
  * the other order.  Both change the tile map, so the order is observable. */
 
+#include <math.h>
 #include <stdint.h>
 #include "gametick.h"
 #include "sysdev.h"
@@ -63,84 +64,39 @@
 
 static int s_fx = -1;
 
-/* __ftol: truncates the value on the FPU to an int64. */
+/* __ftol: truncates toward zero to an int64.  Out of range or NaN gives
+ * 0x8000000000000000, as the x87 does. */
 static long long ftol80(long double v)
 {
-    unsigned short cw, chop;
-    long long r;
-    __asm__ volatile(
-        "fnstcw %1\n\t"
-        "movw %1, %%ax\n\t"
-        "orw $0x0c00, %%ax\n\t"
-        "movw %%ax, %2\n\t"
-        "fldcw %2\n\t"
-        "fistpll %0\n\t"
-        "fldcw %1\n\t"
-        : "=m"(r), "=m"(cw), "=m"(chop) : "t"(v) : "ax", "st");
-    return r;
+    return (long long)v;
 }
 
-/* floor(): FRNDINT with rounding set to down. */
+/* floor() of a double. */
 static double crt_floor(double v)
 {
-    unsigned short cw, down;
-    long double r;
-    __asm__ volatile(
-        "fnstcw %1\n\t"
-        "movw %1, %%ax\n\t"
-        "andw $0xf3ff, %%ax\n\t"
-        "orw $0x0400, %%ax\n\t"
-        "movw %%ax, %2\n\t"
-        "fldcw %2\n\t"
-        "frndint\n\t"
-        "fldcw %1\n\t"
-        : "=t"(r), "=m"(cw), "=m"(down) : "0"((long double)v) : "ax");
-    return (double)r;
+    return floorl((long double)v);
 }
 
-/* float(sin(now * 0.0025f) * 0.2 + base), in one FPU chain. */
+/* float(sin(now * 0.0025f) * 0.2 + base), evaluated in extended precision. */
 static float camera_sway(double now, float base)
 {
     static const float  k1 = 0.0024999999441206455f;  // 0.0025 as a float
     static const double k2 = 0.20000000298023224;     // 0.2 as a float, widened
-    float out;
-    __asm__ volatile(
-        "fldl %1\n\t"
-        "fmuls %2\n\t"
-        "fsin\n\t"
-        "fmull %3\n\t"
-        "fadds %4\n\t"
-        "fstps %0\n\t"
-        : "=m"(out) : "m"(now), "m"(k1), "m"(k2), "m"(base) : "st");
-    return out;
+    long double s = sinl((long double)now * (long double)k1);
+    return (float)(s * (long double)k2 + (long double)base);
 }
 
-/* The completion percentage: a / (b * 0.001f) * 25, truncated, with both
- * operands loaded unsigned.  b == 0 gives an infinity, which truncates to
- * 0x8000000000000000, so the byte is 0. */
+/* The completion percentage: a / (b * 0.001f) * 25, truncated to a byte.
+ * b == 0 gives an infinity, which truncates to 0x8000000000000000, so the
+ * byte is 0. */
 static unsigned char completion_percent(unsigned int a, unsigned int b)
 {
-    static const float  k001 = 0.0010000000474974513f;
-    static const double k25  = 25.0;
-    unsigned long long qa = a, qb = b;
-    unsigned short cw, chop;
-    long long r;
-    __asm__ volatile(
-        "fildll %3\n\t"
-        "fildll %4\n\t"
-        "fmuls %5\n\t"
-        "fdivrp\n\t"  // ST1 / ST0, then pop
-        "fmull %6\n\t"
-        "fnstcw %1\n\t"
-        "movw %1, %%ax\n\t"
-        "orw $0x0c00, %%ax\n\t"
-        "movw %%ax, %2\n\t"
-        "fldcw %2\n\t"
-        "fistpll %0\n\t"
-        "fldcw %1\n\t"
-        : "=m"(r), "=m"(cw), "=m"(chop)
-        : "m"(qa), "m"(qb), "m"(k001), "m"(k25) : "ax", "st", "st(1)");
-    return (unsigned char)r;
+    static const float k001 = 0.0010000000474974513f;
+    long double r = (long double)a / ((long double)b * (long double)k001)
+                    * 25.0L;
+    if (!(r > -9.2e18L && r < 9.2e18L))
+        return 0;
+    return (unsigned char)(long long)r;
 }
 
 /* The switch-triggered block, shared by the player and each foe. */

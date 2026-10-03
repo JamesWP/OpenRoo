@@ -12,6 +12,7 @@
  * KAROO_SIM_FX=entrycase is a negative control: the shift sense is inverted,
  * so what is typed, and any cheat or name compared downstream, changes. */
 
+#include <math.h>
 #include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
@@ -22,25 +23,13 @@
 
 static int s_fx = -1;
 
-/* True when sin(phase * 0.01) > 0: the cursor shows '_', else ' '.  The x87
- * FSIN on an extended value, as the game computes it; it only chooses the
- * blink character, which Return and Escape overwrite. */
+/* True when sin(phase * 0.01) > 0: the cursor shows '_', else ' '.  The sine
+ * is taken in extended precision, as the game computes it; it only chooses
+ * the blink character, which Return and Escape overwrite. */
 static int blink_positive(unsigned int phase)
 {
-    unsigned long long q = phase;  // the high word zeroed: an unsigned load
     static const float k = 0.0099999998f;
-    unsigned short sw;
-
-    __asm__ volatile(
-        "fildq %1\n\t"
-        "fmuls %2\n\t"
-        "fsin\n\t"
-        "fldz\n\t"
-        "fcompp\n\t"  // compares 0.0 with sin
-        "fnstsw %0\n\t"
-        : "=a"(sw) : "m"(q), "m"(k) : "st", "st(1)");
-    // C0 set (0 < sin) and C2 clear (ordered).
-    return (sw & 0x0100) && !(sw & 0x0400);
+    return sinl((long double)phase * (long double)k) > 0.0L;
 }
 
 void TextEntry::poll(unsigned int phase)
