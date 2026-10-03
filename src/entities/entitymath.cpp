@@ -7,7 +7,7 @@
 /* Tile kinds 5 to 8 are the four ramps.  The compares are unsigned, so kind
  * must stay a byte: widened to a signed int, 0x80 and up would change answer.
  */
-  int __attribute__((stdcall))
+int
 Sim_CheckTileIsRamp(unsigned char kind)
 {
     if (kind > 4 && kind < 9)
@@ -21,7 +21,7 @@ Sim_CheckTileIsRamp(unsigned char kind)
  *     out wrong (4 + 7 gives 7, not 3);
  *   - the sum is 8-bit, wrapping at 256;
  *   - the compare is unsigned, so a sum of 0x80 and up is reduced. */
-  unsigned char __attribute__((stdcall))
+unsigned char
 Sim_GetTurnedDirection(unsigned char dir, unsigned char delta)
 {
     unsigned char d = (unsigned char)(dir + delta);  // 8-bit: wraps at 256

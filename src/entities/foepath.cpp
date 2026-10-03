@@ -553,7 +553,7 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
  * bug in either: this result is compared against a ramp-orientation code, a
  * different enumeration from entity facing, and reconciling the two would
  * misclassify every ramp. */
-  int __attribute__((stdcall))
+int
 Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
                              unsigned char u_to,   unsigned char v_to)
 {

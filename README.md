@@ -10,12 +10,12 @@ sounds and the original executable's resources from it.
 
 ## Build and run
 
-Needs `i686-w64-mingw32-g++`, `cmake` (3.20+), Python 3 and Proton (Steam's
+Needs `x86_64-w64-mingw32-g++`, `cmake` (3.20+), Python 3 and Proton (Steam's
 "Proton - Experimental").
 
 ```bash
 python3 tools/import_assets.py --from KaRoo.zip   # once: fills game/ from your copy
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake  # once
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw.cmake  # once
 cmake --build build -j                            # build/KarooOwn.exe
 bash launch.sh                                    # run it (in run/)
 bash launch.sh --headless --auto-exit 30          # no display at all

@@ -54,9 +54,9 @@ private:
 
  
 
-    float           flYawAngle_;       // +0x004 radians, the Y rotation
-    Texture    Textures_[6];      // +0x008 one Texture per face
-    SkyVertex       QuadVerts_[6][4];  // +0x0b0 one triangle-strip quad per face
-    float           WorldMatrix_[16];  // +0x3b0 rebuilt every draw call
+    float           flYawAngle_;       // radians, the Y rotation
+    Texture    Textures_[6];      // one Texture per face
+    SkyVertex       QuadVerts_[6][4];  // one triangle-strip quad per face
+    float           WorldMatrix_[16];  // rebuilt every draw call
 };
 

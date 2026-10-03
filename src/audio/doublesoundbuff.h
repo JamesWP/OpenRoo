@@ -10,7 +10,6 @@
 
 class VoicePool;
 
-/* Allocated by the sound manager with a fixed size of 0x58. */
 class doublesoundbuff {
 public:
      

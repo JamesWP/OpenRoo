@@ -730,50 +730,13 @@ static ULONG WINAPI NOINLINE no_Release(NullObj *s)
 static HRESULT WINAPI NOINLINE no_QueryInterface(NullObj *s, REFIID r, void **p)
     { (void)r; if (!p) return E_POINTER; *p = s; InterlockedIncrement(&s->ref); return S_OK; }
 
-/* ─── Arity-correct filler stubs ───────────────────────────────────────────
+/* ─── Filler stubs ─────────────────────────────────────────────────────────
  *
- * A slot that must exist but does nothing.  These MUST take the same number of
- * arguments as the method they stand in for: COM vtable methods are __stdcall,
- * so the CALLEE pops the arguments.  A single zero-argument `no_ok()` used for
- * every such slot pops nothing while the caller has pushed several — the stack
- * pointer walks up by 4 bytes per unpopped argument, and execution eventually
- * returns into stack garbage.
- *
- * That is not hypothetical: the first headless run crashed exactly this way,
- * immediately after IDirect3DViewport3::AddLight —
- *
- *   Unhandled page fault on write access to 00000001 at address 007EFD82
- *   eip=007efd82 esp=007efd00     <- eip is INSIDE the stack
- *   esi=7a5ee348                  <- the light object we had just handed out
- *
- * So there is no catch-all here.  okN/failN are generated per argument count
- * (N counts `this`), and every slot below names the one matching its own
- * signature, taken from the COM interface declaration in d3d.h / ddraw.h.
+ * A slot that must exist but does nothing.  The x64 calling convention has the
+ * caller clean up its arguments, so one stub serves every arity.
  */
-#define OK_STUB(n, params) \
-    static HRESULT WINAPI NOINLINE ok##n params { return S_OK; }
-#define FAIL_STUB(n, params) \
-    static HRESULT WINAPI NOINLINE fail##n params { return DDERR_UNSUPPORTED; }
-
-#define A1 (void *)
-#define A2 (void *, DWORD)
-#define A3 (void *, DWORD, DWORD)
-#define A4 (void *, DWORD, DWORD, DWORD)
-#define A5 (void *, DWORD, DWORD, DWORD, DWORD)
-#define A6 (void *, DWORD, DWORD, DWORD, DWORD, DWORD)
-#define A7 (void *, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD)
-#define A8 (void *, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD)
-
-/* The parameters exist only to give each stub the right stdcall stack
- * cleanup; no stub reads them. */
- 
- 
-OK_STUB(1, A1) OK_STUB(2, A2) OK_STUB(3, A3) OK_STUB(4, A4)
-OK_STUB(5, A5) OK_STUB(6, A6) OK_STUB(7, A7) OK_STUB(8, A8)
-
-FAIL_STUB(1, A1) FAIL_STUB(2, A2) FAIL_STUB(3, A3) FAIL_STUB(4, A4)
-FAIL_STUB(5, A5)
- 
+static HRESULT WINAPI NOINLINE ok_stub(...)   { return S_OK; }
+static HRESULT WINAPI NOINLINE fail_stub(...) { return DDERR_UNSUPPORTED; }
 
 /* --- IDirect3DDevice3 (42 slots) --- */
 
@@ -1169,9 +1132,7 @@ static HRESULT WINAPI NOINLINE n1_QueryInterface(NullObj *s, REFIID riid, void *
     { return n4_QueryInterface(s, riid, ppv); }
 static HRESULT WINAPI NOINLINE n1_SetDisplayMode(NullObj *s, DWORD w, DWORD h, DWORD bpp)
     { return n4_SetDisplayMode(s, w, h, bpp, 0, 0); }
-/* Every other v1 slot is a failN of the right arity (see OK_STUB): the game
- * only ever uses v1 to reach DD4, but a wrongly-sized stub would corrupt the
- * stack if anything did call one. */
+/* Every other v1 slot is fail_stub: the game only ever uses v1 to reach DD4. */
 
 /* ─── Vtable assembly ───────────────────────────────────────────────────── */
 
@@ -1213,50 +1174,49 @@ static void nulldd_build_vtables(void)
 
     /* IDirect3DDevice3, 42 slots.  Everything not named here is a draw or a
      * state setter and returns D3D_OK. */
-    /* IDirect3DDevice3, 42 slots.  The okN on each filler line is the
-     * argument count INCLUDING `this` — see the OK_STUB comment. */
+    /* IDirect3DDevice3, 42 slots. */
     v = s_dev3_vtable;
     v[0]  = (void*)no_QueryInterface;          /* 3 */
     v[1]  = (void*)no_AddRef;                  /* 1 */
     v[2]  = (void*)no_Release;                 /* 1 */
     v[3]  = (void*)nd_GetCaps;                 /* 3 */
     v[4]  = (void*)nd_GetStats;                /* 2 */
-    v[5]  = (void*)ok2;                        /* AddViewport */
-    v[6]  = (void*)ok2;                        /* DeleteViewport */
+    v[5]  = (void*)ok_stub;                        /* AddViewport */
+    v[6]  = (void*)ok_stub;                        /* DeleteViewport */
     v[7]  = (void*)nd_NextViewport;            /* 4 */
     v[8]  = (void*)nd_EnumTextureFormats;      /* 3 */
-    v[9]  = (void*)ok1;                        /* BeginScene */
-    v[10] = (void*)ok1;                        /* EndScene */
+    v[9]  = (void*)ok_stub;                        /* BeginScene */
+    v[10] = (void*)ok_stub;                        /* EndScene */
     v[11] = (void*)nd_GetDirect3D;             /* 2 */
-    v[12] = (void*)ok2;                        /* SetCurrentViewport */
+    v[12] = (void*)ok_stub;                        /* SetCurrentViewport */
     v[13] = (void*)nd_GetCurrentViewport;      /* 2 */
-    v[14] = (void*)ok3;                        /* SetRenderTarget */
+    v[14] = (void*)ok_stub;                        /* SetRenderTarget */
     v[15] = (void*)nd_GetRenderTarget;         /* 2 */
-    v[16] = (void*)ok4;                        /* Begin */
-    v[17] = (void*)ok6;                        /* BeginIndexed */
-    v[18] = (void*)ok2;                        /* Vertex */
-    v[19] = (void*)ok2;                        /* Index */
-    v[20] = (void*)ok2;                        /* End */
+    v[16] = (void*)ok_stub;                        /* Begin */
+    v[17] = (void*)ok_stub;                        /* BeginIndexed */
+    v[18] = (void*)ok_stub;                        /* Vertex */
+    v[19] = (void*)ok_stub;                        /* Index */
+    v[20] = (void*)ok_stub;                        /* End */
     v[21] = (void*)nd_GetRenderState;          /* 3 */
-    v[22] = (void*)ok3;                        /* SetRenderState */
+    v[22] = (void*)ok_stub;                        /* SetRenderState */
     v[23] = (void*)nd_GetLightState;           /* 3 */
-    v[24] = (void*)ok3;                        /* SetLightState */
-    v[25] = (void*)ok3;                        /* SetTransform */
+    v[24] = (void*)ok_stub;                        /* SetLightState */
+    v[25] = (void*)ok_stub;                        /* SetTransform */
     v[26] = (void*)nd_GetTransform;            /* 3 */
-    v[27] = (void*)ok3;                        /* MultiplyTransform */
-    v[28] = (void*)ok6;                        /* DrawPrimitive */
-    v[29] = (void*)ok8;                        /* DrawIndexedPrimitive */
-    v[30] = (void*)ok2;                        /* SetClipStatus */
+    v[27] = (void*)ok_stub;                        /* MultiplyTransform */
+    v[28] = (void*)ok_stub;                        /* DrawPrimitive */
+    v[29] = (void*)ok_stub;                        /* DrawIndexedPrimitive */
+    v[30] = (void*)ok_stub;                        /* SetClipStatus */
     v[31] = (void*)nd_GetClipStatus;           /* 2 */
-    v[32] = (void*)ok6;                        /* DrawPrimitiveStrided */
-    v[33] = (void*)ok8;                        /* DrawIndexedPrimitiveStrided */
-    v[34] = (void*)ok6;                        /* DrawPrimitiveVB */
-    v[35] = (void*)ok6;                        /* DrawIndexedPrimitiveVB */
+    v[32] = (void*)ok_stub;                        /* DrawPrimitiveStrided */
+    v[33] = (void*)ok_stub;                        /* DrawIndexedPrimitiveStrided */
+    v[34] = (void*)ok_stub;                        /* DrawPrimitiveVB */
+    v[35] = (void*)ok_stub;                        /* DrawIndexedPrimitiveVB */
     v[36] = (void*)nd_ComputeSphereVisibility; /* 6 */
     v[37] = (void*)nd_GetTexture;              /* 3 */
-    v[38] = (void*)ok3;                        /* SetTexture */
+    v[38] = (void*)ok_stub;                        /* SetTexture */
     v[39] = (void*)nd_GetTextureStageState;    /* 4 */
-    v[40] = (void*)ok4;                        /* SetTextureStageState */
+    v[40] = (void*)ok_stub;                        /* SetTextureStageState */
     v[41] = (void*)nd_ValidateDevice;          /* 2 */
 
     v = s_d3d3_vtable;
@@ -1266,7 +1226,7 @@ static void nulldd_build_vtables(void)
     v[6]  = (void*)n3_CreateViewport; v[7]  = (void*)n3_FindDevice;
     v[8]  = (void*)n3_CreateDevice;   v[9]  = (void*)n3_CreateVertexBuffer;
     v[10] = (void*)n3_EnumZBufferFormats;
-    v[11] = (void*)ok1;               /* EvictManagedTextures */
+    v[11] = (void*)ok_stub;               /* EvictManagedTextures */
 
     /* IDirect3DViewport3, 21 slots.  AddLight (slot 13) is what crashed the
      * first headless run when it was filled with a zero-argument stub. */
@@ -1274,24 +1234,24 @@ static void nulldd_build_vtables(void)
     v[0]  = (void*)no_QueryInterface;      /* 3 */
     v[1]  = (void*)no_AddRef;              /* 1 */
     v[2]  = (void*)no_Release;             /* 1 */
-    v[3]  = (void*)ok2;                    /* Initialize */
+    v[3]  = (void*)ok_stub;                    /* Initialize */
     v[4]  = (void*)nv_GetViewport;         /* 2 */
-    v[5]  = (void*)ok2;                    /* SetViewport */
-    v[6]  = (void*)ok5;                    /* TransformVertices */
-    v[7]  = (void*)ok3;                    /* LightElements */
-    v[8]  = (void*)ok2;                    /* SetBackground */
+    v[5]  = (void*)ok_stub;                    /* SetViewport */
+    v[6]  = (void*)ok_stub;                    /* TransformVertices */
+    v[7]  = (void*)ok_stub;                    /* LightElements */
+    v[8]  = (void*)ok_stub;                    /* SetBackground */
     v[9]  = (void*)nv_GetBackground;       /* 3 */
-    v[10] = (void*)ok2;                    /* SetBackgroundDepth */
+    v[10] = (void*)ok_stub;                    /* SetBackgroundDepth */
     v[11] = (void*)nv_GetBackgroundDepth;  /* 3 */
-    v[12] = (void*)ok4;                    /* Clear */
-    v[13] = (void*)ok2;                    /* AddLight */
-    v[14] = (void*)ok2;                    /* DeleteLight */
+    v[12] = (void*)ok_stub;                    /* Clear */
+    v[13] = (void*)ok_stub;                    /* AddLight */
+    v[14] = (void*)ok_stub;                    /* DeleteLight */
     v[15] = (void*)nv_NextLight;           /* 4 */
     v[16] = (void*)nv_GetViewport2;        /* 2 */
     v[17] = (void*)nv_SetViewport2;        /* 2 */
-    v[18] = (void*)ok2;                    /* SetBackgroundDepth2 */
-    v[19] = (void*)ok3;                    /* GetBackgroundDepth2 */
-    v[20] = (void*)ok7;                    /* Clear2 */
+    v[18] = (void*)ok_stub;                    /* SetBackgroundDepth2 */
+    v[19] = (void*)ok_stub;                    /* GetBackgroundDepth2 */
+    v[20] = (void*)ok_stub;                    /* Clear2 */
 
     v = s_mat3_vtable;
     v[0] = (void*)no_QueryInterface; v[1] = (void*)no_AddRef;
@@ -1300,51 +1260,51 @@ static void nulldd_build_vtables(void)
 
     v = s_light_vtable;
     v[0] = (void*)no_QueryInterface; v[1] = (void*)no_AddRef;
-    v[2] = (void*)no_Release;        v[3] = (void*)ok2;     /* Initialize */
+    v[2] = (void*)no_Release;        v[3] = (void*)ok_stub;     /* Initialize */
     v[4] = (void*)nl_SetLight;       v[5] = (void*)nl_GetLight;
 
     v = s_dd4_vtable;
     v[0]  = (void*)n4_QueryInterface;   v[1]  = (void*)no_AddRef;
-    v[2]  = (void*)no_Release;          v[3]  = (void*)ok1;     /* Compact */
+    v[2]  = (void*)no_Release;          v[3]  = (void*)ok_stub;     /* Compact */
     v[4]  = (void*)n4_CreateClipper;    v[5]  = (void*)n4_CreatePalette;
     v[6]  = (void*)n4_CreateSurface;    v[7]  = (void*)n4_DuplicateSurface;
-    v[8]  = (void*)n4_EnumDisplayModes; v[9]  = (void*)ok5;     /* EnumSurfaces */
-    v[10] = (void*)ok1;                 /* FlipToGDISurface */
+    v[8]  = (void*)n4_EnumDisplayModes; v[9]  = (void*)ok_stub;     /* EnumSurfaces */
+    v[10] = (void*)ok_stub;                 /* FlipToGDISurface */
     v[11] = (void*)n4_GetCaps;          v[12] = (void*)n4_GetDisplayMode;
     v[13] = (void*)n4_GetFourCCCodes;   v[14] = (void*)n4_GetGDISurface;
     v[15] = (void*)n4_GetMonitorFrequency; v[16] = (void*)n4_GetScanLine;
-    v[17] = (void*)n4_GetVerticalBlankStatus; v[18] = (void*)ok2;   /* Initialize */
-    v[19] = (void*)ok1;                 /* RestoreDisplayMode */
+    v[17] = (void*)n4_GetVerticalBlankStatus; v[18] = (void*)ok_stub;   /* Initialize */
+    v[19] = (void*)ok_stub;                 /* RestoreDisplayMode */
     v[20] = (void*)n4_SetCooperativeLevel; v[21] = (void*)n4_SetDisplayMode;
     v[22] = (void*)n4_WaitForVerticalBlank; v[23] = (void*)n4_GetAvailableVidMem;
-    v[24] = (void*)n4_GetSurfaceFromDC; v[25] = (void*)ok1;   /* RestoreAllSurfaces */
-    v[26] = (void*)ok1;                 /* TestCooperativeLevel */
+    v[24] = (void*)n4_GetSurfaceFromDC; v[25] = (void*)ok_stub;   /* RestoreAllSurfaces */
+    v[26] = (void*)ok_stub;                 /* TestCooperativeLevel */
     v[27] = (void*)n4_GetDeviceIdentifier;
 
     v = s_dd1_vtable;
     v[0]  = (void*)n1_QueryInterface;      /* 3 */
     v[1]  = (void*)no_AddRef;              /* 1 */
     v[2]  = (void*)no_Release;             /* 1 */
-    v[3]  = (void*)fail1;                  /* Compact */
-    v[4]  = (void*)fail4;                  /* CreateClipper */
-    v[5]  = (void*)fail5;                  /* CreatePalette */
-    v[6]  = (void*)fail4;                  /* CreateSurface */
-    v[7]  = (void*)fail3;                  /* DuplicateSurface */
-    v[8]  = (void*)fail5;                  /* EnumDisplayModes */
-    v[9]  = (void*)fail5;                  /* EnumSurfaces */
-    v[10] = (void*)fail1;                  /* FlipToGDISurface */
-    v[11] = (void*)fail3;                  /* GetCaps */
-    v[12] = (void*)fail2;                  /* GetDisplayMode */
-    v[13] = (void*)fail3;                  /* GetFourCCCodes */
-    v[14] = (void*)fail2;                  /* GetGDISurface */
-    v[15] = (void*)fail2;                  /* GetMonitorFrequency */
-    v[16] = (void*)fail2;                  /* GetScanLine */
-    v[17] = (void*)fail2;                  /* GetVerticalBlankStatus */
-    v[18] = (void*)fail2;                  /* Initialize */
-    v[19] = (void*)fail1;                  /* RestoreDisplayMode */
+    v[3]  = (void*)fail_stub;                  /* Compact */
+    v[4]  = (void*)fail_stub;                  /* CreateClipper */
+    v[5]  = (void*)fail_stub;                  /* CreatePalette */
+    v[6]  = (void*)fail_stub;                  /* CreateSurface */
+    v[7]  = (void*)fail_stub;                  /* DuplicateSurface */
+    v[8]  = (void*)fail_stub;                  /* EnumDisplayModes */
+    v[9]  = (void*)fail_stub;                  /* EnumSurfaces */
+    v[10] = (void*)fail_stub;                  /* FlipToGDISurface */
+    v[11] = (void*)fail_stub;                  /* GetCaps */
+    v[12] = (void*)fail_stub;                  /* GetDisplayMode */
+    v[13] = (void*)fail_stub;                  /* GetFourCCCodes */
+    v[14] = (void*)fail_stub;                  /* GetGDISurface */
+    v[15] = (void*)fail_stub;                  /* GetMonitorFrequency */
+    v[16] = (void*)fail_stub;                  /* GetScanLine */
+    v[17] = (void*)fail_stub;                  /* GetVerticalBlankStatus */
+    v[18] = (void*)fail_stub;                  /* Initialize */
+    v[19] = (void*)fail_stub;                  /* RestoreDisplayMode */
     v[20] = (void*)n4_SetCooperativeLevel; /* 3 */
     v[21] = (void*)n1_SetDisplayMode;      /* 4 */
-    v[22] = (void*)fail3;                  /* WaitForVerticalBlank */
+    v[22] = (void*)fail_stub;                  /* WaitForVerticalBlank */
 
     s_dd4.vtable   = s_dd4_vtable;
     s_dd1.vtable   = s_dd1_vtable;

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Configure with -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake
+# Configure with -DCMAKE_TOOLCHAIN_FILE=cmake/mingw.cmake
 project(OpenRoo CXX RC)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)

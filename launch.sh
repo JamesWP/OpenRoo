@@ -31,11 +31,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 EXE=KarooOwn.exe
-# BUILD_DIR=build64 BUILD_TOOLCHAIN=mingw-x86_64 runs the 64-bit build.
 BUILD_DIR=${BUILD_DIR:-build}
-BUILD_TOOLCHAIN=${BUILD_TOOLCHAIN:-mingw-i686}
 # Bring the build up to date first; a failed build does not launch a stale exe.
-[[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE="cmake/$BUILD_TOOLCHAIN.cmake" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
+[[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE="cmake/mingw.cmake" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
 cmake --build "$BUILD_DIR" -j"$(nproc)" >&2 || { echo "ERROR: build failed"; exit 1; }
 [[ -f "$BUILD_DIR/$EXE" ]] || { echo "ERROR: $BUILD_DIR/$EXE missing after build"; exit 1; }
 

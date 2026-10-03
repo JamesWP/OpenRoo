@@ -74,11 +74,11 @@ private:
     using FrameRecord = std::array<float, 6>;  // 0x18 bytes: the frame's bounding box
 
     std::vector<MeshVertex> vertexData_;  // dwVertexCount * wFrameCount vertices
-    uint32_t  dwVertexCount_;  // +0x08 vertices per animation frame
+    uint32_t  dwVertexCount_;  // vertices per animation frame
     std::vector<FrameRecord> frameRecords_;  // wFrameCount records
-    uint16_t   wFrameCount_;    // +0x10 frame index clamps to 0 when >= this
+    uint16_t   wFrameCount_;    // frame index clamps to 0 when >= this
     std::string pszName_;   // the path
-    /* +0x16 D3DDRAWPRIMITIVESTRIDEDDATA: position, normal, diffuse,
+    /* D3DDRAWPRIMITIVESTRIDEDDATA: position, normal, diffuse,
      * specular, then textureCoords[8].  Only the four strides the ctor
      * writes are ever touched. */
     MeshStridedEntry strided_[12];

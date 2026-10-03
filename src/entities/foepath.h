@@ -35,15 +35,15 @@ private:
             children_[i] = node;
     }
 
-    int       f_;            // +0x00  g + h, the open list's order
-    int       h_;            // +0x04  the squared distance to the goal
-    int       g_;            // +0x08  steps from the seed
-    int       u_;            // +0x10
-    int       v_;            // +0x14
-    int       key_;          // +0x18  FoePath::cellKey(u, v)
-    PathNode *parent_;       // +0x1c
-    PathNode *children_[8];  // +0x20  the nodes relaxed through this one
-    PathNode *next_;         // +0x40  the open or closed chain
+    int       f_;            // g + h, the open list's order
+    int       h_;            // the squared distance to the goal
+    int       g_;            // steps from the seed
+    int       u_;
+    int       v_;
+    int       key_;          // FoePath::cellKey(u, v)
+    PathNode *parent_;
+    PathNode *children_[8];  // the nodes relaxed through this one
+    PathNode *next_;         // the open or closed chain
 
      
 };
@@ -59,9 +59,9 @@ public:
 private:
     friend class FoePath;  // the worklist is FoePath's
 
-    PathNode    *node_;      // +0x00
-    PendingCell *next_;      // +0x04
-    unsigned char field_8_;  // +0x08  never touched
+    PathNode    *node_;
+    PendingCell *next_;
+    unsigned char field_8_;  // never touched
 
      
 };
@@ -75,7 +75,7 @@ public:
 
 private:
     friend class FoePath;
-    PendingCell  *head_;     // +0x04
+    PendingCell  *head_;
 };
 
 class FoePath {
