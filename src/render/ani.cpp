@@ -132,8 +132,8 @@ int AnimTable::load(const char *path)
     // KAROO_ANI_DUMP=<path>: the whole table, hashed, for comparison against
     // an independent parse.
     {
-        char dump[FILENAME_MAX];
-        if (sysdev::getEnv("KAROO_ANI_DUMP", dump, sizeof(dump))) {
+        const std::string dump = sysdev::getEnv("KAROO_ANI_DUMP");
+        if (!dump.empty()) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {
                 unsigned long hash = 2166136261UL;

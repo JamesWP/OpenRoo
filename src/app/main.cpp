@@ -10,6 +10,7 @@
 
 #include <strings.h>
 #include <stdio.h>
+#include <string>
 #include "sysdev.h"
 #include <new>
 #include "main.h"
@@ -244,13 +245,11 @@ int Main_WinMain(const char *lpCmdLine)
     Render_ConfigureRenderState();
     hooks_ClockInit();
 
-    // FILENAME_MAX-sized, so a long install path cannot overflow it.
-    char path[FILENAME_MAX + 32];
-    snprintf(path, sizeof(path), "%s\\Video\\intro.avi", g_gameDir);
-    if (g_movie.load(hWnd, path))
+    const std::string path = std::string(g_gameDir) + "\\Video\\intro.avi";
+    if (g_movie.load(hWnd, path.c_str()))
         g_movie.play();
     else
-        g_logger.logMessage(3, "MAIN: Couldn't load %s .", path);
+        g_logger.logMessage(3, "MAIN: Couldn't load %s .", path.c_str());
 
     g_norender = winmain_fx_norender();
     const int exitCode = windev::runMessageLoop(idle);

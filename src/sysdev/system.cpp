@@ -40,15 +40,35 @@ LocalTime localTime()
     return t;
 }
 
-bool executablePath(char *buf, unsigned size)
-{
-    DWORD n = GetModuleFileNameA(NULL, buf, size);
-    return n > 0 && n < size;
-}
-
 unsigned getEnv(const char *name, char *buf, unsigned size)
 {
     return GetEnvironmentVariableA(name, buf, size);
+}
+
+std::string getEnv(const char *name)
+{
+    unsigned n = getEnv(name, NULL, 0);
+    if (n == 0)
+        return std::string();
+    std::string value(n, '\0');
+    n = getEnv(name, &value[0], n);
+    value.resize(n < value.size() ? n : 0);
+    return value;
+}
+
+std::string executablePath()
+{
+    std::string path(MAX_PATH, '\0');
+    for (;;) {
+        DWORD n = GetModuleFileNameA(NULL, &path[0], (DWORD)path.size());
+        if (n == 0)
+            return std::string();
+        if (n < path.size()) {
+            path.resize(n);
+            return path;
+        }
+        path.resize(path.size() * 2);
+    }
 }
 
 }  // namespace sysdev

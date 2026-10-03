@@ -4,6 +4,8 @@
  * platform headers, so a port replaces the .cpp files beside it. */
 #pragma once
 
+#include <string>
+
 namespace sysdev {
 
 /* Where the layer reports problems.  printf-style; may stay unset. */
@@ -26,13 +28,15 @@ struct LocalTime {
 };
 LocalTime localTime();
 
-/* The running executable's path into buf; false if it does not fit or is
- * unknown. */
-bool executablePath(char *buf, unsigned size);
-
 /* Copies the environment variable name into buf.  Returns its length without
  * the terminator, or 0 if it is unset; if buf is too small, returns the size
  * needed including the terminator and leaves buf unspecified. */
 unsigned getEnv(const char *name, char *buf, unsigned size);
+
+/* The environment variable name, or an empty string if it is unset or empty. */
+std::string getEnv(const char *name);
+
+/* The running executable's path, or an empty string if it is unknown. */
+std::string executablePath();
 
 }  // namespace sysdev

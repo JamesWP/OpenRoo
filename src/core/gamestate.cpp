@@ -179,8 +179,8 @@ void gamestate_dump(const char *reason)
     static bool dumped = false;
     if (dumped) return;  // the first, most live, wins
 
-    char path[FILENAME_MAX];
-    if (!sysdev::getEnv("KAROO_STATE_DUMP", path, sizeof(path)) || !path[0])
+    const std::string path = sysdev::getEnv("KAROO_STATE_DUMP");
+    if (path.empty())
         return;
     dumped = true;
 

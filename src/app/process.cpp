@@ -25,10 +25,7 @@ static void crt_stderr_probe(void)
 void Process_Attach(const char *log_name)
 {
     g_logger.open(log_name);
-    char path[FILENAME_MAX];
-    if (!sysdev::executablePath(path, FILENAME_MAX))
-        path[0] = '\0';
-    g_logger.write("karoo_hooks loaded by: %s\n", path);
+    g_logger.write("karoo_hooks loaded by: %s\n", sysdev::executablePath().c_str());
     sysdev::setLog(log_sink);
     crt_stderr_probe();
     launcher_init();

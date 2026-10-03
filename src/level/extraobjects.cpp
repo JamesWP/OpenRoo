@@ -104,8 +104,8 @@ static std::string clip64(const char *p)
 
 void ExtraObjects::recDump(const char *path)
 {
-    char out[FILENAME_MAX];
-    if (!sysdev::getEnv("KAROO_LEO_RECDUMP", out, sizeof(out)))
+    const std::string out = sysdev::getEnv("KAROO_LEO_RECDUMP");
+    if (out.empty())
         return;
     std::ofstream f(out, std::ios::binary | std::ios::app);
     if (!f)
@@ -203,8 +203,8 @@ int ExtraObjects::openFile(const char *name)
     // KAROO_LEO_DUMP=<path>: the entry count and an FNV-1a hash of every entry
     // handed to the handler, for comparison with an independent parse.
     {
-        char dump[FILENAME_MAX];
-        if (sysdev::getEnv("KAROO_LEO_DUMP", dump, sizeof(dump))) {
+        const std::string dump = sysdev::getEnv("KAROO_LEO_DUMP");
+        if (!dump.empty()) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {
                 char line[768];

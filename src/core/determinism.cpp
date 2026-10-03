@@ -103,12 +103,12 @@ static void fold_sub(int sub, const void *p, size_t n)
 bool dethash_enabled(void)
 {
     if (g_on < 0) {
-        char path[FILENAME_MAX];
+        const std::string path = sysdev::getEnv("KAROO_HASH_LOG");
         g_on = 0;
-        if (sysdev::getEnv("KAROO_HASH_LOG", path, sizeof(path)) && path[0]) {
+        if (!path.empty()) {
             g_fh.open(path, std::ios::binary);
             g_on = g_fh.is_open();
-            g_logger.write("dethash: %s -> %s\n", path, g_on ? "recording" : "OPEN FAILED");
+            g_logger.write("dethash: %s -> %s\n", path.c_str(), g_on ? "recording" : "OPEN FAILED");
         }
     }
     return g_on > 0;
