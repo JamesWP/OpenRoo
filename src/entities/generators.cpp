@@ -12,7 +12,6 @@
 #include <stdint.h>
 #include "generators.h"
 #include "sysdev.h"
-#include "assetio.h"
 #include "clock.h"
 #include "crtrand.h"
 #include <new>
@@ -568,7 +567,7 @@ void CylinderGenerator::tick(float dt)
  * read in place and returns false. */
 static bool read1(void *dst, unsigned size, void *fp)
 {
-    return hooks_fread(dst, size, 1, fp) == 1;
+    return fread(dst, size, 1, (FILE *)fp) == 1;
 }
 
 /* Stores flDirection/flMagnitude as given, and flGravity =
@@ -944,10 +943,10 @@ static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint
     if (fp == NULL)
         return FALSE;
     uint32_t count;
-    if (hooks_fread(&count, 4, 1, fp) != 1)
+    if (fread(&count, 4, 1, (FILE *)fp) != 1)
         return FALSE;
     std::vector<uint32_t> pairs((size_t)count * 2);
-    if (hooks_fread(pairs.data(), 8, count, fp) != count)
+    if (fread(pairs.data(), 8, count, (FILE *)fp) != count)
         return FALSE;
     type_table_clone(ptable, pcount, emit_prob, pairs.data(), count);
     return TRUE;

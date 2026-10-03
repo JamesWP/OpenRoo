@@ -34,8 +34,7 @@ struct Image {
 };
 
 /* Decoders.  Each returns false, leaving `out` untouched, when the file is
- * missing or is not a format the game ships.  The game's file reads go through
- * assetio.h. */
+ * missing or is not a format the game ships. */
 bool Image_LoadTGA(const char *path, Image &out);
 bool Image_LoadBMP(const char *path, Image &out);
 
@@ -43,6 +42,6 @@ bool Image_LoadBMP(const char *path, Image &out);
  * else, including mixed case, fails. */
 bool Image_Load(const char *path, Image &out);
 
-/* The whole of a game file, read through assetio.h.  The decoders' only
+/* The whole of a file.  The decoders' only
  * file access. */
 bool Image_ReadFile(const char *path, std::vector<uint8_t> &out);

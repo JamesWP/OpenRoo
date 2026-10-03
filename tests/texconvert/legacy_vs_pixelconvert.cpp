@@ -26,12 +26,6 @@
 #include "image.h"
 #include "pixelconvert.h"
 
-// assetio stand-ins
-extern "C++" {
-void *hooks_fopen(const char *p, const char *m) { return fopen(p, m); }
-unsigned hooks_fread(void *b, unsigned s, unsigned c, void *f) { return fread(b, s, c, (FILE *)f); }
-int hooks_fclose(void *f) { return fclose((FILE *)f); }
-}
 
 /* ---- legacy: texturetga.cpp (origin/main), verbatim apart from the surface ---- */
 static unsigned int mask_popcount(unsigned int m){unsigned int n=0;while(m!=0){m&=m-1;++n;}return n;}

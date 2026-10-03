@@ -17,7 +17,6 @@
 #include "logger.h"
 #include "determinism.h"
 #include <stdlib.h>
-#include "assetio.h"
 #include "clock.h"
 #include "crtrand.h"
 #include "gamestr.h"
@@ -372,7 +371,7 @@ static bool ps_write(const void *src, unsigned size, void *fp)
 
 static bool ps_read(void *dst, unsigned size, void *fp)
 {
-    return hooks_fread(dst, size, 1, fp) == 1;
+    return fread(dst, size, 1, (FILE *)fp) == 1;
 }
 
 /* Sampling constant shared with the generators: 1/32767. */
@@ -561,7 +560,7 @@ static std::unique_ptr<char[]> ps_read_name(void *fp, const char *msg_name)
         return nullptr;
     }
     std::unique_ptr<char[]> name(new char[(size_t)len + 1]());
-    if (hooks_fread(name.get(), 1, len, fp) != len) {
+    if (fread(name.get(), 1, len, (FILE *)fp) != len) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, msg_name);
         return nullptr;
     }
@@ -979,12 +978,12 @@ ParticleSystem *
 ParticleSystem::loadStream(void *fp)
 {
     uint32_t len;
-    if (hooks_fread(&len, 4, 1, fp) != 1) {
+    if (fread(&len, 4, 1, (FILE *)fp) != 1) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the data could not be read");
         return NULL;
     }
     std::unique_ptr<char[]> name(new char[(size_t)len + 1]());
-    if (hooks_fread(name.get(), 1, len, fp) != len) {
+    if (fread(name.get(), 1, len, (FILE *)fp) != len) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the data could not be read");
         return NULL;
     }
@@ -1005,13 +1004,13 @@ ParticleSystem *
 ParticleSystem::loadFile(const char *path)
 {
     g_logger.logMessage(2, "PS: reading particle system from file %s ...", path);
-    void *fp = hooks_fopen(path, "r");  // text mode
+    FILE *fp = fopen(path, "r");  // text mode
     if (fp == NULL) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because file %s could not be opened", path);
         return NULL;
     }
     ParticleSystem *ps = ParticleSystem::loadStream(fp);
-    if (hooks_fclose(fp) != 0) {
+    if (fclose(fp) != 0) {
         g_logger.logSourceLocation(3, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because file %s could not be closed", path);
         delete ps;
         return NULL;
