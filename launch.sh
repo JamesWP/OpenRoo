@@ -31,10 +31,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 EXE=KarooOwn.exe
+# BUILD_DIR=build64 BUILD_TOOLCHAIN=mingw-x86_64 runs the 64-bit build.
+BUILD_DIR=${BUILD_DIR:-build}
+BUILD_TOOLCHAIN=${BUILD_TOOLCHAIN:-mingw-i686}
 # Bring the build up to date first; a failed build does not launch a stale exe.
-[[ -f build/CMakeCache.txt ]] || cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
-cmake --build build -j"$(nproc)" >&2 || { echo "ERROR: build failed"; exit 1; }
-[[ -f "build/$EXE" ]] || { echo "ERROR: build/$EXE missing after build"; exit 1; }
+[[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE="cmake/$BUILD_TOOLCHAIN.cmake" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
+cmake --build "$BUILD_DIR" -j"$(nproc)" >&2 || { echo "ERROR: build failed"; exit 1; }
+[[ -f "$BUILD_DIR/$EXE" ]] || { echo "ERROR: $BUILD_DIR/$EXE missing after build"; exit 1; }
 
 # A ddraw.dll beside the game would be loaded in preference to stock Wine ddraw, even under
 # ddraw=b.
@@ -73,7 +76,7 @@ for _entry in game/*; do
 done
 # The input bindings: the game rewrites this file, so run/ gets a copy.
 [[ -f run/ProgableControl.sav ]] || cp game/ProgableControl.sav run/
-cp -p "build/$EXE" run/
+cp -p "$BUILD_DIR/$EXE" run/
 
 # Karoo.cfg is ours, not the game's.  Without it Game::Load leaves the video
 # mode index and adapter GUID zero-initialised, so the game comes up in

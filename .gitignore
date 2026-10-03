@@ -3,6 +3,7 @@
 **/*.sav
 karoo_hooks.dll
 /build/
+/build64/
 Karoo.exe
 Karoo.cfg
 Karoo.exe.orig.xml
