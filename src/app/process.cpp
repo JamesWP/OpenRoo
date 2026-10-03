@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <iostream>
 #include <stdio.h>
 #include "logger.h"
 #include "sysdev.h"
@@ -17,9 +18,9 @@ static void crt_stderr_probe(void)
         return;
 
     static const char msg[] = "karoo: CRT_PLAN Stage B stderr probe\n";
-    const unsigned n = (unsigned)fwrite(msg, sizeof(msg) - 1, 1, stderr);
+    std::cerr.write(msg, sizeof(msg) - 1);
 
-    g_logger.write("crt: our fwrite(stderr)=%u\n", n);
+    g_logger.write("crt: cerr write ok=%d\n", (int)(bool)std::cerr);
 }
 
 void Process_Attach(const char *log_name)

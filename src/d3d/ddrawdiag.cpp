@@ -2,6 +2,7 @@
 
 #include "ddrawdiag.h"
 #include "sysdev.h"
+#include <fstream>
 #include <stdio.h>
 #include "logger.h"
 
@@ -154,9 +155,6 @@ void ddiag_dump_surface(const char *kind, const char *name,
              (unsigned long)d.ddpfPixelFormat.dwRGBAlphaBitMask, h);
     surf->Unlock(NULL);
 
-    FILE *f = fopen(path, "ab");
-    if (f) {
-        fputs(line, f);
-        fclose(f);
-    }
+    std::ofstream f(path, std::ios::binary | std::ios::app);
+    f << line;
 }

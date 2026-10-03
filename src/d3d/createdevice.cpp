@@ -18,6 +18,7 @@
 #include "logger.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include <iostream>
 #include <stdio.h>
 #include <string.h>
 
@@ -77,7 +78,7 @@ static int devdiag(void)
  * lastError()), the English progress lines to the image log. */
 static void imagelog(const char *s)
 {
-    fwrite(s, (unsigned)lstrlenA(s), 1, stderr);
+    std::cerr.write(s, lstrlenA(s));
 }
 
 /* Create's helpers, befriended by RenderDevice. */
