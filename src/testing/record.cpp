@@ -185,16 +185,17 @@ static void open_replay(const char *path)
 static void init(void)
 {
     if (g_mode >= 0) return;
-    char path[FILENAME_MAX];
     g_mode = 0;
     read_env();
 
-    if (sysdev::getEnv("KAROO_RECORD", path, sizeof(path)) && path[0]) {
+    const std::string recordPath = sysdev::getEnv("KAROO_RECORD");
+    const std::string replayPath = sysdev::getEnv("KAROO_REPLAY");
+    if (!recordPath.empty()) {
         g_mode = 1;
-        open_record(path);
-    } else if (sysdev::getEnv("KAROO_REPLAY", path, sizeof(path)) && path[0]) {
+        open_record(recordPath.c_str());
+    } else if (!replayPath.empty()) {
         g_mode = 2;
-        open_replay(path);
+        open_replay(replayPath.c_str());
     }
 }
 

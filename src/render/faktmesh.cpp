@@ -220,8 +220,8 @@ int CFaktMesh::importSceneModels(const char *path)
     // (FNV-1a 32), to compare an independent parse of the same .mdl against
     // what landed in memory.
     {
-        char dump[FILENAME_MAX];
-        if (sysdev::getEnv("KAROO_MDL_DUMP", dump, sizeof(dump))) {
+        const std::string dump = sysdev::getEnv("KAROO_MDL_DUMP");
+        if (!dump.empty()) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {
                 char line[512];

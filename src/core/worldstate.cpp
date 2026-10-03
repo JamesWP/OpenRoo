@@ -40,11 +40,6 @@ static bool env_flag(const char *name)
     return sysdev::getEnv(name, buf, sizeof(buf)) && buf[0] && buf[0] != '0';
 }
 
-static bool env_path(const char *name, char *out, uint32_t n)
-{
-    return sysdev::getEnv(name, out, n) != 0 && out[0] != 0;
-}
-
 /* Reads one entity: the MovableEntity fields, and for a foe its own.  The cell
  * bytes are signed in the class and copied as raw bytes. */
 static void read_entity(const MovableEntity *obj, uint8_t slot, WsEntity *e)
@@ -419,7 +414,7 @@ static void obs_dump_line(std::ostream &fp, const Observation *obs)
 }
 
 static int   g_trace = -1, g_obsdump = -1;
-static char  g_map_path[FILENAME_MAX], g_obs_path[FILENAME_MAX];
+static std::string g_map_path, g_obs_path;
 
 /* One map dump per run, carrying the level index and name.  Re-dumping on a
  * later level would overwrite it with a different map. */
@@ -429,12 +424,14 @@ static std::ofstream g_obs_fp;
 static void worldstate_init(void)
 {
     g_trace   = env_flag("KAROO_ENTITY_TRACE");
-    g_map_wanted = env_path("KAROO_MAP_DUMP", g_map_path, sizeof(g_map_path));
-    g_obsdump = env_path("KAROO_OBS_DUMP", g_obs_path, sizeof(g_obs_path));
+    g_map_path = sysdev::getEnv("KAROO_MAP_DUMP");
+    g_obs_path = sysdev::getEnv("KAROO_OBS_DUMP");
+    g_map_wanted = !g_map_path.empty();
+    g_obsdump = !g_obs_path.empty();
     g_logger.write("worldstate: trace=%s map_dump=%s obs_dump=%s\n",
               g_trace ? "on" : "off",
-              g_map_wanted ? g_map_path : "off",
-              g_obsdump ? g_obs_path : "off");
+              g_map_wanted ? g_map_path.c_str() : "off",
+              g_obsdump ? g_obs_path.c_str() : "off");
 }
 
 void worldstate_tick(void)
@@ -453,7 +450,7 @@ void worldstate_tick(void)
 
     if (g_map_wanted && !g_map_done) {
         g_map_done = true;
-        map_dump(Game::instance(), obs, g_map_path);
+        map_dump(Game::instance(), obs, g_map_path.c_str());
     }
     if (g_trace) obs->traceFrame();
     if (g_obsdump) {

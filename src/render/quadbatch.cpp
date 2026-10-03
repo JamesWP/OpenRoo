@@ -26,8 +26,8 @@
 static void quad_dump(const void *data, uint32_t quads)
 {
     static std::atomic<long> calls = 0;
-    char path[FILENAME_MAX];
-    if (!sysdev::getEnv("KAROO_QUAD_DUMP", path, sizeof(path)))
+    const std::string path = sysdev::getEnv("KAROO_QUAD_DUMP");
+    if (path.empty())
         return;
     // Dumps the 200th gated draw, not the first: if the buffer is filled
     // lazily, the first frame would show an empty one.

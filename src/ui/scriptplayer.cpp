@@ -139,8 +139,8 @@ int ScriptPlayer::readForLevel(const char *path)
     // KAROO_JJS_DUMP: the path, the entry count and an FNV-1a hash of every
     // line, for comparison with an independent parse.
     {
-        char dump[FILENAME_MAX];
-        if (sysdev::getEnv("KAROO_JJS_DUMP", dump, sizeof(dump))) {
+        const std::string dump = sysdev::getEnv("KAROO_JJS_DUMP");
+        if (!dump.empty()) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {
                 unsigned long hash = 2166136261UL;
