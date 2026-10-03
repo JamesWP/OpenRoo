@@ -38,7 +38,7 @@
  *   backward  negate the scroll: a direction change, so it proves the
  *             fmod and clock arithmetic. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "bridgesurf.h"
 #include "sysdev.h"
@@ -186,8 +186,8 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
                         ok = d3d->Draw(
                             Prim::TriangleStrip, BRIDGE_FVF, v, 4, 0);
 
-                    static LONG logged = 0;
-                    if (InterlockedIncrement(&logged) <= BRIDGE_LOG_FIRST)
+                    static AtomicInt logged = 0;
+                    if (atomicIncrement(&logged) <= BRIDGE_LOG_FIRST)
                         g_logger.write("bridgesurf: obj=%lu sub=%lu cv=%lu axis=%d "
                                   "dir=%d n=%d len=%d f=%d/1000 -> ok=%d\n",
                                   i, s, k, info.axis, info.dir, info.n,

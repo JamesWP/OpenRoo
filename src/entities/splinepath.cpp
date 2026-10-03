@@ -1,7 +1,7 @@
 /* SplinePath: a Bezier curve through a linked list of control points, and the
  * two debug line-strip draws. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <math.h>
@@ -226,7 +226,7 @@ static void run_selfcheck(void)
               bad ? "FAIL" : "PASS", bad, bad == 1 ? "" : "s");
 }
 
-typedef long (WINAPI *DrawP_fn)(void *, uint32_t, uint32_t, void *, uint32_t, uint32_t);
+typedef long (*DrawP_fn)(void *, uint32_t, uint32_t, void *, uint32_t, uint32_t);
 struct DevVtbl { void *slot[42]; };
 struct DevShim { DevVtbl *lpVtbl; };
 

@@ -13,7 +13,7 @@
  *   - death_raw: four raw bytes from the player's move state;
  *   - pos: the player's position. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "gamestate.h"
 #include "sysdev.h"

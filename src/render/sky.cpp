@@ -7,7 +7,7 @@
  *
  * KAROO_SKY_FX=noskip draws only the first of the six quads. */
 
-#include <windows.h>
+#include "portable.h"
 #include "renderdevice.h"
 #include "sysdev.h"
 #include "sky.h"
@@ -69,8 +69,8 @@ float *SkyBackground::draw(RenderDevice *dev,
         bool ok = dev->Draw(Prim::TriangleStrip, SKY_FVF, QuadVerts_[i], 4,
                             DrawFlag::NoUpdateExtents);
 
-        static LONG logged = 0;
-        if (InterlockedIncrement(&logged) <= SKY_LOG_FIRST)
+        static AtomicInt logged = 0;
+        if (atomicIncrement(&logged) <= SKY_LOG_FIRST)
             g_logger.write("sky: quad %d tex=%p yaw=%d/1000 -> ok=%d\n",
                       i, (void *)tex, (int)(flYawAngle_ * 1000.0f), ok);
     }

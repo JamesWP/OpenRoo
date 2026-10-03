@@ -3,7 +3,7 @@
 
 #define DIRECTSOUND_VERSION 0x0800
 #include <algorithm>
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <new>

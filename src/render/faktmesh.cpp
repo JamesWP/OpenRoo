@@ -7,7 +7,7 @@
  * KAROO_FAKTMESH_FX=half draws only the first half of each mesh's triangles.
  */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "faktmesh.h"
 #include "sysdev.h"
@@ -43,18 +43,18 @@ static bool fx_half(void)
  * the lighting/material/texture state, none of which this file sets. */
 static void mesh_diag(RenderDevice *dev, uint32_t flags)
 {
-    static LONG once = 0;
+    static AtomicInt once = 0;
     char buf[8];
     if (!sysdev::getEnv("KAROO_MESH_DIAG", buf, sizeof(buf)) || buf[0] == '0')
         return;
-    if (InterlockedExchange(&once, 1) != 0)
+    if (atomicExchange(&once, 1) != 0)
         return;
 
     g_logger.write("diag: drawflags=%02lX\n", flags);
     dev->LogState("diag");
 }
 
-HRESULT CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
+long CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
                          uint32_t flags, const char *name)
 {
     mesh_diag(dev, flags);
@@ -67,11 +67,11 @@ HRESULT CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
     if (fx_half())
         count = (count / 2 / 3) * 3;  // keep it a whole number of triangles
 
-    HRESULT hr = dev->Draw(Prim::TriangleList, MESH_FVF, verts, count, flags)
-               ? S_OK : E_FAIL;
+    long hr = dev->Draw(Prim::TriangleList, MESH_FVF, verts, count, flags)
+               ? 0 : (long)0x80004005u;  // S_OK : E_FAIL
 
-    static LONG logged = 0;
-    if (InterlockedIncrement(&logged) <= MESH_LOG_FIRST)
+    static AtomicInt logged = 0;
+    if (atomicIncrement(&logged) <= MESH_LOG_FIRST)
         g_logger.write("faktmesh: %s this=%p dev=%p frame=%lu count=%lu flags=%02lX -> hr=%08lX\n",
                   name, this, dev, frame, count, flags, hr);
     return hr;
@@ -79,12 +79,12 @@ HRESULT CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
 
 /* ─── Exports ───────────────────────────────────────────────────────────────
  */
-HRESULT CFaktMesh::drawMeshBuffer(RenderDevice *dev, uint32_t frame)
+long CFaktMesh::drawMeshBuffer(RenderDevice *dev, uint32_t frame)
 {
     return drawMesh(dev, frame, DrawFlag::NoUpdateExtents, "DrawMeshBuffer");
 }
 
-HRESULT CFaktMesh::drawFramedModel(RenderDevice *dev, uint32_t frame)
+long CFaktMesh::drawFramedModel(RenderDevice *dev, uint32_t frame)
 {
     return drawMesh(dev, frame, DrawFlag::NoUpdateExtents | DrawFlag::NoLight,
                      "DrawFramedModel");
@@ -117,8 +117,8 @@ CFaktMesh::CFaktMesh()
     dwVertexCount_  = 0;
     wFrameCount_    = 1;
 
-    static LONG logged = 0;
-    if (InterlockedIncrement(&logged) <= MESH_LOG_FIRST)
+    static AtomicInt logged = 0;
+    if (atomicIncrement(&logged) <= MESH_LOG_FIRST)
         g_logger.write("faktmesh: Init this=%p\n", this);
 }
 

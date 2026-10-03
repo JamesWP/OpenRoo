@@ -12,7 +12,7 @@
  * magenta (only these functions build it), "nodraw" skips the quads and leaves
  * the text. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include <stdio.h>
 #include "sysdev.h"
@@ -121,10 +121,10 @@ void Score_DrawHighScoreTable(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
     d3d->SetTexture(0, g_pPanelTexture);
     if (score_fx() != SCORE_FX_NODRAW)
         d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
-                                    (LPVOID)g_pPanelVerts, 4, 0);
+                                    (void *)g_pPanelVerts, 4, 0);
 
-    static LONG calls = 0;
-    if (InterlockedIncrement(&calls) <= SCORE_LOG_FIRST)
+    static AtomicInt calls = 0;
+    if (atomicIncrement(&calls) <= SCORE_LOG_FIRST)
         g_logger.write("scoreoverlay: highscore %.0fx%.0f entries=%u\n",
                    w, h, (unsigned)g->highScores()->count());
 
@@ -250,8 +250,8 @@ static void draw_summary(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
 void Score_DrawGameOverScore(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
                              TextRenderer *text, int n)
 {
-    static LONG calls = 0;
-    if (InterlockedIncrement(&calls) <= SCORE_LOG_FIRST)
+    static AtomicInt calls = 0;
+    if (atomicIncrement(&calls) <= SCORE_LOG_FIRST)
         g_logger.write("scoreoverlay: gameover %lux%lu n=%d\n",
                   (unsigned long)d3d->width(),
                   (unsigned long)d3d->height(), n);

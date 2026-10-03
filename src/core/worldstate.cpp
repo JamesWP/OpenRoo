@@ -14,7 +14,7 @@
  * lists, never by scanning the slots, since a dead slot keeps its stale
  * pointer. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "worldstate.h"
 #include "sysdev.h"

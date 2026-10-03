@@ -18,7 +18,7 @@
  * so animated models hold their first frame while everything else about them
  * stays. */
 
-#include <windows.h>
+#include "portable.h"
 #include "sysdev.h"
 #include <fstream>
 #include <sstream>

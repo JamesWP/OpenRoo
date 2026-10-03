@@ -1,4 +1,4 @@
-#include <windows.h>
+#include <mutex>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -22,10 +22,7 @@ void Logger::close()
 }
 
 /* Held for each line, so lines from different threads do not interleave. */
-static struct LogLock {
-    CRITICAL_SECTION cs;
-    LogLock() { InitializeCriticalSection(&cs); }
-} s_lock;
+static std::mutex s_lock;
 
 void Logger::emit(const char *prefix, const char *fmt, va_list ap)
 {
@@ -38,10 +35,9 @@ void Logger::emit(const char *prefix, const char *fmt, va_list ap)
     size_t len = n + m;
     if (len >= LINE_MAX_BYTES) len = LINE_MAX_BYTES - 1;
     if (len == 0 || line[len - 1] != '\n') line[len++] = '\n';
-    EnterCriticalSection(&s_lock.cs);
+    std::lock_guard<std::mutex> guard(s_lock);
     fp_.write(line, len);
     fp_.flush();
-    LeaveCriticalSection(&s_lock.cs);
 }
 
 void Logger::write(const char *fmt, ...)

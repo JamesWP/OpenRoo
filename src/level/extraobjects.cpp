@@ -31,7 +31,7 @@
  * the extra models vanish; "pathrev" stores every spline backwards, so the
  * Water01 ray swims its loop the other way. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <stdio.h>

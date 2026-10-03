@@ -21,7 +21,7 @@
  * - Objects whose type is neither 0 nor 2, and type-0 objects with a NULL
  *    mesh, still run the whole render-state prologue before being skipped. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "dsoscene.h"
 #include "sysdev.h"

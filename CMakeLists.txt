@@ -20,7 +20,7 @@ foreach(group app audio audiodev core d3d entities input inputdev level render t
 endforeach()
 
 add_executable(KarooOwn WIN32
-    src/app/exemain.cpp)
+    src/windev/exemain.cpp)
 set_target_properties(KarooOwn PROPERTIES OUTPUT_NAME KarooOwn)
 target_include_directories(KarooOwn PRIVATE src/app)
 target_link_libraries(KarooOwn PRIVATE

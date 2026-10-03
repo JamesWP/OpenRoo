@@ -1,7 +1,7 @@
 /* MovableEntity's construction and destruction; the
  * shared movement step, updateMovement(), follows in the rest of the file. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "movableentity.h"
 #include "sysdev.h"

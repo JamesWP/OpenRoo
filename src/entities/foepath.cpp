@@ -6,7 +6,7 @@
  * closed-list reopenings that produces.  Each function below is a FoePath
  * method (or a free helper it calls) followed by its export shim. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <stdlib.h>

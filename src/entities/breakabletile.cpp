@@ -19,7 +19,7 @@
  * spawns and a failed allocation; KAROO_RESET_DIAG=1 logs purges and sound
  * releases. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <new>

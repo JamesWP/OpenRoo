@@ -1,4 +1,4 @@
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include <fstream>
 #include "binio.h"
