@@ -298,11 +298,11 @@ unsigned int MovableEntity::updateMovement()
                 if (now_ - field_126 <= K_GLUE_MS) {
                     pendingMove_ = 0;  // stuck: drop the queued move
                 } else {
-                    memset(&field_126, 0, 8);
+                    field_126 = 0.0;
                     CUR->setBusy(1);  // pad spent
                 }
             } else {
-                memset(&field_126, 0, 8);
+                field_126 = 0.0;
             }
 
             // Climb tile.

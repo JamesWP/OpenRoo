@@ -10,6 +10,8 @@
 #include "record.h"
 #include "policy.h"
 #include "clock.h"
+#include <algorithm>
+#include <iterator>
 
 static const char SAVE_FILE[] = "ProgableControl.sav";
 
@@ -181,13 +183,12 @@ void ProgableControl::dispatch(unsigned short game_state)
         // so a recorded policy run replays exactly.
         if (game_state >= 5) return;
 
-        uint8_t human[256];
-        memset(human, 0, sizeof(human));
-        if (!devices_.readKeyboard(human)) memset(human, 0, sizeof(human));
+        uint8_t human[256] = {};
+        if (!devices_.readKeyboard(human)) std::fill(std::begin(human), std::end(human), uint8_t(0));
 
-        memset(ks, 0, sizeof(ks));
+        std::fill(std::begin(ks), std::end(ks), uint8_t(0));
         if (!policy_keys(this, game_state, ks)) {
-            memcpy(ks, human, sizeof(ks));
+            std::copy(std::begin(human), std::end(human), ks);
         } else {
             for (int i = 0; i < 256; i++) ks[i] |= human[i];
         }

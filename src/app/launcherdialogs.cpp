@@ -84,7 +84,7 @@ public:
         if (adapter >= 0 && adapters_[adapter].hasGuid)
             *cfg->adapterId() = adapters_[adapter].id;
         else
-            memset(cfg->adapterId(), 0, sizeof(AdapterId));
+            *cfg->adapterId() = AdapterId();
         cfg->setDisplayModeIndex((unsigned int)mode);
     }
 

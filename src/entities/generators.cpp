@@ -22,6 +22,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <vector>
 
 #define SIM_LOG_FIRST 8
 
@@ -730,16 +731,12 @@ Environment::Environment() : pName_(GS_PSNAME_ENVIRONMENT), pRing_(NULL)
  * which starts at 10. */
 GravityEnvironment::GravityEnvironment()
 {
-    memset((uint8_t *)this + sizeof(Environment), 0,
-           sizeof(GravityEnvironment) - sizeof(Environment));
     pName_ = GS_PSNAME_GRAVITY_ENV;
     dwFadeThreshold_ = 10;
 }
 
 MagnetEnvironment::MagnetEnvironment()
 {
-    memset((uint8_t *)this + sizeof(Environment), 0,
-           sizeof(MagnetEnvironment) - sizeof(Environment));
     pName_ = GS_PSNAME_MAGNET_ENV;
     dwFadeThreshold_ = 10;
 }
@@ -890,16 +887,14 @@ int Generator::attachRing(RingBuffer *ring)
  * rand() until all 200 slots are filled, skipping zero-weight pairs — the draw
  * order feeds the emitted particle colours.  An empty or missing source table
  * instead fills pEmitProb with all -1. */
-static void type_table_clone(void **ptable, uint32_t *pcount, uint32_t *emit_prob,
+static void type_table_clone(std::vector<uint32_t> *table, uint32_t *pcount, uint32_t *emit_prob,
                              const uint32_t *src, uint32_t count)
 {
-    if (*ptable)
-        ::operator delete(*ptable);
     *pcount = count;
-    uint32_t *table = (uint32_t *)::operator new(count * 8);
-    *ptable = table;
-    if (count)
-        memcpy(table, src, count * 8);
+    if (src != NULL && count)
+        table->assign(src, src + (size_t)count * 2);
+    else
+        table->assign((size_t)count * 2, 0);
 
     if (src == NULL || count == 0) {
         for (int i = 0; i < 200; i++)
@@ -928,45 +923,42 @@ static void type_table_clone(void **ptable, uint32_t *pcount, uint32_t *emit_pro
 
 void StdGenerator::stdCloneTypeTable(const uint32_t *src, uint32_t count)
 {
-    type_table_clone(&pTypeTable_, &dwTypeTableCount_, pEmitProb_,
+    type_table_clone(&typeTable_, &dwTypeTableCount_, pEmitProb_,
                      src, count);
 }
 
 /* FORMAT: count (uint32_t), then that many (colour, weight) uint32_t pairs. */
-static int type_table_save(void *table, const uint32_t *pcount, void *fp)
+static int type_table_save(const std::vector<uint32_t> &table, const uint32_t *pcount, void *fp)
 {
     if (fp == NULL)
         return FALSE;
     if (!write1(pcount, 4, fp))
         return FALSE;
-    return fwrite(table, 8, *pcount, (FILE *)fp) == *pcount;
+    return fwrite(table.data(), 8, *pcount, (FILE *)fp) == *pcount;
 }
 
-/* PRESERVED: a short read returns FALSE without freeing the scratch buffer — a
- * genuine leak, reproduced. */
-static int type_table_load(void **ptable, uint32_t *pcount, uint32_t *emit_prob, void *fp)
+static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint32_t *emit_prob, void *fp)
 {
     if (fp == NULL)
         return FALSE;
     uint32_t count;
     if (hooks_fread(&count, 4, 1, fp) != 1)
         return FALSE;
-    uint32_t *pairs = (uint32_t *)::operator new(count * 8);
-    if (hooks_fread(pairs, 8, count, fp) != count)
+    std::vector<uint32_t> pairs((size_t)count * 2);
+    if (hooks_fread(pairs.data(), 8, count, fp) != count)
         return FALSE;
-    type_table_clone(ptable, pcount, emit_prob, pairs, count);
-    ::operator delete(pairs);
+    type_table_clone(ptable, pcount, emit_prob, pairs.data(), count);
     return TRUE;
 }
 
 int StdGenerator::stdSaveTypeTable(void *fp)
 {
-    return type_table_save(pTypeTable_, &dwTypeTableCount_, fp);
+    return type_table_save(typeTable_, &dwTypeTableCount_, fp);
 }
 
 int StdGenerator::stdLoadTypeTable(void *fp)
 {
-    return type_table_load(&pTypeTable_, &dwTypeTableCount_,
+    return type_table_load(&typeTable_, &dwTypeTableCount_,
                            pEmitProb_, fp);
 }
 
@@ -1068,10 +1060,8 @@ int StdGenerator::copyFrom(const Generator *gsrc)
     if (!Generator::copyFrom(gsrc))
         return FALSE;
     const StdGenerator *src = static_cast<const StdGenerator *>(gsrc);
-    void *own = pTypeTable_;   // the assignment must not hand us the source's table
     *this = *src;
-    pTypeTable_ = own;
-    this->stdCloneTypeTable((const uint32_t*)src->pTypeTable_,src->dwTypeTableCount_);
+    this->stdCloneTypeTable(src->typeTable_.data(), src->dwTypeTableCount_);
     return TRUE;
 }
 
@@ -1362,7 +1352,7 @@ void CylinderGenerator::cylBuildVelocity(const float *vmin, const float *vmax,
     dwVelIdx_ = 0;
     memcpy(flVelMin_, a, sizeof a);
     memcpy(flVelMax_, b, sizeof b);
-    pTypeTable_ = NULL;
+    typeTable_.clear();
     dwTypeTableCount_ = 0;
     flLifeMin_ = lmin;
     flLifeMax_ = lmax;
@@ -1383,11 +1373,9 @@ int CylinderGenerator::copyFrom(const Generator *gsrc)
     if (!Generator::copyFrom(gsrc))
         return FALSE;
     const CylinderGenerator *src = static_cast<const CylinderGenerator *>(gsrc);
-    void *own = pTypeTable_;   // the assignment must not hand us the source's table
     *this = *src;
-    pTypeTable_ = own;
-    type_table_clone(&this->pTypeTable_, &this->dwTypeTableCount_, this->pEmitProb_,
-                     (const uint32_t *)src->pTypeTable_, src->dwTypeTableCount_);
+    type_table_clone(&this->typeTable_, &this->dwTypeTableCount_, this->pEmitProb_,
+                     src->typeTable_.data(), src->dwTypeTableCount_);
     return TRUE;
 }
 
@@ -1403,7 +1391,7 @@ int CylinderGenerator::save(void *fp)
     if (!write1(&flEmitRateMin_, 4, fp))  return FALSE;
     if (!write1(&flEmitRateMax_, 4, fp))  return FALSE;
     if (!write1(&flDtScale_, 4, fp))      return FALSE;
-    return type_table_save(pTypeTable_, &dwTypeTableCount_, fp);
+    return type_table_save(typeTable_, &dwTypeTableCount_, fp);
 }
 
 /* Reads its own direction back out to rebuild the matrix via
@@ -1428,7 +1416,7 @@ int CylinderGenerator::load(void *fp)
     cylBuildVelocity(flVelMin_, flVelMax_,
                        flLifeMin_, flLifeMax_);
     cylBuildRate(flEmitRateMin_, flEmitRateMax_);
-    return type_table_load(&pTypeTable_, &dwTypeTableCount_,
+    return type_table_load(&typeTable_, &dwTypeTableCount_,
                            pEmitProb_, fp);
 }
 
@@ -1455,7 +1443,6 @@ BoxGenerator::BoxGenerator()
 
 StdGenerator::StdGenerator()
 {
-    memset((uint8_t *)this + sizeof(Generator), 0, sizeof(StdGenerator) - sizeof(Generator));
     pName_ = GS_PSNAME_STD_GEN;
     for (int i = 0; i < 200; i++)
         pEmitProb_[i] = 0xFFFFFFFF;
@@ -1463,20 +1450,14 @@ StdGenerator::StdGenerator()
 
 StdGenerator::~StdGenerator()
 {
-    if (pTypeTable_)
-        ::operator delete(pTypeTable_);
 }
 
 CylinderGenerator::~CylinderGenerator()
 {
-    if (pTypeTable_)
-        ::operator delete(pTypeTable_);
 }
 
 XStdGenerator::XStdGenerator()
 {
-    memset(flPosOffset_, 0, sizeof flPosOffset_);
-    memset(flVelOffset_, 0, sizeof flVelOffset_);
     pName_ = GS_PSNAME_XSTD_GEN;
 }
 
@@ -1490,8 +1471,6 @@ XStdGenerator::XStdGenerator()
  */
 CylinderGenerator::CylinderGenerator()
 {
-    memset((uint8_t *)this + sizeof(Generator), 0,
-           sizeof(CylinderGenerator) - sizeof(Generator));
     pName_ = GS_PSNAME_CYL_GEN;
     setDirection(0.0f, 1.0f, 0.0f);
     static const float IDENTITY[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 };

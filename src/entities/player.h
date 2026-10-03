@@ -183,7 +183,7 @@ private:
     void  endEffect(int code);
 
     int                 worldSoundVariant_;
-    SoundRef            pickupSounds_[9][3];
+    SoundRef            pickupSounds_[9][3] = {};
     double              lastSecondsMark_;
     double              effectBStart_;
     int                 effectBActive_;

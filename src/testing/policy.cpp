@@ -20,6 +20,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <algorithm>
 
 /* The action names the gameplay mode registers (inputsetup.cpp). */
 #define ACT_FORWARD  "John_Move_Forward"
@@ -248,7 +249,7 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, uint8_t *keys)
     if (o->frame < policy_after()) return false;
 
     dump_actions(s, game_state);
-    memset(keys, 0, 256);
+    std::fill_n(keys, 256, 0);
 
     // Keys are held, not pulsed: moving and turning do nothing while a move is
     // in progress, so holding a key steps one tile or one quarter turn at a

@@ -44,6 +44,8 @@
 #include "gameglobals.h"
 #include <stdlib.h>
 #include <stdlib.h>
+#include <algorithm>
+#include <iterator>
 
 #define LEO_LOG_FIRST    6
 
@@ -451,7 +453,7 @@ void ExtraObjects::parseModel()
             if (more)
                 w = leo_tok();
         } else {
-            memset(current()->animationFile, 0, sizeof(current()->animationFile));
+            std::fill(std::begin(current()->animationFile), std::end(current()->animationFile), 0);
             g_logger.logMessage(1, "LEO: no model-animation");
         }
         if (more && w != NULL) {

@@ -1,4 +1,6 @@
 #pragma once
+
+#include <memory>
 #include <stdint.h>
 #include <stddef.h>
 class RenderDevice;
@@ -52,7 +54,7 @@ struct RingBuffer {
     int alloc(uint32_t count, uint32_t shapes);
 
     uint32_t         dwRingCount  = 0;
-    ParticleNode *pRingBase    = NULL;
+    std::unique_ptr<ParticleNode[]> ringNodes;  // the block pRingHead..pRingTail point into
     ParticleNode *pRingHead    = NULL;  // oldest live particle
     ParticleNode *pRingTail    = NULL;  // last free node
     ParticleNode *pRingCurrent = NULL;  // next node to emit into
@@ -124,7 +126,7 @@ protected:
     RingBuffer      ring_;          // handed to the generator and environment
     Generator      *pGenerator_;
     Environment    *pEnvironment_;
-    ParticleVertex *pVerts_;
+    std::unique_ptr<ParticleVertex[]> pVerts_;
     uint32_t           dwVertexCount_;  // vertices the last fill wrote
 };
 
@@ -163,7 +165,7 @@ private:
     int allocVerts() { return ParticleSystem::allocVerts(6, FACE_UV); }
 
     static const float FACE_UV[6][2];
-    float           flCorner_[6][3]; // six baked xyz corner offsets
+    float           flCorner_[6][3] = {}; // six baked xyz corner offsets
     float           flScale_;
 };
 
@@ -199,7 +201,7 @@ private:
     int buildCorners();
 
     static const float XFACE_UV[6][2];
-    XFaceCornerEntry *pCornerTable_; // dwCornerTableCount entries
+    std::unique_ptr<XFaceCornerEntry[]> pCornerTable_; // dwCornerTableCount entries
     uint32_t             dwCornerTableCount_;
     float             ranges[8];
 };

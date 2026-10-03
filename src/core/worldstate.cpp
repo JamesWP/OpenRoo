@@ -48,7 +48,7 @@ static bool env_path(const char *name, char *out, uint32_t n)
  * bytes are signed in the class and copied as raw bytes. */
 static void read_entity(const MovableEntity *obj, uint8_t slot, WsEntity *e)
 {
-    memset(e, 0, sizeof(*e));
+    *e = WsEntity();
     e->slot    = slot;
     e->facing  = obj->facing();
     e->moving  = (uint8_t)obj->moveDir();
@@ -108,7 +108,7 @@ static unsigned read_table(const Game *g, unsigned char count_in,
 bool Observation::observe()
 {
     const Game *g = Game::instance();
-    memset(this, 0, sizeof(decltype(*this)));
+    *this = Observation();
     if (!g) return false;
 
     const LevelMap *map = g->map();

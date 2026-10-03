@@ -71,7 +71,7 @@ LevelEntry_PrepareAssets(void)
     cam->eye()[0] = x;
     cam->eye()[1] = offY + 6.0f;
     cam->eye()[2] = z - 4.0f;
-    memset(&g_cameraFocus, 0, sizeof(g_cameraFocus));
+    g_cameraFocus = CameraFocus();
     cam->setYaw(0.0f);
     cam->setPitch(1.0471976f);  // pi/3
 }

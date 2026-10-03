@@ -30,6 +30,8 @@
 #include "logger.h"
 #include <stdlib.h>
 #include <string.h>
+#include <algorithm>
+#include <iterator>
 
 #define RECORD_VERSION  1
 #define ASYNC_MAX       64
@@ -100,8 +102,7 @@ static void open_record(const char *path)
         g_mode = 0;
         return;
     }
-    uint8_t hdr[HEADER_SIZE];
-    memset(hdr, 0, sizeof(hdr));
+    uint8_t hdr[HEADER_SIZE] = {};
     memcpy(hdr, "KROO", 4);
     *(uint32_t  *)(hdr + 4)  = RECORD_VERSION;
     *(double *)(hdr + 8)  = g_dt;
@@ -188,7 +189,7 @@ static void flush_frame(void)
     fwrite(buf, 1, n, g_fh);
     fflush(g_fh);
 
-    memset(&g_cur, 0, sizeof(g_cur));
+    g_cur = FrameRec();
     g_keys_seen = false;
 }
 
@@ -219,7 +220,7 @@ static bool read_exact(void *dst, uint32_t n)
 
 static bool read_one(FrameRec *r)
 {
-    memset(r, 0, sizeof(*r));
+    *r = FrameRec();
     if (!read_exact(&r->frame, 4) || !read_exact(&r->game_state, 1) ||
         !read_exact(r->keys, 256)  || !read_exact(&r->async_count, 1))
         return false;
@@ -252,7 +253,7 @@ static void load_frame(void)
         g_play = g_pending;
         g_have_pending = false;
         g_have_play = true;
-        memset(g_async_used, 0, sizeof(g_async_used));
+        std::fill(std::begin(g_async_used), std::end(g_async_used), 0);
     }
 }
 

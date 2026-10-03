@@ -5,6 +5,8 @@
  * killing particles already in the ring. */
 
 #pragma once
+
+#include <vector>
 #include <stdint.h>
 #include <stddef.h>
 #include "particles.h"
@@ -98,18 +100,18 @@ private:
     void gravitySetVector(const float dir[3], float mag);
     void gravitySetColour(uint32_t argb, float fade);
 
-    float       flDirection_[3];
-    float       flMagnitude_;
-    float       flGravity_[3];
-    uint32_t       dwTargetARGB_;
-    uint32_t       dwTargetA_;  // never read
-    uint32_t       dwTargetRGB_[3];
-    float       flFadeRate_;
-    uint32_t       dwFadeThreshold_;  // a fade step below this is not applied
-    uint32_t       dwClipEnable_[3];
-    float       flClipMax_[3];
-    float       flClipMin_[3];
-    float       flFadeAccum_;
+    float       flDirection_[3] = {};
+    float       flMagnitude_ = {};
+    float       flGravity_[3] = {};
+    uint32_t       dwTargetARGB_ = {};
+    uint32_t       dwTargetA_ = {};  // never read
+    uint32_t       dwTargetRGB_[3] = {};
+    float       flFadeRate_ = {};
+    uint32_t       dwFadeThreshold_ = 10;  // a fade step below this is not applied
+    uint32_t       dwClipEnable_[3] = {};
+    float       flClipMax_[3] = {};
+    float       flClipMin_[3] = {};
+    float       flFadeAccum_ = {};
 
  
 };
@@ -129,15 +131,15 @@ public:
 private:
     void magnetTick(float dt);
 
-    float       flCentre_[3];
-    float       flForce_[3];
-    float       flHalfExtent_[3];
-    float       flRange_;    // serialised, unread by Tick
-    uint32_t       dwField34_;  // serialised, unread by Tick
-    uint32_t       dwTargetRGB_[3];
-    float       flFadeRate_;
-    uint32_t       dwFadeThreshold_;
-    float       flFadeAccum_;
+    float       flCentre_[3] = {};
+    float       flForce_[3] = {};
+    float       flHalfExtent_[3] = {};
+    float       flRange_ = {};    // serialised, unread by Tick
+    uint32_t       dwField34_ = {};  // serialised, unread by Tick
+    uint32_t       dwTargetRGB_[3] = {};
+    float       flFadeRate_ = {};
+    uint32_t       dwFadeThreshold_ = 10;
+    float       flFadeAccum_ = {};
 
  
 };
@@ -168,30 +170,30 @@ protected:
                           float lmax);
     void stdBuildRate(float lo, float hi);
 
-    float     flDtScale_;
-    uint32_t     dwEmitMode_;   // selects which of the Sph/Box parameter pairs below Load samples from
-    float     flSphMin_[3];  // consumed only by Load, to build the tables; emit never reads these
-    float     flSphMax_[3];
-    float     flBoxMin_[3];
-    float     flBoxMax_[3];
-    float     flVelMin_[3];
-    float     flVelMax_[3];
-    float     flLifeMin_;
-    float     flLifeMax_;
-    float     flEmitRateMin_;
-    float     flEmitRateMax_;
-    void     *pTypeTable_;  // heap block owned and freed by this object
-    uint32_t     dwTypeTableCount_;
-    float     flPosTable_[1500];  // 500 samples of (x, y, z), read as node position
-    float     flVelTable_[1500];  // 500 samples of (x, y, z), read as node velocity
-    float     pLifeTable_[100];
-    uint32_t     pEmitProb_[200];
-    uint32_t     dwCtr0_;
-    float     flAccumulator_;
-    uint32_t     dwPosIdx_;  // steps by 1, wraps at 500
-    uint32_t     dwVelIdx_;
-    uint32_t     dwLifeIdx_;
-    uint32_t     dwProbIdx_;
+    float     flDtScale_ = {};
+    uint32_t     dwEmitMode_ = {};   // selects which of the Sph/Box parameter pairs below Load samples from
+    float     flSphMin_[3] = {};  // consumed only by Load, to build the tables; emit never reads these
+    float     flSphMax_[3] = {};
+    float     flBoxMin_[3] = {};
+    float     flBoxMax_[3] = {};
+    float     flVelMin_[3] = {};
+    float     flVelMax_[3] = {};
+    float     flLifeMin_ = {};
+    float     flLifeMax_ = {};
+    float     flEmitRateMin_ = {};
+    float     flEmitRateMax_ = {};
+    std::vector<uint32_t> typeTable_;  // dwTypeTableCount_ (colour, weight) pairs
+    uint32_t     dwTypeTableCount_ = {};
+    float     flPosTable_[1500] = {};  // 500 samples of (x, y, z), read as node position
+    float     flVelTable_[1500] = {};  // 500 samples of (x, y, z), read as node velocity
+    float     pLifeTable_[100] = {};
+    uint32_t     pEmitProb_[200] = {};
+    uint32_t     dwCtr0_ = {};
+    float     flAccumulator_ = {};
+    uint32_t     dwPosIdx_ = {};  // steps by 1, wraps at 500
+    uint32_t     dwVelIdx_ = {};
+    uint32_t     dwLifeIdx_ = {};
+    uint32_t     dwProbIdx_ = {};
 
 private:
  
@@ -216,8 +218,8 @@ public:
 private:
     void xstdStoreScaled(double x, double y, double z, double len, double mag);
 
-    float        flPosOffset_[3];
-    float        flVelOffset_[3];
+    float        flPosOffset_[3] = {};
+    float        flVelOffset_[3] = {};
 
  
 };
@@ -243,28 +245,28 @@ private:
                           float lmax);
     void cylBuildRate(float lo, float hi);
 
-    float     flOrigin_[3];
-    float     flDirection_[3];
-    float     flScale_;       // scale applied to the sampled position, before the matrix
-    float     flMatrix_[16];  // rebuilt whenever SetDirection is called
-    float     flVelMin_[3];
-    float     flVelMax_[3];
-    float     flLifeMin_;
-    float     flLifeMax_;
-    float     flEmitRateMin_;
-    float     flEmitRateMax_;
-    float     flDtScale_;
-    void     *pTypeTable_;
-    uint32_t     dwTypeTableCount_;
-    float     flAccumulator_;
-    float     flPosTable_[1500];
-    float     flVelTable_[1500];
-    float     pLifeTable_[100];
-    uint32_t     pEmitProb_[200];
-    uint32_t     dwPosIdx_;
-    uint32_t     dwVelIdx_;
-    uint32_t     dwLifeIdx_;
-    uint32_t     dwProbIdx_;
+    float     flOrigin_[3] = {};
+    float     flDirection_[3] = {};
+    float     flScale_ = {};       // scale applied to the sampled position, before the matrix
+    float     flMatrix_[16] = {};  // rebuilt whenever SetDirection is called
+    float     flVelMin_[3] = {};
+    float     flVelMax_[3] = {};
+    float     flLifeMin_ = {};
+    float     flLifeMax_ = {};
+    float     flEmitRateMin_ = {};
+    float     flEmitRateMax_ = {};
+    float     flDtScale_ = {};
+    std::vector<uint32_t> typeTable_;  // dwTypeTableCount_ (colour, weight) pairs
+    uint32_t     dwTypeTableCount_ = {};
+    float     flAccumulator_ = {};
+    float     flPosTable_[1500] = {};
+    float     flVelTable_[1500] = {};
+    float     pLifeTable_[100] = {};
+    uint32_t     pEmitProb_[200] = {};
+    uint32_t     dwPosIdx_ = {};
+    uint32_t     dwVelIdx_ = {};
+    uint32_t     dwLifeIdx_ = {};
+    uint32_t     dwProbIdx_ = {};
 
  
 };

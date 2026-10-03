@@ -21,6 +21,7 @@
 #include "menutree.h"
 #include <string.h>
 #include <stdlib.h>
+#include <algorithm>
 
 /* Two frames down is an edge at any frame rate the game runs at; three up lets
  * the navigator clear its debounce on the next poll. */
@@ -54,7 +55,7 @@ static bool trace_on(void)
 bool MenuState::read()
 {
     const uint8_t *g = (const uint8_t *)Game::instance();
-    memset(this, 0, sizeof(*this));
+    *this = MenuState();
     if (!g) return false;
 
     const MenuTree *mt = ((const Game *)g)->menu();
@@ -64,7 +65,7 @@ bool MenuState::read()
     depth_    = mt->depth();
     last_key_ = mt->lastKey();
     lock_     = mt->lock();
-    memcpy(children_, mt->childRow(node_), 256);
+    std::copy_n(mt->childRow(node_), 256, children_);
     valid_    = true;
     return true;
 }
@@ -96,10 +97,9 @@ static int route_first_hop(const uint8_t *g, uint8_t from, uint8_t goal)
 {
     if (from == goal) return -1;
 
-    bool  seen[256];
+    bool  seen[256] = {};
     short first[256];  // first hop from `from`, per node
     short queue[256];
-    memset(seen, 0, sizeof(seen));
 
     int head = 0, tail = 0;
     seen[from] = true;

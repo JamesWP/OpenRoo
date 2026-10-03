@@ -36,6 +36,8 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 #include "cdm.h"
+#include <algorithm>
+#include <iterator>
 
 class CDM;
 
@@ -125,14 +127,14 @@ Sim_HandleTypedCheatCode(Game *self)
     }
 
     // jjmapnr: a 7-byte prefix, then load by number.
-    memset(frame, 0, sizeof(frame));
-    memcpy(frame, buf, 7);
+    std::fill(std::begin(frame), std::end(frame), 0);
+    std::copy_n(buf, 7, frame);
     frame[7] = 0;
     if (streq(frame, "jjmapnr")) {
         size_t len = strlen((const char *)buf);
         if (len > 8) {
             char num[256];
-            memcpy(num, buf + 8, len - 8);
+            std::copy_n(buf + 8, len - 8, num);
             num[len - 8] = 0;
             unsigned char lvl = (unsigned char)(atoi(num) - 1);
             Sim_SetCurrentLevelName(self, lvl);
@@ -154,13 +156,13 @@ Sim_HandleTypedCheatCode(Game *self)
     }
 
     // jjmap: a 5-byte prefix, then load by name.
-    memset(frame, 0, sizeof(frame));
-    memcpy(frame, buf, 5);
+    std::fill(std::begin(frame), std::end(frame), 0);
+    std::copy_n(buf, 5, frame);
     frame[5] = 0;
     if (streq(frame, "jjmap")) {
         size_t len = strlen((const char *)buf);
         if (len > 6) {
-            memcpy(frame, buf + 6, len - 6);
+            std::copy_n(buf + 6, len - 6, frame);
             frame[len - 6] = 0;
             g_logger.logMessage(3, "GAME: lc %s", (const char *)frame);
             sprintf(path, GS_CHEAT_FMT_LVL_PATH, g_gameDir, (const char *)frame);
@@ -191,7 +193,7 @@ Sim_HandleTypedCheatCode(Game *self)
         pl->setEffectDStart(*self->clock());
     }
 
-    memset(buf, 0, 0x100);
+    std::fill_n(buf, 0x100, 0);
     self->cheatEntry()->setCursor(0);
     self->cheatEntry()->setBuffer((char *)buf);
     self->cheatEntry()->setActive(1);

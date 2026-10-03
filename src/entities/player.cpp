@@ -489,7 +489,6 @@ void Player::actReleaseBomb()
 Player::Player()
 {
     pool_9f_ = NULL;
-    memset(pickupSounds_, 0, sizeof(pickupSounds_));
     zeroSoundSlots();
     field_126      = 0.0;
     stepDuration_  = 200.0;

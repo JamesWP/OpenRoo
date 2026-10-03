@@ -336,8 +336,7 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
         break;
     }
 
-    StridedVertices sv;
-    memset(&sv, 0, sizeof(sv));
+    StridedVertices sv = {};
     sv.position     = { &q[0].x,       sizeof(SceneQuadVertex) };
     sv.diffuse      = { &q[0].diffuse, sizeof(SceneQuadVertex) };
     sv.texCoords[0] = { &q[0].u1,      sizeof(SceneQuadVertex) };

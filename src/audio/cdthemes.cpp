@@ -11,6 +11,8 @@
 #include "gamestr.h"
 #include "gameglobals.h"
 #include <stdlib.h>
+#include <algorithm>
+#include <iterator>
 
 static int s_fx = -1;
 
@@ -136,7 +138,8 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
 
     if (fp == NULL) {
         g_logger.logMessage(3, "CDM: warning - track-file %s was not found", path);
-        memset(names_, 0, sizeof(names_));
+        for (auto &n : names_)
+            std::fill(std::begin(n), std::end(n), 0);
         return 0;
     }
     g_logger.logMessage(2, "CDM: track-file %s was found", path);
