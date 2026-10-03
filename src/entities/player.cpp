@@ -73,7 +73,7 @@ static inline double load_double(const void *p)
 /* Re-derived at every use: movement can change the cell between blocks. */
 Tile *Player::curTile() const
 {
-    return Tile::at(tileBase_, cellU_, cellV_);
+    return map_->tile( cellU_, cellV_);
 }
 
 int Player::soundVariant() const
@@ -204,7 +204,7 @@ unsigned int Player::updateTileEffects()
         }
 
         if ((signed char)curTile()->contents() == CONTENTS_TIME_BONUS) {
-            LevelMap *map = LevelMap::fromTileBase(tileBase_);
+            LevelMap *map = map_;
             map->setTimeLimit(map->timeLimit() + 5);
             curTile()->setContents(0);
             itemsCollected_ += 1;

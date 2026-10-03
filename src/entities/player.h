@@ -36,7 +36,7 @@ public:
 
     void  setClock(double *c)                  { clock_ = c; }
     void  setTickStep(TickStep *r)            { tickStep_ = r; }
-    void  setTileBase(Tile *b)        { tileBase_ = b; }
+    void  setMap(LevelMap *m)         { map_ = m; }
     // The readers (facing, pos, cell) are MovableEntity's.
     void  setFacing(unsigned char f)           { facing_ = f; }
     // Stored in the order u, y, v, as every caller stores them.

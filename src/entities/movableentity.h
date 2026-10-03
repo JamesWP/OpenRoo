@@ -13,6 +13,7 @@
 #include "tile.h"
 
 namespace audiodev { class Buffer; }
+class LevelMap;
 class VoicePool;
 class FoePath;
 
@@ -21,10 +22,10 @@ class MovableEntity {
 public:
      
 
-    // The level's tile array, copied in at spawn from Game::tileBase().
+    // The level's map, copied in at spawn from Game::map().
     // Public because tilequery.cpp's farthest-tile search takes a
     // MovableEntity and reaches the map through it.
-    Tile *tileBase() const { return tileBase_; }
+    LevelMap *map() const { return map_; }
 
     // Zero the twelve sound handles.
     void zeroSoundSlots();
@@ -136,7 +137,7 @@ protected:
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;
-    Tile               *tileBase_;
+    LevelMap               *map_;
     double              idleDuration_;  // ms the idle animation runs.
     int                 onStairOrSlide_;
     int                 movingBackwards_;  // Set when turnKind_ is 3 (reversing this step).

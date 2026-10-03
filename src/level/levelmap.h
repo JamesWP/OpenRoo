@@ -17,32 +17,19 @@ public:
     // The grid is 100 x 100 whatever the level's real size.
     static const int DIM = 100;
 
-    // Objects keep the grid's first cell as their tile base; this is where
-    // that pointer becomes a LevelMap again.
-    static LevelMap *fromTileBase(Tile *base)
-    {
-        // The vptr makes LevelMap non-standard-layout; grid_'s offset is fixed.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-        return (LevelMap *)((unsigned char *)base - offsetof(LevelMap, grid_));
-#pragma GCC diagnostic pop
-    }
-    Tile *tileBase()                     { return &grid_[0][0]; }
-
-    Tile       *tile(int u, int v)       { return Tile::at(tileBase(), u, v); }
+    // The cell at (u, v), either axis signed.  A cell outside the grid is a
+    // scratch solid wall, fresh on every call, so a scan that steps off the
+    // grid stops there and a write to it is lost.
+    Tile       *tile(int u, int v)       { return cellAt(grid_, u, v); }
     const Tile *tile(int u, int v) const
     {
-        return Tile::at(const_cast<LevelMap *>(this)->tileBase(), u, v);
+        return cellAt(const_cast<LevelMap *>(this)->grid_, u, v);
     }
-    // The same cell in the snapshot grid, which follows the live grid.
-    static Tile *snapshotOf(Tile *t)
-    {
-        return t + DIM * DIM;
-    }
-    Tile       *snapshot(int u, int v)       { return snapshotOf(tile(u, v)); }
+    // The same cell in the snapshot grid.
+    Tile       *snapshot(int u, int v)       { return cellAt(snapshot_, u, v); }
     const Tile *snapshot(int u, int v) const
     {
-        return snapshotOf(const_cast<Tile *>(tile(u, v)));
+        return cellAt(const_cast<LevelMap *>(this)->snapshot_, u, v);
     }
 
     // Reads <path>.jjm; path has no extension.
@@ -80,11 +67,16 @@ private:
     int           gemsRequired_;   // crystals needed to open the exit
     unsigned char extentV_;        // the v extent (file byte 1)
     unsigned char extentU_;        // the u extent (file byte 0)
-    // Indexed [u][v]: one step of u is 100 records.  tile() and snapshot() go
-    // through Tile::at rather than subscripting because the bridge and slide
-    // spawn scans are unbounded and can step outside the grid on malformed
-    // data; pointer arithmetic keeps that the game's behaviour rather than an
-    // out-of-bounds subscript.
+    // Indexed [u][v].
     Tile          grid_[DIM][DIM];
     Tile          snapshot_[DIM][DIM];
+    mutable Tile  outside_;        // what tile() hands out beyond the grid
+
+    Tile *cellAt(Tile (&grid)[DIM][DIM], int u, int v) const
+    {
+        if (u >= 0 && u < DIM && v >= 0 && v < DIM)
+            return &grid[u][v];
+        outside_ = Tile::outsideGrid();
+        return &outside_;
+    }
 };

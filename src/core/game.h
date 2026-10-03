@@ -164,7 +164,6 @@ public:
     const LevelMap *map() const      { return &map_; }
     /* The base Tile::at() indexes from -- the grid's first cell.  Objects keep
      * their own copy. */
-    Tile *tileBase()        { return map_.tileBase(); }
     /* Gems the level requires (Player::gemsCollected is the other side). */
     int            gemsRequired() const { return map_.gemsRequired(); }
 

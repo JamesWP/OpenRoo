@@ -112,7 +112,7 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 {
     unsigned int u, v, height, axis, slot;
     unsigned int var;
-    Tile *base;
+    LevelMap *base;
     BridgeObject *obj;
     Tile *tile;
 
@@ -140,10 +140,10 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     obj->tickStep_ = game->tickStep();
     obj->axis_   = (unsigned char)axis;
 
-    base = game->tileBase();
-    obj->tileBase_ = base;
+    base = game->map();
+    obj->map_ = base;
 
-    tile = Tile::at(base, (int)u, (int)v);
+    tile = base->tile( (int)u, (int)v);
     tile->setObjectMarker(0);
 
     obj->endU_ = (unsigned char)u;
@@ -161,14 +161,14 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     if (axis == 1) {
         obj->step_ = 1;
         obj->endU_ = (unsigned char)u;
-        if (Tile::at(base, (int)u - 1, (int)v)->objectMarker() == TILE_EMPTY) {
+        if (base->tile( (int)u - 1, (int)v)->objectMarker() == TILE_EMPTY) {
             obj->step_ = (signed char)0xff;
             obj->endU_ = (unsigned char)(u + 1);
         }
         obj->span_ = 0;
 
         var = u;
-        while (Tile::at(base, (int)var, (int)v)->objectMarker() == TILE_EMPTY) {
+        while (base->tile( (int)var, (int)v)->objectMarker() == TILE_EMPTY) {
             var = (unsigned int)(var + (int)obj->step_);
             obj->span_ = (signed char)(obj->span_ + 1);
         }
@@ -180,14 +180,14 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     } else if (axis == 2) {
         obj->step_ = 1;
         obj->endV_ = (unsigned char)v;
-        if (Tile::at(base, (int)u, (int)v - 1)->objectMarker() == TILE_EMPTY) {
+        if (base->tile( (int)u, (int)v - 1)->objectMarker() == TILE_EMPTY) {
             obj->step_ = (signed char)0xff;
             obj->endV_ = (unsigned char)(v + 1);
         }
         obj->span_ = 0;
 
         var = v;
-        while (Tile::at(base, (int)u, (int)var)->objectMarker() == TILE_EMPTY) {
+        while (base->tile( (int)u, (int)var)->objectMarker() == TILE_EMPTY) {
             var = (unsigned int)(var + (int)obj->step_);
             obj->span_ = (signed char)(obj->span_ + 1);
         }
@@ -378,7 +378,7 @@ void BridgeObject::tick()
         //         // test and returns without stamping.
         if ((axis == 1 && cu < (signed char)guard_)
             || (axis == 2 && cv < (signed char)guard_)) {
-            Tile *t = Tile::at(tileBase_, cu, cv);
+            Tile *t = map_->tile( cu, cv);
 
             if (s_diag_deck && !s_logged_stamp) {
                 s_logged_stamp = 1;
@@ -441,7 +441,7 @@ void BridgeObject::tick()
 
     if ((axis == 1 && cu < (signed char)guard_)
         || (axis == 2 && cv < (signed char)guard_)) {
-        Tile *t = Tile::at(tileBase_, cu, cv);
+        Tile *t = map_->tile( cu, cv);
 
         if (s_diag_deck && !s_logged_unstamp) {
             s_logged_unstamp = 1;

@@ -218,7 +218,7 @@ int FoePath::passable(int u, int v)
     if (fx_blindfoe())
         return 0;
 
-    const Tile *t = Tile::at(tileBase(), u, v);
+    const Tile *t = map()->tile( u, v);
     const unsigned char kind = t->objectMarker();
 
     if (kind == TILE_EMPTY && t->slideTrack() == 0)  // a void cell is passable only when something bridges it
@@ -317,12 +317,12 @@ void Sim_ReleasePathSearchNodeLists(FoePath *self)
     self->releaseLists();
 }
 
-FoePath *FoePath::create(Tile *tileBase, unsigned short field04)
+FoePath *FoePath::create(LevelMap *map, unsigned short field04)
 {
     FoePath *p = (FoePath *)::operator new(sizeof(FoePath), std::nothrow);
     if (p == 0)
         return 0;
-    p->populate(tileBase, field04);
+    p->populate(map, field04);
     return p;
 }
 
@@ -332,11 +332,9 @@ void FoePath::destroy(FoePath *p)
     ::operator delete(p);
 }
 
-void FoePath::populate(Tile *tileBase, unsigned short field04)
+void FoePath::populate(LevelMap *map, unsigned short field04)
 {
-    const LevelMap *map = LevelMap::fromTileBase(tileBase);
-
-    tileBase_  = tileBase;
+    map_       = map;
     field_04   = field04;
     keyStride_ = (int)map->extentU();
     extentV_   = (int)map->extentV();
@@ -582,15 +580,15 @@ Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
  * "illegal" (the bridge and jump-pad blocks both do, on their failure path),
  * so reordering them changes the answer. */
 int
-Sim_CheckCellStepIsLegal(Tile *base, unsigned char u_from, unsigned char v_from,
+Sim_CheckCellStepIsLegal(LevelMap *base, unsigned char u_from, unsigned char v_from,
                          unsigned char u_to, unsigned char v_to)
 {
 
     if (fx_freestep())
         return 1;
 
-    const Tile *to   = Tile::at(base, u_to,   v_to);
-    const Tile *from = Tile::at(base, u_from, v_from);
+    const Tile *to   = base->tile( u_to,   v_to);
+    const Tile *from = base->tile( u_from, v_from);
 
     int flag = 0;
 
@@ -650,10 +648,10 @@ Sim_CheckCellStepIsLegal(Tile *base, unsigned char u_from, unsigned char v_from,
 
     if (from->objectMarker() == TILE_JUMP_PAD) {
         const unsigned char lvl = from->field1f1();
-        const Tile *nu_pos = Tile::at(base, u_from + 1, v_from);
-        const Tile *nu_neg = Tile::at(base, u_from - 1, v_from);
-        const Tile *nv_pos = Tile::at(base, u_from, v_from + 1);
-        const Tile *nv_neg = Tile::at(base, u_from, v_from - 1);
+        const Tile *nu_pos = base->tile( u_from + 1, v_from);
+        const Tile *nu_neg = base->tile( u_from - 1, v_from);
+        const Tile *nv_pos = base->tile( u_from, v_from + 1);
+        const Tile *nv_neg = base->tile( u_from, v_from - 1);
 
         if (u_from > u_to && lvl == nu_pos->height())
             flag = 1;
@@ -675,7 +673,7 @@ Sim_CheckCellStepIsLegal(Tile *base, unsigned char u_from, unsigned char v_from,
         const signed char dv = (signed char)(v_from - v_to);
         const int up = (int)u_to + (int)du * 2;
         const int vp = (int)v_to + (int)dv * 2;
-        return Tile::at(base, up, vp)->occupant() == 4;
+        return base->tile( up, vp)->occupant() == 4;
     }
 
     return flag;
@@ -701,7 +699,7 @@ void FoePath::expand(PathNode *n, int goalU, int goalV)
 
         if (!passable(nu, nv))
             continue;
-        if (!Sim_CheckCellStepIsLegal(tileBase(), (unsigned char)u, (unsigned char)v,
+        if (!Sim_CheckCellStepIsLegal(map(), (unsigned char)u, (unsigned char)v,
                                       (unsigned char)nu, (unsigned char)nv))
             continue;
 

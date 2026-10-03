@@ -345,8 +345,8 @@ Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
 Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
                              unsigned char *pv)
 {
-    Tile *tiles = self->tileBase();
-    LevelMap      *hdr   = LevelMap::fromTileBase(tiles);
+    LevelMap      *tiles = self->map();
+    LevelMap      *hdr   = tiles;
     unsigned char  u0    = *pu;
     unsigned char  v0    = *pv;
     unsigned char  bestU = *pu;  // seeded from the inputs, not zeroed
@@ -370,7 +370,7 @@ Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
 
                 do {
                     // Outer index v, inner u.
-                    Tile *t = Tile::at(tiles, ui, (int)(signed char)v);
+                    Tile *t = tiles->tile( ui, (int)(signed char)v);
 
                     if (t->objectMarker() != TILE_EMPTY && t->occupant() == 0) {
                         // PRESERVED: compared at full extended precision...

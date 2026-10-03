@@ -58,7 +58,7 @@ Sim_RestoreTileGridFromSnapshot(Game *self)
     for (unsigned r = 0; r < map->extentV(); ++r) {
         for (unsigned c = 0; c < map->extentU(); ++c) {
             Tile *t = map->tile((int)c, (int)r);
-            Tile *s = LevelMap::snapshotOf(t);
+            Tile *s = map->snapshot((int)c, (int)r);
 
             t->setHeight(s->height());
             t->setObjectMarker(s->objectMarker());

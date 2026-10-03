@@ -125,11 +125,13 @@ enum TileContents {
 
 class Tile {
 public:
-    // origin is the grid's first cell (LevelMap::tileBase()).  Both axes are
-    // signed: the lift reads its cell as signed char.
-    static Tile *at(Tile *origin, int u, int v)
+    // The cell beyond the grid's edge: a solid wall at a height no level uses.
+    static Tile outsideGrid()
     {
-        return origin + (v + u * 100);
+        Tile t{};
+        t.height_ = 0xff;
+        t.objectMarker_ = TILE_IMPASSABLE;
+        return t;
     }
 
     unsigned char height() const               { return height_; }

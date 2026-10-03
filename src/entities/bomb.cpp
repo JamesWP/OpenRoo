@@ -233,7 +233,7 @@ void Bomb::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     p->clock_ = game->clock();
 
     (*slot)->tickStep_   = game->tickStep();
-    (*slot)->tileBase_ = game->tileBase();
+    (*slot)->map_ = game->map();
     (*slot)->facing_   = f;
 
     (*slot)->cellU_      = (signed char)u;
@@ -331,7 +331,7 @@ static int           s_logged_blast = 0;
 
 Tile *Bomb::tile(int u, int v) const
 {
-    return Tile::at(tileBase_, u, v);
+    return map_->tile( u, v);
 }
 
 void Bomb::tick()

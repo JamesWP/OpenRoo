@@ -53,7 +53,7 @@ private:
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;  // the live height, truncated
-    Tile               *tileBase_;    // Game::tileBase()
+    LevelMap               *map_;    // Game::map()
     signed char         baseHeight_;
     signed char         topHeight_;
     audiodev::Buffer *sound_;       // the moving loop; may be NULL
