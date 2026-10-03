@@ -1,6 +1,6 @@
 #define DIRECTSOUND_VERSION 0x0800
 #include "dsound_internal.h"
-#include <new>
+#include <utility>
 #include <stdio.h>
 #include <string.h>
 
@@ -25,6 +25,49 @@ static bool read_dword(FILE *f, DWORD *out) {
     return fread(out, 1, 4, f) == 4;
 }
 
+/* The chunk walk.  Fills *out only when both the format and the data are
+ * found; a data chunk bigger than the file is a truncated file. */
+static bool parseWav(FILE *f, Wav *out)
+{
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    DWORD id, size, wave_id;
+    if (!read_dword(f, &id)   || id      != ID_RIFF) return false;
+    if (!read_dword(f, &size))                        return false;
+    if (!read_dword(f, &wave_id) || wave_id != ID_WAVE) return false;
+
+    Wav wav;
+    bool have_fmt = false, have_pcm = false;
+    while (!have_fmt || !have_pcm) {
+        DWORD chunk_id, chunk_size;
+        if (!read_dword(f, &chunk_id) || !read_dword(f, &chunk_size))
+            break;
+        if (chunk_id == ID_FMT) {
+            DWORD to_read = chunk_size < sizeof(WAVEFORMATEX)
+                          ? chunk_size : sizeof(WAVEFORMATEX);
+            wav.format = WAVEFORMATEX();
+            if (fread(&wav.format, 1, to_read, f) != to_read) return false;
+            have_fmt = true;
+            DWORD skip = chunk_size - to_read;
+            if (skip) fseek(f, (long)(skip + (skip & 1)), SEEK_CUR);
+        } else if (chunk_id == ID_DATA) {
+            if (chunk_size > (DWORD)file_size) return false;
+            wav.pcm.assign(chunk_size, 0);
+            if (fread(wav.pcm.data(), 1, chunk_size, f) != chunk_size) return false;
+            have_pcm = true;
+        } else {
+            DWORD skip = chunk_size + (chunk_size & 1);
+            fseek(f, (long)skip, SEEK_CUR);
+        }
+    }
+    if (!have_fmt || !have_pcm)
+        return false;
+    *out = std::move(wav);
+    return true;
+}
+
 bool loadWav(const char *path, Wav *out)
 {
     FILE *f = fopen(path, "rb");
@@ -32,76 +75,22 @@ bool loadWav(const char *path, Wav *out)
         AD_LOG("audiodev: can't open '%s'\n", path);
         return false;
     }
-
-    WAVEFORMATEX *fmt = NULL;
-    BYTE         *pcm = NULL;
-    DWORD         pcm_sz = 0;
-
-    DWORD id, size, wave_id;
-    if (!read_dword(f, &id)   || id      != ID_RIFF) goto fail;
-    if (!read_dword(f, &size))                        goto fail;
-    if (!read_dword(f, &wave_id) || wave_id != ID_WAVE) goto fail;
-
-    while (!fmt || !pcm) {
-        DWORD chunk_id, chunk_size;
-        if (!read_dword(f, &chunk_id) || !read_dword(f, &chunk_size))
-            break;
-        if (chunk_id == ID_FMT) {
-            DWORD to_read = chunk_size < sizeof(WAVEFORMATEX)
-                          ? chunk_size : sizeof(WAVEFORMATEX);
-            fmt = new (std::nothrow) WAVEFORMATEX();
-            if (!fmt) goto fail;
-            if (fread(fmt, 1, to_read, f) != to_read) goto fail;
-            DWORD skip = chunk_size - to_read;
-            if (skip) fseek(f, (long)(skip + (skip & 1)), SEEK_CUR);
-        } else if (chunk_id == ID_DATA) {
-            pcm_sz = chunk_size;
-            pcm    = new (std::nothrow) BYTE[pcm_sz];
-            if (!pcm) goto fail;
-            if (fread(pcm, 1, pcm_sz, f) != pcm_sz) goto fail;
-        } else {
-            DWORD skip = chunk_size + (chunk_size & 1);
-            fseek(f, (long)skip, SEEK_CUR);
-        }
-    }
+    bool ok = parseWav(f, out);
     fclose(f);
-    if (!fmt || !pcm) {
-        delete fmt;
-        delete[] pcm;
-        return false;
-    }
-    out->format = fmt;
-    out->pcm    = pcm;
-    out->size   = pcm_sz;
-    return true;
-
-fail:
-    fclose(f);
-    delete fmt;
-    delete[] pcm;
-    return false;
-}
-
-void freeWav(Wav *wav)
-{
-    delete wav->format;
-    delete[] wav->pcm;
-    wav->format = NULL;
-    wav->pcm    = NULL;
-    wav->size   = 0;
+    return ok;
 }
 
 bool fillWavBuffer(IDirectSoundBuffer *buf, const Wav &wav)
 {
     void  *ptr1 = NULL, *ptr2 = NULL;
     DWORD  bytes1 = 0,   bytes2 = 0;
-    HRESULT hr = buf->Lock(0, wav.size, &ptr1, &bytes1, &ptr2, &bytes2, 0);
+    HRESULT hr = buf->Lock(0, (DWORD)wav.pcm.size(), &ptr1, &bytes1, &ptr2, &bytes2, 0);
     if (FAILED(hr)) {
         AD_LOG("audiodev: Lock failed hr=0x%lx\n", (unsigned long)hr);
         return false;
     }
-    memcpy(ptr1, wav.pcm, bytes1);
-    if (ptr2 && bytes2) memcpy(ptr2, wav.pcm + bytes1, bytes2);
+    memcpy(ptr1, wav.pcm.data(), bytes1);
+    if (ptr2 && bytes2) memcpy(ptr2, wav.pcm.data() + bytes1, bytes2);
     buf->Unlock(ptr1, bytes1, ptr2, bytes2);
     return true;
 }
@@ -112,8 +101,8 @@ IDirectSoundBuffer *createWavBuffer(IDirectSound *ds, DWORD flags,
     DSBUFFERDESC desc = {};
     desc.dwSize        = sizeof(DSBUFFERDESC);
     desc.dwFlags       = flags;
-    desc.dwBufferBytes = wav.size;
-    desc.lpwfxFormat   = wav.format;
+    desc.dwBufferBytes = (DWORD)wav.pcm.size();
+    desc.lpwfxFormat   = const_cast<WAVEFORMATEX *>(&wav.format);
 
     IDirectSoundBuffer *buf = NULL;
     HRESULT hr = ds->CreateSoundBuffer(&desc, &buf, NULL);
@@ -127,20 +116,6 @@ IDirectSoundBuffer *createWavBuffer(IDirectSound *ds, DWORD flags,
         return NULL;
     }
     return buf;
-}
-
-char *heapStrdup(const char *s)
-{
-    if (!s) return NULL;
-    size_t len = strlen(s) + 1;
-    char *out = new (std::nothrow) char[len];
-    if (out) memcpy(out, s, len);
-    return out;
-}
-
-void heapFree(char *p)
-{
-    delete[] p;
 }
 
 }  // namespace audiodev

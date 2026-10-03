@@ -3,6 +3,8 @@
 #define DIRECTSOUND_VERSION 0x0800
 #include <windows.h>
 #include <dsound.h>
+#include <string>
+#include <vector>
 #include "audiodev.h"
 
 namespace audiodev {
@@ -14,7 +16,7 @@ struct DeviceState {
 };
 
 struct BufferState {
-    char                 *filename;    // owned copy of the path
+    std::string           filename;    // owned copy of the path
     IDirectSoundBuffer   *soundbuffer;
     IDirectSound3DBuffer *threeD;      // NULL for a 2D buffer
 };
@@ -22,14 +24,12 @@ struct BufferState {
 extern LogFn g_log;
 #define AD_LOG(...) do { if (::audiodev::g_log) ::audiodev::g_log(__VA_ARGS__); } while (0)
 
-/* A parsed .wav file; free with freeWav. */
+/* A parsed .wav file. */
 struct Wav {
-    WAVEFORMATEX *format;
-    BYTE         *pcm;
-    DWORD         size;
+    WAVEFORMATEX      format = {};
+    std::vector<BYTE> pcm;
 };
 bool loadWav(const char *path, Wav *out);
-void freeWav(Wav *wav);
 
 /* Creates a buffer for wav, with flags, and fills it.  NULL on failure. */
 IDirectSoundBuffer *createWavBuffer(IDirectSound *ds, DWORD flags,
@@ -38,7 +38,5 @@ IDirectSoundBuffer *createWavBuffer(IDirectSound *ds, DWORD flags,
 /* Copies wav's sample data into an existing buffer. */
 bool fillWavBuffer(IDirectSoundBuffer *buf, const Wav &wav);
 
-char *heapStrdup(const char *s);
-void  heapFree(char *p);
 
 }  // namespace audiodev

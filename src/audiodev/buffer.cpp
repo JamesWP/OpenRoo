@@ -24,13 +24,12 @@ void Buffer::reset()
         state_->soundbuffer->Release();
         state_->soundbuffer = NULL;
     }
-    heapFree(state_->filename);
-    state_->filename = NULL;
+    state_->filename.clear();
 }
 
 bool Buffer::isLoaded() const        { return state_->soundbuffer != NULL; }
 bool Buffer::is3D() const            { return state_->threeD != NULL; }
-const char *Buffer::filename() const { return state_->filename; }
+const char *Buffer::filename() const { return state_->filename.c_str(); }
 
 static bool query_3d(BufferState *s)
 {
@@ -53,8 +52,7 @@ bool Buffer::load(Device &dev, const char *path, bool want3D)
         return false;
     }
 
-    state_->filename = heapStrdup(path);
-    if (!state_->filename) return false;
+    state_->filename = path;
 
     Wav wav;
     if (!loadWav(path, &wav)) {
@@ -69,7 +67,6 @@ bool Buffer::load(Device &dev, const char *path, bool want3D)
         flags |= DSBCAPS_CTRL3D;
 
     state_->soundbuffer = createWavBuffer(dev.state()->directsound, flags, wav);
-    freeWav(&wav);
     if (!state_->soundbuffer) {
         AD_LOG("audiodev: load: can't create a buffer for '%s'\n", path);
         reset();
@@ -98,7 +95,7 @@ bool Buffer::duplicate(Device &dev, const Buffer &src)
         return false;
     }
 
-    state_->filename = heapStrdup(src.state_->filename);
+    state_->filename = src.state_->filename;
     if (src.state_->threeD && !query_3d(state_)) {
         reset();
         return false;
@@ -111,11 +108,9 @@ bool Buffer::reload3D(Device &dev, bool want3D)
     if (!state_->soundbuffer) return false;
     if (want3D == is3D()) return true;
 
-    char *path = heapStrdup(state_->filename);
+    std::string path = state_->filename;
     reset();
-    bool ok = load(dev, path, want3D);
-    heapFree(path);
-    return ok;
+    return load(dev, path.c_str(), want3D);
 }
 
 bool Buffer::set3DEnabled(bool enable)
@@ -143,10 +138,9 @@ static bool restore(BufferState *s)
         return false;
     }
     Wav wav;
-    if (!loadWav(s->filename ? s->filename : "", &wav))
+    if (!loadWav(s->filename.c_str(), &wav))
         return false;
     bool ok = fillWavBuffer(s->soundbuffer, wav);
-    freeWav(&wav);
     return ok;
 }
 
@@ -159,7 +153,7 @@ void Buffer::play(bool loop)
     // A lost buffer is restored, refilled and played again once.
     if (hr == DSERR_BUFFERLOST) {
         AD_LOG("audiodev: buffer lost, restoring '%s'\n",
-               state_->filename ? state_->filename : "<null>");
+               state_->filename.c_str());
         if (!restore(state_)) return;
         hr = state_->soundbuffer->Play(0, 0, flags);
     }

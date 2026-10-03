@@ -2,7 +2,7 @@
 
 #include "texture.h"
 #include <new>
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "renderdevice.h"
 #include "logger.h"
@@ -12,13 +12,13 @@ Texture g_texShadow;
 TextureManager g_textureManager;
 
 Texture::Texture()
-    : handle_(NULL), name_(NULL), image_(NULL)
+    : handle_(NULL), image_(NULL)
 {
+    name_[0] = '\0';
 }
 
 Texture::~Texture()
 {
-    free(name_);
     delete image_;
 }
 
@@ -26,8 +26,7 @@ void Texture::release()
 {
     RenderDevice::DestroyTexture(handle_);
     handle_ = NULL;
-    free(name_);
-    name_ = NULL;
+    name_[0] = '\0';
     delete image_;
     image_ = NULL;
 }
@@ -35,15 +34,14 @@ void Texture::release()
 bool Texture::adopt(RenderDevice *dev, Image *img, uint32_t flags, unsigned depth)
 {
     DeviceTexture *t = dev->CreateTexture(*img, flags, depth);
-    char *copy = t ? strdup(img->name) : NULL;
-    if (t == NULL || copy == NULL) {
+    if (t == NULL) {
         RenderDevice::DestroyTexture(t);
         delete img;
         return false;
     }
     release();
     handle_ = t;
-    name_   = copy;
+    snprintf(name_, sizeof(name_), "%s", img->name);
     image_  = img;
     return true;
 }

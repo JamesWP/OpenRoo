@@ -12,6 +12,7 @@
 
 #pragma once
 
+
 #include <stdint.h>
 #include "image.h"
 #include "linkedlist.h"
@@ -19,7 +20,7 @@
 class RenderDevice;
 struct DeviceTexture;
 
-/* Every member is a plain pointer, so a zeroed Texture is an empty one (the
+/* Every member is plain data, so a zeroed Texture is an empty one (the
  * theme block is memset to zero once its textures are released). */
 class Texture {
 public:
@@ -47,14 +48,15 @@ public:
     void release();
 
     DeviceTexture *handle() const { return handle_; }
-    char          *name() const { return name_; }
+    const char    *name() const { return name_; }
+    char          *name() { return name_; }
     const Image   *image() const { return image_; }
 
 private:
     bool adopt(RenderDevice *dev, Image *img, uint32_t flags, unsigned depth);
 
     DeviceTexture *handle_;
-    char          *name_;
+    char           name_[260];  // a copy of Image::name
     Image         *image_;
 };
 

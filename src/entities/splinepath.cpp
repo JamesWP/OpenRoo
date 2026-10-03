@@ -7,6 +7,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <vector>
 
 #include "splinepath.h"
 #include <stdlib.h>
@@ -76,14 +77,13 @@ SplinePath::~SplinePath()
 
 void SplinePath::addControlPoint(float x, float y, float z)
 {
-    SplineControlPoint *p =
-        (SplineControlPoint *)malloc(sizeof(SplineControlPoint));
+    SplineControlPoint *p = new SplineControlPoint;
 
     fx_init();
     if (s_diag)
         ++s_adds;
 
-    p->flX = x;  // PRESERVED: a failed malloc is not checked.
+    p->flX = x;
     p->flY = y;
     p->flZ = z;
     controlPointList_.append(p);
@@ -98,10 +98,9 @@ void SplinePath::purgeControlPoints()
         ++s_purges;
 
     while (node != 0) {
-        void *value = node->value();
+        SplineControlPoint *value = static_cast<SplineControlPoint *>(node->value());
         node = node->next();
-        if (value != 0)
-            free(value);
+        delete value;
     }
     controlPointList_.clear();
 }
@@ -255,14 +254,10 @@ static long draw_strip(void *dev, void *verts, uint32_t count)
         dev, 3 , 0x1e2, verts, count, 0);  // Prim::LineStrip
 }
 
-/* On a failed allocation the original writes through the null pointer and
- * faults; that cannot be expressed in C, so the stores are guarded and only
- * the null buffer reaches DrawPrimitive.  No gate reaches the path. */
 long SplinePath::drawSplinePath(RenderDevice *dev,
                       unsigned int numsegments, unsigned long color)
 {
-    SplineVertex *verts =
-        (SplineVertex *)malloc((numsegments + 1) * 32);
+    std::vector<SplineVertex> verts(numsegments + 1);
     // An unsigned conversion; numsegments == 0 divides by zero.
     float        step = (float)(1.0 / (double)numsegments);
     unsigned int i;
@@ -276,15 +271,12 @@ long SplinePath::drawSplinePath(RenderDevice *dev,
         v.x = pt[0]; v.y = pt[1]; v.z = pt[2];
         v.zero = 0; v.diffuse = color; v.specular = 0;
         v.u = 0.0f; v.v = 0.0f;
-        if (verts != 0)
-            verts[i] = v;
+        verts[i] = v;
     }
 
     if (s_diag)
         ++s_draws;
-    hr = draw_strip(dev, verts, numsegments + 1);
-    if (verts != 0)
-        free(verts);
+    hr = draw_strip(dev, verts.data(), numsegments + 1);
     return hr;
 }
 
@@ -292,7 +284,7 @@ long SplinePath::drawControlPolygon(RenderDevice *dev,
                           unsigned long color)
 {
     unsigned int    n     = (unsigned int)controlPointList_.count();
-    SplineVertex   *verts = (SplineVertex *)malloc(n * 32);
+    std::vector<SplineVertex> verts(n);
     LinkedListNode *node  = controlPointList_.head();
     unsigned int    i     = 0;
     long            hr;
@@ -305,15 +297,12 @@ long SplinePath::drawControlPolygon(RenderDevice *dev,
         v.x = p[0]; v.y = p[1]; v.z = p[2];
         v.zero = 0; v.diffuse = color; v.specular = 0;
         v.u = 0.0f; v.v = 0.0f;
-        if (verts != 0)
-            verts[i] = v;
+        verts[i] = v;
         ++i;
     }
 
     if (s_diag)
         ++s_draws;
-    hr = draw_strip(dev, verts, n);
-    if (verts != 0)
-        free(verts);
+    hr = draw_strip(dev, verts.data(), n);
     return hr;
 }

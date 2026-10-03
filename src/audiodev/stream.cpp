@@ -6,7 +6,7 @@ namespace audiodev {
 /* The whole file in one buffer, played once.  A watcher thread polls it and
  * marks the stream done when playback ends. */
 struct StreamState {
-    char                *filename;
+    std::string          filename;
     IDirectSoundBuffer  *soundbuffer;
     volatile DWORD       done;  // 0 playing, 1 finished or idle
     HANDLE               watcher;
@@ -57,8 +57,7 @@ bool Stream::prepare(Device &dev, const char *path)
     if (!path || !dev.isUp())
         return false;
 
-    state_->filename = heapStrdup(path);
-    if (!state_->filename) return false;
+    state_->filename = path;
 
     Wav wav;
     if (!loadWav(path, &wav)) {
@@ -69,7 +68,6 @@ bool Stream::prepare(Device &dev, const char *path)
     state_->soundbuffer = createWavBuffer(
         dev.state()->directsound,
         DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_GLOBALFOCUS, wav);
-    freeWav(&wav);
     if (!state_->soundbuffer) {
         release();
         return false;
@@ -120,8 +118,7 @@ void Stream::release()
         CloseHandle(state_->stopEvent);
         state_->stopEvent = NULL;
     }
-    heapFree(state_->filename);
-    state_->filename = NULL;
+    state_->filename.clear();
     state_->done = 1;
 }
 

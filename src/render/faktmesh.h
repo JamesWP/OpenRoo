@@ -1,6 +1,9 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
+#include <array>
+#include <string>
+#include <vector>
 class RenderDevice;
 
 /* CFaktMesh — the mesh object, drawn by DrawMeshBuffer / DrawFramedModel
@@ -47,8 +50,7 @@ public:
     /* ─── Lifecycle ────────────────────────────────────────────────────────
      *
      * The constructor sets the four strides and empties the buffers; the
-     * destructor frees them with releaseModelBuffers.  model.cpp allocates
-     * the four buffers with the allocator this frees them with. */
+     * destructor releases them with releaseModelBuffers. */
     CFaktMesh();
     virtual ~CFaktMesh();
     CFaktMesh(const CFaktMesh &) = delete;
@@ -56,11 +58,12 @@ public:
 
     void releaseModelBuffers();
 
-    void  *vertexData() const { return pVertexData_; }
+    void  *vertexData() const { return const_cast<MeshVertex *>(vertexData_.data()); }
     uint32_t vertexCount() const { return dwVertexCount_; }
-    void  *frameRecords() const { return pFrameRecords_; }
+    void  *frameRecords() const { return const_cast<FrameRecord *>(frameRecords_.data()); }
     uint16_t frameCount() const { return wFrameCount_; }
-    char  *name() const { return pszName_; }
+    char  *name() { return &pszName_[0]; }
+    const char *name() const { return pszName_.c_str(); }
 
 private:
     long drawMesh(RenderDevice *dev, uint32_t frame, uint32_t flags,
@@ -68,16 +71,17 @@ private:
 
  
 
-    void  *pVertexData_;    // +0x04 dwVertexCount * wFrameCount vertices, stride 0x28
+    using FrameRecord = std::array<float, 6>;  // 0x18 bytes: the frame's bounding box
+
+    std::vector<MeshVertex> vertexData_;  // dwVertexCount * wFrameCount vertices
     uint32_t  dwVertexCount_;  // +0x08 vertices per animation frame
-    void  *pFrameRecords_;  // +0x0c wFrameCount records of 0x18 bytes (6 dwords)
+    std::vector<FrameRecord> frameRecords_;  // wFrameCount records
     uint16_t   wFrameCount_;    // +0x10 frame index clamps to 0 when >= this
-    char  *pszName_;        // +0x12 strdup of the path, freed by ReleaseModelBuffers
+    std::string pszName_;   // the path
     /* +0x16 D3DDRAWPRIMITIVESTRIDEDDATA: position, normal, diffuse,
      * specular, then textureCoords[8].  Only the four strides the ctor
      * writes are ever touched. */
     MeshStridedEntry strided_[12];
-    void  *pScratchVerts_;  // +0x76 dwVertexCount vertices, stride 0x28, zeroed
 };
 
 /* The two character meshes, loaded once at startup (renderstate.cpp):

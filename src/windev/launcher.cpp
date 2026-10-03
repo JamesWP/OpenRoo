@@ -9,6 +9,7 @@
 #include <shellapi.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 #include <string.h>
 #include <ctype.h>
 #include "windev.h"
@@ -141,16 +142,15 @@ static void version_string(const char *name, char *out, size_t size)
     if (!GetModuleFileNameA(Resources_Module(), path, sizeof(path)))
         return;
     DWORD dummy, len = GetFileVersionInfoSizeA(path, &dummy);
-    void *info = len ? malloc(len) : NULL;
-    if (info && GetFileVersionInfoA(path, 0, len, info)) {
+    std::vector<char> info(len);
+    if (len && GetFileVersionInfoA(path, 0, len, info.data())) {
         char key[64];
         snprintf(key, sizeof(key), "\\StringFileInfo\\000004b0\\%s", name);
         char *val;
         UINT vlen;
-        if (VerQueryValueA(info, key, (void **)&val, &vlen) && vlen)
+        if (VerQueryValueA(info.data(), key, (void **)&val, &vlen) && vlen)
             snprintf(out, size, "%s", val);
     }
-    free(info);
 }
 
 /* The corner text's extent, shadow included; clicking it opens the project. */

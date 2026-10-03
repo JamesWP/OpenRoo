@@ -8,6 +8,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <array>
+#include <vector>
 #include "faktmesh.h"
  
 class RenderDevice;
@@ -20,8 +22,7 @@ public:
     ExplodeDebris(const ExplodeDebris &) = delete;
     ExplodeDebris &operator=(const ExplodeDebris &) = delete;
 
-    /* Frees the two scratch buffers.  See the .cpp for the field it does not
-     * clear. */
+    /* Frees the two scratch buffers. */
     void release();
 
     /* The theme loader's "explode": size the buffers, and store the drop rate
@@ -56,8 +57,8 @@ private:
     float *debrisVertex(int i);
     float *debrisVelocity(int tri);
 
-    MeshVertex   *pVertexCopy_;           // nVertexCount * 0x28 (FVF 0x212)
-    float       (*pFaceRecords_)[3];      // a velocity per triangle, (nVertexCount / 3) * 0xc
+    std::vector<MeshVertex>              vertexCopy_;   // nVertexCount of them (FVF 0x212)
+    std::vector<std::array<float, 3>>    faceRecords_;  // a velocity per triangle, nVertexCount / 3
     int           nVertexCount_;          // as it was when the buffers were built
     uint32_t         bActive_;               // set by begin; cleared by the ctor and release
     float         samples_[30];           // Gaussian speeds, mu 2.0, sigma 1.0; refilled whole

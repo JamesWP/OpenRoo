@@ -21,7 +21,8 @@
 #include "game.h"
 #include "player.h"
 #include <string.h>
-#include <stdlib.h>
+#include <algorithm>
+#include <memory>
 #include <stdio.h>
 
 struct GameState {
@@ -63,7 +64,7 @@ struct GameState {
 #define DIFF_MAX     120
 #define REPORT_AFTER 45  // frames after the respawn for the second report
 
-static uint8_t *g_snap;
+static std::unique_ptr<uint8_t[]> g_snap;
 static int   g_diff_on = -1;
 static uint8_t  g_prev_death;
 static uint32_t g_respawn_at;  // the frame the death cause cleared; 0 is idle
@@ -74,8 +75,8 @@ static bool deathdiff_enabled(void)
         char buf[16];
         g_diff_on = 0;
         if (sysdev::getEnv("KAROO_DEATH_DIFF", buf, sizeof(buf)) && buf[0] && buf[0] != '0') {
-            g_snap = (uint8_t *)VirtualAlloc(NULL, GAME_SIZE, MEM_COMMIT, PAGE_READWRITE);
-            g_diff_on = (g_snap != NULL);
+            g_snap.reset(new uint8_t[GAME_SIZE]());
+            g_diff_on = 1;
         }
         g_logger.write("gamestate: death diff %s\n", g_diff_on ? "enabled" : "disabled");
     }
@@ -103,7 +104,7 @@ static void deathdiff_report(const uint8_t *game, unsigned cause, const char *wh
     }
     // Everything else, as dwords.
     for (uint32_t o = 0; o + 4 <= GAME_SIZE && shown < DIFF_MAX; o += 4) {
-        int a = *(const int *)(g_snap + o);
+        int a = *(const int *)(g_snap.get() + o);
         int b = *(const int *)(game   + o);
         if (a == b) continue;
         bool bytestep = false;
@@ -261,7 +262,7 @@ void gamestate_deathdiff(void)
         deathdiff_report(game, g_prev_death, "after respawn");
         g_respawn_at = 0;
     } else if (cause == 0 && !g_respawn_at && (g_frame % SNAP_EVERY) == 0) {
-        memcpy(g_snap, game, GAME_SIZE);  // alive: refresh the snapshot
+        std::copy_n(game, GAME_SIZE, g_snap.get());  // alive: refresh the snapshot
     }
 
     g_prev_death = cause;

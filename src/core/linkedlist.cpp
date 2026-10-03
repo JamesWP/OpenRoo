@@ -11,9 +11,7 @@
 #include <stdint.h>
 #include "linkedlist.h"
 #include "sysdev.h"
-#include <stdlib.h>  // free() of the list object
 #include <stddef.h>
-#include <stdlib.h>
 #include "logger.h"
 
 /* KAROO_LIST_FX, a negative control (CONTROLS.md):
@@ -99,7 +97,7 @@ void LinkedList::clear()
     LinkedListNode *p = pHead;
     while (p != NULL) {
         LinkedListNode *next = p->pNextNode;
-        free(p);
+        delete p;
         p = next;
     }
     pHead   = NULL;
@@ -120,11 +118,9 @@ void LinkedList::append(void *pValue)
     { static unsigned long seen; list_first("Append", &seen); }
     list_census();
 
-    // malloc, not new.  The nothrow new costs about 7x across the suite (a
-    // try/catch per node on a hot path), and the throwing new would unwind
-    // where the game faults.  malloc returns NULL, and Append then faults on
-    // it, as PRESERVED above.
-    LinkedListNode *node = (LinkedListNode *)malloc(sizeof(LinkedListNode));
+    // Plain new: an exhausted heap throws std::bad_alloc, which nothing
+    // catches, where the game faulted on the NULL.  Either way it ends.
+    LinkedListNode *node = new LinkedListNode;
     node->pValue    = pValue;
     node->pNextNode = NULL;
     node->pPrevNode = NULL;
@@ -166,7 +162,7 @@ int LinkedList::unlink(LinkedListNode *pNode)
         else
             pNode->pNextNode->pPrevNode = pNode->pPrevNode;
 
-        free(pNode);
+        delete pNode;
         dwCount = dwCount - 1;
     }
     return 0;
