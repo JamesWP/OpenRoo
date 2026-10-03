@@ -1,5 +1,6 @@
 /* FORMAT: Karoo.cfg is the persisted blob followed by a 10-byte tag holding
  * "End".  Both directions use text mode, as the game does. */
+#include <fstream>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -77,19 +78,18 @@ void Config::decode(const unsigned char in[PERSISTED_SIZE])
 int Config::loadValues(const char *path)
 {
     char tag[CFG_TAG_SIZE];
-    FILE *fp = fopen(path, "r");
+    std::ifstream in(path);  // text mode, as the original wrote it
 
-    if (fp == NULL) {
+    if (!in) {
         ps_log("cfg load", path, 0);
         return 0;
     }
     // A short file leaves the rest of the blob as it was.
     unsigned char blob[CFG_BLOB_SIZE];
     encode(blob);
-    fread(blob, CFG_BLOB_SIZE, 1, fp);
+    in.read(reinterpret_cast<char *>(blob), CFG_BLOB_SIZE);
     decode(blob);
-    fread(tag, CFG_TAG_SIZE, 1, fp);
-    fclose(fp);
+    in.read(tag, CFG_TAG_SIZE);
 
     // Only the bytes up to the tag's NUL are compared.
     ps_log("cfg load", path, 1);
@@ -99,18 +99,18 @@ int Config::loadValues(const char *path)
 int Config::save(const char *path)
 {
     char tag[CFG_TAG_SIZE];  // PRESERVED: uninitialised
-    FILE *fp = fopen(path, "w");
+    std::ofstream out(path);  // text mode, as the original wrote it
 
-    if (fp == NULL) {
+    if (!out) {
         ps_log("cfg save", path, 0);
         return 0;
     }
     unsigned char blob[CFG_BLOB_SIZE];
     encode(blob);
-    fwrite(blob, CFG_BLOB_SIZE, 1, fp);
+    out.write(reinterpret_cast<const char *>(blob), CFG_BLOB_SIZE);
     strcpy(tag, CFG_TAG);  // FORMAT: 4 bytes of 10; the rest are whatever the stack held
-    fwrite(tag, CFG_TAG_SIZE, 1, fp);
-    fclose(fp);
+    out.write(tag, CFG_TAG_SIZE);
+    out.close();
 
     ps_log("cfg save", path, 1);
     return 1;
