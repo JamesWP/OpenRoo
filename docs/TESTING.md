@@ -43,11 +43,11 @@ say so explicitly.
 ## `--headless` -- no window, no graphics, no display
 
 `--fast` stops the game *asking* the driver to draw. `--headless` removes the
-driver: `create_directdraw` (`src/d3d/createdevice.cpp`) hands back an in-DLL null DirectDraw
-(`src/d3d/nullddraw.cpp`) rather than loading `ddraw.dll`, and the game's
-one window is created message-only so Wine needs no display driver for it.
-Nothing appears on screen, nothing takes focus, no desktop mode is switched,
-and the run works with `DISPLAY` unset entirely.
+driver: with `KAROO_HEADLESS=1`, `RenderDevice::Create` (`src/d3d/createdevice.cpp`)
+creates no Direct3D objects at all, and the game's one window is created
+message-only so Wine needs no display driver for it. Nothing appears on
+screen, nothing takes focus, no desktop mode is switched, and the run works
+with `DISPLAY` unset entirely.
 
 ```bash
 python3 tools/replaytest.py --headless          # the whole suite, in the background
@@ -59,35 +59,33 @@ the machine, or on a box with no X server at all. It is orthogonal to
 `--fast`: fast skips the draw calls, headless removes what they would have
 gone to, and the two compose.
 
-**Why the null device is a recording, not a stub.** The game reads what the
-driver reports and behaves accordingly -- `Karoo.cfg`'s video-mode *index*
-selects from the enumerated mode list, `PickTextureFormatForDepth` (0x43f720)
-picks from `EnumTextureFormats`, and `st_texture_caps` branches on
-`D3DDEVICEDESC.dcmColorModel`. Invent those answers and the run legitimately
-differs, and a replay diverges for a reason that has nothing to do with
-headlessness. So `nullddraw.cpp`'s tables were captured from stock Wine ddraw
-with `KAROO_DDRAW_DIAG=1` and are replayed verbatim: 93 display modes, 14
-texture formats, 4 z-buffer formats, and the two 0xfc-byte device descriptors.
+**How it works.** A headless `RenderDevice` is a `RenderDevice` whose Direct3D
+device is `NULL`. Every method that would reach the device checks for that and
+does nothing; everything else is the real code. The pieces that matter:
 
-A consequence: the mode list is fixed rather than read from the host monitor,
-so `Karoo.cfg`'s mode index means the same thing on every machine. If a Wine
-update changes what ddraw reports, re-capture with `KAROO_DDRAW_DIAG=1` rather
-than hand-editing the tables.
+- The mode list is a fixed table of the 4:3 sizes (`kHeadlessSizes`), 32-bit
+  first and then 16-bit, so `Karoo.cfg`'s mode index means the same thing on
+  every machine and in a real run: 3 is 1024x768x32, 10 is 800x600x16.
+- The render states, transforms, material and light are kept in a shadow
+  that `GetRenderState` and `GetTransform` answer from, with or without a
+  device.
+- Textures are converted exactly as on a real device -- same format choice,
+  same pixels -- and then dropped, unless `KAROO_TEXTURE_DUMP` wants them
+  hashed. `tools/texdump.py` therefore gives the same answer headless and not.
+- `DrawStrided` still reads every vertex stream before it finds there is no
+  device to give them to, which is what keeps the guard below working.
 
-**Surfaces are real memory.** They have to be -- the backend writes pixels into
-them (`devicetexture.cpp` Locks a staging surface, converts an `Image` into it
-and Blts). Every surface is a zeroed `new[]` block of its pitch times its height, so
-`Lock` addresses it; there is no `GetDC`.  What is *not*
-implemented is stretching and format-converting Blts; the one place the game
-asks for one is the loading-screen bitmap, and it logs a single line saying so.
+The game reads little of what the driver reports (the mode list, and which
+texture format and depth buffer it got), and none of it reaches the simulation,
+so nothing here has to be a recording of a real driver.
 
 ### The one recording that never runs fast
 
 `bombstart-crash` carries `"fast": false` in the manifest and always renders for
 real, whatever the suite was invoked with.
 
-It exists to guard the CRASH.md fault: a bad pointer handed to ddraw, which
-faulted *inside* `DrawPrimitiveStrided`. Skip the draw call and that pointer is
+It exists to guard the CRASH.md fault: a bad pointer handed to the driver, which
+faulted *inside* the strided draw. Skip the draw call and that pointer is
 never handed over, so the only class of fault this suite has actually caught in
 anger would go unnoticed. It costs about 10 s of the run, which is a better
 trade than losing the guard.
@@ -315,7 +313,9 @@ to be detected). Frames then run at roughly 230 fps and the two-recording suite
 takes **35 s instead of 102 s**.
 
 The wait is below Wine: passing `DDFLIP_NOVSYNC` through the ddraw proxy was
-tried first and changed nothing. The game has no vsync option of its own.
+tried first and changed nothing (that was when the backend was DirectDraw; it
+is Direct3D 9 now, and presents with the default interval). The game has no
+vsync option of its own.
 
 This changes when a finished frame reaches the screen, not what is in it — every
 frame is still rendered and presented, and nothing reads back present timing.

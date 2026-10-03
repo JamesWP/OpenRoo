@@ -48,5 +48,5 @@ an unofficial fan project and is not affiliated with them.
 Each directory under `src/` is a CMake group (an object library in its
 `CMakeLists.txt`). A group can include only its own
 headers and those of the groups in its `DEPENDS` list, so those lists are the
-layering and the compiler enforces them. Direct3D/DirectDraw headers
+layering and the compiler enforces them. Direct3D headers
 are for `d3d` alone (`cmake/CheckNativeD3D.cmake`); everything else goes through `renderdevice.h`.
