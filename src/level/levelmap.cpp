@@ -23,7 +23,8 @@
 
 #include <windows.h>
 #include "sysdev.h"
-#include <stdio.h>
+#include <fstream>
+#include "binio.h"
 #include <string.h>
 #include <stddef.h>
 #include "logger.h"
@@ -57,7 +58,6 @@ static void clear_file_bytes(Tile *t)
 int LevelMap::readFile(const char *path)
 {
     char name[128];  // PRESERVED: 128 bytes, unchecked
-    FILE *fp;
     unsigned char hdr[2];
     unsigned x, y, width, height;
     static int logged = 0;
@@ -65,12 +65,12 @@ int LevelMap::readFile(const char *path)
     strcpy(name, path);
     strcat(name, ".jjm");
 
-    fp = fopen(name, "rb");
-    if (fp == NULL)
+    std::ifstream in(name, std::ios::binary);
+    if (!in)
         return 0;
 
     // Width to extentU_, height to extentV_.
-    fread(hdr, 2, 1, fp);
+    readBytes(in, hdr, 2);
     extentU_ = hdr[0];
     extentV_ = hdr[1];
 
@@ -86,12 +86,12 @@ int LevelMap::readFile(const char *path)
         for (x = 0; x < width; x++) {
             unsigned dx = fx_flipx() ? (width - 1 - x) : x;
             Tile *cell = tile((int)dx, (int)y);
-            // The stored byte is the low byte of getc's result: end of file
+            // The stored byte is the low byte of get's result: end of file
             // lands as 0xff.
-            cell->setHeight((unsigned char)fgetc(fp));
-            cell->setObjectMarker((unsigned char)fgetc(fp));
-            cell->setParam((unsigned char)fgetc(fp));
-            cell->setContents((unsigned char)fgetc(fp));
+            cell->setHeight((unsigned char)in.get());
+            cell->setObjectMarker((unsigned char)in.get());
+            cell->setParam((unsigned char)in.get());
+            cell->setContents((unsigned char)in.get());
 
             // The border clear comes after the read, and tests the loop's x,
             // not the flipped one; under flipx the border is the border either
@@ -109,14 +109,12 @@ int LevelMap::readFile(const char *path)
     }
 
     // The trailer, in file order.
-    fread(&gemsRequired_,  4,    1, fp);
-    fread(&fileTimeLimit_, 4,    1, fp);
-    fread(&mapName_,       0x80, 1, fp);
-    fread(&title_,         0x80, 1, fp);
-    fread(&text010_,       0x80, 1, fp);
-    fread(&bonus_,         4,    1, fp);
-
-    fclose(fp);
+    readBytes(in, &gemsRequired_, 4);
+    readBytes(in, &fileTimeLimit_, 4);
+    readBytes(in, &mapName_, 0x80);
+    readBytes(in, &title_, 0x80);
+    readBytes(in, &text010_, 0x80);
+    readBytes(in, &bonus_, 4);
 
     if (logged < LM_LOG_FIRST) {
         logged++;
