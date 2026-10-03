@@ -35,6 +35,9 @@
 #include <stdint.h>
 #include "sysdev.h"
 #include <stdio.h>
+#include <fstream>
+#include <iomanip>
+#include <string>
 #include <string.h>
 #include "logger.h"
 #include "extraobjects.h"
@@ -94,15 +97,21 @@ static void fnv_path(unsigned long *h, const char *field, size_t size)
     fnv(h, s, strnlen(s, size - (size_t)(s - field)) + 1);
 }
 
+/* The first 64 characters, as the dump's "%.64s" printed them. */
+static std::string clip64(const char *p)
+{
+    return std::string(p, strnlen(p, 64));
+}
+
 void ExtraObjects::recDump(const char *path)
 {
     char out[MAX_PATH];
     if (!sysdev::getEnv("KAROO_LEO_RECDUMP", out, sizeof(out)))
         return;
-    FILE *f = fopen(out, "ab");
+    std::ofstream f(out, std::ios::binary | std::ios::app);
     if (!f)
         return;
-    fprintf(f, "== %s objects=%u entries=%u\n", path, objectCount_, entries_);
+    f << "== " << path << " objects=" << objectCount_ << " entries=" << entries_ << '\n';
     for (unsigned i = 0; i <= objectCount_ && i < RECORD_MAX; i++) {
         const ExtraObjectRecord *r = &records_[i];
         unsigned long h = 2166136261UL;
@@ -126,26 +135,26 @@ void ExtraObjects::recDump(const char *path)
         fnv(&h, &r->soundParam, sizeof(r->soundParam));
         fnv(&h, &r->sound, sizeof(r->sound));
 
-        fprintf(f, "[%u] hash=%08lx kind=%u file=%.64s pos=%g,%g,%g v2=%g,%g,%g\n",
-                i, h, r->kind, strip_game_dir(r->file),
-                r->position[0], r->position[1], r->position[2],
-                r->field_10c[0], r->field_10c[1], r->field_10c[2]);
-        fprintf(f, "    anim=%.64s tex=%.64s lit=%d blend=%d,%d addr=%u size=%g\n",
-                strip_game_dir(r->animationFile), strip_game_dir(r->textureFile),
-                r->lit, r->srcBlend, r->destBlend, r->textureAddress, r->billboardSize);
-        fprintf(f, "    spline=%u time=%d points=%u sound=%g\n",
-                r->splineMode, r->splineTime, r->splinePointCount, r->soundParam);
+        f << '[' << i << "] hash=" << std::hex << std::setw(8) << std::setfill('0') << h
+          << std::dec << std::setfill(' ') << " kind=" << r->kind
+          << " file=" << clip64(strip_game_dir(r->file))
+          << " pos=" << r->position[0] << ',' << r->position[1] << ',' << r->position[2]
+          << " v2=" << r->field_10c[0] << ',' << r->field_10c[1] << ',' << r->field_10c[2] << '\n';
+        f << "    anim=" << clip64(strip_game_dir(r->animationFile))
+          << " tex=" << clip64(strip_game_dir(r->textureFile))
+          << " lit=" << r->lit << " blend=" << r->srcBlend << ',' << r->destBlend
+          << " addr=" << r->textureAddress << " size=" << r->billboardSize << '\n';
+        f << "    spline=" << r->splineMode << " time=" << r->splineTime
+          << " points=" << r->splinePointCount << " sound=" << r->soundParam << '\n';
         for (unsigned p = 0; p < r->splinePointCount && p < 0x100; p++)
-            fprintf(f, "      %g,%g,%g\n", r->splinePoints[p][0],
-                    r->splinePoints[p][1], r->splinePoints[p][2]);
+            f << "      " << r->splinePoints[p][0] << ',' << r->splinePoints[p][1]
+              << ',' << r->splinePoints[p][2] << '\n';
     }
-    fclose(f);
 }
 
 int ExtraObjects::openFile(const char *name)
 {
     char path[512];
-    FILE *fp;
     unsigned idx = 0;
     unsigned long s_hash = 2166136261UL;
     static int logged = 0;
@@ -155,14 +164,18 @@ int ExtraObjects::openFile(const char *name)
 
     sprintf(path, "%s\\Level3DExtraObjects\\%s.leo", g_gameDir, name);
 
-    fp = fopen(path, "r");
-    if (fp == NULL)
+    // Binary, with the '\r's dropped as they are read: the entry after each
+    // ';' is a CRLF, which must count as one character.
+    std::ifstream in(path, std::ios::binary);
+    if (!in)
         return 0;  // PRESERVED: counters already zeroed
 
-    while (!feof(fp)) {
-        int c = fgetc(fp);  // PRESERVED: end of file stored as 0xff
+    char c;
+    while (in.get(c)) {
+        if (c == '\r')
+            continue;
 
-        if ((char)c == ';') {
+        if (c == ';') {
             s_entry[idx & 0xffff] = '\0';
             strcat(s_entry, "\n");
             idx = 0;
@@ -177,14 +190,12 @@ int ExtraObjects::openFile(const char *name)
 
             parseEntry(s_entry);
 
-            fgetc(fp);  // the character after the ';', discarded
+            in.get();  // the character after the ';', discarded
         } else {
-            s_entry[idx & 0xffff] = (char)c;  // PRESERVED: masked to 16 bits
+            s_entry[idx & 0xffff] = c;  // PRESERVED: masked to 16 bits
             idx++;
         }
     }
-
-    fclose(fp);
 
     recDump(path);
 
@@ -193,7 +204,7 @@ int ExtraObjects::openFile(const char *name)
     {
         char dump[MAX_PATH];
         if (sysdev::getEnv("KAROO_LEO_DUMP", dump, sizeof(dump))) {
-            FILE *h = fopen(dump, "ab");
+            std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {
                 char line[768];
                 int len = snprintf(line, sizeof(line), "%s entries=%u objects=%u hash=%08lx\r\n",
@@ -201,8 +212,7 @@ int ExtraObjects::openFile(const char *name)
                                     (unsigned)entries_,
                                     (unsigned)objectCount_,
                                     s_hash);
-                fwrite(line, 1, len, h);
-                fclose(h);
+                h.write(line, len);
             }
         }
     }
