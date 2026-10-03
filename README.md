@@ -33,6 +33,23 @@ python3 tools/levelreport.py             # all 80 levels loaded and counted
 
 See `docs/TESTING.md`. How the code is organised: `docs/DESIGN.md`.
 
+## Known issue: stray black pixels under DXVK on Intel
+
+Under DXVK (Proton's default Direct3D 9 layer) on an Intel HD Graphics 620 with
+Mesa ANV, lit and textured meshes get scattered single-pixel black glitches that
+flicker from frame to frame.  The same game data renders cleanly on the CPU
+Vulkan renderer (lavapipe) and through Wine's own OpenGL Direct3D (wined3d), and
+making the device wait for the GPU after the draws of a frame's first stretch
+removes them, so it looks like a driver or DXVK batching problem and not a game
+or backend one; `INTEL_DEBUG=noccs` does not help, and it resembles
+[DXVK #4041](https://github.com/doitsujin/dxvk/issues/4041).  `launch.sh`
+therefore runs wined3d by default (`PROTON_USE_WINED3D=1`; set it to 0 for DXVK).
+
+To revisit when the rendering backend changes again: the glitches need no
+particular draw, state or depth-stencil setup, and submitting commands after
+every draw (about 60 fps against 44 with a full wait) is a fallback if DXVK is
+wanted again.
+
 ## Licence
 
 Open'Roo is **source-available, non-commercial**: everything in this
