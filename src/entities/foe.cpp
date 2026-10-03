@@ -141,6 +141,45 @@ Foe::Foe()
     dropContents_    = 0;
     type_            = 0;
     pathfinder_      = 0;
+
+    // Everything else starts at zero.  stepEnd_ in particular is read by the
+    // first step commit (now_ - stepEnd_, to decide where the move animation
+    // starts): zero is "long ago", so it starts at once, whereas whatever a
+    // recycled heap block held could be a NaN, which made animStart_ NaN and
+    // left the foe's position NaN.
+    now_ = 0;
+    clock_ = 0;
+    tickStep_ = 0;
+    tileBase_ = 0;
+    facing_ = 0;
+    posU_ = posY_ = posV_ = 0.0f;
+    cellU_ = cellV_ = heightCell_ = 0;
+    stepEnd_ = 0.0;
+    fallSpeed_ = 0;
+    stepDuration_ = 0.0;
+    lastActive_ = 0.0;
+    dyingSince_ = 0.0;
+    lastContact_ = 0.0;
+    field_d8 = 0;
+    field_ee = 0;
+    chaseSpeed_ = 0;
+    kind_ = 0;
+    homeU_ = homeV_ = homeH_ = 0;
+    targetU_ = targetV_ = 0;
+    field_15d = 0;
+    lastMoveDir_ = 0;
+    fallStartH_ = 0;
+    fallStart_ = 0.0;
+    turnKind_ = 0;
+    field_12e = 0.0;
+    animDuration_ = 0.0;
+    animStart_ = 0.0;
+    stepU_ = stepV_ = 0;
+    field_141 = 0;
+    markerCellU_ = markerCellV_ = markerCellH_ = 0;
+    teleportSince_ = 0.0;
+    movingBackwards_ = 0;
+    onStairOrSlide_ = 0;
 }
 
 Foe::~Foe()
