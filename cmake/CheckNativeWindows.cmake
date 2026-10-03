@@ -1,10 +1,8 @@
-# Fails if a header outside the platform groups includes <windows.h>, so
-# Win32 types cannot leak into the interfaces game code sees.  Source files
-# outside them that still call Win32 APIs are listed, not failed on; delete
-# the NOTICE branch once the list is empty and fail on those too.
+# Fails if a header or source file outside the platform groups includes
+# <windows.h>, so Win32 types and calls cannot leak into game code.  The one
+# exception is the executable's WinMain in src/windev.
 set(platform_groups d3d windev inputdev audiodev sysdev videodev)
 file(GLOB_RECURSE files "${SOURCE_DIR}/src/*.cpp" "${SOURCE_DIR}/src/*.h")
-set(remaining "")
 foreach(file IN LISTS files)
     set(skip FALSE)
     foreach(group IN LISTS platform_groups)
@@ -16,18 +14,8 @@ foreach(file IN LISTS files)
         continue()
     endif()
     file(STRINGS "${file}" bad REGEX "^[ \t]*#[ \t]*include[ \t]*<windows.h>")
-    if(NOT bad)
-        continue()
-    endif()
-    file(RELATIVE_PATH rel "${SOURCE_DIR}" "${file}")
-    if(file MATCHES "\\.h$")
-        message(SEND_ERROR "${rel}: <windows.h> in a header outside the platform groups; use plain types")
-    else()
-        list(APPEND remaining "${rel}")
+    if(bad)
+        file(RELATIVE_PATH rel "${SOURCE_DIR}" "${file}")
+        message(SEND_ERROR "${rel}: <windows.h> outside the platform groups; use core/portable.h or a platform-group API")
     endif()
 endforeach()
-list(LENGTH remaining n)
-if(n GREATER 0)
-    string(REPLACE ";" "\n  " listing "${remaining}")
-    message(STATUS "NOTICE: ${n} source files outside the platform groups still include <windows.h>:\n  ${listing}")
-endif()
