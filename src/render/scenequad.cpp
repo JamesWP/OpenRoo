@@ -10,6 +10,7 @@
  *   drop  skip the draw entirely -- the animated billboard quads vanish;
  *   tint  force their vertex diffuse to magenta. */
 
+#include <string.h>
 #include <windows.h>
 #include <stdint.h>
 #include "scenequad.h"
@@ -50,8 +51,9 @@ bool SceneQuad_Draw(RenderDevice *dev, StridedVertices *v, uint32_t count)
     if (fx == FX_TINT && v->diffuse.data) {
         // The caller rebuilds this quad fresh for every draw, so overwriting
         // its diffuse colour here is safe and only affects this one draw.
+        const uint32_t tint = 0xFFFF00FF;
         for (uint32_t i = 0; i < count; i++)
-            *(uint32_t *)((char *)v->diffuse.data + i * v->diffuse.stride) = 0xFFFF00FF;
+            memcpy((char *)v->diffuse.data + i * v->diffuse.stride, &tint, sizeof(tint));
     }
 
     return dev->DrawStrided(Prim::TriangleStrip, VertexFormat::Diffuse1, v, count);

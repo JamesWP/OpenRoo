@@ -29,7 +29,7 @@ class BridgeObject;
 class BreakableTile;
 
 
-/* The end-of-level score tally, Game+0x1404c1..+0x140543.  Six rows, each
+/* The end-of-level score tally.  Six rows, each
  * with a real COUNT and SCORE (CalculateLevelScore) and a SHOWN
  * count and score that AnimateScoreTallyStages counts up from zero
  * towards them.  The animation's stages visit FOES before TIME. */

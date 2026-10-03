@@ -94,7 +94,6 @@ double clock_seconds(void)
     // every run, so it does no harm to the hash.
     dethash_frame_end(g_accum);
     gamestate_tick();
-    gamestate_deathdiff();
     worldstate_tick();
     policy_menu_tick();
     levelreport_tick();  // may set a menu goal, so it runs before menu_tick

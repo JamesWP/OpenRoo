@@ -1,3 +1,4 @@
+#include <string.h>
 #include "pixelconvert.h"
 
 unsigned int PixelMask_Popcount(uint32_t mask)
@@ -38,10 +39,12 @@ static uint32_t pack_pixel(const PixelFormat &pf, uint32_t r, uint32_t g,
 
 static void store_pixel(uint8_t *p, unsigned bits, uint32_t v)
 {
-    if (bits == 32)
-        *(uint32_t *)p = v;
-    else
-        *(uint16_t *)p = (uint16_t)v;
+    if (bits == 32) {
+        memcpy(p, &v, sizeof(v));
+    } else {
+        const uint16_t v16 = (uint16_t)v;
+        memcpy(p, &v16, sizeof(v16));
+    }
 }
 
 void PixelConvert_ToTexture(const Image &img, const PixelFormat &pf,

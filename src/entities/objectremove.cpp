@@ -117,7 +117,6 @@ unsigned char Object_ClaimSpareId(unsigned char *ids, unsigned char *count)
     return id;
 }
 
-static int s_logged_dtor     = 0;
 static int s_logged_shift    = 0;
 
 void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
@@ -131,12 +130,6 @@ void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
     fx_init();
 
     if (obj != 0) {
-        if (s_diag && !s_logged_dtor) {
-            void **vtbl = *(void ***)obj;
-            s_logged_dtor = 1;
-            g_logger.write("objectremove: first virtual dtor -- obj=%p vtbl=%p "
-                      "slot0=%p\n", obj, (void *)vtbl, vtbl[0]);
-        }
         delete (MovableEntity *)obj;
     }
 
