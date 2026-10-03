@@ -15,8 +15,8 @@ while [[ $# -gt 0 ]]; do
     # takes the mode from Karoo.cfg; see the default-config block below.
     --skip-launcher) SKIP_LAUNCHER=1 ;;
     # Truly headless: no window, no graphics, no display needed.  Implies
-    # --skip-launcher (the dialog is a window too).  DirectDraw is replaced
-    # wholesale by the in-DLL null device -- see src/d3d/nullddraw.cpp --
+    # --skip-launcher (the dialog is a window too).  The render device is
+    # created with no Direct3D behind it -- see src/d3d/createdevice.cpp --
     # so nothing here touches X, nothing takes focus, and no desktop mode is
     # switched.  This is what to use for a background test run.
     --headless) HEADLESS=1; SKIP_LAUNCHER=1 ;;
@@ -36,14 +36,6 @@ BUILD_DIR=${BUILD_DIR:-build}
 [[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE="cmake/mingw.cmake" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
 cmake --build "$BUILD_DIR" -j"$(nproc)" >&2 || { echo "ERROR: build failed"; exit 1; }
 [[ -f "$BUILD_DIR/$EXE" ]] || { echo "ERROR: $BUILD_DIR/$EXE missing after build"; exit 1; }
-
-# A ddraw.dll beside the game would be loaded in preference to stock Wine ddraw, even under
-# ddraw=b.
-if [[ -f ddraw.dll || -f run/ddraw.dll ]]; then
-  echo "ERROR: ddraw.dll present in the game directory — it would be loaded instead of" >&2
-  echo "       stock Wine ddraw (Wine logs it from this path as \"builtin\"). Remove it." >&2
-  exit 1
-fi
 
 roll_log() {
   local base="$1" keep=5
@@ -78,7 +70,7 @@ cp -p "$BUILD_DIR/$EXE" run/
 
 # Karoo.cfg is ours, not the game's.  Without it Game::Load leaves the video
 # mode index and adapter GUID zero-initialised, so the game comes up in
-# whatever mode DirectDraw enumerates first.  Install a known-good config
+# whatever mode Direct3D enumerates first.  Install a known-good config
 # (1024x768x32, music off) -- only when absent: never overwrite a config the
 # player has since changed through the launcher.
 if [[ ! -f run/Karoo.cfg ]]; then
@@ -171,8 +163,10 @@ PROTON_RUN=(
   STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.steam/root"
   PROTON_LOG_DIR="$(pwd)"
   SteamGameId=123456 SteamAppId=123456
-  # Stock Wine ddraw — forced builtin rather than relying on load order.
-  WINEDLLOVERRIDES="ddraw=b"
+  # Direct3D 9 through Wine's own OpenGL layer, not DXVK: DXVK on Intel
+  # (Mesa ANV) leaves stray black pixels, see the README.  Set it to 0 to try
+  # DXVK.
+  PROTON_USE_WINED3D="${PROTON_USE_WINED3D:-1}"
   # Script-controlled; these are always set, so the DLL can rely on them.
   KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
   KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"

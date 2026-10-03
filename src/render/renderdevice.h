@@ -1,13 +1,16 @@
 /* RenderDevice: the game's one rendering device, and the only way game code
  * talks to the rendering backend.  One instance exists, at g_renderDevice.
  *
- * The backend -- Direct3D 6 and DirectDraw -- lives in src/d3d/, and nothing
- * outside it includes their headers (cmake/CheckNativeD3D.cmake enforces
- * it).  RenderDevice owns the backend's objects (RenderDevice::Native, in
- * src/d3d/d3dnative.h): the display mode, the primary/back/z-buffer
- * surfaces, the device, the viewport, the material and the light.  Game code
- * speaks rendertypes.h's vocabulary to it, and hands it textures as
- * DeviceTextures, made from Images (image.h) and opaque outside src/d3d/. */
+ * The backend -- Direct3D 9 -- lives in src/d3d/, and nothing outside it
+ * includes its headers (cmake/CheckNativeD3D.cmake enforces it).
+ * RenderDevice owns the backend's objects (RenderDevice::Native, in
+ * src/d3d/d3dnative.h): the Direct3D device and a shadow of the state the
+ * game has set on it.  Game code speaks rendertypes.h's vocabulary to it,
+ * and hands it textures as DeviceTextures, made from Images (image.h) and
+ * opaque outside src/d3d/.
+ *
+ * A headless RenderDevice (KAROO_HEADLESS=1) has no Direct3D behind it: it
+ * answers every query as a real one would and draws nothing. */
 
 #pragma once
 #include <stdint.h>
@@ -62,11 +65,14 @@ public:
 
     // ── Lifetime ──
 
-    /* Brings up the display mode, the surfaces, the device and the viewport
-     * (createdevice.cpp).  hWnd is the native window handle to go full-screen on; the
-     * adapter may be NULL for the default.  On failure lastError() says
-     * why. */
-    bool Create(void *hWnd, const AdapterId *adapter, int nModeIndex, bool bHardware);
+    /* Whether this run is headless: KAROO_HEADLESS is set.  The window should
+     * not be shown, and Create makes no device. */
+    static bool headless();
+
+    /* Brings up the display mode and the device (createdevice.cpp).  hWnd is
+     * the native window handle to go full-screen on; the adapter may be NULL
+     * for the default.  On failure lastError() says why. */
+    bool Create(void *hWnd, const AdapterId *adapter, int nModeIndex);
 
     /* Releases everything and forgets the display modes. */
     void Release();
@@ -77,9 +83,8 @@ public:
     static bool EnumerateAdapters(std::vector<Adapter> &out);
 
     /* The modes Create's nModeIndex indexes, on the given adapter (NULL for
-     * the default): the 4:3 modes of 16 bits or more that the hardware
-     * device can render to.  anyAspect lifts the 4:3 restriction, which
-     * makes the indices disagree with Create's. */
+     * the default): the 4:3 modes of 32 bits and then of 16.  anyAspect lifts
+     * the 4:3 restriction, which makes the indices disagree with Create's. */
     static bool EnumerateDisplayModes(const AdapterId *adapter,
                                       std::vector<DisplayMode> &out,
                                       bool anyAspect = false);
@@ -92,9 +97,6 @@ public:
 
     /* The z-buffer has stencil bits. */
     bool hasStencil() const;
-
-    /* Puts the desktop's display mode back. */
-    void RestoreDisplayMode();
 
     // ── Frames ──
 
@@ -168,14 +170,9 @@ public:
     Native *native() { return native_; }
 
 private:
-    friend struct DeviceCreation;
-
-    bool BltImageToBackBuffer(const Image &img, bool blt);
-
     Native                  *native_;
     std::vector<DisplayMode> modes_;
     DisplayMode             *mode_;
-    uint32_t                 modeFilterFlags_;
     char                     lastError_[100];
 };
 

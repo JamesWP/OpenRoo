@@ -62,33 +62,6 @@ inline const char GS_KEY_MOVE_FORWARD[] = "John_Move_Forward";
 inline const char GS_KEY_TURN_RIGHT[] = "John_Turn_Right";
 inline const char GS_KEY_TURN_LEFT[] = "John_Turn_Left";
 
-/* D3D: device bring-up, with the authors' German error texts. */
-inline const char GS_D3D_ERR_CREATE_VP[] = "Could not create the Direct3D viewport.";
-inline const char GS_D3D_ERR_CREATE_DEVICE[] = "Could not create the Direct3D device.";
-inline const char GS_D3D_ERR_ATTACH_ZBUF[] = "Could not attach the z-buffer to the render surface.";
-inline const char GS_D3D_ERR_ZBUF_SURFACE[] = "Could not create the z-buffer.";
-inline const char GS_D3D_STENCIL_BITDEPTH[] = "Stencil-Buffer-Bit-Depth: %d ()\012\012";
-inline const char GS_D3D_ZBUF_BITDEPTH[] = "Z-Buffer-Bit-Depth: %d ()\012\012";
-inline const char GS_D3D_ERR_ZBUF_FORMAT[] = "No pixel format found for the z-buffer.";
-inline const char GS_D3D_ERR_D3D3_IFACE[] = "Could not get the Direct3D3 interface.";
-inline const char GS_D3D_ERR_BACKBUFFER[] = "Could not get the back buffer.";
-inline const char GS_D3D_ERR_PRIMARY[] = "Could not create the primary surface.";
-inline const char GS_D3D_DONE[] = "...done\012\012";
-inline const char GS_D3D_NO_MODE_SPECIFIED[] = "no mode specified, trying to set first mode %dx%dx%d\012";
-inline const char GS_D3D_ERR_SET_MODE[] = "Could not set the display mode.";
-inline const char GS_D3D_TRYING_FIRST_MODE[] = "trying to set first mode %dx%dx%d\012";
-inline const char GS_D3D_FAILED_HR[] = "...failed (%x)\012";
-inline const char GS_D3D_TRYING_MODE[] = "trying to set mode %dx%dx%d ";
-inline const char GS_D3D_END_ENUMMODES[] = "END ENUMDISPLAYMODES\012\012";
-inline const char GS_D3D_ERR_ENUMMODES[] = "Could not list the display modes.";
-inline const char GS_D3D_START_ENUMMODES[] = "START ENUMDISPLAYMODES\012";
-inline const char GS_D3D_RENDER_BITDEPTH[] = "DeviceRenderBitDepthFlags:%d\012\012";
-inline const char GS_D3D_ERR_COOP_LEVEL[] = "Could not set the cooperative level.";
-inline const char GS_D3D_ERR_DD4_IFACE[] = "Could not get the DirectDraw4 interface.";
-inline const char GS_D3D_ERR_DDRAW_CREATE[] = "Could not create the DirectDraw object.";
-inline const char GS_D3D_FOUND_MODE[] = "found mode %dx%dx%d\012";
-inline const char GS_D3D_ZBUF_FMT[] = "Z:%d S:%d\012";
-
 /* CFG: Karoo.cfg. */
 inline const char GS_CFG_FILE[] = "Karoo.cfg";
 
