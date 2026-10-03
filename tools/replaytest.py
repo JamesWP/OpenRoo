@@ -239,7 +239,7 @@ def apply_turbo(env):
 #
 # One recording opts out of it permanently (unless headless is specified), and the reason is worth keeping in
 # view.  bombstart-crash exists to guard the CRASH.md fault: a bad pointer
-# handed to ddraw, which faulted *inside* DrawPrimitiveStrided.  Skipping the
+# handed to the driver, which faulted *inside* the strided draw.  Skipping the
 # draw call means that pointer is never handed over, so that entire class of
 # fault -- the only one this suite has actually caught in anger -- would go
 # unnoticed.  Rather than trade it away for the ~10 s that recording costs, the
@@ -294,8 +294,8 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
     env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
     env["KAROO_SEED"] = str(cfg.get("seed", ""))
     auto_exit = int(cfg.get("timeout", 120))
-    # --headless replaces DirectDraw with the in-DLL null device
-    # (src/d3d/nullddraw.cpp) and makes the game's window message-only, so
+    # --headless creates the render device with no Direct3D behind it
+    # (src/d3d/createdevice.cpp) and makes the game's window message-only, so
     # the run needs no display, opens nothing on screen and takes no focus.
     # It implies --skip-launcher.  Orthogonal to --fast: fast skips the draw
     # CALLS, headless removes the driver underneath them.
@@ -655,12 +655,12 @@ def main():
     ap.add_argument("--no-fast", dest="fast", action="store_false",
                     help="render every frame for real. Slower (~216 s vs "
                          "~172 s for the suite), and the only way to exercise "
-                         "the ddraw draw path for every recording.")
+                         "the draw path for every recording.")
     ap.add_argument("--no-headless", dest="headless", action="store_false", 
                     help="disable the headless mode which is enabled by default")
     ap.add_argument("--headless", dest="headless", action="store_true", default=True,
                     help="run with no window and no graphics at all: "
-                         "DirectDraw is replaced by the in-DLL null device and "
+                         "the render device is created with no Direct3D behind it and "
                          "the game's window is made message-only, so the suite "
                          "can run in the background without stealing focus and "
                          "without a display. Implies --skip-launcher. also means"

@@ -8,6 +8,7 @@
  * if the intro never ended.  Messages are still pumped, so --auto-exit still
  * ends the run; every recording fails on frames_run. */
 
+#include <windows.h>
 #include "sysdev.h"
 #include <new>
 #include <stdio.h>
@@ -33,7 +34,6 @@
 #include "launcher.h"
 #include "launcherdialogs.h"
 #include "windev.h"
-#include "nullddraw.h"
 #include "progctrl.h"
 #include "texture.h"
 #include "scene.h"
@@ -164,7 +164,7 @@ int Main_WinMain(const char *lpCmdLine)
     wc.title       = "Ka'roo";
     wc.width       = 400;
     wc.height      = 300;
-    wc.messageOnly = nulldd_enabled();
+    wc.messageOnly = RenderDevice::headless();
     if (!window.create(&handler, wc))
         return 0;
     void *hWnd = window.handle();
@@ -215,13 +215,12 @@ int Main_WinMain(const char *lpCmdLine)
     // that mode, the default adapter in mode 0.
     Config *cfg = game->config();
     const int mode = (int)cfg->displayModeIndex();
-    if (!d3d->Create(hWnd, cfg->adapterId(), mode, true)
-        && !d3d->Create(hWnd, NULL, mode, true)
-        && !d3d->Create(hWnd, NULL, 0, true)) {
+    if (!d3d->Create(hWnd, cfg->adapterId(), mode)
+        && !d3d->Create(hWnd, NULL, mode)
+        && !d3d->Create(hWnd, NULL, 0)) {
         g_logger.logSourceLocation(4,
             "src/app/main.cpp", __LINE__,
             "Creation of Direct3D failed");
-        d3d->RestoreDisplayMode();
         windev::messageBox(NULL, d3d->lastError(), "Error!",
                            windev::Buttons::Ok, windev::Icon::Error);
         delete d3d;

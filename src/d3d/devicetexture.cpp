@@ -1,184 +1,149 @@
-/* RenderDevice's textures and images (renderdevice.h): the DirectDraw surface
- * a texture lives in, the choice of its pixel format, and the conversion of
- * an Image's RGBA8 pixels into that format.
+/* RenderDevice's textures and images (renderdevice.h): the Direct3D texture a
+ * DeviceTexture holds, the choice of its pixel format, and the conversion of
+ * an Image's RGBA8 pixels into that format (pixelconvert.cpp).
  *
- * Format choice.  The device is asked for its texture formats and one is kept
- * (see st_enum_texture_formats_picker).  The depth asked for is `depth` if
- * that is exactly 16 or 32, else the image's own depth, so a 24-bit image gets
- * a 32-bit format.  The texture memory pool comes from the hardware device
- * description's dcmColorModel.
+ * Format choice.  The depth asked for is `depth` if that is exactly 16 or 32,
+ * else the image's own depth, so an 8-bit image gets a 16-bit format and a
+ * 24-bit image a 32-bit one.  Each depth has a short preference list --
+ * with or without alpha -- and the first format the device supports wins.
  *
- * Conversion into the chosen format is pixelconvert.cpp's.
- *
- * The pixels are written into a system-memory scratch surface and Blt'ed to
- * the texture surface. */
+ * Textures live in the managed pool, so they survive a device Reset.  A
+ * headless device makes no texture at all; it only converts, when
+ * KAROO_TEXTURE_DUMP wants to see the pixels. */
 
-#include <string.h>
+#include <fstream>
 #include <stdio.h>
+#include <string.h>
 #include "d3dnative.h"
-#include "ddrawdiag.h"
 #include "image.h"
-#include "pixelconvert.h"
 #include "logger.h"
+#include "sysdev.h"
 
 struct DeviceTexture {
-    IDirectDrawSurface4 *surface;
-    IDirect3DTexture2   *texture;
-    DDPIXELFORMAT        format;
-    int                  width, height;
+    IDirect3DTexture9 *texture;  // NULL when headless
+    D3DFORMAT          format;
+    bool               alpha;
+    int                width, height;
 };
 
-/* D3DDEVICEDESC as 0x3f raw dwords, zeroed, dwSize at [0], so the size used is
- * 0xfc whatever the SDK header defines.  Only dcmColorModel is read. */
-struct DevDescRaw { DWORD dw[0x3f]; };
-#define DEVDESC_COLORMODEL 2
-
-/* ─── The texture-format picker ─────────────────────────────────────────────
- *
- * Enumerates the device's texture formats and keeps the one the callback
- * prefers.
- *
- * Gate: DDPF_ALPHA formats are always skipped.  At 8 bits or fewer a format
- * must be palettised and exactly 8 bits wide; above 8 bits it must be
- * DDPF_RGB.
- *
- * Preference: with nothing kept yet, take it.  Otherwise, with no alpha asked
- * for, the format must be at least as deep as the request and strictly closer
- * to it than the kept one -- the smallest depth at or above the request wins,
- * and the first of a tie keeps its place.  With alpha asked for, a format that
- * is not strictly closer can still win as an equal-depth alternative: same bit
- * count, strictly more alpha bits than the kept one, and no more alpha bits
- * than a quarter of its own depth.
- *
- * All the arithmetic is unsigned, including `bits - request` where the kept
- * format is shallower than the request and the subtraction wraps. */
-
-struct PickFormatCtx {
-    DWORD         dwRequestedBpp;
-    BYTE          bWantAlpha;
-    DDPIXELFORMAT kept;
-};
-
-static bool s_log_texfmts;  // set by pick_texture_format
-
-/* Always returns D3DENUMRET_OK: every format is enumerated every time. */
-static HRESULT WINAPI enum_texture_formats_picker(LPDDPIXELFORMAT pf, LPVOID param)
+IDirect3DTexture9 *d3d_texture_object(const DeviceTexture *t)
 {
-    if (s_log_texfmts)
-        ddiag_pixfmt("texfmt", pf);
-    DWORD flags = pf->dwFlags;
-    if (flags & 0x02)  // DDPF_ALPHA
-        return D3DENUMRET_OK;
+    return t ? t->texture : NULL;
+}
 
-    DWORD bits = pf->dwRGBBitCount;
-    if (bits <= 8) {
-        if (!(flags & 0x28))  // DDPF_PALETTEINDEXED4|8
-            return D3DENUMRET_OK;
-        if (bits != 8)  // 4-bit palettised is rejected
-            return D3DENUMRET_OK;
+bool d3d_texture_has_alpha(const DeviceTexture *t)
+{
+    return t->alpha;
+}
+
+PixelFormat d3d_pixel_format(D3DFORMAT f)
+{
+    switch (f) {
+    case D3DFMT_A8R8G8B8: return { 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000 };
+    case D3DFMT_R5G6B5:   return { 16, 0x0000F800, 0x000007E0, 0x0000001F, 0x00000000 };
+    case D3DFMT_X1R5G5B5: return { 16, 0x00007C00, 0x000003E0, 0x0000001F, 0x00000000 };
+    case D3DFMT_A1R5G5B5: return { 16, 0x00007C00, 0x000003E0, 0x0000001F, 0x00008000 };
+    case D3DFMT_A4R4G4B4: return { 16, 0x00000F00, 0x000000F0, 0x0000000F, 0x0000F000 };
+    default:              return { 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0x00000000 };  // X8R8G8B8
+    }
+}
+
+// ── The texture dump ──
+
+bool d3d_dump_enabled()
+{
+    static int enabled = -1;
+    if (enabled < 0) {
+        char path[4];
+        enabled = sysdev::getEnv("KAROO_TEXTURE_DUMP", path, sizeof(path)) ? 1 : 0;
+    }
+    return enabled != 0;
+}
+
+void d3d_dump_pixels(const char *kind, const char *name, int width, int height,
+                     const PixelFormat &pf, const uint8_t *bits, long pitch)
+{
+    static char path[MAX_PATH];
+    if (!d3d_dump_enabled())
+        return;
+    if (path[0] == '\0')
+        sysdev::getEnv("KAROO_TEXTURE_DUMP", path, sizeof(path));
+
+    unsigned long long h = 1469598103934665603ull;
+    const unsigned rowBytes = (unsigned)width * (pf.bits / 8);
+    for (int y = 0; y < height; ++y, bits += pitch)
+        for (unsigned x = 0; x < rowBytes; ++x)
+            h = (h ^ bits[x]) * 1099511628211ull;
+
+    char line[512];
+    snprintf(line, sizeof(line),
+             "%s|%s|%dx%d|%ubpp r=%08lX g=%08lX b=%08lX a=%08lX|%016llX\n",
+             kind, name, width, height, pf.bits,
+             (unsigned long)pf.rMask, (unsigned long)pf.gMask,
+             (unsigned long)pf.bMask, (unsigned long)pf.aMask, h);
+    std::ofstream f(path, std::ios::binary | std::ios::app);
+    f << line;
+}
+
+// ── Format choice ──
+
+static D3DFORMAT pick_format(RenderDevice::Native *n, unsigned depth, bool alpha)
+{
+    static const D3DFORMAT p32alpha[] = { D3DFMT_A8R8G8B8 };
+    static const D3DFORMAT p32[]      = { D3DFMT_X8R8G8B8, D3DFMT_A8R8G8B8 };
+    static const D3DFORMAT p16alpha[] = { D3DFMT_A4R4G4B4, D3DFMT_A1R5G5B5, D3DFMT_A8R8G8B8 };
+    static const D3DFORMAT p16[]      = { D3DFMT_X1R5G5B5, D3DFMT_R5G6B5, D3DFMT_X8R8G8B8 };
+
+    const D3DFORMAT *list;
+    size_t count;
+    if (depth > 16) {
+        list = alpha ? p32alpha : p32;
+        count = alpha ? sizeof p32alpha / sizeof *p32alpha : sizeof p32 / sizeof *p32;
     } else {
-        if (!(flags & 0x40))  // DDPF_RGB
-            return D3DENUMRET_OK;
+        list = alpha ? p16alpha : p16;
+        count = alpha ? sizeof p16alpha / sizeof *p16alpha : sizeof p16 / sizeof *p16;
     }
+    // Headless has no device to ask; the first choice stands.
+    if (!n->device)
+        return list[0];
+    for (size_t i = 0; i < count; i++)
+        if (SUCCEEDED(n->d3d->CheckDeviceFormat(n->adapter, D3DDEVTYPE_HAL,
+                                                n->displayFormat, 0,
+                                                D3DRTYPE_TEXTURE, list[i])))
+            return list[i];
+    return D3DFMT_A8R8G8B8;
+}
 
-    PickFormatCtx *ctx = (PickFormatCtx *)param;
-    DWORD req  = ctx->dwRequestedBpp;
-    DWORD kept = ctx->kept.dwRGBBitCount;  // 0 until something is kept
+static bool format_has_alpha(D3DFORMAT f)
+{
+    return d3d_pixel_format(f).aMask != 0;
+}
 
-    if (ctx->bWantAlpha == 0) {
-        if (kept != 0) {
-            if (bits < req)
-                return D3DENUMRET_OK;
-            if (!((bits - req) < (kept - req)))
-                return D3DENUMRET_OK;
+/* Converts img into t's texture, or, headless, into a scratch buffer that
+ * only the dump looks at. */
+static bool fill_texture(DeviceTexture *t, const Image &img)
+{
+    const PixelFormat pf = d3d_pixel_format(t->format);
+    if (t->texture) {
+        D3DLOCKED_RECT lr;
+        if (FAILED(t->texture->LockRect(0, &lr, NULL, 0))) {
+            g_logger.write("devicetexture: LockRect failed (%s)\n", img.name);
+            return false;
         }
-    } else if (kept != 0) {
-        bool closer = (bits >= req) && ((bits - req) < (kept - req));
-        if (!closer) {
-            if (bits != kept)
-                return D3DENUMRET_OK;
-            unsigned short keptAlpha =
-                (unsigned short)PixelMask_Popcount(ctx->kept.dwRGBAlphaBitMask);
-            unsigned short candAlpha =
-                (unsigned short)PixelMask_Popcount(pf->dwRGBAlphaBitMask);
-            if (candAlpha <= keptAlpha)
-                return D3DENUMRET_OK;
-            if ((DWORD)candAlpha > (bits >> 2))
-                return D3DENUMRET_OK;
-        }
+        PixelConvert_ToTexture(img, pf, (uint8_t *)lr.pBits, lr.Pitch);
+        d3d_dump_pixels("tex", img.name, img.width, img.height, pf,
+                        (const uint8_t *)lr.pBits, lr.Pitch);
+        t->texture->UnlockRect(0);
+    } else if (d3d_dump_enabled()) {
+        std::vector<uint8_t> buf((size_t)img.width * img.height * (pf.bits / 8));
+        const long pitch = (long)img.width * (pf.bits / 8);
+        PixelConvert_ToTexture(img, pf, buf.data(), pitch);
+        d3d_dump_pixels("tex", img.name, img.width, img.height, pf, buf.data(), pitch);
     }
-
-    ctx->kept = *pf;
-    return D3DENUMRET_OK;
+    return true;
 }
 
-static DDPIXELFORMAT pick_texture_format(RenderDevice *dev, DWORD bpp, bool wantAlpha)
-{
-    // The context is zeroed whole; the original zeroed one byte short and
-    // wrote the alpha flag into the kept format's alpha mask, visible only
-    // when no format was kept.
-    PickFormatCtx ctx = {};
-    ctx.bWantAlpha     = wantAlpha ? 1 : 0;
-    ctx.dwRequestedBpp = bpp;
-
-    // KAROO_DDRAW_DIAG logs the formats offered the first time only.
-    static LONG enumerations = 0;
-    s_log_texfmts = InterlockedIncrement(&enumerations) == 1;
-    dev->native()->device->EnumTextureFormats(enum_texture_formats_picker, &ctx);
-    s_log_texfmts = false;
-    return ctx.kept;
-}
-
-static PixelFormat to_pixel_format(const DDPIXELFORMAT &pf)
-{
-    PixelFormat f = { pf.dwRGBBitCount, pf.dwRBitMask, pf.dwGBitMask,
-                      pf.dwBBitMask, pf.dwRGBAlphaBitMask };
-    return f;
-}
-
-/* Create a system-memory scratch surface of `pf`, fill it from `img`, and Blt
- * it onto `target`. */
-static bool upload_image(IDirectDraw4 *dd, IDirectDrawSurface4 *target,
-                         const Image &img, const DDPIXELFORMAT &pf)
-{
-    DDSURFACEDESC2 ddsd = {};
-    ddsd.dwSize         = sizeof(ddsd);
-    ddsd.dwFlags        = 0x1007;  // CAPS | HEIGHT | WIDTH | PIXELFORMAT
-    ddsd.dwWidth        = (DWORD)img.width;
-    ddsd.dwHeight       = (DWORD)img.height;
-    ddsd.ddpfPixelFormat = pf;
-    ddsd.ddsCaps.dwCaps = 0x1800;  // TEXTURE | SYSTEMMEMORY
-
-    IDirectDrawSurface4 *tmp = NULL;
-    HRESULT hr = dd->CreateSurface(&ddsd, &tmp, NULL);
-    ddiag_create_surface(hr, &ddsd);
-    if (hr < 0) {
-        g_logger.write("devicetexture: scratch CreateSurface failed %08lX (%s)\n",
-                       (unsigned long)hr, img.name);
-        return false;
-    }
-
-    // Lock overwrites ddsd with the scratch surface's real pitch and pointer.
-    hr = tmp->Lock(NULL, &ddsd, 0, NULL);
-    ddiag_lock(hr, 0, &ddsd);
-    if (hr < 0) {
-        g_logger.write("devicetexture: scratch Lock failed %08lX (%s)\n",
-                       (unsigned long)hr, img.name);
-        tmp->Release();
-        return false;
-    }
-
-    PixelConvert_ToTexture(img, to_pixel_format(ddsd.ddpfPixelFormat),
-                           (uint8_t *)ddsd.lpSurface, ddsd.lPitch);
-
-    bool ok = tmp->Unlock(NULL) >= 0;
-    if (ok)
-        target->Blt(NULL, tmp, NULL, DDBLT_WAIT, NULL);
-    tmp->Release();
-    return ok;
-}
-
-/* ─── RenderDevice ──────────────────────────────────────────────────────── */
+// ── RenderDevice ──
 
 DeviceTexture *RenderDevice::CreateTexture(const Image &img, uint32_t flags,
                                            unsigned depth)
@@ -190,64 +155,32 @@ DeviceTexture *RenderDevice::CreateTexture(const Image &img, uint32_t flags,
     if (depth != 16 && depth != 32)
         depth = img.sourceBits;
 
-    DDPIXELFORMAT pf = pick_texture_format(this, depth, (flags & TextureFlag::Alpha) != 0);
+    DeviceTexture *t = new DeviceTexture();
+    t->format = pick_format(native_, depth, (flags & TextureFlag::Alpha) != 0);
+    t->alpha  = format_has_alpha(t->format);
+    t->width  = img.width;
+    t->height = img.height;
 
     static LONG seen = 0;
     if (InterlockedIncrement(&seen) <= 8)
-        g_logger.write("devicetexture: %s req=%u -> chosen %lubpp flags=%08lX "
-                       "r=%08lX g=%08lX b=%08lX a=%08lX\n",
-                       img.name, depth, (unsigned long)pf.dwRGBBitCount,
-                       (unsigned long)pf.dwFlags,
-                       (unsigned long)pf.dwRBitMask, (unsigned long)pf.dwGBitMask,
-                       (unsigned long)pf.dwBBitMask,
-                       (unsigned long)pf.dwRGBAlphaBitMask);
+        g_logger.write("devicetexture: %s req=%u -> format %d\n",
+                       img.name, depth, (int)t->format);
 
-    // The memory pool: hardware colour model or not.
-    DevDescRaw hw = {}, sw = {};
-    hw.dw[0] = 0xfc;
-    sw.dw[0] = 0xfc;
-    HRESULT hr = native_->device->GetCaps((LPD3DDEVICEDESC)&hw, (LPD3DDEVICEDESC)&sw);
-    ddiag_device_caps(hr, &hw, &sw);
-
-    DDSURFACEDESC2 ddsd = {};
-    ddsd.dwSize          = sizeof(ddsd);
-    ddsd.dwFlags         = 0x101007;  // CAPS|HEIGHT|WIDTH|PIXELFORMAT|TEXTURESTAGE
-    ddsd.dwTextureStage  = 0;
-    ddsd.dwWidth         = (DWORD)img.width;
-    ddsd.dwHeight        = (DWORD)img.height;
-    ddsd.ddpfPixelFormat = pf;
-    ddsd.ddsCaps.dwCaps = hw.dw[DEVDESC_COLORMODEL] != 0
-                            ? (DWORD)DDSCAPS_TEXTURE
-                            : (DWORD)(DDSCAPS_TEXTURE | DDSCAPS_SYSTEMMEMORY);
-
-    DeviceTexture *t = new DeviceTexture();
-    t->format = pf;
-    t->width  = img.width;
-    t->height = img.height;
-    hr = native_->dd->CreateSurface(&ddsd, &t->surface, NULL);
-    ddiag_create_surface(hr, &ddsd);
-    if (hr < 0) {
-        g_logger.write("devicetexture: couldn't create texture surface for %s (%08lX)\n",
-                       img.name, (unsigned long)hr);
-        delete t;
+    if (native_->device) {
+        HRESULT hr = native_->device->CreateTexture(
+            img.width, img.height, 1, 0, t->format, D3DPOOL_MANAGED,
+            &t->texture, NULL);
+        if (FAILED(hr)) {
+            g_logger.write("devicetexture: couldn't create texture for %s (%08lX)\n",
+                           img.name, (unsigned long)hr);
+            delete t;
+            return NULL;
+        }
+    }
+    if (!fill_texture(t, img)) {
+        DestroyTexture(t);
         return NULL;
     }
-
-    if (!upload_image(native_->dd, t->surface, img, pf)) {
-        t->surface->Release();
-        delete t;
-        return NULL;
-    }
-
-    hr = t->surface->QueryInterface(IID_IDirect3DTexture2, (void **)&t->texture);
-    if (hr < 0) {
-        g_logger.write("devicetexture: no Texture-Interface for %s\n", img.name);
-        t->surface->Release();
-        delete t;
-        return NULL;
-    }
-
-    ddiag_dump_surface("tex", img.name, t->surface);
     return t;
 }
 
@@ -255,13 +188,7 @@ bool RenderDevice::UpdateTexture(DeviceTexture *t, const Image &img)
 {
     if (t == NULL || img.width != t->width || img.height != t->height)
         return false;
-
-    // A lost surface (a mode switch, another application's full-screen)
-    // comes back empty and is refilled here.
-    HRESULT hr = t->surface->Restore();
-    if (hr < 0)
-        return false;
-    return upload_image(native_->dd, t->surface, img, t->format);
+    return fill_texture(t, img);
 }
 
 void RenderDevice::DestroyTexture(DeviceTexture *t)
@@ -270,60 +197,67 @@ void RenderDevice::DestroyTexture(DeviceTexture *t)
         return;
     if (t->texture != NULL)
         t->texture->Release();
-    if (t->surface != NULL)
-        t->surface->Release();
     delete t;
 }
 
-void RenderDevice::SetTexture(int stage, const DeviceTexture *tex)
-{
-    native_->device->SetTexture(stage, tex ? tex->texture : NULL);
-}
+// ── Images ──
+//
+// PresentImage's source: the image converted into a system-memory surface in
+// the display's format, copied to video memory and stretched over the back
+// buffer.
 
-/* ─── Images ───────────────────────────────────────────────────────────────
- *
- * PresentImage's source: an offscreen system-memory surface in the display's
- * own pixel format, filled from the image. */
-/* Converts img for the display and, if `blt`, copies it over the back buffer,
- * scaled to fit. */
-bool RenderDevice::BltImageToBackBuffer(const Image &img, bool blt)
+void RenderDevice::PresentImage(const Image &img)
 {
     Native *n = native_;
-    DDSURFACEDESC2 ddsd = {};
-    ddsd.dwSize = sizeof(ddsd);
-    if (FAILED(n->backBuffer->GetSurfaceDesc(&ddsd)))
-        return false;
-    const DDPIXELFORMAT pf = ddsd.ddpfPixelFormat;
-    if (pf.dwRGBBitCount != 16 && pf.dwRGBBitCount != 32)
-        return false;
+    const PixelFormat pf = d3d_pixel_format(d3d_display_format(mode_->dwBitDepth));
 
-    ddsd = DDSURFACEDESC2();
-    ddsd.dwSize         = sizeof(ddsd);
-    ddsd.dwFlags        = 7;  // CAPS | HEIGHT | WIDTH
-    ddsd.dwWidth        = (DWORD)img.width;
-    ddsd.dwHeight       = (DWORD)img.height;
-    ddsd.ddsCaps.dwCaps = 0x840;  // OFFSCREENPLAIN | SYSTEMMEMORY
-
-    IDirectDrawSurface4 *surf = NULL;
-    HRESULT hr = n->dd->CreateSurface(&ddsd, &surf, NULL);
-    ddiag_create_surface(hr, &ddsd);
-    if (hr < 0)
-        return false;
-
-    ddsd = DDSURFACEDESC2();
-    ddsd.dwSize = sizeof(ddsd);
-    hr = surf->Lock(NULL, &ddsd, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL);
-    ddiag_lock(hr, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, &ddsd);
-    if (hr < 0) {
-        surf->Release();
-        return false;
+    if (!n->device) {
+        if (!img.empty() && d3d_dump_enabled()) {
+            const long pitch = (long)img.width * (pf.bits / 8);
+            std::vector<uint8_t> buf((size_t)img.height * pitch);
+            PixelConvert_ToDisplay(img, pf, buf.data(), pitch);
+            d3d_dump_pixels("img", img.name, img.width, img.height, pf,
+                            buf.data(), pitch);
+        }
+        return;
     }
-    PixelConvert_ToDisplay(img, to_pixel_format(ddsd.ddpfPixelFormat),
-                           (uint8_t *)ddsd.lpSurface, ddsd.lPitch);
-    surf->Unlock(NULL);
 
-    ddiag_dump_surface("img", img.name, surf);
-    hr = blt ? n->backBuffer->Blt(NULL, surf, NULL, DDBLT_WAIT, NULL) : S_OK;
-    surf->Release();
-    return hr >= 0;
+    bool ok = false;
+    if (!img.empty()) {
+        if (n->imageW != img.width || n->imageH != img.height)
+            d3d_release_image_surfaces(n);
+        if (!n->imageSys &&
+            SUCCEEDED(n->device->CreateOffscreenPlainSurface(
+                img.width, img.height, n->displayFormat, D3DPOOL_SYSTEMMEM,
+                &n->imageSys, NULL)) &&
+            SUCCEEDED(n->device->CreateOffscreenPlainSurface(
+                img.width, img.height, n->displayFormat, D3DPOOL_DEFAULT,
+                &n->imageGpu, NULL))) {
+            n->imageW = img.width;
+            n->imageH = img.height;
+        }
+        D3DLOCKED_RECT lr;
+        if (n->imageW == img.width && n->imageGpu &&
+            SUCCEEDED(n->imageSys->LockRect(&lr, NULL, 0))) {
+            PixelConvert_ToDisplay(img, pf, (uint8_t *)lr.pBits, lr.Pitch);
+            d3d_dump_pixels("img", img.name, img.width, img.height, pf,
+                            (const uint8_t *)lr.pBits, lr.Pitch);
+            n->imageSys->UnlockRect();
+
+            IDirect3DSurface9 *back = NULL;
+            if (SUCCEEDED(n->device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &back))) {
+                ok = SUCCEEDED(n->device->UpdateSurface(n->imageSys, NULL, n->imageGpu, NULL))
+                  && SUCCEEDED(n->device->StretchRect(n->imageGpu, NULL, back, NULL,
+                                                      D3DTEXF_LINEAR));
+                back->Release();
+            }
+        }
+    }
+
+    Flip();
+
+    static LONG logged = 0;
+    if (InterlockedIncrement(&logged) <= 8)
+        g_logger.write("renderdevice: PresentImage %s %dx%d %s\n",
+                       img.name, img.width, img.height, ok ? "ok" : "not drawn");
 }

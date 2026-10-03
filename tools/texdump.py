@@ -9,8 +9,8 @@
 Every texture and image surface the loaders produce is hashed (name, size,
 pixel format, FNV-1a of the pixel bytes).  OUT.txt holds the sorted unique
 lines; diff two of them to see whether a loader change moved a pixel.  The
-replays run headless against the null device, whose texture-format list is
-Wine's (src/d3d/nullddraw.cpp).  --mode picks Karoo.cfg's display mode index
+replays run headless, which converts textures as a real device does
+(src/d3d/devicetexture.cpp).  --mode picks Karoo.cfg's display mode index
 (3 = 1024x768x32, 10 = 800x600x16); run/Karoo.cfg is put back afterwards.
 """
 import argparse, json, os, subprocess, sys
@@ -58,7 +58,7 @@ def main():
     ap.add_argument("--diff", nargs=2, metavar=("A", "B"))
     ap.add_argument("--mode", type=int)
     ap.add_argument("--no-headless", dest="headless", action="store_false",
-                    help="use the real DirectDraw (stock Wine ddraw, needs a display)")
+                    help="use the real Direct3D 9 device (needs a display)")
     ap.add_argument("--no-fast", dest="fast", action="store_false",
                     help="render for real; --fast skips PresentImage's Blt, so the "
                          "loading screens are never converted")
