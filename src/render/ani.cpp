@@ -1,10 +1,10 @@
 /* The .ani reader (LoadAnimationFile), the table lookup (LookupAnimDescriptor)
  * and the two frame evaluators (ani.h).
  *
- * FORMAT: a .ani is a plain-text table, opened in text mode and read with
- * fgets in 0x100-byte lines.  Per line:
- *   - "//" at the start is a comment; a bare "\n" is blank; both are skipped.
- *   - The line is split with strtok on " \t\n" into 0x100-byte token slots.
+ * FORMAT: a .ani is a plain-text table, opened in text mode and read a line
+ * at a time.  Per line:
+ *   - "//" at the start is a comment and a blank line is empty; both are skipped.
+ *   - The line is split into whitespace-separated tokens.
  *   - Fewer than 4 tokens: the line is ignored.
  *   - token[0] is lowercased and matched against 24 keywords; a match selects
  *     a slot in the destination table.
@@ -20,6 +20,9 @@
 
 #include <windows.h>
 #include "sysdev.h"
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -32,9 +35,6 @@
 #include <algorithm>
 #include <iterator>
 
-#define ANI_LINE_MAX     0x100
-#define ANI_TOKEN_SLOTS  64  // see the token loop
-#define ANI_TOKEN_SIZE   0x100
 #define ANI_LOG_FIRST    6
 
 /* Keyword -> slot offset, in compare order, not offset order: after
@@ -56,8 +56,6 @@ static const struct { const char *key; unsigned off; } ANI_SLOTS[] = {
 };
 #define ANI_SLOT_COUNT (sizeof(ANI_SLOTS) / sizeof(ANI_SLOTS[0]))
 
-static char s_tokens[ANI_TOKEN_SLOTS][ANI_TOKEN_SIZE];
-
 static bool fx_freeze(void)
 {
     static int cached = -1;
@@ -71,20 +69,15 @@ static bool fx_freeze(void)
     return cached != 0;
 }
 
-/* 'A'..'Z' += 0x20, in place. */
-static char *ani_strlwr(char *s)
+/* 'A'..'Z' += 0x20. */
+static char ani_lower(char c)
 {
-    for (char *p = s; *p; p++)
-        if (*p > '@' && *p < '[')
-            *p = (char)(*p + ' ');
-    return s;
+    return (c > '@' && c < '[') ? (char)(c + ' ') : c;
 }
 
 int AnimTable::load(const char *path)
 {
     unsigned char *table = (unsigned char *)this;
-    char line[ANI_LINE_MAX];
-    FILE *fp;
     static int logged = 0;
 
     *this = AnimTable();
@@ -92,73 +85,56 @@ int AnimTable::load(const char *path)
     if (path == NULL || path[0] == '\0')
         return 0;  // PRESERVED: after the table is cleared
 
-    fp = fopen(path, "r");
-    if (fp == NULL)
+    std::ifstream in(path);  // text mode: the CRT folds CRLF
+    if (!in)
         return 0;
 
-    while (!feof(fp)) {
-        char *tok;
+    std::string line;
+    while (std::getline(in, line)) {
+        if (line.compare(0, 2, "//") == 0)
+            continue;
+
+        std::istringstream words(line);
+        std::string tok[5];
         unsigned count = 0;
-        AnimSlot *slot = NULL;
-
-        if (fgets(line, ANI_LINE_MAX, fp) == NULL)
-            continue;  // PRESERVED: a read error that never sets EOF spins forever
-
-        for (auto &t : s_tokens)
-            std::fill(std::begin(t), std::end(t), 0);
-
-        if (line[0] == '/') {  // '/' then anything else is tokenised
-            if (line[1] == '/')
-                continue;
-        } else if (line[0] == '\n') {
-            continue;
-        }
-
-        tok = strtok(line, " \t\n");
-        if (tok == NULL)
-            continue;
-        // PRESERVED: no bound on the token count or length.  More than 16
-        // tokens overran the original's buffer; ANI_TOKEN_SLOTS is sized so
-        // that every line that did not overrun reads the same.  No shipped
-        // .ani line has more than 6.
-        while (tok != NULL) {
-            if (count < ANI_TOKEN_SLOTS)
-                sprintf(s_tokens[count], "%s", tok);
-            count++;
-            tok = strtok(NULL, " \t\n");
-        }
+        for (std::string w; words >> w; count++)
+            if (count < 5)
+                tok[count] = w;
 
         if (count <= 3)
             continue;
 
+        AnimSlot *slot = NULL;
+        std::transform(tok[0].begin(), tok[0].end(), tok[0].begin(), ani_lower);
         for (unsigned i = 0; i < ANI_SLOT_COUNT; i++) {
-            if (strcmp(ani_strlwr(s_tokens[0]), ANI_SLOTS[i].key) == 0) {
-                slot = (AnimSlot *)(table + ANI_SLOTS[i].off);  // token[0] is lowercased again for every keyword
+            if (tok[0] == ANI_SLOTS[i].key) {
+                slot = (AnimSlot *)(table + ANI_SLOTS[i].off);
                 break;
             }
         }
         if (slot == NULL)
             continue;
 
-        slot->firstFrame_ = atoi(s_tokens[1]);
-        slot->numFrames_  = atoi(s_tokens[2]);
-        slot->fps_        = atoi(s_tokens[3]);
+        slot->firstFrame_ = atoi(tok[1].c_str());
+        slot->numFrames_  = atoi(tok[2].c_str());
+        slot->fps_        = atoi(tok[3].c_str());
 
         if (fx_freeze())
             slot->numFrames_ = 1;  // hold the first frame
 
-        if (count > 4 && strcmp(ani_strlwr(s_tokens[4]), "r") == 0)
-            slot->reverse_ = 1;
+        if (count > 4) {
+            std::transform(tok[4].begin(), tok[4].end(), tok[4].begin(), ani_lower);
+            if (tok[4] == "r")
+                slot->reverse_ = 1;
+        }
     }
-
-    fclose(fp);
 
     // KAROO_ANI_DUMP=<path>: the whole table, hashed, for comparison against
     // an independent parse.
     {
         char dump[MAX_PATH];
         if (sysdev::getEnv("KAROO_ANI_DUMP", dump, sizeof(dump))) {
-            FILE *h = fopen(dump, "ab");
+            std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {
                 unsigned long hash = 2166136261UL;
                 for (unsigned i = 0; i < sizeof(AnimTable); i++) {
@@ -167,8 +143,7 @@ int AnimTable::load(const char *path)
                 }
                 char l[768];
                 int n = snprintf(l, sizeof(l), "%s table=%08lx\r\n", path, hash);
-                fwrite(l, 1, n, h);
-                fclose(h);
+                h.write(l, n);
             }
         }
     }

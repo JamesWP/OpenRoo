@@ -5,11 +5,12 @@
  * files the game cannot read.
  *
  * PRESERVED:
- *   - The reader ignores fread's result and reads each byte into the same
+ *   - The reader ignores read's result and reads each byte into the same
  *     variable, so a short file repeats its last byte to the end.
  *   - The path is formatted unbounded into a 128-byte buffer. */
 #include <stdint.h>
 #include "sysdev.h"
+#include <fstream>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -57,19 +58,18 @@ int HighScoreTable::readFile(const char *name, char key)
     unsigned char b = 0;  // PRESERVED: never re-initialised between reads
 
     sprintf(path, "%s\\Highscores\\%s.hsc", g_gameDir, name);
-    FILE *fp = fopen(path, "r");
-    if (fp == NULL) {
+    std::ifstream in(path);  // text mode, as the original wrote it
+    if (!in) {
         ps_log("hsc load", path, 0);
         return 0;
     }
     for (unsigned r = 0; r < count_; r++) {
         for (unsigned i = 0; i < HSC_ENTRY_SIZE; i++) {
-            fread(&b, 1, 1, fp);
+            in.read(reinterpret_cast<char *>(&b), 1);
             rec[i] = (unsigned char)(b - (unsigned char)key);
         }
         hsc_decode(&records_[r], rec);
     }
-    fclose(fp);
     ps_log("hsc load", path, 1);
     return 1;
 }
@@ -80,8 +80,8 @@ int HighScoreTable::writeFile(const char *name, char key)
     char path[128];
 
     sprintf(path, "%s\\Highscores\\%s.hsc", g_gameDir, name);
-    FILE *fp = fopen(path, "w+");
-    if (fp == NULL) {
+    std::ofstream outFile(path);  // text mode, as the original wrote it
+    if (!outFile) {
         ps_log("hsc save", path, 0);
         return 0;
     }
@@ -89,10 +89,10 @@ int HighScoreTable::writeFile(const char *name, char key)
         hsc_encode(&records_[r], rec);
         for (unsigned i = 0; i < HSC_ENTRY_SIZE; i++) {
             unsigned char out = (unsigned char)(rec[i] + (unsigned char)key);
-            fwrite(&out, 1, 1, fp);
+            outFile.write(reinterpret_cast<const char *>(&out), 1);
         }
     }
-    fclose(fp);
+    outFile.close();
     ps_log("hsc save", path, 1);
     return 1;
 }
