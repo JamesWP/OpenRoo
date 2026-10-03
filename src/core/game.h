@@ -162,8 +162,6 @@ public:
     /* The level's map (levelmap.h): its header and both tile grids. */
     LevelMap       *map()            { return &map_; }
     const LevelMap *map() const      { return &map_; }
-    /* The base Tile::at() indexes from -- the grid's first cell.  Objects keep
-     * their own copy. */
     /* Gems the level requires (Player::gemsCollected is the other side). */
     int            gemsRequired() const { return map_.gemsRequired(); }
 

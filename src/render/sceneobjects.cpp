@@ -19,7 +19,7 @@
  *
  * Rotation matrices are built row-major, in the transpose of D3DX's usual
  * convention; multiplication and SetTransform follow that convention
- * throughout.  The tile under a position is Tile::at(map, (int)x, -(int)z). */
+ * throughout.  The tile under a position is map->tile((int)x, -(int)z). */
 
 #include "renderdevice.h"
 #include <stdint.h>
