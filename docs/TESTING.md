@@ -313,8 +313,9 @@ to be detected). Frames then run at roughly 230 fps and the two-recording suite
 takes **35 s instead of 102 s**.
 
 The wait is below Wine: passing `DDFLIP_NOVSYNC` through the ddraw proxy was
-tried first and changed nothing (that was when the backend was DirectDraw; it
-is Direct3D 9 now, and presents with the default interval). The game has no
+tried first and changed nothing.  The backend is Direct3D 9 now (DXVK under
+Proton), where those driver switches do not reach the present, so the harness
+also sets `KAROO_NOVSYNC=1`, which makes the device present immediately. The game has no
 vsync option of its own.
 
 This changes when a finished frame reaches the screen, not what is in it — every

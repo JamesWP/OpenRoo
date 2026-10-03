@@ -198,6 +198,7 @@ VSYNC_OFF = {
     "vblank_mode": "0",                       # Mesa OpenGL
     "MESA_VK_WSI_PRESENT_MODE": "immediate",  # Mesa Vulkan WSI
     "__GL_SYNC_TO_VBLANK": "0",               # NVIDIA OpenGL
+    "KAROO_NOVSYNC": "1",                     # the game's own Direct3D 9 present interval
 }
 
 
