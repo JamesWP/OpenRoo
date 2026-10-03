@@ -11,7 +11,9 @@
 #include <stdint.h>
 #include "faktmesh.h"
 #include "sysdev.h"
+#include <fstream>
 #include <stdio.h>
+#include "binio.h"
 #include <string.h>
 #include "logger.h"
 #include "gamestr.h"
@@ -169,7 +171,6 @@ static unsigned long fnv1a(const void *p, unsigned len)
 
 int CFaktMesh::importSceneModels(const char *path)
 {
-    FILE *fp;
     unsigned frames, verts, total;
     static int logged = 0;
 
@@ -177,15 +178,15 @@ int CFaktMesh::importSceneModels(const char *path)
     // mesh cleared, not unchanged.
     releaseModelBuffers();
 
-    fp = fopen(path, "rb");
-    if (fp == NULL)
+    std::ifstream in(path, std::ios::binary);
+    if (!in)
         return 0;
 
     // PRESERVED: no read is checked, and neither is the file's size: a
     // truncated .mdl leaves the rest of the vertices zero and still returns 1.
     // A NULL allocation is stored and then read into.
-    fread(&wFrameCount_,   2, 1, fp);
-    fread(&dwVertexCount_, 4, 1, fp);
+    readBytes(in, &wFrameCount_,   2);
+    readBytes(in, &dwVertexCount_, 4);
 
     frames = wFrameCount_;
     verts  = dwVertexCount_;
@@ -197,12 +198,12 @@ int CFaktMesh::importSceneModels(const char *path)
     for (unsigned f = 0; f < (frames & 0xffff); f++) {
         unsigned char *rec = (unsigned char *)&frameRecords_[f];
         for (int i = 0; i < 6; i++)
-            fread(rec + i * 4, 4, 1, fp);
+            readBytes(in, rec + i * 4, 4);
 
         for (unsigned v = 0; v < dwVertexCount_; v++) {
             unsigned char *vert = (unsigned char *)&vertexData_[f * dwVertexCount_ + v];
             for (int i = 0; i < 10; i++)
-                fread(vert + i * 4, 4, 1, fp);
+                readBytes(in, vert + i * 4, 4);
 
             if (fx_scale()) {
                 ((float *)vert)[0] *= 0.5f;
@@ -212,8 +213,6 @@ int CFaktMesh::importSceneModels(const char *path)
         }
     }
 
-    fclose(fp);
-
     pszName_ = path;
 
     // KAROO_MDL_DUMP=<path>: one line per load, the two heap buffers hashed
@@ -222,15 +221,14 @@ int CFaktMesh::importSceneModels(const char *path)
     {
         char dump[MAX_PATH];
         if (sysdev::getEnv("KAROO_MDL_DUMP", dump, sizeof(dump))) {
-            FILE *h = fopen(dump, "ab");
+            std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {
                 char line[512];
                 int n = snprintf(line, sizeof(line), "%s frames=%u verts=%u rec=%08lx vtx=%08lx\r\n",
                                   path, frames, verts,
                                   fnv1a(frameRecords_.data(), frames * MDL_FRAME_REC_SIZE),
                                   fnv1a(vertexData_.data(), total  * MDL_VERTEX_SIZE));
-                fwrite(line, 1, n, h);
-                fclose(h);
+                h.write(line, n);
             }
         }
     }
