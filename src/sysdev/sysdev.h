@@ -1,5 +1,5 @@
 /* The platform system layer: clocks, the local date and time, the executable's
- * path and the crash logger.  The only code that may call the system's own
+ * directory and the crash logger.  The only code that may call the system's own
  * timing, time-of-day and exception APIs; the header is opaque and free of
  * platform headers, so a port replaces the .cpp files beside it. */
 #pragma once
@@ -36,7 +36,8 @@ unsigned getEnv(const char *name, char *buf, unsigned size);
 /* The environment variable name, or an empty string if it is unset or empty. */
 std::string getEnv(const char *name);
 
-/* The running executable's path, or an empty string if it is unknown. */
-std::string executablePath();
+/* The directory the executable lives in, with a trailing separator, or an
+ * empty string if it is unknown. */
+std::string executableDir();
 
 }  // namespace sysdev

@@ -1,6 +1,7 @@
-#include <windows.h>
+#include <SDL3/SDL.h>
+#include <atomic>
+#include <stdlib.h>
 #include "windev.h"
-#include "resources.h"
 
 namespace windev {
 
@@ -8,38 +9,71 @@ static LogFn g_log = NULL;
 void setLog(LogFn fn) { g_log = fn; }
 #define WD_LOG(...) do { if (g_log) g_log(__VA_ARGS__); } while (0)
 
+static WindowHandler *g_handler;
+static SDL_Window *g_sdlWindow;
+static bool g_closed;
+static std::atomic<bool> g_quit(false);
+static std::atomic<int>  g_exitCode(0);
+
 bool messageBox(void *parent, const char *text, const char *title,
                 Buttons buttons, Icon icon)
 {
-    UINT flags = (buttons == Buttons::OkCancel ? MB_OKCANCEL : MB_OK)
-               | (icon == Icon::Error ? MB_ICONHAND : 0);
-    return MessageBoxA((HWND)parent, text, title, flags) != IDCANCEL;
-}
-
-static WindowHandler *g_handler;
-
-static LRESULT CALLBACK window_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    if (g_handler) {
-        switch (msg) {
-        case WM_DESTROY:
-            g_handler->onDestroyed();
-            break;
-        case WM_ACTIVATE:
-            // Exactly WA_ACTIVE: a click activation (2) counts as losing focus.
-            g_handler->onActivate((WORD)wParam == WA_ACTIVE);
-            break;
-        case WM_KEYUP:
-            g_handler->onKeyUp();
-            break;
-        }
-        if (g_handler->onNativeMessage(msg, wParam, lParam))
-            return 0;
+    SDL_Window *owner = parent ? g_sdlWindow : NULL;
+    SDL_MessageBoxFlags flags = icon == Icon::Error ? SDL_MESSAGEBOX_ERROR
+                                                    : SDL_MESSAGEBOX_INFORMATION;
+    if (buttons == Buttons::Ok) {
+        SDL_ShowSimpleMessageBox(flags, title, text, owner);
+        return true;
     }
-    return DefWindowProcA(hWnd, msg, wParam, lParam);
+
+    SDL_MessageBoxButtonData btn[2] = {
+        { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "OK" },
+        { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "Cancel" },
+    };
+    SDL_MessageBoxData box = { flags, owner, title, text, 2, btn, NULL };
+    int pressed = 0;
+    return SDL_ShowMessageBox(&box, &pressed) && pressed == 1;
 }
 
-Window::Window() : handle_(NULL)
+/* The window is closed once: by its close button, a quit signal, or
+ * requestClose. */
+static void close_window()
+{
+    if (g_closed)
+        return;
+    g_closed = true;
+    if (g_sdlWindow) {
+        SDL_DestroyWindow(g_sdlWindow);
+        g_sdlWindow = NULL;
+    }
+    if (g_handler)
+        g_handler->onDestroyed();
+}
+
+static void dispatch(const SDL_Event &e)
+{
+    switch (e.type) {
+    case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        if (g_handler) g_handler->onActivate(true);
+        break;
+    case SDL_EVENT_WINDOW_FOCUS_LOST:
+        if (g_handler) g_handler->onActivate(false);
+        break;
+    case SDL_EVENT_KEY_UP:
+        if (g_handler) g_handler->onKeyUp();
+        break;
+    case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+    case SDL_EVENT_QUIT:
+        close_window();
+        break;
+    case SDL_EVENT_USER:
+        if (g_handler)
+            g_handler->onNativeMessage((unsigned)e.user.code, 0, 0);
+        break;
+    }
+}
+
+Window::Window() : handle_(NULL), sdl_(NULL)
 {
 }
 
@@ -51,116 +85,98 @@ bool Window::create(WindowHandler *handler,
                     const WindowConfig &config)
 {
     g_handler = handler;
-    HINSTANCE instance = GetModuleHandle(NULL);
-
-    WNDCLASSA wc;
-    wc.style         = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc   = window_proc;
-    wc.cbClsExtra    = 0;
-    wc.cbWndExtra    = 0;
-    wc.hInstance     = instance;
-    wc.hIcon         = LoadIconA(Resources_Module(), MAKEINTRESOURCEA(0x6a));
-    wc.hCursor       = LoadCursorA(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-    wc.lpszMenuName  = NULL;
-    wc.lpszClassName = "Karoo";
-    if (RegisterClassA(&wc) == 0)
+    g_closed  = false;
+    // Events are enough for a run with no display: the video system is what
+    // needs a display server.
+    if (!SDL_Init(config.messageOnly ? SDL_INIT_EVENTS : SDL_INIT_VIDEO)) {
+        WD_LOG("windev: SDL_Init failed: %s\n", SDL_GetError());
         return false;
-
-    HWND hwnd;
-    if (config.messageOnly) {
-        // A window parented to HWND_MESSAGE never goes near the display
-        // driver: no frame, position or visibility, but a handle, a window
-        // procedure and a message queue.  That is what a run with no display
-        // needs, and the only kind that can be created when no display
-        // server is running.
-        hwnd = CreateWindowExA(0, "Karoo", config.title, WS_POPUP,
-                               0, 0, config.width, config.height,
-                               HWND_MESSAGE, NULL, instance, NULL);
-        WD_LOG("windev: message-only window hwnd=%p\n", (void *)hwnd);
-    } else {
-        hwnd = CreateWindowExA(WS_EX_APPWINDOW, "Karoo", config.title, WS_POPUP,
-                               0, 0, config.width, config.height,
-                               NULL, NULL, instance, NULL);
     }
-    handle_ = hwnd;
-    return hwnd != NULL;
+    // Closing the window is the game's to act on (onDestroyed), not SDL's.
+    SDL_SetHint(SDL_HINT_QUIT_ON_LAST_WINDOW_CLOSE, "0");
+
+    if (config.messageOnly) {
+        WD_LOG("windev: no window (headless)\n");
+        return true;
+    }
+
+    SDL_Window *win = SDL_CreateWindow(config.title, config.width, config.height,
+                                       SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN);
+    if (!win) {
+        WD_LOG("windev: SDL_CreateWindow failed: %s\n", SDL_GetError());
+        return false;
+    }
+    SDL_SetWindowPosition(win, 0, 0);
+    g_sdlWindow = win;
+    sdl_        = win;
+    handle_     = SDL_GetPointerProperty(SDL_GetWindowProperties(win),
+                                         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+    return true;
 }
 
 void Window::destroy()
 {
-    if (handle_)
-        DestroyWindow((HWND)handle_);
-    handle_ = NULL;
+    if (g_sdlWindow)
+        SDL_DestroyWindow(g_sdlWindow);
+    g_sdlWindow = NULL;
+    handle_ = sdl_ = NULL;
 }
 
 void Window::show(bool visible)
 {
-    ShowWindow((HWND)handle_, visible ? SW_SHOW : SW_HIDE);
-    if (!visible)
-        UpdateWindow((HWND)handle_);
+    if (!g_sdlWindow)
+        return;
+    if (visible)
+        SDL_ShowWindow(g_sdlWindow);
+    else
+        SDL_HideWindow(g_sdlWindow);
 }
 
-/* Every pending message is handled before each idle() call.  WM_QUIT is only
- * delivered once the queue is otherwise empty, so handling one message per
- * frame meant a quit could run any number of extra frames behind whatever else
- * was queued.  Stopping the music posts such a message (MM_MCINOTIFY), which
- * made the frame count of a run depend on whether music was on. */
+/* Every pending event is handled before each idle() call, and a quit is
+ * acted on once the queue is empty, so the frame count of a run does not
+ * depend on what else happened to be queued. */
 int runMessageLoop(void (*idle)())
 {
-    MSG msg;
+    SDL_Event e;
     for (;;) {
-        while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
-            if (msg.message == WM_QUIT)
-                return (int)msg.wParam;
-            TranslateMessage(&msg);
-            DispatchMessageA(&msg);
-        }
+        while (SDL_PollEvent(&e))
+            dispatch(e);
+        if (g_quit)
+            return g_exitCode;
         idle();
     }
 }
 
 void quit(int exitCode)
 {
-    PostQuitMessage(exitCode);
-}
-
-/* The process's visible, unowned top-level window. */
-static BOOL CALLBACK find_main_window(HWND hwnd, LPARAM lp)
-{
-    DWORD pid = 0;
-    GetWindowThreadProcessId(hwnd, &pid);
-    if (pid == GetCurrentProcessId() && !GetWindow(hwnd, GW_OWNER) && IsWindowVisible(hwnd)) {
-        *(HWND *)lp = hwnd;
-        return FALSE;
-    }
-    return TRUE;
+    g_exitCode = exitCode;
+    g_quit = true;
 }
 
 void requestClose()
 {
-    HWND hwnd = NULL;
-    EnumWindows(find_main_window, (LPARAM)&hwnd);
-    if (hwnd) {
-        WD_LOG("windev: posting WM_CLOSE to hwnd %p\n", (void *)hwnd);
-        PostMessage(hwnd, WM_CLOSE, 0, 0);
+    SDL_Window *win = g_sdlWindow;
+    if (win && !(SDL_GetWindowFlags(win) & SDL_WINDOW_HIDDEN)) {
+        WD_LOG("windev: posting a close request\n");
+        SDL_Event e = {};
+        e.type = SDL_EVENT_WINDOW_CLOSE_REQUESTED;
+        e.window.windowID = SDL_GetWindowID(win);
+        SDL_PushEvent(&e);
     } else {
-        WD_LOG("windev: no main window found, calling ExitProcess\n");
-        ExitProcess(0);
+        WD_LOG("windev: no main window found, exiting\n");
+        _Exit(0);
     }
 }
 
-static DWORD WINAPI close_thread(LPVOID param)
+static Uint32 SDLCALL close_timer(void *, SDL_TimerID, Uint32)
 {
-    Sleep((DWORD)(ULONG_PTR)param);
     requestClose();
     return 0;
 }
 
 void requestCloseAfter(unsigned milliseconds)
 {
-    CloseHandle(CreateThread(NULL, 0, close_thread,
-                             (LPVOID)(ULONG_PTR)milliseconds, 0, NULL));
+    SDL_AddTimer(milliseconds, close_timer, NULL);
 }
 
 }  // namespace windev

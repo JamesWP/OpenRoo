@@ -1,4 +1,4 @@
-#include <windows.h>
+#include <SDL3/SDL.h>
 #include "videodev.h"
 
 namespace videodev {
@@ -7,8 +7,8 @@ static LogFn g_log = NULL;
 void setLog(LogFn fn) { g_log = fn; }
 #define VD_LOG(...) do { if (g_log) g_log(__VA_ARGS__); } while (0)
 
-/* Posted to the window when the movie ends. */
-static const unsigned MOVIE_ENDED = 0x464;
+/* The SDL user event code the window passes on when the movie ends. */
+static const int MOVIE_ENDED = 0x464;
 
 Player::Player() : window_(NULL), playing_(false)
 {
@@ -30,7 +30,10 @@ bool Player::load(void *window, const char *path)
 void Player::play()
 {
     VD_LOG("videodev: play\n");
-    PostMessageA((HWND)window_, MOVIE_ENDED, 0, 0);
+    SDL_Event e = {};
+    e.type = SDL_EVENT_USER;
+    e.user.code = MOVIE_ENDED;
+    SDL_PushEvent(&e);
 }
 
 void Player::pause()
@@ -46,7 +49,7 @@ void Player::skip()
 
 bool Player::handleWindowMessage(unsigned msg, unsigned long, long)
 {
-    if (msg != MOVIE_ENDED)
+    if (msg != (unsigned)MOVIE_ENDED)
         return false;
     playing_ = false;
     return true;

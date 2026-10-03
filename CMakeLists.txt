@@ -11,6 +11,19 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 add_compile_options(-Wall -Wextra)
 
+# SDL3 (tools/fetch_sdl3.sh), the platform groups' only dependency besides
+# Direct3D.  Imported, so only the groups that name it see its headers.
+set(SDL3_ROOT "${PROJECT_SOURCE_DIR}/third_party/SDL3" CACHE PATH "SDL3 MinGW development package")
+set(SDL3_PREFIX "${SDL3_ROOT}/x86_64-w64-mingw32")
+if(NOT EXISTS "${SDL3_PREFIX}/lib/libSDL3.dll.a")
+    message(FATAL_ERROR "SDL3 not found in ${SDL3_ROOT}: run tools/fetch_sdl3.sh or pass -DSDL3_ROOT")
+endif()
+add_library(sdl3 SHARED IMPORTED)
+set_target_properties(sdl3 PROPERTIES
+    IMPORTED_IMPLIB "${SDL3_PREFIX}/lib/libSDL3.dll.a"
+    IMPORTED_LOCATION "${SDL3_PREFIX}/bin/SDL3.dll"
+    INTERFACE_INCLUDE_DIRECTORIES "${SDL3_PREFIX}/include")
+
 # One directory under src/ is one group.  A group's include path is its own
 # folder plus its dependencies' (private), so the lists in src/*/CMakeLists.txt
 # are the layering and the compiler enforces them.  Today's lists are the
@@ -26,6 +39,15 @@ target_include_directories(KarooOwn PRIVATE src/app)
 target_link_libraries(KarooOwn PRIVATE
     app audio audiodev core d3d entities input inputdev level render testing ui videodev windev sysdev log
     -static-libgcc -static-libstdc++ -static)
+
+# SDL3.dll next to the executable (launch.sh copies both into run/).
+add_custom_command(TARGET KarooOwn POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SDL3_PREFIX}/bin/SDL3.dll" $<TARGET_FILE_DIR:KarooOwn>)
+
+# Only the platform groups may include SDL.
+add_custom_target(check-native-sdl ALL
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeSDL.cmake)
+add_dependencies(KarooOwn check-native-sdl)
 
 # Only the audiodev group may include the system audio headers.
 add_custom_target(check-native-audio ALL

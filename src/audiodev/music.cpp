@@ -1,25 +1,16 @@
-#include <windows.h>
-#include <mmsystem.h>
-#include <stdio.h>
-#include <string.h>
-#include "audiodev.h"
-#include "dsound_internal.h"
+#include "sdl_internal.h"
 
 namespace audiodev {
 
-/* Played through MCI waveaudio under the alias "km".  The window gets
- * MM_MCINOTIFY when a track ends. */
+/* The track plays on a logical device of its own, mixed by SDL with the
+ * sound effects'; a repeating track refills its own stream, so nothing here
+ * waits on the window. */
 struct MusicState {
-    HWND window;
-    bool repeat;
-    char path[MAX_PATH];  // the track playing, to restart it
+    std::unique_ptr<Voice> voice;
 };
 
 Music::Music() : state_(new MusicState())
 {
-    state_->window = NULL;
-    state_->repeat = false;
-    state_->path[0] = '\0';
 }
 
 Music::~Music()
@@ -28,53 +19,42 @@ Music::~Music()
     delete state_;
 }
 
-void Music::setWindow(void *window)
+void Music::setWindow(void *)
 {
-    state_->window = (HWND)window;
-}
-
-static void close_device()
-{
-    mciSendStringA("stop km", NULL, 0, NULL);
-    mciSendStringA("close km", NULL, 0, NULL);
 }
 
 void Music::play(const char *path, bool repeat)
 {
-    close_device();
+    stop();
 
-    state_->repeat = repeat;
-    snprintf(state_->path, sizeof(state_->path), "%s", path);
-
-    char cmd[MAX_PATH + 64];
-    snprintf(cmd, sizeof(cmd), "open \"%s\" type waveaudio alias km", path);
-    MCIERROR err = mciSendStringA(cmd, NULL, 0, NULL);
-    if (err) {
-        AD_LOG("audiodev: Music open failed err=%lu\n", err);
+    auto wav = std::make_shared<Wav>();
+    if (!loadWav(path, wav.get()))
+        return;
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
+        AD_LOG("audiodev: Music: SDL_INIT_AUDIO failed: %s\n", SDL_GetError());
         return;
     }
-
-    // Plays without blocking; the window gets MM_MCINOTIFY when it ends.
-    mciSendStringA("play km notify", NULL, 0, state_->window);
+    state_->voice.reset(new Voice(0, wav));
+    if (!state_->voice->ok()) {
+        AD_LOG("audiodev: Music open failed\n");
+        state_->voice.reset();
+        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+        return;
+    }
+    state_->voice->start(repeat);
 }
 
 void Music::stop()
 {
-    // Clear repeat so a pending notification does not restart it.
-    state_->repeat = false;
-    close_device();
+    if (state_->voice) {
+        state_->voice.reset();
+        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    }
 }
 
-bool Music::handleWindowMessage(unsigned msg, unsigned long wParam, long)
+bool Music::handleWindowMessage(unsigned, unsigned long, long)
 {
-    if (msg != MM_MCINOTIFY)
-        return false;
-    if (wParam == MCI_NOTIFY_SUCCESSFUL && state_->repeat) {
-        char path[MAX_PATH];
-        snprintf(path, sizeof(path), "%s", state_->path);
-        play(path, true);
-    }
-    return true;
+    return false;
 }
 
 }  // namespace audiodev
