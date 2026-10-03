@@ -190,7 +190,9 @@ int ExtraObjects::openFile(const char *name)
 
             parseEntry(s_entry);
 
-            in.get();  // the character after the ';', discarded
+            // The character after the ';', discarded: the CRLF's '\n', the '\r'
+            // being dropped here as everywhere else.
+            while (in.get(c) && c == '\r') {}
         } else {
             s_entry[idx & 0xffff] = c;  // PRESERVED: masked to 16 bits
             idx++;
