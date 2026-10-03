@@ -1,5 +1,4 @@
 add_library(core OBJECT
-    assetio.cpp
     clock.cpp
     determinism.cpp
     game.cpp
