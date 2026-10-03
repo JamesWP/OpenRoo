@@ -47,7 +47,7 @@ static bool winmain_fx_norender()
 {
     char buf[16];
     bool on = sysdev::getEnv("KAROO_WINMAIN_FX", buf, sizeof(buf))
-              && lstrcmpiA(buf, "norender") == 0;
+              && strcaseCompare(buf, "norender") == 0;
     g_logger.write("winmain: FX mode = %s\n", on ? "norender" : "off");
     return on;
 }
@@ -104,7 +104,7 @@ static bool wndproc_fx_noquit()
     if (cached < 0) {
         char buf[16];
         cached = sysdev::getEnv("KAROO_WNDPROC_FX", buf, sizeof(buf))
-                 && lstrcmpiA(buf, "noquit") == 0;
+                 && strcaseCompare(buf, "noquit") == 0;
         g_logger.write("wndproc: FX mode = %s\n", cached ? "noquit" : "off");
     }
     return cached != 0;
@@ -244,8 +244,8 @@ int Main_WinMain(const char *lpCmdLine)
     Render_ConfigureRenderState();
     hooks_ClockInit();
 
-    // MAX_PATH-sized, so a long install path cannot overflow it.
-    char path[MAX_PATH + 32];
+    // kMaxPath-sized, so a long install path cannot overflow it.
+    char path[kMaxPath + 32];
     snprintf(path, sizeof(path), "%s\\Video\\intro.avi", g_gameDir);
     if (g_movie.load(hWnd, path))
         g_movie.play();

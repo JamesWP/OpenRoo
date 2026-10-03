@@ -37,7 +37,7 @@ static int fx_is(const char *mode)
 {
     char buf[64];
     uint32_t n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    return (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, mode) == 0) ? 1 : 0;
+    return (n > 0 && n < sizeof(buf) && strcaseCompare(buf, mode) == 0) ? 1 : 0;
 }
 
 static int fx_blindfoe(void)

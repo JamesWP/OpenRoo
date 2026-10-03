@@ -151,7 +151,7 @@ void ProgableControl::getBindingStr(int mode, const char *name,
 
     bool first = true;
     for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
-        char keyname[MAX_PATH] = "?";
+        char keyname[kMaxPath] = "?";
         devices_.keyName(kb->scancode, keyname, sizeof(keyname));
         if (!first) {
             size_t cur = strlen(buf), sep = strlen(sep_or);

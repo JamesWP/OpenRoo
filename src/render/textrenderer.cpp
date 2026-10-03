@@ -68,9 +68,9 @@ static TextFx text_fx(void)
     uint32_t n = sysdev::getEnv("KAROO_TEXT_FX", buf, sizeof(buf));
     TextFx fx = TEXT_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
-        if (lstrcmpiA(buf, "mirror") == 0)   fx = TEXT_FX_MIRROR;
-        if (lstrcmpiA(buf, "loadswap") == 0) fx = TEXT_FX_LOADSWAP;
-        if (lstrcmpiA(buf, "bigwave") == 0)  fx = TEXT_FX_BIGWAVE;
+        if (strcaseCompare(buf, "mirror") == 0)   fx = TEXT_FX_MIRROR;
+        if (strcaseCompare(buf, "loadswap") == 0) fx = TEXT_FX_LOADSWAP;
+        if (strcaseCompare(buf, "bigwave") == 0)  fx = TEXT_FX_BIGWAVE;
     }
     g_logger.write("textrenderer: FX mode = %s\n",
               fx == TEXT_FX_MIRROR   ? "mirror" :
@@ -89,7 +89,7 @@ static bool text_diag(void)
     if (cached < 0) {
         char buf[32];
         uint32_t n = sysdev::getEnv("KAROO_TEXT_DIAG", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
+        cached = (n > 0 && n < sizeof(buf) && strcaseCompare(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;
 }

@@ -180,7 +180,7 @@ void gamestate_dump(const char *reason)
     static bool dumped = false;
     if (dumped) return;  // the first, most live, wins
 
-    char path[MAX_PATH];
+    char path[kMaxPath];
     if (!sysdev::getEnv("KAROO_STATE_DUMP", path, sizeof(path)) || !path[0])
         return;
     dumped = true;

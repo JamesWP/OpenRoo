@@ -57,7 +57,7 @@ static void fx_init(void)
     s_init = 1;
 
     if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
-        if (lstrcmpiA(buf, "slowfall") == 0) {
+        if (strcaseCompare(buf, "slowfall") == 0) {
             s_fx_slowfall = 1;
             g_logger.write("breakabletile: KAROO_SIM_FX=slowfall -- fall delay "
                       "%.0f ms, not %.0f\n",

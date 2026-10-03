@@ -1,5 +1,5 @@
-/* Small portable stand-ins for the Win32 helpers game code used to take from
- * <windows.h>: path buffer size, case-insensitive compare, interlocked
+/* Small portable stand-ins for the helpers game code used to take from the Win32 headers:
+ * path buffer size, case-insensitive compare, interlocked
  * counters and the virtual-key codes of the debug keys. */
 #pragma once
 
@@ -10,9 +10,9 @@
 #include <strings.h>
 #endif
 
-enum { MAX_PATH = 260 };
+enum { kMaxPath = 260 };
 
-inline int lstrcmpiA(const char *a, const char *b)
+inline int strcaseCompare(const char *a, const char *b)
 {
 #if defined(_WIN32)
     return _stricmp(a, b);
@@ -31,4 +31,4 @@ inline long atomicExchange(AtomicInt *a, long v) { return a->exchange(v); }
 inline void atomicAdd(AtomicInt *a, long v) { a->fetch_add(v); }
 
 /* Virtual-key codes for hooks_GetAsyncKeyState. */
-enum { VK_F1 = 0x70, VK_F3 = 0x72, VK_F4 = 0x73 };
+enum { kKeyF1 = 0x70, kKeyF3 = 0x72, kKeyF4 = 0x73 };

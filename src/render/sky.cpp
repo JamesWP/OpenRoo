@@ -30,7 +30,7 @@ static bool fx_one_quad(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_SKY_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "noskip") == 0);
+            cached = (strcaseCompare(buf, "noskip") == 0);
         g_logger.write("sky: FX mode = %s\n", cached ? "noskip (1 quad only)" : "off");
     }
     return cached != 0;

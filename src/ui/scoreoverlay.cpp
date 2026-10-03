@@ -54,8 +54,8 @@ static ScoreFx score_fx(void)
     uint32_t n = sysdev::getEnv("KAROO_SCORE_FX", buf, sizeof(buf));
     ScoreFx fx = SCORE_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
-        if (lstrcmpiA(buf, "tint") == 0)        fx = SCORE_FX_TINT;
-        else if (lstrcmpiA(buf, "nodraw") == 0) fx = SCORE_FX_NODRAW;
+        if (strcaseCompare(buf, "tint") == 0)        fx = SCORE_FX_TINT;
+        else if (strcaseCompare(buf, "nodraw") == 0) fx = SCORE_FX_NODRAW;
     }
     g_logger.write("scoreoverlay: FX mode = %s\n",
                fx == SCORE_FX_TINT   ? "tint"   :

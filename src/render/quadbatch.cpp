@@ -25,7 +25,7 @@
 static void quad_dump(const void *data, uint32_t quads)
 {
     static AtomicInt calls = 0;
-    char path[MAX_PATH];
+    char path[kMaxPath];
     if (!sysdev::getEnv("KAROO_QUAD_DUMP", path, sizeof(path)))
         return;
     // Dumps the 200th gated draw, not the first: if the buffer is filled
@@ -65,8 +65,8 @@ static QuadFxMode quad_fx(void)
         char buf[16];
         cached = QUAD_FX_OFF;
         if (sysdev::getEnv("KAROO_QUAD_FX", buf, sizeof(buf))) {
-            if (lstrcmpiA(buf, "noalpha") == 0) cached = QUAD_FX_NOALPHA;
-            else if (lstrcmpiA(buf, "nodraw") == 0) cached = QUAD_FX_NODRAW;
+            if (strcaseCompare(buf, "noalpha") == 0) cached = QUAD_FX_NOALPHA;
+            else if (strcaseCompare(buf, "nodraw") == 0) cached = QUAD_FX_NODRAW;
         }
         g_logger.write("quadbatch: FX mode = %s\n",
                   cached == QUAD_FX_NOALPHA ? "noalpha" :

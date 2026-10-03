@@ -192,7 +192,7 @@ static unsigned int levelsetup_seed_fx(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_CRT_FX", buf, sizeof(buf)) &&
-            lstrcmpiA(buf, "seed") == 0)
+            strcaseCompare(buf, "seed") == 0)
             cached = 1;
         g_logger.write("levelsetup: CRT FX seed xor = %d\n", cached);
     }

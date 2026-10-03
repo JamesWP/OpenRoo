@@ -186,7 +186,7 @@ static void open_replay(const char *path)
 static void init(void)
 {
     if (g_mode >= 0) return;
-    char path[MAX_PATH];
+    char path[kMaxPath];
     g_mode = 0;
     read_env();
 

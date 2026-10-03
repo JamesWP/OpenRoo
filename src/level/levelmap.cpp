@@ -40,7 +40,7 @@ static bool fx_flipx(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_JJM_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "flipx") == 0);
+            cached = (strcaseCompare(buf, "flipx") == 0);
         g_logger.write("levelmap: FX mode = %s\n", cached ? "flipx" : "off");
     }
     return cached != 0;

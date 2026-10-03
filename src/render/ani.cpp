@@ -63,7 +63,7 @@ static bool fx_freeze(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_ANI_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "freeze") == 0);
+            cached = (strcaseCompare(buf, "freeze") == 0);
         g_logger.write("ani: FX mode = %s\n", cached ? "freeze" : "off");
     }
     return cached != 0;
@@ -132,7 +132,7 @@ int AnimTable::load(const char *path)
     // KAROO_ANI_DUMP=<path>: the whole table, hashed, for comparison against
     // an independent parse.
     {
-        char dump[MAX_PATH];
+        char dump[kMaxPath];
         if (sysdev::getEnv("KAROO_ANI_DUMP", dump, sizeof(dump))) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {

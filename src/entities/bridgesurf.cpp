@@ -61,9 +61,9 @@ static BridgeFxMode bridge_fx(void)
         char buf[16];
         cached = BRIDGE_FX_OFF;
         if (sysdev::getEnv("KAROO_BRIDGE_FX", buf, sizeof(buf))) {
-            if (lstrcmpiA(buf, "tint") == 0)          cached = BRIDGE_FX_TINT;
-            else if (lstrcmpiA(buf, "nodraw") == 0)   cached = BRIDGE_FX_NODRAW;
-            else if (lstrcmpiA(buf, "backward") == 0) cached = BRIDGE_FX_BACKWARD;
+            if (strcaseCompare(buf, "tint") == 0)          cached = BRIDGE_FX_TINT;
+            else if (strcaseCompare(buf, "nodraw") == 0)   cached = BRIDGE_FX_NODRAW;
+            else if (strcaseCompare(buf, "backward") == 0) cached = BRIDGE_FX_BACKWARD;
         }
         g_logger.write("bridgesurf: FX mode = %s\n",
                   cached == BRIDGE_FX_TINT     ? "tint" :

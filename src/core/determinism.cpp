@@ -104,7 +104,7 @@ static void fold_sub(int sub, const void *p, size_t n)
 bool dethash_enabled(void)
 {
     if (g_on < 0) {
-        char path[MAX_PATH];
+        char path[kMaxPath];
         g_on = 0;
         if (sysdev::getEnv("KAROO_HASH_LOG", path, sizeof(path)) && path[0]) {
             g_fh.open(path, std::ios::binary);

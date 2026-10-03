@@ -55,12 +55,12 @@ static SimFx sim_fx(void)
         const char *name = "off";
         cached = FX_NONE;
         if (sysdev::getEnv("KAROO_PARTICLE_FX", buf, sizeof(buf))) {
-            if (lstrcmpiA(buf, "gravity") == 0)       { cached = FX_GRAVITY;  name = "gravity";  }
-            else if (lstrcmpiA(buf, "nolife") == 0)   { cached = FX_NOLIFE;   name = "nolife";   }
-            else if (lstrcmpiA(buf, "antigrav") == 0) { cached = FX_ANTIGRAV; name = "antigrav"; }
-            else if (lstrcmpiA(buf, "burst") == 0)    { cached = FX_BURST;    name = "burst";    }
-            else if (lstrcmpiA(buf, "loadflip") == 0) { cached = FX_LOADFLIP; name = "loadflip"; }
-            else if (lstrcmpiA(buf, "fastemit") == 0) { cached = FX_FASTEMIT; name = "fastemit"; }
+            if (strcaseCompare(buf, "gravity") == 0)       { cached = FX_GRAVITY;  name = "gravity";  }
+            else if (strcaseCompare(buf, "nolife") == 0)   { cached = FX_NOLIFE;   name = "nolife";   }
+            else if (strcaseCompare(buf, "antigrav") == 0) { cached = FX_ANTIGRAV; name = "antigrav"; }
+            else if (strcaseCompare(buf, "burst") == 0)    { cached = FX_BURST;    name = "burst";    }
+            else if (strcaseCompare(buf, "loadflip") == 0) { cached = FX_LOADFLIP; name = "loadflip"; }
+            else if (strcaseCompare(buf, "fastemit") == 0) { cached = FX_FASTEMIT; name = "fastemit"; }
         }
         if (cached != FX_NONE)
             g_logger.write("sim: FX mode = %s\n", name);

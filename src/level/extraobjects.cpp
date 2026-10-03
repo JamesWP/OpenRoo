@@ -61,7 +61,7 @@ static bool fx_nomodels(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_LEO_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "nomodels") == 0);
+            cached = (strcaseCompare(buf, "nomodels") == 0);
         g_logger.write("leo: FX mode = %s\n", cached ? "nomodels" : "off");
     }
     return cached != 0;
@@ -105,7 +105,7 @@ static std::string clip64(const char *p)
 
 void ExtraObjects::recDump(const char *path)
 {
-    char out[MAX_PATH];
+    char out[kMaxPath];
     if (!sysdev::getEnv("KAROO_LEO_RECDUMP", out, sizeof(out)))
         return;
     std::ofstream f(out, std::ios::binary | std::ios::app);
@@ -204,7 +204,7 @@ int ExtraObjects::openFile(const char *name)
     // KAROO_LEO_DUMP=<path>: the entry count and an FNV-1a hash of every entry
     // handed to the handler, for comparison with an independent parse.
     {
-        char dump[MAX_PATH];
+        char dump[kMaxPath];
         if (sysdev::getEnv("KAROO_LEO_DUMP", dump, sizeof(dump))) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {
@@ -285,7 +285,7 @@ static bool fx_pathrev(void)
     if (cached < 0) {
         char buf[16];
         cached = sysdev::getEnv("KAROO_LEO_FX", buf, sizeof(buf))
-                 && lstrcmpiA(buf, "pathrev") == 0;
+                 && strcaseCompare(buf, "pathrev") == 0;
     }
     return cached != 0;
 }

@@ -366,9 +366,9 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
             dev->SetTransform(Transform::World, &ident);
 
             SplinePath *sp = (SplinePath *)&o->spline;
-            if (hooks_GetAsyncKeyState(VK_F3) & 0x8000)
+            if (hooks_GetAsyncKeyState(kKeyF3) & 0x8000)
                 sp->drawSplinePath(dev, 100, 0xffffffff);
-            if (hooks_GetAsyncKeyState(VK_F4) & 0x8000)
+            if (hooks_GetAsyncKeyState(kKeyF4) & 0x8000)
                 sp->drawControlPolygon(dev, 0xff808080);
 
             if (o->texture != NULL)
