@@ -20,7 +20,7 @@
 #include "gamestr.h"
 #include <math.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include "binio.h"
 #include <vector>
 #include <algorithm>
 #include <iterator>
@@ -563,11 +563,11 @@ void CylinderGenerator::tick(float dt)
     cylinderEmit(dt);
 }
 
-/* One fread of `size` bytes; on a short read this leaves whatever was already
+/* One read of `size` bytes; on a short read this leaves whatever was already
  * read in place and returns false. */
-static bool read1(void *dst, unsigned size, FILE *fp)
+static bool read1(void *dst, unsigned size, std::istream &in)
 {
-    return fread(dst, size, 1, fp) == 1;
+    return readBytes(in, dst, size);
 }
 
 /* Stores flDirection/flMagnitude as given, and flGravity =
@@ -606,20 +606,20 @@ void GravityEnvironment::gravitySetColour(uint32_t argb, float fade)
 
 /* Leaves flFadeAccum as constructed — unlike MagnetEnvironment::Load, which
  * resets it every time. */
-int GravityEnvironment::load(FILE *fp)
+int GravityEnvironment::load(std::istream &in)
 {
     float dir[3], mag, fade;
     uint32_t argb;
-    if (!read1(dir, 12, fp))                   return FALSE;
-    if (!read1(&mag, 4, fp))                   return FALSE;
-    if (!read1(&argb, 4, fp))                  return FALSE;
-    if (!read1(&fade, 4, fp))                  return FALSE;
-    if (!read1(&dwFadeThreshold_, 4, fp)) return FALSE;
-    if (!read1(&dwClipEnable_[0], 4, fp)) return FALSE;
-    if (!read1(&dwClipEnable_[1], 4, fp)) return FALSE;
-    if (!read1(&dwClipEnable_[2], 4, fp)) return FALSE;
-    if (!read1(flClipMax_, 12, fp))       return FALSE;
-    if (!read1(flClipMin_, 12, fp))       return FALSE;
+    if (!read1(dir, 12, in))                   return FALSE;
+    if (!read1(&mag, 4, in))                   return FALSE;
+    if (!read1(&argb, 4, in))                  return FALSE;
+    if (!read1(&fade, 4, in))                  return FALSE;
+    if (!read1(&dwFadeThreshold_, 4, in)) return FALSE;
+    if (!read1(&dwClipEnable_[0], 4, in)) return FALSE;
+    if (!read1(&dwClipEnable_[1], 4, in)) return FALSE;
+    if (!read1(&dwClipEnable_[2], 4, in)) return FALSE;
+    if (!read1(flClipMax_, 12, in))       return FALSE;
+    if (!read1(flClipMin_, 12, in))       return FALSE;
     if (sim_fx() == FX_LOADFLIP)
         mag = -mag;
     gravitySetVector(dir, mag);
@@ -633,15 +633,15 @@ int GravityEnvironment::load(FILE *fp)
 /* FORMAT: on disk, force precedes centre.  PRESERVED: dwTargetRGB is never
  * loaded — it keeps whatever the constructor or a CopyFrom set, not what a
  * saved file may have recorded. */
-int MagnetEnvironment::load(FILE *fp)
+int MagnetEnvironment::load(std::istream &in)
 {
     // The base Environment::Load contributes nothing; its result is not
     // checked.
-    if (!read1(flForce_, 12, fp))         return FALSE;
-    if (!read1(flCentre_, 12, fp))        return FALSE;
-    if (!read1(&flRange_, 4, fp))         return FALSE;
-    if (!read1(&flFadeRate_, 4, fp))      return FALSE;
-    if (!read1(&dwFadeThreshold_, 4, fp)) return FALSE;
+    if (!read1(flForce_, 12, in))         return FALSE;
+    if (!read1(flCentre_, 12, in))        return FALSE;
+    if (!read1(&flRange_, 4, in))         return FALSE;
+    if (!read1(&flFadeRate_, 4, in))      return FALSE;
+    if (!read1(&dwFadeThreshold_, 4, in)) return FALSE;
     flFadeAccum_ = 0.0f;
     if (sim_fx() == FX_LOADFLIP)
         for (int i = 0; i < 3; i++)
@@ -653,38 +653,36 @@ int MagnetEnvironment::load(FILE *fp)
     return TRUE;
 }
 
-/* The game's static-CRT fwrite; other files reach the same stream the same
- * way, so this is not a private handle. */
-
-static bool write1(const void *src, unsigned size, FILE *fp)
+/* One write of `size` bytes. */
+static bool write1(const void *src, unsigned size, std::ostream &out)
 {
-    return fwrite(src, size, 1, fp) == 1;
+    return writeBytes(out, src, size);
 }
 
 /* Field-for-field mirror of Load, in the same order. */
-int GravityEnvironment::save(FILE *fp)
+int GravityEnvironment::save(std::ostream &out)
 {
-    if (!write1(flDirection_, 12, fp))      return FALSE;
-    if (!write1(&flMagnitude_, 4, fp))      return FALSE;
-    if (!write1(&dwTargetARGB_, 4, fp))     return FALSE;
-    if (!write1(&flFadeRate_, 4, fp))       return FALSE;
-    if (!write1(&dwFadeThreshold_, 4, fp))  return FALSE;
-    if (!write1(&dwClipEnable_[0], 4, fp))  return FALSE;
-    if (!write1(&dwClipEnable_[1], 4, fp))  return FALSE;
-    if (!write1(&dwClipEnable_[2], 4, fp))  return FALSE;
-    if (!write1(flClipMax_, 12, fp))        return FALSE;
-    return write1(flClipMin_, 12, fp);
+    if (!write1(flDirection_, 12, out))      return FALSE;
+    if (!write1(&flMagnitude_, 4, out))      return FALSE;
+    if (!write1(&dwTargetARGB_, 4, out))     return FALSE;
+    if (!write1(&flFadeRate_, 4, out))       return FALSE;
+    if (!write1(&dwFadeThreshold_, 4, out))  return FALSE;
+    if (!write1(&dwClipEnable_[0], 4, out))  return FALSE;
+    if (!write1(&dwClipEnable_[1], 4, out))  return FALSE;
+    if (!write1(&dwClipEnable_[2], 4, out))  return FALSE;
+    if (!write1(flClipMax_, 12, out))        return FALSE;
+    return write1(flClipMin_, 12, out);
 }
 
 /* Calls the base Environment::Save (a no-op) first, then mirrors Load.
  * PRESERVED: dwTargetRGB is not written either, matching Load. */
-int MagnetEnvironment::save(FILE *fp)
+int MagnetEnvironment::save(std::ostream &out)
 {
-    if (!write1(flForce_, 12, fp))          return FALSE;
-    if (!write1(flCentre_, 12, fp))         return FALSE;
-    if (!write1(&flRange_, 4, fp))          return FALSE;
-    if (!write1(&flFadeRate_, 4, fp))       return FALSE;
-    return write1(&dwFadeThreshold_, 4, fp);
+    if (!write1(flForce_, 12, out))          return FALSE;
+    if (!write1(flCentre_, 12, out))         return FALSE;
+    if (!write1(&flRange_, 4, out))          return FALSE;
+    if (!write1(&flFadeRate_, 4, out))       return FALSE;
+    return write1(&dwFadeThreshold_, 4, out);
 }
 
 /* The base Environment::CopyFrom only gates on type name; it copies nothing
@@ -929,38 +927,34 @@ void StdGenerator::stdCloneTypeTable(const uint32_t *src, uint32_t count)
 }
 
 /* FORMAT: count (uint32_t), then that many (colour, weight) uint32_t pairs. */
-static int type_table_save(const std::vector<uint32_t> &table, const uint32_t *pcount, FILE *fp)
+static int type_table_save(const std::vector<uint32_t> &table, const uint32_t *pcount, std::ostream &out)
 {
-    if (fp == NULL)
+    if (!write1(pcount, 4, out))
         return FALSE;
-    if (!write1(pcount, 4, fp))
-        return FALSE;
-    return fwrite(table.data(), 8, *pcount, fp) == *pcount;
+    return writeBytes(out, table.data(), (size_t)*pcount * 8);
 }
 
-static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint32_t *emit_prob, FILE *fp)
+static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint32_t *emit_prob, std::istream &in)
 {
-    if (fp == NULL)
-        return FALSE;
     uint32_t count;
-    if (fread(&count, 4, 1, fp) != 1)
+    if (!readBytes(in, &count, 4))
         return FALSE;
     std::vector<uint32_t> pairs((size_t)count * 2);
-    if (fread(pairs.data(), 8, count, fp) != count)
+    if (!readBytes(in, pairs.data(), (size_t)count * 8))
         return FALSE;
     type_table_clone(ptable, pcount, emit_prob, pairs.data(), count);
     return TRUE;
 }
 
-int StdGenerator::stdSaveTypeTable(FILE *fp)
+int StdGenerator::stdSaveTypeTable(std::ostream &out)
 {
-    return type_table_save(typeTable_, &dwTypeTableCount_, fp);
+    return type_table_save(typeTable_, &dwTypeTableCount_, out);
 }
 
-int StdGenerator::stdLoadTypeTable(FILE *fp)
+int StdGenerator::stdLoadTypeTable(std::istream &in)
 {
     return type_table_load(&typeTable_, &dwTypeTableCount_,
-                           pEmitProb_, fp);
+                           pEmitProb_, in);
 }
 
 /* Interleave three 500-sample columns into flPosTable (x, y, z per entry). */
@@ -1066,39 +1060,39 @@ int StdGenerator::copyFrom(const Generator *gsrc)
     return TRUE;
 }
 
-int StdGenerator::save(FILE *fp)
+int StdGenerator::save(std::ostream &out)
 {
-    if (!write1(&dwEmitMode_, 4, fp))     return FALSE;
-    if (!write1(flBoxMax_, 12, fp))       return FALSE;
-    if (!write1(flBoxMin_, 12, fp))       return FALSE;
-    if (!write1(flSphMin_, 12, fp))       return FALSE;
-    if (!write1(flSphMax_, 12, fp))       return FALSE;
-    if (!write1(flVelMin_, 12, fp))       return FALSE;
-    if (!write1(flVelMax_, 12, fp))       return FALSE;
-    if (!write1(&flLifeMin_, 4, fp))      return FALSE;
-    if (!write1(&flLifeMax_, 4, fp))      return FALSE;
-    if (!write1(&flEmitRateMin_, 4, fp))  return FALSE;
-    if (!write1(&flEmitRateMax_, 4, fp))  return FALSE;
-    if (!write1(&flDtScale_, 4, fp))      return FALSE;
-    return stdSaveTypeTable(fp);
+    if (!write1(&dwEmitMode_, 4, out))     return FALSE;
+    if (!write1(flBoxMax_, 12, out))       return FALSE;
+    if (!write1(flBoxMin_, 12, out))       return FALSE;
+    if (!write1(flSphMin_, 12, out))       return FALSE;
+    if (!write1(flSphMax_, 12, out))       return FALSE;
+    if (!write1(flVelMin_, 12, out))       return FALSE;
+    if (!write1(flVelMax_, 12, out))       return FALSE;
+    if (!write1(&flLifeMin_, 4, out))      return FALSE;
+    if (!write1(&flLifeMax_, 4, out))      return FALSE;
+    if (!write1(&flEmitRateMin_, 4, out))  return FALSE;
+    if (!write1(&flEmitRateMax_, 4, out))  return FALSE;
+    if (!write1(&flDtScale_, 4, out))      return FALSE;
+    return stdSaveTypeTable(out);
 }
 
 /* Builds the sphere or box position table (whichever dwEmitMode selects), then
  * always rebuilds the velocity and rate tables. */
-int StdGenerator::load(FILE *fp)
+int StdGenerator::load(std::istream &in)
 {
-    if (!read1(&dwEmitMode_, 4, fp))      return FALSE;
-    if (!read1(flBoxMax_, 12, fp))        return FALSE;
-    if (!read1(flBoxMin_, 12, fp))        return FALSE;
-    if (!read1(flSphMin_, 12, fp))        return FALSE;
-    if (!read1(flSphMax_, 12, fp))        return FALSE;
-    if (!read1(flVelMin_, 12, fp))        return FALSE;
-    if (!read1(flVelMax_, 12, fp))        return FALSE;
-    if (!read1(&flLifeMin_, 4, fp))       return FALSE;
-    if (!read1(&flLifeMax_, 4, fp))       return FALSE;
-    if (!read1(&flEmitRateMin_, 4, fp))   return FALSE;
-    if (!read1(&flEmitRateMax_, 4, fp))   return FALSE;
-    if (!read1(&flDtScale_, 4, fp))       return FALSE;
+    if (!read1(&dwEmitMode_, 4, in))      return FALSE;
+    if (!read1(flBoxMax_, 12, in))        return FALSE;
+    if (!read1(flBoxMin_, 12, in))        return FALSE;
+    if (!read1(flSphMin_, 12, in))        return FALSE;
+    if (!read1(flSphMax_, 12, in))        return FALSE;
+    if (!read1(flVelMin_, 12, in))        return FALSE;
+    if (!read1(flVelMax_, 12, in))        return FALSE;
+    if (!read1(&flLifeMin_, 4, in))       return FALSE;
+    if (!read1(&flLifeMax_, 4, in))       return FALSE;
+    if (!read1(&flEmitRateMin_, 4, in))   return FALSE;
+    if (!read1(&flEmitRateMax_, 4, in))   return FALSE;
+    if (!read1(&flDtScale_, 4, in))       return FALSE;
     if (sim_fx() == FX_FASTEMIT)
         flDtScale_ = (float)((double)flDtScale_ * 5.0);
     if (dwEmitMode_ == 0)
@@ -1108,7 +1102,7 @@ int StdGenerator::load(FILE *fp)
     stdBuildVelocity(flVelMin_, flVelMax_,
                        flLifeMin_, flLifeMax_);
     stdBuildRate(flEmitRateMin_, flEmitRateMax_);
-    return stdLoadTypeTable(fp);
+    return stdLoadTypeTable(in);
 }
 
 /* PRESERVED: copies flPosOffset but not flVelOffset — a copied generator keeps
@@ -1122,18 +1116,18 @@ int XStdGenerator::copyFrom(const Generator *gsrc)
     return TRUE;
 }
 
-int XStdGenerator::save(FILE *fp)
+int XStdGenerator::save(std::ostream &out)
 {
-    if (!StdGenerator::save(fp))        return FALSE;
-    if (!write1(flPosOffset_, 12, fp))    return FALSE;
-    return write1(flVelOffset_, 12, fp);
+    if (!StdGenerator::save(out))        return FALSE;
+    if (!write1(flPosOffset_, 12, out))    return FALSE;
+    return write1(flVelOffset_, 12, out);
 }
 
-int XStdGenerator::load(FILE *fp)
+int XStdGenerator::load(std::istream &in)
 {
-    if (!StdGenerator::load(fp))        return FALSE;
-    if (!read1(flPosOffset_, 12, fp))     return FALSE;
-    return read1(flVelOffset_, 12, fp);
+    if (!StdGenerator::load(in))        return FALSE;
+    if (!read1(flPosOffset_, 12, in))     return FALSE;
+    return read1(flVelOffset_, 12, in);
 }
 
 void XStdGenerator::setPosition(float x, float y, float z)
@@ -1380,36 +1374,36 @@ int CylinderGenerator::copyFrom(const Generator *gsrc)
     return TRUE;
 }
 
-int CylinderGenerator::save(FILE *fp)
+int CylinderGenerator::save(std::ostream &out)
 {
-    if (!write1(flOrigin_, 12, fp))       return FALSE;
-    if (!write1(&flScale_, 4, fp))        return FALSE;
-    if (!write1(flDirection_, 12, fp))    return FALSE;
-    if (!write1(flVelMin_, 12, fp))       return FALSE;
-    if (!write1(flVelMax_, 12, fp))       return FALSE;
-    if (!write1(&flLifeMin_, 4, fp))      return FALSE;
-    if (!write1(&flLifeMax_, 4, fp))      return FALSE;
-    if (!write1(&flEmitRateMin_, 4, fp))  return FALSE;
-    if (!write1(&flEmitRateMax_, 4, fp))  return FALSE;
-    if (!write1(&flDtScale_, 4, fp))      return FALSE;
-    return type_table_save(typeTable_, &dwTypeTableCount_, fp);
+    if (!write1(flOrigin_, 12, out))       return FALSE;
+    if (!write1(&flScale_, 4, out))        return FALSE;
+    if (!write1(flDirection_, 12, out))    return FALSE;
+    if (!write1(flVelMin_, 12, out))       return FALSE;
+    if (!write1(flVelMax_, 12, out))       return FALSE;
+    if (!write1(&flLifeMin_, 4, out))      return FALSE;
+    if (!write1(&flLifeMax_, 4, out))      return FALSE;
+    if (!write1(&flEmitRateMin_, 4, out))  return FALSE;
+    if (!write1(&flEmitRateMax_, 4, out))  return FALSE;
+    if (!write1(&flDtScale_, 4, out))      return FALSE;
+    return type_table_save(typeTable_, &dwTypeTableCount_, out);
 }
 
 /* Reads its own direction back out to rebuild the matrix via
  * cylSetDirection.  The position table (the unit circle) is the constructor's
  * and is never rebuilt here. */
-int CylinderGenerator::load(FILE *fp)
+int CylinderGenerator::load(std::istream &in)
 {
-    if (!read1(flOrigin_, 12, fp))        return FALSE;
-    if (!read1(&flScale_, 4, fp))         return FALSE;
-    if (!read1(flDirection_, 12, fp))     return FALSE;
-    if (!read1(flVelMin_, 12, fp))        return FALSE;
-    if (!read1(flVelMax_, 12, fp))        return FALSE;
-    if (!read1(&flLifeMin_, 4, fp))       return FALSE;
-    if (!read1(&flLifeMax_, 4, fp))       return FALSE;
-    if (!read1(&flEmitRateMin_, 4, fp))   return FALSE;
-    if (!read1(&flEmitRateMax_, 4, fp))   return FALSE;
-    if (!read1(&flDtScale_, 4, fp))       return FALSE;
+    if (!read1(flOrigin_, 12, in))        return FALSE;
+    if (!read1(&flScale_, 4, in))         return FALSE;
+    if (!read1(flDirection_, 12, in))     return FALSE;
+    if (!read1(flVelMin_, 12, in))        return FALSE;
+    if (!read1(flVelMax_, 12, in))        return FALSE;
+    if (!read1(&flLifeMin_, 4, in))       return FALSE;
+    if (!read1(&flLifeMax_, 4, in))       return FALSE;
+    if (!read1(&flEmitRateMin_, 4, in))   return FALSE;
+    if (!read1(&flEmitRateMax_, 4, in))   return FALSE;
+    if (!read1(&flDtScale_, 4, in))       return FALSE;
     if (sim_fx() == FX_FASTEMIT)
         flDtScale_ = (float)((double)flDtScale_ * 5.0);
     setDirection(flDirection_[0], flDirection_[1],
@@ -1418,7 +1412,7 @@ int CylinderGenerator::load(FILE *fp)
                        flLifeMin_, flLifeMax_);
     cylBuildRate(flEmitRateMin_, flEmitRateMax_);
     return type_table_load(&typeTable_, &dwTypeTableCount_,
-                           pEmitProb_, fp);
+                           pEmitProb_, in);
 }
 
 Generator::Generator()

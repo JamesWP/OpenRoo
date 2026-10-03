@@ -23,7 +23,8 @@
 #include <math.h>
 #include <string.h>
 #include <new>
-#include <stdio.h>
+#include <fstream>
+#include "binio.h"
 #include "renderdevice.h"
 #include <algorithm>
 #include <memory>
@@ -364,14 +365,14 @@ void FaceParticleSystem::transformCorners(float *matrix)
  *
  * The virtuals that make, copy, resize, serialise and destroy a system, plus
  * the RingBuffer they all work on. */
-static bool ps_write(const void *src, unsigned size, FILE *fp)
+static bool ps_write(const void *src, unsigned size, std::ostream &out)
 {
-    return fwrite(src, size, 1, fp) == 1;
+    return writeBytes(out, src, size);
 }
 
-static bool ps_read(void *dst, unsigned size, FILE *fp)
+static bool ps_read(void *dst, unsigned size, std::istream &in)
 {
-    return fread(dst, size, 1, fp) == 1;
+    return readBytes(in, dst, size);
 }
 
 /* Sampling constant shared with the generators: 1/32767. */
@@ -521,46 +522,44 @@ int ParticleSystem::copyFrom(const ParticleSystem *src)
 
 /* ─── Save / Load ──────────────────────────────────────────────────────────
  *
- * Both take (FILE *) and return int; the base ignores the
- * logger, the subclasses report through it.
+ * Save takes an ostream and load an istream; both return int.  The base
+ * ignores the logger, the subclasses report through it.
  *
  * FORMAT: a sub-object's class name is its length including the terminator,
  * then that many bytes, so the NUL goes to the file too.  A missing sub-object
  * writes the literal "NULL". */
 template <class T>
-static int ps_write_sub_object(T *obj, FILE *fp)
+static int ps_write_sub_object(T *obj, std::ostream &out)
 {
     const char *name = obj ? obj->name() : GS_PS_NAME_NULL;
     uint32_t len = (uint32_t)strlen(name) + 1;
-    if (!ps_write(&len, 4, fp))
+    if (!ps_write(&len, 4, out))
         return FALSE;
-    if (fwrite(name, 1, len, fp) != len)
+    if (!writeBytes(out, name, len))
         return FALSE;
-    return obj ? obj->save(fp) : TRUE;
+    return obj ? obj->save(out) : TRUE;
 }
 
 /* Ring size, then the generator and the environment. */
-int ParticleSystem::save(FILE *fp)
+int ParticleSystem::save(std::ostream &out)
 {
-    if (fp == NULL)
+    if (!ps_write(&ring_.dwRingCount, 4, out))
         return FALSE;
-    if (!ps_write(&ring_.dwRingCount, 4, fp))
-        return FALSE;
-    return ps_write_sub_object(pGenerator_, fp)
-        && ps_write_sub_object(pEnvironment_, fp);
+    return ps_write_sub_object(pGenerator_, out)
+        && ps_write_sub_object(pEnvironment_, out);
 }
 
 /* Read one length-prefixed class name into a fresh, terminated buffer.  Null
  * on failure. */
-static std::unique_ptr<char[]> ps_read_name(FILE *fp, const char *msg_name)
+static std::unique_ptr<char[]> ps_read_name(std::istream &in, const char *msg_name)
 {
     uint32_t len;
-    if (!ps_read(&len, 4, fp)) {
+    if (!ps_read(&len, 4, in)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the data could not be read");
         return nullptr;
     }
     std::unique_ptr<char[]> name(new char[(size_t)len + 1]());
-    if (fread(name.get(), 1, len, fp) != len) {
+    if (!readBytes(in, name.get(), len)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, msg_name);
         return nullptr;
     }
@@ -570,19 +569,19 @@ static std::unique_ptr<char[]> ps_read_name(FILE *fp, const char *msg_name)
 /* One sub-object: its class name, the factory, then its load.  *out is NULL
  * for the literal "NULL" name.  Each failure logs its own message. */
 template <class T>
-static int ps_load_sub_object(FILE *fp, T **out,
+static int ps_load_sub_object(std::istream &in, T **out,
                                const char *msg_noname, const char *msg_nocreate,
                                const char *msg_noload)
 {
     *out = NULL;
-    std::unique_ptr<char[]> name = ps_read_name(fp, msg_noname);
+    std::unique_ptr<char[]> name = ps_read_name(in, msg_noname);
     if (!name)
         return FALSE;
     if (strcmp(name.get(), GS_PS_NAME_NULL) != 0) {
         T *obj = T::create(name.get());
         if (obj == NULL) {
             g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, msg_nocreate, name.get());
-        } else if (!obj->load(fp)) {
+        } else if (!obj->load(in)) {
             g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, msg_noload, name.get());
             delete obj;
         } else {
@@ -597,12 +596,12 @@ static int ps_load_sub_object(FILE *fp, T **out,
 /* Release, re-make the ring at the stored size, then load and attach each
  * sub-object.  The ring is sized directly rather than through setCapacity, so
  * a subclass's override does not run here. */
-int ParticleSystem::load(FILE *fp)
+int ParticleSystem::load(std::istream &in)
 {
     release(1);
 
     uint32_t count;
-    if (!ps_read(&count, 4, fp)) {
+    if (!ps_read(&count, 4, in)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle count could not be read");
         return FALSE;
     }
@@ -612,14 +611,14 @@ int ParticleSystem::load(FILE *fp)
     }
 
     Generator *gen;
-    if (!ps_load_sub_object(fp, &gen, GS_PS_MSG_NONAME, GS_PS_MSG_NOGEN,
+    if (!ps_load_sub_object(in, &gen, GS_PS_MSG_NONAME, GS_PS_MSG_NOGEN,
                             GS_PS_MSG_GENLOAD))
         return FALSE;
     if (gen)
         setGenerator(gen);
 
     Environment *env;
-    if (!ps_load_sub_object(fp, &env, GS_PS_MSG_NOENV, GS_PS_MSG_ENVNAME,
+    if (!ps_load_sub_object(in, &env, GS_PS_MSG_NOENV, GS_PS_MSG_ENVNAME,
                             GS_PS_MSG_ENVLOAD))
         return FALSE;
     if (env)
@@ -679,15 +678,15 @@ int PointParticleSystem::copyFrom(const ParticleSystem *src)
 }
 
 /* The base write, whose result is discarded, then success. */
-int PointParticleSystem::save(FILE *fp)
+int PointParticleSystem::save(std::ostream &out)
 {
-    ParticleSystem::save(fp);
+    ParticleSystem::save(out);
     return TRUE;
 }
 
-int PointParticleSystem::load(FILE *fp)
+int PointParticleSystem::load(std::istream &in)
 {
-    if (!ParticleSystem::load(fp))
+    if (!ParticleSystem::load(in))
         return FALSE;
     if (!allocVerts(1)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading PointParticleSystem failed, because the vertex array could not be created");
@@ -723,21 +722,21 @@ int FaceParticleSystem::resize(uint32_t count)
 }
 
 /* The base write (result discarded, as Point's), then the scale. */
-int FaceParticleSystem::save(FILE *fp)
+int FaceParticleSystem::save(std::ostream &out)
 {
-    ParticleSystem::save(fp);
-    if (!ps_write(&flScale_, 4, fp)) {
+    ParticleSystem::save(out);
+    if (!ps_write(&flScale_, 4, out)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: saving FaceParticleSystem failed, because the face size could not be saved");
         return FALSE;
     }
     return TRUE;
 }
 
-int FaceParticleSystem::load(FILE *fp)
+int FaceParticleSystem::load(std::istream &in)
 {
-    if (!ParticleSystem::load(fp))
+    if (!ParticleSystem::load(in))
         return FALSE;
-    if (!ps_read(&flScale_, 4, fp)) {
+    if (!ps_read(&flScale_, 4, in)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading FaceParticleSystem failed, because the face size could not be read");
         return FALSE;
     }
@@ -886,22 +885,22 @@ int XFaceParticleSystem::resize(uint32_t count)
 /* The base stream, then the corner count and the eight ranges.  Load finishes
  * by re-running setCapacity with the ring size, which rebuilds the corners and
  * vertices. */
-int XFaceParticleSystem::save(FILE *fp)
+int XFaceParticleSystem::save(std::ostream &out)
 {
-    if (!ParticleSystem::save(fp))
+    if (!ParticleSystem::save(out))
         return FALSE;
-    if (ps_write(&dwCornerTableCount_, 4, fp)
-        && ps_write(ranges, sizeof(ranges), fp))
+    if (ps_write(&dwCornerTableCount_, 4, out)
+        && ps_write(ranges, sizeof(ranges), out))
         return TRUE;
     g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: saving XFaceParticleSystem failed, because the attributes could not be saved");
     return FALSE;
 }
 
-int XFaceParticleSystem::load(FILE *fp)
+int XFaceParticleSystem::load(std::istream &in)
 {
-    if (!ParticleSystem::load(fp))
+    if (!ParticleSystem::load(in))
         return FALSE;
-    if (ps_read(&dwCornerTableCount_, 4, fp) && ps_read(ranges, sizeof(ranges), fp))
+    if (ps_read(&dwCornerTableCount_, 4, in) && ps_read(ranges, sizeof(ranges), in))
         return setCapacity(ring_.dwRingCount);
     release(1);
     g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading XFaceParticleSystem failed, because the attributes could not be read");
@@ -975,15 +974,15 @@ ParticleSystem::create(const char *name)
  *
  * Length-prefixed class name, then the factory, then load. */
 ParticleSystem *
-ParticleSystem::loadStream(FILE *fp)
+ParticleSystem::loadStream(std::istream &in)
 {
     uint32_t len;
-    if (fread(&len, 4, 1, fp) != 1) {
+    if (!readBytes(in, &len, 4)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the data could not be read");
         return NULL;
     }
     std::unique_ptr<char[]> name(new char[(size_t)len + 1]());
-    if (fread(name.get(), 1, len, fp) != len) {
+    if (!readBytes(in, name.get(), len)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the data could not be read");
         return NULL;
     }
@@ -992,30 +991,24 @@ ParticleSystem::loadStream(FILE *fp)
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the system '%s' could not be created", name.get());
         return NULL;
     }
-    if (!ps->load(fp)) {
+    if (!ps->load(in)) {
         delete ps;
         return NULL;
     }
     return ps;
 }
 
-/* The .par entry point.  A failed fclose discards the system that was read. */
+/* The .par entry point. */
 ParticleSystem *
 ParticleSystem::loadFile(const char *path)
 {
     g_logger.logMessage(2, "PS: reading particle system from file %s ...", path);
-    FILE *fp = fopen(path, "r");  // text mode
-    if (fp == NULL) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because file %s could not be opened", path);
         return NULL;
     }
-    ParticleSystem *ps = ParticleSystem::loadStream(fp);
-    if (fclose(fp) != 0) {
-        g_logger.logSourceLocation(3, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because file %s could not be closed", path);
-        delete ps;
-        return NULL;
-    }
-    return ps;
+    return ParticleSystem::loadStream(in);
 }
 
 /* Build one of the same class and copyFrom. */

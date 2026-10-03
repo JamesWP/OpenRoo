@@ -1,4 +1,5 @@
-#include <stdio.h>
+#include <fstream>
+#include <iterator>
 #include "image.h"
 #include <string.h>
 #include "gamestr.h"
@@ -17,17 +18,9 @@ bool Image_Load(const char *path, Image &out)
 
 bool Image_ReadFile(const char *path, std::vector<uint8_t> &out)
 {
-    FILE *fp = fopen(path, "rb");
-    if (fp == NULL)
+    std::ifstream in(path, std::ios::binary);
+    if (!in)
         return false;
-    out.clear();
-    uint8_t chunk[65536];
-    for (;;) {
-        unsigned got = fread(chunk, 1, sizeof(chunk), fp);
-        if (got == 0)
-            break;
-        out.insert(out.end(), chunk, chunk + got);
-    }
-    fclose(fp);
+    out.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
     return true;
 }

@@ -8,7 +8,8 @@
 
 #include <vector>
 #include <stdint.h>
-#include <stdio.h>
+#include <istream>
+#include <ostream>
 #include <stddef.h>
 #include "particles.h"
  
@@ -33,8 +34,8 @@ public:
     virtual int copyFrom(const Generator *src);
     /* Emits into the ring. */
     virtual void tick(float dt) { (void)dt; }
-    virtual int save(FILE *fp) { (void)fp; return 1; }
-    virtual int load(FILE *fp) { (void)fp; return 1; }
+    virtual int save(std::ostream &out) { (void)out; return 1; }
+    virtual int load(std::istream &in) { (void)in; return 1; }
     virtual void setPosition(float x, float y, float z)  { (void)x; (void)y; (void)z; }
     virtual void setVelocity(float x, float y, float z, float mag)
         { (void)x; (void)y; (void)z; (void)mag; }
@@ -70,8 +71,8 @@ public:
     /* The base copyFrom only gates on type name. */
     virtual int copyFrom(const Environment *src) { return envSameName(src); }
     virtual void tick(float dt) { (void)dt; }
-    virtual int save(FILE *fp) { (void)fp; return 1; }
-    virtual int load(FILE *fp) { (void)fp; return 1; }
+    virtual int save(std::ostream &out) { (void)out; return 1; }
+    virtual int load(std::istream &in) { (void)in; return 1; }
 
     /* Refuses (and leaves pRing alone) a NULL ring. */
     int attachRing(RingBuffer *ring);
@@ -93,8 +94,8 @@ public:
 
     int copyFrom(const Environment *src) override;
     void tick(float dt) override;
-    int save(FILE *fp) override;
-    int load(FILE *fp) override;
+    int save(std::ostream &out) override;
+    int load(std::istream &in) override;
 
 private:
     void gravityTick(float dt);
@@ -126,8 +127,8 @@ public:
 
     int copyFrom(const Environment *src) override;
     void tick(float dt) override;
-    int save(FILE *fp) override;
-    int load(FILE *fp) override;
+    int save(std::ostream &out) override;
+    int load(std::istream &in) override;
 
 private:
     void magnetTick(float dt);
@@ -156,14 +157,14 @@ public:
 
     int copyFrom(const Generator *src) override;
     void tick(float dt) override;
-    int save(FILE *fp) override;
-    int load(FILE *fp) override;
+    int save(std::ostream &out) override;
+    int load(std::istream &in) override;
 
 protected:
     void stdEmit(float dt, const float *pos_off, const float *vel_off);
     void stdCloneTypeTable(const uint32_t *src, uint32_t count);
-    int stdSaveTypeTable(FILE *fp);
-    int stdLoadTypeTable(FILE *fp);
+    int stdSaveTypeTable(std::ostream &out);
+    int stdLoadTypeTable(std::istream &in);
     void stdInterleavePos(const float *x, const float *y, const float *z);
     void stdBuildSphere(const float *mn, const float *mx);
     void stdBuildBox(const float *mn, const float *mx);
@@ -209,8 +210,8 @@ public:
 
     int copyFrom(const Generator *src) override;
     void tick(float dt) override;
-    int save(FILE *fp) override;
-    int load(FILE *fp) override;
+    int save(std::ostream &out) override;
+    int load(std::istream &in) override;
     void setPosition(float x, float y, float z) override;
     void setVelocity(float x, float y, float z, float mag) override;
     void setDirection(float x, float y, float z) override;
@@ -235,8 +236,8 @@ public:
 
     int copyFrom(const Generator *src) override;
     void tick(float dt) override;
-    int save(FILE *fp) override;
-    int load(FILE *fp) override;
+    int save(std::ostream &out) override;
+    int load(std::istream &in) override;
     void setPosition(float x, float y, float z) override;
     void setDirection(float x, float y, float z) override;
 
