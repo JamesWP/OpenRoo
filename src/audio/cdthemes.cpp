@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
+#include <fstream>
+#include <string>
 #include <stdio.h>
 #include <stdlib.h>
 #include "logger.h"
@@ -111,13 +113,12 @@ CdThemes::~CdThemes()
 {
 }
 
-/* Opened in text mode, and needlessly writable.  PRESERVED:
+/* Opened in text mode.  PRESERVED:
  *   - the line buffer starts empty and is parsed even when the first read
  *     gets nothing;
  *   - the end-of-file test comes before the read, so a file ending in a
  *     newline has one failed read whose buffer is parsed again, and the
  *     last theme is added twice;
- *   - the newline chop drops the last character unconditionally;
  *   - the index is a byte and unchecked: a 256th theme's track lands in
  *     currentTrack_ and its name past the object.  No shipped file comes
  *     close.
@@ -126,45 +127,51 @@ CdThemes::~CdThemes()
 unsigned char CdThemes::readTrackThemeTable(const char *name)
 {
     char path[256];
-    char line[256];
-    char delims[8];
 
     sprintf(path, GS_CD_TRACKFILE_PATH, g_gameDir, name);
-    std::copy_n(GS_CD_TRACKFILE_DELIMS, 6, delims);
     unsigned char n = 0;
-    FILE *fp = fopen(path, GS_CD_TRACKFILE_MODE);
+    std::ifstream in(path);  // text mode
     count_ = 0;
-    line[0] = '\0';
 
-    if (fp == NULL) {
+    if (!in) {
         g_logger.logMessage(3, "CDM: warning - track-file %s was not found", path);
         for (auto &n : names_)
             std::fill(std::begin(n), std::end(n), 0);
         return 0;
     }
     g_logger.logMessage(2, "CDM: track-file %s was found", path);
-    while (!feof(fp)) {
-        fgets(line, 0x100, fp);
-        if (!feof(fp))
-            line[strlen(line) - 1] = '\0';
-        char *tok = strtok(line, delims);
-        if (tok == NULL)
+
+    // Fields are split on these; the first two of a line are the track and the
+    // theme name.
+    const char *const delims = GS_CD_TRACKFILE_DELIMS;
+    std::string line;
+    while (!in.eof()) {
+        std::string next;
+        if (std::getline(in, next))
+            line = next;
+
+        size_t b = line.find_first_not_of(delims);
+        if (b == std::string::npos)
             continue;
-        unsigned char track = (unsigned char)atoi(tok);
-        tok = strtok(NULL, delims);
-        if (tok == NULL)
+        size_t e = line.find_first_of(delims, b);
+        unsigned char track = (unsigned char)atoi(line.substr(b, e - b).c_str());
+
+        b = (e == std::string::npos) ? e : line.find_first_not_of(delims, e);
+        if (b == std::string::npos)
             continue;
+        e = line.find_first_of(delims, b);
+        std::string theme = line.substr(b, e - b);
+
         if (n < THEME_MAX)
             trackOf_[n] = track;
         else
             currentTrack_ = track;  // PRESERVED: trackOf_[255], one past the array
         char *dst = names_[n];
-        strcpy(dst, tok);
+        strcpy(dst, theme.c_str());
         g_logger.logMessage(2, "CDM: theme %s is cd track %d", dst, (unsigned)track);
         n++;
     }
     count_ = n;
-    fclose(fp);
     return count_;
 }
 

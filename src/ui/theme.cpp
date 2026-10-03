@@ -1,12 +1,10 @@
 /* The theme file loader.
  *
- * FORMAT: a .thm is text, read with fgets into 0x100-byte lines in text mode
- * (the delimiters " \t\n" have no '\r', so binary mode would match nothing).
- * Leading spaces and tabs are skipped, "//" lines and blank lines dropped, and
- * each line split into up to 16 tokens.
+ * FORMAT: a .thm is text, read a line at a time in text mode (so the '\r' of
+ * CRLF is folded away).  Leading whitespace is skipped, "//" lines and blank
+ * lines dropped, and each line split into up to 16 tokens.
  *
  * PRESERVED in the tokenizer:
- *   - a line longer than 0x100 is split, and its tail parses as a new line;
  *   - the whitespace skip comes before the comment test, so "   // x" is a
  *     comment but "Model x // y" yields "//" and "y" as ordinary tokens;
  *   - an unknown keyword is ignored at every depth.
@@ -34,10 +32,12 @@
 #include <math.h>
 #include <algorithm>
 #include <iterator>
+#include <fstream>
+#include <sstream>
+#include <string>
 ThemeAssetBlock g_themeBlock;
 
-/* The fixed limits: fgets' line length, and 16 token slots of 0x100. */
-#define LINE_MAX     0x100
+/* The fixed limits: 16 token slots of 0x100. */
 #define TOKEN_SLOTS  16
 #define TOKEN_MAX    0x100
 
@@ -435,12 +435,12 @@ template <typename T> struct Cursor {
 };
 class ThemeParser {
 public:
-    /* Parses fp into block; the parse state starts cleared. */
+    /* Parses the stream into block; the parse state starts cleared. */
     void run(Game *g, RenderDevice *dev, ThemeAssetBlock *b,
-             FILE *f)
+             std::istream &f)
     {
         *this = ThemeParser();
-        game = g; d3d = dev; block = b; fp = f;
+        game = g; d3d = dev; block = b; in = &f;
         parseFile();
     }
 
@@ -448,7 +448,7 @@ private:
     Game            *game;
     RenderDevice    *d3d;
     ThemeAssetBlock *block;
-    FILE            *fp;
+    std::istream    *in;
 
     char     tok[TOKEN_SLOTS][TOKEN_MAX];
     unsigned ntok;
@@ -496,29 +496,24 @@ private:
     void explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec);
 };
 
-/* The next line that is not blank or a comment, tokenized; false at the end.
- * A whitespace-only last line with no newline is not skipped: it yields no
- * tokens and an empty tok[0]. */
+/* The next line that is not blank or a comment, tokenized; false at the end. */
 bool ThemeParser::nextLine()
 {
-    char buf[LINE_MAX];
-    while (!feof(fp)) {
-        if (fgets(buf, LINE_MAX, fp) == NULL)
-            continue;
+    std::string line;
+    while (std::getline(*in, line)) {
         for (auto &t : tok)
             std::fill(std::begin(t), std::end(t), 0);
         ntok = 0;
 
-        char *s = buf;
-        while (*s == ' ' || *s == '\t')
-            s++;
-        if ((s[0] == '/' && s[1] == '/') || s[0] == '\n')
+        std::istringstream words(line);
+        std::string w;
+        if (!(words >> w) || w.compare(0, 2, "//") == 0)
             continue;
-        for (char *t = strtok(s, " \t\n"); t != NULL; t = strtok(NULL, " \t\n")) {
+        do {
             if (ntok < TOKEN_SLOTS)
-                strcpy(tok[ntok], t);
+                strncpy(tok[ntok], w.c_str(), TOKEN_MAX - 1);
             ntok++;
-        }
+        } while (words >> w);
         return true;
     }
     return false;
@@ -891,14 +886,13 @@ bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
     release();
     d3d->SetRenderState(RS::FogEnable, 0);
 
-    FILE *fp = fopen(path, "r");  // text mode: the CRT folds CRLF
-    if (fp == NULL)
+    std::ifstream file(path);  // text mode: the CRT folds CRLF
+    if (!file)
         return false;
 
-    s_parser.run(game, d3d, this, fp);
+    s_parser.run(game, d3d, this, file);
 
     theme_struct_dump_if_enabled(path);
-    fclose(fp);
     strcpy(themeName_, path);  // PRESERVED: unbounded
     return true;
 }

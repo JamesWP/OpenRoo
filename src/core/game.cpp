@@ -5,6 +5,8 @@
  * config.cpp, levelmap.cpp), in a fixed order; teardown is its exact reverse.
  */
 
+#include <fstream>
+#include <string>
 #include <stdio.h>
 #include <string.h>
 
@@ -196,25 +198,24 @@ Game::~Game()
 
 }
 
-/* "<gamedir>\<name>.gam", opened in text mode ("r") even for the binary form.
+/* "<gamedir>\<name>.gam", opened in text mode even for the binary form.
  * FORMAT: binary is a 6,6,6,<levels> header, then every byte minus 5 into the
  * flat level-name table.  Text is one name per line, up to a line starting
  * '*', which is stored and counted, then uncounted.  PRESERVED: the EOF test
- * comes before the read, so the last, failing fread decodes the byte it left
+ * comes before the read, so the last, failing read decodes the byte it left
  * behind a second time. */
 int Game::loadGameFile(const char *name)
 {
     char path[0x80] = { 0 };
-    char line[0x100];
     unsigned char hdr[4];
 
     levelCount_ = 0;
     sprintf(path, GS_GAME_FILE_PATH, g_gameDir, name);
     g_logger.logMessage(2, "GAME: load game-file: %s", path);
-    FILE *fp = fopen(path, GS_MODE_READ);
-    if (fp == NULL)
+    std::ifstream in(path);
+    if (!in)
         return 0;
-    fread(hdr, 4, 1, fp);
+    in.read(reinterpret_cast<char *>(hdr), 4);
 
     char *table = &levelNameTable_[0][0];
     if (hdr[0] == 6 && hdr[1] == 6 && hdr[2] == 6) {
@@ -222,8 +223,8 @@ int Game::loadGameFile(const char *name)
         levelCount_ = hdr[3];
         unsigned int n = 0;
         char c = 0;
-        while (!feof(fp)) {
-            fread(&c, 1, 1, fp);
+        while (!in.eof()) {
+            in.read(&c, 1);
             c = (char)(c - 5);
             table[n & 0xffff] = c;
             n++;
@@ -232,28 +233,22 @@ int Game::loadGameFile(const char *name)
                            (unsigned)levelCount_, n & 0xffff);
         for (unsigned short i = 0; i < levelCount_; i++)
             g_logger.logMessage(2, "GAME: game-file: %s", levelNameTable_[i]);
-        fclose(fp);
         return 1;
     }
 
     g_logger.logMessage(2, "GAME: load game-file as text-file");
     unsigned int n = 0;
-    fseek(fp, 0, SEEK_SET);
-    line[0] = '\0';
-    while (!feof(fp) && line[0] != '*') {
-        line[0] = '\0';  // empty, in case fgets reads nothing
-        fgets(line, 0x100, fp);
-        // Chop the last character, newline or not.  An empty line at EOF would
-        // chop the byte before the buffer; that write is skipped.
-        size_t len = strlen(line);
-        if (len > 0)
-            line[len - 1] = '\0';
-        strcpy(levelNameTable_[n & 0xffff], line);
+    in.clear();
+    in.seekg(0);
+    std::string line;
+    while (!in.eof() && (line.empty() || line[0] != '*')) {
+        if (!std::getline(in, line))
+            line.clear();  // nothing read: an empty name
+        strcpy(levelNameTable_[n & 0xffff], line.c_str());
         n++;
     }
     levelCount_ = (unsigned char)(n - 1);
     g_logger.logMessage(2, "GAME: game-file loaded %d levels included", (unsigned)levelCount_);
-    fclose(fp);
     return 1;
 }
 
