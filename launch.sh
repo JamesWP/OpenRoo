@@ -163,6 +163,10 @@ PROTON_RUN=(
   STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.steam/root"
   PROTON_LOG_DIR="$(pwd)"
   SteamGameId=123456 SteamAppId=123456
+  # Direct3D 9 through Wine's own OpenGL layer, not DXVK: DXVK on Intel
+  # (Mesa ANV) leaves stray black pixels, see the README.  Set it to 0 to try
+  # DXVK.
+  PROTON_USE_WINED3D="${PROTON_USE_WINED3D:-1}"
   # Script-controlled; these are always set, so the DLL can rely on them.
   KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
   KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"
