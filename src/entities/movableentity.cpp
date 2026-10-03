@@ -124,8 +124,8 @@ static inline double load_double(const void *p)
     return v;
 }
 
-/* Tile addressing: Tile::at(base, u, v), both axes read signed. */
-#define TILE(u, v)   Tile::at(tileBase_, (u), (v))
+/* Tile addressing: base->tile( u, v), both axes read signed. */
+#define TILE(u, v)   map_->tile( (u), (v))
 #define GU           cellU_
 #define GV           cellV_
 #define GH           heightCell_
@@ -207,7 +207,7 @@ unsigned int MovableEntity::updateMovement()
             if (facing_or_reverse(((unsigned)moveDir_), facing_)) {
                 if (((signed char)kind_) != 9) {
                     // Clears the occupant of the cell being left.
-                    Tile *from = Tile::at(tileBase_,
+                    Tile *from = map_->tile(
                         (int)GU - (int)stepU_, (int)GV - (int)stepV_);
                     from->setOccupant(0);
                 }
@@ -330,11 +330,11 @@ unsigned int MovableEntity::updateMovement()
                     copy8(&teleportSince_, &now_);
                     teleportPhase_ = 2;
                     CUR->setBusy(0);
-                    Tile *base = tileBase_;
+                    LevelMap *base = map_;
                     Tile *here = CUR;
                     signed char du = (signed char)here->teleportU();
                     signed char dv = (signed char)here->teleportV();
-                    signed char dh = (signed char)Tile::at(base, du, dv)->height();
+                    signed char dh = (signed char)base->tile( du, dv)->height();
                     if (((signed char)kind_) != 9)
                         here->setOccupant(0);
                     cellU_ = du;
@@ -363,12 +363,12 @@ unsigned int MovableEntity::updateMovement()
 
             // Attach to a moving platform.
             if (((signed char)slideSlot_) == -1) {
-                Tile *base = tileBase_;
+                LevelMap *base = map_;
                 Tile *here = CUR;
                 if ((signed char)here->objectMarker() == TILE_SLIDE_TRACK) {
                     unsigned pu = here->slideOriginU();
                     unsigned pv = here->slideOriginV();
-                    Tile *p = Tile::at(base, pu, pv);
+                    Tile *p = base->tile( pu, pv);
                     if (fabsf((p->slidePosU() + (float)K_HALF_D) -
                               (posU_ + K_HALF_F)) <= (float)K_LINK_EPS &&
                         fabsf((p->slidePosV() + (float)K_HALF_D) -
@@ -421,11 +421,11 @@ unsigned int MovableEntity::updateMovement()
 
     // Riding a platform.
     if (((signed char)slideSlot_) != -1 && ((signed char)moveState_) == 0) {
-        Tile *base = tileBase_;
+        LevelMap *base = map_;
         Tile *here = CUR;
         unsigned pu = here->slideOriginU();
         unsigned pv = here->slideOriginV();
-        Tile *p = Tile::at(base, pu, pv);
+        Tile *p = base->tile( pu, pv);
         cellU_ = p->slideCellU();
         cellV_ = p->slideCellV();
         posU_  = p->slidePosU();
@@ -674,7 +674,7 @@ unsigned int MovableEntity::updateMovement()
             Tile          *here    = CUR;
             unsigned char  h_here  = here->height();
             unsigned char  k_here  = here->objectMarker();
-            Tile          *dest    = Tile::at(tileBase_,
+            Tile          *dest    = map_->tile(
                 (int)stepU_ + (int)GU, (int)GV + (int)stepV_);
             unsigned char  h_dest  = dest->height();
             unsigned char  k_dest  = dest->objectMarker();
@@ -802,8 +802,8 @@ unsigned int MovableEntity::updateMovement()
                     }
                     int nu = (int)GU + (int)stepU_;
                     int nv = (int)GV + (int)stepV_;
-                    if (nu < 0 || (int)(unsigned)LevelMap::fromTileBase(tileBase_)->extentU() <= nu ||
-                        nv < 0 || (int)(unsigned)LevelMap::fromTileBase(tileBase_)->extentV() <= nv) {
+                    if (nu < 0 || (int)(unsigned)map_->extentU() <= nu ||
+                        nv < 0 || (int)(unsigned)map_->extentV() <= nv) {
                         moveDir_ = 0;  // off the edge of the map
                     } else {
                         cellU_ = (signed char)(GU + stepU_);

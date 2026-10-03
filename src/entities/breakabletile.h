@@ -64,7 +64,7 @@ private:
     signed char         cellU_;           // read by RenderGameFrame
     signed char         cellV_;
     signed char         heightCell_;
-    Tile               *tileBase_;        // Game::tileBase()
+    LevelMap               *map_;        // Game::map()
     int                 justRespawned_;   // set for the respawn tick
     int                 justFell_;        // set for the fall tick
     double              eventTime_;       // the clock at the last fall or respawn

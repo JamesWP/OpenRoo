@@ -285,7 +285,7 @@ Sim_SetupLevelObjects(Game *self)
     self->setSwitchMax(0);
     self->player()->setLastRoll(0);
 
-    self->player()->setTileBase(M->tileBase());
+    self->player()->setMap(M);
 
     // The player start, and the marker-4 cell.
     if (Sim_FindTileByTypeMarker(M, 3, self->player()->homeRef())) {
@@ -347,7 +347,7 @@ Sim_SetupLevelObjects(Game *self)
             u = 0;
             do {
                 t = CELL(M, u, v);
-                s = LevelMap::snapshotOf(t);
+                s = M->snapshot((int)u, (int)v);
 
                 t->setOccupant(0);
                 t->setField1f6(0);

@@ -134,7 +134,7 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     n = game->liftCount();
     game->setLiftSlot(n, (LiftObject *)raw);
     obj  = (LiftObject *)raw;
-    tile = Tile::at(game->tileBase(), (int)u, (int)v);
+    tile = game->map()->tile( (int)u, (int)v);
 
     if (s_diag_place && !s_logged_spawn) {
         s_logged_spawn = 1;
@@ -145,7 +145,7 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     obj->clock_    = game->clock();
     obj->tickStep_   = game->tickStep();
-    obj->tileBase_ = game->tileBase();
+    obj->map_ = game->map();
 
     obj->cellU_      = (signed char)u;
     obj->cellV_      = (signed char)v;
@@ -251,7 +251,7 @@ void LiftObject::tick()
 
         //         // Compares against the rounded height_; a NaN completes the rise.
         if (!((long double)(int)topHeight_ > (long double)height_)) {
-            signed char top = Tile::at(tileBase_, cellU_, cellV_)->liftTop();
+            signed char top = map_->tile( cellU_, cellV_)->liftTop();
 
             if (s_diag_lift && !s_logged_rise) {
                 s_logged_rise = 1;
@@ -286,7 +286,7 @@ void LiftObject::tick()
             //             // An integer compare, where the rise compares floats.
             if ((int)c <= (int)baseHeight_ - 1) {
                 signed char bot =
-                    Tile::at(tileBase_, cellU_, cellV_)->liftBottom();
+                    map_->tile( cellU_, cellV_)->liftBottom();
 
                 if (s_diag_lift && !s_logged_fall) {
                     s_logged_fall = 1;
@@ -311,7 +311,7 @@ void LiftObject::tick()
                                   -(float)(int)cellV_, 1);
     }
 
-    t = Tile::at(tileBase_, cellU_, cellV_);
+    t = map_->tile( cellU_, cellV_);
 
     if (state_ == 0) {
         //         // The park time is published before the departure test replaces it.

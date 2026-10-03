@@ -84,7 +84,7 @@ private:
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;
-    Tile               *tileBase_;    // Game::tileBase()
+    LevelMap               *map_;    // Game::map()
     unsigned char       guard_;       // the far end; read signed by the tick
     float               restU_;       // the anchor, where the deck
     float               restY_;       // starts

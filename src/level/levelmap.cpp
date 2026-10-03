@@ -100,7 +100,7 @@ int LevelMap::readFile(const char *path)
                 clear_file_bytes(cell);
 
             // The snapshot copy, after the clear.
-            Tile *snap = snapshotOf(cell);
+            Tile *snap = snapshot((int)dx, (int)y);
             snap->setHeight(cell->height());
             snap->setObjectMarker(cell->objectMarker());
             snap->setParam(cell->param());

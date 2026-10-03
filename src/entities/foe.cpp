@@ -88,7 +88,7 @@ static void fx_init(void)
 
 Tile *Foe::tile(int u, int v) const
 {
-    return Tile::at(tileBase_, u, v);
+    return map_->tile( u, v);
 }
 
 Foe *Foe::create()
@@ -151,7 +151,7 @@ Foe::Foe()
     now_ = 0;
     clock_ = 0;
     tickStep_ = 0;
-    tileBase_ = 0;
+    map_ = 0;
     facing_ = 0;
     posU_ = posY_ = posV_ = 0.0f;
     cellU_ = cellV_ = heightCell_ = 0;
@@ -293,7 +293,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         }
     }
 
-    (*slot)->tileBase_ = game->tileBase();
+    (*slot)->map_ = game->map();
     (*slot)->type_     = type;
 
     if (type > 0x64) {
@@ -326,11 +326,11 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     (*slot)->posY_ = (float)(int)(unsigned int)h;
     (*slot)->posV_ = (float)(int)(unsigned int)v;
 
-    Tile::at(game->tileBase(), (int)u, (int)v)->setOccupant((*slot)->kind_);
+    game->map()->tile( (int)u, (int)v)->setOccupant((*slot)->kind_);
 
     // PRESERVED: FoePath::create can return NULL on a failed allocation, and
     // setMode is called on it unconditionally below.
-    (*slot)->pathfinder_ = FoePath::create((*slot)->tileBase_, 0);
+    (*slot)->pathfinder_ = FoePath::create((*slot)->map_, 0);
 
     (*slot)->pathfinder_->setMode(type);
 
@@ -647,7 +647,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
             return pendingMove_;
     }
 
-    Tile *step = Tile::at(tileBase_, (int)nu, (int)nv);
+    Tile *step = map_->tile( (int)nu, (int)nv);
     Tile *here = tile(cellU_, cellV_);
 
     if (step->objectMarker() == TILE_EMPTY)

@@ -6,6 +6,7 @@
 
 #pragma once
 
+class LevelMap;
 class Tile;
 
 /* A search node, 0x44 bytes, zeroed.  FoePath builds and links them; the chase
@@ -84,7 +85,7 @@ public:
 
     // Allocates (nothrow) and populates one; NULL if the allocation fails, and
     // the caller stores that.
-    static FoePath *create(Tile *tileBase, unsigned short field04);
+    static FoePath *create(LevelMap *map, unsigned short field04);
     // dispose(), then delete.
     static void destroy(FoePath *p);
 
@@ -105,7 +106,7 @@ public:
     PathNode *result() const                       { return result_; }
     void setResult(PathNode *n)                    { result_ = n; }
 
-    Tile* tileBase() const { return tileBase_; }
+    LevelMap *map() const { return map_; }
 
     // The search (foepath.cpp).
     int       find(int uFoe, int vFoe, int uTarget, int vTarget);
@@ -131,10 +132,10 @@ public:
 private:
     FoePath() = delete;  // built by create()
     // The constructor's stores.
-    void populate(Tile *tileBase, unsigned short field04);
+    void populate(LevelMap *map, unsigned short field04);
     static PathNode *findByKey(PathNode *hdr, int key);
 
-    Tile *tileBase_;  // the ctor's argument
+    LevelMap *map_;  // the ctor's argument
     unsigned short field_04;   // the ctor's second argument (0)
     PathNode      *open_;      // a header node, fresh each search
     PathNode      *closed_;    // likewise

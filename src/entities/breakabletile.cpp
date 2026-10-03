@@ -149,7 +149,7 @@ unsigned int BreakableTile::spawn(Game *game, unsigned int uArg,
     //     // PRESERVED: a failed allocation is not checked; the first store faults.
     obj->clock_    = game->clock();
     obj->tickStep_   = game->tickStep();
-    obj->tileBase_ = game->tileBase();
+    obj->map_ = game->map();
 
     obj->cellU_      = (signed char)u;
     obj->cellV_      = (signed char)v;
@@ -168,7 +168,7 @@ unsigned int BreakableTile::spawn(Game *game, unsigned int uArg,
     //     // places further objects, which is why placeaxis also fails
     //     // levelreport.py.
     idx = v + u * 100;
-    Tile::at(game->tileBase(), (int)u, (int)v)->setObjectMarker(TILE_BREAKABLE);
+    game->map()->tile( (int)u, (int)v)->setObjectMarker(TILE_BREAKABLE);
 
     game->setBreakableCount((unsigned char)(n + 1));
 
@@ -228,7 +228,7 @@ void BreakableTile::purgeAll(Game *game)
 
 Tile *BreakableTile::tile() const
 {
-    return Tile::at(tileBase_, (int)cellU_, (int)cellV_);
+    return map_->tile( (int)cellU_, (int)cellV_);
 }
 
 void BreakableTile::playAtTile(audiodev::Buffer *snd, const Tile *t) const

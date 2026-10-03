@@ -108,7 +108,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 {
     unsigned int u, v, height, kind;
     unsigned char n, var, last;
-    Tile *base;
+    LevelMap *base;
     SlideObject *obj;
     Tile *tile;
 
@@ -126,8 +126,8 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
             kind = 0x0a;
     }
 
-    base = game->tileBase();
-    tile = Tile::at(base, (int)u, (int)v);
+    base = game->map();
+    tile = base->tile( (int)u, (int)v);
 
     //     // Four fields of the spawn cell are cleared before the allocation.
     tile->setHeight(0);
@@ -159,7 +159,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     obj->tickStep_   = game->tickStep();
     obj->kind_     = (signed char)kind;
     obj->state_    = 1;
-    obj->tileBase_ = base;
+    obj->map_ = base;
 
     //     // This clear fires for every kind but covers only the spawn cell.
     //     // PRESERVED: the V scan clears the marker of every cell it walks; the U
@@ -177,7 +177,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
             last = var;
             var  = (unsigned char)(var + 1);
-            tile = Tile::at(base, (int)var, (int)v);
+            tile = base->tile( (int)var, (int)v);
             if (tile->objectMarker() != TILE_EMPTY)
                 break;
         }
@@ -194,7 +194,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
             last = var;
             var  = (unsigned char)(var + 1);
-            tile = Tile::at(base, (int)u, (int)var);
+            tile = base->tile( (int)u, (int)var);
             if (tile->objectMarker() != TILE_EMPTY)
                 break;
         }
@@ -289,8 +289,8 @@ void SlideObject::vacate()
         g_logger.write("slideobject: first vacate -- cell=(%d,%d)\n",
                   (int)cellU_, (int)cellV_);
     }
-    Tile::at(tileBase_, cellU_, cellV_)->setObjectMarker(0);
-    Tile::at(tileBase_, cellU_, cellV_)->setOccupant(0);
+    map_->tile( cellU_, cellV_)->setObjectMarker(0);
+    map_->tile( cellU_, cellV_)->setOccupant(0);
 }
 
 void SlideObject::tick()
@@ -432,14 +432,14 @@ void SlideObject::tick()
     }
 
     if (state_ == 0) {
-        t = Tile::at(tileBase_, cellU_, cellV_);
+        t = map_->tile( cellU_, cellV_);
         t->setSlideParkedSince(phaseStart_);
         t->setSlideDwell(K_PARK_DWELL);
 
         if (now_ - phaseStart_ >= K_PARK_DWELL) {
             //             // PRESERVED: unlike the lift, a departing slide restarts its
             //             // sound without setting its 3D position.
-            Tile::at(tileBase_, cellU_, cellV_)->setObjectMarker(0);
+            map_->tile( cellU_, cellV_)->setObjectMarker(0);
 
             phaseStart_ = now_;
             state_ = (signed char)((atLimit_ != 0) + 1);
@@ -456,14 +456,14 @@ void SlideObject::tick()
         }
     }
 
-    t = Tile::at(tileBase_, cellU_, cellV_);
+    t = map_->tile( cellU_, cellV_);
     t->setObjectMarker(0x0c);
     t->setHeight(tileHeight_);
 
     posY_ = (float)(int)heightCell_;
 
     //     // Indexed by the origin cell: the home tile carries the live position.
-    t = Tile::at(tileBase_, originU_, originV_);
+    t = map_->tile( originU_, originV_);
     t->setSlideCell((unsigned char)cellU_, (unsigned char)cellV_);
     t->setSlidePos(posU_, posY_, posV_);
 }
