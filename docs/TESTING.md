@@ -76,11 +76,8 @@ than hand-editing the tables.
 
 **Surfaces are real memory.** They have to be -- the backend writes pixels into
 them (`devicetexture.cpp` Locks a staging surface, converts an `Image` into it
-and Blts). Every surface is a `VirtualAlloc` block of its pitch times its height, so
-`Lock` addresses it; there is no `GetDC`.  Not the CRT heap, on purpose: with
-the surfaces there, `enemyfactory` ends with one foe fewer killed, so the game
-has a read of uninitialised or freed memory whose result follows the heap's
-layout.  (Unfound; see the comment on `surf_alloc_bits`.) What is *not*
+and Blts). Every surface is a zeroed `new[]` block of its pitch times its height, so
+`Lock` addresses it; there is no `GetDC`.  What is *not*
 implemented is stretching and format-converting Blts; the one place the game
 asks for one is the loading-screen bitmap, and it logs a single line saying so.
 

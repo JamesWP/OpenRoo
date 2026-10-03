@@ -212,7 +212,7 @@ int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
 
         fgets(line, JJSR_LINE_MAX, fp);  // PRESERVED: result unchecked
 
-        memcpy(prefix4, line, 4);
+        std::copy_n(line, 4, prefix4);
         prefix4[4] = '\0';
 
         if (!inBlock) {
@@ -246,7 +246,7 @@ int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
             }
         }
 
-        memcpy(prefix9, line, 9);
+        std::copy_n(line, 9, prefix9);
         prefix9[9] = '\0';
         if (strcmp(prefix9, "splinexyz") == 0)
             splineLines_ = (uint16_t)(splineLines_ + 1);
@@ -324,7 +324,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
         float speed = next_float();
         moving_ = 1;
         speed_ = speed;
-        memcpy(from_, eye_, sizeof(from_));
+        std::copy_n(eye_, std::size(from_), from_);
         start_ = now_;
         float dx = target_[0] - eye_[0];
         float dy = target_[1] - eye_[1];
@@ -377,7 +377,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
         // Drops "text " and the trailing "\n".  PRESERVED: a line under six
         // characters gives a negative length.
         size_t n = strlen(line) - 6;
-        memcpy(scratch_, line + 5, n);
+        std::copy_n(line + 5, n, scratch_);
         scratch_[n] = '\0';
         return 9;
     }
@@ -396,7 +396,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
     if (strcmp(cmd, "splinexyz") == 0) {
         field_92d_ = 1;
         spline->purgeControlPoints();
-        memcpy(splinePoint_, g_camera.eye(), sizeof(splinePoint_));  // the camera's eye (camera.h)
+        std::copy_n(g_camera.eye(), std::size(splinePoint_), splinePoint_);  // the camera's eye (camera.h)
         start_ = now_;
         // DETERMINISM: an int product widened as unsigned.
         duration_ = (double)(unsigned int)(atoi(strtok(NULL, JJS_DELIMS)) * 1000);
@@ -501,7 +501,7 @@ void ScriptPlayer::updateSpline()
     if (elapsed < duration_) {
         float out[3];
         const float *p = (const float *)spline_.evalBezierPath(out, (float)(elapsed / duration_));
-        memcpy(splinePoint_, p, sizeof(splinePoint_));
+        std::copy_n(p, std::size(splinePoint_), splinePoint_);
     } else {
         eye_[1] = -eye_[1];  // PRESERVED
         splineActive_ = 0;
@@ -522,7 +522,7 @@ void ScriptPlayer::updateGlide()
         return;
     if (duration_ <= now_ - start_) {
         moving_ = 0;
-        memcpy(eye_, target_, sizeof(eye_));
+        std::copy_n(target_, std::size(eye_), eye_);
         return;
     }
     float dt = (float)dt_;

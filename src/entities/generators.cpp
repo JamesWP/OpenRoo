@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
+#include <algorithm>
+#include <iterator>
 
 #define SIM_LOG_FIRST 8
 
@@ -976,8 +978,8 @@ void StdGenerator::stdInterleavePos(const float *x, const float *y,
 void StdGenerator::stdBuildSphere(const float *mn, const float *mx)
 {
     float a[3] = { mn[0], mn[1], mn[2] }, b[3] = { mx[0], mx[1], mx[2] };
-    memcpy(flSphMin_, a, sizeof a);
-    memcpy(flSphMax_, b, sizeof b);
+    std::copy(std::begin(a), std::end(a), flSphMin_);
+    std::copy(std::begin(b), std::end(b), flSphMax_);
     dwEmitMode_ = 0;
     float *col[3] = { new float[500], new float[500], new float[500] };
     for (int i = 0; i < 3; i++)
@@ -991,8 +993,8 @@ void StdGenerator::stdBuildSphere(const float *mn, const float *mx)
 void StdGenerator::stdBuildBox(const float *mn, const float *mx)
 {
     float a[3] = { mn[0], mn[1], mn[2] }, b[3] = { mx[0], mx[1], mx[2] };
-    memcpy(flBoxMax_, b, sizeof b);
-    memcpy(flBoxMin_, a, sizeof a);
+    std::copy(std::begin(b), std::end(b), flBoxMax_);
+    std::copy(std::begin(a), std::end(a), flBoxMin_);
     dwEmitMode_ = 1;
     float *col[3] = { new float[500], new float[500], new float[500] };
     for (int i = 0; i < 3; i++)
@@ -1038,8 +1040,8 @@ void StdGenerator::stdBuildVelocity(const float *vmin, const float *vmax,
     float a[3] = { vmin[0], vmin[1], vmin[2] }, b[3] = { vmax[0], vmax[1], vmax[2] };
     build_velocity_table(flVelTable_, a, b, lmin, lmax);
     dwVelIdx_ = 0;
-    memcpy(flVelMin_, a, sizeof a);
-    memcpy(flVelMax_, b, sizeof b);
+    std::copy(std::begin(a), std::end(a), flVelMin_);
+    std::copy(std::begin(b), std::end(b), flVelMax_);
     flLifeMin_ = lmin;
     flLifeMax_ = lmax;
 }
@@ -1117,7 +1119,7 @@ int XStdGenerator::copyFrom(const Generator *gsrc)
     if (!StdGenerator::copyFrom(gsrc))
         return FALSE;
     const XStdGenerator *src = static_cast<const XStdGenerator *>(gsrc);
-    memcpy(flPosOffset_, src->flPosOffset_, sizeof flPosOffset_);
+    std::copy(std::begin(src->flPosOffset_), std::end(src->flPosOffset_), flPosOffset_);
     return TRUE;
 }
 
@@ -1229,7 +1231,7 @@ void PointGenerator::tick(float dt)
     for (int i = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
         *(uint32_t *)&node->flLife = life[dwLifeIdx_];
-        memcpy(&node->flX, flEmitPos_, 12);
+        std::copy_n(flEmitPos_, 3, &node->flX);
         node->dwDiffuse = dwDiffuse_;
         for (int a = 0; a < 3; a++)
             node->flVel[a] = flVelTable_[dwVelIdx_[a]] + flVelBias_[a];
@@ -1331,7 +1333,7 @@ void CylinderGenerator::setDirection(float x, float y, float z)
     for (int i = 0; i < 3; i++)
         for (int j = 0; j < 3; j++)
             m[i * 4 + j] = direction_cosine(rows[i], AXIS[j]);
-    memcpy(flMatrix_, m, sizeof m);
+    std::copy(std::begin(m), std::end(m), flMatrix_);
 }
 
 void CylinderGenerator::setPosition(float x, float y, float z)
@@ -1350,8 +1352,8 @@ void CylinderGenerator::cylBuildVelocity(const float *vmin, const float *vmax,
     float a[3] = { vmin[0], vmin[1], vmin[2] }, b[3] = { vmax[0], vmax[1], vmax[2] };
     build_velocity_table(flVelTable_, a, b, lmin, lmax);
     dwVelIdx_ = 0;
-    memcpy(flVelMin_, a, sizeof a);
-    memcpy(flVelMax_, b, sizeof b);
+    std::copy(std::begin(a), std::end(a), flVelMin_);
+    std::copy(std::begin(b), std::end(b), flVelMax_);
     typeTable_.clear();
     dwTypeTableCount_ = 0;
     flLifeMin_ = lmin;
@@ -1474,7 +1476,7 @@ CylinderGenerator::CylinderGenerator()
     pName_ = GS_PSNAME_CYL_GEN;
     setDirection(0.0f, 1.0f, 0.0f);
     static const float IDENTITY[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 };
-    memcpy(flMatrix_, IDENTITY, sizeof IDENTITY);
+    std::copy(std::begin(IDENTITY), std::end(IDENTITY), flMatrix_);
     for (int i = 0; i < 200; i++)
         pEmitProb_[i] = 0xFFFFFFFF;
     float *angle = new float[500];

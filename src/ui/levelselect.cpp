@@ -5,6 +5,7 @@
 #include "game.h"
 #include "menutree.h"
 #include "logger.h"
+#include <algorithm>
 
 static int  s_themeCount;
 static int  s_themeFirst[LS_MAX_THEMES + 1];  // JJ.GAM index each theme starts at
@@ -18,7 +19,7 @@ static void theme_of(const char *name, char *out, size_t n)
     size_t len = bs ? (size_t)(bs - name) : strlen(name);
     if (len >= n)
         len = n - 1;
-    memcpy(out, name, len);
+    std::copy_n(name, len, out);
     out[len] = 0;
 }
 

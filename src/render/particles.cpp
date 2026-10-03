@@ -28,6 +28,7 @@
 #include "renderdevice.h"
 #include <algorithm>
 #include <memory>
+#include <iterator>
 
 #define PARTICLE_FVF       VertexFormat::Lit  // XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1, 0x20 stride
 #define PARTICLE_LOG_FIRST 8
@@ -805,7 +806,7 @@ int XFaceParticleSystem::buildCorners()
         float n = -s;
         const float quad[6][3] = { { n, 0, n }, { s, 0, s }, { n, 0, s },
                                    { s, 0, n }, { s, 0, s }, { n, 0, n } };
-        memcpy(e->flCorner, quad, sizeof quad);
+        std::copy_n(&quad[0][0], 18, &e->flCorner[0][0]);
 
         float axis[3] = { rand_signed_unit(), rand_signed_unit(), rand_signed_unit() };
         bool along_x = !(axis[0] < 1.0f || axis[0] > 1.0f)
@@ -855,8 +856,8 @@ int XFaceParticleSystem::copyFrom(const ParticleSystem *src)
 {
     if (!ParticleSystem::copyFrom(src))
         return FALSE;
-    memcpy(ranges, static_cast<const XFaceParticleSystem *>(src)->ranges,
-           sizeof(ranges));
+    std::copy(std::begin(static_cast<const XFaceParticleSystem *>(src)->ranges),
+              std::end(static_cast<const XFaceParticleSystem *>(src)->ranges), ranges);
     ring_.assignShapes(dwCornerTableCount_);
     if (!buildCorners()) {
         ParticleSystem::release(1);
