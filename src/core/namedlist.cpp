@@ -1,12 +1,6 @@
 /* NamedEntryList (namedlist.h).
  *
  * PRESERVED, all harmless as the game uses the list:
- *   - Insert stores through the new entry without checking it, so an
- *     exhausted heap faults inside Insert;
- *   - Insert rejects a name longer than 0x100, so a name of exactly 0x100 is
- *     accepted and copied with its terminator, 0x101 bytes into a 0x100-byte
- *     field.  The stray NUL lands on the payload, which the next store
- *     overwrites;
  *   - Remove repairs head and tail from the entry's own links and never checks
  *     that the entry is in this list: a foreign entry corrupts both lists;
  *   - Remove always returns 0. */
@@ -15,7 +9,7 @@
 #include <stdint.h>
 #include "namedlist.h"
 #include "sysdev.h"
-#include <stdlib.h>
+#include <algorithm>
 #include <stddef.h>
 #include <string.h>
 #include "logger.h"
@@ -109,7 +103,7 @@ void NamedEntryList::clear()
     while (p != NULL) {
         NamedEntry *next = p->pNext;
         ++g_nClearFreed;
-        free(p);
+        delete p;
         p = next;
     }
     pHead   = NULL;
@@ -141,14 +135,13 @@ NamedEntry *NamedEntryList::insert(const char *pszName, void *pPayload)
     }
 
     size_t len = strlen(pszName);
-    if (len > 0x100) {  // greater than, not at least: see the file comment
+    if (len >= sizeof(NamedEntry::szName)) {  // no room for the terminator
         ++g_nInsertReject;
         return NULL;
     }
 
-    // No NULL check, and the copy is len+1, both PRESERVED.
-    NamedEntry *entry = (NamedEntry *)malloc(sizeof(NamedEntry));
-    memcpy(entry->szName, pszName, len + 1);
+    NamedEntry *entry = new NamedEntry;
+    std::copy_n(pszName, len + 1, entry->szName);
     entry->pPayload = pPayload;
     entry->pNext    = NULL;
     entry->pPrev    = NULL;
@@ -184,7 +177,7 @@ int NamedEntryList::remove(NamedEntry *pEntry)
         else
             pEntry->pNext->pPrev = pEntry->pPrev;
 
-        free(pEntry);
+        delete pEntry;
         dwCount = dwCount - 1;
     }
     return 0;

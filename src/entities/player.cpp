@@ -507,12 +507,9 @@ Player::Player()
     pathfinder_    = NULL;
 }
 
-/* The path-finder is allocated on the game heap, so it is freed there. */
 Player::~Player()
 {
-    if (pathfinder_ != NULL) {
-        pathfinder_->dispose();
-        free(pathfinder_);
-    }
+    if (pathfinder_ != NULL)
+        FoePath::destroy(pathfinder_);
 }
 

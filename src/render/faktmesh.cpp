@@ -15,7 +15,6 @@
 #include <string.h>
 #include "logger.h"
 #include "gamestr.h"
-#include <stdlib.h>
 #include "renderdevice.h"
 CFaktMesh g_meshEnemy;
 CFaktMesh g_meshPlayer;
@@ -93,19 +92,13 @@ HRESULT CFaktMesh::drawFramedModel(RenderDevice *dev, uint32_t frame)
 /* ─── Lifecycle ────────────────────────────────────────────────────
  */
 
-/* Four guarded frees, each followed by a NULL, then the two scalars.
- * PRESERVED: wFrameCount goes to 1, not 0, so an empty mesh claims one frame.
+/* PRESERVED: wFrameCount goes to 1, not 0, so an empty mesh claims one frame.
  */
 void CFaktMesh::releaseModelBuffers()
 {
-    if (pVertexData_)   free(pVertexData_);
-    pVertexData_ = NULL;
-    if (pFrameRecords_) free(pFrameRecords_);
-    pFrameRecords_ = NULL;
-    if (pScratchVerts_) free(pScratchVerts_);
-    pScratchVerts_ = NULL;
-    if (pszName_)       free(pszName_);
-    pszName_ = NULL;
+    std::vector<MeshVertex>().swap(vertexData_);
+    std::vector<FrameRecord>().swap(frameRecords_);
+    std::string().swap(pszName_);
     dwVertexCount_ = 0;
     wFrameCount_   = 1;
 }
@@ -119,12 +112,8 @@ CFaktMesh::CFaktMesh()
     strided_[MESH_STRIDED_TEX0].dwStride     = MDL_VERTEX_STRIDE;
     strided_[MESH_STRIDED_TEX1].dwStride     = MDL_VERTEX_STRIDE;
 
-    pVertexData_    = NULL;
     dwVertexCount_  = 0;
-    pFrameRecords_  = NULL;
     wFrameCount_    = 1;
-    pScratchVerts_  = NULL;
-    pszName_        = NULL;
 
     static LONG logged = 0;
     if (InterlockedIncrement(&logged) <= MESH_LOG_FIRST)
@@ -143,9 +132,9 @@ CFaktMesh::~CFaktMesh()
  *   +0x00  uint16_t   frameCount     -> wFrameCount_
  *   +0x02  uint32_t  vertexCount    -> dwVertexCount_
  *   then, for each frame f:
- *          6 x uint32_t             -> pFrameRecords_ + f*0x18
+ *          6 x uint32_t             -> frameRecords_[f]
  *          for each vertex v:
- *              10 x uint32_t        -> pVertexData_ + (f*vertexCount + v)*0x28
+ *              10 x uint32_t        -> vertexData_[f*vertexCount + v]
  * Opened "rb".  Every read is a separate 4-byte fread; the header's two are 2
  * and 4 bytes.
  *
@@ -202,27 +191,16 @@ int CFaktMesh::importSceneModels(const char *path)
     verts  = dwVertexCount_;
     total  = frames * verts;
 
-    // PRESERVED: the frame records are not zero-filled, unlike the two vertex
-    // buffers, so a record missing from the file reads as heap garbage.
-    pFrameRecords_ = malloc(frames * MDL_FRAME_REC_SIZE);
-
-    pVertexData_ = malloc(total * MDL_VERTEX_SIZE);
-    if (pVertexData_ != NULL && total != 0)
-        memset(pVertexData_, 0, total * MDL_VERTEX_SIZE);
-
-    pScratchVerts_ = malloc(verts * MDL_VERTEX_SIZE);
-    if (pScratchVerts_ != NULL && verts != 0)
-        memset(pScratchVerts_, 0, verts * MDL_VERTEX_SIZE);
+    frameRecords_.assign(frames, FrameRecord{});
+    vertexData_.assign(total, MeshVertex{});
 
     for (unsigned f = 0; f < (frames & 0xffff); f++) {
-        unsigned char *rec = (unsigned char *)pFrameRecords_
-                           + f * MDL_FRAME_REC_SIZE;
+        unsigned char *rec = (unsigned char *)&frameRecords_[f];
         for (int i = 0; i < 6; i++)
             fread(rec + i * 4, 4, 1, fp);
 
         for (unsigned v = 0; v < dwVertexCount_; v++) {
-            unsigned char *vert = (unsigned char *)pVertexData_
-                                + (f * dwVertexCount_ + v) * MDL_VERTEX_SIZE;
+            unsigned char *vert = (unsigned char *)&vertexData_[f * dwVertexCount_ + v];
             for (int i = 0; i < 10; i++)
                 fread(vert + i * 4, 4, 1, fp);
 
@@ -236,14 +214,7 @@ int CFaktMesh::importSceneModels(const char *path)
 
     fclose(fp);
 
-    // pszName is the path, freed by CFaktMesh::releaseModelBuffers.
-    {
-        unsigned n = (unsigned)strlen(path) + 1;
-        char *name = (char *)malloc(n);
-        pszName_ = name;
-        if (name != NULL)
-            memcpy(name, path, n);
-    }
+    pszName_ = path;
 
     // KAROO_MDL_DUMP=<path>: one line per load, the two heap buffers hashed
     // (FNV-1a 32), to compare an independent parse of the same .mdl against
@@ -256,8 +227,8 @@ int CFaktMesh::importSceneModels(const char *path)
                 char line[512];
                 int n = snprintf(line, sizeof(line), "%s frames=%u verts=%u rec=%08lx vtx=%08lx\r\n",
                                   path, frames, verts,
-                                  fnv1a(pFrameRecords_, frames * MDL_FRAME_REC_SIZE),
-                                  fnv1a(pVertexData_,   total  * MDL_VERTEX_SIZE));
+                                  fnv1a(frameRecords_.data(), frames * MDL_FRAME_REC_SIZE),
+                                  fnv1a(vertexData_.data(), total  * MDL_VERTEX_SIZE));
                 fwrite(line, 1, n, h);
                 fclose(h);
             }

@@ -278,36 +278,25 @@ PathNode *FoePath::popBestOpen()
     return head;
 }
 
-static inline void *path_calloc(int count, int size)
-{
-    return calloc((size_t)count, (size_t)size);
-}
-
 void FoePath::releaseLists()
 {
     static int reported = 0;
     int freed = 0;
 
     for (int i = 0; i < 2; ++i) {
-        PathNode *hdr = (i == 0) ? open_ : closed_;
+        PathNode *&hdr = (i == 0) ? open_ : closed_;
         if (hdr == 0)
             continue;
 
         PathNode *n = hdr->next_;
-        if (n == 0)
-            continue;
-
-        do {
+        while (n != 0) {
             PathNode *p = n;
             n = n->next_;  // next must be read before p is freed
-            free(p);
+            delete p;
             ++freed;
-        // PRESERVED: hdr->next is left pointing at the freed chain here.
-        // Harmless only because SearchPathNodeGraph callocs a fresh header for
-        // every search before anything reads it; do not add the "obvious"
-        // hdr->next = 0 without checking every caller still relies on that.
-        } while (n != 0);
-
+        }
+        delete hdr;
+        hdr = 0;
     }
 
     // Logged in two stages because the first call is always empty: it runs
@@ -351,7 +340,7 @@ void FoePath::populate(Tile *tileBase, unsigned short field04)
     field_04   = field04;
     keyStride_ = (int)map->extentU();
     extentV_   = (int)map->extentV();
-    pending_   = (PendingStack *)path_calloc(1, sizeof(PendingStack));
+    pending_   = new PendingStack();
     found_     = 0;
     open_      = 0;
     closed_    = 0;
@@ -361,7 +350,8 @@ void FoePath::populate(Tile *tileBase, unsigned short field04)
 void FoePath::dispose()
 {
     releaseLists();
-    free(pending_);
+    delete pending_;
+    pending_ = 0;
 }
 
 PathNode *FoePath::findByKey(PathNode *hdr, int key)
@@ -428,7 +418,7 @@ void FoePath::pushPending(PathNode *node)
 
     ++g_diag.pushes;
 
-    PendingCell *cell = (PendingCell *)path_calloc(1, sizeof(PendingCell));
+    PendingCell *cell = new PendingCell();
 
     cell->node_ = node;
 
@@ -446,7 +436,7 @@ PathNode *FoePath::popPending()
     PathNode *node = cell->node_;
     owner->head_ = cell->next_;
 
-    free(cell);
+    delete cell;
     return node;
 }
 
@@ -536,7 +526,7 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
         return;
     }
 
-    n = (PathNode *)path_calloc(1, sizeof(PathNode));
+    n = new PathNode();
 
     const int du = u - goalU;
     const int dv = v - goalV;
@@ -728,14 +718,12 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
 
     const int goalKey = cellKey(uFoe, vFoe);
 
-    // PRESERVED: these two headers, and the seed node below, are calloc'd
-    // fresh on every search and never reused; releaseLists frees only the
-    // nodes chained off a header, not the header itself, so each search leaks
-    // two small blocks.
-    open_   = (PathNode *)path_calloc(1, sizeof(PathNode));
-    closed_ = (PathNode *)path_calloc(1, sizeof(PathNode));
+    // These two headers, and the seed node below, are new on every search;
+    // releaseLists frees the headers and the nodes chained off them.
+    open_   = new PathNode();
+    closed_ = new PathNode();
 
-    PathNode *seed = (PathNode *)path_calloc(1, sizeof(PathNode));
+    PathNode *seed = new PathNode();
 
     const int du = uTarget - uFoe;
     const int dv = vTarget - vFoe;

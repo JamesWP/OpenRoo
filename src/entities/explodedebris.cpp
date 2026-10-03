@@ -12,43 +12,28 @@
 
 #include "explodedebris.h"
 #include "generators.h"
-#include <stdlib.h>
+#include <algorithm>
 #include "faktmesh.h"
-#include <string.h>
 #include <math.h>
 #include "renderdevice.h"
 
-/* Guarded frees, then three of the four stores. */
 void ExplodeDebris::release()
 {
-    if (pVertexCopy_)
-        free(pVertexCopy_);
-    if (pFaceRecords_)
-        free(pFaceRecords_);
-    pVertexCopy_  = NULL;
+    std::vector<MeshVertex>().swap(vertexCopy_);
+    std::vector<std::array<float, 3>>().swap(faceRecords_);
     nVertexCount_ = 0;
     bActive_      = 0;
-
-/* pFaceRecords is not cleared: PRESERVED. */
 }
 
-/* The "explode" keyword's buffers, sized from the mesh.  PRESERVED: neither
- * allocation is checked before the zeroing after the second; the vertex buffer
- * is zeroed twice, the second time as (n*5 & 0x1fffffff)*2 dwords, which is
- * n*10 only while n*5 fits in 29 bits. */
+/* The "explode" keyword's buffers, sized from the mesh and zeroed. */
 void ExplodeDebris::allocateExplodeBuffers(CFaktMesh *mesh)
 {
     release();
 
     uint32_t n = mesh->vertexCount();
-    MeshVertex *verts = (MeshVertex *)malloc(n * sizeof(MeshVertex));
-    if (verts != NULL && (int)n > 0)
-        memset(verts, 0, n * 0x28);
-    pVertexCopy_  = verts;
-    pFaceRecords_ = (float (*)[3])malloc((n / 3) * sizeof(float[3]));
-    nVertexCount_ = (int)mesh->vertexCount();
-
-    memset(pVertexCopy_, 0, (((uint32_t)nVertexCount_ * 5) & 0x1fffffffu) * 2 * 4);
+    vertexCopy_.assign(n, MeshVertex{});
+    faceRecords_.assign(n / 3, std::array<float, 3>{});
+    nVertexCount_ = (int)n;
 }
 
 /* The drop rate: the count, converted unsigned, times arg / 300. */
@@ -61,8 +46,6 @@ void ExplodeDebris::storeExplodeScaledCount(float scale)
 /* The stores in a fixed order, then the table seed. */
 ExplodeDebris::ExplodeDebris()
 {
-    pVertexCopy_  = NULL;
-    pFaceRecords_ = NULL;
     nVertexCount_ = 0;
     bActive_      = 0;
     nLiveVertices_ = 0;
@@ -82,12 +65,12 @@ ExplodeDebris::~ExplodeDebris()
  * nothing compares. */
 float *ExplodeDebris::debrisVertex(int i)
 {
-    return pVertexCopy_[i].pos;
+    return vertexCopy_[i].pos;
 }
 
 float *ExplodeDebris::debrisVelocity(int tri)
 {
-    return pFaceRecords_[tri];
+    return faceRecords_[tri].data();
 }
 
 int ExplodeDebris::begin(CFaktMesh *mesh,
@@ -97,16 +80,15 @@ int ExplodeDebris::begin(CFaktMesh *mesh,
         return 0;
     if ((uint32_t)nVertexCount_ != mesh->vertexCount())
         return 0;
-    if (pVertexCopy_ == NULL)
+    if (vertexCopy_.empty())
         return 0;
 
     // PRESERVED: the source offset is frame * count * 40 vertices, forty
     // times a frame's real size.  Frame 0 is right; any other frame
     // reads far past the mesh's vertices.
     uint32_t count = mesh->vertexCount();
-    memcpy(pVertexCopy_,
-           (MeshVertex *)mesh->vertexData() + (uint32_t)frame * count * 40,
-           count * sizeof(MeshVertex));
+    const MeshVertex *src = (const MeshVertex *)mesh->vertexData() + (uint32_t)frame * count * 40;
+    std::copy_n(src, count, vertexCopy_.begin());
 
     for (uint32_t t = 0; t < (uint32_t)nVertexCount_ / 3; t++) {
         float *r = debrisVelocity(t);
@@ -161,10 +143,10 @@ long ExplodeDebris::draw(RenderDevice *dev)
     uint32_t saved;
     saved = dev->GetRenderState(RS::SrcBlend);
     dev->SetRenderState(RS::SrcBlend, Blend::SrcAlpha);
-    dev->Draw(Prim::TriangleList, VertexFormat::Normal2, pVertexCopy_,
+    dev->Draw(Prim::TriangleList, VertexFormat::Normal2, vertexCopy_.data(),
                        nLiveVertices_, DrawFlag::NoLight);
     dev->SetRenderState(RS::SrcBlend, Blend::DestAlpha);
-    dev->Draw(Prim::TriangleList, VertexFormat::Normal2, pVertexCopy_,
+    dev->Draw(Prim::TriangleList, VertexFormat::Normal2, vertexCopy_.data(),
                        nLiveVertices_, DrawFlag::NoLight);
     dev->SetRenderState(RS::SrcBlend, saved);
     return 0;

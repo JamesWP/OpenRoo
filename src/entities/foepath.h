@@ -1,14 +1,14 @@
 /* FoePath: the foe pathfinder, a best-first (A*-shaped) search over the tile
  * grid, run backward from the target to the foe.  One per foe.  The object,
  * its worklist block, cells and nodes are all allocated and freed here (new
- * and delete, calloc and free).  foepath.cpp has each method's PRESERVED
+ * and delete).  foepath.cpp has each method's PRESERVED
  * notes. */
 
 #pragma once
 
 class Tile;
 
-/* A search node, calloc(1, 0x44).  FoePath builds and links them; the chase
+/* A search node, 0x44 bytes, zeroed.  FoePath builds and links them; the chase
  * (foe.cpp) reads the result's parent and cell. */
 class PathNode {
 public:
@@ -50,7 +50,7 @@ private:
 
  
 
-/* One cell of the cost-propagation worklist: calloc(1, 9), nine bytes for two
+/* One cell of the cost-propagation worklist: nine bytes for two
  * pointers; the ninth is never touched. */
 class PendingCell {
 public:
@@ -67,7 +67,7 @@ private:
 };
 
  
-/* The worklist's owner block, calloc(1, 9).  Only the head is ever touched:
+/* The worklist's owner block, one pointer.  Only the head is ever touched:
  * the worklist is a stack. */
 class PendingStack {
 public:
