@@ -22,7 +22,6 @@
 #include "player.h"
 #include <string.h>
 #include <algorithm>
-#include <memory>
 #include <fstream>
 #include "binio.h"
 #include <stdio.h>
@@ -48,79 +47,6 @@ struct GameState {
     float pos[3];         // unconfirmed
     unsigned short mode;  // the mode handed to the input dispatch
 };
-
-/* The death diff (KAROO_DEATH_DIFF=1), a field finder: rather than guess a
- * field's meaning, snapshot the whole Game while alive and diff it across a
- * death, so that a counter names itself by stepping by one.
- *
- * Two reports are made per death: one at the death, and one REPORT_AFTER
- * frames after the death cause clears, against the same snapshot.  The second
- * is needed because lives is decremented during the restart, not at the death.
- * The snapshot refreshes every SNAP_EVERY frames while alive, which keeps the
- * window, and the noise, small.
- *
- * The scan is by byte, not by dword: lives is a byte, and as a dword its step
- * of one reads as a change of 65536, lost among the other large changes. */
-#define GAME_SIZE   sizeof(Game)
-#define SNAP_EVERY   30
-#define DIFF_MAX     120
-#define REPORT_AFTER 45  // frames after the respawn for the second report
-
-static std::unique_ptr<uint8_t[]> g_snap;
-static int   g_diff_on = -1;
-static uint8_t  g_prev_death;
-static uint32_t g_respawn_at;  // the frame the death cause cleared; 0 is idle
-
-static bool deathdiff_enabled(void)
-{
-    if (g_diff_on < 0) {
-        char buf[16];
-        g_diff_on = 0;
-        if (sysdev::getEnv("KAROO_DEATH_DIFF", buf, sizeof(buf)) && buf[0] && buf[0] != '0') {
-            g_snap.reset(new uint8_t[GAME_SIZE]());
-            g_diff_on = 1;
-        }
-        g_logger.write("gamestate: death diff %s\n", g_diff_on ? "enabled" : "disabled");
-    }
-    return g_diff_on > 0;
-}
-
-/* Reports what differs between the snapshot and the live object.  Bytes that
- * moved by exactly one come first: that is what a life, a bomb count or an
- * attempt counter looks like across a death.  The rest are listed as dwords,
- * which reads better for pointers and floats. */
-static void deathdiff_report(const uint8_t *game, unsigned cause, const char *when)
-{
-    int shown = 0, delta1 = 0;
-    g_logger.write("deathdiff: === %s (cause=%u) — dwords changed vs pre-death snapshot ===\n",
-              when, cause);
-
-    // Byte steps of one: the counters.
-    for (uint32_t o = 0; o < GAME_SIZE && shown < DIFF_MAX; o++) {
-        int a = g_snap[o], b = game[o];
-        int d = b - a;
-        if (d != 1 && d != -1) continue;
-        g_logger.write("deathdiff:   +0x%06lx  byte %d -> %d  (%+d)  <-- step\n",
-                  (unsigned long)o, a, b, d);
-        shown++; delta1++;
-    }
-    // Everything else, as dwords.
-    for (uint32_t o = 0; o + 4 <= GAME_SIZE && shown < DIFF_MAX; o += 4) {
-        int a = *(const int *)(g_snap.get() + o);
-        int b = *(const int *)(game   + o);
-        if (a == b) continue;
-        bool bytestep = false;
-        for (int i = 0; i < 4; i++) {
-            int d = (int)game[o + i] - (int)g_snap[o + i];
-            if (d == 1 || d == -1) bytestep = true;
-        }
-        if (bytestep) continue;  // reported above
-        g_logger.write("deathdiff:   +0x%06lx  %d -> %d  (%+d)\n",
-                  (unsigned long)o, a, b, b - a);
-        shown++;
-    }
-    g_logger.write("deathdiff: === %d shown, %d of them byte +/-1 steps ===\n", shown, delta1);
-}
 
 static int       g_on = -1;
 static GameState g_prevClock;
@@ -244,30 +170,6 @@ void gamestate_tick(void)
 
     g_prevClock      = s;
     g_have_prev = true;
-}
-
-void gamestate_deathdiff(void)
-{
-    if (!deathdiff_enabled()) return;
-    const uint8_t *game = (const uint8_t *)Game::instance();
-    if (!game) return;
-
-    uint8_t cause = ((const Game *)game)->player()->moveState();
-
-    if (cause != 0 && g_prev_death == 0) {
-        deathdiff_report(game, cause, "at death");
-        g_respawn_at = 0;
-    } else if (cause == 0 && g_prev_death != 0) {
-        g_respawn_at = g_frame;  // the restart began; hold the snapshot
-    } else if (g_respawn_at && g_frame - g_respawn_at >= REPORT_AFTER) {
-        // Lives is decremented in the restart, not at the death.
-        deathdiff_report(game, g_prev_death, "after respawn");
-        g_respawn_at = 0;
-    } else if (cause == 0 && !g_respawn_at && (g_frame % SNAP_EVERY) == 0) {
-        std::copy_n(game, GAME_SIZE, g_snap.get());  // alive: refresh the snapshot
-    }
-
-    g_prev_death = cause;
 }
 
 /* Writes the dump, as JSON so that the harness can name the field that

@@ -17,10 +17,6 @@ unsigned short gamestate_mode(void);
 /* Called once a frame; logs only on a change. */
 void gamestate_tick(void);
 
-/* Snapshots the whole Game and diffs it across a death (KAROO_DEATH_DIFF=1).
- */
-void gamestate_deathdiff(void);
-
 /* Writes the current state to KAROO_STATE_DUMP as one JSON object.  The game
  * cannot return an exit code through launch.sh, so the comparing is done by
  * tools/replaytest.py, against the values in the test manifest.  reason is

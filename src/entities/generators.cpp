@@ -8,6 +8,7 @@
  * adding new particles at pRingCurrent.  Ring allocation itself lives
  * elsewhere — this file only honours the contract. */
 
+#include <string.h>
 #include <windows.h>
 #include <stdint.h>
 #include "generators.h"
@@ -24,6 +25,13 @@
 #include <vector>
 #include <algorithm>
 #include <iterator>
+
+/* Stores a float's bit pattern, as the emit tables keep their values. */
+static inline void set_bits(float *dst, uint32_t bits)
+{
+    memcpy(dst, &bits, sizeof(bits));
+}
+
 
 #define SIM_LOG_FIRST 8
 
@@ -1223,7 +1231,7 @@ void PointGenerator::tick(float dt)
     const uint32_t *life = this->dwLifeTable_;
     for (int i = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
-        *(uint32_t *)&node->flLife = life[dwLifeIdx_];
+        set_bits(&node->flLife, life[dwLifeIdx_]);
         std::copy_n(flEmitPos_, 3, &node->flX);
         node->dwDiffuse = dwDiffuse_;
         for (int a = 0; a < 3; a++)
@@ -1254,10 +1262,10 @@ void BoxGenerator::tick(float dt)
         return;
     for (int i = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
-        *(uint32_t *)&node->flLife = dwLifeTable_[dwLifeIdx_];
-        *(uint32_t *)&node->flX = dwPosX_[dwPosIdx_[0]];
-        *(uint32_t *)&node->flY = dwPosY_[dwPosIdx_[1]];
-        *(uint32_t *)&node->flZ = dwPosZ_[dwPosIdx_[2]];
+        set_bits(&node->flLife, dwLifeTable_[dwLifeIdx_]);
+        set_bits(&node->flX, dwPosX_[dwPosIdx_[0]]);
+        set_bits(&node->flY, dwPosY_[dwPosIdx_[1]]);
+        set_bits(&node->flZ, dwPosZ_[dwPosIdx_[2]]);
         node->dwDiffuse = dwDiffuse_[dwDiffuseIdx_];
         for (int a = 0; a < 3; a++)
             node->flVel[a] = flVelTable_[dwVelIdx_[a]] + flVelBias_[a];

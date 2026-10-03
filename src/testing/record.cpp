@@ -96,6 +96,35 @@ static void warn_determinism(const char *what)
                   "differ (REPLAY_PLAN.md Stage A2)\n", what);
 }
 
+/* The file is little-endian whatever the host. */
+static void put_u32(uint8_t *p, uint32_t v)
+{
+    for (int i = 0; i < 4; i++) p[i] = (uint8_t)(v >> (8 * i));
+}
+
+static uint32_t get_u32(const uint8_t *p)
+{
+    uint32_t v = 0;
+    for (int i = 0; i < 4; i++) v |= (uint32_t)p[i] << (8 * i);
+    return v;
+}
+
+static void put_f64(uint8_t *p, double d)
+{
+    uint64_t bits;
+    memcpy(&bits, &d, 8);
+    put_u32(p, (uint32_t)bits);
+    put_u32(p + 4, (uint32_t)(bits >> 32));
+}
+
+static double get_f64(const uint8_t *p)
+{
+    uint64_t bits = (uint64_t)get_u32(p) | ((uint64_t)get_u32(p + 4) << 32);
+    double d;
+    memcpy(&d, &bits, 8);
+    return d;
+}
+
 static void open_record(const char *path)
 {
     g_out.open(path, std::ios::binary);
@@ -106,10 +135,10 @@ static void open_record(const char *path)
     }
     uint8_t hdr[HEADER_SIZE] = {};
     std::copy_n("KROO", 4, hdr);
-    *(uint32_t  *)(hdr + 4)  = RECORD_VERSION;
-    *(double *)(hdr + 8)  = g_dt;
-    *(uint32_t  *)(hdr + 16) = g_seed;
-    *(uint32_t  *)(hdr + 20) = g_seed_set ? 1u : 0u;
+    put_u32(hdr + 4, RECORD_VERSION);
+    put_f64(hdr + 8, g_dt);
+    put_u32(hdr + 16, g_seed);
+    put_u32(hdr + 20, g_seed_set ? 1u : 0u);
     sysdev::getEnv("KAROO_RECORD_LABEL", (char *)hdr + 24, 56);
     g_out.write((const char *)hdr, sizeof(hdr));
     g_out.flush();
@@ -133,9 +162,9 @@ static void open_replay(const char *path)
         g_mode = 0;
         return;
     }
-    uint32_t  ver  = *(uint32_t  *)(hdr + 4);
-    double rdt  = *(double *)(hdr + 8);
-    uint32_t  seed = *(uint32_t  *)(hdr + 16);
+    uint32_t  ver  = get_u32(hdr + 4);
+    double rdt  = get_f64(hdr + 8);
+    uint32_t  seed = get_u32(hdr + 16);
     if (ver != RECORD_VERSION) {
         g_logger.write("record: %s is version %lu, this build reads %d\n",
                   path, (unsigned long)ver, RECORD_VERSION);
@@ -179,7 +208,7 @@ static void flush_frame(void)
     if (!g_keys_seen) return;  // nothing polled input this frame
     uint8_t buf[4 + 1 + 256 + 1 + ASYNC_MAX * 2];
     int  n = 0;
-    *(uint32_t *)(buf + n) = g_cur.frame;      n += 4;
+    put_u32(buf + n, g_cur.frame);             n += 4;
     buf[n++] = g_cur.game_state;
     std::copy_n(g_cur.keys, 256, buf + n);       n += 256;
     buf[n++] = g_cur.async_count;
@@ -223,9 +252,11 @@ static bool read_exact(void *dst, uint32_t n)
 static bool read_one(FrameRec *r)
 {
     *r = FrameRec();
-    if (!read_exact(&r->frame, 4) || !read_exact(&r->game_state, 1) ||
+    uint8_t fbytes[4];
+    if (!read_exact(fbytes, 4) || !read_exact(&r->game_state, 1) ||
         !read_exact(r->keys, 256)  || !read_exact(&r->async_count, 1))
         return false;
+    r->frame = get_u32(fbytes);
     if (r->async_count > ASYNC_MAX) return false;
     for (int i = 0; i < r->async_count; i++)
         if (!read_exact(r->async[i], 2)) return false;

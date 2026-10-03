@@ -25,6 +25,9 @@
 
 #define HSC_ENTRY_SIZE ((unsigned)HIGH_SCORE_RECORD_BYTES)
 
+static_assert(sizeof(HighScoreRecord::name) + 4 + 1 == HIGH_SCORE_RECORD_BYTES,
+              "the file record is the name, a u32 score and a u8 level");
+
 static void hsc_encode(const HighScoreRecord *r, unsigned char *p)
 {
     put_bytes(p, r->name, sizeof(r->name));
@@ -98,7 +101,7 @@ int HighScoreTable::writeFile(const char *name, char key)
 }
 
 /* PRESERVED: scores compare unsigned.  Shifting down starts one record past
- * the last, so a full table writes past its end.  Only the name is cleared
+ * the last.  Only the name is cleared
  * before the new score and level are stored.  The return
  * is 11 * rank + 11 with the low byte replaced by the rank.
  *
@@ -125,15 +128,10 @@ unsigned int HighScoreTable::insert(unsigned int score, unsigned char levelId)
     if ((int)rank >= (int)count || s_hs_fx)
         return (count & 0xffffff00u) | 0xffu;
 
-    // Records count + 1 down to rank + 1 each take the one before, through raw
-    // pointers so writing past the array is well defined.
-    if ((int)count >= (int)rank) {
-        unsigned char *dst = (unsigned char *)records_ + (count + 1) * sizeof(HighScoreRecord);
-        for (unsigned int n = count - rank + 1; n != 0; --n) {
-            memcpy(dst, dst - sizeof(HighScoreRecord), sizeof(HighScoreRecord));
-            dst -= sizeof(HighScoreRecord);
-        }
-    }
+    // Records rank..count each move up one.  Row count + 1 is written, one
+    // past the last row in use.
+    if ((int)count >= (int)rank && count + 1 < RECORD_MAX)
+        std::copy_backward(records_ + rank, records_ + count + 1, records_ + count + 2);
     std::fill(std::begin(records_[rank].name), std::end(records_[rank].name), 0);
     records_[rank].score = score;
     records_[rank].level = levelId;
