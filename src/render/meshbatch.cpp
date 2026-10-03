@@ -12,6 +12,7 @@
  * rotation (identity 3x3, translation kept); it too is only visible on such a
  * level. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "meshbatch.h"
@@ -37,7 +38,7 @@ static bool fx_norot(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_MESHBATCH_FX", buf, sizeof buf))
-            cached = (strcaseCompare(buf, "norot") == 0);
+            cached = (strcasecmp(buf, "norot") == 0);
         g_logger.write("meshbatch: FX mode = %s\n", cached ? "norot" : "off");
     }
     return cached != 0;

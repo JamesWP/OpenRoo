@@ -22,6 +22,7 @@
  * count does not, so on the tally screen each row's count and score disagree
  * by exactly two times. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
@@ -41,7 +42,7 @@ static int fx_double(void)
     if (s_fxDouble < 0) {
         char buf[32];
         uint32_t n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-        s_fxDouble = (n > 0 && n < sizeof(buf) && strcaseCompare(buf, "score") == 0);
+        s_fxDouble = (n > 0 && n < sizeof(buf) && strcasecmp(buf, "score") == 0);
         if (s_fxDouble)
             g_logger.write("levelscore: KAROO_SIM_FX=score -- scores doubled, counts left alone\n");
     }

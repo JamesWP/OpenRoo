@@ -1,25 +1,11 @@
-/* Small portable stand-ins for the helpers game code used to take from the Win32 headers:
- * path buffer size, case-insensitive compare, interlocked
- * counters and the virtual-key codes of the debug keys. */
+/* Small portable stand-ins for what game code used to take from the Win32
+ * headers: the path buffer size, interlocked counters and the virtual-key
+ * codes of the debug keys. */
 #pragma once
 
 #include <atomic>
-#include <string.h>
-
-#if !defined(_WIN32)
-#include <strings.h>
-#endif
 
 enum { kMaxPath = 260 };
-
-inline int strcaseCompare(const char *a, const char *b)
-{
-#if defined(_WIN32)
-    return _stricmp(a, b);
-#else
-    return strcasecmp(a, b);
-#endif
-}
 
 /* A counter or once-flag shared between threads, zero at static init. */
 typedef std::atomic<long> AtomicInt;

@@ -7,6 +7,7 @@
  * KAROO_FAKTMESH_FX=half draws only the first half of each mesh's triangles.
  */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "faktmesh.h"
@@ -32,7 +33,7 @@ static bool fx_half(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_FAKTMESH_FX", buf, sizeof(buf)))
-            cached = (strcaseCompare(buf, "half") == 0);
+            cached = (strcasecmp(buf, "half") == 0);
         g_logger.write("faktmesh: FX mode = %s\n", cached ? "half" : "off");
     }
     return cached != 0;
@@ -154,7 +155,7 @@ static bool fx_scale(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_MDL_FX", buf, sizeof(buf)))
-            cached = (strcaseCompare(buf, "scale") == 0);
+            cached = (strcasecmp(buf, "scale") == 0);
         g_logger.write("model: FX mode = %s\n", cached ? "scale" : "off");
     }
     return cached != 0;

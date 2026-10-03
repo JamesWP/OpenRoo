@@ -31,6 +31,7 @@
  * the extra models vanish; "pathrev" stores every spline backwards, so the
  * Water01 ray swims its loop the other way. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
@@ -61,7 +62,7 @@ static bool fx_nomodels(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_LEO_FX", buf, sizeof(buf)))
-            cached = (strcaseCompare(buf, "nomodels") == 0);
+            cached = (strcasecmp(buf, "nomodels") == 0);
         g_logger.write("leo: FX mode = %s\n", cached ? "nomodels" : "off");
     }
     return cached != 0;
@@ -285,7 +286,7 @@ static bool fx_pathrev(void)
     if (cached < 0) {
         char buf[16];
         cached = sysdev::getEnv("KAROO_LEO_FX", buf, sizeof(buf))
-                 && strcaseCompare(buf, "pathrev") == 0;
+                 && strcasecmp(buf, "pathrev") == 0;
     }
     return cached != 0;
 }

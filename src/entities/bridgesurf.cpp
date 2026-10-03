@@ -38,6 +38,7 @@
  *   backward  negate the scroll: a direction change, so it proves the
  *             fmod and clock arithmetic. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "bridgesurf.h"
@@ -61,9 +62,9 @@ static BridgeFxMode bridge_fx(void)
         char buf[16];
         cached = BRIDGE_FX_OFF;
         if (sysdev::getEnv("KAROO_BRIDGE_FX", buf, sizeof(buf))) {
-            if (strcaseCompare(buf, "tint") == 0)          cached = BRIDGE_FX_TINT;
-            else if (strcaseCompare(buf, "nodraw") == 0)   cached = BRIDGE_FX_NODRAW;
-            else if (strcaseCompare(buf, "backward") == 0) cached = BRIDGE_FX_BACKWARD;
+            if (strcasecmp(buf, "tint") == 0)          cached = BRIDGE_FX_TINT;
+            else if (strcasecmp(buf, "nodraw") == 0)   cached = BRIDGE_FX_NODRAW;
+            else if (strcasecmp(buf, "backward") == 0) cached = BRIDGE_FX_BACKWARD;
         }
         g_logger.write("bridgesurf: FX mode = %s\n",
                   cached == BRIDGE_FX_TINT     ? "tint" :

@@ -31,6 +31,7 @@
  * moves only the census split, not the total, and is safe on both gates.
  * KAROO_SETUP_DIAG=1 logs the extents, the spawn census and the totals. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "camera.h"
@@ -192,7 +193,7 @@ static unsigned int levelsetup_seed_fx(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_CRT_FX", buf, sizeof(buf)) &&
-            strcaseCompare(buf, "seed") == 0)
+            strcasecmp(buf, "seed") == 0)
             cached = 1;
         g_logger.write("levelsetup: CRT FX seed xor = %d\n", cached);
     }

@@ -8,6 +8,7 @@
  * if the intro never ended.  Messages are still pumped, so --auto-exit still
  * ends the run; every recording fails on frames_run. */
 
+#include <strings.h>
 #include "portable.h"
 #include "sysdev.h"
 #include <new>
@@ -47,7 +48,7 @@ static bool winmain_fx_norender()
 {
     char buf[16];
     bool on = sysdev::getEnv("KAROO_WINMAIN_FX", buf, sizeof(buf))
-              && strcaseCompare(buf, "norender") == 0;
+              && strcasecmp(buf, "norender") == 0;
     g_logger.write("winmain: FX mode = %s\n", on ? "norender" : "off");
     return on;
 }
@@ -104,7 +105,7 @@ static bool wndproc_fx_noquit()
     if (cached < 0) {
         char buf[16];
         cached = sysdev::getEnv("KAROO_WNDPROC_FX", buf, sizeof(buf))
-                 && strcaseCompare(buf, "noquit") == 0;
+                 && strcasecmp(buf, "noquit") == 0;
         g_logger.write("wndproc: FX mode = %s\n", cached ? "noquit" : "off");
     }
     return cached != 0;

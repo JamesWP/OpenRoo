@@ -1,3 +1,4 @@
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
@@ -15,7 +16,7 @@ static int pool_diag(void)
     if (cached < 0) {
         char buf[32];
         uint32_t n = sysdev::getEnv("KAROO_POOL_DIAG", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && strcaseCompare(buf, "0") != 0) ? 1 : 0;
+        cached = (n > 0 && n < sizeof(buf) && strcasecmp(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;
 }
@@ -57,7 +58,7 @@ static PoolFx pool_fx(void)
     uint32_t n = sysdev::getEnv("KAROO_POOL_FX", buf, sizeof(buf));
     PoolFx fx = POOL_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
-        if (strcaseCompare(buf, "onevoice") == 0) fx = POOL_FX_ONEVOICE;
+        if (strcasecmp(buf, "onevoice") == 0) fx = POOL_FX_ONEVOICE;
     }
     g_logger.write("voicepool: FX mode = %s\n",
               fx == POOL_FX_ONEVOICE ? "onevoice" : "off");

@@ -6,6 +6,7 @@
  * closed-list reopenings that produces.  Each function below is a FoePath
  * method (or a free helper it calls) followed by its export shim. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
@@ -37,7 +38,7 @@ static int fx_is(const char *mode)
 {
     char buf[64];
     uint32_t n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    return (n > 0 && n < sizeof(buf) && strcaseCompare(buf, mode) == 0) ? 1 : 0;
+    return (n > 0 && n < sizeof(buf) && strcasecmp(buf, mode) == 0) ? 1 : 0;
 }
 
 static int fx_blindfoe(void)

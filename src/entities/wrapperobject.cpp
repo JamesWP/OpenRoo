@@ -11,6 +11,7 @@
  * on the render path.  KAROO_WRAP_DIAG=1 logs each entry point's first call
  * and a running census, since no gate observes texture coordinates. */
 
+#include <strings.h>
 #include "portable.h"
 #include "sysdev.h"
 #include <math.h>
@@ -50,9 +51,9 @@ static int wrap_fx(void)
         char buf[32];
         cached = WRAP_FX_OFF;
         if (sysdev::getEnv("KAROO_WRAP_FX", buf, sizeof(buf))) {
-            if (strcaseCompare(buf, "scrollback") == 0)     cached = WRAP_FX_SCROLLBACK;
-            else if (strcaseCompare(buf, "sineflip") == 0)  cached = WRAP_FX_SINEFLIP;
-            else if (strcaseCompare(buf, "envflip") == 0)   cached = WRAP_FX_ENVFLIP;
+            if (strcasecmp(buf, "scrollback") == 0)     cached = WRAP_FX_SCROLLBACK;
+            else if (strcasecmp(buf, "sineflip") == 0)  cached = WRAP_FX_SINEFLIP;
+            else if (strcasecmp(buf, "envflip") == 0)   cached = WRAP_FX_ENVFLIP;
         }
         g_logger.write("wrapper: FX mode = %d\n", cached);
     }

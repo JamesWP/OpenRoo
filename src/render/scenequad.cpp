@@ -10,6 +10,7 @@
  *   drop  skip the draw entirely -- the animated billboard quads vanish;
  *   tint  force their vertex diffuse to magenta. */
 
+#include <strings.h>
 #include <string.h>
 #include "portable.h"
 #include <stdint.h>
@@ -29,8 +30,8 @@ static QuadFx quad_fx(void)
         buf[0] = 0;
         sysdev::getEnv("KAROO_SCENEQUAD_FX", buf, sizeof(buf));
         cached = FX_OFF;
-        if (strcaseCompare(buf, "drop") == 0)      cached = FX_DROP;
-        else if (strcaseCompare(buf, "tint") == 0) cached = FX_TINT;
+        if (strcasecmp(buf, "drop") == 0)      cached = FX_DROP;
+        else if (strcasecmp(buf, "tint") == 0) cached = FX_TINT;
         g_logger.write("scenequad: FX mode = %s (KAROO_SCENEQUAD_FX='%s')\n",
                   cached == FX_DROP ? "drop" : cached == FX_TINT ? "tint" : "off", buf);
     }

@@ -1,6 +1,7 @@
 /* KAROO_LAUNCHERDLG_FX=allaspect is a negative control: the device dialog
  * lists every aspect ratio instead of 4:3 only. */
 
+#include <strings.h>
 #include "portable.h"
 #include "sysdev.h"
 #include <stdio.h>
@@ -25,7 +26,7 @@ static bool fx_allaspect()
     if (cached < 0) {
         char buf[16];
         cached = sysdev::getEnv("KAROO_LAUNCHERDLG_FX", buf, sizeof(buf))
-                 && strcaseCompare(buf, "allaspect") == 0;
+                 && strcasecmp(buf, "allaspect") == 0;
         g_logger.write("launcherdlg: FX mode = %s\n", cached ? "allaspect" : "off");
     }
     return cached != 0;

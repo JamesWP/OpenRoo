@@ -16,6 +16,7 @@
  * KAROO_JJS_DUMP=<file> appends each script's entry count and an FNV-1a hash
  * of its lines. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "camera.h"
@@ -66,7 +67,7 @@ static bool fx_blank(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_JJS_FX", buf, sizeof(buf)))
-            cached = (strcaseCompare(buf, "blank") == 0);
+            cached = (strcasecmp(buf, "blank") == 0);
         g_logger.write("jjscript: FX mode = %s\n", cached ? "blank" : "off");
     }
     return cached != 0;
@@ -294,7 +295,7 @@ static bool jjs_fx_glide(void)
     if (cached < 0) {
         char buf[16];
         cached = sysdev::getEnv("KAROO_JJS_FX", buf, sizeof(buf))
-                 && strcaseCompare(buf, "glide") == 0;
+                 && strcasecmp(buf, "glide") == 0;
     }
     return cached != 0;
 }

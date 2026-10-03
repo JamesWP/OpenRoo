@@ -2,6 +2,7 @@
  * sub-object's blend and texture state depends on every sub-object that came
  * before it in the array, whether or not that one drew anything. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include "quadbatch.h"
@@ -65,8 +66,8 @@ static QuadFxMode quad_fx(void)
         char buf[16];
         cached = QUAD_FX_OFF;
         if (sysdev::getEnv("KAROO_QUAD_FX", buf, sizeof(buf))) {
-            if (strcaseCompare(buf, "noalpha") == 0) cached = QUAD_FX_NOALPHA;
-            else if (strcaseCompare(buf, "nodraw") == 0) cached = QUAD_FX_NODRAW;
+            if (strcasecmp(buf, "noalpha") == 0) cached = QUAD_FX_NOALPHA;
+            else if (strcasecmp(buf, "nodraw") == 0) cached = QUAD_FX_NODRAW;
         }
         g_logger.write("quadbatch: FX mode = %s\n",
                   cached == QUAD_FX_NOALPHA ? "noalpha" :

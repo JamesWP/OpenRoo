@@ -12,6 +12,7 @@
  * magenta (only these functions build it), "nodraw" skips the quads and leaves
  * the text. */
 
+#include <strings.h>
 #include "portable.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -54,8 +55,8 @@ static ScoreFx score_fx(void)
     uint32_t n = sysdev::getEnv("KAROO_SCORE_FX", buf, sizeof(buf));
     ScoreFx fx = SCORE_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
-        if (strcaseCompare(buf, "tint") == 0)        fx = SCORE_FX_TINT;
-        else if (strcaseCompare(buf, "nodraw") == 0) fx = SCORE_FX_NODRAW;
+        if (strcasecmp(buf, "tint") == 0)        fx = SCORE_FX_TINT;
+        else if (strcasecmp(buf, "nodraw") == 0) fx = SCORE_FX_NODRAW;
     }
     g_logger.write("scoreoverlay: FX mode = %s\n",
                fx == SCORE_FX_TINT   ? "tint"   :
