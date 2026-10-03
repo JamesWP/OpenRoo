@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include "quadbatch.h"
 #include "sysdev.h"
+#include <fstream>
+#include "binio.h"
 #include <stdio.h>
 #include <errno.h>
 #include "renderdevice.h"
@@ -32,22 +34,22 @@ static void quad_dump(const void *data, uint32_t quads)
         return;
     g_logger.write("quadbatch: dumping at call 200, pData=%p quads=%lu\n", data, quads);
 
-    FILE *f = fopen(path, "wb");
+    std::ofstream f(path, std::ios::binary);
     if (!f) {
-        g_logger.write("quadbatch: dump could not open %s (errno=%d)\n", path, errno);
+        g_logger.write("quadbatch: dump could not open %s\n", path);
         return;
     }
     const uint8_t *v = (const uint8_t *)data;
-    fprintf(f, "raw dump pData=%p quads=%lu\r\n", data, (unsigned long)quads);
+    printTo(f, "raw dump pData=%p quads=%lu\r\n", data, (unsigned long)quads);
     // Written as raw hex, one vertex per line, rather than decoded fields.
     uint32_t total = quads * 6 * 32;
     for (uint32_t off = 0; off < total; off += 32) {
-        fprintf(f, "%06lX ", (unsigned long)off);
+        printTo(f, "%06lX ", (unsigned long)off);
         for (int b = 0; b < 32; b++)
-            fprintf(f, "%02X", v[off + b]);
-        fprintf(f, "\r\n");
+            printTo(f, "%02X", v[off + b]);
+        f << "\r\n";
     }
-    fclose(f);
+    f.close();
     g_logger.write("quadbatch: dumped %lu quads to %s\n", quads, path);
 }
 
