@@ -213,7 +213,12 @@ bool RenderDevice::Create(void *hWnd, const AdapterId *adapter, int nModeIndex)
             pp.Windowed               = FALSE;
             pp.EnableAutoDepthStencil = TRUE;
             pp.AutoDepthStencilFormat = n->depthFormat;
-            pp.PresentationInterval   = D3DPRESENT_INTERVAL_DEFAULT;
+            // Vsync, unless KAROO_NOVSYNC asks the replay harness's way of
+            // running unthrottled.
+            char novsync[4];
+            pp.PresentationInterval   = sysdev::getEnv("KAROO_NOVSYNC", novsync, sizeof(novsync))
+                                        && novsync[0] == '1'
+                ? D3DPRESENT_INTERVAL_IMMEDIATE : D3DPRESENT_INTERVAL_DEFAULT;
 
             // FPU_PRESERVE: by default Direct3D drops the x87 to single
             // precision, which the game's double arithmetic does not expect.
