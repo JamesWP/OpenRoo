@@ -12,7 +12,7 @@
  * KAROO_THEME_STRUCT_DIAG=1 dumps a plausibility report of the loaded block
  * after each load (see docs/CONTROLS.md). */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -67,7 +67,7 @@ static int struct_diag_enabled(void)
 
 static int ptr_plausible(const void *p)
 {
-    return p == NULL || (ULONG_PTR)p >= 0x10000;
+    return p == NULL || (uintptr_t)p >= 0x10000;
 }
 
 static int float_plausible(float f)
@@ -168,7 +168,7 @@ static void theme_struct_dump(const char *path)
     for (int f = 0; f < 6; f++) {
         const Texture &img = block->sky().textures()[f];
         const char *name = img.name();
-        int nameOk = name != NULL && (ULONG_PTR)name >= 0x10000;
+        int nameOk = name != NULL && (uintptr_t)name >= 0x10000;
         g_logger.write("THEME_STRUCT: sky.faces[%d] surface=%p%s name=%p \"%.63s\"%s\n",
                   f, (void *)img.handle(),
                   ptr_plausible(img.handle()) ? "" : "  SUSPICIOUS",

@@ -16,7 +16,7 @@
  *     first failure, and stays there for the rest of the duplicates and all
  *     of the entry's voice pools. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include <new>
 #include "sysdev.h"

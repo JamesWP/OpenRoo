@@ -12,7 +12,7 @@
  * and a tolerance would hide the drift it looks for.  Order is part of the
  * hash: systems in the order the game ticks them, nodes in ring order. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include <fstream>
 #include "determinism.h"

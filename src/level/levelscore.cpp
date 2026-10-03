@@ -22,7 +22,7 @@
  * count does not, so on the tally screen each row's count and score disagree
  * by exactly two times. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include "logger.h"

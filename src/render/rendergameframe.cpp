@@ -13,7 +13,7 @@
  *   5. the translucent passes (particle effects) when particles are on;
  *   6. the HUD and the menus, EndScene, the flip.
  */
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include <math.h>
 #include <stdio.h>

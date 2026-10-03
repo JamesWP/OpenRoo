@@ -21,7 +21,7 @@
  * KAROO_JJM_FX=flipx is a negative control: the map is mirrored left to right
  * as it is read. */
 
-#include <windows.h>
+#include "portable.h"
 #include "sysdev.h"
 #include <fstream>
 #include "binio.h"

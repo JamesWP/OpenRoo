@@ -11,7 +11,7 @@
  * on the render path.  KAROO_WRAP_DIAG=1 logs each entry point's first call
  * and a running census, since no gate observes texture coordinates. */
 
-#include <windows.h>
+#include "portable.h"
 #include "sysdev.h"
 #include <math.h>
 #include <new>
@@ -79,20 +79,20 @@ static const char *const kWrapEntryName[WE_COUNT] = {
     "scrollUVs", "updateObjectTransform", "ctor", "dtor"
 };
 
-static LONG g_wrapCalls[WE_COUNT];
-static LONG g_wrapVerts;
+static AtomicInt g_wrapCalls[WE_COUNT];
+static AtomicInt g_wrapVerts;
 
 static void wrap_census(int entry, unsigned int verts)
 {
     if (!wrap_diag())
         return;
-    LONG n = InterlockedIncrement(&g_wrapCalls[entry]);
-    InterlockedExchangeAdd(&g_wrapVerts, (LONG)verts);
+    long n = atomicIncrement(&g_wrapCalls[entry]);
+    atomicAdd(&g_wrapVerts, (long)verts);
     if (n == 1)
         g_logger.write("wrapper: first %s\n", kWrapEntryName[entry]);
     else if ((n % 20000) == 0)
         g_logger.write("wrapper: %s x%ld (uv writes so far %ld)\n",
-                  kWrapEntryName[entry], n, g_wrapVerts);
+                  kWrapEntryName[entry], n, g_wrapVerts.load());
 }
 
 WrapperObject::WrapperObject()

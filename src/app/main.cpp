@@ -8,7 +8,7 @@
  * if the intro never ended.  Messages are still pumped, so --auto-exit still
  * ends the run; every recording fails on frames_run. */
 
-#include <windows.h>
+#include "portable.h"
 #include "sysdev.h"
 #include <new>
 #include <stdio.h>

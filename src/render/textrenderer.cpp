@@ -17,7 +17,7 @@
  * drawCentered and drawRight shift x left by half the rendered width, or all
  * of it, and then call drawLeft. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "textrenderer.h"
 #include "sysdev.h"

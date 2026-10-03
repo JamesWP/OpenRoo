@@ -17,7 +17,7 @@
  * tests.  The pressed-since-last-call bit is not replayed: it is consumed
  * state, and reproducing it would need the same call order within a frame. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include <fstream>
 #include "record.h"

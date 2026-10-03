@@ -3,7 +3,7 @@
  * foe loop calls directly. */
 
 #include <math.h>
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <string.h>

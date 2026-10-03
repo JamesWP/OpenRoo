@@ -1,7 +1,7 @@
 /* KAROO_LAUNCHERDLG_FX=allaspect is a negative control: the device dialog
  * lists every aspect ratio instead of 4:3 only. */
 
-#include <windows.h>
+#include "portable.h"
 #include "sysdev.h"
 #include <stdio.h>
 #include <string.h>

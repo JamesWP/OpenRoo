@@ -16,7 +16,7 @@
  * KAROO_JJS_DUMP=<file> appends each script's entry count and an FNV-1a hash
  * of its lines. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "camera.h"
 #include "sysdev.h"

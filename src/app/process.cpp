@@ -1,4 +1,4 @@
-#include <windows.h>
+#include "portable.h"
 #include <iostream>
 #include <stdio.h>
 #include "logger.h"

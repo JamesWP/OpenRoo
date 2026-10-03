@@ -31,7 +31,7 @@
  * moves only the census split, not the total, and is safe on both gates.
  * KAROO_SETUP_DIAG=1 logs the extents, the spawn census and the totals. */
 
-#include <windows.h>
+#include "portable.h"
 #include <stdint.h>
 #include "camera.h"
 #include "sysdev.h"
