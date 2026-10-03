@@ -136,7 +136,7 @@ void ExtraObjects::recDump(const char *path)
         fnv(&h, &r->sound, sizeof(r->sound));
 
         f << '[' << i << "] hash=" << std::hex << std::setw(8) << std::setfill('0') << h
-          << std::dec << std::setfill(' ') << " kind=" << r->kind
+          << std::dec << std::setfill(' ') << " kind=" << (unsigned)r->kind
           << " file=" << clip64(strip_game_dir(r->file))
           << " pos=" << r->position[0] << ',' << r->position[1] << ',' << r->position[2]
           << " v2=" << r->field_10c[0] << ',' << r->field_10c[1] << ',' << r->field_10c[2] << '\n';
@@ -144,7 +144,7 @@ void ExtraObjects::recDump(const char *path)
           << " tex=" << clip64(strip_game_dir(r->textureFile))
           << " lit=" << r->lit << " blend=" << r->srcBlend << ',' << r->destBlend
           << " addr=" << r->textureAddress << " size=" << r->billboardSize << '\n';
-        f << "    spline=" << r->splineMode << " time=" << r->splineTime
+        f << "    spline=" << (unsigned)r->splineMode << " time=" << r->splineTime
           << " points=" << r->splinePointCount << " sound=" << r->soundParam << '\n';
         for (unsigned p = 0; p < r->splinePointCount && p < 0x100; p++)
             f << "      " << r->splinePoints[p][0] << ',' << r->splinePoints[p][1]

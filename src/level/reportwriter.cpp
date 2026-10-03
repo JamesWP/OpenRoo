@@ -18,6 +18,7 @@
  *   5. The running score subtracts the level index, so the total depends on
  *      the level order, not only the levels. */
 
+#include <fstream>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -65,12 +66,11 @@ static void column_values(Game *g, unsigned out[22])
 Report_WriteLevelReport(Game *self, const char *pathname)
 {
     char buf[256];
-    FILE *sink, *out;
     unsigned idx;
 
-    sink = fopen(GS_RPT_SCRIPTTEXTS, GS_RPT_MODE_W);  // PRESERVED: not checked
-    out  = fopen(pathname, GS_RPT_MODE_W);
-    if (out == NULL)
+    std::ofstream sink(GS_RPT_SCRIPTTEXTS);  // PRESERVED: not checked
+    std::ofstream out(pathname);
+    if (!out)
         return;
 
     g_logger.logMessage(3, "GAME: create a level report");
@@ -82,14 +82,14 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     self->scriptPlayer()->setTextBlocks(0);
     self->scriptPlayer()->setSplineLines(0);
 
-    fputs(GS_RPT_TITLE, out);
+    out << GS_RPT_TITLE;
     sprintf(buf, GS_RPT_GAMEFILE, self->gameFileName());
-    fputs(buf, out);
+    out << buf;
     sprintf(buf, GS_RPT_LEVELS, (unsigned)self->levelCount());
-    fputs(buf, out);
-    fputs(GS_RPT_COLHDR1, out);
-    fputs(GS_RPT_COLHDR2, out);
-    fputs(GS_RPT_RULE, out);
+    out << buf;
+    out << GS_RPT_COLHDR1;
+    out << GS_RPT_COLHDR2;
+    out << GS_RPT_RULE;
 
     for (idx = 0; idx < (unsigned)self->levelCount(); idx++) {
         unsigned catches = 0, timeBonus, n = idx + 1;
@@ -102,30 +102,30 @@ Report_WriteLevelReport(Game *self, const char *pathname)
         Score_CalculateLevelScore(self, 3);
 
         sprintf(buf, GS_RPT_D_TAB, n);
-        fputs(buf, out);
-        fputs(self->map()->mapName(), out);
-        fputs(GS_FMT_TAB, out);
+        out << buf;
+        out << self->map()->mapName();
+        out << GS_FMT_TAB;
 
         if ((int)self->map()->bonus() == 0) {
-            fputs(GS_RPT_BLANK_TAB, out);
+            out << GS_RPT_BLANK_TAB;
         } else {
-            fputs(GS_RPT_X_TAB, out);
+            out << GS_RPT_X_TAB;
             self->setReportLevelsWithBonus((unsigned short)(self->reportLevelsWithBonus() + 1));
         }
 
         if (self->scriptPlayer()->loaded() == 0) {
-            fputs(GS_RPT_BLANK_TAB, out);
+            out << GS_RPT_BLANK_TAB;
         } else {
             sprintf(buf, GS_RPT_D_TAB, (unsigned)self->scriptPlayer()->lineCount());
-            fputs(buf, out);
+            out << buf;
             self->setReportLevelsWithScript((unsigned short)(self->reportLevelsWithScript() + 1));
         }
 
         if (self->extraObjects()->loaded() == 0) {
-            fputs(GS_RPT_BLANK_TAB, out);
+            out << GS_RPT_BLANK_TAB;
         } else {
             sprintf(buf, GS_RPT_D_TAB, (unsigned)self->extraObjects()->objectCount());
-            fputs(buf, out);
+            out << buf;
             self->setReportLevelsWithLeo((unsigned short)(self->reportLevelsWithLeo() + 1));
         }
 
@@ -139,15 +139,15 @@ Report_WriteLevelReport(Game *self, const char *pathname)
             catches = catchByte;
         }
         sprintf(buf, GS_RPT_D_TAB, catches);
-        fputs(buf, out);
+        out << buf;
         sprintf(buf, GS_RPT_D_TAB, (unsigned)(G->foeCount() - catches));
-        fputs(buf, out);
+        out << buf;
 
         unsigned columns[COLUMN_COUNT];
         column_values(self, columns);
         for (unsigned c = 0; c < COLUMN_COUNT; c++) {
             sprintf(buf, GS_RPT_D_TAB, columns[c]);
-            fputs(buf, out);
+            out << buf;
         }
 
         self->player()->setGemsCollected(
@@ -158,19 +158,19 @@ Report_WriteLevelReport(Game *self, const char *pathname)
         Score_CalculateLevelScore(self, 2);
 
         sprintf(buf, GS_RPT_D_TAB, timeBonus);
-        fputs(buf, out);
+        out << buf;
 
         total = self->reportScoreTotal()
               + ((self->tally()->score[TALLY_GEMS] + 0x78 + (int)timeBonus * 2
                   + self->tally()->score[TALLY_VITALITY]) - (int)idx);  // PRESERVED: minus the level index
         self->setReportScoreTotal(total);
         sprintf(buf, GS_RPT_D_TAB, (unsigned)total);
-        fputs(buf, out);
+        out << buf;
 
         Sim_SetCurrentLevelName(self, idx);
         sprintf(buf, GS_RPT_S_TAB, self->levelNameBuffer());
-        fputs(buf, out);
-        fputs(GS_FMT_NEWLINE, out);  // the display name is not written; a newline is
+        out << buf;
+        out << GS_FMT_NEWLINE;  // the display name is not written; a newline is
 
         // PRESERVED: the default name seeds the high-score table backwards
         // from record 9, one record per eight levels.
@@ -187,38 +187,37 @@ Report_WriteLevelReport(Game *self, const char *pathname)
             sprintf(scriptPath, GS_OPEN_FMT_SCRIPTS, g_gameDir,
                     self->levelNameBuffer());
 
-            fputs(GS_RPT_STARS, sink);
+            sink << GS_RPT_STARS;
             sprintf(buf, GS_RPT_LVL_FILE, n, self->levelNameBuffer());
-            fputs(buf, sink);
+            sink << buf;
             sprintf(buf, GS_RPT_LVL_NAME, self->map()->title());
-            fputs(buf, sink);
+            sink << buf;
 
             if (self->scriptPlayer()->loaded() != 0)
                 self->scriptPlayer()->readTextsForReport(scriptPath, sink);
 
-            fputs(GS_FMT_NEWLINE, sink);
-            fputs(GS_FMT_NEWLINE, sink);
+            sink << GS_FMT_NEWLINE;
+            sink << GS_FMT_NEWLINE;
         }
     }
 
-    fputs(GS_RPT_RULE, out);
+    out << GS_RPT_RULE;
     sprintf(buf, GS_RPT_TALLY,
             (unsigned)self->reportLevelsWithBonus(),
             (unsigned)self->reportLevelsWithScript(),
             (unsigned)self->reportLevelsWithLeo());
-    fputs(buf, out);
+    out << buf;
     sprintf(buf, GS_RPT_TESTSCORES, self->reportScoreTotal());
-    fputs(buf, out);
+    out << buf;
     sprintf(buf, GS_RPT_TEXTS_IN, (unsigned)self->scriptPlayer()->textBlocks());
-    fputs(buf, out);
+    out << buf;
     sprintf(buf, GS_RPT_SPLINES_IN, (unsigned)self->scriptPlayer()->splineLines());
-    fputs(buf, out);
+    out << buf;
 
     g_logger.logMessage(3, "GAME: level report created");  // PRESERVED: logged before the files are closed
 
-    fclose(out);
-    if (sink != NULL)
-        fclose(sink);
+    out.close();
+    sink.close();
 
     self->highScores()->writeFile(GS_RPT_HSC_NAME, 'K');
 }
