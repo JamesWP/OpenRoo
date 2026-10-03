@@ -1,9 +1,9 @@
 #include <windows.h>
 #include <stdint.h>
-#include <errno.h>
+#include <fstream>
+#include "binio.h"
 #include <new>
 #include <string.h>
-#include <stdio.h>
 #include "progctrl.h"
 #include "logger.h"
 #include "gamestate.h"
@@ -231,52 +231,52 @@ int ProgableControl::captureBinding(unsigned int mode, const char *name,
  *   uint32_t kbd_count;  kbd_count x (uint32_t scan code, uint32_t strength)
  *   uint32_t axis_count; axis_count x 12 bytes, skipped
  *   uint32_t btn_count;  btn_count x 12 bytes, skipped */
-int ProgableControl::readOrigEntryBindings(FILE *f, int mode, ActionEntry *e)
+int ProgableControl::readOrigEntryBindings(std::istream &f, int mode, ActionEntry *e)
 {
     uint32_t kbd_count;
-    if (fread(&kbd_count, 1, 4, f) != 4) return 0;
+    if (!readBytes(f, &kbd_count, 4)) return 0;
     g_logger.write("ProgCtrl::ReadBindings(orig):     kbd_count=%lu\n", kbd_count);
     for (uint32_t ki = 0; ki < kbd_count; ki++) {
         uint32_t key_id, strength;
-        if (fread(&key_id, 1, 4, f) != 4) return 0;
-        if (fread(&strength, 1, 4, f) != 4) return 0;
+        if (!readBytes(f, &key_id, 4)) return 0;
+        if (!readBytes(f, &strength, 4)) return 0;
         g_logger.write("ProgCtrl::ReadBindings(orig):       key=0x%02lX strength=%lu -> %s\n",
                   key_id, strength, e ? "applied" : "skipped");
         if (e) bindKey((unsigned short)mode, e->name, (int)key_id, (int)strength);
     }
 
     uint32_t axis_count;
-    if (fread(&axis_count, 1, 4, f) != 4) return 0;
+    if (!readBytes(f, &axis_count, 4)) return 0;
     g_logger.write("ProgCtrl::ReadBindings(orig):     axis_count=%lu (skipped)\n", axis_count);
     for (uint32_t ai = 0; ai < axis_count; ai++) {
         uint8_t discard[12];
-        if (fread(discard, 1, 12, f) != 12) return 0;
+        if (!readBytes(f, discard, 12)) return 0;
     }
 
     uint32_t btn_count;
-    if (fread(&btn_count, 1, 4, f) != 4) return 0;
+    if (!readBytes(f, &btn_count, 4)) return 0;
     g_logger.write("ProgCtrl::ReadBindings(orig):     btn_count=%lu (skipped)\n", btn_count);
     for (uint32_t bi = 0; bi < btn_count; bi++) {
         uint8_t discard[12];
-        if (fread(discard, 1, 12, f) != 12) return 0;
+        if (!readBytes(f, discard, 12)) return 0;
     }
 
     return 1;
 }
 
-int ProgableControl::readOrigFormat(FILE *f)
+int ProgableControl::readOrigFormat(std::istream &f)
 {
     g_logger.write("ProgCtrl::ReadBindings: reading\n");
     for (int m = 0; m < 5; m++) {
         uint32_t cnt;
-        if (fread(&cnt, 1, 4, f) != 4) {
+        if (!readBytes(f, &cnt, 4)) {
             g_logger.write("ProgCtrl::ReadBindings(orig): read error on entry count for mode %d\n", m);
             return 0;
         }
         g_logger.write("ProgCtrl::ReadBindings(orig): mode %d: %lu entries\n", m, cnt);
         for (uint32_t ei = 0; ei < cnt; ei++) {
             char namebuf[256] = {};
-            if (fread(namebuf, 1, 256, f) != 256) {
+            if (!readBytes(f, namebuf, 256)) {
                 g_logger.write("ProgCtrl::ReadBindings(orig): read error on name\n");
                 return 0;
             }
@@ -296,9 +296,9 @@ int ProgableControl::readOrigFormat(FILE *f)
 int ProgableControl::writeBindings()
 {
     g_logger.write("ProgCtrl::WriteBindings(this=%p) -> '%s'\n", this, SAVE_FILE);
-    FILE *f = fopen(SAVE_FILE, "wb");
+    std::ofstream f(SAVE_FILE, std::ios::binary);
     if (!f) {
-        g_logger.write("ProgCtrl::WriteBindings: fopen FAILED errno=%d\n", errno);
+        g_logger.write("ProgCtrl::WriteBindings: open FAILED\n");
         return 0;
     }
     // FORMAT: no header.  For each of the five modes:
@@ -310,45 +310,43 @@ int ProgableControl::writeBindings()
         ActionTable *t = &action_tables[m];
         uint32_t cnt = t->entry_count;
         g_logger.write("ProgCtrl::WriteBindings: mode %d: %lu entries\n", m, cnt);
-        if (fwrite(&cnt, 1, 4, f) != 4) goto fail;
+        if (!writeBytes(f, &cnt, 4)) goto fail;
         for (ActionEntry *e = t->head; e; e = e->chain) {
             char namebuf[256] = {};
             strncpy(namebuf, e->name, 255);
-            if (fwrite(namebuf, 1, 256, f) != 256) goto fail;
+            if (!writeBytes(f, namebuf, 256)) goto fail;
             uint32_t kc = 0;
             for (KeyBind *kb = e->kbd; kb; kb = kb->next) kc++;
-            if (fwrite(&kc, 1, 4, f) != 4) goto fail;
+            if (!writeBytes(f, &kc, 4)) goto fail;
             g_logger.write("ProgCtrl::WriteBindings:   '%s': %lu binding(s)\n", namebuf, kc);
             for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
                 uint32_t key_id   = (uint32_t)kb->scancode;
                 uint32_t strength = (uint32_t)kb->strength;
                 g_logger.write("ProgCtrl::WriteBindings:     sc=0x%02lX strength=%lu\n", key_id, strength);
-                if (fwrite(&key_id, 1, 4, f) != 4) goto fail;
-                if (fwrite(&strength, 1, 4, f) != 4) goto fail;
+                if (!writeBytes(f, &key_id, 4)) goto fail;
+                if (!writeBytes(f, &strength, 4)) goto fail;
             }
-            if (fwrite(&zero, 1, 4, f) != 4) goto fail;
-            if (fwrite(&zero, 1, 4, f) != 4) goto fail;
+            if (!writeBytes(f, &zero, 4)) goto fail;
+            if (!writeBytes(f, &zero, 4)) goto fail;
         }
     }
-    fclose(f);
+    f.close();
     g_logger.write("ProgCtrl::WriteBindings: ok\n");
     return 1;
 fail:
     g_logger.write("ProgCtrl::WriteBindings: write error\n");
-    fclose(f);
     return 0;
 }
 
 int ProgableControl::readBindings()
 {
     g_logger.write("ProgCtrl::ReadBindings(this=%p) <- '%s'\n", this, SAVE_FILE);
-    FILE *f = fopen(SAVE_FILE, "rb");
+    std::ifstream f(SAVE_FILE, std::ios::binary);
     if (!f) {
-        g_logger.write("ProgCtrl::ReadBindings: no save file (errno=%d)\n", errno);
+        g_logger.write("ProgCtrl::ReadBindings: no save file\n");
         return 0;
     }
     int ok = readOrigFormat(f);
-    fclose(f);
     if (ok) g_logger.write("ProgCtrl::ReadBindings: done\n");
     return ok;
 }

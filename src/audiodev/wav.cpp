@@ -1,7 +1,7 @@
 #define DIRECTSOUND_VERSION 0x0800
 #include "dsound_internal.h"
 #include <utility>
-#include <stdio.h>
+#include <fstream>
 #include <string.h>
 
 namespace audiodev {
@@ -21,17 +21,22 @@ static const DWORD ID_WAVE = FOURCC('W','A','V','E');
 static const DWORD ID_FMT  = FOURCC('f','m','t',' ');
 static const DWORD ID_DATA = FOURCC('d','a','t','a');
 
-static bool read_dword(FILE *f, DWORD *out) {
-    return fread(out, 1, 4, f) == 4;
+static bool readBytes(std::istream &f, void *dst, size_t size) {
+    f.read(static_cast<char *>(dst), (std::streamsize)size);
+    return (size_t)f.gcount() == size;
+}
+
+static bool read_dword(std::istream &f, DWORD *out) {
+    return readBytes(f, out, 4);
 }
 
 /* The chunk walk.  Fills *out only when both the format and the data are
  * found; a data chunk bigger than the file is a truncated file. */
-static bool parseWav(FILE *f, Wav *out)
+static bool parseWav(std::istream &f, Wav *out)
 {
-    fseek(f, 0, SEEK_END);
-    long file_size = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    f.seekg(0, std::ios::end);
+    std::streamoff file_size = f.tellg();
+    f.seekg(0, std::ios::beg);
 
     DWORD id, size, wave_id;
     if (!read_dword(f, &id)   || id      != ID_RIFF) return false;
@@ -48,18 +53,18 @@ static bool parseWav(FILE *f, Wav *out)
             DWORD to_read = chunk_size < sizeof(WAVEFORMATEX)
                           ? chunk_size : sizeof(WAVEFORMATEX);
             wav.format = WAVEFORMATEX();
-            if (fread(&wav.format, 1, to_read, f) != to_read) return false;
+            if (!readBytes(f, &wav.format, to_read)) return false;
             have_fmt = true;
             DWORD skip = chunk_size - to_read;
-            if (skip) fseek(f, (long)(skip + (skip & 1)), SEEK_CUR);
+            if (skip) f.seekg((std::streamoff)(skip + (skip & 1)), std::ios::cur);
         } else if (chunk_id == ID_DATA) {
-            if (chunk_size > (DWORD)file_size) return false;
+            if ((std::streamoff)chunk_size > file_size) return false;
             wav.pcm.assign(chunk_size, 0);
-            if (fread(wav.pcm.data(), 1, chunk_size, f) != chunk_size) return false;
+            if (!readBytes(f, wav.pcm.data(), chunk_size)) return false;
             have_pcm = true;
         } else {
             DWORD skip = chunk_size + (chunk_size & 1);
-            fseek(f, (long)skip, SEEK_CUR);
+            f.seekg((std::streamoff)skip, std::ios::cur);
         }
     }
     if (!have_fmt || !have_pcm)
@@ -70,14 +75,12 @@ static bool parseWav(FILE *f, Wav *out)
 
 bool loadWav(const char *path, Wav *out)
 {
-    FILE *f = fopen(path, "rb");
+    std::ifstream f(path, std::ios::binary);
     if (!f) {
         AD_LOG("audiodev: can't open '%s'\n", path);
         return false;
     }
-    bool ok = parseWav(f, out);
-    fclose(f);
-    return ok;
+    return parseWav(f, out);
 }
 
 bool fillWavBuffer(IDirectSoundBuffer *buf, const Wav &wav)

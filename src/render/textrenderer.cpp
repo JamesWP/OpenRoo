@@ -27,7 +27,8 @@
 #include "gamestr.h"
 #include <stdlib.h>
 
-#include <stdio.h>
+#include <fstream>
+#include <string>
 #include <math.h>
 #include <string.h>
 TextRenderer g_fontMain;
@@ -195,71 +196,35 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
 /* ─── The .fon loader ──────────────────────────────────────────────────────
  *
  * FORMAT: three lines of text: the atlas's texture path, the column count, the
- * row count.  The file is opened in text mode, which is load-bearing: the .fon
- * files are CRLF, and only text mode turns "strip the last character" into a
- * usable path.
+ * row count.  The files are CRLF, so the path line has its '\r' stripped.
  *
- * A zero column or row count is a failure.  Only the low byte of the result is
- * the success flag; the upper bytes are fclose's, or the texture import's on
- * that failure. */
-
-/* MSVC's atoi, single-byte path: C-locale whitespace and digits only, sign,
- * and an int accumulator that wraps on overflow. */
-static bool c_space(unsigned char c) { return c == ' ' || (c >= 9 && c <= 13); }
-static bool c_digit(unsigned char c) { return c >= '0' && c <= '9'; }
-
-static int font_atoi(const char *p)
-{
-    while (c_space((unsigned char)*p))
-        ++p;
-
-    const unsigned char sign = (unsigned char)*p;
-    if (sign == '-' || sign == '+')
-        ++p;
-
-    int acc = 0;
-    while (c_digit((unsigned char)*p)) {
-        acc = acc * 10 + ((unsigned char)*p - '0');
-        ++p;
-    }
-    return sign == '-' ? -acc : acc;
-}
+ * A zero column or row count is a failure.  Returns 1 on success, else 0. */
 
 unsigned int TextRenderer::load(const char *path, RenderDevice *d3d)
 {
     ++g_nLoad;
     { static unsigned long seen; text_first("ReadBitmapFontFile", &seen); }
 
-    FILE *fp = fopen(path, "r");
-    if (fp == NULL)
+    std::ifstream in(path, std::ios::binary);
+    if (!in)
         return 0;
 
-    char line[0x100];
-
-    // PRESERVED: every failure after the fopen leaks the file handle; only the
-    // success path reaches fclose.
-    if (fgets(line, 0xff, fp) == NULL)
+    std::string atlasPath;
+    if (!std::getline(in, atlasPath))
         return 0;
-    line[strlen(line) - 1] = '\0';
+    if (!atlasPath.empty() && atlasPath.back() == '\r')
+        atlasPath.pop_back();
 
-    if (!this->atlas()->load(d3d, line, 1, 0))
+    if (!this->atlas()->load(d3d, atlasPath.c_str(), 1, 0))
         return 0;
 
-    // Columns.
-    if (fgets(line, 0xff, fp) == NULL)
+    int cols = 0, rows = 0;
+    if (!(in >> cols) || cols == 0)
         return 0;
-    line[strlen(line) - 1] = '\0';
-    cols_ = (unsigned int)font_atoi(line);
-    if (cols_ == 0)
+    cols_ = (unsigned int)cols;
+    if (!(in >> rows) || rows == 0)
         return 0;
-
-    // Rows.
-    if (fgets(line, 0xff, fp) == NULL)
-        return 0;
-    line[strlen(line) - 1] = '\0';
-    rows_ = (unsigned int)font_atoi(line);
-    if (rows_ == 0)
-        return 0;
+    rows_ = (unsigned int)rows;
 
     if (text_fx() == TEXT_FX_LOADSWAP) {
         const unsigned int t = cols_;
@@ -271,9 +236,7 @@ unsigned int TextRenderer::load(const char *path, RenderDevice *d3d)
         g_logger.write("textrenderer: loaded %s -- %u x %u cells\n",
                   path, cols_, rows_);
 
-    // The low byte is the success flag; the upper three are fclose's.
-    const unsigned int closed = (unsigned int)fclose(fp);
-    return (closed & 0xffffff00u) | 1u;
+    return 1;
 }
 
 void TextRenderer::drawCentered(float x, float y, float cellW, float cellH,

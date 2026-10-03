@@ -10,7 +10,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-#include <stdio.h>
+#include <istream>
 #include "inputdev.h"
 
 /* Called with the scan code that fired, the binding's strength and the context
@@ -109,8 +109,8 @@ public:
     const ActionTable &actionTable(int mode) const { return action_tables[mode]; }
 
 private:
-    int  readOrigEntryBindings(FILE *f, int mode, ActionEntry *e);
-    int  readOrigFormat(FILE *f);
+    int  readOrigEntryBindings(std::istream &f, int mode, ActionEntry *e);
+    int  readOrigFormat(std::istream &f);
  
 
     inputdev::Devices      devices_;
