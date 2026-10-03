@@ -1,4 +1,4 @@
-#include "portable.h"
+#include <stdio.h>
 #include <stdint.h>
 #include <fstream>
 #include "binio.h"
@@ -151,7 +151,7 @@ void ProgableControl::getBindingStr(int mode, const char *name,
 
     bool first = true;
     for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
-        char keyname[kMaxPath] = "?";
+        char keyname[FILENAME_MAX] = "?";
         devices_.keyName(kb->scancode, keyname, sizeof(keyname));
         if (!first) {
             size_t cur = strlen(buf), sep = strlen(sep_or);

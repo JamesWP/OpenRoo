@@ -4,7 +4,6 @@
 
 #include <strings.h>
 #include <math.h>
-#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <string.h>

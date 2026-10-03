@@ -1,5 +1,4 @@
 #include <strings.h>
-#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <new>

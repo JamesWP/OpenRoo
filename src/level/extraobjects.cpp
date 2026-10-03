@@ -32,10 +32,9 @@
  * Water01 ray swims its loop the other way. */
 
 #include <strings.h>
-#include "portable.h"
+#include <stdio.h>
 #include <stdint.h>
 #include "sysdev.h"
-#include <stdio.h>
 #include <fstream>
 #include <iomanip>
 #include <string>
@@ -46,7 +45,6 @@
 #include "soundmanager.h"
 #include "gamestr.h"
 #include "gameglobals.h"
-#include <stdlib.h>
 #include <stdlib.h>
 #include <algorithm>
 #include <iterator>
@@ -106,7 +104,7 @@ static std::string clip64(const char *p)
 
 void ExtraObjects::recDump(const char *path)
 {
-    char out[kMaxPath];
+    char out[FILENAME_MAX];
     if (!sysdev::getEnv("KAROO_LEO_RECDUMP", out, sizeof(out)))
         return;
     std::ofstream f(out, std::ios::binary | std::ios::app);
@@ -205,7 +203,7 @@ int ExtraObjects::openFile(const char *name)
     // KAROO_LEO_DUMP=<path>: the entry count and an FNV-1a hash of every entry
     // handed to the handler, for comparison with an independent parse.
     {
-        char dump[kMaxPath];
+        char dump[FILENAME_MAX];
         if (sysdev::getEnv("KAROO_LEO_DUMP", dump, sizeof(dump))) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {

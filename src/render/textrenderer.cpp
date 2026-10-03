@@ -18,7 +18,6 @@
  * of it, and then call drawLeft. */
 
 #include <strings.h>
-#include "portable.h"
 #include <stdint.h>
 #include "textrenderer.h"
 #include "sysdev.h"

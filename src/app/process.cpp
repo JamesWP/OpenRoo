@@ -1,6 +1,5 @@
-#include "portable.h"
-#include <iostream>
 #include <stdio.h>
+#include <iostream>
 #include "logger.h"
 #include "sysdev.h"
 #include "launcher.h"
@@ -26,8 +25,8 @@ static void crt_stderr_probe(void)
 void Process_Attach(const char *log_name)
 {
     g_logger.open(log_name);
-    char path[kMaxPath];
-    if (!sysdev::executablePath(path, kMaxPath))
+    char path[FILENAME_MAX];
+    if (!sysdev::executablePath(path, FILENAME_MAX))
         path[0] = '\0';
     g_logger.write("karoo_hooks loaded by: %s\n", path);
     sysdev::setLog(log_sink);

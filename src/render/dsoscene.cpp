@@ -21,7 +21,6 @@
  * - Objects whose type is neither 0 nor 2, and type-0 objects with a NULL
  *    mesh, still run the whole render-state prologue before being skipped. */
 
-#include "portable.h"
 #include <stdint.h>
 #include "dsoscene.h"
 #include "sysdev.h"
@@ -366,9 +365,9 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
             dev->SetTransform(Transform::World, &ident);
 
             SplinePath *sp = (SplinePath *)&o->spline;
-            if (hooks_GetAsyncKeyState(kKeyF3) & 0x8000)
+            if (hooks_GetAsyncKeyState(0x72 /* VK_F3 */) & 0x8000)
                 sp->drawSplinePath(dev, 100, 0xffffffff);
-            if (hooks_GetAsyncKeyState(kKeyF4) & 0x8000)
+            if (hooks_GetAsyncKeyState(0x73 /* VK_F4 */) & 0x8000)
                 sp->drawControlPolygon(dev, 0xff808080);
 
             if (o->texture != NULL)

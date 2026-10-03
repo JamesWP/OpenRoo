@@ -2,7 +2,6 @@
  * shared movement step, updateMovement(), follows in the rest of the file. */
 
 #include <strings.h>
-#include "portable.h"
 #include <stdint.h>
 #include "movableentity.h"
 #include "sysdev.h"
@@ -59,7 +58,6 @@ void MovableEntity::zeroSoundSlots()
 #include "logger.h"
 #include "entitymath.h"
 #include "voicepool.h"
-#include "movableentity.h"
 #include "tile.h"
 #include "levelmap.h"
 

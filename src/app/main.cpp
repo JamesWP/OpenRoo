@@ -9,10 +9,9 @@
  * ends the run; every recording fails on frames_run. */
 
 #include <strings.h>
-#include "portable.h"
+#include <stdio.h>
 #include "sysdev.h"
 #include <new>
-#include <stdio.h>
 #include "main.h"
 #include <stdlib.h>
 #include "gameglobals.h"
@@ -245,8 +244,8 @@ int Main_WinMain(const char *lpCmdLine)
     Render_ConfigureRenderState();
     hooks_ClockInit();
 
-    // kMaxPath-sized, so a long install path cannot overflow it.
-    char path[kMaxPath + 32];
+    // FILENAME_MAX-sized, so a long install path cannot overflow it.
+    char path[FILENAME_MAX + 32];
     snprintf(path, sizeof(path), "%s\\Video\\intro.avi", g_gameDir);
     if (g_movie.load(hWnd, path))
         g_movie.play();

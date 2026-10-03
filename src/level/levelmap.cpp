@@ -22,7 +22,6 @@
  * as it is read. */
 
 #include <strings.h>
-#include "portable.h"
 #include "sysdev.h"
 #include <fstream>
 #include "binio.h"

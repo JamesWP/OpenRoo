@@ -13,7 +13,7 @@
  *   - death_raw: four raw bytes from the player's move state;
  *   - pos: the player's position. */
 
-#include "portable.h"
+#include <stdio.h>
 #include <stdint.h>
 #include "gamestate.h"
 #include "sysdev.h"
@@ -24,7 +24,6 @@
 #include <algorithm>
 #include <fstream>
 #include "binio.h"
-#include <stdio.h>
 
 struct GameState {
     /* Reads the live Game; false when there is none. */
@@ -180,7 +179,7 @@ void gamestate_dump(const char *reason)
     static bool dumped = false;
     if (dumped) return;  // the first, most live, wins
 
-    char path[kMaxPath];
+    char path[FILENAME_MAX];
     if (!sysdev::getEnv("KAROO_STATE_DUMP", path, sizeof(path)) || !path[0])
         return;
     dumped = true;

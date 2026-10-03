@@ -12,7 +12,7 @@
 
 #include <strings.h>
 #include <string.h>
-#include "portable.h"
+#include <atomic>
 #include <stdint.h>
 #include "scenequad.h"
 #include "sysdev.h"
@@ -40,8 +40,8 @@ static QuadFx quad_fx(void)
 
 bool SceneQuad_Draw(RenderDevice *dev, StridedVertices *v, uint32_t count)
 {
-    static AtomicInt logged = 0;
-    if (atomicIncrement(&logged) <= QUAD_LOG_FIRST)
+    static std::atomic<long> logged = 0;
+    if (++logged <= QUAD_LOG_FIRST)
         g_logger.write("scenequad: dev=%p pos=%p tex0=%p count=%lu\n",
                   (void *)dev, v->position.data, v->texCoords[0].data,
                   (unsigned long)count);

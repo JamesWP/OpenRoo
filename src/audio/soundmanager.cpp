@@ -17,7 +17,6 @@
  *     of the entry's voice pools. */
 
 #include <strings.h>
-#include "portable.h"
 #include <stdint.h>
 #include <new>
 #include "sysdev.h"

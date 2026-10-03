@@ -7,7 +7,6 @@
  * method (or a free helper it calls) followed by its export shim. */
 
 #include <strings.h>
-#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <stdlib.h>

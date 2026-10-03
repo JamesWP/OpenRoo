@@ -4,7 +4,6 @@
 #define DIRECTSOUND_VERSION 0x0800
 #include <strings.h>
 #include <algorithm>
-#include "portable.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <new>

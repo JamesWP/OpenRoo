@@ -32,7 +32,6 @@
  * KAROO_SETUP_DIAG=1 logs the extents, the spawn census and the totals. */
 
 #include <strings.h>
-#include "portable.h"
 #include <stdint.h>
 #include "camera.h"
 #include "sysdev.h"
