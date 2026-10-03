@@ -35,9 +35,4 @@ bool executablePath(char *buf, unsigned size);
  * needed including the terminator and leaves buf unspecified. */
 unsigned getEnv(const char *name, char *buf, unsigned size);
 
-/* Logs access violations in the process's own code (registers and the top of
- * the stack) and guard-page faults through the log function, then lets the
- * exception continue to the normal handlers. */
-void installCrashLogger();
-
 }  // namespace sysdev

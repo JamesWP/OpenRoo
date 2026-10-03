@@ -31,7 +31,6 @@ void Process_Attach(const char *log_name)
         path[0] = '\0';
     g_logger.write("karoo_hooks loaded by: %s\n", path);
     sysdev::setLog(log_sink);
-    sysdev::installCrashLogger();
     crt_stderr_probe();
     launcher_init();
 }
