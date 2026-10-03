@@ -19,6 +19,8 @@
 #include "gameglobals.h"
 
 #include "bytes.h"
+#include <algorithm>
+#include <iterator>
 
 #define HSC_ENTRY_SIZE ((unsigned)HIGH_SCORE_RECORD_BYTES)
 
@@ -132,7 +134,7 @@ unsigned int HighScoreTable::insert(unsigned int score, unsigned char levelId)
             dst -= sizeof(HighScoreRecord);
         }
     }
-    memset(records_[rank].name, 0, sizeof(records_[rank].name));
+    std::fill(std::begin(records_[rank].name), std::end(records_[rank].name), 0);
     records_[rank].score = score;
     records_[rank].level = levelId;
     lastRank_ = (unsigned char)rank;

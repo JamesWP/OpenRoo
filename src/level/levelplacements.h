@@ -7,6 +7,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <memory>
  
 
 class Game;
@@ -19,8 +20,8 @@ public:
      
 
     int      count() const { return count_; }
-    float (*pos() const)[3] { return pos_; }
-    float (*rot() const)[3] { return rot_; }
+    float (*pos() const)[3] { return pos_.get(); }
+    float (*rot() const)[3] { return rot_.get(); }
 
 private:
     friend class LevelPlacements;  // counts, allocates and fills the lists
@@ -30,8 +31,8 @@ private:
     void put(unsigned *next, float x, float y, float z, float yaw);
 
     int     count_;
-    float (*pos_)[3];
-    float (*rot_)[3];
+    std::unique_ptr<float[][3]> pos_;  // zeroed on alloc
+    std::unique_ptr<float[][3]> rot_;
      
 };
 
@@ -79,17 +80,17 @@ public:
     const PlacementList   &destructibles() const { return destructibles_; }
 
     int kind01Count() const { return kind01Count_; }
-    PlacementVertex* kind01Verts() const { return kind01Verts_; }
+    PlacementVertex* kind01Verts() const { return kind01Verts_.get(); }
 
     int wallStripCount() const {return wallStripCount_;}
-    PlacementVertex * wallStripVerts() const { return wallVerts_;}
+    PlacementVertex * wallStripVerts() const { return wallVerts_.get(); }
 
 private:
     void buildWalls(const Game *g, float depth);
 
     PlacementVertex tileQuad_[4];     // unit quad at y 0, +-0.5
     int             kind01Count_;     // TILE_KIND_01 cells
-    PlacementVertex *kind01Verts_;    // 6 per cell, two triangles
+    std::unique_ptr<PlacementVertex[]> kind01Verts_;  // 6 per cell, two triangles
     float           exitPos_[3];      // the TILE_EXIT cell; the last one wins
     float           exitRot_[3];      // always 0
     PlacementList   lifts_;           // TILE_LIFT; pos and rot all 0
@@ -104,7 +105,7 @@ private:
     PlacementList   conveyors_;       // TILE_CONVEYOR
     PlacementList   destructibles_;   // TILE_DESTRUCTIBLE
     int             wallStripCount_;  // strips, 6 vertices each
-    PlacementVertex *wallVerts_;      // the wall strips
+    std::unique_ptr<PlacementVertex[]> wallVerts_;    // the wall strips
      
 };
 

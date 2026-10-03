@@ -32,6 +32,8 @@
 #include "texture.h"
 #include "generators.h"
 #include <math.h>
+#include <algorithm>
+#include <iterator>
 ThemeAssetBlock g_themeBlock;
 
 /* The fixed limits: fgets' line length, and 16 token slots of 0x100. */
@@ -503,7 +505,8 @@ bool ThemeParser::nextLine()
     while (!feof(fp)) {
         if (fgets(buf, LINE_MAX, fp) == NULL)
             continue;
-        memset(tok, 0, sizeof(tok));
+        for (auto &t : tok)
+            std::fill(std::begin(t), std::end(t), 0);
         ntok = 0;
 
         char *s = buf;

@@ -74,15 +74,14 @@ static int diag_on()
 
 void PlacementList::release()
 {
-    ::operator delete(pos_); pos_ = NULL;
-    ::operator delete(rot_); rot_ = NULL;
+    pos_.reset();
+    rot_.reset();
     count_ = 0;
 }
 
 void LevelPlacements::release()
 {
-    ::operator delete(kind01Verts_);
-    kind01Verts_ = NULL;
+    kind01Verts_.reset();
     kind01Count_ = 0;
     lifts_.release();
     slides_.release();
@@ -95,8 +94,7 @@ void LevelPlacements::release()
     climbs_.release();
     conveyors_.release();
     destructibles_.release();
-    ::operator delete(wallVerts_);
-    wallVerts_ = NULL;
+    wallVerts_.reset();
     wallStripCount_ = 0;
 }
 
@@ -193,14 +191,14 @@ void LevelPlacements::buildWalls(const Game *g, float depth)
 
     size_t n = lists[0].size() + lists[1].size() + lists[2].size() + lists[3].size();
     wallStripCount_ = (int)n;
-    wallVerts_ = (PlacementVertex *)::operator new(n * 6 * sizeof(PlacementVertex));
+    wallVerts_.reset(new PlacementVertex[n * 6]());
 
     // Six vertices per run.  S and E are the start and end on the edge, S_ and
     // E_ the same `depth` lower; T = 1 - depth is the edge's v coordinate, 1
     // the bottom's.  Row faces take u from x, column faces from z.  The vertex
     // order, shade and coordinates differ per list.
     const float T = K_ONE - depth;
-    PlacementVertex *o = wallVerts_;
+    PlacementVertex *o = wallVerts_.get();
     for (int li = 0; li < 4; ++li) {
         const uint32_t shade = (li == 0 || li == 3) ? 0xff404040 : 0xffb0b0b0;
         const int ax = (li < 2) ? 0 : 2;  // which axis is u
@@ -240,8 +238,8 @@ void LevelPlacements::buildWalls(const Game *g, float depth)
 
 void PlacementList::alloc(unsigned entries)
 {
-    pos_ = (float (*)[3])::operator new(entries * 12);
-    rot_ = (float (*)[3])::operator new(entries * 12);
+    pos_.reset(new float[entries][3]());
+    rot_.reset(new float[entries][3]());
 }
 
 void PlacementList::put(unsigned *next, float x, float y, float z, float yaw)
@@ -286,7 +284,7 @@ void LevelPlacements::build(const Game *g,
                        ? " -- the original overruns its slide block" : "");
 
     if (kind01Count_ != 0)
-        kind01Verts_ = (PlacementVertex *)::operator new(kind01Count_ * 6 * sizeof(PlacementVertex));
+        kind01Verts_.reset(new PlacementVertex[kind01Count_ * 6]());
     if (lifts_.count_ != 0)       lifts_.alloc(lifts_.count_);
     if (glue_.count_ != 0)        glue_.alloc(glue_.count_);
     if (breakables_.count_ != 0)  breakables_.alloc(breakables_.count_);
@@ -297,10 +295,8 @@ void LevelPlacements::build(const Game *g,
     if (climbs_.count_ != 0)      climbs_.alloc(climbs_.count_);
     unsigned slideCap = (unsigned)slides_.count_ > trackCells
                             ? (unsigned)slides_.count_ : trackCells;
-    if (slideCap != 0) {
+    if (slideCap != 0)
         slides_.alloc(slideCap);
-        memset(slides_.rot_, 0, slideCap * 12);
-    }
     if (conveyors_.count_ != 0)     conveyors_.alloc(conveyors_.count_);
     if (destructibles_.count_ != 0) destructibles_.alloc(destructibles_.count_);
 
@@ -328,7 +324,7 @@ void LevelPlacements::build(const Game *g,
                     // Two triangles over the cell, BbVertex-shaped.
                     const float A = x + K_HALF, B = z - K_HALF;
                     const float C = x - K_HALF, D = z + K_HALF;
-                    PlacementVertex *o = kind01Verts_ + n01 * 6;
+                    PlacementVertex *o = kind01Verts_.get() + n01 * 6;
                     put(o++, A, y, B, 0x00ffffff, 0.0f, 1.0f);
                     put(o++, C, y, B, 0x00ffffff, 0.0f, 0.0f);
                     put(o++, A, y, D, 0x00ffffff, 1.0f, 1.0f);
@@ -399,7 +395,7 @@ void LevelPlacements::drawLifts(Game *g, ThemeAssetBlock *theme,
         lifts_.pos_[i][2] = -lift->posV();
     }
     Scene_RenderSceneObjects(g, (SceneQuadVertex *)(void *)this,  // tileQuad, at +0
-                             (const Vec3 *)lifts_.pos_, (const Vec3 *)lifts_.rot_,
+                             (const Vec3 *)lifts_.pos_.get(), (const Vec3 *)lifts_.rot_.get(),
                              lifts_.count_, theme->slot(THEME_OBJ_ELEVATOR),
                              d3d, now, 0.0f, 0, 0);
 }
@@ -417,7 +413,7 @@ void LevelPlacements::drawSlides(Game *g, ThemeAssetBlock *theme,
     }
     float animTime = (float)fmod(now * (double)0.002f, 1.0);
     Scene_RenderSceneObjects(g, (SceneQuadVertex *)(void *)this,  // tileQuad, at +0
-                             (const Vec3 *)slides_.pos_, (const Vec3 *)slides_.rot_,
+                             (const Vec3 *)slides_.pos_.get(), (const Vec3 *)slides_.rot_.get(),
                              slides_.count_, theme->slot(THEME_OBJ_PLATFORM),
                              d3d, now, animTime, 0x14, 0);
 }

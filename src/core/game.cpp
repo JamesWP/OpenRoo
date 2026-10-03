@@ -32,6 +32,8 @@
 #include "bridgeobject.h"
 #include "foe.h"
 #include "bomb.h"
+#include <algorithm>
+#include <iterator>
 
 /* The key bytes of the save-slot files ('7') and the high-score file ('K'). */
 static const char SAVE_KEY      = 0x37;
@@ -43,11 +45,11 @@ Game::Game(const char *gameName)
     tickCount_  = 0;
     field_04_   = 1.0;
     // The tally is read by the state dump before any level has been scored.
-    memset(&tally_, 0, sizeof(tally_));
+    tally_ = ScoreTally();
     switchCells_.clearCounts();
     // PRESERVED: only the first 256 of each 500-slot table.
-    memset(bombSlots_, 0, 0x100 * sizeof(bombSlots_[0]));
-    memset(foeSlots_,  0, 0x100 * sizeof(foeSlots_[0]));
+    std::fill_n(bombSlots_, 0x100, nullptr);
+    std::fill_n(foeSlots_, 0x100, nullptr);
     breakableCount_ = 0;
     foeCount_       = 0;
     liftCount_      = 0;
@@ -60,8 +62,8 @@ Game::Game(const char *gameName)
     initialised_      = 0;
     levelSoundsReady_ = 0;
     scriptPlayer_.clearStreams();
-    memset(foeIds_,  0, sizeof(foeIds_));
-    memset(bombIds_, 0, sizeof(bombIds_));
+    std::fill(std::begin(foeIds_), std::end(foeIds_), 0);
+    std::fill(std::begin(bombIds_), std::end(bombIds_), 0);
     field_48b14_ = 0;
     fixedSounds_.switchClick    = NULL;
     fixedSounds_.menuUpDown     = NULL;
@@ -150,7 +152,7 @@ Game::Game(const char *gameName)
     field_13cc84_     = 0;
     bridgeCount_      = 0;
     fixedSounds_.loaded = 0;
-    memset(cheatBuffer_, 0, 0x100);
+    std::fill(std::begin(cheatBuffer_), std::end(cheatBuffer_), 0);
     cheatEntry_.setMaxLength(30);
     cheatEntry_.setCursor(0);
     cheatEntry_.setBuffer((char *)cheatBuffer_);

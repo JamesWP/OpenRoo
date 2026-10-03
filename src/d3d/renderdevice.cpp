@@ -120,7 +120,7 @@ void RenderDevice::Release()
     if (n->primary)    { n->primary->Release();    n->primary    = NULL; }
     if (n->d3d)        { n->d3d->Release();        n->d3d        = NULL; }
     if (n->dd)         { n->dd->Release();         n->dd         = NULL; }
-    memset(&n->zbufFmt, 0, sizeof(n->zbufFmt));
+    n->zbufFmt = {};
 
     modes_.clear();
     mode_            = NULL;
@@ -168,8 +168,7 @@ void RenderDevice::Flip()
 
 void RenderDevice::ClearBackBuffer()
 {
-    DDBLTFX fx;
-    memset(&fx, 0, sizeof fx);
+    DDBLTFX fx = {};
     fx.dwSize = sizeof fx;
     native_->backBuffer->Blt(NULL, NULL, NULL, DDBLT_COLORFILL, &fx);
 }
@@ -243,8 +242,7 @@ void RenderDevice::SetMaterial(const Material &m)
             return;
     }
 
-    D3DMATERIAL dm;
-    memset(&dm, 0, sizeof dm);
+    D3DMATERIAL dm = {};
     dm.dwSize     = sizeof dm;
     dm.diffuse    = d3d_color(m.diffuse);
     dm.ambient    = d3d_color(m.ambient);
@@ -268,8 +266,7 @@ void RenderDevice::SetDirectionalLight(const DirectionalLight &l)
         n->viewport->AddLight(n->light);
     }
 
-    D3DLIGHT2 dl;
-    memset(&dl, 0, sizeof dl);
+    D3DLIGHT2 dl = {};
     dl.dwSize         = sizeof dl;
     dl.dltType        = D3DLIGHT_DIRECTIONAL;
     dl.dcvColor       = d3d_color(l.color);
@@ -316,8 +313,7 @@ bool RenderDevice::DrawStrided(Prim prim, VertexFormat format,
         }
     }
 
-    D3DDRAWPRIMITIVESTRIDEDDATA sd;
-    memset(&sd, 0, sizeof(sd));
+    D3DDRAWPRIMITIVESTRIDEDDATA sd = {};
     sd.position.lpvData = (void *)v->position.data;
     sd.position.dwStride = v->position.stride;
     sd.normal.lpvData = (void *)v->normal.data;

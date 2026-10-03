@@ -131,8 +131,7 @@ void ddiag_dump_surface(const char *kind, const char *name,
     if (!enabled || surf == NULL)
         return;
 
-    DDSURFACEDESC2 d;
-    memset(&d, 0, sizeof(d));
+    DDSURFACEDESC2 d = {};
     d.dwSize = sizeof(d);
     if (FAILED(surf->Lock(NULL, &d, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL)))
         return;

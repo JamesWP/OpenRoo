@@ -26,6 +26,8 @@
 #include <new>
 #include <stdio.h>
 #include "renderdevice.h"
+#include <algorithm>
+#include <memory>
 
 #define PARTICLE_FVF       VertexFormat::Lit  // XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1, 0x20 stride
 #define PARTICLE_LOG_FIRST 8
@@ -136,7 +138,7 @@ uint32_t PointParticleSystem::draw(RenderDevice *dev)
 {
     static DrawLogState st;
     bool ok = dev->Draw(Prim::PointList, PARTICLE_FVF,
-                                    pVerts_, dwVertexCount_, 0);
+                                    pVerts_.get(), dwVertexCount_, 0);
     log_draw(&st, "PointDraw", this, dev, dwVertexCount_, ok);
     return dwVertexCount_;
 }
@@ -145,7 +147,7 @@ uint32_t FaceParticleSystem::draw(RenderDevice *dev)
 {
     static DrawLogState st;
     bool ok = dev->Draw(Prim::TriangleList, PARTICLE_FVF,
-                                    pVerts_, dwVertexCount_, 0);
+                                    pVerts_.get(), dwVertexCount_, 0);
     log_draw(&st, "FaceDraw", this, dev, dwVertexCount_, ok);
     return dwVertexCount_ / 6;
 }
@@ -159,10 +161,10 @@ uint32_t XFaceParticleSystem::draw(RenderDevice *dev)
     saved = dev->GetRenderState(RS::CullMode);
     dev->SetRenderState(RS::CullMode, Cull::CCW);
     dev->Draw(Prim::TriangleList, PARTICLE_FVF,
-                       pVerts_, dwVertexCount_, 0);
+                       pVerts_.get(), dwVertexCount_, 0);
     dev->SetRenderState(RS::CullMode, Cull::CW);
     bool ok = dev->Draw(Prim::TriangleList, PARTICLE_FVF,
-                                    pVerts_, dwVertexCount_, 0);
+                                    pVerts_.get(), dwVertexCount_, 0);
     dev->SetRenderState(RS::CullMode, saved);
     static DrawLogState st;
     log_draw(&st, "XFaceDraw", this, dev, dwVertexCount_, ok);
@@ -381,10 +383,8 @@ static const float PS_RAND_SCALE = 1.0f / 32767.0f;
  * fields are. */
 void RingBuffer::release()
 {
-    if (pRingBase)
-        ::operator delete(pRingBase);
+    ringNodes.reset();
     dwRingCount  = 0;
-    pRingBase    = NULL;
     pRingHead    = NULL;
     pRingCurrent = NULL;
 }
@@ -400,7 +400,7 @@ void RingBuffer::assignShapes(uint32_t shapes)
     float span = (float)(int)(shapes - 1);
     for (uint32_t i = 0; i < dwRingCount - 1; i++) {
         int r = (int)crt_rand();
-        pRingBase[i].dwShapeIndex =
+        ringNodes[i].dwShapeIndex =
             (uint32_t)(int)((double)r * span * PS_RAND_SCALE + 0.5);
     }
 }
@@ -414,16 +414,11 @@ int RingBuffer::alloc(uint32_t count, uint32_t shapes)
     if (count < 2)
         return FALSE;
     dwRingCount = count;
-    unsigned bytes = count * sizeof(ParticleNode);
-    ParticleNode *base = (ParticleNode *)::operator new(bytes, std::nothrow);
-    pRingBase = base;
-    if (base == NULL)
-        return FALSE;
+    ringNodes.reset(new ParticleNode[count]());
+    ParticleNode *base = ringNodes.get();
     pRingTail    = base + (count - 1);
     pRingHead    = base;
     pRingCurrent = base;
-    memset(base, 0, bytes);
-
     base[0].pPrev = NULL;
     base[0].pNext = &base[1];
     for (uint32_t i = 1; i + 1 < count; i++) {
@@ -441,7 +436,7 @@ int RingBuffer::alloc(uint32_t count, uint32_t shapes)
  */
 ParticleSystem::ParticleSystem()
     : pName_(GS_PSNAME_SYSTEM), pGenerator_(NULL), pEnvironment_(NULL),
-      pVerts_(NULL), dwVertexCount_(0)
+      dwVertexCount_(0)
 {
 }
 
@@ -461,8 +456,7 @@ void ParticleSystem::release(int flags)
     }
     pGenerator_ = NULL;
     pEnvironment_ = NULL;
-    ::operator delete(pVerts_);
-    pVerts_ = NULL;
+    pVerts_.reset();
     ring_.release();
 }
 
@@ -556,20 +550,19 @@ int ParticleSystem::save(void *fp)
         && ps_write_sub_object(pEnvironment_, fp);
 }
 
-/* Read one length-prefixed class name into a fresh buffer.  NULL on failure;
- * the caller frees. */
-static char *ps_read_name(void *fp, const char *msg_name)
+/* Read one length-prefixed class name into a fresh, terminated buffer.  Null
+ * on failure. */
+static std::unique_ptr<char[]> ps_read_name(void *fp, const char *msg_name)
 {
     uint32_t len;
     if (!ps_read(&len, 4, fp)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the data could not be read");
-        return NULL;
+        return nullptr;
     }
-    char *name = (char *)::operator new(len, std::nothrow);
-    if (hooks_fread(name, 1, len, fp) != len) {
+    std::unique_ptr<char[]> name(new char[(size_t)len + 1]());
+    if (hooks_fread(name.get(), 1, len, fp) != len) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, msg_name);
-        ::operator delete(name);
-        return NULL;
+        return nullptr;
     }
     return name;
 }
@@ -582,25 +575,22 @@ static int ps_load_sub_object(void *fp, T **out,
                                const char *msg_noload)
 {
     *out = NULL;
-    char *name = ps_read_name(fp, msg_noname);
-    if (name == NULL)
+    std::unique_ptr<char[]> name = ps_read_name(fp, msg_noname);
+    if (!name)
         return FALSE;
-    if (strcmp(name, GS_PS_NAME_NULL) != 0) {
-        T *obj = T::create(name);
+    if (strcmp(name.get(), GS_PS_NAME_NULL) != 0) {
+        T *obj = T::create(name.get());
         if (obj == NULL) {
-            g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, msg_nocreate, name);
+            g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, msg_nocreate, name.get());
         } else if (!obj->load(fp)) {
-            g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, msg_noload, name);
+            g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, msg_noload, name.get());
             delete obj;
         } else {
             *out = obj;
         }
-        if (*out == NULL) {
-            ::operator delete(name);
+        if (*out == NULL)
             return FALSE;
-        }
     }
-    ::operator delete(name);
     return TRUE;
 }
 
@@ -647,12 +637,7 @@ const float XFaceParticleSystem::XFACE_UV[6][2] = { {0,0}, {1,1}, {0,1}, {1,0}, 
 
 int ParticleSystem::allocVerts(unsigned perNode, const float (*uv)[2])
 {
-    ::operator delete(pVerts_);
-    unsigned bytes = ring_.dwRingCount * perNode * sizeof(ParticleVertex);
-    pVerts_ = (ParticleVertex *)::operator new(bytes, std::nothrow);
-    if (pVerts_ == NULL)
-        return FALSE;
-    memset(pVerts_, 0, bytes);
+    pVerts_.reset(new ParticleVertex[ring_.dwRingCount * perNode]());
     if (uv)
         for (uint32_t i = 0; i < ring_.dwRingCount; i++)
             for (unsigned c = 0; c < perNode; c++) {
@@ -666,14 +651,12 @@ int ParticleSystem::allocVerts(unsigned perNode, const float (*uv)[2])
  * release drops the rest. */
 void XFaceParticleSystem::release(int flags)
 {
-    ::operator delete(pCornerTable_);
-    pCornerTable_ = NULL;
+    pCornerTable_.reset();
     ParticleSystem::release(flags);
 }
 
 XFaceParticleSystem::~XFaceParticleSystem()
 {
-    ::operator delete(pCornerTable_);
 }
 
 /* Size the ring, then rebuild the vertex buffer.  Both return the second
@@ -803,14 +786,9 @@ static float rand_signed_unit(void)
  * X/Y/Z rotation velocities. */
 int XFaceParticleSystem::buildCorners()
 {
-    if (pCornerTable_)
-        ::operator delete(pCornerTable_);
     uint32_t count = dwCornerTableCount_;
-    XFaceCornerEntry *table =
-        (XFaceCornerEntry *)::operator new(count * sizeof(XFaceCornerEntry), std::nothrow);
-    pCornerTable_ = table;
-    if (table == NULL)
-        return FALSE;
+    pCornerTable_.reset(new XFaceCornerEntry[count]());
+    XFaceCornerEntry *table = pCornerTable_.get();
 
     const float *p = this->ranges;
     float size_min = p[0], size_max = p[1];
@@ -896,8 +874,7 @@ int XFaceParticleSystem::resize(uint32_t count)
 {
     if (!ParticleSystem::resize(count))
         return FALSE;
-    ::operator delete(pCornerTable_);
-    pCornerTable_ = NULL;
+    pCornerTable_.reset();
     ring_.assignShapes(dwCornerTableCount_);
     if (!allocVerts() || !buildCorners()) {
         release(1);
@@ -969,12 +946,12 @@ PointParticleSystem::PointParticleSystem()
 FaceParticleSystem::FaceParticleSystem() : flScale_(1.0f)
 {
     pName_ = GS_PSNAME_FACE_SYSTEM;
-    memset(flCorner_, 0, sizeof flCorner_);
+    std::fill(&flCorner_[0][0], &flCorner_[0][0] + 18, 0.0f);
 }
 
 /* One corner entry by default, sizes 1.0, every other range 0. */
 XFaceParticleSystem::XFaceParticleSystem()
-    : pCornerTable_(NULL), dwCornerTableCount_(1),
+    : dwCornerTableCount_(1),
       ranges{ 1.0f, 1.0f }  // size min/max; lifetime, speed and rotation are 0
 {
     pName_ = GS_PSNAME_XFACE_SYSTEM;
@@ -1005,20 +982,16 @@ ParticleSystem::loadStream(void *fp)
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the data could not be read");
         return NULL;
     }
-    char *name = (char *)::operator new(len, std::nothrow);
-    if (hooks_fread(name, 1, len, fp) != len) {
-        ::operator delete(name);
+    std::unique_ptr<char[]> name(new char[(size_t)len + 1]());
+    if (hooks_fread(name.get(), 1, len, fp) != len) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the data could not be read");
         return NULL;
     }
-    ParticleSystem *ps = ParticleSystem::create(name);
+    ParticleSystem *ps = ParticleSystem::create(name.get());
     if (ps == NULL) {
-        // Logged before the free here, unlike load's two branches.
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the system '%s' could not be created", name);
-        ::operator delete(name);
+        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because the system '%s' could not be created", name.get());
         return NULL;
     }
-    ::operator delete(name);
     if (!ps->load(fp)) {
         delete ps;
         return NULL;

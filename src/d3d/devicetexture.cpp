@@ -117,8 +117,7 @@ static DDPIXELFORMAT pick_texture_format(RenderDevice *dev, DWORD bpp, bool want
     // The context is zeroed whole; the original zeroed one byte short and
     // wrote the alpha flag into the kept format's alpha mask, visible only
     // when no format was kept.
-    PickFormatCtx ctx;
-    memset(&ctx, 0, sizeof(ctx));
+    PickFormatCtx ctx = {};
     ctx.bWantAlpha     = wantAlpha ? 1 : 0;
     ctx.dwRequestedBpp = bpp;
 
@@ -142,8 +141,7 @@ static PixelFormat to_pixel_format(const DDPIXELFORMAT &pf)
 static bool upload_image(IDirectDraw4 *dd, IDirectDrawSurface4 *target,
                          const Image &img, const DDPIXELFORMAT &pf)
 {
-    DDSURFACEDESC2 ddsd;
-    memset(&ddsd, 0, sizeof(ddsd));
+    DDSURFACEDESC2 ddsd = {};
     ddsd.dwSize         = sizeof(ddsd);
     ddsd.dwFlags        = 0x1007;  // CAPS | HEIGHT | WIDTH | PIXELFORMAT
     ddsd.dwWidth        = (DWORD)img.width;
@@ -205,16 +203,13 @@ DeviceTexture *RenderDevice::CreateTexture(const Image &img, uint32_t flags,
                        (unsigned long)pf.dwRGBAlphaBitMask);
 
     // The memory pool: hardware colour model or not.
-    DevDescRaw hw, sw;
-    memset(&hw, 0, sizeof(hw));
-    memset(&sw, 0, sizeof(sw));
+    DevDescRaw hw = {}, sw = {};
     hw.dw[0] = 0xfc;
     sw.dw[0] = 0xfc;
     HRESULT hr = native_->device->GetCaps((LPD3DDEVICEDESC)&hw, (LPD3DDEVICEDESC)&sw);
     ddiag_device_caps(hr, &hw, &sw);
 
-    DDSURFACEDESC2 ddsd;
-    memset(&ddsd, 0, sizeof(ddsd));
+    DDSURFACEDESC2 ddsd = {};
     ddsd.dwSize          = sizeof(ddsd);
     ddsd.dwFlags         = 0x101007;  // CAPS|HEIGHT|WIDTH|PIXELFORMAT|TEXTURESTAGE
     ddsd.dwTextureStage  = 0;
@@ -294,8 +289,7 @@ void RenderDevice::SetTexture(int stage, const DeviceTexture *tex)
 bool RenderDevice::BltImageToBackBuffer(const Image &img, bool blt)
 {
     Native *n = native_;
-    DDSURFACEDESC2 ddsd;
-    memset(&ddsd, 0, sizeof(ddsd));
+    DDSURFACEDESC2 ddsd = {};
     ddsd.dwSize = sizeof(ddsd);
     if (FAILED(n->backBuffer->GetSurfaceDesc(&ddsd)))
         return false;
@@ -303,7 +297,7 @@ bool RenderDevice::BltImageToBackBuffer(const Image &img, bool blt)
     if (pf.dwRGBBitCount != 16 && pf.dwRGBBitCount != 32)
         return false;
 
-    memset(&ddsd, 0, sizeof(ddsd));
+    ddsd = DDSURFACEDESC2();
     ddsd.dwSize         = sizeof(ddsd);
     ddsd.dwFlags        = 7;  // CAPS | HEIGHT | WIDTH
     ddsd.dwWidth        = (DWORD)img.width;
@@ -316,7 +310,7 @@ bool RenderDevice::BltImageToBackBuffer(const Image &img, bool blt)
     if (hr < 0)
         return false;
 
-    memset(&ddsd, 0, sizeof(ddsd));
+    ddsd = DDSURFACEDESC2();
     ddsd.dwSize = sizeof(ddsd);
     hr = surf->Lock(NULL, &ddsd, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL);
     ddiag_lock(hr, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, &ddsd);

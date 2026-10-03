@@ -31,6 +31,8 @@
 #include "splinepath.h"
 #include <stdlib.h>
 #include <math.h>
+#include <algorithm>
+#include <iterator>
 
 /* Stops (if still playing), releases and deletes each stream, re-reading the
  * slot before each step. */
@@ -584,6 +586,6 @@ ScriptPlayer::~ScriptPlayer()
 
 void ScriptPlayer::clearStreams()
 {
-    memset(streams_, 0, sizeof(streams_));
+    std::fill(std::begin(streams_), std::end(streams_), nullptr);
 }
 

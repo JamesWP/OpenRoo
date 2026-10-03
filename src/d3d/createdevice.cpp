@@ -23,6 +23,7 @@
 
 #include "ddrawdiag.h"
 #include "nullddraw.h"
+#include <vector>
 
 /* KAROO_D3DDEV_FX: controls that change geometry, which only this function
  * decides.
@@ -143,10 +144,8 @@ static bool hal_render_depths(IDirectDraw4 *dd, DWORD *depths)
     if (FAILED(dd->QueryInterface(IID_IDirect3D3, (void **)&d3d)))
         return false;
 
-    D3DFINDDEVICERESULT found;
-    D3DFINDDEVICESEARCH search;
-    memset(&found,  0, sizeof(found));
-    memset(&search, 0, sizeof(search));
+    D3DFINDDEVICERESULT found = {};
+    D3DFINDDEVICESEARCH search = {};
     found.dwSize   = sizeof(found);
     search.dwSize  = sizeof(search);
     search.dwFlags = D3DFDS_GUID;
@@ -311,8 +310,7 @@ bool RenderDevice::Create(void *hWndNative, const AdapterId *adapter,
     imagelog(GS_D3D_DONE);
 
     // ── Primary (flipping, complex, 3D) + its attached back buffer ──
-    DDSURFACEDESC2 dd;
-    memset(&dd, 0, sizeof(dd));
+    DDSURFACEDESC2 dd = {};
     dd.dwSize            = sizeof(dd);
     dd.dwFlags           = DDSD_CAPS | DDSD_BACKBUFFERCOUNT;
     dd.ddsCaps.dwCaps    = DDSCAPS_PRIMARYSURFACE | DDSCAPS_FLIP |
@@ -324,8 +322,7 @@ bool RenderDevice::Create(void *hWndNative, const AdapterId *adapter,
         return DeviceCreation::fail(this, GS_D3D_ERR_PRIMARY);
 
     // REVIEW: only dwCaps used to be written; the rest was stack garbage.
-    DDSCAPS2 caps;
-    memset(&caps, 0, sizeof(caps));
+    DDSCAPS2 caps = {};
     caps.dwCaps = DDSCAPS_BACKBUFFER;
     hr = n->primary->GetAttachedSurface(&caps, &n->backBuffer);
     if (FAILED(hr))
@@ -349,7 +346,7 @@ bool RenderDevice::Create(void *hWndNative, const AdapterId *adapter,
         return DeviceCreation::fail(this, GS_D3D_ERR_ZBUF_FORMAT);
 
     // ── The z-buffer surface ──
-    memset(&dd, 0, sizeof(dd));
+    dd = DDSURFACEDESC2();
     dd.dwSize          = sizeof(dd);
     dd.dwFlags         = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT | DDSD_PIXELFORMAT;
     dd.dwWidth         = mode_->dwWidth;
@@ -389,8 +386,7 @@ bool RenderDevice::Create(void *hWndNative, const AdapterId *adapter,
     float aspect = (float)((double)mode_->dwHeight
                          / (double)mode_->dwWidth);
 
-    D3DVIEWPORT2 vp;
-    memset(&vp, 0, sizeof(vp));
+    D3DVIEWPORT2 vp = {};
     vp.dwSize       = sizeof(vp);
     vp.dwWidth      = mode_->dwWidth;
     vp.dwHeight     = mode_->dwHeight;
@@ -438,8 +434,7 @@ bool RenderDevice::Create(void *hWndNative, const AdapterId *adapter,
 static BOOL WINAPI enum_adapters_cb(GUID *guid, LPSTR desc, LPSTR, LPVOID ctx)
 {
     std::vector<Adapter> *out = (std::vector<Adapter> *)ctx;
-    Adapter a;
-    memset(&a, 0, sizeof(a));
+    Adapter a = {};
     lstrcpynA(a.name, desc, sizeof(a.name));
     a.hasGuid = guid != NULL;
     if (guid)

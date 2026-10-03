@@ -14,6 +14,8 @@
 #include "plan.h"
 #include "logger.h"
 #include <string.h>
+#include <algorithm>
+#include <iterator>
 
 #define CELLS      (WS_GRID_PITCH * WS_GRID_PITCH)
 #define IDX(u, v)  ((v) + (u) * WS_GRID_PITCH)
@@ -35,8 +37,8 @@ static void mark_danger(const Observation *o)
 {
     if (g_danger_frame == o->frame) return;
     g_danger_frame = o->frame;
-    memset(g_danger, 0, sizeof(g_danger));
-    memset(g_lethal, 0, sizeof(g_lethal));
+    std::fill(std::begin(g_danger), std::end(g_danger), false);
+    std::fill(std::begin(g_lethal), std::end(g_lethal), false);
 
     // A falling tile kills only if stood on when it falls, and on the levels
     // that use them they are often the only way across.
@@ -188,8 +190,7 @@ static void build_tour(const Observation *o, int pu, int pv)
     }
 
     // Nearest neighbour, highest rank first.
-    bool used[MAX_STOPS];
-    memset(used, 0, sizeof(used));
+    bool used[MAX_STOPS] = {};
     int order[MAX_STOPS], m = 0, cur = 0;
     for (int k = 0; k < n; k++) {
         int best = -1;

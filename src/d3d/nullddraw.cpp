@@ -238,7 +238,7 @@ static const DWORD s_mode_depths[3] = { 32, 16, 8 };
 /* Per-depth display-mode pixel formats, exactly as captured. */
 static void mode_pixfmt(DWORD bpp, DDPIXELFORMAT *pf)
 {
-    memset(pf, 0, sizeof(*pf));
+    *pf = DDPIXELFORMAT();
     pf->dwSize        = sizeof(DDPIXELFORMAT);
     pf->dwRGBBitCount = bpp;
     if (bpp == 32) {
@@ -258,7 +258,7 @@ static void mode_pixfmt(DWORD bpp, DDPIXELFORMAT *pf)
 
 static void rec_to_pixfmt(const PixFmtRec *r, DDPIXELFORMAT *pf)
 {
-    memset(pf, 0, sizeof(*pf));
+    *pf = DDPIXELFORMAT();
     pf->dwSize               = sizeof(DDPIXELFORMAT);
     pf->dwFlags              = r->flags;
     pf->dwFourCC             = r->fourcc;
@@ -821,7 +821,7 @@ static HRESULT WINAPI NOINLINE nd_GetLightState(NullObj *s, DWORD state, DWORD *
 static HRESULT WINAPI NOINLINE nd_GetTransform(NullObj *s, DWORD which, D3DMATRIX *m)
 {
     (void)s; (void)which;
-    if (m) { memset(m, 0, sizeof(*m)); m->_11 = m->_22 = m->_33 = m->_44 = 1.0f; }
+    if (m) { *m = D3DMATRIX(); m->_11 = m->_22 = m->_33 = m->_44 = 1.0f; }
     return S_OK;
 }
 static HRESULT WINAPI NOINLINE nd_GetTexture(NullObj *s, DWORD stage, void **tex)
@@ -1061,8 +1061,7 @@ static HRESULT WINAPI NOINLINE n4_EnumDisplayModes(NullObj *s, DWORD flags,
     if (!cb) return DDERR_INVALIDPARAMS;
     for (unsigned di = 0; di < 3; di++) {
         for (unsigned mi = 0; mi < sizeof(s_modes) / sizeof(s_modes[0]); mi++) {
-            DDSURFACEDESC2 d;
-            memset(&d, 0, sizeof(d));
+            DDSURFACEDESC2 d = {};
             d.dwSize        = sizeof(d);
             d.dwFlags       = 0x0004100E;   /* HEIGHT|WIDTH|PITCH|PIXELFORMAT|REFRESHRATE */
             d.dwWidth       = s_modes[mi].w;

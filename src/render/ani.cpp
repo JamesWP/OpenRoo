@@ -29,6 +29,8 @@
 
 #include "gamestr.h"
 #include "ani.h"
+#include <algorithm>
+#include <iterator>
 
 #define ANI_LINE_MAX     0x100
 #define ANI_TOKEN_SLOTS  64  // see the token loop
@@ -85,7 +87,7 @@ int AnimTable::load(const char *path)
     FILE *fp;
     static int logged = 0;
 
-    memset(table, 0, sizeof(AnimTable));
+    *this = AnimTable();
 
     if (path == NULL || path[0] == '\0')
         return 0;  // PRESERVED: after the table is cleared
@@ -102,7 +104,8 @@ int AnimTable::load(const char *path)
         if (fgets(line, ANI_LINE_MAX, fp) == NULL)
             continue;  // PRESERVED: a read error that never sets EOF spins forever
 
-        memset(s_tokens, 0, sizeof(s_tokens));
+        for (auto &t : s_tokens)
+            std::fill(std::begin(t), std::end(t), 0);
 
         if (line[0] == '/') {  // '/' then anything else is tokenised
             if (line[1] == '/')

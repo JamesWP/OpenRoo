@@ -39,7 +39,7 @@ Render_ConfigureRenderState(void)
 
     // Texture and model caches' loggers, and the level placement scratch
     // block.
-    memset((void *)&g_levelPlacements, 0, sizeof(g_levelPlacements));
+    g_levelPlacements.release();
     Menu_BuildMenuGeometry(d3d, g_gameDir);
 
     // The initial camera, placed exactly as level entry places it.
@@ -76,8 +76,7 @@ Render_ConfigureRenderState(void)
     const float q = (float)(sn * 1.001001000404358);
     // Projection with an unnormalised depth term (m22, m23 are not the usual
     // 1/(f-n) form).
-    Mat4 proj;
-    memset(&proj, 0, sizeof proj);
+    Mat4 proj = {};
     proj.m[0]  = c;
     proj.m[5]  = c;
     proj.m[10] = q;
@@ -85,7 +84,7 @@ Render_ConfigureRenderState(void)
     proj.m[14] = (float)(q * -0.10000000149011612);
 
     CameraFocus *f = &g_cameraFocus;
-    memset(f, 0, sizeof *f);
+    *f = CameraFocus();
     f->f[3] = 5000.0f;
     f->f[5] = cam->yaw();
     f->f[6] = cam->eye()[0];
