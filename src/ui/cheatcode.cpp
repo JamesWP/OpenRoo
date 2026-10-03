@@ -38,6 +38,7 @@
 #include "cdm.h"
 #include <algorithm>
 #include <iterator>
+#include <fstream>
 
 class CDM;
 
@@ -50,7 +51,7 @@ static int streq(const unsigned char *a, const char *b)
 
 /* The tail both level loaders share: go to the loaded state with the intro
  * flythrough armed. */
-static void enter_loaded_state(Game *game, FILE *fp)
+static void enter_loaded_state(Game *game)
 {
     game->setCameraDistance(7.0f);
     game->setState(4);
@@ -59,7 +60,6 @@ static void enter_loaded_state(Game *game, FILE *fp)
     game->scriptPlayer()->setRunning(1);
     game->setCameraMode(1);
     game->setDebounce(0x0d);
-    fclose(fp);
 }
 
   void  
@@ -143,12 +143,11 @@ Sim_HandleTypedCheatCode(Game *self)
                 g_logger.logMessage(3, "GAME: lc by number %d name:%s", (unsigned int)lvl,
                                    self->levelName());
                 self->setLevelIndex(lvl);
-                FILE *fp = fopen(path, "r");
-                if (fp != NULL) {
+                if (std::ifstream(path)) {
                     pl->setGemsCollected(0);
                     Sim_OpenLevelFile(self, self->levelIndex());
                     Sim_SetupLevelObjects(self);
-                    enter_loaded_state(self, fp);
+                    enter_loaded_state(self);
                 }
             }
             buf[0] = 0;
@@ -166,12 +165,11 @@ Sim_HandleTypedCheatCode(Game *self)
             frame[len - 6] = 0;
             g_logger.logMessage(3, "GAME: lc %s", (const char *)frame);
             sprintf(path, GS_CHEAT_FMT_LVL_PATH, g_gameDir, (const char *)frame);
-            FILE *fp = fopen(path, "r");
-            if (fp != NULL) {
+            if (std::ifstream(path)) {
                 pl->setGemsCollected(0);
                 Sim_ParseLevelFiles(self, (const char *)frame);
                 Sim_SetupLevelObjects(self);
-                enter_loaded_state(self, fp);
+                enter_loaded_state(self);
             }
             buf[0] = 0;
         }

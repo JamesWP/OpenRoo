@@ -25,13 +25,11 @@ inline const char GS_CD_TRACK3_LEN[] = "02:59:12";
 inline const char GS_CD_TRACK2_LEN[] = "04:38:71";
 inline const char GS_CD_TRACKFILE_PATH[] = "%s\134CDTracks\134%s.cdt";
 inline const char GS_CD_TRACKFILE_DELIMS[] = " ,\011\012;";
-inline const char GS_CD_TRACKFILE_MODE[] = "r+t";
 inline const char GS_HIGHSCORE_DEFAULT_NAME[] = "Open Roo";
 
 /* GAME: the game object's lifecycle. */
 inline const char GS_GAME_DEMO_LEVEL[] = "DemoLevelForest";
 inline const char GS_GAME_FILE_PATH[] = "%s\134%s.gam";
-inline const char GS_MODE_READ[] = "r";
 inline const char GS_ACT_TURN_LEFT[] = "John_Turn_Left";
 inline const char GS_ACT_TURN_RIGHT[] = "John_Turn_Right";
 inline const char GS_ACT_MOVE_FORWARD[] = "John_Move_Forward";
