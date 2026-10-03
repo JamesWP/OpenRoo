@@ -88,7 +88,7 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
     if (last != 0) {
         audiodev::Buffer *p = acq(g, g->soundAsset42de6());
         g->foeSlot(idx)->setSoundCb(p);
-        last = (unsigned int)(unsigned long)p;
+        last = (unsigned int)(uintptr_t)p;
     }
     return (last & 0xffffff00u) | 1u;
 }

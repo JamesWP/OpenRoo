@@ -102,7 +102,7 @@ void Player::pickupSound(const SoundRef *arr) const
 
 void Player::appendEffect(int code)
 {
-    effects()->append((void *)(unsigned int)code);
+    effects()->append((void *)(uintptr_t)(unsigned int)code);
 }
 
 void Player::clearEffects()
@@ -112,7 +112,7 @@ void Player::clearEffects()
 
 void Player::endEffect(int code)
 {
-    LinkedListNode *node = effects()->find((void *)(unsigned int)code, NULL);
+    LinkedListNode *node = effects()->find((void *)(uintptr_t)(unsigned int)code, NULL);
     effects()->unlink(node);
 }
 

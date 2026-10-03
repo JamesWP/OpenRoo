@@ -882,7 +882,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
     float y = H - ch - pad;
     LinkedListNode *it = pl->effectList()->head();
     while (it != NULL) {
-        const unsigned code = (unsigned char)(uint32_t)LinkedList::nextValue(&it);
+        const unsigned code = (unsigned char)(uintptr_t)LinkedList::nextValue(&it);
         ThemeImageSlot img;
         double start = 0.0, span = 10.0;
         bool icon = true;
