@@ -438,7 +438,7 @@ static BOOL WINAPI enum_adapters_cb(GUID *guid, LPSTR desc, LPSTR, LPVOID ctx)
     lstrcpynA(a.name, desc, sizeof(a.name));
     a.hasGuid = guid != NULL;
     if (guid)
-        memcpy(&a.id, guid, sizeof(a.id));
+        memcpy(&a.id, guid, sizeof(a.id));  // AdapterId has the GUID's layout, not its type
     out->push_back(a);
     return DDENUMRET_OK;
 }

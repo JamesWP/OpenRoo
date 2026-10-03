@@ -198,8 +198,8 @@ Sim_HandleKeypress(Game *self)
             if (self->nameEntry()->lastKey() == 0x0d)
                 self->saveSlots()->writeAllSlotFiles(self->gameFileName(), 0x37);
             else
-                memcpy(self->saveSlots()->slot((unsigned char)self->saveSlots()->editSlot()),
-                       self->saveSlots()->edit(), sizeof(SaveSlot));
+                *self->saveSlots()->slot((unsigned char)self->saveSlots()->editSlot()) =
+                    *self->saveSlots()->edit();
             self->setTextEntryActive(0);
             self->menu()->pop();
             self->menu()->setCursor(0);

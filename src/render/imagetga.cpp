@@ -12,6 +12,7 @@
 
 #include "image.h"
 #include <string.h>
+#include <algorithm>
 
 namespace {
 
@@ -114,7 +115,7 @@ bool Image_LoadTGA(const char *path, Image &out)
     const size_t stride = (size_t)h.width * 4;
     for (unsigned y = 0; y < h.height; ++y) {
         const unsigned srcRow = topDown ? y : (unsigned)(h.height - 1 - y);
-        memcpy(&out.rgba[y * stride], &pix[srcRow * stride], stride);
+        std::copy_n(&pix[srcRow * stride], stride, &out.rgba[y * stride]);
     }
 
     out.width      = h.width;

@@ -6,6 +6,7 @@
 
 #include "image.h"
 #include <string.h>
+#include <algorithm>
 
 namespace {
 
@@ -71,9 +72,9 @@ bool Image_LoadBMP(const char *path, Image &out)
         uint8_t *dst = &rgba[(size_t)y * w * 4];
         for (int32_t x = 0; x < w; ++x, dst += 4) {
             switch (bpp) {
-            case 1: memcpy(dst, palette[(row[x >> 3] >> (7 - (x & 7))) & 1], 4); break;
-            case 4: memcpy(dst, palette[(x & 1) ? (row[x >> 1] & 15) : (row[x >> 1] >> 4)], 4); break;
-            case 8: memcpy(dst, palette[row[x]], 4); break;
+            case 1: std::copy_n(palette[(row[x >> 3] >> (7 - (x & 7))) & 1], 4, dst); break;
+            case 4: std::copy_n(palette[(x & 1) ? (row[x >> 1] & 15) : (row[x >> 1] >> 4)], 4, dst); break;
+            case 8: std::copy_n(palette[row[x]], 4, dst); break;
             case 16: {
                 unsigned px = le16(row + x * 2);
                 unsigned r = (px >> 10) & 0x1f, g = (px >> 5) & 0x1f, b = px & 0x1f;

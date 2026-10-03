@@ -51,9 +51,8 @@
  * Blts it to the texture or the back buffer.  A surface that hands back no
  * memory turns that into null-pointer writes.
  *
- * So every surface is backed by a VirtualAlloc'd block of its pitch times its
- * height (see surf_alloc_bits for why not the heap), which gives working
- * Lock/Unlock.  Top-down, as DirectDraw surfaces are.  There is no GetDC:
+ * So every surface is backed by a zeroed new[] block of its pitch times its
+ * height, which gives working Lock/Unlock.  Top-down, as DirectDraw surfaces are.  There is no GetDC:
  * nothing draws with GDI any more.
  *
  * Blt and BltFast really copy, for the same reason: a texture's upload ends

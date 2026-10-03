@@ -103,7 +103,7 @@ static void open_record(const char *path)
         return;
     }
     uint8_t hdr[HEADER_SIZE] = {};
-    memcpy(hdr, "KROO", 4);
+    std::copy_n("KROO", 4, hdr);
     *(uint32_t  *)(hdr + 4)  = RECORD_VERSION;
     *(double *)(hdr + 8)  = g_dt;
     *(uint32_t  *)(hdr + 16) = g_seed;
@@ -179,7 +179,7 @@ static void flush_frame(void)
     int  n = 0;
     *(uint32_t *)(buf + n) = g_cur.frame;      n += 4;
     buf[n++] = g_cur.game_state;
-    memcpy(buf + n, g_cur.keys, 256);       n += 256;
+    std::copy_n(g_cur.keys, 256, buf + n);       n += 256;
     buf[n++] = g_cur.async_count;
     for (int i = 0; i < g_cur.async_count; i++) {
         buf[n++] = g_cur.async[i][0];
@@ -198,7 +198,7 @@ void record_keys(unsigned short game_state, const uint8_t *keys)
     if (!record_recording()) return;
     g_cur.frame      = clock_frame();
     g_cur.game_state = (uint8_t)game_state;
-    memcpy(g_cur.keys, keys, 256);
+    std::copy_n(keys, 256, g_cur.keys);
     g_keys_seen = true;
 }
 
@@ -274,7 +274,7 @@ bool replay_keys(unsigned short *game_state, uint8_t *keys)
                       clock_frame(), g_play.frame, g_play.game_state, held);
     }
     *game_state = g_play.game_state;
-    memcpy(keys, g_play.keys, 256);
+    std::copy_n(g_play.keys, 256, keys);
     return true;
 }
 
