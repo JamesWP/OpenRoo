@@ -1,7 +1,37 @@
-#define DIRECTSOUND_VERSION 0x0800
-#include "dsound_internal.h"
+#include "sdl_internal.h"
+#include <algorithm>
 
 namespace audiodev {
+
+static std::vector<SDL_AudioDeviceID> g_gainTargets;
+static float g_gain = 1.0f;
+
+void registerGainTarget(SDL_AudioDeviceID id)
+{
+    g_gainTargets.push_back(id);
+    SDL_SetAudioDeviceGain(id, g_gain);
+}
+
+void unregisterGainTarget(SDL_AudioDeviceID id)
+{
+    g_gainTargets.erase(std::remove(g_gainTargets.begin(), g_gainTargets.end(), id),
+                        g_gainTargets.end());
+}
+
+/* The old system volume was two 16-bit channels packed in a word; SDL has no
+ * system volume, so this is this program's own, and balance is dropped. */
+unsigned masterVolume()
+{
+    unsigned v = (unsigned)(g_gain * 0xffff + 0.5f);
+    return v | (v << 16);
+}
+
+void setMasterVolume(unsigned packed)
+{
+    g_gain = (float)(((packed & 0xffff) + (packed >> 16)) / 2) / 0xffff;
+    for (SDL_AudioDeviceID id : g_gainTargets)
+        SDL_SetAudioDeviceGain(id, g_gain);
+}
 
 Device::Device() : state_(new DeviceState())
 {
@@ -15,36 +45,17 @@ Device::~Device()
 
 bool Device::isUp() const
 {
-    return state_->directsound != NULL;
+    return state_->id != 0;
 }
 
 void Device::destroy()
 {
-    if (state_->listener) {
-        state_->listener->Release();
-        state_->listener = NULL;
+    if (state_->id) {
+        unregisterGainTarget(state_->id);
+        SDL_CloseAudioDevice(state_->id);
+        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+        state_->id = 0;
     }
-    if (state_->primary) {
-        state_->primary->Release();
-        state_->primary = NULL;
-    }
-    if (state_->directsound) {
-        state_->directsound->Release();
-        state_->directsound = NULL;
-    }
-}
-
-/* The primary buffer's 3D interface is the listener. */
-static bool query_listener(DeviceState *s)
-{
-    GUID iid = IID_IDirectSound3DListener;
-    HRESULT hr = s->primary->QueryInterface(iid, (void**)&s->listener);
-    if (FAILED(hr)) {
-        AD_LOG("audiodev: QueryInterface 3DListener failed hr=0x%lx\n",
-               (unsigned long)hr);
-        return false;
-    }
-    return true;
 }
 
 bool Device::create(const DeviceConfig &config)
@@ -55,108 +66,38 @@ bool Device::create(const DeviceConfig &config)
 
     destroy();
 
-    HRESULT hr = DirectSoundCreate(NULL, &state_->directsound, NULL);
-    if (FAILED(hr)) {
-        AD_LOG("audiodev: DirectSoundCreate failed hr=0x%lx\n",
-               (unsigned long)hr);
-        goto fail;
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
+        AD_LOG("audiodev: SDL_INIT_AUDIO failed: %s\n", SDL_GetError());
+        return false;
     }
-
-    hr = state_->directsound->SetCooperativeLevel((HWND)config.window,
-                                                  DSSCL_PRIORITY);
-    if (FAILED(hr)) {
-        AD_LOG("audiodev: SetCooperativeLevel failed hr=0x%lx\n",
-               (unsigned long)hr);
-        goto fail;
+    SDL_AudioSpec spec = {};
+    spec.format   = config.bitsPerSample == 8 ? SDL_AUDIO_U8 : SDL_AUDIO_S16;
+    spec.channels = config.channels;
+    spec.freq     = config.sampleRate;
+    state_->id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
+    if (!state_->id) {
+        AD_LOG("audiodev: SDL_OpenAudioDevice failed: %s\n", SDL_GetError());
+        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+        return false;
     }
-
-    {
-        DSBUFFERDESC desc = {};
-        desc.dwSize  = sizeof(DSBUFFERDESC);
-        desc.dwFlags = DSBCAPS_PRIMARYBUFFER
-                     | (config.enable3D ? DSBCAPS_CTRL3D : 0);
-        hr = state_->directsound->CreateSoundBuffer(&desc, &state_->primary,
-                                                    NULL);
-        if (FAILED(hr)) {
-            AD_LOG("audiodev: CreateSoundBuffer (primary) failed hr=0x%lx\n",
-                   (unsigned long)hr);
-            goto fail;
-        }
-    }
-
-    {
-        WAVEFORMATEX wfx = {};
-        wfx.wFormatTag      = WAVE_FORMAT_PCM;
-        wfx.nChannels       = (WORD)config.channels;
-        wfx.nSamplesPerSec  = (DWORD)config.sampleRate;
-        wfx.wBitsPerSample  = (WORD)config.bitsPerSample;
-        wfx.nBlockAlign     = (WORD)((config.bitsPerSample >> 3) * config.channels);
-        wfx.nAvgBytesPerSec = wfx.nBlockAlign * (DWORD)config.sampleRate;
-        hr = state_->primary->SetFormat(&wfx);
-        if (FAILED(hr))
-            AD_LOG("audiodev: SetFormat failed hr=0x%lx (continuing)\n",
-                   (unsigned long)hr);
-    }
-
-    // The primary buffer plays for as long as the device lives.
-    state_->primary->Play(0, 0, DSBPLAY_LOOPING);
-
-    if (config.enable3D && !query_listener(state_))
-        goto fail;
+    SDL_ResumeAudioDevice(state_->id);
+    registerGainTarget(state_->id);
+    state_->enable3D = config.enable3D;
     AD_LOG("audiodev: create OK\n");
     return true;
-
-fail:
-    destroy();
-    return false;
 }
 
+/* SDL has no spatial audio: the listener is accepted and ignored, and every
+ * sound plays as a 2D one.  See docs/SDL_PLATFORM.md. */
 bool Device::set3DEnabled(bool enable)
 {
-    if (enable) {
-        if (state_->listener) return true;
-        if (!state_->primary) return false;
-        if (!query_listener(state_)) {
-            destroy();
-            return false;
-        }
-    } else if (state_->listener) {
-        state_->listener->Release();
-        state_->listener = NULL;
-    }
-    return true;
+    state_->enable3D = enable;
+    return isUp();
 }
 
-static DWORD apply(bool immediate)
-{
-    return immediate ? DS3D_IMMEDIATE : DS3D_DEFERRED;
-}
-
-void Device::commit()
-{
-    if (state_->listener)
-        state_->listener->CommitDeferredSettings();
-}
-
-void Device::setListenerPosition(const float pos[3], bool immediate)
-{
-    if (state_->listener)
-        state_->listener->SetPosition(pos[0], pos[1], pos[2], apply(immediate));
-}
-
-void Device::setListenerOrientation(const float front[3], const float top[3],
-                                    bool immediate)
-{
-    if (state_->listener)
-        state_->listener->SetOrientation(front[0], front[1], front[2],
-                                         top[0], top[1], top[2],
-                                         apply(immediate));
-}
-
-void Device::setListenerRolloff(float rolloff, bool immediate)
-{
-    if (state_->listener)
-        state_->listener->SetRolloffFactor(rolloff, apply(immediate));
-}
+void Device::commit() {}
+void Device::setListenerPosition(const float *, bool) {}
+void Device::setListenerOrientation(const float *, const float *, bool) {}
+void Device::setListenerRolloff(float, bool) {}
 
 }  // namespace audiodev

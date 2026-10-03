@@ -1,11 +1,11 @@
 /* The platform input layer: the only code that may touch the system keyboard,
- * mouse and controller APIs (DirectInput, GetAsyncKeyState).  The header is
+ * mouse and controller APIs (SDL's keyboard state).  The header is
  * opaque and free of platform headers; the game's input logic (src/input) is
  * written against it, so a port replaces the .cpp files beside it.
  *
  * Two key id spaces cross this boundary, both fixed by the game's saved files
  * and recordings:
- *   scan codes    0..255, the layout DirectInput reports (an AT scan code,
+ *   scan codes    0..255, the layout DirectInput used (an AT scan code,
  *                 with 0x80 added for the extended keys); saved in
  *                 ProgableControl.sav and used by the action bindings
  *   virtual keys  the Windows VK_* numbers the menus poll (Enter 0x0d, Escape
@@ -26,8 +26,10 @@ enum Scan {
     SCAN_PAGE_DOWN = 0xd1, SCAN_DELETE = 0xd3
 };
 
-/* Whether a virtual key is down right now, in the system's own format: the
- * high bit of the result is set while it is held. */
+/* Whether a virtual key is down right now, in the old Windows format: the
+ * high bit of the result is set while it is held.  Reflects the events
+ * pumped so far (windev::runMessageLoop), and only while the window has the
+ * focus. */
 short asyncKeyState(int virtualKey);
 
 struct DevicesState;

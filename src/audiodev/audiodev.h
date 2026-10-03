@@ -1,5 +1,5 @@
 /* The platform sound layer: the only code that may touch the system audio
- * APIs (DirectSound, MCI, waveOut, PlaySound).  Everything here is opaque and
+ * APIs (SDL audio).  Everything here is opaque and
  * free of platform headers; the game's sound logic (src/audio) is written
  * against this file alone, so a port replaces the .cpp files beside it.
  *
@@ -16,8 +16,9 @@ namespace audiodev {
 typedef void (*LogFn)(const char *fmt, ...);
 void setLog(LogFn fn);
 
-/* The system master volume, both channels packed (low word left, high word
- * right), and a fire-and-forget sound for the launcher dialogs. */
+/* The master volume, both channels packed (low word left, high word right;
+ * only their mean is used), applied to this program's own output, and a
+ * fire-and-forget sound for the launcher dialogs. */
 unsigned masterVolume();
 void     setMasterVolume(unsigned packed);
 void     playSystemSound(const char *path, bool async);
@@ -45,8 +46,7 @@ public:
     void destroy();
     bool isUp() const;
 
-    /* Turns the 3D listener on or off.  False if it cannot be created, after
-     * which the device is torn down. */
+    /* Turns the 3D listener on or off.  False if the device is not up. */
     bool set3DEnabled(bool enable);
 
     /* The listener follows the camera: position, orientation and rolloff take
@@ -128,7 +128,7 @@ private:
 struct MusicState;
 
 /* Background music.  Tracks play in the background; a repeating track starts
- * again when it ends, driven by the window's messages. */
+ * again when it ends. */
 class Music {
 public:
     Music();
@@ -136,14 +136,15 @@ public:
     Music(const Music &) = delete;
     Music &operator=(const Music &) = delete;
 
-    /* The native window that receives the end-of-track message. */
+    /* Unused: nothing needs the window any more. */
     void setWindow(void *window);
 
     /* Plays path, replacing whatever was playing. */
     void play(const char *path, bool repeat);
     void stop();
 
-    /* Offered every window message; true if it was ours and has been handled. */
+    /* Offered every window message; always false now that the track restarts
+     * itself. */
     bool handleWindowMessage(unsigned msg, unsigned long wParam, long lParam);
 
 private:

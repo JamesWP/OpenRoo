@@ -1,5 +1,4 @@
-#define DIRECTSOUND_VERSION 0x0800
-#include "dsound_internal.h"
+#include "sdl_internal.h"
 #include <utility>
 #include <fstream>
 #include <string.h>
@@ -9,24 +8,37 @@ namespace audiodev {
 LogFn g_log = NULL;
 void setLog(LogFn fn) { g_log = fn; }
 
-/* The .wav parser: RIFF/WAVE with a fmt and a data chunk; other chunks are
- * skipped (padded to even length). */
+bool Wav::spec(SDL_AudioSpec *out) const
+{
+    if (bitsPerSample != 8 && bitsPerSample != 16)
+        return false;
+    out->format   = bitsPerSample == 8 ? SDL_AUDIO_U8 : SDL_AUDIO_S16;
+    out->channels = channels;
+    out->freq     = sampleRate;
+    return channels > 0 && sampleRate > 0;
+}
+
+/* The .wav parser: RIFF/WAVE with a PCM fmt and a data chunk; other chunks
+ * are skipped (padded to even length).  The file is little-endian, as is
+ * every machine this runs on. */
 
 #define FOURCC(a,b,c,d) \
-    ((DWORD)(BYTE)(a) | ((DWORD)(BYTE)(b) << 8) | \
-     ((DWORD)(BYTE)(c) << 16) | ((DWORD)(BYTE)(d) << 24))
+    ((uint32_t)(uint8_t)(a) | ((uint32_t)(uint8_t)(b) << 8) | \
+     ((uint32_t)(uint8_t)(c) << 16) | ((uint32_t)(uint8_t)(d) << 24))
 
-static const DWORD ID_RIFF = FOURCC('R','I','F','F');
-static const DWORD ID_WAVE = FOURCC('W','A','V','E');
-static const DWORD ID_FMT  = FOURCC('f','m','t',' ');
-static const DWORD ID_DATA = FOURCC('d','a','t','a');
+static const uint32_t ID_RIFF = FOURCC('R','I','F','F');
+static const uint32_t ID_WAVE = FOURCC('W','A','V','E');
+static const uint32_t ID_FMT  = FOURCC('f','m','t',' ');
+static const uint32_t ID_DATA = FOURCC('d','a','t','a');
+
+static const int WAVE_FORMAT_PCM_TAG = 1;
 
 static bool readBytes(std::istream &f, void *dst, size_t size) {
     f.read(static_cast<char *>(dst), (std::streamsize)size);
     return (size_t)f.gcount() == size;
 }
 
-static bool read_dword(std::istream &f, DWORD *out) {
+static bool read_u32(std::istream &f, uint32_t *out) {
     return readBytes(f, out, 4);
 }
 
@@ -38,24 +50,35 @@ static bool parseWav(std::istream &f, Wav *out)
     std::streamoff file_size = f.tellg();
     f.seekg(0, std::ios::beg);
 
-    DWORD id, size, wave_id;
-    if (!read_dword(f, &id)   || id      != ID_RIFF) return false;
-    if (!read_dword(f, &size))                        return false;
-    if (!read_dword(f, &wave_id) || wave_id != ID_WAVE) return false;
+    uint32_t id, size, wave_id;
+    if (!read_u32(f, &id)   || id      != ID_RIFF) return false;
+    if (!read_u32(f, &size))                       return false;
+    if (!read_u32(f, &wave_id) || wave_id != ID_WAVE) return false;
 
     Wav wav;
     bool have_fmt = false, have_pcm = false;
     while (!have_fmt || !have_pcm) {
-        DWORD chunk_id, chunk_size;
-        if (!read_dword(f, &chunk_id) || !read_dword(f, &chunk_size))
+        uint32_t chunk_id, chunk_size;
+        if (!read_u32(f, &chunk_id) || !read_u32(f, &chunk_size))
             break;
         if (chunk_id == ID_FMT) {
-            DWORD to_read = chunk_size < sizeof(WAVEFORMATEX)
-                          ? chunk_size : sizeof(WAVEFORMATEX);
-            wav.format = WAVEFORMATEX();
-            if (!readBytes(f, &wav.format, to_read)) return false;
+            // tag, channels, rate, bytes/s, block align, bits
+            uint8_t fmt[16];
+            if (chunk_size < sizeof(fmt) || !readBytes(f, fmt, sizeof(fmt)))
+                return false;
+            uint16_t tag, channels, bits;
+            uint32_t rate;
+            memcpy(&tag, fmt, 2);  memcpy(&channels, fmt + 2, 2);
+            memcpy(&rate, fmt + 4, 4);  memcpy(&bits, fmt + 14, 2);
+            if (tag != WAVE_FORMAT_PCM_TAG) {
+                AD_LOG("audiodev: wav format tag %u is not PCM\n", tag);
+                return false;
+            }
+            wav.channels = channels;
+            wav.sampleRate = (int)rate;
+            wav.bitsPerSample = bits;
             have_fmt = true;
-            DWORD skip = chunk_size - to_read;
+            uint32_t skip = chunk_size - sizeof(fmt);
             if (skip) f.seekg((std::streamoff)(skip + (skip & 1)), std::ios::cur);
         } else if (chunk_id == ID_DATA) {
             if ((std::streamoff)chunk_size > file_size) return false;
@@ -63,7 +86,7 @@ static bool parseWav(std::istream &f, Wav *out)
             if (!readBytes(f, wav.pcm.data(), chunk_size)) return false;
             have_pcm = true;
         } else {
-            DWORD skip = chunk_size + (chunk_size & 1);
+            uint32_t skip = chunk_size + (chunk_size & 1);
             f.seekg((std::streamoff)skip, std::ios::cur);
         }
     }
@@ -81,44 +104,6 @@ bool loadWav(const char *path, Wav *out)
         return false;
     }
     return parseWav(f, out);
-}
-
-bool fillWavBuffer(IDirectSoundBuffer *buf, const Wav &wav)
-{
-    void  *ptr1 = NULL, *ptr2 = NULL;
-    DWORD  bytes1 = 0,   bytes2 = 0;
-    HRESULT hr = buf->Lock(0, (DWORD)wav.pcm.size(), &ptr1, &bytes1, &ptr2, &bytes2, 0);
-    if (FAILED(hr)) {
-        AD_LOG("audiodev: Lock failed hr=0x%lx\n", (unsigned long)hr);
-        return false;
-    }
-    memcpy(ptr1, wav.pcm.data(), bytes1);
-    if (ptr2 && bytes2) memcpy(ptr2, wav.pcm.data() + bytes1, bytes2);
-    buf->Unlock(ptr1, bytes1, ptr2, bytes2);
-    return true;
-}
-
-IDirectSoundBuffer *createWavBuffer(IDirectSound *ds, DWORD flags,
-                                    const Wav &wav)
-{
-    DSBUFFERDESC desc = {};
-    desc.dwSize        = sizeof(DSBUFFERDESC);
-    desc.dwFlags       = flags;
-    desc.dwBufferBytes = (DWORD)wav.pcm.size();
-    desc.lpwfxFormat   = const_cast<WAVEFORMATEX *>(&wav.format);
-
-    IDirectSoundBuffer *buf = NULL;
-    HRESULT hr = ds->CreateSoundBuffer(&desc, &buf, NULL);
-    if (FAILED(hr)) {
-        AD_LOG("audiodev: CreateSoundBuffer failed hr=0x%lx\n",
-               (unsigned long)hr);
-        return NULL;
-    }
-    if (!fillWavBuffer(buf, wav)) {
-        buf->Release();
-        return NULL;
-    }
-    return buf;
 }
 
 }  // namespace audiodev

@@ -1,5 +1,5 @@
-# The only group that may use the system window, message loop, message box and
-# dialog APIs.  It also owns the resource script (icon, launcher dialogs and
+# The only group that may use the window, event loop, message box and dialog
+# APIs: SDL for the window, Win32 for the launcher dialogs.  It also owns the resource script (icon, launcher dialogs and
 # bitmaps, version info).  It depends on nothing else in the project.
 add_library(windev OBJECT
     launcher.cpp
@@ -30,7 +30,7 @@ add_custom_target(buildinfo ALL
 
 add_dependencies(windev launcher_layout buildinfo)
 target_include_directories(windev PRIVATE "${LAUNCHER_DIR}" "${BUILDINFO_DIR}")
-target_link_libraries(windev PRIVATE gdi32 version shell32)
+target_link_libraries(windev PRIVATE sdl3 gdi32 version shell32)
 set_source_files_properties(${PROJECT_SOURCE_DIR}/data/openroo.rc PROPERTIES
     OBJECT_DEPENDS "${PROJECT_SOURCE_DIR}/data/openroo.ico;${LAUNCHER_DIR}/launcher_layout.h"
     COMPILE_FLAGS "--include-dir=${PROJECT_SOURCE_DIR}/data --include-dir=${LAUNCHER_DIR}")

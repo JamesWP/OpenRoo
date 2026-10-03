@@ -1,5 +1,5 @@
-/* The platform windowing layer: the only code that may touch the system
- * window, message loop, message box and dialog APIs.  The header is opaque and
+/* The platform windowing layer: the only code that may touch SDL's window,
+ * event loop and message box, and the system dialog APIs of the launcher.  The header is opaque and
  * free of platform headers; the game (src/app) is written against it, so a
  * port replaces the .cpp files beside it.
  *
@@ -36,7 +36,8 @@ public:
     /* The window was destroyed (closed). */
     virtual void onDestroyed() {}
     /* Every message, after the above; true if the handler consumed it.  The
-     * platform libraries' own messages (music, movie) arrive here. */
+     * platform libraries' own messages (the movie ending) arrive here, as SDL
+     * user events: msg is the event's code, wParam and lParam are 0. */
     virtual bool onNativeMessage(unsigned msg, unsigned long wParam, long lParam)
     { (void)msg; (void)wParam; (void)lParam; return false; }
 };
@@ -45,7 +46,8 @@ struct WindowConfig {
     const char *title;
     int         width, height;
     /* No visible window at all, only a handle and a message queue: for
-     * headless runs. */
+     * headless runs.  There is then no window at all (handle() is NULL), only
+     * the event queue. */
     bool        messageOnly;
 };
 
@@ -62,14 +64,18 @@ public:
     void destroy();
     void show(bool visible);
 
-    /* The native window handle. */
+    /* The native window handle (an HWND), for the Direct3D backend. */
     void *handle() const { return handle_; }
+
+    /* The SDL_Window*, for a backend that creates its own surface on it. */
+    void *sdlWindow() const { return sdl_; }
 
 private:
     void *handle_;
+    void *sdl_;
 };
 
-/* Pumps messages, calling idle between them, until quit(); returns quit's
+/* Pumps events, calling idle between them, until quit(); returns quit's
  * code. */
 int  runMessageLoop(void (*idle)());
 void quit(int exitCode);

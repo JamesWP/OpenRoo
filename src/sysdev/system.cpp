@@ -1,5 +1,4 @@
-#include <windows.h>
-#include <timeapi.h>
+#include <SDL3/SDL.h>
 #include "sysdev.h"
 
 namespace sysdev {
@@ -9,66 +8,58 @@ void setLog(LogFn fn) { g_log = fn; }
 
 unsigned tickMs()
 {
-    return GetTickCount();
+    return (unsigned)SDL_GetTicks();
 }
 
 unsigned timerMs()
 {
-    return timeGetTime();
+    return (unsigned)SDL_GetTicks();
 }
 
 unsigned long long perfCounter()
 {
-    LARGE_INTEGER now;
-    QueryPerformanceCounter(&now);
-    return (unsigned long long)now.QuadPart;
+    return SDL_GetPerformanceCounter();
 }
 
 unsigned long long perfFrequency()
 {
-    LARGE_INTEGER freq;
-    if (!QueryPerformanceFrequency(&freq))
-        freq.QuadPart = 1000;
-    return (unsigned long long)freq.QuadPart;
+    return SDL_GetPerformanceFrequency();
 }
 
 LocalTime localTime()
 {
-    SYSTEMTIME st;
-    GetLocalTime(&st);
-    LocalTime t = { st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond };
+    LocalTime t = { 1970, 1, 1, 0, 0, 0 };
+    SDL_Time now;
+    SDL_DateTime dt;
+    if (SDL_GetCurrentTime(&now) && SDL_TimeToDateTime(now, &dt, true)) {
+        t.year = dt.year;   t.month  = dt.month;  t.day    = dt.day;
+        t.hour = dt.hour;   t.minute = dt.minute; t.second = dt.second;
+    }
     return t;
 }
 
 unsigned getEnv(const char *name, char *buf, unsigned size)
 {
-    return GetEnvironmentVariableA(name, buf, size);
+    const char *value = SDL_getenv(name);
+    if (!value || !*value)
+        return 0;
+    unsigned n = (unsigned)SDL_strlen(value);
+    if (n >= size)
+        return n + 1;
+    SDL_memcpy(buf, value, n + 1);
+    return n;
 }
 
 std::string getEnv(const char *name)
 {
-    unsigned n = getEnv(name, NULL, 0);
-    if (n == 0)
-        return std::string();
-    std::string value(n, '\0');
-    n = getEnv(name, &value[0], n);
-    value.resize(n < value.size() ? n : 0);
-    return value;
+    const char *value = SDL_getenv(name);
+    return value ? value : "";
 }
 
-std::string executablePath()
+std::string executableDir()
 {
-    std::string path(MAX_PATH, '\0');
-    for (;;) {
-        DWORD n = GetModuleFileNameA(NULL, &path[0], (DWORD)path.size());
-        if (n == 0)
-            return std::string();
-        if (n < path.size()) {
-            path.resize(n);
-            return path;
-        }
-        path.resize(path.size() * 2);
-    }
+    const char *dir = SDL_GetBasePath();
+    return dir ? dir : "";
 }
 
 }  // namespace sysdev
