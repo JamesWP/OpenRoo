@@ -4,6 +4,7 @@
  * game's own code report goes through the single global g_logger, one line
  * each, prefixed with the tick count and flushed as it is written. */
 
+#include <fstream>
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -29,7 +30,7 @@ private:
 public:
     void emitV(const char *fmt, va_list ap) { emit("", fmt, ap); }
 
-    FILE *fp_ = NULL;
+    std::ofstream fp_;
 };
 
 extern Logger g_logger;
