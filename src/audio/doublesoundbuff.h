@@ -6,7 +6,7 @@
 
  
 #include "audiodev.h"
-#include "linkedlist.h"
+#include <vector>
 
 class VoicePool;
 
@@ -21,8 +21,8 @@ public:
  
     audiodev::Buffer *master() { return &masterBuf_; }
     audiodev::Buffer *spare()  { return &spareBuf_; }
-    LinkedList         *clones() { return &cloneList_; }
-    LinkedList         *pools()  { return &voicePoolList_; }
+    std::vector<audiodev::Buffer *> &clones() { return cloneList_; }
+    std::vector<VoicePool *>        &pools()  { return voicePoolList_; }
  
 
     /* Empty: both buffers blank, both lists empty, neither lent out. */
@@ -37,12 +37,10 @@ public:
     void clear();
 
     /* Deletes every duplicate through its vtable, then empties the list. */
-    static void __attribute__((stdcall))
-    purgeCloneList(LinkedList *list);
+    static void purgeCloneList(std::vector<audiodev::Buffer *> &list);
 
     /* Wipes and frees every pool, then empties the list. */
-    static void __attribute__((stdcall))
-    purgeVoicePoolList(LinkedList *list);
+    static void purgeVoicePoolList(std::vector<VoicePool *> &list);
 
     /* Gives back one static buffer: 1 if it belonged to this entry, else 0. */
     int releaseStatic(audiodev::Buffer *buf);
@@ -64,7 +62,7 @@ private:
     audiodev::Buffer spareBuf_;       // the same file, the other flag set
     unsigned long      dwMasterTaken_;  // non-zero while the master itself is lent out
     unsigned long      dwSpareTaken_;   // the same for the spare
-    LinkedList         cloneList_;      // audiodev::Buffer* duplicates lent out
-    LinkedList         voicePoolList_;  // VoicePool* built from it
+    std::vector<audiodev::Buffer *> cloneList_;      // duplicates lent out
+    std::vector<VoicePool *>        voicePoolList_;  // built from it
      
 };

@@ -2,6 +2,7 @@
  * up; lists, then buffers, coming down. */
 
 #define DIRECTSOUND_VERSION 0x0800
+#include <algorithm>
 #include <windows.h>
 #include <stdint.h>
 #include "sysdev.h"
@@ -105,38 +106,33 @@ doublesoundbuff::~doublesoundbuff()
     dsb_census();
 }
 
-/* Takes the list, not the entry.  The next node is read before the delete, so
- * a destructor that unlinked its own node would not strand the walk;
- * List_Clear frees the nodes afterwards. */
-void doublesoundbuff::purgeCloneList(LinkedList *list)
+/* Takes the list, not the entry.  The list is emptied before anything is
+ * deleted, so a destructor that touched it would not strand the walk. */
+void doublesoundbuff::purgeCloneList(std::vector<audiodev::Buffer *> &list)
 {
     ++g_nPurgeClone; { static unsigned long seen; dsb_first("PurgeCloneList", &seen); }
-    LinkedListNode *node = list->head();
-    while (node != 0) {
-        void *clone = node->value();
-        node = node->next();
-        if (clone != 0) {
+    std::vector<audiodev::Buffer *> doomed;
+    doomed.swap(list);
+    for (size_t i = 0; i < doomed.size(); ++i) {
+        if (doomed[i] != 0) {
             ++g_nClonesFreed;
-            delete (audiodev::Buffer *)clone;
+            delete doomed[i];
         }
     }
-    list->clear();
 }
 
 /* The same walk; each pool is deleted (which wipes it). */
-void doublesoundbuff::purgeVoicePoolList(LinkedList *list)
+void doublesoundbuff::purgeVoicePoolList(std::vector<VoicePool *> &list)
 {
     ++g_nPurgePool; { static unsigned long seen; dsb_first("PurgeVoicePoolList", &seen); }
-    LinkedListNode *node = list->head();
-    while (node != 0) {
-        VoicePool *pool = (VoicePool *)node->value();
-        node = node->next();
-        if (pool != 0) {
+    std::vector<VoicePool *> doomed;
+    doomed.swap(list);
+    for (size_t i = 0; i < doomed.size(); ++i) {
+        if (doomed[i] != 0) {
             ++g_nPoolsFreed;
-            delete pool;
+            delete doomed[i];
         }
     }
-    list->clear();
 }
 
 /* Gives back one buffer.  It is recognised if it is on the duplicate list
@@ -146,9 +142,10 @@ int doublesoundbuff::releaseStatic(audiodev::Buffer *buf)
 {
     ++g_nRelStatic; { static unsigned long seen; dsb_first("ReleaseStatic", &seen); }
 
-    LinkedListNode *node = clones()->find(buf, 0);
-    if (node != 0) {
-        clones()->unlink(node);
+    std::vector<audiodev::Buffer *>::iterator node =
+        std::find(clones().begin(), clones().end(), buf);
+    if (node != clones().end()) {
+        clones().erase(node);
         if (buf != 0)
             delete buf;
         ++g_nRelStaticHit;
@@ -173,10 +170,11 @@ int doublesoundbuff::releasePool(VoicePool *pool)
 {
     ++g_nRelPool; { static unsigned long seen; dsb_first("ReleasePool", &seen); }
 
-    LinkedListNode *node = pools()->find(pool, 0);
-    if (node == 0)
+    std::vector<VoicePool *>::iterator node =
+        std::find(pools().begin(), pools().end(), pool);
+    if (node == pools().end())
         return 0;
-    pools()->unlink(node);
+    pools().erase(node);
     if (pool != 0) {
         delete pool;
     }
@@ -188,7 +186,7 @@ int doublesoundbuff::releasePool(VoicePool *pool)
 int doublesoundbuff::borrowerCount()
 {
     ++g_nBorrowerCount;
-    return (int)voicePoolList_.count() + (int)cloneList_.count();
+    return (int)voicePoolList_.size() + (int)cloneList_.size();
 }
 
 /* The single predicate that lets the sound manager destroy a loaded sound. */

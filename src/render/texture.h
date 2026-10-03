@@ -15,7 +15,7 @@
 
 #include <stdint.h>
 #include "image.h"
-#include "linkedlist.h"
+#include <vector>
 
 class RenderDevice;
 struct DeviceTexture;
@@ -89,7 +89,7 @@ public:
     void reuploadAll(RenderDevice *dev);
 
 private:
-    LinkedList   cache_;     // Texture *, game-heap nodes
+    std::vector<Texture *> cache_;
 };
 
 extern TextureManager g_textureManager;

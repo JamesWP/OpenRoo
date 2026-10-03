@@ -22,10 +22,8 @@
 #include "sysdev.h"
 #include "soundmanager.h"
 #include "doublesoundbuff.h"
-#include "namedlist.h"
 #include "audiodev.h"
 #include "voicepool.h"
-#include "linkedlist.h"
 #include "logger.h"
 #include <stdlib.h>
 #include <stddef.h>
@@ -149,12 +147,12 @@ void SoundManager::releaseStaticForOwner(audiodev::Buffer *buf,
     ++g_relStatic;
     { static unsigned long seen; sndmgr_first("ReleaseStaticForOwner", &seen); }
 
-    NamedEntryList *lists[2] = { &entriesPlain_, &entries3D_ };
+    EntryList *lists[2] = { &entriesPlain_, &entries3D_ };
     for (int i = 0; i < 2; i++) {
-        NamedEntry *e = lists[i]->find(buf->filename());
-        if (e == NULL)
+        EntryList::iterator e = findEntry(*lists[i], buf->filename());
+        if (e == lists[i]->end())
             continue;
-        doublesoundbuff *entry = (doublesoundbuff *)e->payload();
+        doublesoundbuff *entry = e->entry;
         if (!entry->releaseStatic(buf))
             continue;  // this entry did not own it: try the other list
         if (i == 0) ++g_relStaticPlain; else ++g_relStatic3D;
@@ -162,9 +160,7 @@ void SoundManager::releaseStaticForOwner(audiodev::Buffer *buf,
             return;
         if (!entry->isFullyReleased())
             return;
-        lists[i]->remove(e);
-        if (entry == NULL)  // cannot be NULL
-            return;
+        lists[i]->erase(e);
         destroy_entry(entry);
         sndmgr_census();
         return;
@@ -184,14 +180,14 @@ void SoundManager::releasePooledForOwner(VoicePool *pool,
     ++g_relPool;
     { static unsigned long seen; sndmgr_first("ReleasePoolForOwner", &seen); }
 
-    NamedEntryList *lists[2] = { &entriesPlain_, &entries3D_ };
+    EntryList *lists[2] = { &entriesPlain_, &entries3D_ };
     for (int i = 0; i < 2; i++) {
         // Fetched per list.
         const char *name = pool->firstFilename();
-        NamedEntry *e = lists[i]->find(name);
-        if (e == NULL)
+        EntryList::iterator e = findEntry(*lists[i], name);
+        if (e == lists[i]->end())
             continue;
-        doublesoundbuff *entry = (doublesoundbuff *)e->payload();
+        doublesoundbuff *entry = e->entry;
         if (!entry->releasePool(pool))
             continue;
         if (i == 0) ++g_relPoolPlain; else ++g_relPool3D;
@@ -199,9 +195,7 @@ void SoundManager::releasePooledForOwner(VoicePool *pool,
             return;
         if (!entry->isFullyReleased())
             return;
-        lists[i]->remove(e);
-        if (entry == NULL)
-            return;
+        lists[i]->erase(e);
         destroy_entry(entry);
         sndmgr_census();
         return;
@@ -227,9 +221,9 @@ audiodev::Buffer *SoundManager::acquireStatic(const char *name, int bWant3D)
     if (!dwCreated_)
         return NULL;
 
-    NamedEntry     *e;
-    NamedEntryList *list;
-    int             bDo3D;
+    EntryList::iterator e;
+    EntryList          *list;
+    int                 bDo3D;
 
     for (;;) {
         bDo3D = 0;
@@ -241,8 +235,8 @@ audiodev::Buffer *SoundManager::acquireStatic(const char *name, int bWant3D)
                 bDo3D = 1;
         }
 
-        e = list->find(name);
-        if (e != NULL)
+        e = findEntry(*list, name);
+        if (e != list->end())
             break;
 
         ++g_acqStaticNew;
@@ -255,14 +249,15 @@ audiodev::Buffer *SoundManager::acquireStatic(const char *name, int bWant3D)
             destroy_entry(fresh);
             return NULL;
         }
-        list->insert(name, fresh);
+        NamedEntry added = { name, fresh };
+        list->push_back(added);
         if (!dwCreated_)
             return NULL;
     // Round again; the lookup now hits.
     }
 
     ++g_acqStaticHit;
-    doublesoundbuff *entry = (doublesoundbuff *)e->payload();
+    doublesoundbuff *entry = e->entry;
 
     if (entry->masterTaken() == 0 && sndmgr_fx() != SM_FX_NOSHAREMASTER) {
         entry->setMasterTaken(1);
@@ -280,7 +275,7 @@ audiodev::Buffer *SoundManager::acquireStatic(const char *name, int bWant3D)
         ++g_clones;
         if (!r)
             ++g_acqSpare;  // the master copy failed; the spare carried it
-        entry->clones()->append(clone);
+        entry->clones().push_back(clone);
         sndmgr_census();
         return clone;
     }
@@ -301,9 +296,9 @@ VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
     if (!dwCreated_)
         return NULL;
 
-    NamedEntry     *e;
-    NamedEntryList *list;
-    int             bDo3D;
+    EntryList::iterator e;
+    EntryList          *list;
+    int                 bDo3D;
 
     for (;;) {
         bDo3D = 0;
@@ -315,8 +310,8 @@ VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
                 bDo3D = 1;
         }
 
-        e = list->find(name);
-        if (e != NULL)
+        e = findEntry(*list, name);
+        if (e != list->end())
             break;
 
         ++g_acqPoolNew;
@@ -334,13 +329,14 @@ VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
             delete fresh;
             return NULL;
         }
-        list->insert(name, fresh);
+        NamedEntry added = { name, fresh };
+        list->push_back(added);
         if (!dwCreated_)
             return NULL;
     }
 
     ++g_acqPoolHit;
-    doublesoundbuff *entry = (doublesoundbuff *)e->payload();
+    doublesoundbuff *entry = e->entry;
 
     VoicePool *pool = new (std::nothrow) VoicePool();
 
@@ -349,7 +345,7 @@ VoicePool *SoundManager::acquirePool(int nVoices, const char *name,
              || loadEntryMaster(entry->spare(), name, bDo3D))
             && pool->clone(nVoices, device_, *entry->spare()))) {
         ++g_pools;
-        entry->pools()->append(pool);
+        entry->pools().push_back(pool);
         sndmgr_census();
         return pool;
     }
@@ -375,9 +371,8 @@ int SoundManager::setup(int mode3d)
         if (!device_.set3DEnabled(mode3d != 0))
             return 0;
 
-        for (NamedEntry *n = entries3D_.head(); n != NULL; ) {
-            doublesoundbuff *entry = (doublesoundbuff *)n->payload();
-            n = n->next();  // advanced before the body
+        for (EntryList::iterator n = entries3D_.begin(); n != entries3D_.end(); ++n) {
+            doublesoundbuff *entry = n->entry;
             ++g_setupReloaded;
 
             if (!entry->master()->reload3D(device_, mode3d != 0))
@@ -397,9 +392,8 @@ int SoundManager::setup(int mode3d)
             // file).
             audiodev::Buffer *src = entry->master();
 
-            for (LinkedListNode *c = entry->clones()->head(); c != NULL; ) {
-                audiodev::Buffer *clone = (audiodev::Buffer *)c->value();
-                c = c->next();
+            for (size_t ci = 0; ci < entry->clones().size(); ++ci) {
+                audiodev::Buffer *clone = entry->clones()[ci];
 
                 clone->reset();
                 if (clone->duplicate(device_, *src))
@@ -424,9 +418,8 @@ int SoundManager::setup(int mode3d)
                 clone->duplicate(device_, *src);
             }
 
-            for (LinkedListNode *p = entry->pools()->head(); p != NULL; ) {
-                VoicePool *pool = (VoicePool *)p->value();
-                p = p->next();
+            for (size_t pi = 0; pi < entry->pools().size(); ++pi) {
+                VoicePool *pool = entry->pools()[pi];
 
                 int nVoices = (int)pool->voiceCount();
                 pool->wipe();
@@ -462,22 +455,28 @@ int SoundManager::setup(int mode3d)
     return 1;
 }
 
-/* Destroys every entry in one list, then empties it.  The next pointer is read
- * before the entry is destroyed. */
-static void purge_list(NamedEntryList *list)
+/* Destroys every entry in one list, then empties it.  The list is emptied
+ * first, so a destructor that reached back into it would not strand the walk. */
+static void purge_list(std::list<SoundManager::NamedEntry> &list)
 {
-    for (NamedEntry *e = list->head(); e != NULL; ) {
-        doublesoundbuff *payload = (doublesoundbuff *)e->payload();
-        e = e->next();
-        if (payload != NULL) {
-            payload->clear();
-            delete payload;
+    std::list<SoundManager::NamedEntry> doomed;
+    doomed.swap(list);
+    for (std::list<SoundManager::NamedEntry>::iterator e = doomed.begin();
+         e != doomed.end(); ++e) {
+        if (e->entry != NULL) {
+            e->entry->clear();
+            delete e->entry;
         }
     }
-    list->clear();
 }
 
- 
+SoundManager::EntryList::iterator SoundManager::findEntry(EntryList &list, const char *name)
+{
+    for (EntryList::iterator e = list.begin(); e != list.end(); ++e)
+        if (e->name == name)
+            return e;
+    return list.end();
+}
 
 SoundManager::SoundManager()
 {
@@ -489,8 +488,8 @@ SoundManager::SoundManager()
 /* Also the reset: Init runs it first, and the Game's teardown on its own. */
 void SoundManager::purgeAssets()
 {
-    purge_list(&entriesPlain_);
-    purge_list(&entries3D_);
+    purge_list(entriesPlain_);
+    purge_list(entries3D_);
     device_.destroy();
     dwMode3D_         = 0;
     dwPendingMode3D_  = 0;

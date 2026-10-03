@@ -13,6 +13,7 @@
  * KAROO_SIM_FX=nopickup forces the tile gate to fail, so nothing is ever
  * consumed; it moves items_collected and elapsed_ms. */
 
+#include <algorithm>
 #include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
@@ -21,7 +22,6 @@
 #include "audiodev.h"
 #include "tile.h"
 #include "levelmap.h"
-#include "linkedlist.h"
 #include "crtrand.h"
 #include "player.h"
 #include "entitymath.h"
@@ -102,18 +102,19 @@ void Player::pickupSound(const SoundRef *arr) const
 
 void Player::appendEffect(int code)
 {
-    effects()->append((void *)(uintptr_t)(unsigned int)code);
+    effectList_.push_back(code);
 }
 
 void Player::clearEffects()
 {
-    effects()->clear();
+    effectList_.clear();
 }
 
 void Player::endEffect(int code)
 {
-    LinkedListNode *node = effects()->find((void *)(uintptr_t)(unsigned int)code, NULL);
-    effects()->unlink(node);
+    std::vector<int>::iterator it = std::find(effectList_.begin(), effectList_.end(), code);
+    if (it != effectList_.end())
+        effectList_.erase(it);
 }
 
 unsigned int Player::updateTileEffects()

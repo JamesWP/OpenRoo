@@ -77,38 +77,29 @@ SplinePath::~SplinePath()
 
 void SplinePath::addControlPoint(float x, float y, float z)
 {
-    SplineControlPoint *p = new SplineControlPoint;
-
     fx_init();
     if (s_diag)
         ++s_adds;
 
-    p->flX = x;
-    p->flY = y;
-    p->flZ = z;
-    controlPointList_.append(p);
+    SplineControlPoint p;
+    p.flX = x;
+    p.flY = y;
+    p.flZ = z;
+    points_.push_back(p);
 }
 
 void SplinePath::purgeControlPoints()
 {
-    LinkedListNode *node = controlPointList_.head();
-
     fx_init();
     if (s_diag)
         ++s_purges;
 
-    while (node != 0) {
-        SplineControlPoint *value = static_cast<SplineControlPoint *>(node->value());
-        node = node->next();
-        delete value;
-    }
-    controlPointList_.clear();
+    points_.clear();
 }
 
 float *SplinePath::evalBezierPath(float *out, float t)
 {
-    unsigned int    n    = (unsigned int)controlPointList_.count();
-    LinkedListNode *node = controlPointList_.head();
+    unsigned int    n    = (unsigned int)points_.size();
     float           ax = 0.0f, ay = 0.0f, az = 0.0f;
     unsigned int    i;
 
@@ -132,12 +123,10 @@ float *SplinePath::evalBezierPath(float *out, float t)
     // binomial built from three factorial loops.  An empty list returns (0, 0,
     // 0); dsoscene relies on that.
     for (i = 0; i < n; ++i) {
-        const float *p = (const float *)node->value();
+        const SplineControlPoint &p = points_[i];
         unsigned int num = 1, k;
         int          di = 1, dn = 1;
         double       w;
-
-        node = node->next();
 
         for (k = 2; k < n; ++k)
             num *= k;
@@ -154,9 +143,9 @@ float *SplinePath::evalBezierPath(float *out, float t)
           * pow((double)t,          (double)i)
           * (double)(int)(num / (unsigned int)(dn * di));
 
-        ax += (float)(w * p[0]);
-        ay += (float)(w * p[1]);
-        az += (float)(w * p[2]);
+        ax += (float)(w * p.flX);
+        ay += (float)(w * p.flY);
+        az += (float)(w * p.flZ);
     }
 
     out[0] = ax;
@@ -283,22 +272,18 @@ long SplinePath::drawSplinePath(RenderDevice *dev,
 long SplinePath::drawControlPolygon(RenderDevice *dev,
                           unsigned long color)
 {
-    unsigned int    n     = (unsigned int)controlPointList_.count();
+    unsigned int    n     = (unsigned int)points_.size();
     std::vector<SplineVertex> verts(n);
-    LinkedListNode *node  = controlPointList_.head();
-    unsigned int    i     = 0;
     long            hr;
 
-    while (node != 0) {
-        const float *p = (const float *)node->value();
+    for (unsigned int i = 0; i < n; ++i) {
+        const SplineControlPoint &p = points_[i];
         SplineVertex v;
 
-        node = node->next();
-        v.x = p[0]; v.y = p[1]; v.z = p[2];
+        v.x = p.flX; v.y = p.flY; v.z = p.flZ;
         v.zero = 0; v.diffuse = color; v.specular = 0;
         v.u = 0.0f; v.v = 0.0f;
         verts[i] = v;
-        ++i;
     }
 
     if (s_diag)

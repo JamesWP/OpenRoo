@@ -7,16 +7,16 @@
 #pragma once
 
  
-#include "linkedlist.h"
+#include <vector>
 class RenderDevice;
 
-/* One control point, 12 bytes. */
+/* One control point: three packed floats. */
 struct SplineControlPoint {
      
     float flX, flY, flZ;
-private:
-     
 };
+static_assert(sizeof(SplineControlPoint) == 3 * sizeof(float),
+              "Bezier evaluation reads the points as packed floats");
 
  
 class SplinePath {
@@ -43,9 +43,9 @@ public:
 
     long drawControlPolygon(RenderDevice *dev, unsigned long color);
 
-    const LinkedList *controlPoints() const { return &controlPointList_; }
+    const std::vector<SplineControlPoint> &controlPoints() const { return points_; }
 
 private:
-    LinkedList   controlPointList_;  // +0x04  head +0x08, count +0x10
+    std::vector<SplineControlPoint> points_;
      
 };

@@ -101,9 +101,8 @@ static void tm_lower_inplace(char *s)
 Texture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
                                    uint32_t alphaFlag, unsigned depth)
 {
-    for (LinkedListNode *node = cache_.head(); node != NULL; ) {
-        Texture *cached = (Texture *)node->value();
-        node = node->next();
+    for (size_t i = 0; i < cache_.size(); ++i) {
+        Texture *cached = cache_[i];
         tm_lower_inplace(filename);
         tm_lower_inplace(cached->name());
         if (strcmp(cached->name(), filename) == 0) {
@@ -119,21 +118,18 @@ Texture *TextureManager::getOrLoad(RenderDevice *dev, char *filename,
         return NULL;
     }
     g_logger.logMessage(1, "TM: %s loaded", filename);
-    cache_.append(tex);
+    cache_.push_back(tex);
     return tex;
 }
 
 void TextureManager::releaseAll()
 {
-    for (LinkedListNode *node = cache_.head(); node != NULL; ) {
-        Texture *tex = (Texture *)node->value();
-        node = node->next();
-        if (tex != NULL) {
-            tex->release();
-            delete tex;
-        }
+    std::vector<Texture *> doomed;
+    doomed.swap(cache_);
+    for (size_t i = 0; i < doomed.size(); ++i) {
+        doomed[i]->release();
+        delete doomed[i];
     }
-    cache_.clear();
 }
 
 /* Every instance is static (texture.h), so nothing deletes one and the scalar
@@ -146,14 +142,9 @@ TextureManager::~TextureManager()
 {
 }
 
-/* Reupload every non-NULL cached texture, head to tail, reading the next
- * pointer before the upload. */
+/* Reupload every cached texture, oldest first. */
 void TextureManager::reuploadAll(RenderDevice *dev)
 {
-    for (LinkedListNode *n = cache_.head(); n != NULL; ) {
-        Texture *tex = (Texture *)n->value();
-        n = n->next();
-        if (tex != NULL)
-            tex->reupload(dev);
-    }
+    for (size_t i = 0; i < cache_.size(); ++i)
+        cache_[i]->reupload(dev);
 }

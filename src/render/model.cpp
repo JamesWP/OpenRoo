@@ -24,9 +24,8 @@ static void mm_lower_inplace(char *s)
 
 CFaktMesh *ModelManager::findOrImport(char *name)
 {
-    for (LinkedListNode *node = cache_.head(); node != NULL; ) {
-        CFaktMesh *cached = (CFaktMesh *)node->value();
-        node = node->next();
+    for (size_t i = 0; i < cache_.size(); ++i) {
+        CFaktMesh *cached = cache_[i];
         mm_lower_inplace(name);
         mm_lower_inplace(cached->name());
         if (strcmp(cached->name(), name) == 0) {
@@ -43,21 +42,18 @@ CFaktMesh *ModelManager::findOrImport(char *name)
         return NULL;
     }
     g_logger.logMessage(1, "MM: %s loaded", name);
-    cache_.append(mesh);
+    cache_.push_back(mesh);
     return mesh;
 }
 
 void ModelManager::clearReleaseFree()
 {
-    for (LinkedListNode *node = cache_.head(); node != NULL; ) {
-        CFaktMesh *mesh = (CFaktMesh *)node->value();
-        node = node->next();
-        if (mesh != NULL) {
-            mesh->releaseModelBuffers();
-            delete mesh;
-        }
+    std::vector<CFaktMesh *> doomed;
+    doomed.swap(cache_);
+    for (size_t i = 0; i < doomed.size(); ++i) {
+        doomed[i]->releaseModelBuffers();
+        delete doomed[i];
     }
-    cache_.clear();
 }
 
 /* ─── ModelManager lifecycle ───────────────────────────────────────────────

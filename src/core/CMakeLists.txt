@@ -6,8 +6,6 @@ add_library(core OBJECT
     gamereset.cpp
     gamestate.cpp
     gametick.cpp
-    linkedlist.cpp
-    namedlist.cpp
     worldstate.cpp)
 target_include_directories(core PRIVATE
     .

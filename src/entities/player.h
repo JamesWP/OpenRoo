@@ -8,10 +8,9 @@
 
  
 #include "movableentity.h"
-#include "linkedlist.h"
 
 namespace audiodev { class Buffer; }
-class LinkedList;
+#include <vector>
 class VoicePool;
 class Tile;
 
@@ -138,7 +137,7 @@ public:
     double effectCStart() const                     { return effectCStart_; }
     double effectAStart() const                     { return effectAStart_; }
     // The active timed-effect codes, for the HUD.
-    LinkedList *effectList()                        { return effects(); }
+    const std::vector<int> &effectList() const      { return effectList_; }
     void  setEffectDActive(int n)                   { effectDActive_ = n; }
     void  setEffectCActive(int n)                   { effectCActive_ = n; }
     void  setEffectAActive(int n)                   { effectAActive_ = n; }
@@ -152,7 +151,7 @@ public:
     // The pickup counter for this level.
     unsigned short itemsCollected() const            { return itemsCollected_; }
     void  setItemsCollected(unsigned short n)        { itemsCollected_ = n; }
-    // The active timed-effect list, a game LinkedList.
+    // The active timed-effect codes, in the order they started.
     void  appendEffect(int code);
     void  clearEffects();
     // The running score total, persisted to the save.
@@ -179,7 +178,6 @@ private:
     int   soundVariant() const;
     void  playAtCell(audiodev::Buffer *buf) const;
     void  pickupSound(const SoundRef *arr) const;
-    LinkedList *effects() { return &effectList_; }
     void  endEffect(int code);
 
     int                 worldSoundVariant_;
@@ -199,9 +197,7 @@ private:
     float               markerH_;
     float               markerV_;
     unsigned short      itemsCollected_;  // items picked up this level; the all-items bonus tests it
-    // The game's LinkedList of active effect codes; only ever handed to the
-    // game's own LinkedList functions.
-    LinkedList          effectList_;
+    std::vector<int>    effectList_;
     int                 score_;
     signed char         lastRoll_;
     double              field_231;
