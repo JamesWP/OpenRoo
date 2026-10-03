@@ -50,9 +50,9 @@ static int wrap_fx(void)
         char buf[32];
         cached = WRAP_FX_OFF;
         if (sysdev::getEnv("KAROO_WRAP_FX", buf, sizeof(buf))) {
-            if (lstrcmpiA(buf, "scrollback") == 0)     cached = WRAP_FX_SCROLLBACK;
-            else if (lstrcmpiA(buf, "sineflip") == 0)  cached = WRAP_FX_SINEFLIP;
-            else if (lstrcmpiA(buf, "envflip") == 0)   cached = WRAP_FX_ENVFLIP;
+            if (strcaseCompare(buf, "scrollback") == 0)     cached = WRAP_FX_SCROLLBACK;
+            else if (strcaseCompare(buf, "sineflip") == 0)  cached = WRAP_FX_SINEFLIP;
+            else if (strcaseCompare(buf, "envflip") == 0)   cached = WRAP_FX_ENVFLIP;
         }
         g_logger.write("wrapper: FX mode = %d\n", cached);
     }

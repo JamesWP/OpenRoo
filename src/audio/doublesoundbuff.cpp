@@ -21,7 +21,7 @@ static int dsb_diag(void)
     if (cached < 0) {
         char buf[32];
         uint32_t n = sysdev::getEnv("KAROO_DSB_DIAG", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && lstrcmpiA(buf, "0") != 0) ? 1 : 0;
+        cached = (n > 0 && n < sizeof(buf) && strcaseCompare(buf, "0") != 0) ? 1 : 0;
     }
     return cached != 0;
 }
@@ -68,7 +68,7 @@ static DsbFx dsb_fx(void)
     uint32_t n = sysdev::getEnv("KAROO_DSB_FX", buf, sizeof(buf));
     DsbFx fx = DSB_FX_OFF;
     if (n > 0 && n < sizeof(buf)) {
-        if (lstrcmpiA(buf, "stickyentry") == 0) fx = DSB_FX_STICKYENTRY;
+        if (strcaseCompare(buf, "stickyentry") == 0) fx = DSB_FX_STICKYENTRY;
     }
     g_logger.write("doublesoundbuff: FX mode = %s\n",
               fx == DSB_FX_STICKYENTRY ? "stickyentry" : "off");

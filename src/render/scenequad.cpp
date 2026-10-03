@@ -29,8 +29,8 @@ static QuadFx quad_fx(void)
         buf[0] = 0;
         sysdev::getEnv("KAROO_SCENEQUAD_FX", buf, sizeof(buf));
         cached = FX_OFF;
-        if (lstrcmpiA(buf, "drop") == 0)      cached = FX_DROP;
-        else if (lstrcmpiA(buf, "tint") == 0) cached = FX_TINT;
+        if (strcaseCompare(buf, "drop") == 0)      cached = FX_DROP;
+        else if (strcaseCompare(buf, "tint") == 0) cached = FX_TINT;
         g_logger.write("scenequad: FX mode = %s (KAROO_SCENEQUAD_FX='%s')\n",
                   cached == FX_DROP ? "drop" : cached == FX_TINT ? "tint" : "off", buf);
     }

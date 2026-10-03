@@ -37,7 +37,7 @@ static bool fx_norot(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_MESHBATCH_FX", buf, sizeof buf))
-            cached = (lstrcmpiA(buf, "norot") == 0);
+            cached = (strcaseCompare(buf, "norot") == 0);
         g_logger.write("meshbatch: FX mode = %s\n", cached ? "norot" : "off");
     }
     return cached != 0;

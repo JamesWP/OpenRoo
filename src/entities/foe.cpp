@@ -74,7 +74,7 @@ static void fx_init(void)
             s_fx_unfreeze = 1;
             g_logger.write("foe: KAROO_SIM_FX=foeunfreeze -- the freeze gate is "
                       "ignored, so frozen foes keep chasing\n");
-        } else if (lstrcmpiA(buf, "chaseback") == 0) {
+        } else if (strcaseCompare(buf, "chaseback") == 0) {
             s_fx_chaseback = 1;
             g_logger.write("foe: KAROO_SIM_FX=chaseback -- foes step away, not "
                       "toward\n");

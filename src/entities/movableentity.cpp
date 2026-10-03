@@ -97,11 +97,11 @@ static void fx_init(void)
     uint32_t n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
     s_fx = 0;
     if (n > 0 && n < sizeof(buf)) {
-        if (lstrcmpiA(buf, "floaty") == 0) {
+        if (strcaseCompare(buf, "floaty") == 0) {
             s_fx = 1;
             g_logger.write("entitymove: KAROO_SIM_FX=floaty -- fall accel %.3f, not %.3f\n",
                       (double)(K_FALL_ACCEL / 5.0f), (double)K_FALL_ACCEL);
-        } else if (lstrcmpiA(buf, "hop") == 0) {
+        } else if (strcaseCompare(buf, "hop") == 0) {
             s_fx = 2;
             g_logger.write("entitymove: KAROO_SIM_FX=hop -- arc bias %.1f, not %.1f\n",
                       (double)(K_ARC_BIAS * 4.0f), (double)K_ARC_BIAS);

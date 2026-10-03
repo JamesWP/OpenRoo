@@ -39,7 +39,7 @@ static bool fx_is(const char *mode)
 {
     char buf[16];
     return sysdev::getEnv("KAROO_PARTICLE_FX", buf, sizeof(buf))
-        && lstrcmpiA(buf, mode) == 0;
+        && strcaseCompare(buf, mode) == 0;
 }
 
 static bool fx_tint(void)

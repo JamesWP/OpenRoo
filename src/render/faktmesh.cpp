@@ -32,7 +32,7 @@ static bool fx_half(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_FAKTMESH_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "half") == 0);
+            cached = (strcaseCompare(buf, "half") == 0);
         g_logger.write("faktmesh: FX mode = %s\n", cached ? "half" : "off");
     }
     return cached != 0;
@@ -154,7 +154,7 @@ static bool fx_scale(void)
         char buf[16];
         cached = 0;
         if (sysdev::getEnv("KAROO_MDL_FX", buf, sizeof(buf)))
-            cached = (lstrcmpiA(buf, "scale") == 0);
+            cached = (strcaseCompare(buf, "scale") == 0);
         g_logger.write("model: FX mode = %s\n", cached ? "scale" : "off");
     }
     return cached != 0;
@@ -219,7 +219,7 @@ int CFaktMesh::importSceneModels(const char *path)
     // (FNV-1a 32), to compare an independent parse of the same .mdl against
     // what landed in memory.
     {
-        char dump[MAX_PATH];
+        char dump[kMaxPath];
         if (sysdev::getEnv("KAROO_MDL_DUMP", dump, sizeof(dump))) {
             std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {

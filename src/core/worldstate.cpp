@@ -420,7 +420,7 @@ static void obs_dump_line(std::ostream &fp, const Observation *obs)
 }
 
 static int   g_trace = -1, g_obsdump = -1;
-static char  g_map_path[MAX_PATH], g_obs_path[MAX_PATH];
+static char  g_map_path[kMaxPath], g_obs_path[kMaxPath];
 
 /* One map dump per run, carrying the level index and name.  Re-dumping on a
  * later level would overwrite it with a different map. */
