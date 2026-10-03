@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <stdint.h>
+#include <stdio.h>
 #include <stddef.h>
 class RenderDevice;
 
@@ -98,7 +99,7 @@ public:
     Environment        *environment() const { return pEnvironment_; }
 
 protected:
-    static ParticleSystem *loadStream(void *fp);
+    static ParticleSystem *loadStream(FILE *fp);
 
     /* Drop the generator and environment (when flags is set) and the ring. */
     virtual void release(int flags);
@@ -106,8 +107,8 @@ protected:
     virtual int copyFrom(const ParticleSystem *src);
     virtual int setCapacity(uint32_t count);
     virtual int resize(uint32_t count);
-    virtual int save(void *fp);
-    virtual int load(void *fp);
+    virtual int save(FILE *fp);
+    virtual int load(FILE *fp);
 
     /* Hand the ring to the new sub-object first; only if it accepts is the old
      * one dropped.  A NULL argument is refused. */
@@ -141,8 +142,8 @@ protected:
     int  copyFrom(const ParticleSystem *src) override;
     int  setCapacity(uint32_t count) override;
     int  resize(uint32_t count) override;
-    int  save(void *fp) override;
-    int  load(void *fp) override;
+    int  save(FILE *fp) override;
+    int  load(FILE *fp) override;
 };
 
 class FaceParticleSystem : public ParticleSystem {
@@ -158,8 +159,8 @@ protected:
     int  copyFrom(const ParticleSystem *src) override;
     int  setCapacity(uint32_t count) override;
     int  resize(uint32_t count) override;
-    int  save(void *fp) override;
-    int  load(void *fp) override;
+    int  save(FILE *fp) override;
+    int  load(FILE *fp) override;
 
 private:
     int allocVerts() { return ParticleSystem::allocVerts(6, FACE_UV); }
@@ -193,8 +194,8 @@ protected:
     int  copyFrom(const ParticleSystem *src) override;
     int  setCapacity(uint32_t count) override;
     int  resize(uint32_t count) override;
-    int  save(void *fp) override;
-    int  load(void *fp) override;
+    int  save(FILE *fp) override;
+    int  load(FILE *fp) override;
 
 private:
     int allocVerts() { return ParticleSystem::allocVerts(6, XFACE_UV); }

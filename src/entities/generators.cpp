@@ -565,9 +565,9 @@ void CylinderGenerator::tick(float dt)
 
 /* One fread of `size` bytes; on a short read this leaves whatever was already
  * read in place and returns false. */
-static bool read1(void *dst, unsigned size, void *fp)
+static bool read1(void *dst, unsigned size, FILE *fp)
 {
-    return fread(dst, size, 1, (FILE *)fp) == 1;
+    return fread(dst, size, 1, fp) == 1;
 }
 
 /* Stores flDirection/flMagnitude as given, and flGravity =
@@ -606,7 +606,7 @@ void GravityEnvironment::gravitySetColour(uint32_t argb, float fade)
 
 /* Leaves flFadeAccum as constructed — unlike MagnetEnvironment::Load, which
  * resets it every time. */
-int GravityEnvironment::load(void *fp)
+int GravityEnvironment::load(FILE *fp)
 {
     float dir[3], mag, fade;
     uint32_t argb;
@@ -633,7 +633,7 @@ int GravityEnvironment::load(void *fp)
 /* FORMAT: on disk, force precedes centre.  PRESERVED: dwTargetRGB is never
  * loaded — it keeps whatever the constructor or a CopyFrom set, not what a
  * saved file may have recorded. */
-int MagnetEnvironment::load(void *fp)
+int MagnetEnvironment::load(FILE *fp)
 {
     // The base Environment::Load contributes nothing; its result is not
     // checked.
@@ -656,13 +656,13 @@ int MagnetEnvironment::load(void *fp)
 /* The game's static-CRT fwrite; other files reach the same stream the same
  * way, so this is not a private handle. */
 
-static bool write1(const void *src, unsigned size, void *fp)
+static bool write1(const void *src, unsigned size, FILE *fp)
 {
-    return fwrite(src, size, 1, (FILE *)fp) == 1;
+    return fwrite(src, size, 1, fp) == 1;
 }
 
 /* Field-for-field mirror of Load, in the same order. */
-int GravityEnvironment::save(void *fp)
+int GravityEnvironment::save(FILE *fp)
 {
     if (!write1(flDirection_, 12, fp))      return FALSE;
     if (!write1(&flMagnitude_, 4, fp))      return FALSE;
@@ -678,7 +678,7 @@ int GravityEnvironment::save(void *fp)
 
 /* Calls the base Environment::Save (a no-op) first, then mirrors Load.
  * PRESERVED: dwTargetRGB is not written either, matching Load. */
-int MagnetEnvironment::save(void *fp)
+int MagnetEnvironment::save(FILE *fp)
 {
     if (!write1(flForce_, 12, fp))          return FALSE;
     if (!write1(flCentre_, 12, fp))         return FALSE;
@@ -929,35 +929,35 @@ void StdGenerator::stdCloneTypeTable(const uint32_t *src, uint32_t count)
 }
 
 /* FORMAT: count (uint32_t), then that many (colour, weight) uint32_t pairs. */
-static int type_table_save(const std::vector<uint32_t> &table, const uint32_t *pcount, void *fp)
+static int type_table_save(const std::vector<uint32_t> &table, const uint32_t *pcount, FILE *fp)
 {
     if (fp == NULL)
         return FALSE;
     if (!write1(pcount, 4, fp))
         return FALSE;
-    return fwrite(table.data(), 8, *pcount, (FILE *)fp) == *pcount;
+    return fwrite(table.data(), 8, *pcount, fp) == *pcount;
 }
 
-static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint32_t *emit_prob, void *fp)
+static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint32_t *emit_prob, FILE *fp)
 {
     if (fp == NULL)
         return FALSE;
     uint32_t count;
-    if (fread(&count, 4, 1, (FILE *)fp) != 1)
+    if (fread(&count, 4, 1, fp) != 1)
         return FALSE;
     std::vector<uint32_t> pairs((size_t)count * 2);
-    if (fread(pairs.data(), 8, count, (FILE *)fp) != count)
+    if (fread(pairs.data(), 8, count, fp) != count)
         return FALSE;
     type_table_clone(ptable, pcount, emit_prob, pairs.data(), count);
     return TRUE;
 }
 
-int StdGenerator::stdSaveTypeTable(void *fp)
+int StdGenerator::stdSaveTypeTable(FILE *fp)
 {
     return type_table_save(typeTable_, &dwTypeTableCount_, fp);
 }
 
-int StdGenerator::stdLoadTypeTable(void *fp)
+int StdGenerator::stdLoadTypeTable(FILE *fp)
 {
     return type_table_load(&typeTable_, &dwTypeTableCount_,
                            pEmitProb_, fp);
@@ -1066,7 +1066,7 @@ int StdGenerator::copyFrom(const Generator *gsrc)
     return TRUE;
 }
 
-int StdGenerator::save(void *fp)
+int StdGenerator::save(FILE *fp)
 {
     if (!write1(&dwEmitMode_, 4, fp))     return FALSE;
     if (!write1(flBoxMax_, 12, fp))       return FALSE;
@@ -1085,7 +1085,7 @@ int StdGenerator::save(void *fp)
 
 /* Builds the sphere or box position table (whichever dwEmitMode selects), then
  * always rebuilds the velocity and rate tables. */
-int StdGenerator::load(void *fp)
+int StdGenerator::load(FILE *fp)
 {
     if (!read1(&dwEmitMode_, 4, fp))      return FALSE;
     if (!read1(flBoxMax_, 12, fp))        return FALSE;
@@ -1122,14 +1122,14 @@ int XStdGenerator::copyFrom(const Generator *gsrc)
     return TRUE;
 }
 
-int XStdGenerator::save(void *fp)
+int XStdGenerator::save(FILE *fp)
 {
     if (!StdGenerator::save(fp))        return FALSE;
     if (!write1(flPosOffset_, 12, fp))    return FALSE;
     return write1(flVelOffset_, 12, fp);
 }
 
-int XStdGenerator::load(void *fp)
+int XStdGenerator::load(FILE *fp)
 {
     if (!StdGenerator::load(fp))        return FALSE;
     if (!read1(flPosOffset_, 12, fp))     return FALSE;
@@ -1380,7 +1380,7 @@ int CylinderGenerator::copyFrom(const Generator *gsrc)
     return TRUE;
 }
 
-int CylinderGenerator::save(void *fp)
+int CylinderGenerator::save(FILE *fp)
 {
     if (!write1(flOrigin_, 12, fp))       return FALSE;
     if (!write1(&flScale_, 4, fp))        return FALSE;
@@ -1398,7 +1398,7 @@ int CylinderGenerator::save(void *fp)
 /* Reads its own direction back out to rebuild the matrix via
  * cylSetDirection.  The position table (the unit circle) is the constructor's
  * and is never rebuilt here. */
-int CylinderGenerator::load(void *fp)
+int CylinderGenerator::load(FILE *fp)
 {
     if (!read1(flOrigin_, 12, fp))        return FALSE;
     if (!read1(&flScale_, 4, fp))         return FALSE;
