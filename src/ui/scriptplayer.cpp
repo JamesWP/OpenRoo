@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include "camera.h"
 #include "sysdev.h"
+#include <fstream>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -74,7 +75,6 @@ static bool fx_blank(void)
 int ScriptPlayer::readForLevel(const char *path)
 {
     char name[128];  // PRESERVED: 128 bytes, unchecked
-    FILE *fp;
     unsigned idx = 0;  // 32-bit, masked when indexing
     static int logged = 0;
 
@@ -100,14 +100,18 @@ int ScriptPlayer::readForLevel(const char *path)
     strcpy(name, path);
     strcat(name, ".jjs");
 
-    fp = fopen(name, "r");
-    if (fp == NULL)
+    // Binary, with the '\r's dropped as they are read: the newline after each
+    // ';' is a CRLF, which must count as one character.
+    std::ifstream in(name, std::ios::binary);
+    if (!in)
         return 0;  // PRESERVED: a missing file leaves the object cleared
 
-    while (!feof(fp)) {
-        int c = fgetc(fp);  // PRESERVED: the end-of-file read's -1 is stored as 0xff
+    char c;
+    while (in.get(c)) {
+        if (c == '\r')
+            continue;
 
-        if ((char)c == ';') {
+        if (c == ';') {
             uint16_t  n   = lineCount_;
             char *rec = lines_[0] + n * LINE_SIZE;  // PRESERVED: no bound on the entry count
 
@@ -122,14 +126,13 @@ int ScriptPlayer::readForLevel(const char *path)
 
             lineCount_ = (uint16_t)(n + 1);
 
-            fgetc(fp);  // the newline after the ';', discarded
+            in.get();  // the newline after the ';', discarded
         } else {
-            s_entry[idx & 0xffff] = (char)c;  // PRESERVED: the index is masked to 16 bits
+            s_entry[idx & 0xffff] = c;  // PRESERVED: the index is masked to 16 bits
             idx++;
         }
     }
 
-    fclose(fp);
     loaded_ = 1;
 
     // KAROO_JJS_DUMP: the path, the entry count and an FNV-1a hash of every
@@ -137,7 +140,7 @@ int ScriptPlayer::readForLevel(const char *path)
     {
         char dump[MAX_PATH];
         if (sysdev::getEnv("KAROO_JJS_DUMP", dump, sizeof(dump))) {
-            FILE *h = fopen(dump, "ab");
+            std::ofstream h(dump, std::ios::binary | std::ios::app);
             if (h) {
                 unsigned long hash = 2166136261UL;
                 unsigned n = lineCount_;
@@ -151,8 +154,7 @@ int ScriptPlayer::readForLevel(const char *path)
                 char line[512];
                 int len = snprintf(line, sizeof(line), "%s entries=%u hash=%08lx\r\n",
                                     name, n, hash);
-                fwrite(line, 1, len, h);
-                fclose(h);
+                h.write(line, len);
             }
         }
     }
@@ -175,7 +177,7 @@ int ScriptPlayer::readForLevel(const char *path)
  * PRESERVED:
  *   - It returns 0 on every path, a failed open included.
  *   - The line buffer is pre-filled, pointlessly, before the first read.
- *   - fgets' result is not checked, so at the end the last line is
+ *   - The end of the file is not checked for, so at the end the last line is
  *     examined once more.
  *   - A second in-block flag is not cleared on the trailing-';' path; it is
  *     only read while the first is set, so it changes nothing.
@@ -186,12 +188,28 @@ int ScriptPlayer::readForLevel(const char *path)
 #define JJSR_LINE_MAX   0x80
 #define JJSR_LOG_FIRST  4
 
-int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
+/* fgets over a stream: up to size-1 characters, ending after a newline, with
+ * the '\r's of CRLF dropped.  At the end of the file `line` is left as it was. */
+static void read_line(std::istream &in, char *line, int size)
+{
+    char c;
+    int n = 0;
+    while (n < size - 1 && in.get(c)) {
+        if (c == '\r')
+            continue;
+        line[n++] = c;
+        if (c == '\n')
+            break;
+    }
+    if (n > 0)
+        line[n] = '\0';
+}
+
+int ScriptPlayer::readTextsForReport(const char *path, std::ostream &sink)
 {
     char name[0x80];
     char line[JJSR_LINE_MAX];
     char scratch[0x100];
-    FILE *fp;
     int inBlock = 0, inBlockMirror = 0, wroteHeader = 0;
     unsigned textIndex = 0;
     static int logged = 0;
@@ -199,18 +217,18 @@ int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
     strcpy(name, path);
     strcat(name, ".jjs");
 
-    fp = fopen(name, "r+t");  // text update mode, needlessly writable
+    std::ifstream in(name, std::ios::binary);
 
     strcpy(line, GLOBAL_SCRATCH_STR);  // PRESERVED: overwritten by the first read
 
-    if (fp == NULL)
+    if (!in)
         return 0;  // PRESERVED: always 0
 
-    while (!feof(fp)) {
+    while (!in.eof()) {
         char prefix4[5], prefix9[10];
         size_t len;
 
-        fgets(line, JJSR_LINE_MAX, fp);  // PRESERVED: result unchecked
+        read_line(in, line, JJSR_LINE_MAX);  // PRESERVED: at the end the last line stays
 
         std::copy_n(line, 4, prefix4);
         prefix4[4] = '\0';
@@ -230,18 +248,18 @@ int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
             if (len > 1 && inBlockMirror) {  // two or more characters, counting the newline
                 if (!wroteHeader) {
                     sprintf(scratch, "\n%d. Text:\n", (int)((textIndex & 0xffff) + 1));
-                    fputs(scratch, sink);
+                    sink << scratch;
                     wroteHeader = 1;
                 }
                 if (line[len - 2] == ';') {
                     inBlock     = 0;  // PRESERVED: the mirror is not cleared
                     wroteHeader = 0;
                     line[len - 2] = '\0';
-                    fputs(line, sink);
-                    fputs("\n", sink);
+                    sink << line;
+                    sink << '\n';
                     textIndex++;
                 } else {
-                    fputs(line, sink);
+                    sink << line;
                 }
             }
         }
@@ -251,8 +269,6 @@ int ScriptPlayer::readTextsForReport(const char *path, FILE *sink)
         if (strcmp(prefix9, "splinexyz") == 0)
             splineLines_ = (uint16_t)(splineLines_ + 1);
     }
-
-    fclose(fp);
 
     if (logged < JJSR_LOG_FIRST) {
         logged++;

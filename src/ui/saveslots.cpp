@@ -5,9 +5,10 @@
  * PRESERVED:
  *   - The reader fails the whole call at the first missing file; the
  *     writer skips a slot it cannot open and returns 1 regardless.
- *   - The reader ignores fread's result and reuses one byte variable, so a
+ *   - The reader ignores read's result and reuses one byte variable, so a
  *     short file repeats its last byte.
  *   - Paths are formatted unbounded into 128-byte buffers. */
+#include <fstream>
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
@@ -64,19 +65,17 @@ int SaveSlots::loadAllSlotFiles(const char *name, char key)
     int slot;
 
     for (slot = 0; slot < (int)count(); slot++) {
-        FILE *fp;
         sprintf(path, "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
-        fp = fopen(path, "r");
-        if (fp == NULL) {
+        std::ifstream in(path);  // text mode, as the original wrote them
+        if (!in) {
             ps_log("sav load", path, 0);
             return 0;  // PRESERVED: the whole call fails
         }
         for (int i = 0; i < SAVE_SLOT_BYTES; i++) {
-            fread(&b, 1, 1, fp);
+            in.read(reinterpret_cast<char *>(&b), 1);
             rec[i] = (unsigned char)(b - (unsigned char)key);
         }
         this->slot((unsigned char)slot)->decode(rec);
-        fclose(fp);
         ps_log("sav load", path, 1);
     }
     return 1;
@@ -90,18 +89,17 @@ int SaveSlots::writeAllSlotFiles(const char *name, char key)
     for (slot = 0; slot < (int)count(); slot++) {
         unsigned char rec[SAVE_SLOT_BYTES];
         this->slot((unsigned char)slot)->encode(rec);
-        FILE *fp;
         sprintf(path, "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
-        fp = fopen(path, "w+");
-        if (fp == NULL) {
+        std::ofstream outFile(path);  // text mode, as the original wrote them
+        if (!outFile) {
             ps_log("sav save", path, 0);
             continue;  // PRESERVED: skip it and go on
         }
         for (int i = 0; i < SAVE_SLOT_BYTES; i++) {
             unsigned char out = (unsigned char)(rec[i] + (unsigned char)key);
-            fwrite(&out, 1, 1, fp);
+            outFile.write(reinterpret_cast<const char *>(&out), 1);
         }
-        fclose(fp);
+        outFile.close();
         ps_log("sav save", path, 1);
     }
     return 1;

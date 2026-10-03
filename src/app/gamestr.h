@@ -141,7 +141,6 @@ inline const char GS_RPT_LEVELS[] = "Levels:%d\012\012";
 inline const char GS_RPT_GAMEFILE[] = "gamefile:%s\012";
 inline const char GS_RPT_TITLE[] = "***** level report ******\012\012";
 inline const char GS_RPT_SCRIPTTEXTS[] = "ScriptTexts.txt";
-inline const char GS_RPT_MODE_W[] = "w+t";
 
 /* SND: the level-based sounds. */
 inline const char GS_SND_CANDY[] = "Candy";

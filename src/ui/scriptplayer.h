@@ -5,7 +5,7 @@
  * through it too. */
 #pragma once
 
-#include <stdio.h>
+#include <ostream>
  
 #include "audiodev.h"
 #include "splinepath.h"
@@ -22,7 +22,7 @@ public:
     int  readForLevel(const char *path);
     // The level report's reader: writes the script's texts to sink and counts
     // its spline lines and text blocks.
-    int  readTextsForReport(const char *path, FILE *sink);
+    int  readTextsForReport(const char *path, std::ostream &sink);
 
     // The per-frame tick: the camera spline, a glide, the waits, and the next
     // line through playScript.  now and dt in milliseconds.
