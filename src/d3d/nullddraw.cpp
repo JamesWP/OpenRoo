@@ -325,12 +325,7 @@ static DWORD pitch_for(DWORD w, DWORD bpp)
 }
 
 /* Back the surface with real memory: a zeroed block of its pitch times its
- * height, from VirtualAlloc and not the CRT heap.  This is load-bearing: the
- * surfaces used to be GDI DIB sections, outside the heap, and with them on the
- * CRT heap instead the enemyfactory recording ends with one foe fewer killed
- * (foes_killed 5, not 6).  Something in the game reads memory it did not
- * initialise, or after freeing it, and its result moves with the heap's
- * layout.  Not found yet; until it is, keep these off the heap. */
+ * height. */
 static bool surf_alloc_bits(NullSurface *s)
 {
     DWORD w   = s->desc.dwWidth;
@@ -344,13 +339,13 @@ static bool surf_alloc_bits(NullSurface *s)
     if (w == 0 || h == 0)
         return true;                            /* nothing to allocate */
 
-    s->bits = VirtualAlloc(NULL, pitch * h, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    s->bits = new (std::nothrow) unsigned char[pitch * h]();
     return s->bits != NULL;
 }
 
 static void surf_free_bits(NullSurface *s)
 {
-    if (s->bits) VirtualFree(s->bits, 0, MEM_RELEASE);
+    delete[] (unsigned char *)s->bits;
     s->bits = NULL;
 }
 
