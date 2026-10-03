@@ -10,11 +10,13 @@
 #pragma once
 
  
-#include "namedlist.h"
+#include <list>
+#include <string>
 #include "audiodev.h"
 
 namespace audiodev { class Buffer; }
 class VoicePool;
+class doublesoundbuff;
 
 class SoundManager {
 public:
@@ -64,8 +66,19 @@ private:
     unsigned long  dwPendingMode3D_;   // set with it; the mode new loads apply
     audiodev::Device device_;          // the device
     unsigned long  dwCreated_;         // 0 until the device is up
-    NamedEntryList entriesPlain_;      // bWant3D == 0
-    NamedEntryList entries3D_;         // bWant3D != 0
+    // A name-keyed list of loaded sounds, in the order they were first
+    // acquired.
+public:
+    struct NamedEntry {
+        std::string      name;
+        doublesoundbuff *entry;
+    };
+    typedef std::list<NamedEntry> EntryList;
+private:
+    static EntryList::iterator findEntry(EntryList &list, const char *name);
+
+    EntryList entriesPlain_;           // bWant3D == 0
+    EntryList entries3D_;              // bWant3D != 0
      
 };
 

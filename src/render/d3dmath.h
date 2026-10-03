@@ -16,9 +16,6 @@
  * by the batch passes. */
 extern Mat4 g_worldIdentity;
 
-/* A control-point list node (SplinePath's list). */
-struct ListNodeM { void *pValue; ListNodeM *pNext; };
-
 /* One 0x20-byte FVF 0x1e2 billboard vertex. */
 struct BbVertex { float x, y, z; uint32_t zero; uint32_t diffuse, specular; float u, v; };
 

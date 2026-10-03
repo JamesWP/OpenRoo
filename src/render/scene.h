@@ -5,7 +5,7 @@
 
 #include <stdint.h>
  
-#include "linkedlist.h"
+#include <vector>
 #include "splinepath.h"
 #include "model.h"
 #include "texture.h"
@@ -53,14 +53,14 @@ public:
     int  segmentHitsModel(float px, float py, float pz, float dx,
                           float dy, float dz);
 
-    const LinkedList *objects() const { return &objects_; }
+    const std::vector<SceneObject *> &objects() const { return objects_; }
     ModelManager     *models()        { return &models_; }
     TextureManager   *textures()      { return &textures_; }
 
 private:
     void freeSceneObjects();
 
-    LinkedList      objects_;    /* +0x00  SceneObject * */
+    std::vector<SceneObject *> objects_;  // owned
     ModelManager    models_;     /* +0x10 */
     TextureManager  textures_;   /* +0x28 */
      

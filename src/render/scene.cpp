@@ -26,14 +26,10 @@ Scene::~Scene()
 
 void Scene::freeSceneObjects()
 {
-    for (LinkedListNode *n = objects_.head(); n != NULL; ) {
-        SceneObject *o = (SceneObject *)n->value();
-        n = n->next();
-        if (o != NULL) {
-            delete o;
-        }
-    }
-    objects_.clear();
+    std::vector<SceneObject *> doomed;
+    doomed.swap(objects_);
+    for (size_t i = 0; i < doomed.size(); ++i)
+        delete doomed[i];
     models_.clearReleaseFree();
     textures_.releaseAll();
 }
@@ -96,7 +92,7 @@ void Scene::buildObjectList(RenderDevice *d3d, ExtraObjects *leo)
                                        r->splinePoints[k][2],
                                        -r->splinePoints[k][1]);
         }
-        objects_.append(o);
+        objects_.push_back(o);
     }
 }
 
@@ -169,14 +165,13 @@ static bool segment_hits_object(const SceneObject *o, const float p[3],
     return true;
 }
 
-/* Only kind 0 (model) objects are tested.  PRESERVED: no null check on the
- * list's values. */
+/* Only kind 0 (model) objects are tested. */
 int Scene::segmentHitsModel(float px, float py, float pz,
                        float dx, float dy, float dz)
 {
     const float p[3] = { px, py, pz }, d[3] = { dx, dy, dz };
-    for (LinkedListNode *n = objects_.head(); n != NULL; n = n->next()) {
-        const SceneObject *o = (const SceneObject *)n->value();
+    for (size_t i = 0; i < objects_.size(); ++i) {
+        const SceneObject *o = objects_[i];
         if (o->type == EXTRA_MODEL && segment_hits_object(o, p, d))
             return 1;
     }

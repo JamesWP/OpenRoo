@@ -880,9 +880,9 @@ static void draw_messages(Game *g, float W, float H, float pad)
     const float xText = W * 0.05f + pad;
     const float textLift = H * 0.016666668f;
     float y = H - ch - pad;
-    LinkedListNode *it = pl->effectList()->head();
-    while (it != NULL) {
-        const unsigned code = (unsigned char)(uintptr_t)LinkedList::nextValue(&it);
+    const std::vector<int> &effects = pl->effectList();
+    for (size_t ei = 0; ei < effects.size(); ++ei) {
+        const unsigned code = (unsigned char)effects[ei];
         ThemeImageSlot img;
         double start = 0.0, span = 10.0;
         bool icon = true;

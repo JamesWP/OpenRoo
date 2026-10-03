@@ -60,14 +60,12 @@ float v3_len_sq_std(const Vec3 *v)
 /* Bernstein basis of degree n-1.  The binomial coefficient is built with the
  * multiplicative recurrence rather than three factorial loops -- it cannot
  * overflow and needs no division -- and the weights use powf. */
-void bezier_eval_std(const ListNodeM *head, unsigned int n, float t, Vec3 *out)
+void bezier_eval_std(const float *pts, unsigned int n, float t, Vec3 *out)
 {
     double ax = 0.0, ay = 0.0, az = 0.0;
 
-    const ListNodeM *node = head;
     for (unsigned int i = 0; i < n; ++i) {
-        const float *p = (const float *)node->pValue;
-        node = node->pNext;
+        const float *p = pts + 3 * i;
 
         double coeff = 1.0;                      /* C(n-1, i) */
         for (unsigned int k = 0; k < i; ++k)

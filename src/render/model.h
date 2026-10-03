@@ -3,7 +3,7 @@
 #pragma once
 
  
-#include "linkedlist.h"
+#include <vector>
 #include "faktmesh.h"
 
 
@@ -26,7 +26,7 @@ public:
     ModelManager &operator=(const ModelManager &) = delete;
 
 private:
-    LinkedList   cache_;     // +0x04  CFaktMesh *, game-heap nodes
+    std::vector<CFaktMesh *> cache_;
      
 };
 

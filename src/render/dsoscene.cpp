@@ -66,10 +66,8 @@ static float path_param(double t, uint32_t period, double bias)
 
 static void eval_path(const SceneObject *o, float t, Vec3 *out)
 {
-    const LinkedList *cp = o->spline.controlPoints();
-    // ListNodeM is LinkedListNode's first two fields.
-    const void *head = cp->head();
-    bezier_eval((const ListNodeM *)head, cp->count(), t, out);
+    const std::vector<SplineControlPoint> &cp = o->spline.controlPoints();
+    bezier_eval(cp.empty() ? NULL : &cp[0].flX, (unsigned int)cp.size(), t, out);
 }
 
 static void select_texture(RenderDevice *dev, const SceneObject *o)
@@ -161,8 +159,8 @@ static void cam_diag(const float *cam)
 Scene_DrawSceneObjects(RenderDevice *dev, float *cam, uint32_t , uint32_t , double t)
 {
     cam_diag(cam);
-    for (LinkedListNode *node = g_scene.objects()->head(); node != NULL; node = node->next()) {
-        const SceneObject *o = (const SceneObject *)node->value();
+    for (size_t oi = 0; oi < g_scene.objects().size(); ++oi) {
+        const SceneObject *o = g_scene.objects()[oi];
         if (o == NULL)
             continue;
 
@@ -308,8 +306,8 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
 {
     dev->SetRenderState(RS::SpecularEnable, 0);
 
-    for (LinkedListNode *node = g_scene.objects()->head(); node != NULL; node = node->next()) {
-        const SceneObject *o = (const SceneObject *)node->value();
+    for (size_t oi = 0; oi < g_scene.objects().size(); ++oi) {
+        const SceneObject *o = g_scene.objects()[oi];
         if (o == NULL || o->type != EXTRA_PARTICLE)
             continue;
 

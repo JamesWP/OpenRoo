@@ -26,7 +26,7 @@ float  v3_len_sq(const Vec3 *v);
 /* Bernstein basis of degree count-1:
  *   p = SUM_i C(n-1,i) * t^i * (1-t)^(n-1-i) * P_i
  * An empty control-point list writes (0,0,0) and touches nothing else. */
-void bezier_eval(const ListNodeM *head, unsigned int count, float t, Vec3 *out);
+void bezier_eval(const float *head, unsigned int count, float t, Vec3 *out);
 
 /* Builds four corner offsets (dst[0..3])
  * for a camera-facing quad of the given size. */

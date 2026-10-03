@@ -22,7 +22,7 @@ DISPATCH(void,  m4_rot_y,        (Mat4 *d, float a),                      (d, a)
 DISPATCH(void,  m4_rot_z,        (Mat4 *d, float a),                      (d, a))
 DISPATCH(void,  m4_rot_x_biased, (Mat4 *d, float a, float bias),          (d, a, bias))
 DISPATCH(float, v3_len_sq,       (const Vec3 *v),                         (v))
-DISPATCH(void,  bezier_eval,     (const ListNodeM *h, unsigned int n, float t, Vec3 *o),
+DISPATCH(void,  bezier_eval,     (const float *h, unsigned int n, float t, Vec3 *o),
                                                                           (h, n, t, o))
 DISPATCH(void,  billboard_corners, (Vec3 *d, float dx, float dy, float dz, float s),
                                                                           (d, dx, dy, dz, s))
