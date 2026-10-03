@@ -47,10 +47,10 @@ public:
     void  setPitch(float p) { pitch_ = p; }
 
 private:
-    float  eye_[3];      // +0x00
-    float  target_[3];   // +0x0c
-    float  yaw_;         // +0x18
-    float  pitch_;       // +0x1c
+    float  eye_[3];
+    float  target_[3];
+    float  yaw_;
+    float  pitch_;
 
      
 };

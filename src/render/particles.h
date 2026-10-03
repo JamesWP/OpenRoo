@@ -19,13 +19,13 @@ struct ParticleNode {
      * colour. */
     uint32_t colour() const;
 
-    ParticleNode *pPrev;          // +0x00
-    ParticleNode *pNext;          // +0x04
-    float         flX, flY, flZ;  // +0x08..+0x10 position
-    float         flVel[3];       // +0x14..+0x1c velocity
-    float         flLife;         // +0x20 seconds remaining; < 0 retires
-    uint32_t         dwDiffuse;      // +0x24
-    uint32_t         dwShapeIndex;   // +0x28 XFace corner-table index; alloc-time only
+    ParticleNode *pPrev;
+    ParticleNode *pNext;
+    float         flX, flY, flZ;  // position
+    float         flVel[3];       // velocity
+    float         flLife;         // seconds remaining; < 0 retires
+    uint32_t         dwDiffuse;
+    uint32_t         dwShapeIndex;   // XFace corner-table index; alloc-time only
 };
 
 /* FVF 0x1e2 vertex, 0x20 bytes.  Fill only ever writes xyz + diffuse, leaving

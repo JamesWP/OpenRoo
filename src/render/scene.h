@@ -61,8 +61,8 @@ private:
     void freeSceneObjects();
 
     std::vector<SceneObject *> objects_;  // owned
-    ModelManager    models_;     /* +0x10 */
-    TextureManager  textures_;   /* +0x28 */
+    ModelManager    models_;
+    TextureManager  textures_;
      
 };
 
