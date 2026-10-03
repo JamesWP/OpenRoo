@@ -2,6 +2,7 @@
  * chooseTarget/dropBomb/checkPlayerContact/finishDespawn helpers GameTick's
  * foe loop calls directly. */
 
+#include <math.h>
 #include <windows.h>
 #include <stdint.h>
 #include "sysdev.h"
@@ -801,8 +802,7 @@ void Foe::checkPlayerContact(unsigned char *playerMoveState,
             long double dz = (long double)posV_ - (long double)playerV;
             long double s = dz * dz + dy * dy;
             s = s + dx * dx;
-            long double dist;
-            __asm__("fsqrt" : "=t"(dist) : "0"(s));
+            long double dist = sqrtl(s);
             if (dist < 0.5L)
                 *playerMoveState = 1;
         }
