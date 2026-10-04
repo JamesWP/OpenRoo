@@ -231,13 +231,19 @@ bool RenderDevice::Create(windev::Window *window, const AdapterId *adapter, int 
     }
     n->modeW = mode_->dwWidth;
     n->modeH = mode_->dwHeight;
-    n->vpX = 0;
-    n->vpY = 0;
+    // Letterbox to the mode's aspect, centred; the bars keep the black clear.
     n->vpW = w;
     n->vpH = h;
+    if ((uint64_t)w * n->modeH > (uint64_t)h * n->modeW)
+        n->vpW = (unsigned)((uint64_t)h * n->modeW / n->modeH);
+    else
+        n->vpH = (unsigned)((uint64_t)w * n->modeH / n->modeW);
+    n->vpX = (w - n->vpW) / 2;
+    n->vpY = (h - n->vpH) / 2;
     if (devfx_is("halfvp")) {
         n->vpW = w / 2;
         n->vpH = h / 2;
+        n->vpX = 0;
         n->vpY = h - n->vpH;
     }
     n->dirty = GLDirty::All;
