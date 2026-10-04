@@ -206,7 +206,7 @@ void RenderDevice::PresentImage(const Image &img)
             n->dirty = GLDirty::All;
 
             const float x0 = -0.5f, y0 = -0.5f;
-            const float x1 = (float)n->vpW - 0.5f, y1 = (float)n->vpH - 0.5f;
+            const float x1 = (float)n->modeW - 0.5f, y1 = (float)n->modeH - 0.5f;
             const ScreenVertex q[4] = {
                 { x0, y0, 0.0f, 1.0f, 0xFFFFFFFFu, 0, 0.0f, 0.0f },
                 { x1, y0, 0.0f, 1.0f, 0xFFFFFFFFu, 0, 1.0f, 0.0f },
