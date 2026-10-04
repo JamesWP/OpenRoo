@@ -126,6 +126,7 @@ void UVAnimator::setMesh(AnimatedMesh *mesh)
     unsigned int count = snapshot_count(mesh);
     pBaseUV_ = new (std::nothrow) AnimatedUV[count];
     dirty_   = 0;
+    vertsDirty_ = 0;
 
     for (unsigned int i = 0; i < count; ++i) {
         const float *uv = vtx_uv(mesh, i);
@@ -144,11 +145,9 @@ void UVAnimator::releaseSnapshot()
     uvanim_census(WE_RELEASE, 0);
 }
 
-void UVAnimator::flush()
+/* Puts every frame's UVs back to the snapshot's. */
+void UVAnimator::restoreVertices()
 {
-    if (pMesh_ == NULL || dirty_ == 0)
-        return;
-
     unsigned int count = snapshot_count(pMesh_);
     for (unsigned int i = 0; i < count; ++i) {
         float *uv = vtx_uv(pMesh_, i);
@@ -156,11 +155,26 @@ void UVAnimator::flush()
         uv[1] = pBaseUV_[i].v;
     }
     pMesh_->touchVertices(0, count);
-    dirty_ = 0;
+    vertsDirty_ = 0;
     uvanim_census(WE_FLUSH, count);
 }
 
-/* The tick count is widened unsigned. */
+void UVAnimator::flush()
+{
+    if (pMesh_ == NULL || dirty_ == 0)
+        return;
+
+    if (vertsDirty_)
+        restoreVertices();
+    pMesh_->setUVTransform(UVTransform());
+    dirty_ = 0;
+}
+
+/* The tick count is widened unsigned.  The warp is, per coordinate, an affine
+ * function of the snapshot's:
+ *   u' = ((2u - 1) * skew + amplitude) * s + u
+ *   v' = cos * amplitude + v - (2v - 1) * skew * s
+ * so it is a scale and an offset, whatever the vertex. */
 void UVAnimator::applySineWave(unsigned int ticks, float rate,
                                   float amplitude, float skew)
 {
@@ -172,42 +186,32 @@ void UVAnimator::applySineWave(unsigned int ticks, float rate,
         s = -s;
 
     if (pMesh_ != NULL && pMesh_->vertexCount() != 0) {
-        float cosTerm = c * amplitude;
-        unsigned int count = pMesh_->vertexCount();
-
-        for (unsigned int i = 0; i < count; ++i) {
-            float *uv = vtx_uv(pMesh_, i);
-            float  su = pBaseUV_[i].u;
-            float  sv = pBaseUV_[i].v;
-
-            uv[0] = ((su + su - WRAP_ONE) * skew + amplitude) * s + su;
-            uv[1] = (cosTerm + sv) - (sv + sv - WRAP_ONE) * skew * s;
-
-            count = pMesh_->vertexCount();
-        }
-        pMesh_->touchVertices(0, count);
-        uvanim_census(WE_SINE, count);
+        if (vertsDirty_)
+            restoreVertices();
+        UVTransform t;
+        t.scaleU  = 2.0f * skew * s + WRAP_ONE;
+        t.scaleV  = WRAP_ONE - 2.0f * skew * s;
+        t.offsetU = (amplitude - skew) * s;
+        t.offsetV = c * amplitude + skew * s;
+        pMesh_->setUVTransform(t);
+        uvanim_census(WE_SINE, pMesh_->vertexCount());
     }
     dirty_ = 1;
 }
 
+/* The scroll adds to whatever the coordinates already are, every call. */
 void UVAnimator::scrollUVs(unsigned int ticks, int axisU, float speed)
 {
     if (pMesh_ != NULL) {
-        //     // The delta is rounded to float once; each vertex gets a float add.
         float delta = (float)((double)ticks * (double)speed);
         if (uvanim_fx() == UVANIM_FX_SCROLLBACK)
             delta = -delta;
 
-        unsigned int count = pMesh_->vertexCount();
-        unsigned int axis  = (axisU != 0) ? 0u : 1u;
+        UVTransform t = pMesh_->uvTransform();
+        (axisU != 0 ? t.offsetU : t.offsetV) += delta;
+        pMesh_->setUVTransform(t);
 
-        for (unsigned int i = 0; i < count; ++i) {
-            float *uv = vtx_uv(pMesh_, i);
-            uv[axis] += delta;
-            count = pMesh_->vertexCount();
-        }
-        pMesh_->touchVertices(0, count);
+        const unsigned int count = pMesh_->vertexCount();
         if (count != 0)
             uvanim_census(WE_SCROLL, count);
     }
@@ -238,6 +242,10 @@ void UVAnimator::updateObjectTransform(RenderDevice *dev,
 
     unsigned int count = pMesh_->vertexCount();
     if (count != 0) {
+        // The vertices are written absolutely, so a scroll or warp in force
+        // goes.
+        pMesh_->setUVTransform(UVTransform());
+        vertsDirty_ = 1;
         bool flip = (uvanim_fx() == UVANIM_FX_ENVFLIP);
 
         for (unsigned int i = 0; i < count; ++i) {

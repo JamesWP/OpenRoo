@@ -100,6 +100,19 @@ struct SamplerState {
 
 enum class FogMode : uint8_t { None = 0, Exp = 1, Exp2 = 2, Linear = 3 };
 
+/* A transform of one texture stage's texture coordinates:
+ * (u, v) -> (u * scaleU + offsetU, v * scaleV + offsetV).  A scroll is an
+ * offset; the sine warp is a scale and an offset. */
+struct UVTransform {
+    float scaleU = 1.0f, scaleV = 1.0f;
+    float offsetU = 0.0f, offsetV = 0.0f;
+
+    bool isIdentity() const
+    {
+        return scaleU == 1.0f && scaleV == 1.0f && offsetU == 0.0f && offsetV == 0.0f;
+    }
+};
+
 /* Theme files and the extra-object tables hold blend factors and texture
  * address modes as numbers (the BlendFactor and AddressMode enumerators'),
  * with 0 for "not set".  These make states of them: blending is on only when

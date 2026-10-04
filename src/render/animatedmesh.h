@@ -4,6 +4,7 @@
 #include <array>
 #include <string>
 #include <vector>
+#include "rendertypes.h"
 class RenderDevice;
 struct VertexBuffer;
 
@@ -64,6 +65,11 @@ public:
      * follows at the next draw. */
     void touchVertices(uint32_t first, uint32_t count);
 
+    /* A transform of the mesh's texture coordinates, applied by the device
+     * when the mesh is drawn (UVAnimator's scroll and sine warp). */
+    void setUVTransform(const UVTransform &t) { uvTransform_ = t; }
+    const UVTransform &uvTransform() const { return uvTransform_; }
+
     void  *vertexData() const { return const_cast<MeshVertex *>(vertexData_.data()); }
     uint32_t vertexCount() const { return dwVertexCount_; }
     void  *frameRecords() const { return const_cast<FrameRecord *>(frameRecords_.data()); }
@@ -94,6 +100,7 @@ private:
      * device last had them. */
     VertexBuffer *vb_ = nullptr;
     uint32_t      dirtyFirst_ = 0, dirtyEnd_ = 0;
+    UVTransform   uvTransform_;
 };
 
 /* The two character meshes, loaded once at startup (renderstate.cpp):

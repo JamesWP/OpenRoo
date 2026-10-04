@@ -43,16 +43,18 @@ public:
     // object again.
     void releaseSnapshot();
 
-    // Restores the mesh's UVs from the snapshot and clears the dirty flag;
+    // Undoes the animation: restores the mesh's UVs from the snapshot if the
+    // environment map wrote them, clears the UV transform and the dirty flag;
     // does nothing without a mesh or when not dirty.
     void flush();
 
-    // The sine-wave warp.  ticks is a millisecond count the caller has already
+    // The sine-wave warp, as a UV transform on the mesh.  ticks is a millisecond count the caller has already
     // truncated.
     void applySineWave(unsigned int ticks, float rate, float amplitude,
                        float skew);
 
-    // Scrolls one texture axis: u when axisU is nonzero, else v.
+    // Scrolls one texture axis: u when axisU is nonzero, else v.  The offset
+    // accumulates, every call, until flush.
     void scrollUVs(unsigned int ticks, int axisU, float speed);
 
     // Spherical environment map: UVs from each vertex normal, transformed by
@@ -67,5 +69,8 @@ private:
     AnimatedUV *pBaseUV_;  // wFrameCount * dwVertexCount pairs
     AnimatedMesh *pMesh_;    // not owned
     uint8_t       dirty_;    // set by the three animating modes
+    uint8_t       vertsDirty_ = 0;  // the environment map has written the mesh's UVs
+
+    void restoreVertices();
 };
 

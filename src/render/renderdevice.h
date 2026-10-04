@@ -93,6 +93,7 @@ struct PipelineState {
     RasterState         raster;
     FogState            fog;
     SamplerState        samplers[2];  // by stage; the game's vertex formats address two
+    UVTransform         uvTransform[2];
     bool                specular = false;
     uint32_t            ambient  = 0;
     Material            material = {};
@@ -204,6 +205,10 @@ public:
     void SetSampler(int stage, const SamplerState &s);
     /* Changes only the address modes of `stage`'s sampler. */
     void SetSamplerAddress(int stage, AddressMode u, AddressMode v);
+
+    /* Transforms the texture coordinates `stage` samples with.  Applies to
+     * vertices the game supplies in world space, not to Screen vertices. */
+    void SetUVTransform(int stage, const UVTransform &t);
 
     /* NULL unbinds the stage. */
     void SetTexture(int stage, const DeviceTexture *tex);

@@ -13,6 +13,8 @@
 #include "sysdev.h"
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
+#include <vector>
 
 namespace {
 
@@ -160,8 +162,32 @@ void d3d_trace_draw(RenderDevice::Native *n, int prim, unsigned long fvf,
         st.add(light); st.add(on);
     }
 
+    // The vertices as the draw samples them: texture coordinates through the
+    // stage-0 transform, and rounded to 1/64, so that two ways of arriving at
+    // the same coordinates (a rewritten vertex or a transform) hash alike.
     Hasher vh;
-    vh.add(verts, (size_t)count * stride);
+    std::vector<uint8_t> copy((const uint8_t *)verts, (const uint8_t *)verts + (size_t)count * stride);
+    const unsigned ntex = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
+    if (ntex > 0 && !(fvf & D3DFVF_XYZRHW)) {
+        unsigned uvOff = 12 + ((fvf & D3DFVF_NORMAL) ? 12 : 0) + ((fvf & D3DFVF_DIFFUSE) ? 4 : 0) +
+                         ((fvf & D3DFVF_SPECULAR) ? 4 : 0);
+        DWORD ttf = 0;
+        dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &ttf);
+        D3DMATRIX tm; dev->GetTransform(D3DTS_TEXTURE0, &tm);
+        for (uint32_t i = 0; i < count; i++) {
+            float uv[2];
+            uint8_t *p = copy.data() + (size_t)i * stride + uvOff;
+            memcpy(uv, p, 8);
+            if (ttf & D3DTTFF_COUNT2) {
+                const float u = uv[0] * tm._11 + uv[1] * tm._21 + tm._31;
+                const float v = uv[0] * tm._12 + uv[1] * tm._22 + tm._32;
+                uv[0] = u; uv[1] = v;
+            }
+            int32_t q[2] = { (int32_t)floorf(uv[0] * 64.0f + 0.5f), (int32_t)floorf(uv[1] * 64.0f + 0.5f) };
+            memcpy(p, q, 8);
+        }
+    }
+    vh.add(copy.data(), copy.size());
     fprintf(t.f, "%lu prim=%d fvf=%lx n=%u state=%016llx verts=%016llx\n", t.seq++,
             prim, fvf, count, (unsigned long long)st.h, (unsigned long long)vh.h);
     if (t.verbose)

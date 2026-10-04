@@ -256,6 +256,22 @@ static void apply_sampler(RenderDevice::Native *n, int stage, const SamplerState
     dev->SetSamplerState(stage, D3DSAMP_ADDRESSV, d3d_address(s.v));
 }
 
+/* A 2D scale and offset as a texture-stage transform: (u, v, 1) * M. */
+static void apply_uv_transform(RenderDevice::Native *n, int stage, const UVTransform &t)
+{
+    IDirect3DDevice9 *dev = n->device;
+    if (t.isIdentity()) {
+        dev->SetTextureStageState(stage, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+        return;
+    }
+    D3DMATRIX m = {};
+    m._11 = t.scaleU;  m._22 = t.scaleV;
+    m._31 = t.offsetU; m._32 = t.offsetV;
+    m._33 = 1.0f;      m._44 = 1.0f;
+    dev->SetTransform((D3DTRANSFORMSTATETYPE)(D3DTS_TEXTURE0 + stage), &m);
+    dev->SetTextureStageState(stage, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+}
+
 /* Direct3D 6's legacy modulate, which is the only texture blend the game
  * uses: the texture modulates the vertex colour; alpha comes from the
  * texture if it has any, else from the vertex.  A stage with no texture
@@ -359,6 +375,7 @@ void d3d_restore_state(RenderDevice::Native *n, const PipelineState &st)
     dev->SetRenderState(D3DRS_AMBIENT, st.ambient);
     for (int stage = 0; stage < kStages; stage++) {
         apply_sampler(n, stage, st.samplers[stage]);
+        apply_uv_transform(n, stage, st.uvTransform[stage]);
         apply_texture(n, stage, st.bound[stage]);
     }
     apply_transform(n, D3DTS_WORLD, st.world);
@@ -527,6 +544,15 @@ void RenderDevice::SetSamplerAddress(int stage, AddressMode u, AddressMode v)
     s.u = u;
     s.v = v;
     SetSampler(stage, s);
+}
+
+void RenderDevice::SetUVTransform(int stage, const UVTransform &t)
+{
+    if (stage < 0 || stage >= kStages)
+        return;
+    state_.uvTransform[stage] = t;
+    if (native_->device)
+        apply_uv_transform(native_, stage, t);
 }
 
 void RenderDevice::SetTexture(int stage, const DeviceTexture *tex)
