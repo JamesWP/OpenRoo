@@ -26,7 +26,6 @@
 
 #include <math.h>
 
-#define MESH_QUAD_FVF   VertexFormat::Lit
 #define MESH_LOG_FIRST  8
 
 #define g_flMeshBatchAngle 0x1.921fb6p+0  // (double)(float)(pi/2)
@@ -78,9 +77,9 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
             CFaktMesh *mesh = obj->mesh();  // NULL: draw the flat quads
             if (mesh == NULL) {
                 d3d->SetWorld(g_worldIdentity);
-                d3d->Draw(
-                    Prim::TriangleList, MESH_QUAD_FVF,
-                    pl->kind01Verts(), pl->kind01Count() * 6, 0);
+                d3d->DrawBuffer(
+                    Prim::TriangleList, pl->kind01Buffer(d3d), 0,
+                    pl->kind01Count() * 6);
             } else {
                 const float cs = (float)cos(g_flMeshBatchAngle);
                 const float sn = (float)sin(g_flMeshBatchAngle);

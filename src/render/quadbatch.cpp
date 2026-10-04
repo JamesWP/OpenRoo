@@ -17,7 +17,6 @@
 #include "levelplacements.h"
 #include "logger.h"
 
-#define QUAD_FVF       VertexFormat::Lit
 #define QUAD_LOG_FIRST 8
 
 /* KAROO_QUAD_DUMP=<path> writes every vertex of one quad batch (the 200th draw) to
@@ -119,9 +118,9 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
                 quad_dump(pl->wallStripVerts(), (uint32_t)pl->wallStripCount());
                 bool ok = true;
                 if (quad_fx() != QUAD_FX_NODRAW)
-                    ok = d3d->Draw(
-                        Prim::TriangleList, QUAD_FVF, pl->wallStripVerts(),
-                        (uint32_t)pl->wallStripCount() * 6, 0);
+                    ok = d3d->DrawBuffer(
+                        Prim::TriangleList, pl->wallStripBuffer(d3d), 0,
+                        (uint32_t)pl->wallStripCount() * 6);
 
                 static std::atomic<long> logged = 0;
                 if (++logged <= QUAD_LOG_FIRST)
