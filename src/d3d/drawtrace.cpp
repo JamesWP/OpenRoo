@@ -82,8 +82,7 @@ const D3DSAMPLERSTATETYPE kSamplerStates[] = {
 const D3DTEXTURESTAGESTATETYPE kStageStates[] = {
     D3DTSS_COLOROP, D3DTSS_COLORARG1, D3DTSS_COLORARG2, D3DTSS_ALPHAOP,
     D3DTSS_ALPHAARG1, D3DTSS_ALPHAARG2, D3DTSS_TEXCOORDINDEX,
-    D3DTSS_TEXTURETRANSFORMFLAGS,
-};
+};  // not the texture transform: it is applied to the vertices below
 
 }  // namespace
 
