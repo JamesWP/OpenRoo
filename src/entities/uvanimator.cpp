@@ -1,4 +1,4 @@
-/* WrapperObject: the texture-coordinate arithmetic.  Nothing here feeds the
+/* UVAnimator: the texture-coordinate arithmetic.  Nothing here feeds the
  * simulation; every value computed ends in a texture coordinate, so sin and
  * cos on a double differ from the original only in bits no gate records.
  *
@@ -6,9 +6,9 @@
  * restores them all, but the sine wave and the scroll walk dwVertexCount
  * vertices, which is frame 0 only.  A multi-frame mesh animates frame 0 alone.
  *
- * Controls: KAROO_WRAP_FX=scrollback, =sineflip and =envflip each reverse one
+ * Controls: KAROO_UVANIM_FX=scrollback, =sineflip and =envflip each reverse one
  * effect's direction (the scroll, the warp, the environment map's v); all stay
- * on the render path.  KAROO_WRAP_DIAG=1 logs each entry point's first call
+ * on the render path.  KAROO_UVANIM_DIAG=1 logs each entry point's first call
  * and a running census, since no gate observes texture coordinates. */
 
 #include <strings.h>
@@ -17,7 +17,7 @@
 #include <math.h>
 #include <new>
 
-#include "wrapperobject.h"
+#include "uvanimator.h"
 #include <stdlib.h>
 #include "logger.h"
 #include "renderdevice.h"
@@ -41,21 +41,21 @@ static inline unsigned int snapshot_count(AnimatedMesh *mesh)
     return (unsigned int)mesh->frameCount() * mesh->vertexCount();
 }
 
-enum WrapFx { WRAP_FX_OFF = 0, WRAP_FX_SCROLLBACK, WRAP_FX_SINEFLIP,
-              WRAP_FX_ENVFLIP };
+enum WrapFx { UVANIM_FX_OFF = 0, UVANIM_FX_SCROLLBACK, UVANIM_FX_SINEFLIP,
+              UVANIM_FX_ENVFLIP };
 
-static int wrap_fx(void)
+static int uvanim_fx(void)
 {
     static int cached = -1;
     if (cached < 0) {
         char buf[32];
-        cached = WRAP_FX_OFF;
-        if (sysdev::getEnv("KAROO_WRAP_FX", buf, sizeof(buf))) {
-            if (strcasecmp(buf, "scrollback") == 0)     cached = WRAP_FX_SCROLLBACK;
-            else if (strcasecmp(buf, "sineflip") == 0)  cached = WRAP_FX_SINEFLIP;
-            else if (strcasecmp(buf, "envflip") == 0)   cached = WRAP_FX_ENVFLIP;
+        cached = UVANIM_FX_OFF;
+        if (sysdev::getEnv("KAROO_UVANIM_FX", buf, sizeof(buf))) {
+            if (strcasecmp(buf, "scrollback") == 0)     cached = UVANIM_FX_SCROLLBACK;
+            else if (strcasecmp(buf, "sineflip") == 0)  cached = UVANIM_FX_SINEFLIP;
+            else if (strcasecmp(buf, "envflip") == 0)   cached = UVANIM_FX_ENVFLIP;
         }
-        g_logger.write("wrapper: FX mode = %d\n", cached);
+        g_logger.write("uvanimator: FX mode = %d\n", cached);
     }
     return cached;
 }
@@ -66,7 +66,7 @@ static bool wrap_diag(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (sysdev::getEnv("KAROO_WRAP_DIAG", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_UVANIM_DIAG", buf, sizeof(buf)))
             cached = (buf[0] != '0');
     }
     return cached != 0;
@@ -80,41 +80,41 @@ static const char *const kWrapEntryName[WE_COUNT] = {
     "scrollUVs", "updateObjectTransform", "ctor", "dtor"
 };
 
-static std::atomic<long> g_wrapCalls[WE_COUNT];
-static std::atomic<long> g_wrapVerts;
+static std::atomic<long> g_uvanimCalls[WE_COUNT];
+static std::atomic<long> g_uvanimVerts;
 
-static void wrap_census(int entry, unsigned int verts)
+static void uvanim_census(int entry, unsigned int verts)
 {
     if (!wrap_diag())
         return;
-    long n = ++g_wrapCalls[entry];
-    g_wrapVerts += (long)verts;
+    long n = ++g_uvanimCalls[entry];
+    g_uvanimVerts += (long)verts;
     if (n == 1)
-        g_logger.write("wrapper: first %s\n", kWrapEntryName[entry]);
+        g_logger.write("uvanimator: first %s\n", kWrapEntryName[entry]);
     else if ((n % 20000) == 0)
-        g_logger.write("wrapper: %s x%ld (uv writes so far %ld)\n",
-                  kWrapEntryName[entry], n, g_wrapVerts.load());
+        g_logger.write("uvanimator: %s x%ld (uv writes so far %ld)\n",
+                  kWrapEntryName[entry], n, g_uvanimVerts.load());
 }
 
-WrapperObject::WrapperObject()
+UVAnimator::UVAnimator()
 {
     pBaseUV_ = NULL;
     pMesh_   = NULL;
     dirty_   = 0;
-    wrap_census(WE_CTOR, 0);
+    uvanim_census(WE_CTOR, 0);
 }
 
 /* PRESERVED: frees without clearing pBaseUV_. */
-WrapperObject::~WrapperObject()
+UVAnimator::~UVAnimator()
 {
     delete[] pBaseUV_;
-    wrap_census(WE_DTOR, 0);
+    uvanim_census(WE_DTOR, 0);
 }
 
 /* PRESERVED: a null mesh is ignored entirely: the old snapshot, the mesh and
  * the dirty flag are left as they were.  A failed allocation is not checked.
  */
-void WrapperObject::setMesh(AnimatedMesh *mesh)
+void UVAnimator::setMesh(AnimatedMesh *mesh)
 {
     if (mesh == NULL)
         return;
@@ -124,7 +124,7 @@ void WrapperObject::setMesh(AnimatedMesh *mesh)
     pMesh_   = mesh;
 
     unsigned int count = snapshot_count(mesh);
-    pBaseUV_ = new (std::nothrow) WrapperUV[count];
+    pBaseUV_ = new (std::nothrow) AnimatedUV[count];
     dirty_   = 0;
 
     for (unsigned int i = 0; i < count; ++i) {
@@ -132,19 +132,19 @@ void WrapperObject::setMesh(AnimatedMesh *mesh)
         pBaseUV_[i].u = uv[0];
         pBaseUV_[i].v = uv[1];
     }
-    wrap_census(WE_SETMESH, count);
+    uvanim_census(WE_SETMESH, count);
 }
 
 /* PRESERVED: pMesh_ is left set, so a later flush would read the freed
  * snapshot; only the owning container's destructor calls this. */
-void WrapperObject::releaseSnapshot()
+void UVAnimator::releaseSnapshot()
 {
     delete[] pBaseUV_;
     pBaseUV_ = NULL;
-    wrap_census(WE_RELEASE, 0);
+    uvanim_census(WE_RELEASE, 0);
 }
 
-void WrapperObject::flush()
+void UVAnimator::flush()
 {
     if (pMesh_ == NULL || dirty_ == 0)
         return;
@@ -157,18 +157,18 @@ void WrapperObject::flush()
     }
     pMesh_->touchVertices(0, count);
     dirty_ = 0;
-    wrap_census(WE_FLUSH, count);
+    uvanim_census(WE_FLUSH, count);
 }
 
 /* The tick count is widened unsigned. */
-void WrapperObject::applySineWave(unsigned int ticks, float rate,
+void UVAnimator::applySineWave(unsigned int ticks, float rate,
                                   float amplitude, float skew)
 {
     double angle = (double)ticks * (double)rate;
     float  s     = (float)sin(angle);
     float  c     = (float)cos(angle);
 
-    if (wrap_fx() == WRAP_FX_SINEFLIP)
+    if (uvanim_fx() == UVANIM_FX_SINEFLIP)
         s = -s;
 
     if (pMesh_ != NULL && pMesh_->vertexCount() != 0) {
@@ -186,17 +186,17 @@ void WrapperObject::applySineWave(unsigned int ticks, float rate,
             count = pMesh_->vertexCount();
         }
         pMesh_->touchVertices(0, count);
-        wrap_census(WE_SINE, count);
+        uvanim_census(WE_SINE, count);
     }
     dirty_ = 1;
 }
 
-void WrapperObject::scrollUVs(unsigned int ticks, int axisU, float speed)
+void UVAnimator::scrollUVs(unsigned int ticks, int axisU, float speed)
 {
     if (pMesh_ != NULL) {
         //     // The delta is rounded to float once; each vertex gets a float add.
         float delta = (float)((double)ticks * (double)speed);
-        if (wrap_fx() == WRAP_FX_SCROLLBACK)
+        if (uvanim_fx() == UVANIM_FX_SCROLLBACK)
             delta = -delta;
 
         unsigned int count = pMesh_->vertexCount();
@@ -209,12 +209,12 @@ void WrapperObject::scrollUVs(unsigned int ticks, int axisU, float speed)
         }
         pMesh_->touchVertices(0, count);
         if (count != 0)
-            wrap_census(WE_SCROLL, count);
+            uvanim_census(WE_SCROLL, count);
     }
     dirty_ = 1;
 }
 
-void WrapperObject::updateObjectTransform(RenderDevice *dev,
+void UVAnimator::updateObjectTransform(RenderDevice *dev,
                                           unsigned short frame)
 {
     //     // PRESERVED: an out-of-range frame returns without setting dirty_; every
@@ -238,7 +238,7 @@ void WrapperObject::updateObjectTransform(RenderDevice *dev,
 
     unsigned int count = pMesh_->vertexCount();
     if (count != 0) {
-        bool flip = (wrap_fx() == WRAP_FX_ENVFLIP);
+        bool flip = (uvanim_fx() == UVANIM_FX_ENVFLIP);
 
         for (unsigned int i = 0; i < count; ++i) {
             unsigned int index = (unsigned int)frame * count + i;
@@ -259,7 +259,7 @@ void WrapperObject::updateObjectTransform(RenderDevice *dev,
             count = pMesh_->vertexCount();
         }
         pMesh_->touchVertices(frame * count, count);
-        wrap_census(WE_ENVMAP, count);
+        uvanim_census(WE_ENVMAP, count);
     }
     dirty_ = 1;
 }

@@ -202,7 +202,7 @@ void ThemeObjectTypeSlot::release()
     for (int i = 0; i < 8; i++) {
         ThemeLevelObject &r = records_[i];
         r.explode_.release();
-        r.wrapper_.releaseSnapshot();
+        r.uvAnimator_.releaseSnapshot();
         for (uint32_t k = 0; k < r.dwInstanceCount_; k++) {
             if (r.pParticleSystems_[k] != NULL) {
                 delete r.pParticleSystems_[k];
@@ -661,7 +661,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         }
         rec.at->kind_  = THEME_KIND_MODEL;
         rec.at->pMesh_ = mesh;
-        rec.at->wrapper_.setMesh(mesh);
+        rec.at->uvAnimator_.setMesh(mesh);
         rec.at->animTable_.load(tok[2]);
         if (is(tok[3], "nomovestates"))
             rec.at->bNoMoveStates_ = 1;

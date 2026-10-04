@@ -60,7 +60,7 @@ public:
     void releaseModelBuffers();
 
     /* Vertices [first, first + count) of vertexData were rewritten (the UV
-     * effects of WrapperObject do it every frame): the copy on the device
+     * effects of UVAnimator do it every frame): the copy on the device
      * follows at the next draw. */
     void touchVertices(uint32_t first, uint32_t count);
 

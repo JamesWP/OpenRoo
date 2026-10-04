@@ -17,7 +17,7 @@ add_library(entities OBJECT
     player.cpp
     slideobject.cpp
     splinepath.cpp
-    wrapperobject.cpp)
+    uvanimator.cpp)
 target_include_directories(entities PRIVATE
     .
     ../log

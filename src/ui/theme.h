@@ -13,7 +13,7 @@
 #include <stddef.h>
  
 #include "texture.h"
-#include "wrapperobject.h"
+#include "uvanimator.h"
 #include "ani.h"
 #include "animatedmesh.h"
 #include "levelobject.h"
@@ -45,13 +45,13 @@ class ThemeLevelObject {
 public:
      
 
-    // The wrapper and explode-debris members build and tear themselves down.
+    // The UV animator and explode-debris members build and tear themselves down.
     ThemeLevelObject() = default;
 
     ThemeObjectKind kind() const { return kind_; }
     AnimatedMesh   *mesh() const { return pMesh_; }
-    WrapperObject &wrapper()             { return wrapper_; }
-    const WrapperObject &wrapper() const { return wrapper_; }
+    UVAnimator &uvAnimator()             { return uvAnimator_; }
+    const UVAnimator &uvAnimator() const { return uvAnimator_; }
     ExplodeDebris &explodeDebris()       { return explode_; }
     const ExplodeDebris &explodeDebris() const { return explode_; }
     AnimTable     &animTable()           { return animTable_; }
@@ -111,7 +111,7 @@ private:
     friend class ThemeObjectTypeSlot;  // and releases them
     ThemeObjectKind kind_;
     AnimatedMesh   *pMesh_;
-    WrapperObject wrapper_;
+    UVAnimator uvAnimator_;
     ExplodeDebris   explode_;  // set up only by `explode`, which needs the mesh first
     uint32_t        bExplode_;
     float        flExplodeDir_[3];  // (t4, t5, t6) rotated -90 degrees about X

@@ -39,7 +39,7 @@
 #include "camera.h"
 #include "ani.h"
 #include "animatedmesh.h"
-#include "wrapperobject.h"
+#include "uvanimator.h"
 #include "explodedebris.h"
 #include "d3dmath.h"
 
@@ -175,18 +175,18 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
     const float *p = sub->flEffectParams;
     switch (sub->effect) {
     case 0:
-        rec->wrapper().flush();
+        rec->uvAnimator().flush();
         break;
     case 4:
-        rec->wrapper().applySineWave((unsigned int)(long long)now, p[0], p[1], p[2]);
+        rec->uvAnimator().applySineWave((unsigned int)(long long)now, p[0], p[1], p[2]);
         break;
     case 5:
         if (!game->config()->videoReflection())
             return;
-        rec->wrapper().updateObjectTransform(dev, (unsigned short)frame);
+        rec->uvAnimator().updateObjectTransform(dev, (unsigned short)frame);
         break;
     case 6:
-        rec->wrapper().scrollUVs((unsigned int)(long long)now, p[0] != 0.0f ? 1 : 0, p[1]);
+        rec->uvAnimator().scrollUVs((unsigned int)(long long)now, p[0] != 0.0f ? 1 : 0, p[1]);
         break;
     default:
         break;
