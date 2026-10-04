@@ -189,7 +189,7 @@ void gamestate_dump(const char *reason)
 
     std::ofstream fp(path);  // text mode
     if (!fp) {
-        g_logger.write("gamestate: dump: cannot open %s\n", path);
+        g_logger.write("gamestate: dump: cannot open %s\n", path.c_str());
         return;
     }
 
@@ -245,5 +245,5 @@ void gamestate_dump(const char *reason)
     fp.close();
 
     g_logger.write("gamestate: dumped end state (%s, from frame %lu of %lu) to %s\n",
-              reason, (unsigned long)g_live_frame, (unsigned long)g_frame, path);
+              reason, (unsigned long)g_live_frame, (unsigned long)g_frame, path.c_str());
 }

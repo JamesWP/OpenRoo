@@ -45,5 +45,3 @@ KarooOwn.exe
 # Where launch.sh runs the game: what it writes, plus links into game/
 /run/
 
-# SDL3 MinGW package, from tools/fetch_sdl3.sh
-/third_party/

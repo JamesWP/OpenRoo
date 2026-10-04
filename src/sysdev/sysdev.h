@@ -19,6 +19,9 @@ unsigned tickMs();
  * finer resolution where the system offers one. */
 unsigned timerMs();
 
+/* Gives the processor away for about this long. */
+void sleepMs(unsigned ms);
+
 /* A high-resolution counter and its ticks per second. */
 unsigned long long perfCounter();
 unsigned long long perfFrequency();

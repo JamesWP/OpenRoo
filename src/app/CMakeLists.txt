@@ -19,5 +19,6 @@ target_include_directories(app PRIVATE
     ../input
     ../level
     ../render
+    ../testing
     ../ui)
 

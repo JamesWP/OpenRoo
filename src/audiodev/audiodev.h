@@ -1,5 +1,5 @@
 /* The platform sound layer: the only code that may touch the system audio
- * APIs (SDL audio).  Everything here is opaque and
+ * APIs (SDL_mixer).  Everything here is opaque and
  * free of platform headers; the game's sound logic (src/audio) is written
  * against this file alone, so a port replaces the .cpp files beside it.
  *
@@ -16,12 +16,12 @@ namespace audiodev {
 typedef void (*LogFn)(const char *fmt, ...);
 void setLog(LogFn fn);
 
-/* The master volume, both channels packed (low word left, high word right;
- * only their mean is used), applied to this program's own output, and a
- * fire-and-forget sound for the launcher dialogs. */
-unsigned masterVolume();
-void     setMasterVolume(unsigned packed);
-void     playSystemSound(const char *path, bool async);
+/* The two volumes, each 0 (silent) to 1: the music, and every other sound.
+ * They apply to this program's own output.  A fire-and-forget sound for the
+ * launcher dialogs plays at the effects volume. */
+void setEffectsVolume(float gain);
+void setMusicVolume(float gain);
+void playSystemSound(const char *path, bool async);
 
 struct DeviceConfig {
     void *window;        // the native window handle that owns the sound

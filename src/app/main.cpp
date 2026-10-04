@@ -28,7 +28,10 @@
 #include "cdm.h"
 #include "renderstate.h"
 #include "clock.h"
+#include <string.h>
 #include "videodev.h"
+#include "record.h"
+#include "policy.h"
 #include "levelplacements.h"
 #include "theme.h"
 #include "rendergameframe.h"
@@ -57,11 +60,36 @@ static void delete_game(Game *g)       { delete g; }
 
 static bool g_norender;
 
-/* Between messages: a frame, unless the intro is still playing. */
+/* Draws the intro's current frame, when there is a new one. */
+static void present_movie_frame()
+{
+    if (!g_movie.update()) {
+        sysdev::sleepMs(2);  // nothing due yet
+        return;
+    }
+    int w, h;
+    const unsigned char *rgba = g_movie.frame(&w, &h);
+    if (!rgba)
+        return;
+    static Image image;
+    if (image.width != w || image.height != h) {
+        image.width = w;
+        image.height = h;
+        image.sourceBits = 24;
+        snprintf(image.name, sizeof(image.name), "intro");
+        image.rgba.resize((size_t)w * h * 4);
+    }
+    memcpy(image.rgba.data(), rgba, image.rgba.size());
+    g_renderDevice->PresentImage(image);
+}
+
+/* Between messages: a frame, or the intro's while it plays. */
 static void idle()
 {
-    // Cleared by the window handler when the movie finishes.
-    if (!g_movie.playing() && !g_norender)
+    // Cleared when the movie finishes, is skipped or (stub) gets its message.
+    if (g_movie.playing())
+        present_movie_frame();
+    else if (!g_norender)
         Render_RenderGameFrame();
 }
 
@@ -245,8 +273,13 @@ int Main_WinMain(const char *lpCmdLine)
     Render_ConfigureRenderState();
     hooks_ClockInit();
 
-    const std::string path = std::string(g_gameDir) + "\\Video\\intro.avi";
-    if (g_movie.load(hWnd, path.c_str()))
+    // The intro is only shown to a person at a display: a headless, replayed
+    // or autoplayed run takes it as ending at once, so its frame counts do
+    // not depend on it.
+    const bool show = !RenderDevice::headless() && !record_replaying()
+                      && !policy_active();
+    const std::string path = std::string(g_gameDir) + "/video/INTRO.AVI";
+    if (g_movie.load(hWnd, path.c_str(), show))
         g_movie.play();
     else
         g_logger.logMessage(3, "MAIN: Couldn't load %s .", path.c_str());

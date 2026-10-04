@@ -67,7 +67,7 @@ done
 # The input bindings: the game rewrites this file, so run/ gets a copy.
 [[ -f run/ProgableControl.sav ]] || cp game/ProgableControl.sav run/
 cp -p "$BUILD_DIR/$EXE" run/
-cp -p "$BUILD_DIR/SDL3.dll" run/
+cp -p "$BUILD_DIR"/*.dll run/
 
 # Karoo.cfg is ours, not the game's.  Without it Game::Load leaves the video
 # mode index and adapter GUID zero-initialised, so the game comes up in

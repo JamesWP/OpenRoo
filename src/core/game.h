@@ -277,8 +277,10 @@ public:
     void           setCdMixerVolume(unsigned int v)  { config_.setCdMixerVolume(v); }
     unsigned char  waveVolume() const                { return config_.waveVolume(); }
     void           setWaveVolume(unsigned char p)    { config_.setWaveVolume(p); }
-    /* Both channels packed, for waveOutSetVolume. */
+    /* Both channels packed (the saved format). */
     unsigned int   waveOutVolume() const             { return config_.waveOutVolume(); }
+    /* The sound effects' volume, 0..1: the left channel's share of full. */
+    float          effectsGain() const               { return (float)(config_.waveOutVolume() & 0xffff) / 65535.0f; }
     void           setWaveOutVolume(unsigned int v)  { config_.setWaveOutVolume(v); }
 
     /* ── camera and controls ────────────────────────────────────────── */

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # Configure with -DCMAKE_TOOLCHAIN_FILE=cmake/mingw.cmake
-project(OpenRoo CXX RC)
+project(OpenRoo VERSION 0.1.0 LANGUAGES CXX)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
@@ -11,18 +11,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 add_compile_options(-Wall -Wextra)
 
-# SDL3 (tools/fetch_sdl3.sh), the platform groups' only dependency besides
-# Direct3D.  Imported, so only the groups that name it see its headers.
-set(SDL3_ROOT "${PROJECT_SOURCE_DIR}/third_party/SDL3" CACHE PATH "SDL3 MinGW development package")
-set(SDL3_PREFIX "${SDL3_ROOT}/x86_64-w64-mingw32")
-if(NOT EXISTS "${SDL3_PREFIX}/lib/libSDL3.dll.a")
-    message(FATAL_ERROR "SDL3 not found in ${SDL3_ROOT}: run tools/fetch_sdl3.sh or pass -DSDL3_ROOT")
-endif()
-add_library(sdl3 SHARED IMPORTED)
-set_target_properties(sdl3 PROPERTIES
-    IMPORTED_IMPLIB "${SDL3_PREFIX}/lib/libSDL3.dll.a"
-    IMPORTED_LOCATION "${SDL3_PREFIX}/bin/SDL3.dll"
-    INTERFACE_INCLUDE_DIRECTORIES "${SDL3_PREFIX}/include")
+# SDL3 and SDL3_mixer, fetched here (cmake/FetchSDL.cmake): the platform
+# groups' only dependency besides Direct3D.  Imported, so only the groups that
+# name them see their headers.
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+include(FetchSDL)
+include(FetchFFmpeg)  # the intro movie's decoder
 
 # One directory under src/ is one group.  A group's include path is its own
 # folder plus its dependencies' (private), so the lists in src/*/CMakeLists.txt
@@ -40,9 +34,9 @@ target_link_libraries(KarooOwn PRIVATE
     app audio audiodev core d3d entities input inputdev level render testing ui videodev windev sysdev log
     -static-libgcc -static-libstdc++ -static)
 
-# SDL3.dll next to the executable (launch.sh copies both into run/).
+# The SDL and FFmpeg DLLs next to the executable (launch.sh copies them into run/).
 add_custom_command(TARGET KarooOwn POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SDL3_PREFIX}/bin/SDL3.dll" $<TARGET_FILE_DIR:KarooOwn>)
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_RUNTIME_DLLS} ${FFMPEG_RUNTIME_DLLS} $<TARGET_FILE_DIR:KarooOwn>)
 
 # Only the platform groups may include SDL.
 add_custom_target(check-native-sdl ALL
