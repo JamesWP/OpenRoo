@@ -66,7 +66,7 @@ int SaveSlots::loadAllSlotFiles(const char *name, char key)
     int slot;
 
     for (slot = 0; slot < (int)count(); slot++) {
-        sprintf(path, "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
+        snprintf(path, sizeof(path), "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
         std::ifstream in(sysdev::nativePath(path));  // text mode, as the original wrote them
         if (!in) {
             ps_log("sav load", path, 0);
@@ -90,7 +90,7 @@ int SaveSlots::writeAllSlotFiles(const char *name, char key)
     for (slot = 0; slot < (int)count(); slot++) {
         unsigned char rec[SAVE_SLOT_BYTES];
         this->slot((unsigned char)slot)->encode(rec);
-        sprintf(path, "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
+        snprintf(path, sizeof(path), "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
         std::ofstream outFile(sysdev::nativePath(path));  // text mode, as the original wrote them
         if (!outFile) {
             ps_log("sav save", path, 0);

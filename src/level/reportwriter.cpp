@@ -185,7 +185,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
 
         {
             char scriptPath[256];
-            sprintf(scriptPath, GS_OPEN_FMT_SCRIPTS, g_gameDir,
+            snprintf(scriptPath, sizeof(scriptPath), GS_OPEN_FMT_SCRIPTS, g_gameDir,
                     self->levelNameBuffer());
 
             sink << GS_RPT_STARS;

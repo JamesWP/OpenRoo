@@ -20,14 +20,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
-add_compile_options(-Wall -Wextra)
-
 # SDL3 and SDL3_mixer, fetched here (cmake/FetchSDL.cmake): the platform
 # groups' only dependency.  Imported, so only the groups that
 # name them see their headers.
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(FetchSDL)
 include(FetchFFmpeg)  # the intro movie's decoder
+
+# Warnings are errors for our own groups only; set after the fetched
+# dependencies are added so it does not reach them.
+add_compile_options(-Wall -Wextra -Werror)
 
 # One directory under src/ is one group.  A group's include path is its own
 # folder plus its dependencies' (private), so the lists in src/*/CMakeLists.txt

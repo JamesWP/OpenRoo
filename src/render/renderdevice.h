@@ -284,7 +284,7 @@ private:
     PipelineState            state_;
     std::vector<DisplayMode> modes_;
     DisplayMode             *mode_;
-    char                     lastError_[100];
+    char                     lastError_[900];
 };
 
 extern RenderDevice *g_renderDevice;

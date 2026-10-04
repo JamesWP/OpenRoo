@@ -108,19 +108,19 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
             Report_WriteLevelReport(self, GS_RPT_FILE);
     }
 
-    sprintf(path, GS_WAV_TIME_OUT, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_TIME_OUT, g_gameDir);
     self->fixedSounds()->timeOut = sm->acquireStatic(path, 0);
-    sprintf(path, GS_WAV_LAST_SECONDS, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_LAST_SECONDS, g_gameDir);
     self->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);
-    sprintf(path, GS_WAV_COUNT, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_COUNT, g_gameDir);
     self->fixedSounds()->count = sm->acquireStatic(path, 0);
-    sprintf(path, GS_WAV_MENU_UP_DOWN, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_MENU_UP_DOWN, g_gameDir);
     self->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);
-    sprintf(path, GS_WAV_SWITCH, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_SWITCH, g_gameDir);
     self->fixedSounds()->switchClick = sm->acquireStatic(path, 0);
-    sprintf(path, GS_WAV_LEVEL_COMPLETED, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_LEVEL_COMPLETED, g_gameDir);
     self->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);
-    sprintf(path, GS_WAV_SPLAT, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_SPLAT, g_gameDir);
     self->player()->setSoundA7(sm->acquireStatic(path, 1));
     sm->setup(self->sound3D());
 
