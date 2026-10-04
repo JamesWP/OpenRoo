@@ -155,6 +155,7 @@ void WrapperObject::flush()
         uv[0] = pBaseUV_[i].u;
         uv[1] = pBaseUV_[i].v;
     }
+    pMesh_->touchVertices(0, count);
     dirty_ = 0;
     wrap_census(WE_FLUSH, count);
 }
@@ -184,6 +185,7 @@ void WrapperObject::applySineWave(unsigned int ticks, float rate,
 
             count = pMesh_->vertexCount();
         }
+        pMesh_->touchVertices(0, count);
         wrap_census(WE_SINE, count);
     }
     dirty_ = 1;
@@ -205,6 +207,7 @@ void WrapperObject::scrollUVs(unsigned int ticks, int axisU, float speed)
             uv[axis] += delta;
             count = pMesh_->vertexCount();
         }
+        pMesh_->touchVertices(0, count);
         if (count != 0)
             wrap_census(WE_SCROLL, count);
     }
@@ -255,6 +258,7 @@ void WrapperObject::updateObjectTransform(RenderDevice *dev,
             }
             count = pMesh_->vertexCount();
         }
+        pMesh_->touchVertices(frame * count, count);
         wrap_census(WE_ENVMAP, count);
     }
     dirty_ = 1;

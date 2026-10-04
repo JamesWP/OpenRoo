@@ -7,6 +7,7 @@
  * KAROO_FAKTMESH_FX=half draws only the first half of each mesh's triangles.
  */
 
+#include <algorithm>
 #include <strings.h>
 #include <atomic>
 #include <stdio.h>
@@ -67,9 +68,16 @@ long CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
     if (fx_half())
         count = (count / 2 / 3) * 3;  // keep it a whole number of triangles
 
-    if (!vb_ && !vertexData_.empty())
+    if (!vb_ && !vertexData_.empty()) {
         vb_ = dev->CreateVertexBuffer(MESH_FVF, (uint32_t)vertexData_.size(),
-                                      BufferUsage::Static, vertexData_.data());
+                                      BufferUsage::Dynamic, vertexData_.data());
+        dirtyFirst_ = dirtyEnd_ = 0;
+    }
+    if (vb_ && dirtyEnd_ > dirtyFirst_) {
+        dev->UpdateVertexBuffer(vb_, dirtyFirst_, vertexData_.data() + dirtyFirst_,
+                                dirtyEnd_ - dirtyFirst_);
+        dirtyFirst_ = dirtyEnd_ = 0;
+    }
     long hr = vb_ && dev->DrawBuffer(Prim::TriangleList, vb_,
                                      frame * this->vertexCount(), count, flags)
                ? 0 : (long)0x80004005u;  // S_OK : E_FAIL
@@ -104,11 +112,26 @@ void CFaktMesh::releaseModelBuffers()
 {
     RenderDevice::DestroyVertexBuffer(vb_);
     vb_ = nullptr;
+    dirtyFirst_ = dirtyEnd_ = 0;
     std::vector<MeshVertex>().swap(vertexData_);
     std::vector<FrameRecord>().swap(frameRecords_);
     std::string().swap(pszName_);
     dwVertexCount_ = 0;
     wFrameCount_   = 1;
+}
+
+void CFaktMesh::touchVertices(uint32_t first, uint32_t count)
+{
+    if (!vb_ || count == 0 || first >= vertexData_.size())
+        return;
+    const uint32_t end = (uint32_t)std::min<size_t>(vertexData_.size(), (size_t)first + count);
+    if (dirtyEnd_ == dirtyFirst_) {
+        dirtyFirst_ = first;
+        dirtyEnd_   = end;
+    } else {
+        dirtyFirst_ = std::min(dirtyFirst_, first);
+        dirtyEnd_   = std::max(dirtyEnd_, end);
+    }
 }
 
 /* Only the four strides are set; the other eight strided entries and every

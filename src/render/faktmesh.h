@@ -59,6 +59,11 @@ public:
 
     void releaseModelBuffers();
 
+    /* Vertices [first, first + count) of vertexData were rewritten (the UV
+     * effects of WrapperObject do it every frame): the copy on the device
+     * follows at the next draw. */
+    void touchVertices(uint32_t first, uint32_t count);
+
     void  *vertexData() const { return const_cast<MeshVertex *>(vertexData_.data()); }
     uint32_t vertexCount() const { return dwVertexCount_; }
     void  *frameRecords() const { return const_cast<FrameRecord *>(frameRecords_.data()); }
@@ -85,8 +90,10 @@ private:
     MeshStridedEntry strided_[12];
 
     /* All the frames' vertices on the device, made by the first draw and
-     * dropped with the vertices. */
+     * dropped with the vertices, and the range of them rewritten since the
+     * device last had them. */
     VertexBuffer *vb_ = nullptr;
+    uint32_t      dirtyFirst_ = 0, dirtyEnd_ = 0;
 };
 
 /* The two character meshes, loaded once at startup (renderstate.cpp):
