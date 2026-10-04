@@ -78,9 +78,14 @@ long AnimatedMesh::drawMesh(RenderDevice *dev, uint32_t frame,
                                 dirtyEnd_ - dirtyFirst_);
         dirtyFirst_ = dirtyEnd_ = 0;
     }
+    const bool moved = !uvTransform_.isIdentity();
+    if (moved)
+        dev->SetUVTransform(0, uvTransform_);
     long hr = vb_ && dev->DrawBuffer(Prim::TriangleList, vb_,
                                      frame * this->vertexCount(), count, flags)
                ? 0 : (long)0x80004005u;  // S_OK : E_FAIL
+    if (moved)
+        dev->SetUVTransform(0, UVTransform());
 
     static std::atomic<long> logged = 0;
     if (++logged <= MESH_LOG_FIRST)
