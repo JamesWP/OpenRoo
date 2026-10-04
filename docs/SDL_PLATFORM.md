@@ -51,6 +51,12 @@ page.)
   rolloff) and hands the mixer each source's position relative to it, with
   distance scaled by the rolloff factor. Distance falloff is SDL_mixer's own
   curve, not DirectSound's, so levels will differ.
+- **Switching 3D on or off** (the Audio options) rebuilds every 3D sound in
+  DirectSound, which silenced anything playing; `Buffer::reload3D` therefore
+  stops the track when the mode changes. The game relies on this: it starts
+  its looping level sounds again afterwards and drops the old handles, so a
+  loop left playing could never be stopped (the bees and cuckoo that carried
+  into later levels).
 - **Music** loops inside the mixer; the window-message hook
   (`Music::handleWindowMessage`) is now vestigial and returns false.
 - Sounds are decoded by SDL_mixer, so `audiodev` no longer has its own `.wav`
@@ -60,7 +66,10 @@ page.)
 
 `videodev::Player::load(window, path, show)` decodes `video/INTRO.AVI`
 (Cinepak) with FFmpeg as it plays, converts frames to RGBA and queues the
-sound on an SDL audio stream. `main.cpp` presents each new frame itself. The
+sound on an SDL audio stream. `main.cpp` presents each new frame itself. Any key
+skips it, but only one pressed *during* the intro: the release of the key
+that started the game (the launcher's Enter) used to end it after one frame.
+The
 movie is **not shown** (it "plays" for no time, as the old stub did) when the
 run is headless, a replay, or an autoplay policy, so recorded runs are
 unchanged.

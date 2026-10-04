@@ -103,6 +103,9 @@ bool Buffer::reload3D(Device &dev, bool want3D)
     if (!s->track) return false;
     if (want3D == s->threeD) return true;
 
+    // The sound is rebuilt for the new mode, so whatever was playing stops: the
+    // game starts its looping sounds again afterwards and forgets these.
+    MIX_StopTrack(s->track, 0);
     s->threeD = s->spatial = want3D;
     if (want3D) {
         s->listener = dev.state()->listener;
