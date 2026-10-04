@@ -3,7 +3,7 @@
 A reimplementation of **Ka'roo**, a 1990s Windows 3D puzzle-platform game,
 written from scratch in C++. It builds natively for Linux (`OpenRoo`) and
 cross-compiles to Windows (`OpenRoo.exe`, which also runs on Linux under
-Proton/Wine).  The platform is a configure option, `OPENROO_PLATFORM`; all
+Proton/Wine).  The platform is a configure option, `OPENROO_PLATFORM` (default `linux`); all
 platform-specific code lives in the `*dev` libraries under `src/` (`windev`,
 `sysdev`, `audiodev`, `inputdev`, `videodev`, `gl`), one header each with a
 `_windows` and a `_linux` source file behind it.
@@ -25,15 +25,16 @@ graphics driver needs to offer it.
 
 ```bash
 python3 tools/import_assets.py --from KaRoo.zip   # once: fills game/ from your copy
-cmake -S . -B build                               # once; Windows (the default); fetches SDL3 and FFmpeg
-cmake --build build -j                            # build/OpenRoo.exe
+cmake -S . -B build                               # once; native Linux; fetches SDL3
+cmake --build build -j                            # build/OpenRoo
 bash launch.sh                                    # run it (in run/)
 bash launch.sh --headless --auto-exit 30          # no display at all
 
-cmake -S . -B build-linux -DOPENROO_PLATFORM=linux   # the native Linux build
-cmake --build build-linux -j                         # build-linux/OpenRoo
-OPENROO_PLATFORM=linux bash launch.sh                # launch.sh and the test tools take it too
+cmake -S . -B build -DOPENROO_PLATFORM=windows    # instead: the Windows build (build/OpenRoo.exe)
 ```
+
+`launch.sh` runs whichever platform `build/` was configured for (Windows
+builds under Proton).
 
 The game file defaults to `JJ`; name another on the command line.
 

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
-# The platform to build for: -DOPENROO_PLATFORM=windows (the default; cross-compiled
-# with MinGW-w64, run under Wine/Proton) or -DOPENROO_PLATFORM=linux (native).
-set(OPENROO_PLATFORM "windows" CACHE STRING "windows or linux")
-set_property(CACHE OPENROO_PLATFORM PROPERTY STRINGS windows linux)
+# The platform to build for: -DOPENROO_PLATFORM=linux (the default; native) or
+# -DOPENROO_PLATFORM=windows (cross-compiled with MinGW-w64, run under Wine/Proton).
+set(OPENROO_PLATFORM "linux" CACHE STRING "linux or windows")
+set_property(CACHE OPENROO_PLATFORM PROPERTY STRINGS linux windows)
 if(OPENROO_PLATFORM STREQUAL "windows")
     if(NOT CMAKE_TOOLCHAIN_FILE)
         set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/mingw.cmake")

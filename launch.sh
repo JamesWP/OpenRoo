@@ -30,19 +30,19 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-# OPENROO_PLATFORM=linux runs the native Linux build (build-linux/OpenRoo)
-# directly; the default, windows, runs the Windows build under Proton.  It is
-# the CMake option of the same name.
-PLATFORM=${OPENROO_PLATFORM:-windows}
-case "$PLATFORM" in
-  linux)   NATIVE=1; EXE=OpenRoo;     BUILD_DIR=${BUILD_DIR:-build-linux} ;;
-  windows) NATIVE=0; EXE=OpenRoo.exe; BUILD_DIR=${BUILD_DIR:-build} ;;
-  *) echo "ERROR: OPENROO_PLATFORM must be windows or linux" >&2; exit 1 ;;
-esac
-CONFIGURE_ARGS=(-DOPENROO_PLATFORM="$PLATFORM")
+# The platform is whatever build/ was configured for (the CMake option
+# OPENROO_PLATFORM, linux unless told otherwise at configure time): a Linux
+# build runs directly, a Windows build runs under Proton.
+BUILD_DIR=${BUILD_DIR:-build}
 # Bring the build up to date first; a failed build does not launch a stale exe.
-[[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" "${CONFIGURE_ARGS[@]}" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
+[[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
 cmake --build "$BUILD_DIR" -j"$(nproc)" >&2 || { echo "ERROR: build failed"; exit 1; }
+PLATFORM=$(sed -n 's/^OPENROO_PLATFORM:[A-Z]*=//p' "$BUILD_DIR/CMakeCache.txt")
+case "$PLATFORM" in
+  linux)   NATIVE=1; EXE=OpenRoo ;;
+  windows) NATIVE=0; EXE=OpenRoo.exe ;;
+  *) echo "ERROR: $BUILD_DIR has no OPENROO_PLATFORM (got '$PLATFORM'); reconfigure it" >&2; exit 1 ;;
+esac
 [[ -f "$BUILD_DIR/$EXE" ]] || { echo "ERROR: $BUILD_DIR/$EXE missing after build"; exit 1; }
 
 roll_log() {
@@ -171,7 +171,7 @@ if (( NATIVE )); then
     KAROO_HEADLESS="$HEADLESS"
     "${FORWARD_ENV[@]}"
   )
-  (( DEBUG )) && { echo "ERROR: --debug needs Proton's winedbg; not available with OPENROO_PLATFORM=linux" >&2; exit 1; }
+  (( DEBUG )) && { echo "ERROR: --debug needs Proton's winedbg; not available on a Linux build" >&2; exit 1; }
   exec "${RUN_PREFIX[@]}" "./$EXE"
 fi
 
