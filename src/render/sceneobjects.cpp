@@ -18,7 +18,7 @@
  *                sub-object's effect.
  *
  * Rotation matrices are built row-major, in the transpose of D3DX's usual
- * convention; multiplication and SetTransform follow that convention
+ * convention; multiplication and SetWorld follow that convention
  * throughout.  The tile under a position is map->tile((int)x, -(int)z). */
 
 #include "renderdevice.h"
@@ -169,7 +169,7 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
 
     mat_translate(&R, P.x + pos->x, P.y + pos->y, P.z + pos->z);
     mat_mul(&M, &M, &R);
-    dev->SetTransform(Transform::World, &M);
+    dev->SetWorld(M);
 
     unsigned int frame = anim_frame(rec, now, animTime, animCode);
     const float *p = sub->flEffectParams;
@@ -221,7 +221,7 @@ static void draw_billboard(ThemeLevelObject *rec, const Tile *tile, const Vec3 *
     float y = oscillate(rec, tile, now, rec->posY());
     Mat4 T;
     mat_translate(&T, rec->posX() + pos->x, y + pos->y, rec->posZ() + pos->z);
-    dev->SetTransform(Transform::World, &T);
+    dev->SetWorld(T);
     dev->Draw(Prim::TriangleStrip, VertexFormat::Lit, v, 4, 0);
 }
 
@@ -250,7 +250,7 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
 {
     Mat4 T;
     mat_translate(&T, pos->x, pos->y, pos->z);
-    dev->SetTransform(Transform::World, &T);
+    dev->SetWorld(T);
     for (int i = 0; i < 4; i++)
         q[i].diffuse = 0x0fffffff;
 
@@ -336,11 +336,7 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
         break;
     }
 
-    StridedVertices sv = {};
-    sv.position     = { &q[0].x,       sizeof(SceneQuadVertex) };
-    sv.diffuse      = { &q[0].diffuse, sizeof(SceneQuadVertex) };
-    sv.texCoords[0] = { &q[0].u1,      sizeof(SceneQuadVertex) };
-    SceneQuad_Draw(dev, &sv, 4);
+    SceneQuad_Draw(dev, q);
 }
 
   void  
@@ -356,16 +352,19 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
         ThemeLevelObject *rec = &slot->records()[i];
         RenderDevice *dev = d3d;
         if (rec->specular() && cfg->videoHighlights())
-            dev->SetRenderState(RS::SpecularEnable, 1);
-        dev->SetRenderState(RS::ZWriteEnable, rec->noZWrite() ? 0 : 1);
+            dev->SetSpecular(true);
+        {
+            DepthState depth = dev->depth();
+            depth.write = !rec->noZWrite();
+            dev->SetDepth(depth);
+        }
 
         for (unsigned int s = 0; s < rec->subObjectCount(); s++) {
             SceneSubObject *sub = &rec->subObjects()[s];
             if (sub->effect == 5 && !cfg->videoReflection())
                 continue;
-            uint32_t addr = sub->dwTexAddress != 0 ? sub->dwTexAddress : (uint32_t)TexAddress::Clamp;
-            d3d->SetRenderState(RS::TextureAddressU, addr);
-            d3d->SetRenderState(RS::TextureAddressV, addr);
+            const AddressMode addr = addressFromTheme(sub->dwTexAddress);
+            d3d->SetSamplerAddress(0, addr, addr);
 
             for (unsigned int k = 0; k < count; k++) {
                 const Vec3 *pos = &positions[k];
@@ -375,13 +374,7 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
 
                 dev = d3d;
                 dev->SetTexture(0, sub->pTexture);
-                if (sub->dwBlendSrc != 0 && sub->dwBlendDst != 0) {
-                    dev->SetRenderState(RS::AlphaBlendEnable, 1);
-                    dev->SetRenderState(RS::SrcBlend, sub->dwBlendSrc);
-                    dev->SetRenderState(RS::DestBlend, sub->dwBlendDst);
-                } else {
-                    dev->SetRenderState(RS::AlphaBlendEnable, 0);
-                }
+                dev->SetBlend(blendFromTheme(sub->dwBlendSrc, sub->dwBlendDst));
 
                 switch (rec->kind()) {
                 case KIND_MODEL:
@@ -399,6 +392,6 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
                 }
             }
         }
-        d3d->SetRenderState(RS::SpecularEnable, 0);
+        d3d->SetSpecular(false);
     }
 }

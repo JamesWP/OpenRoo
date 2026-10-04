@@ -219,9 +219,8 @@ void WrapperObject::updateObjectTransform(RenderDevice *dev,
     if (frame >= pMesh_->frameCount())
         return;
 
-    Mat4 view, world;
-    dev->GetTransform(Transform::View,  &view);
-    dev->GetTransform(Transform::World, &world);
+    const Mat4 &view = dev->view();
+    const Mat4 &world = dev->world();
 
     const float *w = world.m;
     const float *v = view.m;

@@ -403,12 +403,6 @@ static bool is(char *tok, const char *kw)
 
 static float atof_f(const char *s) { return (float)atof(s); }
 
-static uint32_t float_bits(float f)
-{
-    uint32_t d;
-    memcpy(&d, &f, sizeof(d));
-    return d;
-}
 
 /* The parser follows the file's nesting: each `{` calls the next level's block
  * function, which reads lines until its own `}`, applies that brace's effects
@@ -610,25 +604,26 @@ void ThemeParser::fog(bool inEnvironment)
 {
     if (!inEnvironment || ntok <= 3)
         return;
-    RenderDevice *dev = d3d;
-    dev->SetRenderState(RS::FogEnable, 1);
+    FogState fog = d3d->fog();
+    fog.enable = true;
     block->bFogEnabled_ = 1;
 
     uint32_t mode = FOG_NONE;
     lookup(tok[1], kFogModes, 4, &mode);
-    dev->SetRenderState(RS::FogTableMode, mode);
+    fog.mode = (FogMode)mode;
 
     char *colourTok;
     if (mode == FOG_LINEAR) {
-        dev->SetRenderState(RS::FogTableStart, float_bits(atof_f(tok[2])));
-        dev->SetRenderState(RS::FogTableEnd,   float_bits(atof_f(tok[3])));
+        fog.start = atof_f(tok[2]);
+        fog.end   = atof_f(tok[3]);
         colourTok = tok[4];
     } else {
-        dev->SetRenderState(RS::FogTableDensity, float_bits(atof_f(tok[2])));
+        fog.density = atof_f(tok[2]);
         colourTok = tok[3];
     }
     char *end;
-    dev->SetRenderState(RS::FogColor, (uint32_t)strtol(colourTok, &end, 16));
+    fog.color = (uint32_t)strtol(colourTok, &end, 16);
+    d3d->SetFog(fog);
 }
 
 void ThemeParser::sky(bool inEnvironment)
@@ -882,7 +877,11 @@ bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
                        char *path)
 {
     release();
-    d3d->SetRenderState(RS::FogEnable, 0);
+    {
+        FogState fog = d3d->fog();
+        fog.enable = false;
+        d3d->SetFog(fog);
+    }
 
     std::ifstream file(path);  // text mode: the CRT folds CRLF
     if (!file)

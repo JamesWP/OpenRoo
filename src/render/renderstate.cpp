@@ -92,19 +92,18 @@ Render_ConfigureRenderState(void)
     f->f[8] = cam->eye()[2];
 
     RenderDevice *dev = d3d;
-    dev->SetTransform(Transform::World, &g_worldIdentity);
-    dev->SetTransform(Transform::View, &view);
-    dev->SetTransform(Transform::Projection, &proj);
+    dev->SetWorld(g_worldIdentity);
+    dev->SetView(view);
+    dev->SetProjection(proj);
 
-    // Ambient light and the fixed render states.
+    // Ambient light and the fixed pipeline state.
     dev->SetAmbientLight(0x404040);
-    static const uint32_t states[][2] = {
-        { 0x09, 2 }, { 0x1a, 0 }, { 0x11, 2 }, { 0x12, 2 }, { 0x1d, 0 },
-        { 0x07, 1 }, { 0x38, 8 }, { 0x39, 1 }, { 0x3a, 0xffffffff },
-        { 0x3b, 0xffffffff }, { 0x36, 1 }, { 0x35, 1 }, { 0x37, 3 },
-    };
-    for (unsigned i = 0; i < sizeof states / sizeof states[0]; ++i)
-        dev->SetRenderState((RS)states[i][0], states[i][1]);
+    dev->SetSpecular(false);
+    dev->SetDepth(DepthState());
+    dev->SetStencil(StencilState{ false, CompareFunc::Always, 1, StencilOp::Keep,
+                                  StencilOp::Keep, StencilOp::Replace });
+    dev->SetSampler(0, SamplerState{ Filter::Linear, Filter::Linear,
+                                     AddressMode::Wrap, AddressMode::Wrap });
 
     // Shared player/enemy models, textures, material, light and fonts.
     g_meshPlayer.importSceneModels("models\\John.mdl");

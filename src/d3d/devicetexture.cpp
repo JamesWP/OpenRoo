@@ -254,7 +254,7 @@ void RenderDevice::PresentImage(const Image &img)
         }
     }
 
-    Flip();
+    Present();
 
     static LONG logged = 0;
     if (InterlockedIncrement(&logged) <= 8)

@@ -1,11 +1,6 @@
-/* The rendering vocabulary game code speaks to RenderDevice in: render
- * states and their values, primitive types, transforms and vertex formats.
- * Nothing here depends on the backend's headers.
- *
- * The render-state names and their value enums carry Direct3D's numbers,
- * because theme files store blend modes and texture addressing as those
- * numbers and hand them straight through.  Primitive types, transforms and
- * vertex formats are mapped by the backend. */
+/* The rendering vocabulary game code speaks to RenderDevice in: pipeline
+ * state, primitive types, vertex formats and the matrices and lights they
+ * are drawn with.  Nothing here depends on the backend's headers. */
 
 #pragma once
 #include <stdint.h>
@@ -28,92 +23,113 @@ struct DirectionalLight {
     Vec3   direction;
 };
 
-enum class RS : uint32_t {
-    ZEnable           = 7,
-    ShadeMode         = 9,
-    ZWriteEnable      = 14,
-    TextureMag        = 17,
-    TextureMin        = 18,
-    SrcBlend          = 19,
-    DestBlend         = 20,
-    TextureMapBlend   = 21,
-    CullMode          = 22,
-    DitherEnable      = 26,
-    AlphaBlendEnable  = 27,
-    FogEnable         = 28,
-    SpecularEnable    = 29,
-    FogColor          = 34,
-    FogTableMode      = 35,
-    FogTableStart     = 36,
-    FogTableEnd       = 37,
-    FogTableDensity   = 38,
-    ColorKeyEnable    = 41,
-    TextureAddressU   = 44,
-    TextureAddressV   = 45,
-    StencilEnable     = 52,
-    StencilFail       = 53,
-    StencilZFail      = 54,
-    StencilPass       = 55,
-    StencilFunc       = 56,
-    StencilRef        = 57,
-    StencilMask       = 58,
-    StencilWriteMask  = 59,
-    TextureFactor     = 60,
-    Ambient           = 139,
+/* ── Pipeline state ──
+ *
+ * The device's fixed state comes in a handful of small value types, each set
+ * whole.  A backend with immutable pipeline objects can hash one and look it
+ * up; the Direct3D 9 backend writes it through.  The defaults are the state a
+ * fresh device starts in.
+ *
+ * The enumerators' numbers are Direct3D's, and nothing relies on that: the
+ * theme parser (ui/theme.cpp) names them by keyword, and every backend maps
+ * them with a switch. */
+
+enum class BlendFactor : uint8_t {
+    Zero = 1, One, SrcColor, InvSrcColor, SrcAlpha, InvSrcAlpha, DestAlpha,
+    InvDestAlpha, DestColor, InvDestColor, SrcAlphaSat,
+    /* Themes may name this one as a source factor.  It stands for the pair
+     * (InvSrcAlpha, SrcAlpha), and the destination factor set with it
+     * replaces the second of them. */
+    BothInvSrcAlpha = 13,
 };
 
-/* Values for RS::SrcBlend / RS::DestBlend. */
-namespace Blend {
-enum : uint32_t {
-    Zero = 1, One = 2, SrcColor = 3, InvSrcColor = 4, SrcAlpha = 5,
-    InvSrcAlpha = 6, DestAlpha = 7, InvDestAlpha = 8, DestColor = 9,
-    InvDestColor = 10,
+struct BlendState {
+    bool        enable = false;
+    BlendFactor src    = BlendFactor::One;
+    BlendFactor dst    = BlendFactor::Zero;
+
+    static BlendState off() { return BlendState(); }
+    static BlendState on(BlendFactor s, BlendFactor d) { return { true, s, d }; }
+    /* Straight alpha: what text, the HUD and the menus draw with. */
+    static BlendState alpha() { return on(BlendFactor::SrcAlpha, BlendFactor::InvSrcAlpha); }
+    static BlendState additive() { return on(BlendFactor::One, BlendFactor::One); }
 };
-}
 
-/* Values for RS::StencilFunc. */
-namespace Cmp {
-enum : uint32_t {
-    Never = 1, Less = 2, Equal = 3, LessEqual = 4, Greater = 5,
-    NotEqual = 6, GreaterEqual = 7, Always = 8,
+/* Depth test and write.  Both default on. */
+struct DepthState {
+    bool test  = true;
+    bool write = true;
 };
-}
 
-/* Values for RS::StencilFail / StencilZFail / StencilPass. */
-namespace StencilOp {
-enum : uint32_t {
-    Keep = 1, Zero = 2, Replace = 3, IncrSat = 4, DecrSat = 5, Invert = 6,
-    Incr = 7, Decr = 8,
+enum class CompareFunc : uint8_t {
+    Never = 1, Less, Equal, LessEqual, Greater, NotEqual, GreaterEqual, Always,
 };
-}
 
-/* Values for RS::CullMode. */
-namespace Cull {
-enum : uint32_t { None = 1, CW = 2, CCW = 3 };
-}
-
-/* Values for RS::TextureAddressU / V. */
-namespace TexAddress {
-enum : uint32_t { Wrap = 1, Mirror = 2, Clamp = 3, Border = 4 };
-}
-
-/* Values for RS::FogTableMode. */
-namespace FogMode {
-enum : uint32_t { None = 0, Exp = 1, Exp2 = 2, Linear = 3 };
-}
-
-/* Values for RS::ShadeMode. */
-namespace ShadeMode {
-enum : uint32_t { Flat = 1, Gouraud = 2, Phong = 3 };
-}
-
-/* Values for RS::TextureMapBlend. */
-namespace TexBlend {
-enum : uint32_t {
-    Decal = 1, Modulate = 2, DecalAlpha = 3, ModulateAlpha = 4,
-    DecalMask = 5, ModulateMask = 6, Copy = 7, Add = 8,
+enum class StencilOp : uint8_t {
+    Keep = 1, Zero, Replace, IncrSat, DecrSat, Invert, Incr, Decr,
 };
+
+/* The stencil test, against a reference of `ref`, with every bit of the
+ * buffer read and written. */
+struct StencilState {
+    bool        enable = false;
+    CompareFunc func   = CompareFunc::Always;
+    uint8_t     ref    = 0;
+    StencilOp   fail   = StencilOp::Keep;   // the stencil test failed
+    StencilOp   zfail  = StencilOp::Keep;   // the stencil test passed, depth failed
+    StencilOp   pass   = StencilOp::Keep;   // both passed
+};
+
+/* Which faces are culled.  CW and CCW name the winding that is *kept*. */
+enum class CullMode : uint8_t { None = 1, CW, CCW };
+
+struct RasterState {
+    CullMode cull = CullMode::CCW;
+};
+
+enum class Filter : uint8_t { Nearest = 1, Linear = 2 };
+enum class AddressMode : uint8_t { Wrap = 1, Mirror, Clamp, Border };
+
+/* How one texture stage samples. */
+struct SamplerState {
+    Filter      mag = Filter::Nearest;
+    Filter      min = Filter::Nearest;
+    AddressMode u   = AddressMode::Wrap;
+    AddressMode v   = AddressMode::Wrap;
+};
+
+enum class FogMode : uint8_t { None = 0, Exp = 1, Exp2 = 2, Linear = 3 };
+
+/* Theme files and the extra-object tables hold blend factors and texture
+ * address modes as numbers (the BlendFactor and AddressMode enumerators'),
+ * with 0 for "not set".  These make states of them: blending is on only when
+ * both factors are set; an unset address clamps; a number that names nothing
+ * is taken as the plainest choice. */
+inline BlendFactor blendFactorFromTheme(uint32_t v)
+{
+    return (v >= 1 && v <= 11) || v == 13 ? (BlendFactor)v : BlendFactor::One;
 }
+inline BlendState blendFromTheme(uint32_t src, uint32_t dst)
+{
+    return src != 0 && dst != 0
+        ? BlendState::on(blendFactorFromTheme(src), blendFactorFromTheme(dst))
+        : BlendState::off();
+}
+inline AddressMode addressFromTheme(uint32_t v)
+{
+    return v >= 1 && v <= 4 ? (AddressMode)v : AddressMode::Clamp;
+}
+
+/* Per-pixel fog.  `start` and `end` are for Linear, `density` for Exp and
+ * Exp2; the colour is 0x00RRGGBB. */
+struct FogState {
+    bool     enable  = false;
+    FogMode  mode    = FogMode::None;
+    uint32_t color   = 0;
+    float    start   = 0.0f;
+    float    end     = 1.0f;
+    float    density = 1.0f;
+};
 
 enum class Prim {
     PointList, LineList, LineStrip, TriangleList, TriangleStrip, TriangleFan,
@@ -127,7 +143,7 @@ enum class VertexFormat {
     Screen,     // ScreenVertex: pre-transformed, lit
     Lit,        // LitVertex: world space, lit, one UV set
     Normal2,    // x,y,z, normal, two UV sets (40 bytes; meshes)
-    Diffuse1,   // x,y,z, diffuse, one UV set (strided quads)
+    Diffuse1,   // Diffuse1Vertex: x,y,z, diffuse, one UV set (scene quads)
     Diffuse2,   // x,y,z, diffuse, two UV sets (36 bytes; quads)
 };
 
@@ -147,15 +163,9 @@ struct LitVertex {
     float    tu, tv;
 };
 
-/* One stream of DrawStrided: a pointer and a byte stride. */
-struct VertexStream {
-    const void *data;
-    uint32_t    stride;
-};
-
-/* DrawStrided's inputs: position, normal, diffuse, specular and up to eight
- * texture-coordinate streams. */
-struct StridedVertices {
-    VertexStream position, normal, diffuse, specular;
-    VertexStream texCoords[8];
+/* VertexFormat::Diffuse1: position, a diffuse colour, one UV set. */
+struct Diffuse1Vertex {
+    float    x, y, z;
+    uint32_t diffuse;
+    float    tu, tv;
 };

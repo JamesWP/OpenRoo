@@ -66,7 +66,7 @@ public:
      *     phase with the one before it.
      *
      * Everything else is drawLeft's: FVF 0x1C4, z/rhw 0.1f / 10.0f, specular
-     * 0xff000000, the DIFFUSE gradient, SetTexture + three SetRenderState
+     * 0xff000000, the DIFFUSE gradient, SetTexture + SetBlend
      * calls ahead of the empty test, and the pen advance.  drawBig is its
      * only caller. */
     void drawWobble(float x, float y, float cellW, float cellH, float spacing,

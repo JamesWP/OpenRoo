@@ -5,13 +5,13 @@
  *   2. timing: now/elapsed in ms, dt against the last tick; when dt > 0,
  *      GameTick, the player/foe poses, the camera (the orbit camera, or the
  *      scripted camera while a spline runs), and the 3D sound listener;
- *   3. clear, BeginScene, the sky, then the opaque passes: the static
+ *   3. clear, BeginFrame, the sky, then the opaque passes: the static
  *      placement lists, the destructibles, the player, the grid items, the
  *      bombs, the foes;
  *   4. scene objects, bridges, the player's effect models, the stencil
  *      shadows;
  *   5. the translucent passes (particle effects) when particles are on;
- *   6. the HUD and the menus, EndScene, the flip.
+ *   6. the HUD and the menus, EndFrame, the present.
  */
 #include "inputdev.h"
 #include <stdint.h>
@@ -83,7 +83,7 @@ static void scripted_camera(Game *g, RenderDevice *d3d)
     Camera_BuildLookAt(&view, cam->eye()[0], cam->eye()[1], cam->eye()[2],
                        cam->target()[0], cam->target()[1], cam->target()[2],
                        0.0f, 1.0f, 0.0f, 0.0f);
-    d3d->SetTransform(Transform::View, &view);
+    d3d->SetView(view);
 }
 
 /* The listener follows the camera: position = eye, front = target - eye,
@@ -206,9 +206,38 @@ static bool foe_slot(unsigned char kind, bool dying, ThemeObjectType *out)
     return false;
 }
 
-static void set_rs(RS s, uint32_t v)
+/* Single fields of the device's state. */
+static void set_stencil_enable(bool on)
 {
-    g_renderDevice->SetRenderState(s, v);
+    StencilState s = g_renderDevice->stencil();
+    s.enable = on;
+    g_renderDevice->SetStencil(s);
+}
+
+static void set_depth(bool test, bool write)
+{
+    g_renderDevice->SetDepth(DepthState{ test, write });
+}
+
+static void set_depth_write(bool on)
+{
+    DepthState d = g_renderDevice->depth();
+    d.write = on;
+    g_renderDevice->SetDepth(d);
+}
+
+static void set_depth_test(bool on)
+{
+    DepthState d = g_renderDevice->depth();
+    d.test = on;
+    g_renderDevice->SetDepth(d);
+}
+
+static void set_fog_enable(bool on)
+{
+    FogState f = g_renderDevice->fog();
+    f.enable = on;
+    g_renderDevice->SetFog(f);
 }
 
 static void opaque_passes(Game *g, double now, double elapsed)
@@ -328,7 +357,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
     RenderDevice *d3d = g_renderDevice;
     Scene_DrawSceneObjects(d3d, g_camera.eye(),
                            ((uint32_t *)&dt)[0], ((uint32_t *)&dt)[1], now);
-    set_rs(RS::StencilEnable, 0);
+    set_stencil_enable(false);
     BridgeSurf_Draw(g, &g_themeBlock, d3d, now);
 
     CameraFocus *focus = &g_cameraFocus;
@@ -343,13 +372,13 @@ static void effects_and_shadows(Game *g, double now, double dt)
     if (d3d->hasStencil() && d3d->bitDepth() > 16 &&
         g->videoShadows() != 0) {
         d3d->SetTexture(0, &g_texShadow);
-        set_rs(RS::AlphaBlendEnable, 1);
-        set_rs(RS::SrcBlend,         Blend::SrcAlpha);
-        set_rs(RS::DestBlend,        Blend::InvSrcAlpha);
-        set_rs(RS::StencilEnable,    1);
-        set_rs(RS::StencilRef,       1);
-        set_rs(RS::StencilFunc,      Cmp::Equal);
-        set_rs(RS::StencilPass,      StencilOp::DecrSat);
+        d3d->SetBlend(BlendState::alpha());
+        StencilState st = d3d->stencil();
+        st.enable = true;
+        st.ref    = 1;
+        st.func   = CompareFunc::Equal;
+        st.pass   = StencilOp::DecrSat;
+        d3d->SetStencil(st);
 
         if (pl->anim() != 10)
             shadow(&focus->f[2], playerRot, THEME_OBJ_JOHN, now, focus->f[0], pl->anim());
@@ -377,9 +406,9 @@ static void effects_and_shadows(Game *g, double now, double dt)
                     shadow(pos, rot, ty, now, 0.0f, 0);
                 }
         }
-        set_rs(RS::StencilEnable, 0);
+        set_stencil_enable(false);
     }
-    set_rs(RS::ZWriteEnable, 0);
+    set_depth_write(false);
 }
 
 /* ─── Section 5: the translucent passes ─────────────────────────────────── */
@@ -435,16 +464,14 @@ enum BurstTick { TICK_WHOLE_MS, TICK_ELAPSED };
  * system, point it along the view, optionally spin its corners about Y by
  * -rotRateY * now, render, age, and switch the node off again.  A burst
  * whose time is up is retired instead. */
-static void draw_bursts(ThemeLevelObject *rec, uint32_t src, uint32_t dst, BurstTick tick,
+static void draw_bursts(ThemeLevelObject *rec, const BlendState &blend, BurstTick tick,
                         bool spin, double now, double elapsed)
 {
     RenderDevice *dev = g_renderDevice;
     Texture *tex = rec->subObjects()[0].pTexture;
     if (tex != NULL)
         dev->SetTexture(0, tex);
-    set_rs(RS::SrcBlend, src);
-    set_rs(RS::DestBlend, dst);
-    set_rs(RS::AlphaBlendEnable, 1);
+    dev->SetBlend(blend);
 
     CameraGlobals *cam = &g_camera;
     for (unsigned char j = 0; j < rec->instanceCount(); ++j) {
@@ -454,7 +481,7 @@ static void draw_bursts(ThemeLevelObject *rec, uint32_t src, uint32_t dst, Burst
             continue;
         }
         Mat4 world = translation(b->pos);
-        dev->SetTransform(Transform::World, &world);
+        dev->SetWorld(world);
 
         ParticleSystem *ps = rec->particleSystems()[j];
         const int ms = (int)elapsed;
@@ -477,7 +504,7 @@ static void draw_bursts(ThemeLevelObject *rec, uint32_t src, uint32_t dst, Burst
         b->msLeft -= (tick == TICK_WHOLE_MS) ? ms : (int)elapsed;
         ps->disableRenderNode();
     }
-    set_rs(RS::AlphaBlendEnable, 0);
+    g_renderDevice->SetBlend(BlendState::off());
 }
 
 static void translucent_passes(Game *g, double now, double elapsed, double dt)
@@ -527,8 +554,10 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
                             (float)-bt->cellV());
         }
         if (field != NULL)
-            draw_bursts(field, field->subObjects()[0].dwBlendSrc,
-                        field->subObjects()[0].dwBlendDst, TICK_WHOLE_MS, false, now, elapsed);
+            draw_bursts(field,
+                        BlendState::on(blendFactorFromTheme(field->subObjects()[0].dwBlendSrc),
+                                       blendFactorFromTheme(field->subObjects()[0].dwBlendDst)),
+                        TICK_WHOLE_MS, false, now, elapsed);
     }
 
     /* Setting 2 and up: pickups and the speed trail. */
@@ -572,11 +601,11 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             }
         }
 
-        set_rs(RS::ZWriteEnable, 0);
+        set_depth_write(false);
         if (crystal != NULL)
-            draw_bursts(crystal, Blend::One, Blend::One, TICK_WHOLE_MS, false, now, elapsed);
+            draw_bursts(crystal, BlendState::additive(), TICK_WHOLE_MS, false, now, elapsed);
         if (coll != NULL)
-            draw_bursts(coll, Blend::One, Blend::One, TICK_ELAPSED, true, now, elapsed);
+            draw_bursts(coll, BlendState::additive(), TICK_ELAPSED, true, now, elapsed);
 
         if (speed != NULL) {
             ParticleSystem *ps = speed->particleSystems()[0];
@@ -603,18 +632,16 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             gen->setDirection(o[0], o[1], o[2]);
 
             RenderDevice *dev = g_renderDevice;
-            dev->SetTransform(Transform::World, &g_worldIdentity);
+            dev->SetWorld(g_worldIdentity);
             dev->SetTexture(0, speed->subObjects()[0].pTexture);
-            set_rs(RS::SrcBlend, Blend::One);
-            set_rs(RS::DestBlend, Blend::One);
-            set_rs(RS::AlphaBlendEnable, 1);
+            dev->SetBlend(BlendState::additive());
             ps->tick((float)(elapsed * 0.001));
             CameraGlobals *cam = &g_camera;
             ps->setVector(cam->target()[0] - cam->eye()[0],
                            cam->target()[1] - cam->eye()[1],
                            cam->target()[2] - cam->eye()[2]);
             ps->render(dev);
-            set_rs(RS::AlphaBlendEnable, 0);
+            g_renderDevice->SetBlend(BlendState::off());
         }
     }
 
@@ -650,9 +677,7 @@ static void draw_strip(ScreenVertex *q)
 
 static void blend_on(void)
 {
-    set_rs(RS::AlphaBlendEnable, 1);
-    set_rs(RS::SrcBlend,         Blend::SrcAlpha);
-    set_rs(RS::DestBlend,        Blend::InvSrcAlpha);
+    g_renderDevice->SetBlend(BlendState::alpha());
 }
 
 static const Texture *image(ThemeImageSlot s)
@@ -703,7 +728,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
             tl(W - a, y1,   0xffffffff, 0.0f, 1.0f),
         };
         draw_strip(r);
-        set_rs(RS::AlphaBlendEnable, 0);
+        g_renderDevice->SetBlend(BlendState::off());
         dev->SetTexture(0, nullptr);
     }
 
@@ -745,7 +770,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
         dev->SetTexture(0, image(THEME_IMG_POINTER));
         blend_on();
         draw_strip(q);
-        set_rs(RS::AlphaBlendEnable, 0);
+        g_renderDevice->SetBlend(BlendState::off());
         dev->SetTexture(0, nullptr);
     }
 
@@ -765,7 +790,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
         blend_on();
         dev->SetTexture(0, image(THEME_IMG_RADAR));
         draw_strip(q);
-        set_rs(RS::AlphaBlendEnable, 0);
+        g_renderDevice->SetBlend(BlendState::off());
         dev->SetTexture(0, nullptr);
     }
 
@@ -927,7 +952,7 @@ static void draw_logo(Game *g, float H, float hudH, float pad)
     g_renderDevice->SetTexture(0, &g_texKaroo128);
     if (g->state() == 0 || g->state() == 5)
         draw_strip(q);
-    set_rs(RS::AlphaBlendEnable, 0);
+    g_renderDevice->SetBlend(BlendState::off());
     g_renderDevice->SetTexture(0, nullptr);
 }
 
@@ -966,34 +991,28 @@ Render_RenderGameFrame(void)
     RenderDevice *d3d = g_renderDevice;
     /* The sky covers the whole target, so only depth (and stencil) clear. */
     if (d3d->hasStencil())
-        set_rs(RS::StencilEnable, 1);
-    d3d->ClearDepth();
-    if (!d3d->BeginScene())
+        set_stencil_enable(true);
+    d3d->Clear(ClearFlag::Depth);
+    if (!d3d->BeginFrame())
         return;
 
-    set_rs(RS::StencilEnable,    0);
-    set_rs(RS::FogEnable,        0);
-    set_rs(RS::SpecularEnable,   0);
-    set_rs(RS::AlphaBlendEnable, 0);
+    set_stencil_enable(false);
+    set_fog_enable(false);
+    d3d->SetSpecular(false);
+    d3d->SetBlend(BlendState::off());
     CameraGlobals *cam = &g_camera;
     g_themeBlock.sky().draw(d3d, cam->eye()[0], cam->eye()[1], cam->eye()[2]);
     if (g_themeBlock.fogEnabled())
-        set_rs(RS::FogEnable, 1);
-    set_rs(RS::StencilEnable, 1);
-    set_rs(RS::StencilFunc,   Cmp::Always);
-    set_rs(RS::StencilRef,    1);
-    set_rs(RS::StencilZFail,  StencilOp::Keep);
-    set_rs(RS::StencilFail,   StencilOp::Keep);
-    set_rs(RS::StencilPass,   StencilOp::Replace);
+        set_fog_enable(true);
+    d3d->SetStencil(StencilState{ true, CompareFunc::Always, 1, StencilOp::Keep,
+                                  StencilOp::Keep, StencilOp::Replace });
 
     opaque_passes(g, now, elapsed);
     effects_and_shadows(g, now, dt);
     translucent_passes(g, now, elapsed, dt);
 
-    set_rs(RS::ZWriteEnable,    1);
-    set_rs(RS::TextureAddressU, TexAddress::Clamp);
-    set_rs(RS::TextureAddressV, TexAddress::Clamp);
-    set_rs(RS::ZEnable,         0);
+    set_depth(false, true);
+    d3d->SetSamplerAddress(0, AddressMode::Clamp, AddressMode::Clamp);
 
     const unsigned w = d3d->width(), h = d3d->height();
     const float W = (float)w, H = (float)h;
@@ -1017,12 +1036,12 @@ Render_RenderGameFrame(void)
     if (g->menu()->node() == 3 || g->state() == 6)
         Score_DrawHighScoreTable(g, &g_themeBlock, d3d, &g_fontMain, ms);
 
-    set_rs(RS::ZEnable, 1);
-    d3d->EndScene();
+    set_depth_test(true);
+    d3d->EndFrame();
     if (g->state() == 7) {
         if (g->field_0c() != 0)
             g_renderDevice->PresentImage(g_demoImage);
         return;
     }
-    d3d->Flip();
+    d3d->Present();
 }

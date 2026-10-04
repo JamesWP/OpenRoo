@@ -100,37 +100,22 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
         for (uint32_t s = 0; s < obj->subObjectCount(); s++) {
             const SceneSubObject *sub = &obj->subObjects()[s];
 
-            uint32_t addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
-            d3d->SetRenderState(RS::TextureAddressU, addr);
-            d3d->SetRenderState(RS::TextureAddressV, addr);
+            const AddressMode addr = addressFromTheme(sub->dwTexAddress);
+            d3d->SetSamplerAddress(0, addr, addr);
 
             if (sub->pTexture)
                 d3d->SetTexture(0, sub->pTexture);
 
-            // last_state and last_value let the alpha-off and dest-blend
-            // branches share one SetRenderState call.
-            RS last_state;
-            uint32_t              last_value;
-            if (sub->dwBlendSrc && sub->dwBlendDst
-                && quad_fx() != QUAD_FX_NOALPHA) {
-                d3d->SetRenderState(RS::AlphaBlendEnable, 1);
-                d3d->SetRenderState(RS::SrcBlend,
-                                             sub->dwBlendSrc);
-                last_state = RS::DestBlend;
-                last_value = sub->dwBlendDst;
-            } else {
-                last_state = RS::AlphaBlendEnable;
-                last_value = 0;
-            }
-            d3d->SetRenderState(last_state, last_value);
+            d3d->SetBlend(quad_fx() != QUAD_FX_NOALPHA
+                          ? blendFromTheme(sub->dwBlendSrc, sub->dwBlendDst)
+                          : BlendState::off());
 
             // The draw itself only runs for draw-kind 2, but the
             // render state above it is set for every sub-object regardless;
             // hoisting this gate above the state changes would change what
             // state is left behind for whatever draws next.
             if (obj->kind() == THEME_KIND_FIELD) {
-                d3d->SetTransform(Transform::World,
-                                           &g_worldIdentity);
+                d3d->SetWorld(g_worldIdentity);
                 quad_dump(pl->wallStripVerts(), (uint32_t)pl->wallStripCount());
                 bool ok = true;
                 if (quad_fx() != QUAD_FX_NODRAW)

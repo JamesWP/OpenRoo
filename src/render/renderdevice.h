@@ -6,8 +6,17 @@
  * RenderDevice owns the backend's objects (RenderDevice::Native, in
  * src/d3d/d3dnative.h): the Direct3D device and a shadow of the state the
  * game has set on it.  Game code speaks rendertypes.h's vocabulary to it,
- * and hands it textures as DeviceTextures, made from Images (image.h) and
- * opaque outside src/d3d/.
+ * and hands it textures and vertex buffers as opaque handles.
+ *
+ * The interface is shaped for a backend without a fixed-function pipeline
+ * (OpenGL, WebGL 2, Direct3D 11 and later):
+ *   - pipeline state is set in whole value types (BlendState, DepthState,
+ *     StencilState, ...), which such a backend turns into a pipeline or
+ *     state object;
+ *   - lighting, fog and the transforms are plain parameters, which such a
+ *     backend turns into uniforms;
+ *   - vertices live in VertexBuffers, or are handed to Draw for one use;
+ *   - nothing reads state back from the device.
  *
  * A headless RenderDevice (KAROO_HEADLESS=1) has no Direct3D behind it: it
  * answers every query as a real one would and draws nothing. */
@@ -50,13 +59,56 @@ struct Adapter {
     AdapterId id;
 };
 
-/* Bits for Draw's flags. */
+/* Bits for Draw's and DrawBuffer's flags. */
 namespace DrawFlag {
 enum : uint32_t {
-    NoLight         = 1,  // the vertices are lit already
-    NoUpdateExtents = 2,  // leave the device's dirty-rectangle extents alone
+    NoLight = 1,  // the vertices are lit already
 };
 }
+
+/* Bits for Clear. */
+namespace ClearFlag {
+enum : uint32_t {
+    Color = 1,  // the back buffer, to black
+    Depth = 2,  // the z-buffer, and the stencil if there is one
+};
+}
+
+/* A vertex buffer on the device: opaque to everything outside src/d3d/.
+ * Made by CreateVertexBuffer, freed by DestroyVertexBuffer. */
+struct VertexBuffer;
+
+enum class BufferUsage {
+    Static,   // filled at creation; never rewritten
+    Dynamic,  // rewritten as often as every frame
+};
+
+/* Everything the game has set on the device: the shadow the backend keeps,
+ * so the getters need no device, and a device that has been reset can be put
+ * back the way it was. */
+struct PipelineState {
+    BlendState          blend;
+    DepthState          depth;
+    StencilState        stencil;
+    RasterState         raster;
+    FogState            fog;
+    SamplerState        samplers[2];  // by stage; the game's vertex formats address two
+    bool                specular = false;
+    uint32_t            ambient  = 0;
+    Material            material = {};
+    bool                materialSet = false;
+    DirectionalLight    light = {};
+    bool                lightSet = false;
+    Mat4                world = identity(), view = identity(), projection = identity();
+    const DeviceTexture *bound[2] = { nullptr, nullptr };  // by stage
+
+    static Mat4 identity()
+    {
+        Mat4 m = {};
+        m.m[0] = m.m[5] = m.m[10] = m.m[15] = 1.0f;
+        return m;
+    }
+};
 
 class RenderDevice {
 public:
@@ -100,19 +152,19 @@ public:
 
     // ── Frames ──
 
-    /* Clears depth, and stencil if there is one, over the whole target. */
-    void ClearDepth();
-    bool BeginScene();
-    void EndScene();
+    /* Clears what ClearFlag bits ask for, over the whole target. */
+    void Clear(uint32_t flags);
+
+    /* Bracket the frame's drawing.  BeginFrame is false if the device is
+     * lost and cannot yet be got back; draw nothing then. */
+    bool BeginFrame();
+    void EndFrame();
 
     /* Shows the back buffer. */
-    void Flip();
+    void Present();
 
-    /* Fills the back buffer with black. */
-    void ClearBackBuffer();
-
-    /* Copies img over the back buffer, scaled to fit, and flips it to the
-     * screen.  An empty image just flips. */
+    /* Copies img over the back buffer, scaled to fit, and shows it.  An empty
+     * image just shows the back buffer. */
     void PresentImage(const Image &img);
 
     // ── Textures ──
@@ -131,17 +183,36 @@ public:
     static void DestroyTexture(DeviceTexture *t);
 
     // ── State ──
+    //
+    // Each setter replaces the whole of its state, and each state stays as
+    // set until set again.  A fresh device is in every state's default (see
+    // rendertypes.h) and no texture is bound.
 
-    void     SetRenderState(RS state, uint32_t value);
-    uint32_t GetRenderState(RS state);
+    void SetBlend(const BlendState &s);
+    void SetDepth(const DepthState &s);
+    void SetStencil(const StencilState &s);
+    void SetRaster(const RasterState &s);
+    void SetFog(const FogState &s);
 
-    void SetTransform(Transform which, const Mat4 *m);
-    void GetTransform(Transform which, Mat4 *m);
+    const BlendState   &blend() const   { return state_.blend; }
+    const DepthState   &depth() const   { return state_.depth; }
+    const StencilState &stencil() const { return state_.stencil; }
+    const RasterState  &raster() const  { return state_.raster; }
+    const FogState     &fog() const     { return state_.fog; }
+
+    /* How `stage` samples its texture.  The game draws with stage 0. */
+    void SetSampler(int stage, const SamplerState &s);
+    /* Changes only the address modes of `stage`'s sampler. */
+    void SetSamplerAddress(int stage, AddressMode u, AddressMode v);
 
     /* NULL unbinds the stage. */
     void SetTexture(int stage, const DeviceTexture *tex);
     void SetTexture(int stage, const Texture *tex);
     void SetTexture(int stage, decltype(nullptr)) { SetTexture(stage, (const DeviceTexture *)nullptr); }
+
+    /* Whether lit geometry shows its specular highlight, and vertices carry
+     * their specular colour. */
+    void SetSpecular(bool on);
 
     /* The ambient light colour, 0x00RRGGBB. */
     void SetAmbientLight(uint32_t rgb);
@@ -151,14 +222,44 @@ public:
     void SetMaterial(const Material &m);
     void SetDirectionalLight(const DirectionalLight &l);
 
+    /* The transforms.  Projection takes the matrix of the game's original
+     * Direct3D 6 viewport, whose clip volume put the y axis at +-aspect, and
+     * the backend adapts it. */
+    void SetWorld(const Mat4 &m);
+    void SetView(const Mat4 &m);
+    void SetProjection(const Mat4 &m);
+
+    const Mat4 &world() const { return state_.world; }
+    const Mat4 &view() const  { return state_.view; }
+
+    // ── Vertex buffers ──
+
+    /* A buffer of `count` vertices of `format`, filled from `data` if that is
+     * not NULL.  Returns NULL if the device could not make it. */
+    VertexBuffer *CreateVertexBuffer(VertexFormat format, uint32_t count,
+                                     BufferUsage usage, const void *data = nullptr);
+
+    /* Overwrites `count` vertices from `first` with `verts`, which must be in
+     * the buffer's format.  The buffer was made Dynamic or has never been
+     * drawn. */
+    bool UpdateVertexBuffer(VertexBuffer *vb, uint32_t first, const void *verts,
+                            uint32_t count);
+
+    /* NULL is ignored.  Needs no device: the buffer knows its owner. */
+    static void DestroyVertexBuffer(VertexBuffer *vb);
+
     // ── Drawing ──
 
-    /* count vertices of `format` from verts; flags are DrawFlag bits.
-     * Returns false if the backend refused the draw. */
+    /* count vertices of `format` from verts, which Draw copies before it
+     * returns: for geometry made fresh each time, like text and the HUD.
+     * flags are DrawFlag bits.  Returns false if the backend refused the
+     * draw. */
     bool Draw(Prim prim, VertexFormat format, const void *verts,
               uint32_t count, uint32_t flags = 0);
-    bool DrawStrided(Prim prim, VertexFormat format, StridedVertices *verts,
-                     uint32_t count, uint32_t flags = 0);
+
+    /* `count` vertices of vb from `first`. */
+    bool DrawBuffer(Prim prim, const VertexBuffer *vb, uint32_t first,
+                    uint32_t count, uint32_t flags = 0);
 
     /* Logs the device's current render, texture-stage and light state
      * (diagnostics). */
@@ -168,9 +269,11 @@ public:
      * only. */
     struct Native;
     Native *native() { return native_; }
+    const PipelineState &state() const { return state_; }
 
 private:
     Native                  *native_;
+    PipelineState            state_;
     std::vector<DisplayMode> modes_;
     DisplayMode             *mode_;
     char                     lastError_[100];

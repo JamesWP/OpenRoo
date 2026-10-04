@@ -164,18 +164,10 @@ Scene_DrawSceneObjects(RenderDevice *dev, float *cam, uint32_t , uint32_t , doub
         if (o == NULL)
             continue;
 
-        uint32_t src = o->srcBlend, dst = o->destBlend;
-        if (src != 0 && dst != 0) {
-            dev->SetRenderState(RS::AlphaBlendEnable, 1);
-            dev->SetRenderState(RS::SrcBlend, src);
-            dev->SetRenderState(RS::DestBlend, dst);
-        } else {
-            dev->SetRenderState(RS::AlphaBlendEnable, 0);
-        }
+        dev->SetBlend(blendFromTheme(o->srcBlend, o->destBlend));
 
-        uint32_t ta = o->textureAddress;
-        dev->SetRenderState(RS::TextureAddressU, ta);
-        dev->SetRenderState(RS::TextureAddressV, ta);
+        const AddressMode ta = addressFromTheme(o->textureAddress);
+        dev->SetSamplerAddress(0, ta, ta);
 
         if (o->texture != NULL)
             select_texture(dev, o);
@@ -226,9 +218,9 @@ Scene_DrawSceneObjects(RenderDevice *dev, float *cam, uint32_t , uint32_t , doub
                     select_texture(dev, o);
             }
 
-            dev->SetTransform(Transform::World, &world);
+            dev->SetWorld(world);
             uint32_t frame = animation_frame(o, t);
-            dev->SetRenderState(RS::SpecularEnable, 0);
+            dev->SetSpecular(false);
 
             if (o->lit != 0)
                 mesh->drawFramedModel(dev, frame);
@@ -259,8 +251,8 @@ Scene_DrawSceneObjects(RenderDevice *dev, float *cam, uint32_t , uint32_t , doub
             }
 
             m4_translate(&world, px, py, pz);
-            dev->SetTransform(Transform::World, &world);
-            dev->SetRenderState(RS::SpecularEnable, 0);
+            dev->SetWorld(world);
+            dev->SetSpecular(false);
             dev->Draw(Prim::TriangleStrip, VertexFormat::Lit, quad, 4, 0);
         }
     }
@@ -304,21 +296,14 @@ static void rotation_xyz(Mat4 *m, float rx, float ry, float rz)
   void  
 Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
 {
-    dev->SetRenderState(RS::SpecularEnable, 0);
+    dev->SetSpecular(false);
 
     for (size_t oi = 0; oi < g_scene.objects().size(); ++oi) {
         const SceneObject *o = g_scene.objects()[oi];
         if (o == NULL || o->type != EXTRA_PARTICLE)
             continue;
 
-        uint32_t src = o->srcBlend, dst = o->destBlend;
-        if (src != 0 && dst != 0) {
-            dev->SetRenderState(RS::AlphaBlendEnable, 1);
-            dev->SetRenderState(RS::SrcBlend, src);
-            dev->SetRenderState(RS::DestBlend, dst);
-        } else {
-            dev->SetRenderState(RS::AlphaBlendEnable, 0);
-        }
+        dev->SetBlend(blendFromTheme(o->srcBlend, o->destBlend));
 
         if (o->texture != NULL)
             select_texture(dev, o);
@@ -363,7 +348,7 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
             dev->SetTexture(0, nullptr);
             Mat4 ident;
             m4_identity(&ident);
-            dev->SetTransform(Transform::World, &ident);
+            dev->SetWorld(ident);
 
             SplinePath *sp = (SplinePath *)&o->spline;
             if (input_key_down(inputdev::KEY_F3))
@@ -375,7 +360,7 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
                 select_texture(dev, o);
         }
 
-        dev->SetTransform(Transform::World, &world);
+        dev->SetWorld(world);
 
         ps->tick((float)(dt_ms * K_ANIM_SCALE));
         Vec3 dir = { cam[3] - cam[0], cam[4] - cam[1], cam[5] - cam[2] };

@@ -69,7 +69,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
         ThemeLevelObject *rec = &slot->records()[r];
 
         if (rec->specular() != 0 && g->videoHighlights() != 0)
-            dev->SetRenderState(RS::SpecularEnable, 1);
+            dev->SetSpecular(true);
 
         if (rec->kind() == THEME_KIND_PARTICLESYSTEM)
             (rec->particleSystems()[system])->tick((float)(dt * K_MS));
@@ -88,13 +88,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                     continue;
 
                 dev->SetTexture(0, sub.pTexture);
-                if (sub.dwBlendSrc != 0 && sub.dwBlendDst != 0) {
-                    dev->SetRenderState(RS::AlphaBlendEnable, 1);
-                    dev->SetRenderState(RS::SrcBlend, sub.dwBlendSrc);
-                    dev->SetRenderState(RS::DestBlend, sub.dwBlendDst);
-                } else {
-                    dev->SetRenderState(RS::AlphaBlendEnable, 0);
-                }
+                dev->SetBlend(blendFromTheme(sub.dwBlendSrc, sub.dwBlendDst));
                 if (rec->kind() != THEME_KIND_PARTICLESYSTEM)
                     continue;
 
@@ -164,10 +158,10 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                     ps->transformCorners(corners.m);
                 }
 
-                dev->SetTransform(Transform::World, &world);
+                dev->SetWorld(world);
                 ps->render(dev);
             }
         }
-        dev->SetRenderState(RS::SpecularEnable, 0);
+        dev->SetSpecular(false);
     }
 }

@@ -195,6 +195,6 @@ void CameraGlobals::updateViewTransform(RenderDevice *d3d, Game *g,
     Camera_BuildLookAt(&view, eye_[0], eye_[1], eye_[2],
                        target_[0], target_[1], target_[2],
                        0.0f, 1.0f, 0.0f, 0.0f);
-    d3d->SetTransform(Transform::View, &view);
+    d3d->SetView(view);
 }
 
