@@ -12,6 +12,7 @@
 
 class Game;
 class RenderDevice;
+struct VertexBuffer;
 struct ThemeAssetBlock;
 
 /* A position and rotation list, one entry per cell of one kind. */
@@ -85,6 +86,11 @@ public:
     int wallStripCount() const {return wallStripCount_;}
     PlacementVertex * wallStripVerts() const { return wallVerts_.get(); }
 
+    /* The flat quads and the wall strips on the device, six vertices apiece:
+     * made on first use, dropped by release.  NULL when there are none. */
+    const VertexBuffer *kind01Buffer(RenderDevice *dev) const;
+    const VertexBuffer *wallStripBuffer(RenderDevice *dev) const;
+
 private:
     void buildWalls(const Game *g, float depth);
 
@@ -106,6 +112,8 @@ private:
     PlacementList   destructibles_;   // TILE_DESTRUCTIBLE
     int             wallStripCount_;  // strips, 6 vertices each
     std::unique_ptr<PlacementVertex[]> wallVerts_;    // the wall strips
+    mutable VertexBuffer *kind01Vb_ = nullptr;  // made by the first draw, so const
+    mutable VertexBuffer *wallVb_   = nullptr;
      
 };
 

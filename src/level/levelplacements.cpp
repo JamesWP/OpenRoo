@@ -25,6 +25,7 @@
 #include <vector>
 #include <new>
 #include "levelplacements.h"
+#include "renderdevice.h"
 #include "game.h"
 #include "levelmap.h"
 #include "tile.h"
@@ -79,8 +80,28 @@ void PlacementList::release()
     count_ = 0;
 }
 
+/* Placement vertices are in the layout of VertexFormat::Lit. */
+const VertexBuffer *LevelPlacements::kind01Buffer(RenderDevice *dev) const
+{
+    if (!kind01Vb_ && kind01Count_ > 0)
+        kind01Vb_ = dev->CreateVertexBuffer(VertexFormat::Lit, kind01Count_ * 6,
+                                            BufferUsage::Static, kind01Verts_.get());
+    return kind01Vb_;
+}
+
+const VertexBuffer *LevelPlacements::wallStripBuffer(RenderDevice *dev) const
+{
+    if (!wallVb_ && wallStripCount_ > 0)
+        wallVb_ = dev->CreateVertexBuffer(VertexFormat::Lit, wallStripCount_ * 6,
+                                          BufferUsage::Static, wallVerts_.get());
+    return wallVb_;
+}
+
 void LevelPlacements::release()
 {
+    RenderDevice::DestroyVertexBuffer(kind01Vb_);
+    RenderDevice::DestroyVertexBuffer(wallVb_);
+    kind01Vb_ = wallVb_ = nullptr;
     kind01Verts_.reset();
     kind01Count_ = 0;
     lifts_.release();
