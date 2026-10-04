@@ -54,7 +54,7 @@ static void column_values(Game *g, unsigned out[22])
     out[n++] = c->conveyors;
     out[n++] = c->bridges;
     out[n++] = c->extraLives;
-    out[n++] = c->effect8Items;
+    out[n++] = c->freezeItems;
     out[n++] = c->transforms;
     out[n++] = c->paragliders;
     out[n++] = c->speedUps;

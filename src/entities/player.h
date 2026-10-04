@@ -124,15 +124,16 @@ public:
     void  setLastSecondsMark(double d)                { lastSecondsMark_ = d; }
     void  setEffectBActive(int n)                   { effectBActive_ = n; }
     // The freeze effect's flag; worldstate.cpp reports it as the freeze timer.
-    int   effect8Active() const                     { return effect8Active_; }
-    void  setEffect8Active(int n)                   { effect8Active_ = n; }
+    int   freezeActive() const                     { return freezeActive_; }
+    void  setFreezeActive(int n)                   { freezeActive_ = n; }
+    void  setFreezeStart(double d)                { freezeStart_ = d; }
     void  setEffectDStart(double d)                { effectDStart_ = d; }
     int   effectDActive() const                     { return effectDActive_; }
     int   effectAActive() const                     { return effectAActive_; }
     // When each timed effect started, in clock ms; the HUD counts down from
     // them.
     double effectBStart() const                     { return effectBStart_; }
-    double effect8Start() const                     { return effect8Start_; }
+    double freezeStart() const                     { return freezeStart_; }
     double effectDStart() const                     { return effectDStart_; }
     double effectCStart() const                     { return effectCStart_; }
     double effectAStart() const                     { return effectAStart_; }
@@ -185,8 +186,8 @@ private:
     double              lastSecondsMark_;
     double              effectBStart_;
     int                 effectBActive_;
-    double              effect8Start_;
-    int                 effect8Active_;
+    double              freezeStart_;
+    int                 freezeActive_;
     double              effectDStart_;
     int                 effectDActive_;
     double              effectCStart_;

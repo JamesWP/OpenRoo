@@ -6,6 +6,17 @@ add_library(debugui OBJECT
     debugui.cpp)
 target_include_directories(debugui PRIVATE
     .
+    ../audiodev
+    ../audio
+    ../inputdev
+    ../input
+    ../videodev
+    ../gl
+    ../app
+    ../core
+    ../entities
+    ../ui
+    ../level
     ../log
     ../render
     ../sysdev

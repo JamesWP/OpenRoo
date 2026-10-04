@@ -1,8 +1,12 @@
 #include "debugui.h"
 #include "imgui.h"
 #include "image.h"
+#include "cheatcode.h"
+#include "game.h"
+#include "gamestate.h"
 #include "renderdevice.h"
 #include "windev.h"
+#include "worldstate.h"
 #include <algorithm>
 #include <math.h>
 #include <string.h>
@@ -132,22 +136,79 @@ static void render_draw_data(RenderDevice &dev, ImDrawData *dd)
 
 // ── The panels ──
 
-static bool g_showDemo;
+static bool g_holdFreeze;
+
+/* The level to load, from the same table the level select reads. */
+static void draw_level_picker(Game *g)
+{
+    if (ImGui::Button("Load level..."))
+        ImGui::OpenPopup("levels");
+    if (ImGui::BeginPopup("levels")) {
+        ImGui::BeginChild("list", ImVec2(260, 300));
+        for (unsigned i = 0; i < g->levelCount(); i++) {
+            ImGui::PushID((int)i);
+            char label[300];
+            snprintf(label, sizeof(label), "%3u  %s", i + 1, g->levelNameTableEntry((unsigned char)i));
+            if (ImGui::Selectable(label, i == g->levelIndex())) {
+                Cheat_LoadLevel(g, (unsigned char)i);
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+        ImGui::EndPopup();
+    }
+}
+
+static void draw_overview(RenderDevice &dev)
+{
+    Game *g = Game::instance();
+    const ImGuiIO &io = ImGui::GetIO();
+    ImGui::Text("%.1f fps  %.2f ms", io.Framerate, 1000.0f / io.Framerate);
+    ImGui::TextDisabled("display %ux%u, %u-bit", dev.width(), dev.height(), dev.bitDepth());
+    if (!g)
+        return;
+    ImGui::Separator();
+    ImGui::Text("level %u/%u: %s", g->levelIndex() + 1, g->levelCount(), g->levelName());
+    draw_level_picker(g);
+
+    if (gamestate_mode() == 0)
+        return;
+    static Observation obs;  // large; a read-only view of the live Game
+    if (obs.observe()) {
+        ImGui::Text("gems %d / %d   lives %u   foes killed %u", obs.gems_collected,
+                    obs.gems_required, obs.lives, obs.foes_killed);
+        ImGui::Text("player U%u V%u H%u   exit U%u V%u H%u", obs.player_cell[0],
+                    obs.player_cell[1], obs.player_cell[2], obs.exit_cell[0],
+                    obs.exit_cell[1], obs.exit_cell[2]);
+        ImGui::Text("%u foes, %u bombs%s", obs.n_foes, obs.n_enemies,
+                    obs.level_complete ? "   [complete]" : "");
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Cheats");
+    if (ImGui::Button("+life"))      Cheat_AddLife(g, 1);
+    ImGui::SameLine();
+    if (ImGui::Button("+10 bombs"))  Cheat_AddBombs(g);
+    ImGui::SameLine();
+    if (ImGui::Button("+glide"))     Cheat_AddGlide(g);
+    if (ImGui::Button("invulnerable")) Cheat_Invulnerable(g);
+    ImGui::SameLine();
+    if (ImGui::Button("kill foes"))  Cheat_KillFoes(g);
+    ImGui::Checkbox("hold foes frozen", &g_holdFreeze);
+    if (g_holdFreeze)
+        Cheat_FreezeFoes(g);
+}
 
 static void draw_panels(RenderDevice &dev)
 {
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Open'Roo")) {
-        const ImGuiIO &io = ImGui::GetIO();
-        ImGui::Text("%.1f fps (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
-        ImGui::Text("display mode %ux%u, %u-bit", dev.width(), dev.height(), dev.bitDepth());
-        ImGui::Text("window %.0fx%.0f", io.DisplaySize.x, io.DisplaySize.y);
-        ImGui::Checkbox("Dear ImGui demo", &g_showDemo);
+        if (ImGui::CollapsingHeader("Overview", ImGuiTreeNodeFlags_DefaultOpen))
+            draw_overview(dev);
         ImGui::TextDisabled("F10 hides this");
     }
     ImGui::End();
-    if (g_showDemo)
-        ImGui::ShowDemoWindow(&g_showDemo);
 }
 
 static bool overlay(RenderDevice &dev)

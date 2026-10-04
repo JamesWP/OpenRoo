@@ -97,9 +97,8 @@ enum TileContents {
     CONTENTS_TIME_BONUS  = 0x06,
     // An extra life.
     CONTENTS_EXTRA_LIFE  = 0x07,
-    // Timed; it only stamps its start and raises effect8Active_.  What it does
-    // is not settled, so the name is neutral.
-    CONTENTS_EFFECT_8    = 0x08,
+    // Freezes every foe for five seconds (the player's freeze effect).
+    CONTENTS_FREEZE      = 0x08,
     // Grants 3 bombs.
     CONTENTS_GRANT_09    = 0x09,
     // Timed speed changes: the step time goes to 100 (0x0a, faster) or 400
