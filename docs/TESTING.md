@@ -18,7 +18,7 @@ uncapped. What is left is real work, and most of the per-frame half of it is
 rendering the game does not need to do to be tested: the suite asserts *game
 state*, and draw calls are pure output that nothing reads back.
 
-Fast mode sets two switches the DLL already has -- `KAROO_D3D_FX=nodraw`, which
+Fast mode sets two switches the DLL already has -- `KAROO_RENDER_FX=nodraw`, which
 makes `RenderDevice::Draw`/`DrawBuffer` return without reaching the device, and `KAROO_FLIP_FX=noblt`, which skips the Blt in
 `RenderDevice::PresentImage`. Measured over the whole suite:
 
@@ -43,8 +43,8 @@ say so explicitly.
 ## `--headless` -- no window, no graphics, no display
 
 `--fast` stops the game *asking* the driver to draw. `--headless` removes the
-driver: with `KAROO_HEADLESS=1`, `RenderDevice::Create` (`src/d3d/createdevice.cpp`)
-creates no Direct3D objects at all, and the game's one window is created
+driver: with `KAROO_HEADLESS=1`, `RenderDevice::Create` (`src/gl/createdevice.cpp`)
+creates no OpenGL context at all, and the game's one window is created
 message-only so Wine needs no display driver for it. Nothing appears on
 screen, nothing takes focus, no desktop mode is switched, and the run works
 with `DISPLAY` unset entirely.
@@ -59,8 +59,8 @@ the machine, or on a box with no X server at all. It is orthogonal to
 `--fast`: fast skips the draw calls, headless removes what they would have
 gone to, and the two compose.
 
-**How it works.** A headless `RenderDevice` is a `RenderDevice` whose Direct3D
-device is `NULL`. Every method that would reach the device checks for that and
+**How it works.** A headless `RenderDevice` is a `RenderDevice` with no OpenGL
+context (`Native::active` is false). Every method that would reach OpenGL checks for that and
 does nothing; everything else is the real code. The pieces that matter:
 
 - The mode list is a fixed table of the 4:3 sizes (`kHeadlessSizes`), 32-bit
@@ -314,10 +314,10 @@ to be detected). Frames then run at roughly 230 fps and the two-recording suite
 takes **35 s instead of 102 s**.
 
 The wait is below Wine: passing `DDFLIP_NOVSYNC` through the ddraw proxy was
-tried first and changed nothing.  The backend is Direct3D 9 now, and under
-DXVK those driver switches do not reach the present, so the harness also sets
-`KAROO_NOVSYNC=1`, which makes the device present immediately, whichever Direct3D
-layer is in use. The game has no vsync option of its own.
+tried first and changed nothing.  The backend is OpenGL now, and not every
+driver honours those switches, so the harness also sets
+`KAROO_NOVSYNC=1`, which makes the device present immediately (swap interval 0),
+whatever the driver does. The game has no vsync option of its own.
 
 This changes when a finished frame reaches the screen, not what is in it — every
 frame is still rendered and presented, and nothing reads back present timing.

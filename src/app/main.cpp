@@ -255,12 +255,12 @@ int Main_WinMain(const char *lpCmdLine)
     // that mode, the default adapter in mode 0.
     Config *cfg = game->config();
     const int mode = (int)cfg->displayModeIndex();
-    if (!d3d->Create(hWnd, cfg->adapterId(), mode)
-        && !d3d->Create(hWnd, NULL, mode)
-        && !d3d->Create(hWnd, NULL, 0)) {
+    if (!d3d->Create(&window, cfg->adapterId(), mode)
+        && !d3d->Create(&window, NULL, mode)
+        && !d3d->Create(&window, NULL, 0)) {
         g_logger.logSourceLocation(4,
             "src/app/main.cpp", __LINE__,
-            "Creation of Direct3D failed");
+            "Creation of the render device failed");
         windev::messageBox(NULL, d3d->lastError(), "Error!",
                            windev::Buttons::Ok, windev::Icon::Error);
         delete d3d;

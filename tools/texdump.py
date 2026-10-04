@@ -10,7 +10,7 @@ Every texture and image surface the loaders produce is hashed (name, size,
 pixel format, FNV-1a of the pixel bytes).  OUT.txt holds the sorted unique
 lines; diff two of them to see whether a loader change moved a pixel.  The
 replays run headless, which converts textures as a real device does
-(src/d3d/devicetexture.cpp).  --mode picks openroo.ini's display mode index
+(src/gl/devicetexture.cpp).  --mode picks openroo.ini's display mode index
 (3 = 1024x768x32, 10 = 800x600x16); run/openroo.ini is put back afterwards.
 """
 import argparse, json, os, re, subprocess, sys

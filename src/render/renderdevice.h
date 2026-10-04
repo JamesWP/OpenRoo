@@ -1,12 +1,13 @@
 /* RenderDevice: the game's one rendering device, and the only way game code
  * talks to the rendering backend.  One instance exists, at g_renderDevice.
  *
- * The backend -- Direct3D 9 -- lives in src/d3d/, and nothing outside it
- * includes its headers (cmake/CheckNativeD3D.cmake enforces it).
- * RenderDevice owns the backend's objects (RenderDevice::Native, in
- * src/d3d/d3dnative.h): the Direct3D device and a shadow of the state the
- * game has set on it.  Game code speaks rendertypes.h's vocabulary to it,
- * and hands it textures and vertex buffers as opaque handles.
+ * The backend -- OpenGL 3.3, core profile, drawing everything with one
+ * shader program -- lives in src/gl/, and nothing outside it includes its
+ * headers (cmake/CheckNativeGL.cmake enforces it).  RenderDevice owns the
+ * backend's objects (RenderDevice::Native, in src/gl/glnative.h): the
+ * program, its buffers, and a shadow of the state the game has set.  Game
+ * code speaks rendertypes.h's vocabulary to it, and hands it textures and
+ * vertex buffers as opaque handles.
  *
  * The interface is shaped for a backend without a fixed-function pipeline
  * (OpenGL, WebGL 2, Direct3D 11 and later):
@@ -18,7 +19,7 @@
  *   - vertices live in VertexBuffers, or are handed to Draw for one use;
  *   - nothing reads state back from the device.
  *
- * A headless RenderDevice (KAROO_HEADLESS=1) has no Direct3D behind it: it
+ * A headless RenderDevice (KAROO_HEADLESS=1) has no OpenGL behind it: it
  * answers every query as a real one would and draws nothing. */
 
 #pragma once
@@ -28,8 +29,9 @@
 
 class Texture;
 struct Image;
+namespace windev { class Window; }
 
-/* A texture on the device: opaque to everything outside src/d3d/.  Made by
+/* A texture on the device: opaque to everything outside src/gl/.  Made by
  * CreateTexture from an Image, freed by DestroyTexture. */
 struct DeviceTexture;
 
@@ -45,17 +47,17 @@ struct DisplayMode {
     uint32_t dwWidth, dwHeight, dwBitDepth;
 };
 
-/* An adapter's identity, opaque to game code: 16 bytes the backend converts
- * to and from its driver GUID.  The launcher stores it in the config file as
- * it is. */
+/* An adapter's identity, opaque to game code: 16 bytes that name the same
+ * display from run to run.  The launcher stores it in the config file as it
+ * is. */
 struct AdapterId {
     uint8_t bytes[16];
 };
 
-/* One display adapter, as EnumerateAdapters lists them. */
+/* One display, as EnumerateAdapters lists them. */
 struct Adapter {
     char name[128];
-    bool hasGuid;  // false for the primary (default) adapter
+    bool hasGuid;  // false for the primary display
     AdapterId id;
 };
 
@@ -74,7 +76,7 @@ enum : uint32_t {
 };
 }
 
-/* A vertex buffer on the device: opaque to everything outside src/d3d/.
+/* A vertex buffer on the device: opaque to everything outside src/gl/.
  * Made by CreateVertexBuffer, freed by DestroyVertexBuffer. */
 struct VertexBuffer;
 
@@ -122,10 +124,11 @@ public:
      * not be shown, and Create makes no device. */
     static bool headless();
 
-    /* Brings up the display mode and the device (createdevice.cpp).  hWnd is
-     * the native window handle to go full-screen on; the adapter may be NULL
-     * for the default.  On failure lastError() says why. */
-    bool Create(void *hWnd, const AdapterId *adapter, int nModeIndex);
+    /* Brings up the display mode and the device (createdevice.cpp): puts
+     * `window` full-screen on the adapter and makes the OpenGL context on it;
+     * the adapter may be NULL for the primary one.  The window outlives the
+     * device.  On failure lastError() says why. */
+    bool Create(windev::Window *window, const AdapterId *adapter, int nModeIndex);
 
     /* Releases everything and forgets the display modes. */
     void Release();
@@ -229,7 +232,7 @@ public:
 
     /* The transforms.  Projection takes the matrix of the game's original
      * Direct3D 6 viewport, whose clip volume put the y axis at +-aspect, and
-     * the backend adapts it. */
+     * the backend adapts it; its depth runs 0..w, as Direct3D's did. */
     void SetWorld(const Mat4 &m);
     void SetView(const Mat4 &m);
     void SetProjection(const Mat4 &m);
@@ -270,7 +273,7 @@ public:
      * (diagnostics). */
     void LogState(const char *tag);
 
-    /* The backend's own objects; defined in d3dnative.h, for backend files
+    /* The backend's own objects; defined in glnative.h, for backend files
      * only. */
     struct Native;
     Native *native() { return native_; }

@@ -16,7 +16,7 @@ while [[ $# -gt 0 ]]; do
     --skip-launcher) SKIP_LAUNCHER=1 ;;
     # Truly headless: no window, no graphics, no display needed.  Implies
     # --skip-launcher (the dialog is a window too).  The render device is
-    # created with no Direct3D behind it -- see src/d3d/createdevice.cpp --
+    # created with no OpenGL behind it -- see src/gl/createdevice.cpp --
     # so nothing here touches X, nothing takes focus, and no desktop mode is
     # switched.  This is what to use for a background test run.
     --headless) HEADLESS=1; SKIP_LAUNCHER=1 ;;
@@ -162,10 +162,6 @@ PROTON_RUN=(
   STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.steam/root"
   PROTON_LOG_DIR="$(pwd)"
   SteamGameId=123456 SteamAppId=123456
-  # Direct3D 9 through Wine's own OpenGL layer, not DXVK: DXVK on Intel
-  # (Mesa ANV) leaves stray black pixels, see the README.  Set it to 0 to try
-  # DXVK.
-  PROTON_USE_WINED3D="${PROTON_USE_WINED3D:-1}"
   # Script-controlled; these are always set, so the DLL can rely on them.
   KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
   KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"

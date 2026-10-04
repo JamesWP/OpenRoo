@@ -25,3 +25,11 @@ void PixelConvert_ToTexture(const Image &img, const PixelFormat &pf,
  * written. */
 void PixelConvert_ToDisplay(const Image &img, const PixelFormat &pf,
                             uint8_t *dst, long pitch);
+
+/* The reverse: a converted surface of format pf (dst of the functions above)
+ * widened to RGBA8, four bytes a pixel in memory order R, G, B, A, for a
+ * graphics API that has no such format.  Each channel is widened by
+ * replicating its bits, so a full channel is 255; a format without an alpha
+ * channel is opaque. */
+void PixelConvert_ToRGBA8(const PixelFormat &pf, const uint8_t *src, long pitch,
+                          int width, int height, uint8_t *dst);

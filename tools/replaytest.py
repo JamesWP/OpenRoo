@@ -216,7 +216,7 @@ def apply_turbo(env):
 # Turbo above removed the *pacing* on presentation; this removes the rendering
 # work itself, using two switches the DLL already has:
 #
-#   KAROO_D3D_FX=nodraw   RenderDevice::Draw/DrawBuffer return without
+#   KAROO_RENDER_FX=nodraw   RenderDevice::Draw/DrawBuffer return without
 #                         reaching the device
 #   KAROO_FLIP_FX=noblt   RenderDevice::PresentImage skips the Blt to the back
 #                         buffer (it still Flips)
@@ -262,7 +262,7 @@ def apply_turbo(env):
 #   instructions -- checked, a run with 9 UD2 hits logged 0 VEH lines -- so
 #   there is no replacement for that check.  Not worth 2%.
 FAST_ENV = {
-    "KAROO_D3D_FX":  "nodraw",
+    "KAROO_RENDER_FX":  "nodraw",
     "KAROO_FLIP_FX": "noblt",
 }
 
@@ -295,8 +295,8 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
     env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
     env["KAROO_SEED"] = str(cfg.get("seed", ""))
     auto_exit = int(cfg.get("timeout", 120))
-    # --headless creates the render device with no Direct3D behind it
-    # (src/d3d/createdevice.cpp) and makes the game's window message-only, so
+    # --headless creates the render device with no OpenGL behind it
+    # (src/gl/createdevice.cpp) and makes the game's window message-only, so
     # the run needs no display, opens nothing on screen and takes no focus.
     # It implies --skip-launcher.  Orthogonal to --fast: fast skips the draw
     # CALLS, headless removes the driver underneath them.
@@ -650,7 +650,7 @@ def main():
     ap.add_argument("--list", action="store_true",
                     help="show the catalogue and exit")
     ap.add_argument("--fast", dest="fast", action="store_true", default=True,
-                    help="skip the render work (KAROO_D3D_FX=nodraw, "
+                    help="skip the render work (KAROO_RENDER_FX=nodraw, "
                          "KAROO_FLIP_FX=noblt). This is the DEFAULT; the flag "
                          "is kept so it can be stated explicitly.")
     ap.add_argument("--no-fast", dest="fast", action="store_false",
