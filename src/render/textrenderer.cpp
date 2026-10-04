@@ -11,7 +11,7 @@
  *   diffuse = colourTop on the two top vertices, colourBottom on the bottom two
  *   penX += cellW * spacing
  *
- * SetTexture and the three SetRenderState calls happen before the empty-string
+ * SetTexture and the SetBlend call happen before the empty-string
  * test, so drawing "" still leaves alpha blending on and the atlas bound.
  *
  * drawCentered and drawRight shift x left by half the rendered width, or all
@@ -146,9 +146,7 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
 
     RenderDevice *dev = d3d;
     dev->SetTexture(0, &atlas_);
-    dev->SetRenderState(RS::SrcBlend,         Blend::SrcAlpha);
-    dev->SetRenderState(RS::DestBlend,        Blend::InvSrcAlpha);
-    dev->SetRenderState(RS::AlphaBlendEnable, 1);
+    dev->SetBlend(BlendState::alpha());
 
     if (strlen(str) == 0) {
         ++g_nEmpty;
@@ -305,9 +303,7 @@ void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
 
     RenderDevice *dev = d3d;
     dev->SetTexture(0, &atlas_);
-    dev->SetRenderState(RS::SrcBlend,         Blend::SrcAlpha);
-    dev->SetRenderState(RS::DestBlend,        Blend::InvSrcAlpha);
-    dev->SetRenderState(RS::AlphaBlendEnable, 1);
+    dev->SetBlend(BlendState::alpha());
 
     if (strlen(str) == 0)
         return;
@@ -423,9 +419,7 @@ void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
     y = y - (float)lines * lineH;
 
     RenderDevice *dev = d3d;
-    dev->SetRenderState(RS::SrcBlend,         Blend::SrcAlpha);
-    dev->SetRenderState(RS::DestBlend,        Blend::InvSrcAlpha);
-    dev->SetRenderState(RS::AlphaBlendEnable, 1);
+    dev->SetBlend(BlendState::alpha());
 
     const float W = (float)d3d->width();
     const float H = (float)d3d->height();
@@ -485,6 +479,6 @@ void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
         x += cellW * spacing;
     }
 
-    dev->SetRenderState(RS::AlphaBlendEnable, 0);
+    dev->SetBlend(BlendState::off());
 }
 

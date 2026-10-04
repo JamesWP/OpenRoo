@@ -54,9 +54,7 @@ static inline uint32_t mode_width(RenderDevice *d3d)
 
 static void set_blend(RenderDevice *d3d)
 {
-    d3d->SetRenderState(RS::AlphaBlendEnable, 1);
-    d3d->SetRenderState(RS::SrcBlend,  Blend::SrcAlpha);
-    d3d->SetRenderState(RS::DestBlend, Blend::InvSrcAlpha);
+    d3d->SetBlend(BlendState::alpha());
 }
 
 static ScreenVertex tlv(float x, float y, float u, float v)

@@ -29,8 +29,8 @@ LevelEntry_PrepareAssets(void)
     const LevelMap *map = g->map();
 
     // 1. Blank the back buffer and flip.
-    d3d->ClearBackBuffer();
-    d3d->Flip();
+    d3d->Clear(ClearFlag::Color);
+    d3d->Present();
 
     // 2. The loading screen.
     char thm[0x100], bmp[0x124];

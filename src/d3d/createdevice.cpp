@@ -242,7 +242,7 @@ bool RenderDevice::Create(void *hWnd, const AdapterId *adapter, int nModeIndex)
     if (mode_ == NULL)
         return false;
 
-    d3d_restore_state(n);
+    d3d_restore_state(n, state_);
 
     g_logger.write("renderdevice: Create hwnd=%p adapter=%u mode=%d -> %lux%lux%lu "
                    "depth=%d stencil=%d\n",

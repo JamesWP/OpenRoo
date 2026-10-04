@@ -140,14 +140,16 @@ long ExplodeDebris::draw(RenderDevice *dev)
     if (bActive_ == 0)
         return (long)0x800401f0;  // CO_E_NOTINITIALIZED
 
-    uint32_t saved;
-    saved = dev->GetRenderState(RS::SrcBlend);
-    dev->SetRenderState(RS::SrcBlend, Blend::SrcAlpha);
+    const BlendState saved = dev->blend();
+    BlendState pass = saved;
+    pass.src = BlendFactor::SrcAlpha;
+    dev->SetBlend(pass);
     dev->Draw(Prim::TriangleList, VertexFormat::Normal2, vertexCopy_.data(),
                        nLiveVertices_, DrawFlag::NoLight);
-    dev->SetRenderState(RS::SrcBlend, Blend::DestAlpha);
+    pass.src = BlendFactor::DestAlpha;
+    dev->SetBlend(pass);
     dev->Draw(Prim::TriangleList, VertexFormat::Normal2, vertexCopy_.data(),
                        nLiveVertices_, DrawFlag::NoLight);
-    dev->SetRenderState(RS::SrcBlend, saved);
+    dev->SetBlend(saved);
     return 0;
 }

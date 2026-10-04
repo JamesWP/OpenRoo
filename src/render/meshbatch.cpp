@@ -67,32 +67,17 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
         for (uint32_t s = 0; s < obj->subObjectCount(); s++) {
             const SceneSubObject *sub = &obj->subObjects()[s];
 
-            uint32_t addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
-            d3d->SetRenderState(RS::TextureAddressU, addr);
-            d3d->SetRenderState(RS::TextureAddressV, addr);
+            const AddressMode addr = addressFromTheme(sub->dwTexAddress);
+            d3d->SetSamplerAddress(0, addr, addr);
 
             if (sub->pTexture)
                 d3d->SetTexture(0, sub->pTexture);
 
-            // The two branches share the final SetRenderState call.
-            RS last_state;
-            uint32_t              last_value;
-            if (sub->dwBlendSrc && sub->dwBlendDst) {
-                d3d->SetRenderState(RS::AlphaBlendEnable, 1);
-                d3d->SetRenderState(RS::SrcBlend,
-                                             sub->dwBlendSrc);
-                last_state = RS::DestBlend;
-                last_value = sub->dwBlendDst;
-            } else {
-                last_state = RS::AlphaBlendEnable;
-                last_value = 0;
-            }
-            d3d->SetRenderState(last_state, last_value);
+            d3d->SetBlend(blendFromTheme(sub->dwBlendSrc, sub->dwBlendDst));
 
             CFaktMesh *mesh = obj->mesh();  // NULL: draw the flat quads
             if (mesh == NULL) {
-                d3d->SetTransform(Transform::World,
-                                           &g_worldIdentity);
+                d3d->SetWorld(g_worldIdentity);
                 d3d->Draw(
                     Prim::TriangleList, MESH_QUAD_FVF,
                     pl->kind01Verts(), pl->kind01Count() * 6, 0);
@@ -118,8 +103,7 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
                 m[14] = pl->exitPos()[2];
                 m[15] = 1.0f;
 
-                d3d->SetTransform(Transform::World,
-                                           (const Mat4 *)m);
+                d3d->SetWorld(*(const Mat4 *)m);
                 mesh->drawMeshBuffer(d3d, 0);
 
                 static std::atomic<long> logged = 0;

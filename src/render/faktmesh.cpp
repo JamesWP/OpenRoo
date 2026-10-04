@@ -82,12 +82,12 @@ long CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
  */
 long CFaktMesh::drawMeshBuffer(RenderDevice *dev, uint32_t frame)
 {
-    return drawMesh(dev, frame, DrawFlag::NoUpdateExtents, "DrawMeshBuffer");
+    return drawMesh(dev, frame, 0, "DrawMeshBuffer");
 }
 
 long CFaktMesh::drawFramedModel(RenderDevice *dev, uint32_t frame)
 {
-    return drawMesh(dev, frame, DrawFlag::NoUpdateExtents | DrawFlag::NoLight,
+    return drawMesh(dev, frame, DrawFlag::NoLight,
                      "DrawFramedModel");
 }
   //  

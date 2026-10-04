@@ -1,8 +1,8 @@
 /* RenderDevice: everything but creation (createdevice.cpp) and textures
  * (devicetexture.cpp).
  *
- * The game's render states are Direct3D 6's numbers, and most of them are
- * Direct3D 9's too; the few that moved are mapped in apply_render_state.
+ * Each of the game's state types is written to the device by an apply_
+ * function, which both the setters and d3d_restore_state call.
  * Direct3D 6 also had a viewport whose clip volume put the y axis at
  * +-aspect, which SetTransform compensates for in the projection matrix.
  *
@@ -94,60 +94,175 @@ static unsigned fvf_stride(DWORD fvf)
     return s + 8 * fvf_tex_count(fvf);
 }
 
-static D3DTRANSFORMSTATETYPE d3d_transform(Transform t)
-{
-    switch (t) {
-    case Transform::World:      return D3DTS_WORLD;
-    case Transform::View:       return D3DTS_VIEW;
-    case Transform::Projection: return D3DTS_PROJECTION;
-    }
-    return D3DTS_WORLD;
-}
-
 // ── State, on the device ──
 
-/* Texture filters are Direct3D 6's: 1 is nearest, anything else linear. */
-static DWORD d3d_filter(uint32_t v)
+static DWORD d3d_blend(BlendFactor f)
 {
-    return v == 1 ? D3DTEXF_POINT : D3DTEXF_LINEAR;
+    switch (f) {
+    case BlendFactor::Zero:            return D3DBLEND_ZERO;
+    case BlendFactor::One:             return D3DBLEND_ONE;
+    case BlendFactor::SrcColor:        return D3DBLEND_SRCCOLOR;
+    case BlendFactor::InvSrcColor:     return D3DBLEND_INVSRCCOLOR;
+    case BlendFactor::SrcAlpha:        return D3DBLEND_SRCALPHA;
+    case BlendFactor::InvSrcAlpha:     return D3DBLEND_INVSRCALPHA;
+    case BlendFactor::DestAlpha:       return D3DBLEND_DESTALPHA;
+    case BlendFactor::InvDestAlpha:    return D3DBLEND_INVDESTALPHA;
+    case BlendFactor::DestColor:       return D3DBLEND_DESTCOLOR;
+    case BlendFactor::InvDestColor:    return D3DBLEND_INVDESTCOLOR;
+    case BlendFactor::SrcAlphaSat:     return D3DBLEND_SRCALPHASAT;
+    case BlendFactor::BothInvSrcAlpha: return D3DBLEND_BOTHINVSRCALPHA;
+    }
+    return D3DBLEND_ONE;
+}
+
+static DWORD d3d_compare(CompareFunc f)
+{
+    switch (f) {
+    case CompareFunc::Never:        return D3DCMP_NEVER;
+    case CompareFunc::Less:         return D3DCMP_LESS;
+    case CompareFunc::Equal:        return D3DCMP_EQUAL;
+    case CompareFunc::LessEqual:    return D3DCMP_LESSEQUAL;
+    case CompareFunc::Greater:      return D3DCMP_GREATER;
+    case CompareFunc::NotEqual:     return D3DCMP_NOTEQUAL;
+    case CompareFunc::GreaterEqual: return D3DCMP_GREATEREQUAL;
+    case CompareFunc::Always:       return D3DCMP_ALWAYS;
+    }
+    return D3DCMP_ALWAYS;
+}
+
+static DWORD d3d_stencil_op(StencilOp o)
+{
+    switch (o) {
+    case StencilOp::Keep:    return D3DSTENCILOP_KEEP;
+    case StencilOp::Zero:    return D3DSTENCILOP_ZERO;
+    case StencilOp::Replace: return D3DSTENCILOP_REPLACE;
+    case StencilOp::IncrSat: return D3DSTENCILOP_INCRSAT;
+    case StencilOp::DecrSat: return D3DSTENCILOP_DECRSAT;
+    case StencilOp::Invert:  return D3DSTENCILOP_INVERT;
+    case StencilOp::Incr:    return D3DSTENCILOP_INCR;
+    case StencilOp::Decr:    return D3DSTENCILOP_DECR;
+    }
+    return D3DSTENCILOP_KEEP;
+}
+
+static DWORD d3d_cull(CullMode c)
+{
+    switch (c) {
+    case CullMode::None: return D3DCULL_NONE;
+    case CullMode::CW:   return D3DCULL_CW;
+    case CullMode::CCW:  return D3DCULL_CCW;
+    }
+    return D3DCULL_CCW;
+}
+
+static DWORD d3d_filter(Filter f)
+{
+    return f == Filter::Nearest ? D3DTEXF_POINT : D3DTEXF_LINEAR;
+}
+
+static DWORD d3d_address(AddressMode a)
+{
+    switch (a) {
+    case AddressMode::Wrap:   return D3DTADDRESS_WRAP;
+    case AddressMode::Mirror: return D3DTADDRESS_MIRROR;
+    case AddressMode::Clamp:  return D3DTADDRESS_CLAMP;
+    case AddressMode::Border: return D3DTADDRESS_BORDER;
+    }
+    return D3DTADDRESS_WRAP;
+}
+
+static DWORD d3d_fog_mode(FogMode m)
+{
+    switch (m) {
+    case FogMode::None:   return D3DFOG_NONE;
+    case FogMode::Exp:    return D3DFOG_EXP;
+    case FogMode::Exp2:   return D3DFOG_EXP2;
+    case FogMode::Linear: return D3DFOG_LINEAR;
+    }
+    return D3DFOG_NONE;
+}
+
+static DWORD float_bits(float f)
+{
+    DWORD d;
+    memcpy(&d, &f, sizeof d);
+    return d;
 }
 
 /* The two texture stages the game's vertex formats can address. */
 enum { kStages = 2 };
 
-static void apply_render_state(RenderDevice::Native *n, uint32_t s, uint32_t v)
+/* Blend factors are written only while blending is on: they mean nothing
+ * otherwise. */
+static void apply_blend(RenderDevice::Native *n, const BlendState &b)
 {
     IDirect3DDevice9 *dev = n->device;
-    switch (s) {
-    case (uint32_t)RS::TextureMag:
-        for (DWORD i = 0; i < kStages; i++) dev->SetSamplerState(i, D3DSAMP_MAGFILTER, d3d_filter(v));
-        break;
-    case (uint32_t)RS::TextureMin:
-        for (DWORD i = 0; i < kStages; i++) dev->SetSamplerState(i, D3DSAMP_MINFILTER, d3d_filter(v));
-        break;
-    case (uint32_t)RS::TextureAddressU:
-        for (DWORD i = 0; i < kStages; i++) dev->SetSamplerState(i, D3DSAMP_ADDRESSU, v);
-        break;
-    case (uint32_t)RS::TextureAddressV:
-        for (DWORD i = 0; i < kStages; i++) dev->SetSamplerState(i, D3DSAMP_ADDRESSV, v);
-        break;
-    case (uint32_t)RS::TextureMapBlend:   // see apply_texture
-    case (uint32_t)RS::ColorKeyEnable:    // gone in Direct3D 9; the game never sets it
-        break;
-    default:
-        dev->SetRenderState((D3DRENDERSTATETYPE)s, v);
-        break;
+    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, b.enable);
+    if (b.enable) {
+        dev->SetRenderState(D3DRS_SRCBLEND, d3d_blend(b.src));
+        dev->SetRenderState(D3DRS_DESTBLEND, d3d_blend(b.dst));
     }
+}
+
+static void apply_depth(RenderDevice::Native *n, const DepthState &d)
+{
+    n->device->SetRenderState(D3DRS_ZENABLE, d.test);
+    n->device->SetRenderState(D3DRS_ZWRITEENABLE, d.write);
+}
+
+/* The stencil reads and writes every bit (the Direct3D default), so the
+ * masks are never written. */
+static void apply_stencil(RenderDevice::Native *n, const StencilState &s)
+{
+    IDirect3DDevice9 *dev = n->device;
+    dev->SetRenderState(D3DRS_STENCILENABLE, s.enable);
+    if (s.enable) {
+        dev->SetRenderState(D3DRS_STENCILFUNC, d3d_compare(s.func));
+        dev->SetRenderState(D3DRS_STENCILREF, s.ref);
+        dev->SetRenderState(D3DRS_STENCILFAIL, d3d_stencil_op(s.fail));
+        dev->SetRenderState(D3DRS_STENCILZFAIL, d3d_stencil_op(s.zfail));
+        dev->SetRenderState(D3DRS_STENCILPASS, d3d_stencil_op(s.pass));
+    }
+}
+
+static void apply_raster(RenderDevice::Native *n, const RasterState &r)
+{
+    n->device->SetRenderState(D3DRS_CULLMODE, d3d_cull(r.cull));
+}
+
+/* Fog is Direct3D's per-pixel "table" fog. */
+static void apply_fog(RenderDevice::Native *n, const FogState &f)
+{
+    IDirect3DDevice9 *dev = n->device;
+    dev->SetRenderState(D3DRS_FOGENABLE, f.enable);
+    if (!f.enable)
+        return;
+    dev->SetRenderState(D3DRS_FOGTABLEMODE, d3d_fog_mode(f.mode));
+    if (f.mode == FogMode::Linear) {
+        dev->SetRenderState(D3DRS_FOGSTART, float_bits(f.start));
+        dev->SetRenderState(D3DRS_FOGEND, float_bits(f.end));
+    } else {
+        dev->SetRenderState(D3DRS_FOGDENSITY, float_bits(f.density));
+    }
+    dev->SetRenderState(D3DRS_FOGCOLOR, f.color);
+}
+
+static void apply_sampler(RenderDevice::Native *n, int stage, const SamplerState &s)
+{
+    IDirect3DDevice9 *dev = n->device;
+    dev->SetSamplerState(stage, D3DSAMP_MAGFILTER, d3d_filter(s.mag));
+    dev->SetSamplerState(stage, D3DSAMP_MINFILTER, d3d_filter(s.min));
+    dev->SetSamplerState(stage, D3DSAMP_ADDRESSU, d3d_address(s.u));
+    dev->SetSamplerState(stage, D3DSAMP_ADDRESSV, d3d_address(s.v));
 }
 
 /* Direct3D 6's legacy modulate, which is the only texture blend the game
  * uses: the texture modulates the vertex colour; alpha comes from the
  * texture if it has any, else from the vertex.  A stage with no texture
  * passes the vertex colour through -- Direct3D 9 would sample black. */
-static void apply_texture(RenderDevice::Native *n, int stage)
+static void apply_texture(RenderDevice::Native *n, int stage, const DeviceTexture *t)
 {
     IDirect3DDevice9 *dev = n->device;
-    const DeviceTexture *t = n->bound[stage];
     dev->SetTexture(stage, d3d_texture_object(t));
     if (stage != 0)
         return;
@@ -168,9 +283,8 @@ static D3DCOLORVALUE d3d_color(const ColorF &c)
     return v;
 }
 
-static void apply_material(RenderDevice::Native *n)
+static void apply_material(RenderDevice::Native *n, const Material &m)
 {
-    const Material &m = n->material;
     D3DMATERIAL9 dm = {};
     dm.Diffuse  = d3d_color(m.diffuse);
     dm.Ambient  = d3d_color(m.ambient);
@@ -180,9 +294,8 @@ static void apply_material(RenderDevice::Native *n)
     n->device->SetMaterial(&dm);
 }
 
-static void apply_light(RenderDevice::Native *n)
+static void apply_light(RenderDevice::Native *n, const DirectionalLight &l)
 {
-    const DirectionalLight &l = n->light;
     const float len = sqrtf(l.direction.x * l.direction.x +
                             l.direction.y * l.direction.y +
                             l.direction.z * l.direction.z);
@@ -208,12 +321,14 @@ static Mat4 adjust_projection(const RenderDevice::Native *n, const Mat4 &m)
     return out;
 }
 
-static void apply_transform(RenderDevice::Native *n, Transform which)
+static void apply_transform(RenderDevice::Native *n, D3DTRANSFORMSTATETYPE which, const Mat4 &m)
 {
-    const Mat4 m = which == Transform::Projection
-        ? adjust_projection(n, n->transform[(int)which])
-        : n->transform[(int)which];
-    n->device->SetTransform(d3d_transform(which), (const D3DMATRIX *)&m);
+    n->device->SetTransform(which, (const D3DMATRIX *)&m);
+}
+
+static void apply_projection(RenderDevice::Native *n, const Mat4 &m)
+{
+    apply_transform(n, D3DTS_PROJECTION, adjust_projection(n, m));
 }
 
 static void set_lighting(RenderDevice::Native *n, bool on)
@@ -227,7 +342,7 @@ static void set_lighting(RenderDevice::Native *n, bool on)
 /* Puts the device in the state the game's Direct3D 6 device started in,
  * then everything the game has set since.  Called after Create and after a
  * Reset, which sets every state back to its default. */
-void d3d_restore_state(RenderDevice::Native *n)
+void d3d_restore_state(RenderDevice::Native *n, const PipelineState &st)
 {
     IDirect3DDevice9 *dev = n->device;
     // The vertex colour is not a light's material: the game's materials are.
@@ -235,18 +350,24 @@ void d3d_restore_state(RenderDevice::Native *n)
     n->lighting = -1;
     d3d_apply_viewport(n);
 
-    for (uint32_t s = 0; s < 256; s++)
-        if (n->rsSet[s])
-            apply_render_state(n, s, n->rs[s]);
-    for (int t = 0; t < 3; t++)
-        if (n->transformSet[t])
-            apply_transform(n, (Transform)t);
-    if (n->materialSet)
-        apply_material(n);
-    if (n->lightSet)
-        apply_light(n);
-    for (int stage = 0; stage < kStages; stage++)
-        apply_texture(n, stage);
+    apply_blend(n, st.blend);
+    apply_depth(n, st.depth);
+    apply_stencil(n, st.stencil);
+    apply_raster(n, st.raster);
+    apply_fog(n, st.fog);
+    dev->SetRenderState(D3DRS_SPECULARENABLE, st.specular);
+    dev->SetRenderState(D3DRS_AMBIENT, st.ambient);
+    for (int stage = 0; stage < kStages; stage++) {
+        apply_sampler(n, stage, st.samplers[stage]);
+        apply_texture(n, stage, st.bound[stage]);
+    }
+    apply_transform(n, D3DTS_WORLD, st.world);
+    apply_transform(n, D3DTS_VIEW, st.view);
+    apply_projection(n, st.projection);
+    if (st.materialSet)
+        apply_material(n, st.material);
+    if (st.lightSet)
+        apply_light(n, st.light);
 }
 
 // ── Lifetime ──
@@ -279,16 +400,9 @@ void RenderDevice::Release()
     if (n->d3d)    { n->d3d->Release();    n->d3d    = NULL; }
     n->stencil = false;
     n->lost    = false;
-
-    memset(n->rs, 0, sizeof(n->rs));
-    memset(n->rsSet, 0, sizeof(n->rsSet));
-    memset(n->transform, 0, sizeof(n->transform));
-    memset(n->transformSet, 0, sizeof(n->transformSet));
-    for (Mat4 &m : n->transform)
-        m.m[0] = m.m[5] = m.m[10] = m.m[15] = 1.0f;
-    n->materialSet = n->lightSet = false;
-    n->bound[0] = n->bound[1] = NULL;
     n->lighting = -1;
+
+    state_ = PipelineState();
 
     modes_.clear();
     mode_ = NULL;
@@ -303,48 +417,53 @@ bool RenderDevice::hasStencil() const
 
 // ── Frames ──
 
-void RenderDevice::ClearDepth()
+void RenderDevice::Clear(uint32_t flags)
 {
     Native *n = native_;
-    if (n->device)
-        n->device->Clear(0, NULL,
-                         D3DCLEAR_ZBUFFER | (n->stencil ? D3DCLEAR_STENCIL : 0),
-                         0, 1.0f, 0);
+    if (!n->device)
+        return;
+    DWORD d3dFlags = 0;
+    if (flags & ClearFlag::Color)
+        d3dFlags |= D3DCLEAR_TARGET;
+    if (flags & ClearFlag::Depth)
+        d3dFlags |= D3DCLEAR_ZBUFFER | (n->stencil ? D3DCLEAR_STENCIL : 0);
+    if (d3dFlags)
+        n->device->Clear(0, NULL, d3dFlags, 0, 1.0f, 0);
 }
 
 /* After a lost device (another application's full-screen, a mode switch):
  * waits for it to come back, then resets it and puts the state back. */
-static bool recover(RenderDevice::Native *n)
+static bool recover(RenderDevice::Native *n, const PipelineState &st)
 {
     HRESULT hr = n->device->TestCooperativeLevel();
     if (hr == D3DERR_DEVICENOTRESET) {
         d3d_release_image_surfaces(n);  // video memory goes before a Reset
         if (FAILED(n->device->Reset(&n->pp)))
             return false;
-        d3d_restore_state(n);
+        d3d_restore_state(n, st);
         hr = D3D_OK;
     }
     n->lost = FAILED(hr);
     return !n->lost;
 }
 
-bool RenderDevice::BeginScene()
+bool RenderDevice::BeginFrame()
 {
     Native *n = native_;
     if (!n->device)
         return true;
-    if (n->lost && !recover(n))
+    if (n->lost && !recover(n, state_))
         return false;
     return SUCCEEDED(n->device->BeginScene());
 }
 
-void RenderDevice::EndScene()
+void RenderDevice::EndFrame()
 {
     if (native_->device)
         native_->device->EndScene();
 }
 
-void RenderDevice::Flip()
+void RenderDevice::Present()
 {
     Native *n = native_;
     if (!n->device)
@@ -354,86 +473,204 @@ void RenderDevice::Flip()
         n->lost = true;
 }
 
-void RenderDevice::ClearBackBuffer()
-{
-    if (native_->device)
-        native_->device->Clear(0, NULL, D3DCLEAR_TARGET, 0, 1.0f, 0);
-}
-
 // ── State ──
 
-void RenderDevice::SetRenderState(RS state, uint32_t value)
+void RenderDevice::SetBlend(const BlendState &s)
 {
-    Native *n = native_;
-    const uint32_t s = (uint32_t)state;
-    if (s >= 256)
+    state_.blend = s;
+    if (native_->device)
+        apply_blend(native_, s);
+}
+
+void RenderDevice::SetDepth(const DepthState &s)
+{
+    state_.depth = s;
+    if (native_->device)
+        apply_depth(native_, s);
+}
+
+void RenderDevice::SetStencil(const StencilState &s)
+{
+    state_.stencil = s;
+    if (native_->device)
+        apply_stencil(native_, s);
+}
+
+void RenderDevice::SetRaster(const RasterState &s)
+{
+    state_.raster = s;
+    if (native_->device)
+        apply_raster(native_, s);
+}
+
+void RenderDevice::SetFog(const FogState &s)
+{
+    state_.fog = s;
+    if (native_->device)
+        apply_fog(native_, s);
+}
+
+void RenderDevice::SetSampler(int stage, const SamplerState &s)
+{
+    if (stage < 0 || stage >= kStages)
         return;
-    n->rs[s] = value;
-    n->rsSet[s] = true;
-    if (n->device)
-        apply_render_state(n, s, value);
+    state_.samplers[stage] = s;
+    if (native_->device)
+        apply_sampler(native_, stage, s);
 }
 
-uint32_t RenderDevice::GetRenderState(RS state)
+void RenderDevice::SetSamplerAddress(int stage, AddressMode u, AddressMode v)
 {
-    Native *n = native_;
-    const uint32_t s = (uint32_t)state;
-    if (s >= 256)
-        return 0;
-    // One the game never set is the device's default.
-    if (!n->rsSet[s] && n->device) {
-        DWORD v = 0;
-        n->device->GetRenderState((D3DRENDERSTATETYPE)s, &v);
-        return v;
-    }
-    return n->rs[s];
-}
-
-void RenderDevice::SetTransform(Transform which, const Mat4 *m)
-{
-    Native *n = native_;
-    n->transform[(int)which] = *m;
-    n->transformSet[(int)which] = true;
-    if (n->device)
-        apply_transform(n, which);
-}
-
-void RenderDevice::GetTransform(Transform which, Mat4 *m)
-{
-    *m = native_->transform[(int)which];
-}
-
-void RenderDevice::SetAmbientLight(uint32_t rgb)
-{
-    SetRenderState(RS::Ambient, rgb);
-}
-
-void RenderDevice::SetMaterial(const Material &m)
-{
-    Native *n = native_;
-    n->material = m;
-    n->materialSet = true;
-    if (n->device)
-        apply_material(n);
-}
-
-void RenderDevice::SetDirectionalLight(const DirectionalLight &l)
-{
-    Native *n = native_;
-    n->light = l;
-    n->lightSet = true;
-    if (n->device)
-        apply_light(n);
+    if (stage < 0 || stage >= kStages)
+        return;
+    SamplerState s = state_.samplers[stage];
+    s.u = u;
+    s.v = v;
+    SetSampler(stage, s);
 }
 
 void RenderDevice::SetTexture(int stage, const DeviceTexture *tex)
 {
-    Native *n = native_;
     if (stage < 0 || stage >= kStages)
         return;
-    n->bound[stage] = tex;
-    if (n->device)
-        apply_texture(n, stage);
+    state_.bound[stage] = tex;
+    if (native_->device)
+        apply_texture(native_, stage, tex);
+}
+
+void RenderDevice::SetSpecular(bool on)
+{
+    state_.specular = on;
+    if (native_->device)
+        native_->device->SetRenderState(D3DRS_SPECULARENABLE, on);
+}
+
+void RenderDevice::SetAmbientLight(uint32_t rgb)
+{
+    state_.ambient = rgb;
+    if (native_->device)
+        native_->device->SetRenderState(D3DRS_AMBIENT, rgb);
+}
+
+void RenderDevice::SetMaterial(const Material &m)
+{
+    state_.material = m;
+    state_.materialSet = true;
+    if (native_->device)
+        apply_material(native_, m);
+}
+
+void RenderDevice::SetDirectionalLight(const DirectionalLight &l)
+{
+    state_.light = l;
+    state_.lightSet = true;
+    if (native_->device)
+        apply_light(native_, l);
+}
+
+void RenderDevice::SetWorld(const Mat4 &m)
+{
+    state_.world = m;
+    if (native_->device)
+        apply_transform(native_, D3DTS_WORLD, m);
+}
+
+void RenderDevice::SetView(const Mat4 &m)
+{
+    state_.view = m;
+    if (native_->device)
+        apply_transform(native_, D3DTS_VIEW, m);
+}
+
+void RenderDevice::SetProjection(const Mat4 &m)
+{
+    state_.projection = m;
+    if (native_->device)
+        apply_projection(native_, m);
+}
+
+// ── Vertex buffers ──
+
+/* Copies `count` vertices of `format` into `out` in the Direct3D layout.
+ * They are the game's own layouts but for Lit, whose reserved word after the
+ * position is dropped. */
+static void pack_vertices(VertexFormat format, const void *in, uint32_t count,
+                          unsigned stride, uint8_t *out)
+{
+    if (format != VertexFormat::Lit) {
+        memcpy(out, in, (size_t)count * stride);
+        return;
+    }
+    const LitVertex *v = (const LitVertex *)in;
+    for (uint32_t i = 0; i < count; i++, out += stride) {
+        memcpy(out, &v[i].x, 12);
+        memcpy(out + 12, &v[i].color, 16);  // color, specular, tu, tv
+    }
+}
+
+/* Writes the CPU copy's vertices [first, first + count) to the buffer. */
+static bool upload_vertices(VertexBuffer *vb, uint32_t first, uint32_t count)
+{
+    if (!vb->vb || count == 0)
+        return true;
+    void *p = NULL;
+    if (FAILED(vb->vb->Lock(first * vb->stride, count * vb->stride, &p, 0)))
+        return false;
+    memcpy(p, vb->shadow.data() + (size_t)first * vb->stride, (size_t)count * vb->stride);
+    vb->vb->Unlock();
+    return true;
+}
+
+VertexBuffer *RenderDevice::CreateVertexBuffer(VertexFormat format, uint32_t count,
+                                               BufferUsage usage, const void *data)
+{
+    Native *n = native_;
+    if (count == 0)
+        return NULL;
+    VertexBuffer *vb = new VertexBuffer();
+    vb->format = format;
+    vb->usage  = usage;
+    vb->count  = count;
+    vb->fvf    = d3d_fvf(format);
+    vb->stride = fvf_stride(vb->fvf);
+    vb->vb     = NULL;
+    vb->shadow.assign((size_t)count * vb->stride, 0);
+    if (data)
+        pack_vertices(format, data, count, vb->stride, vb->shadow.data());
+
+    // Managed, so the buffer outlives a device Reset.
+    if (n->device &&
+        FAILED(n->device->CreateVertexBuffer(count * vb->stride,
+                                             usage == BufferUsage::Dynamic ? D3DUSAGE_DYNAMIC : 0,
+                                             vb->fvf, D3DPOOL_MANAGED, &vb->vb, NULL))) {
+        delete vb;
+        return NULL;
+    }
+    if (!upload_vertices(vb, 0, count)) {
+        DestroyVertexBuffer(vb);
+        return NULL;
+    }
+    return vb;
+}
+
+bool RenderDevice::UpdateVertexBuffer(VertexBuffer *vb, uint32_t first,
+                                      const void *verts, uint32_t count)
+{
+    if (!vb || vb->usage != BufferUsage::Dynamic || first > vb->count ||
+        count > vb->count - first)
+        return false;
+    pack_vertices(vb->format, verts, count, vb->stride,
+                  vb->shadow.data() + (size_t)first * vb->stride);
+    return upload_vertices(vb, first, count);
+}
+
+void RenderDevice::DestroyVertexBuffer(VertexBuffer *vb)
+{
+    if (!vb)
+        return;
+    if (vb->vb)
+        vb->vb->Release();
+    delete vb;
 }
 
 // ── Drawing ──
@@ -441,18 +678,10 @@ void RenderDevice::SetTexture(int stage, const DeviceTexture *tex)
 /* Direct3D 9 lights what has normals, so the game's lit meshes (with them)
  * are lit and its vertex-coloured quads (without) are not.  NoLight turns
  * the lighting off for a mesh the game lit itself. */
-static bool draw_vertices(RenderDevice::Native *n, Prim prim, DWORD fvf,
-                          const void *verts, uint32_t count, uint32_t flags)
+static void prepare_draw(RenderDevice::Native *n, unsigned long fvf, uint32_t flags)
 {
-    const int primitives = prim_count(prim, count);
-    if (primitives <= 0)
-        return false;
     set_lighting(n, (fvf & D3DFVF_NORMAL) && !(flags & DrawFlag::NoLight));
     n->device->SetFVF(fvf);
-    if (d3d_trace_enabled())
-        d3d_trace_draw(n, (int)prim, fvf, verts, count, fvf_stride(fvf));
-    return SUCCEEDED(n->device->DrawPrimitiveUP(d3d_prim(prim), primitives, verts,
-                                                fvf_stride(fvf)));
 }
 
 bool RenderDevice::Draw(Prim prim, VertexFormat format, const void *verts,
@@ -461,74 +690,43 @@ bool RenderDevice::Draw(Prim prim, VertexFormat format, const void *verts,
     Native *n = native_;
     if (!n->device || fx_nodraw())
         return true;
+    const int primitives = prim_count(prim, count);
+    if (primitives <= 0)
+        return false;
     const DWORD fvf = d3d_fvf(format);
+    const unsigned stride = fvf_stride(fvf);
 
     if (format == VertexFormat::Lit) {
-        // LitVertex has a reserved word after the position; drop it.
-        const LitVertex *in = (const LitVertex *)verts;
-        n->scratch.resize((size_t)count * fvf_stride(fvf));
-        uint8_t *out = n->scratch.data();
-        for (uint32_t i = 0; i < count; i++, out += fvf_stride(fvf)) {
-            memcpy(out, &in[i].x, 12);
-            memcpy(out + 12, &in[i].color, 16);  // color, specular, tu, tv
-        }
+        n->scratch.resize((size_t)count * stride);
+        pack_vertices(format, verts, count, stride, n->scratch.data());
         verts = n->scratch.data();
     }
-    return draw_vertices(n, prim, fvf, verts, count, flags);
+    prepare_draw(n, fvf, flags);
+    if (d3d_trace_enabled())
+        d3d_trace_draw(n, (int)prim, fvf, verts, count, stride);
+    return SUCCEEDED(n->device->DrawPrimitiveUP(d3d_prim(prim), primitives, verts, stride));
 }
 
-/* Direct3D 9 has no strided draw, so the streams are interleaved first.  A
- * driver is entitled to read every texture-coordinate set the vertex format
- * declares, so a declared set left unfilled would be a wild read
- * (CRASH.md): the draw is refused instead. */
-bool RenderDevice::DrawStrided(Prim prim, VertexFormat format,
-                               StridedVertices *v, uint32_t count,
-                               uint32_t flags)
+bool RenderDevice::DrawBuffer(Prim prim, const VertexBuffer *vb, uint32_t first,
+                              uint32_t count, uint32_t flags)
 {
     Native *n = native_;
-    if (fx_nodraw())
+    if (!n->device || fx_nodraw())
         return true;
-    const DWORD fvf = d3d_fvf(format);
-    const unsigned ntex = fvf_tex_count(fvf);
-    for (unsigned i = 0; i < ntex; i++) {
-        if (v->texCoords[i].data == NULL) {
-            g_logger.write("renderdevice: DrawStrided refused: format %d declares "
-                      "texture set %u but it is unfilled\n", (int)format, i);
-            return false;
-        }
-    }
-    if (v->position.data == NULL ||
-        ((fvf & D3DFVF_NORMAL) && v->normal.data == NULL))
+    const int primitives = prim_count(prim, count);
+    if (!vb || primitives <= 0 || first > vb->count || count > vb->count - first)
         return false;
-
-    const unsigned stride = fvf_stride(fvf);
-    n->scratch.resize((size_t)count * stride);
-    uint8_t *out = n->scratch.data();
-    auto at = [](const VertexStream &s, uint32_t i) {
-        return (const uint8_t *)s.data + (size_t)i * s.stride;
-    };
-    for (uint32_t i = 0; i < count; i++) {
-        memcpy(out, at(v->position, i), 12);
-        out += 12;
-        if (fvf & D3DFVF_NORMAL) {
-            memcpy(out, at(v->normal, i), 12);
-            out += 12;
-        }
-        if (fvf & D3DFVF_DIFFUSE) {
-            const uint32_t white = 0xffffffff;
-            memcpy(out, v->diffuse.data ? at(v->diffuse, i) : (const uint8_t *)&white, 4);
-            out += 4;
-        }
-        for (unsigned t = 0; t < ntex; t++) {
-            memcpy(out, at(v->texCoords[t], i), 8);
-            out += 8;
+    prepare_draw(n, vb->fvf, flags);
+    n->device->SetStreamSource(0, vb->vb, 0, vb->stride);
+    if (d3d_trace_enabled()) {
+        // What the device holds, not the CPU copy, so a bad upload shows.
+        void *p = NULL;
+        if (SUCCEEDED(vb->vb->Lock(first * vb->stride, count * vb->stride, &p, D3DLOCK_READONLY))) {
+            d3d_trace_draw(n, (int)prim, vb->fvf, p, count, vb->stride);
+            vb->vb->Unlock();
         }
     }
-    // A headless device gets this far on purpose: reading every stream is the
-    // guard bombstart-crash exists for.
-    if (!n->device)
-        return true;
-    return draw_vertices(n, prim, fvf, n->scratch.data(), count, flags);
+    return SUCCEEDED(n->device->DrawPrimitive(d3d_prim(prim), first, primitives));
 }
 
 void RenderDevice::LogState(const char *tag)

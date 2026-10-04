@@ -40,7 +40,9 @@ static bool fx_one_quad(void)
 float *SkyBackground::draw(RenderDevice *dev,
                       float flCentreX, float flCentreY, float flCentreZ)
 {
-    dev->SetRenderState(RS::ZEnable, 0);
+    DepthState depth = dev->depth();
+    depth.test = false;
+    dev->SetDepth(depth);
 
     const float c = (float)cos(flYawAngle_);
     const float s = (float)sin(flYawAngle_);
@@ -61,14 +63,14 @@ float *SkyBackground::draw(RenderDevice *dev,
     m[13] = flCentreY;
     m[14] = flCentreZ;
 
-    dev->SetTransform(Transform::World, (const Mat4 *)m);
+    dev->SetWorld(*(const Mat4 *)m);
 
     const int nquads = fx_one_quad() ? 1 : SKY_QUADS;
     for (int i = 0; i < nquads; i++) {
         const Texture *tex = &Textures_[i];
         dev->SetTexture(0, tex);
         bool ok = dev->Draw(Prim::TriangleStrip, SKY_FVF, QuadVerts_[i], 4,
-                            DrawFlag::NoUpdateExtents);
+                            0);
 
         static std::atomic<long> logged = 0;
         if (++logged <= SKY_LOG_FIRST)
@@ -76,7 +78,8 @@ float *SkyBackground::draw(RenderDevice *dev,
                       i, (void *)tex, (int)(flYawAngle_ * 1000.0f), ok);
     }
 
-    dev->SetRenderState(RS::ZEnable, 1);
+    depth.test = true;
+    dev->SetDepth(depth);
     return WorldMatrix_;
 }
 

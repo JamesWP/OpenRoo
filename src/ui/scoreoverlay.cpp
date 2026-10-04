@@ -95,9 +95,7 @@ static void build_backdrop(TLVertex v[4], float w, float h)
  * call, as the game does, so the call traffic is identical. */
 static void setup_overlay_state(RenderDevice *d3d, ThemeAssetBlock *theme)
 {
-    d3d->SetRenderState(RS::AlphaBlendEnable, 1);
-    d3d->SetRenderState(RS::SrcBlend,  Blend::SrcAlpha);
-    d3d->SetRenderState(RS::DestBlend, Blend::InvSrcAlpha);
+    d3d->SetBlend(BlendState::alpha());
 
     Texture *tex = theme->image(THEME_IMG_MENU);
     d3d->SetTexture(0, tex);

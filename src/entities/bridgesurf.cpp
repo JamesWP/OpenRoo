@@ -114,7 +114,7 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
 {
     Mat4 world = {};
     world.m[0] = world.m[5] = world.m[10] = world.m[15] = 1.0f;
-    d3d->SetTransform(Transform::World, &world);
+    d3d->SetWorld(world);
 
     const uint32_t diffuse =
         bridge_fx() == BRIDGE_FX_TINT ? 0xFFFF00FF : 0xFFFFFFFF;
@@ -130,9 +130,13 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
             continue;
 
         if (obj->specular() != 0 && game->videoHighlights() != 0)
-            d3d->SetRenderState(RS::SpecularEnable, 1);
+            d3d->SetSpecular(true);
 
-        d3d->SetRenderState(RS::ZWriteEnable, obj->noZWrite() != 0 ? 0 : 1);
+        {
+            DepthState depth = d3d->depth();
+            depth.write = obj->noZWrite() == 0;
+            d3d->SetDepth(depth);
+        }
 
         if (obj->subObjectCount() != 0) {
             for (uint32_t s = 0; s < obj->subObjectCount(); s++) {
@@ -143,29 +147,10 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
                 // bound.
                 d3d->SetTexture(0, sub->pTexture);
 
-                // One call, the state and value chosen by the branch.
-                RS last_state;
-                uint32_t              last_value;
-                if (sub->dwBlendSrc && sub->dwBlendDst) {
-                    d3d->SetRenderState(
-                        RS::AlphaBlendEnable, 1);
-                    d3d->SetRenderState(RS::SrcBlend,
-                                                 sub->dwBlendSrc);
-                    last_state = RS::DestBlend;
-                    last_value = sub->dwBlendDst;
-                } else {
-                    last_state = RS::AlphaBlendEnable;
-                    last_value = 0;
-                }
-                d3d->SetRenderState(last_state, last_value);
+                d3d->SetBlend(blendFromTheme(sub->dwBlendSrc, sub->dwBlendDst));
 
-                {
-                    uint32_t addr = sub->dwTexAddress ? sub->dwTexAddress : 3;
-                    d3d->SetRenderState(
-                        RS::TextureAddressU, addr);
-                    d3d->SetRenderState(
-                        RS::TextureAddressV, addr);
-                }
+                const AddressMode addr = addressFromTheme(sub->dwTexAddress);
+                d3d->SetSamplerAddress(0, addr, addr);
 
                 for (uint32_t k = 0;
                      k < game->bridgeCount();
@@ -201,6 +186,6 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
             }
         }
 
-        d3d->SetRenderState(RS::SpecularEnable, 0);
+        d3d->SetSpecular(false);
     }
 }

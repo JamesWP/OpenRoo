@@ -24,18 +24,6 @@ struct RenderDevice::Native {
     bool                  stencil;      // the depth format has stencil bits
     bool                  lost;         // Present said the device is lost
 
-    // What the game has set, so GetRenderState and GetTransform need no
-    // device, and a Reset (which puts every state back to its default) can
-    // be undone.
-    uint32_t              rs[256];      // by RS number
-    bool                  rsSet[256];
-    Mat4                  transform[3]; // by Transform; the game's own matrices
-    bool                  transformSet[3];
-    Material              material;
-    bool                  materialSet;
-    DirectionalLight      light;
-    bool                  lightSet;
-    const DeviceTexture  *bound[2];     // by stage
     int                   lighting;     // last D3DRS_LIGHTING written, -1 unknown
 
     // PresentImage's staging: a system-memory surface the image is converted
@@ -62,9 +50,22 @@ void d3d_dump_pixels(const char *kind, const char *name, int width, int height,
                      const PixelFormat &pf, const uint8_t *bits, long pitch);
 bool d3d_dump_enabled();
 
+/* A VertexBuffer's Direct3D buffer (NULL when headless) and its CPU copy,
+ * which is in the Direct3D vertex layout. */
+struct VertexBuffer {
+    VertexFormat           format;
+    BufferUsage            usage;
+    uint32_t               count;
+    uint32_t               stride;   // of the Direct3D layout
+    unsigned long          fvf;
+    IDirect3DVertexBuffer9 *vb;      // NULL when headless
+    std::vector<uint8_t>   shadow;   // count * stride bytes
+};
+
 /* Backend internals shared between its files. */
 void d3d_apply_viewport(RenderDevice::Native *n);
-void d3d_restore_state(RenderDevice::Native *n);
+/* Puts a device that is new or has been reset in the state `st` records. */
+void d3d_restore_state(RenderDevice::Native *n, const PipelineState &st);
 void d3d_release_image_surfaces(RenderDevice::Native *n);
 
 /* A DeviceTexture's Direct3D texture (NULL when headless or t is NULL), and

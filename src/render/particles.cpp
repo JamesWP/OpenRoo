@@ -154,20 +154,19 @@ uint32_t FaceParticleSystem::draw(RenderDevice *dev)
     return dwVertexCount_ / 6;
 }
 
-/* Two passes, one per face winding: save CULLMODE, draw with Cull::CCW, draw
- * again with Cull::CW, restore.  That makes an XFace billboard two-sided: a
+/* Two passes, one per face winding: save the cull mode, draw with CullMode::CCW, draw
+ * again with CullMode::CW, restore.  That makes an XFace billboard two-sided: a
  * particle whose corner table has rotated past edge-on is still drawn. */
 uint32_t XFaceParticleSystem::draw(RenderDevice *dev)
 {
-    uint32_t saved = 0;
-    saved = dev->GetRenderState(RS::CullMode);
-    dev->SetRenderState(RS::CullMode, Cull::CCW);
+    const RasterState saved = dev->raster();
+    dev->SetRaster(RasterState{ CullMode::CCW });
     dev->Draw(Prim::TriangleList, PARTICLE_FVF,
                        pVerts_.get(), dwVertexCount_, 0);
-    dev->SetRenderState(RS::CullMode, Cull::CW);
+    dev->SetRaster(RasterState{ CullMode::CW });
     bool ok = dev->Draw(Prim::TriangleList, PARTICLE_FVF,
                                     pVerts_.get(), dwVertexCount_, 0);
-    dev->SetRenderState(RS::CullMode, saved);
+    dev->SetRaster(saved);
     static DrawLogState st;
     log_draw(&st, "XFaceDraw", this, dev, dwVertexCount_, ok);
     return dwVertexCount_ / 6;
