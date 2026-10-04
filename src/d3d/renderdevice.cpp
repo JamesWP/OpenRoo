@@ -449,6 +449,8 @@ static bool draw_vertices(RenderDevice::Native *n, Prim prim, DWORD fvf,
         return false;
     set_lighting(n, (fvf & D3DFVF_NORMAL) && !(flags & DrawFlag::NoLight));
     n->device->SetFVF(fvf);
+    if (d3d_trace_enabled())
+        d3d_trace_draw(n, (int)prim, fvf, verts, count, fvf_stride(fvf));
     return SUCCEEDED(n->device->DrawPrimitiveUP(d3d_prim(prim), primitives, verts,
                                                 fvf_stride(fvf)));
 }

@@ -2,6 +2,7 @@
 add_library(d3d OBJECT
     createdevice.cpp
     devicetexture.cpp
+    drawtrace.cpp
     pixelconvert.cpp
     renderdevice.cpp)
 target_include_directories(d3d PRIVATE
