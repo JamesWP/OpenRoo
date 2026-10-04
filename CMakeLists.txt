@@ -36,7 +36,7 @@ add_compile_options(-Wall -Wextra -Werror)
 # folder plus its dependencies' (private), so the lists in src/*/CMakeLists.txt
 # are the layering and the compiler enforces them.  Today's lists are the
 # cyclic baseline, to be narrowed.
-foreach(group app audio audiodev core debugui entities gl input inputdev level render testing ui videodev windev sysdev log)
+foreach(group app audio audiodev core debugui entities gl input inputdev level render testing ui videodev windev sysdev log prof)
     add_subdirectory(src/${group})
 endforeach()
 
@@ -48,7 +48,7 @@ endif()
 set_target_properties(OpenRoo PROPERTIES OUTPUT_NAME OpenRoo)
 target_include_directories(OpenRoo PRIVATE src/app)
 target_link_libraries(OpenRoo PRIVATE
-    app audio audiodev core debugui entities gl input inputdev level render testing ui videodev windev sysdev log imgui)
+    app audio audiodev core debugui entities gl input inputdev level render testing ui videodev windev sysdev log prof imgui)
 if(WIN32)
     target_link_libraries(OpenRoo PRIVATE -static-libgcc -static-libstdc++ -static)
     # The SDL and FFmpeg DLLs next to the executable (launch.sh copies them into run/).

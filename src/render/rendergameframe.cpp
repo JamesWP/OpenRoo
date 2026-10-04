@@ -14,6 +14,7 @@
  *   6. the HUD and the menus, EndFrame, the present.
  */
 #include "inputdev.h"
+#include "prof.h"
 #include <stdint.h>
 #include <math.h>
 #include <stdio.h>
@@ -245,100 +246,126 @@ static void opaque_passes(Game *g, double now, double elapsed)
     LevelPlacements *pl = &g_levelPlacements;
     RenderDevice *d3d = g_renderDevice;
 
-    MeshBatch_Draw(pl, &g_themeBlock, d3d);
-    rso_list(pl->switches(),    THEME_OBJ_SWITCH,        now);
-    rso_list(pl->conveyors(),   THEME_OBJ_ICE,           now);
-    rso_list(pl->glue(),        THEME_OBJ_GLUE,          now);
-    rso_list(pl->breakables(),  THEME_OBJ_DESTRUCTFIELD, now);
-    /* the jump pads animate: a 500 ms cycle, animation code 0x14 */
-    rso(pl->jumpPads().pos(), pl->jumpPads().rot(), pl->jumpPads().count(), THEME_OBJ_JUMPPAD, now,
-        (float)fmod(now * 0.002, 1.0), 0x14, 0);
-    rso_list(pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
-    QuadBatch_Draw(pl, &g_themeBlock, d3d);
-    rso_list(pl->ramps(),       THEME_OBJ_STAIR,         now);
-    pl->drawLifts(g, &g_themeBlock, d3d, now);
-    pl->drawSlides(g, &g_themeBlock, d3d, now);
+    {
+        PROF_SCOPE("level objects");
+        MeshBatch_Draw(pl, &g_themeBlock, d3d);
+        rso_list(pl->switches(),    THEME_OBJ_SWITCH,        now);
+        rso_list(pl->conveyors(),   THEME_OBJ_ICE,           now);
+        rso_list(pl->glue(),        THEME_OBJ_GLUE,          now);
+        rso_list(pl->breakables(),  THEME_OBJ_DESTRUCTFIELD, now);
+        /* the jump pads animate: a 500 ms cycle, animation code 0x14 */
+        rso(pl->jumpPads().pos(), pl->jumpPads().rot(), pl->jumpPads().count(), THEME_OBJ_JUMPPAD, now,
+            (float)fmod(now * 0.002, 1.0), 0x14, 0);
+        rso_list(pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
+    }
+
+    {
+        PROF_SCOPE("tile quads");
+        QuadBatch_Draw(pl, &g_themeBlock, d3d);
+    }
+
+    {
+        PROF_SCOPE("ramps, lifts, slides");
+        rso_list(pl->ramps(),       THEME_OBJ_STAIR,         now);
+        pl->drawLifts(g, &g_themeBlock, d3d, now);
+        pl->drawSlides(g, &g_themeBlock, d3d, now);
+    }
 
     /* The destructible blocks: whole, or (while the cell's field203 is set)
      * the fx model, starting the debris on the cell's field20f latch.  Only
      * the first fx draw of the frame gets the elapsed-ms argument.  The
      * counter is a byte. */
-    bool firstFx = true;
-    for (unsigned char i = 0; i < (unsigned)pl->destructibles().count(); ++i) {
-        const float *pos = pl->destructibles().pos()[i];
-        const float *rot = pl->destructibles().rot()[i];
-        const int v = (unsigned char)(int)(pos[2] * -1.0f);
-        Tile *t = g->map()->tile((unsigned char)(int)pos[0], v);
-        if (t->field203() == 0) {
-            rso(pos, rot, 1, THEME_OBJ_OBSTACLE, now);
-            continue;
-        }
-        ThemeObjectTypeSlot *fx = slot(THEME_OBJ_OBSTACLEFX);
-        for (uint32_t k = 0; k < fx->instanceCount(); ++k) {
-            ThemeLevelObject *rec = &fx->records()[k];
-            if (rec->explodes() && t->field20f())
-                rec->explodeDebris().begin(rec->mesh(), 0, rec->explodeDir());
-        }
-        if (t->field20f())
-            t->setField20f(0);
-        if (firstFx) {
-            rso(pos, rot, 1, THEME_OBJ_OBSTACLEFX, now, 0.0f, 0, (unsigned)(int)elapsed);
-            firstFx = false;
-        } else {
-            rso(pos, rot, 1, THEME_OBJ_OBSTACLEFX, now);
+    {
+        PROF_SCOPE("destructibles");
+        bool firstFx = true;
+        for (unsigned char i = 0; i < (unsigned)pl->destructibles().count(); ++i) {
+            const float *pos = pl->destructibles().pos()[i];
+            const float *rot = pl->destructibles().rot()[i];
+            const int v = (unsigned char)(int)(pos[2] * -1.0f);
+            Tile *t = g->map()->tile((unsigned char)(int)pos[0], v);
+            if (t->field203() == 0) {
+                rso(pos, rot, 1, THEME_OBJ_OBSTACLE, now);
+                continue;
+            }
+            ThemeObjectTypeSlot *fx = slot(THEME_OBJ_OBSTACLEFX);
+            for (uint32_t k = 0; k < fx->instanceCount(); ++k) {
+                ThemeLevelObject *rec = &fx->records()[k];
+                if (rec->explodes() && t->field20f())
+                    rec->explodeDebris().begin(rec->mesh(), 0, rec->explodeDir());
+            }
+            if (t->field20f())
+                t->setField20f(0);
+            if (firstFx) {
+                rso(pos, rot, 1, THEME_OBJ_OBSTACLEFX, now, 0.0f, 0, (unsigned)(int)elapsed);
+                firstFx = false;
+            } else {
+                rso(pos, rot, 1, THEME_OBJ_OBSTACLEFX, now);
+            }
         }
     }
 
     /* The player: CameraFocus f[2..4] is its position, f[1] its yaw, f[0]
      * its animation time; the animation code is its anim byte. */
-    CameraFocus *focus = &g_cameraFocus;
-    float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
-    rso(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
-        g->player()->anim(), 0);
+    {
+        PROF_SCOPE("player, climbs, exit");
+        CameraFocus *focus = &g_cameraFocus;
+        float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
+        rso(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
+            g->player()->anim(), 0);
 
-    rso_list(pl->climbs(), THEME_OBJ_SLIDE, now);
-    rso(pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now);
+        rso_list(pl->climbs(), THEME_OBJ_SLIDE, now);
+        rso(pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now);
+    }
 
     /* The items, cell by cell. */
-    LevelMap *map = g->map();
-    for (unsigned v = 0; v < map->extentV(); ++v)
-        for (unsigned u = 0; u < map->extentU(); ++u) {
-            Tile *t = map->tile(u, v);
-            ThemeObjectType ty;
-            if (!item_slot(t->contents(), &ty))
-                continue;
-            float pos[3] = { (float)u, (float)t->height(), -(float)v };
-            float rot[3] = { 0.0f, 0.0f, 0.0f };
-            rso(pos, rot, 1, ty, now);
-        }
+    {
+        PROF_SCOPE("items");
+        LevelMap *map = g->map();
+        for (unsigned v = 0; v < map->extentV(); ++v)
+            for (unsigned u = 0; u < map->extentU(); ++u) {
+                Tile *t = map->tile(u, v);
+                ThemeObjectType ty;
+                if (!item_slot(t->contents(), &ty))
+                    continue;
+                float pos[3] = { (float)u, (float)t->height(), -(float)v };
+                float rot[3] = { 0.0f, 0.0f, 0.0f };
+                rso(pos, rot, 1, ty, now);
+            }
+    }
 
     /* The bombs: whole, or the explosion once it has started dying. */
-    for (unsigned char i = 0; i < g->bombCount(); ++i) {
-        Bomb *b = g->bombSlot(g->bombId(i));
-        float pos[3] = { b->posU(), b->posY(), -b->posV() };
-        float rot[3] = { 0.0f, 0.0f, 0.0f };
-        if (b->dyingStarted() == 0) {
-            rso(pos, rot, 1, THEME_OBJ_BOMB, now);
-            continue;
+    {
+        PROF_SCOPE("bombs");
+        for (unsigned char i = 0; i < g->bombCount(); ++i) {
+            Bomb *b = g->bombSlot(g->bombId(i));
+            float pos[3] = { b->posU(), b->posY(), -b->posV() };
+            float rot[3] = { 0.0f, 0.0f, 0.0f };
+            if (b->dyingStarted() == 0) {
+                rso(pos, rot, 1, THEME_OBJ_BOMB, now);
+                continue;
+            }
+            arm_fx_records(slot(THEME_OBJ_EXPLOSION), b);
+            rso(pos, rot, 1, THEME_OBJ_EXPLOSION, now, 0.0f, 0, (unsigned)(int)elapsed);
         }
-        arm_fx_records(slot(THEME_OBJ_EXPLOSION), b);
-        rso(pos, rot, 1, THEME_OBJ_EXPLOSION, now, 0.0f, 0, (unsigned)(int)elapsed);
     }
 
     /* The foes, from the poses FramePose_Foes wrote. */
-    for (unsigned char i = 0; i < g->foeCount(); ++i) {
-        Foe *f = g->foeSlot(g->foeId(i));
-        FoePose *p = &g_foePoses[i];
-        const bool dying = f->dyingStarted() != 0;
-        ThemeObjectType ty;
-        if (!foe_slot(p->kind(), dying, &ty))
-            continue;
-        if (!dying) {
-            rso(p->pos(), p->rot(), 1, ty, now, p->stepFrac(), f->anim(), 0);
-            continue;
+    {
+        PROF_SCOPE("foes");
+        for (unsigned char i = 0; i < g->foeCount(); ++i) {
+            Foe *f = g->foeSlot(g->foeId(i));
+            FoePose *p = &g_foePoses[i];
+            const bool dying = f->dyingStarted() != 0;
+            ThemeObjectType ty;
+            if (!foe_slot(p->kind(), dying, &ty))
+                continue;
+            if (!dying) {
+                rso(p->pos(), p->rot(), 1, ty, now, p->stepFrac(), f->anim(), 0);
+                continue;
+            }
+            arm_fx_records(slot(ty), f);
+            rso(p->pos(), p->rot(), 1, ty, now, 0.0f, 0, (unsigned)(int)elapsed);
         }
-        arm_fx_records(slot(ty), f);
-        rso(p->pos(), p->rot(), 1, ty, now, 0.0f, 0, (unsigned)(int)elapsed);
     }
 }
 
@@ -355,10 +382,16 @@ static void shadow(const void *pos, const void *rot, ThemeObjectType t, double n
 static void effects_and_shadows(Game *g, double now, double dt)
 {
     RenderDevice *d3d = g_renderDevice;
-    Scene_DrawSceneObjects(d3d, g_camera.eye(),
-                           ((uint32_t *)&dt)[0], ((uint32_t *)&dt)[1], now);
-    set_stencil_enable(false);
-    BridgeSurf_Draw(g, &g_themeBlock, d3d, now);
+    {
+        PROF_SCOPE("scene objects");
+        Scene_DrawSceneObjects(d3d, g_camera.eye(),
+                               ((uint32_t *)&dt)[0], ((uint32_t *)&dt)[1], now);
+        set_stencil_enable(false);
+    }
+    {
+        PROF_SCOPE("bridges");
+        BridgeSurf_Draw(g, &g_themeBlock, d3d, now);
+    }
 
     CameraFocus *focus = &g_cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
@@ -368,45 +401,48 @@ static void effects_and_shadows(Game *g, double now, double dt)
     if (pl->anim() == 5)
         rso(&focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now);
 
-    /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
-    if (d3d->hasStencil() && d3d->bitDepth() > 16 &&
-        g->videoShadows() != 0) {
-        d3d->SetTexture(0, &g_texShadow);
-        d3d->SetBlend(BlendState::alpha());
-        StencilState st = d3d->stencil();
-        st.enable = true;
-        st.ref    = 1;
-        st.func   = CompareFunc::Equal;
-        st.pass   = StencilOp::DecrSat;
-        d3d->SetStencil(st);
+    {
+        PROF_SCOPE("shadows");
+        /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
+        if (d3d->hasStencil() && d3d->bitDepth() > 16 &&
+            g->videoShadows() != 0) {
+            d3d->SetTexture(0, &g_texShadow);
+            d3d->SetBlend(BlendState::alpha());
+            StencilState st = d3d->stencil();
+            st.enable = true;
+            st.ref    = 1;
+            st.func   = CompareFunc::Equal;
+            st.pass   = StencilOp::DecrSat;
+            d3d->SetStencil(st);
 
-        if (pl->anim() != 10)
-            shadow(&focus->f[2], playerRot, THEME_OBJ_JOHN, now, focus->f[0], pl->anim());
+            if (pl->anim() != 10)
+                shadow(&focus->f[2], playerRot, THEME_OBJ_JOHN, now, focus->f[0], pl->anim());
 
-        for (unsigned char i = 0; i < g->foeCount(); ++i) {
-            Foe *f = g->foeSlot(g->foeId(i));
-            FoePose *p = &g_foePoses[i];
-            ThemeObjectType ty;
-            if (f->dyingStarted() != 0 || !foe_slot(p->kind(), false, &ty))
-                continue;
-            shadow(p->pos(), p->rot(), ty, now, p->stepFrac(), f->anim());
+            for (unsigned char i = 0; i < g->foeCount(); ++i) {
+                Foe *f = g->foeSlot(g->foeId(i));
+                FoePose *p = &g_foePoses[i];
+                ThemeObjectType ty;
+                if (f->dyingStarted() != 0 || !foe_slot(p->kind(), false, &ty))
+                    continue;
+                shadow(p->pos(), p->rot(), ty, now, p->stepFrac(), f->anim());
+            }
+
+            /* Setting 2 and up also shadows the items. */
+            if (g->videoShadows() > 1) {
+                LevelMap *map = g->map();
+                for (unsigned v = 0; v < map->extentV(); ++v)
+                    for (unsigned u = 0; u < map->extentU(); ++u) {
+                        Tile *t = map->tile(u, v);
+                        ThemeObjectType ty;
+                        if (!item_slot(t->contents(), &ty))
+                            continue;
+                        float pos[3] = { (float)u, (float)t->height(), -(float)v };
+                        float rot[3] = { 0.0f, 0.0f, 0.0f };
+                        shadow(pos, rot, ty, now, 0.0f, 0);
+                    }
+            }
+            set_stencil_enable(false);
         }
-
-        /* Setting 2 and up also shadows the items. */
-        if (g->videoShadows() > 1) {
-            LevelMap *map = g->map();
-            for (unsigned v = 0; v < map->extentV(); ++v)
-                for (unsigned u = 0; u < map->extentU(); ++u) {
-                    Tile *t = map->tile(u, v);
-                    ThemeObjectType ty;
-                    if (!item_slot(t->contents(), &ty))
-                        continue;
-                    float pos[3] = { (float)u, (float)t->height(), -(float)v };
-                    float rot[3] = { 0.0f, 0.0f, 0.0f };
-                    shadow(pos, rot, ty, now, 0.0f, 0);
-                }
-        }
-        set_stencil_enable(false);
     }
     set_depth_write(false);
 }
@@ -514,6 +550,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
 
     if (g->videoParticles() != 0) {
+        PROF_SCOPE("particles");
         particles(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, elapsed);
         particles_list(pl->switches(),      THEME_OBJ_SWITCH,        now, elapsed);
         particles_list(pl->destructibles(), THEME_OBJ_OBSTACLE,      now, elapsed);
@@ -562,6 +599,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
     /* Setting 2 and up: pickups and the speed trail. */
     if (g->videoParticles() > 1) {
+        PROF_SCOPE("pickups and speed trail");
         Player *pl = g->player();
         ThemeLevelObject *crystal = burst_record(THEME_OBJ_CRYSTALFX);
         if (pl->pickedUp() == 1 && crystal != NULL)
@@ -961,6 +999,7 @@ static void draw_logo(Game *g, float H, float hudH, float pad)
   void  
 Render_RenderGameFrame(void)
 {
+    PROF_SCOPE("frame");
     Game *g = Game::instance();
     if (g->field_173584() != 0) {
         LevelEntry_PrepareAssets();
@@ -974,20 +1013,33 @@ Render_RenderGameFrame(void)
     double dt = now - g_lastTickMs;
 
     if (dt > 0.0) {
+        PROF_SCOPE("update");
         g_lastTickMs = now;
-        Sim_GameTick(g, dt, now);
+        {
+            PROF_SCOPE("game tick");
+            Sim_GameTick(g, dt, now);
+        }
         if (g->field_173584() != 0)
             return;
-        FramePose_Player(g, now, dt, &g_cameraFocus);
-        FramePose_Foes(g, now, dt, g_foePoses);
-        if (g->scriptPlayer()->splineActive() == 0)
-            g_camera.updateViewTransform(g_renderDevice, g, g_cameraFocus, dt);
-        else
-            scripted_camera(g, g_renderDevice);
-        if (g->soundCreated() != 0)
+        {
+            PROF_SCOPE("poses");
+            FramePose_Player(g, now, dt, &g_cameraFocus);
+            FramePose_Foes(g, now, dt, g_foePoses);
+        }
+        {
+            PROF_SCOPE("camera");
+            if (g->scriptPlayer()->splineActive() == 0)
+                g_camera.updateViewTransform(g_renderDevice, g, g_cameraFocus, dt);
+            else
+                scripted_camera(g, g_renderDevice);
+        }
+        if (g->soundCreated() != 0) {
+            PROF_SCOPE("sound listener");
             update_listener(g);
+        }
     }
 
+    PROF_SCOPE("draw");
     RenderDevice *d3d = g_renderDevice;
     /* The sky covers the whole target, so only depth (and stencil) clear. */
     if (d3d->hasStencil())
@@ -1001,43 +1053,59 @@ Render_RenderGameFrame(void)
     d3d->SetSpecular(false);
     d3d->SetBlend(BlendState::off());
     CameraGlobals *cam = &g_camera;
-    g_themeBlock.sky().draw(d3d, cam->eye()[0], cam->eye()[1], cam->eye()[2]);
+    {
+        PROF_SCOPE("sky");
+        g_themeBlock.sky().draw(d3d, cam->eye()[0], cam->eye()[1], cam->eye()[2]);
+    }
     if (g_themeBlock.fogEnabled())
         set_fog_enable(true);
     d3d->SetStencil(StencilState{ true, CompareFunc::Always, 1, StencilOp::Keep,
                                   StencilOp::Keep, StencilOp::Replace });
 
-    opaque_passes(g, now, elapsed);
-    effects_and_shadows(g, now, dt);
-    translucent_passes(g, now, elapsed, dt);
+    {
+        PROF_SCOPE("opaque");
+        opaque_passes(g, now, elapsed);
+    }
+    {
+        PROF_SCOPE("effects and shadows");
+        effects_and_shadows(g, now, dt);
+    }
+    {
+        PROF_SCOPE("translucent");
+        translucent_passes(g, now, elapsed, dt);
+    }
 
     set_depth(false, true);
     d3d->SetSamplerAddress(0, AddressMode::Clamp, AddressMode::Clamp);
 
-    const unsigned w = d3d->width(), h = d3d->height();
-    const float W = (float)w, H = (float)h;
-    const float hudH = H * 0.26666668f;
-    const unsigned char st = g->state();
-    if (st != 6 && st != 2 && st != 0 && st != 5 && st != 3 &&
-        g->scriptPlayer()->running() == 0)
-        draw_hud(g, w, h, W, H, hudH);
-    draw_fps(W, H);
+    {
+        PROF_SCOPE("hud and menus");
+        const unsigned w = d3d->width(), h = d3d->height();
+        const float W = (float)w, H = (float)h;
+        const float hudH = H * 0.26666668f;
+        const unsigned char st = g->state();
+        if (st != 6 && st != 2 && st != 0 && st != 5 && st != 3 &&
+            g->scriptPlayer()->running() == 0)
+            draw_hud(g, w, h, W, H, hudH);
+        draw_fps(W, H);
 
-    const float pad = H * 0.00625f;
-    if (st != 0 && st != 5 && st != 3)
-        draw_messages(g, W, H, pad);
-    draw_logo(g, H, hudH, pad);
+        const float pad = H * 0.00625f;
+        if (st != 0 && st != 5 && st != 3)
+            draw_messages(g, W, H, pad);
+        draw_logo(g, H, hudH, pad);
 
-    const uint32_t ms = (uint32_t)(long long)now;
-    if (st == 0 || st == 5 || st == 3)
-        Menu_DispatchGameState(g, &g_themeBlock, d3d, &g_fontMain, ms);
-    if (g->state() == 2)
-        Score_DrawGameOverScore(g, &g_themeBlock, d3d, &g_fontMain, ms);
-    if (g->menu()->node() == 3 || g->state() == 6)
-        Score_DrawHighScoreTable(g, &g_themeBlock, d3d, &g_fontMain, ms);
+        const uint32_t ms = (uint32_t)(long long)now;
+        if (st == 0 || st == 5 || st == 3)
+            Menu_DispatchGameState(g, &g_themeBlock, d3d, &g_fontMain, ms);
+        if (g->state() == 2)
+            Score_DrawGameOverScore(g, &g_themeBlock, d3d, &g_fontMain, ms);
+        if (g->menu()->node() == 3 || g->state() == 6)
+            Score_DrawHighScoreTable(g, &g_themeBlock, d3d, &g_fontMain, ms);
+    }
 
     set_depth_test(true);
     d3d->EndFrame();
+    PROF_SCOPE("present");
     if (g->state() == 7) {
         if (g->field_0c() != 0)
             g_renderDevice->PresentImage(g_demoImage);

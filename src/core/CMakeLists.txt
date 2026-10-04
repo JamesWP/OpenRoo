@@ -9,6 +9,7 @@ add_library(core OBJECT
     gametick.cpp
     worldstate.cpp)
 target_include_directories(core PRIVATE
+    ../prof
     .
     ../log
     ../audiodev

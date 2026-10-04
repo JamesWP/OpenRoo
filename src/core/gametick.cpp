@@ -58,6 +58,7 @@
 
 #include "record.h"
 #include "progctrl.h"
+#include "prof.h"
 #include "cdm.h"
 #include "audiodev.h"
 
@@ -125,12 +126,15 @@ Sim_GameTick(Game *self, double dt, double now)
             g_logger.write("gametick: KAROO_SIM_FX=tickorder -- slides tick before lifts\n");
     }
 
-    Sim_AcquireFixedSoundBuffersAndMaybeReport(self);
-    if (self->levelSoundsReady() == 0 && self->field_173584() == 0) {
-        Sim_InitLevelBasedSounds(self);
-        self->setLevelSoundsReady(1);
-        if (self->stateRef() == 0 && self->musicOn() != 0)
-            self->cdThemes()->replay();
+    {
+        PROF_SCOPE("sound buffers");
+        Sim_AcquireFixedSoundBuffersAndMaybeReport(self);
+        if (self->levelSoundsReady() == 0 && self->field_173584() == 0) {
+            Sim_InitLevelBasedSounds(self);
+            self->setLevelSoundsReady(1);
+            if (self->stateRef() == 0 && self->musicOn() != 0)
+                self->cdThemes()->replay();
+        }
     }
 
     if (self->stateRef() == 7 && self->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0) {
@@ -147,6 +151,7 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     if (self->stateRef() == 0 || self->stateRef() == 5) {
+        PROF_SCOPE("menu keypress");
         Sim_RestoreCheckpointStateBlocks(self);
         Sim_HandleKeypress(self);
     }
@@ -178,30 +183,51 @@ Sim_GameTick(Game *self, double dt, double now)
         self->setCameraDistance(camera_sway(now, self->zoomDistance()));
 
     if (self->stateRef() == 3) {
+        PROF_SCOPE("score tally");
         Sim_HandleKeypress(self);
         Sim_AnimateScoreTallyStages(self);
     }
-    if (self->stateRef() == 2)
+    if (self->stateRef() == 2) {
+        PROF_SCOPE("score tally");
         Sim_AnimateScoreTallyStages(self);
+    }
     if (self->stateRef() == 6)
         self->nameEntry()->poll((unsigned int)ftol80((*self->clock())));
 
     Game *game = self;
     if (!s_fx) {
-        for (int i = 0; i < (int)game->liftCount(); ++i)
-            game->liftSlot(i)->tick();
-        for (int i = 0; i < (int)game->slideCount(); ++i)
-            game->slideSlot(i)->tick();
+        {
+            PROF_SCOPE("lifts");
+            for (int i = 0; i < (int)game->liftCount(); ++i)
+                game->liftSlot(i)->tick();
+        }
+        {
+            PROF_SCOPE("slides");
+            for (int i = 0; i < (int)game->slideCount(); ++i)
+                game->slideSlot(i)->tick();
+        }
     } else {
-        for (int i = 0; i < (int)game->slideCount(); ++i)
-            game->slideSlot(i)->tick();
-        for (int i = 0; i < (int)game->liftCount(); ++i)
-            game->liftSlot(i)->tick();
+        {
+            PROF_SCOPE("slides");
+            for (int i = 0; i < (int)game->slideCount(); ++i)
+                game->slideSlot(i)->tick();
+        }
+        {
+            PROF_SCOPE("lifts");
+            for (int i = 0; i < (int)game->liftCount(); ++i)
+                game->liftSlot(i)->tick();
+        }
     }
-    for (int i = 0; i < (int)game->breakableCount(); ++i)
-        game->breakableSlot(i)->tick();
-    for (int i = 0; i < (int)game->bridgeCount(); ++i)
-        game->bridgeSlot(i)->tick();
+    {
+        PROF_SCOPE("breakables");
+        for (int i = 0; i < (int)game->breakableCount(); ++i)
+            game->breakableSlot(i)->tick();
+    }
+    {
+        PROF_SCOPE("bridges");
+        for (int i = 0; i < (int)game->bridgeCount(); ++i)
+            game->bridgeSlot(i)->tick();
+    }
 
     if ((self->stateRef() == 1 || self->stateRef() == 4) && self->debounceRef() != inputdev::KEY_ESCAPE && KEY(inputdev::KEY_ESCAPE) != 0) {
         self->setStateBeforeMenu(self->stateRef());
@@ -214,11 +240,14 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     // Bombs: the count is re-read each pass; no step back after a removal.
-    for (int i = 0; i < (int)self->bombCount(); ++i) {
-        self->bombSlot(self->bombId(i))->tick();
-        unsigned char id = self->bombId(i);
-        if (self->bombSlot(id)->removeRequested() != 0)
-            Bomb::remove(self, id);
+    {
+        PROF_SCOPE("bombs");
+        for (int i = 0; i < (int)self->bombCount(); ++i) {
+            self->bombSlot(self->bombId(i))->tick();
+            unsigned char id = self->bombId(i);
+            if (self->bombSlot(id)->removeRequested() != 0)
+                Bomb::remove(self, id);
+        }
     }
 
     {
@@ -228,13 +257,18 @@ Sim_GameTick(Game *self, double dt, double now)
             self->setVitalityPercent(100);
     }
 
-    pl->updateTileEffects();
+    {
+        PROF_SCOPE("player tile effects");
+        pl->updateTileEffects();
+    }
 
     if (self->stateRef() == 1) {
         if (self->cheatEntry()->active() != 0)
             Sim_HandleTypedCheatCode(self);
 
         // The timed foe spawners (levelcensus.h).
+        {
+        PROF_SCOPE("timed spawners");
         for (int i = 0; i < (int)self->census()->timed; ++i) {
             TimedSpawner *E = self->timedSpawner((unsigned)i);
             long double since = (long double)(*self->clock()) - (long double)E->lastSpawn;
@@ -254,6 +288,8 @@ Sim_GameTick(Game *self, double dt, double now)
             }
             // The last-spawn time, from the clock.
             E->lastSpawn = *self->clock();
+        }
+
         }
 
         self->config()->setActiveCameraPitch(self->config()->cameraPitch());
@@ -290,8 +326,10 @@ Sim_GameTick(Game *self, double dt, double now)
                 pl->setLastSecondsMark(crt_floor(rem64));
             }
         }
-        if (pl->moveState() == 0)
+        if (pl->moveState() == 0) {
+            PROF_SCOPE("player program");
             g_progCtrl.dispatch((unsigned short)self->stateRef());
+        }
     } else {
         pl->setIdleStarted(0);
         pl->setLastActive(*self->clock());
@@ -360,6 +398,8 @@ Sim_GameTick(Game *self, double dt, double now)
 
     // The foes.  Their pieces are Foe methods (foe.cpp); the slot is re-read
     // for each piece.
+    {
+    PROF_SCOPE("foes");
     for (int i = 0; i < (int)game->foeCount(); ++i) {
         unsigned char id = game->foeId(i);
         Foe **slot = game->foeSlotRef(id);
@@ -381,17 +421,29 @@ Sim_GameTick(Game *self, double dt, double now)
             hold = 1;
         if (pl->moveState() != 0)
             hold = 1;
-        (*slot)->chooseTarget(game, hold, (unsigned char)pl->cellU(), (unsigned char)pl->cellV(),
-                              pl->markerCellU(), pl->markerCellV(), &tu, &tv);
-
-        (*slot)->step(tu, tv);
-        (*slot)->dropBomb(game);
-        (*slot)->checkPlayerContact(pl->moveStateRef(),
-                                    pl->posU(), pl->posY(), pl->posV());
+        {
+            PROF_SCOPE("choose target");
+            (*slot)->chooseTarget(game, hold, (unsigned char)pl->cellU(), (unsigned char)pl->cellV(),
+                                  pl->markerCellU(), pl->markerCellV(), &tu, &tv);
+        }
+        {
+            PROF_SCOPE("step");
+            (*slot)->step(tu, tv);
+        }
+        {
+            PROF_SCOPE("drop bomb");
+            (*slot)->dropBomb(game);
+        }
+        {
+            PROF_SCOPE("player contact");
+            (*slot)->checkPlayerContact(pl->moveStateRef(),
+                                        pl->posU(), pl->posY(), pl->posV());
+        }
         if ((*slot)->finishDespawn(self->map())) {
             Foe::remove(game, id);
             self->setFoesKilled((unsigned char)(self->foesKilled() + 1));
         }
+    }
     }
 
     // Playing: camera follow, time-out, exit.

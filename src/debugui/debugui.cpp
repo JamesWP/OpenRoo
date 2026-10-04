@@ -4,10 +4,12 @@
 #include "cheatcode.h"
 #include "game.h"
 #include "gamestate.h"
+#include "prof.h"
 #include "renderdevice.h"
 #include "windev.h"
 #include "worldstate.h"
 #include <algorithm>
+#include <float.h>
 #include <math.h>
 #include <string.h>
 #include <vector>
@@ -200,12 +202,80 @@ static void draw_overview(RenderDevice &dev)
         Cheat_FreezeFoes(g);
 }
 
+/* One scope and, under it, the scopes it opened.  Indented as the code nests
+ * them; the bar is the share of the whole frame. */
+static void draw_prof_node(const prof::Node *nodes, unsigned count, int idx, double frameMs)
+{
+    const prof::Node &n = nodes[idx];
+    bool leaf = true;
+    for (unsigned i = 0; i < count; i++)
+        if (nodes[i].parent == idx) {
+            leaf = false;
+            break;
+        }
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_DefaultOpen;
+    if (leaf)
+        flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+    const bool idle = n.calls == 0;
+    if (idle)
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    const bool open = ImGui::TreeNodeEx(n.name, flags);
+    ImGui::TableNextColumn();
+    ImGui::Text("%.2f", n.avgMs);
+    ImGui::TableNextColumn();
+    ImGui::Text("%.2f", n.maxMs);
+    ImGui::TableNextColumn();
+    if (n.calls > 1)
+        ImGui::Text("x%u", n.calls);
+    ImGui::TableNextColumn();
+    ImGui::ProgressBar(frameMs > 0.0 ? (float)(n.avgMs / frameMs) : 0.0f, ImVec2(-FLT_MIN, 8), "");
+    if (idle)
+        ImGui::PopStyleColor();
+    if (open && !leaf) {
+        for (unsigned i = 0; i < count; i++)
+            if (nodes[i].parent == idx)
+                draw_prof_node(nodes, count, (int)i, frameMs);
+        ImGui::TreePop();
+    }
+}
+
+static void draw_frame_breakdown()
+{
+    unsigned count;
+    const prof::Node *nodes = prof::nodes(&count);
+    if (count == 0) {
+        ImGui::TextDisabled("waiting for a frame");
+        return;
+    }
+    if (ImGui::Button("reset"))
+        prof::reset();
+    ImGui::SameLine();
+    ImGui::TextDisabled("ms: smoothed average, recent worst; the tree follows the code");
+    if (ImGui::BeginTable("prof", 5, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("scope", ImGuiTableColumnFlags_NoHide);
+        ImGui::TableSetupColumn("avg", ImGuiTableColumnFlags_WidthFixed, 44);
+        ImGui::TableSetupColumn("max", ImGuiTableColumnFlags_WidthFixed, 44);
+        ImGui::TableSetupColumn("n", ImGuiTableColumnFlags_WidthFixed, 36);
+        ImGui::TableSetupColumn("share", ImGuiTableColumnFlags_WidthFixed, 70);
+        ImGui::TableHeadersRow();
+        for (unsigned i = 0; i < count; i++)
+            if (nodes[i].parent < 0)
+                draw_prof_node(nodes, count, (int)i, nodes[i].avgMs);
+        ImGui::EndTable();
+    }
+}
+
 static void draw_panels(RenderDevice &dev)
 {
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(440, 720), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Open'Roo")) {
         if (ImGui::CollapsingHeader("Overview", ImGuiTreeNodeFlags_DefaultOpen))
             draw_overview(dev);
+        if (ImGui::CollapsingHeader("Frame breakdown", ImGuiTreeNodeFlags_DefaultOpen))
+            draw_frame_breakdown();
         ImGui::TextDisabled("F10 hides this");
     }
     ImGui::End();
@@ -213,6 +283,7 @@ static void draw_panels(RenderDevice &dev)
 
 static bool overlay(RenderDevice &dev)
 {
+    prof::setEnabled(windev::debugUiShown());
     if (!windev::debugUiShown())
         return false;
     windev::debugUiNewFrame();
