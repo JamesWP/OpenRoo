@@ -4,7 +4,7 @@
  * flat per-frame vertex array, and issue one DrawPrimitive(TRIANGLELIST);
  * DrawMeshBuffer passes flags 0x08, DrawFramedModel 0x18.
  *
- * KAROO_FAKTMESH_FX=half draws only the first half of each mesh's triangles.
+ * KAROO_ANIMMESH_FX=half draws only the first half of each mesh's triangles.
  */
 
 #include <algorithm>
@@ -33,7 +33,7 @@ static bool fx_half(void)
     if (cached < 0) {
         char buf[16];
         cached = 0;
-        if (sysdev::getEnv("KAROO_FAKTMESH_FX", buf, sizeof(buf)))
+        if (sysdev::getEnv("KAROO_ANIMMESH_FX", buf, sizeof(buf)))
             cached = (strcasecmp(buf, "half") == 0);
         g_logger.write("animatedmesh: FX mode = %s\n", cached ? "half" : "off");
     }

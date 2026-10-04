@@ -1,9 +1,9 @@
-/* WrapperObject: the per-mesh texture-coordinate animator, embedded in
- * whatever owns a AnimatedMesh.  It
- * snapshots the mesh's first texture-coordinate set when the mesh is attached,
- * writes animated UVs straight into the mesh's vertices, and restores them
- * from the snapshot when the animation stops.  The name says where it sits
- * rather than what it does.
+/* UVAnimator: the per-mesh texture-coordinate animator, embedded in whatever
+ * owns an AnimatedMesh.  It snapshots the mesh's first texture-coordinate set
+ * when the mesh is attached.  The scroll and the sine warp are a 2D transform
+ * of the texture coordinates (UVTransform), which the mesh hands the device
+ * when it draws; the environment map is computed from the vertex normals and
+ * writes the mesh's vertices.  Stopping the animation restores both.
  *
  * RenderSceneObjects switches on the scene object's animation mode and calls
  * one method per object per frame: mode 0 flush, 4 sine wave, 5 environment
@@ -19,20 +19,20 @@ class RenderDevice;
 
 /* One snapshotted UV pair: a MeshVertex's uv0, the only part of the vertex
  * kept. */
-struct WrapperUV {
+struct AnimatedUV {
     float u, v;
 };
 
-class WrapperObject {
+class UVAnimator {
 public:
      
 
     // Zeroes the three fields.
-    WrapperObject();
+    UVAnimator();
     // Frees the snapshot.
-    ~WrapperObject();
-    WrapperObject(const WrapperObject &) = delete;
-    WrapperObject &operator=(const WrapperObject &) = delete;
+    ~UVAnimator();
+    UVAnimator(const UVAnimator &) = delete;
+    UVAnimator &operator=(const UVAnimator &) = delete;
 
     // Attaches mesh and snapshots every frame's UVs.  A NULL mesh is ignored
     // entirely, including the free of the old snapshot.
@@ -64,7 +64,7 @@ public:
 private:
      
 
-    WrapperUV *pBaseUV_;  // wFrameCount * dwVertexCount pairs
+    AnimatedUV *pBaseUV_;  // wFrameCount * dwVertexCount pairs
     AnimatedMesh *pMesh_;    // not owned
     uint8_t       dirty_;    // set by the three animating modes
 };
