@@ -13,8 +13,8 @@
  *     u8     async_count
  *            async_count x { u16 key; u8 down }
  *
- * Version 1 indexed keys[256] by DirectInput scan code and polled Windows
- * virtual keys; tools/convert_rec.py converts those. */
+ * Version 1 (keys[256] by DirectInput scan code, Windows virtual keys) is no
+ * longer read. */
 
 #include <stdio.h>
 #include <stdint.h>

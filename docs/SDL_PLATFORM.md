@@ -61,8 +61,10 @@ page.)
   harness's values: 1024x768x32, music off) when `run/openroo.ini` is missing.
   The importer no longer fetches `ProgableControl.sav`.
 - **Recordings** are version 2: 512-byte key arrays by SDL scancode and a
-  16-bit key in each poll. `tools/convert_rec.py` converted the committed
-  recordings from version 1; `tools/replay.py` reads version 2.
+  16-bit key in each poll. The committed recordings were converted from
+  version 1 (DirectInput scan codes and virtual keys) once, when this
+  landed; nothing reads version 1 any more, and `tools/replay.py` reads
+  version 2.
 - Behaviour that changed with the ids: Enter on the numeric keypad no longer
   confirms in the menus (only Return does), and the name entry takes A-Z and
   0-9 only (it used to accept `[` and `:` as well).
