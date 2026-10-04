@@ -38,7 +38,7 @@
 #include "texture.h"
 #include "camera.h"
 #include "ani.h"
-#include "faktmesh.h"
+#include "animatedmesh.h"
 #include "wrapperobject.h"
 #include "explodedebris.h"
 #include "d3dmath.h"

@@ -1,4 +1,4 @@
-/* CFaktMesh: the two draws and the lifecycle (faktmesh.h).
+/* AnimatedMesh: the two draws and the lifecycle (animatedmesh.h).
  *
  * Both draws clamp the 16-bit frame index against wFrameCount, index into the
  * flat per-frame vertex array, and issue one DrawPrimitive(TRIANGLELIST);
@@ -12,7 +12,7 @@
 #include <atomic>
 #include <stdio.h>
 #include <stdint.h>
-#include "faktmesh.h"
+#include "animatedmesh.h"
 #include "sysdev.h"
 #include <fstream>
 #include "binio.h"
@@ -20,8 +20,8 @@
 #include "logger.h"
 #include "gamestr.h"
 #include "renderdevice.h"
-CFaktMesh g_meshEnemy;
-CFaktMesh g_meshPlayer;
+AnimatedMesh g_meshEnemy;
+AnimatedMesh g_meshPlayer;
 
 #define MESH_FVF        VertexFormat::Normal2  // XYZ | NORMAL | TEX2
 #define MESH_LOG_FIRST  8
@@ -35,7 +35,7 @@ static bool fx_half(void)
         cached = 0;
         if (sysdev::getEnv("KAROO_FAKTMESH_FX", buf, sizeof(buf)))
             cached = (strcasecmp(buf, "half") == 0);
-        g_logger.write("faktmesh: FX mode = %s\n", cached ? "half" : "off");
+        g_logger.write("animatedmesh: FX mode = %s\n", cached ? "half" : "off");
     }
     return cached != 0;
 }
@@ -56,7 +56,7 @@ static void mesh_diag(RenderDevice *dev, uint32_t flags)
     dev->LogState("diag");
 }
 
-long CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
+long AnimatedMesh::drawMesh(RenderDevice *dev, uint32_t frame,
                          uint32_t flags, const char *name)
 {
     mesh_diag(dev, flags);
@@ -84,19 +84,19 @@ long CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
 
     static std::atomic<long> logged = 0;
     if (++logged <= MESH_LOG_FIRST)
-        g_logger.write("faktmesh: %s this=%p dev=%p frame=%lu count=%lu flags=%02lX -> hr=%08lX\n",
+        g_logger.write("animatedmesh: %s this=%p dev=%p frame=%lu count=%lu flags=%02lX -> hr=%08lX\n",
                   name, this, dev, frame, count, flags, hr);
     return hr;
 }
 
 /* ─── Exports ───────────────────────────────────────────────────────────────
  */
-long CFaktMesh::drawMeshBuffer(RenderDevice *dev, uint32_t frame)
+long AnimatedMesh::drawMeshBuffer(RenderDevice *dev, uint32_t frame)
 {
     return drawMesh(dev, frame, 0, "DrawMeshBuffer");
 }
 
-long CFaktMesh::drawFramedModel(RenderDevice *dev, uint32_t frame)
+long AnimatedMesh::drawFramedModel(RenderDevice *dev, uint32_t frame)
 {
     return drawMesh(dev, frame, DrawFlag::NoLight,
                      "DrawFramedModel");
@@ -108,7 +108,7 @@ long CFaktMesh::drawFramedModel(RenderDevice *dev, uint32_t frame)
 
 /* PRESERVED: wFrameCount goes to 1, not 0, so an empty mesh claims one frame.
  */
-void CFaktMesh::releaseModelBuffers()
+void AnimatedMesh::releaseModelBuffers()
 {
     RenderDevice::DestroyVertexBuffer(vb_);
     vb_ = nullptr;
@@ -120,7 +120,7 @@ void CFaktMesh::releaseModelBuffers()
     wFrameCount_   = 1;
 }
 
-void CFaktMesh::touchVertices(uint32_t first, uint32_t count)
+void AnimatedMesh::touchVertices(uint32_t first, uint32_t count)
 {
     if (!vb_ || count == 0 || first >= vertexData_.size())
         return;
@@ -136,7 +136,7 @@ void CFaktMesh::touchVertices(uint32_t first, uint32_t count)
 
 /* Only the four strides are set; the other eight strided entries and every
  * lpvData are left uninitialised.  PRESERVED: wFrameCount starts at 1. */
-CFaktMesh::CFaktMesh()
+AnimatedMesh::AnimatedMesh()
 {
     strided_[MESH_STRIDED_POSITION].dwStride = MDL_VERTEX_STRIDE;
     strided_[MESH_STRIDED_NORMAL].dwStride   = MDL_VERTEX_STRIDE;
@@ -148,10 +148,10 @@ CFaktMesh::CFaktMesh()
 
     static std::atomic<long> logged = 0;
     if (++logged <= MESH_LOG_FIRST)
-        g_logger.write("faktmesh: Init this=%p\n", this);
+        g_logger.write("animatedmesh: Init this=%p\n", this);
 }
 
-CFaktMesh::~CFaktMesh()
+AnimatedMesh::~AnimatedMesh()
 {
     releaseModelBuffers();
 }
@@ -198,7 +198,7 @@ static unsigned long fnv1a(const void *p, unsigned len)
     return h;
 }
 
-int CFaktMesh::importSceneModels(const char *path)
+int AnimatedMesh::importSceneModels(const char *path)
 {
     unsigned frames, verts, total;
     static int logged = 0;

@@ -15,7 +15,7 @@
 #include "texture.h"
 #include "wrapperobject.h"
 #include "ani.h"
-#include "faktmesh.h"
+#include "animatedmesh.h"
 #include "levelobject.h"
 #include "particles.h"
 #include "explodedebris.h"
@@ -49,7 +49,7 @@ public:
     ThemeLevelObject() = default;
 
     ThemeObjectKind kind() const { return kind_; }
-    CFaktMesh   *mesh() const { return pMesh_; }
+    AnimatedMesh   *mesh() const { return pMesh_; }
     WrapperObject &wrapper()             { return wrapper_; }
     const WrapperObject &wrapper() const { return wrapper_; }
     ExplodeDebris &explodeDebris()       { return explode_; }
@@ -110,7 +110,7 @@ private:
     friend class ThemeParser;          // theme.cpp fills the records
     friend class ThemeObjectTypeSlot;  // and releases them
     ThemeObjectKind kind_;
-    CFaktMesh   *pMesh_;
+    AnimatedMesh   *pMesh_;
     WrapperObject wrapper_;
     ExplodeDebris   explode_;  // set up only by `explode`, which needs the mesh first
     uint32_t        bExplode_;

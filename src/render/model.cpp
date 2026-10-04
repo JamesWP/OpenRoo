@@ -1,5 +1,5 @@
-/* ModelManager (model.h): the name-keyed CFaktMesh cache.  The .mdl reader
- * itself is CFaktMesh::importSceneModels (faktmesh.cpp). */
+/* ModelManager (model.h): the name-keyed AnimatedMesh cache.  The .mdl reader
+ * itself is AnimatedMesh::importSceneModels (animatedmesh.cpp). */
 
 #include <stdio.h>
 #include <string.h>
@@ -22,10 +22,10 @@ static void mm_lower_inplace(char *s)
             *s += ' ';
 }
 
-CFaktMesh *ModelManager::findOrImport(char *name)
+AnimatedMesh *ModelManager::findOrImport(char *name)
 {
     for (size_t i = 0; i < cache_.size(); ++i) {
-        CFaktMesh *cached = cache_[i];
+        AnimatedMesh *cached = cache_[i];
         mm_lower_inplace(name);
         mm_lower_inplace(cached->name());
         if (strcmp(cached->name(), name) == 0) {
@@ -34,7 +34,7 @@ CFaktMesh *ModelManager::findOrImport(char *name)
         }
     }
 
-    CFaktMesh *mesh = new (std::nothrow) CFaktMesh();
+    AnimatedMesh *mesh = new (std::nothrow) AnimatedMesh();
     if ((mesh->importSceneModels(name) & 0xff) == 0) {
         if (mesh != NULL)
             delete mesh;
@@ -48,7 +48,7 @@ CFaktMesh *ModelManager::findOrImport(char *name)
 
 void ModelManager::clearReleaseFree()
 {
-    std::vector<CFaktMesh *> doomed;
+    std::vector<AnimatedMesh *> doomed;
     doomed.swap(cache_);
     for (size_t i = 0; i < doomed.size(); ++i) {
         doomed[i]->releaseModelBuffers();
