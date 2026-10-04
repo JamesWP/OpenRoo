@@ -63,12 +63,15 @@ long CFaktMesh::drawMesh(RenderDevice *dev, uint32_t frame,
     frame &= 0xffff;
     if (frame >= wFrameCount_)
         frame = 0;
-    MeshVertex *verts = (MeshVertex *)this->vertexData() + frame * this->vertexCount();
     uint32_t count = this->vertexCount();
     if (fx_half())
         count = (count / 2 / 3) * 3;  // keep it a whole number of triangles
 
-    long hr = dev->Draw(Prim::TriangleList, MESH_FVF, verts, count, flags)
+    if (!vb_ && !vertexData_.empty())
+        vb_ = dev->CreateVertexBuffer(MESH_FVF, (uint32_t)vertexData_.size(),
+                                      BufferUsage::Static, vertexData_.data());
+    long hr = vb_ && dev->DrawBuffer(Prim::TriangleList, vb_,
+                                     frame * this->vertexCount(), count, flags)
                ? 0 : (long)0x80004005u;  // S_OK : E_FAIL
 
     static std::atomic<long> logged = 0;
@@ -99,6 +102,8 @@ long CFaktMesh::drawFramedModel(RenderDevice *dev, uint32_t frame)
  */
 void CFaktMesh::releaseModelBuffers()
 {
+    RenderDevice::DestroyVertexBuffer(vb_);
+    vb_ = nullptr;
     std::vector<MeshVertex>().swap(vertexData_);
     std::vector<FrameRecord>().swap(frameRecords_);
     std::string().swap(pszName_);

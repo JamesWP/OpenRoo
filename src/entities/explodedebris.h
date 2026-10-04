@@ -13,6 +13,7 @@
 #include "faktmesh.h"
  
 class RenderDevice;
+struct VertexBuffer;
 
 class ExplodeDebris {
 public:
@@ -57,6 +58,7 @@ private:
     float *debrisVertex(int i);
     float *debrisVelocity(int tri);
 
+    VertexBuffer *vb_ = nullptr;   // vertexCopy_ on the device, made by the first draw
     std::vector<MeshVertex>              vertexCopy_;   // nVertexCount of them (FVF 0x212)
     std::vector<std::array<float, 3>>    faceRecords_;  // a velocity per triangle, nVertexCount / 3
     int           nVertexCount_;          // as it was when the buffers were built

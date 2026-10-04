@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include "texture.h"
 class RenderDevice;
+struct VertexBuffer;
 
 /* One sky-cube vertex, FVF 0x1e2 = XYZ | RESERVED1 | DIFFUSE | SPECULAR |
  * TEX1. */
@@ -58,5 +59,6 @@ private:
     Texture    Textures_[6];      // one Texture per face
     SkyVertex       QuadVerts_[6][4];  // one triangle-strip quad per face
     float           WorldMatrix_[16];  // rebuilt every draw call
+    VertexBuffer   *vb_ = nullptr;     // the 24 vertices, made by the first draw
 };
 

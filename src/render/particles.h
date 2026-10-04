@@ -6,6 +6,7 @@
 #include <ostream>
 #include <stddef.h>
 class RenderDevice;
+struct VertexBuffer;
 
 /* ParticleSystem hierarchy: the systems, their ring of particles, and the
  * vertex buffers they fill.  Implemented in particles.cpp. */
@@ -130,6 +131,12 @@ protected:
     Environment    *pEnvironment_;
     std::unique_ptr<ParticleVertex[]> pVerts_;
     uint32_t           dwVertexCount_;  // vertices the last fill wrote
+    uint32_t           dwVertexCapacity_ = 0;  // vertices pVerts_ has room for
+
+    /* pVerts_'s first dwVertexCount_ vertices, on the device: the buffer is
+     * made on first use and dropped when pVerts_ is reallocated. */
+    VertexBuffer      *vb_ = nullptr;
+    const VertexBuffer *uploadVerts(RenderDevice *dev);
 };
 
 class PointParticleSystem : public ParticleSystem {

@@ -19,6 +19,8 @@
 
 void ExplodeDebris::release()
 {
+    RenderDevice::DestroyVertexBuffer(vb_);
+    vb_ = nullptr;
     std::vector<MeshVertex>().swap(vertexCopy_);
     std::vector<std::array<float, 3>>().swap(faceRecords_);
     nVertexCount_ = 0;
@@ -140,16 +142,20 @@ long ExplodeDebris::draw(RenderDevice *dev)
     if (bActive_ == 0)
         return (long)0x800401f0;  // CO_E_NOTINITIALIZED
 
+    if (!vb_ && !vertexCopy_.empty())
+        vb_ = dev->CreateVertexBuffer(VertexFormat::Normal2, (uint32_t)vertexCopy_.size(),
+                                      BufferUsage::Dynamic);
+    if (vb_ && nLiveVertices_ > 0)
+        dev->UpdateVertexBuffer(vb_, 0, vertexCopy_.data(), (uint32_t)nLiveVertices_);
+
     const BlendState saved = dev->blend();
     BlendState pass = saved;
     pass.src = BlendFactor::SrcAlpha;
     dev->SetBlend(pass);
-    dev->Draw(Prim::TriangleList, VertexFormat::Normal2, vertexCopy_.data(),
-                       nLiveVertices_, DrawFlag::NoLight);
+    dev->DrawBuffer(Prim::TriangleList, vb_, 0, nLiveVertices_, DrawFlag::NoLight);
     pass.src = BlendFactor::DestAlpha;
     dev->SetBlend(pass);
-    dev->Draw(Prim::TriangleList, VertexFormat::Normal2, vertexCopy_.data(),
-                       nLiveVertices_, DrawFlag::NoLight);
+    dev->DrawBuffer(Prim::TriangleList, vb_, 0, nLiveVertices_, DrawFlag::NoLight);
     dev->SetBlend(saved);
     return 0;
 }

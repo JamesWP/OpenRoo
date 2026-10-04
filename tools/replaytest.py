@@ -216,7 +216,7 @@ def apply_turbo(env):
 # Turbo above removed the *pacing* on presentation; this removes the rendering
 # work itself, using two switches the DLL already has:
 #
-#   KAROO_D3D_FX=nodraw   RenderDevice::Draw/DrawStrided return without
+#   KAROO_D3D_FX=nodraw   RenderDevice::Draw/DrawBuffer return without
 #                         reaching the device
 #   KAROO_FLIP_FX=noblt   RenderDevice::PresentImage skips the Blt to the back
 #                         buffer (it still Flips)

@@ -19,7 +19,7 @@ rendering the game does not need to do to be tested: the suite asserts *game
 state*, and draw calls are pure output that nothing reads back.
 
 Fast mode sets two switches the DLL already has -- `KAROO_D3D_FX=nodraw`, which
-makes `RenderDevice::Draw`/`DrawStrided` return without reaching the device, and `KAROO_FLIP_FX=noblt`, which skips the Blt in
+makes `RenderDevice::Draw`/`DrawBuffer` return without reaching the device, and `KAROO_FLIP_FX=noblt`, which skips the Blt in
 `RenderDevice::PresentImage`. Measured over the whole suite:
 
 | Run | Wall | Result |
@@ -66,14 +66,15 @@ does nothing; everything else is the real code. The pieces that matter:
 - The mode list is a fixed table of the 4:3 sizes (`kHeadlessSizes`), 32-bit
   first and then 16-bit, so `openroo.ini`'s `mode` means the same thing on
   every machine and in a real run: 3 is 1024x768x32, 10 is 800x600x16.
-- The render states, transforms, material and light are kept in a shadow
-  that `GetRenderState` and `GetTransform` answer from, with or without a
-  device.
+- The pipeline state, transforms, material and light are kept in a shadow
+  (`PipelineState`) that the getters answer from, with or without a device.
+  Vertex buffers keep a CPU copy of their vertices too.
 - Textures are converted exactly as on a real device -- same format choice,
   same pixels -- and then dropped, unless `KAROO_TEXTURE_DUMP` wants them
   hashed. `tools/texdump.py` therefore gives the same answer headless and not.
-- `DrawStrided` still reads every vertex stream before it finds there is no
-  device to give them to, which is what keeps the guard below working.
+- Draws that build their vertices in game code (`SceneQuad_Draw`) still read
+  every one of them before `Draw` finds there is no device to give them to,
+  which is what keeps the guard below working.
 
 The game reads little of what the driver reports (the mode list, and which
 texture format and depth buffer it got), and none of it reaches the simulation,
@@ -85,7 +86,7 @@ so nothing here has to be a recording of a real driver.
 real, whatever the suite was invoked with.
 
 It exists to guard the CRASH.md fault: a bad pointer handed to the driver, which
-faulted *inside* the strided draw. Skip the draw call and that pointer is
+faulted *inside* a strided draw (since replaced by `SceneQuad_Draw` interleaving the vertices itself). Skip the draw call and that pointer is
 never handed over, so the only class of fault this suite has actually caught in
 anger would go unnoticed. It costs about 10 s of the run, which is a better
 trade than losing the guard.
