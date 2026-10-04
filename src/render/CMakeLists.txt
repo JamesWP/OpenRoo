@@ -6,7 +6,7 @@ add_library(render OBJECT
     d3dmath_mode.cpp
     d3dmath_std.cpp
     dsoscene.cpp
-    faktmesh.cpp
+    animatedmesh.cpp
     image.cpp
     imagebmp.cpp
     imagetga.cpp

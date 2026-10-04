@@ -654,7 +654,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         if (slot == NULL || ntok <= 1)
             return;
         open(rec, slot);
-        CFaktMesh *mesh = g_modelManager.findOrImport(tok[1]);
+        AnimatedMesh *mesh = g_modelManager.findOrImport(tok[1]);
         if (mesh == NULL) {
             rec.at->kind_ = THEME_KIND_NONE;
             return;

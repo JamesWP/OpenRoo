@@ -7,8 +7,8 @@
 class RenderDevice;
 struct VertexBuffer;
 
-/* CFaktMesh — the mesh object, drawn by DrawMeshBuffer / DrawFramedModel
- * (faktmesh.cpp) and loaded from a .mdl by ImportSceneModels (model.cpp).
+/* AnimatedMesh — a mesh with a vertex array per animation frame, drawn by DrawMeshBuffer / DrawFramedModel
+ * (animatedmesh.cpp) and loaded from a .mdl by ImportSceneModels (model.cpp).
  *
  * Vertex data is a flat array of MeshVertex, all animation frames
  * concatenated: frame f, vertex v is at index f * dwVertexCount + v
@@ -37,13 +37,13 @@ static_assert(sizeof(MeshVertex) == 0x28, "MeshVertex is the FVF 0x212 stride");
 /* One D3DDRAWPRIMITIVESTRIDEDDATA entry. */
 struct MeshStridedEntry { void *lpvData; uint32_t dwStride; };
 
-class CFaktMesh {
+class AnimatedMesh {
 public:
     /* Load `path` into `self`; the low byte of the result is the
      * success flag. */
     int importSceneModels(const char *path);
 
-    /* The two draw exports (faktmesh.cpp). */
+    /* The two draw exports (animatedmesh.cpp). */
     long drawMeshBuffer(RenderDevice *dev, uint32_t frame);
 
     long drawFramedModel(RenderDevice *dev, uint32_t frame);
@@ -52,10 +52,10 @@ public:
      *
      * The constructor sets the four strides and empties the buffers; the
      * destructor releases them with releaseModelBuffers. */
-    CFaktMesh();
-    virtual ~CFaktMesh();
-    CFaktMesh(const CFaktMesh &) = delete;
-    CFaktMesh &operator=(const CFaktMesh &) = delete;
+    AnimatedMesh();
+    virtual ~AnimatedMesh();
+    AnimatedMesh(const AnimatedMesh &) = delete;
+    AnimatedMesh &operator=(const AnimatedMesh &) = delete;
 
     void releaseModelBuffers();
 
@@ -98,6 +98,6 @@ private:
 
 /* The two character meshes, loaded once at startup (renderstate.cpp):
  * models\John.mdl and models\Enemy.mdl. */
-extern CFaktMesh g_meshPlayer;
-extern CFaktMesh g_meshEnemy;
+extern AnimatedMesh g_meshPlayer;
+extern AnimatedMesh g_meshEnemy;
 

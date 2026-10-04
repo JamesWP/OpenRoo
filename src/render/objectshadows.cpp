@@ -16,7 +16,7 @@
 #include "renderdevice.h"
 #include "d3dmath.h"
 #include "ani.h"
-#include "faktmesh.h"
+#include "animatedmesh.h"
 #include "explodedebris.h"
 
 static const float  K_HALF_PI    = 1.5707963705062866f;

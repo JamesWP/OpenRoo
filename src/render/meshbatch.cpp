@@ -21,7 +21,7 @@
 #include "d3dmath.h"
 #include "theme.h"
 #include "levelplacements.h"
-#include "faktmesh.h"
+#include "animatedmesh.h"
 #include "logger.h"
 
 #include <math.h>
@@ -74,7 +74,7 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
 
             d3d->SetBlend(blendFromTheme(sub->dwBlendSrc, sub->dwBlendDst));
 
-            CFaktMesh *mesh = obj->mesh();  // NULL: draw the flat quads
+            AnimatedMesh *mesh = obj->mesh();  // NULL: draw the flat quads
             if (mesh == NULL) {
                 d3d->SetWorld(g_worldIdentity);
                 d3d->DrawBuffer(

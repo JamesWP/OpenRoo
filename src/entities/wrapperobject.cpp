@@ -26,17 +26,17 @@
 #define WRAP_ZERO  0.0f
 #define WRAP_HALF  0.5f
 
-static inline float *vtx_uv(CFaktMesh *mesh, unsigned int index)
+static inline float *vtx_uv(AnimatedMesh *mesh, unsigned int index)
 {
     return ((MeshVertex *)mesh->vertexData())[index].uv0;
 }
 
-static inline const float *vtx_normal(CFaktMesh *mesh, unsigned int index)
+static inline const float *vtx_normal(AnimatedMesh *mesh, unsigned int index)
 {
     return ((MeshVertex *)mesh->vertexData())[index].normal;
 }
 
-static inline unsigned int snapshot_count(CFaktMesh *mesh)
+static inline unsigned int snapshot_count(AnimatedMesh *mesh)
 {
     return (unsigned int)mesh->frameCount() * mesh->vertexCount();
 }
@@ -114,7 +114,7 @@ WrapperObject::~WrapperObject()
 /* PRESERVED: a null mesh is ignored entirely: the old snapshot, the mesh and
  * the dirty flag are left as they were.  A failed allocation is not checked.
  */
-void WrapperObject::setMesh(CFaktMesh *mesh)
+void WrapperObject::setMesh(AnimatedMesh *mesh)
 {
     if (mesh == NULL)
         return;

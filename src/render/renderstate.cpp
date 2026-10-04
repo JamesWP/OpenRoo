@@ -14,7 +14,7 @@
 #include "image.h"
 #include "texture.h"
 #include "model.h"
-#include "faktmesh.h"
+#include "animatedmesh.h"
 #include "menuscreens.h"
 #include "textrenderer.h"
 #include "logger.h"

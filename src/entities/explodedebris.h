@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <array>
 #include <vector>
-#include "faktmesh.h"
+#include "animatedmesh.h"
  
 class RenderDevice;
 struct VertexBuffer;
@@ -28,13 +28,13 @@ public:
 
     /* The theme loader's "explode": size the buffers, and store the drop rate
      * (the keyword's third argument). */
-    void allocateExplodeBuffers(struct CFaktMesh *mesh);
+    void allocateExplodeBuffers(struct AnimatedMesh *mesh);
 
     void storeExplodeScaledCount(float scale);
 
     /* Copies one mesh frame and gives every triangle a velocity.  Returns 1, or
      * 0 if the frame, the vertex count or the buffer is wrong. */
-    int begin(struct CFaktMesh *mesh, unsigned short frame,
+    int begin(struct AnimatedMesh *mesh, unsigned short frame,
               const float *origin);
 
     /* Advances by dt: moves the live vertices, then drops whole triangles. */

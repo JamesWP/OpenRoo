@@ -17,7 +17,7 @@ class ExtraObjects;
 
 struct SceneObject {
     unsigned char  type;             /* ExtraObjectKind 0..2 */
-    CFaktMesh     *mesh;             /* model */
+    AnimatedMesh     *mesh;             /* model */
     ParticleSystem *particle;        /* particle system */
     float          billboardRadius;  /* billboard */
     uint32_t          animLoaded;       /* 1 when the .ani loaded */

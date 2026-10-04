@@ -27,7 +27,7 @@
 #include "sysdev.h"
 #include "d3dmath.h"
 #include "logger.h"
-#include "faktmesh.h"
+#include "animatedmesh.h"
 #include "ani.h"
 #include "scene.h"
 #include "texture.h"
@@ -176,7 +176,7 @@ Scene_DrawSceneObjects(RenderDevice *dev, float *cam, uint32_t , uint32_t , doub
         Mat4 world;
 
         if (type == EXTRA_MODEL) {
-            CFaktMesh *mesh = o->mesh;
+            AnimatedMesh *mesh = o->mesh;
             if (mesh == NULL)
                 continue;
 

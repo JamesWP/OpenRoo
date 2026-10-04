@@ -1,5 +1,5 @@
 /* WrapperObject: the per-mesh texture-coordinate animator, embedded in
- * whatever owns a CFaktMesh.  It
+ * whatever owns a AnimatedMesh.  It
  * snapshots the mesh's first texture-coordinate set when the mesh is attached,
  * writes animated UVs straight into the mesh's vertices, and restores them
  * from the snapshot when the animation stops.  The name says where it sits
@@ -14,7 +14,7 @@
 
 #include <stdint.h>
  
-#include "faktmesh.h"
+#include "animatedmesh.h"
 class RenderDevice;
 
 /* One snapshotted UV pair: a MeshVertex's uv0, the only part of the vertex
@@ -36,7 +36,7 @@ public:
 
     // Attaches mesh and snapshots every frame's UVs.  A NULL mesh is ignored
     // entirely, including the free of the old snapshot.
-    void setMesh(CFaktMesh *mesh);
+    void setMesh(AnimatedMesh *mesh);
 
     // Frees the snapshot and nulls it, leaving the mesh and the dirty flag:
     // the owner calls this from its own destructor and never touches the
@@ -59,13 +59,13 @@ public:
     // world * view.
     void updateObjectTransform(RenderDevice *dev, unsigned short frame);
 
-    CFaktMesh *mesh() const { return pMesh_; }
+    AnimatedMesh *mesh() const { return pMesh_; }
 
 private:
      
 
     WrapperUV *pBaseUV_;  // wFrameCount * dwVertexCount pairs
-    CFaktMesh *pMesh_;    // not owned
+    AnimatedMesh *pMesh_;    // not owned
     uint8_t       dirty_;    // set by the three animating modes
 };
 

@@ -4,10 +4,10 @@
 
  
 #include <vector>
-#include "faktmesh.h"
+#include "animatedmesh.h"
 
 
-/* ─── ModelManager -- the name-keyed CFaktMesh cache ───────────────────────
+/* ─── ModelManager -- the name-keyed AnimatedMesh cache ───────────────────────
  *
  * The twin of TextureManager (texture.h): same shape, same in-place
  * lowercasing lookup, "MM:" instead of "TM:" in its log lines. */
@@ -15,7 +15,7 @@ class ModelManager {
 public:
      
 
-    CFaktMesh *findOrImport(char *name);
+    AnimatedMesh *findOrImport(char *name);
     void clearReleaseFree();
 
     /* Instances: g_modelManager and the Scene's (scene.h).  The destructor
@@ -26,7 +26,7 @@ public:
     ModelManager &operator=(const ModelManager &) = delete;
 
 private:
-    std::vector<CFaktMesh *> cache_;
+    std::vector<AnimatedMesh *> cache_;
      
 };
 

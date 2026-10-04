@@ -13,7 +13,7 @@
 #include "explodedebris.h"
 #include "generators.h"
 #include <algorithm>
-#include "faktmesh.h"
+#include "animatedmesh.h"
 #include <math.h>
 #include "renderdevice.h"
 
@@ -28,7 +28,7 @@ void ExplodeDebris::release()
 }
 
 /* The "explode" keyword's buffers, sized from the mesh and zeroed. */
-void ExplodeDebris::allocateExplodeBuffers(CFaktMesh *mesh)
+void ExplodeDebris::allocateExplodeBuffers(AnimatedMesh *mesh)
 {
     release();
 
@@ -75,7 +75,7 @@ float *ExplodeDebris::debrisVelocity(int tri)
     return faceRecords_[tri].data();
 }
 
-int ExplodeDebris::begin(CFaktMesh *mesh,
+int ExplodeDebris::begin(AnimatedMesh *mesh,
                     unsigned short frame, const float *origin)
 {
     if (frame >= mesh->frameCount())
