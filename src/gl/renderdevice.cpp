@@ -358,10 +358,10 @@ static void upload_scene(RenderDevice::Native *n, const PipelineState &st, float
     b.fog[2] = st.fog.density;
     b.fog[3] = st.fog.enable ? (float)st.fog.mode : 0.0f;  // None is 0
 
-    b.target[0] = 1.0f / (float)n->vpW;
-    b.target[1] = -1.0f / (float)n->vpH;
-    b.target[2] = (float)n->vpW;
-    b.target[3] = (float)n->vpH;
+    b.target[0] = 1.0f / (float)n->modeW;
+    b.target[1] = -1.0f / (float)n->modeH;
+    b.target[2] = (float)n->modeW;
+    b.target[3] = (float)n->modeH;
 
     gl.BindBuffer(GL_UNIFORM_BUFFER, n->sceneUbo);
     gl.BufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(b), &b);
