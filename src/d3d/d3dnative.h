@@ -71,3 +71,9 @@ void d3d_release_image_surfaces(RenderDevice::Native *n);
  * whether its format has an alpha channel. */
 IDirect3DTexture9 *d3d_texture_object(const DeviceTexture *t);
 bool               d3d_texture_has_alpha(const DeviceTexture *t);
+
+/* KAROO_DRAW_TRACE (src/d3d/drawtrace.cpp): called by each draw, just before
+ * it reaches the device. */
+bool d3d_trace_enabled();
+void d3d_trace_draw(RenderDevice::Native *n, int prim, unsigned long fvf,
+                    const void *verts, uint32_t count, unsigned stride);
