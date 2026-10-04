@@ -78,7 +78,7 @@ static bool fx_nomodels(void)
 static const char *strip_game_dir(const char *s)
 {
     size_t n = strlen(g_gameDir);
-    return (_strnicmp(s, g_gameDir, n) == 0 && s[n] == '\\') ? s + n + 1 : s;
+    return (sysdev::compareNoCase(s, g_gameDir, n) == 0 && s[n] == '\\') ? s + n + 1 : s;
 }
 
 static void fnv(unsigned long *h, const void *p, size_t n)
@@ -107,7 +107,7 @@ void ExtraObjects::recDump(const char *path)
     const std::string out = sysdev::getEnv("KAROO_LEO_RECDUMP");
     if (out.empty())
         return;
-    std::ofstream f(out, std::ios::binary | std::ios::app);
+    std::ofstream f(sysdev::nativePath(out), std::ios::binary | std::ios::app);
     if (!f)
         return;
     f << "== " << path << " objects=" << objectCount_ << " entries=" << entries_ << '\n';
@@ -165,7 +165,7 @@ int ExtraObjects::openFile(const char *name)
 
     // Binary, with the '\r's dropped as they are read: the entry after each
     // ';' is a CRLF, which must count as one character.
-    std::ifstream in(path, std::ios::binary);
+    std::ifstream in(sysdev::nativePath(path), std::ios::binary);
     if (!in)
         return 0;  // PRESERVED: counters already zeroed
 
@@ -205,7 +205,7 @@ int ExtraObjects::openFile(const char *name)
     {
         const std::string dump = sysdev::getEnv("KAROO_LEO_DUMP");
         if (!dump.empty()) {
-            std::ofstream h(dump, std::ios::binary | std::ios::app);
+            std::ofstream h(sysdev::nativePath(dump), std::ios::binary | std::ios::app);
             if (h) {
                 char line[768];
                 int len = snprintf(line, sizeof(line), "%s entries=%u objects=%u hash=%08lx\r\n",

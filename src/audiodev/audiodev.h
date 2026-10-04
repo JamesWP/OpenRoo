@@ -10,11 +10,19 @@
  *   free functions: master volume, one-off system sounds, logging */
 #pragma once
 
+#include <string>
+
 namespace audiodev {
 
 /* Where the layer reports problems.  printf-style; may stay unset. */
 typedef void (*LogFn)(const char *fmt, ...);
 void setLog(LogFn fn);
+
+/* Turns the file names the game passes in into ones the system opens (the
+ * game's own are not the host's).  The names given to the layer stay as they
+ * are everywhere else, so they remain valid lookup keys.  May stay unset. */
+typedef std::string (*PathFn)(const char *path);
+void setPathResolver(PathFn fn);
 
 /* The two volumes, each 0 (silent) to 1: the music, and every other sound.
  * They apply to this program's own output.  A fire-and-forget sound for the

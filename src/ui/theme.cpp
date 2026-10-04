@@ -883,7 +883,7 @@ bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
         d3d->SetFog(fog);
     }
 
-    std::ifstream file(path);  // text mode: the CRT folds CRLF
+    sysdev::TextFile file(path);
     if (!file)
         return false;
 

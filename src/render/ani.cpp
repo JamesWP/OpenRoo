@@ -85,7 +85,7 @@ int AnimTable::load(const char *path)
     if (path == NULL || path[0] == '\0')
         return 0;  // PRESERVED: after the table is cleared
 
-    std::ifstream in(path);  // text mode: the CRT folds CRLF
+    sysdev::TextFile in(path);
     if (!in)
         return 0;
 
@@ -134,7 +134,7 @@ int AnimTable::load(const char *path)
     {
         const std::string dump = sysdev::getEnv("KAROO_ANI_DUMP");
         if (!dump.empty()) {
-            std::ofstream h(dump, std::ios::binary | std::ios::app);
+            std::ofstream h(sysdev::nativePath(dump), std::ios::binary | std::ios::app);
             if (h) {
                 unsigned long hash = 2166136261UL;
                 for (unsigned i = 0; i < sizeof(AnimTable); i++) {

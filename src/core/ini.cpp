@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include "sysdev.h"
 
 static std::string trim(const std::string &s)
 {
@@ -31,7 +32,7 @@ const IniFile::Section *IniFile::find(const char *section) const
 bool IniFile::load(const char *path)
 {
     sections_.clear();
-    std::ifstream in(path);
+    std::ifstream in(sysdev::nativePath(path));
     if (!in) return false;
 
     std::string line, current;
@@ -61,7 +62,7 @@ bool IniFile::load(const char *path)
 
 bool IniFile::save(const char *path) const
 {
-    std::ofstream out(path);
+    std::ofstream out(sysdev::nativePath(path));
     if (!out) return false;
     out << "; Open'Roo settings.  Edit while the game is not running.\n";
     for (const Section &s : sections_) {

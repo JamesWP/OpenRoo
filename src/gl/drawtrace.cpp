@@ -46,7 +46,7 @@ Trace &trace()
         init = true;
         char path[512];
         if (sysdev::getEnv("KAROO_DRAW_TRACE", path, sizeof(path)) && path[0]) {
-            t.f = fopen(path, "w");
+            t.f = fopen(sysdev::nativePath(path).c_str(), "w");
             char v[8];
             t.verbose = sysdev::getEnv("KAROO_DRAW_TRACE_VERBOSE", v, sizeof(v)) && v[0] == '1';
         }

@@ -203,7 +203,7 @@ unsigned int TextRenderer::load(const char *path, RenderDevice *d3d)
     ++g_nLoad;
     { static unsigned long seen; text_first("ReadBitmapFontFile", &seen); }
 
-    std::ifstream in(path, std::ios::binary);
+    std::ifstream in(sysdev::nativePath(path), std::ios::binary);
     if (!in)
         return 0;
 

@@ -31,6 +31,7 @@
 #include "player.h"
 #include "gamestr.h"
 #include "gameglobals.h"
+#include "sysdev.h"
 
 /* The table columns, in file order, each printed with "%d\t". */
 static void column_values(Game *g, unsigned out[22])
@@ -68,8 +69,8 @@ Report_WriteLevelReport(Game *self, const char *pathname)
     char buf[256];
     unsigned idx;
 
-    std::ofstream sink(GS_RPT_SCRIPTTEXTS);  // PRESERVED: not checked
-    std::ofstream out(pathname);
+    std::ofstream sink(sysdev::nativePath(GS_RPT_SCRIPTTEXTS));  // PRESERVED: not checked
+    std::ofstream out(sysdev::nativePath(pathname));
     if (!out)
         return;
 

@@ -125,7 +125,7 @@ static double get_f64(const uint8_t *p)
 
 static void open_record(const char *path)
 {
-    g_out.open(path, std::ios::binary);
+    g_out.open(sysdev::nativePath(path), std::ios::binary);
     if (!g_out) {
         g_logger.write("record: cannot open %s for writing\n", path);
         g_mode = 0;
@@ -147,7 +147,7 @@ static void open_record(const char *path)
 
 static void open_replay(const char *path)
 {
-    g_in.open(path, std::ios::binary);
+    g_in.open(sysdev::nativePath(path), std::ios::binary);
     if (!g_in) {
         g_logger.write("record: cannot open %s for reading\n", path);
         g_mode = 0;

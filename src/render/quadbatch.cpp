@@ -34,7 +34,7 @@ static void quad_dump(const void *data, uint32_t quads)
         return;
     g_logger.write("quadbatch: dumping at call 200, pData=%p quads=%lu\n", data, quads);
 
-    std::ofstream f(path, std::ios::binary);
+    std::ofstream f(sysdev::nativePath(path), std::ios::binary);
     if (!f) {
         g_logger.write("quadbatch: dump could not open %s\n", path);
         return;

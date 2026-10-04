@@ -101,7 +101,7 @@ int ScriptPlayer::readForLevel(const char *path)
 
     // Binary, with the '\r's dropped as they are read: the newline after each
     // ';' is a CRLF, which must count as one character.
-    std::ifstream in(name, std::ios::binary);
+    std::ifstream in(sysdev::nativePath(name), std::ios::binary);
     if (!in)
         return 0;  // PRESERVED: a missing file leaves the object cleared
 
@@ -141,7 +141,7 @@ int ScriptPlayer::readForLevel(const char *path)
     {
         const std::string dump = sysdev::getEnv("KAROO_JJS_DUMP");
         if (!dump.empty()) {
-            std::ofstream h(dump, std::ios::binary | std::ios::app);
+            std::ofstream h(sysdev::nativePath(dump), std::ios::binary | std::ios::app);
             if (h) {
                 unsigned long hash = 2166136261UL;
                 unsigned n = lineCount_;
@@ -218,7 +218,7 @@ int ScriptPlayer::readTextsForReport(const char *path, std::ostream &sink)
     strcpy(name, path);
     strcat(name, ".jjs");
 
-    std::ifstream in(name, std::ios::binary);
+    std::ifstream in(sysdev::nativePath(name), std::ios::binary);
 
     strcpy(line, GLOBAL_SCRATCH_STR);  // PRESERVED: overwritten by the first read
 

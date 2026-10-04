@@ -190,6 +190,7 @@ private:
 int Main_WinMain(const char *lpCmdLine)
 {
     audiodev::setLog(log_sink);
+    audiodev::setPathResolver([](const char *path) { return sysdev::nativePath(path); });
     inputdev::setLog(log_sink);
     videodev::setLog(log_sink);
     windev::setLog(log_sink);
@@ -209,15 +210,10 @@ int Main_WinMain(const char *lpCmdLine)
         return 0;
     void *hWnd = window.handle();
 
-    // The first character is tested, not the pointer.  None of the early
-    // returns below destroys the window.
-    if (lpCmdLine[0] == '\0') {
-        windev::messageBox(hWnd, "Please append the name of the game file at the "
-                           "prompt! (e.g.: Karoo.exe <gamefile>)", "Ka'Roo");
-        return 0;
-    }
+    // The game file is the command line; with none, the one the game ships with.
+    const char *gameName = lpCmdLine[0] ? lpCmdLine : "JJ";
 
-    Game *game = new (std::nothrow) Game(lpCmdLine);
+    Game *game = new (std::nothrow) Game(gameName);
     Game::set_instance(game);
     if (game == NULL)
         return 0;
@@ -290,7 +286,7 @@ int Main_WinMain(const char *lpCmdLine)
     const bool show = !RenderDevice::headless() && !record_replaying()
                       && !policy_active();
     const std::string path = std::string(g_gameDir) + "/video/INTRO.AVI";
-    if (g_movie.load(hWnd, path.c_str(), show))
+    if (g_movie.load(hWnd, sysdev::nativePath(path.c_str()).c_str(), show))
         g_movie.play();
     else
         g_logger.logMessage(3, "MAIN: Couldn't load %s .", path.c_str());

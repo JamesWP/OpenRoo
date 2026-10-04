@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Configure with -DCMAKE_TOOLCHAIN_FILE=cmake/mingw.cmake
+# The platform to build for: -DOPENROO_PLATFORM=windows (the default; cross-compiled
+# with MinGW-w64, run under Wine/Proton) or -DOPENROO_PLATFORM=linux (native).
+set(OPENROO_PLATFORM "windows" CACHE STRING "windows or linux")
+set_property(CACHE OPENROO_PLATFORM PROPERTY STRINGS windows linux)
+if(OPENROO_PLATFORM STREQUAL "windows")
+    if(NOT CMAKE_TOOLCHAIN_FILE)
+        set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/mingw.cmake")
+    endif()
+elseif(NOT OPENROO_PLATFORM STREQUAL "linux")
+    message(FATAL_ERROR "OPENROO_PLATFORM must be windows or linux, not '${OPENROO_PLATFORM}'")
+endif()
+
 project(OpenRoo VERSION 0.1.0 LANGUAGES CXX)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
@@ -26,49 +37,53 @@ foreach(group app audio audiodev core entities gl input inputdev level render te
     add_subdirectory(src/${group})
 endforeach()
 
-add_executable(KarooOwn WIN32
-    src/windev/exemain.cpp)
-set_target_properties(KarooOwn PROPERTIES OUTPUT_NAME KarooOwn)
-target_include_directories(KarooOwn PRIVATE src/app)
-target_link_libraries(KarooOwn PRIVATE
-    app audio audiodev core entities gl input inputdev level render testing ui videodev windev sysdev log
-    -static-libgcc -static-libstdc++ -static)
-
-# The SDL and FFmpeg DLLs next to the executable (launch.sh copies them into run/).
-add_custom_command(TARGET KarooOwn POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_RUNTIME_DLLS} ${FFMPEG_RUNTIME_DLLS} $<TARGET_FILE_DIR:KarooOwn>)
+if(WIN32)
+    add_executable(OpenRoo WIN32 src/windev/exemain_windows.cpp)
+else()
+    add_executable(OpenRoo src/windev/exemain_linux.cpp)
+endif()
+set_target_properties(OpenRoo PROPERTIES OUTPUT_NAME OpenRoo)
+target_include_directories(OpenRoo PRIVATE src/app)
+target_link_libraries(OpenRoo PRIVATE
+    app audio audiodev core entities gl input inputdev level render testing ui videodev windev sysdev log)
+if(WIN32)
+    target_link_libraries(OpenRoo PRIVATE -static-libgcc -static-libstdc++ -static)
+    # The SDL and FFmpeg DLLs next to the executable (launch.sh copies them into run/).
+    add_custom_command(TARGET OpenRoo POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_RUNTIME_DLLS} ${FFMPEG_RUNTIME_DLLS} $<TARGET_FILE_DIR:OpenRoo>)
+endif()
 
 # Only the platform groups may include SDL.
 add_custom_target(check-native-sdl ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeSDL.cmake)
-add_dependencies(KarooOwn check-native-sdl)
+add_dependencies(OpenRoo check-native-sdl)
 
 # Only the audiodev group may include the system audio headers.
 add_custom_target(check-native-audio ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeAudio.cmake)
-add_dependencies(KarooOwn check-native-audio)
+add_dependencies(OpenRoo check-native-audio)
 
 # Only the platform groups may use the system clock, time and exception APIs.
 add_custom_target(check-native-system ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeSystem.cmake)
-add_dependencies(KarooOwn check-native-system)
+add_dependencies(OpenRoo check-native-system)
 
 # Only the windev group may use the system window and dialog APIs.
 add_custom_target(check-native-window ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeWindow.cmake)
-add_dependencies(KarooOwn check-native-window)
+add_dependencies(OpenRoo check-native-window)
 
 # Only the inputdev group may include the system input headers.
 add_custom_target(check-native-input ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeInput.cmake)
-add_dependencies(KarooOwn check-native-input)
+add_dependencies(OpenRoo check-native-input)
 
 # Only the platform groups may include <windows.h> from a header.
 add_custom_target(check-native-windows ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeWindows.cmake)
-add_dependencies(KarooOwn check-native-windows)
+add_dependencies(OpenRoo check-native-windows)
 
 # Only the gl group may include the system OpenGL headers.
 add_custom_target(check-native-gl ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeGL.cmake)
-add_dependencies(KarooOwn check-native-gl)
+add_dependencies(OpenRoo check-native-gl)

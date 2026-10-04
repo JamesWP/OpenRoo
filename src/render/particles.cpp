@@ -1017,7 +1017,7 @@ ParticleSystem::loadFile(const char *path)
     g_logger.logMessage(2, "PS: reading particle system from file %s ...", path);
     // Text mode, which is load-bearing: the files carry CRLF pairs that the
     // CRT folds, and the format counts on it.
-    std::ifstream in(path);
+    sysdev::TextFile in(path);
     if (!in) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: could not read the particle system, because file %s could not be opened", path);
         return NULL;

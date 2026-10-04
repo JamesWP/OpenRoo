@@ -65,7 +65,7 @@ int LevelMap::readFile(const char *path)
     strcpy(name, path);
     strcat(name, ".jjm");
 
-    std::ifstream in(name, std::ios::binary);
+    std::ifstream in(sysdev::nativePath(name), std::ios::binary);
     if (!in)
         return 0;
 

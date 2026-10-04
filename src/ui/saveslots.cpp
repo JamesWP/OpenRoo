@@ -17,6 +17,7 @@
 #include "gameglobals.h"
 #include "bytes.h"
 #include <stdlib.h>
+#include "sysdev.h"
 
 #define PS_LOG_FIRST   6
 
@@ -66,7 +67,7 @@ int SaveSlots::loadAllSlotFiles(const char *name, char key)
 
     for (slot = 0; slot < (int)count(); slot++) {
         sprintf(path, "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
-        std::ifstream in(path);  // text mode, as the original wrote them
+        std::ifstream in(sysdev::nativePath(path));  // text mode, as the original wrote them
         if (!in) {
             ps_log("sav load", path, 0);
             return 0;  // PRESERVED: the whole call fails
@@ -90,7 +91,7 @@ int SaveSlots::writeAllSlotFiles(const char *name, char key)
         unsigned char rec[SAVE_SLOT_BYTES];
         this->slot((unsigned char)slot)->encode(rec);
         sprintf(path, "%s\\SavedGames\\%s%d.sav", g_gameDir, name, slot);
-        std::ofstream outFile(path);  // text mode, as the original wrote them
+        std::ofstream outFile(sysdev::nativePath(path));  // text mode, as the original wrote them
         if (!outFile) {
             ps_log("sav save", path, 0);
             continue;  // PRESERVED: skip it and go on

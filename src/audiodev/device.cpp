@@ -7,6 +7,9 @@ namespace audiodev {
 LogFn g_log = NULL;
 void setLog(LogFn fn) { g_log = fn; }
 
+static PathFn g_resolve = NULL;
+void setPathResolver(PathFn fn) { g_resolve = fn; }
+
 static float g_effectsGain = 1.0f;
 static float g_musicGain   = 1.0f;
 static std::weak_ptr<MixerRef> g_effects, g_music;
@@ -84,7 +87,7 @@ std::shared_ptr<AudioRef> loadAudio(const std::shared_ptr<MixerRef> &mixer,
 {
     std::shared_ptr<AudioRef> a = std::make_shared<AudioRef>();
     a->mixer = mixer;
-    a->audio = MIX_LoadAudio(mixer->mixer, path, predecode);
+    a->audio = MIX_LoadAudio(mixer->mixer, g_resolve ? g_resolve(path).c_str() : path, predecode);
     if (!a->audio) {
         AD_LOG("audiodev: can't load '%s': %s\n", path, SDL_GetError());
         return NULL;

@@ -161,7 +161,7 @@ def wait_for_quiet(timeout=60):
     import time
     deadline = time.time() + timeout
     while time.time() < deadline:
-        r = subprocess.run(["pgrep", "-f", r"Karoo(Own)?\.exe"],
+        r = subprocess.run(["pgrep", "-f", r"(^|[/\\])OpenRoo(\.exe)?( |$)"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if r.returncode != 0:          # nothing matched
             time.sleep(2)              # let wineserver finish behind it
@@ -345,7 +345,7 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
         except subprocess.TimeoutExpired:
             continue
     # Backstop: the game can outlive the launcher script.
-    subprocess.run(["pkill", "-f", r"Karoo(Own)?\.exe"],
+    subprocess.run(["pkill", "-f", r"(^|[/\\])OpenRoo(\.exe)?( |$)"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     wait_for_quiet()
     return True

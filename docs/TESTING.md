@@ -297,11 +297,11 @@ context that does not belong in a JSON field.
 ### Running the whole suite
 
 Recordings run back to back, and the second launch will wedge — hanging before
-the DLL writes a single log line — if the previous run's `KarooOwn.exe` and
+the DLL writes a single log line — if the previous run's `OpenRoo.exe` and
 `wineserver` have not finished shutting down. The harness polls for that between
 runs. If you ever see a run produce an empty `karoo_hooks.log` and no hash file,
 that is this, not a replay failure: the recording will pass on its own. Clear it
-with `pkill -f KarooOwn.exe; pkill -f wineserver`.
+with `pkill -f OpenRoo.exe; pkill -f wineserver`.
 
 **The suite runs unthrottled.** A replay is on the virtual clock, so nothing in
 the game paces itself against wall time — but presentation still blocked on the
@@ -412,7 +412,7 @@ alone, before the first frame boundary. That also means it is orthogonal to the
 replay suite — it catches content-level regressions a replay would only show as
 a divergence thousands of frames later, and it says *which level* changed.
 
-**How the run is driven.** `KAROO_LEVEL_REPORT=1` makes `KarooOwn.exe`
+**How the run is driven.** `KAROO_LEVEL_REPORT=1` makes `OpenRoo.exe`
 (`levelreport.cpp`) answer exactly the three `VK_L` queries `LoadSounds` makes,
 and then, once the report is written, drive the menu's Quit node so the game
 shuts itself down. The quit is not a convenience: `WriteLevelReport` logs
