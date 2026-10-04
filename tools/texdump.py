@@ -10,14 +10,13 @@ Every texture and image surface the loaders produce is hashed (name, size,
 pixel format, FNV-1a of the pixel bytes).  OUT.txt holds the sorted unique
 lines; diff two of them to see whether a loader change moved a pixel.  The
 replays run headless, which converts textures as a real device does
-(src/d3d/devicetexture.cpp).  --mode picks Karoo.cfg's display mode index
-(3 = 1024x768x32, 10 = 800x600x16); run/Karoo.cfg is put back afterwards.
+(src/d3d/devicetexture.cpp).  --mode picks openroo.ini's display mode index
+(3 = 1024x768x32, 10 = 800x600x16); run/openroo.ini is put back afterwards.
 """
-import argparse, json, os, subprocess, sys
+import argparse, json, os, re, subprocess, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CFG = os.path.join(REPO, "run", "Karoo.cfg")
-MODE_OFFSET = 0x1c
+CFG = os.path.join(REPO, "run", "openroo.ini")
 HEADLESS = True
 
 
@@ -33,9 +32,11 @@ def collect(out, names, mode, fast):
     orig = open(CFG, "rb").read()
     try:
         if mode is not None:
-            cfg = bytearray(orig)
-            cfg[MODE_OFFSET] = mode
-            open(CFG, "wb").write(cfg)
+            text = orig.decode()
+            new, n = re.subn(r"(?im)^(mode\s*=\s*)\d+", r"\g<1>%d" % mode, text)
+            if not n:
+                sys.exit("%s has no mode line" % CFG)
+            open(CFG, "wb").write(new.encode())
         env = dict(os.environ, KAROO_TEXTURE_DUMP=os.path.abspath(tmp))
         for n in names:
             # The pass/fail verdict is not the point here; a different display

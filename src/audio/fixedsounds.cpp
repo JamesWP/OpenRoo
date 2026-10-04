@@ -6,6 +6,7 @@
  * never runs.  levelreport.py must fail and the replay suite, which never
  * presses L, must pass. */
 
+#include "inputdev.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <stdio.h>
@@ -101,9 +102,9 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     // DETERMINISM: three polls of L; only the third answer counts.  All three
     // are part of the recorded key stream.
     if (!s_fx) {
-        hooks_GetAsyncKeyState(0x4c);
-        hooks_GetAsyncKeyState(0x4c);
-        if (hooks_GetAsyncKeyState(0x4c) != 0)
+        input_key_down(inputdev::KEY_L);
+        input_key_down(inputdev::KEY_L);
+        if (input_key_down(inputdev::KEY_L) != 0)
             Report_WriteLevelReport(self, GS_RPT_FILE);
     }
 

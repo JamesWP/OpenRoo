@@ -15,6 +15,7 @@
  * KAROO_SIM_FX=tallyfast is a negative control: every stage takes a tenth of
  * the time, so the frame at which the tally finishes moves. */
 
+#include "inputdev.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
@@ -163,7 +164,7 @@ totals:
                        + (unsigned int)T->shownScore[TALLY_VITALITY];
         T->shownLevelTotal = (int)t;
         T->shownGrandTotal = (int)((unsigned int)T->shownBase + t);
-        if (self->debounce() != 0x0d && hooks_GetAsyncKeyState(0x0d) != 0)
+        if (self->debounce() != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0)
             self->setTallyDone(1);
         return (t & 0xffffff00u) | 0xffu;
     }

@@ -17,6 +17,7 @@
  * recording types a cheat, so the suite is expected to pass; it waits for a
  * recording that does. */
 
+#include "inputdev.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <stdio.h>
@@ -59,7 +60,7 @@ static void enter_loaded_state(Game *game)
         g_cdAudio.stop();
     game->scriptPlayer()->setRunning(1);
     game->setCameraMode(1);
-    game->setDebounce(0x0d);
+    game->setDebounce(inputdev::KEY_RETURN);
 }
 
   void  
@@ -101,7 +102,7 @@ Sim_HandleTypedCheatCode(Game *self)
             if (self->musicOn() != 0)
                 self->cdThemes()->play(GS_GAME_GAMEOVER);
             Score_CalculateLevelScore(self, 0x28);
-            self->setDebounce(0x0d);
+            self->setDebounce(inputdev::KEY_RETURN);
             g_logger.logMessage(1, "GAME: completed at level %d/%d",
                                (unsigned int)self->levelIndex() + 1,
                                (unsigned int)self->levelCount());
@@ -195,5 +196,5 @@ Sim_HandleTypedCheatCode(Game *self)
     self->cheatEntry()->setCursor(0);
     self->cheatEntry()->setBuffer((char *)buf);
     self->cheatEntry()->setActive(1);
-    self->cheatEntry()->setLastKey(0x0d);
+    self->cheatEntry()->setLastKey(inputdev::KEY_RETURN);
 }

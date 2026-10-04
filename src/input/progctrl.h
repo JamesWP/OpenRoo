@@ -4,16 +4,15 @@
  * Actions are registered per mode (0..4, the game state the dispatch is called
  * with); each has a callback, a context and a list of bound keys.  Once per
  * tick, Dispatch reads the keyboard and calls the callback of every action
- * with a key held.  Bindings are saved to and loaded from ProgableControl.sav.
+ * with a key held.  Bindings are saved to and loaded from openroo.ini.
  * There is one instance, g_progCtrl (gameglobals.h). */
 
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-#include <istream>
 #include "inputdev.h"
 
-/* Called with the scan code that fired, the binding's strength and the context
+/* Called with the key that fired, the binding's strength and the context
  * given at registration. */
 typedef void (*ActionCallback)(int key_id, int strength, void *context);
 
@@ -22,7 +21,7 @@ struct KeyBind {
     /* Frees kb and every binding chained after it; NULL frees nothing. */
     static void freeChain(KeyBind *kb);
 
-    int      scancode;  // inputdev scan code, 0..255
+    int      scancode;  // an inputdev::Key
     int      strength;  // passed to the callback; 100 for a plain key
     KeyBind *next;
 };
@@ -86,9 +85,10 @@ public:
     void registerAction(unsigned short mode, const char *name,
                         ActionCallback cb, void *ctx);
 
-    /* Loads ProgableControl.sav into the registered actions; returns 0 if the
-     * file is missing or short.  Bindings for unregistered names are
-     * discarded. */
+    /* Loads the bindings in openroo.ini over the registered actions: each
+     * action the file lists gets exactly the keys listed, the others keep
+     * theirs.  Returns 0 if the file has no bindings.  Unknown names and keys
+     * are skipped. */
     int  readBindings();
 
     /* Adds a key to an action, or updates the strength of one already bound. */
@@ -109,8 +109,6 @@ public:
     const ActionTable &actionTable(int mode) const { return action_tables[mode]; }
 
 private:
-    int  readOrigEntryBindings(std::istream &f, int mode, ActionEntry *e);
-    int  readOrigFormat(std::istream &f);
  
 
     inputdev::Devices      devices_;

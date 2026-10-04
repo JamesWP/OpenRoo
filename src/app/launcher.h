@@ -3,7 +3,7 @@
 /* Unattended runs.  KAROO_SKIP_LAUNCHER=1 answers the launcher dialog with OK
  * without showing it, and KAROO_AUTO_EXIT_SECS ends the run after that many
  * seconds.  Neither makes the game headless: the window is still created and
- * drawn to.  With the dialog skipped the video mode comes from Karoo.cfg
+ * drawn to.  With the dialog skipped the video mode comes from openroo.ini
  * alone. */
 void launcher_init(void);
 

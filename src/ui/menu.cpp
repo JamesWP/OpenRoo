@@ -12,6 +12,7 @@
  *   Escape: depth < 2 ? leave the menu : pop (cursor = saved[node])
  *   Up, Down: move the cursor, wrapping at both ends */
 
+#include "inputdev.h"
 #include <stdint.h>
 #include "menu.h"
 #include "sysdev.h"
@@ -28,13 +29,13 @@
 #define HOLD_FRAMES    2
 #define RELEASE_FRAMES 3
 
-#define VK_UP_    0x26
-#define VK_DOWN_  0x28
-#define VK_ENTER_ 0x0d
-#define VK_ESC_   0x1b
+#define KEY_UP_    inputdev::KEY_UP
+#define KEY_DOWN_  inputdev::KEY_DOWN
+#define KEY_ENTER_ inputdev::KEY_RETURN
+#define KEY_ESC_   inputdev::KEY_ESCAPE
 
 static unsigned g_goal = MENU_NO_GOAL;
-static int      g_key;    // vkey being pulsed, 0 for none
+static int      g_key;    // key being pulsed, 0 for none
 static int      g_phase;  // > 0 holding, < 0 releasing
 
 /* KAROO_MENU_TRACE=1 logs each node or cursor change while a goal stands. */
@@ -83,9 +84,9 @@ void menu_request(unsigned goal)
 
 unsigned menu_goal(void) { return g_goal; }
 
-void menu_pulse(int vkey)
+void menu_pulse(int key)
 {
-    if (!g_key) { g_key = vkey; g_phase = HOLD_FRAMES; }
+    if (!g_key) { g_key = key; g_phase = HOLD_FRAMES; }
 }
 
 /* Breadth-first over the child tables from the current node.  Returns the
@@ -129,9 +130,9 @@ static int route_first_hop(const uint8_t *g, uint8_t from, uint8_t goal)
     return -1;
 }
 
-static void want(int vkey)
+static void want(int key)
 {
-    if (g_key != vkey) { g_key = vkey; g_phase = HOLD_FRAMES; }
+    if (g_key != key) { g_key = key; g_phase = HOLD_FRAMES; }
 }
 
 void menu_tick(void)
@@ -193,12 +194,12 @@ void menu_tick(void)
     if (hop < 0) {
         // Not reachable forwards: back out one level and try from the parent.
         // At depth < 2 Escape would leave the menu, so don't.
-        if (m.depth() >= 2) want(VK_ESC_);
+        if (m.depth() >= 2) want(KEY_ESC_);
         return;
     }
 
     if (m.cursor() == (uint8_t)hop) {
-        want(VK_ENTER_);
+        want(KEY_ENTER_);
         // The goal is met when Enter is pressed on the item leading to it:
         // action nodes such as "load slot 4" are passed through within the
         // same frame, so arriving is never seen, and a goal left standing
@@ -214,11 +215,11 @@ void menu_tick(void)
     // The navigator wraps both ways, so go the short way round.
     int down = ((int)hop - (int)m.cursor() + m.count()) % m.count();
     int up   = ((int)m.cursor() - (int)hop + m.count()) % m.count();
-    want(down <= up ? VK_DOWN_ : VK_UP_);
+    want(down <= up ? KEY_DOWN_ : KEY_UP_);
 }
 
-bool menu_async_override(int vkey, short *out)
+bool menu_async_override(int key, bool *down)
 {
-    if (g_key && vkey == g_key && g_phase > 0) { *out = (short)0x8000; return true; }
+    if (g_key && key == g_key && g_phase > 0) { *down = true; return true; }
     return false;
 }

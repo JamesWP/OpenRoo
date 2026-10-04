@@ -2630,12 +2630,6 @@
    "class": "required"
   },
   {
-   "path": "ProgableControl.sav",
-   "sha256": "819c46c7881cee8f8b8cc56ebd2ea7a0b9876d9fa80a459a4b0e1a2bc6977abc",
-   "size": 3608,
-   "class": "required"
-  },
-  {
    "path": "textures/Blow.tga",
    "sha256": "13dbc391f834ab74c290c06f96684e8c3e5e00f687e58bcab83480a5e6d659d0",
    "size": 812,

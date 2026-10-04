@@ -18,8 +18,7 @@ Input_TrySaveSettings(void)
 }
 
 /* The player actions get the Player as their context, the camera actions
- * the Game.  Default keys (inputdev scan codes) are bound only when no
- * saved bindings load. */
+ * the Game.  Default keys are bound first; openroo.ini then overrides the actions it lists. */
   int  
 Input_Setup(void *hwnd, Game *game)
 {
@@ -51,21 +50,23 @@ Input_Setup(void *hwnd, Game *game)
     pc->registerAction(1, GS_ACT_CAM_UP,       Camera_TiltUp,         game);
     pc->registerAction(1, GS_ACT_CAM_DOWN,     Camera_TiltDown,       game);
 
-    if (!pc->readBindings()) {
-        pc->bindKey(1, GS_ACT_MOVE_FORWARD, inputdev::SCAN_UP, 100);  // Up
-        pc->bindKey(1, GS_ACT_MOVE_BACK,    0xd0, 100);  // Down
-        pc->bindKey(1, GS_ACT_TURN_LEFT,    0xcb, 100);  // Left
-        pc->bindKey(1, GS_ACT_TURN_RIGHT,   0xcd, 100);  // Right
-        pc->bindKey(1, GS_ACT_ZOOM_IN,      0x1e, 100);  // A
-        pc->bindKey(1, GS_ACT_ZOOM_OUT,     0x2c, 100);  // Z (Y on a German keyboard)
-        pc->bindKey(1, GS_ACT_RELEASE_BOMB, inputdev::SCAN_B, 100);  // B
-        pc->bindKey(1, GS_ACT_HARAKIRI,     0xd3, 100);  // Delete
-        pc->bindKey(1, GS_ACT_OVERVIEW,     0x0f, 100);  // Tab
-        pc->bindKey(1, GS_ACT_CAM_RIGHT,    0x2e, 100);  // C
-        pc->bindKey(1, GS_ACT_CAM_LEFT,     0x2d, 100);  // X
-        pc->bindKey(1, GS_ACT_CAM_UP,       0xc9, 100);  // Page Up
-        pc->bindKey(1, GS_ACT_CAM_DOWN,     0xd1, 100);  // Page Down
+    {
+        using namespace inputdev;
+        pc->bindKey(1, GS_ACT_MOVE_FORWARD, KEY_UP,       100);
+        pc->bindKey(1, GS_ACT_MOVE_BACK,    KEY_DOWN,     100);
+        pc->bindKey(1, GS_ACT_TURN_LEFT,    KEY_LEFT,     100);
+        pc->bindKey(1, GS_ACT_TURN_RIGHT,   KEY_RIGHT,    100);
+        pc->bindKey(1, GS_ACT_ZOOM_IN,      KEY_A,        100);
+        pc->bindKey(1, GS_ACT_ZOOM_OUT,     KEY_Z,        100);  // physical key: Y on a German keyboard
+        pc->bindKey(1, GS_ACT_RELEASE_BOMB, KEY_B,        100);
+        pc->bindKey(1, GS_ACT_HARAKIRI,     KEY_DELETE,   100);
+        pc->bindKey(1, GS_ACT_OVERVIEW,     KEY_TAB,      100);
+        pc->bindKey(1, GS_ACT_CAM_RIGHT,    KEY_C,        100);
+        pc->bindKey(1, GS_ACT_CAM_LEFT,     KEY_X,        100);
+        pc->bindKey(1, GS_ACT_CAM_UP,       KEY_PAGEUP,   100);
+        pc->bindKey(1, GS_ACT_CAM_DOWN,     KEY_PAGEDOWN, 100);
     }
+    pc->readBindings();  // the file changes only the actions it lists
     if (!pc->acquireAll()) {
         windev::messageBox(NULL, GS_CONTROL_NO_DEVICES, GS_CONTROL_ERROR_CAPTION,
                            windev::Buttons::Ok, windev::Icon::Error);

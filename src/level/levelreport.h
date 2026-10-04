@@ -11,7 +11,7 @@ bool levelreport_enabled(void);
 
 /* The key-poll override: true, with the answer in out, while the trigger is
  * being answered. */
-bool levelreport_async_override(int vkey, short *out);
+bool levelreport_async_override(int key, bool *down);
 
 /* Called once per frame.  After the report the game waits on the main menu, so
  * under KAROO_LEVEL_REPORT this drives the menu to Quit.  Quitting rather than

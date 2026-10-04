@@ -3,7 +3,7 @@
 
 class Game;
 
-/* Saves Karoo.cfg, starts the main theme, loads the three banks of pickup
+/* Saves openroo.ini, starts the main theme, loads the three banks of pickup
  * sounds and the fixed effects, and checks the level-report key.  Does nothing
  * after the first call, or if there is no sound device. */
   void  

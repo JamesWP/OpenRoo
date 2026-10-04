@@ -1,10 +1,9 @@
-/* DETERMINISM: every key poll goes through hooks_GetAsyncKeyState, so replays
- * see them, and their order is part of the recording: Return, Escape,
- * Backspace, Space, A..[ , 0..: , then the debounce release.
+/* DETERMINISM: every key poll goes through input_key_down, so replays
+ * see them.  Polled in this order: Return, Escape, Backspace, Space, A..Z,
+ * 0..9, then the debounce release.
  *
  * PRESERVED:
- *   - '[' and ':' are accepted along with the letters and digits.
- *   - Shift is polled only after a letter is accepted; unshifted adds 0x20.
+ *   - Shift is polled only after a letter is accepted; unshifted is lower case.
  *   - Backspace clears the byte after the new cursor (where the blink
  *     character was), not the one the cursor now sits on.
  *   - The debounce release is tested even when the entry is inactive.
@@ -20,6 +19,7 @@
 #include "textentry.h"
 #include <stdlib.h>
 #include "record.h"
+#include "inputdev.h"
 
 static int s_fx = -1;
 
@@ -51,45 +51,51 @@ void TextEntry::poll(unsigned int phase)
     if (ACTIVE != 0) {
         BUF[CUR] = blink_positive(phase) ? 0x5f : 0x20;
 
-        if (hooks_GetAsyncKeyState(0x0d) != 0 && LAST != 0x0d) {
+        if (input_key_down(inputdev::KEY_RETURN) && LAST != inputdev::KEY_RETURN) {
             ACTIVE = 0;
             BUF[CUR] = 0;
-            LAST = 0x0d;
+            LAST = inputdev::KEY_RETURN;
         }
-        if (hooks_GetAsyncKeyState(0x1b) != 0 && LAST != 0x1b) {
+        if (input_key_down(inputdev::KEY_ESCAPE) && LAST != inputdev::KEY_ESCAPE) {
             ACTIVE = 0;
             BUF[CUR] = 0;
-            LAST = 0x1b;
+            LAST = inputdev::KEY_ESCAPE;
         }
-        if (hooks_GetAsyncKeyState(0x08) != 0 && LAST != 0x08 && CUR != 0) {
+        if (input_key_down(inputdev::KEY_BACKSPACE) && LAST != inputdev::KEY_BACKSPACE
+            && CUR != 0) {
             CUR = (unsigned char)(CUR - 1);
             BUF[CUR + 1] = 0;
-            LAST = 0x08;
+            LAST = inputdev::KEY_BACKSPACE;
         }
-        if (hooks_GetAsyncKeyState(0x20) != 0 && LAST != 0x20 && CUR < MAXL) {
+        if (input_key_down(inputdev::KEY_SPACE) && LAST != inputdev::KEY_SPACE
+            && CUR < MAXL) {
             BUF[CUR] = 0x20;
-            LAST = 0x20;
+            LAST = inputdev::KEY_SPACE;
             CUR = (unsigned char)(CUR + 1);
         }
-        for (unsigned char k = 0x41; k < 0x5c; ++k) {
-            if (hooks_GetAsyncKeyState(k) != 0 && LAST != k && CUR < MAXL) {
-                int shifted = hooks_GetAsyncKeyState(0x10) != 0;
+        for (unsigned char k = inputdev::KEY_A; k <= inputdev::KEY_Z; ++k) {
+            if (input_key_down(k) && LAST != k && CUR < MAXL) {
+                int shifted = input_key_down(inputdev::KEY_LSHIFT)
+                              || input_key_down(inputdev::KEY_RSHIFT);
                 if (s_fx)
                     shifted = !shifted;
-                BUF[CUR] = shifted ? k : (unsigned char)(k + 0x20);
+                const unsigned char upper = (unsigned char)('A' + (k - inputdev::KEY_A));
+                BUF[CUR] = shifted ? upper : (unsigned char)(upper + 0x20);
                 LAST = k;
                 CUR = (unsigned char)(CUR + 1);
             }
         }
-        for (unsigned char k = 0x30; k < 0x3b; ++k) {
-            if (hooks_GetAsyncKeyState(k) != 0 && LAST != k && CUR < MAXL) {
-                BUF[CUR] = k;
+        for (unsigned char c = '0'; c <= '9'; ++c) {
+            const unsigned char k = c == 48 ? (unsigned char)inputdev::KEY_0
+                                             : (unsigned char)(inputdev::KEY_1 + (c - 49));
+            if (input_key_down(k) && LAST != k && CUR < MAXL) {
+                BUF[CUR] = c;
                 LAST = k;
                 CUR = (unsigned char)(CUR + 1);
             }
         }
     }
-    if (hooks_GetAsyncKeyState(LAST) == 0)
+    if (input_key_down(LAST) == 0)
         LAST = 0;
 #undef BUF
 #undef LAST

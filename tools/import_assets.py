@@ -194,7 +194,7 @@ def cmd_check(args):
 DATA_DIRS = ["bitmaps", "CDTracks", "fonts", "InstructionScripts",
              "Level3DExtraObjects", "Levels", "models", "textures", "themes",
              "video", "waves"]
-DATA_FILES = ["ENGLISH.FIS", "JJ.GAM", "ProgableControl.sav"]
+DATA_FILES = ["ENGLISH.FIS", "JJ.GAM"]
 OPTIONAL_PREFIXES = ["CDTracks/Track ", "video/"]
 # The original launcher's bitmaps: replaced by data/launcher/, never read.
 EXCLUDED = {"bitmaps/ENDE_FOC.BMP", "bitmaps/ENDE_OFF.BMP", "bitmaps/MENU.BMP",

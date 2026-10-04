@@ -9,13 +9,12 @@
  *   then one record per frame that polled input:
  *     u32    frame_index
  *     u8     game_state
- *     u8     keys[256]
+ *     u8     keys[512]     indexed by SDL scancode (inputdev::Key)
  *     u8     async_count
- *            async_count x { u8 vkey; u8 down }
+ *            async_count x { u16 key; u8 down }
  *
- * `down` is the sign bit of GetAsyncKeyState's answer, the only bit the game
- * tests.  The pressed-since-last-call bit is not replayed: it is consumed
- * state, and reproducing it would need the same call order within a frame. */
+ * Version 1 indexed keys[256] by DirectInput scan code and polled Windows
+ * virtual keys; tools/convert_rec.py converts those. */
 
 #include <stdio.h>
 #include <stdint.h>
@@ -33,16 +32,16 @@
 #include <algorithm>
 #include <iterator>
 
-#define RECORD_VERSION  1
+#define RECORD_VERSION  2
 #define ASYNC_MAX       64
 #define HEADER_SIZE     80
 
 struct FrameRec {
     uint32_t frame;
     uint8_t  game_state;
-    uint8_t  keys[256];
+    uint8_t  keys[inputdev::KEY_COUNT];
     uint8_t  async_count;
-    uint8_t  async[ASYNC_MAX][2];  // vkey, down
+    struct { uint16_t key; uint8_t down; } async[ASYNC_MAX];
 };
 
 static int      g_mode = -1;  // 0 none, 1 record, 2 replay
@@ -206,15 +205,16 @@ bool record_replay_finished(void){ return g_finished; }
 static void flush_frame(void)
 {
     if (!g_keys_seen) return;  // nothing polled input this frame
-    uint8_t buf[4 + 1 + 256 + 1 + ASYNC_MAX * 2];
+    uint8_t buf[4 + 1 + inputdev::KEY_COUNT + 1 + ASYNC_MAX * 3];
     int  n = 0;
     put_u32(buf + n, g_cur.frame);             n += 4;
     buf[n++] = g_cur.game_state;
-    std::copy_n(g_cur.keys, 256, buf + n);       n += 256;
+    std::copy_n(g_cur.keys, inputdev::KEY_COUNT, buf + n);  n += inputdev::KEY_COUNT;
     buf[n++] = g_cur.async_count;
     for (int i = 0; i < g_cur.async_count; i++) {
-        buf[n++] = g_cur.async[i][0];
-        buf[n++] = g_cur.async[i][1];
+        buf[n++] = (uint8_t)(g_cur.async[i].key & 0xff);
+        buf[n++] = (uint8_t)(g_cur.async[i].key >> 8);
+        buf[n++] = g_cur.async[i].down;
     }
     // Flushed every frame: the process can end without the stream closing the file.
     g_out.write((const char *)buf, n);
@@ -229,17 +229,17 @@ void record_keys(unsigned short game_state, const uint8_t *keys)
     if (!record_recording()) return;
     g_cur.frame      = clock_frame();
     g_cur.game_state = (uint8_t)game_state;
-    std::copy_n(keys, 256, g_cur.keys);
+    std::copy_n(keys, inputdev::KEY_COUNT, g_cur.keys);
     g_keys_seen = true;
 }
 
-void record_async(int vkey, short value)
+void record_async(int key, bool down)
 {
     if (!record_recording()) return;
     if (g_cur.async_count >= ASYNC_MAX) return;
     g_cur.frame = clock_frame();
-    g_cur.async[g_cur.async_count][0] = (uint8_t)(vkey & 0xff);
-    g_cur.async[g_cur.async_count][1] = (value & 0x8000) ? 1 : 0;
+    g_cur.async[g_cur.async_count].key  = (uint16_t)key;
+    g_cur.async[g_cur.async_count].down = down ? 1 : 0;
     g_cur.async_count++;
     g_keys_seen = true;  // a frame with only key polls is still a frame
 }
@@ -254,12 +254,16 @@ static bool read_one(FrameRec *r)
     *r = FrameRec();
     uint8_t fbytes[4];
     if (!read_exact(fbytes, 4) || !read_exact(&r->game_state, 1) ||
-        !read_exact(r->keys, 256)  || !read_exact(&r->async_count, 1))
+        !read_exact(r->keys, inputdev::KEY_COUNT) || !read_exact(&r->async_count, 1))
         return false;
     r->frame = get_u32(fbytes);
     if (r->async_count > ASYNC_MAX) return false;
-    for (int i = 0; i < r->async_count; i++)
-        if (!read_exact(r->async[i], 2)) return false;
+    for (int i = 0; i < r->async_count; i++) {
+        uint8_t e[3];
+        if (!read_exact(e, 3)) return false;
+        r->async[i].key  = (uint16_t)(e[0] | e[1] << 8);
+        r->async[i].down = e[2];
+    }
     return true;
 }
 
@@ -301,28 +305,28 @@ bool replay_keys(unsigned short *game_state, uint8_t *keys)
     }
     if (input_debug()) {
         int held = -1;
-        for (int i = 0; i < 256; i++) if (g_play.keys[i] & 0x80) { held = i; break; }
+        for (int i = 0; i < inputdev::KEY_COUNT; i++) if (g_play.keys[i] & 0x80) { held = i; break; }
         if (held >= 0 && ++served <= 12)
             g_logger.write("replaydbg: frame %u serving rec-frame %u state=%u scancode %d\n",
                       clock_frame(), g_play.frame, g_play.game_state, held);
     }
     *game_state = g_play.game_state;
-    std::copy_n(g_play.keys, 256, keys);
+    std::copy_n(g_play.keys, inputdev::KEY_COUNT, keys);
     return true;
 }
 
-bool replay_async(int vkey, short *value)
+bool replay_async(int key, bool *down)
 {
     if (!record_replaying()) return false;
-    if (!g_have_play) { *value = 0; return true; }
+    if (!g_have_play) { *down = false; return true; }
     for (int i = 0; i < g_play.async_count; i++) {
         if (g_async_used[i]) continue;
-        if (g_play.async[i][0] != (uint8_t)(vkey & 0xff)) continue;
+        if (g_play.async[i].key != (uint16_t)key) continue;
         g_async_used[i] = 1;
-        *value = g_play.async[i][1] ? (short)0x8000 : (short)0;
+        *down = g_play.async[i].down != 0;
         return true;
     }
-    *value = 0;  // not polled in the recording on this frame
+    *down = false;  // not polled in the recording on this frame
     return true;
 }
 
@@ -335,35 +339,35 @@ void record_frame_boundary(void)
 
  
 
-  short hooks_GetAsyncKeyState(int vKey)
+bool input_key_down(int key)
 {
     if (input_debug()) {  // which call sites actually execute
         static int n = 0;
         if (n < 40) {
             n++;
             g_logger.write("askdbg: frame %u vkey=0x%02X from ret=%p\n",
-                      clock_frame(), vKey, __builtin_return_address(0));
+                      clock_frame(), key, __builtin_return_address(0));
         }
     }
     // The menu driver answers first: it is synthesising an edge the menu's
     // debounce depends on, which neither a recording nor the keyboard may
     // contradict.
-    short mv;
-    if (menu_async_override(vKey, &mv)) return mv;
+    bool mv;
+    if (menu_async_override(key, &mv)) return mv;
 
     // The level-report trigger comes next: it fires before the first frame
     // boundary, so no recorded frame could answer it.
-    if (levelreport_async_override(vKey, &mv)) return mv;
+    if (levelreport_async_override(key, &mv)) return mv;
 
-    short v;
+    bool v;
     if (record_replaying() && !policy_in_control(clock_frame())) {
-        replay_async(vKey, &v);
+        replay_async(key, &v);
         return v;
     }
     // Under autoplay the recording's answers must not reach the game (the
     // prefix recording ends by quitting), but the real keyboard is still read,
     // so whoever is watching can still press Escape.
-    v = inputdev::asyncKeyState(vKey);
-    record_async(vKey, v);
+    v = inputdev::keyDown(key);
+    record_async(key, v);
     return v;
 }
