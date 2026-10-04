@@ -4,8 +4,6 @@
 karoo_hooks.dll
 /build/
 /build64/
-/build-linux/
-/build-win/
 Karoo.exe
 Karoo.cfg
 Karoo.exe.orig.xml

@@ -133,8 +133,9 @@ class Sandbox:
 
 def preflight():
     problems = []
-    if not os.path.exists(os.path.join(REPO, "build", "OpenRoo.exe")):
-        problems.append("OpenRoo.exe missing - run make")
+    if not any(os.path.exists(os.path.join(REPO, "build", n))
+               for n in ("OpenRoo", "OpenRoo.exe")):
+        problems.append("OpenRoo missing - run cmake --build build")
     return problems
 
 
