@@ -36,6 +36,10 @@ enum Key {
  * (windev::runMessageLoop), and only while the window has the focus. */
 bool keyDown(int key);
 
+/* While set, no key reads as down: something else (the debug UI's text box)
+ * has the keyboard. */
+void setKeyboardSuppressed(bool suppressed);
+
 /* The key with this name ("Up", "Page Up", "A"; any case), or KEY_NONE. */
 int keyFromName(const char *name);
 

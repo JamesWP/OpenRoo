@@ -48,7 +48,7 @@ namespace windev { class Window; }
     X(Uniform1i, UNIFORM1I) \
     X(GetUniformBlockIndex, GETUNIFORMBLOCKINDEX) \
     X(UniformBlockBinding, UNIFORMBLOCKBINDING) \
-    X(DrawArrays, DRAWARRAYS)
+    X(Scissor, SCISSOR) X(DrawArrays, DRAWARRAYS) X(DrawElements, DRAWELEMENTS)
 
 struct GLApi {
 #define X(name, upper) PFNGL##upper##PROC name;

@@ -27,9 +27,12 @@ CHECK_KEY(KEY_DOWN, SDL_SCANCODE_DOWN);   CHECK_KEY(KEY_UP, SDL_SCANCODE_UP);
 CHECK_KEY(KEY_LSHIFT, SDL_SCANCODE_LSHIFT);
 CHECK_KEY(KEY_RSHIFT, SDL_SCANCODE_RSHIFT);
 
+static bool g_suppressed;
+void setKeyboardSuppressed(bool suppressed) { g_suppressed = suppressed; }
+
 bool keyDown(int key)
 {
-    if (key <= 0 || key >= KEY_COUNT) return false;
+    if (key <= 0 || key >= KEY_COUNT || g_suppressed) return false;
     return SDL_GetKeyboardState(NULL)[key];
 }
 
@@ -81,7 +84,7 @@ bool Devices::readKeyboard(unsigned char keys[KEY_COUNT])
     if (!state_->open) return false;
     const bool *down = SDL_GetKeyboardState(NULL);
     for (int i = 0; i < KEY_COUNT; i++)
-        keys[i] = down[i] ? 0x80 : 0;
+        keys[i] = down[i] && !g_suppressed ? 0x80 : 0;
     return true;
 }
 

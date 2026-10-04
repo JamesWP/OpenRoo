@@ -92,6 +92,12 @@ void gl_trace_draw(const PipelineState &st, Prim prim, VertexFormat format,
         put("spass", (unsigned long)st.stencil.pass);
     }
     put("cull", (unsigned long)st.raster.cull);
+    if (st.scissor.enable) {
+        put("scx", (unsigned long)st.scissor.x);
+        put("scy", (unsigned long)st.scissor.y);
+        put("scw", (unsigned long)st.scissor.width);
+        put("sch", (unsigned long)st.scissor.height);
+    }
     put("fog", st.fog.enable);
     if (st.fog.enable) {
         put("fogmode", (unsigned long)st.fog.mode);

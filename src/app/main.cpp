@@ -38,6 +38,7 @@
 #include "launcher.h"
 #include "launcherdialogs.h"
 #include "windev.h"
+#include "debugui.h"
 #include "progctrl.h"
 #include "texture.h"
 #include "scene.h"
@@ -86,6 +87,7 @@ static void present_movie_frame()
 /* Between messages: a frame, or the intro's while it plays. */
 static void idle()
 {
+    inputdev::setKeyboardSuppressed(windev::debugUiCapturesKeyboard());
     // Cleared when the movie finishes, is skipped or (stub) gets its message.
     if (g_movie.playing())
         present_movie_frame();
@@ -291,8 +293,12 @@ int Main_WinMain(const char *lpCmdLine)
     else
         g_logger.logMessage(3, "MAIN: Couldn't load %s .", path.c_str());
 
+    if (!RenderDevice::headless())
+        debugui::init(*d3d);
+
     g_norender = winmain_fx_norender();
     const int exitCode = windev::runMessageLoop(idle);
+    debugui::shutdown(*d3d);
 
     // Settings are saved after the Game is deleted; the device goes last.
     g_levelPlacements.release();

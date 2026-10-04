@@ -5,8 +5,10 @@
 add_library(windev OBJECT
     launcher.cpp
     window.cpp
+    "${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp"
     "${CMAKE_BINARY_DIR}/generated/launcher/launcher_assets.cpp")
 target_include_directories(windev PRIVATE .)
+set_source_files_properties("${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp" PROPERTIES COMPILE_OPTIONS -w)
 
 # launcher_assets.cpp and launcher_layout.h: the sliced bitmaps and icon.
 set(LAUNCHER_DIR "${CMAKE_BINARY_DIR}/generated/launcher")
@@ -33,4 +35,4 @@ add_dependencies(windev launcher_layout buildinfo)
 target_include_directories(windev PRIVATE "${LAUNCHER_DIR}" "${BUILDINFO_DIR}")
 target_compile_definitions(windev PRIVATE
     OPENROO_NAME="Open'Roo" OPENROO_VERSION="${PROJECT_VERSION}")
-target_link_libraries(windev PRIVATE sdl3)
+target_link_libraries(windev PRIVATE sdl3 imgui)
