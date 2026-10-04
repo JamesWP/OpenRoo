@@ -37,6 +37,7 @@
 #include "bomb.h"
 #include <algorithm>
 #include <iterator>
+#include "sysdev.h"
 
 /* The key bytes of the save-slot files ('7') and the high-score file ('K'). */
 static const char SAVE_KEY      = 0x37;
@@ -209,7 +210,7 @@ int Game::loadGameFile(const char *name)
     levelCount_ = 0;
     sprintf(path, GS_GAME_FILE_PATH, g_gameDir, name);
     g_logger.logMessage(2, "GAME: load game-file: %s", path);
-    std::ifstream in(path);
+    sysdev::TextFile in(path);
     if (!in)
         return 0;
     in.read(reinterpret_cast<char *>(hdr), 4);

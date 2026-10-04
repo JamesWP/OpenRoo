@@ -144,7 +144,7 @@ Sim_HandleTypedCheatCode(Game *self)
                 g_logger.logMessage(3, "GAME: lc by number %d name:%s", (unsigned int)lvl,
                                    self->levelName());
                 self->setLevelIndex(lvl);
-                if (std::ifstream(path)) {
+                if (std::ifstream(sysdev::nativePath(path))) {
                     pl->setGemsCollected(0);
                     Sim_OpenLevelFile(self, self->levelIndex());
                     Sim_SetupLevelObjects(self);
@@ -166,7 +166,7 @@ Sim_HandleTypedCheatCode(Game *self)
             frame[len - 6] = 0;
             g_logger.logMessage(3, "GAME: lc %s", (const char *)frame);
             sprintf(path, GS_CHEAT_FMT_LVL_PATH, g_gameDir, (const char *)frame);
-            if (std::ifstream(path)) {
+            if (std::ifstream(sysdev::nativePath(path))) {
                 pl->setGemsCollected(0);
                 Sim_ParseLevelFiles(self, (const char *)frame);
                 Sim_SetupLevelObjects(self);

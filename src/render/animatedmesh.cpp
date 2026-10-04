@@ -212,7 +212,7 @@ int AnimatedMesh::importSceneModels(const char *path)
     // mesh cleared, not unchanged.
     releaseModelBuffers();
 
-    std::ifstream in(path, std::ios::binary);
+    std::ifstream in(sysdev::nativePath(path), std::ios::binary);
     if (!in)
         return 0;
 
@@ -255,7 +255,7 @@ int AnimatedMesh::importSceneModels(const char *path)
     {
         const std::string dump = sysdev::getEnv("KAROO_MDL_DUMP");
         if (!dump.empty()) {
-            std::ofstream h(dump, std::ios::binary | std::ios::app);
+            std::ofstream h(sysdev::nativePath(dump), std::ios::binary | std::ios::app);
             if (h) {
                 char line[512];
                 int n = snprintf(line, sizeof(line), "%s frames=%u verts=%u rec=%08lx vtx=%08lx\r\n",

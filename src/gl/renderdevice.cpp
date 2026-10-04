@@ -538,7 +538,7 @@ static void capture_frame(RenderDevice::Native *n, unsigned frame)
     gl.ReadPixels(0, 0, (GLsizei)w, (GLsizei)h, GL_RGB, GL_UNSIGNED_BYTE, rgb.data());
     char path[460];
     snprintf(path, sizeof(path), "%s-%u.ppm", prefix, frame);
-    if (FILE *f = fopen(path, "wb")) {
+    if (FILE *f = fopen(sysdev::nativePath(path).c_str(), "wb")) {
         fprintf(f, "P6\n%u %u\n255\n", w, h);
         for (unsigned y = h; y-- > 0;)  // OpenGL's first row is the bottom one
             fwrite(&rgb[(size_t)y * w * 3], 1, (size_t)w * 3, f);

@@ -4,6 +4,8 @@
 karoo_hooks.dll
 /build/
 /build64/
+/build-linux/
+/build-win/
 Karoo.exe
 Karoo.cfg
 Karoo.exe.orig.xml
@@ -37,7 +39,7 @@ LeoRecords.txt
 karoo_dso_golden.txt
 !tests/rendertrace/*.txt
 
-KarooOwn.exe
+OpenRoo.exe
 
 # The game data, imported from your own copy by tools/import_assets.py
 /game/

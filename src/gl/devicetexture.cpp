@@ -69,7 +69,7 @@ void gl_dump_pixels(const char *kind, const char *name, int width, int height,
              kind, name, width, height, pf.bits,
              (unsigned long)pf.rMask, (unsigned long)pf.gMask,
              (unsigned long)pf.bMask, (unsigned long)pf.aMask, h);
-    std::ofstream f(path, std::ios::binary | std::ios::app);
+    std::ofstream f(sysdev::nativePath(path), std::ios::binary | std::ios::app);
     f << line;
 }
 

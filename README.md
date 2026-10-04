@@ -1,8 +1,12 @@
 # Open'Roo
 
 A reimplementation of **Ka'roo**, a 1990s Windows 3D puzzle-platform game,
-written from scratch in C++. It builds to a Windows executable,
-`KarooOwn.exe`, which runs on Linux under Proton/Wine.
+written from scratch in C++. It builds natively for Linux (`OpenRoo`) and
+cross-compiles to Windows (`OpenRoo.exe`, which also runs on Linux under
+Proton/Wine).  The platform is a configure option, `OPENROO_PLATFORM`; all
+platform-specific code lives in the `*dev` libraries under `src/` (`windev`,
+`sysdev`, `audiodev`, `inputdev`, `videodev`, `gl`), one header each with a
+`_windows` and a `_linux` source file behind it.
 
 Open'Roo contains **no game data and no code from the original**. You need
 your own copy of Ka'roo: the importer takes the levels, models, textures,
@@ -10,18 +14,28 @@ sounds and the original executable's resources from it.
 
 ## Build and run
 
-Needs `x86_64-w64-mingw32-g++`, `cmake` (3.20+), Python 3 and Proton (Steam's
-"Proton - Experimental").  The game draws with OpenGL 3.3 (core profile, GLSL
+Needs `cmake` (3.20+) and Python 3, and then for the Windows build
+`x86_64-w64-mingw32-g++` and Proton (Steam's "Proton - Experimental"); for the
+Linux build `g++`, the FFmpeg development packages (`libavformat-dev
+libavcodec-dev libavutil-dev libswscale-dev libswresample-dev`), `libgl-dev` and
+what SDL3 builds against (SDL3 and SDL3_mixer are fetched and built from source;
+see https://wiki.libsdl.org/SDL3/README-linux#build-dependencies).  The game draws with OpenGL 3.3 (core profile, GLSL
 shaders, no fixed-function pipeline), through Wine's OpenGL under Proton, so the
 graphics driver needs to offer it.
 
 ```bash
 python3 tools/import_assets.py --from KaRoo.zip   # once: fills game/ from your copy
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw.cmake  # once; fetches SDL3 and FFmpeg
-cmake --build build -j                            # build/KarooOwn.exe
+cmake -S . -B build                               # once; Windows (the default); fetches SDL3 and FFmpeg
+cmake --build build -j                            # build/OpenRoo.exe
 bash launch.sh                                    # run it (in run/)
 bash launch.sh --headless --auto-exit 30          # no display at all
+
+cmake -S . -B build-linux -DOPENROO_PLATFORM=linux   # the native Linux build
+cmake --build build-linux -j                         # build-linux/OpenRoo
+OPENROO_PLATFORM=linux bash launch.sh                # launch.sh and the test tools take it too
 ```
+
+The game file defaults to `JJ`; name another on the command line.
 
 `game/` is your imported data and is never written. `run/` is where the game
 runs: your config, saves, high scores and logs.

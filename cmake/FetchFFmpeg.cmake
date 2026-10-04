@@ -8,6 +8,17 @@
 # have, pass -DFFMPEG_ROOT=<dir> (the unpacked top, holding include/ lib/
 # bin/).  The DLLs to ship beside the executable are FFMPEG_RUNTIME_DLLS.
 # The build is LGPL and linked dynamically, so the DLLs stay replaceable.
+if(NOT WIN32)
+    # Linux: the system's FFmpeg development packages.
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(FFMPEG_PKG REQUIRED IMPORTED_TARGET
+        libavformat libavcodec libavutil libswscale libswresample)
+    add_library(ffmpeg INTERFACE)
+    target_link_libraries(ffmpeg INTERFACE PkgConfig::FFMPEG_PKG)
+    set(FFMPEG_RUNTIME_DLLS "")
+    return()
+endif()
+
 set(FFMPEG_TAG  "autobuild-2026-10-03-18-14" CACHE STRING "FFmpeg-Builds release tag")
 set(FFMPEG_FILE "ffmpeg-n8.1.3-14-g330caae0c1-win64-lgpl-shared-8.1" CACHE STRING
     "FFmpeg-Builds package name, without .zip")

@@ -30,10 +30,18 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-EXE=KarooOwn.exe
-BUILD_DIR=${BUILD_DIR:-build}
+# OPENROO_PLATFORM=linux runs the native Linux build (build-linux/OpenRoo)
+# directly; the default, windows, runs the Windows build under Proton.  It is
+# the CMake option of the same name.
+PLATFORM=${OPENROO_PLATFORM:-windows}
+case "$PLATFORM" in
+  linux)   NATIVE=1; EXE=OpenRoo;     BUILD_DIR=${BUILD_DIR:-build-linux} ;;
+  windows) NATIVE=0; EXE=OpenRoo.exe; BUILD_DIR=${BUILD_DIR:-build} ;;
+  *) echo "ERROR: OPENROO_PLATFORM must be windows or linux" >&2; exit 1 ;;
+esac
+CONFIGURE_ARGS=(-DOPENROO_PLATFORM="$PLATFORM")
 # Bring the build up to date first; a failed build does not launch a stale exe.
-[[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE="cmake/mingw.cmake" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
+[[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" "${CONFIGURE_ARGS[@]}" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
 cmake --build "$BUILD_DIR" -j"$(nproc)" >&2 || { echo "ERROR: build failed"; exit 1; }
 [[ -f "$BUILD_DIR/$EXE" ]] || { echo "ERROR: $BUILD_DIR/$EXE missing after build"; exit 1; }
 
@@ -65,7 +73,7 @@ for _entry in game/*; do
   [[ -L "run/$_name" ]] || ln -s "../game/$_name" "run/$_name"
 done
 cp -p "$BUILD_DIR/$EXE" run/
-cp -p "$BUILD_DIR"/*.dll run/
+(( NATIVE )) || cp -p "$BUILD_DIR"/*.dll run/
 
 # openroo.ini is ours, not the game's, and holds the settings and the key
 # bindings.  Without it the game runs on its built-in defaults; install the
@@ -152,6 +160,21 @@ for _name in $(compgen -v); do
   esac
 done
 
+if (( NATIVE )); then
+  RUN_PREFIX=(
+    env -i
+    HOME="$HOME" USER="$USER"
+    DISPLAY="${DISPLAY:-}"
+    PATH="$PATH"
+    KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
+    KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"
+    KAROO_HEADLESS="$HEADLESS"
+    "${FORWARD_ENV[@]}"
+  )
+  (( DEBUG )) && { echo "ERROR: --debug needs Proton's winedbg; not available with OPENROO_PLATFORM=linux" >&2; exit 1; }
+  exec "${RUN_PREFIX[@]}" "./$EXE"
+fi
+
 PROTON_DIR="$HOME/.steam/root/steamapps/common/Proton - Experimental"
 PROTON_RUN=(
   env -i
@@ -183,7 +206,7 @@ if (( DEBUG )); then
   }
   trap cleanup EXIT
 
-  "${PROTON_RUN[@]}" winedbg --gdb --no-start --port "$PORT" "$EXE" JJ &
+  "${PROTON_RUN[@]}" winedbg --gdb --no-start --port "$PORT" "$EXE" &
   WINEDBG_PID=$!
 
   # Wait for the gdb stub's listening socket. IMPORTANT: probe PASSIVELY with ss
@@ -203,4 +226,4 @@ if (( DEBUG )); then
   exit 0
 fi
 
-exec "${PROTON_RUN[@]}" "$EXE" JJ
+exec "${PROTON_RUN[@]}" "$EXE"

@@ -187,7 +187,7 @@ void gamestate_dump(const char *reason)
     GameState s   = g_live;
     bool     have = g_have_live;
 
-    std::ofstream fp(path);  // text mode
+    std::ofstream fp(sysdev::nativePath(path));  // text mode
     if (!fp) {
         g_logger.write("gamestate: dump: cannot open %s\n", path.c_str());
         return;

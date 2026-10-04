@@ -130,7 +130,7 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
 
     sprintf(path, GS_CD_TRACKFILE_PATH, g_gameDir, name);
     unsigned char n = 0;
-    std::ifstream in(path);  // text mode
+    sysdev::TextFile in(path);
     count_ = 0;
 
     if (!in) {

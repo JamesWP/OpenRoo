@@ -13,6 +13,7 @@
 #include "clock.h"
 #include "gamestr.h"
 #include "ini.h"
+#include "sysdev.h"
 #include <algorithm>
 #include <iterator>
 
@@ -21,7 +22,7 @@
 ActionEntry *ActionTable::find(const char *name)
 {
     for (ActionEntry *e = head; e; e = e->chain)
-        if (!_stricmp(e->name, name)) return e;
+        if (!sysdev::compareNoCase(e->name, name)) return e;
     return nullptr;
 }
 
@@ -29,7 +30,7 @@ ActionEntry *ActionTable::getOrCreate(const char *name)
 {
     ActionEntry **tail = &head;
     for (ActionEntry *e = head; e; e = e->chain) {
-        if (!_stricmp(e->name, name)) return e;
+        if (!sysdev::compareNoCase(e->name, name)) return e;
         tail = &e->chain;
     }
     ActionEntry *e = new (std::nothrow) ActionEntry();

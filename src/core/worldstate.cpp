@@ -284,7 +284,7 @@ static void map_check(const Game *g, const Observation *obs)
 
 static void map_dump(const Game *g, const Observation *obs, const char *path)
 {
-    std::ofstream fp(path);  // text mode
+    std::ofstream fp(sysdev::nativePath(path));  // text mode
     if (!fp) {
         g_logger.write("worldstate: map dump: cannot open %s\n", path);
         return;
@@ -454,7 +454,7 @@ void worldstate_tick(void)
     }
     if (g_trace) obs->traceFrame();
     if (g_obsdump) {
-        if (!g_obs_fp.is_open()) g_obs_fp.open(g_obs_path);
+        if (!g_obs_fp.is_open()) g_obs_fp.open(sysdev::nativePath(g_obs_path));
         if (g_obs_fp) { obs_dump_line(g_obs_fp, obs); g_obs_fp.flush(); }
     }
 }

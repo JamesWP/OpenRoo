@@ -13,12 +13,13 @@ static const size_t LINE_MAX_BYTES = 3000;
 void Logger::open(const char *path)
 {
     close();
-    fp_.open(path);
+    fp_ = fopen(path, "w");
 }
 
 void Logger::close()
 {
-    fp_.close();
+    if (fp_) fclose(fp_);
+    fp_ = NULL;
 }
 
 /* Held for each line, so lines from different threads do not interleave. */
@@ -26,7 +27,7 @@ static std::mutex s_lock;
 
 void Logger::emit(const char *prefix, const char *fmt, va_list ap)
 {
-    if (!fp_.is_open()) return;
+    if (!fp_) return;
     char line[LINE_MAX_BYTES + 2];
     int n = snprintf(line, sizeof(line), "[%u] %s", sysdev::tickMs(), prefix);
     if (n < 0 || (size_t)n >= LINE_MAX_BYTES) n = 0;
@@ -36,8 +37,8 @@ void Logger::emit(const char *prefix, const char *fmt, va_list ap)
     if (len >= LINE_MAX_BYTES) len = LINE_MAX_BYTES - 1;
     if (len == 0 || line[len - 1] != '\n') line[len++] = '\n';
     std::lock_guard<std::mutex> guard(s_lock);
-    fp_.write(line, len);
-    fp_.flush();
+    fwrite(line, 1, len, fp_);
+    fflush(fp_);
 }
 
 void Logger::write(const char *fmt, ...)

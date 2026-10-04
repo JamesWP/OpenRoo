@@ -3,6 +3,7 @@
 #include "image.h"
 #include <string.h>
 #include "gamestr.h"
+#include "sysdev.h"
 
 bool Image_Load(const char *path, Image &out)
 {
@@ -18,7 +19,7 @@ bool Image_Load(const char *path, Image &out)
 
 bool Image_ReadFile(const char *path, std::vector<uint8_t> &out)
 {
-    std::ifstream in(path, std::ios::binary);
+    std::ifstream in(sysdev::nativePath(path), std::ios::binary);
     if (!in)
         return false;
     out.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
