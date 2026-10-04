@@ -9,11 +9,8 @@ class RenderDevice;
 
 namespace debugui {
 
-/* Whether the run asked for it: KAROO_DEBUGUI=1, or 2 to start with it
- * shown rather than waiting for F10. */
-bool requested();
-
-/* Makes the ImGui context and puts the UI on `dev`; false if it could not.
+/* Makes the ImGui context and puts the UI on `dev`, hidden until F10; false if
+ * it could not.
  * After RenderDevice::Create, because Create forgets the overlay. */
 bool init(RenderDevice &dev);
 

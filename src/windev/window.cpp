@@ -313,14 +313,14 @@ bool listDisplayModes(unsigned display, std::vector<DisplaySize> &out)
 /* Every pending event is handled before each idle() call, and a quit is
  * acted on once the queue is empty, so the frame count of a run does not
  * depend on what else happened to be queued. */
-bool debugUiInit(bool shown)
+bool debugUiInit()
 {
     if (!g_sdlWindow || g_debugUi)
         return false;
     if (!ImGui_ImplSDL3_InitForOther(g_sdlWindow))
         return false;
     g_debugUi = true;
-    g_debugUiShown = shown;
+    g_debugUiShown = false;
     return true;
 }
 

@@ -2,7 +2,6 @@
 #include "imgui.h"
 #include "image.h"
 #include "renderdevice.h"
-#include "sysdev.h"
 #include "windev.h"
 #include <algorithm>
 #include <math.h>
@@ -164,12 +163,6 @@ static void overlay(RenderDevice &dev)
 
 // ── Life cycle ──
 
-bool requested()
-{
-    char v[4];
-    return sysdev::getEnv("KAROO_DEBUGUI", v, sizeof(v)) && (v[0] == '1' || v[0] == '2');
-}
-
 bool init(RenderDevice &dev)
 {
     IMGUI_CHECKVERSION();
@@ -179,9 +172,7 @@ bool init(RenderDevice &dev)
     io.LogFilename = NULL;
     io.BackendRendererName = "RenderDevice";
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
-    char v[4];
-    const bool shown = sysdev::getEnv("KAROO_DEBUGUI", v, sizeof(v)) && v[0] == '2';
-    if (!windev::debugUiInit(shown)) {
+    if (!windev::debugUiInit()) {
         ImGui::DestroyContext();
         return false;
     }

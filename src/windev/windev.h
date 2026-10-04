@@ -131,10 +131,10 @@ bool listDisplayModes(unsigned display, std::vector<DisplaySize> &out);
 //
 // The UI's own context and drawing are src/debugui's; this is the window
 // side of it: events into it, and the keys and mouse it is using kept from
-// the game.  F10 shows and hides it.  Off until debugUiInit; call it after the
+// the game.  F10 shows and hides it.  Hidden until then.  Call it after the
 // ImGui context exists, and debugUiShutdown before the context goes.
 
-bool debugUiInit(bool shown);
+bool debugUiInit();
 void debugUiShutdown();
 
 /* The UI is on and shown: events reach it, and it is drawn. */

@@ -293,7 +293,7 @@ int Main_WinMain(const char *lpCmdLine)
     else
         g_logger.logMessage(3, "MAIN: Couldn't load %s .", path.c_str());
 
-    if (debugui::requested() && !RenderDevice::headless())
+    if (!RenderDevice::headless())
         debugui::init(*d3d);
 
     g_norender = winmain_fx_norender();
