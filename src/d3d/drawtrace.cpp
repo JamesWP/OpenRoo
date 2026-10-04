@@ -48,20 +48,28 @@ Trace &trace()
     return t;
 }
 
+/* Render states that always matter.  Others matter only while the feature
+ * they belong to is on, so a draw that sets the factors of a blend it then
+ * leaves off does not differ from one that never touched them. */
 const D3DRENDERSTATETYPE kRenderStates[] = {
     D3DRS_ZENABLE, D3DRS_FILLMODE, D3DRS_SHADEMODE, D3DRS_ZWRITEENABLE,
-    D3DRS_ALPHATESTENABLE, D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_CULLMODE,
-    D3DRS_ZFUNC, D3DRS_ALPHAREF, D3DRS_ALPHAFUNC, D3DRS_DITHERENABLE,
-    D3DRS_ALPHABLENDENABLE, D3DRS_FOGENABLE, D3DRS_SPECULARENABLE,
+    D3DRS_ALPHATESTENABLE, D3DRS_CULLMODE, D3DRS_ZFUNC, D3DRS_ALPHAREF,
+    D3DRS_ALPHAFUNC, D3DRS_DITHERENABLE, D3DRS_ALPHABLENDENABLE, D3DRS_FOGENABLE,
+    D3DRS_SPECULARENABLE, D3DRS_STENCILENABLE, D3DRS_TEXTUREFACTOR,
+    D3DRS_LIGHTING, D3DRS_AMBIENT, D3DRS_COLORVERTEX, D3DRS_COLORWRITEENABLE,
+    D3DRS_BLENDOP, D3DRS_CLIPPING, D3DRS_FOGVERTEXMODE, D3DRS_LOCALVIEWER,
+    D3DRS_NORMALIZENORMALS, D3DRS_DIFFUSEMATERIALSOURCE,
+    D3DRS_SPECULARMATERIALSOURCE, D3DRS_AMBIENTMATERIALSOURCE,
+    D3DRS_EMISSIVEMATERIALSOURCE,
+};
+const D3DRENDERSTATETYPE kBlendStates[] = { D3DRS_SRCBLEND, D3DRS_DESTBLEND };
+const D3DRENDERSTATETYPE kFogStates[] = {
     D3DRS_FOGCOLOR, D3DRS_FOGTABLEMODE, D3DRS_FOGSTART, D3DRS_FOGEND,
-    D3DRS_FOGDENSITY, D3DRS_STENCILENABLE, D3DRS_STENCILFAIL,
-    D3DRS_STENCILZFAIL, D3DRS_STENCILPASS, D3DRS_STENCILFUNC,
+    D3DRS_FOGDENSITY,
+};
+const D3DRENDERSTATETYPE kStencilStates[] = {
+    D3DRS_STENCILFAIL, D3DRS_STENCILZFAIL, D3DRS_STENCILPASS, D3DRS_STENCILFUNC,
     D3DRS_STENCILREF, D3DRS_STENCILMASK, D3DRS_STENCILWRITEMASK,
-    D3DRS_TEXTUREFACTOR, D3DRS_LIGHTING, D3DRS_AMBIENT, D3DRS_COLORVERTEX,
-    D3DRS_COLORWRITEENABLE, D3DRS_BLENDOP, D3DRS_CLIPPING,
-    D3DRS_FOGVERTEXMODE, D3DRS_LOCALVIEWER, D3DRS_NORMALIZENORMALS,
-    D3DRS_DIFFUSEMATERIALSOURCE, D3DRS_SPECULARMATERIALSOURCE,
-    D3DRS_AMBIENTMATERIALSOURCE, D3DRS_EMISSIVEMATERIALSOURCE,
 };
 
 const D3DSAMPLERSTATETYPE kSamplerStates[] = {
@@ -97,15 +105,27 @@ void d3d_trace_draw(RenderDevice::Native *n, int prim, unsigned long fvf,
             len += snprintf(text + len, sizeof(text) - len, fmt, a, b);
     };
 
-    for (D3DRENDERSTATETYPE rs : kRenderStates) {
+    auto rsAdd = [&](D3DRENDERSTATETYPE rs) {
         DWORD v = 0; dev->GetRenderState(rs, &v);
         st.add(v); put("rs%lu=%lx ", rs, v);
+        return v;
+    };
+    for (D3DRENDERSTATETYPE rs : kRenderStates) {
+        const DWORD v = rsAdd(rs);
+        if (rs == D3DRS_ALPHABLENDENABLE && v)
+            for (D3DRENDERSTATETYPE r : kBlendStates) rsAdd(r);
+        if (rs == D3DRS_FOGENABLE && v)
+            for (D3DRENDERSTATETYPE r : kFogStates) rsAdd(r);
+        if (rs == D3DRS_STENCILENABLE && v)
+            for (D3DRENDERSTATETYPE r : kStencilStates) rsAdd(r);
     }
     for (DWORD s = 0; s < 2; s++) {
-        for (D3DSAMPLERSTATETYPE ss : kSamplerStates) {
-            DWORD v = 0; dev->GetSamplerState(s, ss, &v);
-            st.add(v); put("s%lu.%lu ", s * 100 + ss, v);
-        }
+        // The game only ever samples stage 0; stage 1 has no texture.
+        if (s == 0)
+            for (D3DSAMPLERSTATETYPE ss : kSamplerStates) {
+                DWORD v = 0; dev->GetSamplerState(s, ss, &v);
+                st.add(v); put("s%lu.%lu ", s * 100 + ss, v);
+            }
         IDirect3DBaseTexture9 *base = NULL;
         dev->GetTexture(s, &base);
         if (base) {
