@@ -220,13 +220,11 @@ bool Window::enterFullscreen(unsigned display, unsigned width, unsigned height)
 {
     if (!g_sdlWindow)
         return false;
-    SDL_DisplayMode mode;
-    if (!SDL_GetClosestFullscreenDisplayMode((SDL_DisplayID)display, (int)width, (int)height,
-                                             0.0f, false, &mode)) {
-        WD_LOG("windev: no %ux%u mode: %s\n", width, height, SDL_GetError());
-        return false;
-    }
-    SDL_SetWindowFullscreenMode(g_sdlWindow, &mode);
+    // Borderless full-screen at the desktop's resolution rather than a mode
+    // switch: the monitor would stretch a 4:3 mode over a wider panel, where
+    // the device letterboxes its viewport to the mode's aspect itself.
+    (void)display; (void)width; (void)height;
+    SDL_SetWindowFullscreenMode(g_sdlWindow, NULL);
     // A hidden window would only go full-screen once shown.
     SDL_ShowWindow(g_sdlWindow);
     if (!SDL_SetWindowFullscreen(g_sdlWindow, true)) {
