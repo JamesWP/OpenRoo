@@ -2,10 +2,10 @@
 
 namespace audiodev {
 
-/* The whole file in one voice, played once. */
+/* The whole file on a track of its own, played once. */
 struct StreamState {
-    std::unique_ptr<Voice> voice;
-    bool                   started = false;
+    std::shared_ptr<AudioRef> audio;
+    MIX_Track                *track = NULL;
 };
 
 Stream::Stream() : state_(new StreamState())
@@ -20,7 +20,7 @@ Stream::~Stream()
 
 bool Stream::done() const
 {
-    return !state_->started || state_->voice->idle();
+    return !state_->track || !MIX_TrackPlaying(state_->track);
 }
 
 bool Stream::prepare(Device &dev, const char *path)
@@ -32,11 +32,11 @@ bool Stream::prepare(Device &dev, const char *path)
     if (!path || !dev.isUp())
         return false;
 
-    auto wav = std::make_shared<Wav>();
-    if (!loadWav(path, wav.get()))
+    state_->audio = loadAudio(dev.state()->mixer, path, true);
+    if (!state_->audio)
         return false;
-    state_->voice.reset(new Voice(dev.state()->id, wav));
-    if (!state_->voice->ok()) {
+    state_->track = MIX_CreateTrack(dev.state()->mixer->mixer);
+    if (!state_->track || !MIX_SetTrackAudio(state_->track, state_->audio->audio)) {
         release();
         return false;
     }
@@ -45,22 +45,23 @@ bool Stream::prepare(Device &dev, const char *path)
 
 void Stream::play()
 {
-    if (!state_->voice) return;
-    state_->voice->start(false);
-    state_->started = true;
+    if (state_->track)
+        playTrack(state_->track, false);
 }
 
 void Stream::stop()
 {
-    if (state_->voice)
-        state_->voice->stop();
-    state_->started = false;
+    if (state_->track)
+        MIX_StopTrack(state_->track, 0);
 }
 
 void Stream::release()
 {
-    state_->voice.reset();
-    state_->started = false;
+    if (state_->track) {
+        MIX_DestroyTrack(state_->track);
+        state_->track = NULL;
+    }
+    state_->audio.reset();
 }
 
 }  // namespace audiodev

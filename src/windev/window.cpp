@@ -2,6 +2,7 @@
 #include <atomic>
 #include <stdlib.h>
 #include "windev.h"
+#include "launcher_layout.h"
 
 namespace windev {
 
@@ -107,6 +108,14 @@ bool Window::create(WindowHandler *handler,
         return false;
     }
     SDL_SetWindowPosition(win, 0, 0);
+    SDL_Surface *icon = SDL_CreateSurfaceFrom(LAUNCHER_ICON_SIZE, LAUNCHER_ICON_SIZE,
+                                              SDL_PIXELFORMAT_RGBA32,
+                                              (void *)launcher_icon_rgba,
+                                              LAUNCHER_ICON_SIZE * 4);
+    if (icon) {
+        SDL_SetWindowIcon(win, icon);
+        SDL_DestroySurface(icon);
+    }
     g_sdlWindow = win;
     sdl_        = win;
     handle_     = SDL_GetPointerProperty(SDL_GetWindowProperties(win),

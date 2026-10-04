@@ -16,6 +16,11 @@ unsigned timerMs()
     return (unsigned)SDL_GetTicks();
 }
 
+void sleepMs(unsigned ms)
+{
+    SDL_Delay(ms);
+}
+
 unsigned long long perfCounter()
 {
     return SDL_GetPerformanceCounter();

@@ -130,9 +130,7 @@ Game::Game(const char *gameName)
         return;
     }
     g_logger.logMessage(2, "GAME: this is a commercial version");
-    config_.setSavedWaveOutVolume(audiodev::masterVolume());
-    audiodev::setMasterVolume(config_.waveOutVolume());
-    config_.setSavedCdMixerVolume(g_cdAudio.getMixerDetails());
+    audiodev::setEffectsVolume(effectsGain());
     g_cdAudio.setMixerVolume(config_.cdMixerVolume());
     state_ = 0;
     g_cdAudio.stop();
@@ -193,8 +191,6 @@ Game::~Game()
     releaseAllSounds();
     g_logger.logMessage(1, "GAME: all sounds released successfully");
     soundManager()->purgeAssets();
-    audiodev::setMasterVolume(config_.savedWaveOutVolume());
-    g_cdAudio.setMixerVolume(config_.savedCdMixerVolume());
 
 }
 

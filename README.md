@@ -15,8 +15,7 @@ Needs `x86_64-w64-mingw32-g++`, `cmake` (3.20+), Python 3 and Proton (Steam's
 
 ```bash
 python3 tools/import_assets.py --from KaRoo.zip   # once: fills game/ from your copy
-tools/fetch_sdl3.sh                               # once: SDL3 into third_party/
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw.cmake  # once
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw.cmake  # once; fetches SDL3 and FFmpeg
 cmake --build build -j                            # build/KarooOwn.exe
 bash launch.sh                                    # run it (in run/)
 bash launch.sh --headless --auto-exit 30          # no display at all
@@ -68,6 +67,6 @@ Each directory under `src/` is a CMake group (an object library in its
 headers and those of the groups in its `DEPENDS` list, so those lists are the
 layering and the compiler enforces them. Direct3D headers
 are for `d3d` alone (`cmake/CheckNativeD3D.cmake`); everything else goes through `renderdevice.h`.
-SDL is for the platform groups (`windev`, `audiodev`, `inputdev`, `sysdev`,
+SDL and FFmpeg are for the platform groups (`windev`, `audiodev`, `inputdev`, `sysdev`,
 `videodev`) alone (`cmake/CheckNativeSDL.cmake`); `docs/SDL_PLATFORM.md` records
 what that port found.

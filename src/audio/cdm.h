@@ -26,8 +26,8 @@ public:
     void  playTrack(int tracknumber, bool repeat);
     void  stop();
 
-    /* The CD's mixer volume.  The game has no mixer line: set does nothing and
-     * get returns 0. */
+    /* The music's volume, 0..65536 (full).  There is no system mixer line to
+     * read back: get returns 0. */
     void  setMixerVolume(unsigned level);
     unsigned int getMixerDetails();
 

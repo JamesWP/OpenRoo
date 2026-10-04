@@ -88,7 +88,8 @@ void CDM::stop()
 /* There is no mixer line to drive. */
 void CDM::setMixerVolume(unsigned level)
 {
-    g_logger.write("CDM::setMixerVolume(level=0x%X) — not implemented\n", level);
+    g_logger.write("CDM::setMixerVolume(level=0x%X)\n", level);
+    audiodev::setMusicVolume((float)level / 65536.0f);
 }
 
   void KarooHooksLoad() {}  // unused

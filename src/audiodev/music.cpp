@@ -2,11 +2,11 @@
 
 namespace audiodev {
 
-/* The track plays on a logical device of its own, mixed by SDL with the
- * sound effects'; a repeating track refills its own stream, so nothing here
- * waits on the window. */
+/* The track plays on the music mixer, apart from the effects, so each has its
+ * own volume; a repeating track loops inside the mixer. */
 struct MusicState {
-    std::unique_ptr<Voice> voice;
+    std::shared_ptr<AudioRef> audio;
+    MIX_Track                *track = NULL;
 };
 
 Music::Music() : state_(new MusicState())
@@ -27,29 +27,28 @@ void Music::play(const char *path, bool repeat)
 {
     stop();
 
-    auto wav = std::make_shared<Wav>();
-    if (!loadWav(path, wav.get()))
+    std::shared_ptr<MixerRef> mixer = musicMixer();
+    if (!mixer)
         return;
-    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
-        AD_LOG("audiodev: Music: SDL_INIT_AUDIO failed: %s\n", SDL_GetError());
+    state_->audio = loadAudio(mixer, path, false);
+    if (!state_->audio)
         return;
-    }
-    state_->voice.reset(new Voice(0, wav));
-    if (!state_->voice->ok()) {
-        AD_LOG("audiodev: Music open failed\n");
-        state_->voice.reset();
-        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    state_->track = MIX_CreateTrack(mixer->mixer);
+    if (!state_->track || !MIX_SetTrackAudio(state_->track, state_->audio->audio)) {
+        AD_LOG("audiodev: Music open failed: %s\n", SDL_GetError());
+        stop();
         return;
     }
-    state_->voice->start(repeat);
+    playTrack(state_->track, repeat);
 }
 
 void Music::stop()
 {
-    if (state_->voice) {
-        state_->voice.reset();
-        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    if (state_->track) {
+        MIX_DestroyTrack(state_->track);
+        state_->track = NULL;
     }
+    state_->audio.reset();
 }
 
 bool Music::handleWindowMessage(unsigned, unsigned long, long)

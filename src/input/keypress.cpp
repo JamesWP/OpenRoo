@@ -124,7 +124,7 @@ static void option_edit(Game *game, unsigned char key)
         // The same percentage in both 16-bit halves: left and right channel.
         game->setWaveOutVolume((unsigned int)game->waveVolume() * 0x28f028fu);
         if (game->soundCreated() != 0)
-            audiodev::setMasterVolume(game->waveOutVolume());
+            audiodev::setEffectsVolume(game->effectsGain());
         break;
     }
     // The three 0..2 video-quality sliders: shadows, highlights and particles.

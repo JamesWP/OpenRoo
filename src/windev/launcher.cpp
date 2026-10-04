@@ -1,111 +1,71 @@
 /* The launcher window (a frameless rectangle painted from our own bitmaps,
- * with bitmap buttons: play, setup, quit) and the display device dialog it opens.
- * What they list and change comes from the game's LauncherModel (windev.h).
+ * with bitmap buttons: play, setup, quit) and the display device panel it
+ * opens.  What they list and change comes from the game's LauncherModel
+ * (windev.h).  Drawn with SDL's software renderer: no widgets, no resources.
  *
  * Neither test gate reaches this code: --skip-launcher and --headless both
- * skip the launcher (app/launcher.cpp).  It is checked by hand. */
+ * skip the launcher (app/launcher.cpp).  It is checked by hand.
+ *
+ * Why not SDL_CreatePopupWindow: popups are for menus and tooltips.  They need
+ * a visible parent window (ours is hidden until the game starts), sit at an
+ * offset from it, and are dismissed when the pointer or focus leaves them,
+ * which a start-up dialog must not be.  This is a window of its own. */
 
-#include <windows.h>
-#include <shellapi.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
-#include <string.h>
+#include <SDL3/SDL.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <string.h>
+#include <string>
+#include <vector>
 #include "windev.h"
-#include "resources.h"
 #include "launcher_layout.h"
 #include "buildinfo.h"
 
 using namespace windev;
 
-static const int IDC_PLAY       = 0x3f5;     // "spielen"
-static const int IDC_SETUP      = 0x3f2;     // "setup"; the same id as the mode combo
-static const int IDC_QUIT       = IDCANCEL;  // "ende"
-static const int IDC_DRIVERS    = 0x3f0;
-static const int IDC_HWCHECK    = 0x3f1;
-static const int IDC_MODES      = 0x3f2;
-static const int IDD_DEVICE     = 0x6e;
+namespace {
 
-// The launcher's bitmaps, RCDATA in openroo.rc.
-static const int IDR_LAUNCHER_BG        = 200;
-static const int IDR_LAUNCHER_PLAY_OFF  = 201;
-static const int IDR_LAUNCHER_PLAY_FOC  = 202;
-static const int IDR_LAUNCHER_SETUP_OFF = 203;
-static const int IDR_LAUNCHER_SETUP_FOC = 204;
-static const int IDR_LAUNCHER_QUIT_OFF  = 205;
-static const int IDR_LAUNCHER_QUIT_FOC  = 206;
+enum Button { PLAY, SETUP, QUIT, BUTTONS };
 
-/* The game's data for the dialogs in use. */
-static LauncherModel *s_model;
+const char LINK_URL[] = "https://github.com/jameswp/OpenRoo";
 
-static const BYTE *s_menuBmp;
-static const BYTE *s_playOff,  *s_playFoc;
-static const BYTE *s_setupOff, *s_setupFoc;
-static const BYTE *s_quitOff,  *s_quitFoc;
+struct Art {
+    SDL_Texture *bg = NULL;
+    SDL_Texture *off[BUTTONS] = {}, *foc[BUTTONS] = {};
+};
 
-/* A .bmp file embedded as RCDATA, whole (file header included), or NULL.
- * Resource memory: never freed. */
-static const BYTE *load_bmp_resource(int id)
+SDL_Texture *texture(SDL_Renderer *r, const unsigned char *bmp, size_t size)
 {
-    HMODULE mod = Resources_Module();
-    HRSRC res = FindResourceA(mod, MAKEINTRESOURCEA(id), (LPCSTR)RT_RCDATA);
-    HGLOBAL hg = res ? LoadResource(mod, res) : NULL;
-    const BYTE *buf = hg ? (const BYTE *)LockResource(hg) : NULL;
-    if (!buf || SizeofResource(mod, res) < 54 || *(const WORD *)buf != 0x4d42)  // "BM"
-        return NULL;
-    return buf;
+    SDL_Surface *s = SDL_LoadBMP_IO(SDL_IOFromConstMem(bmp, size), true);
+    if (!s) return NULL;
+    SDL_Texture *t = SDL_CreateTextureFromSurface(r, s);
+    SDL_DestroySurface(s);
+    return t;
 }
 
-/* A file's BITMAPINFO (after the 14-byte file header) and its size, OS/2 core
- * headers included; the height is taken absolute. */
-static void dib_size(const BYTE *hdr, int *w, int *h)
+bool in_rect(float x, float y, const SDL_Rect &r)
 {
-    if (*(const DWORD *)hdr == sizeof(BITMAPCOREHEADER)) {
-        *w = *(const WORD *)(hdr + 4);
-        *h = *(const WORD *)(hdr + 6);
-    } else {
-        *w = *(const LONG *)(hdr + 4);
-        *h = abs(*(const LONG *)(hdr + 8));
-    }
+    return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
 }
 
-static void stretch_bmp(HDC hdc, int destW, int destH, const BYTE *hdr,
-                        const BYTE *bits)
-{
-    int w, h;
-    dib_size(hdr, &w, &h);
-    StretchDIBits(hdc, 0, 0, destW, destH, 0, 0, w, h, bits,
-                  (const BITMAPINFO *)hdr, DIB_RGB_COLORS, SRCCOPY);
-}
+const SDL_Rect BUTTON_RECT[BUTTONS] = {
+    { LAUNCHER_PLAY_RECT }, { LAUNCHER_SETUP_RECT }, { LAUNCHER_QUIT_RECT } };
+const SDL_Rect MIN_RECT   = { LAUNCHER_MIN_RECT };
+const SDL_Rect CLOSE_RECT = { LAUNCHER_CLOSE_RECT };
 
-/* WM_DRAWITEM for one owner-drawn button.  Pressed and focused both show the
- * focus bitmap.  PRESERVED: pressed takes its pixel offset from the off bitmap
- * and applies it to the focus one; harmless while both files share a header
- * layout, which they do. */
-static void draw_button(const DRAWITEMSTRUCT *di, const BYTE *off, const BYTE *foc)
+/* The title bar drags the window; its minimise and close boxes do not. */
+SDL_HitTestResult SDLCALL hit_test(SDL_Window *, const SDL_Point *p, void *)
 {
-    if (!off || !foc)
-        return;
-    const BYTE *hdr, *bits;
-    if (di->itemState & ODS_SELECTED) {
-        bits = foc + *(const DWORD *)(off + 10);
-        hdr  = foc + 14;
-    } else if (di->itemState & ODS_FOCUS) {
-        bits = foc + *(const DWORD *)(foc + 10);
-        hdr  = foc + 14;
-    } else {
-        bits = off + *(const DWORD *)(off + 10);
-        hdr  = off + 14;
-    }
-    stretch_bmp(di->hDC, di->rcItem.right - di->rcItem.left,
-                di->rcItem.bottom - di->rcItem.top, hdr, bits);
+    if (p->y < LAUNCHER_TITLE_H && !in_rect((float)p->x, (float)p->y, MIN_RECT)
+        && !in_rect((float)p->x, (float)p->y, CLOSE_RECT))
+        return SDL_HITTEST_DRAGGABLE;
+    return SDL_HITTEST_NORMAL;
 }
 
 /* The corner text: a 3x5 pixel font, each glyph 5 rows of 3 bits (high bit
  * leftmost).  Lower case draws as upper; anything unknown as a blank. */
-static const char FONT_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-'";
-static const unsigned char FONT[][5] = {
+const char FONT_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-'";
+const unsigned char FONT[][5] = {
     {2,5,7,5,5},{6,5,6,5,6},{3,4,4,4,3},{6,5,5,5,6},{7,4,6,4,7},{7,4,6,4,4},
     {3,4,5,5,3},{5,5,7,5,5},{7,2,2,2,7},{1,1,1,5,2},{5,5,6,5,5},{4,4,4,4,7},
     {5,7,7,5,5},{6,5,5,5,5},{2,5,5,5,2},{6,5,6,4,4},{2,5,5,6,3},{6,5,6,5,5},
@@ -115,321 +75,350 @@ static const unsigned char FONT[][5] = {
     {3,4,7,5,7},{7,1,2,2,2},{7,5,7,5,7},{7,5,7,1,6},
     {0,0,0,0,2},{0,0,7,0,0},{2,2,0,0,0},
 };
-static const int FONT_SCALE = 2;  // screen pixels per font pixel
+const int FONT_SCALE = 2;  // screen pixels per font pixel
 
-static void draw_text_px(HDC hdc, int x, int y, const char *text, HBRUSH brush)
+void draw_text_px(SDL_Renderer *r, int x, int y, const char *text)
 {
     for (; *text; ++text, x += 4 * FONT_SCALE) {
         const char *at = strchr(FONT_CHARS, toupper((unsigned char)*text));
-        if (!at)
-            continue;
+        if (!at) continue;
         const unsigned char *g = FONT[at - FONT_CHARS];
         for (int row = 0; row < 5; ++row)
             for (int col = 0; col < 3; ++col)
                 if (g[row] & (4 >> col)) {
-                    RECT r = { x + col * FONT_SCALE, y + row * FONT_SCALE,
-                               x + (col + 1) * FONT_SCALE, y + (row + 1) * FONT_SCALE };
-                    FillRect(hdc, &r, brush);
+                    SDL_FRect px = { (float)(x + col * FONT_SCALE),
+                                     (float)(y + row * FONT_SCALE),
+                                     (float)FONT_SCALE, (float)FONT_SCALE };
+                    SDL_RenderFillRect(r, &px);
                 }
     }
 }
 
-/* One string from our VERSIONINFO, or "" if absent. */
-static void version_string(const char *name, char *out, size_t size)
-{
-    out[0] = 0;
-    char path[MAX_PATH];
-    if (!GetModuleFileNameA(Resources_Module(), path, sizeof(path)))
-        return;
-    DWORD dummy, len = GetFileVersionInfoSizeA(path, &dummy);
-    std::vector<char> info(len);
-    if (len && GetFileVersionInfoA(path, 0, len, info.data())) {
-        char key[64];
-        snprintf(key, sizeof(key), "\\StringFileInfo\\000004b0\\%s", name);
-        char *val;
-        UINT vlen;
-        if (VerQueryValueA(info.data(), key, (void **)&val, &vlen) && vlen)
-            snprintf(out, size, "%s", val);
-    }
-}
-
 /* The corner text's extent, shadow included; clicking it opens the project. */
-static RECT s_linkRect;
-static const char LINK_URL[] = "https://github.com/jameswp/OpenRoo";
+SDL_Rect g_link;
 
 /* "<name> <version> <git sha>" at the bottom left, with a one-pixel shadow. */
-static void draw_build_text(HDC hdc)
+void draw_build_text(SDL_Renderer *r)
 {
-    char name[64], ver[32], text[160];
-    version_string("ProductName", name, sizeof(name));
-    version_string("ProductVersion", ver, sizeof(ver));
-    snprintf(text, sizeof(text), "%s %s %s", name, ver, BUILD_GIT_SHA);
+    char text[160];
+    snprintf(text, sizeof(text), "%s %s %s", OPENROO_NAME, OPENROO_VERSION,
+             BUILD_GIT_SHA);
     int x = 11, y = LAUNCHER_H - 11 - 5 * FONT_SCALE;
-    HBRUSH shadow = CreateSolidBrush(RGB(0, 0, 0));
-    HBRUSH fore   = CreateSolidBrush(RGB(255, 236, 200));
-    s_linkRect.left   = x;
-    s_linkRect.top    = y;
-    s_linkRect.right  = x + (int)strlen(text) * 4 * FONT_SCALE;
-    s_linkRect.bottom = y + 6 * FONT_SCALE;
-    draw_text_px(hdc, x + FONT_SCALE, y + FONT_SCALE, text, shadow);
-    draw_text_px(hdc, x, y, text, fore);
-    DeleteObject(shadow);
-    DeleteObject(fore);
+    g_link = { x, y, (int)strlen(text) * 4 * FONT_SCALE, 6 * FONT_SCALE };
+    SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+    draw_text_px(r, x + FONT_SCALE, y + FONT_SCALE, text);
+    SDL_SetRenderDrawColor(r, 255, 236, 200, 255);
+    draw_text_px(r, x, y, text);
 }
 
-static void place(HWND hDlg, int id, int x, int y, int w, int h)
-{
-    MoveWindow(GetDlgItem(hDlg, id), x, y, w, h, TRUE);
-}
+/* ── The device panel ────────────────────────────────────────────────── */
 
-static void starter_init(HWND hDlg)
-{
-    SetWindowTextA(hDlg, "Open'Roo");
-    s_menuBmp  = load_bmp_resource(IDR_LAUNCHER_BG);
-    s_playOff  = load_bmp_resource(IDR_LAUNCHER_PLAY_OFF);
-    s_playFoc  = load_bmp_resource(IDR_LAUNCHER_PLAY_FOC);
-    s_setupOff = load_bmp_resource(IDR_LAUNCHER_SETUP_OFF);
-    s_setupFoc = load_bmp_resource(IDR_LAUNCHER_SETUP_FOC);
-    s_quitOff  = load_bmp_resource(IDR_LAUNCHER_QUIT_OFF);
-    s_quitFoc  = load_bmp_resource(IDR_LAUNCHER_QUIT_FOC);
+const SDL_Rect PANEL     = { 90, 60, 420, 280 };
+const SDL_Rect ADAPTERS  = { 110, 104, 380, 56 };    // 4 rows of 14
+const SDL_Rect MODES     = { 110, 190, 380, 84 };    // 6 rows of 14
+const SDL_Rect OK_RECT   = { 300, 304, 90, 24 };
+const SDL_Rect CANCEL_RECT = { 400, 304, 90, 24 };
+const int ROW = 14;
 
-    // Centred, the size of the background; SWP_NOZORDER makes HWND_TOPMOST moot.
-    int y = GetSystemMetrics(SM_CYSCREEN) / 2 - LAUNCHER_H / 2;
-    int x = GetSystemMetrics(SM_CXSCREEN) / 2 - LAUNCHER_W / 2;
-    SetWindowPos(hDlg, HWND_TOPMOST, x, y, LAUNCHER_W, LAUNCHER_H, SWP_NOZORDER);
+struct List {
+    std::vector<std::string> items;
+    int selected = 0, top = 0;
+    int visible = 0;
 
-    place(hDlg, IDC_PLAY,  LAUNCHER_PLAY_RECT);
-    place(hDlg, IDC_SETUP, LAUNCHER_SETUP_RECT);
-    place(hDlg, IDC_QUIT,  LAUNCHER_QUIT_RECT);
-}
+    void select(int i)
+    {
+        if (items.empty()) return;
+        selected = i < 0 ? 0 : i >= (int)items.size() ? (int)items.size() - 1 : i;
+        if (selected < top) top = selected;
+        if (selected >= top + visible) top = selected - visible + 1;
+    }
+};
 
-/* Whether a client point (WM_LBUTTONUP's lParam) is in a painted box. */
-static bool in_box(LPARAM lParam, int x, int y, int w, int h)
-{
-    int px = (short)LOWORD(lParam), py = (short)HIWORD(lParam);
-    return px >= x && px < x + w && py >= y && py < y + h;
-}
+struct DevicePanel {
+    LauncherModel *model;
+    List adapters, modes;
+    bool modeFocus = true;  // keys act on the modes list, else the adapters
 
-static INT_PTR CALLBACK device_proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam);
-
-static void open_device_dialog(HWND hDlg)
-{
-    DialogBoxParamA(Resources_Module(), MAKEINTRESOURCEA(IDD_DEVICE),
-                    hDlg, device_proc, 0);
-}
-
-static INT_PTR CALLBACK launcher_proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    switch (msg) {
-    case WM_INITDIALOG:
-        starter_init(hDlg);
-        return 0;
-
-    case WM_DESTROY:
-        return 0;
-
-    case WM_PAINT: {
-        if (!s_menuBmp)
-            return 0;
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hDlg, &ps);
-        RECT rc;
-        GetClientRect(hDlg, &rc);
-        stretch_bmp(hdc, rc.right - rc.left, rc.bottom - rc.top,
-                    s_menuBmp + 14, s_menuBmp + *(DWORD *)(s_menuBmp + 10));
-        draw_build_text(hdc);
-        EndPaint(hDlg, &ps);
-        return 0;
+    bool init(LauncherModel *m)
+    {
+        model = m;
+        adapters.visible = ADAPTERS.h / ROW;
+        modes.visible = MODES.h / ROW;
+        if (!m->listAdapters(adapters.items)) return false;
+        adapters.select(m->configuredAdapter() < 0 ? 0 : m->configuredAdapter());
+        if (!fillModes()) return false;
+        modes.select(m->configuredMode());
+        return true;
     }
 
-    case WM_DRAWITEM: {
-        const DRAWITEMSTRUCT *di = (const DRAWITEMSTRUCT *)lParam;
-        if (di->CtlID == (UINT)IDC_QUIT)       draw_button(di, s_quitOff,  s_quitFoc);
-        else if (di->CtlID == (UINT)IDC_SETUP) draw_button(di, s_setupOff, s_setupFoc);
-        else if (di->CtlID == (UINT)IDC_PLAY)  draw_button(di, s_playOff,  s_playFoc);
-        return 1;
+    bool fillModes()
+    {
+        modes.items.clear();
+        modes.top = 0;
+        return model->listModes(adapters.selected, modes.items);
     }
 
-    case WM_COMMAND: {
-        int id = LOWORD(wParam), code = HIWORD(wParam);
-        if (id == IDOK) {
-            // Enter acts on whichever button has focus.  The tests are not
-            // exclusive: each runs even after an earlier one ended the dialog.
-            HWND focus = GetFocus();
-            if (GetDlgItem(hDlg, IDC_PLAY) == focus) {
-                s_model->playSound(LauncherModel::Sound::Impact);
-                EndDialog(hDlg, 1);
+    void draw(SDL_Renderer *r) const
+    {
+        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(r, 10, 10, 10, 235);
+        SDL_FRect p = { (float)PANEL.x, (float)PANEL.y, (float)PANEL.w, (float)PANEL.h };
+        SDL_RenderFillRect(r, &p);
+        SDL_SetRenderDrawColor(r, 255, 236, 200, 255);
+        SDL_RenderRect(r, &p);
+        SDL_RenderDebugText(r, 110, 76, "Setup");
+        SDL_RenderDebugText(r, 110, 92, "Device:");
+        drawList(r, adapters, ADAPTERS, !modeFocus);
+        SDL_RenderDebugText(r, 110, 178, "Mode:");
+        drawList(r, modes, MODES, modeFocus);
+        SDL_RenderDebugText(r, 110, 282, "Shadows need a 24- or 32-bit colour mode.");
+        drawButton(r, OK_RECT, "OK");
+        drawButton(r, CANCEL_RECT, "Cancel");
+    }
+
+    static void drawList(SDL_Renderer *r, const List &l, const SDL_Rect &box, bool focus)
+    {
+        SDL_FRect f = { (float)box.x, (float)box.y, (float)box.w, (float)box.h };
+        SDL_SetRenderDrawColor(r, 255, 236, 200, focus ? 255 : 110);
+        SDL_RenderRect(r, &f);
+        for (int i = 0; i < l.visible && l.top + i < (int)l.items.size(); i++) {
+            int idx = l.top + i;
+            if (idx == l.selected) {
+                SDL_FRect row = { (float)box.x + 1, (float)(box.y + i * ROW),
+                                  (float)box.w - 2, (float)ROW };
+                SDL_SetRenderDrawColor(r, 90, 70, 30, 255);
+                SDL_RenderFillRect(r, &row);
             }
-            if (GetDlgItem(hDlg, IDC_QUIT) == focus) {
-                s_model->playSound(LauncherModel::Sound::Ugh);
-                EndDialog(hDlg, 0);
-            }
-            if (GetDlgItem(hDlg, IDC_SETUP) == focus) {
-                s_model->playSound(LauncherModel::Sound::Impact);
-                open_device_dialog(hDlg);
-            }
-            return 0;
+            SDL_SetRenderDrawColor(r, 255, 236, 200, 255);
+            std::string s = l.items[idx].substr(0, (box.w - 8) / 8);
+            SDL_RenderDebugText(r, (float)box.x + 4, (float)(box.y + i * ROW + 3), s.c_str());
         }
-        if (id != IDC_PLAY && id != IDC_SETUP && id != IDC_QUIT)
-            return 0;
-        if (code == BN_CLICKED) {
-            if (id == IDC_PLAY) {
-                s_model->playSound(LauncherModel::Sound::Impact);
-                EndDialog(hDlg, 1);
-            } else if (id == IDC_SETUP) {
-                s_model->playSound(LauncherModel::Sound::Impact);
-                open_device_dialog(hDlg);
-            } else {
-                s_model->playSound(LauncherModel::Sound::Ugh);
-                EndDialog(hDlg, 0);
+    }
+
+    static void drawButton(SDL_Renderer *r, const SDL_Rect &b, const char *label)
+    {
+        SDL_FRect f = { (float)b.x, (float)b.y, (float)b.w, (float)b.h };
+        SDL_SetRenderDrawColor(r, 255, 236, 200, 255);
+        SDL_RenderRect(r, &f);
+        SDL_RenderDebugText(r, (float)b.x + (b.w - 8 * (int)strlen(label)) / 2.0f,
+                            (float)b.y + 8, label);
+    }
+
+    /* A click in a list selects the row under it; true if it was in one. */
+    static bool pick(List &l, const SDL_Rect &box, float x, float y)
+    {
+        if (!in_rect(x, y, box)) return false;
+        int row = l.top + ((int)y - box.y) / ROW;
+        if (row < (int)l.items.size()) l.select(row);
+        return true;
+    }
+
+    /* Returns 1 to confirm, 0 to cancel, -1 to stay. */
+    int event(const SDL_Event &e)
+    {
+        switch (e.type) {
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            if (in_rect(e.button.x, e.button.y, OK_RECT)) return 1;
+            if (in_rect(e.button.x, e.button.y, CANCEL_RECT)) return 0;
+            if (pick(adapters, ADAPTERS, e.button.x, e.button.y)) {
+                modeFocus = false;
+                if (!fillModes()) return 0;
+                modes.select(0);
+            } else if (pick(modes, MODES, e.button.x, e.button.y)) {
+                modeFocus = true;
             }
-        } else if (code == BN_SETFOCUS) {
-            s_model->playSound(LauncherModel::Sound::Switch);
-        }
-        return 0;
-    }
-
-    // The window has no frame; its title bar and boxes are painted in the
-    // background.  The title bar drags it, the boxes minimise and quit.
-    case WM_NCHITTEST: {
-        POINT pt = { (short)LOWORD(lParam), (short)HIWORD(lParam) };
-        ScreenToClient(hDlg, &pt);
-        LPARAM cl = MAKELPARAM(pt.x, pt.y);
-        LRESULT hit = pt.y < LAUNCHER_TITLE_H && !in_box(cl, LAUNCHER_MIN_RECT)
-                      && !in_box(cl, LAUNCHER_CLOSE_RECT) ? HTCAPTION : HTCLIENT;
-        SetWindowLongPtrA(hDlg, DWLP_MSGRESULT, hit);
-        return 1;
-    }
-
-    case WM_SETCURSOR: {
-        POINT pt;
-        GetCursorPos(&pt);
-        ScreenToClient(hDlg, &pt);
-        if (LOWORD(lParam) != HTCLIENT || !PtInRect(&s_linkRect, pt))
-            return 0;
-        SetCursor(LoadCursorA(NULL, IDC_HAND));
-        SetWindowLongPtrA(hDlg, DWLP_MSGRESULT, TRUE);
-        return 1;
-    }
-
-    case WM_LBUTTONUP:
-        if (in_box(lParam, s_linkRect.left, s_linkRect.top,
-                   s_linkRect.right - s_linkRect.left,
-                   s_linkRect.bottom - s_linkRect.top)) {
-            ShellExecuteA(hDlg, "open", LINK_URL, NULL, NULL, SW_SHOWNORMAL);
-        } else if (in_box(lParam, LAUNCHER_MIN_RECT)) {
-            ShowWindow(hDlg, SW_MINIMIZE);
-        } else if (in_box(lParam, LAUNCHER_CLOSE_RECT)) {
-            s_model->playSound(LauncherModel::Sound::Ugh);
-            EndDialog(hDlg, 0);
-        }
-        return 0;
-    }
-    return 0;
-}
-
-/* The mode list for the selected driver.  Each entry's item data is its
- * index in the model's list.  Returns false where the dialog should fail. */
-static bool fill_modes(HWND hDlg)
-{
-    LRESULT sel = SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETCURSEL, 0, 0);
-    int adapter = (int)SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETITEMDATA, sel, 0);
-
-    std::vector<std::string> modes;
-    if (!s_model->listModes(adapter, modes))
-        return false;
-
-    HWND combo = GetDlgItem(hDlg, IDC_MODES);
-    for (size_t i = 0; i < modes.size(); i++) {
-        LRESULT idx = SendMessageA(combo, CB_ADDSTRING, 0, (LPARAM)modes[i].c_str());
-        if (idx == CB_ERR)
-            return false;
-        SendMessageA(combo, CB_SETITEMDATA, idx, (LPARAM)i);
-    }
-    return true;
-}
-
-static bool device_init(HWND hDlg)
-{
-    SetWindowPos(hDlg, HWND_TOPMOST, 400, 300, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-
-    // One combo entry per adapter, sorted by the control; its item data is
-    // the adapter's index in the model's list.
-    std::vector<std::string> adapters;
-    if (!s_model->listAdapters(adapters))
-        return false;
-    HWND drivers = GetDlgItem(hDlg, IDC_DRIVERS);
-    for (size_t i = 0; i < adapters.size(); i++) {
-        LRESULT idx = SendMessageA(drivers, CB_ADDSTRING, 0, (LPARAM)adapters[i].c_str());
-        if (idx == CB_ERR)
             break;
-        SendMessageA(drivers, CB_SETITEMDATA, idx, (LPARAM)i);
-    }
-
-    // Select the configured driver, else the first entry.
-    int want = s_model->configuredAdapter();
-    LRESULT count = SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETCOUNT, 0, 0);
-    LRESULT pick = 0;
-    for (LRESULT i = 0; i < count; i++) {
-        int a = (int)SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETITEMDATA, i, 0);
-        if (a == want)
-            pick = i;
-    }
-    SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_SETCURSEL, pick, 0);
-
-    // REVIEW: the mode numbering used to carry over from an earlier opening
-    // of the dialog; each list now numbers from 0.
-    if (!fill_modes(hDlg))
-        return false;
-    SendDlgItemMessageA(hDlg, IDC_MODES, CB_SETCURSEL, s_model->configuredMode(), 0);
-    SendDlgItemMessageA(hDlg, IDC_HWCHECK, BM_SETCHECK, BST_CHECKED, 0);
-    return true;
-}
-
-static void device_ok(HWND hDlg)
-{
-    LRESULT sel = SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETCURSEL, 0, 0);
-    int adapter = (int)SendDlgItemMessageA(hDlg, IDC_DRIVERS, CB_GETITEMDATA, sel, 0);
-    sel = SendDlgItemMessageA(hDlg, IDC_MODES, CB_GETCURSEL, 0, 0);
-    int mode = (int)SendDlgItemMessageA(hDlg, IDC_MODES, CB_GETITEMDATA, sel, 0);
-    s_model->choose(adapter, mode);
-    EndDialog(hDlg, 1);
-}
-
-static INT_PTR CALLBACK device_proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM)
-{
-    if (msg == WM_INITDIALOG)
-        return device_init(hDlg) ? 1 : 0;
-    if (msg != WM_COMMAND)
-        return 0;
-
-    switch (LOWORD(wParam)) {
-    case IDOK:
-        device_ok(hDlg);
-        break;
-    case IDCANCEL:
-        EndDialog(hDlg, 0);
-        break;
-    case IDC_DRIVERS:
-        if (HIWORD(wParam) != CBN_SELCHANGE)
+        case SDL_EVENT_MOUSE_WHEEL: {
+            float mx, my;
+            SDL_GetMouseState(&mx, &my);
+            List &l = in_rect(mx, my, ADAPTERS) ? adapters : modes;
+            int top = l.top - (int)e.wheel.y;
+            int max = (int)l.items.size() - l.visible;
+            l.top = top < 0 ? 0 : top > max ? (max < 0 ? 0 : max) : top;
             break;
-        SendDlgItemMessageA(hDlg, IDC_MODES, CB_RESETCONTENT, 0, 0);
-        if (!fill_modes(hDlg))
-            return 0;
-        SendDlgItemMessageA(hDlg, IDC_MODES, CB_SETCURSEL, 0, 0);
-        SendDlgItemMessageA(hDlg, IDC_HWCHECK, BM_SETCHECK, BST_CHECKED, 0);
-        break;
+        }
+        case SDL_EVENT_KEY_DOWN:
+            switch (e.key.key) {
+            case SDLK_ESCAPE: return 0;
+            case SDLK_RETURN: case SDLK_KP_ENTER: return 1;
+            case SDLK_TAB: modeFocus = !modeFocus; break;
+            case SDLK_UP: case SDLK_DOWN: {
+                int d = e.key.key == SDLK_UP ? -1 : 1;
+                if (modeFocus) {
+                    modes.select(modes.selected + d);
+                } else {
+                    adapters.select(adapters.selected + d);
+                    if (!fillModes()) return 0;
+                    modes.select(0);
+                }
+                break;
+            }
+            }
+            break;
+        }
+        return -1;
     }
-    return 1;
-}
+};
+
+/* ── The window ──────────────────────────────────────────────────────── */
+
+struct Launcher {
+    LauncherModel *model;
+    SDL_Window    *window = NULL;
+    SDL_Renderer  *renderer = NULL;
+    Art            art;
+    int            focus = PLAY;
+    int            pressed = -1;
+    bool           showPanel = false;
+    DevicePanel    panel;
+
+    bool open()
+    {
+        if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) return false;
+        window = SDL_CreateWindow(OPENROO_NAME, LAUNCHER_W, LAUNCHER_H,
+                                  SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP);
+        if (!window) return false;
+        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+        SDL_SetWindowHitTest(window, hit_test, NULL);
+        SDL_Surface *icon = SDL_CreateSurfaceFrom(LAUNCHER_ICON_SIZE, LAUNCHER_ICON_SIZE,
+                                                  SDL_PIXELFORMAT_RGBA32,
+                                                  (void *)launcher_icon_rgba,
+                                                  LAUNCHER_ICON_SIZE * 4);
+        if (icon) { SDL_SetWindowIcon(window, icon); SDL_DestroySurface(icon); }
+
+        renderer = SDL_CreateRenderer(window, SDL_SOFTWARE_RENDERER);
+        if (!renderer) return false;
+        art.bg = texture(renderer, launcher_bg_bmp, sizeof(launcher_bg_bmp));
+        const unsigned char *off[BUTTONS] = { launcher_play_off_bmp, launcher_setup_off_bmp,
+                                              launcher_quit_off_bmp };
+        const unsigned char *foc[BUTTONS] = { launcher_play_foc_bmp, launcher_setup_foc_bmp,
+                                              launcher_quit_foc_bmp };
+        for (int i = 0; i < BUTTONS; i++) {
+            art.off[i] = texture(renderer, off[i], sizeof(launcher_play_off_bmp));
+            art.foc[i] = texture(renderer, foc[i], sizeof(launcher_play_foc_bmp));
+        }
+        return art.bg != NULL;
+    }
+
+    ~Launcher()
+    {
+        // Textures go with the renderer.
+        if (renderer) SDL_DestroyRenderer(renderer);
+        if (window) SDL_DestroyWindow(window);
+    }
+
+    void draw()
+    {
+        SDL_RenderTexture(renderer, art.bg, NULL, NULL);
+        for (int i = 0; i < BUTTONS; i++) {
+            SDL_Texture *t = (focus == i || pressed == i) ? art.foc[i] : art.off[i];
+            if (!t) continue;
+            const SDL_Rect &b = BUTTON_RECT[i];
+            SDL_FRect d = { (float)b.x, (float)b.y, (float)b.w, (float)b.h };
+            SDL_RenderTexture(renderer, t, NULL, &d);
+        }
+        draw_build_text(renderer);
+        if (showPanel) panel.draw(renderer);
+        SDL_RenderPresent(renderer);
+    }
+
+    void moveFocus(int to)
+    {
+        to = (to + BUTTONS) % BUTTONS;
+        if (to == focus) return;
+        focus = to;
+        model->playSound(LauncherModel::Sound::Switch);
+    }
+
+    /* Returns 1 to play, 0 to quit, -1 to carry on. */
+    int activate(int button)
+    {
+        if (button == PLAY) {
+            model->playSound(LauncherModel::Sound::Impact);
+            return 1;
+        }
+        if (button == QUIT) {
+            model->playSound(LauncherModel::Sound::Ugh);
+            return 0;
+        }
+        model->playSound(LauncherModel::Sound::Impact);
+        showPanel = panel.init(model);
+        return -1;
+    }
+
+    int event(const SDL_Event &e)
+    {
+        if (e.type == SDL_EVENT_QUIT || e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
+            return 0;
+
+        if (showPanel) {
+            int r = panel.event(e);
+            if (r == 1) model->choose(panel.adapters.selected, panel.modes.selected);
+            if (r >= 0) showPanel = false;
+            return -1;
+        }
+
+        int over = -1;
+        if (e.type == SDL_EVENT_MOUSE_MOTION || e.type == SDL_EVENT_MOUSE_BUTTON_DOWN
+            || e.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+            float x = e.type == SDL_EVENT_MOUSE_MOTION ? e.motion.x : e.button.x;
+            float y = e.type == SDL_EVENT_MOUSE_MOTION ? e.motion.y : e.button.y;
+            for (int i = 0; i < BUTTONS; i++)
+                if (in_rect(x, y, BUTTON_RECT[i])) over = i;
+            if (e.type == SDL_EVENT_MOUSE_MOTION && over >= 0)
+                moveFocus(over);
+            if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                pressed = over;
+                if (over >= 0) moveFocus(over);
+            }
+            if (e.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+                int was = pressed;
+                pressed = -1;
+                if (was >= 0 && was == over)
+                    return activate(was);
+                if (in_rect(x, y, g_link)) {
+                    SDL_OpenURL(LINK_URL);
+                } else if (in_rect(x, y, MIN_RECT)) {
+                    SDL_MinimizeWindow(window);
+                } else if (in_rect(x, y, CLOSE_RECT)) {
+                    model->playSound(LauncherModel::Sound::Ugh);
+                    return 0;
+                }
+            }
+        } else if (e.type == SDL_EVENT_KEY_DOWN) {
+            switch (e.key.key) {
+            case SDLK_ESCAPE: return 0;
+            case SDLK_TAB: moveFocus(focus + ((e.key.mod & SDL_KMOD_SHIFT) ? -1 : 1)); break;
+            case SDLK_DOWN: moveFocus(focus + 1); break;
+            case SDLK_UP:   moveFocus(focus - 1); break;
+            case SDLK_RETURN: case SDLK_KP_ENTER: case SDLK_SPACE:
+                return activate(focus);
+            }
+        }
+        return -1;
+    }
+};
+
+}  // namespace
 
 namespace windev {
 
-bool showLauncher(void *parent, LauncherModel &model)
+bool showLauncher(void *, LauncherModel &model)
 {
-    s_model = &model;
-    return DialogBoxParamA(Resources_Module(), MAKEINTRESOURCEA(0x68),
-                           (HWND)parent, launcher_proc, 0) != 0;
+    Launcher l;
+    l.model = &model;
+    if (!l.open())
+        return true;  // no launcher to show: carry on with the saved settings
+
+    int result = -1;
+    SDL_Event e;
+    while (result < 0) {
+        l.draw();
+        if (!SDL_WaitEvent(&e))
+            break;
+        result = l.event(e);
+    }
+    return result != 0;
 }
 
 }  // namespace windev
