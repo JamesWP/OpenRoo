@@ -150,15 +150,16 @@ static void draw_panels(RenderDevice &dev)
         ImGui::ShowDemoWindow(&g_showDemo);
 }
 
-static void overlay(RenderDevice &dev)
+static bool overlay(RenderDevice &dev)
 {
     if (!windev::debugUiShown())
-        return;
+        return false;
     windev::debugUiNewFrame();
     ImGui::NewFrame();
     draw_panels(dev);
     ImGui::Render();
     render_draw_data(dev, ImGui::GetDrawData());
+    return true;
 }
 
 // ── Life cycle ──

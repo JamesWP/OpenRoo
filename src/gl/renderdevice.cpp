@@ -502,6 +502,10 @@ void RenderDevice::Clear(uint32_t flags)
     Native *n = native_;
     if (!n->active)
         return;
+    // A clear is of the whole target: the overlay's last scissor must not
+    // reach it.
+    gl.Disable(GL_SCISSOR_TEST);
+    n->dirty |= GLDirty::Scissor;
     GLbitfield bits = 0;
     if (flags & ClearFlag::Color)
         bits |= GL_COLOR_BUFFER_BIT;
@@ -577,14 +581,15 @@ void RenderDevice::Present()
         return;
     if (n->overlay) {
         const PipelineState saved = state_;
-        n->overlay(*this);
-        SetBlend(saved.blend);
-        SetDepth(saved.depth);
-        SetStencil(saved.stencil);
-        SetRaster(saved.raster);
-        SetScissor(saved.scissor);
-        SetSampler(0, saved.samplers[0]);
-        SetTexture(0, saved.bound[0]);
+        if (n->overlay(*this)) {
+            SetBlend(saved.blend);
+            SetDepth(saved.depth);
+            SetStencil(saved.stencil);
+            SetRaster(saved.raster);
+            SetScissor(saved.scissor);
+            SetSampler(0, saved.samplers[0]);
+            SetTexture(0, saved.bound[0]);
+        }
     }
     capture_frame(n, ++n->presented);
     n->window->swapBuffers();

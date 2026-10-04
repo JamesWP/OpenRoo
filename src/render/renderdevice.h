@@ -170,9 +170,10 @@ public:
     void Present();
 
     /* A function Present calls to draw over the finished frame: the debug UI.
-     * It draws with the ordinary setters; the state the game had set is put
-     * back after.  NULL for none. */
-    typedef void (*OverlayFn)(RenderDevice &dev);
+     * It draws with the ordinary setters and returns true if it drew; the
+     * state the game had set is then put back.  A frame it did not draw on
+     * is shown exactly as if there were no overlay.  NULL for none. */
+    typedef bool (*OverlayFn)(RenderDevice &dev);
     void SetOverlay(OverlayFn fn);
 
     /* Copies img over the back buffer, scaled to fit, and shows it.  An empty
