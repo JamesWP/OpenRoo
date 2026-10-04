@@ -15,3 +15,5 @@ Unless otherwise stated, all completed work should be pushed as a PR so that the
 The game assets (which are licensed) are not included in the repo but instead are populated by a run of `python3 tools/import_assets.py` using a zip, the user can provide this, but you should check to see if some pre extracted assets are available in the main worktree under `game/` and you should prefer symlinking that.
 
 The original game had some odd bits of code some of which are bugs, these have been preserved, however we should take the oppertunity to remove them if we see fit. very likely the bug is some edgecase which dosent occur, or isnt gameplay impacting. those should be removed when we are modifying the code.
+
+Unless otherwise stated, test only on the linux build. don't test both platforms build or pass the tests unless explicitly given permission.
