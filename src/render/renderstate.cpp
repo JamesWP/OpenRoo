@@ -110,9 +110,9 @@ Render_ConfigureRenderState(void)
     g_meshEnemy.importSceneModels("models\\Enemy.mdl");
 
     char path[0x100];
-    sprintf(path, "%s\\textures\\shadow.tga", g_gameDir);
+    snprintf(path, sizeof(path), "%s\\textures\\shadow.tga", g_gameDir);
     g_texShadow.load(d3d, path, 1, 0);
-    sprintf(path, "%s\\textures\\karoo128.tga", g_gameDir);
+    snprintf(path, sizeof(path), "%s\\textures\\karoo128.tga", g_gameDir);
     g_texKaroo128.load(d3d, path, 1, 0);
 
     Material mat = {

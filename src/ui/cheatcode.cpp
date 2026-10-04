@@ -69,7 +69,7 @@ Sim_HandleTypedCheatCode(Game *self)
     Player *pl = self->player();
     unsigned char *buf = self->cheatBuffer();
     unsigned char frame[256];
-    char path[256];
+    char path[384];
 
     if (s_fx < 0) {
         char e[32];
@@ -140,7 +140,7 @@ Sim_HandleTypedCheatCode(Game *self)
             unsigned char lvl = (unsigned char)(atoi(num) - 1);
             Sim_SetCurrentLevelName(self, lvl);
             if (lvl < self->levelCount()) {
-                sprintf(path, GS_CHEAT_FMT_LVL_PATH, g_gameDir, self->levelName());
+                snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, g_gameDir, self->levelName());
                 g_logger.logMessage(3, "GAME: lc by number %d name:%s", (unsigned int)lvl,
                                    self->levelName());
                 self->setLevelIndex(lvl);
@@ -165,7 +165,7 @@ Sim_HandleTypedCheatCode(Game *self)
             std::copy_n(buf + 6, len - 6, frame);
             frame[len - 6] = 0;
             g_logger.logMessage(3, "GAME: lc %s", (const char *)frame);
-            sprintf(path, GS_CHEAT_FMT_LVL_PATH, g_gameDir, (const char *)frame);
+            snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, g_gameDir, (const char *)frame);
             if (std::ifstream(sysdev::nativePath(path))) {
                 pl->setGemsCollected(0);
                 Sim_ParseLevelFiles(self, (const char *)frame);

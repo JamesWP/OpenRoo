@@ -266,7 +266,7 @@ int ThemeSoundTable::add(unsigned int id, const char *waveName,
                uint32_t arg3, uint32_t arg4)
 {
     char path[256];
-    sprintf(path, GS_THEME_SOUND_PATH, g_gameDir, waveName);
+    snprintf(path, sizeof(path), GS_THEME_SOUND_PATH, g_gameDir, waveName);
 
     SoundAssetName &e = entries_[id & 0xffff];
     if (strcmp(waveName, GS_THEME_SOUND_NONE) == 0) {
@@ -630,14 +630,14 @@ void ThemeParser::sky(bool inEnvironment)
 {
     if (!inEnvironment || ntok <= 1)
         return;
-    // PRESERVED: 0x100 each and unbounded.
-    char up[0x100], dn[0x100], fr[0x100], bk[0x100], lf[0x100], rt[0x100];
-    sprintf(up, GS_THEME_SKY_UP, tok[1]);
-    sprintf(dn, GS_THEME_SKY_DN, tok[1]);
-    sprintf(fr, GS_THEME_SKY_FR, tok[1]);
-    sprintf(bk, GS_THEME_SKY_BK, tok[1]);
-    sprintf(lf, GS_THEME_SKY_LF, tok[1]);
-    sprintf(rt, GS_THEME_SKY_RT, tok[1]);
+    // Room for the longest token plus the face suffix.
+    char up[0x110], dn[0x110], fr[0x110], bk[0x110], lf[0x110], rt[0x110];
+    snprintf(up, sizeof(up), GS_THEME_SKY_UP, tok[1]);
+    snprintf(dn, sizeof(dn), GS_THEME_SKY_DN, tok[1]);
+    snprintf(fr, sizeof(fr), GS_THEME_SKY_FR, tok[1]);
+    snprintf(bk, sizeof(bk), GS_THEME_SKY_BK, tok[1]);
+    snprintf(lf, sizeof(lf), GS_THEME_SKY_LF, tok[1]);
+    snprintf(rt, sizeof(rt), GS_THEME_SKY_RT, tok[1]);
     unsigned int ok = block->sky_.buildFromFaceNames(d3d,
                                              up, dn, fr, bk, lf, rt,
                                              d3d->bitDepth());

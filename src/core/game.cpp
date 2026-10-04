@@ -81,8 +81,7 @@ Game::Game(const char *gameName)
     field_13cc8c_ = 0;
     field_13cc88_ = 0;
 
-    // PRESERVED: the game name is used as sprintf's format.
-    sprintf(gameFileName_, gameName);
+    snprintf(gameFileName_, sizeof(gameFileName_), "%s", gameName);
     cdThemes_.readTrackThemeTable(gameFileName_);
     cdThemes_.listTrackLengths();
     if (cdThemes_.validateTrackLengths())
@@ -208,7 +207,7 @@ int Game::loadGameFile(const char *name)
     unsigned char hdr[4];
 
     levelCount_ = 0;
-    sprintf(path, GS_GAME_FILE_PATH, g_gameDir, name);
+    snprintf(path, sizeof(path), GS_GAME_FILE_PATH, g_gameDir, name);
     g_logger.logMessage(2, "GAME: load game-file: %s", path);
     sysdev::TextFile in(path);
     if (!in)

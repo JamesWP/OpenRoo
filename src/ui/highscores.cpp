@@ -60,7 +60,7 @@ int HighScoreTable::readFile(const char *name, char key)
     char path[128];
     unsigned char b = 0;  // PRESERVED: never re-initialised between reads
 
-    sprintf(path, "%s\\Highscores\\%s.hsc", g_gameDir, name);
+    snprintf(path, sizeof(path), "%s\\Highscores\\%s.hsc", g_gameDir, name);
     std::ifstream in(sysdev::nativePath(path));  // text mode, as the original wrote it
     if (!in) {
         ps_log("hsc load", path, 0);
@@ -82,7 +82,7 @@ int HighScoreTable::writeFile(const char *name, char key)
     unsigned char rec[HSC_ENTRY_SIZE];
     char path[128];
 
-    sprintf(path, "%s\\Highscores\\%s.hsc", g_gameDir, name);
+    snprintf(path, sizeof(path), "%s\\Highscores\\%s.hsc", g_gameDir, name);
     std::ofstream outFile(sysdev::nativePath(path));  // text mode, as the original wrote it
     if (!outFile) {
         ps_log("hsc save", path, 0);

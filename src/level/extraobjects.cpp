@@ -397,7 +397,7 @@ void ExtraObjects::parseSound()
     current()->kind = EXTRA_SOUND;
     char *z = NULL;
     char *name = leo_tok();
-    sprintf(current()->file, "%s\\%s", g_gameDir, name);
+    snprintf(current()->file, sizeof(current()->file), "%s\\%s", g_gameDir, name);
     if (name != NULL) {
         char *t = leo_tok();
         current()->position[0] = (float)atof(t);
@@ -425,7 +425,7 @@ void ExtraObjects::parseParticle()
     current()->kind = EXTRA_PARTICLE;
     char *tex = NULL;
     char *name = leo_tok();
-    sprintf(current()->file, "%s\\%s", g_gameDir, name);
+    snprintf(current()->file, sizeof(current()->file), "%s\\%s", g_gameDir, name);
     g_logger.logMessage(1, "LEO: Particle-Filename:%s", current()->file);
     if (name != NULL && readSixFloats()) {
         char src[0x100];
@@ -434,7 +434,7 @@ void ExtraObjects::parseParticle()
         setBlend(src, dest);
         if (dest != NULL) {
             tex = leo_tok();
-            sprintf(current()->textureFile, "%s\\%s", g_gameDir, tex);
+            snprintf(current()->textureFile, sizeof(current()->textureFile), "%s\\%s", g_gameDir, tex);
             g_logger.logMessage(1, "LEO: Particle-Texture-Filename:%s",
                                current()->textureFile);
         }

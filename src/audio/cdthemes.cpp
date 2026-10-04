@@ -128,7 +128,7 @@ unsigned char CdThemes::readTrackThemeTable(const char *name)
 {
     char path[256];
 
-    sprintf(path, GS_CD_TRACKFILE_PATH, g_gameDir, name);
+    snprintf(path, sizeof(path), GS_CD_TRACKFILE_PATH, g_gameDir, name);
     unsigned char n = 0;
     sysdev::TextFile in(path);
     count_ = 0;

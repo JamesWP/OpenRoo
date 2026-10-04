@@ -37,8 +37,8 @@ extern double g_lastTickMs;
 
 /* The install directory, filled by WinMain; game paths are formatted against
  * it. */
-extern char g_gameDir[260];
-static const size_t GG_GAME_DIR_LEN = 0x104;
+extern char g_gameDir[64];
+static const size_t GG_GAME_DIR_LEN = 64;
 
 
 #endif
