@@ -65,12 +65,14 @@ float *SkyBackground::draw(RenderDevice *dev,
 
     dev->SetWorld(*(const Mat4 *)m);
 
+    if (!vb_)
+        vb_ = dev->CreateVertexBuffer(SKY_FVF, SKY_QUADS * 4, BufferUsage::Static, QuadVerts_);
+
     const int nquads = fx_one_quad() ? 1 : SKY_QUADS;
     for (int i = 0; i < nquads; i++) {
         const Texture *tex = &Textures_[i];
         dev->SetTexture(0, tex);
-        bool ok = dev->Draw(Prim::TriangleStrip, SKY_FVF, QuadVerts_[i], 4,
-                            0);
+        bool ok = dev->DrawBuffer(Prim::TriangleStrip, vb_, i * 4, 4);
 
         static std::atomic<long> logged = 0;
         if (++logged <= SKY_LOG_FIRST)
@@ -150,4 +152,5 @@ SkyBackground::SkyBackground()
 
 SkyBackground::~SkyBackground()
 {
+    RenderDevice::DestroyVertexBuffer(vb_);
 }

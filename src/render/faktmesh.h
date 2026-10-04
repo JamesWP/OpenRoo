@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 class RenderDevice;
+struct VertexBuffer;
 
 /* CFaktMesh — the mesh object, drawn by DrawMeshBuffer / DrawFramedModel
  * (faktmesh.cpp) and loaded from a .mdl by ImportSceneModels (model.cpp).
@@ -82,6 +83,10 @@ private:
      * specular, then textureCoords[8].  Only the four strides the ctor
      * writes are ever touched. */
     MeshStridedEntry strided_[12];
+
+    /* All the frames' vertices on the device, made by the first draw and
+     * dropped with the vertices. */
+    VertexBuffer *vb_ = nullptr;
 };
 
 /* The two character meshes, loaded once at startup (renderstate.cpp):

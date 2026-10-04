@@ -136,11 +136,19 @@ void XFaceParticleSystem::fill()
 
 /* ─── Draw ─────────────────────────────────────────────────────────────────
  */
+const VertexBuffer *ParticleSystem::uploadVerts(RenderDevice *dev)
+{
+    if (!vb_ && dwVertexCapacity_ > 0)
+        vb_ = dev->CreateVertexBuffer(PARTICLE_FVF, dwVertexCapacity_, BufferUsage::Dynamic);
+    if (vb_ && dwVertexCount_ > 0)
+        dev->UpdateVertexBuffer(vb_, 0, pVerts_.get(), dwVertexCount_);
+    return vb_;
+}
+
 uint32_t PointParticleSystem::draw(RenderDevice *dev)
 {
     static DrawLogState st;
-    bool ok = dev->Draw(Prim::PointList, PARTICLE_FVF,
-                                    pVerts_.get(), dwVertexCount_, 0);
+    bool ok = dev->DrawBuffer(Prim::PointList, uploadVerts(dev), 0, dwVertexCount_);
     log_draw(&st, "PointDraw", this, dev, dwVertexCount_, ok);
     return dwVertexCount_;
 }
@@ -148,8 +156,7 @@ uint32_t PointParticleSystem::draw(RenderDevice *dev)
 uint32_t FaceParticleSystem::draw(RenderDevice *dev)
 {
     static DrawLogState st;
-    bool ok = dev->Draw(Prim::TriangleList, PARTICLE_FVF,
-                                    pVerts_.get(), dwVertexCount_, 0);
+    bool ok = dev->DrawBuffer(Prim::TriangleList, uploadVerts(dev), 0, dwVertexCount_);
     log_draw(&st, "FaceDraw", this, dev, dwVertexCount_, ok);
     return dwVertexCount_ / 6;
 }
@@ -160,12 +167,11 @@ uint32_t FaceParticleSystem::draw(RenderDevice *dev)
 uint32_t XFaceParticleSystem::draw(RenderDevice *dev)
 {
     const RasterState saved = dev->raster();
+    const VertexBuffer *vb = uploadVerts(dev);
     dev->SetRaster(RasterState{ CullMode::CCW });
-    dev->Draw(Prim::TriangleList, PARTICLE_FVF,
-                       pVerts_.get(), dwVertexCount_, 0);
+    dev->DrawBuffer(Prim::TriangleList, vb, 0, dwVertexCount_);
     dev->SetRaster(RasterState{ CullMode::CW });
-    bool ok = dev->Draw(Prim::TriangleList, PARTICLE_FVF,
-                                    pVerts_.get(), dwVertexCount_, 0);
+    bool ok = dev->DrawBuffer(Prim::TriangleList, vb, 0, dwVertexCount_);
     dev->SetRaster(saved);
     static DrawLogState st;
     log_draw(&st, "XFaceDraw", this, dev, dwVertexCount_, ok);
@@ -458,6 +464,9 @@ void ParticleSystem::release(int flags)
     pGenerator_ = NULL;
     pEnvironment_ = NULL;
     pVerts_.reset();
+    RenderDevice::DestroyVertexBuffer(vb_);
+    vb_ = nullptr;
+    dwVertexCapacity_ = 0;
     ring_.release();
 }
 
@@ -636,7 +645,10 @@ const float XFaceParticleSystem::XFACE_UV[6][2] = { {0,0}, {1,1}, {0,1}, {1,0}, 
 
 int ParticleSystem::allocVerts(unsigned perNode, const float (*uv)[2])
 {
-    pVerts_.reset(new ParticleVertex[ring_.dwRingCount * perNode]());
+    RenderDevice::DestroyVertexBuffer(vb_);
+    vb_ = nullptr;
+    dwVertexCapacity_ = ring_.dwRingCount * perNode;
+    pVerts_.reset(new ParticleVertex[dwVertexCapacity_]());
     if (uv)
         for (uint32_t i = 0; i < ring_.dwRingCount; i++)
             for (unsigned c = 0; c < perNode; c++) {
