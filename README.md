@@ -68,5 +68,4 @@ headers and those of the groups in its `DEPENDS` list, so those lists are the
 layering and the compiler enforces them. Direct3D headers
 are for `d3d` alone (`cmake/CheckNativeD3D.cmake`); everything else goes through `renderdevice.h`.
 SDL and FFmpeg are for the platform groups (`windev`, `audiodev`, `inputdev`, `sysdev`,
-`videodev`) alone (`cmake/CheckNativeSDL.cmake`); `docs/SDL_PLATFORM.md` records
-what that port found.
+`videodev`) alone (`cmake/CheckNativeSDL.cmake`).
