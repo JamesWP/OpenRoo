@@ -1,147 +1,131 @@
-/* FORMAT: Karoo.cfg is the persisted blob followed by a 10-byte tag holding
- * "End".  Both directions use text mode, as the game does. */
-#include <fstream>
+/* openroo.ini: the settings, in [video], [audio], [camera] and [input]. */
 #include <stdio.h>
 #include <string.h>
 #include "logger.h"
 #include "config.h"
-#include <stdlib.h>
-#include <math.h>
-#include "bytes.h"
-
-#define CFG_BLOB_SIZE  Config::PERSISTED_SIZE
-#define CFG_TAG_SIZE   0xa
-#define CFG_TAG        "End"
-
-#define PS_LOG_FIRST   6
+#include "ini.h"
 
 static int s_logged = 0;
 
 static void ps_log(const char *what, const char *path, int ok)
 {
-    if (s_logged < PS_LOG_FIRST) {
+    if (s_logged < 6) {
         s_logged++;
         g_logger.write("config: %s '%s' -> %s\n", what, path, ok ? "ok" : "FAILED");
     }
 }
 
-void Config::encode(unsigned char out[PERSISTED_SIZE]) const
+static int clamp(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+/* The adapter id as 32 hex digits; empty for the primary adapter (all zero). */
+static std::string adapter_text(const AdapterId &id)
 {
-    unsigned char *p = out;
-    put_u32(p, field_00_);
-    put_bytes(p, videoOptions_, sizeof(videoOptions_));
-    put_bytes(p, &cameraDistanceSetting_, 4);
-    put_bytes(p, &adapterId_, sizeof(adapterId_));
-    put_u32(p, displayModeIndex_);
-    put_u32(p, field_20_);
-    put_u32(p, (unsigned int)musicOn_);
-    put_u8(p, cdVolume_);
-    put_u32(p, savedCdMixerVolume_);
-    put_u32(p, cdMixerVolume_);
-    put_bytes(p, undecoded_, sizeof(undecoded_));
-    put_u32(p, (unsigned int)sound3D_);
-    put_u8(p, waveVolume_);
-    put_u32(p, savedWaveOutVolume_);
-    put_u32(p, waveOutVolume_);
-    put_u8(p, cameraTurnsWithPlayer_);
-    put_bytes(p, &cameraYaw_, 4);
-    put_bytes(p, &activeCameraPitch_, 4);
-    put_bytes(p, &cameraPitch_, 4);
-    put_u16(p, joyDeadzone_);
+    static const AdapterId none = {};
+    if (!memcmp(&id, &none, sizeof(id))) return "";
+    char buf[sizeof(id.bytes) * 2 + 1];
+    for (size_t i = 0; i < sizeof(id.bytes); i++)
+        snprintf(buf + 2 * i, 3, "%02x", id.bytes[i]);
+    return buf;
 }
 
-void Config::decode(const unsigned char in[PERSISTED_SIZE])
+static void adapter_parse(const std::string &text, AdapterId *id)
 {
-    const unsigned char *p = in;
-    field_00_ = get_u32(p);
-    get_bytes(p, videoOptions_, sizeof(videoOptions_));
-    get_bytes(p, &cameraDistanceSetting_, 4);
-    get_bytes(p, &adapterId_, sizeof(adapterId_));
-    displayModeIndex_   = get_u32(p);
-    field_20_           = get_u32(p);
-    musicOn_            = (int)get_u32(p);
-    cdVolume_           = get_u8(p);
-    savedCdMixerVolume_ = get_u32(p);
-    cdMixerVolume_      = get_u32(p);
-    get_bytes(p, undecoded_, sizeof(undecoded_));
-    sound3D_            = (int)get_u32(p);
-    waveVolume_         = get_u8(p);
-    savedWaveOutVolume_ = get_u32(p);
-    waveOutVolume_      = get_u32(p);
-    cameraTurnsWithPlayer_ = get_u8(p);
-    get_bytes(p, &cameraYaw_, 4);
-    get_bytes(p, &activeCameraPitch_, 4);
-    get_bytes(p, &cameraPitch_, 4);
-    joyDeadzone_        = get_u16(p);
+    AdapterId parsed = {};
+    if (text.size() == sizeof(parsed.bytes) * 2) {
+        for (size_t i = 0; i < sizeof(parsed.bytes); i++) {
+            unsigned v;
+            if (sscanf(text.c_str() + 2 * i, "%2x", &v) != 1) { parsed = AdapterId(); break; }
+            parsed.bytes[i] = (uint8_t)v;
+        }
+    }
+    *id = parsed;
 }
 
 int Config::loadValues(const char *path)
 {
-    char tag[CFG_TAG_SIZE];
-    std::ifstream in(path);  // text mode, as the original wrote it
-
-    if (!in) {
-        ps_log("cfg load", path, 0);
+    fillDefaults();
+    IniFile ini;
+    if (!ini.load(path)) {
+        ps_log("ini load", path, 0);
         return 0;
     }
-    // A short file leaves the rest of the blob as it was.
-    unsigned char blob[CFG_BLOB_SIZE];
-    encode(blob);
-    in.read(reinterpret_cast<char *>(blob), CFG_BLOB_SIZE);
-    decode(blob);
-    in.read(tag, CFG_TAG_SIZE);
+    adapter_parse(ini.get("video", "adapter"), &adapterId_);
+    displayModeIndex_ = (unsigned)clamp(ini.getInt("video", "mode", (int)displayModeIndex_), 0, 255);
+    videoOptions_[0] = (unsigned char)clamp(ini.getInt("video", "shadows", videoOptions_[0]), 0, 2);
+    videoOptions_[1] = (unsigned char)clamp(ini.getInt("video", "reflection", videoOptions_[1]), 0, 1);
+    videoOptions_[2] = (unsigned char)clamp(ini.getInt("video", "highlights", videoOptions_[2]), 0, 2);
+    videoOptions_[3] = (unsigned char)clamp(ini.getInt("video", "particles", videoOptions_[3]), 0, 2);
 
-    // Only the bytes up to the tag's NUL are compared.
-    ps_log("cfg load", path, 1);
-    return strcmp(tag, CFG_TAG) == 0 ? 1 : 0;
+    sound3D_    = clamp(ini.getInt("audio", "sound3d", sound3D_), 0, 1);
+    musicOn_    = clamp(ini.getInt("audio", "music", musicOn_), 0, 1);
+    cdVolume_   = (unsigned char)clamp(ini.getInt("audio", "music_volume", cdVolume_), 0, 100);
+    waveVolume_ = (unsigned char)clamp(ini.getInt("audio", "effects_volume", waveVolume_), 0, 100);
+
+    cameraDistanceSetting_ = ini.getFloat("camera", "distance", cameraDistanceSetting_);
+    cameraYaw_             = ini.getFloat("camera", "yaw", cameraYaw_);
+    cameraPitch_           = ini.getFloat("camera", "pitch", cameraPitch_);
+    cameraTurnsWithPlayer_ = (unsigned char)clamp(ini.getInt("camera", "turns_with_player",
+                                                             cameraTurnsWithPlayer_), 0, 1);
+    joyDeadzone_ = (unsigned short)clamp(ini.getInt("input", "joy_deadzone", joyDeadzone_), 0, 100);
+    activeCameraPitch_ = cameraPitch_;
+    ps_log("ini load", path, 1);
+    return 1;
 }
 
 int Config::save(const char *path)
 {
-    char tag[CFG_TAG_SIZE];  // PRESERVED: uninitialised
-    std::ofstream out(path);  // text mode, as the original wrote it
+    IniFile ini;
+    ini.load(path);  // keep the other sections; a missing file starts empty
 
-    if (!out) {
-        ps_log("cfg save", path, 0);
-        return 0;
-    }
-    unsigned char blob[CFG_BLOB_SIZE];
-    encode(blob);
-    out.write(reinterpret_cast<const char *>(blob), CFG_BLOB_SIZE);
-    strcpy(tag, CFG_TAG);  // FORMAT: 4 bytes of 10; the rest are whatever the stack held
-    out.write(tag, CFG_TAG_SIZE);
-    out.close();
+    ini.set("video", "adapter", adapter_text(adapterId_));
+    ini.setInt("video", "mode", (int)displayModeIndex_);
+    ini.setInt("video", "shadows", videoOptions_[0]);
+    ini.setInt("video", "reflection", videoOptions_[1]);
+    ini.setInt("video", "highlights", videoOptions_[2]);
+    ini.setInt("video", "particles", videoOptions_[3]);
 
-    ps_log("cfg save", path, 1);
-    return 1;
+    ini.setInt("audio", "sound3d", sound3D_);
+    ini.setInt("audio", "music", musicOn_);
+    ini.setInt("audio", "music_volume", cdVolume_);
+    ini.setInt("audio", "effects_volume", waveVolume_);
+
+    ini.setFloat("camera", "distance", cameraDistanceSetting_);
+    ini.setFloat("camera", "yaw", cameraYaw_);
+    ini.setFloat("camera", "pitch", cameraPitch_);
+    ini.setInt("camera", "turns_with_player", cameraTurnsWithPlayer_);
+
+    ini.setInt("input", "joy_deadzone", joyDeadzone_);
+
+    int ok = ini.save(path) ? 1 : 0;
+    ps_log("ini save", path, ok);
+    return ok;
 }
 
 Config::Config()
 {
+    fillDefaults();
 }
 
 Config::~Config()
 {
 }
 
-
-/* The CD mixer default is pow(2, 16) * 50, truncated, / 100: 32768. */
 void Config::fillDefaults()
 {
-    field_00_              = 1;
+    videoOptions_[0]       = 2;
     videoOptions_[1]       = 1;
     videoOptions_[2]       = 2;
-    cameraDistanceSetting_ = 5.0f;
     videoOptions_[3]       = 2;
-    videoOptions_[0]       = 2;
+    cameraDistanceSetting_ = 5.0f;
+    adapterId_             = AdapterId();
+    for (size_t i = 0; i < sizeof(adapterId_.bytes); i++) adapterId_.bytes[i] = 0;
+    displayModeIndex_      = 3;  // 1024x768x32
     sound3D_               = 1;
-    field_20_              = 1;
     waveVolume_            = 100;
-    waveOutVolume_         = 0xffffffff;
     musicOn_               = 1;
     cdVolume_              = 50;
-    cdMixerVolume_         = (unsigned int)(long long)(pow(2.0, 16.0) * 50.0) / 100;
     cameraPitch_           = 50.0f;
+    activeCameraPitch_     = 50.0f;
     cameraYaw_             = 0.0f;
     cameraTurnsWithPlayer_ = 1;
     joyDeadzone_           = 50;

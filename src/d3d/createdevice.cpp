@@ -3,7 +3,7 @@
  * device on the game's window, full-screen.
  *
  * The mode list is the 4:3 modes of 16 and 32 bits, 32-bit ones first, each
- * group by ascending size.  Karoo.cfg stores an index into it, so the order
+ * group by ascending size.  openroo.ini stores an index into it, so the order
  * is part of the config format.
  *
  * Headless (KAROO_HEADLESS=1) creates nothing: no Direct3D, no display mode.
@@ -131,7 +131,7 @@ static bool pick_depth_format(IDirect3D9 *d3d, UINT adapter, D3DFORMAT display,
  *   halfvp -- halve the viewport: the scene renders into the top-left
  *             quarter of the screen.
  *   mode0  -- force nModeIndex to 0: the game comes up in a different
- *             resolution from Karoo.cfg's. */
+ *             resolution from openroo.ini's. */
 static bool devfx_is(const char *name)
 {
     char buf[16];

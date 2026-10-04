@@ -1,3 +1,4 @@
+#include "inputdev.h"
 #include "levelreport.h"
 #include "menu.h"
 #include "logger.h"
@@ -25,16 +26,16 @@ bool levelreport_enabled(void)
     return g_enabled;
 }
 
-bool levelreport_async_override(int vkey, short *out)
+bool levelreport_async_override(int key, bool *down)
 {
     init();
     if (!g_enabled || g_left <= 0) return false;
-    if (vkey != 0x4C )   return false;  // VK_L
+    if (key != inputdev::KEY_L) return false;
     g_left--;
     if (g_left == 0)
         g_logger.write("levelreport: trigger delivered; WriteLevelReport should now "
                   "run over every level\n");
-    *out = (short)0x8000;
+    *down = true;
     return true;
 }
 

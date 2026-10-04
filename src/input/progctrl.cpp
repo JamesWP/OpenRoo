@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <fstream>
-#include "binio.h"
+#include <string>
+#include <vector>
 #include <new>
 #include <string.h>
 #include "progctrl.h"
@@ -10,10 +11,12 @@
 #include "record.h"
 #include "policy.h"
 #include "clock.h"
+#include "gamestr.h"
+#include "ini.h"
 #include <algorithm>
 #include <iterator>
 
-static const char SAVE_FILE[] = "ProgableControl.sav";
+
 
 ActionEntry *ActionTable::find(const char *name)
 {
@@ -169,7 +172,7 @@ void ProgableControl::dispatch(unsigned short game_state)
 {
     gamestate_note_mode(game_state);  // before the early return, so paused and cutscene modes are seen
 
-    uint8_t ks[256];
+    uint8_t ks[inputdev::KEY_COUNT];
     if (record_replaying() && !policy_in_control(clock_frame())) {
         // Replay supplies both the key array and the mode; the real keyboard
         // is not read.
@@ -183,14 +186,14 @@ void ProgableControl::dispatch(unsigned short game_state)
         // so a recorded policy run replays exactly.
         if (game_state >= 5) return;
 
-        uint8_t human[256] = {};
+        uint8_t human[inputdev::KEY_COUNT] = {};
         if (!devices_.readKeyboard(human)) std::fill(std::begin(human), std::end(human), uint8_t(0));
 
         std::fill(std::begin(ks), std::end(ks), uint8_t(0));
         if (!policy_keys(this, game_state, ks)) {
             std::copy(std::begin(human), std::end(human), ks);
         } else {
-            for (int i = 0; i < 256; i++) ks[i] |= human[i];
+            for (int i = 0; i < inputdev::KEY_COUNT; i++) ks[i] |= human[i];
         }
         record_keys(game_state, ks);
     } else {
@@ -204,7 +207,7 @@ void ProgableControl::dispatch(unsigned short game_state)
 
     for (ActionEntry *e = action_tables[game_state].head; e; e = e->chain) {
         for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
-            if (kb->scancode >= 0 && kb->scancode < 256 && (ks[kb->scancode] & 0x80)) {
+            if (kb->scancode >= 0 && kb->scancode < inputdev::KEY_COUNT && (ks[kb->scancode] & 0x80)) {
                 if (e->callback) e->callback(kb->scancode, kb->strength, e->context);
                 break;
             }
@@ -217,136 +220,117 @@ int ProgableControl::captureBinding(unsigned int mode, const char *name,
 {
     if (mode >= 5) return 0;
 
-    uint8_t ks[256];
+    uint8_t ks[inputdev::KEY_COUNT];
     if (!devices_.readKeyboard(ks)) return 0;
 
-    for (int sc = 0; sc < 256; sc++) {
+    for (int sc = 1; sc < inputdev::KEY_COUNT; sc++) {
         if (ks[sc] & 0x80)
             return bindKey((unsigned short)mode, name, sc, strength);
     }
     return 0;
 }
 
-/* FORMAT: one action's bindings in ProgableControl.sav:
- *   uint32_t kbd_count;  kbd_count x (uint32_t scan code, uint32_t strength)
- *   uint32_t axis_count; axis_count x 12 bytes, skipped
- *   uint32_t btn_count;  btn_count x 12 bytes, skipped */
-int ProgableControl::readOrigEntryBindings(std::istream &f, int mode, ActionEntry *e)
+/* FORMAT: the bindings are the [keys.<mode>] sections of openroo.ini, a line
+ * per action:
+ *     Move_Forward = Up | W
+ *     Zoom_In = A@50
+ * Keys are SDL's scancode names, joined with " | "; "@n" after a name is the
+ * binding's strength (100 when absent).  An action missing from the file keeps
+ * its default; one with nothing after the "=" has no key. */
+static std::string section_name(int mode)
 {
-    uint32_t kbd_count;
-    if (!readBytes(f, &kbd_count, 4)) return 0;
-    g_logger.write("ProgCtrl::ReadBindings(orig):     kbd_count=%lu\n", kbd_count);
-    for (uint32_t ki = 0; ki < kbd_count; ki++) {
-        uint32_t key_id, strength;
-        if (!readBytes(f, &key_id, 4)) return 0;
-        if (!readBytes(f, &strength, 4)) return 0;
-        g_logger.write("ProgCtrl::ReadBindings(orig):       key=0x%02lX strength=%lu -> %s\n",
-                  key_id, strength, e ? "applied" : "skipped");
-        if (e) bindKey((unsigned short)mode, e->name, (int)key_id, (int)strength);
-    }
-
-    uint32_t axis_count;
-    if (!readBytes(f, &axis_count, 4)) return 0;
-    g_logger.write("ProgCtrl::ReadBindings(orig):     axis_count=%lu (skipped)\n", axis_count);
-    for (uint32_t ai = 0; ai < axis_count; ai++) {
-        uint8_t discard[12];
-        if (!readBytes(f, discard, 12)) return 0;
-    }
-
-    uint32_t btn_count;
-    if (!readBytes(f, &btn_count, 4)) return 0;
-    g_logger.write("ProgCtrl::ReadBindings(orig):     btn_count=%lu (skipped)\n", btn_count);
-    for (uint32_t bi = 0; bi < btn_count; bi++) {
-        uint8_t discard[12];
-        if (!readBytes(f, discard, 12)) return 0;
-    }
-
-    return 1;
+    return "keys." + std::to_string(mode);
 }
 
-int ProgableControl::readOrigFormat(std::istream &f)
+/* Splits a binding list into (key name, strength) pairs. */
+static std::vector<std::pair<std::string, int> > parse_binding_list(const std::string &text)
 {
-    g_logger.write("ProgCtrl::ReadBindings: reading\n");
-    for (int m = 0; m < 5; m++) {
-        uint32_t cnt;
-        if (!readBytes(f, &cnt, 4)) {
-            g_logger.write("ProgCtrl::ReadBindings(orig): read error on entry count for mode %d\n", m);
-            return 0;
-        }
-        g_logger.write("ProgCtrl::ReadBindings(orig): mode %d: %lu entries\n", m, cnt);
-        for (uint32_t ei = 0; ei < cnt; ei++) {
-            char namebuf[256] = {};
-            if (!readBytes(f, namebuf, 256)) {
-                g_logger.write("ProgCtrl::ReadBindings(orig): read error on name\n");
-                return 0;
-            }
-            ActionEntry *e = action_tables[m].find(namebuf);
-            g_logger.write("ProgCtrl::ReadBindings(orig):   '%s'%s\n",
-                      namebuf, e ? "" : " (not registered, bindings discarded)");
-            if (!readOrigEntryBindings(f, m, e)) {
-                g_logger.write("ProgCtrl::ReadBindings(orig): read error in bindings for '%s'\n", namebuf);
-                return 0;
-            }
-        }
-    }
-    g_logger.write("ProgCtrl::ReadBindings(orig): ok\n");
-    return 1;
-}
+    std::vector<std::pair<std::string, int> > out;
+    size_t pos = 0;
+    while (pos <= text.size()) {
+        size_t bar = text.find('|', pos);
+        std::string item = text.substr(pos, bar == std::string::npos ? std::string::npos : bar - pos);
+        pos = bar == std::string::npos ? text.size() + 1 : bar + 1;
 
-int ProgableControl::writeBindings()
-{
-    g_logger.write("ProgCtrl::WriteBindings(this=%p) -> '%s'\n", this, SAVE_FILE);
-    std::ofstream f(SAVE_FILE, std::ios::binary);
-    if (!f) {
-        g_logger.write("ProgCtrl::WriteBindings: open FAILED\n");
-        return 0;
-    }
-    // FORMAT: no header.  For each of the five modes:
-    //   uint32_t entry_count
-    //   per entry: char name[256], then the bindings as read above,
-    //   with axis_count and btn_count always 0.
-    const uint32_t zero = 0;
-    for (int m = 0; m < 5; m++) {
-        ActionTable *t = &action_tables[m];
-        uint32_t cnt = t->entry_count;
-        g_logger.write("ProgCtrl::WriteBindings: mode %d: %lu entries\n", m, cnt);
-        if (!writeBytes(f, &cnt, 4)) goto fail;
-        for (ActionEntry *e = t->head; e; e = e->chain) {
-            char namebuf[256] = {};
-            strncpy(namebuf, e->name, 255);
-            if (!writeBytes(f, namebuf, 256)) goto fail;
-            uint32_t kc = 0;
-            for (KeyBind *kb = e->kbd; kb; kb = kb->next) kc++;
-            if (!writeBytes(f, &kc, 4)) goto fail;
-            g_logger.write("ProgCtrl::WriteBindings:   '%s': %lu binding(s)\n", namebuf, kc);
-            for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
-                uint32_t key_id   = (uint32_t)kb->scancode;
-                uint32_t strength = (uint32_t)kb->strength;
-                g_logger.write("ProgCtrl::WriteBindings:     sc=0x%02lX strength=%lu\n", key_id, strength);
-                if (!writeBytes(f, &key_id, 4)) goto fail;
-                if (!writeBytes(f, &strength, 4)) goto fail;
-            }
-            if (!writeBytes(f, &zero, 4)) goto fail;
-            if (!writeBytes(f, &zero, 4)) goto fail;
+        size_t a = item.find_first_not_of(" \t"), b = item.find_last_not_of(" \t");
+        if (a == std::string::npos) continue;
+        item = item.substr(a, b - a + 1);
+
+        int strength = 100;
+        size_t at = item.rfind('@');
+        if (at != std::string::npos && at + 1 < item.size()
+            && item.find_first_not_of("0123456789", at + 1) == std::string::npos) {
+            strength = atoi(item.c_str() + at + 1);
+            item = item.substr(0, at);
+            while (!item.empty() && item.back() == ' ') item.pop_back();
         }
+        out.push_back(std::make_pair(item, strength));
     }
-    f.close();
-    g_logger.write("ProgCtrl::WriteBindings: ok\n");
-    return 1;
-fail:
-    g_logger.write("ProgCtrl::WriteBindings: write error\n");
-    return 0;
+    return out;
 }
 
 int ProgableControl::readBindings()
 {
-    g_logger.write("ProgCtrl::ReadBindings(this=%p) <- '%s'\n", this, SAVE_FILE);
-    std::ifstream f(SAVE_FILE, std::ios::binary);
-    if (!f) {
-        g_logger.write("ProgCtrl::ReadBindings: no save file\n");
+    g_logger.write("ProgCtrl::ReadBindings <- '%s'\n", GS_CFG_FILE);
+    IniFile ini;
+    if (!ini.load(GS_CFG_FILE)) {
+        g_logger.write("ProgCtrl::ReadBindings: no settings file\n");
         return 0;
     }
-    int ok = readOrigFormat(f);
-    if (ok) g_logger.write("ProgCtrl::ReadBindings: done\n");
-    return ok;
+    int found = 0;
+    for (int m = 0; m < 5; m++) {
+        const std::string section = section_name(m);
+        for (const auto &kv : ini.entries(section.c_str())) {
+            ActionEntry *e = action_tables[m].find(kv.first.c_str());
+            if (!e) {
+                g_logger.write("ProgCtrl::ReadBindings: mode %d: '%s' is not an action\n",
+                          m, kv.first.c_str());
+                continue;
+            }
+            found++;
+            clearBindings((unsigned short)m, e->name);
+            for (const auto &key : parse_binding_list(kv.second)) {
+                int id = inputdev::keyFromName(key.first.c_str());
+                if (id == inputdev::KEY_NONE) {
+                    g_logger.write("ProgCtrl::ReadBindings: '%s': unknown key '%s'\n",
+                              e->name, key.first.c_str());
+                    continue;
+                }
+                bindKey((unsigned short)m, e->name, id, key.second);
+            }
+        }
+    }
+    g_logger.write("ProgCtrl::ReadBindings: %d action(s) set\n", found);
+    return found > 0;
+}
+
+int ProgableControl::writeBindings()
+{
+    g_logger.write("ProgCtrl::WriteBindings -> '%s'\n", GS_CFG_FILE);
+    IniFile ini;
+    ini.load(GS_CFG_FILE);  // keep the settings; a missing file starts empty
+    for (int m = 0; m < 5; m++) {
+        const std::string section = section_name(m);
+        ini.removeSection(section.c_str());
+        for (ActionEntry *e = action_tables[m].head; e; e = e->chain) {
+            // The chain is newest first; the file lists them oldest first.
+            std::vector<KeyBind *> binds;
+            for (KeyBind *kb = e->kbd; kb; kb = kb->next) binds.push_back(kb);
+            std::string text;
+            for (size_t i = binds.size(); i-- > 0;) {
+                char name[64];
+                if (!devices_.keyName(binds[i]->scancode, name, sizeof(name))) continue;
+                if (!text.empty()) text += " | ";
+                text += name;
+                if (binds[i]->strength != 100) text += "@" + std::to_string(binds[i]->strength);
+            }
+            ini.set(section.c_str(), e->name, text);
+        }
+    }
+    if (!ini.save(GS_CFG_FILE)) {
+        g_logger.write("ProgCtrl::WriteBindings: write error\n");
+        return 0;
+    }
+    g_logger.write("ProgCtrl::WriteBindings: ok\n");
+    return 1;
 }

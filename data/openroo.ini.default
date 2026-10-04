@@ -1,0 +1,25 @@
+; Open'Roo settings as the test harness runs them (launch.sh installs this
+; when run/openroo.ini is missing): 1024x768x32 on the default adapter, music
+; off and quiet effects, so a run needs nobody at the keyboard.
+[video]
+adapter =
+mode = 3
+shadows = 2
+reflection = 1
+highlights = 2
+particles = 2
+
+[audio]
+sound3d = 1
+music = 0
+music_volume = 0
+effects_volume = 10
+
+[camera]
+distance = 3.954169
+yaw = 0
+pitch = 50
+turns_with_player = 1
+
+[input]
+joy_deadzone = 50

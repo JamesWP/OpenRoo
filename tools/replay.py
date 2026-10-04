@@ -10,6 +10,7 @@ Format is documented at the top of src/testing/record.cpp.
 import argparse, struct, sys
 
 HEADER_SIZE = 80
+KEYS = 512  # one byte per SDL scancode, 0x80 while held
 MAGIC = b"KROO"
 
 
@@ -24,18 +25,22 @@ def load(path):
     label = blob[24:80].split(b"\0")[0].decode("ascii", "replace")
     hdr = dict(version=ver, dt=dt, seed=seed, seed_set=bool(flags & 1), label=label)
 
+    if ver != 2:
+        sys.exit("%s: version %d; tools/convert_rec.py converts version 1" % (path, ver))
     frames, off = [], HEADER_SIZE
-    while off + 262 <= len(blob):
+    while off + 4 + 1 + KEYS + 1 <= len(blob):
         idx, = struct.unpack_from("<I", blob, off)
         state = blob[off + 4]
-        keys = blob[off + 5:off + 261]
-        n = blob[off + 261]
-        off += 262
-        if off + 2 * n > len(blob):
+        keys = blob[off + 5:off + 5 + KEYS]
+        n = blob[off + 5 + KEYS]
+        off += 6 + KEYS
+        if off + 3 * n > len(blob):
             print("warning: truncated async block at frame %d" % idx, file=sys.stderr)
             break
-        async_ = [(blob[off + 2 * i], blob[off + 2 * i + 1]) for i in range(n)]
-        off += 2 * n
+        # (SDL scancode, down) for each single-key poll
+        async_ = [(blob[off + 3 * i] | blob[off + 3 * i + 1] << 8, blob[off + 3 * i + 2])
+                  for i in range(n)]
+        off += 3 * n
         frames.append((idx, state, keys, async_))
     if off != len(blob):
         print("warning: %d trailing bytes" % (len(blob) - off), file=sys.stderr)

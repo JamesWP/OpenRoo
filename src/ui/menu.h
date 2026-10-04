@@ -43,7 +43,7 @@ void menu_request(unsigned goal);
 /* Presses one key once, independent of any goal: for prompts that are not menu
  * nodes, such as the level intro.  Does nothing while another press is in
  * flight. */
-void menu_pulse(int vkey);
+void menu_pulse(int key);
 
 /* The current goal, or MENU_NO_GOAL. */
 unsigned menu_goal(void);
@@ -53,7 +53,7 @@ void menu_tick(void);
 
 /* The key-poll override: true, with the answer in out, when the driver is
  * pressing this key this frame; otherwise the keyboard answers. */
-bool menu_async_override(int vkey, short *out);
+bool menu_async_override(int key, bool *down);
 
 /* Nodes the keypress handler acts on. */
 #define MENU_NODE_NEW_GAME   0x01

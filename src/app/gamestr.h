@@ -62,8 +62,8 @@ inline const char GS_KEY_MOVE_FORWARD[] = "John_Move_Forward";
 inline const char GS_KEY_TURN_RIGHT[] = "John_Turn_Right";
 inline const char GS_KEY_TURN_LEFT[] = "John_Turn_Left";
 
-/* CFG: Karoo.cfg. */
-inline const char GS_CFG_FILE[] = "Karoo.cfg";
+/* Settings and key bindings. */
+inline const char GS_CFG_FILE[] = "openroo.ini";
 
 /* GAME: game flow. */
 inline const char GS_GAME_HSFILE[] = "jj";

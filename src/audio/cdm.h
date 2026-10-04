@@ -26,10 +26,8 @@ public:
     void  playTrack(int tracknumber, bool repeat);
     void  stop();
 
-    /* The music's volume, 0..65536 (full).  There is no system mixer line to
-     * read back: get returns 0. */
-    void  setMixerVolume(unsigned level);
-    unsigned int getMixerDetails();
+    /* The music's volume, 0 (silent) to 1 (full). */
+    void  setVolume(float gain);
 
 private:
     audiodev::Music music_;

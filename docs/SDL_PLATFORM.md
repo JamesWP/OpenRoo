@@ -31,12 +31,41 @@ page.)
 | Group | Became | Notes |
 |---|---|---|
 | `sysdev` | `SDL_GetTicks`, `SDL_GetPerformanceCounter`, `SDL_GetCurrentTime`, `SDL_getenv`, `SDL_Delay` | `tickMs`/`timerMs` count from SDL's first use, not boot (only differences are used). |
-| `inputdev` | `SDL_GetKeyboardState` | A 256-entry table maps the game's DirectInput scan codes (saved in `ProgableControl.sav`, so they cannot change) to SDL scancodes. |
+| `inputdev` | `SDL_GetKeyboardState` | Keys are SDL scancodes throughout the game (see below). |
 | `windev` window | `SDL_CreateWindow`, `SDL_PollEvent`, `SDL_AddTimer` | Focus, key-up and close map one to one onto `WindowHandler`. |
 | `windev::messageBox` | `SDL_ShowMessageBox` | |
 | `windev` launcher | an SDL window, software renderer, our own bitmaps | See below. |
 | `audiodev` | SDL3_mixer: tracks, with 3D positions | Two mixers, so music and effects each have a volume. |
 | `videodev` | FFmpeg decoding, SDL audio stream | The game draws each frame with `RenderDevice::PresentImage`. |
+
+### Keys, settings and recordings
+
+- **Key ids are SDL scancodes** (physical keys) everywhere: the key array, the
+  action bindings and the menus' single-key polls. `inputdev.h` names the ones
+  the game uses in `inputdev::Key`, with SDL's values (checked against SDL when
+  `inputdev` compiles), so game code never includes SDL. The DirectInput scan
+  codes and the Windows virtual keys are gone, along with `asyncKeyState`
+  (now `inputdev::keyDown`, and `input_key_down` in game code).
+- **`openroo.ini`** replaces `Karoo.cfg` and `ProgableControl.sav`. Settings are
+  in `[video]`, `[audio]`, `[camera]` and `[input]`; the bindings are the
+  `[keys.1]` section, a line per action, keys by SDL name:
+  `John_Zoom_In = A | Q@50` (`|` separates keys, `@n` is a strength). The
+  default bindings are set first and the file only overrides the actions it
+  lists; an action with nothing after the `=` has no key. The game rewrites the
+  whole file when it saves (comments are not kept).
+- Dropped as unread or obsolete: the unused blob fields, the saved system
+  volumes, the derived mixer values (music and effects volume are now plain
+  percentages), and the active camera pitch. Old `Karoo.cfg` and
+  `ProgableControl.sav` files are not read or migrated, so settings start from
+  the defaults. `launch.sh` installs `data/openroo.ini.default` (the test
+  harness's values: 1024x768x32, music off) when `run/openroo.ini` is missing.
+  The importer no longer fetches `ProgableControl.sav`.
+- **Recordings** are version 2: 512-byte key arrays by SDL scancode and a
+  16-bit key in each poll. `tools/convert_rec.py` converted the committed
+  recordings from version 1; `tools/replay.py` reads version 2.
+- Behaviour that changed with the ids: Enter on the numeric keypad no longer
+  confirms in the menus (only Return does), and the name entry takes A-Z and
+  0-9 only (it used to accept `[` and `:` as well).
 
 ### Sound
 
@@ -104,7 +133,7 @@ These are what a second rendering backend still has to deal with.
    the backend interprets.
 2. **The render device API is Direct3D-shaped, not just D3D-implemented.**
    `RenderDevice::Create` takes an `AdapterId` that is a D3D adapter GUID,
-   which the launcher writes to `Karoo.cfg`, and a mode index into a list of
+   which the launcher writes to `openroo.ini`, and a mode index into a list of
    full-screen display modes with Direct3D pixel formats; `Create` makes the
    window full screen, and device-loss recovery (`restore_surfaces`, the
    `lost` flag) leaks into `main.cpp`. SDL wants a window created with the
@@ -119,9 +148,9 @@ These are what a second rendering backend still has to deal with.
    become plain callbacks or polled state (`Player::playing()` already is)
    and the hook can go.
 4. **`keyName` text differs.** DirectInput gave "Up Arrow", SDL gives "Up".
-5. **`asyncKeyState` reads the focused window only.** `GetAsyncKeyState` was
+5. **Key polls read the focused window only.** `GetAsyncKeyState` was
    global; SDL's keyboard state is per window, fed by the event pump. Both
-   `asyncKeyState` and `readKeyboard` therefore change only when
+   `keyDown` and `readKeyboard` therefore change only when
    `runMessageLoop` runs, which it does once per frame. `Devices::acquire`,
    `unacquire` and the controller setters are now empty; the mouse and
    controller were never read. Gamepads would be an SDL gamepad addition.

@@ -172,7 +172,7 @@ public:
     TextEntry     *nameEntry()                       { return &nameEntry_; }
     /* The level's extra 3D objects, from its .leo (extraobjects.h). */
     ExtraObjects         *extraObjects()             { return &extraObjects_; }
-    /* The settings object (config.h); Karoo.cfg is its persisted blob. */
+    /* The settings object (config.h); openroo.ini holds it. */
     Config               *config()                   { return &config_; }
     /* The high-score table (highscores.h). */
     HighScoreTable       *highScores()               { return &highScores_; }
@@ -268,20 +268,15 @@ public:
     unsigned char &videoParticles()                  { return config_.videoParticles(); }
 
     /* ── volumes (the options menu, HandleKeypress 0x3e/0x3f) ────────── */
-    /* Percent, steps of 10, shown by RenderSoundOptions; each has the
-     * device value HandleKeypress derives from it beside it. */
+    /* Percent, steps of 10, shown by RenderSoundOptions: the music's and the
+     * sound effects'. */
     unsigned char  cdVolume() const                  { return config_.cdVolume(); }
     void           setCdVolume(unsigned char p)      { config_.setCdVolume(p); }
-    /* CD mixer volume, 0..65536 (CDM::setMixerVolume). */
-    unsigned int   cdMixerVolume() const             { return config_.cdMixerVolume(); }
-    void           setCdMixerVolume(unsigned int v)  { config_.setCdMixerVolume(v); }
     unsigned char  waveVolume() const                { return config_.waveVolume(); }
     void           setWaveVolume(unsigned char p)    { config_.setWaveVolume(p); }
-    /* Both channels packed (the saved format). */
-    unsigned int   waveOutVolume() const             { return config_.waveOutVolume(); }
-    /* The sound effects' volume, 0..1: the left channel's share of full. */
-    float          effectsGain() const               { return (float)(config_.waveOutVolume() & 0xffff) / 65535.0f; }
-    void           setWaveOutVolume(unsigned int v)  { config_.setWaveOutVolume(v); }
+    /* The same as gains, 0..1, for the audio layer. */
+    float          musicGain() const                 { return (float)config_.cdVolume() / 100.0f; }
+    float          effectsGain() const               { return (float)config_.waveVolume() / 100.0f; }
 
     /* ── camera and controls ────────────────────────────────────────── */
     /* 0 = follow the player; nonzero = view from the separate eye,
@@ -481,7 +476,7 @@ public:
 
     /* ── the lifecycle (game.cpp) ───────────────────────────────────────
      * The members build themselves.  The constructor then reads the .gam,
-     * save slots, Karoo.cfg and high scores; check initialised() afterwards.
+     * save slots, openroo.ini and high scores; check initialised() afterwards.
      * The destructor saves the scores and config, and the members tear
      * themselves down. */
     explicit Game(const char *gameName);

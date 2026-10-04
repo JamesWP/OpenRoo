@@ -12,7 +12,7 @@ while [[ $# -gt 0 ]]; do
     # Auto-dismiss the launcher dialog so the run needs nobody at the keyboard.
     # This is NOT headless — the game still opens a window and renders. The
     # dialog is the only place the video mode is chosen, so a run that skips it
-    # takes the mode from Karoo.cfg; see the default-config block below.
+    # takes the mode from openroo.ini; see the default-config block below.
     --skip-launcher) SKIP_LAUNCHER=1 ;;
     # Truly headless: no window, no graphics, no display needed.  Implies
     # --skip-launcher (the dialog is a window too).  The render device is
@@ -51,7 +51,7 @@ roll_log() {
 #
 # The game runs in run/ (gitignored) and never writes to game/, the data
 # imported from your own copy by tools/import_assets.py.  run/ holds what the
-# game writes -- Karoo.cfg, SavedGames/, highscores/, ProgableControl.sav,
+# game writes -- openroo.ini (settings and key bindings), SavedGames/, highscores/,
 # every log and report -- and a symlink to each read-only data entry in
 # game/, so the game's relative paths resolve exactly as they did in an
 # install.  The executable is copied in, so its directory is the cwd too.
@@ -60,23 +60,21 @@ mkdir -p run/SavedGames run/highscores
 for _entry in game/*; do
   _name=$(basename "$_entry")
   case "$_name" in
-    SavedGames|highscores|ProgableControl.sav|Karoo.exe|res) continue ;;
+    SavedGames|highscores|ProgableControl.sav|Karoo.exe|res) continue ;;  # (the old binary bindings, no longer read)
   esac
   [[ -L "run/$_name" ]] || ln -s "../game/$_name" "run/$_name"
 done
-# The input bindings: the game rewrites this file, so run/ gets a copy.
-[[ -f run/ProgableControl.sav ]] || cp game/ProgableControl.sav run/
 cp -p "$BUILD_DIR/$EXE" run/
 cp -p "$BUILD_DIR"/*.dll run/
 
-# Karoo.cfg is ours, not the game's.  Without it Game::Load leaves the video
-# mode index and adapter GUID zero-initialised, so the game comes up in
-# whatever mode Direct3D enumerates first.  Install a known-good config
-# (1024x768x32, music off) -- only when absent: never overwrite a config the
-# player has since changed through the launcher.
-if [[ ! -f run/Karoo.cfg ]]; then
-  echo "run/Karoo.cfg missing — installing Karoo.cfg.default (1024x768x32)"
-  cp data/Karoo.cfg.default run/Karoo.cfg
+# openroo.ini is ours, not the game's, and holds the settings and the key
+# bindings.  Without it the game runs on its built-in defaults; install the
+# harness's (1024x768x32, music off, quiet effects) so a run needs nobody at
+# the keyboard -- only when absent: never overwrite a file the player has
+# since changed through the launcher or the options.
+if [[ ! -f run/openroo.ini ]]; then
+  echo "run/openroo.ini missing — installing data/openroo.ini.default (1024x768x32)"
+  cp data/openroo.ini.default run/openroo.ini
 fi
 
 cd run

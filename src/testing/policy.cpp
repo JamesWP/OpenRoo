@@ -5,6 +5,7 @@
  * DETERMINISM: the policy reads only the Observation and its own state: no
  * rand(), no wall clock.  A policy run is as reproducible as a replay. */
 
+#include "inputdev.h"
 #include <stdint.h>
 #include "policy.h"
 #include <stdio.h>
@@ -145,7 +146,7 @@ void policy_menu_tick(void)
     if (((const Game *)g)->player()->moveState() != 0 && screen != GAME_ST_GAMEOVER && screen != GAME_ST_MENU) {
         static bool said;
         if (!said) { said = true; g_logger.write("policy: death — pressing enter to respawn\n"); }
-        menu_pulse(0x0d);
+        menu_pulse(inputdev::KEY_RETURN);
         return;
     }
 
@@ -155,7 +156,7 @@ void policy_menu_tick(void)
     if (screen == GAME_ST_LOADED && gamestate_mode() == 0) {
         static bool said;
         if (!said) { said = true; g_logger.write("policy: level intro — pressing enter to start\n"); }
-        menu_pulse(0x0d);
+        menu_pulse(inputdev::KEY_RETURN);
         return;
     }
 
@@ -166,7 +167,7 @@ void policy_menu_tick(void)
         if (said != screen) { said = screen;
             g_logger.write("policy: %s screen — pressing enter to clear\n",
                       screen == GAME_ST_GAMEOVER ? "game over" : "level completed"); }
-        menu_pulse(0x0d);
+        menu_pulse(inputdev::KEY_RETURN);
         return;
     }
 
@@ -209,7 +210,7 @@ static void press(ProgableControl *s, unsigned short mode, const char *action, u
         // pressing all of them is the same as pressing the one it would look
         // at.
         for (KeyBind *kb = e->kbd; kb; kb = kb->next)
-            if (kb->scancode >= 0 && kb->scancode < 256)
+            if (kb->scancode >= 0 && kb->scancode < inputdev::KEY_COUNT)
                 keys[kb->scancode] = 0x80;
         return;
     }
@@ -249,7 +250,7 @@ bool policy_keys(ProgableControl *s, unsigned short game_state, uint8_t *keys)
     if (o->frame < policy_after()) return false;
 
     dump_actions(s, game_state);
-    std::fill_n(keys, 256, 0);
+    std::fill_n(keys, inputdev::KEY_COUNT, 0);
 
     // Keys are held, not pulsed: moving and turning do nothing while a move is
     // in progress, so holding a key steps one tile or one quarter turn at a

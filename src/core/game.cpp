@@ -5,6 +5,7 @@
  * config.cpp, levelmap.cpp), in a fixed order; teardown is its exact reverse.
  */
 
+#include "inputdev.h"
 #include <fstream>
 #include <string>
 #include <stdio.h>
@@ -95,8 +96,8 @@ Game::Game(const char *gameName)
         return;
     }
 
-    debounce_ = 0x0d;
-    menu_.setLastKey(0x0d);
+    debounce_ = inputdev::KEY_RETURN;
+    menu_.setLastKey(inputdev::KEY_RETURN);
     saveSlots_.setCount(6);
     if (!saveSlots_.loadAllSlotFiles(gameFileName_, SAVE_KEY)) {
         g_logger.logMessage(3, "GAME: warning - no save-files for this game (maybe started a new game the first time\077), creating %d empty slots", (unsigned)saveSlots_.count());
@@ -131,7 +132,7 @@ Game::Game(const char *gameName)
     }
     g_logger.logMessage(2, "GAME: this is a commercial version");
     audiodev::setEffectsVolume(effectsGain());
-    g_cdAudio.setMixerVolume(config_.cdMixerVolume());
+    g_cdAudio.setVolume(musicGain());
     state_ = 0;
     g_cdAudio.stop();
     menu_.buildDefaultGraph(saveSlots_.count());
@@ -157,7 +158,7 @@ Game::Game(const char *gameName)
     cheatEntry_.setCursor(0);
     cheatEntry_.setBuffer((char *)cheatBuffer_);
     cheatEntry_.setActive(1);
-    cheatEntry_.setLastKey(0x0d);
+    cheatEntry_.setLastKey(inputdev::KEY_RETURN);
     parkedCameraOption_ = 0;
     initialised_        = 1;
 }

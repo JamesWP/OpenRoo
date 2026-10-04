@@ -12,6 +12,7 @@ add_library(level OBJECT
     reportwriter.cpp
     tilequery.cpp)
 target_include_directories(level PRIVATE
+    ../inputdev
     .
     ../log
     ../audiodev

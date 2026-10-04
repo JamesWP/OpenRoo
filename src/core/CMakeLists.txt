@@ -5,6 +5,7 @@ add_library(core OBJECT
     gameglobals.cpp
     gamereset.cpp
     gamestate.cpp
+    ini.cpp
     gametick.cpp
     worldstate.cpp)
 target_include_directories(core PRIVATE

@@ -64,7 +64,7 @@ device is `NULL`. Every method that would reach the device checks for that and
 does nothing; everything else is the real code. The pieces that matter:
 
 - The mode list is a fixed table of the 4:3 sizes (`kHeadlessSizes`), 32-bit
-  first and then 16-bit, so `Karoo.cfg`'s mode index means the same thing on
+  first and then 16-bit, so `openroo.ini`'s `mode` means the same thing on
   every machine and in a real run: 3 is 1024x768x32, 10 is 800x600x16.
 - The render states, transforms, material and light are kept in a shadow
   that `GetRenderState` and `GetTransform` answer from, with or without a
@@ -373,7 +373,7 @@ for *first* when a change could affect level parsing, object construction or
 scoring, because it covers all 80 levels rather than the one a recording visits.
 
 The game already has the test built in. `Game::LoadSounds` polls
-`GetAsyncKeyState(VK_L)` three times just before it acquires the fixed sound
+`input_key_down(KEY_L)` three times just before it acquires the fixed sound
 buffers, and if L is down it calls `WriteLevelReport`. That walks
 every level in the game file — `SetCurrentLevelName`, `OpenLevelFile`,
 `SetupLevelObjects`, `CalculateLevelScore` — and writes two text files into the
