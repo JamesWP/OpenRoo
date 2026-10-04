@@ -376,7 +376,7 @@ Sim_GameTick(Game *self, double dt, double now)
             }
         }
 
-        int hold = ((unsigned int)pl->effect8Active() == 0 && self->stateRef() == 1) ? 0 : 1;
+        int hold = ((unsigned int)pl->freezeActive() == 0 && self->stateRef() == 1) ? 0 : 1;
         if (self->stateRef() == 3)
             hold = 1;
         if (pl->moveState() != 0)

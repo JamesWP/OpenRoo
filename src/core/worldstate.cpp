@@ -167,7 +167,7 @@ bool Observation::observe()
     lives             = (uint8_t)pl->lives();
     level_complete    = pl->held();
     crystals_in_level = ((const Game *)g)->field_42252();
-    freeze_timer      = (uint32_t)pl->effect8Active();
+    freeze_timer      = (uint32_t)pl->freezeActive();
     return true;
 }
 

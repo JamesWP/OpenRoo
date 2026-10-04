@@ -38,7 +38,7 @@ static const float  K_RESPAWN_TOP = 150.0f;
 static const float  K_RISE_RATE   = 0.001f;
 static const float  K_CENTRE_TOL  = 0.3f;
 static const float  K_CENTRE_W    = 3.0f;
-static const double K_EFFECT8_MS  = 5000.0;
+static const double K_FREEZE_MS  = 5000.0;
 static const double K_EFFECT_MS   = 10000.0;
 
 static int s_fx_nopickup = 0;
@@ -133,7 +133,7 @@ unsigned int Player::updateTileEffects()
         curTile()->setOccupant(0);
 
         effectBActive_ = 0;
-        effect8Active_ = 0;
+        freezeActive_ = 0;
         effectDActive_ = 0;
         effectCActive_ = 0;
         effectAActive_ = 0;
@@ -262,11 +262,11 @@ unsigned int Player::updateTileEffects()
             pickedUp_ = 9;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_EFFECT_8) {
-            if (effect8Active_ == 0)
+        if ((signed char)curTile()->contents() == CONTENTS_FREEZE) {
+            if (freezeActive_ == 0)
                 appendEffect(8);
-            copy8(&effect8Start_, &now_);
-            effect8Active_ = 1;
+            copy8(&freezeStart_, &now_);
+            freezeActive_ = 1;
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
@@ -333,11 +333,11 @@ unsigned int Player::updateTileEffects()
 
 expire:
 
-    //     // PRESERVED: effect 8 ends at >= 5000 ms; the other four end only at
+    //     // PRESERVED: the freeze ends at >= 5000 ms; the other four end only at
     //     // > 10000 ms.
-    if (effect8Active_ != 0) {
-        if (now_ - effect8Start_ >= K_EFFECT8_MS) {
-            effect8Active_ = 0;
+    if (freezeActive_ != 0) {
+        if (now_ - freezeStart_ >= K_FREEZE_MS) {
+            freezeActive_ = 0;
             endEffect(8);
         }
     }

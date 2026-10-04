@@ -45,7 +45,7 @@ struct LevelCensus {
     unsigned short conveyors;      // TILE_CONVEYOR
 
     // Contents counts over the snapshot grid.
-    unsigned short effect8Items;  // CONTENTS_EFFECT_8
+    unsigned short freezeItems;  // CONTENTS_FREEZE
     unsigned short timeBonuses;   // CONTENTS_TIME_BONUS
 
     // Contents count over the live grid.
@@ -70,7 +70,7 @@ struct LevelCensus {
     unsigned short jumpPads;      // TILE_JUMP_PAD
 
     // total is the level's collectable-item count: grant09Items + speedUps +
-    // shadow1 + transforms + paragliders + shadow7 + effect8Items + extraLives
+    // shadow1 + transforms + paragliders + shadow7 + freezeItems + extraLives
     // + timeBonuses + the Game's crystal count.  It counts CONTENTS_TRANSFORM,
     // which the autoplay's pickup test (worldstate.h) does not.  It is not
     // Game::itemTotal().
@@ -80,7 +80,7 @@ struct LevelCensus {
     void reset()
     {
         teleports = 0; destructibles = 0; kind01 = 0; total = 0; bridges = 0;
-        unusedEb = 0; gluePads = 0; climbTiles = 0; conveyors = 0; effect8Items = 0;
+        unusedEb = 0; gluePads = 0; climbTiles = 0; conveyors = 0; freezeItems = 0;
         timeBonuses = 0; transforms = 0; speedUps = 0; paragliders = 0; shadow1 = 0;
         shadow7 = 0; jumpPads = 0; extraLives = 0; grant09Items = 0; freeBombs = 0;
         timed = 0;

@@ -63,6 +63,72 @@ static void enter_loaded_state(Game *game)
     game->setDebounce(inputdev::KEY_RETURN);
 }
 
+void Cheat_KillFoes(Game *g)
+{
+    unsigned char i = 0;
+    // The count is re-read every pass.
+    if (g->foeCount() != 0) {
+        do {
+            unsigned char id = g->foeId(i);
+            ++i;
+            g->foeSlot(id)->setMoveState(4);
+        } while (i < g->foeCount());
+    }
+}
+
+void Cheat_AddLife(Game *g, int n)
+{
+    g->player()->setLives(g->player()->lives() + n);
+}
+
+void Cheat_AddGlide(Game *g)
+{
+    g->player()->setGlides((unsigned char)(g->player()->glides() + 1));
+}
+
+void Cheat_AddBombs(Game *g)
+{
+    g->player()->setFieldE8((unsigned char)(g->player()->fieldE8() + 10));
+}
+
+void Cheat_Invulnerable(Game *g)
+{
+    Player *pl = g->player();
+    if (pl->effectDActive() == 0)
+        pl->appendEffect(0x0d);
+    pl->setEffectDActive(1);
+    pl->setKind(3);
+    pl->curTile()->setOccupant(3);
+    pl->setEffectDStart(*g->clock());
+}
+
+void Cheat_FreezeFoes(Game *g)
+{
+    Player *pl = g->player();
+    if (pl->freezeActive() == 0)
+        pl->appendEffect(8);
+    pl->setFreezeStart(*g->clock());
+    pl->setFreezeActive(1);
+}
+
+bool Cheat_LoadLevel(Game *self, unsigned char lvl)
+{
+    char path[384];
+    Sim_SetCurrentLevelName(self, lvl);
+    if (lvl >= self->levelCount())
+        return false;
+    snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, g_gameDir, self->levelName());
+    g_logger.logMessage(3, "GAME: lc by number %d name:%s", (unsigned int)lvl, self->levelName());
+    self->setLevelIndex(lvl);
+    if (!std::ifstream(sysdev::nativePath(path)))
+        return false;
+    self->player()->setGemsCollected(0);
+    Sim_OpenLevelFile(self, self->levelIndex());
+    Sim_SetupLevelObjects(self);
+    enter_loaded_state(self);
+    return true;
+}
+
   void  
 Sim_HandleTypedCheatCode(Game *self)
 {
@@ -84,16 +150,7 @@ Sim_HandleTypedCheatCode(Game *self)
         return;
 
     if (streq(buf, "kaputo")) {
-        Game *g = self;
-        unsigned char i = 0;
-        // The count is re-read every pass.
-        if (g->foeCount() != 0) {
-            do {
-                unsigned char id = g->foeId(i);
-                ++i;
-                g->foeSlot(id)->setMoveState(4);
-            } while (i < g->foeCount());
-        }
+        Cheat_KillFoes(self);
     }
 
     if (streq(buf, "supa")) {
@@ -138,19 +195,7 @@ Sim_HandleTypedCheatCode(Game *self)
             std::copy_n(buf + 8, len - 8, num);
             num[len - 8] = 0;
             unsigned char lvl = (unsigned char)(atoi(num) - 1);
-            Sim_SetCurrentLevelName(self, lvl);
-            if (lvl < self->levelCount()) {
-                snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, g_gameDir, self->levelName());
-                g_logger.logMessage(3, "GAME: lc by number %d name:%s", (unsigned int)lvl,
-                                   self->levelName());
-                self->setLevelIndex(lvl);
-                if (std::ifstream(sysdev::nativePath(path))) {
-                    pl->setGemsCollected(0);
-                    Sim_OpenLevelFile(self, self->levelIndex());
-                    Sim_SetupLevelObjects(self);
-                    enter_loaded_state(self);
-                }
-            }
+            Cheat_LoadLevel(self, lvl);
             buf[0] = 0;
         }
     }
@@ -177,20 +222,14 @@ Sim_HandleTypedCheatCode(Game *self)
     }
 
     if (streq(buf, "mausuruh"))
-        pl->setLives(pl->lives() + (s_fx ? 2 : 1));
+        Cheat_AddLife(self, s_fx ? 2 : 1);
     if (streq(buf, "sportsman"))
-        pl->setGlides((unsigned char)(pl->glides() + 1));
+        Cheat_AddGlide(self);
     if (streq(buf, "boommaker"))
-        pl->setFieldE8((unsigned char)(pl->fieldE8() + 10));
+        Cheat_AddBombs(self);
 
-    if (streq(buf, "notme")) {
-        if (pl->effectDActive() == 0)
-            pl->appendEffect(0x0d);
-        pl->setEffectDActive(1);
-        pl->setKind(3);
-        pl->curTile()->setOccupant(3);
-        pl->setEffectDStart(*self->clock());
-    }
+    if (streq(buf, "notme"))
+        Cheat_Invulnerable(self);
 
     std::fill_n(buf, 0x100, 0);
     self->cheatEntry()->setCursor(0);

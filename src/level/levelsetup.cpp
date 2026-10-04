@@ -500,7 +500,7 @@ Sim_SetupLevelObjects(Game *self)
 
                 // The snapshot: the cell as the file gave it.
                 if (s->contents() == CONTENTS_TRANSFORM) self->census()->transforms++;
-                if (s->contents() == CONTENTS_EFFECT_8) self->census()->effect8Items++;
+                if (s->contents() == CONTENTS_FREEZE) self->census()->freezeItems++;
                 if (s->contents() == CONTENTS_TIME_BONUS) self->census()->timeBonuses++;
                 if (s->contents() == CONTENTS_PARAGLIDER) self->census()->paragliders++;
                 if (s->contents() == CONTENTS_SPEED_UP) self->census()->speedUps++;
@@ -606,7 +606,7 @@ next_row:
     self->census()->total = (unsigned short)(self->census()->grant09Items + self->census()->speedUps +
                                   self->census()->shadow1      + self->census()->transforms +
                                   self->census()->paragliders  + self->census()->shadow7 +
-                                  self->census()->effect8Items + self->census()->extraLives +
+                                  self->census()->freezeItems + self->census()->extraLives +
                                   self->census()->timeBonuses  + self->field_42252());
 
     self->player()->setMoveState(0);
@@ -615,7 +615,7 @@ next_row:
     self->player()->clearEffects();
 
     self->player()->setTickStep(self->tickStep());
-    self->player()->setEffect8Active(0);
+    self->player()->setFreezeActive(0);
     self->player()->setEffectBActive(0);
     self->player()->setEffectAActive(0);
     self->player()->setEffectCActive(0);

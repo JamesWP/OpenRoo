@@ -912,7 +912,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
         double start = 0.0, span = 10.0;
         bool icon = true;
         switch (code) {
-        case 8:  img = THEME_IMG_FREEZE;         start = pl->effect8Start(); span = 5.0; break;
+        case 8:  img = THEME_IMG_FREEZE;         start = pl->freezeStart(); span = 5.0; break;
         case 10: img = THEME_IMG_SPEED;          start = pl->effectAStart(); break;
         case 11: img = THEME_IMG_INVERSECONTROL; start = pl->effectBStart(); break;
         case 12: img = THEME_IMG_SLOWDOWN;       start = pl->effectCStart(); break;
