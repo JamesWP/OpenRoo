@@ -60,6 +60,9 @@ static void dispatch(const SDL_Event &e)
     case SDL_EVENT_WINDOW_FOCUS_LOST:
         if (g_handler) g_handler->onActivate(false);
         break;
+    case SDL_EVENT_KEY_DOWN:
+        if (g_handler && !e.key.repeat) g_handler->onKeyDown();
+        break;
     case SDL_EVENT_KEY_UP:
         if (g_handler) g_handler->onKeyUp();
         break;

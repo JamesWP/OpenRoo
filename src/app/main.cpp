@@ -161,11 +161,19 @@ public:
         }
     }
 
-    void onKeyUp() override  // any key skips the intro
+    // Any key skips the intro -- one pressed during it: the release of the
+    // key that started the game (the launcher's Enter) must not.
+    void onKeyDown() override
     {
-        if (g_movie.playing())
+        keyDownDuringIntro_ = g_movie.playing();
+    }
+
+    void onKeyUp() override
+    {
+        if (g_movie.playing() && keyDownDuringIntro_)
             g_movie.skip();
     }
+
 
     bool onNativeMessage(unsigned msg, unsigned long wParam, long lParam) override
     {
@@ -174,6 +182,9 @@ public:
         // A track ended: the music restarts it if it repeats.
         return g_cdAudio.handleWindowMessage(msg, wParam, lParam);
     }
+
+private:
+    bool keyDownDuringIntro_ = false;
 };
 
 int Main_WinMain(const char *lpCmdLine)

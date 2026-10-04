@@ -31,7 +31,8 @@ public:
     virtual ~WindowHandler() {}
     /* The window gained or lost the focus. */
     virtual void onActivate(bool active) { (void)active; }
-    /* Any key was released. */
+    /* A key went down (not an auto-repeat), and any key was released. */
+    virtual void onKeyDown() {}
     virtual void onKeyUp() {}
     /* The window was destroyed (closed). */
     virtual void onDestroyed() {}
