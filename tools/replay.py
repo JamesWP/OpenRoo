@@ -26,7 +26,7 @@ def load(path):
     hdr = dict(version=ver, dt=dt, seed=seed, seed_set=bool(flags & 1), label=label)
 
     if ver != 2:
-        sys.exit("%s: version %d; tools/convert_rec.py converts version 1" % (path, ver))
+        sys.exit("%s: version %d, this tool reads version 2" % (path, ver))
     frames, off = [], HEADER_SIZE
     while off + 4 + 1 + KEYS + 1 <= len(blob):
         idx, = struct.unpack_from("<I", blob, off)
