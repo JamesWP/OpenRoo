@@ -93,6 +93,7 @@ struct PipelineState {
     DepthState          depth;
     StencilState        stencil;
     RasterState         raster;
+    ScissorState        scissor;
     FogState            fog;
     SamplerState        samplers[2];  // by stage; the game's vertex formats address two
     UVTransform         uvTransform[2];
@@ -197,12 +198,14 @@ public:
     void SetStencil(const StencilState &s);
     void SetRaster(const RasterState &s);
     void SetFog(const FogState &s);
+    void SetScissor(const ScissorState &s);
 
     const BlendState   &blend() const   { return state_.blend; }
     const DepthState   &depth() const   { return state_.depth; }
     const StencilState &stencil() const { return state_.stencil; }
     const RasterState  &raster() const  { return state_.raster; }
     const FogState     &fog() const     { return state_.fog; }
+    const ScissorState &scissor() const { return state_.scissor; }
 
     /* How `stage` samples its texture.  The game draws with stage 0. */
     void SetSampler(int stage, const SamplerState &s);
@@ -264,6 +267,13 @@ public:
      * draw. */
     bool Draw(Prim prim, VertexFormat format, const void *verts,
               uint32_t count, uint32_t flags = 0);
+
+    /* Like Draw, but the primitive is made of the vertices `indices` name:
+     * `indexCount` of them, each less than `vertexCount`.  Returns false if
+     * one is not, or if the backend refused the draw. */
+    bool DrawIndexed(Prim prim, VertexFormat format, const void *verts,
+                     uint32_t vertexCount, const uint16_t *indices,
+                     uint32_t indexCount, uint32_t flags = 0);
 
     /* `count` vertices of vb from `first`. */
     bool DrawBuffer(Prim prim, const VertexBuffer *vb, uint32_t first,

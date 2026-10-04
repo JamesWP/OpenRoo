@@ -118,6 +118,13 @@ static bool create_objects(RenderDevice::Native *n, char *error, size_t errorSiz
     gl.BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)n->streamSize, NULL, GL_STREAM_DRAW);
     n->streamUsed = 0;
 
+    // The indices go through a buffer of their own, which the VAO keeps bound.
+    n->indexStreamSize = 1u << 20;
+    gl.GenBuffers(1, &n->indexStream);
+    gl.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, n->indexStream);
+    gl.BufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)n->indexStreamSize, NULL, GL_STREAM_DRAW);
+    n->indexStreamUsed = 0;
+
     // State no setter changes.
     gl.ActiveTexture(GL_TEXTURE0);
     gl.Disable(GL_DITHER);
@@ -222,6 +229,8 @@ bool RenderDevice::Create(windev::Window *window, const AdapterId *adapter, int 
         w = mode_->dwWidth;
         h = mode_->dwHeight;
     }
+    n->modeW = mode_->dwWidth;
+    n->modeH = mode_->dwHeight;
     n->vpX = 0;
     n->vpY = 0;
     n->vpW = w;

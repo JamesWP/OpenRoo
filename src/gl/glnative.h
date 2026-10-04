@@ -54,8 +54,8 @@ struct DrawBlock {          // binding 1: changes between draws
 namespace GLDirty {
 enum : uint32_t {
     Blend = 1, Depth = 2, Stencil = 4, Raster = 8, Sampler = 16,
-    Texture = 32, Viewport = 64, Scene = 128,
-    All = 0xFF,
+    Texture = 32, Viewport = 64, Scene = 128, Scissor = 256,
+    All = 0x1FF,
 };
 }
 
@@ -81,10 +81,13 @@ struct RenderDevice::Native {
     bool            stencil = false;
 
     unsigned vpX = 0, vpY = 0, vpW = 0, vpH = 0;  // the viewport, in pixels
+    unsigned modeW = 1, modeH = 1;     // the display mode the game draws in
 
     GLuint program = 0, vao = 0, sceneUbo = 0, drawUbo = 0, sampler = 0;
     GLuint stream  = 0;                // the buffer Draw's vertices go through
     size_t streamSize = 0, streamUsed = 0;
+    GLuint indexStream = 0;            // the same for DrawIndexed's indices
+    size_t indexStreamSize = 0, indexStreamUsed = 0;
 
     unsigned  presented = 0;           // frames shown so far
     uint32_t  dirty = GLDirty::All;

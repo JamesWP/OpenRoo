@@ -87,6 +87,14 @@ struct RasterState {
     CullMode cull = CullMode::CCW;
 };
 
+/* Clips drawing to a rectangle of the display, in the same pixels as Screen
+ * vertices (the display mode's size, origin at the top left).  Off by
+ * default. */
+struct ScissorState {
+    bool enable = false;
+    int  x = 0, y = 0, width = 0, height = 0;
+};
+
 enum class Filter : uint8_t { Nearest = 1, Linear = 2 };
 enum class AddressMode : uint8_t { Wrap = 1, Mirror, Clamp, Border };
 

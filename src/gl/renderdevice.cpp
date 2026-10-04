@@ -242,6 +242,23 @@ static void flush_pipeline(RenderDevice::Native *n, const PipelineState &st)
         gl.BindTexture(GL_TEXTURE_2D, st.bound[0] ? st.bound[0]->texture : 0);
     if (dirty & GLDirty::Viewport)
         gl.Viewport((GLint)n->vpX, (GLint)n->vpY, (GLsizei)n->vpW, (GLsizei)n->vpH);
+    if (dirty & (GLDirty::Scissor | GLDirty::Viewport)) {
+        const ScissorState &s = st.scissor;
+        if (s.enable) {
+            // The rectangle is in display-mode pixels with the origin at the
+            // top left; the viewport is some scale of that, and OpenGL
+            // counts rows from the bottom.
+            const double sx = (double)n->vpW / (double)n->modeW;
+            const double sy = (double)n->vpH / (double)n->modeH;
+            const int x0 = (int)floor(s.x * sx + 0.5), x1 = (int)floor((s.x + s.width) * sx + 0.5);
+            const int y0 = (int)floor(s.y * sy + 0.5), y1 = (int)floor((s.y + s.height) * sy + 0.5);
+            gl.Enable(GL_SCISSOR_TEST);
+            gl.Scissor((GLint)n->vpX + x0, (GLint)(n->vpY + n->vpH) - y1,
+                       (GLsizei)(x1 > x0 ? x1 - x0 : 0), (GLsizei)(y1 > y0 ? y1 - y0 : 0));
+        } else {
+            gl.Disable(GL_SCISSOR_TEST);
+        }
+    }
     n->dirty &= GLDirty::Scene;
 }
 
@@ -454,6 +471,7 @@ void RenderDevice::Release()
         DestroyTexture(n->image);
     if (n->active && gl_usable()) {
         gl.DeleteBuffers(1, &n->stream);
+        gl.DeleteBuffers(1, &n->indexStream);
         gl.DeleteBuffers(1, &n->sceneUbo);
         gl.DeleteBuffers(1, &n->drawUbo);
         gl.DeleteSamplers(1, &n->sampler);
@@ -580,6 +598,12 @@ void RenderDevice::SetRaster(const RasterState &s)
 {
     state_.raster = s;
     native_->dirty |= GLDirty::Raster;
+}
+
+void RenderDevice::SetScissor(const ScissorState &s)
+{
+    state_.scissor = s;
+    native_->dirty |= GLDirty::Scissor;
 }
 
 void RenderDevice::SetFog(const FogState &s)
@@ -717,31 +741,36 @@ void RenderDevice::DestroyVertexBuffer(VertexBuffer *vb)
 /* Issues the draw of `count` vertices in `buffer` from `offset` bytes. */
 static void submit(RenderDevice::Native *n, const PipelineState &st, float aspect,
                    Prim prim, VertexFormat format, GLuint buffer, size_t offset,
-                   uint32_t count, uint32_t flags)
+                   uint32_t count, uint32_t flags, size_t indexOffset = 0,
+                   bool indexed = false)
 {
     flush_pipeline(n, st);
     if (n->dirty & GLDirty::Scene)
         upload_scene(n, st, aspect);
     upload_draw(n, st, format, flags);
     bind_vertices(n, format, buffer, offset);
-    gl.DrawArrays(gl_prim(prim), 0, (GLsizei)count);
+    if (indexed)
+        gl.DrawElements(gl_prim(prim), (GLsizei)count, GL_UNSIGNED_SHORT,
+                        (const void *)indexOffset);
+    else
+        gl.DrawArrays(gl_prim(prim), 0, (GLsizei)count);
 }
 
 /* Writes `bytes` to the stream buffer, which is orphaned and started again
  * when it is full; `offset` is where they landed. */
-static bool stream_write(RenderDevice::Native *n, const void *data, size_t bytes,
-                         size_t *offset)
+static bool stream_write(GLenum target, GLuint buffer, size_t size, size_t *used,
+                         const void *data, size_t bytes, size_t *offset)
 {
-    if (bytes > n->streamSize)
+    if (bytes > size)
         return false;
-    size_t at = (n->streamUsed + 31) & ~(size_t)31;
-    gl.BindBuffer(GL_ARRAY_BUFFER, n->stream);
-    if (at + bytes > n->streamSize) {
-        gl.BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)n->streamSize, NULL, GL_STREAM_DRAW);
+    size_t at = (*used + 31) & ~(size_t)31;
+    gl.BindBuffer(target, buffer);
+    if (at + bytes > size) {
+        gl.BufferData(target, (GLsizeiptr)size, NULL, GL_STREAM_DRAW);
         at = 0;
     }
-    gl.BufferSubData(GL_ARRAY_BUFFER, (GLintptr)at, (GLsizeiptr)bytes, data);
-    n->streamUsed = at + bytes;
+    gl.BufferSubData(target, (GLintptr)at, (GLsizeiptr)bytes, data);
+    *used = at + bytes;
     *offset = at;
     return true;
 }
@@ -757,10 +786,44 @@ bool RenderDevice::Draw(Prim prim, VertexFormat format, const void *verts,
     if (gl_trace_enabled())
         gl_trace_draw(state_, prim, format, verts, count, flags);
     size_t offset;
-    if (!stream_write(n, verts, (size_t)count * vertex_layout(format).stride, &offset))
+    if (!stream_write(GL_ARRAY_BUFFER, n->stream, n->streamSize, &n->streamUsed, verts,
+                      (size_t)count * vertex_layout(format).stride, &offset))
         return false;
     submit(n, state_, (float)((double)mode_->dwWidth / (double)mode_->dwHeight),
            prim, format, n->stream, offset, count, flags);
+    return true;
+}
+
+bool RenderDevice::DrawIndexed(Prim prim, VertexFormat format, const void *verts,
+                               uint32_t vertexCount, const uint16_t *indices,
+                               uint32_t indexCount, uint32_t flags)
+{
+    Native *n = native_;
+    if (!n->active || fx_nodraw())
+        return true;
+    if (!prim_complete(prim, indexCount))
+        return false;
+    for (uint32_t i = 0; i < indexCount; i++)
+        if (indices[i] >= vertexCount)
+            return false;
+    if (gl_trace_enabled()) {
+        // The vertices in the order the draw takes them.
+        const uint32_t stride = vertex_layout(format).stride;
+        std::vector<uint8_t> bytes((size_t)indexCount * stride);
+        for (uint32_t i = 0; i < indexCount; i++)
+            memcpy(&bytes[(size_t)i * stride], (const uint8_t *)verts + (size_t)indices[i] * stride,
+                   stride);
+        gl_trace_draw(state_, prim, format, bytes.data(), indexCount, flags);
+    }
+    size_t vertexOffset, indexOffset;
+    if (!stream_write(GL_ARRAY_BUFFER, n->stream, n->streamSize, &n->streamUsed, verts,
+                      (size_t)vertexCount * vertex_layout(format).stride, &vertexOffset) ||
+        !stream_write(GL_ELEMENT_ARRAY_BUFFER, n->indexStream, n->indexStreamSize,
+                      &n->indexStreamUsed, indices, (size_t)indexCount * sizeof(uint16_t),
+                      &indexOffset))
+        return false;
+    submit(n, state_, (float)((double)mode_->dwWidth / (double)mode_->dwHeight),
+           prim, format, n->stream, vertexOffset, indexCount, flags, indexOffset, true);
     return true;
 }
 
