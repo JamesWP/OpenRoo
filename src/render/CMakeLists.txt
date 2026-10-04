@@ -1,4 +1,4 @@
-# Talks to the device through renderdevice.h; d3d implements it.
+# Talks to the device through renderdevice.h; gl implements it.
 add_library(render OBJECT
     ani.cpp
     camera.cpp

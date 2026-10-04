@@ -1,7 +1,7 @@
 # Fails if a file outside the platform groups (src/windev, audiodev, inputdev,
 # videodev, sysdev) includes an SDL or FFmpeg header, so SDL and FFmpeg types and calls cannot leak
-# into game code.  d3d is not on the list: a backend that needs the window
-# gets it through windev.h.
+# into game code.  gl is not on the list: the rendering backend gets its
+# window, OpenGL context and displays through windev.h.
 file(GLOB_RECURSE files "${SOURCE_DIR}/src/*.cpp" "${SOURCE_DIR}/src/*.h")
 foreach(file IN LISTS files)
     if(file MATCHES "/src/(windev|audiodev|inputdev|videodev|sysdev)/")

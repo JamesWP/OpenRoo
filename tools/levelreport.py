@@ -171,8 +171,8 @@ def launch(headless=True):
     # --headless is the default, exactly as in tools/replaytest.py: no window,
     # no display needed and nothing takes focus, which is what makes this
     # runnable from a background job.  It is not merely --skip-launcher with
-    # the window hidden -- the render device is created with no Direct3D
-    # behind it (src/d3d/createdevice.cpp), so no driver is involved at all.  The report
+    # the window hidden -- the render device is created with no OpenGL
+    # behind it (src/gl/createdevice.cpp), so no driver is involved at all.  The report
     # is produced by the game's own WriteLevelReport and draws nothing anyone
     # needs to watch, so there is no reason to want a display by default;
     # --no-headless falls back to --skip-launcher when you do.

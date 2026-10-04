@@ -1,7 +1,7 @@
 # Fails if a header or source file outside the platform groups includes
 # <windows.h>, so Win32 types and calls cannot leak into game code.  The one
 # exception is the executable's WinMain in src/windev.
-set(platform_groups d3d windev inputdev audiodev sysdev videodev)
+set(platform_groups windev inputdev audiodev sysdev videodev)
 file(GLOB_RECURSE files "${SOURCE_DIR}/src/*.cpp" "${SOURCE_DIR}/src/*.h")
 foreach(file IN LISTS files)
     set(skip FALSE)

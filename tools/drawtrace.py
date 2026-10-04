@@ -5,8 +5,8 @@
     python3 tools/drawtrace.py collect DIR NAME [NAME...]
     python3 tools/drawtrace.py diff DIR_A DIR_B           # exit 1 if they differ
 
-Each draw the game makes is hashed together with the state the Direct3D 9
-device reports for it (src/d3d/drawtrace.cpp), one line per draw.  Two builds
+Each draw the game makes is hashed together with the pipeline state the game
+has set for it (src/gl/drawtrace.cpp), one line per draw.  Two builds
 that draw the same pictures leave identical traces, so diffing the traces of a
 replay before and after a change to the rendering code shows whether it moved
 a draw, a vertex or a state -- however differently the code now gets there.

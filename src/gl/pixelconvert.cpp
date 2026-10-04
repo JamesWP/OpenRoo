@@ -77,3 +77,46 @@ void PixelConvert_ToDisplay(const Image &img, const PixelFormat &pf,
         }
     }
 }
+
+/* A channel of `bits` bits widened to 8 by replicating it. */
+static uint32_t widen_channel(uint32_t v, unsigned bits)
+{
+    uint32_t out = 0;
+    for (int shift = 8 - (int)bits;; shift -= (int)bits) {
+        out |= shift >= 0 ? v << shift : v >> -shift;
+        if (shift <= 0)
+            break;
+    }
+    return out & 255u;
+}
+
+static uint32_t unpack_channel(uint32_t pixel, uint32_t mask)
+{
+    if (mask == 0)
+        return 255;
+    return widen_channel((pixel & mask) >> PixelMask_Shift(mask), PixelMask_Popcount(mask));
+}
+
+void PixelConvert_ToRGBA8(const PixelFormat &pf, const uint8_t *src, long pitch,
+                          int width, int height, uint8_t *dst)
+{
+    if (pf.bits != 16 && pf.bits != 32)
+        return;
+    for (int y = 0; y < height; ++y, src += pitch) {
+        const uint8_t *p = src;
+        for (int x = 0; x < width; ++x, p += pf.bits / 8, dst += 4) {
+            uint32_t v = 0;
+            if (pf.bits == 32) {
+                memcpy(&v, p, 4);
+            } else {
+                uint16_t v16;
+                memcpy(&v16, p, 2);
+                v = v16;
+            }
+            dst[0] = (uint8_t)unpack_channel(v, pf.rMask);
+            dst[1] = (uint8_t)unpack_channel(v, pf.gMask);
+            dst[2] = (uint8_t)unpack_channel(v, pf.bMask);
+            dst[3] = (uint8_t)unpack_channel(v, pf.aMask);
+        }
+    }
+}

@@ -14,7 +14,7 @@ target_include_directories(app PRIVATE
     ../windev
     ../audio
     ../core
-    ../d3d
+    ../gl
     ../entities
     ../input
     ../level
