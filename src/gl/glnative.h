@@ -97,6 +97,7 @@ struct RenderDevice::Native {
     bool      lastDrawValid = false;
 
     DeviceTexture *image = NULL;       // PresentImage's texture
+    RenderDevice::OverlayFn overlay = NULL;
 };
 
 /* Whether OpenGL can be called: a context exists and has not been closed with

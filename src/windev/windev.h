@@ -127,6 +127,28 @@ bool listDisplays(std::vector<DisplayInfo> &out);
 struct DisplaySize { unsigned width, height; };
 bool listDisplayModes(unsigned display, std::vector<DisplaySize> &out);
 
+// ── The debug UI's platform half (Dear ImGui's SDL3 backend) ──
+//
+// The UI's own context and drawing are src/debugui's; this is the window
+// side of it: events into it, and the keys and mouse it is using kept from
+// the game.  F10 shows and hides it.  Off until debugUiInit; call it after the
+// ImGui context exists, and debugUiShutdown before the context goes.
+
+bool debugUiInit(bool shown);
+void debugUiShutdown();
+
+/* The UI is on and shown: events reach it, and it is drawn. */
+bool debugUiShown();
+
+/* Starts the UI's frame from the window's size, mouse and time (before
+ * ImGui::NewFrame). */
+void debugUiNewFrame();
+
+/* The UI is using the keyboard (a text box has focus) or the mouse (the
+ * pointer is over one of its windows). */
+bool debugUiCapturesKeyboard();
+bool debugUiCapturesMouse();
+
 /* Pumps events, calling idle between them, until quit(); returns quit's
  * code. */
 int  runMessageLoop(void (*idle)());

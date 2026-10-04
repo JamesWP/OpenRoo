@@ -14,6 +14,7 @@ target_include_directories(app PRIVATE
     ../windev
     ../audio
     ../core
+    ../debugui
     ../gl
     ../entities
     ../input

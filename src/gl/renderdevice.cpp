@@ -565,11 +565,27 @@ static void capture_frame(RenderDevice::Native *n, unsigned frame)
     }
 }
 
+void RenderDevice::SetOverlay(OverlayFn fn)
+{
+    native_->overlay = fn;
+}
+
 void RenderDevice::Present()
 {
     Native *n = native_;
     if (!n->active)
         return;
+    if (n->overlay) {
+        const PipelineState saved = state_;
+        n->overlay(*this);
+        SetBlend(saved.blend);
+        SetDepth(saved.depth);
+        SetStencil(saved.stencil);
+        SetRaster(saved.raster);
+        SetScissor(saved.scissor);
+        SetSampler(0, saved.samplers[0]);
+        SetTexture(0, saved.bound[0]);
+    }
     capture_frame(n, ++n->presented);
     n->window->swapBuffers();
 }

@@ -165,8 +165,15 @@ public:
     bool BeginFrame();
     void EndFrame();
 
-    /* Shows the back buffer. */
+    /* Shows the back buffer, after the overlay (if there is one) has drawn
+     * over it. */
     void Present();
+
+    /* A function Present calls to draw over the finished frame: the debug UI.
+     * It draws with the ordinary setters; the state the game had set is put
+     * back after.  NULL for none. */
+    typedef void (*OverlayFn)(RenderDevice &dev);
+    void SetOverlay(OverlayFn fn);
 
     /* Copies img over the back buffer, scaled to fit, and shows it.  An empty
      * image just shows the back buffer. */

@@ -5,6 +5,8 @@
 #include <string.h>
 #include "windev.h"
 #include "launcher_layout.h"
+#include "imgui.h"
+#include "backends/imgui_impl_sdl3.h"
 
 namespace windev {
 
@@ -18,6 +20,11 @@ static void *g_glContext;
 static bool g_closed;
 static std::atomic<bool> g_quit(false);
 static std::atomic<int>  g_exitCode(0);
+
+// The debug UI's platform half (see debugUiInit): off until asked for, and
+// then only receiving events while shown.
+static bool g_debugUi;
+static bool g_debugUiShown;
 
 bool messageBox(void *parent, const char *text, const char *title,
                 Buttons buttons, Icon icon)
@@ -60,6 +67,21 @@ static void close_window()
 
 static void dispatch(const SDL_Event &e)
 {
+    if (g_debugUi) {
+        if (e.type == SDL_EVENT_KEY_DOWN && e.key.scancode == SDL_SCANCODE_F10 && !e.key.repeat) {
+            g_debugUiShown = !g_debugUiShown;
+            return;
+        }
+        if (g_debugUiShown) {
+            ImGui_ImplSDL3_ProcessEvent(&e);
+            // What the UI is using is not the game's.
+            const ImGuiIO &io = ImGui::GetIO();
+            const bool key   = e.type == SDL_EVENT_KEY_DOWN || e.type == SDL_EVENT_KEY_UP ||
+                               e.type == SDL_EVENT_TEXT_INPUT;
+            if (key && io.WantCaptureKeyboard)
+                return;
+        }
+    }
     switch (e.type) {
     case SDL_EVENT_WINDOW_FOCUS_GAINED:
         if (g_handler) g_handler->onActivate(true);
@@ -291,6 +313,47 @@ bool listDisplayModes(unsigned display, std::vector<DisplaySize> &out)
 /* Every pending event is handled before each idle() call, and a quit is
  * acted on once the queue is empty, so the frame count of a run does not
  * depend on what else happened to be queued. */
+bool debugUiInit(bool shown)
+{
+    if (!g_sdlWindow || g_debugUi)
+        return false;
+    if (!ImGui_ImplSDL3_InitForOther(g_sdlWindow))
+        return false;
+    g_debugUi = true;
+    g_debugUiShown = shown;
+    return true;
+}
+
+void debugUiShutdown()
+{
+    if (!g_debugUi)
+        return;
+    ImGui_ImplSDL3_Shutdown();
+    g_debugUi = false;
+    g_debugUiShown = false;
+}
+
+bool debugUiShown()
+{
+    return g_debugUi && g_debugUiShown;
+}
+
+void debugUiNewFrame()
+{
+    if (g_debugUi)
+        ImGui_ImplSDL3_NewFrame();
+}
+
+bool debugUiCapturesKeyboard()
+{
+    return debugUiShown() && ImGui::GetIO().WantCaptureKeyboard;
+}
+
+bool debugUiCapturesMouse()
+{
+    return debugUiShown() && ImGui::GetIO().WantCaptureMouse;
+}
+
 int runMessageLoop(void (*idle)())
 {
     SDL_Event e;
