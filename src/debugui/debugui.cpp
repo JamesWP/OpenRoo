@@ -73,10 +73,10 @@ static void render_draw_data(RenderDevice &dev, ImDrawData *dd)
     if (dd->DisplaySize.x <= 0.0f || dd->DisplaySize.y <= 0.0f)
         return;
 
-    // ImGui lays out in the window's pixels; the device draws Screen vertices
-    // in the display mode's.
-    const float sx = (float)dev.width() / dd->DisplaySize.x;
-    const float sy = (float)dev.height() / dd->DisplaySize.y;
+    // ImGui lays out in the window's units; the overlay draws in the window's
+    // native pixels.
+    const float sx = (float)dev.overlayWidth() / dd->DisplaySize.x;
+    const float sy = (float)dev.overlayHeight() / dd->DisplaySize.y;
 
     dev.SetBlend(BlendState::alpha());
     dev.SetDepth({ false, false });
@@ -103,8 +103,8 @@ static void render_draw_data(RenderDevice &dev, ImDrawData *dd)
                 continue;
             const float x0 = std::max((cmd.ClipRect.x - dd->DisplayPos.x) * sx, 0.0f);
             const float y0 = std::max((cmd.ClipRect.y - dd->DisplayPos.y) * sy, 0.0f);
-            const float x1 = std::min((cmd.ClipRect.z - dd->DisplayPos.x) * sx, (float)dev.width());
-            const float y1 = std::min((cmd.ClipRect.w - dd->DisplayPos.y) * sy, (float)dev.height());
+            const float x1 = std::min((cmd.ClipRect.z - dd->DisplayPos.x) * sx, (float)dev.overlayWidth());
+            const float y1 = std::min((cmd.ClipRect.w - dd->DisplayPos.y) * sy, (float)dev.overlayHeight());
             if (x1 <= x0 || y1 <= y0)
                 continue;
             dev.SetScissor({ true, (int)floorf(x0), (int)floorf(y0),

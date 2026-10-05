@@ -229,6 +229,8 @@ bool RenderDevice::Create(windev::Window *window, const AdapterId *adapter, int 
         w = mode_->dwWidth;
         h = mode_->dwHeight;
     }
+    n->winW  = w;
+    n->winH  = h;
     n->modeW = mode_->dwWidth;
     n->modeH = mode_->dwHeight;
     // Letterbox to the mode's aspect, centred; the bars keep the black clear.
