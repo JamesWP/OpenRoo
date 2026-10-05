@@ -66,9 +66,12 @@ void Scope::end()
         return;
     }
     Node &n = g_nodes[node_];
-    n.accMs += now_ms() - n.startMs;
+    const double took = now_ms() - n.startMs;
+    n.accMs += took;
     n.accCalls++;
     g_open = n.parent;
+    if (n.parent >= 0)
+        g_nodes[n.parent].childMs += took;
 
     if (n.parent >= 0)
         return;
@@ -77,6 +80,8 @@ void Scope::end()
         m.ms    = m.accMs;
         m.calls = m.accCalls;
         m.avgMs += (m.ms - m.avgMs) * 0.05;
+        m.selfAvgMs += ((m.ms - m.childMs) - m.selfAvgMs) * 0.05;
+        m.childMs = 0;
         m.maxMs  = m.ms > m.maxMs ? m.ms : m.maxMs * 0.98;
         m.accMs = 0;
         m.accCalls = 0;

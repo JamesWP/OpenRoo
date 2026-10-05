@@ -225,6 +225,9 @@ static void draw_prof_node(const prof::Node *nodes, unsigned count, int idx, dou
     ImGui::TableNextColumn();
     ImGui::Text("%.2f", n.avgMs);
     ImGui::TableNextColumn();
+    if (!leaf)
+        ImGui::Text("%.2f", n.selfAvgMs);
+    ImGui::TableNextColumn();
     ImGui::Text("%.2f", n.maxMs);
     ImGui::TableNextColumn();
     if (n.calls > 1)
@@ -252,10 +255,14 @@ static void draw_frame_breakdown()
     if (ImGui::Button("reset"))
         prof::reset();
     ImGui::SameLine();
-    ImGui::TextDisabled("ms: smoothed average, recent worst; the tree follows the code");
-    if (ImGui::BeginTable("prof", 5, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+    ImGui::TextDisabled("ms: avg; self = avg less the scopes inside it (what the code between them costs); max = recent worst");
+    // Opaque, so the stripes cannot wash out to white.
+    ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.10f, 0.10f, 0.12f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.15f, 0.15f, 0.18f, 1.0f));
+    if (ImGui::BeginTable("prof", 6, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("scope", ImGuiTableColumnFlags_NoHide);
         ImGui::TableSetupColumn("avg", ImGuiTableColumnFlags_WidthFixed, 44);
+        ImGui::TableSetupColumn("self", ImGuiTableColumnFlags_WidthFixed, 44);
         ImGui::TableSetupColumn("max", ImGuiTableColumnFlags_WidthFixed, 44);
         ImGui::TableSetupColumn("n", ImGuiTableColumnFlags_WidthFixed, 36);
         ImGui::TableSetupColumn("share", ImGuiTableColumnFlags_WidthFixed, 70);
@@ -265,6 +272,7 @@ static void draw_frame_breakdown()
                 draw_prof_node(nodes, count, (int)i, nodes[i].avgMs);
         ImGui::EndTable();
     }
+    ImGui::PopStyleColor(2);
 }
 
 static void draw_panels(RenderDevice &dev)
