@@ -574,6 +574,9 @@ void RenderDevice::SetOverlay(OverlayFn fn)
     native_->overlay = fn;
 }
 
+unsigned RenderDevice::overlayWidth() const  { return native_->winW; }
+unsigned RenderDevice::overlayHeight() const { return native_->winH; }
+
 void RenderDevice::Present()
 {
     Native *n = native_;
@@ -581,7 +584,19 @@ void RenderDevice::Present()
         return;
     if (n->overlay) {
         const PipelineState saved = state_;
-        if (n->overlay(*this)) {
+        // The overlay draws at the window's native resolution: the viewport
+        // and the pixel space of Screen vertices are the whole window.
+        const unsigned vx = n->vpX, vy = n->vpY, vw = n->vpW, vh = n->vpH;
+        const unsigned mw = n->modeW, mh = n->modeH;
+        n->vpX = n->vpY = 0;
+        n->vpW = n->modeW = n->winW;
+        n->vpH = n->modeH = n->winH;
+        n->dirty |= GLDirty::Viewport | GLDirty::Scene | GLDirty::Scissor;
+        const bool drew = n->overlay(*this);
+        n->vpX = vx; n->vpY = vy; n->vpW = vw; n->vpH = vh;
+        n->modeW = mw; n->modeH = mh;
+        n->dirty |= GLDirty::Viewport | GLDirty::Scene | GLDirty::Scissor;
+        if (drew) {
             SetBlend(saved.blend);
             SetDepth(saved.depth);
             SetStencil(saved.stencil);

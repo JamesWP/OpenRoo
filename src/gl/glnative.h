@@ -81,6 +81,7 @@ struct RenderDevice::Native {
     bool            stencil = false;
 
     unsigned vpX = 0, vpY = 0, vpW = 0, vpH = 0;  // the viewport, in pixels
+    unsigned winW = 1, winH = 1;      // the whole window, which the overlay draws in
     unsigned modeW = 1, modeH = 1;     // the display mode the game draws in
 
     GLuint program = 0, vao = 0, sceneUbo = 0, drawUbo = 0, sampler = 0;

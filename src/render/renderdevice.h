@@ -150,6 +150,10 @@ public:
 
     unsigned width() const    { return mode_->dwWidth; }
     unsigned height() const   { return mode_->dwHeight; }
+    /* The size the overlay draws in: the whole window, native pixels, bars
+     * included.  Equal to width()/height() where there are no bars. */
+    unsigned overlayWidth() const;
+    unsigned overlayHeight() const;
     unsigned bitDepth() const { return mode_->dwBitDepth; }
 
     /* The z-buffer has stencil bits. */
