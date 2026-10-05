@@ -147,10 +147,21 @@ static ThemeObjectTypeSlot *slot(ThemeObjectType t)
 
 /* Every model pass goes through RenderSceneObjects with the placement block
  * as its quad template. */
+/* The profile's names for the models, in ThemeObjectType order. */
+static const char *const OBJECT_NAMES[THEME_OBJ_COUNT] = {
+    "john", "catcher", "catcher fx", "thrower", "thrower fx", "plate", "side", "platform",
+    "paraglide", "paraglide fx", "elevator", "exit", "glue", "destruct field",
+    "destruct field fx", "jump pad", "slide", "stair", "teleporter", "crystal",
+    "crystal fx", "ammunition", "bomb", "explosion", "surprise", "freeze", "speed",
+    "speed fx", "collect fx", "life", "switch", "time", "ice", "obstacle", "obstacle fx",
+    "protection", "protection fx", "bridge",
+};
+
 static void rso(const void *pos, const void *rot, unsigned count, ThemeObjectType t,
                 double now, float animTime = 0.0f, unsigned animCode = 0,
                 unsigned dtMs = 0)
 {
+    PROF_SCOPE(OBJECT_NAMES[t]);
     Scene_RenderSceneObjects(Game::instance(), (SceneQuadVertex *)&g_levelPlacements,
                              (const Vec3 *)pos, (const Vec3 *)rot, count, slot(t),
                              g_renderDevice, now, animTime, animCode, dtMs);
@@ -248,7 +259,10 @@ static void opaque_passes(Game *g, double now, double elapsed)
 
     {
         PROF_SCOPE("level objects");
-        MeshBatch_Draw(pl, &g_themeBlock, d3d);
+        {
+            PROF_SCOPE("level mesh");
+            MeshBatch_Draw(pl, &g_themeBlock, d3d);
+        }
         rso_list(pl->switches(),    THEME_OBJ_SWITCH,        now);
         rso_list(pl->conveyors(),   THEME_OBJ_ICE,           now);
         rso_list(pl->glue(),        THEME_OBJ_GLUE,          now);
@@ -452,6 +466,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
 static void particles(const void *pos, const void *rot, unsigned count, ThemeObjectType t,
                       double now, double elapsed)
 {
+    PROF_SCOPE(OBJECT_NAMES[t]);
     Theme_DrawParticleObjects(Game::instance(), &g_levelPlacements,
                               (const float (*)[3])pos, (const float (*)[3])rot, count,
                               slot(t), g_renderDevice, now, elapsed, 0);
@@ -1044,9 +1059,12 @@ Render_RenderGameFrame(void)
     /* The sky covers the whole target, so only depth (and stencil) clear. */
     if (d3d->hasStencil())
         set_stencil_enable(true);
-    d3d->Clear(ClearFlag::Depth);
-    if (!d3d->BeginFrame())
-        return;
+    {
+        PROF_SCOPE("clear and begin");
+        d3d->Clear(ClearFlag::Depth);
+        if (!d3d->BeginFrame())
+            return;
+    }
 
     set_stencil_enable(false);
     set_fog_enable(false);
@@ -1086,25 +1104,45 @@ Render_RenderGameFrame(void)
         const unsigned char st = g->state();
         if (st != 6 && st != 2 && st != 0 && st != 5 && st != 3 &&
             g->scriptPlayer()->running() == 0)
+        {
+            PROF_SCOPE("hud");
             draw_hud(g, w, h, W, H, hudH);
-        draw_fps(W, H);
+        }
+        {
+            PROF_SCOPE("fps text");
+            draw_fps(W, H);
+        }
 
         const float pad = H * 0.00625f;
-        if (st != 0 && st != 5 && st != 3)
+        if (st != 0 && st != 5 && st != 3) {
+            PROF_SCOPE("messages");
             draw_messages(g, W, H, pad);
-        draw_logo(g, H, hudH, pad);
+        }
+        {
+            PROF_SCOPE("logo");
+            draw_logo(g, H, hudH, pad);
+        }
 
         const uint32_t ms = (uint32_t)(long long)now;
-        if (st == 0 || st == 5 || st == 3)
+        if (st == 0 || st == 5 || st == 3) {
+            PROF_SCOPE("menu");
             Menu_DispatchGameState(g, &g_themeBlock, d3d, &g_fontMain, ms);
-        if (g->state() == 2)
+        }
+        if (g->state() == 2) {
+            PROF_SCOPE("game over score");
             Score_DrawGameOverScore(g, &g_themeBlock, d3d, &g_fontMain, ms);
-        if (g->menu()->node() == 3 || g->state() == 6)
+        }
+        if (g->menu()->node() == 3 || g->state() == 6) {
+            PROF_SCOPE("high scores");
             Score_DrawHighScoreTable(g, &g_themeBlock, d3d, &g_fontMain, ms);
+        }
     }
 
     set_depth_test(true);
-    d3d->EndFrame();
+    {
+        PROF_SCOPE("end frame");
+        d3d->EndFrame();
+    }
     PROF_SCOPE("present");
     if (g->state() == 7) {
         if (g->field_0c() != 0)

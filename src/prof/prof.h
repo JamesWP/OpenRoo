@@ -19,10 +19,12 @@ struct Node {
     int         parent;       // -1 for a root
     double      ms;           // the last frame, summed over its calls
     double      avgMs;        // smoothed
+    double      selfAvgMs;    // avgMs less the time in its children
     double      maxMs;        // slowest frame in the last second or so
     unsigned    calls;        // in the last frame
     // Per-frame working state.
     double      accMs;
+    double      childMs;      // time in children this frame
     unsigned    accCalls;
     double      startMs;
 };
