@@ -35,6 +35,7 @@ struct GameState {
     int   time_limit_s;
     uint32_t elapsed_ms;
     uint8_t  lives;  // drops at the restart after a death
+    uint8_t  bombs;  // bombs the player is carrying
     int   total_score;
     int   level_score;
     uint8_t  vitality;       // unconfirmed; see above
@@ -80,6 +81,7 @@ bool GameState::read()
     time_limit_s   = g->timeLimit();
     elapsed_ms     = g->timeElapsed();
     lives          = (uint8_t)pl->lives();
+    bombs          = pl->fieldE8();
     total_score    = pl->score();
     level_score    = g->tally()->levelTotal;
     vitality       = g->vitalityPercent();
@@ -209,6 +211,7 @@ void gamestate_dump(const char *reason)
         printTo(fp, "  \"items_bonus_blocked\": %u,\n", (unsigned)s.extra_block);
         printTo(fp, "  \"vitality\": %u,\n",        (unsigned)s.vitality);
         printTo(fp, "  \"lives\": %u,\n",           (unsigned)s.lives);
+        printTo(fp, "  \"bombs\": %u,\n",           (unsigned)s.bombs);
         printTo(fp, "  \"level_score\": %d,\n",     s.level_score);
         printTo(fp, "  \"total_score\": %d,\n",     s.total_score);
         printTo(fp, "  \"time_limit_s\": %d,\n",    s.time_limit_s);
