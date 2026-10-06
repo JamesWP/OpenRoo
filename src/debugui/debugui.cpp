@@ -301,7 +301,7 @@ static const char *kind_name(uint8_t k)
     case TILE_START:        return "start";
     case TILE_EXIT:         return "exit";
     case TILE_RAMP_1: case TILE_RAMP_2: case TILE_RAMP_3: case TILE_RAMP_4:
-                            return "ramp";
+                            return "stairs";
     case TILE_LIFT:         return "lift";
     case TILE_PLATFORM_U: case TILE_PLATFORM_V:
                             return "platform";
@@ -366,12 +366,17 @@ static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
         break;
     }
     case TILE_RAMP_1: case TILE_RAMP_2: case TILE_RAMP_3: case TILE_RAMP_4: {
-        // An arrow up the ramp: kind - 4 is its direction.
+        // Steps, walkable both ways: three treads across the slope, widest at
+        // the foot and narrowest at the top.  kind - 4 is the way up.
         const int d = kind - 4;
-        const ImVec2 f(WS_DIR_DU[d] * w * 0.35f, WS_DIR_DV[d] * w * 0.35f);
+        const ImVec2 f(WS_DIR_DU[d] * w, WS_DIR_DV[d] * w);  // one cell uphill
         const ImVec2 s(-f.y, f.x);
-        dl->AddTriangleFilled(ImVec2(c.x + f.x, c.y + f.y), ImVec2(c.x - f.x + s.x, c.y - f.y + s.y),
-                              ImVec2(c.x - f.x - s.x, c.y - f.y - s.y), IM_COL32(90, 90, 90, 255));
+        for (int i = 0; i < 3; i++) {
+            const float along = -0.3f + 0.3f * i, half = 0.4f - 0.1f * i;
+            const ImVec2 m(c.x + f.x * along, c.y + f.y * along);
+            dl->AddLine(ImVec2(m.x - s.x * half, m.y - s.y * half),
+                        ImVec2(m.x + s.x * half, m.y + s.y * half), IM_COL32(80, 80, 80, 255), t * 1.3f);
+        }
         break;
     }
     case TILE_LIFT: {
@@ -692,6 +697,13 @@ static void draw_map()
             const WsEntity &f = o.foes[i];
             dl->AddCircleFilled(centre(f.pos[0], f.pos[2]), cell * 0.35f,
                                 f.hidden ? IM_COL32(120, 60, 60, 255) : IM_COL32(230, 50, 50, 255));
+            // A tick for its facing, as the player's.
+            if (f.facing >= WS_DIR_MIN && f.facing <= WS_DIR_MAX) {
+                const ImVec2 p = centre(f.pos[0], f.pos[2]);
+                dl->AddLine(p, ImVec2(p.x + WS_DIR_DU[f.facing] * cell * 0.5f,
+                                      p.y + WS_DIR_DV[f.facing] * cell * 0.5f),
+                            IM_COL32(0, 0, 0, 255), 2);
+            }
         }
         // The player, with a tick for its facing.
         const ImVec2 p = centre(o.player_grid[0], o.player_grid[2]);
