@@ -40,6 +40,18 @@
       "playthrough": "Playthrough"
     },
     {
+      "name": "Playthrough-02",
+      "file": "Playthrough-02.rec",
+      "description": "Playthrough part 2: continue the playthrough",
+      "scenario": "continue the playthrough",
+      "expect": {
+        "crash": "none",
+        "state": {}
+      },
+      "notes": "Captured 75011 frames. No end-state assertions yet \u2014 run `replaytest.py --bless Playthrough-02` once a replay is trusted.",
+      "playthrough": "Playthrough"
+    },
+    {
       "name": "bombstart-crash",
       "file": "bombstart-crash.rec",
       "level": "Forest\\BombStart",
