@@ -624,6 +624,36 @@
         "Covers the score branch neither earlier run reached: the all-items bonus actually AWARDED (items_collected >= items_available with the +0x4220B flag clear). The two runs in REPLAY_PLAN.md both had it withheld.",
         "Exercises a level transition, which no other recording does."
       ]
-    }
+    },
+    {
+      "name": "bomb-timing",
+      "file": "bomb-timing.rec",
+      "description": "Bomb timing on Castle\\Tower: collects bomb pickups and drops one; ends with one gem and five bombs",
+      "scenario": "ends with one gem and five bombs",
+      "expect": {
+        "crash": "none",
+        "state": {
+          "frames_run": 1764,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 1,
+          "gems_required": 12,
+          "foes_killed": 0,
+          "items_collected": 3,
+          "items_available": 14,
+          "items_bonus_blocked": 0,
+          "vitality": 56,
+          "lives": 2,
+          "bombs": 5,
+          "level_score": 0,
+          "total_score": 0,
+          "time_limit_s": 180,
+          "elapsed_ms": 23184,
+          "level_complete": 0,
+          "death_cause": 0,
+          "completed_a_level": false
+        },
+        "seconds": 4.2
+      }
   ]
 }
