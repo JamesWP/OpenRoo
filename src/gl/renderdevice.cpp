@@ -582,6 +582,23 @@ void RenderDevice::Present()
     Native *n = native_;
     if (!n->active)
         return;
+    // The game draws only inside the viewport, so the bars around it keep
+    // whatever was last there (the overlay's last frame): clear them black.
+    if (n->vpW < n->winW || n->vpH < n->winH) {
+        const struct { unsigned x, y, w, h; } bars[4] = {
+            { 0, 0, n->vpX, n->winH },                                       // left
+            { n->vpX + n->vpW, 0, n->winW - n->vpX - n->vpW, n->winH },      // right
+            { n->vpX, 0, n->vpW, n->vpY },                                   // bottom
+            { n->vpX, n->vpY + n->vpH, n->vpW, n->winH - n->vpY - n->vpH },  // top
+        };
+        gl.Enable(GL_SCISSOR_TEST);
+        for (const auto &b : bars)
+            if (b.w && b.h) {
+                gl.Scissor((GLint)b.x, (GLint)b.y, (GLsizei)b.w, (GLsizei)b.h);
+                gl.Clear(GL_COLOR_BUFFER_BIT);
+            }
+        n->dirty |= GLDirty::Scissor;
+    }
     if (n->overlay) {
         const PipelineState saved = state_;
         // The overlay draws at the window's native resolution: the viewport
