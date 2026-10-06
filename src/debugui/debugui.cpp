@@ -13,6 +13,7 @@
 #include "worldstate.h"
 #include <algorithm>
 #include <float.h>
+#include <functional>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -346,6 +347,8 @@ static ImU32 floor_color(uint8_t height, int maxH)
     return ImGui::ColorConvertFloat4ToU32(ImVec4(l, l, l, 1));
 }
 
+#define SLIDE_COLOR IM_COL32(40, 170, 160, 255)
+
 /* Each kind's mark, drawn over the floor in the cell [a, b]: shapes and
  * borders rather than colour alone, so kinds stay apart at any height. */
 static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
@@ -403,10 +406,10 @@ static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
                           ImVec2(c.x, b.y - w * 0.12f), ImVec2(a.x + w * 0.12f, c.y), IM_COL32(190, 70, 230, 255));
         break;
     case TILE_SLIDE:
-        for (int i = 1; i <= 3; i++) {
-            const float y = a.y + w * i / 4.0f;
-            dl->AddLine(ImVec2(a.x + w * 0.25f, y), ImVec2(b.x - w * 0.25f, y), IM_COL32(120, 80, 40, 255), t);
-        }
+        // The legend's swatch; the map draws slides as chains (draw_slides).
+        dl->AddLine(ImVec2(a.x + w * 0.1f, c.y), ImVec2(b.x - w * 0.35f, c.y), SLIDE_COLOR, w * 0.3f);
+        dl->AddTriangleFilled(ImVec2(b.x - w * 0.05f, c.y), ImVec2(b.x - w * 0.4f, a.y + w * 0.15f),
+                              ImVec2(b.x - w * 0.4f, b.y - w * 0.15f), SLIDE_COLOR);
         break;
     case TILE_SWITCH: {
         auto r = in(0.3f);
@@ -462,6 +465,71 @@ static ImU32 contents_color(uint8_t c)
     case CONTENTS_GRANT_09:   return IM_COL32(40, 40, 40, 255);
     default:                  return IM_COL32(255, 200, 40, 255);
     }
+}
+
+/* Slides as chains: from each cell no slide feeds into, follow the cells'
+ * directions while they lead onto further slides, and draw the run as one
+ * band through the cell centres, from the edge it is entered by to an
+ * arrowhead past the edge it leaves by.  Bends follow the tiles.  The
+ * direction byte is the movement code's (WS_DIR): it becomes the move. */
+/* Slides as chains: from each cell no slide feeds into, follow the cells'
+ * directions while they lead onto further slides, and draw the run as one
+ * band through the cell centres, from the edge it is entered by to an
+ * arrowhead past the edge it leaves by.  Bends follow the tiles. */
+/* A slide's direction byte is not the WS_DIR convention: foe pathing leaves a
+ * direction-1 slide towards increasing V, and the Enemy Factory's slides
+ * carry the foes away from their spawners.  Each points opposite WS_DIR. */
+static const int SLIDE_DU[5] = { 0,  0, -1,  0, +1 };
+static const int SLIDE_DV[5] = { 0, +1,  0, -1,  0 };
+
+static void draw_slides(ImDrawList *dl, LevelMap *map, unsigned cols, unsigned rows,
+                        float cell, const std::function<ImVec2(float, float)> &centre)
+{
+    auto dirAt = [&](int u, int v) -> int {
+        if (u < 0 || v < 0 || u >= (int)cols || v >= (int)rows)
+            return 0;
+        const Tile *t = map->tile(u, v);
+        const int d = t->slideDir();
+        return t->objectMarker() == TILE_SLIDE && d >= WS_DIR_MIN && d <= WS_DIR_MAX ? d : 0;
+    };
+    std::vector<bool> fed(cols * rows), done(cols * rows);
+    for (unsigned u = 0; u < cols; u++)
+        for (unsigned v = 0; v < rows; v++)
+            if (const int d = dirAt(u, v)) {
+                const int nu = u + WS_DIR_DU[d], nv = v + WS_DIR_DV[d];
+                if (dirAt(nu, nv))
+                    fed[nv * cols + nu] = true;
+            }
+    const float width = cell * 0.3f;
+    // Starts first, then whatever is left (closed loops).
+    for (int pass = 0; pass < 2; pass++)
+        for (unsigned u0 = 0; u0 < cols; u0++)
+            for (unsigned v0 = 0; v0 < rows; v0++) {
+                if (!dirAt(u0, v0) || done[v0 * cols + u0] || (pass == 0 && fed[v0 * cols + u0]))
+                    continue;
+                std::vector<ImVec2> pts;
+                int u = u0, v = v0, d = dirAt(u, v);
+                const ImVec2 c0 = centre(u, v);
+                pts.push_back(ImVec2(c0.x - WS_DIR_DU[d] * cell * 0.45f, c0.y - WS_DIR_DV[d] * cell * 0.45f));
+                for (;;) {
+                    done[v * cols + u] = true;
+                    pts.push_back(centre(u, v));
+                    d = dirAt(u, v);
+                    const int nu = u + WS_DIR_DU[d], nv = v + WS_DIR_DV[d];
+                    if (!dirAt(nu, nv) || done[nv * cols + nu])
+                        break;
+                    u = nu;
+                    v = nv;
+                }
+                const ImVec2 last = pts.back();
+                const ImVec2 f(WS_DIR_DU[d] * cell, WS_DIR_DV[d] * cell), side(-f.y, f.x);
+                const ImVec2 base(last.x + f.x * 0.2f, last.y + f.y * 0.2f);
+                pts.push_back(base);
+                dl->AddPolyline(pts.data(), (int)pts.size(), SLIDE_COLOR, 0, width);
+                dl->AddTriangleFilled(ImVec2(last.x + f.x * 0.55f, last.y + f.y * 0.55f),
+                                      ImVec2(base.x + side.x * 0.3f, base.y + side.y * 0.3f),
+                                      ImVec2(base.x - side.x * 0.3f, base.y - side.y * 0.3f), SLIDE_COLOR);
+            }
 }
 
 static void entity_tooltip(const char *what, const WsEntity &e, bool foe)
@@ -541,14 +609,18 @@ static void draw_map()
             if (contents_name(c))
                 seenContents[c] = true;
             dl->AddRectFilled(corner(u, v), corner(u + 1, v + 1), floor_color(h, maxH));
-            draw_kind_mark(dl, t.kind, corner(u, v), corner(u + 1, v + 1));
+            if (t.kind != TILE_SLIDE)  // drawn as chains below
+                draw_kind_mark(dl, t.kind, corner(u, v), corner(u + 1, v + 1));
             if (contents_name(c))
                 dl->AddCircleFilled(centre(u, v), cell * 0.2f, contents_color(c));
         }
 
+    Game *game = Game::instance();
+    if (game)
+        draw_slides(dl, game->map(), o.cols, o.rows, cell, centre);
+
     // Bridges are objects, not tiles: the builder clears their cells.  The
     // whole span is outlined; the deck fills as far as it has extended.
-    Game *game = Game::instance();
     const unsigned nBridges = game ? game->bridgeCount() : 0;
     for (unsigned i = 0; i < nBridges; i++) {
         const BridgeExtent b = game->bridgeSlot(i)->extent();
@@ -645,6 +717,8 @@ static void draw_map()
             ImGui::Text("param %u (loaded %u)", t.param, t.spawn_b);
             const char *now = contents_name(t.contents), *was = contents_name(t.spawn);
             ImGui::Text("contents %s (loaded %s)", now ? now : "-", was ? was : "-");
+            if (t.kind == TILE_SLIDE && game)
+                ImGui::Text("slide direction %u", game->map()->tile(u, v)->slideDir());
             if (t.occupant)
                 ImGui::Text("occupied (%u)", t.occupant);
             if (t.spent)
