@@ -28,6 +28,18 @@
   },
   "recordings": [
     {
+      "name": "Playthrough-01",
+      "file": "Playthrough-01.rec",
+      "description": "Playthrough part 1: i did all of forrest but died a few times so loaded a bunch of saves",
+      "scenario": "start a new game play a few levels and exit once we complete forest and start castle",
+      "expect": {
+        "crash": "none",
+        "state": {}
+      },
+      "notes": "Captured 34659 frames. No end-state assertions yet \u2014 run `replaytest.py --bless Playthrough-01` once a replay is trusted.",
+      "playthrough": "Playthrough"
+    },
+    {
       "name": "bombstart-crash",
       "file": "bombstart-crash.rec",
       "level": "Forest\\BombStart",
