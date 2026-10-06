@@ -30,8 +30,8 @@
 #include "levelparse.h"
 #include "levelsetup.h"
 #include "liftobject.h"
-#include "slideobject.h"
-#include "breakabletile.h"
+#include "platformobject.h"
+#include "fallingtile.h"
 #include "bridgeobject.h"
 #include "foe.h"
 #include "bomb.h"
@@ -54,10 +54,10 @@ Game::Game(const char *gameName)
     // PRESERVED: only the first 256 of each 500-slot table.
     std::fill_n(bombSlots_, 0x100, nullptr);
     std::fill_n(foeSlots_, 0x100, nullptr);
-    breakableCount_ = 0;
+    fallingCount_ = 0;
     foeCount_       = 0;
     liftCount_      = 0;
-    slideCount_     = 0;
+    platformCount_     = 0;
     bombCount_      = 0;
     bridgeCount_    = 0;
     Sim_ResetLevelObjectCounters(this);
@@ -167,17 +167,17 @@ Game::~Game()
 {
     g_logger.logMessage(1, "GAME: starting destructor");
     LiftObject::purgeAll(this);
-    SlideObject::purgeAll(this);
-    BreakableTile::purgeAll(this);
+    PlatformObject::purgeAll(this);
+    FallingTile::purgeAll(this);
     BridgeObject::purgeAll(this);
     while (foeCount_ != 0)
         Foe::remove(this, foeIds_[0]);
     while (bombCount_ != 0)
         Bomb::remove(this, bombIds_[0]);
-    breakableCount_ = 0;
+    fallingCount_ = 0;
     foeCount_       = 0;
     liftCount_      = 0;
-    slideCount_     = 0;
+    platformCount_     = 0;
     bombCount_      = 0;
     switchMax_      = 0;
     config_.setCameraDistanceSetting(zoomDistance_);

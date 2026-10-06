@@ -1,6 +1,6 @@
 add_library(entities OBJECT
     bomb.cpp
-    breakabletile.cpp
+    fallingtile.cpp
     bridgeobject.cpp
     bridgesurf.cpp
     checkpoint.cpp
@@ -15,7 +15,7 @@ add_library(entities OBJECT
     movableentity.cpp
     objectremove.cpp
     player.cpp
-    slideobject.cpp
+    platformobject.cpp
     splinepath.cpp
     uvanimator.cpp)
 target_include_directories(entities PRIVATE

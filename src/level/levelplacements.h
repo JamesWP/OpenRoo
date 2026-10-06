@@ -1,5 +1,5 @@
 /* The level's placement lists: for each kind of cell the renderer draws
- * (lifts, slides, breakables, ramps...), where each one stands and how it is
+ * (lifts, platforms, falling tiles, ramps...), where each one stands and how it is
  * turned, plus the tile-top template and the wall strips at height steps.
  * Built on level entry, read by the frame renderer every frame.  Every list is
  * a count and one or two heap arrays, freed only by LevelPlacements::release.
@@ -56,7 +56,7 @@ public:
 
     void drawLifts(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
                    double now);
-    void drawSlides(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+    void drawPlatforms(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
                     double now);
 
     /* Every dword of the tile quad template zero but the diffuse, 0xffffffff.
@@ -69,16 +69,16 @@ public:
     const float           *exitRot() const      { return exitRot_; }
  
     const PlacementList   &lifts() const        { return lifts_; }
-    const PlacementList   &slides() const       { return slides_; }
-    const PlacementList   &breakables() const   { return breakables_; }
+    const PlacementList   &platforms() const       { return platforms_; }
+    const PlacementList   &falling() const   { return falling_; }
     const PlacementList   &jumpPads() const     { return jumpPads_; }
     const PlacementList   &teleporters() const  { return teleporters_; }
-    const PlacementList   &glue() const         { return glue_; }
+    const PlacementList   &sticky() const         { return sticky_; }
     const PlacementList   &switches() const     { return switches_; }
     const PlacementList   &ramps() const        { return ramps_; }
-    const PlacementList   &climbs() const       { return climbs_; }
-    const PlacementList   &conveyors() const    { return conveyors_; }
-    const PlacementList   &destructibles() const { return destructibles_; }
+    const PlacementList   &slides() const       { return slides_; }
+    const PlacementList   &ice() const    { return ice_; }
+    const PlacementList   &bombables() const { return bombables_; }
 
     int kind01Count() const { return kind01Count_; }
     PlacementVertex* kind01Verts() const { return kind01Verts_.get(); }
@@ -100,16 +100,16 @@ private:
     float           exitPos_[3];      // the TILE_EXIT cell; the last one wins
     float           exitRot_[3];      // always 0
     PlacementList   lifts_;           // TILE_LIFT; pos and rot all 0
-    PlacementList   slides_;  // count is the Game's slide count, not a cell count; rot zeroed
-    PlacementList   breakables_;      // TILE_BREAKABLE
+    PlacementList   platforms_;  // count is the Game's platform count, not a cell count; rot zeroed
+    PlacementList   falling_;      // TILE_FALLING
     PlacementList   jumpPads_;        // TILE_JUMP_PAD
     PlacementList   teleporters_;     // TILE_TELEPORTER
-    PlacementList   glue_;            // TILE_GLUE
+    PlacementList   sticky_;            // TILE_STICKY
     PlacementList   switches_;        // TILE_SWITCH
     PlacementList   ramps_;           // TILE_RAMP_1..4, yaw by kind
-    PlacementList   climbs_;          // TILE_CLIMB, yaw by climb direction
-    PlacementList   conveyors_;       // TILE_CONVEYOR
-    PlacementList   destructibles_;   // TILE_DESTRUCTIBLE
+    PlacementList   slides_;          // TILE_SLIDE, yaw by slide direction
+    PlacementList   ice_;       // TILE_ICE
+    PlacementList   bombables_;   // TILE_BOMBABLE
     int             wallStripCount_;  // strips, 6 vertices each
     std::unique_ptr<PlacementVertex[]> wallVerts_;    // the wall strips
     mutable VertexBuffer *kind01Vb_ = nullptr;  // made by the first draw, so const
@@ -124,9 +124,9 @@ class Game;
 class ThemeAssetBlock;
 
 
-/* Copies every live lift's (or slide's) position into its list, v negated to
+/* Copies every live lift's (or platform's) position into its list, v negated to
  * z, then draws the list with the theme's ELEVATOR (PLATFORM) records.  A
- * slide along u gets a quarter-turn yaw; slides animate with fmod(now * 0.002,
+ * platform along u gets a quarter-turn yaw; platforms animate with fmod(now * 0.002,
  * 1). */
 class ThemeAssetBlock;
 class RenderDevice;

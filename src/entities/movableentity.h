@@ -146,7 +146,7 @@ protected:
     // the clock value that window is measured from.
     double              stepGrace_;
     double              stepEnd_;
-    int                 conveyorDir_;  // Conveyor: the last direction sent.
+    int                 iceDir_;  // Ice: the last direction sent.
     float               fallSpeed_;    // Fall velocity; starts at -3.0.
     // Re-queued from here once kind 4 is released from a blocked step.
     unsigned char       queuedMove_;
@@ -195,21 +195,21 @@ protected:
     int                 gliding_;
     unsigned char       field_ee;
     int                 held_;
-    int                 climbing_;
+    int                 sliding_;
     unsigned char       teleportPhase_;  // 0 idle, 1 armed, 2 sent.
     double              teleportSince_;  // The clock the current teleport phase began.
     unsigned char       lastMoveDir_;  // The last direction actually moved (as opposed to a turn on the spot).
     unsigned char       fallStartH_;  // The height the current fall began at.
     double              fallStart_;   // The clock the current fall began.
     int                 field_11a;
-    unsigned char       slideSlot_;  // The slide being ridden, 0xff for none.
+    unsigned char       platformSlot_;  // The platform being ridden, 0xff for none.
     unsigned char       moveState_;
     int                 falling_;
     unsigned char       field_124;
     // pendingMove_'s turn relative to facing_: 1 forward, 2 and 4 the two
     // turns, 3 reverse, 0 when the move needs no turn at all.
     unsigned char       turnKind_;
-    double              field_126;  // The clock the glue pad caught this entity; zero while not stuck.
+    double              field_126;  // The clock the sticky pad caught this entity; zero while not stuck.
     int                 field_12e;
     double              animDuration_;  // ms the current animation phase lasts.
     FoePath            *pathfinder_;  // Foe: its FoePath.

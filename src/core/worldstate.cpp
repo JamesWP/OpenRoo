@@ -199,17 +199,17 @@ bool Observation::wsPassableImpl(int fu, int fv,
     // The occupant byte is set by an entity arriving (its kind) and cleared
     // when it leaves; it is not used for scenery.  PRESERVED: it leaks.  A foe
     // removed on death is not cleared from its tile, so the byte stays set for
-    // the rest of the level (and a breakable tile re-arms on it).  A cell is
+    // the rest of the level (and a falling tile re-arms on it).  A cell is
     // therefore treated as occupied only if a foe or bomb is actually reported
     // there.
     if (to->occupant != 0 && !ignore_foes && foeOnCell(tu, tv))
         return false;
     if (to->kind == TILE_IMPASSABLE)   return false;
-    if (to->kind == TILE_DESTRUCTIBLE && to->spent == 0) return false;
+    if (to->kind == TILE_BOMBABLE && to->spent == 0) return false;
 
-    // An unspent glue pad holds whoever stands on it, which with foes about is
+    // An unspent sticky pad holds whoever stands on it, which with foes about is
     // how the player gets caught.  A spent pad is safe.
-    if (to->kind == WS_TILE_GLUE && to->spent == 0) return false;
+    if (to->kind == WS_TILE_STICKY && to->spent == 0) return false;
 
     // A climb is allowed only when the tile being left is a ramp facing the
     // direction of travel, or facing directly away; it is the source tile that

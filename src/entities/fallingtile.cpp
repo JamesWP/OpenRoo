@@ -1,6 +1,6 @@
-/* BreakableTile: spawn, tick and purge.
+/* FallingTile: spawn, tick and purge.
  *
- * The tick is a three-state machine on the tile under the breakable:
+ * The tick is a three-state machine on the tile under the falling tile:
  *   ARM      someone on the tile, not armed, tile not busy -> armedAt = now
  *   FALL     armed and now - armedAt >= 1500 ms -> the cell becomes void,
  *            busy, and respawnPending unless noRespawn
@@ -9,7 +9,7 @@
  * later.
  *
  * PRESERVED: Foe::remove never clears a tile's occupant byte, so a foe that
- * dies on a breakable leaves it set; when the tile respawns the stale occupant
+ * dies on a falling tile leaves it set; when the tile respawns the stale occupant
  * re-arms it and it drops again 1.5 s later.  tests/destr-bait.rec waits out
  * that second fall.
  *
@@ -25,7 +25,7 @@
 #include <new>
 #include <string.h>
 
-#include "breakabletile.h"
+#include "fallingtile.h"
 #include "game.h"
 #include "tile.h"
 #include "soundmanager.h"
@@ -59,16 +59,16 @@ static void fx_init(void)
     if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
         if (strcasecmp(buf, "slowfall") == 0) {
             s_fx_slowfall = 1;
-            g_logger.write("breakabletile: KAROO_SIM_FX=slowfall -- fall delay "
+            g_logger.write("fallingtile: KAROO_SIM_FX=slowfall -- fall delay "
                       "%.0f ms, not %.0f\n",
                       FALL_DELAY_MS * 3.0, FALL_DELAY_MS);
         } else if (strcmp(buf, "placeaxis") == 0) {
             s_fx_placeaxis = 1;
-            g_logger.write("breakabletile: KAROO_SIM_FX=placeaxis -- u and v are "
+            g_logger.write("fallingtile: KAROO_SIM_FX=placeaxis -- u and v are "
                       "exchanged at the single point the spawn reads them\n");
         } else if (strcmp(buf, "keepobjects") == 0) {
             s_fx_keepobjects = 1;
-            g_logger.write("breakabletile: KAROO_SIM_FX=keepobjects -- breakable "
+            g_logger.write("fallingtile: KAROO_SIM_FX=keepobjects -- falling tile "
                       "purge does nothing\n");
         }
     }
@@ -79,12 +79,12 @@ static void fx_init(void)
         s_diag_reset = 1;
 }
 
-BreakableTile *BreakableTile::create()
+FallingTile *FallingTile::create()
 {
-    return new (std::nothrow) BreakableTile;
+    return new (std::nothrow) FallingTile;
 }
 
-BreakableTile::BreakableTile()
+FallingTile::FallingTile()
 {
     posU_ = 0.0f;
     posY_ = 0.0f;
@@ -97,7 +97,7 @@ BreakableTile::BreakableTile()
     justRespawned_  = 0;
 }
 
-BreakableTile::~BreakableTile()
+FallingTile::~FallingTile()
 {
 }
 
@@ -105,18 +105,18 @@ static unsigned s_spawns       = 0;
 static int      s_logged_spawn = 0;
 static int      s_logged_oom   = 0;
 
-unsigned int BreakableTile::spawn(Game *game, unsigned int uArg,
+unsigned int FallingTile::spawn(Game *game, unsigned int uArg,
                                   unsigned int vArg, unsigned int heightArg,
                                   unsigned int paramArg)
 {
     unsigned int u, v, height, idx;
     unsigned char n;
-    BreakableTile *obj;
+    FallingTile *obj;
 
     fx_init();
     s_spawns++;
     if (s_diag_place && (s_spawns % 500) == 0)
-        g_logger.write("breakabletile: %u spawns\n", s_spawns);
+        g_logger.write("fallingtile: %u spawns\n", s_spawns);
 
     u = uArg & 0xff;
     v = vArg & 0xff;
@@ -132,16 +132,16 @@ unsigned int BreakableTile::spawn(Game *game, unsigned int uArg,
     obj = create();
     if (obj == 0 && s_diag_place && !s_logged_oom) {
         s_logged_oom = 1;
-        g_logger.write("breakabletile: ALLOCATION FAILED in spawn -- the original "
+        g_logger.write("fallingtile: ALLOCATION FAILED in spawn -- the original "
                   "would store through the slot, which now holds NULL\n");
     }
 
-    n = game->breakableCount();
-    game->setBreakableSlot(n, obj);
+    n = game->fallingCount();
+    game->setFallingSlot(n, obj);
 
     if (s_diag_place && !s_logged_spawn) {
         s_logged_spawn = 1;
-        g_logger.write("breakabletile: first breakable spawn -- slot=%u u=%u v=%u "
+        g_logger.write("fallingtile: first falling tile spawn -- slot=%u u=%u v=%u "
                   "height=%u p4=%u obj=%p\n",
                   (unsigned)n, u, v, height, paramArg & 0xff, (void *)obj);
     }
@@ -164,13 +164,13 @@ unsigned int BreakableTile::spawn(Game *game, unsigned int uArg,
     //     // PRESERVED: cellV_ is written a second time, with the same value.
     obj->cellV_ = (signed char)v;
 
-    //     // The TILE_BREAKABLE marker is read back by SetupLevelObjects when it
+    //     // The TILE_FALLING marker is read back by SetupLevelObjects when it
     //     // places further objects, which is why placeaxis also fails
     //     // levelreport.py.
     idx = v + u * 100;
-    game->map()->tile( (int)u, (int)v)->setObjectMarker(TILE_BREAKABLE);
+    game->map()->tile( (int)u, (int)v)->setObjectMarker(TILE_FALLING);
 
-    game->setBreakableCount((unsigned char)(n + 1));
+    game->setFallingCount((unsigned char)(n + 1));
 
     return idx & 0xffffff00;
 }
@@ -185,12 +185,12 @@ static void release_sound(Game *game, audiodev::Buffer *h)
         return;
     if (s_diag_reset && !s_logged_release) {
         s_logged_release = 1;
-        g_logger.write("breakabletile: first sound release -- h=%p\n", (void *)h);
+        g_logger.write("fallingtile: first sound release -- h=%p\n", (void *)h);
     }
     game->soundManager()->releaseStaticForOwner(h, 1);
 }
 
-void BreakableTile::purgeAll(Game *game)
+void FallingTile::purgeAll(Game *game)
 {
     unsigned char i;
 
@@ -201,37 +201,37 @@ void BreakableTile::purgeAll(Game *game)
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
-        g_logger.write("breakabletile: first purge -- count=%u\n",
-                  (unsigned)game->breakableCount());
+        g_logger.write("fallingtile: first purge -- count=%u\n",
+                  (unsigned)game->fallingCount());
     }
 
     i = 0;
-    if (game->breakableCount() != 0) {
+    if (game->fallingCount() != 0) {
         if (s_diag_reset)
-            g_logger.write("breakabletile: LIVE purge #%u -- count=%u\n",
-                      ++s_live_purges, (unsigned)game->breakableCount());
+            g_logger.write("fallingtile: LIVE purge #%u -- count=%u\n",
+                      ++s_live_purges, (unsigned)game->fallingCount());
         do {
             //             // The two releases are siblings: a null fall sound does not skip
             //             // the respawn sound.
             if (game->soundCreated() != 0) {
-                release_sound(game, game->breakableSlot(i)->fallSound_);
-                release_sound(game, game->breakableSlot(i)->respawnSound_);
+                release_sound(game, game->fallingSlot(i)->fallSound_);
+                release_sound(game, game->fallingSlot(i)->respawnSound_);
             }
-            BreakableTile *obj = game->breakableSlot(i);
+            FallingTile *obj = game->fallingSlot(i);
             if (obj != 0)
                 delete obj;
             i++;
-        } while (i < game->breakableCount());
+        } while (i < game->fallingCount());
     }
-    game->setBreakableCount(0);
+    game->setFallingCount(0);
 }
 
-Tile *BreakableTile::tile() const
+Tile *FallingTile::tile() const
 {
     return map_->tile( (int)cellU_, (int)cellV_);
 }
 
-void BreakableTile::playAtTile(audiodev::Buffer *snd, const Tile *t) const
+void FallingTile::playAtTile(audiodev::Buffer *snd, const Tile *t) const
 {
     snd->setPosition((float)(int)cellU_,
                           (float)t->height(),
@@ -240,7 +240,7 @@ void BreakableTile::playAtTile(audiodev::Buffer *snd, const Tile *t) const
     snd->play(false);
 }
 
-void BreakableTile::tick()
+void FallingTile::tick()
 {
     fx_init();
     const double fallDelay = s_fx_slowfall ? FALL_DELAY_MS * 3.0 : FALL_DELAY_MS;
@@ -290,7 +290,7 @@ void BreakableTile::tick()
             if (respawnSound_ != 0)
                 playAtTile(respawnSound_, t);
 
-            t->setObjectMarker(TILE_BREAKABLE);
+            t->setObjectMarker(TILE_FALLING);
             armed_          = 0;
             respawnPending_ = 0;
             t->setBusy(0);

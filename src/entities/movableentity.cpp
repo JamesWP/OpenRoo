@@ -41,8 +41,8 @@ void MovableEntity::zeroSoundSlots()
 
 /* MovableEntity::updateMovement(): the movement integrator every entity
  * (player, foe or bomb) ticks through -- grid stepping, falling, gliding,
- * riding lifts and slides, and the tile-triggered special cases (glue,
- * teleporter, conveyor, jump pad, climb).
+ * riding lifts and platforms, and the tile-triggered special cases (sticky,
+ * teleporter, ice, jump pad, slide).
  *
  * DETERMINISM: replays depend on the floating-point expressions below being
  * evaluated exactly as written; do not reassociate the fall- or glide-height
@@ -78,7 +78,7 @@ static const float  K_FALL_ACCEL   = 5.405f;
 static const float  K_GLIDE_RATE   = 0.004f;
 static const float  K_SNAP_EPS     = 0.15f;
 static const double K_LINK_EPS     = 0.25;
-static const double K_GLUE_MS      = 3000.0;
+static const double K_STICKY_MS      = 3000.0;
 static const double K_HALF_SEC_MS  = 500.0;
 static const double K_IDLE_MS      = 5000.0;
 static const float  K_GLIDE_DROP   = 2.0f;
@@ -164,7 +164,7 @@ unsigned int MovableEntity::updateMovement()
     if (moveDir_ == 0 && ((signed char)moveState_) == 0)
         anim_ = 0;
 
-    if (idleStarted_ == 0 && climbing_ == 0)
+    if (idleStarted_ == 0 && sliding_ == 0)
         copy8(&animDuration_, &stepDuration_);  // move duration <- default
 
     // The two early outs. Both return 1.
@@ -219,7 +219,7 @@ unsigned int MovableEntity::updateMovement()
                     posU_ = (float)(int)GU;
                     posV_ = (float)(int)GV;
                 }
-                if (climbing_ != 0)
+                if (sliding_ != 0)
                     posY_ = (float)(int)GH;
                 field_d8 = field_d8 + 1;
                 lastMoveDir_ = (unsigned char)moveDir_;
@@ -284,9 +284,9 @@ unsigned int MovableEntity::updateMovement()
 
         t = CUR;
         if ((unsigned)(int)GH == (unsigned)t->height()) {
-            // PRESERVED: the glue pad freezes foes as well as the player --
+            // PRESERVED: the sticky pad freezes foes as well as the player --
             // there is no kind check gating it to the player alone.
-            if ((signed char)t->objectMarker() == TILE_GLUE && t->busy() == 0) {
+            if ((signed char)t->objectMarker() == TILE_STICKY && t->busy() == 0) {
                 if (field_126 == K_ZERO) {
                     copy8(&field_126, &now_);
                     if (field_156 != 0)
@@ -294,7 +294,7 @@ unsigned int MovableEntity::updateMovement()
                                -(float)(int)GV, 0);
                     anim_ = 9;
                 }
-                if (now_ - field_126 <= K_GLUE_MS) {
+                if (now_ - field_126 <= K_STICKY_MS) {
                     pendingMove_ = 0;  // stuck: drop the queued move
                 } else {
                     field_126 = 0.0;
@@ -304,20 +304,20 @@ unsigned int MovableEntity::updateMovement()
                 field_126 = 0.0;
             }
 
-            // Climb tile.
+            // Slide tile.
             Tile *c = CUR;
-            if ((signed char)c->objectMarker() == TILE_CLIMB) {
-                unsigned char dir = c->climbDir();
-                if (climbing_ == 0)
+            if ((signed char)c->objectMarker() == TILE_SLIDE) {
+                unsigned char dir = c->slideDir();
+                if (sliding_ == 0)
                     snd_at(sound_af_, (float)(int)GU, (float)(int)GH,
                            -(float)(int)GV, 1);
                 facing_  = dir;
-                climbing_ = 1;
+                sliding_ = 1;
                 pendingMove_ = dir;
                 animDuration_ = 150.0;  // ms, stored as a double
             } else {
                 copy8(&animDuration_, &stepDuration_);
-                climbing_ = 0;
+                sliding_ = 0;
                 if (sound_af_ != 0)
                     sound_af_->stop();
             }
@@ -361,49 +361,49 @@ unsigned int MovableEntity::updateMovement()
             }
 
             // Attach to a moving platform.
-            if (((signed char)slideSlot_) == -1) {
+            if (((signed char)platformSlot_) == -1) {
                 LevelMap *base = map_;
                 Tile *here = CUR;
-                if ((signed char)here->objectMarker() == TILE_SLIDE_TRACK) {
-                    unsigned pu = here->slideOriginU();
-                    unsigned pv = here->slideOriginV();
+                if ((signed char)here->objectMarker() == TILE_PLATFORM_TRACK) {
+                    unsigned pu = here->platformOriginU();
+                    unsigned pv = here->platformOriginV();
                     Tile *p = base->tile( pu, pv);
-                    if (fabsf((p->slidePosU() + (float)K_HALF_D) -
+                    if (fabsf((p->platformPosU() + (float)K_HALF_D) -
                               (posU_ + K_HALF_F)) <= (float)K_LINK_EPS &&
-                        fabsf((p->slidePosV() + (float)K_HALF_D) -
+                        fabsf((p->platformPosV() + (float)K_HALF_D) -
                               (posV_ + K_HALF_F)) <= (float)K_LINK_EPS &&
                         (float)here->height() <= posY_) {
-                        slideSlot_ = here->slideSlot();
+                        platformSlot_ = here->platformSlot();
                     }
                 }
             }
 
-            // Conveyor tile.
-            if ((signed char)CUR->objectMarker() == TILE_CONVEYOR) {
-                if (conveyorDir_ == 0) {
+            // Ice tile.
+            if ((signed char)CUR->objectMarker() == TILE_ICE) {
+                if (iceDir_ == 0) {
                     pendingMove_ = lastMoveDir_;
                     turnKind_ = 0;
                     snd_at(sound_ab_, (float)(int)GU, (float)(int)GH,
                            -(float)(int)GV, 1);
                 } else {
-                    unsigned char d = (unsigned char)conveyorDir_;
+                    unsigned char d = (unsigned char)iceDir_;
                     pendingMove_ = d;
                     lastMoveDir_ = d;
                     turnKind_ = 0;
                 }
                 anim_ = 3;
-                conveyorDir_ = (unsigned)lastMoveDir_;
+                iceDir_ = (unsigned)lastMoveDir_;
             } else {
-                conveyorDir_ = 0;
+                iceDir_ = 0;
             }
         }
 
         Tile *t2 = CUR;
-        if ((signed char)t2->objectMarker() != TILE_CONVEYOR ||
+        if ((signed char)t2->objectMarker() != TILE_ICE ||
             (unsigned)t2->height() != (unsigned)(int)GH) {
             if (sound_ab_ != 0)
                 sound_ab_->stop();
-            conveyorDir_ = 0;
+            iceDir_ = 0;
         }
     }
 
@@ -419,17 +419,17 @@ unsigned int MovableEntity::updateMovement()
     }
 
     // Riding a platform.
-    if (((signed char)slideSlot_) != -1 && ((signed char)moveState_) == 0) {
+    if (((signed char)platformSlot_) != -1 && ((signed char)moveState_) == 0) {
         LevelMap *base = map_;
         Tile *here = CUR;
-        unsigned pu = here->slideOriginU();
-        unsigned pv = here->slideOriginV();
+        unsigned pu = here->platformOriginU();
+        unsigned pv = here->platformOriginV();
         Tile *p = base->tile( pu, pv);
-        cellU_ = p->slideCellU();
-        cellV_ = p->slideCellV();
-        posU_  = p->slidePosU();
-        posY_  = p->slidePosY();
-        posV_  = p->slidePosV();
+        cellU_ = p->platformCellU();
+        cellV_ = p->platformCellV();
+        posU_  = p->platformPosU();
+        posY_  = p->platformPosY();
+        posV_  = p->platformPosV();
         if (((signed char)kind_) != 9)
             CUR->setOccupant(((signed char)kind_));
         if (facing_or_reverse((unsigned)pendingMove_, facing_)) {
@@ -437,7 +437,7 @@ unsigned int MovableEntity::updateMovement()
                 K_SNAP_EPS < posV_ - (float)(int)GV)
                 pendingMove_ = 0;
             else
-                slideSlot_ = 0xff;
+                platformSlot_ = 0xff;
         }
     }
 
@@ -475,7 +475,7 @@ unsigned int MovableEntity::updateMovement()
                 // entirely, so a bomb landing leaves the tile's occupant byte
                 // stale rather than clearing or setting it.
                 if (((signed char)kind_) != 9) {
-                    climbing_ = 0;
+                    sliding_ = 0;
                     if ((signed char)CUR->occupant() != 0)
                         dying_ = 1;  // landed on someone
                     CUR->setOccupant(kind_);
@@ -522,7 +522,7 @@ unsigned int MovableEntity::updateMovement()
             if (falling_ == 0) {
                 // not falling yet: start the fall
                 copy8(&animDuration_, &stepDuration_);
-                climbing_ = 0;
+                sliding_ = 0;
                 if (sound_af_ != 0)
                     sound_af_->stop();
                 if (onLift_ == 0) {
@@ -661,7 +661,7 @@ unsigned int MovableEntity::updateMovement()
             pendingMove_ = 0;
             stepU_ = 0;
             stepV_ = 0;
-            if (climbing_ != 0)
+            if (sliding_ != 0)
                 field_141 = 0xff;
             if (moveDir_ > 0x14)
                 moveDir_ = moveDir_ - 0x14;  // PRESERVED: subtraction, not a modulo; relies on moveDir_ staying under 0x28
@@ -783,7 +783,7 @@ unsigned int MovableEntity::updateMovement()
                 }
             }
 
-            if (climbing_ != 0 && k_dest != 0x10)
+            if (sliding_ != 0 && k_dest != 0x10)
                 anim_ = 0x14;
 
             if (moveDir_ != 0) {
@@ -794,7 +794,7 @@ unsigned int MovableEntity::updateMovement()
                 else
                     copy8(&animStart_, &stepEnd_);
 
-                if (((signed char)slideSlot_) == -1) {
+                if (((signed char)platformSlot_) == -1) {
                     if ((unsigned)lastMoveDir_ != ((unsigned)moveDir_)) {
                         posU_ = (float)(int)GU;
                         posV_ = (float)(int)GV;
@@ -832,7 +832,7 @@ unsigned int MovableEntity::updateMovement()
     // Height curves for the animation states.
     onStairOrSlide_ = 0;
     if (((unsigned)moveDir_) == 0) {
-        if (stepGrace_ <= now_ - stepEnd_ && ((signed char)slideSlot_) == -1) {
+        if (stepGrace_ <= now_ - stepEnd_ && ((signed char)platformSlot_) == -1) {
             posU_ = (float)(int)GU;
             posV_ = (float)(int)GV;
         }
@@ -887,7 +887,7 @@ unsigned int MovableEntity::updateMovement()
         case 3: posU_ = (float)((double)(GU + 1) - frac); break;
         default: break;
         }
-        if (climbing_ != 0)  // climbing: interpolate height instead
+        if (sliding_ != 0)  // sliding: interpolate height instead
             posY_ = (float)((double)(GH + 1) - frac);
     }
 

@@ -499,7 +499,7 @@ Player::Player()
     facing_        = 1;
     moveDir_       = 0;
     teleportPhase_ = 0;
-    climbing_      = 0;
+    sliding_      = 0;
     falling_       = 0;
     moveState_     = 0;
     zeroSoundSlots();

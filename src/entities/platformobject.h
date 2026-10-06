@@ -1,5 +1,5 @@
-/* SlideObject: a block that slides along its track and back.  Every function
- * that touches a SlideObject field is in slideobject.cpp; the fields are
+/* PlatformObject: a block that slides along its track and back.  Every function
+ * that touches a PlatformObject field is in platformobject.cpp; the fields are
  * private.  The renderer reads the position and the kind. */
 
 #pragma once
@@ -9,21 +9,21 @@
 
 namespace audiodev { class Buffer; }
 
-class SlideObject {
+class PlatformObject {
 public:
      
 
-    // Spawns a slide; the arguments are masked to bytes.
+    // Spawns a platform; the arguments are masked to bytes.
     static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
                       unsigned int heightArg, unsigned int kindArg);
 
-    // Destroys every slide and zeroes the count.
+    // Destroys every platform and zeroes the count.
     static void purgeAll(Game *game);
 
     // One tick.
     void tick();
 
-    // Where it is drawn (LevelPlacements::drawSlides), and its axis: kind 0x0a
+    // Where it is drawn (LevelPlacements::drawPlatforms), and its axis: kind 0x0a
     // runs along U, any other along V.
     float posU() const          { return posU_; }
     float posY() const          { return posY_; }
@@ -37,13 +37,13 @@ public:
 private:
 
     // Allocates and constructs one; NULL if the allocation fails.
-    static SlideObject *create();
-    SlideObject();
-    virtual ~SlideObject();
-    SlideObject(const SlideObject &) = delete;
-    SlideObject &operator=(const SlideObject &) = delete;
+    static PlatformObject *create();
+    PlatformObject();
+    virtual ~PlatformObject();
+    PlatformObject(const PlatformObject &) = delete;
+    PlatformObject &operator=(const PlatformObject &) = delete;
 
-    // Releases the tile the slide just left.
+    // Releases the tile the platform just left.
     void vacate();
 
     double              now_;           // latched from *clock_

@@ -6,7 +6,7 @@
  *   and draws them), positions[count], rotations[count], count, the theme
  *   slot, the Direct3D, now (a double), the animation time (a float), the
  *   animation code, and the frame's elapsed ms (unsigned).
- * Callers: RenderGameFrame's object passes, the lift and slide wrappers. */
+ * Callers: RenderGameFrame's object passes, the lift and platform wrappers. */
 #pragma once
 #include <stdint.h>
 #include "d3dmath.h"

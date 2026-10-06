@@ -1,7 +1,7 @@
 /* Everything is gated on the sound device being up.  The world's sound variant
  * is 0, 2 for Space and 1 for Candy; PRESERVED: Egypt is set to 0 a second
  * time, redundantly.  The player's two voice pools and eleven effect buffers
- * are reloaded, then every foe, breakable, lift, slide and bridge gets its
+ * are reloaded, then every foe, falling tile, lift, platform and bridge gets its
  * sounds, and on a first attempt at a level with 3D sound each extra sound
  * object (.leo) starts looping at its position.  Every load passes a stack
  * copy of the name.  Returns 0 in the low byte.
@@ -19,9 +19,9 @@
 #include "player.h"
 #include "soundobj.h"
 #include "liftobject.h"
-#include "slideobject.h"
+#include "platformobject.h"
 #include "bridgeobject.h"
-#include "breakabletile.h"
+#include "fallingtile.h"
 #include "gamestr.h"
 #include "gameglobals.h"
 
@@ -119,19 +119,19 @@ Sim_InitLevelBasedSounds(Game *self)
         for (unsigned short i = 0; i < game->foeCount(); ++i)
             Sim_AcquireObjectSoundBuffersForIndex(game, game->foeId(i));
 
-        for (unsigned short i = 0; i < game->breakableCount(); ++i) {
+        for (unsigned short i = 0; i < game->fallingCount(); ++i) {
             if (game->soundAsset4310a()->enabled != 0) {
                 audiodev::Buffer *p = acq(game, game->soundAsset4310a());
-                game->breakableSlot(i)->setFallSound(p);
+                game->fallingSlot(i)->setFallSound(p);
             }
             if (game->soundAsset43216()->enabled != 0) {
                 audiodev::Buffer *p = acq(game, game->soundAsset43216());
-                game->breakableSlot(i)->setRespawnSound(p);
+                game->fallingSlot(i)->setRespawnSound(p);
             }
         }
         attachLoopSound(game, &Game::liftCount,   &Game::liftSlot,
                         game->soundAsset42bce());
-        attachLoopSound(game, &Game::slideCount,  &Game::slideSlot,
+        attachLoopSound(game, &Game::platformCount,  &Game::platformSlot,
                         game->soundAsset42cda());
         attachLoopSound(game, &Game::bridgeCount, &Game::bridgeSlot,
                         game->soundAsset42ffe());
