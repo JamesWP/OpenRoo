@@ -318,7 +318,10 @@ bool debugUiInit()
     if (!ImGui_ImplSDL3_InitForOther(g_sdlWindow))
         return false;
     g_debugUi = true;
-    g_debugUiShown = false;
+    // KAROO_DEBUGUI_SHOWN=1 starts with the overlay up (for screenshots and
+    // headless profiling, where nobody can press F10).
+    const char *shown = SDL_getenv("KAROO_DEBUGUI_SHOWN");
+    g_debugUiShown = shown && *shown && strcmp(shown, "0") != 0;
     return true;
 }
 
