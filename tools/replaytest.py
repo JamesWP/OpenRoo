@@ -77,10 +77,13 @@ def entry_defaults(m, e):
     return d
 
 
-def select(m, names):
+def select(m, names, everything=False):
+    """The recordings to run.  With no names that is the suite, which leaves
+    out the playthroughs (hours of play, minutes to replay): those run only
+    when named, or with --all."""
     recs = m["recordings"]
     if not names:
-        return recs
+        return recs if everything else [r for r in recs if not r.get("playthrough")]
     by_name = {r["name"]: r for r in recs}
     out = []
     for n in names:
@@ -620,7 +623,8 @@ def cmd_list(m):
     print("%d recording(s) in %s\n" % (len(m["recordings"]), os.path.relpath(MANIFEST, REPO)))
     for r in m["recordings"]:
         exp = r.get("expect", {})
-        print("%-22s %s" % (r["name"], r.get("level", "?")))
+        print("%-22s %s%s" % (r["name"], r.get("level", "?"),
+                             "  [playthrough: runs only when named]" if r.get("playthrough") else ""))
         print("  %s" % r.get("description", "").strip())
         print("  expect crash=%s, %d asserted field(s)"
               % (exp.get("crash", "none"),
@@ -667,6 +671,9 @@ def main():
         description=__doc__ + CAPTURE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("names", nargs="*", help="recordings to run (default: all)")
+    ap.add_argument("--all", action="store_true",
+                    help="with no names, run the playthrough recordings too "
+                         "(by default they run only when named)")
     ap.add_argument("--list", action="store_true",
                     help="show the catalogue and exit")
     ap.add_argument("--fast", dest="fast", action="store_true", default=True,
@@ -697,7 +704,7 @@ def main():
         cmd_list(m)
         return 0
 
-    entries = select(m, args.names)
+    entries = select(m, args.names, args.all)
     build_once()
     if args.bless and len(entries) != 1:
         sys.exit("--bless takes exactly one recording name")
