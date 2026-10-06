@@ -8,6 +8,7 @@ way; this file is the operating manual.
 python3 tools/replaytest.py              # run every catalogued recording
 python3 tools/replaytest.py --list       # what is catalogued, and why
 python3 tools/replaytest.py NAME         # run one
+python3 tools/replaytest.py --all        # the suite plus the playthroughs
 python3 tools/replaytest.py --no-fast    # render every frame for real
 ```
 
