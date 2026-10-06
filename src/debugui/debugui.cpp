@@ -3,7 +3,6 @@
 #include "image.h"
 #include "cheatcode.h"
 #include "game.h"
-#include "gamestate.h"
 #include "prof.h"
 #include "renderdevice.h"
 #include "windev.h"
@@ -179,8 +178,6 @@ static void draw_overview(RenderDevice &dev)
     ImGui::Text("level %u/%u: %s", g->levelIndex() + 1, g->levelCount(), g->levelName());
     draw_level_picker(g);
 
-    if (gamestate_mode() == 0)
-        return;
     const Observation &obs = g_obs;
     if (g_obsValid) {
         ImGui::Text("gems %d / %d   lives %u   foes killed %u", obs.gems_collected,
@@ -389,7 +386,7 @@ static void draw_map()
     }
     const Observation &o = g_obs;
     if (!g_obsValid) {
-        ImGui::TextDisabled("not in a level");
+        ImGui::TextDisabled("no level loaded");
         ImGui::End();
         return;
     }
@@ -482,7 +479,9 @@ static void draw_map()
 
 static void draw_panels(RenderDevice &dev)
 {
-    g_obsValid = gamestate_mode() != 0 && g_obs.observe();
+    // Not gated on the game mode, which is 0 while paused: observe() itself
+    // refuses when no level grid is loaded.
+    g_obsValid = g_obs.observe();
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(520, ImGui::GetIO().DisplaySize.y - 20), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Open'Roo")) {
