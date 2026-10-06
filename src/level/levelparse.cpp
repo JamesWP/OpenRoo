@@ -117,7 +117,7 @@ static int inline_strcmp(const unsigned char *a, const unsigned char *b)
   unsigned int  
 Sim_ParseLevelFiles(Game *self, const char *name)
 {
-    char path[256];  // PRESERVED: 256 bytes, unbounded
+    char path[512];  // g_gameDir plus a 255-char level name
     char prev[256];  // the map name before the read
     int ok;
 
@@ -193,7 +193,7 @@ Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
   unsigned int  
 Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 {
-    char path[256];  // PRESERVED: 256 bytes, unbounded
+    char path[512];  // g_gameDir plus a 255-char level name
     char prev[256];  // the map name before the read
     int ok;
 

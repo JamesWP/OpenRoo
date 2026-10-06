@@ -87,7 +87,8 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
                 // RotX(angle) with the translation row copied in: the
                 // rotation's last row is (0,0,0,1) and the translation's 3x3
                 // is identity, so the product is exact.
-                float m[16];
+                Mat4 mat;
+                float *m = mat.m;
                 for (int k = 0; k < 16; k++)
                     m[k] = 0.0f;
                 m[0] = 1.0f;
@@ -102,7 +103,7 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
                 m[14] = pl->exitPos()[2];
                 m[15] = 1.0f;
 
-                d3d->SetWorld(*(const Mat4 *)m);
+                d3d->SetWorld(mat);
                 mesh->drawMeshBuffer(d3d, 0);
 
                 static std::atomic<long> logged = 0;

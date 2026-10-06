@@ -161,7 +161,7 @@ static void rso(const void *pos, const void *rot, unsigned count, ThemeObjectTyp
                 double now, float animTime = 0.0f, unsigned animCode = 0,
                 unsigned dtMs = 0)
 {
-    Scene_RenderSceneObjects(Game::instance(), (SceneQuadVertex *)&g_levelPlacements,
+    Scene_RenderSceneObjects(Game::instance(), g_levelPlacements.tileQuad(),
                              (const Vec3 *)pos, (const Vec3 *)rot, count, slot(t),
                              g_renderDevice, now, animTime, animCode, dtMs);
 }
@@ -386,8 +386,9 @@ static void shadow(const void *pos, const void *rot, ThemeObjectType t, double n
 static void effects_and_shadows(Game *g, double now, double dt)
 {
     RenderDevice *d3d = g_renderDevice;
-    Scene_DrawSceneObjects(d3d, g_camera.eye(),
-                           ((uint32_t *)&dt)[0], ((uint32_t *)&dt)[1], now);
+    uint32_t dtBits[2];
+    memcpy(dtBits, &dt, sizeof dt);
+    Scene_DrawSceneObjects(d3d, g_camera.eye(), dtBits[0], dtBits[1], now);
     set_stencil_enable(false);
     BridgeSurf_Draw(g, &g_themeBlock, d3d, now);
 

@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <memory>
+#include "sceneobjects.h"   // SceneQuadVertex: the tile-top quad
  
 
 class Game;
@@ -65,6 +66,7 @@ public:
 
  
  
+    SceneQuadVertex       *tileQuad()           { return tileQuad_; }
     const float           *exitPos() const      { return exitPos_; }
     const float           *exitRot() const      { return exitRot_; }
  
@@ -94,7 +96,7 @@ public:
 private:
     void buildWalls(const Game *g, float depth);
 
-    PlacementVertex tileQuad_[4];     // unit quad at y 0, +-0.5
+    SceneQuadVertex tileQuad_[4];     // unit quad at y 0, +-0.5
     int             kind01Count_;     // TILE_KIND_01 cells
     std::unique_ptr<PlacementVertex[]> kind01Verts_;  // 6 per cell, two triangles
     float           exitPos_[3];      // the TILE_EXIT cell; the last one wins

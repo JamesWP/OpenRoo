@@ -66,7 +66,7 @@ static void column_values(Game *g, unsigned out[22])
   void  
 Report_WriteLevelReport(Game *self, const char *pathname)
 {
-    char buf[256];
+    char buf[512];
     unsigned idx;
 
     std::ofstream sink(sysdev::nativePath(GS_RPT_SCRIPTTEXTS));  // PRESERVED: not checked
@@ -184,7 +184,7 @@ Report_WriteLevelReport(Game *self, const char *pathname)
         }
 
         {
-            char scriptPath[256];
+            char scriptPath[512];
             snprintf(scriptPath, sizeof(scriptPath), GS_OPEN_FMT_SCRIPTS, g_gameDir,
                     self->levelNameBuffer());
 

@@ -21,6 +21,7 @@
  * - Objects whose type is neither 0 nor 2, and type-0 objects with a NULL
  *    mesh, still run the whole render-state prologue before being skipped. */
 
+#include <string.h>
 #include "inputdev.h"
 #include <stdint.h>
 #include "dsoscene.h"
@@ -116,7 +117,7 @@ static uint32_t animation_frame(const SceneObject *o, double t)
         return 0;
     // LookupAnimDescriptor(anim, 0x14) returns the table's first slot, so no
     // lookup is needed, and it can never be NULL.
-    const AnimSlot *slot = (const AnimSlot *)&o->anim;
+    const AnimSlot *slot = o->anim.lookup(0x14);
     if (slot->numFrames() == 0)
         return 0;
     // The same frame as AnimSlot::frameOnClock, written as fmod(v, n) rather
@@ -138,12 +139,14 @@ static void cam_diag(const float *cam)
     }
     if (!on)
         return;
-    const uint32_t *b = (const uint32_t *)cam;
+    uint32_t b[8];
+    memcpy(b, cam, sizeof b);
     g_logger.write("CAM %08lx %08lx %08lx  %08lx %08lx %08lx  %08lx %08lx\n",
               b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
     // framepose.cpp's outputs: the focus block, and an FNV-1a hash over the
     // live foes' pose records.
-    const uint32_t *f = (const uint32_t *)g_cameraFocus.f;
+    uint32_t f[9];
+    memcpy(f, g_cameraFocus.f, sizeof f);
     g_logger.write("FOCUS %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n",
               f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8]);
     const Game *game = Game::instance();

@@ -14,6 +14,13 @@ endif()
 
 project(OpenRoo VERSION 0.1.0 LANGUAGES CXX)
 
+# Optimised unless told otherwise (-DCMAKE_BUILD_TYPE=Debug for a debugger
+# session).  An unoptimised build loads a level about 4x slower, which is most
+# of what the replay suite spends.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "build type" FORCE)
+endif()
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 set(CMAKE_CXX_STANDARD_REQUIRED OFF)
