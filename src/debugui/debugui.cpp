@@ -255,17 +255,17 @@ static void draw_frame_breakdown()
     if (ImGui::Button("reset"))
         prof::reset();
     ImGui::SameLine();
-    ImGui::TextDisabled("ms: avg; self = avg less the scopes inside it (what the code between them costs); max = recent worst");
+    ImGui::TextDisabled("ms; self excludes child scopes");
     // Opaque, so the stripes cannot wash out to white.
     ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.10f, 0.10f, 0.12f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.15f, 0.15f, 0.18f, 1.0f));
     if (ImGui::BeginTable("prof", 6, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
-        ImGui::TableSetupColumn("scope", ImGuiTableColumnFlags_NoHide);
+        ImGui::TableSetupColumn("scope", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableSetupColumn("avg", ImGuiTableColumnFlags_WidthFixed, 44);
         ImGui::TableSetupColumn("self", ImGuiTableColumnFlags_WidthFixed, 44);
         ImGui::TableSetupColumn("max", ImGuiTableColumnFlags_WidthFixed, 44);
         ImGui::TableSetupColumn("n", ImGuiTableColumnFlags_WidthFixed, 36);
-        ImGui::TableSetupColumn("share", ImGuiTableColumnFlags_WidthFixed, 70);
+        ImGui::TableSetupColumn("share", ImGuiTableColumnFlags_WidthFixed, 60);
         ImGui::TableHeadersRow();
         for (unsigned i = 0; i < count; i++)
             if (nodes[i].parent < 0)
@@ -278,7 +278,7 @@ static void draw_frame_breakdown()
 static void draw_panels(RenderDevice &dev)
 {
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(440, 720), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(520, ImGui::GetIO().DisplaySize.y - 20), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Open'Roo")) {
         if (ImGui::CollapsingHeader("Overview", ImGuiTreeNodeFlags_DefaultOpen))
             draw_overview(dev);
