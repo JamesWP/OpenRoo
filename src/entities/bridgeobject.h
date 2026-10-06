@@ -20,6 +20,19 @@ struct BridgeVertex {
     float u1, v1;
 };
 
+/* A bridge's extent for the debug map, in cell-edge coordinates: the deck
+ * runs along its axis from `rest` (the anchor) towards `rest + step * span`,
+ * and currently reaches `reach`.  The cross axis is the anchor cell's. */
+struct BridgeExtent {
+    int   axis;       // 1 along U, 2 along V
+    float restU, restV;
+    int   step, span;
+    float reachU, reachV;
+    int   slot;       // the switch that operates it
+    bool  armed;      // moving
+    int   phase;      // 0: extends next; 1: retracts next
+};
+
 /* What buildSurface() computed, for bridgesurf.cpp's logs. */
 struct BridgeSurfaceInfo {
     int   axis, dir, n;
@@ -58,6 +71,12 @@ public:
     // 0xFFFFFFFF for the caller to overwrite.
     bool buildSurface(BridgeVertex v[4], double t, bool backward,
                       BridgeSurfaceInfo *info) const;
+
+    // A read-only view for the debug map.
+    BridgeExtent extent() const
+    {
+        return { axis_, restU_, restV_, step_, span_, posU_, posV_, slot_, armed_ != 0, phase_ };
+    }
 
     // The moving-loop sound, attached by InitLevelBasedSounds
     // (levelsounds.cpp).

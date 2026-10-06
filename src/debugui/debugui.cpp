@@ -1,6 +1,7 @@
 #include "debugui.h"
 #include "imgui.h"
 #include "image.h"
+#include "bridgeobject.h"
 #include "cheatcode.h"
 #include "game.h"
 #include "prof.h"
@@ -289,7 +290,8 @@ static bool g_mapInitial;  // the level as loaded, not as it is now
 static const char *kind_name(uint8_t k)
 {
     switch (k) {
-    case TILE_EMPTY:        return "floor";
+    case TILE_EMPTY:        return "void";
+    case TILE_KIND_01:      return "floor";
     case TILE_GLUE:         return "glue";
     case TILE_START:        return "start";
     case TILE_EXIT:         return "exit";
@@ -333,22 +335,117 @@ static const char *contents_name(uint8_t c)
     }
 }
 
-/* Floor shaded by height; special kinds tinted. */
-static ImU32 tile_color(uint8_t kind, uint8_t height, int maxH)
+/* Floor: grey by height. */
+static ImU32 floor_color(uint8_t height, int maxH)
 {
-    const float l = 0.25f + 0.6f * (maxH > 0 ? (float)height / maxH : 0.0f);
+    const float l = 0.3f + 0.55f * (maxH > 0 ? (float)height / maxH : 0.0f);
+    return ImGui::ColorConvertFloat4ToU32(ImVec4(l, l, l, 1));
+}
+
+/* Each kind's mark, drawn over the floor in the cell [a, b]: shapes and
+ * borders rather than colour alone, so kinds stay apart at any height. */
+static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
+{
+    const float w = b.x - a.x, t = std::max(1.0f, w * 0.12f);
+    const ImVec2 c((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f);
+    auto in = [&](float f) { return std::make_pair(ImVec2(a.x + w * f, a.y + w * f), ImVec2(b.x - w * f, b.y - w * f)); };
     switch (kind) {
-    case TILE_EXIT:         return ImGui::ColorConvertFloat4ToU32(ImVec4(0.2f, l, 0.2f, 1));
-    case TILE_GLUE:         return ImGui::ColorConvertFloat4ToU32(ImVec4(l, l, 0.2f, 1));
-    case TILE_BREAKABLE:
-    case TILE_DESTRUCTIBLE: return ImGui::ColorConvertFloat4ToU32(ImVec4(l, 0.45f * l, 0.2f, 1));
-    case TILE_IMPASSABLE:   return IM_COL32(60, 20, 20, 255);
-    case TILE_LIFT: case TILE_SLIDE_U: case TILE_SLIDE_V: case TILE_SLIDE_TRACK:
-    case TILE_BRIDGE_U: case TILE_BRIDGE_V: case TILE_SWITCH:
-                            return ImGui::ColorConvertFloat4ToU32(ImVec4(0.3f * l, 0.5f * l, l, 1));
-    case TILE_JUMP_PAD: case TILE_TELEPORTER: case TILE_CONVEYOR:
-                            return ImGui::ColorConvertFloat4ToU32(ImVec4(0.7f * l, 0.3f * l, l, 1));
-    default:                return ImGui::ColorConvertFloat4ToU32(ImVec4(l, l, l, 1));
+    case TILE_EXIT:
+        dl->AddRect(a, b, IM_COL32(40, 230, 40, 255), 0.0f, 0, t * 1.5f);
+        break;
+    case TILE_GLUE: {
+        auto r = in(0.15f);
+        dl->AddRectFilled(r.first, r.second, IM_COL32(220, 200, 40, 200), w * 0.3f);
+        break;
+    }
+    case TILE_RAMP_1: case TILE_RAMP_2: case TILE_RAMP_3: case TILE_RAMP_4: {
+        // An arrow up the ramp: kind - 4 is its direction.
+        const int d = kind - 4;
+        const ImVec2 f(WS_DIR_DU[d] * w * 0.35f, WS_DIR_DV[d] * w * 0.35f);
+        const ImVec2 s(-f.y, f.x);
+        dl->AddTriangleFilled(ImVec2(c.x + f.x, c.y + f.y), ImVec2(c.x - f.x + s.x, c.y - f.y + s.y),
+                              ImVec2(c.x - f.x - s.x, c.y - f.y - s.y), IM_COL32(90, 90, 90, 255));
+        break;
+    }
+    case TILE_LIFT: {
+        auto r = in(0.15f);
+        dl->AddRect(r.first, r.second, IM_COL32(60, 120, 255, 255), 0.0f, 0, t);
+        dl->AddLine(ImVec2(c.x, r.first.y + t), ImVec2(c.x, r.second.y - t), IM_COL32(60, 120, 255, 255), t);
+        break;
+    }
+    case TILE_SLIDE_U: case TILE_SLIDE_V: case TILE_SLIDE_TRACK: {
+        // The track along its axis; the slide's own cell is a solid block.
+        const bool alongU = kind != TILE_SLIDE_V;
+        const ImU32 col = IM_COL32(60, 120, 255, 255);
+        if (alongU) dl->AddLine(ImVec2(a.x, c.y), ImVec2(b.x, c.y), col, t);
+        else        dl->AddLine(ImVec2(c.x, a.y), ImVec2(c.x, b.y), col, t);
+        if (kind != TILE_SLIDE_TRACK) {
+            auto r = in(0.25f);
+            dl->AddRectFilled(r.first, r.second, col);
+        }
+        break;
+    }
+    case TILE_BREAKABLE: {
+        auto r = in(0.1f);
+        dl->AddRect(r.first, r.second, IM_COL32(200, 110, 40, 255), 0.0f, 0, t);
+        dl->AddLine(r.first, r.second, IM_COL32(200, 110, 40, 255), t);
+        break;
+    }
+    case TILE_JUMP_PAD:
+        dl->AddCircle(c, w * 0.32f, IM_COL32(190, 70, 230, 255), 0, t * 1.5f);
+        break;
+    case TILE_TELEPORTER:
+        dl->AddQuadFilled(ImVec2(c.x, a.y + w * 0.12f), ImVec2(b.x - w * 0.12f, c.y),
+                          ImVec2(c.x, b.y - w * 0.12f), ImVec2(a.x + w * 0.12f, c.y), IM_COL32(190, 70, 230, 255));
+        break;
+    case TILE_CLIMB:
+        for (int i = 1; i <= 3; i++) {
+            const float y = a.y + w * i / 4.0f;
+            dl->AddLine(ImVec2(a.x + w * 0.25f, y), ImVec2(b.x - w * 0.25f, y), IM_COL32(120, 80, 40, 255), t);
+        }
+        break;
+    case TILE_SWITCH: {
+        auto r = in(0.3f);
+        dl->AddRectFilled(r.first, r.second, IM_COL32(230, 40, 40, 255));
+        dl->AddRect(r.first, r.second, IM_COL32(0, 0, 0, 255), 0.0f, 0, 1.0f);
+        break;
+    }
+    case TILE_BRIDGE_U: case TILE_BRIDGE_V: {
+        // Two rails along the bridge's axis, with planks across.
+        const ImU32 col = IM_COL32(150, 95, 45, 255);
+        if (kind == TILE_BRIDGE_U) {
+            dl->AddRectFilled(ImVec2(a.x, a.y + w * 0.2f), ImVec2(b.x, b.y - w * 0.2f), IM_COL32(190, 140, 80, 255));
+            dl->AddLine(ImVec2(a.x, a.y + w * 0.2f), ImVec2(b.x, a.y + w * 0.2f), col, t);
+            dl->AddLine(ImVec2(a.x, b.y - w * 0.2f), ImVec2(b.x, b.y - w * 0.2f), col, t);
+        } else {
+            dl->AddRectFilled(ImVec2(a.x + w * 0.2f, a.y), ImVec2(b.x - w * 0.2f, b.y), IM_COL32(190, 140, 80, 255));
+            dl->AddLine(ImVec2(a.x + w * 0.2f, a.y), ImVec2(a.x + w * 0.2f, b.y), col, t);
+            dl->AddLine(ImVec2(b.x - w * 0.2f, a.y), ImVec2(b.x - w * 0.2f, b.y), col, t);
+        }
+        break;
+    }
+    case TILE_CONVEYOR:
+        for (int i = 0; i < 2; i++) {
+            const float x = a.x + w * (0.25f + 0.3f * i);
+            dl->AddLine(ImVec2(x, a.y + w * 0.25f), ImVec2(x + w * 0.2f, c.y), IM_COL32(40, 40, 40, 255), t);
+            dl->AddLine(ImVec2(x + w * 0.2f, c.y), ImVec2(x, b.y - w * 0.25f), IM_COL32(40, 40, 40, 255), t);
+        }
+        break;
+    case TILE_IMPASSABLE: {
+        auto r = in(0.08f);
+        dl->AddRectFilled(r.first, r.second, IM_COL32(90, 30, 30, 255));
+        dl->AddLine(r.first, r.second, IM_COL32(200, 60, 60, 255), t);
+        dl->AddLine(ImVec2(r.second.x, r.first.y), ImVec2(r.first.x, r.second.y), IM_COL32(200, 60, 60, 255), t);
+        break;
+    }
+    case TILE_DESTRUCTIBLE: {
+        auto r = in(0.08f);
+        dl->AddRectFilled(r.first, r.second, IM_COL32(150, 95, 45, 255));
+        dl->AddRect(r.first, r.second, IM_COL32(70, 40, 15, 255), 0.0f, 0, t);
+        break;
+    }
+    default:
+        break;
     }
 }
 
@@ -382,7 +479,7 @@ static void entity_tooltip(const char *what, const WsEntity &e, bool foe)
 static void draw_map()
 {
     ImGui::SetNextWindowPos(ImVec2(540, 10), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(510, 560), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(660, 560), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Map", &g_showMap)) {
         ImGui::End();
         return;
@@ -404,8 +501,12 @@ static void draw_map()
             maxH = std::max(maxH, (int)(g_mapInitial ? t.spawn_a : t.height));
         }
 
-    // Square cells as large as the window allows.
-    const ImVec2 avail = ImGui::GetContentRegionAvail();
+    bool seen[256] = {}, seenContents[256] = {}, seenBridge = false;
+
+    // Square cells as large as the window allows, beside the legend.
+    const float legendW = 150.0f;
+    ImVec2 avail = ImGui::GetContentRegionAvail();
+    avail.x -= legendW;
     const float cell = std::max(4.0f, std::min(avail.x / o.cols, avail.y / o.rows));
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     ImDrawList *dl = ImGui::GetWindowDrawList();
@@ -419,12 +520,42 @@ static void draw_map()
             const uint8_t c = g_mapInitial ? t.spawn : t.contents;
             if (h == 0 && t.kind == TILE_EMPTY)
                 continue;  // no floor here
-            dl->AddRectFilled(corner(u, v), corner(u + 1, v + 1), tile_color(t.kind, h, maxH));
+            seen[t.kind] = true;
+            if (contents_name(c))
+                seenContents[c] = true;
+            dl->AddRectFilled(corner(u, v), corner(u + 1, v + 1), floor_color(h, maxH));
+            draw_kind_mark(dl, t.kind, corner(u, v), corner(u + 1, v + 1));
             if (contents_name(c))
                 dl->AddCircleFilled(centre(u, v), cell * 0.2f, contents_color(c));
         }
-    dl->AddRect(corner(o.exit_cell[0], o.exit_cell[1]), corner(o.exit_cell[0] + 1, o.exit_cell[1] + 1),
-                IM_COL32(60, 255, 60, 255), 0.0f, 0, 2.0f);
+
+    // Bridges are objects, not tiles: the builder clears their cells.  The
+    // whole span is outlined; the deck fills as far as it has extended.
+    Game *game = Game::instance();
+    const unsigned nBridges = game ? game->bridgeCount() : 0;
+    for (unsigned i = 0; i < nBridges; i++) {
+        const BridgeExtent b = game->bridgeSlot(i)->extent();
+        const bool alongU = b.axis == 1;
+        const float end  = (alongU ? b.restU : b.restV) + b.step * b.span;
+        const float rest = alongU ? b.restU : b.restV;
+        const float reach = g_mapInitial ? rest : (alongU ? b.reachU : b.reachV);
+        // The cross-axis cell is the anchor's.
+        const float cross = alongU ? b.restV : b.restU;
+        auto rect = [&](float a0, float a1, ImVec2 *p0, ImVec2 *p1) {
+            const float lo = std::min(a0, a1), hi = std::max(a0, a1);
+            *p0 = alongU ? corner(lo, cross) : corner(cross, lo);
+            *p1 = alongU ? corner(hi, cross + 1) : corner(cross + 1, hi);
+        };
+        ImVec2 p0, p1;
+        if (reach != rest) {
+            rect(rest, reach, &p0, &p1);
+            dl->AddRectFilled(p0, p1, IM_COL32(190, 140, 80, 255));
+        }
+        rect(rest, end, &p0, &p1);
+        dl->AddRect(p0, p1, b.armed ? IM_COL32(255, 220, 60, 255) : IM_COL32(170, 110, 50, 255),
+                    0.0f, 0, std::max(1.5f, cell * 0.1f));
+        seenBridge = true;
+    }
 
     if (!g_mapInitial) {
         for (unsigned i = 0; i < o.n_enemies; i++)
@@ -463,6 +594,18 @@ static void draw_map()
                 ImGui::Text("occupied (%u)", t.occupant);
             if (t.spent)
                 ImGui::TextUnformatted("spent / armed");
+            for (unsigned i = 0; i < nBridges; i++) {
+                const BridgeExtent b = game->bridgeSlot(i)->extent();
+                const bool alongU = b.axis == 1;
+                const float rest = alongU ? b.restU : b.restV, end = rest + b.step * b.span;
+                const int along = alongU ? u : v, across = alongU ? v : u;
+                if (across != (int)(alongU ? b.restV : b.restU) ||
+                    along < std::min(rest, end) || along >= std::max(rest, end))
+                    continue;
+                ImGui::Separator();
+                ImGui::Text("bridge on switch %d, along %s, %d cells", b.slot + 1, alongU ? "U" : "V", b.span);
+                ImGui::Text("%s, %s next", b.armed ? "moving" : "still", b.phase ? "retracts" : "extends");
+            }
             if (u == o.player_cell[0] && v == o.player_cell[1]) {
                 ImGui::Separator();
                 ImGui::Text("player at H%u, facing %u%s", o.player_cell[2], o.player_facing,
@@ -477,6 +620,63 @@ static void draw_map()
             ImGui::EndTooltip();
         }
     }
+
+    // The legend: only what this level has, drawn with the map's own marks.
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    const float ls = 16.0f;
+    auto swatch = [&]() {
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        ImGui::Dummy(ImVec2(ls, ls));
+        ImGui::SameLine();
+        return std::make_pair(p, ImVec2(p.x + ls, p.y + ls));
+    };
+    static const uint8_t KINDS[] = {
+        TILE_EXIT, TILE_GLUE, TILE_RAMP_1, TILE_LIFT, TILE_SLIDE_U, TILE_SLIDE_TRACK,
+        TILE_BREAKABLE, TILE_JUMP_PAD, TILE_TELEPORTER, TILE_CLIMB, TILE_SWITCH,
+        TILE_BRIDGE_U, TILE_CONVEYOR, TILE_IMPASSABLE, TILE_DESTRUCTIBLE,
+    };
+    for (uint8_t k : KINDS) {
+        bool any = seen[k];
+        if (k == TILE_RAMP_1) any = seen[5] || seen[6] || seen[7] || seen[8];
+        if (k == TILE_SLIDE_U) any = seen[TILE_SLIDE_U] || seen[TILE_SLIDE_V];
+        if (k == TILE_BRIDGE_U) any = seenBridge;
+        if (!any)
+            continue;
+        auto r = swatch();
+        if (k == TILE_BRIDGE_U) {
+            // As the map draws one: extended deck inside the span's outline.
+            dl->AddRectFilled(r.first, ImVec2(r.first.x + ls * 0.6f, r.second.y), IM_COL32(190, 140, 80, 255));
+            dl->AddRect(r.first, r.second, IM_COL32(170, 110, 50, 255), 0.0f, 0, 2.0f);
+            ImGui::TextUnformatted("bridge");
+            continue;
+        }
+        dl->AddRectFilled(r.first, r.second, floor_color(1, 2));
+        draw_kind_mark(dl, k, r.first, r.second);
+        ImGui::TextUnformatted(kind_name(k));
+    }
+    ImGui::Separator();
+    for (int c = 1; c < 256; c++) {
+        if (!seenContents[c])
+            continue;
+        auto r = swatch();
+        dl->AddCircleFilled(ImVec2(r.first.x + ls / 2, r.first.y + ls / 2), ls * 0.2f, contents_color((uint8_t)c));
+        ImGui::TextUnformatted(contents_name((uint8_t)c));
+    }
+    if (!g_mapInitial) {
+        ImGui::Separator();
+        auto r = swatch();
+        dl->AddCircleFilled(ImVec2(r.first.x + ls / 2, r.first.y + ls / 2), ls * 0.4f, IM_COL32(255, 255, 255, 255));
+        ImGui::TextUnformatted("player");
+        r = swatch();
+        dl->AddCircleFilled(ImVec2(r.first.x + ls / 2, r.first.y + ls / 2), ls * 0.35f, IM_COL32(230, 50, 50, 255));
+        ImGui::TextUnformatted("foe");
+        r = swatch();
+        dl->AddCircleFilled(ImVec2(r.first.x + ls / 2, r.first.y + ls / 2), ls * 0.3f, IM_COL32(20, 20, 20, 255));
+        ImGui::TextUnformatted("bomb");
+    }
+    ImGui::TextDisabled("lighter is higher");
+    ImGui::EndGroup();
     ImGui::End();
 }
 
