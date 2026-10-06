@@ -34,7 +34,41 @@
       "scenario": "start a new game play a few levels and exit once we complete forest and start castle",
       "expect": {
         "crash": "none",
-        "state": {}
+        "state": {
+          "frames_run": 34677,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 0,
+          "gems_required": 48,
+          "foes_killed": 0,
+          "items_collected": 0,
+          "items_available": 51,
+          "items_bonus_blocked": 0,
+          "vitality": 0,
+          "lives": 4,
+          "bombs": 0,
+          "level_score": 301,
+          "total_score": 5915,
+          "time_limit_s": 120,
+          "elapsed_ms": 496,
+          "level_complete": 0,
+          "death_cause": 0,
+          "completed_a_level": true,
+          "at_completion.gems_collected": 10,
+          "at_completion.gems_required": 10,
+          "at_completion.foes_killed": 0,
+          "at_completion.items_collected": 10,
+          "at_completion.items_available": 10,
+          "at_completion.items_bonus_blocked": 0,
+          "at_completion.vitality": 91,
+          "at_completion.lives": 2,
+          "at_completion.level_score": 430,
+          "at_completion.total_score": 430,
+          "at_completion.time_limit_s": 140,
+          "at_completion.elapsed_ms": 20688,
+          "at_completion.level_complete": 1
+        },
+        "seconds": 23.6
       },
       "notes": "Captured 34659 frames. No end-state assertions yet \u2014 run `replaytest.py --bless Playthrough-01` once a replay is trusted.",
       "playthrough": "Playthrough"
@@ -46,7 +80,41 @@
       "scenario": "continue the playthrough",
       "expect": {
         "crash": "none",
-        "state": {}
+        "state": {
+          "frames_run": 75030,
+          "game_live": true,
+          "mode": 1,
+          "gems_collected": 10,
+          "gems_required": 10,
+          "foes_killed": 0,
+          "items_collected": 17,
+          "items_available": 17,
+          "items_bonus_blocked": 0,
+          "vitality": 57,
+          "lives": 5,
+          "bombs": 0,
+          "level_score": 204,
+          "total_score": 11228,
+          "time_limit_s": 47,
+          "elapsed_ms": 41280,
+          "level_complete": 1,
+          "death_cause": 0,
+          "completed_a_level": true,
+          "at_completion.gems_collected": 50,
+          "at_completion.gems_required": 48,
+          "at_completion.foes_killed": 0,
+          "at_completion.items_collected": 51,
+          "at_completion.items_available": 51,
+          "at_completion.items_bonus_blocked": 0,
+          "at_completion.vitality": 32,
+          "at_completion.lives": 5,
+          "at_completion.level_score": 605,
+          "at_completion.total_score": 6520,
+          "at_completion.time_limit_s": 120,
+          "at_completion.elapsed_ms": 91072,
+          "at_completion.level_complete": 1
+        },
+        "seconds": 111.7
       },
       "notes": "Captured 75011 frames. No end-state assertions yet \u2014 run `replaytest.py --bless Playthrough-02` once a replay is trusted.",
       "playthrough": "Playthrough"
@@ -75,6 +143,7 @@
           "items_bonus_blocked": 0,
           "vitality": 61,
           "lives": 0,
+          "bombs": 2,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 120,
@@ -83,7 +152,7 @@
           "death_cause": 0,
           "completed_a_level": false
         },
-        "seconds": 0.6
+        "seconds": 4.2
       },
       "notes": "Named for the crash it used to reproduce; kept under that name because docs/TESTING.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced byte-identical 1036-frame hash logs and identical end-state dumps. --fast is the suite default, and this entry sets \"fast\": false to opt out of it: --fast skips the ddraw draw calls, and the fault this recording guards happened INSIDE DrawPrimitiveStrided, so running it fast would silently retire the only render-path crash guard the suite has. Costs about 10 s. Remove the field to make the whole suite fast unconditionally.",
       "fast": false
@@ -108,6 +177,7 @@
           "items_bonus_blocked": 0,
           "vitality": 87,
           "lives": 3,
+          "bombs": 0,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 300,
@@ -116,7 +186,7 @@
           "death_cause": 4,
           "completed_a_level": false
         },
-        "seconds": 0.8
+        "seconds": 2.2
       },
       "notes": "Captured 1063 frames. Blessed; the note previously still said it was unasserted."
     },
@@ -140,6 +210,7 @@
           "items_bonus_blocked": 0,
           "vitality": 70,
           "lives": 3,
+          "bombs": 0,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 120,
@@ -148,7 +219,7 @@
           "death_cause": 1,
           "completed_a_level": false
         },
-        "seconds": 1.1
+        "seconds": 2.8
       },
       "notes": "Captured 1033 frames. Blessed; the note previously still said it was unasserted."
     },
@@ -172,6 +243,7 @@
           "items_bonus_blocked": 0,
           "vitality": 87,
           "lives": 3,
+          "bombs": 0,
           "level_score": 309,
           "total_score": 309,
           "time_limit_s": 65,
@@ -193,7 +265,7 @@
           "at_completion.elapsed_ms": 34176,
           "at_completion.level_complete": 1
         },
-        "seconds": 0.9
+        "seconds": 3.8
       },
       "notes": "Captured 2514 frames. Covers foe type 3 (+0x62 == 3) and the arm that calls FindNearestFlaggedTileInRadius with the foe's own cell and radius 5. On SUCCESS it sets foe+0x64 = 0x96 and calls SetFoeChaseTarget with the found tile; on FAILURE it falls back to the player's cell (Game+0x1751fa/fb) with foe+0x64 = 0x64 -- so a foe visibly ignoring the player is the search succeeding. Sibling of switchfoe, which covers type 2. Type 5 (FindFarthestOccupiedTile) still has no recording: see Castle\\EnemyVsEnemy. COVERAGE, measured not assumed: this recording CALLS the search and SUCCEEDS in it (KAROO_TILEQ_DIAG=1 logs a HIT at u=9 v=5), but KAROO_SIM_FX=radiusfar still passes 16/16 -- so the function is EXERCISED but UNCONTROLLED. A near/far control only fails if two candidates were in range at different distances AND the swap moved an asserted field; that was not established here. Do not read this entry's presence as radiusfar coverage."
     },
@@ -217,6 +289,7 @@
           "items_bonus_blocked": 0,
           "vitality": 45,
           "lives": 4,
+          "bombs": 0,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 120,
@@ -225,7 +298,7 @@
           "death_cause": 0,
           "completed_a_level": false
         },
-        "seconds": 1.1
+        "seconds": 2.7
       },
       "notes": "Captured 2098 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-bait` once a replay is trusted."
     },
@@ -249,6 +322,7 @@
           "items_bonus_blocked": 0,
           "vitality": 64,
           "lives": 4,
+          "bombs": 0,
           "level_score": 537,
           "total_score": 537,
           "time_limit_s": 120,
@@ -270,7 +344,7 @@
           "at_completion.elapsed_ms": 61344,
           "at_completion.level_complete": 1
         },
-        "seconds": 1.0
+        "seconds": 5.2
       },
       "notes": "Captured 4602 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-extralife` once a replay is trusted."
     },
@@ -294,6 +368,7 @@
           "items_bonus_blocked": 0,
           "vitality": 60,
           "lives": 3,
+          "bombs": 17,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 120,
@@ -302,7 +377,7 @@
           "death_cause": 1,
           "completed_a_level": false
         },
-        "seconds": 0.7
+        "seconds": 3.1
       },
       "notes": "Captured 2013 frames. Determinism confirmed before blessing rather than assumed: two consecutive headless runs produced byte-identical hash logs AND byte-identical end-state dumps. Blessed on 18 fields; the assertion was then watched to fail on purpose (foes_killed forced to 99 -> harness exits 1 naming that field) before being restored. foes_killed=6 is the field that carries the weight here: it is the spawn/despawn churn expressed as a number, so a regression in the ID allocator or the free-list compaction shows up as a different kill count rather than as a crash. Note items_collected 10 exceeds items_available 8 -- that is what the game reports, not a blessing error."
     },
@@ -326,6 +401,7 @@
           "items_bonus_blocked": 1,
           "vitality": 0,
           "lives": 2,
+          "bombs": 0,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 120,
@@ -334,7 +410,7 @@
           "death_cause": 0,
           "completed_a_level": false
         },
-        "seconds": 1.2
+        "seconds": 4.9
       },
       "notes": "Captured 3630 frames. Determinism confirmed before blessing rather than assumed: two consecutive headless runs produced byte-identical hash logs AND byte-identical end-state dumps. Blessed on 18 fields; the assertion was then watched to fail on purpose (items_collected forced to 77 -> harness exits 1 naming that field) before being restored. The fields to watch are the ones that say the high-type foes behaved: foes_killed 0 and vitality 0 mean the player died to them without killing any, so a regression in the high-type path would move vitality or death_cause here and nowhere else in the suite. KAROO_SPAWN_DIAG=1 on this recording logs HIGHTYPE 102, 103 and 104 plus 'first type > 0x64' -- that is how to confirm the branch is still reached."
     },
@@ -358,6 +434,7 @@
           "items_bonus_blocked": 0,
           "vitality": 99,
           "lives": 3,
+          "bombs": 0,
           "level_score": 839,
           "total_score": 839,
           "time_limit_s": 100,
@@ -379,7 +456,7 @@
           "at_completion.elapsed_ms": 30240,
           "at_completion.level_complete": 1
         },
-        "seconds": 0.8
+        "seconds": 2.9
       },
       "notes": "Blessed 2026-09-05. Determinism confirmed before blessing rather than assumed: two consecutive runs produced byte-identical 2258-frame hash logs AND byte-identical end-state dumps. The completion fields are the ones to watch -- level_complete, gems 56/56 and items 64/64 all being maxed is what makes the all-items bonus fire, and a regression that quietly denies that bonus would show up here as a level_score change and nowhere else."
     },
@@ -402,6 +479,7 @@
           "items_bonus_blocked": 2,
           "vitality": 74,
           "lives": 0,
+          "bombs": 0,
           "level_score": 94,
           "total_score": 94,
           "time_limit_s": 60,
@@ -410,7 +488,7 @@
           "death_cause": 1,
           "completed_a_level": false
         },
-        "seconds": 0.6
+        "seconds": 2.3
       },
       "notes": "Captured 1491 frames, blessed on 18 fields. The ONLY recording that reaches the game-over overlay (bGame_state 2), so it is the only automated coverage of src/ui/scoreoverlay.cpp Score_DrawGameOverScore -- the four capped \"scoreoverlay: gameover\" lines in karoo_hooks.log are how you check it still runs. One life, so the single death ends the game rather than respawning; lives=0 and death_cause=1 are the fields that say so. Scores are non-zero (4 gems, level_score 94) deliberately, so the breakdown draws real numbers in its count and product columns rather than a screen of zeros. The high-score half of that file is NOT covered here -- reach it with KAROO_MENU_NODE=3."
     },
@@ -434,6 +512,7 @@
           "items_bonus_blocked": 0,
           "vitality": 10,
           "lives": 3,
+          "bombs": 0,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 100,
@@ -442,7 +521,7 @@
           "death_cause": 1,
           "completed_a_level": false
         },
-        "seconds": 0.6
+        "seconds": 2.1
       },
       "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1138-frame hash logs and identical end-state dumps. NOTE the death_cause=1 with lives=3: that pairing is recorded as observed and has NOT been explained -- gameover-forest reaches death_cause=1 with lives=0. Do not read it as 'a death was not counted' without checking; it is asserted here so that if the meaning of the field changes, this entry says so."
     },
@@ -466,6 +545,7 @@
           "items_bonus_blocked": 0,
           "vitality": 44,
           "lives": 3,
+          "bombs": 0,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 180,
@@ -474,7 +554,7 @@
           "death_cause": 0,
           "completed_a_level": false
         },
-        "seconds": 0.8
+        "seconds": 2.7
       },
       "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1464-frame hash logs and identical end-state dumps. The level is not completed, so there is no at_completion block and completed_a_level is false. Its value is the tile-effect coverage, not the outcome: this is the recording that will catch a regression in Game::UpdatePlayerTileEffects (0x41fcb0), which handles glue, slides, jump pads and teleporters and which no recording could see before it existed."
     },
@@ -498,6 +578,7 @@
           "items_bonus_blocked": 0,
           "vitality": 35,
           "lives": 3,
+          "bombs": 0,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 140,
@@ -506,7 +587,7 @@
           "death_cause": 0,
           "completed_a_level": false
         },
-        "seconds": 0.8
+        "seconds": 3.0
       },
       "notes": "Captured 1796 frames. Covers foe type 2 (+0x62 == 2), the gate (foe+0xd7 == 0xff -> retarget) and the type-2 arm, which calls FindNearestListedObjectTile with the foe's own cell and radius 7. The census in src/level/tilequery.cpp names five levels carrying a gated foe type; this is one of the two type-2 levels. Types 3 and 5 still have no recording -- see Egypt\\CollectIt / Candy\\Collect01 and Castle\\EnemyVsEnemy."
     },
@@ -530,6 +611,7 @@
           "items_bonus_blocked": 0,
           "vitality": 24,
           "lives": 3,
+          "bombs": 0,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 220,
@@ -538,7 +620,7 @@
           "death_cause": 0,
           "completed_a_level": false
         },
-        "seconds": 1.0
+        "seconds": 3.9
       },
       "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 2931-frame hash logs and identical end-state dumps. foes_killed=1 is worth keeping an eye on: it is one of only two recordings that kills anything (with bombstart-crash), so it is thin coverage of the foe-death path and of CalculateLevelScore's foe term."
     },
@@ -562,6 +644,7 @@
           "items_bonus_blocked": 0,
           "vitality": 41,
           "lives": 4,
+          "bombs": 0,
           "level_score": 0,
           "total_score": 0,
           "time_limit_s": 220,
@@ -570,7 +653,7 @@
           "death_cause": 0,
           "completed_a_level": false
         },
-        "seconds": 0.7
+        "seconds": 2.6
       },
       "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1395-frame hash logs and identical end-state dumps. lives=4 is the assertion that matters here -- if a change breaks the extra-life pickup, this is the only recording that fails."
     },
@@ -594,6 +677,7 @@
           "items_bonus_blocked": 0,
           "vitality": 0,
           "lives": 0,
+          "bombs": 0,
           "level_score": 320,
           "total_score": 320,
           "time_limit_s": 220,
@@ -615,7 +699,7 @@
           "at_completion.elapsed_ms": 54816,
           "at_completion.level_complete": 1
         },
-        "seconds": 1.1
+        "seconds": 4.0
       },
       "notes": "Assert on the at_completion.* fields, not the top-level ones: the recording carries on into the next level, so the top-level block describes THAT level starting (gems 0/12, time_limit_s 220, level_complete 0), not Water01. at_completion latches the first completion and is Water01's. The score reproduces exactly from six fields: 75 gem base + 0 surplus + 0 foes + 92 time ((100-54)*2) + 75 all-items + 78 vitality = 320, and 1077 + 320 = 1397. Verified 2026-08-31: two consecutive runs gave byte-identical 4150-frame hash logs and identical end-state dumps.",
       "timeout": 300,
