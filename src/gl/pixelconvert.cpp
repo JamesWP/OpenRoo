@@ -22,20 +22,30 @@ unsigned int PixelMask_Shift(uint32_t m)
 
 /* One 0..255 channel value scaled to the width of its mask, truncating, and
  * placed in the mask.  A format without the channel gets nothing. */
-static uint32_t pack_channel(uint32_t value, uint32_t mask)
-{
-    if (mask == 0)
-        return 0;
-    const uint32_t max = mask >> PixelMask_Shift(mask);
-    return ((value * max) / 255u) << PixelMask_Shift(mask);
-}
+struct ChannelPacker {
+    uint32_t     max = 0;     // the mask's largest value, 0 for no channel
+    unsigned int shift = 0;
 
-static uint32_t pack_pixel(const PixelFormat &pf, uint32_t r, uint32_t g,
-                           uint32_t b, uint32_t a)
-{
-    return pack_channel(r, pf.rMask) | pack_channel(g, pf.gMask)
-         | pack_channel(b, pf.bMask) | pack_channel(a, pf.aMask);
-}
+    explicit ChannelPacker(uint32_t mask)
+    {
+        if (mask != 0) {
+            shift = PixelMask_Shift(mask);
+            max = mask >> shift;
+        }
+    }
+    uint32_t pack(uint32_t value) const { return ((value * max) / 255u) << shift; }
+};
+
+struct PixelPacker {
+    ChannelPacker r, g, b, a;
+
+    explicit PixelPacker(const PixelFormat &pf)
+        : r(pf.rMask), g(pf.gMask), b(pf.bMask), a(pf.aMask) {}
+    uint32_t pack(uint32_t rv, uint32_t gv, uint32_t bv, uint32_t av) const
+    {
+        return r.pack(rv) | g.pack(gv) | b.pack(bv) | a.pack(av);
+    }
+};
 
 static void store_pixel(uint8_t *p, unsigned bits, uint32_t v)
 {
@@ -53,13 +63,14 @@ void PixelConvert_ToTexture(const Image &img, const PixelFormat &pf,
     if (pf.bits != 16 && pf.bits != 32)
         return;
 
+    const PixelPacker packer(pf);
     for (int y = 0; y < img.height; ++y, dst += pitch) {
         uint8_t *p = dst;
         for (int x = 0; x < img.width; ++x, p += pf.bits / 8) {
             const uint8_t *px = img.pixel(x, y);
             store_pixel(p, pf.bits,
-                        pack_pixel(pf, px[0], px[1], px[2],
-                                   img.hasAlpha ? px[3] : 0));
+                        packer.pack(px[0], px[1], px[2],
+                                    img.hasAlpha ? px[3] : 0));
         }
     }
 }
@@ -69,11 +80,12 @@ void PixelConvert_ToDisplay(const Image &img, const PixelFormat &pf,
 {
     if (pf.bits != 16 && pf.bits != 32)
         return;
+    const PixelPacker packer(pf);
     for (int y = 0; y < img.height; ++y, dst += pitch) {
         uint8_t *p = dst;
         for (int x = 0; x < img.width; ++x, p += pf.bits / 8) {
             const uint8_t *px = img.pixel(x, y);
-            store_pixel(p, pf.bits, pack_pixel(pf, px[0], px[1], px[2], 0));
+            store_pixel(p, pf.bits, packer.pack(px[0], px[1], px[2], 0));
         }
     }
 }
