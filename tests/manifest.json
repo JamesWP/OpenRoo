@@ -28,7 +28,6 @@
     {
       "name": "bombstart-crash",
       "file": "bombstart-crash.rec",
-      "saves": "tests/saves/bombstart",
       "level": "Forest\\BombStart",
       "description": "Hand-played by James, 2026-08-30. Navigates the main menu, loads save slot 4 (Forest\\BombStart), plays about 10 seconds of the level \u2014 picks up one item and kills one foe \u2014 then quits. 1034 records over 1036 frames, 313 with a key held. The level is never completed; this exercises the menu, the save-slot load and the first seconds of gameplay, not a full run.",
       "scenario": "menu navigation + save-slot load + ~10s of BombStart gameplay",
@@ -65,7 +64,6 @@
     {
       "name": "bridge01",
       "file": "bridge01.rec",
-      "saves": "tests/saves/bridge01",
       "level": "Space\\Bridge01",
       "description": "Loads slot 4 (Space\\Bridge01) and crosses the bridges.",
       "scenario": "Loads slot 4 (Space\\Bridge01) and crosses the bridges.",
@@ -97,7 +95,6 @@
     {
       "name": "castle-something",
       "file": "castle-something.rec",
-      "saves": "tests/saves/castle-something",
       "level": "Castle\\Something",
       "description": "Hand-played by James, 2026-08-31. Navigates the main menu, loads save slot 4 (Castle\\Something), collects 8 of the 41 items and quits about 11 seconds in without completing the level (8/40 gems, no foes killed, vitality down to 70 from damage taken). 1033 records over 1035 frames, 439 with a key held. Covers the menu, the save-slot load and the first seconds of Castle-theme gameplay; the level is never completed, so completed_a_level is false and there is no at_completion block. This is the only recording that exercises DrawQuadBatch's dwType==2 draw path (116 quads per frame) -- Forest\\BombStart and Water\\Water01 have no such object, so a change to src/render/quadbatch.cpp is only covered here.",
       "scenario": "Hand-played by James, 2026-08-31. Navigates the main menu, loads save slot 4 (Castle\\Something), collects a few gems and then quits without completing the level. Covers the menu, the save-slot load and the first seconds of Castle-theme gameplay; the level is never completed, so there is no at_completion block. Captured to give the Castle theme's content coverage the Forest and Water recordings lack.",
@@ -129,7 +126,6 @@
     {
       "name": "cristal-stealer",
       "file": "cristal-stealer.rec",
-      "saves": "tests/saves/cristal-stealer",
       "level": "Egypt\\CollectIt",
       "description": "Hand-played by James, 2026-09-07, to arm the KAROO_SIM_FX=radiusfar control, which could not fail before it. Egypt\\CollectIt for 2514 frames. The foes on this level are crystal STEALERS: GameTick's foe type-3 arm searches for the nearest tile whose contents byte (tile+0x19f) is 1 -- an uncollected crystal -- within radius 5 of the foe, and diverts there instead of chasing the player. It is the only thing in the game that drives FindNearestFlaggedTileInRadius.",
       "scenario": "Crystals are on the level from the start, so the search fires without being provoked -- what needed care was leaving TWO OR MORE crystals within radius 5 of a foe at different distances. KAROO_SIM_FX=radiusfar picks the FARTHEST qualifying tile instead of the nearest, so a foe with only one crystal in range makes nearest == farthest and the control cannot fail even though the function ran. Areas near foes are deliberately NOT cleared: with no crystal in range the type-3 arm takes its fallback path and chases the player instead, which exercises nothing here.",
@@ -174,7 +170,6 @@
     {
       "name": "destr-bait",
       "file": "destr-bait.rec",
-      "saves": "tests/saves/destr-extralife",
       "level": "Forest\\DestrStart",
       "description": "Hand-played by James, isolated. Forest\\DestrStart: does the bait manoeuvre and nothing else, then quits once the extra life at (11,3) is taken. The sequence is: climb the stairs, wait clear of the falling tiles so the foe commits to crossing the bridge, step on and off a tile to break it while he is mid-crossing, which severs his path and strands him on a falling cell so he drops; wait out the repeat fall (a tile a foe dies on re-arms from the stale occupant byte and falls again); then collect the life. Captured to measure the timings a tactical layer would need: how long the bait wait is, how many frames the foe takes to commit, and how long the repeat fall lasts.",
       "scenario": "bait the foe onto the falling bridge, break it under him, take the extra life",
@@ -206,7 +201,6 @@
     {
       "name": "destr-extralife",
       "file": "destr-extralife.rec",
-      "saves": "tests/saves/destr-extralife",
       "level": "Forest\\DestrStart",
       "description": "Hand-played by James. Forest\\DestrStart: collects the extra life (tile contents 7) at u=11,v=3, which sits in a pocket whose only approach is (10,4)->(11,4)->(11,3) with a foe spawning at (10,3). Captured to show how a human gets past that foe - whether it is dormant until triggered, and what the route and timing are - because the policy completes the level 30/30 but walks past this pickup.",
       "scenario": "extra life at (11,3), guarded by the foe at (10,3)",
@@ -251,7 +245,6 @@
     {
       "name": "enemyfactory",
       "file": "enemyfactory.rec",
-      "saves": "tests/saves/enemyfactory",
       "level": "Space\\EnemyFactory",
       "description": "Hand-played by James, 2026-09-07, to close a coverage gap named in GAMETICK_PLAN.md. Space\\EnemyFactory for 2013 frames: kills SIX foes -- more than any other recording in the suite -- collects 10 items and 2 of the 20 crystals required, vitality down to 60, does not complete. WHY IT EXISTS: this level manufactures foes DURING play, so it is the only recording that drives SpawnFoeObject's GameTick call site rather than only the level-setup sites. That site passes `<level byte> + 100`, and here the byte is 0, so the type is exactly 100 (0x64) -- the BOUNDARY of the `CMP BL,0x64 / JBE` test in karoo-hooks/objectspawn.cpp. A transcription that used >= instead of > would be caught by this recording and by nothing else in the suite. Six kills plus continuous respawning also make it the suite's heaviest churn through RemoveFoeObject, the ID free-list compaction and ClaimSpareObjectIdSlot's highest-unused-ID allocator, which only does anything surprising once two or more IDs are free at the same time. It has 8 bomb pickups, the most of any level, and does spawn bombs and remove enemies.",
       "scenario": "Space\\EnemyFactory, runtime foe manufacturing and the 0x64 boundary",
@@ -283,7 +276,6 @@
     {
       "name": "freeze03",
       "file": "freeze03.rec",
-      "saves": "tests/saves/freeze03",
       "level": "Space\\Freeze03",
       "description": "Hand-played by James, 2026-09-07, to close a coverage gap named in GAMETICK_PLAN.md rather than to cover a level. Space\\Freeze03 for 3630 frames: collects 4 of the 8 items, no crystals of the 4 required, dies once (vitality 0, lives 3->2) and does not complete. WHY IT EXISTS: it is one of only TWO levels in the game whose level data carries a foe type above 0x64, and the only one carrying all three -- 102, 103 and 104. That makes it the sole automated coverage of SpawnFoeObject's high-type branch (karoo-hooks/objectspawn.cpp), which stores type-0x64 into entity+0x14 and then ZEROES the working copy, so the value reaching the pathfinder's +0x2a is 0 for these foes and the original type for every other foe in the game. Before this recording that branch was transcribed but executed by nothing. Do not confuse this level with the `thrower02` recording, which is Candy\\Thrower02 and carries no high type. It also spawns bombs and removes enemies, so it exercises SpawnBombObject and RemoveEnemyObject, and it sets items_bonus_blocked=1.",
       "scenario": "Space\\Freeze03, the only level carrying all three high foe types",
@@ -315,7 +307,6 @@
     {
       "name": "freezestart",
       "file": "freezestart.rec",
-      "saves": "tests/saves/freezestart",
       "level": "Forest\\FreezeStart",
       "description": "Hand-played by James, 2026-09-05. Forest\\FreezeStart played through to the exit: all 56 crystals and all 64 items collected, no foes killed, no damage taken, completed at frame 2158 in 30.2 s of game time against a 100 s limit for a level score of 839. 2258 frames in total. Two reasons this one carries weight beyond its object coverage: it is the suite's only coverage of the freeze objects (8 on this level, more than any other level in the game), and it is one of only two recordings that finishes a level, so it drives Game::CalculateLevelScore and the score tally with the all-items bonus actually earned rather than skipped.",
       "scenario": "full clean completion of FreezeStart: every crystal, every item, no damage",
@@ -360,7 +351,6 @@
     {
       "name": "gameover-forest",
       "file": "gameover-forest.rec",
-      "saves": "tests/saves/gameover-forest",
       "level": "Forest\\EnemyStart",
       "description": "Loads slot 4 (Forest\\EnemyStart, one life), collects a few\n                   crystals, then dies to the foe and runs out of lives, so\n                   bGame_state hits 2 and DrawGameOverScore renders. Sits on\n                   the game-over screen for a few seconds, then quits. The only\n                   recording that reaches the game-over overlay.",
       "expect": {
@@ -391,7 +381,6 @@
     {
       "name": "protectionstart",
       "file": "protectionstart.rec",
-      "saves": "tests/saves/protectionstart",
       "level": "Egypt\\ProtectionStart",
       "description": "Hand-played by James, 2026-09-05. Egypt\\ProtectionStart for about 11.6 s: collects 1 of 17 items, no crystals of the 12 required, takes heavy damage (vitality down to 10 from 100) and records death_cause 1 while still holding 3 lives, then quits without completing the level. 1138 frames. Two firsts for the suite: the only coverage of the protect objects (5), and the ONLY recording that loads an Egypt level at all -- Egypt is 13 of the game's 80 levels and none of its theme assets had ever been exercised by a replay before this.",
       "scenario": "first seconds of an Egypt level, taking heavy damage",
@@ -423,7 +412,6 @@
     {
       "name": "sandra02",
       "file": "sandra02.rec",
-      "saves": "tests/saves/sandra02",
       "level": "Space\\Sandra02",
       "description": "Hand-played by James, 2026-09-05. Space\\Sandra02 for about 18.2 s: collects 1 of 39 items and 1 of the 30 crystals required, vitality down to 44, no foes killed and no deaths, then quits without completing. 1464 frames. This is the recording that carries most of the suite's new object coverage: slides (14), glue (4), teleporters (2), speed (2), hidden lives (2), jump pads (1) and obstacles (1), none of which any earlier recording touched. It also has bombs, breakables and elevators, so it overlaps bombstart-crash and castle-something rather than replacing them.",
       "scenario": "first seconds of Sandra02, the glue/slide/teleporter level",
@@ -455,7 +443,6 @@
     {
       "name": "switchfoe",
       "file": "switchfoe.rec",
-      "saves": "tests/saves/switchfoe",
       "level": "Space\\Bridges&EnemiesStart",
       "description": "Hand-played by James, 2026-09-07, to close the coverage gap named in GAMETICK_PLAN.md: the tile-query cluster was reached by NOTHING in the suite. Space\\Bridges&EnemiesStart for 1796 frames. The foes on this level do not chase the player -- they seek out switches the player has toggled and turn them back off. That behaviour IS GameTick's foe type-2 dispatch, and it is the only thing in the game that drives FindNearestListedObjectTile.",
       "scenario": "Toggle switches, then let the foes walk to them and switch them back. Two or more switches are left pending near a foe at the same time, deliberately: the KAROO_SIM_FX=listfar control picks the FARTHEST qualifying candidate instead of the nearest, so with only one pending switch in range nearest == farthest and the control cannot fail even though the function ran. Foes are also allowed to REACH switches rather than being outrun, because arrival is the path that calls MarkListedTilesBlockedByObject.",
@@ -487,7 +474,6 @@
     {
       "name": "thrower02",
       "file": "thrower02.rec",
-      "saves": "tests/saves/thrower02",
       "level": "Candy\\Thrower02",
       "description": "Hand-played by James, 2026-09-05. Candy\\Thrower02 for about 44.2 s: kills one foe, collects 1 of 15 items and 1 of the 10 crystals required, vitality down to 24, then quits without completing. 2931 frames -- the longest of the five new recordings. Covers throwers (1), the paraglider (2), slides (8), teleporters (3), jump pads (3), ice (1) and hidden crystals (1). Paired with thrower02_fly, which plays the same level from the same fixture a different way.",
       "scenario": "first seconds of Thrower02, killing one foe",
@@ -519,7 +505,6 @@
     {
       "name": "thrower02_fly",
       "file": "thrower02_fly.rec",
-      "saves": "tests/saves/thrower02",
       "level": "Candy\\Thrower02",
       "description": "Hand-played by James, 2026-09-05. Candy\\Thrower02 again, from the same save fixture as thrower02 but played with the flying powerup: 1395 frames, about 16.2 s, 3 of 15 items collected, no crystals, vitality 41, level not completed. It ends on 4 lives, one MORE than it started with -- the level carries 2 extra-life pickups and this run takes one. That makes it the only recording in the suite where the life count goes UP; everywhere else lives are lost or unchanged, so it is the only automated check that the pickup path credits a life at all.",
       "scenario": "Thrower02 again, flying, gaining a life",
@@ -546,12 +531,11 @@
           "completed_a_level": false
         }
       },
-      "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1395-frame hash logs and identical end-state dumps. lives=4 is the assertion that matters here -- if a change breaks the extra-life pickup, this is the only recording that fails. Two recordings sharing one fixture (tests/saves/thrower02) is intended, not an oversight: the fixture is the starting state, and two different playthroughs of it are two tests."
+      "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1395-frame hash logs and identical end-state dumps. lives=4 is the assertion that matters here -- if a change breaks the extra-life pickup, this is the only recording that fails."
     },
     {
       "name": "water01",
       "file": "water01.rec",
-      "saves": "tests/saves/water01",
       "level": "Water\\Water01",
       "description": "Hand-played by James, 2026-08-31. Navigates the main menu, loads save slot 4 (Water\\Water01), plays the level through to the exit collecting all 15 gems (15 of 15 items, no foes killed, no deaths), completes it at frame 3921 for a level score of 320, then launches into the following level and quits a few seconds in without saving. 4147 records over 4150 frames, 2102 with a key held.",
       "scenario": "full level run: menu, save-slot load, all 15 gems, exit reached, then into the next level",

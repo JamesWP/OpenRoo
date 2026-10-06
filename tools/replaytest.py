@@ -2,7 +2,7 @@
 r"""Ka'roo replay test harness — REPLAY_PLAN.md Stage E.
 
 Runs the recordings catalogued in tests/manifest.json: restore the save
-fixture, replay the recorded input under the fixed clock and fixed seed, then
+files bundled in the recording, replay the recorded input under the fixed clock and fixed seed, then
 compare the end state and the crash classification against what the manifest
 says should happen.
 
@@ -11,7 +11,7 @@ says should happen.
     python3 tools/replaytest.py --list          # what is catalogued
     python3 tools/replaytest.py --bless NAME    # re-baseline expect.state
     python3 tools/replaytest.py record NAME --description "..." \
-            --saves tests/saves/bombstart --level 'Forest\BombStart'
+            --level 'Forest\BombStart'
 
 Exit code is the point: 0 = every selected recording behaved as catalogued,
 1 = at least one did not.
@@ -32,7 +32,7 @@ assumes (REPLAY_PLAN.md Stages A/A2):
   - SavedGames/ must hold exactly the bytes it held at record time, because
     the recording replays the *keypresses* that pick a save slot, not the load
     itself.  A different slot layout lands the menu somewhere else and the run
-    diverges immediately.  That is what the save fixtures are for.
+    diverges immediately.  That is why each recording carries its save files.
   - The replay ends on the recording's own length, never on wall-clock time.
     The DLL does that itself now (clock.cpp); --auto-exit is only a safety net
     for a run that wedges.
@@ -92,25 +92,17 @@ def select(m, names):
 
 # ── running ───────────────────────────────────────────────────────────────
 
-def restore_fixture(entry, verbose=False):
-    """Rebuild SavedGames/ from the recording's fixture. True if it is usable.
+SAVES_DIR = os.path.join(REPO, "run", "SavedGames")
 
-    A v2 fixture is *generated* from the decoded slot fields and then checked
-    against the hash recorded for each file, so a fixture that has been edited
-    without re-snapshotting fails here — before the game is launched — instead
-    of showing up as a replay divergence thousands of frames later.
-    """
-    fixture = entry.get("saves")
-    if not fixture:
-        print("  ! no save fixture — the run inherits whatever SavedGames holds")
-        return True
-    path = os.path.join(REPO, fixture)
-    stdout = None if verbose else subprocess.DEVNULL
-    r = subprocess.run([sys.executable,
-                        os.path.join(REPO, "tools", "karoosave.py"),
-                        "restore", path],
-                       cwd=REPO, stdout=stdout)
-    return r.returncode == 0
+
+def restore_saves(hdr, verbose=False):
+    """Make SavedGames/ hold the save files bundled in the recording."""
+    if not hdr["saves"]:
+        print("  ! no bundled saves — the run inherits whatever SavedGames holds")
+        return
+    recfmt.restore_saves(hdr, SAVES_DIR)
+    if verbose:
+        print("  restored %d save file(s)" % len(hdr["saves"]))
 
 
 def check_header(entry, cfg, rec_path):
@@ -421,13 +413,10 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
         return False
 
     if verbose:
-        print("  %d frames, dt=%.9f seed=%u, fixture=%s"
-              % (len(frames), hdr["dt"], hdr["seed"], entry.get("saves", "<none>")))
+        print("  %d frames, dt=%.9f seed=%u, saves=%d"
+              % (len(frames), hdr["dt"], hdr["seed"], len(hdr["saves"])))
 
-    if not restore_fixture(entry, verbose):
-        print("  FAIL: could not rebuild the save fixture %s — see the error "
-              "above. The game was not launched." % entry.get("saves"))
-        return False
+    restore_saves(hdr, verbose)
     wait_for_quiet()
     for stale in (dump_path, hash_path):
         if os.path.exists(stale):
@@ -531,11 +520,11 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
 CAPTURE_HELP = r"""
 Capturing a recording
 ---------------------
-1. Put SavedGames/ into the exact state the recording should start from, then
-   freeze it:
+1. Put SavedGames/ into the exact state the recording should start from:
 
-       python3 tools/karoosave.py set 4 --match BombStart --seed-from 2
-       python3 tools/karoosave.py snapshot tests/saves/<name>
+       python3 tools/karoosave.py write --slot 4 --match BombStart --all
+
+   It is bundled into the recording when the game exits.
 
 2. Run this command.  The game launches windowed, with the fixed clock and the
    fixed seed already set, recording to tests/recordings/<name>.rec.  Play the scenario,
@@ -561,15 +550,7 @@ def cmd_record(args):
     seed = args.seed or cfg.get("seed", "12345")
     rec_path = os.path.join(RECORDINGS, args.name + ".rec")
 
-    if args.saves:
-        fixture = os.path.join(REPO, args.saves)
-        if not os.path.exists(os.path.join(fixture, "FIXTURE")):
-            sys.exit("%s is not a save fixture — run `karoosave.py snapshot %s` "
-                     "first, with SavedGames/ in the state the recording should "
-                     "start from" % (args.saves, args.saves))
-        # Restore it now so what is recorded is what will be replayed.
-        subprocess.run([sys.executable, os.path.join(REPO, "tools", "karoosave.py"),
-                        "restore", fixture], cwd=REPO, check=True)
+    saves = recfmt.read_saves(SAVES_DIR)
 
     env = dict(os.environ)
     env["KAROO_RECORD"] = rec_path
@@ -580,7 +561,7 @@ def cmd_record(args):
     env["KAROO_STATE_DUMP"] = os.path.join(REPO, "replaytest-%s.json" % args.name)
 
     print("Recording to %s" % rec_path)
-    print("  dt=%s seed=%s fixture=%s" % (dt, seed, args.saves or "<none>"))
+    print("  dt=%s seed=%s saves=%s" % (dt, seed, ", ".join(sorted(saves)) or "<none>"))
     print("Play the scenario, then quit the game normally.")
     subprocess.run(["bash", os.path.join(REPO, "launch.sh")], cwd=REPO, env=env)
 
@@ -589,13 +570,15 @@ def cmd_record(args):
                  "(it must be in launch.sh's `env -i` block)")
 
     hdr, frames = recfmt.load(rec_path)
+    hdr["saves"] = saves
+    with open(rec_path, "wb") as f:
+        f.write(recfmt.encode(hdr, frames))
     keyed = sum(1 for f in frames if recfmt.pressed(f[2]))
     print("\ncaptured %d frames, %d with a key held" % (len(frames), keyed))
 
     entry = {
         "name": args.name,
         "file": os.path.basename(rec_path),
-        "saves": args.saves,
         "level": args.level,
         "description": args.description,
         "scenario": args.scenario or args.description,
@@ -619,8 +602,8 @@ def cmd_list(m):
         exp = r.get("expect", {})
         print("%-22s %s" % (r["name"], r.get("level", "?")))
         print("  %s" % r.get("description", "").strip())
-        print("  fixture=%s  expect crash=%s, %d asserted field(s)"
-              % (r.get("saves", "<none>"), exp.get("crash", "none"),
+        print("  expect crash=%s, %d asserted field(s)"
+              % (exp.get("crash", "none"),
                  len(exp.get("state") or {})))
         if r.get("notes"):
             print("  note: %s" % r["notes"])
@@ -655,8 +638,6 @@ def main():
                        help="what the recording does and what it is good for")
         p.add_argument("--scenario", help="short form, e.g. 'gem run, no deaths'")
         p.add_argument("--level", help=r"level name, e.g. 'Forest\BombStart'")
-        p.add_argument("--saves",
-                       help="save fixture to start from, e.g. tests/saves/bombstart")
         p.add_argument("--dt")
         p.add_argument("--seed")
         p.add_argument("--force", action="store_true", help="replace an existing entry")
