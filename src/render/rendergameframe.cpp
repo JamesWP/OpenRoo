@@ -161,7 +161,6 @@ static void rso(const void *pos, const void *rot, unsigned count, ThemeObjectTyp
                 double now, float animTime = 0.0f, unsigned animCode = 0,
                 unsigned dtMs = 0)
 {
-    PROF_SCOPE(OBJECT_NAMES[t]);
     Scene_RenderSceneObjects(Game::instance(), (SceneQuadVertex *)&g_levelPlacements,
                              (const Vec3 *)pos, (const Vec3 *)rot, count, slot(t),
                              g_renderDevice, now, animTime, animCode, dtMs);
@@ -258,78 +257,66 @@ static void opaque_passes(Game *g, double now, double elapsed)
     RenderDevice *d3d = g_renderDevice;
 
     {
-        PROF_SCOPE("level objects");
-        {
-            PROF_SCOPE("level mesh");
-            MeshBatch_Draw(pl, &g_themeBlock, d3d);
-        }
-        rso_list(pl->switches(),    THEME_OBJ_SWITCH,        now);
-        rso_list(pl->conveyors(),   THEME_OBJ_ICE,           now);
-        rso_list(pl->glue(),        THEME_OBJ_GLUE,          now);
-        rso_list(pl->breakables(),  THEME_OBJ_DESTRUCTFIELD, now);
-        /* the jump pads animate: a 500 ms cycle, animation code 0x14 */
-        rso(pl->jumpPads().pos(), pl->jumpPads().rot(), pl->jumpPads().count(), THEME_OBJ_JUMPPAD, now,
-            (float)fmod(now * 0.002, 1.0), 0x14, 0);
-        rso_list(pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
+        PROF_SCOPE("level mesh");
+        MeshBatch_Draw(pl, &g_themeBlock, d3d);
     }
+    rso_list(pl->switches(),    THEME_OBJ_SWITCH,        now);
+    rso_list(pl->conveyors(),   THEME_OBJ_ICE,           now);
+    rso_list(pl->glue(),        THEME_OBJ_GLUE,          now);
+    rso_list(pl->breakables(),  THEME_OBJ_DESTRUCTFIELD, now);
+    /* the jump pads animate: a 500 ms cycle, animation code 0x14 */
+    rso(pl->jumpPads().pos(), pl->jumpPads().rot(), pl->jumpPads().count(), THEME_OBJ_JUMPPAD, now,
+        (float)fmod(now * 0.002, 1.0), 0x14, 0);
+    rso_list(pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
 
     {
         PROF_SCOPE("tile quads");
         QuadBatch_Draw(pl, &g_themeBlock, d3d);
     }
 
-    {
-        PROF_SCOPE("ramps, lifts, slides");
-        rso_list(pl->ramps(),       THEME_OBJ_STAIR,         now);
-        pl->drawLifts(g, &g_themeBlock, d3d, now);
-        pl->drawSlides(g, &g_themeBlock, d3d, now);
-    }
+    rso_list(pl->ramps(),       THEME_OBJ_STAIR,         now);
+    pl->drawLifts(g, &g_themeBlock, d3d, now);
+    pl->drawSlides(g, &g_themeBlock, d3d, now);
 
     /* The destructible blocks: whole, or (while the cell's field203 is set)
      * the fx model, starting the debris on the cell's field20f latch.  Only
      * the first fx draw of the frame gets the elapsed-ms argument.  The
      * counter is a byte. */
-    {
-        PROF_SCOPE("destructibles");
-        bool firstFx = true;
-        for (unsigned char i = 0; i < (unsigned)pl->destructibles().count(); ++i) {
-            const float *pos = pl->destructibles().pos()[i];
-            const float *rot = pl->destructibles().rot()[i];
-            const int v = (unsigned char)(int)(pos[2] * -1.0f);
-            Tile *t = g->map()->tile((unsigned char)(int)pos[0], v);
-            if (t->field203() == 0) {
-                rso(pos, rot, 1, THEME_OBJ_OBSTACLE, now);
-                continue;
-            }
-            ThemeObjectTypeSlot *fx = slot(THEME_OBJ_OBSTACLEFX);
-            for (uint32_t k = 0; k < fx->instanceCount(); ++k) {
-                ThemeLevelObject *rec = &fx->records()[k];
-                if (rec->explodes() && t->field20f())
-                    rec->explodeDebris().begin(rec->mesh(), 0, rec->explodeDir());
-            }
-            if (t->field20f())
-                t->setField20f(0);
-            if (firstFx) {
-                rso(pos, rot, 1, THEME_OBJ_OBSTACLEFX, now, 0.0f, 0, (unsigned)(int)elapsed);
-                firstFx = false;
-            } else {
-                rso(pos, rot, 1, THEME_OBJ_OBSTACLEFX, now);
-            }
+    bool firstFx = true;
+    for (unsigned char i = 0; i < (unsigned)pl->destructibles().count(); ++i) {
+        const float *pos = pl->destructibles().pos()[i];
+        const float *rot = pl->destructibles().rot()[i];
+        const int v = (unsigned char)(int)(pos[2] * -1.0f);
+        Tile *t = g->map()->tile((unsigned char)(int)pos[0], v);
+        if (t->field203() == 0) {
+            rso(pos, rot, 1, THEME_OBJ_OBSTACLE, now);
+            continue;
+        }
+        ThemeObjectTypeSlot *fx = slot(THEME_OBJ_OBSTACLEFX);
+        for (uint32_t k = 0; k < fx->instanceCount(); ++k) {
+            ThemeLevelObject *rec = &fx->records()[k];
+            if (rec->explodes() && t->field20f())
+                rec->explodeDebris().begin(rec->mesh(), 0, rec->explodeDir());
+        }
+        if (t->field20f())
+            t->setField20f(0);
+        if (firstFx) {
+            rso(pos, rot, 1, THEME_OBJ_OBSTACLEFX, now, 0.0f, 0, (unsigned)(int)elapsed);
+            firstFx = false;
+        } else {
+            rso(pos, rot, 1, THEME_OBJ_OBSTACLEFX, now);
         }
     }
 
     /* The player: CameraFocus f[2..4] is its position, f[1] its yaw, f[0]
      * its animation time; the animation code is its anim byte. */
-    {
-        PROF_SCOPE("player, climbs, exit");
-        CameraFocus *focus = &g_cameraFocus;
-        float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
-        rso(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
-            g->player()->anim(), 0);
+    CameraFocus *focus = &g_cameraFocus;
+    float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
+    rso(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
+        g->player()->anim(), 0);
 
-        rso_list(pl->climbs(), THEME_OBJ_SLIDE, now);
-        rso(pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now);
-    }
+    rso_list(pl->climbs(), THEME_OBJ_SLIDE, now);
+    rso(pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now);
 
     /* The items, cell by cell. */
     {
@@ -343,17 +330,19 @@ static void opaque_passes(Game *g, double now, double elapsed)
                     continue;
                 float pos[3] = { (float)u, (float)t->height(), -(float)v };
                 float rot[3] = { 0.0f, 0.0f, 0.0f };
+                PROF_SCOPE(OBJECT_NAMES[ty]);
                 rso(pos, rot, 1, ty, now);
             }
     }
 
     /* The bombs: whole, or the explosion once it has started dying. */
-    {
+    if (g->bombCount() != 0) {
         PROF_SCOPE("bombs");
         for (unsigned char i = 0; i < g->bombCount(); ++i) {
             Bomb *b = g->bombSlot(g->bombId(i));
             float pos[3] = { b->posU(), b->posY(), -b->posV() };
             float rot[3] = { 0.0f, 0.0f, 0.0f };
+            PROF_SCOPE(OBJECT_NAMES[b->dyingStarted() == 0 ? THEME_OBJ_BOMB : THEME_OBJ_EXPLOSION]);
             if (b->dyingStarted() == 0) {
                 rso(pos, rot, 1, THEME_OBJ_BOMB, now);
                 continue;
@@ -364,7 +353,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
     }
 
     /* The foes, from the poses FramePose_Foes wrote. */
-    {
+    if (g->foeCount() != 0) {
         PROF_SCOPE("foes");
         for (unsigned char i = 0; i < g->foeCount(); ++i) {
             Foe *f = g->foeSlot(g->foeId(i));
@@ -373,6 +362,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
             ThemeObjectType ty;
             if (!foe_slot(p->kind(), dying, &ty))
                 continue;
+            PROF_SCOPE(OBJECT_NAMES[ty]);
             if (!dying) {
                 rso(p->pos(), p->rot(), 1, ty, now, p->stepFrac(), f->anim(), 0);
                 continue;
@@ -396,16 +386,10 @@ static void shadow(const void *pos, const void *rot, ThemeObjectType t, double n
 static void effects_and_shadows(Game *g, double now, double dt)
 {
     RenderDevice *d3d = g_renderDevice;
-    {
-        PROF_SCOPE("scene objects");
-        Scene_DrawSceneObjects(d3d, g_camera.eye(),
-                               ((uint32_t *)&dt)[0], ((uint32_t *)&dt)[1], now);
-        set_stencil_enable(false);
-    }
-    {
-        PROF_SCOPE("bridges");
-        BridgeSurf_Draw(g, &g_themeBlock, d3d, now);
-    }
+    Scene_DrawSceneObjects(d3d, g_camera.eye(),
+                           ((uint32_t *)&dt)[0], ((uint32_t *)&dt)[1], now);
+    set_stencil_enable(false);
+    BridgeSurf_Draw(g, &g_themeBlock, d3d, now);
 
     CameraFocus *focus = &g_cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
@@ -466,6 +450,8 @@ static void effects_and_shadows(Game *g, double now, double dt)
 static void particles(const void *pos, const void *rot, unsigned count, ThemeObjectType t,
                       double now, double elapsed)
 {
+    if (count == 0)
+        return;
     PROF_SCOPE(OBJECT_NAMES[t]);
     Theme_DrawParticleObjects(Game::instance(), &g_levelPlacements,
                               (const float (*)[3])pos, (const float (*)[3])rot, count,
@@ -614,7 +600,6 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
     /* Setting 2 and up: pickups and the speed trail. */
     if (g->videoParticles() > 1) {
-        PROF_SCOPE("pickups and speed trail");
         Player *pl = g->player();
         ThemeLevelObject *crystal = burst_record(THEME_OBJ_CRYSTALFX);
         if (pl->pickedUp() == 1 && crystal != NULL)
@@ -1049,7 +1034,7 @@ Render_RenderGameFrame(void)
                 scripted_camera(g, g_renderDevice);
         }
         if (g->soundCreated() != 0) {
-            PROF_SCOPE("sound listener");
+            PROF_SCOPE("audio");
             update_listener(g);
         }
     }
@@ -1060,7 +1045,7 @@ Render_RenderGameFrame(void)
     if (d3d->hasStencil())
         set_stencil_enable(true);
     {
-        PROF_SCOPE("clear and begin");
+        PROF_SCOPE("gpu / vsync wait");
         d3d->Clear(ClearFlag::Depth);
         if (!d3d->BeginFrame())
             return;
@@ -1071,10 +1056,7 @@ Render_RenderGameFrame(void)
     d3d->SetSpecular(false);
     d3d->SetBlend(BlendState::off());
     CameraGlobals *cam = &g_camera;
-    {
-        PROF_SCOPE("sky");
-        g_themeBlock.sky().draw(d3d, cam->eye()[0], cam->eye()[1], cam->eye()[2]);
-    }
+    g_themeBlock.sky().draw(d3d, cam->eye()[0], cam->eye()[1], cam->eye()[2]);
     if (g_themeBlock.fogEnabled())
         set_fog_enable(true);
     d3d->SetStencil(StencilState{ true, CompareFunc::Always, 1, StencilOp::Keep,
@@ -1096,53 +1078,47 @@ Render_RenderGameFrame(void)
     set_depth(false, true);
     d3d->SetSamplerAddress(0, AddressMode::Clamp, AddressMode::Clamp);
 
+    const unsigned w = d3d->width(), h = d3d->height();
+    const float W = (float)w, H = (float)h;
+    const float hudH = H * 0.26666668f;
+    const unsigned char st = g->state();
+    if (st != 6 && st != 2 && st != 0 && st != 5 && st != 3 &&
+        g->scriptPlayer()->running() == 0)
     {
-        PROF_SCOPE("hud and menus");
-        const unsigned w = d3d->width(), h = d3d->height();
-        const float W = (float)w, H = (float)h;
-        const float hudH = H * 0.26666668f;
-        const unsigned char st = g->state();
-        if (st != 6 && st != 2 && st != 0 && st != 5 && st != 3 &&
-            g->scriptPlayer()->running() == 0)
-        {
-            PROF_SCOPE("hud");
-            draw_hud(g, w, h, W, H, hudH);
-        }
-        {
-            PROF_SCOPE("fps text");
-            draw_fps(W, H);
-        }
+        PROF_SCOPE("hud");
+        draw_hud(g, w, h, W, H, hudH);
+    }
+    {
+        PROF_SCOPE("hud");
+        draw_fps(W, H);
+    }
 
-        const float pad = H * 0.00625f;
-        if (st != 0 && st != 5 && st != 3) {
-            PROF_SCOPE("messages");
-            draw_messages(g, W, H, pad);
-        }
-        {
-            PROF_SCOPE("logo");
-            draw_logo(g, H, hudH, pad);
-        }
+    const float pad = H * 0.00625f;
+    if (st != 0 && st != 5 && st != 3) {
+        PROF_SCOPE("hud");
+        draw_messages(g, W, H, pad);
+    }
+    {
+        PROF_SCOPE("hud");
+        draw_logo(g, H, hudH, pad);
+    }
 
-        const uint32_t ms = (uint32_t)(long long)now;
-        if (st == 0 || st == 5 || st == 3) {
-            PROF_SCOPE("menu");
-            Menu_DispatchGameState(g, &g_themeBlock, d3d, &g_fontMain, ms);
-        }
-        if (g->state() == 2) {
-            PROF_SCOPE("game over score");
-            Score_DrawGameOverScore(g, &g_themeBlock, d3d, &g_fontMain, ms);
-        }
-        if (g->menu()->node() == 3 || g->state() == 6) {
-            PROF_SCOPE("high scores");
-            Score_DrawHighScoreTable(g, &g_themeBlock, d3d, &g_fontMain, ms);
-        }
+    const uint32_t ms = (uint32_t)(long long)now;
+    if (st == 0 || st == 5 || st == 3) {
+        PROF_SCOPE("menu");
+        Menu_DispatchGameState(g, &g_themeBlock, d3d, &g_fontMain, ms);
+    }
+    if (g->state() == 2) {
+        PROF_SCOPE("menu");
+        Score_DrawGameOverScore(g, &g_themeBlock, d3d, &g_fontMain, ms);
+    }
+    if (g->menu()->node() == 3 || g->state() == 6) {
+        PROF_SCOPE("menu");
+        Score_DrawHighScoreTable(g, &g_themeBlock, d3d, &g_fontMain, ms);
     }
 
     set_depth_test(true);
-    {
-        PROF_SCOPE("end frame");
-        d3d->EndFrame();
-    }
+    d3d->EndFrame();
     PROF_SCOPE("present");
     if (g->state() == 7) {
         if (g->field_0c() != 0)

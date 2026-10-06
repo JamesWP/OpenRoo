@@ -32,6 +32,8 @@ const Node *nodes(unsigned *count)
     return g_nodes.data();
 }
 
+bool recent(const Node &n) { return n.framesIdle < 60; }
+
 void reset()
 {
     g_nodes.clear();
@@ -79,6 +81,7 @@ void Scope::end()
     for (Node &m : g_nodes) {
         m.ms    = m.accMs;
         m.calls = m.accCalls;
+        m.framesIdle = m.calls ? 0 : m.framesIdle + 1;
         m.avgMs += (m.ms - m.avgMs) * 0.05;
         m.selfAvgMs += ((m.ms - m.childMs) - m.selfAvgMs) * 0.05;
         m.childMs = 0;
