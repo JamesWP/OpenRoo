@@ -3,6 +3,9 @@
 #include "image.h"
 #include "bridgeobject.h"
 #include "cheatcode.h"
+#include "levelmap.h"
+#include "switchcells.h"
+#include "tile.h"
 #include "game.h"
 #include "prof.h"
 #include "renderdevice.h"
@@ -286,6 +289,7 @@ static void draw_frame_breakdown()
 
 static bool g_showMap = true;
 static bool g_mapInitial;  // the level as loaded, not as it is now
+static bool g_showLinks;   // every switch and teleporter link, not just the hovered one
 
 static const char *kind_name(uint8_t k)
 {
@@ -492,7 +496,9 @@ static void draw_map()
     }
     ImGui::Checkbox("as loaded", &g_mapInitial);
     ImGui::SameLine();
-    ImGui::TextDisabled("%ux%u  hover a cell for details", o.cols, o.rows);
+    ImGui::Checkbox("links", &g_showLinks);
+    ImGui::SameLine();
+    ImGui::TextDisabled("%ux%u  hover for details and links", o.cols, o.rows);
 
     int maxH = 1;
     for (unsigned u = 0; u < o.cols; u++)
@@ -509,6 +515,17 @@ static void draw_map()
     avail.x -= legendW;
     const float cell = std::max(4.0f, std::min(avail.x / o.cols, avail.y / o.rows));
     const ImVec2 origin = ImGui::GetCursorScreenPos();
+    // The hovered cell, known before drawing so its links can be shown.
+    int hoverU = -1, hoverV = -1;
+    if (ImGui::IsWindowHovered()) {
+        const ImVec2 m = ImGui::GetIO().MousePos;
+        const int hu = (int)floorf((m.x - origin.x) / cell), hv = (int)floorf((m.y - origin.y) / cell);
+        if (hu >= 0 && hv >= 0 && hu < o.cols && hv < o.rows) {
+            hoverU = hu;
+            hoverV = hv;
+        }
+    }
+    auto hovered = [&](unsigned u, unsigned v) { return (int)u == hoverU && (int)v == hoverV; };
     ImDrawList *dl = ImGui::GetWindowDrawList();
     auto corner = [&](float u, float v) { return ImVec2(origin.x + u * cell, origin.y + v * cell); };
     auto centre = [&](float u, float v) { return corner(u + 0.5f, v + 0.5f); };
@@ -555,6 +572,44 @@ static void draw_map()
         dl->AddRect(p0, p1, b.armed ? IM_COL32(255, 220, 60, 255) : IM_COL32(170, 110, 50, 255),
                     0.0f, 0, std::max(1.5f, cell * 0.1f));
         seenBridge = true;
+
+        // A line from each of its switches to the middle of the span: all of
+        // them, or those of a hovered switch or bridge.
+        rect(rest, end, &p0, &p1);
+        const ImVec2 mid((p0.x + p1.x) * 0.5f, (p0.y + p1.y) * 0.5f);
+        const SwitchCells *sc = game->switchCells();
+        const int hAlong = alongU ? hoverU : hoverV, hAcross = alongU ? hoverV : hoverU;
+        bool show = g_showLinks || (hAcross == (int)cross && hAlong >= std::min(rest, end) &&
+                                    hAlong < std::max(rest, end));
+        for (unsigned k = 0; k < sc->count(b.slot); k++)
+            show = show || hovered(sc->cellU(b.slot, k), sc->cellV(b.slot, k));
+        for (unsigned k = 0; show && k < sc->count(b.slot); k++)
+            dl->AddLine(centre(sc->cellU(b.slot, k), sc->cellV(b.slot, k)), mid,
+                        IM_COL32(230, 40, 40, 200), std::max(1.0f, cell * 0.08f));
+    }
+
+    // Teleporters to their partners, once per pair.
+    if (game) {
+        LevelMap *map = game->map();
+        for (unsigned u = 0; u < o.cols; u++)
+            for (unsigned v = 0; v < o.rows; v++) {
+                Tile *t = map->tile((int)u, (int)v);
+                if (t->objectMarker() != TILE_TELEPORTER)
+                    continue;
+                const unsigned tu = t->teleportU(), tv = t->teleportV();
+                if (tu >= o.cols || tv >= o.rows || (tu == u && tv == v))
+                    continue;
+                const bool paired = map->tile((int)tu, (int)tv)->teleportU() == u &&
+                                    map->tile((int)tu, (int)tv)->teleportV() == v;
+                if (!g_showLinks && !hovered(u, v) && !hovered(tu, tv))
+                    continue;
+                if (paired && (tu < u || (tu == u && tv < v)) && !hovered(u, v))
+                    continue;  // drawn from the other end
+                dl->AddLine(centre(u, v), centre(tu, tv), IM_COL32(190, 70, 230, 220),
+                            std::max(1.0f, cell * 0.08f));
+                if (!paired)  // one-way: mark the destination
+                    dl->AddCircle(centre(tu, tv), cell * 0.25f, IM_COL32(190, 70, 230, 220), 0, 2.0f);
+            }
     }
 
     if (!g_mapInitial) {
@@ -730,6 +785,8 @@ static void settings_read_line(ImGuiContext *, ImGuiSettingsHandler *, void *, c
         g_showMap = v != 0;
     else if (sscanf(line, "MapAsLoaded=%d", &v) == 1)
         g_mapInitial = v != 0;
+    else if (sscanf(line, "MapLinks=%d", &v) == 1)
+        g_showLinks = v != 0;
 }
 
 static void settings_write_all(ImGuiContext *, ImGuiSettingsHandler *h, ImGuiTextBuffer *out)
@@ -737,6 +794,7 @@ static void settings_write_all(ImGuiContext *, ImGuiSettingsHandler *h, ImGuiTex
     out->appendf("[%s][Settings]\n", h->TypeName);
     out->appendf("ShowMap=%d\n", g_showMap ? 1 : 0);
     out->appendf("MapAsLoaded=%d\n", g_mapInitial ? 1 : 0);
+    out->appendf("MapLinks=%d\n", g_showLinks ? 1 : 0);
     out->append("\n");
 }
 
