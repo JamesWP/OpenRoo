@@ -15,7 +15,7 @@ namespace audiodev { class Buffer; }
 /* An FVF 0x242 vertex: XYZ, diffuse, two texture-coordinate sets. */
 struct BridgeVertex {
     float x, y, z;
-    unsigned long diffuse;
+    uint32_t diffuse;
     float u0, v0;
     float u1, v1;
 };
