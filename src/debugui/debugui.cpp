@@ -10,8 +10,11 @@
 #include <algorithm>
 #include <float.h>
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 #include <vector>
+// Last: it defines LINE_MAX, which the game's headers use as a name.
+#include "imgui_internal.h"
 
 namespace debugui {
 
@@ -513,12 +516,45 @@ static bool overlay(RenderDevice &dev)
 
 // ── Life cycle ──
 
+/* Our own toggles, kept in the ini beside ImGui's window placement as a
+ * [Open'Roo][Settings] section. */
+static void *settings_open(ImGuiContext *, ImGuiSettingsHandler *, const char *name)
+{
+    return strcmp(name, "Settings") == 0 ? (void *)1 : NULL;
+}
+
+static void settings_read_line(ImGuiContext *, ImGuiSettingsHandler *, void *, const char *line)
+{
+    int v;
+    if (sscanf(line, "ShowMap=%d", &v) == 1)
+        g_showMap = v != 0;
+    else if (sscanf(line, "MapAsLoaded=%d", &v) == 1)
+        g_mapInitial = v != 0;
+}
+
+static void settings_write_all(ImGuiContext *, ImGuiSettingsHandler *h, ImGuiTextBuffer *out)
+{
+    out->appendf("[%s][Settings]\n", h->TypeName);
+    out->appendf("ShowMap=%d\n", g_showMap ? 1 : 0);
+    out->appendf("MapAsLoaded=%d\n", g_mapInitial ? 1 : 0);
+    out->append("\n");
+}
+
 bool init(RenderDevice &dev)
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
-    io.IniFilename = NULL;
+    // In the run directory: window placement and the toggles above persist
+    // from run to run.  The cheats (which change the game) are not saved.
+    io.IniFilename = "debugui.ini";
+    ImGuiSettingsHandler handler;
+    handler.TypeName   = "Open'Roo";
+    handler.TypeHash   = ImHashStr(handler.TypeName);
+    handler.ReadOpenFn = settings_open;
+    handler.ReadLineFn = settings_read_line;
+    handler.WriteAllFn = settings_write_all;
+    ImGui::AddSettingsHandler(&handler);
     io.LogFilename = NULL;
     io.BackendRendererName = "RenderDevice";
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
