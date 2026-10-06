@@ -6,6 +6,8 @@
 #include "levelmap.h"
 #include "switchcells.h"
 #include "tile.h"
+#include "foe.h"
+#include "foepath.h"
 #include "game.h"
 #include "prof.h"
 #include "renderdevice.h"
@@ -152,6 +154,23 @@ static bool        g_obsValid;
 
 static bool g_holdFreeze;
 
+/* The level timer held at the value it had when the box was ticked (the level
+ * index guards against carrying it into another level). */
+static bool     g_pauseTimer;
+static unsigned g_pausedMs;
+static unsigned g_pausedLevel;
+
+static void hold_timer(Game *g)
+{
+    if (!g_pauseTimer)
+        return;
+    if (g_pausedLevel != g->levelIndex() || g->timeElapsed() < g_pausedMs) {
+        g_pausedLevel = g->levelIndex();
+        g_pausedMs    = g->timeElapsed();
+    }
+    g->setTimeElapsed(g_pausedMs);
+}
+
 /* The level to load, from the same table the level select reads. */
 static void draw_level_picker(Game *g)
 {
@@ -185,6 +204,14 @@ static void draw_overview(RenderDevice &dev)
     ImGui::Separator();
     ImGui::Text("level %u/%u: %s", g->levelIndex() + 1, g->levelCount(), g->levelName());
     draw_level_picker(g);
+
+    if (ImGui::Checkbox("pause timer", &g_pauseTimer)) {
+        g_pausedLevel = g->levelIndex();
+        g_pausedMs    = g->timeElapsed();
+    }
+    hold_timer(g);
+    ImGui::SameLine();
+    ImGui::TextDisabled("%u s of %d", g->timeElapsed() / 1000, g->timeLimit());
 
     const Observation &obs = g_obs;
     if (g_obsValid) {
@@ -289,6 +316,7 @@ static void draw_frame_breakdown()
 // ── The map ──
 
 static bool g_showMap = true;
+static bool g_showFoePaths;
 static bool g_mapInitial;  // the level as loaded, not as it is now
 static bool g_showLinks;   // every switch and teleporter link, not just the hovered one
 
@@ -571,7 +599,9 @@ static void draw_map()
     ImGui::SameLine();
     ImGui::Checkbox("links", &g_showLinks);
     ImGui::SameLine();
-    ImGui::TextDisabled("%ux%u  hover for details and links", o.cols, o.rows);
+    ImGui::Checkbox("foe paths", &g_showFoePaths);
+    ImGui::SameLine();
+    ImGui::TextDisabled("%ux%u  click teleports; hover for details and links", o.cols, o.rows);
 
     int maxH = 1;
     for (unsigned u = 0; u < o.cols; u++)
@@ -689,6 +719,25 @@ static void draw_map()
             }
     }
 
+    // Each foe's remaining route to its target, from the pathfinder's last
+    // search (the nodes run on towards the target).
+    if (g_showFoePaths && game && !g_mapInitial) {
+        for (unsigned i = 0; i < game->foeCount(); i++) {
+            const Foe *f = game->foeSlot(game->foeId(i));
+            const FoePath *fp = f ? f->pathfinder() : nullptr;
+            if (!fp || !fp->hasPath() || !fp->result())
+                continue;
+            ImVec2 prev = centre(f->posU(), f->posV());
+            int guard = 0;
+            for (const PathNode *n = fp->result(); n && guard++ < 4096; n = n->parent()) {
+                const ImVec2 p = centre((float)n->u(), (float)n->v());
+                dl->AddLine(prev, p, IM_COL32(255, 140, 0, 220), std::max(1.0f, cell * 0.1f));
+                prev = p;
+            }
+            dl->AddCircle(prev, cell * 0.25f, IM_COL32(255, 140, 0, 220), 0, 2.0f);
+        }
+    }
+
     if (!g_mapInitial) {
         for (unsigned i = 0; i < o.n_enemies; i++)
             dl->AddCircleFilled(centre(o.enemies[i].pos[0], o.enemies[i].pos[2]), cell * 0.3f,
@@ -720,6 +769,8 @@ static void draw_map()
         const int u = (int)((m.x - origin.x) / cell), v = (int)((m.y - origin.y) / cell);
         if (u >= 0 && v >= 0 && u < o.cols && v < o.rows) {
             const WsTile &t = o.grid[v + u * WS_GRID_PITCH];
+            if (ImGui::IsItemClicked(0) && game && (t.height != 0 || t.kind != TILE_EMPTY))
+                Cheat_TeleportPlayer(game, (unsigned char)u, (unsigned char)v);
             dl->AddRect(corner(u, v), corner(u + 1, v + 1), IM_COL32(255, 255, 0, 255), 0.0f, 0, 2.0f);
             ImGui::BeginTooltip();
             ImGui::Text("U%d V%d  %s (0x%02x)", u, v, kind_name(t.kind), t.kind);
@@ -816,6 +867,11 @@ static void draw_map()
         dl->AddCircleFilled(ImVec2(r.first.x + ls / 2, r.first.y + ls / 2), ls * 0.3f, IM_COL32(20, 20, 20, 255));
         ImGui::TextUnformatted("bomb");
     }
+    if (g_showFoePaths) {
+        auto r = swatch();
+        dl->AddLine(ImVec2(r.first.x, r.second.y), ImVec2(r.second.x, r.first.y), IM_COL32(255, 140, 0, 220), 2.0f);
+        ImGui::TextUnformatted("foe path");
+    }
     ImGui::TextDisabled("lighter is higher");
     ImGui::EndGroup();
     ImGui::End();
@@ -871,6 +927,8 @@ static void settings_read_line(ImGuiContext *, ImGuiSettingsHandler *, void *, c
         g_showMap = v != 0;
     else if (sscanf(line, "MapAsLoaded=%d", &v) == 1)
         g_mapInitial = v != 0;
+    else if (sscanf(line, "FoePaths=%d", &v) == 1)
+        g_showFoePaths = v != 0;
     else if (sscanf(line, "MapLinks=%d", &v) == 1)
         g_showLinks = v != 0;
 }
@@ -880,6 +938,7 @@ static void settings_write_all(ImGuiContext *, ImGuiSettingsHandler *h, ImGuiTex
     out->appendf("[%s][Settings]\n", h->TypeName);
     out->appendf("ShowMap=%d\n", g_showMap ? 1 : 0);
     out->appendf("MapAsLoaded=%d\n", g_mapInitial ? 1 : 0);
+    out->appendf("FoePaths=%d\n", g_showFoePaths ? 1 : 0);
     out->appendf("MapLinks=%d\n", g_showLinks ? 1 : 0);
     out->append("\n");
 }

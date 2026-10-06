@@ -84,6 +84,7 @@ public:
     // nonzero while dead or respawning.
     unsigned char moveState() const            { return moveState_; }
     void  setMoveState(unsigned char s)        { moveState_ = s; }
+    FoePath *pathfinder() const                { return pathfinder_; }
 
     // The sound handles: soundobj.cpp writes them for foes, levelsounds.cpp
     // and fixedsounds.cpp for the Player.

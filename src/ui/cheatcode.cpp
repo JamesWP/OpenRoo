@@ -111,6 +111,16 @@ void Cheat_FreezeFoes(Game *g)
     pl->setFreezeActive(1);
 }
 
+void Cheat_TeleportPlayer(Game *g, unsigned char u, unsigned char v)
+{
+    Player *pl = g->player();
+    const unsigned char h = g->map()->tile(u, v)->height();
+    pl->setMoveDir(0);
+    pl->setPendingMove(0);
+    pl->setCell(u, v, h);
+    pl->setPos((float)u, (float)h, (float)v);
+}
+
 bool Cheat_LoadLevel(Game *self, unsigned char lvl)
 {
     char path[384];

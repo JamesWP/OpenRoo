@@ -19,3 +19,6 @@ void Cheat_FreezeFoes(Game *g);      // restarts the freeze pickup's window
 /* jjmapnr: loads level `lvl` (0-based) by number and enters it.  False if
  * there is no such level or its file is missing. */
 bool Cheat_LoadLevel(Game *g, unsigned char lvl);
+
+/* Moves the player to cell (u, v), standing on its floor, as a teleporter does. */
+void Cheat_TeleportPlayer(Game *g, unsigned char u, unsigned char v);
