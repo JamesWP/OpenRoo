@@ -209,7 +209,7 @@ static void draw_prof_node(const prof::Node *nodes, unsigned count, int idx, dou
     const prof::Node &n = nodes[idx];
     bool leaf = true;
     for (unsigned i = 0; i < count; i++)
-        if (nodes[i].parent == idx) {
+        if (nodes[i].parent == idx && prof::recent(nodes[i])) {
             leaf = false;
             break;
         }
@@ -238,7 +238,7 @@ static void draw_prof_node(const prof::Node *nodes, unsigned count, int idx, dou
         ImGui::PopStyleColor();
     if (open && !leaf) {
         for (unsigned i = 0; i < count; i++)
-            if (nodes[i].parent == idx)
+            if (nodes[i].parent == idx && prof::recent(nodes[i]))
                 draw_prof_node(nodes, count, (int)i, frameMs);
         ImGui::TreePop();
     }
