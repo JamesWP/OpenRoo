@@ -1,5 +1,5 @@
 /* The level's placement lists: for each kind of cell the renderer draws
- * (lifts, platforms, falling tiles, ramps...), where each one stands and how it is
+ * (lifts, platforms, falling tiles, stairs...), where each one stands and how it is
  * turned, plus the tile-top template and the wall strips at height steps.
  * Built on level entry, read by the frame renderer every frame.  Every list is
  * a count and one or two heap arrays, freed only by LevelPlacements::release.
@@ -75,7 +75,7 @@ public:
     const PlacementList   &teleporters() const  { return teleporters_; }
     const PlacementList   &sticky() const         { return sticky_; }
     const PlacementList   &switches() const     { return switches_; }
-    const PlacementList   &ramps() const        { return ramps_; }
+    const PlacementList   &stairs() const       { return stairs_; }
     const PlacementList   &slides() const       { return slides_; }
     const PlacementList   &ice() const    { return ice_; }
     const PlacementList   &bombables() const { return bombables_; }
@@ -106,7 +106,7 @@ private:
     PlacementList   teleporters_;     // TILE_TELEPORTER
     PlacementList   sticky_;            // TILE_STICKY
     PlacementList   switches_;        // TILE_SWITCH
-    PlacementList   ramps_;           // TILE_RAMP_1..4, yaw by kind
+    PlacementList   stairs_;           // TILE_STAIRS_1..4, yaw by kind
     PlacementList   slides_;          // TILE_SLIDE, yaw by slide direction
     PlacementList   ice_;       // TILE_ICE
     PlacementList   bombables_;   // TILE_BOMBABLE

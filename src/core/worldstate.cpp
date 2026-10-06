@@ -171,9 +171,9 @@ bool Observation::observe()
     return true;
 }
 
-/* Kinds 5 to 8 are ramps; the movement code uses this test to tell a climb
+/* Kinds 5 to 8 are stairs; the movement code uses this test to tell a climb
  * from a wall. */
-static inline bool ws_is_ramp(uint8_t kind) { return kind > 4 && kind < 9; }
+static inline bool ws_is_stairs(uint8_t kind) { return kind > 4 && kind < 9; }
 
 bool Observation::foeOnCell(int u, int v) const
 {
@@ -211,17 +211,17 @@ bool Observation::wsPassableImpl(int fu, int fv,
     // how the player gets caught.  A spent pad is safe.
     if (to->kind == WS_TILE_STICKY && to->spent == 0) return false;
 
-    // A climb is allowed only when the tile being left is a ramp facing the
+    // A climb is allowed only when the tile being left is a stair tile facing the
     // direction of travel, or facing directly away; it is the source tile that
     // counts.  Otherwise a step one higher is refused.
     if (to->height > from->height) {
-        if (!ws_is_ramp(from->kind)) return false;
+        if (!ws_is_stairs(from->kind)) return false;
         int dir = 0;
         for (int d = WS_DIR_MIN; d <= WS_DIR_MAX; d++)
             if (fu + WS_DIR_DU[d] == tu && fv + WS_DIR_DV[d] == tv) { dir = d; break; }
-        int ramp = from->kind - 4;            // 1..4
-        int back = ((ramp - 1 + 2) % 4) + 1;  // its opposite
-        if (dir != ramp && dir != back) return false;
+        int up   = from->kind - 4;              // 1..4, the way up
+        int back = ((up - 1 + 2) % 4) + 1;      // its opposite
+        if (dir != up && dir != back) return false;
     }
 
     // A drop of three or more kills, unless onto a jump pad.

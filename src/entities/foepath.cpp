@@ -548,9 +548,9 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
 
 /* GetCellStepDirectionCode's axis pairing does not match the movement facing
  * table in worldstate.h (+v and +u are swapped between them).  That is not a
- * bug in either: this result is compared against a ramp-orientation code, a
+ * bug in either: this result is compared against a stairs-orientation code, a
  * different enumeration from entity facing, and reconciling the two would
- * misclassify every ramp. */
+ * misclassify every stair tile. */
 int
 Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
                              unsigned char u_to,   unsigned char v_to)
@@ -592,7 +592,7 @@ Sim_CheckCellStepIsLegal(LevelMap *base, unsigned char u_from, unsigned char v_f
 
     int flag = 0;
 
-    if (Sim_CheckTileIsRamp(to->objectMarker())) {
+    if (Sim_CheckTileIsStairs(to->objectMarker())) {
         const int code = Sim_GetCellStepDirectionCode(u_from, v_from, u_to, v_to);
         const unsigned char k = to->objectMarker();
         if ((int)(k & 0xff) - 4 == code ||
@@ -611,13 +611,13 @@ Sim_CheckCellStepIsLegal(LevelMap *base, unsigned char u_from, unsigned char v_f
               (unsigned char)from->liftTop() == to->height()))
         flag = 1;
 
-    if (Sim_CheckTileIsRamp(to->objectMarker())) {
+    if (Sim_CheckTileIsStairs(to->objectMarker())) {
         const int code = Sim_GetCellStepDirectionCode(u_from, v_from, u_to, v_to);
         const unsigned char k = to->objectMarker();
         if ((int)(k & 0xff) - 4 == code ||
             Sim_GetTurnedDirection((unsigned char)(k - 4), 2) == code) {
             int ok = 1;
-            if (Sim_CheckTileIsRamp(from->objectMarker()) &&
+            if (Sim_CheckTileIsStairs(from->objectMarker()) &&
                 code != (int)from->objectMarker())
                 ok = 0;
             if (ok && (int)to->height() == (int)from->height() - 1)  // Int arithmetic: a height of 0 matches nothing.
@@ -640,7 +640,7 @@ Sim_CheckCellStepIsLegal(LevelMap *base, unsigned char u_from, unsigned char v_f
         else if (u_from > u_to && dir == 2)
             flag = 1;
         else
-            flag = 0;  // overwrites whatever the ramp/height clauses above decided
+            flag = 0;  // overwrites whatever the stairs/height clauses above decided
     }
 
     if (to->objectMarker() == TILE_SLIDE)

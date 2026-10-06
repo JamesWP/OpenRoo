@@ -31,12 +31,12 @@ enum TileKind {
     // it as solid.
     TILE_EXIT        = 0x04,
 
-    // Ramps, one per facing: kind - 4 is the direction, 1..4.  A step off a
-    // ramp is exempt from the fall rule only along the ramp's own axis.
-    TILE_RAMP_1      = 0x05,
-    TILE_RAMP_2      = 0x06,
-    TILE_RAMP_3      = 0x07,
-    TILE_RAMP_4      = 0x08,
+    // Stairs, one per facing: kind - 4 is the direction, 1..4.  A step off a
+    // stair tile is exempt from the fall rule only along the stairs' own axis.
+    TILE_STAIRS_1      = 0x05,
+    TILE_STAIRS_2      = 0x06,
+    TILE_STAIRS_3      = 0x07,
+    TILE_STAIRS_4      = 0x08,
 
     // A lift; the param is the lift's.
     TILE_LIFT        = 0x09,

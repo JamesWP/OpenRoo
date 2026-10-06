@@ -300,7 +300,7 @@ static const char *kind_name(uint8_t k)
     case TILE_STICKY:       return "sticky";
     case TILE_START:        return "start";
     case TILE_EXIT:         return "exit";
-    case TILE_RAMP_1: case TILE_RAMP_2: case TILE_RAMP_3: case TILE_RAMP_4:
+    case TILE_STAIRS_1: case TILE_STAIRS_2: case TILE_STAIRS_3: case TILE_STAIRS_4:
                             return "stairs";
     case TILE_LIFT:         return "lift";
     case TILE_PLATFORM_U: case TILE_PLATFORM_V:
@@ -365,7 +365,7 @@ static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
         dl->AddRectFilled(r.first, r.second, IM_COL32(220, 200, 40, 200), w * 0.3f);
         break;
     }
-    case TILE_RAMP_1: case TILE_RAMP_2: case TILE_RAMP_3: case TILE_RAMP_4: {
+    case TILE_STAIRS_1: case TILE_STAIRS_2: case TILE_STAIRS_3: case TILE_STAIRS_4: {
         // Steps, walkable both ways: three treads across the slope, widest at
         // the foot and narrowest at the top.  kind - 4 is the way up.
         const int d = kind - 4;
@@ -773,13 +773,13 @@ static void draw_map()
         return std::make_pair(p, ImVec2(p.x + ls, p.y + ls));
     };
     static const uint8_t KINDS[] = {
-        TILE_EXIT, TILE_STICKY, TILE_RAMP_1, TILE_LIFT, TILE_PLATFORM_U, TILE_PLATFORM_TRACK,
+        TILE_EXIT, TILE_STICKY, TILE_STAIRS_1, TILE_LIFT, TILE_PLATFORM_U, TILE_PLATFORM_TRACK,
         TILE_FALLING, TILE_JUMP_PAD, TILE_TELEPORTER, TILE_SLIDE, TILE_SWITCH,
         TILE_BRIDGE_U, TILE_ICE, TILE_IMPASSABLE, TILE_BOMBABLE,
     };
     for (uint8_t k : KINDS) {
         bool any = seen[k];
-        if (k == TILE_RAMP_1) any = seen[5] || seen[6] || seen[7] || seen[8];
+        if (k == TILE_STAIRS_1) any = seen[5] || seen[6] || seen[7] || seen[8];
         if (k == TILE_PLATFORM_U) any = seen[TILE_PLATFORM_U] || seen[TILE_PLATFORM_V];
         if (k == TILE_BRIDGE_U) any = seenBridge;
         if (!any)

@@ -119,10 +119,10 @@ struct Observation {
     /* Whether an entity on (fu, fv) can step to the adjacent (tu, tv).  The
      * game's movement cancels a step when:
      *   - the destination's occupant byte is set (an object or a foe);
-     *   - it is higher, unless the tile being left is a ramp facing that way;
+     *   - it is higher, unless the tile being left is a stair tile facing that way;
      *   - it is WS_MAX_SAFE_DROP or more steps lower, unless it is a jump pad;
      *   - it is kind 0x16, or 0x17 with its busy flag clear.
-     * Ramps (kinds 5 to 8) allow the climb only in their own direction; that
+     * Stairs (kinds 5 to 8) allow the climb only in their own direction; that
      * test is not reproduced here, so this can propose a climb the game
      * refuses.  Everywhere else it errs towards blocked: a refused legal step
      * costs a detour, but an accepted illegal one wedges the autoplayer
