@@ -50,7 +50,7 @@ public:
 
     void  setIdleDuration(double d)                 { idleDuration_ = d; }
     void  setMovingBackwards(int n)                    { movingBackwards_ = n; }
-    void  setConveyorDir(int n)                { conveyorDir_ = n; }
+    void  setIceDir(int n)                { iceDir_ = n; }
     // The move duration default: movableentity.cpp copies it into the moving
     // entity's step timer. 200 ms normally; 100 or 400 ms under the speed-up
     // or speed-down effects.
@@ -82,7 +82,7 @@ public:
     void  setLastMoveDir(unsigned char b)      { lastMoveDir_ = b; }
     unsigned char fallStartH() const             { return fallStartH_; }
     void  setField11a(int n)                   { field_11a = n; }
-    void  setSlideSlot(unsigned char b)         { slideSlot_ = b; }
+    void  setPlatformSlot(unsigned char b)         { platformSlot_ = b; }
     // Nonzero while dead or respawning. Foe::checkPlayerContact sets it to 1
     // on contact with a foe.
     unsigned char *moveStateRef()              { return &moveState_; }

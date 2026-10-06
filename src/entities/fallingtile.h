@@ -1,6 +1,6 @@
-/* BreakableTile: a floor tile (kind TILE_BREAKABLE) that drops away a moment
+/* FallingTile: a floor tile (kind TILE_FALLING) that drops away a moment
  * after someone stands on it and, unless its param says otherwise, comes back.
- * Every function that touches a BreakableTile field is in breakabletile.cpp;
+ * Every function that touches a FallingTile field is in fallingtile.cpp;
  * the fields are private.  RenderGameFrame reads the just-fell flag and the
  * cell bytes to place the falling-tile effect. */
 
@@ -12,16 +12,16 @@
 namespace audiodev { class Buffer; }
 class Tile;
 
-class BreakableTile {
+class FallingTile {
 public:
      
 
-    // Spawns a breakable; the arguments are masked to bytes.  PRESERVED:
+    // Spawns a falling tile; the arguments are masked to bytes.  PRESERVED:
     // returns idx & 0xffffff00, which no caller uses.
     static unsigned int spawn(Game *game, unsigned int uArg, unsigned int vArg,
                               unsigned int heightArg, unsigned int paramArg);
 
-    // Destroys every breakable and zeroes the count.
+    // Destroys every falling tile and zeroes the count.
     static void purgeAll(Game *game);
 
     // One tick.
@@ -32,7 +32,7 @@ public:
     void setRespawnSound(audiodev::Buffer *p) { respawnSound_ = p; }
 
     // Read by RenderGameFrame to start a destruct-field burst on the tick a
-    // breakable falls: the flag, and the cell (read signed).
+    // falling tile falls: the flag, and the cell (read signed).
     int  justFell() const                      { return justFell_; }
     signed char cellU() const                  { return cellU_; }
     signed char cellV() const                  { return cellV_; }
@@ -41,11 +41,11 @@ public:
 private:
 
     // Allocates and constructs one; NULL if the allocation fails.
-    static BreakableTile *create();
-    BreakableTile();
-    virtual ~BreakableTile();
-    BreakableTile(const BreakableTile &) = delete;
-    BreakableTile &operator=(const BreakableTile &) = delete;
+    static FallingTile *create();
+    FallingTile();
+    virtual ~FallingTile();
+    FallingTile(const FallingTile &) = delete;
+    FallingTile &operator=(const FallingTile &) = delete;
 
     // The tile it sits on: (cellU_, cellV_), read signed.
     Tile *tile() const;
@@ -77,5 +77,5 @@ private:
     double              armedAt_;
 };
 
-/* Destroys every breakable and zeroes the count; Game's teardown calls it. */
-void Sim_PurgeBreakableObjects(Game *self);
+/* Destroys every falling tile and zeroes the count; Game's teardown calls it. */
+void Sim_PurgeFallingTiles(Game *self);

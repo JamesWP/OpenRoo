@@ -1,7 +1,7 @@
 /* Game::GameTick: one simulation step, called once a frame by RenderGameFrame
  * with dt and the clock.  It ticks the bombs, the timed foe spawners, the
  * countdown, the player's bomb drop and switches, the foes, the lifts and
- * slides; then, by game state, the camera and exit while playing, the restart
+ * platforms; then, by game state, the camera and exit while playing, the restart
  * or game-over tally on ENTER, and high-score entry.
  *
  * The x87 helpers keep a value on the FPU across a chain where the result
@@ -18,7 +18,7 @@
  *   - leaving game over with ENTER adds the level time to the total play time;
  *     ENTER after high-score name entry does not.
  *
- * KAROO_SIM_FX=tickorder, a negative control: the lift and slide loops run in
+ * KAROO_SIM_FX=tickorder, a negative control: the lift and platform loops run in
  * the other order.  Both change the tile map, so the order is observable. */
 
 #include "inputdev.h"
@@ -45,9 +45,9 @@
 #include "menutree.h"
 #include "textentry.h"
 #include "liftobject.h"
-#include "slideobject.h"
+#include "platformobject.h"
 #include "bridgeobject.h"
-#include "breakabletile.h"
+#include "fallingtile.h"
 #include "bomb.h"
 #include "foe.h"
 #include "player.h"
@@ -123,7 +123,7 @@ Sim_GameTick(Game *self, double dt, double now)
         uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
         s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "tickorder") == 0);
         if (s_fx)
-            g_logger.write("gametick: KAROO_SIM_FX=tickorder -- slides tick before lifts\n");
+            g_logger.write("gametick: KAROO_SIM_FX=tickorder -- platforms tick before lifts\n");
     }
 
     Sim_AcquireFixedSoundBuffersAndMaybeReport(self);
@@ -198,16 +198,16 @@ Sim_GameTick(Game *self, double dt, double now)
             for (int i = 0; i < (int)game->liftCount(); ++i)
                 game->liftSlot(i)->tick();
         }
-        if (game->slideCount() != 0) {
-            PROF_SCOPE("slides");
-            for (int i = 0; i < (int)game->slideCount(); ++i)
-                game->slideSlot(i)->tick();
+        if (game->platformCount() != 0) {
+            PROF_SCOPE("platforms");
+            for (int i = 0; i < (int)game->platformCount(); ++i)
+                game->platformSlot(i)->tick();
         }
     } else {
-        if (game->slideCount() != 0) {
-            PROF_SCOPE("slides");
-            for (int i = 0; i < (int)game->slideCount(); ++i)
-                game->slideSlot(i)->tick();
+        if (game->platformCount() != 0) {
+            PROF_SCOPE("platforms");
+            for (int i = 0; i < (int)game->platformCount(); ++i)
+                game->platformSlot(i)->tick();
         }
         if (game->liftCount() != 0) {
             PROF_SCOPE("lifts");
@@ -215,10 +215,10 @@ Sim_GameTick(Game *self, double dt, double now)
                 game->liftSlot(i)->tick();
         }
     }
-    if (game->breakableCount() != 0) {
-        PROF_SCOPE("breakables");
-        for (int i = 0; i < (int)game->breakableCount(); ++i)
-            game->breakableSlot(i)->tick();
+    if (game->fallingCount() != 0) {
+        PROF_SCOPE("falling tiles");
+        for (int i = 0; i < (int)game->fallingCount(); ++i)
+            game->fallingSlot(i)->tick();
     }
     if (game->bridgeCount() != 0) {
         PROF_SCOPE("bridges");

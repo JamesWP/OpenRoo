@@ -1,4 +1,4 @@
-/* SlideObject: spawn, tick and purge.
+/* PlatformObject: spawn, tick and purge.
  *
  * The tick is a three-state machine like the lift's, along one grid axis (kind
  * 0x0a: u, otherwise v), at the lift's rate and dwell:
@@ -7,11 +7,11 @@
  *   2 RETREATING  coord = limit - elapsed * 0.005, the same way back
  *   0 PARKED      publishes its park time on the tile and, after 1500 ms,
  *                 clears its marker and departs in the latched direction
- * The state tests are separate ifs, so a slide that arrives parks in the same
+ * The state tests are separate ifs, so a platform that arrives parks in the same
  * tick.  Every tick it then re-stamps its marker and height on its current
  * tile and publishes its live position on its ORIGIN tile.
  *
- * Despite their names, blockstay and KAROO_BLOCK_DIAG act on slides.
+ * Despite their names, blockstay and KAROO_BLOCK_DIAG act on platforms.
  *
  * Controls: KAROO_SIM_FX=blockstay stops the vacated-tile clear, leaving a
  * trail of solid cells; =slideaxis exchanges the spawn's two track kinds;
@@ -25,7 +25,7 @@
 #include <new>
 #include <string.h>
 
-#include "slideobject.h"
+#include "platformobject.h"
 #include "game.h"
 #include "tile.h"
 #include "soundmanager.h"
@@ -60,17 +60,17 @@ static void fx_init(void)
     if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
         if (strcmp(buf, "blockstay") == 0) {
             s_fx_blockstay = 1;
-            g_logger.write("slideobject: KAROO_SIM_FX=blockstay -- vacated tiles "
+            g_logger.write("platformobject: KAROO_SIM_FX=blockstay -- vacated tiles "
                       "are never released\n");
         } else if (strcmp(buf, "slideaxis") == 0) {
             s_fx_slideaxis = 1;
-            g_logger.write("slideobject: KAROO_SIM_FX=slideaxis -- the two "
-                      "slide-track kind codes are exchanged, so a track meant "
+            g_logger.write("platformobject: KAROO_SIM_FX=slideaxis -- the two "
+                      "platform-track kind codes are exchanged, so a track meant "
                       "to run along U is scanned along V and vice versa; scan, "
                       "stamping and recorded span all move together\n");
         } else if (strcmp(buf, "keepobjects") == 0) {
             s_fx_keepobjects = 1;
-            g_logger.write("slideobject: KAROO_SIM_FX=keepobjects -- slide purge "
+            g_logger.write("platformobject: KAROO_SIM_FX=keepobjects -- platform purge "
                       "does nothing\n");
         }
     }
@@ -83,12 +83,12 @@ static void fx_init(void)
         s_diag_reset = 1;
 }
 
-SlideObject *SlideObject::create()
+PlatformObject *PlatformObject::create()
 {
-    return new (std::nothrow) SlideObject;
+    return new (std::nothrow) PlatformObject;
 }
 
-SlideObject::SlideObject()
+PlatformObject::PlatformObject()
 {
     posU_ = 0.0f;
     posY_ = 0.0f;
@@ -96,20 +96,20 @@ SlideObject::SlideObject()
     sound_  = 0;
 }
 
-SlideObject::~SlideObject()
+PlatformObject::~PlatformObject()
 {
 }
 
 static int s_logged_spawn = 0;
 static int s_logged_oom   = 0;
 
-void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
+void PlatformObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
                         unsigned int heightArg, unsigned int kindArg)
 {
     unsigned int u, v, height, kind;
     unsigned char n, var, last;
     LevelMap *base;
-    SlideObject *obj;
+    PlatformObject *obj;
     Tile *tile;
 
     fx_init();
@@ -120,9 +120,9 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     kind   = kindArg & 0xff;
 
     if (s_fx_slideaxis) {
-        if (kind == TILE_SLIDE_U)
+        if (kind == TILE_PLATFORM_U)
             kind = 0x0b;
-        else if (kind == TILE_SLIDE_V)
+        else if (kind == TILE_PLATFORM_V)
             kind = 0x0a;
     }
 
@@ -131,28 +131,28 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     //     // Four fields of the spawn cell are cleared before the allocation.
     tile->setHeight(0);
-    tile->setSlideTrack(0);
-    tile->setClimbDir(0);
+    tile->setPlatformTrack(0);
+    tile->setSlideDir(0);
     tile->setField202(0);
 
     //     // PRESERVED: a failed allocation is not checked; the first store faults.
     obj = create();
     if (obj == 0 && s_diag_place && !s_logged_oom) {
         s_logged_oom = 1;
-        g_logger.write("slideobject: ALLOCATION FAILED in spawn -- the original "
+        g_logger.write("platformobject: ALLOCATION FAILED in spawn -- the original "
                   "would store through the slot, which now holds NULL\n");
     }
 
-    n = game->slideCount();
-    game->setSlideSlot(n, obj);
+    n = game->platformCount();
+    game->setPlatformSlot(n, obj);
 
     if (s_diag_place) {
         s_logged_spawn++;
-        g_logger.write("slideobject: slide spawn #%d -- slot=%u u=%u v=%u "
+        g_logger.write("platformobject: platform spawn #%d -- slot=%u u=%u v=%u "
                   "height=%u kind=0x%x %s\n",
                   s_logged_spawn, (unsigned)n, u, v, height, kind,
-                  (kind == TILE_SLIDE_U) ? "SCAN-U" :
-                  (kind == TILE_SLIDE_V) ? "SCAN-V" : "no-scan");
+                  (kind == TILE_PLATFORM_U) ? "SCAN-U" :
+                  (kind == TILE_PLATFORM_V) ? "SCAN-V" : "no-scan");
     }
 
     obj->clock_    = game->clock();
@@ -167,13 +167,13 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     //     // the spawn cell.
     tile->setObjectMarker(0);
 
-    if (kind == TILE_SLIDE_U) {
+    if (kind == TILE_PLATFORM_U) {
         var = (unsigned char)u;
         for (;;) {
-            tile->setSlideTrack(1);
-            tile->setSlideHeight((unsigned char)height);
-            tile->setSlideSlot(n);
-            tile->setSlideOrigin((unsigned char)u, (unsigned char)v);
+            tile->setPlatformTrack(1);
+            tile->setPlatformHeight((unsigned char)height);
+            tile->setPlatformSlot(n);
+            tile->setPlatformOrigin((unsigned char)u, (unsigned char)v);
 
             last = var;
             var  = (unsigned char)(var + 1);
@@ -183,14 +183,14 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         }
         obj->trackStart_ = (unsigned char)u;
         obj->limit_      = last;
-    } else if (kind == TILE_SLIDE_V) {
+    } else if (kind == TILE_PLATFORM_V) {
         var = (unsigned char)v;
         for (;;) {
             tile->setObjectMarker(0);
-            tile->setSlideTrack(1);
-            tile->setSlideHeight((unsigned char)height);
-            tile->setSlideSlot(n);
-            tile->setSlideOrigin((unsigned char)u, (unsigned char)v);
+            tile->setPlatformTrack(1);
+            tile->setPlatformHeight((unsigned char)height);
+            tile->setPlatformSlot(n);
+            tile->setPlatformOrigin((unsigned char)u, (unsigned char)v);
 
             last = var;
             var  = (unsigned char)(var + 1);
@@ -208,7 +208,7 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     obj->posU_ = (float)(int)u;
     obj->posY_ = (float)(int)height;
-    obj->posV_ = (float)(int)v;  // PRESERVED: not negated, unlike the breakable's.
+    obj->posV_ = (float)(int)v;  // PRESERVED: not negated, unlike the falling tile's.
 
     obj->originU_      = (signed char)u;
     obj->originV_      = (signed char)v;
@@ -223,13 +223,13 @@ void SlideObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     obj->span_  = (unsigned char)(obj->limit_ - obj->trackStart_);
     obj->sound_ = 0;
 
-    game->setSlideCount((unsigned char)(n + 1));
+    game->setPlatformCount((unsigned char)(n + 1));
 }
 
 static int s_logged_purge = 0;
 static unsigned s_live_purges = 0;
 
-void SlideObject::purgeAll(Game *game)
+void PlatformObject::purgeAll(Game *game)
 {
     unsigned char i;
 
@@ -240,28 +240,28 @@ void SlideObject::purgeAll(Game *game)
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
-        g_logger.write("slideobject: first purge -- count=%u\n",
-                  (unsigned)game->slideCount());
+        g_logger.write("platformobject: first purge -- count=%u\n",
+                  (unsigned)game->platformCount());
     }
 
     i = 0;
-    if (game->slideCount() != 0) {
+    if (game->platformCount() != 0) {
         if (s_diag_reset)
-            g_logger.write("slideobject: LIVE purge #%u -- count=%u\n",
-                      ++s_live_purges, (unsigned)game->slideCount());
+            g_logger.write("platformobject: LIVE purge #%u -- count=%u\n",
+                      ++s_live_purges, (unsigned)game->platformCount());
         do {
             if (game->soundCreated() != 0) {
-                audiodev::Buffer *h = game->slideSlot(i)->sound_;
+                audiodev::Buffer *h = game->platformSlot(i)->sound_;
                 if (h != 0)
                     game->soundManager()->releaseStaticForOwner(h, 1);
             }
-            SlideObject *obj = game->slideSlot(i);
+            PlatformObject *obj = game->platformSlot(i);
             if (obj != 0)
                 delete obj;
             i++;
-        } while (i < game->slideCount());
+        } while (i < game->platformCount());
     }
-    game->setSlideCount(0);
+    game->setPlatformCount(0);
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte.  Each branch below
@@ -280,20 +280,20 @@ static int s_logged_advance = 0;
 static int s_logged_retreat = 0;
 static int s_logged_depart  = 0;
 
-void SlideObject::vacate()
+void PlatformObject::vacate()
 {
     if (s_fx_blockstay)
         return;
     if (s_diag_block && !s_logged_vacate) {
         s_logged_vacate = 1;
-        g_logger.write("slideobject: first vacate -- cell=(%d,%d)\n",
+        g_logger.write("platformobject: first vacate -- cell=(%d,%d)\n",
                   (int)cellU_, (int)cellV_);
     }
     map_->tile( cellU_, cellV_)->setObjectMarker(0);
     map_->tile( cellU_, cellV_)->setOccupant(0);
 }
 
-void SlideObject::tick()
+void PlatformObject::tick()
 {
     Tile *t;
 
@@ -301,12 +301,12 @@ void SlideObject::tick()
 
     if (!s_logged_first) {
         s_logged_first = 1;
-        g_logger.write("slideobject: first slide tick -- this=%p\n", (void *)this);
+        g_logger.write("platformobject: first platform tick -- this=%p\n", (void *)this);
     }
     if (s_diag_block) {
         ++s_ticks;
         if ((s_ticks % 5000) == 0)
-            g_logger.write("slideobject: %lu ticks\n", s_ticks);
+            g_logger.write("platformobject: %lu ticks\n", s_ticks);
     }
 
     tickStepCopy_ = *tickStep_;
@@ -362,7 +362,7 @@ void SlideObject::tick()
 
             if (s_diag_block && !s_logged_advance) {
                 s_logged_advance = 1;
-                g_logger.write("slideobject: first completed advance -- "
+                g_logger.write("platformobject: first completed advance -- "
                           "cell=(%d,%d) limit=%u\n",
                           (int)cellU_, (int)cellV_, (unsigned)limit_);
             }
@@ -421,7 +421,7 @@ void SlideObject::tick()
 
             if (s_diag_block && !s_logged_retreat) {
                 s_logged_retreat = 1;
-                g_logger.write("slideobject: first completed retreat -- "
+                g_logger.write("platformobject: first completed retreat -- "
                           "cell=(%d,%d)\n", (int)cellU_, (int)cellV_);
             }
         }
@@ -433,11 +433,11 @@ void SlideObject::tick()
 
     if (state_ == 0) {
         t = map_->tile( cellU_, cellV_);
-        t->setSlideParkedSince(phaseStart_);
-        t->setSlideDwell(K_PARK_DWELL);
+        t->setPlatformParkedSince(phaseStart_);
+        t->setPlatformDwell(K_PARK_DWELL);
 
         if (now_ - phaseStart_ >= K_PARK_DWELL) {
-            //             // PRESERVED: unlike the lift, a departing slide restarts its
+            //             // PRESERVED: unlike the lift, a departing platform restarts its
             //             // sound without setting its 3D position.
             map_->tile( cellU_, cellV_)->setObjectMarker(0);
 
@@ -446,7 +446,7 @@ void SlideObject::tick()
 
             if (s_diag_block && !s_logged_depart) {
                 s_logged_depart = 1;
-                g_logger.write("slideobject: first depart -- cell=(%d,%d) "
+                g_logger.write("platformobject: first depart -- cell=(%d,%d) "
                           "latch=%d state=%d\n",
                           (int)cellU_, (int)cellV_, atLimit_, (int)state_);
             }
@@ -464,7 +464,7 @@ void SlideObject::tick()
 
     //     // Indexed by the origin cell: the home tile carries the live position.
     t = map_->tile( originU_, originV_);
-    t->setSlideCell((unsigned char)cellU_, (unsigned char)cellV_);
-    t->setSlidePos(posU_, posY_, posV_);
+    t->setPlatformCell((unsigned char)cellU_, (unsigned char)cellV_);
+    t->setPlatformPos(posU_, posY_, posV_);
 }
 

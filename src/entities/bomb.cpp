@@ -11,7 +11,7 @@
  *   remove >= 2600   moveState 4; the movement code then raises the flag
  *                    GameTick reads to call remove().
  * A tile's blast height is live: nonzero means that cell is exploding at that
- * height now.  A destructible block (TILE_DESTRUCTIBLE) at the blast's exact
+ * height now.  A bombable block (TILE_BOMBABLE) at the blast's exact
  * height is marked busy (spent), stamped with the blast time, logs "obstacle
  * is exploding", and has its hidden contents promoted into its contents.
  *
@@ -130,9 +130,9 @@ Bomb::Bomb()
     field_124         = 1;
     facing_           = 1;
     field_126         = 0.0;
-    conveyorDir_          = 0;
+    iceDir_          = 0;
     moveDir_         = 0;
-    climbing_          = 0;
+    sliding_          = 0;
     falling_         = 0;
     moveState_        = 0;
     held_          = 0;
@@ -142,7 +142,7 @@ Bomb::Bomb()
     teleportPhase_          = 0;
     field_156         = 0;
     glides_          = 0;
-    slideSlot_         = 0xff;
+    platformSlot_         = 0xff;
     field_11a         = 0;
     gliding_          = 0;
     onLift_          = 0;
@@ -377,7 +377,7 @@ void Bomb::tick()
     }
 
     // Blast.
-    slideSlot_    = 0xff;
+    platformSlot_    = 0xff;
     held_     = 1;
     dying_     = 1;  // halts the roll sound
     moveDir_    = 0;
@@ -405,7 +405,7 @@ void Bomb::tick()
             // The raw byte of the height: PRESERVED.
             t->setBlastHeight((unsigned char)heightCell_);
 
-            if ((signed char)t->objectMarker() == TILE_DESTRUCTIBLE &&
+            if ((signed char)t->objectMarker() == TILE_BOMBABLE &&
                 (int)heightCell_ == (int)t->height() &&
                 t->busy() == 0) {
 
@@ -438,7 +438,7 @@ void Bomb::tick()
                 t->setBlastHeight(0);
 
                 // No busy test here: PRESERVED.
-                if ((signed char)t->objectMarker() == TILE_DESTRUCTIBLE &&
+                if ((signed char)t->objectMarker() == TILE_BOMBABLE &&
                     (int)heightCell_ == (int)t->height())
                     t->setField203(0);
             }

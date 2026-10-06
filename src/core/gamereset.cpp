@@ -1,5 +1,5 @@
 /* The level teardown, Game::ClearGameState: resets the run's scalar state,
- * then destroys every object the level made.  The lifts, slides, breakables
+ * then destroys every object the level made.  The lifts, platforms, falling tiles
  * and bridges go through their classes' purges; foes and bombs are removed one
  * at a time through their ID lists until none is left.
  *
@@ -20,9 +20,9 @@
 #include "game.h"
 #include "gamereset.h"
 #include "liftobject.h"
-#include "slideobject.h"
+#include "platformobject.h"
 #include "bridgeobject.h"
-#include "breakabletile.h"
+#include "fallingtile.h"
 #include "bomb.h"
 #include "foe.h"
 #include "player.h"
@@ -72,11 +72,11 @@ Sim_ClearGameState(Game *self)
     if (s_diag && !s_logged_clear) {
         s_logged_clear = 1;
         g_logger.write("gamereset: first ClearGameState -- foes=%u enemies=%u "
-                  "lift=%u slide=%u break=%u bridge=%u\n",
+                  "lift=%u platform=%u break=%u bridge=%u\n",
                   (unsigned)self->foeCount(), (unsigned)self->bombCount(),
                   (unsigned)self->liftCount(),
-                  (unsigned)self->slideCount(),
-                  (unsigned)self->breakableCount(),
+                  (unsigned)self->platformCount(),
+                  (unsigned)self->fallingCount(),
                   (unsigned)self->bridgeCount());
     }
 
@@ -110,8 +110,8 @@ Sim_ClearGameState(Game *self)
     }
 
     LiftObject::purgeAll(self);
-    SlideObject::purgeAll(self);
-    BreakableTile::purgeAll(self);
+    PlatformObject::purgeAll(self);
+    FallingTile::purgeAll(self);
     BridgeObject::purgeAll(self);
 
     // The 256 switch counts.
@@ -136,9 +136,9 @@ Sim_ClearGameState(Game *self)
         Bomb::remove(self, self->bombId(0));
     }
 
-    self->setBreakableCount(0);
+    self->setFallingCount(0);
     self->setFoeCount(0);
     self->setLiftCount(0);
-    self->setSlideCount(0);
+    self->setPlatformCount(0);
     self->setBombCount(0);
 }

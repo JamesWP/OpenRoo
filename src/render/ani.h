@@ -87,7 +87,7 @@ private:
     AnimSlot slowBackward_; 
     AnimSlot celebration_; 
     AnimSlot jump_;       
-    AnimSlot glue_;      
+    AnimSlot sticky_;      
     AnimSlot ghost_;    
     AnimSlot ice_;    
     AnimSlot fall_;  

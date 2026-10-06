@@ -103,14 +103,14 @@ Foe::Foe()
     dyingStarted_         = 0;
     removeRequested_ = 0;
     dying_         = 0;
-    conveyorDir_         = 0;
+    iceDir_         = 0;
     field_124        = 1;
     moveDir_        = 0;
     pendingMove_     = 0;
     field_126        = 0.0;
-    climbing_         = 0;
+    sliding_         = 0;
     falling_        = 0;
-    slideSlot_        = 0xff;
+    platformSlot_        = 0xff;
     field_d7         = 0xff;
     stepGrace_         = 20.0;
     idleDuration_         = 1000.0;
@@ -652,7 +652,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
 
     if (step->objectMarker() == TILE_EMPTY)
         pendingMove_ = 0;
-    if (slideSlot_ != 0xff && step->slideTrack() != 0)
+    if (platformSlot_ != 0xff && step->platformTrack() != 0)
         pendingMove_ = 0;
     if (here->objectMarker() == TILE_JUMP_PAD)
         pendingMove_ = 0;
@@ -673,13 +673,13 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
             pendingMove_ = 0;
     }
 
-    if (step->objectMarker() != TILE_SLIDE_TRACK)
+    if (step->objectMarker() != TILE_PLATFORM_TRACK)
         return pendingMove_;
 
     {
-        const unsigned e = ftol32(step->slideParkedSince());
+        const unsigned e = ftol32(step->platformParkedSince());
         const unsigned f = ftol32(now_ - (double)e);
-        const unsigned g = ftol32(step->slideDwell());
+        const unsigned g = ftol32(step->platformDwell());
         const unsigned h = ftol32(animDuration_);
         if ((int)(g - f) >= (int)h)
             return pendingMove_;

@@ -2,7 +2,7 @@
  * the player restarts it.  Height, object marker and parameter are copied
  * back; the contents follow these rules, in this order:
  *   - a crystal taken since the snapshot stays taken;
- *   - a destructible tile that is busy becomes marker 1, in the snapshot
+ *   - a bombable tile that is busy becomes marker 1, in the snapshot
  *     as well as the live tile (PRESERVED: the snapshot is written);
  *   - the tile's own respawn contents, if any, are put back;
  *   - an extra life taken since the snapshot stays taken;
@@ -65,7 +65,7 @@ Sim_RestoreTileGridFromSnapshot(Game *self)
             t->setParam(s->param());
             if (s->contents() == CONTENTS_CRYSTAL && t->contents() != CONTENTS_CRYSTAL && !s_fx)
                 t->setContents(0);
-            if (s->objectMarker() == TILE_DESTRUCTIBLE && t->busy() != 0) {
+            if (s->objectMarker() == TILE_BOMBABLE && t->busy() != 0) {
                 s->setObjectMarker(1);
                 t->setObjectMarker(1);
             }

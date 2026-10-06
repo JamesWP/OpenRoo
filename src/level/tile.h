@@ -4,7 +4,7 @@
  * every field is declared yet: only those the code reads by name.
  *
  * The kind byte and the contents byte have separate value spaces: the same
- * number means unrelated things in each (0x0d is a breakable kind but the
+ * number means unrelated things in each (0x0d is a falling tile kind but the
  * transform contents), hence the two enums with unlike prefixes. */
 
 #pragma once
@@ -16,14 +16,14 @@
  * settles keep a neutral TILE_KIND_<hex> name.  Call sites compare it as
  * signed char, as the game does. */
 enum TileKind {
-    // A void cell.  The foe pathfinder treats it as blocked unless a slide
+    // A void cell.  The foe pathfinder treats it as blocked unless a platform
     // track bridges it.
     TILE_EMPTY       = 0x00,
     // Counted as LevelCensus::kind01.  The builder rewrites TILE_START to
     // this; nothing else reads it.
     TILE_KIND_01     = 0x01,
     // The pad that holds whoever stands on it until it is spent.
-    TILE_GLUE        = 0x02,
+    TILE_STICKY      = 0x02,
     // The player's start.  The builder rewrites it to TILE_KIND_01, so nothing
     // after the level build reads this value.
     TILE_START       = 0x03,
@@ -40,41 +40,43 @@ enum TileKind {
 
     // A lift; the param is the lift's.
     TILE_LIFT        = 0x09,
-    // The two slide spawns.  The kind is the track axis: 0x0a runs along u,
+    // The two platform spawns.  The kind is the track axis: 0x0a runs along u,
     // 0x0b along v.  PRESERVED: the v scan clears the markers along its track
     // and the u scan leaves them standing.
-    TILE_SLIDE_U     = 0x0a,
-    TILE_SLIDE_V     = 0x0b,
-    // Stamped by a slide on every cell of its track; an entity standing on one
-    // rides the moving platform.
-    TILE_SLIDE_TRACK = 0x0c,
+    TILE_PLATFORM_U  = 0x0a,
+    TILE_PLATFORM_V  = 0x0b,
+    // Stamped by a platform on every cell of its track; an entity standing on
+    // one rides the moving platform.
+    TILE_PLATFORM_TRACK = 0x0c,
     // The falling tile.
-    TILE_BREAKABLE   = 0x0d,
+    TILE_FALLING     = 0x0d,
     // The jump pad: landing on it survives any drop, and it cancels a queued
     // move.
     TILE_JUMP_PAD    = 0x0e,
     // Paired by the builder through the param byte; the pair's cell lands in
     // teleportU/teleportV.
     TILE_TELEPORTER  = 0x0f,
-    // Climbable.  The builder moves the param byte into climbDir().
-    TILE_CLIMB       = 0x10,
+    // A slide (the game's own name for it): standing on one moves you on in
+    // its direction, quickly and facing that way, and paths leave it only
+    // that way.  The builder moves the param byte into slideDir().
+    TILE_SLIDE       = 0x10,
     // A numbered switch; the builder files the cell into SwitchCells and
     // leaves the number in field1f3().
     TILE_SWITCH      = 0x11,
     // Bridges along u and v.
     TILE_BRIDGE_U    = 0x12,
     TILE_BRIDGE_V    = 0x13,
-    // Carries whoever stands on it along its direction.
-    TILE_CONVEYOR    = 0x15,
+    // Ice: whoever steps on keeps moving the way they entered until off it.
+    TILE_ICE         = 0x15,
     // Blocked unconditionally.  On screen it is whatever the level's .leo
     // object at that cell is (a crate, a beehive, a bush); nothing links the
     // two files, so under KAROO_LEO_FX=nomodels the cells stay blocked and
     // bare.
     TILE_IMPASSABLE  = 0x16,
-    // A destructible block (the game's "obstacle"): a bomb's blast spends it
+    // A bombable block (the game's "obstacle"): a bomb's blast spends it
     // and promotes its hidden contents (field202()) into contents() to be
     // picked up.  Blocked until spent.
-    TILE_DESTRUCTIBLE = 0x17,
+    TILE_BOMBABLE    = 0x17,
 };
 
 /* The contents byte, file byte 3.  Named from the code that consumes each
@@ -136,11 +138,11 @@ public:
     unsigned char height() const               { return height_; }
     void setHeight(unsigned char h)            { height_ = h; }
 
-    // The kind byte; a slide scan stops at a non-zero one, and a slide stamps
+    // The kind byte; a platform scan stops at a non-zero one, and a platform stamps
     // 0x0c here.
     unsigned char objectMarker() const         { return objectMarker_; }
     void setObjectMarker(unsigned char k)      { objectMarker_ = k; }
-    // Cleared with the marker when a slide leaves a cell.  A breakable arms
+    // Cleared with the marker when a platform leaves a cell.  A falling tile arms
     // when it is non-zero (someone is standing on the cell).
     unsigned char occupant() const             { return occupant_; }
     void setOccupant(unsigned char b)          { occupant_ = b; }
@@ -165,34 +167,34 @@ public:
     void setLiftParkedSince(double t)          { liftParkedSince_ = t; }
     void setLiftDwell(double ms)               { liftDwell_ = ms; }
 
-    // A slide's track and live position (slideobject.cpp).  The track number
+    // A platform's track and live position (platformobject.cpp).  The track number
     // is stamped on every cell of a track by the spawn.
-    void setSlideSlot(unsigned char n)         { slideSlot_ = n; }
-    void setSlideHeight(unsigned char h)       { slideHeight_ = h; }
-    void setSlideTrack(int on)                 { slideTrack_ = on; }
-    void setSlideOrigin(unsigned char u, unsigned char v)
+    void setPlatformSlot(unsigned char n)         { platformSlot_ = n; }
+    void setPlatformHeight(unsigned char h)       { platformHeight_ = h; }
+    void setPlatformTrack(int on)                 { platformTrack_ = on; }
+    void setPlatformOrigin(unsigned char u, unsigned char v)
     {
-        slideOriginU_ = u;
-        slideOriginV_ = v;
+        platformOriginU_ = u;
+        platformOriginV_ = v;
     }
-    // Published by a parked slide on the cell it is parked on.
-    void setSlideParkedSince(double t)         { slideParkedSince_ = t; }
-    void setSlideDwell(double ms)              { slideDwell_ = ms; }
-    // Published every tick on the slide's origin cell: how the renderer finds
-    // a slide that has moved off its home tile.
-    void setSlideCell(unsigned char u, unsigned char v)
+    // Published by a parked platform on the cell it is parked on.
+    void setPlatformParkedSince(double t)         { platformParkedSince_ = t; }
+    void setPlatformDwell(double ms)              { platformDwell_ = ms; }
+    // Published every tick on the platform's origin cell: how the renderer finds
+    // a platform that has moved off its home tile.
+    void setPlatformCell(unsigned char u, unsigned char v)
     {
-        slideCellU_ = u;
-        slideCellV_ = v;
+        platformCellU_ = u;
+        platformCellV_ = v;
     }
-    void setSlidePos(float u, float y, float v)
+    void setPlatformPos(float u, float y, float v)
     {
-        slidePosU_ = u;
-        slidePosY_ = y;
-        slidePosV_ = v;
+        platformPosU_ = u;
+        platformPosY_ = y;
+        platformPosV_ = v;
     }
     // Cleared by the spawn on the spawn cell only; meaning unknown.
-    void setClimbDir(unsigned char b)          { climbDir_ = b; }
+    void setSlideDir(unsigned char b)          { slideDir_ = b; }
     void setField202(unsigned char b)          { field_202 = b; }
 
     // A bridge deck cell (bridgeobject.cpp).  The spawn stamps its own cell,
@@ -203,22 +205,22 @@ public:
     // Meaning unknown: 1 on an extended deck cell, else 0.
     void setField1f6(int b)                    { field_1f6 = b; }
     void setBusy(int b)                    { busy_ = b; }
-    // A breakable sets it when it falls and clears it when it comes back, and
+    // A falling tile sets it when it falls and clears it when it comes back, and
     // will not arm while it is set.
     int  busy() const                      { return busy_; }
 
     // A bomb's blast (bomb.cpp).  blastHeight is the bomb's height while its
     // 3x3 is live, else 0.
     void setBlastHeight(unsigned char h)       { blastHeight_ = h; }
-    // A spent destructible block's promoted hidden contents.
+    // A spent bombable block's promoted hidden contents.
     void setContents(unsigned char c)          { contents_ = c; }
-    // The destructible block's hidden contents.
+    // The bombable block's hidden contents.
     unsigned char field202() const             { return field_202; }
-    // Meaning unknown: raised by a blast on a destructible block; field_203
+    // Meaning unknown: raised by a blast on a bombable block; field_203
     // drops again when the blast clears.
     void setField203(int b)                    { field_203 = b; }
     void setField20f(int b)                    { field_20f = b; }
-    // Read by the frame renderer: field_203 while a destructible block is
+    // Read by the frame renderer: field_203 while a bombable block is
     // blasted draws the effect model; field_20f starts the debris burst once.
     int  field203() const                      { return field_203; }
     int  field20f() const                      { return field_20f; }
@@ -226,9 +228,9 @@ public:
 
     // Read by a foe (foe.cpp).
     unsigned char contents() const             { return contents_; }
-    int    slideTrack() const                  { return slideTrack_; }
-    double slideParkedSince() const            { return slideParkedSince_; }
-    double slideDwell() const                  { return slideDwell_; }
+    int    platformTrack() const                  { return platformTrack_; }
+    double platformParkedSince() const            { return platformParkedSince_; }
+    double platformDwell() const                  { return platformDwell_; }
     double liftParkedSince() const             { return liftParkedSince_; }
     double liftDwell() const                   { return liftDwell_; }
     // Cleared by a foe's destructor on the cell it stood on; meaning unknown.
@@ -248,21 +250,21 @@ public:
     // Read by the foe pathfinder.  field_1f1 is set from the param byte on a
     // jump pad; what it is for is not settled.
     unsigned char field1f1() const             { return field_1f1; }
-    // On a climb cell, its direction byte, moved here from the param byte.
-    unsigned char climbDir() const             { return climbDir_; }
+    // On a slide cell, its direction byte, moved here from the param byte.
+    unsigned char slideDir() const             { return slideDir_; }
 
     // Read by the movement tick, sometimes signed and sometimes unsigned; the
     // accessors are unsigned and the signed reads cast at the call site.
     unsigned char blastHeight() const          { return blastHeight_; }
     float  liftLiveHeight() const              { return liftLiveHeight_; }
-    unsigned char slideSlot() const            { return slideSlot_; }
-    unsigned char slideOriginU() const         { return slideOriginU_; }
-    unsigned char slideOriginV() const         { return slideOriginV_; }
-    unsigned char slideCellU() const           { return slideCellU_; }
-    unsigned char slideCellV() const           { return slideCellV_; }
-    float  slidePosU() const                   { return slidePosU_; }
-    float  slidePosY() const                   { return slidePosY_; }
-    float  slidePosV() const                   { return slidePosV_; }
+    unsigned char platformSlot() const            { return platformSlot_; }
+    unsigned char platformOriginU() const         { return platformOriginU_; }
+    unsigned char platformOriginV() const         { return platformOriginV_; }
+    unsigned char platformCellU() const           { return platformCellU_; }
+    unsigned char platformCellV() const           { return platformCellV_; }
+    float  platformPosU() const                   { return platformPosU_; }
+    float  platformPosY() const                   { return platformPosY_; }
+    float  platformPosV() const                   { return platformPosV_; }
     // On a teleporter cell: the destination cell.
     unsigned char teleportU() const             { return teleportU_; }
     unsigned char teleportV() const             { return teleportV_; }
@@ -281,18 +283,18 @@ private:
     int           field_1a1;
     unsigned char occupant_;        // the kind of entity standing here
     float         liftLiveHeight_;  // the lift's live height
-    unsigned char slideSlot_;       // which slide's track this is
-    unsigned char slideHeight_;
-    double        slideParkedSince_;  // phase start while parked
-    double        slideDwell_;        // park dwell, ms: 1500
-    int           slideTrack_;        // 1 on a slide's track
-    unsigned char slideOriginU_;      // the track's spawn cell
-    unsigned char slideOriginV_;
-    unsigned char slideCellU_;  // live cell, on the origin tile only
-    unsigned char slideCellV_;
-    float         slidePosU_;  // live position, on the origin tile only
-    float         slidePosY_;
-    float         slidePosV_;
+    unsigned char platformSlot_;       // which platform's track this is
+    unsigned char platformHeight_;
+    double        platformParkedSince_;  // phase start while parked
+    double        platformDwell_;        // park dwell, ms: 1500
+    int           platformTrack_;        // 1 on a platform's track
+    unsigned char platformOriginU_;      // the track's spawn cell
+    unsigned char platformOriginV_;
+    unsigned char platformCellU_;  // live cell, on the origin tile only
+    unsigned char platformCellV_;
+    float         platformPosU_;  // live position, on the origin tile only
+    float         platformPosY_;
+    float         platformPosV_;
     unsigned char liftSlot_;         // which lift stands here
     signed char   liftBottom_;       // where the lift parks at the bottom
     signed char   liftTop_;          // and at the top
@@ -303,7 +305,7 @@ private:
     unsigned char teleportU_;        // teleporter destination
     unsigned char teleportV_;
     unsigned char field_1f1;  // set from param on a jump pad
-    unsigned char climbDir_;  // climb cell: which way up
+    unsigned char slideDir_;  // slide cell: its direction
     unsigned char field_1f3;
     unsigned char bridgeSlot_;  // the bridge's switch slot
     unsigned char bridgeAxis_;  // 1 along u, 2 along v
@@ -313,5 +315,5 @@ private:
     double        blastTime_;  // when a blast spent this cell
     int           field_20f;
     float         itemPhase_;  // an item's random phase
-    int           busy_;       // a pad, teleporter or breakable is in use
+    int           busy_;       // a pad, teleporter or falling tile is in use
 };

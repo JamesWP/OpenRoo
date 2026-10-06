@@ -4,7 +4,7 @@
  * PRESERVED:
  *   1. The exit's position is not reset by the release: a level with no
  *      exit keeps the previous level's.  The last exit cell found wins.
- *   2. Lifts and slides store all-zero positions and rotations.
+ *   2. Lifts and platforms store all-zero positions and rotations.
  *   3. The wall-run state is not reset between rows, nor between one
  *      height's column sweep and the next height's row sweep.  A run open
  *      at the end of a row carries into the next row's first cells; one
@@ -13,9 +13,9 @@
  *   4. Neighbour reads at the grid edge are not bounds-checked: they read
  *      the bytes either side of the row.
  *
- * The slide list's count is the Game's slide count, but it is written once per
- * slide-track cell.  The game writes past its block when a level has more
- * track cells than slides; here the block is sized to cover every write, so
+ * The platform list's count is the Game's platform count, but it is written once per
+ * platform-track cell.  The game writes past its block when a level has more
+ * track cells than platforms; here the block is sized to cover every write, so
  * the overrun stays in our allocation, and count is unchanged.
  * KAROO_PLACEMENT_DIAG=1 logs the two numbers per level. */
 
@@ -33,7 +33,7 @@
 #include "logger.h"
 #include "sceneobjects.h"
 #include "liftobject.h"
-#include "slideobject.h"
+#include "platformobject.h"
 #include <math.h>
 #include "renderdevice.h"
 LevelPlacements g_levelPlacements;
@@ -105,16 +105,16 @@ void LevelPlacements::release()
     kind01Verts_.reset();
     kind01Count_ = 0;
     lifts_.release();
-    slides_.release();
-    glue_.release();
-    breakables_.release();
+    platforms_.release();
+    sticky_.release();
+    falling_.release();
     jumpPads_.release();
     switches_.release();
     teleporters_.release();
     ramps_.release();
-    climbs_.release();
-    conveyors_.release();
-    destructibles_.release();
+    slides_.release();
+    ice_.release();
+    bombables_.release();
     wallVerts_.reset();
     wallStripCount_ = 0;
 }
@@ -128,8 +128,8 @@ void LevelPlacements::release()
 static bool solid(unsigned char kind)
 {
     switch (kind) {
-    case TILE_KIND_01: case TILE_IMPASSABLE: case TILE_GLUE:
-    case TILE_CONVEYOR: case TILE_DESTRUCTIBLE: case TILE_JUMP_PAD:
+    case TILE_KIND_01: case TILE_IMPASSABLE: case TILE_STICKY:
+    case TILE_ICE: case TILE_BOMBABLE: case TILE_JUMP_PAD:
     case TILE_TELEPORTER: case TILE_SWITCH: case TILE_EXIT:
         return true;
     }
@@ -285,41 +285,41 @@ void LevelPlacements::build(const Game *g,
             unsigned char k = map->tile(u, v)->objectMarker();
             if (k == TILE_LIFT)         ++lifts_.count_;
             if (k == TILE_KIND_01)      ++kind01Count_;
-            if (k == TILE_GLUE)         ++glue_.count_;
-            if (k == TILE_BREAKABLE)    ++breakables_.count_;
+            if (k == TILE_STICKY)         ++sticky_.count_;
+            if (k == TILE_FALLING)    ++falling_.count_;
             if (k == TILE_JUMP_PAD)     ++jumpPads_.count_;
             if (k == TILE_TELEPORTER)   ++teleporters_.count_;
-            if (k == TILE_CLIMB)        ++climbs_.count_;
+            if (k == TILE_SLIDE)        ++slides_.count_;
             if (k == TILE_SWITCH)       ++switches_.count_;
-            if (k == TILE_CONVEYOR)     ++conveyors_.count_;
-            if (k == TILE_DESTRUCTIBLE) ++destructibles_.count_;
+            if (k == TILE_ICE)     ++ice_.count_;
+            if (k == TILE_BOMBABLE) ++bombables_.count_;
             if (k >= TILE_RAMP_1 && k <= TILE_RAMP_4) ++ramps_.count_;
-            if (k == TILE_SLIDE_TRACK)  ++trackCells;  // see the top of the file
+            if (k == TILE_PLATFORM_TRACK)  ++trackCells;  // see the top of the file
         }
-    slides_.count_ = g->slideCount();
+    platforms_.count_ = g->platformCount();
 
     if (diag_on())
-        g_logger.write("levelplacements: slideCount=%d, slide-track cells=%u%s\n",
-                   slides_.count_, trackCells,
-                   trackCells > (unsigned)slides_.count_
-                       ? " -- the original overruns its slide block" : "");
+        g_logger.write("levelplacements: platformCount=%d, platform-track cells=%u%s\n",
+                   platforms_.count_, trackCells,
+                   trackCells > (unsigned)platforms_.count_
+                       ? " -- the original overruns its platform block" : "");
 
     if (kind01Count_ != 0)
         kind01Verts_.reset(new PlacementVertex[kind01Count_ * 6]());
     if (lifts_.count_ != 0)       lifts_.alloc(lifts_.count_);
-    if (glue_.count_ != 0)        glue_.alloc(glue_.count_);
-    if (breakables_.count_ != 0)  breakables_.alloc(breakables_.count_);
+    if (sticky_.count_ != 0)        sticky_.alloc(sticky_.count_);
+    if (falling_.count_ != 0)  falling_.alloc(falling_.count_);
     if (jumpPads_.count_ != 0)    jumpPads_.alloc(jumpPads_.count_);
     if (teleporters_.count_ != 0) teleporters_.alloc(teleporters_.count_);
     if (switches_.count_ != 0)    switches_.alloc(switches_.count_);
     if (ramps_.count_ != 0)       ramps_.alloc(ramps_.count_);
-    if (climbs_.count_ != 0)      climbs_.alloc(climbs_.count_);
-    unsigned slideCap = (unsigned)slides_.count_ > trackCells
-                            ? (unsigned)slides_.count_ : trackCells;
-    if (slideCap != 0)
-        slides_.alloc(slideCap);
-    if (conveyors_.count_ != 0)     conveyors_.alloc(conveyors_.count_);
-    if (destructibles_.count_ != 0) destructibles_.alloc(destructibles_.count_);
+    if (slides_.count_ != 0)      slides_.alloc(slides_.count_);
+    unsigned platformCap = (unsigned)platforms_.count_ > trackCells
+                            ? (unsigned)platforms_.count_ : trackCells;
+    if (platformCap != 0)
+        platforms_.alloc(platformCap);
+    if (ice_.count_ != 0)     ice_.alloc(ice_.count_);
+    if (bombables_.count_ != 0) bombables_.alloc(bombables_.count_);
 
     // The tile-top template.
     static const uint32_t quad[4][8] = {
@@ -331,8 +331,8 @@ void LevelPlacements::build(const Game *g,
     memcpy(tileQuad_, quad, sizeof quad);
 
     // Pass 2: fill, height by height, so each array is in height order.
-    unsigned n01 = 0, nLift = 0, nSlide = 0, nGlue = 0, nBreak = 0, nJump = 0,
-             nTele = 0, nSwitch = 0, nRamp = 0, nClimb = 0, nConv = 0, nDest = 0;
+    unsigned n01 = 0, nLift = 0, nPlatform = 0, nSticky = 0, nBreak = 0, nJump = 0,
+             nTele = 0, nSwitch = 0, nRamp = 0, nSlide = 0, nIce = 0, nDest = 0;
     for (unsigned L = 0; L < 0x100; ++L)
         for (unsigned v = 0; v < V; ++v)
             for (unsigned u = 0; u < U; ++u) {
@@ -355,7 +355,7 @@ void LevelPlacements::build(const Game *g,
                     ++n01;
                     break;
                 }
-                case TILE_GLUE:       glue_.put(&nGlue, x, y, z, 0.0f); break;
+                case TILE_STICKY:       sticky_.put(&nSticky, x, y, z, 0.0f); break;
                 case TILE_EXIT:
                 {  // packed members: copy, don't take their address
                     const float pos[3] = { x, y, z }, rot[3] = { 0.0f, 0.0f, 0.0f };
@@ -368,24 +368,24 @@ void LevelPlacements::build(const Game *g,
                 case TILE_RAMP_3:     ramps_.put(&nRamp, x, y, z, YAW_QUARTER); break;
                 case TILE_RAMP_4:     ramps_.put(&nRamp, x, y, z, YAW_HALF); break;
                 case TILE_LIFT:       lifts_.put(&nLift, 0.0f, 0.0f, 0.0f, 0.0f); break;
-                case TILE_SLIDE_TRACK: slides_.put(&nSlide, 0.0f, 0.0f, 0.0f, 0.0f); break;
-                case TILE_BREAKABLE:  breakables_.put(&nBreak, x, y, z, 0.0f); break;
+                case TILE_PLATFORM_TRACK: platforms_.put(&nPlatform, 0.0f, 0.0f, 0.0f, 0.0f); break;
+                case TILE_FALLING:  falling_.put(&nBreak, x, y, z, 0.0f); break;
                 case TILE_JUMP_PAD:   jumpPads_.put(&nJump, x, y, z, 0.0f); break;
                 case TILE_TELEPORTER: teleporters_.put(&nTele, x, y, z, 0.0f); break;
-                case TILE_CLIMB: {
+                case TILE_SLIDE: {
                     float yaw;
-                    switch (t->climbDir()) {
+                    switch (t->slideDir()) {
                     case 1:  yaw = YAW_NEG_QUARTER; break;
                     case 2:  yaw = YAW_HALF; break;
                     case 3:  yaw = YAW_QUARTER; break;
                     default: yaw = 0.0f; break;  // 4 and anything else
                     }
-                    climbs_.put(&nClimb, x, y, z, yaw);
+                    slides_.put(&nSlide, x, y, z, yaw);
                     break;
                 }
                 case TILE_SWITCH:      switches_.put(&nSwitch, x, y, z, 0.0f); break;
-                case TILE_CONVEYOR:    conveyors_.put(&nConv, x, y, z, 0.0f); break;
-                case TILE_DESTRUCTIBLE: destructibles_.put(&nDest, x, y, z, 0.0f); break;
+                case TILE_ICE:    ice_.put(&nIce, x, y, z, 0.0f); break;
+                case TILE_BOMBABLE: bombables_.put(&nDest, x, y, z, 0.0f); break;
                 default: break;
                 }
             }
@@ -404,7 +404,7 @@ LevelPlacements::LevelPlacements()
     }
 }
 
-/* The lift and slide passes.  Counts compare unsigned.  The block itself is
+/* The lift and platform passes.  Counts compare unsigned.  The block itself is
  * passed as the scene renderer's quad: tileQuad heads it. */
 void LevelPlacements::drawLifts(Game *g, ThemeAssetBlock *theme,
                           RenderDevice *d3d, double now)
@@ -421,20 +421,20 @@ void LevelPlacements::drawLifts(Game *g, ThemeAssetBlock *theme,
                              d3d, now, 0.0f, 0, 0);
 }
 
-void LevelPlacements::drawSlides(Game *g, ThemeAssetBlock *theme,
+void LevelPlacements::drawPlatforms(Game *g, ThemeAssetBlock *theme,
                            RenderDevice *d3d, double now)
 {
-    for (unsigned int i = 0; i < (unsigned int)slides_.count_; i++) {
-        const SlideObject *slide = g->slideSlot(i);
-        slides_.pos_[i][0] = slide->posU();
-        slides_.pos_[i][1] = slide->posY();
-        slides_.pos_[i][2] = -slide->posV();
-        if (slide->kind() == 0x0a)
-            slides_.rot_[i][1] = 1.5707963705062866f;  // pi/2 as a float
+    for (unsigned int i = 0; i < (unsigned int)platforms_.count_; i++) {
+        const PlatformObject *platform = g->platformSlot(i);
+        platforms_.pos_[i][0] = platform->posU();
+        platforms_.pos_[i][1] = platform->posY();
+        platforms_.pos_[i][2] = -platform->posV();
+        if (platform->kind() == 0x0a)
+            platforms_.rot_[i][1] = 1.5707963705062866f;  // pi/2 as a float
     }
     float animTime = (float)fmod(now * (double)0.002f, 1.0);
     Scene_RenderSceneObjects(g, (SceneQuadVertex *)(void *)this,  // tileQuad, at +0
-                             (const Vec3 *)slides_.pos_.get(), (const Vec3 *)slides_.rot_.get(),
-                             slides_.count_, theme->slot(THEME_OBJ_PLATFORM),
+                             (const Vec3 *)platforms_.pos_.get(), (const Vec3 *)platforms_.rot_.get(),
+                             platforms_.count_, theme->slot(THEME_OBJ_PLATFORM),
                              d3d, now, animTime, 0x14, 0);
 }
