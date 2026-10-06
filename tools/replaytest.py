@@ -164,7 +164,12 @@ def wait_for_quiet(timeout=60):
         r = subprocess.run(["pgrep", "-f", r"(^|[/\\])OpenRoo(\.exe)?( |$)"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if r.returncode != 0:          # nothing matched
-            time.sleep(2)              # let wineserver finish behind it
+            # Only a Proton run has a wineserver to finish shutting down
+            # behind the game; a native run has nothing to wait for.
+            if subprocess.run(["pgrep", "-x", "wineserver"],
+                              stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL).returncode == 0:
+                time.sleep(2)
             return True
         time.sleep(1)
     print("  ! a previous Karoo.exe is still running after %ds — the launch "
@@ -622,6 +627,20 @@ def cmd_list(m):
         print()
 
 
+def build_once():
+    """Bring the build up to date, once, so launch.sh need not check it before
+    every recording (OPENROO_SKIP_BUILD)."""
+    build = os.environ.get("BUILD_DIR", "build")
+    cache = os.path.join(REPO, build, "CMakeCache.txt")
+    if not os.path.exists(cache):
+        if subprocess.run(["cmake", "-S", ".", "-B", build], cwd=REPO).returncode:
+            sys.exit("cmake configure failed")
+    if subprocess.run(["cmake", "--build", build, "-j%d" % (os.cpu_count() or 1)],
+                      cwd=REPO, stdout=subprocess.DEVNULL).returncode:
+        sys.exit("build failed")
+    os.environ["OPENROO_SKIP_BUILD"] = "1"
+
+
 def main():
     # `record` is dispatched by hand rather than with add_subparsers: argparse
     # cannot combine a subparser with the trailing `names` positional that the
@@ -678,6 +697,7 @@ def main():
         return 0
 
     entries = select(m, args.names)
+    build_once()
     if args.bless and len(entries) != 1:
         sys.exit("--bless takes exactly one recording name")
 
