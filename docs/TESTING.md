@@ -119,6 +119,16 @@ window and renders each run on screen. These tests need a display.
 | `manifest.json` | The catalogue: one entry per recording, with its description and expected end state |
 | `*.rec` | The recordings themselves (delta-compressed input streams, decoded by `tools/replay.py`; format in `src/testing/record.cpp`), each bundling the `SavedGames/` files it starts from |
 
+## Recording a long playthrough
+
+`python3 tools/playthrough.py [series]` records a playthrough across several
+sittings. A recording cannot span a game exit, so each sitting is its own
+recording (`<series>-01`, `-02`, ...) whose bundled saves are where the
+previous one ended. The script prompts for new/continue and your plan, launches
+the recording, then asks how it went, catalogues the part (with a `playthrough`
+field in the manifest) and offers to commit. End-of-sitting saves are kept in
+`run/playthroughs/` so the next sitting can resume from them.
+
 ## Determinism, and why the saves are bundled
 
 A recording is a stream of *keypresses*, not a stream of game actions. When a
