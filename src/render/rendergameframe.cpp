@@ -274,7 +274,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
         QuadBatch_Draw(pl, &g_themeBlock, d3d);
     }
 
-    rso_list(pl->ramps(),       THEME_OBJ_STAIR,         now);
+    rso_list(pl->stairs(),      THEME_OBJ_STAIR,         now);
     pl->drawLifts(g, &g_themeBlock, d3d, now);
     pl->drawPlatforms(g, &g_themeBlock, d3d, now);
 
@@ -555,7 +555,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
         particles(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, elapsed);
         particles_list(pl->switches(),      THEME_OBJ_SWITCH,        now, elapsed);
         particles_list(pl->bombables(), THEME_OBJ_OBSTACLE,      now, elapsed);
-        particles_list(pl->ramps(),         THEME_OBJ_STAIR,         now, elapsed);
+        particles_list(pl->stairs(),        THEME_OBJ_STAIR,         now, elapsed);
         particles_list(pl->ice(),     THEME_OBJ_ICE,           now, elapsed);
         particles_list(pl->sticky(),          THEME_OBJ_GLUE,          now, elapsed);
         particles_list(pl->falling(),    THEME_OBJ_DESTRUCTFIELD, now, elapsed);

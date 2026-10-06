@@ -111,7 +111,7 @@ void LevelPlacements::release()
     jumpPads_.release();
     switches_.release();
     teleporters_.release();
-    ramps_.release();
+    stairs_.release();
     slides_.release();
     ice_.release();
     bombables_.release();
@@ -293,7 +293,7 @@ void LevelPlacements::build(const Game *g,
             if (k == TILE_SWITCH)       ++switches_.count_;
             if (k == TILE_ICE)     ++ice_.count_;
             if (k == TILE_BOMBABLE) ++bombables_.count_;
-            if (k >= TILE_RAMP_1 && k <= TILE_RAMP_4) ++ramps_.count_;
+            if (k >= TILE_STAIRS_1 && k <= TILE_STAIRS_4) ++stairs_.count_;
             if (k == TILE_PLATFORM_TRACK)  ++trackCells;  // see the top of the file
         }
     platforms_.count_ = g->platformCount();
@@ -312,7 +312,7 @@ void LevelPlacements::build(const Game *g,
     if (jumpPads_.count_ != 0)    jumpPads_.alloc(jumpPads_.count_);
     if (teleporters_.count_ != 0) teleporters_.alloc(teleporters_.count_);
     if (switches_.count_ != 0)    switches_.alloc(switches_.count_);
-    if (ramps_.count_ != 0)       ramps_.alloc(ramps_.count_);
+    if (stairs_.count_ != 0)       stairs_.alloc(stairs_.count_);
     if (slides_.count_ != 0)      slides_.alloc(slides_.count_);
     unsigned platformCap = (unsigned)platforms_.count_ > trackCells
                             ? (unsigned)platforms_.count_ : trackCells;
@@ -332,7 +332,7 @@ void LevelPlacements::build(const Game *g,
 
     // Pass 2: fill, height by height, so each array is in height order.
     unsigned n01 = 0, nLift = 0, nPlatform = 0, nSticky = 0, nBreak = 0, nJump = 0,
-             nTele = 0, nSwitch = 0, nRamp = 0, nSlide = 0, nIce = 0, nDest = 0;
+             nTele = 0, nSwitch = 0, nStairs = 0, nSlide = 0, nIce = 0, nDest = 0;
     for (unsigned L = 0; L < 0x100; ++L)
         for (unsigned v = 0; v < V; ++v)
             for (unsigned u = 0; u < U; ++u) {
@@ -363,10 +363,10 @@ void LevelPlacements::build(const Game *g,
                     memcpy(exitRot_, rot, sizeof rot);
                 }
                     break;
-                case TILE_RAMP_1:     ramps_.put(&nRamp, x, y, z, YAW_NEG_QUARTER); break;
-                case TILE_RAMP_2:     ramps_.put(&nRamp, x, y, z, 0.0f); break;
-                case TILE_RAMP_3:     ramps_.put(&nRamp, x, y, z, YAW_QUARTER); break;
-                case TILE_RAMP_4:     ramps_.put(&nRamp, x, y, z, YAW_HALF); break;
+                case TILE_STAIRS_1:     stairs_.put(&nStairs, x, y, z, YAW_NEG_QUARTER); break;
+                case TILE_STAIRS_2:     stairs_.put(&nStairs, x, y, z, 0.0f); break;
+                case TILE_STAIRS_3:     stairs_.put(&nStairs, x, y, z, YAW_QUARTER); break;
+                case TILE_STAIRS_4:     stairs_.put(&nStairs, x, y, z, YAW_HALF); break;
                 case TILE_LIFT:       lifts_.put(&nLift, 0.0f, 0.0f, 0.0f, 0.0f); break;
                 case TILE_PLATFORM_TRACK: platforms_.put(&nPlatform, 0.0f, 0.0f, 0.0f, 0.0f); break;
                 case TILE_FALLING:  falling_.put(&nBreak, x, y, z, 0.0f); break;

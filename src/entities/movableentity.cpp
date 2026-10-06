@@ -82,7 +82,7 @@ static const double K_STICKY_MS      = 3000.0;
 static const double K_HALF_SEC_MS  = 500.0;
 static const double K_IDLE_MS      = 5000.0;
 static const float  K_GLIDE_DROP   = 2.0f;
-static const double K_RAMP_EPS     = 0.2;
+static const double K_STAIRS_EPS     = 0.2;
 
 /* KAROO_SIM_FX, read by value: "floaty" divides the fall acceleration by five
  * so a fatal drop visibly slows; "hop" quadruples the jump-pad arc so a pad
@@ -210,7 +210,7 @@ unsigned int MovableEntity::updateMovement()
                         (int)GU - (int)stepU_, (int)GV - (int)stepV_);
                     from->setOccupant(0);
                 }
-                if (Sim_CheckTileIsRamp(CUR->objectMarker()) != 0) {
+                if (Sim_CheckTileIsStairs(CUR->objectMarker()) != 0) {
                     posY_ = (float)(int)GH + K_HALF_F;
                 } else if (gliding_ == 0) {
                     posY_ = (float)(int)GH;
@@ -510,7 +510,7 @@ unsigned int MovableEntity::updateMovement()
                 falling_ = 0;
                 posU_ = (float)(int)GU;
                 posV_ = (float)(int)GV;
-                if (Sim_CheckTileIsRamp(CUR->objectMarker()) != 0)
+                if (Sim_CheckTileIsStairs(CUR->objectMarker()) != 0)
                     posY_ = (float)(int)GH + K_HALF_F;
                 else
                     posY_ = (float)(int)GH;
@@ -594,8 +594,8 @@ unsigned int MovableEntity::updateMovement()
                     anim_ = 5;
                 }
 
-                // A ramp lets the entity settle half a step lower.
-                if (Sim_CheckTileIsRamp(CUR->objectMarker()) != 0) {
+                // Stairs let the entity settle half a step lower.
+                if (Sim_CheckTileIsStairs(CUR->objectMarker()) != 0) {
                     unsigned char th = CUR->height();
                     if ((float)th < posY_ &&
                         posY_ <= (float)th + (float)K_HALF_D)
@@ -700,7 +700,7 @@ unsigned int MovableEntity::updateMovement()
                 anim_ = 4;
             } else {
                 if (k_here == 9 && facing_or_reverse(((unsigned)moveDir_), facing_)) {
-                    if ((float)K_RAMP_EPS < fabsf(posY_ - (float)(int)GH) ||
+                    if ((float)K_STAIRS_EPS < fabsf(posY_ - (float)(int)GH) ||
                         (int)GH == (int)h_dest - 1)
                         moveDir_ = 0;
                     else
@@ -714,10 +714,10 @@ unsigned int MovableEntity::updateMovement()
             if (moveDir_ != 0 && anim_ > 0xf9)
                 anim_ = 0;
 
-            // Ramp bookkeeping: which climb animation, and whether the move is
+            // Stairs bookkeeping: which climb animation, and whether the move is
             // allowed.
-            if (Sim_CheckTileIsRamp(k_here) != 0) {
-                if (Sim_CheckTileIsRamp(k_dest) == 0 && h_here == h_dest)
+            if (Sim_CheckTileIsStairs(k_here) != 0) {
+                if (Sim_CheckTileIsStairs(k_dest) == 0 && h_here == h_dest)
                     anim_ = 0x1b;
                 if (((unsigned)moveDir_) == (unsigned)(k_here - 4) ||
                     ((unsigned)moveDir_) == (unsigned)Sim_GetTurnedDirection(
@@ -727,12 +727,12 @@ unsigned int MovableEntity::updateMovement()
                         field_12e = 1;
                         if (((signed char)anim_) == 0)
                             anim_ = (unsigned char)
-                                ((-(Sim_CheckTileIsRamp(k_dest) != 0) & 0xfeU) + 0x1a);
+                                ((-(Sim_CheckTileIsStairs(k_dest) != 0) & 0xfeU) + 0x1a);
                     }
                     if (h_dest == h_here) {
                         if (((signed char)anim_) == 0)
                             anim_ = (unsigned char)
-                                ((-(Sim_CheckTileIsRamp(k_dest) != 0) & 0xfeU) + 0x1b);
+                                ((-(Sim_CheckTileIsStairs(k_dest) != 0) & 0xfeU) + 0x1b);
                         field_12e = 2;
                     }
                 } else if ((unsigned)h_dest == (unsigned)h_here + 1) {
@@ -740,9 +740,9 @@ unsigned int MovableEntity::updateMovement()
                 }
             }
 
-            if (Sim_CheckTileIsRamp(k_dest) == 0) {
-                if (gliding_ == 0 && Sim_CheckTileIsRamp(k_here) == 0 &&
-                    Sim_CheckTileIsRamp(k_dest) == 0) {
+            if (Sim_CheckTileIsStairs(k_dest) == 0) {
+                if (gliding_ == 0 && Sim_CheckTileIsStairs(k_here) == 0 &&
+                    Sim_CheckTileIsStairs(k_dest) == 0) {
                     if (((signed char)anim_) == 0) {
                         if (((unsigned)moveDir_) == (unsigned)facing_)
                             anim_ = 0x14;
@@ -757,14 +757,14 @@ unsigned int MovableEntity::updateMovement()
                 if (h_dest < h_here) {
                     if (((signed char)anim_) == 0)
                         anim_ = (unsigned char)
-                            ((-(Sim_CheckTileIsRamp(k_here) != 0) & 2U) + 0x17);
+                            ((-(Sim_CheckTileIsStairs(k_here) != 0) & 2U) + 0x17);
                     field_141  = 0xff;
                     field_12e = 2;
                 }
                 if (h_dest == h_here) {
                     if (((signed char)anim_) == 0)
                         anim_ = (unsigned char)
-                            ((-(Sim_CheckTileIsRamp(k_here) != 0) & 2U) + 0x16);
+                            ((-(Sim_CheckTileIsStairs(k_here) != 0) & 2U) + 0x16);
                     field_12e = 1;
                 }
             }

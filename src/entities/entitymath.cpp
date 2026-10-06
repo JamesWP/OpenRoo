@@ -4,11 +4,11 @@
 #include "logger.h"
 #include "entitymath.h"
 
-/* Tile kinds 5 to 8 are the four ramps.  The compares are unsigned, so kind
+/* Tile kinds 5 to 8 are the four stairs.  The compares are unsigned, so kind
  * must stay a byte: widened to a signed int, 0x80 and up would change answer.
  */
 int
-Sim_CheckTileIsRamp(unsigned char kind)
+Sim_CheckTileIsStairs(unsigned char kind)
 {
     if (kind > 4 && kind < 9)
         return 1;

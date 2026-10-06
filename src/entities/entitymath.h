@@ -2,9 +2,9 @@
 
 #pragma once
 
-/* Whether a tile kind is a ramp: kinds 5 to 8. */
+/* Whether a tile kind is a stair tile: kinds 5 to 8. */
 int
-Sim_CheckTileIsRamp(unsigned char kind);
+Sim_CheckTileIsStairs(unsigned char kind);
 
 /* Turns a facing 1..4 by delta, wrapping within 1..4. */
 unsigned char
