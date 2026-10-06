@@ -14,6 +14,8 @@
     "  dt / seed    determinism settings; MUST match the recording's header",
     "  timeout      --auto-exit seconds; a safety net, the replay ends itself",
     "  expect.crash \"none\", \"known\" (the CRASH.md guard-page fault) or \"different\"",
+    "  expect.seconds wall-clock replay time, set by --bless; the stuck budget is 3x this",
+    "               (min 25s).  Without it the run is given as long as it takes.",
     "  expect.state fields from the KAROO_STATE_DUMP JSON that must match exactly;",
     "               omit a field to leave it unasserted",
     "  fast         optional; false = never run under --fast (the default), for a recording that guards something on the render path",
