@@ -86,7 +86,7 @@ bool policy_active(void)
             else if (strcmp(buf, "none") != 0)
                 g_logger.write("policy: unknown KAROO_POLICY=%s — disabled "
                           "(known: nearest-crystal, probe)\n", buf);
-            strncpy(g_name, buf, sizeof(g_name) - 1);
+            snprintf(g_name, sizeof(g_name), "%s", buf);
         }
         g_logger.write("policy: %s\n", g_mode ? g_name : "disabled");
     }

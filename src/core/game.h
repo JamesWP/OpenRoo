@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <stdint.h>
+#include <string.h>
 
  
 #include "textentry.h"
@@ -242,8 +243,20 @@ public:
      * unrelated stores between them, so they cannot be merged into one
      * double store (template 3: preserve the original's shape).  These are
      * the only callers, and gamereset.cpp says why at each. */
-    unsigned int  &totalPlayTimeLowDword()  { return ((unsigned int *)&totalPlayTime_)[0]; }
-    unsigned int  &totalPlayTimeHighDword() { return ((unsigned int *)&totalPlayTime_)[1]; }
+    void setTotalPlayTimeLowDword(unsigned int v)
+    {
+        unsigned int w[2];
+        memcpy(w, &totalPlayTime_, sizeof w);
+        w[0] = v;
+        memcpy(&totalPlayTime_, w, sizeof w);
+    }
+    void setTotalPlayTimeHighDword(unsigned int v)
+    {
+        unsigned int w[2];
+        memcpy(w, &totalPlayTime_, sizeof w);
+        w[1] = v;
+        memcpy(&totalPlayTime_, w, sizeof w);
+    }
 
     /* SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
     char          *levelNameBuffer()                 { return levelName_; }

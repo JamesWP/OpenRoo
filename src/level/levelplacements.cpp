@@ -322,11 +322,11 @@ void LevelPlacements::build(const Game *g,
     if (bombables_.count_ != 0) bombables_.alloc(bombables_.count_);
 
     // The tile-top template.
-    static const uint32_t quad[4][8] = {
-        { 0x3f000000, 0, 0xbf000000, 0xffffffff, 0,          0x3f800000, 0,          0x3f800000 },
-        { 0xbf000000, 0, 0xbf000000, 0xffffffff, 0,          0,          0,          0          },
-        { 0x3f000000, 0, 0x3f000000, 0xffffffff, 0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000 },
-        { 0xbf000000, 0, 0x3f000000, 0xffffffff, 0x3f800000, 0,          0x3f800000, 0          },
+    static const SceneQuadVertex quad[4] = {
+        {  0.5f, 0, -0.5f, 0xffffffff, 0, 1, 0, 1 },
+        { -0.5f, 0, -0.5f, 0xffffffff, 0, 0, 0, 0 },
+        {  0.5f, 0,  0.5f, 0xffffffff, 1, 1, 1, 1 },
+        { -0.5f, 0,  0.5f, 0xffffffff, 1, 0, 1, 0 },
     };
     memcpy(tileQuad_, quad, sizeof quad);
 
@@ -397,15 +397,13 @@ void LevelPlacements::build(const Game *g,
  * The builder overwrites all four later. */
 LevelPlacements::LevelPlacements()
 {
-    for (int i = 0; i < 4; i++) {
-        for (int k = 0; k < 8; k++)
-            tileQuad_[i].d[k] = 0;
-        tileQuad_[i].d[3] = 0xffffffff;
-    }
+    memset(tileQuad_, 0, sizeof tileQuad_);
+    for (int i = 0; i < 4; i++)
+        tileQuad_[i].diffuse = 0xffffffff;
 }
 
 /* The lift and platform passes.  Counts compare unsigned.  The block itself is
- * passed as the scene renderer's quad: tileQuad heads it. */
+ * handed the scene renderer its quad. */
 void LevelPlacements::drawLifts(Game *g, ThemeAssetBlock *theme,
                           RenderDevice *d3d, double now)
 {
@@ -415,7 +413,7 @@ void LevelPlacements::drawLifts(Game *g, ThemeAssetBlock *theme,
         lifts_.pos_[i][1] = lift->height();
         lifts_.pos_[i][2] = -lift->posV();
     }
-    Scene_RenderSceneObjects(g, (SceneQuadVertex *)(void *)this,  // tileQuad, at +0
+    Scene_RenderSceneObjects(g, tileQuad_,
                              (const Vec3 *)lifts_.pos_.get(), (const Vec3 *)lifts_.rot_.get(),
                              lifts_.count_, theme->slot(THEME_OBJ_ELEVATOR),
                              d3d, now, 0.0f, 0, 0);
@@ -433,7 +431,7 @@ void LevelPlacements::drawPlatforms(Game *g, ThemeAssetBlock *theme,
             platforms_.rot_[i][1] = 1.5707963705062866f;  // pi/2 as a float
     }
     float animTime = (float)fmod(now * (double)0.002f, 1.0);
-    Scene_RenderSceneObjects(g, (SceneQuadVertex *)(void *)this,  // tileQuad, at +0
+    Scene_RenderSceneObjects(g, tileQuad_,
                              (const Vec3 *)platforms_.pos_.get(), (const Vec3 *)platforms_.rot_.get(),
                              platforms_.count_, theme->slot(THEME_OBJ_PLATFORM),
                              d3d, now, animTime, 0x14, 0);

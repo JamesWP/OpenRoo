@@ -77,6 +77,10 @@ public:
     /* The slot for an animation code, or NULL for a code the table has no
      * slot for. */
     AnimSlot *lookup(unsigned int code);
+    const AnimSlot *lookup(unsigned int code) const
+    {
+        return const_cast<AnimTable *>(this)->lookup(code);
+    }
 
 private:
     AnimSlot walkForward_;      
