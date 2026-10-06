@@ -107,6 +107,8 @@ public:
     void setResult(PathNode *n)                    { result_ = n; }
 
     LevelMap *map() const { return map_; }
+    // The last search reached the foe: result() and its parents are live.
+    bool      hasPath() const                      { return found_ != 0; }
 
     // The search (foepath.cpp).
     int       find(int uFoe, int vFoe, int uTarget, int vTarget);
