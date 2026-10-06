@@ -109,8 +109,9 @@ static inline double clear_ms(void)  { return s_fx_shortfuse ? K_CLEAR_MS  / 2.0
 static inline double remove_ms(void) { return s_fx_shortfuse ? K_REMOVE_MS / 2.0 : K_REMOVE_MS; }
 
 /* Construction: the MovableEntity base, then the bomb's own stores in a fixed
- * order; every other byte is left as allocated.  PRESERVED: the sound slots
- * +0xab..+0xcb are cleared a second time after zeroSoundSlots().  */
+ * order.  PRESERVED: the sound slots +0xab..+0xcb are cleared a second time
+ * after zeroSoundSlots().  The timing fields are zeroed (see below), which the
+ * original left as allocated.  */
 Bomb *Bomb::create()
 {
     return new (std::nothrow) Bomb;
@@ -159,6 +160,22 @@ Bomb::Bomb()
     sound_cb_         = 0;
     field_d8          = 0;
     stepGrace_          = 50.0;
+
+    // The first step commit reads now_ - stepEnd_ to decide where the move
+    // animation starts.  Zero is "long ago"; a recycled heap block could hold
+    // a NaN there, which made animStart_ and then the bomb's position NaN --
+    // and only in a run that draws, since drawing changes what the heap held.
+    // The same fix as Foe::Foe.
+    stepEnd_          = 0.0;
+    animStart_        = 0.0;
+    animDuration_     = 0.0;
+    idleDuration_     = 0.0;
+    lastActive_       = 0.0;
+    lastContact_      = 0.0;
+    dyingSince_       = 0.0;
+    teleportSince_    = 0.0;
+    fallStart_        = 0.0;
+    fallSpeed_        = 0.0f;
 }
 
 static unsigned long s_spawns       = 0;
