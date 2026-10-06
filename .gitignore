@@ -21,7 +21,6 @@ replaytest-*.json
 # Save fixtures are committed test data, not the live SavedGames/ slots that
 # **/*.sav above deliberately ignores. Without this, restoring a fixture would
 # depend on files nobody could clone.
-!tests/saves/**/*.sav
 
 # The game's own all-levels dump, written into the game directory whenever L is
 # held during Game::LoadSounds. It is a *test output*, not source: the baseline
