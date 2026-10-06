@@ -34,15 +34,15 @@ struct FreeBomb {
 struct LevelCensus {
     // Kind counts, over the live grid.
     unsigned short teleports;      // TILE_TELEPORTER, paired only
-    unsigned short destructibles;  // TILE_DESTRUCTIBLE
+    unsigned short bombables;      // TILE_BOMBABLE
     unsigned short kind01;         // TILE_KIND_01, itself unnamed
     unsigned short field_e5;       // never reset, never counted
     unsigned short total;          // collectable items: see below
     unsigned short bridges;        // TILE_BRIDGE_U and _V
     unsigned short unusedEb;       // reset only
-    unsigned short gluePads;       // TILE_GLUE
-    unsigned short climbTiles;     // TILE_CLIMB
-    unsigned short conveyors;      // TILE_CONVEYOR
+    unsigned short stickyPads;       // TILE_STICKY
+    unsigned short slideTiles;     // TILE_SLIDE
+    unsigned short iceTiles;       // TILE_ICE
 
     // Contents counts over the snapshot grid.
     unsigned short freezeItems;  // CONTENTS_FREEZE
@@ -54,9 +54,9 @@ struct LevelCensus {
     unsigned short transforms;  // CONTENTS_TRANSFORM, snapshot
 
     // The two concealed-item counters keep numeric names: each is counted from
-    // two places that do not agree.  shadow1 counts a destructible hiding a
-    // crystal, and a kind 2 foe dropping 0x0b or 0x07; shadow7 a destructible
-    // hiding an extra life, and a kind 2 foe dropping 0x4d.  The destructible
+    // two places that do not agree.  shadow1 counts a bombable hiding a
+    // crystal, and a kind 2 foe dropping 0x0b or 0x07; shadow7 a bombable
+    // hiding an extra life, and a kind 2 foe dropping 0x4d.  The bombable
     // half reads as crystals and lives; the foe half does not (0x07 is an
     // extra life, 0x4d a free bomb), so a meaningful name would be a guess.
     unsigned short shadow1;
@@ -79,8 +79,8 @@ struct LevelCensus {
     // game does.
     void reset()
     {
-        teleports = 0; destructibles = 0; kind01 = 0; total = 0; bridges = 0;
-        unusedEb = 0; gluePads = 0; climbTiles = 0; conveyors = 0; freezeItems = 0;
+        teleports = 0; bombables = 0; kind01 = 0; total = 0; bridges = 0;
+        unusedEb = 0; stickyPads = 0; slideTiles = 0; iceTiles = 0; freezeItems = 0;
         timeBonuses = 0; transforms = 0; speedUps = 0; paragliders = 0; shadow1 = 0;
         shadow7 = 0; jumpPads = 0; extraLives = 0; grant09Items = 0; freeBombs = 0;
         timed = 0;

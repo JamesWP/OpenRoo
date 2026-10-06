@@ -1,7 +1,7 @@
 /* The level builder: clears the run's per-level state, tears down the previous
  * level's objects, finds the player start, seeds rand(), then walks the whole
  * map once (v outer, u inner), dispatching on each cell's kind: spawning
- * lifts, slides, breakables, bridges and foes, filing switch cells and
+ * lifts, platforms, falling tiles, bridges and foes, filing switch cells and
  * teleport pairs, and counting what the score and the HUD need.
  *
  * DETERMINISM: the seed is time() through hooks_GameTime, so KAROO_SEED
@@ -16,7 +16,7 @@
  *     on a cell that just spawned a kind 2 foe.
  *   - The teleport search clears this cell's parameter before searching,
  *     which is the only reason a teleporter cannot pair with itself.
- *   - A destructible cell moves its contents into its hidden slot, so those
+ *   - A bombable cell moves its contents into its hidden slot, so those
  *     items count as shadow1/shadow7 rather than crystals and extra lives.
  *   - The start (kind 3) is rewritten to kind 1 in the middle of its visit,
  *     before the later tests see it.
@@ -27,7 +27,7 @@
  *
  * Negative controls (KAROO_SIM_FX): "setupflip" transposes u and v at the one
  * place the walk forms a cell address, so the whole level transposes
- * coherently; "noshadow" keeps destructible cells' items in the open, which
+ * coherently; "noshadow" keeps bombable cells' items in the open, which
  * moves only the census split, not the total, and is safe on both gates.
  * KAROO_SETUP_DIAG=1 logs the extents, the spawn census and the totals. */
 
@@ -45,9 +45,9 @@
 #include "tilequery.h"
 #include "levelsetup.h"
 #include "liftobject.h"
-#include "slideobject.h"
+#include "platformobject.h"
 #include "bridgeobject.h"
-#include "breakabletile.h"
+#include "fallingtile.h"
 #include "foe.h"
 #include "gamestr.h"
 #include "gameglobals.h"
@@ -261,12 +261,12 @@ Sim_SetupLevelObjects(Game *self)
     self->player()->setMovingBackwards(0);
     self->player()->setTeleportPhase(0);
     self->player()->setField11a(0);
-    self->player()->setConveyorDir(0);
+    self->player()->setIceDir(0);
 
     // Tear down the previous level.
     LiftObject::purgeAll(self);
-    SlideObject::purgeAll(self);
-    BreakableTile::purgeAll(self);
+    PlatformObject::purgeAll(self);
+    FallingTile::purgeAll(self);
     BridgeObject::purgeAll(self);
 
     // The 256 switch counts.
@@ -277,10 +277,10 @@ Sim_SetupLevelObjects(Game *self)
     while (self->bombCount() != 0)
         Bomb::remove(self, self->bombId(0));
 
-    self->setBreakableCount(0);
+    self->setFallingCount(0);
     self->setFoeCount(0);
     self->setLiftCount(0);
-    self->setSlideCount(0);
+    self->setPlatformCount(0);
     self->setBombCount(0);
     self->setSwitchMax(0);
     self->player()->setLastRoll(0);
@@ -330,7 +330,7 @@ Sim_SetupLevelObjects(Game *self)
             if (w != 0) {
                 u = 0;
                 do {
-                    CELL(M, u, v)->setSlideTrack(0);
+                    CELL(M, u, v)->setPlatformTrack(0);
                     u = (unsigned char)(u + 1);
                 } while (u < M->extentU());
             }
@@ -363,13 +363,13 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->contents() == CONTENTS_EXTRA_LIFE) self->census()->extraLives++;
 
                 if (t->objectMarker() == TILE_KIND_01) self->census()->kind01++;
-                if (t->objectMarker() == TILE_GLUE) self->census()->gluePads++;
-                if (t->objectMarker() == TILE_CLIMB) self->census()->climbTiles++;
-                if (t->objectMarker() == TILE_CONVEYOR) self->census()->conveyors++;
+                if (t->objectMarker() == TILE_STICKY) self->census()->stickyPads++;
+                if (t->objectMarker() == TILE_SLIDE) self->census()->slideTiles++;
+                if (t->objectMarker() == TILE_ICE) self->census()->iceTiles++;
 
-                if (t->objectMarker() == TILE_DESTRUCTIBLE) {
+                if (t->objectMarker() == TILE_BOMBABLE) {
                     unsigned char item;
-                    self->census()->destructibles++;
+                    self->census()->bombables++;
                     t->setBusy(0);
                     item = t->contents();
                     if (s_fx_noshadow)
@@ -424,8 +424,8 @@ Sim_SetupLevelObjects(Game *self)
                     }
                 }
 
-                if (t->objectMarker() == TILE_CLIMB) {
-                    t->setClimbDir(t->param());
+                if (t->objectMarker() == TILE_SLIDE) {
+                    t->setSlideDir(t->param());
                     t->setParam(0);
                 }
 
@@ -453,16 +453,16 @@ Sim_SetupLevelObjects(Game *self)
                     t->setItemPhase((float)ph);
                 }
 
-                if (t->objectMarker() == TILE_SLIDE_U || t->objectMarker() == TILE_SLIDE_V) {
+                if (t->objectMarker() == TILE_PLATFORM_U || t->objectMarker() == TILE_PLATFORM_V) {
                     t->setContents(0);
                     t->setParam(0);
-                    SlideObject::spawn(self, u, v, t->height(),
+                    PlatformObject::spawn(self, u, v, t->height(),
                                        t->objectMarker());
                     t->setObjectMarker(0);
                 }
 
-                if (t->objectMarker() == TILE_BREAKABLE)
-                    BreakableTile::spawn(self, u, v, t->height(), t->param());
+                if (t->objectMarker() == TILE_FALLING)
+                    FallingTile::spawn(self, u, v, t->height(), t->param());
 
                 // Teleport pairing.
                 if (t->objectMarker() == TILE_TELEPORTER && t->param() != 0) {
@@ -599,7 +599,7 @@ next_row:
     }
 
     // Totals, and the rest of the reset.
-    self->player()->setSlideSlot(0xff);
+    self->player()->setPlatformSlot(0xff);
     self->setField173584(1);
 
     // The collectable-item count (see LevelCensus), summed in this order.
@@ -698,13 +698,13 @@ next_row:
     s_calls++;
     if (s_diag)
         g_logger.write("levelsetup: DIAG call #%u map=%ux%u crystals=%u total=%u "
-                  "bridges=%u teleports=%u lifts=%u slides=%u breakables=%u "
+                  "bridges=%u teleports=%u lifts=%u platforms=%u falling tiles=%u "
                   "foes=%u freebombs=%u timed=%u switchmax=%u\n",
                   s_calls, (unsigned)M->extentU(), (unsigned)M->extentV(),
                   (unsigned)self->field_42252(), (unsigned)self->census()->total,
                   (unsigned)self->census()->bridges, (unsigned)self->census()->teleports,
-                  (unsigned)self->liftCount(), (unsigned)self->slideCount(),
-                  (unsigned)self->breakableCount(), (unsigned)self->foeCount(),
+                  (unsigned)self->liftCount(), (unsigned)self->platformCount(),
+                  (unsigned)self->fallingCount(), (unsigned)self->foeCount(),
                   (unsigned)self->census()->freeBombs, (unsigned)self->census()->timed,
                   (unsigned)self->switchMax());
 

@@ -24,9 +24,9 @@
 
 class SoundManager;
 class LiftObject;
-class SlideObject;
+class PlatformObject;
 class BridgeObject;
-class BreakableTile;
+class FallingTile;
 
 
 /* The end-of-level score tally.  Six rows, each
@@ -389,11 +389,11 @@ public:
     LiftObject   *liftSlot(unsigned int i) const { return liftSlots_[i]; }
     void          setLiftSlot(unsigned int i, LiftObject *p) { liftSlots_[i] = p; }
 
-    /* ── slides ─────────────────────────────────────────────────────── */
-    unsigned char slideCount() const               { return slideCount_; }
-    void          setSlideCount(unsigned char n)   { slideCount_ = n; }
-    SlideObject  *slideSlot(unsigned int i) const  { return slideSlots_[i]; }
-    void          setSlideSlot(unsigned int i, SlideObject *p) { slideSlots_[i] = p; }
+    /* ── platforms ─────────────────────────────────────────────────────── */
+    unsigned char platformCount() const               { return platformCount_; }
+    void          setPlatformCount(unsigned char n)   { platformCount_ = n; }
+    PlatformObject  *platformSlot(unsigned int i) const  { return platformSlots_[i]; }
+    void          setPlatformSlot(unsigned int i, PlatformObject *p) { platformSlots_[i] = p; }
 
     /* ── bridges ────────────────────────────────────────────────────── */
     /* Indexed by the bridge's switch slot, not the count; the count is a
@@ -403,11 +403,11 @@ public:
     BridgeObject *bridgeSlot(unsigned int i) const { return bridgeSlots_[i]; }
     void          setBridgeSlot(unsigned int i, BridgeObject *p) { bridgeSlots_[i] = p; }
 
-    /* ── breakable tiles ────────────────────────────────────────────── */
-    unsigned char  breakableCount() const              { return breakableCount_; }
-    void           setBreakableCount(unsigned char n)  { breakableCount_ = n; }
-    BreakableTile *breakableSlot(unsigned int i) const { return breakableSlots_[i]; }
-    void           setBreakableSlot(unsigned int i, BreakableTile *p) { breakableSlots_[i] = p; }
+    /* ── falling tiles ────────────────────────────────────────────── */
+    unsigned char  fallingCount() const              { return fallingCount_; }
+    void           setFallingCount(unsigned char n)  { fallingCount_ = n; }
+    FallingTile *fallingSlot(unsigned int i) const { return fallingSlots_[i]; }
+    void           setFallingSlot(unsigned int i, FallingTile *p) { fallingSlots_[i] = p; }
 
     /* ── bombs (the game's "enemy" table) ───────────────────────────── */
     /* Slots are indexed by ID; the ID list holds the live IDs, count long.
@@ -558,13 +558,13 @@ private:
     char          levelName_[0x100];
     unsigned char levelIndex_;
     int           field_173584_;
-    SlideObject  *slideSlots_[100];
-    unsigned char slideCount_;
+    PlatformObject  *platformSlots_[100];
+    unsigned char platformCount_;
     LiftObject   *liftSlots_[256];
     unsigned char liftCount_;
     int           field_173b1a_;
-    BreakableTile *breakableSlots_[200];
-    unsigned char breakableCount_;
+    FallingTile *fallingSlots_[200];
+    unsigned char fallingCount_;
     Bomb         *bombSlots_[500];
     unsigned char bombCount_;
     unsigned char bombIds_[500];

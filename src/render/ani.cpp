@@ -173,7 +173,7 @@ AnimSlot *AnimTable::lookup(unsigned int code)
     case ANIM_WALK_FORWARD:     return &walkForward_;
     case ANIM_WALK_BACKWARD:    return &walkBackward_;
     case ANIM_JUMP:             return &jump_;
-    case ANIM_GLUE:             return &glue_;
+    case ANIM_GLUE:             return &sticky_;
     case ANIM_GHOST:            return &ghost_;
     case ANIM_ICE:              return &ice_;
     case ANIM_FALL:             return &fall_;

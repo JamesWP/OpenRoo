@@ -25,23 +25,23 @@
 /* Every nonzero contents byte is a pickup except CONTENTS_TRANSFORM, which
  * turns the player into something else and is left alone. */
 
-/* A glue pad (TILE_GLUE).  Standing on one whose busy flag is clear cancels
+/* A sticky pad (TILE_STICKY).  Standing on one whose busy flag is clear cancels
  * the queued move for a fixed time; then the flag is set and the pad is inert.
  * Foes run the same movement code, so a foe on a pad is held too. */
-#define WS_TILE_GLUE TILE_GLUE
+#define WS_TILE_STICKY TILE_STICKY
 
-/* The breakable tile.  Standing on one drops it away a few ticks later, and
+/* The falling tile.  Standing on one drops it away a few ticks later, and
  * the player with it; crossing without stopping is safe.  They are laid out as
  * corridors, so the planner avoids them where it can and crosses them where it
  * must.  One whose param is 0 comes back after it falls; any other param falls
  * once.  A severed route is often temporary, so plans are allowed to recover
  * (plan.cpp). */
-#define WS_TILE_FALLING TILE_BREAKABLE
+#define WS_TILE_FALLING TILE_FALLING
 
 /* CONTENTS_EXTRA_LIFE adds one to the player's lives. */
 #define WS_TILE_EXTRA_LIFE CONTENTS_EXTRA_LIFE
 
-/* Contents, not a kind: TILE_BREAKABLE is the kind with the same value. */
+/* Contents, not a kind: TILE_FALLING is the kind with the same value. */
 #define WS_TILE_TRANSFORM CONTENTS_TRANSFORM
 static inline bool ws_is_pickup(uint8_t contents)
 {
@@ -66,7 +66,7 @@ struct WsTile {
     uint8_t  spawn_a;   // the snapshot's height
     uint8_t  spawn_b;   // the snapshot's param
     float height_f;  // a lift's live height
-    uint32_t spent;     // the busy flag: a spent glue pad, an armed breakable
+    uint32_t spent;     // the busy flag: a spent sticky pad, an armed falling tile
 };
 
 /* One live foe or bomb. */

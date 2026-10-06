@@ -221,11 +221,11 @@ int FoePath::passable(int u, int v)
     const Tile *t = map()->tile( u, v);
     const unsigned char kind = t->objectMarker();
 
-    if (kind == TILE_EMPTY && t->slideTrack() == 0)  // a void cell is passable only when something bridges it
+    if (kind == TILE_EMPTY && t->platformTrack() == 0)  // a void cell is passable only when something bridges it
         return 0;
     if (kind == TILE_IMPASSABLE)
         return 0;
-    if (kind == TILE_DESTRUCTIBLE && t->busy() == 0)
+    if (kind == TILE_BOMBABLE && t->busy() == 0)
         return 0;
 
     const unsigned char mode = mode_;
@@ -600,7 +600,7 @@ Sim_CheckCellStepIsLegal(LevelMap *base, unsigned char u_from, unsigned char v_f
             flag = 1;
     }
 
-    if (from->objectMarker() != TILE_CLIMB && from->height() == to->height())
+    if (from->objectMarker() != TILE_SLIDE && from->height() == to->height())
         flag = 1;
     else if (to->objectMarker() == TILE_LIFT &&
              ((unsigned char)to->liftBottom() == from->height() ||
@@ -625,12 +625,12 @@ Sim_CheckCellStepIsLegal(LevelMap *base, unsigned char u_from, unsigned char v_f
         }
     } else {
         const int d = (int)to->height() - (int)from->height();
-        if (from->objectMarker() != TILE_CLIMB && d < 3 && d > 0)
-            flag = (from->slideTrack() == 0);
+        if (from->objectMarker() != TILE_SLIDE && d < 3 && d > 0)
+            flag = (from->platformTrack() == 0);
     }
 
-    if (from->objectMarker() == TILE_CLIMB && from->height() == to->height()) {
-        const unsigned char dir = from->climbDir();
+    if (from->objectMarker() == TILE_SLIDE && from->height() == to->height()) {
+        const unsigned char dir = from->slideDir();
         if (v_from < v_to && dir == 1)
             flag = 1;
         else if (u_from < u_to && dir == 4)
@@ -643,7 +643,7 @@ Sim_CheckCellStepIsLegal(LevelMap *base, unsigned char u_from, unsigned char v_f
             flag = 0;  // overwrites whatever the ramp/height clauses above decided
     }
 
-    if (to->objectMarker() == TILE_CLIMB)
+    if (to->objectMarker() == TILE_SLIDE)
         flag = 1;
 
     if (from->objectMarker() == TILE_JUMP_PAD) {
@@ -668,7 +668,7 @@ Sim_CheckCellStepIsLegal(LevelMap *base, unsigned char u_from, unsigned char v_f
     if (to->objectMarker() == TILE_JUMP_PAD)
         flag = 1;
 
-    if (from->objectMarker() == TILE_GLUE && from->occupant() == 0) {
+    if (from->objectMarker() == TILE_STICKY && from->occupant() == 0) {
         const signed char du = (signed char)(u_from - u_to);
         const signed char dv = (signed char)(v_from - v_to);
         const int up = (int)u_to + (int)du * 2;

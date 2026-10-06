@@ -296,25 +296,25 @@ static const char *kind_name(uint8_t k)
     switch (k) {
     case TILE_EMPTY:        return "void";
     case TILE_KIND_01:      return "floor";
-    case TILE_GLUE:         return "glue";
+    case TILE_STICKY:       return "sticky";
     case TILE_START:        return "start";
     case TILE_EXIT:         return "exit";
     case TILE_RAMP_1: case TILE_RAMP_2: case TILE_RAMP_3: case TILE_RAMP_4:
                             return "ramp";
     case TILE_LIFT:         return "lift";
-    case TILE_SLIDE_U: case TILE_SLIDE_V:
-                            return "slide";
-    case TILE_SLIDE_TRACK:  return "slide track";
-    case TILE_BREAKABLE:    return "breakable";
+    case TILE_PLATFORM_U: case TILE_PLATFORM_V:
+                            return "platform";
+    case TILE_PLATFORM_TRACK: return "platform track";
+    case TILE_FALLING:      return "falling tile";
     case TILE_JUMP_PAD:     return "jump pad";
     case TILE_TELEPORTER:   return "teleporter";
-    case TILE_CLIMB:        return "climb";
+    case TILE_SLIDE:        return "slide";
     case TILE_SWITCH:       return "switch";
     case TILE_BRIDGE_U: case TILE_BRIDGE_V:
                             return "bridge";
-    case TILE_CONVEYOR:     return "conveyor";
+    case TILE_ICE:          return "ice";
     case TILE_IMPASSABLE:   return "impassable";
-    case TILE_DESTRUCTIBLE: return "destructible";
+    case TILE_BOMBABLE:     return "bombable";
     default:                return "?";
     }
 }
@@ -357,7 +357,7 @@ static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
     case TILE_EXIT:
         dl->AddRect(a, b, IM_COL32(40, 230, 40, 255), 0.0f, 0, t * 1.5f);
         break;
-    case TILE_GLUE: {
+    case TILE_STICKY: {
         auto r = in(0.15f);
         dl->AddRectFilled(r.first, r.second, IM_COL32(220, 200, 40, 200), w * 0.3f);
         break;
@@ -377,19 +377,19 @@ static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
         dl->AddLine(ImVec2(c.x, r.first.y + t), ImVec2(c.x, r.second.y - t), IM_COL32(60, 120, 255, 255), t);
         break;
     }
-    case TILE_SLIDE_U: case TILE_SLIDE_V: case TILE_SLIDE_TRACK: {
-        // The track along its axis; the slide's own cell is a solid block.
-        const bool alongU = kind != TILE_SLIDE_V;
+    case TILE_PLATFORM_U: case TILE_PLATFORM_V: case TILE_PLATFORM_TRACK: {
+        // The track along its axis; the platform's own cell is a solid block.
+        const bool alongU = kind != TILE_PLATFORM_V;
         const ImU32 col = IM_COL32(60, 120, 255, 255);
         if (alongU) dl->AddLine(ImVec2(a.x, c.y), ImVec2(b.x, c.y), col, t);
         else        dl->AddLine(ImVec2(c.x, a.y), ImVec2(c.x, b.y), col, t);
-        if (kind != TILE_SLIDE_TRACK) {
+        if (kind != TILE_PLATFORM_TRACK) {
             auto r = in(0.25f);
             dl->AddRectFilled(r.first, r.second, col);
         }
         break;
     }
-    case TILE_BREAKABLE: {
+    case TILE_FALLING: {
         auto r = in(0.1f);
         dl->AddRect(r.first, r.second, IM_COL32(200, 110, 40, 255), 0.0f, 0, t);
         dl->AddLine(r.first, r.second, IM_COL32(200, 110, 40, 255), t);
@@ -402,7 +402,7 @@ static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
         dl->AddQuadFilled(ImVec2(c.x, a.y + w * 0.12f), ImVec2(b.x - w * 0.12f, c.y),
                           ImVec2(c.x, b.y - w * 0.12f), ImVec2(a.x + w * 0.12f, c.y), IM_COL32(190, 70, 230, 255));
         break;
-    case TILE_CLIMB:
+    case TILE_SLIDE:
         for (int i = 1; i <= 3; i++) {
             const float y = a.y + w * i / 4.0f;
             dl->AddLine(ImVec2(a.x + w * 0.25f, y), ImVec2(b.x - w * 0.25f, y), IM_COL32(120, 80, 40, 255), t);
@@ -428,7 +428,7 @@ static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
         }
         break;
     }
-    case TILE_CONVEYOR:
+    case TILE_ICE:
         for (int i = 0; i < 2; i++) {
             const float x = a.x + w * (0.25f + 0.3f * i);
             dl->AddLine(ImVec2(x, a.y + w * 0.25f), ImVec2(x + w * 0.2f, c.y), IM_COL32(40, 40, 40, 255), t);
@@ -442,7 +442,7 @@ static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
         dl->AddLine(ImVec2(r.second.x, r.first.y), ImVec2(r.first.x, r.second.y), IM_COL32(200, 60, 60, 255), t);
         break;
     }
-    case TILE_DESTRUCTIBLE: {
+    case TILE_BOMBABLE: {
         auto r = in(0.08f);
         dl->AddRectFilled(r.first, r.second, IM_COL32(150, 95, 45, 255));
         dl->AddRect(r.first, r.second, IM_COL32(70, 40, 15, 255), 0.0f, 0, t);
@@ -687,14 +687,14 @@ static void draw_map()
         return std::make_pair(p, ImVec2(p.x + ls, p.y + ls));
     };
     static const uint8_t KINDS[] = {
-        TILE_EXIT, TILE_GLUE, TILE_RAMP_1, TILE_LIFT, TILE_SLIDE_U, TILE_SLIDE_TRACK,
-        TILE_BREAKABLE, TILE_JUMP_PAD, TILE_TELEPORTER, TILE_CLIMB, TILE_SWITCH,
-        TILE_BRIDGE_U, TILE_CONVEYOR, TILE_IMPASSABLE, TILE_DESTRUCTIBLE,
+        TILE_EXIT, TILE_STICKY, TILE_RAMP_1, TILE_LIFT, TILE_PLATFORM_U, TILE_PLATFORM_TRACK,
+        TILE_FALLING, TILE_JUMP_PAD, TILE_TELEPORTER, TILE_SLIDE, TILE_SWITCH,
+        TILE_BRIDGE_U, TILE_ICE, TILE_IMPASSABLE, TILE_BOMBABLE,
     };
     for (uint8_t k : KINDS) {
         bool any = seen[k];
         if (k == TILE_RAMP_1) any = seen[5] || seen[6] || seen[7] || seen[8];
-        if (k == TILE_SLIDE_U) any = seen[TILE_SLIDE_U] || seen[TILE_SLIDE_V];
+        if (k == TILE_PLATFORM_U) any = seen[TILE_PLATFORM_U] || seen[TILE_PLATFORM_V];
         if (k == TILE_BRIDGE_U) any = seenBridge;
         if (!any)
             continue;
