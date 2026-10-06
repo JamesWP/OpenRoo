@@ -35,8 +35,14 @@ done
 # build runs directly, a Windows build runs under Proton.
 BUILD_DIR=${BUILD_DIR:-build}
 # Bring the build up to date first; a failed build does not launch a stale exe.
-[[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
-cmake --build "$BUILD_DIR" -j"$(nproc)" >&2 || { echo "ERROR: build failed"; exit 1; }
+# OPENROO_SKIP_BUILD=1 launches what is already built: a caller that starts many
+# runs (tools/replaytest.py) builds once itself, and the no-op build check
+# costs about a second a launch.
+if [[ -z "${OPENROO_SKIP_BUILD:-}" ]]; then
+  [[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
+  cmake --build "$BUILD_DIR" -j"$(nproc)" >&2 || { echo "ERROR: build failed"; exit 1; }
+fi
+[[ -f "$BUILD_DIR/CMakeCache.txt" ]] || { echo "ERROR: $BUILD_DIR is not configured" >&2; exit 1; }
 PLATFORM=$(sed -n 's/^OPENROO_PLATFORM:[A-Z]*=//p' "$BUILD_DIR/CMakeCache.txt")
 case "$PLATFORM" in
   linux)   NATIVE=1; EXE=OpenRoo ;;
