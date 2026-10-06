@@ -533,7 +533,7 @@ void RenderDevice::EndFrame()
  * screen grab, which the display server may not give). */
 static void capture_frame(RenderDevice::Native *n, unsigned frame)
 {
-    static char prefix[400], frames[200];
+    static char prefix[400], frames[8192];
     static int enabled = -1;
     if (enabled < 0) {
         enabled = sysdev::getEnv("KAROO_SCREENSHOT", prefix, sizeof(prefix))
