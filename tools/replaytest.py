@@ -139,6 +139,19 @@ def check_header(entry, cfg, rec_path):
 # with KAROO_STUCK_SECONDS if a genuinely slower machine needs the room.
 STUCK_SECONDS = int(os.environ.get("KAROO_STUCK_SECONDS", "25"))
 
+# A blessed recording carries its own replay time (expect.seconds, wall clock);
+# the stuck budget is that times SECONDS_MARGIN, never less than STUCK_SECONDS.
+# One that is not blessed yet has no known duration, so it is given as long as
+# it takes: a long playthrough is not a hang.
+SECONDS_MARGIN = 3
+
+
+def stuck_budget(entry):
+    seconds = entry.get("expect", {}).get("seconds")
+    if seconds is None:
+        return None
+    return max(STUCK_SECONDS, seconds * SECONDS_MARGIN)
+
 
 def wait_for_quiet(timeout=60):
     """Wait for a previous run's game process to actually be gone.
@@ -284,14 +297,16 @@ def entry_fast(entry, fast):
 
 
 def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
-           headless=True):
+           headless=True, game_seconds=0):
+    """Returns (stuck, wall_seconds); on a stuck run the seconds are the budget."""
     env = apply_fast(apply_turbo(dict(os.environ)), fast)
     env["KAROO_REPLAY"] = rec_path
     env["KAROO_STATE_DUMP"] = dump_path
     env["KAROO_HASH_LOG"] = hash_path
     env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
     env["KAROO_SEED"] = str(cfg.get("seed", ""))
-    auto_exit = int(cfg.get("timeout", 120))
+    # The replay ends itself; this only has to outlast it.
+    auto_exit = max(int(cfg.get("timeout", 120)), int(game_seconds * 2) + 60)
     # --headless creates the render device with no OpenGL behind it
     # (src/gl/createdevice.cpp) and makes the game's window message-only, so
     # the run needs no display, opens nothing on screen and takes no focus.
@@ -306,7 +321,8 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
     # mid-run, an unbounded wait blocks the whole suite indefinitely (seen
     # 2026-08-31 on a laptop that slept).  The margin is deliberately wide —
     # a slow run must not be reported as a hang — but finite.
-    budget = STUCK_SECONDS
+    budget = stuck_budget(entry)
+    started = time.perf_counter()
 
     # start_new_session so the whole tree gets signalled: killing the bash
     # child alone would leave Proton/Wine running and the next recording would
@@ -319,18 +335,18 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
     # dump are the oracles.
     try:
         proc.wait(timeout=budget)
-        return False
+        return False, time.perf_counter() - started
     except subprocess.TimeoutExpired:
         pass
 
     print("  STUCK: no exit after %ds wall clock (--auto-exit was %ds of game "
           "time); killing the run.\n"
-          "         A healthy recording finishes in 11-14s, so this is a wedge,\n"
+          "         The blessed replay time is %.1fs, so this is a wedge,\n"
           "         not a slow run.  Suspect the environment first: a surviving\n"
           "         wineserver or a stale Karoo.exe from an earlier run wedges\n"
           "         the next launch (see GAMETICK_PLAN.md standing hazards).\n"
           "         Raise KAROO_STUCK_SECONDS if this machine is genuinely slower."
-          % (budget, auto_exit))
+          % (budget, auto_exit, entry["expect"]["seconds"]))
     for sig in (signal.SIGTERM, signal.SIGKILL):
         try:
             os.killpg(os.getpgid(proc.pid), sig)
@@ -345,7 +361,7 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
     subprocess.run(["pkill", "-f", r"(^|[/\\])OpenRoo(\.exe)?( |$)"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     wait_for_quiet()
-    return True
+    return True, budget
 
 
 def crash_verdict():
@@ -426,12 +442,14 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
         if verbose:
             print("ignoring fastonly test due to headless being enabled")
 
-    if launch(entry, cfg, rec_path, dump_path, hash_path,
-              fast=entry_fast(entry, fast) or headless, headless=headless):
+    stuck, wall = launch(entry, cfg, rec_path, dump_path, hash_path,
+                         fast=entry_fast(entry, fast) or headless,
+                         headless=headless, game_seconds=len(frames) * hdr["dt"])
+    if stuck:
         print("  FAIL (STUCK): run exceeded the %ds stuck detector and was "
               "killed.\n"
               "         Treat this as a hang, not a state mismatch — "
-              "karoo_hooks.log ends where it wedged." % STUCK_SECONDS)
+              "karoo_hooks.log ends where it wedged." % wall)
         return False
 
     verdict = crash_verdict()
@@ -483,6 +501,8 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
                          if k != "frame"})
         entry.setdefault("expect", {})["state"] = keep
         entry["expect"]["crash"] = CRASH_NAME.get(verdict, "undetermined")
+        # The wall-clock replay time; the stuck detector's budget from now on.
+        entry["expect"]["seconds"] = round(wall, 1)
         # A blessed run reached its own end; any stop-early expectation from a
         # previous baseline no longer applies.
         entry["expect"].pop("crash_frame", None)
