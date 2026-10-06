@@ -239,24 +239,6 @@ public:
      * added as it ends; the save slot stores it, ClearGameState zeroes it. */
     double         totalPlayTime() const             { return totalPlayTime_; }
     void           setTotalPlayTime(double ms)       { totalPlayTime_ = ms; }
-    /* ClearGameState zeroes the two halves as separate dword stores with
-     * unrelated stores between them, so they cannot be merged into one
-     * double store (template 3: preserve the original's shape).  These are
-     * the only callers, and gamereset.cpp says why at each. */
-    void setTotalPlayTimeLowDword(unsigned int v)
-    {
-        unsigned int w[2];
-        memcpy(w, &totalPlayTime_, sizeof w);
-        w[0] = v;
-        memcpy(&totalPlayTime_, w, sizeof w);
-    }
-    void setTotalPlayTimeHighDword(unsigned int v)
-    {
-        unsigned int w[2];
-        memcpy(w, &totalPlayTime_, sizeof w);
-        w[1] = v;
-        memcpy(&totalPlayTime_, w, sizeof w);
-    }
 
     /* SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
     char          *levelNameBuffer()                 { return levelName_; }

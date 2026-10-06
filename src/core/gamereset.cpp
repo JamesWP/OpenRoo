@@ -89,9 +89,7 @@ Sim_ClearGameState(Game *self)
     // Two doubles the game zeroes in two halves; nothing reads between, so
     // each is one store.
     pl->setField126(0.0);
-    // Only the low half: the high half is zeroed further down, with other
-    // stores between.
-    self->setTotalPlayTimeLowDword(0);
+    self->setTotalPlayTime(0.0);
     self->setLevelIndex(0);
     self->setRestartCount(0);
     pl->setGemsCollected(0);
@@ -101,7 +99,6 @@ Sim_ClearGameState(Game *self)
     pl->setMoveState(0);
     pl->setStepDuration(200.0);  // bits 0x4069000000000000
     pl->setScore(0);
-    self->setTotalPlayTimeHighDword(0);
 
     if (gamefile_ok == 0) {
         g_logger.logMessage(4, "GAME: ** error ** game-file %s is not readable (maybe it does not exist\077) aborting game!!!",
