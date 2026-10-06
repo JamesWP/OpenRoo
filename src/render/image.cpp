@@ -22,6 +22,13 @@ bool Image_ReadFile(const char *path, std::vector<uint8_t> &out)
     std::ifstream in(sysdev::nativePath(path), std::ios::binary);
     if (!in)
         return false;
-    out.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    in.seekg(0, std::ios::end);
+    const std::streamoff size = in.tellg();
+    in.seekg(0, std::ios::beg);
+    if (size < 0)
+        return false;
+    out.resize((size_t)size);
+    in.read(reinterpret_cast<char *>(out.data()), size);
+    out.resize((size_t)in.gcount());
     return true;
 }

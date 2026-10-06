@@ -12,6 +12,7 @@
 #include <atomic>
 #include <stdio.h>
 #include <stdint.h>
+#include "image.h"
 #include "animatedmesh.h"
 #include "sysdev.h"
 #include <fstream>
@@ -212,15 +213,23 @@ int AnimatedMesh::importSceneModels(const char *path)
     // mesh cleared, not unchanged.
     releaseModelBuffers();
 
-    std::ifstream in(sysdev::nativePath(path), std::ios::binary);
-    if (!in)
+    static_assert(sizeof(frameRecords_[0]) == MDL_FRAME_REC_SIZE &&
+                  sizeof(vertexData_[0]) == MDL_VERTEX_SIZE,
+                  "the .mdl records are read whole");
+    // The whole file at once; the reads below are copies out of it.
+    std::vector<uint8_t> file;
+    if (!Image_ReadFile(path, file))
         return 0;
-
+    size_t pos = 0;
     // PRESERVED: no read is checked, and neither is the file's size: a
     // truncated .mdl leaves the rest of the vertices zero and still returns 1.
-    // A NULL allocation is stored and then read into.
-    readBytes(in, &wFrameCount_,   2);
-    readBytes(in, &dwVertexCount_, 4);
+    auto readBytes = [&](void *dst, size_t n) {
+        const size_t take = pos < file.size() ? std::min(n, file.size() - pos) : 0;
+        memcpy(dst, file.data() + pos, take);
+        pos += n;
+    };
+    readBytes(&wFrameCount_,   2);
+    readBytes(&dwVertexCount_, 4);
 
     frames = wFrameCount_;
     verts  = dwVertexCount_;
@@ -230,14 +239,11 @@ int AnimatedMesh::importSceneModels(const char *path)
     vertexData_.assign(total, MeshVertex{});
 
     for (unsigned f = 0; f < (frames & 0xffff); f++) {
-        unsigned char *rec = (unsigned char *)&frameRecords_[f];
-        for (int i = 0; i < 6; i++)
-            readBytes(in, rec + i * 4, 4);
+        readBytes(&frameRecords_[f], MDL_FRAME_REC_SIZE);
 
         for (unsigned v = 0; v < dwVertexCount_; v++) {
             unsigned char *vert = (unsigned char *)&vertexData_[f * dwVertexCount_ + v];
-            for (int i = 0; i < 10; i++)
-                readBytes(in, vert + i * 4, 4);
+            readBytes(vert, MDL_VERTEX_SIZE);
 
             if (fx_scale()) {
                 ((float *)vert)[0] *= 0.5f;
