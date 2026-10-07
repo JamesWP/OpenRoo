@@ -1003,13 +1003,20 @@ Render_RenderGameFrame(void)
     PROF_SCOPE("frame");
     Game *g = Game::instance();
     if (g->field_173584() != 0) {
-        LevelEntry_PrepareAssets();
+        {
+            PROF_SCOPE("level prepare");
+            LevelEntry_PrepareAssets();
+        }
         g->setField173584(0);
         return;
     }
 
     const double prevMs = clock_previous_seconds() * 1000.0;
-    const double now = hooks_ClockSeconds() * 1000.0;
+    double now;
+    {
+        PROF_SCOPE("clock + test hooks");
+        now = hooks_ClockSeconds() * 1000.0;
+    }
     const double elapsed = now - prevMs;
     double dt = now - g_lastTickMs;
 
@@ -1047,7 +1054,10 @@ Render_RenderGameFrame(void)
         set_stencil_enable(true);
     {
         PROF_SCOPE("gpu / vsync wait");
-        d3d->Clear(ClearFlag::Depth);
+        {
+            PROF_SCOPE("clear");
+            d3d->Clear(ClearFlag::Depth);
+        }
         if (!d3d->BeginFrame())
             return;
     }

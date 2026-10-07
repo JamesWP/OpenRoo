@@ -31,6 +31,15 @@ struct Node {
 };
 
 void setEnabled(bool on);
+
+/* Slow-frame detection.  KAROO_SLOWFRAME_MS=<ms> turns the profiler on for the
+ * whole run (the debug UI can no longer switch it off) and keeps the last
+ * kSlowKeep frames whose "frame" scope took longer than that, each with the
+ * scopes that took 0.5 ms or more.  Frames that prepared a level are not kept:
+ * a level load is slow by design.  dumpSlowFrames() writes them to the log;
+ * the app calls it on exit. */
+void initSlowFrames();
+void dumpSlowFrames();
 bool enabled();
 
 /* The nodes in first-seen order, so a parent always precedes its children. */

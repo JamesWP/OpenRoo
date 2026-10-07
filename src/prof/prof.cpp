@@ -1,5 +1,8 @@
 #include "prof.h"
+#include "logger.h"
 #include <chrono>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <vector>
 
@@ -9,6 +12,63 @@ static bool              g_on;
 static std::vector<Node> g_nodes;
 static int               g_open = -1;   // the innermost open scope
 
+/* The ring of slow frames: where each spent its time, as one line of text. */
+static const unsigned kSlowKeep = 64;
+struct SlowFrame {
+    unsigned frame;
+    double   ms;
+    char     text[320];
+};
+static double    g_slowMs;          // 0: detection off
+static SlowFrame g_slow[kSlowKeep];
+static unsigned  g_frames;          // "frame" scopes ended
+static unsigned  g_slowCount;       // slow frames seen, kept or not
+
+static void note_slow_frame(int root)
+{
+    const Node &f = g_nodes[root];
+    SlowFrame &s = g_slow[g_slowCount++ % kSlowKeep];
+    s.frame = g_frames;
+    s.ms    = f.accMs;
+    size_t len = 0;
+    s.text[0] = 0;
+    for (const Node &m : g_nodes)
+        if (m.accMs >= 0.5 && len < sizeof(s.text))
+            len += snprintf(s.text + len, sizeof(s.text) - len, " %s(%d)=%.1f",
+                            m.name, m.parent, m.accMs);
+}
+
+static bool is_level_load(int root)
+{
+    for (const Node &m : g_nodes)
+        if (m.parent == root && m.accMs > 0.0 && strcmp(m.name, "level prepare") == 0)
+            return true;
+    return false;
+}
+
+void initSlowFrames()
+{
+    const char *ms = getenv("KAROO_SLOWFRAME_MS");
+    g_slowMs = ms ? atof(ms) : 0.0;
+    if (g_slowMs > 0.0) {
+        g_on = true;
+        g_logger.write("prof: keeping frames slower than %.1f ms\n", g_slowMs);
+    }
+}
+
+void dumpSlowFrames()
+{
+    if (g_slowMs <= 0.0)
+        return;
+    g_logger.write("prof: %u slow frame(s) of %u; last %u, as frame(parent)=ms:\n",
+                   g_slowCount, g_frames, g_slowCount < kSlowKeep ? g_slowCount : kSlowKeep);
+    const unsigned first = g_slowCount > kSlowKeep ? g_slowCount - kSlowKeep : 0;
+    for (unsigned i = first; i < g_slowCount; i++) {
+        const SlowFrame &s = g_slow[i % kSlowKeep];
+        g_logger.write("prof: frame %u took %.1f ms:%s\n", s.frame, s.ms, s.text);
+    }
+}
+
 static double now_ms()
 {
     using namespace std::chrono;
@@ -17,6 +77,8 @@ static double now_ms()
 
 void setEnabled(bool on)
 {
+    if (g_slowMs > 0.0)
+        return;  // slow-frame detection keeps the profiler on
     if (g_on && !on) {
         // Never leave a half-open frame behind.
         g_open = -1;
@@ -78,6 +140,11 @@ void Scope::end()
     if (n.parent >= 0)
         return;
     // A root ended: that was the frame.
+    if (strcmp(n.name, "frame") == 0) {
+        g_frames++;
+        if (g_slowMs > 0.0 && n.accMs > g_slowMs && !is_level_load(node_))
+            note_slow_frame(node_);
+    }
     for (Node &m : g_nodes) {
         m.ms    = m.accMs;
         m.calls = m.accCalls;
