@@ -125,6 +125,8 @@ bool Window::create(WindowHandler *handler,
         WD_LOG("windev: SDL_Init failed: %s\n", SDL_GetError());
         return false;
     }
+    if (!config.messageOnly)
+        WD_LOG("windev: SDL video driver %s\n", SDL_GetCurrentVideoDriver());
     // Closing the window is the game's to act on (onDestroyed), not SDL's.
     SDL_SetHint(SDL_HINT_QUIT_ON_LAST_WINDOW_CLOSE, "0");
 
