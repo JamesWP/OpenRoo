@@ -375,17 +375,19 @@ void quit(int exitCode)
 
 void requestClose()
 {
+    // A message-only (headless) run has no window, but still pumps events, so
+    // a quit event takes it through the same close_window() shutdown.
     SDL_Window *win = g_sdlWindow;
-    if (win && !(SDL_GetWindowFlags(win) & SDL_WINDOW_HIDDEN)) {
+    SDL_Event e = {};
+    if (win) {
         WD_LOG("windev: posting a close request\n");
-        SDL_Event e = {};
         e.type = SDL_EVENT_WINDOW_CLOSE_REQUESTED;
         e.window.windowID = SDL_GetWindowID(win);
-        SDL_PushEvent(&e);
     } else {
-        WD_LOG("windev: no main window found, exiting\n");
-        _Exit(0);
+        WD_LOG("windev: no window, posting a quit request\n");
+        e.type = SDL_EVENT_QUIT;
     }
+    SDL_PushEvent(&e);
 }
 
 static Uint32 SDLCALL close_timer(void *, SDL_TimerID, Uint32)
