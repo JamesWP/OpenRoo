@@ -157,6 +157,11 @@ for _name in XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR \
   fi
 done
 
+# Slow-frame detection (src/prof/prof.h) is on for every launch: frames over
+# 16 ms are kept and written to the log on exit.  KAROO_SLOWFRAME_MS=0 turns it
+# off, any other value moves the threshold.
+export KAROO_SLOWFRAME_MS="${KAROO_SLOWFRAME_MS-16}"
+
 # Every KAROO_* the caller set, exported or not (compgen sees both).  The
 # three the script controls itself are excluded here and set explicitly below.
 for _name in $(compgen -v); do
