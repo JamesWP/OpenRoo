@@ -382,17 +382,19 @@ CRASH_NAME = {0: "none", 1: "known", 2: "different", 3: "undetermined"}
 
 
 def lookup(actual, key):
-    """Resolve a dotted key such as at_completion.total_score.
+    """Resolve a dotted key such as events.2.total_score.
 
-    Returns (found, value).  Nested blocks matter because the last in-level
-    frame is not the end of the level under test once a recording carries on
-    into the next one — at_completion.* is the block that describes the level
-    the entry is named for."""
+    Returns (found, value).  Numeric parts index lists: a recording crosses
+    several levels and deaths, so the dump holds one events[] snapshot per level
+    load, completion and death, and events.N.* picks one."""
     cur = actual
     for part in key.split("."):
-        if not isinstance(cur, dict) or part not in cur:
+        if isinstance(cur, list) and part.isdigit() and int(part) < len(cur):
+            cur = cur[int(part)]
+        elif isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
             return False, None
-        cur = cur[part]
     return True, cur
 
 
@@ -487,8 +489,11 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
     if os.path.exists(dump_path):
         with open(dump_path) as fh:
             actual = json.load(fh)
+        actual["event_count"] = len(actual.get("events", []))
         if verbose:
-            print("  end state: reason=%s frame=%s" % (actual.get("reason"), actual.get("frame")))
+            print("  end state: reason=%s frames=%s events=%d"
+                  % (actual.get("reason"), actual.get("frames_run"),
+                     len(actual.get("events", []))))
     else:
         if verbose:
             print("  end state: no dump written")
@@ -497,16 +502,14 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
         if actual is None:
             print("  cannot bless: no state dump")
             return False
-        skip = ("reason", "frame", "pos", "at_completion")
-        keep = {k: v for k, v in actual.items()
-                if not k.startswith("_") and k not in skip}
-        # Flatten the completion block into dotted keys.  Its own "frame" is
-        # dropped for the same reason the top-level one is: it is a position in
-        # the run, not a property of the level.
-        done = actual.get("at_completion")
-        if isinstance(done, dict):
-            keep.update({"at_completion.%s" % k: v for k, v in done.items()
-                         if k != "frame"})
+        # One group of fields per event (level load, completion, death), keyed
+        # by position: events.N.field.  The frame and position are places in
+        # the run, not properties of the level, so they are not asserted.
+        keep = {"frames_run": actual.get("frames_run"),
+                "event_count": len(actual.get("events", []))}
+        for i, ev in enumerate(actual.get("events", [])):
+            keep.update({"events.%d.%s" % (i, k): v for k, v in ev.items()
+                         if k not in ("frame", "pos")})
         entry.setdefault("expect", {})["state"] = keep
         entry["expect"]["crash"] = CRASH_NAME.get(verdict, "undetermined")
         # A blessed run reached its own end; any stop-early expectation from a

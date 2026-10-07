@@ -215,29 +215,27 @@ to the expected length unchanged, suspect a message posted by the quit path.
    Then run it once more and confirm it passes, and edit one expected value to
    confirm it fails. An assertion nobody has watched fail is not an assertion.
 
-### Assert on the level you named
+### Assert on events, not the final frame
 
-If a recording carries on past the level under test — into the next level, or
-just back to the menu — the *last in-level frame* is no longer that level's end
-state. `water01` completes Water01 and then launches the following level, so its
-top-level dump block reads `gems 0/12`, `time_limit_s 220`, `level_complete 0`:
-the next level starting.
-
-The dump therefore also carries an **`at_completion`** block, latched the first
-time the completion flag goes non-zero and locked when it clears, so a later
-level cannot overwrite it. Assert on `at_completion.*` for anything about the
-level the entry is named for:
+A recording usually crosses several levels and deaths, so the last in-level
+frame says little about any one of them. The state dump instead carries an
+**`events`** list, one full snapshot each time a level **loads** (first
+in-level frame), **completes**, or the player **dies** (lives drop), in order.
+Each carries `kind`, `level` and the same fields (`gems_collected`,
+`level_score`, `total_score`, `lives`, ...). `--bless` flattens them into
+dotted keys, plus `event_count` and `frames_run`:
 
 ```json
-"at_completion.level_score": 320,
-"at_completion.gems_collected": 15,
-"at_completion.level_complete": 1
+"events.1.kind": "complete",
+"events.1.level": "Water\\Water01",
+"events.1.level_score": 320,
+"events.1.gems_collected": 15
 ```
 
-The latch refreshes while the flag stays set rather than freezing on its leading
-edge, because `CalculateLevelScore` writes the score a frame or two after the
-flag flips. `completed_a_level` is `false` and `at_completion` is `null` for a
-recording that never finishes one.
+A completion is recorded when the complete flag clears (or at the end of the
+run), because `CalculateLevelScore` writes the score a frame or two after the
+flag flips. Frame numbers and positions are not asserted. A load event's score
+fields still show the previous level's values until the new level scores.
 
 ### Writing the description
 
@@ -331,7 +329,7 @@ It pins two things nothing else does:
   so the `items_available * 5` term is paid. That is a score branch nothing else
   exercises.
 
-Assert on `at_completion.*`, not the top-level block — see above.
+Assert on the `complete` event for the level — see above.
 
 ## The level report — an all-levels check that is not a replay
 

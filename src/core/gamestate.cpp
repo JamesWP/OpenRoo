@@ -1,7 +1,8 @@
 /* The game-state reader.  Each frame it reads the fields the replay tests
  * assert on (the ones the level score is built from, plus lives, position and
  * the game mode), logs them when they change (KAROO_STATE_LOG), and at the end
- * of a replay dumps them as JSON (KAROO_STATE_DUMP) for replaytest.py.
+ * of a replay dumps a snapshot per level load, completion and death as JSON
+ * (KAROO_STATE_DUMP) for replaytest.py.
  *
  * What the fields mean was confirmed by watching them in play: gems and foes
  * step by one per pickup and kill, lives drops by one at the restart after a
@@ -23,6 +24,8 @@
 #include <string.h>
 #include <algorithm>
 #include <fstream>
+#include <string>
+#include <vector>
 #include "binio.h"
 
 struct GameState {
@@ -101,23 +104,68 @@ bool GameState::read()
     return true;
 }
 
-/* The last state read while a level was running (mode not 0).  The dump cannot
- * read the live object: a recording usually ends by quitting, and by then the
- * level is torn down.  So each in-level frame is kept and the last is dumped:
- * the end of the gameplay. */
-static GameState g_live;
-static bool      g_have_live;
-static uint32_t     g_live_frame;
+static std::string json_escape(const char *in)
+{
+    std::string out;
+    for (; *in; in++) {
+        if (*in == '"' || *in == '\\') out += '\\';
+        out += *in;
+    }
+    return out;
+}
 
-/* The state when a level was completed.  A recording that carries on into the
- * next level ends in that level, so its last in-level frame says nothing about
- * the level it names.  This latch refreshes while the complete flag stays set,
- * because the score is written a frame or two after the flag, and locks when
- * the flag clears, so a later level cannot overwrite it. */
+/* Level events.  A recording crosses several levels and deaths, and the last
+ * in-level frame describes only the final one, so a snapshot is taken at each
+ * moment worth asserting on: a level loading (the first in-level frame), a
+ * level completing, and the player dying.  The dump lists them in order. */
+struct Event {
+    const char *kind;     // "load", "complete" or "death"
+    uint32_t    frame;
+    std::string level;
+    GameState   state;
+};
+static std::vector<Event> g_events;
+static const size_t MAX_EVENTS = 512;
+
+static std::string current_level(void)
+{
+    const Game *g = Game::instance();
+    return g && g->levelName() ? g->levelName() : "";
+}
+
+static void record_event(const char *kind, uint32_t frame, const GameState &s,
+                         const std::string &level)
+{
+    if (g_events.size() >= MAX_EVENTS) return;
+    Event e;
+    e.kind  = kind;
+    e.frame = frame;
+    e.state = s;
+    e.level = level;
+    g_events.push_back(e);
+    g_logger.write("gamestate: event %s at frame %lu level=%s (score=%d total=%d "
+                   "gems=%d/%d lives=%u t=%lus)\n",
+                   kind, (unsigned long)frame, e.level.c_str(), s.level_score,
+                   s.total_score, s.gems_collected, s.gems_required,
+                   (unsigned)s.lives, (unsigned long)(s.elapsed_ms / 1000));
+}
+
+/* Completion is recorded when the complete flag clears, or at the dump if the
+ * recording ends first, because the score is written a frame or two after the
+ * flag rises.  g_done refreshes while the flag stays set. */
 static GameState g_done;
-static bool      g_have_done;
-static uint32_t     g_done_frame;
-static int       g_done_phase;  // 0 never seen, 1 in progress, 2 locked
+static uint32_t  g_done_frame;
+static std::string g_done_level;  // the name moves on once the flag clears
+static bool      g_done_pending;
+static bool      g_have_last;
+static GameState g_last;  // previous tick's state, for edge detection
+
+static void flush_completion(void)
+{
+    if (!g_done_pending) return;
+    g_done_pending = false;
+    record_event("complete", g_done_frame, g_done, g_done_level);
+}
 
 void gamestate_tick(void)
 {
@@ -126,26 +174,22 @@ void gamestate_tick(void)
     GameState s;
     if (!s.read()) return;
     if (s.mode != 0) {
-        g_live       = s;
-        g_have_live  = true;
-        g_live_frame = g_frame;
+        if (!g_have_last || g_last.mode == 0)
+            record_event("load", g_frame, s, current_level());
+        else if (s.lives < g_last.lives)
+            record_event("death", g_frame, s, current_level());
     }
 
     if (s.complete_flag != 0) {
-        if (g_done_phase != 2) {  // refresh until the flag clears
-            g_done       = s;
-            g_have_done  = true;
-            g_done_frame = g_frame;
-            g_done_phase = 1;
-        }
-    } else if (g_done_phase == 1) {
-        g_done_phase = 2;  // lock: the first completion wins
-        g_logger.write("gamestate: level completed at frame %lu - latched "
-                  "(score=%d total=%d gems=%d/%d t=%lus)\n",
-                  (unsigned long)g_done_frame, g_done.level_score,
-                  g_done.total_score, g_done.gems_collected, g_done.gems_required,
-                  (unsigned long)(g_done.elapsed_ms / 1000));
+        g_done         = s;
+        g_done_frame   = g_frame;
+        g_done_level   = current_level();
+        g_done_pending = true;
+    } else {
+        flush_completion();
     }
+    g_last      = s;
+    g_have_last = true;
 
     if (!gamestate_enabled()) return;
 
@@ -186,67 +230,49 @@ void gamestate_dump(const char *reason)
         return;
     dumped = true;
 
-    GameState s   = g_live;
-    bool     have = g_have_live;
-
     std::ofstream fp(sysdev::nativePath(path));  // text mode
     if (!fp) {
         g_logger.write("gamestate: dump: cannot open %s\n", path.c_str());
         return;
     }
 
+    flush_completion();
+
     printTo(fp, "{\n");
     printTo(fp, "  \"reason\": \"%s\",\n", reason);
-    printTo(fp, "  \"frame\": %lu,\n", (unsigned long)g_live_frame);
     printTo(fp, "  \"frames_run\": %lu,\n", (unsigned long)g_frame);
-    printTo(fp, "  \"game_live\": %s", have ? "true" : "false");
-    if (have) {
-        printTo(fp, ",\n");
-        printTo(fp, "  \"mode\": %u,\n",            (unsigned)s.mode);
-        printTo(fp, "  \"gems_collected\": %d,\n",  s.gems_collected);
-        printTo(fp, "  \"gems_required\": %d,\n",   s.gems_required);
-        printTo(fp, "  \"foes_killed\": %u,\n",     (unsigned)s.foes_killed);
-        printTo(fp, "  \"items_collected\": %u,\n", (unsigned)s.extra_cap);
-        printTo(fp, "  \"items_available\": %u,\n", (unsigned)s.extra_count);
-        printTo(fp, "  \"items_bonus_blocked\": %u,\n", (unsigned)s.extra_block);
-        printTo(fp, "  \"vitality\": %u,\n",        (unsigned)s.vitality);
-        printTo(fp, "  \"lives\": %u,\n",           (unsigned)s.lives);
-        printTo(fp, "  \"bombs\": %u,\n",           (unsigned)s.bombs);
-        printTo(fp, "  \"level_score\": %d,\n",     s.level_score);
-        printTo(fp, "  \"total_score\": %d,\n",     s.total_score);
-        printTo(fp, "  \"time_limit_s\": %d,\n",    s.time_limit_s);
-        printTo(fp, "  \"elapsed_ms\": %lu,\n",     (unsigned long)s.elapsed_ms);
-        printTo(fp, "  \"level_complete\": %d,\n",  s.complete_flag);
-        printTo(fp, "  \"death_cause\": %u,\n",     (unsigned)s.death_raw[0]);
-        printTo(fp, "  \"pos\": [%.6f, %.6f, %.6f],\n", s.pos[0], s.pos[1], s.pos[2]);
-        printTo(fp, "  \"_unconfirmed\": [\"vitality\", \"death_cause\", \"pos\"],\n");
-        printTo(fp, "  \"completed_a_level\": %s,\n", g_have_done ? "true" : "false");
-        if (g_have_done) {
-            printTo(fp, "  \"at_completion\": {\n");
-            printTo(fp, "    \"frame\": %lu,\n",           (unsigned long)g_done_frame);
-            printTo(fp, "    \"gems_collected\": %d,\n",   g_done.gems_collected);
-            printTo(fp, "    \"gems_required\": %d,\n",    g_done.gems_required);
-            printTo(fp, "    \"foes_killed\": %u,\n",      (unsigned)g_done.foes_killed);
-            printTo(fp, "    \"items_collected\": %u,\n",  (unsigned)g_done.extra_cap);
-            printTo(fp, "    \"items_available\": %u,\n",  (unsigned)g_done.extra_count);
-            printTo(fp, "    \"items_bonus_blocked\": %u,\n", (unsigned)g_done.extra_block);
-            printTo(fp, "    \"vitality\": %u,\n",         (unsigned)g_done.vitality);
-            printTo(fp, "    \"lives\": %u,\n",            (unsigned)g_done.lives);
-            printTo(fp, "    \"level_score\": %d,\n",      g_done.level_score);
-            printTo(fp, "    \"total_score\": %d,\n",      g_done.total_score);
-            printTo(fp, "    \"time_limit_s\": %d,\n",     g_done.time_limit_s);
-            printTo(fp, "    \"elapsed_ms\": %lu,\n",      (unsigned long)g_done.elapsed_ms);
-            printTo(fp, "    \"level_complete\": %d\n",    g_done.complete_flag);
-            printTo(fp, "  }\n");
-        } else {
-            printTo(fp, "  \"at_completion\": null\n");
-        }
-    } else {
-        printTo(fp, "\n");
+    printTo(fp, "  \"_unconfirmed\": [\"vitality\", \"death_cause\", \"pos\"],\n");
+    printTo(fp, "  \"events\": [");
+    for (size_t i = 0; i < g_events.size(); i++) {
+        const Event &e = g_events[i];
+        const GameState &s = e.state;
+        printTo(fp, "%s\n    {\n", i ? "," : "");
+        printTo(fp, "      \"kind\": \"%s\",\n",           e.kind);
+        printTo(fp, "      \"frame\": %lu,\n",              (unsigned long)e.frame);
+        printTo(fp, "      \"level\": \"%s\",\n",          json_escape(e.level.c_str()).c_str());
+        printTo(fp, "      \"mode\": %u,\n",                (unsigned)s.mode);
+        printTo(fp, "      \"gems_collected\": %d,\n",      s.gems_collected);
+        printTo(fp, "      \"gems_required\": %d,\n",       s.gems_required);
+        printTo(fp, "      \"foes_killed\": %u,\n",         (unsigned)s.foes_killed);
+        printTo(fp, "      \"items_collected\": %u,\n",     (unsigned)s.extra_cap);
+        printTo(fp, "      \"items_available\": %u,\n",     (unsigned)s.extra_count);
+        printTo(fp, "      \"items_bonus_blocked\": %u,\n", (unsigned)s.extra_block);
+        printTo(fp, "      \"vitality\": %u,\n",            (unsigned)s.vitality);
+        printTo(fp, "      \"lives\": %u,\n",               (unsigned)s.lives);
+        printTo(fp, "      \"bombs\": %u,\n",               (unsigned)s.bombs);
+        printTo(fp, "      \"level_score\": %d,\n",         s.level_score);
+        printTo(fp, "      \"total_score\": %d,\n",         s.total_score);
+        printTo(fp, "      \"time_limit_s\": %d,\n",        s.time_limit_s);
+        printTo(fp, "      \"elapsed_ms\": %lu,\n",         (unsigned long)s.elapsed_ms);
+        printTo(fp, "      \"level_complete\": %d,\n",      s.complete_flag);
+        printTo(fp, "      \"death_cause\": %u,\n",         (unsigned)s.death_raw[0]);
+        printTo(fp, "      \"pos\": [%.6f, %.6f, %.6f]\n",  s.pos[0], s.pos[1], s.pos[2]);
+        printTo(fp, "    }");
     }
+    printTo(fp, "%s]\n", g_events.empty() ? "" : "\n  ");
     printTo(fp, "}\n");
     fp.close();
 
-    g_logger.write("gamestate: dumped end state (%s, from frame %lu of %lu) to %s\n",
-              reason, (unsigned long)g_live_frame, (unsigned long)g_frame, path.c_str());
+    g_logger.write("gamestate: dumped %lu event(s) (%s, %lu frames) to %s\n",
+              (unsigned long)g_events.size(), reason, (unsigned long)g_frame, path.c_str());
 }
