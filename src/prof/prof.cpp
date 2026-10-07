@@ -24,6 +24,28 @@ static SlowFrame g_slow[kSlowKeep];
 static unsigned  g_frames;          // "frame" scopes ended
 static unsigned  g_slowCount;       // slow frames seen, kept or not
 
+/* Time the frame spent blocked on the display (vsync) rather than working.
+ * With vsync on, "frame" always takes about one refresh interval, so that
+ * wait must not count towards a frame being slow. */
+static double wait_ms(int root)
+{
+    double total = 0;
+    for (const Node &m : g_nodes) {
+        if (strcmp(m.name, "gpu / vsync wait") != 0 && strcmp(m.name, "swap") != 0)
+            continue;
+        int p = m.parent;
+        while (p >= 0 && p != root)
+            p = g_nodes[p].parent;
+        // Nested waits (swap inside the wait scope) would double count.
+        if (p == root && !(m.parent >= 0 && strcmp(g_nodes[m.parent].name, "gpu / vsync wait") == 0))
+            total += m.accMs;
+    }
+    return total;
+}
+
+/* A frame is slow if its work exceeds the threshold, or if the whole frame,
+ * wait included, exceeds 1.5x it: the threshold is about one refresh interval,
+ * so that second case is a dropped frame even when the work was small. */
 static void note_slow_frame(int root)
 {
     const Node &f = g_nodes[root];
@@ -142,7 +164,8 @@ void Scope::end()
     // A root ended: that was the frame.
     if (strcmp(n.name, "frame") == 0) {
         g_frames++;
-        if (g_slowMs > 0.0 && n.accMs > g_slowMs && !is_level_load(node_))
+        if (g_slowMs > 0.0 && (n.accMs - wait_ms(node_) > g_slowMs ||
+                              n.accMs > g_slowMs * 1.5) && !is_level_load(node_))
             note_slow_frame(node_);
     }
     for (Node &m : g_nodes) {
