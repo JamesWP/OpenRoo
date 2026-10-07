@@ -191,7 +191,7 @@ protected:
     int                 field_d8;
     double              lastContact_;      // Foe: the clock of its last contact.
     int                 bombDropRequest_;  // Requests a bomb be dropped this tick.
-    unsigned char       field_e8;
+    unsigned char       bombsCarried_;     // Player: bombs in hand; a pickup adds 3, a drop takes 1.
     unsigned char       glides_;
     int                 gliding_;
     unsigned char       field_ee;

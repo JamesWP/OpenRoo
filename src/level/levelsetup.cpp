@@ -657,7 +657,7 @@ next_row:
     SCELL(M, self->player()->cellU(), self->player()->cellV())->setField1a1(0);
 
     self->player()->setGlides(0);
-    self->player()->setFieldE8(0);
+    self->player()->setBombsCarried(0);
     self->player()->setEffectDActive(0);
     self->player()->setFalling(0);
     self->player()->setIdleStarted(0);

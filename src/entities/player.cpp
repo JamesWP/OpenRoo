@@ -254,7 +254,7 @@ unsigned int Player::updateTileEffects()
         }
 
         if ((signed char)curTile()->contents() == CONTENTS_GRANT_09) {
-            field_e8 += 3;
+            bombsCarried_ += 3;
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
@@ -471,11 +471,11 @@ void Player::actReleaseBomb()
 {
     if (!(now_ - lastContact_ >= 2000.0))  // A NaN also skips.
         return;
-    if (moveState_ != 0 || field_e8 == 0)
+    if (moveState_ != 0 || bombsCarried_ == 0)
         return;
     lastContact_ = now_;
     bombDropRequest_ = 1;
-    field_e8--;
+    bombsCarried_--;
 }
 
  

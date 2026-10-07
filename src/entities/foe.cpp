@@ -116,7 +116,7 @@ Foe::Foe()
     idleDuration_         = 1000.0;
     moveState_       = 0;
     held_         = 0;
-    field_e8         = 0;
+    bombsCarried_         = 0;
     bombDropRequest_         = 0;
     teleportPhase_         = 0;
     field_156        = 0;
