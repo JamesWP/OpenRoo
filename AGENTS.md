@@ -1,6 +1,6 @@
-To build the code you will need the mingw compiler toolchain, you should install this if you dont already have this available.
+The build uses cmake; the full build process (native Linux and Windows/mingw) is documented in README.md. Install the toolchain it lists if you dont already have it.
 
-To test you should run `make` to check things compile. and then consider running a smoke test consisting of one of the pre recorded gameplay sessions. e.g. using `python3 tools/replaytest.py bombstart-crash`. Test using the whole suite (omit session name) only when completing a body of work since it takes a few minutes.
+To test you should build with cmake (see README.md) to check things compile. and then consider running a smoke test consisting of one of the pre recorded gameplay sessions. e.g. using `python3 tools/replaytest.py bombstart-crash`. Test using the whole suite (omit session name) only when completing a body of work since it takes a few minutes.
 
 The code which forms the game here is not high quality, and isnt indicative of good examples. its mostly from a reverse engineer of the original and has lots of artifacts of that which we will be cleaning up as we go. We should be refactoring the code so that eventually its more robust and easy to work with and understand.
 
