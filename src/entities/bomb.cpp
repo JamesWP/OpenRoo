@@ -137,7 +137,7 @@ Bomb::Bomb()
     falling_         = 0;
     moveState_        = 0;
     held_          = 0;
-    field_e8          = 0;
+    bombsCarried_          = 0;
     stepDuration_          = 200.0;
     bombDropRequest_          = 0;
     teleportPhase_          = 0;

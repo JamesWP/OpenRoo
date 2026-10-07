@@ -81,7 +81,7 @@ bool GameState::read()
     time_limit_s   = g->timeLimit();
     elapsed_ms     = g->timeElapsed();
     lives          = (uint8_t)pl->lives();
-    bombs          = pl->fieldE8();
+    bombs          = pl->bombsCarried();
     total_score    = pl->score();
     level_score    = g->tally()->levelTotal;
     vitality       = g->vitalityPercent();

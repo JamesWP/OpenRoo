@@ -70,8 +70,8 @@ public:
     // The player's pending bomb-drop request.
     int   bombDropRequest() const              { return bombDropRequest_; }
     void  setBombDropRequest(int n)            { bombDropRequest_ = n; }
-    unsigned char fieldE8() const              { return field_e8; }
-    void  setFieldE8(unsigned char b)          { field_e8 = b; }
+    unsigned char bombsCarried() const        { return bombsCarried_; }
+    void  setBombsCarried(unsigned char b)    { bombsCarried_ = b; }
     unsigned char glides() const              { return glides_; }
     void  setGlides(unsigned char b)          { glides_ = b; }
     int   gliding() const                      { return gliding_; }

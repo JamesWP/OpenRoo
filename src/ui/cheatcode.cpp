@@ -88,7 +88,7 @@ void Cheat_AddGlide(Game *g)
 
 void Cheat_AddBombs(Game *g)
 {
-    g->player()->setFieldE8((unsigned char)(g->player()->fieldE8() + 10));
+    g->player()->setBombsCarried((unsigned char)(g->player()->bombsCarried() + 10));
 }
 
 void Cheat_Invulnerable(Game *g)

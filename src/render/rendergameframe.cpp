@@ -882,7 +882,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     hud_text(&g_fontMain, -1, wx(w, 121), wx(w, 38), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
     sprintf(buf, "%d", g->levelIndex() + 1);
     hud_text(&g_fontMain, 1, wx(w, 630), wx(w, 23), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
-    sprintf(buf, "%dx", pl->fieldE8());
+    sprintf(buf, "%dx", pl->bombsCarried());
     hud_text(&g_fontMain, 0, wx(w, 32), wx(w, 62), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
 }
 
