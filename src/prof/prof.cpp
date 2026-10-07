@@ -118,6 +118,12 @@ const Node *nodes(unsigned *count)
 
 bool recent(const Node &n) { return n.framesIdle < 60; }
 
+void resetMax()
+{
+    for (Node &n : g_nodes)
+        n.maxMs = 0;
+}
+
 void reset()
 {
     g_nodes.clear();
@@ -175,7 +181,8 @@ void Scope::end()
         m.avgMs += (m.ms - m.avgMs) * 0.05;
         m.selfAvgMs += ((m.ms - m.childMs) - m.selfAvgMs) * 0.05;
         m.childMs = 0;
-        m.maxMs  = m.ms > m.maxMs ? m.ms : m.maxMs * 0.98;
+        if (m.ms > m.maxMs)
+            m.maxMs = m.ms;
         m.accMs = 0;
         m.accCalls = 0;
     }
