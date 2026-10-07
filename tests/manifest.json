@@ -1072,7 +1072,7 @@
       "description": "Playthrough part 3: water levels",
       "scenario": "water levels",
       "expect": {
-        "crash": "different",
+        "crash": "none",
         "state": {
           "frames_run": 59503,
           "event_count": 34,
