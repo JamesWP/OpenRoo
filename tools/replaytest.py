@@ -127,33 +127,37 @@ def check_header(entry, cfg, rec_path):
 
 # Wall-clock ceiling for ONE recording — the stuck detector.
 #
-# A healthy recording takes 11-14 s headless (12-15 s with a display), so 25 s
-# is roughly a 2x margin on the slowest observed run and still catches a wedge
-# in seconds rather than minutes.  This is deliberately much tighter than the
-# old max(300, auto_exit*6): that bound existed only to stop an *indefinite*
-# hang, and in practice a wedged Proton prefix or a game stuck in
-# futex_wait_multiple would sit there for five minutes per recording and turn
-# the suite into an hour of nothing.  Both failure modes are documented in
-# GAMETICK_PLAN.md's standing hazards, and both are visible within 25 s.
+# Replay time scales with the number of captured frames and with how the run
+# is configured, so the budget is derived from the frame count:
 #
-# It is a *stuck* detector, not a benchmark: exceeding it is reported as STUCK,
-# distinct from FAIL, because the usual cause is the environment (a surviving
-# wineserver, a stale Karoo.exe) rather than the change under test.  Raise it
-# with KAROO_STUCK_SECONDS if a genuinely slower machine needs the room.
-STUCK_SECONDS = int(os.environ.get("KAROO_STUCK_SECONDS", "25"))
+#   expected = LAUNCH_SECONDS + frames * MS_PER_FRAME[config] / 1000
+#   budget   = max(STUCK_SECONDS, expected * SECONDS_MARGIN)
+#
+# The per-frame rates are rough, fitted by eye to the blessed recordings in
+# tests/manifest.json (headless: ~1.5 s launch + ~0.6 ms/frame, so Playthrough-01
+# at 34659 frames takes ~23 s).  The display rates were timed on water01 (4147 frames: 5.1 s fast, 14.6 s full)
+# and are rounded.  They need only be good enough to notice a run taking more
+# than SECONDS_MARGIN (2x) the expected time; this is not a benchmark.
+#
+# Exceeding it is reported as STUCK, distinct from FAIL, because the usual cause
+# is the environment (a surviving wineserver, a stale Karoo.exe) rather than the
+# change under test.  KAROO_STUCK_SECONDS sets the floor for tiny recordings and
+# KAROO_STUCK_SCALE multiplies the whole budget for a slower machine.
+STUCK_SECONDS = int(os.environ.get("KAROO_STUCK_SECONDS", "10"))
+STUCK_SCALE = float(os.environ.get("KAROO_STUCK_SCALE", "1"))
+SECONDS_MARGIN = 2
+LAUNCH_SECONDS = 3.0
+MS_PER_FRAME = {
+    "headless": 0.7,
+    "fast": 1.0,
+    "full": 3.0,
+}
 
-# A blessed recording carries its own replay time (expect.seconds, wall clock);
-# the stuck budget is that times SECONDS_MARGIN, never less than STUCK_SECONDS.
-# One that is not blessed yet has no known duration, so it is given as long as
-# it takes: a long playthrough is not a hang.
-SECONDS_MARGIN = 3
 
-
-def stuck_budget(entry):
-    seconds = entry.get("expect", {}).get("seconds")
-    if seconds is None:
-        return None
-    return max(STUCK_SECONDS, seconds * SECONDS_MARGIN)
+def stuck_budget(frames, fast, headless):
+    config = "headless" if headless else "fast" if fast else "full"
+    expected = LAUNCH_SECONDS + frames * MS_PER_FRAME[config] / 1000.0
+    return max(STUCK_SECONDS, expected * SECONDS_MARGIN) * STUCK_SCALE
 
 
 def wait_for_quiet(timeout=60):
@@ -300,7 +304,7 @@ def entry_fast(entry, fast):
 
 
 def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
-           headless=True, game_seconds=0):
+           headless=True, game_seconds=0, frames=0):
     """Returns (stuck, wall_seconds); on a stuck run the seconds are the budget."""
     env = apply_fast(apply_turbo(dict(os.environ)), fast)
     env["KAROO_REPLAY"] = rec_path
@@ -324,7 +328,7 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
     # mid-run, an unbounded wait blocks the whole suite indefinitely (seen
     # 2026-08-31 on a laptop that slept).  The margin is deliberately wide —
     # a slow run must not be reported as a hang — but finite.
-    budget = stuck_budget(entry)
+    budget = stuck_budget(frames, fast, headless)
     started = time.perf_counter()
 
     # start_new_session so the whole tree gets signalled: killing the bash
@@ -344,12 +348,12 @@ def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
 
     print("  STUCK: no exit after %ds wall clock (--auto-exit was %ds of game "
           "time); killing the run.\n"
-          "         The blessed replay time is %.1fs, so this is a wedge,\n"
-          "         not a slow run.  Suspect the environment first: a surviving\n"
+          "         That is over twice the expected time for %d frames.\n"
+          "         Suspect the environment first: a surviving\n"
           "         wineserver or a stale Karoo.exe from an earlier run wedges\n"
           "         the next launch (see GAMETICK_PLAN.md standing hazards).\n"
-          "         Raise KAROO_STUCK_SECONDS if this machine is genuinely slower."
-          % (budget, auto_exit, entry["expect"]["seconds"]))
+          "         Set KAROO_STUCK_SCALE if this machine is genuinely slower."
+          % (budget, auto_exit, frames))
     for sig in (signal.SIGTERM, signal.SIGKILL):
         try:
             os.killpg(os.getpgid(proc.pid), sig)
@@ -447,7 +451,8 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
 
     stuck, wall = launch(entry, cfg, rec_path, dump_path, hash_path,
                          fast=entry_fast(entry, fast) or headless,
-                         headless=headless, game_seconds=len(frames) * hdr["dt"])
+                         headless=headless, game_seconds=len(frames) * hdr["dt"],
+                         frames=len(frames))
     if stuck:
         print("  FAIL (STUCK): run exceeded the %ds stuck detector and was "
               "killed.\n"
@@ -504,8 +509,6 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
                          if k != "frame"})
         entry.setdefault("expect", {})["state"] = keep
         entry["expect"]["crash"] = CRASH_NAME.get(verdict, "undetermined")
-        # The wall-clock replay time; the stuck detector's budget from now on.
-        entry["expect"]["seconds"] = round(wall, 1)
         # A blessed run reached its own end; any stop-early expectation from a
         # previous baseline no longer applies.
         entry["expect"].pop("crash_frame", None)
