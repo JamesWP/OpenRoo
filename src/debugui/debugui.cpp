@@ -199,13 +199,19 @@ static float    g_maxFrameMs;
 static unsigned g_maxLevel = ~0u;
 static unsigned g_maxTimerMs;
 
+static void reset_max()
+{
+    g_maxFrameMs = 0.0f;
+    prof::resetMax();
+}
+
 static void draw_overview(RenderDevice &dev)
 {
     Game *g = Game::instance();
     const ImGuiIO &io = ImGui::GetIO();
     if (g) {
         if (g->levelIndex() != g_maxLevel || g->timeElapsed() < g_maxTimerMs)
-            g_maxFrameMs = 0.0f;
+            reset_max();
         g_maxLevel   = g->levelIndex();
         g_maxTimerMs = g->timeElapsed();
     }
@@ -215,7 +221,7 @@ static void draw_overview(RenderDevice &dev)
     ImGui::Text("%.1f fps  %.2f ms  max %.2f ms", io.Framerate, 1000.0f / io.Framerate, g_maxFrameMs);
     ImGui::SameLine();
     if (ImGui::SmallButton("reset max"))
-        g_maxFrameMs = 0.0f;
+        reset_max();
     ImGui::TextDisabled("display %ux%u, %u-bit", dev.width(), dev.height(), dev.bitDepth());
     if (!g)
         return;

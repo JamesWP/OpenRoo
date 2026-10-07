@@ -20,7 +20,7 @@ struct Node {
     double      ms;           // the last frame, summed over its calls
     double      avgMs;        // smoothed
     double      selfAvgMs;    // avgMs less the time in its children
-    double      maxMs;        // slowest frame in the last second or so
+    double      maxMs;        // slowest frame since resetMax()
     unsigned    calls;        // in the last frame
     unsigned    framesIdle;   // frames since it last ran
     // Per-frame working state.
@@ -48,6 +48,9 @@ const Node *nodes(unsigned *count);
 /* Whether a node has run lately: a scope that is not entered (no bridges in
  * this level, the menu while playing) drops out of view after a second or so. */
 bool recent(const Node &n);
+
+/* Clears every node's maxMs. */
+void resetMax();
 
 /* Drops the tree, so renamed or stale scopes go. */
 void reset();
