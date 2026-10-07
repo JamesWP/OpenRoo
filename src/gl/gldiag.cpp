@@ -3,6 +3,7 @@
 #include "logger.h"
 #include "sysdev.h"
 #include <chrono>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -22,6 +23,7 @@ struct Pending {
     unsigned    id;
     const char *what;
     double      cpuMs;
+    double      busyMs;
     unsigned    call;
     bool        busy;
 };
@@ -49,6 +51,15 @@ void APIENTRY on_message(GLenum source, GLenum type, GLuint id, GLenum severity,
                    (int)length, message);
 }
 
+/* CPU time this thread has used: well under the wall time means it was
+ * blocked or descheduled, close to it means the driver was working. */
+double thread_cpu_ms()
+{
+    timespec ts;
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
+    return ts.tv_sec * 1e3 + ts.tv_nsec / 1e6;
+}
+
 /* Logs a finished query, if its call was a slow one. */
 void collect(Pending &p)
 {
@@ -60,8 +71,8 @@ void collect(Pending &p)
     gl.GetQueryObjectui64v(p.id, GL_QUERY_RESULT, &ns);
     p.busy = false;
     if (p.cpuMs >= g_thresholdMs)
-        g_logger.write("gldiag: call %u: %s took %.1f ms on the CPU, %.2f ms on the GPU\n",
-                       p.call, p.what, p.cpuMs, (double)ns / 1e6);
+        g_logger.write("gldiag: call %u: %s took %.1f ms on the CPU (%.1f ms busy), %.2f ms on the GPU\n",
+                       p.call, p.what, p.cpuMs, p.busyMs, (double)ns / 1e6);
 }
 
 }  // namespace
@@ -95,11 +106,12 @@ void init()
                    timers ? "timer queries" : "no timer queries", g_thresholdMs);
 }
 
-Timed::Timed(const char *what) : what_(what), startMs_(0), query_(0)
+Timed::Timed(const char *what) : what_(what), startMs_(0), startBusyMs_(0), query_(0)
 {
     if (!g_on)
         return;
     startMs_ = now_ms();
+    startBusyMs_ = thread_cpu_ms();
     g_calls++;
     Pending &p = g_ring[g_head];
     if (p.id && !p.busy) {
@@ -114,18 +126,20 @@ Timed::~Timed()
         return;
     if (query_)
         gl.EndQuery(GL_TIME_ELAPSED);
-    const double cpuMs = now_ms() - startMs_;
+    const double cpuMs  = now_ms() - startMs_;
+    const double busyMs = thread_cpu_ms() - startBusyMs_;
     // Only one GL_TIME_ELAPSED query can be active at a time, so an inner
     // Timed would have no query: they are used flat.
     Pending &p = g_ring[g_head];
     if (query_) {
         p.what  = what_;
-        p.cpuMs = cpuMs;
+        p.cpuMs  = cpuMs;
+        p.busyMs = busyMs;
         p.call  = g_calls;
         p.busy  = true;
     } else if (cpuMs >= g_thresholdMs) {
-        g_logger.write("gldiag: call %u: %s took %.1f ms on the CPU\n",
-                       g_calls, what_, cpuMs);
+        g_logger.write("gldiag: call %u: %s took %.1f ms on the CPU (%.1f ms busy)\n",
+                       g_calls, what_, cpuMs, busyMs);
     }
     g_head = (g_head + 1) % kRing;
     for (Pending &q : g_ring)

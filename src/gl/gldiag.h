@@ -1,8 +1,9 @@
 /* Opt-in driver diagnostics, on with KAROO_GLDIAG=1: a debug context whose
  * messages go to the log, and wall-clock plus GPU timing of the clear and the
  * swap.  A call that took longer than KAROO_GLDIAG_MS (default 8) on the CPU
- * is logged with the GPU time of its query, so a stall inside the driver
- * (CPU long, GPU short) can be told from slow GPU work. */
+ * is logged with the GPU time of its query and the thread's busy CPU time: a stall inside
+ * the driver is CPU long and GPU short, and busy short if it was blocked
+ * (or descheduled) rather than working. */
 #pragma once
 
 namespace gldiag {
@@ -24,6 +25,7 @@ public:
 private:
     const char *what_;
     double      startMs_;
+    double      startBusyMs_;
     unsigned    query_;
 };
 
