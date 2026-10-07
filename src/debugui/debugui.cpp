@@ -193,11 +193,29 @@ static void draw_level_picker(Game *g)
     }
 }
 
+/* The slowest frame seen since the level was loaded.  A reload of the same
+ * level shows as the level timer running backwards. */
+static float    g_maxFrameMs;
+static unsigned g_maxLevel = ~0u;
+static unsigned g_maxTimerMs;
+
 static void draw_overview(RenderDevice &dev)
 {
     Game *g = Game::instance();
     const ImGuiIO &io = ImGui::GetIO();
-    ImGui::Text("%.1f fps  %.2f ms", io.Framerate, 1000.0f / io.Framerate);
+    if (g) {
+        if (g->levelIndex() != g_maxLevel || g->timeElapsed() < g_maxTimerMs)
+            g_maxFrameMs = 0.0f;
+        g_maxLevel   = g->levelIndex();
+        g_maxTimerMs = g->timeElapsed();
+    }
+    float frameMs = io.DeltaTime * 1000.0f;
+    if (frameMs > g_maxFrameMs)
+        g_maxFrameMs = frameMs;
+    ImGui::Text("%.1f fps  %.2f ms  max %.2f ms", io.Framerate, 1000.0f / io.Framerate, g_maxFrameMs);
+    ImGui::SameLine();
+    if (ImGui::SmallButton("reset max"))
+        g_maxFrameMs = 0.0f;
     ImGui::TextDisabled("display %ux%u, %u-bit", dev.width(), dev.height(), dev.bitDepth());
     if (!g)
         return;
