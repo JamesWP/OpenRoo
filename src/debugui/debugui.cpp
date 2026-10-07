@@ -212,8 +212,6 @@ static void draw_overview(RenderDevice &dev)
     if (g) {
         if (g->levelIndex() != g_maxLevel || g->timeElapsed() < g_maxTimerMs)
             reset_max();
-        g_maxLevel   = g->levelIndex();
-        g_maxTimerMs = g->timeElapsed();
     }
     float frameMs = io.DeltaTime * 1000.0f;
     if (frameMs > g_maxFrameMs)
@@ -234,6 +232,11 @@ static void draw_overview(RenderDevice &dev)
         g_pausedMs    = g->timeElapsed();
     }
     hold_timer(g);
+    // After the hold, which winds the timer back: remembering the unheld value
+    // made the next frame's timer look like it ran backwards, resetting the
+    // maxima every frame.
+    g_maxLevel   = g->levelIndex();
+    g_maxTimerMs = g->timeElapsed();
     ImGui::SameLine();
     ImGui::TextDisabled("%u s of %d", g->timeElapsed() / 1000, g->timeLimit());
 
