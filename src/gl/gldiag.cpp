@@ -4,6 +4,8 @@
 #include "sysdev.h"
 #include <chrono>
 #include <time.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -26,6 +28,7 @@ struct Pending {
     double      busyMs;
     unsigned    call;
     bool        busy;
+    char        when[40];   // when the call ended, for slow calls
 };
 Pending g_ring[kRing];
 unsigned g_head;                   // the next slot to use
@@ -60,6 +63,18 @@ double thread_cpu_ms()
     return ts.tv_sec * 1e3 + ts.tv_nsec / 1e6;
 }
 
+/* The wall clock as strace -tt prints it, with the thread, so a slow call can
+ * be matched to a syscall in a trace. */
+void stamp(char *buf, size_t size)
+{
+    timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    tm t;
+    localtime_r(&ts.tv_sec, &t);
+    snprintf(buf, size, "%02d:%02d:%02d.%03ld tid %ld", t.tm_hour, t.tm_min, t.tm_sec,
+             ts.tv_nsec / 1000000, (long)syscall(SYS_gettid));
+}
+
 /* Logs a finished query, if its call was a slow one. */
 void collect(Pending &p)
 {
@@ -71,8 +86,8 @@ void collect(Pending &p)
     gl.GetQueryObjectui64v(p.id, GL_QUERY_RESULT, &ns);
     p.busy = false;
     if (p.cpuMs >= g_thresholdMs)
-        g_logger.write("gldiag: call %u: %s took %.1f ms on the CPU (%.1f ms busy), %.2f ms on the GPU\n",
-                       p.call, p.what, p.cpuMs, p.busyMs, (double)ns / 1e6);
+        g_logger.write("gldiag: call %u: %s took %.1f ms on the CPU (%.1f ms busy), %.2f ms on the GPU, ended %s\n",
+                       p.call, p.what, p.cpuMs, p.busyMs, (double)ns / 1e6, p.when);
 }
 
 }  // namespace
@@ -137,9 +152,13 @@ Timed::~Timed()
         p.busyMs = busyMs;
         p.call  = g_calls;
         p.busy  = true;
+        if (cpuMs >= g_thresholdMs)
+            stamp(p.when, sizeof(p.when));
     } else if (cpuMs >= g_thresholdMs) {
-        g_logger.write("gldiag: call %u: %s took %.1f ms on the CPU (%.1f ms busy)\n",
-                       g_calls, what_, cpuMs, busyMs);
+        char when[40];
+        stamp(when, sizeof(when));
+        g_logger.write("gldiag: call %u: %s took %.1f ms on the CPU (%.1f ms busy), ended %s\n",
+                       g_calls, what_, cpuMs, busyMs, when);
     }
     g_head = (g_head + 1) % kRing;
     for (Pending &q : g_ring)
