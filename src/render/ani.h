@@ -52,10 +52,10 @@ public:
 
 private:
     friend class AnimTable;  // the loader fills the slots
-    int firstFrame_;   /* first mesh frame of the range            */
-    int numFrames_;    /* frames in it; 0 means "no animation"     */
-    int fps_;          /* playback rate, frames per second         */
-    int reverse_;      /* the "r" flag: play the range backwards   */
+    int firstFrame_{};   /* first mesh frame of the range            */
+    int numFrames_{};    /* frames in it; 0 means "no animation"     */
+    int fps_{};          /* playback rate, frames per second         */
+    int reverse_{};      /* the "r" flag: play the range backwards   */
      
 };
 

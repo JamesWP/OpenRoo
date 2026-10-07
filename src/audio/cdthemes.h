@@ -45,10 +45,10 @@ public:
 private:
      
 
-    int           trackCount_;          // set by validateTrackLengths
-    unsigned char trackOf_[THEME_MAX];  // theme i's CD track
-    unsigned char currentTrack_;
-    unsigned char count_;                        // themes read
-    char          names_[THEME_MAX][NAME_SIZE];  // theme i's name
+    int           trackCount_{};          // set by validateTrackLengths
+    unsigned char trackOf_[THEME_MAX]{};  // theme i's CD track
+    unsigned char currentTrack_{};
+    unsigned char count_{};                        // themes read
+    char          names_[THEME_MAX][NAME_SIZE]{};  // theme i's name
 };
 

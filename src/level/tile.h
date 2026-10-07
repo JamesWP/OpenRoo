@@ -271,49 +271,49 @@ public:
     // On a switch cell: the switch number, copied into the entity.
     unsigned char field1f3() const             { return field_1f3; }
 
-    Tile() = default;  // left uninitialised, as the level loader fills it
+    Tile() = default;
 
 private:
 
-    unsigned char height_;        // file byte 0
-    unsigned char objectMarker_;  // file byte 1: the kind
-    unsigned char param_;         // file byte 2
-    unsigned char contents_;      // file byte 3: what lies here
-    unsigned char blastHeight_;   // a live blast's height, 0 for none
-    int           field_1a1;
-    unsigned char occupant_;        // the kind of entity standing here
-    float         liftLiveHeight_;  // the lift's live height
-    unsigned char platformSlot_;       // which platform's track this is
-    unsigned char platformHeight_;
-    double        platformParkedSince_;  // phase start while parked
-    double        platformDwell_;        // park dwell, ms: 1500
-    int           platformTrack_;        // 1 on a platform's track
-    unsigned char platformOriginU_;      // the track's spawn cell
-    unsigned char platformOriginV_;
-    unsigned char platformCellU_;  // live cell, on the origin tile only
-    unsigned char platformCellV_;
-    float         platformPosU_;  // live position, on the origin tile only
-    float         platformPosY_;
-    float         platformPosV_;
-    unsigned char liftSlot_;         // which lift stands here
-    signed char   liftBottom_;       // where the lift parks at the bottom
-    signed char   liftTop_;          // and at the top
-    double        liftMovingSince_;  // phase start while moving
-    double        liftParkedSince_;  // phase start while parked
-    double        liftDwell_;        // park dwell, ms: 1500
-    unsigned char teleportId_;       // a teleporter's pair id
-    unsigned char teleportU_;        // teleporter destination
-    unsigned char teleportV_;
-    unsigned char field_1f1;  // set from param on a jump pad
-    unsigned char slideDir_;  // slide cell: its direction
-    unsigned char field_1f3;
-    unsigned char bridgeSlot_;  // the bridge's switch slot
-    unsigned char bridgeAxis_;  // 1 along u, 2 along v
-    int           field_1f6;
-    unsigned char field_202;
-    int           field_203;
-    double        blastTime_;  // when a blast spent this cell
-    int           field_20f;
-    float         itemPhase_;  // an item's random phase
-    int           busy_;       // a pad, teleporter or falling tile is in use
+    unsigned char height_{};        // file byte 0
+    unsigned char objectMarker_{};  // file byte 1: the kind
+    unsigned char param_{};         // file byte 2
+    unsigned char contents_{};      // file byte 3: what lies here
+    unsigned char blastHeight_{};   // a live blast's height, 0 for none
+    int           field_1a1{};
+    unsigned char occupant_{};        // the kind of entity standing here
+    float         liftLiveHeight_{};  // the lift's live height
+    unsigned char platformSlot_{};       // which platform's track this is
+    unsigned char platformHeight_{};
+    double        platformParkedSince_{};  // phase start while parked
+    double        platformDwell_{};        // park dwell, ms: 1500
+    int           platformTrack_{};        // 1 on a platform's track
+    unsigned char platformOriginU_{};      // the track's spawn cell
+    unsigned char platformOriginV_{};
+    unsigned char platformCellU_{};  // live cell, on the origin tile only
+    unsigned char platformCellV_{};
+    float         platformPosU_{};  // live position, on the origin tile only
+    float         platformPosY_{};
+    float         platformPosV_{};
+    unsigned char liftSlot_{};         // which lift stands here
+    signed char   liftBottom_{};       // where the lift parks at the bottom
+    signed char   liftTop_{};          // and at the top
+    double        liftMovingSince_{};  // phase start while moving
+    double        liftParkedSince_{};  // phase start while parked
+    double        liftDwell_{};        // park dwell, ms: 1500
+    unsigned char teleportId_{};       // a teleporter's pair id
+    unsigned char teleportU_{};        // teleporter destination
+    unsigned char teleportV_{};
+    unsigned char field_1f1{};  // set from param on a jump pad
+    unsigned char slideDir_{};  // slide cell: its direction
+    unsigned char field_1f3{};
+    unsigned char bridgeSlot_{};  // the bridge's switch slot
+    unsigned char bridgeAxis_{};  // 1 along u, 2 along v
+    int           field_1f6{};
+    unsigned char field_202{};
+    int           field_203{};
+    double        blastTime_{};  // when a blast spent this cell
+    int           field_20f{};
+    float         itemPhase_{};  // an item's random phase
+    int           busy_{};       // a pad, teleporter or falling tile is in use
 };

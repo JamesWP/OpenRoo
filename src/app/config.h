@@ -65,18 +65,18 @@ public:
     float          cameraDistanceSetting() const       { return cameraDistanceSetting_; }
 
 private:
-    unsigned char  videoOptions_[4];        // Shadows, Reflection, Highlights, Particles
-    float          cameraDistanceSetting_;
+    unsigned char  videoOptions_[4]{};        // Shadows, Reflection, Highlights, Particles
+    float          cameraDistanceSetting_{};
     // PRESERVED: the mode index is a uint32_t, but WinMain passes only its low byte.
     AdapterId      adapterId_;              // all zero: the primary adapter
-    unsigned int   displayModeIndex_;
-    int            musicOn_;                // 0 or 1
-    unsigned char  cdVolume_;
-    int            sound3D_;                // 0 or 1
-    unsigned char  waveVolume_;
-    unsigned char  cameraTurnsWithPlayer_;  // 0 or 1
-    float          cameraYaw_;
-    float          activeCameraPitch_;
-    float          cameraPitch_;            // 50..89, default 50
-    unsigned short joyDeadzone_;            // percent, default 50
+    unsigned int   displayModeIndex_{};
+    int            musicOn_{};                // 0 or 1
+    unsigned char  cdVolume_{};
+    int            sound3D_{};                // 0 or 1
+    unsigned char  waveVolume_{};
+    unsigned char  cameraTurnsWithPlayer_{};  // 0 or 1
+    float          cameraYaw_{};
+    float          activeCameraPitch_{};
+    float          cameraPitch_{};            // 50..89, default 50
+    unsigned short joyDeadzone_{};            // percent, default 50
 };

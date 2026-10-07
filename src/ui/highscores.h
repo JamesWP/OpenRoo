@@ -7,9 +7,9 @@
 
 /* One row: the name the player typed, the score and the level reached. */
 struct HighScoreRecord {
-    char          name[0x32];
-    unsigned int  score;
-    unsigned char level;
+    char          name[0x32]{};
+    unsigned int  score{};
+    unsigned char level{};
 };
 
 enum { HIGH_SCORE_RECORD_BYTES = 0x37 };
@@ -45,8 +45,8 @@ public:
 private:
      
 
-    unsigned char    lastRank_;
+    unsigned char    lastRank_{};
     HighScoreRecord  records_[RECORD_MAX];
-    unsigned char    count_;
+    unsigned char    count_{};
 };
  

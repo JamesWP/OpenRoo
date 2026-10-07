@@ -57,16 +57,16 @@ public:
 private:
      
 
-    int           timeLimit_;      // the live time limit, s; a time bonus adds 5
-    unsigned int  timeElapsed_;    // ms of play
-    unsigned int  bonus_;          // the level's bonus flag
-    char          text010_[0x80];  // from the file; unread
-    char          title_[0x80];    // the display title
-    char          mapName_[0x80];  // the map name: the theme and CD-track key
-    int           fileTimeLimit_;  // the time limit as the file gives it, s
-    int           gemsRequired_;   // crystals needed to open the exit
-    unsigned char extentV_;        // the v extent (file byte 1)
-    unsigned char extentU_;        // the u extent (file byte 0)
+    int           timeLimit_{};      // the live time limit, s; a time bonus adds 5
+    unsigned int  timeElapsed_{};    // ms of play
+    unsigned int  bonus_{};          // the level's bonus flag
+    char          text010_[0x80]{};  // from the file; unread
+    char          title_[0x80]{};    // the display title
+    char          mapName_[0x80]{};  // the map name: the theme and CD-track key
+    int           fileTimeLimit_{};  // the time limit as the file gives it, s
+    int           gemsRequired_{};   // crystals needed to open the exit
+    unsigned char extentV_{};        // the v extent (file byte 1)
+    unsigned char extentU_{};        // the u extent (file byte 0)
     // Indexed [u][v].
     Tile          grid_[DIM][DIM];
     Tile          snapshot_[DIM][DIM];

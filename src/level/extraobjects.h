@@ -19,22 +19,22 @@ struct ExtraObjectRecord {
      
 
     // FORMAT: "<game dir>\<name>" of the model, particle system or sound.
-    char                 file[0x100];
-    float                position[3];           // position
-    float                field_10c[3];          // models and particles only
-    char                 animationFile[0x100];  // model; zeroed when none
-    char                 textureFile[0x100];
-    int                  lit;   // model: lighting on
-    unsigned char        kind;  // ExtraObjectKind
-    float                billboardSize;
-    int                  srcBlend;   // D3DBLEND 1..13; 0 none or unknown
-    int                  destBlend;  // written only when srcBlend != 0
-    unsigned int         textureAddress;
+    char                 file[0x100]{};
+    float                position[3]{};           // position
+    float                field_10c[3]{};          // models and particles only
+    char                 animationFile[0x100]{};  // model; zeroed when none
+    char                 textureFile[0x100]{};
+    int                  lit{};   // model: lighting on
+    unsigned char        kind{};  // ExtraObjectKind
+    float                billboardSize{};
+    int                  srcBlend{};   // D3DBLEND 1..13; 0 none or unknown
+    int                  destBlend{};  // written only when srcBlend != 0
+    unsigned int         textureAddress{};
     unsigned char        splineMode;              // 0 none, 1 dynamic, 2 static
-    int                  splineTime;              // ms
-    float                splinePoints[0x100][3];  // from the file's spline line
-    unsigned short       splinePointCount;
-    double               soundParam;  // sound: zeroed, then optional
+    int                  splineTime{};              // ms
+    float                splinePoints[0x100][3]{};  // from the file's spline line
+    unsigned short       splinePointCount{};
+    double               soundParam{};  // sound: zeroed, then optional
     audiodev::Buffer  *sound;
 
      
@@ -84,9 +84,9 @@ private:
     ExtraObjectRecord *current() { return &records_[objectCount_]; }
      
 
-    int                loaded_;
-    SoundManager      *soundManager_;
-    unsigned short     entries_;  // entries seen
+    int                loaded_{};
+    SoundManager      *soundManager_{};
+    unsigned short     entries_{};  // entries seen
     ExtraObjectRecord  records_[RECORD_MAX];
-    unsigned short     objectCount_;
+    unsigned short     objectCount_{};
 };

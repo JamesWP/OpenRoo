@@ -35,11 +35,11 @@ public:
 private:
      
 
-    char          *buffer_;  // the owner's storage
-    unsigned char  lastKey_;
-    unsigned char  cursor_;
-    unsigned char  maxLength_;  // characters, not counting the terminator
-    int            active_;
+    char          *buffer_{};  // the owner's storage
+    unsigned char  lastKey_{};
+    unsigned char  cursor_{};
+    unsigned char  maxLength_{};  // characters, not counting the terminator
+    int            active_{};
 };
 
  

@@ -62,10 +62,10 @@ public:
 
     int created()const {return dwCreated_;}
 private:
-    unsigned long  dwMode3D_;          // the live 3D listener mode
-    unsigned long  dwPendingMode3D_;   // set with it; the mode new loads apply
+    unsigned long  dwMode3D_{};          // the live 3D listener mode
+    unsigned long  dwPendingMode3D_{};   // set with it; the mode new loads apply
     audiodev::Device device_;          // the device
-    unsigned long  dwCreated_;         // 0 until the device is up
+    unsigned long  dwCreated_{};         // 0 until the device is up
     // A name-keyed list of loaded sounds, in the order they were first
     // acquired.
 public:

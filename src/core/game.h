@@ -486,106 +486,106 @@ private:
 private:
      
 
-    double        field_04_;                              /* Load sets 1.0; reader not decoded */
-    int           field_0c_;
-    unsigned int  mapChanged_;
-    unsigned int  nextLevelBonus_;
-    unsigned int  tickCount_;
+    double        field_04_{};                              /* Load sets 1.0; reader not decoded */
+    int           field_0c_{};
+    unsigned int  mapChanged_{};
+    unsigned int  nextLevelBonus_{};
+    unsigned int  tickCount_{};
     MenuTree      rootMenu_;                              /* constructed, never navigated */
-    int           initialised_;                           /* 0 until Load completes */
+    int           initialised_{};                           /* 0 until Load completes */
     TimedSpawner  timedSpawners_[256];
     FreeBomb      freeBombs_[256];
     CdThemes      cdThemes_;
-    unsigned char parkedCameraOption_;
+    unsigned char parkedCameraOption_{};
     /* 256 level names, 0x100 each.  SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
-    char          levelNameTable_[256][0x100];
-    unsigned char levelCount_;
-    char          gameFileName_[0x80];
+    char          levelNameTable_[256][0x100]{};
+    unsigned char levelCount_{};
+    char          gameFileName_[0x80]{};
     LevelCensus   census_;
-    unsigned char restartCount_;
+    unsigned char restartCount_{};
     /* The level-report tallies, zeroed and accumulated by
      * Report_WriteLevelReport (reportwriter.cpp) and by nothing else. */
-    unsigned short reportLevelsWithScript_;
-    int            reportScoreTotal_;
-    unsigned short reportTallyA_;
-    unsigned short reportLevelsWithBonus_;
-    unsigned short reportLevelsWithLeo_;
+    unsigned short reportLevelsWithScript_{};
+    int            reportScoreTotal_{};
+    unsigned short reportTallyA_{};
+    unsigned short reportLevelsWithBonus_{};
+    unsigned short reportLevelsWithLeo_{};
     /* Foes killed this level; CalculateLevelScore pays 50 each. */
-    unsigned char foesKilled_;
-    unsigned short itemTotal_;
-    unsigned short field_42252_;
-    int           levelSoundsReady_;
+    unsigned char foesKilled_{};
+    unsigned short itemTotal_{};
+    unsigned short field_42252_{};
+    int           levelSoundsReady_{};
     ThemeSoundTable themeSounds_;
-    unsigned char switchMax_;
-    unsigned char stateBeforeMenu_;
-    unsigned int  field_48b14_;
-    char          menuLevelName_[0x80];
+    unsigned char switchMax_{};
+    unsigned char stateBeforeMenu_{};
+    unsigned int  field_48b14_{};
+    char          menuLevelName_[0x80]{};
     ExtraObjects  extraObjects_;
     SoundManager  soundManager_;
-    FixedSounds   fixedSounds_;
-    int           field_13cc84_;                          /* Load zeroes; reader not decoded */
-    int           field_13cc88_;
-    int           field_13cc8c_;
-    int           field_13cc90_;
-    float         field_13cc94_[3];
-    float         zoomDistance_;
-    int           overviewActive_;
+    FixedSounds   fixedSounds_{};
+    int           field_13cc84_{};                          /* Load zeroes; reader not decoded */
+    int           field_13cc88_{};
+    int           field_13cc8c_{};
+    int           field_13cc90_{};
+    float         field_13cc94_[3]{};
+    float         zoomDistance_{};
+    int           overviewActive_{};
     /* The typed-cheat buffer; declared up to the cheat entry that follows.
      * Its real length is not established. */
-    unsigned char cheatBuffer_[0x100];
+    unsigned char cheatBuffer_[0x100]{};
     TextEntry     cheatEntry_;
     HighScoreTable highScores_;
     ScoreTally    tally_;
     SwitchCells   switchCells_;
-    BridgeObject *bridgeSlots_[256];
-    unsigned char bridgeCount_;
-    double        totalPlayTime_;
-    double        lastTickTime_;
-    double        clock_;
+    BridgeObject *bridgeSlots_[256]{};
+    unsigned char bridgeCount_{};
+    double        totalPlayTime_{};
+    double        lastTickTime_{};
+    double        clock_{};
     TickStep      tickStep_;
     /* Recomputed by GameTick every tick; see vitalityPercent(). */
-    unsigned char vitalityPercent_;
-    unsigned int  field_170a65_;
-    int           textEntryActive_;
+    unsigned char vitalityPercent_{};
+    unsigned int  field_170a65_{};
+    int           textEntryActive_{};
     TextEntry     nameEntry_;
     SaveSlots     saveSlots_;
     /* As long as a level-name table entry. */
-    char          levelName_[0x100];
-    unsigned char levelIndex_;
-    int           field_173584_;
-    PlatformObject  *platformSlots_[100];
-    unsigned char platformCount_;
-    LiftObject   *liftSlots_[256];
-    unsigned char liftCount_;
-    int           field_173b1a_;
-    FallingTile *fallingSlots_[200];
-    unsigned char fallingCount_;
-    Bomb         *bombSlots_[500];
-    unsigned char bombCount_;
-    unsigned char bombIds_[500];
-    Foe          *foeSlots_[500];
-    unsigned char foeCount_;
-    unsigned char foeIds_[500];
+    char          levelName_[0x100]{};
+    unsigned char levelIndex_{};
+    int           field_173584_{};
+    PlatformObject  *platformSlots_[100]{};
+    unsigned char platformCount_{};
+    LiftObject   *liftSlots_[256]{};
+    unsigned char liftCount_{};
+    int           field_173b1a_{};
+    FallingTile *fallingSlots_[200]{};
+    unsigned char fallingCount_{};
+    Bomb         *bombSlots_[500]{};
+    unsigned char bombCount_{};
+    unsigned char bombIds_[500]{};
+    Foe          *foeSlots_[500]{};
+    unsigned char foeCount_{};
+    unsigned char foeIds_[500]{};
     Player        player_;
-    unsigned char rebindCode_;
-    char          rebindAction_[0x100];
-    int           rebindActive_;
-    unsigned char debounce_;
+    unsigned char rebindCode_{};
+    char          rebindAction_[0x100]{};
+    int           rebindActive_{};
+    unsigned char debounce_{};
     MenuTree      menu_;
     ScriptPlayer  scriptPlayer_;
-    float         cameraDistance_;
-    unsigned char cameraMode_;
+    float         cameraDistance_{};
+    unsigned char cameraMode_{};
     /* The settings (config.h); music, volumes, 3D sound, the camera
      * option and the joystick deadzone live in its persisted blob. */
     Config        config_;
-    float         cameraEye_[3];
-    unsigned char state_;
+    float         cameraEye_[3]{};
+    unsigned char state_{};
     /* The map: header, grid and snapshot grid.  Its header holds the time limit (GameTick times the
      * level out at timeLimit*1000 ms), the ms of play (CalculateLevelScore
      * pays the unused seconds) and the gem quota (CalculateLevelScore
      * pays 5 a gem up to it and 10 per gem beyond). */
     LevelMap      map_;
-    int           tallyDone_;
+    int           tallyDone_{};
 };
 
  

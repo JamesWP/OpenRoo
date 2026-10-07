@@ -84,42 +84,42 @@ private:
     void runNextCommand();
      
 
-    unsigned short splineLines_;
-    unsigned short textBlocks_;
-    unsigned short againLine_;       // "fromhere" sets it to cursor + 1; "again" jumps back to it
-    unsigned int   durations_[255];  // seconds a soundless "playwave WAIT" waits, by id
-    SoundManager  *soundManager_;       // set by the fixed sound setup
-    unsigned char  waitStream_;         // the stream waitingOnStream_ waits on
+    unsigned short splineLines_{};
+    unsigned short textBlocks_{};
+    unsigned short againLine_{};       // "fromhere" sets it to cursor + 1; "again" jumps back to it
+    unsigned int   durations_[255]{};  // seconds a soundless "playwave WAIT" waits, by id
+    SoundManager  *soundManager_{};       // set by the fixed sound setup
+    unsigned char  waitStream_{};         // the stream waitingOnStream_ waits on
     audiodev::Stream *streams_[255];  // by id
-    unsigned int   waitingOnStream_;  // "playwave <id> <wait>": the tick stalls until its stream finishes
-    unsigned int   streamReady_;      // "initwave"'s prepare result
+    unsigned int   waitingOnStream_{};  // "playwave <id> <wait>": the tick stalls until its stream finishes
+    unsigned int   streamReady_{};      // "initwave"'s prepare result
     audiodev::Stream stream_;         // the embedded stream
-    unsigned int   field_92d_;  // never read
-    float          splinePoint_[3];
+    unsigned int   field_92d_{};  // never read
+    float          splinePoint_[3]{};
     SplinePath     spline_;
-    int            splineActive_;
-    unsigned int   field_955_;  // never read
-    float          angle_[3];   // "anglexyz"; never read
-    double         duration_;   // ms, of the spline or the glide
-    double         dt_;         // the tick's frame dt
-    float          dir_[3];     // the glide's unit direction
-    double         start_;      // now_ when the spline or glide began
-    float          speed_;      // glide units per second
-    float          from_[3];    // the eye when the glide began; never read
-    float          target_[3];  // the glide's end point
-    unsigned int   moving_;     // "movetoxyz" in progress
-    double         now_;        // the tick's clock
-    int            loaded_;
-    float          cameraDistance_;          // set by "distance"
-    char           currentLine_[LINE_SIZE];  // the line being played
-    float          eye_[3];                  // set by "eyexyz" and the glide
-    unsigned char  cameraMode_;
-    int            running_;
-    double         waitSeconds_;
-    unsigned int   waiting_;    // a timed wait in progress
-    double         waitStart_;  // now_ when it began
-    unsigned short cursor_;     // the next line to play
-    unsigned short lineCount_;
-    char           scratch_[0x3ea];  // the caption, and scratch for parsing
-    char           lines_[LINE_MAX][LINE_SIZE];
+    int            splineActive_{};
+    unsigned int   field_955_{};  // never read
+    float          angle_[3]{};   // "anglexyz"; never read
+    double         duration_{};   // ms, of the spline or the glide
+    double         dt_{};         // the tick's frame dt
+    float          dir_[3]{};     // the glide's unit direction
+    double         start_{};      // now_ when the spline or glide began
+    float          speed_{};      // glide units per second
+    float          from_[3]{};    // the eye when the glide began; never read
+    float          target_[3]{};  // the glide's end point
+    unsigned int   moving_{};     // "movetoxyz" in progress
+    double         now_{};        // the tick's clock
+    int            loaded_{};
+    float          cameraDistance_{};          // set by "distance"
+    char           currentLine_[LINE_SIZE]{};  // the line being played
+    float          eye_[3]{};                  // set by "eyexyz" and the glide
+    unsigned char  cameraMode_{};
+    int            running_{};
+    double         waitSeconds_{};
+    unsigned int   waiting_{};    // a timed wait in progress
+    double         waitStart_{};  // now_ when it began
+    unsigned short cursor_{};     // the next line to play
+    unsigned short lineCount_{};
+    char           scratch_[0x3ea]{};  // the caption, and scratch for parsing
+    char           lines_[LINE_MAX][LINE_SIZE]{};
 };
