@@ -183,7 +183,9 @@ if (( NATIVE )); then
     "${FORWARD_ENV[@]}"
   )
   (( DEBUG )) && { echo "ERROR: --debug needs Proton's winedbg; not available on a Linux build" >&2; exit 1; }
-  exec "${RUN_PREFIX[@]}" "./$EXE"
+  # OPENROO_WRAPPER: a command to run the game under, e.g. "valgrind --error-exitcode=9".
+  # shellcheck disable=SC2206
+  exec "${RUN_PREFIX[@]}" ${OPENROO_WRAPPER:-} "./$EXE"
 fi
 
 PROTON_DIR="$HOME/.steam/root/steamapps/common/Proton - Experimental"

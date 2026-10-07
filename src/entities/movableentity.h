@@ -126,54 +126,54 @@ public:
     virtual ~MovableEntity();
 
 protected:
-    double              now_;
-    double             *clock_;
-    TickStep        *tickStep_;
-    unsigned char       facing_;
+    double              now_{};
+    double             *clock_{};
+    TickStep        *tickStep_{};
+    unsigned char       facing_{};
     TickStep         tickStepCopy_;
     // World position (U, height, V), read every frame by RenderGameFrame.
-    float               posU_;
-    float               posY_;
-    float               posV_;
+    float               posU_{};
+    float               posY_{};
+    float               posV_{};
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;
-    LevelMap               *map_;
-    double              idleDuration_;  // ms the idle animation runs.
-    int                 onStairOrSlide_;
-    int                 movingBackwards_;  // Set when turnKind_ is 3 (reversing this step).
+    LevelMap               *map_{};
+    double              idleDuration_{};  // ms the idle animation runs.
+    int                 onStairOrSlide_{};
+    int                 movingBackwards_{};  // Set when turnKind_ is 3 (reversing this step).
     // stepGrace_: the window after a step ends (animStart_ + animDuration_)
     // during which the next step may start without a fresh delay.  stepEnd_:
     // the clock value that window is measured from.
-    double              stepGrace_;
-    double              stepEnd_;
-    int                 iceDir_;  // Ice: the last direction sent.
-    float               fallSpeed_;    // Fall velocity; starts at -3.0.
+    double              stepGrace_{};
+    double              stepEnd_{};
+    int                 iceDir_{};  // Ice: the last direction sent.
+    float               fallSpeed_{};    // Fall velocity; starts at -3.0.
     // Re-queued from here once kind 4 is released from a blocked step.
-    unsigned char       queuedMove_;
-    unsigned char       queuedTurn_;
+    unsigned char       queuedMove_{};
+    unsigned char       queuedTurn_{};
     // The foe's behaviour type: 1 escort, 2 seek a listed tile, 3 seek a
     // flagged tile, 4 return to post, 5 follow, 7 seek the farthest tile
     // (GameTick's foe loop).  Read signed by the step and the chase.
-    unsigned char       type_;
-    unsigned char       pickedUp_;
-    unsigned short      chaseSpeed_;
+    unsigned char       type_{};
+    unsigned char       pickedUp_{};
+    unsigned short      chaseSpeed_{};
     // ms one cell step takes; animDuration_ resets to this by kind and state
     // elsewhere.
-    double              stepDuration_;
-    int                 idleStarted_;
+    double              stepDuration_{};
+    int                 idleStarted_{};
     // The clock the idle timeout counts from.
-    double              lastActive_;
-    void               *field_7a;
-    int                 removeRequested_;
-    int                 dyingStarted_;  // Read by RenderGameFrame once the entity starts dying.
-    int                 dying_;  // Set on being crushed or blasted; starts the death sequence.
-    double              dyingSince_;  // Dying clock; removeRequested_ is set once it is half a second old.
+    double              lastActive_{};
+    void               *field_7a{};
+    int                 removeRequested_{};
+    int                 dyingStarted_{};  // Read by RenderGameFrame once the entity starts dying.
+    int                 dying_{};  // Set on being crushed or blasted; starts the death sequence.
+    double              dyingSince_{};  // Dying clock; removeRequested_ is set once it is half a second old.
     // The animation state: 0 = still, 0xfa = the idle animation; 0x16..0x1b
     // carry the height curves updateMovement() interpolates between.
-    unsigned char       anim_;
-    int                 onLift_;  // Riding a lift (kind 9).
-    VoicePool          *pool_9f_;
+    unsigned char       anim_{};
+    int                 onLift_{};  // Riding a lift (kind 9).
+    VoicePool          *pool_9f_{};
     audiodev::Buffer *sound_a3_;
     audiodev::Buffer *sound_a7_;
     audiodev::Buffer *sound_ab_;
@@ -186,50 +186,50 @@ protected:
     audiodev::Buffer *sound_c7_;
     audiodev::Buffer *sound_cb_;
     audiodev::Buffer *sound_cf_;
-    int                 field_d3;
-    unsigned char       field_d7;  // The switch this foe is standing on, when it is standing on one.
-    int                 field_d8;
-    double              lastContact_;      // Foe: the clock of its last contact.
-    int                 bombDropRequest_;  // Requests a bomb be dropped this tick.
-    unsigned char       bombsCarried_;     // Player: bombs in hand; a pickup adds 3, a drop takes 1.
-    unsigned char       glides_;
-    int                 gliding_;
-    unsigned char       field_ee;
-    int                 held_;
-    int                 sliding_;
-    unsigned char       teleportPhase_;  // 0 idle, 1 armed, 2 sent.
-    double              teleportSince_;  // The clock the current teleport phase began.
-    unsigned char       lastMoveDir_;  // The last direction actually moved (as opposed to a turn on the spot).
-    unsigned char       fallStartH_;  // The height the current fall began at.
-    double              fallStart_;   // The clock the current fall began.
-    int                 field_11a;
-    unsigned char       platformSlot_;  // The platform being ridden, 0xff for none.
-    unsigned char       moveState_;
-    int                 falling_;
-    unsigned char       field_124;
+    int                 field_d3{};
+    unsigned char       field_d7{};  // The switch this foe is standing on, when it is standing on one.
+    int                 field_d8{};
+    double              lastContact_{};      // Foe: the clock of its last contact.
+    int                 bombDropRequest_{};  // Requests a bomb be dropped this tick.
+    unsigned char       bombsCarried_{};     // Player: bombs in hand; a pickup adds 3, a drop takes 1.
+    unsigned char       glides_{};
+    int                 gliding_{};
+    unsigned char       field_ee{};
+    int                 held_{};
+    int                 sliding_{};
+    unsigned char       teleportPhase_{};  // 0 idle, 1 armed, 2 sent.
+    double              teleportSince_{};  // The clock the current teleport phase began.
+    unsigned char       lastMoveDir_{};  // The last direction actually moved (as opposed to a turn on the spot).
+    unsigned char       fallStartH_{};  // The height the current fall began at.
+    double              fallStart_{};   // The clock the current fall began.
+    int                 field_11a{};
+    unsigned char       platformSlot_{};  // The platform being ridden, 0xff for none.
+    unsigned char       moveState_{};
+    int                 falling_{};
+    unsigned char       field_124{};
     // pendingMove_'s turn relative to facing_: 1 forward, 2 and 4 the two
     // turns, 3 reverse, 0 when the move needs no turn at all.
-    unsigned char       turnKind_;
-    double              field_126;  // The clock the sticky pad caught this entity; zero while not stuck.
-    int                 field_12e;
-    double              animDuration_;  // ms the current animation phase lasts.
-    FoePath            *pathfinder_;  // Foe: its FoePath.
+    unsigned char       turnKind_{};
+    double              field_126{};  // The clock the sticky pad caught this entity; zero while not stuck.
+    int                 field_12e{};
+    double              animDuration_{};  // ms the current animation phase lasts.
+    FoePath            *pathfinder_{};  // Foe: its FoePath.
     // stepU_ / stepV_: moveDir_ resolved to a cell step, each -1, 0 or +1.
     signed char         stepU_;
     signed char         stepV_;
     signed char         field_141;
-    unsigned char       markerCellU_;
-    unsigned char       markerCellV_;
-    unsigned char       markerCellH_;
-    unsigned char       pendingMove_;
-    double              animStart_;  // The clock the current animation phase began.
-    int                 moveDir_;
-    unsigned char       kind_;  // 9 identifies a bomb; a foe's is set from its spawn kind.
+    unsigned char       markerCellU_{};
+    unsigned char       markerCellV_{};
+    unsigned char       markerCellH_{};
+    unsigned char       pendingMove_{};
+    double              animStart_{};  // The clock the current animation phase began.
+    int                 moveDir_{};
+    unsigned char       kind_{};  // 9 identifies a bomb; a foe's is set from its spawn kind.
     // homeU_ / homeV_ / homeH_: the foe's spawn cell.
-    unsigned char       homeU_;
-    unsigned char       homeV_;
-    unsigned char       homeH_;
-    int                 field_156;
+    unsigned char       homeU_{};
+    unsigned char       homeV_{};
+    unsigned char       homeH_{};
+    int                 field_156{};
 
 private:
      

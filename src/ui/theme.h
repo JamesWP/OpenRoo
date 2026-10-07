@@ -35,9 +35,9 @@ enum ThemeObjectKind : uint32_t {
 /* A short-lived particle burst: a position, the milliseconds left and whether
  * it is live. */
 struct FxBurst {
-    float pos[3];
-    int   msLeft;  // 1000 at spawn
-    uint8_t  active;
+    float pos[3]{};
+    int   msLeft{};  // 1000 at spawn
+    uint8_t  active{};
 };
 
 /* One `model`, `field`, `billboard` or `particlesystem` entry. */
@@ -110,44 +110,44 @@ private:
     friend class ThemeParser;          // theme.cpp fills the records
     friend class ThemeObjectTypeSlot;  // and releases them
     ThemeObjectKind kind_;
-    AnimatedMesh   *pMesh_;
+    AnimatedMesh   *pMesh_{};
     UVAnimator uvAnimator_;
     ExplodeDebris   explode_;  // set up only by `explode`, which needs the mesh first
-    uint32_t        bExplode_;
-    float        flExplodeDir_[3];  // (t4, t5, t6) rotated -90 degrees about X
+    uint32_t        bExplode_{};
+    float        flExplodeDir_[3]{};  // (t4, t5, t6) rotated -90 degrees about X
 
     AnimTable    animTable_;
-    float        flBillboardScale_;
-    ParticleSystem *pParticleSystems_[16];
+    float        flBillboardScale_{};
+    ParticleSystem *pParticleSystems_[16]{};
     // Sixteen bursts of this record's particle systems, one per system,
     // spawned and aged by the frame renderer.
     FxBurst      bursts_[16];
 
-    uint32_t  dwInstanceCount_;
-    uint32_t  dwMovableType_;
-    float  flPosX_;
-    float  flPosY_;
-    float  flPosZ_;
-    float  flScaleX_;
-    float  flScaleY_;
-    float  flScaleZ_;
-    float  flRotRateX_;
-    float  flRotRateY_;
-    float  flRotRateZ_;
-    uint32_t  dwSubObjectCount_;
+    uint32_t  dwInstanceCount_{};
+    uint32_t  dwMovableType_{};
+    float  flPosX_{};
+    float  flPosY_{};
+    float  flPosZ_{};
+    float  flScaleX_{};
+    float  flScaleY_{};
+    float  flScaleZ_{};
+    float  flRotRateX_{};
+    float  flRotRateY_{};
+    float  flRotRateZ_{};
+    uint32_t  dwSubObjectCount_{};
     SceneSubObject pSubObjects_[8];
 
-    uint32_t  bLit_;
-    uint32_t  bNoMoveStates_;
-    uint32_t  bNoZWrite_;
-    uint32_t  bNoShadow_;
-    uint32_t  bSpecular_;
-    uint32_t  bRandomYAngle_;
-    uint32_t  bOscillateRandom_;
-    float  flOscillationAmplitude_;
-    float  flOscillationFrequency_;
-    float  flOscillationPhase_;
-    float  flPump_[4];
+    uint32_t  bLit_{};
+    uint32_t  bNoMoveStates_{};
+    uint32_t  bNoZWrite_{};
+    uint32_t  bNoShadow_{};
+    uint32_t  bSpecular_{};
+    uint32_t  bRandomYAngle_{};
+    uint32_t  bOscillateRandom_{};
+    float  flOscillationAmplitude_{};
+    float  flOscillationFrequency_{};
+    float  flOscillationPhase_{};
+    float  flPump_[4]{};
 
      
 };
@@ -174,7 +174,7 @@ public:
 
 private:
     friend class ThemeParser;  // theme.cpp fills the slots
-    uint32_t            dwInstanceCount_;  // last record index + 1
+    uint32_t            dwInstanceCount_{};  // last record index + 1
     ThemeLevelObject records_[8];
 
      
@@ -206,8 +206,8 @@ enum ThemeImageSlot {
 };
 
 struct ThemeTextColorPair {
-    uint32_t color1;
-    uint32_t color2;
+    uint32_t color1{};
+    uint32_t color2{};
 };
 
 enum ThemeTextColorSlot {
@@ -256,16 +256,16 @@ public:
 private:
     friend class ThemeParser;  // theme.cpp fills the block
 
-    char                 themeName_[0x100];  // copied from the path after the file is read
-    uint32_t                dwUnknown100_;      // never written
+    char                 themeName_[0x100]{};  // copied from the path after the file is read
+    uint32_t                dwUnknown100_{};      // never written
     ThemeObjectTypeSlot  slots_[THEME_OBJ_COUNT];
 
     // Written only inside `environment { }`.
-    Texture        *images_[THEME_IMG_COUNT];
+    Texture        *images_[THEME_IMG_COUNT]{};
     ThemeTextColorPair   textColors_[THEME_COLOR_COUNT];
-    uint8_t                 bFogEnabled_;
+    uint8_t                 bFogEnabled_{};
     SkyBackground        sky_;  // built from the face names; drawn by sky.cpp
-    float                flSideHeight_;
+    float                flSideHeight_{};
 
     bool themeLoad(Game *game, RenderDevice *d3d, char *path);
 
@@ -277,10 +277,10 @@ private:
 /* A sound asset's file name and, immediately after it, its enabled flag.
  * The spawn's unbounded strcpy of `name` relies on the flag to stop it. */
 struct SoundAssetName {
-    char name[256];
-    int  enabled;
-    uint32_t unknown104;   /* add()'s arg4; the .thm path passes 1 */
-    uint32_t unknown108;   /* add()'s arg3; the .thm path passes 1 */
+    char name[256]{};
+    int  enabled{};
+    uint32_t unknown104{};   /* add()'s arg4; the .thm path passes 1 */
+    uint32_t unknown108{};   /* add()'s arg3; the .thm path passes 1 */
 };
 
 /* The theme sound table ("TSM" in its log line),.  A .thm
@@ -308,8 +308,8 @@ public:
     const SoundAssetName *entry(int id) const { return &entries_[id]; }
 
 private:
-    uint32_t          unknown4_;     /* +4  never written */
-    uint16_t           unknown8_;     /* +8  zeroed by the ctor, never read */
+    uint32_t          unknown4_{};     /* +4  never written */
+    uint16_t           unknown8_{};     /* +8  zeroed by the ctor, never read */
     SoundAssetName entries_[THEME_SOUND_COUNT];
 };
 

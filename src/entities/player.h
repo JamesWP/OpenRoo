@@ -181,29 +181,29 @@ private:
     void  pickupSound(const SoundRef *arr) const;
     void  endEffect(int code);
 
-    int                 worldSoundVariant_;
+    int                 worldSoundVariant_{};
     SoundRef            pickupSounds_[9][3] = {};
-    double              lastSecondsMark_;
-    double              effectBStart_;
-    int                 effectBActive_;
-    double              freezeStart_;
-    int                 freezeActive_;
-    double              effectDStart_;
-    int                 effectDActive_;
-    double              effectCStart_;
-    int                 effectCActive_;
-    double              effectAStart_;
-    int                 effectAActive_;
-    float               markerU_;
-    float               markerH_;
-    float               markerV_;
-    unsigned short      itemsCollected_;  // items picked up this level; the all-items bonus tests it
+    double              lastSecondsMark_{};
+    double              effectBStart_{};
+    int                 effectBActive_{};
+    double              freezeStart_{};
+    int                 freezeActive_{};
+    double              effectDStart_{};
+    int                 effectDActive_{};
+    double              effectCStart_{};
+    int                 effectCActive_{};
+    double              effectAStart_{};
+    int                 effectAActive_{};
+    float               markerU_{};
+    float               markerH_{};
+    float               markerV_{};
+    unsigned short      itemsCollected_{};  // items picked up this level; the all-items bonus tests it
     std::vector<int>    effectList_;
-    int                 score_;
+    int                 score_{};
     signed char         lastRoll_;
-    double              field_231;
-    int                 lives_;
-    int                 gemsCollected_;
+    double              field_231{};
+    int                 lives_{};
+    int                 gemsCollected_{};
 };
 
  

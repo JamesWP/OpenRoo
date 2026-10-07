@@ -9,14 +9,14 @@ enum { SAVE_SLOT_BYTES = 42 };
  * little-endian and unpadded, SAVE_SLOT_BYTES in all (saveslots.cpp). */
 struct SaveSlot {
 
-    char          name[20];    // the menu text; ".........." when empty
-    unsigned char levelIndex;  // the level to resume at
-    unsigned char livesRemaining;
-    unsigned int  totalScore;
-    unsigned int  completionNumerator;  // the player's completion numerator
-    unsigned int  elapsedGameTime;      // play time, whole seconds
-    unsigned int  inUse;                // 1 = loadable
-    unsigned int  unusedTail;           // never read or written
+    char          name[20]{};    // the menu text; ".........." when empty
+    unsigned char levelIndex{};  // the level to resume at
+    unsigned char livesRemaining{};
+    unsigned int  totalScore{};
+    unsigned int  completionNumerator{};  // the player's completion numerator
+    unsigned int  elapsedGameTime{};      // play time, whole seconds
+    unsigned int  inUse{};                // 1 = loadable
+    unsigned int  unusedTail{};           // never read or written
 
     /* The record to and from its file bytes. */
     void encode(unsigned char out[SAVE_SLOT_BYTES]) const;
@@ -56,9 +56,9 @@ public:
 private:
      
 
-    unsigned short editSlot_;
+    unsigned short editSlot_{};
     SaveSlot       edit_;
-    unsigned char  count_;
+    unsigned char  count_{};
     SaveSlot       slots_[MAX_SLOTS];
 };
 

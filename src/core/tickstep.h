@@ -4,5 +4,5 @@
 #pragma once
 
 struct TickStep {
-    double value;
+    double value{};
 };

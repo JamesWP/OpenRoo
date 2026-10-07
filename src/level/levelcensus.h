@@ -9,23 +9,23 @@
 
 /* A timed foe spawner: a snapshot cell whose contents are 0x64. */
 struct TimedSpawner {
-    unsigned char u;
-    unsigned char v;
-    unsigned char height;     // the snapshot cell's height
-    double        lastSpawn;  // the clock at the last spawn attempt
+    unsigned char u{};
+    unsigned char v{};
+    unsigned char height{};     // the snapshot cell's height
+    double        lastSpawn{};  // the clock at the last spawn attempt
     // Read by the tick (plus 100, it is the spawned foe's drop contents);
     // never written by the builder.
-    unsigned char field_0b;
-    double        interval;  // ms between spawns
-    unsigned char maxFoes;   // spawns only below this foe count
+    unsigned char field_0b{};
+    double        interval{};  // ms between spawns
+    unsigned char maxFoes{};   // spawns only below this foe count
 };
 
 /* A free bomb: a snapshot cell whose contents are 0x4d. */
 struct FreeBomb {
-    unsigned char u;
-    unsigned char v;
-    unsigned char param;     // the snapshot cell's param
-    double        placedAt;  // the clock when the level was built
+    unsigned char u{};
+    unsigned char v{};
+    unsigned char param{};     // the snapshot cell's param
+    double        placedAt{};  // the clock when the level was built
 };
 
 /* The per-level object counts.  Each counts one tile kind or contents value
@@ -33,25 +33,25 @@ struct FreeBomb {
  * as marked.  The level report prints them. */
 struct LevelCensus {
     // Kind counts, over the live grid.
-    unsigned short teleports;      // TILE_TELEPORTER, paired only
-    unsigned short bombables;      // TILE_BOMBABLE
-    unsigned short kind01;         // TILE_KIND_01, itself unnamed
-    unsigned short field_e5;       // never reset, never counted
-    unsigned short total;          // collectable items: see below
-    unsigned short bridges;        // TILE_BRIDGE_U and _V
-    unsigned short unusedEb;       // reset only
-    unsigned short stickyPads;       // TILE_STICKY
-    unsigned short slideTiles;     // TILE_SLIDE
-    unsigned short iceTiles;       // TILE_ICE
+    unsigned short teleports{};      // TILE_TELEPORTER, paired only
+    unsigned short bombables{};      // TILE_BOMBABLE
+    unsigned short kind01{};         // TILE_KIND_01, itself unnamed
+    unsigned short field_e5{};       // never reset, never counted
+    unsigned short total{};          // collectable items: see below
+    unsigned short bridges{};        // TILE_BRIDGE_U and _V
+    unsigned short unusedEb{};       // reset only
+    unsigned short stickyPads{};       // TILE_STICKY
+    unsigned short slideTiles{};     // TILE_SLIDE
+    unsigned short iceTiles{};       // TILE_ICE
 
     // Contents counts over the snapshot grid.
-    unsigned short freezeItems;  // CONTENTS_FREEZE
-    unsigned short timeBonuses;   // CONTENTS_TIME_BONUS
+    unsigned short freezeItems{};  // CONTENTS_FREEZE
+    unsigned short timeBonuses{};   // CONTENTS_TIME_BONUS
 
     // Contents count over the live grid.
-    unsigned short extraLives;  // CONTENTS_EXTRA_LIFE
+    unsigned short extraLives{};  // CONTENTS_EXTRA_LIFE
 
-    unsigned short transforms;  // CONTENTS_TRANSFORM, snapshot
+    unsigned short transforms{};  // CONTENTS_TRANSFORM, snapshot
 
     // The two concealed-item counters keep numeric names: each is counted from
     // two places that do not agree.  shadow1 counts a bombable hiding a
@@ -59,15 +59,15 @@ struct LevelCensus {
     // hiding an extra life, and a kind 2 foe dropping 0x4d.  The bombable
     // half reads as crystals and lives; the foe half does not (0x07 is an
     // extra life, 0x4d a free bomb), so a meaningful name would be a guess.
-    unsigned short shadow1;
-    unsigned short shadow7;
+    unsigned short shadow1{};
+    unsigned short shadow7{};
 
-    unsigned short paragliders;   // CONTENTS_PARAGLIDER, snapshot
-    unsigned short speedUps;      // CONTENTS_SPEED_UP, snapshot
-    unsigned short grant09Items;  // CONTENTS_GRANT_09, snapshot
-    unsigned short freeBombs;     // entries in the FreeBomb table
-    unsigned short timed;         // entries in the TimedSpawner table
-    unsigned short jumpPads;      // TILE_JUMP_PAD
+    unsigned short paragliders{};   // CONTENTS_PARAGLIDER, snapshot
+    unsigned short speedUps{};      // CONTENTS_SPEED_UP, snapshot
+    unsigned short grant09Items{};  // CONTENTS_GRANT_09, snapshot
+    unsigned short freeBombs{};     // entries in the FreeBomb table
+    unsigned short timed{};         // entries in the TimedSpawner table
+    unsigned short jumpPads{};      // TILE_JUMP_PAD
 
     // total is the level's collectable-item count: grant09Items + speedUps +
     // shadow1 + transforms + paragliders + shadow7 + freezeItems + extraLives

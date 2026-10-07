@@ -76,20 +76,20 @@ public:
 private:
      
 
-    unsigned int   changed_;
-    unsigned short lastNodeSeen_;
-    double         lockStart_;
-    unsigned int   lock_;
-    unsigned int   leave_;
-    unsigned char  lastKey_;
-    unsigned char  cursor_;
-    unsigned char  savedCursor_[0xff];  // by node id
-    unsigned char  childCount_[0xff];   // by node id
+    unsigned int   changed_{};
+    unsigned short lastNodeSeen_{};
+    double         lockStart_{};
+    unsigned int   lock_{};
+    unsigned int   leave_{};
+    unsigned char  lastKey_{};
+    unsigned char  cursor_{};
+    unsigned char  savedCursor_[0xff]{};  // by node id
+    unsigned char  childCount_[0xff]{};   // by node id
     // children_[node * 0xff + i].  How many rows the game uses is not settled,
     // so it runs, undivided, to the depth byte.
-    unsigned char  children_[0x1fe01];
-    unsigned char  depth_;
+    unsigned char  children_[0x1fe01]{};
+    unsigned char  depth_{};
     // PRESERVED: no bounds check anywhere; a runaway push walks off the end.
-    unsigned char  stack_[0x1fe];
-    unsigned char  node_;
+    unsigned char  stack_[0x1fe]{};
+    unsigned char  node_{};
 };
