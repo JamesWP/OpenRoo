@@ -117,9 +117,9 @@ static std::string json_escape(const char *in)
 /* Level events.  A recording crosses several levels and deaths, and the last
  * in-level frame describes only the final one, so a snapshot is taken at each
  * moment worth asserting on: a level loading (the first in-level frame), a
- * level completing, and the player dying.  The dump lists them in order. */
+ * level completing, the player dying, and the run ending ("quit").  The dump lists them in order. */
 struct Event {
-    const char *kind;     // "load", "complete" or "death"
+    const char *kind;     // "load", "complete", "death" or "quit"
     uint32_t    frame;
     std::string level;
     GameState   state;
@@ -159,6 +159,7 @@ static std::string g_done_level;  // the name moves on once the flag clears
 static bool      g_done_pending;
 static bool      g_have_last;
 static GameState g_last;  // previous tick's state, for edge detection
+static std::string g_last_level;  // the level of the last in-level frame
 
 static void flush_completion(void)
 {
@@ -188,6 +189,7 @@ void gamestate_tick(void)
     } else {
         flush_completion();
     }
+    if (s.mode != 0) g_last_level = current_level();
     g_last      = s;
     g_have_last = true;
 
@@ -237,6 +239,8 @@ void gamestate_dump(const char *reason)
     }
 
     flush_completion();
+    if (g_have_last)
+        record_event("quit", g_frame, g_last, g_last_level);
 
     printTo(fp, "{\n");
     printTo(fp, "  \"reason\": \"%s\",\n", reason);

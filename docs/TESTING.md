@@ -220,7 +220,8 @@ to the expected length unchanged, suspect a message posted by the quit path.
 A recording usually crosses several levels and deaths, so the last in-level
 frame says little about any one of them. The state dump instead carries an
 **`events`** list, one full snapshot each time a level **loads** (first
-in-level frame), **completes**, or the player **dies** (lives drop), in order.
+in-level frame), **completes**, the player **dies** (lives drop), or the run **quits** (the last
+state seen, with the level it was in), in order.
 Each carries `kind`, `level` and the same fields (`gems_collected`,
 `level_score`, `total_score`, `lives`, ...). `--bless` flattens them into
 dotted keys, plus `event_count` and `frames_run`:

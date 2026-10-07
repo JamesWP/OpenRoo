@@ -32,10 +32,10 @@
       "description": "Playthrough part 1: i did all of forrest but died a few times so loaded a bunch of saves",
       "scenario": "start a new game play a few levels and exit once we complete forest and start castle",
       "expect": {
-        "crash": "different",
+        "crash": "none",
         "state": {
           "frames_run": 34677,
-          "event_count": 27,
+          "event_count": 28,
           "events.0.kind": "load",
           "events.0.level": "Forest\\Start",
           "events.0.mode": 1,
@@ -521,9 +521,27 @@
           "events.26.time_limit_s": 120,
           "events.26.elapsed_ms": 16,
           "events.26.level_complete": 0,
-          "events.26.death_cause": 0
+          "events.26.death_cause": 0,
+          "events.27.kind": "quit",
+          "events.27.level": "Castle\\Elev&PlatfStart",
+          "events.27.mode": 0,
+          "events.27.gems_collected": 0,
+          "events.27.gems_required": 48,
+          "events.27.foes_killed": 0,
+          "events.27.items_collected": 0,
+          "events.27.items_available": 51,
+          "events.27.items_bonus_blocked": 0,
+          "events.27.vitality": 0,
+          "events.27.lives": 4,
+          "events.27.bombs": 0,
+          "events.27.level_score": 301,
+          "events.27.total_score": 5915,
+          "events.27.time_limit_s": 120,
+          "events.27.elapsed_ms": 496,
+          "events.27.level_complete": 0,
+          "events.27.death_cause": 0
         },
-        "seconds": 7.3
+        "seconds": 6.0
       },
       "notes": "Captured 34659 frames. No end-state assertions yet \u2014 run `replaytest.py --bless Playthrough-01` once a replay is trusted.",
       "playthrough": "Playthrough"
@@ -534,10 +552,10 @@
       "description": "Playthrough part 2: continue the playthrough",
       "scenario": "continue the playthrough",
       "expect": {
-        "crash": "different",
+        "crash": "none",
         "state": {
           "frames_run": 75030,
-          "event_count": 27,
+          "event_count": 28,
           "events.0.kind": "load",
           "events.0.level": "Castle\\Elev&PlatfStart",
           "events.0.mode": 1,
@@ -1023,9 +1041,27 @@
           "events.26.time_limit_s": 47,
           "events.26.elapsed_ms": 41280,
           "events.26.level_complete": 1,
-          "events.26.death_cause": 0
+          "events.26.death_cause": 0,
+          "events.27.kind": "quit",
+          "events.27.level": "Castle\\TimeBonus",
+          "events.27.mode": 0,
+          "events.27.gems_collected": 0,
+          "events.27.gems_required": 15,
+          "events.27.foes_killed": 0,
+          "events.27.items_collected": 0,
+          "events.27.items_available": 15,
+          "events.27.items_bonus_blocked": 0,
+          "events.27.vitality": 0,
+          "events.27.lives": 5,
+          "events.27.bombs": 0,
+          "events.27.level_score": 204,
+          "events.27.total_score": 11228,
+          "events.27.time_limit_s": 100,
+          "events.27.elapsed_ms": 0,
+          "events.27.level_complete": 0,
+          "events.27.death_cause": 0
         },
-        "seconds": 46.8
+        "seconds": 35.1
       },
       "notes": "Captured 75011 frames. No end-state assertions yet \u2014 run `replaytest.py --bless Playthrough-02` once a replay is trusted.",
       "playthrough": "Playthrough"
@@ -1039,7 +1075,7 @@
         "crash": "different",
         "state": {
           "frames_run": 59503,
-          "event_count": 33,
+          "event_count": 34,
           "events.0.kind": "load",
           "events.0.level": "Water\\Water01",
           "events.0.mode": 1,
@@ -1633,9 +1669,27 @@
           "events.32.time_limit_s": 80,
           "events.32.elapsed_ms": 22048,
           "events.32.level_complete": 1,
-          "events.32.death_cause": 0
+          "events.32.death_cause": 0,
+          "events.33.kind": "quit",
+          "events.33.level": "Water\\BonusObstacles",
+          "events.33.mode": 0,
+          "events.33.gems_collected": 0,
+          "events.33.gems_required": 10,
+          "events.33.foes_killed": 0,
+          "events.33.items_collected": 0,
+          "events.33.items_available": 10,
+          "events.33.items_bonus_blocked": 0,
+          "events.33.vitality": 0,
+          "events.33.lives": 8,
+          "events.33.bombs": 0,
+          "events.33.level_score": 191,
+          "events.33.total_score": 16055,
+          "events.33.time_limit_s": 120,
+          "events.33.elapsed_ms": 0,
+          "events.33.level_complete": 0,
+          "events.33.death_cause": 0
         },
-        "seconds": 25.6
+        "seconds": 11.6
       },
       "notes": "Captured 59480 frames. No end-state assertions yet \u2014 run `replaytest.py --bless Playthrough-03` once a replay is trusted.",
       "playthrough": "Playthrough"
@@ -1646,10 +1700,10 @@
       "description": "Bomb timing on Castle\\Tower: collects bomb pickups and drops one; ends with one gem and five bombs",
       "scenario": "ends with one gem and five bombs",
       "expect": {
-        "crash": "different",
+        "crash": "none",
         "state": {
           "frames_run": 1764,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Castle\\Tower",
           "events.0.mode": 1,
@@ -1667,9 +1721,27 @@
           "events.0.time_limit_s": 180,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Castle\\Tower",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 1,
+          "events.1.gems_required": 12,
+          "events.1.foes_killed": 0,
+          "events.1.items_collected": 3,
+          "events.1.items_available": 14,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 56,
+          "events.1.lives": 2,
+          "events.1.bombs": 5,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 180,
+          "events.1.elapsed_ms": 23184,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 0
         },
-        "seconds": 2.9
+        "seconds": 1.5
       }
     },
     {
@@ -1686,7 +1758,7 @@
         "crash": "none",
         "state": {
           "frames_run": 1035,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Forest\\BombStart",
           "events.0.mode": 1,
@@ -1704,9 +1776,27 @@
           "events.0.time_limit_s": 120,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Forest\\BombStart",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 0,
+          "events.1.gems_required": 0,
+          "events.1.foes_killed": 1,
+          "events.1.items_collected": 1,
+          "events.1.items_available": 13,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 61,
+          "events.1.lives": 0,
+          "events.1.bombs": 2,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 120,
+          "events.1.elapsed_ms": 10544,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 0
         },
-        "seconds": 1.4
+        "seconds": 0.9
       },
       "notes": "Named for the crash it used to reproduce; kept under that name because docs/TESTING.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced byte-identical 1036-frame hash logs and identical end-state dumps. --fast is the suite default, and this entry sets \"fast\": false to opt out of it: --fast skips the ddraw draw calls, and the fault this recording guards happened INSIDE DrawPrimitiveStrided, so running it fast would silently retire the only render-path crash guard the suite has. Costs about 10 s. Remove the field to make the whole suite fast unconditionally.",
       "fast": false
@@ -1721,7 +1811,7 @@
         "crash": "none",
         "state": {
           "frames_run": 1065,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Space\\Bridge01",
           "events.0.mode": 1,
@@ -1739,9 +1829,27 @@
           "events.0.time_limit_s": 300,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Space\\Bridge01",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 0,
+          "events.1.gems_required": 25,
+          "events.1.foes_killed": 0,
+          "events.1.items_collected": 0,
+          "events.1.items_available": 26,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 87,
+          "events.1.lives": 3,
+          "events.1.bombs": 0,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 300,
+          "events.1.elapsed_ms": 11184,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 4
         },
-        "seconds": 1.7
+        "seconds": 0.7
       },
       "notes": "Captured 1063 frames. Blessed; the note previously still said it was unasserted."
     },
@@ -1755,7 +1863,7 @@
         "crash": "none",
         "state": {
           "frames_run": 1034,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Castle\\Something",
           "events.0.mode": 1,
@@ -1773,9 +1881,27 @@
           "events.0.time_limit_s": 120,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Castle\\Something",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 8,
+          "events.1.gems_required": 40,
+          "events.1.foes_killed": 0,
+          "events.1.items_collected": 8,
+          "events.1.items_available": 41,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 70,
+          "events.1.lives": 3,
+          "events.1.bombs": 0,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 120,
+          "events.1.elapsed_ms": 11312,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 1
         },
-        "seconds": 2.8
+        "seconds": 1.4
       },
       "notes": "Captured 1033 frames. Blessed; the note previously still said it was unasserted."
     },
@@ -1789,7 +1915,7 @@
         "crash": "none",
         "state": {
           "frames_run": 2517,
-          "event_count": 2,
+          "event_count": 3,
           "events.0.kind": "load",
           "events.0.level": "Egypt\\CollectIt",
           "events.0.mode": 1,
@@ -1825,9 +1951,27 @@
           "events.1.time_limit_s": 65,
           "events.1.elapsed_ms": 34176,
           "events.1.level_complete": 1,
-          "events.1.death_cause": 0
+          "events.1.death_cause": 0,
+          "events.2.kind": "quit",
+          "events.2.level": "Egypt\\CollectIt",
+          "events.2.mode": 0,
+          "events.2.gems_collected": 0,
+          "events.2.gems_required": 10,
+          "events.2.foes_killed": 0,
+          "events.2.items_collected": 0,
+          "events.2.items_available": 11,
+          "events.2.items_bonus_blocked": 0,
+          "events.2.vitality": 0,
+          "events.2.lives": 3,
+          "events.2.bombs": 0,
+          "events.2.level_score": 309,
+          "events.2.total_score": 309,
+          "events.2.time_limit_s": 120,
+          "events.2.elapsed_ms": 0,
+          "events.2.level_complete": 0,
+          "events.2.death_cause": 0
         },
-        "seconds": 2.8
+        "seconds": 1.0
       },
       "notes": "Captured 2514 frames. Covers foe type 3 (+0x62 == 3) and the arm that calls FindNearestFlaggedTileInRadius with the foe's own cell and radius 5. On SUCCESS it sets foe+0x64 = 0x96 and calls SetFoeChaseTarget with the found tile; on FAILURE it falls back to the player's cell (Game+0x1751fa/fb) with foe+0x64 = 0x64 -- so a foe visibly ignoring the player is the search succeeding. Sibling of switchfoe, which covers type 2. Type 5 (FindFarthestOccupiedTile) still has no recording: see Castle\\EnemyVsEnemy. COVERAGE, measured not assumed: this recording CALLS the search and SUCCEEDS in it (KAROO_TILEQ_DIAG=1 logs a HIT at u=9 v=5), but KAROO_SIM_FX=radiusfar still passes 16/16 -- so the function is EXERCISED but UNCONTROLLED. A near/far control only fails if two candidates were in range at different distances AND the swap moved an asserted field; that was not established here. Do not read this entry's presence as radiusfar coverage."
     },
@@ -1841,7 +1985,7 @@
         "crash": "none",
         "state": {
           "frames_run": 2100,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Forest\\DestrStart",
           "events.0.mode": 1,
@@ -1859,9 +2003,27 @@
           "events.0.time_limit_s": 120,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Forest\\DestrStart",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 3,
+          "events.1.gems_required": 30,
+          "events.1.foes_killed": 1,
+          "events.1.items_collected": 4,
+          "events.1.items_available": 31,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 45,
+          "events.1.lives": 4,
+          "events.1.bombs": 0,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 120,
+          "events.1.elapsed_ms": 28608,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 0
         },
-        "seconds": 2.0
+        "seconds": 0.9
       },
       "notes": "Captured 2098 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-bait` once a replay is trusted."
     },
@@ -1875,7 +2037,7 @@
         "crash": "none",
         "state": {
           "frames_run": 4605,
-          "event_count": 2,
+          "event_count": 3,
           "events.0.kind": "load",
           "events.0.level": "Forest\\DestrStart",
           "events.0.mode": 1,
@@ -1911,9 +2073,27 @@
           "events.1.time_limit_s": 120,
           "events.1.elapsed_ms": 61344,
           "events.1.level_complete": 1,
-          "events.1.death_cause": 0
+          "events.1.death_cause": 0,
+          "events.2.kind": "quit",
+          "events.2.level": "Forest\\DestrStart",
+          "events.2.mode": 0,
+          "events.2.gems_collected": 0,
+          "events.2.gems_required": 0,
+          "events.2.foes_killed": 0,
+          "events.2.items_collected": 0,
+          "events.2.items_available": 13,
+          "events.2.items_bonus_blocked": 0,
+          "events.2.vitality": 0,
+          "events.2.lives": 4,
+          "events.2.bombs": 0,
+          "events.2.level_score": 537,
+          "events.2.total_score": 537,
+          "events.2.time_limit_s": 120,
+          "events.2.elapsed_ms": 0,
+          "events.2.level_complete": 0,
+          "events.2.death_cause": 0
         },
-        "seconds": 3.4
+        "seconds": 1.2
       },
       "notes": "Captured 4602 frames. No end-state assertions yet \u2014 run `replaytest.py --bless destr-extralife` once a replay is trusted."
     },
@@ -1927,7 +2107,7 @@
         "crash": "none",
         "state": {
           "frames_run": 2013,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Space\\EnemyFactory",
           "events.0.mode": 1,
@@ -1945,9 +2125,27 @@
           "events.0.time_limit_s": 120,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Space\\EnemyFactory",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 2,
+          "events.1.gems_required": 20,
+          "events.1.foes_killed": 6,
+          "events.1.items_collected": 10,
+          "events.1.items_available": 8,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 60,
+          "events.1.lives": 3,
+          "events.1.bombs": 17,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 120,
+          "events.1.elapsed_ms": 27856,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 1
         },
-        "seconds": 2.2
+        "seconds": 1.0
       },
       "notes": "Captured 2013 frames. Determinism confirmed before blessing rather than assumed: two consecutive headless runs produced byte-identical hash logs AND byte-identical end-state dumps. Blessed on 18 fields; the assertion was then watched to fail on purpose (foes_killed forced to 99 -> harness exits 1 naming that field) before being restored. foes_killed=6 is the field that carries the weight here: it is the spawn/despawn churn expressed as a number, so a regression in the ID allocator or the free-list compaction shows up as a different kill count rather than as a crash. Note items_collected 10 exceeds items_available 8 -- that is what the game reports, not a blessing error."
     },
@@ -1961,7 +2159,7 @@
         "crash": "none",
         "state": {
           "frames_run": 3630,
-          "event_count": 2,
+          "event_count": 3,
           "events.0.kind": "load",
           "events.0.level": "Space\\Freeze03",
           "events.0.mode": 1,
@@ -1997,9 +2195,27 @@
           "events.1.time_limit_s": 120,
           "events.1.elapsed_ms": 0,
           "events.1.level_complete": 0,
-          "events.1.death_cause": 0
+          "events.1.death_cause": 0,
+          "events.2.kind": "quit",
+          "events.2.level": "Space\\Freeze03",
+          "events.2.mode": 0,
+          "events.2.gems_collected": 0,
+          "events.2.gems_required": 4,
+          "events.2.foes_killed": 0,
+          "events.2.items_collected": 4,
+          "events.2.items_available": 8,
+          "events.2.items_bonus_blocked": 1,
+          "events.2.vitality": 0,
+          "events.2.lives": 2,
+          "events.2.bombs": 0,
+          "events.2.level_score": 0,
+          "events.2.total_score": 0,
+          "events.2.time_limit_s": 120,
+          "events.2.elapsed_ms": 720,
+          "events.2.level_complete": 0,
+          "events.2.death_cause": 0
         },
-        "seconds": 5.1
+        "seconds": 1.6
       },
       "notes": "Captured 3630 frames. Determinism confirmed before blessing rather than assumed: two consecutive headless runs produced byte-identical hash logs AND byte-identical end-state dumps. Blessed on 18 fields; the assertion was then watched to fail on purpose (items_collected forced to 77 -> harness exits 1 naming that field) before being restored. The fields to watch are the ones that say the high-type foes behaved: foes_killed 0 and vitality 0 mean the player died to them without killing any, so a regression in the high-type path would move vitality or death_cause here and nowhere else in the suite. KAROO_SPAWN_DIAG=1 on this recording logs HIGHTYPE 102, 103 and 104 plus 'first type > 0x64' -- that is how to confirm the branch is still reached."
     },
@@ -2013,7 +2229,7 @@
         "crash": "none",
         "state": {
           "frames_run": 2258,
-          "event_count": 2,
+          "event_count": 3,
           "events.0.kind": "load",
           "events.0.level": "Forest\\FreezeStart",
           "events.0.mode": 1,
@@ -2049,9 +2265,27 @@
           "events.1.time_limit_s": 100,
           "events.1.elapsed_ms": 30240,
           "events.1.level_complete": 1,
-          "events.1.death_cause": 0
+          "events.1.death_cause": 0,
+          "events.2.kind": "quit",
+          "events.2.level": "Forest\\FreezeStart",
+          "events.2.mode": 0,
+          "events.2.gems_collected": 0,
+          "events.2.gems_required": 30,
+          "events.2.foes_killed": 0,
+          "events.2.items_collected": 0,
+          "events.2.items_available": 31,
+          "events.2.items_bonus_blocked": 0,
+          "events.2.vitality": 0,
+          "events.2.lives": 3,
+          "events.2.bombs": 0,
+          "events.2.level_score": 839,
+          "events.2.total_score": 839,
+          "events.2.time_limit_s": 120,
+          "events.2.elapsed_ms": 0,
+          "events.2.level_complete": 0,
+          "events.2.death_cause": 0
         },
-        "seconds": 1.5
+        "seconds": 0.8
       },
       "notes": "Blessed 2026-09-05. Determinism confirmed before blessing rather than assumed: two consecutive runs produced byte-identical 2258-frame hash logs AND byte-identical end-state dumps. The completion fields are the ones to watch -- level_complete, gems 56/56 and items 64/64 all being maxed is what makes the all-items bonus fire, and a regression that quietly denies that bonus would show up here as a level_score change and nowhere else."
     },
@@ -2064,7 +2298,7 @@
         "crash": "none",
         "state": {
           "frames_run": 1495,
-          "event_count": 2,
+          "event_count": 3,
           "events.0.kind": "load",
           "events.0.level": "Forest\\EnemyStart",
           "events.0.mode": 1,
@@ -2100,9 +2334,27 @@
           "events.1.time_limit_s": 60,
           "events.1.elapsed_ms": 0,
           "events.1.level_complete": 0,
-          "events.1.death_cause": 0
+          "events.1.death_cause": 0,
+          "events.2.kind": "quit",
+          "events.2.level": "Forest\\EnemyStart",
+          "events.2.mode": 0,
+          "events.2.gems_collected": 0,
+          "events.2.gems_required": 0,
+          "events.2.foes_killed": 0,
+          "events.2.items_collected": 0,
+          "events.2.items_available": 17,
+          "events.2.items_bonus_blocked": 0,
+          "events.2.vitality": 0,
+          "events.2.lives": 2,
+          "events.2.bombs": 0,
+          "events.2.level_score": 94,
+          "events.2.total_score": 0,
+          "events.2.time_limit_s": 120,
+          "events.2.elapsed_ms": 0,
+          "events.2.level_complete": 0,
+          "events.2.death_cause": 0
         },
-        "seconds": 1.5
+        "seconds": 0.6
       },
       "notes": "Captured 1491 frames, blessed on 18 fields. The ONLY recording that reaches the game-over overlay (bGame_state 2), so it is the only automated coverage of src/ui/scoreoverlay.cpp Score_DrawGameOverScore -- the four capped \"scoreoverlay: gameover\" lines in karoo_hooks.log are how you check it still runs. One life, so the single death ends the game rather than respawning; lives=0 and death_cause=1 are the fields that say so. Scores are non-zero (4 gems, level_score 94) deliberately, so the breakdown draws real numbers in its count and product columns rather than a screen of zeros. The high-score half of that file is NOT covered here -- reach it with KAROO_MENU_NODE=3."
     },
@@ -2116,7 +2368,7 @@
         "crash": "none",
         "state": {
           "frames_run": 1138,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Egypt\\ProtectionStart",
           "events.0.mode": 1,
@@ -2134,9 +2386,27 @@
           "events.0.time_limit_s": 100,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Egypt\\ProtectionStart",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 0,
+          "events.1.gems_required": 12,
+          "events.1.foes_killed": 0,
+          "events.1.items_collected": 1,
+          "events.1.items_available": 17,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 10,
+          "events.1.lives": 3,
+          "events.1.bombs": 0,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 100,
+          "events.1.elapsed_ms": 11616,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 1
         },
-        "seconds": 2.8
+        "seconds": 0.8
       },
       "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1138-frame hash logs and identical end-state dumps. NOTE the death_cause=1 with lives=3: that pairing is recorded as observed and has NOT been explained -- gameover-forest reaches death_cause=1 with lives=0. Do not read it as 'a death was not counted' without checking; it is asserted here so that if the meaning of the field changes, this entry says so."
     },
@@ -2150,7 +2420,7 @@
         "crash": "none",
         "state": {
           "frames_run": 1464,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Space\\Sandra02",
           "events.0.mode": 1,
@@ -2168,9 +2438,27 @@
           "events.0.time_limit_s": 180,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Space\\Sandra02",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 1,
+          "events.1.gems_required": 30,
+          "events.1.foes_killed": 0,
+          "events.1.items_collected": 1,
+          "events.1.items_available": 39,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 44,
+          "events.1.lives": 3,
+          "events.1.bombs": 0,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 180,
+          "events.1.elapsed_ms": 18176,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 0
         },
-        "seconds": 2.6
+        "seconds": 1.0
       },
       "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1464-frame hash logs and identical end-state dumps. The level is not completed, so there is no at_completion block and completed_a_level is false. Its value is the tile-effect coverage, not the outcome: this is the recording that will catch a regression in Game::UpdatePlayerTileEffects (0x41fcb0), which handles glue, slides, jump pads and teleporters and which no recording could see before it existed."
     },
@@ -2184,7 +2472,7 @@
         "crash": "none",
         "state": {
           "frames_run": 1798,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Space\\Bridges&EnemiesStart",
           "events.0.mode": 1,
@@ -2202,9 +2490,27 @@
           "events.0.time_limit_s": 140,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Space\\Bridges&EnemiesStart",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 0,
+          "events.1.gems_required": 8,
+          "events.1.foes_killed": 0,
+          "events.1.items_collected": 0,
+          "events.1.items_available": 9,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 35,
+          "events.1.lives": 3,
+          "events.1.bombs": 0,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 140,
+          "events.1.elapsed_ms": 25312,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 0
         },
-        "seconds": 1.6
+        "seconds": 1.0
       },
       "notes": "Captured 1796 frames. Covers foe type 2 (+0x62 == 2), the gate (foe+0xd7 == 0xff -> retarget) and the type-2 arm, which calls FindNearestListedObjectTile with the foe's own cell and radius 7. The census in src/level/tilequery.cpp names five levels carrying a gated foe type; this is one of the two type-2 levels. Types 3 and 5 still have no recording -- see Egypt\\CollectIt / Candy\\Collect01 and Castle\\EnemyVsEnemy."
     },
@@ -2218,7 +2524,7 @@
         "crash": "none",
         "state": {
           "frames_run": 2931,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Candy\\Thrower02",
           "events.0.mode": 1,
@@ -2236,9 +2542,27 @@
           "events.0.time_limit_s": 220,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Candy\\Thrower02",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 1,
+          "events.1.gems_required": 10,
+          "events.1.foes_killed": 1,
+          "events.1.items_collected": 1,
+          "events.1.items_available": 15,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 24,
+          "events.1.lives": 3,
+          "events.1.bombs": 0,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 220,
+          "events.1.elapsed_ms": 44240,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 0
         },
-        "seconds": 4.2
+        "seconds": 1.2
       },
       "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 2931-frame hash logs and identical end-state dumps. foes_killed=1 is worth keeping an eye on: it is one of only two recordings that kills anything (with bombstart-crash), so it is thin coverage of the foe-death path and of CalculateLevelScore's foe term."
     },
@@ -2252,7 +2576,7 @@
         "crash": "none",
         "state": {
           "frames_run": 1395,
-          "event_count": 1,
+          "event_count": 2,
           "events.0.kind": "load",
           "events.0.level": "Candy\\Thrower02",
           "events.0.mode": 1,
@@ -2270,9 +2594,27 @@
           "events.0.time_limit_s": 220,
           "events.0.elapsed_ms": 16,
           "events.0.level_complete": 0,
-          "events.0.death_cause": 0
+          "events.0.death_cause": 0,
+          "events.1.kind": "quit",
+          "events.1.level": "Candy\\Thrower02",
+          "events.1.mode": 0,
+          "events.1.gems_collected": 0,
+          "events.1.gems_required": 10,
+          "events.1.foes_killed": 0,
+          "events.1.items_collected": 3,
+          "events.1.items_available": 15,
+          "events.1.items_bonus_blocked": 0,
+          "events.1.vitality": 41,
+          "events.1.lives": 4,
+          "events.1.bombs": 0,
+          "events.1.level_score": 0,
+          "events.1.total_score": 0,
+          "events.1.time_limit_s": 220,
+          "events.1.elapsed_ms": 16160,
+          "events.1.level_complete": 0,
+          "events.1.death_cause": 0
         },
-        "seconds": 1.9
+        "seconds": 0.8
       },
       "notes": "Blessed 2026-09-05, after two consecutive runs produced byte-identical 1395-frame hash logs and identical end-state dumps. lives=4 is the assertion that matters here -- if a change breaks the extra-life pickup, this is the only recording that fails."
     },
@@ -2286,7 +2628,7 @@
         "crash": "none",
         "state": {
           "frames_run": 4149,
-          "event_count": 3,
+          "event_count": 4,
           "events.0.kind": "load",
           "events.0.level": "Water\\Water01",
           "events.0.mode": 1,
@@ -2340,7 +2682,25 @@
           "events.2.time_limit_s": 220,
           "events.2.elapsed_ms": 16,
           "events.2.level_complete": 0,
-          "events.2.death_cause": 0
+          "events.2.death_cause": 0,
+          "events.3.kind": "quit",
+          "events.3.level": "Water\\Elev&Platf02",
+          "events.3.mode": 0,
+          "events.3.gems_collected": 0,
+          "events.3.gems_required": 12,
+          "events.3.foes_killed": 0,
+          "events.3.items_collected": 0,
+          "events.3.items_available": 12,
+          "events.3.items_bonus_blocked": 0,
+          "events.3.vitality": 0,
+          "events.3.lives": 0,
+          "events.3.bombs": 0,
+          "events.3.level_score": 320,
+          "events.3.total_score": 320,
+          "events.3.time_limit_s": 220,
+          "events.3.elapsed_ms": 1168,
+          "events.3.level_complete": 0,
+          "events.3.death_cause": 0
         },
         "seconds": 1.4
       },
