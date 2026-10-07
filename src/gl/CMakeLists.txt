@@ -11,6 +11,7 @@ add_library(gl OBJECT
 target_include_directories(gl PRIVATE
     .
     ../log
+    ../prof
     ../app
     ../core
     ../render

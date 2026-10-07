@@ -7,6 +7,7 @@ add_library(app OBJECT
 target_include_directories(app PRIVATE
     .
     ../log
+    ../prof
     ../audiodev
     ../sysdev
     ../inputdev

@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include "image.h"
 #include "logger.h"
+#include "prof.h"
 #include <math.h>
 #include <string.h>
 #include <strings.h>
@@ -624,7 +625,10 @@ void RenderDevice::Present()
         }
     }
     capture_frame(n, ++n->presented);
-    n->window->swapBuffers();
+    {
+        PROF_SCOPE("swap");
+        n->window->swapBuffers();
+    }
 }
 
 // ── State ──

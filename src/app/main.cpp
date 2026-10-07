@@ -39,6 +39,7 @@
 #include "launcherdialogs.h"
 #include "windev.h"
 #include "debugui.h"
+#include "prof.h"
 #include "progctrl.h"
 #include "texture.h"
 #include "scene.h"
@@ -297,7 +298,9 @@ int Main_WinMain(const char *lpCmdLine)
         debugui::init(*d3d);
 
     g_norender = winmain_fx_norender();
+    prof::initSlowFrames();
     const int exitCode = windev::runMessageLoop(idle);
+    prof::dumpSlowFrames();
     debugui::shutdown(*d3d);
 
     // Settings are saved after the Game is deleted; the device goes last.

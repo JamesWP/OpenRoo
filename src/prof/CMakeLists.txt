@@ -2,4 +2,4 @@
 # debug UI reads.
 add_library(prof OBJECT
     prof.cpp)
-target_include_directories(prof PRIVATE .)
+target_include_directories(prof PRIVATE . ../log)
