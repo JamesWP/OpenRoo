@@ -16,6 +16,7 @@
  * inactive device and does nothing. */
 
 #include "glnative.h"
+#include "gldiag.h"
 #include "sysdev.h"
 #include "logger.h"
 #include <algorithm>
@@ -189,7 +190,7 @@ bool RenderDevice::Create(windev::Window *window, const AdapterId *adapter, int 
     if (mode_ == NULL)
         return false;
 
-    const windev::GLContextConfig want = { 3, 3, 24, 8 };
+    const windev::GLContextConfig want = { 3, 3, 24, 8, gldiag::wanted() };
     if (!window->createGLContext(want)) {
         strcpy(lastError_, "Could not create an OpenGL 3.3 context.");
         mode_ = NULL;
@@ -214,6 +215,7 @@ bool RenderDevice::Create(windev::Window *window, const AdapterId *adapter, int 
     }
     n->active  = true;
     n->stencil = true;
+    gldiag::init();
 
     // Vsync, unless KAROO_NOVSYNC asks the replay harness's way of running
     // unthrottled.

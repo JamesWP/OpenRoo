@@ -51,6 +51,7 @@ public:
 struct GLContextConfig {
     int major, minor;
     int depthBits, stencilBits;
+    bool debug;     // a debug context, for the driver's own diagnostics
 };
 
 struct WindowConfig {

@@ -4,6 +4,7 @@ add_library(gl OBJECT
     createdevice.cpp
     devicetexture.cpp
     drawtrace.cpp
+    gldiag.cpp
     glapi.cpp
     pixelconvert.cpp
     renderdevice.cpp

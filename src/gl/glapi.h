@@ -50,9 +50,19 @@ namespace windev { class Window; }
     X(UniformBlockBinding, UNIFORMBLOCKBINDING) \
     X(Scissor, SCISSOR) X(DrawArrays, DRAWARRAYS) X(DrawElements, DRAWELEMENTS)
 
+/* Diagnostic entry points: null if the driver lacks them, and nothing but
+ * gldiag uses them. */
+#define GL_OPTIONAL_FUNCTIONS(X) \
+    X(DebugMessageCallback, DEBUGMESSAGECALLBACK) \
+    X(GenQueries, GENQUERIES) X(DeleteQueries, DELETEQUERIES) \
+    X(BeginQuery, BEGINQUERY) X(EndQuery, ENDQUERY) \
+    X(GetQueryObjectiv, GETQUERYOBJECTIV) \
+    X(GetQueryObjectui64v, GETQUERYOBJECTUI64V)
+
 struct GLApi {
 #define X(name, upper) PFNGL##upper##PROC name;
     GL_FUNCTIONS(X)
+    GL_OPTIONAL_FUNCTIONS(X)
 #undef X
 };
 

@@ -178,6 +178,7 @@ bool Window::createGLContext(const GLContextConfig &c)
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, c.depthBits);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, c.stencilBits);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, c.debug ? SDL_GL_CONTEXT_DEBUG_FLAG : 0);
     SDL_GLContext ctx = SDL_GL_CreateContext(g_sdlWindow);
     if (!ctx) {
         WD_LOG("windev: SDL_GL_CreateContext failed: %s\n", SDL_GetError());

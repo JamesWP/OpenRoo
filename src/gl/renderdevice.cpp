@@ -15,6 +15,7 @@
  * nothing in the simulation reads back. */
 
 #include "glnative.h"
+#include "gldiag.h"
 #include "sysdev.h"
 #include <stdio.h>
 #include "image.h"
@@ -515,8 +516,10 @@ void RenderDevice::Clear(uint32_t flags)
         gl.DepthMask(GL_TRUE);  // a clear ignores the game's depth write
         n->dirty |= GLDirty::Depth;
     }
-    if (bits)
+    if (bits) {
+        gldiag::Timed t("glClear");
         gl.Clear(bits);
+    }
 }
 
 bool RenderDevice::BeginFrame()
@@ -627,6 +630,7 @@ void RenderDevice::Present()
     capture_frame(n, ++n->presented);
     {
         PROF_SCOPE("swap");
+        gldiag::Timed t("swap");
         n->window->swapBuffers();
     }
 }
