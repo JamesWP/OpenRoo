@@ -1,4 +1,9 @@
-# RG35XX Plus: cross-compilation environment report (SDL2 + GLES)
+# RG35XX Plus: cross-compilation environment report (SDL3 + GLES)
+
+> Update: the project uses **SDL3** (fetched and built statically, `cmake/FetchSDL.cmake`) and an
+> OpenGL 3.3 core renderer; where this report says SDL2, read SDL3. The owner has the **stock
+> firmware** installed, so Track A (§2) is the primary target. See `docs/gles-port-audit.md`
+> for the renderer/code audit.
 
 Status: research/plan only. Nothing here has been run on a device yet.
 Confidence is marked per claim: **[src]** = seen in a web source during research,
