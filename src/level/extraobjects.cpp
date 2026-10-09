@@ -72,7 +72,7 @@ static bool fx_nomodels(void)
  * strings is hashed raw, stale bytes included: the load order is
  * deterministic, so a byte written differently is caught.  Paths are hashed
  * without the game directory, so the dump is the same in every checkout.
- * tools/levelreport.py compares it (LeoRecords.txt). */
+ * It is a hand-diffable record of the parse. */
 
 /* s without a leading "<game dir>\", compared case-insensitively. */
 static const char *strip_game_dir(const char *s)

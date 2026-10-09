@@ -166,7 +166,7 @@ unsigned int FallingTile::spawn(Game *game, unsigned int uArg,
 
     //     // The TILE_FALLING marker is read back by SetupLevelObjects when it
     //     // places further objects, which is why placeaxis also fails
-    //     // levelreport.py.
+    //     // the level load.
     idx = v + u * 100;
     game->map()->tile( (int)u, (int)v)->setObjectMarker(TILE_FALLING);
 

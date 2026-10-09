@@ -1,11 +1,3 @@
-/* The level report (reportwriter.cpp) is triggered from here: holding L as the
- * sounds load writes it.  KAROO_LEVEL_REPORT=1 answers those polls
- * (levelreport.cpp).
- *
- * KAROO_SIM_FX=reportkey is a negative control: L is not polled, so the report
- * never runs.  levelreport.py must fail and the replay suite, which never
- * presses L, must pass. */
-
 #include "inputdev.h"
 #include <stdint.h>
 #include "sysdev.h"
@@ -14,7 +6,6 @@
 #include "logger.h"
 #include "soundmanager.h"
 #include "game.h"
-#include "reportwriter.h"
 #include "fixedsounds.h"
 #include "menutree.h"
 #include "player.h"
@@ -23,8 +14,6 @@
 #include "record.h"
 
 #include "audiodev.h"
-
-static int s_fx = -1;
 
 /* Resets the old buffer if there is one, then loads a new one from "<game
  * dir>\waves\<name><suffix>.wav".  The caller stores the result back into the
@@ -44,14 +33,6 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
 {
     SoundManager *sm = self->soundManager();
     char path[256];
-
-    if (s_fx < 0) {
-        char e[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
-        s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "reportkey") == 0);
-        if (s_fx)
-            g_logger.write("fixedsounds: KAROO_SIM_FX=reportkey -- VK_L not polled\n");
-    }
 
     if (self->fixedSounds()->loaded != 0)
         return;
@@ -98,15 +79,6 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     ScriptPlayer *sp = self->scriptPlayer();
     self->extraObjects()->setSoundManager(sm);
     sp->setSoundManager(sm);
-
-    // DETERMINISM: three polls of L; only the third answer counts.  All three
-    // are part of the recorded key stream.
-    if (!s_fx) {
-        input_key_down(inputdev::KEY_L);
-        input_key_down(inputdev::KEY_L);
-        if (input_key_down(inputdev::KEY_L) != 0)
-            Report_WriteLevelReport(self, GS_RPT_FILE);
-    }
 
     snprintf(path, sizeof(path), GS_WAV_TIME_OUT, g_gameDir);
     self->fixedSounds()->timeOut = sm->acquireStatic(path, 0);

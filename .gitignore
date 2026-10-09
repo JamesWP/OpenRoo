@@ -22,16 +22,8 @@ replaytest-*.json
 # **/*.sav above deliberately ignores. Without this, restoring a fixture would
 # depend on files nobody could clone.
 
-# The game's own all-levels dump, written into the game directory whenever L is
-# held during Game::LoadSounds. It is a *test output*, not source: the baseline
-# it is compared against lives in tests/levelreport/ (tools/levelreport.py).
-LevelReport.txt
-ScriptTexts.txt
-LeoRecords.txt
-!tests/levelreport/*.txt
-
 # DrawSceneObjects golden-output fixture run output (dsogolden.cpp, since removed).
-# A test output, like LevelReport.txt above: the baseline it is compared
+# A test output: the baseline it is compared
 # against lives in tests/rendertrace/ (tools/dsogolden.py).
 karoo_dso_golden.txt
 !tests/rendertrace/*.txt

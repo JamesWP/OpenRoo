@@ -32,8 +32,6 @@
 #include "record.h"
 #include "sysdev.h"
 #include "inputdev.h"
-#include "menu.h"
-#include "levelreport.h"
 #include "clock.h"
 #include "logger.h"
 #include <stdlib.h>
@@ -434,16 +432,6 @@ bool input_key_down(int key)
                       clock_frame(), key, __builtin_return_address(0));
         }
     }
-    // The menu driver answers first: it is synthesising an edge the menu's
-    // debounce depends on, which neither a recording nor the keyboard may
-    // contradict.
-    bool mv;
-    if (menu_async_override(key, &mv)) return mv;
-
-    // The level-report trigger comes next: it fires before the first frame
-    // boundary, so no recorded frame could answer it.
-    if (levelreport_async_override(key, &mv)) return mv;
-
     bool v;
     if (record_replaying()) {
         replay_async(key, &v);

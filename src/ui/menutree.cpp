@@ -4,8 +4,7 @@
  * Negative controls (KAROO_SIM_FX), both unable to fail the suite, as
  * docs/CONTROLS.md records: "stacktop" makes the pop read one past the top,
  * but every pop in the recordings is overwritten before anything reads it;
- * "menuroot" opens every menu on its second item, but the menu driver
- * routes from wherever the cursor is, so only frames_run moves (+1, the
+ * "menuroot" opens every menu on its second item, but only frames_run moves (+1, the
  * music-on signature).  "menuwrap" stops Down wrapping at the last entry.
  * KAROO_MENUSTACK_DIAG=1 logs every push, pop and rewind with running counts
  * and the deepest depth reached. */

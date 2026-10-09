@@ -204,7 +204,7 @@ public:
 
     /* ── game state ─────────────────────────────────────────────────── */
     /* The top-level state GameTick and HandleKeypress switch on, 0..7.
-     * menu.h's GAME_ST_* (decoded at runtime): 0 menu, 1 playing, 2 game
+     * 0 menu, 1 playing, 2 game
      * over, 3 level completed, 4 loaded (the flythrough and its "press
      * enter" screen), 7 quitting.  6 is high-score name entry (GameTick
      * sets it after InsertScoreIntoHighScoreTable); 5 is not decoded.
@@ -243,18 +243,6 @@ public:
     /* SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
     char          *levelNameBuffer()                 { return levelName_; }
     char          *levelNameTableEntry(unsigned char i) { return levelNameTable_[i]; }
-
-    /* The level-report tallies (reportwriter.cpp owns all of them). */
-    unsigned short reportLevelsWithScript() const    { return reportLevelsWithScript_; }
-    void        setReportLevelsWithScript(unsigned short n) { reportLevelsWithScript_ = n; }
-    unsigned short reportLevelsWithBonus() const     { return reportLevelsWithBonus_; }
-    void        setReportLevelsWithBonus(unsigned short n)  { reportLevelsWithBonus_ = n; }
-    unsigned short reportLevelsWithLeo() const       { return reportLevelsWithLeo_; }
-    void        setReportLevelsWithLeo(unsigned short n)    { reportLevelsWithLeo_ = n; }
-    unsigned short reportTallyA() const              { return reportTallyA_; }
-    void        setReportTallyA(unsigned short n)    { reportTallyA_ = n; }
-    int            reportScoreTotal() const          { return reportScoreTotal_; }
-    void        setReportScoreTotal(int n)           { reportScoreTotal_ = n; }
 
     /* ── video quality (the options menu; config.h has the derivation) ─ */
     unsigned char &videoShadows()                    { return config_.videoShadows(); }
@@ -503,13 +491,6 @@ private:
     char          gameFileName_[0x80]{};
     LevelCensus   census_;
     unsigned char restartCount_{};
-    /* The level-report tallies, zeroed and accumulated by
-     * Report_WriteLevelReport (reportwriter.cpp) and by nothing else. */
-    unsigned short reportLevelsWithScript_{};
-    int            reportScoreTotal_{};
-    unsigned short reportTallyA_{};
-    unsigned short reportLevelsWithBonus_{};
-    unsigned short reportLevelsWithLeo_{};
     /* Foes killed this level; CalculateLevelScore pays 50 each. */
     unsigned char foesKilled_{};
     unsigned short itemTotal_{};

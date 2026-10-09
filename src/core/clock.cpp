@@ -1,7 +1,7 @@
 /* The game clock: the seconds since start, from the platform layer's high-resolution counter.
  * Every clock read is also a frame boundary, so the per-frame test hooks (the
- * determinism hash, the state and world logs, the level
- * report, the menu driver and the recorder) run from here.
+ * determinism hash, the state and world logs, the
+ * recorder) run from here.
  *
  * The real clock keeps the game's quirks:
  *   - the first read returns 0.0 and only takes the tick baseline;
@@ -23,8 +23,6 @@
 #include "determinism.h"
 #include "gamestate.h"
 #include "worldstate.h"
-#include "menu.h"
-#include "levelreport.h"
 #include "launcher.h"
 #include "sysdev.h"
 #include "record.h"
@@ -94,8 +92,6 @@ double clock_seconds(void)
     dethash_frame_end(g_accum);
     gamestate_tick();
     worldstate_tick();
-    levelreport_tick();  // may set a menu goal, so it runs before menu_tick
-    menu_tick();
     record_frame_boundary();
 
     // A replay ends on the recording's length, never on wall time.  The state

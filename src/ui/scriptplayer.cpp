@@ -183,8 +183,7 @@ int ScriptPlayer::readForLevel(const char *path)
  *   - A second in-block flag is not cleared on the trailing-';' path; it is
  *     only read while the first is set, so it changes nothing.
  *   - The header number is masked to 16 bits before the +1.
- *   - The path and scratch buffers are fixed-size and unchecked.
- * Checked byte for byte by tools/levelreport.py over all 80 levels. */
+ *   - The path and scratch buffers are fixed-size and unchecked. */
 
 #define JJSR_LINE_MAX   0x80
 #define JJSR_LOG_FIRST  4

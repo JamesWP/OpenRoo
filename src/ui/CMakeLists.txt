@@ -2,7 +2,6 @@ add_library(ui OBJECT
     cheatcode.cpp
     highscores.cpp
     levelselect.cpp
-    menu.cpp
     menunav.cpp
     menuscreens.cpp
     menutree.cpp

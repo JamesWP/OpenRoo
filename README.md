@@ -45,7 +45,6 @@ runs: your config, saves, high scores and logs.
 
 ```bash
 python3 tools/replaytest.py --headless   # recorded inputs, asserted end state
-python3 tools/levelreport.py             # all 80 levels loaded and counted
 ```
 
 See `docs/TESTING.md`. How the code is organised: `docs/DESIGN.md`.

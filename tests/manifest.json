@@ -2356,7 +2356,7 @@
         },
         "seconds": 0.6
       },
-      "notes": "Captured 1491 frames, blessed on 18 fields. The ONLY recording that reaches the game-over overlay (bGame_state 2), so it is the only automated coverage of src/ui/scoreoverlay.cpp Score_DrawGameOverScore -- the four capped \"scoreoverlay: gameover\" lines in karoo_hooks.log are how you check it still runs. One life, so the single death ends the game rather than respawning; lives=0 and death_cause=1 are the fields that say so. Scores are non-zero (4 gems, level_score 94) deliberately, so the breakdown draws real numbers in its count and product columns rather than a screen of zeros. The high-score half of that file is NOT covered here -- reach it with KAROO_MENU_NODE=3."
+      "notes": "Captured 1491 frames, blessed on 18 fields. The ONLY recording that reaches the game-over overlay (bGame_state 2), so it is the only automated coverage of src/ui/scoreoverlay.cpp Score_DrawGameOverScore -- the four capped \"scoreoverlay: gameover\" lines in karoo_hooks.log are how you check it still runs. One life, so the single death ends the game rather than respawning; lives=0 and death_cause=1 are the fields that say so. Scores are non-zero (4 gems, level_score 94) deliberately, so the breakdown draws real numbers in its count and product columns rather than a screen of zeros. The high-score half of that file is NOT covered here --."
     },
     {
       "name": "protectionstart",

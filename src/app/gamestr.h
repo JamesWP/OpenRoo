@@ -91,7 +91,6 @@ inline const char GS_WAV_TIME_OUT[] = "%s\134waves\134TimeOut.wav";
 inline const char GS_CHEAT_FMT_LVL_PATH[] = "%s\134Levels\134%s.jjm";
 
 /* RPT: the level report. */
-inline const char GS_RPT_FILE[] = "LevelReport.txt";
 inline const char GS_RPT_HSC_NAME[] = "jj.hsc";
 inline const char GS_RPT_SPLINES_IN[] = "\012Splines in Scripts:%d";
 inline const char GS_RPT_TEXTS_IN[] = "\012Texts in Scripts:%d";
