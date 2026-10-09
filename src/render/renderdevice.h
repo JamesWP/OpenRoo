@@ -24,6 +24,7 @@
 
 #pragma once
 #include <stdint.h>
+#include "adapterid.h"
 #include <vector>
 #include "rendertypes.h"
 
@@ -45,13 +46,6 @@ enum : uint32_t {
 /* One enumerated display mode. */
 struct DisplayMode {
     uint32_t dwWidth, dwHeight, dwBitDepth;
-};
-
-/* An adapter's identity, opaque to game code: 16 bytes that name the same
- * display from run to run.  The launcher stores it in the config file as it
- * is. */
-struct AdapterId {
-    uint8_t bytes[16];
 };
 
 /* One display, as EnumerateAdapters lists them. */
