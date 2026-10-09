@@ -1,0 +1,24 @@
+# The layering of the src/ groups, lowest first.  A group may include headers
+# from the groups on the lines above its own and from itself, never from its
+# own line (peers) or below; tools/check_layers.py enforces it at build time.
+#
+# This is the order the groups are being moved towards.  Where the code does
+# not follow it yet the violation is listed in layers.baseline, which may only
+# shrink.  Add a new group by giving it a line here.
+
+sysdev
+log
+prof inputdev audiodev videodev
+windev
+dbg
+audio
+render
+gl
+level
+entities
+testing
+input
+ui
+core
+debugui
+app
