@@ -3,14 +3,12 @@ add_library(entities OBJECT
     fallingtile.cpp
     bridgeobject.cpp
     bridgesurf.cpp
-    checkpoint.cpp
     entitymath.cpp
     explodedebris.cpp
     factory.cpp
     foe.cpp
-    foepath.cpp
-    framepose.cpp
     generators.cpp
+    foepath.cpp
     liftobject.cpp
     movableentity.cpp
     objectremove.cpp

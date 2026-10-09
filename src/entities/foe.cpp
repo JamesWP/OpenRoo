@@ -11,7 +11,8 @@
 #include "foe.h"
 #include "dbg.h"
 #include "tiledebug.h"
-#include "game.h"
+#include "levelmap.h"
+#include "switchcells.h"
 #include "tile.h"
 #include "movableentity.h"
 #include "entitymath.h"
@@ -214,7 +215,8 @@ static int           s_logged_hightype = 0;
 static int           s_logged_kind2    = 0;
 static int           s_logged_kind3    = 0;
 
-unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
+unsigned char Foe::spawn(const EntityContext &ctx, FoeTable &foes,
+                         unsigned int uArg, unsigned int vArg,
                          unsigned int hArg, unsigned int kindArg,
                          unsigned int typeArg)
 {
@@ -234,23 +236,23 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         unsigned char t = u; u = v; v = t;
     }
 
-    id = Object_ClaimSpareId(game->foeIds(), game->foeCountRef());
+    id = Object_ClaimSpareId(foes.ids, &foes.count);
 
     p = create();
 
     i     = (unsigned int)id;
-    slot  = game->foeSlotRef(i);
+    slot  = &foes.slot[i];
     *slot = p;
 
     if (!s_logged_spawn) {
         s_logged_spawn = 1;
-        g_logger.write("foe: first foe spawn -- game=%p id=%u obj=%p "
+        g_logger.write("foe: first foe spawn -- table=%p id=%u obj=%p "
                   "u=%u v=%u h=%u kind=%d type=%u\n",
-                  (void *)game, (unsigned)id, (void *)p, (unsigned)u,
+                  (void *)&foes, (unsigned)id, (void *)p, (unsigned)u,
                   (unsigned)v, (unsigned)h, (int)kind, (unsigned)type);
     }
     if (s_diag_spawn) {
-        const char  *lvl = game->levelName();
+        const char  *lvl = ctx.levelName;
         unsigned int lh  = level_hash(lvl);
 
         ++s_spawns;
@@ -272,13 +274,13 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     // PRESERVED: the field stores below go through the pointer the allocator
     // returned, not the slot; a failed allocation leaves this NULL and crashes
     // here rather than failing gracefully.
-    p->clock_ = game->clock();
+    p->clock_ = ctx.clock;
 
-    (*slot)->tickStep_ = game->tickStep();
+    (*slot)->tickStep_ = ctx.tickStep;
 
     // each foe spawned in the same frame starts 1500ms later than the last, so
     // their step and idle timers do not all line up.
-    (*slot)->lastActive_ = (double)(int)(i * 0x5dc) + *game->clock();
+    (*slot)->lastActive_ = (double)(int)(i * 0x5dc) + *ctx.clock;
 
     (*slot)->kind_ = (unsigned char)kind;
     if (kind == 2) {
@@ -295,7 +297,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         }
     }
 
-    (*slot)->map_ = game->map();
+    (*slot)->map_ = ctx.map;
     (*slot)->type_     = type;
 
     if (type > 0x64) {
@@ -309,7 +311,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         (*slot)->facing_ = 1;
         if (type == 0x0b) {
             (*slot)->dropContents_ = 1;
-            game->setField42252((unsigned short)(game->field_42252() + 1));
+            ++*ctx.crystalFoes;
         } else if (type == 0x4d) {
             (*slot)->dropContents_ = 7;
         } else if (type == 0x07) {
@@ -328,7 +330,7 @@ unsigned char Foe::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     (*slot)->posY_ = (float)(int)(unsigned int)h;
     (*slot)->posV_ = (float)(int)(unsigned int)v;
 
-    game->map()->tile( (int)u, (int)v)->setOccupant((*slot)->kind_);
+    ctx.map->tile( (int)u, (int)v)->setOccupant((*slot)->kind_);
 
     // PRESERVED: FoePath::create can return NULL on a failed allocation, and
     // setMode is called on it unconditionally below.
@@ -360,11 +362,11 @@ static void release(SoundManager *sm, void *obj, void *buf, int bPool)
         sm->releaseStaticForOwner((audiodev::Buffer *)buf, 1);
 }
 
-void Foe::remove(Game *game, unsigned int idArg)
+void Foe::remove(const EntityContext &ctx, FoeTable &foes, unsigned int idArg)
 {
     unsigned char id   = (unsigned char)(idArg & 0xff);
-    Foe         **slot = game->foeSlotRef(id);
-    SoundManager *sm   = game->soundManager();
+    Foe         **slot = &foes.slot[id];
+    SoundManager *sm   = ctx.sound;
 
     fx_init();
 
@@ -373,8 +375,8 @@ void Foe::remove(Game *game, unsigned int idArg)
 
     if (!s_logged_remove) {
         s_logged_remove = 1;
-        g_logger.write("foe: first foe removal -- game=%p id=%u obj=%p\n",
-                  (void *)game, (unsigned)id, (void *)*slot);
+        g_logger.write("foe: first foe removal -- table=%p id=%u obj=%p\n",
+                  (void *)&foes, (unsigned)id, (void *)*slot);
     }
     if (s_diag_remove) {
         ++s_removals;
@@ -382,7 +384,7 @@ void Foe::remove(Game *game, unsigned int idArg)
             g_logger.write("foe: %lu removals\n", s_removals);
     }
 
-    if (game->soundCreated() != 0) {
+    if (ctx.sound->created() != 0) {
         release(sm, *slot, (*slot)->pool_9f_,  1);
         release(sm, *slot, (*slot)->sound_b3_, 0);
         release(sm, *slot, (*slot)->sound_c7_, 0);
@@ -401,8 +403,8 @@ void Foe::remove(Game *game, unsigned int idArg)
         release(sm, *slot, (*slot)->sound_a7_, 0);
     }
 
-    Object_DestroyAndCompactId((void **)slot, game->foeCountRef(),
-                               game->foeIds(), id,
+    Object_DestroyAndCompactId((void **)slot, &foes.count,
+                               foes.ids, id,
                                1);
 }
 
@@ -695,7 +697,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
  * target, then dropBomb, checkPlayerContact and finishDespawn as needed; the
  * Game and Player values it passes are read once, here. */
 
-void Foe::chooseTarget(Game *game, int hold,
+void Foe::chooseTarget(const EntityContext &ctx, FoeTable &foes, int hold,
                        unsigned char playerU, unsigned char playerV,
                        unsigned char escortU, unsigned char escortV,
                        unsigned char *pu, unsigned char *pv)
@@ -712,7 +714,7 @@ void Foe::chooseTarget(Game *game, int hold,
     if (type_ == 2) {
         tu = (unsigned char)cellU_;
         tv = (unsigned char)cellV_;
-        if (Sim_FindNearestListedObjectTile(game, &tu, &tv, 7) != 0) {
+        if (Sim_FindNearestListedObjectTile(ctx.switches, *ctx.switchMax, ctx.map, &tu, &tv, 7) != 0) {
             chaseSpeed_ = 100;
             chase(tu, tv, 100);
             if (field_d3 == 0 && pendingMove_ == 0 && turnKind_ == 0) {
@@ -729,7 +731,7 @@ void Foe::chooseTarget(Game *game, int hold,
     if (type_ == 3) {
         tu = (unsigned char)cellU_;
         tv = (unsigned char)cellV_;
-        if (Sim_FindNearestFlaggedTileInRadius(game, &tu, &tv, 5) == 0) {
+        if (Sim_FindNearestFlaggedTileInRadius(ctx.map, &tu, &tv, 5) == 0) {
             tu = playerU;
             tv = playerV;
             chaseSpeed_ = 100;
@@ -746,8 +748,8 @@ void Foe::chooseTarget(Game *game, int hold,
     if (type_ == 5) {
         int found = 0;
         held_ = 0;
-        for (int j = 0; j < (int)game->foeCount(); ++j) {
-            Foe *other = game->foeSlot(game->foeId(j));
+        for (int j = 0; j < (int)foes.count; ++j) {
+            Foe *other = foes.slot[foes.ids[j]];
             if (other->kind_ == 2) {
                 found = 1;
                 tu = (unsigned char)other->cellU_;
@@ -769,13 +771,14 @@ void Foe::chooseTarget(Game *game, int hold,
     *pv = tv;
 }
 
-void Foe::dropBomb(Game *game)
+void Foe::dropBomb(const EntityContext &ctx, BombTable &bombs,
+                   const BombSounds &sounds)
 {
     if (bombDropRequest_ == 0 || type_ == 2)
         return;
     int spawn = 1, offset = 0;
     if (moveDir_ != 0) {
-        long double since = (long double)*game->clock() - (long double)animStart_;
+        long double since = (long double)*ctx.clock - (long double)animStart_;
         if (since < 50.0L)
             offset = 1;
         else
@@ -784,12 +787,12 @@ void Foe::dropBomb(Game *game)
     if (!spawn)
         return;
     if (offset)
-        Bomb::spawn(game, (unsigned char)((unsigned char)cellU_ - (unsigned char)stepU_),
+        Bomb::spawn(ctx, bombs, sounds, (unsigned char)((unsigned char)cellU_ - (unsigned char)stepU_),
                           (unsigned char)((unsigned char)cellV_ - (unsigned char)stepV_),
                           (unsigned char)((unsigned char)heightCell_ - (unsigned char)field_141),
                           facing_);
     else
-        Bomb::spawn(game, (unsigned char)cellU_, (unsigned char)cellV_,
+        Bomb::spawn(ctx, bombs, sounds, (unsigned char)cellU_, (unsigned char)cellV_,
                           (unsigned char)heightCell_, facing_);
     bombDropRequest_ = 0;
 }

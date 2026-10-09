@@ -121,7 +121,7 @@ Sim_ClearGameState(Game *self)
                       (unsigned)self->foeCount(),
                       (unsigned)self->foeId(0));
         }
-        Foe::remove(self, self->foeId(0));
+        Foe::remove(self->entityContext(), self->foes(), self->foeId(0));
     }
 
     while (self->bombCount() != 0) {
@@ -130,7 +130,7 @@ Sim_ClearGameState(Game *self)
             g_logger.write("gamereset: first enemy drain -- count=%u id=%u\n",
                       (unsigned)self->bombCount(), (unsigned)self->bombId(0));
         }
-        Bomb::remove(self, self->bombId(0));
+        Bomb::remove(self->entityContext(), self->bombs(), self->bombId(0));
     }
 
     self->setFallingCount(0);

@@ -249,7 +249,7 @@ Sim_GameTick(Game *self, double dt, double now)
             unsigned char id = self->bombId(i);
             self->bombSlot(id)->debugDraw(id);
             if (self->bombSlot(id)->removeRequested() != 0)
-                Bomb::remove(self, id);
+                Bomb::remove(self->entityContext(), self->bombs(), id);
         }
     }
 
@@ -277,7 +277,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 continue;
             signed char u = (signed char)E->u, v = (signed char)E->v;
             if (self->map()->tile(u, v)->occupant() == 0 &&self->foeCount() < E->maxFoes) {
-                unsigned char id = Foe::spawn(self, (unsigned char)u,
+                unsigned char id = Foe::spawn(self->entityContext(), self->foes(), (unsigned char)u,
                                               (unsigned char)v, E->height, 2,
                                               (unsigned char)(E->field_0b + 100));
                 Foe *foe = self->foeSlot(id);
@@ -350,12 +350,12 @@ Sim_GameTick(Game *self, double dt, double now)
         }
         if (spawn) {
             if (offset)
-                Bomb::spawn(self,(unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
+                Bomb::spawn(self->entityContext(), self->bombs(), self->bombSounds(), (unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
                                     (unsigned char)((unsigned char)pl->cellV() - (unsigned char)pl->stepV()),
                                     (unsigned char)((unsigned char)pl->heightCell() - (unsigned char)pl->field141()),
                                     pl->facing());
             else
-                Bomb::spawn(self,(unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
+                Bomb::spawn(self->entityContext(), self->bombs(), self->bombSounds(), (unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
                                     pl->facing());
             pl->setBombDropRequest(0);
         }
@@ -422,7 +422,7 @@ Sim_GameTick(Game *self, double dt, double now)
             hold = 1;
         {
             PROF_SCOPE("choose target");
-            (*slot)->chooseTarget(game, hold, (unsigned char)pl->cellU(), (unsigned char)pl->cellV(),
+            (*slot)->chooseTarget(game->entityContext(), game->foes(), hold, (unsigned char)pl->cellU(), (unsigned char)pl->cellV(),
                                   pl->markerCellU(), pl->markerCellV(), &tu, &tv);
         }
         {
@@ -430,11 +430,11 @@ Sim_GameTick(Game *self, double dt, double now)
             (*slot)->step(tu, tv);
         }
         (*slot)->debugDraw(id);
-        (*slot)->dropBomb(game);
+        (*slot)->dropBomb(game->entityContext(), game->bombs(), game->bombSounds());
         (*slot)->checkPlayerContact(pl->moveStateRef(),
                                     pl->posU(), pl->posY(), pl->posV());
         if ((*slot)->finishDespawn(self->map())) {
-            Foe::remove(game, id);
+            Foe::remove(game->entityContext(), game->foes(), id);
             self->setFoesKilled((unsigned char)(self->foesKilled() + 1));
         }
     }

@@ -178,10 +178,10 @@ Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 /* The listed tile nearest the one passed in, among tiles whose blocked word is
  * non-zero, within maxDist. */
   unsigned int  
-Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
+Sim_FindNearestListedObjectTile(SwitchCells *sw, unsigned char switchMax,
+                                LevelMap *map, unsigned char *pu,
                                 unsigned char *pv, unsigned char maxDist)
 {
-    SwitchCells   *sw = self->switchCells();
     unsigned char  u0 = *pu;  // saved inputs, restored on failure
     unsigned char  v0 = *pv;
     unsigned char  best     = maxDist;
@@ -192,10 +192,10 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
     unsigned int   list;
 
     fx_init();
-    diag_enter(Q_LIST, self);
+    diag_enter(Q_LIST, sw);
 
     // PRESERVED: this guard cannot fail.
-    if ((int)((unsigned int)self->switchMax() + 1) > 0) {
+    if ((int)((unsigned int)switchMax + 1) > 0) {
 
         for (list = 0; ; ) {
             unsigned char inner = 0;
@@ -210,7 +210,7 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
                     v = sw->cellV(list, inner);
                     *pv = v;
 
-                    if (self->map()->tile(u, v)->busy() != 0) {
+                    if (map->tile(u, v)->busy() != 0) {
                         unsigned char d =
                             tile_distance((int)u0 - (int)u,
                                           (int)v0 - (int)v);
@@ -240,7 +240,7 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
             // PRESERVED: an 8-bit counter widened for a signed compare against
             // count + 1, re-read every pass: the body runs count + 1 times.
             list = (unsigned int)(unsigned char)(list + 1);
-            if (!((int)list < (int)((unsigned int)self->switchMax() + 1)))
+            if (!((int)list < (int)((unsigned int)switchMax + 1)))
                 break;
         }
 
@@ -264,7 +264,7 @@ Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu,
 /* The nearest tile with flag 1 in a square window around the one passed in.
  * Outer loop v, inner u. */
   unsigned int  
-Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
+Sim_FindNearestFlaggedTileInRadius(LevelMap *map, unsigned char *pu,
                                    unsigned char *pv, unsigned char radius)
 {
     unsigned char  u0 = *pu;
@@ -277,7 +277,7 @@ Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
     int            v, vEnd, uBeg, uEnd;
 
     fx_init();
-    diag_enter(Q_RADIUS, self);
+    diag_enter(Q_RADIUS, map);
 
     // PRESERVED: half-open, radius tiles one way and radius - 1 the other.
     v    = (int)v0 - (int)radius;
@@ -289,15 +289,15 @@ Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu,
 
         do {
             if (uBeg < uEnd) {
-                unsigned char  vExtent = self->map()->extentV();
+                unsigned char  vExtent = map->extentV();
                 int            u       = uBeg;
 
                 do {
                     // PRESERVED: strictly above zero, so row and column 0 are
                     // never chosen.
                     if (v < (int)(unsigned)vExtent && v > 0 &&
-                        u < (int)(unsigned)self->map()->extentU() && u > 0 &&
-                        self->map()->tile(u, v)->contents() == CONTENTS_CRYSTAL) {
+                        u < (int)(unsigned)map->extentU() && u > 0 &&
+                        map->tile(u, v)->contents() == CONTENTS_CRYSTAL) {
                         unsigned char d =
                             tile_distance((int)u0 - u, (int)v0 - v);
 
