@@ -6,6 +6,9 @@ namespace audiodev {
  * until the next sound replaces it. */
 void playSystemSound(const char *path, bool async)
 {
+    if (silent())
+        return;
+
     static std::shared_ptr<AudioRef> audio;
     static MIX_Track *track;
     static std::shared_ptr<MixerRef> mixer;

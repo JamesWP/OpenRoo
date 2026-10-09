@@ -60,6 +60,7 @@ struct Listener {
 
 struct DeviceState {
     std::shared_ptr<MixerRef> mixer;
+    bool                      silentUp = false;  // up with no mixer (silent)
     std::shared_ptr<Listener> listener = std::make_shared<Listener>();
 };
 
@@ -68,6 +69,7 @@ struct BufferState {
     std::shared_ptr<AudioRef>  audio;
     MIX_Track                 *track = NULL;
     std::shared_ptr<Listener>  listener;
+    bool                       silentLoaded = false;  // loaded with no track (silent)
     bool                       threeD  = false;  // loaded as a 3D sound
     bool                       spatial = false;  // and currently positional
     float                      pos[3]  = {0, 0, 0};
