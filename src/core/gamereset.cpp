@@ -106,10 +106,10 @@ Sim_ClearGameState(Game *self)
         windev::quit(1);
     }
 
-    LiftObject::purgeAll(self);
-    PlatformObject::purgeAll(self);
-    FallingTile::purgeAll(self);
-    BridgeObject::purgeAll(self);
+    LiftObject::purgeAll(self->entityContext(), self->lifts());
+    PlatformObject::purgeAll(self->entityContext(), self->platforms());
+    FallingTile::purgeAll(self->entityContext(), self->fallings());
+    BridgeObject::purgeAll(self->entityContext(), self->bridges());
 
     // The 256 switch counts.
     self->switchCells()->clearCounts();

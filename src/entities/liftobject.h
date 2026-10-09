@@ -3,22 +3,26 @@
  * is fixed: the renderer reads each lift's position directly. */
 
 #pragma once
+#include "entitycontext.h"
+#include "tickstep.h"
 
  
-#include "game.h"
 
 namespace audiodev { class Buffer; }
+
+class LiftObject;
+typedef EntitySlots<LiftObject, 256> LiftSlots;
 
 class LiftObject {
 public:
      
 
     // Spawns a lift; the arguments are masked to bytes.
-    static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
+    static void spawn(const EntityContext &ctx, LiftSlots &slots, unsigned int uArg, unsigned int vArg,
                       unsigned int baseArg, unsigned int topArg);
 
     // Destroys every lift and zeroes the count.
-    static void purgeAll(Game *game);
+    static void purgeAll(const EntityContext &ctx, LiftSlots &slots);
 
     // One tick.
     void tick();

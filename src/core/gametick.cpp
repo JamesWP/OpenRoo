@@ -227,7 +227,7 @@ Sim_GameTick(Game *self, double dt, double now)
         PROF_SCOPE("bridges");
         for (int i = 0; i < (int)game->bridgeCount(); ++i) {
             game->bridgeSlot(i)->tick();
-            game->bridgeSlot(i)->debugDraw();
+            game->bridgeSlot(i)->debugDraw(*game->switchCells());
         }
     }
 

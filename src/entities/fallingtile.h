@@ -5,12 +5,16 @@
  * cell bytes to place the falling-tile effect. */
 
 #pragma once
+#include "entitycontext.h"
+#include "tickstep.h"
 
  
-#include "game.h"
 
 namespace audiodev { class Buffer; }
 class Tile;
+
+class FallingTile;
+typedef EntitySlots<FallingTile, 200> FallingSlots;
 
 class FallingTile {
 public:
@@ -18,11 +22,11 @@ public:
 
     // Spawns a falling tile; the arguments are masked to bytes.  PRESERVED:
     // returns idx & 0xffffff00, which no caller uses.
-    static unsigned int spawn(Game *game, unsigned int uArg, unsigned int vArg,
+    static unsigned int spawn(const EntityContext &ctx, FallingSlots &slots, unsigned int uArg, unsigned int vArg,
                               unsigned int heightArg, unsigned int paramArg);
 
     // Destroys every falling tile and zeroes the count.
-    static void purgeAll(Game *game);
+    static void purgeAll(const EntityContext &ctx, FallingSlots &slots);
 
     // One tick.
     void tick();
@@ -76,6 +80,3 @@ private:
     int                 noRespawn_;       // the tile's param: nonzero never respawns
     double              armedAt_;
 };
-
-/* Destroys every falling tile and zeroes the count; Game's teardown calls it. */
-void Sim_PurgeFallingTiles(Game *self);

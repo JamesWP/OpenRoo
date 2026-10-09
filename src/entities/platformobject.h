@@ -3,22 +3,26 @@
  * private.  The renderer reads the position and the kind. */
 
 #pragma once
+#include "entitycontext.h"
+#include "tickstep.h"
 
  
-#include "game.h"
 
 namespace audiodev { class Buffer; }
+
+class PlatformObject;
+typedef EntitySlots<PlatformObject, 100> PlatformSlots;
 
 class PlatformObject {
 public:
      
 
     // Spawns a platform; the arguments are masked to bytes.
-    static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
+    static void spawn(const EntityContext &ctx, PlatformSlots &slots, unsigned int uArg, unsigned int vArg,
                       unsigned int heightArg, unsigned int kindArg);
 
     // Destroys every platform and zeroes the count.
-    static void purgeAll(Game *game);
+    static void purgeAll(const EntityContext &ctx, PlatformSlots &slots);
 
     // One tick.
     void tick();

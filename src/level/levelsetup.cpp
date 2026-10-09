@@ -264,10 +264,10 @@ Sim_SetupLevelObjects(Game *self)
     self->player()->setIceDir(0);
 
     // Tear down the previous level.
-    LiftObject::purgeAll(self);
-    PlatformObject::purgeAll(self);
-    FallingTile::purgeAll(self);
-    BridgeObject::purgeAll(self);
+    LiftObject::purgeAll(self->entityContext(), self->lifts());
+    PlatformObject::purgeAll(self->entityContext(), self->platforms());
+    FallingTile::purgeAll(self->entityContext(), self->fallings());
+    BridgeObject::purgeAll(self->entityContext(), self->bridges());
 
     // The 256 switch counts.
     self->switchCells()->clearCounts();
@@ -406,7 +406,7 @@ Sim_SetupLevelObjects(Game *self)
                     if (param == 0) {
                         g_logger.logMessage(1, "GAME: warning - X-bridge with an index lower than 1 !!!");
                     } else {
-                        BridgeObject::spawn(self, u, v, t->height(),
+                        BridgeObject::spawn(self->entityContext(), self->bridges(), u, v, t->height(),
                                             (unsigned char)(param - 1), 1);
                         t->setParam(0);
                         self->census()->bridges++;
@@ -417,7 +417,7 @@ Sim_SetupLevelObjects(Game *self)
                     if (param == 0) {
                         g_logger.logMessage(1, "GAME: warning - Y-bridge with an index lower than 1 !!!");
                     } else {
-                        BridgeObject::spawn(self, u, v, t->height(),
+                        BridgeObject::spawn(self->entityContext(), self->bridges(), u, v, t->height(),
                                             (unsigned char)(param - 1), 2);
                         t->setParam(0);
                         self->census()->bridges++;
@@ -435,7 +435,7 @@ Sim_SetupLevelObjects(Game *self)
                     t->setObjectMarker(1);
 
                 if (t->objectMarker() == TILE_LIFT) {
-                    LiftObject::spawn(self, u, v, t->height(), t->param());
+                    LiftObject::spawn(self->entityContext(), self->lifts(), u, v, t->height(), t->param());
                     t->setParam(0);
                 }
 
@@ -456,13 +456,13 @@ Sim_SetupLevelObjects(Game *self)
                 if (t->objectMarker() == TILE_PLATFORM_U || t->objectMarker() == TILE_PLATFORM_V) {
                     t->setContents(0);
                     t->setParam(0);
-                    PlatformObject::spawn(self, u, v, t->height(),
+                    PlatformObject::spawn(self->entityContext(), self->platforms(), u, v, t->height(),
                                        t->objectMarker());
                     t->setObjectMarker(0);
                 }
 
                 if (t->objectMarker() == TILE_FALLING)
-                    FallingTile::spawn(self, u, v, t->height(), t->param());
+                    FallingTile::spawn(self->entityContext(), self->fallings(), u, v, t->height(), t->param());
 
                 // Teleport pairing.
                 if (t->objectMarker() == TILE_TELEPORTER && t->param() != 0) {

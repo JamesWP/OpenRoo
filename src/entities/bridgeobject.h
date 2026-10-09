@@ -6,9 +6,10 @@
  * and tilequery.cpp use. */
 
 #pragma once
+#include "entitycontext.h"
+#include "tickstep.h"
 
  
-#include "game.h"
 
 namespace audiodev { class Buffer; }
 
@@ -39,23 +40,27 @@ struct BridgeSurfaceInfo {
     float len, f;
 };
 
+class BridgeObject;
+class SwitchCells;
+typedef EntitySlots<BridgeObject, 256> BridgeSlots;
+
 class BridgeObject {
 public:
      
 
     // Spawns a bridge; the arguments are masked to bytes.
-    static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
+    static void spawn(const EntityContext &ctx, BridgeSlots &slots, unsigned int uArg, unsigned int vArg,
                       unsigned int heightArg, unsigned int slotArg,
                       unsigned int axisArg);
 
     // Destroys every bridge and zeroes the count.
-    static void purgeAll(Game *game);
+    static void purgeAll(const EntityContext &ctx, BridgeSlots &slots);
 
     // One tick.
     void tick();
 
     // Draws it on the debug map, with its switch links (dbg.h).
-    void debugDraw() const;
+    void debugDraw(const SwitchCells &sc) const;
 
     // The switch (GameTick, tilequery.cpp).
     // Nonzero while a switch has set it moving.

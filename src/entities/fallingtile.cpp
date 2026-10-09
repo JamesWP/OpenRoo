@@ -26,7 +26,8 @@
 #include <string.h>
 
 #include "fallingtile.h"
-#include "game.h"
+#include "soundmanager.h"
+#include "levelmap.h"
 #include "tile.h"
 #include "soundmanager.h"
 #include "audiodev.h"
@@ -105,7 +106,7 @@ static unsigned s_spawns       = 0;
 static int      s_logged_spawn = 0;
 static int      s_logged_oom   = 0;
 
-unsigned int FallingTile::spawn(Game *game, unsigned int uArg,
+unsigned int FallingTile::spawn(const EntityContext &ctx, FallingSlots &slots, unsigned int uArg,
                                   unsigned int vArg, unsigned int heightArg,
                                   unsigned int paramArg)
 {
@@ -136,8 +137,8 @@ unsigned int FallingTile::spawn(Game *game, unsigned int uArg,
                   "would store through the slot, which now holds NULL\n");
     }
 
-    n = game->fallingCount();
-    game->setFallingSlot(n, obj);
+    n = slots.count;
+    slots.slot[n] = obj;
 
     if (s_diag_place && !s_logged_spawn) {
         s_logged_spawn = 1;
@@ -147,9 +148,9 @@ unsigned int FallingTile::spawn(Game *game, unsigned int uArg,
     }
 
     //     // PRESERVED: a failed allocation is not checked; the first store faults.
-    obj->clock_    = game->clock();
-    obj->tickStep_   = game->tickStep();
-    obj->map_ = game->map();
+    obj->clock_    = ctx.clock;
+    obj->tickStep_   = ctx.tickStep;
+    obj->map_ = ctx.map;
 
     obj->cellU_      = (signed char)u;
     obj->cellV_      = (signed char)v;
@@ -168,9 +169,9 @@ unsigned int FallingTile::spawn(Game *game, unsigned int uArg,
     //     // places further objects, which is why placeaxis also fails
     //     // the level load.
     idx = v + u * 100;
-    game->map()->tile( (int)u, (int)v)->setObjectMarker(TILE_FALLING);
+    ctx.map->tile( (int)u, (int)v)->setObjectMarker(TILE_FALLING);
 
-    game->setFallingCount((unsigned char)(n + 1));
+    slots.count = (unsigned char)(n + 1);
 
     return idx & 0xffffff00;
 }
@@ -179,7 +180,7 @@ static int      s_logged_purge   = 0;
 static int      s_logged_release = 0;
 static unsigned s_live_purges    = 0;
 
-static void release_sound(Game *game, audiodev::Buffer *h)
+static void release_sound(SoundManager *sound, audiodev::Buffer *h)
 {
     if (h == 0)
         return;
@@ -187,10 +188,10 @@ static void release_sound(Game *game, audiodev::Buffer *h)
         s_logged_release = 1;
         g_logger.write("fallingtile: first sound release -- h=%p\n", (void *)h);
     }
-    game->soundManager()->releaseStaticForOwner(h, 1);
+    sound->releaseStaticForOwner(h, 1);
 }
 
-void FallingTile::purgeAll(Game *game)
+void FallingTile::purgeAll(const EntityContext &ctx, FallingSlots &slots)
 {
     unsigned char i;
 
@@ -202,28 +203,28 @@ void FallingTile::purgeAll(Game *game)
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
         g_logger.write("fallingtile: first purge -- count=%u\n",
-                  (unsigned)game->fallingCount());
+                  (unsigned)slots.count);
     }
 
     i = 0;
-    if (game->fallingCount() != 0) {
+    if (slots.count != 0) {
         if (s_diag_reset)
             g_logger.write("fallingtile: LIVE purge #%u -- count=%u\n",
-                      ++s_live_purges, (unsigned)game->fallingCount());
+                      ++s_live_purges, (unsigned)slots.count);
         do {
             //             // The two releases are siblings: a null fall sound does not skip
             //             // the respawn sound.
-            if (game->soundCreated() != 0) {
-                release_sound(game, game->fallingSlot(i)->fallSound_);
-                release_sound(game, game->fallingSlot(i)->respawnSound_);
+            if (ctx.sound->created() != 0) {
+                release_sound(ctx.sound, slots.slot[i]->fallSound_);
+                release_sound(ctx.sound, slots.slot[i]->respawnSound_);
             }
-            FallingTile *obj = game->fallingSlot(i);
+            FallingTile *obj = slots.slot[i];
             if (obj != 0)
                 delete obj;
             i++;
-        } while (i < game->fallingCount());
+        } while (i < slots.count);
     }
-    game->setFallingCount(0);
+    slots.count = 0;
 }
 
 Tile *FallingTile::tile() const
