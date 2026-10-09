@@ -1,6 +1,6 @@
 /* The game clock: the seconds since start, from the platform layer's high-resolution counter.
  * Every clock read is also a frame boundary, so the per-frame test hooks (the
- * determinism hash, the state and world logs, the autoplayer, the level
+ * determinism hash, the state and world logs, the level
  * report, the menu driver and the recorder) run from here.
  *
  * The real clock keeps the game's quirks:
@@ -23,7 +23,6 @@
 #include "determinism.h"
 #include "gamestate.h"
 #include "worldstate.h"
-#include "policy.h"
 #include "menu.h"
 #include "levelreport.h"
 #include "launcher.h"
@@ -95,18 +94,14 @@ double clock_seconds(void)
     dethash_frame_end(g_accum);
     gamestate_tick();
     worldstate_tick();
-    policy_menu_tick();
     levelreport_tick();  // may set a menu goal, so it runs before menu_tick
     menu_tick();
     record_frame_boundary();
 
     // A replay ends on the recording's length, never on wall time.  The state
     // is dumped while the level is still live (teardown clears the score),
-    // then the window is closed so the game shuts down normally.  An
-    // autoplayer run outlives its recording, which only gets it into a level;
-    // --auto-exit still bounds it.
-    if (record_replaying() && record_replay_finished() && !g_replay_ended &&
-        !policy_in_control(g_calls)) {
+    // then the window is closed so the game shuts down normally. 
+    if (record_replaying() && record_replay_finished() && !g_replay_ended) {
         g_replay_ended = true;
         gamestate_dump("replay-finished");
         launcher_end_run("replay finished");

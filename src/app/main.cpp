@@ -31,7 +31,6 @@
 #include <string.h>
 #include "videodev.h"
 #include "record.h"
-#include "policy.h"
 #include "levelplacements.h"
 #include "theme.h"
 #include "rendergameframe.h"
@@ -283,11 +282,10 @@ int Main_WinMain(const char *lpCmdLine)
     Render_ConfigureRenderState();
     hooks_ClockInit();
 
-    // The intro is only shown to a person at a display: a headless, replayed
-    // or autoplayed run takes it as ending at once, so its frame counts do
+    // The intro is only shown to a person at a display: a headless or replayed
+    // run takes it as ending at once, so its frame counts do
     // not depend on it.
-    const bool show = !RenderDevice::headless() && !record_replaying()
-                      && !policy_active();
+    const bool show = !RenderDevice::headless() && !record_replaying();
     const std::string path = std::string(g_gameDir) + "/video/INTRO.AVI";
     if (g_movie.load(hWnd, sysdev::nativePath(path.c_str()).c_str(), show))
         g_movie.play();

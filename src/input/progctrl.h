@@ -67,7 +67,7 @@ public:
 
     int  setJoyDeadzone(uint32_t axis, int zone);
 
-    /* Reads the keyboard (or the replay, or the autoplay policy) and calls
+    /* Reads the keyboard (or the replay) and calls
      * every action in this mode with a bound key held; the first held key of
      * each action wins.  Modes of 5 and above do nothing. */
     void dispatch(unsigned short game_state);

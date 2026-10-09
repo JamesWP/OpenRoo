@@ -72,7 +72,7 @@ struct LevelCensus {
     // total is the level's collectable-item count: grant09Items + speedUps +
     // shadow1 + transforms + paragliders + shadow7 + freezeItems + extraLives
     // + timeBonuses + the Game's crystal count.  It counts CONTENTS_TRANSFORM,
-    // which the autoplay's pickup test (worldstate.h) does not.  It is not
+    // which a pickup test that ignores transforms would not.  It is not
     // Game::itemTotal().
 
     // Zeroes the counts, in the game's store order, leaving field_e5 as the

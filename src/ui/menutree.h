@@ -1,4 +1,4 @@
-/* MenuTree: the game's menu, a sub-object of Game (menu.h is the autoplay
+/* MenuTree: the game's menu, a sub-object of Game (menu.h is the
  * driver that reads it).  The menu is a graph of byte node ids: each node has
  * a row of child node ids, the cursor picks one, Enter pushes the node and
  * moves to the child, Escape pops.  Entering some nodes is an action, taken by
@@ -60,7 +60,7 @@ public:
     {
         children_[(unsigned)node * CHILD_STRIDE + i] = c;
     }
-    // A node's row of children, for callers that copy it whole.  The autoplay
+    // A node's row of children, for callers that copy it whole.  The menu
     // driver copies 256 bytes, one past the row.
     const unsigned char *childRow(unsigned char node) const
     {
