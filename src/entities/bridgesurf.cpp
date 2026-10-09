@@ -45,7 +45,6 @@
 #include "sysdev.h"
 #include "renderdevice.h"
 #include "theme.h"
-#include "game.h"
 #include "bridgeobject.h"
 #include "logger.h"
 
@@ -109,8 +108,8 @@ static void bridge_note_variant(uint32_t k, int axis, int dir, int n,
               (int)(vnear * 1000.0f), (int)(vfar * 1000.0f));
 }
 
-void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
-                     double t)
+void BridgeSurf_Draw(const BridgeSurfSet &bridges, ThemeAssetBlock *theme,
+                     RenderDevice *d3d, double t)
 {
     Mat4 world = {};
     world.m[0] = world.m[5] = world.m[10] = world.m[15] = 1.0f;
@@ -129,7 +128,7 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
         if (obj->kind() != THEME_KIND_FIELD)
             continue;
 
-        if (obj->specular() != 0 && game->videoHighlights() != 0)
+        if (obj->specular() != 0 && bridges.highlights)
             d3d->SetSpecular(true);
 
         {
@@ -153,9 +152,9 @@ void BridgeSurf_Draw(Game *game, ThemeAssetBlock *theme, RenderDevice *d3d,
                 d3d->SetSamplerAddress(0, addr, addr);
 
                 for (uint32_t k = 0;
-                     k < game->bridgeCount();
+                     k < bridges.count;
                      k++) {
-                    const BridgeObject *cv = game->bridgeSlot(k);
+                    const BridgeObject *cv = bridges.slots[k];
 
                     // BridgeObject::buildSurface builds the vertices.
                     BridgeVertex v[4];

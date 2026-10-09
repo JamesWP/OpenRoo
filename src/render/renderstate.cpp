@@ -8,6 +8,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "gamedir.h"
 #include "renderstate.h"
 #include "windev.h"
 #include "renderdevice.h"
@@ -40,7 +41,7 @@ Render_ConfigureRenderState(void)
     // Texture and model caches' loggers, and the level placement scratch
     // block.
     g_levelPlacements.release();
-    Menu_BuildMenuGeometry(d3d, g_gameDir);
+    Menu_BuildMenuGeometry(d3d, gameDir());
 
     // The initial camera, placed exactly as level entry places it.
     Mat4 world;
@@ -110,9 +111,9 @@ Render_ConfigureRenderState(void)
     g_meshEnemy.importSceneModels("models\\Enemy.mdl");
 
     char path[0x100];
-    snprintf(path, sizeof(path), "%s\\textures\\shadow.tga", g_gameDir);
+    snprintf(path, sizeof(path), "%s\\textures\\shadow.tga", gameDir());
     g_texShadow.load(d3d, path, 1, 0);
-    snprintf(path, sizeof(path), "%s\\textures\\karoo128.tga", g_gameDir);
+    snprintf(path, sizeof(path), "%s\\textures\\karoo128.tga", gameDir());
     g_texKaroo128.load(d3d, path, 1, 0);
 
     Material mat = {

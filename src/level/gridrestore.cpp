@@ -17,7 +17,7 @@
 #include "sysdev.h"
 #include <string.h>
 #include "logger.h"
-#include "game.h"
+#include "levelmap.h"
 #include "gridrestore.h"
 
 static int s_fx = 0, s_diag = 0, s_init = 0;
@@ -44,10 +44,8 @@ static void fx_init(void)
 }
 
   void  
-Sim_RestoreTileGridFromSnapshot(Game *self)
+Sim_RestoreTileGridFromSnapshot(LevelMap *map)
 {
-    LevelMap *map = self->map();
-
     fx_init();
     ++s_calls;
     if (s_diag)

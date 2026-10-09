@@ -15,7 +15,6 @@ entities/bomb.cpp -> core/gameglobals.h
 entities/bomb.h -> core/game.h
 entities/bridgeobject.cpp -> core/game.h
 entities/bridgeobject.h -> core/game.h
-entities/bridgesurf.cpp -> core/game.h
 entities/bridgesurf.cpp -> ui/theme.h
 entities/checkpoint.cpp -> core/game.h
 entities/fallingtile.cpp -> core/game.h
@@ -41,7 +40,6 @@ input/keypress.cpp -> ui/textentry.h
 input/progctrl.cpp -> core/clock.h
 input/progctrl.cpp -> core/gamestate.h
 level/extraobjects.cpp -> core/gameglobals.h
-level/gridrestore.cpp -> core/game.h
 level/levelentry.cpp -> core/clock.h
 level/levelentry.cpp -> core/game.h
 level/levelentry.cpp -> core/gameglobals.h

@@ -391,7 +391,8 @@ static void effects_and_shadows(Game *g, double now, double dt)
     memcpy(dtBits, &dt, sizeof dt);
     Scene_DrawSceneObjects(d3d, g_camera.eye(), dtBits[0], dtBits[1], now);
     set_stencil_enable(false);
-    BridgeSurf_Draw(g, &g_themeBlock, d3d, now);
+    BridgeSurf_Draw({g->bridgeSlots(), g->bridgeCount(), g->videoHighlights() != 0},
+                    &g_themeBlock, d3d, now);
 
     CameraFocus *focus = &g_cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };

@@ -11,6 +11,7 @@
 #include <strings.h>
 #include <stdio.h>
 #include <string>
+#include "gamedir.h"
 #include "sysdev.h"
 #include <new>
 #include "main.h"
@@ -199,7 +200,7 @@ int Main_WinMain(const char *lpCmdLine)
     // Data paths are relative to the current directory, which nothing changes.
     // An absolute prefix could overflow the fixed path buffers on a deep
     // install.
-    strcpy(g_gameDir, ".");
+    setGameDir(".");
 
     static MainWindow handler;
     windev::Window window;
@@ -286,7 +287,7 @@ int Main_WinMain(const char *lpCmdLine)
     // run takes it as ending at once, so its frame counts do
     // not depend on it.
     const bool show = !RenderDevice::headless() && !record_replaying();
-    const std::string path = std::string(g_gameDir) + "/video/INTRO.AVI";
+    const std::string path = std::string(gameDir()) + "/video/INTRO.AVI";
     if (g_movie.load(hWnd, sysdev::nativePath(path.c_str()).c_str(), show))
         g_movie.play();
     else

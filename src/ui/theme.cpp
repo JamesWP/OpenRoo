@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "gamedir.h"
 #include "theme.h"
 #include "sysdev.h"
 #include "logger.h"
@@ -266,7 +267,7 @@ int ThemeSoundTable::add(unsigned int id, const char *waveName,
                uint32_t arg3, uint32_t arg4)
 {
     char path[256];
-    snprintf(path, sizeof(path), GS_THEME_SOUND_PATH, g_gameDir, waveName);
+    snprintf(path, sizeof(path), GS_THEME_SOUND_PATH, gameDir(), waveName);
 
     SoundAssetName &e = entries_[id & 0xffff];
     if (strcmp(waveName, GS_THEME_SOUND_NONE) == 0) {

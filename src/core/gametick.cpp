@@ -516,7 +516,7 @@ Sim_GameTick(Game *self, double dt, double now)
             int restart_tail = 1;
             if (lives > 0 && bonus == 0) {
                 pl->setLives(lives - 1);  // lives drop at the restart
-                Sim_RestoreTileGridFromSnapshot(self);
+                Sim_RestoreTileGridFromSnapshot(self->map());
                 Sim_SetupLevelObjects(self);
             } else if (lives <= 0 && bonus == 0) {
                 self->stateRef() = 2;

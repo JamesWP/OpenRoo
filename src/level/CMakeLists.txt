@@ -1,8 +1,8 @@
 add_library(level OBJECT
     extraobjects.cpp
     gridrestore.cpp
-    levelentry.cpp
     levelmap.cpp
+    levelentry.cpp
     levelparse.cpp
     levelplacements.cpp
     levelscore.cpp

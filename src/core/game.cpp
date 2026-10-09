@@ -5,6 +5,7 @@
  * config.cpp, levelmap.cpp), in a fixed order; teardown is its exact reverse.
  */
 
+#include "gamedir.h"
 #include "inputdev.h"
 #include <fstream>
 #include <string>
@@ -207,7 +208,7 @@ int Game::loadGameFile(const char *name)
     unsigned char hdr[4];
 
     levelCount_ = 0;
-    snprintf(path, sizeof(path), GS_GAME_FILE_PATH, g_gameDir, name);
+    snprintf(path, sizeof(path), GS_GAME_FILE_PATH, gameDir(), name);
     g_logger.logMessage(2, "GAME: load game-file: %s", path);
     sysdev::TextFile in(path);
     if (!in)

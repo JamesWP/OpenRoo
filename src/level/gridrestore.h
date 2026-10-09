@@ -2,9 +2,9 @@
  * player restarts the level. */
 #pragma once
 
-class Game;
+class LevelMap;
 
 /* Copies each tile back from the snapshot, with the state byte's special cases
  * (see gridrestore.cpp). */
   void  
-Sim_RestoreTileGridFromSnapshot(Game *self);
+Sim_RestoreTileGridFromSnapshot(LevelMap *map);
