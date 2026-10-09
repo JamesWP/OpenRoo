@@ -186,7 +186,7 @@ Sim_HandleKeypress(Game *self)
         self->nameEntry()->poll((unsigned int)(long long)*self->clock());
         if (self->nameEntry()->active() == 0) {
             if (self->nameEntry()->lastKey() == inputdev::KEY_RETURN)
-                self->saveSlots()->writeAllSlotFiles(self->gameFileName(), 0x37);
+                self->saveSlots()->writeAllSlotFiles(self->gameDir(), self->gameFileName(), 0x37);
             else
                 *self->saveSlots()->slot((unsigned char)self->saveSlots()->editSlot()) =
                     *self->saveSlots()->edit();

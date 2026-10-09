@@ -141,6 +141,8 @@ public:
     /* The game file's name (the .gam, the save-slot files' base and the
      * final directory's %s), 0x80 bytes. */
     const char    *gameFileName() const              { return gameFileName_; }
+    /* The directory every game file is read from; fixed when the Game is made. */
+    const char    *gameDir() const                   { return gameDir_; }
     /* The level the main menu shows behind it, which GameTick reloads on
      * returning there; 0x80 bytes. */
     const char    *menuLevelName() const             { return menuLevelName_; }
@@ -463,7 +465,7 @@ public:
      * save slots, openroo.ini and high scores; check initialised() afterwards.
      * The destructor saves the scores and config, and the members tear
      * themselves down. */
-    explicit Game(const char *gameName);
+    Game(const char *gameName, const char *gameDir);
     virtual ~Game();
     Game(const Game &) = delete;
     Game &operator=(const Game &) = delete;
@@ -490,6 +492,7 @@ private:
     char          levelNameTable_[256][0x100]{};
     unsigned char levelCount_{};
     char          gameFileName_[0x80]{};
+    char          gameDir_[64]{};
     LevelCensus   census_;
     unsigned char restartCount_{};
     /* Foes killed this level; CalculateLevelScore pays 50 each. */

@@ -294,7 +294,7 @@ struct SoundAssetName {
 class ThemeSoundTable {
 public:
     /* Adds (or replaces) the wave for a theme sound id. */
-    int add(unsigned int id, const char *waveName, uint32_t arg3, uint32_t arg4);
+    int add(const char *dir, unsigned int id, const char *waveName, uint32_t arg3, uint32_t arg4);
 
     /* An empty table: every entry cleared (see releaseAll). */
     ThemeSoundTable();

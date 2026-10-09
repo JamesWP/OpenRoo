@@ -1,7 +1,6 @@
 /* KAROO_SIM_FX=themeoff is a negative control: a match returns the next
  * theme's track, so every level gets its neighbour's music. */
 #include <stdint.h>
-#include "gamedir.h"
 #include "sysdev.h"
 #include <string.h>
 #include <fstream>
@@ -125,11 +124,11 @@ CdThemes::~CdThemes()
  *     close.
  * A missing file zeroes all 255 names and returns 0. */
 
-unsigned char CdThemes::readTrackThemeTable(const char *name)
+unsigned char CdThemes::readTrackThemeTable(const char *dir, const char *name)
 {
     char path[256];
 
-    snprintf(path, sizeof(path), GS_CD_TRACKFILE_PATH, gameDir(), name);
+    snprintf(path, sizeof(path), GS_CD_TRACKFILE_PATH, dir, name);
     unsigned char n = 0;
     sysdev::TextFile in(path);
     count_ = 0;

@@ -11,7 +11,6 @@
 #include <strings.h>
 #include <stdio.h>
 #include <string>
-#include "gamedir.h"
 #include "sysdev.h"
 #include <new>
 #include "main.h"
@@ -190,6 +189,11 @@ private:
     bool keyDownDuringIntro_ = false;
 };
 
+/* Where the game's files are.  Data paths are relative to the current
+ * directory, which nothing changes; an absolute prefix could overflow the
+ * fixed path buffers on a deep install. */
+static const char *const kGameDir = ".";
+
 int Main_WinMain(const char *lpCmdLine)
 {
     audiodev::setLog(log_sink);
@@ -197,10 +201,6 @@ int Main_WinMain(const char *lpCmdLine)
     inputdev::setLog(log_sink);
     videodev::setLog(log_sink);
     windev::setLog(log_sink);
-    // Data paths are relative to the current directory, which nothing changes.
-    // An absolute prefix could overflow the fixed path buffers on a deep
-    // install.
-    setGameDir(".");
 
     static MainWindow handler;
     windev::Window window;
@@ -216,7 +216,7 @@ int Main_WinMain(const char *lpCmdLine)
     // The game file is the command line; with none, the one the game ships with.
     const char *gameName = lpCmdLine[0] ? lpCmdLine : "JJ";
 
-    Game *game = new (std::nothrow) Game(gameName);
+    Game *game = new (std::nothrow) Game(gameName, kGameDir);
     Game::set_instance(game);
     if (game == NULL)
         return 0;
@@ -280,14 +280,14 @@ int Main_WinMain(const char *lpCmdLine)
 
     g_cdAudio.setWindowHandle(hWnd);
     window.show(true);
-    Render_ConfigureRenderState();
+    Render_ConfigureRenderState(kGameDir);
     hooks_ClockInit();
 
     // The intro is only shown to a person at a display: a headless or replayed
     // run takes it as ending at once, so its frame counts do
     // not depend on it.
     const bool show = !RenderDevice::headless() && !record_replaying();
-    const std::string path = std::string(gameDir()) + "/video/INTRO.AVI";
+    const std::string path = std::string(kGameDir) + "/video/INTRO.AVI";
     if (g_movie.load(hWnd, sysdev::nativePath(path.c_str()).c_str(), show))
         g_movie.play();
     else

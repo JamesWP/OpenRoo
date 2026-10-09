@@ -5,7 +5,6 @@
  * config.cpp, levelmap.cpp), in a fixed order; teardown is its exact reverse.
  */
 
-#include "gamedir.h"
 #include "inputdev.h"
 #include <fstream>
 #include <string>
@@ -44,8 +43,9 @@
 static const char SAVE_KEY      = 0x37;
 static const char HIGHSCORE_KEY = 0x4b;
 
-Game::Game(const char *gameName)
+Game::Game(const char *gameName, const char *gameDir)
 {
+    snprintf(gameDir_, sizeof(gameDir_), "%s", gameDir);
     field_0c_   = 0;
     tickCount_  = 0;
     field_04_   = 1.0;
@@ -83,7 +83,7 @@ Game::Game(const char *gameName)
     field_13cc88_ = 0;
 
     snprintf(gameFileName_, sizeof(gameFileName_), "%s", gameName);
-    cdThemes_.readTrackThemeTable(gameFileName_);
+    cdThemes_.readTrackThemeTable(gameDir_, gameFileName_);
     cdThemes_.listTrackLengths();
     if (cdThemes_.validateTrackLengths())
         g_logger.logMessage(2, "GAME: original CD is in the drive - OK");
@@ -100,10 +100,10 @@ Game::Game(const char *gameName)
     debounce_ = inputdev::KEY_RETURN;
     menu_.setLastKey(inputdev::KEY_RETURN);
     saveSlots_.setCount(6);
-    if (!saveSlots_.loadAllSlotFiles(gameFileName_, SAVE_KEY)) {
+    if (!saveSlots_.loadAllSlotFiles(gameDir_, gameFileName_, SAVE_KEY)) {
         g_logger.logMessage(3, "GAME: warning - no save-files for this game (maybe started a new game the first time\077), creating %d empty slots", (unsigned)saveSlots_.count());
         saveSlots_.initialiseEmpty();
-        saveSlots_.writeAllSlotFiles(gameFileName_, SAVE_KEY);
+        saveSlots_.writeAllSlotFiles(gameDir_, gameFileName_, SAVE_KEY);
     }
     field_173584_ = 0;
     if (!config_.loadValues(GS_CFG_FILE)) {
@@ -116,10 +116,10 @@ Game::Game(const char *gameName)
     g_progCtrl.setJoyDeadzone(4, config_.joyDeadzone() * 100);
 
     highScores_.setCount(10);
-    if (!highScores_.readFile(gameFileName_, HIGHSCORE_KEY)) {
+    if (!highScores_.readFile(gameDir_, gameFileName_, HIGHSCORE_KEY)) {
         g_logger.logMessage(3, "GAME: warning - no highscore-file for the game found! Creating a new one...");
         highScores_.fillDefaults();
-        highScores_.writeFile(gameFileName_, HIGHSCORE_KEY);
+        highScores_.writeFile(gameDir_, gameFileName_, HIGHSCORE_KEY);
     } else {
         g_logger.logMessage(1, "GAME: highscore-file loaded");
     }
@@ -182,7 +182,7 @@ Game::~Game()
     bombCount_      = 0;
     switchMax_      = 0;
     config_.setCameraDistanceSetting(zoomDistance_);
-    if (highScores_.writeFile(gameFileName_, HIGHSCORE_KEY))
+    if (highScores_.writeFile(gameDir_, gameFileName_, HIGHSCORE_KEY))
         g_logger.logMessage(1, "GAME: highscore-files saved");
     if (config_.save(GS_CFG_FILE))
         g_logger.logMessage(1, "GAME: config-values saved correctly");
@@ -208,7 +208,7 @@ int Game::loadGameFile(const char *name)
     unsigned char hdr[4];
 
     levelCount_ = 0;
-    snprintf(path, sizeof(path), GS_GAME_FILE_PATH, gameDir(), name);
+    snprintf(path, sizeof(path), GS_GAME_FILE_PATH, gameDir_, name);
     g_logger.logMessage(2, "GAME: load game-file: %s", path);
     sysdev::TextFile in(path);
     if (!in)
