@@ -22,6 +22,7 @@ target_include_directories(debugui PRIVATE
     ../level
     ../log
     ../render
+    ../gfx
     ../sysdev
     ../windev)
 target_link_libraries(debugui PRIVATE imgui)

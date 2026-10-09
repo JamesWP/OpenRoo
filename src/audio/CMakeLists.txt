@@ -17,6 +17,7 @@ target_include_directories(audio PRIVATE
     ../entities
     ../level
     ../render
+    ../gfx
     ../testing
     ../ui
     ../sysdev)

@@ -22,6 +22,7 @@ target_include_directories(level PRIVATE
     ../core
     ../entities
     ../render
+    ../gfx
     ../ui
     ../sysdev)
 

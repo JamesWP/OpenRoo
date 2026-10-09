@@ -25,6 +25,7 @@ target_include_directories(ui PRIVATE
     ../input
     ../level
     ../render
+    ../gfx
     ../testing)
 
 # The debug UI sections and map layers drawn from this group (dbg.h).
