@@ -18,14 +18,14 @@ Needs `cmake` (3.20+) and Python 3, and then for the Windows build
 `x86_64-w64-mingw32-g++` and Proton (Steam's "Proton - Experimental"); for the
 Linux build `g++`, the FFmpeg development packages (`libavformat-dev
 libavcodec-dev libavutil-dev libswscale-dev libswresample-dev`), `libgl-dev` and
-what SDL3 builds against (SDL3 and SDL3_mixer are fetched and built from source;
+what SDL3 builds against (SDL3 and SDL3_mixer are used from the system if installed, else fetched and built from source;
 see https://wiki.libsdl.org/SDL3/README-linux#build-dependencies).  The game draws with OpenGL 3.3 (core profile, GLSL
 shaders, no fixed-function pipeline), through Wine's OpenGL under Proton, so the
 graphics driver needs to offer it.
 
 ```bash
 python3 tools/import_assets.py --from KaRoo.zip   # once: fills game/ from your copy
-cmake -S . -B build                               # once; native Linux; fetches SDL3
+cmake -S . -B build                               # once; native Linux; uses system SDL3 or fetches it
 cmake --build build -j                            # build/OpenRoo
 bash launch.sh                                    # run it (in run/)
 bash launch.sh --headless --auto-exit 30          # no display at all

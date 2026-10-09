@@ -1,5 +1,5 @@
 # On Linux the two libraries are fetched as source (FetchContent) and built
-# with the project.  On Windows: downloads and unpacks the SDL3 and SDL3_mixer MinGW development packages at
+# with the project, unless the system already has them.  On Windows: downloads and unpacks the SDL3 and SDL3_mixer MinGW development packages at
 # configure time, and defines the imported targets `sdl3` and `sdl3_mixer`.
 #
 #   include(FetchSDL)
@@ -15,6 +15,22 @@ set(SDL3_ROOT       "" CACHE PATH "An unpacked SDL3 MinGW development package")
 set(SDL3_MIXER_ROOT "" CACHE PATH "An unpacked SDL3_mixer MinGW development package")
 
 if(NOT WIN32)
+    # Prefer SDL3 / SDL3_mixer installed on the system (e.g. Ubuntu 26's
+    # libsdl3-dev); each is fetched as source only if it is not found.
+    # -DOPENROO_FETCH_SDL=ON skips the system copies.
+    option(OPENROO_FETCH_SDL "Always build SDL3 and SDL3_mixer from source on Linux" OFF)
+    set(sdl_fetch SDL3 SDL3_mixer)
+    if(NOT OPENROO_FETCH_SDL)
+        find_package(SDL3 3.2 QUIET CONFIG)
+        if(SDL3_FOUND)
+            list(REMOVE_ITEM sdl_fetch SDL3)
+            find_package(SDL3_mixer 3.0 QUIET CONFIG)
+            if(SDL3_mixer_FOUND)
+                list(REMOVE_ITEM sdl_fetch SDL3_mixer)
+            endif()
+        endif()
+    endif()
+    message(STATUS "SDL3: ${SDL3_FOUND}, SDL3_mixer: ${SDL3_mixer_FOUND} (system); fetching: ${sdl_fetch}")
     include(FetchContent)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(SDL_SHARED OFF CACHE BOOL "" FORCE)
@@ -33,7 +49,9 @@ if(NOT WIN32)
     FetchContent_Declare(SDL3_mixer
         GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
         GIT_TAG release-${SDL3_MIXER_VERSION} GIT_SHALLOW TRUE)
-    FetchContent_MakeAvailable(SDL3 SDL3_mixer)
+    if(sdl_fetch)
+        FetchContent_MakeAvailable(${sdl_fetch})
+    endif()
     add_library(sdl3 INTERFACE)
     target_link_libraries(sdl3 INTERFACE SDL3::SDL3)
     add_library(sdl3_mixer INTERFACE)
