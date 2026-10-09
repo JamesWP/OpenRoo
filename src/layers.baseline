@@ -10,7 +10,6 @@ audio/fixedsounds.cpp -> ui/menutree.h
 audio/soundobj.cpp -> core/game.h
 audio/soundobj.cpp -> entities/foe.h
 core/clock.cpp -> app/launcher.h
-core/game.h -> app/config.h
 entities/bomb.cpp -> core/game.h
 entities/bomb.cpp -> core/gameglobals.h
 entities/bomb.h -> core/game.h
@@ -23,14 +22,12 @@ entities/fallingtile.cpp -> core/game.h
 entities/fallingtile.h -> core/game.h
 entities/foe.cpp -> core/game.h
 entities/foe.h -> core/game.h
-entities/framepose.cpp -> app/config.h
 entities/framepose.cpp -> core/game.h
 entities/generators.cpp -> core/clock.h
 entities/liftobject.cpp -> core/game.h
 entities/liftobject.h -> core/game.h
 entities/platformobject.cpp -> core/game.h
 entities/platformobject.h -> core/game.h
-input/camerainput.cpp -> app/config.h
 input/camerainput.cpp -> core/game.h
 input/inputsetup.cpp -> core/game.h
 input/inputsetup.cpp -> core/gameglobals.h
@@ -78,7 +75,6 @@ level/tiledebug.cpp -> ui/cheatcode.h
 level/tilequery.cpp -> core/game.h
 level/tilequery.cpp -> entities/bridgeobject.h
 level/tilequery.cpp -> entities/foe.h
-render/camera.cpp -> app/config.h
 render/camera.cpp -> core/game.h
 render/camera.cpp -> entities/player.h
 render/camera.cpp -> level/levelmap.h
@@ -130,7 +126,6 @@ render/renderstate.cpp -> level/levelplacements.h
 render/renderstate.cpp -> ui/menuscreens.h
 render/scene.cpp -> level/extraobjects.h
 render/scene.h -> entities/splinepath.h
-render/sceneobjects.cpp -> app/config.h
 render/sceneobjects.cpp -> core/game.h
 render/sceneobjects.cpp -> entities/explodedebris.h
 render/sceneobjects.cpp -> entities/player.h
@@ -159,7 +154,3 @@ ui/scoretally.cpp -> core/game.h
 ui/scriptplayer.cpp -> core/gameglobals.h
 ui/theme.cpp -> core/game.h
 ui/theme.cpp -> core/gameglobals.h
-windev/exemain_linux.cpp -> app/main.h
-windev/exemain_linux.cpp -> app/process.h
-windev/exemain_windows.cpp -> app/main.h
-windev/exemain_windows.cpp -> app/process.h

@@ -1,5 +1,4 @@
 add_library(app OBJECT
-    config.cpp
     launcher.cpp
     launcherdialogs.cpp
     main.cpp

@@ -3,7 +3,7 @@
  * the key bindings share the file (ProgableControl). */
 #pragma once
 #include <stdint.h>
-#include "renderdevice.h"
+#include "adapterid.h"
 
 class Config {
 public:

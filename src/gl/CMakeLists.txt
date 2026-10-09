@@ -9,6 +9,7 @@ add_library(gl OBJECT
     renderdevice.cpp
     shaders.cpp)
 target_include_directories(gl PRIVATE
+    ../base
     .
     ../log
     ../prof

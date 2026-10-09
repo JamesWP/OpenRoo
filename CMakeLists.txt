@@ -48,9 +48,9 @@ foreach(group app audio base audiodev core dbg debugui entities gl input inputde
 endforeach()
 
 if(WIN32)
-    add_executable(OpenRoo WIN32 src/windev/exemain_windows.cpp)
+    add_executable(OpenRoo WIN32 src/app/exemain_windows.cpp)
 else()
-    add_executable(OpenRoo src/windev/exemain_linux.cpp)
+    add_executable(OpenRoo src/app/exemain_linux.cpp)
 endif()
 set_target_properties(OpenRoo PROPERTIES OUTPUT_NAME OpenRoo)
 target_include_directories(OpenRoo PRIVATE src/app)
