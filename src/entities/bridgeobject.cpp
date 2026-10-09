@@ -23,6 +23,9 @@
 #include <string.h>
 
 #include "bridgeobject.h"
+#include "dbg.h"
+#include "switchcells.h"
+#include <algorithm>
 #include "game.h"
 #include "tile.h"
 #include "soundmanager.h"
@@ -559,3 +562,63 @@ bool BridgeObject::buildSurface(BridgeVertex v[4], double t, bool backward,
     return true;
 }
 
+
+static void deck_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
+{
+    // As the map draws one: extended deck inside the span's outline.
+    dl->AddRectFilled(a, ImVec2(a.x + (b.x - a.x) * 0.6f, b.y), IM_COL32(190, 140, 80, 255));
+    dl->AddRect(a, b, IM_COL32(170, 110, 50, 255), 0.0f, 0, 2.0f);
+}
+
+/* Bridges are objects, not tiles: the builder clears their cells.  The whole
+ * span is outlined; the deck fills as far as it has extended. */
+void BridgeObject::debugDraw() const
+{
+    if (!dbg::active())
+        return;
+    dbg::MapLayer layer;
+    if (!layer)
+        return;
+    const dbg::MapView &m = *layer;
+    ImDrawList *dl = m.dl;
+    const BridgeExtent b = extent();
+    const bool alongU = b.axis == 1;
+    const float end  = (alongU ? b.restU : b.restV) + b.step * b.span;
+    const float rest = alongU ? b.restU : b.restV;
+    const float reach = m.asLoaded ? rest : (alongU ? b.reachU : b.reachV);
+    // The cross-axis cell is the anchor's.
+    const float cross = alongU ? b.restV : b.restU;
+    auto rect = [&](float a0, float a1, ImVec2 *p0, ImVec2 *p1) {
+        const float lo = std::min(a0, a1), hi = std::max(a0, a1);
+        *p0 = alongU ? m.corner(lo, cross) : m.corner(cross, lo);
+        *p1 = alongU ? m.corner(hi, cross + 1) : m.corner(cross + 1, hi);
+    };
+    ImVec2 p0, p1;
+    if (reach != rest) {
+        rect(rest, reach, &p0, &p1);
+        dl->AddRectFilled(p0, p1, IM_COL32(190, 140, 80, 255));
+    }
+    rect(rest, end, &p0, &p1);
+    dl->AddRect(p0, p1, b.armed ? IM_COL32(255, 220, 60, 255) : IM_COL32(170, 110, 50, 255),
+                0.0f, 0, std::max(1.5f, m.cell * 0.1f));
+
+    // A line from each of its switches to the middle of the span: all of
+    // them, or those of a hovered switch or bridge.
+    const ImVec2 mid((p0.x + p1.x) * 0.5f, (p0.y + p1.y) * 0.5f);
+    const SwitchCells *sc = Game::instance()->switchCells();
+    const int hAlong = alongU ? m.hoverU : m.hoverV, hAcross = alongU ? m.hoverV : m.hoverU;
+    const bool onSpan = hAcross == (int)cross && hAlong >= std::min(rest, end) && hAlong < std::max(rest, end);
+    bool show = m.links || onSpan;
+    for (unsigned k = 0; k < sc->count(b.slot); k++)
+        show = show || m.hovered(sc->cellU(b.slot, k), sc->cellV(b.slot, k));
+    for (unsigned k = 0; show && k < sc->count(b.slot); k++)
+        dl->AddLine(m.centre((float)sc->cellU(b.slot, k), (float)sc->cellV(b.slot, k)), mid,
+                    IM_COL32(230, 40, 40, 200), std::max(1.0f, m.cell * 0.08f));
+
+    if (onSpan) {
+        m.separator();
+        m.tip("bridge on switch %d, along %s, %d cells", b.slot + 1, alongU ? "U" : "V", b.span);
+        m.tip("%s, %s next", b.armed ? "moving" : "still", b.phase ? "retracts" : "extends");
+    }
+    m.legend(0, "bridge", deck_swatch);
+}

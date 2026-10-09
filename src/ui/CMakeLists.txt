@@ -25,3 +25,7 @@ target_include_directories(ui PRIVATE
     ../level
     ../render
     ../testing)
+
+# The debug UI sections and map layers drawn from this group (dbg.h).
+target_include_directories(ui PRIVATE ../dbg)
+target_link_libraries(ui PRIVATE imgui)

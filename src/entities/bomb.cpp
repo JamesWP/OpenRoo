@@ -46,6 +46,7 @@
 #include <string.h>
 
 #include "bomb.h"
+#include "dbg.h"
 #include "game.h"
 #include "tile.h"
 #include <stdlib.h>
@@ -475,3 +476,31 @@ void Bomb::tick()
     updateMovement();
 }
 
+
+static void bomb_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
+{
+    dl->AddCircleFilled(ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f), (b.x - a.x) * 0.3f,
+                        IM_COL32(20, 20, 20, 255));
+}
+
+void Bomb::debugDraw(unsigned id) const
+{
+    if (!dbg::active())
+        return;
+    dbg::MapLayer layer;
+    if (!layer)
+        return;
+    const dbg::MapView &m = *layer;
+    if (!m.asLoaded) {
+        m.dl->AddCircleFilled(m.centre(posU(), posV()), m.cell * 0.3f, IM_COL32(20, 20, 20, 255));
+        m.legend(2, "bomb", bomb_swatch);
+    }
+    if (m.hovered((uint8_t)cellU(), (uint8_t)cellV())) {
+        m.separator();
+        m.tip("bomb #%u at U%u V%u H%u", id, (uint8_t)cellU(), (uint8_t)cellV(), (uint8_t)heightCell());
+        if (held())
+            m.tip("frozen");
+        if (dyingStarted())
+            m.tip("dying");
+    }
+}

@@ -29,6 +29,7 @@
 #include "levelscore.h"
 #include "levelparse.h"
 #include "cheatcode.h"
+#include "dbg.h"
 #include "menutree.h"
 #include "textentry.h"
 #include "foe.h"
@@ -246,4 +247,24 @@ Sim_HandleTypedCheatCode(Game *self)
     self->cheatEntry()->setBuffer((char *)buf);
     self->cheatEntry()->setActive(1);
     self->cheatEntry()->setLastKey(inputdev::KEY_RETURN);
+}
+
+void Cheat_DebugPanel(Game *g)
+{
+    // Not saved with the window: the cheats change the game.
+    static bool holdFrozen;
+    dbg::Section s("Cheats", true);
+    if (!s)
+        return;
+    if (ImGui::Button("+life"))      Cheat_AddLife(g, 1);
+    ImGui::SameLine();
+    if (ImGui::Button("+10 bombs"))  Cheat_AddBombs(g);
+    ImGui::SameLine();
+    if (ImGui::Button("+glide"))     Cheat_AddGlide(g);
+    if (ImGui::Button("invulnerable")) Cheat_Invulnerable(g);
+    ImGui::SameLine();
+    if (ImGui::Button("kill foes"))  Cheat_KillFoes(g);
+    ImGui::Checkbox("hold foes frozen", &holdFrozen);
+    if (holdFrozen)
+        Cheat_FreezeFoes(g);
 }

@@ -54,6 +54,9 @@ public:
     // One tick.
     void tick();
 
+    // Draws it on the debug map, with its switch links (dbg.h).
+    void debugDraw() const;
+
     // The switch (GameTick, tilequery.cpp).
     // Nonzero while a switch has set it moving.
     int  armed() const               { return armed_; }

@@ -22,3 +22,6 @@ bool Cheat_LoadLevel(Game *g, unsigned char lvl);
 
 /* Moves the player to cell (u, v), standing on its floor, as a teleporter does. */
 void Cheat_TeleportPlayer(Game *g, unsigned char u, unsigned char v);
+
+/* The debug UI's Cheats section (dbg.h).  Does nothing unless it is shown. */
+void Cheat_DebugPanel(Game *g);

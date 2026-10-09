@@ -1,4 +1,6 @@
-/* The debug UI: Dear ImGui over the game, drawn through RenderDevice.
+/* The debug UI's backend: Dear ImGui's context and its renderer over
+ * RenderDevice.  What it shows is drawn by the game's own code as it runs
+ * (dbg.h); this only puts the finished frame on screen.
  *
  * It draws as RenderDevice's overlay, after the game's frame and before it is
  * shown, so it needs no part of the game's rendering and leaves the state the
