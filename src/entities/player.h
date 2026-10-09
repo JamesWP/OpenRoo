@@ -126,7 +126,7 @@ public:
     double lastSecondsMark() const                    { return lastSecondsMark_; }
     void  setLastSecondsMark(double d)                { lastSecondsMark_ = d; }
     void  setEffectBActive(int n)                   { effectBActive_ = n; }
-    // The freeze effect's flag; worldstate.cpp reports it as the freeze timer.
+    // The freeze effect's flag.
     int   freezeActive() const                     { return freezeActive_; }
     void  setFreezeActive(int n)                   { freezeActive_ = n; }
     void  setFreezeStart(double d)                { freezeStart_ = d; }

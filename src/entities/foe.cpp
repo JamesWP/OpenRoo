@@ -11,7 +11,6 @@
 #include "foe.h"
 #include "dbg.h"
 #include "tiledebug.h"
-#include "worldstate.h"  // WS_DIR_*
 #include "game.h"
 #include "tile.h"
 #include "movableentity.h"
@@ -851,8 +850,8 @@ void Foe::debugDraw(unsigned id) const
                               dyingStarted() ? IM_COL32(120, 60, 60, 255) : IM_COL32(230, 50, 50, 255));
         // A tick for its facing, as the player's.
         const int f = facing();
-        if (f >= WS_DIR_MIN && f <= WS_DIR_MAX)
-            m.dl->AddLine(p, ImVec2(p.x + WS_DIR_DU[f] * m.cell * 0.5f, p.y + WS_DIR_DV[f] * m.cell * 0.5f),
+        if (f >= DIR_MIN && f <= DIR_MAX)
+            m.dl->AddLine(p, ImVec2(p.x + DIR_DU[f] * m.cell * 0.5f, p.y + DIR_DV[f] * m.cell * 0.5f),
                           IM_COL32(0, 0, 0, 255), 2);
         m.legend(2, "foe", foe_swatch);
     }

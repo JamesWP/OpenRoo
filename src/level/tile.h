@@ -15,6 +15,14 @@
  * on each value (the level builder spawns one object per kind); values nothing
  * settles keep a neutral TILE_KIND_<hex> name.  Call sites compare it as
  * signed char, as the game does. */
+/* Facing is a direction 1 to 4, from the movement interpolation:
+ *   1: V decreasing   2: U increasing   3: V increasing   4: U decreasing
+ * Turning right adds 1 and turning left adds 3, wrapping in 1 to 4. */
+#define DIR_MIN 1
+#define DIR_MAX 4
+static const int DIR_DU[5] = { 0,  0, +1,  0, -1 };
+static const int DIR_DV[5] = { 0, -1,  0, +1,  0 };
+
 enum TileKind {
     // A void cell.  The foe pathfinder treats it as blocked unless a platform
     // track bridges it.

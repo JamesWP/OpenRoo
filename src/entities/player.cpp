@@ -25,7 +25,6 @@
 #include "crtrand.h"
 #include "player.h"
 #include "dbg.h"
-#include "worldstate.h"  // WS_DIR_*
 #include "entitymath.h"
 #include "foepath.h"
 #include <stdlib.h>
@@ -535,8 +534,8 @@ void Player::debugDraw() const
         const ImVec2 p = m.centre(posU(), posV());
         m.dl->AddCircleFilled(p, m.cell * 0.4f, IM_COL32(255, 255, 255, 255));
         const int f = facing();
-        if (f >= WS_DIR_MIN && f <= WS_DIR_MAX)
-            m.dl->AddLine(p, ImVec2(p.x + WS_DIR_DU[f] * m.cell * 0.6f, p.y + WS_DIR_DV[f] * m.cell * 0.6f),
+        if (f >= DIR_MIN && f <= DIR_MAX)
+            m.dl->AddLine(p, ImVec2(p.x + DIR_DU[f] * m.cell * 0.6f, p.y + DIR_DV[f] * m.cell * 0.6f),
                           IM_COL32(0, 0, 0, 255), 2);
         m.legend(2, "player", player_swatch);
     }

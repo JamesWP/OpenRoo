@@ -39,9 +39,8 @@ public:
     // otherwise.
     unsigned int updateMovement();
 
-    // Readers shared by every entity.  worldstate.cpp's snapshot reads foes
-    // and bombs through these; the Player's own callers use them too.  Meaning
-    // is noted below only where the name does not already say it.
+    // Readers shared by every entity.  Meaning is noted below only where the
+    // name does not already say it.
     unsigned char facing() const               { return facing_; }
     float posU() const                         { return posU_; }
     float posY() const                         { return posY_; }

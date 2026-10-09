@@ -4,7 +4,6 @@
 #include "game.h"
 #include "levelmap.h"
 #include "tile.h"
-#include "worldstate.h"  // WS_DIR_*
 #include <algorithm>
 #include <vector>
 
@@ -85,7 +84,7 @@ static void draw_kind_mark(ImDrawList *dl, uint8_t kind, ImVec2 a, ImVec2 b)
         // Steps, walkable both ways: three treads across the slope, widest at
         // the foot and narrowest at the top.  kind - 4 is the way up.
         const int d = kind - 4;
-        const ImVec2 f(WS_DIR_DU[d] * w, WS_DIR_DV[d] * w);  // one cell uphill
+        const ImVec2 f(DIR_DU[d] * w, DIR_DV[d] * w);  // one cell uphill
         const ImVec2 s(-f.y, f.x);
         for (int i = 0; i < 3; i++) {
             const float along = -0.3f + 0.3f * i, half = 0.4f - 0.1f * i;
@@ -205,13 +204,13 @@ static void draw_slides(const dbg::MapView &m, LevelMap *map)
             return 0;
         const Tile *t = map->tile(u, v);
         const int d = t->slideDir();
-        return t->objectMarker() == TILE_SLIDE && d >= WS_DIR_MIN && d <= WS_DIR_MAX ? d : 0;
+        return t->objectMarker() == TILE_SLIDE && d >= DIR_MIN && d <= DIR_MAX ? d : 0;
     };
     std::vector<bool> fed(cols * rows), done(cols * rows);
     for (unsigned u = 0; u < cols; u++)
         for (unsigned v = 0; v < rows; v++)
             if (const int d = dirAt(u, v)) {
-                const int nu = u + WS_DIR_DU[d], nv = v + WS_DIR_DV[d];
+                const int nu = u + DIR_DU[d], nv = v + DIR_DV[d];
                 if (dirAt(nu, nv))
                     fed[nv * cols + nu] = true;
             }
@@ -225,19 +224,19 @@ static void draw_slides(const dbg::MapView &m, LevelMap *map)
                 std::vector<ImVec2> pts;
                 int u = u0, v = v0, d = dirAt(u, v);
                 const ImVec2 c0 = centre(u, v);
-                pts.push_back(ImVec2(c0.x - WS_DIR_DU[d] * cell * 0.45f, c0.y - WS_DIR_DV[d] * cell * 0.45f));
+                pts.push_back(ImVec2(c0.x - DIR_DU[d] * cell * 0.45f, c0.y - DIR_DV[d] * cell * 0.45f));
                 for (;;) {
                     done[v * cols + u] = true;
                     pts.push_back(centre(u, v));
                     d = dirAt(u, v);
-                    const int nu = u + WS_DIR_DU[d], nv = v + WS_DIR_DV[d];
+                    const int nu = u + DIR_DU[d], nv = v + DIR_DV[d];
                     if (!dirAt(nu, nv) || done[nv * cols + nu])
                         break;
                     u = nu;
                     v = nv;
                 }
                 const ImVec2 last = pts.back();
-                const ImVec2 f(WS_DIR_DU[d] * cell, WS_DIR_DV[d] * cell), side(-f.y, f.x);
+                const ImVec2 f(DIR_DU[d] * cell, DIR_DV[d] * cell), side(-f.y, f.x);
                 const ImVec2 base(last.x + f.x * 0.2f, last.y + f.y * 0.2f);
                 pts.push_back(base);
                 dl->AddPolyline(pts.data(), (int)pts.size(), SLIDE_COLOR, 0, width);

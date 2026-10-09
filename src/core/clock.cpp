@@ -22,7 +22,6 @@
 #include "logger.h"
 #include "determinism.h"
 #include "gamestate.h"
-#include "worldstate.h"
 #include "launcher.h"
 #include "sysdev.h"
 #include "record.h"
@@ -91,7 +90,6 @@ double clock_seconds(void)
     // every run, so it does no harm to the hash.
     dethash_frame_end(g_accum);
     gamestate_tick();
-    worldstate_tick();
     record_frame_boundary();
 
     // A replay ends on the recording's length, never on wall time.  The state

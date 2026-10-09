@@ -10,10 +10,6 @@ bool gamestate_enabled(void);
 /* Records the game mode as handed to the input dispatch. */
 void gamestate_note_mode(unsigned short mode);
 
-/* The last game mode seen; 0 is "not in a level".  worldstate.cpp checks it so
- * that a menu frame never dumps a stale or torn-down grid. */
-unsigned short gamestate_mode(void);
-
 /* Called once a frame; logs only on a change. */
 void gamestate_tick(void);
 

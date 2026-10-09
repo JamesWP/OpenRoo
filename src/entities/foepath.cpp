@@ -549,7 +549,7 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
 }
 
 /* GetCellStepDirectionCode's axis pairing does not match the movement facing
- * table in worldstate.h (+v and +u are swapped between them).  That is not a
+ * table in tile.h (+v and +u are swapped between them).  That is not a
  * bug in either: this result is compared against a stairs-orientation code, a
  * different enumeration from entity facing, and reconciling the two would
  * misclassify every stair tile. */

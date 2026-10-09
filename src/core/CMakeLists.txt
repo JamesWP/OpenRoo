@@ -7,8 +7,7 @@ add_library(core OBJECT
     gamestate.cpp
     ini.cpp
     gamedebug.cpp
-    gametick.cpp
-    worldstate.cpp)
+    gametick.cpp)
 target_include_directories(core PRIVATE
     ../prof
     .
