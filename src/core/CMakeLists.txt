@@ -22,6 +22,7 @@ target_include_directories(core PRIVATE
     ../input
     ../level
     ../render
+    ../gfx
     ../testing
     ../ui)
 

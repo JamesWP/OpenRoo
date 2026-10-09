@@ -12,5 +12,6 @@ target_include_directories(testing PRIVATE
     ../input
     ../level
     ../render
+    ../gfx
     ../ui
     ../sysdev)

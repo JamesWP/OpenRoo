@@ -16,5 +16,6 @@ target_include_directories(gl PRIVATE
     ../app
     ../core
     ../render
+    ../gfx
     ../sysdev
     ../windev)

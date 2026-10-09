@@ -12,9 +12,10 @@ base
 prof inputdev audiodev videodev
 windev
 dbg
+gfx
+gl
 audio
 render
-gl
 level
 entities
 testing
