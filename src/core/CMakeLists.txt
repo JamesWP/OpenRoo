@@ -5,10 +5,10 @@ add_library(core OBJECT
     gameglobals.cpp
     gamereset.cpp
     gamestate.cpp
-    ini.cpp
     gamedebug.cpp
     gametick.cpp)
 target_include_directories(core PRIVATE
+    ../base
     ../prof
     .
     ../log

@@ -19,6 +19,7 @@ add_library(entities OBJECT
     splinepath.cpp
     uvanimator.cpp)
 target_include_directories(entities PRIVATE
+    ../base
     .
     ../log
     ../audiodev
