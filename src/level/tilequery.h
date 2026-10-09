@@ -3,6 +3,8 @@
 #pragma once
 
 class Game;
+class LevelMap;
+class SwitchCells;
 class MovableEntity;
 
  
@@ -11,10 +13,10 @@ class MovableEntity;
 
 /* The nearest tile of the listed objects to (*pu, *pv), within maxDist;
  * written back through pu and pv. */
-  unsigned int   Sim_FindNearestListedObjectTile(Game *self, unsigned char *pu, unsigned char *pv, unsigned char maxDist);
+  unsigned int   Sim_FindNearestListedObjectTile(SwitchCells *sw, unsigned char switchMax, LevelMap *map, unsigned char *pu, unsigned char *pv, unsigned char maxDist);
 
 /* The nearest flagged tile within radius of (*pu, *pv), written back. */
-  unsigned int   Sim_FindNearestFlaggedTileInRadius(Game *self, unsigned char *pu, unsigned char *pv, unsigned char radius);
+  unsigned int   Sim_FindNearestFlaggedTileInRadius(LevelMap *map, unsigned char *pu, unsigned char *pv, unsigned char radius);
 
 /* self is the entity searching: the farthest occupied tile from it. */
   unsigned int   Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu, unsigned char *pv);

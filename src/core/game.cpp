@@ -53,13 +53,13 @@ Game::Game(const char *gameName, const char *gameDir)
     tally_ = ScoreTally();
     switchCells_.clearCounts();
     // PRESERVED: only the first 256 of each 500-slot table.
-    std::fill_n(bombSlots_, 0x100, nullptr);
-    std::fill_n(foeSlots_, 0x100, nullptr);
+    std::fill_n(bombs_.slot, 0x100, nullptr);
+    std::fill_n(foes_.slot, 0x100, nullptr);
     fallings_.count = 0;
-    foeCount_       = 0;
+    foes_.count       = 0;
     lifts_.count      = 0;
     platforms_.count     = 0;
-    bombCount_      = 0;
+    bombs_.count      = 0;
     bridges_.count    = 0;
     Sim_ResetLevelObjectCounters(this);
     field_42252_      = 0;
@@ -67,8 +67,8 @@ Game::Game(const char *gameName, const char *gameDir)
     initialised_      = 0;
     levelSoundsReady_ = 0;
     scriptPlayer_.clearStreams();
-    std::fill(std::begin(foeIds_), std::end(foeIds_), 0);
-    std::fill(std::begin(bombIds_), std::end(bombIds_), 0);
+    std::fill(std::begin(foes_.ids), std::end(foes_.ids), 0);
+    std::fill(std::begin(bombs_.ids), std::end(bombs_.ids), 0);
     field_48b14_ = 0;
     fixedSounds_.switchClick    = NULL;
     fixedSounds_.menuUpDown     = NULL;
@@ -171,15 +171,15 @@ Game::~Game()
     PlatformObject::purgeAll(entityContext(), platforms());
     FallingTile::purgeAll(entityContext(), fallings());
     BridgeObject::purgeAll(entityContext(), bridges());
-    while (foeCount_ != 0)
-        Foe::remove(this, foeIds_[0]);
-    while (bombCount_ != 0)
-        Bomb::remove(this, bombIds_[0]);
+    while (foes_.count != 0)
+        Foe::remove(entityContext(), foes_, foes_.ids[0]);
+    while (bombs_.count != 0)
+        Bomb::remove(entityContext(), bombs_, bombs_.ids[0]);
     fallings_.count = 0;
-    foeCount_       = 0;
+    foes_.count       = 0;
     lifts_.count      = 0;
     platforms_.count     = 0;
-    bombCount_      = 0;
+    bombs_.count      = 0;
     switchMax_      = 0;
     config_.setCameraDistanceSetting(zoomDistance_);
     if (highScores_.writeFile(gameDir_, gameFileName_, HIGHSCORE_KEY))

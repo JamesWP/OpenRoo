@@ -47,7 +47,8 @@
 
 #include "bomb.h"
 #include "dbg.h"
-#include "game.h"
+#include "soundmanager.h"
+#include "levelmap.h"
 #include "tile.h"
 #include <stdlib.h>
 #include "movableentity.h"
@@ -55,7 +56,6 @@
 #include "soundmanager.h"
 #include "audiodev.h"
 #include "logger.h"
-#include "gameglobals.h"
 
 #include <new>  // std::nothrow
 
@@ -192,7 +192,7 @@ static void spawn_strcpy(char *dst, const char *src)
 
 /* One "if enabled: copy the name, acquire, store" block; the slot is re-read
  * for the store. */
-void Bomb::acquireInto(Game *game, Bomb **slot, const SoundAssetName *asset,
+void Bomb::acquireInto(SoundManager *sm, Bomb **slot, const SoundAssetName *asset,
                        audiodev::Buffer *Bomb::*field)
 {
     char name[256];
@@ -207,11 +207,12 @@ void Bomb::acquireInto(Game *game, Bomb **slot, const SoundAssetName *asset,
         g_logger.write("bomb: first sound acquire -- '%s'\n", name);
     }
 
-    (*slot)->*field = game->soundManager()->acquireStatic(name, 1);
+    (*slot)->*field = sm->acquireStatic(name, 1);
 }
 
-void Bomb::spawn(Game *game, unsigned int uArg, unsigned int vArg,
-                 unsigned int hArg, unsigned int flagArg)
+void Bomb::spawn(const EntityContext &ctx, BombTable &bombs,
+                 const BombSounds &sounds, unsigned int uArg,
+                 unsigned int vArg, unsigned int hArg, unsigned int flagArg)
 {
     unsigned char u = (unsigned char)(uArg & 0xff);
     unsigned char v = (unsigned char)(vArg & 0xff);
@@ -227,18 +228,18 @@ void Bomb::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         unsigned char t = u; u = v; v = t;
     }
 
-    id = Object_ClaimSpareId(game->bombIds(), game->bombCountRef());
+    id = Object_ClaimSpareId(bombs.ids, &bombs.count);
 
     p = create();
 
-    slot  = game->bombSlotRef(id);
+    slot  = &bombs.slot[id];
     *slot = p;
 
     if (!s_logged_spawn) {
         s_logged_spawn = 1;
-        g_logger.write("bomb: first bomb spawn -- game=%p id=%u obj=%p "
+        g_logger.write("bomb: first bomb spawn -- table=%p id=%u obj=%p "
                   "u=%u v=%u h=%u flag=%u\n",
-                  (void *)game, (unsigned)id, (void *)p, (unsigned)u,
+                  (void *)&bombs, (unsigned)id, (void *)p, (unsigned)u,
                   (unsigned)v, (unsigned)h, (unsigned)f);
     }
     if (s_diag_spawn) {
@@ -248,10 +249,10 @@ void Bomb::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     }
 
     // Through the raw pointer, not the slot: PRESERVED.
-    p->clock_ = game->clock();
+    p->clock_ = ctx.clock;
 
-    (*slot)->tickStep_   = game->tickStep();
-    (*slot)->map_ = game->map();
+    (*slot)->tickStep_   = ctx.tickStep;
+    (*slot)->map_ = ctx.map;
     (*slot)->facing_   = f;
 
     (*slot)->cellU_      = (signed char)u;
@@ -263,21 +264,21 @@ void Bomb::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     (*slot)->posY_ = (float)(int)(unsigned int)h;
     (*slot)->posV_ = (float)(int)(unsigned int)v;
 
-    (*slot)->droppedAt_ = *game->clock();
+    (*slot)->droppedAt_ = *ctx.clock;
 
-    if (game->soundCreated() != 0) {
-        acquireInto(game, slot, game->soundAsset429b6(), &Bomb::sound_b3_);
+    if (ctx.sound->created() != 0) {
+        acquireInto(ctx.sound, slot, sounds.b3, &Bomb::sound_b3_);
 
-        if (game->soundAsset42ac2()->enabled != 0) {
-            acquireInto(game, slot, game->soundAsset42ac2(), &Bomb::sound_b7_);
+        if (sounds.b7bb->enabled != 0) {
+            acquireInto(ctx.sound, slot, sounds.b7bb, &Bomb::sound_b7_);
             // The same flag, tested again: PRESERVED.
-            if (game->soundAsset42ac2()->enabled != 0)
-                acquireInto(game, slot, game->soundAsset42ac2(), &Bomb::sound_bb_);
+            if (sounds.b7bb->enabled != 0)
+                acquireInto(ctx.sound, slot, sounds.b7bb, &Bomb::sound_bb_);
         }
 
-        acquireInto(game, slot, game->soundAsset46baa(), &Bomb::blastSound_);
-        acquireInto(game, slot, game->soundAsset457c6(), &Bomb::sound_c3_);
-        acquireInto(game, slot, game->soundAsset46132(), &Bomb::rollSound_);
+        acquireInto(ctx.sound, slot, sounds.blast, &Bomb::blastSound_);
+        acquireInto(ctx.sound, slot, sounds.c3, &Bomb::sound_c3_);
+        acquireInto(ctx.sound, slot, sounds.roll, &Bomb::rollSound_);
     }
 }
 
@@ -304,11 +305,11 @@ void Bomb::releaseField(SoundManager *sm, Bomb **slot,
     sm->releaseStaticForOwner(buf, 0);
 }
 
-void Bomb::remove(Game *game, unsigned int idArg)
+void Bomb::remove(const EntityContext &ctx, BombTable &bombs, unsigned int idArg)
 {
     unsigned char id  = (unsigned char)(idArg & 0xff);
-    Bomb        **slot = game->bombSlotRef(id);
-    SoundManager *sm   = game->soundManager();
+    Bomb        **slot = &bombs.slot[id];
+    SoundManager *sm   = ctx.sound;
 
     fx_init();
 
@@ -317,8 +318,8 @@ void Bomb::remove(Game *game, unsigned int idArg)
 
     if (!s_logged_remove) {
         s_logged_remove = 1;
-        g_logger.write("bomb: first bomb removal -- game=%p id=%u obj=%p\n",
-                  (void *)game, (unsigned)id, (void *)*slot);
+        g_logger.write("bomb: first bomb removal -- table=%p id=%u obj=%p\n",
+                  (void *)&bombs, (unsigned)id, (void *)*slot);
     }
     if (s_diag_remove) {
         ++s_removals;
@@ -326,7 +327,7 @@ void Bomb::remove(Game *game, unsigned int idArg)
             g_logger.write("bomb: %lu removals\n", s_removals);
     }
 
-    if (game->soundCreated() != 0) {
+    if (ctx.sound->created() != 0) {
         // In a fixed order.
         releaseField(sm, slot, &Bomb::blastSound_);
         releaseField(sm, slot, &Bomb::sound_b3_);
@@ -338,8 +339,8 @@ void Bomb::remove(Game *game, unsigned int idArg)
         releaseField(sm, slot, &Bomb::sound_af_);
     }
 
-    Object_DestroyAndCompactId((void **)slot, game->bombCountRef(),
-                               game->bombIds(), id,
+    Object_DestroyAndCompactId((void **)slot, &bombs.count,
+                               bombs.ids, id,
                                0);  // PRESERVED: not nulled
 }
 

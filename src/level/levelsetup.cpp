@@ -273,9 +273,9 @@ Sim_SetupLevelObjects(Game *self)
     self->switchCells()->clearCounts();
 
     while (self->foeCount() != 0)
-        Foe::remove(self, self->foeId(0));
+        Foe::remove(self->entityContext(), self->foes(), self->foeId(0));
     while (self->bombCount() != 0)
-        Bomb::remove(self, self->bombId(0));
+        Bomb::remove(self->entityContext(), self->bombs(), self->bombId(0));
 
     self->setFallingCount(0);
     self->setFoeCount(0);
@@ -572,13 +572,13 @@ Sim_SetupLevelObjects(Game *self)
                             t->setParam(0);
                             hh = (unsigned char)(hh + bump);
                         }
-                        Foe::spawn(self, u, v, hh, 2, t->param());
+                        Foe::spawn(self->entityContext(), self->foes(), u, v, hh, 2, t->param());
                         t->setContents(0);
                         spawned2 = 1;
                     }
 
                     if (s->contents() == CONTENTS_FOE_TYPE3) {
-                        Foe::spawn(self, u, v, t->height(), 3, t->param());
+                        Foe::spawn(self->entityContext(), self->foes(), u, v, t->height(), 3, t->param());
                         t->setContents(0);
                         t->setParam(0);
                     } else if (!spawned2) {
@@ -643,7 +643,7 @@ next_row:
             self->levelIndex() > 4) {
             unsigned char cu = self->player()->homeU();
             unsigned char cv = self->player()->homeV();
-            if (Sim_FindNearestFlaggedTileInRadius(self, &cu, &cv, 0x14)) {
+            if (Sim_FindNearestFlaggedTileInRadius(self->map(), &cu, &cv, 0x14)) {
                 CELL(M, cu, cv)->setContents(0);
                 g_logger.logMessage(3, "GAME: CD is not in drive! Crystal at %d,%d token!",
                                    (unsigned int)cu, (unsigned int)cv);

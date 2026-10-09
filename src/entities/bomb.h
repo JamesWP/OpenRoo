@@ -7,24 +7,36 @@
 #pragma once
 
  
-#include "game.h"
+#include "entitycontext.h"
 #include "movableentity.h"
+#include "soundasset.h"
 
 namespace audiodev { class Buffer; }
 class SoundManager;
 class Tile;
+class Bomb;
+
+typedef EntityIdTable<Bomb, 500> BombTable;
+
+/* The theme's sounds a bomb attaches when it is dropped. */
+struct BombSounds {
+    const SoundAssetName *b3, *b7bb, *blast, *c3, *roll;
+};
 
 class Bomb : public MovableEntity {
 public:
      
 
     // Spawns a bomb at (u, v, h); the arguments are masked to bytes.
-    static void spawn(Game *game, unsigned int uArg, unsigned int vArg,
-                      unsigned int hArg, unsigned int flagArg);
+    static void spawn(const EntityContext &ctx, BombTable &bombs,
+                      const BombSounds &sounds, unsigned int uArg,
+                      unsigned int vArg, unsigned int hArg,
+                      unsigned int flagArg);
 
     // Releases the sounds, destroys the bomb and removes its ID.  PRESERVED:
     // leaves the slot dangling.
-    static void remove(Game *game, unsigned int idArg);
+    static void remove(const EntityContext &ctx, BombTable &bombs,
+                       unsigned int idArg);
 
     // One tick: the fuse, the roll and the blast.
     void tick();
@@ -43,7 +55,7 @@ private:
 
     // The cell (u, v) from this bomb's tile base, both read signed.
     Tile *tile(int u, int v) const;
-    static void acquireInto(Game *game, Bomb **slot, const SoundAssetName *asset,
+    static void acquireInto(SoundManager *sm, Bomb **slot, const SoundAssetName *asset,
                             audiodev::Buffer *Bomb::*field);
     static void releaseField(SoundManager *sm, Bomb **slot,
                              audiodev::Buffer *Bomb::*field);

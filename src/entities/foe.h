@@ -9,24 +9,30 @@
 #pragma once
 
  
-#include "game.h"
+#include "entitycontext.h"
+#include "bomb.h"
 #include "movableentity.h"
 
 class SoundManager;
 class Tile;
+class Foe;
+
+typedef EntityIdTable<Foe, 500> FoeTable;
 
 class Foe : public MovableEntity {
 public:
      
 
     // Spawns a foe; the arguments are masked to bytes.  Returns the new ID.
-    static unsigned char spawn(Game *game, unsigned int uArg, unsigned int vArg,
+    static unsigned char spawn(const EntityContext &ctx, FoeTable &foes,
+                               unsigned int uArg, unsigned int vArg,
                                unsigned int hArg, unsigned int kindArg,
                                unsigned int typeArg);
 
     // Releases the sounds, destroys the foe, nulls the slot and removes its
     // ID.
-    static void remove(Game *game, unsigned int idArg);
+    static void remove(const EntityContext &ctx, FoeTable &foes,
+                       unsigned int idArg);
 
     // Draws it on the debug map and adds it to the tooltip; id is its slot
     // in the Game's foe table.
@@ -54,12 +60,13 @@ public:
 
     // The target for each behaviour, the hold flag and the chase speed (types
     // 2 and 3 chase from here).  hold is the loop's 0 or 1.
-    void chooseTarget(Game *game, int hold,
+    void chooseTarget(const EntityContext &ctx, FoeTable &foes, int hold,
                       unsigned char playerU, unsigned char playerV,
                       unsigned char escortU, unsigned char escortV,
                       unsigned char *pu, unsigned char *pv);
     // The foe's own bomb drop, when step() raised the hit flag.
-    void dropBomb(Game *game);
+    void dropBomb(const EntityContext &ctx, BombTable &bombs,
+                  const BombSounds &sounds);
     // Touching the player kills it (*playerMoveState = 1); once the player is
     // down, a foe not held gets anim 0x28.
     void checkPlayerContact(unsigned char *playerMoveState,

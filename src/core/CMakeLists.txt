@@ -3,6 +3,7 @@ add_library(core OBJECT
     determinism.cpp
     game.cpp
     gameglobals.cpp
+    checkpoint.cpp
     gamereset.cpp
     gamestate.cpp
     gamedebug.cpp

@@ -2,6 +2,7 @@
 add_library(render OBJECT
     camera.cpp
     dsoscene.cpp
+    framepose.cpp
     meshbatch.cpp
     objectshadows.cpp
     particles.cpp

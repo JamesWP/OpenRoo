@@ -21,6 +21,7 @@
 #include "theme.h"
 #include "tickstep.h"
 #include "entitycontext.h"
+#include "bomb.h"
 #include "soundmanager.h"
 #include "player.h"
 
@@ -370,7 +371,18 @@ public:
     void           setTallyDone(int d)               { tallyDone_ = d; }
 
     /* What the entities are given at spawn, and the tables they fill. */
-    EntityContext entityContext() { return { &clock_, &tickStep_, &map_, &soundManager_ }; }
+    EntityContext entityContext()
+    {
+        return { &clock_, &tickStep_, &map_, &soundManager_, &switchCells_,
+                 &switchMax_, levelName_, &field_42252_ };
+    }
+    BombSounds bombSounds() const
+    {
+        return { soundAsset429b6(), soundAsset42ac2(), soundAsset46baa(),
+                 soundAsset457c6(), soundAsset46132() };
+    }
+    EntityIdTable<Bomb, 500> &bombs() { return bombs_; }
+    EntityIdTable<Foe, 500>  &foes()  { return foes_; }
     EntitySlots<LiftObject, 256>     &lifts()     { return lifts_; }
     EntitySlots<PlatformObject, 100> &platforms() { return platforms_; }
     EntitySlots<BridgeObject, 256>   &bridges()   { return bridges_; }
@@ -408,24 +420,24 @@ public:
      * The *Ref accessors hand out addresses because the remove's tail
      * (objectremove.cpp) edits them in place, and the removes re-read the
      * slot through its address exactly as the original does. */
-    unsigned char  bombCount() const               { return bombCount_; }
-    void           setBombCount(unsigned char n)   { bombCount_ = n; }
-    unsigned char *bombCountRef()   { return &bombCount_; }
-    unsigned char  bombId(unsigned int i) const    { return bombIds_[i]; }
-    unsigned char *bombIds()        { return bombIds_; }
-    Bomb          *bombSlot(unsigned int id) const { return bombSlots_[id]; }
-    Bomb         **bombSlotRef(unsigned int id)  { return &bombSlots_[id]; }
+    unsigned char  bombCount() const               { return bombs_.count; }
+    void           setBombCount(unsigned char n)   { bombs_.count = n; }
+    unsigned char *bombCountRef()   { return &bombs_.count; }
+    unsigned char  bombId(unsigned int i) const    { return bombs_.ids[i]; }
+    unsigned char *bombIds()        { return bombs_.ids; }
+    Bomb          *bombSlot(unsigned int id) const { return bombs_.slot[id]; }
+    Bomb         **bombSlotRef(unsigned int id)  { return &bombs_.slot[id]; }
 
     /* ── foes ───────────────────────────────────────────────────────── */
     /* The same slot/count/ID-list shape as the bombs, and the same *Ref
      * accessors for the shared remove tail. */
-    unsigned char  foeCount() const               { return foeCount_; }
-    void           setFoeCount(unsigned char n)   { foeCount_ = n; }
-    unsigned char *foeCountRef()    { return &foeCount_; }
-    unsigned char  foeId(unsigned int i) const    { return foeIds_[i]; }
-    unsigned char *foeIds()         { return foeIds_; }
-    Foe           *foeSlot(unsigned int id) const { return foeSlots_[id]; }
-    Foe          **foeSlotRef(unsigned int id)   { return &foeSlots_[id]; }
+    unsigned char  foeCount() const               { return foes_.count; }
+    void           setFoeCount(unsigned char n)   { foes_.count = n; }
+    unsigned char *foeCountRef()    { return &foes_.count; }
+    unsigned char  foeId(unsigned int i) const    { return foes_.ids[i]; }
+    unsigned char *foeIds()         { return foes_.ids; }
+    Foe           *foeSlot(unsigned int id) const { return foes_.slot[id]; }
+    Foe          **foeSlotRef(unsigned int id)   { return &foes_.slot[id]; }
     /* A uint16_t the foe spawn bumps for type 0x0b; levelsetup.cpp calls it a
      * crystal count.  Not confirmed, so not named. */
     unsigned short field_42252() const             { return field_42252_; }
@@ -549,12 +561,8 @@ private:
     EntitySlots<LiftObject, 256> lifts_;
     int           field_173b1a_{};
     EntitySlots<FallingTile, 200> fallings_;
-    Bomb         *bombSlots_[500]{};
-    unsigned char bombCount_{};
-    unsigned char bombIds_[500]{};
-    Foe          *foeSlots_[500]{};
-    unsigned char foeCount_{};
-    unsigned char foeIds_[500]{};
+    EntityIdTable<Bomb, 500> bombs_;
+    EntityIdTable<Foe, 500>  foes_;
     Player        player_;
     unsigned char rebindCode_{};
     char          rebindAction_[0x100]{};
