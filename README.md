@@ -66,5 +66,12 @@ Each directory under `src/` is a CMake group (an object library in its
 headers and those of the groups in its `DEPENDS` list, so those lists are the
 layering and the compiler enforces them. OpenGL headers
 are for `gl` alone (`cmake/CheckNativeGL.cmake`); everything else goes through `renderdevice.h`.
+The groups are also ordered in `src/layers.txt`, lowest first: a group may include
+only groups on lines above its own (`tools/check_layers.py`, run by the build as
+`check-layers`). The includes that still point upwards are listed in
+`src/layers.baseline`, which may only shrink: a new upward include fails the build,
+and so does a baseline line whose include has been fixed (delete it). After fixing
+some, `python3 tools/check_layers.py . --update-baseline` rewrites the list, and
+`--report` prints the remaining group cycles.
 SDL and FFmpeg are for the platform groups (`windev`, `audiodev`, `inputdev`, `sysdev`,
 `videodev`) alone (`cmake/CheckNativeSDL.cmake`).

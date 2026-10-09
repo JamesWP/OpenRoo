@@ -73,6 +73,13 @@ add_custom_target(check-native-audio ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeAudio.cmake)
 add_dependencies(OpenRoo check-native-audio)
 
+# The groups must keep to the layering in src/layers.txt (new upward includes
+# fail; the known ones are in src/layers.baseline, which may only shrink).
+add_custom_target(check-layers ALL
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tools/check_layers.py ${PROJECT_SOURCE_DIR}
+    COMMENT "Checking the group layering")
+add_dependencies(OpenRoo check-layers)
+
 # Only the platform groups may use the system clock, time and exception APIs.
 add_custom_target(check-native-system ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeSystem.cmake)
