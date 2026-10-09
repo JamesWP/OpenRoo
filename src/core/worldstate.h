@@ -1,4 +1,4 @@
-/* The world-state reader (worldstate.cpp): the autoplayer's view of a level,
+/* The world-state reader (worldstate.cpp): the view of a level,
  * read from the Game each frame.  Reads only: it never writes game state, so
  * it cannot perturb a recording.
  *
@@ -16,38 +16,6 @@
 /* Facing is a direction 1 to 4, from the movement interpolation:
  *   1: V decreasing   2: U increasing   3: V increasing   4: U decreasing
  * Turning right adds 1 and turning left adds 3, wrapping in 1 to 4. */
-
-/* A drop of one or two height steps is survivable and three or more is fatal,
- * unless the landing tile is a jump pad; landing at height 1 or lower is
- * fatal too. */
-#define WS_MAX_SAFE_DROP 2
-
-/* Every nonzero contents byte is a pickup except CONTENTS_TRANSFORM, which
- * turns the player into something else and is left alone. */
-
-/* A sticky pad (TILE_STICKY).  Standing on one whose busy flag is clear cancels
- * the queued move for a fixed time; then the flag is set and the pad is inert.
- * Foes run the same movement code, so a foe on a pad is held too. */
-#define WS_TILE_STICKY TILE_STICKY
-
-/* The falling tile.  Standing on one drops it away a few ticks later, and
- * the player with it; crossing without stopping is safe.  They are laid out as
- * corridors, so the planner avoids them where it can and crosses them where it
- * must.  One whose param is 0 comes back after it falls; any other param falls
- * once.  A severed route is often temporary, so plans are allowed to recover
- * (plan.cpp). */
-#define WS_TILE_FALLING TILE_FALLING
-
-/* CONTENTS_EXTRA_LIFE adds one to the player's lives. */
-#define WS_TILE_EXTRA_LIFE CONTENTS_EXTRA_LIFE
-
-/* Contents, not a kind: TILE_FALLING is the kind with the same value. */
-#define WS_TILE_TRANSFORM CONTENTS_TRANSFORM
-static inline bool ws_is_pickup(uint8_t contents)
-{
-    return contents != 0 && contents != WS_TILE_TRANSFORM;
-}
-#define WS_TILE_SOFT_LAND TILE_JUMP_PAD
 
 #define WS_DIR_MIN 1
 #define WS_DIR_MAX 4
@@ -84,7 +52,7 @@ struct WsEntity {
     uint32_t hidden;      // nonzero once it has started dying
 };
 
-/* One frame's observation: what the autoplayer reads. */
+/* One frame's observation: what the debug UI and dumps read. */
 struct Observation {
     bool  valid;
     uint32_t frame;
@@ -116,37 +84,10 @@ struct Observation {
      * extents are out of range (menus, teardown). */
     bool observe();
 
-    /* Whether an entity on (fu, fv) can step to the adjacent (tu, tv).  The
-     * game's movement cancels a step when:
-     *   - the destination's occupant byte is set (an object or a foe);
-     *   - it is higher, unless the tile being left is a stair tile facing that way;
-     *   - it is WS_MAX_SAFE_DROP or more steps lower, unless it is a jump pad;
-     *   - it is kind 0x16, or 0x17 with its busy flag clear.
-     * Stairs (kinds 5 to 8) allow the climb only in their own direction; that
-     * test is not reproduced here, so this can propose a climb the game
-     * refuses.  Everywhere else it errs towards blocked: a refused legal step
-     * costs a detour, but an accepted illegal one wedges the autoplayer
-     * against a wall. */
-    bool passable(int fu, int fv, int tu, int tv) const;
-
-    /* As passable, with foes treated as absent.  A foe blocks its cell as an
-     * object does, but it moves; this separates "blocked for now" from "blocked
-     * for good", so the autoplayer can wait for a guarded pickup. */
-    bool passableIgnoringFoes(int fu, int fv, int tu, int tv) const;
-
-    /* Whether a live foe or bomb stands on this cell.
-     *
-     * Foes act only while the freeze timer is 0 and the mode is 1; otherwise,
-     * and once the level is complete or the player dead, they are held.  The
-     * freeze bonus is the window in which a guarded pickup is safe.  Behaviour
-     * 1 walks to the exit, 2 and 3 chase the player, 5 hunts other foes. */
-    bool foeOnCell(int u, int v) const;
-
     /* KAROO_WS_TRACE: logs the frame's player and entity lines. */
     void traceFrame() const;
 
 private:
-    bool wsPassableImpl(int fu, int fv, int tu, int tv, bool ignore_foes) const;
     void traceEntities(const char *tag, const WsEntity *ents, unsigned n,
                        bool foe) const;
 };
@@ -156,6 +97,3 @@ private:
  * none is set. */
 void worldstate_tick(void);
 
-/* The latest valid observation, or NULL.  The autoplayer reads this rather
- * than the Game. */
-const Observation *worldstate_latest(void);

@@ -9,7 +9,6 @@
 #include "logger.h"
 #include "gamestate.h"
 #include "record.h"
-#include "policy.h"
 #include "clock.h"
 #include "gamestr.h"
 #include "ini.h"
@@ -174,35 +173,15 @@ void ProgableControl::dispatch(unsigned short game_state)
     gamestate_note_mode(game_state);  // before the early return, so paused and cutscene modes are seen
 
     uint8_t ks[inputdev::KEY_COUNT];
-    if (record_replaying() && !policy_in_control(clock_frame())) {
+    if (record_replaying()) {
         // Replay supplies both the key array and the mode; the real keyboard
         // is not read.
         unsigned short recorded = game_state;
         if (!replay_keys(&recorded, ks)) return;
         game_state = recorded;
         if (game_state >= 5) return;
-    } else if (policy_in_control(clock_frame())) {
-        // The autoplay policy drives.  The watcher's own keys are merged on
-        // top, so they can still steer; the recording sees the merged array,
-        // so a recorded policy run replays exactly.
-        if (game_state >= 5) return;
-
-        uint8_t human[inputdev::KEY_COUNT] = {};
-        if (!devices_.readKeyboard(human)) std::fill(std::begin(human), std::end(human), uint8_t(0));
-
-        std::fill(std::begin(ks), std::end(ks), uint8_t(0));
-        if (!policy_keys(this, game_state, ks)) {
-            std::copy(std::begin(human), std::end(human), ks);
-        } else {
-            for (int i = 0; i < inputdev::KEY_COUNT; i++) ks[i] |= human[i];
-        }
-        record_keys(game_state, ks);
     } else {
         if (game_state >= 5 || !devices_.readKeyboard(ks)) return;
-        // The policy may overwrite the keys (it declines outside a level), and
-        // runs before recording so a policy-driven run records like a
-        // hand-played one.
-        policy_keys(this, game_state, ks);
         record_keys(game_state, ks);
     }
 

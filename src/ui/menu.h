@@ -1,8 +1,8 @@
 #pragma once
 #include <stdint.h>
 
-/* The menu reader and driver, for the autoplay policy.  The menu is a tree of
- * byte node ids, readable from the Game, so the policy navigates it as a
+/* The menu reader and driver, for unattended runs.  The menu is a tree of
+ * byte node ids, readable from the Game, so it is navigated as a
  * person does: see where the cursor is, work out a route, press keys.
  * Descending into some nodes is an action (6 quits, 0x29 continues after a
  * completed level, 200 + k loads save slot k), so "navigate to node N" is the

@@ -442,7 +442,7 @@ void tilequery_census_object_types(Game *self)
 
     ++level;
 
-    // The foe table, as the autoplay's perception enumerates it; the type is
+    // The foe table, as the world-state reader enumerates it; the type is
     // the same field the tick dispatches on.
     Game *g = self;
     count = (unsigned int)g->foeCount();

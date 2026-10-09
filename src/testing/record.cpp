@@ -32,7 +32,6 @@
 #include "record.h"
 #include "sysdev.h"
 #include "inputdev.h"
-#include "policy.h"
 #include "menu.h"
 #include "levelreport.h"
 #include "clock.h"
@@ -446,13 +445,10 @@ bool input_key_down(int key)
     if (levelreport_async_override(key, &mv)) return mv;
 
     bool v;
-    if (record_replaying() && !policy_in_control(clock_frame())) {
+    if (record_replaying()) {
         replay_async(key, &v);
         return v;
     }
-    // Under autoplay the recording's answers must not reach the game (the
-    // prefix recording ends by quitting), but the real keyboard is still read,
-    // so whoever is watching can still press Escape.
     v = inputdev::keyDown(key);
     record_async(key, v);
     return v;

@@ -20,7 +20,6 @@
 #include "sysdev.h"
 #include "gamestate.h"
 #include "clock.h"
-#include "policy.h"
 #include "logger.h"
 #include "game.h"
 #include "player.h"
@@ -32,7 +31,6 @@
 
 static WsTile     g_grid[WS_GRID_PITCH * WS_GRID_PITCH];
 static Observation g_obs;
-static bool        g_obs_valid;
 
 static bool env_flag(const char *name)
 {
@@ -170,80 +168,6 @@ bool Observation::observe()
     freeze_timer      = (uint32_t)pl->freezeActive();
     return true;
 }
-
-/* Kinds 5 to 8 are stairs; the movement code uses this test to tell a climb
- * from a wall. */
-static inline bool ws_is_stairs(uint8_t kind) { return kind > 4 && kind < 9; }
-
-bool Observation::foeOnCell(int u, int v) const
-{
-    for (unsigned pass = 0; pass < 2; pass++) {
-        const WsEntity *e = pass ? enemies : foes;
-        unsigned n        = pass ? n_enemies : n_foes;
-        for (unsigned i = 0; i < n; i++)
-            if (e[i].gu == u && e[i].gv == v) return true;
-    }
-    return false;
-}
-
-bool Observation::wsPassableImpl(int fu, int fv,
-                             int tu, int tv, bool ignore_foes) const
-{
-    if (tu < 0 || tv < 0 || tu >= cols || tv >= rows) return false;
-    if (fu < 0 || fv < 0 || fu >= cols || fv >= rows) return false;
-
-    const WsTile *from = &grid[fv + fu * WS_GRID_PITCH];
-    const WsTile *to   = &grid[tv + tu * WS_GRID_PITCH];
-
-    if (to->kind == TILE_EMPTY)      return false;  // no floor
-    // The occupant byte is set by an entity arriving (its kind) and cleared
-    // when it leaves; it is not used for scenery.  PRESERVED: it leaks.  A foe
-    // removed on death is not cleared from its tile, so the byte stays set for
-    // the rest of the level (and a falling tile re-arms on it).  A cell is
-    // therefore treated as occupied only if a foe or bomb is actually reported
-    // there.
-    if (to->occupant != 0 && !ignore_foes && foeOnCell(tu, tv))
-        return false;
-    if (to->kind == TILE_IMPASSABLE)   return false;
-    if (to->kind == TILE_BOMBABLE && to->spent == 0) return false;
-
-    // An unspent sticky pad holds whoever stands on it, which with foes about is
-    // how the player gets caught.  A spent pad is safe.
-    if (to->kind == WS_TILE_STICKY && to->spent == 0) return false;
-
-    // A climb is allowed only when the tile being left is a stair tile facing the
-    // direction of travel, or facing directly away; it is the source tile that
-    // counts.  Otherwise a step one higher is refused.
-    if (to->height > from->height) {
-        if (!ws_is_stairs(from->kind)) return false;
-        int dir = 0;
-        for (int d = WS_DIR_MIN; d <= WS_DIR_MAX; d++)
-            if (fu + WS_DIR_DU[d] == tu && fv + WS_DIR_DV[d] == tv) { dir = d; break; }
-        int up   = from->kind - 4;              // 1..4, the way up
-        int back = ((up - 1 + 2) % 4) + 1;      // its opposite
-        if (dir != up && dir != back) return false;
-    }
-
-    // A drop of three or more kills, unless onto a jump pad.
-    if (to->kind != WS_TILE_SOFT_LAND &&
-        from->height > to->height + WS_MAX_SAFE_DROP)
-        return false;
-
-    return true;
-}
-
-bool Observation::passable(int fu, int fv, int tu, int tv) const
-{
-    return wsPassableImpl(fu, fv, tu, tv, false);
-}
-
-bool Observation::passableIgnoringFoes(int fu, int fv,
-                                       int tu, int tv) const
-{
-    return wsPassableImpl(fu, fv, tu, tv, true);
-}
-
-const Observation *worldstate_latest(void) { return g_obs_valid ? &g_obs : NULL; }
 
 /* The map check.  The Game's count of crystals in the level is set by the
  * level builder and never written in play, so recounting it from the grid is
@@ -437,8 +361,7 @@ static void worldstate_init(void)
 void worldstate_tick(void)
 {
     if (g_trace < 0) worldstate_init();
-    // The autoplayer needs observations too; without it here it gets none.
-    if (!g_trace && !g_map_wanted && !g_obsdump && !policy_active()) return;
+    if (!g_trace && !g_map_wanted && !g_obsdump) return;
 
     // Only in a level (mode not 0): menus must not dump a stale grid.
     Observation *obs = &g_obs;
@@ -446,7 +369,6 @@ void worldstate_tick(void)
     if (mode == 0) return;
     if (!obs->observe()) return;
     obs->mode   = mode;
-    g_obs_valid = true;
 
     if (g_map_wanted && !g_map_done) {
         g_map_done = true;
