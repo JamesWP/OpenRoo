@@ -8,6 +8,7 @@
 
 sysdev
 log
+base
 prof inputdev audiodev videodev
 windev
 dbg

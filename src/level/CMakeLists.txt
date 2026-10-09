@@ -11,6 +11,7 @@ add_library(level OBJECT
     tiledebug.cpp
     tilequery.cpp)
 target_include_directories(level PRIVATE
+    ../base
     ../inputdev
     .
     ../log

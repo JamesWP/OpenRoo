@@ -12,6 +12,7 @@ add_library(ui OBJECT
     textentry.cpp
     theme.cpp)
 target_include_directories(ui PRIVATE
+    ../base
     .
     ../log
     ../audiodev
