@@ -13,6 +13,8 @@
 #include <new>
 #include "logger.h"
 #include "foepath.h"
+#include "dbg.h"
+#include <algorithm>
 #include "tile.h"
 #include "levelmap.h"
 #include "entitymath.h"
@@ -796,3 +798,27 @@ int FoePath::find(int uFoe, int vFoe, int uTarget, int vTarget)
     return 0;
 }
 
+
+static void path_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
+{
+    dl->AddLine(ImVec2(a.x, b.y), ImVec2(b.x, a.y), IM_COL32(255, 140, 0, 220), 2.0f);
+}
+
+void FoePath::debugDraw(float fromU, float fromV) const
+{
+    if (!found_ || !result_)
+        return;
+    dbg::MapLayer layer;
+    if (!layer || !layer->foePaths || layer->asLoaded)
+        return;
+    const dbg::MapView &m = *layer;
+    ImVec2 prev = m.centre(fromU, fromV);
+    int guard = 0;
+    for (const PathNode *n = result_; n && guard++ < 4096; n = n->parent()) {
+        const ImVec2 p = m.centre((float)n->u(), (float)n->v());
+        m.dl->AddLine(prev, p, IM_COL32(255, 140, 0, 220), std::max(1.0f, m.cell * 0.1f));
+        prev = p;
+    }
+    m.dl->AddCircle(prev, m.cell * 0.25f, IM_COL32(255, 140, 0, 220), 0, 2.0f);
+    m.legend(3, "foe path", path_swatch);
+}

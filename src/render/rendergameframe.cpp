@@ -57,6 +57,7 @@
 #include "textrenderer.h"
 #include "menuscreens.h"
 #include "scoreoverlay.h"
+#include "dbg.h"
 #include "gameglobals.h"
 
 /* ─── Section 2: timing, tick, camera, listener ─────────────────────────── */
@@ -1000,6 +1001,7 @@ static void draw_logo(Game *g, float H, float hudH, float pad)
   void  
 Render_RenderGameFrame(void)
 {
+    dbg::frameBegin();
     PROF_SCOPE("frame");
     Game *g = Game::instance();
     if (g->field_173584() != 0) {

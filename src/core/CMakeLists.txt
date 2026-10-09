@@ -6,6 +6,7 @@ add_library(core OBJECT
     gamereset.cpp
     gamestate.cpp
     ini.cpp
+    gamedebug.cpp
     gametick.cpp
     worldstate.cpp)
 target_include_directories(core PRIVATE
@@ -24,3 +25,7 @@ target_include_directories(core PRIVATE
     ../render
     ../testing
     ../ui)
+
+# The debug UI sections and map layers drawn from this group (dbg.h).
+target_include_directories(core PRIVATE ../dbg)
+target_link_libraries(core PRIVATE imgui)

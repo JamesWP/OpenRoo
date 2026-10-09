@@ -59,6 +59,8 @@
 #include "record.h"
 #include "progctrl.h"
 #include "prof.h"
+#include "tiledebug.h"
+#include "gamedebug.h"
 #include "cdm.h"
 #include "audiodev.h"
 
@@ -192,6 +194,7 @@ Sim_GameTick(Game *self, double dt, double now)
         self->nameEntry()->poll((unsigned int)ftol80((*self->clock())));
 
     Game *game = self;
+    Tile_DebugDrawMap(game);
     if (!s_fx) {
         if (game->liftCount() != 0) {
             PROF_SCOPE("lifts");
@@ -222,8 +225,10 @@ Sim_GameTick(Game *self, double dt, double now)
     }
     if (game->bridgeCount() != 0) {
         PROF_SCOPE("bridges");
-        for (int i = 0; i < (int)game->bridgeCount(); ++i)
+        for (int i = 0; i < (int)game->bridgeCount(); ++i) {
             game->bridgeSlot(i)->tick();
+            game->bridgeSlot(i)->debugDraw();
+        }
     }
 
     if ((self->stateRef() == 1 || self->stateRef() == 4) && self->debounceRef() != inputdev::KEY_ESCAPE && KEY(inputdev::KEY_ESCAPE) != 0) {
@@ -242,6 +247,7 @@ Sim_GameTick(Game *self, double dt, double now)
         for (int i = 0; i < (int)self->bombCount(); ++i) {
             self->bombSlot(self->bombId(i))->tick();
             unsigned char id = self->bombId(i);
+            self->bombSlot(id)->debugDraw(id);
             if (self->bombSlot(id)->removeRequested() != 0)
                 Bomb::remove(self, id);
         }
@@ -423,6 +429,7 @@ Sim_GameTick(Game *self, double dt, double now)
             PROF_SCOPE("step");
             (*slot)->step(tu, tv);
         }
+        (*slot)->debugDraw(id);
         (*slot)->dropBomb(game);
         (*slot)->checkPlayerContact(pl->moveStateRef(),
                                     pl->posU(), pl->posY(), pl->posV());
@@ -432,6 +439,10 @@ Sim_GameTick(Game *self, double dt, double now)
         }
     }
     }
+
+    pl->debugDraw();  // last, so it sits over the foes
+    Game_DebugPanel(self);
+    Cheat_DebugPanel(self);
 
     // Playing: camera follow, time-out, exit.
     if (self->stateRef() == 1) {

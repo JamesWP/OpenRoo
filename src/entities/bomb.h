@@ -29,6 +29,9 @@ public:
     // One tick: the fuse, the roll and the blast.
     void tick();
 
+    // Draws it on the debug map; id is its slot in the Game's bomb table.
+    void debugDraw(unsigned id) const;
+
     // The clock when it was dropped; RenderGameFrame switches its model 2 s
     // later.
     double droppedAt() const { return droppedAt_; }

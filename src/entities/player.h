@@ -22,6 +22,9 @@ public:
     // and consumes the tile underfoot.  See player.cpp.
     unsigned int updateTileEffects();
 
+    // Draws the player on the debug map and adds it to the tooltip.
+    void debugDraw() const;
+
     // The six actions DirectInputSetup registers as player controls.
     void actMoveForward();
     void actMoveBack();

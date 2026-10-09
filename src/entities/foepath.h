@@ -110,6 +110,10 @@ public:
     // The last search reached the foe: result() and its parents are live.
     bool      hasPath() const                      { return found_ != 0; }
 
+    // Draws the route left to the target on the debug map, from the foe's
+    // position.  The nodes run on towards the target.
+    void      debugDraw(float fromU, float fromV) const;
+
     // The search (foepath.cpp).
     int       find(int uFoe, int vFoe, int uTarget, int vTarget);
     int       cellKey(int u, int v);
