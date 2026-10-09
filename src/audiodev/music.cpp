@@ -26,6 +26,8 @@ void Music::setWindow(void *)
 void Music::play(const char *path, bool repeat)
 {
     stop();
+    if (silent())
+        return;
 
     std::shared_ptr<MixerRef> mixer = musicMixer();
     if (!mixer)

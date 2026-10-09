@@ -31,6 +31,8 @@ bool Stream::prepare(Device &dev, const char *path)
 
     if (!path || !dev.isUp())
         return false;
+    if (silent())
+        return true;
 
     state_->audio = loadAudio(dev.state()->mixer, path, true);
     if (!state_->audio)

@@ -10,6 +10,16 @@ void setLog(LogFn fn) { g_log = fn; }
 static PathFn g_resolve = NULL;
 void setPathResolver(PathFn fn) { g_resolve = fn; }
 
+bool silent()
+{
+    static int cached = -1;
+    if (cached < 0) {
+        const char *v = SDL_getenv("KAROO_HEADLESS");
+        cached = v && v[0] != '\0' && v[0] != '0';
+    }
+    return cached != 0;
+}
+
 static float g_effectsGain = 1.0f;
 static float g_musicGain   = 1.0f;
 static std::weak_ptr<MixerRef> g_effects, g_music;
@@ -143,12 +153,13 @@ Device::~Device()
 
 bool Device::isUp() const
 {
-    return state_->mixer != NULL;
+    return state_->mixer != NULL || state_->silentUp;
 }
 
 void Device::destroy()
 {
     state_->mixer.reset();
+    state_->silentUp = false;
 }
 
 bool Device::create(const DeviceConfig &config)
@@ -158,6 +169,12 @@ bool Device::create(const DeviceConfig &config)
            config.sampleRate, config.bitsPerSample);
 
     destroy();
+
+    if (silent()) {
+        state_->silentUp = true;
+        state_->listener->enabled = config.enable3D;
+        return true;
+    }
 
     SDL_AudioSpec spec = {};
     spec.format   = config.bitsPerSample == 8 ? SDL_AUDIO_U8 : SDL_AUDIO_S16;

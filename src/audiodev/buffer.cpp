@@ -21,7 +21,7 @@ void BufferState::release()
     }
     audio.reset();
     filename.clear();
-    threeD = spatial = false;
+    threeD = spatial = silentLoaded = false;
 }
 
 /* Puts the track where the listener hears it, or takes it out of 3D mode. */
@@ -46,7 +46,7 @@ Buffer::~Buffer()
 }
 
 void Buffer::reset()                 { state_->release(); }
-bool Buffer::isLoaded() const        { return state_->track != NULL; }
+bool Buffer::isLoaded() const        { return state_->track != NULL || state_->silentLoaded; }
 bool Buffer::is3D() const            { return state_->threeD; }
 const char *Buffer::filename() const { return state_->filename.c_str(); }
 
@@ -78,6 +78,12 @@ bool Buffer::load(Device &dev, const char *path, bool want3D)
         AD_LOG("audiodev: load: no device or path\n");
         return false;
     }
+    if (silent()) {
+        state_->silentLoaded = true;
+        state_->threeD = state_->spatial = want3D;
+        state_->filename = path;
+        return true;
+    }
     std::shared_ptr<AudioRef> audio = loadAudio(dev.state()->mixer, path, true);
     if (!audio || !attach(state_, dev, audio, want3D))
         return false;
@@ -89,7 +95,13 @@ bool Buffer::duplicate(Device &dev, const Buffer &src)
 {
     reset();
 
-    if (!src.state_->track || !dev.isUp()) return false;
+    if (!src.isLoaded() || !dev.isUp()) return false;
+    if (silent()) {
+        state_->silentLoaded = true;
+        state_->threeD = state_->spatial = src.state_->threeD;
+        state_->filename = src.state_->filename;
+        return true;
+    }
     if (!attach(state_, dev, src.state_->audio, src.state_->threeD))
         return false;
     state_->filename = src.state_->filename;
@@ -100,8 +112,12 @@ bool Buffer::duplicate(Device &dev, const Buffer &src)
 bool Buffer::reload3D(Device &dev, bool want3D)
 {
     BufferState *s = state_;
-    if (!s->track) return false;
+    if (!isLoaded()) return false;
     if (want3D == s->threeD) return true;
+    if (silent()) {
+        s->threeD = s->spatial = want3D;
+        return true;
+    }
 
     // The sound is rebuilt for the new mode, so whatever was playing stops: the
     // game starts its looping sounds again afterwards and forgets these.

@@ -24,6 +24,11 @@ void setLog(LogFn fn);
 typedef std::string (*PathFn)(const char *path);
 void setPathResolver(PathFn fn);
 
+/* Whether this run is silent: KAROO_HEADLESS is set.  Nothing then touches the
+ * system audio: the device comes up, sounds load and play, but no SDL or
+ * SDL_mixer call is made and nothing is heard.  Streams finish at once. */
+bool silent();
+
 /* The two volumes, each 0 (silent) to 1: the music, and every other sound.
  * They apply to this program's own output.  A fire-and-forget sound for the
  * launcher dialogs plays at the effects volume. */
