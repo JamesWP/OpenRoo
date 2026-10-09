@@ -21,7 +21,8 @@
 #include <string.h>
 
 #include "liftobject.h"
-#include "game.h"
+#include "soundmanager.h"
+#include "levelmap.h"
 #include "tile.h"
 #include "soundmanager.h"
 #include "audiodev.h"
@@ -100,7 +101,7 @@ LiftObject::~LiftObject()
 static int s_logged_spawn = 0;
 static int s_logged_oom   = 0;
 
-void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
+void LiftObject::spawn(const EntityContext &ctx, LiftSlots &slots, unsigned int uArg, unsigned int vArg,
                        unsigned int baseArg, unsigned int topArg)
 {
     unsigned int u, v, base, top;
@@ -131,10 +132,10 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
         }
     }
 
-    n = game->liftCount();
-    game->setLiftSlot(n, (LiftObject *)raw);
+    n = slots.count;
+    slots.slot[n] = (LiftObject *)raw;
     obj  = (LiftObject *)raw;
-    tile = game->map()->tile( (int)u, (int)v);
+    tile = ctx.map->tile( (int)u, (int)v);
 
     if (s_diag_place && !s_logged_spawn) {
         s_logged_spawn = 1;
@@ -143,9 +144,9 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
                   (unsigned)n, u, v, base, top, (void *)obj);
     }
 
-    obj->clock_    = game->clock();
-    obj->tickStep_   = game->tickStep();
-    obj->map_ = game->map();
+    obj->clock_    = ctx.clock;
+    obj->tickStep_   = ctx.tickStep;
+    obj->map_ = ctx.map;
 
     obj->cellU_      = (signed char)u;
     obj->cellV_      = (signed char)v;
@@ -162,18 +163,18 @@ void LiftObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     obj->sound_ = 0;
     tile->clearLiftMovingSince();
 
-    obj->phaseStart_ = *game->clock();
+    obj->phaseStart_ = *ctx.clock;
 
     obj->atTop_ = 0;
     obj->state_ = 1;
 
-    game->setLiftCount((unsigned char)(n + 1));
+    slots.count = (unsigned char)(n + 1);
 }
 
 static int s_logged_purge = 0;
 static unsigned s_live_purges = 0;
 
-void LiftObject::purgeAll(Game *game)
+void LiftObject::purgeAll(const EntityContext &ctx, LiftSlots &slots)
 {
     unsigned char i;
 
@@ -185,27 +186,27 @@ void LiftObject::purgeAll(Game *game)
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
         g_logger.write("liftobject: first purge -- count=%u\n",
-                  (unsigned)game->liftCount());
+                  (unsigned)slots.count);
     }
 
     i = 0;
-    if (game->liftCount() != 0) {
+    if (slots.count != 0) {
         if (s_diag_reset)
             g_logger.write("liftobject: LIVE purge #%u -- count=%u\n",
-                      ++s_live_purges, (unsigned)game->liftCount());
+                      ++s_live_purges, (unsigned)slots.count);
         do {
-            if (game->soundCreated() != 0) {
-                audiodev::Buffer *h = game->liftSlot(i)->sound_;
+            if (ctx.sound->created() != 0) {
+                audiodev::Buffer *h = slots.slot[i]->sound_;
                 if (h != 0)
-                    game->soundManager()->releaseStaticForOwner(h, 1);
+                    ctx.sound->releaseStaticForOwner(h, 1);
             }
-            LiftObject *obj = game->liftSlot(i);
+            LiftObject *obj = slots.slot[i];
             if (obj != 0)
                 delete obj;
             i++;
-        } while (i < game->liftCount());
+        } while (i < slots.count);
     }
-    game->setLiftCount(0);
+    slots.count = 0;
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte.  The tick passes

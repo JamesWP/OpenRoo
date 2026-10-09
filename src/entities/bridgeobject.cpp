@@ -26,7 +26,8 @@
 #include "dbg.h"
 #include "switchcells.h"
 #include <algorithm>
-#include "game.h"
+#include "soundmanager.h"
+#include "levelmap.h"
 #include "tile.h"
 #include "soundmanager.h"
 #include "audiodev.h"
@@ -109,7 +110,7 @@ BridgeObject::~BridgeObject()
 static int s_logged_spawn = 0;
 static int s_logged_oom   = 0;
 
-void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
+void BridgeObject::spawn(const EntityContext &ctx, BridgeSlots &slots, unsigned int uArg, unsigned int vArg,
                          unsigned int heightArg, unsigned int slotArg,
                          unsigned int axisArg)
 {
@@ -137,13 +138,13 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     //     // The slot is the switch slot argument, not the count; the count is only
     //     // a running total.  PRESERVED: a failed allocation is not checked; the
     //     // first store faults.
-    game->setBridgeSlot(slot, obj);
+    slots.slot[slot] = obj;
 
-    obj->clock_  = game->clock();
-    obj->tickStep_ = game->tickStep();
+    obj->clock_  = ctx.clock;
+    obj->tickStep_ = ctx.tickStep;
     obj->axis_   = (unsigned char)axis;
 
-    base = game->map();
+    base = ctx.map;
     obj->map_ = base;
 
     tile = base->tile( (int)u, (int)v);
@@ -225,7 +226,7 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 
     obj->sound_ = 0;
 
-    game->setBridgeCount((unsigned char)(game->bridgeCount() + 1));
+    slots.count = (unsigned char)(slots.count + 1);
 
     if (s_diag_place)
         g_logger.write("bridgeobject:   bridge done -- +0x38=%u +0x45=%u +0x57=%d "
@@ -238,7 +239,7 @@ void BridgeObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
 static int s_logged_purge = 0;
 static unsigned s_live_purges = 0;
 
-void BridgeObject::purgeAll(Game *game)
+void BridgeObject::purgeAll(const EntityContext &ctx, BridgeSlots &slots)
 {
     int i;
 
@@ -250,27 +251,27 @@ void BridgeObject::purgeAll(Game *game)
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
         g_logger.write("bridgeobject: first purge -- count=%u\n",
-                  (unsigned)game->bridgeCount());
+                  (unsigned)slots.count);
     }
 
     i = 0;
-    if (game->bridgeCount() != 0) {
+    if (slots.count != 0) {
         if (s_diag_reset)
             g_logger.write("bridgeobject: LIVE purge #%u -- count=%u\n",
-                      ++s_live_purges, (unsigned)game->bridgeCount());
+                      ++s_live_purges, (unsigned)slots.count);
         do {
-            if (game->soundCreated() != 0) {
-                audiodev::Buffer *h = game->bridgeSlot(i)->sound_;
+            if (ctx.sound->created() != 0) {
+                audiodev::Buffer *h = slots.slot[i]->sound_;
                 if (h != 0)
-                    game->soundManager()->releaseStaticForOwner(h, 1);
+                    ctx.sound->releaseStaticForOwner(h, 1);
             }
-            BridgeObject *obj = game->bridgeSlot(i);
+            BridgeObject *obj = slots.slot[i];
             if (obj != 0)
                 delete obj;
             i++;
-        } while (i < (int)(unsigned int)game->bridgeCount());
+        } while (i < (int)(unsigned int)slots.count);
     }
-    game->setBridgeCount(0);
+    slots.count = 0;
 }
 
 void BridgeObject::playArmSound()
@@ -572,7 +573,7 @@ static void deck_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
 
 /* Bridges are objects, not tiles: the builder clears their cells.  The whole
  * span is outlined; the deck fills as far as it has extended. */
-void BridgeObject::debugDraw() const
+void BridgeObject::debugDraw(const SwitchCells &sc_) const
 {
     if (!dbg::active())
         return;
@@ -605,7 +606,7 @@ void BridgeObject::debugDraw() const
     // A line from each of its switches to the middle of the span: all of
     // them, or those of a hovered switch or bridge.
     const ImVec2 mid((p0.x + p1.x) * 0.5f, (p0.y + p1.y) * 0.5f);
-    const SwitchCells *sc = Game::instance()->switchCells();
+    const SwitchCells *sc = &sc_;
     const int hAlong = alongU ? m.hoverU : m.hoverV, hAcross = alongU ? m.hoverV : m.hoverU;
     const bool onSpan = hAcross == (int)cross && hAlong >= std::min(rest, end) && hAlong < std::max(rest, end);
     bool show = m.links || onSpan;

@@ -55,12 +55,12 @@ Game::Game(const char *gameName, const char *gameDir)
     // PRESERVED: only the first 256 of each 500-slot table.
     std::fill_n(bombSlots_, 0x100, nullptr);
     std::fill_n(foeSlots_, 0x100, nullptr);
-    fallingCount_ = 0;
+    fallings_.count = 0;
     foeCount_       = 0;
-    liftCount_      = 0;
-    platformCount_     = 0;
+    lifts_.count      = 0;
+    platforms_.count     = 0;
     bombCount_      = 0;
-    bridgeCount_    = 0;
+    bridges_.count    = 0;
     Sim_ResetLevelObjectCounters(this);
     field_42252_      = 0;
     mapChanged_       = 1;
@@ -152,7 +152,7 @@ Game::Game(const char *gameName, const char *gameDir)
     cameraMode_       = 1;
     overviewActive_   = 0;
     field_13cc84_     = 0;
-    bridgeCount_      = 0;
+    bridges_.count      = 0;
     fixedSounds_.loaded = 0;
     std::fill(std::begin(cheatBuffer_), std::end(cheatBuffer_), 0);
     cheatEntry_.setMaxLength(30);
@@ -167,18 +167,18 @@ Game::Game(const char *gameName, const char *gameDir)
 Game::~Game()
 {
     g_logger.logMessage(1, "GAME: starting destructor");
-    LiftObject::purgeAll(this);
-    PlatformObject::purgeAll(this);
-    FallingTile::purgeAll(this);
-    BridgeObject::purgeAll(this);
+    LiftObject::purgeAll(entityContext(), lifts());
+    PlatformObject::purgeAll(entityContext(), platforms());
+    FallingTile::purgeAll(entityContext(), fallings());
+    BridgeObject::purgeAll(entityContext(), bridges());
     while (foeCount_ != 0)
         Foe::remove(this, foeIds_[0]);
     while (bombCount_ != 0)
         Bomb::remove(this, bombIds_[0]);
-    fallingCount_ = 0;
+    fallings_.count = 0;
     foeCount_       = 0;
-    liftCount_      = 0;
-    platformCount_     = 0;
+    lifts_.count      = 0;
+    platforms_.count     = 0;
     bombCount_      = 0;
     switchMax_      = 0;
     config_.setCameraDistanceSetting(zoomDistance_);

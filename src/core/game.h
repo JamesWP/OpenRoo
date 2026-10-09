@@ -20,6 +20,7 @@
 #include "levelcensus.h"
 #include "theme.h"
 #include "tickstep.h"
+#include "entitycontext.h"
 #include "soundmanager.h"
 #include "player.h"
 
@@ -368,32 +369,39 @@ public:
     int            tallyDone() const                 { return tallyDone_; }
     void           setTallyDone(int d)               { tallyDone_ = d; }
 
+    /* What the entities are given at spawn, and the tables they fill. */
+    EntityContext entityContext() { return { &clock_, &tickStep_, &map_, &soundManager_ }; }
+    EntitySlots<LiftObject, 256>     &lifts()     { return lifts_; }
+    EntitySlots<PlatformObject, 100> &platforms() { return platforms_; }
+    EntitySlots<BridgeObject, 256>   &bridges()   { return bridges_; }
+    EntitySlots<FallingTile, 200>    &fallings()  { return fallings_; }
+
     /* ── lifts ──────────────────────────────────────────────────────── */
-    unsigned char liftCount() const              { return liftCount_; }
-    void          setLiftCount(unsigned char n)  { liftCount_ = n; }
-    LiftObject   *liftSlot(unsigned int i) const { return liftSlots_[i]; }
-    void          setLiftSlot(unsigned int i, LiftObject *p) { liftSlots_[i] = p; }
+    unsigned char liftCount() const              { return lifts_.count; }
+    void          setLiftCount(unsigned char n)  { lifts_.count = n; }
+    LiftObject   *liftSlot(unsigned int i) const { return lifts_.slot[i]; }
+    void          setLiftSlot(unsigned int i, LiftObject *p) { lifts_.slot[i] = p; }
 
     /* ── platforms ─────────────────────────────────────────────────────── */
-    unsigned char platformCount() const               { return platformCount_; }
-    void          setPlatformCount(unsigned char n)   { platformCount_ = n; }
-    PlatformObject  *platformSlot(unsigned int i) const  { return platformSlots_[i]; }
-    void          setPlatformSlot(unsigned int i, PlatformObject *p) { platformSlots_[i] = p; }
+    unsigned char platformCount() const               { return platforms_.count; }
+    void          setPlatformCount(unsigned char n)   { platforms_.count = n; }
+    PlatformObject  *platformSlot(unsigned int i) const  { return platforms_.slot[i]; }
+    void          setPlatformSlot(unsigned int i, PlatformObject *p) { platforms_.slot[i] = p; }
 
     /* ── bridges ────────────────────────────────────────────────────── */
     /* Indexed by the bridge's switch slot, not the count; the count is a
      * running total (see BridgeObject::spawn). */
-    unsigned char bridgeCount() const              { return bridgeCount_; }
-    void          setBridgeCount(unsigned char n)  { bridgeCount_ = n; }
-    BridgeObject *bridgeSlot(unsigned int i) const { return bridgeSlots_[i]; }
-    BridgeObject *const *bridgeSlots() const       { return bridgeSlots_; }
-    void          setBridgeSlot(unsigned int i, BridgeObject *p) { bridgeSlots_[i] = p; }
+    unsigned char bridgeCount() const              { return bridges_.count; }
+    void          setBridgeCount(unsigned char n)  { bridges_.count = n; }
+    BridgeObject *bridgeSlot(unsigned int i) const { return bridges_.slot[i]; }
+    BridgeObject *const *bridgeSlots() const       { return bridges_.slot; }
+    void          setBridgeSlot(unsigned int i, BridgeObject *p) { bridges_.slot[i] = p; }
 
     /* ── falling tiles ────────────────────────────────────────────── */
-    unsigned char  fallingCount() const              { return fallingCount_; }
-    void           setFallingCount(unsigned char n)  { fallingCount_ = n; }
-    FallingTile *fallingSlot(unsigned int i) const { return fallingSlots_[i]; }
-    void           setFallingSlot(unsigned int i, FallingTile *p) { fallingSlots_[i] = p; }
+    unsigned char  fallingCount() const              { return fallings_.count; }
+    void           setFallingCount(unsigned char n)  { fallings_.count = n; }
+    FallingTile *fallingSlot(unsigned int i) const { return fallings_.slot[i]; }
+    void           setFallingSlot(unsigned int i, FallingTile *p) { fallings_.slot[i] = p; }
 
     /* ── bombs (the game's "enemy" table) ───────────────────────────── */
     /* Slots are indexed by ID; the ID list holds the live IDs, count long.
@@ -522,8 +530,7 @@ private:
     HighScoreTable highScores_;
     ScoreTally    tally_;
     SwitchCells   switchCells_;
-    BridgeObject *bridgeSlots_[256]{};
-    unsigned char bridgeCount_{};
+    EntitySlots<BridgeObject, 256> bridges_;
     double        totalPlayTime_{};
     double        lastTickTime_{};
     double        clock_{};
@@ -538,13 +545,10 @@ private:
     char          levelName_[0x100]{};
     unsigned char levelIndex_{};
     int           field_173584_{};
-    PlatformObject  *platformSlots_[100]{};
-    unsigned char platformCount_{};
-    LiftObject   *liftSlots_[256]{};
-    unsigned char liftCount_{};
+    EntitySlots<PlatformObject, 100> platforms_;
+    EntitySlots<LiftObject, 256> lifts_;
     int           field_173b1a_{};
-    FallingTile *fallingSlots_[200]{};
-    unsigned char fallingCount_{};
+    EntitySlots<FallingTile, 200> fallings_;
     Bomb         *bombSlots_[500]{};
     unsigned char bombCount_{};
     unsigned char bombIds_[500]{};

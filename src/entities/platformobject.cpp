@@ -26,7 +26,8 @@
 #include <string.h>
 
 #include "platformobject.h"
-#include "game.h"
+#include "soundmanager.h"
+#include "levelmap.h"
 #include "tile.h"
 #include "soundmanager.h"
 #include "audiodev.h"
@@ -103,7 +104,7 @@ PlatformObject::~PlatformObject()
 static int s_logged_spawn = 0;
 static int s_logged_oom   = 0;
 
-void PlatformObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
+void PlatformObject::spawn(const EntityContext &ctx, PlatformSlots &slots, unsigned int uArg, unsigned int vArg,
                         unsigned int heightArg, unsigned int kindArg)
 {
     unsigned int u, v, height, kind;
@@ -126,7 +127,7 @@ void PlatformObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
             kind = 0x0a;
     }
 
-    base = game->map();
+    base = ctx.map;
     tile = base->tile( (int)u, (int)v);
 
     //     // Four fields of the spawn cell are cleared before the allocation.
@@ -143,8 +144,8 @@ void PlatformObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
                   "would store through the slot, which now holds NULL\n");
     }
 
-    n = game->platformCount();
-    game->setPlatformSlot(n, obj);
+    n = slots.count;
+    slots.slot[n] = obj;
 
     if (s_diag_place) {
         s_logged_spawn++;
@@ -155,8 +156,8 @@ void PlatformObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
                   (kind == TILE_PLATFORM_V) ? "SCAN-V" : "no-scan");
     }
 
-    obj->clock_    = game->clock();
-    obj->tickStep_   = game->tickStep();
+    obj->clock_    = ctx.clock;
+    obj->tickStep_   = ctx.tickStep;
     obj->kind_     = (signed char)kind;
     obj->state_    = 1;
     obj->map_ = base;
@@ -223,13 +224,13 @@ void PlatformObject::spawn(Game *game, unsigned int uArg, unsigned int vArg,
     obj->span_  = (unsigned char)(obj->limit_ - obj->trackStart_);
     obj->sound_ = 0;
 
-    game->setPlatformCount((unsigned char)(n + 1));
+    slots.count = (unsigned char)(n + 1);
 }
 
 static int s_logged_purge = 0;
 static unsigned s_live_purges = 0;
 
-void PlatformObject::purgeAll(Game *game)
+void PlatformObject::purgeAll(const EntityContext &ctx, PlatformSlots &slots)
 {
     unsigned char i;
 
@@ -241,27 +242,27 @@ void PlatformObject::purgeAll(Game *game)
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
         g_logger.write("platformobject: first purge -- count=%u\n",
-                  (unsigned)game->platformCount());
+                  (unsigned)slots.count);
     }
 
     i = 0;
-    if (game->platformCount() != 0) {
+    if (slots.count != 0) {
         if (s_diag_reset)
             g_logger.write("platformobject: LIVE purge #%u -- count=%u\n",
-                      ++s_live_purges, (unsigned)game->platformCount());
+                      ++s_live_purges, (unsigned)slots.count);
         do {
-            if (game->soundCreated() != 0) {
-                audiodev::Buffer *h = game->platformSlot(i)->sound_;
+            if (ctx.sound->created() != 0) {
+                audiodev::Buffer *h = slots.slot[i]->sound_;
                 if (h != 0)
-                    game->soundManager()->releaseStaticForOwner(h, 1);
+                    ctx.sound->releaseStaticForOwner(h, 1);
             }
-            PlatformObject *obj = game->platformSlot(i);
+            PlatformObject *obj = slots.slot[i];
             if (obj != 0)
                 delete obj;
             i++;
-        } while (i < game->platformCount());
+        } while (i < slots.count);
     }
-    game->setPlatformCount(0);
+    slots.count = 0;
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte.  Each branch below
