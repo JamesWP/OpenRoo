@@ -17,7 +17,6 @@
  * recording types a cheat, so the suite is expected to pass; it waits for a
  * recording that does. */
 
-#include "gamedir.h"
 #include "inputdev.h"
 #include <stdint.h>
 #include "sysdev.h"
@@ -129,7 +128,7 @@ bool Cheat_LoadLevel(Game *self, unsigned char lvl)
     Sim_SetCurrentLevelName(self, lvl);
     if (lvl >= self->levelCount())
         return false;
-    snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, gameDir(), self->levelName());
+    snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, self->gameDir(), self->levelName());
     g_logger.logMessage(3, "GAME: lc by number %d name:%s", (unsigned int)lvl, self->levelName());
     self->setLevelIndex(lvl);
     if (!std::ifstream(sysdev::nativePath(path)))
@@ -222,7 +221,7 @@ Sim_HandleTypedCheatCode(Game *self)
             std::copy_n(buf + 6, len - 6, frame);
             frame[len - 6] = 0;
             g_logger.logMessage(3, "GAME: lc %s", (const char *)frame);
-            snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, gameDir(), (const char *)frame);
+            snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, self->gameDir(), (const char *)frame);
             if (std::ifstream(sysdev::nativePath(path))) {
                 pl->setGemsCollected(0);
                 Sim_ParseLevelFiles(self, (const char *)frame);

@@ -17,7 +17,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "gamedir.h"
 #include "theme.h"
 #include "sysdev.h"
 #include "logger.h"
@@ -263,11 +262,11 @@ void ThemeAssetBlock::release()
 
 /* "NONE" (case-exact, on the raw wave name) disables the entry without
  * logging.  PRESERVED: the path is formatted unbounded into 256 bytes. */
-int ThemeSoundTable::add(unsigned int id, const char *waveName,
+int ThemeSoundTable::add(const char *dir, unsigned int id, const char *waveName,
                uint32_t arg3, uint32_t arg4)
 {
     char path[256];
-    snprintf(path, sizeof(path), GS_THEME_SOUND_PATH, gameDir(), waveName);
+    snprintf(path, sizeof(path), GS_THEME_SOUND_PATH, dir, waveName);
 
     SoundAssetName &e = entries_[id & 0xffff];
     if (strcmp(waveName, GS_THEME_SOUND_NONE) == 0) {
@@ -302,7 +301,7 @@ Theme_RegisterSound(Game *game, char *eventName, const char *waveName)
     lower_inplace(eventName);
     for (const auto &ev : kSoundEvents) {
         if (strcmp(eventName, ev.name) == 0) {
-            game->themeSounds()->add(ev.id, waveName, 1, 1);
+            game->themeSounds()->add(game->gameDir(), ev.id, waveName, 1, 1);
             return true;
         }
     }

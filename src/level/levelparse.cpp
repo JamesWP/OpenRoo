@@ -25,7 +25,6 @@
  * KAROO_LEVELPARSE_DIAG=1 logs every load, the peek and the sound release. */
 
 #include <stdint.h>
-#include "gamedir.h"
 #include "sysdev.h"
 #include <stdio.h>
 #include <string.h>
@@ -118,7 +117,7 @@ static int inline_strcmp(const unsigned char *a, const unsigned char *b)
   unsigned int  
 Sim_ParseLevelFiles(Game *self, const char *name)
 {
-    char path[512];  // gameDir() plus a 255-char level name
+    char path[512];  // the game directory plus a 255-char level name
     char prev[256];  // the map name before the read
     int ok;
 
@@ -127,9 +126,9 @@ Sim_ParseLevelFiles(Game *self, const char *name)
     inline_strcpy(self->levelNameBuffer(), name);
 
     if (s_fx_crtpath)
-        snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, name, gameDir());
+        snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, name, self->gameDir());
     else
-        snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, gameDir(), name);
+        snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, self->gameDir(), name);
 
     // Saved before the read overwrites it: the mapChanged mechanism.  The
     // samelevel control moves this copy after the read.
@@ -156,7 +155,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
                       (const unsigned char *)self->map()->mapName()) != 0)
         self->setMapChanged(1);
 
-    snprintf(path, sizeof(path), GS_OPEN_FMT_SCRIPTS, gameDir(), name);
+    snprintf(path, sizeof(path), GS_OPEN_FMT_SCRIPTS, self->gameDir(), name);
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);
 
@@ -194,7 +193,7 @@ Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
   unsigned int  
 Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 {
-    char path[512];  // gameDir() plus a 255-char level name
+    char path[512];  // the game directory plus a 255-char level name
     char prev[256];  // the map name before the read
     int ok;
 
@@ -209,7 +208,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     if (self->restartCount() == 0 &&
         (unsigned int)(self->levelIndex()) + 1 != (unsigned int)self->levelCount()) {
         Sim_SetCurrentLevelName(self, (unsigned char)(self->levelIndex() + 1));
-        snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, gameDir(),
+        snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, self->gameDir(),
                            self->levelName());
         // PRESERVED: the result is not tested.
         self->map()->readFile(path);
@@ -222,7 +221,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     }
 
     Sim_SetCurrentLevelName(self, levelNo);
-    snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, gameDir(),
+    snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, self->gameDir(),
                        self->levelName());
 
     // Saved before the read (see the top of the file).
@@ -251,7 +250,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
                       (const unsigned char *)self->map()->mapName()) != 0)
         self->setMapChanged(1);
 
-    snprintf(path, sizeof(path), GS_OPEN_FMT_SCRIPTS, gameDir(),
+    snprintf(path, sizeof(path), GS_OPEN_FMT_SCRIPTS, self->gameDir(),
                        self->levelName());
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);

@@ -610,7 +610,7 @@ Sim_GameTick(Game *self, double dt, double now)
 
     // ENTER after high-score name entry.
     if (self->stateRef() == 6 && self->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0) {
-        self->highScores()->writeFile(GS_GAME_HSFILE, 0x4b);
+        self->highScores()->writeFile(self->gameDir(), GS_GAME_HSFILE, 0x4b);
         self->stateRef() = 0;
         self->menu()->rewind();
         const char *theme = NULL;

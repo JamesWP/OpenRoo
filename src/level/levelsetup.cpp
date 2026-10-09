@@ -681,8 +681,7 @@ next_row:
         g_logger.logMessage(3, "GAME: warning - not enough crystals to complete this level!!!!");
 
     // One argument: the level name.
-    if (self->extraObjects()->openFile(
-                                 self->levelName()) == 0) {
+    if (self->extraObjects()->openFile(self->gameDir(), self->levelName()) == 0) {
         self->extraObjects()->setLoaded(0);
         g_logger.logMessage(1, "GAME: could not load LEO:%s.leo no extra-objects in this level",
                            self->levelName());

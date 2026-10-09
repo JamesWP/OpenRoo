@@ -34,7 +34,6 @@
 #include <strings.h>
 #include <stdio.h>
 #include <stdint.h>
-#include "gamedir.h"
 #include "sysdev.h"
 #include <fstream>
 #include <iomanip>
@@ -76,10 +75,10 @@ static bool fx_nomodels(void)
  * It is a hand-diffable record of the parse. */
 
 /* s without a leading "<game dir>\", compared case-insensitively. */
-static const char *strip_game_dir(const char *s)
+static const char *strip_game_dir(const char *dir, const char *s)
 {
-    size_t n = strlen(gameDir());
-    return (sysdev::compareNoCase(s, gameDir(), n) == 0 && s[n] == '\\') ? s + n + 1 : s;
+    size_t n = strlen(dir);
+    return (sysdev::compareNoCase(s, dir, n) == 0 && s[n] == '\\') ? s + n + 1 : s;
 }
 
 static void fnv(unsigned long *h, const void *p, size_t n)
@@ -91,9 +90,9 @@ static void fnv(unsigned long *h, const void *p, size_t n)
 }
 
 /* A path field: its game-dir-relative text and one terminator. */
-static void fnv_path(unsigned long *h, const char *field, size_t size)
+static void fnv_path(const char *dir, unsigned long *h, const char *field, size_t size)
 {
-    const char *s = strip_game_dir(field);
+    const char *s = strip_game_dir(dir, field);
     fnv(h, s, strnlen(s, size - (size_t)(s - field)) + 1);
 }
 
@@ -117,11 +116,11 @@ void ExtraObjects::recDump(const char *path)
         unsigned long h = 2166136261UL;
         // Field by field, each at its own size: the reference hashed the
         // record's fields back to back, with no padding between them.
-        fnv_path(&h, r->file, sizeof(r->file));
+        fnv_path(dir_, &h, r->file, sizeof(r->file));
         fnv(&h, r->position, sizeof(r->position));
         fnv(&h, r->field_10c, sizeof(r->field_10c));
-        fnv_path(&h, r->animationFile, sizeof(r->animationFile));
-        fnv_path(&h, r->textureFile, sizeof(r->textureFile));
+        fnv_path(dir_, &h, r->animationFile, sizeof(r->animationFile));
+        fnv_path(dir_, &h, r->textureFile, sizeof(r->textureFile));
         fnv(&h, &r->lit, sizeof(r->lit));
         fnv(&h, &r->kind, sizeof(r->kind));
         fnv(&h, &r->billboardSize, sizeof(r->billboardSize));
@@ -137,11 +136,11 @@ void ExtraObjects::recDump(const char *path)
 
         f << '[' << i << "] hash=" << std::hex << std::setw(8) << std::setfill('0') << h
           << std::dec << std::setfill(' ') << " kind=" << (unsigned)r->kind
-          << " file=" << clip64(strip_game_dir(r->file))
+          << " file=" << clip64(strip_game_dir(dir_, r->file))
           << " pos=" << r->position[0] << ',' << r->position[1] << ',' << r->position[2]
           << " v2=" << r->field_10c[0] << ',' << r->field_10c[1] << ',' << r->field_10c[2] << '\n';
-        f << "    anim=" << clip64(strip_game_dir(r->animationFile))
-          << " tex=" << clip64(strip_game_dir(r->textureFile))
+        f << "    anim=" << clip64(strip_game_dir(dir_, r->animationFile))
+          << " tex=" << clip64(strip_game_dir(dir_, r->textureFile))
           << " lit=" << r->lit << " blend=" << r->srcBlend << ',' << r->destBlend
           << " addr=" << r->textureAddress << " size=" << r->billboardSize << '\n';
         f << "    spline=" << (unsigned)r->splineMode << " time=" << r->splineTime
@@ -152,8 +151,9 @@ void ExtraObjects::recDump(const char *path)
     }
 }
 
-int ExtraObjects::openFile(const char *name)
+int ExtraObjects::openFile(const char *dir, const char *name)
 {
+    snprintf(dir_, sizeof(dir_), "%s", dir);
     char path[512];
     unsigned idx = 0;
     unsigned long s_hash = 2166136261UL;
@@ -162,7 +162,7 @@ int ExtraObjects::openFile(const char *name)
     objectCount_ = 0;
     entries_    = 0;
 
-    sprintf(path, "%s\\Level3DExtraObjects\\%s.leo", gameDir(), name);
+    sprintf(path, "%s\\Level3DExtraObjects\\%s.leo", dir_, name);
 
     // Binary, with the '\r's dropped as they are read: the entry after each
     // ';' is a CRLF, which must count as one character.
@@ -398,7 +398,7 @@ void ExtraObjects::parseSound()
     current()->kind = EXTRA_SOUND;
     char *z = NULL;
     char *name = leo_tok();
-    snprintf(current()->file, sizeof(current()->file), "%s\\%s", gameDir(), name);
+    snprintf(current()->file, sizeof(current()->file), "%s\\%s", dir_, name);
     if (name != NULL) {
         char *t = leo_tok();
         current()->position[0] = (float)atof(t);
@@ -426,7 +426,7 @@ void ExtraObjects::parseParticle()
     current()->kind = EXTRA_PARTICLE;
     char *tex = NULL;
     char *name = leo_tok();
-    snprintf(current()->file, sizeof(current()->file), "%s\\%s", gameDir(), name);
+    snprintf(current()->file, sizeof(current()->file), "%s\\%s", dir_, name);
     g_logger.logMessage(1, "LEO: Particle-Filename:%s", current()->file);
     if (name != NULL && readSixFloats()) {
         char src[0x100];
@@ -435,7 +435,7 @@ void ExtraObjects::parseParticle()
         setBlend(src, dest);
         if (dest != NULL) {
             tex = leo_tok();
-            snprintf(current()->textureFile, sizeof(current()->textureFile), "%s\\%s", gameDir(), tex);
+            snprintf(current()->textureFile, sizeof(current()->textureFile), "%s\\%s", dir_, tex);
             g_logger.logMessage(1, "LEO: Particle-Texture-Filename:%s",
                                current()->textureFile);
         }

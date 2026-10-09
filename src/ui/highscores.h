@@ -20,8 +20,8 @@ public:
 
     enum { RECORD_MAX = 256 };
 
-    int           readFile(const char *name, char key);
-    int           writeFile(const char *name, char key);
+    int           readFile(const char *dir, const char *name, char key);
+    int           writeFile(const char *dir, const char *name, char key);
     // Places score at the first rank it beats and returns that rank in the low
     // byte, or 0xff when it does not place.  The caller increments the count.
     unsigned int  insert(unsigned int score, unsigned char levelId);

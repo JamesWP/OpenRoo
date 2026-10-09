@@ -50,8 +50,9 @@ public:
     virtual ~ExtraObjects();
     ExtraObjects(const ExtraObjects &) = delete;
     ExtraObjects &operator=(const ExtraObjects &) = delete;
-    // Parses <name>.leo.
-    int  openFile(const char *name);
+    // Parses <dir>\Level3DExtraObjects\<name>.leo; the paths the file names
+    // are relative to dir, which the parse keeps until the next openFile.
+    int  openFile(const char *dir, const char *name);
     // Halts and releases each record's sound.  PRESERVED: the first 255 only.
     void releaseSounds();
     // Sounds released so far, for KAROO_LEVELPARSE_DIAG.
@@ -67,6 +68,7 @@ public:
 
 
 private:
+    char dir_[64]{};
     void recDump(const char *path);
     // The entry parser and its helpers.
     int  parseEntry(const char *entry);

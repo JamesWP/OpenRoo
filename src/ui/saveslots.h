@@ -49,9 +49,9 @@ public:
 
     /* Loads and saves every slot's file, enciphered with key.  See
      * saveslots.cpp. */
-    int loadAllSlotFiles(const char *name, char key);
+    int loadAllSlotFiles(const char *dir, const char *name, char key);
 
-    int writeAllSlotFiles(const char *name, char key);
+    int writeAllSlotFiles(const char *dir, const char *name, char key);
 
 private:
      

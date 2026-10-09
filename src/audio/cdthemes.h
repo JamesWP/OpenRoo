@@ -33,7 +33,7 @@ public:
 
     // Fills the table from <game dir>\CDTracks\<name>.cdt; returns the theme
     // count.
-    unsigned char readTrackThemeTable(const char *name);
+    unsigned char readTrackThemeTable(const char *dir, const char *name);
     // Stores the track count and logs each track's length.
     int           listTrackLengths();
 

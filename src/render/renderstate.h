@@ -2,4 +2,4 @@
 #pragma once
 
 /* Called once, by WinMain at startup. */
-  void   Render_ConfigureRenderState(void);
+  void   Render_ConfigureRenderState(const char *gameDir);

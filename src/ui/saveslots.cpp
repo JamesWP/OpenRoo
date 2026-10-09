@@ -11,7 +11,6 @@
 #include <fstream>
 #include <stdio.h>
 #include <string.h>
-#include "gamedir.h"
 #include "logger.h"
 #include "saveslots.h"
 #include "gamestr.h"
@@ -59,7 +58,7 @@ void SaveSlot::decode(const unsigned char in[SAVE_SLOT_BYTES])
     unusedTail          = get_u32(p);
 }
 
-int SaveSlots::loadAllSlotFiles(const char *name, char key)
+int SaveSlots::loadAllSlotFiles(const char *dir, const char *name, char key)
 {
     unsigned char rec[SAVE_SLOT_BYTES];
     char path[128];
@@ -67,7 +66,7 @@ int SaveSlots::loadAllSlotFiles(const char *name, char key)
     int slot;
 
     for (slot = 0; slot < (int)count(); slot++) {
-        snprintf(path, sizeof(path), "%s\\SavedGames\\%s%d.sav", gameDir(), name, slot);
+        snprintf(path, sizeof(path), "%s\\SavedGames\\%s%d.sav", dir, name, slot);
         std::ifstream in(sysdev::nativePath(path));  // text mode, as the original wrote them
         if (!in) {
             ps_log("sav load", path, 0);
@@ -83,7 +82,7 @@ int SaveSlots::loadAllSlotFiles(const char *name, char key)
     return 1;
 }
 
-int SaveSlots::writeAllSlotFiles(const char *name, char key)
+int SaveSlots::writeAllSlotFiles(const char *dir, const char *name, char key)
 {
     char path[128];
     int slot;
@@ -91,7 +90,7 @@ int SaveSlots::writeAllSlotFiles(const char *name, char key)
     for (slot = 0; slot < (int)count(); slot++) {
         unsigned char rec[SAVE_SLOT_BYTES];
         this->slot((unsigned char)slot)->encode(rec);
-        snprintf(path, sizeof(path), "%s\\SavedGames\\%s%d.sav", gameDir(), name, slot);
+        snprintf(path, sizeof(path), "%s\\SavedGames\\%s%d.sav", dir, name, slot);
         std::ofstream outFile(sysdev::nativePath(path));  // text mode, as the original wrote them
         if (!outFile) {
             ps_log("sav save", path, 0);
