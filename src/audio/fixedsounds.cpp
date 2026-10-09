@@ -1,3 +1,4 @@
+#include "gamedir.h"
 #include "inputdev.h"
 #include <stdint.h>
 #include "sysdev.h"
@@ -24,7 +25,7 @@ static audiodev::Buffer *bank(Game *game, audiodev::Buffer *cur,
     char path[256];
     if (cur != NULL)
         cur->reset();
-    sprintf(path, fmt, g_gameDir, suffix);
+    sprintf(path, fmt, gameDir(), suffix);
     return game->soundManager()->acquireStatic(path, 0);
 }
 
@@ -80,19 +81,19 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     self->extraObjects()->setSoundManager(sm);
     sp->setSoundManager(sm);
 
-    snprintf(path, sizeof(path), GS_WAV_TIME_OUT, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_TIME_OUT, gameDir());
     self->fixedSounds()->timeOut = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), GS_WAV_LAST_SECONDS, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_LAST_SECONDS, gameDir());
     self->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), GS_WAV_COUNT, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_COUNT, gameDir());
     self->fixedSounds()->count = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), GS_WAV_MENU_UP_DOWN, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_MENU_UP_DOWN, gameDir());
     self->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);
-    snprintf(path, sizeof(path), GS_WAV_SWITCH, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_SWITCH, gameDir());
     self->fixedSounds()->switchClick = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), GS_WAV_LEVEL_COMPLETED, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_LEVEL_COMPLETED, gameDir());
     self->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), GS_WAV_SPLAT, g_gameDir);
+    snprintf(path, sizeof(path), GS_WAV_SPLAT, gameDir());
     self->player()->setSoundA7(sm->acquireStatic(path, 1));
     sm->setup(self->sound3D());
 

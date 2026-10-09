@@ -384,6 +384,7 @@ public:
     unsigned char bridgeCount() const              { return bridgeCount_; }
     void          setBridgeCount(unsigned char n)  { bridgeCount_ = n; }
     BridgeObject *bridgeSlot(unsigned int i) const { return bridgeSlots_[i]; }
+    BridgeObject *const *bridgeSlots() const       { return bridgeSlots_; }
     void          setBridgeSlot(unsigned int i, BridgeObject *p) { bridgeSlots_[i] = p; }
 
     /* ── falling tiles ────────────────────────────────────────────── */

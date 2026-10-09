@@ -34,6 +34,7 @@
 #include <strings.h>
 #include <stdio.h>
 #include <stdint.h>
+#include "gamedir.h"
 #include "sysdev.h"
 #include <fstream>
 #include <iomanip>
@@ -77,8 +78,8 @@ static bool fx_nomodels(void)
 /* s without a leading "<game dir>\", compared case-insensitively. */
 static const char *strip_game_dir(const char *s)
 {
-    size_t n = strlen(g_gameDir);
-    return (sysdev::compareNoCase(s, g_gameDir, n) == 0 && s[n] == '\\') ? s + n + 1 : s;
+    size_t n = strlen(gameDir());
+    return (sysdev::compareNoCase(s, gameDir(), n) == 0 && s[n] == '\\') ? s + n + 1 : s;
 }
 
 static void fnv(unsigned long *h, const void *p, size_t n)
@@ -161,7 +162,7 @@ int ExtraObjects::openFile(const char *name)
     objectCount_ = 0;
     entries_    = 0;
 
-    sprintf(path, "%s\\Level3DExtraObjects\\%s.leo", g_gameDir, name);
+    sprintf(path, "%s\\Level3DExtraObjects\\%s.leo", gameDir(), name);
 
     // Binary, with the '\r's dropped as they are read: the entry after each
     // ';' is a CRLF, which must count as one character.
@@ -397,7 +398,7 @@ void ExtraObjects::parseSound()
     current()->kind = EXTRA_SOUND;
     char *z = NULL;
     char *name = leo_tok();
-    snprintf(current()->file, sizeof(current()->file), "%s\\%s", g_gameDir, name);
+    snprintf(current()->file, sizeof(current()->file), "%s\\%s", gameDir(), name);
     if (name != NULL) {
         char *t = leo_tok();
         current()->position[0] = (float)atof(t);
@@ -425,7 +426,7 @@ void ExtraObjects::parseParticle()
     current()->kind = EXTRA_PARTICLE;
     char *tex = NULL;
     char *name = leo_tok();
-    snprintf(current()->file, sizeof(current()->file), "%s\\%s", g_gameDir, name);
+    snprintf(current()->file, sizeof(current()->file), "%s\\%s", gameDir(), name);
     g_logger.logMessage(1, "LEO: Particle-Filename:%s", current()->file);
     if (name != NULL && readSixFloats()) {
         char src[0x100];
@@ -434,7 +435,7 @@ void ExtraObjects::parseParticle()
         setBlend(src, dest);
         if (dest != NULL) {
             tex = leo_tok();
-            snprintf(current()->textureFile, sizeof(current()->textureFile), "%s\\%s", g_gameDir, tex);
+            snprintf(current()->textureFile, sizeof(current()->textureFile), "%s\\%s", gameDir(), tex);
             g_logger.logMessage(1, "LEO: Particle-Texture-Filename:%s",
                                current()->textureFile);
         }
