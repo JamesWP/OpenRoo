@@ -67,7 +67,10 @@ group may include only groups on lines above its own. The build enforces it
 twice: each group's include path holds only the lower groups (`CMakeLists.txt`
 reads the file), and `tools/check_layers.py` (the `check-layers` target) fails
 on any other include. To add a group, give it a line in `src/layers.txt` in the
-position its includes allow.
+position its includes allow. Each group also declares, in `src/deps.txt`, the
+groups it may include directly (and the build gives it their include paths,
+transitively); an include of an undeclared group, or a declared dep nothing
+uses, fails the same check, so a new dependency is a one-line change there.
 
 OpenGL headers are for `gl` alone (`cmake/CheckNativeGL.cmake`); everything else
 goes through `renderdevice.h`.

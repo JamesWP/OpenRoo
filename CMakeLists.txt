@@ -40,31 +40,40 @@ include(FetchImGui)   # the debug UI
 add_compile_options(-Wall -Wextra -Werror)
 
 # One directory under src/ is one group.  Its include path is its own folder
-# plus the groups below it in src/layers.txt (see below).
+# plus the deps it declares in src/deps.txt, transitively (see below).
 foreach(group app audio base camera session fx game gfx math screens audiodev core dbg debugui entities flow gl input inputdev level render sim testing ui videodev windev sysdev log prof)
     add_subdirectory(src/${group})
 endforeach()
 
-# Each group sees its own folder and the folders of the groups on the lines
-# above its own in src/layers.txt, and nothing else: an include of a group
-# that is not below it does not compile (tools/check_layers.py reports the same
-# thing, and also catches a name that resolves some other way).
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/layers.txt")
-file(STRINGS "${PROJECT_SOURCE_DIR}/src/layers.txt" layer_lines)
-set(lower_groups "")
-foreach(line IN LISTS layer_lines)
+# Each group sees its own folder (its CMakeLists.txt adds it) and the folders
+# of the groups it declares in src/deps.txt, and of their deps in turn, and
+# nothing else: an include of any other group does not compile.  The tree
+# holds the same rule (tools/check_layers.py reports the same thing, and also
+# catches a name that resolves some other way).
+#
+# deps.txt lists the groups in layers.txt order, so each group's closure can be
+# built in one pass from the closures of its deps, which are already computed.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/deps.txt")
+file(STRINGS "${PROJECT_SOURCE_DIR}/src/deps.txt" dep_lines)
+foreach(line IN LISTS dep_lines)
     string(REGEX REPLACE "#.*" "" line "${line}")
     string(STRIP "${line}" line)
     if(line STREQUAL "")
         continue()
     endif()
-    string(REPLACE " " ";" line_groups "${line}")
-    foreach(group IN LISTS line_groups)
-        foreach(below IN LISTS lower_groups)
-            target_include_directories(${group} PRIVATE "${PROJECT_SOURCE_DIR}/src/${below}")
-        endforeach()
+    string(REGEX MATCH "^([^:]+):(.*)$" _ "${line}")
+    string(STRIP "${CMAKE_MATCH_1}" group)
+    string(STRIP "${CMAKE_MATCH_2}" direct_deps)
+    separate_arguments(direct_deps UNIX_COMMAND "${direct_deps}")
+    set(closure "")
+    foreach(dep IN LISTS direct_deps)
+        list(APPEND closure ${dep} ${closure_${dep}})
     endforeach()
-    list(APPEND lower_groups ${line_groups})
+    list(REMOVE_DUPLICATES closure)
+    set(closure_${group} "${closure}")
+    foreach(dep IN LISTS closure)
+        target_include_directories(${group} PRIVATE "${PROJECT_SOURCE_DIR}/src/${dep}")
+    endforeach()
 endforeach()
 
 if(WIN32)
@@ -93,8 +102,8 @@ add_custom_target(check-native-audio ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeAudio.cmake)
 add_dependencies(OpenRoo check-native-audio)
 
-# The groups must keep to the layering in src/layers.txt (new upward includes
-# fail; the known ones are in src/layers.baseline, which may only shrink).
+# The groups must keep to the layering in src/layers.txt and the dependencies
+# declared in src/deps.txt (an undeclared include fails the check).
 add_custom_target(check-layers ALL
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tools/check_layers.py ${PROJECT_SOURCE_DIR}
     COMMENT "Checking the group layering")

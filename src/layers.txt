@@ -1,8 +1,8 @@
 # The layering of the src/ groups, lowest first.  A group may include headers
 # from the groups on the lines above its own and from itself, never from its
-# own line (peers) or below.  Two things hold it to that: the build gives each
-# group the include paths of the lower groups only (CMakeLists.txt), and
-# tools/check_layers.py (the check-layers target) fails on any other include.
+# own line (peers) or below.  The groups each one may include are declared in
+# src/deps.txt; the build gives each group only those include paths (CMakeLists.txt),
+# and tools/check_layers.py (the check-layers target) fails on any other include.
 #
 # Add a new group by giving it a line here, in the position its includes allow.
 

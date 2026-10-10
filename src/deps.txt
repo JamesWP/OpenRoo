@@ -1,0 +1,42 @@
+# The groups each src/ group may include directly, one line per group in the
+# order of src/layers.txt: "group: dep dep ...", deps in layers.txt order (a
+# group with no deps is "group:" alone).  A group includes headers from the
+# groups listed on its line and from itself, nothing else.
+#
+# Every dep must sit on a lower line of src/layers.txt.  tools/check_layers.py
+# (the check-layers target) fails on an include of a group not listed here, and
+# on a listed dep that no include uses, so the list stays exact.  Adding a
+# dependency is then a visible one-line change here.
+#
+# The build gives each group the include paths of its deps and, transitively,
+# of their deps: a header may include its own group's deps, so those must
+# resolve too.  CMakeLists.txt computes that closure from this file.
+sysdev:
+log: sysdev
+base: sysdev log
+math: sysdev log
+prof: log
+inputdev:
+audiodev: base
+videodev:
+windev:
+dbg: prof windev
+testing: sysdev log base inputdev
+input: sysdev log base inputdev testing
+gfx: sysdev log base math
+gl: sysdev log prof windev gfx
+fx: sysdev log base gfx
+audio: sysdev log base audiodev
+ui: sysdev log base inputdev testing
+camera: sysdev log math audiodev audio
+session: sysdev log base
+level: sysdev log base gfx
+entities: sysdev log base prof dbg gfx level
+render: sysdev log base math prof inputdev windev testing gfx fx camera level entities
+screens: sysdev log base math inputdev testing input gfx ui camera session level entities render
+game: log base inputdev audiodev windev audio ui camera session level entities
+sim: sysdev log base prof inputdev audiodev windev testing audio ui level entities game
+flow: sysdev log base prof inputdev audiodev windev testing input audio ui level entities screens game sim
+core: sysdev log base prof inputdev audiodev windev dbg testing input gfx audio camera level entities render screens game sim flow
+debugui: windev dbg gfx
+app: sysdev log base prof inputdev audiodev videodev windev testing input gfx audio render screens game sim flow core debugui
