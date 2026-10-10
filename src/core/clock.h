@@ -22,7 +22,3 @@ double clock_previous_seconds(void);
  * state log and recordings all number frames by it. */
 unsigned clock_frame(void);
 
-/* The game's time(): seconds, also stored through out when it is not NULL.
- * DETERMINISM: the particle samplers and the level builder seed rand() from
- * it; KAROO_SEED fixes it. */
-  int   hooks_GameTime(int *out);

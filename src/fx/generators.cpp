@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include "generators.h"
 #include "sysdev.h"
-#include "clock.h"
+#include "gametime.h"
 #include "crtrand.h"
 #include <new>
 #include "factory.h"

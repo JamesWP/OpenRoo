@@ -1,11 +1,11 @@
 # Talks to the device through renderdevice.h; gl implements it.
 add_library(render OBJECT
+    bridgesurf.cpp
     camera.cpp
     dsoscene.cpp
     framepose.cpp
     meshbatch.cpp
     objectshadows.cpp
-    particles.cpp
     quadbatch.cpp
     rendergameframe.cpp
     renderstate.cpp
@@ -14,6 +14,7 @@ add_library(render OBJECT
     scenequad.cpp
     themedraw.cpp)
 target_include_directories(render PRIVATE
+    ../fx
     ../gfx
     ../base
     ../prof
@@ -33,5 +34,6 @@ target_include_directories(render PRIVATE
 
 # The debug UI sections and map layers drawn from this group (dbg.h).
 target_include_directories(render PRIVATE
+    ../fx
     ../gfx ../dbg)
 target_link_libraries(render PRIVATE imgui)

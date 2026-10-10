@@ -69,6 +69,11 @@ class Environment;
 /* Base class.  Its fields are protected: the three subclasses work on them. */
 class ParticleSystem {
 public:
+    /* Called after each system's tick, with the system (the determinism hash
+     * folds its ring in); none by default. */
+    typedef void (*TickObserver)(ParticleSystem *);
+    static void setTickObserver(TickObserver fn);
+
     /* The factory: one of the four class names, allocated and constructed. */
     static ParticleSystem *create(const char *name);
     /* The two ways the game builds a system: clone, and load from a file. */

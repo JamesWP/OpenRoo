@@ -7,6 +7,7 @@ add_library(audio OBJECT
     soundobj.cpp
     voicepool.cpp)
 target_include_directories(audio PRIVATE
+    ../fx
     ../base
     ../inputdev
     .
