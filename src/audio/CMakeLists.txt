@@ -5,18 +5,4 @@ add_library(audio OBJECT
     soundmanager.cpp
     voicepool.cpp)
 target_include_directories(audio PRIVATE
-    ../fx
-    ../base
-    ../inputdev
-    .
-    ../log
-    ../audiodev
-    ../app
-    ../core
-    ../entities
-    ../level
-    ../render
-    ../gfx
-    ../testing
-    ../ui
-    ../sysdev)
+    .)

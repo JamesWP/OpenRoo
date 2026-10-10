@@ -1,3 +1,0 @@
-# Include violations of src/layers.txt that predate the check, as
-# "<file> -> <header>".  Only ever delete lines; regenerate with
-# tools/check_layers.py . --update-baseline after fixing some.

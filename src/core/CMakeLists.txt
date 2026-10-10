@@ -20,28 +20,6 @@ add_library(core OBJECT
     fixedsounds.cpp
     soundobj.cpp)
 target_include_directories(core PRIVATE
-    ../screens
-    ../game
-    ../fx
-    ../base
-    ../prof
-    .
-    ../log
-    ../audiodev
-    ../sysdev
-    ../windev
-    ../inputdev
-    ../app
-    ../audio
-    ../entities
-    ../input
-    ../level
-    ../render
-    ../gfx
-    ../testing
-    ../ui)
+    .)
 
-# The debug UI sections and map layers drawn from this group (dbg.h).
-target_include_directories(core PRIVATE
-    ../fx ../dbg)
 target_link_libraries(core PRIVATE imgui)

@@ -12,9 +12,4 @@ add_library(gfx OBJECT
     textrenderer.cpp
     texture.cpp)
 target_include_directories(gfx PRIVATE
-    .
-    ../base
-    ../log
-    ../prof
-    ../sysdev
-    ../windev)
+    .)

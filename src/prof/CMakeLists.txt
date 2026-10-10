@@ -3,5 +3,5 @@
 add_library(prof OBJECT
     prof.cpp
     profpanel.cpp)
-target_include_directories(prof PRIVATE . ../log)
+target_include_directories(prof PRIVATE .)
 target_link_libraries(prof PRIVATE imgui)

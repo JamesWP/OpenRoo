@@ -5,6 +5,4 @@ add_library(base OBJECT
     ini.cpp
     themesounds.cpp)
 target_include_directories(base PRIVATE
-    .
-    ../log
-    ../sysdev)
+    .)

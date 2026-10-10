@@ -39,12 +39,32 @@ include(FetchImGui)   # the debug UI
 # dependencies are added so it does not reach them.
 add_compile_options(-Wall -Wextra -Werror)
 
-# One directory under src/ is one group.  A group's include path is its own
-# folder plus its dependencies' (private), so the lists in src/*/CMakeLists.txt
-# are the layering and the compiler enforces them.  Today's lists are the
-# cyclic baseline, to be narrowed.
+# One directory under src/ is one group.  Its include path is its own folder
+# plus the groups below it in src/layers.txt (see below).
 foreach(group app audio base fx game gfx screens audiodev core dbg debugui entities gl input inputdev level render testing ui videodev windev sysdev log prof)
     add_subdirectory(src/${group})
+endforeach()
+
+# Each group sees its own folder and the folders of the groups on the lines
+# above its own in src/layers.txt, and nothing else: an include of a group
+# that is not below it does not compile (tools/check_layers.py reports the same
+# thing, and also catches a name that resolves some other way).
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/layers.txt")
+file(STRINGS "${PROJECT_SOURCE_DIR}/src/layers.txt" layer_lines)
+set(lower_groups "")
+foreach(line IN LISTS layer_lines)
+    string(REGEX REPLACE "#.*" "" line "${line}")
+    string(STRIP "${line}" line)
+    if(line STREQUAL "")
+        continue()
+    endif()
+    string(REPLACE " " ";" line_groups "${line}")
+    foreach(group IN LISTS line_groups)
+        foreach(below IN LISTS lower_groups)
+            target_include_directories(${group} PRIVATE "${PROJECT_SOURCE_DIR}/src/${below}")
+        endforeach()
+    endforeach()
+    list(APPEND lower_groups ${line_groups})
 endforeach()
 
 if(WIN32)
