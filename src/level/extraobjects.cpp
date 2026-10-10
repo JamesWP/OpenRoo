@@ -44,7 +44,6 @@
 #include "audiodev.h"
 #include "soundmanager.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 #include <stdlib.h>
 #include <algorithm>
 #include <iterator>

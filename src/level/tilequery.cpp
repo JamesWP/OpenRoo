@@ -81,9 +81,8 @@ static void fx_init(void)
         s_diag = 1;
 }
 
-#include "game.h"
-#include "bridgeobject.h"
-#include "foe.h"
+#include "levelmap.h"
+#include "switchcells.h"
 #include "tile.h"
 
 /* The tile tables are the map's; reached through Game::map(). */
@@ -140,19 +139,19 @@ static void diag_hit(int which, unsigned u, unsigned v)
 
 /* Recomputes the blocked word of one list's tiles from its bridge. */
   void  
-Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
+Sim_MarkListedTilesBlockedByObject(SwitchCells *sw, LevelMap *map,
+                                   int bridgePhase, unsigned int listIndex)
 {
-    SwitchCells   *sw = self->switchCells();
     unsigned int   li = listIndex & 0xff;
     int            flagged;
     unsigned int   value;
     int            i;
 
     fx_init();
-    diag_enter(Q_MARK, self);
+    diag_enter(Q_MARK, sw);
 
     // PRESERVED: blocked when the phase is zero.  Read once, before the loop.
-    flagged = self->bridgeSlot(li)->phase();
+    flagged = bridgePhase;
     value   = (unsigned int)(flagged == 0);
 
     if (s_fx == FX_BLOCKINVERT)
@@ -169,7 +168,7 @@ Sim_MarkListedTilesBlockedByObject(Game *self, unsigned int listIndex)
 
         ++i;
 
-        self->map()->tile(u, v)->setBusy((int)value);
+        map->tile(u, v)->setBusy((int)value);
 
     // The bound is re-read every pass.
     } while (i < (int)(unsigned)sw->count(li));
@@ -342,10 +341,10 @@ Sim_FindNearestFlaggedTileInRadius(LevelMap *map, unsigned char *pu,
 /* The occupied, unmarked tile farthest from the one passed in, over the whole
  * grid.  The only query that keeps a real distance. */
   unsigned int  
-Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
+Sim_FindFarthestOccupiedTile(LevelMap *map, unsigned char *pu,
                              unsigned char *pv)
 {
-    LevelMap      *tiles = self->map();
+    LevelMap      *tiles = map;
     LevelMap      *hdr   = tiles;
     unsigned char  u0    = *pu;
     unsigned char  v0    = *pv;
@@ -358,7 +357,7 @@ Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
     unsigned char  v;
 
     fx_init();
-    diag_enter(Q_FAR, self);
+    diag_enter(Q_FAR, map);
 
     if (hdr->extentV() != 0) {
         v = 0;
@@ -415,58 +414,4 @@ Sim_FindFarthestOccupiedTile(MovableEntity *self, unsigned char *pu,
     }
 
     return 0;
-}
-
-/* KAROO_TILEQ_DIAG=1 only: logs each distinct foe type a level carries, once,
- * naming every level with a type 2, 3 or 5 (the types whose queries the game
- * makes).  Called for every level by the level report, so it names the levels
- * a recording would need to reach these queries.  Read-only. */
-void tilequery_census_object_types(Game *self)
-{
-    static int seen[256];
-    static int announced = 0;
-    static unsigned int level = 0;
-    unsigned int count, i;
-    int has2 = 0, has3 = 0, has5 = 0;
-
-    fx_init();
-    if (!s_diag)
-        return;
-
-    if (!announced) {
-        announced = 1;
-        g_logger.write("tilequery: census of FOE +0x62 types begins "
-                  "(2 = listed-object search, 3 = radius search, "
-                  "5 = farthest search)\n");
-    }
-
-    ++level;
-
-    // The foe table, as the world-state reader enumerates it; the type is
-    // the same field the tick dispatches on.
-    Game *g = self;
-    count = (unsigned int)g->foeCount();
-    for (i = 0; i < count; ++i) {
-        const Foe     *foe = g->foeSlot(g->foeId(i));
-        unsigned char  t;
-
-        if (foe == 0)
-            continue;
-        t = foe->type();
-
-        if (!seen[t]) {
-            seen[t] = 1;
-            g_logger.write("tilequery: CENSUS new foe type +0x62 = %u\n",
-                      (unsigned)t);
-        }
-        if (t == 2) has2 = 1;
-        if (t == 3) has3 = 1;
-        if (t == 5) has5 = 1;
-    }
-
-    if (has2 || has3 || has5) {
-        g_logger.write("tilequery: CENSUS level #%u carries GATED foe type%s%s%s "
-                  "-- capture a recording here\n", level,
-                  has2 ? " 2" : "", has3 ? " 3" : "", has5 ? " 5" : "");
-    }
 }

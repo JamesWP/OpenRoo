@@ -27,7 +27,6 @@
 #include "sysdev.h"
 #include "logger.h"
 #include "game.h"
-#include "tilequery.h"
 #include "levelscore.h"
 #include "player.h"
 
@@ -48,15 +47,9 @@ static int fx_double(void)
     return s_fxDouble;
 }
 
-/* The level report's type census (tilequery.cpp). */
-
   void  
 Score_CalculateLevelScore(Game *self, char endReason)
 {
-    // KAROO_TILEQ_DIAG=1 only, read-only: the census of foe types this level
-    // carries.
-    tilequery_census_object_types(self);
-
     // Crystals and surplus.
     const int collected = self->player()->gemsCollected();
     const int quota     = self->gemsRequired();

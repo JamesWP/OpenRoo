@@ -2,13 +2,7 @@ add_library(level OBJECT
     extraobjects.cpp
     gridrestore.cpp
     levelmap.cpp
-    levelentry.cpp
-    levelparse.cpp
-    levelplacements.cpp
-    levelscore.cpp
-    levelsetup.cpp
-    levelsounds.cpp
-    tiledebug.cpp
+    tilenames.cpp
     tilequery.cpp)
 target_include_directories(level PRIVATE
     ../fx

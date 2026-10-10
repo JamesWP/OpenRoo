@@ -370,7 +370,9 @@ Sim_GameTick(Game *self, double dt, double now)
             BridgeObject *br = self->bridgeSlot(pl->switchSlot());
             br->arm(self->clock());
             br->playArmSound();
-            Sim_MarkListedTilesBlockedByObject(self, pl->switchSlot());
+            Sim_MarkListedTilesBlockedByObject(self->switchCells(), self->map(),
+                                                   self->bridgeSlot(pl->switchSlot() & 0xff)->phase(),
+                                                   pl->switchSlot());
             pl->setSwitchSlot(0xff);
         }
     }
@@ -410,7 +412,9 @@ Sim_GameTick(Game *self, double dt, double now)
                 g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
                 trigger_switch_tile(self, (*slot)->switchSlot(), (*slot)->cellU(), (*slot)->cellV());
                 game->bridgeSlot((*slot)->switchSlot())->arm(game->clock());
-                Sim_MarkListedTilesBlockedByObject(self, (*slot)->switchSlot());
+                Sim_MarkListedTilesBlockedByObject(self->switchCells(), self->map(),
+                                                       self->bridgeSlot((*slot)->switchSlot() & 0xff)->phase(),
+                                                       (*slot)->switchSlot());
                 (*slot)->clearSwitchSlot();
             }
         }
