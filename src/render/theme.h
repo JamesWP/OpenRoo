@@ -8,7 +8,7 @@
  * `textureadress` keywords skip the check for a missing record every other
  * handler makes, and would write near address 0.  No shipped theme does it. */
 #pragma once
-#include "soundasset.h"
+#include "themesounds.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -22,7 +22,6 @@
 #include "explodedebris.h"
 #include "sky.h"
 
-class Game;
 class RenderDevice;
 
 enum ThemeObjectKind : uint32_t {
@@ -231,7 +230,8 @@ public:
 
     /* Releases the block, parses the theme file at path into it, and builds its
      * meshes, textures and sounds. */
-    bool load(Game *game, RenderDevice *d3d, char *path);
+    bool load(ThemeSoundTable *sounds, const char *gameDir, RenderDevice *d3d,
+              char *path);
 
     /* Releases everything the block holds.  Also called at shutdown. */
     void release();
@@ -268,7 +268,8 @@ private:
     SkyBackground        sky_;  // built from the face names; drawn by sky.cpp
     float                flSideHeight_{};
 
-    bool themeLoad(Game *game, RenderDevice *d3d, char *path);
+    bool themeLoad(ThemeSoundTable *sounds, const char *gameDir,
+                   RenderDevice *d3d, char *path);
 
      
 };
@@ -276,39 +277,10 @@ private:
 /* The loader and its helpers. */
 
 
-/* The theme sound table ("TSM" in its log line),.  A .thm
- * `Sound <event> <wave>` line fills entries[id] through ThemeSoundTable::add
- * (theme.cpp); the id is RegisterThemeSound's event number, so e.g. entry 0
- * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
- * 0x47, but the table holds 100 entries: ReleaseAll clears exactly
- * 100, where switchMax_ begins.  Lifecycle in
- * theme.cpp; the vptr is at +0. */
-#define THEME_SOUND_COUNT 100
-class ThemeSoundTable {
-public:
-    /* Adds (or replaces) the wave for a theme sound id. */
-    int add(const char *dir, unsigned int id, const char *waveName, uint32_t arg3, uint32_t arg4);
-
-    /* An empty table: every entry cleared (see releaseAll). */
-    ThemeSoundTable();
-    virtual ~ThemeSoundTable();
-    ThemeSoundTable(const ThemeSoundTable &) = delete;
-    ThemeSoundTable &operator=(const ThemeSoundTable &) = delete;
-
-    int releaseAll();
-
-    /* The entry for theme event id. */
-    const SoundAssetName *entry(int id) const { return &entries_[id]; }
-
-private:
-    uint32_t          unknown4_{};     /* +4  never written */
-    uint16_t           unknown8_{};     /* +8  zeroed by the ctor, never read */
-    SoundAssetName entries_[THEME_SOUND_COUNT];
-};
-
 extern ThemeAssetBlock g_themeBlock;
 
 /* The `sound` keyword: event name to id, then ThemeSoundTable::add. */
   bool  
-Theme_RegisterSound(Game *game, char *eventName, const char *waveName);
+Theme_RegisterSound(ThemeSoundTable *sounds, const char *gameDir,
+                    char *eventName, const char *waveName);
 

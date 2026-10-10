@@ -20,7 +20,6 @@
 #include "theme.h"
 #include "sysdev.h"
 #include "logger.h"
-#include "game.h"
 #include "renderdevice.h"
 #include "gamestr.h"
 #include "model.h"
@@ -259,27 +258,6 @@ void ThemeAssetBlock::release()
     memset((void *)this, 0, sizeof(*this));
 }
 
-/* "NONE" (case-exact, on the raw wave name) disables the entry without
- * logging.  PRESERVED: the path is formatted unbounded into 256 bytes. */
-int ThemeSoundTable::add(const char *dir, unsigned int id, const char *waveName,
-               uint32_t arg3, uint32_t arg4)
-{
-    char path[256];
-    snprintf(path, sizeof(path), GS_THEME_SOUND_PATH, dir, waveName);
-
-    SoundAssetName &e = entries_[id & 0xffff];
-    if (strcmp(waveName, GS_THEME_SOUND_NONE) == 0) {
-        e.enabled = 0;
-        return 0;
-    }
-    g_logger.logMessage(1, "TSM: add called (Index=%d/fn=%s)", id & 0xffff, path);
-    strcpy(e.name, path);
-    e.unknown104 = arg4;
-    e.unknown108 = arg3;
-    e.enabled    = 1;
-    return 0;
-}
-
 /* The event ids, in test order.  An unknown event registers nothing and
  * returns false. */
 static const struct { const char *name; unsigned id; } kSoundEvents[] = {
@@ -295,12 +273,13 @@ static const struct { const char *name; unsigned id; } kSoundEvents[] = {
 };
 
   bool  
-Theme_RegisterSound(Game *game, char *eventName, const char *waveName)
+Theme_RegisterSound(ThemeSoundTable *sounds, const char *gameDir,
+                    char *eventName, const char *waveName)
 {
     lower_inplace(eventName);
     for (const auto &ev : kSoundEvents) {
         if (strcmp(eventName, ev.name) == 0) {
-            game->themeSounds()->add(game->gameDir(), ev.id, waveName, 1, 1);
+            sounds->add(gameDir, ev.id, waveName, 1, 1);
             return true;
         }
     }
@@ -427,16 +406,17 @@ template <typename T> struct Cursor {
 class ThemeParser {
 public:
     /* Parses the stream into block; the parse state starts cleared. */
-    void run(Game *g, RenderDevice *dev, ThemeAssetBlock *b,
+    void run(ThemeSoundTable *s, const char *dir, RenderDevice *dev, ThemeAssetBlock *b,
              std::istream &f)
     {
         *this = ThemeParser();
-        game = g; d3d = dev; block = b; in = &f;
+        sounds = s; gameDir = dir; d3d = dev; block = b; in = &f;
         parseFile();
     }
 
 private:
-    Game            *game;
+    ThemeSoundTable *sounds;
+    const char      *gameDir;
     RenderDevice    *d3d;
     ThemeAssetBlock *block;
     std::istream    *in;
@@ -711,7 +691,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
             block->flSideHeight_ = atof_f(tok[1]);
     } else if (is(tok[0], "sound")) {
         if (inEnvironment && ntok > 2)
-            Theme_RegisterSound(game, tok[1], tok[2]);
+            Theme_RegisterSound(sounds, gameDir, tok[1], tok[2]);
     }
 }
 
@@ -872,7 +852,8 @@ void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *su
 /* One parser for every call; 4 KB of tokens, so not on the stack. */
 static ThemeParser s_parser;
 
-bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
+bool ThemeAssetBlock::themeLoad(ThemeSoundTable *sounds, const char *gameDir,
+                                RenderDevice *d3d,
                        char *path)
 {
     release();
@@ -886,7 +867,7 @@ bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
     if (!file)
         return false;
 
-    s_parser.run(game, d3d, this, file);
+    s_parser.run(sounds, gameDir, d3d, this, file);
 
     theme_struct_dump_if_enabled(path);
     strcpy(themeName_, path);  // PRESERVED: unbounded
@@ -894,39 +875,16 @@ bool ThemeAssetBlock::themeLoad(Game *game, RenderDevice *d3d,
 }
 
 /* The load, timed.  The time goes only to our log, never into game state. */
-bool ThemeAssetBlock::load(Game *game, RenderDevice *d3d, char *path)
+bool ThemeAssetBlock::load(ThemeSoundTable *sounds, const char *gameDir,
+                           RenderDevice *d3d, char *path)
 {
     const unsigned long long freq = sysdev::perfFrequency();
     const unsigned long long t0 = sysdev::perfCounter();
 
-    bool ok = themeLoad(game, d3d, path);
+    bool ok = themeLoad(sounds, gameDir, d3d, path);
 
     const unsigned long long t1 = sysdev::perfCounter();
     double ms = (double)(t1 - t0) * 1000.0 / (double)freq;
     g_logger.write("theme: %s %s in %.2f ms\n", path, ok ? "loaded" : "NOT opened", ms);
     return ok;
-}
-
-/* The theme sound table's lifecycle.  ReleaseAll clears the name and the
- * enabled flag of all 100 entries between two log lines, leaving the other
- * fields, and returns 0. */
-int ThemeSoundTable::releaseAll()
-{
-    g_logger.logMessage(1, "TSM: trying to release all sounds");
-    for (int i = 0; i < THEME_SOUND_COUNT; i++) {
-        entries_[i].enabled = 0;
-        entries_[i].name[0] = 0;
-    }
-    g_logger.logMessage(1, "TSM: all sounds released");
-    return 0;
-}
-
-ThemeSoundTable::ThemeSoundTable()
-{
-    unknown8_  = 0;
-    releaseAll();
-}
-
-ThemeSoundTable::~ThemeSoundTable()
-{
 }

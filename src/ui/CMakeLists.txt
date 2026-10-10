@@ -9,8 +9,7 @@ add_library(ui OBJECT
     scoreoverlay.cpp
     scoretally.cpp
     scriptplayer.cpp
-    textentry.cpp
-    theme.cpp)
+    textentry.cpp)
 target_include_directories(ui PRIVATE
     ../fx
     ../base
