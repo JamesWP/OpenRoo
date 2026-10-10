@@ -8,6 +8,7 @@ add_library(sim OBJECT
     levelscore.cpp
     levelsetup.cpp
     levelsounds.cpp
+    playtick.cpp
     soundobj.cpp)
 target_include_directories(sim PRIVATE
     .)
