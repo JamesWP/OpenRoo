@@ -219,9 +219,9 @@ Sim_HandleKeypress(Game *self)
         const bool right = KEY(inputdev::KEY_RIGHT) != 0, left = KEY(inputdev::KEY_LEFT) != 0;
         if (self->frontEnd()->rebindActive() == 0 && self->frontEnd()->textEntryActive() == 0) {
             if (right && !s_right)
-                LevelSelect_Turn(self, +1);
+                LevelSelect_Turn(self->frontEnd(), self->session(), +1);
             if (left && !s_left)
-                LevelSelect_Turn(self, -1);
+                LevelSelect_Turn(self->frontEnd(), self->session(), -1);
         }
         s_right = right;
         s_left = left;
@@ -321,7 +321,7 @@ Sim_HandleKeypress(Game *self)
 
     // The level select's start node: as New Game, at the chosen level.
     if (self->frontEnd()->menu()->nodeRef() == LS_START) {
-        int level = LevelSelect_Chosen(self);
+        int level = LevelSelect_Chosen(self->frontEnd(), self->session());
         Sim_ClearGameState(self);
         self->session()->setLevelIndex((unsigned char)level);
         Sim_OpenLevelFile(self, self->session()->levelIndex());
@@ -341,7 +341,7 @@ Sim_HandleKeypress(Game *self)
                 slot = (unsigned char)(slot + 1);
             if (self->frontEnd()->saveSlots()->slot(slot)->inUse != 0) {
                 Sim_ClearGameState(self);
-                Sim_RestoreGameStateFromSaveSlot(self, slot);
+                Sim_RestoreGameStateFromSaveSlot(self->frontEnd(), self->session(), self->world(), slot);
                 Sim_OpenLevelFile(self, self->session()->levelIndex());
                 Sim_SetupLevelObjects(self);
                 loaded_tail(self);
@@ -366,7 +366,7 @@ Sim_HandleKeypress(Game *self)
             self->frontEnd()->nameEntry()->setBuffer(rec->name);
             self->frontEnd()->saveSlots()->setEditSlot(slot);
             self->frontEnd()->nameEntry()->setCursor((unsigned char)strlen(rec->name));
-            Sim_StoreGameStateIntoSaveSlot(self, slot);
+            Sim_StoreGameStateIntoSaveSlot(self->frontEnd(), self->session(), self->world(), slot);
             self->frontEnd()->nameEntry()->setLastKey(inputdev::KEY_RETURN);
             // PRESERVED: three discarded Backspace polls clear its pressed bit
             // before name entry starts.

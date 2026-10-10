@@ -49,6 +49,10 @@ public:
     unsigned char &videoReflection()                   { return videoOptions_[1]; }
     unsigned char &videoHighlights()                   { return videoOptions_[2]; }
     unsigned char &videoParticles()                    { return videoOptions_[3]; }
+    unsigned char  videoShadows() const                { return videoOptions_[0]; }
+    unsigned char  videoReflection() const             { return videoOptions_[1]; }
+    unsigned char  videoHighlights() const             { return videoOptions_[2]; }
+    unsigned char  videoParticles() const              { return videoOptions_[3]; }
 
     // The orbit camera's angles, in degrees.
     float          cameraYaw() const                   { return cameraYaw_; }

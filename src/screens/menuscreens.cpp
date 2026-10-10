@@ -9,7 +9,8 @@
 
 #include <stdint.h>
 #include "menuscreens.h"
-#include "game.h"
+#include "frontend.h"
+#include "config.h"
 #include "renderdevice.h"
 #include "textrenderer.h"
 #include "menutree.h"
@@ -104,11 +105,11 @@ static void draw_markers(RenderDevice *d3d, float y0, float left, float right)
 }
 
   void  
-Menu_DrawCursorMarkers(Game *g, RenderDevice *d3d, uint32_t ms, float rowOffset)
+Menu_DrawCursorMarkers(const FrontEnd *frontEnd, RenderDevice *d3d, uint32_t ms, float rowOffset)
 {
     const uint32_t w  = mode_width(d3d);
     const float y0 = (float)(w * 172) * K640
-                   + ((float)g->frontEnd()->menu()->cursor() * 0.05f + rowOffset * K640) * (float)w;
+                   + ((float)frontEnd->menu()->cursor() * 0.05f + rowOffset * K640) * (float)w;
     const double t = (double)ms * 0.01;
     draw_markers(d3d, y0, (float)(sin(t) * 4.0 + 244.0),
                  (float)(sin(t + 3.14159274101257) * 4.0 + 396.0));
@@ -118,11 +119,11 @@ Menu_DrawCursorMarkers(Game *g, RenderDevice *d3d, uint32_t ms, float rowOffset)
  * from y 102, at the page's edges (centres 40 and 600) so they bracket the
  * whole row. */
   void  
-Menu_DrawControlsCursorMarkers(Game *g, RenderDevice *d3d, uint32_t ms)
+Menu_DrawControlsCursorMarkers(const FrontEnd *frontEnd, RenderDevice *d3d, uint32_t ms)
 {
     const uint32_t w  = mode_width(d3d);
     const float y0 = (float)(w * 102) * K640
-                   + (float)g->frontEnd()->menu()->cursor() * (float)w * 0.03125f;
+                   + (float)frontEnd->menu()->cursor() * (float)w * 0.03125f;
     const double t = (double)ms * 0.01;
     draw_markers(d3d, y0, (float)(sin(t) * 4.0 + 40.0),
                  (float)(sin(t + 3.14159274101257) * 4.0 + 600.0));
@@ -161,10 +162,10 @@ static void draw_fixed_rows(RenderDevice *d3d, ThemeAssetBlock *theme, TextRende
     }
 }
 
-static void draw_slot_rows(Game *g, RenderDevice *d3d, ThemeAssetBlock *theme,
+static void draw_slot_rows(FrontEnd *frontEnd, RenderDevice *d3d, ThemeAssetBlock *theme,
                            TextRenderer *text, ThemeTextColorSlot slot)
 {
-    SaveSlots *ss = g->frontEnd()->saveSlots();
+    SaveSlots *ss = frontEnd->saveSlots();
     if (ss->count() == 0)
         return;
     const float fw = (float)mode_width(d3d);
@@ -193,11 +194,11 @@ static void draw_slot_rows(Game *g, RenderDevice *d3d, ThemeAssetBlock *theme,
 #define LS_MARKER_SPREAD 1.3f  // level names run wider than menu rows
 #define LS_ROW_Y    208.0f
 #define LS_ROW_STEP  20.0f
-void Menu_RenderLevelSelect(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                            TextRenderer *text, uint32_t ms)
+void Menu_RenderLevelSelect(const FrontEnd *frontEnd, Session *session, ThemeAssetBlock *theme,
+                            RenderDevice *d3d, TextRenderer *text, uint32_t ms)
 {
     LevelSelectView v;
-    LevelSelect_View(g, &v);
+    LevelSelect_View(frontEnd, session, &v);
     draw_panel(d3d, theme, g_panelTexture, g_listQuad);
     const uint32_t w  = mode_width(d3d);
     const float fw = (float)w, x = fw * 0.5f;
@@ -226,37 +227,37 @@ static const char *const k_mainMenuRows[6] = {
 static const char *const k_optionsRows[3] = { "Controls", "Video", "Audio" };
 
 void
-Menu_RenderMainMenu(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
-                    uint32_t ms)
+Menu_RenderMainMenu(const FrontEnd *frontEnd, ThemeAssetBlock *theme, RenderDevice *d3d,
+                    TextRenderer *text, uint32_t ms)
 {
     draw_panel(d3d, theme, g_panelTexture, g_panelQuad);
     draw_fixed_rows(d3d, theme, text, k_mainMenuRows, 6, THEME_COLOR_MENUNEWGAME);
-    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+    Menu_DrawCursorMarkers(frontEnd, d3d, ms, 0.0f);
 }
 
 void
-Menu_RenderOptionsMenu(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
-                       uint32_t ms)
+Menu_RenderOptionsMenu(const FrontEnd *frontEnd, ThemeAssetBlock *theme, RenderDevice *d3d,
+                       TextRenderer *text, uint32_t ms)
 {
     draw_panel(d3d, theme, g_optionsTexture, g_listQuad);
     draw_fixed_rows(d3d, theme, text, k_optionsRows, 3, THEME_COLOR_MENUOPTIONSCONTROL);
-    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+    Menu_DrawCursorMarkers(frontEnd, d3d, ms, 0.0f);
 }
 
-void Menu_RenderRestoreSlotList(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+void Menu_RenderRestoreSlotList(FrontEnd *frontEnd, ThemeAssetBlock *theme, RenderDevice *d3d,
                                 TextRenderer *text, uint32_t ms)
 {
     draw_panel(d3d, theme, g_panelTexture, g_listQuad);
-    draw_slot_rows(g, d3d, theme, text, THEME_COLOR_MENULOADGAMEENTRIES);
-    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+    draw_slot_rows(frontEnd, d3d, theme, text, THEME_COLOR_MENULOADGAMEENTRIES);
+    Menu_DrawCursorMarkers(frontEnd, d3d, ms, 0.0f);
 }
 
-void Menu_RenderSaveSlotList(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
+void Menu_RenderSaveSlotList(FrontEnd *frontEnd, ThemeAssetBlock *theme, RenderDevice *d3d,
                              TextRenderer *text, uint32_t ms)
 {
     draw_panel(d3d, theme, g_saveTexture, g_listQuad);
-    draw_slot_rows(g, d3d, theme, text, THEME_COLOR_MENUSAVEGAMEENTRIES);
-    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+    draw_slot_rows(frontEnd, d3d, theme, text, THEME_COLOR_MENUSAVEGAMEENTRIES);
+    Menu_DrawCursorMarkers(frontEnd, d3d, ms, 0.0f);
 }
 
 /* The option widgets: a four-point square model pushed through a matrix and
@@ -331,8 +332,8 @@ static void draw_label(RenderDevice *d3d, ThemeAssetBlock *theme, TextRenderer *
 
 /* Menu node 0xc.  Four rows of a label at x 262 and its widget at x 368: 3D
  * sound (toggle), sound volume (knob), CD music (toggle), CD volume (knob). */
-void Menu_RenderSoundOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                             TextRenderer *text, uint32_t ms)
+void Menu_RenderSoundOptions(const FrontEnd *frontEnd, const Config *config, ThemeAssetBlock *theme,
+                             RenderDevice *d3d, TextRenderer *text, uint32_t ms)
 {
     draw_panel(d3d, theme, g_saveTexture, g_panelQuad);
 
@@ -342,21 +343,21 @@ void Menu_RenderSoundOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
 
     draw_label(d3d, theme, text, 262.0f, 0.28125f, "3D Sound", THEME_COLOR_MENUAUDIO3DSOUND);
     draw_widget(d3d, place(tx, fw * 0.29374999f),
-                g->sound3D() != 0 ? g_texOn : g_texOff);
+                config->sound3D() != 0 ? g_texOn : g_texOff);
 
     draw_label(d3d, theme, text, 262.0f, 0.33125001f, "Sound Vol.", THEME_COLOR_MENUAUDIOSOUNDVOL);
     draw_widget(d3d, place(tx, fw * 0.34375f), g_texKnobBase);
-    draw_widget(d3d, knob(tx, fw * 0.34375f, g->waveVolume()), g_texKnob);
+    draw_widget(d3d, knob(tx, fw * 0.34375f, config->waveVolume()), g_texKnob);
 
     draw_label(d3d, theme, text, 262.0f, 0.38124999f, "CD Music", THEME_COLOR_MENUAUDIOCDMUSIC);
     draw_widget(d3d, place(tx, fw * 0.39375001f),
-                g->musicOn() != 0 ? g_texOn : g_texOff);
+                config->musicOn() != 0 ? g_texOn : g_texOff);
 
     draw_label(d3d, theme, text, 262.0f, 0.43125001f, "CD Vol.", THEME_COLOR_MENUAUDIOCDVOL);
     draw_widget(d3d, place(tx, fw * 0.44374999f), g_texKnobBase);
-    draw_widget(d3d, knob(tx, fw * 0.44374999f, g->cdVolume()), g_texKnob);
+    draw_widget(d3d, knob(tx, fw * 0.44374999f, config->cdVolume()), g_texKnob);
 
-    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+    Menu_DrawCursorMarkers(frontEnd, d3d, ms, 0.0f);
 }
 
 /* Menu node 0xb: reflection (toggle), shadows, highlights and particles
@@ -370,8 +371,8 @@ static bool shadows_available(RenderDevice *d3d)
     return d3d->hasStencil() && d3d->bitDepth() > 16;
 }
 
-void Menu_RenderVideoOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                             TextRenderer *text, uint32_t ms)
+void Menu_RenderVideoOptions(const FrontEnd *frontEnd, const Config *config, ThemeAssetBlock *theme,
+                             RenderDevice *d3d, TextRenderer *text, uint32_t ms)
 {
     draw_panel(d3d, theme, g_videoTexture, g_listQuad);
 
@@ -381,7 +382,7 @@ void Menu_RenderVideoOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
 
     draw_label(d3d, theme, text, 262.0f, 0.28125f, "Reflection", THEME_COLOR_MENUVIDEOREFLECTION);
     draw_widget(d3d, place(tx, fw * 0.29374999f),
-                g->videoReflection() != 0 ? g_texOn : g_texOff);
+                config->videoReflection() != 0 ? g_texOn : g_texOff);
 
     if (shadows_available(d3d))
         draw_label(d3d, theme, text, 262.0f, 0.33125001f, "Shadows", THEME_COLOR_MENUVIDEOSHADOW);
@@ -391,17 +392,17 @@ void Menu_RenderVideoOptions(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
     draw_widget(d3d, place(tx, fw * 0.34375f), g_texKnobBase,
                 shadows_available(d3d) ? 0xffffffff : 0x80808080);
     if (shadows_available(d3d))
-        draw_widget(d3d, knob3(tx, fw * 0.34375f, g->videoShadows()), g_texKnob);
+        draw_widget(d3d, knob3(tx, fw * 0.34375f, config->videoShadows()), g_texKnob);
 
     draw_label(d3d, theme, text, 262.0f, 0.38124999f, "Highlights", THEME_COLOR_MENUVIDEOHIGHLIGHT);
     draw_widget(d3d, place(tx, fw * 0.39375001f), g_texKnobBase);
-    draw_widget(d3d, knob3(tx, fw * 0.39375001f, g->videoHighlights()), g_texKnob);
+    draw_widget(d3d, knob3(tx, fw * 0.39375001f, config->videoHighlights()), g_texKnob);
 
     draw_label(d3d, theme, text, 262.0f, 0.43125001f, "Particles", THEME_COLOR_MENUVIDEOPARTICLE);
     draw_widget(d3d, place(tx, fw * 0.44374999f), g_texKnobBase);
-    draw_widget(d3d, knob3(tx, fw * 0.44374999f, g->videoParticles()), g_texKnob);
+    draw_widget(d3d, knob3(tx, fw * 0.44374999f, config->videoParticles()), g_texKnob);
 
-    Menu_DrawCursorMarkers(g, d3d, ms, 0.0f);
+    Menu_DrawCursorMarkers(frontEnd, d3d, ms, 0.0f);
 }
 
 /* Menu node 0xa.  It opens with the full-screen backdrop the score screens
@@ -427,8 +428,9 @@ static const ControlRow k_controls[13] = {
     { "camera down",  "CamModeDown",       0x20 },
 };
 
-void Menu_RenderControlsRemap(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                              TextRenderer *text, uint32_t ms)
+void Menu_RenderControlsRemap(const FrontEnd *frontEnd, const Config *config,
+                              ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
+                              uint32_t ms)
 {
     const uint32_t w  = mode_width(d3d);
     const float fw = (float)w;
@@ -465,23 +467,23 @@ void Menu_RenderControlsRemap(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
     const float tx = (float)(w * 450) * K640;
     draw_label(d3d, theme, text, 180.0f, 0.578125f, "following camera", THEME_COLOR_MENUCONTROLCAMERA);
     draw_widget(d3d, place(tx, fw * 0.59062499f),
-                g->cameraTurnsWithPlayer() != 0 ? g_texOn : g_texOff);
+                config->cameraTurnsWithPlayer() != 0 ? g_texOn : g_texOff);
 
     draw_label(d3d, theme, text, 180.0f, 0.609375f, "joystick deathzone", THEME_COLOR_MENUCONTROLCAMERA);
     draw_widget(d3d, place(tx, fw * 0.62187499f), g_texKnobBase);
-    draw_widget(d3d, knob(tx, fw * 0.62187499f, g->joyDeadzone()), g_texKnob);
+    draw_widget(d3d, knob(tx, fw * 0.62187499f, config->joyDeadzone()), g_texKnob);
 
     char buf[0x100];
     for (int i = 0; i < 13; i++) {
         g_progCtrl.getBindingStr(1, k_controls[i].action, buf, sizeof(buf));
-        const bool asking = g->frontEnd()->rebindActive() != 0 && g->frontEnd()->rebindCode() == k_controls[i].node;
+        const bool asking = frontEnd->rebindActive() != 0 && frontEnd->rebindCode() == k_controls[i].node;
         const uint32_t wr = mode_width(d3d);
         text->drawRight(fw * 0.90625f, rowY[i],
                         (float)(wr * 12) * K640, (float)(wr * 14) * K640, 0.75f,
                         asking ? "???" : buf, d3d, 0, col.color1, col.color2);
     }
 
-    Menu_DrawControlsCursorMarkers(g, d3d, ms);
+    Menu_DrawControlsCursorMarkers(frontEnd, d3d, ms);
 }
 
 /* Builds the quads the screens draw and loads the nine menu textures, once per
@@ -547,7 +549,7 @@ Menu_BuildMenuGeometry(RenderDevice *d3d, const char *prefix)
  *   names     left-aligned   x 330, cell 16
  *   y         (scroll + row offset), scaled
  *   scroll    500 - elapsed ms * 0.05 (20 ms per virtual pixel)
- * The start time is re-armed when the Game's credits flag is set (the
+ * The start time is re-armed when the front end's credits flag is set (the
  * keypress handler sets it on entering) and the flag cleared; once scroll
  * falls below -1800 (46 s) the credits start again.  DETERMINISM: the
  * width and the elapsed time are unsigned, so a clock behind the start
@@ -637,14 +639,13 @@ static float g_creditsScroll;
 static uint32_t g_creditsStartMs;
 
   void  
-Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
-                         uint32_t nowMs)
+Menu_RenderCreditsScroll(FrontEnd *frontEnd, RenderDevice *d3d, TextRenderer *text, uint32_t nowMs)
 {
     const float scale = (float)d3d->width() * (1.0f / 640.0f);
 
-    if (game->frontEnd()->field_13cc8c() != 0) {
+    if (frontEnd->field_13cc8c() != 0) {
         g_creditsStartMs = nowMs;
-        game->frontEnd()->setField13cc8c(0);
+        frontEnd->setField13cc8c(0);
     }
     g_creditsScroll = 500.0f - (float)(uint32_t)(nowMs - g_creditsStartMs) * 0.05f;
 
@@ -675,23 +676,23 @@ Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
 /* Picks the screen for the current menu node; any other node draws nothing.
  * The level select's theme nodes (0x60 + t) draw the level select page. */
 void
-Menu_DispatchGameState(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
-                       uint32_t ms)
+Menu_DispatchGameState(FrontEnd *frontEnd, Session *session, const Config *config,
+                       ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text, uint32_t ms)
 {
-    const unsigned char node = g->frontEnd()->menu()->node();
+    const unsigned char node = frontEnd->menu()->node();
     switch (node) {
-    case 0:    Menu_RenderMainMenu(g, theme, d3d, text, ms); break;
-    case 2:    Menu_RenderRestoreSlotList(g, theme, d3d, text, ms); break;
-    case 4:    Menu_RenderOptionsMenu(g, theme, d3d, text, ms); break;
-    case 5:    Menu_RenderCreditsScroll(g, d3d, text, ms); break;
-    case 0xa:  Menu_RenderControlsRemap(g, theme, d3d, text, ms); break;
-    case 0xb:  Menu_RenderVideoOptions(g, theme, d3d, text, ms); break;
-    case 0xc:  Menu_RenderSoundOptions(g, theme, d3d, text, ms); break;
-    case 0x28: Menu_RenderLevelComplete(g, theme, d3d, text, ms); break;
-    case 0x2a: Menu_RenderSaveSlotList(g, theme, d3d, text, ms); break;
+    case 0:    Menu_RenderMainMenu(frontEnd, theme, d3d, text, ms); break;
+    case 2:    Menu_RenderRestoreSlotList(frontEnd, theme, d3d, text, ms); break;
+    case 4:    Menu_RenderOptionsMenu(frontEnd, theme, d3d, text, ms); break;
+    case 5:    Menu_RenderCreditsScroll(frontEnd, d3d, text, ms); break;
+    case 0xa:  Menu_RenderControlsRemap(frontEnd, config, theme, d3d, text, ms); break;
+    case 0xb:  Menu_RenderVideoOptions(frontEnd, config, theme, d3d, text, ms); break;
+    case 0xc:  Menu_RenderSoundOptions(frontEnd, config, theme, d3d, text, ms); break;
+    case 0x28: Menu_RenderLevelComplete(frontEnd, session, theme, d3d, text, ms); break;
+    case 0x2a: Menu_RenderSaveSlotList(frontEnd, theme, d3d, text, ms); break;
     default:
         if (LevelSelect_IsThemeNode(node))
-            Menu_RenderLevelSelect(g, theme, d3d, text, ms);
+            Menu_RenderLevelSelect(frontEnd, session, theme, d3d, text, ms);
         break;
     }
 }

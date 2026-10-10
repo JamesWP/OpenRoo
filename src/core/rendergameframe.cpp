@@ -1121,15 +1121,16 @@ Render_RenderGameFrame(void)
     const uint32_t ms = (uint32_t)(long long)now;
     if (st == 0 || st == 5 || st == 3) {
         PROF_SCOPE("menu");
-        Menu_DispatchGameState(g, &g_themeBlock, d3d, &g_fontMain, ms);
+        Menu_DispatchGameState(g->frontEnd(), g->session(), g->config(),
+                               &g_themeBlock, d3d, &g_fontMain, ms);
     }
     if (g->state() == 2) {
         PROF_SCOPE("menu");
-        Score_DrawGameOverScore(g, &g_themeBlock, d3d, &g_fontMain, ms);
+        Score_DrawGameOverScore(g->session(), &g_themeBlock, d3d, &g_fontMain, ms);
     }
     if (g->frontEnd()->menu()->node() == 3 || g->state() == 6) {
         PROF_SCOPE("menu");
-        Score_DrawHighScoreTable(g, &g_themeBlock, d3d, &g_fontMain, ms);
+        Score_DrawHighScoreTable(g->frontEnd(), &g_themeBlock, d3d, &g_fontMain, ms);
     }
 
     set_depth_test(true);
