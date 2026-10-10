@@ -16,34 +16,11 @@
 #include "bomb.h"
 #include "soundmanager.h"
 #include "world.h"
+#include "session.h"
 
 class SoundManager;
 
 
-/* The end-of-level score tally.  Six rows, each
- * with a real COUNT and SCORE (CalculateLevelScore) and a SHOWN
- * count and score that AnimateScoreTallyStages counts up from zero
- * towards them.  The animation's stages visit FOES before TIME. */
-enum TallyRow {
-    TALLY_GEMS, TALLY_SURPLUS, TALLY_TIME, TALLY_FOES, TALLY_ALLITEMS,
-    TALLY_VITALITY, TALLY_ROWS
-};
-
-struct ScoreTally {
-    int           shownScore[TALLY_ROWS];
-    int           shownBase;                /* running total before this level */
-    int           shownCount[TALLY_ROWS];
-    int           shownLevelTotal;          /* sum of shownScore */
-    int           shownGrandTotal;          /* shownBase + shownLevelTotal */
-    int           score[TALLY_ROWS];
-    int           count[TALLY_ROWS];
-    int           levelTotal;
-    int           grandTotal;
-    unsigned char stage;                    /* animation state, 0..6 */
-    int           stageStart;               /* ms, the stage's start */
-};
-
- 
 /* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport loads once.  They
  * are the Game's, not the SoundManager's: only Game code writes them. */
 namespace audiodev { class Buffer; }
@@ -103,12 +80,6 @@ public:
      * one before it (both loaders, levelparse.cpp). */
     unsigned int   mapChanged() const                { return mapChanged_; }
     void           setMapChanged(unsigned int c)     { mapChanged_ = c; }
-    /* The NEXT level's bonus flag, which OpenLevelFile peeks by
-     * loading that level's map first.  SetupLevelObjects reads it to give
-     * the completed-level menu node (0x28) two children when it is 0 and
-     * one otherwise -- the builder called it a "mode flag". */
-    unsigned int   nextLevelBonus() const            { return nextLevelBonus_; }
-    void           setNextLevelBonus(unsigned int b) { nextLevelBonus_ = b; }
     /* GameTick latches it to 1 the first time the exit
      * condition is met in a level (and plays a crystal sound); the level
      * builder clears it.  Named by offset. */
@@ -146,6 +117,13 @@ public:
     FrontEnd       *frontEnd()                       { return &frontEnd_; }
     const FrontEnd *frontEnd() const                 { return &frontEnd_; }
 
+    /* ── the play-through (session.h) ───────────────────────────────── */
+    /* The play-through's progress: the game file's level list and the level
+     * being played, the restart count, the counters the level score is
+     * computed from, the end-of-level tally and the total play time. */
+    Session        *session()                        { return &session_; }
+    const Session  *session() const                  { return &session_; }
+
     /* The settings object (config.h); openroo.ini holds it. */
     Config               *config()                   { return &config_; }
     /* The CD-music theme table (cdthemes.h). */
@@ -168,25 +146,11 @@ public:
     int            levelSoundsReady() const          { return levelSoundsReady_; }
     void           setLevelSoundsReady(int r)        { levelSoundsReady_ = r; }
 
-    /* ── the level sequence ─────────────────────────────────────────── */
-    /* The level being played, 0-based (StoreGameStateIntoSaveSlot saves it),
-     * and how many levels the game file lists (LoadGameFile; zero when it
-     * did not load).  index + 1 == count is the last level. */
-    unsigned char  levelIndex() const                { return levelIndex_; }
-    void           setLevelIndex(unsigned char i)    { levelIndex_ = i; }
-    unsigned char  levelCount() const                { return levelCount_; }
     /* CD music on: every CdThemes::play call is gated on it; HandleKeypress
      * toggles it, RenderSoundOptions shows it, sound setup clears it on
      * failure.  A dword. */
     int            musicOn() const                   { return config_.musicOn(); }
     void           setMusicOn(int on)                { config_.setMusicOn(on); }
-
-    /* Total play time over the whole game, ms: each level's timeElapsed is
-     * added as it ends; the save slot stores it, ClearGameState zeroes it. */
-    double         totalPlayTime() const             { return totalPlayTime_; }
-    void           setTotalPlayTime(double ms)       { totalPlayTime_ = ms; }
-
-    char          *levelNameTableEntry(unsigned char i) { return levelNameTable_[i]; }
 
     /* ── video quality (the options menu; config.h has the derivation) ─ */
     unsigned char &videoShadows()                    { return config_.videoShadows(); }
@@ -224,42 +188,6 @@ public:
     /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
     unsigned short joyDeadzone() const               { return config_.joyDeadzone(); }
     void           setJoyDeadzone(unsigned short p)  { config_.setJoyDeadzone(p); }
-
-    /* ── the tally's inputs (CalculateLevelScore) ────────────────────── */
-    /* Death restarts on this level: GameTick adds one each time ENTER
-     * restarts it after a death, and zeroes it when the level ends (as do
-     * ClearGameState and the level-skip cheat).  While it is nonzero the
-     * restart is a RETRY, not a fresh level: SetupLevelObjects keeps the
-     * kill and item counters, OpenLevelFile skips the bonus peek, the
-     * music and extra-object sounds are not reloaded, and
-     * CalculateLevelScore denies the all-items bonus.  A byte; it wraps. */
-    unsigned char  restartCount() const              { return restartCount_; }
-    void           setRestartCount(unsigned char n)  { restartCount_ = n; }
-    /* Items the level holds (SetupLevelObjects copies its census total);
-     * the all-items bonus needs Player::itemsCollected to reach it. */
-    unsigned short itemTotal() const                 { return itemTotal_; }
-    void           setItemTotal(unsigned short n)    { itemTotal_ = n; }
-    unsigned char  foesKilled() const                { return foesKilled_; }
-    void           setFoesKilled(unsigned char n)    { foesKilled_ = n; }
-    /* ── vitality and the score tally ───────────────────────────────── */
-    /* The tally's "vitality" row, which pays it 1:1:
-     * Player::completionNumerator per second of field_170a65, times 25, capped
-     * at 100 -- a RATE, not health (gamestate.cpp's note: it varies with
-     * movement).  Named for the row it feeds. */
-    unsigned char  vitalityPercent() const           { return vitalityPercent_; }
-    void           setVitalityPercent(unsigned char p) { vitalityPercent_ = p; }
-    /* The divisor: GameTick adds each tick's clock step to it and the
-     * level builder zeroes it, so likely elapsed level time.  Unconfirmed. */
-    unsigned int   field_170a65() const              { return field_170a65_; }
-    void           setField170a65(unsigned int n)    { field_170a65_ = n; }
-    /* The end-of-level tally (CalculateLevelScore fills it,
-     * AnimateScoreTallyStages counts it up). */
-    ScoreTally    *tally()                           { return &tally_; }
-    const ScoreTally *tally() const                  { return &tally_; }
-    /* Set to 1 when the tally has finished counting up (or ENTER skipped
-     * it); GameTick only takes ENTER to the high-score table once it is. */
-    int            tallyDone() const                 { return tallyDone_; }
-    void           setTallyDone(int d)               { tallyDone_ = d; }
 
     BombSounds bombSounds() const
     {
@@ -314,7 +242,6 @@ public:
     Game &operator=(const Game &) = delete;
 
 private:
-    int   loadGameFile(const char *name);   /* the .gam: the level names */
     void  releaseAllSounds();
 
 private:
@@ -323,19 +250,12 @@ private:
     double        field_04_{};                              /* Load sets 1.0; reader not decoded */
     int           field_0c_{};
     unsigned int  mapChanged_{};
-    unsigned int  nextLevelBonus_{};
     unsigned int  tickCount_{};
     int           initialised_{};                           /* 0 until Load completes */
     CdThemes      cdThemes_;
     /* 256 level names, 0x100 each.  SetCurrentLevelName copies entry `levelNo & 0xff` into World's levelName_. */
-    char          levelNameTable_[256][0x100]{};
-    unsigned char levelCount_{};
     char          gameFileName_[0x80]{};
     char          gameDir_[64]{};
-    unsigned char restartCount_{};
-    /* Foes killed this level; CalculateLevelScore pays 50 each. */
-    unsigned char foesKilled_{};
-    unsigned short itemTotal_{};
     int           levelSoundsReady_{};
     ThemeSoundTable themeSounds_;
     unsigned char stateBeforeMenu_{};
@@ -350,14 +270,12 @@ private:
      * and the high-score table.  Declared after World, as the moved members
      * were after the sound manager, so it is torn down before them. */
     FrontEnd      frontEnd_;
+    /* The play-through (session.h).  Declared after the front end, as the
+     * moved members were after the sound manager, so it is torn down before
+     * them. */
+    Session       session_;
     int           field_13cc84_{};                          /* Load zeroes; reader not decoded */
-    ScoreTally    tally_;
-    double        totalPlayTime_{};
     double        lastTickTime_{};
-    /* Recomputed by GameTick every tick; see vitalityPercent(). */
-    unsigned char vitalityPercent_{};
-    unsigned int  field_170a65_{};
-    unsigned char levelIndex_{};
     int           field_173584_{};
     int           field_173b1a_{};
     ScriptPlayer  scriptPlayer_;
@@ -366,7 +284,6 @@ private:
      * option and the joystick deadzone live in its persisted blob. */
     Config        config_;
     unsigned char state_{};
-    int           tallyDone_{};
 };
 
  

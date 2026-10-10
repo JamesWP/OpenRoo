@@ -125,15 +125,15 @@ bool Cheat_LoadLevel(Game *self, unsigned char lvl)
 {
     char path[384];
     Sim_SetCurrentLevelName(self, lvl);
-    if (lvl >= self->levelCount())
+    if (lvl >= self->session()->levelCount())
         return false;
     snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, self->gameDir(), self->world()->levelName());
     g_logger.logMessage(3, "GAME: lc by number %d name:%s", (unsigned int)lvl, self->world()->levelName());
-    self->setLevelIndex(lvl);
+    self->session()->setLevelIndex(lvl);
     if (!std::ifstream(sysdev::nativePath(path)))
         return false;
     self->world()->player()->setGemsCollected(0);
-    Sim_OpenLevelFile(self, self->levelIndex());
+    Sim_OpenLevelFile(self, self->session()->levelIndex());
     Sim_SetupLevelObjects(self);
     enter_loaded_state(self);
     return true;
@@ -164,15 +164,15 @@ Sim_HandleTypedCheatCode(Game *self)
     }
 
     if (streq(buf, "supa")) {
-        if ((unsigned int)self->levelIndex() + 1 == (unsigned int)self->levelCount()) {
+        if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
             self->setState(2);
             if (self->musicOn() != 0)
                 self->cdThemes()->play(GS_GAME_GAMEOVER);
             Score_CalculateLevelScore(self, 0x28);
             self->frontEnd()->setDebounce(inputdev::KEY_RETURN);
             g_logger.logMessage(1, "GAME: completed at level %d/%d",
-                               (unsigned int)self->levelIndex() + 1,
-                               (unsigned int)self->levelCount());
+                               (unsigned int)self->session()->levelIndex() + 1,
+                               (unsigned int)self->session()->levelCount());
         } else {
             self->frontEnd()->menu()->setLockStart(self->lastTickTime());
             self->frontEnd()->menu()->setLock(1);
@@ -188,10 +188,10 @@ Sim_HandleTypedCheatCode(Game *self)
             self->frontEnd()->menu()->setCursor(0);
             self->frontEnd()->menu()->setLock(1);
             Score_CalculateLevelScore(self, (char)self->state());
-            self->setRestartCount(0);
+            self->session()->setRestartCount(0);
             g_logger.logMessage(1, "GAME: c - sl");
         }
-        self->setTotalPlayTime((double)(unsigned long long)self->world()->timeElapsed() + self->totalPlayTime());
+        self->session()->setTotalPlayTime((double)(unsigned long long)self->world()->timeElapsed() + self->session()->totalPlayTime());
     }
 
     // jjmapnr: a 7-byte prefix, then load by number.

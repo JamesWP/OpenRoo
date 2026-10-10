@@ -183,7 +183,7 @@ Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
         levelNo = levelNo + 1;
 
     inline_strcpy(self->world()->levelNameBuffer(),
-                  self->levelNameTableEntry((unsigned char)(levelNo & 0xff)));
+                  self->session()->levelNameTableEntry((unsigned char)(levelNo & 0xff)));
 
     // The upper bytes of the game's return are the copied length; unreadable.
     return 0;
@@ -198,25 +198,25 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     fx_init();
 
-    self->setNextLevelBonus(0);
+    self->session()->setNextLevelBonus(0);
 
     // PRESERVED: path is overwritten before it is read.
     sprintf(path, GS_OPEN_FMT_GAM, self->gameFileName());
 
     // The peek: load the next level's map just to read its bonus flag.
-    if (self->restartCount() == 0 &&
-        (unsigned int)(self->levelIndex()) + 1 != (unsigned int)self->levelCount()) {
-        Sim_SetCurrentLevelName(self, (unsigned char)(self->levelIndex() + 1));
+    if (self->session()->restartCount() == 0 &&
+        (unsigned int)(self->session()->levelIndex()) + 1 != (unsigned int)self->session()->levelCount()) {
+        Sim_SetCurrentLevelName(self, (unsigned char)(self->session()->levelIndex() + 1));
         snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, self->gameDir(),
                            self->world()->levelName());
         // PRESERVED: the result is not tested.
         self->world()->map()->readFile(path);
-        self->setNextLevelBonus(self->world()->map()->bonus());
+        self->session()->setNextLevelBonus(self->world()->map()->bonus());
 
         if (s_diag)
             g_logger.write("levelparse: bonus peek for level %u -> bonus=%u\n",
-                      (unsigned)(unsigned char)(self->levelIndex() + 1),
-                      self->nextLevelBonus());
+                      (unsigned)(unsigned char)(self->session()->levelIndex() + 1),
+                      self->session()->nextLevelBonus());
     }
 
     Sim_SetCurrentLevelName(self, levelNo);

@@ -782,7 +782,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
             { W * -0.1f, H * -0.13333334f, 0.0f },
             { W * -0.1f, H * 0.13333334f,  0.0f },
         };
-        const double ang = 0.9519978 - (int)g->vitalityPercent() * 0.019039957;
+        const double ang = 0.9519978 - (int)g->session()->vitalityPercent() * 0.019039957;
         const float c = (float)cos(ang), s = (float)sin(ang);
         float m[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
         m[0] = c;  m[1] = -s;  m[4] = s;  m[5] = c;
@@ -882,7 +882,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
     hud_text(&g_fontMain, -1, wx(w, 10), wx(w, 32), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
     sprintf(buf, "x%d", pl->glides());
     hud_text(&g_fontMain, -1, wx(w, 121), wx(w, 38), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
-    sprintf(buf, "%d", g->levelIndex() + 1);
+    sprintf(buf, "%d", g->session()->levelIndex() + 1);
     hud_text(&g_fontMain, 1, wx(w, 630), wx(w, 23), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
     sprintf(buf, "%dx", pl->bombsCarried());
     hud_text(&g_fontMain, 0, wx(w, 32), wx(w, 62), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);

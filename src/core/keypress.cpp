@@ -232,7 +232,7 @@ Sim_HandleKeypress(Game *self)
     switch (self->frontEnd()->menu()->nodeRef()) {
     case 1:
         Sim_ClearGameState(self);
-        Sim_OpenLevelFile(self, self->levelIndex());
+        Sim_OpenLevelFile(self, self->session()->levelIndex());
         Sim_SetupLevelObjects(self);
         loaded_tail(self);
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
@@ -292,9 +292,9 @@ Sim_HandleKeypress(Game *self)
         self->frontEnd()->menu()->pop();
         break;
     case 0x29: {
-        unsigned char lvl = (unsigned char)(self->levelIndex() + 1);
+        unsigned char lvl = (unsigned char)(self->session()->levelIndex() + 1);
         self->world()->player()->setGemsCollected(0);
-        self->setLevelIndex(lvl);
+        self->session()->setLevelIndex(lvl);
         Sim_OpenLevelFile(self, lvl);
         Sim_SetupLevelObjects(self);
         self->stateRef() = 4;
@@ -323,8 +323,8 @@ Sim_HandleKeypress(Game *self)
     if (self->frontEnd()->menu()->nodeRef() == LS_START) {
         int level = LevelSelect_Chosen(self);
         Sim_ClearGameState(self);
-        self->setLevelIndex((unsigned char)level);
-        Sim_OpenLevelFile(self, self->levelIndex());
+        self->session()->setLevelIndex((unsigned char)level);
+        Sim_OpenLevelFile(self, self->session()->levelIndex());
         Sim_SetupLevelObjects(self);
         loaded_tail(self);
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
@@ -342,7 +342,7 @@ Sim_HandleKeypress(Game *self)
             if (self->frontEnd()->saveSlots()->slot(slot)->inUse != 0) {
                 Sim_ClearGameState(self);
                 Sim_RestoreGameStateFromSaveSlot(self, slot);
-                Sim_OpenLevelFile(self, self->levelIndex());
+                Sim_OpenLevelFile(self, self->session()->levelIndex());
                 Sim_SetupLevelObjects(self);
                 loaded_tail(self);
             }

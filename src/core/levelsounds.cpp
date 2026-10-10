@@ -135,7 +135,7 @@ Sim_InitLevelBasedSounds(Game *self)
         attachLoopSound(game, game->world(), &World::bridgeCount, &World::bridgeSlot,
                         game->soundAsset42ffe());
 
-        if (game->restartCount() == 0 && game->sound3D() != 0) {
+        if (game->session()->restartCount() == 0 && game->sound3D() != 0) {
             g_logger.logMessage(1, "GAME: try to play level-based LEO sounds");
             // The count is re-read every pass.
             ExtraObjects *xo = game->world()->extraObjects();

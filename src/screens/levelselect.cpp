@@ -32,9 +32,9 @@ static void build_nodes(Game *g)
     MenuTree *m = g->frontEnd()->menu();
     s_themeCount = 0;
     char prev[64] = "";
-    for (int i = 0; i < g->levelCount(); i++) {
+    for (int i = 0; i < g->session()->levelCount(); i++) {
         char t[64];
-        theme_of(g->levelNameTableEntry((unsigned char)i), t, sizeof(t));
+        theme_of(g->session()->levelNameTableEntry((unsigned char)i), t, sizeof(t));
         if (s_themeCount == 0 || strcmp(t, prev) != 0) {
             if (s_themeCount == LS_MAX_THEMES)
                 break;
@@ -44,7 +44,7 @@ static void build_nodes(Game *g)
             strcpy(prev, t);
         }
     }
-    s_themeFirst[s_themeCount] = s_themeCount ? g->levelCount() : 0;
+    s_themeFirst[s_themeCount] = s_themeCount ? g->session()->levelCount() : 0;
 
     for (int t = 0; t < s_themeCount; t++) {
         const unsigned char node = (unsigned char)(LS_THEME_NODE + t);
@@ -71,7 +71,7 @@ void LevelSelect_Turn(Game *g, int dir)
         // Open on the theme of the level last loaded.
         int t = 0;
         for (int i = 0; i < s_themeCount; i++)
-            if (g->levelIndex() >= s_themeFirst[i])
+            if (g->session()->levelIndex() >= s_themeFirst[i])
                 t = i;
         // Descend as the navigator's Enter does.
         m->setSavedCursor(2, m->cursor());
@@ -80,7 +80,7 @@ void LevelSelect_Turn(Game *g, int dir)
         m->setNode((unsigned char)(LS_THEME_NODE + t));
         s_top = 0;
         g_logger.write("levelselect: open, %d themes, %d levels\n",
-                  s_themeCount, (int)g->levelCount());
+                  s_themeCount, (int)g->session()->levelCount());
         return;
     }
     if (!LevelSelect_IsThemeNode(m->node()))
@@ -99,7 +99,7 @@ int LevelSelect_Chosen(Game *g)
     m->pop();  // node is the theme page, cursor the row
     int level = s_themeFirst[m->node() - LS_THEME_NODE] + m->cursor();
     g_logger.write("levelselect: start level %d (%s)\n",
-              level, g->levelNameTableEntry((unsigned char)level));
+              level, g->session()->levelNameTableEntry((unsigned char)level));
     return level;
 }
 
@@ -119,7 +119,7 @@ void LevelSelect_View(Game *g, LevelSelectView *v)
     v->theme = s_themeName[t];
     v->count = n - s_top < LEVELSELECT_ROWS ? n - s_top : LEVELSELECT_ROWS;
     for (int i = 0; i < v->count; i++) {
-        const char *name = g->levelNameTableEntry((unsigned char)(s_themeFirst[t] + s_top + i));
+        const char *name = g->session()->levelNameTableEntry((unsigned char)(s_themeFirst[t] + s_top + i));
         const char *bs = strchr(name, '\\');
         v->rows[i] = bs ? bs + 1 : name;
     }

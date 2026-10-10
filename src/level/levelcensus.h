@@ -73,7 +73,7 @@ struct LevelCensus {
     // shadow1 + transforms + paragliders + shadow7 + freezeItems + extraLives
     // + timeBonuses + the World's crystal count.  It counts CONTENTS_TRANSFORM,
     // which a pickup test that ignores transforms would not.  It is not
-    // Game::itemTotal().
+    // Session::itemTotal().
 
     // Zeroes the counts, in the game's store order, leaving field_e5 as the
     // game does.
