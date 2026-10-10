@@ -106,19 +106,19 @@ void Game::releaseAllSounds()
             if (s) sm->releaseStaticForOwner(s, 1);
         if (fixedSounds_.menuUpDown)
             sm->releasePooledForOwner(fixedSounds_.menuUpDown, 1);
-        if (p->soundC3()) sm->releaseStaticForOwner(p->soundC3(), 1);
-        if (p->soundBf()) sm->releaseStaticForOwner(p->soundBf(), 1);
-        if (p->poolCf())  sm->releasePooledForOwner(p->poolCf(), 1);
+        if (p->soundC3()) sm->releaseVoice(p->soundC3(), true);
+        if (p->soundBf()) sm->releaseVoice(p->soundBf(), true);
+        if (p->poolCf())  sm->releaseVoice(p->poolCf(), true);
         if (fixedSounds_.levelCompleted)
             sm->releaseStaticForOwner(fixedSounds_.levelCompleted, 1);
-        audiodev::Buffer *statics2[] = {
+        SoundVoice *statics2[] = {
             p->soundC7(), p->soundA3(), p->soundB3(), p->soundB7(),
             p->soundBb(), p->soundAb(), p->soundAf(), p->soundCb(), p->soundA7(),
         };
-        for (audiodev::Buffer *s : statics2)
-            if (s) sm->releaseStaticForOwner(s, 1);
+        for (SoundVoice *s : statics2)
+            if (s) sm->releaseVoice(s, true);
         if (p->pool9f())
-            sm->releasePooledForOwner(p->pool9f(), 1);
+            sm->releaseVoice(p->pool9f(), true);
         // The crystal banks and the pickup banks, one entry of each per pass.
         // PRESERVED: bank 5 is never released.
         static const int banks[] = { 0, 1, 2, 3, 4, 6, 7, 8 };
@@ -127,7 +127,7 @@ void Game::releaseAllSounds()
                 sm->releaseStaticForOwner(fixedSounds_.crystalBank[i], 1);
             for (int b : banks)
                 if (p->pickupSound(b, i))
-                    sm->releaseStaticForOwner(p->pickupSound(b, i), 1);
+                    sm->releaseVoice(p->pickupSound(b, i), true);
         }
     }
     fixedSounds_.loaded = 0;

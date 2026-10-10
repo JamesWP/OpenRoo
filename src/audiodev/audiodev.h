@@ -11,6 +11,7 @@
 #pragma once
 
 #include <string>
+#include "soundvoice.h"
 
 namespace audiodev {
 
@@ -80,7 +81,7 @@ struct BufferState;
 
 /* One sound.  It remembers its file so it can be reloaded when the 2D/3D mode
  * switches. */
-class Buffer {
+class Buffer : public SoundVoice {
 public:
     Buffer();
     ~Buffer();
@@ -106,12 +107,12 @@ public:
 
     /* Switches a 3D buffer's spatialisation on or off; false if it is 2D. */
     bool set3DEnabled(bool enable);
-    void setPosition(float x, float y, float z, bool immediate = true);
+    void setPosition(float x, float y, float z, bool immediate = true) override;
 
     /* Starts from the beginning, restoring the sound first if the platform
      * lost it.  Retriggering a playing buffer restarts it. */
-    void play(bool loop);
-    void stop();
+    void play(bool loop) override;
+    void stop() override;
 
 private:
     BufferState *state_;

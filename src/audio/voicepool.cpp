@@ -86,6 +86,16 @@ void VoicePool::cycle(bool loop)
         currentIdx_ = 0;
 }
 
+/* Stops every voice that is loaded. */
+void VoicePool::stop()
+{
+    for (int i = 0; i < voiceCount(); i++) {
+        audiodev::Buffer *b = voiceAt(i);
+        if (b != 0)
+            b->stop();
+    }
+}
+
 /* PRESERVED: only voice 0 is checked for 3D before every voice is positioned,
  * and the voices pointer is not checked at all.  Pools are all-3D or all-2D,
  * so neither fires. */

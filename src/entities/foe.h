@@ -13,7 +13,7 @@
 #include "bomb.h"
 #include "movableentity.h"
 
-class SoundManager;
+class SoundLibrary;
 class Tile;
 class Foe;
 

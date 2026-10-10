@@ -12,6 +12,7 @@
 #include "game.h"
 #include "foe.h"
 #include "soundmanager.h"
+#include "voicepool.h"
 #include "soundobj.h"
 
 static int s_fx = -1;

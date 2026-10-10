@@ -21,11 +21,9 @@
 #include <string.h>
 
 #include "liftobject.h"
-#include "soundmanager.h"
+#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
-#include "soundmanager.h"
-#include "audiodev.h"
 #include "logger.h"
 
 static const float  K_MS_TO_HEIGHT = 0.005f;
@@ -195,10 +193,10 @@ void LiftObject::purgeAll(const EntityContext &ctx, LiftSlots &slots)
             g_logger.write("liftobject: LIVE purge #%u -- count=%u\n",
                       ++s_live_purges, (unsigned)slots.count);
         do {
-            if (ctx.sound->created() != 0) {
-                audiodev::Buffer *h = slots.slot[i]->sound_;
+            if (ctx.sound->active()) {
+                SoundVoice *h = slots.slot[i]->sound_;
                 if (h != 0)
-                    ctx.sound->releaseStaticForOwner(h, 1);
+                    ctx.sound->releaseVoice(h, true);
             }
             LiftObject *obj = slots.slot[i];
             if (obj != 0)

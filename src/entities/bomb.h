@@ -11,8 +11,8 @@
 #include "movableentity.h"
 #include "soundasset.h"
 
-namespace audiodev { class Buffer; }
-class SoundManager;
+class SoundVoice;
+class SoundLibrary;
 class Tile;
 class Bomb;
 
@@ -55,13 +55,13 @@ private:
 
     // The cell (u, v) from this bomb's tile base, both read signed.
     Tile *tile(int u, int v) const;
-    static void acquireInto(SoundManager *sm, Bomb **slot, const SoundAssetName *asset,
-                            audiodev::Buffer *Bomb::*field);
-    static void releaseField(SoundManager *sm, Bomb **slot,
-                             audiodev::Buffer *Bomb::*field);
+    static void acquireInto(SoundLibrary *sm, Bomb **slot, const SoundAssetName *asset,
+                            SoundVoice *Bomb::*field);
+    static void releaseField(SoundLibrary *sm, Bomb **slot,
+                             SoundVoice *Bomb::*field);
 
-    audiodev::Buffer *rollSound_;         // may be NULL
-    audiodev::Buffer *blastSound_;        // may be NULL
+    SoundVoice *rollSound_;         // may be NULL
+    SoundVoice *blastSound_;        // may be NULL
     int                 blastSoundPlayed_;
     int                 zoneCleared_;
     double              droppedAt_;

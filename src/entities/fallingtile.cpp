@@ -26,11 +26,9 @@
 #include <string.h>
 
 #include "fallingtile.h"
-#include "soundmanager.h"
+#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
-#include "soundmanager.h"
-#include "audiodev.h"
 #include "logger.h"
 
 static const double FALL_DELAY_MS    = 1500.0;
@@ -180,7 +178,7 @@ static int      s_logged_purge   = 0;
 static int      s_logged_release = 0;
 static unsigned s_live_purges    = 0;
 
-static void release_sound(SoundManager *sound, audiodev::Buffer *h)
+static void release_sound(SoundLibrary *sound, SoundVoice *h)
 {
     if (h == 0)
         return;
@@ -188,7 +186,7 @@ static void release_sound(SoundManager *sound, audiodev::Buffer *h)
         s_logged_release = 1;
         g_logger.write("fallingtile: first sound release -- h=%p\n", (void *)h);
     }
-    sound->releaseStaticForOwner(h, 1);
+    sound->releaseVoice(h, true);
 }
 
 void FallingTile::purgeAll(const EntityContext &ctx, FallingSlots &slots)
@@ -214,7 +212,7 @@ void FallingTile::purgeAll(const EntityContext &ctx, FallingSlots &slots)
         do {
             //             // The two releases are siblings: a null fall sound does not skip
             //             // the respawn sound.
-            if (ctx.sound->created() != 0) {
+            if (ctx.sound->active()) {
                 release_sound(ctx.sound, slots.slot[i]->fallSound_);
                 release_sound(ctx.sound, slots.slot[i]->respawnSound_);
             }
@@ -232,7 +230,7 @@ Tile *FallingTile::tile() const
     return map_->tile( (int)cellU_, (int)cellV_);
 }
 
-void FallingTile::playAtTile(audiodev::Buffer *snd, const Tile *t) const
+void FallingTile::playAtTile(SoundVoice *snd, const Tile *t) const
 {
     snd->setPosition((float)(int)cellU_,
                           (float)t->height(),

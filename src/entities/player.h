@@ -9,9 +9,8 @@
  
 #include "movableentity.h"
 
-namespace audiodev { class Buffer; }
+class SoundVoice;
 #include <vector>
-class VoicePool;
 class Tile;
 
 class Player : public MovableEntity {
@@ -120,8 +119,8 @@ public:
         SND_15E, SND_16A, SND_176, SND_182, SND_18E,
         SND_19A, SND_1A6, SND_1B2, SND_1BE,
     };
-    audiodev::Buffer *pickupSound(int bank, int i) const { return pickupSounds_[bank][i]; }
-    void  setPickupSound(int bank, int i, audiodev::Buffer *p) { pickupSounds_[bank][i] = p; }
+    SoundVoice *pickupSound(int bank, int i) const { return pickupSounds_[bank][i]; }
+    void  setPickupSound(int bank, int i, SoundVoice *p) { pickupSounds_[bank][i] = p; }
 
     double lastSecondsMark() const                    { return lastSecondsMark_; }
     void  setLastSecondsMark(double d)                { lastSecondsMark_ = d; }
@@ -177,10 +176,10 @@ public:
 
 private:
 
-    typedef audiodev::Buffer *SoundRef;
+    typedef SoundVoice *SoundRef;
 
     int   soundVariant() const;
-    void  playAtCell(audiodev::Buffer *buf) const;
+    void  playAtCell(SoundVoice *buf) const;
     void  pickupSound(const SoundRef *arr) const;
     void  endEffect(int code);
 

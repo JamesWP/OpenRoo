@@ -26,11 +26,9 @@
 #include <string.h>
 
 #include "platformobject.h"
-#include "soundmanager.h"
+#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
-#include "soundmanager.h"
-#include "audiodev.h"
 #include "logger.h"
 
 static const float  K_MS_TO_TILE = 0.005f;
@@ -251,10 +249,10 @@ void PlatformObject::purgeAll(const EntityContext &ctx, PlatformSlots &slots)
             g_logger.write("platformobject: LIVE purge #%u -- count=%u\n",
                       ++s_live_purges, (unsigned)slots.count);
         do {
-            if (ctx.sound->created() != 0) {
-                audiodev::Buffer *h = slots.slot[i]->sound_;
+            if (ctx.sound->active()) {
+                SoundVoice *h = slots.slot[i]->sound_;
                 if (h != 0)
-                    ctx.sound->releaseStaticForOwner(h, 1);
+                    ctx.sound->releaseVoice(h, true);
             }
             PlatformObject *obj = slots.slot[i];
             if (obj != 0)

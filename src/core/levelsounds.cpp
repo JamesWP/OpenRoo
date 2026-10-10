@@ -45,11 +45,11 @@ static VoicePool *acq_pool(Game *game, int count, const SoundAssetName *asset)
 
 /* Resets the old buffer if there is one, then loads the named asset if it is
  * set.  The caller stores the result: the new buffer, or the reset one. */
-static audiodev::Buffer *reslot(Game *game, audiodev::Buffer *cur,
-                                  const SoundAssetName *asset)
+static SoundVoice *reslot(Game *game, SoundVoice *cur,
+                          const SoundAssetName *asset)
 {
     if (cur != NULL)
-        cur->reset();
+        static_cast<audiodev::Buffer *>(cur)->reset();
     if (asset->enabled != 0)
         return acq(game, asset);
     return cur;
@@ -95,11 +95,11 @@ Sim_InitLevelBasedSounds(Game *self)
             pl->setWorldSoundVariant(s_fx ? 2 : 1);
 
         if (pl->pool9f() != NULL)
-            pl->pool9f()->wipe();
+            static_cast<VoicePool *>(pl->pool9f())->wipe();
         if (game->soundAsset441ca()->enabled != 0)
             pl->setPool9f(acq_pool(game, 3, game->soundAsset441ca()));
         if (pl->poolCf() != NULL)
-            pl->poolCf()->wipe();
+            static_cast<VoicePool *>(pl->poolCf())->wipe();
         if (game->soundAsset4236e()->enabled != 0)
             pl->setPoolCf(acq_pool(game, 10, game->soundAsset4236e()));
 

@@ -211,6 +211,15 @@ void SoundManager::releasePooledForOwner(VoicePool *pool,
         "was not found !", voice0->filename());
 }
 
+/* SoundLibrary: a voice is either a pool or a single buffer. */
+void SoundManager::releaseVoice(SoundVoice *v, bool destroyIfUnused)
+{
+    if (VoicePool *pool = dynamic_cast<VoicePool *>(v))
+        releasePooledForOwner(pool, destroyIfUnused);
+    else
+        releaseStaticForOwner(static_cast<audiodev::Buffer *>(v), destroyIfUnused);
+}
+
 /* Finds or creates the entry, then hands out its master once, or a fresh
  * duplicate added to its borrower list. */
 audiodev::Buffer *SoundManager::acquireStatic(const char *name, int bWant3D)

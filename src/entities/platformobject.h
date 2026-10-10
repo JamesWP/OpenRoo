@@ -8,7 +8,7 @@
 
  
 
-namespace audiodev { class Buffer; }
+class SoundVoice;
 
 class PlatformObject;
 typedef EntitySlots<PlatformObject, 100> PlatformSlots;
@@ -36,7 +36,7 @@ public:
 
     // The moving-loop sound, attached by InitLevelBasedSounds
     // (levelsounds.cpp).
-    void setSound(audiodev::Buffer *p) { sound_ = p; }
+    void setSound(SoundVoice *p) { sound_ = p; }
 
 private:
 
@@ -64,7 +64,7 @@ private:
     signed char         heightCell_;
     unsigned char       field_34[4];    // never written
     unsigned char       span_;          // limit - trackStart
-    audiodev::Buffer *sound_;         // the moving loop; may be NULL
+    SoundVoice *sound_;         // the moving loop; may be NULL
     signed char         originU_;
     signed char         originV_;
     signed char         originHeight_;

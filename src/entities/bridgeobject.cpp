@@ -26,11 +26,9 @@
 #include "dbg.h"
 #include "switchcells.h"
 #include <algorithm>
-#include "soundmanager.h"
+#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
-#include "soundmanager.h"
-#include "audiodev.h"
 #include "logger.h"
 
 /* The float nearest 0.01; widened where it is multiplied. */
@@ -260,10 +258,10 @@ void BridgeObject::purgeAll(const EntityContext &ctx, BridgeSlots &slots)
             g_logger.write("bridgeobject: LIVE purge #%u -- count=%u\n",
                       ++s_live_purges, (unsigned)slots.count);
         do {
-            if (ctx.sound->created() != 0) {
-                audiodev::Buffer *h = slots.slot[i]->sound_;
+            if (ctx.sound->active()) {
+                SoundVoice *h = slots.slot[i]->sound_;
                 if (h != 0)
-                    ctx.sound->releaseStaticForOwner(h, 1);
+                    ctx.sound->releaseVoice(h, true);
             }
             BridgeObject *obj = slots.slot[i];
             if (obj != 0)

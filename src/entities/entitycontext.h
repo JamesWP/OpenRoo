@@ -5,14 +5,14 @@
 
 struct TickStep;
 class  LevelMap;
-class  SoundManager;
+class  SoundLibrary;
 class  SwitchCells;
 
 struct EntityContext {
     double       *clock;
     TickStep     *tickStep;
     LevelMap     *map;
-    SoundManager *sound;
+    SoundLibrary *sound;
     /* The switch cells and the highest switch slot in use (a view of the
      * Game's, so it follows the level being built). */
     SwitchCells         *switches;
