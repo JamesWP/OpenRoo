@@ -54,10 +54,9 @@ void MovableEntity::zeroSoundSlots()
  * otherwise. */
 #include <string.h>
 #include <math.h>
-#include "audiodev.h"
+#include "soundvoice.h"
 #include "logger.h"
 #include "entitymath.h"
-#include "voicepool.h"
 #include "tile.h"
 #include "levelmap.h"
 
@@ -131,7 +130,7 @@ static inline double load_double(const void *p)
 #define CUR          TILE(GU, GV)
 
 /* Positions a sound at (x, y, z) and triggers it; a null sound is skipped. */
-static inline void snd_at(audiodev::Buffer *s, float x, float y, float z, uint32_t loop)
+static inline void snd_at(SoundVoice *s, float x, float y, float z, uint32_t loop)
 {
     if (s == 0)
         return;
@@ -238,9 +237,9 @@ unsigned int MovableEntity::updateMovement()
             if (((signed char)kind_) != 9) {
                 unsigned char a = anim_;
                 if (((a > 0x13 && a < 0x1c && moveDir_ != 0) || turned) &&
-                    ((VoicePool *)sound_cf_) != 0 && a != 3 && a != 5) {
-                    (((VoicePool *)sound_cf_))->broadcastCoordinates((float)(int)GU, (float)(int)GH, -(float)(int)GV, 1);
-                    (((VoicePool *)sound_cf_))->cycle(0);
+                    sound_cf_ != 0 && a != 3 && a != 5) {
+                    sound_cf_->setPosition((float)(int)GU, (float)(int)GH, -(float)(int)GV, 1);
+                    sound_cf_->play(0);
                 }
             }
 
@@ -485,10 +484,10 @@ unsigned int MovableEntity::updateMovement()
                     if ((signed char)CUR->objectMarker() == TILE_JUMP_PAD ||
                         ((int)((unsigned)fallStartH_ - (int)h2) < 3 && h2 > 1)) {
                         moveState_ = 0;  // survived
-                        if (((VoicePool *)sound_cf_) != 0 && ((signed char)kind_) == 4) {
-                            (((VoicePool *)sound_cf_))->broadcastCoordinates((float)(int)GU, (float)(int)GH,
+                        if (sound_cf_ != 0 && ((signed char)kind_) == 4) {
+                            sound_cf_->setPosition((float)(int)GU, (float)(int)GH,
                                 -(float)(int)GV, 1);
-                            (((VoicePool *)sound_cf_))->cycle(0);
+                            sound_cf_->play(0);
                         }
                     } else if (((signed char)kind_) == 9 && h2 > 1) {
                         moveState_ = 0;

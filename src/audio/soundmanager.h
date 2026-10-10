@@ -13,12 +13,13 @@
 #include <list>
 #include <string>
 #include "audiodev.h"
+#include "soundvoice.h"
 
 namespace audiodev { class Buffer; }
 class VoicePool;
 class doublesoundbuff;
 
-class SoundManager {
+class SoundManager : public SoundLibrary {
 public:
      
     audiodev::Device *device() { return &device_; }
@@ -61,6 +62,14 @@ public:
              int bitspersample);
 
     int created()const {return dwCreated_;}
+
+    /* SoundLibrary: the game objects' view of this manager. */
+    bool active() const override { return created() != 0; }
+    SoundVoice *acquireVoice(const char *name, bool want3D) override
+    {
+        return acquireStatic(name, want3D ? 1 : 0);
+    }
+    void releaseVoice(SoundVoice *v, bool destroyIfUnused) override;
 private:
     unsigned long  dwMode3D_{};          // the live 3D listener mode
     unsigned long  dwPendingMode3D_{};   // set with it; the mode new loads apply

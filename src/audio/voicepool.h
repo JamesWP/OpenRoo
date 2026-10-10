@@ -5,9 +5,18 @@
 #pragma once
 
 #include "audiodev.h"
+#include "soundvoice.h"
 
-class VoicePool {
+class VoicePool : public SoundVoice {
 public:
+    /* SoundVoice: the pool plays and positions as one sound. */
+    void setPosition(float x, float y, float z, bool immediate = true) override
+    {
+        broadcastCoordinates(x, y, z, immediate);
+    }
+    void play(bool loop) override { cycle(loop); }
+    void stop() override;
+
     /* Halts and re-triggers the current voice, then advances the cursor.  Does
      * nothing with no voices. */
     void cycle(bool loop = false);

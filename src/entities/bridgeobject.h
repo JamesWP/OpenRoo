@@ -11,7 +11,7 @@
 
  
 
-namespace audiodev { class Buffer; }
+class SoundVoice;
 
 /* An FVF 0x242 vertex: XYZ, diffuse, two texture-coordinate sets. */
 struct BridgeVertex {
@@ -88,7 +88,7 @@ public:
 
     // The moving-loop sound, attached by InitLevelBasedSounds
     // (levelsounds.cpp).
-    void setSound(audiodev::Buffer *p) { sound_ = p; }
+    void setSound(SoundVoice *p) { sound_ = p; }
 
 private:
 
@@ -118,7 +118,7 @@ private:
     float               restV_;
     signed char         span_;        // the deck's length, in cells
     unsigned char       slot_;        // the switch slot, stamped into cells
-    audiodev::Buffer *sound_;       // the moving loop; may be NULL
+    SoundVoice *sound_;       // the moving loop; may be NULL
     double              phaseStart_;
     int                 armed_;
     signed char         step_;        // +1 or -1 cell per 100 ms

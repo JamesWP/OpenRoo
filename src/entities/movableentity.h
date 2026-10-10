@@ -12,9 +12,8 @@
 #include "tickstep.h"
 #include "tile.h"
 
-namespace audiodev { class Buffer; }
+class SoundVoice;
 class LevelMap;
-class VoicePool;
 class FoePath;
 
 /* One moving entity's shared state.  Foe, Bomb and Player derive from it. */
@@ -87,33 +86,33 @@ public:
 
     // The sound handles: soundobj.cpp writes them for foes, levelsounds.cpp
     // and fixedsounds.cpp for the Player.
-    VoicePool *pool9f() const                  { return pool_9f_; }
-    void  setPool9f(VoicePool *p)              { pool_9f_ = p; }
-    audiodev::Buffer *soundA3() const        { return sound_a3_; }
-    void  setSoundA3(audiodev::Buffer *p)    { sound_a3_ = p; }
-    audiodev::Buffer *soundA7() const        { return sound_a7_; }
-    void  setSoundA7(audiodev::Buffer *p)    { sound_a7_ = p; }
-    audiodev::Buffer *soundAb() const        { return sound_ab_; }
-    void  setSoundAb(audiodev::Buffer *p)    { sound_ab_ = p; }
-    audiodev::Buffer *soundAf() const        { return sound_af_; }
-    void  setSoundAf(audiodev::Buffer *p)    { sound_af_ = p; }
-    audiodev::Buffer *soundB3() const        { return sound_b3_; }
-    void  setSoundB3(audiodev::Buffer *p)    { sound_b3_ = p; }
-    audiodev::Buffer *soundB7() const        { return sound_b7_; }
-    void  setSoundB7(audiodev::Buffer *p)    { sound_b7_ = p; }
-    audiodev::Buffer *soundBb() const        { return sound_bb_; }
-    void  setSoundBb(audiodev::Buffer *p)    { sound_bb_ = p; }
-    audiodev::Buffer *soundBf() const        { return sound_bf_; }
-    void  setSoundBf(audiodev::Buffer *p)    { sound_bf_ = p; }
-    audiodev::Buffer *soundC3() const        { return sound_c3_; }
-    void  setSoundC3(audiodev::Buffer *p)    { sound_c3_ = p; }
-    audiodev::Buffer *soundC7() const        { return sound_c7_; }
-    void  setSoundC7(audiodev::Buffer *p)    { sound_c7_ = p; }
-    audiodev::Buffer *soundCb() const        { return sound_cb_; }
-    void  setSoundCb(audiodev::Buffer *p)    { sound_cb_ = p; }
+    SoundVoice *pool9f() const                  { return pool_9f_; }
+    void  setPool9f(SoundVoice *p)              { pool_9f_ = p; }
+    SoundVoice *soundA3() const        { return sound_a3_; }
+    void  setSoundA3(SoundVoice *p)    { sound_a3_ = p; }
+    SoundVoice *soundA7() const        { return sound_a7_; }
+    void  setSoundA7(SoundVoice *p)    { sound_a7_ = p; }
+    SoundVoice *soundAb() const        { return sound_ab_; }
+    void  setSoundAb(SoundVoice *p)    { sound_ab_ = p; }
+    SoundVoice *soundAf() const        { return sound_af_; }
+    void  setSoundAf(SoundVoice *p)    { sound_af_ = p; }
+    SoundVoice *soundB3() const        { return sound_b3_; }
+    void  setSoundB3(SoundVoice *p)    { sound_b3_ = p; }
+    SoundVoice *soundB7() const        { return sound_b7_; }
+    void  setSoundB7(SoundVoice *p)    { sound_b7_ = p; }
+    SoundVoice *soundBb() const        { return sound_bb_; }
+    void  setSoundBb(SoundVoice *p)    { sound_bb_ = p; }
+    SoundVoice *soundBf() const        { return sound_bf_; }
+    void  setSoundBf(SoundVoice *p)    { sound_bf_ = p; }
+    SoundVoice *soundC3() const        { return sound_c3_; }
+    void  setSoundC3(SoundVoice *p)    { sound_c3_ = p; }
+    SoundVoice *soundC7() const        { return sound_c7_; }
+    void  setSoundC7(SoundVoice *p)    { sound_c7_ = p; }
+    SoundVoice *soundCb() const        { return sound_cb_; }
+    void  setSoundCb(SoundVoice *p)    { sound_cb_ = p; }
     // Also holds a voice pool, on both the Player and a foe.
-    VoicePool *poolCf() const                  { return (VoicePool *)sound_cf_; }
-    void  setPoolCf(VoicePool *p)              { sound_cf_ = (audiodev::Buffer *)p; }
+    SoundVoice *poolCf() const                  { return sound_cf_; }
+    void  setPoolCf(SoundVoice *p)              { sound_cf_ = p; }
 
 protected:
     // Our own subclasses use only the base's field work, the three zeroed
@@ -172,19 +171,19 @@ protected:
     // carry the height curves updateMovement() interpolates between.
     unsigned char       anim_{};
     int                 onLift_{};  // Riding a lift (kind 9).
-    VoicePool          *pool_9f_{};
-    audiodev::Buffer *sound_a3_;
-    audiodev::Buffer *sound_a7_;
-    audiodev::Buffer *sound_ab_;
-    audiodev::Buffer *sound_af_;
-    audiodev::Buffer *sound_b3_;
-    audiodev::Buffer *sound_b7_;
-    audiodev::Buffer *sound_bb_;
-    audiodev::Buffer *sound_bf_;
-    audiodev::Buffer *sound_c3_;
-    audiodev::Buffer *sound_c7_;
-    audiodev::Buffer *sound_cb_;
-    audiodev::Buffer *sound_cf_;
+    SoundVoice         *pool_9f_{};
+    SoundVoice *sound_a3_;
+    SoundVoice *sound_a7_;
+    SoundVoice *sound_ab_;
+    SoundVoice *sound_af_;
+    SoundVoice *sound_b3_;
+    SoundVoice *sound_b7_;
+    SoundVoice *sound_bb_;
+    SoundVoice *sound_bf_;
+    SoundVoice *sound_c3_;
+    SoundVoice *sound_c7_;
+    SoundVoice *sound_cb_;
+    SoundVoice *sound_cf_;
     int                 field_d3{};
     unsigned char       field_d7{};  // The switch this foe is standing on, when it is standing on one.
     int                 field_d8{};

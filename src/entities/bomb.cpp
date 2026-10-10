@@ -47,14 +47,12 @@
 
 #include "bomb.h"
 #include "dbg.h"
-#include "soundmanager.h"
+#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
 #include <stdlib.h>
 #include "movableentity.h"
 #include "objectremove.h"
-#include "soundmanager.h"
-#include "audiodev.h"
 #include "logger.h"
 
 #include <new>  // std::nothrow
@@ -192,8 +190,8 @@ static void spawn_strcpy(char *dst, const char *src)
 
 /* One "if enabled: copy the name, acquire, store" block; the slot is re-read
  * for the store. */
-void Bomb::acquireInto(SoundManager *sm, Bomb **slot, const SoundAssetName *asset,
-                       audiodev::Buffer *Bomb::*field)
+void Bomb::acquireInto(SoundLibrary *sm, Bomb **slot, const SoundAssetName *asset,
+                       SoundVoice *Bomb::*field)
 {
     char name[256];
 
@@ -207,7 +205,7 @@ void Bomb::acquireInto(SoundManager *sm, Bomb **slot, const SoundAssetName *asse
         g_logger.write("bomb: first sound acquire -- '%s'\n", name);
     }
 
-    (*slot)->*field = sm->acquireStatic(name, 1);
+    (*slot)->*field = sm->acquireVoice(name, true);
 }
 
 void Bomb::spawn(const EntityContext &ctx, BombTable &bombs,
@@ -266,7 +264,7 @@ void Bomb::spawn(const EntityContext &ctx, BombTable &bombs,
 
     (*slot)->droppedAt_ = *ctx.clock;
 
-    if (ctx.sound->created() != 0) {
+    if (ctx.sound->active()) {
         acquireInto(ctx.sound, slot, sounds.b3, &Bomb::sound_b3_);
 
         if (sounds.b7bb->enabled != 0) {
@@ -288,10 +286,10 @@ static int           s_logged_release  = 0;
 
 /* Releases one sound field, re-reading the slot.  Owner flag 0: a bomb never
  * destroys a shared buffer. */
-void Bomb::releaseField(SoundManager *sm, Bomb **slot,
-                        audiodev::Buffer *Bomb::*field)
+void Bomb::releaseField(SoundLibrary *sm, Bomb **slot,
+                        SoundVoice *Bomb::*field)
 {
-    audiodev::Buffer *buf = (*slot)->*field;
+    SoundVoice *buf = (*slot)->*field;
 
     if (buf == 0)
         return;
@@ -302,14 +300,14 @@ void Bomb::releaseField(SoundManager *sm, Bomb **slot,
                   (void *)*slot, (void *)buf);
     }
 
-    sm->releaseStaticForOwner(buf, 0);
+    sm->releaseVoice(buf, false);
 }
 
 void Bomb::remove(const EntityContext &ctx, BombTable &bombs, unsigned int idArg)
 {
     unsigned char id  = (unsigned char)(idArg & 0xff);
     Bomb        **slot = &bombs.slot[id];
-    SoundManager *sm   = ctx.sound;
+    SoundLibrary *sm   = ctx.sound;
 
     fx_init();
 
@@ -327,7 +325,7 @@ void Bomb::remove(const EntityContext &ctx, BombTable &bombs, unsigned int idArg
             g_logger.write("bomb: %lu removals\n", s_removals);
     }
 
-    if (ctx.sound->created() != 0) {
+    if (ctx.sound->active()) {
         // In a fixed order.
         releaseField(sm, slot, &Bomb::blastSound_);
         releaseField(sm, slot, &Bomb::sound_b3_);

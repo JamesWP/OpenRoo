@@ -19,7 +19,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "audiodev.h"
+#include "soundvoice.h"
 #include "tile.h"
 #include "levelmap.h"
 #include "crtrand.h"
@@ -28,7 +28,6 @@
 #include "entitymath.h"
 #include "foepath.h"
 #include <stdlib.h>
-#include "voicepool.h"
 #include "logger.h"
 
 #include "movableentity.h"
@@ -82,7 +81,7 @@ int Player::soundVariant() const
     return (int)(long long)now_ % 3;
 }
 
-void Player::playAtCell(audiodev::Buffer *buf) const
+void Player::playAtCell(SoundVoice *buf) const
 {
     buf->setPosition((float)(int)cellU_,
                           (float)(int)heightCell_,
@@ -93,7 +92,7 @@ void Player::playAtCell(audiodev::Buffer *buf) const
 /* PRESERVED: the variant is computed twice, for the array and the trigger. */
 void Player::pickupSound(const SoundRef *arr) const
 {
-    audiodev::Buffer *buf = arr[soundVariant()];
+    SoundVoice *buf = arr[soundVariant()];
 
     if (buf != NULL) {
         playAtCell(buf);
@@ -221,11 +220,11 @@ unsigned int Player::updateTileEffects()
             itemsCollected_ += 1;
 
             if (pool_9f_ != NULL) {
-                pool_9f_->broadcastCoordinates((float)(int)cellU_,
+                pool_9f_->setPosition((float)(int)cellU_,
                     (float)(int)heightCell_,
                     -(float)(int)cellV_,
                     1);
-                pool_9f_->cycle(0);
+                pool_9f_->play(0);
             }
             pickedUp_ = 1;
         }
@@ -245,7 +244,7 @@ unsigned int Player::updateTileEffects()
             itemsCollected_ += 1;
 
             {
-                audiodev::Buffer *buf = pickupSounds_[SND_19A][worldSoundVariant_];
+                SoundVoice *buf = pickupSounds_[SND_19A][worldSoundVariant_];
                 if (buf != NULL) {
                     playAtCell(buf);
                     pickupSounds_[SND_19A][worldSoundVariant_]->play(false);
