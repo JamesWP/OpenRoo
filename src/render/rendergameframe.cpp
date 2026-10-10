@@ -58,7 +58,7 @@
 #include "menuscreens.h"
 #include "scoreoverlay.h"
 #include "dbg.h"
-#include "gameglobals.h"
+#include "renderstate.h"
 
 /* ─── Section 2: timing, tick, camera, listener ─────────────────────────── */
 

@@ -23,7 +23,6 @@
 #include "bridgeobject.h"
 #include "fallingtile.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 
 namespace audiodev { class Buffer; }
 #include "voicepool.h"

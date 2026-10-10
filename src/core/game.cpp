@@ -15,7 +15,6 @@
 #include "windev.h"
 #include "gamestr.h"
 #include "logger.h"
-#include "gameglobals.h"
 #include <stdlib.h>
 #include "cdm.h"
 #include "cdthemes.h"

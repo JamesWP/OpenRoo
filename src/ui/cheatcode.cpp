@@ -36,7 +36,6 @@
 #include "player.h"
 #include "tile.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 #include "cdm.h"
 #include <algorithm>
 #include <iterator>

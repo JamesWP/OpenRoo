@@ -10,7 +10,6 @@
 #include "menutree.h"
 #include "player.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 #include "record.h"
 
 #include "audiodev.h"

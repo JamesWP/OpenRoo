@@ -35,7 +35,6 @@
 #include "levelparse.h"
 #include "soundmanager.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 
 /* The map-changed flag and the peeked next level's bonus are Game fields. */
 

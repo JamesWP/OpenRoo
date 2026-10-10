@@ -18,7 +18,7 @@
 #include "menuscreens.h"
 #include "textrenderer.h"
 #include "logger.h"
-#include "gameglobals.h"
+#include "image.h"
 #include "gamestr.h"
 #include "game.h"
 #include "levelmap.h"
@@ -137,3 +137,9 @@ Render_ConfigureRenderState(const char *gameDir)
         windev::quit(1);
     }
 }
+
+Image  g_loadingImage;
+Image  g_fallbackImage;
+Image  g_demoImage;
+char   g_levelTitle[128];
+double g_lastTickMs;

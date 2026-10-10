@@ -15,7 +15,6 @@
 #include <new>
 #include "main.h"
 #include <stdlib.h>
-#include "gameglobals.h"
 #include "logger.h"
 #include "game.h"
 #include "config.h"

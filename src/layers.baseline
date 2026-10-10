@@ -1,9 +1,7 @@
 # Include violations of src/layers.txt that predate the check, as
 # "<file> -> <header>".  Only ever delete lines; regenerate with
 # tools/check_layers.py . --update-baseline after fixing some.
-audio/cdthemes.cpp -> core/gameglobals.h
 audio/fixedsounds.cpp -> core/game.h
-audio/fixedsounds.cpp -> core/gameglobals.h
 audio/fixedsounds.cpp -> entities/player.h
 audio/fixedsounds.cpp -> testing/record.h
 audio/fixedsounds.cpp -> ui/menutree.h
@@ -12,9 +10,7 @@ audio/soundobj.cpp -> entities/foe.h
 core/clock.cpp -> app/launcher.h
 input/camerainput.cpp -> core/game.h
 input/inputsetup.cpp -> core/game.h
-input/inputsetup.cpp -> core/gameglobals.h
 input/keypress.cpp -> core/game.h
-input/keypress.cpp -> core/gameglobals.h
 input/keypress.cpp -> core/gamereset.h
 input/keypress.cpp -> core/levelparse.h
 input/keypress.cpp -> core/levelsetup.h
@@ -37,7 +33,6 @@ render/objectshadows.cpp -> ui/theme.h
 render/quadbatch.cpp -> ui/theme.h
 render/rendergameframe.cpp -> core/clock.h
 render/rendergameframe.cpp -> core/game.h
-render/rendergameframe.cpp -> core/gameglobals.h
 render/rendergameframe.cpp -> core/gametick.h
 render/rendergameframe.cpp -> core/levelentry.h
 render/rendergameframe.cpp -> testing/record.h
@@ -46,7 +41,6 @@ render/rendergameframe.cpp -> ui/scoreoverlay.h
 render/rendergameframe.cpp -> ui/scriptplayer.h
 render/rendergameframe.cpp -> ui/theme.h
 render/renderstate.cpp -> core/game.h
-render/renderstate.cpp -> core/gameglobals.h
 render/renderstate.cpp -> ui/menuscreens.h
 render/sceneobjects.cpp -> core/game.h
 render/sceneobjects.cpp -> ui/theme.h
@@ -54,18 +48,12 @@ render/themedraw.cpp -> core/game.h
 render/themedraw.cpp -> ui/theme.h
 testing/record.cpp -> core/clock.h
 ui/cheatcode.cpp -> core/game.h
-ui/cheatcode.cpp -> core/gameglobals.h
 ui/cheatcode.cpp -> core/levelparse.h
 ui/cheatcode.cpp -> core/levelscore.h
 ui/cheatcode.cpp -> core/levelsetup.h
-ui/highscores.cpp -> core/gameglobals.h
 ui/levelselect.cpp -> core/game.h
 ui/menunav.cpp -> core/game.h
 ui/menuscreens.cpp -> core/game.h
-ui/menuscreens.cpp -> core/gameglobals.h
-ui/saveslots.cpp -> core/gameglobals.h
 ui/scoreoverlay.cpp -> core/game.h
 ui/scoretally.cpp -> core/game.h
-ui/scriptplayer.cpp -> core/gameglobals.h
 ui/theme.cpp -> core/game.h
-ui/theme.cpp -> core/gameglobals.h

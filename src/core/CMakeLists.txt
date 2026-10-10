@@ -1,7 +1,6 @@
 add_library(core OBJECT
     clock.cpp
     game.cpp
-    gameglobals.cpp
     checkpoint.cpp
     gamereset.cpp
     levelsetup.cpp

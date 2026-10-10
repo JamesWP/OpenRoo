@@ -17,7 +17,7 @@
 #include "levelplacements.h"
 #include "scene.h"
 #include "logger.h"
-#include "gameglobals.h"
+#include "renderstate.h"
 #include "clock.h"
 #include "camera.h"
 

@@ -27,7 +27,6 @@
 #include "scriptplayer.h"
 #include "soundmanager.h"
 #include <stdlib.h>
-#include "gameglobals.h"
 #include <new>
 #include "splinepath.h"
 #include <math.h>

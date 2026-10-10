@@ -14,7 +14,6 @@
 #include "logger.h"
 #include "saveslots.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 #include "bytes.h"
 #include <stdlib.h>
 #include "sysdev.h"
