@@ -89,54 +89,48 @@ public:
 
     /* ── lifts ──────────────────────────────────────────────────────── */
     unsigned char liftCount() const              { return lifts_.count; }
-    void          setLiftCount(unsigned char n)  { lifts_.count = n; }
     LiftObject   *liftSlot(unsigned int i) const { return lifts_.slot[i]; }
-    void          setLiftSlot(unsigned int i, LiftObject *p) { lifts_.slot[i] = p; }
 
     /* ── platforms ─────────────────────────────────────────────────────── */
     unsigned char platformCount() const               { return platforms_.count; }
-    void          setPlatformCount(unsigned char n)   { platforms_.count = n; }
     PlatformObject  *platformSlot(unsigned int i) const  { return platforms_.slot[i]; }
-    void          setPlatformSlot(unsigned int i, PlatformObject *p) { platforms_.slot[i] = p; }
 
     /* ── bridges ────────────────────────────────────────────────────── */
     /* Indexed by the bridge's switch slot, not the count; the count is a
      * running total (see BridgeObject::spawn). */
     unsigned char bridgeCount() const              { return bridges_.count; }
-    void          setBridgeCount(unsigned char n)  { bridges_.count = n; }
     BridgeObject *bridgeSlot(unsigned int i) const { return bridges_.slot[i]; }
     BridgeObject *const *bridgeSlots() const       { return bridges_.slot; }
-    void          setBridgeSlot(unsigned int i, BridgeObject *p) { bridges_.slot[i] = p; }
 
     /* ── falling tiles ────────────────────────────────────────────── */
     unsigned char  fallingCount() const              { return fallings_.count; }
-    void           setFallingCount(unsigned char n)  { fallings_.count = n; }
     FallingTile *fallingSlot(unsigned int i) const { return fallings_.slot[i]; }
-    void           setFallingSlot(unsigned int i, FallingTile *p) { fallings_.slot[i] = p; }
 
     /* ── bombs (the game's "enemy" table) ───────────────────────────── */
-    /* Slots are indexed by ID; the ID list holds the live IDs, count long.
-     * The *Ref accessors hand out addresses because the remove's tail
-     * (objectremove.cpp) edits them in place, and the removes re-read the
-     * slot through its address exactly as the original does. */
+    /* Slots are indexed by ID; the ID list holds the live IDs, count long. */
     unsigned char  bombCount() const               { return bombs_.count; }
-    void           setBombCount(unsigned char n)   { bombs_.count = n; }
-    unsigned char *bombCountRef()   { return &bombs_.count; }
     unsigned char  bombId(unsigned int i) const    { return bombs_.ids[i]; }
-    unsigned char *bombIds()        { return bombs_.ids; }
     Bomb          *bombSlot(unsigned int id) const { return bombs_.slot[id]; }
-    Bomb         **bombSlotRef(unsigned int id)  { return &bombs_.slot[id]; }
 
     /* ── foes ───────────────────────────────────────────────────────── */
-    /* The same slot/count/ID-list shape as the bombs, and the same *Ref
-     * accessors for the shared remove tail. */
+    /* The same slot/count/ID-list shape as the bombs. */
     unsigned char  foeCount() const               { return foes_.count; }
-    void           setFoeCount(unsigned char n)   { foes_.count = n; }
-    unsigned char *foeCountRef()    { return &foes_.count; }
     unsigned char  foeId(unsigned int i) const    { return foes_.ids[i]; }
-    unsigned char *foeIds()         { return foes_.ids; }
     Foe           *foeSlot(unsigned int id) const { return foes_.slot[id]; }
     Foe          **foeSlotRef(unsigned int id)   { return &foes_.slot[id]; }
+
+    /* ── whole-table operations (world.cpp) ───────────────────────── */
+    /* Removes every object from the level and zeroes the tables' counts. */
+    void clearObjects();
+    /* Ticks every live object of one kind, in slot order.  The count is
+     * re-read each pass. */
+    void tickLifts();
+    void tickPlatforms();
+    void tickFallings();
+    void tickBridges();
+    /* Ticks and debug-draws each bomb, removing those that asked to be;
+     * a removal can make the next bomb be skipped (kept as the original). */
+    void tickBombs();
 
 private:
     TimedSpawner  timedSpawners_[256];

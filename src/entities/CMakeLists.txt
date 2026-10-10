@@ -10,7 +10,8 @@ add_library(entities OBJECT
     objectremove.cpp
     player.cpp
     platformobject.cpp
-    uvanimator.cpp)
+    uvanimator.cpp
+    world.cpp)
 target_include_directories(entities PRIVATE
     .)
 
