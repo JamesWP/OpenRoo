@@ -5,25 +5,5 @@
 add_library(debugui OBJECT
     debugui.cpp)
 target_include_directories(debugui PRIVATE
-    ../fx
-    ../base
-    ../dbg
-    ../prof
-    .
-    ../audiodev
-    ../audio
-    ../inputdev
-    ../input
-    ../videodev
-    ../gl
-    ../app
-    ../core
-    ../entities
-    ../ui
-    ../level
-    ../log
-    ../render
-    ../gfx
-    ../sysdev
-    ../windev)
+    .)
 target_link_libraries(debugui PRIVATE imgui)

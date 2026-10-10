@@ -15,27 +15,6 @@ add_library(render OBJECT
     theme.cpp
     themedraw.cpp)
 target_include_directories(render PRIVATE
-    ../game
-    ../fx
-    ../gfx
-    ../base
-    ../prof
-    ../inputdev
-    .
-    ../log
-    ../audiodev
-    ../sysdev
-    ../windev
-    ../app
-    ../audio
-    ../core
-    ../entities
-    ../level
-    ../testing
-    ../ui)
+    .)
 
-# The debug UI sections and map layers drawn from this group (dbg.h).
-target_include_directories(render PRIVATE
-    ../fx
-    ../gfx ../dbg)
 target_link_libraries(render PRIVATE imgui)

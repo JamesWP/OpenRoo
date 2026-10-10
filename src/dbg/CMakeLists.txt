@@ -6,8 +6,5 @@
 add_library(dbg OBJECT
     dbg.cpp)
 target_include_directories(dbg PRIVATE
-    .
-    ../log
-    ../prof
-    ../windev)
+    .)
 target_link_libraries(dbg PRIVATE imgui)
