@@ -3,4 +3,6 @@
  * flag and draws nothing that frame. */
 #pragma once
 
-  void   LevelEntry_PrepareAssets(void);
+class Renderer;
+
+  void   LevelEntry_PrepareAssets(Renderer *renderer);

@@ -18,7 +18,6 @@
 #include "config.h"
 #include "player.h"
 #include "foe.h"
-FoePose g_foePoses[500];
 
 static const float K_HALF_PI  = 1.5707964f;
 static const double K_WRAP    = 6.2831854820251465;

@@ -119,7 +119,6 @@ private:
 };
 
  
-extern LevelPlacements g_levelPlacements;
 
 class World;
 class CameraPose;

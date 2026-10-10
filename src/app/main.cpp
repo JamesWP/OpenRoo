@@ -26,6 +26,7 @@
 #include "inputdev.h"
 #include "cdm.h"
 #include "renderstate.h"
+#include "renderer.h"
 #include "clock.h"
 #include <string.h>
 #include "videodev.h"
@@ -48,6 +49,10 @@
 
 /* Shared by WinMain and the window procedure; nothing else reads either. */
 static videodev::Player g_movie;
+
+/* The render state (renderer.h).  app owns it and passes it down; nothing
+ * below app reaches it through a global. */
+static Renderer s_renderer;
 
 static bool winmain_fx_norender()
 {
@@ -93,7 +98,7 @@ static void idle()
     if (g_movie.playing())
         present_movie_frame();
     else if (!g_norender)
-        Render_RenderGameFrame();
+        Render_RenderGameFrame(&s_renderer);
 }
 
 /* The window's events: input devices and surfaces on focus changes, the intro
@@ -110,20 +115,20 @@ static Texture *const TAIL_TEXTURES[10] = {
 };
 
 
-static void restore_surfaces()
+static void restore_surfaces(Renderer *renderer)
 {
     RenderDevice *dev = g_renderDevice;
     g_fontMain.atlas()->reupload(dev);
     g_fontNumbers.atlas()->reupload(dev);
     for (int i = 0; i < 6; i++)
-        g_themeBlock.sky().textures()[i].reupload(dev);
+        renderer->themeBlock.sky().textures()[i].reupload(dev);
     for (int i = 0; i < 10; i++) {
-        Texture *img = g_themeBlock.image(IMAGE_PTR_ORDER[i]);
+        Texture *img = renderer->themeBlock.image(IMAGE_PTR_ORDER[i]);
         if (img)
             img->reupload(dev);
     }
     g_textureManager.reuploadAll(dev);
-    g_scene.textures()->reuploadAll(dev);
+    renderer->scene.textures()->reuploadAll(dev);
     for (int i = 0; i < 10; i++)
         TAIL_TEXTURES[i]->reupload(dev);
 }
@@ -154,7 +159,7 @@ public:
     {
         if (active) {
             g_progCtrl.acquireAll();
-            restore_surfaces();
+            restore_surfaces(&s_renderer);
             if (g_movie.playing())
                 g_movie.play();
         } else {
@@ -302,7 +307,7 @@ int Main_WinMain(const char *lpCmdLine)
 
     g_cdAudio.setWindowHandle(hWnd);
     window.show(true);
-    Render_ConfigureRenderState(game->world(), game->camera()->pose(), kGameDir);
+    Render_ConfigureRenderState(&s_renderer, game->world(), game->camera()->pose(), kGameDir);
     Menu_BuildMenuGeometry(g_renderDevice, kGameDir);
     hooks_ClockInit();
 
@@ -326,10 +331,10 @@ int Main_WinMain(const char *lpCmdLine)
     debugui::shutdown(*d3d);
 
     // Settings are saved after the Game is deleted; the device goes last.
-    g_levelPlacements.release();
+    s_renderer.levelPlacements.release();
     delete_game(Game::instance());
     Input_TrySaveSettings();
-    g_themeBlock.release();
+    s_renderer.themeBlock.release();
     delete g_renderDevice;
     g_renderDevice = NULL;
     return exitCode;

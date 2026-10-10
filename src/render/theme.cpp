@@ -31,7 +31,6 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-ThemeAssetBlock g_themeBlock;
 
 /* The fixed limits: 16 token slots of 0x100. */
 #define TOKEN_SLOTS  16
@@ -127,10 +126,8 @@ static void dump_slot(const char *name, const ThemeObjectTypeSlot &slot)
 /* A plausibility report on the loaded block, not a proof: it catches a field
  * offset that is plainly wrong (a pointer that looks like a small integer, a
  * NaN float, a kind outside 0..4). */
-static void theme_struct_dump(const char *path)
+static void theme_struct_dump(const ThemeAssetBlock *block, const char *path)
 {
-    const ThemeAssetBlock *block = &g_themeBlock;
-
     g_logger.write("THEME_STRUCT: after close of %s\n", path);
     g_logger.write("THEME_STRUCT: themeName=\"%.255s\" dwUnknown100=0x%08lx\n",
               block->themeName(), (unsigned long)block->unknown100());
@@ -173,10 +170,10 @@ static void theme_struct_dump(const char *path)
     }
 }
 
-static void theme_struct_dump_if_enabled(const char *path)
+static void theme_struct_dump_if_enabled(const ThemeAssetBlock *block, const char *path)
 {
     if (struct_diag_enabled())
-        theme_struct_dump(path);
+        theme_struct_dump(block, path);
 }
 
 /* What each keyword writes.  rec is the record the last model, field,
@@ -869,7 +866,7 @@ bool ThemeAssetBlock::themeLoad(ThemeSoundTable *sounds, const char *gameDir,
 
     s_parser.run(sounds, gameDir, d3d, this, file);
 
-    theme_struct_dump_if_enabled(path);
+    theme_struct_dump_if_enabled(this, path);
     strcpy(themeName_, path);  // PRESERVED: unbounded
     return true;
 }

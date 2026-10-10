@@ -39,8 +39,6 @@
 #include "levelmap.h"
 #include "player.h"
 #include "scene.h"
-CameraFocus g_cameraFocus;
-
 static const float K_TARGET_RATE = 0.004f;
 static const double K_YAW_WRAP   = 6.2831854820251465;
 static const double K_PI         = 3.1415927410125732;
@@ -107,7 +105,7 @@ Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
 }
 
 void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *camera,
-                           const Config *config, CameraFocus focus, double dt)
+                           const Config *config, Scene *scene, CameraFocus focus, double dt)
 {
     CameraPose &p = *camera->pose();
     const float dtf = (float)dt;
@@ -176,7 +174,7 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *came
                 i++;
             }
         }
-        if ((unsigned char)g_scene.segmentHitsModel(p.target()[0], p.target()[1], p.target()[2],
+        if ((unsigned char)scene->segmentHitsModel(p.target()[0], p.target()[1], p.target()[2],
                                                   probe.x, probe.y, probe.z))
             pitchTarget = K_PITCH_MAX;
     }
