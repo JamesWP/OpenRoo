@@ -4,6 +4,7 @@ add_library(input OBJECT
     keypress.cpp
     progctrl.cpp)
 target_include_directories(input PRIVATE
+    ../fx
     ../base
     .
     ../log

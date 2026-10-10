@@ -10,10 +10,6 @@ audio/fixedsounds.cpp -> ui/menutree.h
 audio/soundobj.cpp -> core/game.h
 audio/soundobj.cpp -> entities/foe.h
 core/clock.cpp -> app/launcher.h
-entities/bridgesurf.cpp -> ui/theme.h
-entities/factory.cpp -> render/particles.h
-entities/generators.cpp -> core/clock.h
-entities/generators.h -> render/particles.h
 input/camerainput.cpp -> core/game.h
 input/inputsetup.cpp -> core/game.h
 input/inputsetup.cpp -> core/gameglobals.h
@@ -65,6 +61,7 @@ level/tiledebug.cpp -> ui/cheatcode.h
 level/tilequery.cpp -> core/game.h
 level/tilequery.cpp -> entities/bridgeobject.h
 level/tilequery.cpp -> entities/foe.h
+render/bridgesurf.cpp -> ui/theme.h
 render/camera.cpp -> core/game.h
 render/dsoscene.cpp -> core/game.h
 render/dsoscene.cpp -> testing/record.h
@@ -72,8 +69,6 @@ render/framepose.cpp -> core/game.h
 render/meshbatch.cpp -> ui/theme.h
 render/objectshadows.cpp -> core/game.h
 render/objectshadows.cpp -> ui/theme.h
-render/particles.cpp -> core/clock.h
-render/particles.cpp -> core/determinism.h
 render/quadbatch.cpp -> ui/theme.h
 render/rendergameframe.cpp -> core/clock.h
 render/rendergameframe.cpp -> core/game.h

@@ -67,8 +67,7 @@
 #define K_INV_32K  0x1.0002p-15f   // 1/32767 as a float
 
 
-/* time(), through the seed hook. */
-  int   hooks_GameTime(int *out);
+#include "gametime.h"
 
 
 typedef unsigned int   __attribute__((aligned(1))) u32_ua;

@@ -16,9 +16,8 @@
 #include "generators.h"
 #include "factory.h"
 #include "logger.h"
-#include "determinism.h"
 #include <stdlib.h>
-#include "clock.h"
+#include "gametime.h"
 #include "crtrand.h"
 #include "gamestr.h"
 #include <math.h>
@@ -254,6 +253,10 @@ static bool fx_spin(void)
     return on;
 }
 
+static ParticleSystem::TickObserver g_tickObserver;
+
+void ParticleSystem::setTickObserver(TickObserver fn) { g_tickObserver = fn; }
+
 void ParticleSystem::tick(float dt)
 {
     static std::atomic<long> once = 0;
@@ -264,7 +267,8 @@ void ParticleSystem::tick(float dt)
         pGenerator_->tick(dt);
     if (pEnvironment_)
         pEnvironment_->tick(dt);
-    dethash_particles(this);
+    if (g_tickObserver)
+        g_tickObserver(this);
 }
 
 void XFaceParticleSystem::tick(float dt)

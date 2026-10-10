@@ -11,6 +11,7 @@ add_library(level OBJECT
     tiledebug.cpp
     tilequery.cpp)
 target_include_directories(level PRIVATE
+    ../fx
     ../base
     ../inputdev
     .
@@ -27,5 +28,6 @@ target_include_directories(level PRIVATE
     ../sysdev)
 
 # The debug UI sections and map layers drawn from this group (dbg.h).
-target_include_directories(level PRIVATE ../dbg)
+target_include_directories(level PRIVATE
+    ../fx ../dbg)
 target_link_libraries(level PRIVATE imgui)

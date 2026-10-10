@@ -12,6 +12,7 @@ add_library(ui OBJECT
     textentry.cpp
     theme.cpp)
 target_include_directories(ui PRIVATE
+    ../fx
     ../base
     .
     ../log
@@ -29,5 +30,6 @@ target_include_directories(ui PRIVATE
     ../testing)
 
 # The debug UI sections and map layers drawn from this group (dbg.h).
-target_include_directories(ui PRIVATE ../dbg)
+target_include_directories(ui PRIVATE
+    ../fx ../dbg)
 target_link_libraries(ui PRIVATE imgui)

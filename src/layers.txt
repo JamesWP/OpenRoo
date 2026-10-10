@@ -14,6 +14,7 @@ windev
 dbg
 gfx
 gl
+fx
 audio
 level
 entities

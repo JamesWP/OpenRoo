@@ -5,6 +5,7 @@
 add_library(debugui OBJECT
     debugui.cpp)
 target_include_directories(debugui PRIVATE
+    ../fx
     ../base
     ../dbg
     ../prof

@@ -9,6 +9,7 @@ add_library(core OBJECT
     gamedebug.cpp
     gametick.cpp)
 target_include_directories(core PRIVATE
+    ../fx
     ../base
     ../prof
     .
@@ -28,5 +29,6 @@ target_include_directories(core PRIVATE
     ../ui)
 
 # The debug UI sections and map layers drawn from this group (dbg.h).
-target_include_directories(core PRIVATE ../dbg)
+target_include_directories(core PRIVATE
+    ../fx ../dbg)
 target_link_libraries(core PRIVATE imgui)

@@ -2,12 +2,8 @@ add_library(entities OBJECT
     bomb.cpp
     fallingtile.cpp
     bridgeobject.cpp
-    bridgesurf.cpp
     entitymath.cpp
-    explodedebris.cpp
-    factory.cpp
     foe.cpp
-    generators.cpp
     foepath.cpp
     liftobject.cpp
     movableentity.cpp
@@ -17,6 +13,7 @@ add_library(entities OBJECT
     splinepath.cpp
     uvanimator.cpp)
 target_include_directories(entities PRIVATE
+    ../fx
     ../base
     .
     ../log
@@ -31,5 +28,6 @@ target_include_directories(entities PRIVATE
     ../sysdev)
 
 # The debug UI sections and map layers drawn from this group (dbg.h).
-target_include_directories(entities PRIVATE ../dbg)
+target_include_directories(entities PRIVATE
+    ../fx ../dbg)
 target_link_libraries(entities PRIVATE imgui)
