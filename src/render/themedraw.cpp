@@ -14,7 +14,7 @@
 #include "particles.h"
 #include "camera.h"
 #include "renderdevice.h"
-#include "d3dmath.h"
+#include "vecmath.h"
 #include "game.h"
 #include "levelmap.h"
 #include "player.h"

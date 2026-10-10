@@ -31,7 +31,7 @@
  */
 #include <math.h>
 #include "camera.h"
-#include "d3dmath.h"
+#include "vecmath.h"
 #include "renderdevice.h"
 #include "game.h"
 #include "config.h"

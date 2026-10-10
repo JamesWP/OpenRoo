@@ -4,9 +4,7 @@
 
 #pragma once
 #include <stdint.h>
-
-struct Mat4 { float m[16]; };   /* row-major, row vectors: v * M */
-struct Vec3 { float x, y, z; };
+#include "vecmath.h"   /* Mat4 and Vec3 */
 
 /* A colour with float channels, 0..1. */
 struct ColorF { float r, g, b, a; };

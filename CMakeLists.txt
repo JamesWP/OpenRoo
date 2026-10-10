@@ -41,7 +41,7 @@ add_compile_options(-Wall -Wextra -Werror)
 
 # One directory under src/ is one group.  Its include path is its own folder
 # plus the groups below it in src/layers.txt (see below).
-foreach(group app audio base fx game gfx screens audiodev core dbg debugui entities gl input inputdev level render testing ui videodev windev sysdev log prof)
+foreach(group app audio base fx game gfx math screens audiodev core dbg debugui entities gl input inputdev level render testing ui videodev windev sysdev log prof)
     add_subdirectory(src/${group})
 endforeach()
 
@@ -75,7 +75,7 @@ endif()
 set_target_properties(OpenRoo PROPERTIES OUTPUT_NAME OpenRoo)
 target_include_directories(OpenRoo PRIVATE src/app)
 target_link_libraries(OpenRoo PRIVATE
-    app audio audiodev base fx game gfx screens core dbg debugui entities gl input inputdev level render testing ui videodev windev sysdev log prof imgui)
+    app audio audiodev base fx game gfx math screens core dbg debugui entities gl input inputdev level render testing ui videodev windev sysdev log prof imgui)
 if(WIN32)
     target_link_libraries(OpenRoo PRIVATE -static-libgcc -static-libstdc++ -static)
     # The SDL and FFmpeg DLLs next to the executable (launch.sh copies them into run/).

@@ -1,5 +1,4 @@
-/* SplinePath: a Bezier curve through a linked list of control points, and the
- * two debug line-strip draws. */
+/* SplinePath: a Bezier curve through a list of control points. */
 
 #include <stdint.h>
 #include "sysdev.h"
@@ -10,7 +9,6 @@
 
 #include "splinepath.h"
 #include "logger.h"
-#include "renderdevice.h"
 
 /* KAROO_SIM_FX=splinerev evaluates every path backwards (t -> 1 - t);
  * KAROO_SPLINE_DIAG=N logs a census every N evaluations;
@@ -21,7 +19,7 @@ static int s_selfcheck    = 0;
 static int s_init         = 0;
 
 static unsigned s_evals = 0, s_adds = 0, s_purges = 0;
-static unsigned s_ctors = 0, s_dtors = 0, s_draws = 0;
+static unsigned s_ctors = 0, s_dtors = 0;
 static unsigned s_eval_empty = 0, s_eval_maxpts = 0;
 
 static void run_selfcheck(void);
@@ -112,9 +110,9 @@ float *SplinePath::evalBezierPath(float *out, float t)
             s_eval_maxpts = n;
         if ((s_evals % (unsigned)s_diag) == 0)
             g_logger.write("splinepath: evals=%u (empty=%u, max points=%u) "
-                      "adds=%u purges=%u ctors=%u dtors=%u draws=%u\n",
+                      "adds=%u purges=%u ctors=%u dtors=%u\n",
                       s_evals, s_eval_empty, s_eval_maxpts,
-                      s_adds, s_purges, s_ctors, s_dtors, s_draws);
+                      s_adds, s_purges, s_ctors, s_dtors);
     }
 
     // Each weight is the Bernstein term C(n-1, i) (1-t)^(n-1-i) t^i, with the
@@ -222,70 +220,4 @@ static void run_selfcheck(void)
 
     g_logger.write("splinepath: selfcheck %s (%d failure%s)\n",
               bad ? "FAIL" : "PASS", bad, bad == 1 ? "" : "s");
-}
-
-typedef long (*DrawP_fn)(void *, uint32_t, uint32_t, void *, uint32_t, uint32_t);
-struct DevVtbl { void *slot[42]; };
-struct DevShim { DevVtbl *lpVtbl; };
-
-struct SplineVertex {
-    float x, y, z;
-    uint32_t zero;
-    uint32_t diffuse, specular;
-    float u, v;
-};
-
-static long draw_strip(void *dev, void *verts, uint32_t count)
-{
-    return ((DrawP_fn)((DevShim *)dev)->lpVtbl->slot[0x70 / 4])(
-        dev, 3 , 0x1e2, verts, count, 0);  // Prim::LineStrip
-}
-
-long SplinePath::drawSplinePath(RenderDevice *dev,
-                      unsigned int numsegments, unsigned long color)
-{
-    std::vector<SplineVertex> verts(numsegments + 1);
-    // An unsigned conversion; numsegments == 0 divides by zero.
-    float        step = (float)(1.0 / (double)numsegments);
-    unsigned int i;
-    long         hr;
-
-    for (i = 0; i <= numsegments; ++i) {
-        SplineVertex v;
-        float        pt[3];
-
-        evalBezierPath(pt, (float)((double)i * step));
-        v.x = pt[0]; v.y = pt[1]; v.z = pt[2];
-        v.zero = 0; v.diffuse = color; v.specular = 0;
-        v.u = 0.0f; v.v = 0.0f;
-        verts[i] = v;
-    }
-
-    if (s_diag)
-        ++s_draws;
-    hr = draw_strip(dev, verts.data(), numsegments + 1);
-    return hr;
-}
-
-long SplinePath::drawControlPolygon(RenderDevice *dev,
-                          unsigned long color)
-{
-    unsigned int    n     = (unsigned int)points_.size();
-    std::vector<SplineVertex> verts(n);
-    long            hr;
-
-    for (unsigned int i = 0; i < n; ++i) {
-        const SplineControlPoint &p = points_[i];
-        SplineVertex v;
-
-        v.x = p.flX; v.y = p.flY; v.z = p.flZ;
-        v.zero = 0; v.diffuse = color; v.specular = 0;
-        v.u = 0.0f; v.v = 0.0f;
-        verts[i] = v;
-    }
-
-    if (s_diag)
-        ++s_draws;
-    hr = draw_strip(dev, verts.data(), n);
-    return hr;
 }

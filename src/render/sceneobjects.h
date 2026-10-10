@@ -9,7 +9,7 @@
  * Callers: RenderGameFrame's object passes, the lift and platform wrappers. */
 #pragma once
 #include <stdint.h>
-#include "d3dmath.h"
+#include "vecmath.h"
 
 class Game;
 class ThemeObjectTypeSlot;
