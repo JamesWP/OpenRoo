@@ -5,6 +5,6 @@
 # their own code; the backend that puts the result on screen is debugui.
 add_library(dbg OBJECT
     dbg.cpp)
-target_include_directories(dbg PRIVATE
-    .)
-target_link_libraries(dbg PRIVATE imgui)
+target_include_directories(dbg PUBLIC .)
+target_link_libraries(dbg
+    PRIVATE prof windev imgui)

@@ -4,6 +4,6 @@
 # depends on this group but src/app, which starts it.
 add_library(debugui OBJECT
     debugui.cpp)
-target_include_directories(debugui PRIVATE
-    .)
-target_link_libraries(debugui PRIVATE imgui)
+target_include_directories(debugui PUBLIC .)
+target_link_libraries(debugui
+    PRIVATE windev dbg gfx imgui)

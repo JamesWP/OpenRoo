@@ -3,5 +3,7 @@ add_library(fx OBJECT
     factory.cpp
     generators.cpp
     particles.cpp)
-target_include_directories(fx PRIVATE
-    .)
+target_include_directories(fx PUBLIC .)
+target_link_libraries(fx
+    PUBLIC  gfx
+    PRIVATE sysdev log base)

@@ -15,7 +15,8 @@ add_library(render OBJECT
     scenequad.cpp
     theme.cpp
     themedraw.cpp)
-target_include_directories(render PRIVATE
-    .)
+target_include_directories(render PUBLIC .)
 
-target_link_libraries(render PRIVATE imgui)
+target_link_libraries(render
+    PUBLIC  base math gfx fx level entities
+    PRIVATE sysdev log prof inputdev windev testing camera imgui)

@@ -12,7 +12,8 @@ add_library(entities OBJECT
     platformobject.cpp
     uvanimator.cpp
     world.cpp)
-target_include_directories(entities PRIVATE
-    .)
+target_include_directories(entities PUBLIC .)
 
-target_link_libraries(entities PRIVATE imgui)
+target_link_libraries(entities
+    PUBLIC  base gfx level
+    PRIVATE sysdev log prof dbg imgui)

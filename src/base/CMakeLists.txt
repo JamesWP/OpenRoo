@@ -4,5 +4,6 @@ add_library(base OBJECT
     gametime.cpp
     ini.cpp
     themesounds.cpp)
-target_include_directories(base PRIVATE
-    .)
+target_include_directories(base PUBLIC .)
+target_link_libraries(base
+    PRIVATE sysdev log)

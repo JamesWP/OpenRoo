@@ -39,32 +39,12 @@ include(FetchImGui)   # the debug UI
 # dependencies are added so it does not reach them.
 add_compile_options(-Wall -Wextra -Werror)
 
-# One directory under src/ is one group.  Its include path is its own folder
-# plus the groups below it in src/layers.txt (see below).
+# One directory under src/ is one group.  Each group declares the groups it
+# depends on with target_link_libraries in its own CMakeLists.txt; their include
+# paths follow from those links.  tools/check_layers.py (the check-layers
+# target) checks the declarations against the includes and src/layers.txt.
 foreach(group app audio base camera session fx game gfx math screens audiodev core dbg debugui entities flow gl input inputdev level render sim testing ui videodev windev sysdev log prof)
     add_subdirectory(src/${group})
-endforeach()
-
-# Each group sees its own folder and the folders of the groups on the lines
-# above its own in src/layers.txt, and nothing else: an include of a group
-# that is not below it does not compile (tools/check_layers.py reports the same
-# thing, and also catches a name that resolves some other way).
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/layers.txt")
-file(STRINGS "${PROJECT_SOURCE_DIR}/src/layers.txt" layer_lines)
-set(lower_groups "")
-foreach(line IN LISTS layer_lines)
-    string(REGEX REPLACE "#.*" "" line "${line}")
-    string(STRIP "${line}" line)
-    if(line STREQUAL "")
-        continue()
-    endif()
-    string(REPLACE " " ";" line_groups "${line}")
-    foreach(group IN LISTS line_groups)
-        foreach(below IN LISTS lower_groups)
-            target_include_directories(${group} PRIVATE "${PROJECT_SOURCE_DIR}/src/${below}")
-        endforeach()
-    endforeach()
-    list(APPEND lower_groups ${line_groups})
 endforeach()
 
 if(WIN32)
@@ -93,8 +73,8 @@ add_custom_target(check-native-audio ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeAudio.cmake)
 add_dependencies(OpenRoo check-native-audio)
 
-# The groups must keep to the layering in src/layers.txt (new upward includes
-# fail; the known ones are in src/layers.baseline, which may only shrink).
+# The groups' declared links and includes must match, and respect the layering
+# in src/layers.txt.
 add_custom_target(check-layers ALL
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tools/check_layers.py ${PROJECT_SOURCE_DIR}
     COMMENT "Checking the group layering")

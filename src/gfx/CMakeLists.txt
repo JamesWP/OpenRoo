@@ -9,5 +9,7 @@ add_library(gfx OBJECT
     sky.cpp
     textrenderer.cpp
     texture.cpp)
-target_include_directories(gfx PRIVATE
-    .)
+target_include_directories(gfx PUBLIC .)
+target_link_libraries(gfx
+    PUBLIC  base math
+    PRIVATE sysdev log)

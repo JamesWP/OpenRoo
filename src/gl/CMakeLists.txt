@@ -8,5 +8,7 @@ add_library(gl OBJECT
     pixelconvert.cpp
     renderdevice.cpp
     shaders.cpp)
-target_include_directories(gl PRIVATE
-    .)
+target_include_directories(gl PUBLIC .)
+target_link_libraries(gl
+    PUBLIC  windev gfx
+    PRIVATE sysdev log prof)
