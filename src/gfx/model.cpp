@@ -8,7 +8,6 @@
 #include "logger.h"
 #include <stdlib.h>
 #include "gamestr.h"
-ModelManager g_modelManager;
 
 /* ─── ModelManager ──────────────────────────────────────────────────────────
  *

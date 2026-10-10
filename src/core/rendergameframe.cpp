@@ -121,31 +121,31 @@ static void update_listener(Game *g)
 }
 
 /* Single fields of the device's state. */
-static void set_stencil_enable(bool on)
+static void set_stencil_enable(RenderDevice *d3d, bool on)
 {
-    StencilState s = g_renderDevice->stencil();
+    StencilState s = d3d->stencil();
     s.enable = on;
-    g_renderDevice->SetStencil(s);
+    d3d->SetStencil(s);
 }
 
-static void set_depth(bool test, bool write)
+static void set_depth(RenderDevice *d3d, bool test, bool write)
 {
-    g_renderDevice->SetDepth(DepthState{ test, write });
+    d3d->SetDepth(DepthState{ test, write });
 }
 
 
-static void set_depth_test(bool on)
+static void set_depth_test(RenderDevice *d3d, bool on)
 {
-    DepthState d = g_renderDevice->depth();
+    DepthState d = d3d->depth();
     d.test = on;
-    g_renderDevice->SetDepth(d);
+    d3d->SetDepth(d);
 }
 
-static void set_fog_enable(bool on)
+static void set_fog_enable(RenderDevice *d3d, bool on)
 {
-    FogState f = g_renderDevice->fog();
+    FogState f = d3d->fog();
     f.enable = on;
-    g_renderDevice->SetFog(f);
+    d3d->SetFog(f);
 }
 
 /* ─── RenderGameFrame ───────────────────────────────────────────────────── */
@@ -191,10 +191,10 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
         {
             PROF_SCOPE("camera");
             if (g->scriptPlayer()->splineActive() == 0)
-                Camera_UpdateViewTransform(g_renderDevice, g->world(), g->camera(), g->config(),
+                Camera_UpdateViewTransform(renderer->device, g->world(), g->camera(), g->config(),
                                            &renderer->scene, renderer->cameraFocus, dt);
             else
-                scripted_camera(g, g_renderDevice);
+                scripted_camera(g, renderer->device);
         }
         if (g->soundCreated() != 0) {
             PROF_SCOPE("audio");
@@ -203,10 +203,10 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
     }
 
     PROF_SCOPE("draw");
-    RenderDevice *d3d = g_renderDevice;
+    RenderDevice *d3d = renderer->device;
     /* The sky covers the whole target, so only depth (and stencil) clear. */
     if (d3d->hasStencil())
-        set_stencil_enable(true);
+        set_stencil_enable(d3d, true);
     {
         PROF_SCOPE("gpu / vsync wait");
         {
@@ -217,14 +217,14 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
             return;
     }
 
-    set_stencil_enable(false);
-    set_fog_enable(false);
+    set_stencil_enable(d3d, false);
+    set_fog_enable(d3d, false);
     d3d->SetSpecular(false);
     d3d->SetBlend(BlendState::off());
     CameraPose *cam = g->camera()->pose();
     renderer->themeBlock.sky().draw(d3d, cam->eye()[0], cam->eye()[1], cam->eye()[2]);
     if (renderer->themeBlock.fogEnabled())
-        set_fog_enable(true);
+        set_fog_enable(d3d, true);
     d3d->SetStencil(StencilState{ true, CompareFunc::Always, 1, StencilOp::Keep,
                                   StencilOp::Keep, StencilOp::Replace });
 
@@ -243,7 +243,7 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
         Scene_TranslucentPasses(renderer, g->world(), g->camera()->pose(), g->config(), now, elapsed, dt);
     }
 
-    set_depth(false, true);
+    set_depth(d3d, false, true);
     d3d->SetSamplerAddress(0, AddressMode::Clamp, AddressMode::Clamp);
 
     const unsigned w = d3d->width(), h = d3d->height();
@@ -258,40 +258,41 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
     }
     {
         PROF_SCOPE("hud");
-        Hud_DrawFps(W, H);
+        Hud_DrawFps(d3d, &renderer->fontMain, W, H);
     }
 
     const float pad = H * 0.00625f;
     if (st != GameState::MainMenu && st != GameState::PauseMenu && st != GameState::LevelComplete) {
         PROF_SCOPE("hud");
-        Hud_DrawMessages(&renderer->themeBlock, g->world(), g->scriptPlayer(), st, W, H, pad);
+        Hud_DrawMessages(d3d, &renderer->fontMain, &renderer->themeBlock, g->world(), g->scriptPlayer(), st, W, H,
+                         pad);
     }
     {
         PROF_SCOPE("hud");
-        Hud_DrawLogo(st, H, hudH, pad);
+        Hud_DrawLogo(d3d, &renderer->texKaroo128, st, H, hudH, pad);
     }
 
     const uint32_t ms = (uint32_t)(long long)now;
     if (st == GameState::MainMenu || st == GameState::PauseMenu || st == GameState::LevelComplete) {
         PROF_SCOPE("menu");
         Menu_DispatchGameState(art, g->frontEnd(), g->session(), g->config(),
-                               &renderer->themeBlock, d3d, &g_fontMain, ms, progCtrl);
+                               &renderer->themeBlock, d3d, &renderer->fontMain, ms, progCtrl);
     }
     if (g->state() == GameState::GameOver) {
         PROF_SCOPE("menu");
-        Score_DrawGameOverScore(g->session(), &renderer->themeBlock, d3d, &g_fontMain, ms);
+        Score_DrawGameOverScore(g->session(), &renderer->themeBlock, d3d, &renderer->fontMain, ms);
     }
     if (g->frontEnd()->menu()->node() == 3 || g->state() == GameState::NameEntry) {
         PROF_SCOPE("menu");
-        Score_DrawHighScoreTable(art, g->frontEnd(), &renderer->themeBlock, d3d, &g_fontMain, ms);
+        Score_DrawHighScoreTable(art, g->frontEnd(), &renderer->themeBlock, d3d, &renderer->fontMain, ms);
     }
 
-    set_depth_test(true);
+    set_depth_test(d3d, true);
     d3d->EndFrame();
     PROF_SCOPE("present");
     if (g->state() == GameState::Quitting) {
         if (g->field_0c() != 0)
-            g_renderDevice->PresentImage(renderer->demoImage);
+            d3d->PresentImage(renderer->demoImage);
         return;
     }
     d3d->Present();

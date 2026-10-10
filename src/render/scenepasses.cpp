@@ -60,7 +60,7 @@ static void rso(Renderer *renderer, World *world, CameraPose *cam, Config *confi
     Scene_RenderSceneObjects(world, cam, config,
                              renderer->levelPlacements.tileQuad(),
                              (const Vec3 *)pos, (const Vec3 *)rot, count, slot(&renderer->themeBlock, t),
-                             g_renderDevice, now, animTime, animCode, dtMs);
+                             renderer->device, now, animTime, animCode, dtMs);
 }
 
 static void rso_list(Renderer *renderer, World *world, CameraPose *cam, Config *config, const PlacementList &l,
@@ -116,25 +116,25 @@ static bool foe_slot(unsigned char kind, bool dying, ThemeObjectType *out)
 }
 
 /* Single fields of the device's state. */
-static void set_stencil_enable(bool on)
+static void set_stencil_enable(RenderDevice *d3d, bool on)
 {
-    StencilState s = g_renderDevice->stencil();
+    StencilState s = d3d->stencil();
     s.enable = on;
-    g_renderDevice->SetStencil(s);
+    d3d->SetStencil(s);
 }
 
-static void set_depth_write(bool on)
+static void set_depth_write(RenderDevice *d3d, bool on)
 {
-    DepthState d = g_renderDevice->depth();
+    DepthState d = d3d->depth();
     d.write = on;
-    g_renderDevice->SetDepth(d);
+    d3d->SetDepth(d);
 }
 
 
 void Scene_OpaquePasses(Renderer *renderer, World *world, CameraPose *cam, Config *config, double now, double elapsed)
 {
     LevelPlacements *pl = &renderer->levelPlacements;
-    RenderDevice *d3d = g_renderDevice;
+    RenderDevice *d3d = renderer->device;
 
     {
         PROF_SCOPE("level mesh");
@@ -260,16 +260,16 @@ static void shadow(Renderer *renderer, World *world, const void *pos, const void
 {
     Shadows_DrawObjectShadows(world, &renderer->levelPlacements,
                               (const float *)pos, (const float *)rot, 1, slot(&renderer->themeBlock, t),
-                              g_renderDevice, now, phase, animKey, 0);
+                              renderer->device, now, phase, animKey, 0);
 }
 
 void Scene_EffectsAndShadows(Renderer *renderer, World *world, CameraPose *cam, Config *config, double now, double dt)
 {
-    RenderDevice *d3d = g_renderDevice;
+    RenderDevice *d3d = renderer->device;
     uint32_t dtBits[2];
     memcpy(dtBits, &dt, sizeof dt);
     Scene_DrawSceneObjects(renderer, d3d, world, cam->eye(), dtBits[0], dtBits[1], now);
-    set_stencil_enable(false);
+    set_stencil_enable(d3d, false);
     BridgeSurf_Draw({world->bridgeSlots(), world->bridgeCount(), config->videoHighlights() != 0},
                     &renderer->themeBlock, d3d, now);
 
@@ -286,7 +286,7 @@ void Scene_EffectsAndShadows(Renderer *renderer, World *world, CameraPose *cam, 
         /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
         if (d3d->hasStencil() && d3d->bitDepth() > 16 &&
             config->videoShadows() != 0) {
-            d3d->SetTexture(0, &g_texShadow);
+            d3d->SetTexture(0, &renderer->texShadow);
             d3d->SetBlend(BlendState::alpha());
             StencilState st = d3d->stencil();
             st.enable = true;
@@ -321,10 +321,10 @@ void Scene_EffectsAndShadows(Renderer *renderer, World *world, CameraPose *cam, 
                         shadow(renderer, world, pos, rot, ty, now, 0.0f, 0);
                     }
             }
-            set_stencil_enable(false);
+            set_stencil_enable(d3d, false);
         }
     }
-    set_depth_write(false);
+    set_depth_write(d3d, false);
 }
 
 /* ─── Section 5: the translucent passes ─────────────────────────────────── */
@@ -337,7 +337,7 @@ static void particles(Renderer *renderer, World *world, CameraPose *cam, Config 
     PROF_SCOPE(OBJECT_NAMES[t]);
     Theme_DrawParticleObjects(world, cam, config, &renderer->levelPlacements,
                               (const float (*)[3])pos, (const float (*)[3])rot, count,
-                              slot(&renderer->themeBlock, t), g_renderDevice, now, elapsed, 0);
+                              slot(&renderer->themeBlock, t), renderer->device, now, elapsed, 0);
 }
 
 static void particles_list(Renderer *renderer, World *world, CameraPose *cam, Config *config, const PlacementList &l,
@@ -384,10 +384,9 @@ enum BurstTick { TICK_WHOLE_MS, TICK_ELAPSED };
  * system, point it along the view, optionally spin its corners about Y by
  * -rotRateY * now, render, age, and switch the node off again.  A burst
  * whose time is up is retired instead. */
-static void draw_bursts(const CameraPose *cam, ThemeLevelObject *rec, const BlendState &blend, BurstTick tick,
-                        bool spin, double now, double elapsed)
+static void draw_bursts(RenderDevice *dev, const CameraPose *cam, ThemeLevelObject *rec, const BlendState &blend,
+                        BurstTick tick, bool spin, double now, double elapsed)
 {
-    RenderDevice *dev = g_renderDevice;
     Texture *tex = rec->subObjects()[0].pTexture;
     if (tex != NULL)
         dev->SetTexture(0, tex);
@@ -423,7 +422,7 @@ static void draw_bursts(const CameraPose *cam, ThemeLevelObject *rec, const Blen
         b->msLeft -= (tick == TICK_WHOLE_MS) ? ms : (int)elapsed;
         ps->disableRenderNode();
     }
-    g_renderDevice->SetBlend(BlendState::off());
+    dev->SetBlend(BlendState::off());
 }
 
 void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, Config *config, double now, double elapsed,
@@ -431,6 +430,7 @@ void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, 
 {
     LevelPlacements *pl = &renderer->levelPlacements;
     CameraFocus *focus = &renderer->cameraFocus;
+    RenderDevice *d3d = renderer->device;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
 
     if (config->videoParticles() != 0) {
@@ -475,7 +475,7 @@ void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, 
                             (float)-bt->cellV());
         }
         if (field != NULL)
-            draw_bursts(cam, field,
+            draw_bursts(d3d, cam, field,
                         BlendState::on(blendFactorFromTheme(field->subObjects()[0].dwBlendSrc),
                                        blendFactorFromTheme(field->subObjects()[0].dwBlendDst)),
                         TICK_WHOLE_MS, false, now, elapsed);
@@ -522,11 +522,11 @@ void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, 
             }
         }
 
-        set_depth_write(false);
+        set_depth_write(d3d, false);
         if (crystal != NULL)
-            draw_bursts(cam, crystal, BlendState::additive(), TICK_WHOLE_MS, false, now, elapsed);
+            draw_bursts(d3d, cam, crystal, BlendState::additive(), TICK_WHOLE_MS, false, now, elapsed);
         if (coll != NULL)
-            draw_bursts(cam, coll, BlendState::additive(), TICK_ELAPSED, true, now, elapsed);
+            draw_bursts(d3d, cam, coll, BlendState::additive(), TICK_ELAPSED, true, now, elapsed);
 
         if (speed != NULL) {
             ParticleSystem *ps = speed->particleSystems()[0];
@@ -552,8 +552,10 @@ void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, 
             gen = ps->getGenerator(NULL);
             gen->setDirection(o[0], o[1], o[2]);
 
-            RenderDevice *dev = g_renderDevice;
-            dev->SetWorld(g_worldIdentity);
+            RenderDevice *dev = renderer->device;
+            Mat4 ident;
+            m4_identity(&ident);
+            dev->SetWorld(ident);
             dev->SetTexture(0, speed->subObjects()[0].pTexture);
             dev->SetBlend(BlendState::additive());
             ps->tick((float)(elapsed * 0.001));
@@ -561,12 +563,12 @@ void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, 
                            cam->target()[1] - cam->eye()[1],
                            cam->target()[2] - cam->eye()[2]);
             ps->render(dev);
-            g_renderDevice->SetBlend(BlendState::off());
+            renderer->device->SetBlend(BlendState::off());
         }
     }
 
     Scene_DrawParticleSystems(&renderer->scene, renderer->showSplinePaths,
-                              renderer->showSplineControlPolygons, g_renderDevice, cam->eye(), dt, now);
+                              renderer->showSplineControlPolygons, renderer->device, cam->eye(), dt, now);
 
     Player *player = world->player();
     if (player->effectDActive() != 0 && player->anim() != 10)

@@ -25,7 +25,7 @@
   void  
 LevelEntry_PrepareAssets(Renderer *renderer)
 {
-    RenderDevice *d3d = g_renderDevice;
+    RenderDevice *d3d = renderer->device;
     Game *g = Game::instance();
     const LevelMap *map = g->world()->map();
 
@@ -38,13 +38,14 @@ LevelEntry_PrepareAssets(Renderer *renderer)
     sprintf(thm, "themes\\%s.thm", map->mapName());
     sprintf(bmp, "bitmaps\\%s.bmp", map->mapName());
     bool ok = Image_LoadBMP(bmp, renderer->loadingImage);
-    g_renderDevice->PresentImage(ok ? renderer->loadingImage : renderer->fallbackImage);
+    d3d->PresentImage(ok ? renderer->loadingImage : renderer->fallbackImage);
 
     // 3. The theme, only when it has changed: the block keeps the path it was
     // loaded from.
     if (strcmp(renderer->themeBlock.themeName(), thm) != 0) {
         g_logger.logMessage(1, "THM: *** Theme: %s ***", map->mapName());
-        if (!renderer->themeBlock.load(g->themeSounds(), g->gameDir(), d3d, thm))
+        if (!renderer->themeBlock.load(g->themeSounds(), g->gameDir(), d3d,
+                                       &renderer->textures, &renderer->models, thm))
             g_logger.logMessage(4, "Couldn't load theme %s.", map->mapName());
     }
 

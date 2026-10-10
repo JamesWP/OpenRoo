@@ -4,13 +4,7 @@
 #include "rendertypes.h"
 
 /* The render-specific helpers over the pure maths in vecmath.h: the vertex
- * builders for the billboard and screen formats, and the identity world
- * matrix.  Implemented in d3dmath.cpp. */
-
-
-/* The identity WORLD matrix, set at startup (renderstate.cpp) and re-applied
- * by the batch passes. */
-extern Mat4 g_worldIdentity;
+ * builders for the billboard and screen formats.  Implemented in d3dmath.cpp. */
 
 /* One 0x20-byte FVF 0x1e2 billboard vertex. */
 struct BbVertex { float x, y, z; uint32_t zero; uint32_t diffuse, specular; float u, v; };

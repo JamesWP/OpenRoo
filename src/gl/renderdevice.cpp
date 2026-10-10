@@ -24,8 +24,6 @@
 #include <string.h>
 #include <strings.h>
 
-RenderDevice *g_renderDevice;
-
 static windev::Window *g_window;
 
 void gl_set_window(windev::Window *window)

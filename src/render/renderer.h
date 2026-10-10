@@ -1,4 +1,5 @@
-/* renderer.h -- the render state kept between frames and levels: the level's
+/* renderer.h -- the render state kept between frames and levels: the rendering
+ * device and the fixed assets (textures, models, fonts), the level's
  * placements and scene, the theme's assets, the camera focus and foe poses of
  * the frame, and the level-entry images.  app owns one (app/main.cpp) and
  * passes it down to the frame renderer, the level entry and the render setup. */
@@ -10,8 +11,36 @@
 #include "levelplacements.h"
 #include "scene.h"
 #include "theme.h"
+#include "texture.h"
+#include "model.h"
+#include "animatedmesh.h"
+#include "textrenderer.h"
+
+class RenderDevice;
 
 struct Renderer {
+    /* The rendering device.  Not owned: app creates it and deletes it, and
+     * stores it here for the render passes. */
+    RenderDevice *device{};
+
+    /* The theme's texture and model caches; the Scene has its own (scene.h). */
+    TextureManager textures;
+    ModelManager models;
+
+    /* The two character meshes, loaded once at startup (renderstate.cpp):
+     * models\John.mdl and models\Enemy.mdl. */
+    AnimatedMesh meshEnemy;
+    AnimatedMesh meshPlayer;
+
+    /* textures\shadow.tga and textures\karoo128.tga, loaded once at startup
+     * (renderstate.cpp). */
+    Texture texKaroo128;
+    Texture texShadow;
+
+    /* The two fonts: fonts\font1.fon and fonts\numbers.fon. */
+    TextRenderer fontMain;
+    TextRenderer fontNumbers;
+
     /* The camera focus: FramePose_Player fills it every frame; the level entry
      * zeroes it. */
     CameraFocus cameraFocus{};

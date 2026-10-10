@@ -1,5 +1,6 @@
 /* RenderDevice: the game's one rendering device, and the only way game code
- * talks to the rendering backend.  One instance exists, at g_renderDevice.
+ * talks to the rendering backend.  One instance exists; app owns it and
+ * Renderer::device points at it.
  *
  * The backend -- OpenGL 3.3, core profile, drawing everything with one
  * shader program -- lives in src/gl/, and nothing outside it includes its
@@ -302,5 +303,3 @@ private:
     DisplayMode             *mode_;
     char                     lastError_[900];
 };
-
-extern RenderDevice *g_renderDevice;

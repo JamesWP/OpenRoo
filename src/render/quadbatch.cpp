@@ -114,7 +114,9 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
             // hoisting this gate above the state changes would change what
             // state is left behind for whatever draws next.
             if (obj->kind() == THEME_KIND_FIELD) {
-                d3d->SetWorld(g_worldIdentity);
+                Mat4 ident;
+                m4_identity(&ident);
+                d3d->SetWorld(ident);
                 quad_dump(pl->wallStripVerts(), (uint32_t)pl->wallStripCount());
                 bool ok = true;
                 if (quad_fx() != QUAD_FX_NODRAW)

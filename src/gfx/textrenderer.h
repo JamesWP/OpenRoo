@@ -13,7 +13,7 @@
  *     1 overlaps successive cells.  That is why the centring wrappers
  *     subtract `(len - (len-1)*(1-spacing)) * cellW` and not `len * cellW`.
  *
- * The two instances are globals, g_fontMain and g_fontNumbers.
+ * The two instances are Renderer::fontMain and Renderer::fontNumbers.
  */
 #pragma once
 
@@ -92,7 +92,3 @@ private:
     unsigned int  rows_;    /* atlas rows */
     Texture  atlas_;
 };
-
-/* The two fonts: fonts\font1.fon and fonts\numbers.fon. */
-extern TextRenderer g_fontMain;
-extern TextRenderer g_fontNumbers;

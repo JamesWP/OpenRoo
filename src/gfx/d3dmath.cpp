@@ -1,9 +1,7 @@
-/* The render-specific helpers (d3dmath.h): the identity world matrix and the
- * vertex builders.  The pure maths they sit beside is in vecmath.cpp. */
+/* The render-specific helpers (d3dmath.h): the vertex builders.  The pure
+ * maths they sit beside is in vecmath.cpp. */
 #include <stdint.h>
 #include "d3dmath.h"
-
-Mat4 g_worldIdentity;
 
 /* +0x0c is written as a literal zero, not left alone: FVF 0x1e2 has a
  * reserved slot there that nothing else fills. */

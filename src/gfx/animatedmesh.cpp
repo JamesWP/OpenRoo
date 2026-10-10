@@ -21,8 +21,6 @@
 #include "logger.h"
 #include "gamestr.h"
 #include "renderdevice.h"
-AnimatedMesh g_meshEnemy;
-AnimatedMesh g_meshPlayer;
 
 #define MESH_FVF        VertexFormat::Normal2  // XYZ | NORMAL | TEX2
 #define MESH_LOG_FIRST  8

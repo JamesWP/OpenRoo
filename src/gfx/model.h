@@ -18,7 +18,7 @@ public:
     AnimatedMesh *findOrImport(char *name);
     void clearReleaseFree();
 
-    /* Instances: g_modelManager and the Scene's (scene.h).  The destructor
+    /* Instances: Renderer::models and the Scene's (scene.h).  The destructor
      * empties the cache's nodes, not the meshes. */
     ModelManager();
     virtual ~ModelManager();
@@ -30,6 +30,4 @@ private:
      
 };
 
- 
-extern ModelManager g_modelManager;
 
