@@ -1,4 +1,5 @@
 add_library(screens OBJECT
+    hud.cpp
     levelselect.cpp
     menunav.cpp
     menuscreens.cpp
