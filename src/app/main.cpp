@@ -59,6 +59,10 @@ static Renderer s_renderer;
  * the render state. */
 static MenuArt s_menuArt;
 
+/* The programmable control (progctrl.h).  app owns it and passes it down; it
+ * outlives the Game, so the bindings can be saved after the Game is deleted. */
+static ProgableControl s_progCtrl;
+
 static bool winmain_fx_norender()
 {
     char buf[16];
@@ -103,7 +107,7 @@ static void idle()
     if (g_movie.playing())
         present_movie_frame();
     else if (!g_norender)
-        Render_RenderGameFrame(&s_renderer, &s_menuArt);
+        Render_RenderGameFrame(&s_renderer, &s_menuArt, &s_progCtrl);
 }
 
 /* The window's events: input devices and surfaces on focus changes, the intro
@@ -163,12 +167,12 @@ public:
     void onActivate(bool active) override
     {
         if (active) {
-            g_progCtrl.acquireAll();
+            s_progCtrl.acquireAll();
             restore_surfaces(&s_renderer);
             if (g_movie.playing())
                 g_movie.play();
         } else {
-            g_progCtrl.unacquireAll();
+            s_progCtrl.unacquireAll();
             if (g_movie.playing())
                 g_movie.pause();
         }
@@ -248,7 +252,7 @@ int Main_WinMain(const char *lpCmdLine)
 
     Game *game = new (std::nothrow) Game();
     if (game != NULL)
-        Game_Boot(game, gameName, kGameDir);
+        Game_Boot(game, gameName, kGameDir, &s_progCtrl);
     Game::set_instance(game);
     if (game == NULL)
         return 0;
@@ -299,7 +303,7 @@ int Main_WinMain(const char *lpCmdLine)
         return 1;
     }
 
-    if (Input_Setup(hWnd, game) == 0) {
+    if (Input_Setup(hWnd, game, &s_progCtrl) == 0) {
         delete d3d;
         delete_game(game);
         return 1;
@@ -338,7 +342,7 @@ int Main_WinMain(const char *lpCmdLine)
     // Settings are saved after the Game is deleted; the device goes last.
     s_renderer.levelPlacements.release();
     delete_game(Game::instance());
-    Input_TrySaveSettings();
+    Input_TrySaveSettings(&s_progCtrl);
     s_renderer.themeBlock.release();
     delete g_renderDevice;
     g_renderDevice = NULL;

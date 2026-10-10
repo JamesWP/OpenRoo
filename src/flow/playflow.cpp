@@ -66,7 +66,7 @@ void Flow_OpenPauseMenu(Game *self)
 
 /* The controls while playing: cheat entry, the timed spawners, the camera pitch, the
  * countdown's last seconds, and the progctrl dispatch once the player is at rest. */
-void Flow_TickPlayingControls(Game *self)
+void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
 {
     Player *pl = self->world()->player();
 
@@ -113,19 +113,19 @@ void Flow_TickPlayingControls(Game *self)
         PROF_SCOPE("player");
         // Noted before the dispatch, so paused and cutscene modes are seen.
         gamestate_note_mode(static_cast<unsigned short>(static_cast<unsigned char>(self->state())));
-        g_progCtrl.dispatch(static_cast<unsigned short>(static_cast<unsigned char>(self->state())));
+        progCtrl->dispatch(static_cast<unsigned short>(static_cast<unsigned char>(self->state())));
     }
 }
 
 /* The controls outside play: the progctrl dispatch runs in mode 0. */
-void Flow_TickIdleControls(Game *self)
+void Flow_TickIdleControls(Game *self, ProgableControl *progCtrl)
 {
     Player *pl = self->world()->player();
 
     pl->setIdleStarted(0);
     pl->setLastActive(*self->world()->clock());
     gamestate_note_mode(0);
-    g_progCtrl.dispatch(0);
+    progCtrl->dispatch(0);
     if (self->fixedSounds()->lastSeconds != NULL)
         (self->fixedSounds()->lastSeconds)->stop();
 }

@@ -28,7 +28,7 @@
 static const char SAVE_KEY      = 0x37;
 static const char HIGHSCORE_KEY = 0x4b;
 
-void Game_Boot(Game *g, const char *gameName, const char *gameDir)
+void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableControl *progCtrl)
 {
     snprintf(g->gameDir_, sizeof(g->gameDir_), "%s", gameDir);
     g->field_0c_   = 0;
@@ -97,8 +97,8 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     } else {
         g_logger.logMessage(1, "GAME: config-values loaded");
     }
-    g_progCtrl.setJoyDeadzone(0, g->config_.joyDeadzone() * 100);
-    g_progCtrl.setJoyDeadzone(4, g->config_.joyDeadzone() * 100);
+    progCtrl->setJoyDeadzone(0, g->config_.joyDeadzone() * 100);
+    progCtrl->setJoyDeadzone(4, g->config_.joyDeadzone() * 100);
 
     g->frontEnd()->highScores()->setCount(10);
     if (!g->frontEnd()->highScores()->readFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY)) {

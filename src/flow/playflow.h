@@ -2,11 +2,12 @@
 
 #pragma once
 class Game;
+class ProgableControl;
 
 void Flow_TickFlythrough(Game *self);
 void Flow_OpenPauseMenu(Game *self);
-void Flow_TickPlayingControls(Game *self);
-void Flow_TickIdleControls(Game *self);
+void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl);
+void Flow_TickIdleControls(Game *self, ProgableControl *progCtrl);
 void Flow_RestartAfterDeath(Game *self);
 void Flow_LeaveGameOver(Game *self);
 void Flow_LeaveNameEntry(Game *self);

@@ -65,20 +65,20 @@ static void loaded_tail(Game *game)
     game->frontEnd()->menu()->rewind();
 }
 
-static void option_edit(Game *game, unsigned char key)
+static void option_edit(Game *game, unsigned char key, ProgableControl *progCtrl)
 {
     switch (key) {
     case 0x22: {  // the "sfx %" page edits the joystick dead zone
         if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && game->joyDeadzone() < 0x5a) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() + 10));
-            g_progCtrl.setJoyDeadzone(0, game->joyDeadzone() * 100);
-            g_progCtrl.setJoyDeadzone(4, game->joyDeadzone() * 100);
+            progCtrl->setJoyDeadzone(0, game->joyDeadzone() * 100);
+            progCtrl->setJoyDeadzone(4, game->joyDeadzone() * 100);
             game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
         }
         if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && game->joyDeadzone() > 10) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() - 10));
-            g_progCtrl.setJoyDeadzone(0, game->joyDeadzone() * 100);
-            g_progCtrl.setJoyDeadzone(4, game->joyDeadzone() * 100);
+            progCtrl->setJoyDeadzone(0, game->joyDeadzone() * 100);
+            progCtrl->setJoyDeadzone(4, game->joyDeadzone() * 100);
             game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
         }
         break;
@@ -138,7 +138,7 @@ static void option_edit(Game *game, unsigned char key)
 }
 
   void  
-Sim_HandleKeypress(Game *self)
+Sim_HandleKeypress(Game *self, ProgableControl *progCtrl)
 {
 
     if (s_fx < 0) {
@@ -207,7 +207,7 @@ Sim_HandleKeypress(Game *self)
     {
         unsigned char key = self->frontEnd()->menu()->child(self->frontEnd()->menu()->nodeRef(), self->frontEnd()->menu()->cursor());
         if ((unsigned int)key - 0x22 <= 0x28)
-            option_edit(self, key);
+            option_edit(self, key, progCtrl);
     }
 
     // DETERMINISM: the right and left polls here are discarded by the game's
@@ -379,8 +379,8 @@ Sim_HandleKeypress(Game *self)
 
     // Key-rebind capture, once Enter is released.
     if (self->frontEnd()->rebindActive() != 0 && KEY(inputdev::KEY_RETURN) == 0) {
-        g_progCtrl.clearBindings(1, self->frontEnd()->rebindAction());
-        if (g_progCtrl.captureBinding(1, self->frontEnd()->rebindAction(),
+        progCtrl->clearBindings(1, self->frontEnd()->rebindAction());
+        if (progCtrl->captureBinding(1, self->frontEnd()->rebindAction(),
                                     100, 10, 0) != 0)
             self->frontEnd()->setRebindActive(0);
     }
