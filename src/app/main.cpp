@@ -31,8 +31,6 @@
 #include <string.h>
 #include "videodev.h"
 #include "record.h"
-#include "particles.h"
-#include "determinism.h"
 #include "levelplacements.h"
 #include "theme.h"
 #include "rendergameframe.h"
@@ -284,7 +282,6 @@ int Main_WinMain(const char *lpCmdLine)
     window.show(true);
     Render_ConfigureRenderState(kGameDir);
     hooks_ClockInit();
-    ParticleSystem::setTickObserver(dethash_particles);
 
     // The intro is only shown to a person at a display: a headless or replayed
     // run takes it as ending at once, so its frame counts do

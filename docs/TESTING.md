@@ -1,5 +1,8 @@
 # Replay tests
 
+> The per-frame hash log (`KAROO_HASH_LOG`) has been removed. Mentions of hash
+> logs below are historical; `frames_run` in the end-state dump is the frame count.
+
 Recorded input, replayed deterministically, with the resulting game state
 asserted. See `REPLAY_PLAN.md` for how it works and what was proven along the
 way; this file is the operating manual.
@@ -264,7 +267,7 @@ context that does not belong in a JSON field.
 Recordings run back to back, and the second launch will wedge — hanging before
 the DLL writes a single log line — if the previous run's `OpenRoo.exe` and
 `wineserver` have not finished shutting down. The harness polls for that between
-runs. If you ever see a run produce an empty `karoo_hooks.log` and no hash file,
+runs. If you ever see a run produce an empty `karoo_hooks.log` and no end-state dump,
 that is this, not a replay failure: the recording will pass on its own. Clear it
 with `pkill -f OpenRoo.exe; pkill -f wineserver`.
 

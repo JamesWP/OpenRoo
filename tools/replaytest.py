@@ -303,13 +303,12 @@ def entry_fast(entry, fast):
     return fast and entry.get("fast", True)
 
 
-def launch(entry, cfg, rec_path, dump_path, hash_path, fast=True,
+def launch(entry, cfg, rec_path, dump_path, fast=True,
            headless=True, game_seconds=0, frames=0):
     """Returns (stuck, wall_seconds); on a stuck run the seconds are the budget."""
     env = apply_fast(apply_turbo(dict(os.environ)), fast)
     env["KAROO_REPLAY"] = rec_path
     env["KAROO_STATE_DUMP"] = dump_path
-    env["KAROO_HASH_LOG"] = hash_path
     env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
     env["KAROO_SEED"] = str(cfg.get("seed", ""))
     # The replay ends itself; this only has to outlast it.
@@ -417,7 +416,6 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
     name = entry["name"]
     rec_path = os.path.join(RECORDINGS, entry["file"])
     dump_path = os.path.join(REPO, "run", "replaytest-%s.json" % name)
-    hash_path = os.path.join(REPO, "run", "replaytest-%s.hash" % name)
 
     print("=" * 72)
     print("%s — %s" % (name, entry.get("level", "?")))
@@ -443,7 +441,7 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
 
     restore_saves(hdr, verbose)
     wait_for_quiet()
-    for stale in (dump_path, hash_path):
+    for stale in (dump_path,):
         if os.path.exists(stale):
             os.remove(stale)
 
@@ -451,7 +449,7 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
         if verbose:
             print("ignoring fastonly test due to headless being enabled")
 
-    stuck, wall = launch(entry, cfg, rec_path, dump_path, hash_path,
+    stuck, wall = launch(entry, cfg, rec_path, dump_path,
                          fast=entry_fast(entry, fast) or headless,
                          headless=headless, game_seconds=len(frames) * hdr["dt"],
                          frames=len(frames))
@@ -471,18 +469,6 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
     if CRASH_NAME.get(verdict) != want_crash:
         print("  FAIL: crash classification differs — see karoo_hooks.log / "
               "steam-123456.log, and CRASH.md for the fingerprint")
-        ok = False
-
-    nframes = 0
-    if os.path.exists(hash_path):
-        with open(hash_path) as fh:
-            nframes = sum(1 for _ in fh)
-        if verbose:
-            print("  hash log: %d frames -> %s" % (nframes, os.path.basename(hash_path)))
-    want_frame = entry.get("expect", {}).get("crash_frame")
-    if want_frame is not None and nframes and abs(nframes - want_frame) > 2:
-        print("  FAIL: expected to stop around frame %d, stopped at %d"
-              % (want_frame, nframes))
         ok = False
 
     actual = None
@@ -586,7 +572,6 @@ def cmd_record(args):
     env["KAROO_RECORD_LABEL"] = args.level or args.name
     env["KAROO_FIXED_DT"] = dt
     env["KAROO_SEED"] = seed
-    env["KAROO_HASH_LOG"] = os.path.join(REPO, "replaytest-%s.hash" % args.name)
     env["KAROO_STATE_DUMP"] = os.path.join(REPO, "replaytest-%s.json" % args.name)
 
     print("Recording to %s" % rec_path)

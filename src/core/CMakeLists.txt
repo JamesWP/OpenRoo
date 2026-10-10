@@ -1,6 +1,5 @@
 add_library(core OBJECT
     clock.cpp
-    determinism.cpp
     game.cpp
     gameglobals.cpp
     checkpoint.cpp
