@@ -60,7 +60,7 @@ public:
     // saved.
     float          activeCameraPitch() const           { return activeCameraPitch_; }
     void           setActiveCameraPitch(float a)       { activeCameraPitch_ = a; }
-    // Copied into the Game's camera distance on load; default 5.0.
+    // Copied into the camera rig's distance on load; default 5.0.
     void           setCameraDistanceSetting(float d)   { cameraDistanceSetting_ = d; }
     float          cameraDistanceSetting() const       { return cameraDistanceSetting_; }
 

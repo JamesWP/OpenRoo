@@ -64,13 +64,13 @@
 
 /* The scripted camera (the script player's running spline): eye from
  * field13cc94(), target from cameraEye(), both copied into the camera
- * globals; pitch and yaw recovered by acos; a plain LookAt with +Y up. */
+ * pose; pitch and yaw recovered by acos; a plain LookAt with +Y up. */
 static void scripted_camera(Game *g, RenderDevice *d3d)
 {
-    CameraGlobals *cam = &g_camera;
+    CameraPose *cam = g->camera()->pose();
     for (int i = 0; i < 3; ++i) {
-        cam->eye()[i]    = g->field13cc94(i);
-        cam->target()[i] = g->cameraEye(i);
+        cam->eye()[i]    = g->camera()->field13cc94(i);
+        cam->target()[i] = g->camera()->cameraEye(i);
     }
     const float dx = cam->target()[0] - cam->eye()[0];
     const float dy = cam->target()[1] - cam->eye()[1];
@@ -95,7 +95,7 @@ static void scripted_camera(Game *g, RenderDevice *d3d)
  * unless it is exactly 1. */
 static void update_listener(Game *g)
 {
-    CameraGlobals *cam = &g_camera;
+    CameraPose *cam = g->camera()->pose();
     float front[3] = { cam->target()[0] - cam->eye()[0],
                     cam->target()[1] - cam->eye()[1],
                     cam->target()[2] - cam->eye()[2] };
@@ -389,7 +389,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
     RenderDevice *d3d = g_renderDevice;
     uint32_t dtBits[2];
     memcpy(dtBits, &dt, sizeof dt);
-    Scene_DrawSceneObjects(d3d, g_camera.eye(), dtBits[0], dtBits[1], now);
+    Scene_DrawSceneObjects(d3d, g->camera()->pose()->eye(), dtBits[0], dtBits[1], now);
     set_stencil_enable(false);
     BridgeSurf_Draw({g->bridgeSlots(), g->bridgeCount(), g->videoHighlights() != 0},
                     &g_themeBlock, d3d, now);
@@ -504,7 +504,7 @@ enum BurstTick { TICK_WHOLE_MS, TICK_ELAPSED };
  * system, point it along the view, optionally spin its corners about Y by
  * -rotRateY * now, render, age, and switch the node off again.  A burst
  * whose time is up is retired instead. */
-static void draw_bursts(ThemeLevelObject *rec, const BlendState &blend, BurstTick tick,
+static void draw_bursts(const CameraPose *cam, ThemeLevelObject *rec, const BlendState &blend, BurstTick tick,
                         bool spin, double now, double elapsed)
 {
     RenderDevice *dev = g_renderDevice;
@@ -513,7 +513,6 @@ static void draw_bursts(ThemeLevelObject *rec, const BlendState &blend, BurstTic
         dev->SetTexture(0, tex);
     dev->SetBlend(blend);
 
-    CameraGlobals *cam = &g_camera;
     for (unsigned char j = 0; j < rec->instanceCount(); ++j) {
         FxBurst *b = &rec->bursts()[j];
         if (b->msLeft <= 0) {
@@ -595,7 +594,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
                             (float)-bt->cellV());
         }
         if (field != NULL)
-            draw_bursts(field,
+            draw_bursts(g->camera()->pose(), field,
                         BlendState::on(blendFactorFromTheme(field->subObjects()[0].dwBlendSrc),
                                        blendFactorFromTheme(field->subObjects()[0].dwBlendDst)),
                         TICK_WHOLE_MS, false, now, elapsed);
@@ -644,9 +643,9 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
         set_depth_write(false);
         if (crystal != NULL)
-            draw_bursts(crystal, BlendState::additive(), TICK_WHOLE_MS, false, now, elapsed);
+            draw_bursts(g->camera()->pose(), crystal, BlendState::additive(), TICK_WHOLE_MS, false, now, elapsed);
         if (coll != NULL)
-            draw_bursts(coll, BlendState::additive(), TICK_ELAPSED, true, now, elapsed);
+            draw_bursts(g->camera()->pose(), coll, BlendState::additive(), TICK_ELAPSED, true, now, elapsed);
 
         if (speed != NULL) {
             ParticleSystem *ps = speed->particleSystems()[0];
@@ -677,7 +676,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             dev->SetTexture(0, speed->subObjects()[0].pTexture);
             dev->SetBlend(BlendState::additive());
             ps->tick((float)(elapsed * 0.001));
-            CameraGlobals *cam = &g_camera;
+            CameraPose *cam = g->camera()->pose();
             ps->setVector(cam->target()[0] - cam->eye()[0],
                            cam->target()[1] - cam->eye()[1],
                            cam->target()[2] - cam->eye()[2]);
@@ -686,7 +685,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
         }
     }
 
-    Scene_DrawParticleSystems(g_renderDevice, g_camera.eye(), dt, now);
+    Scene_DrawParticleSystems(g_renderDevice, g->camera()->pose()->eye(), dt, now);
 
     Player *player = g->player();
     if (player->effectDActive() != 0 && player->anim() != 10)
@@ -1040,7 +1039,7 @@ Render_RenderGameFrame(void)
         {
             PROF_SCOPE("camera");
             if (g->scriptPlayer()->splineActive() == 0)
-                g_camera.updateViewTransform(g_renderDevice, g, g_cameraFocus, dt);
+                Camera_UpdateViewTransform(g_renderDevice, g, g_cameraFocus, dt);
             else
                 scripted_camera(g, g_renderDevice);
         }
@@ -1069,7 +1068,7 @@ Render_RenderGameFrame(void)
     set_fog_enable(false);
     d3d->SetSpecular(false);
     d3d->SetBlend(BlendState::off());
-    CameraGlobals *cam = &g_camera;
+    CameraPose *cam = g->camera()->pose();
     g_themeBlock.sky().draw(d3d, cam->eye()[0], cam->eye()[1], cam->eye()[2]);
     if (g_themeBlock.fogEnabled())
         set_fog_enable(true);

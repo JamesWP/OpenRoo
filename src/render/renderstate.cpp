@@ -53,7 +53,7 @@ Render_ConfigureRenderState(const char *gameDir)
     const float x = (float)((float)map->extentU() * 0.5f + offX);
     const float z = (float)((float)(-(int)map->extentV()) * 0.5f + offZ);
 
-    CameraGlobals *cam = &g_camera;
+    CameraPose *cam = Game::instance()->camera()->pose();
     cam->target()[0] = x;
     cam->target()[1] = offY;
     cam->target()[2] = z;

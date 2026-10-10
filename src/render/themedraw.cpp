@@ -12,7 +12,6 @@
 #include "levelobject.h"
 #include "generators.h"
 #include "particles.h"
-#include "camera.h"
 #include "renderdevice.h"
 #include "vecmath.h"
 #include "game.h"
@@ -48,9 +47,8 @@ static bool gate_open(uint32_t gate, const Player *p, const Tile *cell)
     return false;
 }
 
-static void camera_view_dir(float d[3])
+static void camera_view_dir(const CameraPose *c, float d[3])
 {
-    const CameraGlobals *c = &g_camera;
     for (int i = 0; i < 3; i++)
         d[i] = c->target()[i] - c->eye()[i];
 }
@@ -129,7 +127,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                 if (move == THEME_MOVE_TRANSLATE) {
                     m4_translate(&world, ip[0], ip[1], ip[2]);
                     (ps->getGenerator(NULL))->setPosition(p[0], p[1], p[2]);
-                    camera_view_dir(view);
+                    camera_view_dir(g->camera()->pose(), view);
                     ps->setVector(view[0], view[1], view[2]);
                     Mat4 corners;
                     m4_rot_y(&corners, (float)-((double)o[1] + ir[1]));
@@ -137,7 +135,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                 } else if (move == THEME_MOVE_GENERATOR) {
                     m4_identity(&world);
                     (ps->getGenerator(NULL))->setPosition(p[0] + ip[0], p[1] + ip[1], p[2] + ip[2]);
-                    camera_view_dir(view);
+                    camera_view_dir(g->camera()->pose(), view);
                     ps->setVector(view[0], view[1], view[2]);
                 } else {
                     Mat4 sc, rx, ry, rz, tr, a, b;
@@ -151,7 +149,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                     mul(&b, &a, &ry);
                     mul(&a, &b, &rz);
                     mul(&world, &a, &tr);
-                    camera_view_dir(view);
+                    camera_view_dir(g->camera()->pose(), view);
                     ps->setVector(view[0], view[1], view[2]);
                     Mat4 corners;
                     m4_rot_y(&corners, (float)-((double)o[1] + ir[1]));
