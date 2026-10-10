@@ -90,5 +90,3 @@ void CDM::setVolume(float gain)
     g_logger.write("CDM::setVolume(%g)\n", gain);
     audiodev::setMusicVolume(gain);
 }
-
-CDM g_cdAudio;

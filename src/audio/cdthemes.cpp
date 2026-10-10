@@ -60,21 +60,21 @@ unsigned int CdThemes::play(const char *caption)
 
     if (count_ == 0)
         return 0;
-    g_cdAudio.stop();
+    cdAudio_->stop();
     idx = findThemeIndex(caption);
     currentTrack_ = (unsigned char)idx;
     g_logger.logMessage(2, "CDM: trying to play track %d caption:%s ", idx & 0xff, caption);
     if (currentTrack_ != 0)
-        g_cdAudio.playTrack(currentTrack_, true);
+        cdAudio_->playTrack(currentTrack_, true);
     return 1;
 }
 
 unsigned int CdThemes::replay()
 {
     if (count_ != 0) {
-        g_cdAudio.stop();
+        cdAudio_->stop();
         if (currentTrack_ != 0)
-            g_cdAudio.playTrack(currentTrack_, true);
+            cdAudio_->playTrack(currentTrack_, true);
     }
     return 0;
 }
@@ -91,12 +91,12 @@ static const char *const k_trackLength[10] = {
 
 int CdThemes::validateTrackLengths()
 {
-    trackCount_ = g_cdAudio.getTrackCount();
+    trackCount_ = cdAudio_->getTrackCount();
     if (trackCount_ != 9)
         return 0;
-    g_cdAudio.getTrackLength(1);
+    cdAudio_->getTrackLength(1);
     for (int t = 2; t <= 9; ++t) {
-        if (strcmp(g_cdAudio.getTrackLength(t), k_trackLength[t]) != 0)
+        if (strcmp(cdAudio_->getTrackLength(t), k_trackLength[t]) != 0)
             return 0;
     }
     return 1;
@@ -176,10 +176,10 @@ unsigned char CdThemes::readTrackThemeTable(const char *dir, const char *name)
 
 int CdThemes::listTrackLengths()
 {
-    trackCount_ = g_cdAudio.getTrackCount();
+    trackCount_ = cdAudio_->getTrackCount();
     g_logger.logMessage(3, "CDM: number of tracks %d", trackCount_);
     for (unsigned t = 1; (unsigned)trackCount_ != 0; t++) {
-        g_logger.logMessage(3, "CDM: track %d length:%s", t, g_cdAudio.getTrackLength(t));
+        g_logger.logMessage(3, "CDM: track %d length:%s", t, cdAudio_->getTrackLength(t));
         if (!(t < (unsigned)trackCount_))
             break;
     }

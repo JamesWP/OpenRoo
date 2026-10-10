@@ -24,7 +24,7 @@ void Cheat_EnterLoadedState(Game *game)
     game->camera()->setCameraDistance(7.0f);
     game->setState(GameState::Flythrough);
     if (game->musicOn() != 0)
-        g_cdAudio.stop();
+        game->cdAudio()->stop();
     game->scriptPlayer()->setRunning(1);
     game->camera()->setCameraMode(1);
     game->frontEnd()->setDebounce(inputdev::KEY_RETURN);

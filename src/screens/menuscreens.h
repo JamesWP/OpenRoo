@@ -10,18 +10,7 @@
 
 #include "texture.h"
 #include "renderdevice.h"
-
-/* The menu's nine textures and the panel quad the score overlay shares. */
-extern Texture g_menuTex4;
-extern Texture g_menuTex1;
-extern Texture g_menuTexKnob;
-extern Texture g_menuTexSelector;
-extern ScreenVertex g_panelQuad[4];
-extern Texture g_menuTexScale;
-extern Texture g_menuTexOn;
-extern Texture g_menuTex2;
-extern Texture g_menuTex3;
-extern Texture g_menuTexOff;
+#include "menuart.h"
 
 class FrontEnd;
 class Session;
@@ -36,46 +25,50 @@ void Menu_DrawBackdrop(RenderDevice *d3d, ThemeAssetBlock *theme);
 /* The two animated markers either side of the highlighted row.  rowOffset
  * shifts them, in 640-wide screen units (0 on the main menu). */
   void  
-Menu_DrawCursorMarkers(const FrontEnd *frontEnd, RenderDevice *d3d, uint32_t ms, float rowOffset);
+Menu_DrawCursorMarkers(const MenuArt *art, const FrontEnd *frontEnd, RenderDevice *d3d, uint32_t ms,
+                       float rowOffset);
 
 /* Node 0: the main menu. */
 void
-Menu_RenderMainMenu(const FrontEnd *frontEnd, ThemeAssetBlock *theme, RenderDevice *d3d,
-                    TextRenderer *text, uint32_t ms);
+Menu_RenderMainMenu(const MenuArt *art, const FrontEnd *frontEnd, ThemeAssetBlock *theme,
+                    RenderDevice *d3d, TextRenderer *text, uint32_t ms);
 
 /* Node 4: Controls, Video, Audio. */
 void
-Menu_RenderOptionsMenu(const FrontEnd *frontEnd, ThemeAssetBlock *theme, RenderDevice *d3d,
-                       TextRenderer *text, uint32_t ms);
+Menu_RenderOptionsMenu(const MenuArt *art, const FrontEnd *frontEnd, ThemeAssetBlock *theme,
+                       RenderDevice *d3d, TextRenderer *text, uint32_t ms);
 
 /* Node 2, Load Game: the save-slot names. */
-void Menu_RenderRestoreSlotList(FrontEnd *frontEnd, ThemeAssetBlock *theme, RenderDevice *d3d,
-                                TextRenderer *text, uint32_t ms);
+void Menu_RenderRestoreSlotList(const MenuArt *art, FrontEnd *frontEnd, ThemeAssetBlock *theme,
+                                RenderDevice *d3d, TextRenderer *text, uint32_t ms);
 
 /* Node 0x2a, Save Game (from the level-complete screen). */
-void Menu_RenderSaveSlotList(FrontEnd *frontEnd, ThemeAssetBlock *theme, RenderDevice *d3d,
-                             TextRenderer *text, uint32_t ms);
+void Menu_RenderSaveSlotList(const MenuArt *art, FrontEnd *frontEnd, ThemeAssetBlock *theme,
+                             RenderDevice *d3d, TextRenderer *text, uint32_t ms);
 
-/* Builds the static quads, the widget model and the nine textures the screens
- * draw with; once per device. */
+/* Builds the static quads, the widget model and the nine textures (art) the
+ * screens draw with; once per device. */
   void  
-Menu_BuildMenuGeometry(RenderDevice *d3d, const char *prefix);
+Menu_BuildMenuGeometry(MenuArt *art, RenderDevice *d3d, const char *prefix);
 
 /* Node 0xa: the key-binding page. */
-void Menu_RenderControlsRemap(const FrontEnd *frontEnd, const Config *config,
+void Menu_RenderControlsRemap(const MenuArt *art, const FrontEnd *frontEnd, const Config *config,
                               ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
                               uint32_t ms);
 
 /* That page's own cursor markers. */
   void  
-Menu_DrawControlsCursorMarkers(const FrontEnd *frontEnd, RenderDevice *d3d, uint32_t ms);
+Menu_DrawControlsCursorMarkers(const MenuArt *art, const FrontEnd *frontEnd, RenderDevice *d3d,
+                               uint32_t ms);
 
 /* Node 0xb: the video options. */
-void Menu_RenderVideoOptions(const FrontEnd *frontEnd, const Config *config, ThemeAssetBlock *theme,
+void Menu_RenderVideoOptions(const MenuArt *art, const FrontEnd *frontEnd, const Config *config,
+                             ThemeAssetBlock *theme,
                              RenderDevice *d3d, TextRenderer *text, uint32_t ms);
 
 /* Node 0xc: the audio options. */
-void Menu_RenderSoundOptions(const FrontEnd *frontEnd, const Config *config, ThemeAssetBlock *theme,
+void Menu_RenderSoundOptions(const MenuArt *art, const FrontEnd *frontEnd, const Config *config,
+                             ThemeAssetBlock *theme,
                              RenderDevice *d3d, TextRenderer *text, uint32_t ms);
 
 /* Node 5: the credits; nowMs is the millisecond clock. */
@@ -84,9 +77,10 @@ Menu_RenderCreditsScroll(FrontEnd *frontEnd, RenderDevice *d3d, TextRenderer *te
 
 /* Picks and draws the screen for the current menu node. */
 void
-Menu_DispatchGameState(FrontEnd *frontEnd, Session *session, const Config *config,
+Menu_DispatchGameState(const MenuArt *art, FrontEnd *frontEnd, Session *session, const Config *config,
                        ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text, uint32_t ms);
 
 /* A level-select theme page. */
-void Menu_RenderLevelSelect(const FrontEnd *frontEnd, Session *session, ThemeAssetBlock *theme,
-                            RenderDevice *d3d, TextRenderer *text, uint32_t ms);
+void Menu_RenderLevelSelect(const MenuArt *art, const FrontEnd *frontEnd, Session *session,
+                            ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
+                            uint32_t ms);

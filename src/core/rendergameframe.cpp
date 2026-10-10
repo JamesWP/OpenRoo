@@ -32,6 +32,7 @@
 #include "scenepasses.h"
 #include "hud.h"
 #include "menuscreens.h"
+#include "menuart.h"
 #include "scoreoverlay.h"
 #include "textrenderer.h"
 #include "dbg.h"
@@ -148,7 +149,7 @@ static void set_fog_enable(bool on)
 /* ─── RenderGameFrame ───────────────────────────────────────────────────── */
 
   void  
-Render_RenderGameFrame(Renderer *renderer)
+Render_RenderGameFrame(Renderer *renderer, const MenuArt *art)
 {
     dbg::frameBegin();
     PROF_SCOPE("frame");
@@ -269,7 +270,7 @@ Render_RenderGameFrame(Renderer *renderer)
     const uint32_t ms = (uint32_t)(long long)now;
     if (st == GameState::MainMenu || st == GameState::PauseMenu || st == GameState::LevelComplete) {
         PROF_SCOPE("menu");
-        Menu_DispatchGameState(g->frontEnd(), g->session(), g->config(),
+        Menu_DispatchGameState(art, g->frontEnd(), g->session(), g->config(),
                                &renderer->themeBlock, d3d, &g_fontMain, ms);
     }
     if (g->state() == GameState::GameOver) {
@@ -278,7 +279,7 @@ Render_RenderGameFrame(Renderer *renderer)
     }
     if (g->frontEnd()->menu()->node() == 3 || g->state() == GameState::NameEntry) {
         PROF_SCOPE("menu");
-        Score_DrawHighScoreTable(g->frontEnd(), &renderer->themeBlock, d3d, &g_fontMain, ms);
+        Score_DrawHighScoreTable(art, g->frontEnd(), &renderer->themeBlock, d3d, &g_fontMain, ms);
     }
 
     set_depth_test(true);

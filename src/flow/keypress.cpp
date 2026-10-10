@@ -59,7 +59,7 @@ static void loaded_tail(Game *game)
     game->setState(GameState::Flythrough);
     game->camera()->setCameraDistance(7.0f);
     if (game->musicOn() != 0)
-        g_cdAudio.stop();
+        game->cdAudio()->stop();
     game->scriptPlayer()->setRunning(1);
     game->camera()->setCameraMode(1);
     game->frontEnd()->menu()->rewind();
@@ -96,7 +96,7 @@ static void option_edit(Game *game, unsigned char key)
         } else if (!changed) {
             break;
         }
-        g_cdAudio.setVolume(game->musicGain());
+        game->cdAudio()->setVolume(game->musicGain());
         break;
     }
     case 0x3f: {
@@ -247,7 +247,7 @@ Sim_HandleKeypress(Game *self)
         self->frontEnd()->menu()->pop();
         self->setState(GameState::Quitting);
         if (self->musicOn() != 0)
-            g_cdAudio.stop();
+            self->cdAudio()->stop();
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         if (self->field_0c() == 0)
             windev::quit(1);
@@ -283,7 +283,7 @@ Sim_HandleKeypress(Game *self)
     case 0x3d:
         if (self->musicOn() != 0) {
             self->setMusicOn(0);
-            g_cdAudio.stop();
+            self->cdAudio()->stop();
             self->frontEnd()->menu()->pop();
             break;
         }
@@ -300,7 +300,7 @@ Sim_HandleKeypress(Game *self)
         self->setState(GameState::Flythrough);
         self->scriptPlayer()->setRunning(1);
         if (self->musicOn() != 0)
-            g_cdAudio.stop();
+            self->cdAudio()->stop();
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         self->frontEnd()->menu()->setLockStart(self->lastTickTime());
         self->camera()->setCameraMode(1);

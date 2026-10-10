@@ -10,6 +10,7 @@
 #include "frontend.h"
 #include "scriptplayer.h"
 #include "camerarig.h"
+#include "cdm.h"
 #include "cdthemes.h"
 #include "config.h"
 #include "themesounds.h"
@@ -127,6 +128,8 @@ public:
 
     /* The settings object (config.h); openroo.ini holds it. */
     Config               *config()                   { return &config_; }
+    /* The CD audio device (cdm.h); the CD-music theme table plays on it. */
+    CDM            *cdAudio()                        { return &cdAudio_; }
     /* The CD-music theme table (cdthemes.h). */
     CdThemes       *cdThemes()                       { return &cdThemes_; }
     /* The instruction-script player (scriptplayer.h). */
@@ -249,6 +252,9 @@ private:
     unsigned int  mapChanged_{};
     unsigned int  tickCount_{};
     int           initialised_{};                           /* 0 until Load completes */
+    /* The CD audio device (cdm.h).  Declared before the theme table, which
+     * plays on it, so it is torn down after the table. */
+    CDM           cdAudio_;
     CdThemes      cdThemes_;
     /* 256 level names, 0x100 each.  SetCurrentLevelName copies entry `levelNo & 0xff` into World's levelName_. */
     char          gameFileName_[0x80]{};

@@ -38,6 +38,7 @@
 Game::Game()
 {
     world_.setSoundLibrary(&soundManager_);
+    cdThemes_.setCdAudio(&cdAudio_);
 }
 
 Game::~Game() {}
