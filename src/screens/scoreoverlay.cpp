@@ -231,7 +231,7 @@ static void draw_summary(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
         text->drawLeft(xLabel, y, cellW, cellH, 0.75f, r.label, d3d, 0,
                        THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
 
-        sprintf(buf, GS_FMT_D, row_value(g->tally(), r.row));
+        sprintf(buf, GS_FMT_D, row_value(g->session()->tally(), r.row));
         text->drawRight(r.mul ? xValue : xProd, y, cellW, cellH, 0.75f,
                         buf, d3d, 0,
                         THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
@@ -239,7 +239,7 @@ static void draw_summary(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
         if (r.mul) {
             text->drawLeft(xValue, y, cellW, cellH, 0.75f, r.mul, d3d, 0,
                            THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
-            sprintf(buf, GS_FMT_D, g->tally()->shownScore[r.row]);
+            sprintf(buf, GS_FMT_D, g->session()->tally()->shownScore[r.row]);
             text->drawRight(xProd, y, cellW, cellH, 0.75f, buf, d3d, 0,
                             THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
         }
@@ -281,7 +281,7 @@ void Menu_RenderLevelComplete(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
     const float cellH = (float)(dwWidth * 14) * VSCALE;
     text->drawCentered(w * 0.5f, w * 0.59375f, cellW, cellH, 0.75f, "Next",
                        d3d, 0, THEME_COL(THEME_COLOR_MENUSUMMARYNEXT));
-    if (g->nextLevelBonus() == 0)
+    if (g->session()->nextLevelBonus() == 0)
         text->drawCentered(w * 0.5f, w * 0.64375001f, cellW, cellH, 0.75f,
                            "Save", d3d, 0,
                            THEME_COL(THEME_COLOR_MENUSUMMARYSAVE));

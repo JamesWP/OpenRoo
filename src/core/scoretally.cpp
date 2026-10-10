@@ -57,7 +57,7 @@ Sim_AnimateScoreTallyStages(Game *self)
     }
 #define LIM(x)  (s_fx ? (x) / 10 : (x))
 
-    ScoreTally *T = self->tally();
+    ScoreTally *T = self->session()->tally();
 
     now = ftol_low(self);
     el  = now - (unsigned int)T->stageStart;
@@ -145,7 +145,7 @@ Sim_AnimateScoreTallyStages(Game *self)
             T->stageStart = (int)ftol_low(self);
             T->shownCount[TALLY_VITALITY] = (int)n;
             T->shownScore[TALLY_VITALITY] = T->score[TALLY_VITALITY];
-            self->setTallyDone(1);
+            self->session()->setTallyDone(1);
         } else {
             tick_sound(self);
             T->shownCount[TALLY_VITALITY] = (int)(el / 50);
@@ -165,7 +165,7 @@ totals:
         T->shownLevelTotal = (int)t;
         T->shownGrandTotal = (int)((unsigned int)T->shownBase + t);
         if (self->frontEnd()->debounce() != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0)
-            self->setTallyDone(1);
+            self->session()->setTallyDone(1);
         return (t & 0xffffff00u) | 0xffu;
     }
 #undef LIM

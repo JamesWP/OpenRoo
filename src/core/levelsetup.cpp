@@ -222,7 +222,7 @@ Sim_SetupLevelObjects(Game *self)
     // The run state.
     // The level-complete node offers Save only when there is no next-level
     // bonus.
-    self->frontEnd()->menu()->setChildCount(0x28, (self->nextLevelBonus() == 0) ? 2 : 1);
+    self->frontEnd()->menu()->setChildCount(0x28, (self->session()->nextLevelBonus() == 0) ? 2 : 1);
     self->world()->player()->setLastSecondsMark(10.0);  // 10.0
 
     g_logger.logMessage(2, "GAME: init level started");
@@ -624,10 +624,10 @@ next_row:
     self->world()->setTimeLimit(M->fileTimeLimit());
     self->world()->player()->setClock(self->world()->clock());
 
-    if (self->restartCount() == 0) {
-        self->setFoesKilled(0);
+    if (self->session()->restartCount() == 0) {
+        self->session()->setFoesKilled(0);
         self->world()->player()->setItemsCollected(0);
-        self->setItemTotal(self->world()->census()->total);
+        self->session()->setItemTotal(self->world()->census()->total);
 
         if (self->scriptPlayer()->loaded() == 0) {
             self->camera()->setCameraEye(0, (float)(int)(signed char)self->world()->player()->homeU());
@@ -637,7 +637,7 @@ next_row:
 
         if (self->cdThemes()->validateTrackLengths() == 0 &&
             self->field_0c() == 0 &&
-            self->levelIndex() > 4) {
+            self->session()->levelIndex() > 4) {
             unsigned char cu = self->world()->player()->homeU();
             unsigned char cv = self->world()->player()->homeV();
             if (Sim_FindNearestFlaggedTileInRadius(self->world()->map(), &cu, &cv, 0x14)) {
@@ -649,7 +649,7 @@ next_row:
     }
 
     self->world()->setTimeElapsed(0);
-    self->setField170a65(0);
+    self->session()->setField170a65(0);
 
     SCELL(M, self->world()->player()->cellU(), self->world()->player()->cellV())->setField1a1(0);
 

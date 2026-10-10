@@ -79,23 +79,23 @@ bool GameState::read()
     const Player *pl = g->world()->player();
     gems_collected = pl->gemsCollected();
     gems_required  = g->world()->gemsRequired();
-    foes_killed    = g->foesKilled();
+    foes_killed    = g->session()->foesKilled();
     time_limit_s   = g->world()->timeLimit();
     elapsed_ms     = g->world()->timeElapsed();
     lives          = (uint8_t)pl->lives();
     bombs          = pl->bombsCarried();
     total_score    = pl->score();
-    level_score    = g->tally()->levelTotal;
-    vitality       = g->vitalityPercent();
+    level_score    = g->session()->tally()->levelTotal;
+    vitality       = g->session()->vitalityPercent();
     {
         int f120 = pl->falling();
         death_raw[0] = pl->moveState();
         memcpy(death_raw + 1, &f120, 3);
     }
     complete_flag  = pl->held();
-    extra_count    = g->itemTotal();
+    extra_count    = g->session()->itemTotal();
     extra_cap      = pl->itemsCollected();
-    extra_block    = g->restartCount();
+    extra_block    = g->session()->restartCount();
     pos[0]         = pl->posU();
     pos[1]         = pl->posY();
     pos[2]         = pl->posV();

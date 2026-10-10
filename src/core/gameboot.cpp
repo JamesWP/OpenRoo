@@ -41,7 +41,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g->tickCount_  = 0;
     g->field_04_   = 1.0;
     // The tally is read by the state dump before any level has been scored.
-    g->tally_ = ScoreTally();
+    *g->session()->tally() = ScoreTally();
     g->world()->switchCells()->clearCounts();
     // PRESERVED: only the first 256 of each 500-slot table.
     std::fill_n(g->world()->bombs().slot, 0x100, nullptr);
@@ -82,7 +82,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
         g_logger.logMessage(3, "GAME: * warning * - the original CD is not in drive");
     g_logger.logMessage(1, "GAME: game-object created, game name:%s", g->gameFileName_);
 
-    if (!g->loadGameFile(g->gameFileName_)) {
+    if (!g->session()->loadGameFile(g->gameDir_, g->gameFileName_)) {
         g_logger.logMessage(4, "GAME: ** error ** game-file named as %s.gam could not be loaded - aborting!!!", g->gameFileName_);
         windev::quit(1);
         return;
@@ -117,7 +117,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
 
     // PRESERVED: a demo check, for a nonzero field_0c_ with more than ten
     // levels.  field_0c_ was zeroed above, so it never fires.
-    if (g->field_0c_ != 0 && g->levelCount_ > 10) {
+    if (g->field_0c_ != 0 && g->session()->levelCount() > 10) {
         g_logger.logMessage(4, "GAME: ** error ** this is a DEMO, piracy alert, aborting!!!");
         windev::quit(1);
         return;
@@ -128,7 +128,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g->state_ = 0;
     g_cdAudio.stop();
     g->frontEnd()->menu()->buildDefaultGraph(g->frontEnd()->saveSlots()->count());
-    g->levelIndex_     = 0;
+    g->session()->setLevelIndex(0);
     g->camera()->setZoomDistance(g->config_.cameraDistanceSetting());
     g->camera()->setCameraDistance(g->config_.cameraDistanceSetting());
     Sim_ClearGameState(g);

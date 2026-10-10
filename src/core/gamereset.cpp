@@ -80,7 +80,7 @@ Sim_ClearGameState(Game *self)
     }
 
     // Read before the stores; acted on after them.
-    gamefile_ok = self->levelCount();
+    gamefile_ok = self->session()->levelCount();
 
     Player *pl = self->world()->player();
     pl->setLives(2);  // lives
@@ -88,9 +88,9 @@ Sim_ClearGameState(Game *self)
     // Two doubles the game zeroes in two halves; nothing reads between, so
     // each is one store.
     pl->setField126(0.0);
-    self->setTotalPlayTime(0.0);
-    self->setLevelIndex(0);
-    self->setRestartCount(0);
+    self->session()->setTotalPlayTime(0.0);
+    self->session()->setLevelIndex(0);
+    self->session()->setRestartCount(0);
     pl->setGemsCollected(0);
     pl->setFacing(1);
     pl->setMoveDir(0);

@@ -30,8 +30,8 @@
 #include "levelscore.h"
 #include "player.h"
 
-/* The counts, scores, totals and animation state are the Game's tally
- * (ScoreTally, game.h). */
+/* The counts, scores, totals and animation state are the Session's tally
+ * (ScoreTally, session.h). */
 
 static int s_fxDouble = -1;
 
@@ -54,7 +54,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
     const int collected = self->world()->player()->gemsCollected();
     const int quota     = self->world()->gemsRequired();
 
-    ScoreTally *t = self->tally();
+    ScoreTally *t = self->session()->tally();
 
     if (collected > quota) {
         t->score[TALLY_GEMS]    = quota * 5;
@@ -69,7 +69,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
     }
 
     // Foes.
-    const unsigned foes = self->foesKilled();
+    const unsigned foes = self->session()->foesKilled();
     t->score[TALLY_FOES] = (int)(foes * 50u);
     t->count[TALLY_FOES] = (int)foes;
 
@@ -87,8 +87,8 @@ Score_CalculateLevelScore(Game *self, char endReason)
     }
 
     // All items.
-    const unsigned short itemTotal = self->itemTotal();
-    if (itemTotal > self->world()->player()->itemsCollected() || self->restartCount() != 0) {
+    const unsigned short itemTotal = self->session()->itemTotal();
+    if (itemTotal > self->world()->player()->itemsCollected() || self->session()->restartCount() != 0) {
         t->score[TALLY_ALLITEMS] = 0;
         t->count[TALLY_ALLITEMS] = 0;
     } else {
@@ -97,7 +97,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
     }
 
     // Vitality: the clamped percentage, a point each.
-    const unsigned vitality = self->vitalityPercent();
+    const unsigned vitality = self->session()->vitalityPercent();
     t->shownScore[TALLY_GEMS] = 0;  // zeroed here, before the rest
     t->score[TALLY_VITALITY]  = (int)vitality;
     t->count[TALLY_VITALITY]  = (int)vitality;
@@ -131,5 +131,5 @@ Score_CalculateLevelScore(Game *self, char endReason)
     // Hand the tally animation stage 0 and its start time.
     t->stage      = 0;
     t->stageStart = (int)*self->world()->clock();
-    self->setTallyDone(1);
+    self->session()->setTallyDone(1);
 }

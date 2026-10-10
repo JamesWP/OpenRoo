@@ -167,7 +167,7 @@ Sim_GameTick(Game *self, double dt, double now)
             sp->releaseStreams();
             sp->releaseStreams();
             self->stateRef() = 1;
-            if (self->restartCount() == 0) {
+            if (self->session()->restartCount() == 0) {
                 if (self->musicOn() != 0)
                     self->cdThemes()->play(self->world()->map()->mapName());
                 self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(self->world()->map()->mapName()));
@@ -254,10 +254,10 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     {
-        unsigned char pct = completion_percent((unsigned int)pl->completionNumerator(), self->field_170a65());
-        self->setVitalityPercent(pct);
+        unsigned char pct = completion_percent((unsigned int)pl->completionNumerator(), self->session()->field_170a65());
+        self->session()->setVitalityPercent(pct);
         if (pct > 100)
-            self->setVitalityPercent(100);
+            self->session()->setVitalityPercent(100);
     }
 
     {
@@ -281,7 +281,7 @@ Sim_GameTick(Game *self, double dt, double now)
                                               (unsigned char)v, E->height, 2,
                                               (unsigned char)(E->field_0b + 100));
                 Foe *foe = self->world()->foeSlot(id);
-                if (((int)self->foesKilled() + 1) % 15 == 0)
+                if (((int)self->session()->foesKilled() + 1) % 15 == 0)
                     foe->setDropContents(7);
                 else
                     foe->setDropContents(1);
@@ -385,7 +385,7 @@ Sim_GameTick(Game *self, double dt, double now)
     } else if (self->stateRef() == 1) {
         self->world()->setTimeElapsed(self->world()->timeElapsed()
             + (unsigned int)ftol80(self->world()->tickStep()->value));
-        self->setField170a65(self->field_170a65()
+        self->session()->setField170a65(self->session()->field_170a65()
             + (unsigned int)ftol80(self->world()->tickStep()->value));
     }
 
@@ -442,7 +442,7 @@ Sim_GameTick(Game *self, double dt, double now)
                                     pl->posU(), pl->posY(), pl->posV());
         if ((*slot)->finishDespawn(self->world()->map())) {
             Foe::remove(game->world()->entityContext(), game->world()->foes(), id);
-            self->setFoesKilled((unsigned char)(self->foesKilled() + 1));
+            self->session()->setFoesKilled((unsigned char)(self->session()->foesKilled() + 1));
         }
     }
     }
@@ -485,15 +485,15 @@ Sim_GameTick(Game *self, double dt, double now)
                 if ((unsigned int)pl->moveDir() == 0) {
                     if (self->fixedSounds()->levelCompleted != NULL)
                         (self->fixedSounds()->levelCompleted)->play(false);
-                    if ((unsigned int)self->levelIndex() + 1 == (unsigned int)self->levelCount()) {
+                    if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
                         self->stateRef() = 2;
                         if (self->musicOn() != 0)
                             self->cdThemes()->play(GS_GAME_GAMEOVER);
                         Score_CalculateLevelScore(self, 3);
                         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
                         g_logger.logMessage(1, "GAME: completed at level %d/%d",
-                                           (unsigned int)self->levelIndex() + 1,
-                                           (unsigned int)self->levelCount());
+                                           (unsigned int)self->session()->levelIndex() + 1,
+                                           (unsigned int)self->session()->levelCount());
                     } else {
                         self->stateRef() = 3;
                         self->camera()->setCameraMode(2);
@@ -505,10 +505,10 @@ Sim_GameTick(Game *self, double dt, double now)
                         self->frontEnd()->menu()->setLock(1);
                         self->frontEnd()->menu()->setCursor(0);
                         Score_CalculateLevelScore(self, (char)self->stateRef());
-                        self->setRestartCount(0);
+                        self->session()->setRestartCount(0);
                     }
-                    self->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
-                                            (long double)self->totalPlayTime()));
+                    self->session()->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
+                                            (long double)self->session()->totalPlayTime()));
                 }
             }
         }
@@ -517,7 +517,7 @@ Sim_GameTick(Game *self, double dt, double now)
     // ENTER after a death, or on the game-over tally.
     if (self->stateRef() != 2) {
         if (self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0 && pl->moveState() != 0 && self->stateRef() == 1) {
-            self->setRestartCount((unsigned char)(self->restartCount() + 1));
+            self->session()->setRestartCount((unsigned char)(self->session()->restartCount() + 1));
             int lives = pl->lives();
             int bonus = (int)self->world()->map()->bonus();
             int restart_tail = 1;
@@ -546,17 +546,17 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->frontEnd()->menu()->setCursor(0);
                 self->world()->setTimeElapsed((unsigned int)(self->world()->timeLimit() * 1000));
                 Score_CalculateLevelScore(self, (char)self->stateRef());
-                self->setRestartCount(0);
-                self->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
-                                        (long double)self->totalPlayTime()));
+                self->session()->setRestartCount(0);
+                self->session()->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
+                                        (long double)self->session()->totalPlayTime()));
                 g_logger.logMessage(2, "GAME: game completed %d %d",
-                                   (unsigned int)self->levelIndex(), (unsigned int)self->levelCount());
-                if ((unsigned int)self->levelIndex() == (unsigned int)self->levelCount() - 1) {
+                                   (unsigned int)self->session()->levelIndex(), (unsigned int)self->session()->levelCount());
+                if ((unsigned int)self->session()->levelIndex() == (unsigned int)self->session()->levelCount() - 1) {
                     self->stateRef() = 2;
                     if (self->musicOn() != 0)
                         self->cdThemes()->play(GS_GAME_GAMEOVER);
                 }
-                self->setRestartCount(0);
+                self->session()->setRestartCount(0);
             }
             if (restart_tail) {
                 self->camera()->setCameraDistance(7.0f);
@@ -564,9 +564,9 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
             }
         }
-    } else if (self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0 && self->tallyDone() != 0) {
+    } else if (self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0 && self->session()->tallyDone() != 0) {
         unsigned int r = self->frontEnd()->highScores()->insert(
-            (unsigned int)pl->score(), (unsigned char)(self->levelIndex() + 1));
+            (unsigned int)pl->score(), (unsigned char)(self->session()->levelIndex() + 1));
         if ((unsigned char)r < 0xff) {
             self->stateRef() = 6;
             if (self->musicOn() != 0)
@@ -583,7 +583,7 @@ Sim_GameTick(Game *self, double dt, double now)
             self->frontEnd()->menu()->rewind();
             const char *theme = NULL;
             int setup = 1;
-            if ((unsigned int)self->levelIndex() + 1 == (unsigned int)self->levelCount() &&
+            if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount() &&
                 pl->moveState() == 0) {
                 if (self->field_0c() == 0) {
                     char name[256];
@@ -609,8 +609,8 @@ Sim_GameTick(Game *self, double dt, double now)
                 Sim_SetupLevelObjects(self);
                 self->scriptPlayer()->setRunning(1);
                 self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
-                self->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
-                                        (long double)self->totalPlayTime()));
+                self->session()->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
+                                        (long double)self->session()->totalPlayTime()));
             }
         }
     }
@@ -621,7 +621,7 @@ Sim_GameTick(Game *self, double dt, double now)
         self->stateRef() = 0;
         self->frontEnd()->menu()->rewind();
         const char *theme = NULL;
-        if ((unsigned int)self->levelIndex() + 1 == (unsigned int)self->levelCount()) {
+        if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
             if (self->field_0c() == 0) {
                 char name[256];
                 sprintf(name, GS_GAME_FINAL_DIR, self->gameFileName());
