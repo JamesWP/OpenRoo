@@ -19,14 +19,16 @@
 #include "logger.h"
 #include "image.h"
 #include "gamestr.h"
-#include "game.h"
+#include "world.h"
+#include "camerarig.h"
 #include "levelmap.h"
 #include "levelplacements.h"
 #include "camera.h"
 #include "d3dmath.h"
 
   void  
-Render_ConfigureRenderState(const char *gameDir)
+Render_ConfigureRenderState(const World *level, CameraPose *cam,
+                            const char *gameDir)
 {
     RenderDevice *d3d = g_renderDevice;
 
@@ -45,7 +47,7 @@ Render_ConfigureRenderState(const char *gameDir)
     m4_identity(&world);
     g_worldIdentity = *(Mat4 *)&world;
 
-    const LevelMap *map = Game::instance()->world()->map();
+    const LevelMap *map = level->map();
     const double s = sqrt(52.0);
     const float offY = (float)(6.0f / s) * 255.0f;
     const float offX = (float)(0.0f / s) * 255.0f;
@@ -53,7 +55,6 @@ Render_ConfigureRenderState(const char *gameDir)
     const float x = (float)((float)map->extentU() * 0.5f + offX);
     const float z = (float)((float)(-(int)map->extentV()) * 0.5f + offZ);
 
-    CameraPose *cam = Game::instance()->camera()->pose();
     cam->target()[0] = x;
     cam->target()[1] = offY;
     cam->target()[2] = z;

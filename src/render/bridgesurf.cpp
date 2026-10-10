@@ -3,7 +3,7 @@
  * The deck's texture v scrolls by
  *     f = fmod(t * (double)0.001f / n, 1.0)      n = the deck length
  * so the surface moves along its length over time.  RenderGameFrame calls it
- * once a frame with the Game, the theme block, the Direct3D object and the
+ * once a frame with the bridge set, the theme block, the Direct3D object and the
  * clock in ms.  BridgeObject::buildSurface builds each quad; this file sets
  * the render states and draws.
  *
@@ -19,7 +19,7 @@
  *
  * On a level object, bNoZWrite gates ZWRITEENABLE and bSpecular gates
  * SPECULARENABLE, together with the Highlights video option
- * (Game::videoHighlights()).
+ * (Config::videoHighlights()).
  *
  * PRESERVED, too:
  *   - the vertices are zeroed (diffuse 0xFFFFFFFF) and then every field is

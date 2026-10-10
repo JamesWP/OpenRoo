@@ -11,7 +11,6 @@
 #include "sceneobjects.h"   // SceneQuadVertex: the tile-top quad
  
 
-class Game;
 class RenderDevice;
 struct VertexBuffer;
 struct ThemeAssetBlock;
@@ -53,12 +52,12 @@ public:
 
     /* Releases, counts, allocates and fills the lists, then the wall strips.
      * Called on level entry. */
-    void build(const Game *g, const ThemeAssetBlock *theme);
+    void build(const World *world, const ThemeAssetBlock *theme);
 
-    void drawLifts(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                   double now);
-    void drawPlatforms(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d,
-                    double now);
+    void drawLifts(World *world, CameraPose *pose, Config *config,
+                   ThemeAssetBlock *theme, RenderDevice *d3d, double now);
+    void drawPlatforms(World *world, CameraPose *pose, Config *config,
+                    ThemeAssetBlock *theme, RenderDevice *d3d, double now);
 
     /* Every dword of the tile quad template zero but the diffuse, 0xffffffff.
      * The builder overwrites all four later. */
@@ -94,7 +93,7 @@ public:
     const VertexBuffer *wallStripBuffer(RenderDevice *dev) const;
 
 private:
-    void buildWalls(const Game *g, float depth);
+    void buildWalls(const World *world, float depth);
 
     SceneQuadVertex tileQuad_[4];     // unit quad at y 0, +-0.5
     int             kind01Count_;     // TILE_KIND_01 cells
@@ -122,7 +121,9 @@ private:
  
 extern LevelPlacements g_levelPlacements;
 
-class Game;
+class World;
+class CameraPose;
+class Config;
 class ThemeAssetBlock;
 
 

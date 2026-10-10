@@ -3,7 +3,7 @@
 #pragma once
 
 
-class Game;
+class World;
 class LevelPlacements;
 class ThemeObjectTypeSlot;
 class RenderDevice;
@@ -13,7 +13,7 @@ class RenderDevice;
  * with its owner; `debrisMs` scales the explode debris' advance, and every
  * call site passes 0. */
   void  
-Shadows_DrawObjectShadows(Game *game, LevelPlacements *placements,
+Shadows_DrawObjectShadows(World *world, LevelPlacements *placements,
                           const float *pos, const float *rot, unsigned int count,
                           ThemeObjectTypeSlot *slot, RenderDevice *d3d, double t,
                           float phase, unsigned int animKey, unsigned int debrisMs);

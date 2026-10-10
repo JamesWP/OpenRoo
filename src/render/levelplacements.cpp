@@ -26,7 +26,7 @@
 #include <new>
 #include "levelplacements.h"
 #include "renderdevice.h"
-#include "game.h"
+#include "world.h"
 #include "levelmap.h"
 #include "tile.h"
 #include "theme.h"
@@ -155,11 +155,11 @@ static void close_run(RunSlot *slot, std::vector<Run> *list)
     }
 }
 
-void LevelPlacements::buildWalls(const Game *g, float depth)
+void LevelPlacements::buildWalls(const World *world, float depth)
 {
     std::vector<Run> lists[4];  // row -v, row +v, column -u, column +u
     RunSlot a = { false, {{0}} }, b = { false, {{0}} };
-    const LevelMap *map = g->world()->map();
+    const LevelMap *map = world->map();
     const unsigned V = map->extentV(), U = map->extentU();
 
     for (unsigned L = 0; L < 0x100; ++L) {
@@ -270,12 +270,12 @@ void PlacementList::put(unsigned *next, float x, float y, float z, float yaw)
     ++*next;
 }
 
-void LevelPlacements::build(const Game *g,
+void LevelPlacements::build(const World *world,
                       const ThemeAssetBlock *theme)
 {
     release();
 
-    const LevelMap *map = g->world()->map();
+    const LevelMap *map = world->map();
     const unsigned V = map->extentV(), U = map->extentU();
 
     // Pass 1: count.
@@ -296,7 +296,7 @@ void LevelPlacements::build(const Game *g,
             if (k >= TILE_STAIRS_1 && k <= TILE_STAIRS_4) ++stairs_.count_;
             if (k == TILE_PLATFORM_TRACK)  ++trackCells;  // see the top of the file
         }
-    platforms_.count_ = g->world()->platformCount();
+    platforms_.count_ = world->platformCount();
 
     if (diag_on())
         g_logger.write("levelplacements: platformCount=%d, platform-track cells=%u%s\n",
@@ -390,7 +390,7 @@ void LevelPlacements::build(const Game *g,
                 }
             }
 
-    buildWalls(g, theme->sideHeight());
+    buildWalls(world, theme->sideHeight());
 }
 
 /* Every dword of the tile quad template zero but the diffuse, 0xffffffff.
@@ -404,26 +404,26 @@ LevelPlacements::LevelPlacements()
 
 /* The lift and platform passes.  Counts compare unsigned.  The block itself is
  * handed the scene renderer its quad. */
-void LevelPlacements::drawLifts(Game *g, ThemeAssetBlock *theme,
-                          RenderDevice *d3d, double now)
+void LevelPlacements::drawLifts(World *world, CameraPose *pose, Config *config,
+                          ThemeAssetBlock *theme, RenderDevice *d3d, double now)
 {
     for (unsigned int i = 0; i < (unsigned int)lifts_.count_; i++) {
-        const LiftObject *lift = g->world()->liftSlot(i);
+        const LiftObject *lift = world->liftSlot(i);
         lifts_.pos_[i][0] = lift->posU();
         lifts_.pos_[i][1] = lift->height();
         lifts_.pos_[i][2] = -lift->posV();
     }
-    Scene_RenderSceneObjects(g, tileQuad_,
+    Scene_RenderSceneObjects(world, pose, config, tileQuad_,
                              (const Vec3 *)lifts_.pos_.get(), (const Vec3 *)lifts_.rot_.get(),
                              lifts_.count_, theme->slot(THEME_OBJ_ELEVATOR),
                              d3d, now, 0.0f, 0, 0);
 }
 
-void LevelPlacements::drawPlatforms(Game *g, ThemeAssetBlock *theme,
-                           RenderDevice *d3d, double now)
+void LevelPlacements::drawPlatforms(World *world, CameraPose *pose, Config *config,
+                           ThemeAssetBlock *theme, RenderDevice *d3d, double now)
 {
     for (unsigned int i = 0; i < (unsigned int)platforms_.count_; i++) {
-        const PlatformObject *platform = g->world()->platformSlot(i);
+        const PlatformObject *platform = world->platformSlot(i);
         platforms_.pos_[i][0] = platform->posU();
         platforms_.pos_[i][1] = platform->posY();
         platforms_.pos_[i][2] = -platform->posV();
@@ -431,7 +431,7 @@ void LevelPlacements::drawPlatforms(Game *g, ThemeAssetBlock *theme,
             platforms_.rot_[i][1] = 1.5707963705062866f;  // pi/2 as a float
     }
     float animTime = (float)fmod(now * (double)0.002f, 1.0);
-    Scene_RenderSceneObjects(g, tileQuad_,
+    Scene_RenderSceneObjects(world, pose, config, tileQuad_,
                              (const Vec3 *)platforms_.pos_.get(), (const Vec3 *)platforms_.rot_.get(),
                              platforms_.count_, theme->slot(THEME_OBJ_PLATFORM),
                              d3d, now, animTime, 0x14, 0);

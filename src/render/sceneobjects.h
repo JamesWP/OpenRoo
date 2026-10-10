@@ -2,7 +2,7 @@
  * through: models (kind 1), quads (kind 2) and billboards (kind 3).
  *
  *  , twelve dwords (the callers ADD ESP,0x30):
- *   game, quad (four FVF 0x242 vertices the caller owns; kind 2 animates
+ *   world, pose, config, quad (four FVF 0x242 vertices the caller owns; kind 2 animates
  *   and draws them), positions[count], rotations[count], count, the theme
  *   slot, the Direct3D, now (a double), the animation time (a float), the
  *   animation code, and the frame's elapsed ms (unsigned).
@@ -11,7 +11,9 @@
 #include <stdint.h>
 #include "vecmath.h"
 
-class Game;
+class World;
+class CameraPose;
+class Config;
 class ThemeObjectTypeSlot;
 class RenderDevice;
 
@@ -26,7 +28,8 @@ struct SceneQuadVertex {                  /* naturally aligned; no packing neede
 };
 
   void  
-Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *positions,
+Scene_RenderSceneObjects(World *world, CameraPose *pose, Config *config,
+                         SceneQuadVertex *quad, const Vec3 *positions,
                          const Vec3 *rotations, unsigned int count,
                          ThemeObjectTypeSlot *slot, RenderDevice *d3d, double now,
                          float animTime, unsigned int animCode, unsigned int dtMs);

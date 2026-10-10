@@ -28,7 +28,9 @@
 
 #include "sceneobjects.h"
 #include "scenequad.h"
-#include "game.h"
+#include "world.h"
+#include "camerarig.h"
+#include "config.h"
 #include "config.h"
 #include "levelmap.h"
 #include "tile.h"
@@ -122,7 +124,7 @@ static unsigned int anim_frame(ThemeLevelObject *rec, double now, float animTime
     return (unsigned int)(long long)v;
 }
 
-static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
+static void draw_model(Config *config, ThemeLevelObject *rec, SceneSubObject *sub,
                        const Tile *tile, const Vec3 *pos, const Vec3 *rot,
                        RenderDevice *dev, double now, float animTime,
                        unsigned int animCode, unsigned int dtMs)
@@ -180,7 +182,7 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
         rec->uvAnimator().applySineWave((unsigned int)(long long)now, p[0], p[1], p[2]);
         break;
     case 5:
-        if (!game->config()->videoReflection())
+        if (!config->videoReflection())
             return;
         rec->uvAnimator().updateObjectTransform(dev, (unsigned short)frame);
         break;
@@ -339,18 +341,18 @@ static void draw_quad(SceneQuadVertex *q, SceneSubObject *sub, const Vec3 *pos,
 }
 
   void  
-Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *positions,
+Scene_RenderSceneObjects(World *world, CameraPose *pose, Config *config,
+                         SceneQuadVertex *quad, const Vec3 *positions,
                          const Vec3 *rotations, unsigned int count,
                          ThemeObjectTypeSlot *slot, RenderDevice *d3d, double now,
                          float animTime, unsigned int animCode, unsigned int dtMs)
 {
-    Config *cfg = game->config();
-    const Player *pl = game->world()->player();
+    const Player *pl = world->player();
 
     for (unsigned int i = 0; i < slot->instanceCount(); i++) {
         ThemeLevelObject *rec = &slot->records()[i];
         RenderDevice *dev = d3d;
-        if (rec->specular() && cfg->videoHighlights())
+        if (rec->specular() && config->videoHighlights())
             dev->SetSpecular(true);
         {
             DepthState depth = dev->depth();
@@ -360,14 +362,14 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
 
         for (unsigned int s = 0; s < rec->subObjectCount(); s++) {
             SceneSubObject *sub = &rec->subObjects()[s];
-            if (sub->effect == 5 && !cfg->videoReflection())
+            if (sub->effect == 5 && !config->videoReflection())
                 continue;
             const AddressMode addr = addressFromTheme(sub->dwTexAddress);
             d3d->SetSamplerAddress(0, addr, addr);
 
             for (unsigned int k = 0; k < count; k++) {
                 const Vec3 *pos = &positions[k];
-                const Tile *tile = game->world()->map()->tile((int)pos->x, -(int)pos->z);
+                const Tile *tile = world->map()->tile((int)pos->x, -(int)pos->z);
                 if (!gate_passes(sub->dwVisibilityGate, tile, pl))
                     continue;
 
@@ -377,11 +379,11 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
 
                 switch (rec->kind()) {
                 case KIND_MODEL:
-                    draw_model(game, rec, sub, tile, pos, &rotations[k], dev,
+                    draw_model(config, rec, sub, tile, pos, &rotations[k], dev,
                                now, animTime, animCode, dtMs);
                     break;
                 case KIND_BILLBOARD:
-                    draw_billboard(rec, tile, pos, game->camera()->pose(), dev, now);
+                    draw_billboard(rec, tile, pos, pose, dev, now);
                     break;
                 case KIND_QUAD:
                     draw_quad(quad, sub, pos, dev, now);

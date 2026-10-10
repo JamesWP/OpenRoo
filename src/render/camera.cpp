@@ -33,7 +33,7 @@
 #include "camera.h"
 #include "vecmath.h"
 #include "renderdevice.h"
-#include "game.h"
+#include "world.h"
 #include "camerarig.h"
 #include "config.h"
 #include "levelmap.h"
@@ -106,10 +106,10 @@ Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
     return out;
 }
 
-void Camera_UpdateViewTransform(RenderDevice *d3d, Game *g,
-                           CameraFocus focus, double dt)
+void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *camera,
+                           const Config *config, CameraFocus focus, double dt)
 {
-    CameraPose &p = *g->camera()->pose();
+    CameraPose &p = *camera->pose();
     const float dtf = (float)dt;
 
     /* 1. target */
@@ -119,7 +119,7 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, Game *g,
                              + p.target()[1]);
 
     /* 2. yaw */
-    if (g->camera()->cameraMode() == 0 && g->config()->cameraTurnsWithPlayer() == 1) {
+    if (camera->cameraMode() == 0 && config->cameraTurnsWithPlayer() == 1) {
         double y = fmod((double)p.yaw(), K_YAW_WRAP);
         p.setYaw((y < 0.0) ? (float)(y + K_TWO_PI) : (float)y);
         double diff = (double)focus.f[5] - p.yaw();
@@ -135,7 +135,7 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, Game *g,
     double dy = (double)p.target()[1] - p.eye()[1];
     double dz = (double)p.target()[2] - p.eye()[2];
     double len = sqrt((dx * dx + dz * dz) + dy * dy);
-    double dist = (g->camera()->cameraDistance() - len) * dtf * K_EASE_RATE + len;
+    double dist = (camera->cameraDistance() - len) * dtf * K_EASE_RATE + len;
     if (dist < 0.0 || dist != dist)
         dist = K_DIST_MIN;
     else if (dist > K_DIST_MAX)
@@ -143,15 +143,15 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, Game *g,
     const float negdist = (float)-dist;
 
     /* 4. pitch target, and the occlusion probe */
-    const float tilt = g->config()->activeCameraPitch();
+    const float tilt = config->activeCameraPitch();
     Vec3 probe = orbit_offset((float)(tilt * K_NEG_DEG), p.yaw(), negdist);
     float pitchTarget = (float)(tilt * K_DEG);
 
-    if (g->camera()->cameraMode() == 0) {
+    if (camera->cameraMode() == 0) {
         const float ey = p.eye()[1];
         if (ey > 0.0f && ey < K_EYE_CEIL) {
-            LevelMap *map = g->world()->map();
-            unsigned i = (unsigned)((int)g->world()->player()->heightCell() + 1);
+            LevelMap *map = world->map();
+            unsigned i = (unsigned)((int)world->player()->heightCell() + 1);
             /* ey + 1 is summed in double before the truncation:
              * a float sum could round across an integer and move the bound. */
             while (i < (unsigned)(int)((double)ey + 1.0)) {
@@ -166,7 +166,7 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, Game *g,
                             const Tile *t = map->tile((int)cu, (int)cv);
                             if (t->objectMarker() != 0 &&
                                 (t->height() == i || t->height() == i + 1)) {
-                                if (g->world()->player()->onStairOrSlide() == 0)
+                                if (world->player()->onStairOrSlide() == 0)
                                     pitchTarget = K_PITCH_MAX;
                                 i = 2000;       /* ends the scan */
                             }
