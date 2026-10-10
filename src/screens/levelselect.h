@@ -9,7 +9,8 @@
  * their name in JJ.GAM ("Forest\Start" is Forest). */
 #pragma once
 
-class Game;
+class FrontEnd;
+class Session;
 
 static const unsigned char LS_THEME_NODE = 0x60;  // 0x60 .. 0x6f
 static const int           LS_MAX_THEMES = 16;
@@ -24,11 +25,11 @@ bool LevelSelect_IsThemeNode(unsigned char node);
 /* Called with the right and left polls the keypress handler already makes (dir
  * +1 or -1): from node 2, right opens the page of the last-played level's
  * theme; on a theme page, either moves to the next or previous theme. */
-void LevelSelect_Turn(Game *g, int dir);
+void LevelSelect_Turn(FrontEnd *frontEnd, Session *session, int dir);
 
 /* At LS_START: pops back to the theme page and returns the JJ.GAM index of the
  * row Enter was pressed on. */
-int LevelSelect_Chosen(Game *g);
+int LevelSelect_Chosen(FrontEnd *frontEnd, Session *session);
 
 /* What the page draws: the theme's name, the visible window of its levels, and
  * the selected row's place in that window. */
@@ -38,4 +39,4 @@ struct LevelSelectView {
     const char *rows[LEVELSELECT_ROWS];
     int         selected;
 };
-void LevelSelect_View(Game *g, LevelSelectView *v);
+void LevelSelect_View(const FrontEnd *frontEnd, Session *session, LevelSelectView *v);
