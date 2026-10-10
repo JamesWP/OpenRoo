@@ -23,8 +23,8 @@ ui
 camera
 level
 entities
-game
 render
+game
 screens
 core
 debugui

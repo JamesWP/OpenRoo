@@ -13,7 +13,8 @@
 #include <math.h>
 #include "framepose.h"
 #include "camera.h"
-#include "game.h"
+#include "world.h"
+#include "camerarig.h"
 #include "config.h"
 #include "player.h"
 #include "foe.h"
@@ -41,9 +42,9 @@ static bool stepping(const MovableEntity *e)
     return e->moveDir() != 0 || e->anim() >= 0xfa;
 }
 
-static float step_fraction(Game *g, const MovableEntity *e)
+static float step_fraction(World *world, const MovableEntity *e)
 {
-    return (float)((*g->world()->clock() - e->animStart()) / e->animDuration());
+    return (float)((*world->clock() - e->animStart()) / e->animDuration());
 }
 
 /* The turn term, applied only past moveDir 10. */
@@ -68,23 +69,24 @@ static float wrap(double v)
  
 
   void  
-FramePose_Player(Game *g, double , double dt, CameraFocus *out)
+FramePose_Player(World *world, const CameraRig *camera, const Config *config,
+                 double , double dt, CameraFocus *out)
 {
-    const Player *p = g->world()->player();
+    const Player *p = world->player();
     float *f = out->f;
 
     f[0] = 0.0f;
     facing_angle(p->facing(), &f[1]);
 
-    const unsigned char mode = g->camera()->cameraMode();
+    const unsigned char mode = camera->cameraMode();
     if (mode == 2) {
         f[5] = wrap(dt * K_SPIN + f[5]);
     } else if (mode == 0) {
         if (stepping(p)) {
-            f[0] = step_fraction(g, p);
+            f[0] = step_fraction(world, p);
             f[1] = turned(p, f[1], f[0]);
         }
-        const Config *c = g->config();
+        const Config *c = config;
         if (c->cameraTurnsWithPlayer() == 1) {
             if (p->gliding() != 0)
                 f[5] = f[1];
@@ -103,24 +105,24 @@ FramePose_Player(Game *g, double , double dt, CameraFocus *out)
     if (mode == 0) {
         f[6] = f[2];  f[7] = f[3];  f[8] = f[4];
     } else {
-        f[6] = g->camera()->cameraEye(0);
-        f[7] = g->camera()->cameraEye(1);
-        f[8] = -g->camera()->cameraEye(2);
+        f[6] = camera->cameraEye(0);
+        f[7] = camera->cameraEye(1);
+        f[8] = -camera->cameraEye(2);
     }
 }
 
   void  
-FramePose_Foes(Game *g, double , double , FoePose *out)
+FramePose_Foes(World *world, double , double , FoePose *out)
 {
-    const unsigned n = g->world()->foeCount();
+    const unsigned n = world->foeCount();
     for (unsigned i = 0; i < n; i++) {
-        const Foe *e = g->world()->foeSlot(g->world()->foeId(i));
+        const Foe *e = world->foeSlot(world->foeId(i));
         FoePose *r = &out[i];
 
         float angle = 0.0f;
         facing_angle(e->facing(), &angle);
         if (stepping(e)) {
-            float frac = step_fraction(g, e);
+            float frac = step_fraction(world, e);
             r->setStepFrac(frac);
             angle = turned(e, angle, frac);
         }

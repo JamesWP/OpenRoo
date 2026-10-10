@@ -302,7 +302,7 @@ int Main_WinMain(const char *lpCmdLine)
 
     g_cdAudio.setWindowHandle(hWnd);
     window.show(true);
-    Render_ConfigureRenderState(kGameDir);
+    Render_ConfigureRenderState(game->world(), game->camera()->pose(), kGameDir);
     Menu_BuildMenuGeometry(g_renderDevice, kGameDir);
     hooks_ClockInit();
 

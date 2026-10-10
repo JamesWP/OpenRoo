@@ -7,7 +7,9 @@
 
  
 
-class Game;
+class World;
+class CameraRig;
+class Config;
 struct CameraFocus;
 
 /* One foe's pose, 0x1d bytes. */
@@ -51,6 +53,7 @@ extern FoePose g_foePoses[500];
 
  
   void  
-FramePose_Player(Game *g, double t, double dt, CameraFocus *out);
+FramePose_Player(World *world, const CameraRig *camera, const Config *config,
+                 double t, double dt, CameraFocus *out);
   void  
-FramePose_Foes(Game *g, double t, double dt, FoePose *out);
+FramePose_Foes(World *world, double t, double dt, FoePose *out);

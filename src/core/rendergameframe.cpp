@@ -158,18 +158,19 @@ static const char *const OBJECT_NAMES[THEME_OBJ_COUNT] = {
     "protection", "protection fx", "bridge",
 };
 
-static void rso(const void *pos, const void *rot, unsigned count, ThemeObjectType t,
+static void rso(Game *g, const void *pos, const void *rot, unsigned count, ThemeObjectType t,
                 double now, float animTime = 0.0f, unsigned animCode = 0,
                 unsigned dtMs = 0)
 {
-    Scene_RenderSceneObjects(Game::instance(), g_levelPlacements.tileQuad(),
+    Scene_RenderSceneObjects(g->world(), g->camera()->pose(), g->config(),
+                             g_levelPlacements.tileQuad(),
                              (const Vec3 *)pos, (const Vec3 *)rot, count, slot(t),
                              g_renderDevice, now, animTime, animCode, dtMs);
 }
 
-static void rso_list(const PlacementList &l, ThemeObjectType t, double now)
+static void rso_list(Game *g, const PlacementList &l, ThemeObjectType t, double now)
 {
-    rso(l.pos(), l.rot(), l.count(), t, now);
+    rso(g, l.pos(), l.rot(), l.count(), t, now);
 }
 
 /* The dying variant of a model: its fx slot's records each light their
@@ -261,23 +262,23 @@ static void opaque_passes(Game *g, double now, double elapsed)
         PROF_SCOPE("level mesh");
         MeshBatch_Draw(pl, &g_themeBlock, d3d);
     }
-    rso_list(pl->switches(),    THEME_OBJ_SWITCH,        now);
-    rso_list(pl->ice(),   THEME_OBJ_ICE,           now);
-    rso_list(pl->sticky(),        THEME_OBJ_GLUE,          now);
-    rso_list(pl->falling(),  THEME_OBJ_DESTRUCTFIELD, now);
+    rso_list(g, pl->switches(),    THEME_OBJ_SWITCH,        now);
+    rso_list(g, pl->ice(),   THEME_OBJ_ICE,           now);
+    rso_list(g, pl->sticky(),        THEME_OBJ_GLUE,          now);
+    rso_list(g, pl->falling(),  THEME_OBJ_DESTRUCTFIELD, now);
     /* the jump pads animate: a 500 ms cycle, animation code 0x14 */
-    rso(pl->jumpPads().pos(), pl->jumpPads().rot(), pl->jumpPads().count(), THEME_OBJ_JUMPPAD, now,
+    rso(g, pl->jumpPads().pos(), pl->jumpPads().rot(), pl->jumpPads().count(), THEME_OBJ_JUMPPAD, now,
         (float)fmod(now * 0.002, 1.0), 0x14, 0);
-    rso_list(pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
+    rso_list(g, pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
 
     {
         PROF_SCOPE("tile quads");
         QuadBatch_Draw(pl, &g_themeBlock, d3d);
     }
 
-    rso_list(pl->stairs(),      THEME_OBJ_STAIR,         now);
-    pl->drawLifts(g, &g_themeBlock, d3d, now);
-    pl->drawPlatforms(g, &g_themeBlock, d3d, now);
+    rso_list(g, pl->stairs(),      THEME_OBJ_STAIR,         now);
+    pl->drawLifts(g->world(), g->camera()->pose(), g->config(), &g_themeBlock, d3d, now);
+    pl->drawPlatforms(g->world(), g->camera()->pose(), g->config(), &g_themeBlock, d3d, now);
 
     /* The bombable blocks: whole, or (while the cell's field203 is set)
      * the fx model, starting the debris on the cell's field20f latch.  Only
@@ -290,7 +291,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
         const int v = (unsigned char)(int)(pos[2] * -1.0f);
         Tile *t = g->world()->map()->tile((unsigned char)(int)pos[0], v);
         if (t->field203() == 0) {
-            rso(pos, rot, 1, THEME_OBJ_OBSTACLE, now);
+            rso(g, pos, rot, 1, THEME_OBJ_OBSTACLE, now);
             continue;
         }
         ThemeObjectTypeSlot *fx = slot(THEME_OBJ_OBSTACLEFX);
@@ -302,10 +303,10 @@ static void opaque_passes(Game *g, double now, double elapsed)
         if (t->field20f())
             t->setField20f(0);
         if (firstFx) {
-            rso(pos, rot, 1, THEME_OBJ_OBSTACLEFX, now, 0.0f, 0, (unsigned)(int)elapsed);
+            rso(g, pos, rot, 1, THEME_OBJ_OBSTACLEFX, now, 0.0f, 0, (unsigned)(int)elapsed);
             firstFx = false;
         } else {
-            rso(pos, rot, 1, THEME_OBJ_OBSTACLEFX, now);
+            rso(g, pos, rot, 1, THEME_OBJ_OBSTACLEFX, now);
         }
     }
 
@@ -313,11 +314,11 @@ static void opaque_passes(Game *g, double now, double elapsed)
      * its animation time; the animation code is its anim byte. */
     CameraFocus *focus = &g_cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
-    rso(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
+    rso(g, &focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
         g->world()->player()->anim(), 0);
 
-    rso_list(pl->slides(), THEME_OBJ_SLIDE, now);
-    rso(pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now);
+    rso_list(g, pl->slides(), THEME_OBJ_SLIDE, now);
+    rso(g, pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now);
 
     /* The items, cell by cell. */
     {
@@ -332,7 +333,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
                 float pos[3] = { (float)u, (float)t->height(), -(float)v };
                 float rot[3] = { 0.0f, 0.0f, 0.0f };
                 PROF_SCOPE(OBJECT_NAMES[ty]);
-                rso(pos, rot, 1, ty, now);
+                rso(g, pos, rot, 1, ty, now);
             }
     }
 
@@ -345,11 +346,11 @@ static void opaque_passes(Game *g, double now, double elapsed)
             float rot[3] = { 0.0f, 0.0f, 0.0f };
             PROF_SCOPE(OBJECT_NAMES[b->dyingStarted() == 0 ? THEME_OBJ_BOMB : THEME_OBJ_EXPLOSION]);
             if (b->dyingStarted() == 0) {
-                rso(pos, rot, 1, THEME_OBJ_BOMB, now);
+                rso(g, pos, rot, 1, THEME_OBJ_BOMB, now);
                 continue;
             }
             arm_fx_records(slot(THEME_OBJ_EXPLOSION), b);
-            rso(pos, rot, 1, THEME_OBJ_EXPLOSION, now, 0.0f, 0, (unsigned)(int)elapsed);
+            rso(g, pos, rot, 1, THEME_OBJ_EXPLOSION, now, 0.0f, 0, (unsigned)(int)elapsed);
         }
     }
 
@@ -365,21 +366,21 @@ static void opaque_passes(Game *g, double now, double elapsed)
                 continue;
             PROF_SCOPE(OBJECT_NAMES[ty]);
             if (!dying) {
-                rso(p->pos(), p->rot(), 1, ty, now, p->stepFrac(), f->anim(), 0);
+                rso(g, p->pos(), p->rot(), 1, ty, now, p->stepFrac(), f->anim(), 0);
                 continue;
             }
             arm_fx_records(slot(ty), f);
-            rso(p->pos(), p->rot(), 1, ty, now, 0.0f, 0, (unsigned)(int)elapsed);
+            rso(g, p->pos(), p->rot(), 1, ty, now, 0.0f, 0, (unsigned)(int)elapsed);
         }
     }
 }
 
 /* ─── Section 4: scene objects, bridges, effects, shadows ───────────────── */
 
-static void shadow(const void *pos, const void *rot, ThemeObjectType t, double now,
+static void shadow(Game *g, const void *pos, const void *rot, ThemeObjectType t, double now,
                    float phase, unsigned animKey)
 {
-    Shadows_DrawObjectShadows(Game::instance(), &g_levelPlacements,
+    Shadows_DrawObjectShadows(g->world(), &g_levelPlacements,
                               (const float *)pos, (const float *)rot, 1, slot(t),
                               g_renderDevice, now, phase, animKey, 0);
 }
@@ -389,7 +390,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
     RenderDevice *d3d = g_renderDevice;
     uint32_t dtBits[2];
     memcpy(dtBits, &dt, sizeof dt);
-    Scene_DrawSceneObjects(d3d, g->camera()->pose()->eye(), dtBits[0], dtBits[1], now);
+    Scene_DrawSceneObjects(d3d, g->world(), g->camera()->pose()->eye(), dtBits[0], dtBits[1], now);
     set_stencil_enable(false);
     BridgeSurf_Draw({g->world()->bridgeSlots(), g->world()->bridgeCount(), g->videoHighlights() != 0},
                     &g_themeBlock, d3d, now);
@@ -398,9 +399,9 @@ static void effects_and_shadows(Game *g, double now, double dt)
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
     Player *pl = g->world()->player();
     if (pl->effectDActive() != 0 && pl->anim() != 10)
-        rso(&focus->f[2], playerRot, 1, THEME_OBJ_PROTECTIONFX, now);
+        rso(g, &focus->f[2], playerRot, 1, THEME_OBJ_PROTECTIONFX, now);
     if (pl->anim() == 5)
-        rso(&focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now);
+        rso(g, &focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now);
 
     {
         PROF_SCOPE("shadows");
@@ -417,7 +418,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
             d3d->SetStencil(st);
 
             if (pl->anim() != 10)
-                shadow(&focus->f[2], playerRot, THEME_OBJ_JOHN, now, focus->f[0], pl->anim());
+                shadow(g, &focus->f[2], playerRot, THEME_OBJ_JOHN, now, focus->f[0], pl->anim());
 
             for (unsigned char i = 0; i < g->world()->foeCount(); ++i) {
                 Foe *f = g->world()->foeSlot(g->world()->foeId(i));
@@ -425,7 +426,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
                 ThemeObjectType ty;
                 if (f->dyingStarted() != 0 || !foe_slot(p->kind(), false, &ty))
                     continue;
-                shadow(p->pos(), p->rot(), ty, now, p->stepFrac(), f->anim());
+                shadow(g, p->pos(), p->rot(), ty, now, p->stepFrac(), f->anim());
             }
 
             /* Setting 2 and up also shadows the items. */
@@ -439,7 +440,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
                             continue;
                         float pos[3] = { (float)u, (float)t->height(), -(float)v };
                         float rot[3] = { 0.0f, 0.0f, 0.0f };
-                        shadow(pos, rot, ty, now, 0.0f, 0);
+                        shadow(g, pos, rot, ty, now, 0.0f, 0);
                     }
             }
             set_stencil_enable(false);
@@ -450,20 +451,20 @@ static void effects_and_shadows(Game *g, double now, double dt)
 
 /* ─── Section 5: the translucent passes ─────────────────────────────────── */
 
-static void particles(const void *pos, const void *rot, unsigned count, ThemeObjectType t,
+static void particles(Game *g, const void *pos, const void *rot, unsigned count, ThemeObjectType t,
                       double now, double elapsed)
 {
     if (count == 0)
         return;
     PROF_SCOPE(OBJECT_NAMES[t]);
-    Theme_DrawParticleObjects(Game::instance(), &g_levelPlacements,
+    Theme_DrawParticleObjects(g->world(), g->camera()->pose(), g->config(), &g_levelPlacements,
                               (const float (*)[3])pos, (const float (*)[3])rot, count,
                               slot(t), g_renderDevice, now, elapsed, 0);
 }
 
-static void particles_list(const PlacementList &l, ThemeObjectType t, double now, double elapsed)
+static void particles_list(Game *g, const PlacementList &l, ThemeObjectType t, double now, double elapsed)
 {
-    particles(l.pos(), l.rot(), l.count(), t, now, elapsed);
+    particles(g, l.pos(), l.rot(), l.count(), t, now, elapsed);
 }
 
 /* A burst system is a slot whose first record is a particle-system object:
@@ -554,24 +555,24 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
     if (g->videoParticles() != 0) {
         PROF_SCOPE("particles");
-        particles(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, elapsed);
-        particles_list(pl->switches(),      THEME_OBJ_SWITCH,        now, elapsed);
-        particles_list(pl->bombables(), THEME_OBJ_OBSTACLE,      now, elapsed);
-        particles_list(pl->stairs(),        THEME_OBJ_STAIR,         now, elapsed);
-        particles_list(pl->ice(),     THEME_OBJ_ICE,           now, elapsed);
-        particles_list(pl->sticky(),          THEME_OBJ_GLUE,          now, elapsed);
-        particles_list(pl->falling(),    THEME_OBJ_DESTRUCTFIELD, now, elapsed);
-        particles_list(pl->jumpPads(),      THEME_OBJ_JUMPPAD,       now, elapsed);
-        particles_list(pl->teleporters(),   THEME_OBJ_TELEPORTER,    now, elapsed);
-        particles(pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now, elapsed);
-        particles_list(pl->slides(),        THEME_OBJ_SLIDE,         now, elapsed);
+        particles(g, &focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, elapsed);
+        particles_list(g, pl->switches(),      THEME_OBJ_SWITCH,        now, elapsed);
+        particles_list(g, pl->bombables(), THEME_OBJ_OBSTACLE,      now, elapsed);
+        particles_list(g, pl->stairs(),        THEME_OBJ_STAIR,         now, elapsed);
+        particles_list(g, pl->ice(),     THEME_OBJ_ICE,           now, elapsed);
+        particles_list(g, pl->sticky(),          THEME_OBJ_GLUE,          now, elapsed);
+        particles_list(g, pl->falling(),    THEME_OBJ_DESTRUCTFIELD, now, elapsed);
+        particles_list(g, pl->jumpPads(),      THEME_OBJ_JUMPPAD,       now, elapsed);
+        particles_list(g, pl->teleporters(),   THEME_OBJ_TELEPORTER,    now, elapsed);
+        particles(g, pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now, elapsed);
+        particles_list(g, pl->slides(),        THEME_OBJ_SLIDE,         now, elapsed);
 
         for (unsigned char i = 0; i < g->world()->foeCount(); ++i) {
             Foe *f = g->world()->foeSlot(g->world()->foeId(i));
             FoePose *p = &g_foePoses[i];
             ThemeObjectType ty;
             if (foe_slot(p->kind(), f->dyingStarted() != 0, &ty))
-                particles(p->pos(), p->rot(), 1, ty, now, elapsed);
+                particles(g, p->pos(), p->rot(), 1, ty, now, elapsed);
         }
 
         /* Bombs: the fuse's effects, then the explosion's 2 s after the drop.
@@ -581,7 +582,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
             float pos[3] = { b->posU(), b->posY(), -b->posV() };
             float rot[3] = { 0.0f, 0.0f, 0.0f };
             const bool late = *g->world()->clock() - b->droppedAt() > 2000.0;
-            particles(pos, rot, 1, late ? THEME_OBJ_EXPLOSION : THEME_OBJ_BOMB, now, elapsed);
+            particles(g, pos, rot, 1, late ? THEME_OBJ_EXPLOSION : THEME_OBJ_BOMB, now, elapsed);
         }
 
         /* A falling tile that fell this tick spawns a destruct-field burst on
@@ -689,9 +690,9 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
     Player *player = g->world()->player();
     if (player->effectDActive() != 0 && player->anim() != 10)
-        particles(&focus->f[2], playerRot, 1, THEME_OBJ_PROTECTIONFX, now, elapsed);
+        particles(g, &focus->f[2], playerRot, 1, THEME_OBJ_PROTECTIONFX, now, elapsed);
     if (player->anim() == 5)
-        particles(&focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now, elapsed);
+        particles(g, &focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now, elapsed);
 }
 
 /* ─── Section 6: the HUD, the menus, present ───────────────────────────── */
@@ -1033,13 +1034,14 @@ Render_RenderGameFrame(void)
             return;
         {
             PROF_SCOPE("poses");
-            FramePose_Player(g, now, dt, &g_cameraFocus);
-            FramePose_Foes(g, now, dt, g_foePoses);
+            FramePose_Player(g->world(), g->camera(), g->config(), now, dt, &g_cameraFocus);
+            FramePose_Foes(g->world(), now, dt, g_foePoses);
         }
         {
             PROF_SCOPE("camera");
             if (g->scriptPlayer()->splineActive() == 0)
-                Camera_UpdateViewTransform(g_renderDevice, g, g_cameraFocus, dt);
+                Camera_UpdateViewTransform(g_renderDevice, g->world(), g->camera(), g->config(),
+                                           g_cameraFocus, dt);
             else
                 scripted_camera(g, g_renderDevice);
         }

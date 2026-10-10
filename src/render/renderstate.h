@@ -2,6 +2,8 @@
 #pragma once
 
 struct Image;
+class World;
+class CameraPose;
 
 /* The loading screen: bitmaps\<map>.bmp is loaded into the first; the second
  * is shown when that fails. */
@@ -19,4 +21,5 @@ extern char g_levelTitle[128];
 extern double g_lastTickMs;
 
 /* Called once, by WinMain at startup. */
-  void   Render_ConfigureRenderState(const char *gameDir);
+  void   Render_ConfigureRenderState(const World *level, CameraPose *cam,
+                                     const char *gameDir);

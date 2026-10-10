@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <math.h>
 #include "objectshadows.h"
-#include "game.h"
+#include "world.h"
 #include "player.h"
 #include "levelmap.h"
 #include "tile.h"
@@ -32,9 +32,9 @@ static void compose(Mat4 *d, const Mat4 *left, const Mat4 *right)
     m4_mul(d, right, left);
 }
 
-static bool condition_holds(uint32_t gate, const Game *g, const Tile *cell)
+static bool condition_holds(uint32_t gate, const World *world, const Tile *cell)
 {
-    const Player *p = g->world()->player();
+    const Player *p = world->player();
     switch (gate) {
     case 0:  return true;
     case 1:  return cell->busy() != 0;
@@ -81,7 +81,7 @@ static int animation_frame(ThemeLevelObject *rec, double t, float phase,
 }
 
   void  
-Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
+Shadows_DrawObjectShadows(World *world, LevelPlacements *,
                           const float *pos, const float *rot, unsigned int count,
                           ThemeObjectTypeSlot *slot, RenderDevice *d3d, double t,
                           float phase, unsigned int animKey, unsigned int debrisMs)
@@ -102,9 +102,9 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                 const float *p = pos + k * 3;
                 const float *r = rot + k * 3;
                 int u = (int)p[0], v = -(int)p[2];
-                const Tile *cell = game->world()->map()->tile(u, v);
+                const Tile *cell = world->map()->tile(u, v);
 
-                if (!condition_holds(rec->subObjects()[s].dwVisibilityGate, game, cell))
+                if (!condition_holds(rec->subObjects()[s].dwVisibilityGate, world, cell))
                     continue;
                 if (rec->kind() != THEME_KIND_MODEL)
                     continue;

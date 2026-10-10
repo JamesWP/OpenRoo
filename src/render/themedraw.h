@@ -1,8 +1,8 @@
 /* themedraw.{h,cpp} -- the theme's
  * particle-system effects, drawn at a list of instance positions.
  *
- *   cdecl(Game*, unused, pos[], rot[], count, ThemeObjectTypeSlot*,
- *         RenderDevice*, double t, double dt, uint32_t system)
+ *   cdecl(World*, CameraPose*, Config*, unused, pos[], rot[], count,
+ *         ThemeObjectTypeSlot*, RenderDevice*, double t, double dt, uint32_t system)
  *
  * 15 call sites, all in RenderGameFrame; each passes one theme slot (the
  * player's, a foe's, an item type's, ...), its instances' positions and
@@ -13,12 +13,15 @@
 
 #include <stdint.h>
 
-class Game;
+class World;
+class CameraPose;
+class Config;
 class ThemeObjectTypeSlot;
 class RenderDevice;
 
   void  
-Theme_DrawParticleObjects(Game *g, void *unused, const float (*pos)[3],
+Theme_DrawParticleObjects(World *world, CameraPose *pose, Config *config,
+                          void *unused, const float (*pos)[3],
                           const float (*rot)[3], uint32_t count,
                           ThemeObjectTypeSlot *slot, RenderDevice *d3d,
                           double t, double dt, uint32_t system);

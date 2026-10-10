@@ -14,7 +14,9 @@
 #include "particles.h"
 #include "renderdevice.h"
 #include "vecmath.h"
-#include "game.h"
+#include "world.h"
+#include "camerarig.h"
+#include "config.h"
 #include "levelmap.h"
 #include "player.h"
 #include "ani.h"
@@ -54,19 +56,20 @@ static void camera_view_dir(const CameraPose *c, float d[3])
 }
 
   void  
-Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
+Theme_DrawParticleObjects(World *world, CameraPose *pose, Config *config,
+                          void * , const float (*pos)[3],
                           const float (*rot)[3], uint32_t count,
                           ThemeObjectTypeSlot *slot, RenderDevice *d3d,
                           double t, double dt, uint32_t system)
 {
     RenderDevice *dev = d3d;
-    const Player *player = g->world()->player();
-    LevelMap *map = g->world()->map();
+    const Player *player = world->player();
+    LevelMap *map = world->map();
 
     for (uint32_t r = 0; r < slot->instanceCount(); r++) {
         ThemeLevelObject *rec = &slot->records()[r];
 
-        if (rec->specular() != 0 && g->videoHighlights() != 0)
+        if (rec->specular() != 0 && config->videoHighlights() != 0)
             dev->SetSpecular(true);
 
         if (rec->kind() == THEME_KIND_PARTICLESYSTEM)
@@ -127,7 +130,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                 if (move == THEME_MOVE_TRANSLATE) {
                     m4_translate(&world, ip[0], ip[1], ip[2]);
                     (ps->getGenerator(NULL))->setPosition(p[0], p[1], p[2]);
-                    camera_view_dir(g->camera()->pose(), view);
+                    camera_view_dir(pose, view);
                     ps->setVector(view[0], view[1], view[2]);
                     Mat4 corners;
                     m4_rot_y(&corners, (float)-((double)o[1] + ir[1]));
@@ -135,7 +138,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                 } else if (move == THEME_MOVE_GENERATOR) {
                     m4_identity(&world);
                     (ps->getGenerator(NULL))->setPosition(p[0] + ip[0], p[1] + ip[1], p[2] + ip[2]);
-                    camera_view_dir(g->camera()->pose(), view);
+                    camera_view_dir(pose, view);
                     ps->setVector(view[0], view[1], view[2]);
                 } else {
                     Mat4 sc, rx, ry, rz, tr, a, b;
@@ -149,7 +152,7 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                     mul(&b, &a, &ry);
                     mul(&a, &b, &rz);
                     mul(&world, &a, &tr);
-                    camera_view_dir(g->camera()->pose(), view);
+                    camera_view_dir(pose, view);
                     ps->setVector(view[0], view[1], view[2]);
                     Mat4 corners;
                     m4_rot_y(&corners, (float)-((double)o[1] + ir[1]));

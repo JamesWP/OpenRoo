@@ -1,5 +1,5 @@
 /* camera.h -- the orbit camera's update (camera.cpp).  The camera's state is
- * the CameraRig Game owns (camerarig.h); this file only eases its pose.
+ * the CameraRig (camerarig.h); this file only eases its pose.
  *
  * Camera_UpdateViewTransform eases the pose's `target` towards the player every
  * frame and places `eye` at target + RotX(-pitch).RotY(yaw) applied to
@@ -12,17 +12,20 @@
 
 struct Mat4;
 class RenderDevice;
-class Game;
+class World;
+class CameraRig;
+class Config;
 
 /* The 9-float block FramePose_Player fills and RenderGameFrame passes BY
  * VALUE to UpdateViewTransform: [5] is the yaw the camera turns
  * towards, [6..8] the point `target` follows.  [0..4] are not read here. */
 struct CameraFocus { float f[9]; };
 
-/* cdecl(d3d, game, focus BY VALUE, double dt): eases the game's camera pose
- * (g->camera()->pose()) and sets the VIEW transform.  One caller, RenderGameFrame. */
-void Camera_UpdateViewTransform(RenderDevice *d3d, Game *g, CameraFocus focus,
-                                double dt);
+/* cdecl(d3d, world, camera, config, focus BY VALUE, double dt): eases the
+ * camera's pose (camera->pose()) and sets the VIEW transform.  One caller,
+ * RenderGameFrame. */
+void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *camera,
+                                const Config *config, CameraFocus focus, double dt);
 
 
 /* The level entry zeroes it; FramePose_Player fills it every frame. */

@@ -48,7 +48,7 @@ LevelEntry_PrepareAssets(void)
     }
 
     // 4. What the frame renderer draws.
-    g_levelPlacements.build(g, &g_themeBlock);
+    g_levelPlacements.build(g->world(), &g_themeBlock);
     g_scene.buildObjectList(d3d, g->world()->extraObjects());
 
     strcpy(g_levelTitle, map->title());
