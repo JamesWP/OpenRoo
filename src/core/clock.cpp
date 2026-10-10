@@ -84,8 +84,6 @@ double clock_seconds(void)
 {
     if (g_fixed_dt < 0.0) clock_init();
     clock_log_progress();
-    // The camera setup's read ends one extra, empty frame; that is the same
-    // every run, so it does no harm to the hash.
     gamestate_tick();
     record_frame_boundary();
 
