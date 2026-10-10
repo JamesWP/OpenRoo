@@ -72,17 +72,17 @@ Sim_ClearGameState(Game *self)
         s_logged_clear = 1;
         g_logger.write("gamereset: first ClearGameState -- foes=%u enemies=%u "
                   "lift=%u platform=%u break=%u bridge=%u\n",
-                  (unsigned)self->foeCount(), (unsigned)self->bombCount(),
-                  (unsigned)self->liftCount(),
-                  (unsigned)self->platformCount(),
-                  (unsigned)self->fallingCount(),
-                  (unsigned)self->bridgeCount());
+                  (unsigned)self->world()->foeCount(), (unsigned)self->world()->bombCount(),
+                  (unsigned)self->world()->liftCount(),
+                  (unsigned)self->world()->platformCount(),
+                  (unsigned)self->world()->fallingCount(),
+                  (unsigned)self->world()->bridgeCount());
     }
 
     // Read before the stores; acted on after them.
     gamefile_ok = self->levelCount();
 
-    Player *pl = self->player();
+    Player *pl = self->world()->player();
     pl->setLives(2);  // lives
     self->camera()->setCameraMode(2);
     // Two doubles the game zeroes in two halves; nothing reads between, so
@@ -105,36 +105,36 @@ Sim_ClearGameState(Game *self)
         windev::quit(1);
     }
 
-    LiftObject::purgeAll(self->entityContext(), self->lifts());
-    PlatformObject::purgeAll(self->entityContext(), self->platforms());
-    FallingTile::purgeAll(self->entityContext(), self->fallings());
-    BridgeObject::purgeAll(self->entityContext(), self->bridges());
+    LiftObject::purgeAll(self->world()->entityContext(), self->world()->lifts());
+    PlatformObject::purgeAll(self->world()->entityContext(), self->world()->platforms());
+    FallingTile::purgeAll(self->world()->entityContext(), self->world()->fallings());
+    BridgeObject::purgeAll(self->world()->entityContext(), self->world()->bridges());
 
     // The 256 switch counts.
-    self->switchCells()->clearCounts();
+    self->world()->switchCells()->clearCounts();
 
-    while (self->foeCount() != 0) {
+    while (self->world()->foeCount() != 0) {
         if (s_diag && !s_logged_foedrain) {
             s_logged_foedrain = 1;
             g_logger.write("gamereset: first foe drain -- count=%u id=%u\n",
-                      (unsigned)self->foeCount(),
-                      (unsigned)self->foeId(0));
+                      (unsigned)self->world()->foeCount(),
+                      (unsigned)self->world()->foeId(0));
         }
-        Foe::remove(self->entityContext(), self->foes(), self->foeId(0));
+        Foe::remove(self->world()->entityContext(), self->world()->foes(), self->world()->foeId(0));
     }
 
-    while (self->bombCount() != 0) {
+    while (self->world()->bombCount() != 0) {
         if (s_diag && !s_logged_enemydrain) {
             s_logged_enemydrain = 1;
             g_logger.write("gamereset: first enemy drain -- count=%u id=%u\n",
-                      (unsigned)self->bombCount(), (unsigned)self->bombId(0));
+                      (unsigned)self->world()->bombCount(), (unsigned)self->world()->bombId(0));
         }
-        Bomb::remove(self->entityContext(), self->bombs(), self->bombId(0));
+        Bomb::remove(self->world()->entityContext(), self->world()->bombs(), self->world()->bombId(0));
     }
 
-    self->setFallingCount(0);
-    self->setFoeCount(0);
-    self->setLiftCount(0);
-    self->setPlatformCount(0);
-    self->setBombCount(0);
+    self->world()->setFallingCount(0);
+    self->world()->setFoeCount(0);
+    self->world()->setLiftCount(0);
+    self->world()->setPlatformCount(0);
+    self->world()->setBombCount(0);
 }

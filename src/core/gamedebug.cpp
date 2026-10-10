@@ -21,11 +21,11 @@ static void hold_timer(Game *g)
 {
     if (!g_pauseTimer)
         return;
-    if (g_pausedLevel != g->levelIndex() || g->timeElapsed() < g_pausedMs) {
+    if (g_pausedLevel != g->levelIndex() || g->world()->timeElapsed() < g_pausedMs) {
         g_pausedLevel = g->levelIndex();
-        g_pausedMs    = g->timeElapsed();
+        g_pausedMs    = g->world()->timeElapsed();
     }
-    g->setTimeElapsed(g_pausedMs);
+    g->world()->setTimeElapsed(g_pausedMs);
 }
 
 /* The level to load, from the same table the level select reads. */
@@ -54,33 +54,33 @@ void Game_DebugPanel(Game *g)
 {
     if (!dbg::active())
         return;
-    if (g->levelIndex() != g_maxLevel || g->timeElapsed() < g_maxTimerMs)
+    if (g->levelIndex() != g_maxLevel || g->world()->timeElapsed() < g_maxTimerMs)
         dbg::resetMax();
     g_maxLevel   = g->levelIndex();
-    g_maxTimerMs = g->timeElapsed();
+    g_maxTimerMs = g->world()->timeElapsed();
 
     dbg::Section s("Overview", true);
     if (!s)
         return;
-    ImGui::Text("level %u/%u: %s", g->levelIndex() + 1, g->levelCount(), g->levelName());
+    ImGui::Text("level %u/%u: %s", g->levelIndex() + 1, g->levelCount(), g->world()->levelName());
     level_picker(g);
 
     if (ImGui::Checkbox("pause timer", &g_pauseTimer)) {
         g_pausedLevel = g->levelIndex();
-        g_pausedMs    = g->timeElapsed();
+        g_pausedMs    = g->world()->timeElapsed();
     }
     hold_timer(g);
     ImGui::SameLine();
-    ImGui::TextDisabled("%u s of %d", g->timeElapsed() / 1000, g->timeLimit());
+    ImGui::TextDisabled("%u s of %d", g->world()->timeElapsed() / 1000, g->world()->timeLimit());
 
-    if (g->map()->extentU() == 0 || g->map()->extentV() == 0)
+    if (g->world()->map()->extentU() == 0 || g->world()->map()->extentV() == 0)
         return;  // a menu, or the level torn down
-    const Player *pl = g->player();
-    ImGui::Text("gems %d / %d   lives %u   foes killed %u", pl->gemsCollected(), g->gemsRequired(),
+    const Player *pl = g->world()->player();
+    ImGui::Text("gems %d / %d   lives %u   foes killed %u", pl->gemsCollected(), g->world()->gemsRequired(),
                 (unsigned)pl->lives(), (unsigned)g->foesKilled());
     ImGui::Text("player U%u V%u H%u   exit U%u V%u H%u", (unsigned)(uint8_t)pl->cellU(),
                 (unsigned)(uint8_t)pl->cellV(), (unsigned)(uint8_t)pl->heightCell(),
                 (unsigned)pl->markerCellU(), (unsigned)pl->markerCellV(), (unsigned)pl->markerCellH());
-    ImGui::Text("%u foes, %u bombs%s", (unsigned)g->foeCount(), (unsigned)g->bombCount(),
+    ImGui::Text("%u foes, %u bombs%s", (unsigned)g->world()->foeCount(), (unsigned)g->world()->bombCount(),
                 pl->held() ? "   [complete]" : "");
 }

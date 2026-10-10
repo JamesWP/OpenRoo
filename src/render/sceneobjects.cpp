@@ -345,7 +345,7 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
                          float animTime, unsigned int animCode, unsigned int dtMs)
 {
     Config *cfg = game->config();
-    const Player *pl = game->player();
+    const Player *pl = game->world()->player();
 
     for (unsigned int i = 0; i < slot->instanceCount(); i++) {
         ThemeLevelObject *rec = &slot->records()[i];
@@ -367,7 +367,7 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
 
             for (unsigned int k = 0; k < count; k++) {
                 const Vec3 *pos = &positions[k];
-                const Tile *tile = game->map()->tile((int)pos->x, -(int)pos->z);
+                const Tile *tile = game->world()->map()->tile((int)pos->x, -(int)pos->z);
                 if (!gate_passes(sub->dwVisibilityGate, tile, pl))
                     continue;
 

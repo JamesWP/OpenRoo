@@ -122,7 +122,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     fx_init();
 
-    inline_strcpy(self->levelNameBuffer(), name);
+    inline_strcpy(self->world()->levelNameBuffer(), name);
 
     if (s_fx_crtpath)
         snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, name, self->gameDir());
@@ -132,17 +132,17 @@ Sim_ParseLevelFiles(Game *self, const char *name)
     // Saved before the read overwrites it: the mapChanged mechanism.  The
     // samelevel control moves this copy after the read.
     if (!s_fx_samelevel)
-        inline_strcpy(prev, self->map()->mapName());
+        inline_strcpy(prev, self->world()->map()->mapName());
 
-    ok = self->map()->readFile(path);
+    ok = self->world()->map()->readFile(path);
 
     if (s_fx_samelevel)
-        inline_strcpy(prev, self->map()->mapName());
+        inline_strcpy(prev, self->world()->map()->mapName());
 
     if ((char)ok != 0) {
-        self->extraObjects()->releaseSounds();
+        self->world()->extraObjects()->releaseSounds();
         g_logger.logMessage(1, "GAME: level (Bonus=%d) loaded by name: %s.jjm",
-                           self->map()->bonus(), path);
+                           self->world()->map()->bonus(), path);
     } else {
         g_logger.logMessage(4, "GAME: ** error ** could not load level by name: %s.jjm (maybe it does not exist\077)", path);
         windev::quit(1);
@@ -151,7 +151,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     self->setMapChanged(0);
     if (inline_strcmp((const unsigned char *)prev,
-                      (const unsigned char *)self->map()->mapName()) != 0)
+                      (const unsigned char *)self->world()->map()->mapName()) != 0)
         self->setMapChanged(1);
 
     snprintf(path, sizeof(path), GS_OPEN_FMT_SCRIPTS, self->gameDir(), name);
@@ -182,7 +182,7 @@ Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
     if (s_fx_levelshift)
         levelNo = levelNo + 1;
 
-    inline_strcpy(self->levelNameBuffer(),
+    inline_strcpy(self->world()->levelNameBuffer(),
                   self->levelNameTableEntry((unsigned char)(levelNo & 0xff)));
 
     // The upper bytes of the game's return are the copied length; unreadable.
@@ -208,10 +208,10 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
         (unsigned int)(self->levelIndex()) + 1 != (unsigned int)self->levelCount()) {
         Sim_SetCurrentLevelName(self, (unsigned char)(self->levelIndex() + 1));
         snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, self->gameDir(),
-                           self->levelName());
+                           self->world()->levelName());
         // PRESERVED: the result is not tested.
-        self->map()->readFile(path);
-        self->setNextLevelBonus(self->map()->bonus());
+        self->world()->map()->readFile(path);
+        self->setNextLevelBonus(self->world()->map()->bonus());
 
         if (s_diag)
             g_logger.write("levelparse: bonus peek for level %u -> bonus=%u\n",
@@ -221,21 +221,21 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     Sim_SetCurrentLevelName(self, levelNo);
     snprintf(path, sizeof(path), GS_OPEN_FMT_LEVELS, self->gameDir(),
-                       self->levelName());
+                       self->world()->levelName());
 
     // Saved before the read (see the top of the file).
     if (!s_fx_samelevel)
-        inline_strcpy(prev, self->map()->mapName());
+        inline_strcpy(prev, self->world()->map()->mapName());
 
-    ok = self->map()->readFile(path);
+    ok = self->world()->map()->readFile(path);
 
     if (s_fx_samelevel)
-        inline_strcpy(prev, self->map()->mapName());
+        inline_strcpy(prev, self->world()->map()->mapName());
 
     if ((char)ok != 0) {
-        self->extraObjects()->releaseSounds();
+        self->world()->extraObjects()->releaseSounds();
         g_logger.logMessage(1, "GAME: level (Bonus=%d) loaded by Number (%d): %s.jjm",
-                           self->map()->bonus(),
+                           self->world()->map()->bonus(),
                            levelNo & 0xff, path);
     } else {
         g_logger.logMessage(4, "GAME: ** error ** could not load level by Number (%d) (maybe it does not exist\077): %s.jjm",
@@ -246,11 +246,11 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
 
     self->setMapChanged(0);
     if (inline_strcmp((const unsigned char *)prev,
-                      (const unsigned char *)self->map()->mapName()) != 0)
+                      (const unsigned char *)self->world()->map()->mapName()) != 0)
         self->setMapChanged(1);
 
     snprintf(path, sizeof(path), GS_OPEN_FMT_SCRIPTS, self->gameDir(),
-                       self->levelName());
+                       self->world()->levelName());
     self->scriptPlayer()->setLoaded(0);
     self->scriptPlayer()->readForLevel(path);
 
@@ -263,7 +263,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     if (s_diag)
         g_logger.write("levelparse: DIAG open #%u level=%u name=\"%s\" map=%s "
                   "changed=%u script=%u released=%u\n",
-                  s_opens, levelNo & 0xff, self->levelName(),
+                  s_opens, levelNo & 0xff, self->world()->levelName(),
                   (char)ok ? "ok" : "FAILED",
                   self->mapChanged(),
                   self->scriptPlayer()->loaded(), ExtraObjects::releasedCount());

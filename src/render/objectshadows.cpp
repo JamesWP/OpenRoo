@@ -34,7 +34,7 @@ static void compose(Mat4 *d, const Mat4 *left, const Mat4 *right)
 
 static bool condition_holds(uint32_t gate, const Game *g, const Tile *cell)
 {
-    const Player *p = g->player();
+    const Player *p = g->world()->player();
     switch (gate) {
     case 0:  return true;
     case 1:  return cell->busy() != 0;
@@ -102,7 +102,7 @@ Shadows_DrawObjectShadows(Game *game, LevelPlacements *,
                 const float *p = pos + k * 3;
                 const float *r = rot + k * 3;
                 int u = (int)p[0], v = -(int)p[2];
-                const Tile *cell = game->map()->tile(u, v);
+                const Tile *cell = game->world()->map()->tile(u, v);
 
                 if (!condition_holds(rec->subObjects()[s].dwVisibilityGate, game, cell))
                     continue;

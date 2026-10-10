@@ -15,22 +15,12 @@
 #include "cdthemes.h"
 #include "highscores.h"
 #include "config.h"
-#include "extraobjects.h"
-#include "levelmap.h"
-#include "switchcells.h"
-#include "levelcensus.h"
 #include "themesounds.h"
-#include "tickstep.h"
-#include "entitycontext.h"
 #include "bomb.h"
 #include "soundmanager.h"
-#include "player.h"
+#include "world.h"
 
 class SoundManager;
-class LiftObject;
-class PlatformObject;
-class BridgeObject;
-class FallingTile;
 
 
 /* The end-of-level score tally.  Six rows, each
@@ -78,7 +68,6 @@ struct FixedSounds {
  
 class Bomb;
 class Foe;
-class Player;
 
 class Game {
 public:
@@ -96,17 +85,17 @@ public:
     int  soundCreated() const        { return (int)soundManager_.created(); }
     FixedSounds  *fixedSounds()      { return &fixedSounds_; }
 
+    /* ── the level in play (world.h) ─────────────────────────────────── */
+    /* The level in play: its map, objects and player (world.h). */
+    World        *world()       { return &world_; }
+    const World  *world() const { return &world_; }
+
     /* ── time ───────────────────────────────────────────────────────── */
     /* The `now` GameTick was last called with (double, ms); the menus
      * stamp their timers from it.  Its two halves are also copied dword by
      * dword into the menu's lock start (MenuTree::setLockStart). */
     double         lastTickTime() const              { return lastTickTime_; }
     void           setLastTickTime(double t)         { lastTickTime_ = t; }
-    /* The 8-byte clock accumulator.  Objects keep a pointer to it and
-     * re-read it every tick. */
-    double        *clock()           { return &clock_; }
-    /* The tick step, dt; objects copy it to their own each tick. */
-    TickStep      *tickStep()        { return &tickStep_; }
 
     /* ── tiles ──────────────────────────────────────────────────────── */
     /* ── level-load flags ───────────────────────────────────────────── */
@@ -154,30 +143,11 @@ public:
     unsigned char  stateBeforeMenu() const           { return stateBeforeMenu_; }
     void           setStateBeforeMenu(unsigned char s) { stateBeforeMenu_ = s; }
 
-    /* The level builder's census and spawn tables (levelcensus.h). */
-    LevelCensus    *census()                    { return &census_; }
-    TimedSpawner   *timedSpawner(unsigned i)    { return &timedSpawners_[i]; }
-    FreeBomb       *freeBomb(unsigned i)        { return &freeBombs_[i]; }
-
-    /* The cells each switch controls (switchcells.h), and the highest
-     * switch index the level builder saw -- the list walks run to it. */
-    SwitchCells    *switchCells()               { return &switchCells_; }
-    unsigned char   switchMax() const           { return switchMax_; }
-    void            setSwitchMax(unsigned char n) { switchMax_ = n; }
-
-    /* The level's map (levelmap.h): its header and both tile grids. */
-    LevelMap       *map()            { return &map_; }
-    const LevelMap *map() const      { return &map_; }
-    /* Gems the level requires (Player::gemsCollected is the other side). */
-    int            gemsRequired() const { return map_.gemsRequired(); }
-
     /* ── text entry ─────────────────────────────────────────────────── */
     /* The cheat-code entry (HandleTypedCheatCode polls it every tick) and
      * the name entry (save names and the high-score name). */
     TextEntry     *cheatEntry()                      { return &cheatEntry_; }
     TextEntry     *nameEntry()                       { return &nameEntry_; }
-    /* The level's extra 3D objects, from its .leo (extraobjects.h). */
-    ExtraObjects         *extraObjects()             { return &extraObjects_; }
     /* The settings object (config.h); openroo.ini holds it. */
     Config               *config()                   { return &config_; }
     /* The high-score table (highscores.h). */
@@ -245,8 +215,6 @@ public:
     double         totalPlayTime() const             { return totalPlayTime_; }
     void           setTotalPlayTime(double ms)       { totalPlayTime_ = ms; }
 
-    /* SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
-    char          *levelNameBuffer()                 { return levelName_; }
     char          *levelNameTableEntry(unsigned char i) { return levelNameTable_[i]; }
 
     /* ── video quality (the options menu; config.h has the derivation) ─ */
@@ -310,13 +278,6 @@ public:
     void           setItemTotal(unsigned short n)    { itemTotal_ = n; }
     unsigned char  foesKilled() const                { return foesKilled_; }
     void           setFoesKilled(unsigned char n)    { foesKilled_ = n; }
-    /* The level's time limit in seconds (SetupLevelObjects copies it from
-     * the map file's) and the play time against it in milliseconds. */
-    int            timeLimit() const                 { return map_.timeLimit(); }
-    void           setTimeLimit(int s)               { map_.setTimeLimit(s); }
-    unsigned int   timeElapsed() const               { return map_.timeElapsed(); }
-    void           setTimeElapsed(unsigned int ms)   { map_.setTimeElapsed(ms); }
-
     /* ── vitality and the score tally ───────────────────────────────── */
     /* The tally's "vitality" row, which pays it 1:1:
      * Player::completionNumerator per second of field_170a65, times 25, capped
@@ -337,84 +298,11 @@ public:
     int            tallyDone() const                 { return tallyDone_; }
     void           setTallyDone(int d)               { tallyDone_ = d; }
 
-    /* What the entities are given at spawn, and the tables they fill. */
-    EntityContext entityContext()
-    {
-        return { &clock_, &tickStep_, &map_, &soundManager_, &switchCells_,
-                 &switchMax_, levelName_, &field_42252_ };
-    }
     BombSounds bombSounds() const
     {
         return { soundAsset429b6(), soundAsset42ac2(), soundAsset46baa(),
                  soundAsset457c6(), soundAsset46132() };
     }
-    EntityIdTable<Bomb, 500> &bombs() { return bombs_; }
-    EntityIdTable<Foe, 500>  &foes()  { return foes_; }
-    EntitySlots<LiftObject, 256>     &lifts()     { return lifts_; }
-    EntitySlots<PlatformObject, 100> &platforms() { return platforms_; }
-    EntitySlots<BridgeObject, 256>   &bridges()   { return bridges_; }
-    EntitySlots<FallingTile, 200>    &fallings()  { return fallings_; }
-
-    /* ── lifts ──────────────────────────────────────────────────────── */
-    unsigned char liftCount() const              { return lifts_.count; }
-    void          setLiftCount(unsigned char n)  { lifts_.count = n; }
-    LiftObject   *liftSlot(unsigned int i) const { return lifts_.slot[i]; }
-    void          setLiftSlot(unsigned int i, LiftObject *p) { lifts_.slot[i] = p; }
-
-    /* ── platforms ─────────────────────────────────────────────────────── */
-    unsigned char platformCount() const               { return platforms_.count; }
-    void          setPlatformCount(unsigned char n)   { platforms_.count = n; }
-    PlatformObject  *platformSlot(unsigned int i) const  { return platforms_.slot[i]; }
-    void          setPlatformSlot(unsigned int i, PlatformObject *p) { platforms_.slot[i] = p; }
-
-    /* ── bridges ────────────────────────────────────────────────────── */
-    /* Indexed by the bridge's switch slot, not the count; the count is a
-     * running total (see BridgeObject::spawn). */
-    unsigned char bridgeCount() const              { return bridges_.count; }
-    void          setBridgeCount(unsigned char n)  { bridges_.count = n; }
-    BridgeObject *bridgeSlot(unsigned int i) const { return bridges_.slot[i]; }
-    BridgeObject *const *bridgeSlots() const       { return bridges_.slot; }
-    void          setBridgeSlot(unsigned int i, BridgeObject *p) { bridges_.slot[i] = p; }
-
-    /* ── falling tiles ────────────────────────────────────────────── */
-    unsigned char  fallingCount() const              { return fallings_.count; }
-    void           setFallingCount(unsigned char n)  { fallings_.count = n; }
-    FallingTile *fallingSlot(unsigned int i) const { return fallings_.slot[i]; }
-    void           setFallingSlot(unsigned int i, FallingTile *p) { fallings_.slot[i] = p; }
-
-    /* ── bombs (the game's "enemy" table) ───────────────────────────── */
-    /* Slots are indexed by ID; the ID list holds the live IDs, count long.
-     * The *Ref accessors hand out addresses because the remove's tail
-     * (objectremove.cpp) edits them in place, and the removes re-read the
-     * slot through its address exactly as the original does. */
-    unsigned char  bombCount() const               { return bombs_.count; }
-    void           setBombCount(unsigned char n)   { bombs_.count = n; }
-    unsigned char *bombCountRef()   { return &bombs_.count; }
-    unsigned char  bombId(unsigned int i) const    { return bombs_.ids[i]; }
-    unsigned char *bombIds()        { return bombs_.ids; }
-    Bomb          *bombSlot(unsigned int id) const { return bombs_.slot[id]; }
-    Bomb         **bombSlotRef(unsigned int id)  { return &bombs_.slot[id]; }
-
-    /* ── foes ───────────────────────────────────────────────────────── */
-    /* The same slot/count/ID-list shape as the bombs, and the same *Ref
-     * accessors for the shared remove tail. */
-    unsigned char  foeCount() const               { return foes_.count; }
-    void           setFoeCount(unsigned char n)   { foes_.count = n; }
-    unsigned char *foeCountRef()    { return &foes_.count; }
-    unsigned char  foeId(unsigned int i) const    { return foes_.ids[i]; }
-    unsigned char *foeIds()         { return foes_.ids; }
-    Foe           *foeSlot(unsigned int id) const { return foes_.slot[id]; }
-    Foe          **foeSlotRef(unsigned int id)   { return &foes_.slot[id]; }
-    /* A uint16_t the foe spawn bumps for type 0x0b; levelsetup.cpp calls it a
-     * crystal count.  Not confirmed, so not named. */
-    unsigned short field_42252() const             { return field_42252_; }
-    void           setField42252(unsigned short n) { field_42252_ = n; }
-    /* ── the player ─────────────────────────────────────────────────── */
-    Player       *player()       { return &player_; }
-    const Player *player() const { return &player_; }
-
-    /* The current level's path; diagnostics only. */
-    const char    *levelName() const               { return levelName_; }
 
     bool initialised() const {return initialised_; }
 
@@ -476,29 +364,26 @@ private:
     unsigned int  tickCount_{};
     MenuTree      rootMenu_;                              /* constructed, never navigated */
     int           initialised_{};                           /* 0 until Load completes */
-    TimedSpawner  timedSpawners_[256];
-    FreeBomb      freeBombs_[256];
     CdThemes      cdThemes_;
-    /* 256 level names, 0x100 each.  SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
+    /* 256 level names, 0x100 each.  SetCurrentLevelName copies entry `levelNo & 0xff` into World's levelName_. */
     char          levelNameTable_[256][0x100]{};
     unsigned char levelCount_{};
     char          gameFileName_[0x80]{};
     char          gameDir_[64]{};
-    LevelCensus   census_;
     unsigned char restartCount_{};
     /* Foes killed this level; CalculateLevelScore pays 50 each. */
     unsigned char foesKilled_{};
     unsigned short itemTotal_{};
-    unsigned short field_42252_{};
     int           levelSoundsReady_{};
     ThemeSoundTable themeSounds_;
-    unsigned char switchMax_{};
     unsigned char stateBeforeMenu_{};
     unsigned int  field_48b14_{};
     char          menuLevelName_[0x80]{};
-    ExtraObjects  extraObjects_;
     SoundManager  soundManager_;
     FixedSounds   fixedSounds_{};
+    /* The level in play (world.h).  Declared after the sound manager and the
+     * fixed sounds, so it is torn down before them. */
+    World         world_;
     int           field_13cc84_{};                          /* Load zeroes; reader not decoded */
     int           field_13cc88_{};
     int           field_13cc8c_{};
@@ -508,29 +393,17 @@ private:
     TextEntry     cheatEntry_;
     HighScoreTable highScores_;
     ScoreTally    tally_;
-    SwitchCells   switchCells_;
-    EntitySlots<BridgeObject, 256> bridges_;
     double        totalPlayTime_{};
     double        lastTickTime_{};
-    double        clock_{};
-    TickStep      tickStep_;
     /* Recomputed by GameTick every tick; see vitalityPercent(). */
     unsigned char vitalityPercent_{};
     unsigned int  field_170a65_{};
     int           textEntryActive_{};
     TextEntry     nameEntry_;
     SaveSlots     saveSlots_;
-    /* As long as a level-name table entry. */
-    char          levelName_[0x100]{};
     unsigned char levelIndex_{};
     int           field_173584_{};
-    EntitySlots<PlatformObject, 100> platforms_;
-    EntitySlots<LiftObject, 256> lifts_;
     int           field_173b1a_{};
-    EntitySlots<FallingTile, 200> fallings_;
-    EntityIdTable<Bomb, 500> bombs_;
-    EntityIdTable<Foe, 500>  foes_;
-    Player        player_;
     unsigned char rebindCode_{};
     char          rebindAction_[0x100]{};
     int           rebindActive_{};
@@ -542,11 +415,6 @@ private:
      * option and the joystick deadzone live in its persisted blob. */
     Config        config_;
     unsigned char state_{};
-    /* The map: header, grid and snapshot grid.  Its header holds the time limit (GameTick times the
-     * level out at timeLimit*1000 ms), the ms of play (CalculateLevelScore
-     * pays the unused seconds) and the gem quota (CalculateLevelScore
-     * pays 5 a gem up to it and 10 per gem beyond). */
-    LevelMap      map_;
     int           tallyDone_{};
 };
 

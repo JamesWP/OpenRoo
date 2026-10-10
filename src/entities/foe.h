@@ -1,4 +1,4 @@
-/* Foe: a chasing enemy, a MovableEntity plus its own four fields.  The Game's
+/* Foe: a chasing enemy, a MovableEntity plus its own four fields.  The World's
  * foe table holds only foes.  Most foe fields sit inside the MovableEntity, so
  * they are declared there (protected).
  *
@@ -35,7 +35,7 @@ public:
                        unsigned int idArg);
 
     // Draws it on the debug map and adds it to the tooltip; id is its slot
-    // in the Game's foe table.
+    // in the World's foe table.
     void debugDraw(unsigned id) const;
 
     // One tick, towards the player's cell (or whatever target GameTick chose).

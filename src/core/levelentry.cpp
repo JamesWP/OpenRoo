@@ -26,7 +26,7 @@ LevelEntry_PrepareAssets(void)
 {
     RenderDevice *d3d = g_renderDevice;
     Game *g = Game::instance();
-    const LevelMap *map = g->map();
+    const LevelMap *map = g->world()->map();
 
     // 1. Blank the back buffer and flip.
     d3d->Clear(ClearFlag::Color);
@@ -49,7 +49,7 @@ LevelEntry_PrepareAssets(void)
 
     // 4. What the frame renderer draws.
     g_levelPlacements.build(g, &g_themeBlock);
-    g_scene.buildObjectList(d3d, g->extraObjects());
+    g_scene.buildObjectList(d3d, g->world()->extraObjects());
 
     strcpy(g_levelTitle, map->title());
     g_lastTickMs = clock_seconds() * 1000.0;

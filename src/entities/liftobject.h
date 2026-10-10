@@ -46,8 +46,8 @@ private:
     LiftObject &operator=(const LiftObject &) = delete;
 
     double              now_;         // latched from *clock_
-    double             *clock_;       // Game::clock()
-    TickStep        *tickStep_;       // Game::tickStep()
+    double             *clock_;       // World::clock()
+    TickStep        *tickStep_;       // World::tickStep()
     unsigned char       field_14;
     TickStep         tickStepCopy_;   // copied from *tickStep_
     unsigned char       field_1d[8];
@@ -57,11 +57,11 @@ private:
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;  // the live height, truncated
-    LevelMap               *map_;    // Game::map()
+    LevelMap               *map_;    // World::map()
     signed char         baseHeight_;
     signed char         topHeight_;
     SoundVoice *sound_;       // the moving loop; may be NULL
-    unsigned char       slot_;        // its index in Game's lift slots
+    unsigned char       slot_;        // its index in World's lift slots
     int                 atTop_;       // 1: parked at the top
     signed char         state_;       // 0 parked, 1 rising, 2 falling
     double              phaseStart_;

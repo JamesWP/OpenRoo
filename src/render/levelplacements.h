@@ -102,7 +102,7 @@ private:
     float           exitPos_[3];      // the TILE_EXIT cell; the last one wins
     float           exitRot_[3];      // always 0
     PlacementList   lifts_;           // TILE_LIFT; pos and rot all 0
-    PlacementList   platforms_;  // count is the Game's platform count, not a cell count; rot zeroed
+    PlacementList   platforms_;  // count is the World's platform count, not a cell count; rot zeroed
     PlacementList   falling_;      // TILE_FALLING
     PlacementList   jumpPads_;        // TILE_JUMP_PAD
     PlacementList   teleporters_;     // TILE_TELEPORTER

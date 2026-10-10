@@ -15,9 +15,9 @@ Sim_StoreGameStateIntoSaveSlot(Game *self, unsigned int slotArg)
     // back: the index loads as stored.
     S->levelIndex          = (unsigned char)(game->levelIndex() + 1);
     S->elapsedGameTime     = (unsigned int)(long long)game->totalPlayTime();
-    S->completionNumerator = (unsigned int)game->player()->completionNumerator();
-    S->totalScore          = (unsigned int)game->player()->score();
-    S->livesRemaining      = (unsigned char)game->player()->lives();
+    S->completionNumerator = (unsigned int)game->world()->player()->completionNumerator();
+    S->totalScore          = (unsigned int)game->world()->player()->score();
+    S->livesRemaining      = (unsigned char)game->world()->player()->lives();
     S->inUse               = 1;
     return 1;
 }
@@ -30,8 +30,8 @@ Sim_RestoreGameStateFromSaveSlot(Game *self, unsigned int slotArg)
     self->setLevelIndex(S->levelIndex);
     // DETERMINISM: the stored time is unsigned; widened exactly.
     self->setTotalPlayTime((double)(unsigned long long)S->elapsedGameTime);
-    self->player()->setCompletionNumerator(S->completionNumerator);
-    self->player()->setScore(S->totalScore);
-    self->player()->setLives(S->livesRemaining);
+    self->world()->player()->setCompletionNumerator(S->completionNumerator);
+    self->world()->player()->setScore(S->totalScore);
+    self->world()->player()->setLives(S->livesRemaining);
     return 1;
 }

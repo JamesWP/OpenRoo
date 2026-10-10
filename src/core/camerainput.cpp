@@ -14,7 +14,7 @@ static const float  ZOOM_MIN   = 2.0f;
 static const float  PITCH_MAX  = 89.0f;
 static const float  PITCH_MIN  = 50.0f;
 
-static inline double dt(Game *g) { return g->tickStep()->value; }
+static inline double dt(Game *g) { return g->world()->tickStep()->value; }
 
  
 
@@ -41,7 +41,7 @@ Camera_ZoomIn(int, int, void *ctx)
 Camera_Overview(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
-    if (g->map()->bonus() != 0 || g->player()->moveState() != 0)
+    if (g->world()->map()->bonus() != 0 || g->world()->player()->moveState() != 0)
         return;
     g->camera()->setOverviewActive(1);
     g->camera()->setCameraDistance(40.0f);

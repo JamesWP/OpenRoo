@@ -150,8 +150,8 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, Game *g,
     if (g->camera()->cameraMode() == 0) {
         const float ey = p.eye()[1];
         if (ey > 0.0f && ey < K_EYE_CEIL) {
-            LevelMap *map = g->map();
-            unsigned i = (unsigned)((int)g->player()->heightCell() + 1);
+            LevelMap *map = g->world()->map();
+            unsigned i = (unsigned)((int)g->world()->player()->heightCell() + 1);
             /* ey + 1 is summed in double before the truncation:
              * a float sum could round across an integer and move the bound. */
             while (i < (unsigned)(int)((double)ey + 1.0)) {
@@ -166,7 +166,7 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, Game *g,
                             const Tile *t = map->tile((int)cu, (int)cv);
                             if (t->objectMarker() != 0 &&
                                 (t->height() == i || t->height() == i + 1)) {
-                                if (g->player()->onStairOrSlide() == 0)
+                                if (g->world()->player()->onStairOrSlide() == 0)
                                     pitchTarget = K_PITCH_MAX;
                                 i = 2000;       /* ends the scan */
                             }

@@ -248,7 +248,7 @@ void Tile_DebugDrawMap(Game *game)
 {
     if (!dbg::active())
         return;
-    LevelMap *map = game->map();
+    LevelMap *map = game->world()->map();
     const unsigned cols = map->extentU(), rows = map->extentV();
     dbg::MapLayer layer(cols, rows);
     if (!layer)

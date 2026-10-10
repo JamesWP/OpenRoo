@@ -57,8 +57,8 @@ private:
     void playAtTile(SoundVoice *snd, const Tile *t) const;
 
     double              now_;             // latched from *clock_
-    double             *clock_;           // Game::clock()
-    TickStep        *tickStep_;           // Game::tickStep()
+    double             *clock_;           // World::clock()
+    TickStep        *tickStep_;           // World::tickStep()
     unsigned char       field_14;
     TickStep         tickStepCopy_;       // copied from *tickStep_
     unsigned char       field_1d[8];
@@ -68,7 +68,7 @@ private:
     signed char         cellU_;           // read by RenderGameFrame
     signed char         cellV_;
     signed char         heightCell_;
-    LevelMap               *map_;        // Game::map()
+    LevelMap               *map_;        // World::map()
     int                 justRespawned_;   // set for the respawn tick
     int                 justFell_;        // set for the fall tick
     double              eventTime_;       // the clock at the last fall or respawn

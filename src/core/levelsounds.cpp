@@ -58,14 +58,14 @@ static SoundVoice *reslot(Game *game, SoundVoice *cur,
 /* Gives every object in one slot table its moving-loop sound.  The count and
  * the slot are re-read every pass. */
 template <typename T>
-static void attachLoopSound(Game *game,
-                            unsigned char (Game::*count)() const,
-                            T *(Game::*slot)(unsigned int) const,
+static void attachLoopSound(Game *game, const World *w,
+                            unsigned char (World::*count)() const,
+                            T *(World::*slot)(unsigned int) const,
                             const SoundAssetName *asset)
 {
-    for (unsigned short i = 0; i < (game->*count)(); ++i) {
+    for (unsigned short i = 0; i < (w->*count)(); ++i) {
         if (asset->enabled != 0)
-            (game->*slot)(i)->setSound(acq(game, asset));
+            (w->*slot)(i)->setSound(acq(game, asset));
     }
 }
 
@@ -73,8 +73,8 @@ static void attachLoopSound(Game *game,
 Sim_InitLevelBasedSounds(Game *self)
 {
     Game *game = self;
-    Player *pl = game->player();
-    const char *world = game->map()->mapName();
+    Player *pl = game->world()->player();
+    const char *world = game->world()->map()->mapName();
 
     if (s_fx < 0) {
         char e[32];
@@ -115,30 +115,30 @@ Sim_InitLevelBasedSounds(Game *self)
         pl->setSoundCb(reslot(game, pl->soundCb(), game->soundAsset42de6()));
         pl->setSoundA7(reslot(game, pl->soundA7(), game->soundAsset44c42()));
 
-        for (unsigned short i = 0; i < game->foeCount(); ++i)
-            Sim_AcquireObjectSoundBuffersForIndex(game, game->foeId(i));
+        for (unsigned short i = 0; i < game->world()->foeCount(); ++i)
+            Sim_AcquireObjectSoundBuffersForIndex(game, game->world()->foeId(i));
 
-        for (unsigned short i = 0; i < game->fallingCount(); ++i) {
+        for (unsigned short i = 0; i < game->world()->fallingCount(); ++i) {
             if (game->soundAsset4310a()->enabled != 0) {
                 audiodev::Buffer *p = acq(game, game->soundAsset4310a());
-                game->fallingSlot(i)->setFallSound(p);
+                game->world()->fallingSlot(i)->setFallSound(p);
             }
             if (game->soundAsset43216()->enabled != 0) {
                 audiodev::Buffer *p = acq(game, game->soundAsset43216());
-                game->fallingSlot(i)->setRespawnSound(p);
+                game->world()->fallingSlot(i)->setRespawnSound(p);
             }
         }
-        attachLoopSound(game, &Game::liftCount,   &Game::liftSlot,
+        attachLoopSound(game, game->world(), &World::liftCount,   &World::liftSlot,
                         game->soundAsset42bce());
-        attachLoopSound(game, &Game::platformCount,  &Game::platformSlot,
+        attachLoopSound(game, game->world(), &World::platformCount,  &World::platformSlot,
                         game->soundAsset42cda());
-        attachLoopSound(game, &Game::bridgeCount, &Game::bridgeSlot,
+        attachLoopSound(game, game->world(), &World::bridgeCount, &World::bridgeSlot,
                         game->soundAsset42ffe());
 
         if (game->restartCount() == 0 && game->sound3D() != 0) {
             g_logger.logMessage(1, "GAME: try to play level-based LEO sounds");
             // The count is re-read every pass.
-            ExtraObjects *xo = game->extraObjects();
+            ExtraObjects *xo = game->world()->extraObjects();
             for (unsigned short i = 0; i < xo->objectCount(); ++i) {
                 ExtraObjectRecord *E = xo->record(i);
                 if (E->kind != EXTRA_SOUND)

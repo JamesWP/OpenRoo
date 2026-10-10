@@ -13,7 +13,7 @@
  *   4. Neighbour reads at the grid edge are not bounds-checked: they read
  *      the bytes either side of the row.
  *
- * The platform list's count is the Game's platform count, but it is written once per
+ * The platform list's count is the World's platform count, but it is written once per
  * platform-track cell.  The game writes past its block when a level has more
  * track cells than platforms; here the block is sized to cover every write, so
  * the overrun stays in our allocation, and count is unchanged.
@@ -159,7 +159,7 @@ void LevelPlacements::buildWalls(const Game *g, float depth)
 {
     std::vector<Run> lists[4];  // row -v, row +v, column -u, column +u
     RunSlot a = { false, {{0}} }, b = { false, {{0}} };
-    const LevelMap *map = g->map();
+    const LevelMap *map = g->world()->map();
     const unsigned V = map->extentV(), U = map->extentU();
 
     for (unsigned L = 0; L < 0x100; ++L) {
@@ -275,7 +275,7 @@ void LevelPlacements::build(const Game *g,
 {
     release();
 
-    const LevelMap *map = g->map();
+    const LevelMap *map = g->world()->map();
     const unsigned V = map->extentV(), U = map->extentU();
 
     // Pass 1: count.
@@ -296,7 +296,7 @@ void LevelPlacements::build(const Game *g,
             if (k >= TILE_STAIRS_1 && k <= TILE_STAIRS_4) ++stairs_.count_;
             if (k == TILE_PLATFORM_TRACK)  ++trackCells;  // see the top of the file
         }
-    platforms_.count_ = g->platformCount();
+    platforms_.count_ = g->world()->platformCount();
 
     if (diag_on())
         g_logger.write("levelplacements: platformCount=%d, platform-track cells=%u%s\n",
@@ -408,7 +408,7 @@ void LevelPlacements::drawLifts(Game *g, ThemeAssetBlock *theme,
                           RenderDevice *d3d, double now)
 {
     for (unsigned int i = 0; i < (unsigned int)lifts_.count_; i++) {
-        const LiftObject *lift = g->liftSlot(i);
+        const LiftObject *lift = g->world()->liftSlot(i);
         lifts_.pos_[i][0] = lift->posU();
         lifts_.pos_[i][1] = lift->height();
         lifts_.pos_[i][2] = -lift->posV();
@@ -423,7 +423,7 @@ void LevelPlacements::drawPlatforms(Game *g, ThemeAssetBlock *theme,
                            RenderDevice *d3d, double now)
 {
     for (unsigned int i = 0; i < (unsigned int)platforms_.count_; i++) {
-        const PlatformObject *platform = g->platformSlot(i);
+        const PlatformObject *platform = g->world()->platformSlot(i);
         platforms_.pos_[i][0] = platform->posU();
         platforms_.pos_[i][1] = platform->posY();
         platforms_.pos_[i][2] = -platform->posV();

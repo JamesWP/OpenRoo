@@ -1,8 +1,11 @@
 /* Game's lifecycle: the constructor, the destructor, the game-file loader and
  * the sound release.  Each member is built and torn down by its owner
- * (menutree.cpp, cdthemes.cpp, theme.cpp, extraobjects.cpp, soundmanager.cpp,
- * textentry.cpp, highscores.cpp, saveslots.cpp, player.cpp, scriptplayer.cpp,
- * config.cpp, levelmap.cpp), in a fixed order; teardown is its exact reverse.
+ * (menutree.cpp, cdthemes.cpp, theme.cpp, soundmanager.cpp, textentry.cpp,
+ * highscores.cpp, saveslots.cpp, scriptplayer.cpp, config.cpp), in declaration
+ * order; teardown is its exact reverse.  World (world.h) is declared after the
+ * sound manager and the fixed sounds, so it is torn down before them; its own
+ * members (levelmap.cpp, extraobjects.cpp, player.cpp) are built and torn down
+ * by World.
  */
 
 #include "inputdev.h"
@@ -33,7 +36,10 @@
 #include <iterator>
 #include "sysdev.h"
 
-Game::Game() {}
+Game::Game()
+{
+    world_.setSoundLibrary(&soundManager_);
+}
 
 Game::~Game() {}
 
@@ -97,7 +103,7 @@ void Game::releaseAllSounds()
 {
     SoundManager *sm = soundManager();
     if (soundCreated() != 0) {
-        Player *p = player();
+        Player *p = world()->player();
         audiodev::Buffer *statics1[] = {
             fixedSounds_.timeOut, fixedSounds_.lastSeconds,
             fixedSounds_.count,   fixedSounds_.switchClick,

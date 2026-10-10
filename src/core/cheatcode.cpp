@@ -67,54 +67,54 @@ void Cheat_KillFoes(Game *g)
 {
     unsigned char i = 0;
     // The count is re-read every pass.
-    if (g->foeCount() != 0) {
+    if (g->world()->foeCount() != 0) {
         do {
-            unsigned char id = g->foeId(i);
+            unsigned char id = g->world()->foeId(i);
             ++i;
-            g->foeSlot(id)->setMoveState(4);
-        } while (i < g->foeCount());
+            g->world()->foeSlot(id)->setMoveState(4);
+        } while (i < g->world()->foeCount());
     }
 }
 
 void Cheat_AddLife(Game *g, int n)
 {
-    g->player()->setLives(g->player()->lives() + n);
+    g->world()->player()->setLives(g->world()->player()->lives() + n);
 }
 
 void Cheat_AddGlide(Game *g)
 {
-    g->player()->setGlides((unsigned char)(g->player()->glides() + 1));
+    g->world()->player()->setGlides((unsigned char)(g->world()->player()->glides() + 1));
 }
 
 void Cheat_AddBombs(Game *g)
 {
-    g->player()->setBombsCarried((unsigned char)(g->player()->bombsCarried() + 10));
+    g->world()->player()->setBombsCarried((unsigned char)(g->world()->player()->bombsCarried() + 10));
 }
 
 void Cheat_Invulnerable(Game *g)
 {
-    Player *pl = g->player();
+    Player *pl = g->world()->player();
     if (pl->effectDActive() == 0)
         pl->appendEffect(0x0d);
     pl->setEffectDActive(1);
     pl->setKind(3);
     pl->curTile()->setOccupant(3);
-    pl->setEffectDStart(*g->clock());
+    pl->setEffectDStart(*g->world()->clock());
 }
 
 void Cheat_FreezeFoes(Game *g)
 {
-    Player *pl = g->player();
+    Player *pl = g->world()->player();
     if (pl->freezeActive() == 0)
         pl->appendEffect(8);
-    pl->setFreezeStart(*g->clock());
+    pl->setFreezeStart(*g->world()->clock());
     pl->setFreezeActive(1);
 }
 
 void Cheat_TeleportPlayer(Game *g, unsigned char u, unsigned char v)
 {
-    Player *pl = g->player();
-    const unsigned char h = g->map()->tile(u, v)->height();
+    Player *pl = g->world()->player();
+    const unsigned char h = g->world()->map()->tile(u, v)->height();
     pl->setMoveDir(0);
     pl->setPendingMove(0);
     pl->setCell(u, v, h);
@@ -127,12 +127,12 @@ bool Cheat_LoadLevel(Game *self, unsigned char lvl)
     Sim_SetCurrentLevelName(self, lvl);
     if (lvl >= self->levelCount())
         return false;
-    snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, self->gameDir(), self->levelName());
-    g_logger.logMessage(3, "GAME: lc by number %d name:%s", (unsigned int)lvl, self->levelName());
+    snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, self->gameDir(), self->world()->levelName());
+    g_logger.logMessage(3, "GAME: lc by number %d name:%s", (unsigned int)lvl, self->world()->levelName());
     self->setLevelIndex(lvl);
     if (!std::ifstream(sysdev::nativePath(path)))
         return false;
-    self->player()->setGemsCollected(0);
+    self->world()->player()->setGemsCollected(0);
     Sim_OpenLevelFile(self, self->levelIndex());
     Sim_SetupLevelObjects(self);
     enter_loaded_state(self);
@@ -142,7 +142,7 @@ bool Cheat_LoadLevel(Game *self, unsigned char lvl)
   void  
 Sim_HandleTypedCheatCode(Game *self)
 {
-    Player *pl = self->player();
+    Player *pl = self->world()->player();
     unsigned char *buf = self->cheatBuffer();
     unsigned char frame[256];
     char path[384];
@@ -155,7 +155,7 @@ Sim_HandleTypedCheatCode(Game *self)
             g_logger.write("cheatcode: KAROO_SIM_FX=cheatlife -- mausuruh gives 2\n");
     }
 
-    self->cheatEntry()->poll((unsigned int)(long long)*self->clock());
+    self->cheatEntry()->poll((unsigned int)(long long)*self->world()->clock());
     if (self->cheatEntry()->active() != 0)
         return;
 
@@ -191,7 +191,7 @@ Sim_HandleTypedCheatCode(Game *self)
             self->setRestartCount(0);
             g_logger.logMessage(1, "GAME: c - sl");
         }
-        self->setTotalPlayTime((double)(unsigned long long)self->timeElapsed() + self->totalPlayTime());
+        self->setTotalPlayTime((double)(unsigned long long)self->world()->timeElapsed() + self->totalPlayTime());
     }
 
     // jjmapnr: a 7-byte prefix, then load by number.

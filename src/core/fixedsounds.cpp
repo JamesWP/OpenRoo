@@ -40,7 +40,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         g_logger.logMessage(1, "GAME: config-values saved correctly");
     else
         g_logger.logMessage(3, "GAME: ** error ** while saving config-values (maybe write-protected or hd full\077) !!!");
-    self->menu()->setLockStart(*self->clock());
+    self->menu()->setLockStart(*self->world()->clock());
     self->menu()->setLock(1);
     if (self->musicOn() != 0)
         self->cdThemes()->play(GS_GAME_MAIN);
@@ -59,7 +59,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     // rest are the player's pickup sounds.
     for (unsigned int i = 0; i < 3; ++i) {
         char suffix[2] = { (char)('A' + i), 0 };
-        Player *pl = self->player();
+        Player *pl = self->world()->player();
         FixedSounds *fs = self->fixedSounds();
         fs->crystalBank[i] = bank(self, fs->crystalBank[i], "%s\\waves\\add02%s.wav", suffix);
 #define PBANK(k, fmt) pl->setPickupSound(Player::k, i, bank(self, pl->pickupSound(Player::k, i), fmt, suffix))
@@ -76,7 +76,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     }
 
     ScriptPlayer *sp = self->scriptPlayer();
-    self->extraObjects()->setSoundLibrary(sm);
+    self->world()->extraObjects()->setSoundLibrary(sm);
     sp->setSoundManager(sm);
 
     snprintf(path, sizeof(path), GS_WAV_TIME_OUT, self->gameDir());
@@ -92,7 +92,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     snprintf(path, sizeof(path), GS_WAV_LEVEL_COMPLETED, self->gameDir());
     self->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), GS_WAV_SPLAT, self->gameDir());
-    self->player()->setSoundA7(sm->acquireStatic(path, 1));
+    self->world()->player()->setSoundA7(sm->acquireStatic(path, 1));
     sm->setup(self->sound3D());
 
     self->fixedSounds()->loaded = 1;
