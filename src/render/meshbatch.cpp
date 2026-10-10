@@ -76,7 +76,9 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
 
             AnimatedMesh *mesh = obj->mesh();  // NULL: draw the flat quads
             if (mesh == NULL) {
-                d3d->SetWorld(g_worldIdentity);
+                Mat4 ident;
+                m4_identity(&ident);
+                d3d->SetWorld(ident);
                 d3d->DrawBuffer(
                     Prim::TriangleList, pl->kind01Buffer(d3d), 0,
                     pl->kind01Count() * 6);

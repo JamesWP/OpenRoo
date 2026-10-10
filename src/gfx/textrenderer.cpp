@@ -31,8 +31,6 @@
 #include <string>
 #include <math.h>
 #include <string.h>
-TextRenderer g_fontMain;
-TextRenderer g_fontNumbers;
 
 /* FVF 0x1C4 is 32 bytes: the SPECULAR set is really written (0xff000000 into
  * every vertex).  A shorter vertex would hand the driver a stride four bytes

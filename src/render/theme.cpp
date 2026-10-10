@@ -244,10 +244,10 @@ static const ThemeObjectType kReleaseOrder[] = {
     THEME_OBJ_PARAGLIDEFX, THEME_OBJ_BRIDGE,
 };
 
-void ThemeAssetBlock::release()
+void ThemeAssetBlock::release(TextureManager *textures, ModelManager *models)
 {
-    g_textureManager.releaseAll();
-    g_modelManager.clearReleaseFree();
+    textures->releaseAll();
+    models->clearReleaseFree();
     for (ThemeObjectType t : kReleaseOrder)
         slots_[t].release();
     for (int f = 0; f < 6; f++)
@@ -403,11 +403,11 @@ template <typename T> struct Cursor {
 class ThemeParser {
 public:
     /* Parses the stream into block; the parse state starts cleared. */
-    void run(ThemeSoundTable *s, const char *dir, RenderDevice *dev, ThemeAssetBlock *b,
-             std::istream &f)
+    void run(ThemeSoundTable *s, const char *dir, RenderDevice *dev, TextureManager *tex,
+             ModelManager *mdl, ThemeAssetBlock *b, std::istream &f)
     {
         *this = ThemeParser();
-        sounds = s; gameDir = dir; d3d = dev; block = b; in = &f;
+        sounds = s; gameDir = dir; d3d = dev; textures = tex; models = mdl; block = b; in = &f;
         parseFile();
     }
 
@@ -415,6 +415,8 @@ private:
     ThemeSoundTable *sounds;
     const char      *gameDir;
     RenderDevice    *d3d;
+    TextureManager  *textures;
+    ModelManager    *models;
     ThemeAssetBlock *block;
     std::istream    *in;
 
@@ -454,7 +456,7 @@ private:
     Texture *loadTexture(char *name, char *alphaTok)
     {
         uint32_t alpha = is(alphaTok, "alpha") ? 1 : 0;
-        return g_textureManager.getOrLoad(d3d,
+        return textures->getOrLoad(d3d,
                                         name, alpha, 0);
     }
 
@@ -630,7 +632,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
         if (slot == NULL || ntok <= 1)
             return;
         open(rec, slot);
-        AnimatedMesh *mesh = g_modelManager.findOrImport(tok[1]);
+        AnimatedMesh *mesh = models->findOrImport(tok[1]);
         if (mesh == NULL) {
             rec.at->kind_ = THEME_KIND_NONE;
             return;
@@ -746,7 +748,7 @@ void ThemeParser::recordKeyword(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec
         open(sub, rec);
         uint32_t alpha = is(tok[2], "alpha") ? 1 : 0;
         if (slot)
-            sub.at->pTexture = g_textureManager.getOrLoad(d3d, tok[1], alpha, 0);
+            sub.at->pTexture = textures->getOrLoad(d3d, tok[1], alpha, 0);
     } else if (is(tok[0], "position")) {
         if (ntok > 3 && slot) {
             rec->flPosX_ = atof_f(tok[1]); rec->flPosY_ = atof_f(tok[2]); rec->flPosZ_ = atof_f(tok[3]);
@@ -850,10 +852,10 @@ void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *su
 static ThemeParser s_parser;
 
 bool ThemeAssetBlock::themeLoad(ThemeSoundTable *sounds, const char *gameDir,
-                                RenderDevice *d3d,
-                       char *path)
+                                RenderDevice *d3d, TextureManager *textures,
+                                ModelManager *models, char *path)
 {
-    release();
+    release(textures, models);
     {
         FogState fog = d3d->fog();
         fog.enable = false;
@@ -864,7 +866,7 @@ bool ThemeAssetBlock::themeLoad(ThemeSoundTable *sounds, const char *gameDir,
     if (!file)
         return false;
 
-    s_parser.run(sounds, gameDir, d3d, this, file);
+    s_parser.run(sounds, gameDir, d3d, textures, models, this, file);
 
     theme_struct_dump_if_enabled(this, path);
     strcpy(themeName_, path);  // PRESERVED: unbounded
@@ -873,12 +875,13 @@ bool ThemeAssetBlock::themeLoad(ThemeSoundTable *sounds, const char *gameDir,
 
 /* The load, timed.  The time goes only to our log, never into game state. */
 bool ThemeAssetBlock::load(ThemeSoundTable *sounds, const char *gameDir,
-                           RenderDevice *d3d, char *path)
+                           RenderDevice *d3d, TextureManager *textures,
+                           ModelManager *models, char *path)
 {
     const unsigned long long freq = sysdev::perfFrequency();
     const unsigned long long t0 = sysdev::perfCounter();
 
-    bool ok = themeLoad(sounds, gameDir, d3d, path);
+    bool ok = themeLoad(sounds, gameDir, d3d, textures, models, path);
 
     const unsigned long long t1 = sysdev::perfCounter();
     double ms = (double)(t1 - t0) * 1000.0 / (double)freq;

@@ -103,8 +103,3 @@ private:
     UVTransform   uvTransform_;
 };
 
-/* The two character meshes, loaded once at startup (renderstate.cpp):
- * models\John.mdl and models\Enemy.mdl. */
-extern AnimatedMesh g_meshPlayer;
-extern AnimatedMesh g_meshEnemy;
-

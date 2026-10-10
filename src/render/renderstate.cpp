@@ -31,12 +31,12 @@
 Render_ConfigureRenderState(Renderer *renderer, const World *level, CameraPose *cam,
                             const char *gameDir)
 {
-    RenderDevice *d3d = g_renderDevice;
+    RenderDevice *d3d = renderer->device;
 
     // Loading-screen and demo bitmaps.
     if (!Image_LoadBMP("bitmaps\\loading.bmp", renderer->fallbackImage))
         g_logger.logMessage(3, "SUR: *ERROR* couldn't load loading.bmp");
-    g_renderDevice->PresentImage(renderer->fallbackImage);
+    d3d->PresentImage(renderer->fallbackImage);
     Image_LoadBMP("bitmaps\\demo.bmp", renderer->demoImage);
 
     // Texture and model caches' loggers, and the level placement scratch
@@ -46,7 +46,6 @@ Render_ConfigureRenderState(Renderer *renderer, const World *level, CameraPose *
     // The initial camera, placed exactly as level entry places it.
     Mat4 world;
     m4_identity(&world);
-    g_worldIdentity = *(Mat4 *)&world;
 
     const LevelMap *map = level->map();
     const double s = sqrt(52.0);
@@ -92,7 +91,7 @@ Render_ConfigureRenderState(Renderer *renderer, const World *level, CameraPose *
     f->f[8] = cam->eye()[2];
 
     RenderDevice *dev = d3d;
-    dev->SetWorld(g_worldIdentity);
+    dev->SetWorld(world);
     dev->SetView(view);
     dev->SetProjection(proj);
 
@@ -106,14 +105,14 @@ Render_ConfigureRenderState(Renderer *renderer, const World *level, CameraPose *
                                      AddressMode::Wrap, AddressMode::Wrap });
 
     // Shared player/enemy models, textures, material, light and fonts.
-    g_meshPlayer.importSceneModels("models\\John.mdl");
-    g_meshEnemy.importSceneModels("models\\Enemy.mdl");
+    renderer->meshPlayer.importSceneModels("models\\John.mdl");
+    renderer->meshEnemy.importSceneModels("models\\Enemy.mdl");
 
     char path[0x100];
     snprintf(path, sizeof(path), "%s\\textures\\shadow.tga", gameDir);
-    g_texShadow.load(d3d, path, 1, 0);
+    renderer->texShadow.load(d3d, path, 1, 0);
     snprintf(path, sizeof(path), "%s\\textures\\karoo128.tga", gameDir);
-    g_texKaroo128.load(d3d, path, 1, 0);
+    renderer->texKaroo128.load(d3d, path, 1, 0);
 
     Material mat = {
         { 0.9f, 1.0f, 0.9f, 1.0f },  // diffuse
@@ -129,11 +128,11 @@ Render_ConfigureRenderState(Renderer *renderer, const World *level, CameraPose *
     d3d->SetDirectionalLight(light);
 
     bool fontsLoaded = true;
-    if (!(char)g_fontMain.load("fonts\\font1.fon", d3d)) {
+    if (!(char)renderer->fontMain.load("fonts\\font1.fon", d3d)) {
         g_logger.logMessage(4, "Couldn't create Font font1.fon");
         fontsLoaded = false;
     }
-    if (!(char)g_fontNumbers.load("fonts\\numbers.fon", d3d)) {
+    if (!(char)renderer->fontNumbers.load("fonts\\numbers.fon", d3d)) {
         g_logger.logMessage(4, "Couldn't create Font numbers.fon");
         fontsLoaded = false;
     }

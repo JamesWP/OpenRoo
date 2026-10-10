@@ -60,14 +60,9 @@ private:
     Image         *image_;
 };
 
-/* textures\shadow.tga and textures\karoo128.tga, loaded once at startup
- * (renderstate.cpp). */
-extern Texture g_texShadow;
-extern Texture g_texKaroo128;
-
 /* ─── TextureManager -- the name-keyed Texture cache ───────────────────────
  *
- * The theme's instance is g_textureManager; the Scene has its own (scene.h).
+ * The theme's instance is Renderer::textures; the Scene has its own (scene.h).
  * Same shape as ModelManager (model.h).  The window procedure re-uploads both
  * on WM_ACTIVATE.
  *
@@ -92,4 +87,3 @@ private:
     std::vector<Texture *> cache_;
 };
 
-extern TextureManager g_textureManager;

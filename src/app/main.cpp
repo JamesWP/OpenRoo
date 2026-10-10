@@ -77,7 +77,7 @@ static void delete_game(Game *g)       { Game_Shutdown(g); delete g; }
 static bool g_norender;
 
 /* Draws the intro's current frame, when there is a new one. */
-static void present_movie_frame()
+static void present_movie_frame(RenderDevice *dev)
 {
     if (!g_movie.update()) {
         sysdev::sleepMs(2);  // nothing due yet
@@ -96,7 +96,7 @@ static void present_movie_frame()
         image.rgba.resize((size_t)w * h * 4);
     }
     memcpy(image.rgba.data(), rgba, image.rgba.size());
-    g_renderDevice->PresentImage(image);
+    dev->PresentImage(image);
 }
 
 /* Between messages: a frame, or the intro's while it plays. */
@@ -105,7 +105,7 @@ static void idle()
     inputdev::setKeyboardSuppressed(windev::debugUiCapturesKeyboard());
     // Cleared when the movie finishes, is skipped or (stub) gets its message.
     if (g_movie.playing())
-        present_movie_frame();
+        present_movie_frame(s_renderer.device);
     else if (!g_norender)
         Render_RenderGameFrame(&s_renderer, &s_menuArt, &s_progCtrl);
 }
@@ -118,17 +118,13 @@ static void idle()
  * empty ones), both texture managers, then the logo and the menu's nine
  * textures. */
 static const int IMAGE_PTR_ORDER[10] = { 2, 5, 0, 6, 1, 4, 7, 3, 8, 9 };
-static Texture *const TAIL_TEXTURES[10] = {
-    &g_texKaroo128, &s_menuArt.tex1, &s_menuArt.tex2, &s_menuArt.tex3, &s_menuArt.tex4,
-    &s_menuArt.selector, &s_menuArt.on, &s_menuArt.off, &s_menuArt.knob, &s_menuArt.scale,
-};
 
 
 static void restore_surfaces(Renderer *renderer)
 {
-    RenderDevice *dev = g_renderDevice;
-    g_fontMain.atlas()->reupload(dev);
-    g_fontNumbers.atlas()->reupload(dev);
+    RenderDevice *dev = renderer->device;
+    renderer->fontMain.atlas()->reupload(dev);
+    renderer->fontNumbers.atlas()->reupload(dev);
     for (int i = 0; i < 6; i++)
         renderer->themeBlock.sky().textures()[i].reupload(dev);
     for (int i = 0; i < 10; i++) {
@@ -136,10 +132,14 @@ static void restore_surfaces(Renderer *renderer)
         if (img)
             img->reupload(dev);
     }
-    g_textureManager.reuploadAll(dev);
+    renderer->textures.reuploadAll(dev);
     renderer->scene.textures()->reuploadAll(dev);
+    Texture *const tail[10] = {
+        &renderer->texKaroo128, &s_menuArt.tex1, &s_menuArt.tex2, &s_menuArt.tex3, &s_menuArt.tex4,
+        &s_menuArt.selector, &s_menuArt.on, &s_menuArt.off, &s_menuArt.knob, &s_menuArt.scale,
+    };
     for (int i = 0; i < 10; i++)
-        TAIL_TEXTURES[i]->reupload(dev);
+        tail[i]->reupload(dev);
 }
 
 /* KAROO_WNDPROC_FX=noquit is a negative control: closing the window does not
@@ -284,7 +284,7 @@ int Main_WinMain(const char *lpCmdLine)
 
     window.show(false);
 
-    RenderDevice *d3d = g_renderDevice = new RenderDevice();
+    RenderDevice *d3d = s_renderer.device = new RenderDevice();
 
     // Three attempts: the launcher's adapter and mode, the default adapter in
     // that mode, the default adapter in mode 0.
@@ -318,7 +318,7 @@ int Main_WinMain(const char *lpCmdLine)
     window.show(true);
     if (!Render_ConfigureRenderState(&s_renderer, game->world(), game->camera()->pose(), kGameDir))
         windev::quit(1);
-    Menu_BuildMenuGeometry(&s_menuArt, g_renderDevice, kGameDir);
+    Menu_BuildMenuGeometry(&s_menuArt, s_renderer.device, kGameDir);
     hooks_ClockInit();
 
     // The intro is only shown to a person at a display: a headless or replayed
@@ -344,8 +344,8 @@ int Main_WinMain(const char *lpCmdLine)
     s_renderer.levelPlacements.release();
     delete_game(Game::instance());
     Input_TrySaveSettings(&s_progCtrl);
-    s_renderer.themeBlock.release();
-    delete g_renderDevice;
-    g_renderDevice = NULL;
+    s_renderer.themeBlock.release(&s_renderer.textures, &s_renderer.models);
+    delete s_renderer.device;
+    s_renderer.device = NULL;
     return exitCode;
 }

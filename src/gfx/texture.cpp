@@ -7,9 +7,6 @@
 #include "renderdevice.h"
 #include "logger.h"
 
-Texture g_texKaroo128;
-Texture g_texShadow;
-TextureManager g_textureManager;
 
 Texture::Texture()
     : handle_(NULL), image_(NULL)

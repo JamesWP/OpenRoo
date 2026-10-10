@@ -23,6 +23,8 @@
 #include "sky.h"
 
 class RenderDevice;
+class TextureManager;
+class ModelManager;
 
 enum ThemeObjectKind : uint32_t {
     THEME_KIND_NONE           = 0,
@@ -231,10 +233,10 @@ public:
     /* Releases the block, parses the theme file at path into it, and builds its
      * meshes, textures and sounds. */
     bool load(ThemeSoundTable *sounds, const char *gameDir, RenderDevice *d3d,
-              char *path);
+              TextureManager *textures, ModelManager *models, char *path);
 
     /* Releases everything the block holds.  Also called at shutdown. */
-    void release();
+    void release(TextureManager *textures, ModelManager *models);
 
     /* The 38 slots and the sky build themselves, and are destroyed in
      * reverse; the plain data between them is left alone. */
@@ -269,7 +271,8 @@ private:
     float                flSideHeight_{};
 
     bool themeLoad(ThemeSoundTable *sounds, const char *gameDir,
-                   RenderDevice *d3d, char *path);
+                   RenderDevice *d3d, TextureManager *textures, ModelManager *models,
+                   char *path);
 
      
 };
