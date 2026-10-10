@@ -1,5 +1,5 @@
 #include "tiledebug.h"
-#include "cheatcode.h"
+#include "cheats.h"
 #include "dbg.h"
 #include "game.h"
 #include "levelmap.h"
