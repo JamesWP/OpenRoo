@@ -36,6 +36,7 @@
 #include "textrenderer.h"
 #include "dbg.h"
 #include "renderstate.h"
+#include "renderer.h"
 
 /* ─── Section 2: timing, tick, camera, listener ─────────────────────────── */
 
@@ -147,7 +148,7 @@ static void set_fog_enable(bool on)
 /* ─── RenderGameFrame ───────────────────────────────────────────────────── */
 
   void  
-Render_RenderGameFrame(void)
+Render_RenderGameFrame(Renderer *renderer)
 {
     dbg::frameBegin();
     PROF_SCOPE("frame");
@@ -155,7 +156,7 @@ Render_RenderGameFrame(void)
     if (g->field_173584() != 0) {
         {
             PROF_SCOPE("level prepare");
-            LevelEntry_PrepareAssets();
+            LevelEntry_PrepareAssets(renderer);
         }
         g->setField173584(0);
         return;
@@ -168,11 +169,11 @@ Render_RenderGameFrame(void)
         now = hooks_ClockSeconds() * 1000.0;
     }
     const double elapsed = now - prevMs;
-    double dt = now - g_lastTickMs;
+    double dt = now - renderer->lastTickMs;
 
     if (dt > 0.0) {
         PROF_SCOPE("update");
-        g_lastTickMs = now;
+        renderer->lastTickMs = now;
         {
             PROF_SCOPE("game tick");
             Sim_GameTick(g, dt, now);
@@ -181,14 +182,14 @@ Render_RenderGameFrame(void)
             return;
         {
             PROF_SCOPE("poses");
-            FramePose_Player(g->world(), g->camera(), g->config(), now, dt, &g_cameraFocus);
-            FramePose_Foes(g->world(), now, dt, g_foePoses);
+            FramePose_Player(g->world(), g->camera(), g->config(), now, dt, &renderer->cameraFocus);
+            FramePose_Foes(g->world(), now, dt, renderer->foePoses);
         }
         {
             PROF_SCOPE("camera");
             if (g->scriptPlayer()->splineActive() == 0)
                 Camera_UpdateViewTransform(g_renderDevice, g->world(), g->camera(), g->config(),
-                                           g_cameraFocus, dt);
+                                           &renderer->scene, renderer->cameraFocus, dt);
             else
                 scripted_camera(g, g_renderDevice);
         }
@@ -218,23 +219,23 @@ Render_RenderGameFrame(void)
     d3d->SetSpecular(false);
     d3d->SetBlend(BlendState::off());
     CameraPose *cam = g->camera()->pose();
-    g_themeBlock.sky().draw(d3d, cam->eye()[0], cam->eye()[1], cam->eye()[2]);
-    if (g_themeBlock.fogEnabled())
+    renderer->themeBlock.sky().draw(d3d, cam->eye()[0], cam->eye()[1], cam->eye()[2]);
+    if (renderer->themeBlock.fogEnabled())
         set_fog_enable(true);
     d3d->SetStencil(StencilState{ true, CompareFunc::Always, 1, StencilOp::Keep,
                                   StencilOp::Keep, StencilOp::Replace });
 
     {
         PROF_SCOPE("opaque");
-        Scene_OpaquePasses(g->world(), g->camera()->pose(), g->config(), now, elapsed);
+        Scene_OpaquePasses(renderer, g->world(), g->camera()->pose(), g->config(), now, elapsed);
     }
     {
         PROF_SCOPE("effects and shadows");
-        Scene_EffectsAndShadows(g->world(), g->camera()->pose(), g->config(), now, dt);
+        Scene_EffectsAndShadows(renderer, g->world(), g->camera()->pose(), g->config(), now, dt);
     }
     {
         PROF_SCOPE("translucent");
-        Scene_TranslucentPasses(g->world(), g->camera()->pose(), g->config(), now, elapsed, dt);
+        Scene_TranslucentPasses(renderer, g->world(), g->camera()->pose(), g->config(), now, elapsed, dt);
     }
 
     set_depth(false, true);
@@ -248,7 +249,7 @@ Render_RenderGameFrame(void)
         g->scriptPlayer()->running() == 0)
     {
         PROF_SCOPE("hud");
-        Hud_Draw(g->world(), g->session(), st, w, h, W, H, hudH);
+        Hud_Draw(renderer, g->world(), g->session(), st, w, h, W, H, hudH);
     }
     {
         PROF_SCOPE("hud");
@@ -258,7 +259,7 @@ Render_RenderGameFrame(void)
     const float pad = H * 0.00625f;
     if (st != GameState::MainMenu && st != GameState::PauseMenu && st != GameState::LevelComplete) {
         PROF_SCOPE("hud");
-        Hud_DrawMessages(g->world(), g->scriptPlayer(), st, W, H, pad);
+        Hud_DrawMessages(&renderer->themeBlock, g->world(), g->scriptPlayer(), st, W, H, pad);
     }
     {
         PROF_SCOPE("hud");
@@ -269,15 +270,15 @@ Render_RenderGameFrame(void)
     if (st == GameState::MainMenu || st == GameState::PauseMenu || st == GameState::LevelComplete) {
         PROF_SCOPE("menu");
         Menu_DispatchGameState(g->frontEnd(), g->session(), g->config(),
-                               &g_themeBlock, d3d, &g_fontMain, ms);
+                               &renderer->themeBlock, d3d, &g_fontMain, ms);
     }
     if (g->state() == GameState::GameOver) {
         PROF_SCOPE("menu");
-        Score_DrawGameOverScore(g->session(), &g_themeBlock, d3d, &g_fontMain, ms);
+        Score_DrawGameOverScore(g->session(), &renderer->themeBlock, d3d, &g_fontMain, ms);
     }
     if (g->frontEnd()->menu()->node() == 3 || g->state() == GameState::NameEntry) {
         PROF_SCOPE("menu");
-        Score_DrawHighScoreTable(g->frontEnd(), &g_themeBlock, d3d, &g_fontMain, ms);
+        Score_DrawHighScoreTable(g->frontEnd(), &renderer->themeBlock, d3d, &g_fontMain, ms);
     }
 
     set_depth_test(true);
@@ -285,7 +286,7 @@ Render_RenderGameFrame(void)
     PROF_SCOPE("present");
     if (g->state() == GameState::Quitting) {
         if (g->field_0c() != 0)
-            g_renderDevice->PresentImage(g_demoImage);
+            g_renderDevice->PresentImage(renderer->demoImage);
         return;
     }
     d3d->Present();

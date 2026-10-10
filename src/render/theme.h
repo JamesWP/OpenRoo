@@ -1,5 +1,5 @@
 /* The theme asset block: everything a theme file (themes\<name>.thm) defines,
- * in one global.  For each of 38 object types (the player, foes, tiles,
+ * in one ThemeAssetBlock owned by the Renderer (renderer.h).  For each of 38 object types (the player, foes, tiles,
  * pickups...) up to eight records of meshes, animations, billboards and
  * particle systems; then the HUD and menu images, the text colours, fog, the
  * sky and the side height.  Loading a theme releases the old one first.
@@ -277,7 +277,6 @@ private:
 /* The loader and its helpers. */
 
 
-extern ThemeAssetBlock g_themeBlock;
 
 /* The `sound` keyword: event name to id, then ThemeSoundTable::add. */
   bool  

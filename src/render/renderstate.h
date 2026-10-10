@@ -1,25 +1,10 @@
 /* renderstate.h -- the fixed render state (renderstate.cpp). */
 #pragma once
 
-struct Image;
+class Renderer;
 class World;
 class CameraPose;
 
-/* The loading screen: bitmaps\<map>.bmp is loaded into the first; the second
- * is shown when that fails. */
-extern Image g_loadingImage;
-extern Image g_fallbackImage;
-
-/* bitmaps\demo.bmp, loaded once at startup. */
-extern Image g_demoImage;
-
-/* A copy of the LevelMap's title, made at level entry. */
-extern char g_levelTitle[128];
-
-/* The clock (ms) at the last GameTick.  Level entry resets it, so the level's
- * first frame ticks from there. */
-extern double g_lastTickMs;
-
 /* Called once, by WinMain at startup. */
-  void   Render_ConfigureRenderState(const World *level, CameraPose *cam,
-                                     const char *gameDir);
+  void   Render_ConfigureRenderState(Renderer *renderer, const World *level,
+                                     CameraPose *cam, const char *gameDir);

@@ -1,6 +1,6 @@
-/* scene.h -- the level's scene-object list: one static instance, built and
- * torn down by staticinit.cpp, filled per level by BuildSceneObjectList
- * (scene.cpp) from the level's .leo records. */
+/* scene.h -- the level's scene-object list: one instance, owned by the
+ * Renderer (renderer.h), filled per level by buildObjectList (scene.cpp) from
+ * the level's .leo records. */
 #pragma once
 
 #include <stdint.h>
@@ -65,5 +65,4 @@ private:
      
 };
 
-extern Scene g_scene;
 

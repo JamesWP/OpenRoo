@@ -20,6 +20,7 @@
 #include "theme.h"
 #include "camera.h"
 #include "framepose.h"
+#include "renderer.h"
 
 /* ─── The HUD ─────────────────────────────────────────────────────────── */
 
@@ -47,9 +48,9 @@ static void blend_on(void)
     g_renderDevice->SetBlend(BlendState::alpha());
 }
 
-static const Texture *image(ThemeImageSlot s)
+static const Texture *image(const ThemeAssetBlock *theme, ThemeImageSlot s)
 {
-    return g_themeBlock.image(s);
+    return theme->image(s);
 }
 
 /* The HUD's text positions are integer multiples of the screen width, taken
@@ -70,15 +71,16 @@ static void hud_text(TextRenderer *font, int align, float x, float y, float cw, 
 
 /* The in-level HUD: the side panels, the vitality needle, the radar and
  * its foe blips, then the timer and counters. */
-void Hud_Draw(World *world, Session *session, GameState state, unsigned w, unsigned h,
-              float W, float H, float hudH)
+void Hud_Draw(Renderer *renderer, World *world, Session *session, GameState state,
+              unsigned w, unsigned h, float W, float H, float hudH)
 {
     RenderDevice *dev = g_renderDevice;
+    const ThemeAssetBlock *theme = &renderer->themeBlock;
     Player *pl = world->player();
 
     /* The two corner panels, mirrored halves of the HUD image. */
-    if (g_themeBlock.image(THEME_IMG_HUD) != NULL) {
-        dev->SetTexture(0, image(THEME_IMG_HUD));
+    if (theme->image(THEME_IMG_HUD) != NULL) {
+        dev->SetTexture(0, image(theme, THEME_IMG_HUD));
         blend_on();
         const float a  = hudH + hudH;
         const float y1 = hudH - W * 0.003125f;
@@ -102,7 +104,7 @@ void Hud_Draw(World *world, Session *session, GameState state, unsigned w, unsig
 
     /* The vitality needle: a quad about the origin, turned by 0.9519978 -
      * vitality% * 0.019039957 and moved to (541/640 W, 92/480 H). */
-    if (g_themeBlock.image(THEME_IMG_POINTER) != NULL) {
+    if (theme->image(THEME_IMG_POINTER) != NULL) {
         float p[4][3] = {
             { W * 0.1f,  H * -0.13333334f, 0.0f },
             { W * 0.1f,  H * 0.13333334f,  0.0f },
@@ -135,7 +137,7 @@ void Hud_Draw(World *world, Session *session, GameState state, unsigned w, unsig
         };
         for (int k = 0; k < 4; ++k)
             q[k].sz = p[k][2];
-        dev->SetTexture(0, image(THEME_IMG_POINTER));
+        dev->SetTexture(0, image(theme, THEME_IMG_POINTER));
         blend_on();
         draw_strip(q);
         g_renderDevice->SetBlend(BlendState::off());
@@ -144,9 +146,9 @@ void Hud_Draw(World *world, Session *session, GameState state, unsigned w, unsig
 
     /* The radar, centred at (0.9 W, 0.8667 H). */
     const float cx = W * 0.9f, cy = H * 0.8666667f;
-    CameraFocus *focus = &g_cameraFocus;
+    CameraFocus *focus = &renderer->cameraFocus;
     Vec3 me = { focus->f[2], focus->f[3], focus->f[4] };
-    if (g_themeBlock.image(THEME_IMG_RADAR) != NULL) {
+    if (theme->image(THEME_IMG_RADAR) != NULL) {
         const float r = hudH * 0.5f;
         me.y = 0.0f;
         ScreenVertex q[4] = {
@@ -156,7 +158,7 @@ void Hud_Draw(World *world, Session *session, GameState state, unsigned w, unsig
             tl(cx - r, cy + r, 0xffffffff, 0.0f, 1.0f),
         };
         blend_on();
-        dev->SetTexture(0, image(THEME_IMG_RADAR));
+        dev->SetTexture(0, image(theme, THEME_IMG_RADAR));
         draw_strip(q);
         g_renderDevice->SetBlend(BlendState::off());
         dev->SetTexture(0, nullptr);
@@ -165,7 +167,7 @@ void Hud_Draw(World *world, Session *session, GameState state, unsigned w, unsig
     /* A blip for every foe within 13 cells, turned into the camera's frame
      * (RotY(-yaw)) and scaled by 4; drawn untextured. */
     for (unsigned char i = 0; i < world->foeCount(); ++i) {
-        const float *fp = g_foePoses[i].pos();
+        const float *fp = renderer->foePoses[i].pos();
         Vec3 a = { fp[0], 0.0f, fp[2] }, d;
         Math_Vec3Sub(&d, &a, &me);
         if (!(Math_Vec3Length(&d) < 13.0))
@@ -201,7 +203,7 @@ void Hud_Draw(World *world, Session *session, GameState state, unsigned w, unsig
     hud_text(&g_fontNumbers, 0, W * 0.5f, 0.0f, W * 0.05f, W * 0.06666667f, 1.0f,
              buf, '0', tc, tc);
 
-    const ThemeTextColorPair &hc = g_themeBlock.textColor(THEME_COLOR_HUD);
+    const ThemeTextColorPair &hc = theme->textColor(THEME_COLOR_HUD);
     const float cw = W * 0.025f, ch = H * 0.033333335f;
     sprintf(buf, "x%d", pl->lives());
     hud_text(&g_fontMain, -1, wx(w, 490), W * 0.009375f, cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
@@ -241,10 +243,10 @@ void Hud_DrawFps(float W, float H)
 }
 
 /* The captions and the timed-effect icons down the left edge. */
-void Hud_DrawMessages(World *world, ScriptPlayer *scriptPlayer, GameState state, float W,
-                      float H, float pad)
+void Hud_DrawMessages(const ThemeAssetBlock *theme, World *world, ScriptPlayer *scriptPlayer,
+                      GameState state, float W, float H, float pad)
 {
-    const ThemeTextColorPair &hc = g_themeBlock.textColor(THEME_COLOR_HUD);
+    const ThemeTextColorPair &hc = theme->textColor(THEME_COLOR_HUD);
     const float cw = W * 0.025f, ch = H * 0.033333335f;
     ScriptPlayer *sp = scriptPlayer;
     Player *pl = world->player();
@@ -255,8 +257,8 @@ void Hud_DrawMessages(World *world, ScriptPlayer *scriptPlayer, GameState state,
         if (sp->caption()[0] != '\0')
             g_fontMain.drawPanel(pad, H - pad, cw, ch, 0.75f, H * 0.03750938f,
                                sp->caption(), g_renderDevice, hc.color1, hc.color2,
-                               g_themeBlock.image(THEME_IMG_MENU),
-                               g_themeBlock.image(THEME_IMG_EDGE));
+                               theme->image(THEME_IMG_MENU),
+                               theme->image(THEME_IMG_EDGE));
     }
     if ((state == GameState::Flythrough && sp->running() == 0) || (state == GameState::Playing && pl->moveState() != 0))
         hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 232.0f, cw, ch, 0.75f,
@@ -288,8 +290,8 @@ void Hud_DrawMessages(World *world, ScriptPlayer *scriptPlayer, GameState state,
         case 13: img = THEME_IMG_PROTECTION;     start = pl->effectDStart(); break;
         default: icon = false; img = THEME_IMG_HUD; break;
         }
-        if (icon && g_themeBlock.image(img) != NULL) {
-            g_renderDevice->SetTexture(0, image(img));
+        if (icon && theme->image(img) != NULL) {
+            g_renderDevice->SetTexture(0, image(theme, img));
             sprintf(buf, "%.1f", span - (*world->clock() - start) * 0.001);
         }
         ScreenVertex q[4] = {

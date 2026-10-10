@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "renderstate.h"
+#include "renderer.h"
 #include "windev.h"
 #include "renderdevice.h"
 #include "image.h"
@@ -27,20 +28,20 @@
 #include "d3dmath.h"
 
   void  
-Render_ConfigureRenderState(const World *level, CameraPose *cam,
+Render_ConfigureRenderState(Renderer *renderer, const World *level, CameraPose *cam,
                             const char *gameDir)
 {
     RenderDevice *d3d = g_renderDevice;
 
     // Loading-screen and demo bitmaps.
-    if (!Image_LoadBMP("bitmaps\\loading.bmp", g_fallbackImage))
+    if (!Image_LoadBMP("bitmaps\\loading.bmp", renderer->fallbackImage))
         g_logger.logMessage(3, "SUR: *ERROR* couldn't load loading.bmp");
-    g_renderDevice->PresentImage(g_fallbackImage);
-    Image_LoadBMP("bitmaps\\demo.bmp", g_demoImage);
+    g_renderDevice->PresentImage(renderer->fallbackImage);
+    Image_LoadBMP("bitmaps\\demo.bmp", renderer->demoImage);
 
     // Texture and model caches' loggers, and the level placement scratch
     // block.
-    g_levelPlacements.release();
+    renderer->levelPlacements.release();
 
     // The initial camera, placed exactly as level entry places it.
     Mat4 world;
@@ -82,7 +83,7 @@ Render_ConfigureRenderState(const World *level, CameraPose *cam,
     proj.m[11] = sn;
     proj.m[14] = (float)(q * -0.10000000149011612);
 
-    CameraFocus *f = &g_cameraFocus;
+    CameraFocus *f = &renderer->cameraFocus;
     *f = CameraFocus();
     f->f[3] = 5000.0f;
     f->f[5] = cam->yaw();
@@ -136,9 +137,3 @@ Render_ConfigureRenderState(const World *level, CameraPose *cam,
         windev::quit(1);
     }
 }
-
-Image  g_loadingImage;
-Image  g_fallbackImage;
-Image  g_demoImage;
-char   g_levelTitle[128];
-double g_lastTickMs;

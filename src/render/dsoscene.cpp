@@ -25,6 +25,7 @@
 #include "inputdev.h"
 #include <stdint.h>
 #include "dsoscene.h"
+#include "renderer.h"
 #include "sysdev.h"
 #include "d3dmath.h"
 #include "logger.h"
@@ -129,7 +130,7 @@ static uint32_t animation_frame(const SceneObject *o, double t)
 
 /* KAROO_CAM_DIAG=1: log the camera pose (eye, target, yaw, pitch) as raw
  * bits every frame, after UpdateViewTransform has run. */
-static void cam_diag(const World *world, const float *cam)
+static void cam_diag(const Renderer *renderer, const World *world, const float *cam)
 {
     static int on = -1;
     if (on < 0) {
@@ -146,11 +147,11 @@ static void cam_diag(const World *world, const float *cam)
     // framepose.cpp's outputs: the focus block, and an FNV-1a hash over the
     // live foes' pose records.
     uint32_t f[9];
-    memcpy(f, g_cameraFocus.f, sizeof f);
+    memcpy(f, renderer->cameraFocus.f, sizeof f);
     g_logger.write("FOCUS %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n",
               f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8]);
     unsigned n = world ? world->foeCount() : 0;
-    const unsigned char *r = (const unsigned char *)g_foePoses;
+    const unsigned char *r = (const unsigned char *)renderer->foePoses;
     uint32_t h = 2166136261u;
     for (unsigned i = 0; i < n * 0x1d; i++)
         h = (h ^ r[i]) * 16777619u;
@@ -158,11 +159,11 @@ static void cam_diag(const World *world, const float *cam)
 }
 
   void  
-Scene_DrawSceneObjects(RenderDevice *dev, const World *world, float *cam, uint32_t , uint32_t , double t)
+Scene_DrawSceneObjects(Renderer *renderer, RenderDevice *dev, const World *world, float *cam, uint32_t , uint32_t , double t)
 {
-    cam_diag(world, cam);
-    for (size_t oi = 0; oi < g_scene.objects().size(); ++oi) {
-        const SceneObject *o = g_scene.objects()[oi];
+    cam_diag(renderer, world, cam);
+    for (size_t oi = 0; oi < renderer->scene.objects().size(); ++oi) {
+        const SceneObject *o = renderer->scene.objects()[oi];
         if (o == NULL)
             continue;
 
@@ -335,12 +336,12 @@ static void draw_control_polygon(RenderDevice *dev, const SplinePath &sp,
 }
 
   void  
-Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
+Scene_DrawParticleSystems(Scene *scene, RenderDevice *dev, float *cam, double dt_ms, double t)
 {
     dev->SetSpecular(false);
 
-    for (size_t oi = 0; oi < g_scene.objects().size(); ++oi) {
-        const SceneObject *o = g_scene.objects()[oi];
+    for (size_t oi = 0; oi < scene->objects().size(); ++oi) {
+        const SceneObject *o = scene->objects()[oi];
         if (o == NULL || o->type != EXTRA_PARTICLE)
             continue;
 

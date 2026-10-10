@@ -15,6 +15,7 @@ class RenderDevice;
 class World;
 class CameraRig;
 class Config;
+class Scene;
 
 /* The 9-float block FramePose_Player fills and RenderGameFrame passes BY
  * VALUE to UpdateViewTransform: [5] is the yaw the camera turns
@@ -25,11 +26,8 @@ struct CameraFocus { float f[9]; };
  * camera's pose (camera->pose()) and sets the VIEW transform.  One caller,
  * RenderGameFrame. */
 void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *camera,
-                                const Config *config, CameraFocus focus, double dt);
+                                const Config *config, Scene *scene, CameraFocus focus, double dt);
 
-
-/* The level entry zeroes it; FramePose_Player fills it every frame. */
-extern CameraFocus g_cameraFocus;
 
  
 /* cdecl(out, eye, at, up by value, roll) -> out: a left-handed

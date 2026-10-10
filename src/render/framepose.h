@@ -47,9 +47,6 @@ private:
 };
 
  
-/* One record per live foe, in foe-list order; RenderGameFrame draws from it.
- */
-extern FoePose g_foePoses[500];
 
  
   void  

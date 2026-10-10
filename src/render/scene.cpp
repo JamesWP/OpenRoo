@@ -10,7 +10,6 @@
 #include "extraobjects.h"
 #include "particles.h"
 #include "ani.h"
-Scene g_scene;
 
 /* ─── Construction and teardown ─────────────────────────────────────────── */
 

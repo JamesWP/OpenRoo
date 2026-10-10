@@ -32,12 +32,13 @@
 #include "meshbatch.h"
 #include "bridgesurf.h"
 #include "sceneobjects.h"
+#include "renderer.h"
 
 /* ─── Section 3: the opaque passes ──────────────────────────────────────── */
 
-static ThemeObjectTypeSlot *slot(ThemeObjectType t)
+static ThemeObjectTypeSlot *slot(ThemeAssetBlock *theme, ThemeObjectType t)
 {
-    return g_themeBlock.slot(t);
+    return theme->slot(t);
 }
 
 /* Every model pass goes through RenderSceneObjects with the placement block
@@ -52,20 +53,20 @@ static const char *const OBJECT_NAMES[THEME_OBJ_COUNT] = {
     "protection", "protection fx", "bridge",
 };
 
-static void rso(World *world, CameraPose *cam, Config *config, const void *pos, const void *rot,
+static void rso(Renderer *renderer, World *world, CameraPose *cam, Config *config, const void *pos, const void *rot,
                 unsigned count, ThemeObjectType t, double now, float animTime = 0.0f,
                 unsigned animCode = 0, unsigned dtMs = 0)
 {
     Scene_RenderSceneObjects(world, cam, config,
-                             g_levelPlacements.tileQuad(),
-                             (const Vec3 *)pos, (const Vec3 *)rot, count, slot(t),
+                             renderer->levelPlacements.tileQuad(),
+                             (const Vec3 *)pos, (const Vec3 *)rot, count, slot(&renderer->themeBlock, t),
                              g_renderDevice, now, animTime, animCode, dtMs);
 }
 
-static void rso_list(World *world, CameraPose *cam, Config *config, const PlacementList &l,
+static void rso_list(Renderer *renderer, World *world, CameraPose *cam, Config *config, const PlacementList &l,
                      ThemeObjectType t, double now)
 {
-    rso(world, cam, config, l.pos(), l.rot(), l.count(), t, now);
+    rso(renderer, world, cam, config, l.pos(), l.rot(), l.count(), t, now);
 }
 
 /* The dying variant of a model: its fx slot's records each light their
@@ -130,32 +131,32 @@ static void set_depth_write(bool on)
 }
 
 
-void Scene_OpaquePasses(World *world, CameraPose *cam, Config *config, double now, double elapsed)
+void Scene_OpaquePasses(Renderer *renderer, World *world, CameraPose *cam, Config *config, double now, double elapsed)
 {
-    LevelPlacements *pl = &g_levelPlacements;
+    LevelPlacements *pl = &renderer->levelPlacements;
     RenderDevice *d3d = g_renderDevice;
 
     {
         PROF_SCOPE("level mesh");
-        MeshBatch_Draw(pl, &g_themeBlock, d3d);
+        MeshBatch_Draw(pl, &renderer->themeBlock, d3d);
     }
-    rso_list(world, cam, config, pl->switches(),    THEME_OBJ_SWITCH,        now);
-    rso_list(world, cam, config, pl->ice(),   THEME_OBJ_ICE,           now);
-    rso_list(world, cam, config, pl->sticky(),        THEME_OBJ_GLUE,          now);
-    rso_list(world, cam, config, pl->falling(),  THEME_OBJ_DESTRUCTFIELD, now);
+    rso_list(renderer, world, cam, config, pl->switches(),    THEME_OBJ_SWITCH,        now);
+    rso_list(renderer, world, cam, config, pl->ice(),   THEME_OBJ_ICE,           now);
+    rso_list(renderer, world, cam, config, pl->sticky(),        THEME_OBJ_GLUE,          now);
+    rso_list(renderer, world, cam, config, pl->falling(),  THEME_OBJ_DESTRUCTFIELD, now);
     /* the jump pads animate: a 500 ms cycle, animation code 0x14 */
-    rso(world, cam, config, pl->jumpPads().pos(), pl->jumpPads().rot(), pl->jumpPads().count(), THEME_OBJ_JUMPPAD, now,
+    rso(renderer, world, cam, config, pl->jumpPads().pos(), pl->jumpPads().rot(), pl->jumpPads().count(), THEME_OBJ_JUMPPAD, now,
         (float)fmod(now * 0.002, 1.0), 0x14, 0);
-    rso_list(world, cam, config, pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
+    rso_list(renderer, world, cam, config, pl->teleporters(), THEME_OBJ_TELEPORTER,    now);
 
     {
         PROF_SCOPE("tile quads");
-        QuadBatch_Draw(pl, &g_themeBlock, d3d);
+        QuadBatch_Draw(pl, &renderer->themeBlock, d3d);
     }
 
-    rso_list(world, cam, config, pl->stairs(),      THEME_OBJ_STAIR,         now);
-    pl->drawLifts(world, cam, config, &g_themeBlock, d3d, now);
-    pl->drawPlatforms(world, cam, config, &g_themeBlock, d3d, now);
+    rso_list(renderer, world, cam, config, pl->stairs(),      THEME_OBJ_STAIR,         now);
+    pl->drawLifts(world, cam, config, &renderer->themeBlock, d3d, now);
+    pl->drawPlatforms(world, cam, config, &renderer->themeBlock, d3d, now);
 
     /* The bombable blocks: whole, or (while the cell's field203 is set)
      * the fx model, starting the debris on the cell's field20f latch.  Only
@@ -168,10 +169,10 @@ void Scene_OpaquePasses(World *world, CameraPose *cam, Config *config, double no
         const int v = (unsigned char)(int)(pos[2] * -1.0f);
         Tile *t = world->map()->tile((unsigned char)(int)pos[0], v);
         if (t->field203() == 0) {
-            rso(world, cam, config, pos, rot, 1, THEME_OBJ_OBSTACLE, now);
+            rso(renderer, world, cam, config, pos, rot, 1, THEME_OBJ_OBSTACLE, now);
             continue;
         }
-        ThemeObjectTypeSlot *fx = slot(THEME_OBJ_OBSTACLEFX);
+        ThemeObjectTypeSlot *fx = slot(&renderer->themeBlock, THEME_OBJ_OBSTACLEFX);
         for (uint32_t k = 0; k < fx->instanceCount(); ++k) {
             ThemeLevelObject *rec = &fx->records()[k];
             if (rec->explodes() && t->field20f())
@@ -180,22 +181,22 @@ void Scene_OpaquePasses(World *world, CameraPose *cam, Config *config, double no
         if (t->field20f())
             t->setField20f(0);
         if (firstFx) {
-            rso(world, cam, config, pos, rot, 1, THEME_OBJ_OBSTACLEFX, now, 0.0f, 0, (unsigned)(int)elapsed);
+            rso(renderer, world, cam, config, pos, rot, 1, THEME_OBJ_OBSTACLEFX, now, 0.0f, 0, (unsigned)(int)elapsed);
             firstFx = false;
         } else {
-            rso(world, cam, config, pos, rot, 1, THEME_OBJ_OBSTACLEFX, now);
+            rso(renderer, world, cam, config, pos, rot, 1, THEME_OBJ_OBSTACLEFX, now);
         }
     }
 
     /* The player: CameraFocus f[2..4] is its position, f[1] its yaw, f[0]
      * its animation time; the animation code is its anim byte. */
-    CameraFocus *focus = &g_cameraFocus;
+    CameraFocus *focus = &renderer->cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
-    rso(world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
+    rso(renderer, world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
         world->player()->anim(), 0);
 
-    rso_list(world, cam, config, pl->slides(), THEME_OBJ_SLIDE, now);
-    rso(world, cam, config, pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now);
+    rso_list(renderer, world, cam, config, pl->slides(), THEME_OBJ_SLIDE, now);
+    rso(renderer, world, cam, config, pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now);
 
     /* The items, cell by cell. */
     {
@@ -210,7 +211,7 @@ void Scene_OpaquePasses(World *world, CameraPose *cam, Config *config, double no
                 float pos[3] = { (float)u, (float)t->height(), -(float)v };
                 float rot[3] = { 0.0f, 0.0f, 0.0f };
                 PROF_SCOPE(OBJECT_NAMES[ty]);
-                rso(world, cam, config, pos, rot, 1, ty, now);
+                rso(renderer, world, cam, config, pos, rot, 1, ty, now);
             }
     }
 
@@ -223,11 +224,11 @@ void Scene_OpaquePasses(World *world, CameraPose *cam, Config *config, double no
             float rot[3] = { 0.0f, 0.0f, 0.0f };
             PROF_SCOPE(OBJECT_NAMES[b->dyingStarted() == 0 ? THEME_OBJ_BOMB : THEME_OBJ_EXPLOSION]);
             if (b->dyingStarted() == 0) {
-                rso(world, cam, config, pos, rot, 1, THEME_OBJ_BOMB, now);
+                rso(renderer, world, cam, config, pos, rot, 1, THEME_OBJ_BOMB, now);
                 continue;
             }
-            arm_fx_records(slot(THEME_OBJ_EXPLOSION), b);
-            rso(world, cam, config, pos, rot, 1, THEME_OBJ_EXPLOSION, now, 0.0f, 0, (unsigned)(int)elapsed);
+            arm_fx_records(slot(&renderer->themeBlock, THEME_OBJ_EXPLOSION), b);
+            rso(renderer, world, cam, config, pos, rot, 1, THEME_OBJ_EXPLOSION, now, 0.0f, 0, (unsigned)(int)elapsed);
         }
     }
 
@@ -236,49 +237,49 @@ void Scene_OpaquePasses(World *world, CameraPose *cam, Config *config, double no
         PROF_SCOPE("foes");
         for (unsigned char i = 0; i < world->foeCount(); ++i) {
             Foe *f = world->foeSlot(world->foeId(i));
-            FoePose *p = &g_foePoses[i];
+            FoePose *p = &renderer->foePoses[i];
             const bool dying = f->dyingStarted() != 0;
             ThemeObjectType ty;
             if (!foe_slot(p->kind(), dying, &ty))
                 continue;
             PROF_SCOPE(OBJECT_NAMES[ty]);
             if (!dying) {
-                rso(world, cam, config, p->pos(), p->rot(), 1, ty, now, p->stepFrac(), f->anim(), 0);
+                rso(renderer, world, cam, config, p->pos(), p->rot(), 1, ty, now, p->stepFrac(), f->anim(), 0);
                 continue;
             }
-            arm_fx_records(slot(ty), f);
-            rso(world, cam, config, p->pos(), p->rot(), 1, ty, now, 0.0f, 0, (unsigned)(int)elapsed);
+            arm_fx_records(slot(&renderer->themeBlock, ty), f);
+            rso(renderer, world, cam, config, p->pos(), p->rot(), 1, ty, now, 0.0f, 0, (unsigned)(int)elapsed);
         }
     }
 }
 
 /* ─── Section 4: scene objects, bridges, effects, shadows ───────────────── */
 
-static void shadow(World *world, const void *pos, const void *rot, ThemeObjectType t, double now,
+static void shadow(Renderer *renderer, World *world, const void *pos, const void *rot, ThemeObjectType t, double now,
                    float phase, unsigned animKey)
 {
-    Shadows_DrawObjectShadows(world, &g_levelPlacements,
-                              (const float *)pos, (const float *)rot, 1, slot(t),
+    Shadows_DrawObjectShadows(world, &renderer->levelPlacements,
+                              (const float *)pos, (const float *)rot, 1, slot(&renderer->themeBlock, t),
                               g_renderDevice, now, phase, animKey, 0);
 }
 
-void Scene_EffectsAndShadows(World *world, CameraPose *cam, Config *config, double now, double dt)
+void Scene_EffectsAndShadows(Renderer *renderer, World *world, CameraPose *cam, Config *config, double now, double dt)
 {
     RenderDevice *d3d = g_renderDevice;
     uint32_t dtBits[2];
     memcpy(dtBits, &dt, sizeof dt);
-    Scene_DrawSceneObjects(d3d, world, cam->eye(), dtBits[0], dtBits[1], now);
+    Scene_DrawSceneObjects(renderer, d3d, world, cam->eye(), dtBits[0], dtBits[1], now);
     set_stencil_enable(false);
     BridgeSurf_Draw({world->bridgeSlots(), world->bridgeCount(), config->videoHighlights() != 0},
-                    &g_themeBlock, d3d, now);
+                    &renderer->themeBlock, d3d, now);
 
-    CameraFocus *focus = &g_cameraFocus;
+    CameraFocus *focus = &renderer->cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
     Player *pl = world->player();
     if (pl->effectDActive() != 0 && pl->anim() != 10)
-        rso(world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_PROTECTIONFX, now);
+        rso(renderer, world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_PROTECTIONFX, now);
     if (pl->anim() == 5)
-        rso(world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now);
+        rso(renderer, world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now);
 
     {
         PROF_SCOPE("shadows");
@@ -295,15 +296,15 @@ void Scene_EffectsAndShadows(World *world, CameraPose *cam, Config *config, doub
             d3d->SetStencil(st);
 
             if (pl->anim() != 10)
-                shadow(world, &focus->f[2], playerRot, THEME_OBJ_JOHN, now, focus->f[0], pl->anim());
+                shadow(renderer, world, &focus->f[2], playerRot, THEME_OBJ_JOHN, now, focus->f[0], pl->anim());
 
             for (unsigned char i = 0; i < world->foeCount(); ++i) {
                 Foe *f = world->foeSlot(world->foeId(i));
-                FoePose *p = &g_foePoses[i];
+                FoePose *p = &renderer->foePoses[i];
                 ThemeObjectType ty;
                 if (f->dyingStarted() != 0 || !foe_slot(p->kind(), false, &ty))
                     continue;
-                shadow(world, p->pos(), p->rot(), ty, now, p->stepFrac(), f->anim());
+                shadow(renderer, world, p->pos(), p->rot(), ty, now, p->stepFrac(), f->anim());
             }
 
             /* Setting 2 and up also shadows the items. */
@@ -317,7 +318,7 @@ void Scene_EffectsAndShadows(World *world, CameraPose *cam, Config *config, doub
                             continue;
                         float pos[3] = { (float)u, (float)t->height(), -(float)v };
                         float rot[3] = { 0.0f, 0.0f, 0.0f };
-                        shadow(world, pos, rot, ty, now, 0.0f, 0);
+                        shadow(renderer, world, pos, rot, ty, now, 0.0f, 0);
                     }
             }
             set_stencil_enable(false);
@@ -328,28 +329,28 @@ void Scene_EffectsAndShadows(World *world, CameraPose *cam, Config *config, doub
 
 /* ─── Section 5: the translucent passes ─────────────────────────────────── */
 
-static void particles(World *world, CameraPose *cam, Config *config, const void *pos, const void *rot,
+static void particles(Renderer *renderer, World *world, CameraPose *cam, Config *config, const void *pos, const void *rot,
                       unsigned count, ThemeObjectType t, double now, double elapsed)
 {
     if (count == 0)
         return;
     PROF_SCOPE(OBJECT_NAMES[t]);
-    Theme_DrawParticleObjects(world, cam, config, &g_levelPlacements,
+    Theme_DrawParticleObjects(world, cam, config, &renderer->levelPlacements,
                               (const float (*)[3])pos, (const float (*)[3])rot, count,
-                              slot(t), g_renderDevice, now, elapsed, 0);
+                              slot(&renderer->themeBlock, t), g_renderDevice, now, elapsed, 0);
 }
 
-static void particles_list(World *world, CameraPose *cam, Config *config, const PlacementList &l,
+static void particles_list(Renderer *renderer, World *world, CameraPose *cam, Config *config, const PlacementList &l,
                            ThemeObjectType t, double now, double elapsed)
 {
-    particles(world, cam, config, l.pos(), l.rot(), l.count(), t, now, elapsed);
+    particles(renderer, world, cam, config, l.pos(), l.rot(), l.count(), t, now, elapsed);
 }
 
 /* A burst system is a slot whose first record is a particle-system object:
  * its bursts[] are spawned at a point and live 1000 ms. */
-static ThemeLevelObject *burst_record(ThemeObjectType t)
+static ThemeLevelObject *burst_record(ThemeAssetBlock *theme, ThemeObjectType t)
 {
-    ThemeLevelObject *rec = &slot(t)->records()[0];
+    ThemeLevelObject *rec = &slot(theme, t)->records()[0];
     return rec->kind() == THEME_KIND_PARTICLESYSTEM ? rec : NULL;
 }
 
@@ -425,33 +426,33 @@ static void draw_bursts(const CameraPose *cam, ThemeLevelObject *rec, const Blen
     g_renderDevice->SetBlend(BlendState::off());
 }
 
-void Scene_TranslucentPasses(World *world, CameraPose *cam, Config *config, double now, double elapsed,
+void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, Config *config, double now, double elapsed,
                              double dt)
 {
-    LevelPlacements *pl = &g_levelPlacements;
-    CameraFocus *focus = &g_cameraFocus;
+    LevelPlacements *pl = &renderer->levelPlacements;
+    CameraFocus *focus = &renderer->cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
 
     if (config->videoParticles() != 0) {
         PROF_SCOPE("particles");
-        particles(world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, elapsed);
-        particles_list(world, cam, config, pl->switches(),      THEME_OBJ_SWITCH,        now, elapsed);
-        particles_list(world, cam, config, pl->bombables(), THEME_OBJ_OBSTACLE,      now, elapsed);
-        particles_list(world, cam, config, pl->stairs(),        THEME_OBJ_STAIR,         now, elapsed);
-        particles_list(world, cam, config, pl->ice(),     THEME_OBJ_ICE,           now, elapsed);
-        particles_list(world, cam, config, pl->sticky(),          THEME_OBJ_GLUE,          now, elapsed);
-        particles_list(world, cam, config, pl->falling(),    THEME_OBJ_DESTRUCTFIELD, now, elapsed);
-        particles_list(world, cam, config, pl->jumpPads(),      THEME_OBJ_JUMPPAD,       now, elapsed);
-        particles_list(world, cam, config, pl->teleporters(),   THEME_OBJ_TELEPORTER,    now, elapsed);
-        particles(world, cam, config, pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now, elapsed);
-        particles_list(world, cam, config, pl->slides(),        THEME_OBJ_SLIDE,         now, elapsed);
+        particles(renderer, world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, elapsed);
+        particles_list(renderer, world, cam, config, pl->switches(),      THEME_OBJ_SWITCH,        now, elapsed);
+        particles_list(renderer, world, cam, config, pl->bombables(), THEME_OBJ_OBSTACLE,      now, elapsed);
+        particles_list(renderer, world, cam, config, pl->stairs(),        THEME_OBJ_STAIR,         now, elapsed);
+        particles_list(renderer, world, cam, config, pl->ice(),     THEME_OBJ_ICE,           now, elapsed);
+        particles_list(renderer, world, cam, config, pl->sticky(),          THEME_OBJ_GLUE,          now, elapsed);
+        particles_list(renderer, world, cam, config, pl->falling(),    THEME_OBJ_DESTRUCTFIELD, now, elapsed);
+        particles_list(renderer, world, cam, config, pl->jumpPads(),      THEME_OBJ_JUMPPAD,       now, elapsed);
+        particles_list(renderer, world, cam, config, pl->teleporters(),   THEME_OBJ_TELEPORTER,    now, elapsed);
+        particles(renderer, world, cam, config, pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now, elapsed);
+        particles_list(renderer, world, cam, config, pl->slides(),        THEME_OBJ_SLIDE,         now, elapsed);
 
         for (unsigned char i = 0; i < world->foeCount(); ++i) {
             Foe *f = world->foeSlot(world->foeId(i));
-            FoePose *p = &g_foePoses[i];
+            FoePose *p = &renderer->foePoses[i];
             ThemeObjectType ty;
             if (foe_slot(p->kind(), f->dyingStarted() != 0, &ty))
-                particles(world, cam, config, p->pos(), p->rot(), 1, ty, now, elapsed);
+                particles(renderer, world, cam, config, p->pos(), p->rot(), 1, ty, now, elapsed);
         }
 
         /* Bombs: the fuse's effects, then the explosion's 2 s after the drop.
@@ -461,12 +462,12 @@ void Scene_TranslucentPasses(World *world, CameraPose *cam, Config *config, doub
             float pos[3] = { b->posU(), b->posY(), -b->posV() };
             float rot[3] = { 0.0f, 0.0f, 0.0f };
             const bool late = *world->clock() - b->droppedAt() > 2000.0;
-            particles(world, cam, config, pos, rot, 1, late ? THEME_OBJ_EXPLOSION : THEME_OBJ_BOMB, now, elapsed);
+            particles(renderer, world, cam, config, pos, rot, 1, late ? THEME_OBJ_EXPLOSION : THEME_OBJ_BOMB, now, elapsed);
         }
 
         /* A falling tile that fell this tick spawns a destruct-field burst on
          * its cell (the height and -V from the falling tile's own cell). */
-        ThemeLevelObject *field = burst_record(THEME_OBJ_DESTRUCTFIELDFX);
+        ThemeLevelObject *field = burst_record(&renderer->themeBlock, THEME_OBJ_DESTRUCTFIELDFX);
         for (unsigned char i = 0; i < world->fallingCount(); ++i) {
             FallingTile *bt = world->fallingSlot(i);
             if (bt->justFell() != 0 && field != NULL)
@@ -483,23 +484,23 @@ void Scene_TranslucentPasses(World *world, CameraPose *cam, Config *config, doub
     /* Setting 2 and up: pickups and the speed trail. */
     if (config->videoParticles() > 1) {
         Player *pl = world->player();
-        ThemeLevelObject *crystal = burst_record(THEME_OBJ_CRYSTALFX);
+        ThemeLevelObject *crystal = burst_record(&renderer->themeBlock, THEME_OBJ_CRYSTALFX);
         if (pl->pickedUp() == 1 && crystal != NULL)
             spawn_burst(crystal, focus->f[2], focus->f[3], focus->f[4]);
         for (unsigned char i = 0; i < world->foeCount(); ++i) {
             Foe *f = world->foeSlot(world->foeId(i));
             if (f->pickedUp() == 1 && crystal != NULL) {
-                const float *p = g_foePoses[i].pos();
+                const float *p = renderer->foePoses[i].pos();
                 spawn_burst(crystal, p[0], p[1], p[2]);
             }
         }
-        ThemeLevelObject *coll = burst_record(THEME_OBJ_COLLFX);
+        ThemeLevelObject *coll = burst_record(&renderer->themeBlock, THEME_OBJ_COLLFX);
         if (pl->pickedUp() > 1 && coll != NULL)
             spawn_burst(coll, focus->f[2], focus->f[3], focus->f[4]);
 
         /* The speed trail: burst 0, live while the speed-up runs and the
          * player moves along (or directly against) its facing. */
-        ThemeLevelObject *speed = burst_record(THEME_OBJ_SPEEDFX);
+        ThemeLevelObject *speed = burst_record(&renderer->themeBlock, THEME_OBJ_SPEEDFX);
         if (speed != NULL) {
             bool on = false;
             if (pl->effectAActive() != 0) {
@@ -564,11 +565,11 @@ void Scene_TranslucentPasses(World *world, CameraPose *cam, Config *config, doub
         }
     }
 
-    Scene_DrawParticleSystems(g_renderDevice, cam->eye(), dt, now);
+    Scene_DrawParticleSystems(&renderer->scene, g_renderDevice, cam->eye(), dt, now);
 
     Player *player = world->player();
     if (player->effectDActive() != 0 && player->anim() != 10)
-        particles(world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_PROTECTIONFX, now, elapsed);
+        particles(renderer, world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_PROTECTIONFX, now, elapsed);
     if (player->anim() == 5)
-        particles(world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now, elapsed);
+        particles(renderer, world, cam, config, &focus->f[2], playerRot, 1, THEME_OBJ_PARAGLIDEFX, now, elapsed);
 }

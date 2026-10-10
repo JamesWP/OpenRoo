@@ -1,5 +1,7 @@
 /* rendergameframe.h -- one frame of the game (rendergameframe.cpp). */
 #pragma once
 
-/* cdecl(void); one caller, WinMain's message loop. */
-  void   Render_RenderGameFrame(void);
+/* One caller, WinMain's message loop, which passes the app's Renderer. */
+class Renderer;
+
+  void   Render_RenderGameFrame(Renderer *renderer);

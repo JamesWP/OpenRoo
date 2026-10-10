@@ -18,11 +18,12 @@
 #include "scene.h"
 #include "logger.h"
 #include "renderstate.h"
+#include "renderer.h"
 #include "clock.h"
 #include "camera.h"
 
   void  
-LevelEntry_PrepareAssets(void)
+LevelEntry_PrepareAssets(Renderer *renderer)
 {
     RenderDevice *d3d = g_renderDevice;
     Game *g = Game::instance();
@@ -36,23 +37,23 @@ LevelEntry_PrepareAssets(void)
     char thm[0x100], bmp[0x124];
     sprintf(thm, "themes\\%s.thm", map->mapName());
     sprintf(bmp, "bitmaps\\%s.bmp", map->mapName());
-    bool ok = Image_LoadBMP(bmp, g_loadingImage);
-    g_renderDevice->PresentImage(ok ? g_loadingImage : g_fallbackImage);
+    bool ok = Image_LoadBMP(bmp, renderer->loadingImage);
+    g_renderDevice->PresentImage(ok ? renderer->loadingImage : renderer->fallbackImage);
 
     // 3. The theme, only when it has changed: the block keeps the path it was
     // loaded from.
-    if (strcmp(g_themeBlock.themeName(), thm) != 0) {
+    if (strcmp(renderer->themeBlock.themeName(), thm) != 0) {
         g_logger.logMessage(1, "THM: *** Theme: %s ***", map->mapName());
-        if (!g_themeBlock.load(g->themeSounds(), g->gameDir(), d3d, thm))
+        if (!renderer->themeBlock.load(g->themeSounds(), g->gameDir(), d3d, thm))
             g_logger.logMessage(4, "Couldn't load theme %s.", map->mapName());
     }
 
     // 4. What the frame renderer draws.
-    g_levelPlacements.build(g->world(), &g_themeBlock);
-    g_scene.buildObjectList(d3d, g->world()->extraObjects());
+    renderer->levelPlacements.build(g->world(), &renderer->themeBlock);
+    renderer->scene.buildObjectList(d3d, g->world()->extraObjects());
 
-    strcpy(g_levelTitle, map->title());
-    g_lastTickMs = clock_seconds() * 1000.0;
+    strcpy(renderer->levelTitle, map->title());
+    renderer->lastTickMs = clock_seconds() * 1000.0;
 
     // 5. The camera: a fixed offset (0, 6, -4) scaled to 255/sqrt(52), placed
     // over the middle of the grid.  Double precision; the game's
@@ -71,7 +72,7 @@ LevelEntry_PrepareAssets(void)
     cam->eye()[0] = x;
     cam->eye()[1] = offY + 6.0f;
     cam->eye()[2] = z - 4.0f;
-    g_cameraFocus = CameraFocus();
+    renderer->cameraFocus = CameraFocus();
     cam->setYaw(0.0f);
     cam->setPitch(1.0471976f);  // pi/3
 }
