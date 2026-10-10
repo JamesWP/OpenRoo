@@ -19,7 +19,6 @@
 #include <strings.h>
 #include <stdio.h>
 #include <stdint.h>
-#include "camera.h"
 #include "sysdev.h"
 #include <fstream>
 #include <string.h>
@@ -411,7 +410,7 @@ unsigned char ScriptPlayer::playScript(const char *line)
     if (strcmp(cmd, "splinexyz") == 0) {
         field_92d_ = 1;
         spline->purgeControlPoints();
-        std::copy_n(g_camera.eye(), std::size(splinePoint_), splinePoint_);  // the camera's eye (camera.h)
+        std::copy_n(cameraEye_, std::size(splinePoint_), splinePoint_);  // the camera's eye
         start_ = now_;
         // DETERMINISM: an int product widened as unsigned.
         duration_ = (double)(unsigned int)(atoi(strtok(NULL, JJS_DELIMS)) * 1000);
@@ -563,8 +562,9 @@ void ScriptPlayer::runNextCommand()
                        (int)cursor_, currentLine_);
 }
 
-void ScriptPlayer::tick(double now, double dt)
+void ScriptPlayer::tick(double now, double dt, const float *cameraEye)
 {
+    cameraEye_ = cameraEye;
     now_ = now;
     dt_ = dt;
     updateStreamWait();

@@ -484,8 +484,13 @@ public:
      * save slots, openroo.ini and high scores; check initialised() afterwards.
      * The destructor saves the scores and config, and the members tear
      * themselves down. */
-    Game(const char *gameName, const char *gameDir);
+    Game();
     virtual ~Game();
+    /* Built and torn down by Game_Boot and Game_Shutdown (core/gameboot.h),
+     * which set up and take down everything the Game holds. */
+    friend void Game_Boot(Game *g, const char *gameName, const char *gameDir);
+    friend void Game_Shutdown(Game *g);
+
     Game(const Game &) = delete;
     Game &operator=(const Game &) = delete;
 

@@ -4,6 +4,8 @@ add_library(app OBJECT
     main.cpp
     process.cpp)
 target_include_directories(app PRIVATE
+    ../screens
+    ../game
     ../fx
     ../base
     .

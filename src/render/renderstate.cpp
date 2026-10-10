@@ -15,7 +15,6 @@
 #include "texture.h"
 #include "model.h"
 #include "animatedmesh.h"
-#include "menuscreens.h"
 #include "textrenderer.h"
 #include "logger.h"
 #include "image.h"
@@ -40,7 +39,6 @@ Render_ConfigureRenderState(const char *gameDir)
     // Texture and model caches' loggers, and the level placement scratch
     // block.
     g_levelPlacements.release();
-    Menu_BuildMenuGeometry(d3d, gameDir);
 
     // The initial camera, placed exactly as level entry places it.
     Mat4 world;

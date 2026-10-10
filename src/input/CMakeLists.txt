@@ -1,7 +1,4 @@
 add_library(input OBJECT
-    camerainput.cpp
-    inputsetup.cpp
-    keypress.cpp
     progctrl.cpp)
 target_include_directories(input PRIVATE
     ../fx
