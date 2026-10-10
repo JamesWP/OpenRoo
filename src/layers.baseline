@@ -7,7 +7,6 @@ audio/fixedsounds.cpp -> testing/record.h
 audio/fixedsounds.cpp -> ui/menutree.h
 audio/soundobj.cpp -> core/game.h
 audio/soundobj.cpp -> entities/foe.h
-core/clock.cpp -> app/launcher.h
 input/camerainput.cpp -> core/game.h
 input/inputsetup.cpp -> core/game.h
 input/keypress.cpp -> core/game.h
@@ -18,8 +17,6 @@ input/keypress.cpp -> ui/levelselect.h
 input/keypress.cpp -> ui/menunav.h
 input/keypress.cpp -> ui/menutree.h
 input/keypress.cpp -> ui/textentry.h
-input/progctrl.cpp -> core/clock.h
-input/progctrl.cpp -> core/gamestate.h
 render/bridgesurf.cpp -> ui/theme.h
 render/camera.cpp -> core/game.h
 render/dsoscene.cpp -> core/game.h
@@ -31,7 +28,6 @@ render/meshbatch.cpp -> ui/theme.h
 render/objectshadows.cpp -> core/game.h
 render/objectshadows.cpp -> ui/theme.h
 render/quadbatch.cpp -> ui/theme.h
-render/rendergameframe.cpp -> core/clock.h
 render/rendergameframe.cpp -> core/game.h
 render/rendergameframe.cpp -> core/gametick.h
 render/rendergameframe.cpp -> core/levelentry.h
@@ -46,7 +42,6 @@ render/sceneobjects.cpp -> core/game.h
 render/sceneobjects.cpp -> ui/theme.h
 render/themedraw.cpp -> core/game.h
 render/themedraw.cpp -> ui/theme.h
-testing/record.cpp -> core/clock.h
 ui/cheatcode.cpp -> core/game.h
 ui/cheatcode.cpp -> core/levelparse.h
 ui/cheatcode.cpp -> core/levelscore.h

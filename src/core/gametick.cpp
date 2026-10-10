@@ -57,6 +57,7 @@
 
 #include "record.h"
 #include "progctrl.h"
+#include "gamestate.h"
 #include "prof.h"
 #include "tiledebug.h"
 #include "gamedebug.h"
@@ -326,11 +327,14 @@ Sim_GameTick(Game *self, double dt, double now)
         }
         if (pl->moveState() == 0) {
             PROF_SCOPE("player");
+            // Noted before the dispatch, so paused and cutscene modes are seen.
+            gamestate_note_mode((unsigned short)self->stateRef());
             g_progCtrl.dispatch((unsigned short)self->stateRef());
         }
     } else {
         pl->setIdleStarted(0);
         pl->setLastActive(*self->clock());
+        gamestate_note_mode(0);
         g_progCtrl.dispatch(0);
         if (self->fixedSounds()->lastSeconds != NULL)
             (self->fixedSounds()->lastSeconds)->stop();

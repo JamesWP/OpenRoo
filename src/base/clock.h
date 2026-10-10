@@ -4,6 +4,11 @@
 
 #pragma once
 
+/* Called at every frame boundary (every clock read), before the time is
+ * read; none by default. */
+typedef void (*ClockFrameHook)(void);
+void clock_setFrameHook(ClockFrameHook fn);
+
 /* The clock in seconds.  Each call also ends a frame and runs the per-frame
  * test hooks: RenderGameFrame calls it once a frame, level entry once more. */
 double clock_seconds(void);

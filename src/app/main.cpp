@@ -30,6 +30,7 @@
 #include <string.h>
 #include "videodev.h"
 #include "record.h"
+#include "gamestate.h"
 #include "levelplacements.h"
 #include "theme.h"
 #include "rendergameframe.h"
@@ -188,6 +189,24 @@ private:
     bool keyDownDuringIntro_ = false;
 };
 
+/* Run at every clock read, which ends a frame: the state log, the recorder,
+ * and the end of a replay.  A replay ends on the recording's length, never on
+ * wall time.  The state is dumped while the level is still live (teardown
+ * clears the score), then the window is closed so the game shuts down
+ * normally. */
+static void frame_boundary(void)
+{
+    static bool replayEnded;
+
+    gamestate_tick();
+    record_frame_boundary();
+    if (record_replaying() && record_replay_finished() && !replayEnded) {
+        replayEnded = true;
+        gamestate_dump("replay-finished");
+        launcher_end_run("replay finished");
+    }
+}
+
 /* Where the game's files are.  Data paths are relative to the current
  * directory, which nothing changes; an absolute prefix could overflow the
  * fixed path buffers on a deep install. */
@@ -195,6 +214,7 @@ static const char *const kGameDir = ".";
 
 int Main_WinMain(const char *lpCmdLine)
 {
+    clock_setFrameHook(frame_boundary);
     audiodev::setLog(log_sink);
     audiodev::setPathResolver([](const char *path) { return sysdev::nativePath(path); });
     inputdev::setLog(log_sink);

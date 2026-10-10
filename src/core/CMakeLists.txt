@@ -1,5 +1,4 @@
 add_library(core OBJECT
-    clock.cpp
     game.cpp
     checkpoint.cpp
     gamereset.cpp
