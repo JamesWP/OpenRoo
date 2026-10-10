@@ -28,7 +28,7 @@
 #include <vector>
 #include "binio.h"
 
-struct GameState {
+struct StateSnapshot {
     /* Reads the live Game; false when there is none. */
     bool read();
 
@@ -52,7 +52,7 @@ struct GameState {
 };
 
 static int       g_on = -1;
-static GameState g_prevClock;
+static StateSnapshot g_prevClock;
 static bool      g_have_prev;
 static unsigned short g_mode;
 static uint32_t     g_frame;
@@ -71,7 +71,7 @@ bool gamestate_enabled(void)
 
 void gamestate_note_mode(unsigned short mode) { g_mode = mode; }
 
-bool GameState::read()
+bool StateSnapshot::read()
 {
     const Game *g = Game::instance();
     if (!g) return false;
@@ -121,7 +121,7 @@ struct Event {
     const char *kind;     // "load", "complete", "death" or "quit"
     uint32_t    frame;
     std::string level;
-    GameState   state;
+    StateSnapshot   state;
 };
 static std::vector<Event> g_events;
 static const size_t MAX_EVENTS = 512;
@@ -132,7 +132,7 @@ static std::string current_level(void)
     return g && g->world()->levelName() ? g->world()->levelName() : "";
 }
 
-static void record_event(const char *kind, uint32_t frame, const GameState &s,
+static void record_event(const char *kind, uint32_t frame, const StateSnapshot &s,
                          const std::string &level)
 {
     if (g_events.size() >= MAX_EVENTS) return;
@@ -152,12 +152,12 @@ static void record_event(const char *kind, uint32_t frame, const GameState &s,
 /* Completion is recorded when the complete flag clears, or at the dump if the
  * recording ends first, because the score is written a frame or two after the
  * flag rises.  g_done refreshes while the flag stays set. */
-static GameState g_done;
+static StateSnapshot g_done;
 static uint32_t  g_done_frame;
 static std::string g_done_level;  // the name moves on once the flag clears
 static bool      g_done_pending;
 static bool      g_have_last;
-static GameState g_last;  // previous tick's state, for edge detection
+static StateSnapshot g_last;  // previous tick's state, for edge detection
 static std::string g_last_level;  // the level of the last in-level frame
 
 static void flush_completion(void)
@@ -171,7 +171,7 @@ void gamestate_tick(void)
 {
     g_frame++;
 
-    GameState s;
+    StateSnapshot s;
     if (!s.read()) return;
     if (s.mode != 0) {
         if (!g_have_last || g_last.mode == 0)
@@ -196,7 +196,7 @@ void gamestate_tick(void)
 
     // Elapsed time moves every frame, so it is left out of the comparison; it
     // is still printed on each line.
-    GameState a = s, b = g_prevClock;
+    StateSnapshot a = s, b = g_prevClock;
     a.elapsed_ms = b.elapsed_ms = 0;
     if (g_have_prev && memcmp(&a, &b, sizeof(a)) == 0) return;
 
@@ -248,7 +248,7 @@ void gamestate_dump(const char *reason)
     printTo(fp, "  \"events\": [");
     for (size_t i = 0; i < g_events.size(); i++) {
         const Event &e = g_events[i];
-        const GameState &s = e.state;
+        const StateSnapshot &s = e.state;
         printTo(fp, "%s\n    {\n", i ? "," : "");
         printTo(fp, "      \"kind\": \"%s\",\n",           e.kind);
         printTo(fp, "      \"frame\": %lu,\n",              (unsigned long)e.frame);

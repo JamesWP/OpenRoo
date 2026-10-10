@@ -22,7 +22,7 @@
 void Cheat_EnterLoadedState(Game *game)
 {
     game->camera()->setCameraDistance(7.0f);
-    game->setState(4);
+    game->setState(GameState::Flythrough);
     if (game->musicOn() != 0)
         g_cdAudio.stop();
     game->scriptPlayer()->setRunning(1);

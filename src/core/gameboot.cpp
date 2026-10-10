@@ -119,7 +119,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g_logger.logMessage(2, "GAME: this is a commercial version");
     audiodev::setEffectsVolume(g->effectsGain());
     g_cdAudio.setVolume(g->musicGain());
-    g->state_ = 0;
+    g->state_ = GameState::MainMenu;
     g_cdAudio.stop();
     g->frontEnd()->menu()->buildDefaultGraph(g->frontEnd()->saveSlots()->count());
     g->session()->setLevelIndex(0);

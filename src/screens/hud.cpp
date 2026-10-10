@@ -70,7 +70,7 @@ static void hud_text(TextRenderer *font, int align, float x, float y, float cw, 
 
 /* The in-level HUD: the side panels, the vitality needle, the radar and
  * its foe blips, then the timer and counters. */
-void Hud_Draw(World *world, Session *session, unsigned char state, unsigned w, unsigned h,
+void Hud_Draw(World *world, Session *session, GameState state, unsigned w, unsigned h,
               float W, float H, float hudH)
 {
     RenderDevice *dev = g_renderDevice;
@@ -189,7 +189,7 @@ void Hud_Draw(World *world, Session *session, unsigned char state, unsigned w, u
     /* The timer: minutes, seconds and tenths of what is left (or of the
      * limit, outside play); red under ten seconds. */
     LevelMap *map = world->map();
-    const unsigned ms = state == 1
+    const unsigned ms = state == GameState::Playing
         ? (unsigned)map->timeLimit() * 1000u - map->timeElapsed()
         : (unsigned)map->timeLimit() * 1000u;
     const unsigned mins = ms / 60000u;
@@ -241,7 +241,7 @@ void Hud_DrawFps(float W, float H)
 }
 
 /* The captions and the timed-effect icons down the left edge. */
-void Hud_DrawMessages(World *world, ScriptPlayer *scriptPlayer, unsigned char state, float W,
+void Hud_DrawMessages(World *world, ScriptPlayer *scriptPlayer, GameState state, float W,
                       float H, float pad)
 {
     const ThemeTextColorPair &hc = g_themeBlock.textColor(THEME_COLOR_HUD);
@@ -258,10 +258,10 @@ void Hud_DrawMessages(World *world, ScriptPlayer *scriptPlayer, unsigned char st
                                g_themeBlock.image(THEME_IMG_MENU),
                                g_themeBlock.image(THEME_IMG_EDGE));
     }
-    if ((state == 4 && sp->running() == 0) || (state == 1 && pl->moveState() != 0))
+    if ((state == GameState::Flythrough && sp->running() == 0) || (state == GameState::Playing && pl->moveState() != 0))
         hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 232.0f, cw, ch, 0.75f,
                  "...press Enter", 0, hc.color1, hc.color2);
-    if (state == 4 && world->map()->bonus() != 0)
+    if (state == GameState::Flythrough && world->map()->bonus() != 0)
         hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 200.0f, cw, ch, 0.75f,
                  "BONUSLEVEL", 0, hc.color1, hc.color2);
 
@@ -308,7 +308,7 @@ void Hud_DrawMessages(World *world, ScriptPlayer *scriptPlayer, unsigned char st
 
 /* The Ka'roo logo in the bottom-left corner, on the menus only; the
  * blend and texture state around it are set regardless. */
-void Hud_DrawLogo(unsigned char state, float H, float hudH, float pad)
+void Hud_DrawLogo(GameState state, float H, float hudH, float pad)
 {
     const float xr = pad + hudH, yt = H - hudH - pad, yb = H - pad;
     ScreenVertex q[4] = {
@@ -319,7 +319,7 @@ void Hud_DrawLogo(unsigned char state, float H, float hudH, float pad)
     };
     blend_on();
     g_renderDevice->SetTexture(0, &g_texKaroo128);
-    if (state == 0 || state == 5)
+    if (state == GameState::MainMenu || state == GameState::PauseMenu)
         draw_strip(q);
     g_renderDevice->SetBlend(BlendState::off());
     g_renderDevice->SetTexture(0, nullptr);

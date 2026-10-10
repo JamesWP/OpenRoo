@@ -74,7 +74,7 @@ Sim_HandleTypedCheatCode(Game *self)
 
     if (streq(buf, "supa")) {
         if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
-            self->setState(2);
+            self->setState(GameState::GameOver);
             if (self->musicOn() != 0)
                 self->cdThemes()->play(GS_GAME_GAMEOVER);
             Score_CalculateLevelScore(self, 0x28);
@@ -85,7 +85,7 @@ Sim_HandleTypedCheatCode(Game *self)
         } else {
             self->frontEnd()->menu()->setLockStart(self->lastTickTime());
             self->frontEnd()->menu()->setLock(1);
-            self->setState(3);
+            self->setState(GameState::LevelComplete);
             if (self->musicOn() != 0)
                 self->cdThemes()->play(GS_GAME_COMPLETED);
             self->camera()->setCameraMode(2);
@@ -96,7 +96,7 @@ Sim_HandleTypedCheatCode(Game *self)
             self->frontEnd()->menu()->setNode(0x28);
             self->frontEnd()->menu()->setCursor(0);
             self->frontEnd()->menu()->setLock(1);
-            Score_CalculateLevelScore(self, (char)self->state());
+            Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
             self->session()->setRestartCount(0);
             g_logger.logMessage(1, "GAME: c - sl");
         }

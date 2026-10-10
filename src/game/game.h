@@ -17,6 +17,7 @@
 #include "soundmanager.h"
 #include "world.h"
 #include "session.h"
+#include "playstate.h"
 
 class SoundManager;
 
@@ -106,10 +107,10 @@ public:
     /* The level the main menu shows behind it, which GameTick reloads on
      * returning there; 0x80 bytes. */
     const char    *menuLevelName() const             { return menuLevelName_; }
-    /* The game state ESC interrupted (1 playing or 4 loaded); keypress.cpp
+    /* The game state ESC interrupted (Playing or Flythrough); keypress.cpp
      * restores it when the menu is left. */
-    unsigned char  stateBeforeMenu() const           { return stateBeforeMenu_; }
-    void           setStateBeforeMenu(unsigned char s) { stateBeforeMenu_ = s; }
+    GameState      stateBeforeMenu() const           { return stateBeforeMenu_; }
+    void           setStateBeforeMenu(GameState s)   { stateBeforeMenu_ = s; }
 
     /* ── the front end (frontend.h) ─────────────────────────────────── */
     /* The menu, the cheat and name entries, the save slots, the high-score
@@ -132,15 +133,11 @@ public:
     ScriptPlayer   *scriptPlayer()                   { return &scriptPlayer_; }
 
     /* ── game state ─────────────────────────────────────────────────── */
-    /* The top-level state GameTick and HandleKeypress switch on, 0..7.
-     * 0 menu, 1 playing, 2 game
-     * over, 3 level completed, 4 loaded (the flythrough and its "press
-     * enter" screen), 7 quitting.  6 is high-score name entry (GameTick
-     * sets it after InsertScoreIntoHighScoreTable); 5 is not decoded.
-     * stateRef() is the field as an lvalue. */
-    unsigned char  state() const                     { return state_; }
-    void           setState(unsigned char s)         { state_ = s; }
-    unsigned char &stateRef()                        { return state_; }
+    /* The top-level state GameTick and HandleKeypress switch on (GameState,
+     * playstate.h).  NameEntry is set by GameTick after
+     * InsertScoreIntoHighScoreTable; PauseMenu is the ESC menu. */
+    GameState      state() const                     { return state_; }
+    void           setState(GameState s)             { state_ = s; }
     /* GameTick runs InitLevelBasedSounds while this is 0, then sets it;
      * Load, SetupLevelObjects and the 3D-sound toggle clear it. */
     int            levelSoundsReady() const          { return levelSoundsReady_; }
@@ -258,7 +255,7 @@ private:
     char          gameDir_[64]{};
     int           levelSoundsReady_{};
     ThemeSoundTable themeSounds_;
-    unsigned char stateBeforeMenu_{};
+    GameState     stateBeforeMenu_{};
     unsigned int  field_48b14_{};
     char          menuLevelName_[0x80]{};
     SoundManager  soundManager_;
@@ -283,7 +280,7 @@ private:
     /* The settings (config.h); music, volumes, 3D sound, the camera
      * option and the joystick deadzone live in its persisted blob. */
     Config        config_;
-    unsigned char state_{};
+    GameState     state_{};
 };
 
  

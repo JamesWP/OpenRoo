@@ -69,7 +69,7 @@ Camera_RotateLeft(int, int, void *ctx)
 Camera_TiltUp(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
-    if (g->state() != 1)
+    if (g->state() != GameState::Playing)
         return;
     Config *c = g->config();
     if (c->cameraPitch() <= PITCH_MAX)
@@ -82,7 +82,7 @@ Camera_TiltUp(int, int, void *ctx)
 Camera_TiltDown(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
-    if (g->state() != 1)
+    if (g->state() != GameState::Playing)
         return;
     Config *c = g->config();
     if (!(c->cameraPitch() < PITCH_MIN))

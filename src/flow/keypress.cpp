@@ -56,7 +56,7 @@ static void rebind(Game *game, const char *name, unsigned char code, int hl)
  * level's intro flythrough. */
 static void loaded_tail(Game *game)
 {
-    game->stateRef() = 4;
+    game->setState(GameState::Flythrough);
     game->camera()->setCameraDistance(7.0f);
     if (game->musicOn() != 0)
         g_cdAudio.stop();
@@ -197,8 +197,8 @@ Sim_HandleKeypress(Game *self)
 
     if (self->frontEnd()->menu()->nodeRef() == 0) {
         self->frontEnd()->setRebindActive(0);
-        if (self->stateRef() == 5 && self->frontEnd()->menu()->leave() != 0) {
-            self->stateRef() = self->stateBeforeMenu();
+        if (self->state() == GameState::PauseMenu && self->frontEnd()->menu()->leave() != 0) {
+            self->setState(self->stateBeforeMenu());
             self->world()->player()->setPendingMove(0);
             self->frontEnd()->debounceRef() = inputdev::KEY_ESCAPE;
         }
@@ -245,7 +245,7 @@ Sim_HandleKeypress(Game *self)
         break;
     case 6:
         self->frontEnd()->menu()->pop();
-        self->stateRef() = 7;
+        self->setState(GameState::Quitting);
         if (self->musicOn() != 0)
             g_cdAudio.stop();
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
@@ -297,7 +297,7 @@ Sim_HandleKeypress(Game *self)
         self->session()->setLevelIndex(lvl);
         Sim_OpenLevelFile(self, lvl);
         Sim_SetupLevelObjects(self);
-        self->stateRef() = 4;
+        self->setState(GameState::Flythrough);
         self->scriptPlayer()->setRunning(1);
         if (self->musicOn() != 0)
             g_cdAudio.stop();
