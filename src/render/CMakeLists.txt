@@ -10,6 +10,7 @@ add_library(render OBJECT
     quadbatch.cpp
     renderstate.cpp
     scene.cpp
+    scenepasses.cpp
     sceneobjects.cpp
     scenequad.cpp
     theme.cpp
