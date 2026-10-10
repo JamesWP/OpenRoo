@@ -6,3 +6,6 @@
 class Game;
 
 void Game_DebugPanel(Game *game);
+
+/* The debug UI's Cheats section (cheats.h).  Does nothing unless it is shown. */
+void Cheat_DebugPanel(Game *g);

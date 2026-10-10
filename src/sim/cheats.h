@@ -1,14 +1,12 @@
-/* The typed cheat codes (cheatcode.cpp). */
+/* The cheats: what each code does, for the typed codes (cheatcode.cpp) and the debug UI. */
 #pragma once
 
 class Game;
 
-/* Reads the letters typed since the last call and applies any cheat code they
- * complete. */
-  void  
-Sim_HandleTypedCheatCode(Game *self);
+/* The tail both level loaders share: go to the loaded state with the intro
+ * flythrough armed. */
+void Cheat_EnterLoadedState(Game *game);
 
-/* The cheats themselves, for the debug UI as well as the typed codes. */
 void Cheat_KillFoes(Game *g);        // kaputo
 void Cheat_AddLife(Game *g, int n);  // mausuruh
 void Cheat_AddGlide(Game *g);        // sportsman
@@ -22,6 +20,3 @@ bool Cheat_LoadLevel(Game *g, unsigned char lvl);
 
 /* Moves the player to cell (u, v), standing on its floor, as a teleporter does. */
 void Cheat_TeleportPlayer(Game *g, unsigned char u, unsigned char v);
-
-/* The debug UI's Cheats section (dbg.h).  Does nothing unless it is shown. */
-void Cheat_DebugPanel(Game *g);
