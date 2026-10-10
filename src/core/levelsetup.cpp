@@ -222,7 +222,7 @@ Sim_SetupLevelObjects(Game *self)
     // The run state.
     // The level-complete node offers Save only when there is no next-level
     // bonus.
-    self->menu()->setChildCount(0x28, (self->nextLevelBonus() == 0) ? 2 : 1);
+    self->frontEnd()->menu()->setChildCount(0x28, (self->nextLevelBonus() == 0) ? 2 : 1);
     self->world()->player()->setLastSecondsMark(10.0);  // 10.0
 
     g_logger.logMessage(2, "GAME: init level started");

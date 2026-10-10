@@ -108,7 +108,7 @@ Menu_DrawCursorMarkers(Game *g, RenderDevice *d3d, uint32_t ms, float rowOffset)
 {
     const uint32_t w  = mode_width(d3d);
     const float y0 = (float)(w * 172) * K640
-                   + ((float)g->menu()->cursor() * 0.05f + rowOffset * K640) * (float)w;
+                   + ((float)g->frontEnd()->menu()->cursor() * 0.05f + rowOffset * K640) * (float)w;
     const double t = (double)ms * 0.01;
     draw_markers(d3d, y0, (float)(sin(t) * 4.0 + 244.0),
                  (float)(sin(t + 3.14159274101257) * 4.0 + 396.0));
@@ -122,7 +122,7 @@ Menu_DrawControlsCursorMarkers(Game *g, RenderDevice *d3d, uint32_t ms)
 {
     const uint32_t w  = mode_width(d3d);
     const float y0 = (float)(w * 102) * K640
-                   + (float)g->menu()->cursor() * (float)w * 0.03125f;
+                   + (float)g->frontEnd()->menu()->cursor() * (float)w * 0.03125f;
     const double t = (double)ms * 0.01;
     draw_markers(d3d, y0, (float)(sin(t) * 4.0 + 40.0),
                  (float)(sin(t + 3.14159274101257) * 4.0 + 600.0));
@@ -164,7 +164,7 @@ static void draw_fixed_rows(RenderDevice *d3d, ThemeAssetBlock *theme, TextRende
 static void draw_slot_rows(Game *g, RenderDevice *d3d, ThemeAssetBlock *theme,
                            TextRenderer *text, ThemeTextColorSlot slot)
 {
-    SaveSlots *ss = g->saveSlots();
+    SaveSlots *ss = g->frontEnd()->saveSlots();
     if (ss->count() == 0)
         return;
     const float fw = (float)mode_width(d3d);
@@ -474,7 +474,7 @@ void Menu_RenderControlsRemap(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
     char buf[0x100];
     for (int i = 0; i < 13; i++) {
         g_progCtrl.getBindingStr(1, k_controls[i].action, buf, sizeof(buf));
-        const bool asking = g->rebindActive() != 0 && g->rebindCode() == k_controls[i].node;
+        const bool asking = g->frontEnd()->rebindActive() != 0 && g->frontEnd()->rebindCode() == k_controls[i].node;
         const uint32_t wr = mode_width(d3d);
         text->drawRight(fw * 0.90625f, rowY[i],
                         (float)(wr * 12) * K640, (float)(wr * 14) * K640, 0.75f,
@@ -642,9 +642,9 @@ Menu_RenderCreditsScroll(Game *game, RenderDevice *d3d, TextRenderer *text,
 {
     const float scale = (float)d3d->width() * (1.0f / 640.0f);
 
-    if (game->field_13cc8c() != 0) {
+    if (game->frontEnd()->field_13cc8c() != 0) {
         g_creditsStartMs = nowMs;
-        game->setField13cc8c(0);
+        game->frontEnd()->setField13cc8c(0);
     }
     g_creditsScroll = 500.0f - (float)(uint32_t)(nowMs - g_creditsStartMs) * 0.05f;
 
@@ -678,7 +678,7 @@ void
 Menu_DispatchGameState(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
                        uint32_t ms)
 {
-    const unsigned char node = g->menu()->node();
+    const unsigned char node = g->frontEnd()->menu()->node();
     switch (node) {
     case 0:    Menu_RenderMainMenu(g, theme, d3d, text, ms); break;
     case 2:    Menu_RenderRestoreSlotList(g, theme, d3d, text, ms); break;

@@ -125,11 +125,11 @@ void Score_DrawHighScoreTable(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
     static std::atomic<long> calls = 0;
     if (++calls <= SCORE_LOG_FIRST)
         g_logger.write("scoreoverlay: highscore %.0fx%.0f entries=%u\n",
-                   w, h, (unsigned)g->highScores()->count());
+                   w, h, (unsigned)g->frontEnd()->highScores()->count());
 
     // PRESERVED: an unsigned early-out, then a signed loop against a count
     // re-read every pass.
-    if (g->highScores()->count() == 0)
+    if (g->frontEnd()->highScores()->count() == 0)
         return;
 
     const float cellW = (float)(d3d->width() * 12) * VSCALE;
@@ -141,7 +141,7 @@ void Score_DrawHighScoreTable(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
     char buf[256];
     int row = 0, dy = 0;
     do {
-        const HighScoreRecord *rec = g->highScores()->record(row);
+        const HighScoreRecord *rec = g->frontEnd()->highScores()->record(row);
         const float y = ((float)dy + 180.0f) * w * VSCALE;
 
         sprintf(buf, GS_FMT_S, rec->name);
@@ -158,7 +158,7 @@ void Score_DrawHighScoreTable(Game *g, ThemeAssetBlock *theme, RenderDevice *d3d
 
         dy += 20;
         row++;
-    } while (row < (int)(unsigned)g->highScores()->count());
+    } while (row < (int)(unsigned)g->frontEnd()->highScores()->count());
 }
 
 /* One breakdown row: caption at x 130, its value right-aligned at 380, the

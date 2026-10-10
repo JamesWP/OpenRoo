@@ -9,7 +9,7 @@
 Sim_StoreGameStateIntoSaveSlot(Game *self, unsigned int slotArg)
 {
     Game     *game = (Game *)self;
-    SaveSlot *S    = game->saveSlots()->slot((unsigned char)slotArg);
+    SaveSlot *S    = game->frontEnd()->saveSlots()->slot((unsigned char)slotArg);
 
     // FORMAT: the slot stores level + 1, and restore does not subtract it
     // back: the index loads as stored.
@@ -25,7 +25,7 @@ Sim_StoreGameStateIntoSaveSlot(Game *self, unsigned int slotArg)
   unsigned int  
 Sim_RestoreGameStateFromSaveSlot(Game *self, unsigned int slotArg)
 {
-    SaveSlot *S = self->saveSlots()->slot((unsigned char)slotArg);
+    SaveSlot *S = self->frontEnd()->saveSlots()->slot((unsigned char)slotArg);
 
     self->setLevelIndex(S->levelIndex);
     // DETERMINISM: the stored time is unsigned; widened exactly.

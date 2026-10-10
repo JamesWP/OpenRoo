@@ -70,8 +70,8 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g->fixedSounds_.crystalBank[1] = NULL;
     g->fixedSounds_.crystalBank[2] = NULL;
     strcpy(g->menuLevelName_, GS_GAME_DEMO_LEVEL);
-    g->field_13cc8c_ = 0;
-    g->field_13cc88_ = 0;
+    g->frontEnd()->setField13cc8c(0);
+    g->frontEnd()->setField13cc88(0);
 
     snprintf(g->gameFileName_, sizeof(g->gameFileName_), "%s", gameName);
     g->cdThemes_.readTrackThemeTable(g->gameDir_, g->gameFileName_);
@@ -88,13 +88,13 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
         return;
     }
 
-    g->debounce_ = inputdev::KEY_RETURN;
-    g->menu_.setLastKey(inputdev::KEY_RETURN);
-    g->saveSlots_.setCount(6);
-    if (!g->saveSlots_.loadAllSlotFiles(g->gameDir_, g->gameFileName_, SAVE_KEY)) {
-        g_logger.logMessage(3, "GAME: warning - no save-files for this game (maybe started a new game the first time\077), creating %d empty slots", (unsigned)g->saveSlots_.count());
-        g->saveSlots_.initialiseEmpty();
-        g->saveSlots_.writeAllSlotFiles(g->gameDir_, g->gameFileName_, SAVE_KEY);
+    g->frontEnd()->setDebounce(inputdev::KEY_RETURN);
+    g->frontEnd()->menu()->setLastKey(inputdev::KEY_RETURN);
+    g->frontEnd()->saveSlots()->setCount(6);
+    if (!g->frontEnd()->saveSlots()->loadAllSlotFiles(g->gameDir_, g->gameFileName_, SAVE_KEY)) {
+        g_logger.logMessage(3, "GAME: warning - no save-files for this game (maybe started a new game the first time\077), creating %d empty slots", (unsigned)g->frontEnd()->saveSlots()->count());
+        g->frontEnd()->saveSlots()->initialiseEmpty();
+        g->frontEnd()->saveSlots()->writeAllSlotFiles(g->gameDir_, g->gameFileName_, SAVE_KEY);
     }
     g->field_173584_ = 0;
     if (!g->config_.loadValues(GS_CFG_FILE)) {
@@ -106,11 +106,11 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g_progCtrl.setJoyDeadzone(0, g->config_.joyDeadzone() * 100);
     g_progCtrl.setJoyDeadzone(4, g->config_.joyDeadzone() * 100);
 
-    g->highScores_.setCount(10);
-    if (!g->highScores_.readFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY)) {
+    g->frontEnd()->highScores()->setCount(10);
+    if (!g->frontEnd()->highScores()->readFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY)) {
         g_logger.logMessage(3, "GAME: warning - no highscore-file for the game found! Creating a new one...");
-        g->highScores_.fillDefaults();
-        g->highScores_.writeFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY);
+        g->frontEnd()->highScores()->fillDefaults();
+        g->frontEnd()->highScores()->writeFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY);
     } else {
         g_logger.logMessage(1, "GAME: highscore-file loaded");
     }
@@ -127,7 +127,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g_cdAudio.setVolume(g->musicGain());
     g->state_ = 0;
     g_cdAudio.stop();
-    g->menu_.buildDefaultGraph(g->saveSlots_.count());
+    g->frontEnd()->menu()->buildDefaultGraph(g->frontEnd()->saveSlots()->count());
     g->levelIndex_     = 0;
     g->camera()->setZoomDistance(g->config_.cameraDistanceSetting());
     g->camera()->setCameraDistance(g->config_.cameraDistanceSetting());
@@ -139,18 +139,18 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     *g->world()->clock() = 1000.0;
     g->field_173b1a_     = 0;
     g->world()->player()->setGliding(0);
-    g->textEntryActive_  = 0;
+    g->frontEnd()->setTextEntryActive(0);
     g->camera()->setCameraMode(1);
     g->camera()->setOverviewActive(0);
     g->field_13cc84_     = 0;
     g->world()->bridges().count      = 0;
     g->fixedSounds_.loaded = 0;
-    std::fill(std::begin(g->cheatBuffer_), std::end(g->cheatBuffer_), 0);
-    g->cheatEntry_.setMaxLength(30);
-    g->cheatEntry_.setCursor(0);
-    g->cheatEntry_.setBuffer((char *)g->cheatBuffer_);
-    g->cheatEntry_.setActive(1);
-    g->cheatEntry_.setLastKey(inputdev::KEY_RETURN);
+    std::fill_n(g->frontEnd()->cheatBuffer(), 0x100, 0);
+    g->frontEnd()->cheatEntry()->setMaxLength(30);
+    g->frontEnd()->cheatEntry()->setCursor(0);
+    g->frontEnd()->cheatEntry()->setBuffer((char *)g->frontEnd()->cheatBuffer());
+    g->frontEnd()->cheatEntry()->setActive(1);
+    g->frontEnd()->cheatEntry()->setLastKey(inputdev::KEY_RETURN);
     g->camera()->setParkedCameraOption(0);
     g->initialised_        = 1;
 }
@@ -173,7 +173,7 @@ void Game_Shutdown(Game *g)
     g->world()->bombs().count      = 0;
     g->world()->setSwitchMax(0);
     g->config_.setCameraDistanceSetting(g->camera()->zoomDistance());
-    if (g->highScores_.writeFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY))
+    if (g->frontEnd()->highScores()->writeFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY))
         g_logger.logMessage(1, "GAME: highscore-files saved");
     if (g->config_.save(GS_CFG_FILE))
         g_logger.logMessage(1, "GAME: config-values saved correctly");

@@ -40,8 +40,8 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         g_logger.logMessage(1, "GAME: config-values saved correctly");
     else
         g_logger.logMessage(3, "GAME: ** error ** while saving config-values (maybe write-protected or hd full\077) !!!");
-    self->menu()->setLockStart(*self->world()->clock());
-    self->menu()->setLock(1);
+    self->frontEnd()->menu()->setLockStart(*self->world()->clock());
+    self->frontEnd()->menu()->setLock(1);
     if (self->musicOn() != 0)
         self->cdThemes()->play(GS_GAME_MAIN);
     self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(GS_GAME_MAIN));

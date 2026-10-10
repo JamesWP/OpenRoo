@@ -60,7 +60,7 @@ static void enter_loaded_state(Game *game)
         g_cdAudio.stop();
     game->scriptPlayer()->setRunning(1);
     game->camera()->setCameraMode(1);
-    game->setDebounce(inputdev::KEY_RETURN);
+    game->frontEnd()->setDebounce(inputdev::KEY_RETURN);
 }
 
 void Cheat_KillFoes(Game *g)
@@ -143,7 +143,7 @@ bool Cheat_LoadLevel(Game *self, unsigned char lvl)
 Sim_HandleTypedCheatCode(Game *self)
 {
     Player *pl = self->world()->player();
-    unsigned char *buf = self->cheatBuffer();
+    unsigned char *buf = self->frontEnd()->cheatBuffer();
     unsigned char frame[256];
     char path[384];
 
@@ -155,8 +155,8 @@ Sim_HandleTypedCheatCode(Game *self)
             g_logger.write("cheatcode: KAROO_SIM_FX=cheatlife -- mausuruh gives 2\n");
     }
 
-    self->cheatEntry()->poll((unsigned int)(long long)*self->world()->clock());
-    if (self->cheatEntry()->active() != 0)
+    self->frontEnd()->cheatEntry()->poll((unsigned int)(long long)*self->world()->clock());
+    if (self->frontEnd()->cheatEntry()->active() != 0)
         return;
 
     if (streq(buf, "kaputo")) {
@@ -169,24 +169,24 @@ Sim_HandleTypedCheatCode(Game *self)
             if (self->musicOn() != 0)
                 self->cdThemes()->play(GS_GAME_GAMEOVER);
             Score_CalculateLevelScore(self, 0x28);
-            self->setDebounce(inputdev::KEY_RETURN);
+            self->frontEnd()->setDebounce(inputdev::KEY_RETURN);
             g_logger.logMessage(1, "GAME: completed at level %d/%d",
                                (unsigned int)self->levelIndex() + 1,
                                (unsigned int)self->levelCount());
         } else {
-            self->menu()->setLockStart(self->lastTickTime());
-            self->menu()->setLock(1);
+            self->frontEnd()->menu()->setLockStart(self->lastTickTime());
+            self->frontEnd()->menu()->setLock(1);
             self->setState(3);
             if (self->musicOn() != 0)
                 self->cdThemes()->play(GS_GAME_COMPLETED);
             self->camera()->setCameraMode(2);
-            self->menu()->rewind();
-            self->menu()->pop();
-            self->menu()->push(0x28);
-            self->menu()->setLockStart(self->lastTickTime());
-            self->menu()->setNode(0x28);
-            self->menu()->setCursor(0);
-            self->menu()->setLock(1);
+            self->frontEnd()->menu()->rewind();
+            self->frontEnd()->menu()->pop();
+            self->frontEnd()->menu()->push(0x28);
+            self->frontEnd()->menu()->setLockStart(self->lastTickTime());
+            self->frontEnd()->menu()->setNode(0x28);
+            self->frontEnd()->menu()->setCursor(0);
+            self->frontEnd()->menu()->setLock(1);
             Score_CalculateLevelScore(self, (char)self->state());
             self->setRestartCount(0);
             g_logger.logMessage(1, "GAME: c - sl");
@@ -242,10 +242,10 @@ Sim_HandleTypedCheatCode(Game *self)
         Cheat_Invulnerable(self);
 
     std::fill_n(buf, 0x100, 0);
-    self->cheatEntry()->setCursor(0);
-    self->cheatEntry()->setBuffer((char *)buf);
-    self->cheatEntry()->setActive(1);
-    self->cheatEntry()->setLastKey(inputdev::KEY_RETURN);
+    self->frontEnd()->cheatEntry()->setCursor(0);
+    self->frontEnd()->cheatEntry()->setBuffer((char *)buf);
+    self->frontEnd()->cheatEntry()->setActive(1);
+    self->frontEnd()->cheatEntry()->setLastKey(inputdev::KEY_RETURN);
 }
 
 void Cheat_DebugPanel(Game *g)
