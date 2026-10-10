@@ -23,7 +23,7 @@
 #include "levelmap.h"
 #include "levelplacements.h"
 #include "camera.h"
-#include "d3dmath_common.h"
+#include "d3dmath.h"
 
   void  
 Render_ConfigureRenderState(const char *gameDir)
