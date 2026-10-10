@@ -13,6 +13,7 @@ add_library(render OBJECT
     scene.cpp
     sceneobjects.cpp
     scenequad.cpp
+    theme.cpp
     themedraw.cpp)
 target_include_directories(render PRIVATE
     ../fx

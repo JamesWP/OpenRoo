@@ -18,7 +18,7 @@
 #include "levelmap.h"
 #include "switchcells.h"
 #include "levelcensus.h"
-#include "theme.h"
+#include "themesounds.h"
 #include "tickstep.h"
 #include "entitycontext.h"
 #include "bomb.h"

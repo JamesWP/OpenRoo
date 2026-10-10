@@ -43,7 +43,7 @@ LevelEntry_PrepareAssets(void)
     // loaded from.
     if (strcmp(g_themeBlock.themeName(), thm) != 0) {
         g_logger.logMessage(1, "THM: *** Theme: %s ***", map->mapName());
-        if (!g_themeBlock.load(g, d3d, thm))
+        if (!g_themeBlock.load(g->themeSounds(), g->gameDir(), d3d, thm))
             g_logger.logMessage(4, "Couldn't load theme %s.", map->mapName());
     }
 

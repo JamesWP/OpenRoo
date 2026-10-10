@@ -17,17 +17,12 @@ input/keypress.cpp -> ui/levelselect.h
 input/keypress.cpp -> ui/menunav.h
 input/keypress.cpp -> ui/menutree.h
 input/keypress.cpp -> ui/textentry.h
-render/bridgesurf.cpp -> ui/theme.h
 render/camera.cpp -> core/game.h
 render/dsoscene.cpp -> core/game.h
 render/dsoscene.cpp -> testing/record.h
 render/framepose.cpp -> core/game.h
 render/levelplacements.cpp -> core/game.h
-render/levelplacements.cpp -> ui/theme.h
-render/meshbatch.cpp -> ui/theme.h
 render/objectshadows.cpp -> core/game.h
-render/objectshadows.cpp -> ui/theme.h
-render/quadbatch.cpp -> ui/theme.h
 render/rendergameframe.cpp -> core/game.h
 render/rendergameframe.cpp -> core/gametick.h
 render/rendergameframe.cpp -> core/levelentry.h
@@ -35,13 +30,10 @@ render/rendergameframe.cpp -> testing/record.h
 render/rendergameframe.cpp -> ui/menuscreens.h
 render/rendergameframe.cpp -> ui/scoreoverlay.h
 render/rendergameframe.cpp -> ui/scriptplayer.h
-render/rendergameframe.cpp -> ui/theme.h
 render/renderstate.cpp -> core/game.h
 render/renderstate.cpp -> ui/menuscreens.h
 render/sceneobjects.cpp -> core/game.h
-render/sceneobjects.cpp -> ui/theme.h
 render/themedraw.cpp -> core/game.h
-render/themedraw.cpp -> ui/theme.h
 ui/cheatcode.cpp -> core/game.h
 ui/cheatcode.cpp -> core/levelparse.h
 ui/cheatcode.cpp -> core/levelscore.h
@@ -51,4 +43,3 @@ ui/menunav.cpp -> core/game.h
 ui/menuscreens.cpp -> core/game.h
 ui/scoreoverlay.cpp -> core/game.h
 ui/scoretally.cpp -> core/game.h
-ui/theme.cpp -> core/game.h
