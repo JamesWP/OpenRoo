@@ -311,5 +311,3 @@ int ProgableControl::writeBindings()
     g_logger.write("ProgCtrl::WriteBindings: ok\n");
     return 1;
 }
-
-ProgableControl g_progCtrl;

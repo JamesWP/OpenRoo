@@ -2,8 +2,9 @@
 
 #pragma once
 class Game;
+class ProgableControl;
 
 /* Advances the level by dt seconds at clock time now.  Called once a frame by
- * RenderGameFrame. */
-  unsigned int  
-Sim_GameTick(Game *self, double dt, double now);
+ * RenderGameFrame, which passes the app's progCtrl through. */
+  unsigned int
+Sim_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl);

@@ -5,7 +5,7 @@
  * with); each has a callback, a context and a list of bound keys.  Once per
  * tick, Dispatch reads the keyboard and calls the callback of every action
  * with a key held.  Bindings are saved to and loaded from openroo.ini.
- * There is one instance, g_progCtrl. */
+ * app owns the one instance and passes it down. */
 
 #pragma once
 #include <stdint.h>
@@ -115,6 +115,3 @@ private:
     char                   sep_or[50];  // joins key names in a binding description: " or "
     ActionTable            action_tables[5];    // one per mode
 };
-
-/* The programmable-control singleton. */
-extern ProgableControl g_progCtrl;

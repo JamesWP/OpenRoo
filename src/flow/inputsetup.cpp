@@ -8,20 +8,20 @@
 #include "windev.h"
 
   void  
-Input_TrySaveSettings(void)
+Input_TrySaveSettings(ProgableControl *progCtrl)
 {
     g_logger.logMessage(1, "CONTROL: trying to save settings");
-    g_progCtrl.writeBindings();
-    g_progCtrl.shutdown();
+    progCtrl->writeBindings();
+    progCtrl->shutdown();
     g_logger.logMessage(1, "CONTROL: saved settings\n");
 }
 
 /* The player actions get the Player as their context, the camera actions
  * the Game.  Default keys are bound first; openroo.ini then overrides the actions it lists. */
   int  
-Input_Setup(void *hwnd, Game *game)
+Input_Setup(void *hwnd, Game *game, ProgableControl *progCtrl)
 {
-    ProgableControl *pc = &g_progCtrl;
+    ProgableControl *pc = progCtrl;
     if (!pc->setupDevices(hwnd)) {
         windev::messageBox(NULL, GS_CONTROL_NO_INPUT, GS_CONTROL_ERROR_CAPTION,
                            windev::Buttons::Ok, windev::Icon::Error);

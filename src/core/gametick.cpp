@@ -95,7 +95,7 @@ static void tick_level_objects(Game *self)
 }
 
   unsigned int
-Sim_GameTick(Game *self, double dt, double now)
+Sim_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 {
     Player *pl = self->world()->player();
 
@@ -118,7 +118,7 @@ Sim_GameTick(Game *self, double dt, double now)
     if (self->state() == GameState::MainMenu || self->state() == GameState::PauseMenu) {
         PROF_SCOPE("menus");
         Sim_RestoreCheckpointStateBlocks(self);
-        Sim_HandleKeypress(self);
+        Sim_HandleKeypress(self, progCtrl);
     }
 
     if (self->state() == GameState::Flythrough)
@@ -129,7 +129,7 @@ Sim_GameTick(Game *self, double dt, double now)
 
     if (self->state() == GameState::LevelComplete) {
         PROF_SCOPE("menus");
-        Sim_HandleKeypress(self);
+        Sim_HandleKeypress(self, progCtrl);
         Sim_AnimateScoreTallyStages(self);
     }
     if (self->state() == GameState::GameOver) {
@@ -159,9 +159,9 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     if (self->state() == GameState::Playing)
-        Flow_TickPlayingControls(self);
+        Flow_TickPlayingControls(self, progCtrl);
     else
-        Flow_TickIdleControls(self);
+        Flow_TickIdleControls(self, progCtrl);
 
     Play_DropPlayerBomb(self);
     Play_PlayerSwitch(self);

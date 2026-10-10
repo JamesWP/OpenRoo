@@ -413,7 +413,7 @@ static const ControlRow k_controls[13] = {
 
 void Menu_RenderControlsRemap(const MenuArt *art, const FrontEnd *frontEnd, const Config *config,
                               ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
-                              uint32_t ms)
+                              uint32_t ms, ProgableControl *progCtrl)
 {
     const uint32_t w  = mode_width(d3d);
     const float fw = (float)w;
@@ -458,7 +458,7 @@ void Menu_RenderControlsRemap(const MenuArt *art, const FrontEnd *frontEnd, cons
 
     char buf[0x100];
     for (int i = 0; i < 13; i++) {
-        g_progCtrl.getBindingStr(1, k_controls[i].action, buf, sizeof(buf));
+        progCtrl->getBindingStr(1, k_controls[i].action, buf, sizeof(buf));
         const bool asking = frontEnd->rebindActive() != 0 && frontEnd->rebindCode() == k_controls[i].node;
         const uint32_t wr = mode_width(d3d);
         text->drawRight(fw * 0.90625f, rowY[i],
@@ -660,7 +660,8 @@ Menu_RenderCreditsScroll(FrontEnd *frontEnd, RenderDevice *d3d, TextRenderer *te
  * The level select's theme nodes (0x60 + t) draw the level select page. */
 void
 Menu_DispatchGameState(const MenuArt *art, FrontEnd *frontEnd, Session *session, const Config *config,
-                       ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text, uint32_t ms)
+                       ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text, uint32_t ms,
+                       ProgableControl *progCtrl)
 {
     const unsigned char node = frontEnd->menu()->node();
     switch (node) {
@@ -668,7 +669,7 @@ Menu_DispatchGameState(const MenuArt *art, FrontEnd *frontEnd, Session *session,
     case 2:    Menu_RenderRestoreSlotList(art, frontEnd, theme, d3d, text, ms); break;
     case 4:    Menu_RenderOptionsMenu(art, frontEnd, theme, d3d, text, ms); break;
     case 5:    Menu_RenderCreditsScroll(frontEnd, d3d, text, ms); break;
-    case 0xa:  Menu_RenderControlsRemap(art, frontEnd, config, theme, d3d, text, ms); break;
+    case 0xa:  Menu_RenderControlsRemap(art, frontEnd, config, theme, d3d, text, ms, progCtrl); break;
     case 0xb:  Menu_RenderVideoOptions(art, frontEnd, config, theme, d3d, text, ms); break;
     case 0xc:  Menu_RenderSoundOptions(art, frontEnd, config, theme, d3d, text, ms); break;
     case 0x28: Menu_RenderLevelComplete(art, frontEnd, session, theme, d3d, text, ms); break;

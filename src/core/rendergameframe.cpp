@@ -149,7 +149,7 @@ static void set_fog_enable(bool on)
 /* ─── RenderGameFrame ───────────────────────────────────────────────────── */
 
   void  
-Render_RenderGameFrame(Renderer *renderer, const MenuArt *art)
+Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *progCtrl)
 {
     dbg::frameBegin();
     PROF_SCOPE("frame");
@@ -177,7 +177,7 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art)
         renderer->lastTickMs = now;
         {
             PROF_SCOPE("game tick");
-            Sim_GameTick(g, dt, now);
+            Sim_GameTick(g, dt, now, progCtrl);
         }
         if (g->field_173584() != 0)
             return;
@@ -271,7 +271,7 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art)
     if (st == GameState::MainMenu || st == GameState::PauseMenu || st == GameState::LevelComplete) {
         PROF_SCOPE("menu");
         Menu_DispatchGameState(art, g->frontEnd(), g->session(), g->config(),
-                               &renderer->themeBlock, d3d, &g_fontMain, ms);
+                               &renderer->themeBlock, d3d, &g_fontMain, ms, progCtrl);
     }
     if (g->state() == GameState::GameOver) {
         PROF_SCOPE("menu");

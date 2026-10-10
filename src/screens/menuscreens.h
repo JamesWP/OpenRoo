@@ -12,6 +12,8 @@
 #include "renderdevice.h"
 #include "menuart.h"
 
+class ProgableControl;
+
 class FrontEnd;
 class Session;
 class Config;
@@ -51,10 +53,10 @@ void Menu_RenderSaveSlotList(const MenuArt *art, FrontEnd *frontEnd, ThemeAssetB
   void  
 Menu_BuildMenuGeometry(MenuArt *art, RenderDevice *d3d, const char *prefix);
 
-/* Node 0xa: the key-binding page. */
+/* Node 0xa: the key-binding page.  Reads each action's bound keys from progCtrl. */
 void Menu_RenderControlsRemap(const MenuArt *art, const FrontEnd *frontEnd, const Config *config,
                               ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
-                              uint32_t ms);
+                              uint32_t ms, ProgableControl *progCtrl);
 
 /* That page's own cursor markers. */
   void  
@@ -78,7 +80,8 @@ Menu_RenderCreditsScroll(FrontEnd *frontEnd, RenderDevice *d3d, TextRenderer *te
 /* Picks and draws the screen for the current menu node. */
 void
 Menu_DispatchGameState(const MenuArt *art, FrontEnd *frontEnd, Session *session, const Config *config,
-                       ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text, uint32_t ms);
+                       ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text, uint32_t ms,
+                       ProgableControl *progCtrl);
 
 /* A level-select theme page. */
 void Menu_RenderLevelSelect(const MenuArt *art, const FrontEnd *frontEnd, Session *session,
