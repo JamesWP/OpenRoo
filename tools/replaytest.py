@@ -173,7 +173,9 @@ def wait_for_quiet(timeout=60):
     import time
     deadline = time.time() + timeout
     while time.time() < deadline:
-        r = subprocess.run(["pgrep", "-f", r"(^|[/\\])OpenRoo(\.exe)?( |$)"],
+        # The process name, not the command line: a shell whose command
+        # mentions the checkout (".../OpenRoo && ...") would match that.
+        r = subprocess.run(["pgrep", "-x", r"OpenRoo(\.exe)?"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if r.returncode != 0:          # nothing matched
             # Only a Proton run has a wineserver to finish shutting down
