@@ -1,6 +1,6 @@
 add_library(core OBJECT
-    game.cpp
     checkpoint.cpp
+    gameboot.cpp
     gamereset.cpp
     levelsetup.cpp
     levelsounds.cpp
@@ -10,8 +10,18 @@ add_library(core OBJECT
     tiledebug.cpp
     gamestate.cpp
     gamedebug.cpp
-    gametick.cpp)
+    gametick.cpp
+    keypress.cpp
+    inputsetup.cpp
+    camerainput.cpp
+    rendergameframe.cpp
+    cheatcode.cpp
+    scoretally.cpp
+    fixedsounds.cpp
+    soundobj.cpp)
 target_include_directories(core PRIVATE
+    ../screens
+    ../game
     ../fx
     ../base
     ../prof

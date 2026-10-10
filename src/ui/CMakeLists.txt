@@ -1,13 +1,7 @@
 add_library(ui OBJECT
-    cheatcode.cpp
     highscores.cpp
-    levelselect.cpp
-    menunav.cpp
-    menuscreens.cpp
     menutree.cpp
     saveslots.cpp
-    scoreoverlay.cpp
-    scoretally.cpp
     scriptplayer.cpp
     textentry.cpp)
 target_include_directories(ui PRIVATE

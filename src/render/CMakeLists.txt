@@ -8,7 +8,6 @@ add_library(render OBJECT
     meshbatch.cpp
     objectshadows.cpp
     quadbatch.cpp
-    rendergameframe.cpp
     renderstate.cpp
     scene.cpp
     sceneobjects.cpp
@@ -16,6 +15,7 @@ add_library(render OBJECT
     theme.cpp
     themedraw.cpp)
 target_include_directories(render PRIVATE
+    ../game
     ../fx
     ../gfx
     ../base

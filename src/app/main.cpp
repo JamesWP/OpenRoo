@@ -30,6 +30,7 @@
 #include <string.h>
 #include "videodev.h"
 #include "record.h"
+#include "gameboot.h"
 #include "gamestate.h"
 #include "levelplacements.h"
 #include "theme.h"
@@ -57,7 +58,7 @@ static bool winmain_fx_norender()
     return on;
 }
 
-static void delete_game(Game *g)       { delete g; }
+static void delete_game(Game *g)       { Game_Shutdown(g); delete g; }
 
 static bool g_norender;
 
@@ -235,7 +236,9 @@ int Main_WinMain(const char *lpCmdLine)
     // The game file is the command line; with none, the one the game ships with.
     const char *gameName = lpCmdLine[0] ? lpCmdLine : "JJ";
 
-    Game *game = new (std::nothrow) Game(gameName, kGameDir);
+    Game *game = new (std::nothrow) Game();
+    if (game != NULL)
+        Game_Boot(game, gameName, kGameDir);
     Game::set_instance(game);
     if (game == NULL)
         return 0;
@@ -300,6 +303,7 @@ int Main_WinMain(const char *lpCmdLine)
     g_cdAudio.setWindowHandle(hWnd);
     window.show(true);
     Render_ConfigureRenderState(kGameDir);
+    Menu_BuildMenuGeometry(g_renderDevice, kGameDir);
     hooks_ClockInit();
 
     // The intro is only shown to a person at a display: a headless or replayed

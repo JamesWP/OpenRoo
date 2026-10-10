@@ -26,7 +26,7 @@ public:
 
     // The per-frame tick: the camera spline, a glide, the waits, and the next
     // line through playScript.  now and dt in milliseconds.
-    void tick(double now, double dt);
+    void tick(double now, double dt, const float *cameraEye);
     // Stops, releases and deletes each of the 255 stream slots.
     void releaseStreams();
 
@@ -109,6 +109,7 @@ private:
     float          target_[3]{};  // the glide's end point
     unsigned int   moving_{};     // "movetoxyz" in progress
     double         now_{};        // the tick's clock
+    const float   *cameraEye_{};  // the camera's eye, which "splinexyz" starts the spline at
     int            loaded_{};
     float          cameraDistance_{};          // set by "distance"
     char           currentLine_[LINE_SIZE]{};  // the line being played

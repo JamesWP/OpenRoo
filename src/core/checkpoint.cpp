@@ -12,6 +12,7 @@
 #include <string.h>
 #include "logger.h"
 #include "game.h"
+#include "camera.h"
 #include "checkpoint.h"
 
 static int s_fx = -1;
@@ -33,7 +34,7 @@ Sim_RestoreCheckpointStateBlocks(Game *self)
     if (sp->running() == 0 || sp->loaded() == 0)
         return;
 
-    sp->tick(*g->clock(), g->tickStep()->value);
+    sp->tick(*g->clock(), g->tickStep()->value, g_camera.eye());
     g->setCameraMode(sp->cameraMode());
     g->setCameraDistance(sp->cameraDistance());
     g->setCameraEye(0, sp->eye(0));
