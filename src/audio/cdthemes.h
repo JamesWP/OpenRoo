@@ -5,6 +5,8 @@
  * before the game starts. */
 #pragma once
 
+class CDM;
+
 class CdThemes {
 public:
      
@@ -37,6 +39,10 @@ public:
     // Stores the track count and logs each track's length.
     int           listTrackLengths();
 
+    // The CD audio device the themes play on; Game hands it in once, when it
+    // is built, before any theme is played.
+    void          setCdAudio(CDM *cdAudio)           { cdAudio_ = cdAudio; }
+
     // The track play() last picked, 0 for none.
     unsigned char currentTrack() const               { return currentTrack_; }
     void          setCurrentTrack(unsigned char t)   { currentTrack_ = t; }
@@ -45,6 +51,7 @@ public:
 private:
      
 
+    CDM          *cdAudio_{};            // set by setCdAudio
     int           trackCount_{};          // set by validateTrackLengths
     unsigned char trackOf_[THEME_MAX]{};  // theme i's CD track
     unsigned char currentTrack_{};

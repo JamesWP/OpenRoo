@@ -194,7 +194,7 @@ static void return_to_menu(Game *self, bool lastLevel)
         } else {
             self->setState(GameState::Quitting);
             if (self->musicOn() != 0)
-                g_cdAudio.stop();
+                self->cdAudio()->stop();
             self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         }
     } else {
@@ -219,7 +219,7 @@ void Flow_LeaveGameOver(Game *self)
     if ((unsigned char)r < 0xff) {
         self->setState(GameState::NameEntry);
         if (self->musicOn() != 0)
-            g_cdAudio.stop();
+            self->cdAudio()->stop();
         self->frontEnd()->nameEntry()->setMaxLength(0x0f);
         self->frontEnd()->nameEntry()->setActive(1);
         self->frontEnd()->nameEntry()->setCursor(0);

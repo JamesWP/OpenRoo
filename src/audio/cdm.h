@@ -1,6 +1,7 @@
 /* The CD audio device.  The game played its music as audio tracks from the CD;
  * here each track is a .wav in CDTracks/ (imported from the CD image), played
- * through the platform layer's music player.  One global instance, g_cdAudio. */
+ * through the platform layer's music player.  Game owns the one instance
+ * (game.h). */
 #pragma once
 #include <stddef.h>
 #include "audiodev.h"
@@ -33,6 +34,3 @@ private:
     audiodev::Music music_;
     void           *window_;       // the game window
 };
-
-/* The CD audio device. */
-extern CDM g_cdAudio;

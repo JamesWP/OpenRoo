@@ -26,6 +26,7 @@
 #include "textrenderer.h"
 #include "gamestr.h"
 #include "menuscreens.h"
+#include "menuart.h"
 #include "theme.h"
 #include "highscores.h"
 
@@ -34,10 +35,6 @@
 
 /* 1/640, the virtual-space scale, bit for bit the game's float. */
 #define VSCALE 0x1.99999ap-10f
-
-/* The high-score panel's quad and texture. */
-#define g_pPanelVerts   ((const void *)g_panelQuad)
-#define g_pPanelTexture (&g_menuTex2)
 
 /* The theme's text colours come from the theme file, differ per theme, and
  * are re-read every draw.  Each pair is the glyph quad's top and bottom vertex
@@ -102,8 +99,8 @@ static void setup_overlay_state(RenderDevice *d3d, ThemeAssetBlock *theme)
     d3d->SetTexture(0, tex);
 }
 
-void Score_DrawHighScoreTable(const FrontEnd *frontEnd, ThemeAssetBlock *theme, RenderDevice *d3d,
-                              TextRenderer *text, int n)
+void Score_DrawHighScoreTable(const MenuArt *art, const FrontEnd *frontEnd, ThemeAssetBlock *theme,
+                              RenderDevice *d3d, TextRenderer *text, int n)
 {
     (void)n;  // pushed by the caller, never read
 
@@ -118,10 +115,10 @@ void Score_DrawHighScoreTable(const FrontEnd *frontEnd, ThemeAssetBlock *theme, 
         d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
                                     quad, 4, 0);
 
-    d3d->SetTexture(0, g_pPanelTexture);
+    d3d->SetTexture(0, &art->tex2);
     if (score_fx() != SCORE_FX_NODRAW)
         d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
-                                    (void *)g_pPanelVerts, 4, 0);
+                                    (const void *)art->panelQuad, 4, 0);
 
     static std::atomic<long> calls = 0;
     if (++calls <= SCORE_LOG_FIRST)
@@ -271,7 +268,7 @@ void Score_DrawGameOverScore(const Session *session, ThemeAssetBlock *theme, Ren
  * next-level bonus, each in its own theme colours, and the cursor markers 200
  * virtual units down. */
 
-void Menu_RenderLevelComplete(const FrontEnd *frontEnd, const Session *session,
+void Menu_RenderLevelComplete(const MenuArt *art, const FrontEnd *frontEnd, const Session *session,
                               ThemeAssetBlock *theme, RenderDevice *d3d, TextRenderer *text,
                               uint32_t ms)
 {
@@ -288,5 +285,5 @@ void Menu_RenderLevelComplete(const FrontEnd *frontEnd, const Session *session,
                            "Save", d3d, 0,
                            THEME_COL(THEME_COLOR_MENUSUMMARYSAVE));
 
-    Menu_DrawCursorMarkers(frontEnd, d3d, ms, 200.0f);
+    Menu_DrawCursorMarkers(art, frontEnd, d3d, ms, 200.0f);
 }

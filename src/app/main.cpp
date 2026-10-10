@@ -27,6 +27,7 @@
 #include "cdm.h"
 #include "renderstate.h"
 #include "renderer.h"
+#include "menuart.h"
 #include "clock.h"
 #include <string.h>
 #include "videodev.h"
@@ -53,6 +54,10 @@ static videodev::Player g_movie;
 /* The render state (renderer.h).  app owns it and passes it down; nothing
  * below app reaches it through a global. */
 static Renderer s_renderer;
+
+/* The menu's art (menuart.h).  app owns it and passes it down, as it does
+ * the render state. */
+static MenuArt s_menuArt;
 
 static bool winmain_fx_norender()
 {
@@ -98,7 +103,7 @@ static void idle()
     if (g_movie.playing())
         present_movie_frame();
     else if (!g_norender)
-        Render_RenderGameFrame(&s_renderer);
+        Render_RenderGameFrame(&s_renderer, &s_menuArt);
 }
 
 /* The window's events: input devices and surfaces on focus changes, the intro
@@ -110,8 +115,8 @@ static void idle()
  * textures. */
 static const int IMAGE_PTR_ORDER[10] = { 2, 5, 0, 6, 1, 4, 7, 3, 8, 9 };
 static Texture *const TAIL_TEXTURES[10] = {
-    &g_texKaroo128, &g_menuTex1, &g_menuTex2, &g_menuTex3, &g_menuTex4,
-    &g_menuTexSelector, &g_menuTexOn, &g_menuTexOff, &g_menuTexKnob, &g_menuTexScale,
+    &g_texKaroo128, &s_menuArt.tex1, &s_menuArt.tex2, &s_menuArt.tex3, &s_menuArt.tex4,
+    &s_menuArt.selector, &s_menuArt.on, &s_menuArt.off, &s_menuArt.knob, &s_menuArt.scale,
 };
 
 
@@ -188,7 +193,7 @@ public:
         if (g_movie.handleWindowMessage(msg, wParam, lParam))
             return true;
         // A track ended: the music restarts it if it repeats.
-        return g_cdAudio.handleWindowMessage(msg, wParam, lParam);
+        return Game::instance()->cdAudio()->handleWindowMessage(msg, wParam, lParam);
     }
 
 private:
@@ -305,10 +310,10 @@ int Main_WinMain(const char *lpCmdLine)
     if (snd->init(1, hWnd, 2, 22050, 16))
         snd->device()->setListenerRolloff(0.3f, true);
 
-    g_cdAudio.setWindowHandle(hWnd);
+    game->cdAudio()->setWindowHandle(hWnd);
     window.show(true);
     Render_ConfigureRenderState(&s_renderer, game->world(), game->camera()->pose(), kGameDir);
-    Menu_BuildMenuGeometry(g_renderDevice, kGameDir);
+    Menu_BuildMenuGeometry(&s_menuArt, g_renderDevice, kGameDir);
     hooks_ClockInit();
 
     // The intro is only shown to a person at a display: a headless or replayed
