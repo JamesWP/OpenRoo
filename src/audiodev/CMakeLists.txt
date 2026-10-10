@@ -8,5 +8,5 @@ add_library(audiodev OBJECT
     system.cpp)
 target_include_directories(audiodev PUBLIC .)
 target_link_libraries(audiodev
-    PUBLIC  base
+    PUBLIC  soundapi
     PRIVATE sdl3 sdl3_mixer)

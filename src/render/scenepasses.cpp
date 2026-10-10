@@ -565,7 +565,8 @@ void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, 
         }
     }
 
-    Scene_DrawParticleSystems(&renderer->scene, g_renderDevice, cam->eye(), dt, now);
+    Scene_DrawParticleSystems(&renderer->scene, renderer->showSplinePaths,
+                              renderer->showSplineControlPolygons, g_renderDevice, cam->eye(), dt, now);
 
     Player *player = world->player();
     if (player->effectDActive() != 0 && player->anim() != 10)

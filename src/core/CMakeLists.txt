@@ -2,6 +2,7 @@ add_library(core OBJECT
     gameboot.cpp
     gamedebug.cpp
     gametick.cpp
+    quitforward.cpp
     levelentry.cpp
     rendergameframe.cpp
     tiledebug.cpp)

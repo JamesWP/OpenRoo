@@ -2,7 +2,6 @@
  * (cheatcode.cpp) and the debug UI (gamedebug.cpp).  They change the game and
  * never read the keyboard. */
 
-#include "inputdev.h"
 #include <stdio.h>
 #include "sysdev.h"
 #include "logger.h"
@@ -27,7 +26,7 @@ void Cheat_EnterLoadedState(Game *game)
         game->cdAudio()->stop();
     game->scriptPlayer()->setRunning(1);
     game->camera()->setCameraMode(1);
-    game->frontEnd()->setDebounce(inputdev::KEY_RETURN);
+    game->frontEnd()->debounceEnter();
 }
 
 void Cheat_KillFoes(Game *g)

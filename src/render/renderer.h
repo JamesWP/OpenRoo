@@ -28,6 +28,10 @@ struct Renderer {
     /* The theme's assets, loaded at level entry when the theme changes. */
     ThemeAssetBlock themeBlock;
 
+    /* The F3/F4 debug views of the scene objects' paths; core polls the keys each frame. */
+    bool showSplinePaths{};
+    bool showSplineControlPolygons{};
+
     /* The clock (ms) at the last GameTick.  Level entry resets it, so the level's
      * first frame ticks from there. */
     double lastTickMs{};

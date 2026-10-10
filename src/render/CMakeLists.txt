@@ -19,4 +19,4 @@ target_include_directories(render PUBLIC .)
 
 target_link_libraries(render
     PUBLIC  base math gfx fx level entities
-    PRIVATE sysdev log prof inputdev windev testing camera imgui)
+    PRIVATE sysdev log prof camera imgui)

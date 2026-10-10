@@ -2,7 +2,8 @@
  * device exists.  It loads the loading-screen and demo bitmaps, wires the
  * texture and model caches' loggers, places the initial camera and builds the
  * view/projection matrices, sets the fixed render states, and imports the
- * shared player/enemy models, textures, material, light and fonts. */
+ * shared player/enemy models, textures, material, light and fonts.  It returns
+ * false if a font fails to load (both are still tried and logged). */
 
 #include <stdint.h>
 #include <math.h>
@@ -10,7 +11,6 @@
 #include <string.h>
 #include "renderstate.h"
 #include "renderer.h"
-#include "windev.h"
 #include "renderdevice.h"
 #include "image.h"
 #include "texture.h"
@@ -27,7 +27,7 @@
 #include "camera.h"
 #include "d3dmath.h"
 
-  void  
+  bool
 Render_ConfigureRenderState(Renderer *renderer, const World *level, CameraPose *cam,
                             const char *gameDir)
 {
@@ -128,12 +128,14 @@ Render_ConfigureRenderState(Renderer *renderer, const World *level, CameraPose *
     DirectionalLight light = { { 0.8f, 0.8f, 0.8f, 1.0f }, { 1.0f, -1.1f, 1.2f } };
     d3d->SetDirectionalLight(light);
 
+    bool fontsLoaded = true;
     if (!(char)g_fontMain.load("fonts\\font1.fon", d3d)) {
         g_logger.logMessage(4, "Couldn't create Font font1.fon");
-        windev::quit(1);
+        fontsLoaded = false;
     }
     if (!(char)g_fontNumbers.load("fonts\\numbers.fon", d3d)) {
         g_logger.logMessage(4, "Couldn't create Font numbers.fon");
-        windev::quit(1);
+        fontsLoaded = false;
     }
+    return fontsLoaded;
 }

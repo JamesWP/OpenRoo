@@ -5,7 +5,7 @@
  *
  * PRESERVED: the game-file check reads its byte before the field stores but
  * acts on it after them, so every store happens even when the game file is
- * bad, and the objects are still purged after windev::quit.
+ * bad, and the objects are still purged after the quit request.
  *
  * KAROO_SIM_FX=keepobjects (a negative control, in each purge) leaves the
  * objects and their counts alive.  KAROO_RESET_DIAG=1 logs the first call, the
@@ -16,7 +16,6 @@
 #include <string.h>
 
 #include "logger.h"
-#include "windev.h"
 #include "game.h"
 #include "gamereset.h"
 #include "player.h"
@@ -94,7 +93,7 @@ Sim_ClearGameState(Game *self)
     if (gamefile_ok == 0) {
         g_logger.logMessage(4, "GAME: ** error ** game-file %s is not readable (maybe it does not exist\077) aborting game!!!",
                            self->gameFileName());
-        windev::quit(1);
+        self->requestQuit(1);
     }
 
     self->world()->clearObjects();

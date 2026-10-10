@@ -9,6 +9,7 @@
 # Add a new group by giving it a line here, in the position its includes allow.
 
 sysdev
+soundapi
 log
 base
 math

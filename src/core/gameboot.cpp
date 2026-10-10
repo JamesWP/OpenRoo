@@ -23,6 +23,7 @@
 #include "levelparse.h"
 #include "levelsetup.h"
 #include "gameboot.h"
+#include "quitforward.h"
 
 /* The key bytes of the save-slot files ('7') and the high-score file ('K'). */
 static const char SAVE_KEY      = 0x37;
@@ -147,6 +148,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
     g->frontEnd()->cheatEntry()->setLastKey(inputdev::KEY_RETURN);
     g->camera()->setParkedCameraOption(0);
     g->initialised_        = 1;
+    Core_ForwardQuit(g);
 }
 
 void Game_Shutdown(Game *g)

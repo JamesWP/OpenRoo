@@ -6,5 +6,5 @@ add_library(audio OBJECT
     voicepool.cpp)
 target_include_directories(audio PUBLIC .)
 target_link_libraries(audio
-    PUBLIC  base audiodev
-    PRIVATE sysdev log)
+    PUBLIC  audiodev soundapi
+    PRIVATE sysdev log base)
