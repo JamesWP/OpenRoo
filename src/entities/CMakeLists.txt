@@ -10,7 +10,6 @@ add_library(entities OBJECT
     objectremove.cpp
     player.cpp
     platformobject.cpp
-    splinepath.cpp
     uvanimator.cpp)
 target_include_directories(entities PRIVATE
     .)

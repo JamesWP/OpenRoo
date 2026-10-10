@@ -9,6 +9,7 @@
 sysdev
 log
 base
+math
 prof inputdev audiodev videodev
 windev
 dbg
@@ -18,9 +19,9 @@ gfx
 gl
 fx
 audio
+ui
 level
 entities
-ui
 game
 render
 screens

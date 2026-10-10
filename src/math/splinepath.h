@@ -8,7 +8,6 @@
 
  
 #include <vector>
-class RenderDevice;
 
 /* One control point: three packed floats. */
 struct SplineControlPoint {
@@ -36,12 +35,6 @@ public:
 
     /* Frees every control point and empties the list. */
     void purgeControlPoints();
-
-    /* Draws the path as numsegments line segments, and its control polygon. */
-    long drawSplinePath(RenderDevice *dev, unsigned int numsegments,
-                        unsigned long color);
-
-    long drawControlPolygon(RenderDevice *dev, unsigned long color);
 
     const std::vector<SplineControlPoint> &controlPoints() const { return points_; }
 

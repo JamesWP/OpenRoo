@@ -16,7 +16,7 @@
 #include "saveslots.h"
 #include "levelselect.h"
 #include "scoreoverlay.h"
-#include "d3dmath.h"
+#include "vecmath.h"
 #include "progctrl.h"
 #include "texture.h"
 #include "theme.h"

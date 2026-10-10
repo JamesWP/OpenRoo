@@ -283,6 +283,7 @@ Scene_DrawSceneObjects(RenderDevice *dev, float *cam, uint32_t , uint32_t , doub
  *
  * The system is ticked with (float)(dt_ms * 0.001), pointed along the view
  * direction cam[3..5] - cam[0..2], then rendered. */
+#include <vector>
 #include "splinepath.h"
 #include "record.h"
 
@@ -294,6 +295,44 @@ static void rotation_xyz(Mat4 *m, float rx, float ry, float rz)
     compose(&t, &a, &b);
     m4_rot_z(&c, rz);
     compose(m, &t, &c);
+}
+
+/* The debug draws of a spline path (F3) and its control polygon (F4), as
+ * line strips. */
+static LitVertex spline_vertex(float x, float y, float z, unsigned long color)
+{
+    LitVertex v;
+    v.x = x; v.y = y; v.z = z;
+    v.reserved = 0; v.color = (uint32_t)color; v.specular = 0;
+    v.tu = 0.0f; v.tv = 0.0f;
+    return v;
+}
+
+/* Draws the path as numsegments line segments. */
+static void draw_spline_path(RenderDevice *dev, SplinePath &sp,
+                             unsigned int numsegments, unsigned long color)
+{
+    std::vector<LitVertex> verts(numsegments + 1);
+    float step = (float)(1.0 / (double)numsegments);
+
+    for (unsigned int i = 0; i <= numsegments; ++i) {
+        float pt[3];
+        sp.evalBezierPath(pt, (float)((double)i * step));
+        verts[i] = spline_vertex(pt[0], pt[1], pt[2], color);
+    }
+    dev->Draw(Prim::LineStrip, VertexFormat::Lit, verts.data(), numsegments + 1);
+}
+
+/* Draws the control points of the path, joined in order. */
+static void draw_control_polygon(RenderDevice *dev, const SplinePath &sp,
+                                 unsigned long color)
+{
+    std::vector<LitVertex> verts;
+    for (const SplineControlPoint &p : sp.controlPoints())
+        verts.push_back(spline_vertex(p.flX, p.flY, p.flZ, color));
+    if (!verts.empty())
+        dev->Draw(Prim::LineStrip, VertexFormat::Lit, verts.data(),
+                  (uint32_t)verts.size());
 }
 
   void  
@@ -355,9 +394,9 @@ Scene_DrawParticleSystems(RenderDevice *dev, float *cam, double dt_ms, double t)
 
             SplinePath *sp = (SplinePath *)&o->spline;
             if (input_key_down(inputdev::KEY_F3))
-                sp->drawSplinePath(dev, 100, 0xffffffff);
+                draw_spline_path(dev, *sp, 100, 0xffffffff);
             if (input_key_down(inputdev::KEY_F4))
-                sp->drawControlPolygon(dev, 0xff808080);
+                draw_control_polygon(dev, *sp, 0xff808080);
 
             if (o->texture != NULL)
                 select_texture(dev, o);

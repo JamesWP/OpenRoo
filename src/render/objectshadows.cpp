@@ -14,7 +14,7 @@
 #include "tile.h"
 #include "theme.h"
 #include "renderdevice.h"
-#include "d3dmath.h"
+#include "vecmath.h"
 #include "ani.h"
 #include "animatedmesh.h"
 #include "explodedebris.h"

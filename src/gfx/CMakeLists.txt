@@ -1,9 +1,7 @@
 add_library(gfx OBJECT
     ani.cpp
     animatedmesh.cpp
-    d3dmath_common.cpp
-    d3dmath_mode.cpp
-    d3dmath_std.cpp
+    d3dmath.cpp
     image.cpp
     imagebmp.cpp
     imagetga.cpp
