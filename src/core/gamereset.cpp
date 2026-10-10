@@ -27,7 +27,6 @@
 #include "foe.h"
 #include "player.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 
 
 typedef unsigned int __attribute__((aligned(1))) u32_ua;

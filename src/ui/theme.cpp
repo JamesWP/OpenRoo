@@ -23,7 +23,6 @@
 #include "game.h"
 #include "renderdevice.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 #include "model.h"
 #include "texture.h"
 #include "generators.h"

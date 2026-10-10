@@ -2,7 +2,6 @@
 #include "progctrl.h"
 #include "logger.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 #include "game.h"
 #include "player.h"
 #include "camerainput.h"

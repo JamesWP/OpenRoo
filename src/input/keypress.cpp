@@ -33,7 +33,6 @@
 
 #include "soundmanager.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 #include "levelselect.h"
 #include "record.h"
 

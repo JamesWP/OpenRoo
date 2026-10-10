@@ -50,7 +50,6 @@
 #include "fallingtile.h"
 #include "foe.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 
 /* The map and its tiles (levelmap.h, tile.h).  The snapshot grid holds the
  * cell as the file gave it: height, param and contents. */

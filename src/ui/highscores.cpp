@@ -17,7 +17,6 @@
 #include "highscores.h"
 #include <stdlib.h>
 #include "gamestr.h"
-#include "gameglobals.h"
 
 #include "bytes.h"
 #include <algorithm>

@@ -33,3 +33,6 @@ private:
     audiodev::Music music_;
     void           *window_;       // the game window
 };
+
+/* The CD audio device. */
+extern CDM g_cdAudio;

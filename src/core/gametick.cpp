@@ -54,7 +54,6 @@
 #include "tilequery.h"
 #include "soundobj.h"
 #include "gamestr.h"
-#include "gameglobals.h"
 
 #include "record.h"
 #include "progctrl.h"

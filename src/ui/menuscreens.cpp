@@ -21,7 +21,6 @@
 #include "texture.h"
 #include "theme.h"
 #include <stdio.h>
-#include "gameglobals.h"
 #include <math.h>
 
 /* The menu's textures and quads. */
