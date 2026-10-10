@@ -18,7 +18,7 @@ double clock_previous_seconds(void);
 /* clock_seconds(), for the game's callers. */
   double   hooks_ClockSeconds(void);
 
-/* The frame number: the count of clock_seconds() calls.  The hash log, the
- * state log and recordings all number frames by it. */
+/* The frame number: the count of clock_seconds() calls.  The state log and
+ * recordings number frames by it. */
 unsigned clock_frame(void);
 

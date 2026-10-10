@@ -1,8 +1,5 @@
 # Replay tests
 
-> The per-frame hash log (`KAROO_HASH_LOG`) has been removed. Mentions of hash
-> logs below are historical; `frames_run` in the end-state dump is the frame count.
-
 Recorded input, replayed deterministically, with the resulting game state
 asserted. See `REPLAY_PLAN.md` for how it works and what was proven along the
 way; this file is the operating manual.
@@ -159,7 +156,7 @@ at record time, and `replaytest.py` refuses to run if the manifest disagrees
 with the header rather than reporting a diff that was never a real comparison.
 
 Music used to be a third precondition: with it on, every recording ran exactly
-one frame longer, and nothing else moved (the per-frame hashes were identical).
+one frame longer, and nothing else moved.
 The cause was the message loop, not the music.  A recording ends when the game
 quits itself, with `PostQuitMessage` and, with music on, `CDM::stop()` in the
 same tick.  Stopping the MCI device posts an `MM_MCINOTIFY` to the window;
@@ -169,8 +166,7 @@ frame.  `windev::runMessageLoop` now drains every pending message before each
 frame, so the frame count no longer depends on what else is queued.  The suite
 passes 16/16 with music on or off.
 
-If a run ever ends on `frames_run` one or more frames over, with the hashes up
-to the expected length unchanged, suspect a message posted by the quit path.
+If a run ever ends on `frames_run` one or more frames over, suspect a message posted by the quit path.
 
 ## Capturing a new recording
 
@@ -290,8 +286,7 @@ whatever the driver does. The game has no vsync option of its own.
 This changes when a finished frame reaches the screen, not what is in it — every
 frame is still rendered and presented, and nothing reads back present timing.
 Checked rather than assumed: both recordings reproduce their catalogued end
-state and exact frame counts unthrottled, and two consecutive `water01` runs
-produce byte-identical 4150-frame hash logs.
+state and exact frame counts unthrottled.
 
 Set `KAROO_NO_TURBO=1` to put the vsync limit back — useful when you want to
 *watch* a replay at playing speed. A variable already set in your environment is
@@ -308,7 +303,7 @@ caught by an unattended run at all. That is what a deterministic replay buys.
 The crash is now fixed (`Game::RenderSceneObjects` left `textureCoords[1]`
 uninitialised), so the recording runs to its own end and the entry stands as a
 regression guard. It was re-baselined on 2026-08-31: two consecutive runs
-produced byte-identical 1036-frame hash logs and identical end-state dumps.
+produced identical end-state dumps.
 
 It is a menu-and-early-gameplay test, not a full level run — the recorded
 session quits after about ten seconds of play. A scoring or level-completion
