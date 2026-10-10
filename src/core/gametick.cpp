@@ -31,6 +31,7 @@
 #include "windev.h"
 #include "logger.h"
 #include "game.h"
+#include "quitforward.h"
 #include "checkpoint.h"
 #include "keypress.h"
 #include "scoretally.h"
@@ -215,5 +216,6 @@ Sim_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     self->camera()->setField13cc90(0);
     self->setField48b14(self->field_48b14() + 1);
     self->setTickCount(self->tickCount() + 1);
+    Core_ForwardQuit(self);
     return self->tickCount() & 0xffffff00u;
 }

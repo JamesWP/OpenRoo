@@ -1,6 +1,5 @@
 #include "playtick.h"
 #include "crtmath.h"
-#include "inputdev.h"
 #include "logger.h"
 #include "game.h"
 #include "prof.h"
@@ -217,7 +216,7 @@ void Play_CheckLevelEnd(Game *self)
                     if (self->musicOn() != 0)
                         self->cdThemes()->play(GS_GAME_GAMEOVER);
                     Score_CalculateLevelScore(self, 3);
-                    self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
+                    self->frontEnd()->debounceEnter();
                     g_logger.logMessage(1, "GAME: completed at level %d/%d",
                                        (unsigned int)self->session()->levelIndex() + 1,
                                        (unsigned int)self->session()->levelCount());

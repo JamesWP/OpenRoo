@@ -12,4 +12,4 @@ add_library(sim OBJECT
     soundobj.cpp)
 target_include_directories(sim PUBLIC .)
 target_link_libraries(sim
-    PRIVATE sysdev log base prof inputdev audiodev windev testing audio ui level entities game)
+    PRIVATE sysdev log base prof audiodev audio ui level entities game)

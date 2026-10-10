@@ -2,7 +2,7 @@
  * gameplay level loads; ParseLevelFiles loads one by name (the menu's demo
  * backdrop).  Both, in order: set the current level name; build "<game
  * dir>\Levels\<name>" and save the currently loaded map name; read the map (on
- * success release the old .leo sounds and log, on failure log and quit); set mapChanged if the map name differs from the saved one; read
+ * success release the old .leo sounds and log, on failure log and request a quit); set mapChanged if the map name differs from the saved one; read
  * the level's script from "<game dir>\InstructionScripts\<name>".
  *
  * Before its load, OpenLevelFile peeks at the next level (on a first attempt,
@@ -14,7 +14,7 @@
  *     is the whole mapChanged mechanism.  The peek runs first, so the saved
  *     name is the next level's.
  *   - The peek's read is not checked.
- *   - A failed map read quits the game (windev::quit) and carries on to read the script.
+ *   - A failed map read requests a quit (Game::requestQuit) and carries on to read the script.
  *   - Both loaders return 0 on every path.
  *   - Paths are formatted unbounded into 256-byte buffers.
  *
@@ -30,7 +30,6 @@
 #include <string.h>
 
 #include "logger.h"
-#include "windev.h"
 #include "game.h"
 #include "levelparse.h"
 #include "soundmanager.h"
@@ -145,7 +144,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
                            self->world()->map()->bonus(), path);
     } else {
         g_logger.logMessage(4, "GAME: ** error ** could not load level by name: %s.jjm (maybe it does not exist\077)", path);
-        windev::quit(1);
+        self->requestQuit(1);
     // PRESERVED: carries on; does not return.
     }
 
@@ -240,7 +239,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     } else {
         g_logger.logMessage(4, "GAME: ** error ** could not load level by Number (%d) (maybe it does not exist\077): %s.jjm",
                            levelNo & 0xff, path);
-        windev::quit(1);
+        self->requestQuit(1);
     // PRESERVED: carries on, as in ParseLevelFiles.
     }
 

@@ -22,7 +22,6 @@
  *    mesh, still run the whole render-state prologue before being skipped. */
 
 #include <string.h>
-#include "inputdev.h"
 #include <stdint.h>
 #include "dsoscene.h"
 #include "renderer.h"
@@ -285,7 +284,6 @@ Scene_DrawSceneObjects(Renderer *renderer, RenderDevice *dev, const World *world
  * direction cam[3..5] - cam[0..2], then rendered. */
 #include <vector>
 #include "splinepath.h"
-#include "record.h"
 
 static void rotation_xyz(Mat4 *m, float rx, float ry, float rz)
 {
@@ -336,7 +334,8 @@ static void draw_control_polygon(RenderDevice *dev, const SplinePath &sp,
 }
 
   void  
-Scene_DrawParticleSystems(Scene *scene, RenderDevice *dev, float *cam, double dt_ms, double t)
+Scene_DrawParticleSystems(Scene *scene, bool showPaths, bool showControlPolygons, RenderDevice *dev,
+                          float *cam, double dt_ms, double t)
 {
     dev->SetSpecular(false);
 
@@ -393,9 +392,9 @@ Scene_DrawParticleSystems(Scene *scene, RenderDevice *dev, float *cam, double dt
             dev->SetWorld(ident);
 
             SplinePath *sp = (SplinePath *)&o->spline;
-            if (input_key_down(inputdev::KEY_F3))
+            if (showPaths)
                 draw_spline_path(dev, *sp, 100, 0xffffffff);
-            if (input_key_down(inputdev::KEY_F4))
+            if (showControlPolygons)
                 draw_control_polygon(dev, *sp, 0xff808080);
 
             if (o->texture != NULL)

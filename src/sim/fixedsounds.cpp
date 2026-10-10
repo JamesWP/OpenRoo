@@ -1,4 +1,3 @@
-#include "inputdev.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <stdio.h>
@@ -10,7 +9,6 @@
 #include "menutree.h"
 #include "player.h"
 #include "gamestr.h"
-#include "record.h"
 
 #include "audiodev.h"
 

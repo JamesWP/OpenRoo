@@ -56,6 +56,15 @@ public:
     static Game *instance()           { return s_instance; }
     static void set_instance(Game* g) { s_instance = g; }
 
+    /* ── quit ───────────────────────────────────────────────────────── */
+    /* A fatal error in the simulation asks for the game to end; the driver
+     * (core) passes it to the window layer.  If called more than once, the
+     * last code wins. */
+    void requestQuit(int exitCode)   { quitRequested_ = true; quitCode_ = exitCode; }
+    bool quitRequested() const       { return quitRequested_; }
+    int  quitCode() const            { return quitCode_; }
+    void clearQuitRequest()          { quitRequested_ = false; }
+
     /* ── sound ──────────────────────────────────────────────────────── */
     SoundManager *soundManager()     { return &soundManager_; }
     /* Nonzero once sound is up. */
@@ -288,6 +297,9 @@ private:
      * option and the joystick deadzone live in its persisted blob. */
     Config        config_;
     GameState     state_{};
+    /* The fatal-error quit requested by requestQuit, until the driver takes it. */
+    bool          quitRequested_{};
+    int           quitCode_{};
 };
 
  

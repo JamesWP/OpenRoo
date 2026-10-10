@@ -316,7 +316,8 @@ int Main_WinMain(const char *lpCmdLine)
 
     game->cdAudio()->setWindowHandle(hWnd);
     window.show(true);
-    Render_ConfigureRenderState(&s_renderer, game->world(), game->camera()->pose(), kGameDir);
+    if (!Render_ConfigureRenderState(&s_renderer, game->world(), game->camera()->pose(), kGameDir))
+        windev::quit(1);
     Menu_BuildMenuGeometry(&s_menuArt, g_renderDevice, kGameDir);
     hooks_ClockInit();
 

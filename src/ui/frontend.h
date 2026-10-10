@@ -10,6 +10,7 @@
 #include "saveslots.h"
 #include "menutree.h"
 #include "highscores.h"
+#include "inputdev.h"
 
 class FrontEnd {
 public:
@@ -36,6 +37,8 @@ public:
     unsigned char  debounce() const                  { return debounce_; }
     void           setDebounce(unsigned char k)      { debounce_ = k; }
     unsigned char &debounceRef()                     { return debounce_; }
+    /* Enter is ignored until it is released. */
+    void           debounceEnter()                   { debounce_ = inputdev::KEY_RETURN; }
     /* Key-rebind capture: the controls menu's rebind nodes name the action
      * and set the flag; HandleKeypress captures the next binding and clears
      * it.  RenderControlsRemap reads the flag. */
