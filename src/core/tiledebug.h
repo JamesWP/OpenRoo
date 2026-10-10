@@ -11,6 +11,3 @@ class Game;
 
 /* Opens the map for this frame.  Does nothing unless dbg::active(). */
 void Tile_DebugDrawMap(Game *game);
-
-/* The name of what a tile holds, NULL for nothing. */
-const char *Tile_ContentsName(uint8_t contents);

@@ -4,6 +4,7 @@ add_library(render OBJECT
     camera.cpp
     dsoscene.cpp
     framepose.cpp
+    levelplacements.cpp
     meshbatch.cpp
     objectshadows.cpp
     quadbatch.cpp

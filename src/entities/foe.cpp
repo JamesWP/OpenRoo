@@ -10,7 +10,7 @@
 
 #include "foe.h"
 #include "dbg.h"
-#include "tiledebug.h"
+#include "tilenames.h"
 #include "levelmap.h"
 #include "switchcells.h"
 #include "tile.h"
@@ -762,7 +762,7 @@ void Foe::chooseTarget(const EntityContext &ctx, FoeTable &foes, int hold,
     }
     if (type_ == 7) {
         held_ = 0;
-        if (Sim_FindFarthestOccupiedTile(this, &tu, &tv) != 0)
+        if (Sim_FindFarthestOccupiedTile(map(), &tu, &tv) != 0)
             chaseSpeed_ = 0x96;
         else
             held_ = 1;

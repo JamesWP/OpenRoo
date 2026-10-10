@@ -4,6 +4,12 @@ add_library(core OBJECT
     gameglobals.cpp
     checkpoint.cpp
     gamereset.cpp
+    levelsetup.cpp
+    levelsounds.cpp
+    levelentry.cpp
+    levelscore.cpp
+    levelparse.cpp
+    tiledebug.cpp
     gamestate.cpp
     gamedebug.cpp
     gametick.cpp)
