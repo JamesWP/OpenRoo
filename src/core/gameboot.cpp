@@ -129,8 +129,8 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g_cdAudio.stop();
     g->menu_.buildDefaultGraph(g->saveSlots_.count());
     g->levelIndex_     = 0;
-    g->zoomDistance_   = g->config_.cameraDistanceSetting();
-    g->cameraDistance_ = g->config_.cameraDistanceSetting();
+    g->camera()->setZoomDistance(g->config_.cameraDistanceSetting());
+    g->camera()->setCameraDistance(g->config_.cameraDistanceSetting());
     Sim_ClearGameState(g);
     Sim_ParseLevelFiles(g, g->menuLevelName_);
     Sim_SetupLevelObjects(g);
@@ -140,8 +140,8 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g->field_173b1a_     = 0;
     g->player()->setGliding(0);
     g->textEntryActive_  = 0;
-    g->cameraMode_       = 1;
-    g->overviewActive_   = 0;
+    g->camera()->setCameraMode(1);
+    g->camera()->setOverviewActive(0);
     g->field_13cc84_     = 0;
     g->bridges_.count      = 0;
     g->fixedSounds_.loaded = 0;
@@ -151,7 +151,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g->cheatEntry_.setBuffer((char *)g->cheatBuffer_);
     g->cheatEntry_.setActive(1);
     g->cheatEntry_.setLastKey(inputdev::KEY_RETURN);
-    g->parkedCameraOption_ = 0;
+    g->camera()->setParkedCameraOption(0);
     g->initialised_        = 1;
 }
 
@@ -172,7 +172,7 @@ void Game_Shutdown(Game *g)
     g->platforms_.count     = 0;
     g->bombs_.count      = 0;
     g->switchMax_      = 0;
-    g->config_.setCameraDistanceSetting(g->zoomDistance_);
+    g->config_.setCameraDistanceSetting(g->camera()->zoomDistance());
     if (g->highScores_.writeFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY))
         g_logger.logMessage(1, "GAME: highscore-files saved");
     if (g->config_.save(GS_CFG_FILE))

@@ -33,7 +33,6 @@
 
 #include <strings.h>
 #include <stdint.h>
-#include "camera.h"
 #include "sysdev.h"
 #include <string.h>
 
@@ -234,21 +233,21 @@ Sim_SetupLevelObjects(Game *self)
     // The game also makes a no-op call here; it has no effect.
 
     // The camera eye is zeroed and the sound listener placed at it, y 1000.
-    self->setCameraEye(0, 0.0f);
-    self->setCameraEye(1, 0.0f);
-    self->setCameraEye(2, 0.0f);
+    self->camera()->setCameraEye(0, 0.0f);
+    self->camera()->setCameraEye(1, 0.0f);
+    self->camera()->setCameraEye(2, 0.0f);
 
-    self->setField13cc94(0, 0.0f);
-    self->setField13cc94(1, 1000.0f);
-    self->setField13cc94(2, 0.0f);
+    self->camera()->setField13cc94(0, 0.0f);
+    self->camera()->setField13cc94(1, 1000.0f);
+    self->camera()->setField13cc94(2, 0.0f);
 
-    CameraGlobals *cam = &g_camera;  // camera.h: note the eye/target conflict
+    CameraPose *cam = self->camera()->pose();  // camerarig.h: note the eye/target conflict
     cam->eye()[0] = 0.0f;
     cam->eye()[1] = 1000.0f;
     cam->eye()[2] = 0.0f;
 
     for (int i = 0; i < 3; i++)
-        cam->target()[i] = self->cameraEye(i);
+        cam->target()[i] = self->camera()->cameraEye(i);
     cam->setYaw(0.0f);
     cam->setPitch(0.0f);
 
@@ -631,9 +630,9 @@ next_row:
         self->setItemTotal(self->census()->total);
 
         if (self->scriptPlayer()->loaded() == 0) {
-            self->setCameraEye(0, (float)(int)(signed char)self->player()->homeU());
-            self->setCameraEye(1, (float)(int)(signed char)self->player()->homeH());
-            self->setCameraEye(2, (float)(int)(signed char)self->player()->homeV());
+            self->camera()->setCameraEye(0, (float)(int)(signed char)self->player()->homeU());
+            self->camera()->setCameraEye(1, (float)(int)(signed char)self->player()->homeH());
+            self->camera()->setCameraEye(2, (float)(int)(signed char)self->player()->homeV());
         }
 
         if (self->cdThemes()->validateTrackLengths() == 0 &&
@@ -667,8 +666,8 @@ next_row:
     self->player()->setAnim(0);
     self->player()->setDying(0);
     self->player()->setIdleDuration(500.0);  // 500.0
-    self->setField13cc90(0);
-    self->setOverviewActive(0);
+    self->camera()->setField13cc90(0);
+    self->camera()->setOverviewActive(0);
 
     g_logger.logMessage(1, "GAME: %d crystals in this level, %d needed",
                        (unsigned int)self->field_42252(),

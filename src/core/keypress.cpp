@@ -57,11 +57,11 @@ static void rebind(Game *game, const char *name, unsigned char code, int hl)
 static void loaded_tail(Game *game)
 {
     game->stateRef() = 4;
-    game->setCameraDistance(7.0f);
+    game->camera()->setCameraDistance(7.0f);
     if (game->musicOn() != 0)
         g_cdAudio.stop();
     game->scriptPlayer()->setRunning(1);
-    game->setCameraMode(1);
+    game->camera()->setCameraMode(1);
     game->menu()->rewind();
 }
 
@@ -303,7 +303,7 @@ Sim_HandleKeypress(Game *self)
             g_cdAudio.stop();
         self->debounceRef() = inputdev::KEY_RETURN;
         self->menu()->setLockStart(self->lastTickTime());
-        self->setCameraMode(1);
+        self->camera()->setCameraMode(1);
         self->menu()->setLock(1);
         self->menu()->pop();
         g_logger.logMessage(1, "level completed - continue");

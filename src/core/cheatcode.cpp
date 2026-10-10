@@ -54,12 +54,12 @@ static int streq(const unsigned char *a, const char *b)
  * flythrough armed. */
 static void enter_loaded_state(Game *game)
 {
-    game->setCameraDistance(7.0f);
+    game->camera()->setCameraDistance(7.0f);
     game->setState(4);
     if (game->musicOn() != 0)
         g_cdAudio.stop();
     game->scriptPlayer()->setRunning(1);
-    game->setCameraMode(1);
+    game->camera()->setCameraMode(1);
     game->setDebounce(inputdev::KEY_RETURN);
 }
 
@@ -179,7 +179,7 @@ Sim_HandleTypedCheatCode(Game *self)
             self->setState(3);
             if (self->musicOn() != 0)
                 self->cdThemes()->play(GS_GAME_COMPLETED);
-            self->setCameraMode(2);
+            self->camera()->setCameraMode(2);
             self->menu()->rewind();
             self->menu()->pop();
             self->menu()->push(0x28);

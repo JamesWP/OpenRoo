@@ -1,13 +1,10 @@
-/* camera.h -- the camera globals, one static block (not part of Game).
+/* camera.h -- the orbit camera's update (camera.cpp).  The camera's state is
+ * the CameraRig Game owns (camerarig.h); this file only eases its pose.
  *
- * UpdateViewTransform (camera.cpp) eases `target` towards the player every
+ * Camera_UpdateViewTransform eases the pose's `target` towards the player every
  * frame and places `eye` at target + RotX(-pitch).RotY(yaw) applied to
  * (0, 0, -distance).  yaw and pitch are in radians; pitch is pi/3 after the
  * level entry and clamped at 1.569051.
- *
- * SetupLevelObjects (levelsetup.cpp) copies Game::cameraEye into `target` and
- * sets `eye` to (0, 1000, 0), the other way round from these names; the
- * level entry overwrites both one frame later.
  */
 #pragma once
 
@@ -22,41 +19,10 @@ class Game;
  * towards, [6..8] the point `target` follows.  [0..4] are not read here. */
 struct CameraFocus { float f[9]; };
 
-class CameraGlobals {
-public:
-     
-
-    /* cdecl(cam, d3d, game, focus BY VALUE, double dt): eases the orbit camera
-     * and sets the VIEW transform.  One caller, RenderGameFrame. */
-    void updateViewTransform(RenderDevice *d3d, Game *g, CameraFocus focus,
-                             double dt);
-
- 
- 
-    float *eye() { return eye_; }
-    const float *eye() const { return eye_; }
- 
- 
- 
-    float *target() { return target_; }
-    const float *target() const { return target_; }
- 
-    float yaw() const { return yaw_; }
-    void  setYaw(float y) { yaw_ = y; }
-    float pitch() const { return pitch_; }
-    void  setPitch(float p) { pitch_ = p; }
-
-private:
-    float  eye_[3];
-    float  target_[3];
-    float  yaw_;
-    float  pitch_;
-
-     
-};
-
- 
-extern CameraGlobals g_camera;
+/* cdecl(d3d, game, focus BY VALUE, double dt): eases the game's camera pose
+ * (g->camera()->pose()) and sets the VIEW transform.  One caller, RenderGameFrame. */
+void Camera_UpdateViewTransform(RenderDevice *d3d, Game *g, CameraFocus focus,
+                                double dt);
 
 
 /* The level entry zeroes it; FramePose_Player fills it every frame. */

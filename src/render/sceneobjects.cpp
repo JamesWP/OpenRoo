@@ -36,7 +36,6 @@
 #include "theme.h"
 #include "levelobject.h"
 #include "texture.h"
-#include "camera.h"
 #include "ani.h"
 #include "animatedmesh.h"
 #include "uvanimator.h"
@@ -204,13 +203,13 @@ static void draw_model(Game *game, ThemeLevelObject *rec, SceneSubObject *sub,
 }
 
 static void draw_billboard(ThemeLevelObject *rec, const Tile *tile, const Vec3 *pos,
-                           RenderDevice *dev, double now)
+                           const CameraPose *cam, RenderDevice *dev, double now)
 {
     Vec3 corner[4];
     Math_BuildBillboardQuad(corner,
-                            g_camera.target()[0] - g_camera.eye()[0],
-                            g_camera.target()[1] - g_camera.eye()[1],
-                            g_camera.target()[2] - g_camera.eye()[2],
+                            cam->target()[0] - cam->eye()[0],
+                            cam->target()[1] - cam->eye()[1],
+                            cam->target()[2] - cam->eye()[2],
                             rec->billboardScale());
     BbVertex v[4];
     billboard_vertex(&v[0], &corner[0], 0x00ffffff, 0, 0.0f, 1.0f);
@@ -382,7 +381,7 @@ Scene_RenderSceneObjects(Game *game, SceneQuadVertex *quad, const Vec3 *position
                                now, animTime, animCode, dtMs);
                     break;
                 case KIND_BILLBOARD:
-                    draw_billboard(rec, tile, pos, dev, now);
+                    draw_billboard(rec, tile, pos, game->camera()->pose(), dev, now);
                     break;
                 case KIND_QUAD:
                     draw_quad(quad, sub, pos, dev, now);

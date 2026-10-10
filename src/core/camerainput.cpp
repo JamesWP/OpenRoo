@@ -22,18 +22,18 @@ static inline double dt(Game *g) { return g->tickStep()->value; }
 Camera_ZoomOut(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
-    if (g->zoomDistance() < ZOOM_MAX)
-        g->setZoomDistance((float)(dt(g) * ZOOM_RATE + g->zoomDistance()));
-    g->setField13cc90(1);  // PRESERVED: set on every zoom; nothing reads it
+    if (g->camera()->zoomDistance() < ZOOM_MAX)
+        g->camera()->setZoomDistance((float)(dt(g) * ZOOM_RATE + g->camera()->zoomDistance()));
+    g->camera()->setField13cc90(1);  // PRESERVED: set on every zoom; nothing reads it
 }
 
   void  
 Camera_ZoomIn(int, int, void *ctx)
 {
     Game *g = (Game *)ctx;
-    if (g->zoomDistance() > ZOOM_MIN)
-        g->setZoomDistance((float)(g->zoomDistance() - dt(g) * ZOOM_RATE));
-    g->setField13cc90(1);  // PRESERVED: set on every zoom; nothing reads it
+    if (g->camera()->zoomDistance() > ZOOM_MIN)
+        g->camera()->setZoomDistance((float)(g->camera()->zoomDistance() - dt(g) * ZOOM_RATE));
+    g->camera()->setField13cc90(1);  // PRESERVED: set on every zoom; nothing reads it
 }
 
 /* Only on a normal (non-bonus) level, and only while the player is alive. */
@@ -43,8 +43,8 @@ Camera_Overview(int, int, void *ctx)
     Game *g = (Game *)ctx;
     if (g->map()->bonus() != 0 || g->player()->moveState() != 0)
         return;
-    g->setOverviewActive(1);
-    g->setCameraDistance(40.0f);
+    g->camera()->setOverviewActive(1);
+    g->camera()->setCameraDistance(40.0f);
 }
 
   void  

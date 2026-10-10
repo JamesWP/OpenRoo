@@ -127,7 +127,7 @@ static uint32_t animation_frame(const SceneObject *o, double t)
     return (uint32_t)(unsigned short)(int)r;  // truncated to 16 bits
 }
 
-/* KAROO_CAM_DIAG=1: log the camera globals (eye, target, yaw, pitch) as raw
+/* KAROO_CAM_DIAG=1: log the camera pose (eye, target, yaw, pitch) as raw
  * bits every frame, after UpdateViewTransform has run. */
 static void cam_diag(const float *cam)
 {
