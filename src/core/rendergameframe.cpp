@@ -243,8 +243,8 @@ Render_RenderGameFrame(void)
     const unsigned w = d3d->width(), h = d3d->height();
     const float W = (float)w, H = (float)h;
     const float hudH = H * 0.26666668f;
-    const unsigned char st = g->state();
-    if (st != 6 && st != 2 && st != 0 && st != 5 && st != 3 &&
+    const GameState st = g->state();
+    if (st != GameState::NameEntry && st != GameState::GameOver && st != GameState::MainMenu && st != GameState::PauseMenu && st != GameState::LevelComplete &&
         g->scriptPlayer()->running() == 0)
     {
         PROF_SCOPE("hud");
@@ -256,7 +256,7 @@ Render_RenderGameFrame(void)
     }
 
     const float pad = H * 0.00625f;
-    if (st != 0 && st != 5 && st != 3) {
+    if (st != GameState::MainMenu && st != GameState::PauseMenu && st != GameState::LevelComplete) {
         PROF_SCOPE("hud");
         Hud_DrawMessages(g->world(), g->scriptPlayer(), st, W, H, pad);
     }
@@ -266,16 +266,16 @@ Render_RenderGameFrame(void)
     }
 
     const uint32_t ms = (uint32_t)(long long)now;
-    if (st == 0 || st == 5 || st == 3) {
+    if (st == GameState::MainMenu || st == GameState::PauseMenu || st == GameState::LevelComplete) {
         PROF_SCOPE("menu");
         Menu_DispatchGameState(g->frontEnd(), g->session(), g->config(),
                                &g_themeBlock, d3d, &g_fontMain, ms);
     }
-    if (g->state() == 2) {
+    if (g->state() == GameState::GameOver) {
         PROF_SCOPE("menu");
         Score_DrawGameOverScore(g->session(), &g_themeBlock, d3d, &g_fontMain, ms);
     }
-    if (g->frontEnd()->menu()->node() == 3 || g->state() == 6) {
+    if (g->frontEnd()->menu()->node() == 3 || g->state() == GameState::NameEntry) {
         PROF_SCOPE("menu");
         Score_DrawHighScoreTable(g->frontEnd(), &g_themeBlock, d3d, &g_fontMain, ms);
     }
@@ -283,7 +283,7 @@ Render_RenderGameFrame(void)
     set_depth_test(true);
     d3d->EndFrame();
     PROF_SCOPE("present");
-    if (g->state() == 7) {
+    if (g->state() == GameState::Quitting) {
         if (g->field_0c() != 0)
             g_renderDevice->PresentImage(g_demoImage);
         return;

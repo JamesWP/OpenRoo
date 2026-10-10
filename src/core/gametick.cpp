@@ -132,30 +132,30 @@ Sim_GameTick(Game *self, double dt, double now)
     if (self->levelSoundsReady() == 0 && self->field_173584() == 0) {
         Sim_InitLevelBasedSounds(self);
         self->setLevelSoundsReady(1);
-        if (self->stateRef() == 0 && self->musicOn() != 0)
+        if (self->state() == GameState::MainMenu && self->musicOn() != 0)
             self->cdThemes()->replay();
     }
 
-    if (self->stateRef() == 7 && self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0) {
+    if (self->state() == GameState::Quitting && self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0) {
         g_logger.logMessage(1, "GAME: GameActions - JJ_GAME_END");
         windev::quit(1);
     }
 
     self->setLastTickTime(now);
-    if (self->stateRef() == 5) {
+    if (self->state() == GameState::PauseMenu) {
         self->world()->tickStep()->value = 0.0;  // +0.0
     } else {
         self->world()->tickStep()->value = dt;
         (*self->world()->clock()) = (double)((long double)dt + (long double)(*self->world()->clock()));
     }
 
-    if (self->stateRef() == 0 || self->stateRef() == 5) {
+    if (self->state() == GameState::MainMenu || self->state() == GameState::PauseMenu) {
         PROF_SCOPE("menus");
         Sim_RestoreCheckpointStateBlocks(self);
         Sim_HandleKeypress(self);
     }
 
-    if (self->stateRef() == 4) {
+    if (self->state() == GameState::Flythrough) {
         ScriptPlayer *sp = self->scriptPlayer();
         if (sp->loaded() != 0)
             Sim_RestoreCheckpointStateBlocks(self);
@@ -166,7 +166,7 @@ Sim_GameTick(Game *self, double dt, double now)
             sp->setSplineActive(0);
             sp->releaseStreams();
             sp->releaseStreams();
-            self->stateRef() = 1;
+            self->setState(GameState::Playing);
             if (self->session()->restartCount() == 0) {
                 if (self->musicOn() != 0)
                     self->cdThemes()->play(self->world()->map()->mapName());
@@ -181,16 +181,16 @@ Sim_GameTick(Game *self, double dt, double now)
     if (self->camera()->cameraMode() == 0)
         self->camera()->setCameraDistance(camera_sway(now, self->camera()->zoomDistance()));
 
-    if (self->stateRef() == 3) {
+    if (self->state() == GameState::LevelComplete) {
         PROF_SCOPE("menus");
         Sim_HandleKeypress(self);
         Sim_AnimateScoreTallyStages(self);
     }
-    if (self->stateRef() == 2) {
+    if (self->state() == GameState::GameOver) {
         PROF_SCOPE("menus");
         Sim_AnimateScoreTallyStages(self);
     }
-    if (self->stateRef() == 6)
+    if (self->state() == GameState::NameEntry)
         self->frontEnd()->nameEntry()->poll((unsigned int)ftol80((*self->world()->clock())));
 
     Game *game = self;
@@ -205,11 +205,11 @@ Sim_GameTick(Game *self, double dt, double now)
     game->world()->tickFallings();
     game->world()->tickBridges();
 
-    if ((self->stateRef() == 1 || self->stateRef() == 4) && self->frontEnd()->debounceRef() != inputdev::KEY_ESCAPE && KEY(inputdev::KEY_ESCAPE) != 0) {
-        self->setStateBeforeMenu(self->stateRef());
+    if ((self->state() == GameState::Playing || self->state() == GameState::Flythrough) && self->frontEnd()->debounceRef() != inputdev::KEY_ESCAPE && KEY(inputdev::KEY_ESCAPE) != 0) {
+        self->setStateBeforeMenu(self->state());
         self->frontEnd()->menu()->rewind();
         self->frontEnd()->menu()->setLastKey(inputdev::KEY_ESCAPE);
-        self->stateRef() = 5;
+        self->setState(GameState::PauseMenu);
         self->frontEnd()->menu()->setLockStart(self->lastTickTime());
         self->frontEnd()->menu()->setLock(1);
         self->frontEnd()->debounceRef() = inputdev::KEY_ESCAPE;
@@ -229,7 +229,7 @@ Sim_GameTick(Game *self, double dt, double now)
         pl->updateTileEffects();
     }
 
-    if (self->stateRef() == 1) {
+    if (self->state() == GameState::Playing) {
         if (self->frontEnd()->cheatEntry()->active() != 0)
             Sim_HandleTypedCheatCode(self);
 
@@ -292,8 +292,8 @@ Sim_GameTick(Game *self, double dt, double now)
         if (pl->moveState() == 0) {
             PROF_SCOPE("player");
             // Noted before the dispatch, so paused and cutscene modes are seen.
-            gamestate_note_mode((unsigned short)self->stateRef());
-            g_progCtrl.dispatch((unsigned short)self->stateRef());
+            gamestate_note_mode(static_cast<unsigned short>(static_cast<unsigned char>(self->state())));
+            g_progCtrl.dispatch(static_cast<unsigned short>(static_cast<unsigned char>(self->state())));
         }
     } else {
         pl->setIdleStarted(0);
@@ -346,7 +346,7 @@ Sim_GameTick(Game *self, double dt, double now)
 
     if (pl->moveState() != 0) {
         self->camera()->setCameraMode(2);
-    } else if (self->stateRef() == 1) {
+    } else if (self->state() == GameState::Playing) {
         self->world()->setTimeElapsed(self->world()->timeElapsed()
             + (unsigned int)ftol80(self->world()->tickStep()->value));
         self->session()->setField170a65(self->session()->field_170a65()
@@ -386,8 +386,8 @@ Sim_GameTick(Game *self, double dt, double now)
             }
         }
 
-        int hold = ((unsigned int)pl->freezeActive() == 0 && self->stateRef() == 1) ? 0 : 1;
-        if (self->stateRef() == 3)
+        int hold = ((unsigned int)pl->freezeActive() == 0 && self->state() == GameState::Playing) ? 0 : 1;
+        if (self->state() == GameState::LevelComplete)
             hold = 1;
         if (pl->moveState() != 0)
             hold = 1;
@@ -416,7 +416,7 @@ Sim_GameTick(Game *self, double dt, double now)
     Cheat_DebugPanel(self);
 
     // Playing: camera follow, time-out, exit.
-    if (self->stateRef() == 1) {
+    if (self->state() == GameState::Playing) {
         if ((unsigned int)pl->falling() == 0 && pl->moveState() == 0) {
             self->camera()->setCameraEye(0, pl->posU());
             self->camera()->setCameraEye(1, pl->posY());
@@ -434,7 +434,7 @@ Sim_GameTick(Game *self, double dt, double now)
             }
         }
         if (pl->gemsCollected() >= self->world()->gemsRequired()) {
-            if (self->field_173b1a() == 0 && self->stateRef() != 3) {
+            if (self->field_173b1a() == 0 && self->state() != GameState::LevelComplete) {
                 int r = (int)ftol80((*self->world()->clock()));
                 void *snd = self->fixedSounds()->crystalBank[r % 3];
                 if (snd != NULL)
@@ -450,7 +450,7 @@ Sim_GameTick(Game *self, double dt, double now)
                     if (self->fixedSounds()->levelCompleted != NULL)
                         (self->fixedSounds()->levelCompleted)->play(false);
                     if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
-                        self->stateRef() = 2;
+                        self->setState(GameState::GameOver);
                         if (self->musicOn() != 0)
                             self->cdThemes()->play(GS_GAME_GAMEOVER);
                         Score_CalculateLevelScore(self, 3);
@@ -459,7 +459,7 @@ Sim_GameTick(Game *self, double dt, double now)
                                            (unsigned int)self->session()->levelIndex() + 1,
                                            (unsigned int)self->session()->levelCount());
                     } else {
-                        self->stateRef() = 3;
+                        self->setState(GameState::LevelComplete);
                         self->camera()->setCameraMode(2);
                         self->frontEnd()->menu()->rewind();
                         self->frontEnd()->menu()->pop();
@@ -468,7 +468,7 @@ Sim_GameTick(Game *self, double dt, double now)
                         self->frontEnd()->menu()->setLockStart(self->lastTickTime());
                         self->frontEnd()->menu()->setLock(1);
                         self->frontEnd()->menu()->setCursor(0);
-                        Score_CalculateLevelScore(self, (char)self->stateRef());
+                        Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
                         self->session()->setRestartCount(0);
                     }
                     self->session()->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
@@ -479,8 +479,8 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     // ENTER after a death, or on the game-over tally.
-    if (self->stateRef() != 2) {
-        if (self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0 && pl->moveState() != 0 && self->stateRef() == 1) {
+    if (self->state() != GameState::GameOver) {
+        if (self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0 && pl->moveState() != 0 && self->state() == GameState::Playing) {
             self->session()->setRestartCount((unsigned char)(self->session()->restartCount() + 1));
             int lives = pl->lives();
             int bonus = (int)self->world()->map()->bonus();
@@ -490,15 +490,15 @@ Sim_GameTick(Game *self, double dt, double now)
                 Sim_RestoreTileGridFromSnapshot(self->world()->map());
                 Sim_SetupLevelObjects(self);
             } else if (lives <= 0 && bonus == 0) {
-                self->stateRef() = 2;
+                self->setState(GameState::GameOver);
                 if (self->musicOn() != 0)
                     self->cdThemes()->play(GS_GAME_GAMEOVER);
-                Score_CalculateLevelScore(self, (char)self->stateRef());
+                Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
                 self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
                 restart_tail = 0;  // game over: skip the camera reset
             } else {
                 self->camera()->setCameraMode(2);
-                self->stateRef() = 3;
+                self->setState(GameState::LevelComplete);
                 if (self->musicOn() != 0)
                     self->cdThemes()->play(GS_GAME_COMPLETED);
                 self->frontEnd()->menu()->rewind();
@@ -509,14 +509,14 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->frontEnd()->menu()->setLock(1);
                 self->frontEnd()->menu()->setCursor(0);
                 self->world()->setTimeElapsed((unsigned int)(self->world()->timeLimit() * 1000));
-                Score_CalculateLevelScore(self, (char)self->stateRef());
+                Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
                 self->session()->setRestartCount(0);
                 self->session()->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
                                         (long double)self->session()->totalPlayTime()));
                 g_logger.logMessage(2, "GAME: game completed %d %d",
                                    (unsigned int)self->session()->levelIndex(), (unsigned int)self->session()->levelCount());
                 if ((unsigned int)self->session()->levelIndex() == (unsigned int)self->session()->levelCount() - 1) {
-                    self->stateRef() = 2;
+                    self->setState(GameState::GameOver);
                     if (self->musicOn() != 0)
                         self->cdThemes()->play(GS_GAME_GAMEOVER);
                 }
@@ -532,7 +532,7 @@ Sim_GameTick(Game *self, double dt, double now)
         unsigned int r = self->frontEnd()->highScores()->insert(
             (unsigned int)pl->score(), (unsigned char)(self->session()->levelIndex() + 1));
         if ((unsigned char)r < 0xff) {
-            self->stateRef() = 6;
+            self->setState(GameState::NameEntry);
             if (self->musicOn() != 0)
                 g_cdAudio.stop();
             self->frontEnd()->nameEntry()->setMaxLength(0x0f);
@@ -543,7 +543,7 @@ Sim_GameTick(Game *self, double dt, double now)
             self->frontEnd()->nameEntry()->setBuffer(
                 self->frontEnd()->highScores()->record(self->frontEnd()->highScores()->lastRank())->name);
         } else {
-            self->stateRef() = 0;
+            self->setState(GameState::MainMenu);
             self->frontEnd()->menu()->rewind();
             const char *theme = NULL;
             int setup = 1;
@@ -557,7 +557,7 @@ Sim_GameTick(Game *self, double dt, double now)
                     self->frontEnd()->menu()->setNode(5);
                     theme = GS_GAME_FINAL;
                 } else {
-                    self->stateRef() = 7;
+                    self->setState(GameState::Quitting);
                     if (self->musicOn() != 0)
                         g_cdAudio.stop();
                     self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
@@ -580,9 +580,9 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     // ENTER after high-score name entry.
-    if (self->stateRef() == 6 && self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0) {
+    if (self->state() == GameState::NameEntry && self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0) {
         self->frontEnd()->highScores()->writeFile(self->gameDir(), GS_GAME_HSFILE, 0x4b);
-        self->stateRef() = 0;
+        self->setState(GameState::MainMenu);
         self->frontEnd()->menu()->rewind();
         const char *theme = NULL;
         if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
@@ -594,7 +594,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->frontEnd()->menu()->setNode(5);
                 theme = GS_GAME_FINAL;
             } else {
-                self->stateRef() = 7;
+                self->setState(GameState::Quitting);
                 if (self->musicOn() != 0)
                     g_cdAudio.stop();
                 self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
