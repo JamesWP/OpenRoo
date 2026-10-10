@@ -1,6 +1,6 @@
 /* The game clock: the seconds since start, from the platform layer's high-resolution counter.
- * Every clock read is also a frame boundary, so the per-frame test hooks (the
- * state and world logs, the recorder) run from here.
+ * Every clock read is also a frame boundary: it runs the frame hook (see
+ * clock_setFrameHook), which the test machinery uses.
  *
  * The real clock keeps the game's quirks:
  *   - the first read returns 0.0 and only takes the tick baseline;
@@ -19,10 +19,7 @@
 #include <time.h>
 #include "clock.h"
 #include "logger.h"
-#include "gamestate.h"
-#include "launcher.h"
 #include "sysdev.h"
-#include "record.h"
 #include <stdlib.h>
 
 static bool      g_started;  // set by the first read
@@ -76,7 +73,9 @@ static void clock_log_progress(void)
               g_calls, g_accum, (double)(sysdev::tickMs() - g_wall0) / 1000.0);
 }
 
-static bool g_replay_ended;
+static ClockFrameHook g_frameHook;
+
+void clock_setFrameHook(ClockFrameHook fn) { g_frameHook = fn; }
 
 unsigned clock_frame(void) { return g_calls; }
 
@@ -84,17 +83,8 @@ double clock_seconds(void)
 {
     if (g_fixed_dt < 0.0) clock_init();
     clock_log_progress();
-    gamestate_tick();
-    record_frame_boundary();
-
-    // A replay ends on the recording's length, never on wall time.  The state
-    // is dumped while the level is still live (teardown clears the score),
-    // then the window is closed so the game shuts down normally. 
-    if (record_replaying() && record_replay_finished() && !g_replay_ended) {
-        g_replay_ended = true;
-        gamestate_dump("replay-finished");
-        launcher_end_run("replay finished");
-    }
+    if (g_frameHook)
+        g_frameHook();
 
     if (g_fixed_dt > 0.0) {
         // The first read returns 0.0, as on the real clock.

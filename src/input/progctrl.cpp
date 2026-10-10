@@ -7,7 +7,6 @@
 #include <string.h>
 #include "progctrl.h"
 #include "logger.h"
-#include "gamestate.h"
 #include "record.h"
 #include "clock.h"
 #include "gamestr.h"
@@ -170,8 +169,6 @@ void ProgableControl::getBindingStr(int mode, const char *name,
 
 void ProgableControl::dispatch(unsigned short game_state)
 {
-    gamestate_note_mode(game_state);  // before the early return, so paused and cutscene modes are seen
-
     uint8_t ks[inputdev::KEY_COUNT];
     if (record_replaying()) {
         // Replay supplies both the key array and the mode; the real keyboard
