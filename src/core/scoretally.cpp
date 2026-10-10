@@ -10,7 +10,7 @@
  *     with the same elapsed time.
  *   - Stages 3..5 read the clock again for the next stage's start; 0..2 use
  *     the reading they began with.
- *   - Enter's skip is debounced on the Game's shared debounce byte.
+ *   - Enter's skip is debounced on the front end's shared debounce byte.
  *
  * KAROO_SIM_FX=tallyfast is a negative control: every stage takes a tenth of
  * the time, so the frame at which the tally finishes moves. */
@@ -164,7 +164,7 @@ totals:
                        + (unsigned int)T->shownScore[TALLY_VITALITY];
         T->shownLevelTotal = (int)t;
         T->shownGrandTotal = (int)((unsigned int)T->shownBase + t);
-        if (self->debounce() != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0)
+        if (self->frontEnd()->debounce() != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0)
             self->setTallyDone(1);
         return (t & 0xffffff00u) | 0xffu;
     }

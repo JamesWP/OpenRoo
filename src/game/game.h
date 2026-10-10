@@ -7,13 +7,10 @@
 #include <string.h>
 
  
-#include "textentry.h"
-#include "saveslots.h"
-#include "menutree.h"
+#include "frontend.h"
 #include "scriptplayer.h"
 #include "camerarig.h"
 #include "cdthemes.h"
-#include "highscores.h"
 #include "config.h"
 #include "themesounds.h"
 #include "bomb.h"
@@ -143,39 +140,18 @@ public:
     unsigned char  stateBeforeMenu() const           { return stateBeforeMenu_; }
     void           setStateBeforeMenu(unsigned char s) { stateBeforeMenu_ = s; }
 
-    /* ── text entry ─────────────────────────────────────────────────── */
-    /* The cheat-code entry (HandleTypedCheatCode polls it every tick) and
-     * the name entry (save names and the high-score name). */
-    TextEntry     *cheatEntry()                      { return &cheatEntry_; }
-    TextEntry     *nameEntry()                       { return &nameEntry_; }
+    /* ── the front end (frontend.h) ─────────────────────────────────── */
+    /* The menu, the cheat and name entries, the save slots, the high-score
+     * table and the rebind and debounce state (frontend.h). */
+    FrontEnd       *frontEnd()                       { return &frontEnd_; }
+    const FrontEnd *frontEnd() const                 { return &frontEnd_; }
+
     /* The settings object (config.h); openroo.ini holds it. */
     Config               *config()                   { return &config_; }
-    /* The high-score table (highscores.h). */
-    HighScoreTable       *highScores()               { return &highScores_; }
-    const HighScoreTable *highScores() const         { return &highScores_; }
     /* The CD-music theme table (cdthemes.h). */
     CdThemes       *cdThemes()                       { return &cdThemes_; }
     /* The instruction-script player (scriptplayer.h). */
     ScriptPlayer   *scriptPlayer()                   { return &scriptPlayer_; }
-    /* The menu (menutree.h). */
-    MenuTree       *menu()                           { return &menu_; }
-    const MenuTree *menu() const                     { return &menu_; }
-    /* Game's own debounce key (distinct from MenuTree's): GameTick,
-     * HandleKeypress, the tally and the cheats ignore a key equal to it
-     * until it is released.  debounceRef() is the field as an lvalue. */
-    unsigned char  debounce() const                  { return debounce_; }
-    void           setDebounce(unsigned char k)      { debounce_ = k; }
-    unsigned char &debounceRef()                     { return debounce_; }
-    /* Key-rebind capture: the controls menu's rebind nodes name the action
-     * and set the flag; HandleKeypress captures the next binding and clears
-     * it.  RenderControlsRemap reads the flag. */
-    int            rebindActive() const              { return rebindActive_; }
-    void           setRebindActive(int a)            { rebindActive_ = a; }
-    unsigned char  rebindCode() const                { return rebindCode_; }
-    void           setRebindCode(unsigned char c)    { rebindCode_ = c; }
-    char          *rebindAction()                    { return rebindAction_; }
-    /* The save-slot table (saveslots.h). */
-    SaveSlots     *saveSlots()                       { return &saveSlots_; }
 
     /* ── game state ─────────────────────────────────────────────────── */
     /* The top-level state GameTick and HandleKeypress switch on, 0..7.
@@ -191,11 +167,6 @@ public:
      * Load, SetupLevelObjects and the 3D-sound toggle clear it. */
     int            levelSoundsReady() const          { return levelSoundsReady_; }
     void           setLevelSoundsReady(int r)        { levelSoundsReady_ = r; }
-    /* Save-name text entry in progress (nameEntry()):
-     * HandleKeypress sets it on the save-slot nodes, routes keys to the
-     * entry while it is set, and clears it when entry ends. */
-    int            textEntryActive() const           { return textEntryActive_; }
-    void           setTextEntryActive(int a)         { textEntryActive_ = a; }
 
     /* ── the level sequence ─────────────────────────────────────────── */
     /* The level being played, 0-based (StoreGameStateIntoSaveSlot saves it),
@@ -252,14 +223,6 @@ public:
     void           setSound3D(int on)                { config_.setSound3D(on); }
     /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
     unsigned short joyDeadzone() const               { return config_.joyDeadzone(); }
-    /* keypress.cpp: field_13cc88 is a one-shot latch (cleared, then set on
-     * the first press, which also sets field_13cc8c). */
-    int            field_13cc88() const              { return field_13cc88_; }
-    void           setField13cc88(int v)             { field_13cc88_ = v; }
-    int            field_13cc8c() const              { return field_13cc8c_; }
-    void           setField13cc8c(int v)             { field_13cc8c_ = v; }
-    /* The buffer HandleTypedCheatCode matches typed cheats in. */
-    unsigned char *cheatBuffer()                     { return cheatBuffer_; }
     void           setJoyDeadzone(unsigned short p)  { config_.setJoyDeadzone(p); }
 
     /* ── the tally's inputs (CalculateLevelScore) ────────────────────── */
@@ -362,7 +325,6 @@ private:
     unsigned int  mapChanged_{};
     unsigned int  nextLevelBonus_{};
     unsigned int  tickCount_{};
-    MenuTree      rootMenu_;                              /* constructed, never navigated */
     int           initialised_{};                           /* 0 until Load completes */
     CdThemes      cdThemes_;
     /* 256 level names, 0x100 each.  SetCurrentLevelName copies entry `levelNo & 0xff` into World's levelName_. */
@@ -384,31 +346,20 @@ private:
     /* The level in play (world.h).  Declared after the sound manager and the
      * fixed sounds, so it is torn down before them. */
     World         world_;
+    /* The front end (frontend.h): the menu, the text entries, the save slots
+     * and the high-score table.  Declared after World, as the moved members
+     * were after the sound manager, so it is torn down before them. */
+    FrontEnd      frontEnd_;
     int           field_13cc84_{};                          /* Load zeroes; reader not decoded */
-    int           field_13cc88_{};
-    int           field_13cc8c_{};
-    /* The typed-cheat buffer; declared up to the cheat entry that follows.
-     * Its real length is not established. */
-    unsigned char cheatBuffer_[0x100]{};
-    TextEntry     cheatEntry_;
-    HighScoreTable highScores_;
     ScoreTally    tally_;
     double        totalPlayTime_{};
     double        lastTickTime_{};
     /* Recomputed by GameTick every tick; see vitalityPercent(). */
     unsigned char vitalityPercent_{};
     unsigned int  field_170a65_{};
-    int           textEntryActive_{};
-    TextEntry     nameEntry_;
-    SaveSlots     saveSlots_;
     unsigned char levelIndex_{};
     int           field_173584_{};
     int           field_173b1a_{};
-    unsigned char rebindCode_{};
-    char          rebindAction_[0x100]{};
-    int           rebindActive_{};
-    unsigned char debounce_{};
-    MenuTree      menu_;
     ScriptPlayer  scriptPlayer_;
     CameraRig     camera_;
     /* The settings (config.h); music, volumes, 3D sound, the camera

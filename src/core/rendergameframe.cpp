@@ -1127,7 +1127,7 @@ Render_RenderGameFrame(void)
         PROF_SCOPE("menu");
         Score_DrawGameOverScore(g, &g_themeBlock, d3d, &g_fontMain, ms);
     }
-    if (g->menu()->node() == 3 || g->state() == 6) {
+    if (g->frontEnd()->menu()->node() == 3 || g->state() == 6) {
         PROF_SCOPE("menu");
         Score_DrawHighScoreTable(g, &g_themeBlock, d3d, &g_fontMain, ms);
     }

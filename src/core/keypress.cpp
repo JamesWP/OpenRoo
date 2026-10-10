@@ -44,12 +44,12 @@ static int s_fx = -1;
  * hl is the arrow key the rebind screen highlights, or -1 for none. */
 static void rebind(Game *game, const char *name, unsigned char code, int hl)
 {
-    strcpy(game->rebindAction(), name);
-    game->setRebindActive(1);
-    game->setRebindCode(code);
+    strcpy(game->frontEnd()->rebindAction(), name);
+    game->frontEnd()->setRebindActive(1);
+    game->frontEnd()->setRebindCode(code);
     if (hl >= 0)
-        game->menu()->setLastKey((unsigned char)hl);
-    game->menu()->pop();
+        game->frontEnd()->menu()->setLastKey((unsigned char)hl);
+    game->frontEnd()->menu()->pop();
 }
 
 /* The tail shared by new game, the level select and loading a save: start the
@@ -62,36 +62,36 @@ static void loaded_tail(Game *game)
         g_cdAudio.stop();
     game->scriptPlayer()->setRunning(1);
     game->camera()->setCameraMode(1);
-    game->menu()->rewind();
+    game->frontEnd()->menu()->rewind();
 }
 
 static void option_edit(Game *game, unsigned char key)
 {
     switch (key) {
     case 0x22: {  // the "sfx %" page edits the joystick dead zone
-        if (game->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && game->joyDeadzone() < 0x5a) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && game->joyDeadzone() < 0x5a) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() + 10));
             g_progCtrl.setJoyDeadzone(0, game->joyDeadzone() * 100);
             g_progCtrl.setJoyDeadzone(4, game->joyDeadzone() * 100);
-            game->debounceRef() = inputdev::KEY_RIGHT;
+            game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
         }
-        if (game->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && game->joyDeadzone() > 10) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && game->joyDeadzone() > 10) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() - 10));
             g_progCtrl.setJoyDeadzone(0, game->joyDeadzone() * 100);
             g_progCtrl.setJoyDeadzone(4, game->joyDeadzone() * 100);
-            game->debounceRef() = inputdev::KEY_LEFT;
+            game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
         }
         break;
     }
     case 0x3e: {
         int changed = 0;
-        if (game->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && game->cdVolume() < 100) {
-            game->debounceRef() = inputdev::KEY_RIGHT;
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && game->cdVolume() < 100) {
+            game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
             game->setCdVolume((unsigned char)(game->cdVolume() + 10));
             changed = 1;
         }
-        if (game->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && game->cdVolume() != 0) {
-            game->debounceRef() = inputdev::KEY_LEFT;
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && game->cdVolume() != 0) {
+            game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
             game->setCdVolume((unsigned char)(game->cdVolume() - 10));
         } else if (!changed) {
             break;
@@ -101,13 +101,13 @@ static void option_edit(Game *game, unsigned char key)
     }
     case 0x3f: {
         int changed = 0;
-        if (game->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && game->waveVolume() < 100) {
-            game->debounceRef() = inputdev::KEY_RIGHT;
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && game->waveVolume() < 100) {
+            game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
             game->setWaveVolume((unsigned char)(game->waveVolume() + 10));
             changed = 1;
         }
-        if (game->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && game->waveVolume() != 0) {
-            game->debounceRef() = inputdev::KEY_LEFT;
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && game->waveVolume() != 0) {
+            game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
             game->setWaveVolume((unsigned char)(game->waveVolume() - 10));
         } else if (!changed) {
             break;
@@ -122,13 +122,13 @@ static void option_edit(Game *game, unsigned char key)
         unsigned char &opt = key == 0x48 ? game->videoShadows()
                            : key == 0x49 ? game->videoHighlights()
                                          : game->videoParticles();
-        if (game->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && opt < 2) {
-            game->debounceRef() = inputdev::KEY_RIGHT;
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && opt < 2) {
+            game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
             opt = (unsigned char)(opt + 1);
         }
-        if (game->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && opt != 0) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && opt != 0) {
             opt = (unsigned char)(opt - 1);
-            game->debounceRef() = inputdev::KEY_LEFT;
+            game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
         }
         break;
     }
@@ -150,62 +150,62 @@ Sim_HandleKeypress(Game *self)
     }
 
     int entry = 0;
-    if (self->rebindActive() == 0 && self->textEntryActive() == 0) {
-        if (KEY(inputdev::KEY_ESCAPE) != 0 && self->debounceRef() != inputdev::KEY_ESCAPE && self->menu()->changed() != 0) {
+    if (self->frontEnd()->rebindActive() == 0 && self->frontEnd()->textEntryActive() == 0) {
+        if (KEY(inputdev::KEY_ESCAPE) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_ESCAPE && self->frontEnd()->menu()->changed() != 0) {
             if (self->fixedSounds()->switchClick != NULL)
                 (self->fixedSounds()->switchClick)->play(false);
-            self->debounceRef() = inputdev::KEY_ESCAPE;
+            self->frontEnd()->debounceRef() = inputdev::KEY_ESCAPE;
         }
-        if (self->menu()->nodeRef() != 5 && self->menu()->nodeRef() != 3 && self->menu()->childCount(self->menu()->nodeRef()) > 1) {
-            if (KEY(inputdev::KEY_UP) != 0 && self->debounceRef() != inputdev::KEY_UP) {
+        if (self->frontEnd()->menu()->nodeRef() != 5 && self->frontEnd()->menu()->nodeRef() != 3 && self->frontEnd()->menu()->childCount(self->frontEnd()->menu()->nodeRef()) > 1) {
+            if (KEY(inputdev::KEY_UP) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_UP) {
                 if (self->fixedSounds()->menuUpDown != NULL)
                     (self->fixedSounds()->menuUpDown)->cycle(0);
-                self->debounceRef() = inputdev::KEY_UP;
+                self->frontEnd()->debounceRef() = inputdev::KEY_UP;
             }
-            if (KEY(inputdev::KEY_DOWN) != 0 && self->debounceRef() != inputdev::KEY_DOWN) {
+            if (KEY(inputdev::KEY_DOWN) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_DOWN) {
                 if (self->fixedSounds()->menuUpDown != NULL)
                     (self->fixedSounds()->menuUpDown)->cycle(0);
-                self->debounceRef() = inputdev::KEY_DOWN;
+                self->frontEnd()->debounceRef() = inputdev::KEY_DOWN;
             }
         }
-        if (KEY(inputdev::KEY_RETURN) != 0 && self->debounceRef() != inputdev::KEY_RETURN && self->menu()->changed() != 0 &&
-            (unsigned short)self->menu()->nodeRef() == self->menu()->lastNodeSeen()) {
+        if (KEY(inputdev::KEY_RETURN) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && self->frontEnd()->menu()->changed() != 0 &&
+            (unsigned short)self->frontEnd()->menu()->nodeRef() == self->frontEnd()->menu()->lastNodeSeen()) {
             if (self->fixedSounds()->switchClick != NULL)
                 (self->fixedSounds()->switchClick)->play(false);
-            self->debounceRef() = inputdev::KEY_RETURN;
+            self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         }
-        self->menu()->navigate((int)(long long)self->lastTickTime());
-        self->menu()->setLastNodeSeen((unsigned short)self->menu()->nodeRef());
-        entry = self->textEntryActive() != 0;
+        self->frontEnd()->menu()->navigate((int)(long long)self->lastTickTime());
+        self->frontEnd()->menu()->setLastNodeSeen((unsigned short)self->frontEnd()->menu()->nodeRef());
+        entry = self->frontEnd()->textEntryActive() != 0;
     } else {
-        entry = self->textEntryActive() != 0;
+        entry = self->frontEnd()->textEntryActive() != 0;
     }
 
     if (entry) {  // save-name text entry
-        self->nameEntry()->poll((unsigned int)(long long)*self->world()->clock());
-        if (self->nameEntry()->active() == 0) {
-            if (self->nameEntry()->lastKey() == inputdev::KEY_RETURN)
-                self->saveSlots()->writeAllSlotFiles(self->gameDir(), self->gameFileName(), 0x37);
+        self->frontEnd()->nameEntry()->poll((unsigned int)(long long)*self->world()->clock());
+        if (self->frontEnd()->nameEntry()->active() == 0) {
+            if (self->frontEnd()->nameEntry()->lastKey() == inputdev::KEY_RETURN)
+                self->frontEnd()->saveSlots()->writeAllSlotFiles(self->gameDir(), self->gameFileName(), 0x37);
             else
-                *self->saveSlots()->slot((unsigned char)self->saveSlots()->editSlot()) =
-                    *self->saveSlots()->edit();
-            self->setTextEntryActive(0);
-            self->menu()->pop();
-            self->menu()->setCursor(0);
+                *self->frontEnd()->saveSlots()->slot((unsigned char)self->frontEnd()->saveSlots()->editSlot()) =
+                    *self->frontEnd()->saveSlots()->edit();
+            self->frontEnd()->setTextEntryActive(0);
+            self->frontEnd()->menu()->pop();
+            self->frontEnd()->menu()->setCursor(0);
         }
     }
 
-    if (self->menu()->nodeRef() == 0) {
-        self->setRebindActive(0);
-        if (self->stateRef() == 5 && self->menu()->leave() != 0) {
+    if (self->frontEnd()->menu()->nodeRef() == 0) {
+        self->frontEnd()->setRebindActive(0);
+        if (self->stateRef() == 5 && self->frontEnd()->menu()->leave() != 0) {
             self->stateRef() = self->stateBeforeMenu();
             self->world()->player()->setPendingMove(0);
-            self->debounceRef() = inputdev::KEY_ESCAPE;
+            self->frontEnd()->debounceRef() = inputdev::KEY_ESCAPE;
         }
     }
 
     {
-        unsigned char key = self->menu()->child(self->menu()->nodeRef(), self->menu()->cursor());
+        unsigned char key = self->frontEnd()->menu()->child(self->frontEnd()->menu()->nodeRef(), self->frontEnd()->menu()->cursor());
         if ((unsigned int)key - 0x22 <= 0x28)
             option_edit(self, key);
     }
@@ -217,7 +217,7 @@ Sim_HandleKeypress(Game *self)
     {
         static bool s_right, s_left;
         const bool right = KEY(inputdev::KEY_RIGHT) != 0, left = KEY(inputdev::KEY_LEFT) != 0;
-        if (self->rebindActive() == 0 && self->textEntryActive() == 0) {
+        if (self->frontEnd()->rebindActive() == 0 && self->frontEnd()->textEntryActive() == 0) {
             if (right && !s_right)
                 LevelSelect_Turn(self, +1);
             if (left && !s_left)
@@ -226,29 +226,29 @@ Sim_HandleKeypress(Game *self)
         s_right = right;
         s_left = left;
     }
-    if (self->menu()->nodeRef() != 5 && self->menu()->nodeRef() != 0x50)
-        self->setField13cc88(0);
+    if (self->frontEnd()->menu()->nodeRef() != 5 && self->frontEnd()->menu()->nodeRef() != 0x50)
+        self->frontEnd()->setField13cc88(0);
 
-    switch (self->menu()->nodeRef()) {
+    switch (self->frontEnd()->menu()->nodeRef()) {
     case 1:
         Sim_ClearGameState(self);
         Sim_OpenLevelFile(self, self->levelIndex());
         Sim_SetupLevelObjects(self);
         loaded_tail(self);
-        self->debounceRef() = inputdev::KEY_RETURN;
+        self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         break;
     case 5:
-        if (self->field_13cc88() == 0) {
-            self->setField13cc8c(1);
-            self->setField13cc88(1);
+        if (self->frontEnd()->field_13cc88() == 0) {
+            self->frontEnd()->setField13cc8c(1);
+            self->frontEnd()->setField13cc88(1);
         }
         break;
     case 6:
-        self->menu()->pop();
+        self->frontEnd()->menu()->pop();
         self->stateRef() = 7;
         if (self->musicOn() != 0)
             g_cdAudio.stop();
-        self->debounceRef() = inputdev::KEY_RETURN;
+        self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         if (self->field_0c() == 0)
             windev::quit(1);
         break;
@@ -268,28 +268,28 @@ Sim_HandleKeypress(Game *self)
     case 0x21:
         if (self->world()->player()->gliding() == 0)
             self->setCameraTurnsWithPlayer(self->cameraTurnsWithPlayer() == 0);
-        self->menu()->pop();
+        self->frontEnd()->menu()->pop();
         break;
     case 0x47:
         self->videoReflection() = (self->videoReflection() == 0);
-        self->menu()->pop();
+        self->frontEnd()->menu()->pop();
         break;
     case 0x3c:
         self->setSound3D(self->sound3D() == 0);
         self->soundManager()->setup(self->sound3D());
         self->setLevelSoundsReady(0);
-        self->menu()->pop();
+        self->frontEnd()->menu()->pop();
         break;
     case 0x3d:
         if (self->musicOn() != 0) {
             self->setMusicOn(0);
             g_cdAudio.stop();
-            self->menu()->pop();
+            self->frontEnd()->menu()->pop();
             break;
         }
         self->cdThemes()->replay();
         self->setMusicOn(1);
-        self->menu()->pop();
+        self->frontEnd()->menu()->pop();
         break;
     case 0x29: {
         unsigned char lvl = (unsigned char)(self->levelIndex() + 1);
@@ -301,11 +301,11 @@ Sim_HandleKeypress(Game *self)
         self->scriptPlayer()->setRunning(1);
         if (self->musicOn() != 0)
             g_cdAudio.stop();
-        self->debounceRef() = inputdev::KEY_RETURN;
-        self->menu()->setLockStart(self->lastTickTime());
+        self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
+        self->frontEnd()->menu()->setLockStart(self->lastTickTime());
         self->camera()->setCameraMode(1);
-        self->menu()->setLock(1);
-        self->menu()->pop();
+        self->frontEnd()->menu()->setLock(1);
+        self->frontEnd()->menu()->pop();
         g_logger.logMessage(1, "level completed - continue");
         if (self->fixedSounds()->levelCompleted != NULL)
             (self->fixedSounds()->levelCompleted)->stop();
@@ -313,75 +313,75 @@ Sim_HandleKeypress(Game *self)
     }
     case 0x22: case 0x32: case 0x3e: case 0x3f:
     case 0x48: case 0x49: case 0x4a: case 0x50:
-        self->menu()->pop();
+        self->frontEnd()->menu()->pop();
         break;
     default:
         break;
     }
 
     // The level select's start node: as New Game, at the chosen level.
-    if (self->menu()->nodeRef() == LS_START) {
+    if (self->frontEnd()->menu()->nodeRef() == LS_START) {
         int level = LevelSelect_Chosen(self);
         Sim_ClearGameState(self);
         self->setLevelIndex((unsigned char)level);
         Sim_OpenLevelFile(self, self->levelIndex());
         Sim_SetupLevelObjects(self);
         loaded_tail(self);
-        self->debounceRef() = inputdev::KEY_RETURN;
+        self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
     }
 
     // Load nodes, 200 .. 200+n-1.  The slot index is the node number wrapped
     // to a byte.
     {
-        unsigned int n = self->saveSlots()->count();
-        unsigned int node = self->menu()->nodeRef();
+        unsigned int n = self->frontEnd()->saveSlots()->count();
+        unsigned int node = self->frontEnd()->menu()->nodeRef();
         if (node >= 200 && (int)node < (int)(n + 200)) {
             unsigned char slot = (unsigned char)(node + 0x38);
             if (s_fx)
                 slot = (unsigned char)(slot + 1);
-            if (self->saveSlots()->slot(slot)->inUse != 0) {
+            if (self->frontEnd()->saveSlots()->slot(slot)->inUse != 0) {
                 Sim_ClearGameState(self);
                 Sim_RestoreGameStateFromSaveSlot(self, slot);
                 Sim_OpenLevelFile(self, self->levelIndex());
                 Sim_SetupLevelObjects(self);
                 loaded_tail(self);
             }
-            self->debounceRef() = inputdev::KEY_RETURN;
-            self->menu()->pop();
+            self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
+            self->frontEnd()->menu()->pop();
         }
     }
 
     // Save nodes, 200+n .. 200+2n-1: snapshot the game into the slot and start
     // name entry on it.
     {
-        unsigned int n = self->saveSlots()->count();
-        unsigned int node = self->menu()->nodeRef();
+        unsigned int n = self->frontEnd()->saveSlots()->count();
+        unsigned int node = self->frontEnd()->menu()->nodeRef();
         if ((int)node >= (int)(n + 200) && (int)node < (int)(2 * n + 200)) {
             unsigned char slot = (unsigned char)(node - n + 0x38);
-            SaveSlot *rec = self->saveSlots()->slot(slot);
-            self->nameEntry()->setMaxLength(10);
-            self->setTextEntryActive(1);
-            self->nameEntry()->setActive(1);
-            *self->saveSlots()->edit() = *rec;
-            self->nameEntry()->setBuffer(rec->name);
-            self->saveSlots()->setEditSlot(slot);
-            self->nameEntry()->setCursor((unsigned char)strlen(rec->name));
+            SaveSlot *rec = self->frontEnd()->saveSlots()->slot(slot);
+            self->frontEnd()->nameEntry()->setMaxLength(10);
+            self->frontEnd()->setTextEntryActive(1);
+            self->frontEnd()->nameEntry()->setActive(1);
+            *self->frontEnd()->saveSlots()->edit() = *rec;
+            self->frontEnd()->nameEntry()->setBuffer(rec->name);
+            self->frontEnd()->saveSlots()->setEditSlot(slot);
+            self->frontEnd()->nameEntry()->setCursor((unsigned char)strlen(rec->name));
             Sim_StoreGameStateIntoSaveSlot(self, slot);
-            self->nameEntry()->setLastKey(inputdev::KEY_RETURN);
+            self->frontEnd()->nameEntry()->setLastKey(inputdev::KEY_RETURN);
             // PRESERVED: three discarded Backspace polls clear its pressed bit
             // before name entry starts.
             KEY(inputdev::KEY_BACKSPACE);
             KEY(inputdev::KEY_BACKSPACE);
             KEY(inputdev::KEY_BACKSPACE);
-            self->menu()->pop();
+            self->frontEnd()->menu()->pop();
         }
     }
 
     // Key-rebind capture, once Enter is released.
-    if (self->rebindActive() != 0 && KEY(inputdev::KEY_RETURN) == 0) {
-        g_progCtrl.clearBindings(1, self->rebindAction());
-        if (g_progCtrl.captureBinding(1, self->rebindAction(),
+    if (self->frontEnd()->rebindActive() != 0 && KEY(inputdev::KEY_RETURN) == 0) {
+        g_progCtrl.clearBindings(1, self->frontEnd()->rebindAction());
+        if (g_progCtrl.captureBinding(1, self->frontEnd()->rebindAction(),
                                     100, 10, 0) != 0)
-            self->setRebindActive(0);
+            self->frontEnd()->setRebindActive(0);
     }
 }

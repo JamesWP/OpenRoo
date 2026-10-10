@@ -29,7 +29,7 @@ static int theme_size(int t) { return s_themeFirst[t + 1] - s_themeFirst[t]; }
  * folder names; a folder that recurred later would get a second page. */
 static void build_nodes(Game *g)
 {
-    MenuTree *m = g->menu();
+    MenuTree *m = g->frontEnd()->menu();
     s_themeCount = 0;
     char prev[64] = "";
     for (int i = 0; i < g->levelCount(); i++) {
@@ -61,7 +61,7 @@ bool LevelSelect_IsThemeNode(unsigned char node)
 
 void LevelSelect_Turn(Game *g, int dir)
 {
-    MenuTree *m = g->menu();
+    MenuTree *m = g->frontEnd()->menu();
     if (m->node() == 2) {
         if (dir < 0)
             return;
@@ -95,7 +95,7 @@ void LevelSelect_Turn(Game *g, int dir)
 
 int LevelSelect_Chosen(Game *g)
 {
-    MenuTree *m = g->menu();
+    MenuTree *m = g->frontEnd()->menu();
     m->pop();  // node is the theme page, cursor the row
     int level = s_themeFirst[m->node() - LS_THEME_NODE] + m->cursor();
     g_logger.write("levelselect: start level %d (%s)\n",
@@ -105,9 +105,9 @@ int LevelSelect_Chosen(Game *g)
 
 void LevelSelect_View(Game *g, LevelSelectView *v)
 {
-    const int t   = g->menu()->node() - LS_THEME_NODE;
+    const int t   = g->frontEnd()->menu()->node() - LS_THEME_NODE;
     const int n   = theme_size(t);
-    const int row = g->menu()->cursor();
+    const int row = g->frontEnd()->menu()->cursor();
     // Scroll only as far as keeps the selection visible.
     if (row < s_top)
         s_top = row;

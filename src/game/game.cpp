@@ -1,11 +1,11 @@
 /* Game's lifecycle: the constructor, the destructor, the game-file loader and
  * the sound release.  Each member is built and torn down by its owner
- * (menutree.cpp, cdthemes.cpp, theme.cpp, soundmanager.cpp, textentry.cpp,
- * highscores.cpp, saveslots.cpp, scriptplayer.cpp, config.cpp), in declaration
- * order; teardown is its exact reverse.  World (world.h) is declared after the
- * sound manager and the fixed sounds, so it is torn down before them; its own
- * members (levelmap.cpp, extraobjects.cpp, player.cpp) are built and torn down
- * by World.
+ * (cdthemes.cpp, theme.cpp, soundmanager.cpp, scriptplayer.cpp, config.cpp),
+ * in declaration order; teardown is its exact reverse.  World (world.h) and
+ * the FrontEnd (frontend.h) are declared after the sound manager and the fixed
+ * sounds, so they are torn down before them; their own members (levelmap.cpp,
+ * extraobjects.cpp, player.cpp, menutree.cpp, textentry.cpp, highscores.cpp,
+ * saveslots.cpp) are built and torn down by World and FrontEnd.
  */
 
 #include "inputdev.h"
