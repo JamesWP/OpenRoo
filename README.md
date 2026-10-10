@@ -63,11 +63,12 @@ an unofficial fan project and is not affiliated with them.
 
 Each directory under `src/` is a CMake group (an object library in its
 `CMakeLists.txt`). The groups are ordered in `src/layers.txt`, lowest first: a
-group may include only groups on lines above its own. The build enforces it
-twice: each group's include path holds only the lower groups (`CMakeLists.txt`
-reads the file), and `tools/check_layers.py` (the `check-layers` target) fails
-on any other include. To add a group, give it a line in `src/layers.txt` in the
-position its includes allow.
+group may include only groups on lines above its own. Each group declares the
+groups it includes with `target_link_libraries` (PUBLIC when its headers use
+them, PRIVATE otherwise), and those links give it the include paths;
+`tools/check_layers.py` (the `check-layers` target) checks the links against the
+includes and `src/layers.txt`. To add a group, give it a line in
+`src/layers.txt` in the position its includes allow.
 
 OpenGL headers are for `gl` alone (`cmake/CheckNativeGL.cmake`); everything else
 goes through `renderdevice.h`.

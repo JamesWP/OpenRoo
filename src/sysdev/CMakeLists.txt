@@ -12,5 +12,5 @@ add_library(sysdev OBJECT
     text_common.cpp
     textfile_common.cpp
     ${SYSDEV_PLATFORM})
-target_include_directories(sysdev PRIVATE .)
+target_include_directories(sysdev PUBLIC .)
 target_link_libraries(sysdev PRIVATE sdl3)

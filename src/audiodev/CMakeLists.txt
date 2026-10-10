@@ -6,5 +6,7 @@ add_library(audiodev OBJECT
     music.cpp
     stream.cpp
     system.cpp)
-target_include_directories(audiodev PRIVATE .)
-target_link_libraries(audiodev PRIVATE sdl3 sdl3_mixer)
+target_include_directories(audiodev PUBLIC .)
+target_link_libraries(audiodev
+    PUBLIC  base
+    PRIVATE sdl3 sdl3_mixer)

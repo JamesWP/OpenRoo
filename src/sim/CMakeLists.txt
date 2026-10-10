@@ -10,5 +10,6 @@ add_library(sim OBJECT
     levelsounds.cpp
     playtick.cpp
     soundobj.cpp)
-target_include_directories(sim PRIVATE
-    .)
+target_include_directories(sim PUBLIC .)
+target_link_libraries(sim
+    PRIVATE sysdev log base prof inputdev audiodev windev testing audio ui level entities game)

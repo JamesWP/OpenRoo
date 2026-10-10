@@ -4,7 +4,8 @@ add_library(level OBJECT
     levelmap.cpp
     tilenames.cpp
     tilequery.cpp)
-target_include_directories(level PRIVATE
-    .)
+target_include_directories(level PUBLIC .)
 
-target_link_libraries(level PRIVATE imgui)
+target_link_libraries(level
+    PUBLIC  gfx
+    PRIVATE sysdev log base imgui)
