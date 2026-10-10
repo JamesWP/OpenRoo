@@ -22,12 +22,6 @@
 #include "gamereset.h"
 #include "levelparse.h"
 #include "levelsetup.h"
-#include "liftobject.h"
-#include "platformobject.h"
-#include "fallingtile.h"
-#include "bridgeobject.h"
-#include "foe.h"
-#include "bomb.h"
 #include "gameboot.h"
 
 /* The key bytes of the save-slot files ('7') and the high-score file ('K'). */
@@ -158,19 +152,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
 void Game_Shutdown(Game *g)
 {
     g_logger.logMessage(1, "GAME: starting destructor");
-    LiftObject::purgeAll(g->world()->entityContext(), g->world()->lifts());
-    PlatformObject::purgeAll(g->world()->entityContext(), g->world()->platforms());
-    FallingTile::purgeAll(g->world()->entityContext(), g->world()->fallings());
-    BridgeObject::purgeAll(g->world()->entityContext(), g->world()->bridges());
-    while (g->world()->foes().count != 0)
-        Foe::remove(g->world()->entityContext(), g->world()->foes(), g->world()->foes().ids[0]);
-    while (g->world()->bombs().count != 0)
-        Bomb::remove(g->world()->entityContext(), g->world()->bombs(), g->world()->bombs().ids[0]);
-    g->world()->fallings().count = 0;
-    g->world()->foes().count       = 0;
-    g->world()->lifts().count      = 0;
-    g->world()->platforms().count     = 0;
-    g->world()->bombs().count      = 0;
+    g->world()->clearObjects();
     g->world()->setSwitchMax(0);
     g->config_.setCameraDistanceSetting(g->camera()->zoomDistance());
     if (g->frontEnd()->highScores()->writeFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY))

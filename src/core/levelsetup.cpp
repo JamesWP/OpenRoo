@@ -261,24 +261,7 @@ Sim_SetupLevelObjects(Game *self)
     self->world()->player()->setIceDir(0);
 
     // Tear down the previous level.
-    LiftObject::purgeAll(self->world()->entityContext(), self->world()->lifts());
-    PlatformObject::purgeAll(self->world()->entityContext(), self->world()->platforms());
-    FallingTile::purgeAll(self->world()->entityContext(), self->world()->fallings());
-    BridgeObject::purgeAll(self->world()->entityContext(), self->world()->bridges());
-
-    // The 256 switch counts.
-    self->world()->switchCells()->clearCounts();
-
-    while (self->world()->foeCount() != 0)
-        Foe::remove(self->world()->entityContext(), self->world()->foes(), self->world()->foeId(0));
-    while (self->world()->bombCount() != 0)
-        Bomb::remove(self->world()->entityContext(), self->world()->bombs(), self->world()->bombId(0));
-
-    self->world()->setFallingCount(0);
-    self->world()->setFoeCount(0);
-    self->world()->setLiftCount(0);
-    self->world()->setPlatformCount(0);
-    self->world()->setBombCount(0);
+    self->world()->clearObjects();
     self->world()->setSwitchMax(0);
     self->world()->player()->setLastRoll(0);
 

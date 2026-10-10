@@ -196,40 +196,14 @@ Sim_GameTick(Game *self, double dt, double now)
     Game *game = self;
     Tile_DebugDrawMap(game);
     if (!s_fx) {
-        if (game->world()->liftCount() != 0) {
-            PROF_SCOPE("lifts");
-            for (int i = 0; i < (int)game->world()->liftCount(); ++i)
-                game->world()->liftSlot(i)->tick();
-        }
-        if (game->world()->platformCount() != 0) {
-            PROF_SCOPE("platforms");
-            for (int i = 0; i < (int)game->world()->platformCount(); ++i)
-                game->world()->platformSlot(i)->tick();
-        }
+        game->world()->tickLifts();
+        game->world()->tickPlatforms();
     } else {
-        if (game->world()->platformCount() != 0) {
-            PROF_SCOPE("platforms");
-            for (int i = 0; i < (int)game->world()->platformCount(); ++i)
-                game->world()->platformSlot(i)->tick();
-        }
-        if (game->world()->liftCount() != 0) {
-            PROF_SCOPE("lifts");
-            for (int i = 0; i < (int)game->world()->liftCount(); ++i)
-                game->world()->liftSlot(i)->tick();
-        }
+        game->world()->tickPlatforms();
+        game->world()->tickLifts();
     }
-    if (game->world()->fallingCount() != 0) {
-        PROF_SCOPE("falling tiles");
-        for (int i = 0; i < (int)game->world()->fallingCount(); ++i)
-            game->world()->fallingSlot(i)->tick();
-    }
-    if (game->world()->bridgeCount() != 0) {
-        PROF_SCOPE("bridges");
-        for (int i = 0; i < (int)game->world()->bridgeCount(); ++i) {
-            game->world()->bridgeSlot(i)->tick();
-            game->world()->bridgeSlot(i)->debugDraw(*game->world()->switchCells());
-        }
-    }
+    game->world()->tickFallings();
+    game->world()->tickBridges();
 
     if ((self->stateRef() == 1 || self->stateRef() == 4) && self->frontEnd()->debounceRef() != inputdev::KEY_ESCAPE && KEY(inputdev::KEY_ESCAPE) != 0) {
         self->setStateBeforeMenu(self->stateRef());
@@ -241,17 +215,7 @@ Sim_GameTick(Game *self, double dt, double now)
         self->frontEnd()->debounceRef() = inputdev::KEY_ESCAPE;
     }
 
-    // Bombs: the count is re-read each pass; no step back after a removal.
-    if (self->world()->bombCount() != 0) {
-        PROF_SCOPE("bombs");
-        for (int i = 0; i < (int)self->world()->bombCount(); ++i) {
-            self->world()->bombSlot(self->world()->bombId(i))->tick();
-            unsigned char id = self->world()->bombId(i);
-            self->world()->bombSlot(id)->debugDraw(id);
-            if (self->world()->bombSlot(id)->removeRequested() != 0)
-                Bomb::remove(self->world()->entityContext(), self->world()->bombs(), id);
-        }
-    }
+    self->world()->tickBombs();
 
     {
         unsigned char pct = completion_percent((unsigned int)pl->completionNumerator(), self->session()->field_170a65());

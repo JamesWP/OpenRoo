@@ -19,12 +19,6 @@
 #include "windev.h"
 #include "game.h"
 #include "gamereset.h"
-#include "liftobject.h"
-#include "platformobject.h"
-#include "bridgeobject.h"
-#include "fallingtile.h"
-#include "bomb.h"
-#include "foe.h"
 #include "player.h"
 #include "gamestr.h"
 
@@ -36,8 +30,6 @@ static int s_init           = 0;
 
 static unsigned s_calls        = 0;
 static int s_logged_clear      = 0;
-static int s_logged_foedrain   = 0;
-static int s_logged_enemydrain = 0;
 
 static void fx_init(void)
 {
@@ -105,36 +97,5 @@ Sim_ClearGameState(Game *self)
         windev::quit(1);
     }
 
-    LiftObject::purgeAll(self->world()->entityContext(), self->world()->lifts());
-    PlatformObject::purgeAll(self->world()->entityContext(), self->world()->platforms());
-    FallingTile::purgeAll(self->world()->entityContext(), self->world()->fallings());
-    BridgeObject::purgeAll(self->world()->entityContext(), self->world()->bridges());
-
-    // The 256 switch counts.
-    self->world()->switchCells()->clearCounts();
-
-    while (self->world()->foeCount() != 0) {
-        if (s_diag && !s_logged_foedrain) {
-            s_logged_foedrain = 1;
-            g_logger.write("gamereset: first foe drain -- count=%u id=%u\n",
-                      (unsigned)self->world()->foeCount(),
-                      (unsigned)self->world()->foeId(0));
-        }
-        Foe::remove(self->world()->entityContext(), self->world()->foes(), self->world()->foeId(0));
-    }
-
-    while (self->world()->bombCount() != 0) {
-        if (s_diag && !s_logged_enemydrain) {
-            s_logged_enemydrain = 1;
-            g_logger.write("gamereset: first enemy drain -- count=%u id=%u\n",
-                      (unsigned)self->world()->bombCount(), (unsigned)self->world()->bombId(0));
-        }
-        Bomb::remove(self->world()->entityContext(), self->world()->bombs(), self->world()->bombId(0));
-    }
-
-    self->world()->setFallingCount(0);
-    self->world()->setFoeCount(0);
-    self->world()->setLiftCount(0);
-    self->world()->setPlatformCount(0);
-    self->world()->setBombCount(0);
+    self->world()->clearObjects();
 }
