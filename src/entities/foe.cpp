@@ -17,10 +17,8 @@
 #include "movableentity.h"
 #include "entitymath.h"
 #include "foepath.h"
-#include "voicepool.h"
+#include "soundvoice.h"
 #include "objectremove.h"
-#include "soundmanager.h"
-#include "audiodev.h"
 #include "bomb.h"
 #include "tilequery.h"
 #include "logger.h"
@@ -345,7 +343,7 @@ static unsigned long s_removals       = 0;
 static int           s_logged_remove  = 0;
 static int           s_logged_release = 0;
 
-static void release(SoundManager *sm, void *obj, void *buf, int bPool)
+static void release(SoundLibrary *sm, void *obj, SoundVoice *buf, int bPool)
 {
     if (buf == 0)
         return;
@@ -353,20 +351,17 @@ static void release(SoundManager *sm, void *obj, void *buf, int bPool)
     if (s_diag_remove && !s_logged_release) {
         s_logged_release = 1;
         g_logger.write("foe: first sound release -- obj=%p buf=%p pool=%d\n",
-                  obj, buf, bPool);
+                  obj, (void *)buf, bPool);
     }
 
-    if (bPool)
-        sm->releasePooledForOwner((VoicePool *)buf, 1);
-    else
-        sm->releaseStaticForOwner((audiodev::Buffer *)buf, 1);
+    sm->releaseVoice(buf, true);
 }
 
 void Foe::remove(const EntityContext &ctx, FoeTable &foes, unsigned int idArg)
 {
     unsigned char id   = (unsigned char)(idArg & 0xff);
     Foe         **slot = &foes.slot[id];
-    SoundManager *sm   = ctx.sound;
+    SoundLibrary *sm   = ctx.sound;
 
     fx_init();
 
@@ -384,7 +379,7 @@ void Foe::remove(const EntityContext &ctx, FoeTable &foes, unsigned int idArg)
             g_logger.write("foe: %lu removals\n", s_removals);
     }
 
-    if (ctx.sound->created() != 0) {
+    if (ctx.sound->active()) {
         release(sm, *slot, (*slot)->pool_9f_,  1);
         release(sm, *slot, (*slot)->sound_b3_, 0);
         release(sm, *slot, (*slot)->sound_c7_, 0);
@@ -487,11 +482,11 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
             }
 
             if (pool_9f_ != 0) {
-                pool_9f_->broadcastCoordinates((float)(int)cellU_,
+                pool_9f_->setPosition((float)(int)cellU_,
                                                   (float)(int)heightCell_,
                                                   -(float)(int)cellV_,
                                                   1);
-                pool_9f_->cycle(0);
+                pool_9f_->play(0);
             }
             pickedUp_ = 1;
         }

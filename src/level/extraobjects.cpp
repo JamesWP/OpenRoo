@@ -41,8 +41,7 @@
 #include <string.h>
 #include "logger.h"
 #include "extraobjects.h"
-#include "audiodev.h"
-#include "soundmanager.h"
+#include "soundvoice.h"
 #include "gamestr.h"
 #include <stdlib.h>
 #include <algorithm>
@@ -258,7 +257,7 @@ void ExtraObjects::releaseSounds()
         // The handle is re-read after halting.
         if (r->sound != 0) {
             r->sound->stop();
-            soundManager_->releaseStaticForOwner(r->sound, 1);
+            soundLibrary_->releaseVoice(r->sound, true);
             r->sound = 0;
 
             s_released++;

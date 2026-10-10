@@ -17,12 +17,12 @@
 /* Resets the old buffer if there is one, then loads a new one from "<game
  * dir>\waves\<name><suffix>.wav".  The caller stores the result back into the
  * slot. */
-static audiodev::Buffer *bank(Game *game, audiodev::Buffer *cur,
+static audiodev::Buffer *bank(Game *game, SoundVoice *cur,
                                 const char *fmt, const char *suffix)
 {
     char path[256];
     if (cur != NULL)
-        cur->reset();
+        static_cast<audiodev::Buffer *>(cur)->reset();
     sprintf(path, fmt, game->gameDir(), suffix);
     return game->soundManager()->acquireStatic(path, 0);
 }
@@ -76,7 +76,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     }
 
     ScriptPlayer *sp = self->scriptPlayer();
-    self->extraObjects()->setSoundManager(sm);
+    self->extraObjects()->setSoundLibrary(sm);
     sp->setSoundManager(sm);
 
     snprintf(path, sizeof(path), GS_WAV_TIME_OUT, self->gameDir());

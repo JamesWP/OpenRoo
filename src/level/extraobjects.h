@@ -8,8 +8,8 @@
 #include <stddef.h>
  
 
-class SoundManager;
-namespace audiodev { class Buffer; }
+class SoundLibrary;
+class SoundVoice;
 
 enum ExtraObjectKind {
     EXTRA_MODEL = 0, EXTRA_PARTICLE = 1, EXTRA_BILLBOARD = 2, EXTRA_SOUND = 3
@@ -35,7 +35,7 @@ struct ExtraObjectRecord {
     float                splinePoints[0x100][3]{};  // from the file's spline line
     unsigned short       splinePointCount{};
     double               soundParam{};  // sound: zeroed, then optional
-    audiodev::Buffer  *sound;
+    SoundVoice  *sound;
 
      
 };
@@ -61,7 +61,7 @@ public:
     // Non-zero when the level's .leo loaded.
     int            loaded() const                    { return loaded_; }
     void           setLoaded(int l)                  { loaded_ = l; }
-    void           setSoundManager(SoundManager *sm) { soundManager_ = sm; }
+    void           setSoundLibrary(SoundLibrary *sm) { soundLibrary_ = sm; }
     // Objects built from the file; the level report prints it.
     unsigned short objectCount() const               { return objectCount_; }
     ExtraObjectRecord *record(unsigned int i)        { return &records_[i]; }
@@ -87,7 +87,7 @@ private:
      
 
     int                loaded_{};
-    SoundManager      *soundManager_{};
+    SoundLibrary      *soundLibrary_{};
     unsigned short     entries_{};  // entries seen
     ExtraObjectRecord  records_[RECORD_MAX];
     unsigned short     objectCount_{};
