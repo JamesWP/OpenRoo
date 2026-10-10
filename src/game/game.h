@@ -11,6 +11,7 @@
 #include "saveslots.h"
 #include "menutree.h"
 #include "scriptplayer.h"
+#include "camerarig.h"
 #include "cdthemes.h"
 #include "highscores.h"
 #include "config.h"
@@ -266,27 +267,16 @@ public:
     float          effectsGain() const               { return (float)config_.waveVolume() / 100.0f; }
 
     /* ── camera and controls ────────────────────────────────────────── */
-    /* 0 = follow the player; nonzero = view from the separate eye,
-     * cameraEye() (FramePose_Player / UpdateViewTransform), and 2 also spins
-     * the yaw -- the menus and the tally.  Checkpoints restore it. */
-    unsigned char  cameraMode() const                { return cameraMode_; }
-    void           setCameraMode(unsigned char m)    { cameraMode_ = m; }
-    /* The distance the camera eases towards (UpdateViewTransform subtracts
-     * the current eye distance and closes a dt-scaled share of the gap):
-     * 7.0 by default, 40.0 in CameraOverview, animated by the sway. */
-    float          cameraDistance() const            { return cameraDistance_; }
-    void           setCameraDistance(float d)        { cameraDistance_ = d; }
+    /* The camera (camerarig.h): its intent, set by the simulation, menus,
+     * script player and checkpoints, and its live pose. */
+    CameraRig      *camera()                         { return &camera_; }
+    const CameraRig *camera() const                  { return &camera_; }
     /* The controls menu's camera option: 1 = the camera turns with the
      * player (UpdateViewTransform, FramePose_Player).  GameTick forces it to 1
      * while the player is gliding, parking the choice +10 in
      * parkedCameraOption. */
     unsigned char  cameraTurnsWithPlayer() const     { return config_.cameraTurnsWithPlayer(); }
     void           setCameraTurnsWithPlayer(unsigned char on) { config_.setCameraTurnsWithPlayer(on); }
-    /* Where GameTick parks cameraTurnsWithPlayer while gliding forces
-     * it on: the player's choice + 10, so 0 means "nothing parked".  Load
-     * zeroes it. */
-    unsigned char  parkedCameraOption() const        { return parkedCameraOption_; }
-    void           setParkedCameraOption(unsigned char v) { parkedCameraOption_ = v; }
     /* The options menu's 3D-sound switch: handed to the SoundManager's
      * setup, and InitLevelBasedSounds adds the extra-object sounds only
      * while it is on. */
@@ -294,28 +284,6 @@ public:
     void           setSound3D(int on)                { config_.setSound3D(on); }
     /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
     unsigned short joyDeadzone() const               { return config_.joyDeadzone(); }
-    /* The separate eye the camera views from when cameraMode() is nonzero
-     * (FramePose_Player makes it the camera's focus, z negated);
-     * checkpoints restore it from the script player. */
-    void           setCameraEye(int i, float v)      { cameraEye_[i] = v; }
-    float          cameraEye(int i) const            { return cameraEye_[i]; }
-    /* A float vector RenderGameFrame's scripted-camera branch (taken
-     * instead of UpdateViewTransform while the script player's spline is active) reads beside
-     * the eye; checkpoints restore it from the script player's spline point,
-     * and the level builder seeds it {0, 1000, 0}.  Not decoded. */
-    void           setField13cc94(int i, float v)    { field_13cc94_[i] = v; }
-    float          field13cc94(int i) const          { return field_13cc94_[i]; }
-    /* zoomDistance is the zoom distance the Zoom In/Out actions step (clamped
-     * 2..20); GameTick eases cameraDistance towards it and copies it back
-     * when the overview ends.  overviewActive is the overview flag the OverView
-     * action raises (with cameraDistance 40); GameTick and the level
-     * builder clear it.  field_13cc90 is set by both zoom actions and cleared
-     * by the same two; PRESERVED: nothing reads it. */
-    void           setField13cc90(int v)             { field_13cc90_ = v; }
-    float          zoomDistance() const              { return zoomDistance_; }
-    void           setZoomDistance(float d)          { zoomDistance_ = d; }
-    int            overviewActive() const            { return overviewActive_; }
-    void           setOverviewActive(int v)          { overviewActive_ = v; }
     /* keypress.cpp: field_13cc88 is a one-shot latch (cleared, then set on
      * the first press, which also sets field_13cc8c). */
     int            field_13cc88() const              { return field_13cc88_; }
@@ -511,7 +479,6 @@ private:
     TimedSpawner  timedSpawners_[256];
     FreeBomb      freeBombs_[256];
     CdThemes      cdThemes_;
-    unsigned char parkedCameraOption_{};
     /* 256 level names, 0x100 each.  SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
     char          levelNameTable_[256][0x100]{};
     unsigned char levelCount_{};
@@ -535,10 +502,6 @@ private:
     int           field_13cc84_{};                          /* Load zeroes; reader not decoded */
     int           field_13cc88_{};
     int           field_13cc8c_{};
-    int           field_13cc90_{};
-    float         field_13cc94_[3]{};
-    float         zoomDistance_{};
-    int           overviewActive_{};
     /* The typed-cheat buffer; declared up to the cheat entry that follows.
      * Its real length is not established. */
     unsigned char cheatBuffer_[0x100]{};
@@ -574,12 +537,10 @@ private:
     unsigned char debounce_{};
     MenuTree      menu_;
     ScriptPlayer  scriptPlayer_;
-    float         cameraDistance_{};
-    unsigned char cameraMode_{};
+    CameraRig     camera_;
     /* The settings (config.h); music, volumes, 3D sound, the camera
      * option and the joystick deadzone live in its persisted blob. */
     Config        config_;
-    float         cameraEye_[3]{};
     unsigned char state_{};
     /* The map: header, grid and snapshot grid.  Its header holds the time limit (GameTick times the
      * level out at timeLimit*1000 ms), the ms of play (CalculateLevelScore

@@ -76,7 +76,7 @@ FramePose_Player(Game *g, double , double dt, CameraFocus *out)
     f[0] = 0.0f;
     facing_angle(p->facing(), &f[1]);
 
-    const unsigned char mode = g->cameraMode();
+    const unsigned char mode = g->camera()->cameraMode();
     if (mode == 2) {
         f[5] = wrap(dt * K_SPIN + f[5]);
     } else if (mode == 0) {
@@ -103,9 +103,9 @@ FramePose_Player(Game *g, double , double dt, CameraFocus *out)
     if (mode == 0) {
         f[6] = f[2];  f[7] = f[3];  f[8] = f[4];
     } else {
-        f[6] = g->cameraEye(0);
-        f[7] = g->cameraEye(1);
-        f[8] = -g->cameraEye(2);
+        f[6] = g->camera()->cameraEye(0);
+        f[7] = g->camera()->cameraEye(1);
+        f[8] = -g->camera()->cameraEye(2);
     }
 }
 

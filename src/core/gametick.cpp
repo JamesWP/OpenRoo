@@ -160,7 +160,7 @@ Sim_GameTick(Game *self, double dt, double now)
         if (sp->loaded() != 0)
             Sim_RestoreCheckpointStateBlocks(self);
         if (sp->running() == 0 || sp->loaded() == 0)
-            self->setCameraMode(2);
+            self->camera()->setCameraMode(2);
         if (self->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0) {
             sp->setRunning(0);
             sp->setSplineActive(0);
@@ -172,14 +172,14 @@ Sim_GameTick(Game *self, double dt, double now)
                     self->cdThemes()->play(self->map()->mapName());
                 self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(self->map()->mapName()));
             }
-            self->setCameraDistance(7.0f);
-            self->setCameraMode(0);
+            self->camera()->setCameraDistance(7.0f);
+            self->camera()->setCameraMode(0);
             pl->setField231(*self->clock());
         }
     }
 
-    if (self->cameraMode() == 0)
-        self->setCameraDistance(camera_sway(now, self->zoomDistance()));
+    if (self->camera()->cameraMode() == 0)
+        self->camera()->setCameraDistance(camera_sway(now, self->camera()->zoomDistance()));
 
     if (self->stateRef() == 3) {
         PROF_SCOPE("menus");
@@ -293,21 +293,21 @@ Sim_GameTick(Game *self, double dt, double now)
 
         self->config()->setActiveCameraPitch(self->config()->cameraPitch());
         if (pl->moveState() != 0) {
-            self->setOverviewActive(0);
-            self->setCameraDistance(self->zoomDistance());
+            self->camera()->setOverviewActive(0);
+            self->camera()->setCameraDistance(self->camera()->zoomDistance());
             if (pl->soundAf() != NULL) pl->soundAf()->stop();
             if (pl->soundAb() != NULL) pl->soundAb()->stop();
             if (pl->soundC7() != NULL) pl->soundC7()->stop();
         }
 
         if ((unsigned int)pl->gliding() != 0) {
-            if (self->parkedCameraOption() == 0) {
-                self->setParkedCameraOption((unsigned char)(self->cameraTurnsWithPlayer() + 10));
+            if (self->camera()->parkedCameraOption() == 0) {
+                self->camera()->setParkedCameraOption((unsigned char)(self->cameraTurnsWithPlayer() + 10));
                 self->setCameraTurnsWithPlayer(1);
             }
-        } else if (self->parkedCameraOption() >= 10) {
-            self->setCameraTurnsWithPlayer((unsigned char)(self->parkedCameraOption() - 10));
-            self->setParkedCameraOption(0);
+        } else if (self->camera()->parkedCameraOption() >= 10) {
+            self->setCameraTurnsWithPlayer((unsigned char)(self->camera()->parkedCameraOption() - 10));
+            self->camera()->setParkedCameraOption(0);
         }
 
         // The countdown's last seconds: compared at 80 bits, stored at 64.
@@ -381,7 +381,7 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     if (pl->moveState() != 0) {
-        self->setCameraMode(2);
+        self->camera()->setCameraMode(2);
     } else if (self->stateRef() == 1) {
         self->setTimeElapsed(self->timeElapsed()
             + (unsigned int)ftol80(self->tickStep()->value));
@@ -390,13 +390,13 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     if ((unsigned int)pl->gliding() != 0) {
-        self->setCameraMode(0);
+        self->camera()->setCameraMode(0);
     } else if ((unsigned int)pl->falling() != 0) {
         long double d = (long double)(int)pl->fallStartH() - (long double)(int)pl->heightCell();
         if (d > 2.0L) {
-            self->setCameraMode(1);
-            self->setCameraEye(0, pl->posU());
-            self->setCameraEye(2, pl->posV());
+            self->camera()->setCameraMode(1);
+            self->camera()->setCameraEye(0, pl->posU());
+            self->camera()->setCameraEye(2, pl->posV());
         }
     }
 
@@ -454,10 +454,10 @@ Sim_GameTick(Game *self, double dt, double now)
     // Playing: camera follow, time-out, exit.
     if (self->stateRef() == 1) {
         if ((unsigned int)pl->falling() == 0 && pl->moveState() == 0) {
-            self->setCameraEye(0, pl->posU());
-            self->setCameraEye(1, pl->posY());
-            self->setCameraEye(2, pl->posV());
-            self->setCameraMode(0);
+            self->camera()->setCameraEye(0, pl->posU());
+            self->camera()->setCameraEye(1, pl->posY());
+            self->camera()->setCameraEye(2, pl->posV());
+            self->camera()->setCameraMode(0);
         }
         if (pl->moveState() != 3) {
             int t = self->timeLimit() * 1000;
@@ -496,7 +496,7 @@ Sim_GameTick(Game *self, double dt, double now)
                                            (unsigned int)self->levelCount());
                     } else {
                         self->stateRef() = 3;
-                        self->setCameraMode(2);
+                        self->camera()->setCameraMode(2);
                         self->menu()->rewind();
                         self->menu()->pop();
                         self->menu()->push(0x28);
@@ -533,7 +533,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->debounceRef() = inputdev::KEY_RETURN;
                 restart_tail = 0;  // game over: skip the camera reset
             } else {
-                self->setCameraMode(2);
+                self->camera()->setCameraMode(2);
                 self->stateRef() = 3;
                 if (self->musicOn() != 0)
                     self->cdThemes()->play(GS_GAME_COMPLETED);
@@ -559,8 +559,8 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->setRestartCount(0);
             }
             if (restart_tail) {
-                self->setCameraDistance(7.0f);
-                self->setCameraMode(0);
+                self->camera()->setCameraDistance(7.0f);
+                self->camera()->setCameraMode(0);
                 self->debounceRef() = inputdev::KEY_RETURN;
             }
         }
@@ -648,11 +648,11 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     if (pl->moveState() != 0 && pl->moveState() != 2)
-        self->setCameraMode(2);
+        self->camera()->setCameraMode(2);
     if (KEY(self->debounceRef()) == 0)
         self->debounceRef() = 0;
-    self->setOverviewActive(0);
-    self->setField13cc90(0);
+    self->camera()->setOverviewActive(0);
+    self->camera()->setField13cc90(0);
     self->setField48b14(self->field_48b14() + 1);
     self->setTickCount(self->tickCount() + 1);
     return self->tickCount() & 0xffffff00u;

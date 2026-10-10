@@ -20,6 +20,7 @@ gl
 fx
 audio
 ui
+camera
 level
 entities
 game
