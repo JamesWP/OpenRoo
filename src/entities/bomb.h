@@ -1,5 +1,5 @@
 /* Bomb: a dropped bomb.  A 2 s fuse during which it rolls forward, then a 3x3
- * kill zone for 0.4 s.  A MovableEntity plus its own fields.  The Game's
+ * kill zone for 0.4 s.  A MovableEntity plus its own fields.  The World's
  * second entity table holds only bombs.  RenderGameFrame reads its position,
  * dyingStarted and droppedAt, and reads and clears the debris latch, and the
  * movement code treats a bomb as a plain entity. */
@@ -41,7 +41,7 @@ public:
     // One tick: the fuse, the roll and the blast.
     void tick();
 
-    // Draws it on the debug map; id is its slot in the Game's bomb table.
+    // Draws it on the debug map; id is its slot in the World's bomb table.
     void debugDraw(unsigned id) const;
 
     // The clock when it was dropped; RenderGameFrame switches its model 2 s

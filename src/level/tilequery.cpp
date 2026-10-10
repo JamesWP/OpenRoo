@@ -85,7 +85,7 @@ static void fx_init(void)
 #include "switchcells.h"
 #include "tile.h"
 
-/* The tile tables are the map's; reached through Game::map(). */
+/* The tile tables are the map's; reached through World::map(). */
 
 /* Truncation toward zero; only the low byte is kept. */
 static inline unsigned char ftol_b(long double v)

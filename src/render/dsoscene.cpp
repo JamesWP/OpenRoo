@@ -150,7 +150,7 @@ static void cam_diag(const float *cam)
     g_logger.write("FOCUS %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n",
               f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8]);
     const Game *game = Game::instance();
-    unsigned n = game ? game->foeCount() : 0;
+    unsigned n = game ? game->world()->foeCount() : 0;
     const unsigned char *r = (const unsigned char *)g_foePoses;
     uint32_t h = 2166136261u;
     for (unsigned i = 0; i < n * 0x1d; i++)

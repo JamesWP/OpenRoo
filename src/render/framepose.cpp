@@ -43,7 +43,7 @@ static bool stepping(const MovableEntity *e)
 
 static float step_fraction(Game *g, const MovableEntity *e)
 {
-    return (float)((*g->clock() - e->animStart()) / e->animDuration());
+    return (float)((*g->world()->clock() - e->animStart()) / e->animDuration());
 }
 
 /* The turn term, applied only past moveDir 10. */
@@ -70,7 +70,7 @@ static float wrap(double v)
   void  
 FramePose_Player(Game *g, double , double dt, CameraFocus *out)
 {
-    const Player *p = g->player();
+    const Player *p = g->world()->player();
     float *f = out->f;
 
     f[0] = 0.0f;
@@ -112,9 +112,9 @@ FramePose_Player(Game *g, double , double dt, CameraFocus *out)
   void  
 FramePose_Foes(Game *g, double , double , FoePose *out)
 {
-    const unsigned n = g->foeCount();
+    const unsigned n = g->world()->foeCount();
     for (unsigned i = 0; i < n; i++) {
-        const Foe *e = g->foeSlot(g->foeId(i));
+        const Foe *e = g->world()->foeSlot(g->world()->foeId(i));
         FoePose *r = &out[i];
 
         float angle = 0.0f;

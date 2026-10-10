@@ -560,7 +560,7 @@ int ExtraObjects::parseEntry(const char *entry)
     return 1;
 }
 
-/* Embedded in the Game, so the deleting destructor never frees in practice. */
+/* Embedded in the World, so the deleting destructor never frees in practice. */
 ExtraObjects::ExtraObjects()
 {
     // Each spline point's constructor does nothing; not run.

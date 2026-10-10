@@ -34,7 +34,7 @@ Input_Setup(void *hwnd, Game *game)
     pc->setJoyDeadzone(4, 5000);
     pc->setJoyDeadzone(8, 10000);
 
-    void *player = game->player();
+    void *player = game->world()->player();
     pc->registerAction(1, GS_ACT_TURN_LEFT,    Player_ActTurnLeft,    player);
     pc->registerAction(1, GS_ACT_TURN_RIGHT,   Player_ActTurnRight,   player);
     pc->registerAction(1, GS_ACT_MOVE_FORWARD, Player_ActMoveForward, player);

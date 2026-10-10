@@ -107,8 +107,8 @@ static unsigned char completion_percent(unsigned int a, unsigned int b)
 
 static void trigger_switch_tile(Game *game, unsigned char sw, int u, int v)
 {
-    BridgeObject *br = game->bridgeSlot(sw);
-    Tile *t = game->map()->tile(u, v);
+    BridgeObject *br = game->world()->bridgeSlot(sw);
+    Tile *t = game->world()->map()->tile(u, v);
     if (br->phase() == 0)
         t->setBusy(1);
     else
@@ -118,7 +118,7 @@ static void trigger_switch_tile(Game *game, unsigned char sw, int u, int v)
   unsigned int  
 Sim_GameTick(Game *self, double dt, double now)
 {
-    Player *pl = self->player();
+    Player *pl = self->world()->player();
 
     if (s_fx < 0) {
         char e[32];
@@ -143,10 +143,10 @@ Sim_GameTick(Game *self, double dt, double now)
 
     self->setLastTickTime(now);
     if (self->stateRef() == 5) {
-        self->tickStep()->value = 0.0;  // +0.0
+        self->world()->tickStep()->value = 0.0;  // +0.0
     } else {
-        self->tickStep()->value = dt;
-        (*self->clock()) = (double)((long double)dt + (long double)(*self->clock()));
+        self->world()->tickStep()->value = dt;
+        (*self->world()->clock()) = (double)((long double)dt + (long double)(*self->world()->clock()));
     }
 
     if (self->stateRef() == 0 || self->stateRef() == 5) {
@@ -169,12 +169,12 @@ Sim_GameTick(Game *self, double dt, double now)
             self->stateRef() = 1;
             if (self->restartCount() == 0) {
                 if (self->musicOn() != 0)
-                    self->cdThemes()->play(self->map()->mapName());
-                self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(self->map()->mapName()));
+                    self->cdThemes()->play(self->world()->map()->mapName());
+                self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(self->world()->map()->mapName()));
             }
             self->camera()->setCameraDistance(7.0f);
             self->camera()->setCameraMode(0);
-            pl->setField231(*self->clock());
+            pl->setField231(*self->world()->clock());
         }
     }
 
@@ -191,43 +191,43 @@ Sim_GameTick(Game *self, double dt, double now)
         Sim_AnimateScoreTallyStages(self);
     }
     if (self->stateRef() == 6)
-        self->nameEntry()->poll((unsigned int)ftol80((*self->clock())));
+        self->nameEntry()->poll((unsigned int)ftol80((*self->world()->clock())));
 
     Game *game = self;
     Tile_DebugDrawMap(game);
     if (!s_fx) {
-        if (game->liftCount() != 0) {
+        if (game->world()->liftCount() != 0) {
             PROF_SCOPE("lifts");
-            for (int i = 0; i < (int)game->liftCount(); ++i)
-                game->liftSlot(i)->tick();
+            for (int i = 0; i < (int)game->world()->liftCount(); ++i)
+                game->world()->liftSlot(i)->tick();
         }
-        if (game->platformCount() != 0) {
+        if (game->world()->platformCount() != 0) {
             PROF_SCOPE("platforms");
-            for (int i = 0; i < (int)game->platformCount(); ++i)
-                game->platformSlot(i)->tick();
+            for (int i = 0; i < (int)game->world()->platformCount(); ++i)
+                game->world()->platformSlot(i)->tick();
         }
     } else {
-        if (game->platformCount() != 0) {
+        if (game->world()->platformCount() != 0) {
             PROF_SCOPE("platforms");
-            for (int i = 0; i < (int)game->platformCount(); ++i)
-                game->platformSlot(i)->tick();
+            for (int i = 0; i < (int)game->world()->platformCount(); ++i)
+                game->world()->platformSlot(i)->tick();
         }
-        if (game->liftCount() != 0) {
+        if (game->world()->liftCount() != 0) {
             PROF_SCOPE("lifts");
-            for (int i = 0; i < (int)game->liftCount(); ++i)
-                game->liftSlot(i)->tick();
+            for (int i = 0; i < (int)game->world()->liftCount(); ++i)
+                game->world()->liftSlot(i)->tick();
         }
     }
-    if (game->fallingCount() != 0) {
+    if (game->world()->fallingCount() != 0) {
         PROF_SCOPE("falling tiles");
-        for (int i = 0; i < (int)game->fallingCount(); ++i)
-            game->fallingSlot(i)->tick();
+        for (int i = 0; i < (int)game->world()->fallingCount(); ++i)
+            game->world()->fallingSlot(i)->tick();
     }
-    if (game->bridgeCount() != 0) {
+    if (game->world()->bridgeCount() != 0) {
         PROF_SCOPE("bridges");
-        for (int i = 0; i < (int)game->bridgeCount(); ++i) {
-            game->bridgeSlot(i)->tick();
-            game->bridgeSlot(i)->debugDraw(*game->switchCells());
+        for (int i = 0; i < (int)game->world()->bridgeCount(); ++i) {
+            game->world()->bridgeSlot(i)->tick();
+            game->world()->bridgeSlot(i)->debugDraw(*game->world()->switchCells());
         }
     }
 
@@ -242,14 +242,14 @@ Sim_GameTick(Game *self, double dt, double now)
     }
 
     // Bombs: the count is re-read each pass; no step back after a removal.
-    if (self->bombCount() != 0) {
+    if (self->world()->bombCount() != 0) {
         PROF_SCOPE("bombs");
-        for (int i = 0; i < (int)self->bombCount(); ++i) {
-            self->bombSlot(self->bombId(i))->tick();
-            unsigned char id = self->bombId(i);
-            self->bombSlot(id)->debugDraw(id);
-            if (self->bombSlot(id)->removeRequested() != 0)
-                Bomb::remove(self->entityContext(), self->bombs(), id);
+        for (int i = 0; i < (int)self->world()->bombCount(); ++i) {
+            self->world()->bombSlot(self->world()->bombId(i))->tick();
+            unsigned char id = self->world()->bombId(i);
+            self->world()->bombSlot(id)->debugDraw(id);
+            if (self->world()->bombSlot(id)->removeRequested() != 0)
+                Bomb::remove(self->world()->entityContext(), self->world()->bombs(), id);
         }
     }
 
@@ -270,17 +270,17 @@ Sim_GameTick(Game *self, double dt, double now)
             Sim_HandleTypedCheatCode(self);
 
         // The timed foe spawners (levelcensus.h).
-        for (int i = 0; i < (int)self->census()->timed; ++i) {
-            TimedSpawner *E = self->timedSpawner((unsigned)i);
-            long double since = (long double)(*self->clock()) - (long double)E->lastSpawn;
+        for (int i = 0; i < (int)self->world()->census()->timed; ++i) {
+            TimedSpawner *E = self->world()->timedSpawner((unsigned)i);
+            long double since = (long double)(*self->world()->clock()) - (long double)E->lastSpawn;
             if (!(since > (long double)E->interval))
                 continue;
             signed char u = (signed char)E->u, v = (signed char)E->v;
-            if (self->map()->tile(u, v)->occupant() == 0 &&self->foeCount() < E->maxFoes) {
-                unsigned char id = Foe::spawn(self->entityContext(), self->foes(), (unsigned char)u,
+            if (self->world()->map()->tile(u, v)->occupant() == 0 &&self->world()->foeCount() < E->maxFoes) {
+                unsigned char id = Foe::spawn(self->world()->entityContext(), self->world()->foes(), (unsigned char)u,
                                               (unsigned char)v, E->height, 2,
                                               (unsigned char)(E->field_0b + 100));
-                Foe *foe = self->foeSlot(id);
+                Foe *foe = self->world()->foeSlot(id);
                 if (((int)self->foesKilled() + 1) % 15 == 0)
                     foe->setDropContents(7);
                 else
@@ -288,7 +288,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 Sim_AcquireObjectSoundBuffersForIndex(self, id);
             }
             // The last-spawn time, from the clock.
-            E->lastSpawn = *self->clock();
+            E->lastSpawn = *self->world()->clock();
         }
 
         self->config()->setActiveCameraPitch(self->config()->cameraPitch());
@@ -313,8 +313,8 @@ Sim_GameTick(Game *self, double dt, double now)
         // The countdown's last seconds: compared at 80 bits, stored at 64.
         {
             static const double k001 = 0.001;  // a double
-            long double lim = (long double)(unsigned long long)(unsigned int)self->timeLimit() * 1000.0L;
-            long double rem80 = (lim - (long double)(unsigned long long)self->timeElapsed()) *
+            long double lim = (long double)(unsigned long long)(unsigned int)self->world()->timeLimit() * 1000.0L;
+            long double rem80 = (lim - (long double)(unsigned long long)self->world()->timeElapsed()) *
                                 (long double)k001;
             double rem64 = (double)rem80;
             if (rem80 > 11.0L || pl->moveState() == 3) {
@@ -333,7 +333,7 @@ Sim_GameTick(Game *self, double dt, double now)
         }
     } else {
         pl->setIdleStarted(0);
-        pl->setLastActive(*self->clock());
+        pl->setLastActive(*self->world()->clock());
         gamestate_note_mode(0);
         g_progCtrl.dispatch(0);
         if (self->fixedSounds()->lastSeconds != NULL)
@@ -345,7 +345,7 @@ Sim_GameTick(Game *self, double dt, double now)
         unsigned int timed = (unsigned int)pl->moveDir();
         int spawn = 1, offset = 0;
         if (timed != 0) {
-            long double since = (long double)(*self->clock()) - (long double)pl->animStart();
+            long double since = (long double)(*self->world()->clock()) - (long double)pl->animStart();
             if (since < 50.0L)
                 offset = 1;
             else
@@ -353,12 +353,12 @@ Sim_GameTick(Game *self, double dt, double now)
         }
         if (spawn) {
             if (offset)
-                Bomb::spawn(self->entityContext(), self->bombs(), self->bombSounds(), (unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
+                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), self->bombSounds(), (unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
                                     (unsigned char)((unsigned char)pl->cellV() - (unsigned char)pl->stepV()),
                                     (unsigned char)((unsigned char)pl->heightCell() - (unsigned char)pl->field141()),
                                     pl->facing());
             else
-                Bomb::spawn(self->entityContext(), self->bombs(), self->bombSounds(), (unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
+                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), self->bombSounds(), (unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
                                     pl->facing());
             pl->setBombDropRequest(0);
         }
@@ -367,14 +367,14 @@ Sim_GameTick(Game *self, double dt, double now)
     // A switch the player stepped on.
     {
         unsigned char sw = pl->switchSlot();
-        if (sw < 0xff && self->bridgeSlot(sw)->armed() == 0) {
+        if (sw < 0xff && self->world()->bridgeSlot(sw)->armed() == 0) {
             g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
             trigger_switch_tile(self, pl->switchSlot(), pl->cellU(), pl->cellV());
-            BridgeObject *br = self->bridgeSlot(pl->switchSlot());
-            br->arm(self->clock());
+            BridgeObject *br = self->world()->bridgeSlot(pl->switchSlot());
+            br->arm(self->world()->clock());
             br->playArmSound();
-            Sim_MarkListedTilesBlockedByObject(self->switchCells(), self->map(),
-                                                   self->bridgeSlot(pl->switchSlot() & 0xff)->phase(),
+            Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(),
+                                                   self->world()->bridgeSlot(pl->switchSlot() & 0xff)->phase(),
                                                    pl->switchSlot());
             pl->setSwitchSlot(0xff);
         }
@@ -383,10 +383,10 @@ Sim_GameTick(Game *self, double dt, double now)
     if (pl->moveState() != 0) {
         self->camera()->setCameraMode(2);
     } else if (self->stateRef() == 1) {
-        self->setTimeElapsed(self->timeElapsed()
-            + (unsigned int)ftol80(self->tickStep()->value));
+        self->world()->setTimeElapsed(self->world()->timeElapsed()
+            + (unsigned int)ftol80(self->world()->tickStep()->value));
         self->setField170a65(self->field_170a65()
-            + (unsigned int)ftol80(self->tickStep()->value));
+            + (unsigned int)ftol80(self->world()->tickStep()->value));
     }
 
     if ((unsigned int)pl->gliding() != 0) {
@@ -402,21 +402,21 @@ Sim_GameTick(Game *self, double dt, double now)
 
     // The foes.  Their pieces are Foe methods (foe.cpp); the slot is re-read
     // for each piece.
-    if (game->foeCount() != 0) {
+    if (game->world()->foeCount() != 0) {
     PROF_SCOPE("foes");
-    for (int i = 0; i < (int)game->foeCount(); ++i) {
-        unsigned char id = game->foeId(i);
-        Foe **slot = game->foeSlotRef(id);
+    for (int i = 0; i < (int)game->world()->foeCount(); ++i) {
+        unsigned char id = game->world()->foeId(i);
+        Foe **slot = game->world()->foeSlotRef(id);
         unsigned char tu, tv;
 
         {
             unsigned char sw = (*slot)->switchSlot();
-            if (sw < 0xff && game->bridgeSlot(sw)->armed() == 0) {
+            if (sw < 0xff && game->world()->bridgeSlot(sw)->armed() == 0) {
                 g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
                 trigger_switch_tile(self, (*slot)->switchSlot(), (*slot)->cellU(), (*slot)->cellV());
-                game->bridgeSlot((*slot)->switchSlot())->arm(game->clock());
-                Sim_MarkListedTilesBlockedByObject(self->switchCells(), self->map(),
-                                                       self->bridgeSlot((*slot)->switchSlot() & 0xff)->phase(),
+                game->world()->bridgeSlot((*slot)->switchSlot())->arm(game->world()->clock());
+                Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(),
+                                                       self->world()->bridgeSlot((*slot)->switchSlot() & 0xff)->phase(),
                                                        (*slot)->switchSlot());
                 (*slot)->clearSwitchSlot();
             }
@@ -429,7 +429,7 @@ Sim_GameTick(Game *self, double dt, double now)
             hold = 1;
         {
             PROF_SCOPE("choose target");
-            (*slot)->chooseTarget(game->entityContext(), game->foes(), hold, (unsigned char)pl->cellU(), (unsigned char)pl->cellV(),
+            (*slot)->chooseTarget(game->world()->entityContext(), game->world()->foes(), hold, (unsigned char)pl->cellU(), (unsigned char)pl->cellV(),
                                   pl->markerCellU(), pl->markerCellV(), &tu, &tv);
         }
         {
@@ -437,11 +437,11 @@ Sim_GameTick(Game *self, double dt, double now)
             (*slot)->step(tu, tv);
         }
         (*slot)->debugDraw(id);
-        (*slot)->dropBomb(game->entityContext(), game->bombs(), game->bombSounds());
+        (*slot)->dropBomb(game->world()->entityContext(), game->world()->bombs(), game->bombSounds());
         (*slot)->checkPlayerContact(pl->moveStateRef(),
                                     pl->posU(), pl->posY(), pl->posV());
-        if ((*slot)->finishDespawn(self->map())) {
-            Foe::remove(game->entityContext(), game->foes(), id);
+        if ((*slot)->finishDespawn(self->world()->map())) {
+            Foe::remove(game->world()->entityContext(), game->world()->foes(), id);
             self->setFoesKilled((unsigned char)(self->foesKilled() + 1));
         }
     }
@@ -460,24 +460,24 @@ Sim_GameTick(Game *self, double dt, double now)
             self->camera()->setCameraMode(0);
         }
         if (pl->moveState() != 3) {
-            int t = self->timeLimit() * 1000;
-            if (t - (int)self->timeElapsed() <= 0) {
+            int t = self->world()->timeLimit() * 1000;
+            if (t - (int)self->world()->timeElapsed() <= 0) {
                 void *snd = self->fixedSounds()->timeOut;
-                self->setTimeElapsed((unsigned int)t);
+                self->world()->setTimeElapsed((unsigned int)t);
                 pl->setMoveState(3);
                 if (snd != NULL)
                     ((audiodev::Buffer *)snd)->play(false);
             }
         }
-        if (pl->gemsCollected() >= self->gemsRequired()) {
+        if (pl->gemsCollected() >= self->world()->gemsRequired()) {
             if (self->field_173b1a() == 0 && self->stateRef() != 3) {
-                int r = (int)ftol80((*self->clock()));
+                int r = (int)ftol80((*self->world()->clock()));
                 void *snd = self->fixedSounds()->crystalBank[r % 3];
                 if (snd != NULL)
                     ((audiodev::Buffer *)snd)->play(false);
                 self->setField173b1a(1);
             }
-            self->map()->tile((signed char)pl->markerCellU(), (signed char)pl->markerCellV())->setBusy(1);
+            self->world()->map()->tile((signed char)pl->markerCellU(), (signed char)pl->markerCellV())->setBusy(1);
             if ((unsigned char)pl->cellU() == pl->markerCellU() && (unsigned char)pl->cellV() == pl->markerCellV() &&
                 (unsigned char)pl->heightCell() == pl->markerCellH() && (unsigned int)pl->falling() == 0 &&
                 pl->moveState() == 0) {
@@ -507,7 +507,7 @@ Sim_GameTick(Game *self, double dt, double now)
                         Score_CalculateLevelScore(self, (char)self->stateRef());
                         self->setRestartCount(0);
                     }
-                    self->setTotalPlayTime((double)((long double)(unsigned long long)self->timeElapsed() +
+                    self->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
                                             (long double)self->totalPlayTime()));
                 }
             }
@@ -519,11 +519,11 @@ Sim_GameTick(Game *self, double dt, double now)
         if (self->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0 && pl->moveState() != 0 && self->stateRef() == 1) {
             self->setRestartCount((unsigned char)(self->restartCount() + 1));
             int lives = pl->lives();
-            int bonus = (int)self->map()->bonus();
+            int bonus = (int)self->world()->map()->bonus();
             int restart_tail = 1;
             if (lives > 0 && bonus == 0) {
                 pl->setLives(lives - 1);  // lives drop at the restart
-                Sim_RestoreTileGridFromSnapshot(self->map());
+                Sim_RestoreTileGridFromSnapshot(self->world()->map());
                 Sim_SetupLevelObjects(self);
             } else if (lives <= 0 && bonus == 0) {
                 self->stateRef() = 2;
@@ -544,10 +544,10 @@ Sim_GameTick(Game *self, double dt, double now)
                 self->menu()->setLockStart(self->lastTickTime());
                 self->menu()->setLock(1);
                 self->menu()->setCursor(0);
-                self->setTimeElapsed((unsigned int)(self->timeLimit() * 1000));
+                self->world()->setTimeElapsed((unsigned int)(self->world()->timeLimit() * 1000));
                 Score_CalculateLevelScore(self, (char)self->stateRef());
                 self->setRestartCount(0);
-                self->setTotalPlayTime((double)((long double)(unsigned long long)self->timeElapsed() +
+                self->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
                                         (long double)self->totalPlayTime()));
                 g_logger.logMessage(2, "GAME: game completed %d %d",
                                    (unsigned int)self->levelIndex(), (unsigned int)self->levelCount());
@@ -609,7 +609,7 @@ Sim_GameTick(Game *self, double dt, double now)
                 Sim_SetupLevelObjects(self);
                 self->scriptPlayer()->setRunning(1);
                 self->debounceRef() = inputdev::KEY_RETURN;
-                self->setTotalPlayTime((double)((long double)(unsigned long long)self->timeElapsed() +
+                self->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
                                         (long double)self->totalPlayTime()));
             }
         }

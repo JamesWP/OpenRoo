@@ -21,7 +21,7 @@ class MovableEntity {
 public:
      
 
-    // The level's map, copied in at spawn from Game::map().
+    // The level's map, copied in at spawn from World::map().
     // Public because tilequery.cpp's farthest-tile search takes a
     // MovableEntity and reaches the map through it.
     LevelMap *map() const { return map_; }

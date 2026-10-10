@@ -182,7 +182,7 @@ Sim_HandleKeypress(Game *self)
     }
 
     if (entry) {  // save-name text entry
-        self->nameEntry()->poll((unsigned int)(long long)*self->clock());
+        self->nameEntry()->poll((unsigned int)(long long)*self->world()->clock());
         if (self->nameEntry()->active() == 0) {
             if (self->nameEntry()->lastKey() == inputdev::KEY_RETURN)
                 self->saveSlots()->writeAllSlotFiles(self->gameDir(), self->gameFileName(), 0x37);
@@ -199,7 +199,7 @@ Sim_HandleKeypress(Game *self)
         self->setRebindActive(0);
         if (self->stateRef() == 5 && self->menu()->leave() != 0) {
             self->stateRef() = self->stateBeforeMenu();
-            self->player()->setPendingMove(0);
+            self->world()->player()->setPendingMove(0);
             self->debounceRef() = inputdev::KEY_ESCAPE;
         }
     }
@@ -266,7 +266,7 @@ Sim_HandleKeypress(Game *self)
     case 0x1f: rebind(self, GS_KEY_CAM_MODE_UP, 0x1f, -1); break;
     case 0x20: rebind(self, GS_KEY_CAM_MODE_DOWN, 0x20, -1); break;
     case 0x21:
-        if (self->player()->gliding() == 0)
+        if (self->world()->player()->gliding() == 0)
             self->setCameraTurnsWithPlayer(self->cameraTurnsWithPlayer() == 0);
         self->menu()->pop();
         break;
@@ -293,7 +293,7 @@ Sim_HandleKeypress(Game *self)
         break;
     case 0x29: {
         unsigned char lvl = (unsigned char)(self->levelIndex() + 1);
-        self->player()->setGemsCollected(0);
+        self->world()->player()->setGemsCollected(0);
         self->setLevelIndex(lvl);
         Sim_OpenLevelFile(self, lvl);
         Sim_SetupLevelObjects(self);

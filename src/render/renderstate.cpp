@@ -45,7 +45,7 @@ Render_ConfigureRenderState(const char *gameDir)
     m4_identity(&world);
     g_worldIdentity = *(Mat4 *)&world;
 
-    const LevelMap *map = Game::instance()->map();
+    const LevelMap *map = Game::instance()->world()->map();
     const double s = sqrt(52.0);
     const float offY = (float)(6.0f / s) * 255.0f;
     const float offX = (float)(0.0f / s) * 255.0f;

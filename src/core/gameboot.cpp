@@ -42,24 +42,24 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g->field_04_   = 1.0;
     // The tally is read by the state dump before any level has been scored.
     g->tally_ = ScoreTally();
-    g->switchCells_.clearCounts();
+    g->world()->switchCells()->clearCounts();
     // PRESERVED: only the first 256 of each 500-slot table.
-    std::fill_n(g->bombs_.slot, 0x100, nullptr);
-    std::fill_n(g->foes_.slot, 0x100, nullptr);
-    g->fallings_.count = 0;
-    g->foes_.count       = 0;
-    g->lifts_.count      = 0;
-    g->platforms_.count     = 0;
-    g->bombs_.count      = 0;
-    g->bridges_.count    = 0;
+    std::fill_n(g->world()->bombs().slot, 0x100, nullptr);
+    std::fill_n(g->world()->foes().slot, 0x100, nullptr);
+    g->world()->fallings().count = 0;
+    g->world()->foes().count       = 0;
+    g->world()->lifts().count      = 0;
+    g->world()->platforms().count     = 0;
+    g->world()->bombs().count      = 0;
+    g->world()->bridges().count    = 0;
     Sim_ResetLevelObjectCounters(g);
-    g->field_42252_      = 0;
+    g->world()->setField42252(0);
     g->mapChanged_       = 1;
     g->initialised_      = 0;
     g->levelSoundsReady_ = 0;
     g->scriptPlayer_.clearStreams();
-    std::fill(std::begin(g->foes_.ids), std::end(g->foes_.ids), 0);
-    std::fill(std::begin(g->bombs_.ids), std::end(g->bombs_.ids), 0);
+    std::fill(std::begin(g->world()->foes().ids), std::end(g->world()->foes().ids), 0);
+    std::fill(std::begin(g->world()->bombs().ids), std::end(g->world()->bombs().ids), 0);
     g->field_48b14_ = 0;
     g->fixedSounds_.switchClick    = NULL;
     g->fixedSounds_.menuUpDown     = NULL;
@@ -136,14 +136,14 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     Sim_SetupLevelObjects(g);
     g->scriptPlayer_.setRunning(g->scriptPlayer_.loaded() != 0 ? 1 : 0);
 
-    g->clock_            = 1000.0;
+    *g->world()->clock() = 1000.0;
     g->field_173b1a_     = 0;
-    g->player()->setGliding(0);
+    g->world()->player()->setGliding(0);
     g->textEntryActive_  = 0;
     g->camera()->setCameraMode(1);
     g->camera()->setOverviewActive(0);
     g->field_13cc84_     = 0;
-    g->bridges_.count      = 0;
+    g->world()->bridges().count      = 0;
     g->fixedSounds_.loaded = 0;
     std::fill(std::begin(g->cheatBuffer_), std::end(g->cheatBuffer_), 0);
     g->cheatEntry_.setMaxLength(30);
@@ -158,20 +158,20 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
 void Game_Shutdown(Game *g)
 {
     g_logger.logMessage(1, "GAME: starting destructor");
-    LiftObject::purgeAll(g->entityContext(), g->lifts());
-    PlatformObject::purgeAll(g->entityContext(), g->platforms());
-    FallingTile::purgeAll(g->entityContext(), g->fallings());
-    BridgeObject::purgeAll(g->entityContext(), g->bridges());
-    while (g->foes_.count != 0)
-        Foe::remove(g->entityContext(), g->foes_, g->foes_.ids[0]);
-    while (g->bombs_.count != 0)
-        Bomb::remove(g->entityContext(), g->bombs_, g->bombs_.ids[0]);
-    g->fallings_.count = 0;
-    g->foes_.count       = 0;
-    g->lifts_.count      = 0;
-    g->platforms_.count     = 0;
-    g->bombs_.count      = 0;
-    g->switchMax_      = 0;
+    LiftObject::purgeAll(g->world()->entityContext(), g->world()->lifts());
+    PlatformObject::purgeAll(g->world()->entityContext(), g->world()->platforms());
+    FallingTile::purgeAll(g->world()->entityContext(), g->world()->fallings());
+    BridgeObject::purgeAll(g->world()->entityContext(), g->world()->bridges());
+    while (g->world()->foes().count != 0)
+        Foe::remove(g->world()->entityContext(), g->world()->foes(), g->world()->foes().ids[0]);
+    while (g->world()->bombs().count != 0)
+        Bomb::remove(g->world()->entityContext(), g->world()->bombs(), g->world()->bombs().ids[0]);
+    g->world()->fallings().count = 0;
+    g->world()->foes().count       = 0;
+    g->world()->lifts().count      = 0;
+    g->world()->platforms().count     = 0;
+    g->world()->bombs().count      = 0;
+    g->world()->setSwitchMax(0);
     g->config_.setCameraDistanceSetting(g->camera()->zoomDistance());
     if (g->highScores_.writeFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY))
         g_logger.logMessage(1, "GAME: highscore-files saved");
@@ -180,7 +180,7 @@ void Game_Shutdown(Game *g)
     else
         g_logger.logMessage(3, "GAME: ** error ** while saving config-values (maybe write-protected or hd full\077) !!!");
     g->scriptPlayer_.releaseStreams();
-    g->extraObjects_.releaseSounds();
+    g->world()->extraObjects()->releaseSounds();
     g->releaseAllSounds();
     g_logger.logMessage(1, "GAME: all sounds released successfully");
     g->soundManager()->purgeAssets();

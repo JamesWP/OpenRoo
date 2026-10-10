@@ -7,7 +7,7 @@ class Game;
   unsigned int  
 Sim_ParseLevelFiles(Game *self, const char *name);
 
-/* Copies level levelNo's name from the game file's table into the Game. */
+/* Copies level levelNo's name from the game file's table into the World's level name. */
   unsigned int  
 Sim_SetCurrentLevelName(Game *self, unsigned int levelNo);
 

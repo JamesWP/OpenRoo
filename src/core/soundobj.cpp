@@ -52,35 +52,35 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
     }
 
     if (g->soundAsset441ca()->enabled)
-        g->foeSlot(idx)->setPool9f(acq_pool(g, 3, g->soundAsset441ca()));
+        g->world()->foeSlot(idx)->setPool9f(acq_pool(g, 3, g->soundAsset441ca()));
     if (g->soundAsset429b6()->enabled)
-        g->foeSlot(idx)->setSoundB3(acq(g, g->soundAsset429b6()));
+        g->world()->foeSlot(idx)->setSoundB3(acq(g, g->soundAsset429b6()));
     if (g->soundAsset42ac2()->enabled) {
-        g->foeSlot(idx)->setSoundB7(acq(g, g->soundAsset42ac2()));
+        g->world()->foeSlot(idx)->setSoundB7(acq(g, g->soundAsset42ac2()));
         // PRESERVED: the same guard is tested again and the same name loaded a
         // second time, so two buffers play one file.
         if (g->soundAsset42ac2()->enabled)
-            g->foeSlot(idx)->setSoundBb(acq(g, g->soundAsset42ac2()));
+            g->world()->foeSlot(idx)->setSoundBb(acq(g, g->soundAsset42ac2()));
     }
     if (assetAB->enabled)
-        g->foeSlot(idx)->setSoundAb(acq(g, assetAB));
+        g->world()->foeSlot(idx)->setSoundAb(acq(g, assetAB));
     if (assetAF->enabled)
-        g->foeSlot(idx)->setSoundAf(acq(g, assetAF));
+        g->world()->foeSlot(idx)->setSoundAf(acq(g, assetAF));
 
-    if (g->foeSlot(idx)->kind() == 2) {
+    if (g->world()->foeSlot(idx)->kind() == 2) {
         if (g->soundAsset457c6()->enabled)
-            g->foeSlot(idx)->setSoundC3(acq(g, g->soundAsset457c6()));
+            g->world()->foeSlot(idx)->setSoundC3(acq(g, g->soundAsset457c6()));
         if (g->soundAsset42262()->enabled)
-            g->foeSlot(idx)->setPoolCf(acq_pool(g, 5, g->soundAsset42262()));
+            g->world()->foeSlot(idx)->setPoolCf(acq_pool(g, 5, g->soundAsset42262()));
         if (g->soundAsset44d4e()->enabled)
-            g->foeSlot(idx)->setSoundA7(acq(g, g->soundAsset44d4e()));
+            g->world()->foeSlot(idx)->setSoundA7(acq(g, g->soundAsset44d4e()));
     } else {
         if (g->soundAsset458d2()->enabled)
-            g->foeSlot(idx)->setSoundC3(acq(g, g->soundAsset458d2()));
+            g->world()->foeSlot(idx)->setSoundC3(acq(g, g->soundAsset458d2()));
         if (g->soundAsset4247a()->enabled)
-            g->foeSlot(idx)->setPoolCf(acq_pool(g, 5, g->soundAsset4247a()));
+            g->world()->foeSlot(idx)->setPoolCf(acq_pool(g, 5, g->soundAsset4247a()));
         if (g->soundAsset44e5a()->enabled)
-            g->foeSlot(idx)->setSoundA7(acq(g, g->soundAsset44e5a()));
+            g->world()->foeSlot(idx)->setSoundA7(acq(g, g->soundAsset44e5a()));
     }
 
     // PRESERVED: the low byte is 1 over whatever the last acquire left: its
@@ -88,7 +88,7 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
     last = (unsigned int)g->soundAsset42de6()->enabled;
     if (last != 0) {
         audiodev::Buffer *p = acq(g, g->soundAsset42de6());
-        g->foeSlot(idx)->setSoundCb(p);
+        g->world()->foeSlot(idx)->setSoundCb(p);
         last = (unsigned int)(uintptr_t)p;
     }
     return (last & 0xffffff00u) | 1u;

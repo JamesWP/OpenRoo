@@ -100,8 +100,8 @@ private:
     BridgeObject &operator=(const BridgeObject &) = delete;
 
     double              now_;         // latched from *clock_
-    double             *clock_;       // Game::clock()
-    TickStep        *tickStep_;       // Game::tickStep()
+    double             *clock_;       // World::clock()
+    TickStep        *tickStep_;       // World::tickStep()
     unsigned char       field_14;
     TickStep         tickStepCopy_;   // copied from *tickStep_
     unsigned char       field_1d[8];
@@ -111,7 +111,7 @@ private:
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;
-    LevelMap               *map_;    // Game::map()
+    LevelMap               *map_;    // World::map()
     unsigned char       guard_;       // the far end; read signed by the tick
     float               restU_;       // the anchor, where the deck
     float               restY_;       // starts

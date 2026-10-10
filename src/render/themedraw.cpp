@@ -60,8 +60,8 @@ Theme_DrawParticleObjects(Game *g, void * , const float (*pos)[3],
                           double t, double dt, uint32_t system)
 {
     RenderDevice *dev = d3d;
-    const Player *player = g->player();
-    LevelMap *map = g->map();
+    const Player *player = g->world()->player();
+    LevelMap *map = g->world()->map();
 
     for (uint32_t r = 0; r < slot->instanceCount(); r++) {
         ThemeLevelObject *rec = &slot->records()[r];

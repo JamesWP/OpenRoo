@@ -51,8 +51,8 @@ static int fx_double(void)
 Score_CalculateLevelScore(Game *self, char endReason)
 {
     // Crystals and surplus.
-    const int collected = self->player()->gemsCollected();
-    const int quota     = self->gemsRequired();
+    const int collected = self->world()->player()->gemsCollected();
+    const int quota     = self->world()->gemsRequired();
 
     ScoreTally *t = self->tally();
 
@@ -75,8 +75,8 @@ Score_CalculateLevelScore(Game *self, char endReason)
 
     // Time, only when the level ended at the exit.
     if (endReason == 3) {
-        const unsigned q = self->timeElapsed() / 1000u;
-        const unsigned limit = (unsigned)self->timeLimit();
+        const unsigned q = self->world()->timeElapsed() / 1000u;
+        const unsigned limit = (unsigned)self->world()->timeLimit();
         // PRESERVED: the ((-q) << 31) term is shifted away by the * 2.
         const unsigned acc = ((0u - q) << 31) - q + limit;
         t->score[TALLY_TIME] = (int)(acc * 2u);
@@ -88,7 +88,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
 
     // All items.
     const unsigned short itemTotal = self->itemTotal();
-    if (itemTotal > self->player()->itemsCollected() || self->restartCount() != 0) {
+    if (itemTotal > self->world()->player()->itemsCollected() || self->restartCount() != 0) {
         t->score[TALLY_ALLITEMS] = 0;
         t->count[TALLY_ALLITEMS] = 0;
     } else {
@@ -113,7 +113,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
                     + t->score[TALLY_SURPLUS]  + t->score[TALLY_VITALITY]
                     + t->score[TALLY_TIME]     + t->score[TALLY_GEMS];
 
-    const int running = self->player()->score();
+    const int running = self->world()->player()->score();
     t->levelTotal = total;
     t->grandTotal = total + running;
 
@@ -126,10 +126,10 @@ Score_CalculateLevelScore(Game *self, char endReason)
 
     t->shownBase       = running;
     t->shownGrandTotal = running;
-    self->player()->setScore(total + running);
+    self->world()->player()->setScore(total + running);
 
     // Hand the tally animation stage 0 and its start time.
     t->stage      = 0;
-    t->stageStart = (int)*self->clock();
+    t->stageStart = (int)*self->world()->clock();
     self->setTallyDone(1);
 }

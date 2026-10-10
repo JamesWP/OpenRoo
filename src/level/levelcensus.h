@@ -71,7 +71,7 @@ struct LevelCensus {
 
     // total is the level's collectable-item count: grant09Items + speedUps +
     // shadow1 + transforms + paragliders + shadow7 + freezeItems + extraLives
-    // + timeBonuses + the Game's crystal count.  It counts CONTENTS_TRANSFORM,
+    // + timeBonuses + the World's crystal count.  It counts CONTENTS_TRANSFORM,
     // which a pickup test that ignores transforms would not.  It is not
     // Game::itemTotal().
 

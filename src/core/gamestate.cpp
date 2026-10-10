@@ -76,12 +76,12 @@ bool GameState::read()
     const Game *g = Game::instance();
     if (!g) return false;
 
-    const Player *pl = g->player();
+    const Player *pl = g->world()->player();
     gems_collected = pl->gemsCollected();
-    gems_required  = g->gemsRequired();
+    gems_required  = g->world()->gemsRequired();
     foes_killed    = g->foesKilled();
-    time_limit_s   = g->timeLimit();
-    elapsed_ms     = g->timeElapsed();
+    time_limit_s   = g->world()->timeLimit();
+    elapsed_ms     = g->world()->timeElapsed();
     lives          = (uint8_t)pl->lives();
     bombs          = pl->bombsCarried();
     total_score    = pl->score();
@@ -129,7 +129,7 @@ static const size_t MAX_EVENTS = 512;
 static std::string current_level(void)
 {
     const Game *g = Game::instance();
-    return g && g->levelName() ? g->levelName() : "";
+    return g && g->world()->levelName() ? g->world()->levelName() : "";
 }
 
 static void record_event(const char *kind, uint32_t frame, const GameState &s,

@@ -31,7 +31,7 @@ static int s_fx = -1;
 /* The clock truncated to whole milliseconds, low word. */
 static unsigned int ftol_low(Game *game)
 {
-    double d = *game->clock();
+    double d = *game->world()->clock();
     return (unsigned int)(long long)d;
 }
 

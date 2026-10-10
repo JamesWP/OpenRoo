@@ -51,8 +51,8 @@ private:
     void vacate();
 
     double              now_;           // latched from *clock_
-    double             *clock_;         // Game::clock()
-    TickStep        *tickStep_;         // Game::tickStep()
+    double             *clock_;         // World::clock()
+    TickStep        *tickStep_;         // World::tickStep()
     unsigned char       field_14;
     TickStep         tickStepCopy_;     // copied from *tickStep_
     unsigned char       field_1d[8];
@@ -72,7 +72,7 @@ private:
     unsigned char       limit_;       // the track's last cell
     unsigned char       trackStart_;  // the track's first cell
     unsigned char       tileHeight_;  // stamped into the tile
-    LevelMap               *map_;    // Game::map()
+    LevelMap               *map_;    // World::map()
     signed char         kind_;        // 0x0a: along U; else V
     int                 atLimit_;     // 1: parked at the limit
     signed char         state_;       // 0 parked, 1 advancing, 2 retreating

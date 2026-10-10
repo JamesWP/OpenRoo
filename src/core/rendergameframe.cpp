@@ -288,7 +288,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
         const float *pos = pl->bombables().pos()[i];
         const float *rot = pl->bombables().rot()[i];
         const int v = (unsigned char)(int)(pos[2] * -1.0f);
-        Tile *t = g->map()->tile((unsigned char)(int)pos[0], v);
+        Tile *t = g->world()->map()->tile((unsigned char)(int)pos[0], v);
         if (t->field203() == 0) {
             rso(pos, rot, 1, THEME_OBJ_OBSTACLE, now);
             continue;
@@ -314,7 +314,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
     CameraFocus *focus = &g_cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
     rso(&focus->f[2], playerRot, 1, THEME_OBJ_JOHN, now, focus->f[0],
-        g->player()->anim(), 0);
+        g->world()->player()->anim(), 0);
 
     rso_list(pl->slides(), THEME_OBJ_SLIDE, now);
     rso(pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now);
@@ -322,7 +322,7 @@ static void opaque_passes(Game *g, double now, double elapsed)
     /* The items, cell by cell. */
     {
         PROF_SCOPE("items");
-        LevelMap *map = g->map();
+        LevelMap *map = g->world()->map();
         for (unsigned v = 0; v < map->extentV(); ++v)
             for (unsigned u = 0; u < map->extentU(); ++u) {
                 Tile *t = map->tile(u, v);
@@ -337,10 +337,10 @@ static void opaque_passes(Game *g, double now, double elapsed)
     }
 
     /* The bombs: whole, or the explosion once it has started dying. */
-    if (g->bombCount() != 0) {
+    if (g->world()->bombCount() != 0) {
         PROF_SCOPE("bombs");
-        for (unsigned char i = 0; i < g->bombCount(); ++i) {
-            Bomb *b = g->bombSlot(g->bombId(i));
+        for (unsigned char i = 0; i < g->world()->bombCount(); ++i) {
+            Bomb *b = g->world()->bombSlot(g->world()->bombId(i));
             float pos[3] = { b->posU(), b->posY(), -b->posV() };
             float rot[3] = { 0.0f, 0.0f, 0.0f };
             PROF_SCOPE(OBJECT_NAMES[b->dyingStarted() == 0 ? THEME_OBJ_BOMB : THEME_OBJ_EXPLOSION]);
@@ -354,10 +354,10 @@ static void opaque_passes(Game *g, double now, double elapsed)
     }
 
     /* The foes, from the poses FramePose_Foes wrote. */
-    if (g->foeCount() != 0) {
+    if (g->world()->foeCount() != 0) {
         PROF_SCOPE("foes");
-        for (unsigned char i = 0; i < g->foeCount(); ++i) {
-            Foe *f = g->foeSlot(g->foeId(i));
+        for (unsigned char i = 0; i < g->world()->foeCount(); ++i) {
+            Foe *f = g->world()->foeSlot(g->world()->foeId(i));
             FoePose *p = &g_foePoses[i];
             const bool dying = f->dyingStarted() != 0;
             ThemeObjectType ty;
@@ -391,12 +391,12 @@ static void effects_and_shadows(Game *g, double now, double dt)
     memcpy(dtBits, &dt, sizeof dt);
     Scene_DrawSceneObjects(d3d, g->camera()->pose()->eye(), dtBits[0], dtBits[1], now);
     set_stencil_enable(false);
-    BridgeSurf_Draw({g->bridgeSlots(), g->bridgeCount(), g->videoHighlights() != 0},
+    BridgeSurf_Draw({g->world()->bridgeSlots(), g->world()->bridgeCount(), g->videoHighlights() != 0},
                     &g_themeBlock, d3d, now);
 
     CameraFocus *focus = &g_cameraFocus;
     float playerRot[3] = { 0.0f, focus->f[1], 0.0f };
-    Player *pl = g->player();
+    Player *pl = g->world()->player();
     if (pl->effectDActive() != 0 && pl->anim() != 10)
         rso(&focus->f[2], playerRot, 1, THEME_OBJ_PROTECTIONFX, now);
     if (pl->anim() == 5)
@@ -419,8 +419,8 @@ static void effects_and_shadows(Game *g, double now, double dt)
             if (pl->anim() != 10)
                 shadow(&focus->f[2], playerRot, THEME_OBJ_JOHN, now, focus->f[0], pl->anim());
 
-            for (unsigned char i = 0; i < g->foeCount(); ++i) {
-                Foe *f = g->foeSlot(g->foeId(i));
+            for (unsigned char i = 0; i < g->world()->foeCount(); ++i) {
+                Foe *f = g->world()->foeSlot(g->world()->foeId(i));
                 FoePose *p = &g_foePoses[i];
                 ThemeObjectType ty;
                 if (f->dyingStarted() != 0 || !foe_slot(p->kind(), false, &ty))
@@ -430,7 +430,7 @@ static void effects_and_shadows(Game *g, double now, double dt)
 
             /* Setting 2 and up also shadows the items. */
             if (g->videoShadows() > 1) {
-                LevelMap *map = g->map();
+                LevelMap *map = g->world()->map();
                 for (unsigned v = 0; v < map->extentV(); ++v)
                     for (unsigned u = 0; u < map->extentU(); ++u) {
                         Tile *t = map->tile(u, v);
@@ -566,8 +566,8 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
         particles(pl->exitPos(), pl->exitRot(), 1, THEME_OBJ_EXIT, now, elapsed);
         particles_list(pl->slides(),        THEME_OBJ_SLIDE,         now, elapsed);
 
-        for (unsigned char i = 0; i < g->foeCount(); ++i) {
-            Foe *f = g->foeSlot(g->foeId(i));
+        for (unsigned char i = 0; i < g->world()->foeCount(); ++i) {
+            Foe *f = g->world()->foeSlot(g->world()->foeId(i));
             FoePose *p = &g_foePoses[i];
             ThemeObjectType ty;
             if (foe_slot(p->kind(), f->dyingStarted() != 0, &ty))
@@ -576,19 +576,19 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
         /* Bombs: the fuse's effects, then the explosion's 2 s after the drop.
          */
-        for (unsigned char i = 0; i < g->bombCount(); ++i) {
-            Bomb *b = g->bombSlot(g->bombId(i));
+        for (unsigned char i = 0; i < g->world()->bombCount(); ++i) {
+            Bomb *b = g->world()->bombSlot(g->world()->bombId(i));
             float pos[3] = { b->posU(), b->posY(), -b->posV() };
             float rot[3] = { 0.0f, 0.0f, 0.0f };
-            const bool late = *g->clock() - b->droppedAt() > 2000.0;
+            const bool late = *g->world()->clock() - b->droppedAt() > 2000.0;
             particles(pos, rot, 1, late ? THEME_OBJ_EXPLOSION : THEME_OBJ_BOMB, now, elapsed);
         }
 
         /* A falling tile that fell this tick spawns a destruct-field burst on
          * its cell (the height and -V from the falling tile's own cell). */
         ThemeLevelObject *field = burst_record(THEME_OBJ_DESTRUCTFIELDFX);
-        for (unsigned char i = 0; i < g->fallingCount(); ++i) {
-            FallingTile *bt = g->fallingSlot(i);
+        for (unsigned char i = 0; i < g->world()->fallingCount(); ++i) {
+            FallingTile *bt = g->world()->fallingSlot(i);
             if (bt->justFell() != 0 && field != NULL)
                 spawn_burst(field, (float)bt->cellU(), (float)bt->heightCell(),
                             (float)-bt->cellV());
@@ -602,12 +602,12 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
     /* Setting 2 and up: pickups and the speed trail. */
     if (g->videoParticles() > 1) {
-        Player *pl = g->player();
+        Player *pl = g->world()->player();
         ThemeLevelObject *crystal = burst_record(THEME_OBJ_CRYSTALFX);
         if (pl->pickedUp() == 1 && crystal != NULL)
             spawn_burst(crystal, focus->f[2], focus->f[3], focus->f[4]);
-        for (unsigned char i = 0; i < g->foeCount(); ++i) {
-            Foe *f = g->foeSlot(g->foeId(i));
+        for (unsigned char i = 0; i < g->world()->foeCount(); ++i) {
+            Foe *f = g->world()->foeSlot(g->world()->foeId(i));
             if (f->pickedUp() == 1 && crystal != NULL) {
                 const float *p = g_foePoses[i].pos();
                 spawn_burst(crystal, p[0], p[1], p[2]);
@@ -687,7 +687,7 @@ static void translucent_passes(Game *g, double now, double elapsed, double dt)
 
     Scene_DrawParticleSystems(g_renderDevice, g->camera()->pose()->eye(), dt, now);
 
-    Player *player = g->player();
+    Player *player = g->world()->player();
     if (player->effectDActive() != 0 && player->anim() != 10)
         particles(&focus->f[2], playerRot, 1, THEME_OBJ_PROTECTIONFX, now, elapsed);
     if (player->anim() == 5)
@@ -746,7 +746,7 @@ static void hud_text(TextRenderer *font, int align, float x, float y, float cw, 
 static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hudH)
 {
     RenderDevice *dev = g_renderDevice;
-    Player *pl = g->player();
+    Player *pl = g->world()->player();
 
     /* The two corner panels, mirrored halves of the HUD image. */
     if (g_themeBlock.image(THEME_IMG_HUD) != NULL) {
@@ -836,7 +836,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
 
     /* A blip for every foe within 13 cells, turned into the camera's frame
      * (RotY(-yaw)) and scaled by 4; drawn untextured. */
-    for (unsigned char i = 0; i < g->foeCount(); ++i) {
+    for (unsigned char i = 0; i < g->world()->foeCount(); ++i) {
         const float *fp = g_foePoses[i].pos();
         Vec3 a = { fp[0], 0.0f, fp[2] }, d;
         Math_Vec3Sub(&d, &a, &me);
@@ -860,7 +860,7 @@ static void draw_hud(Game *g, unsigned w, unsigned h, float W, float H, float hu
 
     /* The timer: minutes, seconds and tenths of what is left (or of the
      * limit, outside play); red under ten seconds. */
-    LevelMap *map = g->map();
+    LevelMap *map = g->world()->map();
     const unsigned ms = g->state() == 1
         ? (unsigned)map->timeLimit() * 1000u - map->timeElapsed()
         : (unsigned)map->timeLimit() * 1000u;
@@ -918,11 +918,11 @@ static void draw_messages(Game *g, float W, float H, float pad)
     const ThemeTextColorPair &hc = g_themeBlock.textColor(THEME_COLOR_HUD);
     const float cw = W * 0.025f, ch = H * 0.033333335f;
     ScriptPlayer *sp = g->scriptPlayer();
-    Player *pl = g->player();
+    Player *pl = g->world()->player();
 
     if (sp->running() != 0) {
         hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 3.0f, cw, ch, 0.75f,
-                 g->map()->title(), 0, hc.color1, hc.color2);
+                 g->world()->map()->title(), 0, hc.color1, hc.color2);
         if (sp->caption()[0] != '\0')
             g_fontMain.drawPanel(pad, H - pad, cw, ch, 0.75f, H * 0.03750938f,
                                sp->caption(), g_renderDevice, hc.color1, hc.color2,
@@ -932,7 +932,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
     if ((g->state() == 4 && sp->running() == 0) || (g->state() == 1 && pl->moveState() != 0))
         hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 232.0f, cw, ch, 0.75f,
                  "...press Enter", 0, hc.color1, hc.color2);
-    if (g->state() == 4 && g->map()->bonus() != 0)
+    if (g->state() == 4 && g->world()->map()->bonus() != 0)
         hud_text(&g_fontMain, 0, W * 0.5f, W * 0.0015625f * 200.0f, cw, ch, 0.75f,
                  "BONUSLEVEL", 0, hc.color1, hc.color2);
 
@@ -961,7 +961,7 @@ static void draw_messages(Game *g, float W, float H, float pad)
         }
         if (icon && g_themeBlock.image(img) != NULL) {
             g_renderDevice->SetTexture(0, image(img));
-            sprintf(buf, "%.1f", span - (*g->clock() - start) * 0.001);
+            sprintf(buf, "%.1f", span - (*g->world()->clock() - start) * 0.001);
         }
         ScreenVertex q[4] = {
             tl(xText, y - ch, 0x00ffffff, 1.0f, 0.0f),

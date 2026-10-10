@@ -14,7 +14,7 @@ struct EntityContext {
     LevelMap     *map;
     SoundLibrary *sound;
     /* The switch cells and the highest switch slot in use (a view of the
-     * Game's, so it follows the level being built). */
+     * World's, so it follows the level being built). */
     SwitchCells         *switches;
     const unsigned char *switchMax;
     /* The level's name (diagnostics) and the count of foes that drop a
