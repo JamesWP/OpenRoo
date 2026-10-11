@@ -17,7 +17,9 @@ to the group that owns the header.  Errors:
   - an include of a group the including group does not link;
   - a group whose headers include a group it links PRIVATE;
   - a group linked PUBLIC that only its .cpp files include;
-  - a group linked that nothing includes.
+  - a group linked that nothing includes;
+  - a quoted #include of a header no group has, unless it is one of the
+    dependencies' or generated headers in EXTERNAL.
 Names in target_link_libraries that are not groups (imgui, sdl3, ...) are
 ignored.  Exits 1 if there are any errors.
 
@@ -26,6 +28,13 @@ ignored.  Exits 1 if there are any errors.
 import os
 import re
 import sys
+
+# Quoted includes that are not the groups' own: the fetched dependencies'
+# headers, and the ones the build generates (src/windev/CMakeLists.txt).
+EXTERNAL = {
+    'imgui.h', 'imgui_internal.h', 'imgui_impl_sdl3.h',
+    'buildinfo.h', 'launcher_layout.h',
+}
 
 INCLUDE = re.compile(r'\s*#\s*include\s+"([^"]+)"')
 LINK = re.compile(r'target_link_libraries\(\s*(\w+)\s+(.*?)\)', re.S)
@@ -77,6 +86,7 @@ def scan(src):
             if f.endswith('.h'):
                 owner[f] = g
     edges = []  # (file, group, header, owning group, is a header file)
+    missing = []  # (file, header): a quoted include no group has
     for g in groups:
         for f in sorted(os.listdir(os.path.join(src, g))):
             if not f.endswith(('.cpp', '.h')):
@@ -87,17 +97,19 @@ def scan(src):
                     if not m:
                         continue
                     h = os.path.basename(m.group(1))
+                    if h not in owner and h not in EXTERNAL:
+                        missing.append((g + '/' + f, m.group(1)))
                     if h in owner and owner[h] != g:
                         edges.append((g + '/' + f, g, owner[h] + '/' + h, owner[h],
                                       f.endswith('.h')))
-    return groups, edges
+    return groups, edges, missing
 
 
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else '.'
     src = os.path.join(root, 'src')
     rank = load_layers(os.path.join(src, 'layers.yaml'))
-    groups, edges = scan(src)
+    groups, edges, missing = scan(src)
     links = load_links(src, groups)
 
     errors = []
@@ -114,6 +126,9 @@ def main():
             if g in rank and d in rank and rank[d] >= rank[g]:
                 errors.append('src/%s/CMakeLists.txt: %s links %s, which sits on the same '
                               'or a higher layer (src/layers.yaml)' % (g, g, d))
+
+    for f, h in missing:
+        errors.append('src/%s includes "%s", which no group has' % (f, h))
 
     # The includes: each must be linked, with the right visibility.
     header_deps = {g: set() for g in groups}
