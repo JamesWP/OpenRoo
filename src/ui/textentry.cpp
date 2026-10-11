@@ -27,7 +27,7 @@ static int s_fx = -1;
 static int blink_positive(unsigned int phase)
 {
     static const float k = 0.0099999998f;
-    return sinl((long double)phase * (long double)k) > 0.0L;
+    return sin((double)phase * (double)k) > 0.0;
 }
 
 void TextEntry::poll(unsigned int phase)

@@ -12,7 +12,6 @@
  * the other order.  Both change the tile map, so the order is observable. */
 
 #include "gametick.h"
-#include "crtmath.h"
 #include "keycodes.h"
 #include <math.h>
 #include <stdint.h>
@@ -40,8 +39,8 @@ static float camera_sway(double now, float base)
 {
     static const float  k1 = 0.0024999999441206455f;  // 0.0025 as a float
     static const double k2 = 0.20000000298023224;     // 0.2 as a float, widened
-    long double s = sinl((long double)now * (long double)k1);
-    return (float)(s * (long double)k2 + (long double)base);
+    double s = sin((double)now * (double)k1);
+    return (float)(s * (double)k2 + (double)base);
 }
 
 /* The completion percentage: a / (b * 0.001f) * 25, truncated to a byte.
@@ -50,9 +49,9 @@ static float camera_sway(double now, float base)
 static unsigned char completion_percent(unsigned int a, unsigned int b)
 {
     static const float k001 = 0.0010000000474974513f;
-    long double r = (long double)a / ((long double)b * (long double)k001)
-                    * 25.0L;
-    if (!(r > -9.2e18L && r < 9.2e18L))
+    double r = (double)a / ((double)b * (double)k001)
+                    * 25.0;
+    if (!(r > -9.2e18 && r < 9.2e18))
         return 0;
     return (unsigned char)(long long)r;
 }
@@ -65,7 +64,7 @@ static void advance_clock(Game *self, double dt, double now)
         self->world()->tickStep()->value = 0.0;  // +0.0
     } else {
         self->world()->tickStep()->value = dt;
-        (*self->world()->clock()) = (double)((long double)dt + (long double)(*self->world()->clock()));
+        (*self->world()->clock()) = (double)((double)dt + (double)(*self->world()->clock()));
     }
 }
 
@@ -129,7 +128,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
         Flow_AnimateScoreTallyStages(self);
     }
     if (self->state() == GameState::NameEntry)
-        self->frontEnd()->nameEntry()->poll((unsigned int)ftol80((*self->world()->clock())));
+        self->frontEnd()->nameEntry()->poll((unsigned int)(long long)((*self->world()->clock())));
 
     tick_level_objects(self);
 
@@ -162,16 +161,16 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
         self->camera()->setMode(2);
     } else if (self->state() == GameState::Playing) {
         self->world()->setTimeElapsed(self->world()->timeElapsed()
-            + (unsigned int)ftol80(self->world()->tickStep()->value));
+            + (unsigned int)(long long)(self->world()->tickStep()->value));
         self->session()->setPlayingTime(self->session()->playingTime()
-            + (unsigned int)ftol80(self->world()->tickStep()->value));
+            + (unsigned int)(long long)(self->world()->tickStep()->value));
     }
 
     if ((unsigned int)pl->gliding() != 0) {
         self->camera()->setMode(0);
     } else if ((unsigned int)pl->falling() != 0) {
-        long double d = (long double)(int)pl->fallStartH() - (long double)(int)pl->heightCell();
-        if (d > 2.0L) {
+        double d = (double)(int)pl->fallStartH() - (double)(int)pl->heightCell();
+        if (d > 2.0) {
             self->camera()->setMode(1);
             self->camera()->setFocus(0, pl->posU());
             self->camera()->setFocus(2, pl->posV());

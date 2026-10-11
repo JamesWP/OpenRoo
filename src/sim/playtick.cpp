@@ -14,7 +14,6 @@
  */
 
 #include "playtick.h"
-#include "crtmath.h"
 #include "logger.h"
 #include "game.h"
 #include "prof.h"
@@ -57,8 +56,8 @@ void Play_SpawnTimedFoes(Game *self)
     // The timed foe spawners (levelcensus.h).
     for (int i = 0; i < (int)self->world()->census()->timed; ++i) {
         TimedSpawner *E = self->world()->timedSpawner((unsigned)i);
-        long double since = (long double)(*self->world()->clock()) - (long double)E->lastSpawn;
-        if (!(since > (long double)E->interval))
+        double since = (double)(*self->world()->clock()) - (double)E->lastSpawn;
+        if (!(since > (double)E->interval))
             continue;
         signed char u = (signed char)E->u, v = (signed char)E->v;
         if (self->world()->map()->tile(u, v)->occupant() == 0 &&self->world()->foeCount() < E->maxFoes) {
@@ -86,8 +85,8 @@ void Play_DropPlayerBomb(Game *self)
         unsigned int timed = (unsigned int)pl->moveDir();
         int spawn = 1, offset = 0;
         if (timed != 0) {
-            long double since = (long double)(*self->world()->clock()) - (long double)pl->animStart();
-            if (since < 50.0L)
+            double since = (double)(*self->world()->clock()) - (double)pl->animStart();
+            if (since < 50.0)
                 offset = 1;
             else
                 spawn = 0;  // too soon: the flag stays set
@@ -212,7 +211,7 @@ void Play_CheckLevelEnd(Game *self)
     }
     if (pl->gemsCollected() >= self->world()->gemsRequired()) {
         if (self->gemsGoalReached() == 0 && self->state() != GameState::LevelComplete) {
-            int r = (int)ftol80((*self->world()->clock()));
+            int r = (int)(long long)((*self->world()->clock()));
             void *snd = self->audio()->fixedSounds()->crystalBank[r % 3];
             if (snd != NULL)
                 ((audiodev::Buffer *)snd)->play(false);
@@ -241,8 +240,8 @@ void Play_CheckLevelEnd(Game *self)
                     Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
                     self->session()->setRestartCount(0);
                 }
-                self->session()->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
-                                        (long double)self->session()->totalPlayTime()));
+                self->session()->setTotalPlayTime((double)((double)(unsigned long long)self->world()->timeElapsed() +
+                                        (double)self->session()->totalPlayTime()));
             }
         }
     }

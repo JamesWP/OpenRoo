@@ -1,6 +1,6 @@
 /* The tile queries.  Each object list is a switch's cells (switchcells.h)
  * paired with the bridge that switch arms.  Distances are
- * (byte)trunc(sqrtl(sum of integer squares)): the squares are integers and the
+ * (byte)trunc(sqrt(sum of integer squares)): the squares are integers and the
  * square root is truncated without rounding through double first, which would
  * turn a one-ulp difference into a whole unit at a perfect square.
  *
@@ -88,7 +88,7 @@ static void fx_init(void)
 /* The tile tables are the map's; reached through World::map(). */
 
 /* Truncation toward zero; only the low byte is kept. */
-static inline unsigned char ftol_b(long double v)
+static inline unsigned char ftol_b(double v)
 {
     return (unsigned char)(long long)v;
 }
@@ -96,7 +96,7 @@ static inline unsigned char ftol_b(long double v)
 /* The distance both nearest searches compute, at extended precision. */
 static inline unsigned char tile_distance(int da, int db)
 {
-    return ftol_b(sqrtl((long double)(int)(da * da + db * db)));
+    return ftol_b(sqrt((double)(int)(da * da + db * db)));
 }
 
 /* Diagnostics. */
@@ -373,18 +373,18 @@ Sim_FindFarthestOccupiedTile(LevelMap *map, unsigned char *pu,
 
                     if (t->objectMarker() != TILE_EMPTY && t->occupant() == 0) {
                         // PRESERVED: compared at full extended precision...
-                        long double d = sqrtl((long double)(int)(
+                        double d = sqrt((double)(int)(
                             ((int)(signed char)v - (int)v0) *
                             ((int)(signed char)v - (int)v0) +
                             (ui - (int)u0) * (ui - (int)u0)));
 
-                        if ((long double)best < d) {
+                        if ((double)best < d) {
                             bestV = v;
                             bestU = u;
                             // ...and only then rounded to double on store.
                             best  = (double)d;
                         }
-                        if (!haveNear || d < (long double)near_) {
+                        if (!haveNear || d < (double)near_) {
                             haveNear = 1;
                             near_    = (double)d;
                             nearV    = v;

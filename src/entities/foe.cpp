@@ -773,8 +773,8 @@ void Foe::dropBomb(const EntityContext &ctx, BombTable &bombs,
         return;
     int spawn = 1, offset = 0;
     if (moveDir_ != 0) {
-        long double since = (long double)*ctx.clock - (long double)animStart_;
-        if (since < 50.0L)
+        double since = (double)*ctx.clock - (double)animStart_;
+        if (since < 50.0)
             offset = 1;
         else
             spawn = 0;
@@ -797,13 +797,13 @@ void Foe::checkPlayerContact(unsigned char *playerMoveState,
 {
     if (*playerMoveState == 0) {
         if (kind_ != 3 && moveState_ == 0) {
-            long double dx = (long double)posU_ - (long double)playerU;
-            long double dy = (long double)posY_ - (long double)playerY;
-            long double dz = (long double)posV_ - (long double)playerV;
-            long double s = dz * dz + dy * dy;
+            double dx = (double)posU_ - (double)playerU;
+            double dy = (double)posY_ - (double)playerY;
+            double dz = (double)posV_ - (double)playerV;
+            double s = dz * dz + dy * dy;
             s = s + dx * dx;
-            long double dist = sqrtl(s);
-            if (dist < 0.5L)
+            double dist = sqrt(s);
+            if (dist < 0.5)
                 *playerMoveState = 1;
         }
     } else if (moveDir_ == 0) {
@@ -821,7 +821,7 @@ bool Foe::finishDespawn(LevelMap *map)
         home->setContents(0);
     if (removeRequested_ == 0)
         return false;
-    if ((long double)posY_ > 0.0L)
+    if ((double)posY_ > 0.0)
         tile(cellU_, cellV_)->setContents(dropContents_);
     return true;
 }
