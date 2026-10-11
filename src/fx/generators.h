@@ -1,6 +1,6 @@
 /* Particle generators and environments: the emitters that fill a particle
  * system's ring with new particles, and the fields that age and retire them
- * once they are in it.  A Generator subclass overrides tick/save/load/copyFrom;
+ * once they are in it.  A Generator subclass overrides tick/load/copyFrom;
  * an Environment subclass overrides the same four for ageing, fading and
  * killing particles already in the ring. */
 
@@ -9,13 +9,12 @@
 #include <vector>
 #include <stdint.h>
 #include <istream>
-#include <ostream>
 #include <stddef.h>
 #include "particles.h"
  
 #include "explodedebris.h"
 
-/* Base of every emitter.  pName identifies the concrete class for Save/Load
+/* Base of every emitter.  pName identifies the concrete class for Load
  * and for copyFrom's type check, and dwEnabled gates whether tick runs at all.
  * pRing is the particle system's ring buffer, shared with the paired
  * Environment. */
@@ -34,7 +33,6 @@ public:
     virtual int copyFrom(const Generator *src);
     /* Emits into the ring. */
     virtual void tick(float dt) { (void)dt; }
-    virtual int save(std::ostream &out) { (void)out; return 1; }
     virtual int load(std::istream &in) { (void)in; return 1; }
     virtual void setPosition(float x, float y, float z)  { (void)x; (void)y; (void)z; }
     virtual void setVelocity(float x, float y, float z, float mag)
@@ -71,7 +69,6 @@ public:
     /* The base copyFrom only gates on type name. */
     virtual int copyFrom(const Environment *src) { return envSameName(src); }
     virtual void tick(float dt) { (void)dt; }
-    virtual int save(std::ostream &out) { (void)out; return 1; }
     virtual int load(std::istream &in) { (void)in; return 1; }
 
     /* Refuses (and leaves pRing alone) a NULL ring. */
@@ -94,7 +91,6 @@ public:
 
     int copyFrom(const Environment *src) override;
     void tick(float dt) override;
-    int save(std::ostream &out) override;
     int load(std::istream &in) override;
 
 private:
@@ -127,7 +123,6 @@ public:
 
     int copyFrom(const Environment *src) override;
     void tick(float dt) override;
-    int save(std::ostream &out) override;
     int load(std::istream &in) override;
 
 private:
@@ -157,13 +152,11 @@ public:
 
     int copyFrom(const Generator *src) override;
     void tick(float dt) override;
-    int save(std::ostream &out) override;
     int load(std::istream &in) override;
 
 protected:
     void stdEmit(float dt, const float *pos_off, const float *vel_off);
     void stdCloneTypeTable(const uint32_t *src, uint32_t count);
-    int stdSaveTypeTable(std::ostream &out);
     int stdLoadTypeTable(std::istream &in);
     void stdInterleavePos(const float *x, const float *y, const float *z);
     void stdBuildSphere(const float *mn, const float *mx);
@@ -210,7 +203,6 @@ public:
 
     int copyFrom(const Generator *src) override;
     void tick(float dt) override;
-    int save(std::ostream &out) override;
     int load(std::istream &in) override;
     void setPosition(float x, float y, float z) override;
     void setVelocity(float x, float y, float z, float mag) override;
@@ -236,7 +228,6 @@ public:
 
     int copyFrom(const Generator *src) override;
     void tick(float dt) override;
-    int save(std::ostream &out) override;
     int load(std::istream &in) override;
     void setPosition(float x, float y, float z) override;
     void setDirection(float x, float y, float z) override;

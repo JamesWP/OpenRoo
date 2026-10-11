@@ -1,4 +1,4 @@
-/* Every Generator and Environment virtual — Tick/emit, Save, Load, CopyFrom,
+/* Every Generator and Environment virtual — Tick/emit, Load, CopyFrom,
  * the dtors and constructors, and the ring helpers the two environment ticks
  * share.
  *
@@ -17,7 +17,6 @@
 #include "gametime.h"
 #include "crtrand.h"
 #include <new>
-#include "factory.h"
 #include "logger.h"
 #include <math.h>
 #include <stdlib.h>
@@ -661,38 +660,6 @@ int MagnetEnvironment::load(std::istream &in)
     return true;
 }
 
-/* One write of `size` bytes. */
-static bool write1(const void *src, unsigned size, std::ostream &out)
-{
-    return writeBytes(out, src, size);
-}
-
-/* Field-for-field mirror of Load, in the same order. */
-int GravityEnvironment::save(std::ostream &out)
-{
-    if (!write1(flDirection_, 12, out))      return false;
-    if (!write1(&flMagnitude_, 4, out))      return false;
-    if (!write1(&dwTargetARGB_, 4, out))     return false;
-    if (!write1(&flFadeRate_, 4, out))       return false;
-    if (!write1(&dwFadeThreshold_, 4, out))  return false;
-    if (!write1(&dwClipEnable_[0], 4, out))  return false;
-    if (!write1(&dwClipEnable_[1], 4, out))  return false;
-    if (!write1(&dwClipEnable_[2], 4, out))  return false;
-    if (!write1(flClipMax_, 12, out))        return false;
-    return write1(flClipMin_, 12, out);
-}
-
-/* Calls the base Environment::Save (a no-op) first, then mirrors Load.
- * PRESERVED: dwTargetRGB is not written either, matching Load. */
-int MagnetEnvironment::save(std::ostream &out)
-{
-    if (!write1(flForce_, 12, out))          return false;
-    if (!write1(flCentre_, 12, out))         return false;
-    if (!write1(&flRange_, 4, out))          return false;
-    if (!write1(&flFadeRate_, 4, out))       return false;
-    return write1(&dwFadeThreshold_, 4, out);
-}
-
 /* The base Environment::CopyFrom only gates on type name; it copies nothing
  * itself. */
 int Environment::envSameName(const Environment *src) const
@@ -934,14 +901,6 @@ void StdGenerator::stdCloneTypeTable(const uint32_t *src, uint32_t count)
                      src, count);
 }
 
-/* FORMAT: count (uint32_t), then that many (colour, weight) uint32_t pairs. */
-static int type_table_save(const std::vector<uint32_t> &table, const uint32_t *pcount, std::ostream &out)
-{
-    if (!write1(pcount, 4, out))
-        return false;
-    return writeBytes(out, table.data(), (size_t)*pcount * 8);
-}
-
 static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint32_t *emit_prob, std::istream &in)
 {
     uint32_t count;
@@ -952,11 +911,6 @@ static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint
         return false;
     type_table_clone(ptable, pcount, emit_prob, pairs.data(), count);
     return true;
-}
-
-int StdGenerator::stdSaveTypeTable(std::ostream &out)
-{
-    return type_table_save(typeTable_, &dwTypeTableCount_, out);
 }
 
 int StdGenerator::stdLoadTypeTable(std::istream &in)
@@ -1068,23 +1022,6 @@ int StdGenerator::copyFrom(const Generator *gsrc)
     return true;
 }
 
-int StdGenerator::save(std::ostream &out)
-{
-    if (!write1(&dwEmitMode_, 4, out))     return false;
-    if (!write1(flBoxMax_, 12, out))       return false;
-    if (!write1(flBoxMin_, 12, out))       return false;
-    if (!write1(flSphMin_, 12, out))       return false;
-    if (!write1(flSphMax_, 12, out))       return false;
-    if (!write1(flVelMin_, 12, out))       return false;
-    if (!write1(flVelMax_, 12, out))       return false;
-    if (!write1(&flLifeMin_, 4, out))      return false;
-    if (!write1(&flLifeMax_, 4, out))      return false;
-    if (!write1(&flEmitRateMin_, 4, out))  return false;
-    if (!write1(&flEmitRateMax_, 4, out))  return false;
-    if (!write1(&flDtScale_, 4, out))      return false;
-    return stdSaveTypeTable(out);
-}
-
 /* Builds the sphere or box position table (whichever dwEmitMode selects), then
  * always rebuilds the velocity and rate tables. */
 int StdGenerator::load(std::istream &in)
@@ -1122,13 +1059,6 @@ int XStdGenerator::copyFrom(const Generator *gsrc)
     const XStdGenerator *src = static_cast<const XStdGenerator *>(gsrc);
     std::copy(std::begin(src->flPosOffset_), std::end(src->flPosOffset_), flPosOffset_);
     return true;
-}
-
-int XStdGenerator::save(std::ostream &out)
-{
-    if (!StdGenerator::save(out))        return false;
-    if (!write1(flPosOffset_, 12, out))    return false;
-    return write1(flVelOffset_, 12, out);
 }
 
 int XStdGenerator::load(std::istream &in)
@@ -1380,21 +1310,6 @@ int CylinderGenerator::copyFrom(const Generator *gsrc)
     type_table_clone(&this->typeTable_, &this->dwTypeTableCount_, this->pEmitProb_,
                      src->typeTable_.data(), src->dwTypeTableCount_);
     return true;
-}
-
-int CylinderGenerator::save(std::ostream &out)
-{
-    if (!write1(flOrigin_, 12, out))       return false;
-    if (!write1(&flScale_, 4, out))        return false;
-    if (!write1(flDirection_, 12, out))    return false;
-    if (!write1(flVelMin_, 12, out))       return false;
-    if (!write1(flVelMax_, 12, out))       return false;
-    if (!write1(&flLifeMin_, 4, out))      return false;
-    if (!write1(&flLifeMax_, 4, out))      return false;
-    if (!write1(&flEmitRateMin_, 4, out))  return false;
-    if (!write1(&flEmitRateMax_, 4, out))  return false;
-    if (!write1(&flDtScale_, 4, out))      return false;
-    return type_table_save(typeTable_, &dwTypeTableCount_, out);
 }
 
 /* Reads its own direction back out to rebuild the matrix via
