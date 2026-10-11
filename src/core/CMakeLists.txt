@@ -4,7 +4,8 @@ add_library(core OBJECT
     gametick.cpp
     quitforward.cpp
     levelentry.cpp
-    rendergameframe.cpp
+    frame.cpp
+    drawframe.cpp
     tiledebug.cpp)
 target_include_directories(core PUBLIC .)
 
