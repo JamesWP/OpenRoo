@@ -264,10 +264,10 @@ void PlatformObject::purgeAll(const EntityContext &ctx, PlatformSlots &slots)
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte.  Each branch below
- * truncates twice with different arguments: the unrounded long double decides
+ * truncates twice with different arguments: the unrounded double decides
  * whether a tile was vacated, the rounded float becomes the new cell.  They
  * differ wherever the float's rounding crosses an integer. */
-static inline signed char ftol_c(long double v)
+static inline signed char ftol_c(double v)
 {
     return (signed char)(long long)v;
 }
@@ -312,23 +312,23 @@ void PlatformObject::tick()
     now_ = *clock_;
 
     if (state_ == 1) {
-        long double travel = ((long double)now_ - (long double)phaseStart_)
-                             * (long double)K_MS_TO_TILE;
+        double travel = ((double)now_ - (double)phaseStart_)
+                             * (double)K_MS_TO_TILE;
         int done = 0;
 
         if (kind_ == 0x0a) {
-            long double pos = travel + (long double)(int)originU_;
+            double pos = travel + (double)(int)originU_;
             posU_ = (float)pos;
 
             //             // A signed compare against the cell before it is updated.
             if (ftol_c(pos) > cellU_)
                 vacate();
 
-            cellU_ = ftol_c((long double)posU_);
+            cellU_ = ftol_c((double)posU_);
 
             //             // limit_ is read unsigned to compare and signed to snap.  A NaN
             //             // completes the advance; it does not complete the retreat.
-            if (!((long double)(int)limit_ > (long double)posU_)) {
+            if (!((double)(int)limit_ > (double)posU_)) {
                 cellU_ = (signed char)limit_;
                 phaseStart_ = now_;
                 posU_ = (float)(int)(signed char)limit_;
@@ -337,15 +337,15 @@ void PlatformObject::tick()
                 done = 1;
             }
         } else {
-            long double pos = travel + (long double)(int)originV_;
+            double pos = travel + (double)(int)originV_;
             posV_ = (float)pos;
 
             if (ftol_c(pos) > cellV_)
                 vacate();
 
-            cellV_ = ftol_c((long double)posV_);
+            cellV_ = ftol_c((double)posV_);
 
-            if (!((long double)(int)limit_ > (long double)posV_)) {
+            if (!((double)(int)limit_ > (double)posV_)) {
                 cellV_ = (signed char)limit_;
                 phaseStart_ = now_;
                 posV_ = (float)(int)(signed char)limit_;
@@ -376,17 +376,17 @@ void PlatformObject::tick()
         int done = 0;
 
         if (kind_ == 0x0a) {
-            long double pos = (long double)(int)limit_
-                              - ((long double)now_ - (long double)phaseStart_)
-                                * (long double)K_MS_TO_TILE;
+            double pos = (double)(int)limit_
+                              - ((double)now_ - (double)phaseStart_)
+                                * (double)K_MS_TO_TILE;
             posU_ = (float)pos;
 
             if (ftol_c(pos) < cellU_)
                 vacate();
 
-            cellU_ = ftol_c((long double)posU_);
+            cellU_ = ftol_c((double)posU_);
 
-            if ((long double)posU_ <= (long double)(int)originU_) {
+            if ((double)posU_ <= (double)(int)originU_) {
                 cellU_ = originU_;
                 phaseStart_ = now_;
                 posU_ = (float)(int)originU_;
@@ -394,17 +394,17 @@ void PlatformObject::tick()
                 done = 1;
             }
         } else {
-            long double pos = (long double)(int)limit_
-                              - ((long double)now_ - (long double)phaseStart_)
-                                * (long double)K_MS_TO_TILE;
+            double pos = (double)(int)limit_
+                              - ((double)now_ - (double)phaseStart_)
+                                * (double)K_MS_TO_TILE;
             posV_ = (float)pos;
 
             if (ftol_c(pos) < cellV_)
                 vacate();
 
-            cellV_ = ftol_c((long double)posV_);
+            cellV_ = ftol_c((double)posV_);
 
-            if ((long double)posV_ <= (long double)(int)originV_) {
+            if ((double)posV_ <= (double)(int)originV_) {
                 cellV_ = originV_;
                 state_ = 0;
                 posV_ = (float)(int)originV_;

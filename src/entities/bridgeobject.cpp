@@ -282,7 +282,7 @@ void BridgeObject::playArmSound()
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte. */
-static inline signed char ftol_c(long double v)
+static inline signed char ftol_c(double v)
 {
     return (signed char)(long long)v;
 }
@@ -295,7 +295,7 @@ static int s_logged_unstamp = 0;
 void BridgeObject::tick()
 {
     unsigned char axis;
-    long double elapsed;
+    double elapsed;
     double span100;
     signed char cu, cv;
 
@@ -325,7 +325,7 @@ void BridgeObject::tick()
     if (armed_ == 0)
         return;
 
-    elapsed = (long double)now_ - (long double)phaseStart_;
+    elapsed = (double)now_ - (double)phaseStart_;
 
     //     // DETERMINISM: an unsigned conversion, so a negative span gives a huge
     //     // threshold.  A NaN elapsed ends the phase.
@@ -333,7 +333,7 @@ void BridgeObject::tick()
 
     if (phase_ == 0) {
 
-        if (!((long double)span100 > elapsed)) {
+        if (!((double)span100 > elapsed)) {
             //             // Snaps to (int)(step * span) + rest, never the live coordinate:
             //             // one cell index, then both floats.
             if (sound_ != 0)
@@ -342,11 +342,11 @@ void BridgeObject::tick()
             phase_ = 1;
 
             if (axis == 1)
-                cellU_ = ftol_c((long double)(int)((int)step_ * (int)span_)
-                                + (long double)restU_);
+                cellU_ = ftol_c((double)(int)((int)step_ * (int)span_)
+                                + (double)restU_);
             else
-                cellV_ = ftol_c((long double)(int)((int)step_ * (int)span_)
-                                + (long double)restV_);
+                cellV_ = ftol_c((double)(int)((int)step_ * (int)span_)
+                                + (double)restV_);
 
             posU_ = (float)(int)cellU_;
             posV_ = (float)(int)cellV_;
@@ -359,21 +359,21 @@ void BridgeObject::tick()
                                   (float)(int)heightCell_,
                                   -(float)(int)cellV_, 1);
 
-        //         // DETERMINISM: long double, associated as written; a one-ulp change
+        //         // DETERMINISM: double, associated as written; a one-ulp change
         //         // moves a whole cell.
         {
-            long double t = elapsed * (long double)K_MS_TO_TILE;
+            double t = elapsed * (double)K_MS_TO_TILE;
             if (axis == 1)
-                posU_ = (float)(t * (long double)(int)step_
-                                + (long double)restU_);
+                posU_ = (float)(t * (double)(int)step_
+                                + (double)restU_);
             else
-                posV_ = (float)(t * (long double)(int)step_
-                                + (long double)restV_);
+                posV_ = (float)(t * (double)(int)step_
+                                + (double)restV_);
         }
 
-        cu = ftol_c((long double)posU_);
+        cu = ftol_c((double)posU_);
         cellU_ = cu;
-        cv = ftol_c((long double)posV_);
+        cv = ftol_c((double)posV_);
         cellV_ = cv;
 
         //         // PRESERVED: axis 1 with u at or past the guard falls into the axis 2
@@ -400,7 +400,7 @@ void BridgeObject::tick()
         return;
     }
 
-    if (!((long double)span100 > elapsed)) {
+    if (!((double)span100 > elapsed)) {
         //             // Snaps back to rest.
         if (sound_ != 0)
             sound_->stop();
@@ -408,9 +408,9 @@ void BridgeObject::tick()
         phase_ = 0;
 
         if (axis == 1)
-            cellU_ = ftol_c((long double)restU_);
+            cellU_ = ftol_c((double)restU_);
         else
-            cellV_ = ftol_c((long double)restV_);
+            cellV_ = ftol_c((double)restV_);
 
         posU_ = (float)(int)cellU_;
         posV_ = (float)(int)cellV_;
@@ -426,19 +426,19 @@ void BridgeObject::tick()
     //         // not re-associated.
     {
         int step = (int)step_;
-        long double travel = elapsed * (long double)K_MS_TO_TILE
-                             * (long double)step;
+        double travel = elapsed * (double)K_MS_TO_TILE
+                             * (double)step;
         if (axis == 1)
-            posU_ = (float)(((long double)(int)((int)span_ * step)
-                             + (long double)restU_) - travel);
+            posU_ = (float)(((double)(int)((int)span_ * step)
+                             + (double)restU_) - travel);
         else
-            posV_ = (float)(((long double)(int)((int)span_ * step)
-                             + (long double)restV_) - travel);
+            posV_ = (float)(((double)(int)((int)span_ * step)
+                             + (double)restV_) - travel);
     }
 
-    cu = ftol_c((long double)posU_);
+    cu = ftol_c((double)posU_);
     cellU_ = cu;
-    cv = ftol_c((long double)posV_);
+    cv = ftol_c((double)posV_);
     cellV_ = cv;
 
     if ((axis == 1 && cu < (signed char)guard_)

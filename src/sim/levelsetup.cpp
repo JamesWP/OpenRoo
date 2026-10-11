@@ -427,9 +427,9 @@ Sim_SetupLevelObjects(Game *self)
 
                 // A cell holding an item gets a random phase.
                 if (t->contents() != CONTENTS_NONE) {
-                    long double ph = (long double)(int)crt_rand();
-                    ph = ph * (long double)K_TWO_PI;
-                    ph = ph * (long double)K_INV_32K;
+                    double ph = (double)(int)crt_rand();
+                    ph = ph * (double)K_TWO_PI;
+                    ph = ph * (double)K_INV_32K;
                     t->setItemPhase((float)ph);
                 }
 
@@ -526,8 +526,8 @@ Sim_SetupLevelObjects(Game *self)
                     // Staggered: spawner k first fires k seconds late.
                     idx = self->world()->census()->timed;
                     {
-                        long double when = (long double)(int)(idx * 1000u);
-                        when = when + (long double)*self->world()->clock();
+                        double when = (double)(int)(idx * 1000u);
+                        when = when + (double)*self->world()->clock();
                         self->world()->timedSpawner(idx)->lastSpawn = (double)when;
                     }
                     self->world()->census()->timed++;

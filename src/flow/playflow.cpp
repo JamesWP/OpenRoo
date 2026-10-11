@@ -33,7 +33,7 @@
 /* floor() of a double. */
 static double crt_floor(double v)
 {
-    return floorl((long double)v);
+    return floor((double)v);
 }
 
 /* The flythrough: its checkpoint is restored, and ENTER ends it and returns to play. */
@@ -106,13 +106,13 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
     // The countdown's last seconds: compared at 80 bits, stored at 64.
     {
         static const double k001 = 0.001;  // a double
-        long double lim = (long double)(unsigned long long)(unsigned int)self->world()->timeLimit() * 1000.0L;
-        long double rem80 = (lim - (long double)(unsigned long long)self->world()->timeElapsed()) *
-                            (long double)k001;
+        double lim = (double)(unsigned long long)(unsigned int)self->world()->timeLimit() * 1000.0;
+        double rem80 = (lim - (double)(unsigned long long)self->world()->timeElapsed()) *
+                            (double)k001;
         double rem64 = (double)rem80;
-        if (rem80 > 11.0L || pl->moveState() == 3) {
+        if (rem80 > 11.0 || pl->moveState() == 3) {
             pl->setLastSecondsMark(10.0);
-        } else if ((long double)pl->lastSecondsMark() > (long double)rem64) {
+        } else if ((double)pl->lastSecondsMark() > (double)rem64) {
             if (self->audio()->fixedSounds()->lastSeconds != NULL)
                 (self->audio()->fixedSounds()->lastSeconds)->play(false);
             pl->setLastSecondsMark(crt_floor(rem64));
@@ -168,8 +168,8 @@ void Flow_RestartAfterDeath(Game *self)
         self->world()->setTimeElapsed((unsigned int)(self->world()->timeLimit() * 1000));
         Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
         self->session()->setRestartCount(0);
-        self->session()->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
-                                (long double)self->session()->totalPlayTime()));
+        self->session()->setTotalPlayTime((double)((double)(unsigned long long)self->world()->timeElapsed() +
+                                (double)self->session()->totalPlayTime()));
         g_logger.logMessage(2, "GAME: game completed %d %d",
                            (unsigned int)self->session()->levelIndex(), (unsigned int)self->session()->levelCount());
         if ((unsigned int)self->session()->levelIndex() == (unsigned int)self->session()->levelCount() - 1) {
@@ -232,8 +232,8 @@ void Flow_LeaveGameOver(Game *self)
         bool lastLevel = (unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount() &&
                          pl->moveState() == 0;
         return_to_menu(self, lastLevel);
-        self->session()->setTotalPlayTime((double)((long double)(unsigned long long)self->world()->timeElapsed() +
-                                (long double)self->session()->totalPlayTime()));
+        self->session()->setTotalPlayTime((double)((double)(unsigned long long)self->world()->timeElapsed() +
+                                (double)self->session()->totalPlayTime()));
     }
 }
 

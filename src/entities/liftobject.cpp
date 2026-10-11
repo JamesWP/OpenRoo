@@ -208,9 +208,9 @@ void LiftObject::purgeAll(const EntityContext &ctx, LiftSlots &slots)
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte.  The tick passes
- * the unrounded long double, not the float stored in height_: truncating the
+ * the unrounded double, not the float stored in height_: truncating the
  * float would differ wherever its rounding crosses an integer. */
-static inline signed char ftol_c(long double v)
+static inline signed char ftol_c(double v)
 {
     return (signed char)(long long)v;
 }
@@ -242,14 +242,14 @@ void LiftObject::tick()
     now_ = *clock_;
 
     if (state_ == 1) {
-        long double h = ((long double)now_ - (long double)phaseStart_)
-                        * (long double)K_MS_TO_HEIGHT
-                        + (long double)(int)baseHeight_;
+        double h = ((double)now_ - (double)phaseStart_)
+                        * (double)K_MS_TO_HEIGHT
+                        + (double)(int)baseHeight_;
         height_     = (float)h;
         heightCell_ = ftol_c(h);
 
         //         // Compares against the rounded height_; a NaN completes the rise.
-        if (!((long double)(int)topHeight_ > (long double)height_)) {
+        if (!((double)(int)topHeight_ > (double)height_)) {
             signed char top = map_->tile( cellU_, cellV_)->liftTop();
 
             if (s_diag_lift && !s_logged_rise) {
@@ -274,9 +274,9 @@ void LiftObject::tick()
     }
 
     if (state_ == 2) {
-        long double h = (long double)(int)topHeight_
-                        - ((long double)now_ - (long double)phaseStart_)
-                          * (long double)K_MS_TO_HEIGHT;
+        double h = (double)(int)topHeight_
+                        - ((double)now_ - (double)phaseStart_)
+                          * (double)K_MS_TO_HEIGHT;
         height_ = (float)h;
         {
             signed char c = ftol_c(h);
