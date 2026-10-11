@@ -15,7 +15,7 @@
  * thing on every machine, and every other RenderDevice method sees an
  * inactive device and does nothing. */
 
-#include "glnative.h"
+#include "glnative_internal.h"
 #include "glrenderdevice.h"
 #include "sysdev.h"
 #include "logger.h"

@@ -21,9 +21,9 @@
 #error "Only the gl group's own sources may include this header; use glrenderdevice.h"
 #endif
 #include <vector>
-#include "glapi.h"
+#include "glapi_internal.h"
 #include "renderdevice.h"
-#include "pixelconvert.h"
+#include "pixelconvert_internal.h"
 #include "windev.h"
 
 /* The two uniform blocks of the program (shaders.cpp declares the same, in

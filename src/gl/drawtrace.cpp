@@ -13,7 +13,7 @@
  * KAROO_DRAW_TRACE_VERBOSE=1 writes the state as text instead of a hash, to
  * find which field differs when two traces do. */
 
-#include "glnative.h"
+#include "glnative_internal.h"
 #include "sysdev.h"
 #include <stdio.h>
 #include <string.h>

@@ -2,19 +2,19 @@
  * (shaders.cpp) and textures (devicetexture.cpp).
  *
  * The setters only record the game's state in PipelineState and mark a group
- * of it dirty (glnative.h); a draw then brings OpenGL up to date with what is
+ * of it dirty (glnative_internal.h); a draw then brings OpenGL up to date with what is
  * dirty, uploads the transforms and the lighting if they changed, and issues
  * the draw.  Direct3D 6 had a viewport whose clip volume put the y axis at
  * +-aspect, which the projection compensates for when it is uploaded.
  *
  * Every method that reaches OpenGL checks `active` first: a headless
- * RenderDevice has no context (glnative.h).
+ * RenderDevice has no context (glnative_internal.h).
  *
  * KAROO_RENDER_FX=nodraw: every draw returns success without reaching
  * OpenGL.  The replay suite's fast mode sets it: draws are pure output that
  * nothing in the simulation reads back. */
 
-#include "glnative.h"
+#include "glnative_internal.h"
 #include "sysdev.h"
 #include <stdio.h>
 #include "image.h"

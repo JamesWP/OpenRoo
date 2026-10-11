@@ -21,7 +21,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "glnative.h"
+#include "glnative_internal.h"
 
 static const char *kBlocks = R"GLSL(
 layout(std140) uniform Scene {

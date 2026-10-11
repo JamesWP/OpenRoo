@@ -1,4 +1,4 @@
-#include "glapi.h"
+#include "glapi_internal.h"
 #include "windev.h"
 
 GLApi gl;

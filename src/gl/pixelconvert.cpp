@@ -1,5 +1,5 @@
 #include <string.h>
-#include "pixelconvert.h"
+#include "pixelconvert_internal.h"
 
 unsigned int PixelMask_Popcount(uint32_t mask)
 {

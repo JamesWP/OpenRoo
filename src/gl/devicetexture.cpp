@@ -16,7 +16,7 @@
 #include <fstream>
 #include <stdio.h>
 #include <string.h>
-#include "glnative.h"
+#include "glnative_internal.h"
 #include "image.h"
 #include "logger.h"
 #include "sysdev.h"
