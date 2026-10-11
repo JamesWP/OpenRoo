@@ -44,7 +44,7 @@ void Flow_TickFlythrough(Game *self)
     if (sp->loaded() != 0)
         Sim_RestoreCheckpointStateBlocks(self);
     if (sp->running() == 0 || sp->loaded() == 0)
-        self->camera()->setCameraMode(2);
+        self->camera()->setMode(2);
     if (self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0) {
         sp->setRunning(0);
         sp->setSplineActive(0);
@@ -56,8 +56,8 @@ void Flow_TickFlythrough(Game *self)
                 self->cdThemes()->play(self->world()->map()->mapName());
             self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(self->world()->map()->mapName()));
         }
-        self->camera()->setCameraDistance(7.0f);
-        self->camera()->setCameraMode(0);
+        self->camera()->setDistance(7.0f);
+        self->camera()->setMode(0);
         pl->setField231(*self->world()->clock());
     }
 }
@@ -88,7 +88,7 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
     self->config()->setActiveCameraPitch(self->config()->cameraPitch());
     if (pl->moveState() != 0) {
         self->camera()->setOverviewActive(0);
-        self->camera()->setCameraDistance(self->camera()->zoomDistance());
+        self->camera()->setDistance(self->camera()->zoomDistance());
         if (pl->soundAf() != NULL) pl->soundAf()->stop();
         if (pl->soundAb() != NULL) pl->soundAb()->stop();
         if (pl->soundC7() != NULL) pl->soundC7()->stop();
@@ -161,7 +161,7 @@ void Flow_RestartAfterDeath(Game *self)
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         restart_tail = 0;  // game over: skip the camera reset
     } else {
-        self->camera()->setCameraMode(2);
+        self->camera()->setMode(2);
         self->setState(GameState::LevelComplete);
         if (self->musicOn() != 0)
             self->cdThemes()->play(GS_GAME_COMPLETED);
@@ -181,8 +181,8 @@ void Flow_RestartAfterDeath(Game *self)
         self->session()->setRestartCount(0);
     }
     if (restart_tail) {
-        self->camera()->setCameraDistance(7.0f);
-        self->camera()->setCameraMode(0);
+        self->camera()->setDistance(7.0f);
+        self->camera()->setMode(0);
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
     }
 }
@@ -194,19 +194,12 @@ static void return_to_menu(Game *self, bool lastLevel)
     self->frontEnd()->menu()->rewind();
     const char *theme = NULL;
     if (lastLevel) {
-        if (self->field_0c() == 0) {
-            char name[256];
-            sprintf(name, GS_GAME_FINAL_DIR, self->gameFileName());
-            Sim_ParseLevelFiles(self, name);
-            self->frontEnd()->menu()->push(0);
-            self->frontEnd()->menu()->setNode(5);
-            theme = GS_GAME_FINAL;
-        } else {
-            self->setState(GameState::Quitting);
-            if (self->musicOn() != 0)
-                self->cdAudio()->stop();
-            self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
-        }
+        char name[256];
+        sprintf(name, GS_GAME_FINAL_DIR, self->gameFileName());
+        Sim_ParseLevelFiles(self, name);
+        self->frontEnd()->menu()->push(0);
+        self->frontEnd()->menu()->setNode(5);
+        theme = GS_GAME_FINAL;
     } else {
         Sim_ClearGameState(self);
         Sim_ParseLevelFiles(self, self->menuLevelName());

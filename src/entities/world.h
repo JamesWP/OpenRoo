@@ -64,16 +64,17 @@ public:
     /* SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
     char          *levelNameBuffer()                 { return levelName_; }
 
-    /* A uint16_t the foe spawn bumps for type 0x0b; levelsetup.cpp calls it a
-     * crystal count.  Not confirmed, so not named. */
-    unsigned short field_42252() const             { return field_42252_; }
-    void           setField42252(unsigned short n) { field_42252_ = n; }
+    /* The crystals in the level: the level builder counts each crystal tile
+     * and each foe of type 0x0b spawned (EntityContext::crystalsInLevel).
+     * Summed into the census total, and logged as the crystals in the level. */
+    unsigned short crystalsInLevel() const             { return crystalsInLevel_; }
+    void           setCrystalsInLevel(unsigned short n) { crystalsInLevel_ = n; }
 
     /* What the entities are given at spawn, and the tables they fill. */
     EntityContext entityContext()
     {
         return { &clock_, &tickStep_, &map_, sound_, &switchCells_,
-                 &switchMax_, levelName_, &field_42252_ };
+                 &switchMax_, levelName_, &crystalsInLevel_ };
     }
 
     /* The sound library the entities acquire their sounds from, set by Game
@@ -137,7 +138,7 @@ private:
     FreeBomb      freeBombs_[256];
     LevelCensus   census_;
     unsigned char switchMax_{};
-    unsigned short field_42252_{};
+    unsigned short crystalsInLevel_{};
     ExtraObjects  extraObjects_;
     SwitchCells   switchCells_;
     EntitySlots<BridgeObject, 256> bridges_;

@@ -88,7 +88,7 @@ Flow_HandleTypedCheatCode(Game *self)
             self->setState(GameState::LevelComplete);
             if (self->musicOn() != 0)
                 self->cdThemes()->play(GS_GAME_COMPLETED);
-            self->camera()->setCameraMode(2);
+            self->camera()->setMode(2);
             self->frontEnd()->menu()->rewind();
             self->frontEnd()->menu()->pop();
             self->frontEnd()->menu()->push(0x28);

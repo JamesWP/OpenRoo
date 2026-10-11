@@ -626,9 +626,9 @@ Menu_RenderCreditsScroll(FrontEnd *frontEnd, RenderDevice *d3d, TextRenderer *te
 {
     const float scale = (float)d3d->width() * (1.0f / 640.0f);
 
-    if (frontEnd->field_13cc8c() != 0) {
+    if (frontEnd->creditsRestart() != 0) {
         g_creditsStartMs = nowMs;
-        frontEnd->setField13cc8c(0);
+        frontEnd->setCreditsRestart(0);
     }
     g_creditsScroll = 500.0f - (float)(uint32_t)(nowMs - g_creditsStartMs) * 0.05f;
 

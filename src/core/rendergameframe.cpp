@@ -45,14 +45,14 @@
 /* ─── Section 2: timing, tick, camera, listener ─────────────────────────── */
 
 /* The scripted camera (the script player's running spline): eye from
- * field13cc94(), target from cameraEye(), both copied into the camera
+ * scriptedEye(), target from focus(), both copied into the camera
  * pose; pitch and yaw recovered by acos; a plain LookAt with +Y up. */
 static void scripted_camera(Game *g, RenderDevice *d3d)
 {
     CameraPose *cam = g->camera()->pose();
     for (int i = 0; i < 3; ++i) {
-        cam->eye()[i]    = g->camera()->field13cc94(i);
-        cam->target()[i] = g->camera()->cameraEye(i);
+        cam->eye()[i]    = g->camera()->scriptedEye(i);
+        cam->target()[i] = g->camera()->focus(i);
     }
     const float dx = cam->target()[0] - cam->eye()[0];
     const float dy = cam->target()[1] - cam->eye()[1];
@@ -129,12 +129,12 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
     dbg::frameBegin();
     PROF_SCOPE("frame");
     Game *g = Game::instance();
-    if (g->field_173584() != 0) {
+    if (g->levelPrepPending() != 0) {
         {
             PROF_SCOPE("level prepare");
             LevelEntry_PrepareAssets(renderer);
         }
-        g->setField173584(0);
+        g->setLevelPrepPending(0);
         return;
     }
 
@@ -154,7 +154,7 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
             PROF_SCOPE("game tick");
             Core_GameTick(g, dt, now, progCtrl);
         }
-        if (g->field_173584() != 0)
+        if (g->levelPrepPending() != 0)
             return;
         {
             PROF_SCOPE("poses");
@@ -263,10 +263,7 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
     set_depth_test(d3d, true);
     d3d->EndFrame();
     PROF_SCOPE("present");
-    if (g->state() == GameState::Quitting) {
-        if (g->field_0c() != 0)
-            d3d->PresentImage(renderer->demoImage);
+    if (g->state() == GameState::Quitting)
         return;
-    }
     d3d->Present();
 }

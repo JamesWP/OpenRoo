@@ -1,5 +1,5 @@
 /* ConfigureRenderState: the one-time setup WinMain runs once the Direct3D
- * device exists.  It loads the loading-screen and demo bitmaps, wires the
+ * device exists.  It loads the loading-screen bitmap, wires the
  * texture and model caches' loggers, places the initial camera and builds the
  * view/projection matrices, sets the fixed render states, and imports the
  * shared player/enemy models, textures, material, light and fonts.  It returns
@@ -33,11 +33,10 @@ Render_ConfigureRenderState(Renderer *renderer, const World *level, CameraPose *
 {
     RenderDevice *d3d = renderer->device;
 
-    // Loading-screen and demo bitmaps.
+    // The loading-screen bitmap.
     if (!Image_LoadBMP("bitmaps\\loading.bmp", renderer->fallbackImage))
         g_logger.logMessage(3, "SUR: *ERROR* couldn't load loading.bmp");
     d3d->PresentImage(renderer->fallbackImage);
-    Image_LoadBMP("bitmaps\\demo.bmp", renderer->demoImage);
 
     // Texture and model caches' loggers, and the level placement scratch
     // block.

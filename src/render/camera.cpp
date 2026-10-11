@@ -5,11 +5,11 @@
  *   1. target.x/z snap to the focus point, target.y eases towards it
  *      (rate 0.004 * dt).
  *   2. yaw: eases towards focus[5] by the short way round (0.006 * dt) when
- *      cameraMode == 0 and the "camera turns with player" option is 1,
+ *      mode == 0 and the "camera turns with player" option is 1,
  *      after first wrapping itself into [0, 2pi); otherwise it is set.
  *   3. distance: the current |target - eye| eases towards
- *      CameraRig::cameraDistance (0.005 * dt), then < 0 (or NaN) -> 1, > 255 -> 255.
- *   4. pitch target = Config::activeCameraPitch() degrees -> radians.  In cameraMode 0
+ *      CameraRig::distance (0.005 * dt), then < 0 (or NaN) -> 1, > 255 -> 255.
+ *   4. pitch target = Config::activeCameraPitch() degrees -> radians.  In mode 0
  *      an occlusion probe may force it to 1.569051 (just under pi/2, straight
  *      down): the ray target -> target + P, P = RotX(-p0).RotY(yaw) applied to
  *      (0,0,-d) with p0 the configured tilt, is stepped one height unit at a
@@ -117,7 +117,7 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *came
                              + p.target()[1]);
 
     /* 2. yaw */
-    if (camera->cameraMode() == 0 && config->cameraTurnsWithPlayer() == 1) {
+    if (camera->mode() == 0 && config->cameraTurnsWithPlayer() == 1) {
         double y = fmod((double)p.yaw(), K_YAW_WRAP);
         p.setYaw((y < 0.0) ? (float)(y + K_TWO_PI) : (float)y);
         double diff = (double)focus.f[5] - p.yaw();
@@ -133,7 +133,7 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *came
     double dy = (double)p.target()[1] - p.eye()[1];
     double dz = (double)p.target()[2] - p.eye()[2];
     double len = sqrt((dx * dx + dz * dz) + dy * dy);
-    double dist = (camera->cameraDistance() - len) * dtf * K_EASE_RATE + len;
+    double dist = (camera->distance() - len) * dtf * K_EASE_RATE + len;
     if (dist < 0.0 || dist != dist)
         dist = K_DIST_MIN;
     else if (dist > K_DIST_MAX)
@@ -145,7 +145,7 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *came
     Vec3 probe = orbit_offset((float)(tilt * K_NEG_DEG), p.yaw(), negdist);
     float pitchTarget = (float)(tilt * K_DEG);
 
-    if (camera->cameraMode() == 0) {
+    if (camera->mode() == 0) {
         const float ey = p.eye()[1];
         if (ey > 0.0f && ey < K_EYE_CEIL) {
             LevelMap *map = world->map();

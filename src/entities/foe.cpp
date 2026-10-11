@@ -309,7 +309,7 @@ unsigned char Foe::spawn(const EntityContext &ctx, FoeTable &foes,
         (*slot)->facing_ = 1;
         if (type == 0x0b) {
             (*slot)->dropContents_ = 1;
-            ++*ctx.crystalFoes;
+            ++*ctx.crystalsInLevel;
         } else if (type == 0x4d) {
             (*slot)->dropContents_ = 7;
         } else if (type == 0x07) {

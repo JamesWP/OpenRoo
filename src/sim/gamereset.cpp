@@ -75,7 +75,7 @@ Sim_ClearGameState(Game *self)
 
     Player *pl = self->world()->player();
     pl->setLives(2);  // lives
-    self->camera()->setCameraMode(2);
+    self->camera()->setMode(2);
     // Two doubles the game zeroes in two halves; nothing reads between, so
     // each is one store.
     pl->setField126(0.0);

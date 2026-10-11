@@ -32,9 +32,6 @@ static const char HIGHSCORE_KEY = 0x4b;
 void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableControl *progCtrl)
 {
     snprintf(g->gameDir_, sizeof(g->gameDir_), "%s", gameDir);
-    g->field_0c_   = 0;
-    g->tickCount_  = 0;
-    g->field_04_   = 1.0;
     // The tally is read by the state dump before any level has been scored.
     *g->session()->tally() = ScoreTally();
     g->world()->switchCells()->clearCounts();
@@ -48,14 +45,13 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
     g->world()->bombs().count      = 0;
     g->world()->bridges().count    = 0;
     Sim_ResetLevelObjectCounters(g);
-    g->world()->setField42252(0);
+    g->world()->setCrystalsInLevel(0);
     g->mapChanged_       = 1;
     g->initialised_      = 0;
     g->levelSoundsReady_ = 0;
     g->scriptPlayer_.clearStreams();
     std::fill(std::begin(g->world()->foes().ids), std::end(g->world()->foes().ids), 0);
     std::fill(std::begin(g->world()->bombs().ids), std::end(g->world()->bombs().ids), 0);
-    g->field_48b14_ = 0;
     g->fixedSounds_.switchClick    = NULL;
     g->fixedSounds_.menuUpDown     = NULL;
     g->fixedSounds_.count          = NULL;
@@ -65,8 +61,8 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
     g->fixedSounds_.crystalBank[1] = NULL;
     g->fixedSounds_.crystalBank[2] = NULL;
     strcpy(g->menuLevelName_, GS_GAME_DEMO_LEVEL);
-    g->frontEnd()->setField13cc8c(0);
-    g->frontEnd()->setField13cc88(0);
+    g->frontEnd()->setCreditsRestart(0);
+    g->frontEnd()->setCreditsLatch(0);
 
     snprintf(g->gameFileName_, sizeof(g->gameFileName_), "%s", gameName);
     g->cdThemes_.readTrackThemeTable(g->gameDir_, g->gameFileName_);
@@ -91,7 +87,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
         g->frontEnd()->saveSlots()->initialiseEmpty();
         g->frontEnd()->saveSlots()->writeAllSlotFiles(g->gameDir_, g->gameFileName_, SAVE_KEY);
     }
-    g->field_173584_ = 0;
+    g->levelPrepPending_ = 0;
     if (!g->config_.loadValues(GS_CFG_FILE)) {
         g_logger.logMessage(3, "GAME: warning - no correct config-values (or no *.cfg-file), creating default-config");
         g->config_.fillDefaults();
@@ -110,13 +106,6 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
         g_logger.logMessage(1, "GAME: highscore-file loaded");
     }
 
-    // PRESERVED: a demo check, for a nonzero field_0c_ with more than ten
-    // levels.  field_0c_ was zeroed above, so it never fires.
-    if (g->field_0c_ != 0 && g->session()->levelCount() > 10) {
-        g_logger.logMessage(4, "GAME: ** error ** this is a DEMO, piracy alert, aborting!!!");
-        windev::quit(1);
-        return;
-    }
     g_logger.logMessage(2, "GAME: this is a commercial version");
     audiodev::setEffectsVolume(g->effectsGain());
     g->cdAudio()->setVolume(g->musicGain());
@@ -125,19 +114,18 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
     g->frontEnd()->menu()->buildDefaultGraph(g->frontEnd()->saveSlots()->count());
     g->session()->setLevelIndex(0);
     g->camera()->setZoomDistance(g->config_.cameraDistanceSetting());
-    g->camera()->setCameraDistance(g->config_.cameraDistanceSetting());
+    g->camera()->setDistance(g->config_.cameraDistanceSetting());
     Sim_ClearGameState(g);
     Sim_ParseLevelFiles(g, g->menuLevelName_);
     Sim_SetupLevelObjects(g);
     g->scriptPlayer_.setRunning(g->scriptPlayer_.loaded() != 0 ? 1 : 0);
 
     *g->world()->clock() = 1000.0;
-    g->field_173b1a_     = 0;
+    g->gemsGoalReached_     = 0;
     g->world()->player()->setGliding(0);
     g->frontEnd()->setTextEntryActive(0);
-    g->camera()->setCameraMode(1);
+    g->camera()->setMode(1);
     g->camera()->setOverviewActive(0);
-    g->field_13cc84_     = 0;
     g->world()->bridges().count      = 0;
     g->fixedSounds_.loaded = 0;
     std::fill_n(g->frontEnd()->cheatBuffer(), 0x100, 0);

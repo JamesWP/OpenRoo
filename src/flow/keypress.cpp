@@ -56,11 +56,11 @@ static void rebind(Game *game, const char *name, unsigned char code, int hl)
 static void loaded_tail(Game *game)
 {
     game->setState(GameState::Flythrough);
-    game->camera()->setCameraDistance(7.0f);
+    game->camera()->setDistance(7.0f);
     if (game->musicOn() != 0)
         game->cdAudio()->stop();
     game->scriptPlayer()->setRunning(1);
-    game->camera()->setCameraMode(1);
+    game->camera()->setMode(1);
     game->frontEnd()->menu()->rewind();
 }
 
@@ -226,7 +226,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         s_left = left;
     }
     if (self->frontEnd()->menu()->nodeRef() != 5 && self->frontEnd()->menu()->nodeRef() != 0x50)
-        self->frontEnd()->setField13cc88(0);
+        self->frontEnd()->setCreditsLatch(0);
 
     switch (self->frontEnd()->menu()->nodeRef()) {
     case 1:
@@ -237,9 +237,9 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         break;
     case 5:
-        if (self->frontEnd()->field_13cc88() == 0) {
-            self->frontEnd()->setField13cc8c(1);
-            self->frontEnd()->setField13cc88(1);
+        if (self->frontEnd()->creditsLatch() == 0) {
+            self->frontEnd()->setCreditsRestart(1);
+            self->frontEnd()->setCreditsLatch(1);
         }
         break;
     case 6:
@@ -248,8 +248,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         if (self->musicOn() != 0)
             self->cdAudio()->stop();
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
-        if (self->field_0c() == 0)
-            windev::quit(1);
+        windev::quit(1);
         break;
     case 0x14: rebind(self, GS_KEY_MOVE_FORWARD, 0x14, inputdev::KEY_UP); break;
     case 0x15: rebind(self, GS_KEY_MOVE_BACK, 0x15, inputdev::KEY_DOWN); break;
@@ -302,7 +301,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
             self->cdAudio()->stop();
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         self->frontEnd()->menu()->setLockStart(self->lastTickTime());
-        self->camera()->setCameraMode(1);
+        self->camera()->setMode(1);
         self->frontEnd()->menu()->setLock(1);
         self->frontEnd()->menu()->pop();
         g_logger.logMessage(1, "level completed - continue");

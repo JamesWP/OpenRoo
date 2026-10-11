@@ -54,16 +54,18 @@ public:
     int            textEntryActive() const           { return textEntryActive_; }
     void           setTextEntryActive(int a)         { textEntryActive_ = a; }
 
-    /* keypress.cpp: field_13cc88 is a one-shot latch (cleared, then set on
-     * the first press, which also sets field_13cc8c). */
-    int            field_13cc88() const              { return field_13cc88_; }
-    void           setField13cc88(int v)             { field_13cc88_ = v; }
-    int            field_13cc8c() const              { return field_13cc8c_; }
-    void           setField13cc8c(int v)             { field_13cc8c_ = v; }
+    /* keypress.cpp: creditsLatch is set when the credits node (5) is first
+     * handled, and cleared once the menu leaves it.  creditsRestart asks the
+     * credits scroll to restart from now (Menu_RenderCreditsScroll, which
+     * clears it). */
+    int            creditsLatch() const              { return creditsLatch_; }
+    void           setCreditsLatch(int v)             { creditsLatch_ = v; }
+    int            creditsRestart() const              { return creditsRestart_; }
+    void           setCreditsRestart(int v)             { creditsRestart_ = v; }
 
 private:
-    int            field_13cc88_{};
-    int            field_13cc8c_{};
+    int            creditsLatch_{};
+    int            creditsRestart_{};
     /* The typed-cheat buffer; declared up to the cheat entry that follows.
      * Its real length is not established. */
     unsigned char  cheatBuffer_[0x100]{};
