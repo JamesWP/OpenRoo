@@ -3,9 +3,10 @@
 
 The groups and their dependencies come from the same places the build and
 tools/check_layers.py read them: each src/<group>/CMakeLists.txt's
-target_link_libraries, and src/layers.txt for the order.  Every group sits on
-a row by its depth (one above the deepest group it links), so the foundation
-is at the bottom and app at the top, and groups that don't depend on each
+target_link_libraries, and src/layers.txt for the order.  The foundation
+is at the bottom and app at the top.  Each line of src/layers.txt is a row
+(the tiers it declares); --depth puts each group on a row by its depth instead
+(one above the deepest group it links), so groups that don't depend on each
 other share a row.
 
 By default only the links that aren't implied by others are drawn (the
@@ -14,7 +15,7 @@ to game is left out.  --all draws every link.  PUBLIC links (the group's
 headers use the dependency) are solid, PRIVATE ones (only its .cpp files do)
 dashed.  Hovering a group or a link shows its details.
 
-  group_graph.py [--all] [--dot] [-o FILE] [<source dir>]
+  group_graph.py [--all] [--depth] [--dot] [-o FILE] [<source dir>]
 
 Writes groups.svg (or groups.dot with --dot) unless -o says otherwise; -o -
 writes to stdout.
@@ -219,12 +220,14 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('root', nargs='?', default='.', help='the repository root (default .)')
     ap.add_argument('--all', action='store_true', help='draw every link, not just the reduction')
+    ap.add_argument('--depth', action='store_true',
+                    help='rows by dependency depth rather than by the lines of layers.txt')
     ap.add_argument('--dot', action='store_true', help='write Graphviz DOT instead of SVG')
     ap.add_argument('-o', '--output', help='output file (default groups.svg / groups.dot; - for stdout)')
     args = ap.parse_args()
 
     groups, order, links, includes, size = load(args.root)
-    depth = depths(groups, links)
+    depth = depths(groups, links) if args.depth else order
     drawn = links if args.all else reduction(groups, links)
     if args.dot:
         text = dot(groups, drawn, depth)
