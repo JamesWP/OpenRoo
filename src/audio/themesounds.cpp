@@ -5,8 +5,7 @@
 
 /* "NONE" (case-exact, on the raw wave name) disables the entry without
  * logging.  PRESERVED: the path is formatted unbounded into 256 bytes. */
-int ThemeSoundTable::add(const char *dir, unsigned int id, const char *waveName,
-               uint32_t arg3, uint32_t arg4)
+int ThemeSoundTable::add(const char *dir, unsigned int id, const char *waveName)
 {
     char path[256];
     snprintf(path, sizeof(path), "%s\134%s", dir, waveName);
@@ -18,8 +17,6 @@ int ThemeSoundTable::add(const char *dir, unsigned int id, const char *waveName,
     }
     g_logger.logMessage(1, "TSM: add called (Index=%d/fn=%s)", id & 0xffff, path);
     strcpy(e.name, path);
-    e.unknown104 = arg4;
-    e.unknown108 = arg3;
     e.enabled    = 1;
     return 0;
 }

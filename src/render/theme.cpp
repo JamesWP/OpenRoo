@@ -280,7 +280,7 @@ Theme_RegisterSound(ThemeSoundTable *sounds, const char *gameDir,
     lower_inplace(eventName);
     for (const auto &ev : kSoundEvents) {
         if (strcmp(eventName, ev.name) == 0) {
-            sounds->add(gameDir, static_cast<unsigned>(ev.id), waveName, 1, 1);
+            sounds->add(gameDir, static_cast<unsigned>(ev.id), waveName);
             return true;
         }
     }

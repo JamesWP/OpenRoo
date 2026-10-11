@@ -6,6 +6,7 @@
  * and tilequery.cpp use. */
 
 #pragma once
+#include <stdint.h>
 #include "entitycontext.h"
 #include "tickstep.h"
 
