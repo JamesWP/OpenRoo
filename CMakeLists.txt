@@ -80,6 +80,12 @@ add_custom_target(check-layers ALL
     COMMENT "Checking the group layering")
 add_dependencies(OpenRoo check-layers)
 
+# A picture of the groups and their links: build/groups.svg (on request only).
+add_custom_target(group-graph
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tools/group_graph.py
+            -o ${CMAKE_BINARY_DIR}/groups.svg ${PROJECT_SOURCE_DIR}
+    COMMENT "Drawing the group graph")
+
 # Only the platform groups may use the system clock, time and exception APIs.
 add_custom_target(check-native-system ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeSystem.cmake)
