@@ -11,6 +11,7 @@
  *
  * Native handles cross as void*. */
 #pragma once
+#include <functional>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -151,7 +152,7 @@ bool debugUiCapturesMouse();
 
 /* Pumps events, calling idle between them, until quit(); returns quit's
  * code. */
-int  runMessageLoop(void (*idle)());
+int  runMessageLoop(const std::function<void()> &idle);
 void quit(int exitCode);
 
 /* Asks the main window to close so the game's own shutdown runs, or ends the
