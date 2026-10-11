@@ -43,7 +43,7 @@ add_compile_options(-Wall -Wextra -Werror)
 # depends on with target_link_libraries in its own CMakeLists.txt; their include
 # paths follow from those links.  tools/check_layers.py (the check-layers
 # target) checks the declarations against the includes and src/layers.txt.
-foreach(group app audio base camera script session fx game gfx math screens audiodev core dbg debugui entities flow gl input inputdev level render sim soundapi testing ui videodev windev sysdev log prof)
+foreach(group app audio base camera script session fx game gfx math screens audiodev core dbg debugui entities flow gl input inputdev level render renderapi sim soundapi testing ui videodev windev sysdev log prof)
     add_subdirectory(src/${group})
 endforeach()
 

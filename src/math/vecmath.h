@@ -10,8 +10,7 @@
  * feed rendering only, never the simulation.
  */
 
-struct Mat4 { float m[16]; };   /* row-major, row vectors: v * M */
-struct Vec3 { float x, y, z; };
+#include "vectypes.h"   /* Mat4 and Vec3 */
 
 /* The identity and data-movement helpers.  Pure data movement, no arithmetic
  * that could round differently. */

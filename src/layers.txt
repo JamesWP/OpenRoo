@@ -11,13 +11,18 @@
 # between two.  If a group comes to need a peer, that is a design change: move
 # one of them, here and in review.
 
-# The platform interfaces: the OS, the devices, the window, the sound API.
-sysdev inputdev videodev windev soundapi
+# The interfaces the platform groups and the game share: sound and rendering.
+# Header-only, and they depend on nothing, so that the groups that implement
+# them (audiodev, gl) and the groups that use them agree on a vocabulary.
+soundapi renderapi
 
-# Foundation: logging, then the basic types and settings, maths, the profiler
-# and the audio device.
+# The platform: the OS, the devices, the window, the sound system.
+sysdev inputdev videodev windev audiodev
+
+# Foundation: logging, then the basic types and settings, maths and the
+# profiler.
 log
-base math prof audiodev
+base math prof
 
 # Services the game is built on: debug, replay, graphics, sound; then input
 # mapping, the GL backend, particles, the script player and the debug UI.

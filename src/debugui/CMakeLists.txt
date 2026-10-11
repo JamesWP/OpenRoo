@@ -6,4 +6,4 @@ add_library(debugui OBJECT
     debugui.cpp)
 target_include_directories(debugui PUBLIC .)
 target_link_libraries(debugui
-    PRIVATE windev dbg gfx imgui)
+    PRIVATE windev dbg gfx imgui renderapi)

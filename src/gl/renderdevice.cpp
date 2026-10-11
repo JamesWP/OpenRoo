@@ -188,7 +188,7 @@ static void blend_factors(const BlendState &b, GLenum *src, GLenum *dst)
 
 /* Brings OpenGL's fixed state up to date with what the game has set since
  * the last draw. */
-static void flush_pipeline(RenderDevice::Native *n, const PipelineState &st)
+static void flush_pipeline(GLRenderDevice::Native *n, const PipelineState &st)
 {
     const uint32_t dirty = n->dirty & ~GLDirty::Scene;
     if (dirty & GLDirty::Blend) {
@@ -238,7 +238,7 @@ static void flush_pipeline(RenderDevice::Native *n, const PipelineState &st)
         gl.SamplerParameterfv(n->sampler, GL_TEXTURE_BORDER_COLOR, border);
     }
     if (dirty & GLDirty::Texture)
-        gl.BindTexture(GL_TEXTURE_2D, st.bound[0] ? st.bound[0]->texture : 0);
+        gl.BindTexture(GL_TEXTURE_2D, st.bound[0] ? static_cast<const GLTexture *>(st.bound[0])->texture : 0);
     if (dirty & GLDirty::Viewport)
         gl.Viewport((GLint)n->vpX, (GLint)n->vpY, (GLsizei)n->vpW, (GLsizei)n->vpH);
     if (dirty & (GLDirty::Scissor | GLDirty::Viewport)) {
@@ -331,7 +331,7 @@ static void unpack_rgb(float out[4], uint32_t rgb)
 /* Direct3D 6's viewport put the clip volume's y axis at +-aspect; the
  * projection takes up the difference by scaling its y column.  `aspect` is
  * the display's width over its height. */
-static void upload_scene(RenderDevice::Native *n, const PipelineState &st, float aspect)
+static void upload_scene(GLRenderDevice::Native *n, const PipelineState &st, float aspect)
 {
     SceneBlock b = {};
     memcpy(b.view, st.view.m, sizeof(b.view));
@@ -369,7 +369,7 @@ static void upload_scene(RenderDevice::Native *n, const PipelineState &st, float
 
 /* What this draw needs that the program's uniforms hold: the world matrix,
  * the material and which of the program's paths to take. */
-static void upload_draw(RenderDevice::Native *n, const PipelineState &st,
+static void upload_draw(GLRenderDevice::Native *n, const PipelineState &st,
                         VertexFormat format, uint32_t flags)
 {
     DrawBlock b = {};
@@ -396,7 +396,7 @@ static void upload_draw(RenderDevice::Native *n, const PipelineState &st,
     // The texture modulates the vertex colour; its alpha replaces the
     // vertex's if it has one.  With no texture the vertex colour is the
     // colour.
-    const DeviceTexture *tex = st.bound[0];
+    const GLTexture *tex = static_cast<const GLTexture *>(st.bound[0]);
     b.flags[3] = tex ? (tex->alpha ? 2.0f : 1.0f) : 0.0f;
 
     if (n->lastDrawValid && memcmp(&b, &n->lastDraw, sizeof(b)) == 0)
@@ -409,7 +409,7 @@ static void upload_draw(RenderDevice::Native *n, const PipelineState &st,
 
 /* Points the program's attributes at `count` vertices of `format` in
  * `buffer`, starting `offset` bytes in. */
-static void bind_vertices(RenderDevice::Native *n, VertexFormat format,
+static void bind_vertices(GLRenderDevice::Native *n, VertexFormat format,
                           GLuint buffer, size_t offset)
 {
     const VertexLayout &l = vertex_layout(format);
@@ -451,19 +451,19 @@ static void bind_vertices(RenderDevice::Native *n, VertexFormat format,
 
 // ── Lifetime ──
 
-RenderDevice::RenderDevice()
+GLRenderDevice::GLRenderDevice()
     : native_(new Native()), mode_(NULL)
 {
     lastError_[0] = '\0';
 }
 
-RenderDevice::~RenderDevice()
+GLRenderDevice::~GLRenderDevice()
 {
     Release();
     delete native_;
 }
 
-void RenderDevice::Release()
+void GLRenderDevice::Release()
 {
     Native *n = native_;
     if (n->image)
@@ -489,14 +489,14 @@ void RenderDevice::Release()
 
 // ── Display ──
 
-bool RenderDevice::hasStencil() const
+bool GLRenderDevice::hasStencil() const
 {
     return native_->stencil;
 }
 
 // ── Frames ──
 
-void RenderDevice::Clear(uint32_t flags)
+void GLRenderDevice::Clear(uint32_t flags)
 {
     Native *n = native_;
     if (!n->active)
@@ -517,12 +517,12 @@ void RenderDevice::Clear(uint32_t flags)
         gl.Clear(bits);
 }
 
-bool RenderDevice::BeginFrame()
+bool GLRenderDevice::BeginFrame()
 {
     return true;
 }
 
-void RenderDevice::EndFrame()
+void GLRenderDevice::EndFrame()
 {
 }
 
@@ -530,7 +530,7 @@ void RenderDevice::EndFrame()
  * the back buffer of the n-th presented frames, just before they are shown,
  * to <prefix>-<n>.ppm (a diagnostic: to see what the backend drew without a
  * screen grab, which the display server may not give). */
-static void capture_frame(RenderDevice::Native *n, unsigned frame)
+static void capture_frame(GLRenderDevice::Native *n, unsigned frame)
 {
     static char prefix[400], frames[8192];
     static int enabled = -1;
@@ -568,15 +568,15 @@ static void capture_frame(RenderDevice::Native *n, unsigned frame)
     }
 }
 
-void RenderDevice::SetOverlay(OverlayFn fn)
+void GLRenderDevice::SetOverlay(OverlayFn fn)
 {
     native_->overlay = fn;
 }
 
-unsigned RenderDevice::overlayWidth() const  { return native_->winW; }
-unsigned RenderDevice::overlayHeight() const { return native_->winH; }
+unsigned GLRenderDevice::overlayWidth() const  { return native_->winW; }
+unsigned GLRenderDevice::overlayHeight() const { return native_->winH; }
 
-void RenderDevice::Present()
+void GLRenderDevice::Present()
 {
     Native *n = native_;
     if (!n->active)
@@ -631,43 +631,43 @@ void RenderDevice::Present()
 
 // ── State ──
 
-void RenderDevice::SetBlend(const BlendState &s)
+void GLRenderDevice::SetBlend(const BlendState &s)
 {
     state_.blend = s;
     native_->dirty |= GLDirty::Blend;
 }
 
-void RenderDevice::SetDepth(const DepthState &s)
+void GLRenderDevice::SetDepth(const DepthState &s)
 {
     state_.depth = s;
     native_->dirty |= GLDirty::Depth;
 }
 
-void RenderDevice::SetStencil(const StencilState &s)
+void GLRenderDevice::SetStencil(const StencilState &s)
 {
     state_.stencil = s;
     native_->dirty |= GLDirty::Stencil;
 }
 
-void RenderDevice::SetRaster(const RasterState &s)
+void GLRenderDevice::SetRaster(const RasterState &s)
 {
     state_.raster = s;
     native_->dirty |= GLDirty::Raster;
 }
 
-void RenderDevice::SetScissor(const ScissorState &s)
+void GLRenderDevice::SetScissor(const ScissorState &s)
 {
     state_.scissor = s;
     native_->dirty |= GLDirty::Scissor;
 }
 
-void RenderDevice::SetFog(const FogState &s)
+void GLRenderDevice::SetFog(const FogState &s)
 {
     state_.fog = s;
     native_->dirty |= GLDirty::Scene;
 }
 
-void RenderDevice::SetSampler(int stage, const SamplerState &s)
+void GLRenderDevice::SetSampler(int stage, const SamplerState &s)
 {
     if (stage < 0 || stage >= 2)
         return;
@@ -676,7 +676,7 @@ void RenderDevice::SetSampler(int stage, const SamplerState &s)
         native_->dirty |= GLDirty::Sampler;
 }
 
-void RenderDevice::SetSamplerAddress(int stage, AddressMode u, AddressMode v)
+void GLRenderDevice::SetSamplerAddress(int stage, AddressMode u, AddressMode v)
 {
     if (stage < 0 || stage >= 2)
         return;
@@ -686,14 +686,14 @@ void RenderDevice::SetSamplerAddress(int stage, AddressMode u, AddressMode v)
     SetSampler(stage, s);
 }
 
-void RenderDevice::SetUVTransform(int stage, const UVTransform &t)
+void GLRenderDevice::SetUVTransform(int stage, const UVTransform &t)
 {
     if (stage < 0 || stage >= 2)
         return;
     state_.uvTransform[stage] = t;
 }
 
-void RenderDevice::SetTexture(int stage, const DeviceTexture *tex)
+void GLRenderDevice::SetTexture(int stage, const DeviceTexture *tex)
 {
     if (stage < 0 || stage >= 2)
         return;
@@ -702,44 +702,44 @@ void RenderDevice::SetTexture(int stage, const DeviceTexture *tex)
         native_->dirty |= GLDirty::Texture;
 }
 
-void RenderDevice::SetSpecular(bool on)
+void GLRenderDevice::SetSpecular(bool on)
 {
     state_.specular = on;
 }
 
-void RenderDevice::SetAmbientLight(uint32_t rgb)
+void GLRenderDevice::SetAmbientLight(uint32_t rgb)
 {
     state_.ambient = rgb;
     native_->dirty |= GLDirty::Scene;
 }
 
-void RenderDevice::SetMaterial(const Material &m)
+void GLRenderDevice::SetMaterial(const Material &m)
 {
     state_.material = m;
     state_.materialSet = true;
 }
 
-void RenderDevice::SetDirectionalLight(const DirectionalLight &l)
+void GLRenderDevice::SetDirectionalLight(const DirectionalLight &l)
 {
     state_.light = l;
     state_.lightSet = true;
     native_->dirty |= GLDirty::Scene;
 }
 
-void RenderDevice::SetWorld(const Mat4 &m)
+void GLRenderDevice::SetWorld(const Mat4 &m)
 {
     state_.world = m;
     native_->normalMatrix = normal_matrix(m);
 }
 
-void RenderDevice::SetView(const Mat4 &m)
+void GLRenderDevice::SetView(const Mat4 &m)
 {
     state_.view = m;
     eye_position(m, native_->eye);
     native_->dirty |= GLDirty::Scene;
 }
 
-void RenderDevice::SetProjection(const Mat4 &m)
+void GLRenderDevice::SetProjection(const Mat4 &m)
 {
     state_.projection = m;
     native_->dirty |= GLDirty::Scene;
@@ -747,18 +747,17 @@ void RenderDevice::SetProjection(const Mat4 &m)
 
 // ── Vertex buffers ──
 
-VertexBuffer *RenderDevice::CreateVertexBuffer(VertexFormat format, uint32_t count,
+VertexBuffer *GLRenderDevice::CreateVertexBuffer(VertexFormat format, uint32_t count,
                                                BufferUsage usage, const void *data)
 {
     Native *n = native_;
     if (count == 0)
         return NULL;
-    VertexBuffer *vb = new VertexBuffer();
+    GLVertexBuffer *vb = new GLVertexBuffer();
     vb->format = format;
     vb->usage  = usage;
     vb->count  = count;
     vb->stride = vertex_layout(format).stride;
-    vb->buffer = 0;
     if (n->active) {
         gl.GenBuffers(1, &vb->buffer);
         gl.BindBuffer(GL_ARRAY_BUFFER, vb->buffer);
@@ -768,9 +767,10 @@ VertexBuffer *RenderDevice::CreateVertexBuffer(VertexFormat format, uint32_t cou
     return vb;
 }
 
-bool RenderDevice::UpdateVertexBuffer(VertexBuffer *vb, uint32_t first,
+bool GLRenderDevice::UpdateVertexBuffer(VertexBuffer *buf, uint32_t first,
                                       const void *verts, uint32_t count)
 {
+    GLVertexBuffer *vb = static_cast<GLVertexBuffer *>(buf);
     if (!vb || vb->usage != BufferUsage::Dynamic || first > vb->count ||
         count > vb->count - first)
         return false;
@@ -782,19 +782,16 @@ bool RenderDevice::UpdateVertexBuffer(VertexBuffer *vb, uint32_t first,
     return true;
 }
 
-void RenderDevice::DestroyVertexBuffer(VertexBuffer *vb)
+GLVertexBuffer::~GLVertexBuffer()
 {
-    if (!vb)
-        return;
-    if (vb->buffer && gl_usable())
-        gl.DeleteBuffers(1, &vb->buffer);
-    delete vb;
+    if (buffer && gl_usable())
+        gl.DeleteBuffers(1, &buffer);
 }
 
 // ── Drawing ──
 
 /* Issues the draw of `count` vertices in `buffer` from `offset` bytes. */
-static void submit(RenderDevice::Native *n, const PipelineState &st, float aspect,
+static void submit(GLRenderDevice::Native *n, const PipelineState &st, float aspect,
                    Prim prim, VertexFormat format, GLuint buffer, size_t offset,
                    uint32_t count, uint32_t flags, size_t indexOffset = 0,
                    bool indexed = false)
@@ -830,7 +827,7 @@ static bool stream_write(GLenum target, GLuint buffer, size_t size, size_t *used
     return true;
 }
 
-bool RenderDevice::Draw(Prim prim, VertexFormat format, const void *verts,
+bool GLRenderDevice::Draw(Prim prim, VertexFormat format, const void *verts,
                         uint32_t count, uint32_t flags)
 {
     Native *n = native_;
@@ -849,7 +846,7 @@ bool RenderDevice::Draw(Prim prim, VertexFormat format, const void *verts,
     return true;
 }
 
-bool RenderDevice::DrawIndexed(Prim prim, VertexFormat format, const void *verts,
+bool GLRenderDevice::DrawIndexed(Prim prim, VertexFormat format, const void *verts,
                                uint32_t vertexCount, const uint16_t *indices,
                                uint32_t indexCount, uint32_t flags)
 {
@@ -882,9 +879,10 @@ bool RenderDevice::DrawIndexed(Prim prim, VertexFormat format, const void *verts
     return true;
 }
 
-bool RenderDevice::DrawBuffer(Prim prim, const VertexBuffer *vb, uint32_t first,
+bool GLRenderDevice::DrawBuffer(Prim prim, const VertexBuffer *buf, uint32_t first,
                               uint32_t count, uint32_t flags)
 {
+    const GLVertexBuffer *vb = static_cast<const GLVertexBuffer *>(buf);
     Native *n = native_;
     if (!n->active || fx_nodraw())
         return true;
@@ -903,7 +901,7 @@ bool RenderDevice::DrawBuffer(Prim prim, const VertexBuffer *vb, uint32_t first,
     return true;
 }
 
-void RenderDevice::LogState(const char *tag)
+void GLRenderDevice::LogState(const char *tag)
 {
     if (!native_->active) {
         g_logger.write("%s: headless, no device state\n", tag);

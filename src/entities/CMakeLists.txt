@@ -16,4 +16,4 @@ target_include_directories(entities PUBLIC .)
 
 target_link_libraries(entities
     PUBLIC  base gfx level
-    PRIVATE sysdev log prof dbg soundapi imgui)
+    PRIVATE sysdev log prof dbg soundapi imgui renderapi)

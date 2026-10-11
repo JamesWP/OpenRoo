@@ -5,5 +5,5 @@ add_library(screens OBJECT
     scoreoverlay.cpp)
 target_include_directories(screens PUBLIC .)
 target_link_libraries(screens
-    PUBLIC  gfx session
+    PUBLIC  gfx session renderapi
     PRIVATE sysdev log base math inputdev input ui script level entities render)

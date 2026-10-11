@@ -4,7 +4,7 @@
 
 #pragma once
 #include <stdint.h>
-#include "vecmath.h"   /* Mat4 and Vec3 */
+#include "vectypes.h"   /* Mat4 and Vec3 */
 
 /* A colour with float channels, 0..1. */
 struct ColorF { float r, g, b, a; };

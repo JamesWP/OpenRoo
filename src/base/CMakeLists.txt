@@ -6,4 +6,5 @@ add_library(base OBJECT
     themesounds.cpp)
 target_include_directories(base PUBLIC .)
 target_link_libraries(base
-    PRIVATE sysdev log)
+    PRIVATE sysdev log
+    PUBLIC renderapi)

@@ -1,4 +1,4 @@
-/* RenderDevice::Create and the enumeration the launcher uses: puts the
+/* GLRenderDevice::Create and the enumeration the launcher uses: puts the
  * game's window full-screen in the display mode asked for, makes an OpenGL
  * 3.3 core context on it, and builds the program and the buffers every draw
  * shares.
@@ -16,6 +16,7 @@
  * inactive device and does nothing. */
 
 #include "glnative.h"
+#include "glrenderdevice.h"
 #include "sysdev.h"
 #include "logger.h"
 #include <algorithm>
@@ -28,7 +29,7 @@ static const struct { unsigned w, h; } kHeadlessSizes[] = {
     { 1152, 864 }, { 1280, 960 }, { 1400, 1050 }, { 1440, 1080 },
 };
 
-bool RenderDevice::headless()
+bool GLRenderDevice::headless() const
 {
     static int cached = -1;
     if (cached < 0) {
@@ -87,7 +88,7 @@ static bool devfx_is(const char *name)
 
 /* The objects every draw shares: the program, a vertex array, the uniform
  * blocks, the sampler and the buffer Draw streams through. */
-static bool create_objects(RenderDevice::Native *n, char *error, size_t errorSize)
+static bool create_objects(GLRenderDevice::Native *n, char *error, size_t errorSize)
 {
     n->program = gl_build_program(error, errorSize);
     if (!n->program)
@@ -138,7 +139,7 @@ static bool create_objects(RenderDevice::Native *n, char *error, size_t errorSiz
     return true;
 }
 
-bool RenderDevice::Create(windev::Window *window, const AdapterId *adapter, int nModeIndex)
+bool GLRenderDevice::Create(windev::Window *window, const AdapterId *adapter, int nModeIndex)
 {
     Release();
     Native *n = native_;
@@ -263,7 +264,7 @@ bool RenderDevice::Create(windev::Window *window, const AdapterId *adapter, int 
 
 // ── Enumeration for the launcher ──
 
-bool RenderDevice::EnumerateAdapters(std::vector<Adapter> &out)
+bool GLRenderDevice::EnumerateAdapters(std::vector<Adapter> &out) const
 {
     std::vector<windev::DisplayInfo> displays;
     if (!windev::listDisplays(displays))
@@ -278,13 +279,18 @@ bool RenderDevice::EnumerateAdapters(std::vector<Adapter> &out)
     return true;
 }
 
-bool RenderDevice::EnumerateDisplayModes(const AdapterId *adapter,
+bool GLRenderDevice::EnumerateDisplayModes(const AdapterId *adapter,
                                          std::vector<DisplayMode> &out,
-                                         bool anyAspect)
+                                         bool anyAspect) const
 {
     windev::DisplayInfo display;
     if (!find_display(adapter, &display))
         return false;
     list_modes(display.id, anyAspect, out);
     return !out.empty();
+}
+
+std::unique_ptr<RenderDevice> createGLRenderDevice()
+{
+    return std::unique_ptr<RenderDevice>(new GLRenderDevice());
 }

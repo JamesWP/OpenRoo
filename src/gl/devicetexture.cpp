@@ -75,7 +75,7 @@ void gl_dump_pixels(const char *kind, const char *name, int width, int height,
 
 // ── Upload ──
 
-bool gl_upload_image(DeviceTexture *t, const Image &img, bool display, bool create)
+bool gl_upload_image(GLTexture *t, const Image &img, bool display, bool create)
 {
     const PixelFormat &pf = t->format;
     const long pitch = (long)img.width * (pf.bits / 8);
@@ -105,7 +105,7 @@ bool gl_upload_image(DeviceTexture *t, const Image &img, bool display, bool crea
 
 // ── RenderDevice ──
 
-DeviceTexture *RenderDevice::CreateTexture(const Image &img, uint32_t flags,
+DeviceTexture *GLRenderDevice::CreateTexture(const Image &img, uint32_t flags,
                                            unsigned depth)
 {
     if (img.empty())
@@ -115,8 +115,7 @@ DeviceTexture *RenderDevice::CreateTexture(const Image &img, uint32_t flags,
     if (depth != 16 && depth != 32)
         depth = img.sourceBits;
 
-    DeviceTexture *t = new DeviceTexture();
-    t->texture = 0;
+    GLTexture *t = new GLTexture();
     t->format  = gl_texture_format(depth, (flags & TextureFlag::Alpha) != 0);
     t->alpha   = t->format.aMask != 0;
     t->width   = img.width;
@@ -138,21 +137,19 @@ DeviceTexture *RenderDevice::CreateTexture(const Image &img, uint32_t flags,
     return t;
 }
 
-bool RenderDevice::UpdateTexture(DeviceTexture *t, const Image &img)
+bool GLRenderDevice::UpdateTexture(DeviceTexture *tex, const Image &img)
 {
+    GLTexture *t = static_cast<GLTexture *>(tex);
     if (t == NULL || img.width != t->width || img.height != t->height)
         return false;
     native_->dirty |= GLDirty::Texture;
     return gl_upload_image(t, img, false, false);
 }
 
-void RenderDevice::DestroyTexture(DeviceTexture *t)
+GLTexture::~GLTexture()
 {
-    if (t == NULL)
-        return;
-    if (t->texture != 0 && gl_usable())
-        gl.DeleteTextures(1, &t->texture);
-    delete t;
+    if (texture != 0 && gl_usable())
+        gl.DeleteTextures(1, &texture);
 }
 
 // ── Images ──
@@ -160,7 +157,7 @@ void RenderDevice::DestroyTexture(DeviceTexture *t)
 // PresentImage's source: the image quantised to the display's format, as a
 // texture drawn over the whole back buffer, filtered to fit.
 
-void RenderDevice::PresentImage(const Image &img)
+void GLRenderDevice::PresentImage(const Image &img)
 {
     Native *n = native_;
     const PixelFormat pf = gl_display_format(mode_->dwBitDepth);
@@ -183,7 +180,7 @@ void RenderDevice::PresentImage(const Image &img)
         }
         const bool fresh = n->image == NULL;
         if (fresh) {
-            n->image = new DeviceTexture();
+            n->image = new GLTexture();
             n->image->format = pf;
             n->image->alpha  = false;
             n->image->width  = img.width;

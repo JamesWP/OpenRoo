@@ -44,7 +44,7 @@ say so explicitly.
 ## `--headless` -- no window, no graphics, no display
 
 `--fast` stops the game *asking* the driver to draw. `--headless` removes the
-driver: with `KAROO_HEADLESS=1`, `RenderDevice::Create` (`src/gl/createdevice.cpp`)
+driver: with `KAROO_HEADLESS=1`, `GLRenderDevice::Create` (`src/gl/createdevice.cpp`)
 creates no OpenGL context at all, and the game's one window is created
 message-only so Wine needs no display driver for it. Nothing appears on
 screen, nothing takes focus, no desktop mode is switched, and the run works

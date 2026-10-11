@@ -11,5 +11,5 @@ add_library(gfx OBJECT
     texture.cpp)
 target_include_directories(gfx PUBLIC .)
 target_link_libraries(gfx
-    PUBLIC  base math
-    PRIVATE sysdev log)
+    PUBLIC  math renderapi
+    PRIVATE base sysdev log)

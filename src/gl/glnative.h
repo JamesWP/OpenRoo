@@ -1,15 +1,17 @@
-/* RenderDevice::Native: the OpenGL objects behind the RenderDevice.  For
- * backend files only -- game code goes through renderdevice.h.
+/* GLRenderDevice, the OpenGL implementation of the RenderDevice interface, and
+ * the OpenGL objects behind it (GLRenderDevice::Native).  For backend files
+ * only -- game code goes through renderdevice.h, and gets its device from
+ * glrenderdevice.h.
  *
  * The backend is OpenGL 3.3 core profile: everything is drawn by one GLSL
  * program (shaders.cpp) from vertex buffers, with the transforms, light,
  * material and fog in two uniform blocks and the texture sampler in a sampler
  * object.  There is no fixed-function state to set.  The game's pipeline
  * state is set on the device lazily, when a draw needs it: a setter only
- * records the value in RenderDevice's PipelineState and marks its group
+ * records the value in GLRenderDevice's PipelineState and marks its group
  * dirty.
  *
- * A headless RenderDevice (renderdevice.h) has no context at all: `active`
+ * A headless GLRenderDevice has no context at all: `active`
  * stays false, and every RenderDevice method that would reach OpenGL does
  * nothing instead.  Everything else -- the mode list, the shadow state, the
  * texture sizes -- works as normal, so the game cannot tell. */
@@ -50,6 +52,35 @@ struct DrawBlock {          // binding 1: changes between draws
     float flags[4];         // screen vertices, lit, specular on, texture mode
 };
 
+/* Everything the game has set on the device: the shadow the backend keeps,
+ * so the getters need no device, and a device that has been reset can be put
+ * back the way it was. */
+struct PipelineState {
+    BlendState          blend;
+    DepthState          depth;
+    StencilState        stencil;
+    RasterState         raster;
+    ScissorState        scissor;
+    FogState            fog;
+    SamplerState        samplers[2];  // by stage; the game's vertex formats address two
+    UVTransform         uvTransform[2];
+    bool                specular = false;
+    uint32_t            ambient  = 0;
+    Material            material = {};
+    bool                materialSet = false;
+    DirectionalLight    light = {};
+    bool                lightSet = false;
+    Mat4                world = identity(), view = identity(), projection = identity();
+    const DeviceTexture *bound[2] = { nullptr, nullptr };  // by stage
+
+    static Mat4 identity()
+    {
+        Mat4 m = {};
+        m.m[0] = m.m[5] = m.m[10] = m.m[15] = 1.0f;
+        return m;
+    }
+};
+
 /* The groups of PipelineState the device is lazily brought up to date with. */
 namespace GLDirty {
 enum : uint32_t {
@@ -59,22 +90,101 @@ enum : uint32_t {
 };
 }
 
-struct DeviceTexture {
-    GLuint   texture;     // 0 when headless
-    bool     alpha;       // its format has an alpha channel
-    int      width, height;
+struct GLTexture : DeviceTexture {
+    ~GLTexture() override;
+    GLuint   texture = 0; // 0 when headless
+    bool     alpha = false;  // its format has an alpha channel
+    int      width = 0, height = 0;
     PixelFormat format;   // what the game's pixels were converted to first
 };
 
-struct VertexBuffer {
+struct GLVertexBuffer : VertexBuffer {
+    ~GLVertexBuffer() override;
     VertexFormat format;
     BufferUsage  usage;
     uint32_t     count;
     uint32_t     stride;
-    GLuint       buffer;  // 0 when headless
+    GLuint       buffer = 0;  // 0 when headless
 };
 
-struct RenderDevice::Native {
+/* The OpenGL implementation of RenderDevice. */
+class GLRenderDevice final : public RenderDevice {
+public:
+    GLRenderDevice();
+    ~GLRenderDevice() override;
+
+    bool headless() const override;
+    bool Create(windev::Window *window, const AdapterId *adapter, int nModeIndex) override;
+    void Release() override;
+    const char *lastError() const override { return lastError_; }
+    bool EnumerateAdapters(std::vector<Adapter> &out) const override;
+    bool EnumerateDisplayModes(const AdapterId *adapter,
+        std::vector<DisplayMode> &out,
+        bool anyAspect) const override;
+    unsigned width() const override { return mode_->dwWidth; }
+    unsigned height() const override { return mode_->dwHeight; }
+    unsigned overlayWidth() const override;
+    unsigned overlayHeight() const override;
+    unsigned bitDepth() const override { return mode_->dwBitDepth; }
+    bool hasStencil() const override;
+    void Clear(uint32_t flags) override;
+    bool BeginFrame() override;
+    void EndFrame() override;
+    void Present() override;
+    void SetOverlay(OverlayFn fn) override;
+    void PresentImage(const Image &img) override;
+    DeviceTexture *CreateTexture(const Image &img, uint32_t flags, unsigned depth) override;
+    bool UpdateTexture(DeviceTexture *t, const Image &img) override;
+    void SetBlend(const BlendState &s) override;
+    void SetDepth(const DepthState &s) override;
+    void SetStencil(const StencilState &s) override;
+    void SetRaster(const RasterState &s) override;
+    void SetFog(const FogState &s) override;
+    void SetScissor(const ScissorState &s) override;
+    const BlendState &blend() const override { return state_.blend; }
+    const DepthState &depth() const override { return state_.depth; }
+    const StencilState &stencil() const override { return state_.stencil; }
+    const RasterState &raster() const override { return state_.raster; }
+    const FogState &fog() const override { return state_.fog; }
+    const ScissorState &scissor() const override { return state_.scissor; }
+    void SetSampler(int stage, const SamplerState &s) override;
+    void SetSamplerAddress(int stage, AddressMode u, AddressMode v) override;
+    void SetUVTransform(int stage, const UVTransform &t) override;
+    void SetTexture(int stage, const DeviceTexture *tex) override;
+    void SetSpecular(bool on) override;
+    void SetAmbientLight(uint32_t rgb) override;
+    void SetMaterial(const Material &m) override;
+    void SetDirectionalLight(const DirectionalLight &l) override;
+    void SetWorld(const Mat4 &m) override;
+    void SetView(const Mat4 &m) override;
+    void SetProjection(const Mat4 &m) override;
+    const Mat4 &world() const override { return state_.world; }
+    const Mat4 &view() const override { return state_.view; }
+    VertexBuffer *CreateVertexBuffer(VertexFormat format, uint32_t count,
+        BufferUsage usage, const void *data) override;
+    bool UpdateVertexBuffer(VertexBuffer *vb, uint32_t first, const void *verts,
+        uint32_t count) override;
+    bool Draw(Prim prim, VertexFormat format, const void *verts,
+        uint32_t count, uint32_t flags) override;
+    bool DrawIndexed(Prim prim, VertexFormat format, const void *verts,
+        uint32_t vertexCount, const uint16_t *indices,
+        uint32_t indexCount, uint32_t flags) override;
+    bool DrawBuffer(Prim prim, const VertexBuffer *vb, uint32_t first,
+        uint32_t count, uint32_t flags) override;
+    void LogState(const char *tag) override;
+
+    /* The backend's own objects. */
+    struct Native;
+
+private:
+    Native                  *native_;
+    PipelineState            state_;
+    std::vector<DisplayMode> modes_;
+    DisplayMode             *mode_;
+    char                     lastError_[900];
+};
+
+struct GLRenderDevice::Native {
     windev::Window *window  = NULL;
     unsigned        display = 0;       // the windev display it is full-screen on
     bool            active  = false;   // a context and its objects exist
@@ -97,7 +207,7 @@ struct RenderDevice::Native {
     DrawBlock lastDraw;
     bool      lastDrawValid = false;
 
-    DeviceTexture *image = NULL;       // PresentImage's texture
+    GLTexture     *image = NULL;       // PresentImage's texture
     RenderDevice::OverlayFn overlay = NULL;
 };
 
@@ -124,7 +234,7 @@ void gl_dump_pixels(const char *kind, const char *name, int width, int height,
 bool gl_dump_enabled();
 
 /* Uploads img, converted to pf, into t (which has its storage if `create`). */
-bool gl_upload_image(DeviceTexture *t, const Image &img, bool display, bool create);
+bool gl_upload_image(GLTexture *t, const Image &img, bool display, bool create);
 
 /* KAROO_DRAW_TRACE (src/gl/drawtrace.cpp): called by each draw, just before
  * it is issued. */

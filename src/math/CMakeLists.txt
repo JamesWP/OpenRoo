@@ -3,4 +3,5 @@ add_library(math OBJECT
     vecmath.cpp)
 target_include_directories(math PUBLIC .)
 target_link_libraries(math
-    PRIVATE sysdev log)
+    PRIVATE sysdev log
+    PUBLIC renderapi)

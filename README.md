@@ -93,6 +93,7 @@ includes and `src/layers.txt`. To add a group, give it a line in
 just those not implied by others, `--dot` for Graphviz).
 
 OpenGL headers are for `gl` alone (`cmake/CheckNativeGL.cmake`); everything else
-goes through `renderdevice.h`.
+goes through the `RenderDevice` interface (`renderapi/renderdevice.h`), which `gl`
+implements and makes with `createGLRenderDevice()`.
 SDL and FFmpeg are for the platform groups (`windev`, `audiodev`, `inputdev`, `sysdev`,
 `videodev`) alone (`cmake/CheckNativeSDL.cmake`).

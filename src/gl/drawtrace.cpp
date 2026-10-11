@@ -114,7 +114,7 @@ void gl_trace_draw(const PipelineState &st, Prim prim, VertexFormat format,
     put("min", (unsigned long)s.min);
     put("u", (unsigned long)s.u);
     put("v", (unsigned long)s.v);
-    if (const DeviceTexture *tex = st.bound[0]) {
+    if (const GLTexture *tex = static_cast<const GLTexture *>(st.bound[0])) {
         put("texw", (unsigned long)tex->width);
         put("texh", (unsigned long)tex->height);
         put("texbits", tex->format.bits);

@@ -6,4 +6,4 @@ add_library(fx OBJECT
 target_include_directories(fx PUBLIC .)
 target_link_libraries(fx
     PUBLIC  gfx
-    PRIVATE sysdev log base)
+    PRIVATE sysdev log base renderapi)

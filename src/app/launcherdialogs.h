@@ -4,5 +4,7 @@
  * unattended-run support that skips them. */
 #pragma once
 
+class RenderDevice;
+
 /* Shows the launcher over the given window.  True to play, false to quit. */
-bool LauncherDlg_Show(void *parent);
+bool LauncherDlg_Show(void *parent, const RenderDevice &dev);

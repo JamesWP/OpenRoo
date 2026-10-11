@@ -35,10 +35,12 @@ static bool fx_allaspect()
  * the Config. */
 class DisplayModel : public windev::LauncherModel {
 public:
+    explicit DisplayModel(const RenderDevice &dev) : dev_(dev) {}
+
     bool listAdapters(std::vector<std::string> &names) override
     {
         adapters_.clear();
-        if (!RenderDevice::EnumerateAdapters(adapters_))
+        if (!dev_.EnumerateAdapters(adapters_))
             return false;
         for (size_t i = 0; i < adapters_.size(); i++)
             names.push_back(adapters_[i].name);
@@ -62,7 +64,7 @@ public:
         const AdapterId *id = adapter >= 0 && adapters_[adapter].hasGuid
                             ? &adapters_[adapter].id : NULL;
         std::vector<DisplayMode> modes;
-        if (!RenderDevice::EnumerateDisplayModes(id, modes, fx_allaspect()))
+        if (!dev_.EnumerateDisplayModes(id, modes, fx_allaspect()))
             return false;
         for (size_t i = 0; i < modes.size(); i++) {
             char text[64];
@@ -98,11 +100,12 @@ public:
     }
 
 private:
+    const RenderDevice  &dev_;
     std::vector<Adapter> adapters_;
 };
 
-bool LauncherDlg_Show(void *parent)
+bool LauncherDlg_Show(void *parent, const RenderDevice &dev)
 {
-    DisplayModel model;
+    DisplayModel model(dev);
     return windev::showLauncher(parent, model);
 }

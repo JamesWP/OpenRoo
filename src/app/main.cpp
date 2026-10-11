@@ -19,7 +19,9 @@
 #include "game.h"
 #include "config.h"
 #include "cdthemes.h"
+#include <memory>
 #include "renderdevice.h"
+#include "glrenderdevice.h"
 #include "inputsetup.h"
 #include "soundmanager.h"
 #include "audiodev.h"
@@ -238,11 +240,12 @@ int Main_WinMain(const char *lpCmdLine)
 
     static MainWindow handler;
     windev::Window window;
+    std::unique_ptr<RenderDevice> device = createGLRenderDevice();
     windev::WindowConfig wc;
     wc.title       = "Ka'roo";
     wc.width       = 400;
     wc.height      = 300;
-    wc.messageOnly = RenderDevice::headless();
+    wc.messageOnly = device->headless();
     if (!window.create(&handler, wc))
         return 0;
     void *hWnd = window.handle();
@@ -275,7 +278,7 @@ int Main_WinMain(const char *lpCmdLine)
     if (launcher_skipped())
         g_logger.write("launcher: dialog skipped\n");
     else
-        play = LauncherDlg_Show(NULL);
+        play = LauncherDlg_Show(NULL, *device);
     if (!play) {
         window.destroy();
         delete_game(game);
@@ -284,7 +287,7 @@ int Main_WinMain(const char *lpCmdLine)
 
     window.show(false);
 
-    RenderDevice *d3d = s_renderer.device = new RenderDevice();
+    RenderDevice *d3d = s_renderer.device = device.get();
 
     // Three attempts: the launcher's adapter and mode, the default adapter in
     // that mode, the default adapter in mode 0.
@@ -298,13 +301,11 @@ int Main_WinMain(const char *lpCmdLine)
             "Creation of the render device failed");
         windev::messageBox(NULL, d3d->lastError(), "Error!",
                            windev::Buttons::Ok, windev::Icon::Error);
-        delete d3d;
         delete_game(game);
         return 1;
     }
 
     if (Input_Setup(hWnd, game, &s_progCtrl) == 0) {
-        delete d3d;
         delete_game(game);
         return 1;
     }
@@ -324,14 +325,14 @@ int Main_WinMain(const char *lpCmdLine)
     // The intro is only shown to a person at a display: a headless or replayed
     // run takes it as ending at once, so its frame counts do
     // not depend on it.
-    const bool show = !RenderDevice::headless() && !record_replaying();
+    const bool show = !d3d->headless() && !record_replaying();
     const std::string path = std::string(kGameDir) + "/video/INTRO.AVI";
     if (g_movie.load(hWnd, sysdev::nativePath(path.c_str()).c_str(), show))
         g_movie.play();
     else
         g_logger.logMessage(3, "MAIN: Couldn't load %s .", path.c_str());
 
-    if (!RenderDevice::headless())
+    if (!d3d->headless())
         debugui::init(*d3d);
 
     g_norender = winmain_fx_norender();
@@ -345,7 +346,7 @@ int Main_WinMain(const char *lpCmdLine)
     delete_game(Game::instance());
     Input_TrySaveSettings(&s_progCtrl);
     s_renderer.themeBlock.release(&s_renderer.textures, &s_renderer.models);
-    delete s_renderer.device;
     s_renderer.device = NULL;
+    device.reset();
     return exitCode;
 }

@@ -10,5 +10,5 @@ add_library(gl OBJECT
     shaders.cpp)
 target_include_directories(gl PUBLIC .)
 target_link_libraries(gl
-    PUBLIC  windev gfx
+    PUBLIC  windev gfx renderapi
     PRIVATE sysdev log prof)
