@@ -8,7 +8,6 @@
 #include <iterator>
 #include <stdio.h>
 #include <string.h>
-#include "inputdev.h"
 #include "windev.h"
 #include "gamestr.h"
 #include "logger.h"
@@ -18,7 +17,6 @@
 #include "audiodev.h"
 #include "voicepool.h"
 #include "player.h"
-#include "progctrl.h"
 #include "gamereset.h"
 #include "levelparse.h"
 #include "levelsetup.h"
@@ -29,7 +27,7 @@
 static const char SAVE_KEY      = 0x37;
 static const char HIGHSCORE_KEY = 0x4b;
 
-void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableControl *progCtrl)
+void Game_Boot(Game *g, const char *gameName, const char *gameDir)
 {
     snprintf(g->gameDir_, sizeof(g->gameDir_), "%s", gameDir);
     // The tally is read by the state dump before any level has been scored.
@@ -79,8 +77,6 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
         return;
     }
 
-    g->frontEnd()->setDebounce(inputdev::KEY_RETURN);
-    g->frontEnd()->menu()->setLastKey(inputdev::KEY_RETURN);
     g->frontEnd()->saveSlots()->setCount(6);
     if (!g->frontEnd()->saveSlots()->loadAllSlotFiles(g->gameDir_, g->gameFileName_, SAVE_KEY)) {
         g_logger.logMessage(3, "GAME: warning - no save-files for this game (maybe started a new game the first time\077), creating %d empty slots", (unsigned)g->frontEnd()->saveSlots()->count());
@@ -94,8 +90,6 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
     } else {
         g_logger.logMessage(1, "GAME: config-values loaded");
     }
-    progCtrl->setJoyDeadzone(0, g->config_.joyDeadzone() * 100);
-    progCtrl->setJoyDeadzone(4, g->config_.joyDeadzone() * 100);
 
     g->frontEnd()->highScores()->setCount(10);
     if (!g->frontEnd()->highScores()->readFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY)) {
@@ -133,7 +127,6 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
     g->frontEnd()->cheatEntry()->setCursor(0);
     g->frontEnd()->cheatEntry()->setBuffer((char *)g->frontEnd()->cheatBuffer());
     g->frontEnd()->cheatEntry()->setActive(1);
-    g->frontEnd()->cheatEntry()->setLastKey(inputdev::KEY_RETURN);
     g->camera()->setParkedCameraOption(0);
     g->initialised_        = 1;
     Core_ForwardQuit(g);

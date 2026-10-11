@@ -26,7 +26,6 @@ void Cheat_EnterLoadedState(Game *game)
         game->audio()->cdAudio()->stop();
     game->scriptPlayer()->setRunning(1);
     game->camera()->setMode(1);
-    game->frontEnd()->debounceEnter();
 }
 
 void Cheat_KillFoes(Game *g)

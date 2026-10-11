@@ -589,7 +589,7 @@ def cmd_record(args):
     hdr["saves"] = saves
     with open(rec_path, "wb") as f:
         f.write(recfmt.encode(hdr, frames))
-    keyed = sum(1 for f in frames if recfmt.pressed(f[2]))
+    keyed = sum(1 for f in frames if recfmt.pressed(f[1]))
     print("\ncaptured %d frames, %d with a key held" % (len(frames), keyed))
 
     entry = {

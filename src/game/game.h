@@ -94,7 +94,7 @@ public:
 
     /* ── the front end (frontend.h) ─────────────────────────────────── */
     /* The menu, the cheat and name entries, the save slots, the high-score
-     * table and the rebind and debounce state (frontend.h). */
+     * table and the rebind state (frontend.h). */
     FrontEnd       *frontEnd()                       { return &frontEnd_; }
     const FrontEnd *frontEnd() const                 { return &frontEnd_; }
 
@@ -139,7 +139,7 @@ public:
     virtual ~Game();
     /* Built and torn down by Game_Boot and Game_Shutdown (core/gameboot.h),
      * which set up and take down everything the Game holds. */
-    friend void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableControl *progCtrl);
+    friend void Game_Boot(Game *g, const char *gameName, const char *gameDir);
     friend void Game_Shutdown(Game *g);
 
     Game(const Game &) = delete;

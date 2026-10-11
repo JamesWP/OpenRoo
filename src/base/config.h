@@ -47,7 +47,7 @@ public:
      * parkedCameraOption. */
     unsigned char  cameraTurnsWithPlayer() const       { return cameraTurnsWithPlayer_; }
     void           setCameraTurnsWithPlayer(unsigned char on) { cameraTurnsWithPlayer_ = on; }
-    /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
+    /* Joystick deadzone in percent, steps of 10.  Only the menu knob uses it: no controller is read. */
     unsigned short joyDeadzone() const                 { return joyDeadzone_; }
     void           setJoyDeadzone(unsigned short p)    { joyDeadzone_ = p; }
 

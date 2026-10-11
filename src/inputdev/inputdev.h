@@ -32,9 +32,10 @@ enum Key {
     KEY_LSHIFT = 225, KEY_RSHIFT = 229
 };
 
-/* Whether a key is down right now.  Reflects the events pumped so far
- * (windev::runMessageLoop), and only while the window has the focus. */
-bool keyDown(int key);
+/* The state of every key: bit 0x80 of each byte is set while the key is held.
+ * Reflects the events pumped so far (windev::runMessageLoop), and only while
+ * the window has the focus. */
+void readKeyboard(unsigned char keys[KEY_COUNT]);
 
 /* While set, no key reads as down: something else (the debug UI's text box)
  * has the keyboard. */
@@ -43,41 +44,8 @@ void setKeyboardSuppressed(bool suppressed);
 /* The key with this name ("Up", "Page Up", "A"; any case), or KEY_NONE. */
 int keyFromName(const char *name);
 
-struct DevicesState;
-
-/* The keyboard and mouse bound to the game window, plus the controller. */
-class Devices {
-public:
-    Devices();
-    ~Devices();
-    Devices(const Devices &) = delete;
-    Devices &operator=(const Devices &) = delete;
-
-    /* Brings up the input system and the keyboard and mouse for the native
-     * window.  False if any fails, with nothing left open. */
-    bool create(void *window);
-    void destroy();
-
-    /* Takes the devices when the window is active, and gives them back.
-     * acquire is false if the keyboard cannot be taken. */
-    bool acquire();
-    void unacquire();
-
-    /* The state of every key: bit 0x80 of each byte is set while the key is
-     * held.  False if there is no keyboard or it cannot be read. */
-    bool readKeyboard(unsigned char keys[KEY_COUNT]);
-
-    /* The key's name, for menus and openroo.ini, into buf (bufsz bytes).
-     * False if it has none. */
-    bool keyName(int key, char *buf, unsigned bufsz);
-
-    /* The controller: no controller is ever opened, so both succeed without
-     * doing anything.  Axes are numbered by their offset (0, 4, 8). */
-    bool setControllerRange(int axis, int low, int high);
-    bool setControllerDeadzone(int axis, int zone);
-
-private:
-    DevicesState *state_;
-};
+/* The key's name, for menus and openroo.ini, into buf (bufsz bytes).  False
+ * if it has none. */
+bool keyName(int key, char *buf, unsigned bufsz);
 
 }  // namespace inputdev

@@ -7,7 +7,8 @@
 #include <string.h>
 #include "progctrl.h"
 #include "logger.h"
-#include "record.h"
+#include "keys.h"
+#include "inputdev.h"
 #include "clock.h"
 #include "gamestr.h"
 #include "ini.h"
@@ -71,37 +72,6 @@ ProgableControl::~ProgableControl()
     for (int i = 0; i < 5; i++) action_tables[i].freeAll();
 }
 
-void ProgableControl::shutdown()
-{
-    devices_.destroy();
-}
-
-int ProgableControl::setupDevices(void *window)
-{
-    return devices_.create(window) ? 1 : 0;
-}
-
-int ProgableControl::setJoyRange(int axis, int lo, int hi)
-{
-    return devices_.setControllerRange(axis, lo, hi);
-}
-
-int ProgableControl::setJoyDeadzone(uint32_t axis, int zone)
-{
-    return devices_.setControllerDeadzone((int)axis, zone);
-}
-
-int ProgableControl::acquireAll()
-{
-    return devices_.acquire() ? 1 : 0;
-}
-
-int ProgableControl::unacquireAll()
-{
-    devices_.unacquire();
-    return 1;
-}
-
 void ProgableControl::registerAction(unsigned short mode,
                                  const char *name, ActionCallback cb, void *ctx)
 {
@@ -154,7 +124,7 @@ void ProgableControl::getBindingStr(int mode, const char *name,
     bool first = true;
     for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
         char keyname[64] = "?";
-        devices_.keyName(kb->scancode, keyname, sizeof(keyname));
+        inputdev::keyName(kb->scancode, keyname, sizeof(keyname));
         if (!first) {
             size_t cur = strlen(buf), sep = strlen(sep_or);
             if (cur + sep + 1 <= bufsz)
@@ -169,22 +139,11 @@ void ProgableControl::getBindingStr(int mode, const char *name,
 
 void ProgableControl::dispatch(unsigned short game_state)
 {
-    uint8_t ks[inputdev::KEY_COUNT];
-    if (record_replaying()) {
-        // Replay supplies both the key array and the mode; the real keyboard
-        // is not read.
-        unsigned short recorded = game_state;
-        if (!replay_keys(&recorded, ks)) return;
-        game_state = recorded;
-        if (game_state >= 5) return;
-    } else {
-        if (game_state >= 5 || !devices_.readKeyboard(ks)) return;
-        record_keys(game_state, ks);
-    }
+    if (game_state >= 5) return;
 
     for (ActionEntry *e = action_tables[game_state].head; e; e = e->chain) {
         for (KeyBind *kb = e->kbd; kb; kb = kb->next) {
-            if (kb->scancode >= 0 && kb->scancode < inputdev::KEY_COUNT && (ks[kb->scancode] & 0x80)) {
+            if (input::down(kb->scancode)) {
                 if (e->callback) e->callback(kb->scancode, kb->strength, e->context);
                 break;
             }
@@ -193,18 +152,11 @@ void ProgableControl::dispatch(unsigned short game_state)
 }
 
 int ProgableControl::captureBinding(unsigned int mode, const char *name,
-                                int strength, int , int)
+                                int strength)
 {
     if (mode >= 5) return 0;
-
-    uint8_t ks[inputdev::KEY_COUNT];
-    if (!devices_.readKeyboard(ks)) return 0;
-
-    for (int sc = 1; sc < inputdev::KEY_COUNT; sc++) {
-        if (ks[sc] & 0x80)
-            return bindKey((unsigned short)mode, name, sc, strength);
-    }
-    return 0;
+    int key = input::firstDown();
+    return key ? bindKey((unsigned short)mode, name, key, strength) : 0;
 }
 
 /* FORMAT: the bindings are the [keys.<mode>] sections of openroo.ini, a line
@@ -296,7 +248,7 @@ int ProgableControl::writeBindings()
             std::string text;
             for (size_t i = binds.size(); i-- > 0;) {
                 char name[64];
-                if (!devices_.keyName(binds[i]->scancode, name, sizeof(name))) continue;
+                if (!inputdev::keyName(binds[i]->scancode, name, sizeof(name))) continue;
                 if (!text.empty()) text += " | ";
                 text += name;
                 if (binds[i]->strength != 100) text += "@" + std::to_string(binds[i]->strength);

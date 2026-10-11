@@ -231,7 +231,6 @@ void Play_CheckLevelEnd(Game *self)
                     if (self->config()->musicOn() != 0)
                         self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
                     Score_CalculateLevelScore(self, 3);
-                    self->frontEnd()->debounceEnter();
                     g_logger.logMessage(1, "GAME: completed at level %d/%d",
                                        (unsigned int)self->session()->levelIndex() + 1,
                                        (unsigned int)self->session()->levelCount());

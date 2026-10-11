@@ -41,8 +41,6 @@ public:
     // Escape at the root: leave the menu.
     unsigned int   leave() const                    { return leave_; }
 
-    unsigned char  lastKey() const                  { return lastKey_; }
-    void           setLastKey(unsigned char k)      { lastKey_ = k; }
     unsigned char  cursor() const                   { return cursor_; }
     void           setCursor(unsigned char c)       { cursor_ = c; }
     unsigned char  savedCursor(unsigned char node) const { return savedCursor_[node]; }
@@ -74,7 +72,6 @@ private:
     double         lockStart_{};
     unsigned int   lock_{};
     unsigned int   leave_{};
-    unsigned char  lastKey_{};
     unsigned char  cursor_{};
     unsigned char  savedCursor_[0xff]{};  // by node id
     unsigned char  childCount_[0xff]{};   // by node id

@@ -89,6 +89,8 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 {
     Player *pl = self->world()->player();
 
+    input::update();
+
     if (s_fx < 0) {
         char e[32];
         uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
@@ -98,7 +100,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     }
 
     Play_LoadSounds(self);
-    if (self->state() == GameState::Quitting && self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0) {
+    if (self->state() == GameState::Quitting && input::pressed(inputdev::KEY_RETURN)) {
         g_logger.logMessage(1, "GAME: GameActions - JJ_GAME_END");
         windev::quit(1);
     }
@@ -131,7 +133,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 
     tick_level_objects(self);
 
-    if ((self->state() == GameState::Playing || self->state() == GameState::Flythrough) && self->frontEnd()->debounceRef() != inputdev::KEY_ESCAPE && input_key_down(inputdev::KEY_ESCAPE) != 0)
+    if ((self->state() == GameState::Playing || self->state() == GameState::Flythrough) && input::pressed(inputdev::KEY_ESCAPE))
         Flow_OpenPauseMenu(self);
 
     self->world()->tickBombs();
@@ -187,20 +189,18 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 
     // ENTER after a death, or on the game-over tally.
     if (self->state() != GameState::GameOver) {
-        if (self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0 && pl->moveState() != 0 && self->state() == GameState::Playing)
+        if (input::pressed(inputdev::KEY_RETURN) && pl->moveState() != 0 && self->state() == GameState::Playing)
             Flow_RestartAfterDeath(self);
-    } else if (self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0 && self->session()->tallyDone() != 0) {
+    } else if (input::pressed(inputdev::KEY_RETURN) && self->session()->tallyDone() != 0) {
         Flow_LeaveGameOver(self);
     }
 
     // ENTER after high-score name entry.
-    if (self->state() == GameState::NameEntry && self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0)
+    if (self->state() == GameState::NameEntry && input::pressed(inputdev::KEY_RETURN))
         Flow_LeaveNameEntry(self);
 
     if (pl->moveState() != 0 && pl->moveState() != 2)
         self->camera()->setMode(2);
-    if (input_key_down(self->frontEnd()->debounceRef()) == 0)
-        self->frontEnd()->debounceRef() = 0;
     self->camera()->setOverviewActive(0);
     Core_ForwardQuit(self);
 }

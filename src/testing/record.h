@@ -1,11 +1,9 @@
 /* Input recording and replay.
  *
- * All player input reaches the game by two paths: the key array (one byte per
- * SDL scancode) the control dispatch reads once per tick (progctrl.cpp), and
- * single-key polls (input_key_down), through which the menus poll Enter, Escape
- * and the arrows.
- * Recording captures both per frame; replay feeds them back in place of the
- * real devices.  KAROO_RECORD=<file> records, KAROO_REPLAY=<file> replays.
+ * All player input reaches the game as the key array input::update takes once
+ * per tick (src/input/keys.h).  Recording captures it per frame; replay feeds
+ * it back in place of the real keyboard.
+ * KAROO_RECORD=<file> records, KAROO_REPLAY=<file> replays.
  *
  * DETERMINISM: a recording replays exactly only under the KAROO_FIXED_DT and
  * KAROO_SEED it was made with; both are stored in the header and a mismatch is
@@ -20,19 +18,15 @@ bool record_replaying(void);
  * Called by the clock once per frame, before the game ticks. */
 void record_frame_boundary(void);
 
-/* The key array (inputdev::KEY_COUNT bytes, 0x80 while held).  Recording stores what the device returned; replay
- * overwrites the buffer with what was recorded and returns true. */
-void record_keys(unsigned short game_state, const uint8_t *keys);
-bool replay_keys(unsigned short *game_state, uint8_t *keys);
-
-/* Single-key polls.  Recording notes the query and its answer; replay answers
- * from the recording. */
-void record_async(int key, bool down);
-bool replay_async(int key, bool *down);
+/* The key array (inputdev::KEY_COUNT bytes, 0x80 while held).  Recording
+ * stores what the keyboard returned; replay fills the buffer with what was
+ * recorded. */
+void record_keys(const uint8_t *keys);
+void replay_keys(uint8_t *keys);
 
 /* True once the replay file is exhausted; the test harness ends the run here.
  */
 bool record_replay_finished(void);
 
-/* KAROO_INPUT_DEBUG=1: input_key_down and the replay log their first calls. */
+/* KAROO_INPUT_DEBUG=1: the replay logs its first key records. */
 bool input_debug(void);

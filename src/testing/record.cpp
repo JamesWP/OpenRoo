@@ -11,19 +11,16 @@
  *                          tools/replaytest.py restores them before the run, the
  *                          game ignores them
  *             file_count x { uvarint name_len; char name[]; uvarint size; u8 data[size] }
- *   then one record per frame that polled input:
+ *   then one record per tick that took the keyboard (input::update):
  *     uvarint frame_delta  frames since the previous record (the first counts from 0)
- *     u8      flags        bit 0: game_state changed, bit 1: keys changed,
- *                          bit 2: has key polls
- *     u8      game_state   if bit 0
- *     uvarint key_count    if bit 1
+ *     u8      flags        bit 0: keys changed
+ *     uvarint key_count    if bit 0
  *             key_count x { uvarint scancode_delta; u8 value }
  *                          changes against the previous record's key array
  *                          (inputdev::Key scancodes, 0x80 while held),
  *                          scancode_delta from the previous entry (the first from 0)
- *     uvarint async_count  if bit 2
- *             async_count x uvarint (key << 1 | down)
- *   uvarint is LEB128.  The key array and game_state start at zero. */
+ *   uvarint is LEB128.  The key array starts at zero, and holds through a
+ *   frame with no record. */
 
 #include <stdio.h>
 #include <stdint.h>
@@ -39,38 +36,31 @@
 #include <algorithm>
 #include <iterator>
 
-#define RECORD_VERSION  3
-#define ASYNC_MAX       64
+#define RECORD_VERSION  4
 
 struct FrameRec {
     uint32_t frame;
-    uint8_t  game_state;
     uint8_t  keys[inputdev::KEY_COUNT];
-    uint8_t  async_count;
-    struct { uint16_t key; uint8_t down; } async[ASYNC_MAX];
 };
 
 static int      g_mode = -1;  // 0 none, 1 record, 2 replay
 static std::ofstream g_out;  // record
 static std::ifstream g_in;   // replay
 static FrameRec g_cur;   // the frame being accumulated (record)
-static FrameRec g_play;  // the frame being served (replay)
-static bool     g_have_play;
+static FrameRec g_play;  // the keys being served: the last record due (replay)
 static FrameRec g_pending;  // read ahead, not yet due
 static bool     g_have_pending;
 static bool     g_finished;
-static uint8_t     g_async_used[ASYNC_MAX];
 static bool     g_keys_seen;
 // Running state the per-frame deltas are against: the previous record's.
 struct DeltaState {
     uint32_t frame = 0;
-    uint8_t  game_state = 0;
     uint8_t  keys[inputdev::KEY_COUNT] = {};
 };
 static DeltaState g_wr;  // record
 static DeltaState g_rd;  // replay
 
-/* KAROO_INPUT_DEBUG=1 logs the first few replayed frames and key polls. */
+/* KAROO_INPUT_DEBUG=1 logs the first few replayed key records. */
 static int      g_dbg = -1;
 bool input_debug(void)
 {
@@ -260,16 +250,14 @@ static void put_uvarint(std::string &out, uint32_t v)
 
 static void flush_frame(void)
 {
-    if (!g_keys_seen) return;  // nothing polled input this frame
+    if (!g_keys_seen) return;  // the game did not take the keyboard this frame
     std::string buf;
     put_uvarint(buf, g_cur.frame - g_wr.frame);
 
     int changed = 0;
     for (int i = 0; i < inputdev::KEY_COUNT; i++)
         changed += g_cur.keys[i] != g_wr.keys[i];
-    bool state_changed = g_cur.game_state != g_wr.game_state;
-    buf += (char)((state_changed ? 1 : 0) | (changed ? 2 : 0) | (g_cur.async_count ? 4 : 0));
-    if (state_changed) buf += (char)g_cur.game_state;
+    buf += (char)(changed ? 1 : 0);
     if (changed) {
         put_uvarint(buf, changed);
         int last = 0;
@@ -280,52 +268,31 @@ static void flush_frame(void)
             last = i;
         }
     }
-    if (g_cur.async_count) {
-        put_uvarint(buf, g_cur.async_count);
-        for (int i = 0; i < g_cur.async_count; i++)
-            put_uvarint(buf, (uint32_t)g_cur.async[i].key << 1 | (g_cur.async[i].down ? 1 : 0));
-    }
     g_wr.frame = g_cur.frame;
-    g_wr.game_state = g_cur.game_state;
     std::copy_n(g_cur.keys, inputdev::KEY_COUNT, g_wr.keys);
 
     // Flushed every frame: the process can end without the stream closing the file.
     g_out.write(buf.data(), buf.size());
     g_out.flush();
 
-    g_cur = FrameRec();
     g_keys_seen = false;
 }
 
-void record_keys(unsigned short game_state, const uint8_t *keys)
+void record_keys(const uint8_t *keys)
 {
     if (!record_recording()) return;
-    g_cur.frame      = clock_frame();
-    g_cur.game_state = (uint8_t)game_state;
+    g_cur.frame = clock_frame();
     std::copy_n(keys, inputdev::KEY_COUNT, g_cur.keys);
     g_keys_seen = true;
 }
 
-void record_async(int key, bool down)
-{
-    if (!record_recording()) return;
-    if (g_cur.async_count >= ASYNC_MAX) return;
-    g_cur.frame = clock_frame();
-    g_cur.async[g_cur.async_count].key  = (uint16_t)key;
-    g_cur.async[g_cur.async_count].down = down ? 1 : 0;
-    g_cur.async_count++;
-    g_keys_seen = true;  // a frame with only key polls is still a frame
-}
-
 static bool read_one(FrameRec *r)
 {
-    *r = FrameRec();
     uint32_t delta, n;
     uint8_t flags;
     if (!read_uvarint(&delta) || !read_u8(&flags)) return false;
     g_rd.frame += delta;
-    if ((flags & 1) && !read_u8(&g_rd.game_state)) return false;
-    if (flags & 2) {
+    if (flags & 1) {
         if (!read_uvarint(&n)) return false;
         uint32_t key = 0;
         for (uint32_t i = 0; i < n; i++) {
@@ -335,29 +302,17 @@ static bool read_one(FrameRec *r)
         }
     }
     r->frame = g_rd.frame;
-    r->game_state = g_rd.game_state;
     std::copy_n(g_rd.keys, inputdev::KEY_COUNT, r->keys);
-    if (flags & 4) {
-        if (!read_uvarint(&n) || n > ASYNC_MAX) return false;
-        r->async_count = (uint8_t)n;
-        for (uint32_t i = 0; i < n; i++) {
-            uint32_t v;
-            if (!read_uvarint(&v)) return false;
-            r->async[i].key  = (uint16_t)(v >> 1);
-            r->async[i].down = v & 1;
-        }
-    }
     return true;
 }
 
-/* Records are served by frame index, not in sequence.  A frame in which the
- * game polled no input writes no record, so consuming records in order would
- * shift every later frame.  A record applies only on the frame it was recorded
- * on; a frame with none gets no input, as happened.  A record whose frame has
- * already passed is consumed rather than stalling the replay. */
+/* Records are served by frame index, not in sequence.  A frame the game did
+ * not take the keyboard in writes no record, so consuming records in order
+ * would shift every later frame.  A record applies from the frame it was
+ * recorded on, and holds until the next.  One whose frame has already passed
+ * is consumed rather than stalling the replay. */
 static void load_frame(void)
 {
-    g_have_play = false;
     unsigned now = clock_frame();
 
     if (!g_have_pending && !g_finished) {
@@ -372,45 +327,22 @@ static void load_frame(void)
     if (g_have_pending && g_pending.frame <= now) {
         g_play = g_pending;
         g_have_pending = false;
-        g_have_play = true;
-        std::fill(std::begin(g_async_used), std::end(g_async_used), 0);
+        if (input_debug()) {
+            static int served = 0;
+            for (int i = 0; i < inputdev::KEY_COUNT && served < 12; i++)
+                if (g_play.keys[i] & 0x80) {
+                    g_logger.write("replaydbg: frame %u serving rec-frame %u scancode %d\n",
+                                   now, g_play.frame, i);
+                    served++;
+                    break;
+                }
+        }
     }
 }
 
-bool replay_keys(unsigned short *game_state, uint8_t *keys)
+void replay_keys(uint8_t *keys)
 {
-    if (!record_replaying()) return false;
-    static int served = 0, empty = 0;
-    if (!g_have_play) {
-        if (input_debug() && ++empty <= 5)
-            g_logger.write("replaydbg: frame %u — no record for this frame\n", clock_frame());
-        return false;
-    }
-    if (input_debug()) {
-        int held = -1;
-        for (int i = 0; i < inputdev::KEY_COUNT; i++) if (g_play.keys[i] & 0x80) { held = i; break; }
-        if (held >= 0 && ++served <= 12)
-            g_logger.write("replaydbg: frame %u serving rec-frame %u state=%u scancode %d\n",
-                      clock_frame(), g_play.frame, g_play.game_state, held);
-    }
-    *game_state = g_play.game_state;
     std::copy_n(g_play.keys, inputdev::KEY_COUNT, keys);
-    return true;
-}
-
-bool replay_async(int key, bool *down)
-{
-    if (!record_replaying()) return false;
-    if (!g_have_play) { *down = false; return true; }
-    for (int i = 0; i < g_play.async_count; i++) {
-        if (g_async_used[i]) continue;
-        if (g_play.async[i].key != (uint16_t)key) continue;
-        g_async_used[i] = 1;
-        *down = g_play.async[i].down != 0;
-        return true;
-    }
-    *down = false;  // not polled in the recording on this frame
-    return true;
 }
 
 void record_frame_boundary(void)
@@ -419,6 +351,3 @@ void record_frame_boundary(void)
     if (g_mode == 1)      flush_frame();
     else if (g_mode == 2) load_frame();
 }
-
- 
-

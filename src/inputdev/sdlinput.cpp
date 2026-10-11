@@ -30,10 +30,11 @@ CHECK_KEY(KEY_RSHIFT, SDL_SCANCODE_RSHIFT);
 static bool g_suppressed;
 void setKeyboardSuppressed(bool suppressed) { g_suppressed = suppressed; }
 
-bool keyDown(int key)
+void readKeyboard(unsigned char keys[KEY_COUNT])
 {
-    if (key <= 0 || key >= KEY_COUNT || g_suppressed) return false;
-    return SDL_GetKeyboardState(NULL)[key];
+    const bool *down = SDL_GetKeyboardState(NULL);
+    for (int i = 0; i < KEY_COUNT; i++)
+        keys[i] = down[i] && !g_suppressed ? 0x80 : 0;
 }
 
 int keyFromName(const char *name)
@@ -43,52 +44,7 @@ int keyFromName(const char *name)
     return sc == SDL_SCANCODE_UNKNOWN ? KEY_NONE : (int)sc;
 }
 
-struct DevicesState {
-    bool open;
-};
-
-Devices::Devices() : state_(new DevicesState())
-{
-}
-
-Devices::~Devices()
-{
-    destroy();
-    delete state_;
-}
-
-void Devices::destroy()
-{
-    state_->open = false;
-}
-
-/* SDL's keyboard is part of its video system, which the window brought up
- * (a headless run has no keyboard to read, as before). */
-bool Devices::create(void *)
-{
-    state_->open = true;
-    return true;
-}
-
-bool Devices::acquire()
-{
-    return true;
-}
-
-void Devices::unacquire()
-{
-}
-
-bool Devices::readKeyboard(unsigned char keys[KEY_COUNT])
-{
-    if (!state_->open) return false;
-    const bool *down = SDL_GetKeyboardState(NULL);
-    for (int i = 0; i < KEY_COUNT; i++)
-        keys[i] = down[i] && !g_suppressed ? 0x80 : 0;
-    return true;
-}
-
-bool Devices::keyName(int key, char *buf, unsigned bufsz)
+bool keyName(int key, char *buf, unsigned bufsz)
 {
     if (!buf || bufsz == 0) return false;
     const char *name = key > 0 && key < KEY_COUNT
@@ -99,16 +55,6 @@ bool Devices::keyName(int key, char *buf, unsigned bufsz)
     }
     strncpy(buf, name, bufsz - 1);
     buf[bufsz - 1] = '\0';
-    return true;
-}
-
-bool Devices::setControllerRange(int, int, int)
-{
-    return true;
-}
-
-bool Devices::setControllerDeadzone(int, int)
-{
     return true;
 }
 

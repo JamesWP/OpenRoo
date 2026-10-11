@@ -12,7 +12,7 @@
 class FrontEnd;
 class Session;
 
-/* Called with the right and left polls the keypress handler already makes (dir
+/* Called on a press of right or left by the keypress handler (dir
  * +1 or -1): from node 2, right opens the page of the last-played level's
  * theme; on a theme page, either moves to the next or previous theme. */
 void LevelSelect_Turn(FrontEnd *frontEnd, Session *session, int dir);

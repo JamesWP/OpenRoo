@@ -169,12 +169,10 @@ public:
     void onActivate(bool active) override
     {
         if (active) {
-            s_progCtrl.acquireAll();
             restore_surfaces(&s_renderer);
             if (g_movie.playing())
                 g_movie.play();
         } else {
-            s_progCtrl.unacquireAll();
             if (g_movie.playing())
                 g_movie.pause();
         }
@@ -255,7 +253,7 @@ int Main_WinMain(const char *lpCmdLine)
 
     Game *game = new (std::nothrow) Game();
     if (game != NULL)
-        Game_Boot(game, gameName, kGameDir, &s_progCtrl);
+        Game_Boot(game, gameName, kGameDir);
     Game::set_instance(game);
     if (game == NULL)
         return 0;
@@ -305,10 +303,7 @@ int Main_WinMain(const char *lpCmdLine)
         return 1;
     }
 
-    if (Input_Setup(hWnd, game, &s_progCtrl) == 0) {
-        delete_game(game);
-        return 1;
-    }
+    Input_Setup(game, &s_progCtrl);
 
     // 3D sound, 22050 Hz, 16-bit stereo; rolloff 0.3 if it came up.
     SoundManager *snd = game->audio()->soundManager();

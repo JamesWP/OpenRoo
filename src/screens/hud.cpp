@@ -231,7 +231,7 @@ void Hud_DrawFps(RenderDevice *d3d, TextRenderer *font, float W, float H)
         g_fps = (float)((double)n / span);
         g_fpsMark = t;
     }
-    if (input_key_down(inputdev::KEY_F1)) {
+    if (input::down(inputdev::KEY_F1)) {
         char *buf = s_text;
         sprintf(buf, "%.1f fps", (double)g_fps);
         hud_text(d3d, font, 0, W * 0.5f, H * 0.96041667f, W * 0.025f, H * 0.033333335f,
