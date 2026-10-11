@@ -8,6 +8,8 @@
 
 class Logger {
 public:
+    ~Logger() { close(); }
+
     /* Writes nothing until open; closes any earlier file. */
     void open(const char *path);
     void close();
@@ -27,10 +29,10 @@ private:
     friend void log_sink(const char *fmt, ...);
     void emit(const char *prefix, const char *fmt, va_list ap);
 
-    /* A plain FILE (opaque here), never closed at exit, so the log still
-     * works from the destructors of other globals whatever order they run
-     * in. */
-    void *fp_ = nullptr;
+    /* The open log file, wrapping a FILE: the C library's FILE can't be
+     * forward declared portably, so logger.cpp defines this around it. */
+    struct File;
+    File *file_ = nullptr;
 };
 
 extern Logger g_logger;
