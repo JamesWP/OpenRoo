@@ -1,5 +1,5 @@
 /* The game clock: the seconds since start, from the platform layer's high-resolution counter.
- * Every clock read is also a frame boundary: it runs the frame hook (see
+ * Every advance is also a frame boundary: it runs the frame hook (see
  * clock_setFrameHook), which the test machinery uses.
  *
  * The real clock keeps the game's quirks:
@@ -79,7 +79,7 @@ void clock_setFrameHook(ClockFrameHook fn) { g_frameHook = fn; }
 
 unsigned clock_frame(void) { return g_calls; }
 
-double clock_seconds(void)
+double clock_advance(void)
 {
     if (g_fixed_dt < 0.0) clock_init();
     clock_log_progress();
@@ -132,15 +132,9 @@ double clock_seconds(void)
  * they fix independent sources. */
 
 /* Starts the clock now; a later call, or the first read, does nothing more. */
-  void   hooks_ClockInit(void)
+void clock_start(void)
 {
     if (g_fixed_dt < 0.0) clock_init();
-}
-
-/* clock_seconds(), for the game's callers. */
-  double   hooks_ClockSeconds(void)
-{
-    return clock_seconds();
 }
 
 double clock_previous_seconds(void)

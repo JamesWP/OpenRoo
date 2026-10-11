@@ -142,7 +142,7 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
     double now;
     {
         PROF_SCOPE("clock + test hooks");
-        now = hooks_ClockSeconds() * 1000.0;
+        now = clock_advance() * 1000.0;
     }
     const double elapsed = now - prevMs;
     double dt = now - renderer->lastTickMs;
