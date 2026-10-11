@@ -5,7 +5,7 @@
 #include "hud.h"
 #include "inputdev.h"
 #include "sysdev.h"
-#include "record.h"
+#include "keys.h"
 #include "renderdevice.h"
 #include "d3dmath.h"
 #include "texture.h"

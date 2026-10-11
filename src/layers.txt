@@ -24,6 +24,7 @@ fx
 audio
 ui
 camera
+script
 session
 level
 entities

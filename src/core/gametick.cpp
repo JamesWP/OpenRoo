@@ -28,7 +28,7 @@
 #include "prof.h"
 #include "tiledebug.h"
 #include "gamedebug.h"
-#include "record.h"
+#include "keys.h"
 #include "playtick.h"
 #include "playflow.h"
 

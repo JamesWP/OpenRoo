@@ -17,7 +17,7 @@
 #include "logger.h"
 #include "menutree.h"
 #include <stdlib.h>
-#include "record.h"
+#include "keys.h"
 
 static int s_fx_menuroot = 0;
 static int s_fx_stacktop = 0;

@@ -9,4 +9,4 @@ add_library(core OBJECT
 target_include_directories(core PUBLIC .)
 
 target_link_libraries(core
-    PRIVATE sysdev log base prof inputdev audiodev windev dbg testing input gfx audio camera level entities render screens game sim flow imgui)
+    PRIVATE sysdev log base prof inputdev audiodev windev dbg input gfx audio script level entities render screens game sim flow imgui)

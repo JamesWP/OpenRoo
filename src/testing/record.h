@@ -34,6 +34,5 @@ bool replay_async(int key, bool *down);
  */
 bool record_replay_finished(void);
 
-/* Whether a key (an inputdev::Key) is down: every key poll in the game goes
- * through here. */
-bool input_key_down(int key);
+/* KAROO_INPUT_DEBUG=1: input_key_down and the replay log their first calls. */
+bool input_debug(void);

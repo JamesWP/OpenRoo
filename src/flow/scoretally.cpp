@@ -24,7 +24,7 @@
 #include "game.h"
 #include "scoretally.h"
 #include "menutree.h"
-#include "record.h"
+#include "keys.h"
 
 static int s_fx = -1;
 

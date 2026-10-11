@@ -53,7 +53,7 @@ public:
     {
         return children_[(unsigned)node * CHILD_STRIDE + i];
     }
-    // For the level select's nodes (levelselect.h), which the game's builder
+    // For the level select's nodes (session/levelthemes.h), which the game's builder
     // never fills.
     void           setChild(unsigned char node, unsigned char i, unsigned char c)
     {

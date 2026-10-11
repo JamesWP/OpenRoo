@@ -15,7 +15,8 @@
 #include "textrenderer.h"
 #include "menutree.h"
 #include "saveslots.h"
-#include "levelselect.h"
+#include "levelselectview.h"
+#include "levelthemes.h"
 #include "scoreoverlay.h"
 #include "vecmath.h"
 #include "progctrl.h"
@@ -675,7 +676,7 @@ Menu_DispatchGameState(const MenuArt *art, FrontEnd *frontEnd, Session *session,
     case 0x28: Menu_RenderLevelComplete(art, frontEnd, session, theme, d3d, text, ms); break;
     case 0x2a: Menu_RenderSaveSlotList(art, frontEnd, theme, d3d, text, ms); break;
     default:
-        if (LevelSelect_IsThemeNode(node))
+        if (LevelThemes_IsThemeNode(node))
             Menu_RenderLevelSelect(art, frontEnd, session, theme, d3d, text, ms);
         break;
     }

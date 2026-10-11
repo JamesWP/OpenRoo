@@ -1,15 +1,13 @@
-#include <string.h>
-#include "logger.h"
+#include "savegame.h"
 #include "frontend.h"
+#include "saveslots.h"
 #include "session.h"
 #include "world.h"
-#include "menunav.h"
 #include "player.h"
-#include "menutree.h"
 
   unsigned int  
-Menu_StoreGameStateIntoSaveSlot(FrontEnd *frontEnd, const Session *session, const World *world,
-                               unsigned int slotArg)
+SaveGame_StoreIntoSaveSlot(FrontEnd *frontEnd, const Session *session, const World *world,
+                           unsigned int slotArg)
 {
     SaveSlot *S    = frontEnd->saveSlots()->slot((unsigned char)slotArg);
 
@@ -25,8 +23,8 @@ Menu_StoreGameStateIntoSaveSlot(FrontEnd *frontEnd, const Session *session, cons
 }
 
   unsigned int  
-Menu_RestoreGameStateFromSaveSlot(FrontEnd *frontEnd, Session *session, World *world,
-                                 unsigned int slotArg)
+SaveGame_RestoreFromSaveSlot(FrontEnd *frontEnd, Session *session, World *world,
+                             unsigned int slotArg)
 {
     SaveSlot *S = frontEnd->saveSlots()->slot((unsigned char)slotArg);
 
