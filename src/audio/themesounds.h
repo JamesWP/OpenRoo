@@ -44,7 +44,7 @@ enum class ThemeSound : unsigned {
 class ThemeSoundTable {
 public:
     /* Adds (or replaces) the wave for a theme sound id. */
-    int add(const char *dir, unsigned int id, const char *waveName, uint32_t arg3, uint32_t arg4);
+    int add(const char *dir, unsigned int id, const char *waveName);
 
     /* An empty table: every entry cleared (see releaseAll). */
     ThemeSoundTable();
