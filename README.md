@@ -70,6 +70,10 @@ them, PRIVATE otherwise), and those links give it the include paths;
 includes and `src/layers.txt`. To add a group, give it a line in
 `src/layers.txt` in the position its includes allow.
 
+`cmake --build build --target group-graph` draws the groups and their links to
+`build/groups.svg` (`tools/group_graph.py`; `--all` for every link rather than
+just those not implied by others, `--dot` for Graphviz).
+
 OpenGL headers are for `gl` alone (`cmake/CheckNativeGL.cmake`); everything else
 goes through `renderdevice.h`.
 SDL and FFmpeg are for the platform groups (`windev`, `audiodev`, `inputdev`, `sysdev`,
