@@ -9,8 +9,8 @@ void setLog(LogFn fn) { g_log = fn; }
 #define ID_LOG(...) do { if (g_log) g_log(__VA_ARGS__); } while (0)
 
 /* The Key enum is SDL's scancodes under other names. */
-static_assert((int)KEY_COUNT == (int)SDL_SCANCODE_COUNT, "key count");
-#define CHECK_KEY(k, sc) static_assert((int)(k) == (int)(sc), #k)
+static_assert((int)input::KEY_COUNT == (int)SDL_SCANCODE_COUNT, "key count");
+#define CHECK_KEY(k, sc) static_assert((int)(input::k) == (int)(sc), #k)
 CHECK_KEY(KEY_A, SDL_SCANCODE_A);         CHECK_KEY(KEY_Z, SDL_SCANCODE_Z);
 CHECK_KEY(KEY_1, SDL_SCANCODE_1);         CHECK_KEY(KEY_9, SDL_SCANCODE_9);
 CHECK_KEY(KEY_0, SDL_SCANCODE_0);
@@ -30,24 +30,36 @@ CHECK_KEY(KEY_RSHIFT, SDL_SCANCODE_RSHIFT);
 static bool g_suppressed;
 void setKeyboardSuppressed(bool suppressed) { g_suppressed = suppressed; }
 
-void readKeyboard(unsigned char keys[KEY_COUNT])
+namespace {
+class Keyboard : public input::KeySource {
+public:
+    void sample(unsigned char keys[input::KEY_COUNT]) override
+    {
+        if (g_suppressed) return;
+        const bool *down = SDL_GetKeyboardState(NULL);
+        for (int i = 0; i < input::KEY_COUNT; i++)
+            if (down[i]) keys[i] = 0x80;
+    }
+};
+}  // namespace
+
+input::KeySource &keyboard()
 {
-    const bool *down = SDL_GetKeyboardState(NULL);
-    for (int i = 0; i < KEY_COUNT; i++)
-        keys[i] = down[i] && !g_suppressed ? 0x80 : 0;
+    static Keyboard k;
+    return k;
 }
 
 int keyFromName(const char *name)
 {
     // SDL_GetScancodeFromName ignores case.
     SDL_Scancode sc = SDL_GetScancodeFromName(name);
-    return sc == SDL_SCANCODE_UNKNOWN ? KEY_NONE : (int)sc;
+    return sc == SDL_SCANCODE_UNKNOWN ? input::KEY_NONE : (int)sc;
 }
 
 bool keyName(int key, char *buf, unsigned bufsz)
 {
     if (!buf || bufsz == 0) return false;
-    const char *name = key > 0 && key < KEY_COUNT
+    const char *name = key > 0 && key < input::KEY_COUNT
                      ? SDL_GetScancodeName((SDL_Scancode)key) : "";
     if (!*name) {
         ID_LOG("inputdev: no name for key %d\n", key);

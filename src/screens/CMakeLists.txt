@@ -6,4 +6,4 @@ add_library(screens OBJECT
 target_include_directories(screens PUBLIC .)
 target_link_libraries(screens
     PUBLIC  gfx session renderapi
-    PRIVATE sysdev log base math inputdev input ui script level entities render)
+    PRIVATE sysdev log base math inputapi input ui script level entities render)

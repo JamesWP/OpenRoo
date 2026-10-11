@@ -2,7 +2,7 @@
 #include "progctrl.h"
 #include "logger.h"
 #include "gamestr.h"
-#include "inputdev.h"
+#include "keycodes.h"
 #include "game.h"
 #include "player.h"
 #include "camerainput.h"
@@ -37,7 +37,7 @@ Input_Setup(Game *game, ProgableControl *progCtrl)
     pc->registerAction(1, GS_ACT_CAM_DOWN,     Camera_TiltDown,       game);
 
     {
-        using namespace inputdev;
+        using namespace input;
         pc->bindKey(1, GS_ACT_MOVE_FORWARD, KEY_UP,       100);
         pc->bindKey(1, GS_ACT_MOVE_BACK,    KEY_DOWN,     100);
         pc->bindKey(1, GS_ACT_TURN_LEFT,    KEY_LEFT,     100);

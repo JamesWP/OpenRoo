@@ -2,7 +2,7 @@
  * slot k+1.  Every recording loads a slot through here, so it must fail them
  * all. */
 
-#include "inputdev.h"
+#include "keycodes.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
@@ -57,7 +57,7 @@ static void loaded_tail(Game *game)
 /* Right is +1, Left -1, on the press. */
 static int arrow_step()
 {
-    return input::pressed(inputdev::KEY_RIGHT) ? 1 : input::pressed(inputdev::KEY_LEFT) ? -1 : 0;
+    return input::pressed(input::KEY_RIGHT) ? 1 : input::pressed(input::KEY_LEFT) ? -1 : 0;
 }
 
 /* The volume pages step by 10 in 0..100; true if it moved. */
@@ -129,7 +129,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         if (self->frontEnd()->menu()->changed() != 0 && self->audio()->fixedSounds()->switchClick != NULL)
             (self->audio()->fixedSounds()->switchClick)->play(false);
         const unsigned char node = self->frontEnd()->menu()->nodeRef();
-        if ((input::pressed(inputdev::KEY_UP) || input::pressed(inputdev::KEY_DOWN)) &&
+        if ((input::pressed(input::KEY_UP) || input::pressed(input::KEY_DOWN)) &&
             node != 5 && node != 3 && self->frontEnd()->menu()->childCount(node) > 1 &&
             self->audio()->fixedSounds()->menuUpDown != NULL)
             (self->audio()->fixedSounds()->menuUpDown)->cycle(0);
@@ -142,7 +142,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
     if (entry) {  // save-name text entry
         self->frontEnd()->nameEntry()->poll((unsigned int)(long long)*self->world()->clock());
         if (self->frontEnd()->nameEntry()->active() == 0) {
-            if (self->frontEnd()->nameEntry()->endKey() == inputdev::KEY_RETURN)
+            if (self->frontEnd()->nameEntry()->endKey() == input::KEY_RETURN)
                 self->frontEnd()->saveSlots()->writeAllSlotFiles(self->gameDir(), self->gameFileName(), 0x37);
             else
                 *self->frontEnd()->saveSlots()->slot((unsigned char)self->frontEnd()->saveSlots()->editSlot()) =
@@ -158,7 +158,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         if (self->state() == GameState::PauseMenu && self->frontEnd()->menu()->leave() != 0) {
             self->setState(self->stateBeforeMenu());
             self->world()->player()->setPendingMove(0);
-            input::swallow(inputdev::KEY_ESCAPE);
+            input::swallow(input::KEY_ESCAPE);
         }
     }
 
@@ -169,9 +169,9 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
     }
 
     if (self->frontEnd()->rebindActive() == 0 && self->frontEnd()->textEntryActive() == 0) {
-        if (input::pressed(inputdev::KEY_RIGHT))
+        if (input::pressed(input::KEY_RIGHT))
             LevelSelect_Turn(self->frontEnd(), self->session(), +1);
-        if (input::pressed(inputdev::KEY_LEFT))
+        if (input::pressed(input::KEY_LEFT))
             LevelSelect_Turn(self->frontEnd(), self->session(), -1);
     }
     if (self->frontEnd()->menu()->nodeRef() != 5 && self->frontEnd()->menu()->nodeRef() != 0x50)
@@ -183,7 +183,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         Sim_OpenLevelFile(self, self->session()->levelIndex());
         Sim_SetupLevelObjects(self);
         loaded_tail(self);
-        input::swallow(inputdev::KEY_RETURN);
+        input::swallow(input::KEY_RETURN);
         break;
     case 5:
         if (self->frontEnd()->creditsLatch() == 0) {
@@ -196,7 +196,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         self->setState(GameState::Quitting);
         if (self->config()->musicOn() != 0)
             self->audio()->cdAudio()->stop();
-        input::swallow(inputdev::KEY_RETURN);
+        input::swallow(input::KEY_RETURN);
         windev::quit(1);
         break;
     case 0x14: rebind(self, GS_KEY_MOVE_FORWARD, 0x14); break;
@@ -248,7 +248,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         self->scriptPlayer()->setRunning(1);
         if (self->config()->musicOn() != 0)
             self->audio()->cdAudio()->stop();
-        input::swallow(inputdev::KEY_RETURN);
+        input::swallow(input::KEY_RETURN);
         self->frontEnd()->menu()->setLockStart(self->lastTickTime());
         self->camera()->setMode(1);
         self->frontEnd()->menu()->setLock(1);
@@ -274,7 +274,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         Sim_OpenLevelFile(self, self->session()->levelIndex());
         Sim_SetupLevelObjects(self);
         loaded_tail(self);
-        input::swallow(inputdev::KEY_RETURN);
+        input::swallow(input::KEY_RETURN);
     }
 
     // Load nodes, 200 .. 200+n-1.  The slot index is the node number wrapped
@@ -293,7 +293,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
                 Sim_SetupLevelObjects(self);
                 loaded_tail(self);
             }
-            input::swallow(inputdev::KEY_RETURN);
+            input::swallow(input::KEY_RETURN);
             self->frontEnd()->menu()->pop();
         }
     }
@@ -319,7 +319,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
     }
 
     // Key-rebind capture, once Enter is released.
-    if (self->frontEnd()->rebindActive() != 0 && !input::down(inputdev::KEY_RETURN)) {
+    if (self->frontEnd()->rebindActive() != 0 && !input::down(input::KEY_RETURN)) {
         progCtrl->clearBindings(1, self->frontEnd()->rebindAction());
         if (progCtrl->captureBinding(1, self->frontEnd()->rebindAction(), 100) != 0)
             self->frontEnd()->setRebindActive(0);

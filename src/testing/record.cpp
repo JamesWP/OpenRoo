@@ -17,7 +17,7 @@
  *     uvarint key_count    if bit 0
  *             key_count x { uvarint scancode_delta; u8 value }
  *                          changes against the previous record's key array
- *                          (inputdev::Key scancodes, 0x80 while held),
+ *                          (input::Key scancodes, 0x80 while held),
  *                          scancode_delta from the previous entry (the first from 0)
  *   uvarint is LEB128.  The key array starts at zero, and holds through a
  *   frame with no record. */
@@ -28,7 +28,7 @@
 #include <string>
 #include "record.h"
 #include "sysdev.h"
-#include "inputdev.h"
+#include "keycodes.h"
 #include "clock.h"
 #include "logger.h"
 #include <stdlib.h>
@@ -40,7 +40,7 @@
 
 struct FrameRec {
     uint32_t frame;
-    uint8_t  keys[inputdev::KEY_COUNT];
+    uint8_t  keys[input::KEY_COUNT];
 };
 
 static int      g_mode = -1;  // 0 none, 1 record, 2 replay
@@ -55,7 +55,7 @@ static bool     g_keys_seen;
 // Running state the per-frame deltas are against: the previous record's.
 struct DeltaState {
     uint32_t frame = 0;
-    uint8_t  keys[inputdev::KEY_COUNT] = {};
+    uint8_t  keys[input::KEY_COUNT] = {};
 };
 static DeltaState g_wr;  // record
 static DeltaState g_rd;  // replay
@@ -255,13 +255,13 @@ static void flush_frame(void)
     put_uvarint(buf, g_cur.frame - g_wr.frame);
 
     int changed = 0;
-    for (int i = 0; i < inputdev::KEY_COUNT; i++)
+    for (int i = 0; i < input::KEY_COUNT; i++)
         changed += g_cur.keys[i] != g_wr.keys[i];
     buf += (char)(changed ? 1 : 0);
     if (changed) {
         put_uvarint(buf, changed);
         int last = 0;
-        for (int i = 0; i < inputdev::KEY_COUNT; i++) {
+        for (int i = 0; i < input::KEY_COUNT; i++) {
             if (g_cur.keys[i] == g_wr.keys[i]) continue;
             put_uvarint(buf, i - last);
             buf += (char)g_cur.keys[i];
@@ -269,7 +269,7 @@ static void flush_frame(void)
         }
     }
     g_wr.frame = g_cur.frame;
-    std::copy_n(g_cur.keys, inputdev::KEY_COUNT, g_wr.keys);
+    std::copy_n(g_cur.keys, input::KEY_COUNT, g_wr.keys);
 
     // Flushed every frame: the process can end without the stream closing the file.
     g_out.write(buf.data(), buf.size());
@@ -278,11 +278,11 @@ static void flush_frame(void)
     g_keys_seen = false;
 }
 
-void record_keys(const uint8_t *keys)
+static void record_keys(const uint8_t *keys)
 {
     if (!record_recording()) return;
     g_cur.frame = clock_frame();
-    std::copy_n(keys, inputdev::KEY_COUNT, g_cur.keys);
+    std::copy_n(keys, input::KEY_COUNT, g_cur.keys);
     g_keys_seen = true;
 }
 
@@ -298,11 +298,11 @@ static bool read_one(FrameRec *r)
         for (uint32_t i = 0; i < n; i++) {
             if (!read_uvarint(&delta)) return false;
             key += delta;
-            if (key >= (uint32_t)inputdev::KEY_COUNT || !read_u8(&g_rd.keys[key])) return false;
+            if (key >= (uint32_t)input::KEY_COUNT || !read_u8(&g_rd.keys[key])) return false;
         }
     }
     r->frame = g_rd.frame;
-    std::copy_n(g_rd.keys, inputdev::KEY_COUNT, r->keys);
+    std::copy_n(g_rd.keys, input::KEY_COUNT, r->keys);
     return true;
 }
 
@@ -329,7 +329,7 @@ static void load_frame(void)
         g_have_pending = false;
         if (input_debug()) {
             static int served = 0;
-            for (int i = 0; i < inputdev::KEY_COUNT && served < 12; i++)
+            for (int i = 0; i < input::KEY_COUNT && served < 12; i++)
                 if (g_play.keys[i] & 0x80) {
                     g_logger.write("replaydbg: frame %u serving rec-frame %u scancode %d\n",
                                    now, g_play.frame, i);
@@ -340,9 +340,34 @@ static void load_frame(void)
     }
 }
 
-void replay_keys(uint8_t *keys)
+namespace {
+class ReplaySource : public input::KeySource {
+public:
+    void sample(unsigned char keys[input::KEY_COUNT]) override
+    {
+        for (int i = 0; i < input::KEY_COUNT; i++)
+            if (g_play.keys[i] & 0x80) keys[i] = 0x80;
+    }
+    // A real key must not change what it replays.
+    bool exclusive() const override { return true; }
+};
+
+class Recorder : public input::KeyObserver {
+public:
+    void observe(const unsigned char keys[input::KEY_COUNT]) override { record_keys(keys); }
+};
+}  // namespace
+
+input::KeySource *replay_source(void)
 {
-    std::copy_n(g_play.keys, inputdev::KEY_COUNT, keys);
+    static ReplaySource s;
+    return record_replaying() ? &s : NULL;
+}
+
+input::KeyObserver *record_observer(void)
+{
+    static Recorder r;
+    return record_recording() ? &r : NULL;
 }
 
 void record_frame_boundary(void)

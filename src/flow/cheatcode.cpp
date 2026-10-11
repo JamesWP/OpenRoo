@@ -18,7 +18,7 @@
  * recording that does. */
 
 #include "keys.h"
-#include "inputdev.h"
+#include "keycodes.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <stdio.h>
@@ -79,7 +79,7 @@ Flow_HandleTypedCheatCode(Game *self)
             if (self->config()->musicOn() != 0)
                 self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
             Score_CalculateLevelScore(self, 0x28);
-            input::swallow(inputdev::KEY_RETURN);
+            input::swallow(input::KEY_RETURN);
             g_logger.logMessage(1, "GAME: completed at level %d/%d",
                                (unsigned int)self->session()->levelIndex() + 1,
                                (unsigned int)self->session()->levelCount());
@@ -136,7 +136,7 @@ Flow_HandleTypedCheatCode(Game *self)
                 Sim_ParseLevelFiles(self, (const char *)frame);
                 Sim_SetupLevelObjects(self);
                 Cheat_EnterLoadedState(self);
-                input::swallow(inputdev::KEY_RETURN);
+                input::swallow(input::KEY_RETURN);
             }
             buf[0] = 0;
         }

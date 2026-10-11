@@ -8,7 +8,7 @@
  * saveslots.cpp) are built and torn down by World and FrontEnd.
  */
 
-#include "inputdev.h"
+#include "keycodes.h"
 #include <string>
 #include <stdio.h>
 #include <string.h>

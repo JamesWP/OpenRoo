@@ -45,7 +45,7 @@ void Flow_TickFlythrough(Game *self)
         Sim_RestoreCheckpointStateBlocks(self);
     if (sp->running() == 0 || sp->loaded() == 0)
         self->camera()->setMode(2);
-    if (input::pressed(inputdev::KEY_RETURN)) {
+    if (input::pressed(input::KEY_RETURN)) {
         sp->setRunning(0);
         sp->setSplineActive(0);
         sp->releaseStreams();
@@ -70,7 +70,7 @@ void Flow_OpenPauseMenu(Game *self)
     self->setState(GameState::PauseMenu);
     self->frontEnd()->menu()->setLockStart(self->lastTickTime());
     self->frontEnd()->menu()->setLock(1);
-    input::swallow(inputdev::KEY_ESCAPE);
+    input::swallow(input::KEY_ESCAPE);
 }
 
 /* The controls while playing: cheat entry, the timed spawners, the camera pitch, the
@@ -157,7 +157,7 @@ void Flow_RestartAfterDeath(Game *self)
         if (self->config()->musicOn() != 0)
             self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
         Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
-        input::swallow(inputdev::KEY_RETURN);
+        input::swallow(input::KEY_RETURN);
         restart_tail = 0;  // game over: skip the camera reset
     } else {
         self->camera()->setMode(2);
@@ -182,7 +182,7 @@ void Flow_RestartAfterDeath(Game *self)
     if (restart_tail) {
         self->camera()->setDistance(7.0f);
         self->camera()->setMode(0);
-        input::swallow(inputdev::KEY_RETURN);
+        input::swallow(input::KEY_RETURN);
     }
 }
 
@@ -208,7 +208,7 @@ static void return_to_menu(Game *self, bool lastLevel)
         self->audio()->cdThemes()->setCurrentTrack((unsigned char)self->audio()->cdThemes()->findThemeIndex(theme));
     Sim_SetupLevelObjects(self);
     self->scriptPlayer()->setRunning(1);
-    input::swallow(inputdev::KEY_RETURN);
+    input::swallow(input::KEY_RETURN);
 }
 
 /* ENTER on the game-over tally: enters a high score, or returns to the menu. */
@@ -225,7 +225,7 @@ void Flow_LeaveGameOver(Game *self)
         self->frontEnd()->nameEntry()->setMaxLength(0x0f);
         self->frontEnd()->nameEntry()->setActive(1);
         self->frontEnd()->nameEntry()->setCursor(0);
-        input::swallow(inputdev::KEY_RETURN);
+        input::swallow(input::KEY_RETURN);
         self->frontEnd()->nameEntry()->setBuffer(
             self->frontEnd()->highScores()->record(self->frontEnd()->highScores()->lastRank())->name);
     } else {

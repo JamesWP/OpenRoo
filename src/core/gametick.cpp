@@ -13,7 +13,7 @@
 
 #include "gametick.h"
 #include "crtmath.h"
-#include "inputdev.h"
+#include "keycodes.h"
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
@@ -100,7 +100,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     }
 
     Play_LoadSounds(self);
-    if (self->state() == GameState::Quitting && input::pressed(inputdev::KEY_RETURN)) {
+    if (self->state() == GameState::Quitting && input::pressed(input::KEY_RETURN)) {
         g_logger.logMessage(1, "GAME: GameActions - JJ_GAME_END");
         windev::quit(1);
     }
@@ -133,7 +133,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 
     tick_level_objects(self);
 
-    if ((self->state() == GameState::Playing || self->state() == GameState::Flythrough) && input::pressed(inputdev::KEY_ESCAPE))
+    if ((self->state() == GameState::Playing || self->state() == GameState::Flythrough) && input::pressed(input::KEY_ESCAPE))
         Flow_OpenPauseMenu(self);
 
     self->world()->tickBombs();
@@ -189,14 +189,14 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 
     // ENTER after a death, or on the game-over tally.
     if (self->state() != GameState::GameOver) {
-        if (input::pressed(inputdev::KEY_RETURN) && pl->moveState() != 0 && self->state() == GameState::Playing)
+        if (input::pressed(input::KEY_RETURN) && pl->moveState() != 0 && self->state() == GameState::Playing)
             Flow_RestartAfterDeath(self);
-    } else if (input::pressed(inputdev::KEY_RETURN) && self->session()->tallyDone() != 0) {
+    } else if (input::pressed(input::KEY_RETURN) && self->session()->tallyDone() != 0) {
         Flow_LeaveGameOver(self);
     }
 
     // ENTER after high-score name entry.
-    if (self->state() == GameState::NameEntry && input::pressed(inputdev::KEY_RETURN))
+    if (self->state() == GameState::NameEntry && input::pressed(input::KEY_RETURN))
         Flow_LeaveNameEntry(self);
 
     if (pl->moveState() != 0 && pl->moveState() != 2)

@@ -1,12 +1,19 @@
-/* The game's keyboard: one snapshot of every key per tick, which everything
- * that reads a key reads.  The recording and replay (testing/record.h) sit
- * behind it, so a replay supplies the snapshot in place of the keyboard.
+/* The game's keys: one snapshot of every key per tick, which everything that
+ * reads a key reads.  The snapshot is made from the key sources the app has
+ * added (keysource.h): the keyboard, a replay, anything else.
  *
- * Keys are inputdev::Key scancodes.  Held and just-pressed are the only two
+ * Keys are input::Key scancodes.  Held and just-pressed are the only two
  * questions; nothing else debounces. */
 #pragma once
+#include "keysource.h"
 
 namespace input {
+
+/* Adds a source of keys, or an observer of them.  The app does this once, at
+ * start up; the group that implements one never knows who reads it.  Nothing
+ * is owned: each must outlive the game.  Null is ignored. */
+void addSource(KeySource *source);
+void addObserver(KeyObserver *observer);
 
 /* Takes the tick's snapshot.  Once per tick, before anything reads a key. */
 void update();

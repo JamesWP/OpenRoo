@@ -26,6 +26,7 @@
 #include "soundmanager.h"
 #include "audiodev.h"
 #include "inputdev.h"
+#include "keys.h"
 #include "cdm.h"
 #include "renderstate.h"
 #include "renderer.h"
@@ -303,6 +304,11 @@ int Main_WinMain(const char *lpCmdLine)
         return 1;
     }
 
+    // The game's keys: the keyboard, or a replay in its place; a recording
+    // sees what the game is given.
+    input::addSource(&inputdev::keyboard());
+    input::addSource(replay_source());
+    input::addObserver(record_observer());
     Input_Setup(game, &s_progCtrl);
 
     // 3D sound, 22050 Hz, 16-bit stereo; rolloff 0.3 if it came up.

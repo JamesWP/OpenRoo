@@ -10,7 +10,7 @@
 #include "saveslots.h"
 #include "menutree.h"
 #include "highscores.h"
-#include "inputdev.h"
+#include "keycodes.h"
 
 class FrontEnd {
 public:

@@ -39,7 +39,7 @@
 #include "dbg.h"
 #include "renderstate.h"
 #include "renderer.h"
-#include "inputdev.h"
+#include "keycodes.h"
 #include "keys.h"
 
 /* ─── Section 2: timing, tick, camera, listener ─────────────────────────── */
@@ -201,8 +201,8 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
     d3d->SetStencil(StencilState{ true, CompareFunc::Always, 1, StencilOp::Keep,
                                   StencilOp::Keep, StencilOp::Replace });
 
-    renderer->showSplinePaths = input::down(inputdev::KEY_F3);
-    renderer->showSplineControlPolygons = input::down(inputdev::KEY_F4);
+    renderer->showSplinePaths = input::down(input::KEY_F3);
+    renderer->showSplineControlPolygons = input::down(input::KEY_F4);
     {
         PROF_SCOPE("opaque");
         Scene_OpaquePasses(renderer, g->world(), g->camera()->pose(), g->config(), now, elapsed);
