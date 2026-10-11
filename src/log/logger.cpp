@@ -18,7 +18,7 @@ void Logger::open(const char *path)
 
 void Logger::close()
 {
-    if (fp_) fclose(fp_);
+    if (fp_) fclose((FILE *)fp_);
     fp_ = NULL;
 }
 
@@ -37,8 +37,8 @@ void Logger::emit(const char *prefix, const char *fmt, va_list ap)
     if (len >= LINE_MAX_BYTES) len = LINE_MAX_BYTES - 1;
     if (len == 0 || line[len - 1] != '\n') line[len++] = '\n';
     std::lock_guard<std::mutex> guard(s_lock);
-    fwrite(line, 1, len, fp_);
-    fflush(fp_);
+    fwrite(line, 1, len, (FILE *)fp_);
+    fflush((FILE *)fp_);
 }
 
 void Logger::write(const char *fmt, ...)
@@ -74,6 +74,6 @@ void log_sink(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    g_logger.emitV(fmt, ap);
+    g_logger.emit("", fmt, ap);
     va_end(ap);
 }
