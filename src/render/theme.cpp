@@ -257,26 +257,31 @@ void ThemeAssetBlock::release(TextureManager *textures, ModelManager *models)
 
 /* The event ids, in test order.  An unknown event registers nothing and
  * returns false. */
-static const struct { const char *name; unsigned id; } kSoundEvents[] = {
-    { "movejj", 1 },            { "movecatcher", 0 },     { "movethrower", 2 },
-    { "moveicesliding", 3 },    { "movesliding", 4 },     { "moveparagliding", 5 },
-    { "moveparaglidingstart", 6 }, { "movejumppad", 7 },  { "teleporter", 8 },
-    { "elevator", 9 },          { "platform", 10 },       { "switch", 11 },
-    { "glue", 12 },             { "bridge", 13 },         { "destructstart", 14 },
-    { "destructregen", 15 },    { "obstacle", 16 },       { "crystal", 0x1e },
-    { "splatjj", 0x28 },        { "splatcatcher", 0x29 }, { "splatthrower", 0x2a },
-    { "falljj", 0x32 },         { "fallcatcher", 0x33 },  { "fallthrower", 0x34 },
-    { "bombtick", 0x3c },       { "explosionbomb", 0x46 }, { "explosioncatcher", 0x47 },
+static const struct { const char *name; ThemeSound id; } kSoundEvents[] = {
+    { "movejj", ThemeSound::MoveJJ },                 { "movecatcher", ThemeSound::MoveCatcher },
+    { "movethrower", ThemeSound::MoveThrower },       { "moveicesliding", ThemeSound::MoveIceSliding },
+    { "movesliding", ThemeSound::MoveSliding },       { "moveparagliding", ThemeSound::MoveParagliding },
+    { "moveparaglidingstart", ThemeSound::MoveParaglidingStart }, { "movejumppad", ThemeSound::MoveJumpPad },
+    { "teleporter", ThemeSound::Teleporter },         { "elevator", ThemeSound::Elevator },
+    { "platform", ThemeSound::Platform },             { "switch", ThemeSound::Switch },
+    { "glue", ThemeSound::Glue },                     { "bridge", ThemeSound::Bridge },
+    { "destructstart", ThemeSound::DestructStart },   { "destructregen", ThemeSound::DestructRegen },
+    { "obstacle", ThemeSound::Obstacle },             { "crystal", ThemeSound::Crystal },
+    { "splatjj", ThemeSound::SplatJJ },               { "splatcatcher", ThemeSound::SplatCatcher },
+    { "splatthrower", ThemeSound::SplatThrower },     { "falljj", ThemeSound::FallJJ },
+    { "fallcatcher", ThemeSound::FallCatcher },       { "fallthrower", ThemeSound::FallThrower },
+    { "bombtick", ThemeSound::BombTick },             { "explosionbomb", ThemeSound::ExplosionBomb },
+    { "explosioncatcher", ThemeSound::ExplosionCatcher },
 };
 
-  bool  
+bool  
 Theme_RegisterSound(ThemeSoundTable *sounds, const char *gameDir,
                     char *eventName, const char *waveName)
 {
     lower_inplace(eventName);
     for (const auto &ev : kSoundEvents) {
         if (strcmp(eventName, ev.name) == 0) {
-            sounds->add(gameDir, ev.id, waveName, 1, 1);
+            sounds->add(gameDir, static_cast<unsigned>(ev.id), waveName, 1, 1);
             return true;
         }
     }

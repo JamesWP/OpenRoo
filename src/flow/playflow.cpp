@@ -1,3 +1,14 @@
+/* The player's input around the play: the flythrough, the pause menu, the
+ * controls while playing, and the ENTER that restarts, leaves the game-over
+ * tally or ends name entry (Core_GameTick calls them).
+ *
+ * PRESERVED:
+ *   - lives drop at the restart after a death (ENTER), not at the death;
+ *   - the game-over branch of the restart skips the camera reset;
+ *   - leaving game over with ENTER adds the level time to the total play time;
+ *     ENTER after high-score name entry does not.
+ */
+
 #include "playflow.h"
 #include "playtick.h"
 #include <math.h>
@@ -18,7 +29,6 @@
 #include "record.h"
 #include "gamestr.h"
 
-#define KEY(k)  input_key_down(k)
 
 /* floor() of a double. */
 static double crt_floor(double v)
@@ -35,7 +45,7 @@ void Flow_TickFlythrough(Game *self)
         Sim_RestoreCheckpointStateBlocks(self);
     if (sp->running() == 0 || sp->loaded() == 0)
         self->camera()->setCameraMode(2);
-    if (self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0) {
+    if (self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0) {
         sp->setRunning(0);
         sp->setSplineActive(0);
         sp->releaseStreams();
@@ -71,7 +81,7 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
     Player *pl = self->world()->player();
 
     if (self->frontEnd()->cheatEntry()->active() != 0)
-        Sim_HandleTypedCheatCode(self);
+        Flow_HandleTypedCheatCode(self);
 
     Play_SpawnTimedFoes(self);
 

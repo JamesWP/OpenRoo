@@ -8,7 +8,7 @@
 #include "menutree.h"
 
   unsigned int  
-Sim_StoreGameStateIntoSaveSlot(FrontEnd *frontEnd, const Session *session, const World *world,
+Menu_StoreGameStateIntoSaveSlot(FrontEnd *frontEnd, const Session *session, const World *world,
                                unsigned int slotArg)
 {
     SaveSlot *S    = frontEnd->saveSlots()->slot((unsigned char)slotArg);
@@ -25,7 +25,7 @@ Sim_StoreGameStateIntoSaveSlot(FrontEnd *frontEnd, const Session *session, const
 }
 
   unsigned int  
-Sim_RestoreGameStateFromSaveSlot(FrontEnd *frontEnd, Session *session, World *world,
+Menu_RestoreGameStateFromSaveSlot(FrontEnd *frontEnd, Session *session, World *world,
                                  unsigned int slotArg)
 {
     SaveSlot *S = frontEnd->saveSlots()->slot((unsigned char)slotArg);

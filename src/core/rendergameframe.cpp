@@ -16,6 +16,7 @@
 #include "prof.h"
 #include <math.h>
 #include "rendergameframe.h"
+#include "renderstates.h"
 #include "renderdevice.h"
 #include "d3dmath.h"
 #include "game.h"
@@ -120,34 +121,6 @@ static void update_listener(Game *g)
     snd->commit();
 }
 
-/* Single fields of the device's state. */
-static void set_stencil_enable(RenderDevice *d3d, bool on)
-{
-    StencilState s = d3d->stencil();
-    s.enable = on;
-    d3d->SetStencil(s);
-}
-
-static void set_depth(RenderDevice *d3d, bool test, bool write)
-{
-    d3d->SetDepth(DepthState{ test, write });
-}
-
-
-static void set_depth_test(RenderDevice *d3d, bool on)
-{
-    DepthState d = d3d->depth();
-    d.test = on;
-    d3d->SetDepth(d);
-}
-
-static void set_fog_enable(RenderDevice *d3d, bool on)
-{
-    FogState f = d3d->fog();
-    f.enable = on;
-    d3d->SetFog(f);
-}
-
 /* ─── RenderGameFrame ───────────────────────────────────────────────────── */
 
   void  
@@ -179,7 +152,7 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
         renderer->lastTickMs = now;
         {
             PROF_SCOPE("game tick");
-            Sim_GameTick(g, dt, now, progCtrl);
+            Core_GameTick(g, dt, now, progCtrl);
         }
         if (g->field_173584() != 0)
             return;

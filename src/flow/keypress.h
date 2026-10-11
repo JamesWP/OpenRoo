@@ -10,4 +10,4 @@ class ProgableControl;
  * save slots, quit, key rebinding, sound and video toggles.  progCtrl is the
  * app's, which the joystick dead zone and key rebinding write to. */
   void
-Sim_HandleKeypress(Game *self, ProgableControl *progCtrl);
+Flow_HandleKeypress(Game *self, ProgableControl *progCtrl);

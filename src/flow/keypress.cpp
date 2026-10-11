@@ -36,7 +36,6 @@
 #include "levelselect.h"
 #include "record.h"
 
-#define KEY(k)  input_key_down(k)
 
 static int s_fx = -1;
 
@@ -69,13 +68,13 @@ static void option_edit(Game *game, unsigned char key, ProgableControl *progCtrl
 {
     switch (key) {
     case 0x22: {  // the "sfx %" page edits the joystick dead zone
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && game->joyDeadzone() < 0x5a) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && game->joyDeadzone() < 0x5a) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() + 10));
             progCtrl->setJoyDeadzone(0, game->joyDeadzone() * 100);
             progCtrl->setJoyDeadzone(4, game->joyDeadzone() * 100);
             game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
         }
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && game->joyDeadzone() > 10) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && input_key_down(inputdev::KEY_LEFT) != 0 && game->joyDeadzone() > 10) {
             game->setJoyDeadzone((unsigned short)(game->joyDeadzone() - 10));
             progCtrl->setJoyDeadzone(0, game->joyDeadzone() * 100);
             progCtrl->setJoyDeadzone(4, game->joyDeadzone() * 100);
@@ -85,12 +84,12 @@ static void option_edit(Game *game, unsigned char key, ProgableControl *progCtrl
     }
     case 0x3e: {
         int changed = 0;
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && game->cdVolume() < 100) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && game->cdVolume() < 100) {
             game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
             game->setCdVolume((unsigned char)(game->cdVolume() + 10));
             changed = 1;
         }
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && game->cdVolume() != 0) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && input_key_down(inputdev::KEY_LEFT) != 0 && game->cdVolume() != 0) {
             game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
             game->setCdVolume((unsigned char)(game->cdVolume() - 10));
         } else if (!changed) {
@@ -101,12 +100,12 @@ static void option_edit(Game *game, unsigned char key, ProgableControl *progCtrl
     }
     case 0x3f: {
         int changed = 0;
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && game->waveVolume() < 100) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && game->waveVolume() < 100) {
             game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
             game->setWaveVolume((unsigned char)(game->waveVolume() + 10));
             changed = 1;
         }
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && game->waveVolume() != 0) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && input_key_down(inputdev::KEY_LEFT) != 0 && game->waveVolume() != 0) {
             game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
             game->setWaveVolume((unsigned char)(game->waveVolume() - 10));
         } else if (!changed) {
@@ -122,11 +121,11 @@ static void option_edit(Game *game, unsigned char key, ProgableControl *progCtrl
         unsigned char &opt = key == 0x48 ? game->videoShadows()
                            : key == 0x49 ? game->videoHighlights()
                                          : game->videoParticles();
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && KEY(inputdev::KEY_RIGHT) != 0 && opt < 2) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && opt < 2) {
             game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
             opt = (unsigned char)(opt + 1);
         }
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && KEY(inputdev::KEY_LEFT) != 0 && opt != 0) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && input_key_down(inputdev::KEY_LEFT) != 0 && opt != 0) {
             opt = (unsigned char)(opt - 1);
             game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
         }
@@ -138,7 +137,7 @@ static void option_edit(Game *game, unsigned char key, ProgableControl *progCtrl
 }
 
   void  
-Sim_HandleKeypress(Game *self, ProgableControl *progCtrl)
+Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
 {
 
     if (s_fx < 0) {
@@ -151,24 +150,24 @@ Sim_HandleKeypress(Game *self, ProgableControl *progCtrl)
 
     int entry = 0;
     if (self->frontEnd()->rebindActive() == 0 && self->frontEnd()->textEntryActive() == 0) {
-        if (KEY(inputdev::KEY_ESCAPE) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_ESCAPE && self->frontEnd()->menu()->changed() != 0) {
+        if (input_key_down(inputdev::KEY_ESCAPE) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_ESCAPE && self->frontEnd()->menu()->changed() != 0) {
             if (self->fixedSounds()->switchClick != NULL)
                 (self->fixedSounds()->switchClick)->play(false);
             self->frontEnd()->debounceRef() = inputdev::KEY_ESCAPE;
         }
         if (self->frontEnd()->menu()->nodeRef() != 5 && self->frontEnd()->menu()->nodeRef() != 3 && self->frontEnd()->menu()->childCount(self->frontEnd()->menu()->nodeRef()) > 1) {
-            if (KEY(inputdev::KEY_UP) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_UP) {
+            if (input_key_down(inputdev::KEY_UP) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_UP) {
                 if (self->fixedSounds()->menuUpDown != NULL)
                     (self->fixedSounds()->menuUpDown)->cycle(0);
                 self->frontEnd()->debounceRef() = inputdev::KEY_UP;
             }
-            if (KEY(inputdev::KEY_DOWN) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_DOWN) {
+            if (input_key_down(inputdev::KEY_DOWN) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_DOWN) {
                 if (self->fixedSounds()->menuUpDown != NULL)
                     (self->fixedSounds()->menuUpDown)->cycle(0);
                 self->frontEnd()->debounceRef() = inputdev::KEY_DOWN;
             }
         }
-        if (KEY(inputdev::KEY_RETURN) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && self->frontEnd()->menu()->changed() != 0 &&
+        if (input_key_down(inputdev::KEY_RETURN) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && self->frontEnd()->menu()->changed() != 0 &&
             (unsigned short)self->frontEnd()->menu()->nodeRef() == self->frontEnd()->menu()->lastNodeSeen()) {
             if (self->fixedSounds()->switchClick != NULL)
                 (self->fixedSounds()->switchClick)->play(false);
@@ -216,7 +215,7 @@ Sim_HandleKeypress(Game *self, ProgableControl *progCtrl)
     // because the game's debounce belongs to the option pages on these keys.
     {
         static bool s_right, s_left;
-        const bool right = KEY(inputdev::KEY_RIGHT) != 0, left = KEY(inputdev::KEY_LEFT) != 0;
+        const bool right = input_key_down(inputdev::KEY_RIGHT) != 0, left = input_key_down(inputdev::KEY_LEFT) != 0;
         if (self->frontEnd()->rebindActive() == 0 && self->frontEnd()->textEntryActive() == 0) {
             if (right && !s_right)
                 LevelSelect_Turn(self->frontEnd(), self->session(), +1);
@@ -341,7 +340,7 @@ Sim_HandleKeypress(Game *self, ProgableControl *progCtrl)
                 slot = (unsigned char)(slot + 1);
             if (self->frontEnd()->saveSlots()->slot(slot)->inUse != 0) {
                 Sim_ClearGameState(self);
-                Sim_RestoreGameStateFromSaveSlot(self->frontEnd(), self->session(), self->world(), slot);
+                Menu_RestoreGameStateFromSaveSlot(self->frontEnd(), self->session(), self->world(), slot);
                 Sim_OpenLevelFile(self, self->session()->levelIndex());
                 Sim_SetupLevelObjects(self);
                 loaded_tail(self);
@@ -366,19 +365,19 @@ Sim_HandleKeypress(Game *self, ProgableControl *progCtrl)
             self->frontEnd()->nameEntry()->setBuffer(rec->name);
             self->frontEnd()->saveSlots()->setEditSlot(slot);
             self->frontEnd()->nameEntry()->setCursor((unsigned char)strlen(rec->name));
-            Sim_StoreGameStateIntoSaveSlot(self->frontEnd(), self->session(), self->world(), slot);
+            Menu_StoreGameStateIntoSaveSlot(self->frontEnd(), self->session(), self->world(), slot);
             self->frontEnd()->nameEntry()->setLastKey(inputdev::KEY_RETURN);
             // PRESERVED: three discarded Backspace polls clear its pressed bit
             // before name entry starts.
-            KEY(inputdev::KEY_BACKSPACE);
-            KEY(inputdev::KEY_BACKSPACE);
-            KEY(inputdev::KEY_BACKSPACE);
+            input_key_down(inputdev::KEY_BACKSPACE);
+            input_key_down(inputdev::KEY_BACKSPACE);
+            input_key_down(inputdev::KEY_BACKSPACE);
             self->frontEnd()->menu()->pop();
         }
     }
 
     // Key-rebind capture, once Enter is released.
-    if (self->frontEnd()->rebindActive() != 0 && KEY(inputdev::KEY_RETURN) == 0) {
+    if (self->frontEnd()->rebindActive() != 0 && input_key_down(inputdev::KEY_RETURN) == 0) {
         progCtrl->clearBindings(1, self->frontEnd()->rebindAction());
         if (progCtrl->captureBinding(1, self->frontEnd()->rebindAction(),
                                     100, 10, 0) != 0)

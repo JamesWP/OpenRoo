@@ -201,39 +201,16 @@ public:
 
     BombSounds bombSounds() const
     {
-        return { soundAsset429b6(), soundAsset42ac2(), soundAsset46baa(),
-                 soundAsset457c6(), soundAsset46132() };
+        return { themeSound(ThemeSound::MoveJumpPad), themeSound(ThemeSound::Teleporter),
+                 themeSound(ThemeSound::ExplosionBomb), themeSound(ThemeSound::FallCatcher),
+                 themeSound(ThemeSound::BombTick) };
     }
 
     bool initialised() const {return initialised_; }
 
-    /* The theme sound entries the spawns and level sounds acquire, named
-     * by their old Game offsets; the index is the theme event id. */
-    const SoundAssetName *soundAsset42262() const { return themeSounds_.entry(0); }
-    const SoundAssetName *soundAsset4236e() const { return themeSounds_.entry(1); }
-    const SoundAssetName *soundAsset4247a() const { return themeSounds_.entry(2); }
-    const SoundAssetName *soundAsset42586() const { return themeSounds_.entry(3); }
-    const SoundAssetName *soundAsset42692() const { return themeSounds_.entry(4); }
-    const SoundAssetName *soundAsset4279e() const { return themeSounds_.entry(5); }
-    const SoundAssetName *soundAsset428aa() const { return themeSounds_.entry(6); }
-    const SoundAssetName *soundAsset429b6() const { return themeSounds_.entry(7); }
-    const SoundAssetName *soundAsset42ac2() const { return themeSounds_.entry(8); }
-    const SoundAssetName *soundAsset42bce() const { return themeSounds_.entry(9); }
-    const SoundAssetName *soundAsset42cda() const { return themeSounds_.entry(10); }
-    const SoundAssetName *soundAsset42de6() const { return themeSounds_.entry(11); }
-    const SoundAssetName *soundAsset42ef2() const { return themeSounds_.entry(12); }
-    const SoundAssetName *soundAsset42ffe() const { return themeSounds_.entry(13); }
-    const SoundAssetName *soundAsset4310a() const { return themeSounds_.entry(14); }
-    const SoundAssetName *soundAsset43216() const { return themeSounds_.entry(15); }
-    const SoundAssetName *soundAsset441ca() const { return themeSounds_.entry(30); }
-    const SoundAssetName *soundAsset44c42() const { return themeSounds_.entry(40); }
-    const SoundAssetName *soundAsset44d4e() const { return themeSounds_.entry(41); }
-    const SoundAssetName *soundAsset44e5a() const { return themeSounds_.entry(42); }
-    const SoundAssetName *soundAsset456ba() const { return themeSounds_.entry(50); }
-    const SoundAssetName *soundAsset457c6() const { return themeSounds_.entry(51); }
-    const SoundAssetName *soundAsset458d2() const { return themeSounds_.entry(52); }
-    const SoundAssetName *soundAsset46132() const { return themeSounds_.entry(60); }
-    const SoundAssetName *soundAsset46baa() const { return themeSounds_.entry(70); }
+    /* The theme sound entry for a slot, which the spawns and level sounds
+     * acquire. */
+    const SoundAssetName *themeSound(ThemeSound s) const { return themeSounds_.entry(s); }
     ThemeSoundTable      *themeSounds()             { return &themeSounds_; }
 
     /* ── the lifecycle (game.cpp) ───────────────────────────────────────

@@ -43,7 +43,7 @@ static void tick_sound(Game *game)
 }
 
   unsigned int  
-Sim_AnimateScoreTallyStages(Game *self)
+Flow_AnimateScoreTallyStages(Game *self)
 {
     unsigned int now, el, lim, n;
     unsigned char st;
