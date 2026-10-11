@@ -49,7 +49,7 @@ static int streq(const unsigned char *a, const char *b)
 }
 
   void  
-Sim_HandleTypedCheatCode(Game *self)
+Flow_HandleTypedCheatCode(Game *self)
 {
     Player *pl = self->world()->player();
     unsigned char *buf = self->frontEnd()->cheatBuffer();

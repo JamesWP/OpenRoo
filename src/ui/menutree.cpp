@@ -142,7 +142,6 @@ void MenuTree::rewind()
  * Right are.  The lock clears once now is more than 200 ms past its start
  * (unsigned).  Down's wrap test is a signed compare. */
 
-#define KEY(k)  input_key_down(k)
 
 static int s_fx_menuwrap = -1;
 
@@ -170,12 +169,12 @@ void MenuTree::navigate(int now)
         unsigned int t = (unsigned int)(long long)lockStart_;
         if ((unsigned int)now - t > 200)
             LOCK = 0;
-        KEY(inputdev::KEY_UP);
-        KEY(inputdev::KEY_DOWN);
-        KEY(inputdev::KEY_ESCAPE);
-        KEY(inputdev::KEY_RETURN);
+        input_key_down(inputdev::KEY_UP);
+        input_key_down(inputdev::KEY_DOWN);
+        input_key_down(inputdev::KEY_ESCAPE);
+        input_key_down(inputdev::KEY_RETURN);
     } else {
-        if (DEB != inputdev::KEY_RETURN && KEY(inputdev::KEY_RETURN) != 0) {
+        if (DEB != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0) {
             unsigned char child = children_[NODE * CHILD_STRIDE + CUR];
             savedCursor_[NODE] = CUR;
             CUR = 0;
@@ -184,7 +183,7 @@ void MenuTree::navigate(int now)
             NODE = child;
             DEB = inputdev::KEY_RETURN;
         }
-        if (DEB != inputdev::KEY_ESCAPE && KEY(inputdev::KEY_ESCAPE) != 0) {
+        if (DEB != inputdev::KEY_ESCAPE && input_key_down(inputdev::KEY_ESCAPE) != 0) {
             if (DEPTH > 1) {
                 pop();
                 CHANGED = 1;
@@ -193,26 +192,26 @@ void MenuTree::navigate(int now)
             }
             DEB = inputdev::KEY_ESCAPE;
         }
-        if (DEB != inputdev::KEY_UP && KEY(inputdev::KEY_UP) != 0) {
+        if (DEB != inputdev::KEY_UP && input_key_down(inputdev::KEY_UP) != 0) {
             if (CUR > 0)
                 CUR = (unsigned char)(CUR - 1);
             else
                 CUR = (unsigned char)(COUNT(NODE) - 1);
             DEB = inputdev::KEY_UP;
-            KEY(inputdev::KEY_LEFT);
-            KEY(inputdev::KEY_RIGHT);
+            input_key_down(inputdev::KEY_LEFT);
+            input_key_down(inputdev::KEY_RIGHT);
         }
-        if (DEB != inputdev::KEY_DOWN && KEY(inputdev::KEY_DOWN) != 0) {
+        if (DEB != inputdev::KEY_DOWN && input_key_down(inputdev::KEY_DOWN) != 0) {
             if ((int)CUR < (int)COUNT(NODE) - 1)
                 CUR = (unsigned char)(CUR + 1);
             else if (!s_fx_menuwrap)
                 CUR = 0;
             DEB = inputdev::KEY_DOWN;
-            KEY(inputdev::KEY_LEFT);
-            KEY(inputdev::KEY_RIGHT);
+            input_key_down(inputdev::KEY_LEFT);
+            input_key_down(inputdev::KEY_RIGHT);
         }
     }
-    if (KEY(DEB) == 0)
+    if (input_key_down(DEB) == 0)
         DEB = 0;
 #undef CHANGED
 #undef LOCK

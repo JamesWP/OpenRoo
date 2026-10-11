@@ -35,8 +35,8 @@ static VoicePool *acq_pool(Game *g, int count, const SoundAssetName *asset)
 Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
 {
     unsigned int idx = objArg & 0xff;
-    const SoundAssetName *assetAB = g->soundAsset42586();
-    const SoundAssetName *assetAF = g->soundAsset42692();
+    const SoundAssetName *assetAB = g->themeSound(ThemeSound::MoveIceSliding);
+    const SoundAssetName *assetAF = g->themeSound(ThemeSound::MoveSliding);
     unsigned int last;
 
     if (s_fx < 0) {
@@ -47,20 +47,20 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
             g_logger.write("soundobj: KAROO_SIM_FX=soundswap -- +0xab/+0xaf swapped\n");
     }
     if (s_fx) {
-        assetAB = g->soundAsset42692();
-        assetAF = g->soundAsset42586();
+        assetAB = g->themeSound(ThemeSound::MoveSliding);
+        assetAF = g->themeSound(ThemeSound::MoveIceSliding);
     }
 
-    if (g->soundAsset441ca()->enabled)
-        g->world()->foeSlot(idx)->setPool9f(acq_pool(g, 3, g->soundAsset441ca()));
-    if (g->soundAsset429b6()->enabled)
-        g->world()->foeSlot(idx)->setSoundB3(acq(g, g->soundAsset429b6()));
-    if (g->soundAsset42ac2()->enabled) {
-        g->world()->foeSlot(idx)->setSoundB7(acq(g, g->soundAsset42ac2()));
+    if (g->themeSound(ThemeSound::Crystal)->enabled)
+        g->world()->foeSlot(idx)->setPool9f(acq_pool(g, 3, g->themeSound(ThemeSound::Crystal)));
+    if (g->themeSound(ThemeSound::MoveJumpPad)->enabled)
+        g->world()->foeSlot(idx)->setSoundB3(acq(g, g->themeSound(ThemeSound::MoveJumpPad)));
+    if (g->themeSound(ThemeSound::Teleporter)->enabled) {
+        g->world()->foeSlot(idx)->setSoundB7(acq(g, g->themeSound(ThemeSound::Teleporter)));
         // PRESERVED: the same guard is tested again and the same name loaded a
         // second time, so two buffers play one file.
-        if (g->soundAsset42ac2()->enabled)
-            g->world()->foeSlot(idx)->setSoundBb(acq(g, g->soundAsset42ac2()));
+        if (g->themeSound(ThemeSound::Teleporter)->enabled)
+            g->world()->foeSlot(idx)->setSoundBb(acq(g, g->themeSound(ThemeSound::Teleporter)));
     }
     if (assetAB->enabled)
         g->world()->foeSlot(idx)->setSoundAb(acq(g, assetAB));
@@ -68,26 +68,26 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
         g->world()->foeSlot(idx)->setSoundAf(acq(g, assetAF));
 
     if (g->world()->foeSlot(idx)->kind() == 2) {
-        if (g->soundAsset457c6()->enabled)
-            g->world()->foeSlot(idx)->setSoundC3(acq(g, g->soundAsset457c6()));
-        if (g->soundAsset42262()->enabled)
-            g->world()->foeSlot(idx)->setPoolCf(acq_pool(g, 5, g->soundAsset42262()));
-        if (g->soundAsset44d4e()->enabled)
-            g->world()->foeSlot(idx)->setSoundA7(acq(g, g->soundAsset44d4e()));
+        if (g->themeSound(ThemeSound::FallCatcher)->enabled)
+            g->world()->foeSlot(idx)->setSoundC3(acq(g, g->themeSound(ThemeSound::FallCatcher)));
+        if (g->themeSound(ThemeSound::MoveCatcher)->enabled)
+            g->world()->foeSlot(idx)->setPoolCf(acq_pool(g, 5, g->themeSound(ThemeSound::MoveCatcher)));
+        if (g->themeSound(ThemeSound::SplatCatcher)->enabled)
+            g->world()->foeSlot(idx)->setSoundA7(acq(g, g->themeSound(ThemeSound::SplatCatcher)));
     } else {
-        if (g->soundAsset458d2()->enabled)
-            g->world()->foeSlot(idx)->setSoundC3(acq(g, g->soundAsset458d2()));
-        if (g->soundAsset4247a()->enabled)
-            g->world()->foeSlot(idx)->setPoolCf(acq_pool(g, 5, g->soundAsset4247a()));
-        if (g->soundAsset44e5a()->enabled)
-            g->world()->foeSlot(idx)->setSoundA7(acq(g, g->soundAsset44e5a()));
+        if (g->themeSound(ThemeSound::FallThrower)->enabled)
+            g->world()->foeSlot(idx)->setSoundC3(acq(g, g->themeSound(ThemeSound::FallThrower)));
+        if (g->themeSound(ThemeSound::MoveThrower)->enabled)
+            g->world()->foeSlot(idx)->setPoolCf(acq_pool(g, 5, g->themeSound(ThemeSound::MoveThrower)));
+        if (g->themeSound(ThemeSound::SplatThrower)->enabled)
+            g->world()->foeSlot(idx)->setSoundA7(acq(g, g->themeSound(ThemeSound::SplatThrower)));
     }
 
     // PRESERVED: the low byte is 1 over whatever the last acquire left: its
     // result if the final sound was set, else 0.
-    last = (unsigned int)g->soundAsset42de6()->enabled;
+    last = (unsigned int)g->themeSound(ThemeSound::Switch)->enabled;
     if (last != 0) {
-        audiodev::Buffer *p = acq(g, g->soundAsset42de6());
+        audiodev::Buffer *p = acq(g, g->themeSound(ThemeSound::Switch));
         g->world()->foeSlot(idx)->setSoundCb(p);
         last = (unsigned int)(uintptr_t)p;
     }

@@ -1,3 +1,18 @@
+/* The play's per-tick simulation, called from Core_GameTick (core/gametick.cpp):
+ * the level sounds, the timed foe spawns, the player's bomb drop and switch,
+ * the foes, and the level end.
+ *
+ * PRESERVED:
+ *   - the bomb and foe loops re-read their counts every pass and do not step
+ *     back after a removal, so the entry moved into a removed slot is skipped
+ *     for one tick;
+ *   - a bomb drop or foe bomb refused as too soon also leaves its request
+ *     flag set;
+ *   - the game-over branch of the restart skips the camera reset;
+ *   - leaving game over with ENTER adds the level time to the total play time;
+ *     ENTER after high-score name entry does not.
+ */
+
 #include "playtick.h"
 #include "crtmath.h"
 #include "logger.h"

@@ -7,6 +7,7 @@
 #include "scenepasses.h"
 #include "prof.h"
 #include "renderdevice.h"
+#include "renderstates.h"
 #include "d3dmath.h"
 #include "texture.h"
 #include "world.h"
@@ -114,22 +115,6 @@ static bool foe_slot(unsigned char kind, bool dying, ThemeObjectType *out)
     if (kind == 3) { *out = dying ? THEME_OBJ_THROWERFX : THEME_OBJ_THROWER; return true; }
     return false;
 }
-
-/* Single fields of the device's state. */
-static void set_stencil_enable(RenderDevice *d3d, bool on)
-{
-    StencilState s = d3d->stencil();
-    s.enable = on;
-    d3d->SetStencil(s);
-}
-
-static void set_depth_write(RenderDevice *d3d, bool on)
-{
-    DepthState d = d3d->depth();
-    d.write = on;
-    d3d->SetDepth(d);
-}
-
 
 void Scene_OpaquePasses(Renderer *renderer, World *world, CameraPose *cam, Config *config, double now, double elapsed)
 {

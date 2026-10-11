@@ -4,12 +4,43 @@
 
 /* The theme sound table ("TSM" in its log line),.  A .thm
  * `Sound <event> <wave>` line fills entries[id] through ThemeSoundTable::add
- * (theme.cpp); the id is RegisterThemeSound's event number, so e.g. entry 0
- * is movecatcher and entry 70 explosionbomb.  The event table's largest id is
- * 0x47, but the table holds 100 entries: ReleaseAll clears exactly
- * 100, where switchMax_ begins.  Lifecycle in
- * theme.cpp; the vptr is at +0. */
+ * (theme.cpp); the id is the ThemeSound value for the event name.  The event
+ * table's largest id is 0x47, but the table holds 100 entries: ReleaseAll
+ * clears exactly 100, where switchMax_ begins.  Lifecycle in theme.cpp; the
+ * vptr is at +0. */
 #define THEME_SOUND_COUNT 100
+
+/* The slots of the theme sound table, named after the theme file's "sound"
+ * keywords (render/theme.cpp).  JJ is the player character. */
+enum class ThemeSound : unsigned {
+    MoveCatcher          = 0,
+    MoveJJ               = 1,
+    MoveThrower          = 2,
+    MoveIceSliding       = 3,
+    MoveSliding          = 4,
+    MoveParagliding      = 5,
+    MoveParaglidingStart = 6,
+    MoveJumpPad          = 7,
+    Teleporter           = 8,
+    Elevator             = 9,
+    Platform             = 10,
+    Switch               = 11,
+    Glue                 = 12,
+    Bridge               = 13,
+    DestructStart        = 14,
+    DestructRegen        = 15,
+    Obstacle             = 16,
+    Crystal              = 0x1e,
+    SplatJJ              = 0x28,
+    SplatCatcher         = 0x29,
+    SplatThrower         = 0x2a,
+    FallJJ               = 0x32,
+    FallCatcher          = 0x33,
+    FallThrower          = 0x34,
+    BombTick             = 0x3c,
+    ExplosionBomb        = 0x46,
+    ExplosionCatcher     = 0x47,
+};
 class ThemeSoundTable {
 public:
     /* Adds (or replaces) the wave for a theme sound id. */
@@ -23,8 +54,8 @@ public:
 
     int releaseAll();
 
-    /* The entry for theme event id. */
-    const SoundAssetName *entry(int id) const { return &entries_[id]; }
+    /* The entry for a theme sound slot. */
+    const SoundAssetName *entry(ThemeSound s) const { return &entries_[static_cast<unsigned>(s)]; }
 
 private:
     uint32_t          unknown4_{};     /* +4  never written */
