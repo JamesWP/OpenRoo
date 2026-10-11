@@ -355,7 +355,7 @@ bool debugUiCapturesMouse()
     return debugUiShown() && ImGui::GetIO().WantCaptureMouse;
 }
 
-int runMessageLoop(void (*idle)())
+int runMessageLoop(const std::function<void()> &idle)
 {
     SDL_Event e;
     for (;;) {

@@ -51,10 +51,6 @@
 #include "textrenderer.h"
 #include "menuscreens.h"
 
-/* The intro movie player: owned by WinMain, so it is torn down (and logs that)
- * when WinMain returns, while the log is still open.  The window procedure
- * reaches it through here; nothing else does. */
-static videodev::Player *g_movie;
 
 /* The render state (renderer.h).  app owns it and passes it down; nothing
  * below app reaches it through a global. */
@@ -82,14 +78,14 @@ static void delete_game(Game *g)       { Game_Shutdown(g); delete g; }
 static bool g_norender;
 
 /* Draws the intro's current frame, when there is a new one. */
-static void present_movie_frame(RenderDevice *dev)
+static void present_movie_frame(videodev::Player &movie, RenderDevice *dev)
 {
-    if (!g_movie->update()) {
+    if (!movie.update()) {
         sysdev::sleepMs(2);  // nothing due yet
         return;
     }
     int w, h;
-    const unsigned char *rgba = g_movie->frame(&w, &h);
+    const unsigned char *rgba = movie.frame(&w, &h);
     if (!rgba)
         return;
     static Image image;
@@ -105,12 +101,12 @@ static void present_movie_frame(RenderDevice *dev)
 }
 
 /* Between messages: a frame, or the intro's while it plays. */
-static void idle()
+static void idle(videodev::Player &movie)
 {
     inputdev::setKeyboardSuppressed(windev::debugUiCapturesKeyboard());
     // Cleared when the movie finishes, is skipped or (stub) gets its message.
-    if (g_movie->playing())
-        present_movie_frame(s_renderer.device);
+    if (movie.playing())
+        present_movie_frame(movie, s_renderer.device);
     else if (!g_norender)
         Render_RenderGameFrame(&s_renderer, &s_menuArt, &s_progCtrl);
 }
@@ -163,6 +159,8 @@ static bool wndproc_fx_noquit()
 
 class MainWindow : public windev::WindowHandler {
 public:
+    explicit MainWindow(videodev::Player &movie) : movie_(movie) {}
+
     void onDestroyed() override
     {
         if (!wndproc_fx_noquit())
@@ -173,11 +171,11 @@ public:
     {
         if (active) {
             restore_surfaces(&s_renderer);
-            if (g_movie->playing())
-                g_movie->play();
+            if (movie_.playing())
+                movie_.play();
         } else {
-            if (g_movie->playing())
-                g_movie->pause();
+            if (movie_.playing())
+                movie_.pause();
         }
     }
 
@@ -185,25 +183,26 @@ public:
     // key that started the game (the launcher's Enter) must not.
     void onKeyDown() override
     {
-        keyDownDuringIntro_ = g_movie->playing();
+        keyDownDuringIntro_ = movie_.playing();
     }
 
     void onKeyUp() override
     {
-        if (g_movie->playing() && keyDownDuringIntro_)
-            g_movie->skip();
+        if (movie_.playing() && keyDownDuringIntro_)
+            movie_.skip();
     }
 
 
     bool onNativeMessage(unsigned msg, unsigned long wParam, long lParam) override
     {
-        if (g_movie->handleWindowMessage(msg, wParam, lParam))
+        if (movie_.handleWindowMessage(msg, wParam, lParam))
             return true;
         // A track ended: the music restarts it if it repeats.
         return Game::instance()->audio()->cdAudio()->handleWindowMessage(msg, wParam, lParam);
     }
 
 private:
+    videodev::Player &movie_;
     bool keyDownDuringIntro_ = false;
 };
 
@@ -233,7 +232,6 @@ static const char *const kGameDir = ".";
 int Main_WinMain(const char *lpCmdLine)
 {
     videodev::Player movie;
-    g_movie = &movie;
     clock_setFrameHook(frame_boundary);
     audiodev::setLog(log_sink);
     audiodev::setPathResolver([](const char *path) { return sysdev::nativePath(path); });
@@ -241,7 +239,7 @@ int Main_WinMain(const char *lpCmdLine)
     videodev::setLog(log_sink);
     windev::setLog(log_sink);
 
-    static MainWindow handler;
+    MainWindow handler(movie);
     windev::Window window;
     std::unique_ptr<RenderDevice> device = createGLRenderDevice();
     windev::WindowConfig wc;
@@ -332,8 +330,8 @@ int Main_WinMain(const char *lpCmdLine)
     // not depend on it.
     const bool show = !d3d->headless() && !record_replaying();
     const std::string path = std::string(kGameDir) + "/video/INTRO.AVI";
-    if (g_movie->load(hWnd, sysdev::nativePath(path.c_str()).c_str(), show))
-        g_movie->play();
+    if (movie.load(hWnd, sysdev::nativePath(path.c_str()).c_str(), show))
+        movie.play();
     else
         g_logger.logMessage(3, "MAIN: Couldn't load %s .", path.c_str());
 
@@ -342,7 +340,7 @@ int Main_WinMain(const char *lpCmdLine)
 
     g_norender = winmain_fx_norender();
     prof::initSlowFrames();
-    const int exitCode = windev::runMessageLoop(idle);
+    const int exitCode = windev::runMessageLoop([&movie] { idle(movie); });
     prof::dumpSlowFrames();
     debugui::shutdown(*d3d);
 
