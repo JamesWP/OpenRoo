@@ -8,4 +8,4 @@ add_library(audio OBJECT
 target_include_directories(audio PUBLIC .)
 target_link_libraries(audio
     PUBLIC  audiodev soundapi
-    PRIVATE base sysdev log)
+    PRIVATE sysdev log)
