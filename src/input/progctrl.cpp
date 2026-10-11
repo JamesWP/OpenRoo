@@ -220,7 +220,7 @@ int ProgableControl::readBindings()
             clearBindings((unsigned short)m, e->name);
             for (const auto &key : parse_binding_list(kv.second)) {
                 int id = inputdev::keyFromName(key.first.c_str());
-                if (id == inputdev::KEY_NONE) {
+                if (id == input::KEY_NONE) {
                     g_logger.write("ProgCtrl::ReadBindings: '%s': unknown key '%s'\n",
                               e->name, key.first.c_str());
                     continue;

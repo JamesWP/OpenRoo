@@ -6,5 +6,5 @@ add_library(ui OBJECT
 target_include_directories(ui PUBLIC .)
 
 target_link_libraries(ui
-    PUBLIC  inputdev
+    PUBLIC  inputapi
     PRIVATE sysdev log base input imgui)

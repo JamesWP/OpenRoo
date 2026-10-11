@@ -10,6 +10,7 @@
  * logged on replay. */
 #pragma once
 #include <stdint.h>
+#include "keysource.h"
 
 bool record_recording(void);
 bool record_replaying(void);
@@ -18,11 +19,12 @@ bool record_replaying(void);
  * Called by the clock once per frame, before the game ticks. */
 void record_frame_boundary(void);
 
-/* The key array (inputdev::KEY_COUNT bytes, 0x80 while held).  Recording
- * stores what the keyboard returned; replay fills the buffer with what was
- * recorded. */
-void record_keys(const uint8_t *keys);
-void replay_keys(uint8_t *keys);
+/* The replay and the recorder, as a key source and an observer (input/keys.h
+ * adds them).  Null unless KAROO_REPLAY or KAROO_RECORD is set.  The replay
+ * is the one source the game takes keys from; the recorder sees the keys the
+ * game was given, from whatever sources. */
+input::KeySource   *replay_source(void);
+input::KeyObserver *record_observer(void);
 
 /* True once the replay file is exhausted; the test harness ends the run here.
  */

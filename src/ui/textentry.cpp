@@ -17,7 +17,7 @@
 #include "textentry.h"
 #include <stdlib.h>
 #include "keys.h"
-#include "inputdev.h"
+#include "keycodes.h"
 
 static int s_fx = -1;
 
@@ -49,38 +49,38 @@ void TextEntry::poll(unsigned int phase)
         return;
     BUF[CUR] = blink_positive(phase) ? 0x5f : 0x20;
 
-    if (input::pressed(inputdev::KEY_RETURN)) {
+    if (input::pressed(input::KEY_RETURN)) {
         ACTIVE = 0;
         BUF[CUR] = 0;
-        endKey_ = inputdev::KEY_RETURN;
+        endKey_ = input::KEY_RETURN;
     }
-    if (input::pressed(inputdev::KEY_ESCAPE)) {
+    if (input::pressed(input::KEY_ESCAPE)) {
         ACTIVE = 0;
         BUF[CUR] = 0;
-        endKey_ = inputdev::KEY_ESCAPE;
+        endKey_ = input::KEY_ESCAPE;
     }
-    if (input::pressed(inputdev::KEY_BACKSPACE) && CUR != 0) {
+    if (input::pressed(input::KEY_BACKSPACE) && CUR != 0) {
         CUR = (unsigned char)(CUR - 1);
         BUF[CUR + 1] = 0;
     }
-    if (input::pressed(inputdev::KEY_SPACE) && CUR < MAXL) {
+    if (input::pressed(input::KEY_SPACE) && CUR < MAXL) {
         BUF[CUR] = 0x20;
         CUR = (unsigned char)(CUR + 1);
     }
-    for (unsigned char k = inputdev::KEY_A; k <= inputdev::KEY_Z; ++k) {
+    for (unsigned char k = input::KEY_A; k <= input::KEY_Z; ++k) {
         if (input::pressed(k) && CUR < MAXL) {
-            int shifted = input::down(inputdev::KEY_LSHIFT)
-                          || input::down(inputdev::KEY_RSHIFT);
+            int shifted = input::down(input::KEY_LSHIFT)
+                          || input::down(input::KEY_RSHIFT);
             if (s_fx)
                 shifted = !shifted;
-            const unsigned char upper = (unsigned char)('A' + (k - inputdev::KEY_A));
+            const unsigned char upper = (unsigned char)('A' + (k - input::KEY_A));
             BUF[CUR] = shifted ? upper : (unsigned char)(upper + 0x20);
             CUR = (unsigned char)(CUR + 1);
         }
     }
     for (unsigned char c = '0'; c <= '9'; ++c) {
-        const unsigned char k = c == 48 ? (unsigned char)inputdev::KEY_0
-                                         : (unsigned char)(inputdev::KEY_1 + (c - 49));
+        const unsigned char k = c == 48 ? (unsigned char)input::KEY_0
+                                         : (unsigned char)(input::KEY_1 + (c - 49));
         if (input::pressed(k) && CUR < MAXL) {
             BUF[CUR] = c;
             CUR = (unsigned char)(CUR + 1);

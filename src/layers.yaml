@@ -12,10 +12,11 @@
 # one of them, here and in review.
 
 layers:
-  # The interfaces the platform groups and the game share: sound and rendering.
-  # Header-only, and they depend on nothing, so that the groups that implement
-  # them (audiodev, gl) and the groups that use them agree on a vocabulary.
-  - [soundapi, renderapi]
+  # The interfaces the platform groups and the game share: sound, rendering and
+  # keys.  Header-only, and they depend on nothing, so that the groups that
+  # implement them (audiodev, gl, inputdev, testing) and the groups that use
+  # them agree on a vocabulary.
+  - [soundapi, renderapi, inputapi]
 
   # The platform: the OS, the devices, the window, the sound system.
   - [sysdev, inputdev, videodev, windev, audiodev]

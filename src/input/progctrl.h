@@ -19,7 +19,7 @@ struct KeyBind {
     /* Frees kb and every binding chained after it; NULL frees nothing. */
     static void freeChain(KeyBind *kb);
 
-    int      scancode;  // an inputdev::Key
+    int      scancode;  // an input::Key
     int      strength;  // passed to the callback; 100 for a plain key
     KeyBind *next;
 };

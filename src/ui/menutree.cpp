@@ -9,7 +9,7 @@
  * KAROO_MENUSTACK_DIAG=1 logs every push, pop and rewind with running counts
  * and the deepest depth reached. */
 
-#include "inputdev.h"
+#include "keycodes.h"
 #include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
@@ -168,7 +168,7 @@ void MenuTree::navigate(int now)
             LOCK = 0;
         return;
     }
-    if (input::pressed(inputdev::KEY_RETURN)) {
+    if (input::pressed(input::KEY_RETURN)) {
         unsigned char child = children_[NODE * CHILD_STRIDE + CUR];
         savedCursor_[NODE] = CUR;
         CUR = 0;
@@ -176,7 +176,7 @@ void MenuTree::navigate(int now)
         push(NODE);
         NODE = child;
     }
-    if (input::pressed(inputdev::KEY_ESCAPE)) {
+    if (input::pressed(input::KEY_ESCAPE)) {
         if (DEPTH > 1) {
             pop();
             CHANGED = 1;
@@ -184,13 +184,13 @@ void MenuTree::navigate(int now)
             LEAVE = 1;
         }
     }
-    if (input::pressed(inputdev::KEY_UP)) {
+    if (input::pressed(input::KEY_UP)) {
         if (CUR > 0)
             CUR = (unsigned char)(CUR - 1);
         else
             CUR = (unsigned char)(COUNT(NODE) - 1);
     }
-    if (input::pressed(inputdev::KEY_DOWN)) {
+    if (input::pressed(input::KEY_DOWN)) {
         if ((int)CUR < (int)COUNT(NODE) - 1)
             CUR = (unsigned char)(CUR + 1);
         else if (!s_fx_menuwrap)

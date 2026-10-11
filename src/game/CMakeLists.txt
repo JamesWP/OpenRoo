@@ -3,4 +3,4 @@ add_library(game OBJECT
 target_include_directories(game PUBLIC .)
 target_link_libraries(game
     PUBLIC  base audio ui camera script session entities
-    PRIVATE log inputdev audiodev windev level)
+    PRIVATE log inputapi audiodev windev level)

@@ -8,4 +8,4 @@ add_library(flow OBJECT
     scoretally.cpp)
 target_include_directories(flow PUBLIC .)
 target_link_libraries(flow
-    PRIVATE sysdev log base prof inputdev audiodev windev input audio ui level entities session game sim)
+    PRIVATE sysdev log base prof inputapi audiodev windev input audio ui level entities session game sim)
