@@ -15,5 +15,5 @@ add_library(entities OBJECT
 target_include_directories(entities PUBLIC .)
 
 target_link_libraries(entities
-    PUBLIC  base gfx level
-    PRIVATE sysdev log prof dbg soundapi imgui renderapi)
+    PUBLIC  base gfx level soundapi
+    PRIVATE sysdev log prof dbg imgui renderapi)
