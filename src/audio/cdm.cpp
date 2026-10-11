@@ -7,7 +7,6 @@
 CDM::CDM()
 {
     g_logger.write("CDM::construct(this=%p)\n", this);
-    window_ = NULL;
 }
 
 CDM::~CDM()
@@ -15,18 +14,6 @@ CDM::~CDM()
     g_logger.write("CDM::stopAndClose(this=%p)\n", this);
     music_.stop();
     g_logger.write("CDM::stopAndClose done\n");
-}
-
-void CDM::setWindowHandle(void *hwnd)
-{
-    g_logger.write("CDM::setWindowHandle(hwnd=0x%p)\n", hwnd);
-    window_ = hwnd;
-    music_.setWindow(hwnd);
-}
-
-bool CDM::handleWindowMessage(unsigned msg, unsigned long wParam, long lParam)
-{
-    return music_.handleWindowMessage(msg, wParam, lParam);
 }
 
 int CDM::getTrackCount()

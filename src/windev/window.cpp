@@ -99,10 +99,6 @@ static void dispatch(const SDL_Event &e)
     case SDL_EVENT_QUIT:
         close_window();
         break;
-    case SDL_EVENT_USER:
-        if (g_handler)
-            g_handler->onNativeMessage((unsigned)e.user.code, 0, 0);
-        break;
     }
 }
 

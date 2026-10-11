@@ -164,8 +164,8 @@ void Device::destroy()
 
 bool Device::create(const DeviceConfig &config)
 {
-    AD_LOG("audiodev: create(window=%p 3d=%d ch=%d rate=%d bits=%d)\n",
-           config.window, (int)config.enable3D, config.channels,
+    AD_LOG("audiodev: create(3d=%d ch=%d rate=%d bits=%d)\n",
+           (int)config.enable3D, config.channels,
            config.sampleRate, config.bitsPerSample);
 
     destroy();

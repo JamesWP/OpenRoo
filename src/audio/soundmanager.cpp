@@ -510,12 +510,11 @@ SoundManager::~SoundManager()
 }
 
 
-int SoundManager::init(int enable3d, void *window, int channels,
-              int samplespersec, int bitspersample)
+int SoundManager::init(int enable3d, int channels, int samplespersec,
+                       int bitspersample)
 {
     purgeAssets();
     audiodev::DeviceConfig config;
-    config.window        = window;
     config.enable3D      = enable3d != 0;
     config.channels      = channels;
     config.sampleRate    = samplespersec;

@@ -24,9 +24,9 @@ public:
 
     /* Opens the movie file at path.  With show false (a headless or test
      * run) nothing is opened, decoded or heard, and the movie "plays" for no
-     * time, ending at the window's next end-of-movie message.  False if it
-     * cannot be played, after which playing() is false. */
-    bool load(void *window, const char *path, bool show);
+     * time: play() ends it.  False if it cannot be played, after which
+     * playing() is false. */
+    bool load(const char *path, bool show);
 
     /* True from a successful load until the movie ends or is skipped. */
     bool playing() const { return playing_; }
@@ -46,9 +46,6 @@ public:
      * each (R, G, B, A); valid until the next update().  NULL before the
      * first. */
     const unsigned char *frame(int *width, int *height) const;
-
-    /* Offered every window message; true if it was the player's. */
-    bool handleWindowMessage(unsigned msg, unsigned long wParam, long lParam);
 
 private:
     PlayerState *state_;

@@ -58,8 +58,7 @@ public:
     SoundManager(const SoundManager &) = delete;
     SoundManager &operator=(const SoundManager &) = delete;
     void purgeAssets();
-    int init(int enable3d, void *window, int channels, int samplespersec,
-             int bitspersample);
+    int init(int enable3d, int channels, int samplespersec, int bitspersample);
 
     int created()const {return dwCreated_;}
 
