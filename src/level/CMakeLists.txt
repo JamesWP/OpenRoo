@@ -7,5 +7,4 @@ add_library(level OBJECT
 target_include_directories(level PUBLIC .)
 
 target_link_libraries(level
-    PUBLIC  gfx
     PRIVATE sysdev log base soundapi imgui)

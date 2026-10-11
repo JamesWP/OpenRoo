@@ -14,9 +14,10 @@ add_library(render OBJECT
     sceneobjects.cpp
     scenequad.cpp
     theme.cpp
-    themedraw.cpp)
+    themedraw.cpp
+    uvanimator.cpp)
 target_include_directories(render PUBLIC .)
 
 target_link_libraries(render
-    PUBLIC  audio math gfx fx level entities renderapi
-    PRIVATE base sysdev log prof camera imgui)
+    PUBLIC  audio math gfx fx renderapi
+    PRIVATE base sysdev log prof camera level entities imgui)
