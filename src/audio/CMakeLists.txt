@@ -3,6 +3,7 @@ add_library(audio OBJECT
     cdthemes.cpp
     doublesoundbuff.cpp
     soundmanager.cpp
+    themesounds.cpp
     voicepool.cpp)
 target_include_directories(audio PUBLIC .)
 target_link_libraries(audio
