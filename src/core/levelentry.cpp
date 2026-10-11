@@ -22,11 +22,9 @@
 #include "clock.h"
 #include "camera.h"
 
-  void  
-LevelEntry_PrepareAssets(Renderer *renderer)
+void LevelEntry_PrepareAssets(Game *g, Renderer *renderer)
 {
     RenderDevice *d3d = renderer->device;
-    Game *g = Game::instance();
     const LevelMap *map = g->world()->map();
 
     // 1. Blank the back buffer and flip.

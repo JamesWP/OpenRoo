@@ -1,4 +1,4 @@
-/* Game::GameTick: one simulation step, called once a frame by RenderGameFrame
+/* Game::GameTick: one simulation step, called once a frame by Core_UpdateFrame
  * with dt and the clock.  It ticks the bombs, the timed foe spawners, the
  * countdown, the player's bomb drop and switches, the foes, the lifts and
  * platforms; then, by game state, the camera and exit while playing, the restart

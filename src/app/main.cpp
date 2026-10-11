@@ -39,7 +39,7 @@
 #include "gamestate.h"
 #include "levelplacements.h"
 #include "theme.h"
-#include "rendergameframe.h"
+#include "frame.h"
 #include "launcher.h"
 #include "launcherdialogs.h"
 #include "windev.h"
@@ -101,14 +101,14 @@ static void present_movie_frame(videodev::Player &movie, RenderDevice *dev)
 }
 
 /* Between messages: a frame, or the intro's while it plays. */
-static void idle(videodev::Player &movie)
+static void idle(Game *game, videodev::Player &movie)
 {
     inputdev::setKeyboardSuppressed(windev::debugUiCapturesKeyboard());
     // Cleared when the movie finishes or is skipped (a headless one, at once).
     if (movie.playing())
         present_movie_frame(movie, s_renderer.device);
     else if (!g_norender)
-        Render_RenderGameFrame(&s_renderer, &s_menuArt, &s_progCtrl);
+        Core_RunFrame(game, &s_renderer, &s_menuArt, &s_progCtrl);
 }
 
 /* The window's events: surfaces and the intro movie on focus changes, and the
@@ -330,7 +330,7 @@ int Main_WinMain(const char *lpCmdLine)
 
     g_norender = winmain_fx_norender();
     prof::initSlowFrames();
-    const int exitCode = windev::runMessageLoop([&movie] { idle(movie); });
+    const int exitCode = windev::runMessageLoop([game, &movie] { idle(game, movie); });
     prof::dumpSlowFrames();
     debugui::shutdown(*d3d);
 

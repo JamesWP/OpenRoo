@@ -73,8 +73,8 @@ public:
     int            gemsGoalReached() const           { return gemsGoalReached_; }
     void           setGemsGoalReached(int v)         { gemsGoalReached_ = v; }
 
-    /* The level builder sets it to 1 once a level is built; RenderGameFrame
-     * then prepares the level's assets and clears it (skipping the frame
+    /* The level builder sets it to 1 once a level is built; the next frame's
+     * update (core/frame.h) then prepares the level's assets and clears it (skipping the frame
      * meanwhile), and GameTick loads the level sounds only while it and
      * levelSoundsReady() are both 0. */
     int            levelPrepPending() const          { return levelPrepPending_; }

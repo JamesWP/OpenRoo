@@ -1,8 +1,9 @@
 /* A level's asset load, done on its first frame: when the level builder sets
- * the Game's "prepare assets" flag, the frame renderer calls this, clears the
- * flag and draws nothing that frame. */
+ * the Game's "prepare assets" flag, the frame's update (frame.h) calls this,
+ * clears the flag and draws nothing that frame. */
 #pragma once
 
+class Game;
 class Renderer;
 
-  void   LevelEntry_PrepareAssets(Renderer *renderer);
+void LevelEntry_PrepareAssets(Game *g, Renderer *renderer);

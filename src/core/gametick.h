@@ -4,7 +4,7 @@
 class Game;
 class ProgableControl;
 
-/* Advances the level by dt seconds at clock time now.  Called once a frame by
- * RenderGameFrame, which passes the app's progCtrl through. */
-  void
-Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl);
+/* Advances the level by dt milliseconds at clock time now.  Called once a
+ * frame by the frame's update (frame.h), which passes the app's progCtrl
+ * through. */
+void Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl);

@@ -26,8 +26,8 @@ static bool      g_started;  // set by the first read
 static uint32_t     g_last;     // the previous shifted tick
 static double    g_accum;    // elapsed seconds
 
-/* The previous read's result.  RenderGameFrame reads it before reading the
- * clock, and takes the frame's dt as the difference. */
+/* The previous advance's result.  The frame's update reads it before advancing
+ * the clock, and takes the frame's elapsed time as the difference. */
 static double g_prevClock;
 static int       g_same;    // reads in a row with the same result
 static uint8_t      g_shift;   // the frequency's halvings
@@ -90,7 +90,7 @@ double clock_advance(void)
         // The first read returns 0.0, as on the real clock.
         if (!g_started) { g_started = true; return g_accum; }
         g_accum += g_fixed_dt;
-        g_prevClock = g_accum;  // RenderGameFrame's dt source
+        g_prevClock = g_accum;  // the frame's elapsed-time source
         return g_accum;
     }
 

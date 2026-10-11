@@ -4,7 +4,7 @@
  * section to the main window.  Nothing is copied or snapshotted; each piece
  * reads its own live state.
  *
- * A frame opens at the top of Render_RenderGameFrame (frameBegin) and the
+ * A frame opens at the top of Core_RunFrame (frameBegin) and the
  * overlay closes it (frameEnd).  In between, anything may call ImGui, but only
  * when active() is true, which is the F10 toggle: hidden, none of it runs.
  *
