@@ -18,7 +18,7 @@
 #include "logger.h"
 #include "textentry.h"
 #include <stdlib.h>
-#include "record.h"
+#include "keys.h"
 #include "inputdev.h"
 
 static int s_fx = -1;

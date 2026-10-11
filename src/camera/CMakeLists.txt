@@ -1,6 +1,3 @@
-add_library(camera OBJECT
-    scriptplayer.cpp)
-target_include_directories(camera PUBLIC .)
-target_link_libraries(camera
-    PUBLIC  math audiodev
-    PRIVATE sysdev log audio)
+# CameraRig is header-only and needs no other group.
+add_library(camera INTERFACE)
+target_include_directories(camera INTERFACE .)

@@ -72,7 +72,7 @@ static DeltaState g_rd;  // replay
 
 /* KAROO_INPUT_DEBUG=1 logs the first few replayed frames and key polls. */
 static int      g_dbg = -1;
-static bool input_debug(void)
+bool input_debug(void)
 {
     if (g_dbg < 0) {
         char b[8];
@@ -422,22 +422,3 @@ void record_frame_boundary(void)
 
  
 
-bool input_key_down(int key)
-{
-    if (input_debug()) {  // which call sites actually execute
-        static int n = 0;
-        if (n < 40) {
-            n++;
-            g_logger.write("askdbg: frame %u vkey=0x%02X from ret=%p\n",
-                      clock_frame(), key, __builtin_return_address(0));
-        }
-    }
-    bool v;
-    if (record_replaying()) {
-        replay_async(key, &v);
-        return v;
-    }
-    v = inputdev::keyDown(key);
-    record_async(key, v);
-    return v;
-}

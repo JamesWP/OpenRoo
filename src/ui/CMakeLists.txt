@@ -7,4 +7,4 @@ target_include_directories(ui PUBLIC .)
 
 target_link_libraries(ui
     PUBLIC  inputdev
-    PRIVATE sysdev log base testing imgui)
+    PRIVATE sysdev log base input imgui)

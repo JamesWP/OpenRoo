@@ -26,7 +26,7 @@
 #include "gridrestore.h"
 #include "checkpoint.h"
 #include "cheatcode.h"
-#include "record.h"
+#include "keys.h"
 #include "gamestr.h"
 
 

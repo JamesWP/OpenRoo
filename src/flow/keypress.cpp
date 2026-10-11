@@ -17,7 +17,7 @@
 #include "logger.h"
 #include "windev.h"
 #include "game.h"
-#include "menunav.h"
+#include "savegame.h"
 #include "levelsetup.h"
 #include "levelparse.h"
 #include "gamereset.h"
@@ -34,7 +34,8 @@
 #include "soundmanager.h"
 #include "gamestr.h"
 #include "levelselect.h"
-#include "record.h"
+#include "levelthemes.h"
+#include "keys.h"
 
 
 static int s_fx = -1;
@@ -339,7 +340,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
                 slot = (unsigned char)(slot + 1);
             if (self->frontEnd()->saveSlots()->slot(slot)->inUse != 0) {
                 Sim_ClearGameState(self);
-                Menu_RestoreGameStateFromSaveSlot(self->frontEnd(), self->session(), self->world(), slot);
+                SaveGame_RestoreFromSaveSlot(self->frontEnd(), self->session(), self->world(), slot);
                 Sim_OpenLevelFile(self, self->session()->levelIndex());
                 Sim_SetupLevelObjects(self);
                 loaded_tail(self);
@@ -364,7 +365,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
             self->frontEnd()->nameEntry()->setBuffer(rec->name);
             self->frontEnd()->saveSlots()->setEditSlot(slot);
             self->frontEnd()->nameEntry()->setCursor((unsigned char)strlen(rec->name));
-            Menu_StoreGameStateIntoSaveSlot(self->frontEnd(), self->session(), self->world(), slot);
+            SaveGame_StoreIntoSaveSlot(self->frontEnd(), self->session(), self->world(), slot);
             self->frontEnd()->nameEntry()->setLastKey(inputdev::KEY_RETURN);
             // PRESERVED: three discarded Backspace polls clear its pressed bit
             // before name entry starts.

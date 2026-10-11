@@ -6,7 +6,7 @@
  * credits takes the front end, session or config it reads, then (theme, device,
  * text, ms); theme is the object holding
  * the theme file's colours and backdrop texture, read at fixed offsets.  The
- * level-select pages are ours (levelselect.h). */
+ * level-select pages are ours (levelselectview.h). */
 
 #include "texture.h"
 #include "renderdevice.h"
