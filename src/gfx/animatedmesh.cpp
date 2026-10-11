@@ -12,7 +12,7 @@
 #include <atomic>
 #include <stdio.h>
 #include <stdint.h>
-#include "image.h"
+#include "imagefile.h"
 #include "animatedmesh.h"
 #include "sysdev.h"
 #include <fstream>

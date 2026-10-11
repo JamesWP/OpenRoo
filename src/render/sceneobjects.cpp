@@ -373,7 +373,7 @@ Scene_RenderSceneObjects(World *world, CameraPose *pose, Config *config,
                     continue;
 
                 dev = d3d;
-                dev->SetTexture(0, sub->pTexture);
+                bindTexture(dev, 0, sub->pTexture);
                 dev->SetBlend(blendFromTheme(sub->dwBlendSrc, sub->dwBlendDst));
 
                 switch (rec->kind()) {

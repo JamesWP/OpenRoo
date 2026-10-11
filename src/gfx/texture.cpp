@@ -1,6 +1,7 @@
 /* Texture and TextureManager (texture.h). */
 
 #include "texture.h"
+#include "imagefile.h"
 #include <new>
 #include <stdio.h>
 #include <string.h>
@@ -75,9 +76,9 @@ bool Texture::reupload(RenderDevice *dev)
     return dev->UpdateTexture(handle_, *image_);
 }
 
-void RenderDevice::SetTexture(int stage, const Texture *tex)
+void bindTexture(RenderDevice *dev, int stage, const Texture *tex)
 {
-    SetTexture(stage, tex ? tex->handle() : (const DeviceTexture *)NULL);
+    dev->SetTexture(stage, tex ? tex->handle() : NULL);
 }
 
 /* ─── TextureManager ───────────────────────────────────────────────────────

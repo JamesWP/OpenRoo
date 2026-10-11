@@ -142,7 +142,7 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
     const float invRows = 1.0f / (float)(int)rows_;
 
     RenderDevice *dev = d3d;
-    dev->SetTexture(0, &atlas_);
+    bindTexture(dev, 0, &atlas_);
     dev->SetBlend(BlendState::alpha());
 
     if (strlen(str) == 0) {
@@ -299,7 +299,7 @@ void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
     const float invRows = 1.0f / (float)(int)rows_;
 
     RenderDevice *dev = d3d;
-    dev->SetTexture(0, &atlas_);
+    bindTexture(dev, 0, &atlas_);
     dev->SetBlend(BlendState::alpha());
 
     if (strlen(str) == 0)
@@ -434,7 +434,7 @@ void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
     strip[1].x = W; strip[1].y = H;    strip[1].u = 0.6f; strip[1].v = 0.6f;
     strip[2].x = 0; strip[2].y = top1; strip[2].u = 0.4f; strip[2].v = 0.4f;
     strip[3].x = 0; strip[3].y = H;    strip[3].u = 0.4f; strip[3].v = 0.6f;
-    dev->SetTexture(0, panelTex);
+    bindTexture(dev, 0, panelTex);
     dev->Draw(Prim::TriangleStrip, TEXT_FVF, strip, 4, 0);
 
     const float top2 = y - W * 0.015625f;
@@ -444,11 +444,11 @@ void TextRenderer::drawPanel(float x, float y, float cellW, float cellH,
     strip[2].x = 0; strip[2].y = top2; strip[2].u = 0.0f; strip[2].v = 0.0f;
     strip[3].x = 0; strip[3].y = bot2; strip[3].u = 0.0f; strip[3].v = 1.0f;
     if (frameTex) {
-        dev->SetTexture(0, frameTex);
+        bindTexture(dev, 0, frameTex);
         dev->Draw(Prim::TriangleStrip, TEXT_FVF, strip, 4, 0);
     }
 
-    dev->SetTexture(0, &atlas_);
+    bindTexture(dev, 0, &atlas_);
 
     TextVertex quad[4];
     for (int k = 0; k < 4; k++) {

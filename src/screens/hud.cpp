@@ -77,7 +77,7 @@ void Hud_Draw(Renderer *renderer, World *world, Session *session, GameState stat
 
     /* The two corner panels, mirrored halves of the HUD image. */
     if (theme->image(THEME_IMG_HUD) != NULL) {
-        dev->SetTexture(0, image(theme, THEME_IMG_HUD));
+        bindTexture(dev, 0, image(theme, THEME_IMG_HUD));
         blend_on(dev);
         const float a  = hudH + hudH;
         const float y1 = hudH - W * 0.003125f;
@@ -134,7 +134,7 @@ void Hud_Draw(Renderer *renderer, World *world, Session *session, GameState stat
         };
         for (int k = 0; k < 4; ++k)
             q[k].sz = p[k][2];
-        dev->SetTexture(0, image(theme, THEME_IMG_POINTER));
+        bindTexture(dev, 0, image(theme, THEME_IMG_POINTER));
         blend_on(dev);
         draw_strip(dev, q);
         dev->SetBlend(BlendState::off());
@@ -155,7 +155,7 @@ void Hud_Draw(Renderer *renderer, World *world, Session *session, GameState stat
             tl(cx - r, cy + r, 0xffffffff, 0.0f, 1.0f),
         };
         blend_on(dev);
-        dev->SetTexture(0, image(theme, THEME_IMG_RADAR));
+        bindTexture(dev, 0, image(theme, THEME_IMG_RADAR));
         draw_strip(dev, q);
         dev->SetBlend(BlendState::off());
         dev->SetTexture(0, nullptr);
@@ -288,7 +288,7 @@ void Hud_DrawMessages(RenderDevice *d3d, TextRenderer *font, const ThemeAssetBlo
         default: icon = false; img = THEME_IMG_HUD; break;
         }
         if (icon && theme->image(img) != NULL) {
-            d3d->SetTexture(0, image(theme, img));
+            bindTexture(d3d, 0, image(theme, img));
             sprintf(buf, "%.1f", span - (*world->clock() - start) * 0.001);
         }
         ScreenVertex q[4] = {
@@ -318,7 +318,7 @@ void Hud_DrawLogo(RenderDevice *d3d, Texture *logo, GameState state, float H,
         tl(pad, yb, 0xffffffff, 0.0f, 1.0f),
     };
     blend_on(d3d);
-    d3d->SetTexture(0, logo);
+    bindTexture(d3d, 0, logo);
     if (state == GameState::MainMenu || state == GameState::PauseMenu)
         draw_strip(d3d, q);
     d3d->SetBlend(BlendState::off());

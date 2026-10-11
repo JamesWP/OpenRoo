@@ -4,7 +4,7 @@
  * nothing loads); the other depths are here so a bitmap of any ordinary kind
  * decodes. */
 
-#include "image.h"
+#include "imagefile.h"
 #include <string.h>
 #include <algorithm>
 

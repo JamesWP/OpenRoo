@@ -270,7 +270,7 @@ void Scene_EffectsAndShadows(Renderer *renderer, World *world, CameraPose *cam, 
         /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
         if (d3d->hasStencil() && d3d->bitDepth() > 16 &&
             config->videoShadows() != 0) {
-            d3d->SetTexture(0, &renderer->texShadow);
+            bindTexture(d3d, 0, &renderer->texShadow);
             d3d->SetBlend(BlendState::alpha());
             StencilState st = d3d->stencil();
             st.enable = true;
@@ -373,7 +373,7 @@ static void draw_bursts(RenderDevice *dev, const CameraPose *cam, ThemeLevelObje
 {
     Texture *tex = rec->subObjects()[0].pTexture;
     if (tex != NULL)
-        dev->SetTexture(0, tex);
+        bindTexture(dev, 0, tex);
     dev->SetBlend(blend);
 
     for (unsigned char j = 0; j < rec->instanceCount(); ++j) {
@@ -538,7 +538,7 @@ void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, 
             Mat4 ident;
             m4_identity(&ident);
             dev->SetWorld(ident);
-            dev->SetTexture(0, speed->subObjects()[0].pTexture);
+            bindTexture(dev, 0, speed->subObjects()[0].pTexture);
             dev->SetBlend(BlendState::additive());
             ps->tick((float)(elapsed * 0.001));
                         ps->setVector(cam->target()[0] - cam->eye()[0],

@@ -88,7 +88,7 @@ Theme_DrawParticleObjects(World *world, CameraPose *pose, Config *config,
                 if (!gate_open(sub.dwVisibilityGate, player, cell))
                     continue;
 
-                dev->SetTexture(0, sub.pTexture);
+                bindTexture(dev, 0, sub.pTexture);
                 dev->SetBlend(blendFromTheme(sub.dwBlendSrc, sub.dwBlendDst));
                 if (rec->kind() != THEME_KIND_PARTICLESYSTEM)
                     continue;

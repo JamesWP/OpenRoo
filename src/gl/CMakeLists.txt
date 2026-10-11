@@ -12,5 +12,5 @@ target_include_directories(gl PUBLIC .)
 # Marks the gl group's own sources: its internal headers #error without it.
 target_compile_definitions(gl PRIVATE OPENROO_GL_BACKEND)
 target_link_libraries(gl
-    PUBLIC  windev gfx renderapi
+    PUBLIC  windev renderapi
     PRIVATE sysdev log prof)

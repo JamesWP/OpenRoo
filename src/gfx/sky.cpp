@@ -71,7 +71,7 @@ float *SkyBackground::draw(RenderDevice *dev,
     const int nquads = fx_one_quad() ? 1 : SKY_QUADS;
     for (int i = 0; i < nquads; i++) {
         const Texture *tex = &Textures_[i];
-        dev->SetTexture(0, tex);
+        bindTexture(dev, 0, tex);
         bool ok = dev->DrawBuffer(Prim::TriangleStrip, vb_, i * 4, 4);
 
         static std::atomic<long> logged = 0;

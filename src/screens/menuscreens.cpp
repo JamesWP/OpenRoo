@@ -55,7 +55,7 @@ void Menu_DrawBackdrop(RenderDevice *d3d, ThemeAssetBlock *theme)
 {
     set_blend(d3d);
     Texture *tex = theme->image(THEME_IMG_MENU);
-    d3d->SetTexture(0, tex);
+    bindTexture(d3d, 0, tex);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF,
                                 g_backdropQuad, 4, 0);
 }
@@ -78,7 +78,7 @@ static void draw_markers(RenderDevice *d3d, const MenuArt *art, float y0, float 
         tlv(l0, y0, 1.0f, 0.0f), tlv(l0, y1, 1.0f, 1.0f),
         tlv(l1, y0, 0.0f, 0.0f), tlv(l1, y1, 0.0f, 1.0f),
     };
-    d3d->SetTexture(0, &art->selector);
+    bindTexture(d3d, 0, &art->selector);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, q, 4, 0);
 
     const float r0 = (right + 16.0f) * fw * K640, r1 = (right - 16.0f) * fw * K640;
@@ -131,7 +131,7 @@ static void draw_panel(RenderDevice *d3d, ThemeAssetBlock *theme, const Texture 
 {
     Menu_DrawBackdrop(d3d, theme);
     set_blend(d3d);
-    d3d->SetTexture(0, tex);
+    bindTexture(d3d, 0, tex);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, quad, 4, 0);
 }
 
@@ -292,7 +292,7 @@ static void draw_widget(RenderDevice *d3d, const Affine &m, const Texture *tex,
         q[i].sz = p.z;
         q[i].color = colour;
     }
-    d3d->SetTexture(0, tex);
+    bindTexture(d3d, 0, tex);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, q, 4, 0);
 }
 
@@ -426,7 +426,7 @@ void Menu_RenderControlsRemap(const MenuArt *art, const FrontEnd *frontEnd, cons
     };
     set_blend(d3d);
     Texture *tex = theme->image(THEME_IMG_MENU);
-    d3d->SetTexture(0, tex);
+    bindTexture(d3d, 0, tex);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, back, 4, 0);
 
     const float hx0 = fw * 0.60000002f, hx1 = fw * 0.40000001f;
@@ -435,7 +435,7 @@ void Menu_RenderControlsRemap(const MenuArt *art, const FrontEnd *frontEnd, cons
         tlv(hx0, hy0, 1.0f, 0.0f), tlv(hx0, hy1, 1.0f, 0.5f),
         tlv(hx1, hy0, 0.0f, 0.0f), tlv(hx1, hy1, 0.0f, 0.5f),
     };
-    d3d->SetTexture(0, &art->tex3);
+    bindTexture(d3d, 0, &art->tex3);
     d3d->Draw(Prim::TriangleStrip, MENU_FVF, head, 4, 0);
 
     const ThemeTextColorPair &col = theme->textColor(THEME_COLOR_MENUCONTROLENTRIES);
