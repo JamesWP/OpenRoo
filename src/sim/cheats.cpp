@@ -31,15 +31,9 @@ void Cheat_EnterLoadedState(Game *game)
 
 void Cheat_KillFoes(Game *g)
 {
-    unsigned char i = 0;
-    // The count is re-read every pass.
-    if (g->world()->foeCount() != 0) {
-        do {
-            unsigned char id = g->world()->foeId(i);
-            ++i;
-            g->world()->foeSlot(id)->setMoveState(4);
-        } while (i < g->world()->foeCount());
-    }
+    // Only the move state is set: no foe is added or removed.
+    for (Foe *f : g->world()->foes())
+        f->setMoveState(4);
 }
 
 void Cheat_AddLife(Game *g, int n)

@@ -203,8 +203,7 @@ void Scene_OpaquePasses(Renderer *renderer, World *world, CameraPose *cam, Confi
     /* The bombs: whole, or the explosion once it has started dying. */
     if (world->bombCount() != 0) {
         PROF_SCOPE("bombs");
-        for (unsigned char i = 0; i < world->bombCount(); ++i) {
-            Bomb *b = world->bombSlot(world->bombId(i));
+        for (Bomb *b : world->bombs()) {
             float pos[3] = { b->posU(), b->posY(), -b->posV() };
             float rot[3] = { 0.0f, 0.0f, 0.0f };
             PROF_SCOPE(OBJECT_NAMES[b->dyingStarted() == 0 ? THEME_OBJ_BOMB : THEME_OBJ_EXPLOSION]);
@@ -442,8 +441,7 @@ void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, 
 
         /* Bombs: the fuse's effects, then the explosion's 2 s after the drop.
          */
-        for (unsigned char i = 0; i < world->bombCount(); ++i) {
-            Bomb *b = world->bombSlot(world->bombId(i));
+        for (Bomb *b : world->bombs()) {
             float pos[3] = { b->posU(), b->posY(), -b->posV() };
             float rot[3] = { 0.0f, 0.0f, 0.0f };
             const bool late = *world->clock() - b->droppedAt() > 2000.0;
@@ -453,8 +451,7 @@ void Scene_TranslucentPasses(Renderer *renderer, World *world, CameraPose *cam, 
         /* A falling tile that fell this tick spawns a destruct-field burst on
          * its cell (the height and -V from the falling tile's own cell). */
         ThemeLevelObject *field = burst_record(&renderer->themeBlock, THEME_OBJ_DESTRUCTFIELDFX);
-        for (unsigned char i = 0; i < world->fallingCount(); ++i) {
-            FallingTile *bt = world->fallingSlot(i);
+        for (FallingTile *bt : world->fallings()) {
             if (bt->justFell() != 0 && field != NULL)
                 spawn_burst(field, (float)bt->cellU(), (float)bt->heightCell(),
                             (float)-bt->cellV());

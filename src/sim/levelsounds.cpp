@@ -55,17 +55,15 @@ static SoundVoice *reslot(Game *game, SoundVoice *cur,
     return cur;
 }
 
-/* Gives every object in one slot table its moving-loop sound.  The count and
- * the slot are re-read every pass. */
-template <typename T>
-static void attachLoopSound(Game *game, const World *w,
-                            unsigned char (World::*count)() const,
-                            T *(World::*slot)(unsigned int) const,
+/* Gives every object in one slot table its moving-loop sound.  The body only
+ * sets a sound, so the table is not changed while it is walked. */
+template <class T, unsigned N>
+static void attachLoopSound(Game *game, EntitySlots<T, N> &table,
                             const SoundAssetName *asset)
 {
-    for (unsigned short i = 0; i < (w->*count)(); ++i) {
+    for (T *obj : table) {
         if (asset->enabled != 0)
-            (w->*slot)(i)->setSound(acq(game, asset));
+            obj->setSound(acq(game, asset));
     }
 }
 
@@ -118,21 +116,21 @@ Sim_InitLevelBasedSounds(Game *self)
         for (unsigned short i = 0; i < game->world()->foeCount(); ++i)
             Sim_AcquireObjectSoundBuffersForIndex(game, game->world()->foeId(i));
 
-        for (unsigned short i = 0; i < game->world()->fallingCount(); ++i) {
+        for (FallingTile *bt : game->world()->fallings()) {
             if (game->audio()->themeSound(ThemeSound::DestructStart)->enabled != 0) {
                 audiodev::Buffer *p = acq(game, game->audio()->themeSound(ThemeSound::DestructStart));
-                game->world()->fallingSlot(i)->setFallSound(p);
+                bt->setFallSound(p);
             }
             if (game->audio()->themeSound(ThemeSound::DestructRegen)->enabled != 0) {
                 audiodev::Buffer *p = acq(game, game->audio()->themeSound(ThemeSound::DestructRegen));
-                game->world()->fallingSlot(i)->setRespawnSound(p);
+                bt->setRespawnSound(p);
             }
         }
-        attachLoopSound(game, game->world(), &World::liftCount,   &World::liftSlot,
+        attachLoopSound(game, game->world()->lifts(),
                         game->audio()->themeSound(ThemeSound::Elevator));
-        attachLoopSound(game, game->world(), &World::platformCount,  &World::platformSlot,
+        attachLoopSound(game, game->world()->platforms(),
                         game->audio()->themeSound(ThemeSound::Platform));
-        attachLoopSound(game, game->world(), &World::bridgeCount, &World::bridgeSlot,
+        attachLoopSound(game, game->world()->bridges(),
                         game->audio()->themeSound(ThemeSound::Bridge));
 
         if (game->session()->restartCount() == 0 && game->config()->sound3D() != 0) {
