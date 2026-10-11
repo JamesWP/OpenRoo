@@ -14,7 +14,6 @@
 #include "particles.h"
 #include "sysdev.h"
 #include "generators.h"
-#include "factory.h"
 #include "logger.h"
 #include <stdlib.h>
 #include "gametime.h"
@@ -366,13 +365,8 @@ void FaceParticleSystem::transformCorners(float *matrix)
 
 /* ─── The ring and the ParticleSystem lifecycle ────────────────────────────
  *
- * The virtuals that make, copy, resize, serialise and destroy a system, plus
+ * The virtuals that make, copy, resize, load and destroy a system, plus
  * the RingBuffer they all work on. */
-static bool ps_write(const void *src, unsigned size, std::ostream &out)
-{
-    return writeBytes(out, src, size);
-}
-
 static bool ps_read(void *dst, unsigned size, std::istream &in)
 {
     return readBytes(in, dst, size);
@@ -526,35 +520,6 @@ int ParticleSystem::copyFrom(const ParticleSystem *src)
     return true;
 }
 
-/* ─── Save / Load ──────────────────────────────────────────────────────────
- *
- * Save takes an ostream and load an istream; both return int.  The base
- * ignores the logger, the subclasses report through it.
- *
- * FORMAT: a sub-object's class name is its length including the terminator,
- * then that many bytes, so the NUL goes to the file too.  A missing sub-object
- * writes the literal "NULL". */
-template <class T>
-static int ps_write_sub_object(T *obj, std::ostream &out)
-{
-    const char *name = obj ? obj->name() : "NULL";
-    uint32_t len = (uint32_t)strlen(name) + 1;
-    if (!ps_write(&len, 4, out))
-        return false;
-    if (!writeBytes(out, name, len))
-        return false;
-    return obj ? obj->save(out) : true;
-}
-
-/* Ring size, then the generator and the environment. */
-int ParticleSystem::save(std::ostream &out)
-{
-    if (!ps_write(&ring_.dwRingCount, 4, out))
-        return false;
-    return ps_write_sub_object(pGenerator_, out)
-        && ps_write_sub_object(pEnvironment_, out);
-}
-
 /* Read one length-prefixed class name into a fresh, terminated buffer.  Null
  * on failure. */
 static std::unique_ptr<char[]> ps_read_name(std::istream &in, const char *msg_name)
@@ -686,13 +651,6 @@ int PointParticleSystem::copyFrom(const ParticleSystem *src)
     return ParticleSystem::copyFrom(src) && allocVerts(1);
 }
 
-/* The base write, whose result is discarded, then success. */
-int PointParticleSystem::save(std::ostream &out)
-{
-    ParticleSystem::save(out);
-    return true;
-}
-
 int PointParticleSystem::load(std::istream &in)
 {
     if (!ParticleSystem::load(in))
@@ -728,17 +686,6 @@ int FaceParticleSystem::copyFrom(const ParticleSystem *src)
 int FaceParticleSystem::resize(uint32_t count)
 {
     return ParticleSystem::resize(count) && allocVerts();
-}
-
-/* The base write (result discarded, as Point's), then the scale. */
-int FaceParticleSystem::save(std::ostream &out)
-{
-    ParticleSystem::save(out);
-    if (!ps_write(&flScale_, 4, out)) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: saving FaceParticleSystem failed, because the face size could not be saved");
-        return false;
-    }
-    return true;
 }
 
 int FaceParticleSystem::load(std::istream &in)
@@ -889,20 +836,6 @@ int XFaceParticleSystem::resize(uint32_t count)
         return false;
     }
     return true;
-}
-
-/* The base stream, then the corner count and the eight ranges.  Load finishes
- * by re-running setCapacity with the ring size, which rebuilds the corners and
- * vertices. */
-int XFaceParticleSystem::save(std::ostream &out)
-{
-    if (!ParticleSystem::save(out))
-        return false;
-    if (ps_write(&dwCornerTableCount_, 4, out)
-        && ps_write(ranges, sizeof(ranges), out))
-        return true;
-    g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: saving XFaceParticleSystem failed, because the attributes could not be saved");
-    return false;
 }
 
 int XFaceParticleSystem::load(std::istream &in)

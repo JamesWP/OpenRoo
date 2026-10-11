@@ -3,7 +3,6 @@
 #include <memory>
 #include <stdint.h>
 #include <istream>
-#include <ostream>
 #include <stddef.h>
 class RenderDevice;
 struct VertexBuffer;
@@ -109,7 +108,6 @@ protected:
     virtual int copyFrom(const ParticleSystem *src);
     virtual int setCapacity(uint32_t count);
     virtual int resize(uint32_t count);
-    virtual int save(std::ostream &out);
     virtual int load(std::istream &in);
 
     /* Hand the ring to the new sub-object first; only if it accepts is the old
@@ -150,7 +148,6 @@ protected:
     int  copyFrom(const ParticleSystem *src) override;
     int  setCapacity(uint32_t count) override;
     int  resize(uint32_t count) override;
-    int  save(std::ostream &out) override;
     int  load(std::istream &in) override;
 };
 
@@ -167,7 +164,6 @@ protected:
     int  copyFrom(const ParticleSystem *src) override;
     int  setCapacity(uint32_t count) override;
     int  resize(uint32_t count) override;
-    int  save(std::ostream &out) override;
     int  load(std::istream &in) override;
 
 private:
@@ -202,7 +198,6 @@ protected:
     int  copyFrom(const ParticleSystem *src) override;
     int  setCapacity(uint32_t count) override;
     int  resize(uint32_t count) override;
-    int  save(std::ostream &out) override;
     int  load(std::istream &in) override;
 
 private:
