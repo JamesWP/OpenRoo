@@ -9,7 +9,6 @@
 #include <math.h>
 #include "themedraw.h"
 #include "theme.h"
-#include "levelobject.h"
 #include "generators.h"
 #include "particles.h"
 #include "renderdevice.h"
@@ -20,6 +19,7 @@
 #include "levelmap.h"
 #include "player.h"
 #include "ani.h"
+#include "animcode.h"
 
 static const float K_PHASE_SCALE = 4.0f;
 static const float K_HALF        = 0.5f;

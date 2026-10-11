@@ -31,6 +31,7 @@
 #include "logger.h"
 
 #include "ani.h"
+#include "animcode.h"
 #include <algorithm>
 #include <iterator>
 

@@ -74,8 +74,8 @@ public:
     /* Fills the table from a .ani file. */
     int load(const char *path);
 
-    /* The slot for an animation code, or NULL for a code the table has no
-     * slot for. */
+    /* The slot for an animation code (AnimCode, base/animcode.h), or NULL
+     * for a code the table has no slot for. */
     AnimSlot *lookup(unsigned int code);
     const AnimSlot *lookup(unsigned int code) const
     {
@@ -108,31 +108,6 @@ private:
     AnimSlot turnLeft_;       
     AnimSlot turnRight_;     
      
-};
-
-/* The animation codes, as LookupAnimDescriptor dispatches them.
- * These are the values MovableEntity carries in anim_ (see
- * movableentity.h), which is why 0xfa/0xfb are already spelled there. */
-enum AnimCode {
-    ANIM_ICE               = 0x03,
-    ANIM_SLIDE             = 0x04,
-    ANIM_PARAGLIDE         = 0x05,
-    ANIM_FALL              = 0x08,
-    ANIM_GLUE              = 0x09,
-    ANIM_GHOST             = 0x0a,
-    ANIM_JUMP              = 0x0b,
-    ANIM_WALK_FORWARD      = 0x14,
-    ANIM_WALK_BACKWARD     = 0x15,
-    ANIM_FIELD_STAIR_UP    = 0x16,
-    ANIM_FIELD_STAIR_DOWN  = 0x17,
-    ANIM_STAIR_STAIR_UP    = 0x18,
-    ANIM_STAIR_STAIR_DOWN  = 0x19,
-    ANIM_STAIR_FIELD_UP    = 0x1a,
-    ANIM_STAIR_FIELD_DOWN  = 0x1b,
-    ANIM_TURN_RIGHT        = 0x1e,
-    ANIM_TURN_LEFT         = 0x1f,
-    ANIM_IDLE1             = 0xfa,
-    ANIM_IDLE2             = 0xfb
 };
 
 /* ── The two evaluators ───────────────────────────────────────────────────

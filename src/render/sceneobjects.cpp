@@ -36,7 +36,6 @@
 #include "tile.h"
 #include "player.h"
 #include "theme.h"
-#include "levelobject.h"
 #include "texture.h"
 #include "ani.h"
 #include "animatedmesh.h"

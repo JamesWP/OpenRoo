@@ -30,6 +30,7 @@
 #include "logger.h"
 #include "animatedmesh.h"
 #include "ani.h"
+#include "animcode.h"
 #include "scene.h"
 #include "texture.h"
 #include "extraobjects.h"
