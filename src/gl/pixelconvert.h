@@ -2,6 +2,9 @@
  * by its bit count and channel masks, so this can be tested on its own. */
 
 #pragma once
+#ifndef OPENROO_GL_BACKEND
+#error "Only the gl group's own sources may include this header; use glrenderdevice.h"
+#endif
 #include <stdint.h>
 #include "image.h"
 

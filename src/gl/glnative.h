@@ -17,6 +17,9 @@
  * texture sizes -- works as normal, so the game cannot tell. */
 
 #pragma once
+#ifndef OPENROO_GL_BACKEND
+#error "Only the gl group's own sources may include this header; use glrenderdevice.h"
+#endif
 #include <vector>
 #include "glapi.h"
 #include "renderdevice.h"

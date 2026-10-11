@@ -9,6 +9,9 @@
  * stacks, no lights, no texture environments and no immediate mode. */
 
 #pragma once
+#ifndef OPENROO_GL_BACKEND
+#error "Only the gl group's own sources may include this header; use glrenderdevice.h"
+#endif
 #include <GL/glcorearb.h>
 
 namespace windev { class Window; }
