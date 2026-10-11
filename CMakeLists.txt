@@ -43,7 +43,8 @@ add_compile_options(-Wall -Wextra -Werror)
 # depends on with target_link_libraries in its own CMakeLists.txt; their include
 # paths follow from those links.  tools/check_layers.py (the check-layers
 # target) checks the declarations against the includes and src/layers.yaml.
-foreach(group app audio base camera script session fx game gfx math screens audiodev core dbg debugui entities flow gl input inputapi inputdev level render renderapi sim soundapi testing ui videodev windev sysdev log prof)
+set(GROUPS app audio base camera script session fx game gfx math screens audiodev core dbg debugui entities flow gl input inputapi inputdev level render renderapi sim soundapi testing ui videodev windev sysdev log prof)
+foreach(group ${GROUPS})
     add_subdirectory(src/${group})
 endforeach()
 
@@ -79,6 +80,13 @@ add_custom_target(check-layers ALL
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tools/check_layers.py ${PROJECT_SOURCE_DIR}
     COMMENT "Checking the group layering")
 add_dependencies(OpenRoo check-layers)
+# Every group waits for the check, so a layering error fails the build before
+# anything compiles.
+foreach(group ${GROUPS})
+    if(TARGET ${group})
+        add_dependencies(${group} check-layers)
+    endif()
+endforeach()
 
 # A picture of the groups and their links: build/groups.svg (on request only).
 add_custom_target(group-graph
