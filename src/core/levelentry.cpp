@@ -44,9 +44,11 @@ LevelEntry_PrepareAssets(Renderer *renderer)
     // loaded from.
     if (strcmp(renderer->themeBlock.themeName(), thm) != 0) {
         g_logger.logMessage(1, "THM: *** Theme: %s ***", map->mapName());
-        if (!renderer->themeBlock.load(g->audio()->themeSounds(), g->gameDir(), d3d,
-                                       &renderer->textures, &renderer->models, thm))
+        std::vector<ThemeSoundLine> sounds;
+        if (!renderer->themeBlock.load(d3d, &renderer->textures, &renderer->models, thm, sounds))
             g_logger.logMessage(4, "Couldn't load theme %s.", map->mapName());
+        for (const ThemeSoundLine &s : sounds)
+            g->audio()->themeSounds()->addEvent(g->gameDir(), s.event.c_str(), s.wave.c_str());
     }
 
     // 4. What the frame renderer draws.

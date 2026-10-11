@@ -254,39 +254,6 @@ void ThemeAssetBlock::release(TextureManager *textures, ModelManager *models)
     memset((void *)this, 0, sizeof(*this));
 }
 
-/* The event ids, in test order.  An unknown event registers nothing and
- * returns false. */
-static const struct { const char *name; ThemeSound id; } kSoundEvents[] = {
-    { "movejj", ThemeSound::MoveJJ },                 { "movecatcher", ThemeSound::MoveCatcher },
-    { "movethrower", ThemeSound::MoveThrower },       { "moveicesliding", ThemeSound::MoveIceSliding },
-    { "movesliding", ThemeSound::MoveSliding },       { "moveparagliding", ThemeSound::MoveParagliding },
-    { "moveparaglidingstart", ThemeSound::MoveParaglidingStart }, { "movejumppad", ThemeSound::MoveJumpPad },
-    { "teleporter", ThemeSound::Teleporter },         { "elevator", ThemeSound::Elevator },
-    { "platform", ThemeSound::Platform },             { "switch", ThemeSound::Switch },
-    { "glue", ThemeSound::Glue },                     { "bridge", ThemeSound::Bridge },
-    { "destructstart", ThemeSound::DestructStart },   { "destructregen", ThemeSound::DestructRegen },
-    { "obstacle", ThemeSound::Obstacle },             { "crystal", ThemeSound::Crystal },
-    { "splatjj", ThemeSound::SplatJJ },               { "splatcatcher", ThemeSound::SplatCatcher },
-    { "splatthrower", ThemeSound::SplatThrower },     { "falljj", ThemeSound::FallJJ },
-    { "fallcatcher", ThemeSound::FallCatcher },       { "fallthrower", ThemeSound::FallThrower },
-    { "bombtick", ThemeSound::BombTick },             { "explosionbomb", ThemeSound::ExplosionBomb },
-    { "explosioncatcher", ThemeSound::ExplosionCatcher },
-};
-
-bool  
-Theme_RegisterSound(ThemeSoundTable *sounds, const char *gameDir,
-                    char *eventName, const char *waveName)
-{
-    lower_inplace(eventName);
-    for (const auto &ev : kSoundEvents) {
-        if (strcmp(eventName, ev.name) == 0) {
-            sounds->add(gameDir, static_cast<unsigned>(ev.id), waveName);
-            return true;
-        }
-    }
-    return false;
-}
-
 /* The parser's keyword tables. */
 
 enum { FOG_NONE = 0, FOG_EXP = 1, FOG_EXP2 = 2, FOG_LINEAR = 3 };
@@ -407,22 +374,21 @@ template <typename T> struct Cursor {
 class ThemeParser {
 public:
     /* Parses the stream into block; the parse state starts cleared. */
-    void run(ThemeSoundTable *s, const char *dir, RenderDevice *dev, TextureManager *tex,
-             ModelManager *mdl, ThemeAssetBlock *b, std::istream &f)
+    void run(RenderDevice *dev, TextureManager *tex, ModelManager *mdl, ThemeAssetBlock *b,
+             std::istream &f, std::vector<ThemeSoundLine> *s)
     {
         *this = ThemeParser();
-        sounds = s; gameDir = dir; d3d = dev; textures = tex; models = mdl; block = b; in = &f;
+        d3d = dev; textures = tex; models = mdl; block = b; in = &f; sounds = s;
         parseFile();
     }
 
 private:
-    ThemeSoundTable *sounds;
-    const char      *gameDir;
     RenderDevice    *d3d;
     TextureManager  *textures;
     ModelManager    *models;
     ThemeAssetBlock *block;
     std::istream    *in;
+    std::vector<ThemeSoundLine> *sounds;
 
     char     tok[TOKEN_SLOTS][TOKEN_MAX];
     unsigned ntok;
@@ -694,7 +660,7 @@ void ThemeParser::objectKeyword(ThemeObjectTypeSlot *slot, bool inEnvironment,
             block->flSideHeight_ = atof_f(tok[1]);
     } else if (is(tok[0], "sound")) {
         if (inEnvironment && ntok > 2)
-            Theme_RegisterSound(sounds, gameDir, tok[1], tok[2]);
+            sounds->push_back({ tok[1], tok[2] });
     }
 }
 
@@ -855,10 +821,11 @@ void ThemeParser::subObjectKeyword(ThemeObjectTypeSlot *slot, SceneSubObject *su
 /* One parser for every call; 4 KB of tokens, so not on the stack. */
 static ThemeParser s_parser;
 
-bool ThemeAssetBlock::themeLoad(ThemeSoundTable *sounds, const char *gameDir,
-                                RenderDevice *d3d, TextureManager *textures,
-                                ModelManager *models, char *path)
+bool ThemeAssetBlock::themeLoad(RenderDevice *d3d, TextureManager *textures,
+                                ModelManager *models, char *path,
+                                std::vector<ThemeSoundLine> &sounds)
 {
+    sounds.clear();
     release(textures, models);
     {
         FogState fog = d3d->fog();
@@ -870,7 +837,7 @@ bool ThemeAssetBlock::themeLoad(ThemeSoundTable *sounds, const char *gameDir,
     if (!file)
         return false;
 
-    s_parser.run(sounds, gameDir, d3d, textures, models, this, file);
+    s_parser.run(d3d, textures, models, this, file, &sounds);
 
     theme_struct_dump_if_enabled(this, path);
     strcpy(themeName_, path);  // PRESERVED: unbounded
@@ -878,14 +845,14 @@ bool ThemeAssetBlock::themeLoad(ThemeSoundTable *sounds, const char *gameDir,
 }
 
 /* The load, timed.  The time goes only to our log, never into game state. */
-bool ThemeAssetBlock::load(ThemeSoundTable *sounds, const char *gameDir,
-                           RenderDevice *d3d, TextureManager *textures,
-                           ModelManager *models, char *path)
+bool ThemeAssetBlock::load(RenderDevice *d3d, TextureManager *textures,
+                           ModelManager *models, char *path,
+                           std::vector<ThemeSoundLine> &sounds)
 {
     const unsigned long long freq = sysdev::perfFrequency();
     const unsigned long long t0 = sysdev::perfCounter();
 
-    bool ok = themeLoad(sounds, gameDir, d3d, textures, models, path);
+    bool ok = themeLoad(d3d, textures, models, path, sounds);
 
     const unsigned long long t1 = sysdev::perfCounter();
     double ms = (double)(t1 - t0) * 1000.0 / (double)freq;

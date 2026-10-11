@@ -2,16 +2,15 @@
 #include <stdint.h>
 #include "soundasset.h"
 
-/* The theme sound table ("TSM" in its log line),.  A .thm
- * `Sound <event> <wave>` line fills entries[id] through ThemeSoundTable::add
- * (theme.cpp); the id is the ThemeSound value for the event name.  The event
- * table's largest id is 0x47, but the table holds 100 entries: ReleaseAll
- * clears exactly 100, where switchMax_ begins.  Lifecycle in theme.cpp; the
- * vptr is at +0. */
+/* The theme sound table ("TSM" in its log line).  A .thm `Sound <event>
+ * <wave>` line, which the theme loader (render/theme.cpp) hands back to the
+ * level entry, fills entries[id] through ThemeSoundTable::addEvent; the id is
+ * the ThemeSound value for the event name.  The largest id is 0x47, but the
+ * table holds 100 entries, all of which releaseAll clears. */
 #define THEME_SOUND_COUNT 100
 
 /* The slots of the theme sound table, named after the theme file's "sound"
- * keywords (render/theme.cpp).  JJ is the player character. */
+ * keywords (themesounds.cpp).  JJ is the player character. */
 enum class ThemeSound : unsigned {
     MoveCatcher          = 0,
     MoveJJ               = 1,
@@ -45,6 +44,11 @@ class ThemeSoundTable {
 public:
     /* Adds (or replaces) the wave for a theme sound id. */
     int add(const char *dir, unsigned int id, const char *waveName);
+
+    /* The same, for a theme file's `sound` line: the event is the slot's
+     * keyword (movejj, bombtick..., any case).  False, adding nothing, for an
+     * event no slot has. */
+    bool addEvent(const char *dir, const char *eventName, const char *waveName);
 
     /* An empty table: every entry cleared (see releaseAll). */
     ThemeSoundTable();

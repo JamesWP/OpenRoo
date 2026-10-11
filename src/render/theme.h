@@ -8,10 +8,11 @@
  * `textureadress` keywords skip the check for a missing record every other
  * handler makes, and would write near address 0.  No shipped theme does it. */
 #pragma once
-#include "themesounds.h"
 
 #include <stdint.h>
 #include <stddef.h>
+#include <string>
+#include <vector>
  
 #include "texture.h"
 #include "uvanimator.h"
@@ -48,6 +49,12 @@ struct SceneSubObject {
     uint32_t  dwTexAddress;     // TEXTUREADDRESSU/V; 0 means 3
     SceneSubObjectEffect effect;
     float  flEffectParams[3];
+};
+
+/* A theme file's `sound <event> <wave>` line, inside `environment { }`. */
+struct ThemeSoundLine {
+    std::string event;
+    std::string wave;
 };
 
 enum ThemeObjectKind : uint32_t {
@@ -255,9 +262,11 @@ public:
      
 
     /* Releases the block, parses the theme file at path into it, and builds its
-     * meshes, textures and sounds. */
-    bool load(ThemeSoundTable *sounds, const char *gameDir, RenderDevice *d3d,
-              TextureManager *textures, ModelManager *models, char *path);
+     * meshes and textures.  The theme's sounds are not the renderer's: its
+     * `sound` lines are handed back in sounds, in file order, for the caller to
+     * give the theme sound table (ThemeSoundTable::addEvent). */
+    bool load(RenderDevice *d3d, TextureManager *textures, ModelManager *models,
+              char *path, std::vector<ThemeSoundLine> &sounds);
 
     /* Releases everything the block holds.  Also called at shutdown. */
     void release(TextureManager *textures, ModelManager *models);
@@ -294,9 +303,8 @@ private:
     SkyBackground        sky_;  // built from the face names; drawn by sky.cpp
     float                flSideHeight_{};
 
-    bool themeLoad(ThemeSoundTable *sounds, const char *gameDir,
-                   RenderDevice *d3d, TextureManager *textures, ModelManager *models,
-                   char *path);
+    bool themeLoad(RenderDevice *d3d, TextureManager *textures, ModelManager *models,
+                   char *path, std::vector<ThemeSoundLine> &sounds);
 
      
 };
@@ -304,9 +312,4 @@ private:
 /* The loader and its helpers. */
 
 
-
-/* The `sound` keyword: event name to id, then ThemeSoundTable::add. */
-  bool  
-Theme_RegisterSound(ThemeSoundTable *sounds, const char *gameDir,
-                    char *eventName, const char *waveName);
 

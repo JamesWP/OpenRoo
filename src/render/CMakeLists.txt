@@ -19,5 +19,5 @@ add_library(render OBJECT
 target_include_directories(render PUBLIC .)
 
 target_link_libraries(render
-    PUBLIC  audio math gfx fx renderapi
+    PUBLIC  math gfx fx renderapi
     PRIVATE base sysdev log prof camera level entities imgui)
