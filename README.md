@@ -80,13 +80,13 @@ an unofficial fan project and is not affiliated with them.
 ## Component groups
 
 Each directory under `src/` is a CMake group (an object library in its
-`CMakeLists.txt`). The groups are ordered in `src/layers.txt`, lowest first: a
+`CMakeLists.txt`). The groups are ordered in `src/layers.yaml`, lowest first: a
 group may include only groups on lines above its own. Each group declares the
 groups it includes with `target_link_libraries` (PUBLIC when its headers use
 them, PRIVATE otherwise), and those links give it the include paths;
 `tools/check_layers.py` (the `check-layers` target) checks the links against the
-includes and `src/layers.txt`. To add a group, give it a line in
-`src/layers.txt` in the position its includes allow.
+includes and `src/layers.yaml`. To add a group, give it a line in
+`src/layers.yaml` in the position its includes allow.
 
 `cmake --build build --target group-graph` draws the groups and their links to
 `build/groups.svg` (`tools/group_graph.py`; `--all` for every link rather than

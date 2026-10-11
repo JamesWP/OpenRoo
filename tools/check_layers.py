@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Checks the src/ groups' declared dependencies against their includes and
-against the layering in src/layers.txt.
+against the layering in src/layers.yaml.
 
 Each group (a directory under src/) declares the groups it depends on with
 target_link_libraries in its own src/<group>/CMakeLists.txt, under PUBLIC
@@ -12,8 +12,8 @@ reason.
 
 Every quoted #include of a project header is an edge from the including group
 to the group that owns the header.  Errors:
-  - a group missing from src/layers.txt, or listed there without a directory;
-  - a link to a group that is not lower in src/layers.txt;
+  - a group missing from src/layers.yaml, or listed there without a directory;
+  - a link to a group that is not lower in src/layers.yaml;
   - an include of a group the including group does not link;
   - a group whose headers include a group it links PRIVATE;
   - a group linked PUBLIC that only its .cpp files include;
@@ -33,13 +33,15 @@ KEYWORDS = ('PUBLIC', 'PRIVATE', 'INTERFACE')
 
 
 def load_layers(path):
+    """Reads the rows of layers.yaml: `layers:` and then one `- [a, b]` per row,
+    lowest first.  A subset of YAML, so that no YAML library is needed."""
     rank = {}
     layer = 0
     for line in open(path):
-        line = line.split('#', 1)[0].split()
-        if not line:
+        m = re.match(r'\s*-\s*\[(.*)\]', line.split('#', 1)[0])
+        if not m:
             continue
-        for g in line:
+        for g in m.group(1).replace(',', ' ').split():
             rank[g] = layer
         layer += 1
     return rank
@@ -94,24 +96,24 @@ def scan(src):
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else '.'
     src = os.path.join(root, 'src')
-    rank = load_layers(os.path.join(src, 'layers.txt'))
+    rank = load_layers(os.path.join(src, 'layers.yaml'))
     groups, edges = scan(src)
     links = load_links(src, groups)
 
     errors = []
     for g in groups:
         if g not in rank:
-            errors.append('src/%s: group is not in src/layers.txt' % g)
+            errors.append('src/%s: group is not in src/layers.yaml' % g)
     for g in rank:
         if g not in groups:
-            errors.append('src/layers.txt: %s is not a group under src/' % g)
+            errors.append('src/layers.yaml: %s is not a group under src/' % g)
 
     # The declared links: each must point at a lower layer.
     for g in groups:
         for d in sorted(links[g], key=lambda d: (rank.get(d, 0), d)):
             if g in rank and d in rank and rank[d] >= rank[g]:
                 errors.append('src/%s/CMakeLists.txt: %s links %s, which sits on the same '
-                              'or a higher layer (src/layers.txt)' % (g, g, d))
+                              'or a higher layer (src/layers.yaml)' % (g, g, d))
 
     # The includes: each must be linked, with the right visibility.
     header_deps = {g: set() for g in groups}

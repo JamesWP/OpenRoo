@@ -1,0 +1,45 @@
+# The layering of the src/ groups, lowest first, in tiers by role.  A group may
+# include headers from the groups on the lines above its own and from itself,
+# never from its own line or below: the groups sharing a line are peers that
+# don't depend on each other.  Each group links the groups it includes with
+# target_link_libraries in its own CMakeLists.txt, and those links give it the
+# include paths; this file is the order the links must respect.
+# tools/check_layers.py (the check-layers target) checks the links against the
+# includes and this file; tools/group_graph.py draws them.
+#
+# Add a new group to the tier its role belongs to, or a new line if it must sit
+# between two.  If a group comes to need a peer, that is a design change: move
+# one of them, here and in review.
+
+layers:
+  # The interfaces the platform groups and the game share: sound and rendering.
+  # Header-only, and they depend on nothing, so that the groups that implement
+  # them (audiodev, gl) and the groups that use them agree on a vocabulary.
+  - [soundapi, renderapi]
+
+  # The platform: the OS, the devices, the window, the sound system.
+  - [sysdev, inputdev, videodev, windev, audiodev]
+
+  # Foundation: logging, then the basic types and settings, maths and the
+  # profiler.
+  - [log]
+  - [base, math, prof]
+
+  # Services the game is built on: debug, replay, graphics, sound; then input
+  # mapping, the GL backend, particles, the script player and the debug UI.
+  - [dbg, testing, gfx, audio]
+  - [input, gl, fx, script, debugui]
+
+  # The game's state: the play-through, the camera, the level map; the objects in
+  # the level and the front end's menus; then the renderer of the level beside
+  # the Game that owns all that state.
+  - [session, camera, level]
+  - [entities, ui]
+  - [render, game]
+
+  # Drawing the game (screens) and running it (sim); the input and menu flow
+  # above both; the drivers; the executable.
+  - [screens, sim]
+  - [flow]
+  - [core]
+  - [app]

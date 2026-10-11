@@ -3,8 +3,8 @@
 
 The groups and their dependencies come from the same places the build and
 tools/check_layers.py read them: each src/<group>/CMakeLists.txt's
-target_link_libraries, and src/layers.txt for the order.  The foundation
-is at the bottom and app at the top.  Each line of src/layers.txt is a row
+target_link_libraries, and src/layers.yaml for the order.  The foundation
+is at the bottom and app at the top.  Each line of src/layers.yaml is a row
 (the tiers it declares); --depth puts each group on a row by its depth instead
 (one above the deepest group it links), so groups that don't depend on each
 other share a row.
@@ -31,7 +31,7 @@ from check_layers import load_layers, load_links, scan  # noqa: E402
 
 def load(root):
     src = os.path.join(root, 'src')
-    order = load_layers(os.path.join(src, 'layers.txt'))
+    order = load_layers(os.path.join(src, 'layers.yaml'))
     groups, edges = scan(src)
     groups = [g for g in groups if g in order]
     links = load_links(src, set(groups))
@@ -80,7 +80,7 @@ def reduction(groups, links):
 
 def layout(groups, order, depth, drawn):
     """Rows by depth; within a row, a few barycentre sweeps against the rows
-    around it, starting from layers.txt order.  A link that skips rows gets a
+    around it, starting from layers.yaml order.  A link that skips rows gets a
     waypoint on each row it crosses, placed like a (narrow) node, so it is
     routed between the groups on those rows rather than through them.
 
@@ -221,7 +221,7 @@ def main():
     ap.add_argument('root', nargs='?', default='.', help='the repository root (default .)')
     ap.add_argument('--all', action='store_true', help='draw every link, not just the reduction')
     ap.add_argument('--depth', action='store_true',
-                    help='rows by dependency depth rather than by the lines of layers.txt')
+                    help='rows by dependency depth rather than by the lines of layers.yaml')
     ap.add_argument('--dot', action='store_true', help='write Graphviz DOT instead of SVG')
     ap.add_argument('-o', '--output', help='output file (default groups.svg / groups.dot; - for stdout)')
     args = ap.parse_args()
